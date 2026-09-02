@@ -973,7 +973,7 @@
     "remainingStops": 3,
     "selectable": true
    },
-   "express": true,
+   "express": "unknown",
    "departedMinutes": 2,
    "expect": {
     "parts": [
@@ -1057,7 +1057,7 @@
     "remainingStops": 3,
     "selectable": true
    },
-   "express": false,
+   "express": null,
    "departedMinutes": null,
    "expect": {
     "parts": [
@@ -1127,7 +1127,7 @@
     "remainingStops": 3,
     "selectable": true
    },
-   "express": false,
+   "express": null,
    "departedMinutes": null,
    "expect": {
     "parts": [
@@ -1504,7 +1504,7 @@
     "remainingStops": 4,
     "selectable": true
    },
-   "express": false,
+   "express": null,
    "departedMinutes": null,
    "expect": {
     "parts": [
@@ -1561,7 +1561,7 @@
     "remainingStops": 4,
     "selectable": true
    },
-   "express": false,
+   "express": null,
    "departedMinutes": null,
    "expect": {
     "parts": [
@@ -1594,6 +1594,331 @@
    "expect": {
     "parts": [],
     "lang": "en"
+   }
+  },
+  {
+   "name": "candidateDesc 급행 정차 확정(stops) en",
+   "fn": "candidateDesc",
+   "isEn": true,
+   "leg": {
+    "mode": "subway",
+    "line": {
+     "ko": "노선ᛥ",
+     "en": "Line 5"
+    },
+    "board": {
+     "ko": "승차ᛥ",
+     "en": "Cheonho"
+    },
+    "alight": {
+     "ko": "하차ᛥ",
+     "en": "Gwanghwamun"
+    },
+    "stops": [
+     {
+      "ko": "경유0ᛥ",
+      "en": "Stop0"
+     },
+     {
+      "ko": "경유1ᛥ",
+      "en": "Stop1"
+     }
+    ],
+    "stationCount": 8,
+    "walkBeforeMinutes": 3,
+    "boardOverridden": false
+   },
+   "item": {
+    "message": {
+     "ko": "메시지ᛥ",
+     "en": "In 3 min"
+    },
+    "direction": {
+     "ko": "방향ᛥ",
+     "en": "Down"
+    },
+    "destination": {
+     "ko": "종착ᛥ",
+     "en": "Hanam"
+    },
+    "currentLocation": {
+     "ko": "현재ᛥ",
+     "en": "Singil"
+    },
+    "express": false,
+    "remainingStops": 3,
+    "selectable": true
+   },
+   "express": "stops",
+   "departedMinutes": null,
+   "expect": {
+    "parts": [
+     {
+      "key": "bound",
+      "args": [
+       "Hanam"
+      ]
+     },
+     {
+      "text": "Down"
+     },
+     {
+      "text": "In 3 min"
+     },
+     {
+      "key": "expressStopsAt",
+      "args": [
+       "Gwanghwamun"
+      ]
+     }
+    ],
+    "lang": "en"
+   }
+  },
+  {
+   "name": "candidateDesc 급행 통과(skips)는 조각 없음 — 차단 행 사유 줄이 말한다",
+   "fn": "candidateDesc",
+   "isEn": false,
+   "leg": {
+    "mode": "subway",
+    "line": {
+     "ko": "노선ᛥ",
+     "en": "Line 5"
+    },
+    "board": {
+     "ko": "승차ᛥ",
+     "en": "Cheonho"
+    },
+    "alight": {
+     "ko": "하차ᛥ",
+     "en": "Gwanghwamun"
+    },
+    "stops": [
+     {
+      "ko": "경유0ᛥ",
+      "en": "Stop0"
+     },
+     {
+      "ko": "경유1ᛥ",
+      "en": "Stop1"
+     }
+    ],
+    "stationCount": 8,
+    "walkBeforeMinutes": 3,
+    "boardOverridden": false
+   },
+   "item": {
+    "message": {
+     "ko": "메시지ᛥ",
+     "en": "In 3 min"
+    },
+    "direction": {
+     "ko": "방향ᛥ",
+     "en": "Down"
+    },
+    "destination": {
+     "ko": "종착ᛥ",
+     "en": "Hanam"
+    },
+    "currentLocation": {
+     "ko": "현재ᛥ",
+     "en": "Singil"
+    },
+    "express": false,
+    "remainingStops": 3,
+    "selectable": true
+   },
+   "express": "skips",
+   "departedMinutes": null,
+   "expect": {
+    "parts": [
+     {
+      "key": "bound",
+      "args": [
+       "종착ᛥ"
+      ]
+     },
+     {
+      "text": "방향ᛥ"
+     },
+     {
+      "text": "메시지ᛥ"
+     }
+    ],
+    "lang": "ko"
+   }
+  },
+  {
+   "name": "expressSkipsAlight en",
+   "fn": "expressSkipsAlight",
+   "isEn": true,
+   "leg": {
+    "mode": "subway",
+    "line": {
+     "ko": "노선ᛥ",
+     "en": "Line 5"
+    },
+    "board": {
+     "ko": "승차ᛥ",
+     "en": "Cheonho"
+    },
+    "alight": {
+     "ko": "하차ᛥ",
+     "en": "Gwanghwamun"
+    },
+    "stops": [
+     {
+      "ko": "경유0ᛥ",
+      "en": "Stop0"
+     },
+     {
+      "ko": "경유1ᛥ",
+      "en": "Stop1"
+     }
+    ],
+    "stationCount": 8,
+    "walkBeforeMinutes": 3,
+    "boardOverridden": false
+   },
+   "expect": {
+    "parts": [
+     {
+      "key": "expressSkipsAlight",
+      "args": [
+       "Gwanghwamun"
+      ]
+     }
+    ],
+    "lang": "en"
+   }
+  },
+  {
+   "name": "expressSkipsAlight 하차역 영문 결측 → ko",
+   "fn": "expressSkipsAlight",
+   "isEn": true,
+   "leg": {
+    "mode": "subway",
+    "line": {
+     "ko": "노선ᛥ",
+     "en": "Line 5"
+    },
+    "board": {
+     "ko": "승차ᛥ",
+     "en": "Cheonho"
+    },
+    "alight": {
+     "ko": "하차ᛥ"
+    },
+    "stops": [
+     {
+      "ko": "경유0ᛥ",
+      "en": "Stop0"
+     },
+     {
+      "ko": "경유1ᛥ",
+      "en": "Stop1"
+     }
+    ],
+    "stationCount": 8,
+    "walkBeforeMinutes": 3,
+    "boardOverridden": false
+   },
+   "expect": {
+    "parts": [
+     {
+      "key": "expressSkipsAlight",
+      "args": [
+       "하차ᛥ"
+      ]
+     }
+    ],
+    "lang": "ko"
+   }
+  },
+  {
+   "name": "exitBound ko",
+   "fn": "exitBound",
+   "isEn": false,
+   "exit": "2-1",
+   "expect": {
+    "parts": [
+     {
+      "key": "exitBound",
+      "args": [
+       "2-1"
+      ]
+     }
+    ],
+    "lang": "ko"
+   }
+  },
+  {
+   "name": "exitBound en",
+   "fn": "exitBound",
+   "isEn": true,
+   "exit": "3",
+   "expect": {
+    "parts": [
+     {
+      "key": "exitBound",
+      "args": [
+       "3"
+      ]
+     }
+    ],
+    "lang": "en"
+   }
+  },
+  {
+   "name": "viaStop 하차역 행 출구 병기",
+   "fn": "viaStop",
+   "isEn": false,
+   "stop": {
+    "ko": "광화문"
+   },
+   "role": "alight",
+   "here": false,
+   "exit": "3",
+   "expect": {
+    "parts": [
+     {
+      "text": "광화문"
+     },
+     {
+      "key": "viaAlight",
+      "args": []
+     },
+     {
+      "key": "exitBound",
+      "args": [
+       "3"
+      ]
+     }
+    ],
+    "lang": "ko"
+   }
+  },
+  {
+   "name": "viaStop 승차역 행엔 출구를 붙이지 않는다",
+   "fn": "viaStop",
+   "isEn": false,
+   "stop": {
+    "ko": "천호"
+   },
+   "role": "board",
+   "here": false,
+   "exit": "3",
+   "expect": {
+    "parts": [
+     {
+      "text": "천호"
+     },
+     {
+      "key": "viaBoard",
+      "args": []
+     }
+    ],
+    "lang": "ko"
    }
   }
  ]

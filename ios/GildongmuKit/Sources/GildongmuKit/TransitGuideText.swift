@@ -162,13 +162,19 @@ public func transitCurrentStationLine(isEn: Bool, location: TransitLabel) -> Tra
 /// ⚠ 조각 순서가 곧 낭독 순서다. 빈 조각은 제거되어 구분자가 겹치지 않는다.
 public func transitCandidateDescLine(
     isEn: Bool, leg: TransitDisplayLeg, item: TransitDisplayItem,
-    express: Bool, departedMinutes: Int?
+    express: TransitExpressVerdict?, departedMinutes: Int?
 ) -> TransitTextLine {
     var labels: [TransitLabel] = []
     if let dest = item.destination { labels.append(dest) }
     labels.append(item.direction)
     labels.append(item.message)
-    if express { labels.append(leg.alight) }
+    // 급행 조각(A16 L1): unknown → 종전 "정차 여부 확인 필요", stops → "정차". skips는 조각 없음(차단 행의 사유 줄이 말한다).
+    let expressKey: String? = switch express {
+    case .unknown: "expressCheck"
+    case .stops: "expressStopsAt"
+    case .skips, nil: nil
+    }
+    if expressKey != nil { labels.append(leg.alight) }
     let picked = transitPickLabels(isEn: isEn, labels)
     var i = 0
     var parts: [TransitTextPart] = []
@@ -179,8 +185,8 @@ public func transitCandidateDescLine(
     if !direction.isEmpty { parts.append(.text(direction)) }
     let message = picked.values[i]; i += 1
     if !message.isEmpty { parts.append(.text(message)) }
-    if express {
-        parts.append(.key("expressCheck", [picked.values[i]])); i += 1
+    if let expressKey {
+        parts.append(.key(expressKey, [picked.values[i]])); i += 1
     }
     if let departedMinutes {
         parts.append(.key("departed", [String(departedMinutes)]))
@@ -204,6 +210,16 @@ public func transitVehicleDescLine(isEn: Bool, item: TransitDisplayItem) -> Tran
     return TransitTextLine(parts: parts, lang: picked.lang)
 }
 
+/// 급행이 하차역에 서지 않는 후보의 사유 줄(A16 L1 결정적 미도달, 차단 행).
+public func transitExpressSkipsAlightLine(isEn: Bool, leg: TransitDisplayLeg) -> TransitTextLine {
+    makeLine(isEn, "expressSkipsAlight", [leg.alight]) { $0 }
+}
+
+/// 하차 출구 방면(E25) — 확정 도착 통지·하차역 행에 병기. 순수 UI 템플릿이라 줄 언어는 로케일.
+public func transitExitBoundLine(isEn: Bool, exit: String) -> TransitTextLine {
+    TransitTextLine(parts: [.key("exitBound", [exit])], lang: isEn ? "en" : "ko")
+}
+
 public func transitTerminatesEarlyLine(
     isEn: Bool, leg: TransitDisplayLeg, item: TransitDisplayItem
 ) -> TransitTextLine {
@@ -215,13 +231,15 @@ public func transitTerminatesEarlyLine(
 
 /// 경유 정류소 한 줄 — 이름 + 승차·하차·현재 위치 표식(표식은 UI 라벨이라 인자가 없다).
 public func transitViaStopLine(
-    isEn: Bool, stop: TransitLabel, role: String, here: Bool
+    isEn: Bool, stop: TransitLabel, role: String, here: Bool, exit: String? = nil
 ) -> TransitTextLine {
     let picked = transitPickLabels(isEn: isEn, [stop])
     var parts: [TransitTextPart] = [.text(picked.values[0])]
     if role == "board" { parts.append(.key("viaBoard")) }
     else if role == "alight" { parts.append(.key("viaAlight")) }
     if here { parts.append(.key("viaCurrent")) }
+    // 하차역 행에 출구 번호 병기(E25) — 하차 역할에만.
+    if role == "alight", let exit, !exit.isEmpty { parts.append(.key("exitBound", [exit])) }
     return TransitTextLine(parts: parts, lang: picked.lang)
 }
 
@@ -253,7 +271,7 @@ public let transitTextKeys: [String] = [
     "messageFrame", "subwayNextStop", "subwayArriving", "subwayAtStop", "subwayDeparted",
     "approachFrame", "vehicleSelected", "selectedVehicle", "vehiclePassed",
     "arrivedAtBoardStop", "boarded", "boardedCount", "currentStation",
-    "bound", "expressCheck", "departed", "terminatesEarly",
+    "bound", "expressCheck", "expressStopsAt", "expressSkipsAlight", "exitBound", "departed", "terminatesEarly",
     "viaBoard", "viaAlight", "viaCurrent", "overviewLeg",
     "prewalkStart", "prewalkArrived", "prewalkArrivedButton",
 ]

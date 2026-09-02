@@ -13,7 +13,7 @@
  * 어순이 다른 로케일은 변환 스크립트가 인덱스를 재배치하므로 호출부는 이 순서 하나만 지킨다.
  */
 import type { TransitDisplayItem, TransitDisplayLeg, TransitLabel } from "./transit-display";
-import { subwayRidingMessage } from "./transit-guide";
+import { subwayRidingMessage, type ExpressVerdict } from "./transit-guide";
 
 /** 한 조각: i18n 키(+위치 인자) 또는 완성 문장 원문(서버가 준 그대로 병치). */
 export type TransitTextPart = { key: string; args: string[] } | { text: string };
@@ -193,12 +193,16 @@ export function candidateDescLine(
   isEn: boolean,
   leg: TransitDisplayLeg,
   item: TransitDisplayItem,
-  opts: { express: boolean; departedMinutes: number | null },
+  opts: { express: ExpressVerdict | null; departedMinutes: number | null },
 ): TransitTextLine {
   const labels: TransitLabel[] = [];
   if (item.destination) labels.push(item.destination);
   labels.push(item.direction, item.message);
-  if (opts.express) labels.push(leg.alight);
+  // 급행 조각(A16 L1): unknown → 종전 "정차 여부 확인 필요", stops → "정차". skips는 조각을 만들지
+  // 않는다 — 차단 행의 사유 줄(expressSkipsAlightLine)이 급행을 말한다.
+  const expressKey =
+    opts.express === "unknown" ? "expressCheck" : opts.express === "stops" ? "expressStopsAt" : null;
+  if (expressKey) labels.push(leg.alight);
   const { values, lang } = pickLabels(isEn, labels);
   let i = 0;
   const parts: TransitTextPart[] = [];
@@ -207,7 +211,7 @@ export function candidateDescLine(
   if (direction) parts.push({ text: direction });
   const message = values[i++];
   if (message) parts.push({ text: message });
-  if (opts.express) parts.push({ key: "expressCheck", args: [values[i++]] });
+  if (expressKey) parts.push({ key: expressKey, args: [values[i++]] });
   if (opts.departedMinutes != null) {
     parts.push({ key: "departed", args: [String(opts.departedMinutes)] });
   }
@@ -231,6 +235,16 @@ export function vehicleDescLine(isEn: boolean, item: TransitDisplayItem): Transi
   return { parts, lang };
 }
 
+/** 급행이 하차역에 서지 않는 후보의 사유 줄(A16 L1 결정적 미도달, 차단 행). */
+export function expressSkipsAlightLine(isEn: boolean, leg: TransitDisplayLeg): TransitTextLine {
+  return line(isEn, "expressSkipsAlight", [leg.alight], (v) => v);
+}
+
+/** 하차 출구 방면(E25) — 확정 도착 통지·하차역 행에 병기. 순수 UI 템플릿이라 줄 언어는 로케일. */
+export function exitBoundLine(isEn: boolean, exit: string): TransitTextLine {
+  return { parts: [{ key: "exitBound", args: [exit] }], lang: isEn ? "en" : "ko" };
+}
+
 /** 종착이 하차역보다 앞인 후보의 주석. */
 export function terminatesEarlyLine(
   isEn: boolean,
@@ -249,12 +263,15 @@ export function viaStopLine(
   stop: TransitLabel,
   role: "board" | "via" | "alight",
   here: boolean,
+  /** 하차역 행에 병기할 출구 번호(E25) — 하차 역할에만 붙는다. */
+  exit: string | null = null,
 ): TransitTextLine {
   const { values, lang } = pickLabels(isEn, [stop]);
   const parts: TransitTextPart[] = [{ text: values[0] }];
   if (role === "board") parts.push({ key: "viaBoard", args: [] });
   else if (role === "alight") parts.push({ key: "viaAlight", args: [] });
   if (here) parts.push({ key: "viaCurrent", args: [] });
+  if (role === "alight" && exit) parts.push({ key: "exitBound", args: [exit] });
   return { parts, lang };
 }
 
@@ -308,6 +325,9 @@ export const TRANSIT_TEXT_KEYS = [
   "currentStation",
   "bound",
   "expressCheck",
+  "expressStopsAt",
+  "expressSkipsAlight",
+  "exitBound",
   "departed",
   "terminatesEarly",
   "viaBoard",

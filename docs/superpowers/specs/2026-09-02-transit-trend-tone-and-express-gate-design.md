@@ -199,7 +199,7 @@ BoardingCandidate { item, unreachable: "terminatesEarly" | "expressSkipsAlight" 
 
 - `TransitGuideLeg.exitAlight?: string`(승차 출구는 이번에 소비하지 않는다 — 실을 자리가 없다). 표시 투영 `TransitDisplayLeg.exitAlight: string | null`(조인이 아니라 표시 값이라 투영에 둔다).
 - 문장 키 `exitBound`: ko "{exit}번 출구 방면" · en "Toward Exit {exit}" · es "Hacia la salida {exit}" · fr "Vers la sortie {exit}" · it "Verso l'uscita {exit}" · ja "{exit}番出口方面".
-- **마지막 탑승 구간에만**(리뷰 #16): 환승 구간의 하차 출구는 개찰구 밖으로 유도할 수 있고 ODsay `endExitNo`가 "역외 이동"을 뜻한다는 보장이 없다. 그래서 `exitAlight`는 `buildTransitGuideRoute`가 **마지막 탑승 leg에만** 싣는다(중간 leg는 부재). 자리 둘: ①**확정 도착 통지**(`arrived(certain: true)` 문장 뒤, `nextLeg` 앞. 추정 도착(`arrivedGuess`)엔 붙이지 않는다 — 리뷰 #14, 전 역에서 신호를 잃은 추정에 출구를 확정형으로 붙이면 잘못 내린다) ②**경유역 목록의 하차역 행**(`viaStopLine` role `alight`에 조각 추가 — 정적 표시). 상태줄·`context`·`boarded`엔 넣지 않는다(잉여).
+- **역 밖으로 나가는 하차에만**(리뷰 #16): 환승 구간의 하차 출구는 개찰구 밖으로 유도할 수 있다. 통합된 transit-data 계약(`types.ts` `exit` 주석, `df6b439`)이 이 문맥 게이트를 **서버에서** 건다 — `alight`는 마지막 탑승·버스 환승·역 밖 도보 하차에만 실리고 역내 환승 leg엔 ODsay가 값을 채워도 싣지 않는다. 그래서 소비자는 "마지막 leg에만" 규칙을 따로 두지 않고 값이 있는 leg에 그대로 붙인다(버스 환승 하차의 출구도 정류소로 가는 정보다). 자리 둘: ①**확정 도착 통지**(`arrived(certain: true)` 문장 뒤, `nextLeg` 앞. 추정 도착(`arrivedGuess`)엔 붙이지 않는다 — 리뷰 #14, 전 역에서 신호를 잃은 추정에 출구를 확정형으로 붙이면 잘못 내린다) ②**경유역 목록의 하차역 행**(`viaStopLine` role `alight`에 조각 추가 — 정적 표시). 상태줄·`context`·`boarded`엔 넣지 않는다(잉여).
 - 웹 `useTransitGuide` 확정 도착 통지·`TransitGuidePanel` 경유 목록 미러.
 - 낭독 형태(리뷰 #17): 하이픈 출구(`2-1`)는 VoiceOver가 "2 대시 1"·"2-1"로 정확히 읽는다(memory `voiceover-hyphen-reads-fine-no-expansion`, 실기기 확정) — 정정 대상은 실기기에서 오독이 확인된 것뿐이다.
 
@@ -252,5 +252,7 @@ BoardingCandidate { item, unreachable: "terminatesEarly" | "expressSkipsAlight" 
 | 5 | MAJOR | **수용** | 변이 킬러를 ⑤ 회복 폴로 옮김(§2.7) — fixture도 그 자리를 갖는다 |
 | 6 | MAJOR | **수용** | `pollEnd`는 `defer`(§3) |
 | 7 | MINOR | **수용** | 양끝 공백만(§5.1) |
+
+**§4·§5 구현(2026-09-02, transit-data `df6b439` 통합 뒤)**: `expressVerdict`(ID 1순위)·`unreachableReason` 단일 술어(웹 ↔ Kit, 단위 테스트 미러 `expressVerdictGate`), 선택 진입점 재판정(iOS `board(item:)`·웹 `boardCandidate`), 문장 키 3종 6로케일(`expressStopsAt`·`expressSkipsAlight`·`exitBound`) + descriptor·공유 fixture 8케이스, 출구는 확정 도착 통지·하차역 행에만. 서버가 형식·문맥 게이트를 이미 걸어 소비자 형식 게이트(`validExitNo` ↔ `transitValidExitNo`)는 이중 방어다.
 
 기각 #9·#17은 조건부 타당으로 확인됐다(외부 보관·릴리스 no-op은 코드 게이트가 강제하고, 하이픈 낭독은 실기기 확정). 3차 리뷰는 돌리지 않는다 — 남은 조건 4 중 2·4(수용)는 설계에 박혔고, 1(#13)은 위원장 판정 항목, 3(출력 직렬화)은 근거 있는 기각이다.

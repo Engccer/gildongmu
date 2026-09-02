@@ -443,8 +443,60 @@ private func kindName(_ event: TransitGuideEvent?) -> String? {
 
     let decorated = classifyTransitBoardingCandidates(
         [item("하행", "5", express: true), item("하행", "6", dest: "왕십리")], leg: leg)
-    #expect(decorated.candidates[0].express == true)
-    #expect(decorated.candidates[1].terminatesEarly == true)
+    // 집합 부재 → 판정 불가(unknown): 차단하지 않고 종전 expressCheck.
+    #expect(decorated.candidates[0].express == .unknown)
+    #expect(decorated.candidates[0].unreachable == nil)
+    #expect(decorated.candidates[1].express == nil)
+    #expect(decorated.candidates[1].unreachable == .terminatesEarly)
+}
+
+// 웹 transit-guide.test.ts "급행 결정적 미도달 게이트(A16 L1)"와 동일 케이스(미러 동조). spec 2026-09-02 §4.2.
+@Test func expressVerdictGate() {
+    let names = ["김포공항", "당산", "노량진", "노들", "동작"]
+    let ids = ["901", "902", "903", "904", "905"]
+    func stops(_ withIds: Bool) -> [TransitLegStop] {
+        zip(names, ids).map { TransitLegStop(name: $0.0, stationId: withIds ? $0.1 : nil, lat: 37.5, lng: 127) }
+    }
+    func leg(expressStops: [String]? = nil, expressStopIds: [String]? = nil, withIds: Bool = true, alightName: String = "노들") -> TransitGuideLeg {
+        TransitGuideLeg(
+            mode: "subway", lineName: "수도권 9호선", trackMode: .subway,
+            boardName: "김포공항", alightName: alightName,
+            boardStop: stops(withIds).first,
+            alightStop: TransitLegStop(name: "노들", stationId: withIds ? "904" : nil, lat: 37.5, lng: 127),
+            viaStops: stops(withIds), stationCount: 4, routeId: nil, wayCode: 2, walkBeforeMinutes: nil,
+            expressStops: expressStops, expressStopIds: expressStopIds)
+    }
+    let express = TransitTrackItem(
+        vehicleId: "9", direction: "하행", message: "m", remainingStops: 3,
+        destinationName: "중앙보훈병원", express: true, arrivalCode: nil)
+
+    // ID 판정
+    let skip = leg(expressStops: ["김포공항", "당산", "동작"], expressStopIds: ["901", "902", "905"])
+    #expect(transitExpressVerdict(express, leg: skip) == .skips)
+    #expect(transitUnreachableReason(express, leg: skip) == .expressSkipsAlight)
+    #expect(classifyTransitBoardingCandidates([express], leg: skip).candidates[0].unreachable == .expressSkipsAlight)
+    let stop = leg(expressStops: ["김포공항", "당산", "노들"], expressStopIds: ["901", "902", "904"])
+    #expect(transitExpressVerdict(express, leg: stop) == .stops)
+    #expect(transitUnreachableReason(express, leg: stop) == nil)
+    // ID는 이름 별칭을 무시한다
+    #expect(transitExpressVerdict(express, leg: leg(expressStops: ["김포공항역", "당산역", "노들역"], expressStopIds: ["901", "902", "904"])) == .stops)
+    // 이름 판정(ID 부재): 자격 ⓐⓑ
+    #expect(transitExpressVerdict(express, leg: leg(expressStops: ["김포공항", "당산", "동작"], withIds: false)) == .skips)
+    #expect(transitExpressVerdict(express, leg: leg(expressStops: ["김포공항역", "노들역"], withIds: false)) == .stops)
+    #expect(transitExpressVerdict(express, leg: leg(expressStops: ["여의도", "신논현"], withIds: false)) == .unknown)
+    #expect(transitExpressVerdict(express, leg: leg(expressStops: ["김포공항", "당산"], withIds: false, alightName: "미지역")) == .unknown)
+    // 집합 부재·빈 집합은 unknown, 완행은 nil, 종착 앞이면 종착이 먼저
+    #expect(transitExpressVerdict(express, leg: leg()) == .unknown)
+    #expect(transitExpressVerdict(express, leg: leg(expressStops: [], expressStopIds: [])) == .unknown)
+    let local = TransitTrackItem(vehicleId: "1", direction: "하행", message: "m", remainingStops: 3, destinationName: nil, express: false, arrivalCode: nil)
+    #expect(transitExpressVerdict(local, leg: leg()) == nil)
+    let early = TransitTrackItem(vehicleId: "8", direction: "하행", message: "m", remainingStops: 3, destinationName: "당산", express: true, arrivalCode: nil)
+    #expect(transitUnreachableReason(early, leg: leg(expressStops: ["김포공항"], expressStopIds: ["901"])) == .terminatesEarly)
+    // 출구 번호 형식 게이트
+    #expect(transitValidExitNo(" 2-1 ") == "2-1")
+    #expect(transitValidExitNo("1 2") == nil)
+    #expect(transitValidExitNo("3번 출구") == nil)
+    #expect(transitValidExitNo(nil) == nil)
 }
 
 // 웹 transit-guide.test.ts "순환선 2호선(내선·외선)"과 동일 케이스(미러 동조).
@@ -473,7 +525,7 @@ private func kindName(_ event: TransitGuideEvent?) -> String? {
     #expect(result.candidates.map(\.item.vehicleId) == ["3"])
     // 순수 판정 자체는 여전히 "앞선 종착"이라 답한다 — 순환선 제외는 분류기 몫.
     #expect(transitTerminatesBeforeAlight("성수", leg: leg) == true)
-    #expect(result.candidates[0].terminatesEarly == false)
+    #expect(result.candidates[0].unreachable == nil)
 
     // 지선(성수·신정)도 내선/외선을 쓴다. 방향 대응은 본선과 같고, 종착은 지선
     // 라벨이거나 그 지선의 종점이라 어느 쪽도 하차역보다 앞설 수 없다.

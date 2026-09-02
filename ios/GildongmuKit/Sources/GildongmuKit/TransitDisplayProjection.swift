@@ -31,6 +31,24 @@ public struct TransitDisplayLeg: Codable, Sendable, Equatable {
     public let walkBeforeMinutes: Int?
     /// 승차 지점이 재선택으로 바뀌었는가 — 선행 도보 문구 분기 축(지난 도보를 다시 말하지 않게).
     public let boardOverridden: Bool
+    /// 하차 출구 번호(E25) — 조인이 아니라 표시 값이라 투영에 둔다. 부재는 nil.
+    public let exitAlight: String?
+
+    public init(
+        mode: String, line: TransitLabel, board: TransitLabel, alight: TransitLabel,
+        stops: [TransitLabel], stationCount: Int?, walkBeforeMinutes: Int?,
+        boardOverridden: Bool, exitAlight: String? = nil
+    ) {
+        self.mode = mode
+        self.line = line
+        self.board = board
+        self.alight = alight
+        self.stops = stops
+        self.stationCount = stationCount
+        self.walkBeforeMinutes = walkBeforeMinutes
+        self.boardOverridden = boardOverridden
+        self.exitAlight = exitAlight
+    }
 }
 
 public struct TransitDisplayItem: Codable, Sendable, Equatable {
@@ -81,7 +99,8 @@ public func transitDisplayLeg(
         stops: leg.viaStops.map(stopLabel),
         stationCount: leg.stationCount,
         walkBeforeMinutes: leg.walkBeforeMinutes,
-        boardOverridden: override != nil)
+        boardOverridden: override != nil,
+        exitAlight: leg.exitAlight)
 }
 
 /// 폴링 항목 → 표시 투영. `message`만 `""`를 자리 표시로 보존한다.

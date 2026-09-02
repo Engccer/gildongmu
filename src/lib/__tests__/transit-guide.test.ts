@@ -6,6 +6,9 @@ import {
   classifyBoardingCandidates,
   classifyTrackMode,
   eventProfile,
+  expressVerdict,
+  unreachableReason,
+  validExitNo,
   initTransitGuide,
   pollIntervalMs,
   SESSION_POLL_CAP,
@@ -440,7 +443,7 @@ describe("classifyBoardingCandidates·terminatesBeforeAlight(§5.1)", () => {
       expect(terminatesBeforeAlight("성수", loopLeg)).toBe(true);
       const inner = item({ direction: "내선", vehicleId: "3", destinationName: "성수" });
       const { candidates } = classifyBoardingCandidates([inner], loopLeg);
-      expect(candidates[0].terminatesEarly).toBe(false);
+      expect(candidates[0].unreachable).toBeNull();
     });
   });
 
@@ -448,8 +451,83 @@ describe("classifyBoardingCandidates·terminatesBeforeAlight(§5.1)", () => {
     const express = item({ express: true, vehicleId: "5", direction: "하행" });
     const short = item({ destinationName: "왕십리", vehicleId: "6", direction: "하행" });
     const { candidates } = classifyBoardingCandidates([express, short], leg);
-    expect(candidates[0].express).toBe(true);
-    expect(candidates[1].terminatesEarly).toBe(true);
+    // 집합 부재 → 판정 불가(unknown): 차단하지 않고 종전 expressCheck.
+    expect(candidates[0].express).toBe("unknown");
+    expect(candidates[0].unreachable).toBeNull();
+    expect(candidates[1].express).toBeNull();
+    expect(candidates[1].unreachable).toBe("terminatesEarly");
+  });
+
+  // Kit TransitGuideTests.expressVerdictGate와 동일 케이스(미러 동조). spec 2026-09-02 §4.2.
+  describe("급행 결정적 미도달 게이트(A16 L1)", () => {
+    const stopsOf = (names: string[], ids?: string[]) =>
+      names.map((name, i) => ({ name, lat: 37.5, lng: 127, ...(ids ? { stationId: ids[i] } : {}) }));
+    const ids = ["901", "902", "903", "904", "905"];
+    const names = ["김포공항", "당산", "노량진", "노들", "동작"];
+    const base: TransitGuideLeg = {
+      ...leg,
+      lineName: "수도권 9호선",
+      boardName: "김포공항",
+      alightName: "노들",
+      viaStops: stopsOf(names, ids),
+      alightStop: { name: "노들", stationId: "904", lat: 37.5, lng: 127 },
+    };
+    const express = item({ express: true, vehicleId: "9", direction: "하행", destinationName: "중앙보훈병원" });
+
+    it("ID 판정: 하차역 ID가 집합에 없으면 skips(차단), 있으면 stops", () => {
+      const skip: TransitGuideLeg = { ...base, expressStops: ["김포공항", "당산", "동작"], expressStopIds: ["901", "902", "905"] };
+      expect(expressVerdict(express, skip)).toBe("skips");
+      expect(unreachableReason(express, skip)).toBe("expressSkipsAlight");
+      expect(classifyBoardingCandidates([express], skip).candidates[0].unreachable).toBe("expressSkipsAlight");
+      const stop: TransitGuideLeg = { ...skip, expressStopIds: ["901", "902", "904"], expressStops: ["김포공항", "당산", "노들"] };
+      expect(expressVerdict(express, stop)).toBe("stops");
+      expect(unreachableReason(express, stop)).toBeNull();
+    });
+
+    it("ID는 이름 별칭을 무시한다 — 이름이 어긋나도 ID가 판정한다", () => {
+      const aliased: TransitGuideLeg = { ...base, expressStops: ["김포공항역", "당산역", "노들역"], expressStopIds: ["901", "902", "904"] };
+      expect(expressVerdict(express, aliased)).toBe("stops");
+    });
+
+    it("이름 판정(ID 부재): 자격 ⓐ(하차역이 viaStops와 조인) ⓑ(집합이 viaStops와 이름 공유)", () => {
+      const noIds: TransitGuideLeg = { ...base, viaStops: stopsOf(names), alightStop: { name: "노들", lat: 37.5, lng: 127 } };
+      expect(expressVerdict(express, { ...noIds, expressStops: ["김포공항", "당산", "동작"] })).toBe("skips");
+      expect(expressVerdict(express, { ...noIds, expressStops: ["김포공항역", "노들역"] })).toBe("stops"); // "역" 접미 흡수
+      // ⓑ 미달: 집합이 이 구간과 이름을 하나도 공유하지 않으면 별칭 체계일 수 있어 unknown.
+      expect(expressVerdict(express, { ...noIds, expressStops: ["여의도", "신논현"] })).toBe("unknown");
+      // ⓐ 미달: 하차역 이름이 viaStops에 없으면 unknown.
+      expect(expressVerdict(express, { ...noIds, alightName: "미지역", expressStops: ["김포공항", "당산"] })).toBe("unknown");
+    });
+
+    it("집합 부재·빈 집합은 unknown, 완행은 null, 종착 앞이면 종착이 먼저", () => {
+      expect(expressVerdict(express, base)).toBe("unknown");
+      expect(expressVerdict(express, { ...base, expressStops: [], expressStopIds: [] })).toBe("unknown");
+      expect(expressVerdict(item({ express: false, vehicleId: "1" }), base)).toBeNull();
+      const skip: TransitGuideLeg = { ...base, expressStops: ["김포공항"], expressStopIds: ["901"] };
+      const early = item({ express: true, vehicleId: "8", direction: "하행", destinationName: "당산" });
+      expect(unreachableReason(early, skip)).toBe("terminatesEarly");
+    });
+
+    it("buildTransitGuideRoute가 계약 필드를 싣고 출구 번호를 형식 게이트로 거른다", () => {
+      const built = buildTransitGuideRoute({
+        legs: [
+          { mode: "subway", lineName: "수도권 9호선", minutes: 20, fromName: "김포공항", toName: "노들",
+            stops: stopsOf(names, ids), expressStops: ["김포공항"], expressStopIds: ["901"],
+            exit: { alight: " 2-1 " } },
+        ],
+      } as unknown as TransitRoute)!;
+      expect(built.legs[0].expressStops).toEqual(["김포공항"]);
+      expect(built.legs[0].expressStopIds).toEqual(["901"]);
+      expect(built.legs[0].exitAlight).toBe("2-1");
+      const bad = buildTransitGuideRoute({
+        legs: [{ mode: "subway", lineName: "수도권 9호선", minutes: 20, fromName: "a", toName: "b",
+          stops: stopsOf(names), expressStops: [], exit: { alight: "1 2" } }],
+      } as unknown as TransitRoute)!;
+      expect(bad.legs[0].expressStops).toBeUndefined();
+      expect(bad.legs[0].exitAlight).toBeUndefined();
+      expect(validExitNo("3번 출구")).toBeNull();
+      expect(validExitNo("10")).toBe("10");
+    });
   });
 
   // Kit TransitGuideTests.viaStopCurrentIndexMatching과 동일 케이스(미러 동조).

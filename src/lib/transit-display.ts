@@ -30,6 +30,8 @@ export interface TransitDisplayLeg {
   walkBeforeMinutes: number | null;
   /** 승차 지점이 재선택으로 바뀌었는가 — 선행 도보 문구 분기 축(지난 도보를 다시 말하지 않게). */
   boardOverridden: boolean;
+  /** 하차 출구 번호(E25) — 조인이 아니라 표시 값이라 투영에 둔다. 부재는 키 없음. */
+  exitAlight?: string;
 }
 
 export interface TransitDisplayItem {
@@ -86,6 +88,7 @@ export function transitDisplayLeg(
     stationCount: leg.stationCount,
     walkBeforeMinutes: leg.walkBeforeMinutes,
     boardOverridden: override !== null,
+    ...(leg.exitAlight ? { exitAlight: leg.exitAlight } : {}),
   };
 }
 
