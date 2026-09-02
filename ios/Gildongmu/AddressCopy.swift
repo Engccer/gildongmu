@@ -6,9 +6,17 @@ import GildongmuKit
 /// 클립보드 복사 + 완료 통지(웹 PlaceDetail.tsx의 sr-only live region 미러).
 /// 포커스는 실행한 컨트롤(버튼·커스텀 액션의 행)에 그대로 남으므로 어느 주소를
 /// 복사했는지 맥락이 유지된다. 장소 상세·주소 검색 결과 공용.
+///
+/// 통지는 `.high`(위원장 실사용 2026-09-02: 기본 우선순위로는 낭독되지 않았다).
+/// 버튼·커스텀 액션 활성화의 **직접 응답** 통지는 VoiceOver의 활성화 처리에 잠식되어
+/// 무발화될 수 있다(헌장 §5 — 비요청 interrupt가 아니라 사용자 행동의 응답이라 `.high`가
+/// 의미상 정당). 화면 변화가 없는 동작이라 이 문장이 복사 성공의 **유일한 증거**다 —
+/// 놓치면 "버튼이 동작하지 않는다"가 된다(PATTERNS "iOS 통지 우선순위"의 성공 통지 함정).
 func copyAddressToPasteboard(_ address: String) {
     UIPasteboard.general.string = address
-    AccessibilityNotification.Announcement(appLocalized("place.addressCopied")).post()
+    var copied = AttributedString(appLocalized("place.addressCopied"))
+    copied.accessibilitySpeechAnnouncementPriority = .high
+    AccessibilityNotification.Announcement(copied).post()
 }
 
 extension View {
