@@ -625,8 +625,12 @@ struct DirectionsTabView: View {
                     // (탭=재검색) + 삭제 버튼으로 바뀐다. 삭제는 자기를 누른 버튼을 없애므로
                     // 조회 버튼을 선점한다(헌장 §5). 도착지 확정 후 포커스는 종전대로 조회
                     // 버튼이다(선택 사항이 기본 흐름을 늘리면 안 된다 — 위원장 판정).
-                    if let viaLabel = model.viaLabel {
-                        Button("\(appLocalized("directions.via")), \(viaLabel)") { searchTarget = .via }
+                    if let viaName = viaFieldName {
+                        Button { searchTarget = .via } label: {
+                            bilingualLine(
+                                visible: "\(appLocalized("directions.via")), \(viaName.display)",
+                                accessible: "\(appLocalized("directions.via")), \(viaName.primary)")
+                        }
                             .accessibilityFocused($focusedEndpointField, equals: .via)
                         Button(appLocalized("directions.removeVia")) {
                             submitFocused = true
@@ -1201,11 +1205,21 @@ struct DirectionsTabView: View {
         switch model.endpoint(for: target) {
         case .current:
             return "\(label), \(currentLocationText(accessible: accessible))"
-        case .place(let name, _, _, _):
-            return "\(label), \(name)"
+        case .place(let name, _, _, let roman):
+            // 확정 필드도 후보 목록과 같은 이름으로 들려야 한다(a11y 감사 2026-09-02 — 후보는 로마자,
+            // 필드는 한글이면 같은 곳이라는 근거가 SR 사용자에게 없다). 결과 행·세션 요청의 라벨은
+            // 원명 그대로다(조인·안내 문구 계약, `viaLabel`·`trackedDestination`).
+            let bilingualName = bilingual(name, roman: roman)
+            return "\(label), \(accessible ? bilingualName.primary : bilingualName.display)"
         case nil:
             return target == .from ? appLocalized("directions.searchFrom") : appLocalized("directions.searchTo")
         }
+    }
+
+    /// 경유지 필드의 병기 이름(E28) — 위 `fieldText`의 `.place` 분기와 같은 계약. `model.viaLabel`은 원명.
+    private var viaFieldName: BilingualName? {
+        guard case .place(let label, _, _, let roman) = model.via else { return nil }
+        return bilingual(label, roman: roman)
     }
 
     /// 현재 위치 값 텍스트(F-B): 수동 위치가 켜져 있으면 그 라벨(표시줄과 **같은 훅**을
