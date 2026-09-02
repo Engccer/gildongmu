@@ -113,7 +113,7 @@ private func playTone(_ tone: BeaconTone) { guard !outputSuppressed else { retur
 ### 2.6 소리·재생·발화 계약
 
 - 톤 → 파일: `closer`→`guide-closer`, `farther`→`guide-farther`, `unreliable`→`guide-unreliable`. **신규 파일 0**, `BeaconTones.swift`·`build-guide-tones.py` 무변. 게인(`closer`·`farther` 0.35, `unreliable` 0.45)·햅틱(farther만) 그대로.
-- **톤 뒤 발화를 대중교통에도 건다**(리뷰 #5): `TransitGuideModel.announce`가 `AccessibilityNotification`을 직접 게시하던 것을 Kit `DeferredAnnouncer`(도보 선례, spec 2026-08-14)로 바꾼다 — `toneEndsAt`은 `tones.toneEndsAt`, `post`는 억제 가드 → 게시. 자동 통지(이벤트·재개·외부 문장)는 `announce`(지연), 사용자 활성화의 직접 응답(`announceProgress`·새로고침 응답·재조회 통지·경로 교체·목적지 전환)은 `announceNow`(즉시, 보류 슬롯 무효화). 세대는 `beginSession`·`changeRoute`·`stop()`에서 올린다. 종전 순서(톤 → 즉시 발화)가 임박 0.73초·도착 종 2.25초 앞머리를 잘라 먹던 것이 도보와 같은 계약으로 닫힌다.
+- **톤 뒤 발화를 대중교통에도 건다**(리뷰 #5): `TransitGuideModel.announce`가 `AccessibilityNotification`을 직접 게시하던 것을 Kit `DeferredAnnouncer`(도보 선례, spec 2026-08-14)로 바꾼다 — `toneEndsAt`은 `tones.toneEndsAt`, `post`는 억제 가드 → 게시. 자동 통지(폴 유래 이벤트·재개·외부 문장)는 `announce`(지연), 사용자 활성화의 직접 응답(`announceProgress`·새로고침 응답·재조회 통지·경로 교체·목적지 전환·**탑승 선언 `boarded(declared)`·다음 구간 `legAdvanced`** — a11y 감사 W1: 지연 슬롯에 두면 같은 함수의 즉폴 이벤트가 latest-wins로 버려 웜/콜드에 따라 비결정)은 `announceNow`(즉시, 보류 슬롯 무효화). 마지막 구간 완료 문장은 `stop()`의 세대 증가 **뒤에** 낸다(코드 리뷰 B1 — 지연 슬롯에 있던 문장이 세대 증가에 취소돼 완료 문장이 0이었다). 억제 중 `post`가 버린 마지막 자동 문장은 해제 시 1회 되살린다(a11y 감사 W2 — 도착·`neverSeen`처럼 1회뿐인 문장은 다음 폴이 대신 말해 주지 않는다). 세대는 `beginSession`·`changeRoute`·`stop()`에서 올린다. 종전 순서(톤 → 즉시 발화)가 임박 0.73초·도착 종 2.25초 앞머리를 잘라 먹던 것이 도보와 같은 계약으로 닫힌다.
 - 추세 톤은 이벤트가 없는 폴에서만 나므로 같은 스텝에 톤과 문장이 겹치는 경로가 없고, 다른 스텝의 문장(재개 통지 뒤 즉폴의 톤 등)은 위 지연 창구가 톤 잔여만큼 미룬다.
 - 억제(`outputSuppressed`)는 톤(`playTone`)·발화(`post`) 둘 다 막고, 전경 전용(백그라운드 폴 정지)은 종전 계약 그대로다.
 
@@ -238,6 +238,8 @@ BoardingCandidate { item, unreachable: "terminatesEarly" | "expressSkipsAlight" 
 | 15 | MAJOR | **수용** | 소비자 형식 게이트(§5.1) |
 | 16 | MAJOR | **수용** | 마지막 탑승 구간에만(§5.2) |
 | 17 | MINOR | **기각** | 실기기 확정 메모리(하이픈 정상 낭독)와 충돌(§5.2) |
+
+### 구현 리뷰(2026-09-02, 커밋 `72c97f0`): spec-compliance PASS(비차단 2 — 정지 톤 `playTone` 경유·`planned=-` 표기, 반영) · code-quality BLOCKER 1(마지막 구간 완료 문장 소실 → stop() 뒤 게시로 수정)+MINOR 5(M4 autoclosure·M5 근사 잠금 fixture 반영, M1·M2 수용, M3=위 정지 톤) · a11y DONE_WITH_CONCERNS(W1 탑승 선언 즉시 창구·W2 억제 해제 복구 반영, I2·I3·I4 기록, 실기기 판정 5건은 BACKLOG §2 E15 ② 행).
 
 ### 2차(확인) 리뷰 — 같은 방식, 판정 REJECT 7건(최소 조건 4)
 

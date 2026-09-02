@@ -128,8 +128,19 @@ final class TransitGuideModel {
     /// 검색 시트가 열린 동안 통지·톤 억제(스펙 §5.4, BeaconModel 동형 — 받아쓰기
     /// 전사 오염 방지). stop()이 무조건 해제한다(잔류 억제로 다음 세션 무음 방지).
     var outputSuppressed = false {
-        didSet { tones.isSuppressed = outputSuppressed }
+        didSet {
+            tones.isSuppressed = outputSuppressed
+            // 억제 해제(a11y 감사 W2, 2026-09-02): 억제 중 게시하지 못한 **마지막** 자동 문장을 되살린다.
+            // 도착·neverSeen처럼 세션에 1회뿐인 문장은 다음 폴이 대신 말해 주지 않고, 그 문장만이
+            // 행동("탑승 변경을 눌러 주세요")을 담는다(memory once-only-warning-delivery-contract).
+            if !outputSuppressed, let text = droppedWhileSuppressed {
+                droppedWhileSuppressed = nil
+                announce(text)
+            }
+        }
     }
+    /// 억제 중 `post`가 버린 마지막 자동 문장(latest-wins) — 해제 시 1회 복구. stop()이 지운다.
+    private var droppedWhileSuppressed: String?
     private let routeService = RouteService(client: APIClient(baseURL: AppConfig.apiBaseURL))
 
     private static let retainSeconds: TimeInterval = 180
@@ -227,7 +238,7 @@ final class TransitGuideModel {
         toneState = .initial
         lastPollStartAt = nil
         plannedIntervalMs = nil
-        if playStopTone, state != nil { tones.play(.stop) }
+        if playStopTone, state != nil { playTone(.stop) }
         state = nil
         route = nil
         waitingLive = []
@@ -239,6 +250,7 @@ final class TransitGuideModel {
         pausedInBackground = false
         refreshAnnounce = false
         pendingWalkHandoff = nil
+        droppedWhileSuppressed = nil
         boardOverrideIndex = nil
         selectedDescription = nil
         reboardPickerActive = false
@@ -332,8 +344,13 @@ final class TransitGuideModel {
             let handoff = route?.walkAfterMinutes.map {
                 TransitWalkHandoff(destinationLabel: destinationLabel, walkMinutes: $0)
             }
+            // 완료 문장은 stop() **뒤에** 낸다(BeaconModel 도착 문장 선례, 코드 리뷰 B1 2026-09-02):
+            // `handle(event:)`가 start 톤 뒤로 미룬 문장은 stop()의 세대 증가가 취소하므로, 그 자리는
+            // 발화하지 않고 여기서 stop()이 지우는 route를 지역 변수로 캡처해 새 세대에 게시한다.
+            let doneText = finalLegText()
             stop()
             pendingWalkHandoff = handoff
+            announce(doneText)
         } else {
             waitingLive = []
             waitingDeparted = []
@@ -756,10 +773,15 @@ final class TransitGuideModel {
         // 계측(A16 미확정 ②, spec 2026-09-02 §3): 시작·종료 1쌍/폴. 종료는 `defer`라 조기 반환·취소
         // 어느 경로든 정확히 한 번 남는다(설계 리뷰 2차 #6). 시각은 단조(systemUptime).
         let startedAt = ProcessInfo.processInfo.systemUptime
-        let sinceLast = lastPollStartAt.map { String(format: "%.1f", startedAt - $0) } ?? "-"
-        let planned = plannedIntervalMs.map { "\($0 / 1000)" } ?? "-"  // 정수 초(ms 주기는 1000 배수)
+        let previousStart = lastPollStartAt
+        let planned = plannedIntervalMs
         lastPollStartAt = startedAt
-        transitGuideLog("pollStart seq=\(mySeq) phase=\(state.phase.rawValue) sinceLast=\(sinceLast)s planned=\(planned)s")
+        transitGuideLog({
+            let sinceLast = previousStart.map { String(format: "%.1f", startedAt - $0) } ?? "-"
+            // 정수 초(ms 주기는 1000 배수), 즉폴은 "-".
+            let plannedText = planned.map { "\($0 / 1000)s" } ?? "-"
+            return "pollStart seq=\(mySeq) phase=\(state.phase.rawValue) sinceLast=\(sinceLast)s planned=\(plannedText)"
+        }())
         var endStatus = "cancelled"
         defer {
             let elapsed = ProcessInfo.processInfo.systemUptime - startedAt
@@ -1021,7 +1043,16 @@ final class TransitGuideModel {
         case nil: break
         }
         let text = announcementText(for: event)
-        if !text.isEmpty { announce(text, highPriority: profile.interrupt) }
+        guard !text.isEmpty else { return }
+        // 사용자 활성화의 직접 응답(탑승 선언·다음 구간 버튼)은 즉시 창구다(a11y 감사 W1): 지연 슬롯에
+        // 두면 같은 함수가 부르는 즉폴의 `trackingStarted`가 latest-wins로 그 문장을 버려, 웜 응답이면
+        // "탑승했습니다"가 사라지고 콜드면 살아남는 비결정이 된다. 도착 관측(`observed`)은 폴 유래라 지연.
+        switch event {
+        case .boarded(legIndex: _, cause: .declared), .legAdvanced:
+            announceNow(text, highPriority: profile.interrupt)
+        default:
+            announce(text, highPriority: profile.interrupt)
+        }
     }
 
     /// 톤 재생 단일 창구 — 억제 가드는 여기 한 곳(BeaconModel.playTone 동형). 종전엔 이벤트 톤이
@@ -1132,11 +1163,8 @@ final class TransitGuideModel {
             parts.append(appLocalized("transitGuide.capSlowed"))
         case let .legAdvanced(legIndex, final):
             if final {
-                if let walk = route?.walkAfterMinutes {
-                    parts.append(appLocalized("transitGuide.doneWalk", String(walk)))
-                } else {
-                    parts.append(appLocalized("transitGuide.done"))
-                }
+                // 발화는 advance()가 stop() 뒤에 한다(B1) — 여기서 내면 세대 증가에 취소된다.
+                break
             } else if let route, route.legs.indices.contains(legIndex) {
                 let next = route.legs[legIndex]
                 parts.append(waitContextText(next, isCurrentLeg: false))
@@ -1146,6 +1174,14 @@ final class TransitGuideModel {
             parts.append(appLocalized("transitGuide.changeBoardingDone"))
         }
         return parts.joined(separator: " ")
+    }
+
+    /// 완료 문장(마지막 구간 `advance`) — 말미 도보가 있으면 그 분을, 없으면 "도착했습니다".
+    private func finalLegText() -> String {
+        if let walk = route?.walkAfterMinutes {
+            return appLocalized("transitGuide.doneWalk", String(walk))
+        }
+        return appLocalized("transitGuide.done")
     }
 
     /// 노선·하차 전문 문맥(§6.1 M1 개정) — 추적 시작·진행 상황·상시 표시가 담당.
@@ -1250,8 +1286,11 @@ final class TransitGuideModel {
     /// 같은 가드를 지난다. 반환 = 실제로 게시했는가.
     @discardableResult
     private func post(_ message: String, highPriority: Bool, bypassSuppression: Bool) -> Bool {
-        // 검색 시트(받아쓰기 마이크)가 열린 동안은 발화 0(스펙 §5.4).
-        guard bypassSuppression || !outputSuppressed else { return false }
+        // 검색 시트(받아쓰기 마이크)가 열린 동안은 발화 0(스펙 §5.4) — 마지막 문장은 해제 시 복구(W2).
+        guard bypassSuppression || !outputSuppressed else {
+            droppedWhileSuppressed = message
+            return false
+        }
         var attributed = AttributedString(spokenUnits(message))
         if highPriority { attributed.accessibilitySpeechAnnouncementPriority = .high }
         AccessibilityNotification.Announcement(attributed).post()
