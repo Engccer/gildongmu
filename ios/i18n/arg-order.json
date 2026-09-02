@@ -774,7 +774,16 @@
   "transitGuide.doneWalk": [
     "minutes"
   ],
+  "transitGuide.exitBound": [
+    "exit"
+  ],
   "transitGuide.expressCheck": [
+    "stop"
+  ],
+  "transitGuide.expressSkipsAlight": [
+    "stop"
+  ],
+  "transitGuide.expressStopsAt": [
     "stop"
   ],
   "transitGuide.lastUpdated": [

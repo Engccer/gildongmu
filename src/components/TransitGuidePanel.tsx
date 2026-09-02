@@ -11,6 +11,7 @@ import { joinText } from "@/lib/format";
 import { transitDisplayItem, transitDisplayLeg, type TransitLabel } from "@/lib/transit-display";
 import {
   candidateDescLine,
+  expressSkipsAlightLine,
   prewalkArrivedButtonLine,
   prewalkStartLine,
   terminatesEarlyLine,
@@ -332,15 +333,14 @@ export function TransitGuidePanel({
                   return (
                     <ul className="mt-1">
                       {display.stops.map((stop, index) => {
+                        const isAlight = index === display.stops.length - 1;
                         const line = viaStopLine(
                           isEn,
                           stop,
-                          index === 0
-                            ? "board"
-                            : index === display.stops.length - 1
-                              ? "alight"
-                              : "via",
+                          index === 0 ? "board" : isAlight ? "alight" : "via",
                           index === currentIndex,
+                          // 하차역 행에 출구 번호 병기(E25) — 정적 표시.
+                          isAlight ? (display.exitAlight ?? null) : null,
                         );
                         return (
                           <li key={`${index}-${stop.ko}`} className="text-sm" lang={langOf(line)}>
@@ -426,8 +426,12 @@ export function TransitGuidePanel({
                         departedMinutes: option.departedMinutes,
                       });
                       const desc = render(descLine);
-                      if (option.candidate.terminatesEarly) {
-                        const note = terminatesEarlyLine(isEn, displayLeg, displayItem);
+                      if (option.candidate.unreachable) {
+                        // 결정적 미도달(§5.1·A16 L1) — 활성화 차단의 단일 술어, 사유별 문장.
+                        const note =
+                          option.candidate.unreachable === "terminatesEarly"
+                            ? terminatesEarlyLine(isEn, displayLeg, displayItem)
+                            : expressSkipsAlightLine(isEn, displayLeg);
                         // 두 줄이 한 항목이라 언어가 갈리면 그 항목은 통째로 ko로 태그한다.
                         const lang = langOf(descLine) ?? langOf(note);
                         return (

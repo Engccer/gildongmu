@@ -112,6 +112,25 @@ export interface TransitGuideLeg {
   walkBeforeMinutes: number | null;
   /** 하차역 빠른하차 문 위치(E5). 판정 불가·미커버는 undefined. */
   quickExit?: QuickExit;
+  /**
+   * 이 노선의 급행 정차역 이름 집합(A16 L1, 서버가 단일 패턴 노선에만 싣는다 — 부재 = 판정 불가).
+   * 빈 배열은 오지 않지만 소비자는 비어 있어도 부재로 본다(spec 2026-09-02 §4.2).
+   */
+  expressStops?: string[];
+  /** `expressStops`와 같은 순서의 ODsay `stationID` — 있으면 ID 판정이 정본이고 이름은 폴백이다. */
+  expressStopIds?: string[];
+  /** 하차 출구 번호(E25). 서버가 형식·문맥(역 밖으로 나가는 하차)을 걸러 실은 값 + 소비자 형식 게이트. */
+  exitAlight?: string;
+}
+
+/**
+ * 출구 번호 소비자 형식 게이트(spec 2026-09-02 §5.1): 양끝 공백만 제거한 뒤 `^\d+(-\d+)?$`.
+ * 가운데 공백을 지우면 `"1 2"`가 12번 출구로 둔갑하므로 trim만 한다. 미달은 null(부재).
+ */
+export function validExitNo(raw: string | undefined | null): string | null {
+  if (raw == null) return null;
+  const t = raw.trim();
+  return /^\d+(-\d+)?$/.test(t) ? t : null;
 }
 
 export interface TransitGuideRoute {
@@ -449,6 +468,7 @@ export function buildTransitGuideRoute(route: TransitRoute): TransitGuideRoute |
     // 서로 다른 정류소를 가리키게 된다 — 그래서 **같은 원천끼리만** 짝짓는다.
     const boardNameEn = leg.fromName != null ? leg.fromNameEn : boardStop?.nameEn;
     const alightNameEn = leg.toName != null ? leg.toNameEn : alightStop?.nameEn;
+    const exitAlight = validExitNo(leg.exit?.alight);
     legs.push({
       mode: leg.mode,
       lineName: leg.lineName ?? "",
@@ -466,6 +486,9 @@ export function buildTransitGuideRoute(route: TransitRoute): TransitGuideRoute |
       wayCode: leg.serviceWayCode ?? null,
       walkBeforeMinutes: pendingWalk,
       ...(leg.quickExit ? { quickExit: leg.quickExit } : {}),
+      ...(leg.expressStops?.length ? { expressStops: leg.expressStops } : {}),
+      ...(leg.expressStopIds?.length ? { expressStopIds: leg.expressStopIds } : {}),
+      ...(exitAlight ? { exitAlight } : {}),
     });
     pendingWalk = null;
   }
@@ -519,14 +542,62 @@ export function withoutPrewalk(route: TransitGuideRoute): TransitGuideRoute {
 
 // === 열차 선택 목록 필터 (§5.1) — 순수 판정, UI가 소비 ===
 
+/**
+ * 급행 후보의 하차역 정차 판정(A16 L1, spec 2026-09-02 §4.2).
+ * - `skips`: 결정적 미도달(활성화 차단 + "이 급행은 {하차역}에 서지 않습니다")
+ * - `stops`: 정차 확정("급행, {하차역} 정차")
+ * - `unknown`: 판정 불가(집합 부재·판정 자격 미달 — 종전 `expressCheck` 문장, 차단 금지)
+ */
+export type ExpressVerdict = "skips" | "stops" | "unknown";
+/** 활성화 차단의 단일 사유 — 소비자는 `unreachable != null`로만 버튼을 만들지 않는다. */
+export type UnreachableReason = "terminatesEarly" | "expressSkipsAlight";
+
 export interface BoardingCandidate {
   item: TrackItem;
-  /** 종착이 하차역 이전 — 결정적 미도달이라 활성화 차단(§5.1). */
-  terminatesEarly: boolean;
-  /** 급행 — 하차역 정차 여부 확인 라벨 병기(차단 금지). */
-  express: boolean;
+  /** 결정적 미도달 사유(종착 앞 / 급행 통과). null이면 선택 가능. 두 사유가 겹치면 종착이 앞이다. */
+  unreachable: UnreachableReason | null;
+  /** 급행 판정. 급행이 아니면 null. */
+  express: ExpressVerdict | null;
   /** 방향 판정 성공 여부 — 전체 0건이면 목록 앞에 "방면 확인" 안내(§5.1). */
   directionMatched: boolean;
+}
+
+/**
+ * 급행 판정. **ID 판정이 1순위**(`expressStopIds` ∧ `alightStop.stationId` — 정규화 없음, 별칭 위험 0),
+ * 이름 판정은 ID가 없을 때의 폴백이고 자격이 붙는다(설계 리뷰 #11·2차 #2): ⓐ하차역 이름이
+ * `viaStops` 표기와 조인되고 ⓑ집합이 `viaStops`와 이름을 공유해야 한다 — 그 밖의 미포함은 별칭일 수
+ * 있어 `unknown`이다. 차단은 근거가 조인된 이름·ID에서만 나온다.
+ */
+export function expressVerdict(item: TrackItem, leg: TransitGuideLeg): ExpressVerdict | null {
+  if (!item.express) return null;
+  const ids = leg.expressStopIds;
+  const alightId = leg.alightStop?.stationId;
+  if (ids && ids.length > 0 && alightId) {
+    return ids.includes(alightId) ? "stops" : "skips";
+  }
+  const names = leg.expressStops;
+  if (!names || names.length === 0) return "unknown";
+  const alight = normalizeStopName(leg.alightName);
+  if (!alight) return "unknown";
+  const viaNames = new Set(leg.viaStops.map((s) => normalizeStopName(s.name)));
+  const expressNames = new Set(names.map(normalizeStopName));
+  if (!viaNames.has(alight)) return "unknown"; // ⓐ
+  if (![...expressNames].some((n) => viaNames.has(n))) return "unknown"; // ⓑ
+  return expressNames.has(alight) ? "stops" : "skips";
+}
+
+/**
+ * 결정적 미도달 사유(단일 술어). 2호선 계열은 종착 축에서만 제외되고(`isLine2Direction`), 급행 축은
+ * 순환선과 무관하다(2호선엔 급행이 없다). 선택 진입점(iOS `board(item:)`·웹 `boardCandidate`)도
+ * 이 함수로 다시 판정한다(설계 리뷰 2차 #3).
+ */
+export function unreachableReason(item: TrackItem, leg: TransitGuideLeg): UnreachableReason | null {
+  const terminates = isLine2Direction(item.direction)
+    ? false
+    : terminatesBeforeAlight(item.destinationName, leg);
+  if (terminates) return "terminatesEarly";
+  if (expressVerdict(item, leg) === "skips") return "expressSkipsAlight";
+  return null;
 }
 
 /**
@@ -586,12 +657,10 @@ export function classifyBoardingCandidates(
     const dir = directionMatchesWayCode(item.direction, leg.wayCode);
     return {
       item,
-      // 2호선 계열은 종착 검사에서 제외한다 — 그 종착 필드가 판정 근거가
-      // 아니라 오차단원이기 때문이다(isLine2Direction 주석에 표본).
-      terminatesEarly: isLine2Direction(item.direction)
-        ? false
-        : terminatesBeforeAlight(item.destinationName, leg),
-      express: item.express,
+      // 2호선 계열의 종착 검사 제외는 unreachableReason 안에 있다(그 종착 필드가 판정 근거가
+      // 아니라 오차단원이기 때문 — isLine2Direction 주석에 표본).
+      unreachable: unreachableReason(item, leg),
+      express: expressVerdict(item, leg),
       directionMatched: dir === true,
     };
   });

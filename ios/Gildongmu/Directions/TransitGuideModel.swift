@@ -304,6 +304,12 @@ final class TransitGuideModel {
     /// dispatch **전에** 동기로 보관해 vehicleSelected 통지가 빈 설명을 읽지 않는다.
     func board(item: TransitTrackItem, description: TransitLabel?) {
         guard let leg = currentLeg, let trackMode = leg.trackMode else { return }
+        // 선택 진입점의 차단 재판정(A16 L1, 설계 리뷰 2차 #3): 시트 버튼 유무에만 기대면 다른 호출
+        // 경로가 결정적 미도달 열차를 잠근다. 같은 술어(`transitUnreachableReason`)로 여기서도 거른다.
+        guard transitUnreachableReason(item, leg: leg) == nil else {
+            transitGuideLog("board rejected unreachable vehicle=\(item.vehicleId ?? "-")")
+            return
+        }
         let lock = TransitLock(
             mode: trackMode,
             routeId: leg.routeId ?? subwayIdForOdsayLine(leg.lineName) ?? "",
@@ -926,11 +932,11 @@ final class TransitGuideModel {
                 waitingLive + waitingDeparted.map(\.item), leg: leg)
             let vehIdless = classified.candidates
                 .count(where: { $0.item.vehicleId?.isEmpty != false })
-            let terminates = classified.candidates.count(where: \.terminatesEarly)
+            let terminates = classified.candidates.count(where: { $0.unreachable != nil })
             return "waitPoll seq=\(seq) status=\(status) raw=\(rawCount.map(String.init) ?? "-")"
                 + " live=\(waitingLive.count) departed=\(waitingDeparted.count)"
                 + " candidates=\(classified.candidates.count) vehIdless=\(vehIdless)"
-                + " terminates=\(terminates)"
+                + " unreachable=\(terminates)"
                 + " directionUncertain=\(classified.directionUncertain)"
                 + " reason=\(waitingReason?.rawValue ?? "-")"
         }())
@@ -1127,6 +1133,12 @@ final class TransitGuideModel {
             if let framed { parts.append(framed) }
         case let .arrived(certain):
             parts.append(appLocalized(certain ? "transitGuide.arrived" : "transitGuide.arrivedGuess"))
+            // 출구 방면(E25)은 **확정** 도착에만 — 추정 도착은 전 역에서 신호를 잃은 것일 수 있어
+            // 확정형 출구 안내가 잘못 내리게 한다(설계 리뷰 #14). 서버가 역 밖 하차에만 실은 값.
+            if certain, let leg, let exit = displayLeg(leg, useOverride: false).exitAlight {
+                parts.append(TransitGuideTextRenderer.render(
+                    transitExitBoundLine(isEn: transitGuideIsEn, exit: exit)))
+            }
             if let state, let route {
                 let nextIndex = state.legIndex + 1
                 if route.legs.indices.contains(nextIndex) {

@@ -20,7 +20,8 @@ private struct TextFixture: Decodable {
         let role: String?
         let here: Bool?
         let isCurrentLeg: Bool?
-        let express: Bool?
+        let express: String?
+        let exit: String?
         let departedMinutes: Int?
         let minutes: Int?
         let n: Int?
@@ -58,11 +59,13 @@ private func run(_ c: TextFixture.Case) -> TransitTextLine {
     case "currentStation": return transitCurrentStationLine(isEn: e, location: c.location!)
     case "candidateDesc":
         return transitCandidateDescLine(
-            isEn: e, leg: c.leg!, item: c.item!, express: c.express!,
+            isEn: e, leg: c.leg!, item: c.item!, express: c.express.flatMap(TransitExpressVerdict.init(rawValue:)),
             departedMinutes: c.departedMinutes)
     case "vehicleDesc": return transitVehicleDescLine(isEn: e, item: c.item!)
     case "terminatesEarly": return transitTerminatesEarlyLine(isEn: e, leg: c.leg!, item: c.item!)
-    case "viaStop": return transitViaStopLine(isEn: e, stop: c.stop!, role: c.role!, here: c.here!)
+    case "expressSkipsAlight": return transitExpressSkipsAlightLine(isEn: e, leg: c.leg!)
+    case "exitBound": return transitExitBoundLine(isEn: e, exit: c.exit!)
+    case "viaStop": return transitViaStopLine(isEn: e, stop: c.stop!, role: c.role!, here: c.here!, exit: c.exit)
     case "overviewLeg":
         return transitOverviewLegLine(
             isEn: e, n: c.n!, line: c.line!, board: c.board!, alight: c.alight!)

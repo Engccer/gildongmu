@@ -10,6 +10,7 @@ import {
   pollIntervalMs,
   subwayIdForOdsayLine,
   transitGuideStep,
+  unreachableReason,
   waitingEmptyReason,
   type WaitingEmptyReason,
   type BoardingCandidate,
@@ -39,6 +40,7 @@ import {
   boardingContextLine,
   contextLine,
   currentStationLine,
+  exitBoundLine,
   prewalkArrivedLine,
   frameLine,
   selectedVehicleLine,
@@ -560,6 +562,11 @@ export function useTransitGuide(route: TransitRoute | null) {
           break;
         case "arrived": {
           parts.push(event.certain ? t("arrived") : t("arrivedGuess"));
+          // 출구 방면(E25)은 **확정** 도착에만(설계 리뷰 #14) — 추정 도착에 확정형 출구 안내는 잘못 내리게 한다.
+          if (event.certain && leg) {
+            const exit = transitDisplayLeg(leg, null).exitAlight;
+            if (exit) parts.push(renderText(exitBoundLine(isEn, exit)));
+          }
           const s = stateRef.current;
           const next = s && r ? r.legs[s.legIndex + 1] : null;
           if (next) {
@@ -948,6 +955,8 @@ export function useTransitGuide(route: TransitRoute | null) {
     (candidate: BoardingCandidate, description: TransitLabel | null) => {
       const leg = currentLeg();
       if (!leg?.trackMode) return;
+      // 선택 진입점의 차단 재판정(A16 L1, 설계 리뷰 2차 #3) — 버튼 유무에만 기대지 않는다.
+      if (unreachableReason(candidate.item, leg)) return;
       setSelectedDescription(description);
       board({
         mode: leg.trackMode,

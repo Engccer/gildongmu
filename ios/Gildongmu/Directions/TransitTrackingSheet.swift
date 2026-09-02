@@ -365,12 +365,13 @@ struct TransitTrackingSheet: View {
                 let currentIndex = viaStopCurrentIndex(leg: leg, currentLocation: state.currentLocation)
                 let display = model.displayLeg(leg, useOverride: false)
                 ForEach(Array(display.stops.enumerated()), id: \.offset) { index, stop in
+                    let isAlight = index == display.stops.count - 1
                     Text(TransitGuideTextRenderer.render(transitViaStopLine(
                         isEn: transitGuideIsEn, stop: stop,
-                        role: index == 0
-                            ? "board"
-                            : index == display.stops.count - 1 ? "alight" : "via",
-                        here: index == currentIndex)))
+                        role: index == 0 ? "board" : isAlight ? "alight" : "via",
+                        here: index == currentIndex,
+                        // 하차역 행에 출구 번호 병기(E25) — 정적 표시, 통지 없음.
+                        exit: isAlight ? display.exitAlight : nil)))
                 }
             } label: {
                 Text(appLocalized(
@@ -604,14 +605,16 @@ struct TransitTrackingSheet: View {
             // vehId 없는 슬롯은 잠금 불가(§5.1 "vehId 보유 슬롯만 활성화") — 빈 잠금은
             // 어떤 항목과도 매칭되지 않는 조용한 고장이 된다(독립 리뷰 BLOCKER).
             Text(desc).foregroundStyle(.secondary)
-        } else if candidate.terminatesEarly {
-            // 결정적 미도달(§5.1) — 활성화 차단, 사유 병기.
-            Text(joinText(
-                desc,
-                TransitGuideTextRenderer.render(transitTerminatesEarlyLine(
-                    isEn: transitGuideIsEn, leg: displayLeg, item: displayItem))
-            ))
-            .foregroundStyle(.secondary)
+        } else if let reason = candidate.unreachable {
+            // 결정적 미도달(§5.1·A16 L1) — 활성화 차단의 단일 술어, 사유별 문장 병기.
+            let note: TransitTextLine = switch reason {
+            case .terminatesEarly:
+                transitTerminatesEarlyLine(isEn: transitGuideIsEn, leg: displayLeg, item: displayItem)
+            case .expressSkipsAlight:
+                transitExpressSkipsAlightLine(isEn: transitGuideIsEn, leg: displayLeg)
+            }
+            Text(joinText(desc, TransitGuideTextRenderer.render(note)))
+                .foregroundStyle(.secondary)
         } else {
             // 라벨은 "선택"이다(N3) — 탑승 여부는 앱이 승차 정류소 도착으로 판정한다.
             // 선택 차량 설명은 폴마다 바뀌는 완성 문장을 뺀 안정 조각(행선·방향)만.

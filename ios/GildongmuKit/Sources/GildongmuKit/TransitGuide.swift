@@ -79,6 +79,12 @@ public struct TransitGuideLeg: Codable, Sendable {
     public let walkBeforeMinutes: Int?
     /// 하차역 빠른하차 문 위치(E5). 판정 불가·미커버는 nil.
     public let quickExit: QuickExit?
+    /// 급행 정차역 이름 집합(A16 L1, 단일 패턴 노선에만 — 부재 = 판정 불가). 웹 미러.
+    public let expressStops: [String]?
+    /// `expressStops`와 같은 순서의 ODsay `stationID` — 있으면 ID 판정이 정본.
+    public let expressStopIds: [String]?
+    /// 하차 출구 번호(E25, 서버 문맥 게이트 + 소비자 형식 게이트 통과값).
+    public let exitAlight: String?
 
     public init(
         mode: String, lineName: String, trackMode: TransitTrackMode?,
@@ -87,7 +93,8 @@ public struct TransitGuideLeg: Codable, Sendable {
         viaStops: [TransitLegStop], stationCount: Int?,
         routeId: String?, wayCode: Int?, walkBeforeMinutes: Int?,
         quickExit: QuickExit? = nil,
-        lineNameEn: String? = nil, boardNameEn: String? = nil, alightNameEn: String? = nil
+        lineNameEn: String? = nil, boardNameEn: String? = nil, alightNameEn: String? = nil,
+        expressStops: [String]? = nil, expressStopIds: [String]? = nil, exitAlight: String? = nil
     ) {
         self.mode = mode
         self.lineName = lineName
@@ -105,7 +112,18 @@ public struct TransitGuideLeg: Codable, Sendable {
         self.wayCode = wayCode
         self.walkBeforeMinutes = walkBeforeMinutes
         self.quickExit = quickExit
+        self.expressStops = expressStops
+        self.expressStopIds = expressStopIds
+        self.exitAlight = exitAlight
     }
+}
+
+/// 출구 번호 소비자 형식 게이트(spec 2026-09-02 §5.1, 웹 `validExitNo` 미러): 양끝 공백만 제거한 뒤
+/// `^\d+(-\d+)?$`. 가운데 공백을 지우면 `"1 2"`가 12번 출구로 둔갑하므로 trim만 한다.
+public func transitValidExitNo(_ raw: String?) -> String? {
+    guard let raw else { return nil }
+    let t = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+    return t.range(of: "^\\d+(-\\d+)?$", options: .regularExpression) != nil ? t : nil
 }
 
 public struct TransitGuideRoute: Codable, Sendable {
@@ -407,7 +425,10 @@ public func buildTransitGuideRoute(_ route: TransitRoute) -> TransitGuideRoute? 
             // `fromNameEn`만 본다. 원천이 갈리면 같은 자리가 서로 다른 정류소를 가리킨다.
             lineNameEn: leg.lineNameEn,
             boardNameEn: leg.fromName != nil ? leg.fromNameEn : boardStop?.nameEn,
-            alightNameEn: leg.toName != nil ? leg.toNameEn : alightStop?.nameEn
+            alightNameEn: leg.toName != nil ? leg.toNameEn : alightStop?.nameEn,
+            expressStops: (leg.expressStops?.isEmpty == false) ? leg.expressStops : nil,
+            expressStopIds: (leg.expressStopIds?.isEmpty == false) ? leg.expressStopIds : nil,
+            exitAlight: transitValidExitNo(leg.exit?.alight)
         ))
         pendingWalk = nil
     }
@@ -459,17 +480,30 @@ public func withoutPrewalk(_ route: TransitGuideRoute) -> TransitGuideRoute {
         boardStop: first.boardStop, alightStop: first.alightStop,
         viaStops: first.viaStops, stationCount: first.stationCount,
         routeId: first.routeId, wayCode: first.wayCode, walkBeforeMinutes: nil,
-        quickExit: first.quickExit)
+        quickExit: first.quickExit,
+        lineNameEn: first.lineNameEn, boardNameEn: first.boardNameEn, alightNameEn: first.alightNameEn,
+        expressStops: first.expressStops, expressStopIds: first.expressStopIds, exitAlight: first.exitAlight)
     return TransitGuideRoute(legs: [stripped] + route.legs.dropFirst(), walkAfterMinutes: route.walkAfterMinutes)
 }
 
 // === 열차 선택 목록 필터 (§5.1) — 순수 판정, 시트가 소비 ===
 
+/// 급행 후보의 하차역 정차 판정(A16 L1, spec 2026-09-02 §4.2, 웹 `ExpressVerdict` 미러).
+public enum TransitExpressVerdict: String, Sendable, Equatable {
+    case skips, stops, unknown
+}
+
+/// 활성화 차단의 단일 사유(웹 `UnreachableReason` 미러) — 소비자는 `unreachable != nil`로만 버튼을 만들지 않는다.
+public enum TransitUnreachableReason: String, Sendable, Equatable {
+    case terminatesEarly, expressSkipsAlight
+}
+
 public struct TransitBoardingCandidate: Sendable {
     public let item: TransitTrackItem
-    /// 종착이 하차역 이전 — 결정적 미도달이라 활성화 차단(§5.1).
-    public let terminatesEarly: Bool
-    public let express: Bool
+    /// 결정적 미도달 사유(종착 앞 / 급행 통과). nil이면 선택 가능. 겹치면 종착이 앞이다.
+    public let unreachable: TransitUnreachableReason?
+    /// 급행 판정. 급행이 아니면 nil.
+    public let express: TransitExpressVerdict?
     public let directionMatched: Bool
 
     // 목록 정체성 키는 소비자(시트·패널) 몫 — vehId, 없으면 슬롯 위치 폴백(§13.4.
@@ -519,12 +553,8 @@ public func classifyTransitBoardingCandidates(
     let decorated = items.map { item in
         TransitBoardingCandidate(
             item: item,
-            // 2호선 계열은 종착 검사에서 제외한다 — 그 종착 필드가 판정 근거가
-            // 아니라 오차단원이기 때문이다(isLine2Direction 주석에 표본).
-            terminatesEarly: isLine2Direction(item.direction)
-                ? false
-                : transitTerminatesBeforeAlight(item.destinationName, leg: leg),
-            express: item.express,
+            unreachable: transitUnreachableReason(item, leg: leg),
+            express: transitExpressVerdict(item, leg: leg),
             directionMatched: directionMatchesWayCode(item.direction, leg.wayCode) == true
         )
     }
@@ -532,6 +562,35 @@ public func classifyTransitBoardingCandidates(
     let hasDirectionAxis = decorated.contains { !$0.item.direction.isEmpty }
     let candidates = anyMatched ? decorated.filter(\.directionMatched) : decorated
     return (candidates, hasDirectionAxis && !anyMatched)
+}
+
+/// 급행 판정(웹 `expressVerdict` 미러). **ID 판정이 1순위**(`expressStopIds` ∧ `alightStop.stationId`,
+/// 정규화 없음), 이름 판정은 폴백이고 자격이 붙는다: ⓐ하차역 이름이 `viaStops` 표기와 조인되고
+/// ⓑ집합이 `viaStops`와 이름을 공유해야 한다 — 그 밖의 미포함은 별칭일 수 있어 `unknown`.
+public func transitExpressVerdict(_ item: TransitTrackItem, leg: TransitGuideLeg) -> TransitExpressVerdict? {
+    guard item.express else { return nil }
+    if let ids = leg.expressStopIds, !ids.isEmpty, let alightId = leg.alightStop?.stationId {
+        return ids.contains(alightId) ? .stops : .skips
+    }
+    guard let names = leg.expressStops, !names.isEmpty else { return .unknown }
+    let alight = normalizeStopName(leg.alightName)
+    guard !alight.isEmpty else { return .unknown }
+    let viaNames = Set(leg.viaStops.map { normalizeStopName($0.name) })
+    let expressNames = Set(names.map(normalizeStopName))
+    guard viaNames.contains(alight) else { return .unknown }                 // ⓐ
+    guard !expressNames.isDisjoint(with: viaNames) else { return .unknown }  // ⓑ
+    return expressNames.contains(alight) ? .stops : .skips
+}
+
+/// 결정적 미도달 사유(단일 술어, 웹 `unreachableReason` 미러). 2호선 계열은 종착 축에서만 제외되고
+/// 급행 축은 순환선과 무관하다. 선택 진입점(`TransitGuideModel.board(item:)`)도 이 함수로 다시 판정한다.
+public func transitUnreachableReason(_ item: TransitTrackItem, leg: TransitGuideLeg) -> TransitUnreachableReason? {
+    let terminates = isLine2Direction(item.direction)
+        ? false
+        : transitTerminatesBeforeAlight(item.destinationName, leg: leg)
+    if terminates { return .terminatesEarly }
+    if transitExpressVerdict(item, leg: leg) == .skips { return .expressSkipsAlight }
+    return nil
 }
 
 /// 역명 표기 차이 흡수(부역명 괄호·"역" 접미) — 종착 검사·현재 위치 매칭 공용.
