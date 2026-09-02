@@ -45,7 +45,7 @@ function unavailableHereReason(body: unknown): UnavailableHereReason | null {
 }
 
 // ⚠ package.json version과 동조 필수(version-drift.test.ts가 강제). 릴리스 때 함께 올린다.
-const server = new McpServer({ name: "gildongmu", version: "0.9.0" });
+const server = new McpServer({ name: "gildongmu", version: "0.10.0" });
 
 for (const spec of ENDPOINT_CATALOG.filter((e) => e.mcp)) {
   const shape: Record<string, z.ZodTypeAny> = {};
