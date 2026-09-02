@@ -21,7 +21,7 @@
 | 웹 | https://gildongmu.dodoplanet.space (push = 자동 배포) |
 | iOS | **1.14 `WAITING_FOR_REVIEW`**(빌드 22, 아카이브 커밋 `11fe5f9`, 제출 2026-09-02 06:52 KST). 스토어 최신은 **1.13**(빌드 21, 아카이브 `df229f0`). ⚠ 1.14 아카이브 뒤 iOS 커밋은 스토어에 없다 — `git log 11fe5f9..HEAD -- ios/` |
 | iOS 최소 지원 | **18.0**(2026-08-19 하향, 1.10부터 적용 — 스토어 반영 완료) |
-| npm | `gildongmu` · `gildongmu-mcp` **v0.9.0**(2026-08-25, provenance 증명 포함). ⚠ 0.9.0 뒤 미발행 변경 있음(`lang` 배선 — `packages/*/CHANGELOG.md` `[미출시]`, 발행은 위원장 판정) |
+| npm | `gildongmu` · `gildongmu-mcp` **v0.10.0**(2026-09-02, `cli-v0.10.0` 태그 → Trusted Publishing 워크플로 성공, `npm view` 両패키지 0.10.0 확인). 미발행 변경 없음(`packages/*/CHANGELOG.md`에 `[미출시]` 절 없음) |
 | 저장소 | GitHub **public**(2026-08-17 전환) — https://github.com/Engccer/gildongmu. 코드 MIT, 번들 데이터는 `NOTICE.md`. **모든 커밋이 즉시 공개된다** — 실주소·계측 로그·키를 넣지 않는 규칙은 `CLAUDE.md` 개발 규칙 |
 
 - iOS 심사 상태 조회: `node ios/scripts/asc-submit.mjs --check`
@@ -69,6 +69,7 @@
 | 대중교통 경로 | ODsay, 운행 시간 밖(`outside`)만 강등(A21), 최단·최소환승 축, 경유지는 `unsupported` 정직 표시. **en 계열은 ODsay `lang=1` 영문 + 노선명 표 + 역명 병기**(E27, 2026-08-31 — 한국어 필드 불변. 실시간 안내 게이트는 2026-09-01 해제, §실시간 길 안내) |
 | 길찾기 섹션 동적 순서(E11) | 성공 앞·비성공 뒤, 도보 30분 이하 최상단, settled 스냅샷(웹·iOS, 2026-08-12) |
 | 지하철 빠른하차 | 환승 leg는 ODsay 빠른환승 문(A20), 최종 하차 leg는 1~8호선 방향별 계단·엘리베이터 최근접 칸·문 (⏳ 하차역 실승차 판정) |
+| 하차 출구 번호(E25) | ODsay `startExitNo`/`endExitNo`를 역 밖 진입·하차 구간에만 `exit`로 투영(2026-09-02), 실시간 안내의 확정 도착 통지·하차역 행에 "{N}번 출구 방면"(추정 도착 제외) — ⏳ 실승차 판정 §2 E5·B2 ⑫ |
 
 ### 생활 정보
 | 기능 | 비고 |
@@ -108,6 +109,7 @@
 | 하단 2행(현재 행동 카운트다운 + 다음 예고) | 웹·iOS 구현 완료(2026-08-11, walk 상세 전용·표시 좌표계 effectiveD) — ⏳ 실보행 판정 축 5건(BACKLOG H M0) |
 | 안내 시트 목적지 메뉴(장소 상세·끊김 없는 목적지 전환) | iOS 구현 완료(2026-08-12, 3수단·웹 미이식) — ⏳ 실기기 판정 축 4건(BACKLOG H M5) |
 | 톤 뒤 발화(효과음이 통지를 덮는 결함 해소) | 웹·iOS 구현 완료(2026-08-14) — ⏳ 실보행 판정 5종 + `imminentAheadMeters` 재판정(BACKLOG A12) |
+| 대중교통 승차 추세 톤(E15 ②) | iOS 실험판·웹 미러(2026-09-02) — 이벤트 소유 우선 배타 계층, 정수 정거장 축·데드밴드 1, 신규 소리 0, 통지는 톤 뒤 발화. ⏳ 실승차 판정 8축(§2 E15 ②, 대본 `docs/FIELD-TEST.md` §5-2) |
 | 결정 지점 톤 5종(횡단보도·왼쪽·오른쪽·뒤로 돌기·그 외) | 웹·iOS 구현 완료(2026-08-22, N2) — ⏳ 실기기 판정 2건: 잠금 상태 5종 구분 · 좌우 구분 패닝/음높이 선택(실험판 설정 피커, BACKLOG N2) |
 
 ### 플랫폼
@@ -115,8 +117,8 @@
 |---|---|
 | 웹 PWA | 수제 서비스워커, document network-first |
 | iOS 앱 | SwiftUI + GildongmuKit, 4탭, 설정 업데이트 이력(release notes) 화면 |
-| CLI · MCP | REST 카탈로그 중계 씬 클라이언트. 응답 언어 `lang`은 서버가 받는 8엔드포인트(`route walk`·`car`·`transit`·`station` 계열·`nearby subway`·`search`)에서 받는다 — CLI 텍스트 표기 자체는 한국어 고정 |
-| 다국어 | ko·en·es·fr·it·ja 6개. 비-ko의 한국어 장소명은 **서버 로마자 + `Roman (한글)` 병기**(E28, 2026-08-31 — 웹 prod·iOS 코드 도달, ⏳ 실기기 판정 5건 BACKLOG §2), 카카오 분류 경로는 **세그먼트 사전 영문**(A28, 2026-08-31 — 실호출 카드 97.0%(프로덕션, spec §11), 미등재는 한국어 원문 + `lang="ko"`). 웹 수동 위치 라벨도 병기하고(2026-09-01, iOS 미해소), 지하철 시설 노선 라벨은 E27 표를 탄다(iOS 미러 열림) |
+| CLI · MCP | REST 카탈로그 중계 씬 클라이언트. 응답 언어 `lang`은 서버가 받는 9엔드포인트(`route walk`·`car`·`transit`·`station` 계열 4종(meta·metro-facilities·timetable·arrivals)·`nearby subway`·`search` — 정본은 카탈로그 `lang` params)에서 받는다 — CLI 텍스트 표기 자체는 한국어 고정 |
+| 다국어 | ko·en·es·fr·it·ja 6개. 비-ko의 한국어 장소명은 **서버 로마자 + `Roman (한글)` 병기**(E28, 2026-08-31 — 웹 prod·iOS 코드 도달, ⏳ 실기기 판정 5건 BACKLOG §2), 카카오 분류 경로는 **세그먼트 사전 영문**(A28, 2026-08-31 — 실호출 카드 97.0%(프로덕션, spec §11), 미등재는 한국어 원문 + `lang="ko"`). 수동 위치 라벨도 병기하고(웹 2026-09-01, iOS 2026-09-02 `manualLocationLabel` 한 함수), 지하철 시설 노선 라벨은 E27 표를 탄다(iOS 미러 2026-09-02 — 서버 `parts.lineEn` 우선, 표 미스만 조립) |
 | 커스텀 도메인 · GEO 대응 | 소개·FAQ + JSON-LD + llms.txt |
 | 서비스 커버리지 | 좌표 라우트 19종(`grep -rl isInKorea src/app/api`, 테스트 제외 — 2026-08-30 E24 `places/hours`로 +1)·웹 클라·iOS Kit·채팅 게이트가 국경 폴리곤 `isInKorea` 한 술어(사각형은 프리필터). 링 정본 `src/lib/data/korea-boundary.json`, Kit 리소스는 바이트 동일 사본 |
 
@@ -126,7 +128,7 @@
 
 **실측 2026-08-30 (`vercel env ls production`) — 17개 등록**(2026-08-30 `GOOGLE_PLACES_API_KEY` 추가):
 
-`KAKAO_REST_API_KEY` · `TOUR_API_KEY`(유일하게 Preview·Development 포함) · `DATA_GO_KR_API_KEY`(TOUR_API_KEY와 동일값) · `NCP_MAPS_CLIENT_ID` · `NCP_MAPS_CLIENT_SECRET` · `SEOUL_OPEN_DATA_KEY` · `SEOUL_SUBWAY_REALTIME_KEY` · `JUSO_CONFM_KEY` · `DEEPGRAM_API_KEY` · `PERPLEXITY_API_KEY` · `ODSAY_API_KEY` · `NAVER_LOCAL_CLIENT_ID` · `NAVER_LOCAL_CLIENT_SECRET` · `TMAP_APP_KEY` · `GEMINI_API_KEY` · `GOOGLE_CLOUD_TTS_API_KEY` · `GOOGLE_PLACES_API_KEY`(E24 영업시간, iOS 실험판 전용 소비)
+`KAKAO_REST_API_KEY` · `TOUR_API_KEY`(유일하게 Preview·Development 포함) · `DATA_GO_KR_API_KEY`(TOUR_API_KEY와 동일값) · `NCP_MAPS_CLIENT_ID` · `NCP_MAPS_CLIENT_SECRET` · `SEOUL_OPEN_DATA_KEY` · `SEOUL_SUBWAY_REALTIME_KEY` · `JUSO_CONFM_KEY` · `DEEPGRAM_API_KEY` · `PERPLEXITY_API_KEY` · `ODSAY_API_KEY` · `NAVER_LOCAL_CLIENT_ID` · `NAVER_LOCAL_CLIENT_SECRET` · `TMAP_APP_KEY` · `GEMINI_API_KEY` · `GOOGLE_CLOUD_TTS_API_KEY` · `GOOGLE_PLACES_API_KEY`(E24 영업시간, 웹·iOS 정식판 소비)
 
 ⚠ 이 목록은 **명령으로 재확인한다**. 재편 직전까지 `TMAP_APP_KEY`(18일 전 등록)와 `GOOGLE_CLOUD_TTS_API_KEY`가 이 문서에서 빠져 있었다 — 파일이 273KB로 불어 있는 동안 정작 현재 상태인 이 목록이 낡았다.
 
@@ -153,7 +155,7 @@
 
 **정본은 `docs/BACKLOG.md`다.** 여기에 목록을 복제하지 않는다 — 두 곳에 적으면 어느 쪽이 참인지 판정할 수 없게 된다.
 
-대중교통 안내는 잠근 차량이 한 번도 관측되지 않으면 10분(잠정) 뒤 그 사실을 말하고, 탑승 변경이 지금 있는 역을 물어 재잠금 경로를 연다(A16 L2·L3, ⏳ 실승차 판정). "진행 상황"은 조망 모달을 연다(E15-1, 2026-08-23 — 구간·정차역·"현재 위치"·침묵 설명+탑승 변경·현재 위치 기준 다른 경로 전환, ⏳ 실승차 판정 `docs/FIELD-TEST.md` §5-4). 급행 경로도 실시간 안내가 열린다(2026-08-23 — 종전에는 ODsay `(급행)` 접미 때문에 급행 leg가 통째로 추적 불가였다, ⏳ 실승차 판정 §2 A16 ⑥). A16 L1의 데이터원 판정은 종결됐고(데이터는 있다) 남은 경우는 "완행 leg에 급행을 잠갔을 때" 하나다 — 그 판정은 데이터가 아니라 제품이며 `docs/BACKLOG.md` A16 L1이 정본이다. 시트에 "주변 확인"이 있고 기준은 확정 현재역 또는 하차역이다(E15-2, 2026-08-23, ⏳ 실승차 판정). "탑승" 버튼은 차량 선택이고 승차 정류소 도착을 관측해 앱이 `riding`으로 올린다(`boarding` 국면, N3 2026-08-22, ⏳ 실승차 판정 — A19 포커스 착지 포함).
+대중교통 안내는 잠근 차량이 한 번도 관측되지 않으면 10분(잠정) 뒤 그 사실을 말하고, 탑승 변경이 지금 있는 역을 물어 재잠금 경로를 연다(A16 L2·L3, ⏳ 실승차 판정). "진행 상황"은 조망 모달을 연다(E15-1, 2026-08-23 — 구간·정차역·"현재 위치"·침묵 설명+탑승 변경·현재 위치 기준 다른 경로 전환, ⏳ 실승차 판정 `docs/FIELD-TEST.md` §5-4). 급행 경로도 실시간 안내가 열린다(2026-08-23 — 종전에는 ODsay `(급행)` 접미 때문에 급행 leg가 통째로 추적 불가였다, ⏳ 실승차 판정 §2 A16 ⑥). A16 L1은 2026-09-02에 판정·구현 모두 종결됐다 — 급행 정차역 집합(`expressStops`, ODsay 런타임 조회 + 7일 캐시)으로 통과 급행의 활성화를 차단하고 결정적 문장을 내며, 근사 잠금은 급행 집합이 있는 노선에서 "급행인가요?"를 한 번 묻는다(⏳ 실승차 판정 §2 A16 ⑦⑧). 시트에 "주변 확인"이 있고 기준은 확정 현재역 또는 하차역이다(E15-2, 2026-08-23, ⏳ 실승차 판정). "탑승" 버튼은 차량 선택이고 승차 정류소 도착을 관측해 앱이 `riding`으로 올린다(`boarding` 국면, N3 2026-08-22, ⏳ 실승차 판정 — A19 포커스 착지 포함).
 
 도보 안내 경로 출발점은 정확한 fix(≤30m)를 최대 15초 기다린 뒤 정하고, 그 origin이 계측된다(A18 코드 종결 2026-08-17, ⏳ 실보행 판정 — 침묵 길이·간략 폴백 빈도).
 

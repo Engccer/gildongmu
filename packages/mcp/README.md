@@ -73,8 +73,8 @@ codex mcp add gildongmu -- npx -y gildongmu-mcp
 
 채팅(`chat`)·웹 검색(`web`)은 호스트 LLM이 직접 처리하는 몫이라 MCP 도구로는 노출하지 않는다.
 
-`places_search`·`route_car`·`route_walk`·`route_transit`·`station_meta`·`station_timetable`·
-`subway_arrival`·`nearby_subway`은 선택 입력 `lang`을 받는다. `en`이면 서버가 영문 안내 문장과
+`places_search`·`route_car`·`route_walk`·`route_transit`·`station_meta`·`station_metro_facilities`(음성유도기
+노선의 영문 노선명 `parts.lineEn`)·`station_timetable`·`subway_arrival`·`nearby_subway`은 선택 입력 `lang`을 받는다. `en`이면 서버가 영문 안내 문장과
 `*En` 필드(`lineNameEn`·`messageEn` 등)를 함께 싣는다 — 한국어 필드는 조인 키라 그대로 남는다.
 
 ## 동작 방식

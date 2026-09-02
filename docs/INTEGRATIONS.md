@@ -134,7 +134,7 @@ spec `2026-09-02-express-stops-data-design.md`. 둘 다 `includeStops=1` 응답�
 
 ### 승차 후보 판정
 
-방향 필터·종착 검사는 `classifyBoardingCandidates`(웹) ↔ `classifyTransitBoardingCandidates`(Kit)에 있고, 두 판정이 쓰는 필드(`direction`·`destinationName`)는 **서울 지하철 실시간 도착 API**가 주고, **버스 upstream은 `direction`을 주지 않는다**(`transit-track.ts`가 빈 문자열로 채운다). 그래서 `directionUncertain`은 "방향 축이 있는데(후보 중 `direction`이 비어 있지 않은 것이 하나라도 있음) 매칭이 전멸했다"일 때만 참이다(A17, 2026-08-17) — 전원 빈 문자열이면 축 부재라 uncertain이 아니다. 어기면 모든 버스 세션에 "방면을 확인해 주세요"가 상시 붙는데 버스 목록엔 확인할 방면 정보가 없다. **2호선은 그 두 필드가 모두 다르게 동작하므로 이 계층을 수정하기 전에 아래 §서울 지하철 실시간의 "순환선(2호선)" 절을 읽는다.**
+방향 필터·종착 검사는 `classifyBoardingCandidates`(웹) ↔ `classifyTransitBoardingCandidates`(Kit)에 있고(2026-09-02부터 차단 술어는 `unreachable` 하나 — 종착 앞 / 급행 통과 — 이고 급행 축은 `expressVerdict`가 `expressStopIds` ID 우선으로 판정한다. 계약 전문은 CLAUDE.md "승차 후보의 활성화 차단 술어" 항목), 두 판정이 쓰는 필드(`direction`·`destinationName`)는 **서울 지하철 실시간 도착 API**가 주고, **버스 upstream은 `direction`을 주지 않는다**(`transit-track.ts`가 빈 문자열로 채운다). 그래서 `directionUncertain`은 "방향 축이 있는데(후보 중 `direction`이 비어 있지 않은 것이 하나라도 있음) 매칭이 전멸했다"일 때만 참이다(A17, 2026-08-17) — 전원 빈 문자열이면 축 부재라 uncertain이 아니다. 어기면 모든 버스 세션에 "방면을 확인해 주세요"가 상시 붙는데 버스 목록엔 확인할 방면 정보가 없다. **2호선은 그 두 필드가 모두 다르게 동작하므로 이 계층을 수정하기 전에 아래 §서울 지하철 실시간의 "순환선(2호선)" 절을 읽는다.**
 
 ### 안내 상태 머신에 신호를 추가할 때 (A16에서 배운 것)
 

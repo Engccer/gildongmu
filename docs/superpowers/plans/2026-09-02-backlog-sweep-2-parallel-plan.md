@@ -1,5 +1,7 @@
 # 2026-09-02 백로그 2차 전수 소화 계획 — 병렬 세션 작업 분할
 
+> **종료 상태(2026-09-02, doc-audit)**: 웨이브 1 전 세션 통합 완료 — transit-data `df6b439e` · transit-guide `c03ff36e`→`90bf5da1`→`7a8c79e8`(근사 잠금 프롬프트 포함) · en-ios `2e47d73a` · ios-quality `db0716d3` · small-batch `4f94546d`→`5f0ffbe0`(C5 41 판정 반영). 웨이브 2 doc-audit: 문서 만료 점검 36건 반영·PORTS.md 5행 등록·**CLI/MCP 0.10.0 발행 완료**(`da905b02`, 태그 `cli-v0.10.0`, 워크플로 성공, `npm view` 両패키지 0.10.0). **실기기 미배포**(위원장 지시 — 기기 미연결, 다음 배포는 Experimental·Release 둘 다), iOS 1.15 제출 여부는 1.14 심사 결과 뒤 위원장 판정. 남은 위원장 판정 위치: `docs/BACKLOG.md` §2 실승차 행 A16 ⑦⑧·E15 ②(8축)·E5 출구·B2 ⑫, 실기기 E28-⑥(대본 `docs/FIELD-TEST.md` §5-2·§5-3·§4-6), C5 41 재채점(다음 하네스 승인 실행), ODsay 미실측 2건은 2026-09-03 이후 실행 조건(BACKLOG A22·E25).
+>
 > 출처: `docs/BACKLOG.md` 전수 판독(2026-09-02, HEAD `f4270ec`). 위원장 지시 "백로그에서 코딩으로 처리할 수 있는 건 모두 처리, 마일스톤 여러 개면 코디네이터 + 병렬 세션". 판정 6건은 같은 세션에서 위원장이 직접 내렸다(§1 표의 "판정" 열). 절차 정본은 `parallel-sessions` 스킬, 직전 선례는 `2026-08-23-backlog-sweep-parallel-plan.md`·`2026-09-01-en-locale-residual-parallel-plan.md`.
 
 ## 0. 전제 (코디네이터 판독 결과, 관측 시점 `f4270ec`)
