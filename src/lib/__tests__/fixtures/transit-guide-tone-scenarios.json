@@ -1696,6 +1696,175 @@
           }
         }
       ]
+    },
+    {
+      "name": "⑬ 근사 잠금: 잔여 증가는 approxVehicleChanged 이벤트가 소유(무음·재앵커), 그 뒤 감소에 closer",
+      "route": "subwaySingle",
+      "steps": [
+        {
+          "at": 0,
+          "input": {
+            "kind": "board",
+            "lock": "subwayApproxDown"
+          },
+          "expect": {
+            "tone": null,
+            "phase": "riding",
+            "event": "boarded"
+          }
+        },
+        {
+          "at": 120000,
+          "input": {
+            "kind": "poll",
+            "seq": 1,
+            "phaseGen": 1,
+            "poll": {
+              "kind": "ok",
+              "items": [
+                {
+                  "vehicleId": "A",
+                  "direction": "하행",
+                  "message": "[5]번째 전역",
+                  "remainingStops": 5,
+                  "destinationName": "하남검단산",
+                  "express": false,
+                  "arrivalCode": "99"
+                },
+                {
+                  "vehicleId": "B",
+                  "direction": "하행",
+                  "message": "[9]번째 전역",
+                  "remainingStops": 9,
+                  "destinationName": "하남검단산",
+                  "express": false,
+                  "arrivalCode": "99"
+                }
+              ]
+            }
+          },
+          "expect": {
+            "tone": null,
+            "anchor": 5,
+            "event": "trackingStarted"
+          }
+        },
+        {
+          "at": 135000,
+          "input": {
+            "kind": "poll",
+            "seq": 2,
+            "phaseGen": 1,
+            "poll": {
+              "kind": "ok",
+              "items": [
+                {
+                  "vehicleId": "A",
+                  "direction": "하행",
+                  "message": "[4]번째 전역",
+                  "remainingStops": 4,
+                  "destinationName": "하남검단산",
+                  "express": false,
+                  "arrivalCode": "99"
+                },
+                {
+                  "vehicleId": "B",
+                  "direction": "하행",
+                  "message": "[8]번째 전역",
+                  "remainingStops": 8,
+                  "destinationName": "하남검단산",
+                  "express": false,
+                  "arrivalCode": "99"
+                }
+              ]
+            }
+          },
+          "expect": {
+            "tone": "closer",
+            "anchor": 4
+          }
+        },
+        {
+          "at": 150000,
+          "input": {
+            "kind": "poll",
+            "seq": 3,
+            "phaseGen": 1,
+            "poll": {
+              "kind": "ok",
+              "items": [
+                {
+                  "vehicleId": "B",
+                  "direction": "하행",
+                  "message": "[6]번째 전역",
+                  "remainingStops": 6,
+                  "destinationName": "하남검단산",
+                  "express": false,
+                  "arrivalCode": "99"
+                }
+              ]
+            }
+          },
+          "expect": {
+            "tone": null,
+            "anchor": 6,
+            "event": "approxVehicleChanged"
+          }
+        },
+        {
+          "at": 165000,
+          "input": {
+            "kind": "poll",
+            "seq": 4,
+            "phaseGen": 1,
+            "poll": {
+              "kind": "ok",
+              "items": [
+                {
+                  "vehicleId": "B",
+                  "direction": "하행",
+                  "message": "[5]번째 전역",
+                  "remainingStops": 5,
+                  "destinationName": "하남검단산",
+                  "express": false,
+                  "arrivalCode": "99"
+                }
+              ]
+            }
+          },
+          "expect": {
+            "tone": "closer",
+            "anchor": 5
+          }
+        },
+        {
+          "at": 180000,
+          "input": {
+            "kind": "poll",
+            "seq": 5,
+            "phaseGen": 1,
+            "poll": {
+              "kind": "ok",
+              "items": [
+                {
+                  "vehicleId": "B",
+                  "direction": "하행",
+                  "message": "[5]번째 전역 (재)",
+                  "remainingStops": 5,
+                  "destinationName": "하남검단산",
+                  "express": false,
+                  "arrivalCode": "99"
+                }
+              ]
+            }
+          },
+          "expect": {
+            "tone": null,
+            "anchor": 5,
+            "event": null
+          }
+        }
+      ]
     }
   ]
 }
