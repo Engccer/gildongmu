@@ -251,6 +251,7 @@ final class TransitGuideModel {
         refreshAnnounce = false
         pendingWalkHandoff = nil
         droppedWhileSuppressed = nil
+        expressBlockedNote = nil
         boardOverrideIndex = nil
         selectedDescription = nil
         reboardPickerActive = false
@@ -430,19 +431,38 @@ final class TransitGuideModel {
     }
 
     /// "이미 탑승했습니다"(§13.2) — 식별자 없는 근사 잠금(tagoBus 계약 동형).
-    func boardAlready() {
+    ///
+    /// `express`는 급행 확인 프롬프트(spec 2026-09-02 §6, 위원장 판정 — 급행 집합이 있는 노선에서만 시트가
+    /// 묻는다)의 답. true면 하차역 정차를 판정해 통과 급행이면 잠그지 않고 차단 문장(결정적 문장 재사용)을
+    /// 남기고, 정차하면 급행 선언 잠금(하차역 목록에서 급행 항목 우선). 프롬프트가 없는 노선은 nil로 종전 그대로.
+    func boardAlready(express: Bool? = nil) {
         guard let leg = currentLeg, let trackMode = leg.trackMode, trackMode != .tagoBus else {
             return
         }
+        if express == true, transitDeclaredExpressVerdict(leg: leg) == .skips {
+            let note = TransitGuideTextRenderer.render(
+                transitExpressSkipsAlightLine(isEn: transitGuideIsEn, leg: displayLeg(leg, useOverride: false)))
+            expressBlockedNote = note
+            transitGuideLog("boardAlready rejected express skips alight")
+            // 활성화의 직접 응답이고 프롬프트 버튼이 사라진다(헌장 §6) — 즉시·.high.
+            announceNow(note, highPriority: true)
+            return
+        }
+        expressBlockedNote = nil
         let direction = leg.wayCode == 1 ? "상행" : leg.wayCode == 2 ? "하행" : ""
         dispatch(.board(TransitLock(
             mode: trackMode,
             routeId: leg.routeId ?? subwayIdForOdsayLine(leg.lineName) ?? "",
             direction: direction,
-            vehicleId: ""
+            vehicleId: "",
+            express: express == true ? true : nil
         )))
         restartPollLoop(immediate: true)
     }
+
+    /// 급행 확인에서 잠금을 거절한 뒤 남는 상시 문장("이 급행은 {하차역}에 서지 않습니다", §6).
+    /// 국면 전이(잠금·전진·탑승 변경)와 세션 종료가 지운다.
+    private(set) var expressBlockedNote: String?
 
     /// 새로고침(§13.2) — 즉폴 + 결과를 직접 응답으로 통지(자동 폴 무낭독의 예외).
     func refreshWaiting() {
@@ -1011,6 +1031,8 @@ final class TransitGuideModel {
         case .board, .confirmBoarded, .restoreBoarding, .changeBoarding, .poll: break
         }
         if enteredRiding { boardOverrideIndex = nil }
+        // 급행 거절 문장은 그 대기 국면에 묶인다 — 국면 세대가 바뀌면 낡았다.
+        if result.state.phaseGen != state.phaseGen { expressBlockedNote = nil }
         // 픽커는 riding 국면 전용 UI다. 국면이 바뀌면 화면에서는 사라지지만 플래그가
         // 남아, 다음 riding 진입에서 **묻지도 않은 역 선택 화면이 되살아나고** 포커스를
         // 강탈한다(독립 리뷰 MAJOR: 픽커를 연 채 폴이 도착 추정으로 전이 → advance →

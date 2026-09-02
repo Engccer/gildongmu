@@ -36,6 +36,10 @@ struct TransitTrackingSheet: View {
     /// (`SearchView.applyRowFocus`의 교훈). 후보·경로 목록은 정체성 바인딩을 따로 둔다.
     enum SheetControl: Hashable {
         case advance, changeBoarding, confirmBoarded, walkHandoff, waitingLabel, reboardPrompt
+        /// 급행 확인 프롬프트 헤딩(§6) — 펼친 직후 착지.
+        case expressPrompt
+        /// 급행 거절 상시 문장(§6) — 프롬프트 버튼이 사라진 자리의 착지.
+        case expressBlocked
         /// 제목 행(제목 메뉴) — 시트 진입 기본 착지이자 사라지는 컨트롤의 복귀 앵커(항상
         /// 존재). 종전 앵커였던 중지는 최하단 고정으로 내려갔다(위원장 판정 2026-08-23).
         case title
@@ -70,6 +74,10 @@ struct TransitTrackingSheet: View {
 
     private static let waitingLabelId = "transit-waiting-label"
     private static let reboardPromptId = "transit-reboard-prompt"
+    private static let expressPromptId = "transit-express-prompt"
+    private static let expressBlockedId = "transit-express-blocked"
+    /// 급행 확인 프롬프트 표시(spec 2026-09-02 §6) — "이미 탑승했습니다" 뒤, 급행 집합이 있는 노선만.
+    @State private var expressPromptActive = false
 
     var body: some View {
         // 접기 버튼은 섹션 헤더(제목 메뉴) 행 우측 아이콘(BeaconTrackingSheet 동형,
@@ -143,6 +151,8 @@ struct TransitTrackingSheet: View {
             .onChange(of: model.state?.phase) { previous, phase in
                 // 국면이 바뀌면 진행 중 착지는 낡은 대상을 좇는다 — 먼저 끊는다.
                 controlFocusTask?.cancel()
+                // 급행 확인 프롬프트는 대기 국면 전용(§6) — 국면이 바뀌면 접는다.
+                expressPromptActive = false
                 // 세션 종료(state nil)도 여기로 온다(.some → nil 변화) — 조망을 닫는다.
                 let target = phaseTransitionLanding(previous: previous, phase: phase)
                 // 조망이 열려 있으면 그 행·행동은 낡았다 — 닫고, 착지는 onDismiss로 미룬다(§4.3).
@@ -471,7 +481,37 @@ struct TransitTrackingSheet: View {
             }
             // 대기 국면 탈출구(§13.2) + 탑승 변경 취소(§13.1).
             Button(appLocalized("transitGuide.refresh")) { model.refreshWaiting() }
-            Button(appLocalized("transitGuide.boardAlready")) { model.boardAlready() }
+            Button(appLocalized("transitGuide.boardAlready")) {
+                // 급행 집합이 있는 노선만 급행 확인을 묻는다(§6) — 없으면 종전 즉시 잠금.
+                if transitNeedsExpressPrompt(leg) {
+                    expressPromptActive = true
+                    landControlFocus(.expressPrompt, proxy: proxy)
+                } else {
+                    model.boardAlready()
+                }
+            }
+            if expressPromptActive {
+                // 버튼으로 펼친 것이라 헤딩이 발견 경로(헌장 §3). 답하면 프롬프트는 사라지고 착지는 국면 전이
+                // (riding → 다음 구간) 또는 거절 문장이 맡는다.
+                Text(appLocalized("transitGuide.expressPrompt"))
+                    .accessibilityAddTraits(.isHeader)
+                    .accessibilityFocused($focusedControl, equals: .expressPrompt)
+                    .id(Self.expressPromptId)
+                Button(appLocalized("transitGuide.expressYes")) {
+                    expressPromptActive = false
+                    model.boardAlready(express: true)
+                    if model.expressBlockedNote != nil { landControlFocus(.expressBlocked, proxy: proxy) }
+                }
+                Button(appLocalized("transitGuide.expressNo")) {
+                    expressPromptActive = false
+                    model.boardAlready(express: false)
+                }
+            }
+            if let note = model.expressBlockedNote {
+                Text(note)
+                    .accessibilityFocused($focusedControl, equals: .expressBlocked)
+                    .id(Self.expressBlockedId)
+            }
             if previousLock != nil {
                 Button(appLocalized("transitGuide.cancelChangeBoarding")) {
                     model.cancelChangeBoarding()
@@ -550,6 +590,8 @@ struct TransitTrackingSheet: View {
         switch target {
         case .waitingLabel: proxy.scrollTo(Self.waitingLabelId)
         case .reboardPrompt: proxy.scrollTo(Self.reboardPromptId)
+        case .expressPrompt: proxy.scrollTo(Self.expressPromptId)
+        case .expressBlocked: proxy.scrollTo(Self.expressBlockedId)
         case .destChangeStatus: proxy.scrollTo(Self.destChangeStatusId)
         default: break  // 섹션 상단 버튼들은 List 첫 화면 안이라 가시화 불필요
         }
@@ -567,6 +609,8 @@ struct TransitTrackingSheet: View {
         case .walkHandoff: return model.pendingWalkHandoff != nil
         case .waitingLabel: return phase == .waiting
         case .reboardPrompt: return phase == .riding && model.reboardPickerActive
+        case .expressPrompt: return phase == .waiting && expressPromptActive
+        case .expressBlocked: return phase == .waiting && model.expressBlockedNote != nil
         case .destChangeStatus:
             if case .loaded = model.pendingDestChange?.phase { return false }
             return model.pendingDestChange != nil

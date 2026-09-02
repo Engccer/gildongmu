@@ -492,6 +492,12 @@ private func kindName(_ event: TransitGuideEvent?) -> String? {
     #expect(transitExpressVerdict(local, leg: leg()) == nil)
     let early = TransitTrackItem(vehicleId: "8", direction: "하행", message: "m", remainingStops: 3, destinationName: "당산", express: true, arrivalCode: nil)
     #expect(transitUnreachableReason(early, leg: leg(expressStops: ["김포공항"], expressStopIds: ["901"])) == .terminatesEarly)
+    // 근사 잠금 급행 확인(§6): 집합 있는 노선만 묻고, 선언 판정은 후보 없이 leg만으로
+    #expect(transitNeedsExpressPrompt(leg()) == false)
+    #expect(transitNeedsExpressPrompt(skip) == true)
+    #expect(transitDeclaredExpressVerdict(leg: skip) == .skips)
+    #expect(transitDeclaredExpressVerdict(leg: stop) == .stops)
+    #expect(transitDeclaredExpressVerdict(leg: leg()) == .unknown)
     // 출구 번호 형식 게이트
     #expect(transitValidExitNo(" 2-1 ") == "2-1")
     #expect(transitValidExitNo("1 2") == nil)

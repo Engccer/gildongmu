@@ -38,12 +38,15 @@ public struct TransitLock: Codable, Sendable, Equatable {
     public let routeId: String
     public let direction: String
     public let vehicleId: String
+    /// 근사 잠금의 급행 선언(spec 2026-09-02 §6, 웹 미러) — 하차역 목록에서 급행 항목을 우선한다. 식별자 잠금엔 nil.
+    public let express: Bool?
 
-    public init(mode: TransitTrackMode, routeId: String, direction: String, vehicleId: String) {
+    public init(mode: TransitTrackMode, routeId: String, direction: String, vehicleId: String, express: Bool? = nil) {
         self.mode = mode
         self.routeId = routeId
         self.direction = direction
         self.vehicleId = vehicleId
+        self.express = express
     }
 }
 
@@ -584,6 +587,19 @@ public func transitExpressVerdict(_ item: TransitTrackItem, leg: TransitGuideLeg
     return expressNames.contains(alight) ? .stops : .skips
 }
 
+/// "이미 탑승했습니다"에서 급행 확인을 물어야 하는 leg인가 — 급행 집합이 있는 노선만(spec §6, 웹 미러).
+public func transitNeedsExpressPrompt(_ leg: TransitGuideLeg) -> Bool {
+    (leg.expressStopIds?.isEmpty == false) || (leg.expressStops?.isEmpty == false)
+}
+
+/// 사용자가 "급행"이라 선언했을 때의 하차역 정차 판정 — 후보 항목 없이 leg만으로(§6, 웹 미러).
+public func transitDeclaredExpressVerdict(leg: TransitGuideLeg) -> TransitExpressVerdict? {
+    transitExpressVerdict(
+        TransitTrackItem(vehicleId: nil, direction: "", message: "", remainingStops: nil,
+                         destinationName: nil, express: true, arrivalCode: nil),
+        leg: leg)
+}
+
 /// 결정적 미도달 사유(단일 술어, 웹 `unreachableReason` 미러). 2호선 계열은 종착 축에서만 제외되고
 /// 급행 축은 순환선과 무관하다. 선택 진입점(`TransitGuideModel.board(item:)`)도 이 함수로 다시 판정한다.
 public func transitUnreachableReason(_ item: TransitTrackItem, leg: TransitGuideLeg) -> TransitUnreachableReason? {
@@ -1044,9 +1060,12 @@ public func transitFindLockedItem(_ items: [TransitTrackItem], lock: TransitLock
     if isApproxTransitLock(lock) {
         // 근사(§5.2·§13.2): 방향 일치(양측 보유 시) 항목 중 최근접 접근 차량(잔여
         // 최소). tagoBus는 방향이 ""라 무필터 — 기존 행동 불변.
-        let pool = items.filter {
+        let byDirection = items.filter {
             lock.direction.isEmpty || $0.direction.isEmpty || $0.direction == lock.direction
         }
+        // 급행 선언 근사 잠금(§6): 급행 항목이 있으면 그 안에서 고른다(없으면 전체).
+        let expressOnly = lock.express == true ? byDirection.filter(\.express) : []
+        let pool = expressOnly.isEmpty ? byDirection : expressOnly
         let withRemaining = pool.filter { $0.remainingStops != nil }
         if let best = withRemaining.min(by: { ($0.remainingStops ?? .max) < ($1.remainingStops ?? .max) }) {
             return best

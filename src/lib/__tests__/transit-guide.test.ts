@@ -9,6 +9,8 @@ import {
   expressVerdict,
   unreachableReason,
   validExitNo,
+  needsExpressPrompt,
+  declaredExpressVerdict,
   initTransitGuide,
   pollIntervalMs,
   SESSION_POLL_CAP,
@@ -506,6 +508,15 @@ describe("classifyBoardingCandidates·terminatesBeforeAlight(§5.1)", () => {
       const skip: TransitGuideLeg = { ...base, expressStops: ["김포공항"], expressStopIds: ["901"] };
       const early = item({ express: true, vehicleId: "8", direction: "하행", destinationName: "당산" });
       expect(unreachableReason(early, skip)).toBe("terminatesEarly");
+    });
+
+    it("근사 잠금 급행 확인(§6): 집합 있는 노선만 묻고, 선언 판정은 후보 없이 leg만으로", () => {
+      expect(needsExpressPrompt(base)).toBe(false);
+      const withSet: TransitGuideLeg = { ...base, expressStops: ["김포공항", "당산", "동작"], expressStopIds: ["901", "902", "905"] };
+      expect(needsExpressPrompt(withSet)).toBe(true);
+      expect(declaredExpressVerdict(withSet)).toBe("skips");
+      expect(declaredExpressVerdict({ ...withSet, expressStopIds: ["901", "904"], expressStops: ["김포공항", "노들"] })).toBe("stops");
+      expect(declaredExpressVerdict(base)).toBe("unknown");
     });
 
     it("buildTransitGuideRoute가 계약 필드를 싣고 출구 번호를 형식 게이트로 거른다", () => {
