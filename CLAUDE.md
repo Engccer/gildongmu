@@ -122,7 +122,7 @@
 - **안내 세션은 앱 수명이고 시트를 내리는 제스처는 최소화다**(N1: `GuideSession.shared`가 모델 소유, 루트 `.sheet(item:)` 하나, 시작은 전부 `startBeacon/startTransit` — `guidance-gate-drift.test.ts`가 호출 수를 센다). dismiss 콜백은 무조건 `isMinimized = true`, 소거는 "닫기" 버튼의 `clearArrival()`·`clearWalkHandoff()`뿐. → INTEGRATIONS
 - **승차 국면 지하철 상태줄은 `arvlMsg2` 원문을 "{stop}까지" 틀에 넣지 않는다**(A27, `subwayRidingMessage(arrivalCode)` 웹 ↔ Kit 공유 fixture). 버스 승차·대기 후보·내 주변 목록은 완성 문장 그대로. → INTEGRATIONS
 - **승차 전 도보(prewalk)는 대중교통 세션이 아니라 그 앞의 도보 세션이고, 종료 화면을 남기지 않는다**(A25: `transitPrewalkTarget` → `BeaconModel.markPrewalk` → `onSessionEnd(reason)`). `prewalkTarget`은 `stop()` 앞에서 캡처, 콜백 발화점은 둘뿐, 잊힌 세션 안전망 비적용, `destinationLabel`은 대중교통 문구와 같은 언어. → INTEGRATIONS
-- **iOS 통지 우선순위의 판별선은 "포커스가 움직이고, 그 통지가 착지 라벨로 대체될 수 없을 때 `.high`"다**(`BeaconModel.performReroute` 실사고). 한 함수에서 실패만 `.high`이고 성공이 기본값이면 그 비대칭이 결함 신호. → PATTERNS
+- **iOS 통지 우선순위의 판별선은 "포커스가 움직이고, 그 통지가 착지 라벨로 대체될 수 없을 때 `.high`"다**(`BeaconModel.performReroute` 실사고). 포커스가 안 움직여도 화면 변화 없는 활성화 응답(주소 복사 "복사됨")은 통지가 유일한 증거라 `.high`. 한 함수에서 실패만 `.high`이고 성공이 기본값이면 그 비대칭이 결함 신호. → PATTERNS
 - **직선거리는 고를 수 있는 모드가 아니라 이름 없는 내부 강등이다**(E16 축2 — 웹에 단독 진입점·모드 전환 버튼 재도입 금지, 시작 가능 수단 0이면 버튼 0). 기능을 지울 땐 소비자 기준(웹·iOS 공유 i18n 키·이벤트)으로 자른다. → PATTERNS
 - **모드 이름을 지운 대가는 강등 사유가 유일한 단서가 되는 것이다**: `fetchGuideRoute`는 `{ok:false, failure}` 태그(`noLocation`·`retryable`·`unavailable`·`outOfCoverage`) — 비-200 전부를 재시도 가능으로 접지 말 것. 통지는 사유, 상시 표시는 동작 서술(`degradedNote`), 강등 문구에 모드 이름 금지. → PATTERNS
 - **현위치 수동 지정: 유효 위치를 소비하는 화면과 표시줄을 함께 옮긴다**(우선순위 장소 앵커 > 수동 위치 > GPS, 실시간 안내만 실좌표). 표시줄은 "이 화면의 조회 기준"이라는 약속 — 라벨은 `isManualLocationVerified`까지 본다, 비-ko 병기 `labelRoman`은 지정 시점 저장, 가드 `manual-location-copy.test.ts`. → PATTERNS

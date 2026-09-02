@@ -124,10 +124,31 @@ final class DirectionsModel {
     /// 직전 조회에 쓴 해석 좌표(웹 lastCoordsRef 미러). 토글 재조회가 재측위 없이 재사용.
     private var lastCoords: (origin: (lat: Double, lng: Double), dest: (lat: Double, lng: Double), via: (lat: Double, lng: Double)?)?
 
+    /// 프리필 진입(장소 상세·검색 결과 "여기까지 길찾기")의 자동 조회 1회분(위원장 실사용
+    /// 2026-09-02). 종전엔 도착지만 채워 놓고 사용자가 조회 버튼까지 스와이프해 다시
+    /// 눌러야 했다 — 그 버튼을 누르지 않을 이유가 없는 진입이라 조회까지가 한 동작이다.
+    /// ⚠ 뷰의 `.task`는 탭을 떠났다 돌아올 때마다 다시 돌므로 소비는 1회로 못 박는다
+    /// (돌아올 때 재조회하면 사용자가 바꾼 결과를 덮어쓴다). 순수 상태라 `State(initialValue:)`
+    /// 재평가에 안전(init 부수효과 금지 규칙과 무충돌).
+    /// ⚠ 소비 단위는 프리필 이벤트가 아니라 **이 모델(=`DirectionsTabView` 정체성)**이다: 언어 전환은
+    /// 앱이 탭 트리를 통째로 재생성하며 `directionsPrefill`을 비우지 않으므로(로케일 의존 데이터를 새
+    /// 언어로 다시 받는 종전 설계) 새 모델이 다시 true로 태어나 조회가 한 번 더 돈다 — 알려진 동작(리뷰 2026-09-03).
+    private var pendingPrefillQuery: Bool
+
     init(prefilledDestination: DirectionsEndpoint? = nil) {
         from = .current
         to = prefilledDestination
+        pendingPrefillQuery = prefilledDestination != nil
         recentRoutes = RecentSearchStore().routes()
+    }
+
+    /// 프리필 자동 조회 소비(뷰 `.task` 1회). 호출 시점의 필드로 조회한다 — 진행 중 조회가
+    /// 있으면(안내 주도 폼 동기화가 같은 `.task`에서 먼저 돌 수 있다) `runQuery`의
+    /// in-flight 가드가 흡수하고, 그 경우에도 소비된 것으로 친다(두 번 조회하지 않는다).
+    func runPrefillQueryIfPending() {
+        guard pendingPrefillQuery else { return }
+        pendingPrefillQuery = false
+        runQuery()
     }
 
     var isBusy: Bool { phase == .locating || phase == .loading || stepFreeBusy }
@@ -912,6 +933,9 @@ struct DirectionsTabView: View {
                     walkNoticePresented = true
                 }
                 consumeGuideFormSync()
+                // "여기까지 길찾기" 진입은 도착지 채움 + 즉시 조회가 한 동작(1회 소비 —
+                // 탭 재진입엔 돌지 않는다). 폼 동기화 재조회가 먼저 돌았으면 가드가 흡수.
+                model.runPrefillQueryIfPending()
                 await model.loadCurrentAddressIfAuthorized()
             }
         }
