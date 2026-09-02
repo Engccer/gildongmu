@@ -481,6 +481,7 @@ export function useTransitGuide(route: TransitRoute | null) {
       signalText,
       t,
       waitContextPiece,
+      displayLegOf,
     ],
   );
 
