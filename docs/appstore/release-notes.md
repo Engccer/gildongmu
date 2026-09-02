@@ -12,6 +12,50 @@
 
 ---
 
+## 1.15 (빌드 23)
+
+기준은 1.14 아카이브 커밋 `11fe5f9`(빌드 22)이며 그 이후 `ios/` 커밋 15건을 판정했다. Release 바이너리에 도달하면서 iOS 사용자에게 보이는 것만 담는다.
+
+포함 판정:
+
+| 기능 | 커밋 | 노트 |
+|---|---|---|
+| 주소 복사 완료 통지를 `.high`로 승격 — 활성화 직접 응답 통지가 VoiceOver 활성화 처리에 잠식되어 무발화되던 자리(위원장 실사용 2026-09-02) | `ca0bc3f2` | ko·en 전 로케일. `AddressCopy.swift`는 장소 상세·주소 검색 공용이라 두 화면 모두 적용. 화면 변화가 없는 동작이라 이 문장이 성공의 유일한 증거다 |
+| "여기까지 길찾기" 진입 시 도착지 채움 + 즉시 조회가 한 동작(`DirectionsModel.runPrefillQueryIfPending`, `.task` 1회 소비) | `ca0bc3f2` | ko·en 전 로케일. 종전엔 조회 버튼까지 다시 스와이프해 눌러야 했다 |
+| 0건 안내 문구에 무엇을 찾았는지 한정어 — `clinicEmpty`·`kidsEmpty`·`barrierFreeEmpty`(E19 ③, 웹 문구와 동조) | `c0dad89d` | ko 포함 6로케일. "주변에 진료 기관이 없습니다"가 "주변에 소아 야간·휴일 진료 기관이 없습니다"로 |
+| **비한국어 로케일 잔여 병기·영문화** — 수동 지정 위치의 라틴 표기(`labelRoman`, 지정 시점 저장), 길찾기 출발·도착 필드와 후보 행 병기, 지하철 시설 노선명 `lineEn`, 진료 종별(의원·병원), 둘러보기 장면의 도로명 로마자 | `3078d44c`·`71daae2f`·`b1ba978e` | **en(비-ko)만.** ko 화면은 byte-identical(커밋 메시지 단언 + ko 테스트). Release 도달면은 `LocationBarView`·`DirectionsTabView`·`DirectionsEndpointSearchView`·`StationSections`·`ClinicNearbyView`·`SurroundingsSceneSection` |
+
+제외 근거:
+
+- **급행 결정적 미도달 게이트·급행 확인 프롬프트·출구 번호 낭독**(A16 L1·E25 `4550f247`·`90bf5da1`·`d282d2ef`·`9d0bdfd5`)과 **대중교통 승차 추세 톤**(E15 ② `6592b624`·`c03ff36e`): 전부 `TransitGuideModel`·`TransitTrackingSheet`·Kit `TransitGuide`/`TransitGuideTone`/`TransitDisplayProjection`만 건드린다. 대중교통 세션 시작이 `AppConfig.experimentalGuidanceEnabled` 뒤에 봉인돼 있어(`DirectionsTabView` 1115·1129·1141·1153) 정식판 사용자에게는 그 기능 자체가 존재하지 않는다. `RouteBriefing.swift`는 이 구간에서 한 줄도 바뀌지 않아 브리핑으로 새는 경로도 없다.
+- **급행 정차역·출구 번호 서버 투영**(`c27e3f46`·`df6b439e`): Kit `RouteModels` 디코딩만 늘렸고 소비처가 위 봉인 안이다. "서버 판정과 앱 UI가 짝"인 경우가 아니다.
+- **동작 변경 0**: `db0716d3`(xcstrings 게이트 순서·`DataLocale` 잉여 제거·언어 스냅샷 1회 읽기), `163de3c2`(테스트 분리·단언), `c0dad89d`의 리팩터분(Kit 도보 `lang` enum화·문장 분류기 삭제 — 웹 결과 불변).
+
+심사 노트는 이번 버전에서 **승계한다**(`--review-notes` 없음). 새 권한·새 데이터 유형이 없고(개인정보 3자 일치 무변화), §9 문장 중 이번 변경으로 거짓이 된 것도 없다.
+
+### ko
+
+```
+개선
+- 주소를 복사하면 복사되었다는 안내가 화면 낭독으로 들립니다. 화면이 바뀌지 않는 동작이라 이 안내가 복사되었다는 유일한 신호인데, 그동안 들리지 않을 때가 있었습니다.
+- 장소 상세나 검색 결과에서 "여기까지 길찾기"를 고르면 도착지를 채우는 데 그치지 않고 바로 경로까지 찾아 드립니다. 조회 버튼을 다시 찾아 누르지 않아도 됩니다.
+- 주변에 결과가 없다는 안내가 무엇을 찾은 결과인지 함께 알려 드립니다. 소아 야간·휴일 진료 기관, 아이 놀 곳(키즈카페·놀이터·공원), 등록된 무장애 관광지가 그 대상입니다.
+```
+
+### en
+
+```
+New
+- More of the app now reads in English or the Latin alphabet: a location you set by hand, the start and destination fields and their candidates in Directions, subway facility line names, clinic types, and road names in the description of your surroundings.
+
+Improved
+- Copying an address now announces that it was copied. Nothing on screen changes when you copy, so that announcement is the only sign it worked, and it was sometimes silent.
+- Choosing "Directions to here" from a place or a search result now looks up the route right away instead of only filling in the destination.
+- When nothing is found nearby, the message now says what was searched for, so "No clinics nearby" reads as "No pediatric night and holiday clinics nearby", and likewise for kids play places and registered barrier-free attractions.
+```
+
+---
+
 ## 1.14 (빌드 22)
 
 기준은 1.13 아카이브 커밋 `df229f0`(빌드 21)이며 그 이후 `ios/` 커밋 37건을 판정했다. Release 바이너리에 도달하면서 iOS 사용자에게 보이는 것만 담는다.
