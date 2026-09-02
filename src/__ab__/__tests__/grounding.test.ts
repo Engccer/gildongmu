@@ -179,6 +179,16 @@ describe("scoreGrounding — 어휘 강등(09 장소 앵커)", () => {
   });
 });
 
+describe("케이스 계약(위원장 판정 2026-09-02)", () => {
+  it("41·37은 search_places 보강을 금지하지 않고, 41은 그 도구 값을 접지 근거로 센다", () => {
+    const c41 = CASES.find((c) => c.id === "41-빈응답-소아과-0건")!;
+    const c37 = CASES.find((c) => c.id === "37-지명-place")!;
+    expect(c41.forbid).not.toContain("search_places");
+    expect(c37.forbid).not.toContain("search_places");
+    expect(c41.grounding!.fromTools).toEqual(expect.arrayContaining(["get_night_clinics", "search_places"]));
+  });
+});
+
 describe("passK", () => {
   it("k 회 전부 통과해야 통과다", () => {
     expect(passK([true, true, true])).toBe(true);
