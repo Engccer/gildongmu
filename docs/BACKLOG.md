@@ -7,7 +7,7 @@
 | 언제 무엇이 바뀌었나 | `CHANGELOG.md` |
 | 지금 무엇이 동작하나 | `PROGRESS.md` |
 | 설계·검증 상세 | `docs/superpowers/specs`·`plans` |
-| 항구 규칙·함정 | `CLAUDE.md`·`docs/INTEGRATIONS.md` |
+| 항구 규칙·함정 | `CLAUDE.md`(요지)·`docs/INTEGRATIONS.md`·`docs/PATTERNS.md`(상세) |
 | §2를 **언제 어떻게 실행하나** | `docs/FIELD-TEST.md`(실보행·실승차 대본, 시간 축) |
 
 **기준선은 문서가 아니라 명령이 든다.** 아래 넷은 **전부 0/green이 기준선**이고, 벗어난 출력은 그 자체가 신규 결함이다. 수치를 여기 적지 않는다 — 종전에 테스트 수·커밋 수·릴리스 버전을 박아 두었다가 사흘에 세 번 낡았고, 그중 한 번은 기준선의 결론까지 오염시켰다.
