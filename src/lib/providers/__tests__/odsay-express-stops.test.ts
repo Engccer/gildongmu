@@ -8,7 +8,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("next/cache", () => ({
   unstable_cache: (fn: (...a: unknown[]) => unknown) => fn,
 }));
-vi.mock("../../env", () => ({ env: { ODSAY_API_KEY: "k" } }));
+// ⚠ vi.mock은 호이스팅되므로 팩토리가 참조하는 값은 vi.hoisted로 만든다(그냥 const면 TDZ).
+const envState = vi.hoisted(() => ({ ODSAY_API_KEY: "k" as string | undefined }));
+vi.mock("../../env", () => ({ env: envState }));
 
 const fetchMock = vi.fn();
 vi.stubGlobal("fetch", fetchMock);
@@ -28,6 +30,7 @@ const EXPRESS_16: Array<[number, string]> = [
   [930, "종합운동장"], [933, "석촌"], [936, "올림픽공원"], [938, "중앙보훈병원"],
 ];
 const NAMES_16 = EXPRESS_16.map(([, n]) => n);
+const SET_16 = { names: NAMES_16, ids: EXPRESS_16.map(([id]) => String(id)) };
 const leg = (start: string, end: string, rows: Array<[number, string]>) => ({
   trafficType: 1,
   startName: start,
@@ -50,12 +53,13 @@ function respondByDirection(forward: unknown, reverse: unknown) {
 beforeEach(() => {
   fetchMock.mockReset();
   resetExpressStopsState();
+  envState.ODSAY_API_KEY = "k";
 });
 
 describe("fetchExpressStopsUncached", () => {
   it("정·역방향 2콜로 조회해 집합을 돌려준다(SearchPathType=1, no-store, 타임아웃)", async () => {
     respondByDirection(FORWARD, REVERSE);
-    await expect(fetchExpressStopsUncached(LINE9)).resolves.toEqual(NAMES_16);
+    await expect(fetchExpressStopsUncached(LINE9)).resolves.toEqual(SET_16);
     expect(fetchMock).toHaveBeenCalledTimes(2);
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(url).toContain("SearchPathType=1");
@@ -87,8 +91,8 @@ describe("fetchExpressStopsMap — 캐시 바깥의 단일 실행·쿨다운", (
   it("성공하면 Map에 싣고, 동시 요청은 probe 1세트(2콜)만 쓴다", async () => {
     respondByDirection(FORWARD, REVERSE);
     const [a, b] = await Promise.all([fetchExpressStopsMap([LINE9]), fetchExpressStopsMap([LINE9])]);
-    expect(a.get(LINE9.line)).toEqual(NAMES_16);
-    expect(b.get(LINE9.line)).toEqual(NAMES_16);
+    expect(a.get(LINE9.line)).toEqual(SET_16);
+    expect(b.get(LINE9.line)).toEqual(SET_16);
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
@@ -111,7 +115,7 @@ describe("fetchExpressStopsMap — 캐시 바깥의 단일 실행·쿨다운", (
     respondByDirection(FORWARD, REVERSE);
     const map = await fetchExpressStopsMap([LINE9], now);
     expect(fetchMock).toHaveBeenCalledTimes(4);
-    expect(map.get(LINE9.line)).toEqual(NAMES_16);
+    expect(map.get(LINE9.line)).toEqual(SET_16);
   });
 
   it("일시 실패(HTTP)는 10분, 429는 1시간 쿨다운", async () => {
@@ -139,6 +143,14 @@ describe("fetchExpressStopsMap — 캐시 바깥의 단일 실행·쿨다운", (
 
   it("표가 비면 호출 0", async () => {
     const map = await fetchExpressStopsMap([]);
+    expect(map.size).toBe(0);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("키가 없으면 빈 Map·호출 0(게이트 패턴)", async () => {
+    envState.ODSAY_API_KEY = undefined;
+    respondByDirection(FORWARD, REVERSE);
+    const map = await fetchExpressStopsMap([LINE9]);
     expect(map.size).toBe(0);
     expect(fetchMock).not.toHaveBeenCalled();
   });

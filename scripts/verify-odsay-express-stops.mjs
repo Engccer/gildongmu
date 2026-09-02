@@ -11,8 +11,11 @@
 //   ③ `exit`: 첫 지하철 leg board="2"(개화), 마지막 leg alight="1"(중앙보훈병원), 환승 leg엔 없음,
 //      값은 운영 정규식과 같은 완전 일치, 직렬화에 "null" 문자열 0.
 //
-// ⚠ ODsay 일 1,000회를 프로덕션과 공유한다. 이 게이트는 **4콜**(집합 정·역 2 + 길찾기 1 + 길찾기 안 express 조회는
-//   캐시 없는 환경이라 2콜 더 → 실측 5콜)을 쓴다. 429면 재시도하지 않는다(exit 2).
+//   ④ 정차 패턴이 여럿인 1호선(급행·특급)은 표에 없어 **필드 부재**다 — 소비자가 검증할 수 없는 계약이라 생산자
+//      게이트가 정본이다(용산→동인천 1콜).
+//
+// ⚠ ODsay 일 1,000회를 프로덕션과 공유한다. 이 게이트는 **6콜**(집합 정·역 2 + 9호선 길찾기 1 + 그 안의 express
+//   조회 2(캐시 없는 환경) + 1호선 길찾기 1)을 쓴다. 429면 재시도하지 않는다(exit 2).
 //
 // 사용법: node scripts/verify-odsay-express-stops.mjs
 //   exit 0 = 통과 / 1 = 계약 위반 또는 호출 불가 / 2 = ODsay 일일 쿼터 소진
@@ -39,6 +42,8 @@ const GOLDEN_LINE9 = [
   "김포공항", "마곡나루", "가양", "염창", "당산", "여의도", "노량진", "동작",
   "고속터미널", "신논현", "선정릉", "봉은사", "종합운동장", "석촌", "올림픽공원", "중앙보훈병원",
 ];
+const GOLDEN_LINE9_IDS = ["902", "905", "907", "910", "913", "915", "917", "920", "923", "925", "927", "929", "930", "933", "936", "938"];
+const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const EXIT_RE = /^[1-9]\d*(?:-[1-9]\d*)?$/; // 운영 `exitNumber`와 같은 완전 일치
 
 let quota = false;
@@ -64,19 +69,16 @@ try {
   const line9 = EXPRESS_LINES.find((e) => e.line === "수도권 9호선");
 
   // ① 집합 골든 전수(정·역방향 2콜)
-  let stops = null;
+  let set = null;
   try {
-    stops = await fetchExpressStopsUncached(line9);
+    set = await fetchExpressStopsUncached(line9);
   } catch (e) {
     if (e?.kind === "quota") quota = true;
     check("9호선 급행 정차역 집합 조회", false, `${e?.kind ?? "?"}: ${String(e?.message ?? e).slice(0, 160)}`);
   }
-  if (stops) {
-    check(
-      "9호선 급행 정차역 16역 골든 전수 일치(이름·순서)",
-      JSON.stringify(stops) === JSON.stringify(GOLDEN_LINE9),
-      stops.join("·"),
-    );
+  if (set) {
+    check("9호선 급행 정차역 16역 골든 전수 일치(이름·순서)", same(set.names, GOLDEN_LINE9), set.names.join("·"));
+    check("9호선 급행 정차역 stationID 16개 골든 전수 일치(같은 순서)", same(set.ids, GOLDEN_LINE9_IDS), set.ids.join("·"));
   }
 
   // ② ③ 길찾기 응답(개화→중앙보훈병원, includeStops) — 표본이 정·역 조회 OD와 같다
@@ -91,9 +93,9 @@ try {
     const legs = routes.flatMap((r) => r.legs);
     const line9Legs = legs.filter((l) => l.mode === "subway" && /9호선/.test(l.lineName ?? ""));
     check(
-      "9호선 leg(완행·급행) 전부에 expressStops 16역",
-      line9Legs.length > 0 && line9Legs.every((l) => JSON.stringify(l.expressStops) === JSON.stringify(GOLDEN_LINE9)),
-      line9Legs.map((l) => `${l.lineName}:${l.expressStops?.length ?? "부재"}`).join(" | "),
+      "9호선 leg(완행·급행) 전부에 expressStops 16역 + expressStopIds 같은 순서",
+      line9Legs.length > 0 && line9Legs.every((l) => same(l.expressStops, GOLDEN_LINE9) && same(l.expressStopIds, GOLDEN_LINE9_IDS)),
+      line9Legs.map((l) => `${l.lineName}:${l.expressStops?.length ?? "부재"}/${l.expressStopIds?.length ?? "부재"}`).join(" | "),
     );
     check(
       "빈 expressStops 없음 + 도보·버스 leg 부재",
@@ -128,6 +130,19 @@ try {
       }
     }
     check('응답 직렬화에 "null" 문자열 값이 없다', !JSON.stringify(result).includes('"null"'));
+
+    // ④ 1호선(급행·특급 복수 패턴)은 표에 없다 → 필드 부재. 용산 → 동인천(경인급행 구간).
+    const line1 = await getTransitRoute({
+      origin: { lat: 37.5299, lng: 126.9646 },
+      dest: { lat: 37.4749, lng: 126.6327 },
+      includeStops: true,
+    });
+    const line1Legs = (line1 ? [line1.recommended, ...line1.alternatives] : []).flatMap((r) => r.legs).filter((l) => l.mode === "subway" && /1호선/.test(l.lineName ?? ""));
+    check(
+      "1호선 leg에는 expressStops·expressStopIds 부재(복수 정차 패턴 노선 = 판정 불가)",
+      line1Legs.length > 0 && line1Legs.every((l) => !("expressStops" in l) && !("expressStopIds" in l)),
+      `${line1Legs.length}건`,
+    );
     for (const r of routes) {
       console.log(
         `  ${r.summary.totalMinutes}분: ` +
@@ -136,6 +151,8 @@ try {
     }
   }
 } catch (e) {
+  // 길찾기 단계에서 만난 429도 쿼터다(provider는 일반 Error로 던지므로 메시지로 가른다) — exit 2.
+  if (/\b429\b/.test(String(e))) quota = true;
   check("provider 실호출", false, String(e).slice(0, 300));
 } finally {
   rmSync(workDir, { recursive: true, force: true });

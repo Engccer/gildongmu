@@ -145,10 +145,11 @@ describe("getTransitRoute 파이프라인", () => {
  * 급행 정차역 부착(A16 L1, spec `2026-09-02-express-stops-data-design.md` §3.4) — 조회는 스텁, 부착 경계만 본다.
  * ⚠ 이 스위트가 실호출 스텁 없이 돌면 `odsay-express-stops`가 실제 fetch(위 fetchMock)를 타 첫 mock 응답을 되읽는다.
  */
-const expressSets = new Map<string, string[]>();
+const expressSets = new Map<string, { names: string[]; ids: string[] }>();
 vi.mock("../odsay-express-stops", () => ({
   fetchExpressStopsMap: vi.fn(async () => expressSets),
 }));
+const SET3 = { names: ["김포공항", "당산", "중앙보훈병원"], ids: ["902", "913", "938"] };
 
 function subwayPath(...lanes: string[]) {
   const subPath: unknown[] = [{ trafficType: 3, distance: 100, sectionTime: 2 }];
@@ -175,22 +176,24 @@ describe("expressStops 부착", () => {
     expressSets.clear();
   });
 
-  it("includeStops면 표 노선 leg(완행·급행)에 붙고 다른 노선엔 없다", async () => {
-    expressSets.set("수도권 9호선", ["김포공항", "당산", "중앙보훈병원"]);
+  it("includeStops면 표 노선 leg(완행·급행)에 붙고 다른 노선엔 없다 — 조회 인자는 표 노선 dedupe", async () => {
+    const { fetchExpressStopsMap } = await import("../odsay-express-stops");
+    const { EXPRESS_LINES } = await import("../../express-stops");
+    vi.mocked(fetchExpressStopsMap).mockClear();
+    expressSets.set("수도권 9호선", SET3);
     respond([subwayPath("수도권 9호선", "수도권 9호선(급행)", "수도권 5호선")]);
     const result = (await getTransitRoute({ ...COORDS, includeStops: true }))!;
     const subways = result.recommended.legs.filter((l) => l.mode === "subway");
-    expect(subways.map((l) => l.expressStops)).toEqual([
-      ["김포공항", "당산", "중앙보훈병원"],
-      ["김포공항", "당산", "중앙보훈병원"],
-      undefined,
-    ]);
+    expect(subways.map((l) => l.expressStops)).toEqual([SET3.names, SET3.names, undefined]);
+    expect(subways.map((l) => l.expressStopIds)).toEqual([SET3.ids, SET3.ids, undefined]);
+    // ⚠ 인자를 단언하지 않으면 `expressLinesIn`이 빈 배열을 내는 회귀가 통과한다(프로덕션에선 필드 부재 = 반증 채널 0)
+    expect(fetchExpressStopsMap).toHaveBeenCalledWith([EXPRESS_LINES.find((e) => e.line === "수도권 9호선")]);
   });
 
   it("includeStops가 아니면 조회조차 하지 않고 필드도 없다", async () => {
     const { fetchExpressStopsMap } = await import("../odsay-express-stops");
     vi.mocked(fetchExpressStopsMap).mockClear();
-    expressSets.set("수도권 9호선", ["김포공항", "당산", "중앙보훈병원"]);
+    expressSets.set("수도권 9호선", SET3);
     respond([subwayPath("수도권 9호선")]);
     const result = (await getTransitRoute(COORDS))!;
     expect(fetchExpressStopsMap).not.toHaveBeenCalled();

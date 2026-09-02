@@ -132,8 +132,12 @@ function directionalRows(
   const decreasing = ids.every((n, i) => i === 0 || n < ids[i - 1]);
   if (!increasing && !decreasing) return null;
 
-  // ⑦ 같은 구간 완행 leg가 있으면 급행은 그 진부분집합(ID 기준)
-  const locals = subways.filter((sp) => sp.lane?.[0]?.name === entry.line && covers(sp)).map(stopRows);
+  // ⑦ 같은 구간 완행 leg가 있으면 급행은 그 진부분집합(ID 기준). passStopList가 없는 완행 leg는
+  //    비교 대상이 없는 것이지 반례가 아니라 건너뛴다(spec "없으면 건너뛴다").
+  const locals = subways
+    .filter((sp) => sp.lane?.[0]?.name === entry.line && covers(sp))
+    .map(stopRows)
+    .filter((local) => local.length > 0);
   for (const local of locals) {
     const localIds = new Set(local.map((r) => r.id));
     if (!rows.every((r) => localIds.has(r.id))) return null;
@@ -151,34 +155,43 @@ function directionalRows(
  * ⚠ ODsay 데이터가 양방향 일관되게 틀린 경우(여의도 대신 샛강)는 단일 소스 안에서 못 잡는다 —
  *   그 축은 실호출 게이트의 16역 골든(`scripts/verify-odsay-express-stops.mjs`)이 맡는다.
  */
+export interface ExpressStopSet {
+  /** ODsay `passStopList` 원문 역명(노선 순서) */
+  names: string[];
+  /** 같은 순서의 ODsay `stationID` 원문 — 소비자는 ID가 있으면 정규화 없이 ID로 판정한다 */
+  ids: string[];
+}
+
 export function extractExpressStops(
   forward: ExpressResponseLike,
   reverse: ExpressResponseLike,
   entry: ExpressLineEntry,
-): string[] | null {
+): ExpressStopSet | null {
   const fwd = directionalRows(forward, entry, entry.span.first, entry.span.last);
   if (!fwd) return null;
   const rev = directionalRows(reverse, entry, entry.span.last, entry.span.first);
   if (!rev) return null;
   if (!sameRows([...rev].reverse(), fwd)) return null; // ⑤
-  return fwd.map((r) => r.name);
+  return { names: fwd.map((r) => r.name), ids: fwd.map((r) => r.id) };
 }
 
 /**
- * 표 노선의 지하철 leg 전부(완행·급행)에 같은 집합을 붙인다. 집합이 없는 노선은 키 자체가 없다.
+ * 표 노선의 지하철 leg 전부(완행·급행)에 같은 집합을 붙인다(`expressStops` 이름 + `expressStopIds` ID, 같은 순서).
+ * 집합이 없는 노선은 키 자체가 없다 — 빈 배열·길이 불일치 집합은 싣지 않는다(마지막 게이트).
  * 소비자 시나리오가 "완행 leg × 급행 잠금 후보"라 완행 leg에 없으면 이 필드는 존재 이유가 없다.
  */
 export function attachExpressStops(
   routes: TransitRoute[],
-  sets: Map<string, string[]>,
+  sets: Map<string, ExpressStopSet>,
 ): TransitRoute[] {
   if (sets.size === 0) return routes;
   return routes.map((route) => ({
     ...route,
     legs: route.legs.map((leg) => {
       if (leg.mode !== "subway" || !leg.lineName) return leg;
-      const stops = sets.get(expressLineKey(leg.lineName));
-      return stops && stops.length > 0 ? { ...leg, expressStops: stops } : leg;
+      const set = sets.get(expressLineKey(leg.lineName));
+      if (!set || set.names.length === 0 || set.ids.length !== set.names.length) return leg;
+      return { ...leg, expressStops: set.names, expressStopIds: set.ids };
     }),
   }));
 }
