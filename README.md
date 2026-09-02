@@ -59,7 +59,8 @@ node scripts/usage-report.mjs   # API 비용·쿼터·키 만료 상태(무과�
 | [`PROGRESS.md`](PROGRESS.md) | 지금 무엇이 동작하고 어디까지 도달했는가 |
 | [`CHANGELOG.md`](CHANGELOG.md) | 날짜별 변경 이력 |
 | [`docs/BACKLOG.md`](docs/BACKLOG.md) | 아직 하지 않은 것(폐기 근거 포함) |
-| [`docs/INTEGRATIONS.md`](docs/INTEGRATIONS.md) | 통합별 상세 계약. 요지만으로는 지킬 수 없는 것 |
+| [`docs/INTEGRATIONS.md`](docs/INTEGRATIONS.md) | 외부 통합의 상세 계약. 요지만으로는 지킬 수 없는 것 |
+| [`docs/PATTERNS.md`](docs/PATTERNS.md) | UI·상태·채팅·도구층·빌드 구성의 상세 계약 |
 | `docs/superpowers/specs`·`plans` | 기능별 설계 정본과 검증 기록 |
 | `docs/research/RESEARCH-*.md` | 국내 API 생태계 조사 |
 
