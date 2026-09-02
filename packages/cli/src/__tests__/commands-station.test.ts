@@ -237,7 +237,7 @@ describe("station 명령", () => {
     expect(apiRequest).toHaveBeenCalledWith("/api/station/timetable", { query: { station: "강동", lang: "en" } });
   });
 
-  it("info --lang en은 lang을 받는 섹션에만 싣고 시설 2종엔 싣지 않는다", async () => {
+  it("info --lang en은 lang을 받는 섹션에만 싣고 코레일 시설엔 싣지 않는다(지하철 시설은 2026-09-02부터 받는다)", async () => {
     apiRequest.mockImplementation(async (path: string) => {
       if (path === "/api/station/meta") {
         return { meta: { name: "강남", nameEn: "Gangnam", lines: ["2호선"], isTransfer: false, operator: "서울교통공사" } };
@@ -253,7 +253,7 @@ describe("station 명령", () => {
     expect(apiRequest).toHaveBeenCalledWith("/api/station/meta", { query: { station: "강남", lang: "en" } });
     expect(apiRequest).toHaveBeenCalledWith("/api/station/timetable", { query: { station: "강남", lang: "en" } });
     expect(apiRequest).toHaveBeenCalledWith("/api/station/facilities", { query: { station: "강남" } });
-    expect(apiRequest).toHaveBeenCalledWith("/api/station/metro-facilities", { query: { station: "강남" } });
+    expect(apiRequest).toHaveBeenCalledWith("/api/station/metro-facilities", { query: { station: "강남", lang: "en" } });
   });
 
   /**

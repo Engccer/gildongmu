@@ -40,6 +40,7 @@ describe("MCP 도구 카탈로그 필터·이름 규칙", () => {
       "route-transit",
       "route-walk",
       "station-meta",
+      "station-metro-facilities",
       "station-timetable",
       "subway-arrival",
     ]);
