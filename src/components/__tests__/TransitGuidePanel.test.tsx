@@ -357,6 +357,53 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
     expect(screen.queryByText(/expressCheck|expressStopsAt/)).toBeNull();
   });
 
+  it("이미 탑승했습니다 → 급행 확인 프롬프트(헤딩 착지) → 급행이 하차역을 지나면 거절 문장, 일반 열차면 잠금", async () => {
+    const expressRoute: TransitRoute = {
+      ...ROUTE,
+      legs: [{
+        ...ROUTE.legs[0],
+        lineName: "수도권 9호선",
+        fromName: "김포공항",
+        toName: "노들",
+        stops: [
+          { name: "김포공항", stationId: "901", lat: 37.56, lng: 126.8 },
+          { name: "당산", stationId: "902", lat: 37.53, lng: 126.9 },
+          { name: "노들", stationId: "904", lat: 37.51, lng: 126.95 },
+        ],
+        expressStops: ["김포공항", "당산", "동작"],
+        expressStopIds: ["901", "902", "905"],
+      }],
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("phase=track")) {
+          return { ok: true, json: async () => ({ mode: "subway", status: "ok", items: [] }) } as Response;
+        }
+        throw new Error(`unexpected fetch: ${url}`);
+      }),
+    );
+    render(<TransitGuidePanel route={expressRoute} triggerLabel="시작" walkAccessible={false} />);
+    fireEvent.click(screen.getByRole("button", { name: "시작" }));
+    fireEvent.click(await screen.findByRole("button", { name: "transitGuide.boardAlready" }));
+    // 프롬프트 헤딩에 착지, 국면은 아직 waiting.
+    const heading = await screen.findByRole("heading", { name: "transitGuide.expressPrompt" });
+    await waitFor(() => expect(document.activeElement).toBe(heading));
+    fireEvent.click(screen.getByRole("button", { name: "transitGuide.expressYes" }));
+    // 통과 급행 → 잠그지 않고 거절 문장(상시 + live region), 프롬프트는 닫힌다.
+    await waitFor(() => {
+      expect(screen.getAllByText(/expressSkipsAlight/).length).toBeGreaterThan(0);
+    });
+    expect(screen.queryByRole("heading", { name: "transitGuide.expressPrompt" })).toBeNull();
+    expect(screen.getByRole("button", { name: "transitGuide.boardAlready" })).toBeTruthy();
+    // 다시 묻고 "일반 열차" → 종전 근사 잠금(riding, 다음 구간 상시).
+    fireEvent.click(screen.getByRole("button", { name: "transitGuide.boardAlready" }));
+    fireEvent.click(await screen.findByRole("button", { name: "transitGuide.expressNo" }));
+    expect(await screen.findByRole("button", { name: "transitGuide.advance" })).toBeTruthy();
+    expect(screen.queryByText(/expressSkipsAlight/)).toBeNull();
+  });
+
   it("시작 → 열차 목록(종착 차단 항목은 비버튼) → 탑승 → 하차 추적 → 도착 → 다음 구간 → 완료", async () => {
     const calls: string[] = [];
     let ridePollCount = 0;

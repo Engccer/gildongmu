@@ -4,7 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { FocusEvent } from "react";
 import { useTranslations } from "next-intl";
 import { useTransitGuide } from "@/hooks/useTransitGuide";
-import { isApproxTransitLock, viaStopCurrentIndex } from "@/lib/transit-guide";
+import { isApproxTransitLock, needsExpressPrompt, viaStopCurrentIndex } from "@/lib/transit-guide";
 import type { TransitPrewalkTarget } from "@/lib/transit-guide";
 import type { TransitRoute } from "@/lib/types";
 import { joinText } from "@/lib/format";
@@ -101,6 +101,12 @@ export function TransitGuidePanel({
   const changeBoardingRef = useRef<HTMLButtonElement>(null);
   /** 역 재선택 프롬프트 착지(A16 L3) — 버튼이 사라지는 전이라 포커스를 선점한다. */
   const reboardPromptRef = useRef<HTMLHeadingElement>(null);
+  /** 급행 확인 프롬프트(spec 2026-09-02 §6) — 버튼으로 펼친 것이라 heading이 발견 경로(헌장 §3). */
+  const [expressPromptOpen, setExpressPromptOpen] = useState(false);
+  const expressPromptRef = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    if (expressPromptOpen) expressPromptRef.current?.focus();
+  }, [expressPromptOpen]);
   const confirmBoardedRef = useRef<HTMLButtonElement>(null);
   const waitingLabelRef = useRef<HTMLParagraphElement>(null);
   const statusRef = useRef<HTMLParagraphElement>(null);
@@ -477,7 +483,10 @@ export function TransitGuidePanel({
                     </button>
                     <button
                       type="button"
-                      onClick={guide.boardAlready}
+                      // 급행 집합이 있는 노선만 급행 확인을 묻는다(§6) — 없으면 종전 즉시 잠금.
+                      onClick={() =>
+                        needsExpressPrompt(leg) ? setExpressPromptOpen(true) : guide.boardAlready()
+                      }
                       className="min-h-11 rounded-md border border-gray-400 px-3 text-sm"
                     >
                       {t("boardAlready")}
@@ -492,6 +501,41 @@ export function TransitGuidePanel({
                       </button>
                     )}
                   </div>
+                  {expressPromptOpen && (
+                    <div className="mt-2">
+                      <h4 ref={expressPromptRef} tabIndex={-1} className="text-sm font-medium">
+                        {t("expressPrompt")}
+                      </h4>
+                      <div className="mt-1 flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setExpressPromptOpen(false);
+                            guide.boardAlready(true);
+                          }}
+                          className="min-h-11 rounded-md border border-gray-400 px-3 text-sm"
+                        >
+                          {t("expressYes")}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setExpressPromptOpen(false);
+                            guide.boardAlready(false);
+                          }}
+                          className="min-h-11 rounded-md border border-gray-400 px-3 text-sm"
+                        >
+                          {t("expressNo")}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  {guide.expressBlockedNote && (
+                    // 잠금 거절의 상시 문장(통지는 훅 live region이 이미 냈다) — 사유가 화면에 남는다.
+                    <p className="mt-1 text-sm" lang={guide.expressBlockedNote.lang}>
+                      {guide.expressBlockedNote.text}
+                    </p>
+                  )}
                 </>
               )}
             </div>

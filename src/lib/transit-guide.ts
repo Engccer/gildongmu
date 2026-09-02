@@ -45,6 +45,12 @@ export interface TransitLock {
   routeId: string;
   direction: string;
   vehicleId: string;
+  /**
+   * 근사 잠금의 급행 선언(위원장 판정 2026-09-02, spec 2026-09-02 §6): "이미 탑승했습니다"에서 급행이라
+   * 답한 세션. 하차역 도착 목록의 최근접 항목을 고를 때 급행 항목을 우선한다 — 완행을 잡으면 카운트다운이
+   * 다른 열차 것이 된다. 식별자 잠금엔 의미 없음(부재).
+   */
+  express?: boolean;
 }
 
 /**
@@ -584,6 +590,19 @@ export function expressVerdict(item: TrackItem, leg: TransitGuideLeg): ExpressVe
   if (!viaNames.has(alight)) return "unknown"; // ⓐ
   if (![...expressNames].some((n) => viaNames.has(n))) return "unknown"; // ⓑ
   return expressNames.has(alight) ? "stops" : "skips";
+}
+
+/** "이미 탑승했습니다"에서 급행 확인을 물어야 하는 leg인가 — 급행 집합이 있는 노선만(spec §6). */
+export function needsExpressPrompt(leg: TransitGuideLeg): boolean {
+  return (leg.expressStopIds?.length ?? 0) > 0 || (leg.expressStops?.length ?? 0) > 0;
+}
+
+/** 사용자가 "급행"이라 선언했을 때의 하차역 정차 판정 — 후보 항목 없이 leg만으로(§6). */
+export function declaredExpressVerdict(leg: TransitGuideLeg): ExpressVerdict | null {
+  return expressVerdict(
+    { vehicleId: null, direction: "", message: "", remainingStops: null, destinationName: null, express: true, arrivalCode: null },
+    leg,
+  );
 }
 
 /**
@@ -1197,9 +1216,13 @@ export function findLockedItem(items: TrackItem[], lock: TransitLock): TrackItem
   if (isApproxTransitLock(lock)) {
     // 근사(§5.2·§13.2): 방향 일치(양측 보유 시) 항목 중 최근접 접근 차량(잔여 최소).
     // tagoBus는 방향이 ""라 무필터 — 기존 행동 불변.
-    const pool = items.filter(
+    const byDirection = items.filter(
       (it) => !lock.direction || !it.direction || it.direction === lock.direction,
     );
+    // 급행 선언 근사 잠금(§6): 급행 항목이 있으면 그 안에서 고른다(없으면 전체 — 목록에 급행 표지가
+    // 없는 수단·시각에도 추적은 살아야 한다).
+    const expressOnly = lock.express ? byDirection.filter((it) => it.express) : [];
+    const pool = expressOnly.length > 0 ? expressOnly : byDirection;
     let best: TrackItem | null = null;
     for (const it of pool) {
       if (it.remainingStops == null) continue;

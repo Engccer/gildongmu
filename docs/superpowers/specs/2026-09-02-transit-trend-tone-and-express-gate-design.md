@@ -207,17 +207,28 @@ BoardingCandidate { item, unreachable: "terminatesEarly" | "expressSkipsAlight" 
 
 - 정확성(그 출구가 목적지 쪽인가, 빠른하차 문과 같은 승강장 끝인가)은 코드로 알 수 없다 — `docs/BACKLOG.md` §2 E5·B2 행에 판정 항목을 더한다.
 
-## 6. 검증·판정 위치 요약
+## 6. 근사 잠금 급행 확인 프롬프트 (위원장 판정 2026-09-02 — 설계 리뷰 2차 #1의 미결 항목 종결)
+
+"이미 탑승했습니다"(근사 잠금, §13.2)는 열차 정체를 모른다. 급행 집합이 있는 노선에서만 한 번 묻는다.
+
+- **트리거**: `needsExpressPrompt(leg)` ↔ `transitNeedsExpressPrompt` = `expressStopIds` 또는 `expressStops`가 비어 있지 않다. 집합 없는 노선은 프롬프트 없이 종전 즉시 잠금.
+- **프롬프트**: 버튼을 눌러 펼친 것이라 헤딩이 발견 경로(헌장 §3) — "급행인가요?"(`transitGuide.expressPrompt`) 헤딩에 착지, 답 버튼 둘 "급행"(`expressYes`) / "일반 열차"(`expressNo`). 취소 버튼은 두지 않는다 — "이미 탑승했습니다"가 이미 선언이고, 잘못 눌렀으면 잠긴 뒤 "탑승 변경"이 출구다.
+- **급행 답**: `declaredExpressVerdict(leg)`(후보 항목 없이 `express: true`인 가상 항목으로 §4.2 판정 재사용 — ID 1순위·이름 폴백 자격 동일). `skips` → 잠그지 않고 **결정적 문장 재사용** "이 급행은 {하차역}에 서지 않습니다"(`expressSkipsAlightLine`): 활성화의 직접 응답이자 프롬프트 버튼이 사라지므로 iOS `announceNow(.high)` + 상시 문장 행(`expressBlockedNote`)에 착지, 웹은 live region + 상시 `<p>`. 국면 세대가 바뀌면(잠금·전진·탑승 변경·세션 종료) 문장은 사라진다. `stops`·`unknown` → **급행 선언 잠금**: `TransitLock.express = true`(웹 ↔ Kit, 식별자 잠금엔 부재)이고 근사 매칭(`findLockedItem`)이 하차역 목록에서 **급행 항목을 우선**한다(급행 항목이 없으면 전체 — 표지가 없는 시각·수단에도 추적은 살아야 한다). 더 가까운 완행이 목록에 있어도 급행 잔여를 추적하는 것이 "급행 정차역 기준"의 구현이다. 공유 fixture 시나리오 "근사 잠금 급행 선언".
+- **일반 답**: 종전 근사 잠금 그대로(`express` 부재).
+- ⚠ `unknown`은 차단하지 않는다(3-state) — 집합이 있는데 자격 미달이면 종전대로 잠근다.
+- 검증: 웹·Kit 단위 테스트(`needsExpressPrompt`·`declaredExpressVerdict`), 공유 fixture(급행 우선 매칭), 웹 컴포넌트 테스트(프롬프트 헤딩 착지·거절 문장·잠금). 실승차: §2 A16 ⑧.
+
+## 7. 검증·판정 위치 요약
 
 - 게이트: `npm run test:run`(공유 fixture: tone·text·scenarios) · `npx tsc --noEmit` · `npm run lint` · Kit `swift test`(macOS 호스트) · 시뮬 빌드.
 - 실승차(§2 표): E15 ②(진행음 체감·지터·60초 unreliable 적절성·톤 뒤 발화 체감) · A16 ①②(로그 회수) · A16 ⑥(급행 문장) · E5·B2(출구 정확성).
 - 후속 후보(BACKLOG에만): boarding 국면 접근 진행음.
 
-## 7. 설계 리뷰 게이트 판정
+## 8. 설계 리뷰 게이트 판정
 
 리뷰 **필수**. 근거: ①새 판정 계층·상태 머신(추세 톤 — 설계 결함이 웹·Kit 두 구현에 복제된다) ④안전 축(급행 미도달은 활성화 **차단**이라 오판이 곧 "탈 수 있는 열차를 못 타게" 또는 "못 타는 열차를 타게"다). §3·§5는 단독이면 생략 대상이나 같은 문서에 있어 함께 본다.
 
-## 8. 설계 리뷰 결과 (codex adversarial-review 1차, 2026-09-02, raw `codex exec` spec 본문 주입 — 판정 REJECT 17건)
+## 9. 설계 리뷰 결과 (codex adversarial-review 1차, 2026-09-02, raw `codex exec` spec 본문 주입 — 판정 REJECT 17건)
 
 | # | 심각도 | 판정 | 반영 |
 |---|---|---|---|

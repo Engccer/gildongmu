@@ -208,6 +208,13 @@
    "routeId": "1005",
    "direction": "하행",
    "vehicleId": ""
+  },
+  "subwayApproxExpress": {
+   "mode": "subway",
+   "routeId": "1009",
+   "direction": "하행",
+   "vehicleId": "",
+   "express": true
   }
  },
  "scenarios": [
@@ -4074,6 +4081,128 @@
        "kind": "trackingStarted",
        "remaining": 5,
        "messageEn": null
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "근사 잠금 급행 선언(§6): 하차역 목록에서 급행 항목을 우선한다 — 더 가까운 완행이 있어도 급행 잔여로 추적, 급행이 없으면 전체",
+   "route": "subwaySingle",
+   "steps": [
+    {
+     "at": 0,
+     "input": {
+      "kind": "board",
+      "lock": "subwayApproxExpress"
+     },
+     "expect": {
+      "phase": "riding",
+      "event": {
+       "kind": "boarded",
+       "cause": "declared"
+      }
+     }
+    },
+    {
+     "at": 60000,
+     "input": {
+      "kind": "poll",
+      "seq": 1,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "L1",
+         "direction": "하행",
+         "message": "[2]번째 전역",
+         "remainingStops": 2,
+         "destinationName": "중앙보훈병원",
+         "express": false,
+         "arrivalCode": "99"
+        },
+        {
+         "vehicleId": "E1",
+         "direction": "하행",
+         "message": "[5]번째 전역",
+         "remainingStops": 5,
+         "destinationName": "중앙보훈병원",
+         "express": true,
+         "arrivalCode": "99"
+        }
+       ]
+      }
+     },
+     "expect": {
+      "remaining": 5,
+      "event": {
+       "kind": "trackingStarted",
+       "remaining": 5
+      }
+     }
+    },
+    {
+     "at": 75000,
+     "input": {
+      "kind": "poll",
+      "seq": 2,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "L1",
+         "direction": "하행",
+         "message": "[1]번째 전역",
+         "remainingStops": 1,
+         "destinationName": "중앙보훈병원",
+         "express": false,
+         "arrivalCode": "99"
+        },
+        {
+         "vehicleId": "E1",
+         "direction": "하행",
+         "message": "[4]번째 전역",
+         "remainingStops": 4,
+         "destinationName": "중앙보훈병원",
+         "express": true,
+         "arrivalCode": "99"
+        }
+       ]
+      }
+     },
+     "expect": {
+      "remaining": 4,
+      "event": null
+     }
+    },
+    {
+     "at": 90000,
+     "input": {
+      "kind": "poll",
+      "seq": 3,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "L2",
+         "direction": "하행",
+         "message": "[3]번째 전역",
+         "remainingStops": 3,
+         "destinationName": "중앙보훈병원",
+         "express": false,
+         "arrivalCode": "99"
+        }
+       ]
+      }
+     },
+     "expect": {
+      "remaining": 3,
+      "event": {
+       "kind": "countdown",
+       "remaining": 3
       }
      }
     }

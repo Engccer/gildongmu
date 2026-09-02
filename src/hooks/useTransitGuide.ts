@@ -11,6 +11,7 @@ import {
   subwayIdForOdsayLine,
   transitGuideStep,
   unreachableReason,
+  declaredExpressVerdict,
   waitingEmptyReason,
   type WaitingEmptyReason,
   type BoardingCandidate,
@@ -41,6 +42,7 @@ import {
   contextLine,
   currentStationLine,
   exitBoundLine,
+  expressSkipsAlightLine,
   prewalkArrivedLine,
   frameLine,
   selectedVehicleLine,
@@ -1056,16 +1058,42 @@ export function useTransitGuide(route: TransitRoute | null) {
   }, [clearTimer, dispatch, pollOnce]);
 
   /** "이미 탑승했습니다"(§13.2) — 식별자 없는 근사 잠금(tagoBus 계약 동형). */
-  const boardAlready = useCallback(() => {
-    const leg = currentLeg();
-    if (!leg?.trackMode || leg.trackMode === "tagoBus") return;
-    board({
-      mode: leg.trackMode,
-      routeId: leg.routeId ?? subwayIdForOdsayLine(leg.lineName) ?? "",
-      direction: leg.wayCode === 1 ? "상행" : leg.wayCode === 2 ? "하행" : "",
-      vehicleId: "",
-    });
-  }, [board, currentLeg]);
+  /** 급행 확인에서 "이 급행은 {하차역}에 서지 않습니다"로 잠금을 거절한 뒤 남는 상시 문장(§6). */
+  const [expressBlockedNote, setExpressBlockedNote] = useState<{ text: string; lang?: "ko" } | null>(null);
+  // 국면·구간이 바뀌면 그 문장은 낡았다(잠금·전진·세션 종료·탑승 변경 전부 phaseGen을 올린다).
+  const expressNoteGen = state?.phaseGen ?? -1;
+  useEffect(() => {
+    setExpressBlockedNote(null);
+  }, [expressNoteGen]);
+
+  /**
+   * "이미 탑승했습니다"(§13.2 근사 잠금). `express`는 급행 확인 프롬프트(spec 2026-09-02 §6, 급행 집합이
+   * 있는 노선에서만 패널이 묻는다)의 답 — true면 하차역 정차를 판정해 통과 급행이면 잠그지 않고 차단
+   * 문장을 낸다(결정적 문장 재사용), 정차하면 급행 선언 잠금(하차역 목록에서 급행 항목 우선). 프롬프트가
+   * 없는 노선은 undefined로 종전 그대로.
+   */
+  const boardAlready = useCallback(
+    (express?: boolean) => {
+      const leg = currentLeg();
+      if (!leg?.trackMode || leg.trackMode === "tagoBus") return;
+      if (express && declaredExpressVerdict(leg) === "skips") {
+        const note = piece(expressSkipsAlightLine(isEn, displayLegOf(leg, null)));
+        const lang = note.ko ? "ko" : undefined;
+        setExpressBlockedNote({ text: note.text, lang });
+        announce(note.text, lang);
+        return;
+      }
+      setExpressBlockedNote(null);
+      board({
+        mode: leg.trackMode,
+        routeId: leg.routeId ?? subwayIdForOdsayLine(leg.lineName) ?? "",
+        direction: leg.wayCode === 1 ? "상행" : leg.wayCode === 2 ? "하행" : "",
+        vehicleId: "",
+        ...(express ? { express: true } : {}),
+      });
+    },
+    [announce, board, currentLeg, displayLegOf, isEn, piece],
+  );
 
   /** 새로고침(§13.2) — 즉폴 + 결과를 직접 응답으로 통지(자동 폴 무낭독의 예외). */
   const refreshWaiting = useCallback(() => {
@@ -1183,6 +1211,7 @@ export function useTransitGuide(route: TransitRoute | null) {
     confirmBoarded,
     boardApprox,
     boardAlready,
+    expressBlockedNote,
     /** boarding 국면의 선택 차량 설명(상시 표시용). */
     selectedDescription,
     advance,
