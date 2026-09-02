@@ -309,6 +309,54 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
     });
   });
 
+  it("급행 통과 후보는 버튼 없이 사유 줄만(unreachable 단일 술어, A16 L1)", async () => {
+    // 9호선 완행 leg + 급행 정차역 집합(하차역 제외) — ID 판정으로 skips.
+    const expressRoute: TransitRoute = {
+      ...ROUTE,
+      legs: [{
+        ...ROUTE.legs[0],
+        lineName: "수도권 9호선",
+        fromName: "김포공항",
+        toName: "노들",
+        stops: [
+          { name: "김포공항", stationId: "901", lat: 37.56, lng: 126.8 },
+          { name: "당산", stationId: "902", lat: 37.53, lng: 126.9 },
+          { name: "노들", stationId: "904", lat: 37.51, lng: 126.95 },
+        ],
+        expressStops: ["김포공항", "당산", "동작"],
+        expressStopIds: ["901", "902", "905"],
+      }],
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("phase=track")) {
+          return {
+            ok: true,
+            json: async () => ({
+              mode: "subway",
+              status: "ok",
+              items: [
+                trackItem({ vehicleId: "9001", express: false }),
+                trackItem({ vehicleId: "9669", express: true, message: "곧 도착" }),
+              ],
+            }),
+          } as Response;
+        }
+        throw new Error(`unexpected fetch: ${url}`);
+      }),
+    );
+    render(<TransitGuidePanel route={expressRoute} triggerLabel="시작" walkAccessible={false} />);
+    fireEvent.click(screen.getByRole("button", { name: "시작" }));
+    await waitFor(() => {
+      expect(screen.getByText(/expressSkipsAlight/)).toBeTruthy();
+    });
+    // 통과 급행은 버튼이 아니고, 차단 행엔 급행 조각(expressCheck·expressStopsAt)이 붙지 않는다.
+    expect(screen.queryAllByRole("button", { name: /selectTrain/ })).toHaveLength(1);
+    expect(screen.queryByText(/expressCheck|expressStopsAt/)).toBeNull();
+  });
+
   it("시작 → 열차 목록(종착 차단 항목은 비버튼) → 탑승 → 하차 추적 → 도착 → 다음 구간 → 완료", async () => {
     const calls: string[] = [];
     let ridePollCount = 0;

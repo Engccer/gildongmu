@@ -123,7 +123,8 @@ public struct TransitGuideLeg: Codable, Sendable {
 public func transitValidExitNo(_ raw: String?) -> String? {
     guard let raw else { return nil }
     let t = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-    return t.range(of: "^\\d+(-\\d+)?$", options: .regularExpression) != nil ? t : nil
+    // `[0-9]`: ICU `\d`는 전각 숫자도 통과해 JS `\d`(ASCII)와 갈린다 — 문자 그대로 미러.
+    return t.range(of: "^[0-9]+(-[0-9]+)?$", options: .regularExpression) != nil ? t : nil
 }
 
 public struct TransitGuideRoute: Codable, Sendable {
@@ -569,7 +570,8 @@ public func classifyTransitBoardingCandidates(
 /// ⓑ집합이 `viaStops`와 이름을 공유해야 한다 — 그 밖의 미포함은 별칭일 수 있어 `unknown`.
 public func transitExpressVerdict(_ item: TransitTrackItem, leg: TransitGuideLeg) -> TransitExpressVerdict? {
     guard item.express else { return nil }
-    if let ids = leg.expressStopIds, !ids.isEmpty, let alightId = leg.alightStop?.stationId {
+    // `""` ID는 부재다(웹 falsy 미러) — `contains("")`가 거짓 차단이 되지 않게.
+    if let ids = leg.expressStopIds, !ids.isEmpty, let alightId = leg.alightStop?.stationId, !alightId.isEmpty {
         return ids.contains(alightId) ? .stops : .skips
     }
     guard let names = leg.expressStops, !names.isEmpty else { return .unknown }

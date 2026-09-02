@@ -598,14 +598,14 @@ struct TransitTrackingSheet: View {
         }?.minutes
         let displayLeg = model.displayLeg(leg, useOverride: false)
         let displayItem = transitDisplayItem(item)
+        // 차단 행은 급행 조각을 빼고 사유 줄만 결정 문장으로 둔다(a11y 감사 2026-09-02 — 종착 앞 + 급행
+        // 정차/미결 조각이 함께 붙으면 "정차한다, 가지 않는다" 모순 낭독).
         let desc = TransitGuideTextRenderer.render(transitCandidateDescLine(
             isEn: transitGuideIsEn, leg: displayLeg, item: displayItem,
-            express: candidate.express, departedMinutes: departedMinutes))
-        if item.vehicleId == nil || item.vehicleId?.isEmpty == true {
-            // vehId 없는 슬롯은 잠금 불가(§5.1 "vehId 보유 슬롯만 활성화") — 빈 잠금은
-            // 어떤 항목과도 매칭되지 않는 조용한 고장이 된다(독립 리뷰 BLOCKER).
-            Text(desc).foregroundStyle(.secondary)
-        } else if let reason = candidate.unreachable {
+            express: candidate.unreachable == nil ? candidate.express : nil,
+            departedMinutes: departedMinutes))
+        // 결정적 미도달 사유는 vehId 유무보다 앞이다(웹과 같은 순서) — "왜 못 고르는가"가 먼저다.
+        if let reason = candidate.unreachable {
             // 결정적 미도달(§5.1·A16 L1) — 활성화 차단의 단일 술어, 사유별 문장 병기.
             let note: TransitTextLine = switch reason {
             case .terminatesEarly:
@@ -615,6 +615,10 @@ struct TransitTrackingSheet: View {
             }
             Text(joinText(desc, TransitGuideTextRenderer.render(note)))
                 .foregroundStyle(.secondary)
+        } else if item.vehicleId == nil || item.vehicleId?.isEmpty == true {
+            // vehId 없는 슬롯은 잠금 불가(§5.1 "vehId 보유 슬롯만 활성화") — 빈 잠금은
+            // 어떤 항목과도 매칭되지 않는 조용한 고장이 된다(독립 리뷰 BLOCKER).
+            Text(desc).foregroundStyle(.secondary)
         } else {
             // 라벨은 "선택"이다(N3) — 탑승 여부는 앱이 승차 정류소 도착으로 판정한다.
             // 선택 차량 설명은 폴마다 바뀌는 완성 문장을 뺀 안정 조각(행선·방향)만.

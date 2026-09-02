@@ -341,6 +341,7 @@ interface FixtureCase {
   isCurrentLeg?: boolean;
   express?: "skips" | "stops" | "unknown" | null;
   exit?: string | null;
+  sentence?: boolean;
   departedMinutes?: number | null;
   minutes?: number;
   n?: number;
@@ -371,7 +372,7 @@ function runFixtureCase(c: FixtureCase): TransitTextLine {
     case "vehicleDesc": return vehicleDescLine(e, c.item!);
     case "terminatesEarly": return terminatesEarlyLine(e, c.leg!, c.item!);
     case "expressSkipsAlight": return expressSkipsAlightLine(e, c.leg!);
-    case "exitBound": return exitBoundLine(e, c.exit!);
+    case "exitBound": return exitBoundLine(e, c.exit!, c.sentence ?? false);
     case "viaStop": return viaStopLine(e, c.stop!, c.role!, c.here!, c.exit ?? null);
     case "overviewLeg": return overviewLegLine(e, c.n!, c.line!, c.board!, c.alight!);
     case "prewalkStart": return prewalkStartLine(e, c.station!, c.minutes!);

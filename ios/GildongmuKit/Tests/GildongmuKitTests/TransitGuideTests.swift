@@ -620,6 +620,17 @@ private func kindName(_ event: TransitGuideEvent?) -> String? {
     #expect(out.walkAfterMinutes == base.walkAfterMinutes)
     #expect(base.legs[0].walkBeforeMinutes == 2)  // 원본 불변
     #expect(out.legs[0].boardName == base.legs[0].boardName)
+
+    // 명시 복사라 필드가 늘면 빠뜨릴 수 있다 — en 이름(종전 유실 결함, 2026-09-02 수정)·급행 집합·출구 보존 단언.
+    let rich = TransitGuideLeg(
+        mode: "subway", lineName: "수도권 9호선", trackMode: .subway, boardName: "김포공항", alightName: "노들",
+        boardStop: nil, alightStop: nil, viaStops: [], stationCount: 4, routeId: nil, wayCode: 2,
+        walkBeforeMinutes: 3, quickExit: nil, lineNameEn: "Line 9", boardNameEn: "Gimpo Int'l Airport",
+        alightNameEn: "Nodeul", expressStops: ["김포공항"], expressStopIds: ["901"], exitAlight: "2-1")
+    let kept = withoutPrewalk(TransitGuideRoute(legs: [rich], walkAfterMinutes: nil)).legs[0]
+    #expect(kept.walkBeforeMinutes == nil)
+    #expect(kept.lineNameEn == "Line 9" && kept.boardNameEn == "Gimpo Int'l Airport" && kept.alightNameEn == "Nodeul")
+    #expect(kept.expressStops == ["김포공항"] && kept.expressStopIds == ["901"] && kept.exitAlight == "2-1")
 }
 
 

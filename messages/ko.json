@@ -1055,6 +1055,7 @@
     "expressStopsAt": "급행, {stop} 정차",
     "expressSkipsAlight": "이 급행은 {stop}에 서지 않습니다",
     "exitBound": "{exit}번 출구 방면",
+    "exitBoundSentence": "{exit}번 출구 방면.",
     "departed": "{minutes}분 전 관측",
     "stateTracking": "추적 중.",
     "stateNotYetVisible": "차량 접근 대기.",

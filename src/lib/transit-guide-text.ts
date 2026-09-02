@@ -240,9 +240,17 @@ export function expressSkipsAlightLine(isEn: boolean, leg: TransitDisplayLeg): T
   return line(isEn, "expressSkipsAlight", [leg.alight], (v) => v);
 }
 
-/** 하차 출구 방면(E25) — 확정 도착 통지·하차역 행에 병기. 순수 UI 템플릿이라 줄 언어는 로케일. */
-export function exitBoundLine(isEn: boolean, exit: string): TransitTextLine {
-  return { parts: [{ key: "exitBound", args: [exit] }], lang: isEn ? "en" : "ko" };
+/**
+ * 하차 출구 방면(E25) — 확정 도착 통지(`sentence`: 마침표 있는 문장 키, 공백 연결 채널)·하차역 행
+ * (쉼표 연결 채널, 마침표 없음)에 병기. 순수 UI 템플릿이라 줄 언어는 로케일.
+ * ⚠ 통지 채널은 조각을 공백으로 잇고 다른 조각은 마침표를 갖는다 — 마침표 없는 키를 쓰면
+ * "3번 출구 방면 다음: …"으로 이어져 읽힌다(a11y 감사 2026-09-02).
+ */
+export function exitBoundLine(isEn: boolean, exit: string, sentence: boolean = false): TransitTextLine {
+  return {
+    parts: [{ key: sentence ? "exitBoundSentence" : "exitBound", args: [exit] }],
+    lang: isEn ? "en" : "ko",
+  };
 }
 
 /** 종착이 하차역보다 앞인 후보의 주석. */
@@ -328,6 +336,7 @@ export const TRANSIT_TEXT_KEYS = [
   "expressStopsAt",
   "expressSkipsAlight",
   "exitBound",
+  "exitBoundSentence",
   "departed",
   "terminatesEarly",
   "viaBoard",

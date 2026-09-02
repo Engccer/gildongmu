@@ -1137,7 +1137,7 @@ final class TransitGuideModel {
             // 확정형 출구 안내가 잘못 내리게 한다(설계 리뷰 #14). 서버가 역 밖 하차에만 실은 값.
             if certain, let leg, let exit = displayLeg(leg, useOverride: false).exitAlight {
                 parts.append(TransitGuideTextRenderer.render(
-                    transitExitBoundLine(isEn: transitGuideIsEn, exit: exit)))
+                    transitExitBoundLine(isEn: transitGuideIsEn, exit: exit, sentence: true)))
             }
             if let state, let route {
                 let nextIndex = state.legIndex + 1

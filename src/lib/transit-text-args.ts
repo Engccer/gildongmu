@@ -28,6 +28,7 @@ export const TRANSIT_TEXT_ARG_NAMES: Record<string, readonly string[]> = {
   expressStopsAt: ["stop"],
   expressSkipsAlight: ["stop"],
   exitBound: ["exit"],
+  exitBoundSentence: ["exit"],
   departed: ["minutes"],
   terminatesEarly: ["dest", "stop"],
   viaBoard: [],

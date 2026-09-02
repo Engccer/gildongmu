@@ -1055,6 +1055,7 @@
     "expressStopsAt": "Express, dessert {stop}",
     "expressSkipsAlight": "Cet express ne dessert pas {stop}",
     "exitBound": "Vers la sortie {exit}",
+    "exitBoundSentence": "Vers la sortie {exit}.",
     "departed": "vu il y a {minutes} min",
     "stateTracking": "Suivi en cours.",
     "stateNotYetVisible": "En attente du véhicule.",
