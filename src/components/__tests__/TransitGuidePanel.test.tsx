@@ -391,10 +391,10 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
     const heading = await screen.findByRole("heading", { name: "transitGuide.expressPrompt" });
     await waitFor(() => expect(document.activeElement).toBe(heading));
     fireEvent.click(screen.getByRole("button", { name: "transitGuide.expressYes" }));
-    // 통과 급행 → 잠그지 않고 거절 문장(상시 + live region), 프롬프트는 닫힌다.
-    await waitFor(() => {
-      expect(screen.getAllByText(/expressSkipsAlight/).length).toBeGreaterThan(0);
-    });
+    // 통과 급행 → 잠그지 않고 거절 문장 행에 착지(착지 낭독이 답 — 별도 live region 없음), 프롬프트는 닫힌다.
+    const note = await screen.findByText(/expressSkipsAlight/);
+    await waitFor(() => expect(document.activeElement).toBe(note));
+    expect(screen.getAllByText(/expressSkipsAlight/)).toHaveLength(1);
     expect(screen.queryByRole("heading", { name: "transitGuide.expressPrompt" })).toBeNull();
     expect(screen.getByRole("button", { name: "transitGuide.boardAlready" })).toBeTruthy();
     // 다시 묻고 "일반 열차" → 종전 근사 잠금(riding, 다음 구간 상시).
@@ -402,6 +402,19 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
     fireEvent.click(await screen.findByRole("button", { name: "transitGuide.expressNo" }));
     expect(await screen.findByRole("button", { name: "transitGuide.advance" })).toBeTruthy();
     expect(screen.queryByText(/expressSkipsAlight/)).toBeNull();
+    // 급행 선언 잠금이 아니라(일반 열차) 상시 표시에 급행 판정 문장이 없다.
+    expect(screen.queryByText(/expressCheck|expressStopsAt/)).toBeNull();
+    // 프롬프트를 연 채 국면이 바뀌면(탑승 변경 → 역 선택 → 대기) 누르지 않은 프롬프트는 되살아나지 않는다.
+    fireEvent.click(screen.getByRole("button", { name: "transitGuide.changeBoarding" }));
+    fireEvent.click(await screen.findByRole("button", { name: "김포공항" }));
+    fireEvent.click(await screen.findByRole("button", { name: "transitGuide.boardAlready" }));
+    await screen.findByRole("heading", { name: "transitGuide.expressPrompt" });
+    fireEvent.click(screen.getByRole("button", { name: "transitGuide.cancelChangeBoarding" }));
+    await screen.findByRole("button", { name: "transitGuide.advance" });
+    fireEvent.click(screen.getByRole("button", { name: "transitGuide.changeBoarding" }));
+    fireEvent.click(await screen.findByRole("button", { name: "김포공항" }));
+    await screen.findByRole("button", { name: "transitGuide.boardAlready" });
+    expect(screen.queryByRole("heading", { name: "transitGuide.expressPrompt" })).toBeNull();
   });
 
   it("시작 → 열차 목록(종착 차단 항목은 비버튼) → 탑승 → 하차 추적 → 도착 → 다음 구간 → 완료", async () => {

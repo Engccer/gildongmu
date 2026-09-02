@@ -16,6 +16,7 @@ import {
   selectedVehicleLine,
   terminatesEarlyLine,
   expressSkipsAlightLine,
+  expressStatusLine,
   exitBoundLine,
   vehiclePassedLine,
   vehicleSelectedLine,
@@ -171,6 +172,11 @@ const CASES: {
     fn: expressSkipsAlightLine, name: "expressSkipsAlightLine(급행 통과 사유 줄)",
     run: (e) => expressSkipsAlightLine(e, LEG),
     en: { parts: [{ key: "expressSkipsAlight", args: ["Gwanghwamun"] }], lang: "en" },
+  },
+  {
+    fn: expressStatusLine, name: "expressStatusLine(급행 선언 상시 표시)",
+    run: (e) => expressStatusLine(e, LEG, "stops"),
+    en: { parts: [{ key: "expressStopsAt", args: ["Gwanghwamun"] }], lang: "en" },
   },
   {
     fn: exitBoundLine, name: "exitBoundLine(출구 방면)",
@@ -372,6 +378,7 @@ function runFixtureCase(c: FixtureCase): TransitTextLine {
     case "vehicleDesc": return vehicleDescLine(e, c.item!);
     case "terminatesEarly": return terminatesEarlyLine(e, c.leg!, c.item!);
     case "expressSkipsAlight": return expressSkipsAlightLine(e, c.leg!);
+    case "expressStatus": return expressStatusLine(e, c.leg!, c.express ?? null);
     case "exitBound": return exitBoundLine(e, c.exit!, c.sentence ?? false);
     case "viaStop": return viaStopLine(e, c.stop!, c.role!, c.here!, c.exit ?? null);
     case "overviewLeg": return overviewLegLine(e, c.n!, c.line!, c.board!, c.alight!);

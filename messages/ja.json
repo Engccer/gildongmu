@@ -1057,7 +1057,7 @@
     "exitBound": "{exit}番出口方面",
     "exitBoundSentence": "{exit}番出口方面。",
     "expressPrompt": "急行ですか？",
-    "expressYes": "急行",
+    "expressYes": "急行列車",
     "expressNo": "各駅停車",
     "departed": "{minutes}分前に確認",
     "stateTracking": "追跡中。",

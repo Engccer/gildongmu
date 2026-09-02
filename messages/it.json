@@ -1057,7 +1057,7 @@
     "exitBound": "Verso l'uscita {exit}",
     "exitBoundSentence": "Verso l'uscita {exit}.",
     "expressPrompt": "È un treno espresso?",
-    "expressYes": "Espresso",
+    "expressYes": "Treno espresso",
     "expressNo": "Treno regolare",
     "departed": "visto {minutes} min fa",
     "stateTracking": "In monitoraggio.",

@@ -1057,7 +1057,7 @@
     "exitBound": "{exit}번 출구 방면",
     "exitBoundSentence": "{exit}번 출구 방면.",
     "expressPrompt": "급행인가요?",
-    "expressYes": "급행",
+    "expressYes": "급행 열차",
     "expressNo": "일반 열차",
     "departed": "{minutes}분 전 관측",
     "stateTracking": "추적 중.",

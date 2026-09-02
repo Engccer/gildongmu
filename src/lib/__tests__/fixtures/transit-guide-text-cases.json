@@ -1938,6 +1938,96 @@
     ],
     "lang": "ko"
    }
+  },
+  {
+   "name": "expressStatus stops en",
+   "fn": "expressStatus",
+   "isEn": true,
+   "leg": {
+    "mode": "subway",
+    "line": {
+     "ko": "노선ᛥ",
+     "en": "Line 5"
+    },
+    "board": {
+     "ko": "승차ᛥ",
+     "en": "Cheonho"
+    },
+    "alight": {
+     "ko": "하차ᛥ",
+     "en": "Gwanghwamun"
+    },
+    "stops": [
+     {
+      "ko": "경유0ᛥ",
+      "en": "Stop0"
+     },
+     {
+      "ko": "경유1ᛥ",
+      "en": "Stop1"
+     }
+    ],
+    "stationCount": 8,
+    "walkBeforeMinutes": 3,
+    "boardOverridden": false
+   },
+   "express": "stops",
+   "expect": {
+    "parts": [
+     {
+      "key": "expressStopsAt",
+      "args": [
+       "Gwanghwamun"
+      ]
+     }
+    ],
+    "lang": "en"
+   }
+  },
+  {
+   "name": "expressStatus unknown ko",
+   "fn": "expressStatus",
+   "isEn": false,
+   "leg": {
+    "mode": "subway",
+    "line": {
+     "ko": "노선ᛥ",
+     "en": "Line 5"
+    },
+    "board": {
+     "ko": "승차ᛥ",
+     "en": "Cheonho"
+    },
+    "alight": {
+     "ko": "하차ᛥ",
+     "en": "Gwanghwamun"
+    },
+    "stops": [
+     {
+      "ko": "경유0ᛥ",
+      "en": "Stop0"
+     },
+     {
+      "ko": "경유1ᛥ",
+      "en": "Stop1"
+     }
+    ],
+    "stationCount": 8,
+    "walkBeforeMinutes": 3,
+    "boardOverridden": false
+   },
+   "express": "unknown",
+   "expect": {
+    "parts": [
+     {
+      "key": "expressCheck",
+      "args": [
+       "하차ᛥ"
+      ]
+     }
+    ],
+    "lang": "ko"
+   }
   }
  ]
 }

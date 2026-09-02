@@ -246,6 +246,16 @@ export function expressSkipsAlightLine(isEn: boolean, leg: TransitDisplayLeg): T
  * ⚠ 통지 채널은 조각을 공백으로 잇고 다른 조각은 마침표를 갖는다 — 마침표 없는 키를 쓰면
  * "3번 출구 방면 다음: …"으로 이어져 읽힌다(a11y 감사 2026-09-02).
  */
+export function expressStatusLine(
+  isEn: boolean,
+  leg: TransitDisplayLeg,
+  verdict: ExpressVerdict | null,
+): TransitTextLine {
+  // 급행 선언 근사 잠금의 승차 상시 표시(§6, a11y 감사): 답한 직후의 침묵이 "확인됨"으로 읽히지 않게
+  // 판정을 말한다 — `stops`는 "급행, {하차역} 정차", 그 밖(`unknown`)은 종전 "정차 여부 확인 필요". 기존 키 재사용.
+  return line(isEn, verdict === "stops" ? "expressStopsAt" : "expressCheck", [leg.alight], (v) => v);
+}
+
 export function exitBoundLine(isEn: boolean, exit: string, sentence: boolean = false): TransitTextLine {
   return {
     parts: [{ key: sentence ? "exitBoundSentence" : "exitBound", args: [exit] }],

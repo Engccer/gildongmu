@@ -43,6 +43,7 @@ import {
   currentStationLine,
   exitBoundLine,
   expressSkipsAlightLine,
+  expressStatusLine,
   prewalkArrivedLine,
   frameLine,
   selectedVehicleLine,
@@ -168,6 +169,18 @@ export function useTransitGuide(route: TransitRoute | null) {
   );
   /** 역 재선택 단계 표시 여부(A16 L3, 지하철 전용). */
   const [reboardPickerActive, setReboardPickerActive] = useState(false);
+  /**
+   * 급행 확인에서 "이 급행은 {하차역}에 서지 않습니다"로 잠금을 거절한 뒤 남는 상시 문장(§6).
+   * 거절 시점의 국면 세대에 결박해 파생한다 — 국면·구간이 바뀌면(잠금·전진·세션 종료·탑승 변경 전부
+   * phaseGen을 올린다) 그 문장은 낡았고, effect로 지우면 렌더 연쇄라 값 비교로 끝낸다.
+   */
+  const [expressBlockedState, setExpressBlockedState] = useState<
+    { text: string; lang?: "ko"; gen: number } | null
+  >(null);
+  const expressBlockedNote =
+    expressBlockedState && state && expressBlockedState.gen === state.phaseGen
+      ? { text: expressBlockedState.text, lang: expressBlockedState.lang }
+      : null;
   /**
    * 선택 차량 설명(boarding 상시 표시·통지, N3). 탑승 변경으로 waiting에 돌아가도
    * 남긴다 — "탑승 변경 취소"(restoreBoarding)가 같은 차량으로 복귀한다. 소거는
@@ -428,6 +441,10 @@ export function useTransitGuide(route: TransitRoute | null) {
             ? t("approxNote")
             : "",
         ),
+        // 급행 선언 잠금(§6)은 판정을 상시 표시에 남긴다 — 답한 직후의 침묵이 "확인됨"으로 읽히지 않게.
+        s.lock?.express
+          ? piece(expressStatusLine(isEn, displayLegOf(leg, null), declaredExpressVerdict(leg)))
+          : ui(""),
         // 신선도 문장은 정확히 1개(§12.3, 감사 H2·M1): 추적 중이면 데이터 나이,
         // 그 외(미등장·소실·실패)엔 마지막 폴 시각만 — 낡은 나이를 신선한 값처럼
         // 이월하지 않는다(3-state, useRouteGuide "낡은 fix 거짓 정밀 차단" 동형).
@@ -873,6 +890,8 @@ export function useTransitGuide(route: TransitRoute | null) {
     setBoardOverride(null);
     setSelectedDescription(null);
     setReboardPickerActive(false);
+    // 다음 세션의 phaseGen도 0에서 시작하므로 세대 결박만으로는 옛 거절 문장이 되살아난다(코드 리뷰 #5).
+    setExpressBlockedState(null);
     setState(null);
     setWaiting(EMPTY_WAITING);
     // ⚠ setBoardOverride·setSelectedDescription은 useCallback([])이라 안정 정체성이다 —
@@ -1058,13 +1077,6 @@ export function useTransitGuide(route: TransitRoute | null) {
   }, [clearTimer, dispatch, pollOnce]);
 
   /** "이미 탑승했습니다"(§13.2) — 식별자 없는 근사 잠금(tagoBus 계약 동형). */
-  /** 급행 확인에서 "이 급행은 {하차역}에 서지 않습니다"로 잠금을 거절한 뒤 남는 상시 문장(§6). */
-  const [expressBlockedNote, setExpressBlockedNote] = useState<{ text: string; lang?: "ko" } | null>(null);
-  // 국면·구간이 바뀌면 그 문장은 낡았다(잠금·전진·세션 종료·탑승 변경 전부 phaseGen을 올린다).
-  const expressNoteGen = state?.phaseGen ?? -1;
-  useEffect(() => {
-    setExpressBlockedNote(null);
-  }, [expressNoteGen]);
 
   /**
    * "이미 탑승했습니다"(§13.2 근사 잠금). `express`는 급행 확인 프롬프트(spec 2026-09-02 §6, 급행 집합이
@@ -1077,13 +1089,14 @@ export function useTransitGuide(route: TransitRoute | null) {
       const leg = currentLeg();
       if (!leg?.trackMode || leg.trackMode === "tagoBus") return;
       if (express && declaredExpressVerdict(leg) === "skips") {
+        // 통지는 내지 않는다 — 패널이 그 문장 행에 착지하고 착지 낭독이 곧 답이다(a11y 감사: 같은 문장을
+        // live region과 DOM에 함께 두면 이중 낭독, 헌장 §5 "라벨 변화로 전달").
         const note = piece(expressSkipsAlightLine(isEn, displayLegOf(leg, null)));
         const lang = note.ko ? "ko" : undefined;
-        setExpressBlockedNote({ text: note.text, lang });
-        announce(note.text, lang);
+        setExpressBlockedState({ text: note.text, lang, gen: stateRef.current?.phaseGen ?? -1 });
         return;
       }
-      setExpressBlockedNote(null);
+      setExpressBlockedState(null);
       board({
         mode: leg.trackMode,
         routeId: leg.routeId ?? subwayIdForOdsayLine(leg.lineName) ?? "",
@@ -1092,7 +1105,7 @@ export function useTransitGuide(route: TransitRoute | null) {
         ...(express ? { express: true } : {}),
       });
     },
-    [announce, board, currentLeg, displayLegOf, isEn, piece],
+    [board, currentLeg, displayLegOf, isEn, piece],
   );
 
   /** 새로고침(§13.2) — 즉폴 + 결과를 직접 응답으로 통지(자동 폴 무낭독의 예외). */
