@@ -19,7 +19,7 @@
 | 채널 | 상태 |
 |---|---|
 | 웹 | https://gildongmu.dodoplanet.space (push = 자동 배포) |
-| iOS | **1.14 `WAITING_FOR_REVIEW`**(빌드 22, 아카이브 커밋 `11fe5f9`, 제출 2026-09-02 06:52 KST). 스토어 최신은 **1.13**(빌드 21, 아카이브 `df229f0`). ⚠ 1.14 아카이브 뒤 iOS 커밋은 스토어에 없다 — `git log 11fe5f9..HEAD -- ios/` |
+| iOS | **1.15 `WAITING_FOR_REVIEW`**(빌드 23, 아카이브 커밋 `ff6e1897`, 제출 2026-09-03 04:39 KST). 스토어 최신은 **1.14**(빌드 22, 아카이브 `11fe5f9`, 2026-09-03 승인). ⚠ 1.15 아카이브 뒤 iOS 커밋은 스토어에 없다 — `git log ff6e1897..HEAD -- ios/` |
 | iOS 최소 지원 | **18.0**(2026-08-19 하향, 1.10부터 적용 — 스토어 반영 완료) |
 | npm | `gildongmu` · `gildongmu-mcp` **v0.10.0**(2026-09-02, `cli-v0.10.0` 태그 → Trusted Publishing 워크플로 성공, `npm view` 両패키지 0.10.0 확인). 미발행 변경 없음(`packages/*/CHANGELOG.md`에 `[미출시]` 절 없음) |
 | 저장소 | GitHub **public**(2026-08-17 전환) — https://github.com/Engccer/gildongmu. 코드 MIT, 번들 데이터는 `NOTICE.md`. **모든 커밋이 즉시 공개된다** — 실주소·계측 로그·키를 넣지 않는 규칙은 `CLAUDE.md` 개발 규칙 |
