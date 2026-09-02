@@ -6,13 +6,15 @@
 
 ---
 
-## [미출시]
+## [0.10.0] - 2026-09-02
 
 ### 추가
 - **`--lang en`을 `route walk`·`route transit`·`station info`·`station timetable`·`station arrivals`·`nearby subway`에서 받는다.** 종전엔 `route car`·`search`뿐이었다. `route walk --lang en`은 영문 안내 문장을(`Turn right, then walk 600m along Olympic-ro`), 대중교통·역 조회는 `*En` 필드(`lineNameEn`·`messageEn`·`linesEn`·`terminusEn` 등)를 함께 싣는다. 한국어 필드는 어느 응답에서도 그대로다(조인 키).
 - `station info --lang en`이 **서울 지하철 교통약자 시설 섹션에도 `lang`을 보낸다**(2026-09-02, 서버 `/api/station/metro-facilities`가 `lang`을 받게 됨). 응답 `metroFacilities`의 음성유도기 항목에 영문 노선명 `parts.lineEn`(예 "Line 5")이 additive로 실린다 — 텍스트 출력은 종전과 같다(문자열 필드 불변). 코레일 시설 섹션은 여전히 `lang`을 받지 않는다.
+- `route transit --output json`의 지하철 구간에 **급행 정차역 집합 `expressStops`·`expressStopIds`**(급행 운행이 있는 노선에만 — 현재 9호선, 완행·급행 구간 모두)와 **출구 번호 `exit`**(`board`·`alight`, 역 밖에서 진입·하차하는 구간에만)가 additive로 실린다. 조회 실패·미지 노선은 필드 부재. 텍스트 출력은 불변.
 
 ### 변경
+- 대중교통 경로의 **환승 구간 빠른하차는 ODsay 빠른환승 문이 정본**이 됐다(`사당 하차, 빠른 환승 5-2 문`). 종전 엘리베이터·계단 최근접 문은 환승 통로와 출구를 구분하지 못해 환승역에서 엉뚱한 문을 골랐다 — 그 안내는 최종 하차 구간에만 남는다.
 - `--lang`이 **서버가 `lang`을 받는 명령의 `--help`에만** 나온다. 종전엔 전 명령에 붙어 따릉이·혼잡도처럼 영어를 줄 수 없는 조회에도 옵션을 광고했다.
 - `--lang` 값을 정규화하지 않고 그대로 보낸다(종전 `search`는 `en`이 아닌 값을 전부 `ko`로 접었다). `--lang EN` 같은 오타는 **모든 `--lang` 명령**에서 400으로 거절된다 — `route car`(`ko`/`en`)·`chat`(지원 6로케일)도 서버가 검증하게 됐다(2026-09-02, 종전엔 이 둘만 en이 아닌 값을 조용히 한국어로 취급했다).
 - **`route car --lang en`이 한국어로 폴백하면 텍스트 출력에 `한국어 안내(영문 미제공)` 한 줄을 요약 줄 다음에 낸다**(경유지·서버 키 부재·기하 요청 — 응답 `guidanceLang: "ko"`). 종전엔 `--output json`에만 보였다. 이를 위해 포매터 계약이 `(body, ctx)`로 바뀌어 요청 `lang`을 받는다 — 폴백 표기는 요청이 en이고 응답이 ko일 때만 선다(ko 요청의 정상 응답과 구분).
