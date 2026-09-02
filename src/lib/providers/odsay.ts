@@ -11,7 +11,7 @@ import { annotateHighlights, isOutside, selectTransitRoutes } from "./odsay-sele
 import { fetchSubwayServiceHoursMap, subwayHoursKey } from "./subway-service-hours";
 import { fetchOdsayJson } from "./odsay-fetch";
 import { fetchExpressStopsMap } from "./odsay-express-stops";
-import { attachExpressStops, expressLinesIn } from "../express-stops";
+import { attachExpressStops, expressLinesIn, type ExpressStopSet } from "../express-stops";
 import type {
   Coord,
   TransitLeg,
@@ -605,7 +605,7 @@ export async function getTransitRoute(params: {
   const [busHours, subwayHours, expressSets] = await Promise.all([
     fetchServiceHoursMap(refs),
     fetchSubwayServiceHoursMap(subwayRefs),
-    params.includeStops ? fetchExpressStopsMap(expressLinesIn(routes)) : new Map<string, string[]>(),
+    params.includeStops ? fetchExpressStopsMap(expressLinesIn(routes)) : new Map<string, ExpressStopSet>(),
   ]);
   const ranked = annotateServiceStatus(
     attachExpressStops(routes, expressSets),

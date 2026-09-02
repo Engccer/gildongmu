@@ -421,6 +421,12 @@ export interface TransitLeg {
    */
   expressStops?: string[];
   /**
+   * `expressStops`와 **같은 순서**의 ODsay `stationID` 원문(`stops[].stationId`와 같은 표기). 둘은 항상 함께 오고
+   * 길이가 같다 — 소비자는 ID가 있으면 정규화 없이 ID로 판정하고(하차역 별칭 하나가 거짓 차단이 되지 않게),
+   * 이름 판정은 그 폴백이다.
+   */
+  expressStopIds?: string[];
+  /**
    * 승차·하차 출구 번호(ODsay `startExitNo`/`endExitNo`, E25). 지하철 leg·`includeStops=1`에만.
    * **값 계약**: 서버가 공백을 제거하고 `^[1-9]\d*(?:-[1-9]\d*)?$`를 통과한 것만 싣는다(`"2"`·`"10"`·`"2-1"` —
    * "3번 출구"·"1·2"·0 계열·`"null"`은 부재로 떨어진다. 실호출 관측 문법은 숫자 단독뿐, 2026-09-02).

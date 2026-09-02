@@ -251,6 +251,9 @@ public struct TransitRouteLeg: Codable, Sendable, Hashable {
     /// 오지 않는다(서버가 싣지 않는다). 소비자는 nil에서 종전 `expressCheck` 라벨을 유지한다.
     /// ⚠ 여기 선언하지 않으면 서버가 실어도 앱만 침묵한다(quickExit와 같은 additive 계약).
     public let expressStops: [String]?
+    /// `expressStops`와 같은 순서의 ODsay `stationID` 원문(`stops[].stationId`와 같은 표기, 길이 동일). ID가 있으면
+    /// 정규화 없이 ID로 판정하고 이름은 폴백이다.
+    public let expressStopIds: [String]?
     /// 승차·하차 출구 번호(ODsay `startExitNo`/`endExitNo`, E25) — 지하철 leg·`includeStops=1`에만.
     /// 없는 쪽은 nil, 둘 다 없으면 `exit` 자체 nil. 환승 leg에는 대개 오지 않는다.
     public let exit: TransitLegExit?
@@ -263,7 +266,8 @@ public struct TransitRouteLeg: Codable, Sendable, Hashable {
         stops: [TransitLegStop]? = nil, distanceMeters: Int? = nil,
         quickExit: QuickExit? = nil,
         lineNameEn: String? = nil, fromNameEn: String? = nil, toNameEn: String? = nil,
-        expressStops: [String]? = nil, exit: TransitLegExit? = nil
+        expressStops: [String]? = nil, exit: TransitLegExit? = nil,
+        expressStopIds: [String]? = nil
     ) {
         self.mode = mode
         self.lineName = lineName
@@ -283,6 +287,7 @@ public struct TransitRouteLeg: Codable, Sendable, Hashable {
         self.stops = stops
         self.quickExit = quickExit
         self.expressStops = expressStops
+        self.expressStopIds = expressStopIds
         self.exit = exit
     }
 }

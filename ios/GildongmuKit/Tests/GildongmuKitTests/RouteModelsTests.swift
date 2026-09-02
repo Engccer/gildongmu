@@ -434,10 +434,12 @@ struct TransitLegExpressExitTests {
         let json = Data("""
         {"mode":"subway","lineName":"수도권 9호선","fromName":"당산","toName":"노들","stationCount":3,"minutes":6,
          "expressStops":["김포공항","당산","여의도","노량진","중앙보훈병원"],
+         "expressStopIds":["902","913","915","917","938"],
          "exit":{"alight":"1"}}
         """.utf8)
         let leg = try JSONDecoder().decode(TransitRouteLeg.self, from: json)
         #expect(leg.expressStops == ["김포공항", "당산", "여의도", "노량진", "중앙보훈병원"])
+        #expect(leg.expressStopIds == ["902", "913", "915", "917", "938"])
         #expect(leg.exit?.alight == "1")
         #expect(leg.exit?.board == nil)
     }
@@ -446,6 +448,7 @@ struct TransitLegExpressExitTests {
         let json = Data(#"{"mode":"subway","lineName":"수도권 5호선","minutes":6}"#.utf8)
         let leg = try JSONDecoder().decode(TransitRouteLeg.self, from: json)
         #expect(leg.expressStops == nil)
+        #expect(leg.expressStopIds == nil)
         #expect(leg.exit == nil)
     }
 }

@@ -22,6 +22,8 @@ const EXPRESS_16: Array<[number, string]> = [
   [930, "종합운동장"], [933, "석촌"], [936, "올림픽공원"], [938, "중앙보훈병원"],
 ];
 const NAMES_16 = EXPRESS_16.map(([, n]) => n);
+const IDS_16 = EXPRESS_16.map(([id]) => String(id));
+const SET_16 = { names: NAMES_16, ids: IDS_16 };
 // 완행 전량(38역)의 축약본 — 급행 16역 + 완행 전용 역 몇 개(진부분집합 검사가 성립하는 최소 형태)
 const LOCAL_SUPERSET: Array<[number, string]> = [
   [901, "개화"], [902, "김포공항"], [903, "공항시장"], [904, "신방화"], [905, "마곡나루"], [906, "양천향교"],
@@ -76,7 +78,7 @@ describe("expressLineKey — 끝에 붙은 (급행) 한 토큰만 벗긴다", ()
 
 describe("extractExpressStops — 수락 판정", () => {
   it("실호출 형태의 정·역방향 응답에서 16역을 순서대로 돌려준다", () => {
-    expect(extractExpressStops(FORWARD, REVERSE, LINE9)).toEqual(NAMES_16);
+    expect(extractExpressStops(FORWARD, REVERSE, LINE9)).toEqual(SET_16);
   });
 
   it("①어느 방향이든 전 구간을 덮는 급행 leg가 없으면 부재(부분 구간 집합을 쓰지 않는다)", () => {
@@ -117,7 +119,7 @@ describe("extractExpressStops — 수락 판정", () => {
       path(subway(LINE9.expressLane, "김포공항", "중앙보훈병원", EXPRESS_16)),
       path(subway(LINE9.expressLane, "김포공항", "중앙보훈병원", EXPRESS_16)),
     );
-    expect(extractExpressStops(agree, REVERSE, LINE9)).toEqual(NAMES_16);
+    expect(extractExpressStops(agree, REVERSE, LINE9)).toEqual(SET_16);
   });
 
   it("⑤역방향이 정방향의 정확한 역순이 아니면 부재(방향별 패턴 상이·한 방향만 다른 모델링)", () => {
@@ -150,7 +152,13 @@ describe("extractExpressStops — 수락 판정", () => {
     );
     expect(extractExpressStops(same, REVERSE, LINE9)).toBeNull();
     // 완행 leg가 span을 덮지 않으면(개화→김포공항) 검사 대상이 아니다 → 통과
-    expect(extractExpressStops(FORWARD, REVERSE, LINE9)).toEqual(NAMES_16);
+    expect(extractExpressStops(FORWARD, REVERSE, LINE9)).toEqual(SET_16);
+    // passStopList가 없는 완행 leg는 비교 대상이 없는 것이라 건너뛴다(반례가 아니다)
+    const emptyLocal = wrap(
+      path(subway(LINE9.expressLane, "김포공항", "중앙보훈병원", EXPRESS_16)),
+      path({ trafficType: 1, startName: "김포공항", endName: "중앙보훈병원", lane: [{ name: "수도권 9호선" }] }),
+    );
+    expect(extractExpressStops(emptyLocal, REVERSE, LINE9)).toEqual(SET_16);
   });
 });
 
@@ -160,9 +168,9 @@ describe("attachExpressStops — 표 노선 지하철 leg 전부에 같은 집�
     legs,
     routeKey: "p0",
   });
-  const sets = new Map([["수도권 9호선", NAMES_16]]);
+  const sets = new Map([["수도권 9호선", SET_16]]);
 
-  it("완행 leg·급행 leg 둘 다 받고, 다른 노선·버스·도보는 무부착", () => {
+  it("완행 leg·급행 leg 둘 다 받고(이름·ID 같은 순서), 다른 노선·버스·도보는 무부착", () => {
     const [r] = attachExpressStops(
       [
         route(
@@ -176,13 +184,16 @@ describe("attachExpressStops — 표 노선 지하철 leg 전부에 같은 집�
       sets,
     );
     expect(r.legs.map((l) => l.expressStops)).toEqual([undefined, NAMES_16, NAMES_16, undefined, undefined]);
+    expect(r.legs.map((l) => l.expressStopIds)).toEqual([undefined, IDS_16, IDS_16, undefined, undefined]);
   });
 
-  it("집합이 없는 노선은 키 자체가 없다(빈 배열 금지)", () => {
-    const [r] = attachExpressStops([route({ mode: "subway", lineName: "수도권 9호선", minutes: 1 })], new Map());
-    expect("expressStops" in r.legs[0]).toBe(false);
-    const [r2] = attachExpressStops([route({ mode: "subway", lineName: "수도권 9호선", minutes: 1 })], new Map([["수도권 9호선", []]]));
-    expect("expressStops" in r2.legs[0]).toBe(false);
+  it("집합이 없거나 빈 배열·길이 불일치면 두 키 다 없다(빈 배열 금지)", () => {
+    const leg = () => route({ mode: "subway", lineName: "수도권 9호선", minutes: 1 });
+    for (const sets of [new Map(), new Map([["수도권 9호선", { names: [], ids: [] }]]), new Map([["수도권 9호선", { names: NAMES_16, ids: IDS_16.slice(1) }]])]) {
+      const [r] = attachExpressStops([leg()], sets);
+      expect("expressStops" in r.legs[0]).toBe(false);
+      expect("expressStopIds" in r.legs[0]).toBe(false);
+    }
   });
 
   it("expressLinesIn은 표 노선을 dedupe해 모은다", () => {

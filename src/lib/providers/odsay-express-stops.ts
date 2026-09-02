@@ -5,6 +5,7 @@ import {
   extractExpressStops,
   type ExpressLineEntry,
   type ExpressResponseLike,
+  type ExpressStopSet,
 } from "../express-stops";
 import { readOdsayError } from "./odsay-envelope";
 import { fetchOdsayJson } from "./odsay-fetch";
@@ -29,8 +30,8 @@ import type { Coord } from "../types";
  */
 
 const EXPRESS_STOPS_TTL_SECONDS = 7 * 24 * 60 * 60;
-/** 캐시 키 버전 — 필드 형태를 바꾸면 올려 구버전 배포의 캐시가 새 형태를 오염시키지 않게 한다. */
-const CACHE_CONTRACT = "v1";
+/** 캐시 키 버전 — 필드 형태를 바꾸면 올려 구버전 배포의 캐시가 새 형태를 오염시키지 않게 한다. v2: {names, ids}. */
+const CACHE_CONTRACT = "v2";
 const PROBE_TIMEOUT_MS = 8_000;
 
 export type ExpressStopsFailure = "rejected" | "quota" | "transient";
@@ -53,7 +54,9 @@ export class ExpressStopsError extends Error {
 /** 노선별 마지막 실패(프로세스 수명). */
 const lastFailure = new Map<string, { at: number; kind: ExpressStopsFailure }>();
 /** 노선별 진행 중 조회(단일 실행). */
-const inFlight = new Map<string, Promise<string[]>>();
+const inFlight = new Map<string, Promise<ExpressStopSet>>();
+/** 노선별 캐시 래퍼(한 번만 만든다 — 매 호출 생성도 키가 같아 정확성엔 무관하지만 의도가 드러난다). */
+const cachedFetchers = new Map<string, () => Promise<ExpressStopSet>>();
 
 async function probe(origin: Coord, dest: Coord): Promise<ExpressResponseLike> {
   const q = new URLSearchParams({
@@ -81,24 +84,29 @@ async function probe(origin: Coord, dest: Coord): Promise<ExpressResponseLike> {
 }
 
 /** 게이트 스크립트·테스트용 — 캐시 없이 정·역방향 조회. 실패·수락 판정 부재는 `ExpressStopsError` throw. */
-export async function fetchExpressStopsUncached(entry: ExpressLineEntry): Promise<string[]> {
+export async function fetchExpressStopsUncached(entry: ExpressLineEntry): Promise<ExpressStopSet> {
   const [forward, reverse] = await Promise.all([
     probe(entry.probe.origin, entry.probe.dest),
     probe(entry.probe.dest, entry.probe.origin),
   ]);
-  const stops = extractExpressStops(forward, reverse, entry);
-  if (!stops || stops.length === 0) {
+  const set = extractExpressStops(forward, reverse, entry);
+  if (!set || set.names.length === 0 || set.ids.length !== set.names.length) {
     throw new ExpressStopsError("rejected", `급행 정차역 수락 판정 부재(${entry.line})`);
   }
-  return stops;
+  return set;
 }
 
-function cachedFetcher(entry: ExpressLineEntry): () => Promise<string[]> {
-  return unstable_cache(
-    () => fetchExpressStopsUncached(entry),
-    ["odsay-express-stops", CACHE_CONTRACT, entry.line],
-    { revalidate: EXPRESS_STOPS_TTL_SECONDS },
-  );
+function cachedFetcher(entry: ExpressLineEntry): () => Promise<ExpressStopSet> {
+  let fetcher = cachedFetchers.get(entry.line);
+  if (!fetcher) {
+    fetcher = unstable_cache(
+      () => fetchExpressStopsUncached(entry),
+      ["odsay-express-stops", CACHE_CONTRACT, entry.line],
+      { revalidate: EXPRESS_STOPS_TTL_SECONDS },
+    );
+    cachedFetchers.set(entry.line, fetcher);
+  }
+  return fetcher;
 }
 
 function failureKind(e: unknown): ExpressStopsFailure {
@@ -112,8 +120,8 @@ function failureKind(e: unknown): ExpressStopsFailure {
 export async function fetchExpressStopsMap(
   entries: ExpressLineEntry[],
   now: () => number = Date.now,
-): Promise<Map<string, string[]>> {
-  const map = new Map<string, string[]>();
+): Promise<Map<string, ExpressStopSet>> {
+  const map = new Map<string, ExpressStopSet>();
   if (!env.ODSAY_API_KEY || entries.length === 0) return map;
   await Promise.all(
     entries.map(async (entry) => {
@@ -126,10 +134,12 @@ export async function fetchExpressStopsMap(
         pending.finally(() => inFlight.delete(entry.line)).catch(() => {});
       }
       try {
-        const stops = await pending;
+        const set = await pending;
         lastFailure.delete(entry.line);
-        // 캐시가 옛 배포의 값을 돌려줄 가능성까지 막는 마지막 게이트 — 빈 배열은 절대 싣지 않는다.
-        if (stops.length > 0) map.set(entry.line, stops);
+        // 캐시가 옛 배포의 값을 돌려줄 가능성까지 막는 마지막 게이트 — 빈 배열·모양 불일치는 절대 싣지 않는다.
+        if (Array.isArray(set?.names) && Array.isArray(set?.ids) && set.names.length > 0 && set.ids.length === set.names.length) {
+          map.set(entry.line, set);
+        }
       } catch (e) {
         lastFailure.set(entry.line, { at: now(), kind: failureKind(e) });
         console.warn(`[odsay] 급행 정차역 집합 부재(${entry.line}):`, e instanceof Error ? e.message : e);
@@ -143,4 +153,5 @@ export async function fetchExpressStopsMap(
 export function resetExpressStopsState(): void {
   lastFailure.clear();
   inFlight.clear();
+  cachedFetchers.clear();
 }
