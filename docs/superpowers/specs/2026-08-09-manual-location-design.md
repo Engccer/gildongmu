@@ -173,7 +173,7 @@ EffectiveLocation = { lat, lng, source: "gps" | "manual" }
 | 표면 | 자리 |
 |---|---|
 | iOS 채팅 | `ChatConversationView.swift:52` `VStack` 첫 자식 |
-| iOS 검색 | `SearchView.swift:35` `List` 첫 Section, **마이크 행 앞** |
+| iOS 검색 | `SearchView.swift` `List`의 **마이크 행 다음** Section(2026-09-04 위원장 판정으로 순서 교체 — 원안은 마이크 행 앞) |
 | iOS 내 주변 | `NearbyHubView.swift:8` `List` 첫 자식 |
 | iOS 길찾기 | **없음** — 출발지 필드가 이미 같은 정보를 낭독한다(`DirectionsTabView.swift:842-848`) |
 | 웹 홈 | `SearchBar` 위 |
@@ -181,7 +181,7 @@ EffectiveLocation = { lat, lng, source: "gps" | "manual" }
 
 ⚠ **툴바(내비 바)에 두지 않는다.** `SearchView.swift:28-30`에 실기기 실측이 있다: *"toolbar(내비 바)에 두면 VoiceOver가 제목보다 먼저 읽는다"*. 또 principal 슬롯은 `gildongmuTitleMenu()`가 점유해 `topBarTrailing`만 남는데, 거기서는 긴 장소명의 **시각 표시가 불가능**하다.
 
-⚠ **검색 탭에서 위치줄이 마이크 행보다 앞이다.** `SearchView.swift:28`의 "마이크는 검색 필드 바로 다음 행" 서술이 한 칸 밀린다. 마이크는 여전히 목록 소멸 시 포커스 착지점(`:20-21`)이므로 그 계약은 유지된다. 주석을 함께 갱신한다.
+⚠ **검색 탭에서 위치줄은 마이크 행 다음이다**(2026-09-04 순서 교체. 시스템 검색창 옆에는 버튼 자리가 없어 마이크를 검색 필드에 최대한 붙인다). 마이크는 목록 소멸 시 포커스 착지점(`:20-21`)이고 그 계약은 순서와 무관하게 유지된다.
 
 **시맨틱과 포커스 계약**:
 - 표시줄은 **형제 버튼 둘**이다: `위치 지정`(항상) + `지정 해제`(수동일 때만). **중첩 인터랙티브 금지** — 행 전체를 버튼으로 만들고 안에 해제 버튼을 넣지 않는다.
