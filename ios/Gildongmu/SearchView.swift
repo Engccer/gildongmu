@@ -25,9 +25,9 @@ struct SearchView: View {
         NavigationStack {
             ScrollViewReader { proxy in
             List {
-                Section { LocationBarView() }
-                // 마이크는 위치 표시줄 다음 행: toolbar(내비 바)에 두면 VoiceOver가
-                // 제목보다 먼저 읽는다(실기기 실측). WhatsApp식 홀드(2026-07-20 탭 토글
+                // 마이크는 검색 필드 바로 다음 행(위원장 판정 2026-09-04: 시스템 검색창
+                // 옆에는 버튼을 붙일 자리가 없고, toolbar(내비 바)에 두면 VoiceOver가
+                // 제목보다 먼저 읽는다 — 실기기 실측). WhatsApp식 홀드(2026-07-20 탭 토글
                 // 대체): 검색어는 짧아 홀드 단일 동작만(잠금·취소 슬라이드는 채팅 전용).
                 // 최종 텍스트를 검색어로 넣고 즉시 검색(웹 음성 검색 계약). partial은
                 // 필드에 실시간 반영하지 않는다(필드 값 경합 회피, 최종만). 포커스 이동은
@@ -50,6 +50,7 @@ struct SearchView: View {
                     )
                     .accessibilityFocused($micRowFocused)
                 }
+                Section { LocationBarView() }
                 // 최근 검색(스펙 2026-07-26): 검색 전 초기 상태에만. 행 활성화=재검색,
                 // swipeActions(고정 토글·삭제 — 고정이 앞, 위원장 지시 2026-08-12)가
                 // VoiceOver 로터 커스텀 액션으로 자동 노출된다. 고정 항목은 라벨 접미사
