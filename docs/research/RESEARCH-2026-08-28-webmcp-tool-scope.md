@@ -84,7 +84,7 @@ issue #144, Chrome chrishtr(선언형 vs 명령형):
 
 > "Pre-existing Projects will be evaluated only on work added during the Submission Period." / "Judges may test WebMCP tools using ChatGPT's in-app browser or Google Chrome with WebMCP enabled." / "Judges are not required to test the Project"
 
-마감: "September 3rd, 2026 (1:00 pm Pacific Time)" = 2026-09-04 05:00 KST.
+마감: "September 3rd, 2026 (1:00 pm Pacific Time)" = 2026-09-04 05:00 KST. ⚠ **갱신 2026-09-04: 12시간 연장돼 09-04 01:00 PT = 09-04 17:00 KST가 됐다**(OpenAI 측 장애, 주최 측 공지 "Deadline Extension | 12 more hours"). 위 인용은 조사 시점(08-28) 그대로이고 규정 페이지 산문은 지금도 원 마감을 들고 있다 — **정본은 Devpost 마감 필드**(`datetime="2026-09-04T04:00:00-04:00"`)다.
 
 **https://learn.chatgpt.com/docs/webmcp** (ChatGPT "Site tools")
 
