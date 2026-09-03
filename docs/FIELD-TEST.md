@@ -445,6 +445,7 @@
 
 > spec `docs/superpowers/specs/2026-08-29-webmcp-wave2-design.md` §8.3. **리뷰로 대체할 수 없는 항목**이다. 자동화 테스트가 전부 green이어도 ⑦~⑪은 실기에서만 갈린다.
 > 준비: ChatGPT 데스크톱 앱 내장 브라우저(GPT-5.6 Sol 또는 Terra. Luna는 WebMCP가 꺼져 있다) + VoiceOver. 배포본 또는 `npm run dev -- -p 3100`.
+> 진입 절차(2026-09-04 실측): 모드 전환 → **ChatGPT → Work 탭**(Chat 탭에는 내장 브라우저가 없다. URL을 채팅에 넣으면 외부 Chrome이 열린다) → 프로젝트 **"Don't work in a project"**(저장소 프로젝트가 붙어 있으면 에이전트가 도구 대신 저장소 문서로 답한다) → 승인 **"Approve for me"** → 측면 패널(⌥⌘B) → **Browser**(⌘T) → 주소창에 URL. 프롬프트는 "open in your browser tab"처럼 열린 탭을 지시해야 도구를 쓴다. 영문 역명 검색은 상점이 섞이므로 한글 역명을 병기한다.
 > ⚠ 종전 ①~⑥(`focus_item`·안내 도구 3종·`open_directions` 대상)은 W2 삭제(2026-08-29 배포)로 대본에서 뺐다. 호스트 확인 UI(종전 ④)는 `search_places`·`get_place_info`·`plan_directions`에서, 호스트 발화 겹침(종전 ③)은 ⑨에서 관측한다.
 
 **⑦ 도구에 없는 기능을 부탁했을 때의 에이전트 행동** (조사 2026-08-28 — 문서상 폴백은 명문화됐지만 실측 리포트가 없다)
