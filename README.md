@@ -23,6 +23,14 @@ gil nearby subway --near "강동역"     # 주변 지하철역 실시간 도착
 gil route walk "길동역" "강남역" --accessible true   # 계단 회피 도보 경로
 ```
 
+## 브라우저 에이전트에 도구로 노출 (WebMCP)
+
+앱 루트에서 WebMCP 도구 7개를 상시 선언한다. ChatGPT 인앱 브라우저나 WebMCP를 켠 Chrome에서 열면 에이전트가 DOM을 추측하는 대신 장소 검색·역 정보·길찾기를 도구로 호출하고, **화면이 보여 주는 것과 같은 문장**을 돌려받는다. 화면도 같은 상태로 따라 움직이므로 사용자가 그 자리에서 이어받는다.
+
+스크린 리더 사용자에게 비싼 것은 화면에 **도달**하는 일이 아니라 그 화면을 **훑는** 일이다. 경로 하나가 수십 개의 접근성 객체인데 도구로는 한 번의 답이 된다. 좌표는 브라우저 밖으로 나가지 않는다(출력 allowlist가 구조적으로 막는다).
+
+구현·계약·검증 근거는 [`docs/WEBMCP.md`](docs/WEBMCP.md)(영문), 코드를 만질 때의 함정은 [`CLAUDE.md`](CLAUDE.md) §WebMCP 도구층에 있다.
+
 ## 핵심 설계
 
 - **정보의 정본은 리스트·텍스트다.** 지도 SDK는 캔버스라 스크린 리더가 읽을 수 없으므로, 지도에만 존재하는 정보가 있으면 그것은 버그다. "출발 전 미리 듣기" 텍스트 브리핑과 **실시간 안내**(도보 정식판, 자동차·대중교통은 실험판)를 자체 구현하고, 지도 앱 딥링크(`nmap://`·`kakaomap://`)는 장소 상세의 보조 출구로만 둔다.
@@ -61,6 +69,7 @@ node scripts/usage-report.mjs   # API 비용·쿼터·키 만료 상태(무과�
 | [`docs/BACKLOG.md`](docs/BACKLOG.md) | 아직 하지 않은 것(폐기 근거 포함) |
 | [`docs/INTEGRATIONS.md`](docs/INTEGRATIONS.md) | 외부 통합의 상세 계약. 요지만으로는 지킬 수 없는 것 |
 | [`docs/PATTERNS.md`](docs/PATTERNS.md) | UI·상태·채팅·도구층·빌드 구성의 상세 계약 |
+| [`docs/WEBMCP.md`](docs/WEBMCP.md) | WebMCP 도구층 영문 개요(도구 7개·구현·시험 방법) |
 | `docs/superpowers/specs`·`plans` | 기능별 설계 정본과 검증 기록 |
 | `docs/research/RESEARCH-*.md` | 국내 API 생태계 조사 |
 
