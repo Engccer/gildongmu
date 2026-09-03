@@ -817,32 +817,6 @@
     "heading": "You are offline",
     "body": "Search works only online."
   },
-  "webmcpProbe": {
-    "title": "WebMCP gate 0 probe",
-    "intro": "This page measures WebMCP tool execution and VoiceOver focus tracking.",
-    "supportLabel": "WebMCP support status",
-    "support": {
-      "checking": "Checking",
-      "supported": "Supported",
-      "unsupported": "Unsupported"
-    },
-    "targetsHeading": "Focus targets",
-    "headingTarget": "Focus target {index}, heading",
-    "buttonTarget": "Focus target {index}, button",
-    "manualActivation": "Activated button {index} directly.",
-    "readStateResult": "WebMCP {support}. Current focus: {focus}. Latest result: {lastResult}.",
-    "focusMoved": "Moved DOM focus to {label}.",
-    "focusFailed": "Could not move DOM focus to item {index}.",
-    "invalidIndex": "The item number must be an integer from 1 through 5.",
-    "noFocus": "None",
-    "noResult": "None",
-    "registrationFailed": "WebMCP tool registration failed.",
-    "tool": {
-      "readDescription": "Return the current probe page support status, focus, and latest result.",
-      "focusDescription": "Move DOM focus to the numbered probe item.",
-      "indexDescription": "Probe item number from 1 through 5."
-    }
-  },
   "surroundingsNearby": {
     "item": "{category}, {direction}, about {distance}",
     "category": {

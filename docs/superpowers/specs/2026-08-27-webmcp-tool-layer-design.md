@@ -325,7 +325,7 @@ Chrome 모범 사례 네 줄이 선택 기준이다: "한 도구는 한 기능",
 | `PlaceSearch.tsx` | `open_directions` 등록 + 전환 시 abort 순서 | 배선 |
 | `useRouteGuide.ts`·`useTransitGuide.ts` | `publishGuideSnapshot` 게시(값 변경 시), `starting` claim | 배선 |
 | `StepList.tsx`·`WalkRouteBriefing.tsx`·`CarRouteBriefing.tsx`·`TransitRouteBriefing.tsx`·`DistanceBeacon.tsx`·`TransitGuidePanel.tsx` | `<li>`·heading·패널 헤딩에 `data-focus-target` + `tabIndex={-1}` | 배선 |
-| `src/app/[locale]/webmcp-probe/**` | 유지. 프로브 도구 2개는 `src/lib/webmcp` 헬퍼로 재작성 | — |
+| `src/app/[locale]/webmcp-probe/**` | ~~유지. 프로브 도구 2개는 `src/lib/webmcp` 헬퍼로 재작성~~ → **2026-09-04 삭제**(게이트 0 임시 페이지의 소임 종료, `webmcpProbe` 6로케일 키·xcstrings 20키 동반 제거) | — |
 
 `src/lib/webmcp`·`guide-session-store`는 React/Next 비의존. 도구 조립 함수는 "상태 스냅샷 + 핸들러 → 출력"의 순수 함수라 node-env 단위 테스트가 된다.
 

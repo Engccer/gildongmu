@@ -817,32 +817,6 @@
     "heading": "Vous êtes hors ligne",
     "body": "La recherche ne fonctionne qu'en ligne."
   },
-  "webmcpProbe": {
-    "title": "Sonde de la porte 0 WebMCP",
-    "intro": "Cette page mesure l’exécution des outils WebMCP et le suivi du focus par VoiceOver.",
-    "supportLabel": "État de prise en charge de WebMCP",
-    "support": {
-      "checking": "Vérification en cours",
-      "supported": "Pris en charge",
-      "unsupported": "Non pris en charge"
-    },
-    "targetsHeading": "Cibles du focus",
-    "headingTarget": "Cible du focus {index}, titre",
-    "buttonTarget": "Cible du focus {index}, bouton",
-    "manualActivation": "Le bouton {index} a été activé directement.",
-    "readStateResult": "WebMCP {support}. Focus actuel : {focus}. Dernier résultat : {lastResult}.",
-    "focusMoved": "Le focus DOM a été placé sur {label}.",
-    "focusFailed": "Impossible de placer le focus DOM sur l’élément {index}.",
-    "invalidIndex": "Le numéro d’élément doit être un entier compris entre 1 et 5.",
-    "noFocus": "Aucun",
-    "noResult": "Aucun",
-    "registrationFailed": "L’enregistrement des outils WebMCP a échoué.",
-    "tool": {
-      "readDescription": "Renvoie l’état de prise en charge, le focus et le dernier résultat de la page de sonde.",
-      "focusDescription": "Place le focus DOM sur l’élément de sonde indiqué.",
-      "indexDescription": "Numéro de l’élément de sonde, de 1 à 5."
-    }
-  },
   "surroundingsNearby": {
     "item": "{category}, {direction}, environ {distance}",
     "category": {

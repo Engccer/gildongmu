@@ -817,32 +817,6 @@
     "heading": "Sei offline",
     "body": "La ricerca funziona solo online."
   },
-  "webmcpProbe": {
-    "title": "Sonda del gate 0 WebMCP",
-    "intro": "Questa pagina misura l’esecuzione degli strumenti WebMCP e il tracciamento del focus di VoiceOver.",
-    "supportLabel": "Stato del supporto WebMCP",
-    "support": {
-      "checking": "Verifica in corso",
-      "supported": "Supportato",
-      "unsupported": "Non supportato"
-    },
-    "targetsHeading": "Destinazioni del focus",
-    "headingTarget": "Destinazione del focus {index}, intestazione",
-    "buttonTarget": "Destinazione del focus {index}, pulsante",
-    "manualActivation": "Il pulsante {index} è stato attivato direttamente.",
-    "readStateResult": "WebMCP {support}. Focus attuale: {focus}. Ultimo risultato: {lastResult}.",
-    "focusMoved": "Il focus DOM è stato spostato su {label}.",
-    "focusFailed": "Impossibile spostare il focus DOM sull’elemento {index}.",
-    "invalidIndex": "Il numero dell’elemento deve essere un intero da 1 a 5.",
-    "noFocus": "Nessuno",
-    "noResult": "Nessuno",
-    "registrationFailed": "Registrazione degli strumenti WebMCP non riuscita.",
-    "tool": {
-      "readDescription": "Restituisce lo stato del supporto, il focus e l’ultimo risultato della pagina di sonda.",
-      "focusDescription": "Sposta il focus DOM sull’elemento di sonda indicato.",
-      "indexDescription": "Numero dell’elemento di sonda, da 1 a 5."
-    }
-  },
   "surroundingsNearby": {
     "item": "{category}, {direction}, circa {distance}",
     "category": {

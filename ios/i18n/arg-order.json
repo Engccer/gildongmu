@@ -935,26 +935,6 @@
   "weather.precipProbability": [
     "pop"
   ],
-  "webmcpProbe.buttonTarget": [
-    "index"
-  ],
-  "webmcpProbe.focusFailed": [
-    "index"
-  ],
-  "webmcpProbe.focusMoved": [
-    "label"
-  ],
-  "webmcpProbe.headingTarget": [
-    "index"
-  ],
-  "webmcpProbe.manualActivation": [
-    "index"
-  ],
-  "webmcpProbe.readStateResult": [
-    "support",
-    "focus",
-    "lastResult"
-  ],
   "whereAmI.overview.failedItem": [
     "label"
   ],
