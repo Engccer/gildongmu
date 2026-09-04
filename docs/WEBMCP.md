@@ -74,7 +74,7 @@ Gildongmu existed before the submission period. Everything in this document was 
 
 Open <https://gildongmu.dodoplanet.space/en> in the ChatGPT desktop app's built-in browser (GPT-5.6 Sol or Terra; WebMCP is off in Luna), or in Chrome 149 or newer with `chrome://flags/#enable-webmcp-testing`. Coverage is South Korea only.
 
-In the ChatGPT desktop app the built-in browser lives in the **Work** tab: start a chat with no project, open the side panel (Option-Command-B), choose **Browser**, and enter the URL. Then ask the agent to use the page open in its browser tab, for example "Which tools does this page offer?" or "Gangdong Station (강동역): first train, last train, elevator?" Station names work best with the Korean name alongside.
+In the ChatGPT desktop app the built-in browser lives in the **Work** tab: start a chat with no project, open the side panel (Option-Command-B), choose **Browser**, and enter the URL. Then ask the agent to use the page open in its browser tab, for example "Which tools does the Gildongmu page open in your browser tab offer?" or "Gangdong Station (강동역): first train, last train, elevator?" Station names work best with the Korean name alongside.
 
 1. "Ask Gildongmu what it can do."
 2. "Find Gangdong Station and tell me the first and last train, and whether it has an elevator."
