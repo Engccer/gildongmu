@@ -25,7 +25,7 @@ node scripts/usage-report.mjs   # API 비용·쿼터·키 만료
 
 > 🔴 **현재 최우선: [W1 — WebMCP 도구층](#w1-webmcp-도구층--웹앱-기능을-에이전트에게-선언한다-신규-2026-08-27)** (위원장 지정 2026-08-27). **2026-09-04(금) 17:00 KST**(12시간 연장, 근거는 W1 절 머리) 외부 시한이 걸려 있어 그때까지 다른 모든 열린 항목에 우선한다(예외: 2026-08-31 A26·E27·E28, 2026-09-01 E27 잔여·E26·A30, 2026-09-02 백로그 2차 소화 5세션(transit-data·transit-guide·en-ios·ios-quality·small-batch)은 위원장 직접 지시로 병행 — 파일 소유가 겹치지 않았다, plan `2026-08-31-en-locale-korean-cleanup-parallel-plan.md`·`2026-09-01-en-locale-residual-parallel-plan.md`·`2026-09-02-backlog-sweep-2-parallel-plan.md`).
 
-> ⛔ **2026-09-22 09:00 KST까지 저장소·사이트 동결**(OpenAI WebMCP Challenge 심사 기간, 주최 측 메일 명시). 그때까지 gildongmu는 **push·재배포·App Store 제출을 하지 않는다**(iOS 포함). 로컬 커밋과 문서 작업은 무관하다. **아래 신규 항목은 전부 그 뒤 착수**이고, 지나면 이 줄을 지운다.
+> ⛔ **2026-09-22 09:00 KST까지 push·재배포 동결**(OpenAI WebMCP Challenge 심사 기간). **로컬 커밋은 허용**이고 실수 방지는 `.git/hooks/pre-push`가 맡는다(origin push 차단, 기간 후 자동 통과). **이 기간에 착수하는 것은 앱 안에서 닫히는 iOS 작업뿐**이다 — 새 라우트·새 응답 필드처럼 **앱이 새 서버 동작에 의존하게 만드는 변경은 "웹 배포가 앱보다 먼저" 계약 때문에 대기**한다. 실기기 배포와 App Store 제출은 저장소·라이브 사이트를 지나지 않아 가능하되, ⚠ **실기기 테스트가 프로덕션 쿼터를 태우면 심사위원이 보는 사이트가 429로 깨진다**(각 일 1,000회 — `node scripts/usage-report.mjs`). 판정 정본은 메모리 `webmcp-challenge-judging-freeze`이고, 지나면 이 줄과 훅을 함께 지운다.
 
 ## 이 파일을 읽는 법
 
