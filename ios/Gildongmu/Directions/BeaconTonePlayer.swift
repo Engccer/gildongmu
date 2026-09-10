@@ -116,7 +116,11 @@ final class BeaconTonePlayer {
     private let notifHaptics = UINotificationFeedbackGenerator()
     private let impactHaptics = UIImpactFeedbackGenerator(style: .medium)
 
-    init() {
+    /// 계측 라벨(`audioTransfer from=`) — 재생기가 둘이라 로그만으로 누가 넘겼는지 가른다(spec §4.6).
+    private let label: String
+
+    init(label: String) {
+        self.label = label
         observeInterruptions()
     }
 
@@ -133,11 +137,15 @@ final class BeaconTonePlayer {
 
     /// 세션 종료 판정 — 그 사이 다른 인스턴스가 시작했으면 원복 의무가 그쪽으로 넘어갔다.
     private func dispatchSessionEnd() {
-        if ownsLatestSession {
-            dispatch(.sessionEnded)
-        } else {
-            guideDiagLog("audioTransfer revertSkipped")
+        // 최신 소유자가 **다른 인스턴스**일 때만 이전이다(nil = 아무도 시작한 적 없음 → 그냥 종료. 코드 리뷰 C8).
+        if let owner = Self.latestOwner, owner != ObjectIdentifier(self) {
+            guideDiagLog("audioTransfer from=\(label)")
+            // 넘긴 뒤 이 인스턴스는 남의 세션 위에 있다 — 적용 기록을 지워 `peerOwnsSession`이 참이 되게 한다
+            // (남겨 두면 인터럽션 뒤 `play()`의 재확보가 남의 `.playback`에 `.ambient`를 얹는다, 코드 리뷰 C2).
+            appliedCategory = nil
             dispatch(.ownershipTransferred)
+        } else {
+            dispatch(.sessionEnded)
         }
     }
 
@@ -465,6 +473,8 @@ final class BeaconTonePlayer {
             appliedCategory = category
             isSilenced = false
         } catch {
+            // 실패는 리듀서에 회신한다(코드 리뷰 O2): 활성을 내려 다음 톤의 `play()`가 재확보(재승격)를 시도하게.
+            audio.isActive = false
             guard category == .playback else {
                 appliedCategory = nil
                 isSilenced = true

@@ -325,7 +325,6 @@ export interface TransitGuideState {
    * 관측되지 않은 채 NEVER_SEEN_POLLS에 닿으면 neverSeen. 시간이 아니라 횟수인 이유: 벽시계는
    * 주머니에 넣어 둔 시간·조회 실패 구간·앱이 재워진 구간을 "차량 확인 안 됨"의 근거로 셌다(09-05
    * 실사고). 실패 폴은 세지 않고 riding 밖에서는 오르지 않는다. Kit `ridingPolls` 미러.
-   * ⚠ null이면 판정하지 않는다 — "시각 불명"을 "방금 탔다"로도 "오래됐다"로도 읽지 않는다.
    */
   ridingPolls: number;
   /** 잠금 차량 연속 미등장 폴 수(소실·도착 추정 판정). */
@@ -348,12 +347,13 @@ export const MISS_LOST_COUNT = 3;
 /** 도착 추정: 직전 잔여 ≤1 ∧ 연속 N폴 미등장(§4.2). */
 export const MISS_ARRIVE_COUNT = 2;
 /**
- * 첫 관측 전 미등장 상한(A16 L2). 관측된 뒤의 소실은 MISS_LOST_COUNT가 맡고,
- * 이 축은 "한 번도 못 본" 상태 전용이라 두 축이 같은 결함을 잡지 않는다.
+ * 첫 관측 전 미등장 상한(A16 L2) — riding 조회 **횟수**(A36 ①, 2026-09-11). 관측된 뒤의 소실은
+ * MISS_LOST_COUNT가 맡고, 이 축은 "한 번도 못 본" 상태 전용이라 두 축이 같은 결함을 잡지 않는다.
  *
- * ⚠ 폴 횟수가 아니라 시간인 이유: 화면 잠금 중 폴 타이머가 멎으면 횟수 기반은
- * 화면을 끌수록 시한이 늦게 온다(실측 35분에 11폴, 주기 60초면 35폴이어야 한다).
- * ⚠ 10분은 잠정값 — 실승차 판정 대상(BACKLOG A16).
+ * ⚠ 종전엔 시간(10분)이었고 그 근거는 "화면 잠금 중 폴이 멎으면 횟수 기반은 시한이 늦게 온다"였다.
+ * 그 전제(백그라운드 폴 정지)가 A36에서 결함으로 판정됐다 — 조회하지 않은 시간을 "못 봤다"의
+ * 근거로 세면 안 된다. 10회 = 미등장 riding 주기 60초 × 10 = 종전 10분과 등가. Kit 미러.
+ * ⚠ 잠정값 — 실승차 판정 대상(BACKLOG §2 A36 행).
  */
 export const NEVER_SEEN_POLLS = 10;
 /** 세션 폴링 캡 — 도달 시 주기 강등 + 1회 통지(조용한 사망 금지, §7). */
@@ -813,11 +813,11 @@ export function transitGuideStep(
 ): TransitStepResult {
   switch (input.kind) {
     case "board":
-      return handleBoard(state, input.lock, now);
+      return handleBoard(state, input.lock);
     case "confirmBoarded":
-      return handleConfirmBoarded(state, now);
+      return handleConfirmBoarded(state);
     case "restoreBoarding":
-      return handleRestoreBoarding(state, now);
+      return handleRestoreBoarding(state);
     case "changeBoarding":
       return handleChangeBoarding(state);
     case "advance":
@@ -825,7 +825,7 @@ export function transitGuideStep(
     case "declareArrived":
       return handleDeclareArrived(state);
     case "boardAboard":
-      return handleBoardAboard(state, input.lock, now);
+      return handleBoardAboard(state, input.lock);
     case "poll":
       return handlePoll(state, input, route, now);
   }
@@ -858,11 +858,11 @@ function handleDeclareArrived(state: TransitGuideState): TransitStepResult {
  * "이미 탑승했습니다" 흐름의 식별 잠금(A34 ②) — 지나는 역의 목록에서 고른 열차로 riding 직행.
  * 근사 잠금은 이 입력의 대상이 아니다(그쪽은 `board`의 종전 경로). Kit `handleBoardAboard` 미러.
  */
-function handleBoardAboard(state: TransitGuideState, lock: TransitLock, now: number): TransitStepResult {
+function handleBoardAboard(state: TransitGuideState, lock: TransitLock): TransitStepResult {
   if (state.phase !== "waiting" || state.signal === "untrackable" || isApproxTransitLock(lock)) {
     return { state, event: null };
   }
-  return enterRiding(state, lock, "declared", now);
+  return enterRiding(state, lock, "declared");
 }
 
 /**
@@ -895,7 +895,6 @@ function enterRiding(
   state: TransitGuideState,
   lock: TransitLock,
   cause: TransitBoardedCause,
-  now: number,
 ): TransitStepResult {
   return {
     state: {
@@ -933,28 +932,24 @@ function enterBoarding(state: TransitGuideState, lock: TransitLock): TransitStep
  * "탑승" = 차량 선택(N3). 근사 잠금(tagoBus·"이미 탑승했습니다")만 종전대로 riding —
  * 식별자가 없어 고를 차량도, 기다릴 도착도 없다.
  */
-function handleBoard(
-  state: TransitGuideState,
-  lock: TransitLock,
-  now: number,
-): TransitStepResult {
+function handleBoard(state: TransitGuideState, lock: TransitLock): TransitStepResult {
   if (state.phase !== "waiting" || state.signal === "untrackable") {
     return { state, event: null };
   }
-  return isApproxTransitLock(lock) ? enterRiding(state, lock, "declared", now) : enterBoarding(state, lock);
+  return isApproxTransitLock(lock) ? enterRiding(state, lock, "declared") : enterBoarding(state, lock);
 }
 
-function handleConfirmBoarded(state: TransitGuideState, now: number): TransitStepResult {
+function handleConfirmBoarded(state: TransitGuideState): TransitStepResult {
   if (state.phase !== "boarding" || state.lock == null) return { state, event: null };
-  return enterRiding(state, state.lock, "declared", now);
+  return enterRiding(state, state.lock, "declared");
 }
 
 /** 탑승 변경 취소 — 해제 전 국면으로 복귀(boarding이면 다시 승차 정류소 대기). */
-function handleRestoreBoarding(state: TransitGuideState, now: number): TransitStepResult {
+function handleRestoreBoarding(state: TransitGuideState): TransitStepResult {
   if (state.phase !== "waiting" || state.previousLock == null) return { state, event: null };
   const lock = state.previousLock;
   if (state.previousPhase === "boarding") return enterBoarding(state, lock);
-  return enterRiding(state, lock, "declared", now);
+  return enterRiding(state, lock, "declared");
 }
 
 function handleChangeBoarding(state: TransitGuideState): TransitStepResult {
@@ -1234,7 +1229,7 @@ function commitBoardingMatched(
         ? item.remainingStops === 0
         : false;
   if (base.lock != null && fresh && arrivedAtBoardStop) {
-    return enterRiding(next, base.lock, "observed", now);
+    return enterRiding(next, base.lock, "observed");
   }
 
   // 첫 관측 — signalLost 뒤의 재발견도 이 문장이 이긴다(문장 자체가 "찾았다", 리뷰 M4).

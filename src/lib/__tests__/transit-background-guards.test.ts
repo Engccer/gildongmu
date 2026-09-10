@@ -41,12 +41,21 @@ describe("대중교통 백그라운드 폴 소스 가드 (E36)", () => {
     // 그 대입은 `.trackingStarted` 판별 안에서만 참이다.
     const line = MODEL.slice(MODEL.lastIndexOf("\n", at) + 1, MODEL.indexOf("\n", at));
     expect(line).toContain("case .trackingStarted = event");
-    // 호출부는 전부 인자를 밝힌다(기본값 없음 — 안전 인자).
-    expect(MODEL.match(/playTone\([^)]*\)/g)?.every((call) => call.includes("allowedInBackground:") || call.includes("func playTone")))
-      .toBe(true);
+    // 호출부 리터럴 `allowedInBackground: true`는 0곳 — 대입 1곳을 우회하는 형태(코드 리뷰 C3 변이).
+    expect(MODEL.match(/allowedInBackground:\s*true/g) ?? []).toHaveLength(0);
+    // 호출부는 전부 인자를 밝힌다(기본값 없음 — 안전 인자). `func playTone(` 선언은 정규식이 `playTone(`부터
+    // 잡으므로 인자 이름을 포함해 같은 조건을 통과한다.
+    const calls = MODEL.match(/playTone\([^)]*\)/g) ?? [];
+    expect(calls.length).toBeGreaterThan(3);
+    expect(calls.every((call) => call.includes("allowedInBackground:"))).toBe(true);
   });
 
-  it("백그라운드 폴 정지 표식(pausedInBackground)은 폐지됐다", () => {
-    expect(MODEL).not.toContain("pausedInBackground = true");
+  it("백그라운드 진입은 폴 태스크를 취소하지 않는다(폴 지속 계약)", () => {
+    const scene = body(/func handleScenePhaseChange\(to phase: ScenePhase\)/);
+    const bg = scene.indexOf("case .background:");
+    const next = scene.indexOf("case .inactive:");
+    expect(bg).toBeGreaterThanOrEqual(0);
+    expect(next).toBeGreaterThan(bg);
+    expect(scene.slice(bg, next)).not.toContain("pollTask");
   });
 });

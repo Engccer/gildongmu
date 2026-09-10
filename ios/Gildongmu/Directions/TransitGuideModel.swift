@@ -92,7 +92,7 @@ final class TransitGuideModel {
     }
 
     private let trackService = TransitTrackService(client: APIClient(baseURL: AppConfig.apiBaseURL))
-    private let tones = BeaconTonePlayer()
+    private let tones = BeaconTonePlayer(label: "transit")
     /// 추세 톤 계층 상태(E15 ②, spec 2026-09-02 §2). 판정은 Kit `transitToneStep`, 여기는 재생만.
     private var toneState = TransitToneState.initial
     /// 발화 지연 슬롯(spec 2026-08-14, BeaconModel 동형 — 2026-09-02 E15 ② 설계 리뷰 #5로 채택):
@@ -327,8 +327,9 @@ final class TransitGuideModel {
             if !resumedFromIdle {
                 // 복귀 낭독은 백그라운드에서 버린 통지가 있을 때만, 현재 상태 하나(누적 재생 금지).
                 if missedAnnouncement {
+                    // 화면 변화 없는 통지라 `.high`(CLAUDE.md 통지 우선순위 판별선 — 착지 라벨로 대체될 수 없다).
                     let text = returnStatusText()
-                    if !text.isEmpty { announce(text) }
+                    if !text.isEmpty { announce(text, highPriority: true) }
                 }
                 restartPollLoop(immediate: true)
             }
@@ -359,7 +360,18 @@ final class TransitGuideModel {
     /// 사용자 조작 표식 — 모든 사용자 입력(`dispatch` 비폴 입력·새로고침·역 선택·조망·목적지/경로 변경)과
     /// 전경 복귀가 부른다. 유휴 정지 중이었으면 재개한다.
     private func touchUserAction() {
+        noteUserAction()
+        resumeIfIdle()
+    }
+
+    private func noteUserAction() {
         lastUserActionAt = ProcessInfo.processInfo.systemUptime
+    }
+
+    /// 유휴 정지 중이었으면 재개. 재개 문장은 **즉시 창구·`.high`** — 사용자 조작의 직접 응답이고 화면 변화
+    /// 없이 "폴이 멈춰 있었다"를 전하는 유일한 증거다(지연 창구에 두면 바로 뒤 `announceNow`(새로고침·조망)가
+    /// 선점해 버린다 — 코드 리뷰 C5).
+    private func resumeIfIdle() {
         guard idlePaused else { return }
         idlePaused = false
         transitGuideLog("idleResume")
@@ -367,7 +379,7 @@ final class TransitGuideModel {
         var parts = [appLocalized("transitGuide.resumed")]
         let status = returnStatusText()
         if !status.isEmpty { parts.append(status) }
-        announce(parts.joined(separator: " "))
+        announceNow(parts.joined(separator: " "), highPriority: true)
         updateKeepAlive()
         restartPollLoop(immediate: true)
     }
@@ -584,6 +596,7 @@ final class TransitGuideModel {
     /// 역 선택(pickStation) 응답. 하차역이면 도착 선언(§4.1), 그 밖은 그 역 기준 목록으로(스냅숏·3분 버퍼 소거 —
     /// 승차역 목록이 다른 역 목록에 섞이지 않게, 리뷰 m1).
     func pickAboardStation(at stopIndex: Int) {
+        touchUserAction()
         guard aboardStep == .pickStation, let leg = currentLeg else { return }
         if stopIndex == leg.viaStops.count - 1 {
             aboardStep = nil
@@ -893,6 +906,7 @@ final class TransitGuideModel {
         announcement: RouteChangeAnnouncement
     ) -> Bool {
         guard let guideRoute = buildTransitGuideRoute(transitRoute) else { return false }
+        touchUserAction()  // 목적지 변경·경로 교체는 사용자 조작(유휴 정지 축 — 없으면 유휴 뒤 이 경로가 폴을 못 되살린다)
         pollTask?.cancel()
         pollTask = nil
         pendingWalkHandoff = nil  // 옛 목적지의 핸드오프 제안 무효
@@ -1277,11 +1291,18 @@ final class TransitGuideModel {
 
     private func dispatch(_ input: TransitGuideInput) {
         guard let state, let route else { return }
-        // 폴을 제외한 모든 입력은 사용자 조작이다(유휴 정지 축).
-        if case .poll = input {} else { touchUserAction() }
+        // 폴을 제외한 모든 입력은 사용자 조작이다(유휴 정지 축). 표식은 여기, 유휴 재개(주기 산정·재개 문장)는
+        // **상태 대입 뒤**(코드 리뷰 C4 — 입력 전 상태로 주기를 재지 않게).
+        let userAction: Bool = if case .poll = input { false } else { true }
+        if userAction { noteUserAction() }
         let result = transitGuideStep(state: state, input: input, route: route, now: nowMs())
         self.state = result.state
+        if userAction { resumeIfIdle() }
         updateKeepAlive()
+        if case .neverSeen = result.event {
+            // A36 ① 판정 재료(spec §4.6·§7): 상한에 닿은 조회 수와 그 시점 잔여(대본 §5-3이 이 문자열을 읽는다).
+            transitGuideLog("neverSeen polls=\(result.state.ridingPolls) remaining=\(result.state.remaining.map(String.init) ?? "-")")
+        }
         // 추세 톤 계층(E15 ②, spec 2026-09-02 §2.5): `state`(대입 전 캡처 = before)와 `result.state`
         // (after)를 넘긴다 — 입력 조립·phaseGen 리셋은 Kit 순수 함수 몫이다(설계 리뷰 #2).
         // 이벤트가 있는 스텝은 층이 nil을 내므로 한 dispatch에 `tones.play`는 최대 1회다.
@@ -1367,15 +1388,20 @@ final class TransitGuideModel {
     private func playTone(_ tone: BeaconTone, allowedInBackground: Bool) {
         guard !outputSuppressed else { return }
         if !isForeground {
-            transitGuideLog("bgTone kind=\(tone) allowed=\(allowedInBackground)")
+            transitGuideLog("bgTone kind=\(tone.rawValue) allowed=\(allowedInBackground)")
             guard allowedInBackground else { return }
         }
         tones.play(tone)
         // 가청 판정은 매 톤(세션 중에도 바뀐다 — 인터럽션·route·억제 해제·소유권 이전), 문장은 세션당 1회.
         // 승격 실패는 전경에서 보이지 않으므로(`.ambient`로도 들린다) 잠그기 전에 한 번은 말해야 한다.
+        // ⚠ latch는 **발화 성공**에 건다(memory once-only-warning-delivery-contract, 구현 리뷰 C1·A-1): 이 문장은
+        // 톤 직후 큐잉되어 바로 뒤 이벤트 문장에 latest-wins로 선점되거나 백그라운드 게이트에 버려진다.
+        // 그때 `onDropped`가 latch를 풀어 다음 톤이 다시 시도한다 — 지연 창구의 상환 계약 그대로.
         if isTracking, !tones.isBackgroundAudible, !soundDegradedAnnounced {
             soundDegradedAnnounced = true
-            announce(appLocalized("ios.beacon.soundBackgroundUnavailable"))
+            deferredAnnouncer.announce(appLocalized("ios.beacon.soundBackgroundUnavailable")) { [weak self] in
+                self?.soundDegradedAnnounced = false
+            }
         }
     }
 

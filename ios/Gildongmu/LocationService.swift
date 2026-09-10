@@ -162,11 +162,19 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
         guard isKeepAliveActive else { return }
         isKeepAliveActive = false
         guard !isBeaconTracking else { return }  // 비콘이 쥔 스트림은 비콘이 끈다
+        // 단발 취득이 진행 중이면 그 취득이 끝날 때(`endOneShotIfIdle`) 매니저를 멈춘다 — 여기서 프로파일만 되돌리면
+        // 진행 중인 취득이 자동 정지에 걸린다(코드 리뷰 C10). `endOneShotIfIdle`은 keep-alive 플래그가 내려간 뒤라
+        // 종전대로 `stopUpdatingLocation()`을 부른다.
+        guard !isOneShotActive else { return }
         // 세션 밖에서 켜 두면 one-shot 취득까지 백그라운드 자격을 얻으므로 여기서 내린다.
         manager.allowsBackgroundLocationUpdates = false
         manager.pausesLocationUpdatesAutomatically = true
-        if !isOneShotActive { manager.stopUpdatingLocation() }
+        manager.stopUpdatingLocation()
     }
+
+    /// keep-alive **단독** 구간(비콘·단발 없음)인가 — 그 fix는 공유 스토어에 쓰지 않는다(spec §4.2.3 ⓐ "좌표를 소비하지
+    /// 않는다"를 가정이 아니라 구조로: 저정밀 요청이라도 도심 Wi-Fi에서 100m 이내 fix가 와 캐시를 덮을 수 있다).
+    private var isKeepAliveOnly: Bool { isKeepAliveActive && !isBeaconTracking && !isOneShotActive }
 
     /// 현재 권한 상태. ⚠ `currentCoordinate()`는 **캐시 우선**이라 권한을 보지 않고
     /// 반환하는 경로가 있다. 권한 게이트가 필요한 호출부는 이 값을 직접 봐야 한다
@@ -513,6 +521,9 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
             applyProfile(.keepAlive)
             return
         }
+        // keep-alive가 단발 취득 도중에 꺼졌으면(`stopKeepAliveUpdates`가 미룬 정리) 여기서 자격도 함께 내린다.
+        manager.allowsBackgroundLocationUpdates = false
+        manager.pausesLocationUpdatesAutomatically = true
         manager.stopUpdatingLocation()
     }
 
@@ -574,7 +585,7 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
             // 스트림 fix도 공유 스토어를 갱신한다. 안 하면 500m 걷고 조회했을 때
             // 출발 전 캐시 좌표로 경로가 계산된다("현재 위치는 한 곳" 불변식은
             // 호출 경로만이 아니라 값의 단일성까지를 뜻한다).
-            if storable { self.stored = fix }
+            if storable, !self.isKeepAliveOnly { self.stored = fix }
 
             if self.isOneShotActive {
                 if accepted {

@@ -258,7 +258,7 @@ final class BeaconModel {
     /// 목적지 전환이 보관한 유도기 버퍼(스펙 2026-08-12 §3.1 승계 조항) —
     /// 다음 fetchGuideRoute 성공이 1회 소비한다. stop()이 소거.
     private var carriedCourseDerivation: CourseDerivationState?
-    private let tones = BeaconTonePlayer()
+    private let tones = BeaconTonePlayer(label: "beacon")
     /// 발화 지연 슬롯(spec 2026-08-14) — 안내 효과음이 재생 중이면 그 잔여만큼
     /// 통지를 미룬다. 수명 계약(latest-wins·세대·재평가)은 Kit 타입이 소유하고
     /// 여기는 톤 잔여·실제 게시를 클로저로 주입만 한다(§5 배선).
