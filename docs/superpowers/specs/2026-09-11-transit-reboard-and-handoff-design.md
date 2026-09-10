@@ -190,3 +190,13 @@ Kit `TransitGuide.swift`(+`TransitGuideTests.swift`) / iOS `TransitGuideModel.sw
 | M7 인계 화면 도달 0 | 채택 — 섹션·컨트롤·착지 삭제(§4.3). `GildongmuApp`·`GuideBand` 잔여는 소유 밖이라 보고. |
 | m1~m6 | 전부 채택(스냅숏·버퍼 소거, `approxNote` 판별자, 프롬프트 리셋 축, 신선도 줄 제거, 선택 차량 문장, untrackable 라벨 키 2개 명시). |
 | 관찰 `changeBoarding` 가드 | 채택 — 확정 도착에서 no-op(§4.1). G4 주석 정정. |
+
+## 10. 구현 리뷰 판정 (2026-09-11, HEAD `961170fd` → 반영 `0a8bc54d`)
+
+세 리뷰(별도 컨텍스트, diff `main...HEAD`만)의 보고는 `~/gildongmu-wt/reports/transit-1-review-{spec,code,a11y}.md`(커밋 밖).
+
+| 리뷰 | 판정 | 반영 |
+|---|---|---|
+| spec-compliance(opus) | 적합(BLOCKER·MAJOR 0, MINOR 6) | MINOR 3 채택: CLAUDE.md 규칙 문구 = INTEGRATIONS 절 제목 / 웹 도착 문장 축·버튼 라벨 축 통일(훅 옵션 `walkHandoffAvailable` → `handoffNow`) / 선언 도착 → autoStart 잇는 jsdom 클릭. 나머지는 관찰. |
+| code-quality(opus) | 조건부 통과(MAJOR 3, MINOR 7) | M1 웹 역 선택 in-flight 폴 경합: `pollOnce`가 조회 기준 역을 세대 축으로 잡고 in-flight면 `finally`에서 즉폴(변이 실측 빨간불 확인). M2 새로고침 수가 pickVehicle 필터를 지난다. M3 필터 전멸 사유 `noCandidatesAboard`(웹·iOS, 6로케일). MINOR: 단계 가드 3·주석 정정 4·`ABOARD_CODES` 선언 순서. 기각(소유 밖·의도): `GuideBand.hasWalkHandoff` 잔여(소유 밖, 보고에 후속 정리 후보로), iOS `boardAboard`의 `selectedDescription`은 가드 뒤에 쓴다(오독), `DistanceBeacon` effect 순서(라벨은 `tracking`에 묶여 순서와 무관 — a11y 감사 통과). |
+| a11y(sonnet) | 통과(결함 0, 관찰 3) | LOW 1 채택: 웹 취소 착지에 `isConnected` 명시. 실기기 권고: 이미 탑승 → 역 선택 → 목록, 마지막 leg → 도보 인계 두 흐름 VoiceOver 1회(§7 실승차 표에 포함). |
