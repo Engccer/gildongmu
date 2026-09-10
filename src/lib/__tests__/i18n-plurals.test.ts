@@ -197,6 +197,7 @@ describe("수량 문구 복수형(A29)", () => {
     "guide.switchedToRecommended": "Switched to the recommended route. 1 step, x total. x",
     "guide.autoReroute": "Now guiding on a new route. 1 step, x total. x",
     "ios.beacon.healthSummary": "You walked 1 step on this leg and burned about x kcal.",
+    "ios.beacon.healthSummaryWithWeight": "You walked 1 step on this leg and burned about x kcal, based on x kg.",
     "ios.beacon.food.ramyeonMany": "That's about 1 bowl of ramyeon!",
   };
   it("en plural 키 전부에 count=1 골든 문장이 있고 일치한다", () => {
