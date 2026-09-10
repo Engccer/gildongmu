@@ -51,6 +51,17 @@ async function boardTrain() {
   fireEvent.click(await screen.findByRole("button", { name: "transitGuide.confirmBoarded" }));
 }
 
+/**
+ * "이미 탑승했습니다"의 근사(비관측) 잠금 경로(A34 ②+①, 2026-09-11): 역을 먼저 묻고, 그 역에 있는
+ * 열차가 0건일 때만 [열차 정보 없이 계속]이 선다. 호출부의 fetch 목이 그 역에 "99"(두 정거장 밖)만
+ * 주거나 비어 있어야 한다.
+ */
+async function boardApproxViaAboard(station = "천호") {
+  fireEvent.click(await screen.findByRole("button", { name: "transitGuide.boardAlready" }));
+  fireEvent.click(await screen.findByRole("button", { name: station }));
+  fireEvent.click(await screen.findByRole("button", { name: "transitGuide.continueWithoutTrain" }));
+}
+
 function trackItem(overrides: Record<string, unknown>) {
   return {
     vehicleId: "5696",
@@ -264,7 +275,8 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
 
     render(<TransitGuidePanel route={twoLegs} triggerLabel="시작" walkAccessible={false} />);
     fireEvent.click(screen.getByRole("button", { name: "시작" }));
-    fireEvent.click(await screen.findByRole("button", { name: "transitGuide.boardAlready" }));
+    // 2026-09-11 A34: "이미 탑승"은 역을 먼저 묻는다 — 목 항목이 "99"라 필터에 걸려 0건 → 비관측 근사 잠금.
+    await boardApproxViaAboard();
 
     // riding 국면에서 픽커를 연다(근사 잠금이라 advance도 함께 떠 있다).
     fireEvent.click(await screen.findByRole("button", { name: "transitGuide.changeBoarding" }));
@@ -277,7 +289,7 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
     });
 
     // 다시 탑승해도 되살아나지 않고, 그 자리엔 탑승 변경 버튼이 있다.
-    fireEvent.click(screen.getByRole("button", { name: "transitGuide.boardAlready" }));
+    await boardApproxViaAboard();
     await waitFor(() => {
       expect(screen.getByRole("button", { name: "transitGuide.changeBoarding" })).toBeTruthy();
     });
@@ -386,7 +398,11 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
     );
     render(<TransitGuidePanel route={expressRoute} triggerLabel="시작" walkAccessible={false} />);
     fireEvent.click(screen.getByRole("button", { name: "시작" }));
+    // 2026-09-11 A34: 급행 확인은 [열차 정보 없이 계속](역 선택 뒤 0건 폴백) 앞에 선다 — 목록 경로는 후보 행의
+    // unreachable 판정이 대신한다.
     fireEvent.click(await screen.findByRole("button", { name: "transitGuide.boardAlready" }));
+    fireEvent.click(await screen.findByRole("button", { name: "김포공항" }));
+    fireEvent.click(await screen.findByRole("button", { name: "transitGuide.continueWithoutTrain" }));
     // 프롬프트 헤딩에 착지, 국면은 아직 waiting.
     const heading = await screen.findByRole("heading", { name: "transitGuide.expressPrompt" });
     await waitFor(() => expect(document.activeElement).toBe(heading));
@@ -396,25 +412,29 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
     await waitFor(() => expect(document.activeElement).toBe(note));
     expect(screen.getAllByText(/expressSkipsAlight/)).toHaveLength(1);
     expect(screen.queryByRole("heading", { name: "transitGuide.expressPrompt" })).toBeNull();
-    expect(screen.getByRole("button", { name: "transitGuide.boardAlready" })).toBeTruthy();
-    // 다시 묻고 "일반 열차" → 종전 근사 잠금(riding, 다음 구간 상시).
-    fireEvent.click(screen.getByRole("button", { name: "transitGuide.boardAlready" }));
+    expect(screen.getByRole("button", { name: "transitGuide.continueWithoutTrain" })).toBeTruthy();
+    // 다시 묻고 "일반 열차" → 근사(비관측) 잠금(riding, 다음 구간 상시).
+    fireEvent.click(screen.getByRole("button", { name: "transitGuide.continueWithoutTrain" }));
     fireEvent.click(await screen.findByRole("button", { name: "transitGuide.expressNo" }));
     expect(await screen.findByRole("button", { name: "transitGuide.advance" })).toBeTruthy();
     expect(screen.queryByText(/expressSkipsAlight/)).toBeNull();
     // 급행 선언 잠금이 아니라(일반 열차) 상시 표시에 급행 판정 문장이 없다.
     expect(screen.queryByText(/expressCheck|expressStopsAt/)).toBeNull();
-    // 프롬프트를 연 채 국면이 바뀌면(탑승 변경 → 역 선택 → 대기) 누르지 않은 프롬프트는 되살아나지 않는다.
+    // 프롬프트를 연 채 역을 바꾸면(다른 역 선택 → 단계 변화) 누르지 않은 프롬프트는 되살아나지 않는다(리뷰 m3).
     fireEvent.click(screen.getByRole("button", { name: "transitGuide.changeBoarding" }));
     fireEvent.click(await screen.findByRole("button", { name: "김포공항" }));
     fireEvent.click(await screen.findByRole("button", { name: "transitGuide.boardAlready" }));
+    fireEvent.click(await screen.findByRole("button", { name: "당산" }));
+    fireEvent.click(await screen.findByRole("button", { name: "transitGuide.continueWithoutTrain" }));
     await screen.findByRole("heading", { name: "transitGuide.expressPrompt" });
-    fireEvent.click(screen.getByRole("button", { name: "transitGuide.cancelChangeBoarding" }));
-    await screen.findByRole("button", { name: "transitGuide.advance" });
-    fireEvent.click(screen.getByRole("button", { name: "transitGuide.changeBoarding" }));
-    fireEvent.click(await screen.findByRole("button", { name: "김포공항" }));
-    await screen.findByRole("button", { name: "transitGuide.boardAlready" });
+    fireEvent.click(screen.getByRole("button", { name: "transitGuide.pickAnotherStation" }));
+    await screen.findByRole("heading", { name: "transitGuide.aboardStationPrompt" });
     expect(screen.queryByRole("heading", { name: "transitGuide.expressPrompt" })).toBeNull();
+    // 역 선택 취소는 눌렀던 자리([이미 탑승했습니다])로 돌아간다.
+    fireEvent.click(screen.getByRole("button", { name: "transitGuide.reboardCancel" }));
+    await waitFor(() => {
+      expect(document.activeElement?.textContent).toBe("transitGuide.boardAlready");
+    });
   });
 
   it("시작 → 열차 목록(종착 차단 항목은 비버튼) → 탑승 → 하차 추적 → 도착 → 다음 구간 → 완료", async () => {
@@ -624,18 +644,20 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
     });
   });
 
-  it("이미 탑승했습니다(§13.2): 근사 잠금 — advance 상시·근사 주석·arrived 미전이", async () => {
+  it("열차 정보 없이 계속(A34 ① 2026-09-11): 비관측 잠금 — advance 상시, 열차 위치·잔여·근사 주석·신선도 없음, 하차역 폴 없음", async () => {
+    const calls: string[] = [];
     vi.stubGlobal(
       "fetch",
       vi.fn(async (input: RequestInfo | URL) => {
         const url = String(input);
+        calls.push(url);
         if (url.includes("station=" + encodeURIComponent("천호"))) {
           return {
             ok: true,
             json: async () => ({ mode: "subway", status: "empty", rawCount: 0 }),
           } as Response;
         }
-        // 하차역: 반대 방향 임박 + 같은 방향 원거리 — 방향 필터로 하행만 매칭돼야 한다
+        // 하차역: 종전 근사 분기라면 잔여 최소(4)를 잡아 "남은 정거장 4개"를 냈을 목록.
         return {
           ok: true,
           json: async () => ({
@@ -653,19 +675,25 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
 
     render(<TransitGuidePanel route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
     fireEvent.click(screen.getByRole("button", { name: "시작" }));
-    const already = await screen.findByRole("button", { name: "transitGuide.boardAlready" });
-    fireEvent.click(already);
+    await boardApproxViaAboard();
 
-    // 근사 잠금: advance 상시 노출 + 근사 주석. 반대 방향 arvlCd "1"은 무시(방향
-    // 필터)라 arrived로 넘어가지 않고 riding에 머문다(탑승 변경도 유지).
+    // 비관측 riding: advance 상시 + 탑승 변경 유지. 상태줄은 "어느 열차인지 모른다"만 말하고 어림값이 없다.
     await waitFor(() => {
       expect(screen.getByRole("button", { name: "transitGuide.advance" })).toBeTruthy();
     });
     expect(screen.getByRole("button", { name: "transitGuide.changeBoarding" })).toBeTruthy();
-    expect(screen.getByText(/approxNote/)).toBeTruthy();
-    // A27: 지하철 99(운행중)는 "까지 {원문}" 프레임을 내지 않고 잔여 수 문장으로 떨어진다 — 통지·상태줄 둘 다.
-    expect(screen.getAllByText(/remainingCount:4/).length).toBeGreaterThan(0);
-    expect(screen.queryByText(/messageFrame/)).toBeNull();
+    expect(screen.getByText(/transitGuide\.stateRidingUnobserved/)).toBeTruthy();
+    expect(screen.queryByText(/approxNote/)).toBeNull();
+    expect(screen.queryByText(/remainingCount|stationCountAbout|messageFrame|lastUpdated|dataAge/)).toBeNull();
+    // 하차역 목록은 읽지 않는다(폴 주기 0 + 즉폴 게이트 — 리뷰 B1).
+    await new Promise((r) => setTimeout(r, 50));
+    expect(calls.some((u) => u.includes(encodeURIComponent("여의도")))).toBe(false);
+    // 백그라운드 복귀 통지도 같은 문장(리뷰 M1 — 호출 지점 셋이 같은 선택기).
+    Object.defineProperty(document, "visibilityState", { value: "visible", configurable: true });
+    document.dispatchEvent(new Event("visibilitychange"));
+    await waitFor(() => {
+      expect(screen.getByRole("status").textContent).toContain("transitGuide.stateRidingUnobserved");
+    });
   });
 
   it("승차 뒤 미관측 상태 문장은 수단별이다 — 지하철은 열차, 서울버스는 버스(A33)", async () => {
@@ -676,13 +704,21 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
       vi.fn(async (input: RequestInfo | URL) => {
         const url = String(input);
         const mode = url.includes("mode=seoulBus") ? "seoulBus" : "subway";
-        return { ok: true, json: async () => ({ mode, status: "empty", rawCount: 0 }) } as Response;
+        // 승차 정류소(대기)엔 식별자 있는 후보 1건, 하차 정류소(승차 중)엔 0건 → riding notYetVisible.
+        const atBoardStop = url.includes("phase=wait") || url.includes("station=" + encodeURIComponent("천호"));
+        return {
+          ok: true,
+          json: async () =>
+            atBoardStop
+              ? { mode, status: "ok", rawCount: 1, items: [trackItem({ vehicleId: "111033479", direction: "" })] }
+              : { mode, status: "empty", rawCount: 0 },
+        } as Response;
       }),
     );
 
     const { unmount } = render(<TransitGuidePanel route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
     fireEvent.click(screen.getByRole("button", { name: "시작" }));
-    fireEvent.click(await screen.findByRole("button", { name: "transitGuide.boardAlready" }));
+    await boardTrain();
     await waitFor(() => {
       expect(screen.getByText(/transitGuide\.stateRidingNotYetVisible /)).toBeTruthy();
     });
@@ -710,7 +746,8 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
     };
     render(<TransitGuidePanel route={BUS_ROUTE} triggerLabel="시작" walkAccessible={false} />);
     fireEvent.click(screen.getByRole("button", { name: "시작" }));
-    fireEvent.click(await screen.findByRole("button", { name: "transitGuide.boardAlready" }));
+    fireEvent.click(await screen.findByRole("button", { name: /selectBus/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "transitGuide.confirmBoarded" }));
     await waitFor(() => {
       expect(screen.getByText(/transitGuide\.stateRidingNotYetVisibleBus/)).toBeTruthy();
     });
@@ -765,10 +802,10 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
     });
   });
 
-  it("도보 핸드오프(§14.2): 완료 시 '남은 도보 안내 시작' 노출 + 포커스 선점", async () => {
-    // DistanceBeacon은 geolocation 미지원이면 렌더하지 않으므로 스텁이 전제다.
+  it("도보 인계 단일 버튼(E34, 2026-09-11): 마지막 leg 도착 뒤 버튼은 '남은 도보 안내 시작' 하나, 한 번 누르면 도보 세션이 시작된다", async () => {
+    // DistanceBeacon은 geolocation 미지원이면 렌더하지 않으므로 스텁이 전제다(watchPosition이 id를 돌려주면 추적 상태).
     Object.defineProperty(navigator, "geolocation", {
-      value: { getCurrentPosition: vi.fn(), watchPosition: vi.fn(), clearWatch: vi.fn() },
+      value: { getCurrentPosition: vi.fn(), watchPosition: vi.fn(() => 1), clearWatch: vi.fn() },
       configurable: true,
     });
     const routeWithTailWalk: TransitRoute = {
@@ -808,15 +845,136 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
     fireEvent.click(screen.getByRole("button", { name: "시작" }));
     await boardTrain();
 
-    // 도착 관측 → 다음 구간 → done: 세션은 접히고 핸드오프 트리거가 포커스를 받는다.
-    const advance = await screen.findByRole("button", { name: "transitGuide.advance" });
-    fireEvent.click(advance);
+    // 도착 관측: 그 자리 버튼이 [다음 구간]이 아니라 [남은 도보 안내 시작]이고 착지가 거기다. 도착 통지는 그
+    // 버튼 이름과 도보 분을 담는다(종전 "다음: 대중교통 구간이 끝났습니다…" 조각 없음).
     const handoff = await screen.findByRole("button", { name: "transitGuide.walkHandoffStart" });
-    expect(document.activeElement).toBe(handoff);
-    // 완료 통지는 기존 계약 그대로(말미 도보 병기).
-    expect(screen.getByRole("status").textContent).toContain("transitGuide.doneWalk:5");
+    expect(screen.queryByRole("button", { name: "transitGuide.advance" })).toBeNull();
+    await waitFor(() => expect(document.activeElement).toBe(handoff));
+    const status = screen.getAllByRole("status")[0];
+    expect(status.textContent).toContain("transitGuide.arrivedWalkNext:5");
+    expect(status.textContent).not.toContain("doneWalk");
+    expect(screen.getByText(/transitGuide\.stateArrived/)).toBeTruthy();
+    // 한 번 누르면 세션 종료 + 도보 세션 자동 시작(트리거가 "중지"로) — 완료 문장은 내지 않는다(리뷰 M3).
+    fireEvent.click(handoff);
+    const stopButton = await screen.findByRole("button", { name: "beacon.stop" });
+    expect(document.activeElement).toBe(stopButton);
+    expect(screen.queryByRole("button", { name: "transitGuide.walkHandoffStart" })).toBeNull();
+    expect(status.textContent).not.toContain("doneWalk");
     // 트리거도 함께 복귀해 재시작 경로가 남는다.
     expect(screen.getByRole("button", { name: "시작" })).toBeTruthy();
+  });
+
+  it("중간 leg의 도착은 여전히 [다음 구간]이고, 역 선택에서 하차역을 고르면 도착 선언이다(A37 ②·E34 (d))", async () => {
+    Object.defineProperty(navigator, "geolocation", {
+      value: { getCurrentPosition: vi.fn(), watchPosition: vi.fn(() => 1), clearWatch: vi.fn() },
+      configurable: true,
+    });
+    const twoLegsWalk: TransitRoute = {
+      ...ROUTE,
+      legs: [
+        { ...SUBWAY_LEG, toName: "왕십리(성동구청)" },
+        { ...SUBWAY_LEG, lineName: "수도권 2호선", fromName: "왕십리(성동구청)", toName: "강남" },
+        { mode: "walk", minutes: 7 },
+      ],
+    };
+    const calls: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        calls.push(String(input));
+        return {
+          ok: true,
+          json: async () => ({ mode: "subway", status: "ok", rawCount: 1, items: [trackItem({})] }),
+        } as Response;
+      }),
+    );
+    render(
+      <TransitGuidePanel
+        route={twoLegsWalk}
+        triggerLabel="시작"
+        dest={{ lat: 37.49, lng: 127.02, name: "강남" }}
+        walkAccessible={false}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "시작" }));
+    await boardTrain();
+    // 승차 중 탑승 변경 → 역 선택 → 마지막 행(하차역) = 도착 선언 → 중간 leg라 [다음 구간].
+    fireEvent.click(await screen.findByRole("button", { name: "transitGuide.changeBoarding" }));
+    const before = calls.length;
+    fireEvent.click(await screen.findByRole("button", { name: "여의도" }));
+    const advance = await screen.findByRole("button", { name: "transitGuide.advance" });
+    expect(screen.queryByRole("button", { name: "transitGuide.walkHandoffStart" })).toBeNull();
+    await waitFor(() => expect(document.activeElement).toBe(advance));
+    expect(screen.getAllByRole("status")[0].textContent).toContain("transitGuide.arrived ");
+    expect(screen.getByText(/transitGuide\.stateArrived/)).toBeTruthy();
+    // 선언 뒤 폴은 나가지 않는다(즉폴 게이트).
+    await new Promise((r) => setTimeout(r, 50));
+    expect(calls.length).toBe(before);
+    // 다음 구간(마지막 leg) → 대기 → "이미 탑승" 흐름에서 하차역을 고르면 그 자리 버튼은 인계 하나다.
+    fireEvent.click(advance);
+    fireEvent.click(await screen.findByRole("button", { name: "transitGuide.boardAlready" }));
+    fireEvent.click(await screen.findByRole("button", { name: "여의도" }));
+    expect(await screen.findByRole("button", { name: "transitGuide.walkHandoffStart" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "transitGuide.advance" })).toBeNull();
+    expect(screen.getAllByRole("status")[0].textContent).toContain("transitGuide.arrivedWalkNext:7");
+  });
+
+  it("이미 탑승했습니다(A34 ② 2026-09-11): 역을 묻고 → 그 역에 있는 열차만 목록 → 고르면 boarding 없이 riding(식별 잠금)", async () => {
+    const calls: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        calls.push(url);
+        if (url.includes("station=" + encodeURIComponent("왕십리(성동구청)"))) {
+          // 그 역에 있는 열차(전역 출발 3) + 두 정거장 밖(99) — 후자는 타고 있을 수 없어 목록에서 빠진다.
+          return {
+            ok: true,
+            json: async () => ({
+              mode: "subway",
+              status: "ok",
+              rawCount: 2,
+              items: [
+                trackItem({ vehicleId: "5701", message: "전역 출발", remainingStops: 1, arrivalCode: "3" }),
+                trackItem({ vehicleId: "5702", message: "[3]번째 전역", remainingStops: 3, arrivalCode: "99" }),
+              ],
+            }),
+          } as Response;
+        }
+        return {
+          ok: true,
+          json: async () => ({ mode: "subway", status: "ok", rawCount: 1, items: [trackItem({})] }),
+        } as Response;
+      }),
+    );
+    render(<TransitGuidePanel route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
+    fireEvent.click(screen.getByRole("button", { name: "시작" }));
+    fireEvent.click(await screen.findByRole("button", { name: "transitGuide.boardAlready" }));
+    // 1단: 전용 질문 헤딩에 착지.
+    const prompt = await screen.findByRole("heading", { name: "transitGuide.aboardStationPrompt" });
+    await waitFor(() => expect(document.activeElement).toBe(prompt));
+    expect(screen.queryByRole("heading", { name: "transitGuide.reboardStationPrompt" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "왕십리(성동구청)" }));
+    // 2단: 라벨이 곧 질문이고 착지점. 목록은 그 역 기준이며 99 항목은 없다. 폴백 버튼은 목록이 있으면 없다.
+    const label = await screen.findByText("transitGuide.waitingLabelAboard");
+    await waitFor(() => expect(document.activeElement).toBe(label));
+    const rows = await screen.findAllByRole("button", { name: /selectTrain/ });
+    expect(rows).toHaveLength(1);
+    expect(screen.queryByRole("button", { name: "transitGuide.continueWithoutTrain" })).toBeNull();
+    expect(screen.getByRole("button", { name: "transitGuide.pickAnotherStation" })).toBeTruthy();
+    // 고르면 boarding(탑승했습니다)을 지나지 않고 riding — 탑승 변경 착지, 통지에 선택 차량, 하차역 폴 시작.
+    fireEvent.click(rows[0]);
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "transitGuide.changeBoarding" })).toBeTruthy();
+    });
+    expect(screen.queryByRole("button", { name: "transitGuide.confirmBoarded" })).toBeNull();
+    expect(screen.getAllByRole("status")[0].textContent).toContain("transitGuide.boarded");
+    expect(screen.getAllByRole("status")[0].textContent).toContain("selectedVehicle");
+    await waitFor(() => {
+      expect(calls.some((u) => u.includes("station=" + encodeURIComponent("여의도")))).toBe(true);
+    });
+    // 상태줄에도 선택 차량(어느 열차인가는 정보다) — live region 통지와 상시 표시 둘.
+    expect(screen.getAllByText(/transitGuide\.selectedVehicle/).length).toBe(2);
   });
 
   it("탑승 leg가 없으면(도보 전용) 렌더하지 않는다", () => {

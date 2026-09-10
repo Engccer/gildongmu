@@ -57,6 +57,26 @@ public func isApproxTransitLock(_ lock: TransitLock) -> Bool {
     lock.vehicleId.isEmpty
 }
 
+/// 비관측 잠금(A34 2026-09-11, spec `2026-09-11-transit-reboard-and-handoff-design.md` §4.2): 근사 잠금 중
+/// 지방버스가 아닌 것 — 지하철·서울버스의 "열차 정보 없이 계속" 폴백. 어느 열차인지 모르므로 하차역 도착
+/// 목록을 매칭하지 않고(잔여 최소 열차 = 하차역 코앞 열차를 내 열차로 잡던 어림값의 폐지) 폴도 하지 않는다.
+/// 출구는 `advance` 상시 + 탑승 변경 + 안내 종료. 지방버스 근사는 설계상 유일한 추적이라 종전 그대로.
+public func transitLockIsUnobserved(_ lock: TransitLock) -> Bool {
+    isApproxTransitLock(lock) && lock.mode != .tagoBus
+}
+
+/// "이미 탑승했습니다" 흐름의 후보 필터(A34 ②, spec §4.2 리뷰 B2): 사용자가 "지금 지나는 역"이라 답한 역의
+/// 도착 목록에서 **그 역에 있는 열차**(진입 0·도착 1·출발 2·전역 출발/진입/도착 3·4·5 — 한 정거장 안)만
+/// 남긴다. `99`(N번째 전역, 두 정거장 이상 밖)는 사용자가 타고 있을 수 없다. 이 필터가 N3의 교차검증
+/// (선택 열차의 승차 정류소 도착 관측)과 같은 급의 증거 — "내가 있다고 말한 역에 그 열차가 있다" — 를
+/// 만들어, 선언 식별 잠금(`boardAboard`)이 확정 도착 권한을 갖는 근거다. 웹 `aboardCandidates` 미러.
+public func transitAboardCandidates(_ items: [TransitTrackItem]) -> [TransitTrackItem] {
+    items.filter { item in
+        guard let code = item.arrivalCode else { return false }
+        return ["0", "1", "2", "3", "4", "5"].contains(code)
+    }
+}
+
 /// 안내 대상으로 조립된 탑승 leg(§4.1). 도보 leg는 대기 문맥으로 흡수된다.
 public struct TransitGuideLeg: Codable, Sendable {
     public let mode: String // "bus" | "subway"
@@ -226,6 +246,12 @@ public enum TransitGuideInput: Sendable {
     case restoreBoarding
     case changeBoarding
     case advance
+    /// 하차역 선언(A37 ②, 2026-09-11): 역 선택에서 하차역을 고르면 그 leg를 확정 도착으로 끝낸다.
+    /// waiting·riding에서만(대기 국면은 "이미 탑승" 흐름의 역 선택).
+    case declareArrived
+    /// "이미 탑승했습니다" 흐름의 식별 잠금(A34 ②, 2026-09-11): 사용자가 지나는 역의 목록에서 고른 열차로
+    /// waiting → riding(declared) 직행. boarding(승차 정류소 도착 대기)을 지나지 않는다 — 이미 탔다.
+    case boardAboard(TransitLock)
 }
 
 /// 구조화 안내 이벤트 — 문구 조립은 앱 몫(GuideText), 완성 문장은 원문 병치(§6.1).
@@ -314,6 +340,10 @@ public let transitBoardStopFreshSeconds = 120
 /// 폴링 주기(ms, §7 적응형). 0 = 폴링 없음(done·untrackable).
 public func transitPollIntervalMs(_ state: TransitGuideState) -> Int {
     if state.phase == .done || state.signal == .untrackable { return 0 }
+    // 확정 도착(관측·선언) 뒤의 폴은 상태를 바꿀 수 없다(backOnTrack은 추정 도착만) — 예산만 쓴다(A37 ②).
+    if state.phase == .arrived, state.arrivedCertain { return 0 }
+    // 비관측 잠금의 riding(A34 ①): 매칭하지 않기로 한 목록을 읽지 않는다.
+    if state.phase == .riding, let lock = state.lock, transitLockIsUnobserved(lock) { return 0 }
     if state.capAnnounced { return 60_000 }
     // boarding은 waiting과 같은 엔드포인트(승차 정류소)라 같은 주기.
     if state.phase == .waiting || state.phase == .boarding { return 20_000 }
@@ -699,9 +729,43 @@ public func transitGuideStep(
         return handleChangeBoarding(state)
     case .advance:
         return handleAdvance(state, route: route)
+    case .declareArrived:
+        return handleDeclareArrived(state)
+    case let .boardAboard(lock):
+        return handleBoardAboard(state, lock: lock, now: now)
     case let .poll(seq, phaseGen, poll):
         return handlePoll(state, seq: seq, phaseGen: phaseGen, poll: poll, now: now)
     }
+}
+
+/// 하차역 선언(A37 ②) — 사용자가 "지금 하차역을 지나고 있다"고 답했다. 확정 도착: 선언은 되돌릴 대상이
+/// 아니라 `certain`이고(추정이면 늦은 폴의 재관측이 `backOnTrack`으로 riding에 되돌린다 — 막다른 길의
+/// 재진입), 세대를 올려 선언 전에 나간 폴의 응답을 폐기한다. `lock`은 유지(급행 선언 상시 문장의 근거).
+/// 웹 `handleDeclareArrived` 미러.
+private func handleDeclareArrived(
+    _ state: TransitGuideState
+) -> (state: TransitGuideState, event: TransitGuideEvent?) {
+    guard state.phase == .waiting || state.phase == .riding, state.signal != .untrackable else {
+        return (state, nil)
+    }
+    var next = resetLockTracking(state)
+    next.phase = .arrived
+    next.phaseGen += 1
+    next.arrivedCertain = true
+    next.ridingSince = nil
+    next.lastUpdatedAt = nil
+    return (next, .arrived(certain: true))
+}
+
+/// "이미 탑승했습니다" 흐름의 식별 잠금(A34 ②) — 지나는 역의 목록에서 고른 열차로 riding 직행.
+/// 근사 잠금은 이 입력의 대상이 아니다(그쪽은 `board`의 종전 경로). 웹 `handleBoardAboard` 미러.
+private func handleBoardAboard(
+    _ state: TransitGuideState, lock: TransitLock, now: Double
+) -> (state: TransitGuideState, event: TransitGuideEvent?) {
+    guard state.phase == .waiting, state.signal != .untrackable, !isApproxTransitLock(lock) else {
+        return (state, nil)
+    }
+    return enterRiding(state, lock: lock, cause: .declared, now: now)
 }
 
 /// 잠금 추적 필드 초기화(국면 진입 공용). failCount/failSince도 함께 비운다 — 폴링
@@ -789,6 +853,9 @@ private func handleChangeBoarding(
     guard state.phase == .boarding || state.phase == .riding || state.phase == .arrived else {
         return (state, nil)
     }
+    // 확정 도착(관측·선언) 뒤의 탑승 변경은 없다(A37 ② 리뷰 관찰): 허용하면 previousPhase = riding으로
+    // 복귀해 선언이 막은 막다른 길이 되살아난다. UI가 arrived에서 그 버튼을 세우지 않지만 리듀서가 막는다.
+    if state.phase == .arrived, state.arrivedCertain { return (state, nil) }
     var next = state
     next.phase = .waiting
     next.phaseGen += 1
@@ -899,6 +966,14 @@ private func handlePoll(
     }
 
     if state.phase == .waiting {
+        next.lastUpdatedAt = now
+        return (next, event)
+    }
+
+    // 비관측 잠금(A34 ①): 매칭·미등장 판정을 지나지 않는다 — trackingStarted·countdown·approxVehicleChanged·
+    // signalLost·neverSeen이 구조적으로 나지 않는다(표시만 가리면 톤 계층이 잔여 앵커로 소리를 낸다).
+    // 폴 주기 0이라 정상 경로에선 도달하지 않는 방어선.
+    if state.phase == .riding, let lock = state.lock, transitLockIsUnobserved(lock) {
         next.lastUpdatedAt = now
         return (next, event)
     }
@@ -1063,10 +1138,9 @@ public func transitFindLockedItem(_ items: [TransitTrackItem], lock: TransitLock
         let byDirection = items.filter {
             lock.direction.isEmpty || $0.direction.isEmpty || $0.direction == lock.direction
         }
-        // 급행 선언 근사 잠금(§6): 급행 항목만 고르고, 없으면 **미등장**(nil) — 완행 폴백은 이 기능이
-        // 막으려던 결함(완행 잔여 카운트다운·거짓 기준 교체)이다(코드 리뷰 MAJOR 1, 웹 미러).
-        let pool = lock.express == true ? byDirection.filter(\.express) : byDirection
-        if lock.express == true, pool.isEmpty { return nil }
+        // ⚠ 급행 선언 근사 잠금의 "급행 항목 우선" 분기는 2026-09-11 은퇴했다(A34 ① — 지하철 근사 잠금이
+        // 비관측이 되어 유일한 소비자가 사라졌다). 급행 확인에 남는 가치는 통과 급행 잠금 거절과 상시 문장.
+        let pool = byDirection
         let withRemaining = pool.filter { $0.remainingStops != nil }
         if let best = withRemaining.min(by: { ($0.remainingStops ?? .max) < ($1.remainingStops ?? .max) }) {
             return best

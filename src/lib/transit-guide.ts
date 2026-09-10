@@ -63,6 +63,28 @@ export function isApproxTransitLock(lock: TransitLock): boolean {
 }
 
 /**
+ * 비관측 잠금(A34 2026-09-11, spec `2026-09-11-transit-reboard-and-handoff-design.md` §4.2): 근사 잠금 중
+ * 지방버스가 아닌 것 — 지하철·서울버스의 "열차 정보 없이 계속" 폴백. 어느 열차인지 모르므로 하차역 도착
+ * 목록을 매칭하지 않고(잔여 최소 열차 = 하차역 코앞 열차를 내 열차로 잡던 어림값의 폐지) 폴도 하지 않는다.
+ * 출구는 `advance` 상시 + 탑승 변경 + 안내 종료. 지방버스 근사는 설계상 유일한 추적이라 종전 그대로.
+ * Kit `transitLockIsUnobserved` 미러.
+ */
+export function isUnobservedTransitLock(lock: TransitLock): boolean {
+  return isApproxTransitLock(lock) && lock.mode !== "tagoBus";
+}
+
+/**
+ * "이미 탑승했습니다" 흐름의 후보 필터(A34 ②, spec §4.2 리뷰 B2): 사용자가 "지금 지나는 역"이라 답한 역의
+ * 도착 목록에서 **그 역에 있는 열차**(진입 0·도착 1·출발 2·전역 출발/진입/도착 3·4·5 — 한 정거장 안)만
+ * 남긴다. `99`(N번째 전역)는 사용자가 타고 있을 수 없다. 이 필터가 N3의 교차검증과 같은 급의 증거를
+ * 만들어 선언 식별 잠금(`boardAboard`)이 확정 도착 권한을 갖는 근거다. Kit `transitAboardCandidates` 미러.
+ */
+export function aboardCandidates(items: TrackItem[]): TrackItem[] {
+  return items.filter((item) => item.arrivalCode != null && ABOARD_CODES.has(item.arrivalCode));
+}
+const ABOARD_CODES = new Set(["0", "1", "2", "3", "4", "5"]);
+
+/**
  * 완성 문장과 그 영문을 **한 관측에서 함께** 뽑는다(E27 잔여 ①, spec 2026-09-01 §3.4).
  *
  * ⚠ 소비자가 이벤트만 보고 문장을 만들고 폴 항목을 붙들지 않으므로, ko만 실으면 소비자가
@@ -208,7 +230,11 @@ export type TransitInput =
   /** "탑승 변경 취소" — previousLock으로 previousPhase 복귀(종전 board(previousLock) 폐기). */
   | { kind: "restoreBoarding" }
   | { kind: "changeBoarding" }
-  | { kind: "advance" };
+  | { kind: "advance" }
+  /** 하차역 선언(A37 ②, 2026-09-11): 역 선택에서 하차역을 고르면 그 leg를 확정 도착으로 끝낸다. */
+  | { kind: "declareArrived" }
+  /** "이미 탑승했습니다" 흐름의 식별 잠금(A34 ②): 지나는 역 목록의 열차로 waiting → riding(declared) 직행. */
+  | { kind: "boardAboard"; lock: TransitLock };
 
 /** riding 진입 경위 — observed=승차 정류소 도착 관측, declared=사용자 선언·근사 잠금. */
 export type TransitBoardedCause = "observed" | "declared";
@@ -336,6 +362,10 @@ export const BOARD_STOP_FRESH_SECONDS = 120;
 /** 폴링 주기(§7 적응형, M1 개정). 0 = 폴링 없음(done·untrackable). */
 export function pollIntervalMs(state: TransitGuideState): number {
   if (state.phase === "done" || state.signal === "untrackable") return 0;
+  // 확정 도착(관측·선언) 뒤의 폴은 상태를 바꿀 수 없다(backOnTrack은 추정 도착만) — 예산만 쓴다(A37 ②).
+  if (state.phase === "arrived" && state.arrivedCertain) return 0;
+  // 비관측 잠금의 riding(A34 ①): 매칭하지 않기로 한 목록을 읽지 않는다.
+  if (state.phase === "riding" && state.lock != null && isUnobservedTransitLock(state.lock)) return 0;
   if (state.capAnnounced) return 60_000;
   // boarding은 waiting과 같은 엔드포인트(승차 정류소)라 같은 주기.
   if (state.phase === "waiting" || state.phase === "boarding") return 20_000;
@@ -786,9 +816,47 @@ export function transitGuideStep(
       return handleChangeBoarding(state);
     case "advance":
       return handleAdvance(state, route);
+    case "declareArrived":
+      return handleDeclareArrived(state);
+    case "boardAboard":
+      return handleBoardAboard(state, input.lock, now);
     case "poll":
       return handlePoll(state, input, route, now);
   }
+}
+
+/**
+ * 하차역 선언(A37 ②) — 사용자가 "지금 하차역을 지나고 있다"고 답했다. 확정 도착: 선언은 되돌릴 대상이
+ * 아니라 `certain`이고(추정이면 늦은 폴의 재관측이 `backOnTrack`으로 riding에 되돌린다 — 막다른 길의
+ * 재진입), 세대를 올려 선언 전에 나간 폴의 응답을 폐기한다. `lock`은 유지(급행 선언 상시 문장의 근거).
+ * Kit `handleDeclareArrived` 미러.
+ */
+function handleDeclareArrived(state: TransitGuideState): TransitStepResult {
+  if ((state.phase !== "waiting" && state.phase !== "riding") || state.signal === "untrackable") {
+    return { state, event: null };
+  }
+  return {
+    state: {
+      ...resetLockTracking(state),
+      phase: "arrived",
+      phaseGen: state.phaseGen + 1,
+      arrivedCertain: true,
+      ridingSince: null,
+      lastUpdatedAt: null,
+    },
+    event: { kind: "arrived", certain: true },
+  };
+}
+
+/**
+ * "이미 탑승했습니다" 흐름의 식별 잠금(A34 ②) — 지나는 역의 목록에서 고른 열차로 riding 직행.
+ * 근사 잠금은 이 입력의 대상이 아니다(그쪽은 `board`의 종전 경로). Kit `handleBoardAboard` 미러.
+ */
+function handleBoardAboard(state: TransitGuideState, lock: TransitLock, now: number): TransitStepResult {
+  if (state.phase !== "waiting" || state.signal === "untrackable" || isApproxTransitLock(lock)) {
+    return { state, event: null };
+  }
+  return enterRiding(state, lock, "declared", now);
 }
 
 /**
@@ -887,6 +955,9 @@ function handleChangeBoarding(state: TransitGuideState): TransitStepResult {
   if (state.phase !== "boarding" && state.phase !== "riding" && state.phase !== "arrived") {
     return { state, event: null };
   }
+  // 확정 도착(관측·선언) 뒤의 탑승 변경은 없다(A37 ② 리뷰 관찰): 허용하면 previousPhase = riding으로
+  // 복귀해 선언이 막은 막다른 길이 되살아난다. UI가 arrived에서 그 버튼을 세우지 않지만 리듀서가 막는다.
+  if (state.phase === "arrived" && state.arrivedCertain) return { state, event: null };
   return {
     state: {
       ...state,
@@ -1010,6 +1081,14 @@ function handlePoll(
 
   if (state.phase === "waiting") {
     // 대기 목록은 오케스트레이터가 직접 소비(§4.2) — 머신은 갱신 시각만 기록.
+    next.lastUpdatedAt = now;
+    return { state: next, event };
+  }
+
+  // 비관측 잠금(A34 ①): 매칭·미등장 판정을 지나지 않는다 — trackingStarted·countdown·approxVehicleChanged·
+  // signalLost·neverSeen이 구조적으로 나지 않는다(표시만 가리면 톤 계층이 잔여 앵커로 소리를 낸다).
+  // 폴 주기 0이라 정상 경로에선 도달하지 않는 방어선.
+  if (state.phase === "riding" && state.lock != null && isUnobservedTransitLock(state.lock)) {
     next.lastUpdatedAt = now;
     return { state: next, event };
   }
@@ -1219,11 +1298,9 @@ export function findLockedItem(items: TrackItem[], lock: TransitLock): TrackItem
     const byDirection = items.filter(
       (it) => !lock.direction || !it.direction || it.direction === lock.direction,
     );
-    // 급행 선언 근사 잠금(§6): 급행 항목만 고른다. 급행이 목록에 없으면 **미등장**(null)이다 — 완행으로
-    // 떨어뜨리면 더 가까운 완행 잔여로 카운트다운이 나가고 급행이 다시 잡힐 때 "기준 차량 교체"가 거짓으로
-    // 난다(코드 리뷰 MAJOR 1). 미등장 경로(첫 관측 전 정상 침묵·관측 후 유예 뒤 소실)가 정직하다.
-    const pool = lock.express ? byDirection.filter((it) => it.express) : byDirection;
-    if (lock.express && pool.length === 0) return null;
+    // ⚠ 급행 선언 근사 잠금의 "급행 항목 우선" 분기는 2026-09-11 은퇴했다(A34 ① — 지하철 근사 잠금이
+    // 비관측이 되어 유일한 소비자가 사라졌다). 급행 확인에 남는 가치는 통과 급행 잠금 거절과 상시 문장.
+    const pool = byDirection;
     let best: TrackItem | null = null;
     for (const it of pool) {
       if (it.remainingStops == null) continue;

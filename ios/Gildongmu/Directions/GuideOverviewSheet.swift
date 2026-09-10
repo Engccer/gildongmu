@@ -348,20 +348,18 @@ final class TransitOverviewAdapter: GuideOverviewCapability, Identifiable {
 
     private func silenceText(_ signal: TransitOverviewSilenceSignal, recovered: Bool) -> String {
         if recovered { return appLocalized("transitGuide.signalRecovered") }
-        // 수단별 키(A33) — 상시 표시 `signalStatusText`와 같은 축(열차/버스). 키는 리터럴(린터).
+        // 상시 표시와 같은 선택기(A33 수단 축·A34 비관측 축) — 리뷰 M1: 이 행이 따로 키를 부르면 비관측 riding에서
+        // "하차역에 가까워지면 표시됩니다"가 거짓으로 남는다. neverSeen만 통지 문장(탈출구 안내)을 쓴다.
         let isTrain = model.currentLeg?.mode == "subway"
-        return switch signal {
-        case .neverSeen: appLocalized("transitGuide.neverSeen")
-        case .notYetVisible:
-            isTrain
-                ? appLocalized("transitGuide.stateRidingNotYetVisible")
-                : appLocalized("transitGuide.stateRidingNotYetVisibleBus")
-        case .signalLost:
-            isTrain
-                ? appLocalized("transitGuide.stateSignalLost")
-                : appLocalized("transitGuide.stateSignalLostBus")
-        case .upstreamFailed: appLocalized("transitGuide.stateUpstreamFailed")
+        let unobserved = model.state?.lock.map(transitLockIsUnobserved) ?? false
+        let mapped: TransitSignal = switch signal {
+        case .neverSeen: .neverSeen
+        case .notYetVisible: .notYetVisible
+        case .signalLost: .signalLost
+        case .upstreamFailed: .upstreamFailed
         }
+        if signal == .neverSeen, !unobserved { return appLocalized("transitGuide.neverSeen") }
+        return model.signalStatusText(mapped, phase: .riding, isTrain: isTrain, unobserved: unobserved)
     }
 
     var overviewActions: [GuideOverviewAction] {

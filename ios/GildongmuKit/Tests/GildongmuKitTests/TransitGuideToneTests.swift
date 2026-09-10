@@ -64,9 +64,10 @@ private func fixtureURL(_ name: String) -> URL {
 
 private func toInput(_ raw: ToneFixture.Input, locks: [String: TransitLock]) throws -> TransitGuideInput {
     switch raw.kind {
-    case "board":
+    case "board", "boardAboard":
         guard let ref = raw.lock, let lock = locks[ref] else { throw FixtureError.badLock }
-        return .board(lock)
+        return raw.kind == "board" ? .board(lock) : .boardAboard(lock)
+    case "declareArrived": return .declareArrived
     case "confirmBoarded": return .confirmBoarded
     case "restoreBoarding": return .restoreBoarding
     case "changeBoarding": return .changeBoarding

@@ -1698,14 +1698,14 @@
       ]
     },
     {
-      "name": "⑬ 근사 잠금: 잔여 증가는 approxVehicleChanged 이벤트가 소유(무음·재앵커), 그 뒤 감소에 closer",
+      "name": "⑬ 근사 잠금(지방버스): 잔여 증가는 approxVehicleChanged 이벤트가 소유(무음·재앵커), 그 뒤 감소에 closer — 2026-09-11 지하철 근사가 비관측이 되어 tagoApprox로",
       "route": "subwaySingle",
       "steps": [
         {
           "at": 0,
           "input": {
             "kind": "board",
-            "lock": "subwayApproxDown"
+            "lock": "tagoApprox"
           },
           "expect": {
             "tone": null,

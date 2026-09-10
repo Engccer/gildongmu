@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import scenariosFixture from "./fixtures/transit-guide-scenarios.json";
 import { transitPrewalkTarget, withoutPrewalk } from "../transit-guide";
 import {
+  aboardCandidates,
   buildTransitGuideRoute,
   classifyBoardingCandidates,
   classifyTrackMode,
@@ -12,6 +13,7 @@ import {
   needsExpressPrompt,
   declaredExpressVerdict,
   initTransitGuide,
+  isUnobservedTransitLock,
   pollIntervalMs,
   SESSION_POLL_CAP,
   subwayIdForOdsayLine,
@@ -50,9 +52,9 @@ const fixture = scenariosFixture as unknown as {
 };
 
 function resolveInput(raw: Record<string, unknown>): TransitInput {
-  if (raw.kind === "board") {
+  if (raw.kind === "board" || raw.kind === "boardAboard") {
     const lockRef = raw.lock as string;
-    return { kind: "board", lock: fixture.locks[lockRef] };
+    return { kind: raw.kind, lock: fixture.locks[lockRef] };
   }
   return raw as unknown as TransitInput;
 }
@@ -150,6 +152,46 @@ describe("pollIntervalMs — 적응 주기(§7)", () => {
     expect(state.phase).toBe("done");
     expect(pollIntervalMs(state)).toBe(0);
     expect(pollIntervalMs(initTransitGuide(fixture.routes.untrackableSubway, 0))).toBe(0);
+  });
+
+  it("확정 도착(관측·선언)·비관측 잠금 riding은 0, 추정 도착·지방버스 근사는 종전(2026-09-11 A37·A34)", () => {
+    const route = SUBWAY_ROUTE();
+    // 선언 도착 → 0(폴이 상태를 바꿀 수 없다).
+    let state = transitGuideStep(initTransitGuide(route, 0), { kind: "boardAboard", lock: SUBWAY_LOCK() }, route, 0).state;
+    expect(pollIntervalMs(state)).toBe(60_000);
+    state = transitGuideStep(state, { kind: "declareArrived" }, route, 1).state;
+    expect(state.phase).toBe("arrived");
+    expect(pollIntervalMs(state)).toBe(0);
+    // 추정 도착은 재관측 감시를 계속한다.
+    let guess = transitGuideStep(initTransitGuide(route, 0), { kind: "boardAboard", lock: SUBWAY_LOCK() }, route, 0).state;
+    guess = transitGuideStep(guess, pollOk(1, 1, [item({ remainingStops: 1, message: "전역 출발" })]), route, 1).state;
+    guess = transitGuideStep(guess, { kind: "poll", seq: 2, phaseGen: 1, poll: { kind: "empty" } }, route, 2).state;
+    guess = transitGuideStep(guess, { kind: "poll", seq: 3, phaseGen: 1, poll: { kind: "empty" } }, route, 3).state;
+    expect(guess.phase).toBe("arrived");
+    expect(guess.arrivedCertain).toBe(false);
+    expect(pollIntervalMs(guess)).toBe(15_000);
+    // 비관측 잠금(지하철 근사) riding → 0, 지방버스 근사 riding → 종전 60s.
+    const unobserved = transitGuideStep(initTransitGuide(route, 0), { kind: "board", lock: fixture.locks.subwayApproxDown }, route, 0).state;
+    expect(unobserved.phase).toBe("riding");
+    expect(pollIntervalMs(unobserved)).toBe(0);
+    const tago = fixture.routes.tagoBusSingle;
+    const tagoState = transitGuideStep(initTransitGuide(tago, 0), { kind: "board", lock: fixture.locks.tagoApprox }, tago, 0).state;
+    expect(pollIntervalMs(tagoState)).toBe(60_000);
+  });
+});
+
+describe("비관측 잠금·이미 탑승 후보 필터(A34, 2026-09-11)", () => {
+  it("isUnobservedTransitLock: 근사 ∧ 지방버스 아님", () => {
+    expect(isUnobservedTransitLock(fixture.locks.subwayApproxDown)).toBe(true);
+    expect(isUnobservedTransitLock({ mode: "seoulBus", routeId: "1", direction: "", vehicleId: "" })).toBe(true);
+    expect(isUnobservedTransitLock(fixture.locks.tagoApprox)).toBe(false);
+    expect(isUnobservedTransitLock(SUBWAY_LOCK())).toBe(false);
+  });
+
+  it("aboardCandidates: 그 역에 있는 열차(0~5)만 — 99·결측은 제외", () => {
+    const codes = ["0", "1", "2", "3", "4", "5", "99", undefined];
+    const items = codes.map((code, i) => item({ vehicleId: `v${i}`, arrivalCode: code }));
+    expect(aboardCandidates(items).map((it) => it.arrivalCode)).toEqual(["0", "1", "2", "3", "4", "5"]);
   });
 });
 

@@ -119,11 +119,13 @@ private func loadFixture() throws -> FixtureFile {
 
 private func toInput(_ raw: FixtureInput, locks: [String: TransitLock]) throws -> TransitGuideInput {
     switch raw.kind {
-    case "board":
+    case "board", "boardAboard":
         guard let ref = raw.lock, let lock = locks[ref] else {
             throw NSError(domain: "fixture", code: 1)
         }
-        return .board(lock)
+        return raw.kind == "board" ? .board(lock) : .boardAboard(lock)
+    case "declareArrived":
+        return .declareArrived
     case "confirmBoarded":
         return .confirmBoarded
     case "restoreBoarding":
@@ -289,6 +291,44 @@ private func kindName(_ event: TransitGuideEvent?) -> String? {
     #expect(state.phase == .done)
     #expect(transitPollIntervalMs(state) == 0)
     #expect(transitPollIntervalMs(initTransitGuide(route: fixture.routes["untrackableSubway"]!, now: 0)) == 0)
+}
+
+@Test func pollIntervalZeroAfterCertainArrivalAndForUnobservedLock() throws {
+    // 2026-09-11 A37 ②·A34 ①: 확정 도착(선언)·비관측 잠금 riding은 폴 없음, 지방버스 근사는 종전.
+    let fixture = try loadFixture()
+    let route = fixture.routes["subwaySingle"]!
+    var state = transitGuideStep(
+        state: initTransitGuide(route: route, now: 0), input: .boardAboard(fixture.locks["subway5696"]!),
+        route: route, now: 0).state
+    #expect(state.phase == .riding)
+    #expect(transitPollIntervalMs(state) == 60_000)
+    state = transitGuideStep(state: state, input: .declareArrived, route: route, now: 1).state
+    #expect(state.phase == .arrived && state.arrivedCertain)
+    #expect(transitPollIntervalMs(state) == 0)
+    let unobserved = transitGuideStep(
+        state: initTransitGuide(route: route, now: 0), input: .board(fixture.locks["subwayApproxDown"]!),
+        route: route, now: 0).state
+    #expect(unobserved.phase == .riding)
+    #expect(transitPollIntervalMs(unobserved) == 0)
+    let tago = fixture.routes["tagoBusSingle"]!
+    let tagoState = transitGuideStep(
+        state: initTransitGuide(route: tago, now: 0), input: .board(fixture.locks["tagoApprox"]!),
+        route: tago, now: 0).state
+    #expect(transitPollIntervalMs(tagoState) == 60_000)
+}
+
+@Test func unobservedLockAndAboardCandidates() throws {
+    let fixture = try loadFixture()
+    #expect(transitLockIsUnobserved(fixture.locks["subwayApproxDown"]!))
+    #expect(transitLockIsUnobserved(TransitLock(mode: .seoulBus, routeId: "1", direction: "", vehicleId: "")))
+    #expect(!transitLockIsUnobserved(fixture.locks["tagoApprox"]!))
+    #expect(!transitLockIsUnobserved(fixture.locks["subway5696"]!))
+    let codes: [String?] = ["0", "1", "2", "3", "4", "5", "99", nil]
+    let items = codes.enumerated().map { i, code in
+        TransitTrackItem(vehicleId: "v\(i)", direction: "하행", message: "", remainingStops: nil,
+                         destinationName: nil, express: false, arrivalCode: code)
+    }
+    #expect(transitAboardCandidates(items).map(\.arrivalCode) == ["0", "1", "2", "3", "4", "5"])
 }
 
 @Test func sessionPollCapAnnouncesOnce() throws {

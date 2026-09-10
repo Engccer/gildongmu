@@ -253,6 +253,7 @@ final class TransitGuideModel {
         droppedWhileSuppressed = nil
         expressBlockedNote = nil
         boardOverrideIndex = nil
+        aboardStep = nil
         selectedDescription = nil
         reboardPickerActive = false
         // 목적지 전환 준비·억제도 세션과 함께 소거(스펙 §5.4 — 잔류 억제 금지).
@@ -290,7 +291,9 @@ final class TransitGuideModel {
             // (§3.2 "안내 재개. {현재 상태}" — 3-state 정직, 독립 리뷰 MAJOR).
             var parts = [appLocalized("transitGuide.resumed")]
             if let s = state, let leg = currentLeg {
-                parts.append(signalStatusText(s.signal, phase: s.phase, isTrain: leg.mode == "subway"))
+                parts.append(signalStatusText(
+                    s.signal, phase: s.phase, isTrain: leg.mode == "subway",
+                    unobserved: s.lock.map(transitLockIsUnobserved) ?? false))
             }
             announce(parts.joined(separator: " "))
             restartPollLoop(immediate: true)
@@ -345,11 +348,35 @@ final class TransitGuideModel {
     }
 
     func advance() {
+        completeOrAdvance(announceDone: true)
+    }
+
+    /// 마지막 leg의 단일 버튼 "남은 도보 안내 시작"(E34, spec 2026-09-11 §4.3): `advance`와 같은 전이이되
+    /// 완료 문장 `doneWalk`를 내지 않는다 — 그 문장은 어차피 `acceptWalkHandoff`의 `stop()`이 지연 슬롯째
+    /// 취소하고(설계 리뷰 M3), 도착 통지(`arrivedWalkNext`)가 이미 도보 분을 말했다. 우연이 아니라 설계로
+    /// 침묵시킨다. 반환 = 말미 도보 인계가 남았는가(false면 시트가 인계를 부르지 않는다 — 전이 실패 시
+    /// 세션을 끊지 않는 가드).
+    func advanceIntoWalkHandoff() -> Bool {
+        completeOrAdvance(announceDone: false)
+        let pending = pendingWalkHandoff != nil
+        transitGuideLog("walkHandoffNow pending=\(pending)")
+        return pending
+    }
+
+    /// 마지막 leg면 목적지까지의 말미 도보 분(E34 버튼 조건), 아니면 nil.
+    var finalLegWalkMinutes: Int? {
+        guard let state, let route, state.legIndex == route.legs.count - 1 else { return nil }
+        return route.walkAfterMinutes
+    }
+
+    private func completeOrAdvance(announceDone: Bool) {
         dispatch(.advance)
         if state?.phase == .done {
             // 완료 통지는 legAdvanced 이벤트가 이미 냈다 — 자원만 회수한다.
             // 말미 도보가 있으면 핸드오프 제안(§14.2)을 stop() **뒤에** 남긴다
             // (stop()이 pendingWalkHandoff까지 nil로 지우는 단일 소거 경로라 순서 필수).
+            // ⚠ E34(2026-09-11)부터 이 값은 인계 화면의 근거가 아니라 **한 턴 수명 신호**다 — 같은 턴에
+            // `GuideSession.acceptWalkHandoff`가 소비한다(인계 제안 화면은 도달 경로가 없어 삭제됐다).
             let handoff = route?.walkAfterMinutes.map {
                 TransitWalkHandoff(destinationLabel: destinationLabel, walkMinutes: $0)
             }
@@ -359,7 +386,7 @@ final class TransitGuideModel {
             let doneText = finalLegText()
             stop()
             pendingWalkHandoff = handoff
-            announce(doneText)
+            if announceDone { announce(doneText) }
         } else {
             waitingLive = []
             waitingDeparted = []
@@ -403,6 +430,92 @@ final class TransitGuideModel {
 
     func cancelReboard() {
         reboardPickerActive = false
+    }
+
+    /// 하차역 선언(A37 ②, spec 2026-09-11 §4.1): 역 선택(승차 중 탑승 변경·"이미 탑승" 흐름 둘 다)에서
+    /// 하차역을 고르면 그 leg를 확정 도착으로 끝낸다 — 대기 국면으로 되돌리지 않는다. 통지는 관측 도착과
+    /// 같은 지연 창구(`.arrived` 이벤트, 도착 종 뒤 발화). 폴 주기 0(리듀서) + 즉폴 게이트로 폴이 나가지 않는다.
+    func declareArrived() {
+        guard let state, state.phase == .waiting || state.phase == .riding else { return }
+        transitGuideLog("declareArrived from=\(state.phase.rawValue) leg=\(state.legIndex)")
+        dispatch(.declareArrived)
+        waitingLive = []
+        waitingDeparted = []
+        waitingReason = nil
+        restartPollLoop(immediate: false)
+    }
+
+    // MARK: - "이미 탑승했습니다" 흐름 (A34 ②+①, spec 2026-09-11 §4.2)
+
+    /// 대기 국면의 두 단계: 지나는 역 묻기 → 그 역에 있는 열차 고르기. 국면이 waiting을 벗어나면 소거(`dispatch`).
+    enum AboardStep: Equatable { case pickStation, pickVehicle }
+    private(set) var aboardStep: AboardStep?
+    /// 이 dispatch의 입력이 `boardAboard`였다 — `boarded(declared)` 통지에 선택 차량 조각을 붙일지의 판별
+    /// (`firstObservationInStep` 동형. `confirmBoarded`의 declared는 `vehicleSelected`가 이미 말했다).
+    private var aboardBoardInStep = false
+
+    /// [이미 탑승했습니다] — 지하철이면 역부터 묻는다. 그 밖(서울버스)은 종전대로 곧장 근사(비관측) 잠금
+    /// (역 이름 조회가 성립하지 않는다 — `beginReboard`가 지하철 전용인 근거와 같다).
+    func beginAboard() {
+        guard state?.phase == .waiting, let leg = currentLeg else { return }
+        guard leg.trackMode == .subway, !leg.viaStops.isEmpty else {
+            boardAlready()
+            return
+        }
+        aboardStep = .pickStation
+        transitGuideLog("aboard step=pickStation")
+    }
+
+    func cancelAboard() {
+        aboardStep = nil
+        transitGuideLog("aboard step=cancel")
+    }
+
+    /// 역 선택(pickStation) 응답. 하차역이면 도착 선언(§4.1), 그 밖은 그 역 기준 목록으로(스냅숏·3분 버퍼 소거 —
+    /// 승차역 목록이 다른 역 목록에 섞이지 않게, 리뷰 m1).
+    func pickAboardStation(at stopIndex: Int) {
+        guard aboardStep == .pickStation, let leg = currentLeg else { return }
+        if stopIndex == leg.viaStops.count - 1 {
+            aboardStep = nil
+            declareArrived()
+            return
+        }
+        boardOverrideIndex = stopIndex
+        aboardStep = .pickVehicle
+        waitingLive = []
+        waitingDeparted = []
+        waitingReason = nil
+        retained = [:]
+        transitGuideLog("aboard step=pickVehicle station=\(stopIndex)")
+        restartPollLoop(immediate: true)
+    }
+
+    func pickAnotherAboardStation() {
+        guard aboardStep == .pickVehicle else { return }
+        aboardStep = .pickStation
+        transitGuideLog("aboard step=pickStation again")
+    }
+
+    /// pickVehicle 목록에서 고른 열차로 riding 직행(식별 잠금, 선언). boarding을 지나지 않는다 — 이미 탔다.
+    /// 차단 재판정은 `board()`와 같은 술어.
+    func boardAboard(item: TransitTrackItem, description: TransitLabel?) {
+        guard aboardStep == .pickVehicle, let leg = currentLeg, let trackMode = leg.trackMode else { return }
+        guard transitUnreachableReason(item, leg: leg) == nil else {
+            transitGuideLog("boardAboard rejected unreachable vehicle=\(item.vehicleId ?? "-")")
+            return
+        }
+        let lock = TransitLock(
+            mode: trackMode,
+            routeId: leg.routeId ?? subwayIdForOdsayLine(leg.lineName) ?? "",
+            direction: item.direction,
+            vehicleId: item.vehicleId ?? ""
+        )
+        selectedDescription = description
+        transitGuideLog("boardAboard vehicle=\(item.vehicleId ?? "-")")
+        aboardBoardInStep = true
+        dispatch(.boardAboard(lock))
+        aboardBoardInStep = false
+        restartPollLoop(immediate: true)
     }
 
     /// 사용자가 고른 현재 역으로 재선택한다(A16 L3). 인자는 **세션 경로 `viaStops`의 인덱스**다 —
@@ -671,6 +784,7 @@ final class TransitGuideModel {
         pollTask?.cancel()
         pollTask = nil
         pendingWalkHandoff = nil  // 옛 목적지의 핸드오프 제안 무효
+        aboardStep = nil  // 새 경로의 대기 국면은 처음부터
         // 같은 목적지의 경로 전환이면 메뉴 쪽 목적지 후보는 낡았다(출발점이 바뀌었다).
         destChangeToken += 1
         pendingDestChange = nil
@@ -731,14 +845,22 @@ final class TransitGuideModel {
         ].filter { !$0.isEmpty }
         default: [contextText(leg)]
         }
-        parts.append(signalStatusText(state.signal, phase: state.phase, isTrain: leg.mode == "subway"))
+        // 비관측 잠금(A34 ①): 어느 열차인지 모르는 상태라 잔여·프레임·신선도를 내지 않는다(어림값 표시 폐지).
+        let unobserved = state.lock.map(transitLockIsUnobserved) ?? false
+        parts.append(signalStatusText(
+            state.signal, phase: state.phase, isTrain: leg.mode == "subway", unobserved: unobserved))
+        // 승차 중 어느 열차인가는 정보다(A34 ② — 목록에서 고른 열차를 확인하는 자리, 리뷰 m5).
+        if state.phase == .riding, let desc = selectedDescription {
+            parts.append(TransitGuideTextRenderer.render(
+                transitSelectedVehicleLine(isEn: transitGuideIsEn, desc: desc)))
+        }
         if state.phase == .boarding {
             // 승차 정류소 기준 정보라 "하차역까지 남은 정거장"을 말하면 거짓이 된다 —
             // 원문 프레임만(잔여 수는 원문 꼬리가 담는다).
             if let message = state.lastMessage, !message.isEmpty {
                 parts.append(approachFrameText(leg, transitMessageLabel(message, state.lastMessageEn)))
             }
-        } else {
+        } else if !unobserved {
             if let remaining = state.remaining {
                 parts.append(appLocalized("transitGuide.remainingCount", remaining))
             } else if let count = leg.stationCount, state.phase == .riding {
@@ -751,9 +873,10 @@ final class TransitGuideModel {
                 parts.append(framed)
             }
         }
-        // 근사 주석의 판별자는 leg 유형이 아니라 잠금의 근사 여부(§13.2 — tagoBus는
-        // 대기 중에도 근사 예고로 유지).
-        if leg.trackMode == .tagoBus || (state.lock.map(isApproxTransitLock) ?? false) {
+        // 근사 주석("같은 노선의 접근 차량 기준")은 지방버스만(대기 중에도 근사 예고). 지하철·서울버스 근사는
+        // 2026-09-11부터 비관측이라 접근 차량 기준이 아니다 — 국면을 보지 않는 잠금 술어로 갈라 선언 도착
+        // 뒤에도 상속되지 않게(리뷰 m2).
+        if leg.trackMode == .tagoBus {
             parts.append(appLocalized("transitGuide.approxNote"))
         }
         // 급행 선언 잠금(§6)은 판정을 상시 표시에 남긴다 — 답한 직후의 침묵이 "확인됨"으로 읽히지 않게.
@@ -764,7 +887,10 @@ final class TransitGuideModel {
         }
         // 신선도 문장은 정확히 1개(§12.3, 감사 H2·M1): 추적 중이면 데이터 나이,
         // 그 외엔 마지막 폴 시각만 — 낡은 나이를 신선한 값처럼 이월하지 않는다.
-        if state.signal == .tracking, let age = state.dataAgeSeconds {
+        // 비관측 잠금은 폴이 없어 신선도가 정보가 아니다(동결 시각은 "앱이 멈췄다"로 읽힌다, 리뷰 m4).
+        if unobserved {
+            // 없음
+        } else if state.signal == .tracking, let age = state.dataAgeSeconds {
             parts.append(appLocalized("transitGuide.dataAge", age))
         } else if let updatedAt = state.lastUpdatedAt {
             parts.append(appLocalized("transitGuide.lastUpdated", Self.timeText(updatedAt)))
@@ -786,7 +912,9 @@ final class TransitGuideModel {
         pollTask?.cancel()
         guard let state else { return }
         let interval = transitPollIntervalMs(state)
-        if !immediate, interval <= 0 { return }
+        // 주기 0 = 폴 없음이고 **즉폴도 예외가 아니다**(A37 ② 설계 리뷰 B1 — 종전엔 `!immediate`에만 걸려
+        // 선언 도착·백그라운드 복귀의 즉폴이 새 세대로 나가 remaining·lastMessage를 되살렸다).
+        if interval <= 0 { return }
         // 계측: 이 폴을 예약한 주기(즉폴은 nil → `planned=-`).
         plannedIntervalMs = immediate ? nil : interval
         pollTask = Task { [weak self] in
@@ -847,7 +975,7 @@ final class TransitGuideModel {
             if refreshAnnounce, leg.trackMode != .tagoBus {
                 refreshAnnounce = false
                 let candidates = classifyTransitBoardingCandidates(
-                    waitingLive + waitingDeparted.map(\.item), leg: leg
+                    waitingCandidatesPool(), leg: leg
                 ).candidates
                 refreshResponse = waitingReason == .unavailable
                     ? reasonText(.unavailable)
@@ -940,6 +1068,13 @@ final class TransitGuideModel {
         } catch {
             return (.failed, nil)
         }
+    }
+
+    /// 대기 목록의 입력 풀(시트·새로고침 응답 공용). "이미 탑승" pickVehicle 단계는 그 역에 있는 열차만
+    /// (`transitAboardCandidates`, A34 ② 후보 필터) — 두 소비자가 다른 풀을 보면 "탑승 후보 N개"가 화면과 어긋난다.
+    func waitingCandidatesPool() -> [TransitTrackItem] {
+        let all = waitingLive + waitingDeparted.map(\.item)
+        return aboardStep == .pickVehicle ? transitAboardCandidates(all) : all
     }
 
     /// 0건 사유 문구(§13.3 3-state) — 목록 자리(시트)·새로고침 응답 공용.
@@ -1043,9 +1178,11 @@ final class TransitGuideModel {
         let enteredRiding = result.state.phase == .riding && state.phase != .riding
         switch input {
         case .advance: boardOverrideIndex = nil; selectedDescription = nil
-        case .board, .confirmBoarded, .restoreBoarding, .changeBoarding, .poll: break
+        case .board, .boardAboard, .confirmBoarded, .restoreBoarding, .changeBoarding, .declareArrived, .poll: break
         }
         if enteredRiding { boardOverrideIndex = nil }
+        // "이미 탑승" 흐름은 대기 국면 전용 UI — 국면이 바뀌면 소거(`reboardPickerActive`와 같은 국면 기반 규칙).
+        if result.state.phase != .waiting { aboardStep = nil }
         // 급행 거절 문장은 그 대기 국면에 묶인다 — 국면 세대가 바뀌면 낡았다.
         if result.state.phaseGen != state.phaseGen { expressBlockedNote = nil }
         // 픽커는 riding 국면 전용 UI다. 국면이 바뀌면 화면에서는 사라지지만 플래그가
@@ -1136,6 +1273,11 @@ final class TransitGuideModel {
                 }
                 parts.append(TransitGuideTextRenderer.render(
                     transitBoardedLine(isEn: transitGuideIsEn, leg: d)))
+                // "이미 탑승" 식별 잠금(A34 ②)은 vehicleSelected를 내지 않으므로 어느 열차를 잠갔는지 여기서 말한다.
+                if aboardBoardInStep, let desc = selectedDescription {
+                    parts.append(TransitGuideTextRenderer.render(
+                        transitSelectedVehicleLine(isEn: transitGuideIsEn, desc: desc)))
+                }
             }
         case let .trackingStarted(message, messageEn, remaining, arrivalCode):
             if let leg { parts.append(contextText(leg)) }
@@ -1169,7 +1311,14 @@ final class TransitGuideModel {
             } ?? message
             if let framed { parts.append(framed) }
         case let .arrived(certain):
-            parts.append(appLocalized(certain ? "transitGuide.arrived" : "transitGuide.arrivedGuess"))
+            // 마지막 leg + 말미 도보(E34): 그 자리 버튼이 "남은 도보 안내 시작" 하나라 지시 문장이 그 이름을
+            // 부르고 도보 분을 담는다("다음: 대중교통 구간이 끝났습니다…" 조각은 내지 않는다 — 내리기 전이다).
+            if let walk = finalLegWalkMinutes {
+                parts.append(appLocalized(
+                    certain ? "transitGuide.arrivedWalkNext" : "transitGuide.arrivedGuessWalkNext", walk))
+            } else {
+                parts.append(appLocalized(certain ? "transitGuide.arrived" : "transitGuide.arrivedGuess"))
+            }
             // 출구 방면(E25)은 **확정** 도착에만 — 추정 도착은 전 역에서 신호를 잃은 것일 수 있어
             // 확정형 출구 안내가 잘못 내리게 한다(설계 리뷰 #14). 서버가 역 밖 하차에만 실은 값.
             if certain, let leg, let exit = displayLeg(leg, useOverride: false).exitAlight {
@@ -1182,7 +1331,7 @@ final class TransitGuideModel {
                     parts.append(appLocalized(
                         "transitGuide.nextLeg",
                         waitContextText(route.legs[nextIndex], isCurrentLeg: false)))
-                } else if let walk = route.walkAfterMinutes {
+                } else if finalLegWalkMinutes == nil, let walk = route.walkAfterMinutes {
                     parts.append(appLocalized(
                         "transitGuide.nextLeg", appLocalized("transitGuide.doneWalk", String(walk))))
                 }
@@ -1295,7 +1444,18 @@ final class TransitGuideModel {
     /// 추적은 GPS를 쓰지 않으므로 문장이 "열차/버스 위치"를 주어로 말해야 "앱이 내 위치를 못 잡는다"로
     /// 읽히지 않는다. 3-state: 아직 안 잡힘(정상, 하차역 부근에서 등장) / 잠시 끊김 / 끝내 확인 불가.
     /// ⚠ `isTrain`에 기본값을 두지 않는다 — 생략이 컴파일을 통과하면 버스 승차에 "열차"가 조용히 붙는다.
-    func signalStatusText(_ signal: TransitSignal, phase: TransitPhase, isTrain: Bool) -> String {
+    /// `unobserved`(비관측 잠금, A34 ①)도 같다 — 호출 지점 셋(상시 표시·복귀 통지·조망 침묵 행)이 컴파일로
+    /// 강제되어야 "하차역에 가까워지면 표시됩니다"가 폴을 하지 않는 상태에서 거짓으로 남지 않는다(리뷰 M1).
+    /// 도착 국면은 신호와 무관하게 "하차 지점 도착."(관측·선언 공통, A37 ②).
+    func signalStatusText(
+        _ signal: TransitSignal, phase: TransitPhase, isTrain: Bool, unobserved: Bool
+    ) -> String {
+        if unobserved, phase == .riding {
+            return isTrain
+                ? appLocalized("transitGuide.stateRidingUnobserved")
+                : appLocalized("transitGuide.stateRidingUnobservedBus")
+        }
+        if phase == .arrived { return appLocalized("transitGuide.stateArrived") }
         // 키는 리터럴로 쓴다 — 카탈로그 키 린터(`check-xcstrings-keys.mjs`)가 보간 키를 못 본다.
         return switch signal {
         case .tracking:
