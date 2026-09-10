@@ -89,6 +89,13 @@ type Status =
  *   백버튼이 목록으로 복귀.
  * - `?q=` URL 동기화(공유·새로고침 보존), 첫 마운트 시 `?q=` 있으면 자동 검색.
  */
+
+/**
+ * 장소 상세에서 길찾기 뷰로 넘기는 프리필 한 끝(E32). `role`이 그 장소를 출발지로
+ * 쓸지 도착지로 쓸지 가른다 — 종전에는 도착지 전용이라 끝점만 넘겼다.
+ */
+type DirectionsPrefill = { role: "from" | "to"; endpoint: DirEndpoint };
+
 export function PlaceSearch({
   isMockMode,
   canBriefCarRoute = false,
@@ -170,6 +177,12 @@ export function PlaceSearch({
   const [directions, setDirections] = useState<{
     from?: DirEndpoint;
     to: DirEndpoint | null;
+    /**
+     * 프리필 진입 표식(B10): 장소 상세의 "여기까지/여기부터 길찾기"로 들어온
+     * 경우만 true. `?dir=` 복원은 같은 필드를 채우면서도 이 표식이 없다 —
+     * DirectionsView의 마운트 1회 자동 조회를 가르는 유일한 축이다.
+     */
+    prefill?: boolean;
   } | null>(null);
   // "내 주변" 허브 뷰(스펙 2026-07-30). 열림/닫힘은 URL(?panel=nearby)이 정본,
   // History 스택은 directions와 동형 규율(직접 진입 시 스택 합성 없음 — 닫기가
@@ -451,15 +464,23 @@ export function PlaceSearch({
     }
   }
 
-  // 길찾기 뷰 진입: 홈(도착지 없음) 또는 장소 상세(도착지 프리필). 기존 state
-  // (상세의 place)를 보존해 뒤로가기가 상세로 정확히 복귀하게 한다. ?dir= URL
-  // 동기화는 DirectionsView가 replaceState로 소유한다(?q= 패턴과 동형).
-  function openDirections(to: DirEndpoint | null) {
+  // 길찾기 뷰 진입: 홈(프리필 없음) 또는 장소 상세(출발지·도착지 프리필). 기존
+  // state(상세의 place)를 보존해 뒤로가기가 상세로 정확히 복귀하게 한다. ?dir=
+  // URL 동기화는 DirectionsView가 replaceState로 소유한다(?q= 패턴과 동형).
+  function openDirections(prefill: DirectionsPrefill | null) {
     window.history.pushState(
       { ...(window.history.state ?? {}), directions: true },
       "",
     );
-    setDirections({ to });
+    if (!prefill) {
+      setDirections({ to: null });
+      return;
+    }
+    setDirections(
+      prefill.role === "to"
+        ? { to: prefill.endpoint, prefill: true }
+        : { from: prefill.endpoint, to: null, prefill: true },
+    );
   }
   function backFromDirections() {
     if (window.history.state?.directions) {
@@ -1138,6 +1159,7 @@ export function PlaceSearch({
         canBriefCarRoute={canBriefCarRoute}
         initialFrom={directions.from}
         initialTo={directions.to}
+        prefill={directions.prefill ?? false}
         onBack={backFromDirections}
       />
     );
@@ -1178,9 +1200,12 @@ export function PlaceSearch({
           canShowDirections
             ? () =>
                 openDirections({
-                  kind: "place",
-                  label: selected.name,
-                  coord: { lat: selected.lat, lng: selected.lng },
+                  role: "to",
+                  endpoint: {
+                    kind: "place",
+                    label: selected.name,
+                    coord: { lat: selected.lat, lng: selected.lng },
+                  },
                 })
             : undefined
         }

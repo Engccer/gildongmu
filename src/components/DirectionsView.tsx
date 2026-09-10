@@ -297,6 +297,7 @@ export function DirectionsView({
   canBriefCarRoute,
   initialFrom,
   initialTo = null,
+  prefill = false,
   onBack,
 }: {
   canShowWalk: boolean;
@@ -304,6 +305,12 @@ export function DirectionsView({
   canBriefCarRoute: boolean;
   initialFrom?: DirEndpoint;
   initialTo?: DirEndpoint | null;
+  /**
+   * 장소 상세의 "여기까지/여기부터 길찾기"로 들어온 **프리필 진입** 표식(B10).
+   * `initialFrom`·`initialTo`는 `?dir=` 복원과 공유하는 prop이라 값만으로는 두
+   * 진입을 가를 수 없다 — 이 표식이 있는 진입에서만 마운트 1회 자동 조회가 돈다.
+   */
+  prefill?: boolean;
   onBack: () => void;
 }) {
   const t = useTranslations("directions");
@@ -454,25 +461,30 @@ export function DirectionsView({
     });
   }, []);
 
-  // 프리필 도착지(장소 상세 "여기까지 길찾기")도 확정 경로와 동일하게 도착지 기록(마운트 1회).
-  // ?dir= 복원의 재기록은 dedupe 끌어올림이라 무해.
+  // 프리필 끝점(장소 상세 "여기까지/여기부터 길찾기")도 확정 경로와 동일하게 그
+  // 필드의 스코프에 기록(마운트 1회) — 기록하지 않으면 같은 장소를 그 자리에 다시
+  // 넣을 때 검색부터 해야 한다. ?dir= 복원의 재기록은 dedupe 끌어올림이라 무해.
   const recordedInitialRef = useRef(false);
   useEffect(() => {
     if (recordedInitialRef.current) return;
     recordedInitialRef.current = true;
-    if (initialTo?.kind === "place") {
-      const ep = initialTo;
+    for (const [field, ep] of [
+      ["from", initialFrom],
+      ["to", initialTo],
+    ] as const) {
+      if (ep?.kind !== "place") continue;
+      const place = ep;
       queueMicrotask(() =>
-        setRecentTo(
-          recordRecentEndpoint("to", {
-            label: ep.label,
-            lat: ep.coord.lat,
-            lng: ep.coord.lng,
+        setRecentFor(field)(
+          recordRecentEndpoint(field, {
+            label: place.label,
+            lat: place.coord.lat,
+            lng: place.coord.lng,
           }),
         ),
       );
     }
-  }, [initialTo]);
+  }, [initialFrom, initialTo]);
 
   /** endpoint 확정 공용 기록 지점(현재 위치 제외 — kind:"place"만). 필드별 분리 기록. */
   function recordResolved(field: RecentEndpointField, ep: DirEndpoint) {
@@ -539,11 +551,35 @@ export function DirectionsView({
     car: carHeadingRef,
   } as const;
 
+  /**
+   * 프리필 진입이 마운트에서 할 일(B10·E32). **첫 렌더 값으로 굳힌다** — 이후
+   * 사용자가 필드를 고쳐도 다시 판정하지 않는다(1회 소비, iOS
+   * `runPrefillQueryIfPending`과 같은 계약).
+   * - `query`: 양끝이 다 있다("여기까지 길찾기" — 출발지는 기본값 현재 위치).
+   * - `landOnTo`: 출발지만 채웠다("여기부터 길찾기") → 조회하지 않고 다음 행동인
+   *   도착지 입력에 착지한다.
+   */
+  const prefillActionRef = useRef<"query" | "landOnTo" | null>(
+    prefill ? (initialTo ? "query" : "landOnTo") : null,
+  );
+
   // 뷰 진입 시 제목으로 포커스(장소 상세와 동형), 새 화면 맥락 통지.
   useEffect(() => {
     // 도구 언와인드 중의 재마운트(앞으로가기 복원 등)는 착지하지 않는다(spec §6.1).
     if (isUnwinding()) return;
-    titleRef.current?.focus();
+    if (prefillActionRef.current === "landOnTo") toInputRef.current?.focus();
+    else titleRef.current?.focus();
+  }, []);
+
+  // 프리필 진입 자동 조회(B10): 장소 상세의 "여기까지 길찾기"는 도착지 채움과
+  // 조회가 한 동작이다(iOS 2026-09-03 선행). ⚠ `?dir=` 복원(새로고침·URL 직진입·
+  // 앞으로가기)에는 `prefill` 표식이 없어 여기 걸리지 않는다 — 걸리면 URL을 여는
+  // 것만으로 측위 팝업이 뜬다. 조회는 화면 정본 트랜잭션 `runQuery`를 그대로 지나
+  // 세대(`genRef`)를 발급하므로 WebMCP 대기자 계약도 어기지 않는다.
+  useEffect(() => {
+    if (prefillActionRef.current !== "query") return;
+    void runQuery();
+    // 첫 렌더의 필드 스냅샷(= initialFrom·initialTo)으로 도는 마운트 1회 조회다.
   }, []);
 
   // 게이트 통과 수단만 — **조회 대상 결정 전용**(E11부터 표시 순서는
