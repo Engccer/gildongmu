@@ -100,6 +100,74 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
     /// 추적 중인지. one-shot 경로가 이 값을 보고 분기한다.
     private(set) var isBeaconTracking = false
 
+    /// 대중교통 승차 국면의 **keep-alive 스트림**이 열려 있는지(E36, spec 2026-09-11 §4.2.3 ⓐ).
+    /// 좌표를 소비하지 않는다 — 소리 없는 대중교통 세션을 iOS가 재우지 않게 하는 것이 유일한
+    /// 목적이다(`audio` 모드는 소리를 내는 동안만 앱을 살린다). 비콘 스트림과 같은 매니저를 쓰되
+    /// 프로파일이 다르다(`Profile.keepAlive`). ⚠ 단발 취득(`endOneShotIfIdle`)이 이 플래그를 모르면
+    /// 스트림을 끊는다(설계 리뷰 M2) — 끄는 쪽은 셋(비콘·keep-alive·단발) 모두를 본다.
+    private(set) var isKeepAliveActive = false
+
+    /// 매니저 설정 프로파일 — 세 스트림이 한 매니저를 공유하므로 설정 변경을 한 곳에 모은다
+    /// (단발 취득이 `desiredAccuracy = Best`를 대입하고 되돌리지 않던 것이 M2의 둘째 구멍).
+    private enum Profile { case beacon, keepAlive, oneShot }
+
+    private func applyProfile(_ profile: Profile) {
+        switch profile {
+        case .beacon:
+            // 서 있는 동안 시스템이 업데이트를 자동 정지하면 tick이 사라져 "죽었나"와
+            // 구분되지 않는다(기본값 true). 보행 프로파일로 고정하고 거리 필터는 끈다
+            // (데드밴드가 이미 필터라 이중 필터링 금지).
+            manager.pausesLocationUpdatesAutomatically = false
+            manager.activityType = .fitness
+            manager.desiredAccuracy = kCLLocationAccuracyBest
+            manager.distanceFilter = kCLDistanceFilterNone
+        case .keepAlive:
+            // ⚠ `pausesLocationUpdatesAutomatically = false`가 전제의 일부다(설계 리뷰 M3): 기본값
+            // true면 정차·터널에서 시스템이 "정지"로 판단해 갱신을 멈추고 그때 백그라운드 근거도
+            // 사라진다. 저정밀·500m 필터라 GPS 칩은 대개 꺼진다(배터리 실측 BACKLOG §2 E36 ③).
+            manager.pausesLocationUpdatesAutomatically = false
+            manager.activityType = .otherNavigation
+            manager.desiredAccuracy = kCLLocationAccuracyKilometer
+            manager.distanceFilter = 500
+        case .oneShot:
+            // 단발 취득은 정확도만 올린다(pauses·activity는 바깥 스트림 것 유지). 거리 필터는 꺼야
+            // keep-alive의 500m 필터 아래에서도 개선 fix가 들어온다.
+            manager.desiredAccuracy = kCLLocationAccuracyBest
+            manager.distanceFilter = kCLDistanceFilterNone
+        }
+    }
+
+    /// keep-alive 스트림 시작(riding 진입). 권한이 없으면 열지 않고 false — 여기서 권한 팝업을 띄우지
+    /// 않는다(대중교통 시작은 권한 요청 지점이 아니다). 비콘 스트림이 열려 있으면 플래그만 세운다
+    /// (비콘 프로파일이 더 강하고, 비콘이 끝나면 `stopBeaconUpdates`가 이 프로파일로 내려온다).
+    func startKeepAliveUpdates() -> Bool {
+        switch manager.authorizationStatus {
+        case .authorizedWhenInUse, .authorizedAlways: break
+        default: return false
+        }
+        guard !isKeepAliveActive else { return true }
+        isKeepAliveActive = true
+        if Self.backgroundLocationDeclared {
+            manager.allowsBackgroundLocationUpdates = true
+        }
+        // 단발 취득 중이면 그 프로파일(Best)을 존중하고 끝날 때 `endOneShotIfIdle`이 내려온다.
+        if !isBeaconTracking, !isOneShotActive {
+            applyProfile(.keepAlive)
+            manager.startUpdatingLocation()
+        }
+        return true
+    }
+
+    func stopKeepAliveUpdates() {
+        guard isKeepAliveActive else { return }
+        isKeepAliveActive = false
+        guard !isBeaconTracking else { return }  // 비콘이 쥔 스트림은 비콘이 끈다
+        // 세션 밖에서 켜 두면 one-shot 취득까지 백그라운드 자격을 얻으므로 여기서 내린다.
+        manager.allowsBackgroundLocationUpdates = false
+        manager.pausesLocationUpdatesAutomatically = true
+        if !isOneShotActive { manager.stopUpdatingLocation() }
+    }
+
     /// 현재 권한 상태. ⚠ `currentCoordinate()`는 **캐시 우선**이라 권한을 보지 않고
     /// 반환하는 경로가 있다. 권한 게이트가 필요한 호출부는 이 값을 직접 봐야 한다
     /// (그러지 않으면 권한 회수 후에도 캐시 좌표로 "성공"해 무한 침묵이 된다).
@@ -145,19 +213,13 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
         beaconAccuracySink = onAccuracyChange
         isBeaconTracking = true
 
-        // 서 있는 동안 시스템이 업데이트를 자동 정지하면 tick이 사라져 "죽었나"와
-        // 구분되지 않는다(기본값 true). 보행 프로파일로 고정하고 거리 필터는 끈다
-        // (데드밴드가 이미 필터라 이중 필터링 금지).
-        manager.pausesLocationUpdatesAutomatically = false
-        manager.activityType = .fitness
-        manager.desiredAccuracy = kCLLocationAccuracyBest
-        manager.distanceFilter = kCLDistanceFilterNone
+        applyProfile(.beacon)
         // 백그라운드 지속(피드백 라운드1 #11나): 주머니에 넣고 걸어도 안내가 살아야
         // 한다. When In Use로 충분하다 — 전경에서 시작한 스트림은 이 플래그만으로
         // 백그라운드에서 계속되고, 파란 표시줄은 시스템이 띄운다(끌 수 없음, 감수).
-        // 이 스트림의 소비자는 도보·자동차 세션(BeaconModel)뿐이라 세션 종류 분기가
-        // 따로 없다 — 대중교통 추적은 위치가 아니라 네트워크 폴링이 생명선이라 이
-        // 경로를 지나지 않는다.
+        // 이 스트림의 소비자는 도보·자동차 세션(BeaconModel)뿐이다. 대중교통 추적은 위치가 아니라
+        // 네트워크 폴링이 생명선이라 fix를 소비하지 않지만, 2026-09-11(E36)부터 승차 국면이
+        // **프로세스를 살려 두기 위해** 별도 진입점(`startKeepAliveUpdates`)으로 같은 매니저를 켠다.
         if Self.backgroundLocationDeclared {
             manager.allowsBackgroundLocationUpdates = true
         }
@@ -177,11 +239,16 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
 
     func stopBeaconUpdates() {
         guard isBeaconTracking else { return }
-        manager.stopUpdatingLocation()
-        manager.pausesLocationUpdatesAutomatically = true
-        // false 대입은 선언 여부와 무관하게 안전하다. 세션 밖에서 켜 두면 one-shot
-        // 취득까지 백그라운드 자격을 얻으므로 세션 경계에서 반드시 내린다.
-        manager.allowsBackgroundLocationUpdates = false
+        if isKeepAliveActive {
+            // 대중교통 keep-alive가 같은 매니저를 기다리고 있다(prewalk 뒤 승차 등) — 끄지 않고 내려온다.
+            applyProfile(.keepAlive)
+        } else {
+            manager.stopUpdatingLocation()
+            manager.pausesLocationUpdatesAutomatically = true
+            // false 대입은 선언 여부와 무관하게 안전하다. 세션 밖에서 켜 두면 one-shot
+            // 취득까지 백그라운드 자격을 얻으므로 세션 경계에서 반드시 내린다.
+            manager.allowsBackgroundLocationUpdates = false
+        }
         isBeaconTracking = false
         beaconFixSink = nil
         beaconErrorSink = nil
@@ -402,7 +469,9 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
         // (혼자였으면 성공했을 취득이다). 좋은 fix는 모두에게 답이라 공유가 맞다.
         if !isOneShotActive { oneShotBest = nil }
         isOneShotActive = true
-        manager.desiredAccuracy = kCLLocationAccuracyBest
+        // 비콘 스트림 중이면 이미 Best·필터 없음이라 무해. keep-alive 중이면 잠시 올리고
+        // `endOneShotIfIdle`이 되돌린다(M2 — 종전엔 Best를 대입하고 되돌리지 않았다).
+        applyProfile(.oneShot)
         manager.startUpdatingLocation()
         defer { endOneShotIfIdle() }
 
@@ -438,6 +507,12 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
         isOneShotActive = false
         oneShotBest = nil
         guard !isBeaconTracking else { return }
+        // ⚠ keep-alive 스트림(대중교통 승차)이 열려 있으면 끊지 않고 그 프로파일로 되돌린다 —
+        // 끊으면 오류도 로그도 없이 프로세스가 잠들어 E36이 침묵으로 실패한다(설계 리뷰 M2).
+        if isKeepAliveActive {
+            applyProfile(.keepAlive)
+            return
+        }
         manager.stopUpdatingLocation()
     }
 
