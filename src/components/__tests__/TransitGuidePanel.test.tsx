@@ -668,6 +668,54 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
     expect(screen.queryByText(/messageFrame/)).toBeNull();
   });
 
+  it("승차 뒤 미관측 상태 문장은 수단별이다 — 지하철은 열차, 서울버스는 버스(A33)", async () => {
+    // 하차역 목록이 비어 있으면 riding은 notYetVisible에 머문다. 이 문장이 GPS를 암시하지
+    // 않도록 주어가 열차/버스여야 하고, 버스 승차에 "열차" 키가 붙으면 회귀다.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        const mode = url.includes("mode=seoulBus") ? "seoulBus" : "subway";
+        return { ok: true, json: async () => ({ mode, status: "empty", rawCount: 0 }) } as Response;
+      }),
+    );
+
+    const { unmount } = render(<TransitGuidePanel route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
+    fireEvent.click(screen.getByRole("button", { name: "시작" }));
+    fireEvent.click(await screen.findByRole("button", { name: "transitGuide.boardAlready" }));
+    await waitFor(() => {
+      expect(screen.getByText(/transitGuide\.stateRidingNotYetVisible /)).toBeTruthy();
+    });
+    expect(screen.queryByText(/stateRidingNotYetVisibleBus/)).toBeNull();
+    unmount();
+
+    const BUS_ROUTE: TransitRoute = {
+      summary: { totalMinutes: 20, fare: 1500, transfers: 0, walkMinutes: 2 },
+      routeKey: "b0",
+      legs: [
+        {
+          mode: "bus",
+          lineName: "3318",
+          fromName: "길동사거리",
+          toName: "천호역",
+          stationCount: 5,
+          minutes: 12,
+          serviceRouteId: "227000006",
+          stops: [
+            { name: "길동사거리", lat: 37.5, lng: 127.1, cityCode: "1000", arsId: "24101", localId: "123000017" },
+            { name: "천호역", lat: 37.53, lng: 127.12, cityCode: "1000", arsId: "24102", localId: "123000043" },
+          ],
+        },
+      ],
+    };
+    render(<TransitGuidePanel route={BUS_ROUTE} triggerLabel="시작" walkAccessible={false} />);
+    fireEvent.click(screen.getByRole("button", { name: "시작" }));
+    fireEvent.click(await screen.findByRole("button", { name: "transitGuide.boardAlready" }));
+    await waitFor(() => {
+      expect(screen.getByText(/transitGuide\.stateRidingNotYetVisibleBus/)).toBeTruthy();
+    });
+  });
+
   it("경유역 목록(§14.1): disclosure 정적 표시 + 승차·하차 라벨 + 현재 위치 병치", async () => {
     vi.stubGlobal(
       "fetch",

@@ -348,10 +348,18 @@ final class TransitOverviewAdapter: GuideOverviewCapability, Identifiable {
 
     private func silenceText(_ signal: TransitOverviewSilenceSignal, recovered: Bool) -> String {
         if recovered { return appLocalized("transitGuide.signalRecovered") }
+        // 수단별 키(A33) — 상시 표시 `signalStatusText`와 같은 축(열차/버스). 키는 리터럴(린터).
+        let isTrain = model.currentLeg?.mode == "subway"
         return switch signal {
         case .neverSeen: appLocalized("transitGuide.neverSeen")
-        case .notYetVisible: appLocalized("transitGuide.stateRidingNotYetVisible")
-        case .signalLost: appLocalized("transitGuide.stateSignalLost")
+        case .notYetVisible:
+            isTrain
+                ? appLocalized("transitGuide.stateRidingNotYetVisible")
+                : appLocalized("transitGuide.stateRidingNotYetVisibleBus")
+        case .signalLost:
+            isTrain
+                ? appLocalized("transitGuide.stateSignalLost")
+                : appLocalized("transitGuide.stateSignalLostBus")
         case .upstreamFailed: appLocalized("transitGuide.stateUpstreamFailed")
         }
     }
