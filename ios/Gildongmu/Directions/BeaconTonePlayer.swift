@@ -44,7 +44,8 @@ final class BeaconTonePlayer {
     /// (접근성 감사 M3). 전자로 두면 억제(받아쓰기·검색 시트) 중 세션을 시작해 승격이
     /// **미뤄진** 경우가 "정상"으로 보고된다 — 실패한 적이 없으니 플래그가 안 서는데
     /// 실제 카테고리는 `.ambient`다. 실패·지연·route 변경 후 재적용 실패가 이 한 축으로 모인다.
-    var isBackgroundAudible: Bool { appliedCategory == .playback }
+    /// 2026-09-11: 카테고리만으로는 부족하다 — 인터럽션은 활성만 뺏고 카테고리를 남긴다(PORTS ①).
+    var isBackgroundAudible: Bool { appliedCategory == .playback && audio.isActive }
 
     /// 상위(모델)가 출력을 억제 중인지. 억제 중에는 **인터럽션 옵서버도 세션을
     /// 건드리지 않는다**: 받아쓰기가 `.playAndRecord`로 잡아 둔 카테고리를 비콘이
@@ -77,6 +78,21 @@ final class BeaconTonePlayer {
     private var observers: [NSObjectProtocol] = []
     /// 오디오 세션 소유권(판정은 Kit `guideAudioStep`, 여기는 적용만).
     private var audio = GuideAudioSessionState.initial
+    /// **프로세스 전역 최신 소유자.** 재생기 인스턴스가 둘(도보·대중교통)이고 세션은 하나라,
+    /// 먼저 끝난 쪽의 미뤄진 원복(`revertTask`)이 새 소유자의 `.playback` 위에 떨어지면 그 세션이
+    /// 통째로 잠금 무음이 된다(prewalk 도착 종 2.2초 → 600ms 뒤 대중교통 시작 / E34 시작음 → 도보
+    /// 시작, 설계 리뷰 B2). 원복을 실행하는 순간 자기가 최신 소유자가 아니면 `.sessionEnded` 대신
+    /// `.ownershipTransferred`를 보내 자격만 내려놓는다.
+    private static var latestOwner: ObjectIdentifier?
+    private var ownsLatestSession: Bool { Self.latestOwner == ObjectIdentifier(self) }
+    /// 다른 인스턴스가 세션을 쥐고 있는가. 그동안 이 인스턴스의 세션 밖 단발 재생은 세션을
+    /// 확보하지 않는다(확보 = `.ambient` 적용 = 남의 백그라운드 세션 파괴). 그 카테고리 위에서 그냥 낸다.
+    private var peerOwnsSession: Bool {
+        guard let owner = Self.latestOwner else { return false }
+        return owner != ObjectIdentifier(self) && appliedCategory != .playback
+    }
+    /// 마지막으로 적용한 카테고리 옵션 — route 변경 통지에서 "자기 메아리인가"를 가르는 대조값.
+    private static let appliedOptions: AVAudioSession.CategoryOptions = [.mixWithOthers]
     /// 현재 적용된 카테고리. nil이면 아직 세션을 잡지 않았다.
     private var appliedCategory: GuideAudioCategory?
     /// 현재 재생 중인 톤. 톤은 전부 1초 미만이라 겹치면 두 소리가 섞여 어느 쪽도
@@ -111,7 +127,18 @@ final class BeaconTonePlayer {
         // ⚠ 미뤄 둔 원복을 반드시 취소한다. 남겨 두면 새 세션 한복판에서 `.ambient`가
         //   적용되어 그 세션이 통째로 잠금 무음이 된다(원복은 **끝난** 세션의 몫이다).
         cancelPendingRevert()
+        Self.latestOwner = ObjectIdentifier(self)
         dispatch(.sessionStarted)
+    }
+
+    /// 세션 종료 판정 — 그 사이 다른 인스턴스가 시작했으면 원복 의무가 그쪽으로 넘어갔다.
+    private func dispatchSessionEnd() {
+        if ownsLatestSession {
+            dispatch(.sessionEnded)
+        } else {
+            guideDiagLog("audioTransfer revertSkipped")
+            dispatch(.ownershipTransferred)
+        }
     }
 
     /// 안내 세션 종료 — **우리가 승격했을 때만** `.ambient`로 원복한다.
@@ -129,7 +156,7 @@ final class BeaconTonePlayer {
     func endSession(holdSeconds: Double = 0) {
         let playbackRemaining = remainingPlaybackSeconds ?? 0
         guard playbackRemaining > 0 || holdSeconds > 0 else {
-            dispatch(.sessionEnded)
+            dispatchSessionEnd()
             return
         }
         // 남은 재생 시간 + 여유 + 발화 유예. 톤은 전부 3초 미만이라 상한이 필요 없다.
@@ -139,7 +166,7 @@ final class BeaconTonePlayer {
             try? await Task.sleep(nanoseconds: UInt64(remaining * 1_000_000_000))
             guard !Task.isCancelled else { return }
             self?.revertTask = nil
-            self?.dispatch(.sessionEnded)
+            self?.dispatchSessionEnd()
         }
     }
 
@@ -151,14 +178,16 @@ final class BeaconTonePlayer {
     func play(_ tone: BeaconTone) {
         toneEndsAt = nil  // 진입 즉시 — 아래 성공 분기만이 되살린다(조기 반환 3경로 공통)
         haptic(for: tone)
-        // 세션을 아직 잡지 않았으면 지금 적용한다(세션 밖 단발 재생 경로 —
-        // 종전 `ensureSession()`과 동형). 인터럽션·route 변경과 달리 이 이벤트만
-        // 원복 자격 없이도 적용된다.
-        if appliedCategory == nil { dispatch(.ensureActive) }
+        // 세션을 아직 잡지 않았거나 **인터럽션이 활성을 뺏어 갔으면** 지금 적용한다(세션 밖 단발
+        // 재생 경로 — 종전 `ensureSession()`과 동형. 활성 축은 2026-09-11 PORTS ①: `.ended`가
+        // 유실되면 카테고리가 `.playback`으로 남은 채 세션만 죽어 있고, 카테고리만 보면 재확보를
+        // 안 해 조용한 무음이 됐다). 인터럽션·route 변경과 달리 이 이벤트만 원복 자격 없이도
+        // 적용된다. 단 다른 인스턴스가 세션을 쥐고 있으면 확보하지 않는다(그 위에서 낸다).
+        if (appliedCategory == nil || !audio.isActive), !peerOwnsSession { dispatch(.ensureActive) }
         // ⚠ 판정 축은 **세션 확보 여부**이지 `isSilenced`가 아니다. 후자는 한 번의
         // 재생 실패로도 켜지므로, 그걸로 막으면 일시적 실패가 영구 침묵으로 굳는다
         // (종전 `guard ensureSession()`은 세션만 봤고 재생은 매번 다시 시도했다).
-        guard appliedCategory != nil else { return }
+        guard appliedCategory != nil || peerOwnsSession else { return }
         let player: AVAudioPlayer
         let resource = tone.resourceName(leftRightScheme)
         if let cached = players[resource] {
@@ -389,7 +418,7 @@ final class BeaconTonePlayer {
         // ⚠ 플레이어·옵서버 정리보다 **앞**이다 — `dispatch`는 옵서버가 비어 있으면
         //   다시 등록하고, 카테고리 적용은 `appliedCategory`를 되살린다.
         cancelPendingRevert()
-        dispatch(.sessionEnded)
+        dispatchSessionEnd()
         for player in players.values { player.stop() }
         players = [:]
         playing = nil
@@ -425,11 +454,12 @@ final class BeaconTonePlayer {
             for player in players.values { player.stop() }
             players = [:]
             playing = nil
+            toneEndsAt = nil  // 재생을 멈췄으니 발화 지연이 유령 종료 시각을 보지 않게(PORTS ③ 부수)
         }
         let session = AVAudioSession.sharedInstance()
         do {
             try session.setCategory(
-                category == .playback ? .playback : .ambient, options: [.mixWithOthers]
+                category == .playback ? .playback : .ambient, options: Self.appliedOptions
             )
             try session.setActive(true)
             appliedCategory = category
@@ -445,7 +475,7 @@ final class BeaconTonePlayer {
             // 잠그기 전 침묵을 만든다. `.ambient`로 물러나 재생 자체는 살린다
             // (그 결과 `isBackgroundAudible`이 거짓으로 남아 호출부가 알린다).
             do {
-                try session.setCategory(.ambient, options: [.mixWithOthers])
+                try session.setCategory(.ambient, options: Self.appliedOptions)
                 try session.setActive(true)
                 appliedCategory = .ambient
                 isSilenced = false
@@ -457,7 +487,7 @@ final class BeaconTonePlayer {
     }
 
     /// 전화 한 통이나 다른 컴포넌트의 `setActive(false)`가 세션을 멈추면 톤이 영영
-    /// 사라진다. 인터럽션 종료·route 변경·media reset을 **같은 재조정 경로**로 모은다.
+    /// 사라진다. 인터럽션 종료·route 변경·media reset·카테고리 탈취를 **같은 재조정 경로**로 모은다.
     private func observeInterruptions() {
         observers.append(
             NotificationCenter.default.addObserver(
@@ -466,29 +496,54 @@ final class BeaconTonePlayer {
             ) { [weak self] note in
                 guard
                     let raw = note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
-                    AVAudioSession.InterruptionType(rawValue: raw) == .ended
+                    let type = AVAudioSession.InterruptionType(rawValue: raw)
                 else { return }
                 MainActor.assumeIsolated {
-                    self?.dispatch(.interrupted)
+                    // `.began`도 본다(PORTS ①): 시스템이 활성을 뺏은 사실을 상태에 남겨야
+                    // `.ended`가 유실돼도 다음 재생이 세션을 재확보한다.
+                    self?.dispatch(type == .began ? .interruptionBegan : .interrupted)
                 }
             }
         )
-        // route 변경(AirPods 해제 등)·media services reset은 플레이어를 무효화한다.
-        // ⚠ `object: nil` — mediaServicesWereReset은 세션 인스턴스가 재생성되므로
-        // 특정 객체로 필터하면 알림을 놓친다.
-        for name in [
-            AVAudioSession.routeChangeNotification,
-            AVAudioSession.mediaServicesWereResetNotification,
-        ] {
-            observers.append(
-                NotificationCenter.default.addObserver(
-                    forName: name, object: nil, queue: .main
-                ) { [weak self] _ in
-                    MainActor.assumeIsolated {
-                        self?.dispatch(.routeChanged)
+        // route 변경(AirPods 해제 등)은 플레이어를 무효화한다. ⚠ 자기 `setCategory`도 reason
+        // `.categoryChange`로 이 통지를 낸다(메아리) — 종전엔 걸러지 않아 세션 시작마다 재생성이
+        // 한 번 더 돌았다. 메아리 판별은 시간 창이 아니라 **지금 세션 값이 우리가 적용한 값과
+        // 같은가**(PORTS ③, 설계 리뷰 M5): 같으면 메아리, 다르면 남(채팅 TTS `duckOthers`)이
+        // 갈아치운 것이라 재적용으로 회복한다. 판정은 Kit `guideAudioRouteChangeEvent`.
+        observers.append(
+            NotificationCenter.default.addObserver(
+                forName: AVAudioSession.routeChangeNotification, object: nil, queue: .main
+            ) { [weak self] note in
+                let reason: GuideAudioRouteChangeReason =
+                    (note.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt)
+                        .flatMap(AVAudioSession.RouteChangeReason.init(rawValue:)) == .categoryChange
+                    ? .categoryChange : .other
+                MainActor.assumeIsolated {
+                    guard let self else { return }
+                    let session = AVAudioSession.sharedInstance()
+                    let applied: AVAudioSession.Category? = switch self.appliedCategory {
+                    case .playback: .playback
+                    case .ambient: .ambient
+                    case nil: nil
+                    }
+                    let matches = applied == session.category
+                        && session.categoryOptions == Self.appliedOptions
+                    if let event = guideAudioRouteChangeEvent(reason: reason, matchesApplied: matches) {
+                        self.dispatch(event)
                     }
                 }
-            )
-        }
+            }
+        )
+        // media services reset은 reason이 없다 — 무조건 재생성. ⚠ `object: nil` — 세션 인스턴스가
+        // 재생성되므로 특정 객체로 필터하면 알림을 놓친다.
+        observers.append(
+            NotificationCenter.default.addObserver(
+                forName: AVAudioSession.mediaServicesWereResetNotification, object: nil, queue: .main
+            ) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    self?.dispatch(.routeChanged)
+                }
+            }
+        )
     }
 }
