@@ -25,11 +25,36 @@ public enum WalkHealth {
     public static let netKcalPerKgKm: Double = 0.5
     /// UserDefaults 키(설정 "칼로리 추정용 체중"). 0 = 미입력.
     public static let weightStorageKey = "walkWeightKg"
+    /// UserDefaults 키(종료 화면의 체중 입력 권유를 무시한 횟수). 0 = 아직 무시하지 않음.
+    public static let weightPromptDismissalsKey = "walkWeightPromptDismissals"
+    /// 권유를 이만큼 무시하면 그 뒤로 띄우지 않는다(위원장 판정 2026-09-08 — 입력을
+    /// 원하지 않는 사용자에게 매 도착마다 반복되는 것이 노이즈다, spec 2026-09-11).
+    public static let maxWeightPromptDismissals = 2
     public static let weightRange: ClosedRange<Double> = 20...300
     /// 요약을 보여 줄 최소 보행 거리(m). 이보다 짧으면 걸음·칼로리를 셈하는 것이 무의미하다
     /// (위원장 판정 2026-08-19 — 시작 직후 중지, 목적지 코앞 시작 등). 65kg에서 50m는
     /// 약 1.6kcal로 음식 사다리 최하단(방울토마토) 절반 근처다. 잠정값.
     public static let minMeaningfulDistanceMeters: Double = 50
+
+    /// 종료 화면이 체중 입력 권유(고지 문장 + [체중 입력하기] 버튼)를 낼 것인가.
+    /// 체중을 입력했으면 무시 횟수를 보지 않는다 — 입력자에게는 이 축이 존재하지 않는다.
+    /// 숨긴 뒤에는 기준 체중이 칼로리 문장 안으로 들어간다(위원장 판정 2026-09-10 —
+    /// 줄 수를 늘리지 않고 수치의 근거를 남긴다).
+    public static func shouldShowWeightPrompt(usedDefaultWeight: Bool, dismissals: Int) -> Bool {
+        usedDefaultWeight && dismissals < maxWeightPromptDismissals
+    }
+
+    /// [닫기]를 눌렀을 때의 다음 무시 횟수. 권유가 **그 화면에 실제로 표시됐고**
+    /// 사용자가 [체중 입력하기]를 누르지 않았을 때만 1 증가한다 — 표시되지도 않은 화면을
+    /// 세면 두 번이 하루에 차고, 버튼을 누른 사용자는 "아무 행동도 하지 않은" 경우가 아니다
+    /// (위원장 인용 2026-09-08). 시트 최소화·스와이프·30분 만료 소거는 호출 자체가 없다.
+    ///
+    /// 상한 clamp를 두지 않는다: `promptShown`이 참이면 정의상 `current < max`라 결과가
+    /// 상한을 넘지 못한다(넘지 못하는 clamp는 아무것도 바꾸지 않는 방어 코드다).
+    public static func nextWeightPromptDismissals(current: Int, promptShown: Bool, engagedPrompt: Bool) -> Int {
+        guard promptShown, !engagedPrompt else { return current }
+        return current + 1
+    }
 
     /// 저장값 → 유효 체중. 범위 밖·nil·비유한값은 nil(=기본 체중 사용).
     public static func normalizedWeight(_ raw: Double?) -> Double? {

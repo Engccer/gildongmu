@@ -80,4 +80,50 @@ import Testing
         #expect(kcals == kcals.sorted())
         #expect(Set(WalkHealth.foodLadder.map(\.key)).count == kcals.count)
     }
+
+    // MARK: - 체중 입력 권유의 무시 상한 (E31, spec 2026-09-11)
+
+    @Test func weightPromptShowsUntilDismissalLimit() {
+        #expect(WalkHealth.shouldShowWeightPrompt(usedDefaultWeight: true, dismissals: 0))
+        #expect(WalkHealth.shouldShowWeightPrompt(usedDefaultWeight: true, dismissals: 1))
+        #expect(!WalkHealth.shouldShowWeightPrompt(usedDefaultWeight: true, dismissals: 2))
+        #expect(!WalkHealth.shouldShowWeightPrompt(usedDefaultWeight: true, dismissals: 5))
+    }
+
+    @Test func weightPromptNeverShowsForEnteredWeight() {
+        // 체중을 입력했으면 무시 횟수와 무관하게 권유가 없다 — 이미 아는 것을 다시 묻지 않는다.
+        for d in [0, 1, 2, 9] {
+            #expect(!WalkHealth.shouldShowWeightPrompt(usedDefaultWeight: false, dismissals: d))
+        }
+    }
+
+    @Test func closingAShownPromptWithoutActingCounts() {
+        #expect(WalkHealth.nextWeightPromptDismissals(current: 0, promptShown: true, engagedPrompt: false) == 1)
+        #expect(WalkHealth.nextWeightPromptDismissals(current: 1, promptShown: true, engagedPrompt: false) == 2)
+    }
+
+    @Test func closingCountsOnlyWhenThePromptWasOnScreen() {
+        // 권유가 없던 화면(입력자·이미 상한 도달)의 [닫기]는 무시가 아니다.
+        for c in [0, 1, 2] {
+            #expect(WalkHealth.nextWeightPromptDismissals(current: c, promptShown: false, engagedPrompt: false) == c)
+        }
+    }
+
+    @Test func pressingEnterWeightMakesTheCloseNotAnIgnore() {
+        // [체중 입력하기]를 누른 화면은 "아무 행동도 하지 않은" 경우가 아니다 —
+        // 설정에서 입력하지 않고 돌아왔더라도 세지 않는다.
+        #expect(WalkHealth.nextWeightPromptDismissals(current: 0, promptShown: true, engagedPrompt: true) == 0)
+        #expect(WalkHealth.nextWeightPromptDismissals(current: 1, promptShown: true, engagedPrompt: true) == 1)
+    }
+
+    @Test func dismissalCountStopsAtTheLimit() {
+        // 상한에 닿으면 권유가 사라지므로(shouldShow == false) 다음 [닫기]는 표시되지 않은
+        // 화면의 닫기이고 카운터가 더 오르지 않는다 — 두 술어가 맞물려야 성립한다.
+        var count = 0
+        for _ in 0..<5 {
+            let shown = WalkHealth.shouldShowWeightPrompt(usedDefaultWeight: true, dismissals: count)
+            count = WalkHealth.nextWeightPromptDismissals(current: count, promptShown: shown, engagedPrompt: false)
+        }
+        #expect(count == WalkHealth.maxWeightPromptDismissals)
+    }
 }

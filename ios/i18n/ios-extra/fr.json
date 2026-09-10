@@ -260,6 +260,7 @@
       "endedHeading": "Guidage terminé",
       "soundBackgroundUnavailable": "Les sons du guidage ne seront pas audibles écran éteint ou dans une autre application.",
       "healthSummary": "Sur ce tronçon, vous avez fait {steps} pas et brûlé environ {kcal} kcal.",
+      "healthSummaryWithWeight": "Sur ce tronçon, vous avez fait {steps} pas et brûlé environ {kcal} kcal, sur la base de {kg} kg.",
       "healthWeightNotice": "Le chiffre des calories repose sur la moyenne adulte de {kg} kg. Saisissez votre poids dans Réglages pour une estimation plus précise. Cette donnée ne quitte jamais votre appareil.",
       "healthEnterWeight": "Saisir mon poids",
       "food": {
