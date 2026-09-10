@@ -260,6 +260,7 @@
       "endedHeading": "Guida terminata",
       "soundBackgroundUnavailable": "I suoni della guida non verranno riprodotti a schermo spento o mentre usi un'altra app.",
       "healthSummary": "In questo tratto hai fatto {steps, plural, one {# passo} other {# passi}} e bruciato circa {kcal} kcal.",
+      "healthSummaryWithWeight": "In questo tratto hai fatto {steps, plural, one {# passo} other {# passi}} e bruciato circa {kcal} kcal, calcolate per {kg} kg.",
       "healthWeightNotice": "Il valore delle calorie usa la media adulta di {kg} kg. Inserisci il tuo peso nelle Impostazioni per una stima più precisa. Il dato non lascia mai il tuo dispositivo.",
       "healthEnterWeight": "Inserisci il peso",
       "food": {

@@ -67,6 +67,12 @@ struct BeaconTrackingSheet: View {
     /// 포커스 복원이 착지할 곳을 잃는다 — 그때 갱신된 요약 문장으로 선점 이동한다
     /// (헌장 §5 "포커스를 쥔 요소를 제거하는 전이"; 라벨 변화가 곧 상태 신호).
     @AccessibilityFocusState private var healthSummaryFocused: Bool
+    /// 체중 입력 권유를 무시한 횟수(E31, spec 2026-09-11). 상한에 닿으면 권유 두 줄이
+    /// 사라지고 기준 체중이 칼로리 문장 안으로 들어간다. 판정은 Kit `WalkHealth`.
+    @AppStorage(WalkHealth.weightPromptDismissalsKey) private var weightPromptDismissals = 0
+    /// 이번 종료 화면에서 [체중 입력하기]를 눌렀는가 — 눌렀다면 뒤이은 [닫기]는 무시가
+    /// 아니다("아무 행동도 하지 않고 닫기를 누르는 경우", 위원장 2026-09-08).
+    @State private var weightPromptEngaged = false
 
     var body: some View {
         // 접기 버튼은 섹션 헤더(제목 메뉴) 행 우측의 작은 아이콘이다(위원장 판정 2026-08-23 —
@@ -339,6 +345,9 @@ struct BeaconTrackingSheet: View {
             // 시트가 도착 화면으로 유지되면서 그 계단이 사라졌다 — 방치하면 stop()이
             // 지운 경로 위에서 "아직 안내가 없습니다" 헤더가 도착 통지와 모순된다.
             showRouteList = false
+            // 새 종료 화면이므로 권유 응답 표식도 새로 시작한다(같은 시트 인스턴스가
+            // 두 번째 종료 화면을 받는 경로에서 앞 화면의 응답이 새어 들지 않게).
+            weightPromptEngaged = false
             Task { await landArrivedFocus() }
         }
         }
@@ -363,18 +372,19 @@ struct BeaconTrackingSheet: View {
                 // 완결 문장끼리라 공백으로 잇는다(joinText의 쉼표는 라벨·값 조각용 — 마침표
                 // 뒤에 쉼표가 붙는다).
                 Text([
-                    appLocalized(
-                        "ios.beacon.healthSummary",
-                        Self.decimal.string(from: NSNumber(value: health.steps)) ?? "\(health.steps)",
-                        "\(health.kcal)"),
+                    healthSummaryLine(health: health),
                     Self.foodLine(kcal: health.kcal),
                 ].compactMap { $0 }.joined(separator: " "))
                     .accessibilityFocused($healthSummaryFocused)
-                // 체중 미입력자에게만: 기준값 고지 + 설정으로 가는 버튼(입력한 사람에겐
-                // 이 두 줄이 없다 — 이미 아는 것을 다시 말하지 않는다).
-                if health.usedDefaultWeight {
+                // 체중 미입력자에게만, 그것도 무시 상한 전까지만: 기준값 고지 + 설정으로
+                // 가는 버튼(입력한 사람에겐 이 두 줄이 없다 — 이미 아는 것을 다시 말하지
+                // 않는다. 두 번 무시한 사람에게도 없다 — E31).
+                if showsWeightPrompt {
                     Text(appLocalized("ios.beacon.healthWeightNotice", "\(Int(WalkHealth.defaultWeightKg))"))
-                    Button(appLocalized("ios.beacon.healthEnterWeight")) { showsSettings = true }
+                    Button(appLocalized("ios.beacon.healthEnterWeight")) {
+                        weightPromptEngaged = true
+                        showsSettings = true
+                    }
                 }
             }
             // 자동차 도착 → 도보 인계(K2 §6.4): 대중교통 하차 인계 틀, 걸음 요약 없음.
@@ -385,11 +395,41 @@ struct BeaconTrackingSheet: View {
                 SurroundingsSceneSection(
                     anchor: (lat: dest.lat, lng: dest.lng), proxy: proxy)
             }
-            Button(appLocalized("actions.close")) { model.clearArrival() }
+            Button(appLocalized("actions.close")) {
+                // 권유가 실제로 떠 있던 화면을 아무 행동 없이 닫은 것만 무시로 센다(E31).
+                weightPromptDismissals = WalkHealth.nextWeightPromptDismissals(
+                    current: weightPromptDismissals,
+                    promptShown: showsWeightPrompt,
+                    engagedPrompt: weightPromptEngaged)
+                model.clearArrival()
+            }
         } header: {
             Text(joinText(endHeading, model.destinationLabel))
                 .accessibilityAddTraits(.isHeader)
         }
+    }
+
+    /// 이번 종료 화면이 체중 입력 권유를 내고 있는가. **렌더와 [닫기]가 같은 술어를 읽는다** —
+    /// 두 자리가 각자 조건을 조립하면 "표시되지 않았는데 셌다"가 조용히 생긴다.
+    private var showsWeightPrompt: Bool {
+        WalkHealth.shouldShowWeightPrompt(
+            usedDefaultWeight: model.arrivalHealth?.usedDefaultWeight ?? false,
+            dismissals: weightPromptDismissals)
+    }
+
+    /// 걸음·칼로리 문장. 권유가 숨겨진 뒤(체중 미입력·무시 상한)에는 기준 체중이 이 문장
+    /// 안으로 들어온다 — 줄을 늘리지 않고 수치의 근거를 남긴다(위원장 판정 2026-09-10).
+    /// 체중을 입력한 사용자는 종전 문장 그대로다(두 벌 키).
+    private func healthSummaryLine(health: WalkHealthSummary) -> String {
+        let steps = Self.decimal.string(from: NSNumber(value: health.steps)) ?? "\(health.steps)"
+        if health.usedDefaultWeight, !showsWeightPrompt {
+            return appLocalized(
+                "ios.beacon.healthSummaryWithWeight",
+                steps,
+                "\(Int(WalkHealth.defaultWeightKg))",
+                "\(health.kcal)")
+        }
+        return appLocalized("ios.beacon.healthSummary", steps, "\(health.kcal)")
     }
 
     private var endSentence: String {

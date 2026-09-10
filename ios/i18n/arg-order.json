@@ -319,6 +319,11 @@
     "steps",
     "kcal"
   ],
+  "ios.beacon.healthSummaryWithWeight": [
+    "steps",
+    "kg",
+    "kcal"
+  ],
   "ios.beacon.healthWeightNotice": [
     "kg"
   ],

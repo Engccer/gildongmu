@@ -260,6 +260,7 @@
       "endedHeading": "案内終了",
       "soundBackgroundUnavailable": "画面が消えている間や他のアプリの使用中は案内音が鳴りません。",
       "healthSummary": "この区間で{steps}歩歩き、約{kcal}kcalを消費しました。",
+      "healthSummaryWithWeight": "この区間で{steps}歩歩き、{kg}kgを基準に約{kcal}kcalを消費しました。",
       "healthWeightNotice": "上のカロリーは成人平均の{kg}kgを基準にしています。設定で体重を入力すると、より正確な値になります。入力した情報は端末の外に送られません。",
       "healthEnterWeight": "体重を入力する",
       "food": {

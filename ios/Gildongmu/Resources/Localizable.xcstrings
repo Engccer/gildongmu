@@ -17921,6 +17921,46 @@
         }
       }
     },
+    "ios.beacon.healthSummaryWithWeight": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이번 구간에서 %1$@걸음 걸으셨어요. %2$@kg 기준으로 약 %3$@kcal를 태우셨어요."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You walked {1, plural, one {%1$@ step} other {%1$@ steps}} on this leg and burned about %3$@ kcal, based on %2$@ kg."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En este tramo caminaste {1, plural, one {%1$@ paso} other {%1$@ pasos}} y quemaste unas %3$@ kcal, calculadas para %2$@ kg."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sur ce tronçon, vous avez fait %1$@ pas et brûlé environ %3$@ kcal, sur la base de %2$@ kg."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In questo tratto hai fatto {1, plural, one {%1$@ passo} other {%1$@ passi}} e bruciato circa %3$@ kcal, calcolate per %2$@ kg."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この区間で%1$@歩歩き、%2$@kgを基準に約%3$@kcalを消費しました。"
+          }
+        }
+      }
+    },
     "ios.beacon.healthWeightNotice": {
       "localizations": {
         "ko": {
