@@ -578,6 +578,10 @@ export function DirectionsView({
   // 세대(`genRef`)를 발급하므로 WebMCP 대기자 계약도 어기지 않는다.
   useEffect(() => {
     if (prefillActionRef.current !== "query") return;
+    // 착지 억제와 같은 가드를 받는다(위 effect와 짝) — 조회가 성공하면 종단에서
+    // 첫 성공 수단 heading으로 포커스가 가므로, 언와인드 중에 돌면 "도구는 착지를
+    // 옮기지 않는다"(spec §6.1)가 제목에서만 지켜지고 결과에서 깨진다.
+    if (isUnwinding()) return;
     void runQuery();
     // 첫 렌더의 필드 스냅샷(= initialFrom·initialTo)으로 도는 마운트 1회 조회다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
