@@ -181,3 +181,15 @@ Kit `TransitGuide.swift`(+`TransitGuideTests.swift`)·`GuideAudioSession.swift`(
 | M7 강등 판정 시작 1회 | 채택 — 판정 상시·문장 1회 latch(§4.2.1) |
 | m1~m10 | 전부 채택(국면 가드·`ridingPolls` 하네스 키·이름 지시·비관측 시나리오 연장·7종 16,807·테스트 개명·m7 근거 정정·게이트 자리 `playTone`·소스 가드 2·복귀 낭독 조건) |
 | O1~O4 | 반영(§4.5·§4.2.4·§4.3 문단) |
+
+## 10. 구현 리뷰 판정 (2026-09-11, HEAD `e8121bd4` → 반영 `e2598848`)
+
+세 리뷰(별도 컨텍스트, diff `main...HEAD`만)의 보고는 `~/gildongmu-wt/reports/transit-2-review-{spec,code,a11y}.md`(커밋 밖).
+
+| 리뷰 | 판정 | 반영 |
+|---|---|---|
+| spec-compliance(opus) | 조건부 적합(BLOCKER 0, MAJOR 3, MINOR 8) | M1 `changeRoute`·`pickAboardStation` 조작 표식 / M2 `neverSeen polls=` 로그 / M3 keep-alive 단독 구간 fix를 공유 스토어에 쓰지 않음(`isKeepAliveOnly` — "좌표 미소비"를 가정에서 구조로) / m1·m2 웹 낡은 주석 / m3 재생기 라벨 `audioTransfer from=` / m4 = 아래 C1 / m5 = C2 / m6 INTEGRATIONS 절 제목 = 규칙 문구 / m7 FIELD-TEST ⑥⑦ 행 / m8 = C3. 전부 채택 |
+| code-quality(opus) | 조건부 통과(BLOCKER 0, MAJOR 1, MINOR 10, 관찰 6) | **C1 승격 실패 문장 latch가 발화 없이 소비**(지연 슬롯 latest-wins 선점 + 백그라운드 게이트) → `DeferredAnnouncer.announce(_:onDropped:)` 상환 계약으로: latch는 큐잉에 세우고 버려지면 `onDropped`가 풀어 다음 톤이 재시도 / C2 소유권 이전 뒤 `appliedCategory` 소거(넘긴 쪽의 재확보가 남의 `.playback`에 `.ambient`를 얹는 문) / C3 소스 가드 강화(호출부 리터럴 `: true` 0곳 단언, 죽은 분기 제거, `.background` 분기가 `pollTask`를 안 건드리는 계약) / C4 `dispatch`의 표식(`noteUserAction`)과 재개(`resumeIfIdle`)를 상태 대입 앞·뒤로 분리 / C5 재개 문장 즉시 창구(`announceNow`)·`.high` / C6 `enterRiding`·핸들러 4곳 죽은 `now` 제거(웹·Kit, 린트 경고 8 → 7) / C7 = M3 / C8 `latestOwner == nil`은 이전이 아니라 종료, 라벨 로그 / **C9 전경 유휴 정지가 조용하다 — 새 문안이라 채택하지 않고 BACKLOG §2 E36 ⑫로 기록(위원장 문안)** / C10 `stopKeepAliveUpdates`가 단발 취득 중이면 정리를 `endOneShotIfIdle`에 미룸 / O1 `.ambient` 옵션 리드백 가정 — 실기기 관찰(PORTS 행) / O2 `apply` 실패·폴백 시 `isActive`를 내려 다음 톤이 재승격 시도 / O3·O5·O6 관찰 유지 / O4 `bgTone` 로그 `rawValue` |
+| a11y(sonnet) | 조건부 통과(HIGH 1, MEDIUM 1(HIGH 연동), LOW 1, 관찰 2) | A-1 = C1(채택) / 통지 우선순위 — 재개·복귀 문장 `.high`(채택, CLAUDE.md 판별선) / C-1 첫 관측 소리가 도보 `closer`와 같다 — spec §4.5 별건, §7 ① 실기기 문항 / E-1 이중 낭독 없음 확인 / D-1 억제+백그라운드 동시 경합의 원문 손실 — 재현 시 A-1 방식으로, 실기기 관찰 |
+
+반영 뒤 게이트: Kit 695 · 웹 4,129(+새 가드) · `tsc` 0 · lint 경고 7(오류 0) · Experimental 시뮬 빌드 rc 0.
