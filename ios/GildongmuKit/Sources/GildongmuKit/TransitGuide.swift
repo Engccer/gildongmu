@@ -307,10 +307,12 @@ public struct TransitGuideState: Sendable {
     public var arrivedCertain: Bool
     public var ladderAnnounced: Int?
     public var trackingAnnounced: Bool
-    /// riding 진입 시각(ms). 한 번도 관측되지 않은 채 `transitNeverSeenMs`를 넘기면
-    /// neverSeen. ⚠ nil이면 판정하지 않는다 — "시각 불명"을 "방금 탔다"로도
-    /// "오래됐다"로도 읽지 않는다.
-    public var ridingSince: Double?
+    /// 이번 riding 진입 이후 하차역 목록 조회가 **결과(ok·empty)를 돌려준 횟수**(A36 ①).
+    /// 한 번도 관측되지 않은 채 `transitNeverSeenPolls`에 닿으면 neverSeen. ⚠ 시간이 아니라
+    /// 횟수인 이유: 벽시계는 주머니에 넣어 둔 시간·조회가 실패한 구간·앱이 재워진 구간을
+    /// "차량 확인 안 됨"의 근거로 세어 멀쩡히 달리는 열차를 놓친 것으로 선언했다(09-05 실사고).
+    /// 실패(failed·unsupported)는 관측이 아니므로 세지 않는다. riding 밖에서는 오르지 않는다.
+    public var ridingPolls: Int
     public var missCount: Int
     public var failCount: Int
     public var failSince: Double?
@@ -325,13 +327,14 @@ public let transitFailNotifyCount = 3
 public let transitFailNotifyMs: Double = 90_000
 public let transitMissLostCount = 3
 public let transitMissArriveCount = 2
-/// 첫 관측 전 미등장 상한(A16 L2). 관측된 뒤의 소실은 `transitMissLostCount`가 맡고
-/// 이 축은 "한 번도 못 본" 상태 전용이라 두 축이 같은 결함을 잡지 않는다.
+/// 첫 관측 전 미등장 상한(A16 L2) — riding 조회 **횟수**(A36 ①, 2026-09-11). 관측된 뒤의 소실은
+/// `transitMissLostCount`가 맡고 이 축은 "한 번도 못 본" 상태 전용이라 두 축이 같은 결함을 잡지 않는다.
 ///
-/// ⚠ 폴 횟수가 아니라 시간인 이유: 화면 잠금 중 폴 타이머가 멎으면 횟수 기반은
-/// 화면을 끌수록 시한이 늦게 온다(실측 35분에 11폴, 주기 60초면 35폴이어야 한다).
-/// ⚠ 10분은 잠정값 — 실승차 판정 대상(BACKLOG A16).
-public let transitNeverSeenMs: Double = 600_000
+/// ⚠ 종전엔 시간(10분)이었고 그 근거는 "화면 잠금 중 폴이 멎으면 횟수 기반은 시한이 늦게 온다"였다.
+/// 그 전제(백그라운드 폴 정지)가 A36에서 결함으로 판정됐다 — 조회하지 않은 시간을 "못 봤다"의
+/// 근거로 세면 안 된다. 10회 = 미등장 riding 주기 60초 × 10 = 종전 10분과 등가.
+/// ⚠ 잠정값 — 실승차 판정 대상(BACKLOG §2 A36 행).
+public let transitNeverSeenPolls = 10
 public let transitSessionPollCap = 240
 /// boarding 도착 관측의 신선도 상한(초) — 서버 STALE_FROZEN_SECONDS와 같은 값. 종착
 /// 코드(1·2)가 동결된 레코드는 선택 직후 폴에 "새 도착"으로 둔갑한다(설계 리뷰 C3).
@@ -694,7 +697,7 @@ public func initTransitGuide(route: TransitGuideRoute, now: Double) -> TransitGu
         arrivedCertain: false,
         ladderAnnounced: nil,
         trackingAnnounced: false,
-        ridingSince: nil,
+        ridingPolls: 0,
         missCount: 0,
         failCount: 0,
         failSince: nil,
@@ -752,7 +755,7 @@ private func handleDeclareArrived(
     next.phase = .arrived
     next.phaseGen += 1
     next.arrivedCertain = true
-    next.ridingSince = nil
+    next.ridingPolls = 0
     next.lastUpdatedAt = nil
     return (next, .arrived(certain: true))
 }
@@ -790,7 +793,7 @@ private func resetLockTracking(_ state: TransitGuideState) -> TransitGuideState 
     return next
 }
 
-/// riding 진입 — ridingSince(미관측 상한 기준점, A16 L2)를 새로 찍는다.
+/// riding 진입 — 미관측 상한 카운터(`ridingPolls`, A16 L2·A36 ①)를 0에서 다시 센다(탑승 변경 취소 복귀 포함).
 private func enterRiding(
     _ state: TransitGuideState, lock: TransitLock, cause: TransitBoardedCause, now: Double
 ) -> (state: TransitGuideState, event: TransitGuideEvent?) {
@@ -801,11 +804,11 @@ private func enterRiding(
     next.lock = lock
     next.previousLock = nil
     next.previousPhase = nil
-    next.ridingSince = now
+    next.ridingPolls = 0
     return (next, .boarded(legIndex: state.legIndex, cause: cause))
 }
 
-/// boarding 진입 — 승차 정류소 폴링은 계속되므로 ridingSince는 없다.
+/// boarding 진입 — 승차 정류소 폴링은 riding 카운터에 세지 않는다(0 유지).
 private func enterBoarding(
     _ state: TransitGuideState, lock: TransitLock
 ) -> (state: TransitGuideState, event: TransitGuideEvent?) {
@@ -816,7 +819,7 @@ private func enterBoarding(
     next.lock = lock
     next.previousLock = nil
     next.previousPhase = nil
-    next.ridingSince = nil
+    next.ridingPolls = 0
     return (next, .vehicleSelected(legIndex: state.legIndex))
 }
 
@@ -873,8 +876,8 @@ private func handleChangeBoarding(
     next.arrivedCertain = false
     next.ladderAnnounced = nil
     next.trackingAnnounced = false
-    // 대기 국면엔 기준점이 없다 — 다음 board가 새로 찍는다.
-    next.ridingSince = nil
+    // 대기 국면엔 카운터가 없다 — 다음 riding 진입이 0에서 다시 센다.
+    next.ridingPolls = 0
     next.missCount = 0
     return (next, .boardingReset)
 }
@@ -917,7 +920,7 @@ private func handleAdvance(
     next.ladderAnnounced = nil
     next.trackingAnnounced = false
     // 다음 leg는 아직 승차 전이다.
-    next.ridingSince = nil
+    next.ridingPolls = 0
     next.missCount = 0
     next.failCount = 0
     next.failSince = nil
@@ -978,6 +981,10 @@ private func handlePoll(
         return (next, event)
     }
 
+    // A36 ①: riding에서 결과를 받은 조회를 센다(실패 폴은 위에서 반환됐다). 국면 가드가 필수다 —
+    // 이 자리는 boarding·추정 arrived 폴도 지나는데, enterRiding이 0으로 리셋해 실해는 없어도
+    // 필드 이름("riding 조회 수")을 거짓으로 만든다. 그 위반은 어떤 fixture도 잡지 못한다(검출력 0).
+    if next.phase == .riding { next.ridingPolls += 1 }
     let items: [TransitTrackItem] = if case let .ok(list) = poll { list } else { [] }
     let matched = state.lock.flatMap { transitFindLockedItem(items, lock: $0) }
 
@@ -1001,15 +1008,15 @@ private func handlePoll(
         }
         next.lastUpdatedAt = now
         // 그 상태를 빠져나오는 문(A16 L2) — 웹 transit-guide.ts 미러.
-        // 판정하지 않는 경우 셋: 방금 조회가 살아난 폴(recovered — 최소 한 번은
+        // 판정하지 않는 경우 둘: 방금 조회가 살아난 폴(recovered — 최소 한 번은
         // 실제로 보고 말한다, 그리고 signalRecovered를 덮지 않는다) · 원인이 다른
-        // 신호(upstreamFailed·signalLost·자기 자신) · 기준 시각 불명.
+        // 신호(upstreamFailed·signalLost·자기 자신). 축은 조회 횟수(A36 ①) — 시계가 아니다.
         //
-        // ⚠ phase == .riding은 현재 **도달 불가 방어**다(위 waiting 조기 반환).
+        // ⚠ phase == .riding은 현재 **도달 불가 방어**다(위 waiting 조기 반환 + boarding 분기).
         // 웹에서 변이 주입으로 실측했고 어느 게이트도 그 제거를 잡지 못했다 —
         // 검증된 가드가 아니라는 사실을 알고 남긴다(불변식의 자립적 표현).
         if !recovered, next.signal == .notYetVisible, next.phase == .riding,
-           let since = next.ridingSince, now - since >= transitNeverSeenMs {
+           next.ridingPolls >= transitNeverSeenPolls {
             next.signal = .neverSeen
             return (next, .neverSeen)
         }

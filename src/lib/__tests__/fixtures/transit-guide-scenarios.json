@@ -2518,7 +2518,7 @@
    ]
   },
   {
-   "name": "비관측 잠금(지하철 이미 탑승, A34 ① 2026-09-11): 폴이 와도 매칭·미등장 판정 없음 — 잔여 null·이벤트 없음·신호 notYetVisible 유지·10분 뒤에도 neverSeen 없음",
+   "name": "비관측 잠금(지하철 이미 탑승, A34 ① 2026-09-11): 폴이 와도 매칭·미등장 판정 없음 — 잔여 null·이벤트 없음·신호 notYetVisible 유지·조회 12회에도 ridingPolls 0·neverSeen 없음",
    "route": "subwaySingle",
    "steps": [
     {
@@ -2533,7 +2533,8 @@
       "event": {
        "kind": "boarded",
        "cause": "declared"
-      }
+      },
+      "ridingPolls": 0
      }
     },
     {
@@ -2570,7 +2571,8 @@
       "phase": "riding",
       "signal": "notYetVisible",
       "remaining": null,
-      "event": null
+      "event": null,
+      "ridingPolls": 0
      }
     },
     {
@@ -2598,7 +2600,8 @@
       "phase": "riding",
       "signal": "notYetVisible",
       "remaining": null,
-      "event": null
+      "event": null,
+      "ridingPolls": 0
      }
     },
     {
@@ -2614,11 +2617,174 @@
      "expect": {
       "phase": "riding",
       "signal": "notYetVisible",
-      "event": null
+      "event": null,
+      "ridingPolls": 0
      }
     },
     {
      "at": 740000,
+     "input": {
+      "kind": "poll",
+      "seq": 4,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "notYetVisible",
+      "remaining": null,
+      "event": null,
+      "ridingPolls": 0
+     }
+    },
+    {
+     "at": 760000,
+     "input": {
+      "kind": "poll",
+      "seq": 5,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "notYetVisible",
+      "remaining": null,
+      "event": null,
+      "ridingPolls": 0
+     }
+    },
+    {
+     "at": 780000,
+     "input": {
+      "kind": "poll",
+      "seq": 6,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "notYetVisible",
+      "remaining": null,
+      "event": null,
+      "ridingPolls": 0
+     }
+    },
+    {
+     "at": 800000,
+     "input": {
+      "kind": "poll",
+      "seq": 7,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "notYetVisible",
+      "remaining": null,
+      "event": null,
+      "ridingPolls": 0
+     }
+    },
+    {
+     "at": 820000,
+     "input": {
+      "kind": "poll",
+      "seq": 8,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "notYetVisible",
+      "remaining": null,
+      "event": null,
+      "ridingPolls": 0
+     }
+    },
+    {
+     "at": 840000,
+     "input": {
+      "kind": "poll",
+      "seq": 9,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "notYetVisible",
+      "remaining": null,
+      "event": null,
+      "ridingPolls": 0
+     }
+    },
+    {
+     "at": 860000,
+     "input": {
+      "kind": "poll",
+      "seq": 10,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "notYetVisible",
+      "remaining": null,
+      "event": null,
+      "ridingPolls": 0
+     }
+    },
+    {
+     "at": 880000,
+     "input": {
+      "kind": "poll",
+      "seq": 11,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "notYetVisible",
+      "remaining": null,
+      "event": null,
+      "ridingPolls": 0
+     }
+    },
+    {
+     "at": 900000,
+     "input": {
+      "kind": "poll",
+      "seq": 12,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "notYetVisible",
+      "remaining": null,
+      "event": null,
+      "ridingPolls": 0
+     }
+    },
+    {
+     "at": 920000,
      "input": {
       "kind": "advance"
      },
@@ -2627,7 +2793,8 @@
       "event": {
        "kind": "legAdvanced",
        "final": true
-      }
+      },
+      "ridingPolls": 0
      }
     }
    ]
@@ -2731,7 +2898,7 @@
    ]
   },
   {
-   "name": "미관측 시한 경과 → neverSeen 1회(반복 발화 없음)",
+   "name": "미관측 조회 10회 → neverSeen 1회(반복 발화 없음, A36 ① 횟수 축)",
    "route": "subwaySingle",
    "steps": [
     {
@@ -2745,7 +2912,8 @@
       "signal": "notYetVisible",
       "event": {
        "kind": "vehicleSelected"
-      }
+      },
+      "ridingPolls": 0
      }
     },
     {
@@ -2760,11 +2928,12 @@
        "kind": "boarded",
        "legIndex": 0,
        "cause": "declared"
-      }
+      },
+      "ridingPolls": 0
      }
     },
     {
-     "at": 300000,
+     "at": 60000,
      "input": {
       "kind": "poll",
       "seq": 1,
@@ -2776,11 +2945,12 @@
      "expect": {
       "phase": "riding",
       "signal": "notYetVisible",
-      "event": null
+      "event": null,
+      "ridingPolls": 1
      }
     },
     {
-     "at": 600000,
+     "at": 120000,
      "input": {
       "kind": "poll",
       "seq": 2,
@@ -2791,14 +2961,13 @@
      },
      "expect": {
       "phase": "riding",
-      "signal": "neverSeen",
-      "event": {
-       "kind": "neverSeen"
-      }
+      "signal": "notYetVisible",
+      "event": null,
+      "ridingPolls": 2
      }
     },
     {
-     "at": 660000,
+     "at": 180000,
      "input": {
       "kind": "poll",
       "seq": 3,
@@ -2809,14 +2978,153 @@
      },
      "expect": {
       "phase": "riding",
+      "signal": "notYetVisible",
+      "event": null,
+      "ridingPolls": 3
+     }
+    },
+    {
+     "at": 240000,
+     "input": {
+      "kind": "poll",
+      "seq": 4,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "notYetVisible",
+      "event": null,
+      "ridingPolls": 4
+     }
+    },
+    {
+     "at": 300000,
+     "input": {
+      "kind": "poll",
+      "seq": 5,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "notYetVisible",
+      "event": null,
+      "ridingPolls": 5
+     }
+    },
+    {
+     "at": 360000,
+     "input": {
+      "kind": "poll",
+      "seq": 6,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "notYetVisible",
+      "event": null,
+      "ridingPolls": 6
+     }
+    },
+    {
+     "at": 420000,
+     "input": {
+      "kind": "poll",
+      "seq": 7,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "notYetVisible",
+      "event": null,
+      "ridingPolls": 7
+     }
+    },
+    {
+     "at": 480000,
+     "input": {
+      "kind": "poll",
+      "seq": 8,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "notYetVisible",
+      "event": null,
+      "ridingPolls": 8
+     }
+    },
+    {
+     "at": 540000,
+     "input": {
+      "kind": "poll",
+      "seq": 9,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "notYetVisible",
+      "event": null,
+      "ridingPolls": 9
+     }
+    },
+    {
+     "at": 600000,
+     "input": {
+      "kind": "poll",
+      "seq": 10,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "phase": "riding",
       "signal": "neverSeen",
-      "event": null
+      "event": {
+       "kind": "neverSeen"
+      },
+      "ridingPolls": 10
+     }
+    },
+    {
+     "at": 660000,
+     "input": {
+      "kind": "poll",
+      "seq": 11,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "neverSeen",
+      "event": null,
+      "ridingPolls": 11
      }
     }
    ]
   },
   {
-   "name": "시한 전 첫 관측이면 neverSeen은 영영 발화하지 않는다(축 배타)",
+   "name": "첫 관측 뒤에는 조회가 10회를 넘어도 neverSeen이 영영 발화하지 않는다(축 배타 — signalLost 축이 맡는다)",
    "route": "subwaySingle",
    "steps": [
     {
@@ -2830,7 +3138,8 @@
       "signal": "notYetVisible",
       "event": {
        "kind": "vehicleSelected"
-      }
+      },
+      "ridingPolls": 0
      }
     },
     {
@@ -2845,7 +3154,8 @@
        "kind": "boarded",
        "legIndex": 0,
        "cause": "declared"
-      }
+      },
+      "ridingPolls": 0
      }
     },
     {
@@ -2876,7 +3186,8 @@
       "event": {
        "kind": "trackingStarted",
        "remaining": 5
-      }
+      },
+      "ridingPolls": 1
      }
     },
     {
@@ -2892,7 +3203,8 @@
      "expect": {
       "phase": "riding",
       "signal": "tracking",
-      "event": null
+      "event": null,
+      "ridingPolls": 2
      }
     },
     {
@@ -2908,7 +3220,8 @@
      "expect": {
       "phase": "riding",
       "signal": "tracking",
-      "event": null
+      "event": null,
+      "ridingPolls": 3
      }
     },
     {
@@ -2926,13 +3239,133 @@
       "signal": "signalLost",
       "event": {
        "kind": "signalLost"
+      },
+      "ridingPolls": 4
+     }
+    },
+    {
+     "at": 1080000,
+     "input": {
+      "kind": "poll",
+      "seq": 5,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "empty"
       }
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "signalLost",
+      "event": null,
+      "ridingPolls": 5
+     }
+    },
+    {
+     "at": 1140000,
+     "input": {
+      "kind": "poll",
+      "seq": 6,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "signalLost",
+      "event": null,
+      "ridingPolls": 6
+     }
+    },
+    {
+     "at": 1200000,
+     "input": {
+      "kind": "poll",
+      "seq": 7,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "signalLost",
+      "event": null,
+      "ridingPolls": 7
+     }
+    },
+    {
+     "at": 1260000,
+     "input": {
+      "kind": "poll",
+      "seq": 8,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "signalLost",
+      "event": null,
+      "ridingPolls": 8
+     }
+    },
+    {
+     "at": 1320000,
+     "input": {
+      "kind": "poll",
+      "seq": 9,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "signalLost",
+      "event": null,
+      "ridingPolls": 9
+     }
+    },
+    {
+     "at": 1380000,
+     "input": {
+      "kind": "poll",
+      "seq": 10,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "signalLost",
+      "event": null,
+      "ridingPolls": 10
+     }
+    },
+    {
+     "at": 1440000,
+     "input": {
+      "kind": "poll",
+      "seq": 11,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "signalLost",
+      "event": null,
+      "ridingPolls": 11
      }
     }
    ]
   },
   {
-   "name": "upstreamFailed 복구 폴은 neverSeen을 내지 않는다(다음 폴에서)",
+   "name": "upstreamFailed: 실패 폴은 세지 않고(ridingPolls 0) 복구 폴은 세되 neverSeen을 내지 않는다 — 결과를 받은 10회째에 발화(A36 ①)",
    "route": "subwaySingle",
    "steps": [
     {
@@ -2946,7 +3379,8 @@
       "signal": "notYetVisible",
       "event": {
        "kind": "vehicleSelected"
-      }
+      },
+      "ridingPolls": 0
      }
     },
     {
@@ -2961,7 +3395,8 @@
        "kind": "boarded",
        "legIndex": 0,
        "cause": "declared"
-      }
+      },
+      "ridingPolls": 0
      }
     },
     {
@@ -2976,7 +3411,8 @@
      },
      "expect": {
       "signal": "notYetVisible",
-      "event": null
+      "event": null,
+      "ridingPolls": 0
      }
     },
     {
@@ -2991,7 +3427,8 @@
      },
      "expect": {
       "signal": "notYetVisible",
-      "event": null
+      "event": null,
+      "ridingPolls": 0
      }
     },
     {
@@ -3008,7 +3445,8 @@
       "signal": "upstreamFailed",
       "event": {
        "kind": "upstreamFailed"
-      }
+      },
+      "ridingPolls": 0
      }
     },
     {
@@ -3023,7 +3461,8 @@
      },
      "expect": {
       "signal": "upstreamFailed",
-      "event": null
+      "event": null,
+      "ridingPolls": 0
      }
     },
     {
@@ -3040,7 +3479,8 @@
       "signal": "notYetVisible",
       "event": {
        "kind": "signalRecovered"
-      }
+      },
+      "ridingPolls": 1
      }
     },
     {
@@ -3054,10 +3494,139 @@
       }
      },
      "expect": {
+      "signal": "notYetVisible",
+      "event": null,
+      "ridingPolls": 2
+     }
+    },
+    {
+     "at": 1080000,
+     "input": {
+      "kind": "poll",
+      "seq": 7,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "signal": "notYetVisible",
+      "event": null,
+      "ridingPolls": 3
+     }
+    },
+    {
+     "at": 1140000,
+     "input": {
+      "kind": "poll",
+      "seq": 8,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "signal": "notYetVisible",
+      "event": null,
+      "ridingPolls": 4
+     }
+    },
+    {
+     "at": 1200000,
+     "input": {
+      "kind": "poll",
+      "seq": 9,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "signal": "notYetVisible",
+      "event": null,
+      "ridingPolls": 5
+     }
+    },
+    {
+     "at": 1260000,
+     "input": {
+      "kind": "poll",
+      "seq": 10,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "signal": "notYetVisible",
+      "event": null,
+      "ridingPolls": 6
+     }
+    },
+    {
+     "at": 1320000,
+     "input": {
+      "kind": "poll",
+      "seq": 11,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "signal": "notYetVisible",
+      "event": null,
+      "ridingPolls": 7
+     }
+    },
+    {
+     "at": 1380000,
+     "input": {
+      "kind": "poll",
+      "seq": 12,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "signal": "notYetVisible",
+      "event": null,
+      "ridingPolls": 8
+     }
+    },
+    {
+     "at": 1440000,
+     "input": {
+      "kind": "poll",
+      "seq": 13,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "signal": "notYetVisible",
+      "event": null,
+      "ridingPolls": 9
+     }
+    },
+    {
+     "at": 1500000,
+     "input": {
+      "kind": "poll",
+      "seq": 14,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
       "signal": "neverSeen",
       "event": {
        "kind": "neverSeen"
-      }
+      },
+      "ridingPolls": 10
      }
     }
    ]
@@ -4452,6 +5021,755 @@
      "expect": {
       "phase": "riding",
       "event": null
+     }
+    }
+   ]
+  },
+  {
+   "name": "시간축 무관(A36 ①): at이 1시간 뒤여도 조회 9회면 neverSeen 없음 — 주머니 시간은 세지 않는다",
+   "route": "subwaySingle",
+   "steps": [
+    {
+     "at": 0,
+     "input": {
+      "kind": "board",
+      "lock": "subway5696"
+     },
+     "expect": {
+      "phase": "boarding",
+      "signal": "notYetVisible",
+      "event": {
+       "kind": "vehicleSelected"
+      },
+      "ridingPolls": 0
+     }
+    },
+    {
+     "at": 0,
+     "input": {
+      "kind": "confirmBoarded"
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "notYetVisible",
+      "event": {
+       "kind": "boarded",
+       "legIndex": 0,
+       "cause": "declared"
+      },
+      "ridingPolls": 0
+     }
+    },
+    {
+     "at": 3660000,
+     "input": {
+      "kind": "poll",
+      "seq": 1,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "notYetVisible",
+      "event": null,
+      "ridingPolls": 1
+     }
+    },
+    {
+     "at": 3720000,
+     "input": {
+      "kind": "poll",
+      "seq": 2,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "notYetVisible",
+      "event": null,
+      "ridingPolls": 2
+     }
+    },
+    {
+     "at": 3780000,
+     "input": {
+      "kind": "poll",
+      "seq": 3,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "notYetVisible",
+      "event": null,
+      "ridingPolls": 3
+     }
+    },
+    {
+     "at": 3840000,
+     "input": {
+      "kind": "poll",
+      "seq": 4,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "notYetVisible",
+      "event": null,
+      "ridingPolls": 4
+     }
+    },
+    {
+     "at": 3900000,
+     "input": {
+      "kind": "poll",
+      "seq": 5,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "notYetVisible",
+      "event": null,
+      "ridingPolls": 5
+     }
+    },
+    {
+     "at": 3960000,
+     "input": {
+      "kind": "poll",
+      "seq": 6,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "notYetVisible",
+      "event": null,
+      "ridingPolls": 6
+     }
+    },
+    {
+     "at": 4020000,
+     "input": {
+      "kind": "poll",
+      "seq": 7,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "notYetVisible",
+      "event": null,
+      "ridingPolls": 7
+     }
+    },
+    {
+     "at": 4080000,
+     "input": {
+      "kind": "poll",
+      "seq": 8,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "notYetVisible",
+      "event": null,
+      "ridingPolls": 8
+     }
+    },
+    {
+     "at": 4140000,
+     "input": {
+      "kind": "poll",
+      "seq": 9,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "notYetVisible",
+      "event": null,
+      "ridingPolls": 9
+     }
+    }
+   ]
+  },
+  {
+   "name": "탑승 변경 취소 뒤 카운트 리셋(A36 ①, 리뷰 B1): 9폴 → changeBoarding → restoreBoarding → 다시 9폴 무이벤트 → 10폴째 neverSeen",
+   "route": "subwaySingle",
+   "steps": [
+    {
+     "at": 0,
+     "input": {
+      "kind": "board",
+      "lock": "subway5696"
+     },
+     "expect": {
+      "phase": "boarding",
+      "signal": "notYetVisible",
+      "event": {
+       "kind": "vehicleSelected"
+      },
+      "ridingPolls": 0
+     }
+    },
+    {
+     "at": 0,
+     "input": {
+      "kind": "confirmBoarded"
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "notYetVisible",
+      "event": {
+       "kind": "boarded",
+       "legIndex": 0,
+       "cause": "declared"
+      },
+      "ridingPolls": 0
+     }
+    },
+    {
+     "at": 60000,
+     "input": {
+      "kind": "poll",
+      "seq": 1,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "signal": "notYetVisible",
+      "event": null,
+      "ridingPolls": 1
+     }
+    },
+    {
+     "at": 120000,
+     "input": {
+      "kind": "poll",
+      "seq": 2,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "signal": "notYetVisible",
+      "event": null,
+      "ridingPolls": 2
+     }
+    },
+    {
+     "at": 180000,
+     "input": {
+      "kind": "poll",
+      "seq": 3,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "signal": "notYetVisible",
+      "event": null,
+      "ridingPolls": 3
+     }
+    },
+    {
+     "at": 240000,
+     "input": {
+      "kind": "poll",
+      "seq": 4,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "signal": "notYetVisible",
+      "event": null,
+      "ridingPolls": 4
+     }
+    },
+    {
+     "at": 300000,
+     "input": {
+      "kind": "poll",
+      "seq": 5,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "signal": "notYetVisible",
+      "event": null,
+      "ridingPolls": 5
+     }
+    },
+    {
+     "at": 360000,
+     "input": {
+      "kind": "poll",
+      "seq": 6,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "signal": "notYetVisible",
+      "event": null,
+      "ridingPolls": 6
+     }
+    },
+    {
+     "at": 420000,
+     "input": {
+      "kind": "poll",
+      "seq": 7,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "signal": "notYetVisible",
+      "event": null,
+      "ridingPolls": 7
+     }
+    },
+    {
+     "at": 480000,
+     "input": {
+      "kind": "poll",
+      "seq": 8,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "signal": "notYetVisible",
+      "event": null,
+      "ridingPolls": 8
+     }
+    },
+    {
+     "at": 540000,
+     "input": {
+      "kind": "poll",
+      "seq": 9,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "signal": "notYetVisible",
+      "event": null,
+      "ridingPolls": 9
+     }
+    },
+    {
+     "at": 600000,
+     "input": {
+      "kind": "changeBoarding"
+     },
+     "expect": {
+      "phase": "waiting",
+      "event": {
+       "kind": "boardingReset"
+      },
+      "ridingPolls": 0
+     }
+    },
+    {
+     "at": 605000,
+     "input": {
+      "kind": "restoreBoarding"
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "notYetVisible",
+      "event": {
+       "kind": "boarded",
+       "cause": "declared"
+      },
+      "ridingPolls": 0
+     }
+    },
+    {
+     "at": 665000,
+     "input": {
+      "kind": "poll",
+      "seq": 10,
+      "phaseGen": 4,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "notYetVisible",
+      "event": null,
+      "ridingPolls": 1
+     }
+    },
+    {
+     "at": 725000,
+     "input": {
+      "kind": "poll",
+      "seq": 11,
+      "phaseGen": 4,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "notYetVisible",
+      "event": null,
+      "ridingPolls": 2
+     }
+    },
+    {
+     "at": 785000,
+     "input": {
+      "kind": "poll",
+      "seq": 12,
+      "phaseGen": 4,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "notYetVisible",
+      "event": null,
+      "ridingPolls": 3
+     }
+    },
+    {
+     "at": 845000,
+     "input": {
+      "kind": "poll",
+      "seq": 13,
+      "phaseGen": 4,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "notYetVisible",
+      "event": null,
+      "ridingPolls": 4
+     }
+    },
+    {
+     "at": 905000,
+     "input": {
+      "kind": "poll",
+      "seq": 14,
+      "phaseGen": 4,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "notYetVisible",
+      "event": null,
+      "ridingPolls": 5
+     }
+    },
+    {
+     "at": 965000,
+     "input": {
+      "kind": "poll",
+      "seq": 15,
+      "phaseGen": 4,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "notYetVisible",
+      "event": null,
+      "ridingPolls": 6
+     }
+    },
+    {
+     "at": 1025000,
+     "input": {
+      "kind": "poll",
+      "seq": 16,
+      "phaseGen": 4,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "notYetVisible",
+      "event": null,
+      "ridingPolls": 7
+     }
+    },
+    {
+     "at": 1085000,
+     "input": {
+      "kind": "poll",
+      "seq": 17,
+      "phaseGen": 4,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "notYetVisible",
+      "event": null,
+      "ridingPolls": 8
+     }
+    },
+    {
+     "at": 1145000,
+     "input": {
+      "kind": "poll",
+      "seq": 18,
+      "phaseGen": 4,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "notYetVisible",
+      "event": null,
+      "ridingPolls": 9
+     }
+    },
+    {
+     "at": 1205000,
+     "input": {
+      "kind": "poll",
+      "seq": 19,
+      "phaseGen": 4,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "neverSeen",
+      "event": {
+       "kind": "neverSeen"
+      },
+      "ridingPolls": 10
+     }
+    }
+   ]
+  },
+  {
+   "name": "boarding 폴은 riding 카운터에 세지 않는다(A36 ①): 접근 3·2·1 폴 뒤 riding 진입 시 ridingPolls 0, 그 뒤 첫 riding 폴이 1",
+   "route": "subwaySingle",
+   "steps": [
+    {
+     "at": 0,
+     "input": {
+      "kind": "board",
+      "lock": "subway5696"
+     },
+     "expect": {
+      "phase": "boarding",
+      "signal": "notYetVisible",
+      "event": {
+       "kind": "vehicleSelected",
+       "legIndex": 0
+      },
+      "ridingPolls": 0
+     }
+    },
+    {
+     "at": 20000,
+     "input": {
+      "kind": "poll",
+      "seq": 1,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "5696",
+         "direction": "하행",
+         "message": "[3]번째 전역",
+         "remainingStops": 3,
+         "destinationName": "하남검단산",
+         "express": false,
+         "arrivalCode": "99"
+        }
+       ]
+      }
+     },
+     "expect": {
+      "phase": "boarding",
+      "signal": "tracking",
+      "remaining": 3,
+      "event": {
+       "kind": "approaching",
+       "remaining": 3
+      },
+      "ridingPolls": 0
+     }
+    },
+    {
+     "at": 40000,
+     "input": {
+      "kind": "poll",
+      "seq": 2,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "5696",
+         "direction": "하행",
+         "message": "[2]번째 전역",
+         "remainingStops": 2,
+         "destinationName": "하남검단산",
+         "express": false,
+         "arrivalCode": "99"
+        }
+       ]
+      }
+     },
+     "expect": {
+      "event": {
+       "kind": "approaching",
+       "remaining": 2
+      },
+      "ridingPolls": 0
+     }
+    },
+    {
+     "at": 60000,
+     "input": {
+      "kind": "poll",
+      "seq": 3,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "5696",
+         "direction": "하행",
+         "message": "전역 출발",
+         "remainingStops": 1,
+         "destinationName": "하남검단산",
+         "express": false,
+         "arrivalCode": "3"
+        }
+       ]
+      }
+     },
+     "expect": {
+      "event": {
+       "kind": "approaching",
+       "remaining": 1
+      },
+      "ridingPolls": 0
+     }
+    },
+    {
+     "at": 80000,
+     "input": {
+      "kind": "poll",
+      "seq": 4,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "5696",
+         "direction": "하행",
+         "message": "천호 도착",
+         "remainingStops": 0,
+         "destinationName": "하남검단산",
+         "express": false,
+         "arrivalCode": "1",
+         "dataAgeSeconds": 5
+        }
+       ]
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "notYetVisible",
+      "remaining": null,
+      "event": {
+       "kind": "boarded",
+       "legIndex": 0,
+       "cause": "observed"
+      },
+      "ridingPolls": 0
+     }
+    },
+    {
+     "at": 100000,
+     "input": {
+      "kind": "poll",
+      "seq": 5,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "event": null,
+      "ridingPolls": 0
+     }
+    },
+    {
+     "at": 100000,
+     "input": {
+      "kind": "poll",
+      "seq": 5,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "event": null,
+      "ridingPolls": 1
      }
     }
    ]
