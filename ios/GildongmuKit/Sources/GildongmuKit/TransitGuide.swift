@@ -108,6 +108,8 @@ public struct TransitGuideLeg: Codable, Sendable {
     public let expressStopIds: [String]?
     /// 하차 출구 번호(E25, 서버 문맥 게이트 + 소비자 형식 게이트 통과값).
     public let exitAlight: String?
+    /// 구간 소요 분(ODsay `TransitLeg.minutes`) — 유휴 폴 정지 한계의 근거(E36 §4.2.6). 표시엔 쓰지 않는다.
+    public let minutes: Int?
 
     public init(
         mode: String, lineName: String, trackMode: TransitTrackMode?,
@@ -117,7 +119,8 @@ public struct TransitGuideLeg: Codable, Sendable {
         routeId: String?, wayCode: Int?, walkBeforeMinutes: Int?,
         quickExit: QuickExit? = nil,
         lineNameEn: String? = nil, boardNameEn: String? = nil, alightNameEn: String? = nil,
-        expressStops: [String]? = nil, expressStopIds: [String]? = nil, exitAlight: String? = nil
+        expressStops: [String]? = nil, expressStopIds: [String]? = nil, exitAlight: String? = nil,
+        minutes: Int? = nil
     ) {
         self.mode = mode
         self.lineName = lineName
@@ -138,6 +141,7 @@ public struct TransitGuideLeg: Codable, Sendable {
         self.expressStops = expressStops
         self.expressStopIds = expressStopIds
         self.exitAlight = exitAlight
+        self.minutes = minutes
     }
 }
 
@@ -465,7 +469,8 @@ public func buildTransitGuideRoute(_ route: TransitRoute) -> TransitGuideRoute? 
             alightNameEn: leg.toName != nil ? leg.toNameEn : alightStop?.nameEn,
             expressStops: (leg.expressStops?.isEmpty == false) ? leg.expressStops : nil,
             expressStopIds: (leg.expressStopIds?.isEmpty == false) ? leg.expressStopIds : nil,
-            exitAlight: transitValidExitNo(leg.exit?.alight)
+            exitAlight: transitValidExitNo(leg.exit?.alight),
+            minutes: leg.minutes
         ))
         pendingWalk = nil
     }
@@ -519,7 +524,8 @@ public func withoutPrewalk(_ route: TransitGuideRoute) -> TransitGuideRoute {
         routeId: first.routeId, wayCode: first.wayCode, walkBeforeMinutes: nil,
         quickExit: first.quickExit,
         lineNameEn: first.lineNameEn, boardNameEn: first.boardNameEn, alightNameEn: first.alightNameEn,
-        expressStops: first.expressStops, expressStopIds: first.expressStopIds, exitAlight: first.exitAlight)
+        expressStops: first.expressStops, expressStopIds: first.expressStopIds, exitAlight: first.exitAlight,
+        minutes: first.minutes)
     return TransitGuideRoute(legs: [stripped] + route.legs.dropFirst(), walkAfterMinutes: route.walkAfterMinutes)
 }
 

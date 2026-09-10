@@ -149,6 +149,8 @@ export interface TransitGuideLeg {
   expressStopIds?: string[];
   /** 하차 출구 번호(E25). 서버가 형식·문맥(역 밖으로 나가는 하차)을 걸러 실은 값 + 소비자 형식 게이트. */
   exitAlight?: string;
+  /** 구간 소요 분(ODsay `TransitLeg.minutes`) — Kit 미러(유휴 폴 정지 한계 근거, iOS 전용 소비). */
+  minutes?: number;
 }
 
 /**
@@ -524,6 +526,7 @@ export function buildTransitGuideRoute(route: TransitRoute): TransitGuideRoute |
       routeId: leg.serviceRouteId ?? null,
       wayCode: leg.serviceWayCode ?? null,
       walkBeforeMinutes: pendingWalk,
+      minutes: leg.minutes,
       ...(leg.quickExit ? { quickExit: leg.quickExit } : {}),
       ...(leg.expressStops?.length ? { expressStops: leg.expressStops } : {}),
       ...(leg.expressStopIds?.length ? { expressStopIds: leg.expressStopIds } : {}),
