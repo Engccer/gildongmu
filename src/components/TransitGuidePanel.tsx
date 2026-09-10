@@ -3,7 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { FocusEvent } from "react";
 import { useTranslations } from "next-intl";
-import { finalLegWalkMinutesOf, useTransitGuide } from "@/hooks/useTransitGuide";
+import { useTransitGuide } from "@/hooks/useTransitGuide";
 import { isApproxTransitLock, needsExpressPrompt, viaStopCurrentIndex } from "@/lib/transit-guide";
 import type { TransitGuideLeg, TransitPrewalkTarget } from "@/lib/transit-guide";
 import type { TransitRoute } from "@/lib/types";
@@ -66,7 +66,7 @@ export function TransitGuidePanel({
   // 빠른하차 문구는 경로 브리핑과 같은 카탈로그를 쓴다 — 두 화면이 같은 사실을
   // 다른 문장으로 말하면 같은 정보인지 알 수 없다.
   const tTransitRoute = useTranslations("route.transit");
-  const guide = useTransitGuide(route);
+  const guide = useTransitGuide(route, { walkHandoffAvailable: dest != null });
   const locale = useLocale();
   /** 데이터 언어 축 — 비-ko 로케일은 전부 영문 데이터를 공유한다(E27 잔여 ① §3.1). */
   const isEn = prefersEnglish(locale);
@@ -198,8 +198,8 @@ export function TransitGuidePanel({
   // (렌더 중 파생 상태 조정 — effect 내 동기 setState의 캐스케이드 회피).
   const [viaOpen, setViaOpen] = useState(false);
   const legIndex = state?.legIndex ?? null;
-  /** E34 조건: 마지막 leg ∧ 말미 도보 ∧ 인계 대상(dest). 참이면 `advance` 자리 버튼이 "남은 도보 안내 시작". */
-  const handoffNow = dest != null && finalLegWalkMinutesOf(state, guide.guideRoute) != null;
+  /** E34 조건 — 훅과 같은 축(도착 문장·버튼 라벨이 갈리지 않게). */
+  const handoffNow = guide.handoffNow;
   const [prevLegIndex, setPrevLegIndex] = useState(legIndex);
   if (legIndex !== prevLegIndex) {
     setPrevLegIndex(legIndex);
@@ -265,9 +265,14 @@ export function TransitGuidePanel({
       setExpressPromptGen(null);
       if (guide.aboardStep === "pickStation") reboardPromptRef.current?.focus();
       if (guide.aboardStep === "pickVehicle") waitingLabelRef.current?.focus();
-      if (guide.aboardStep === null && prevAboardRef.current === "pickStation") {
-        // 취소만 여기로 온다(하차역 선언·잠금은 국면 전이 착지가 맡는다 — 그때 이 버튼은 없다).
-        boardAlreadyRef.current?.focus();
+      if (
+        guide.aboardStep === null &&
+        prevAboardRef.current === "pickStation" &&
+        boardAlreadyRef.current?.isConnected
+      ) {
+        // 취소만 여기로 온다(하차역 선언·잠금은 국면 전이 착지가 맡는다 — 그때 이 버튼은 렌더되지 않는다;
+        // `isConnected`가 그 전제를 명시한다, a11y 감사 LOW).
+        boardAlreadyRef.current.focus();
       }
     }
     prevAboardRef.current = guide.aboardStep;
@@ -449,11 +454,13 @@ export function TransitGuidePanel({
                   {guide.waitingOptions.length === 0 && (
                     // 0건 사유 3-state(§13.3): 진짜 0건 / 필터 전멸 / 조회 실패.
                     <p className="text-sm">
-                      {guide.waitingReason === "filtered"
-                        ? t("noCandidatesFiltered")
-                        : guide.waitingReason === "unavailable"
-                          ? t("noCandidatesUnavailable")
-                          : t("noCandidates")}
+                      {guide.aboardFilteredOut
+                        ? t("noCandidatesAboard")
+                        : guide.waitingReason === "filtered"
+                          ? t("noCandidatesFiltered")
+                          : guide.waitingReason === "unavailable"
+                            ? t("noCandidatesUnavailable")
+                            : t("noCandidates")}
                     </p>
                   )}
                   <ul

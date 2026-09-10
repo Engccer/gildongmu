@@ -1067,6 +1067,7 @@
     "waitingCount": "{count, plural, one {# boarding option} other {# boarding options}}.",
     "noCandidatesFiltered": "Only vehicles from other routes are showing",
     "noCandidatesUnavailable": "Couldn't load the realtime list",
+    "noCandidatesAboard": "No train at this station is showing in the list.",
     "viaStopsTrain": "{count, plural, one {# station} other {# stations}} on this leg",
     "viaStopsBus": "{count, plural, one {# stop} other {# stops}} on this leg",
     "viaBoard": "board",

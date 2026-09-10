@@ -43721,6 +43721,46 @@
         }
       }
     },
+    "transitGuide.noCandidatesAboard": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 역에 있는 열차가 조회되지 않습니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No train at this station is showing in the list."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No aparece ningún tren en esta estación."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun train à cette station n'apparaît dans la liste."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessun treno in questa stazione risulta nell'elenco."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この駅にいる列車が見つかりません。"
+          }
+        }
+      }
+    },
     "transitGuide.noCandidatesFiltered": {
       "localizations": {
         "ko": {

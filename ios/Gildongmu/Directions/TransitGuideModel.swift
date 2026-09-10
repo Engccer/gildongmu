@@ -549,7 +549,8 @@ final class TransitGuideModel {
     ///
     /// `express`는 급행 확인 프롬프트(spec 2026-09-02 §6, 위원장 판정 — 급행 집합이 있는 노선에서만 시트가
     /// 묻는다)의 답. true면 하차역 정차를 판정해 통과 급행이면 잠그지 않고 차단 문장(결정적 문장 재사용)을
-    /// 남기고, 정차하면 급행 선언 잠금(하차역 목록에서 급행 항목 우선). 프롬프트가 없는 노선은 nil로 종전 그대로.
+    /// 남기고, 정차하면 급행 선언 잠금(상시 문장 근거 — 하차역 목록의 급행 우선 매칭은 2026-09-11 비관측 잠금으로
+    /// 은퇴). 프롬프트가 없는 노선은 nil로 종전 그대로.
     func boardAlready(express: Bool? = nil) {
         guard let leg = currentLeg, let trackMode = leg.trackMode, trackMode != .tagoBus else {
             return
