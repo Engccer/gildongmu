@@ -729,11 +729,11 @@ public func transitGuideStep(
 ) -> (state: TransitGuideState, event: TransitGuideEvent?) {
     switch input {
     case let .board(lock):
-        return handleBoard(state, lock: lock, now: now)
+        return handleBoard(state, lock: lock)
     case .confirmBoarded:
-        return handleConfirmBoarded(state, now: now)
+        return handleConfirmBoarded(state)
     case .restoreBoarding:
-        return handleRestoreBoarding(state, now: now)
+        return handleRestoreBoarding(state)
     case .changeBoarding:
         return handleChangeBoarding(state)
     case .advance:
@@ -741,7 +741,7 @@ public func transitGuideStep(
     case .declareArrived:
         return handleDeclareArrived(state)
     case let .boardAboard(lock):
-        return handleBoardAboard(state, lock: lock, now: now)
+        return handleBoardAboard(state, lock: lock)
     case let .poll(seq, phaseGen, poll):
         return handlePoll(state, seq: seq, phaseGen: phaseGen, poll: poll, now: now)
     }
@@ -769,12 +769,12 @@ private func handleDeclareArrived(
 /// "이미 탑승했습니다" 흐름의 식별 잠금(A34 ②) — 지나는 역의 목록에서 고른 열차로 riding 직행.
 /// 근사 잠금은 이 입력의 대상이 아니다(그쪽은 `board`의 종전 경로). 웹 `handleBoardAboard` 미러.
 private func handleBoardAboard(
-    _ state: TransitGuideState, lock: TransitLock, now: Double
+    _ state: TransitGuideState, lock: TransitLock
 ) -> (state: TransitGuideState, event: TransitGuideEvent?) {
     guard state.phase == .waiting, state.signal != .untrackable, !isApproxTransitLock(lock) else {
         return (state, nil)
     }
-    return enterRiding(state, lock: lock, cause: .declared, now: now)
+    return enterRiding(state, lock: lock, cause: .declared)
 }
 
 /// 잠금 추적 필드 초기화(국면 진입 공용). failCount/failSince도 함께 비운다 — 폴링
@@ -801,7 +801,7 @@ private func resetLockTracking(_ state: TransitGuideState) -> TransitGuideState 
 
 /// riding 진입 — 미관측 상한 카운터(`ridingPolls`, A16 L2·A36 ①)를 0에서 다시 센다(탑승 변경 취소 복귀 포함).
 private func enterRiding(
-    _ state: TransitGuideState, lock: TransitLock, cause: TransitBoardedCause, now: Double
+    _ state: TransitGuideState, lock: TransitLock, cause: TransitBoardedCause
 ) -> (state: TransitGuideState, event: TransitGuideEvent?) {
     var next = resetLockTracking(state)
     next.phase = .riding
@@ -832,28 +832,28 @@ private func enterBoarding(
 /// "탑승" = 차량 선택(N3). 근사 잠금(tagoBus·"이미 탑승했습니다")만 종전대로 riding —
 /// 식별자가 없어 고를 차량도, 기다릴 도착도 없다.
 private func handleBoard(
-    _ state: TransitGuideState, lock: TransitLock, now: Double
+    _ state: TransitGuideState, lock: TransitLock
 ) -> (state: TransitGuideState, event: TransitGuideEvent?) {
     guard state.phase == .waiting, state.signal != .untrackable else { return (state, nil) }
     return isApproxTransitLock(lock)
-        ? enterRiding(state, lock: lock, cause: .declared, now: now)
+        ? enterRiding(state, lock: lock, cause: .declared)
         : enterBoarding(state, lock: lock)
 }
 
 private func handleConfirmBoarded(
-    _ state: TransitGuideState, now: Double
+    _ state: TransitGuideState
 ) -> (state: TransitGuideState, event: TransitGuideEvent?) {
     guard state.phase == .boarding, let lock = state.lock else { return (state, nil) }
-    return enterRiding(state, lock: lock, cause: .declared, now: now)
+    return enterRiding(state, lock: lock, cause: .declared)
 }
 
 /// 탑승 변경 취소 — 해제 전 국면으로 복귀(boarding이면 다시 승차 정류소 대기).
 private func handleRestoreBoarding(
-    _ state: TransitGuideState, now: Double
+    _ state: TransitGuideState
 ) -> (state: TransitGuideState, event: TransitGuideEvent?) {
     guard state.phase == .waiting, let lock = state.previousLock else { return (state, nil) }
     if state.previousPhase == .boarding { return enterBoarding(state, lock: lock) }
-    return enterRiding(state, lock: lock, cause: .declared, now: now)
+    return enterRiding(state, lock: lock, cause: .declared)
 }
 
 private func handleChangeBoarding(
@@ -1090,7 +1090,7 @@ private func commitBoardingMatched(
     default: false
     }
     if let lock = base.lock, fresh, arrivedAtBoardStop {
-        return enterRiding(out, lock: lock, cause: .observed, now: now)
+        return enterRiding(out, lock: lock, cause: .observed)
     }
 
     // 첫 관측 — signalLost 뒤의 재발견도 이 문장이 이긴다(문장 자체가 "찾았다", 리뷰 M4).
