@@ -163,6 +163,7 @@
   "directions": {
     "title": "Cómo llegar",
     "toHere": "Cómo llegar hasta aquí",
+    "fromHere": "Cómo llegar desde aquí",
     "back": "Atrás",
     "from": "Origen",
     "to": "Destino",

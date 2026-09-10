@@ -11,10 +11,19 @@ import GildongmuKit
 @Observable @MainActor
 final class DirectionsPrefillStore {
     static let shared = DirectionsPrefillStore()
-    /// 보류 프리필 도착지. GildongmuApp이 관찰해 즉시 nil 대입(1회 소비 확인)한 뒤
+    /// 보류 프리필. GildongmuApp이 관찰해 즉시 nil 대입(1회 소비 확인)한 뒤
     /// 길찾기 탭 전환 + directionsEpoch 갱신(원자 교체: 새 DirectionsModel 재생성이라
     /// 이전 결과·필드 상태가 함께 폐기된다).
-    var pending: DirectionsEndpoint?
+    var pending: DirectionsPrefill?
+}
+
+/// 장소 상세·검색 결과가 길찾기 탭에 넘기는 프리필 한 끝(E32). 종전에는 도착지
+/// 전용이라 끝점만 실었다 — "여기부터 길찾기"가 생기며 **어느 필드에 넣는가**가
+/// 페이로드의 일부가 됐다(같은 장소가 출발지도 도착지도 될 수 있다).
+struct DirectionsPrefill: Equatable {
+    enum Role { case from, to }
+    let role: Role
+    let endpoint: DirectionsEndpoint
 }
 
 /// 길찾기 필드 식별(출발지/도착지) + 수동 위치 지정. 검색 시트 라우팅 공용
@@ -134,11 +143,24 @@ final class DirectionsModel {
     /// 앱이 탭 트리를 통째로 재생성하며 `directionsPrefill`을 비우지 않으므로(로케일 의존 데이터를 새
     /// 언어로 다시 받는 종전 설계) 새 모델이 다시 true로 태어나 조회가 한 번 더 돈다 — 알려진 동작(리뷰 2026-09-03).
     private var pendingPrefillQuery: Bool
+    /// 출발지만 채운 프리필 진입(E32 "여기부터 길찾기")의 착지 1회분. 조회 대신
+    /// 도착지 입력으로 커서를 보낸다 — 그것이 사용자의 다음 행동이고, 이 상태에서
+    /// 조회를 걸면 방금 한 동작의 응답이 "도착지를 입력하세요" 오류가 된다.
+    /// `pendingPrefillQuery`와 배타적이다(양끝이 다 있으면 조회, 아니면 착지).
+    private var pendingPrefillFocus: Bool
 
-    init(prefilledDestination: DirectionsEndpoint? = nil) {
-        from = .current
-        to = prefilledDestination
-        pendingPrefillQuery = prefilledDestination != nil
+    init(prefill: DirectionsPrefill? = nil) {
+        // ⚠ 지역 상수로 받아 판정한다 — `@Observable`이 저장 프로퍼티를 접근자로
+        // 감싸므로 init에서 `from`·`to`를 **읽으면** 모든 저장 프로퍼티가 초기화되기
+        // 전의 접근이라 컴파일되지 않는다(쓰기는 되고 읽기만 막힌다).
+        let initialFrom: DirectionsEndpoint? = prefill?.role == .from ? prefill?.endpoint : .current
+        let initialTo: DirectionsEndpoint? = prefill?.role == .to ? prefill?.endpoint : nil
+        from = initialFrom
+        to = initialTo
+        // 자동 조회는 **양끝이 다 있을 때만**(E32). 웹 `DirectionsView`의 프리필
+        // 판정과 같은 술어다.
+        pendingPrefillQuery = prefill != nil && initialFrom != nil && initialTo != nil
+        pendingPrefillFocus = prefill != nil && initialTo == nil
         recentRoutes = RecentSearchStore().routes()
     }
 
@@ -149,6 +171,14 @@ final class DirectionsModel {
         guard pendingPrefillQuery else { return }
         pendingPrefillQuery = false
         runQuery()
+    }
+
+    /// 출발지만 채운 프리필 진입의 착지 소비(뷰 `.task` 1회, 위 조회 소비와 같은 규율).
+    /// 반환값이 true면 뷰가 도착지 입력으로 커서를 보낸다.
+    func consumePrefillFocusIfPending() -> Bool {
+        guard pendingPrefillFocus else { return false }
+        pendingPrefillFocus = false
+        return true
     }
 
     var isBusy: Bool { phase == .locating || phase == .loading || stepFreeBusy }
@@ -623,9 +653,9 @@ struct DirectionsTabView: View {
     /// 시트가 닫힐 때 되돌아갈 시작 버튼(방금 떠나온 자리).
     @State private var lastGuideStart: GuideStartButton = .fallback
 
-    /// I4 프리필 지점: 장소 상세 "여기까지 길찾기"가 도착지를 넘긴다(파라미터 하나).
-    init(prefilledDestination: DirectionsEndpoint? = nil) {
-        _model = State(initialValue: DirectionsModel(prefilledDestination: prefilledDestination))
+    /// I4 프리필 지점: 장소 상세·검색 결과의 "여기까지/여기부터 길찾기"가 한 끝을 넘긴다(E32).
+    init(prefill: DirectionsPrefill? = nil) {
+        _model = State(initialValue: DirectionsModel(prefill: prefill))
     }
 
     var body: some View {
@@ -936,6 +966,9 @@ struct DirectionsTabView: View {
                 // "여기까지 길찾기" 진입은 도착지 채움 + 즉시 조회가 한 동작(1회 소비 —
                 // 탭 재진입엔 돌지 않는다). 폼 동기화 재조회가 먼저 돌았으면 가드가 흡수.
                 model.runPrefillQueryIfPending()
+                // "여기부터 길찾기"는 조회 대신 착지다(E32). 출발지 확정 뒤 도착지로
+                // 보내는 그 경로를 그대로 쓴다 — 지연·검증·1회 재시도가 정본 시퀀스다.
+                if model.consumePrefillFocusIfPending() { landFocusAfterResolve(from: .from) }
                 await model.loadCurrentAddressIfAuthorized()
             }
         }

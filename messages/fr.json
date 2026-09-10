@@ -163,6 +163,7 @@
   "directions": {
     "title": "Itinéraire",
     "toHere": "Itinéraire jusqu'ici",
+    "fromHere": "Itinéraire depuis ici",
     "back": "Retour",
     "from": "Départ",
     "to": "Arrivée",

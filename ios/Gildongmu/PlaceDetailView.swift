@@ -94,9 +94,17 @@ struct PlaceDetailView<DomainSection: View>: View {
                 // 길찾기 탭으로 도착지 프리필 진입(Task I4) — 출발 전 미리 듣기는
                 // 이 3수단 비교(대중교통·도보·자동차)로 일원화(장소 상세의 단일 수단
                 // 브리핑 화면은 중복이라 제거, 2026-07-30). 딥링크는 실주행 위임.
+                // 두 버튼은 별개 접근성 객체다(합치지 않는다) — 라벨이 각각 동작의
+                // 범위를 말한다. "여기부터"는 도착지가 비므로 조회하지 않고 도착지
+                // 입력으로 착지한다(E32).
                 if showsDirectionsEntry {
                     Button(appLocalized("directions.toHere")) {
-                        DirectionsPrefillStore.shared.pending = .place(label: place.name, lat: place.lat, lng: place.lng)
+                        DirectionsPrefillStore.shared.pending = DirectionsPrefill(
+                            role: .to, endpoint: .place(label: place.name, lat: place.lat, lng: place.lng))
+                    }
+                    Button(appLocalized("directions.fromHere")) {
+                        DirectionsPrefillStore.shared.pending = DirectionsPrefill(
+                            role: .from, endpoint: .place(label: place.name, lat: place.lat, lng: place.lng))
                     }
                 }
                 // 안내 중에만(N1 spec §2.5): 진행 중인 세션의 목적지를 이 장소로 바꾼다.
