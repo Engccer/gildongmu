@@ -44686,37 +44686,77 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "차량 확인 안 됨."
+            "value": "열차 위치를 끝내 확인하지 못했습니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Vehicle not confirmed."
+            "value": "The train's position could not be confirmed."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Vehículo sin confirmar."
+            "value": "No se pudo confirmar la posición del tren."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Véhicule non confirmé."
+            "value": "La position du train n'a pas pu être confirmée."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Veicolo non confermato."
+            "value": "Non è stato possibile confermare la posizione del treno."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "車両を確認できません。"
+            "value": "列車の位置を最後まで確認できませんでした。"
+          }
+        }
+      }
+    },
+    "transitGuide.stateNeverSeenBus": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "버스 위치를 끝내 확인하지 못했습니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The bus's position could not be confirmed."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo confirmar la posición del autobús."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La position du bus n'a pas pu être confirmée."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non è stato possibile confermare la posizione dell'autobus."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "バスの位置を最後まで確認できませんでした。"
           }
         }
       }
@@ -44766,37 +44806,77 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "차량 위치 확인 중."
+            "value": "하차역에 가까워지면 열차 위치가 표시됩니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Locating vehicle."
+            "value": "The train's position will appear as you near your stop."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Localizando el vehículo."
+            "value": "La posición del tren aparecerá al acercarse a su parada."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Localisation du véhicule."
+            "value": "La position du train s'affichera à l'approche de votre arrêt."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Localizzazione del veicolo."
+            "value": "La posizione del treno apparirà avvicinandosi alla fermata."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "車両の位置を確認中。"
+            "value": "降車駅に近づくと列車の位置が表示されます。"
+          }
+        }
+      }
+    },
+    "transitGuide.stateRidingNotYetVisibleBus": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "하차 정류장에 가까워지면 버스 위치가 표시됩니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The bus's position will appear as you near your stop."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La posición del autobús aparecerá al acercarse a su parada."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La position du bus s'affichera à l'approche de votre arrêt."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La posizione dell'autobus apparirà avvicinandosi alla fermata."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "降車停留所に近づくとバスの位置が表示されます。"
           }
         }
       }
@@ -44806,37 +44886,77 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "신호 없음."
+            "value": "열차 위치가 잠시 끊겼습니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "No signal."
+            "value": "Train position lost for now."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sin señal."
+            "value": "Posición del tren perdida por ahora."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pas de signal."
+            "value": "Position du train momentanément perdue."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nessun segnale."
+            "value": "Posizione del treno momentaneamente persa."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "信号なし。"
+            "value": "列車の位置が一時的に途切れました。"
+          }
+        }
+      }
+    },
+    "transitGuide.stateSignalLostBus": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "버스 위치가 잠시 끊겼습니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bus position lost for now."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Posición del autobús perdida por ahora."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Position du bus momentanément perdue."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Posizione dell'autobus momentaneamente persa."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "バスの位置が一時的に途切れました。"
           }
         }
       }

@@ -380,22 +380,34 @@ export function useTransitGuide(route: TransitRoute | null) {
   /**
    * 신호 → 상시 표시 문구. ⚠ notYetVisible은 국면으로 갈린다 — "차량 접근 대기"는
    * 대기 국면 어휘라 승차 중에 뜨면 "아직 못 탔다"로 뒤집혀 읽힌다(A16).
+   *
+   * 승차 뒤 세 문장(미관측·소실·확인 불가)은 **수단별 키**다(A33, iOS `signalStatusText` 미러) —
+   * 대중교통 추적은 GPS를 쓰지 않으므로 문장이 "열차/버스 위치"를 주어로 말해야 "앱이 내 위치를
+   * 못 잡는다"로 읽히지 않는다. 3-state: 아직 안 잡힘(정상) / 잠시 끊김 / 끝내 확인 불가.
+   * `isTrain`에 기본값이 없는 이유: 생략이 타입을 통과하면 버스 승차에 "열차"가 조용히 붙는다.
    */
   const signalText = useCallback(
-    (signal: TransitGuideState["signal"], phase: TransitGuideState["phase"]): string =>
-      ({
+    (
+      signal: TransitGuideState["signal"],
+      phase: TransitGuideState["phase"],
+      isTrain: boolean,
+    ): string => {
+      return {
         tracking: phase === "boarding" ? t("stateApproaching") : t("stateTracking"),
         notYetVisible:
           phase === "riding"
-            ? t("stateRidingNotYetVisible")
+            ? isTrain
+              ? t("stateRidingNotYetVisible")
+              : t("stateRidingNotYetVisibleBus")
             : phase === "boarding"
               ? t("stateBoardingNotYetVisible")
               : t("stateNotYetVisible"),
-        neverSeen: t("stateNeverSeen"),
-        signalLost: t("stateSignalLost"),
+        neverSeen: isTrain ? t("stateNeverSeen") : t("stateNeverSeenBus"),
+        signalLost: isTrain ? t("stateSignalLost") : t("stateSignalLostBus"),
         upstreamFailed: t("stateUpstreamFailed"),
         untrackable: t("stateUntrackable"),
-      })[signal],
+      }[signal];
+    },
     [t],
   );
 
@@ -419,7 +431,7 @@ export function useTransitGuide(route: TransitRoute | null) {
         boarding && selectedDescription
           ? piece(selectedVehicleLine(isEn, selectedDescription))
           : ui(""),
-        ui(signalText(s.signal, s.phase)),
+        ui(signalText(s.signal, s.phase, leg.mode === "subway")),
         // boarding은 승차 정류소 기준 정보라 "하차역까지 남은 정거장"을 말하면 거짓이
         // 된다 — 원문 프레임만(잔여 수는 원문 꼬리가 담는다).
         ui(
@@ -1127,13 +1139,18 @@ export function useTransitGuide(route: TransitRoute | null) {
       }
       const current = stateRef.current;
       announce(
-        [t("resumed"), current ? signalText(current.signal, current.phase) : ""].filter(Boolean).join(" "),
+        [
+          t("resumed"),
+          current ? signalText(current.signal, current.phase, currentLeg()?.mode === "subway") : "",
+        ]
+          .filter(Boolean)
+          .join(" "),
       );
       void pollOnce();
     };
     document.addEventListener("visibilitychange", onVisibility);
     return () => document.removeEventListener("visibilitychange", onVisibility);
-  }, [announce, clearTimer, pollOnce, signalText, t]);
+  }, [announce, clearTimer, currentLeg, pollOnce, signalText, t]);
 
   // 언마운트: 자원 회수(통지 없음 — 언마운트 전이의 통지는 뷰 몫, §3.3).
   useEffect(() => {
