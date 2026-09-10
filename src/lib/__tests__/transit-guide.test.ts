@@ -80,6 +80,8 @@ describe("transitGuideStep — 공유 fixture 시나리오(B2 §8.1)", () => {
         if ("legIndex" in exp) expect(state.legIndex, ctx).toBe(exp.legIndex);
         if ("remaining" in exp) expect(state.remaining, ctx).toBe(exp.remaining);
         if ("dataAgeSeconds" in exp) expect(state.dataAgeSeconds, ctx).toBe(exp.dataAgeSeconds);
+        // A36 ①: 미관측 상한 카운터는 발화 타이밍으로만 간접 관측되므로 직접 단언 키를 둔다(Kit 실행기 동형).
+        if ("ridingPolls" in exp) expect(state.ridingPolls, ctx).toBe(exp.ridingPolls);
         if ("previousLock" in exp) {
           // 값은 락 참조 이름 또는 null(§13.1 보존·소거 단언).
           expect(state.previousLock, ctx).toEqual(

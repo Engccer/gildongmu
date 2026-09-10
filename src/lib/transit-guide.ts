@@ -319,10 +319,13 @@ export interface TransitGuideState {
   ladderAnnounced: number | null;
   trackingAnnounced: boolean;
   /**
-   * riding 진입 시각(ms). 한 번도 관측되지 않은 채 NEVER_SEEN_MS를 넘기면 neverSeen.
+   * 이번 riding 진입 이후 하차역 목록 조회가 결과(ok·empty)를 돌려준 횟수(A36 ①). 한 번도
+   * 관측되지 않은 채 NEVER_SEEN_POLLS에 닿으면 neverSeen. 시간이 아니라 횟수인 이유: 벽시계는
+   * 주머니에 넣어 둔 시간·조회 실패 구간·앱이 재워진 구간을 "차량 확인 안 됨"의 근거로 셌다(09-05
+   * 실사고). 실패 폴은 세지 않고 riding 밖에서는 오르지 않는다. Kit `ridingPolls` 미러.
    * ⚠ null이면 판정하지 않는다 — "시각 불명"을 "방금 탔다"로도 "오래됐다"로도 읽지 않는다.
    */
-  ridingSince: number | null;
+  ridingPolls: number;
   /** 잠금 차량 연속 미등장 폴 수(소실·도착 추정 판정). */
   missCount: number;
   failCount: number;
@@ -350,7 +353,7 @@ export const MISS_ARRIVE_COUNT = 2;
  * 화면을 끌수록 시한이 늦게 온다(실측 35분에 11폴, 주기 60초면 35폴이어야 한다).
  * ⚠ 10분은 잠정값 — 실승차 판정 대상(BACKLOG A16).
  */
-export const NEVER_SEEN_MS = 600_000;
+export const NEVER_SEEN_POLLS = 10;
 /** 세션 폴링 캡 — 도달 시 주기 강등 + 1회 통지(조용한 사망 금지, §7). */
 export const SESSION_POLL_CAP = 240;
 /**
@@ -783,7 +786,7 @@ export function initTransitGuide(route: TransitGuideRoute, _now: number): Transi
     arrivedCertain: false,
     ladderAnnounced: null,
     trackingAnnounced: false,
-    ridingSince: null,
+    ridingPolls: 0,
     missCount: 0,
     failCount: 0,
     failSince: null,
@@ -841,7 +844,7 @@ function handleDeclareArrived(state: TransitGuideState): TransitStepResult {
       phase: "arrived",
       phaseGen: state.phaseGen + 1,
       arrivedCertain: true,
-      ridingSince: null,
+      ridingPolls: 0,
       lastUpdatedAt: null,
     },
     event: { kind: "arrived", certain: true },
@@ -884,7 +887,7 @@ function resetLockTracking(state: TransitGuideState): TransitGuideState {
   };
 }
 
-/** riding 진입 — ridingSince(미관측 상한 기준점, A16 L2)를 새로 찍는다. */
+/** riding 진입 — 미관측 상한 카운터(ridingPolls, A16 L2·A36 ①)를 0에서 다시 센다(탑승 변경 취소 복귀 포함). */
 function enterRiding(
   state: TransitGuideState,
   lock: TransitLock,
@@ -900,13 +903,13 @@ function enterRiding(
       lock,
       previousLock: null,
       previousPhase: null,
-      ridingSince: now,
+      ridingPolls: 0,
     },
     event: { kind: "boarded", legIndex: state.legIndex, cause },
   };
 }
 
-/** boarding 진입 — 승차 정류소 폴링은 계속되므로 ridingSince는 없다. */
+/** boarding 진입 — 승차 정류소 폴링은 riding 카운터에 세지 않는다(0 유지). */
 function enterBoarding(state: TransitGuideState, lock: TransitLock): TransitStepResult {
   return {
     state: {
@@ -917,7 +920,7 @@ function enterBoarding(state: TransitGuideState, lock: TransitLock): TransitStep
       lock,
       previousLock: null,
       previousPhase: null,
-      ridingSince: null,
+      ridingPolls: 0,
     },
     event: { kind: "vehicleSelected", legIndex: state.legIndex },
   };
@@ -977,8 +980,8 @@ function handleChangeBoarding(state: TransitGuideState): TransitStepResult {
       arrivedCertain: false,
       ladderAnnounced: null,
       trackingAnnounced: false,
-      // 대기 국면엔 기준점이 없다 — 다음 board가 새로 찍는다.
-      ridingSince: null,
+      // 대기 국면엔 카운터가 없다 — 다음 riding 진입이 0에서 다시 센다.
+      ridingPolls: 0,
       missCount: 0,
     },
     event: { kind: "boardingReset" },
@@ -1023,7 +1026,7 @@ function handleAdvance(state: TransitGuideState, route: TransitGuideRoute): Tran
       arrivedCertain: false,
       ladderAnnounced: null,
       trackingAnnounced: false,
-      ridingSince: null,
+      ridingPolls: 0,
       missCount: 0,
       failCount: 0,
       failSince: null,
@@ -1093,6 +1096,10 @@ function handlePoll(
     return { state: next, event };
   }
 
+  // A36 ①: riding에서 결과를 받은 조회를 센다(실패 폴은 위에서 반환됐다). 국면 가드가 필수다 —
+  // 이 자리는 boarding·추정 arrived 폴도 지나는데, enterRiding이 0으로 리셋해 실해는 없어도
+  // 필드 이름("riding 조회 수")을 거짓으로 만든다. 그 위반은 어떤 fixture도 잡지 못한다(검출력 0).
+  if (next.phase === "riding") next.ridingPolls += 1;
   const items = poll.kind === "ok" ? poll.items : [];
   const lock = state.lock;
   const matched = lock ? findLockedItem(items, lock) : null;
@@ -1124,26 +1131,25 @@ function handlePoll(
     // 바로 반환해 missCount가 오르지 않았고, 그래서 signalLost 임계에 도달할
     // 산술적 경로가 없어 침묵이 무한했다(실측 35분).
     //
-    // 판정하지 않는 경우 셋:
+    // 판정하지 않는 경우 둘:
     //  - recovered: 방금 조회가 살아난 폴이다. 최소 한 번은 실제로 보고 나서
     //    말한다(그리고 signalRecovered 이벤트를 덮지 않는다 — 입력당 1이벤트).
     //  - signal !== notYetVisible: 원인이 다른 신호(upstreamFailed·signalLost)와
     //    이미 확정된 자기 자신을 배제한다(1회성).
-    //  - ridingSince == null: 기준 시각 불명이면 판정 자격이 없다.
+    // 축은 조회 횟수(A36 ①, 2026-09-11) — 시계가 아니다. 종전 `ridingSince` 시간 축과
+    // 그 타입 검사 방어(TS18047)는 필드와 함께 사라졌고, 횟수는 fixture의 `ridingPolls`
+    // 단언이 직접 잠근다.
     //
-    // ⚠ 변이 주입 실측(2026-08-16)으로 각 조건의 검증 수단이 갈렸다:
-    // recovered·확정 신호 보존은 fixture가, ridingSince는 **타입 검사**가 잡는다
-    // (제거하면 TS18047). 반면 phase === "riding"은 어느 게이트도 잡지 못한다 —
-    // 위 waiting 조기 반환 때문에 현재 도달 불가한 방어다. 지우지 않는 이유는
-    // 이 축의 불변식("riding 전용")을 다른 블록의 조기 반환에 의존하지 않고
-    // 여기서 자립적으로 표현하기 위해서이고, 검증된 가드가 아니라는 사실을
-    // 여기 적어 두어 다음 사람이 오해하지 않게 한다.
+    // ⚠ 변이 주입 실측(2026-08-16): recovered·확정 신호 보존은 fixture가 잡는다.
+    // 반면 phase === "riding"은 어느 게이트도 잡지 못한다 — 위 waiting 조기 반환·boarding
+    // 분기 때문에 현재 도달 불가한 방어다. 지우지 않는 이유는 이 축의 불변식("riding 전용")을
+    // 다른 블록의 조기 반환에 의존하지 않고 여기서 자립적으로 표현하기 위해서이고,
+    // 검증된 가드가 아니라는 사실을 여기 적어 두어 다음 사람이 오해하지 않게 한다.
     if (
       !recovered &&
       next.signal === "notYetVisible" &&
       next.phase === "riding" &&
-      next.ridingSince != null &&
-      now - next.ridingSince >= NEVER_SEEN_MS
+      next.ridingPolls >= NEVER_SEEN_POLLS
     ) {
       next.signal = "neverSeen";
       return { state: next, event: { kind: "neverSeen" } };

@@ -48,9 +48,11 @@ private struct FixtureExpect: Decodable {
     // previousLock은 락 참조 이름 또는 "명시 null"(소거 기대, §13.1).
     let previousLock: String??
     let event: FixtureEvent??
+    /// A36 ①: 미관측 상한 카운터 직접 단언(웹 실행기 동형).
+    let ridingPolls: Int?
 
     enum CodingKeys: String, CodingKey {
-        case phase, signal, legIndex, remaining, dataAgeSeconds, previousLock, event
+        case phase, signal, legIndex, remaining, dataAgeSeconds, previousLock, event, ridingPolls
     }
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -69,6 +71,7 @@ private struct FixtureExpect: Decodable {
         event = c.contains(.event)
             ? .some(try c.decodeIfPresent(FixtureEvent.self, forKey: .event))
             : .none
+        ridingPolls = try c.decodeIfPresent(Int.self, forKey: .ridingPolls)
     }
 }
 
@@ -201,6 +204,9 @@ private func kindName(_ event: TransitGuideEvent?) -> String? {
             }
             if case let .some(expected) = step.expect.dataAgeSeconds {
                 #expect(state.dataAgeSeconds == expected, "\(ctx) dataAgeSeconds")
+            }
+            if let expected = step.expect.ridingPolls {
+                #expect(state.ridingPolls == expected, "\(ctx) ridingPolls")
             }
             if case let .some(expectedLockRef) = step.expect.previousLock {
                 let expectedLock = expectedLockRef.flatMap { fixture.locks[$0] }
