@@ -373,6 +373,31 @@ K2-a(2026-08-31, spec `2026-08-31-car-session-end-design.md`)가 같은 `GuideTu
 - 백그라운드에서는 **톤은 남기고 음성만 막는다**(`scenePhase` 게이트. `.inactive`는 화면을 보고 있는 중이라 허용). ⚠ 예외 하나: **추정 도착 자동 종료의 도착 종은 전경에서만**(`BeaconModel` `if isForeground { playTone(.nearby) }`, 위원장 판정 2026-08-19) — 실시간 신호가 아니라 잠근 채 잊은 기기에서 한참 뒤 울리는 사후 정리라서다. 확정 도착 톤은 백그라운드에서도 울린다. 상태 텍스트는 계속 갱신하고 복귀 발화는 누적이 아니라 현재 상태 하나다.
 - `UIBackgroundModes: location`·`audio`는 **두 plist 모두**(`Support/Info.plist`·`Support/Info-Experimental.plist`)에 둔다 — 1.7 도보 졸업 때 승격했다. 실험 전용 키는 `NSBluetoothAlwaysUsageDescription` 하나뿐이다(`check-release-artifact.mjs`가 누출을 막는다).
 
+### 오디오 재생기는 둘(도보·대중교통)이고 미뤄진 원복은 최신 소유자에게 이전된다 (CLAUDE.md 이관, 2026-09-11)
+
+spec `2026-09-11-transit-background-poll-design.md` §4.2.1·§4.3(PORTS 세 구멍 판정표). `BeaconModel`·`TransitGuideModel`이 각자 `BeaconTonePlayer`를 갖고 세션은 하나다. `endSession()`은 재생 잔여만큼 원복을 미루고 `cancelPendingRevert()`는 같은 인스턴스만 취소하므로, prewalk 도착 종(2.2초) 뒤 600ms에 대중교통이 `.playback`을 잡으면 1.7초 뒤 도보 재생기의 `.ambient`가 그 위에 떨어져 대중교통 세션이 통째로 잠금 무음이 된다(E34 인계는 대칭). 대중교통이 승격을 시작한 2026-09-11 전엔 증상이 없었고, 그 전에도 `.categoryChange` 메아리가 우연히 치유하고 있었다.
+
+- **전역 최신 소유자** `BeaconTonePlayer.latestOwner`(정적): `beginSession()`이 등록하고, 원복을 실행하는 순간(즉시·미뤄진·`shutdown`) 자기가 최신이 아니면 `.sessionEnded` 대신 `.ownershipTransferred`(자격 반납만, 세션 불변). 그 뒤 그 인스턴스의 옵서버는 세션 밖 취급이다. 다른 인스턴스가 세션을 쥔 동안 세션 밖 단발 재생은 `.ensureActive`(= `.ambient` 적용)를 지나지 않고 그 위에서 낸다.
+- **활성화 축 `isActive`**(PORTS ①의 gildongmu 경로): 인터럽션은 활성만 뺏고 카테고리를 남긴다. `.began` → `isActive = false`, `.apply/.rebuild` → true. `play()`는 `appliedCategory == nil || !isActive`면 재확보한다(`.ended`가 유실돼도 다음 톤이 되살린다). `isBackgroundAudible = 카테고리 playback ∧ isActive`. 재조정에 "이미 그 카테고리면 건너뜀" 단락 분기를 넣지 말 것(테스트가 막는다).
+- **원복 자격 불변식** `didPromote == (마지막으로 낸 적용 동작의 카테고리 == .playback)`은 리듀서 층에서 성립하고 이벤트 9종 길이 ≤5 전수 열(59,049)이 단언한다(PORTS ② 미재현). 앱 층 반례는 `apply` 실패 폴백뿐이고 종료 시 `.ambient` 재적용 1회로 무해.
+- **`.categoryChange` 메아리 식별**(PORTS ③): `routeChangeNotification`을 reason 없이 받으면 자기 `setCategory`마다 `reconcile(rebuild:)`가 다시 돌아 플레이어를 재생성한다(통지가 시작 톤 뒤에 오면 절단 — 전달 순서는 실기기 판정). 판별은 시간 창이 아니라 **통지 시점 세션의 category·options가 우리가 적용한 값(`.mixWithOthers`)과 같은가**: 같으면 메아리(무시), 다르면 남(채팅 TTS `activatePlaybackSession`의 `.duckOthers`)이 갈아치운 것이라 `.categoryTakenOver` → 재생성 없이 재적용. 전면 필터는 그 회복 신호까지 없앤다. 매퍼 `guideAudioRouteChangeEvent(reason:matchesApplied:)`(Kit, AVFoundation 비의존), `mediaServicesWereReset`은 매퍼를 지나지 않고 `.routeChanged`. 재생성 분기는 `toneEndsAt`을 지운다(유령 종료 시각으로 발화가 미뤄지지 않게).
+
+### riding 미관측 상한은 시계가 아니라 조회 횟수다 (CLAUDE.md 이관, 2026-09-11 A36 ①)
+
+spec 같은 문서 §4.1. 종전 `now - ridingSince >= 10분`은 09-05 실사고에서 주머니에 넣어 둔 9분(폴 0회)을 "차량 확인 안 됨"의 근거로 셌다. 지금은 `ridingPolls`(Kit `TransitGuideState` ↔ 웹) — 이번 riding 진입 이후 하차역 목록 조회가 **결과(ok·empty)를 돌려준 횟수**, 상한 `transitNeverSeenPolls`/`NEVER_SEEN_POLLS` = 10(미등장 riding 주기 60초 × 10 = 종전 10분 등가, 잠정 — BACKLOG §2 A36). 세지 않는 것: `failed`·`unsupported`(관측이 아니다), 세대·순번 불일치 폴, waiting·boarding·arrived 폴(증가에 `phase == riding` 가드 — 필드 이름을 거짓으로 만들지 않기 위해서이고 `enterRiding` 리셋 때문에 실해는 없어 fixture 검출력 0), 비관측 잠금(폴 0 + 조기 반환). `recovered` 폴은 세되 판정하지 않는다(현행). 리셋은 `enterRiding`(관측·선언·**탑승 변경 취소 복귀** — `restoreBoarding`은 `enterRiding`을 지난다)과 riding을 벗어나는 전이 전부. 공유 하네스 `expect.ridingPolls` 키가 두 실행기에서 직접 단언한다. 백그라운드 폴이 살아 있으면 전경·배경 무관하게 약 10분에 차고, 권한이 없어 keep-alive가 못 열리면 전경에서 조회한 횟수만 찬다 — 어느 쪽이든 "조회 10번 만에 못 봤다"는 뜻은 같고, 벽시계 백스톱은 위원장 판정과 충돌해 두지 않았다(설계 리뷰 M1 기각).
+
+### 대중교통 안내는 백그라운드에서도 폴하고, 프로세스를 살리는 것은 오디오가 아니라 keep-alive 위치 스트림이다 (CLAUDE.md 이관, 2026-09-11 E36)
+
+spec 같은 문서 §4.2. 위원장 판정(2026-09-10)의 전제 "도보와 같은 방식"은 코드 실측으로 절반만 참이었다: `TransitGuideModel`은 `tones.beginSession()`을 한 번도 부르지 않아 톤이 전부 `.ambient`(백그라운드 무음)였고, `audio` 백그라운드 모드는 **소리를 실제로 내는 동안만** 앱을 살린다(2026-08-08 spec §3.3 "앱을 깨어 있게 유지하는 것은 `location` 모드"). 폴 태스크를 안 끊어도 iOS가 재우는 순간 타이머가 멎는다.
+
+- **승격**: 세션 시작 첫 톤 전 `tones.beginSession()`, `stop()`의 정지 톤 뒤 `tones.endSession()`. 무음 스위치 무시는 도보와 같은 트레이드오프. 가청 판정(`isBackgroundAudible`)은 매 톤, 문장(`ios.beacon.soundBackgroundUnavailable`)은 세션당 1회 latch.
+- **백그라운드 톤 허용 집합 = `trackingStarted` 하나**(위원장 판정 — 사다리·도착·추세·boarding "지금 타라"는 별건). 게이트는 `playTone(_:allowedInBackground:)` 한 곳(억제 가드와 같은 창구), 호출부가 뜻을 밝힌다(기본값 없음). 층 상태는 백그라운드에서도 전진한다. 소스 가드 `transit-background-guards.test.ts`가 허용 대입 1곳을 센다.
+- **음성**: `post`에 `isForeground`(게시 시점 조회) 게이트 — 백그라운드는 `missedAnnouncement`만 남긴다. 복귀(`.background` 경유 `.active`)는 버린 통지가 있을 때만 **현재 상태 한 문장**(신호가 `neverSeen`이면 `transitGuide.neverSeen` 행동 문장 — 상태 문장엔 탈출구 지시가 없다) + 복귀 즉폴. 종전 "안내를 재개합니다" 접두는 폴이 멈춘 적이 없으므로 이 자리에서 뗐고, 유휴 정지 재개에서만 쓴다. ⚠ 복귀 즉폴은 예산 항목이 아니라 3-state 방어선이다 — 재워진 동안 끊긴 요청이 `.failed`로 오는데 즉폴이 옛 태스크를 취소하고 취소 가드가 그 결과를 버린다.
+- **프로세스 생존 = keep-alive 위치 스트림**(위원장 판정 ⓐ 2026-09-11; ⓑ 살리지 않음·ⓒ 무음 오디오 루프(심사 거절 사유)·ⓓ 서버 푸시 기각). `LocationService.startKeepAliveUpdates()`: `kCLLocationAccuracyKilometer`·`distanceFilter 500`·`.otherNavigation`·**`pausesLocationUpdatesAutomatically = false`**(기본값 true면 정차·터널에서 시스템이 정지로 판단해 갱신을 멈추고 백그라운드 근거도 사라진다)·`allowsBackgroundLocationUpdates`(선언 가드). 권한(When In Use)이 없으면 열지 않고 로그 `keepAlive denied` — 팝업을 새로 띄우지 않는다. `TransitGuideModel.updateKeepAlive()`가 **riding ∧ 폴 주기 > 0 ∧ 비유휴**에만 켠다(waiting·boarding·비관측 잠금·확정 도착은 끈다). 좌표는 소비하지 않는다(저장 게이트 100m라 캐시도 오염되지 않는다). 세 스트림(비콘·keep-alive·단발)의 매니저 설정은 `applyProfile(_:)` 한 함수이고, 끄는 쪽(`stopBeaconUpdates`·`endOneShotIfIdle`·`stopKeepAliveUpdates`)은 셋을 다 본다 — 종전엔 단발 취득이 `Best`를 대입하고 되돌리지 않았고 비콘만 보고 매니저를 멈췄다(설계 리뷰 M2). 상태바 위치 표시는 끌 수 없다(도보와 동일). 정식 승격 전엔 "좌표를 실제로 쓰는 ⓐ′" 판정이 필요하다(BACKLOG §2 E36 ⑩).
+- **유휴 폴 정지**(설계 리뷰 B3): `transitSessionPollCap` 240은 상한이 아니라 감속 문턱이고 대중교통엔 A23 안전망이 없어, `pausedInBackground`를 지우면 잊힌 세션이 밤새 폴한다(8시간 ≈ 480회 = 공유 예산 절반 + 위치 스트림). `transitIdlePollLimitMs(legMinutes:)` = max(30분, 2×구간 소요)(Kit `TransitIdle.swift`, 잠정). 축은 **마지막 사용자 조작 이후 경과**(`lastUserActionAt` — 세션 시작·`dispatch`의 비폴 입력·새로고침·역 선택·조망·전경 복귀). 폴 루프가 다음 폴 직전에 판정해 `idlePaused`면 폴·keep-alive를 멈추고 **세션은 유지**(A23과 다르다 — 지연 열차에 타고 있는 사용자를 끊지 않는다). 어떤 조작·전경 복귀든 `touchUserAction()`이 풀며 "안내를 재개합니다. {상태}" + 즉폴. 리듀서에는 시계 축을 넣지 않는다.
+- 백그라운드 전용 주기는 두지 않는다(첫 관측 지연 2배 — E36의 목적 반감). 30분 riding 세션 ≈ 30~120회로 전경에서 화면을 켜 둔 오늘의 세션과 같고, 세션당 상한은 유휴 한계 ÷ 주기. 웹 미러 없음(탭이 살아 있어야 도는 별개 축, `visibilitychange` 정지 유지).
+
+
 ## 이탈 판정 방위 축 (`course-derivation.ts`·`guide-course-axis.ts` ↔ `CourseDerivation.swift`·`GuideCourseAxis.swift`)
 
 ### 이탈 판정은 축이 둘이고 확정은 OR, 복귀는 활성 축 전체 해제다 (CLAUDE.md 이관)
