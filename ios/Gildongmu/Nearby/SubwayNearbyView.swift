@@ -31,8 +31,10 @@ func subwayArrivalLine(_ arrival: SubwayArrival, isEn: Bool) -> String {
     let express = arrival.express ? appLocalized("subwayArrival.express") : nil
     // 현재역 꼬리는 완성 문장이 그 역을 이미 담고 있으면 뗀다(A32) — 판정은 그 줄에 실제로 쓰는
     // 값으로 한다(ko는 원문, en은 영문. 계약은 Kit `subwayShowsCurrentLocationTail`).
+    // ⚠ `enLoc`은 아래 `enParts`에 넘기는 바로 그 값이다 — 판정과 렌더가 갈리지 않게 한 번만 만든다.
+    let enLoc: String? = arrival.currentLocation == nil ? "" : arrival.currentLocationEn
     let koTail = subwayShowsCurrentLocationTail(message: arrival.message, currentLocation: arrival.currentLocation)
-    let enTail = subwayShowsCurrentLocationTail(message: arrival.messageEn, currentLocation: arrival.currentLocationEn)
+    let enTail = subwayShowsCurrentLocationTail(message: arrival.messageEn, currentLocation: enLoc)
     let ko = joinText(
         arrival.line, express, arrival.trainLineNm, arrival.message,
         koTail ? arrival.currentLocation.map { appLocalized("subwayArrival.currentLocation", $0) } : nil)
@@ -44,12 +46,12 @@ func subwayArrivalLine(_ arrival: SubwayArrival, isEn: Bool) -> String {
             arrival.directionEn,
             arrival.trainLineNmEn,
             arrival.messageEn,
-            arrival.currentLocation == nil ? "" : arrival.currentLocationEn,
+            enLoc,
         ]
     ) { p in
         joinText(
             "\(p[0].isEmpty ? "" : "\(p[0]) ")\(p[1])", express, p[2], p[3],
-            p[4].isEmpty || !enTail ? nil : appLocalized("subwayArrival.currentLocation", p[4]))
+            enTail ? appLocalized("subwayArrival.currentLocation", p[4]) : nil)
     }
 }
 
