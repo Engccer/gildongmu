@@ -13,6 +13,8 @@
 
 - **웹 프리필 진입 = 채움 + 즉시 조회(B10 종결, 세션 from-here, plan `docs/superpowers/plans/2026-09-11-backlog-sweep-3-parallel-plan.md`)**: 장소 상세 "여기까지 길찾기"가 도착지만 채우고 멈추던 것을 iOS(2026-09-03)와 같은 한 동작으로 합쳤다. 마운트 자동 조회를 그냥 걸 수 없던 이유는 `initialTo`가 `?dir=` 복원과 같은 prop이라 새로고침·URL 직진입마다 측위 팝업이 뜨는 것 — 진입 표식 `prefill`을 `openDirections` 경로에만 붙여 두 진입을 갈랐고, 조회는 화면 정본 트랜잭션 `runQuery`를 지나 WebMCP 세대 결박 계약을 그대로 지킨다. 판정은 첫 렌더 값으로 굳혀 1회 소비(이후 필드 편집은 무관). 테스트 `DirectionsPrefill.test.tsx` 3축: 프리필 1회 조회 / URL 복원 0회 / 출발지만 채운 진입 0회.
 - **장소 상세에 "여기부터 길찾기"(E32 종결, 웹+iOS, 세션 from-here)**: "여기까지 길찾기" 바로 아래에 같은 장소를 **출발지**로 넣는 버튼(`directions.fromHere` 6로케일, 웹·iOS 공유 키). 프리필 페이로드가 도착지 전용에서 어느 필드인지를 함께 싣는 형태로 바뀌었고(iOS `DirectionsPrefill{role,endpoint}`, 웹 `openDirections(prefill)`), 최근 장소 기록도 그 필드 스코프로 간다. 출발지만 채운 진입은 **조회하지 않고** 도착지 입력에 착지한다(iOS는 `landFocusAfterResolve(from:)` 정본 시퀀스 재사용) — 양끝이 없는 조회는 방금 누른 버튼에 "도착지를 입력하세요" 오류로 답한다. 두 버튼은 별개 접근성 객체이고 각 라벨이 동작의 범위를 말한다. 설계 리뷰 생략: 기존 계약(프리필 1회 소비·착지 시퀀스)의 확장이고 가역.
+- **지하철 도착 한 줄의 현재역 중복 제거(A32, 웹·iOS 두 벌·서버 무변경)**: 완성 문장(`arvlMsg2`)이 이미 현재역을 담는 문법(`6분 후 (강일)`·`강일 도착`)에서 `현재 {역}` 꼬리를 또 이어 한 접근성 객체 안에서 같은 역이 두 번 낭독됐다. 판정은 **같은 응답의 `arvlMsg3` 값이 `arvlMsg2` 안에 있는가** 하나이고(글자 패턴 금지 — 역 이름 자체에 괄호가 있다), 못 알아보면 붙이는 쪽으로 실패해 정보 손실이 0이다. 순수 함수 `subwayShowsCurrentLocationTail`(웹 `src/lib/place-lines/station-arrivals.ts` ↔ Kit `SubwayArrivalLine.swift`)과 공유 fixture `subway-arrival-tail-cases.json` 26행이 두 구현을 잠근다.
+- **꼬리 판정의 축은 언어마다 자기 값이다**(위 항목의 설계 판정): 영문 문장은 괄호 현재역을 담지 않으므로(`subway-arrival-en.ts`가 `currentLocationEn` 단일 채널로 뺀다 — E27 설계 리뷰 #5) 한국어 축으로 en을 판정하면 중복이 없는 줄에서 꼬리를 떼어 en 사용자만 현재역을 잃는다. 규칙(값 포함)은 하나이고 적용 대상만 그 줄의 값이다. 실측 문법 대조표는 `docs/INTEGRATIONS.md` §도착 한 줄의 현재역 꼬리.
 
 ## 2026-09-04
 

@@ -23,6 +23,31 @@ export interface ArrivalItem {
   state: { kind: "ok" };
 }
 
+/**
+ * 도착 한 줄에 현재역 꼬리(`현재 {역}`)를 붙일 것인가(A32) — Kit `subwayShowsCurrentLocationTail` 미러.
+ * 공유 fixture `src/lib/__tests__/fixtures/subway-arrival-tail-cases.json`이 두 구현을 한 표로 잠근다.
+ *
+ * 낭독 정본인 완성 문장(`arvlMsg2`)이 **이미 현재역을 담는 문법이 있다**(`6분 후 (강일)`·`강일 도착`).
+ * 그 위에 꼬리를 또 이으면 한 접근성 객체 안에서 같은 역 이름이 두 번 낭독된다.
+ *
+ * ⚠ **판정 축은 값 포함이지 글자 패턴이 아니다** — 역 이름 자체에 괄호가 있어서
+ * (`천호(풍납토성) 전역출발`) "괄호가 있으면 현재역이 들어 있다"는 규칙은 바로 어긋난다.
+ * 알아보지 못하면 **붙이는 쪽**으로 실패한다(= 현행 동작, 정보 손실 0).
+ *
+ * ⚠ **언어마다 자기 값으로 판정한다.** 영문 문장은 괄호 현재역을 담지 않으므로
+ * (`subway-arrival-en.ts`가 `currentLocationEn` 단일 채널로 뺀다 — E27 설계 리뷰 #5) 한국어 값으로
+ * en을 판정하면 중복이 없는 줄에서 꼬리를 떼어 **en 사용자만 현재역을 잃는다**.
+ */
+export function subwayShowsCurrentLocationTail(
+  message: string | undefined | null,
+  currentLocation: string | undefined | null,
+): boolean {
+  const location = (currentLocation ?? "").trim();
+  // 현재역이 애초에 없으면 붙일 것도 없다("정보 없음"이지 중복이 아니다).
+  if (!location) return false;
+  return !(message ?? "").trim().includes(location);
+}
+
 export function arrivalItems(
   arrivals: SubwayArrival[],
   t: TranslateFn,
@@ -39,17 +64,24 @@ export function arrivalItems(
       [a.line ? a.lineEn : "", a.directionEn, a.trainLineNmEn],
       ([lineEn, dir, train]) => joinText(`${lineEn ? `${lineEn} ` : ""}${dir}`, train, express),
     );
+    // 꼬리 판정(A32)은 그 줄에 실제로 쓰는 값으로 한다 — ko는 원문, en은 영문.
+    const koTail = subwayShowsCurrentLocationTail(a.message, a.currentLocation);
+    const enTail = subwayShowsCurrentLocationTail(a.messageEn, a.currentLocationEn);
     const messageKo = joinText(
       a.message,
-      a.currentLocation && t("currentLocation", { location: a.currentLocation }),
+      koTail && a.currentLocation && t("currentLocation", { location: a.currentLocation }),
     );
     const message = pickLine(
       locale,
       messageKo,
+      // ⚠ 영문 요구 자리는 꼬리 판정과 무관하게 ko 기준으로 둔다 — `currentLocationEn` 결측을 자리
+      // 표시로 접으면 "영문 문장은 있는데 현재역만 조용히 사라지는" 손실이 생긴다. 역명이 들어가는
+      // en 문법은 역 조회가 실패하면 `messageEn`도 함께 부재라 이 요구가 과하지 않다.
       [a.messageEn, a.currentLocation ? a.currentLocationEn : ""],
-      ([msg, loc]) => joinText(msg, loc && t("currentLocation", { location: loc })),
-      // 현재역 문장은 UI 템플릿(`Now at {location}`)이라 영어 줄이면 혼합 줄 — en 태그를 달지 않는다
-      { pure: !a.currentLocation },
+      ([msg, loc]) => joinText(msg, enTail && loc && t("currentLocation", { location: loc })),
+      // 현재역 문장은 UI 템플릿(`Now at {location}`)이라 영어 줄이면 혼합 줄 — en 태그를 달지 않는다.
+      // 꼬리를 떼면 그 템플릿이 없으므로 순수 데이터 줄이다.
+      { pure: !enTail },
     );
     return {
       line: line.text,
