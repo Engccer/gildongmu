@@ -53,10 +53,10 @@ struct GildongmuApp: App {
     @AppStorage(AppLanguage.selectionKey) private var languageRaw = ""
     private let launchStore = LaunchActionStore.shared
     private let directionsPrefillStore = DirectionsPrefillStore.shared
-    /// 장소 상세·검색 "길찾기" 진입이 넘긴 도착지(Task I4). directionsEpoch와 함께
-    /// 갱신되어야 DirectionsTabView 재생성 시점에 반영된다. SwiftUI는 `.id` 불변이면
+    /// 장소 상세·검색 "길찾기" 진입이 넘긴 프리필 한 끝(Task I4·E32). directionsEpoch와
+    /// 함께 갱신되어야 DirectionsTabView 재생성 시점에 반영된다. SwiftUI는 `.id` 불변이면
     /// init 인자가 바뀌어도 기존 `@State`를 그대로 유지하므로, 값만 바꾸면 무시된다.
-    @State private var directionsPrefill: DirectionsEndpoint?
+    @State private var directionsPrefill: DirectionsPrefill?
     /// 실시간 안내 세션(N1) — 앱 수명. 시트·띠바도 여기서 띄운다(`.id` 바깥이라
     /// 언어 전환·세션 리셋에도 유지).
     private let guideSession = GuideSession.shared
@@ -79,7 +79,7 @@ struct GildongmuApp: App {
                     case .search:
                         Tab(appLocalized("ios.tab.search"), systemImage: "magnifyingglass", value: AppTab.search) { withGuideBand(.search, SearchView().id(searchEpoch)) }
                     case .directions:
-                        Tab(appLocalized("ios.tab.directions"), systemImage: "signpost.right.and.left", value: AppTab.directions) { withGuideBand(.directions, DirectionsTabView(prefilledDestination: directionsPrefill).id(directionsEpoch)) }
+                        Tab(appLocalized("ios.tab.directions"), systemImage: "signpost.right.and.left", value: AppTab.directions) { withGuideBand(.directions, DirectionsTabView(prefill: directionsPrefill).id(directionsEpoch)) }
                     case .nearby:
                         Tab(appLocalized("ios.tab.nearby"), systemImage: "location", value: AppTab.nearby) { withGuideBand(.nearby, NearbyHubView().id(nearbyEpoch)) }
                     case .chat:
@@ -307,15 +307,19 @@ struct GildongmuApp: App {
     /// 정확히 한 번 발생하는 지점이라, DirectionsModel.init(App body 재평가마다
     /// 반복 호출)에서 기록하면 삭제한 최근 장소가 다음 재평가에서 부활하는
     /// 부수효과가 있었다(2026-07-26 리뷰 발견).
-    private func consumeDirectionsPrefill(_ endpoint: DirectionsEndpoint?) {
-        guard let endpoint else { return }
+    private func consumeDirectionsPrefill(_ prefill: DirectionsPrefill?) {
+        guard let prefill else { return }
         directionsPrefillStore.pending = nil
-        directionsPrefill = endpoint
+        directionsPrefill = prefill
         directionsEpoch += 1
         selectedTab = .directions
-        if case .place(let label, let lat, let lng, _) = endpoint {
-            // 프리필은 도착지 필드 확정이므로 도착지 스코프에 기록(분리 저장).
-            RecentSearchStore().recordEndpoint(RecentEndpoint(label: label, lat: lat, lng: lng), scope: .to)
+        if case .place(let label, let lat, let lng, _) = prefill.endpoint {
+            // 프리필은 그 필드의 확정이므로 같은 스코프에 기록한다(분리 저장) —
+            // "여기부터"를 출발지 최근 목록에 넣지 않으면 다음에 그 장소를 출발지로
+            // 다시 고를 때 검색부터 해야 한다.
+            RecentSearchStore().recordEndpoint(
+                RecentEndpoint(label: label, lat: lat, lng: lng),
+                scope: prefill.role == .from ? .from : .to)
         }
     }
 }

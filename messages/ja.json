@@ -163,6 +163,7 @@
   "directions": {
     "title": "経路検索",
     "toHere": "ここまでの経路検索",
+    "fromHere": "ここからの経路検索",
     "back": "戻る",
     "from": "出発地",
     "to": "目的地",

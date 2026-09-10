@@ -428,7 +428,8 @@ struct PlaceRow: View {
             // 길찾기 탭 도착지 프리필 진입(Task I4). 다음 두 딥링크(외부 앱 위임)와
             // 짝지어 "이 장소로 가는 법" 그룹 안에 둔다.
             Button(appLocalized("directions.toHere")) {
-                DirectionsPrefillStore.shared.pending = .place(label: place.name, lat: place.lat, lng: place.lng)
+                DirectionsPrefillStore.shared.pending = DirectionsPrefill(
+                    role: .to, endpoint: .place(label: place.name, lat: place.lat, lng: place.lng))
             }
             Button(appLocalized("ios.route.naver")) {
                 if let url = buildNaverRouteDeeplink(mode: .walk, dest: dest, appname: AppConfig.appIdentifier) {

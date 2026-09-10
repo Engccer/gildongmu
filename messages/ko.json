@@ -163,6 +163,7 @@
   "directions": {
     "title": "길찾기",
     "toHere": "여기까지 길찾기",
+    "fromHere": "여기부터 길찾기",
     "back": "돌아가기",
     "from": "출발지",
     "to": "도착지",

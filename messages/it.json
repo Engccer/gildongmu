@@ -163,6 +163,7 @@
   "directions": {
     "title": "Indicazioni",
     "toHere": "Indicazioni fino a qui",
+    "fromHere": "Indicazioni da qui",
     "back": "Indietro",
     "from": "Partenza",
     "to": "Destinazione",

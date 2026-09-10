@@ -163,6 +163,7 @@
   "directions": {
     "title": "Directions",
     "toHere": "Directions to here",
+    "fromHere": "Directions from here",
     "back": "Back",
     "from": "From",
     "to": "To",
