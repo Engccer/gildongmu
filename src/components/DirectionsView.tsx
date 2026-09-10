@@ -580,6 +580,7 @@ export function DirectionsView({
     if (prefillActionRef.current !== "query") return;
     void runQuery();
     // 첫 렌더의 필드 스냅샷(= initialFrom·initialTo)으로 도는 마운트 1회 조회다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // 게이트 통과 수단만 — **조회 대상 결정 전용**(E11부터 표시 순서는
