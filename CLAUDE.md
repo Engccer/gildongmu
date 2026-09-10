@@ -84,6 +84,7 @@
 - **거리 표기는 `formatDistance`만 지난다**(웹 `format.ts` ↔ Kit `Format.swift` ↔ CLI `dist()` 3벌 미러: 1km 미만 `m`, 이상 소수 km 원값). 낭독 정정은 m만(`spokenDistanceUnits`). 소수 km 직접 조립 금지 — `format-drift.test.ts`가 강제. → INTEGRATIONS
 - **3-state 불변식 (시각장애인 정합)**: "0대/없음"과 "정보 없음(`unknown`)"과 "조회 실패(throw→502)"를 **절대 뭉개지 않는다**. 도착·진료·공기질·날씨·시설 전반에 적용. 해석 불가한 수치는 숨기고 등급 단어를 정본으로.
 - **도착 낭독 정본은 완성 문장 필드**: 서울버스 `arrmsg1`·지하철 `arvlMsg2`("곧 도착"·"전역 출발"). ⚠ `traTime1`/`barvlDt`를 슬롯형으로 환산하면 운행종료에도 비0이라 오발화. 한 도착 항목이 1·2번째 버스를 슬롯 페어(`arrmsg1`·`arrmsg2`)로 주므로 둘 다 투영(슬롯2는 메시지가 다를 때만).
+- **도착 줄의 현재역 꼬리는 값 포함으로 가르고 축은 그 줄의 언어다**(A32, `subwayShowsCurrentLocationTail` 웹 `station-arrivals.ts` ↔ Kit `SubwayArrivalLine.swift` + 공유 fixture): 완성 문장이 `arvlMsg3` 값을 담으면 `현재 {역}`을 빼고 아니면 붙인다(못 알아보면 붙인다). ⚠ 글자 패턴 금지(역명에 괄호가 있다)·한국어 축으로 en 판정 금지(영문 문장은 현재역을 담지 않아 en만 정보를 잃는다). → INTEGRATIONS
 - **역명 매칭은 확장 정규화가 정본**(`station-match.ts` `normalizeStationName`+`lineHintMatches` 재사용, 자체 정규화 금지). → INTEGRATIONS
 - **음성 전사를 검색어로 쓰기 전 `normalizeVoiceQuery` 필수**(웹 `format.ts` ↔ Kit `VoiceQuery.swift`) — STT 후행 마침표에 juso가 0건이 된다. 소비 여부 판정은 별개 층 `hasSpeechContent`(Kit, `SpeechService.stop()` 한 곳). 채팅은 미적용. → INTEGRATIONS
 - **"내 주변" 거리순 정렬은 코드 책임**(Haversine, `totalCount` 신뢰 금지). ⚠ 검색 탭은 거리순이 아니라 정확도순+근접 블렌딩 — 거리 표기만 `annotateDistances`, 재정렬 금지. → INTEGRATIONS

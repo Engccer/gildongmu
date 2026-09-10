@@ -1,0 +1,31 @@
+{
+  "comment": "A32 지하철 도착 한 줄의 현재역 꼬리 판정 — 웹 station-arrivals.ts ↔ Kit SubwayArrivalLine.swift 공유. expect = 꼬리(`현재 {역}`)를 붙이는가. ko 문법 행은 2026-09-10 실호출(BACKLOG E37 표)과 2026-09-11 수집기 표본, en 행은 subway-arrival-en.ts의 행렬에서 왔다.",
+  "cases": [
+    { "name": "ko 시간+괄호 현재역(위원장 신고 원본)", "message": "6분 후 (강일)", "currentLocation": "강일", "expect": false },
+    { "name": "ko 시간+괄호 현재역(1호선)", "message": "4분 후 (삼각지)", "currentLocation": "삼각지", "expect": false },
+    { "name": "ko 시간만(2호선은 현재역을 병기하지 않는다)", "message": "4분 30초 후", "currentLocation": "방배", "expect": true },
+    { "name": "ko 시간만(분 단위)", "message": "9분 후", "currentLocation": "낙성대", "expect": true },
+    { "name": "ko 당역 도착", "message": "서울 도착", "currentLocation": "서울", "expect": false },
+    { "name": "ko 당역 출발", "message": "서울 출발", "currentLocation": "서울", "expect": false },
+    { "name": "ko 전역 도착(문장에 역명이 없다)", "message": "전역 도착", "currentLocation": "남영", "expect": true },
+    { "name": "ko 전전역 출발(문장에 역명이 없다)", "message": "전전역 출발", "currentLocation": "미사", "expect": true },
+    { "name": "ko N번째 전역+괄호", "message": "[2]번째 전역 (서강대)", "currentLocation": "서강대", "expect": false },
+    { "name": "ko N번째 전역+괄호(장거리)", "message": "[4]번째 전역 (하남검단산)", "currentLocation": "하남검단산", "expect": false },
+    { "name": "ko N번째 전역+괄호(수집기 04:46 1호선)", "message": "[8]번째 전역 (구로)", "currentLocation": "구로", "expect": false },
+    { "name": "ko N번째 전역+괄호(수집기 04:46 1호선 하행)", "message": "[14]번째 전역 (광운대)", "currentLocation": "광운대", "expect": false },
+    { "name": "ko 역 이름 자체에 괄호가 있다 — 글자 패턴 규칙이 깨지는 자리", "message": "천호(풍납토성) 전역출발", "currentLocation": "천호(풍납토성)", "expect": false },
+    { "name": "ko 괄호 있는 역명이 문장에 없으면 꼬리는 남는다", "message": "전역 도착", "currentLocation": "천호(풍납토성)", "expect": true },
+    { "name": "ko 구 문법(괄호 안이 역명이 아니다)", "message": "3분 후(2번째 전)", "currentLocation": "방배", "expect": true },
+    { "name": "ko 시간만(초 포함)", "message": "2분 30초 후", "currentLocation": "선릉", "expect": true },
+    { "name": "현재역 값의 앞뒤 공백은 판정을 뒤집지 않는다", "message": "6분 후 (강일)", "currentLocation": " 강일 ", "expect": false },
+    { "name": "현재역이 없으면 붙일 것이 없다", "message": "곧 도착", "currentLocation": "", "expect": false },
+    { "name": "현재역이 null이어도 같다", "message": "곧 도착", "currentLocation": null, "expect": false },
+    { "name": "문장이 비면 꼬리가 유일한 정보다", "message": "", "currentLocation": "강일", "expect": true },
+    { "name": "en 당역 도착(영문 문장에 역명이 들어간다)", "message": "Arrived at Seoul", "currentLocation": "Seoul", "expect": false },
+    { "name": "en 당역 출발", "message": "Departed Seoul", "currentLocation": "Seoul", "expect": false },
+    { "name": "en 당역 진입", "message": "Approaching Seoul", "currentLocation": "Seoul", "expect": false },
+    { "name": "en 시간 문장은 현재역을 담지 않는다 — 꼬리가 유일한 채널", "message": "In 4 min", "currentLocation": "Samgakji", "expect": true },
+    { "name": "en 잔여 정거장 문장도 같다", "message": "2 stations away", "currentLocation": "Seogang Univ.", "expect": true },
+    { "name": "en 전역 도착", "message": "Arrived at previous station", "currentLocation": "Namyeong", "expect": true }
+  ]
+}

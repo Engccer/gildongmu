@@ -29,9 +29,13 @@ func subwayStationLine(
 /// 없으면 한 건 전체가 한국어 완성 문장(spec 리뷰 검출: 부분 영문이 한 객체 안에 두 언어를 세웠다).
 func subwayArrivalLine(_ arrival: SubwayArrival, isEn: Bool) -> String {
     let express = arrival.express ? appLocalized("subwayArrival.express") : nil
+    // 현재역 꼬리는 완성 문장이 그 역을 이미 담고 있으면 뗀다(A32) — 판정은 그 줄에 실제로 쓰는
+    // 값으로 한다(ko는 원문, en은 영문. 계약은 Kit `subwayShowsCurrentLocationTail`).
+    let koTail = subwayShowsCurrentLocationTail(message: arrival.message, currentLocation: arrival.currentLocation)
+    let enTail = subwayShowsCurrentLocationTail(message: arrival.messageEn, currentLocation: arrival.currentLocationEn)
     let ko = joinText(
         arrival.line, express, arrival.trainLineNm, arrival.message,
-        arrival.currentLocation.map { appLocalized("subwayArrival.currentLocation", $0) })
+        koTail ? arrival.currentLocation.map { appLocalized("subwayArrival.currentLocation", $0) } : nil)
     // 노선 미매핑(`line` nil)·현재역 부재는 ko도 그 조각이 없으므로 영문 요구 대상이 아니다("" 자리 표시).
     return TransitDisplay.pickLine(
         isEn: isEn, ko: ko,
@@ -45,7 +49,7 @@ func subwayArrivalLine(_ arrival: SubwayArrival, isEn: Bool) -> String {
     ) { p in
         joinText(
             "\(p[0].isEmpty ? "" : "\(p[0]) ")\(p[1])", express, p[2], p[3],
-            p[4].isEmpty ? nil : appLocalized("subwayArrival.currentLocation", p[4]))
+            p[4].isEmpty || !enTail ? nil : appLocalized("subwayArrival.currentLocation", p[4]))
     }
 }
 
