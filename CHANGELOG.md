@@ -9,6 +9,11 @@
 
 ---
 
+## 2026-09-11
+
+- **웹 프리필 진입 = 채움 + 즉시 조회(B10 종결, 세션 from-here, plan `docs/superpowers/plans/2026-09-11-backlog-sweep-3-parallel-plan.md`)**: 장소 상세 "여기까지 길찾기"가 도착지만 채우고 멈추던 것을 iOS(2026-09-03)와 같은 한 동작으로 합쳤다. 마운트 자동 조회를 그냥 걸 수 없던 이유는 `initialTo`가 `?dir=` 복원과 같은 prop이라 새로고침·URL 직진입마다 측위 팝업이 뜨는 것 — 진입 표식 `prefill`을 `openDirections` 경로에만 붙여 두 진입을 갈랐고, 조회는 화면 정본 트랜잭션 `runQuery`를 지나 WebMCP 세대 결박 계약을 그대로 지킨다. 판정은 첫 렌더 값으로 굳혀 1회 소비(이후 필드 편집은 무관). 테스트 `DirectionsPrefill.test.tsx` 3축: 프리필 1회 조회 / URL 복원 0회 / 출발지만 채운 진입 0회.
+- **장소 상세에 "여기부터 길찾기"(E32 종결, 웹+iOS, 세션 from-here)**: "여기까지 길찾기" 바로 아래에 같은 장소를 **출발지**로 넣는 버튼(`directions.fromHere` 6로케일, 웹·iOS 공유 키). 프리필 페이로드가 도착지 전용에서 어느 필드인지를 함께 싣는 형태로 바뀌었고(iOS `DirectionsPrefill{role,endpoint}`, 웹 `openDirections(prefill)`), 최근 장소 기록도 그 필드 스코프로 간다. 출발지만 채운 진입은 **조회하지 않고** 도착지 입력에 착지한다(iOS는 `landFocusAfterResolve(from:)` 정본 시퀀스 재사용) — 양끝이 없는 조회는 방금 누른 버튼에 "도착지를 입력하세요" 오류로 답한다. 두 버튼은 별개 접근성 객체이고 각 라벨이 동작의 범위를 말한다. 설계 리뷰 생략: 기존 계약(프리필 1회 소비·착지 시퀀스)의 확장이고 가역.
+
 ## 2026-09-04
 
 - **OpenAI WebMCP Challenge 제출 완료(W1 G4, 16:33 KST, 마감 27분 전)**: Devpost https://devpost.com/software/gildongmu · 영상 https://youtu.be/8L_Xq-6V660 (2분 6초). 영상은 얼굴 2장면(핸드폰) + ChatGPT 앱 내장 브라우저 화면 녹화(computer use로 프롬프트 3개 실행, `screencapture -v` 영역 녹화) + OpenAI TTS 내레이션 + Pillow 자막 오버레이를 ffmpeg로 합성. Devpost 등록·폼 입력은 Windows Chrome을 claude-in-chrome으로 자동화(가입·reCAPTCHA·규정 동의는 위원장). 실측: 프롬프트가 "this page"면 에이전트가 외부 Chrome 페이지에서 도구를 실행해 내장 탭이 안 움직이고, "the page open in your browser tab"이어야 내장 탭에서 실행된다(`docs/WEBMCP.md` 예시 프롬프트 교정).
