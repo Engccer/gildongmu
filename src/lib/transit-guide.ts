@@ -79,10 +79,10 @@ export function isUnobservedTransitLock(lock: TransitLock): boolean {
  * 남긴다. `99`(N번째 전역)는 사용자가 타고 있을 수 없다. 이 필터가 N3의 교차검증과 같은 급의 증거를
  * 만들어 선언 식별 잠금(`boardAboard`)이 확정 도착 권한을 갖는 근거다. Kit `transitAboardCandidates` 미러.
  */
+const ABOARD_CODES = new Set(["0", "1", "2", "3", "4", "5"]);
 export function aboardCandidates(items: TrackItem[]): TrackItem[] {
   return items.filter((item) => item.arrivalCode != null && ABOARD_CODES.has(item.arrivalCode));
 }
-const ABOARD_CODES = new Set(["0", "1", "2", "3", "4", "5"]);
 
 /**
  * 완성 문장과 그 영문을 **한 관측에서 함께** 뽑는다(E27 잔여 ①, spec 2026-09-01 §3.4).

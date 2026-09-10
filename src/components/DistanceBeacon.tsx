@@ -73,7 +73,7 @@ export function DistanceBeacon({
   focusTriggerOnMount?: boolean;
   triggerLabel?: string;
   /**
-   * 트리거로 세션을 시작한 직후 1회(startOnOpen 전용). 호출부가 자기 채널로 시작
+   * 트리거로 세션을 시작한 직후 1회(startOnOpen·autoStart 전용). 호출부가 자기 채널로 시작
    * 고지를 내는 자리다(길찾기 뷰의 수동 위치 고지) — 이 컴포넌트의 live region은
    * 세션 문장이 점유하므로 그 문장과 경합시키지 않는다.
    */

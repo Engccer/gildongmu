@@ -85,7 +85,7 @@ struct TransitTrackingSheet: View {
 
     var body: some View {
         // 접기 버튼은 섹션 헤더(제목 메뉴) 행 우측 아이콘(BeaconTrackingSheet 동형,
-        // 위원장 판정 2026-08-23). 핸드오프 화면은 세션이 끝나 접기가 없다.
+        // 위원장 판정 2026-08-23).
         sheetBody
     }
 
@@ -104,8 +104,7 @@ struct TransitTrackingSheet: View {
                         viaStopsRows
                         phaseControls(proxy: proxy)
                     } header: {
-                        // 제목이 곧 목적지 메뉴다(스펙 2026-08-12 §1). 핸드오프 화면
-                        // 헤더는 불변 — 세션이 끝나 목적지 바꾸기가 성립하지 않는다.
+                        // 제목이 곧 목적지 메뉴다(스펙 2026-08-12 §1).
                         GuideTitleRow {
                             GuideTitleMenu(
                                 heading: appLocalized("beacon.transitHeading"),
@@ -484,8 +483,13 @@ struct TransitTrackingSheet: View {
                 Text(quickExit)
             }
             if classified.candidates.isEmpty {
-                // 0건 사유 3-state(§13.3): 진짜 0건 / 필터 전멸 / 조회 실패.
-                Text(model.reasonText(model.waitingReason ?? TransitWaitingEmptyReason.none))
+                // 0건 사유 3-state(§13.3): 진짜 0건 / 필터 전멸 / 조회 실패. pickVehicle의 "그 역에 있는 열차가
+                // 없다"(원 목록엔 후보가 있다)는 진짜 0건과 다른 상태라 따로 말한다(코드 리뷰 M3).
+                let rawHasCandidates = aboardPicking && !classifyTransitBoardingCandidates(
+                    model.waitingLive + model.waitingDeparted.map(\.item), leg: leg).candidates.isEmpty
+                Text(rawHasCandidates
+                    ? appLocalized("transitGuide.noCandidatesAboard")
+                    : model.reasonText(model.waitingReason ?? TransitWaitingEmptyReason.none))
                     .foregroundStyle(.secondary)
             }
             ForEach(rows, id: \.id) { row in

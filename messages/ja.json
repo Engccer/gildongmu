@@ -1067,6 +1067,7 @@
     "waitingCount": "乗車候補{count}件。",
     "noCandidatesFiltered": "この路線以外の車両のみ表示されています",
     "noCandidatesUnavailable": "リアルタイム一覧を取得できませんでした",
+    "noCandidatesAboard": "この駅にいる列車が見つかりません。",
     "viaStopsTrain": "経由駅{count}駅",
     "viaStopsBus": "経由停留所{count}か所",
     "viaBoard": "乗車",

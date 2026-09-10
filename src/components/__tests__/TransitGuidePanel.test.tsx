@@ -914,9 +914,91 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
     fireEvent.click(advance);
     fireEvent.click(await screen.findByRole("button", { name: "transitGuide.boardAlready" }));
     fireEvent.click(await screen.findByRole("button", { name: "여의도" }));
-    expect(await screen.findByRole("button", { name: "transitGuide.walkHandoffStart" })).toBeTruthy();
+    const handoff = await screen.findByRole("button", { name: "transitGuide.walkHandoffStart" });
     expect(screen.queryByRole("button", { name: "transitGuide.advance" })).toBeNull();
     expect(screen.getAllByRole("status")[0].textContent).toContain("transitGuide.arrivedWalkNext:7");
+    // 위원장 증상의 원래 흐름(A37 ② + E34): 선언 도착에서 그 버튼을 한 번 누르면 도보가 자동 시작된다.
+    fireEvent.click(handoff);
+    const stop = await screen.findByRole("button", { name: "beacon.stop" });
+    await waitFor(() => expect(document.activeElement).toBe(stop));
+    expect(screen.queryByRole("button", { name: "transitGuide.walkHandoffStart" })).toBeNull();
+  });
+
+  it("역 선택 직후 앞 역의 늦은 응답은 새 역 목록으로 커밋되지 않고, 새 역 조회가 바로 나간다(A34, 코드 리뷰 M1)", async () => {
+    // 승차역(천호) 폴을 붙들어 두고, 그 사이 역을 고른다 — 늦게 풀린 옛 응답은 버려져야 한다.
+    let releaseOld: (() => void) | null = null;
+    const calls: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        calls.push(url);
+        if (url.includes("station=" + encodeURIComponent("천호"))) {
+          await new Promise<void>((r) => {
+            releaseOld = r;
+          });
+          return {
+            ok: true,
+            json: async () => ({
+              mode: "subway",
+              status: "ok",
+              rawCount: 1,
+              items: [trackItem({ vehicleId: "OLD", message: "천호 도착", remainingStops: 0, arrivalCode: "1" })],
+            }),
+          } as Response;
+        }
+        return {
+          ok: true,
+          json: async () => ({
+            mode: "subway",
+            status: "ok",
+            rawCount: 1,
+            items: [trackItem({ vehicleId: "NEW", message: "전역 출발", remainingStops: 1, arrivalCode: "3" })],
+          }),
+        } as Response;
+      }),
+    );
+    render(<TransitGuidePanel route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
+    fireEvent.click(screen.getByRole("button", { name: "시작" }));
+    await waitFor(() => expect(releaseOld).not.toBeNull());
+    // 옛 폴이 in-flight인 채 이미 탑승 → 왕십리 선택.
+    fireEvent.click(screen.getByRole("button", { name: "transitGuide.boardAlready" }));
+    fireEvent.click(await screen.findByRole("button", { name: "왕십리(성동구청)" }));
+    await screen.findByText("transitGuide.waitingLabelAboard");
+    // 옛 응답을 이제 풀어 준다 — 새 역 목록에 OLD가 들어오면 안 되고, 새 역 폴이 곧바로 나가야 한다.
+    releaseOld!();
+    await waitFor(() => {
+      expect(calls.some((u) => u.includes("station=" + encodeURIComponent("왕십리(성동구청)")))).toBe(true);
+    });
+    const rows = await screen.findAllByRole("button", { name: /selectTrain/ });
+    expect(rows).toHaveLength(1);
+    expect(rows[0].textContent).not.toContain("천호 도착");
+  });
+
+  it("pickVehicle에서 그 역에 있는 열차가 없으면 사유가 '진짜 0건'과 다르다(코드 리뷰 M3)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          ({
+            ok: true,
+            json: async () => ({ mode: "subway", status: "ok", rawCount: 1, items: [trackItem({})] }),
+          }) as Response,
+      ),
+    );
+    render(<TransitGuidePanel route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
+    fireEvent.click(screen.getByRole("button", { name: "시작" }));
+    fireEvent.click(await screen.findByRole("button", { name: "transitGuide.boardAlready" }));
+    fireEvent.click(await screen.findByRole("button", { name: "왕십리(성동구청)" }));
+    // 목 항목은 99(두 정거장 밖)뿐 — 원 목록엔 후보가 있으나 필터 뒤 0건.
+    expect(await screen.findByText("transitGuide.noCandidatesAboard")).toBeTruthy();
+    expect(screen.queryByText("transitGuide.noCandidates")).toBeNull();
+    expect(screen.getByRole("button", { name: "transitGuide.continueWithoutTrain" })).toBeTruthy();
+    // 새로고침 응답 수도 필터를 지난다(리뷰 M2) — 0개.
+    fireEvent.click(screen.getByRole("button", { name: "transitGuide.refresh" }));
+    await waitFor(() => {
+      expect(screen.getAllByRole("status")[0].textContent).toContain("transitGuide.waitingCount:0");
+    });
   });
 
   it("이미 탑승했습니다(A34 ② 2026-09-11): 역을 묻고 → 그 역에 있는 열차만 목록 → 고르면 boarding 없이 riding(식별 잠금)", async () => {

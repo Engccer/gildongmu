@@ -1067,6 +1067,7 @@
     "waitingCount": "{count, plural, one {# opción de embarque} other {# opciones de embarque}}.",
     "noCandidatesFiltered": "Solo se muestran vehículos de otras líneas",
     "noCandidatesUnavailable": "No se pudo cargar la lista en tiempo real",
+    "noCandidatesAboard": "No aparece ningún tren en esta estación.",
     "viaStopsTrain": "{count, plural, one {# estación} other {# estaciones}} en este tramo",
     "viaStopsBus": "{count, plural, one {# parada} other {# paradas}} en este tramo",
     "viaBoard": "subida",

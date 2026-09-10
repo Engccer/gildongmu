@@ -144,7 +144,22 @@ export function trackTargetUrl(
   return `/api/transit/track?mode=subway&phase=track&station=${encodeURIComponent(station)}&line=${encodeURIComponent(leg.lineName)}&lang=${lang}`;
 }
 
-export function useTransitGuide(route: TransitRoute | null) {
+export function useTransitGuide(
+  route: TransitRoute | null,
+  options: {
+    /**
+     * 마지막 leg 뒤 도보 인계가 가능한가(패널이 목적지 좌표를 아는가, E34). 도착 문장의 선택 축과 버튼
+     * 라벨 축을 한 값으로 묶는다 — 갈리면 "없는 버튼을 가리키는 문장"이 된다(spec-compliance 리뷰 MINOR 2).
+     */
+    walkHandoffAvailable?: boolean;
+  } = {},
+) {
+  const walkHandoffAvailable = options.walkHandoffAvailable ?? false;
+  // 통지 조립(콜백 안, 렌더 밖)이 읽는 미러 — 렌더 중 ref 접근 금지(React 컴파일러 규칙)라 effect로 동기화.
+  const walkHandoffAvailableRef = useRef(walkHandoffAvailable);
+  useEffect(() => {
+    walkHandoffAvailableRef.current = walkHandoffAvailable;
+  }, [walkHandoffAvailable]);
   const t = useTranslations("transitGuide");
   const locale = useLocale();
 
@@ -183,7 +198,15 @@ export function useTransitGuide(route: TransitRoute | null) {
    * "이미 탑승했습니다" 흐름(A34 ②+①, spec 2026-09-11 §4.2)의 두 단계 — 지나는 역 묻기 → 그 역에 있는
    * 열차 고르기. 대기 국면 전용이라 국면이 waiting을 벗어나면 소거(dispatch, iOS `aboardStep` 미러).
    */
-  const [aboardStep, setAboardStep] = useState<"pickStation" | "pickVehicle" | null>(null);
+  const [aboardStep, setAboardStepState] = useState<"pickStation" | "pickVehicle" | null>(null);
+  /** 폴 완료 콜백·단계 가드가 렌더 밖에서 읽는 미러(`boardOverrideRef` 동형). */
+  const aboardStepRef = useRef<"pickStation" | "pickVehicle" | null>(null);
+  const setAboardStep = useCallback((step: "pickStation" | "pickVehicle" | null) => {
+    aboardStepRef.current = step;
+    setAboardStepState(step);
+  }, []);
+  /** 역 선택 직후 in-flight 폴이 있으면 그 폴이 끝나자마자 새 역을 즉폴한다(iOS Task 취소 동형, 코드 리뷰 M1). */
+  const repollRef = useRef(false);
   /** 이 dispatch의 입력이 `boardAboard`였다 — boarded(declared) 통지에 선택 차량 조각을 붙일지의 판별. */
   const aboardBoardRef = useRef(false);
   /** E34 단일 버튼 경로 — legAdvanced(final)의 완료 문장을 내지 않는다(도착 통지가 이미 도보 분을 말했다). */
@@ -403,7 +426,8 @@ export function useTransitGuide(route: TransitRoute | null) {
    * 승차 뒤 세 문장(미관측·소실·확인 불가)은 **수단별 키**다(A33, iOS `signalStatusText` 미러) —
    * 대중교통 추적은 GPS를 쓰지 않으므로 문장이 "열차/버스 위치"를 주어로 말해야 "앱이 내 위치를
    * 못 잡는다"로 읽히지 않는다. 3-state: 아직 안 잡힘(정상) / 잠시 끊김 / 끝내 확인 불가.
-   * `isTrain`에 기본값이 없는 이유: 생략이 타입을 통과하면 버스 승차에 "열차"가 조용히 붙는다.
+   * `isTrain`·`unobserved`에 기본값이 없는 이유: 생략이 타입을 통과하면 버스 승차에 "열차"가, 비관측
+   * riding에 "곧 표시됩니다"가 조용히 붙는다(호출 지점은 웹에선 둘 — 상시 표시·복귀 통지).
    */
   const signalText = useCallback(
     (
@@ -627,7 +651,7 @@ export function useTransitGuide(route: TransitRoute | null) {
         case "arrived": {
           // 마지막 leg + 말미 도보(E34): 그 자리 버튼이 "남은 도보 안내 시작" 하나라 지시 문장이 그 이름을
           // 부르고 도보 분을 담는다("다음: 대중교통 구간이 끝났습니다…" 조각은 내지 않는다 — 내리기 전이다).
-          const finalWalk = finalLegWalkMinutesOf(stateRef.current, r);
+          const finalWalk = walkHandoffAvailableRef.current ? finalLegWalkMinutesOf(stateRef.current, r) : null;
           parts.push(
             finalWalk != null
               ? t(event.certain ? "arrivedWalkNext" : "arrivedGuessWalkNext", { minutes: finalWalk })
@@ -751,7 +775,7 @@ export function useTransitGuide(route: TransitRoute | null) {
       commit(next);
       if (event) announceEvent(event);
     },
-    [announceEvent, commit, setBoardOverride, setSelectedDescription],
+    [announceEvent, commit, setAboardStep, setBoardOverride, setSelectedDescription],
   );
 
   const clearTimer = useCallback(() => {
@@ -822,6 +846,9 @@ export function useTransitGuide(route: TransitRoute | null) {
 
     inFlightRef.current = true;
     const phaseGen = s.phaseGen;
+    // 조회 기준 역(A16 L3·A34 역 선택)도 세대 축이다 — 역 선택은 국면·phaseGen을 바꾸지 않으므로 이 값을
+    // 함께 잡아야 앞 역의 늦은 응답이 새 역 목록으로 커밋되지 않는다(코드 리뷰 M1, iOS는 Task 취소가 막는다).
+    const overrideAtStart = boardOverrideRef.current;
     const seq = ++seqRef.current;
     // 조기 unsupported에서도 새로고침 응답을 침묵시키지 않는다(§13.2 — 무응답이
     // 곧 "고정" 체감, 접근성 감사 HIGH). 플래그는 항상 소비(누수 시 자동 폴 발화).
@@ -880,7 +907,11 @@ export function useTransitGuide(route: TransitRoute | null) {
       }
       // 대기 목록(§5.1): waiting에서만 UI가 직접 소비(머신은 갱신 시각만 기록).
       // 소실 항목(3분 유지)의 경과·병합을 여기(폴 시점)서 계산해 렌더를 순수하게 둔다.
-      if (stateRef.current?.phase === "waiting" && stateRef.current.phaseGen === phaseGen) {
+      if (
+        stateRef.current?.phase === "waiting" &&
+        stateRef.current.phaseGen === phaseGen &&
+        boardOverrideRef.current === overrideAtStart
+      ) {
         const items = poll.kind === "ok" ? poll.items : [];
         const now = Date.now();
         const retained = retainedRef.current;
@@ -910,8 +941,10 @@ export function useTransitGuide(route: TransitRoute | null) {
           const legNow = currentLeg();
           const reason = waitingEmptyReason(poll, rawCount);
           if (legNow && legNow.trackMode !== "tagoBus") {
+            // 화면 목록과 같은 풀(A34 pickVehicle은 그 역에 있는 열차만) — 발화 수와 행 수가 어긋나지 않게(리뷰 M2).
+            const pool = [...items, ...departed.map((d) => d.item)];
             const { candidates } = classifyBoardingCandidates(
-              [...items, ...departed.map((d) => d.item)],
+              aboardStepRef.current === "pickVehicle" ? aboardCandidates(pool) : pool,
               legNow,
             );
             refreshResponse =
@@ -936,7 +969,13 @@ export function useTransitGuide(route: TransitRoute | null) {
       if (wasRefresh && stillSameWaiting()) announce(reasonText("unavailable"));
     } finally {
       inFlightRef.current = false;
-      scheduleNext();
+      if (repollRef.current) {
+        // 역 선택이 in-flight 폴에 막혀 즉폴을 못 냈다 — 지금 낸다(다음 예약은 그 폴이 잡는다).
+        repollRef.current = false;
+        void pollOnce();
+      } else {
+        scheduleNext();
+      }
     }
   }, [announce, currentLeg, dispatch, reasonText, resolveTagoIfNeeded, scheduleNext, t, locale]);
 
@@ -958,7 +997,7 @@ export function useTransitGuide(route: TransitRoute | null) {
     setWaiting(EMPTY_WAITING);
     // ⚠ setBoardOverride·setSelectedDescription은 useCallback([])이라 안정 정체성이다 —
     // 아래 주석의 "참조 동일성이 세션 스토어의 소유 판정 키"라는 전제를 깨지 않는다.
-  }, [clearTimer, setBoardOverride, setSelectedDescription]);
+  }, [clearTimer, setAboardStep, setBoardOverride, setSelectedDescription]);
   // stopSession·pollOnce는 상태 의존이 없어 안정 정체성이다(참조 동일성이
   // 세션 스토어의 소유 판정 키 — 별도 ref 고정 불필요).
 
@@ -1116,7 +1155,7 @@ export function useTransitGuide(route: TransitRoute | null) {
     dispatch({ kind: "declareArrived" });
     setWaiting(EMPTY_WAITING);
     clearTimer();
-  }, [clearTimer, dispatch]);
+  }, [clearTimer, dispatch, setAboardStep]);
 
   const changeBoarding = useCallback(() => {
     dispatch({ kind: "changeBoarding" });
@@ -1175,8 +1214,8 @@ export function useTransitGuide(route: TransitRoute | null) {
   /**
    * "이미 탑승했습니다"(§13.2 근사 잠금). `express`는 급행 확인 프롬프트(spec 2026-09-02 §6, 급행 집합이
    * 있는 노선에서만 패널이 묻는다)의 답 — true면 하차역 정차를 판정해 통과 급행이면 잠그지 않고 차단
-   * 문장을 낸다(결정적 문장 재사용), 정차하면 급행 선언 잠금(하차역 목록에서 급행 항목 우선). 프롬프트가
-   * 없는 노선은 undefined로 종전 그대로.
+   * 문장을 낸다(결정적 문장 재사용), 정차하면 급행 선언 잠금(상시 문장 근거 — 하차역 목록의 급행 우선 매칭은
+   * 2026-09-11 비관측 잠금으로 은퇴). 프롬프트가 없는 노선은 undefined로 종전 그대로.
    */
   const boardAlready = useCallback(
     (express?: boolean) => {
@@ -1211,15 +1250,18 @@ export function useTransitGuide(route: TransitRoute | null) {
       return;
     }
     boardAlready();
-  }, [boardAlready, currentLeg]);
+  }, [boardAlready, currentLeg, setAboardStep]);
 
-  const cancelAboard = useCallback(() => setAboardStep(null), []);
+  const cancelAboard = useCallback(() => {
+    if (aboardStepRef.current !== "pickStation") return;
+    setAboardStep(null);
+  }, [setAboardStep]);
 
   /** 역 선택 응답(pickStation): 하차역이면 도착 선언, 그 밖은 그 역 기준 목록으로(스냅숏·3분 버퍼 소거). */
   const pickAboardStation = useCallback(
     (stopIndex: number) => {
       const leg = currentLeg();
-      if (!leg) return;
+      if (!leg || aboardStepRef.current !== "pickStation") return;
       if (stopIndex === leg.viaStops.length - 1) {
         declareArrived();
         return;
@@ -1229,18 +1271,23 @@ export function useTransitGuide(route: TransitRoute | null) {
       retainedRef.current.clear();
       setWaiting(EMPTY_WAITING);
       clearTimer();
+      // in-flight 폴이 있으면 즉폴이 막힌다 — 그 폴의 finally가 대신 낸다(응답 자체는 기준 역 축이 폐기).
+      repollRef.current = inFlightRef.current;
       void pollOnce();
     },
-    [clearTimer, currentLeg, declareArrived, pollOnce, setBoardOverride],
+    [clearTimer, currentLeg, declareArrived, pollOnce, setAboardStep, setBoardOverride],
   );
 
-  const pickAnotherAboardStation = useCallback(() => setAboardStep("pickStation"), []);
+  const pickAnotherAboardStation = useCallback(() => {
+    if (aboardStepRef.current !== "pickVehicle") return;
+    setAboardStep("pickStation");
+  }, [setAboardStep]);
 
   /** pickVehicle 목록에서 고른 열차로 riding 직행(식별 잠금, 선언 — boarding을 지나지 않는다). */
   const boardAboardCandidate = useCallback(
     (candidate: BoardingCandidate, description: TransitLabel | null) => {
       const leg = currentLeg();
-      if (!leg?.trackMode || !candidate.item.vehicleId) return;
+      if (!leg?.trackMode || !candidate.item.vehicleId || aboardStepRef.current !== "pickVehicle") return;
       if (unreachableReason(candidate.item, leg)) return;
       setSelectedDescription(description);
       aboardBoardRef.current = true;
@@ -1311,11 +1358,15 @@ export function useTransitGuide(route: TransitRoute | null) {
   }, [stopSession]);
 
   /** 대기 목록(소실 유지 병합, §5.1). 후보 판정은 순수 함수. */
-  const waitingOptions = useMemo((): { options: WaitingOption[]; directionUncertain: boolean } => {
+  const waitingOptions = useMemo((): {
+    options: WaitingOption[];
+    directionUncertain: boolean;
+    aboardFilteredOut: boolean;
+  } => {
     const s = state;
     const leg = s && guideRoute ? guideRoute.legs[s.legIndex] : null;
     if (!s || !leg || s.phase !== "waiting" || !leg.trackMode || leg.trackMode === "tagoBus") {
-      return { options: [], directionUncertain: false };
+      return { options: [], directionUncertain: false, aboardFilteredOut: false };
     }
     // 스냅숏은 폴 시점에 계산됐다(렌더 순수성) — 여기서는 순수 판정·매핑만.
     // 소실 항목은 vehId 보유만 유지되므로(retained 조건) 경과 매핑 키는 vehId다.
@@ -1326,10 +1377,14 @@ export function useTransitGuide(route: TransitRoute | null) {
     );
     // "이미 탑승" pickVehicle 단계는 그 역에 있는 열차만(A34 ② 후보 필터 — 두 정거장 밖 열차는 타고 있을 수 없다).
     const pool = [...waiting.live, ...waiting.departed.map((d) => d.item)];
+    const aboardPicking = aboardStep === "pickVehicle";
     const { candidates, directionUncertain } = classifyBoardingCandidates(
-      aboardStep === "pickVehicle" ? aboardCandidates(pool) : pool,
+      aboardPicking ? aboardCandidates(pool) : pool,
       leg,
     );
+    // 필터 전멸(그 역에 있는 열차가 없다)은 "진짜 0건"과 다른 상태다(3-state, 코드 리뷰 M3).
+    const aboardFilteredOut =
+      aboardPicking && candidates.length === 0 && classifyBoardingCandidates(pool, leg).candidates.length > 0;
     const options = candidates.map((candidate, index): WaitingOption => {
       const vid = candidate.item.vehicleId;
       return {
@@ -1340,7 +1395,7 @@ export function useTransitGuide(route: TransitRoute | null) {
         key: vid || `slot-${index}`,
       };
     });
-    return { options, directionUncertain };
+    return { options, directionUncertain, aboardFilteredOut };
   }, [aboardStep, guideRoute, state, waiting]);
 
   /**
@@ -1379,6 +1434,10 @@ export function useTransitGuide(route: TransitRoute | null) {
     setLiveMessage: announce,
     waitingOptions: waitingOptions.options,
     directionUncertain: waitingOptions.directionUncertain,
+    /** pickVehicle에서 그 역에 있는 열차가 없어 목록이 빈 상태(원 목록엔 후보가 있다) — 사유 문장이 갈린다. */
+    aboardFilteredOut: waitingOptions.aboardFilteredOut,
+    /** E34 조건: 마지막 leg ∧ 말미 도보 ∧ 인계 가능 — 도착 문장과 버튼 라벨이 같은 축을 본다. */
+    handoffNow: walkHandoffAvailable && finalLegWalkMinutesOf(state, activeRoute) != null,
     /** 대기 목록 0건 사유(§13.3) — 항목이 있으면 null. */
     waitingReason: waiting.reason,
     /** 완료 후 도보 핸드오프 제안(§14.2) — 말미 도보가 없으면 null. */
