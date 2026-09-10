@@ -182,3 +182,37 @@ describe("PlaceDetail 분류 영문화(A28)", () => {
     expect(screen.queryByText(/Middle School/)).toBeNull();
   });
 });
+
+// E32: 길찾기 두 방향. 별개 버튼 = 별개 접근성 객체이고 서로 다른 끝을 채운다 —
+// 한 버튼이 둘을 겸하면(모드 토글) 라벨이 동작의 범위를 말하지 못한다.
+describe("PlaceDetail 길찾기 진입", () => {
+  it("두 방향 버튼이 각각의 콜백을 부른다", () => {
+    localeState.locale = "ko";
+    const to = vi.fn();
+    const from = vi.fn();
+    render(
+      <PlaceDetail
+        place={place}
+        canShowBus={false}
+        canShowBike={false}
+        canShowSubway={false}
+        canShowAir={false}
+        canShowBarrierFree={false}
+        onOpenDirections={to}
+        onOpenDirectionsFrom={from}
+        onBack={() => {}}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "directions.toHere" }));
+    fireEvent.click(screen.getByRole("button", { name: "directions.fromHere" }));
+    expect(to).toHaveBeenCalledTimes(1);
+    expect(from).toHaveBeenCalledTimes(1);
+  });
+
+  it("길찾기 게이트가 닫히면 두 버튼 다 없다", () => {
+    localeState.locale = "ko";
+    renderDetail();
+    expect(screen.queryByRole("button", { name: "directions.toHere" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "directions.fromHere" })).toBeNull();
+  });
+});

@@ -1209,6 +1209,19 @@ export function PlaceSearch({
                 })
             : undefined
         }
+        onOpenDirectionsFrom={
+          canShowDirections
+            ? () =>
+                openDirections({
+                  role: "from",
+                  endpoint: {
+                    kind: "place",
+                    label: selected.name,
+                    coord: { lat: selected.lat, lng: selected.lng },
+                  },
+                })
+            : undefined
+        }
         canShowBus={canShowBus}
         canShowBike={canShowBike}
         canShowSubway={canShowSubway}

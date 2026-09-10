@@ -47,6 +47,7 @@ export function PlaceDetail({
   canShowBarrierFree,
   canShowChat = false,
   onOpenDirections,
+  onOpenDirectionsFrom,
   onBack,
 }: {
   place: Place;
@@ -58,6 +59,8 @@ export function PlaceDetail({
   canShowChat?: boolean;
   /** 있으면 "여기까지 길찾기" 버튼 노출: 이 장소를 도착지로 길찾기 뷰 전환 */
   onOpenDirections?: () => void;
+  /** 있으면 "여기부터 길찾기" 버튼 노출: 이 장소를 출발지로 길찾기 뷰 전환(E32) */
+  onOpenDirectionsFrom?: () => void;
   onBack: () => void;
 }) {
   const t = useTranslations();
@@ -300,6 +303,9 @@ export function PlaceDetail({
         </div>
 
         <RouteLinks place={place} />
+        {/* 길찾기 두 방향(E32). 별개 버튼 = 별개 접근성 객체이고, 각 라벨이 그
+            버튼이 채우는 끝(도착지·출발지)을 말한다. "여기부터"는 도착지가 비어
+            있으므로 조회하지 않고 도착지 입력에 착지한다. */}
         {onOpenDirections && (
           <button
             type="button"
@@ -308,6 +314,16 @@ export function PlaceDetail({
           >
             <Route aria-hidden="true" className="h-4 w-4" />
             {t("directions.toHere")}
+          </button>
+        )}
+        {onOpenDirectionsFrom && (
+          <button
+            type="button"
+            onClick={onOpenDirectionsFrom}
+            className="mt-4 mr-3 inline-flex min-h-11 items-center gap-2 rounded-md border border-border bg-background px-4 py-2 text-sm font-medium hover:bg-accent/10"
+          >
+            <Route aria-hidden="true" className="h-4 w-4" />
+            {t("directions.fromHere")}
           </button>
         )}
         {canShowChat && (
