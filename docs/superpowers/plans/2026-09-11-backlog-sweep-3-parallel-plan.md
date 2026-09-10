@@ -34,7 +34,7 @@
 | arrival-tail | 웹 `src/lib/place-lines/station-arrivals.ts` + 테스트, iOS `Nearby/SubwayNearbyView.swift`(`subwayArrivalLine`)·`StationSections.swift`(소비부만), Kit 판정 함수(신설 시 `SubwayArrivalLine.swift` 류) + 테스트 |
 
 **겹침과 처리**:
-- transit-1 ∩ from-here = `DirectionsTabView.swift` — transit-1은 `startWalkHandoff` 절만, from-here는 `runPrefillQueryIfPending` 절만. 절이 다르므로 rebase 자동 병합. 둘 다 그 파일의 다른 절을 만지지 않는다.
+- transit-1 ∩ from-here = ~~`DirectionsTabView.swift`~~ **정정(2026-09-11 05:10, transit-1 보고 → 코디네이터 재현)**: `startWalkHandoff`는 N1(2026-08-22)에 `GuideSession.acceptWalkHandoff`(`GuideSessionCoordinator.swift`, transit-1 소유)로 옮겨져 `DirectionsTabView.swift`에는 주석 한 줄뿐이다. transit-1은 그 파일을 만지지 않는다 → 겹침 없음. 대신 웹 E34가 `src/components/DistanceBeacon.tsx`(소유자 없음 → transit-1에 허가)와 `DirectionsView.tsx`의 `<DistanceBeacon …/>` 렌더 두 자리(prop 전달만)를 만진다. from-here는 같은 파일의 프리필/URL 복원 분기만 — 절이 다르므로 rebase 자동 병합, 양쪽 자진 신고.
 - transit-1 ∩ weight-notice = 없음(`BeaconTrackingSheet`는 weight-notice만).
 - arrival-tail ∩ 나머지 = 없음.
 - **웨이브 2·3(transit-2·transit-3)은 transit-1과 같은 파일군**(`TransitGuide.swift`·`TransitGuideModel.swift`·`TransitTrackingSheet.swift`)이라 **직렬**이다. transit-2는 transit-1 통합 SHA 위에서, transit-3는 transit-2 통합 SHA 위에서 worktree를 만든다.
