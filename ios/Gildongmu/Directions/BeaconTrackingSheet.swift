@@ -70,9 +70,14 @@ struct BeaconTrackingSheet: View {
     /// 체중 입력 권유를 무시한 횟수(E31, spec 2026-09-11). 상한에 닿으면 권유 두 줄이
     /// 사라지고 기준 체중이 칼로리 문장 안으로 들어간다. 판정은 Kit `WalkHealth`.
     @AppStorage(WalkHealth.weightPromptDismissalsKey) private var weightPromptDismissals = 0
-    /// 이번 종료 화면에서 [체중 입력하기]를 눌렀는가 — 눌렀다면 뒤이은 [닫기]는 무시가
+    /// 권유가 뜬 화면에서 [체중 입력하기]를 눌렀는가 — 눌렀다면 뒤이은 [닫기]는 무시가
     /// 아니다("아무 행동도 하지 않고 닫기를 누르는 경우", 위원장 2026-09-08).
-    @State private var weightPromptEngaged = false
+    /// ⚠ **`@State`가 아니라 영속 상태여야 한다**: 시트를 최소화하면 루트의
+    /// `presentedScreen`(`isMinimized ? nil : screen`)이 nil이 되어 콘텐츠 뷰가 통째로
+    /// 파괴되고 뷰 상태가 초기값으로 돌아간다. 그러면 [체중 입력하기]를 누른 뒤 스와이프로
+    /// 내렸다 띠바로 돌아와 닫은 화면이 무시로 계상된다(리뷰 검출, 예산이 2회라 절반이 탄다).
+    /// 소비 지점은 [닫기] 하나이고 **거기서 읽고 거기서 지운다**.
+    @AppStorage(WalkHealth.weightPromptEngagedKey) private var weightPromptEngaged = false
 
     var body: some View {
         // 접기 버튼은 섹션 헤더(제목 메뉴) 행 우측의 작은 아이콘이다(위원장 판정 2026-08-23 —
@@ -345,9 +350,6 @@ struct BeaconTrackingSheet: View {
             // 시트가 도착 화면으로 유지되면서 그 계단이 사라졌다 — 방치하면 stop()이
             // 지운 경로 위에서 "아직 안내가 없습니다" 헤더가 도착 통지와 모순된다.
             showRouteList = false
-            // 새 종료 화면이므로 권유 응답 표식도 새로 시작한다(같은 시트 인스턴스가
-            // 두 번째 종료 화면을 받는 경로에서 앞 화면의 응답이 새어 들지 않게).
-            weightPromptEngaged = false
             Task { await landArrivedFocus() }
         }
         }
@@ -372,7 +374,7 @@ struct BeaconTrackingSheet: View {
                 // 완결 문장끼리라 공백으로 잇는다(joinText의 쉼표는 라벨·값 조각용 — 마침표
                 // 뒤에 쉼표가 붙는다).
                 Text([
-                    healthSummaryLine(health: health),
+                    healthSummaryLine(health: health, showsPrompt: showsWeightPrompt),
                     Self.foodLine(kcal: health.kcal),
                 ].compactMap { $0 }.joined(separator: " "))
                     .accessibilityFocused($healthSummaryFocused)
@@ -397,10 +399,15 @@ struct BeaconTrackingSheet: View {
             }
             Button(appLocalized("actions.close")) {
                 // 권유가 실제로 떠 있던 화면을 아무 행동 없이 닫은 것만 무시로 센다(E31).
+                // 표식은 여기서 소비한다 — 이 화면의 응답이 다음 화면으로 새지 않게.
+                // ⚠ 순서가 load-bearing이다: `clearArrival()`이 먼저 돌면 `arrivalHealth`가
+                // nil이 되어 `showsWeightPrompt`가 false로 떨어지고 카운터가 영영 오르지
+                // 않는다(기능이 조용히 죽는다). 가드 `weight-prompt-wiring.test.ts`.
                 weightPromptDismissals = WalkHealth.nextWeightPromptDismissals(
                     current: weightPromptDismissals,
                     promptShown: showsWeightPrompt,
-                    engagedPrompt: weightPromptEngaged)
+                    promptEngaged: weightPromptEngaged)
+                weightPromptEngaged = false
                 model.clearArrival()
             }
         } header: {
@@ -420,9 +427,9 @@ struct BeaconTrackingSheet: View {
     /// 걸음·칼로리 문장. 권유가 숨겨진 뒤(체중 미입력·무시 상한)에는 기준 체중이 이 문장
     /// 안으로 들어온다 — 줄을 늘리지 않고 수치의 근거를 남긴다(위원장 판정 2026-09-10).
     /// 체중을 입력한 사용자는 종전 문장 그대로다(두 벌 키).
-    private func healthSummaryLine(health: WalkHealthSummary) -> String {
+    private func healthSummaryLine(health: WalkHealthSummary, showsPrompt: Bool) -> String {
         let steps = Self.decimal.string(from: NSNumber(value: health.steps)) ?? "\(health.steps)"
-        if health.usedDefaultWeight, !showsWeightPrompt {
+        if health.usedDefaultWeight, !showsPrompt {
             return appLocalized(
                 "ios.beacon.healthSummaryWithWeight",
                 steps,

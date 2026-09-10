@@ -83,6 +83,8 @@ import Testing
 
     // MARK: - 체중 입력 권유의 무시 상한 (E31, spec 2026-09-11)
 
+    // 경계는 리터럴로 적는다(상한 상수를 쓰면 상수를 바꿔도 통과해 변경 감지기가 되지 못한다).
+    // 상수를 쓰는 곳은 두 술어의 맞물림을 보는 dismissalCountStopsAtTheLimit 하나뿐이다.
     @Test func weightPromptShowsUntilDismissalLimit() {
         #expect(WalkHealth.shouldShowWeightPrompt(usedDefaultWeight: true, dismissals: 0))
         #expect(WalkHealth.shouldShowWeightPrompt(usedDefaultWeight: true, dismissals: 1))
@@ -98,32 +100,40 @@ import Testing
     }
 
     @Test func closingAShownPromptWithoutActingCounts() {
-        #expect(WalkHealth.nextWeightPromptDismissals(current: 0, promptShown: true, engagedPrompt: false) == 1)
-        #expect(WalkHealth.nextWeightPromptDismissals(current: 1, promptShown: true, engagedPrompt: false) == 2)
+        #expect(WalkHealth.nextWeightPromptDismissals(current: 0, promptShown: true, promptEngaged: false) == 1)
+        #expect(WalkHealth.nextWeightPromptDismissals(current: 1, promptShown: true, promptEngaged: false) == 2)
     }
 
     @Test func closingCountsOnlyWhenThePromptWasOnScreen() {
         // 권유가 없던 화면(입력자·이미 상한 도달)의 [닫기]는 무시가 아니다.
         for c in [0, 1, 2] {
-            #expect(WalkHealth.nextWeightPromptDismissals(current: c, promptShown: false, engagedPrompt: false) == c)
+            #expect(WalkHealth.nextWeightPromptDismissals(current: c, promptShown: false, promptEngaged: false) == c)
         }
     }
 
     @Test func pressingEnterWeightMakesTheCloseNotAnIgnore() {
         // [체중 입력하기]를 누른 화면은 "아무 행동도 하지 않은" 경우가 아니다 —
         // 설정에서 입력하지 않고 돌아왔더라도 세지 않는다.
-        #expect(WalkHealth.nextWeightPromptDismissals(current: 0, promptShown: true, engagedPrompt: true) == 0)
-        #expect(WalkHealth.nextWeightPromptDismissals(current: 1, promptShown: true, engagedPrompt: true) == 1)
+        #expect(WalkHealth.nextWeightPromptDismissals(current: 0, promptShown: true, promptEngaged: true) == 0)
+        #expect(WalkHealth.nextWeightPromptDismissals(current: 1, promptShown: true, promptEngaged: true) == 1)
+    }
+
+    @Test func bothSuppressorsTogetherStillDoNotCount() {
+        // 두 억제자가 동시에 참인 조합(표를 4형으로 닫는다).
+        #expect(WalkHealth.nextWeightPromptDismissals(current: 1, promptShown: false, promptEngaged: true) == 1)
     }
 
     @Test func dismissalCountStopsAtTheLimit() {
         // 상한에 닿으면 권유가 사라지므로(shouldShow == false) 다음 [닫기]는 표시되지 않은
         // 화면의 닫기이고 카운터가 더 오르지 않는다 — 두 술어가 맞물려야 성립한다.
+        // 이 맞물림이 곧 nextWeightPromptDismissals에 상한 clamp를 두지 않은 근거다.
         var count = 0
         for _ in 0..<5 {
             let shown = WalkHealth.shouldShowWeightPrompt(usedDefaultWeight: true, dismissals: count)
-            count = WalkHealth.nextWeightPromptDismissals(current: count, promptShown: shown, engagedPrompt: false)
+            count = WalkHealth.nextWeightPromptDismissals(current: count, promptShown: shown, promptEngaged: false)
         }
         #expect(count == WalkHealth.maxWeightPromptDismissals)
+        // 카운터 값만이 아니라 사용자에게 드러나는 결과까지 단언한다 — 그 뒤로 권유가 없다.
+        #expect(!WalkHealth.shouldShowWeightPrompt(usedDefaultWeight: true, dismissals: count))
     }
 }

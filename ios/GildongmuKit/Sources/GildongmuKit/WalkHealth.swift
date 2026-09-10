@@ -27,6 +27,12 @@ public enum WalkHealth {
     public static let weightStorageKey = "walkWeightKg"
     /// UserDefaults 키(종료 화면의 체중 입력 권유를 무시한 횟수). 0 = 아직 무시하지 않음.
     public static let weightPromptDismissalsKey = "walkWeightPromptDismissals"
+    /// UserDefaults 키(권유가 뜬 화면에서 [체중 입력하기]를 눌렀다는 표식).
+    /// ⚠ 뷰 상태(`@State`)로 두면 **시트 최소화가 지운다** — 루트가 `.sheet(item:)` 하나이고
+    /// `presentedScreen`이 `isMinimized ? nil : screen`이라 최소화 시 콘텐츠 뷰가 파괴된다.
+    /// 그러면 [체중 입력하기]를 누른 뒤 최소화했다 돌아와 닫은 화면이 무시로 계상된다(리뷰 검출).
+    /// 소비 지점은 [닫기] 하나이고 거기서 지운다.
+    public static let weightPromptEngagedKey = "walkWeightPromptEngaged"
     /// 권유를 이만큼 무시하면 그 뒤로 띄우지 않는다(위원장 판정 2026-09-08 — 입력을
     /// 원하지 않는 사용자에게 매 도착마다 반복되는 것이 노이즈다, spec 2026-09-11).
     public static let maxWeightPromptDismissals = 2
@@ -49,10 +55,11 @@ public enum WalkHealth {
     /// 세면 두 번이 하루에 차고, 버튼을 누른 사용자는 "아무 행동도 하지 않은" 경우가 아니다
     /// (위원장 인용 2026-09-08). 시트 최소화·스와이프·30분 만료 소거는 호출 자체가 없다.
     ///
-    /// 상한 clamp를 두지 않는다: `promptShown`이 참이면 정의상 `current < max`라 결과가
-    /// 상한을 넘지 못한다(넘지 못하는 clamp는 아무것도 바꾸지 않는 방어 코드다).
-    public static func nextWeightPromptDismissals(current: Int, promptShown: Bool, engagedPrompt: Bool) -> Int {
-        guard promptShown, !engagedPrompt else { return current }
+    /// 상한 clamp를 두지 않는 근거는 **함수 계약이 아니라 호출부 계약이다**: 유일한 호출부가
+    /// 같은 `current`로 계산한 `shouldShowWeightPrompt`를 `promptShown`으로 넘기고, 그 술어가
+    /// `current < max`를 이미 담고 있다. 두 번째 호출부가 생기면 이 조건부터 확인할 것.
+    public static func nextWeightPromptDismissals(current: Int, promptShown: Bool, promptEngaged: Bool) -> Int {
+        guard promptShown, !promptEngaged else { return current }
         return current + 1
     }
 
