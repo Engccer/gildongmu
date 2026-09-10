@@ -74,6 +74,24 @@ describe("arrivalItems — 꼬리가 실제 줄에서 빠진다", () => {
     expect(items[0].messageLang).toBe("en");
   });
 
+  it("en: arvlMsg3가 없고 현재역이 99 괄호로만 오면 꼬리가 안 붙고 그 줄은 순수 영어다", () => {
+    // E27 fixture가 계약으로 둔 모양(`99 분 + 괄호 현재역(arvlMsg3 없음)`) — 영문 자리가 자리 표시
+    // `""`로 접혀 꼬리가 붙지 않는다. 판정에 렌더값 아닌 `currentLocationEn`을 먹이면 `pure`가
+    // 어긋나 이 줄이 `lang="en"`을 잃는다(리뷰 3층 공통 검출 회귀).
+    const parenOnly: SubwayArrival = {
+      ...BASE,
+      currentLocation: undefined,
+      lineEn: "Line 5",
+      directionEn: "Up",
+      trainLineNmEn: "To Banghwa via Gubeundari",
+      messageEn: "In 6 min",
+      currentLocationEn: "Gangil",
+    };
+    const items = arrivalItems([parenOnly], t, "ja");
+    expect(items[0].message).toBe("In 6 min");
+    expect(items[0].messageLang).toBe("en");
+  });
+
   it("en: 현재역 영문이 없으면 줄 전체가 한국어 원문이다(줄 단위 원자성 불변)", () => {
     const partial: SubwayArrival = {
       ...BASE,

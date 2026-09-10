@@ -16,14 +16,19 @@ import Foundation
 /// 중복이 실제로 생기는 en 문법은 문장에 역명이 들어가는 `Arrived at {역}` 계열뿐이고,
 /// 그 경우는 영문 값끼리의 포함 판정이 그대로 잡는다.
 ///
+/// ⚠ **판정에는 그 줄에 실제로 렌더될 값을 먹인다.** 영문 자리가 자리 표시(`""`)로 접히는 경로가
+/// 있어서, 소비자가 렌더값이 아닌 원본 필드를 판정에 주면 "붙일 자격은 있는데 붙일 값이 없는"
+/// 어긋남이 생긴다(그 어긋남이 웹에서 `lang="en"` 누락 회귀를 만들었다 — 리뷰 3층 공통 검출).
+///
 /// - Parameters:
 ///   - message: 그 줄에 실제로 쓸 완성 문장(ko `arvlMsg2` 또는 en `messageEn`).
-///   - currentLocation: 같은 줄에 쓸 현재역(ko `arvlMsg3` 또는 en `currentLocationEn`).
+///   - currentLocation: 같은 줄에 **실제로 실릴** 현재역(ko `arvlMsg3` 또는 en `currentLocationEn`).
 /// - Returns: 꼬리(`현재 {역}`)를 붙일 것인가.
 public func subwayShowsCurrentLocationTail(message: String?, currentLocation: String?) -> Bool {
     let location = (currentLocation ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
     // 현재역이 애초에 없으면 붙일 것도 없다("정보 없음"이지 중복이 아니다).
     guard !location.isEmpty else { return false }
-    let sentence = (message ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-    return !sentence.contains(location)
+    // 문장은 trim하지 않는다 — 찾는 값의 양끝 공백이 이미 없어 문장 양끝을 다듬어도 포함 여부가
+    // 바뀌지 않는데, 웹과 trim 문자 집합이 다르다는 발산 표면만 들어온다.
+    return !(message ?? "").contains(location)
 }

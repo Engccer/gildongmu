@@ -45,7 +45,9 @@ export function subwayShowsCurrentLocationTail(
   const location = (currentLocation ?? "").trim();
   // 현재역이 애초에 없으면 붙일 것도 없다("정보 없음"이지 중복이 아니다).
   if (!location) return false;
-  return !(message ?? "").trim().includes(location);
+  // 문장은 trim하지 않는다 — 찾는 값의 양끝 공백이 이미 없어 문장 양끝을 다듬어도 포함 여부가
+  // 바뀌지 않는데, 두 언어의 trim 문자 집합이 다르다는 발산 표면만 들어온다.
+  return !(message ?? "").includes(location);
 }
 
 export function arrivalItems(
@@ -65,8 +67,12 @@ export function arrivalItems(
       ([lineEn, dir, train]) => joinText(`${lineEn ? `${lineEn} ` : ""}${dir}`, train, express),
     );
     // 꼬리 판정(A32)은 그 줄에 실제로 쓰는 값으로 한다 — ko는 원문, en은 영문.
+    // ⚠ **판정에 먹이는 값이 곧 렌더되는 값이어야 한다.** 영문 자리는 ko에 현재역이 없으면 `""`(자리
+    // 표시)로 접히므로, 판정에 `a.currentLocationEn`을 그대로 주면 "붙일 자격은 있는데 붙일 값이 없는"
+    // 어긋남이 생겨 `pure`가 실제 줄과 갈린다(리뷰 3층 공통 검출).
+    const enLoc = a.currentLocation ? a.currentLocationEn : "";
     const koTail = subwayShowsCurrentLocationTail(a.message, a.currentLocation);
-    const enTail = subwayShowsCurrentLocationTail(a.messageEn, a.currentLocationEn);
+    const enTail = subwayShowsCurrentLocationTail(a.messageEn, enLoc);
     const messageKo = joinText(
       a.message,
       koTail && a.currentLocation && t("currentLocation", { location: a.currentLocation }),
@@ -75,10 +81,11 @@ export function arrivalItems(
       locale,
       messageKo,
       // ⚠ 영문 요구 자리는 꼬리 판정과 무관하게 ko 기준으로 둔다 — `currentLocationEn` 결측을 자리
-      // 표시로 접으면 "영문 문장은 있는데 현재역만 조용히 사라지는" 손실이 생긴다. 역명이 들어가는
-      // en 문법은 역 조회가 실패하면 `messageEn`도 함께 부재라 이 요구가 과하지 않다.
-      [a.messageEn, a.currentLocation ? a.currentLocationEn : ""],
-      ([msg, loc]) => joinText(msg, enTail && loc && t("currentLocation", { location: loc })),
+      // 표시로 접으면 "ko에는 현재역이 있는데 영문 줄에서만 조용히 사라지는" 손실이 생긴다.
+      // (반대 방향 손실 — ko `arvlMsg3`가 없고 현재역이 99 괄호로만 오는 도착에서 영문 줄이 현재역을
+      //  잃는 것 — 은 이 변경 이전부터 있고 E27 계약 소관이다. `docs/BACKLOG.md` A32 "남은 것".)
+      [a.messageEn, enLoc],
+      ([msg, loc]) => joinText(msg, enTail && t("currentLocation", { location: loc })),
       // 현재역 문장은 UI 템플릿(`Now at {location}`)이라 영어 줄이면 혼합 줄 — en 태그를 달지 않는다.
       // 꼬리를 떼면 그 템플릿이 없으므로 순수 데이터 줄이다.
       { pure: !enTail },
