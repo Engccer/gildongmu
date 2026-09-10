@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useRouteGuide, type GuideKind } from "@/hooks/useRouteGuide";
 import { formatDistance, joinText } from "@/lib/format";
@@ -38,6 +38,7 @@ export function DistanceBeacon({
   kind = "walk",
   accessible,
   startOnOpen = false,
+  autoStart = false,
   focusTriggerOnMount = false,
   triggerLabel,
   onStart,
@@ -59,6 +60,13 @@ export function DistanceBeacon({
    */
   startOnOpen?: boolean;
   /**
+   * 마운트 즉시 패널을 열고 세션을 시작한다(E34 대중교통 마지막 leg 단일 버튼, spec 2026-09-11 §4.3) —
+   * 사용자는 직전 화면에서 이미 "남은 도보 안내 시작"을 눌렀으므로 트리거를 한 번 더 누르게 하지 않는다.
+   * 계약: `open` 초기값이 이 값(패널 내용이 함께 열린다), 트리거는 시작 뒤 "중지"(라벨 거짓말 금지),
+   * 시작은 **커밋 뒤 effect**(live region이 빈 채로 먼저 DOM에 있어야 첫 통지가 발화된다 — 아래 B1 교훈).
+   */
+  autoStart?: boolean;
+  /**
    * 마운트 시 트리거로 포커스 선점(대중교통→도보 핸드오프, §14.2) — 직전 컨트롤
    * (다음 구간 버튼)이 사라진 전이에서 다음 행동으로 커서를 옮긴다(헌장 §5).
    */
@@ -75,7 +83,7 @@ export function DistanceBeacon({
 }) {
   const t = useTranslations("beacon");
   const tGuide = useTranslations("guide");
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(autoStart);
   // 학습되면 잉여인 안내가 매 세션 한 행을 차지했다(13번) — 첫 사용 안내 +
   // "다시 보지 않음". localStorage 불가 환경은 항상 표시로 수렴(편의 기능).
   const [hintDismissed, setHintDismissed] = useState(() => {
@@ -111,6 +119,17 @@ export function DistanceBeacon({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // 자동 시작(E34) — 커밋 뒤 1회. 렌더 중 동기 시작은 region이 내용과 함께 삽입되어 첫 통지가 무발화된다.
+  const autoStartedRef = useRef(false);
+  useEffect(() => {
+    if (!autoStart || autoStartedRef.current) return;
+    autoStartedRef.current = true;
+    guide.start();
+    onStart?.();
+    // 마운트 1회 계약 — prop은 마운트 시점에만 의미가 있다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   if (!guide.supported) return null;
 
   const tracking = guide.status === "tracking";
@@ -118,7 +137,7 @@ export function DistanceBeacon({
   const togglePanel = () => {
     if (open) {
       guide.stop();
-    } else if (startOnOpen) {
+    } else if (startOnOpen || autoStart) {
       guide.start();
       onStart?.();
     }
@@ -142,7 +161,7 @@ export function DistanceBeacon({
       >
         {/* startOnOpen 트리거는 시작/중지를 겸하므로 추적 중엔 라벨이 곧 상태 신호다
             — "시작"이라 읽히는데 누르면 세션이 끝나는 라벨 거짓말 금지(a11y 감사). */}
-        {startOnOpen && tracking ? t("stop") : (triggerLabel ?? t("walkHeading"))}
+        {(startOnOpen || autoStart) && tracking ? t("stop") : (triggerLabel ?? t("walkHeading"))}
       </button>
 
       {open && (
@@ -181,7 +200,7 @@ export function DistanceBeacon({
             {/* 상태 신호는 라벨 교체가 전부다 — aria-pressed 병기는 "안내 중지,
                 선택됨"처럼 모호한 이중 상태를 만든다(W3C APG, a11y 감사).
                 startOnOpen 패널에선 트리거가 시작/중지를 겸해 이 토글이 잉여다. */}
-            {!startOnOpen && (
+            {!(startOnOpen || autoStart) && (
               <button
                 ref={stopToggleRef}
                 type="button"

@@ -254,8 +254,8 @@ describe("2. 도보 경로는 플래그를 졸업했다", () => {
     // 고지는 안내 시작의 직접 응답이라 시작 버튼 핸들러 안에 있다. 정식판 진입점
     // (도보 추천·최단)이 고지 없이 시작하는 회귀는 선언 본문 검사로는 못 잡는다 —
     // 각 시작 호출(`beacon.toggle(`·`session.startBeacon(`) 직전 몇 줄에 호출이 있어야
-    // 한다. 대중교통→도보 핸드오프(사용자 활성화가 아니고 그 세션은 이미 실좌표 위에
-    // 있었다)는 N1부터 `GuideSession.acceptWalkHandoff` 안에 살아 이 파일에 없고,
+    // 한다. 대중교통→도보 핸드오프(그 세션은 이미 실좌표 위에서 돌고 있었다 — 고지 대상
+    // 아님)는 N1부터 `GuideSession.acceptWalkHandoff` 안에 살아 이 파일에 없고,
     // `restart()`(정밀 위치 허용 뒤 같은 세션 재시작)는 처음 시작 때 이미 말했다.
     const src = directions();
     const lines = src.split("\n");
@@ -270,7 +270,10 @@ describe("2. 도보 경로는 플래그를 졸업했다", () => {
       lines.slice(Math.max(0, i - 3), i).some((l) => l.includes("announceGuideStartIfManualOrigin()")),
     );
     expect(announced.length).toBe(4);
-    // 핸드오프 진입점은 GuideSession 안에 둘이다 — 대중교통→도보(`acceptWalkHandoff`)와
+    // 핸드오프 진입점은 GuideSession 안에 둘이다 — 대중교통→도보(`acceptWalkHandoff`. 사용자
+    // 활성화가 맞다 — 2026-09-11 E34부터 마지막 leg의 "남은 도보 안내 시작" 한 버튼이 leg 종료와
+    // 함께 부른다. 대중교통 세션이 봉인 안이라 도달 불가이고 그 세션은 이미 실좌표 위에 있었으므로
+    // 수동 위치 고지 대상이 아니다)와
     // 자동차 도착→도보(`acceptCarWalkHandoff`, 2026-08-23 K2. 자동차 세션이 봉인 안이라 도달
     // 불가이지만 도보 세션 자체는 졸업한 기능이라 별도 게이트가 없다 — spec K2 §6.4).
     // 승차 전 도보(A25, 2026-08-30 — `startTransit` 안. 대중교통 시작 버튼이 봉인 안이라 도달 불가)까지 셋.
@@ -296,6 +299,8 @@ describe("3. 안내 세션 진입점이 늘지 않았다", () => {
    * 인계는 차단), 2026-08-23 K2가 7번째(자동차 도착→도보 인계 `acceptCarWalkHandoff`,
    * 자동차 종료 화면 안이라 봉인 뒤)를 더했고, 2026-08-30 A25가 8번째(대중교통 시작 →
    * 승차 전 도보 `GuideSession.startTransit`, 대중교통 시작 버튼이 봉인 안이라 도달 불가)를 더했다.
+   * 2026-09-11 E34(마지막 leg 단일 버튼)는 진입점을 더하지 않았다 — 시트가 `acceptWalkHandoff`를
+   * 클로저(`onWalkHandoff`)로 부를 뿐 `startBeacon(` 형태가 늘지 않는다(설계 리뷰 확인).
    *
    * ⚠ 판정 축은 "`toggle`을 부르는가"가 아니라 **세션을 시작시키는가**다. A13이
    * 정밀 위치 복구 경로를 `beacon.restart()`로 바꿨을 때 `toggle`만 세는 검사는

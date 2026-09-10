@@ -45,8 +45,8 @@ const base = scenariosFixture as unknown as {
 const fixture = toneFixture as unknown as { scenarios: FixtureScenario[] };
 
 function resolveInput(raw: Record<string, unknown>): TransitInput {
-  if (raw.kind === "board") {
-    return { kind: "board", lock: base.locks[raw.lock as string] };
+  if (raw.kind === "board" || raw.kind === "boardAboard") {
+    return { kind: raw.kind, lock: base.locks[raw.lock as string] };
   }
   return raw as unknown as TransitInput;
 }

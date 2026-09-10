@@ -208,13 +208,6 @@
    "routeId": "1005",
    "direction": "하행",
    "vehicleId": ""
-  },
-  "subwayApproxExpress": {
-   "mode": "subway",
-   "routeId": "1009",
-   "direction": "하행",
-   "vehicleId": "",
-   "express": true
   }
  },
  "scenarios": [
@@ -2525,7 +2518,7 @@
    ]
   },
   {
-   "name": "근사 잠금(지하철 이미 탑승): 방향 필터·잔여 최소 매칭·arrived 미발동(§13.2)",
+   "name": "비관측 잠금(지하철 이미 탑승, A34 ① 2026-09-11): 폴이 와도 매칭·미등장 판정 없음 — 잔여 null·이벤트 없음·신호 notYetVisible 유지·10분 뒤에도 neverSeen 없음",
    "route": "subwaySingle",
    "steps": [
     {
@@ -2536,6 +2529,7 @@
      },
      "expect": {
       "phase": "riding",
+      "signal": "notYetVisible",
       "event": {
        "kind": "boarded",
        "cause": "declared"
@@ -2554,26 +2548,17 @@
         {
          "vehicleId": "9001",
          "direction": "상행",
-         "message": "[1]번째 전역 (샛강)",
-         "remainingStops": 1,
+         "message": "여의도 도착",
+         "remainingStops": 0,
          "destinationName": "방화",
          "express": false,
-         "arrivalCode": "99"
+         "arrivalCode": "1"
         },
         {
          "vehicleId": "5696",
          "direction": "하행",
-         "message": "[4]번째 전역 (영등포시장)",
-         "remainingStops": 4,
-         "destinationName": "하남검단산",
-         "express": false,
-         "arrivalCode": "99"
-        },
-        {
-         "vehicleId": "5698",
-         "direction": "하행",
-         "message": "[7]번째 전역 (오목교)",
-         "remainingStops": 7,
+         "message": "[1]번째 전역 (샛강)",
+         "remainingStops": 1,
          "destinationName": "하남검단산",
          "express": false,
          "arrivalCode": "99"
@@ -2582,47 +2567,17 @@
       }
      },
      "expect": {
-      "signal": "tracking",
-      "remaining": 4,
-      "event": {
-       "kind": "trackingStarted",
-       "remaining": 4
-      }
+      "phase": "riding",
+      "signal": "notYetVisible",
+      "remaining": null,
+      "event": null
      }
     },
     {
-     "at": 60000,
+     "at": 700000,
      "input": {
       "kind": "poll",
       "seq": 2,
-      "phaseGen": 1,
-      "poll": {
-       "kind": "ok",
-       "items": [
-        {
-         "vehicleId": "5696",
-         "direction": "하행",
-         "message": "전역 출발",
-         "remainingStops": 1,
-         "destinationName": "하남검단산",
-         "express": false,
-         "arrivalCode": "3"
-        }
-       ]
-      }
-     },
-     "expect": {
-      "event": {
-       "kind": "countdown",
-       "remaining": 1
-      }
-     }
-    },
-    {
-     "at": 90000,
-     "input": {
-      "kind": "poll",
-      "seq": 3,
       "phaseGen": 1,
       "poll": {
        "kind": "ok",
@@ -2641,14 +2596,29 @@
      },
      "expect": {
       "phase": "riding",
-      "event": {
-       "kind": "countdown",
-       "remaining": 0
-      }
+      "signal": "notYetVisible",
+      "remaining": null,
+      "event": null
      }
     },
     {
-     "at": 120000,
+     "at": 720000,
+     "input": {
+      "kind": "poll",
+      "seq": 3,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "notYetVisible",
+      "event": null
+     }
+    },
+    {
+     "at": 740000,
      "input": {
       "kind": "advance"
      },
@@ -2663,14 +2633,14 @@
    ]
   },
   {
-   "name": "근사 잠금: 임박 소실은 도착 추정이 아니다(§13.2 소비 한계)",
-   "route": "subwaySingle",
+   "name": "근사 잠금(지방버스): 임박 소실은 도착 추정이 아니다(§13.2 소비 한계 — 2026-09-11 지하철 근사가 비관측이 되어 잠금을 tagoApprox로)",
+   "route": "tagoBusSingle",
    "steps": [
     {
      "at": 0,
      "input": {
       "kind": "board",
-      "lock": "subwayApproxDown"
+      "lock": "tagoApprox"
      },
      "expect": {
       "phase": "riding",
@@ -4087,14 +4057,26 @@
    ]
   },
   {
-   "name": "근사 잠금 급행 선언(§6): 하차역 목록에서 급행 항목만 고른다 — 더 가까운 완행이 있어도 급행 잔여로 추적, 급행이 없으면 미등장(완행 폴백 없음)",
+   "name": "하차역 선언(A37 ② 2026-09-11): 식별 잠금 riding(관측 없음) → declareArrived → 확정 도착, 옛 세대 폴 폐기, changeBoarding no-op, advance → done",
    "route": "subwaySingle",
    "steps": [
     {
      "at": 0,
      "input": {
       "kind": "board",
-      "lock": "subwayApproxExpress"
+      "lock": "subway5696"
+     },
+     "expect": {
+      "phase": "boarding",
+      "event": {
+       "kind": "vehicleSelected"
+      }
+     }
+    },
+    {
+     "at": 0,
+     "input": {
+      "kind": "confirmBoarded"
      },
      "expect": {
       "phase": "riding",
@@ -4109,41 +4091,284 @@
      "input": {
       "kind": "poll",
       "seq": 1,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "ok",
        "items": [
         {
-         "vehicleId": "L1",
+         "vehicleId": "5696",
          "direction": "하행",
-         "message": "[2]번째 전역",
-         "remainingStops": 2,
-         "destinationName": "중앙보훈병원",
+         "message": "[6]번째 전역",
+         "remainingStops": 6,
+         "destinationName": "하남검단산",
          "express": false,
-         "arrivalCode": "99"
-        },
-        {
-         "vehicleId": "E1",
-         "direction": "하행",
-         "message": "[5]번째 전역",
-         "remainingStops": 5,
-         "destinationName": "중앙보훈병원",
-         "express": true,
          "arrivalCode": "99"
         }
        ]
       }
      },
      "expect": {
-      "remaining": 5,
+      "phase": "riding",
+      "signal": "tracking",
+      "remaining": 6,
       "event": {
        "kind": "trackingStarted",
-       "remaining": 5
+       "remaining": 6
       }
      }
     },
     {
-     "at": 75000,
+     "at": 900000,
+     "input": {
+      "kind": "declareArrived"
+     },
+     "expect": {
+      "phase": "arrived",
+      "signal": "tracking",
+      "remaining": null,
+      "event": {
+       "kind": "arrived",
+       "certain": true
+      }
+     }
+    },
+    {
+     "at": 905000,
+     "input": {
+      "kind": "poll",
+      "seq": 2,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "5696",
+         "direction": "하행",
+         "message": "[5]번째 전역",
+         "remainingStops": 5,
+         "destinationName": "하남검단산",
+         "express": false,
+         "arrivalCode": "99"
+        }
+       ]
+      }
+     },
+     "expect": {
+      "phase": "arrived",
+      "remaining": null,
+      "event": null
+     }
+    },
+    {
+     "at": 906000,
+     "input": {
+      "kind": "changeBoarding"
+     },
+     "expect": {
+      "phase": "arrived",
+      "event": null
+     }
+    },
+    {
+     "at": 910000,
+     "input": {
+      "kind": "advance"
+     },
+     "expect": {
+      "phase": "done",
+      "event": {
+       "kind": "legAdvanced",
+       "final": true
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "하차역 선언(A37 ②): 대기 국면(이미 탑승 흐름의 역 선택)에서도 확정 도착 → advance → 다음 leg waiting",
+   "route": "twoLegs",
+   "steps": [
+    {
+     "at": 0,
+     "input": {
+      "kind": "declareArrived"
+     },
+     "expect": {
+      "phase": "arrived",
+      "legIndex": 0,
+      "event": {
+       "kind": "arrived",
+       "certain": true
+      }
+     }
+    },
+    {
+     "at": 1000,
+     "input": {
+      "kind": "advance"
+     },
+     "expect": {
+      "phase": "waiting",
+      "legIndex": 1,
+      "signal": "notYetVisible",
+      "event": {
+       "kind": "legAdvanced",
+       "legIndex": 1,
+       "final": false
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "하차역 선언 가드: boarding·확정 도착·done·추적 불가에서는 no-op",
+   "route": "subwaySingle",
+   "steps": [
+    {
+     "at": 0,
+     "input": {
+      "kind": "board",
+      "lock": "subway5696"
+     },
+     "expect": {
+      "phase": "boarding",
+      "event": {
+       "kind": "vehicleSelected"
+      }
+     }
+    },
+    {
+     "at": 1000,
+     "input": {
+      "kind": "declareArrived"
+     },
+     "expect": {
+      "phase": "boarding",
+      "event": null
+     }
+    },
+    {
+     "at": 2000,
+     "input": {
+      "kind": "confirmBoarded"
+     },
+     "expect": {
+      "phase": "riding"
+     }
+    },
+    {
+     "at": 3000,
+     "input": {
+      "kind": "declareArrived"
+     },
+     "expect": {
+      "phase": "arrived",
+      "event": {
+       "kind": "arrived",
+       "certain": true
+      }
+     }
+    },
+    {
+     "at": 4000,
+     "input": {
+      "kind": "declareArrived"
+     },
+     "expect": {
+      "phase": "arrived",
+      "event": null
+     }
+    },
+    {
+     "at": 5000,
+     "input": {
+      "kind": "advance"
+     },
+     "expect": {
+      "phase": "done"
+     }
+    },
+    {
+     "at": 6000,
+     "input": {
+      "kind": "declareArrived"
+     },
+     "expect": {
+      "phase": "done",
+      "event": null
+     }
+    }
+   ]
+  },
+  {
+   "name": "하차역 선언 가드: 추적 불가 leg에서는 no-op(수동 전진만)",
+   "route": "untrackableSubway",
+   "steps": [
+    {
+     "at": 0,
+     "input": {
+      "kind": "declareArrived"
+     },
+     "expect": {
+      "phase": "waiting",
+      "signal": "untrackable",
+      "event": null
+     }
+    }
+   ]
+  },
+  {
+   "name": "이미 탑승 식별 잠금(A34 ② 2026-09-11): waiting → boardAboard → riding(declared) — boarding을 지나지 않고 하차역 폴 매칭이 정상(trackingStarted)",
+   "route": "subwaySingle",
+   "steps": [
+    {
+     "at": 0,
+     "input": {
+      "kind": "boardAboard",
+      "lock": "subway5696"
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "notYetVisible",
+      "event": {
+       "kind": "boarded",
+       "cause": "declared"
+      }
+     }
+    },
+    {
+     "at": 30000,
+     "input": {
+      "kind": "poll",
+      "seq": 1,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "5696",
+         "direction": "하행",
+         "message": "[3]번째 전역 (길동)",
+         "remainingStops": 3,
+         "destinationName": "하남검단산",
+         "express": false,
+         "arrivalCode": "99"
+        }
+       ]
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "tracking",
+      "remaining": 3,
+      "event": {
+       "kind": "trackingStarted",
+       "remaining": 3
+      }
+     }
+    },
+    {
+     "at": 60000,
      "input": {
       "kind": "poll",
       "seq": 2,
@@ -4152,141 +4377,81 @@
        "kind": "ok",
        "items": [
         {
-         "vehicleId": "L1",
+         "vehicleId": "5696",
          "direction": "하행",
-         "message": "[1]번째 전역",
-         "remainingStops": 1,
-         "destinationName": "중앙보훈병원",
+         "message": "여의도 도착",
+         "remainingStops": 0,
+         "destinationName": "하남검단산",
          "express": false,
-         "arrivalCode": "99"
-        },
-        {
-         "vehicleId": "E1",
-         "direction": "하행",
-         "message": "[4]번째 전역",
-         "remainingStops": 4,
-         "destinationName": "중앙보훈병원",
-         "express": true,
-         "arrivalCode": "99"
+         "arrivalCode": "1"
         }
        ]
       }
      },
      "expect": {
-      "remaining": 4,
+      "phase": "arrived",
+      "event": {
+       "kind": "arrived",
+       "certain": true
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "이미 탑승 식별 잠금 가드: 근사 잠금은 대상이 아니고(no-op) boarding·riding에서도 no-op",
+   "route": "subwaySingle",
+   "steps": [
+    {
+     "at": 0,
+     "input": {
+      "kind": "boardAboard",
+      "lock": "subwayApproxDown"
+     },
+     "expect": {
+      "phase": "waiting",
       "event": null
      }
     },
     {
-     "at": 90000,
+     "at": 1000,
      "input": {
-      "kind": "poll",
-      "seq": 3,
-      "phaseGen": 1,
-      "poll": {
-       "kind": "ok",
-       "items": [
-        {
-         "vehicleId": "L2",
-         "direction": "하행",
-         "message": "[3]번째 전역",
-         "remainingStops": 3,
-         "destinationName": "중앙보훈병원",
-         "express": false,
-         "arrivalCode": "99"
-        }
-       ]
-      }
+      "kind": "board",
+      "lock": "subway5696"
      },
      "expect": {
-      "remaining": 4,
-      "event": null,
-      "signal": "tracking"
+      "phase": "boarding"
      }
     },
     {
-     "at": 105000,
+     "at": 2000,
      "input": {
-      "kind": "poll",
-      "seq": 4,
-      "phaseGen": 1,
-      "poll": {
-       "kind": "ok",
-       "items": [
-        {
-         "vehicleId": "L2",
-         "direction": "하행",
-         "message": "[2]번째 전역",
-         "remainingStops": 2,
-         "destinationName": "중앙보훈병원",
-         "express": false,
-         "arrivalCode": "99"
-        }
-       ]
-      }
+      "kind": "boardAboard",
+      "lock": "subway5696"
      },
      "expect": {
-      "remaining": 4,
+      "phase": "boarding",
       "event": null
      }
     },
     {
-     "at": 120000,
+     "at": 3000,
      "input": {
-      "kind": "poll",
-      "seq": 5,
-      "phaseGen": 1,
-      "poll": {
-       "kind": "ok",
-       "items": [
-        {
-         "vehicleId": "L2",
-         "direction": "하행",
-         "message": "[1]번째 전역",
-         "remainingStops": 1,
-         "destinationName": "중앙보훈병원",
-         "express": false,
-         "arrivalCode": "99"
-        }
-       ]
-      }
+      "kind": "confirmBoarded"
      },
      "expect": {
-      "remaining": 4,
-      "event": {
-       "kind": "signalLost"
-      },
-      "signal": "signalLost"
+      "phase": "riding"
      }
     },
     {
-     "at": 135000,
+     "at": 4000,
      "input": {
-      "kind": "poll",
-      "seq": 6,
-      "phaseGen": 1,
-      "poll": {
-       "kind": "ok",
-       "items": [
-        {
-         "vehicleId": "E1",
-         "direction": "하행",
-         "message": "[3]번째 전역",
-         "remainingStops": 3,
-         "destinationName": "중앙보훈병원",
-         "express": true,
-         "arrivalCode": "99"
-        }
-       ]
-      }
+      "kind": "boardAboard",
+      "lock": "subway5696"
      },
      "expect": {
-      "remaining": 3,
-      "event": {
-       "kind": "countdown",
-       "remaining": 3
-      },
-      "signal": "tracking"
+      "phase": "riding",
+      "event": null
      }
     }
    ]

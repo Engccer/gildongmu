@@ -3,9 +3,9 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { FocusEvent } from "react";
 import { useTranslations } from "next-intl";
-import { useTransitGuide } from "@/hooks/useTransitGuide";
+import { finalLegWalkMinutesOf, useTransitGuide } from "@/hooks/useTransitGuide";
 import { isApproxTransitLock, needsExpressPrompt, viaStopCurrentIndex } from "@/lib/transit-guide";
-import type { TransitPrewalkTarget } from "@/lib/transit-guide";
+import type { TransitGuideLeg, TransitPrewalkTarget } from "@/lib/transit-guide";
 import type { TransitRoute } from "@/lib/types";
 import { joinText } from "@/lib/format";
 import { transitDisplayItem, transitDisplayLeg, type TransitLabel } from "@/lib/transit-display";
@@ -101,6 +101,8 @@ export function TransitGuidePanel({
   const changeBoardingRef = useRef<HTMLButtonElement>(null);
   /** 역 재선택 프롬프트 착지(A16 L3) — 버튼이 사라지는 전이라 포커스를 선점한다. */
   const reboardPromptRef = useRef<HTMLHeadingElement>(null);
+  /** [이미 탑승했습니다] — "이미 탑승" 흐름의 역 선택 취소가 돌아오는 자리(A34 ②, riding 취소의 `changeBoardingRef` 동형). */
+  const boardAlreadyRef = useRef<HTMLButtonElement>(null);
   /**
    * 급행 확인 프롬프트(spec 2026-09-02 §6) — 버튼으로 펼친 것이라 heading이 발견 경로(헌장 §3).
    * 연 시점의 국면 세대에 결박해 파생한다(iOS `onChange(of: phase)` 동형): 후보 선택·탑승 변경·구간
@@ -196,6 +198,8 @@ export function TransitGuidePanel({
   // (렌더 중 파생 상태 조정 — effect 내 동기 setState의 캐스케이드 회피).
   const [viaOpen, setViaOpen] = useState(false);
   const legIndex = state?.legIndex ?? null;
+  /** E34 조건: 마지막 leg ∧ 말미 도보 ∧ 인계 대상(dest). 참이면 `advance` 자리 버튼이 "남은 도보 안내 시작". */
+  const handoffNow = dest != null && finalLegWalkMinutesOf(state, guide.guideRoute) != null;
   const [prevLegIndex, setPrevLegIndex] = useState(legIndex);
   if (legIndex !== prevLegIndex) {
     setPrevLegIndex(legIndex);
@@ -253,6 +257,21 @@ export function TransitGuidePanel({
     }
     prevReboardRef.current = guide.reboardPickerActive;
   }, [guide.reboardPickerActive]);
+  // "이미 탑승" 흐름(A34 ②): pickStation 진입은 같은 헤딩으로, pickVehicle 진입은 목록 라벨(라벨이 곧 질문)로
+  // 선점. 프롬프트가 펼쳐진 채 역을 바꾸면 답이 그 역에 대한 답이 아니다 — 단계가 바뀌면 급행 확인을 접는다.
+  const prevAboardRef = useRef<typeof guide.aboardStep>(null);
+  useLayoutEffect(() => {
+    if (guide.aboardStep !== prevAboardRef.current) {
+      setExpressPromptGen(null);
+      if (guide.aboardStep === "pickStation") reboardPromptRef.current?.focus();
+      if (guide.aboardStep === "pickVehicle") waitingLabelRef.current?.focus();
+      if (guide.aboardStep === null && prevAboardRef.current === "pickStation") {
+        // 취소만 여기로 온다(하차역 선언·잠금은 국면 전이 착지가 맡는다 — 그때 이 버튼은 없다).
+        boardAlreadyRef.current?.focus();
+      }
+    }
+    prevAboardRef.current = guide.aboardStep;
+  }, [guide.aboardStep]);
 
   // 목록 포커스 소실 복귀(§13.4, 헌장 §5): 폴링 갱신으로 포커스가 얹힌 항목이
   // 사라지면(브라우저는 제거된 요소의 blur를 내지 않아 body로 조용히 이탈)
@@ -375,12 +394,13 @@ export function TransitGuidePanel({
           {state.signal === "untrackable" && (
             <>
               <p className="mt-1 text-sm">{t("untrackable")}</p>
+              {/* 마지막 leg면 라벨이 인계 자체(E34). */}
               <button
                 type="button"
-                onClick={guide.advance}
+                onClick={handoffNow ? () => guide.advanceIntoWalkHandoff() : guide.advance}
                 className="mt-1 min-h-11 rounded-md border border-blue-700 px-3 text-sm text-blue-700 dark:text-blue-300"
               >
-                {t("advanceUntrackable")}
+                {handoffNow ? t("walkHandoffStart") : t("advanceUntrackable")}
               </button>
             </>
           )}
@@ -395,11 +415,23 @@ export function TransitGuidePanel({
                 >
                   {t("boardApprox")}
                 </button>
+              ) : guide.aboardStep === "pickStation" ? (
+                // "이미 탑승" 흐름 1단(A34 ②): 지나는 역을 묻는다 — 역 선택 화면 재사용, 질문만 전용 키.
+                <StationPicker
+                  prompt={t("aboardStationPrompt")}
+                  promptRef={reboardPromptRef}
+                  leg={leg}
+                  isEn={isEn}
+                  onPick={guide.pickAboardStation}
+                  onCancel={guide.cancelAboard}
+                  cancelLabel={t("reboardCancel")}
+                />
               ) : (
                 <>
-                  {/* 포커스 소실 복귀 착지점(§13.4) — tabIndex -1로 프로그래매틱 전용. */}
+                  {/* 포커스 소실 복귀 착지점(§13.4) — tabIndex -1로 프로그래매틱 전용.
+                      pickVehicle 단계(A34 ②)는 라벨이 곧 질문("타고 계신 차량을 선택하세요"). */}
                   <p ref={waitingLabelRef} tabIndex={-1} className="text-sm font-medium">
-                    {t("waitingLabel")}
+                    {guide.aboardStep === "pickVehicle" ? t("waitingLabelAboard") : t("waitingLabel")}
                   </p>
                   {guide.directionUncertain && guide.waitingOptions.length > 0 && (
                     <p className="text-sm">{t("directionCheck")}</p>
@@ -470,7 +502,11 @@ export function TransitGuidePanel({
                               if (!item.vehicleId) return;
                               // 설명은 안정 조각(행선·방향)만 — 완성 문장은 폴마다 바뀐다.
                               // 설명이 비면 null — 훅이 노선명 폴백으로 문장을 만든다.
-                              guide.boardCandidate(option.candidate, descLabelOf(displayItem));
+                              if (guide.aboardStep === "pickVehicle") {
+                                guide.boardAboardCandidate(option.candidate, descLabelOf(displayItem));
+                              } else {
+                                guide.boardCandidate(option.candidate, descLabelOf(displayItem));
+                              }
                             }}
                             aria-disabled={!item.vehicleId}
                             className="min-h-11 w-full rounded-md border border-gray-400 px-3 text-left text-sm aria-disabled:opacity-50"
@@ -493,19 +529,49 @@ export function TransitGuidePanel({
                     >
                       {t("refresh")}
                     </button>
-                    <button
-                      type="button"
-                      // 급행 집합이 있는 노선만 급행 확인을 묻는다(§6) — 없으면 종전 즉시 잠금.
-                      onClick={() =>
-                        needsExpressPrompt(leg)
-                          ? setExpressPromptGen(state.phaseGen)
-                          : guide.boardAlready()
-                      }
-                      className="min-h-11 rounded-md border border-gray-400 px-3 text-sm"
-                    >
-                      {t("boardAlready")}
-                    </button>
-                    {state.previousLock && (
+                    {guide.aboardStep === "pickVehicle" ? (
+                      <>
+                        {/* 목록이 빌 때만 근사(비관측) 잠금으로(A34 판정) — 급행 집합 노선이면 급행 확인이 먼저. */}
+                        {guide.waitingOptions.length === 0 && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              needsExpressPrompt(leg)
+                                ? setExpressPromptGen(state.phaseGen)
+                                : guide.boardAlready()
+                            }
+                            className="min-h-11 rounded-md border border-gray-400 px-3 text-sm"
+                          >
+                            {t("continueWithoutTrain")}
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={guide.pickAnotherAboardStation}
+                          className="min-h-11 rounded-md border border-gray-400 px-3 text-sm"
+                        >
+                          {t("pickAnotherStation")}
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        ref={boardAlreadyRef}
+                        // 지하철은 역부터 묻고(A34 ②), 그 밖(서울버스)은 종전대로 — 급행 집합이 있는
+                        // 노선만 급행 확인을 묻는다(§6), 없으면 즉시(비관측) 잠금.
+                        onClick={() =>
+                          leg.trackMode === "subway" && leg.viaStops.length > 0
+                            ? guide.beginAboard()
+                            : needsExpressPrompt(leg)
+                              ? setExpressPromptGen(state.phaseGen)
+                              : guide.boardAlready()
+                        }
+                        className="min-h-11 rounded-md border border-gray-400 px-3 text-sm"
+                      >
+                        {t("boardAlready")}
+                      </button>
+                    )}
+                    {state.previousLock && guide.aboardStep === null && (
                       <button
                         type="button"
                         onClick={guide.cancelChangeBoarding}
@@ -589,13 +655,15 @@ export function TransitGuidePanel({
               {/* 근사 잠금은 advance 상시(§13.2 소비 한계 — arrived 전이가 없다). */}
               {(state.phase === "arrived" ||
                 (state.lock != null && isApproxTransitLock(state.lock))) && (
+                // 마지막 leg + 말미 도보(E34): 버튼 하나, 라벨이 처음부터 "남은 도보 안내 시작" — 한 번 누르면
+                // leg 종료와 도보 시작(아래 DistanceBeacon autoStart)이 함께. 그 밖은 종전 [다음 구간].
                 <button
                   type="button"
                   ref={advanceRef}
-                  onClick={guide.advance}
+                  onClick={handoffNow ? () => guide.advanceIntoWalkHandoff() : guide.advance}
                   className="min-h-11 rounded-md border border-blue-700 px-3 text-sm text-blue-700 dark:text-blue-300"
                 >
-                  {t("advance")}
+                  {handoffNow ? t("walkHandoffStart") : t("advance")}
                 </button>
               )}
               {state.phase === "riding" &&
@@ -620,42 +688,22 @@ export function TransitGuidePanel({
             heading이 발견 경로다(헌장 §3 판단 규칙).
           */}
           {state.phase === "riding" && guide.reboardPickerActive && (
-            <div className="mt-2">
-              <h4 ref={reboardPromptRef} tabIndex={-1} className="text-sm font-medium">
-                {t("reboardStationPrompt")}
-              </h4>
-              <ul className="mt-1 flex flex-wrap gap-2">
-                {transitDisplayLeg(leg, null).stops.map((stop, index) => {
-                  // ⚠ **라벨은 표시(en 가능)이고 값은 인덱스**다 — 조회 쿼리는 훅이 인덱스로
-                  // viaStops의 한국어 원문을 되찾는다(조인/표시 분리, spec §3.5·§3.6).
-                  const label = stop.en ?? stop.ko;
-                  return (
-                    <li key={`${index}-${stop.ko}`}>
-                      <button
-                        type="button"
-                        onClick={() => guide.changeBoardingAt(index)}
-                        className="min-h-11 rounded-md border border-gray-400 px-3 text-sm"
-                        // 한국어 라벨일 때만 ko 태그 — 영문 라벨에 붙이면 영어를 한국어 엔진이 읽는다.
-                        lang={isEn && !stop.en ? "ko" : undefined}
-                      >
-                        {label}
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-              <button
-                type="button"
-                onClick={() => {
-                  guide.cancelReboard();
-                  // 취소는 아무것도 바꾸지 않으므로 눌렀던 자리로 돌려보낸다.
-                  requestAnimationFrame(() => changeBoardingRef.current?.focus());
-                }}
-                className="mt-2 min-h-11 rounded-md border border-gray-400 px-3 text-sm"
-              >
-                {t("reboardCancel")}
-              </button>
-            </div>
+            // 승차 중 탑승 변경(A16 L3): 하차역이면 도착 선언(A37 ②), 그 밖은 그 역 기준 재선택.
+            <StationPicker
+              prompt={t("reboardStationPrompt")}
+              promptRef={reboardPromptRef}
+              leg={leg}
+              isEn={isEn}
+              onPick={(index) =>
+                index === leg.viaStops.length - 1 ? guide.declareArrived() : guide.changeBoardingAt(index)
+              }
+              onCancel={() => {
+                guide.cancelReboard();
+                // 취소는 아무것도 바꾸지 않으므로 눌렀던 자리로 돌려보낸다.
+                requestAnimationFrame(() => changeBoardingRef.current?.focus());
+              }}
+              cancelLabel={t("reboardCancel")}
+            />
           )}
 
           {/* 진행 상황(§3.2 공통 컨트롤): 자동 통지를 기다리지 않는 임의 시점 조회. */}
@@ -684,15 +732,76 @@ export function TransitGuidePanel({
           세션 자체가 ko 게이트 안이라 추가 게이트 없음. 트리거=시작(startOnOpen),
           마운트 포커스로 사라진 "다음 구간" 버튼의 커서를 다음 행동으로 옮긴다. */}
       {guide.doneHandoff && dest && (
+        // E34: 마지막 leg의 버튼을 이미 눌렀으므로 도보 세션은 마운트 즉시 시작(autoStart). 트리거는 시작 뒤
+        // "중지"가 되고 마운트 착지는 그 버튼(사라진 컨트롤 대신 다음 행동, 헌장 §5).
         <DistanceBeacon
           dest={dest}
           kind="walk"
           accessible={walkAccessible}
-          startOnOpen
+          autoStart
           focusTriggerOnMount
           triggerLabel={t("walkHandoffStart")}
         />
       )}
+    </div>
+  );
+}
+
+/**
+ * 역 선택 화면 — 두 흐름이 재사용한다: 승차 중 탑승 변경(A16 L3, "지금 어느 역에 계신가요?")과 "이미 탑승"
+ * (A34 ②, "지금 어느 역을 지나고 계신가요?"). 질문·선택 응답만 다르고 행·취소·착지(heading)는 같다. 위치가
+ * 아니라 목록인 근거(위원장 판정): 지하철 안에서는 GPS가 잡히지 않는다. ⚠ 버튼으로 펼친 것이라 region이
+ * 아니라 heading이 발견 경로다(헌장 §3).
+ */
+function StationPicker({
+  prompt,
+  promptRef,
+  leg,
+  isEn,
+  onPick,
+  onCancel,
+  cancelLabel,
+}: {
+  prompt: string;
+  promptRef: React.RefObject<HTMLHeadingElement | null>;
+  leg: TransitGuideLeg;
+  isEn: boolean;
+  onPick: (index: number) => void;
+  onCancel: () => void;
+  cancelLabel: string;
+}) {
+  return (
+    <div className="mt-2">
+      <h4 ref={promptRef} tabIndex={-1} className="text-sm font-medium">
+        {prompt}
+      </h4>
+      <ul className="mt-1 flex flex-wrap gap-2">
+        {transitDisplayLeg(leg, null).stops.map((stop, index) => {
+          // ⚠ **라벨은 표시(en 가능)이고 값은 인덱스**다 — 조회 쿼리는 훅이 인덱스로
+          // viaStops의 한국어 원문을 되찾는다(조인/표시 분리, spec §3.5·§3.6).
+          const label = stop.en ?? stop.ko;
+          return (
+            <li key={`${index}-${stop.ko}`}>
+              <button
+                type="button"
+                onClick={() => onPick(index)}
+                className="min-h-11 rounded-md border border-gray-400 px-3 text-sm"
+                // 한국어 라벨일 때만 ko 태그 — 영문 라벨에 붙이면 영어를 한국어 엔진이 읽는다.
+                lang={isEn && !stop.en ? "ko" : undefined}
+              >
+                {label}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+      <button
+        type="button"
+        onClick={onCancel}
+        className="mt-2 min-h-11 rounded-md border border-gray-400 px-3 text-sm"
+      >
+        {cancelLabel}
+      </button>
     </div>
   );
 }
