@@ -1795,8 +1795,11 @@ export function useRouteGuide(
       const notice = consumeStepFreeNotice(fetched.stepFree, fetched.stepFreeNotice);
       // 요약과 첫 안내는 한 문장으로 — 두 통지가 경합하면 앞의 것이 잘린다(스펙 §5.3).
       // E40: 시작 통지가 목적지를 말한다(iOS `GuideText.start`·`carStart` 미러).
+      // ⚠ **`destRef.current`를 읽는다**(원시 `dest`가 아니라) — 이 콜백은 목적지가 바뀐 렌더에서
+      // 재생성되지 않아 직전 목적지 이름을 부른다. 하필 E40이 만든 유일한 목적지 채널이다
+      // (code-quality 리뷰 2026-09-12). 같은 파일의 다른 4자리도 전부 `destRef.current`다.
       const summary = t(kindFixed === "car" ? "carStart" : "detailStart", {
-        dest: dest.name,
+        dest: destRef.current.name,
         count: route.steps.length,
         distance: formatDistance(route.totalMeters),
         first,

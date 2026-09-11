@@ -780,6 +780,9 @@
   "transitGuide.arrivingAtBoardStopBus": [
     "line"
   ],
+  "transitGuide.boardedAlight": [
+    "stop"
+  ],
   "transitGuide.boardingContext": [
     "stop",
     "line"
@@ -838,10 +841,6 @@
   ],
   "transitGuide.lastUpdated": [
     "time"
-  ],
-  "transitGuide.messageFrame": [
-    "stop",
-    "message"
   ],
   "transitGuide.nextLeg": [
     "context"

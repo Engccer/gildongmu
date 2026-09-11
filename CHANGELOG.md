@@ -19,9 +19,11 @@
 - **서버 재작성 폐지**: `rewriteBusArrivalMessage`(승차 국면 꼬리 제거 + 어미 "남음")와 그 전용 테스트를 지웠다. 그 재작성은 이 상태 문장 하나만을 위한 것이었고, 클라이언트가 원문을 파싱하게 되면서 같은 원문을 두 계층이 각자 해석하는 상태가 됐다. 대기 후보 목록은 종전대로 원문이다.
 - **새 모양 `회차대기`**: A41 실호출 코퍼스 재분석(21개 노선 2,430행)에서 120건 관측, vehId가 붙는 실재 상태인데 파서가 미지로 떨어뜨리고 있었다. `turning` 종류를 더해 ko·en 문장을 만든다. `운행종료`는 vehId가 없어 잠금 국면에 도달하지 않으므로 문장을 만들지 않는다.
 - **E40**: 세 수단 시작 통지 첫머리에 목적지 라벨(`transitGuide.startedAt`·`guide.detailStart`·`guide.carStart`·`guide.detailUnavailable`). 목적지 없는 `started`는 세션 중 경로 교체용으로 남는다(그 경로는 앞 문장이 이미 목적지를 말한다). `arg-order.json` 재생성.
-- **E41**(위원장 판정, 두 안 중 **통지 축소**): 통지는 "방금 무슨 일이 일어났고 다음에 무엇을 하는가"만 말하고 상황 서술은 착지가 앉는 상태 문장에 맡긴다. `arrived` 선두 문장 제거, `boarded`는 인자 없는 한 문장(`boardedCount` 폐지), `legAdvanced`는 다음 구간 문맥 대신 `legAdvancedNext`. 상태 문장에 없는 조각(`nextLeg`·`untrackable`·출구 방면)은 남는다.
+- **E41**(위원장 판정, 두 안 중 **통지 축소**): 통지는 "방금 무슨 일이 일어났고 다음에 무엇을 하는가"만 말하고 상황 서술은 착지가 앉는 상태 문장에 맡긴다. `arrived` 선두 문장 제거, `boarded`는 정거장 수를 버린다(`boardedCount` 폐지). 상태 문장에 없는 조각(`nextLeg`·`untrackable`·출구 방면)은 남는다.
+- **축소의 전제를 착지 표로 검증했다**(a11y 감사): 모든 전이가 상태 문장에 앉는 것은 아니었다. `legAdvanced`는 차량 선택 목록 라벨에 착지하므로 다음 구간 문맥 축소를 **철회**했고(`legAdvancedNext` 키 폐기), `boarding → riding` 자동 승격은 착지 대상이 아니라 하차역 조각 `boardedAlight`을 그 경로에만 잇는다.
+- **`frameLine`·`messageFrame` 폐지**(리뷰 2인 독립 검출): 지하철 승차 중 판정을 새 조립기가 복제하면서 원래 함수의 프로덕션 호출자가 0이 됐고 fixture가 죽은 쪽만 초록으로 증명하고 있었다. 복제를 이관으로 고치고 버스 프레임 틀은 폐지했다.
 
-새 i18n 키 18개·변경 10개(6로케일), 공유 fixture 17건 추가·2건 폐지. 리듀서·provider·라우트 무변경. spec `docs/superpowers/specs/2026-09-12-transit-status-prose-design.md`, 문안 확정본 `~/gildongmu-wt/reports/status-prose-copy.md`(사설). 실승차 판정은 `docs/BACKLOG.md` §2, 대본 `docs/FIELD-TEST.md` §5-2.
+새 i18n 키 18개·변경 14개·폐지 3개(6로케일), 공유 fixture 22건 추가·5건 전환/폐지. 리듀서·provider·라우트 무변경. spec `docs/superpowers/specs/2026-09-12-transit-status-prose-design.md` §7에 리뷰 반영 기록. 문안 확정본은 `~/gildongmu-wt/reports/status-prose-copy.md`(사설). 실승차 판정은 `docs/BACKLOG.md` §2, 대본 `docs/FIELD-TEST.md` §5-2.
 
 ### 대중교통 안내 시트 착지 대상을 상태 문장 행으로 통일 (E38, iOS + 웹)
 

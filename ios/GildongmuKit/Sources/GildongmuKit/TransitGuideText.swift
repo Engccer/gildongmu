@@ -86,26 +86,6 @@ public func transitContextLine(isEn: Bool, leg: TransitDisplayLeg) -> TransitTex
 
 // MARK: - 완성 문장 프레임
 
-/// 승차 국면 상태 문장(§12.3·A27). ⚠ `arrivalCode` 인자에 기본값 없음.
-public func transitFrameLine(
-    isEn: Bool, leg: TransitDisplayLeg, message: TransitLabel, arrivalCode: String?
-) -> TransitTextLine {
-    if leg.mode == "subway" {
-        switch subwayRidingKey(arrivalCode) {
-        case .omit:
-            return omitLine
-        case let .key(k):
-            return makeLine(isEn, k, [leg.alight]) { $0 }
-        case .raw:
-            // 미지 코드 — 완성 문장 원문 병치(틀 없이).
-            let picked = transitPickLabels(isEn: isEn, [message])
-            guard !picked.values[0].isEmpty else { return omitLine }
-            return TransitTextLine(parts: [.text(picked.values[0])], lang: picked.lang)
-        }
-    }
-    return makeLine(isEn, "messageFrame", [leg.alight, message]) { $0 }
-}
-
 public func transitApproachFrameLine(
     isEn: Bool, leg: TransitDisplayLeg, message: TransitLabel
 ) -> TransitTextLine {
@@ -177,11 +157,22 @@ private func busArrivalPart(_ isEn: Bool, _ message: TransitLabel) -> ArrivalPar
     func ui(_ key: String, _ args: [String] = []) -> ArrivalPart {
         ArrivalPart(line: TransitTextLine(parts: [.key(key, args)], lang: isEn ? "en" : "ko"))
     }
+    // 미지·범위 밖은 원문 병치. ⚠ **ko 원문의 잔여 꼬리는 뗀다** — 잔여 조각이 같은 수를 이미
+    // 말하므로 그대로 실으면 "2정거장 전, 3분후[2번째 전]"이 된다(a11y 감사 2026-09-12).
+    func raw() -> ArrivalPart? {
+        let body = message.ko
+            .replacingOccurrences(of: arrmsgTailPattern, with: "", options: .regularExpression)
+            .trimmingCharacters(in: .whitespaces)
+        return rawArrivalPart(isEn, TransitLabel(ko: body, en: message.en))
+    }
     switch parseBusArrmsgKind(message.ko) {
     case .soon: return ui("busSoon")
     case .waiting: return ui("busNotDeparted")
     case .turning: return ui("busTurning")
     case let .eta(minutes, seconds):
+        // 범위 검증은 웹 `busArrivalPart`·en 투영과 **같은 판정**이다(갈리면 한 원문을 셋이 달리 읽는다).
+        if let minutes, minutes < 0 { return raw() }
+        if let seconds, seconds < 0 || seconds > 59 { return raw() }
         let min = (minutes ?? 0) > 0 ? minutes : nil
         let sec = (seconds ?? 0) > 0 ? seconds : nil
         if let min, let sec { return ui("busEtaMinSec", [String(min), String(sec)]) }
@@ -190,7 +181,7 @@ private func busArrivalPart(_ isEn: Bool, _ message: TransitLabel) -> ArrivalPar
         // 분·초가 둘 다 0 — 담을 값이 없다(en 투영과 같은 판정).
         return nil
     case .ended, .unknown:
-        return rawArrivalPart(isEn, message)
+        return raw()
     }
 }
 
@@ -284,6 +275,13 @@ public func transitArrivingAtBoardStopLine(isEn: Bool, leg: TransitDisplayLeg) -
 /// 일은 탑승이지 버스의 출발이 아니다(spec 2026-09-12-transit-status-prose §4).
 public func transitBoardedLine(isEn: Bool) -> TransitTextLine {
     TransitTextLine(parts: [.key("boarded", [])], lang: isEn ? "en" : "ko")
+}
+
+/// 하차역 조각(E41 a11y 감사 반영) — **자동 승격에만 붙는다.** `boarding → riding`은 착지 대상이
+/// 아니라(N3 ①) VoiceOver가 상태 문장을 다시 읽지 않으므로 통지가 하차역의 유일한 채널이다.
+/// 사용자가 버튼으로 선언한 승차는 상태 문장에 착지하므로 붙이지 않는다.
+public func transitBoardedAlightLine(isEn: Bool, leg: TransitDisplayLeg) -> TransitTextLine {
+    makeLine(isEn, "boardedAlight", [leg.alight]) { $0 }
 }
 
 public func transitCurrentStationLine(isEn: Bool, location: TransitLabel) -> TransitTextLine {
@@ -422,12 +420,12 @@ public func transitOpenStationLine(isEn: Bool, station: TransitLabel) -> Transit
 public let transitTextKeys: [String] = [
     "waitContext", "waitContextBus", "waitContextWalk", "waitContextWalkBus",
     "boardingContext", "boardingContextBus", "context", "contextBus",
-    "messageFrame", "subwayNextStop", "subwayArriving", "subwayAtStop", "subwayDeparted",
+    "subwayNextStop", "subwayArriving", "subwayAtStop", "subwayDeparted",
     "remainingCount", "remainingCountJoin", "stopsAway", "stopsAwayOnly",
     "busEtaMinSec", "busEtaMin", "busEtaSec", "busSoon", "busNotDeparted", "busTurning",
     "approachFrame", "vehicleSelected", "selectedVehicle", "vehiclePassed",
     "arrivedAtBoardStop", "arrivedAtBoardStopBus", "arrivingAtBoardStop", "arrivingAtBoardStopBus",
-    "boarded", "currentStation",
+    "boarded", "boardedAlight", "currentStation",
     "bound", "expressCheck", "expressStopsAt", "expressSkipsAlight", "exitBound", "exitBoundSentence", "departed", "terminatesEarly",
     "viaBoard", "viaAlight", "viaCurrent", "overviewLeg",
     "prewalkStart", "prewalkArrived", "prewalkArrivedButton",

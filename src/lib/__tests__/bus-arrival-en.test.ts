@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-import { busArrivalMessageEn, busArrivalMessageEnFrom, parseBusArrmsg } from "../bus-arrival-en";
+import {
+  busArrivalMessageEn,
+  busArrivalMessageEnFrom,
+  parseBusArrmsg,
+  type BusArrmsgKind,
+} from "../bus-arrival-en";
 import { remainingFromArrmsg } from "../providers/seoul-bus";
 
 /** 실호출·fixture에서 관측된 모양 전부 + 미지 변형. */
@@ -26,13 +31,28 @@ describe("parseBusArrmsg", () => {
     }
   });
 
-  it("ko·en 두 소비자가 같은 한 판정을 쓴다", () => {
+  it("ko·en 두 소비자가 같은 한 판정을 쓴다 — 코퍼스 전량의 종류를 표로 못 박는다", () => {
     // E39로 ko 재작성이 사라진 뒤의 교차 검증: ko 상태 문장(`arrivalStatusLine`)도 en 투영도
     // 이 한 함수의 `kind`로 갈린다. 시간형이 아닌 모양이 `eta`로 새면 ko는 "약 N분 후 도착",
-    // en은 "In N min"을 동시에 지어낸다 — 그래서 판정 자체를 코퍼스 전량으로 못 박는다.
+    // en은 "In N min"을 동시에 지어낸다.
+    // ⚠ **기대값을 정규식으로 쓰지 않는다**(code-quality 리뷰 2026-09-12): 구현과 같은 규칙을
+    // 다시 쓰면 구현이 바뀔 때 기대값도 함께 바뀌어 아무것도 못 잡는다. 표로 고정한다.
+    const EXPECTED: Record<string, BusArrmsgKind> = {
+      "6분47초후[4번째 전]": "eta",
+      "15분후[9번째 전]": "eta",
+      "55초후[1번째 전]": "eta",
+      "3분54초후[2번째 전]": "eta",
+      "2분55초후[3번째 전]": "eta",
+      "곧 도착": "soon",
+      "출발대기": "waiting",
+      "운행종료": "ended",
+      "회차대기": "turning",
+      "정보없음": "unknown",
+      "차고지대기": "unknown",
+    };
+    expect(Object.keys(EXPECTED).sort()).toEqual([...CORPUS].sort());
     for (const m of CORPUS) {
-      const looksLikeEta = /후$/.test(m.replace(/\[\d+번째 전\]/, "").trim());
-      expect(parseBusArrmsg(m).kind === "eta", m).toBe(looksLikeEta);
+      expect(parseBusArrmsg(m).kind, m).toBe(EXPECTED[m]);
     }
   });
 
