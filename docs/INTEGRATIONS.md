@@ -211,6 +211,12 @@ spec `2026-09-02-express-stops-data-design.md`. 둘 다 `includeStops=1` 응답�
 
 ---
 
+### 서울버스 "곧 도착"(잔여 0)은 정차가 아니라 직전 정류소 출발이다 (A41, 2026-09-12)
+
+실호출(spec `2026-09-12-seoul-bus-stop-arrival-signal-design.md` §0, 갈월동 `03012` 차량 22대·2,430행): `arrmsg1 "곧 도착"`(= `staOrd − sectOrd == 0`)은 그 차량이 **직전 정류소를 떠나 우리 정류소 구간에 들어온** 상태이고 간선에서 90~211초 유지된다. 같은 항목의 `isArrive1`은 전 행 0, `stationNm1`은 `sectOrd1`의 정류소명(잔여 0이면 언제나 우리 정류소), `repTm1`은 2018·2021년 고정값 — **정차를 가르는 필드가 이 API에 없다.** 차량은 `traTime1`이 ~5초까지 내려간 뒤 0~50초 안에 목록에서 사라진다(= 서고 떠났다). `getStationByUid`(승차)와 `getArrInfoByRoute`(하차)는 같은 차량에 같은 구조 값을 준다.
+
+리듀서 계약(웹 `transit-guide.ts` ↔ Kit `TransitGuide.swift`, 공유 fixture "A41" 시나리오 5건): ①boarding 서울버스 잔여 0 = `arrivingAtBoardStop` 1회(래치 `ladderAnnounced = 0`, 첫 관측이 0이어도 이 이벤트) ②그 뒤 `MISS_ARRIVE_COUNT` 연속 미등장 = `boarded(cause: departed)` 승격(놓쳤으면 [탑승 변경]으로 복귀) ③잔여 1에서 0을 거치지 않은 소실은 종전 `vehiclePassed` ④riding 서울버스 잔여 0 = `arrivingAtAlightStop` 1회, **확정 도착 없음** — 소실은 종전 도착 추정(가역, 재관측 `backOnTrack`), 확정은 `declareArrived`뿐. 지하철(진입 0·도착 1 승격, 도착 1 확정)은 불변. ⚠ `traTime1`은 카운트다운 표시엔 정확하지만 750A가 97초에서 곧장 사라진 표본이 있어 정차 판정 축으로는 못 쓴다. 정차 확정이 필요해지면 후보는 버스위치 API(`getBusPosByRtid`, `stopFlag`, 활용신청 위원장 몫)뿐이다.
+
 ## 서울 지하철 실시간 (`seoul-subway-arrival`)
 
 ### 서울 지하철 실시간 (CLAUDE.md 이관)
