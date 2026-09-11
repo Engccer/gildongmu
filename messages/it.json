@@ -1087,6 +1087,8 @@
     "approachingStarted": "Tracciamento del veicolo selezionato.",
     "vehicleSelected": "{desc} selezionato. In attesa del suo arrivo a {stop}.",
     "arrivedAtBoardStop": "{line} è arrivato. Sali ora.",
+    "arrivingAtBoardStop": "{line} sta arrivando.",
+    "arrivingAtAlightStop": "Scendi a questa fermata.",
     "vehiclePassed": "Il veicolo scelto sembra aver lasciato {stop}. Se sei a bordo tocca Salgo senza info di arrivo, altrimenti Scegli un altro veicolo.",
     "boardingSignalLost": "Non troviamo il veicolo che hai scelto. Se sei a bordo, tocca Salgo senza info di arrivo.",
     "boardingUpstreamFailed": "Il flusso in tempo reale si è interrotto. Se sei a bordo, tocca Salgo senza info di arrivo.",

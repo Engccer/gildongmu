@@ -3,6 +3,7 @@ import * as textModule from "../transit-guide-text";
 import {
   approachFrameLine,
   arrivedAtBoardStopLine,
+  arrivingAtBoardStopLine,
   boardedLine,
   boardingContextLine,
   candidateDescLine,
@@ -129,6 +130,11 @@ const CASES: {
     fn: arrivedAtBoardStopLine, name: "arrivedAtBoardStopLine",
     run: (e) => arrivedAtBoardStopLine(e, LEG),
     en: { parts: [{ key: "arrivedAtBoardStop", args: ["Line 5"] }], lang: "en" },
+  },
+  {
+    fn: arrivingAtBoardStopLine, name: "arrivingAtBoardStopLine",
+    run: (e) => arrivingAtBoardStopLine(e, LEG),
+    en: { parts: [{ key: "arrivingAtBoardStop", args: ["Line 5"] }], lang: "en" },
   },
   {
     fn: boardedLine, name: "boardedLine(정거장 수 있음)",
@@ -374,6 +380,7 @@ function runFixtureCase(c: FixtureCase): TransitTextLine {
     case "selectedVehicle": return selectedVehicleLine(e, c.desc!);
     case "vehiclePassed": return vehiclePassedLine(e, c.leg!);
     case "arrivedAtBoardStop": return arrivedAtBoardStopLine(e, c.leg!);
+    case "arrivingAtBoardStop": return arrivingAtBoardStopLine(e, c.leg!);
     case "boarded": return boardedLine(e, c.leg!);
     case "currentStation": return currentStationLine(e, c.location!);
     case "candidateDesc":

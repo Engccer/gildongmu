@@ -168,6 +168,11 @@ export function arrivedAtBoardStopLine(isEn: boolean, leg: TransitDisplayLeg): T
   return line(isEn, "arrivedAtBoardStop", [leg.line], (v) => v);
 }
 
+/** A41: 서울버스 "곧 도착"(잔여 0) 승차 임박 — 승격 없이 "{line} 곧 도착합니다." */
+export function arrivingAtBoardStopLine(isEn: boolean, leg: TransitDisplayLeg): TransitTextLine {
+  return line(isEn, "arrivingAtBoardStop", [leg.line], (v) => v);
+}
+
 /** 탑승 통지 — 정거장 수를 아는 경우와 아닌 경우로 키가 갈린다. */
 export function boardedLine(isEn: boolean, leg: TransitDisplayLeg): TransitTextLine {
   if (leg.stationCount != null) {
@@ -347,6 +352,7 @@ export const TRANSIT_TEXT_KEYS = [
   "selectedVehicle",
   "vehiclePassed",
   "arrivedAtBoardStop",
+  "arrivingAtBoardStop",
   "boarded",
   "boardedCount",
   "currentStation",

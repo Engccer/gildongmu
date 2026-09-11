@@ -20,6 +20,7 @@ export const TRANSIT_TEXT_ARG_NAMES: Record<string, readonly string[]> = {
   selectedVehicle: ["desc"],
   vehiclePassed: ["stop"],
   arrivedAtBoardStop: ["line"],
+  arrivingAtBoardStop: ["line"],
   boarded: ["line", "stop"],
   boardedCount: ["line", "stop", "count"],
   currentStation: ["station"],

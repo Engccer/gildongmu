@@ -145,6 +145,11 @@ public func transitArrivedAtBoardStopLine(isEn: Bool, leg: TransitDisplayLeg) ->
     makeLine(isEn, "arrivedAtBoardStop", [leg.line]) { $0 }
 }
 
+/// A41: 서울버스 "곧 도착"(잔여 0) 승차 임박 — 승격 없이 "{line} 곧 도착합니다."
+public func transitArrivingAtBoardStopLine(isEn: Bool, leg: TransitDisplayLeg) -> TransitTextLine {
+    makeLine(isEn, "arrivingAtBoardStop", [leg.line]) { $0 }
+}
+
 public func transitBoardedLine(isEn: Bool, leg: TransitDisplayLeg) -> TransitTextLine {
     if let count = leg.stationCount {
         return makeLine(isEn, "boardedCount", [leg.line, leg.alight]) { [$0[0], $0[1], String(count)] }
@@ -289,7 +294,7 @@ public let transitTextKeys: [String] = [
     "waitContext", "waitContextWalk", "boardingContext", "context",
     "messageFrame", "subwayNextStop", "subwayArriving", "subwayAtStop", "subwayDeparted",
     "approachFrame", "vehicleSelected", "selectedVehicle", "vehiclePassed",
-    "arrivedAtBoardStop", "boarded", "boardedCount", "currentStation",
+    "arrivedAtBoardStop", "arrivingAtBoardStop", "boarded", "boardedCount", "currentStation",
     "bound", "expressCheck", "expressStopsAt", "expressSkipsAlight", "exitBound", "exitBoundSentence", "departed", "terminatesEarly",
     "viaBoard", "viaAlight", "viaCurrent", "overviewLeg",
     "prewalkStart", "prewalkArrived", "prewalkArrivedButton",
