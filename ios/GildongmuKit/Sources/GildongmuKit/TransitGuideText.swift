@@ -48,6 +48,12 @@ public func transitPickLabels(
     return (en, "en")
 }
 
+/// 수단별 키(A33 패턴, E39) — 버스는 `{line}`이 노선 번호라 수단 낱말이 붙어야 한다.
+/// ⚠ 라벨(`TransitDisplayLeg.line`)에 합성하지 않는다(조인 키 오염).
+private func modeKey(_ leg: TransitDisplayLeg, _ base: String) -> String {
+    leg.mode == "bus" ? base + "Bus" : base
+}
+
 private func makeLine(
     _ isEn: Bool, _ key: String, _ labels: [TransitLabel], _ build: ([String]) -> [String]
 ) -> TransitTextLine {
@@ -65,17 +71,17 @@ public func transitWaitContextLine(
 ) -> TransitTextLine {
     let overridden = isCurrentLeg && leg.boardOverridden
     if !overridden, let walk = leg.walkBeforeMinutes, walk > 0 {
-        return makeLine(isEn, "waitContextWalk", [leg.board, leg.line]) { [String(walk), $0[0], $0[1]] }
+        return makeLine(isEn, modeKey(leg, "waitContextWalk"), [leg.board, leg.line]) { [String(walk), $0[0], $0[1]] }
     }
-    return makeLine(isEn, "waitContext", [leg.board, leg.line]) { $0 }
+    return makeLine(isEn, modeKey(leg, "waitContext"), [leg.board, leg.line]) { $0 }
 }
 
 public func transitBoardingContextLine(isEn: Bool, leg: TransitDisplayLeg) -> TransitTextLine {
-    makeLine(isEn, "boardingContext", [leg.board, leg.line]) { $0 }
+    makeLine(isEn, modeKey(leg, "boardingContext"), [leg.board, leg.line]) { $0 }
 }
 
 public func transitContextLine(isEn: Bool, leg: TransitDisplayLeg) -> TransitTextLine {
-    makeLine(isEn, "context", [leg.line, leg.alight]) { $0 }
+    makeLine(isEn, modeKey(leg, "context"), [leg.line, leg.alight]) { $0 }
 }
 
 // MARK: - 완성 문장 프레임
@@ -117,6 +123,129 @@ private enum SubwayRidingKey {
 ///
 /// ⚠ 판정을 여기에 다시 쓰면 CLAUDE.md가 정본이라 부르는 함수의 프로덕션 호출자가 0이 되어
 /// 공유 fixture만 초록인 채 실제 문장이 따라오지 않는 드리프트 경로가 생긴다(리뷰 검출).
+/// 상태 문장을 만드는 국면(E39). `waiting`은 관측값이 없어 이 함수를 지나지 않는다.
+public enum TransitStatusPhase: String, Sendable {
+    case boarding
+    case riding
+}
+
+/// 서울버스 완성 문장(TOPIS `arrmsg`)의 모양 — 웹 `parseBusArrmsg` 미러.
+enum BusArrmsgKind: Equatable {
+    case eta(minutes: Int?, seconds: Int?)
+    case soon
+    case waiting
+    case turning
+    case ended
+    case unknown
+}
+
+private let arrmsgTailPattern = #"\[(\d+)번째 전\]"#
+
+/// 원문 → 모양. 잔여 꼬리는 떼고 본다(잔여 수는 구조 필드가 따로 온다).
+func parseBusArrmsgKind(_ message: String) -> BusArrmsgKind {
+    let body = message
+        .replacingOccurrences(of: arrmsgTailPattern, with: "", options: .regularExpression)
+        .trimmingCharacters(in: .whitespaces)
+    if body.replacingOccurrences(of: " ", with: "") == "곧도착" { return .soon }
+    if body == "출발대기" { return .waiting }
+    if body == "회차대기" { return .turning }
+    if body == "운행종료" { return .ended }
+    // "6분47초후" / "15분후" / "55초후" — 꼬리를 뗀 몸통 전체가 걸려야 한다.
+    let etaPattern = #"^(?:(\d+)분)?\s*(?:(\d+)초)?\s*후$"#
+    guard let m = try? NSRegularExpression(pattern: etaPattern),
+          let hit = m.firstMatch(in: body, range: NSRange(body.startIndex..., in: body))
+    else { return .unknown }
+    func group(_ i: Int) -> Int? {
+        guard let r = Range(hit.range(at: i), in: body) else { return nil }
+        return Int(body[r])
+    }
+    let minutes = group(1)
+    let seconds = group(2)
+    guard minutes != nil || seconds != nil else { return .unknown }
+    return .eta(minutes: minutes, seconds: seconds)
+}
+
+/// 도착 조각 하나.
+private struct ArrivalPart {
+    let line: TransitTextLine
+}
+
+/// 서울버스 완성 문장 → 우리 문장(E39). 초가 있으면 정확값, 없으면 "약".
+/// `ended`·`unknown`은 원문 병치 — `운행종료`는 차량 잠금 국면에 도달하지 않고(vehId 부재),
+/// 미지 모양은 잘못 옮기는 것보다 원문이 낫다.
+private func busArrivalPart(_ isEn: Bool, _ message: TransitLabel) -> ArrivalPart? {
+    func ui(_ key: String, _ args: [String] = []) -> ArrivalPart {
+        ArrivalPart(line: TransitTextLine(parts: [.key(key, args)], lang: isEn ? "en" : "ko"))
+    }
+    switch parseBusArrmsgKind(message.ko) {
+    case .soon: return ui("busSoon")
+    case .waiting: return ui("busNotDeparted")
+    case .turning: return ui("busTurning")
+    case let .eta(minutes, seconds):
+        let min = (minutes ?? 0) > 0 ? minutes : nil
+        let sec = (seconds ?? 0) > 0 ? seconds : nil
+        if let min, let sec { return ui("busEtaMinSec", [String(min), String(sec)]) }
+        if let min { return ui("busEtaMin", [String(min)]) }
+        if let sec { return ui("busEtaSec", [String(sec)]) }
+        // 분·초가 둘 다 0 — 담을 값이 없다(en 투영과 같은 판정).
+        return nil
+    case .ended, .unknown:
+        return rawArrivalPart(isEn, message)
+    }
+}
+
+/// 지하철: 승차 중은 A27 문장, 승차 대기는 종전 프레임("{stop}에 {message}").
+private func subwayArrivalPart(
+    _ isEn: Bool, _ leg: TransitDisplayLeg, _ message: TransitLabel,
+    _ arrivalCode: String?, _ phase: TransitStatusPhase
+) -> ArrivalPart? {
+    if phase == .boarding {
+        return ArrivalPart(line: transitApproachFrameLine(isEn: isEn, leg: leg, message: message))
+    }
+    switch subwayRidingKey(arrivalCode) {
+    case .omit: return nil
+    case let .key(k): return ArrivalPart(line: makeLine(isEn, k, [leg.alight]) { $0 })
+    case .raw: return rawArrivalPart(isEn, message)
+    }
+}
+
+/// 원문 병치(틀 없이) — 비어 있으면 조각 없음.
+private func rawArrivalPart(_ isEn: Bool, _ message: TransitLabel) -> ArrivalPart? {
+    let picked = transitPickLabels(isEn: isEn, [message])
+    guard !picked.values[0].isEmpty else { return nil }
+    return ArrivalPart(line: TransitTextLine(parts: [.text(picked.values[0])], lang: picked.lang))
+}
+
+/// 승차 대기·승차 중 상태 문장의 **도착 조각**(E39) — 잔여와 도착 서술을 한 줄 두 조각으로 낸다.
+/// 렌더가 조각을 쉼표로 이으므로 "남은 정거장 3개, 다음 역 서대문." 한 문장이 된다.
+///
+/// ⚠ `phase`에 기본값을 두지 않는다 — 같은 잔여 수가 대기에서는 "버스가 여기 오기까지"이고
+/// 승차 중에는 "내릴 곳까지"라 낱말이 갈린다.
+public func transitArrivalStatusLine(
+    isEn: Bool, leg: TransitDisplayLeg, message: TransitLabel?, arrivalCode: String?,
+    remaining: Int?, phase: TransitStatusPhase
+) -> TransitTextLine {
+    let arrival: ArrivalPart? = message.flatMap {
+        leg.mode == "bus"
+            ? busArrivalPart(isEn, $0)
+            : subwayArrivalPart(isEn, leg, $0, arrivalCode, phase)
+    }
+    // 지하철 승차 대기는 잔여를 말하지 않는다(종전 계약 — 원문 프레임이 승차 정류소를 말한다).
+    // ⚠ 승차 대기의 잔여 0은 조각을 만들지 않는다 — "0정거장 전"은 한국어가 아니고, 그 상태는
+    // 도착 조각("곧 도착")이 이미 말한다. 승차 중의 0은 종전대로(하차 구간 진입).
+    guard let remaining, phase == .riding || (leg.mode == "bus" && remaining > 0) else {
+        return arrival?.line ?? omitLine
+    }
+    let count = String(remaining)
+    guard let arrival else {
+        let only = phase == .boarding ? "stopsAwayOnly" : "remainingCount"
+        return TransitTextLine(parts: [.key(only, [count])], lang: isEn ? "en" : "ko")
+    }
+    let joinKey = phase == .boarding ? "stopsAway" : "remainingCountJoin"
+    return TransitTextLine(
+        parts: [.key(joinKey, [count])] + arrival.line.parts, lang: arrival.line.lang)
+}
+
 private func subwayRidingKey(_ code: String?) -> SubwayRidingKey {
     switch subwayRidingMessage(code) {
     case let .key(k): .key(k)
@@ -142,19 +271,19 @@ public func transitVehiclePassedLine(isEn: Bool, leg: TransitDisplayLeg) -> Tran
 }
 
 public func transitArrivedAtBoardStopLine(isEn: Bool, leg: TransitDisplayLeg) -> TransitTextLine {
-    makeLine(isEn, "arrivedAtBoardStop", [leg.line]) { $0 }
+    makeLine(isEn, modeKey(leg, "arrivedAtBoardStop"), [leg.line]) { $0 }
 }
 
 /// A41: 서울버스 "곧 도착"(잔여 0) 승차 임박 — 승격 없이 "{line} 곧 도착합니다."
 public func transitArrivingAtBoardStopLine(isEn: Bool, leg: TransitDisplayLeg) -> TransitTextLine {
-    makeLine(isEn, "arrivingAtBoardStop", [leg.line]) { $0 }
+    makeLine(isEn, modeKey(leg, "arrivingAtBoardStop"), [leg.line]) { $0 }
 }
 
-public func transitBoardedLine(isEn: Bool, leg: TransitDisplayLeg) -> TransitTextLine {
-    if let count = leg.stationCount {
-        return makeLine(isEn, "boardedCount", [leg.line, leg.alight]) { [$0[0], $0[1], String(count)] }
-    }
-    return makeLine(isEn, "boarded", [leg.line, leg.alight]) { $0 }
+/// 탑승 통지(E41) — 노선·하차역·정거장 수는 착지가 앉는 상태 문장이 그대로 말하므로 한 문장이다.
+/// ⚠ A41 인계 기각: `departed`에 관측 서술("{노선} 출발")을 넣지 않는다 — 사용자에게 일어난
+/// 일은 탑승이지 버스의 출발이 아니다(spec 2026-09-12-transit-status-prose §4).
+public func transitBoardedLine(isEn: Bool) -> TransitTextLine {
+    TransitTextLine(parts: [.key("boarded", [])], lang: isEn ? "en" : "ko")
 }
 
 public func transitCurrentStationLine(isEn: Bool, location: TransitLabel) -> TransitTextLine {
@@ -291,10 +420,14 @@ public func transitOpenStationLine(isEn: Bool, station: TransitLabel) -> Transit
 
 /// descriptor가 낼 수 있는 전체 키 — 앱 리터럴 `switch` 망라성 대조 축(spec §5.2).
 public let transitTextKeys: [String] = [
-    "waitContext", "waitContextWalk", "boardingContext", "context",
+    "waitContext", "waitContextBus", "waitContextWalk", "waitContextWalkBus",
+    "boardingContext", "boardingContextBus", "context", "contextBus",
     "messageFrame", "subwayNextStop", "subwayArriving", "subwayAtStop", "subwayDeparted",
+    "remainingCount", "remainingCountJoin", "stopsAway", "stopsAwayOnly",
+    "busEtaMinSec", "busEtaMin", "busEtaSec", "busSoon", "busNotDeparted", "busTurning",
     "approachFrame", "vehicleSelected", "selectedVehicle", "vehiclePassed",
-    "arrivedAtBoardStop", "arrivingAtBoardStop", "boarded", "boardedCount", "currentStation",
+    "arrivedAtBoardStop", "arrivedAtBoardStopBus", "arrivingAtBoardStop", "arrivingAtBoardStopBus",
+    "boarded", "currentStation",
     "bound", "expressCheck", "expressStopsAt", "expressSkipsAlight", "exitBound", "exitBoundSentence", "departed", "terminatesEarly",
     "viaBoard", "viaAlight", "viaCurrent", "overviewLeg",
     "prewalkStart", "prewalkArrived", "prewalkArrivedButton",

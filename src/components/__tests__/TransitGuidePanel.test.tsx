@@ -1375,10 +1375,14 @@ describe("TransitGuidePanel — boarding 수동 진행 (N3 ①)", () => {
     await waitFor(() =>
       expect(screen.getByRole("button", { name: "transitGuide.changeBoarding" })).toBeTruthy(),
     );
-    // 승격 통지는 "탑승"이고 하차역 추적으로 넘어가지 않는다 — riding 첫 폴은 주기 뒤다
+    // 승격 통지는 "도착했으니 타세요"이고 하차역 추적으로 넘어가지 않는다 — riding 첫 폴은 주기 뒤다
     // (구현 리뷰 H1: 즉폴을 넣으면 그 응답의 `trackingStarted`가 지연 슬롯의 이 문장을
     // latest-wins로 버려, 이 흐름에서 가장 중요한 한 문장이 웜/콜드에 따라 사라진다).
-    expect(screen.getAllByRole("status")[0].textContent).toContain("transitGuide.boarded");
+    // ⚠ E41로 통지에서 "탑승했습니다"가 빠졌다 — 관측 승격의 그 순간 유일한 지시는 탑승 요청이고,
+    // 노선·하차역은 착지가 앉는 상태 문장이 그대로 말한다.
+    expect(screen.getAllByRole("status")[0].textContent).toContain(
+      "transitGuide.arrivedAtBoardStop",
+    );
     expect(screen.getAllByRole("status")[0].textContent).not.toContain("trackingStarted");
   });
 

@@ -237,8 +237,9 @@ final class TransitGuideModel {
         tones.beginSession()
         playTone(.start, allowedInBackground: false)
         let first = guideRoute.legs[0]
+        // E40: 시작 통지가 목적지를 말한다 — 시트 진입 착지는 상태 문장이라(E38) 목적지를 만날 채널이 없다.
         var parts = [
-            appLocalized("transitGuide.started", guideRoute.legs.count),
+            appLocalized("transitGuide.startedAt", destinationLabel, guideRoute.legs.count),
             waitContextText(first, isCurrentLeg: true),
         ]
         if first.trackMode == nil { parts.append(appLocalized("transitGuide.untrackable")) }
@@ -984,44 +985,50 @@ final class TransitGuideModel {
     /// 단일 헬퍼. 종전엔 시트가 쉼표 조립(joinText)을 따로 해 "기준., " 이중
     /// 구두점과 stationCountAbout·lastUpdated 누락 드리프트가 났었다(피드백 #9).
     func statusLineText(state: TransitGuideState, leg: TransitGuideLeg) -> String {
+        let boarding = state.phase == .boarding
+        let riding = state.phase == .riding
+        let arrived = state.phase == .arrived
+        // 비관측 잠금(A34 ①): 어느 열차인지 모르는 상태라 잔여·도착 문장·신선도를 내지 않는다.
+        let unobserved = state.lock.map(transitLockIsUnobserved) ?? false
+        // 도착 조각을 낼 수 있는 국면 — 도착 뒤의 접근 정보는 낡은 값이라 `arrived`는 제외한다(E39).
+        let live = (boarding || riding) && !unobserved
         var parts: [String] = switch state.phase {
         case .waiting: [waitContextText(leg, isCurrentLeg: true)]
-        case .boarding: [
-            boardingContextText(leg),
-            selectedDescription.map {
-                TransitGuideTextRenderer.render(
-                    transitSelectedVehicleLine(isEn: transitGuideIsEn, desc: $0))
-            } ?? "",
-        ].filter { !$0.isEmpty }
+        case .boarding: [boardingContextText(leg)]
         default: [contextText(leg)]
         }
-        // 비관측 잠금(A34 ①): 어느 열차인지 모르는 상태라 잔여·프레임·신선도를 내지 않는다(어림값 표시 폐지).
-        let unobserved = state.lock.map(transitLockIsUnobserved) ?? false
-        parts.append(signalStatusText(
-            state.signal, phase: state.phase, isTrain: leg.mode == "subway", unobserved: unobserved))
-        // 승차 중 어느 열차인가는 정보다(A34 ② — 목록에서 고른 열차를 확인하는 자리, 리뷰 m5).
-        if state.phase == .riding, let desc = selectedDescription {
+        // 잔여 + 도착 서술을 한 줄 두 조각으로(E39) — 렌더가 쉼표로 이어 한 문장이 된다.
+        let message = live ? state.lastMessage.flatMap { m -> TransitLabel? in
+            m.isEmpty ? nil : transitMessageLabel(m, state.lastMessageEn)
+        } : nil
+        let arrival = live
+            ? TransitGuideTextRenderer.render(transitArrivalStatusLine(
+                isEn: transitGuideIsEn,
+                leg: displayLeg(leg, useOverride: boarding),
+                message: message, arrivalCode: state.lastArrivalCode,
+                remaining: state.remaining, phase: boarding ? .boarding : .riding))
+            : ""
+        // 신호 문구(E39 위원장 판정): 대기 국면의 `notYetVisible`은 그 국면 내내 고정이라 정보가
+        // 0이고(목록 자리가 0건 사유를 3-state로 말한다), 추적 중은 도착 조각이 그 사실을 이미
+        // 말한다. 추적 중인데 도착 조각이 비면 그것이 정보다 — "차량이 없다"가 아니라 "언제
+        // 오는지 못 받았다"(3-state의 unknown).
+        if state.phase == .waiting, state.signal == .notYetVisible {
+            // 없음
+        } else if state.signal == .tracking, live {
+            if arrival.isEmpty { parts.append(appLocalized("transitGuide.noArrivalInfo")) }
+        } else {
+            parts.append(signalStatusText(
+                state.signal, phase: state.phase, isTrain: leg.mode == "subway", unobserved: unobserved))
+        }
+        // 선택 차량 조각: boarding 종전대로 + riding(A34 ② — 목록에서 고른 열차를 확인하는 자리, 리뷰 m5).
+        if boarding || riding, let desc = selectedDescription {
             parts.append(TransitGuideTextRenderer.render(
                 transitSelectedVehicleLine(isEn: transitGuideIsEn, desc: desc)))
         }
-        if state.phase == .boarding {
-            // 승차 정류소 기준 정보라 "하차역까지 남은 정거장"을 말하면 거짓이 된다 —
-            // 원문 프레임만(잔여 수는 원문 꼬리가 담는다).
-            if let message = state.lastMessage, !message.isEmpty {
-                parts.append(approachFrameText(leg, transitMessageLabel(message, state.lastMessageEn)))
-            }
-        } else if !unobserved {
-            if let remaining = state.remaining {
-                parts.append(appLocalized("transitGuide.remainingCount", remaining))
-            } else if let count = leg.stationCount, state.phase == .riding {
-                parts.append(appLocalized("transitGuide.stationCountAbout", count))
-            }
-            if let message = state.lastMessage, !message.isEmpty,
-               let framed = frameText(
-                   leg, transitMessageLabel(message, state.lastMessageEn),
-                   arrivalCode: state.lastArrivalCode) {
-                parts.append(framed)
-            }
+        if !arrival.isEmpty { parts.append(arrival) }
+        // 잔여를 못 받은 승차 중의 어림 정거장 수 — 도착 조각과 겹치지 않는 별도 문장이다.
+        if riding, !unobserved, state.remaining == nil, let count = leg.stationCount {
+            parts.append(appLocalized("transitGuide.stationCountAbout", count))
         }
         // 근사 주석("같은 노선의 접근 차량 기준")은 지방버스만(대기 중에도 근사 예고). 지하철·서울버스 근사는
         // 2026-09-11부터 비관측이라 접근 차량 기준이 아니다 — 국면을 보지 않는 잠금 술어로 갈라 선언 도착
@@ -1038,14 +1045,15 @@ final class TransitGuideModel {
         // 신선도 문장은 정확히 1개(§12.3, 감사 H2·M1): 추적 중이면 데이터 나이,
         // 그 외엔 마지막 폴 시각만 — 낡은 나이를 신선한 값처럼 이월하지 않는다.
         // 비관측 잠금은 폴이 없어 신선도가 정보가 아니다(동결 시각은 "앱이 멈췄다"로 읽힌다, 리뷰 m4).
-        if unobserved {
+        // 도착 국면도 같다 — 내린 뒤의 갱신 시각은 행동을 바꾸지 않는다(E39).
+        if unobserved || arrived {
             // 없음
         } else if state.signal == .tracking, let age = state.dataAgeSeconds {
             parts.append(appLocalized("transitGuide.dataAge", age))
         } else if let updatedAt = state.lastUpdatedAt {
             parts.append(appLocalized("transitGuide.lastUpdated", Self.timeText(updatedAt)))
         }
-        return parts.joined(separator: " ")
+        return parts.filter { !$0.isEmpty }.joined(separator: " ")
     }
 
     private static func timeText(_ epochMs: Double) -> String {
@@ -1438,6 +1446,19 @@ final class TransitGuideModel {
         }
     }
 
+    /// 이벤트가 실어 온 완성 문장 → **상태 문장과 같은 도착 서술**(E39). 통지와 상시 표시가 한
+    /// 조립기를 공유해야 같은 사실이 두 문장으로 갈리지 않는다(§12.3 드리프트 차단).
+    /// `remaining`이 nil이면 잔여 조각 없이 도착 서술만 낸다.
+    private func arrivalText(
+        _ leg: TransitGuideLeg, message: String, messageEn: String?, arrivalCode: String?,
+        remaining: Int?, phase: TransitStatusPhase
+    ) -> String {
+        TransitGuideTextRenderer.render(transitArrivalStatusLine(
+            isEn: transitGuideIsEn, leg: displayLeg(leg, useOverride: phase == .boarding),
+            message: message.isEmpty ? nil : transitMessageLabel(message, messageEn),
+            arrivalCode: arrivalCode, remaining: remaining, phase: phase))
+    }
+
     private func announcementText(for event: TransitGuideEvent) -> String {
         let leg = currentLeg
         var parts: [String] = []
@@ -1448,11 +1469,13 @@ final class TransitGuideModel {
                     isEn: transitGuideIsEn, leg: displayLeg(leg, useOverride: true),
                     desc: selectedDescription)))
             }
-        case let .approaching(_, message, messageEn):
-            // 첫 관측만 "추적합니다"를 앞세운다(래치 nil→값). 이후 사다리는 프레임만.
+        case let .approaching(remaining, message, messageEn):
+            // 첫 관측만 "추적합니다"를 앞세운다(래치 nil→값). 이후 사다리는 도착 서술만.
             if firstObservationInStep { parts.append(appLocalized("transitGuide.approachingStarted")) }
-            if !message.isEmpty, let leg {
-                parts.append(approachFrameText(leg, transitMessageLabel(message, messageEn)))
+            if let leg {
+                parts.append(arrivalText(
+                    leg, message: message, messageEn: messageEn, arrivalCode: nil,
+                    remaining: remaining, phase: .boarding))
             }
         case .vehiclePassed:
             if let leg {
@@ -1471,14 +1494,16 @@ final class TransitGuideModel {
         case let .boarded(_, cause):
             if let leg {
                 let d = displayLeg(leg, useOverride: false)
-                // departed(A41)는 "도착. 탑승하세요"를 내지 않는다 — 차량은 이미 떠났고 사용자는 그 차 안이다.
-                // 폴 유래라 지연 창구(`handle`의 즉시 분기는 declared뿐).
+                // E41: 노선·하차역·정거장 수는 착지가 앉는 상태 문장이 그대로 말한다 — 통지는 한 문장.
+                // 관측 승격은 "도착했으니 타세요"가 그 순간의 유일한 지시라 그것만 내고(departed는
+                // 차량이 이미 떠났으므로 내지 않는다, A41), 그 밖은 탑승 사실만.
                 if cause == .observed {
                     parts.append(TransitGuideTextRenderer.render(
                         transitArrivedAtBoardStopLine(isEn: transitGuideIsEn, leg: d)))
+                } else {
+                    parts.append(TransitGuideTextRenderer.render(
+                        transitBoardedLine(isEn: transitGuideIsEn)))
                 }
-                parts.append(TransitGuideTextRenderer.render(
-                    transitBoardedLine(isEn: transitGuideIsEn, leg: d)))
                 // "이미 탑승" 식별 잠금(A34 ②)은 vehicleSelected를 내지 않으므로 어느 열차를 잠갔는지 여기서 말한다.
                 if aboardBoardInStep, let desc = selectedDescription {
                     parts.append(TransitGuideTextRenderer.render(
@@ -1488,19 +1513,19 @@ final class TransitGuideModel {
         case let .trackingStarted(message, messageEn, remaining, arrivalCode):
             if let leg { parts.append(contextText(leg)) }
             parts.append(appLocalized("transitGuide.trackingStarted"))
-            let label = transitMessageLabel(message, messageEn)
-            let framed = message.isEmpty ? nil : (leg.map { frameText($0, label, arrivalCode: arrivalCode) } ?? message)
-            if let framed {
-                parts.append(framed)
-            } else if let remaining {
-                parts.append(appLocalized("transitGuide.remainingCount", remaining))
+            if let leg {
+                parts.append(arrivalText(
+                    leg, message: message, messageEn: messageEn, arrivalCode: arrivalCode,
+                    remaining: remaining, phase: .riding))
             }
         case let .countdown(remaining, message, messageEn, currentLocation, currentLocationEn, arrivalCode):
-            // §12.3: 매 사다리마다 문맥 문장을 반복하지 않는다 — 프레임이 하차역을 밝힌다.
-            // 지하철 99(운행중)는 프레임이 비어 잔여 수 문장으로 떨어진다(A27).
-            let label = transitMessageLabel(message, messageEn)
-            let framed = message.isEmpty ? nil : (leg.map { frameText($0, label, arrivalCode: arrivalCode) } ?? message)
-            parts.append(framed ?? appLocalized("transitGuide.remainingCount", remaining))
+            // §12.3: 매 사다리마다 문맥 문장을 반복하지 않는다 — 도착 서술이 잔여와 시간을 함께 말한다.
+            // 지하철 99(운행중)는 도착 조각이 비어 잔여 수만 남는다(A27).
+            if let leg {
+                parts.append(arrivalText(
+                    leg, message: message, messageEn: messageEn, arrivalCode: arrivalCode,
+                    remaining: remaining, phase: .riding))
+            }
             // 한 정거장 전 현재 역 병치(§12.2, 피드백 #10) — 잔여 ≥ 2 문장은 원문이
             // 현재 역을 이미 담아 병치하지 않는다(중복 금지).
             if remaining <= 1,
@@ -1509,13 +1534,12 @@ final class TransitGuideModel {
                     transitCurrentStationLine(isEn: transitGuideIsEn, location: location)))
             }
         case let .messageChanged(message, messageEn, arrivalCode):
-            let label = transitMessageLabel(message, messageEn)
-            let framed: String? = leg.map {
-                state?.phase == .boarding
-                    ? approachFrameText($0, label)
-                    : frameText($0, label, arrivalCode: arrivalCode)
-            } ?? message
-            if let framed { parts.append(framed) }
+            // 잔여는 바뀌지 않은 전이라 도착 서술만 낸다(잔여 조각 없음).
+            if let leg {
+                parts.append(arrivalText(
+                    leg, message: message, messageEn: messageEn, arrivalCode: arrivalCode,
+                    remaining: nil, phase: state?.phase == .boarding ? .boarding : .riding))
+            }
         case let .arrived(certain):
             // 마지막 leg + 말미 도보(E34): 그 자리 버튼이 "남은 도보 안내 시작" 하나라 지시 문장이 그 이름을
             // 부르고 도보 분을 담는다("다음: 대중교통 구간이 끝났습니다…" 조각은 내지 않는다 — 내리기 전이다).
@@ -1544,10 +1568,10 @@ final class TransitGuideModel {
             }
         case let .backOnTrack(message, messageEn, arrivalCode):
             parts.append(appLocalized("transitGuide.backOnTrack"))
-            let backLabel = transitMessageLabel(message, messageEn)
-            if !message.isEmpty,
-               let framed = leg.map({ frameText($0, backLabel, arrivalCode: arrivalCode) }) ?? message {
-                parts.append(framed)
+            if let leg {
+                parts.append(arrivalText(
+                    leg, message: message, messageEn: messageEn, arrivalCode: arrivalCode,
+                    remaining: nil, phase: .riding))
             }
         case .approxVehicleChanged:
             parts.append(appLocalized("transitGuide.approxVehicleChanged"))
@@ -1574,9 +1598,12 @@ final class TransitGuideModel {
                 // 발화는 advance()가 stop() 뒤에 한다(B1) — 여기서 내면 세대 증가에 취소된다.
                 break
             } else if let route, route.legs.indices.contains(legIndex) {
-                let next = route.legs[legIndex]
-                parts.append(waitContextText(next, isCurrentLeg: false))
-                if next.trackMode == nil { parts.append(appLocalized("transitGuide.untrackable")) }
+                // E41: 다음 구간 문맥은 착지가 앉는 상태 문장이 그것으로 바뀌어 말한다 — 통지는 전이
+                // 사실만. 미추적 고지는 상태 문장에 없는 정보라 남긴다.
+                parts.append(appLocalized("transitGuide.legAdvancedNext"))
+                if route.legs[legIndex].trackMode == nil {
+                    parts.append(appLocalized("transitGuide.untrackable"))
+                }
             }
         case .boardingReset:
             parts.append(appLocalized("transitGuide.changeBoardingDone"))
@@ -1604,29 +1631,10 @@ final class TransitGuideModel {
         transitDisplayLeg(leg, boardOverrideIndex: useOverride ? boardOverrideIndex : nil)
     }
 
-    /// 승차 국면 상태 문장(§12.3). 버스는 upstream 완성 문장의 라벨 프레임("{stop}까지 {message}", 원문 무변형).
-    /// 지하철은 `arvlMsg2`가 조회역(=하차역) 기준 열차 위치 서술이라 그 틀에 넣으면 뜻이 뒤집힌다
-    /// ("충정로까지 전역 도착", A27 실승차 피드백) — `subwayRidingMessage`(코드 → 탑승자 시점 문장)로 고르고,
-    /// 99(운행중)는 nil(잔여 수가 말한다), 미지 코드는 원문을 틀 없이 그대로. 웹 `frameText` 미러.
-    func frameText(_ leg: TransitGuideLeg, _ message: TransitLabel, arrivalCode: String?) -> String? {
-        let line = transitFrameLine(
-            isEn: transitGuideIsEn, leg: displayLeg(leg, useOverride: false),
-            message: message, arrivalCode: arrivalCode)
-        guard !line.parts.isEmpty else { return nil }
-        return TransitGuideTextRenderer.render(line)
-    }
-
     /// boarding 문맥(N3) — 승차 정류소에서 선택 차량을 기다리는 중. 재선택 역이 있으면 그 역.
     func boardingContextText(_ leg: TransitGuideLeg) -> String {
         TransitGuideTextRenderer.render(
             transitBoardingContextLine(isEn: transitGuideIsEn, leg: displayLeg(leg, useOverride: true)))
-    }
-
-    /// boarding 완성 문장 프레임 — 승차 정류소 라벨 전치("{stop}에 {message}").
-    func approachFrameText(_ leg: TransitGuideLeg, _ message: TransitLabel) -> String {
-        TransitGuideTextRenderer.render(
-            transitApproachFrameLine(
-                isEn: transitGuideIsEn, leg: displayLeg(leg, useOverride: true), message: message))
     }
 
     /// 대기 문맥(§4.1): 선행 도보 + 승차 지점 + 노선.

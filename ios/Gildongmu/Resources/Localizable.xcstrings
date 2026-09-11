@@ -14166,37 +14166,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "자동차 안내 시작. 안내 %1$@개, 총 %2$@. %3$@"
+            "value": "%1$@까지 자동차 안내 시작. 안내 %2$@개, 총 %3$@. %4$@"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Car guidance started. {1, plural, one {%1$@ instruction} other {%1$@ instructions}}, %2$@ total. %3$@"
+            "value": "Car guidance to %1$@ started. {2, plural, one {%2$@ instruction} other {%2$@ instructions}}, %3$@ total. %4$@"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Guía en coche iniciada. {1, plural, one {%1$@ indicación} other {%1$@ indicaciones}}, %2$@ en total. %3$@"
+            "value": "Guía en coche hasta %1$@ iniciada. {2, plural, one {%2$@ indicación} other {%2$@ indicaciones}}, %3$@ en total. %4$@"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Guidage en voiture démarré. {1, plural, one {%1$@ instruction} other {%1$@ instructions}}, %2$@ au total. %3$@"
+            "value": "Guidage en voiture vers %1$@ démarré. {2, plural, one {%2$@ instruction} other {%2$@ instructions}}, %3$@ au total. %4$@"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Guida in auto avviata. {1, plural, one {%1$@ indicazione} other {%1$@ indicazioni}}, %2$@ in totale. %3$@"
+            "value": "Guida in auto verso %1$@ avviata. {2, plural, one {%2$@ indicazione} other {%2$@ indicazioni}}, %3$@ in totale. %4$@"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "自動車案内を開始しました。案内%1$@件、合計%2$@。%3$@"
+            "value": "%1$@まで自動車案内開始。案内%2$@件、合計%3$@。%4$@"
           }
         }
       }
@@ -14606,37 +14606,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "도보 안내 시작. 안내 %1$@개, 총 %2$@. %3$@"
+            "value": "%1$@까지 도보 안내 시작. 안내 %2$@개, 총 %3$@. %4$@"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Walking guidance started. {1, plural, one {%1$@ instruction} other {%1$@ instructions}}, %2$@ total. %3$@"
+            "value": "Walking guidance to %1$@ started. {2, plural, one {%2$@ instruction} other {%2$@ instructions}}, %3$@ total. %4$@"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Guía a pie iniciada. {1, plural, one {%1$@ indicación} other {%1$@ indicaciones}}, %2$@ en total. %3$@"
+            "value": "Guía a pie hasta %1$@ iniciada. {2, plural, one {%2$@ indicación} other {%2$@ indicaciones}}, %3$@ en total. %4$@"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Guidage à pied démarré. {1, plural, one {%1$@ instruction} other {%1$@ instructions}}, %2$@ au total. %3$@"
+            "value": "Guidage à pied vers %1$@ démarré. {2, plural, one {%2$@ instruction} other {%2$@ instructions}}, %3$@ au total. %4$@"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Guida a piedi avviata. {1, plural, one {%1$@ indicazione} other {%1$@ indicazioni}}, %2$@ in totale. %3$@"
+            "value": "Guida a piedi verso %1$@ avviata. {2, plural, one {%2$@ indicazione} other {%2$@ indicazioni}}, %3$@ in totale. %4$@"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "徒歩案内を開始しました。案内%1$@件、合計%2$@。%3$@"
+            "value": "%1$@まで徒歩案内開始。案内%2$@件、合計%3$@。%4$@"
           }
         }
       }
@@ -14646,37 +14646,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "경로 정보를 가져오지 못했습니다. 목적지까지 직선거리로 안내합니다."
+            "value": "경로 정보를 가져오지 못했습니다. %1$@까지 직선거리로 안내합니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Route details unavailable. Guiding by straight-line distance to the destination."
+            "value": "Route details unavailable. Guiding by straight-line distance to %1$@."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No hay detalles de la ruta. Se guiará por distancia en línea recta hasta el destino."
+            "value": "No hay detalles de la ruta. Se guiará por distancia en línea recta hasta %1$@."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Détails de l'itinéraire indisponibles. Guidage à vol d'oiseau jusqu'à la destination."
+            "value": "Détails de l'itinéraire indisponibles. Guidage à vol d'oiseau vers %1$@."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Dettagli del percorso non disponibili. Guida in linea d'aria fino alla destinazione."
+            "value": "Dettagli del percorso non disponibili. Guida in linea d'aria verso %1$@."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "経路情報を取得できませんでした。目的地まで直線距離で案内します。"
+            "value": "経路の詳細を取得できませんでした。%1$@まで直線距離で案内します。"
           }
         }
       }
@@ -42286,37 +42286,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "하차 지점에 도착했습니다. 내리신 뒤 다음 구간 버튼을 눌러 주세요."
+            "value": "내리신 뒤 다음 구간 버튼을 눌러 주세요."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Arriving at your stop. After getting off, press Next segment."
+            "value": "After getting off, press Next segment."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Llegando a tu parada. Después de bajar, pulsa Siguiente tramo."
+            "value": "Después de bajar, pulsa Siguiente tramo."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Arrivée à votre arrêt. Après être descendu, appuyez sur Segment suivant."
+            "value": "Après être descendu, appuyez sur Segment suivant."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "In arrivo alla tua fermata. Dopo essere sceso, premi Tratta successiva."
+            "value": "Dopo essere sceso, premi Tratta successiva."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "降車地点に到着しました。降りたら「次の区間」を押してください。"
+            "value": "降りたら「次の区間」を押してください。"
           }
         }
       }
@@ -42361,42 +42361,82 @@
         }
       }
     },
-    "transitGuide.arrivedGuess": {
+    "transitGuide.arrivedAtBoardStopBus": {
       "localizations": {
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "하차 지점에 도착한 것으로 보입니다. 내리셨으면 다음 구간 버튼을 눌러 주세요."
+            "value": "%1$@번 버스 도착. 탑승하세요."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "It looks like you have arrived at your stop. If you got off, press Next segment."
+            "value": "Bus %1$@ has arrived. Board now."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Parece que has llegado a tu parada. Si has bajado, pulsa Siguiente tramo."
+            "value": "El autobús %1$@ ha llegado. Suba ahora."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Vous semblez être arrivé à votre arrêt. Si vous êtes descendu, appuyez sur Segment suivant."
+            "value": "Le bus %1$@ est arrivé. Montez maintenant."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sembra che tu sia arrivato alla tua fermata. Se sei sceso, premi Tratta successiva."
+            "value": "L'autobus %1$@ è arrivato. Sali ora."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "降車地点に到着したようです。降りたら「次の区間」を押してください。"
+            "value": "%1$@番バスが到着。乗車してください。"
+          }
+        }
+      }
+    },
+    "transitGuide.arrivedGuess": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "내리셨으면 다음 구간 버튼을 눌러 주세요."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "If you got off, press Next segment."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Si has bajado, pulsa Siguiente tramo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Si vous êtes descendu, appuyez sur Segment suivant."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se sei sceso, premi Tratta successiva."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "降りたら「次の区間」を押してください。"
           }
         }
       }
@@ -42406,37 +42446,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "하차 지점에 도착한 것으로 보입니다. 내리셨으면 남은 도보 안내 시작 버튼을 눌러 주세요. 목적지까지 도보 %1$@분."
+            "value": "내리셨으면 남은 도보 안내 시작 버튼을 눌러 주세요. 목적지까지 도보 %1$@분."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "You seem to have reached your stop. Once you are off, press Start remaining walk guidance. %1$@ min walk to your destination."
+            "value": "Once you are off, press Start remaining walk guidance. %1$@ min walk to your destination."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Parece que ha llegado a su parada. Cuando haya bajado, pulse Iniciar guía a pie restante. %1$@ min a pie hasta su destino."
+            "value": "Cuando haya bajado, pulse Iniciar guía a pie restante. %1$@ min a pie hasta su destino."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Vous semblez être arrivé à votre arrêt. Une fois descendu, appuyez sur Démarrer le guidage à pied restant. %1$@ min à pied jusqu'à destination."
+            "value": "Une fois descendu, appuyez sur Démarrer le guidage à pied restant. %1$@ min à pied jusqu'à destination."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sembra che tu sia arrivato alla tua fermata. Una volta sceso, premi Avvia guida a piedi restante. %1$@ min a piedi fino a destinazione."
+            "value": "Una volta sceso, premi Avvia guida a piedi restante. %1$@ min a piedi fino a destinazione."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "降車地点に到着したようです。降りたら「残りの徒歩案内を開始」を押してください。目的地まで徒歩%1$@分。"
+            "value": "降りたら「残りの徒歩案内を開始」を押してください。目的地まで徒歩%1$@分。"
           }
         }
       }
@@ -42446,37 +42486,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "하차 지점에 도착했습니다. 내리신 뒤 남은 도보 안내 시작 버튼을 눌러 주세요. 목적지까지 도보 %1$@분."
+            "value": "내리신 뒤 남은 도보 안내 시작 버튼을 눌러 주세요. 목적지까지 도보 %1$@분."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "You have reached your stop. After getting off, press Start remaining walk guidance. %1$@ min walk to your destination."
+            "value": "After getting off, press Start remaining walk guidance. %1$@ min walk to your destination."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ha llegado a su parada. Al bajar, pulse Iniciar guía a pie restante. %1$@ min a pie hasta su destino."
+            "value": "Al bajar, pulse Iniciar guía a pie restante. %1$@ min a pie hasta su destino."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Vous êtes arrivé à votre arrêt. Une fois descendu, appuyez sur Démarrer le guidage à pied restant. %1$@ min à pied jusqu'à destination."
+            "value": "Une fois descendu, appuyez sur Démarrer le guidage à pied restant. %1$@ min à pied jusqu'à destination."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sei arrivato alla tua fermata. Dopo essere sceso, premi Avvia guida a piedi restante. %1$@ min a piedi fino a destinazione."
+            "value": "Dopo essere sceso, premi Avvia guida a piedi restante. %1$@ min a piedi fino a destinazione."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "降車地点に到着しました。降りたら「残りの徒歩案内を開始」を押してください。目的地まで徒歩%1$@分。"
+            "value": "降りたら「残りの徒歩案内を開始」を押してください。目的地まで徒歩%1$@分。"
           }
         }
       }
@@ -42557,6 +42597,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "%1$@がまもなく到着します。"
+          }
+        }
+      }
+    },
+    "transitGuide.arrivingAtBoardStopBus": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@번 버스 곧 도착합니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bus %1$@ is arriving soon."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El autobús %1$@ llegará pronto."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le bus %1$@ arrive bientôt."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L'autobus %1$@ sta per arrivare."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@番バスがまもなく到着します。"
           }
         }
       }
@@ -42726,77 +42806,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ 탑승. 하차: %2$@."
+            "value": "탑승했습니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Boarded %1$@. Get off at %2$@."
+            "value": "Boarded."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "A bordo del %1$@. Baja en %2$@."
+            "value": "A bordo."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "À bord du %1$@. Descendez à %2$@."
+            "value": "À bord."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "A bordo del %1$@. Scendi a %2$@."
+            "value": "A bordo."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@に乗車。降車: %2$@。"
-          }
-        }
-      }
-    },
-    "transitGuide.boardedCount": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$@ 탑승. 하차: %2$@, 정거장 %3$@개."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Boarded %1$@. Get off at %2$@, {3, plural, one {%3$@ stop} other {%3$@ stops}}."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "A bordo del %1$@. Baja en %2$@, {3, plural, one {%3$@ parada} other {%3$@ paradas}}."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "À bord du %1$@. Descendez à %2$@, {3, plural, one {%3$@ arrêt} other {%3$@ arrêts}}."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "A bordo del %1$@. Scendi a %2$@, {3, plural, one {%3$@ fermata} other {%3$@ fermate}}."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$@に乗車。降車: %2$@、%3$@駅。"
+            "value": "乗車しました。"
           }
         }
       }
@@ -42837,6 +42877,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "%1$@で%2$@の乗車待ち。"
+          }
+        }
+      }
+    },
+    "transitGuide.boardingContextBus": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@에서 %2$@번 버스 탑승 기다리는 중."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Waiting to board bus %2$@ at %1$@."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esperando para subir al autobús %2$@ en %1$@."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En attente de monter dans le bus %2$@ à %1$@."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In attesa di salire sull'autobus %2$@ a %1$@."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@で%2$@番バスの乗車待ち。"
           }
         }
       }
@@ -42957,6 +43037,246 @@
           "stringUnit": {
             "state": "translated",
             "value": "%1$@行き"
+          }
+        }
+      }
+    },
+    "transitGuide.busEtaMin": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "약 %1$@분 후 도착."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arriving in about %1$@ min."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Llega en unos %1$@ min."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arrivée dans environ %1$@ min."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arriva tra circa %1$@ min."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "約%1$@分後に到着。"
+          }
+        }
+      }
+    },
+    "transitGuide.busEtaMinSec": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@분 %2$@초 후 도착."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arriving in %1$@ min %2$@ sec."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Llega en %1$@ min %2$@ s."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arrivée dans %1$@ min %2$@ s."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arriva tra %1$@ min %2$@ s."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@分%2$@秒後に到着。"
+          }
+        }
+      }
+    },
+    "transitGuide.busEtaSec": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "약 %1$@초 후 도착."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arriving in about %1$@ sec."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Llega en unos %1$@ s."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arrivée dans environ %1$@ s."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arriva tra circa %1$@ s."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "約%1$@秒後に到着。"
+          }
+        }
+      }
+    },
+    "transitGuide.busNotDeparted": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "아직 차고지에서 출발하지 않음."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not yet departed from the depot."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aún no ha salido de la cochera."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pas encore parti du dépôt."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non è ancora partito dal deposito."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "まだ車庫を出発していません。"
+          }
+        }
+      }
+    },
+    "transitGuide.busSoon": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "곧 도착."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arriving soon."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Llega pronto."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arrivée imminente."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arriva a breve."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "まもなく到着。"
+          }
+        }
+      }
+    },
+    "transitGuide.busTurning": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "종점에서 회차 대기 중."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Waiting at the terminus."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esperando en la terminal."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En attente au terminus."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In attesa al capolinea."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "終点で折り返し待機中。"
           }
         }
       }
@@ -43157,6 +43477,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "%1$@に乗車中、%2$@で下車します。"
+          }
+        }
+      }
+    },
+    "transitGuide.contextBus": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@번 버스 탑승 중, %2$@에서 하차합니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Riding bus %1$@, get off at %2$@."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A bordo del autobús %1$@, baje en %2$@."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "À bord du bus %1$@, descendez à %2$@."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A bordo dell'autobus %1$@, scendi a %2$@."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@番バスに乗車中、%2$@で下車します。"
           }
         }
       }
@@ -43806,37 +44166,77 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "마지막 갱신 %1$@."
+            "value": "%1$@ 기준."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Last updated %1$@."
+            "value": "As of %1$@."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Última actualización %1$@."
+            "value": "A las %1$@."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Dernière mise à jour %1$@."
+            "value": "À %1$@."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ultimo aggiornamento %1$@."
+            "value": "Alle %1$@."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "最終更新 %1$@。"
+            "value": "%1$@ 時点。"
+          }
+        }
+      }
+    },
+    "transitGuide.legAdvancedNext": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다음 구간입니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Next segment."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Siguiente tramo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Segment suivant."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tratta successiva."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "次の区間です。"
           }
         }
       }
@@ -43957,6 +44357,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "次: %1$@"
+          }
+        }
+      }
+    },
+    "transitGuide.noArrivalInfo": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "도착 정보 없음."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No arrival information."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sin información de llegada."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pas d'information d'arrivée."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessuna informazione di arrivo."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "到着情報なし。"
           }
         }
       }
@@ -44841,6 +45281,46 @@
         }
       }
     },
+    "transitGuide.remainingCountJoin": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "남은 정거장 %1$@개"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{1, plural, one {%1$@ stop} other {%1$@ stops}} remaining"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{1, plural, one {queda %1$@ parada} other {quedan %1$@ paradas}}"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{1, plural, one {%1$@ arrêt restant} other {%1$@ arrêts restants}}"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{1, plural, one {%1$@ fermata rimanente} other {%1$@ fermate rimanenti}}"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "残り%1$@駅"
+          }
+        }
+      }
+    },
     "transitGuide.reselectVehicle": {
       "localizations": {
         "ko": {
@@ -45157,6 +45637,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "公共交通の案内を開始します。乗車区間%1$@件。"
+          }
+        }
+      }
+    },
+    "transitGuide.startedAt": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@까지 대중교통 안내를 시작합니다. 탑승 구간 %2$@개."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Starting transit guidance to %1$@. {2, plural, one {%2$@ ride segment} other {%2$@ ride segments}}."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Iniciando la guía de transporte público hasta %1$@. {2, plural, one {%2$@ tramo} other {%2$@ tramos}}."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Démarrage du guidage en transports vers %1$@. {2, plural, one {%2$@ segment} other {%2$@ segments}}."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Avvio della guida sui mezzi pubblici verso %1$@. {2, plural, one {%2$@ tratta} other {%2$@ tratte}}."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@まで公共交通の案内を開始します。乗車区間%2$@件。"
           }
         }
       }
@@ -45797,6 +46317,86 @@
           "stringUnit": {
             "state": "translated",
             "value": "約%1$@駅。"
+          }
+        }
+      }
+    },
+    "transitGuide.stopsAway": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@정거장 전"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{1, plural, one {%1$@ stop} other {%1$@ stops}} away"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{1, plural, one {a %1$@ parada} other {a %1$@ paradas}}"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{1, plural, one {à %1$@ arrêt} other {à %1$@ arrêts}}"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{1, plural, one {a %1$@ fermata} other {a %1$@ fermate}}"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@駅前"
+          }
+        }
+      }
+    },
+    "transitGuide.stopsAwayOnly": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@정거장 전."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{1, plural, one {%1$@ stop} other {%1$@ stops}} away."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{1, plural, one {A %1$@ parada} other {A %1$@ paradas}}."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{1, plural, one {À %1$@ arrêt} other {À %1$@ arrêts}}."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{1, plural, one {A %1$@ fermata} other {A %1$@ fermate}}."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@駅前。"
           }
         }
       }
@@ -46561,6 +47161,46 @@
         }
       }
     },
+    "transitGuide.waitContextBus": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@에서 %2$@번 버스 탑승."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Board bus %2$@ at %1$@."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sube al autobús %2$@ en %1$@."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Montez dans le bus %2$@ à %1$@."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sali sull'autobus %2$@ a %1$@."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@で%2$@番バスに乗車。"
+          }
+        }
+      }
+    },
     "transitGuide.waitContextWalk": {
       "localizations": {
         "ko": {
@@ -46597,6 +47237,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "徒歩%1$@分の移動後、%2$@で%3$@に乗車。"
+          }
+        }
+      }
+    },
+    "transitGuide.waitContextWalkBus": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "도보 %1$@분 이동 후 %2$@에서 %3$@번 버스 탑승."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Walk %1$@ min, then board bus %3$@ at %2$@."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Camina %1$@ min y sube al autobús %3$@ en %2$@."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Marchez %1$@ min puis montez dans le bus %3$@ à %2$@."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cammina %1$@ min e sali sull'autobus %3$@ a %2$@."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "徒歩%1$@分の移動後、%2$@で%3$@番バスに乗車。"
           }
         }
       }

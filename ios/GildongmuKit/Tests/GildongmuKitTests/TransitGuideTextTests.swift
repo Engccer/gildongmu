@@ -29,6 +29,8 @@ private struct TextFixture: Decodable {
         let line: TransitLabel?
         let board: TransitLabel?
         let alight: TransitLabel?
+        let remaining: Int?
+        let phase: String?
     }
     let cases: [Case]
 }
@@ -52,12 +54,16 @@ private func run(_ c: TextFixture.Case) -> TransitTextLine {
         return transitFrameLine(isEn: e, leg: c.leg!, message: c.message!, arrivalCode: c.arrivalCode)
     case "approachFrame":
         return transitApproachFrameLine(isEn: e, leg: c.leg!, message: c.message!)
+    case "arrivalStatus":
+        return transitArrivalStatusLine(
+            isEn: e, leg: c.leg!, message: c.message, arrivalCode: c.arrivalCode,
+            remaining: c.remaining, phase: TransitStatusPhase(rawValue: c.phase!)!)
     case "vehicleSelected": return transitVehicleSelectedLine(isEn: e, leg: c.leg!, desc: c.desc)
     case "selectedVehicle": return transitSelectedVehicleLine(isEn: e, desc: c.desc!)
     case "vehiclePassed": return transitVehiclePassedLine(isEn: e, leg: c.leg!)
     case "arrivedAtBoardStop": return transitArrivedAtBoardStopLine(isEn: e, leg: c.leg!)
     case "arrivingAtBoardStop": return transitArrivingAtBoardStopLine(isEn: e, leg: c.leg!)
-    case "boarded": return transitBoardedLine(isEn: e, leg: c.leg!)
+    case "boarded": return transitBoardedLine(isEn: e)
     case "currentStation": return transitCurrentStationLine(isEn: e, location: c.location!)
     case "candidateDesc":
         return transitCandidateDescLine(

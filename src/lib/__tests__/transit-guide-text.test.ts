@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import * as textModule from "../transit-guide-text";
 import {
   approachFrameLine,
+  arrivalStatusLine,
   arrivedAtBoardStopLine,
   arrivingAtBoardStopLine,
   boardedLine,
@@ -26,6 +27,7 @@ import {
   viaStopLine,
   waitContextLine,
   type TransitTextLine,
+  type TransitStatusPhase,
 } from "../transit-guide-text";
 import type { TransitDisplayItem, TransitDisplayLeg } from "../transit-display";
 
@@ -137,14 +139,17 @@ const CASES: {
     en: { parts: [{ key: "arrivingAtBoardStop", args: ["Line 5"] }], lang: "en" },
   },
   {
-    fn: boardedLine, name: "boardedLine(정거장 수 있음)",
-    run: (e) => boardedLine(e, LEG),
-    en: { parts: [{ key: "boardedCount", args: ["Line 5", "Gwanghwamun", "8"] }], lang: "en" },
+    fn: arrivalStatusLine, name: "arrivalStatusLine(버스 대기 — 잔여 + 분 예정)",
+    run: (e) => arrivalStatusLine(e, { ...LEG, mode: "bus" }, { ko: "4분후[1번째 전]", en: "In 4 min, 1 stop away" }, null, 1, "boarding"),
+    en: {
+      parts: [{ key: "stopsAway", args: ["1"] }, { key: "busEtaMin", args: ["4"] }],
+      lang: "en",
+    },
   },
   {
-    fn: boardedLine, name: "boardedLine(정거장 수 없음)",
-    run: (e) => boardedLine(e, { ...LEG, stationCount: null }),
-    en: { parts: [{ key: "boarded", args: ["Line 5", "Gwanghwamun"] }], lang: "en" },
+    fn: boardedLine, name: "boardedLine(E41 — 한 문장, 인자 없음)",
+    run: (e) => boardedLine(e),
+    en: { parts: [{ key: "boarded", args: [] }], lang: "en" },
   },
   {
     fn: currentStationLine, name: "currentStationLine",
@@ -366,6 +371,8 @@ interface FixtureCase {
   line?: TransitLabel;
   board?: TransitLabel;
   alight?: TransitLabel;
+  remaining?: number | null;
+  phase?: TransitStatusPhase;
 }
 
 function runFixtureCase(c: FixtureCase): TransitTextLine {
@@ -376,12 +383,17 @@ function runFixtureCase(c: FixtureCase): TransitTextLine {
     case "context": return contextLine(e, c.leg!);
     case "frame": return frameLine(e, c.leg!, c.message!, c.arrivalCode ?? null);
     case "approachFrame": return approachFrameLine(e, c.leg!, c.message!);
+    case "arrivalStatus":
+      return arrivalStatusLine(
+        e, c.leg!, c.message ?? null, c.arrivalCode ?? null,
+        c.remaining ?? null, c.phase!,
+      );
     case "vehicleSelected": return vehicleSelectedLine(e, c.leg!, c.desc ?? null);
     case "selectedVehicle": return selectedVehicleLine(e, c.desc!);
     case "vehiclePassed": return vehiclePassedLine(e, c.leg!);
     case "arrivedAtBoardStop": return arrivedAtBoardStopLine(e, c.leg!);
     case "arrivingAtBoardStop": return arrivingAtBoardStopLine(e, c.leg!);
-    case "boarded": return boardedLine(e, c.leg!);
+    case "boarded": return boardedLine(e);
     case "currentStation": return currentStationLine(e, c.location!);
     case "candidateDesc":
       return candidateDescLine(e, c.leg!, c.item!, {

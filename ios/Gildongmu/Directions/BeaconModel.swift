@@ -965,8 +965,12 @@ final class BeaconModel {
             }
             // 시작 요약 + 첫 안내를 한 문장으로(원자 발화 — 두 통지의 경합 제거).
             let summary = sessionKind == .car
-                ? GuideText.carStart(route: fetched.route, firstIndices: initial.firstIndices)
-                : GuideText.start(route: fetched.route, firstIndices: initial.firstIndices)
+                ? GuideText.carStart(
+                    route: fetched.route, firstIndices: initial.firstIndices,
+                    destination: destinationLabel)
+                : GuideText.start(
+                    route: fetched.route, firstIndices: initial.firstIndices,
+                    destination: destinationLabel)
             // 계단 회피 열화 문장이 있으면 그 앞에 붙인다 — 세션 전체에 걸린 조건이라
             // 걷기 전에 들어야 한다(spec §2.3). 별도 통지로 내보내면 경합한다.
             let notice = consumeStepFreeNotice(
@@ -1100,7 +1104,11 @@ final class BeaconModel {
         // 사라졌으므로 버린다(간략 폴백엔 따라갈 경로 자체가 없다).
         lastStepFree = nil
         pendingStepFreeNotice = nil
-        var text = appLocalized(key)
+        // E40: 경로를 못 받아 직선거리로 떨어지는 이 문장도 시작 통지다 — 목적지를 말한다.
+        // `guide.detailNoLocation`은 대상 밖(위치를 못 잡은 상태라 목적지가 행동을 바꾸지 않는다).
+        var text = key == "guide.detailUnavailable"
+            ? appLocalized(key, destinationLabel)
+            : appLocalized(key)
         // 경유지가 있는 세션의 간략 폴백은 경유지를 **조용히** 버리지 않는다(설계 리뷰 #7):
         // 간략 안내는 기하를 몰라 목적지 직선 안내가 되고, 화면엔 경유지가 남아 거짓이
         // 된다. 사실을 말하고 비운다 — 사용자가 다시 더할 수 있다(세션 보류보다 낫다).

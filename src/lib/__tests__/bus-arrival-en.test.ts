@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { busArrivalMessageEn, busArrivalMessageEnFrom, parseBusArrmsg } from "../bus-arrival-en";
 import { remainingFromArrmsg } from "../providers/seoul-bus";
-import { rewriteBusArrivalMessage } from "../transit-track";
 
 /** 실호출·fixture에서 관측된 모양 전부 + 미지 변형. */
 const CORPUS = [
@@ -13,6 +12,7 @@ const CORPUS = [
   "곧 도착",
   "출발대기",
   "운행종료",
+  "회차대기",
   "정보없음",
   "차고지대기",
 ];
@@ -26,14 +26,20 @@ describe("parseBusArrmsg", () => {
     }
   });
 
-  it("모양 판정이 ko 재작성 경로와 갈리지 않는다", () => {
-    // 진짜 교차 검증(spec §3.11): ko는 "…후"를 "…남음"으로 다듬고 en은 eta로 읽는다.
-    // provider 변형이 한쪽에만 반영되면 이 동치가 깨진다 — 그 순간이 잔여 수와 문장이
-    // 서로 다른 해석을 하기 시작하는 지점이다.
+  it("ko·en 두 소비자가 같은 한 판정을 쓴다", () => {
+    // E39로 ko 재작성이 사라진 뒤의 교차 검증: ko 상태 문장(`arrivalStatusLine`)도 en 투영도
+    // 이 한 함수의 `kind`로 갈린다. 시간형이 아닌 모양이 `eta`로 새면 ko는 "약 N분 후 도착",
+    // en은 "In N min"을 동시에 지어낸다 — 그래서 판정 자체를 코퍼스 전량으로 못 박는다.
     for (const m of CORPUS) {
-      const koRewritten = rewriteBusArrivalMessage(m).endsWith("남음");
-      expect(parseBusArrmsg(m).kind === "eta", m).toBe(koRewritten);
+      const looksLikeEta = /후$/.test(m.replace(/\[\d+번째 전\]/, "").trim());
+      expect(parseBusArrmsg(m).kind === "eta", m).toBe(looksLikeEta);
     }
+  });
+
+  it("회차대기는 미지가 아니라 고유 종류다(A41 코퍼스 실측 120건)", () => {
+    // vehId가 붙는 실재 상태라 미지로 두면 잠글 수 있는 차량의 상태 문장이 통째로 원문 폴백이 된다.
+    expect(parseBusArrmsg("회차대기").kind).toBe("turning");
+    expect(busArrivalMessageEnFrom("회차대기", "wait")).toBe("Waiting at the terminus");
   });
 
   it("모양을 4종 + 미지로 가른다", () => {

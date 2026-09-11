@@ -197,14 +197,19 @@
     "road"
   ],
   "guide.carStart": [
+    "dest",
     "count",
     "distance",
     "first"
   ],
   "guide.detailStart": [
+    "dest",
     "count",
     "distance",
     "first"
+  ],
+  "guide.detailUnavailable": [
+    "dest"
   ],
   "guide.etaStale": [
     "minutes"
@@ -760,6 +765,9 @@
   "transitGuide.arrivedAtBoardStop": [
     "line"
   ],
+  "transitGuide.arrivedAtBoardStopBus": [
+    "line"
+  ],
   "transitGuide.arrivedGuessWalkNext": [
     "minutes"
   ],
@@ -769,23 +777,35 @@
   "transitGuide.arrivingAtBoardStop": [
     "line"
   ],
-  "transitGuide.boarded": [
-    "line",
-    "stop"
-  ],
-  "transitGuide.boardedCount": [
-    "line",
-    "stop",
-    "count"
+  "transitGuide.arrivingAtBoardStopBus": [
+    "line"
   ],
   "transitGuide.boardingContext": [
+    "stop",
+    "line"
+  ],
+  "transitGuide.boardingContextBus": [
     "stop",
     "line"
   ],
   "transitGuide.bound": [
     "dest"
   ],
+  "transitGuide.busEtaMin": [
+    "minutes"
+  ],
+  "transitGuide.busEtaMinSec": [
+    "minutes",
+    "seconds"
+  ],
+  "transitGuide.busEtaSec": [
+    "seconds"
+  ],
   "transitGuide.context": [
+    "line",
+    "stop"
+  ],
+  "transitGuide.contextBus": [
     "line",
     "stop"
   ],
@@ -855,6 +875,9 @@
   "transitGuide.remainingCount": [
     "count"
   ],
+  "transitGuide.remainingCountJoin": [
+    "count"
+  ],
   "transitGuide.selectBus": [
     "desc"
   ],
@@ -867,7 +890,17 @@
   "transitGuide.started": [
     "count"
   ],
+  "transitGuide.startedAt": [
+    "dest",
+    "count"
+  ],
   "transitGuide.stationCountAbout": [
+    "count"
+  ],
+  "transitGuide.stopsAway": [
+    "count"
+  ],
+  "transitGuide.stopsAwayOnly": [
     "count"
   ],
   "transitGuide.subwayArriving": [
@@ -909,7 +942,16 @@
     "stop",
     "line"
   ],
+  "transitGuide.waitContextBus": [
+    "stop",
+    "line"
+  ],
   "transitGuide.waitContextWalk": [
+    "minutes",
+    "stop",
+    "line"
+  ],
+  "transitGuide.waitContextWalkBus": [
     "minutes",
     "stop",
     "line"

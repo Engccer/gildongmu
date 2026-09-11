@@ -20,7 +20,7 @@ import type { QuickExit, TransitLeg, TransitLegStop, TransitRoute } from "./type
  * - 낭독 문구 조립은 플랫폼 몫(웹 i18n·iOS GuideText) — 머신은 구조화 이벤트만
  *   낸다(E4 리듀서 관례). 완성 문장(message)은 서버가 준 대로 실어 나른다 — 여기서
  *   다시 파싱하지 않는다(서울버스 승차 국면은 서버가 이미 다듬었다,
- *   `transit-track.ts`의 `rewriteBusArrivalMessage`).
+ *   `transit-track.ts`의 `slotToItem`).
  */
 
 export type TransitTrackMode = "seoulBus" | "tagoBus" | "subway";

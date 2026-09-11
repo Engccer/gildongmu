@@ -66,7 +66,10 @@ export function TransitGuidePanel({
   // 빠른하차 문구는 경로 브리핑과 같은 카탈로그를 쓴다 — 두 화면이 같은 사실을
   // 다른 문장으로 말하면 같은 정보인지 알 수 없다.
   const tTransitRoute = useTranslations("route.transit");
-  const guide = useTransitGuide(route, { walkHandoffAvailable: dest != null });
+  const guide = useTransitGuide(route, {
+    walkHandoffAvailable: dest != null,
+    ...(dest?.name ? { destinationLabel: dest.name } : {}),
+  });
   const locale = useLocale();
   /** 데이터 언어 축 — 비-ko 로케일은 전부 영문 데이터를 공유한다(E27 잔여 ① §3.1). */
   const isEn = prefersEnglish(locale);

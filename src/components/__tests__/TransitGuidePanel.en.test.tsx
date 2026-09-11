@@ -77,9 +77,10 @@ describe("en 로케일 대중교통 안내 배선", () => {
   it("상시 표시가 영문 조각으로 조립되고 ko 태그가 붙지 않는다", async () => {
     mockPoll([]);
     await startSession();
-    // 상시 표시 줄(신호 상태를 함께 담는 쪽)만 고른다 — live region도 같은 문맥 문장을 담는다.
+    // 상시 표시 줄(갱신 시각을 함께 담는 쪽)만 고른다 — live region도 같은 문맥 문장을 담는다.
+    // ⚠ E39로 대기 국면의 `stateNotYetVisible`은 사라졌다(그 국면 내내 고정이라 정보가 0).
     const status = await screen.findByText(
-      /transitGuide\.waitContext:Cheonho,Line 5 transitGuide\.stateNotYetVisible/,
+      /transitGuide\.waitContext:Cheonho,Line 5 transitGuide\.lastUpdated/,
     );
     expect(status.getAttribute("lang")).toBeNull();
   });
@@ -93,7 +94,7 @@ describe("en 로케일 대중교통 안내 배선", () => {
     render(<TransitGuidePanel route={koRoute} triggerLabel="start" walkAccessible={false} />);
     fireEvent.click(screen.getByRole("button", { name: "start" }));
     const el = await screen.findByText(
-      /transitGuide\.waitContext:천호,수도권 5호선 transitGuide\.stateNotYetVisible/,
+      /transitGuide\.waitContext:천호,수도권 5호선 transitGuide\.lastUpdated/,
     );
     // 노선명 영문이 없으므로 줄 전체가 ko — 영어 엔진이 한글을 만나면 침묵하기 때문이다.
     expect(el.getAttribute("lang")).toBe("ko");
