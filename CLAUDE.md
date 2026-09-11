@@ -127,6 +127,7 @@
 - **승차 국면 지하철 상태줄은 `arvlMsg2` 원문을 "{stop}까지" 틀에 넣지 않는다**(A27, `subwayRidingMessage(arrivalCode)` 웹 ↔ Kit 공유 fixture). 버스 승차·대기 후보·내 주변 목록은 완성 문장 그대로. → INTEGRATIONS
 - **근사 잠금은 두 갈래다 — 지방버스만 관측하고, 그 밖은 비관측이다**(A34 ①, 그 밖 = 지하철·서울버스 "열차 정보 없이 계속". `transitLockIsUnobserved` ↔ 웹 `isUnobservedTransitLock`: 폴 0·매칭 0·어림값 표시 0, 상태 문장은 `signalStatusText(…, unobserved:)` 필수 인자로 세 소비자가 같은 선택기). "이미 탑승했습니다"는 역부터 묻고 그 역에 **있는** 열차(arvlCd 0~5, `transitAboardCandidates`)만 세워 `boardAboard`로 riding 직행하며, 역 선택의 하차역 행은 어느 흐름이든 `declareArrived`(확정 도착)다. → INTEGRATIONS
 - **확정 도착·비관측 riding은 폴 주기 0이고 즉폴도 예외가 아니다**(`restartPollLoop`·웹 `pollOnce`가 `interval <= 0`이면 `immediate`와 무관하게 반환 — 종전엔 즉폴이 주기 0을 무시해 선언 도착 직후 폴이 잔여를 되살렸다). 마지막 leg의 `advance` 자리는 `advanceIntoWalkHandoff()`(완료 문장 없음) + `acceptWalkHandoff` 한 동작이고 인계 제안 화면은 없다(E34). → INTEGRATIONS
+- **boarding 국면의 선언 버튼은 관측이 끝났을 때만 선다**(N3 ① — 승차 정류소 도착 관측이 riding 승격을 자동으로 한다. 조건은 순수 술어 `transitBoardingObservationLost` ↔ 웹 `boardingObservationLost`(`signalLost`·`upstreamFailed`)이고 앱 층에서 래치한다 — 회복에 버튼이 사라지면 포커스를 쥔 컨트롤이 폴 한 번에 제거된다). 그 버튼은 조용히 서므로 그 순간의 통지가 이름을 부르고, 관측 승격 직후 하차 정류소 첫 폴은 즉폴이다. → PATTERNS
 - **riding 미관측 상한은 시계가 아니라 조회 횟수다**(A36 ①, `ridingPolls >= transitNeverSeenPolls` 10 ↔ 웹 `NEVER_SEEN_POLLS`): 실패 폴·boarding 폴·비관측 잠금은 세지 않고 riding 진입(탑승 변경 취소 복귀 포함)에서 0. 벽시계 백스톱을 되살리지 말 것(위원장 판정 — 주머니 시간·실패 구간·재워진 구간은 근거가 아니다). → INTEGRATIONS
 - **대중교통 안내는 백그라운드에서도 폴하고, 프로세스를 살리는 것은 오디오가 아니라 riding 동안의 keep-alive 위치 스트림이다**(E36 — `audio` 모드는 소리를 내는 동안만 앱을 살린다). 백그라운드 톤 허용 집합은 `trackingStarted` 하나(`playTone(_:allowedInBackground:)` 기본값 없음, 소스 가드), 음성은 `post` 전경 게이트(복귀 시 버린 통지가 있을 때만 상태 한 문장), 세션 수명 상한은 유휴 폴 정지 `transitIdlePollLimitMs`(max(30분, 2×구간 소요) — `transitSessionPollCap`은 상한이 아니라 감속 문턱). `LocationService`의 세 스트림(비콘·keep-alive·단발)은 프로파일 한 함수를 지나고 끄는 쪽이 셋을 다 본다. → INTEGRATIONS
 - **승차 전 도보(prewalk)는 대중교통 세션이 아니라 그 앞의 도보 세션이고, 종료 화면을 남기지 않는다**(A25: `transitPrewalkTarget` → `BeaconModel.markPrewalk` → `onSessionEnd(reason)`). `prewalkTarget`은 `stop()` 앞에서 캡처, 콜백 발화점은 둘뿐, 잊힌 세션 안전망 비적용, `destinationLabel`은 대중교통 문구와 같은 언어. → INTEGRATIONS
@@ -144,6 +145,7 @@
 - **딥링크(`nmap://`·`kakaomap://`)는 장소 상세의 보조 출구이고, 브리핑 진입점은 길찾기 뷰(`DirectionsView`·`DirectionsTab`)와 채팅 렌더 카드로 일원화**(장소 상세 단일 수단 브리핑 재도입 금지). 대안·최단은 disclosure, 서버 `withStepFree`가 스텝 0을 삽입하며 경유지 인덱스를 +1 밀어 두므로, 본문에서 그 스텝을 뗄 때(`omitNoticeStep`) 한 칸 되돌린다. → PATTERNS
 - **수량 문구는 ICU plural이고 iOS는 카탈로그의 ICU 블록을 Kit `formatLocalized`가 푼다**(A29; xcstrings 네이티브 `variations.plural` 금지, 수량 인자는 `Int`, 회피 표기 `(s)` 금지). 변환 스크립트는 지원 밖 ICU에 exit 1. → PATTERNS
 - **ko 문장의 플레이스홀더 순서는 iOS 위치 인자 ABI이고 `ios/i18n/arg-order.json`이 그것을 잠근다** — 기존 키 순서 변경은 exit 1, 호출부 인자와 함께 고친 뒤 `--update-arg-order`. 키 개명은 게이트 밖이라 눈으로 본다. → PATTERNS
+- **텍스트 입력의 확정 시점은 키보드 종류가 정한다**(A39 — `.decimalPad`엔 Return이 없어 `onSubmit`이 오지 않는다). 편집 종료는 포커스 이탈·닫기 핸들러(`dismiss()` 앞)·`onDisappear` 셋이고 커밋 함수는 **멱등**이어야 한다. 범위 밖 값을 조용히 기본값으로 접지 말 것(3-state). → PATTERNS
 - **데이터 언어 분리**(`src/lib/data-locale.ts`): 외부 fetch·영문 분기에 `useLocale()` 원시값 금지, `dataLocale`/`prefersEnglish` 경유. iOS 문장 안 수치는 앱 선택 언어로 포맷. → PATTERNS
 
 ### 채팅 (Gemini function-calling)
