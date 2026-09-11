@@ -1061,6 +1061,7 @@
     "noCandidates": "도착 예정 차량이 아직 없습니다",
     "bound": "{dest}행",
     "resumed": "안내를 재개합니다.",
+    "idlePaused": "한동안 조작이 없어 열차 조회를 잠시 멈추었습니다.",
     "refresh": "새로고침",
     "boardAlready": "이미 탔습니다",
     "cancelChangeBoarding": "탑승 변경 취소",

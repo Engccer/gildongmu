@@ -1061,6 +1061,7 @@
     "noCandidates": "No arriving vehicles yet",
     "bound": "Bound for {dest}",
     "resumed": "Resuming guidance.",
+    "idlePaused": "There has been no activity for a while, so train lookups are paused.",
     "refresh": "Refresh",
     "boardAlready": "I already boarded",
     "cancelChangeBoarding": "Cancel boarding change",

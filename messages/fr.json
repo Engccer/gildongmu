@@ -1061,6 +1061,7 @@
     "noCandidates": "Aucun véhicule en approche pour le moment",
     "bound": "Direction {dest}",
     "resumed": "Reprise du guidage.",
+    "idlePaused": "Aucune action depuis un moment, la consultation des trains est suspendue.",
     "refresh": "Actualiser",
     "boardAlready": "Je suis déjà à bord",
     "cancelChangeBoarding": "Annuler le changement d'embarquement",

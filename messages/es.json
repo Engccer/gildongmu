@@ -1061,6 +1061,7 @@
     "noCandidates": "Aún no hay vehículos en camino",
     "bound": "Destino {dest}",
     "resumed": "Reanudando la guía.",
+    "idlePaused": "No ha habido actividad durante un rato, así que la consulta de trenes está en pausa.",
     "refresh": "Actualizar",
     "boardAlready": "Ya subí",
     "cancelChangeBoarding": "Cancelar cambio de embarque",

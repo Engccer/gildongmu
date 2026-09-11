@@ -43681,6 +43681,46 @@
         }
       }
     },
+    "transitGuide.idlePaused": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "한동안 조작이 없어 열차 조회를 잠시 멈추었습니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "There has been no activity for a while, so train lookups are paused."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No ha habido actividad durante un rato, así que la consulta de trenes está en pausa."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucune action depuis un moment, la consultation des trains est suspendue."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessuna attività da un po', quindi la consultazione dei treni è in pausa."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "しばらく操作がなかったため、列車の照会を一時停止しました。"
+          }
+        }
+      }
+    },
     "transitGuide.lastUpdated": {
       "localizations": {
         "ko": {

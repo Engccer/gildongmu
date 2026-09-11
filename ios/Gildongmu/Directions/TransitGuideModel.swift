@@ -397,6 +397,14 @@ final class TransitGuideModel {
         guard sinceAction >= limitSeconds else { return false }
         idlePaused = true
         transitGuideLog("idlePause sinceAction=\(Int(sinceAction))s limit=\(Int(limitSeconds))s")
+        // 정지 사실은 화면이 바뀌지 않아 통지가 유일한 증거다(CLAUDE.md 통지 우선순위 → `.high`).
+        // 재개 문장(`resumeIfIdle`)과 달리 **자동 통지 창구**로 보낸다 — 사용자 활성화의 응답이 아니라
+        // 타이머 판정이라 톤이 울리는 중이면 그 뒤에 말해야 한다(`announceNow`는 즉시 창구 전용).
+        // 재개 방법을 덧붙이지 않는다(위원장 판정 2026-09-11 — BACKLOG E36).
+        // 백그라운드 정지는 `post`의 전경 게이트가 버리고, 전경 복귀가 곧 조작이라
+        // `resumeIfIdle`의 재개 문장이 그 자리를 대신한다(뒤늦은 "멈추었습니다"를 남기지 않는다).
+        announce(appLocalized("transitGuide.idlePaused"), highPriority: true)
+        transitGuideLog("idlePaused announced fg=\(isForeground)")
         updateKeepAlive()
         return true
     }
