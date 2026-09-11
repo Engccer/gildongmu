@@ -9,6 +9,20 @@
 
 ---
 
+## 2026-09-12
+
+### 대중교통 안내 시트 착지 대상을 상태 문장 행으로 통일 (E38, iOS + 웹)
+
+위원장 판정: 시트에서 **무엇을 누르든 커서는 상태 문장 행**(`SheetControl.status`)에 앉는다. 하차 도착도 [다음 구간] 버튼이 아니라 "하차 지점 도착. …" 문장이고 다음 행동 버튼은 한 번 스와이프 아래다. 시트 진입·국면 전이 넷·역 선택 취소 복귀·목적지 전환 확정/취소·조망 안 경로 전환이 모두 그 한 자리로 간다.
+
+대상을 고르던 `phaseTransitionLanding(...) -> SheetControl?`은 여부만 답하는 `phaseTransitionLands(...) -> Bool`이 됐고(웹은 `lands` 술어 하나), 종전 대상 `advance`·`changeBoarding`·`boardAlready`·`title`이 `SheetControl`과 웹 ref에서 사라졌다. 남긴 예외는 자기 질문을 여는 화면(역 선택 헤딩·급행 확인 헤딩과 그 답 문장·차량 선택 라벨)과 띠바 복귀·목적지 전환 상태 행이다. A35 착지 기제(실현 관측 → 반복 가시화 → 늦은 검증 → 폴백 통지)는 불변.
+
+⚠ 대상이 하나가 되면 착지 테스트의 검출력이 0이 된다(변이 주입 실측) — 웹 테스트는 누르기 전에 그 컨트롤로 커서를 옮겨(`clickFocused`) 실기기 경로를 재현하고, 착지 지점 7개 전부에서 변이 검출을 확인했다. 소스 가드가 착지 대상 집합(enum case ↔ `landControlFocus` 리터럴)을 잠근다.
+
+판정 대기: 다음 실승차의 `controlFocus target=status landed=` (BACKLOG §2 A35 행, 대본 `docs/FIELD-TEST.md` §5-3 마지막 행). spec `docs/superpowers/specs/2026-09-11-transit-station-to-place-and-landing-design.md` §4.1 정정 절.
+
+---
+
 ## 2026-09-11
 
 ### App Store 1.16 심사 제출 (빌드 24)

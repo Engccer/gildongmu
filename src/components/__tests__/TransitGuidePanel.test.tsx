@@ -65,7 +65,7 @@ async function boardTrain(select: RegExp = /selectTrain/) {
     }));
     return { ok: true, json: async () => ({ ...body, items }) } as Response;
   }) as unknown as typeof fetch);
-  fireEvent.click(await screen.findByRole("button", { name: select }));
+  clickFocused(await screen.findByRole("button", { name: select }));
   // 승격은 그 폴의 결과라 목록이 사라지는 것으로 확인한다(riding 컨트롤은 잠금 종류에 따라 다르다).
   await waitFor(() => expect(screen.queryByRole("button", { name: select })).toBeNull());
   vi.stubGlobal("fetch", inner);
@@ -80,7 +80,7 @@ async function boardTrain(select: RegExp = /selectTrain/) {
  */
 async function boardTrainAndTrack(station = "천호") {
   const inner = globalThis.fetch;
-  fireEvent.click(await screen.findByRole("button", { name: "transitGuide.boardAlready" }));
+  clickFocused(await screen.findByRole("button", { name: "transitGuide.boardAlready" }));
   // 역 목록 조회의 응답 **한 번만** 손댄다: 그 역에 있는 열차만 후보이므로(`aboardCandidates`:
   // arvlCd 0~5) 목의 99를 0으로 바꿔 세운다. 그 뒤 하차역 폴은 호출부 목 그대로여야 한다.
   let used = false;
@@ -133,6 +133,30 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+/**
+ * 착지 대상 = 상태 문장 행(E38 위원장 판정 2026-09-12: "시트에서 무엇을 누르든 커서는 상태 문장 행에
+ * 앉는다. 예외 없음"). 내용이 폴마다 바뀌므로 텍스트가 아니라 **자리**로 잡는다 — 시트 컨테이너의 첫 문단.
+ */
+const statusLine = () => {
+  const el = document.querySelector<HTMLParagraphElement>(".rounded-md.border > p");
+  expect(el, "상태 문장 행이 없다").toBeTruthy();
+  return el as HTMLParagraphElement;
+};
+/** 착지가 상태 문장 행에 있는가(useLayoutEffect·rAF 어느 쪽이든 잡히게 waitFor). */
+const expectLandedOnStatus = async () => {
+  await waitFor(() => expect(document.activeElement).toBe(statusLine()));
+};
+/**
+ * 커서를 그 컨트롤에 얹고 누른다 — **착지 단언의 검출력은 여기서 나온다**. E38로 대상이 상태 문장
+ * 하나가 되면서 "착지했다"와 "애초에 거기 있었다"가 구별되지 않게 됐다(변이 주입 실측: 전이 착지를
+ * 통째로 지워도 단언이 통과했다). 실기기 경로 그대로 — 커서는 누르는 행 위에 있고 그 행이 사라진다.
+ */
+const clickFocused = (el: HTMLElement) => {
+  el.focus();
+  expect(document.activeElement).toBe(el);
+  fireEvent.click(el);
+};
+
 describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
   it("시작하면 사라진 트리거 대신 상태 텍스트에 커서가 착지한다(B4)", async () => {
     vi.stubGlobal(
@@ -149,7 +173,7 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
     // 트리거는 unmount됐고 커서는 body가 아니라 세션 상태 텍스트에 있다.
     expect(screen.queryByRole("button", { name: "시작" })).toBeNull();
     expect(document.activeElement).not.toBe(document.body);
-    expect(document.activeElement?.tagName).toBe("P");
+    await expectLandedOnStatus();
     await screen.findByRole("button", { name: /selectTrain/ });
   });
 
@@ -348,7 +372,7 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
     expect(screen.queryByRole("heading", { name: "transitGuide.reboardStationPrompt" })).toBeNull();
   });
 
-  it("역 선택 취소는 아무것도 바꾸지 않고 눌렀던 자리로 돌려보낸다(A16 L3)", async () => {
+  it("역 선택 취소는 아무것도 바꾸지 않고 상태 문장으로 돌려보낸다(A16 L3·E38)", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(
@@ -368,9 +392,7 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
 
     // 국면은 riding 그대로(열차 목록으로 떨어지지 않는다).
     expect(screen.queryByRole("button", { name: /selectTrain/ })).toBeNull();
-    await waitFor(() => {
-      expect(document.activeElement?.textContent).toBe("transitGuide.changeBoarding");
-    });
+    await expectLandedOnStatus();
   });
 
   it("급행 통과 후보는 버튼 없이 사유 줄만(unreachable 단일 술어, A16 L1)", async () => {
@@ -482,11 +504,9 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
     fireEvent.click(screen.getByRole("button", { name: "transitGuide.pickAnotherStation" }));
     await screen.findByRole("heading", { name: "transitGuide.aboardStationPrompt" });
     expect(screen.queryByRole("heading", { name: "transitGuide.expressPrompt" })).toBeNull();
-    // 역 선택 취소는 눌렀던 자리([이미 탔습니다])로 돌아간다.
+    // 역 선택 취소도 착지는 상태 문장이다(E38) — [이미 탔습니다]는 거기서 한 번 스와이프 아래.
     fireEvent.click(screen.getByRole("button", { name: "transitGuide.reboardCancel" }));
-    await waitFor(() => {
-      expect(document.activeElement?.textContent).toBe("transitGuide.boardAlready");
-    });
+    await expectLandedOnStatus();
   });
 
   it("시작 → 열차 목록(종착 차단 항목은 비버튼) → 탑승 → 하차 추적 → 도착 → 다음 구간 → 완료", async () => {
@@ -560,13 +580,12 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
     });
     await boardTrainAndTrack();
 
-    // 2번째 하차 폴(arvlCd 1) → arrived → "다음 구간" 노출 + 포커스 선점(헌장 §5)
+    // 2번째 하차 폴(arvlCd 1) → arrived → "다음 구간" 노출. 착지는 그 버튼이 아니라 도착을 말하는
+    // 상태 문장이고(E38), 버튼은 거기서 한 번 스와이프 아래다.
     await waitFor(() => {
       expect(screen.getByRole("button", { name: "transitGuide.advance" })).toBeTruthy();
     });
-    await waitFor(() => {
-      expect(document.activeElement?.textContent).toBe("transitGuide.advance");
-    });
+    await expectLandedOnStatus();
 
     // 다음 구간(마지막 leg) → 세션 종료·트리거 복귀, 완료 통지는 live region에
     fireEvent.click(screen.getByRole("button", { name: "transitGuide.advance" }));
@@ -670,15 +689,16 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
       expect(screen.getByRole("button", { name: "transitGuide.changeBoarding" })).toBeTruthy();
     });
     fireEvent.click(screen.getByRole("button", { name: "transitGuide.changeBoarding" }));
-    fireEvent.click(await screen.findByRole("button", { name: "천호" }));
+    clickFocused(await screen.findByRole("button", { name: "천호" }));
+    // →waiting 전이(누른 역 행이 사라진다) 역시 착지는 상태 문장이다(E38).
+    await expectLandedOnStatus();
     const cancel = await screen.findByRole("button", { name: "transitGuide.cancelChangeBoarding" });
-    fireEvent.click(cancel);
+    clickFocused(cancel);
     await waitFor(() => {
       expect(screen.getByRole("button", { name: "transitGuide.changeBoarding" })).toBeTruthy();
     });
-    // 탑승 계열 전이는 대기 컨트롤을 제거한다 — riding 컨트롤 선점(§13.4, 감사 M2).
-    // useLayoutEffect 포커스라 동기 단언 가능(jsdom flake 메모).
-    expect(document.activeElement?.textContent).toBe("transitGuide.changeBoarding");
+    // 탑승 계열 전이는 대기 컨트롤을 제거한다 — 착지는 상태 문장(E38).
+    await expectLandedOnStatus();
 
     // 다시 대기로 돌아가 목록 항목에 포커스를 얹고, 폴 갱신으로 항목이 사라지면
     // 라벨로 선점 복귀한다(§13.4 — 제거된 요소는 blur 없이 body로 이탈한다).
@@ -900,7 +920,7 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
     // 버튼 이름과 도보 분을 담는다(종전 "다음: 대중교통 구간이 끝났습니다…" 조각 없음).
     const handoff = await screen.findByRole("button", { name: "transitGuide.walkHandoffStart" });
     expect(screen.queryByRole("button", { name: "transitGuide.advance" })).toBeNull();
-    await waitFor(() => expect(document.activeElement).toBe(handoff));
+    await expectLandedOnStatus();
     const status = screen.getAllByRole("status")[0];
     expect(status.textContent).toContain("transitGuide.arrivedWalkNext:5");
     expect(status.textContent).not.toContain("doneWalk");
@@ -955,7 +975,7 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
     fireEvent.click(await screen.findByRole("button", { name: "여의도" }));
     const advance = await screen.findByRole("button", { name: "transitGuide.advance" });
     expect(screen.queryByRole("button", { name: "transitGuide.walkHandoffStart" })).toBeNull();
-    await waitFor(() => expect(document.activeElement).toBe(advance));
+    await expectLandedOnStatus();
     expect(screen.getAllByRole("status")[0].textContent).toContain("transitGuide.arrived ");
     expect(screen.getByText(/transitGuide\.stateArrived/)).toBeTruthy();
     // 선언 뒤 폴은 나가지 않는다(즉폴 게이트).
@@ -1272,16 +1292,15 @@ describe("TransitGuidePanel — boarding 수동 진행 (N3 ①)", () => {
     );
     render(<TransitGuidePanel route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
     fireEvent.click(screen.getByRole("button", { name: "시작" }));
-    fireEvent.click(await screen.findByRole("button", { name: /selectTrain/ }));
+    clickFocused(await screen.findByRole("button", { name: /selectTrain/ }));
 
     // boarding 국면: 탈출은 [다른 차량 선택]뿐이고 선언 버튼은 없다.
     const reselect = await screen.findByRole("button", { name: "transitGuide.reselectVehicle" });
     expect(reselect).toBeTruthy();
     expect(screen.queryByRole("button", { name: "transitGuide.boardWithoutArrival" })).toBeNull();
-    // 누른 후보 행이 사라지는 전이인데 그 국면엔 "다음 행동"이 없다 — 상태 문장으로 선점(§4.3).
-    await waitFor(() =>
-      expect(document.activeElement?.textContent).toContain("transitGuide.boardingContext"),
-    );
+    // 누른 후보 행이 사라지는 전이 — 상태 문장으로 선점(§4.3·E38).
+    await expectLandedOnStatus();
+    expect(statusLine().textContent).toContain("transitGuide.boardingContext");
   });
 
   it("승차 정류소 도착이 관측되면 버튼 없이 riding으로 넘어간다", async () => {
