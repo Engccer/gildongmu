@@ -12,6 +12,56 @@
 
 ---
 
+## 1.16 (빌드 24)
+
+기준은 1.15 아카이브 커밋 `ff6e1897`(빌드 23)이며 그 이후 `ios/` 커밋 21건을 판정했다. Release 바이너리에 도달하면서 iOS 사용자에게 보이는 것만 담는다.
+
+포함 판정:
+
+| 기능 | 커밋 | 노트 |
+|---|---|---|
+| 장소 상세에 **"여기부터 길찾기"**(E32) — `DirectionsPrefill{role, endpoint}`로 출발지 프리필 경로 신설. 출발지만 채운 진입은 조회하지 않고 도착지 입력으로 착지, 최근 장소도 출발지 스코프에 기록 | `d2511051` | ko·en 전 로케일(`directions.fromHere` 6로케일). 도달면 `PlaceDetailView`·`DirectionsTabView`·`GildongmuApp` 전부 정식판 |
+| 도보 종료 화면의 **체중 입력 권유에 무시 상한 2회**(E31) + 체중을 입력한 사용자에게 칼로리 기준 체중 병기(`ios.beacon.healthSummaryWithWeight` 신설) | `479441fa`·`6ab8c705` | ko·en. `BeaconTrackingSheet`·Kit `WalkHealth`는 도보 안내라 1.7 졸업분(봉인 밖). 표식은 `@AppStorage` 영속 |
+| **설정 체중 입력의 범위 밖 값 처리**(A39) — 저장하지 않고 직전 값 유지 + 이유·유지값 낭독(`ios.settings.weightRejected`·`weightRejectedNone`), 허용 범위·비저장 고지를 푸터에 상시(`ios.settings.weightFooter`) | `e2095e29`(후속 보정 `e6e721eb`) | ko·en. `SettingsView`는 정식판. `.decimalPad`엔 Return이 없어 확정 시점이 포커스 이탈·닫기·`onDisappear` 셋이다 |
+| 내 주변 **지하철 도착 한 줄의 현재역 중복 제거**(A32) — 완성 문장이 이미 현재역 값을 담으면 `현재 {역}` 꼬리를 빼고, 못 알아보면 붙이는 쪽으로 실패 | `66952a48`·`2734fcc9` | **ko만.** 영문 문장은 현재역을 담지 않아 en은 꼬리가 그대로다(en 판정을 ko 값으로 하면 en 사용자만 현재역을 잃는다). 도달면 `SubwayNearbyView` |
+| 검색 탭에서 **받아쓰기(마이크) 행이 현재 위치 표시줄보다 앞**으로 — 검색창 바로 다음(위원장 판정 2026-09-04) | `511dcd96` | ko·en. 시스템 검색창 옆에 버튼 자리가 없고 내비 바는 VO가 제목보다 먼저 읽어 기각된 자리라, 목록 첫 행으로 붙였다. 목록 소멸 시 착지점·단축어 선점 계약은 순서와 무관 |
+
+제외 근거:
+
+- **대중교통 실시간 안내 전량**(A33 `2bc074a8` · A37 ②·A34 ②①·E34 `1dfe3fa8` · M1~M3 리뷰 `0a8bc54d` · A36 ① `66682db1` · E36 `654d349e`·`e2598848`·`2dc6b108` · A35·E33 `5441ea7e`·`8e852631` · N3 ①② `d46c6c8a`·`9a1db47d` · 리뷰 `e6e721eb`의 transit 분): 대중교통 세션 시작이 `AppConfig.experimentalGuidanceEnabled` 뒤에 봉인돼 있다(`DirectionsTabView` 1148·1162·1174·1186). 커밋 13건, diff 2,000줄 이상이지만 정식판 사용자에게는 그 기능 자체가 존재하지 않는다.
+- **공유 표면에서 새지 않음을 개별 확인**: `GuideOverviewSheet`(도보·대중교통 공유)의 변경은 riding 국면 신호 문장뿐, Kit `ChatPlaceMentions`(정식판 채팅 공유)의 변경은 `mentionOrder` 추출 리팩터로 동작 보존, Kit `PlaceProjection`의 `transitStopPlace`는 지하철 leg에서만 불린다. `RouteBriefing.swift`는 이 구간에서 한 줄도 바뀌지 않았다.
+- **오디오 세션 소유권 3종**(`55e047b4`·`e2598848`의 재생기 분): `BeaconTonePlayer`가 도보에도 쓰이므로 Release에 닿기는 하나, 재현된 축(두 재생기의 미뤄진 원복 경합·prewalk 인계)이 전부 대중교통 세션 조합이고 도보 단독 경로의 변경은 미재현 방어(인터럽션 `.began` 상태 기록)와 체감 없는 `categoryChange` 메아리 필터다. 사용자가 알아차릴 변화가 없어 적지 않는다.
+- **동작 변경 0**: `30c2af45`(WebMCP 프로브 페이지 삭제로 따라온 xcstrings 20키 — Swift 미참조), 리뷰 반영 커밋의 테스트·소스 가드·계측 라벨 분.
+
+심사 노트는 이번 버전에서 **승계한다**(`--review-notes` 없음). 새 권한·새 데이터 유형이 없고(체중은 종전대로 기기 안에만 있어 개인정보 3자 일치 무변화), §9 문장 중 이번 변경으로 거짓이 된 것도 없다.
+
+### ko
+
+```
+새로운 기능
+- 장소 상세에 "여기부터 길찾기"가 생겼습니다. 지금 보고 있는 장소를 출발지로 넣고, 곧바로 도착지 입력으로 커서를 옮겨 드립니다.
+
+개선
+- 도보 안내를 마치면 나오는 걸음·칼로리 요약에서, 체중 입력 권유를 두 번 지나치면 더는 띄우지 않습니다. 체중을 입력해 두셨다면 칼로리가 몇 kg 기준으로 계산된 값인지 함께 알려 드립니다.
+- 설정에서 체중을 20~300kg 밖의 값으로 바꾸면 그 값을 저장하지 않고 이전 값을 그대로 둡니다. 왜 그랬는지와 어떤 값이 남았는지 말씀드리고, 입력란 아래에는 허용 범위와 서버에 저장되지 않는다는 안내가 늘 있습니다.
+- 내 주변 지하철 도착 안내에서 같은 역 이름이 한 줄에 두 번 낭독되던 자리를 정리했습니다.
+- 검색 탭에서 받아쓰기 행이 현재 위치 표시줄보다 앞에 옵니다. 검색창 바로 다음이라 한 번에 닿습니다.
+```
+
+### en
+
+```
+New
+- Place details now offer "Directions from here". It puts the place you are looking at in the start field and moves the cursor straight to the destination field.
+
+Improved
+- In the walk summary that appears when guidance ends, the prompt to enter your weight stops showing once you have passed it twice. If you have entered a weight, the calorie line now tells you which weight the estimate is based on.
+- Entering a weight outside 20 to 300 kg in Settings no longer throws the entry away in silence. The previous value is kept, the app tells you why and what it kept, and the allowed range, along with the fact that nothing is stored on a server, now sits under the field at all times.
+- In the search tab, the dictation row now comes before the current location bar, right after the search field, so it takes one swipe to reach.
+```
+
+---
+
 ## 1.15 (빌드 23)
 
 기준은 1.14 아카이브 커밋 `11fe5f9`(빌드 22)이며 그 이후 `ios/` 커밋 15건을 판정했다. Release 바이너리에 도달하면서 iOS 사용자에게 보이는 것만 담는다.
