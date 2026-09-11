@@ -243,6 +243,16 @@ describe("eventProfile — 통지 채널·톤(§6.1)", () => {
       eventProfile({ kind: "countdown", remaining: 2, message: "", currentLocation: null, arrivalCode: null }).interrupt,
     ).toBe(false);
     expect(eventProfile({ kind: "arrived", certain: true }).interrupt).toBe(true);
+  });
+
+  it("A41: 곧 도착 이벤트 2종은 imminent·interrupt, boarded(departed)는 비-interrupt", () => {
+    expect(eventProfile({ kind: "arrivingAtBoardStop" })).toEqual({ interrupt: true, tone: "imminent" });
+    expect(eventProfile({ kind: "arrivingAtAlightStop" })).toEqual({ interrupt: true, tone: "imminent" });
+    expect(eventProfile({ kind: "boarded", legIndex: 0, cause: "departed" })).toEqual({
+      interrupt: false,
+      tone: "start",
+    });
+    expect(eventProfile({ kind: "boarded", legIndex: 0, cause: "observed" }).interrupt).toBe(true);
     expect(eventProfile({ kind: "arrived", certain: false }).interrupt).toBe(true);
     expect(eventProfile({ kind: "signalLost" }).interrupt).toBe(false);
     expect(eventProfile({ kind: "boarded", legIndex: 0, cause: "declared" }).interrupt).toBe(false);

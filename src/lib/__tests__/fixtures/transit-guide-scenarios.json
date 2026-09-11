@@ -1295,6 +1295,18 @@
       }
      },
      "expect": {
+      "phase": "riding",
+      "event": {
+       "kind": "arrivingAtAlightStop"
+      }
+     }
+    },
+    {
+     "at": 20000,
+     "input": {
+      "kind": "declareArrived"
+     },
+     "expect": {
       "phase": "arrived",
       "event": {
        "kind": "arrived",
@@ -1323,7 +1335,7 @@
      "input": {
       "kind": "poll",
       "seq": 2,
-      "phaseGen": 3,
+      "phaseGen": 4,
       "poll": {
        "kind": "ok",
        "items": []
@@ -1387,7 +1399,7 @@
      "input": {
       "kind": "poll",
       "seq": 3,
-      "phaseGen": 5,
+      "phaseGen": 6,
       "poll": {
        "kind": "ok",
        "items": [
@@ -4223,7 +4235,7 @@
    ]
   },
   {
-   "name": "boarding: advance 무시, 늦은 세대 폴 폐기, 서울버스 잔여 0은 도착 관측",
+   "name": "boarding: advance 무시, 늦은 세대 폴 폐기, 서울버스 잔여 0은 곧 도착(승격 아님, A41)",
    "route": "seoulBusSingle",
    "steps": [
     {
@@ -4297,10 +4309,10 @@
       }
      },
      "expect": {
-      "phase": "riding",
+      "phase": "boarding",
+      "remaining": 0,
       "event": {
-       "kind": "boarded",
-       "cause": "observed"
+       "kind": "arrivingAtBoardStop"
       }
      }
     }
@@ -5770,6 +5782,721 @@
       "phase": "riding",
       "event": null,
       "ridingPolls": 1
+     }
+    }
+   ]
+  },
+  {
+   "name": "boarding 서울버스(A41): 잔여 2→1 접근 → 곧 도착(잔여 0)은 arrivingAtBoardStop 1회, 지속 무이벤트 → 소실 2폴 → boarded(departed) riding",
+   "route": "seoulBusSingle",
+   "steps": [
+    {
+     "at": 0,
+     "input": {
+      "kind": "board",
+      "lock": "seoulBusV1"
+     },
+     "expect": {
+      "phase": "boarding",
+      "event": {
+       "kind": "vehicleSelected"
+      }
+     }
+    },
+    {
+     "at": 20000,
+     "input": {
+      "kind": "poll",
+      "seq": 1,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "111033479",
+         "direction": "",
+         "message": "5분후[2번째 전]",
+         "remainingStops": 2,
+         "destinationName": null,
+         "express": false,
+         "arrivalCode": null
+        }
+       ]
+      }
+     },
+     "expect": {
+      "phase": "boarding",
+      "event": {
+       "kind": "approaching",
+       "remaining": 2
+      }
+     }
+    },
+    {
+     "at": 40000,
+     "input": {
+      "kind": "poll",
+      "seq": 2,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "111033479",
+         "direction": "",
+         "message": "3분후[1번째 전]",
+         "remainingStops": 1,
+         "destinationName": null,
+         "express": false,
+         "arrivalCode": null
+        }
+       ]
+      }
+     },
+     "expect": {
+      "event": {
+       "kind": "approaching",
+       "remaining": 1
+      }
+     }
+    },
+    {
+     "at": 60000,
+     "input": {
+      "kind": "poll",
+      "seq": 3,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "111033479",
+         "direction": "",
+         "message": "곧 도착",
+         "remainingStops": 0,
+         "destinationName": null,
+         "express": false,
+         "arrivalCode": null
+        }
+       ]
+      }
+     },
+     "expect": {
+      "phase": "boarding",
+      "remaining": 0,
+      "event": {
+       "kind": "arrivingAtBoardStop"
+      }
+     }
+    },
+    {
+     "at": 80000,
+     "input": {
+      "kind": "poll",
+      "seq": 4,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "111033479",
+         "direction": "",
+         "message": "곧 도착",
+         "remainingStops": 0,
+         "destinationName": null,
+         "express": false,
+         "arrivalCode": null
+        }
+       ]
+      }
+     },
+     "expect": {
+      "phase": "boarding",
+      "event": null
+     }
+    },
+    {
+     "at": 100000,
+     "input": {
+      "kind": "poll",
+      "seq": 5,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "111033479",
+         "direction": "",
+         "message": "곧 도착",
+         "remainingStops": 0,
+         "destinationName": null,
+         "express": false,
+         "arrivalCode": null
+        }
+       ]
+      }
+     },
+     "expect": {
+      "phase": "boarding",
+      "event": null
+     }
+    },
+    {
+     "at": 120000,
+     "input": {
+      "kind": "poll",
+      "seq": 6,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "ok",
+       "items": []
+      }
+     },
+     "expect": {
+      "phase": "boarding",
+      "signal": "tracking",
+      "event": null
+     }
+    },
+    {
+     "at": 140000,
+     "input": {
+      "kind": "poll",
+      "seq": 7,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "ok",
+       "items": []
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "notYetVisible",
+      "remaining": null,
+      "ridingPolls": 0,
+      "event": {
+       "kind": "boarded",
+       "legIndex": 0,
+       "cause": "departed"
+      }
+     }
+    },
+    {
+     "at": 160000,
+     "input": {
+      "kind": "poll",
+      "seq": 8,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "ridingPolls": 1,
+      "event": null
+     }
+    }
+   ]
+  },
+  {
+   "name": "boarding 서울버스(A41): 첫 관측이 곧 도착이면 approaching이 아니라 arrivingAtBoardStop",
+   "route": "seoulBusSingle",
+   "steps": [
+    {
+     "at": 0,
+     "input": {
+      "kind": "board",
+      "lock": "seoulBusV1"
+     },
+     "expect": {
+      "phase": "boarding"
+     }
+    },
+    {
+     "at": 20000,
+     "input": {
+      "kind": "poll",
+      "seq": 1,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "111033479",
+         "direction": "",
+         "message": "곧 도착",
+         "remainingStops": 0,
+         "destinationName": null,
+         "express": false,
+         "arrivalCode": null
+        }
+       ]
+      }
+     },
+     "expect": {
+      "phase": "boarding",
+      "signal": "tracking",
+      "event": {
+       "kind": "arrivingAtBoardStop"
+      }
+     }
+    },
+    {
+     "at": 40000,
+     "input": {
+      "kind": "poll",
+      "seq": 2,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "111033479",
+         "direction": "",
+         "message": "곧 도착",
+         "remainingStops": 0,
+         "destinationName": null,
+         "express": false,
+         "arrivalCode": null
+        }
+       ]
+      }
+     },
+     "expect": {
+      "event": null
+     }
+    },
+    {
+     "at": 60000,
+     "input": {
+      "kind": "poll",
+      "seq": 3,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "ok",
+       "items": []
+      }
+     },
+     "expect": {
+      "phase": "boarding",
+      "event": null
+     }
+    },
+    {
+     "at": 80000,
+     "input": {
+      "kind": "poll",
+      "seq": 4,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "ok",
+       "items": []
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "event": {
+       "kind": "boarded",
+       "cause": "departed"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "boarding 서울버스(A41): 잔여 1에서 0을 거치지 않은 소실은 종전 vehiclePassed(승격 아님)",
+   "route": "seoulBusSingle",
+   "steps": [
+    {
+     "at": 0,
+     "input": {
+      "kind": "board",
+      "lock": "seoulBusV1"
+     },
+     "expect": {
+      "phase": "boarding"
+     }
+    },
+    {
+     "at": 20000,
+     "input": {
+      "kind": "poll",
+      "seq": 1,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "111033479",
+         "direction": "",
+         "message": "3분후[1번째 전]",
+         "remainingStops": 1,
+         "destinationName": null,
+         "express": false,
+         "arrivalCode": null
+        }
+       ]
+      }
+     },
+     "expect": {
+      "event": {
+       "kind": "approaching",
+       "remaining": 1
+      }
+     }
+    },
+    {
+     "at": 40000,
+     "input": {
+      "kind": "poll",
+      "seq": 2,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "ok",
+       "items": []
+      }
+     },
+     "expect": {
+      "phase": "boarding",
+      "event": null
+     }
+    },
+    {
+     "at": 60000,
+     "input": {
+      "kind": "poll",
+      "seq": 3,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "ok",
+       "items": []
+      }
+     },
+     "expect": {
+      "phase": "boarding",
+      "signal": "signalLost",
+      "event": {
+       "kind": "vehiclePassed"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "riding 서울버스(A41): 2→1 countdown → 곧 도착(잔여 0)은 arrivingAtAlightStop 1회, 지속 무이벤트 → 소실 2폴 → 도착 추정 → 재관측 backOnTrack(재발화 없음) → 다시 소실 → 도착 추정",
+   "route": "seoulBusSingle",
+   "steps": [
+    {
+     "at": 0,
+     "input": {
+      "kind": "board",
+      "lock": "seoulBusV1"
+     },
+     "expect": {
+      "phase": "boarding"
+     }
+    },
+    {
+     "at": 0,
+     "input": {
+      "kind": "confirmBoarded"
+     },
+     "expect": {
+      "phase": "riding",
+      "event": {
+       "kind": "boarded",
+       "cause": "declared"
+      }
+     }
+    },
+    {
+     "at": 15000,
+     "input": {
+      "kind": "poll",
+      "seq": 1,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "111033479",
+         "direction": "",
+         "message": "5분후[2번째 전]",
+         "remainingStops": 2,
+         "destinationName": null,
+         "express": false,
+         "arrivalCode": null
+        }
+       ]
+      }
+     },
+     "expect": {
+      "event": {
+       "kind": "trackingStarted",
+       "remaining": 2
+      }
+     }
+    },
+    {
+     "at": 30000,
+     "input": {
+      "kind": "poll",
+      "seq": 2,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "111033479",
+         "direction": "",
+         "message": "3분후[1번째 전]",
+         "remainingStops": 1,
+         "destinationName": null,
+         "express": false,
+         "arrivalCode": null
+        }
+       ]
+      }
+     },
+     "expect": {
+      "event": {
+       "kind": "countdown",
+       "remaining": 1
+      }
+     }
+    },
+    {
+     "at": 45000,
+     "input": {
+      "kind": "poll",
+      "seq": 3,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "111033479",
+         "direction": "",
+         "message": "곧 도착",
+         "remainingStops": 0,
+         "destinationName": null,
+         "express": false,
+         "arrivalCode": null
+        }
+       ]
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "remaining": 0,
+      "event": {
+       "kind": "arrivingAtAlightStop"
+      }
+     }
+    },
+    {
+     "at": 60000,
+     "input": {
+      "kind": "poll",
+      "seq": 4,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "111033479",
+         "direction": "",
+         "message": "곧 도착",
+         "remainingStops": 0,
+         "destinationName": null,
+         "express": false,
+         "arrivalCode": null
+        }
+       ]
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "event": null
+     }
+    },
+    {
+     "at": 75000,
+     "input": {
+      "kind": "poll",
+      "seq": 5,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "ok",
+       "items": []
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "event": null
+     }
+    },
+    {
+     "at": 90000,
+     "input": {
+      "kind": "poll",
+      "seq": 6,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "ok",
+       "items": []
+      }
+     },
+     "expect": {
+      "phase": "arrived",
+      "event": {
+       "kind": "arrived",
+       "certain": false
+      }
+     }
+    },
+    {
+     "at": 105000,
+     "input": {
+      "kind": "poll",
+      "seq": 7,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "111033479",
+         "direction": "",
+         "message": "곧 도착",
+         "remainingStops": 0,
+         "destinationName": null,
+         "express": false,
+         "arrivalCode": null
+        }
+       ]
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "event": {
+       "kind": "backOnTrack"
+      }
+     }
+    },
+    {
+     "at": 120000,
+     "input": {
+      "kind": "poll",
+      "seq": 8,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "111033479",
+         "direction": "",
+         "message": "곧 도착",
+         "remainingStops": 0,
+         "destinationName": null,
+         "express": false,
+         "arrivalCode": null
+        }
+       ]
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "event": null
+     }
+    },
+    {
+     "at": 135000,
+     "input": {
+      "kind": "poll",
+      "seq": 9,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "ok",
+       "items": []
+      }
+     },
+     "expect": {
+      "event": null
+     }
+    },
+    {
+     "at": 150000,
+     "input": {
+      "kind": "poll",
+      "seq": 10,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "ok",
+       "items": []
+      }
+     },
+     "expect": {
+      "phase": "arrived",
+      "event": {
+       "kind": "arrived",
+       "certain": false
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "riding 서울버스(A41): 첫 관측이 곧 도착이면 trackingStarted가 아니라 arrivingAtAlightStop",
+   "route": "seoulBusSingle",
+   "steps": [
+    {
+     "at": 0,
+     "input": {
+      "kind": "board",
+      "lock": "seoulBusV1"
+     },
+     "expect": {
+      "phase": "boarding"
+     }
+    },
+    {
+     "at": 0,
+     "input": {
+      "kind": "confirmBoarded"
+     },
+     "expect": {
+      "phase": "riding"
+     }
+    },
+    {
+     "at": 15000,
+     "input": {
+      "kind": "poll",
+      "seq": 1,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "111033479",
+         "direction": "",
+         "message": "곧 도착",
+         "remainingStops": 0,
+         "destinationName": null,
+         "express": false,
+         "arrivalCode": null
+        }
+       ]
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "tracking",
+      "remaining": 0,
+      "event": {
+       "kind": "arrivingAtAlightStop"
+      }
      }
     }
    ]
