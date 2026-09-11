@@ -27,7 +27,7 @@ a11y 감사가 연 두 항목: 착지 낭독과 전이 통지의 중복(E41), �
 
 ### A41 서울버스 "곧 도착"은 정차가 아니다 — 승차 승격·하차 도착을 임박 통지와 소실 신호로 분리
 
-실호출(갈월동 `03012`, 차량 22대·원문 2,430행)로 `isArrive1`이 0 고정임을 확인해 정차 신호 후보 ①(같은 API 구조 필드)을 기각하고, "곧 도착"(잔여 0 = 직전 정류소 출발, 간선 90~211초 유지) 뒤 목록 소실을 승차 승격 신호로 삼았다. 리듀서(웹 `transit-guide.ts`·Kit `TransitGuide.swift`, 공유 fixture 5건 추가·2건 개정)에 이벤트 `arrivingAtBoardStop`("{노선} 곧 도착합니다")·`arrivingAtAlightStop`("이번 정류장에서 내리세요")과 승격 원인 `departed`를 더하고, 서울버스 riding의 확정 도착을 제거했다(소실 → 종전 도착 추정, 확정은 하차역 선언뿐). 설계 리뷰 반영 2건: "0을 본 뒤의 추정 도착"은 소실이 이어져도 `signalLost`·경고음을 내지 않고 폴 60초(종전 확정 도착이 침묵하던 자리의 회귀 차단), riding 첫 조회는 15초(승격이 출발 뒤로 밀린 만큼 짧은 구간의 하차 신호를 놓치지 않게). 지하철·근사·비관측 경로와 provider·라우트는 무변경, 새 i18n 키 2개(6로케일). spec `docs/superpowers/specs/2026-09-12-seoul-bus-stop-arrival-signal-design.md`, 조사 스크립트 `scripts/verify-seoul-bus-stop-arrival.mjs`. 실승차 판정은 `docs/BACKLOG.md` §2 N3 ②.
+실호출(갈월동 `03012`, 차량 22대·원문 2,430행)로 `isArrive1`이 0 고정임을 확인해 정차 신호 후보 ①(같은 API 구조 필드)을 기각하고, "곧 도착"(잔여 0 = 직전 정류소 출발, 간선 90~211초 유지) 뒤 목록 소실을 승차 승격 신호로 삼았다. 리듀서(웹 `transit-guide.ts`·Kit `TransitGuide.swift`, 공유 fixture 14건 추가(ⓐ~ⓝ)·2건 개정 + 톤 fixture ⑭)에 이벤트 `arrivingAtBoardStop`("{노선} 곧 도착합니다")·`arrivingAtAlightStop`("이번 정류장에서 내리세요")과 승격 원인 `departed`를 더하고, 서울버스 riding의 확정 도착을 제거했다(소실 → 종전 도착 추정, 확정은 하차역 선언뿐). 설계 리뷰 반영 2건: "0을 본 뒤의 추정 도착"은 소실이 이어져도 `signalLost`·경고음을 내지 않고 폴 60초(종전 확정 도착이 침묵하던 자리의 회귀 차단), riding 첫 조회는 15초(승격이 출발 뒤로 밀린 만큼 짧은 구간의 하차 신호를 놓치지 않게). 지하철·근사·비관측 경로와 provider·라우트는 무변경, 새 i18n 키 2개(6로케일). spec `docs/superpowers/specs/2026-09-12-seoul-bus-stop-arrival-signal-design.md`, 조사 스크립트 `scripts/verify-seoul-bus-stop-arrival.mjs`. 실승차 판정은 `docs/BACKLOG.md` §2 N3 ②.
 
 ## 2026-09-11
 

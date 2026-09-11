@@ -368,7 +368,10 @@ export const FAIL_NOTIFY_COUNT = 3;
 export const FAIL_NOTIFY_MS = 90_000;
 /** 소실 판정: 관측되다 연속 N폴 미등장(§4.2). */
 export const MISS_LOST_COUNT = 3;
-/** 도착 추정: 직전 잔여 ≤1 ∧ 연속 N폴 미등장(§4.2). */
+/**
+ * 도착 추정: 직전 잔여 ≤1 ∧ 연속 N폴 미등장(§4.2). A41부터는 서울버스 boarding의 `departed` 승격 임계이기도
+ * 하다(잔여 0 뒤 연속 N폴 미등장 = 서고 떠났다 — 깜빡임 방어, 실호출 53대 재등장 0건).
+ */
 export const MISS_ARRIVE_COUNT = 2;
 /**
  * 첫 관측 전 미등장 상한(A16 L2) — riding 조회 **횟수**(A36 ①, 2026-09-11). 관측된 뒤의 소실은
@@ -1233,7 +1236,8 @@ function handlePoll(
 /**
  * boarding 매칭(승차 정류소 기준 도착 정보, N3 spec §3.3). riding의 commitMatched와
  * 달리 ①동일 스냅숏도 missCount를 올리고(동결 레코드가 국면을 영구 고착시키는 것을
- * 막는다 — 이 국면엔 neverSeen 시간축이 없다) ②도착 관측이 riding 승격이다.
+ * 막는다 — 이 국면엔 neverSeen 시간축이 없다) ②도착 관측(지하철)이 riding 승격이다 — 서울버스는
+ * 잔여 0이 임박이고 승격은 그 뒤 소실(A41, boardingUnmatched).
  */
 function commitBoardingMatched(
   base: TransitGuideState,
@@ -1275,7 +1279,8 @@ function commitBoardingMatched(
   // 내고 국면을 유지한다. 승격은 그 뒤 소실(boardingUnmatched)이 맡는다. 첫 관측이 곧 잔여 0이어도
   // 이 문장이 "추적합니다"보다 먼저다(재선택 직후 실사고 2026-09-11 20:43).
   if (base.lock?.mode === "seoulBus" && item.remainingStops === 0) {
-    const announced = wasTracking && base.ladderAnnounced === 0;
+    // 래치 0은 매칭 커밋에서만 서고 리셋 전이는 trackingAnnounced와 함께 지우므로 "첫 관측인데 래치 0"은 없다.
+    const announced = base.ladderAnnounced === 0;
     next.ladderAnnounced = 0;
     if (!announced) return { state: next, event: { kind: "arrivingAtBoardStop" } };
     if (base.signal === "signalLost" && carriedEvent === null) {
@@ -1328,11 +1333,12 @@ function commitBoardingMatched(
 }
 
 /**
- * boarding 미등장 — 선택 시점에 목록에 있던 차량이라 첫 관측 전에도 센다. 잔여 ≤1에서
- * 사라지면 "지나갔을 수 있다"(vehiclePassed)이지 탑승이 아니다(설계 리뷰 C2). 어느
- * 쪽이든 signalLost 상태로 떨어져 1회만 말하고, **그 신호가 곧 수동 진행 수단의 등장
- * 조건이다**(N3 ① `boardingObservationLost`) — 탈출은 [도착 정보 없이 탑승 진행] 또는
- * [다른 차량 선택]이다.
+ * boarding 미등장 — 선택 시점에 목록에 있던 차량이라 첫 관측 전에도 센다. **순서가 곧 3-state다**:
+ * ①signalLost면 조기 반환(장애 구간에 걸친 소실은 어떤 증거도 아니다) ②서울버스 잔여 0을 본 뒤의
+ * 연속 미등장 = 서고 떠났다 → riding 승격(departed, A41) ③잔여 1(0 미관측)에서 사라지면 "지나갔을
+ * 수 있다"(vehiclePassed)이지 탑승이 아니다(설계 리뷰 C2) ④그 밖 연속 미등장은 signalLost. ③④는
+ * signalLost 상태로 떨어져 1회만 말하고, **그 신호가 곧 수동 진행 수단의 등장 조건이다**(N3 ①
+ * `boardingObservationLost`) — 탈출은 [도착 정보 없이 탑승 진행] 또는 [다른 차량 선택]이다.
  */
 function boardingUnmatched(
   base: TransitGuideState,
@@ -1447,7 +1453,8 @@ function commitMatched(
   // 도착이 아니다(실호출 spec 2026-09-12 §0). 임박 1회(`ladderAnnounced = 0` 래치)만 내고 riding 유지.
   // 확정 도착은 없다(정차 신호가 API에 없다) — 소실이 종전 도착 추정(가역)으로 간다.
   if (!approx && base.lock?.mode === "seoulBus" && item.remainingStops === 0) {
-    const announced = wasTracking && base.ladderAnnounced === 0;
+    // 래치 0은 매칭 커밋에서만 서고 리셋 전이는 trackingAnnounced와 함께 지우므로 "첫 관측인데 래치 0"은 없다.
+    const announced = base.ladderAnnounced === 0;
     next.ladderAnnounced = 0;
     if (!announced) return { state: next, event: { kind: "arrivingAtAlightStop" } };
     if (base.signal === "signalLost" && carriedEvent === null) {

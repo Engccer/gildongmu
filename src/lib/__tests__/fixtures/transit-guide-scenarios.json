@@ -6623,7 +6623,7 @@
    ]
   },
   {
-   "name": "boarding 서울버스(A41 ⓖ, 리뷰 M3): 곧 도착 → 조회 실패 3폴 → 회복 폴 부재 → 부재 — 장애 구간에 걸친 소실은 승격이 아니다(signalLost 유지)",
+   "name": "boarding 서울버스(A41 ⓖ, 리뷰 M3): 곧 도착 → 조회 실패 3폴 → 회복 폴 부재 → 부재 — 장애 구간에 걸친 소실은 승격이 아니다(signalLost 유지) → 재등장 곧 도착은 signalRecovered(재발화 없음)",
    "route": "seoulBusSingle",
    "steps": [
     {
@@ -6759,6 +6759,35 @@
       "phase": "boarding",
       "signal": "signalLost",
       "event": null
+     }
+    },
+    {
+     "at": 160000,
+     "input": {
+      "kind": "poll",
+      "seq": 8,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "111033479",
+         "direction": "",
+         "message": "곧 도착",
+         "remainingStops": 0,
+         "destinationName": null,
+         "express": false,
+         "arrivalCode": null
+        }
+       ]
+      }
+     },
+     "expect": {
+      "phase": "boarding",
+      "signal": "tracking",
+      "event": {
+       "kind": "signalRecovered"
+      }
      }
     }
    ]
@@ -7427,6 +7456,258 @@
       "signal": "tracking",
       "event": {
        "kind": "arrivingAtAlightStop"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "riding 서울버스(A41 ⓜ, 코드 리뷰 M1): 잔여 1 관측(0 미관측) → 소실 2폴 도착 추정 → 소실 3폴 signalLost — 0을 못 본 추정은 종전 경고 유지",
+   "route": "seoulBusSingle",
+   "steps": [
+    {
+     "at": 0,
+     "input": {
+      "kind": "board",
+      "lock": "seoulBusV1"
+     },
+     "expect": {
+      "phase": "boarding"
+     }
+    },
+    {
+     "at": 0,
+     "input": {
+      "kind": "confirmBoarded"
+     },
+     "expect": {
+      "phase": "riding"
+     }
+    },
+    {
+     "at": 15000,
+     "input": {
+      "kind": "poll",
+      "seq": 1,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "111033479",
+         "direction": "",
+         "message": "3분후[1번째 전]",
+         "remainingStops": 1,
+         "destinationName": null,
+         "express": false,
+         "arrivalCode": null
+        }
+       ]
+      }
+     },
+     "expect": {
+      "event": {
+       "kind": "trackingStarted",
+       "remaining": 1
+      }
+     }
+    },
+    {
+     "at": 30000,
+     "input": {
+      "kind": "poll",
+      "seq": 2,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "ok",
+       "items": []
+      }
+     },
+     "expect": {
+      "event": null
+     }
+    },
+    {
+     "at": 45000,
+     "input": {
+      "kind": "poll",
+      "seq": 3,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "ok",
+       "items": []
+      }
+     },
+     "expect": {
+      "phase": "arrived",
+      "event": {
+       "kind": "arrived",
+       "certain": false
+      }
+     }
+    },
+    {
+     "at": 60000,
+     "input": {
+      "kind": "poll",
+      "seq": 4,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "ok",
+       "items": []
+      }
+     },
+     "expect": {
+      "phase": "arrived",
+      "signal": "signalLost",
+      "event": {
+       "kind": "signalLost"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "riding 서울버스(A41 ⓝ): 곧 도착 → 조회 실패 3폴 upstreamFailed → 회복 폴 부재(signalRecovered·signalLost) → 재등장 곧 도착은 signalRecovered(재발화 없음)",
+   "route": "seoulBusSingle",
+   "steps": [
+    {
+     "at": 0,
+     "input": {
+      "kind": "board",
+      "lock": "seoulBusV1"
+     },
+     "expect": {
+      "phase": "boarding"
+     }
+    },
+    {
+     "at": 0,
+     "input": {
+      "kind": "confirmBoarded"
+     },
+     "expect": {
+      "phase": "riding"
+     }
+    },
+    {
+     "at": 15000,
+     "input": {
+      "kind": "poll",
+      "seq": 1,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "111033479",
+         "direction": "",
+         "message": "곧 도착",
+         "remainingStops": 0,
+         "destinationName": null,
+         "express": false,
+         "arrivalCode": null
+        }
+       ]
+      }
+     },
+     "expect": {
+      "event": {
+       "kind": "arrivingAtAlightStop"
+      }
+     }
+    },
+    {
+     "at": 30000,
+     "input": {
+      "kind": "poll",
+      "seq": 2,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "failed"
+      }
+     },
+     "expect": {
+      "event": null
+     }
+    },
+    {
+     "at": 45000,
+     "input": {
+      "kind": "poll",
+      "seq": 3,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "failed"
+      }
+     },
+     "expect": {
+      "event": null
+     }
+    },
+    {
+     "at": 60000,
+     "input": {
+      "kind": "poll",
+      "seq": 4,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "failed"
+      }
+     },
+     "expect": {
+      "signal": "upstreamFailed",
+      "event": {
+       "kind": "upstreamFailed"
+      }
+     }
+    },
+    {
+     "at": 75000,
+     "input": {
+      "kind": "poll",
+      "seq": 5,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "ok",
+       "items": []
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "signalLost",
+      "event": {
+       "kind": "signalRecovered"
+      }
+     }
+    },
+    {
+     "at": 90000,
+     "input": {
+      "kind": "poll",
+      "seq": 6,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "111033479",
+         "direction": "",
+         "message": "곧 도착",
+         "remainingStops": 0,
+         "destinationName": null,
+         "express": false,
+         "arrivalCode": null
+        }
+       ]
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "tracking",
+      "remaining": 0,
+      "event": {
+       "kind": "signalRecovered"
       }
      }
     }

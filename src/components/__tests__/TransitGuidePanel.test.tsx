@@ -72,6 +72,42 @@ async function boardTrain(select: RegExp = /selectTrain/) {
 }
 
 /**
+ * 서울버스판 `boardTrain`(A41 2026-09-12): 서울버스 잔여 0("곧 도착")은 승격이 아니라 임박이고, 승격은
+ * **그 뒤 소실 2폴**(`boarded(departed)`)이다. 선택 직후 첫 승차 정류소 폴만 잔여 0으로 바꾸고, 그 뒤
+ * 승차 정류소 폴 두 번을 빈 결과로 돌려 riding에 넣는다. boarding 폴 주기(20초)는 실제 시계로 기다릴
+ * 수 없어 복귀 즉폴(`visibilitychange`)로 그 두 폴을 당긴다 — 리듀서 계약은 공유 fixture ⓐ가 잠그고,
+ * 여기서는 진입 경로만 재현한다.
+ */
+async function boardBusByDeparture(select: RegExp = /selectBus/) {
+  const inner = globalThis.fetch;
+  let waitPolls = 0;
+  vi.stubGlobal("fetch", (async (...args: Parameters<typeof fetch>) => {
+    const url = String(args[0]);
+    if (!url.includes("phase=wait")) return inner(...args);
+    waitPolls += 1;
+    if (waitPolls === 1) {
+      const res = await inner(...args);
+      const body = await res.json();
+      const items = (body.items ?? []).map((it: Record<string, unknown>) => ({
+        ...it,
+        message: "곧 도착",
+        remainingStops: 0,
+      }));
+      return { ok: true, json: async () => ({ ...body, items }) } as Response;
+    }
+    return { ok: true, json: async () => ({ mode: "seoulBus", status: "empty", rawCount: 0 }) } as Response;
+  }) as unknown as typeof fetch);
+  fireEvent.click(await screen.findByRole("button", { name: select }));
+  await waitFor(() => expect(waitPolls).toBe(1));
+  for (const n of [2, 3]) {
+    document.dispatchEvent(new Event("visibilitychange"));
+    await waitFor(() => expect(waitPolls).toBe(n));
+  }
+  await waitFor(() => expect(screen.queryByRole("button", { name: select })).toBeNull());
+  vi.stubGlobal("fetch", inner);
+}
+
+/**
  * riding에 들어가고 **하차역 첫 폴까지** 나가게 하는 헬퍼 — [이미 탔습니다] 식별 잠금 경로(A34).
  * 사용자 조작이라 즉폴이 보장되므로, 하차 추적·도착을 보는 테스트가 주기를 기다리지 않는다.
  * (관측 승격 경로로는 그 첫 폴이 최대 60초 뒤이고, 그 창을 즉폴로 메우는 안은 `boarded` 통지를
@@ -830,7 +866,7 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
     };
     render(<TransitGuidePanel route={BUS_ROUTE} triggerLabel="시작" walkAccessible={false} />);
     fireEvent.click(screen.getByRole("button", { name: "시작" }));
-    await boardTrain(/selectBus/);
+    await boardBusByDeparture(/selectBus/);
     await waitFor(() => {
       expect(screen.getByText(/transitGuide\.stateRidingNotYetVisibleBus/)).toBeTruthy();
     });
