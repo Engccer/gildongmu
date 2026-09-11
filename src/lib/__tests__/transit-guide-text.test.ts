@@ -5,12 +5,12 @@ import {
   arrivalStatusLine,
   arrivedAtBoardStopLine,
   arrivingAtBoardStopLine,
+  boardedAlightLine,
   boardedLine,
   boardingContextLine,
   candidateDescLine,
   contextLine,
   currentStationLine,
-  frameLine,
   overviewLegLine,
   prewalkArrivedButtonLine,
   openStationLine,
@@ -89,19 +89,19 @@ const CASES: {
     en: { parts: [{ key: "context", args: ["Line 5", "Gwanghwamun"] }], lang: "en" },
   },
   {
-    fn: frameLine, name: "frameLine(지하철 코드 3 → 다음 역)",
-    run: (e) => frameLine(e, LEG, ITEM.message, "3"),
+    fn: arrivalStatusLine, name: "arrivalStatusLine(지하철 코드 3 → 다음 역)",
+    run: (e) => arrivalStatusLine(e, LEG, ITEM.message, "3", null, "riding"),
     en: { parts: [{ key: "subwayNextStop", args: ["Gwanghwamun"] }], lang: "en" },
   },
   {
-    fn: frameLine, name: "frameLine(지하철 미지 코드 → 원문 병치)",
-    run: (e) => frameLine(e, LEG, ITEM.message, "77"),
+    fn: arrivalStatusLine, name: "arrivalStatusLine(지하철 미지 코드 → 원문 병치)",
+    run: (e) => arrivalStatusLine(e, LEG, ITEM.message, "77", null, "riding"),
     en: { parts: [{ text: "In 3 min" }], lang: "en" },
   },
   {
-    fn: frameLine, name: "frameLine(버스 → 라벨 프레임)",
-    run: (e) => frameLine(e, { ...LEG, mode: "bus" }, ITEM.message, null),
-    en: { parts: [{ key: "messageFrame", args: ["Gwanghwamun", "In 3 min"] }], lang: "en" },
+    fn: arrivalStatusLine, name: "arrivalStatusLine(버스 미지 모양 → 원문 병치)",
+    run: (e) => arrivalStatusLine(e, { ...LEG, mode: "bus" }, ITEM.message, null, null, "riding"),
+    en: { parts: [{ text: "In 3 min" }], lang: "en" },
   },
   {
     fn: approachFrameLine, name: "approachFrameLine",
@@ -150,6 +150,11 @@ const CASES: {
     fn: boardedLine, name: "boardedLine(E41 — 한 문장, 인자 없음)",
     run: (e) => boardedLine(e),
     en: { parts: [{ key: "boarded", args: [] }], lang: "en" },
+  },
+  {
+    fn: boardedAlightLine, name: "boardedAlightLine(자동 승격 전용 하차역 조각)",
+    run: (e) => boardedAlightLine(e, LEG),
+    en: { parts: [{ key: "boardedAlight", args: ["Gwanghwamun"] }], lang: "en" },
   },
   {
     fn: currentStationLine, name: "currentStationLine",
@@ -275,8 +280,8 @@ describe("역방향 — 영문 조각이 하나라도 없으면 그 줄은 통�
         });
       }
       if (hole.leg?.alight) {
-        expect(frameLine(true, { ...leg, mode: "bus" }, item.message, null)).toEqual({
-          parts: [{ key: "messageFrame", args: [`하차${S}`, `메시지${S}`] }],
+        expect(arrivalStatusLine(true, leg, item.message, "0", null, "riding")).toEqual({
+          parts: [{ key: "subwayArriving", args: [`하차${S}`] }],
           lang: "ko",
         });
       }
@@ -329,9 +334,9 @@ describe("등록부 완전성", () => {
         for (const p of c.run(isEn).parts) if ("key" in p) emitted.add(p.key);
       }
     }
-    // subway 프레임 4종은 코드별 분기라 위 케이스에서 일부만 나온다 — 직접 채운다.
+    // subway 문장 4종은 코드별 분기라 위 케이스에서 일부만 나온다 — 직접 채운다.
     for (const code of ["0", "1", "2", "4", "5"]) {
-      for (const p of frameLine(true, LEG, ITEM.message, code).parts) {
+      for (const p of arrivalStatusLine(true, LEG, ITEM.message, code, null, "riding").parts) {
         if ("key" in p) emitted.add(p.key);
       }
     }
@@ -381,7 +386,6 @@ function runFixtureCase(c: FixtureCase): TransitTextLine {
     case "waitContext": return waitContextLine(e, c.leg!, c.isCurrentLeg!);
     case "boardingContext": return boardingContextLine(e, c.leg!);
     case "context": return contextLine(e, c.leg!);
-    case "frame": return frameLine(e, c.leg!, c.message!, c.arrivalCode ?? null);
     case "approachFrame": return approachFrameLine(e, c.leg!, c.message!);
     case "arrivalStatus":
       return arrivalStatusLine(
@@ -394,6 +398,7 @@ function runFixtureCase(c: FixtureCase): TransitTextLine {
     case "arrivedAtBoardStop": return arrivedAtBoardStopLine(e, c.leg!);
     case "arrivingAtBoardStop": return arrivingAtBoardStopLine(e, c.leg!);
     case "boarded": return boardedLine(e);
+    case "boardedAlight": return boardedAlightLine(e, c.leg!);
     case "currentStation": return currentStationLine(e, c.location!);
     case "candidateDesc":
       return candidateDescLine(e, c.leg!, c.item!, {

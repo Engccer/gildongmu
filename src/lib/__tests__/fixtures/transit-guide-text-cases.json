@@ -322,8 +322,8 @@
       }
     },
     {
-      "name": "frame 지하철 코드 3",
-      "fn": "frame",
+      "name": "arrivalStatus 지하철 코드 3",
+      "fn": "arrivalStatus",
       "isEn": true,
       "leg": {
         "mode": "subway",
@@ -368,11 +368,13 @@
           }
         ],
         "lang": "en"
-      }
+      },
+      "remaining": null,
+      "phase": "riding"
     },
     {
-      "name": "frame 지하철 코드 99 → 생략",
-      "fn": "frame",
+      "name": "arrivalStatus 지하철 코드 99 → 생략",
+      "fn": "arrivalStatus",
       "isEn": true,
       "leg": {
         "mode": "subway",
@@ -410,11 +412,13 @@
       "expect": {
         "parts": [],
         "lang": "ko"
-      }
+      },
+      "remaining": null,
+      "phase": "riding"
     },
     {
-      "name": "frame 지하철 미지 코드 → 원문 병치",
-      "fn": "frame",
+      "name": "arrivalStatus 지하철 미지 코드 → 원문 병치",
+      "fn": "arrivalStatus",
       "isEn": true,
       "leg": {
         "mode": "subway",
@@ -456,106 +460,9 @@
           }
         ],
         "lang": "en"
-      }
-    },
-    {
-      "name": "frame 버스 라벨 프레임",
-      "fn": "frame",
-      "isEn": true,
-      "leg": {
-        "mode": "bus",
-        "line": {
-          "ko": "노선ᛥ",
-          "en": "Line 5"
-        },
-        "board": {
-          "ko": "승차ᛥ",
-          "en": "Cheonho"
-        },
-        "alight": {
-          "ko": "하차ᛥ",
-          "en": "Gwanghwamun"
-        },
-        "stops": [
-          {
-            "ko": "경유0ᛥ",
-            "en": "Stop0"
-          },
-          {
-            "ko": "경유1ᛥ",
-            "en": "Stop1"
-          }
-        ],
-        "stationCount": 8,
-        "walkBeforeMinutes": 3,
-        "boardOverridden": false
       },
-      "message": {
-        "ko": "메시지ᛥ",
-        "en": "In 3 min"
-      },
-      "arrivalCode": null,
-      "expect": {
-        "parts": [
-          {
-            "key": "messageFrame",
-            "args": [
-              "Gwanghwamun",
-              "In 3 min"
-            ]
-          }
-        ],
-        "lang": "en"
-      }
-    },
-    {
-      "name": "frame 버스 문장 결측 → ko",
-      "fn": "frame",
-      "isEn": true,
-      "leg": {
-        "mode": "bus",
-        "line": {
-          "ko": "노선ᛥ",
-          "en": "Line 5"
-        },
-        "board": {
-          "ko": "승차ᛥ",
-          "en": "Cheonho"
-        },
-        "alight": {
-          "ko": "하차ᛥ",
-          "en": "Gwanghwamun"
-        },
-        "stops": [
-          {
-            "ko": "경유0ᛥ",
-            "en": "Stop0"
-          },
-          {
-            "ko": "경유1ᛥ",
-            "en": "Stop1"
-          }
-        ],
-        "stationCount": 8,
-        "walkBeforeMinutes": 3,
-        "boardOverridden": false
-      },
-      "message": {
-        "ko": "메시지ᛥ"
-      },
-      "arrivalCode": null,
-      "expect": {
-        "parts": [
-          {
-            "key": "messageFrame",
-            "args": [
-              "하차ᛥ",
-              "메시지ᛥ"
-            ]
-          }
-        ],
-        "lang": "ko"
-      }
+      "remaining": null,
+      "phase": "riding"
     },
     {
       "name": "approachFrame en",
@@ -2800,6 +2707,309 @@
           {
             "key": "boarded",
             "args": []
+          }
+        ],
+        "lang": "ko"
+      }
+    },
+    {
+      "name": "arrivalStatus 버스 문장 결측 → ko(줄 원자성)",
+      "fn": "arrivalStatus",
+      "isEn": true,
+      "leg": {
+        "mode": "bus",
+        "line": {
+          "ko": "노선ᛥ",
+          "en": "Line 5"
+        },
+        "board": {
+          "ko": "승차ᛥ",
+          "en": "Cheonho"
+        },
+        "alight": {
+          "ko": "하차ᛥ",
+          "en": "Gwanghwamun"
+        },
+        "stops": [
+          {
+            "ko": "경유0ᛥ",
+            "en": "Stop0"
+          },
+          {
+            "ko": "경유1ᛥ",
+            "en": "Stop1"
+          }
+        ],
+        "stationCount": 8,
+        "walkBeforeMinutes": 3,
+        "boardOverridden": false
+      },
+      "message": {
+        "ko": "메시지ᛥ"
+      },
+      "arrivalCode": null,
+      "remaining": null,
+      "phase": "riding",
+      "expect": {
+        "parts": [
+          {
+            "text": "메시지ᛥ"
+          }
+        ],
+        "lang": "ko"
+      }
+    },
+    {
+      "name": "arrivalStatus 버스 초 단독 예정(분 없음)",
+      "fn": "arrivalStatus",
+      "isEn": false,
+      "leg": {
+        "mode": "bus",
+        "line": {
+          "ko": "노선ᛥ",
+          "en": "421"
+        },
+        "board": {
+          "ko": "승차ᛥ",
+          "en": "Galwol-dong"
+        },
+        "alight": {
+          "ko": "하차ᛥ",
+          "en": "Polytech"
+        },
+        "stops": [
+          {
+            "ko": "경유0ᛥ",
+            "en": "Stop0"
+          }
+        ],
+        "stationCount": 5,
+        "walkBeforeMinutes": 3,
+        "boardOverridden": false
+      },
+      "message": {
+        "ko": "45초후[1번째 전]"
+      },
+      "arrivalCode": null,
+      "remaining": null,
+      "phase": "riding",
+      "expect": {
+        "parts": [
+          {
+            "key": "busEtaSec",
+            "args": [
+              "45"
+            ]
+          }
+        ],
+        "lang": "ko"
+      }
+    },
+    {
+      "name": "arrivalStatus 버스 초가 범위 밖이면 문장을 만들지 않는다",
+      "fn": "arrivalStatus",
+      "isEn": false,
+      "leg": {
+        "mode": "bus",
+        "line": {
+          "ko": "노선ᛥ",
+          "en": "421"
+        },
+        "board": {
+          "ko": "승차ᛥ",
+          "en": "Galwol-dong"
+        },
+        "alight": {
+          "ko": "하차ᛥ",
+          "en": "Polytech"
+        },
+        "stops": [
+          {
+            "ko": "경유0ᛥ",
+            "en": "Stop0"
+          }
+        ],
+        "stationCount": 5,
+        "walkBeforeMinutes": 3,
+        "boardOverridden": false
+      },
+      "message": {
+        "ko": "90초후"
+      },
+      "arrivalCode": null,
+      "remaining": null,
+      "phase": "riding",
+      "expect": {
+        "parts": [
+          {
+            "text": "90초후"
+          }
+        ],
+        "lang": "ko"
+      }
+    },
+    {
+      "name": "boardingContext 버스는 수단별 키(E39)",
+      "fn": "boardingContext",
+      "isEn": false,
+      "leg": {
+        "mode": "bus",
+        "line": {
+          "ko": "노선ᛥ",
+          "en": "421"
+        },
+        "board": {
+          "ko": "승차ᛥ",
+          "en": "Galwol-dong"
+        },
+        "alight": {
+          "ko": "하차ᛥ",
+          "en": "Polytech"
+        },
+        "stops": [
+          {
+            "ko": "경유0ᛥ",
+            "en": "Stop0"
+          }
+        ],
+        "stationCount": 5,
+        "walkBeforeMinutes": 3,
+        "boardOverridden": false
+      },
+      "expect": {
+        "parts": [
+          {
+            "key": "boardingContextBus",
+            "args": [
+              "승차ᛥ",
+              "노선ᛥ"
+            ]
+          }
+        ],
+        "lang": "ko"
+      }
+    },
+    {
+      "name": "waitContext 버스 선행 도보 없음도 수단별 키",
+      "fn": "waitContext",
+      "isEn": false,
+      "leg": {
+        "mode": "bus",
+        "line": {
+          "ko": "노선ᛥ",
+          "en": "421"
+        },
+        "board": {
+          "ko": "승차ᛥ",
+          "en": "Galwol-dong"
+        },
+        "alight": {
+          "ko": "하차ᛥ",
+          "en": "Polytech"
+        },
+        "stops": [
+          {
+            "ko": "경유0ᛥ",
+            "en": "Stop0"
+          }
+        ],
+        "stationCount": 5,
+        "walkBeforeMinutes": null,
+        "boardOverridden": false
+      },
+      "isCurrentLeg": true,
+      "expect": {
+        "parts": [
+          {
+            "key": "waitContextBus",
+            "args": [
+              "승차ᛥ",
+              "노선ᛥ"
+            ]
+          }
+        ],
+        "lang": "ko"
+      }
+    },
+    {
+      "name": "arrivedAtBoardStop 버스는 수단별 키(E39)",
+      "fn": "arrivedAtBoardStop",
+      "isEn": false,
+      "leg": {
+        "mode": "bus",
+        "line": {
+          "ko": "노선ᛥ",
+          "en": "421"
+        },
+        "board": {
+          "ko": "승차ᛥ",
+          "en": "Galwol-dong"
+        },
+        "alight": {
+          "ko": "하차ᛥ",
+          "en": "Polytech"
+        },
+        "stops": [
+          {
+            "ko": "경유0ᛥ",
+            "en": "Stop0"
+          }
+        ],
+        "stationCount": 5,
+        "walkBeforeMinutes": 3,
+        "boardOverridden": false
+      },
+      "expect": {
+        "parts": [
+          {
+            "key": "arrivedAtBoardStopBus",
+            "args": [
+              "노선ᛥ"
+            ]
+          }
+        ],
+        "lang": "ko"
+      }
+    },
+    {
+      "name": "boardedAlight 자동 승격 전용 하차역 조각(E41)",
+      "fn": "boardedAlight",
+      "isEn": false,
+      "leg": {
+        "mode": "subway",
+        "line": {
+          "ko": "노선ᛥ",
+          "en": "Line 5"
+        },
+        "board": {
+          "ko": "승차ᛥ",
+          "en": "Cheonho"
+        },
+        "alight": {
+          "ko": "하차ᛥ",
+          "en": "Gwanghwamun"
+        },
+        "stops": [
+          {
+            "ko": "경유0ᛥ",
+            "en": "Stop0"
+          },
+          {
+            "ko": "경유1ᛥ",
+            "en": "Stop1"
+          }
+        ],
+        "stationCount": 8,
+        "walkBeforeMinutes": 3,
+        "boardOverridden": false
+      },
+      "expect": {
+        "parts": [
+          {
+            "key": "boardedAlight",
+            "args": [
+              "하차ᛥ"
+            ]
           }
         ],
         "lang": "ko"

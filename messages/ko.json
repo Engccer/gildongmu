@@ -993,8 +993,8 @@
     "waitContextWalk": "도보 {minutes}분 이동 후 {stop}에서 {line} 탑승.",
     "waitContext": "{stop}에서 {line} 탑승.",
     "boarded": "탑승했습니다.",
+    "boardedAlight": "하차: {stop}.",
     "context": "{line} 탑승 중, {stop}에서 하차합니다.",
-    "messageFrame": "{stop}까지 {message}.",
     "subwayNextStop": "다음 역 {stop}.",
     "subwayArriving": "{stop} 진입 중.",
     "subwayAtStop": "{stop} 도착.",
@@ -1118,12 +1118,11 @@
     "stopsAwayOnly": "{count}정거장 전.",
     "busEtaMinSec": "{minutes}분 {seconds}초 후 도착.",
     "busEtaMin": "약 {minutes}분 후 도착.",
-    "busEtaSec": "약 {seconds}초 후 도착.",
+    "busEtaSec": "{seconds}초 후 도착.",
     "busSoon": "곧 도착.",
     "busNotDeparted": "아직 차고지에서 출발하지 않음.",
     "busTurning": "종점에서 회차 대기 중.",
     "noArrivalInfo": "도착 정보 없음.",
-    "legAdvancedNext": "다음 구간입니다.",
     "startedAt": "{dest}까지 대중교통 안내를 시작합니다. 탑승 구간 {count}개."
   },
   "manualLocation": {

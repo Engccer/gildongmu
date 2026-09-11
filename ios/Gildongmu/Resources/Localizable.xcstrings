@@ -42436,7 +42436,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "降りたら「次の区間」を押してください。"
+            "value": "降りていれば「次の区間」を押してください。"
           }
         }
       }
@@ -42452,31 +42452,31 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Once you are off, press Start remaining walk guidance. %1$@ min walk to your destination."
+            "value": "If you got off, press Start remaining walk guidance. %1$@ min walk to your destination."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cuando haya bajado, pulse Iniciar guía a pie restante. %1$@ min a pie hasta su destino."
+            "value": "Si ha bajado, pulse Iniciar guía a pie restante. %1$@ min a pie hasta su destino."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Une fois descendu, appuyez sur Démarrer le guidage à pied restant. %1$@ min à pied jusqu'à destination."
+            "value": "Si vous êtes descendu, appuyez sur Démarrer le guidage à pied restant. %1$@ min à pied jusqu'à destination."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Una volta sceso, premi Avvia guida a piedi restante. %1$@ min a piedi fino a destinazione."
+            "value": "Se sei sceso, premi Avvia guida a piedi restante. %1$@ min a piedi fino a destinazione."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "降りたら「残りの徒歩案内を開始」を押してください。目的地まで徒歩%1$@分。"
+            "value": "降りていれば「残りの徒歩案内を開始」を押してください。目的地まで徒歩%1$@分。"
           }
         }
       }
@@ -42841,6 +42841,46 @@
         }
       }
     },
+    "transitGuide.boardedAlight": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "하차: %1$@."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Get off at %1$@."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Baja en %1$@."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descendez à %1$@."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scendi a %1$@."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "降車: %1$@。"
+          }
+        }
+      }
+    },
     "transitGuide.boardingContext": {
       "localizations": {
         "ko": {
@@ -43126,37 +43166,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "약 %1$@초 후 도착."
+            "value": "%1$@초 후 도착."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Arriving in about %1$@ sec."
+            "value": "Arriving in %1$@ sec."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Llega en unos %1$@ s."
+            "value": "Llega en %1$@ s."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Arrivée dans environ %1$@ s."
+            "value": "Arrivée dans %1$@ s."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Arriva tra circa %1$@ s."
+            "value": "Arriva tra %1$@ s."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "約%1$@秒後に到着。"
+            "value": "%1$@秒後に到着。"
           }
         }
       }
@@ -44197,86 +44237,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "%1$@ 時点。"
-          }
-        }
-      }
-    },
-    "transitGuide.legAdvancedNext": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "다음 구간입니다."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Next segment."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Siguiente tramo."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Segment suivant."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tratta successiva."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "次の区間です。"
-          }
-        }
-      }
-    },
-    "transitGuide.messageFrame": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$@까지 %2$@."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "To %1$@: %2$@."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Hasta %1$@: %2$@."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Vers %1$@ : %2$@."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Verso %1$@: %2$@."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$@まで、%2$@。"
           }
         }
       }
@@ -46356,7 +46316,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@駅前"
+            "value": "%1$@停留所前"
           }
         }
       }
@@ -46396,7 +46356,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@駅前。"
+            "value": "%1$@停留所前。"
           }
         }
       }

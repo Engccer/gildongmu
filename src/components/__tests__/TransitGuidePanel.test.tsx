@@ -224,6 +224,39 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
     await screen.findByRole("button", { name: /selectTrain/ });
   });
 
+  it("시작 통지가 목적지를 말한다(E40) — 목적지가 없으면 그 자리 없이", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        json: async () => ({ mode: "subway", status: "ok", items: [trackItem({})] }),
+      })) as unknown as typeof fetch,
+    );
+    const { unmount } = render(
+      <TransitGuidePanel
+        route={ROUTE}
+        triggerLabel="시작"
+        walkAccessible={false}
+        dest={{ lat: 37.5, lng: 127.0, name: "한국폴리텍대" }}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "시작" }));
+    // 시트 진입 착지가 상태 문장이라(E38) 목적지를 만날 채널은 이 통지뿐이다.
+    await waitFor(() =>
+      expect(screen.getAllByRole("status")[0].textContent).toContain(
+        "transitGuide.startedAt:한국폴리텍대,1",
+      ),
+    );
+    unmount();
+
+    render(<TransitGuidePanel route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
+    fireEvent.click(screen.getByRole("button", { name: "시작" }));
+    await waitFor(() =>
+      expect(screen.getAllByRole("status")[0].textContent).toContain("transitGuide.started:1"),
+    );
+    expect(screen.getAllByRole("status")[0].textContent).not.toContain("startedAt");
+  });
+
   it("탑승 변경은 지금 있는 역을 묻고, 고른 역이 조회 기준이 된다(A16 L3)", async () => {
     const calls: string[] = [];
     vi.stubGlobal(
@@ -973,6 +1006,12 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
     expect(status.textContent).toContain("transitGuide.arrivedWalkNext:5");
     expect(status.textContent).not.toContain("doneWalk");
     expect(screen.getByText(/transitGuide\.stateArrived/)).toBeTruthy();
+    // E39: 도착한 뒤의 접근 정보는 낡은 값이라 상태 문장이 전부 버린다 — 잔여·도착 서술·갱신 시각 0.
+    const statusLine = screen.getByText(/transitGuide\.stateArrived/).textContent ?? "";
+    expect(statusLine).not.toContain("remainingCount");
+    expect(statusLine).not.toContain("lastUpdated");
+    expect(statusLine).not.toContain("dataAge");
+    expect(statusLine).not.toContain("subway");
     // 한 번 누르면 세션 종료 + 도보 세션 자동 시작(트리거가 "중지"로) — 완료 문장은 내지 않는다(리뷰 M3).
     fireEvent.click(handoff);
     const stopButton = await screen.findByRole("button", { name: "beacon.stop" });

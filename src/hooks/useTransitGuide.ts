@@ -40,6 +40,7 @@ import {
   arrivalStatusLine,
   arrivedAtBoardStopLine,
   arrivingAtBoardStopLine,
+  boardedAlightLine,
   boardedLine,
   boardingContextLine,
   contextLine,
@@ -524,8 +525,13 @@ export function useTransitGuide(
         // 0이고(목록 자리가 0건 사유를 3-state로 말한다), 추적 중은 도착 조각이 그 사실을 이미
         // 말한다. 추적 중인데 도착 조각이 비면 그것이 정보다 — "차량이 없다"가 아니라 "언제
         // 오는지 못 받았다"(3-state의 unknown).
+        // ⚠ `noArrivalInfo`는 **관측된 도달 사례가 없는 방어선**이다(리뷰 검출력 실측 2026-09-12):
+        // 서울버스 `arrmsg`·지하철 `arvlMsg2`는 매칭된 관측이면 언제나 있고, 완성 문장이 없는
+        // 지방버스는 근사 잠금이라 riding에서 `stationCountAbout`이 따로 선다. 그래도 두는 이유는
+        // 생략 분기가 있는 한 줄이 문맥 문장에서 끝나는 경로가 열려 있고, 그때 "조회가 멈췄나"로
+        // 읽히기 때문이다. 실제 도달 여부는 실승차가 답한다(BACKLOG §2 E39 행 ④).
         ui(
-          arrived || !(s.phase === "waiting" && s.signal === "notYetVisible")
+          !(s.phase === "waiting" && s.signal === "notYetVisible")
             ? s.signal === "tracking" && live
               ? arrival.text
                 ? ""
@@ -646,11 +652,15 @@ export function useTransitGuide(
         case "boarded": {
           if (!leg) break;
           const d = displayLegOf(leg, null);
-          // E41: 노선·하차역·정거장 수는 착지가 앉는 상태 문장이 그대로 말한다 — 통지는 한 문장.
-          // 관측 승격은 "도착했으니 타세요"가 그 순간의 유일한 지시라 그것만 내고(departed는 차량이
-          // 이미 떠났으므로 내지 않는다, A41), 그 밖은 탑승 사실만.
+          // E41: 정거장 수는 착지가 앉는 상태 문장이 매 폴 말하므로 뺀다. 하차역은 **자동 승격에만**
+          // 남긴다 — `boarding → riding`은 착지 대상이 아니라(N3 ①) 상태 문장이 다시 낭독되지 않아
+          // 통지가 그 순간의 유일한 채널이다(a11y 감사 2026-09-12). 사용자가 선언한 승차는 상태
+          // 문장에 착지하므로 "탑승했습니다" 한 문장이면 된다.
+          // 관측 승격은 "도착했으니 타세요"가 그 순간의 지시라 그것을 앞세우고(departed는 차량이
+          // 이미 떠났으므로 내지 않는다, A41), departed는 탑승 사실을 말한다.
           if (event.cause === "observed") pushPiece(piece(arrivedAtBoardStopLine(isEn, d)));
           else pushPiece(piece(boardedLine(isEn)));
+          if (event.cause !== "declared") pushPiece(piece(boardedAlightLine(isEn, d)));
           // "이미 탑승" 식별 잠금(A34 ②)은 vehicleSelected를 내지 않으므로 어느 열차를 잠갔는지 여기서 말한다.
           if (aboardBoardRef.current && selectedDescriptionRef.current) {
             pushPiece(piece(selectedVehicleLine(isEn, selectedDescriptionRef.current)));
@@ -752,11 +762,14 @@ export function useTransitGuide(
                 : t("done"),
             );
           } else {
-            // E41: 다음 구간 문맥은 착지가 앉는 상태 문장이 그것으로 바뀌어 말한다 — 통지는 전이
-            // 사실만. 미추적 고지는 상태 문장에 없는 정보라 남긴다.
-            parts.push(t("legAdvancedNext"));
-            if (r?.legs[event.legIndex] && !r.legs[event.legIndex].trackMode) {
-              parts.push(t("untrackable"));
+            // ⚠ **다음 구간 문맥은 통지가 말한다**(E41 a11y 감사로 철회한 축소): 이 전이의 착지
+            // 대상은 상태 문장이 아니라 차량 선택 목록 라벨(E38 예외)이라, 문맥을 빼면 새 구간의
+            // 승차 정류소·노선·선행 도보가 어느 채널에도 남지 않는다. 추적 불가 구간을 수동으로
+            // 넘길 때는 앞선 도착 통지조차 없어 완전 공백이 된다.
+            const nextLeg = r?.legs[event.legIndex];
+            if (nextLeg) {
+              pushPiece(waitContextPiece(nextLeg, false));
+              if (!nextLeg.trackMode) parts.push(t("untrackable"));
             }
           }
           break;
@@ -1072,7 +1085,10 @@ export function useTransitGuide(
       ];
       if (!first.trackMode) parts.push(t("untrackable"));
       if (prefix) parts.unshift(prefix);
-      announce(parts.filter(Boolean).join(" "), context.ko ? "ko" : undefined);
+      // ⚠ 목적지 라벨도 `lang` 판정 축이다(E27 §3.8) — 영어 세션에 한국어 목적지명이 실리면
+      // 태그가 없을 때 영어 엔진이 **그 이름만 침묵**한다(a11y 감사 2026-09-12).
+      const destKo = destinationLabel != null && /[가-힣]/.test(destinationLabel);
+      announce(parts.filter(Boolean).join(" "), context.ko || destKo ? "ko" : undefined);
       void pollOnce();
     },
     [announce, commit, destinationLabel, pollOnce, stopSession, t, waitContextPiece],

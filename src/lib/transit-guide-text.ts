@@ -13,6 +13,7 @@
  * 어순이 다른 로케일은 변환 스크립트가 인덱스를 재배치하므로 호출부는 이 순서 하나만 지킨다.
  */
 import { parseBusArrmsg } from "./bus-arrival-en";
+import { ARRMSG_REMAINING_TAIL } from "./providers/seoul-bus";
 import type { TransitDisplayItem, TransitDisplayLeg, TransitLabel } from "./transit-display";
 import { subwayRidingMessage, type ExpressVerdict } from "./transit-guide";
 
@@ -108,31 +109,6 @@ export function contextLine(isEn: boolean, leg: TransitDisplayLeg): TransitTextL
 
 // === 완성 문장 프레임 ===
 
-/**
- * 승차 국면 상태 문장(§12.3). 버스는 완성 문장의 라벨 프레임("{stop}까지 {message}", 원문 무변형).
- * 지하철은 `arvlMsg2`가 조회역(=하차역) 기준 열차 위치 서술이라 그 틀에 넣으면 뜻이 뒤집힌다
- * ("충정로까지 전역 도착", A27) — `arrivalCode`로 탑승자 시점 문장을 고르고, 99는 생략(잔여 수가
- * 말한다), 미지 코드는 원문을 틀 없이 그대로.
- *
- * ⚠ `arrivalCode` 인자에 기본값 없음(A27 계약 그대로).
- */
-export function frameLine(
-  isEn: boolean,
-  leg: TransitDisplayLeg,
-  message: TransitLabel,
-  arrivalCode: string | null,
-): TransitTextLine {
-  if (leg.mode === "subway") {
-    const r = subwayRidingKey(arrivalCode);
-    if (r === "omit") return OMIT;
-    if (r) return line(isEn, r, [leg.alight], (v) => v);
-    // 미지 코드 — 완성 문장 원문 병치(틀 없이).
-    const { values, lang } = pickLabels(isEn, [message]);
-    return values[0] ? { parts: [{ text: values[0] }], lang } : OMIT;
-  }
-  return line(isEn, "messageFrame", [leg.alight, message], (v) => v);
-}
-
 /** boarding 완성 문장 프레임 — 승차 정류소 라벨 전치("{stop}에 {message}"). */
 export function approachFrameLine(
   isEn: boolean,
@@ -154,7 +130,8 @@ export type TransitStatusPhase = "boarding" | "riding";
  *
  * 버스는 완성 문장을 원문 그대로 읽지 않고 `parseBusArrmsg` 구조로 우리 문장을 고른다(E39 위원장
  * 확정): 대괄호 꼬리가 낭독에서 난반하고, 잔여 수는 구조 필드로 이미 온다. 미지 모양은 원문 병치로
- * 떨어져 **실패 방향이 종전과 같다**. 지하철은 A27 계약(`frameLine`)을 그대로 쓴다.
+ * 떨어져 **실패 방향이 종전과 같다**. 지하철은 A27 계약(`subwayRidingMessage` 판정)을 그대로 쓴다 — 종전 `frameLine`의 지하철 분기가
+ * 이 함수로 **이관**됐고 버스 분기(`messageFrame` 틀)는 폐지됐다(E39).
  */
 export function arrivalStatusLine(
   isEn: boolean,
@@ -200,6 +177,10 @@ function busArrivalPart(isEn: boolean, message: TransitLabel): ArrivalPart | nul
   const ui = (key: string, args: string[] = []): ArrivalPart => ({
     line: { parts: [{ key, args }], lang: isEn ? "en" : "ko" },
   });
+  // 미지·범위 밖은 원문 병치. ⚠ **ko 원문의 잔여 꼬리는 뗀다** — 잔여 조각(`stopsAway`)이 같은 수를
+  // 이미 말하므로 그대로 실으면 "2정거장 전, 3분후[2번째 전]"이 된다(a11y 감사 2026-09-12).
+  const raw = () =>
+    rawArrivalPart(isEn, { ...message, ko: message.ko.replace(ARRMSG_REMAINING_TAIL, "").trim() });
   switch (parsed.kind) {
     case "soon":
       return ui("busSoon");
@@ -208,8 +189,13 @@ function busArrivalPart(isEn: boolean, message: TransitLabel): ArrivalPart | nul
     case "turning":
       return ui("busTurning");
     case "eta": {
-      const min = parsed.minutes != null && parsed.minutes > 0 ? parsed.minutes : null;
-      const sec = parsed.seconds != null && parsed.seconds > 0 ? parsed.seconds : null;
+      // 범위 검증은 en 투영(`busArrivalMessageEn`)과 **같은 판정**이다 — 갈리면 한 원문에서
+      // ko는 "약 90초 후 도착"을 지어내고 en은 부재로 떨어진다.
+      const { minutes, seconds } = parsed;
+      if (minutes != null && (!Number.isInteger(minutes) || minutes < 0)) return raw();
+      if (seconds != null && (!Number.isInteger(seconds) || seconds < 0 || seconds > 59)) return raw();
+      const min = minutes != null && minutes > 0 ? minutes : null;
+      const sec = seconds != null && seconds > 0 ? seconds : null;
       if (min != null && sec != null) return ui("busEtaMinSec", [String(min), String(sec)]);
       if (min != null) return ui("busEtaMin", [String(min)]);
       if (sec != null) return ui("busEtaSec", [String(sec)]);
@@ -217,7 +203,7 @@ function busArrivalPart(isEn: boolean, message: TransitLabel): ArrivalPart | nul
       return null;
     }
     default:
-      return rawArrivalPart(isEn, message);
+      return raw();
   }
 }
 
@@ -233,6 +219,7 @@ function subwayArrivalPart(
   const r = subwayRidingKey(arrivalCode);
   if (r === "omit") return null;
   if (r) return { line: line(isEn, r, [leg.alight], (v) => v) };
+  // 미지 코드 — 완성 문장 원문 병치(틀 없이).
   return rawArrivalPart(isEn, message);
 }
 
@@ -294,6 +281,18 @@ export function arrivingAtBoardStopLine(isEn: boolean, leg: TransitDisplayLeg): 
  */
 export function boardedLine(isEn: boolean): TransitTextLine {
   return { parts: [{ key: "boarded", args: [] }], lang: isEn ? "en" : "ko" };
+}
+
+/**
+ * 하차역 조각(E41 a11y 감사 반영) — **자동 승격에만 붙는다.**
+ *
+ * `boarding → riding` 승격은 착지 대상이 아니라(N3 ① — 커서가 이미 상태 문장에 있고 그 줄은
+ * 사라지지 않는다) VoiceOver가 그 줄을 다시 읽지 않는다. 그래서 이 전이에서는 통지가 하차역의
+ * **유일한 채널**이고, 다음 폴의 `trackingStarted`까지 최소 한 주기를 기다려야 한다.
+ * 사용자가 버튼으로 선언한 승차(`declared`)는 상태 문장에 착지하므로 이 조각을 붙이지 않는다.
+ */
+export function boardedAlightLine(isEn: boolean, leg: TransitDisplayLeg): TransitTextLine {
+  return line(isEn, "boardedAlight", [leg.alight], (v) => v);
 }
 
 export function currentStationLine(isEn: boolean, location: TransitLabel): TransitTextLine {
@@ -460,7 +459,6 @@ export const TRANSIT_TEXT_KEYS = [
   "boardingContextBus",
   "context",
   "contextBus",
-  "messageFrame",
   "remainingCount",
   "remainingCountJoin",
   "stopsAway",
@@ -484,6 +482,7 @@ export const TRANSIT_TEXT_KEYS = [
   "arrivingAtBoardStop",
   "arrivingAtBoardStopBus",
   "boarded",
+  "boardedAlight",
   "currentStation",
   "bound",
   "expressCheck",

@@ -1012,6 +1012,8 @@ final class TransitGuideModel {
         // 0이고(목록 자리가 0건 사유를 3-state로 말한다), 추적 중은 도착 조각이 그 사실을 이미
         // 말한다. 추적 중인데 도착 조각이 비면 그것이 정보다 — "차량이 없다"가 아니라 "언제
         // 오는지 못 받았다"(3-state의 unknown).
+        // ⚠ `noArrivalInfo`는 **관측된 도달 사례가 없는 방어선**이다(웹 미러 주석 참조) — 실제
+        // 도달 여부는 실승차가 답한다(BACKLOG §2 E39 행 ④).
         if state.phase == .waiting, state.signal == .notYetVisible {
             // 없음
         } else if state.signal == .tracking, live {
@@ -1494,15 +1496,21 @@ final class TransitGuideModel {
         case let .boarded(_, cause):
             if let leg {
                 let d = displayLeg(leg, useOverride: false)
-                // E41: 노선·하차역·정거장 수는 착지가 앉는 상태 문장이 그대로 말한다 — 통지는 한 문장.
-                // 관측 승격은 "도착했으니 타세요"가 그 순간의 유일한 지시라 그것만 내고(departed는
-                // 차량이 이미 떠났으므로 내지 않는다, A41), 그 밖은 탑승 사실만.
+                // E41: 정거장 수는 착지가 앉는 상태 문장이 매 폴 말하므로 뺀다. 하차역은 **자동
+                // 승격에만** 남긴다 — `boarding → riding`은 착지 대상이 아니라(N3 ①) 상태 문장이
+                // 다시 낭독되지 않아 통지가 그 순간의 유일한 채널이다(a11y 감사 2026-09-12).
+                // 관측 승격은 "도착했으니 타세요"가 그 순간의 지시라 그것을 앞세우고(departed는
+                // 차량이 이미 떠났으므로 내지 않는다, A41), departed는 탑승 사실을 말한다.
                 if cause == .observed {
                     parts.append(TransitGuideTextRenderer.render(
                         transitArrivedAtBoardStopLine(isEn: transitGuideIsEn, leg: d)))
                 } else {
                     parts.append(TransitGuideTextRenderer.render(
                         transitBoardedLine(isEn: transitGuideIsEn)))
+                }
+                if cause != .declared {
+                    parts.append(TransitGuideTextRenderer.render(
+                        transitBoardedAlightLine(isEn: transitGuideIsEn, leg: d)))
                 }
                 // "이미 탑승" 식별 잠금(A34 ②)은 vehicleSelected를 내지 않으므로 어느 열차를 잠갔는지 여기서 말한다.
                 if aboardBoardInStep, let desc = selectedDescription {
@@ -1598,17 +1606,17 @@ final class TransitGuideModel {
                 // 발화는 advance()가 stop() 뒤에 한다(B1) — 여기서 내면 세대 증가에 취소된다.
                 break
             } else if let route, route.legs.indices.contains(legIndex) {
-                // E41: 다음 구간 문맥은 착지가 앉는 상태 문장이 그것으로 바뀌어 말한다 — 통지는 전이
-                // 사실만. 미추적 고지는 상태 문장에 없는 정보라 남긴다.
-                parts.append(appLocalized("transitGuide.legAdvancedNext"))
-                if route.legs[legIndex].trackMode == nil {
-                    parts.append(appLocalized("transitGuide.untrackable"))
-                }
+                // ⚠ **다음 구간 문맥은 통지가 말한다**(E41 a11y 감사로 철회한 축소): 이 전이의 착지
+                // 대상은 상태 문장이 아니라 차량 선택 목록 라벨(E38 예외)이라, 문맥을 빼면 새 구간의
+                // 승차 정류소·노선·선행 도보가 어느 채널에도 남지 않는다.
+                let next = route.legs[legIndex]
+                parts.append(waitContextText(next, isCurrentLeg: false))
+                if next.trackMode == nil { parts.append(appLocalized("transitGuide.untrackable")) }
             }
         case .boardingReset:
             parts.append(appLocalized("transitGuide.changeBoardingDone"))
         }
-        return parts.joined(separator: " ")
+        return parts.filter { !$0.isEmpty }.joined(separator: " ")
     }
 
     /// 완료 문장(마지막 구간 `advance`) — 말미 도보가 있으면 그 분을, 없으면 "도착했습니다".

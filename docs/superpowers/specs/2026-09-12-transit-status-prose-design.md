@@ -40,7 +40,7 @@
 ⚠ 노선 라벨 자체(`TransitDisplayLeg.line`)는 **건드리지 않는다**. 투영도 텍스트 계층도 i18n 카탈로그를 모르므로 `421번 버스`를 라벨로 합성할 자리가 없고, 합성하면 조인 키(`transitStopPlace`·띠바)까지 오염된다.
 
 ### 2.2 잔여와 도착을 한 줄 두 조각으로
-`TransitTextLine.parts`는 렌더 시 **쉼표로** 이어진다(웹 `joinText` ↔ Kit `TransitGuideTextRenderer.render`). 잔여 조각과 도착 문장을 한 줄에 담아 `남은 정거장 3개, 다음 역 서대문.` 한 문장을 만든다. 결합용 잔여 키(`remainingCountJoin`·`busStopsAway`)는 **마침표가 없고**, 단독으로 설 때는 종전 `remainingCount`(마침표 있음)를 쓴다.
+`TransitTextLine.parts`는 렌더 시 **쉼표로** 이어진다(웹 `joinText` ↔ Kit `TransitGuideTextRenderer.render`). 잔여 조각과 도착 문장을 한 줄에 담아 `남은 정거장 3개, 다음 역 서대문.` 한 문장을 만든다. 결합용 잔여 키(`remainingCountJoin`·`stopsAway`)는 **마침표가 없고**, 단독으로 설 때는 마침표 있는 키(`remainingCount`·`stopsAwayOnly`)를 쓴다.
 이 규칙은 지하철에도 그대로 걸린다 — 지하철 승차 중 문장의 A27 키(`subwayNextStop` 등)가 둘째 조각이 된다.
 
 ### 2.3 서울버스 도착 문장
@@ -50,11 +50,13 @@
 |---|---|---|
 | `eta` 분+초 | `busEtaMinSec` | 초가 있으면 정확값 |
 | `eta` 분만 | `busEtaMin` | 초가 없으면 "약" |
-| `eta` 초만 | `busEtaSec` | 실측 0건, en 계약과 대칭 유지 |
+| `eta` 초만 | `busEtaSec` | 실측 0건, en 계약과 대칭 유지. 초가 있으므로 "약"을 붙이지 않는다 |
 | `soon` | `busSoon` | A41 `arrivingAtBoardStop` 통지와 같은 어휘 |
 | `waiting` | `busNotDeparted` | 실측 미확인(§1.3) |
 | `turning` | `busTurning` | 신규 종류 |
-| `ended`·`unknown` | 없음 | 원문 병치(폴백) |
+| `ended`·`unknown`·범위 밖 | 없음 | 원문 병치(폴백). ⚠ ko 원문의 잔여 꼬리는 뗀다 — 잔여 조각이 같은 수를 이미 말한다 |
+
+범위 검증(분 정수 ≥ 0, 초 0~59)은 **en 투영과 같은 판정**이다. 갈리면 한 원문에서 ko는 "약 90초 후 도착"을 지어내고 en은 부재로 떨어진다.
 
 ⚠ **`phase` 인자에 기본값을 두지 않는다.** 같은 원문이 대기(버스가 여기 오기까지)와 승차(내릴 곳까지)에서 뜻이 다르다(`slotToItem`·`busArrivalMessageEn` 선례).
 
@@ -82,8 +84,12 @@
 | 이벤트 | 남기는 것 | 빼는 것(상태 문장이 말함) |
 |---|---|---|
 | `arrived` | 다음 행동 지시(+확정 도착의 출구 방면, +다음 구간 문맥) | "하차 지점에 도착했습니다" 선두 문장 |
-| `boarded` | cause `observed`는 `arrivedAtBoardStop*`만, 그 밖은 `boarded`("탑승했습니다") | 노선·하차역·정거장 수 → `boardedCount` 키 폐지 |
-| `legAdvanced`(비-final) | `legAdvancedNext` + 미추적 고지 | 다음 구간 문맥(착지한 상태 문장이 그것으로 바뀐다) |
+| `boarded` | `observed`는 `arrivedAtBoardStop*`, `departed`는 `boarded`("탑승했습니다"), **둘 다 `boardedAlight`("하차: {역}.")를 잇는다**. `declared`는 `boarded` 하나 | 정거장 수 → `boardedCount` 키 폐지 |
+| `legAdvanced`(비-final) | **다음 구간 문맥 + 미추적 고지**(축소 철회) | 없음 |
+
+⚠ **축소의 전제는 "그 전이가 상태 문장에 착지한다"이고, 두 전이는 그렇지 않다**(a11y 감사 2026-09-12, 착지 표 `TransitTrackingSheet.phaseTransitionLanding`로 확인):
+- `legAdvanced`는 차량 선택 목록 라벨(`waitingLabel`)에 착지한다(E38 예외). 문맥을 빼면 새 구간의 승차 정류소·노선·선행 도보가 어느 채널에도 남지 않고, 추적 불가 구간을 수동으로 넘길 때는 앞선 도착 통지조차 없어 완전 공백이 된다. → **축소 철회**, `legAdvancedNext` 키 폐기.
+- `boarding → riding` 자동 승격은 **착지 대상이 아니다**(N3 ① — 커서가 이미 그 줄에 있고 줄은 사라지지 않으므로 VoiceOver가 다시 읽지 않는다). 그래서 하차역은 통지가 유일한 채널이고 다음 폴의 `trackingStarted`까지 최소 한 주기가 빈다. → `boardedAlight` 조각을 자동 승격(`observed`·`departed`)에만 잇는다.
 
 ⚠ **`arrived`의 다음 구간 조각(`nextLeg`)은 남긴다.** 도착 국면 상태 문장은 *현재* 구간을 말하므로 다음 구간은 중복이 아니다. 위원장이 본 선택지 미리보기에는 그 조각이 없었으나, 판정의 규칙("상태 문장에 없는 것만")이 남기라고 말한다 — 보고에 명시한다.
 ⚠ **A41 인계 기각**: `boarded(cause: .departed)`에 관측 서술("{노선} 출발")을 넣는 안은 채택하지 않는다. E41 판정으로 통지는 "무슨 일이 일어났나"만 말하는데, 사용자에게 일어난 일은 탑승이지 버스의 출발이 아니다.
@@ -102,3 +108,12 @@
 - **초 표기**: 원문에 초가 있으면 정확값, 없으면 "약"(§2.3). 국면으로 가르지 않는다.
 - **서버 재작성 제거**(§1.4): `rewriteBusArrivalMessage`와 그 전용 테스트를 지운다. `slotToItem`의 `phase` 인자는 영문 투영이 계속 쓰므로 남는다.
 - **`운행종료` 문장 미작성**(§1.2): 도달 불가. 만들면 검증할 수 없는 문장이 늘고 실제로는 미지 폴백이 동작한다.
+
+## 7. 리뷰 반영 (2026-09-12, spec-compliance·code-quality·a11y 3종)
+
+- **`frameLine`/`transitFrameLine`/`messageFrame` 폐지**(세 리뷰 중 둘이 독립 검출): 지하철 승차 중 판정을 `subwayArrivalPart`가 **복제**하면서 원래 함수의 프로덕션 호출자가 0이 됐고, fixture가 죽은 쪽만 초록으로 증명하고 있었다 — `TransitGuideText.swift`가 주석으로 금지한 바로 그 드리프트 경로다. 복제가 아니라 **이관**으로 고쳤다(버스 분기 `messageFrame` 틀은 E39로 쓸모가 사라져 함께 폐지, fixture 지하철 3케이스는 `arrivalStatus`로 전환).
+- **웹 도보·자동차 시작 통지가 원시 `dest`를 읽어 직전 목적지를 부를 수 있었다** — `destRef.current`로 고쳤다(같은 파일의 다른 4자리와 같은 규율). 하필 E40이 만든 유일한 목적지 채널이었다.
+- **추정 도착의 유보 표현이 5개 로케일에서 소실**: `stateArrived`가 확정형 정본이라(A37 ②) 구분을 나르던 유일한 채널이 통지 선두 문장이었는데 그것을 지웠다. ja는 `arrived`와 `arrivedGuess`가 바이트 동일이 됐었다. 다섯 로케일의 유보 어미를 복원했다(ko는 "내리신 뒤"/"내리셨으면"으로 이미 갈려 있었다).
+- **웹 시작 통지의 목적지 라벨이 `lang` 판정 축에서 빠져 있었다**(E27 §3.8) — 영어 세션에 한국어 목적지명이 실리면 그 이름만 침묵한다.
+- **검출력 실측**(변이 주입 27건): `startedAt`·arrived 신선도 생략·`busEtaSec`·수단별 키 단독 무력화가 전부 초록이었다. fixture 6케이스와 패널 테스트 2건을 더해 잠갔다. ⚠ `noArrivalInfo`만은 **관측된 도달 사례가 없어** 자동 검출을 세우지 못했다(도달 조건을 코드 주석과 BACKLOG §2 E39 행 ④에 적었다).
+- **기각**: 라틴 4로케일에서 쉼표로 이은 뒷조각이 대문자로 시작한다(`… , Arriving in about 4 min.`). 낭독에 영향이 없고, 고치려면 결합용·단독용 문장을 로케일마다 두 벌로 만들어야 해 비용이 이득을 넘는다. 표시 흠으로 수용한다.
