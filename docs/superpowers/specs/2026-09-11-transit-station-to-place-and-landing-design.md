@@ -64,7 +64,7 @@
 세 기제에 하나씩 대응한다.
 
 **① 컬링 → 가시화 전수 + 실현 관측.**
-- `scrollTo`의 `default: break`를 없애고 **모든 `SheetControl`에 `.id`를 주어 전수 `scrollTo`**한다(Swift exhaustive switch가 새 대상의 누락을 컴파일 오류로 만든다).
+- `scrollTo`의 `default: break`를 없애고 **모든 `SheetControl`에 `.id`를 주어 전수 `scrollTo`**한다 — id는 case 이름 보간(`"transit-control-\(control)"`)이라 새 대상의 누락 자체가 성립하지 않는다(초안의 "exhaustive switch"보다 강하다, 구현 리뷰 spec m2).
 - 착지 대상 뷰는 전부 한 헬퍼 `landingTarget(_:_:)`로 감싼다: `.accessibilityFocused($focusedControl, equals:)` + `.id(controlId)` + `.onAppear { rendered.insert }` / `.onDisappear { rendered.remove }`. `rendered: Set<SheetControl>`이 **"그 대상이 지금 List에 실현되어 있는가"**의 관측값이다(List는 lazy라 onAppear = 실현·AX 트리 진입, onDisappear = 회수·컬링). ⚠ `.accessibilityFocused($focusedControl` 원시 호출은 헬퍼 안 1곳만 — 소스 가드(§6).
 - 대입 전 고정 400ms 대신 **`rendered.contains(target)`을 50ms 간격으로 최대 500ms 기다린다**(실현되면 즉시 진행). 실현되지 않으면 그 시도의 사유는 `notRendered`. ⚠ **아직 없는 id에 `scrollTo`는 조용히 무효**라(설계 리뷰 L1 — ③이 트리거를 실현 이전으로 옮겼으므로 이제 흔한 경우다) 대기 루프 안에서 150ms마다, 실현 직후 한 번 더 `scrollTo`한다.
 - `rendered`는 **관찰 대상이 아닌 참조 상자 + 카운트**다(L2·L3): `@State Set`이면 스와이프로 행이 실현 창을 드나들 때마다 시트 전체가 재렌더돼 고치려는 결함과 같은 계열이 되고, Set이면 같은 대상이 뷰 둘로 교체될 때(전환 상태 3형·픽커 두 호출부) onAppear/onDisappear 순서 역전으로 화면에 있는데 빠진다.
@@ -74,7 +74,9 @@
 - 검증에서 `focusedControl == target`이면 종료(`ok`). 대상이 실현됐는데도 다르면 사유 `stolen`(대입은 먹었는데 VO가 옮겼거나 대입이 되돌아간 경우 — 둘의 구분은 `vo=` 라벨이 한다, §4.5).
 - 검증 지연은 100ms 단위로 본다(L6): 착지가 확정되면 조기 종료하고, `controlExists(target)`가 거짓이 되면 그 시점에 `vanished`(국면 밖 조건 `aboardStep`·`expressPromptActive`의 변화는 `onChange(of: phase)`의 취소를 타지 않는다).
 - 상한: 최악 3×(500+1200) ≈ 5.1초, 착지 확정 시 그 자리에서 끝난다(실측 기대치 1초 안팎). 국면 전이·새 착지가 즉시 취소한다(현행 계약).
-- **배경에선 시도하지 않는다**(L4): E36으로 국면 전이가 배경에서도 나므로 그대로 두면 VO 커서가 없는 배경에서 3회 전부 실패해 `landed=false`가 판정 축을 오염시키고 폴백이 `missedAnnouncement`를 세운다. 헬퍼 진입에서 `model.isForeground`가 아니면 대상을 `deferredLanding`에 적고(`reason=background deferred=true`) 전경 복귀(`scenePhase == .active`)에 한 번 착지한다(latest-wins). 시트 `.task`는 재표시에만 돌아 이 자리를 대신하지 못한다.
+- **배경·모달 위에선 시도하지 않는다**(L4 + 구현 리뷰 M1·A1·A2): E36으로 국면 전이가 배경에서도 나므로 그대로 두면 VO 커서가 없는 배경에서 3회 전부 실패해 `landed=false`가 판정 축을 오염시키고 폴백이 `missedAnnouncement`를 세운다. 장소 상세·목적지 검색 시트가 떠 있을 때도 같다(커서가 모달 안이라 대입이 먹어도 `stolen`으로 끝나고 폴백만 사용자의 상세 낭독을 끊는다 — E33이 이 빈도를 올린다). 헬퍼 진입에서 배경이면 `reason=background`, 모달이면 `reason=modal`로 대상을 `deferredLanding`에 적고(`deferred=true`), 전경 복귀(`scenePhase == .active`)·상세 `onDismiss`·검색 시트 닫힘에 한 번 착지한다(`note=deferred`, latest-wins). **진행 중** 착지도 배경 전환(`scenePhase == .background`)이 끊고 이월하며(`landingInFlight`), 시트 최소화(N1 콘텐츠 뷰 파괴)는 List `onDisappear`가 Task를 끊는다(고아 Task의 폴백 낭독 차단). 게시 직전에도 전경을 재확인한다. 조망(`overviewAdapter`)은 자기 `pendingFollowUp` 계약 그대로.
+- `controlExists`는 `phaseControls`의 바깥 분기까지 본다(M3): `untrackable` 국면엔 `.advance`·`.waitingLabel` 대상이 없고(수동 전진 버튼은 바인딩 없음), 지방버스 leg엔 `.waitingLabel`이 없다 — 종전엔 참을 내 그 화면에 없는 문장을 폴백으로 낭독할 경로였다.
+- 폴백 여부는 `outcome`으로 가른다(`ok`·`vanished`는 침묵, `landed` 재계산과 어긋날 수 있다 — m3). 취소된 시도도 `reason=cancelled attempts=`로 남긴다(m1 — 무기록이면 표본 편향). 빈 폴백 문장은 `skipped=emptyText`.
 
 **③ 트리거 결손 → 착지는 상태 변화가 부른다, 대상 뷰가 아니다.**
 - `stationPicker` 헤딩의 `.task { landControlFocus(.reboardPrompt) }`를 지우고, List 수준 `.onChange(of: model.reboardPickerActive)`·`.onChange(of: model.aboardStep)`에서 픽커가 열리는 전이(`false→true`, `nil|pickVehicle → pickStation`)에 `.reboardPrompt` 착지를 건다. 조망 `pendingFollowUp(.beginReboard)`의 "지하철은 프롬프트의 `.task`가 맡는다" 주석도 같은 자리로 바뀐다(동작은 `beginReboard()`가 `reboardPickerActive`를 올리므로 그대로 성립).
@@ -98,7 +100,7 @@
 
 통지는 모델 창구를 지난다: `announceExpressBlockedFallback()`을 일반화한 **`announceLandingFallback(_ text: String)`**(즉시 `.high`, `announceNow`). 시트가 `AccessibilityNotification`을 직접 게시하지 않는다(CLAUDE.md "새 통지 경로는 `announce` 창구"). 빈 문장이면 통지하지 않는다.
 
-**⚠ 이중 낭독과 간섭**: ①바인딩 읽기가 늦어 "실제로는 착지했는데 `landed=false`"이면 라벨이 두 번 들린다 — `vo=`(실제 VO 커서 요소 라벨)가 폴백 문장의 머리와 같으면 폴백을 내지 않고 `landingFallback … skipped=voMatchesLabel`로 남긴다(L5 일부). ②**사용자가 스스로 다른 줄을 읽고 있는 동안**(최악 5초 뒤) `.high` 폴백이 그 낭독을 끊을 수 있다(설계 리뷰 L5). 가드를 두지 않은 근거: "커서가 헤더에 있다"는 관측은 VO 재배치(A35의 주 실패 모드)와 사용자 이동을 구분하지 못하므로, 그것으로 억제하면 A35가 잡으려는 바로 그 실패에서 폴백이 사라진다. 대신 §7 첫 항목으로 올려 실승차 첫 세션에서 간섭 체감을 **먼저** 묻고, 잦으면 우선순위를 기본값으로 내리는 후속.
+**⚠ 이중 낭독과 간섭**: ①바인딩 읽기가 늦어 "실제로는 착지했는데 `landed=false`"이면 라벨이 두 번 들린다 — `vo=`(실제 VO 커서 요소 라벨, 40자 절단)가 **비어 있지 않고 폴백 문장의 같은 40자 절단과 같을 때만** 폴백을 내지 않고 `landingFallback … skipped=voMatchesLabel`로 남긴다(L5 일부; 접두 비교·빈 라벨은 무관한 요소에서 침묵을 만든다 — 구현 리뷰 spec M1·a11y A4). ②**사용자가 스스로 다른 줄을 읽고 있는 동안**(최악 5초 뒤) `.high` 폴백이 그 낭독을 끊을 수 있다(설계 리뷰 L5). 가드를 두지 않은 근거: "커서가 헤더에 있다"는 관측은 VO 재배치(A35의 주 실패 모드)와 사용자 이동을 구분하지 못하므로, 그것으로 억제하면 A35가 잡으려는 바로 그 실패에서 폴백이 사라진다. 대신 §7 첫 항목으로 올려 실승차 첫 세션에서 간섭 체감을 **먼저** 묻고, 잦으면 우선순위를 기본값으로 내리는 후속.
 
 **불변**: 옵셔널 단일 바인딩 · 경합 바인딩 해제 순서 · `controlFocusTask` latest-wins · `phaseTransitionLanding` 분기 · `controlExists` 조건 · 조망 `pendingFollowUp` 계약.
 
@@ -125,7 +127,7 @@ NavigationStack push(착수 프롬프트의 강한 디폴트)를 고르지 않�
 - `.accessibilityActions { ForEach(mentions.reversed()) { Button(render(transitOpenStationLine(isEn:, station: display.stops[i]))) } }` — 역순 선언 = 등장 순 노출. 언급 0개면 액션 0개(뷰 불변).
 - 시각 사용자용 인라인 링크·문장 버튼은 두지 않는다 — 시각·터치 사용자는 경유역 목록 행으로 같은 곳에 간다(정보 정본은 목록). 비-지하철 leg는 판정하지 않는다.
 
-**로터 액션 라벨(E1)**: 문장 계층 descriptor에 키 `openStation`("{name} 상세 보기", `messages/*.json` `transitGuide.openStation` 6로케일 — 채팅 `ios.chat.openPlace`와 동문)을 더하고 `transitOpenStationLine(isEn:station:)`(Kit) ↔ `openStationLine`(웹, 소비자 0·키 목록 미러)이 만든다. **영문이 없으면 라벨 전체가 ko**(줄 원자성 — "View details for 천호(풍납토성)" 같은 혼용 금지, 같은 파일 `quickExitLine` 규칙과 동일). 초안의 ios-extra 전용 키 + `guard:allow`는 폐기(spec §5 표 자신이 금지한 자리였다).
+**로터 액션 라벨(E1)**: 문장 계층 descriptor에 키 `openStation`("{station} 상세 보기", `messages/*.json` `transitGuide.openStation` 6로케일 — 채팅 `ios.chat.openPlace`와 동문, 인자 이름은 동류 키와 같은 `station`)을 더하고 `transitOpenStationLine(isEn:station:)`(Kit) ↔ `openStationLine`(웹, 소비자 0·키 목록 미러)이 만든다. 판정은 다른 descriptor와 같다(영문이 없으면 `lang: "ko"`). ⚠ **"라벨 전체가 ko"는 iOS에서 성립하지 않는다**(구현 리뷰 code M4·a11y A3 — 설계 리뷰 E1 채택 문구의 정정): iOS 렌더러는 줄 언어를 `koFallback` 계측에만 쓰고 포맷 문자열은 앱 카탈로그에서 고르므로 en 세션 + 영문 없는 역은 "View details for 천호(풍납토성)"가 된다 — 모든 descriptor 줄의 공통 성질이고 판정 정본은 BACKLOG §2 E28-①(iOS 줄 단위 언어 태깅)이다. 이 spec이 더한 것은 그 규칙을 **우회하지 않는 것**(초안의 ios-extra 전용 키 + `guard:allow` 폐기)이다.
 
 **`PlaceDetailView` 안 채팅 진입(E4 판정)**: `showsChatEntry`는 기본값(표시) **유지**. 목적지 상세가 종전부터 같은 상태이고, 역 상세에서 "이 장소에 관해 물어보기"는 시각장애 사용자에게 실제 가치(엘리베이터·출구 질문)가 있으며 채팅 도구는 좌표 앵커로 돈다(주소가 비어도 성립). 시트 3겹(안내 → 상세 → 채팅)은 현행 목적지 경로와 같은 깊이다.
 
@@ -141,14 +143,16 @@ NavigationStack push(착수 프롬프트의 강한 디폴트)를 고르지 않�
 
 | 키 | ko | 자리 |
 |---|---|---|
-| `transitGuide.openStation`(descriptor 키 `openStation`) | `{name} 상세 보기` | 상태 문장 로터 액션 |
+| `transitGuide.openStation`(descriptor 키 `openStation`) | `{station} 상세 보기` | 상태 문장 로터 액션 |
 
-6로케일(en "View details for {name}", es "Ver detalles de {name}", fr "Voir les détails de {name}", it "Vedi dettagli di {name}", ja "{name}の詳細を見る" — 채팅 키와 동문). descriptor 키 목록(Kit `transitTextKeys` ↔ 웹 `TRANSIT_TEXT_KEYS`)·인자 표(`transit-text-args.ts`)·렌더러 case·공유 fixture(`transit-guide-text-cases.json` 2행: en 완비·en 결측→ko)에 함께 등록. `arg-order.json`은 신규 키라 자동 등록.
+6로케일(en "View details for {station}", es "Ver detalles de {station}", fr "Voir les détails de {station}", it "Vedi dettagli di {station}", ja "{station}の詳細を見る" — 채팅 키와 동문, 인자 이름은 `prewalkArrived*`와 같은 `station`). descriptor 키 목록(Kit `transitTextKeys` ↔ 웹 `TRANSIT_TEXT_KEYS`)·인자 표(`transit-text-args.ts`)·렌더러 case·공유 fixture(`transit-guide-text-cases.json` 2행: en 완비·en 결측→ko)에 함께 등록. `arg-order.json`은 신규 키라 자동 등록.
 
 ### 4.5 계측 (`TransitGuideDiag`)
 
 - `controlFocus target=<t> landed=<b> actual=<focusedControl|nil> attempts=<1..3> elapsedMs=<n> rendered=<b> reason=<ok|notRendered|stolen|vanished> vo="<실제 VO 포커스 요소 라벨 앞 40자|nil>" [note]` — 한 줄, 시도가 끝났을 때 1회. 배경에서 들어온 착지는 `controlFocus target=<t> reason=background deferred=true`만 남기고 전경 복귀 착지가 `note=deferred`로 따라온다(§7 집계에서 배경 줄은 뺀다). `vo=`는 `UIAccessibility.focusedElement(using: .notificationVoiceOver)`의 `accessibilityLabel`(TransitGuideDiag `transitFocusedLabel()`, 같은 게이트). 다음 로그 회수의 판정 축: `reason` 분포(컬링이면 `notRendered`, 경합이면 `stolen`+`vo=`헤더 라벨), 이중 낭독 의심(`landed=false` ∧ `vo=`가 대상 라벨).
-- `landingFallback target=<t> text=…` — 폴백 통지가 나간 자리(위 줄 바로 뒤). `skipped=voMatchesLabel`은 VO 커서가 이미 대상 위라 내지 않은 것(바인딩 지연 표본).
+- `reason` 값: `ok|notRendered|stolen|vanished|background|modal|cancelled`. `background`·`modal`은 시도 없이 이월(`deferred=true`), `cancelled`는 국면 전이·새 착지·배경 전환·최소화가 끊은 시도(`attempts=`까지).
+- `landingFallback target=<t> text=…` — 폴백 통지가 나간 자리(위 줄 바로 뒤). `skipped=voMatchesLabel`은 VO 커서가 이미 대상 위라 내지 않은 것(바인딩 지연 표본), `skipped=emptyText`·`skipped=background`는 각각 빈 문장·시도 중 배경 전환.
+- ⚠ `vo=`와 그 침묵 가드는 `#if DEBUG || EXPERIMENTAL` 안이다(Release엔 `nil` — 폴백이 무조건 발화). 대중교통 안내 졸업 시 이 게이트를 함께 옮긴다(구현 리뷰 spec m4).
 - `stationDetail open station=<ko> source=<via|status>`.
 - 로그 파일은 커밋하지 않는다(개발자 이동 경로).
 
@@ -181,7 +185,7 @@ NavigationStack push(착수 프롬프트의 강한 디폴트)를 고르지 않�
 ## 7. 실기기·실승차 판정 (BACKLOG §2 표 · FIELD-TEST §5)
 
 - **A35 재판정**(A19 행 되살림): ⓪**첫 세션에서 먼저 묻는 것 — 착지 실패 폴백(`.high`)이 내가 읽고 있던 낭독을 끊었는가**(설계 리뷰 L5: 잦으면 우선순위를 기본값으로 내린다 — 이것이 실패하면 그 세션의 다른 판정도 흐려진다) ①`controlFocus … landed=` 성공률이 표(1/6~5/6)에서 얼마로 움직였는가 — **배경 줄(`reason=background`)은 빼고** 센다(성과 기준: 전 대상 5/6 이상) ②`reason` 분포: `notRendered`가 남으면 컬링 축 재설계(가설 ①이 참으로 승격), `stolen`이 남으면 지연·재시도 상한 재조정, `vo=`가 대상 라벨인데 `landed=false`면 바인딩 읽기 문제(`skipped=voMatchesLabel` 빈도) ③실패 시 폴백 문장이 **한 번** 들렸는가 ④전경 복귀 뒤 `note=deferred` 착지가 맞는 자리였는가.
-- **E33 실기기**: ①경유역 행 더블탭 → 역 상세 시트(역 시설·도착편·시간표 섹션이 있는가 = `isStation` 통과) ②**[블로킹] 닫으면 커서가 그 행으로 돌아오는가** — 이 repo에서 확인된 적 없는 전제(설계 리뷰 E8, 목적지 상세도 미확인)이고 중첩 시트를 고른 주된 근거다. 안 되면 후속: `.sheet(item:onDismiss:)`에서 `landControlFocus` 계열의 행 착지(경유역 행에 정체성 바인딩 `focusedViaStop: Int?` 추가) ③상태 문장의 로터에 "○○ 상세 보기"가 등장 순으로 있고 실행이 그 역인가(문장에 역이 1개여도 로터 한 단계) ④상세가 열린 채 국면이 바뀌었을 때(도착 등) 닫은 뒤 커서·통지가 어땠는가(§5 N1 행) ⑤en 세션에서 상세 제목이 영문 병기이고 역 섹션이 비지 않는가(name=ko 조인), 로터 라벨이 영문 없는 역에서 통째로 한국어인가 ⑥**ko 세션 + 괄호 있는 역 하나**("천호(풍납토성)"류)에서 역 섹션이 "정보 없음"으로 위장하지 않는가(설계 리뷰 E7, 서버 매핑 미스 축).
+- **E33 실기기**: ①경유역 행 더블탭 → 역 상세 시트(역 시설·도착편·시간표 섹션이 있는가 = `isStation` 통과) ②**[블로킹] 닫으면 커서가 그 행으로 돌아오는가** — 이 repo에서 확인된 적 없는 전제(설계 리뷰 E8, 목적지 상세도 미확인)이고 중첩 시트를 고른 주된 근거다. 안 되면 후속: `.sheet(item:onDismiss:)`에서 `landControlFocus` 계열의 행 착지(경유역 행에 정체성 바인딩 `focusedViaStop: Int?` 추가) ③상태 문장의 로터에 "○○ 상세 보기"가 등장 순으로 있고 실행이 그 역인가(문장에 역이 1개여도 로터 한 단계 — 소음이면 **문장 액션을 먼저 뺀다**, 정보 정본은 목록 행. 언급 0개일 때 빈 `accessibilityActions`가 로터에 빈 항목을 만드는가도 본다) ④상세가 열린 채 국면이 바뀌었을 때(도착 등) 닫은 뒤 커서·통지가 어땠는가(§5 N1 행) ⑤en 세션에서 상세 제목이 영문 병기이고 역 섹션이 비지 않는가(name=ko 조인); 영문 없는 역의 로터 라벨은 **"View details for 천호(풍납토성)"처럼 혼용되는 것이 현행 계약**이라 그것이 들리는가·영어 음성이 한국어를 삼키는가를 E28-①의 표본으로 적는다 ⑥**ko 세션 + 괄호 있는 역 하나**("천호(풍납토성)"류)에서 역 섹션이 "정보 없음"으로 위장하지 않는가(설계 리뷰 E7, 서버 매핑 미스 축).
 - **관찰(범위 밖 기록)**: 후보 목록 착지(`focusedCandidate`) 실패 체감이 있는가 — 있으면 같은 헬퍼로 승격하는 후속 항목.
 
 ## 8. 파일
@@ -208,7 +212,7 @@ Kit `PlaceProjection.swift`(+`PlaceProjectionTests.swift`, 소유 밖 자진 신
 | L7 가드 창 3줄 | 채택 — 8줄 창 + `.onAppear`. |
 | L8 PATTERNS 정본이 둘로 갈린다 | 채택 — 문서 분배에서 "대중교통 시트는 3회 체증+실현 관측+전 대상 폴백, 그 밖은 종전 2단, 승격 조건 실승차 성공률"을 한 줄로. |
 | E8 시트 dismiss 포커스 복원은 미검증 전제 | 채택 — §7 ② 블로킹 + 실패 시 후속 명시. |
-| E1 로터 라벨 언어 혼용 | 채택 — descriptor 키 `openStation`(Kit·웹·fixture·6로케일), ios-extra 키·`guard:allow` 폐기. |
+| E1 로터 라벨 언어 혼용 | 채택 — descriptor 키 `openStation`(Kit·웹·fixture·6로케일), ios-extra 키·`guard:allow` 폐기. ⚠ 구현 리뷰(code M4·a11y A3)가 "라벨 전체 ko" 보장은 iOS 렌더러에 없음을 확인 — 문구를 현행 계약(E28-① 정본)으로 정정(§4.2). |
 | E2 Button↔Text 전환 | 채택 — 상태 문장은 항상 Text + 로터 액션(1개도). 분기 2·위험 2(E2·E6) 소멸. |
 | E3 세션 로케일 축의 en 링크 소실 | 채택(변형) — 리뷰 대안(줄 lang 반환)은 상태 문장이 조각별로 언어가 갈려 단일 lang이 없다. ko·en 라벨 둘 다로 대응. |
 | E4 채팅 진입 판정 공백 | 채택 — "유지" 한 줄과 근거(§4.2). |
@@ -218,3 +222,13 @@ Kit `PlaceProjection.swift`(+`PlaceProjectionTests.swift`, 소유 밖 자진 신
 | W1 종료자는 `stopSession()` | 채택 — 단어 정정. |
 | W2 오버레이 대안 | 채택 — §2에 검토·기각 기록. |
 | 미니멀리즘(라벨 이중 정의) | 채택 — `advanceLabel`·`waitingLabelText`·`reboardPromptKey` 한 곳, 뷰·폴백·픽커 호출부가 공유. |
+
+## 10. 구현 리뷰 판정 (2026-09-11, HEAD `82ffae56` → 반영 다음 커밋)
+
+세 리뷰(별도 컨텍스트, `git diff main...HEAD`만)의 보고는 `~/gildongmu-wt/reports/transit-3-review-{spec,code,a11y}.md`(커밋 밖).
+
+| 리뷰 | 판정 | 반영 |
+|---|---|---|
+| spec-compliance(opus) | 적합(BLOCKER 0, MAJOR 1, MINOR 6) | M1 `vo` 빈 문자열 침묵 → 비공백 + 40자 절단 일치로 / m1 `note=deferred` 토큰 / m2 §4.1 id 기제 문구 / m3 소스 가드 ⑦을 "`.accessibilityActions` 밖 Button·`if mentions` 없음"으로 / m4 §4.5 Release 비대칭 기록 / m5 FIELD-TEST §5-6 en 행 / m6 빈 문장은 `skipped=emptyText`. o2 제목 메뉴 상세도 `touchUserAction` / o3 `stationPicker` `promptKey` 매개변수 제거. o1은 반대로 경유역 행의 잉여 가드를 지워 대칭(코드 리뷰와 일치). |
+| code-quality(opus) | 조건부 통과(BLOCKER 0, MAJOR 4, MINOR 10) | M1 배경 전환이 진행 중 착지를 끊고 이월(`landingInFlight`) / M2 List `onDisappear`가 Task 취소(최소화 고아 폴백) / M3 `controlExists` `.advance`·`.waitingLabel`에 untrackable·지방버스 축 / M4 라벨 단일 언어 보장 문구 정정(iOS 렌더러 한계, E28-①) / m1 `cancelled` 기록 / m2 `wasRendered`를 guard 앞으로 / m3 폴백은 `outcome`으로 / m4 `landDestChangeStatusFocus` 래퍼 삭제 / m5 픽커 옛 doc 삭제 / m6 가드에 래퍼·변수 인자 / m7 죽은 단언 삭제 / m8 가드 슬라이스 경계 / m9 `@MainActor` + 유실 한계 주석(리셋은 두지 않음 — 국면 전이 뒤 남은 행의 카운트가 사라져 반대 오분류) / m10 인자 이름 `station`. 추측 "빈 `accessibilityActions`"는 §7 ③ 관찰로(조건부 부착은 뷰 종류 분기라 E2와 충돌). |
+| a11y(opus, 헌장 기준) | 위반 0(MEDIUM 3, LOW 2) | A1 모달(상세·검색 시트) 위 착지 이월 + `onDismiss` 착지 / A2 게시 직전 전경 재확인 / A3 = code M4 / A4 = spec M1(대상 라벨 일치로 좁힘) / A5 기록 유지 / A7 "소음이면 문장 액션 먼저 뺀다"를 §7 ③·BACKLOG E33 행에. 실기기 판정 항목 5개는 §7·BACKLOG §2와 일치. |
