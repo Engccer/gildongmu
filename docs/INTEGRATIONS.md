@@ -67,7 +67,7 @@
 ### 캐시·쿼터
 IP 레이트리밋 60초 10회 + fetch 단위 `revalidate 3600`(GET이라 Authorization 헤더 무관 캐시 유효·200만 캐시라 장애 미고착. Tmap POST revalidate는 실효). ⚠ **실시간 안내(기하 포함) 요청은 `noStore`로 캐시를 우회한다**(`kakao-walk.ts`) — 세션 전용 실시간 데이터를 revalidate에 태우면 "세션 한정 메모리 보유, 저장 아님" 약관 판단과 모순(spec 2026-08-03 §7.2). 되돌리지 말 것. ⚠ **카카오 앱 유료 전환 미신청 유지** — 초과=오류=폴백이라 비용 상한이 구조적으로 0원이다(신청은 하드 스톱).
 
-길찾기 뷰(`DirectionsView`)는 `?dir=` 동기화에서 현재 위치를 `cur` 토큰으로만 쓰고 좌표를 직렬화하지 않는다(2026-08-22 N4부터 `via` 토큰이 함께 실린다 — `serializeDir(from, to, via)`). **경유지(`via`)는 응답 `waypoint{stepIndex,coord}` 하나로만 드러나고 스텝 문장은 불변이며, provider가 경유지 표지를 못 찾으면 throw한다**(카카오 도보는 파라미터 이름이 틀려도 200 정상 응답이라 URL 단언 `route-waypoint.test.ts`가 유일한 가드). 계약 전문은 `CLAUDE.md` §횡단 함정 경유지 항목과 spec `2026-08-22-waypoint-server-web-cli-design.md`. 계단 회피 경로 토글은 `walkAccessible=1` 토큰·`aria-pressed`이고 busy 상태를 조회와 공유한다.
+길찾기 뷰(`DirectionsView`)는 `?dir=` 동기화에서 현재 위치를 `cur` 토큰으로만 쓰고 좌표를 직렬화하지 않는다(2026-08-22 N4부터 `via` 토큰이 함께 실린다 — `serializeDir(from, to, via)`). **경유지(`via`)는 응답 `waypoint{stepIndex,coord}` 하나로만 드러나고 스텝 문장은 불변이며, provider가 경유지 표지를 못 찾으면 throw한다**(카카오 도보는 파라미터 이름이 틀려도 200 정상 응답이라 URL 단언 `route-waypoint.test.ts`가 유일한 가드). 계약 전문은 이 문서 아래 §경유지(`via`)는 응답 `waypoint{stepIndex,coord}` 하나로만… 절과 spec `2026-08-22-waypoint-server-web-cli-design.md`. 계단 회피 경로 토글은 `walkAccessible=1` 토큰·`aria-pressed`이고 busy 상태를 조회와 공유한다.
 
 ---
 
@@ -152,7 +152,7 @@ spec `2026-09-02-express-stops-data-design.md`. 둘 다 `includeStops=1` 응답�
 
 ### 승차 후보 판정
 
-방향 필터·종착 검사는 `classifyBoardingCandidates`(웹) ↔ `classifyTransitBoardingCandidates`(Kit)에 있고(2026-09-02부터 차단 술어는 `unreachable` 하나 — 종착 앞 / 급행 통과 — 이고 급행 축은 `expressVerdict`가 `expressStopIds` ID 우선으로 판정한다. 계약 전문은 CLAUDE.md "승차 후보의 활성화 차단 술어" 항목), 두 판정이 쓰는 필드(`direction`·`destinationName`)는 **서울 지하철 실시간 도착 API**가 주고, **버스 upstream은 `direction`을 주지 않는다**(`transit-track.ts`가 빈 문자열로 채운다). 그래서 `directionUncertain`은 "방향 축이 있는데(후보 중 `direction`이 비어 있지 않은 것이 하나라도 있음) 매칭이 전멸했다"일 때만 참이다(A17, 2026-08-17) — 전원 빈 문자열이면 축 부재라 uncertain이 아니다. 어기면 모든 버스 세션에 "방면을 확인해 주세요"가 상시 붙는데 버스 목록엔 확인할 방면 정보가 없다. **2호선은 그 두 필드가 모두 다르게 동작하므로 이 계층을 수정하기 전에 아래 §서울 지하철 실시간의 "순환선(2호선)" 절을 읽는다.**
+방향 필터·종착 검사는 `classifyBoardingCandidates`(웹) ↔ `classifyTransitBoardingCandidates`(Kit)에 있고(2026-09-02부터 차단 술어는 `unreachable` 하나 — 종착 앞 / 급행 통과 — 이고 급행 축은 `expressVerdict`가 `expressStopIds` ID 우선으로 판정한다. 계약 전문은 이 문서 위쪽 §승차 후보의 활성화 차단 술어는 `unreachable` 하나이고… 절), 두 판정이 쓰는 필드(`direction`·`destinationName`)는 **서울 지하철 실시간 도착 API**가 주고, **버스 upstream은 `direction`을 주지 않는다**(`transit-track.ts`가 빈 문자열로 채운다). 그래서 `directionUncertain`은 "방향 축이 있는데(후보 중 `direction`이 비어 있지 않은 것이 하나라도 있음) 매칭이 전멸했다"일 때만 참이다(A17, 2026-08-17) — 전원 빈 문자열이면 축 부재라 uncertain이 아니다. 어기면 모든 버스 세션에 "방면을 확인해 주세요"가 상시 붙는데 버스 목록엔 확인할 방면 정보가 없다. **2호선은 그 두 필드가 모두 다르게 동작하므로 이 계층을 수정하기 전에 아래 §서울 지하철 실시간의 "순환선(2호선)" 절을 읽는다.**
 
 ### 안내 상태 머신에 신호를 추가할 때 (A16에서 배운 것)
 
@@ -353,7 +353,7 @@ spec `2026-08-23-car-guidance-completion-design.md` §3. 임박 임계는 `max(i
 
 `silentCatchUp`(car)은 2026-08-22 실주행의 "터널 뒤 지난 교차로 3개 전문 연속 발화"를 막는 세 가지다: ①점프 fix(`jumped`)는 표본 제외 + 6a 이후 무발화(창이 기어가는 중이라 d가 실위치가 아니다 — 표본에 넣으면 창이 부풀어 재획득이 안 걸린다) ②uncertain 복귀 fix의 공백 >10초는 복귀 대신 재획득 ③유닛 끝이 d 앞이면 전문 없이 래치 3종 전진(`!isOff`), 묶음 안 끝난 스텝은 전문에서 제외. 도보는 전부 종전 동작(실보행 판정이 종전 전제). iOS는 car 재획득 뒤 "지금 구간" 전문을 함께 읽는다(`restateAt`이 현재 유닛을 낭독 완료로 두기 때문).
 
-K2-a(2026-08-31, spec `2026-08-31-car-session-end-design.md`)가 같은 `GuideTuning`에 세션 종료 갈림 셋을 더했다: `entersFinalApproachWithoutGeometry`(car true — 기하 없이 종점 150m에서 최종 접근 진입, 종전엔 간략 인계로 빠져 `carArrivalStep`이 도달 불가) · `presumedArrival`(`PresumedArrivalThresholds`, car 두절 120·무이동 300·캡 150) · `sessionIdleStationaryAxis`(car false — 무이동은 정체와 구분 불가). 계약 전문은 CLAUDE.md §횡단 함정 "잊힌 도보 세션은 국면 무관 안전망이 끝낸다" 항목.
+K2-a(2026-08-31, spec `2026-08-31-car-session-end-design.md`)가 같은 `GuideTuning`에 세션 종료 갈림 셋을 더했다: `entersFinalApproachWithoutGeometry`(car true — 기하 없이 종점 150m에서 최종 접근 진입, 종전엔 간략 인계로 빠져 `carArrivalStep`이 도달 불가) · `presumedArrival`(`PresumedArrivalThresholds`, car 두절 120·무이동 300·캡 150) · `sessionIdleStationaryAxis`(car false — 무이동은 정체와 구분 불가). 계약 전문은 이 문서 아래 §잊힌 도보 세션은 국면 무관 안전망이 끝낸다 절.
 
 ### 정지 판정 (`motionStep`)
 도플러 3-state: `stopped`/`moving`/`speedUnknown`. 도플러가 경로·목적지 양쪽에 독립이라 두 모드가 공유할 수 있는 유일한 축이다(직선거리 미분은 "목적지 접근 속도"라 옆으로 지나쳐 걸으면 정지로 보인다).
@@ -568,7 +568,7 @@ spec 같은 문서 §4.2. 위원장 판정(2026-09-10)의 전제 "도보와 같�
 
 ### 안내 세션은 앱 수명이고 시트를 내리는 제스처는 최소화다
 
-**안내 세션은 앱 수명이고 시트를 내리는 제스처는 최소화다**(2026-08-22 N1, spec `2026-08-22-guide-session-minimize-design.md`): `GuideSession.shared`가 `BeaconModel`·`TransitGuideModel`을 소유하고, 루트 `GildongmuApp`이 `.sheet(item: presentedScreen)` **하나**와 띄우고, 띠바(`GuideBandView`)는 각 탭 콘텐츠가 든다(배치 계약은 위 K1 항목). 길찾기 탭은 모델을 빌려 쓸 뿐이라 `onDisappear`에서 `teardown()`을 부르지 않는다(부르면 탭 전환이 곧 세션 종료 — 원증상). **시작은 전부 `GuideSession.startBeacon/startTransit`을 지난다**(거부 게이트 + 다른 모델 잔여 화면 소거) — `beacon.toggle`은 길찾기 탭 인라인 겸용 버튼(추적 중 "중지") 한 곳뿐이고 `guidance-gate-drift.test.ts`가 네 형태의 호출 수를 센다. `GuideSessionCoordinator.claim`은 점유 중 **nil(거부)**이지 종전처럼 기존 세션을 멈추지 않는다. ⚠ **dismiss 콜백은 모델 상태로 뜻을 정하지 않는다** — `.sheet` set(nil)은 무조건 `isMinimized = true`이고, 도착·중지 종료 화면과 핸드오프 제안의 소거는 그 화면 "닫기" 버튼의 명시 `clearArrival()`·`clearWalkHandoff()`뿐이다(`dismiss()`로 되돌리면 스와이프가 도착 직후 완료될 때 방금 생긴 도착 화면을 지우는 경합이 돌아온다). 루트 시트가 길찾기 폼에 닿는 길은 `GuideFormSyncStore.post/take`(탭이 안 보일 때 쌓인 값은 탭 `.task`가 소비). 폼 도착지 변경은 세션을 멈추지 않는다(조회 허용). 장소 상세가 대중교통 목적지 변경을 준비해도 **시트를 자동으로 올리지 않는다**(장소 상세가 이미 시트인 경로에서 루트 presentation이 조용히 거부된다) — 띠바가 "경로 선택 대기"를 보여 준다. 띠바는 live region이 아니고 거리는 10m 양자화(`bandDistanceMeters`), 낭독은 `spokenDistanceUnits`.
+**안내 세션은 앱 수명이고 시트를 내리는 제스처는 최소화다**(2026-08-22 N1, spec `2026-08-22-guide-session-minimize-design.md`): `GuideSession.shared`가 `BeaconModel`·`TransitGuideModel`을 소유하고, 루트 `GildongmuApp`이 `.sheet(item: presentedScreen)` **하나**와 띄우고, 띠바(`GuideBandView`)는 각 탭 콘텐츠가 든다(배치 계약은 위 K1 항목). 길찾기 탭은 모델을 빌려 쓸 뿐이라 `onDisappear`에서 `teardown()`을 부르지 않는다(부르면 탭 전환이 곧 세션 종료 — 원증상). **시작은 전부 `GuideSession.startBeacon/startTransit`을 지난다**(거부 게이트 + 다른 모델 잔여 화면 소거) — `beacon.toggle`은 길찾기 탭 인라인 겸용 버튼(추적 중 "중지") 한 곳뿐이고 `guidance-gate-drift.test.ts`가 네 형태의 호출 수를 센다. `GuideSessionCoordinator.claim`은 점유 중 **nil(거부)**이지 종전처럼 기존 세션을 멈추지 않는다. ⚠ **dismiss 콜백은 모델 상태로 뜻을 정하지 않는다** — `.sheet` set(nil)은 무조건 `isMinimized = true`이고, 도착·중지 종료 화면의 소거는 그 화면 "닫기" 버튼의 명시 `clearArrival()`뿐이다(⚠ 2026-09-11 E34로 **인계 제안 화면이 삭제**돼 `clearWalkHandoff()`를 부르는 버튼은 없다 — 지금 그 함수를 부르는 자리는 뷰가 아니라 `GuideSessionCoordinator`의 `startBeacon`·`acceptWalkHandoff` 둘이고, 아래 §"확정 도착·비관측 riding은 폴 주기 0이고…" 절이 정본이다)(`dismiss()`로 되돌리면 스와이프가 도착 직후 완료될 때 방금 생긴 도착 화면을 지우는 경합이 돌아온다). 루트 시트가 길찾기 폼에 닿는 길은 `GuideFormSyncStore.post/take`(탭이 안 보일 때 쌓인 값은 탭 `.task`가 소비). 폼 도착지 변경은 세션을 멈추지 않는다(조회 허용). 장소 상세가 대중교통 목적지 변경을 준비해도 **시트를 자동으로 올리지 않는다**(장소 상세가 이미 시트인 경로에서 루트 presentation이 조용히 거부된다) — 띠바가 "경로 선택 대기"를 보여 준다. 띠바는 live region이 아니고 거리는 10m 양자화(`bandDistanceMeters`), 낭독은 `spokenDistanceUnits`.
 
 ### 근사 잠금은 두 갈래다 — 지방버스만 관측하고, 그 밖은 비관측이다
 
