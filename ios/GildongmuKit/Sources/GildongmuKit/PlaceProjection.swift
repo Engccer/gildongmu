@@ -182,3 +182,42 @@ public func guideDestinationPlace(dest: BeaconDest, label: String) -> Place {
         link: nil,
         distanceMeters: nil)
 }
+
+/// 대중교통 안내 시트의 지하철 경유역 → Place(E33, spec 2026-09-11-transit-station-to-place-and-landing §4.2).
+/// **`name`은 한국어 원문(조인 키)이다** — `PlaceDetailView`가 `isStation`·역 섹션 조회에 그 값을 쓴다.
+/// 영문은 `nameRoman` 슬롯으로 나른다(Place엔 `nameEn`이 없고 비-ko 병기 1순위가 그 슬롯이다 — 표시 전용).
+/// category는 `isStation` 정규식(`지하철`)을 통과하는 최소 분류 — 좌표·이름만으로 역 여부를 추정하지 않고
+/// 이 투영이 지하철 leg에서만 불린다는 사실이 근거다(버스 정류장은 이 함수를 지나지 않는다).
+/// 주소·전화·링크는 소스에 없으므로 비운다(없는 값을 지어내지 않는다).
+public func transitStopPlace(_ stop: TransitLegStop) -> Place {
+    let key = stop.stationId.flatMap { $0.isEmpty ? nil : $0 } ?? "\(stop.lat),\(stop.lng)"
+    return Place(
+        id: "transit-stop:\(key)",
+        name: stop.name,
+        nameRoman: (stop.nameEn?.isEmpty == false) ? stop.nameEn : nil,
+        category: "지하철역",
+        categoryEn: "Subway station",
+        address: "",
+        roadAddress: "",
+        englishAddress: nil,
+        lat: stop.lat,
+        lng: stop.lng,
+        phone: nil,
+        link: nil,
+        distanceMeters: nil)
+}
+
+/// 상태 문장 안 역 언급(E33) — 채팅 산문 선례(`chatPlaceMentions`)와 같은 알고리즘으로 `stops`의 인덱스를
+/// 문장 등장 순으로 낸다. 대응 축은 **ko·en 라벨 둘 다**다(설계 리뷰 E3): 상태 문장은 조각(문맥·신호·프레임)
+/// 마다 줄 언어가 따로 정해져 한 문장 안에 ko 조각과 en 조각이 공존할 수 있으므로, 세션 로케일 하나로
+/// 고르면 en 사용자만 링크를 조용히 잃는다. 같은 역이 두 라벨로 등장해도 인덱스는 한 번(첫 등장).
+public func transitStationMentions(in text: String, stops: [TransitLegStop]) -> [Int] {
+    var names: [String] = []
+    var owner: [Int] = []
+    for (index, stop) in stops.enumerated() {
+        names.append(stop.name); owner.append(index)
+        if let en = stop.nameEn, !en.isEmpty { names.append(en); owner.append(index) }
+    }
+    var seen = Set<Int>()
+    return mentionOrder(in: text, names: names).map { owner[$0] }.filter { seen.insert($0).inserted }
+}
