@@ -104,6 +104,17 @@
 
 **불변**: 옵셔널 단일 바인딩 · 경합 바인딩 해제 순서 · `controlFocusTask` latest-wins · `phaseTransitionLanding` 분기 · `controlExists` 조건 · 조망 `pendingFollowUp` 계약.
 
+> ### ⚠ 정정 (2026-09-12 08:20 KST, base `9bcae9f6` — BACKLOG [E38](../../BACKLOG.md) 위원장 판정, 세션 sheet-landing)
+>
+> **위 대상 표와 "불변" 줄의 `phaseTransitionLanding` 분기는 더 이상 유효하지 않다.** 이 절의 **기제**(실현 관측 → 반복 가시화 → 대입 → 늦은 검증 → 체증 재시도 → 전 대상 폴백)는 그대로이고, 바뀐 것은 **대상**이다.
+>
+> - 위원장 판정: 시트에서 **무엇을 누르든 커서는 상태 문장 행**(`SheetControl.status`)에 앉는다. 예외 없음 — 하차 도착도 [다음 구간]이 아니라 "하차 지점 도착. …" 문장이고 버튼은 한 번 스와이프 아래다. 근거는 착지 성공률이 아니라 **읽기 순서 비용**이다(액션마다 커서가 컨트롤로 튀는데 확인하고 싶은 정보는 그 위에 있다).
+> - 그래서 `phaseTransitionLanding(previous:phase:) -> SheetControl?`은 **`phaseTransitionLands(previous:phase:) -> Bool`**이 됐다. 남은 판정은 여부뿐이고, 참인 전이 넷(arrived · →waiting · waiting→boarding · waiting→riding)은 전부 사용자 행동이 만든 것이다. boarding→riding 제외는 그대로다(커서가 이미 그 줄에 있다).
+> - **표에서 사라진 대상**: `.title`(시트 진입 착지가 `.status`로) · `.advance` · `.changeBoarding` · `.boardAlready`(역 선택 취소 복귀가 `.status`로). `.confirmBoarded`는 이미 2026-09-11 N3 ①로 사라졌다. 목적지 전환 확정·취소와 조망 안 경로 전환 착지도 `.title` → `.status`.
+> - **남은 대상과 그 근거**: `status`(전 전이) · `waitingLabel` · `reboardPrompt` · `expressPrompt` · `expressBlocked` · `minimize` · `destChangeStatus`. 뒤 여섯은 **자기 질문을 여는 화면**이거나(착지 낭독이 곧 질문이라 상태 문장으로 옮기면 무엇을 고르는지 모른다) 떠난 자리로의 복귀다.
+> - 소스 가드가 그 집합을 잠근다(`src/lib/__tests__/transit-landing-guard.test.ts` — enum case 집합 ↔ `landControlFocus` 리터럴 대상 집합 일치). §6의 트리거 결손 검사는 면제를 **대상 이름**이 아니라 **자리 표지**(`returnedFromBand`)로 옮겼다 — 열림 착지가 `.status`가 되면서 이름 면제가 대상 뷰 착지까지 함께 눈감게 됐기 때문이다.
+> - ⚠ **대상이 하나가 되면 착지 테스트의 검출력이 0이 된다**(변이 주입 실측): "착지했다"와 "애초에 거기 있었다"가 구별되지 않아 전이 착지를 통째로 지워도 초록이다. 웹 `TransitGuidePanel.test.tsx`는 누르기 전에 그 컨트롤로 커서를 옮겨(`clickFocused`) 실기기 경로를 재현하고, 7개 착지 지점 전부에 대해 변이 주입으로 검출을 확인했다.
+
 ### 4.2 E33 — 지하철역 → 장소 상세 (iOS)
 
 **표현 계층(§1.2 정정에 따라)**: **현행 중첩 시트 하나를 일반화한다.** `showPlaceDetail: Bool` + `detailDest`를 **`detailPlace: Place?` + `.sheet(item: $detailPlace)`** 하나로 바꾸고, 제목 메뉴 "장소 상세 보기"는 `detailPlace = guideDestinationPlace(dest:label:)`, 역 행·상태 문장은 `detailPlace = transitStopPlace(stop)`을 넣는다. 시트 안은 종전과 같이 `NavigationStack { PlaceDetailView(place:, showsDirectionsEntry: false) }`.

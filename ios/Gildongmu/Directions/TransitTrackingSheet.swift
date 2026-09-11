@@ -2,13 +2,17 @@ import GildongmuKit
 import SwiftUI
 
 /// 대중교통 실시간 안내 시트(B2 §3.2·§5). BeaconTrackingSheet와 같은 계약 —
-/// **시작이 곧 표시, 중지가 곧 닫힘(1:1)**, 열릴 때 중지 버튼 착지, 스와이프·
-/// VoiceOver escape 닫기 = 중지(좀비 세션 금지).
+/// **시작이 곧 표시, 중지가 곧 닫힘(1:1)**, 스와이프·VoiceOver escape 닫기 = 최소화(N1).
 ///
 /// 컨트롤은 국면별 집합(§4.2·§5): 대기=열차·차량 선택 목록(행위구 라벨·종착 차단·
-/// 급행 병기), 승차 중=탑승 변경(잠금형)·다음 구간(근사형 상시), 도착=다음 구간
-/// (포커스 선점 — 다음 행동이 있는 곳, 헌장 §5), 추적 불가=수동 전진. 공통=중지·
-/// 진행 상황·상시 표시(신호 상태·마지막 갱신 — 무통지 구간에도 상태가 보인다, §6.1).
+/// 급행 병기), 승차 중=탑승 변경(잠금형)·다음 구간(근사형 상시), 도착=다음 구간,
+/// 추적 불가=수동 전진. 공통=중지·진행 상황·상시 표시(신호 상태·마지막 갱신 —
+/// 무통지 구간에도 상태가 보인다, §6.1).
+///
+/// **착지 대상은 상태 문장 행 하나다**(E38 위원장 판정 2026-09-12): 시트 진입도, 국면 전이도,
+/// 역 선택 취소 복귀도 전부 `SheetControl.status`. 다음 행동 버튼은 거기서 한 번 스와이프 아래다.
+/// 예외는 **자기 질문을 여는 화면**(역 선택·급행 확인·차량 선택 라벨)과 띠바 복귀·목적지 전환
+/// 상태 행뿐이다 — 그 자리는 착지 낭독이 곧 질문이라 상태 문장으로 옮기면 무엇을 고르는지 모른다.
 struct TransitTrackingSheet: View {
     let model: TransitGuideModel
     let onStop: () -> Void
@@ -37,22 +41,26 @@ struct TransitTrackingSheet: View {
     /// 둘이 경합해 대입이 조용히 되돌아갔다(실승차 `reboardPromptFocus landed=false`
     /// 2/2). 옵셔널 단일 바인딩은 "다른 바인딩을 먼저 놓는다"를 구조로 만든다
     /// (`SearchView.applyRowFocus`의 교훈). 후보·경로 목록은 정체성 바인딩을 따로 둔다.
+    ///
+    /// ⚠ **전이 착지의 대상은 `status` 하나다**(E38 위원장 판정 2026-09-12: "시트에서 무엇을 누르든
+    /// 커서는 상태 문장 행에 앉는다. 예외 없음"). 나머지 대상은 **자기 질문 화면을 여는 착지**만 남았다 —
+    /// 그 화면의 헤딩·라벨이 곧 질문이라 착지 낭독이 답을 유도하는 자리다(상태 문장으로 옮기면 사용자가
+    /// 무엇을 고르는지 모른 채 목록 위에 선다). 종전 대상 `advance`·`changeBoarding`·`boardAlready`·`title`은
+    /// 그래서 사라졌다 — 되살리려면 위원장 판정부터 뒤집어야 한다.
     enum SheetControl: Hashable {
-        case advance, changeBoarding, waitingLabel, reboardPrompt
-        /// 상태 문장 줄 — 차량 선택(waiting→boarding) 전이의 착지 자리(N3 ①, spec
-        /// `2026-09-11-boarding-manual-advance-design.md` §4.3). 그 전이엔 "다음 행동"이 없어
-        /// (기다리는 국면이다) 지금 무슨 일이 일어나는지를 말하는 유일한 줄에 착지한다.
+        /// 상태 문장 줄 — **모든 국면 전이·복귀 착지의 유일한 대상**(E38). 폴마다 내용이 바뀌지만 뷰
+        /// 종류·정체성은 불변이라 포커스가 재생성으로 튕기지 않는다(E33과 같은 근거).
         case status
-        /// [이미 탔습니다] — "이미 탑승" 흐름의 역 선택 취소가 돌아오는 자리(A34 ②, riding 취소의 `.changeBoarding` 동형).
-        case boardAlready
+        /// 대기 목록 라벨 — pickVehicle 단계에선 라벨이 곧 질문("타고 계신 차량을 선택하세요")이고,
+        /// 폴링으로 포커스가 얹힌 후보 행이 사라졌을 때의 목록 안 복귀 자리다(§13.4).
+        case waitingLabel
+        /// 역 선택 질문 헤딩 — 두 흐름 공용(승차 중 탑승 변경 A16 L3 · "이미 탑승" A34 ②).
+        case reboardPrompt
         /// 급행 확인 프롬프트 헤딩(§6) — 펼친 직후 착지.
         case expressPrompt
-        /// 급행 거절 상시 문장(§6) — 프롬프트 버튼이 사라진 자리의 착지.
+        /// 급행 거절 상시 문장(§6) — 프롬프트 질문의 답이라 헤딩과 한 묶음(버튼이 사라진 자리).
         case expressBlocked
-        /// 제목 행(제목 메뉴) — 시트 진입 기본 착지이자 사라지는 컨트롤의 복귀 앵커(항상
-        /// 존재). 종전 앵커였던 중지는 최하단 고정으로 내려갔다(위원장 판정 2026-08-23).
-        case title
-        /// 접기 버튼(N1, 헤더 행 우측 아이콘) — 띠바에서 돌아온 시트의 첫 착지.
+        /// 접기 버튼(N1, 헤더 행 우측 아이콘) — 띠바에서 돌아온 시트의 첫 착지(떠난 자리).
         case minimize
         /// 목적지 전환 후보 상태 행(조회 중·0건·오류, 스펙 §4.4).
         case destChangeStatus
@@ -89,9 +97,9 @@ struct TransitTrackingSheet: View {
     /// 아니다), 조망이 열린 채 `beginReboard()`를 부르면 부모 waiting 착지와 프롬프트
     /// 착지가 경쟁한다(설계 리뷰 F2·F4).
     enum OverviewFollowUp: Equatable {
-        case land(SheetControl)
+        /// 조망이 열린 채 난 국면 전이(또는 조망 안 경로 전환)의 착지 — 대상은 언제나 상태 문장(E38).
+        case landStatus
         case beginReboard
-        case routeSwitched
     }
     @State private var pendingFollowUp: OverviewFollowUp?
 
@@ -121,7 +129,7 @@ struct TransitTrackingSheet: View {
                     } header: {
                         // 제목이 곧 목적지 메뉴다(스펙 2026-08-12 §1).
                         GuideTitleRow {
-                            landingTarget(GuideTitleMenu(
+                            GuideTitleMenu(
                                 heading: appLocalized("beacon.transitHeading"),
                                 label: model.destinationLabel,
                                 onShowDetail: {
@@ -129,7 +137,7 @@ struct TransitTrackingSheet: View {
                                     model.touchUserAction()
                                     detailPlace = guideDestinationPlace(dest: dest, label: model.destinationLabel)
                                 },
-                                onChangeDestination: { changeDestPresented = true }), .title)
+                                onChangeDestination: { changeDestPresented = true })
                         } trailing: {
                             landingTarget(GuideMinimizeButton(action: onMinimize), .minimize)
                         }
@@ -152,7 +160,7 @@ struct TransitTrackingSheet: View {
                     GuideSession.shared.returnedFromBand = nil
                     landControlFocus(.minimize, proxy: proxy)
                 } else {
-                    landControlFocus(.title, proxy: proxy)
+                    landControlFocus(.status, proxy: proxy)
                 }
             }
             .onChange(of: model.state?.legIndex) { viaExpanded = false }
@@ -194,24 +202,25 @@ struct TransitTrackingSheet: View {
                 // 급행 확인 프롬프트는 대기 국면 전용(§6) — 국면이 바뀌면 접는다.
                 expressPromptActive = false
                 // 세션 종료(state nil)도 여기로 온다(.some → nil 변화) — 조망을 닫는다.
-                let target = phaseTransitionLanding(previous: previous, phase: phase)
+                let lands = phaseTransitionLands(previous: previous, phase: phase)
                 // 조망이 열려 있으면 그 행·행동은 낡았다 — 닫고, 착지는 onDismiss로 미룬다(§4.3).
                 // 경로 전환이 만든 전이(→waiting)도 여기로 온다: 전환 뒤 착지는 새 세션의
-                // 전이 착지(대기 라벨)가 정본이고, 전이 착지가 없을 때만 중지 버튼
+                // 전이 착지가 정본이고, 전이 착지가 없을 때만 조망이 스스로 세운 후속이 남는다
                 // (메뉴 경유 목적지 전환도 같은 덮임 — spec §7).
                 if overviewAdapter != nil {
-                    if let target { pendingFollowUp = .land(target) }
+                    if lands { pendingFollowUp = .landStatus }
                     overviewAdapter = nil
                     return
                 }
-                if let target { landControlFocus(target, proxy: proxy) }
+                if lands { landControlFocus(.status, proxy: proxy) }
             }
             // 진행 상황 조망(E15-1). 닫힌 뒤 한 곳에서 행동·착지(닫힌 뒤 행동 계약).
             .sheet(item: $overviewAdapter, onDismiss: { runPendingFollowUp(proxy: proxy) }) { adapter in
                 GuideOverviewSheet(capability: adapter) { followUp in
                     pendingFollowUp = switch followUp {
                     case .beginReboard: .beginReboard
-                    case .routeSwitched: .routeSwitched
+                    // 경로 전환 확정도 착지는 상태 문장이다(E38) — 새 경로의 첫 상태를 읽는 자리.
+                    case .routeSwitched: .landStatus
                     }
                 }
             }
@@ -315,7 +324,7 @@ struct TransitTrackingSheet: View {
                                 onDestinationCommitted(.place(
                                     label: pending.label,
                                     lat: pending.dest.lat, lng: pending.dest.lng))
-                                landControlFocus(.title, proxy: proxy)
+                                landControlFocus(.status, proxy: proxy)
                             } else {
                                 // stale 재조회(§4.2) — 선택 행들이 사라지고 조회 중
                                 // 상태 행으로 돌아간다(헌장 §5 선점).
@@ -327,7 +336,7 @@ struct TransitTrackingSheet: View {
                 }
                 Button(appLocalized("ios.transitGuide.destChangeCancel")) {
                     model.cancelDestinationChange()
-                    landControlFocus(.title, proxy: proxy)
+                    landControlFocus(.status, proxy: proxy)
                 }
             } header: {
                 Text(appLocalized("ios.transitGuide.destChangeHeading", pending.label))
@@ -336,22 +345,21 @@ struct TransitTrackingSheet: View {
         }
     }
 
-    /// 국면 전이의 착지 대상(기존 분기 그대로): arrived→"다음 구간"(사라진 컨트롤 대신
-    /// 다음 행동, 헌장 §5) / 탑승 변경·다른 차량 선택(→waiting)→대기 목록 라벨 / 차량
-    /// 선택(waiting→boarding)→상태 문장(N3 ① — 그 국면엔 다음 행동이 없다) / 탑승 계열(waiting·boarding→riding)→
-    /// riding 컨트롤(감사 M2; arrived→riding 자동 복귀는 사용자 행동이 아니라 제외).
-    private func phaseTransitionLanding(previous: TransitPhase?, phase: TransitPhase?) -> SheetControl? {
-        if phase == .arrived { return .advance }
-        if phase == .waiting, previous != nil, previous != .waiting { return .waitingLabel }
-        if phase == .boarding, previous == .waiting { return .status }
-        // waiting → riding은 사용자가 고른 열차로 직행하는 전이라(A34 `boardAboard`) 누른 행이
-        // 사라진다 — 선점 이동이 필요하다(헌장 §5). ⚠ **boarding → riding은 빠져 있다**(N3 ① 구현
-        // 리뷰 M1): 그 승격은 폴이 일으키고 커서가 얹힌 상태 문장은 사라지지 않으므로, 착지시키면
-        // 사용자가 요청하지 않은 포커스 강탈이 되어 듣던 문장을 끊는다. 승격 사실은 통지가 말한다.
-        if phase == .riding, previous == .waiting {
-            return model.state?.lock.map(isApproxTransitLock) == true ? .advance : .changeBoarding
-        }
-        return nil
+    /// 국면 전이가 착지를 일으키는가(E38 — **대상은 물을 것이 없다. 언제나 상태 문장이다**).
+    /// 종전엔 전이마다 다음 행동 버튼을 골랐지만(arrived→"다음 구간", →waiting→대기 라벨,
+    /// →riding→탑승 변경), 위원장 판정으로 대상이 `status` 하나로 접히면서 남은 판정은 **여부**뿐이다.
+    ///
+    /// 참인 전이는 전부 **사용자 행동이 만든 것**이다: 하차역 도착(arrived) · 탑승 변경·다른 차량
+    /// 선택(→waiting) · 차량 선택(waiting→boarding) · 고른 열차로 직행(waiting→riding, A34 `boardAboard`).
+    /// ⚠ **boarding → riding은 빠져 있다**(N3 ① 구현 리뷰 M1): 그 승격은 폴이 일으키고 커서는 이미 상태
+    /// 문장에 앉아 있으므로, 착지시키면 듣던 문장을 끊는 포커스 강탈이 된다. 승격 사실은 통지가 말한다
+    /// (arrived→riding 자동 복귀도 같은 이유로 제외).
+    private func phaseTransitionLands(previous: TransitPhase?, phase: TransitPhase?) -> Bool {
+        if phase == .arrived { return true }
+        if phase == .waiting, previous != nil, previous != .waiting { return true }
+        if phase == .boarding, previous == .waiting { return true }
+        if phase == .riding, previous == .waiting { return true }
+        return false
     }
 
     /// 조망 `onDismiss` — 닫힌 뒤 행동 계약의 실행 지점(한 곳).
@@ -362,13 +370,11 @@ struct TransitTrackingSheet: View {
         guard let followUp = pendingFollowUp else { return }
         pendingFollowUp = nil
         switch followUp {
-        case let .land(target):
-            landControlFocus(target, proxy: proxy)
+        case .landStatus:
+            landControlFocus(.status, proxy: proxy)
         case .beginReboard:
-            // 지하철은 `reboardPickerActive` 전이의 프롬프트 착지가, 버스는 waiting 전이의 waitingLabel 착지가 맡는다.
+            // 지하철은 `reboardPickerActive` 전이의 프롬프트 착지가, 버스는 waiting 전이의 상태 문장 착지가 맡는다.
             model.beginReboard()
-        case .routeSwitched:
-            landControlFocus(.title, proxy: proxy)
         }
     }
 
@@ -490,9 +496,11 @@ struct TransitTrackingSheet: View {
             } else {
                 // 근사 잠금은 advance 상시(§13.2 소비 한계 — arrived 전이가 없다).
                 // 마지막 leg + 말미 도보면 버튼은 하나이고 라벨이 처음부터 "남은 도보 안내 시작"(E34) —
-                // 한 번 누르면 leg 종료와 도보 시작이 함께. 착지 대상 정체성(`.advance`)은 불변.
+                // 한 번 누르면 leg 종료와 도보 시작이 함께.
+                // ⚠ 착지 대상이 아니다(E38): 하차 도착의 커서는 상태 문장("하차 지점 도착. …")에 앉고
+                // 이 버튼은 거기서 한 번 스와이프 아래다.
                 if state.phase == .arrived || (state.lock.map(isApproxTransitLock) ?? false) {
-                    landingTarget(Button(advanceLabel) { advanceOrHandoff() }, .advance)
+                    Button(advanceLabel) { advanceOrHandoff() }
                 }
                 if state.phase == .riding, leg.trackMode != .tagoBus {
                     if model.reboardPickerActive {
@@ -509,11 +517,10 @@ struct TransitTrackingSheet: View {
                             },
                             onCancel: {
                                 model.cancelReboard()
-                                landControlFocus(.changeBoarding, proxy: proxy)
+                                landControlFocus(.status, proxy: proxy)
                             })
                     } else {
-                        landingTarget(
-                            Button(appLocalized("transitGuide.changeBoarding")) { model.beginReboard() }, .changeBoarding)
+                        Button(appLocalized("transitGuide.changeBoarding")) { model.beginReboard() }
                     }
                 }
             }
@@ -533,12 +540,12 @@ struct TransitTrackingSheet: View {
                 onPick: { index in
                     expressPromptActive = false
                     model.pickAboardStation(at: index)
-                    // 하차역이면 국면 전이 착지(arrived → .advance)가 맡는다.
+                    // 하차역이면 국면 전이 착지(arrived → 상태 문장)가 맡는다.
                     if model.aboardStep == .pickVehicle { landControlFocus(.waitingLabel, proxy: proxy) }
                 },
                 onCancel: {
                     model.cancelAboard()
-                    landControlFocus(.boardAlready, proxy: proxy)
+                    landControlFocus(.status, proxy: proxy)
                 })
         } else {
             let aboardPicking = model.aboardStep == .pickVehicle
@@ -598,14 +605,14 @@ struct TransitTrackingSheet: View {
                 }
             } else {
                 // [이미 탔습니다]: 지하철은 역부터 묻고(A34 ②), 그 밖(서울버스)은 종전대로 곧장 잠금.
-                landingTarget(Button(appLocalized("transitGuide.boardAlready")) {
+                Button(appLocalized("transitGuide.boardAlready")) {
                     if leg.trackMode == .subway, !leg.viaStops.isEmpty {
                         expressPromptActive = false
                         model.beginAboard()
                     } else {
                         boardAlreadyOrAskExpress(leg, proxy: proxy)
                     }
-                }, .boardAlready)
+                }
             }
             if expressPromptActive {
                 // 버튼으로 펼친 것이라 헤딩이 발견 경로(헌장 §3). 답하면 프롬프트는 사라지고 착지는 국면 전이
@@ -843,10 +850,7 @@ struct TransitTrackingSheet: View {
     /// 그 시점 상태로 고른다(`advance`의 E34 라벨·대기 라벨의 pickVehicle·프롬프트의 두 흐름·전환 상태 3형).
     private func landingFallbackText(_ target: SheetControl) -> String {
         switch target {
-        case .title: return joinText(appLocalized("beacon.transitHeading"), model.destinationLabel)
         case .minimize: return appLocalized("guide.minimize")
-        case .advance: return advanceLabel
-        case .changeBoarding: return appLocalized("transitGuide.changeBoarding")
         case .status:
             // 화면의 그 줄은 `distanceText`가 `spokenUnits`로 낭독 라벨을 바꾼다 — 폴백은 "그 자리에서
             // 낭독됐을 라벨"이라는 계약이라 같은 변환을 지나야 한다(a11y 감사 L1: 지금은 no-op이지만
@@ -855,7 +859,6 @@ struct TransitTrackingSheet: View {
             return spokenUnits(model.statusLineText(state: state, leg: leg))
         case .waitingLabel: return waitingLabelText
         case .reboardPrompt: return appLocalized(reboardPromptKey)
-        case .boardAlready: return appLocalized("transitGuide.boardAlready")
         case .expressPrompt: return appLocalized("transitGuide.expressPrompt")
         case .expressBlocked: return model.expressBlockedNote ?? ""
         case .destChangeStatus:
@@ -872,12 +875,7 @@ struct TransitTrackingSheet: View {
     private func controlExists(_ target: SheetControl) -> Bool {
         let phase = model.state?.phase
         switch target {
-        case .title, .minimize: return model.state != nil
-        case .advance:
-            // untrackable 분기의 수동 전진 버튼은 착지 바인딩이 없다(코드 리뷰 M3) — 그 국면엔 대상이 없다.
-            return model.state?.signal != .untrackable
-                && (phase == .arrived || (phase == .riding && (model.state?.lock.map(isApproxTransitLock) ?? false)))
-        case .changeBoarding: return phase == .riding && !model.reboardPickerActive
+        case .minimize: return model.state != nil
         case .status: return model.state != nil && model.currentLeg != nil
         case .waitingLabel:
             // 대기 목록은 untrackable·지방버스 분기에선 렌더되지 않는다(`phaseControls`·`waitingList` 바깥 두 분기, 코드 리뷰 M3).
@@ -886,8 +884,6 @@ struct TransitTrackingSheet: View {
         case .reboardPrompt:
             return (phase == .riding && model.reboardPickerActive)
                 || (phase == .waiting && model.aboardStep == .pickStation)
-        case .boardAlready:
-            return phase == .waiting && model.aboardStep == nil && model.currentLeg?.trackMode != .tagoBus
         case .expressPrompt: return phase == .waiting && expressPromptActive
         case .expressBlocked: return phase == .waiting && model.expressBlockedNote != nil
         case .destChangeStatus:

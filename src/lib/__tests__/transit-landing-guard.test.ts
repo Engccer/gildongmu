@@ -35,12 +35,20 @@ describe("TransitTrackingSheet 착지 계약 (A35)", () => {
 
   it("착지 트리거는 상태 변화다 — 대상 뷰의 .task/.onAppear가 landControlFocus를 부르지 않는다(트리거 결손 차단)", () => {
     const lines = SHEET.split("\n");
+    // 면제는 시트 열림 착지 하나뿐이다 — List 수준 `.task`라 **대상 뷰가 아니다**(대상이 실현되지 않아도 돈다).
+    // 종전엔 그 대상 이름(`title`/`minimize`)을 정규식에서 빼는 것으로 면제했는데, E38로 열림 착지가 `.status`가
+    // 되면서 그 방식은 대상 뷰 착지까지 함께 눈감는다 — 자리를 표지(`returnedFromBand`)로 가른다.
+    const exemptAt = lines.findIndex((l, i) =>
+      /\.task\s*\{/.test(l) && lines.slice(i, i + 8).join(" ").includes("returnedFromBand"),
+    );
+    expect(exemptAt, "시트 열림 착지(List 수준 .task)가 사라졌다").toBeGreaterThan(-1);
     for (let i = 0; i < lines.length; i += 1) {
+      if (i === exemptAt) continue;
       if (!/\.(task|onAppear)\s*\{/.test(lines[i])) continue;
-      // 블록이 길어질 수 있어 8줄 창(설계 리뷰 L7). 시트 열림 착지(title/minimize)는 List 수준 `.task`라 대상 뷰가 아니다 — 그 둘만 허용.
+      // 블록이 길어질 수 있어 8줄 창(설계 리뷰 L7).
       const window = lines.slice(i, i + 8).join(" ");
       // 래퍼(`boardAlreadyOrAskExpress`가 `.expressPrompt`를 착지시킨다)와 변수 인자 호출도 함께 본다(코드 리뷰 m6).
-      if (/landControlFocus\((\.(reboardPrompt|advance|changeBoarding|status|waitingLabel|boardAlready|expressPrompt|expressBlocked|destChangeStatus)|target|inFlight)|boardAlreadyOrAskExpress\(/.test(window)) {
+      if (/landControlFocus\((\.(reboardPrompt|status|waitingLabel|expressPrompt|expressBlocked|destChangeStatus)|target|inFlight)|boardAlreadyOrAskExpress\(/.test(window)) {
         throw new Error(`${i + 1}: 대상 뷰 .task/.onAppear가 착지를 부른다 — ${lines[i].trim()}`);
       }
     }
@@ -76,7 +84,7 @@ describe("TransitTrackingSheet 착지 계약 (A35)", () => {
   });
 });
 
-describe("TransitTrackingSheet boarding 수동 진행 (N3 ①)", () => {
+describe("TransitTrackingSheet 착지 대상 (E38) · boarding 수동 진행 (N3 ①)", () => {
   it("[탑승했습니다]는 없다 — boarding 버튼은 래치를 지나고 착지 대상에서도 사라졌다", () => {
     // 문자열 키와 착지 case가 함께 사라져야 한다(둘 중 하나만 지우면 폴백 문장이나 버튼이 되살아난다).
     expect(SHEET).not.toContain("transitGuide.confirmBoarded");
@@ -85,16 +93,65 @@ describe("TransitTrackingSheet boarding 수동 진행 (N3 ①)", () => {
     expect(SHEET).toContain('Button(appLocalized("transitGuide.boardWithoutArrival")) { model.confirmBoarded() }');
   });
 
-  it("차량 선택 전이의 착지는 상태 문장이다 — 그 국면엔 다음 행동이 없다(§4.3)", () => {
-    expect(SHEET).toContain("if phase == .boarding, previous == .waiting { return .status }");
+  it("국면 전이 착지는 대상을 고르지 않는다 — 술어는 Bool이고 착지는 상태 문장 하나(E38)", () => {
+    // 반환형이 `SheetControl?`로 돌아가면 전이마다 대상이 다시 갈릴 수 있다 — 타입이 계약이다.
+    expect(SHEET).toContain(
+      "private func phaseTransitionLands(previous: TransitPhase?, phase: TransitPhase?) -> Bool",
+    );
+    expect(SHEET).not.toContain("phaseTransitionLanding");
+    const start = SHEET.indexOf("private func phaseTransitionLands(");
+    const body = SHEET.slice(start, SHEET.indexOf("\n    }", start));
+    // 술어 본문에 `SheetControl` 리터럴이 있으면 대상 선택이 되살아난 것이다.
+    expect(body).not.toMatch(/return \.\w/);
+    for (const t of [
+      "if phase == .arrived { return true }",
+      "if phase == .waiting, previous != nil, previous != .waiting { return true }",
+      "if phase == .boarding, previous == .waiting { return true }",
+      "if phase == .riding, previous == .waiting { return true }",
+    ]) {
+      expect(body, t).toContain(t);
+    }
+    // ⚠ boarding → riding은 여전히 착지가 아니다(N3 ① 구현 리뷰 M1): 그 승격은 폴이 일으키고
+    // 커서는 이미 상태 문장에 앉아 있어 착지시키면 듣던 문장을 끊는 포커스 강탈이 된다.
+    expect(body).not.toContain("previous == .waiting || previous == .boarding");
+    // 호출부 둘(직접 착지·조망 이월)이 상수 대상을 쓴다.
+    expect(SHEET).toContain("if lands { landControlFocus(.status, proxy: proxy) }");
+    expect(SHEET).toContain("if lands { pendingFollowUp = .landStatus }");
     // `.status`는 상태 문장 줄에 달린다(폴백 문장도 같은 조립기를 읽는다 — 드리프트 차단).
     expect(SHEET).toContain("landingTarget(distanceText(text), .status)");
     // 폴백은 화면과 같은 낭독 라벨을 지난다(a11y 감사 L1).
     expect(SHEET).toContain("return spokenUnits(model.statusLineText(state: state, leg: leg))");
-    // ⚠ boarding → riding은 착지 대상이 아니다(구현 리뷰 M1): 그 승격은 폴이 일으키고 커서가 얹힌
-    // 상태 문장은 사라지지 않으므로 착지시키면 포커스 강탈이 된다.
-    expect(SHEET).toContain("if phase == .riding, previous == .waiting {");
-    expect(SHEET).not.toContain("previous == .waiting || previous == .boarding");
+  });
+
+  it("착지 대상 집합은 상태 문장 + 자기 질문 화면뿐이다 — 죽은 대상도 새 대상도 없다(E38)", () => {
+    // 위원장 판정: 시트에서 무엇을 누르든 커서는 상태 문장 행. 남은 대상은 **그 화면 자체가 질문인 자리**
+    // (역 선택·급행 확인·차량 선택 라벨)와 띠바 복귀·목적지 전환 상태 행뿐이다. 종전 대상
+    // `advance`·`changeBoarding`·`boardAlready`·`title`을 되살리려면 그 판정부터 뒤집어야 한다.
+    const allowed = [
+      "status",
+      "waitingLabel",
+      "reboardPrompt",
+      "expressPrompt",
+      "expressBlocked",
+      "minimize",
+      "destChangeStatus",
+    ].sort();
+    // ① enum에 죽은 case가 남지 않는다(소스 가드가 죽은 대상을 잠그면 다음 사람이 대상으로 읽는다).
+    const enumStart = SHEET.indexOf("enum SheetControl: Hashable {");
+    const enumBody = SHEET.slice(enumStart, SHEET.indexOf("\n    }", enumStart));
+    const cases = [...enumBody.matchAll(/^\s*case (\w+)$/gm)].map((m) => m[1]).sort();
+    expect(cases).toEqual(allowed);
+    // ② 착지 호출의 리터럴 대상도 그 집합 안이다(변수 인자는 이월 두 자리 — 위 목록이 이미 잠근다).
+    const called = [...SHEET.matchAll(/landControlFocus\(\.(\w+)/g)].map((m) => m[1]);
+    expect([...new Set(called)].sort()).toEqual(allowed);
+    // ③ 사용자가 누르는 다음 행동 버튼들은 착지 대상이 아니다 — `landingTarget` 부착이 없어야 한다.
+    for (const label of [
+      'Button(advanceLabel) { advanceOrHandoff() }',
+      'Button(appLocalized("transitGuide.changeBoarding")) { model.beginReboard() }',
+    ]) {
+      expect(SHEET, label).toContain(label);
+      expect(SHEET, label).not.toContain(`landingTarget(${label}`);
+    }
   });
 });
 

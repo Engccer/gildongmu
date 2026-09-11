@@ -97,12 +97,8 @@ export function TransitGuidePanel({
   };
 
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const advanceRef = useRef<HTMLButtonElement>(null);
-  const changeBoardingRef = useRef<HTMLButtonElement>(null);
-  /** 역 재선택 프롬프트 착지(A16 L3) — 버튼이 사라지는 전이라 포커스를 선점한다. */
+  /** 역 재선택 프롬프트 착지(A16 L3) — 화면 자체가 질문이라 헤딩이 착지점이다(E38 예외). */
   const reboardPromptRef = useRef<HTMLHeadingElement>(null);
-  /** [이미 탔습니다] — "이미 탑승" 흐름의 역 선택 취소가 돌아오는 자리(A34 ②, riding 취소의 `changeBoardingRef` 동형). */
-  const boardAlreadyRef = useRef<HTMLButtonElement>(null);
   /**
    * 급행 확인 프롬프트(spec 2026-09-02 §6) — 버튼으로 펼친 것이라 heading이 발견 경로(헌장 §3).
    * 연 시점의 국면 세대에 결박해 파생한다(iOS `onChange(of: phase)` 동형): 후보 선택·탑승 변경·구간
@@ -205,37 +201,34 @@ export function TransitGuidePanel({
     setViaOpen(false);
   }
 
-  // arrived 진입 시 "다음 구간"으로 선점 이동(다음 행동이 있는 곳, 헌장 §5).
-  // 세션 소멸로 컨트롤이 사라지며 포커스가 body로 떨어졌으면 트리거로 복귀.
+  /**
+   * 국면 전이 착지(E38 위원장 판정 2026-09-12) — **대상은 언제나 상태 문장 행이다**(iOS
+   * `phaseTransitionLands` 미러). 종전엔 전이마다 다음 행동 버튼을 골랐지만(arrived→[다음 구간],
+   * →waiting→대기 라벨, →riding→[탑승 변경]), 액션마다 커서가 컨트롤로 튀어 확인하고 싶은 정보
+   * 행까지 다시 내려가야 했다. 남은 판정은 **여부**뿐이고, 참인 전이는 전부 사용자 행동이 만든 것이다.
+   *
+   * ⚠ **boarding→riding은 제외한다**(N3 ① 구현 리뷰 M1): 그 승격은 폴이 일으키고 커서는 이미 상태
+   * 문장에 앉아 있으므로, 착지시키면 듣던 문장을 끊는 포커스 강탈이 된다. 승격 사실은 통지가 말한다
+   * (arrived→riding 자동 복귀도 같은 이유로 제외).
+   */
   const prevPhaseRef = useRef<string | null>(null);
   useLayoutEffect(() => {
     const phase = state?.phase ?? null;
-    // 세션 시작(B4): 트리거 버튼이 unmount되며 커서가 body로 떨어지는 전이다(헌장 §5
-    // "포커스를 쥔 요소를 제거하는 상태 전이"). 세션 내내 존재하는 상태 텍스트로 선점
-    // — 시작 통지는 live region이 이미 내므로 착지는 위치 보존만 맡는다.
-    if (phase !== null && prevPhaseRef.current === null) {
+    const previous = prevPhaseRef.current;
+    const lands =
+      // 세션 시작(B4): 트리거 버튼이 unmount되며 커서가 body로 떨어지는 전이다(헌장 §5
+      // "포커스를 쥔 요소를 제거하는 상태 전이"). 시작 통지는 live region이 이미 낸다.
+      (phase !== null && previous === null) ||
+      // 하차 지점 도착 — [다음 구간]이 아니라 도착을 말하는 문장이 착지점이다(E38 판정 문언).
+      (phase === "arrived" && previous !== "arrived") ||
+      // 탑승 변경·다른 차량 선택(→waiting): 누른 버튼이 섹션째 사라진다.
+      (phase === "waiting" && previous !== null && previous !== "waiting") ||
+      // 차량 선택(waiting→boarding, N3 ①): 누른 후보 행이 사라진다.
+      (phase === "boarding" && previous === "waiting") ||
+      // 고른 열차로 직행(waiting→riding, A34 `boardAboard`): 선택 행·[이미 탔습니다]가 통째로 사라진다.
+      (phase === "riding" && previous === "waiting");
+    if (lands) {
       statusRef.current?.focus();
-    }
-    if (phase === "arrived" && prevPhaseRef.current !== "arrived") {
-      advanceRef.current?.focus();
-    }
-    // 탑승 변경·다른 차량 선택(→waiting): 누른 버튼이 섹션째 사라진다 — 대기 목록
-    // 라벨로 선점(독립 리뷰 WARNING — 종전부터 비어 있던 전이).
-    if (phase === "waiting" && prevPhaseRef.current !== null && prevPhaseRef.current !== "waiting") {
-      waitingLabelRef.current?.focus();
-    }
-    // 차량 선택(waiting→boarding, N3 ①): 누른 후보 행이 사라지는데 그 국면엔 "다음 행동"이
-    // 없다(기다리는 국면이다) — 지금 무슨 일이 일어나는지를 말하는 상태 문장으로 선점(iOS `.status` 미러).
-    if (phase === "boarding" && prevPhaseRef.current === "waiting") {
-      statusRef.current?.focus();
-    }
-    // waiting→riding은 사용자가 고른 열차로 직행하는 전이라 포커스를 쥔 컨트롤(선택 행·
-    // [이미 탔습니다])이 통째로 사라진다 — riding 컨트롤로 선점(헌장 §5, 감사 M2).
-    // ⚠ **boarding→riding은 제외한다**(N3 ① 구현 리뷰 M1): 그 승격은 폴이 일으키고 커서가 얹힌
-    // 상태 문장은 세션 내내 살아 있으므로, 착지시키면 사용자가 요청하지 않은 포커스 강탈이 되어
-    // 듣던 문장을 끊는다. 승격 사실은 통지가 말한다. arrived→riding 자동 복귀도 같은 이유로 제외.
-    if (phase === "riding" && prevPhaseRef.current === "waiting") {
-      (advanceRef.current ?? changeBoardingRef.current)?.focus();
     }
     if (phase === null && prevPhaseRef.current !== null) {
       if (document.activeElement === document.body || document.activeElement === null) {
@@ -263,14 +256,10 @@ export function TransitGuidePanel({
       setExpressPromptGen(null);
       if (guide.aboardStep === "pickStation") reboardPromptRef.current?.focus();
       if (guide.aboardStep === "pickVehicle") waitingLabelRef.current?.focus();
-      if (
-        guide.aboardStep === null &&
-        prevAboardRef.current === "pickStation" &&
-        boardAlreadyRef.current?.isConnected
-      ) {
-        // 취소만 여기로 온다(하차역 선언·잠금은 국면 전이 착지가 맡는다 — 그때 이 버튼은 렌더되지 않는다;
-        // `isConnected`가 그 전제를 명시한다, a11y 감사 LOW).
-        boardAlreadyRef.current.focus();
+      if (guide.aboardStep === null && prevAboardRef.current === "pickStation") {
+        // 역 선택 취소 복귀(E38) — 하차역 선언·잠금이 만드는 국면 전이 착지도 같은 상태 문장이라
+        // 종전의 "취소만 여기로 온다" 판별(`isConnected` 가드)은 더 이상 필요 없다.
+        statusRef.current?.focus();
       }
     }
     prevAboardRef.current = guide.aboardStep;
@@ -561,7 +550,6 @@ export function TransitGuidePanel({
                     ) : (
                       <button
                         type="button"
-                        ref={boardAlreadyRef}
                         // 지하철은 역부터 묻고(A34 ②), 그 밖(서울버스)은 종전대로 — 급행 집합이 있는
                         // 노선만 급행 확인을 묻는다(§6), 없으면 즉시(비관측) 잠금.
                         onClick={() =>
@@ -667,7 +655,6 @@ export function TransitGuidePanel({
                 // leg 종료와 도보 시작(아래 DistanceBeacon autoStart)이 함께. 그 밖은 종전 [다음 구간].
                 <button
                   type="button"
-                  ref={advanceRef}
                   onClick={handoffNow ? () => guide.advanceIntoWalkHandoff() : guide.advance}
                   className="min-h-11 rounded-md border border-blue-700 px-3 text-sm text-blue-700 dark:text-blue-300"
                 >
@@ -679,7 +666,6 @@ export function TransitGuidePanel({
                 !guide.reboardPickerActive && (
                   <button
                     type="button"
-                    ref={changeBoardingRef}
                     onClick={guide.beginReboard}
                     className="min-h-11 rounded-md border border-gray-400 px-3 text-sm"
                   >
@@ -707,8 +693,9 @@ export function TransitGuidePanel({
               }
               onCancel={() => {
                 guide.cancelReboard();
-                // 취소는 아무것도 바꾸지 않으므로 눌렀던 자리로 돌려보낸다.
-                requestAnimationFrame(() => changeBoardingRef.current?.focus());
+                // 취소도 착지는 상태 문장이다(E38). 픽커 언마운트로 커서가 body로 떨어진 뒤에
+                // 대입해야 하므로 리렌더 다음 프레임에서 잡는다.
+                requestAnimationFrame(() => statusRef.current?.focus());
               }}
               cancelLabel={t("reboardCancel")}
             />
