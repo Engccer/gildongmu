@@ -12,6 +12,7 @@
  * ⚠ **인자 순서는 ko 문장의 플레이스홀더 등장 순서가 정본**이다(`TransitWalkLegText` 규약).
  * 어순이 다른 로케일은 변환 스크립트가 인덱스를 재배치하므로 호출부는 이 순서 하나만 지킨다.
  */
+import { parseBusArrmsg } from "./bus-arrival-en";
 import type { TransitDisplayItem, TransitDisplayLeg, TransitLabel } from "./transit-display";
 import { subwayRidingMessage, type ExpressVerdict } from "./transit-guide";
 
@@ -46,6 +47,17 @@ export function pickLabels(
   return { values: labels.map((l) => l.ko), lang: "ko" };
 }
 
+/**
+ * 수단별 키(A33 "수단별 키" 패턴, E39) — 버스는 `{line}`이 노선 번호라 "421번 버스"처럼
+ * 수단 낱말이 붙어야 한다. 지하철 노선명("수도권 5호선")은 그 자체로 수단을 말한다.
+ *
+ * ⚠ **라벨(`TransitDisplayLeg.line`)에 합성하지 않는다.** 투영도 이 계층도 i18n 카탈로그를
+ * 모르고, 라벨에 합성하면 그 값을 조인 키로 쓰는 자리(`transitStopPlace`·띠바)까지 오염된다.
+ */
+function modeKey(leg: TransitDisplayLeg, base: string): string {
+  return leg.mode === "bus" ? `${base}Bus` : base;
+}
+
 /** 라벨 하나 + 라벨 아닌 인자들로 한 줄을 만든다(인자 순서는 ko 문장 순서). */
 function line(
   isEn: boolean,
@@ -75,23 +87,23 @@ export function waitContextLine(
   const overridden = isCurrentLeg && leg.boardOverridden;
   const walk = leg.walkBeforeMinutes;
   if (!overridden && walk != null && walk > 0) {
-    return line(isEn, "waitContextWalk", [leg.board, leg.line], ([stop, lineName]) => [
+    return line(isEn, modeKey(leg, "waitContextWalk"), [leg.board, leg.line], ([stop, lineName]) => [
       String(walk),
       stop,
       lineName,
     ]);
   }
-  return line(isEn, "waitContext", [leg.board, leg.line], (v) => v);
+  return line(isEn, modeKey(leg, "waitContext"), [leg.board, leg.line], (v) => v);
 }
 
 /** boarding 문맥(N3) — 승차 정류소에서 선택 차량을 기다리는 중. */
 export function boardingContextLine(isEn: boolean, leg: TransitDisplayLeg): TransitTextLine {
-  return line(isEn, "boardingContext", [leg.board, leg.line], (v) => v);
+  return line(isEn, modeKey(leg, "boardingContext"), [leg.board, leg.line], (v) => v);
 }
 
 /** 노선·하차 전문 문맥(§6.1 M1) — 추적 시작·진행 상황·상시 표시가 담당. */
 export function contextLine(isEn: boolean, leg: TransitDisplayLeg): TransitTextLine {
-  return line(isEn, "context", [leg.line, leg.alight], (v) => v);
+  return line(isEn, modeKey(leg, "context"), [leg.line, leg.alight], (v) => v);
 }
 
 // === 완성 문장 프레임 ===
@@ -130,6 +142,106 @@ export function approachFrameLine(
   return line(isEn, "approachFrame", [leg.board, message], (v) => v);
 }
 
+/** 상태 문장을 만드는 국면(E39). `waiting`은 관측값이 없어 이 함수를 지나지 않는다. */
+export type TransitStatusPhase = "boarding" | "riding";
+
+/**
+ * 승차 대기·승차 중 상태 문장의 **도착 조각**(E39) — 잔여와 도착 서술을 한 줄 두 조각으로 낸다.
+ * 렌더가 조각을 쉼표로 이으므로 "남은 정거장 3개, 다음 역 서대문." 한 문장이 된다.
+ *
+ * ⚠ **`phase`에 기본값을 두지 않는다.** 같은 잔여 수가 대기에서는 "버스가 여기 오기까지"이고
+ * 승차 중에는 "내릴 곳까지"라 낱말이 갈린다(`slotToItem`·`busArrivalMessageEn` 선례).
+ *
+ * 버스는 완성 문장을 원문 그대로 읽지 않고 `parseBusArrmsg` 구조로 우리 문장을 고른다(E39 위원장
+ * 확정): 대괄호 꼬리가 낭독에서 난반하고, 잔여 수는 구조 필드로 이미 온다. 미지 모양은 원문 병치로
+ * 떨어져 **실패 방향이 종전과 같다**. 지하철은 A27 계약(`frameLine`)을 그대로 쓴다.
+ */
+export function arrivalStatusLine(
+  isEn: boolean,
+  leg: TransitDisplayLeg,
+  message: TransitLabel | null,
+  arrivalCode: string | null,
+  remaining: number | null,
+  phase: TransitStatusPhase,
+): TransitTextLine {
+  const arrival = message
+    ? leg.mode === "bus"
+      ? busArrivalPart(isEn, message)
+      : subwayArrivalPart(isEn, leg, message, arrivalCode, phase)
+    : null;
+  // 지하철 승차 대기는 잔여를 말하지 않는다(종전 계약 그대로 — 원문 프레임이 승차 정류소를 말한다).
+  // ⚠ 승차 대기의 잔여 0은 조각을 만들지 않는다 — "0정거장 전"은 한국어가 아니고, 그 상태는
+  // 도착 조각("곧 도착")이 이미 말한다. 승차 중의 0은 종전대로 "남은 정거장 0개"(하차 구간 진입).
+  const showStops =
+    remaining != null && (phase === "riding" || (leg.mode === "bus" && remaining > 0));
+  if (!showStops) return arrival ? arrival.line : OMIT;
+  const count = String(remaining);
+  if (!arrival) {
+    const only = phase === "boarding" ? "stopsAwayOnly" : "remainingCount";
+    return { parts: [{ key: only, args: [count] }], lang: isEn ? "en" : "ko" };
+  }
+  const joinKey = phase === "boarding" ? "stopsAway" : "remainingCountJoin";
+  return {
+    parts: [{ key: joinKey, args: [count] }, ...arrival.line.parts],
+    lang: arrival.line.lang,
+  };
+}
+
+/** 도착 조각 하나 — `line`이 비면 조각이 없다는 뜻이라 `null`로 접는다. */
+type ArrivalPart = { line: TransitTextLine };
+
+/**
+ * 서울버스 완성 문장 → 우리 문장. 초가 있으면 정확값, 없으면 "약"(국면으로 가르지 않는다).
+ * `ended`·`unknown`은 문장을 만들지 않고 원문을 병치한다 — `운행종료`는 차량 잠금 국면에
+ * 도달하지 않고(vehId 부재), 미지 모양은 잘못 옮기는 것보다 원문이 낫다.
+ */
+function busArrivalPart(isEn: boolean, message: TransitLabel): ArrivalPart | null {
+  const parsed = parseBusArrmsg(message.ko);
+  const ui = (key: string, args: string[] = []): ArrivalPart => ({
+    line: { parts: [{ key, args }], lang: isEn ? "en" : "ko" },
+  });
+  switch (parsed.kind) {
+    case "soon":
+      return ui("busSoon");
+    case "waiting":
+      return ui("busNotDeparted");
+    case "turning":
+      return ui("busTurning");
+    case "eta": {
+      const min = parsed.minutes != null && parsed.minutes > 0 ? parsed.minutes : null;
+      const sec = parsed.seconds != null && parsed.seconds > 0 ? parsed.seconds : null;
+      if (min != null && sec != null) return ui("busEtaMinSec", [String(min), String(sec)]);
+      if (min != null) return ui("busEtaMin", [String(min)]);
+      if (sec != null) return ui("busEtaSec", [String(sec)]);
+      // 분·초가 둘 다 0 — 담을 값이 없다(en 투영과 같은 판정).
+      return null;
+    }
+    default:
+      return rawArrivalPart(isEn, message);
+  }
+}
+
+/** 지하철: 승차 중은 A27 문장, 승차 대기는 종전 프레임("{stop}에 {message}"). */
+function subwayArrivalPart(
+  isEn: boolean,
+  leg: TransitDisplayLeg,
+  message: TransitLabel,
+  arrivalCode: string | null,
+  phase: TransitStatusPhase,
+): ArrivalPart | null {
+  if (phase === "boarding") return { line: approachFrameLine(isEn, leg, message) };
+  const r = subwayRidingKey(arrivalCode);
+  if (r === "omit") return null;
+  if (r) return { line: line(isEn, r, [leg.alight], (v) => v) };
+  return rawArrivalPart(isEn, message);
+}
+
+/** 원문 병치(틀 없이) — 비어 있으면 조각 없음. */
+function rawArrivalPart(isEn: boolean, message: TransitLabel): ArrivalPart | null {
+  const { values, lang } = pickLabels(isEn, [message]);
+  return values[0] ? { line: { parts: [{ text: values[0] }], lang } } : null;
+}
+
 /**
  * A27 승차 국면 지하철 문장 종류 — **판정은 `subwayRidingMessage`가 정본**이고 여기서는 그 결과를
  * i18n 키로 옮기기만 한다.
@@ -165,21 +277,23 @@ export function vehiclePassedLine(isEn: boolean, leg: TransitDisplayLeg): Transi
 }
 
 export function arrivedAtBoardStopLine(isEn: boolean, leg: TransitDisplayLeg): TransitTextLine {
-  return line(isEn, "arrivedAtBoardStop", [leg.line], (v) => v);
+  return line(isEn, modeKey(leg, "arrivedAtBoardStop"), [leg.line], (v) => v);
 }
 
 /** A41: 서울버스 "곧 도착"(잔여 0) 승차 임박 — 승격 없이 "{line} 곧 도착합니다." */
 export function arrivingAtBoardStopLine(isEn: boolean, leg: TransitDisplayLeg): TransitTextLine {
-  return line(isEn, "arrivingAtBoardStop", [leg.line], (v) => v);
+  return line(isEn, modeKey(leg, "arrivingAtBoardStop"), [leg.line], (v) => v);
 }
 
-/** 탑승 통지 — 정거장 수를 아는 경우와 아닌 경우로 키가 갈린다. */
-export function boardedLine(isEn: boolean, leg: TransitDisplayLeg): TransitTextLine {
-  if (leg.stationCount != null) {
-    const count = leg.stationCount;
-    return line(isEn, "boardedCount", [leg.line, leg.alight], ([l, s]) => [l, s, String(count)]);
-  }
-  return line(isEn, "boarded", [leg.line, leg.alight], (v) => v);
+/**
+ * 탑승 통지(E41) — 노선·하차역·정거장 수는 착지가 앉는 상태 문장이 그대로 말하므로 통지는
+ * "무슨 일이 일어났는가" 한 문장이다. 인자가 없어 라벨을 받지 않는다.
+ *
+ * ⚠ A41 인계 기각: `cause: "departed"`에 관측 서술("{노선} 출발")을 넣지 않는다 — 사용자에게
+ * 일어난 일은 탑승이지 버스의 출발이 아니다(spec 2026-09-12-transit-status-prose §4).
+ */
+export function boardedLine(isEn: boolean): TransitTextLine {
+  return { parts: [{ key: "boarded", args: [] }], lang: isEn ? "en" : "ko" };
 }
 
 export function currentStationLine(isEn: boolean, location: TransitLabel): TransitTextLine {
@@ -339,10 +453,24 @@ export function openStationLine(isEn: boolean, station: TransitLabel): TransitTe
 /** descriptor가 낼 수 있는 전체 키(iOS 리터럴 switch 망라성 대조 축, spec §5.2). */
 export const TRANSIT_TEXT_KEYS = [
   "waitContext",
+  "waitContextBus",
   "waitContextWalk",
+  "waitContextWalkBus",
   "boardingContext",
+  "boardingContextBus",
   "context",
+  "contextBus",
   "messageFrame",
+  "remainingCount",
+  "remainingCountJoin",
+  "stopsAway",
+  "stopsAwayOnly",
+  "busEtaMinSec",
+  "busEtaMin",
+  "busEtaSec",
+  "busSoon",
+  "busNotDeparted",
+  "busTurning",
   "subwayNextStop",
   "subwayArriving",
   "subwayAtStop",
@@ -352,9 +480,10 @@ export const TRANSIT_TEXT_KEYS = [
   "selectedVehicle",
   "vehiclePassed",
   "arrivedAtBoardStop",
+  "arrivedAtBoardStopBus",
   "arrivingAtBoardStop",
+  "arrivingAtBoardStopBus",
   "boarded",
-  "boardedCount",
   "currentStation",
   "bound",
   "expressCheck",

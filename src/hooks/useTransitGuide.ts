@@ -37,7 +37,7 @@ import {
   type TransitLabel,
 } from "@/lib/transit-display";
 import {
-  approachFrameLine,
+  arrivalStatusLine,
   arrivedAtBoardStopLine,
   arrivingAtBoardStopLine,
   boardedLine,
@@ -48,12 +48,12 @@ import {
   expressSkipsAlightLine,
   expressStatusLine,
   prewalkArrivedLine,
-  frameLine,
   selectedVehicleLine,
   vehiclePassedLine,
   vehicleSelectedLine,
   waitContextLine,
   type TransitTextLine,
+  type TransitStatusPhase,
 } from "@/lib/transit-guide-text";
 import { namedArgs } from "@/lib/transit-text-args";
 import type { TransitRoute } from "@/lib/types";
@@ -154,9 +154,16 @@ export function useTransitGuide(
      * 라벨 축을 한 값으로 묶는다 — 갈리면 "없는 버튼을 가리키는 문장"이 된다(spec-compliance 리뷰 MINOR 2).
      */
     walkHandoffAvailable?: boolean;
+    /**
+     * 목적지 라벨(E40) — 시작 통지 첫머리에 실린다. 시트 진입 착지가 상태 문장이라(E38) 목적지를
+     * 만날 채널이 시작 통지뿐이다. 없으면 목적지 없는 문장으로 떨어진다(iOS는 세션이 항상 라벨을
+     * 들지만 웹 패널은 목적지 좌표 없이도 뜬다).
+     */
+    destinationLabel?: string;
   } = {},
 ) {
   const walkHandoffAvailable = options.walkHandoffAvailable ?? false;
+  const destinationLabel = options.destinationLabel ?? null;
   // 통지 조립(콜백 안, 렌더 밖)이 읽는 미러 — 렌더 중 ref 접근 금지(React 컴파일러 규칙)라 effect로 동기화.
   const walkHandoffAvailableRef = useRef(walkHandoffAvailable);
   useEffect(() => {
@@ -393,28 +400,35 @@ export function useTransitGuide(
     [displayLegOf, isEn, piece],
   );
 
-  /**
-   * 승차 국면 상태 문장(§12.3). 버스는 완성 문장의 라벨 프레임("{stop}까지 {message}", 원문 무변형).
-   * 지하철은 `arvlMsg2`가 조회역(=하차역) 기준 열차 위치 서술이라 그 틀에 넣으면 뜻이 뒤집힌다
-   * ("충정로까지 전역 도착", A27) — 코드로 탑승자 시점 문장을 고르고 99는 생략(잔여 수가 말한다).
-   */
-  const framePiece = useCallback(
-    (leg: TransitGuideLeg, message: TransitLabel, arrivalCode: string | null) =>
-      piece(frameLine(isEn, displayLegOf(leg, null), message, arrivalCode)),
-    [displayLegOf, isEn, piece],
-  );
-
   /** boarding 문맥(N3) — 승차 정류소에서 선택 차량을 기다리는 중. 재선택 역이 이긴다. */
   const boardingContextPiece = useCallback(
     (leg: TransitGuideLeg) => piece(boardingContextLine(isEn, displayLegOf(leg, boardOverride))),
     [boardOverride, displayLegOf, isEn, piece],
   );
 
-  /** boarding 완성 문장 프레임 — 승차 정류소 라벨 전치("{stop}에 {message}"). */
-  const approachFramePiece = useCallback(
-    (leg: TransitGuideLeg, message: TransitLabel) =>
-      piece(approachFrameLine(isEn, displayLegOf(leg, boardOverride), message)),
-    [boardOverride, displayLegOf, isEn, piece],
+  /**
+   * 이벤트가 실어 온 완성 문장 → **상태 문장과 같은 도착 서술**(E39). 통지와 상시 표시가 한
+   * 조립기를 공유해야 같은 사실이 두 문장으로 갈리지 않는다(§12.3 드리프트 차단).
+   * `remaining`이 null이면 잔여 조각 없이 도착 서술만 낸다.
+   */
+  const arrivalPiece = useCallback(
+    (
+      leg: TransitGuideLeg,
+      event: { message: string; messageEn?: string; arrivalCode?: string | null },
+      remaining: number | null,
+      phase: TransitStatusPhase,
+    ) =>
+      piece(
+        arrivalStatusLine(
+          isEn,
+          displayLegOf(leg, phase === "boarding" ? boardOverrideRef.current : null),
+          event.message ? messageLabel(event.message, event.messageEn) : null,
+          event.arrivalCode ?? null,
+          remaining,
+          phase,
+        ),
+      ),
+    [displayLegOf, isEn, piece],
   );
 
   /** 0건 사유 문구(§13.3 3-state) — 목록 자리·새로고침 응답 공용. */
@@ -477,37 +491,59 @@ export function useTransitGuide(
   const buildStatus = useCallback(
     (s: TransitGuideState, leg: TransitGuideLeg): { text: string; lang?: "ko" } => {
       const boarding = s.phase === "boarding";
-      // 비관측 잠금(A34 ①): 잔여·프레임·신선도를 내지 않는다(어림값 표시 폐지).
+      const riding = s.phase === "riding";
+      const arrived = s.phase === "arrived";
+      // 비관측 잠금(A34 ①): 잔여·도착 문장·신선도를 내지 않는다(어림값 표시 폐지).
       const unobserved = s.lock != null && isUnobservedTransitLock(s.lock);
+      // 도착 조각을 낼 수 있는 국면 — 도착 뒤의 접근 정보는 낡은 값이라 `arrived`는 제외한다(E39).
+      const live = (boarding || riding) && !unobserved;
       const ui = (text: string) => ({ text, ko: false });
-      const lastMessage = s.lastMessage && !unobserved
+      const lastMessage = s.lastMessage && live
         ? messageLabel(s.lastMessage, s.lastMessageEn ?? undefined)
         : null;
+      // 잔여 + 도착 서술을 한 줄 두 조각으로(E39) — 렌더가 쉼표로 이어 한 문장이 된다.
+      const arrival = live
+        ? piece(
+            arrivalStatusLine(
+              isEn,
+              displayLegOf(leg, boarding ? boardOverride : null),
+              lastMessage,
+              s.lastArrivalCode,
+              s.remaining,
+              boarding ? "boarding" : "riding",
+            ),
+          )
+        : ui("");
       const pieces: { text: string; ko: boolean }[] = [
         s.phase === "waiting"
           ? waitContextPiece(leg, true)
           : boarding
             ? boardingContextPiece(leg)
             : contextPiece(leg),
-        ui(signalText(s.signal, s.phase, leg.mode === "subway", unobserved)),
+        // 신호 문구(E39 위원장 판정): 대기 국면의 `notYetVisible`은 그 국면 내내 고정이라 정보가
+        // 0이고(목록 자리가 0건 사유를 3-state로 말한다), 추적 중은 도착 조각이 그 사실을 이미
+        // 말한다. 추적 중인데 도착 조각이 비면 그것이 정보다 — "차량이 없다"가 아니라 "언제
+        // 오는지 못 받았다"(3-state의 unknown).
+        ui(
+          arrived || !(s.phase === "waiting" && s.signal === "notYetVisible")
+            ? s.signal === "tracking" && live
+              ? arrival.text
+                ? ""
+                : t("noArrivalInfo")
+              : signalText(s.signal, s.phase, leg.mode === "subway", unobserved)
+            : "",
+        ),
         // 선택 차량 조각: boarding 종전대로 + riding(A34 ② — 목록에서 고른 열차를 확인하는 자리, 리뷰 m5).
-        (boarding || s.phase === "riding") && selectedDescription
+        (boarding || riding) && selectedDescription
           ? piece(selectedVehicleLine(isEn, selectedDescription))
           : ui(""),
-        // boarding은 승차 정류소 기준 정보라 "하차역까지 남은 정거장"을 말하면 거짓이
-        // 된다 — 원문 프레임만(잔여 수는 원문 꼬리가 담는다).
+        arrival,
+        // 잔여를 못 받은 승차 중의 어림 정거장 수 — 도착 조각과 겹치지 않는 별도 문장이다.
         ui(
-          !boarding && !unobserved && s.remaining != null
-            ? t("remainingCount", { count: s.remaining })
-            : !boarding && !unobserved && leg.stationCount != null && s.phase === "riding"
-              ? t("stationCountAbout", { count: leg.stationCount })
-              : "",
+          riding && !unobserved && s.remaining == null && leg.stationCount != null
+            ? t("stationCountAbout", { count: leg.stationCount })
+            : "",
         ),
-        lastMessage
-          ? boarding
-            ? approachFramePiece(leg, lastMessage)
-            : framePiece(leg, lastMessage, s.lastArrivalCode)
-          : ui(""),
         // 근사 주석("같은 노선의 접근 차량 기준")은 지방버스만(대기 중에도 근사 예고). 지하철·서울버스
         // 근사는 2026-09-11부터 비관측이라 접근 차량 기준이 아니다(리뷰 m2 — 국면이 아니라 잠금 술어).
         ui(leg.trackMode === "tagoBus" ? t("approxNote") : ""),
@@ -519,8 +555,9 @@ export function useTransitGuide(
         // 그 외(미등장·소실·실패)엔 마지막 폴 시각만 — 낡은 나이를 신선한 값처럼
         // 이월하지 않는다(3-state, useRouteGuide "낡은 fix 거짓 정밀 차단" 동형).
         // 비관측 잠금은 폴이 없어 신선도가 정보가 아니다(동결 시각은 "앱이 멈췄다"로 읽힌다, 리뷰 m4).
+        // 도착 국면도 같다 — 내린 뒤의 갱신 시각은 행동을 바꾸지 않는다(E39).
         ui(
-          unobserved
+          unobserved || arrived
             ? ""
             : s.signal === "tracking" && s.dataAgeSeconds != null
             ? t("dataAge", { seconds: s.dataAgeSeconds })
@@ -544,10 +581,9 @@ export function useTransitGuide(
       };
     },
     [
-      approachFramePiece,
+      boardOverride,
       boardingContextPiece,
       contextPiece,
-      framePiece,
       isEn,
       piece,
       selectedDescription,
@@ -594,9 +630,7 @@ export function useTransitGuide(
           // 첫 관측만 "추적합니다"를 앞세운다. 이벤트는 첫 관측과 사다리를 구분하지
           // 않으므로 전이 전 상태(dispatch가 남긴 플래그)를 본다.
           if (firstObservationRef.current) parts.push(t("approachingStarted"));
-          if (event.message && leg) {
-            pushPiece(approachFramePiece(leg, messageLabel(event.message, event.messageEn)));
-          }
+          if (leg) pushPiece(arrivalPiece(leg, event, event.remaining, "boarding"));
           break;
         case "vehiclePassed":
           if (leg) pushPiece(piece(vehiclePassedLine(isEn, displayLegOf(leg, boardOverrideRef.current))));
@@ -612,9 +646,11 @@ export function useTransitGuide(
         case "boarded": {
           if (!leg) break;
           const d = displayLegOf(leg, null);
-          // departed(A41)는 "도착. 탑승하세요"를 내지 않는다 — 차량은 이미 떠났고 사용자는 그 차 안이다.
+          // E41: 노선·하차역·정거장 수는 착지가 앉는 상태 문장이 그대로 말한다 — 통지는 한 문장.
+          // 관측 승격은 "도착했으니 타세요"가 그 순간의 유일한 지시라 그것만 내고(departed는 차량이
+          // 이미 떠났으므로 내지 않는다, A41), 그 밖은 탑승 사실만.
           if (event.cause === "observed") pushPiece(piece(arrivedAtBoardStopLine(isEn, d)));
-          pushPiece(piece(boardedLine(isEn, d)));
+          else pushPiece(piece(boardedLine(isEn)));
           // "이미 탑승" 식별 잠금(A34 ②)은 vehicleSelected를 내지 않으므로 어느 열차를 잠갔는지 여기서 말한다.
           if (aboardBoardRef.current && selectedDescriptionRef.current) {
             pushPiece(piece(selectedVehicleLine(isEn, selectedDescriptionRef.current)));
@@ -624,24 +660,12 @@ export function useTransitGuide(
         case "trackingStarted":
           if (leg) pushPiece(contextPiece(leg));
           parts.push(t("trackingStarted"));
-          {
-            const framed = event.message && leg
-              ? framePiece(leg, messageLabel(event.message, event.messageEn), event.arrivalCode)
-              : { text: event.message, ko: false };
-            if (framed.text) pushPiece(framed);
-            else if (event.remaining != null) parts.push(t("remainingCount", { count: event.remaining }));
-          }
+          if (leg) pushPiece(arrivalPiece(leg, event, event.remaining, "riding"));
           break;
         case "countdown":
-          // §12.3: 매 사다리마다 문맥 문장을 반복하지 않는다 — 프레임이 하차역을 밝힌다.
-          {
-            // 지하철 99(운행중)는 프레임이 비어 잔여 수 문장으로 떨어진다(A27).
-            const framed = event.message && leg
-              ? framePiece(leg, messageLabel(event.message, event.messageEn), event.arrivalCode)
-              : { text: event.message, ko: false };
-            if (framed.text) pushPiece(framed);
-            else parts.push(t("remainingCount", { count: event.remaining }));
-          }
+          // §12.3: 매 사다리마다 문맥 문장을 반복하지 않는다 — 도착 서술이 잔여와 시간을 함께 말한다.
+          // 지하철 99(운행중)는 도착 조각이 비어 잔여 수만 남는다(A27).
+          if (leg) pushPiece(arrivalPiece(leg, event, event.remaining, "riding"));
           // 한 정거장 전 현재 역 병치(§12.2, 피드백 #10) — 잔여 ≥ 2 문장은 원문이
           // 현재 역을 이미 담아 병치하지 않는다(중복 금지).
           if (event.remaining <= 1 && event.currentLocation) {
@@ -656,14 +680,14 @@ export function useTransitGuide(
           }
           break;
         case "messageChanged":
-          {
-            const label = messageLabel(event.message, event.messageEn);
-            const framed = leg
-              ? stateRef.current?.phase === "boarding"
-                ? approachFramePiece(leg, label)
-                : framePiece(leg, label, event.arrivalCode)
-              : { text: event.message, ko: false };
-            if (framed.text) pushPiece(framed);
+          // 잔여는 바뀌지 않은 전이라 도착 서술만 낸다(잔여 조각 없음).
+          if (leg) {
+            pushPiece(
+              arrivalPiece(
+                leg, event, null,
+                stateRef.current?.phase === "boarding" ? "boarding" : "riding",
+              ),
+            );
           }
           break;
         case "arrived": {
@@ -695,12 +719,7 @@ export function useTransitGuide(
         }
         case "backOnTrack":
           parts.push(t("backOnTrack"));
-          {
-            const framed = event.message && leg
-              ? framePiece(leg, messageLabel(event.message, event.messageEn), event.arrivalCode)
-              : { text: event.message, ko: false };
-            if (framed.text) pushPiece(framed);
-          }
+          if (leg) pushPiece(arrivalPiece(leg, event, null, "riding"));
           break;
         case "approxVehicleChanged":
           parts.push(t("approxVehicleChanged"));
@@ -733,10 +752,11 @@ export function useTransitGuide(
                 : t("done"),
             );
           } else {
-            const nextLeg = r?.legs[event.legIndex];
-            if (nextLeg) {
-              pushPiece(waitContextPiece(nextLeg, false));
-              if (!nextLeg.trackMode) parts.push(t("untrackable"));
+            // E41: 다음 구간 문맥은 착지가 앉는 상태 문장이 그것으로 바뀌어 말한다 — 통지는 전이
+            // 사실만. 미추적 고지는 상태 문장에 없는 정보라 남긴다.
+            parts.push(t("legAdvancedNext"));
+            if (r?.legs[event.legIndex] && !r.legs[event.legIndex].trackMode) {
+              parts.push(t("untrackable"));
             }
           }
           break;
@@ -754,12 +774,11 @@ export function useTransitGuide(
     },
     [
       announce,
-      approachFramePiece,
+      arrivalPiece,
       contextPiece,
       currentLeg,
       renderText,
       displayLegOf,
-      framePiece,
       isEn,
       piece,
       t,
@@ -1044,13 +1063,19 @@ export function useTransitGuide(
       commit(init);
       const first = route.legs[0];
       const context = waitContextPiece(first, true);
-      const parts = [t("started", { count: route.legs.length }), context.text];
+      // E40: 시작 통지가 목적지를 말한다 — 시트 진입 착지는 상태 문장이라 목적지를 만날 채널이 없다.
+      const parts = [
+        destinationLabel
+          ? t("startedAt", { dest: destinationLabel, count: route.legs.length })
+          : t("started", { count: route.legs.length }),
+        context.text,
+      ];
       if (!first.trackMode) parts.push(t("untrackable"));
       if (prefix) parts.unshift(prefix);
       announce(parts.filter(Boolean).join(" "), context.ko ? "ko" : undefined);
       void pollOnce();
     },
-    [announce, commit, pollOnce, stopSession, t, waitContextPiece],
+    [announce, commit, destinationLabel, pollOnce, stopSession, t, waitContextPiece],
   );
 
   const start = useCallback(() => {

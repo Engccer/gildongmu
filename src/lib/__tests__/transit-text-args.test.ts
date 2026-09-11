@@ -30,10 +30,12 @@ describe("TRANSIT_TEXT_ARG_NAMES — descriptor ↔ next-intl 어댑터 표", ()
   });
 
   it("namedArgs가 위치 인자를 이름으로 옮긴다", () => {
-    expect(namedArgs("boardedCount", ["Line 5", "Gwanghwamun", "8"])).toEqual({
-      line: "Line 5",
-      stop: "Gwanghwamun",
-      count: "8",
+    expect(namedArgs("waitContextWalkBus", ["3", "Galwol-dong", "421"])).toEqual({
+      minutes: "3",
+      stop: "Galwol-dong",
+      line: "421",
     });
+    // 인자 없는 키는 undefined — 빈 객체를 넘기면 next-intl이 값 없는 보간을 시도한다.
+    expect(namedArgs("boarded", [])).toBeUndefined();
   });
 });

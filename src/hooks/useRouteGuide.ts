@@ -1794,7 +1794,9 @@ export function useRouteGuide(
       rememberGuidance(first);
       const notice = consumeStepFreeNotice(fetched.stepFree, fetched.stepFreeNotice);
       // 요약과 첫 안내는 한 문장으로 — 두 통지가 경합하면 앞의 것이 잘린다(스펙 §5.3).
+      // E40: 시작 통지가 목적지를 말한다(iOS `GuideText.start`·`carStart` 미러).
       const summary = t(kindFixed === "car" ? "carStart" : "detailStart", {
+        dest: dest.name,
         count: route.steps.length,
         distance: formatDistance(route.totalMeters),
         first,

@@ -125,10 +125,10 @@ export interface SeoulTrackSlot {
 }
 
 /**
- * arrmsg 잔여 꼬리 패턴. **읽는 쪽과 지우는 쪽이 공유한다**(`remainingFromArrmsg` ↔
- * `rewriteBusArrivalMessage`) — 한쪽만 무는 변형이 생기면 잔여 수는 추출 실패로 null이
- * 되고 문장에서도 꼬리가 지워져 정보가 이중으로 사라진다. `/g` 없음(꼬리는 하나이고,
- * 공유 객체에 `/g`를 붙이면 `lastIndex`가 호출 간에 이월된다).
+ * arrmsg 잔여 꼬리 패턴. **잔여를 읽는 쪽과 모양을 읽는 쪽이 공유한다**(`remainingFromArrmsg` ↔
+ * `parseBusArrmsg`) — 한쪽만 무는 변형이 생기면 잔여 수는 추출 실패로 null이 되고 모양 판정도
+ * 미지로 떨어져 정보가 이중으로 사라진다. `/g` 없음(꼬리는 하나이고, 공유 객체에 `/g`를 붙이면
+ * `lastIndex`가 호출 간에 이월된다).
  */
 export const ARRMSG_REMAINING_TAIL = /\[(\d+)번째 전\]/;
 

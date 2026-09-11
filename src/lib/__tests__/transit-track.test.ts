@@ -10,7 +10,6 @@ import {
   pickTagoStop,
   remainingFromArvlCd,
   remainingFromArvlMsg,
-  rewriteBusArrivalMessage,
   subwayDataAgeSeconds,
 } from "../transit-track";
 
@@ -154,40 +153,6 @@ describe("remainingFromArvlMsg — 지하철 잔여 추출(§6.2)", () => {
     expect(remainingFromArvlMsg("전역 도착")).toBe(1);
     expect(remainingFromArvlMsg("4분 후 (길동)")).toBeNull();
     expect(remainingFromArvlMsg("여의도 도착")).toBeNull();
-  });
-});
-
-describe("rewriteBusArrivalMessage — 잔여 꼬리 제거·어미 정리", () => {
-  it("잔여 정거장 꼬리를 떼고 '남음'으로 맺는다", () => {
-    // 화면이 "남은 정거장 3개"를 이미 말하므로 "[3번째 전]"은 같은 정보 반복이다.
-    expect(rewriteBusArrivalMessage("2분55초후[3번째 전]")).toBe("2분55초 남음");
-    expect(rewriteBusArrivalMessage("55초후[1번째 전]")).toBe("55초 남음");
-    expect(rewriteBusArrivalMessage("12분3초후[9번째 전]")).toBe("12분3초 남음");
-  });
-
-  it("실승차 로그의 실제 arrmsg 3건(강동01, 2026-08-16)", () => {
-    // `docs/superpowers/specs/logs/transit-guide-diag-2026-08-16.log`의 countdown·
-    // trackingStarted 이벤트 message 원문. 합성 표본이 아니라 그날 화면에 뜬 문자열이다.
-    expect(rewriteBusArrivalMessage("6분18초후[5번째 전]")).toBe("6분18초 남음");
-    expect(rewriteBusArrivalMessage("3분48초후[3번째 전]")).toBe("3분48초 남음");
-    expect(rewriteBusArrivalMessage("1분32초후[1번째 전]")).toBe("1분32초 남음");
-  });
-
-  it("시간형이 아닌 상태 문장은 원문 그대로 둔다", () => {
-    // upstream 완성 문장이 낭독 정본이라는 계약(CLAUDE.md)은 여기서도 유효하다 —
-    // 다듬는 것은 잔여 꼬리와 어미뿐이고 상태 어휘는 우리가 만들지 않는다.
-    for (const raw of ["곧 도착", "출발대기", "운행종료", "차고지 대기"]) {
-      expect(rewriteBusArrivalMessage(raw)).toBe(raw);
-    }
-  });
-
-  it("꼬리만 있고 어미가 없거나, 어미만 있고 꼬리가 없어도 각각 처리한다", () => {
-    expect(rewriteBusArrivalMessage("3분후")).toBe("3분 남음");
-    expect(rewriteBusArrivalMessage("곧 도착[1번째 전]")).toBe("곧 도착");
-  });
-
-  it("빈 문자열은 빈 문자열로 — 없는 문장을 만들지 않는다", () => {
-    expect(rewriteBusArrivalMessage("")).toBe("");
   });
 });
 
@@ -342,7 +307,7 @@ describe("trackSeoulRide — ord 해석 실패의 정직 강등(모킹)", () => 
   });
 });
 
-describe("완성 문장 다듬기는 승차 국면만 — 대기 목록은 원문 유지(모킹)", () => {
+describe("완성 문장은 두 국면 모두 원문 그대로다(E39, 모킹)", () => {
   afterEach(() => {
     vi.restoreAllMocks();
     vi.resetModules();
@@ -371,7 +336,7 @@ describe("완성 문장 다듬기는 승차 국면만 — 대기 목록은 원�
     expect(r.items[0].message).toBe("2분55초후[3번째 전]");
   });
 
-  it("승차 카운트다운은 꼬리를 떼고 '남음'으로 맺는다 — 상태줄이 잔여를 이미 말한다", async () => {
+  it("승차 카운트다운도 원문을 변형하지 않는다 — 문장은 클라이언트가 구조에서 만든다", async () => {
     vi.resetModules();
     vi.doMock("../providers/seoul-bus", async (importOriginal) => ({
       ...(await importOriginal<typeof import("../providers/seoul-bus")>()),
@@ -388,8 +353,9 @@ describe("완성 문장 다듬기는 승차 국면만 — 대기 목록은 원�
       alightLocalId: "123000043", lang: "ko" });
     expect(r.status).toBe("ok");
     if (r.status !== "ok") return;
-    expect(r.items[0].message).toBe("2분55초 남음");
-    // 다듬기가 잔여 추출보다 앞서면 여기서 살아남지 못한다.
+    // E39 전에는 "2분55초 남음"으로 다듬어 실었다. 지금은 `arrivalStatusLine`이 원문을
+    // `parseBusArrmsg`로 읽어 문장을 만들므로, 여기서 다듬으면 그 파싱이 미지로 떨어진다.
+    expect(r.items[0].message).toBe("2분55초후[3번째 전]");
     expect(r.items[0].remainingStops).toBe(3);
   });
 });

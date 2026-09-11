@@ -133,19 +133,23 @@ enum GuideText {
     }
 
     /// 시작 원자 발화(스펙 §5.3 — 요약과 첫 안내를 한 문장으로, 발화 경합 제거).
-    static func start(route: GuideRoute, firstIndices: [Int]) -> String {
+    /// ⚠ `destination`에 기본값을 두지 않는다(E40) — 목적지를 말하는 것이 이 문장의 판정이고,
+    /// 생략이 컴파일을 통과하면 "안내 시작"만 남아 어디로 가는 안내인지 사라진다.
+    static func start(route: GuideRoute, firstIndices: [Int], destination: String) -> String {
         appLocalized(
             "guide.detailStart",
+            destination,
             route.steps.count,
             formatDistance(Int(route.totalMeters.rounded())),
             unit(route: route, indices: firstIndices)
         )
     }
 
-    /// 자동차 시작 원자 발화(B1 — 시작 통지가 수단·모드를 말한다).
-    static func carStart(route: GuideRoute, firstIndices: [Int]) -> String {
+    /// 자동차 시작 원자 발화(B1 — 시작 통지가 수단·모드를 말한다. E40으로 목적지도).
+    static func carStart(route: GuideRoute, firstIndices: [Int], destination: String) -> String {
         appLocalized(
             "guide.carStart",
+            destination,
             route.steps.count,
             formatDistance(Int(route.totalMeters.rounded())),
             unit(route: route, indices: firstIndices)

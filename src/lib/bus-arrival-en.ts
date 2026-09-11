@@ -1,17 +1,17 @@
 /**
  * 시내버스 도착 완성 문장(TOPIS `arrmsg1`)의 파싱과 영문 투영 (E27 잔여 ①, spec §3.11) — 순수.
  *
- * `lang=en` 응답에만 실린다. 원칙은 지하철 도착 영문(`subway-arrival-en.ts`)과 같다 —
+ * 영문 투영은 `lang=en` 응답에만 실린다. 원칙은 지하철 도착 영문(`subway-arrival-en.ts`)과 같다 —
  * **거짓 문장보다 부재**. 모양 밖·범위 밖은 전부 부재로 떨어지고 소비자가 한국어 원문으로 폴백한다.
  *
- * ⚠ **파싱을 ko 재작성(`rewriteBusArrivalMessage`)과 갈라 두지 않는다.** 원문을 각자 해석하면
- * provider 변형이 한쪽에만 반영돼 잔여 정거장 수와 영어 문장이 서로 다른 원문 해석을 하게 된다.
- * 그래서 꼬리 정규식은 `ARRMSG_REMAINING_TAIL`을 그대로 공유하고, 잔여 해석은 계약 테스트가
- * 기존 `remainingFromArrmsg`와의 일치를 전 코퍼스에서 단언한다.
+ * ⚠ **모양 판정(`parseBusArrmsg`)은 ko·en 두 소비자의 공통 한 자리다**(E39). ko 상태 문장
+ * (`arrivalStatusLine`)도 이 `kind`로 우리 문장을 고르므로, 여기서 갈리면 한 원문을 두 언어가
+ * 서로 다르게 해석한다. 꼬리 정규식은 `ARRMSG_REMAINING_TAIL`을 그대로 공유하고, 잔여 해석은
+ * 계약 테스트가 기존 `remainingFromArrmsg`와의 일치를 전 코퍼스에서 단언한다.
  */
 import { ARRMSG_REMAINING_TAIL, remainingFromArrmsg } from "./providers/seoul-bus";
 
-export type BusArrmsgKind = "eta" | "soon" | "waiting" | "ended" | "unknown";
+export type BusArrmsgKind = "eta" | "soon" | "waiting" | "turning" | "ended" | "unknown";
 
 export interface BusArrmsg {
   kind: BusArrmsgKind;
@@ -41,6 +41,10 @@ export function parseBusArrmsg(message: string): BusArrmsg {
   const body = message.replace(ARRMSG_REMAINING_TAIL, "").trim();
   if (/^곧\s*도착$/.test(body)) return { kind: "soon", minutes: null, seconds: null, remainingStops };
   if (body === "출발대기") return { kind: "waiting", minutes: null, seconds: null, remainingStops };
+  // 회차대기 = 종점에서 다음 운행을 기다리는 중. **vehId가 붙는 실재 상태**라 미지로 두면
+  // 잠글 수 있는 차량의 상태 문장이 통째로 원문 폴백이 된다(A41 코퍼스 실측 120건,
+  // spec 2026-09-12-transit-status-prose §1.3).
+  if (body === "회차대기") return { kind: "turning", minutes: null, seconds: null, remainingStops };
   if (body === "운행종료") return { kind: "ended", minutes: null, seconds: null, remainingStops };
   const m = ETA_RE.exec(body);
   if (m && (m[1] != null || m[2] != null)) {
@@ -62,6 +66,8 @@ export function busArrivalMessageEn(parsed: BusArrmsg, phase: "wait" | "ride"): 
       return "Arriving soon";
     case "waiting":
       return "Waiting to depart";
+    case "turning":
+      return "Waiting at the terminus";
     case "ended":
       return "Service ended";
     case "eta": {
@@ -75,9 +81,9 @@ export function busArrivalMessageEn(parsed: BusArrmsg, phase: "wait" | "ride"): 
       if (parts.length === 0) return undefined;
       const body = parts.join(" ");
       // ⚠ **대기 국면에선 잔여 정거장을 붙인다.** ko 원문은 꼬리 `[N번째 전]`을 달고 있고
-      // 대기 후보 목록은 `remainingStops`를 따로 렌더하지 않으므로(`rewriteBusArrivalMessage`
-      // 주석) **그 꼬리가 잔여 정보의 유일한 채널**이다 — 안 붙이면 en 사용자만 "몇 번째 전
-      // 버스인가"를 못 듣는다. 승차 국면은 상태줄이 잔여 수를 따로 말하므로 붙이지 않는다.
+      // 대기 후보 목록은 `remainingStops`를 따로 렌더하지 않으므로 **그 꼬리가 잔여 정보의
+      // 유일한 채널**이다 — 안 붙이면 en 사용자만 "몇 번째 전 버스인가"를 못 듣는다.
+      // 승차 국면은 상태줄이 잔여 수를 따로 말하므로 붙이지 않는다.
       const eta = phase === "wait" ? `In ${body}` : `${body} left`;
       const stops = parsed.remainingStops;
       if (phase === "wait" && stops != null && stops > 0) {
