@@ -147,6 +147,17 @@ const expectLandedOnStatus = async () => {
   await waitFor(() => expect(document.activeElement).toBe(statusLine()));
 };
 /**
+ * 차량 선택 목록으로 가는 전이의 착지 자리(E38 예외, 위원장 판정 2026-09-12) — 그 화면의 질문 라벨.
+ * "이미 탑승" 흐름의 pickVehicle 진입과 **같은 자리**여야 한다(같은 목록에 두 문으로 들어간다).
+ */
+const expectLandedOnWaitingLabel = async () => {
+  // ⚠ 요소로 비교한다 — `activeElement?.textContent` 정규식은 착지가 통째로 사라져 커서가 `body`에
+  // 남았을 때도 통과한다(body의 textContent가 문서 전량이다, 변이 주입 실측).
+  await waitFor(() =>
+    expect(document.activeElement).toBe(screen.getByText(/transitGuide\.waitingLabel/)),
+  );
+};
+/**
  * 커서를 그 컨트롤에 얹고 누른다 — **착지 단언의 검출력은 여기서 나온다**. E38로 대상이 상태 문장
  * 하나가 되면서 "착지했다"와 "애초에 거기 있었다"가 구별되지 않게 됐다(변이 주입 실측: 전이 착지를
  * 통째로 지워도 단언이 통과했다). 실기기 경로 그대로 — 커서는 누르는 행 위에 있고 그 행이 사라진다.
@@ -690,8 +701,9 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "transitGuide.changeBoarding" }));
     clickFocused(await screen.findByRole("button", { name: "천호" }));
-    // →waiting 전이(누른 역 행이 사라진다) 역시 착지는 상태 문장이다(E38).
-    await expectLandedOnStatus();
+    // →waiting 전이(누른 역 행이 사라진다): 도착하는 화면이 차량 선택 목록이라 그 질문 라벨에 앉는다
+    // (E38 예외 — "이미 탑승" 흐름의 pickVehicle 진입과 같은 자리).
+    await expectLandedOnWaitingLabel();
     const cancel = await screen.findByRole("button", { name: "transitGuide.cancelChangeBoarding" });
     clickFocused(cancel);
     await waitFor(() => {

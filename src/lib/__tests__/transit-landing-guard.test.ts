@@ -11,6 +11,7 @@ import { describe, expect, it } from "vitest";
  */
 const ROOT = join(__dirname, "../../..");
 const SHEET = readFileSync(join(ROOT, "ios/Gildongmu/Directions/TransitTrackingSheet.swift"), "utf8");
+const PANEL = readFileSync(join(ROOT, "src/components/TransitGuidePanel.tsx"), "utf8");
 
 describe("TransitTrackingSheet 착지 계약 (A35)", () => {
   it("focusedControl 바인딩은 landingTarget 헬퍼 안 한 자리에만 붙는다 — 가시화 키·실현 관측이 함께 달리는 유일한 경로", () => {
@@ -48,7 +49,7 @@ describe("TransitTrackingSheet 착지 계약 (A35)", () => {
       // 블록이 길어질 수 있어 8줄 창(설계 리뷰 L7).
       const window = lines.slice(i, i + 8).join(" ");
       // 래퍼(`boardAlreadyOrAskExpress`가 `.expressPrompt`를 착지시킨다)와 변수 인자 호출도 함께 본다(코드 리뷰 m6).
-      if (/landControlFocus\((\.(reboardPrompt|status|waitingLabel|expressPrompt|expressBlocked|destChangeStatus)|target|inFlight)|boardAlreadyOrAskExpress\(/.test(window)) {
+      if (/landControlFocus\((\.(reboardPrompt|status|waitingLabel|expressPrompt|expressBlocked|destChangeStatus|minimize)|target|inFlight)|boardAlreadyOrAskExpress\(/.test(window)) {
         throw new Error(`${i + 1}: 대상 뷰 .task/.onAppear가 착지를 부른다 — ${lines[i].trim()}`);
       }
     }
@@ -69,6 +70,10 @@ describe("TransitTrackingSheet 착지 계약 (A35)", () => {
     for (const key of ["attempts=", "elapsedMs=", "rendered=", "reason=", "vo=", "deferred=true", "note=deferred", "reason=\\(LandingOutcome.cancelled.rawValue)"]) {
       expect(SHEET, key).toContain(key);
     }
+    // 진행 중 표식의 소유권은 **세대**다(E38 코드 리뷰 MEDIUM-1) — 대상 동일성으로 판별하면 대상이 하나로
+    // 통일된 뒤 취소된 옛 Task가 새 Task의 표식을 지우고, 배경 전환이 착지를 끊지 못해 판정 축이 오염된다.
+    expect(SHEET).toContain("defer { if landingGen == gen { landingInFlight = nil } }");
+    expect(SHEET).not.toContain("defer { if landingInFlight == target");
     // 배경·모달에선 시도하지 않는다(L4·A1) — 진입 게이트 + 배경 전환의 진행 중 착지 이월(M1) + 최소화 취소(M2).
     expect(SHEET).toContain("!model.isForeground ? .background");
     expect(SHEET).toContain("(detailPlace != nil || changeDestPresented) ? .modal");
@@ -93,34 +98,42 @@ describe("TransitTrackingSheet 착지 대상 (E38) · boarding 수동 진행 (N3
     expect(SHEET).toContain('Button(appLocalized("transitGuide.boardWithoutArrival")) { model.confirmBoarded() }');
   });
 
-  it("국면 전이 착지는 대상을 고르지 않는다 — 술어는 Bool이고 착지는 상태 문장 하나(E38)", () => {
-    // 반환형이 `SheetControl?`로 돌아가면 전이마다 대상이 다시 갈릴 수 있다 — 타입이 계약이다.
-    expect(SHEET).toContain(
-      "private func phaseTransitionLands(previous: TransitPhase?, phase: TransitPhase?) -> Bool",
-    );
-    expect(SHEET).not.toContain("phaseTransitionLanding");
-    const start = SHEET.indexOf("private func phaseTransitionLands(");
+  it("국면 전이 착지는 상태 문장이 기본이고 예외는 차량 선택 목록 하나다(E38)", () => {
+    const start = SHEET.indexOf("private func phaseTransitionLanding(");
+    expect(start, "전이 착지 판정 함수가 없다").toBeGreaterThan(-1);
     const body = SHEET.slice(start, SHEET.indexOf("\n    }", start));
-    // 술어 본문에 `SheetControl` 리터럴이 있으면 대상 선택이 되살아난 것이다.
-    expect(body).not.toMatch(/return \.\w/);
+    // 본문에 나오는 착지 대상은 둘뿐이다 — 종전처럼 전이마다 다음 행동 버튼을 고르는 자리로 돌아가면
+    // 여기서 걸린다(반환형만으로는 잠기지 않아 가드가 그 자리를 대신한다).
+    const targets = [...body.matchAll(/return (?:controlExists\(\.\w+\) \? )?\.(\w+)(?: : \.(\w+))?/g)]
+      .flatMap((m) => [m[1], m[2]])
+      .filter((t): t is string => Boolean(t));
+    expect([...new Set(targets)].sort()).toEqual(["status", "waitingLabel"]);
     for (const t of [
-      "if phase == .arrived { return true }",
-      "if phase == .waiting, previous != nil, previous != .waiting { return true }",
-      "if phase == .boarding, previous == .waiting { return true }",
-      "if phase == .riding, previous == .waiting { return true }",
+      "if phase == .arrived { return .status }",
+      "if phase == .boarding, previous == .waiting { return .status }",
+      "if phase == .riding, previous == .waiting { return .status }",
+      // →waiting만 예외: 도착하는 화면이 차량 선택 목록이라 그 질문 라벨에 앉는다(위원장 판정 2026-09-12).
+      // 목록이 서지 않는 갈래엔 라벨이 없으므로 기본값으로 떨어진다(안 그러면 착지도 폴백도 없다).
+      "return controlExists(.waitingLabel) ? .waitingLabel : .status",
     ]) {
       expect(body, t).toContain(t);
     }
     // ⚠ boarding → riding은 여전히 착지가 아니다(N3 ① 구현 리뷰 M1): 그 승격은 폴이 일으키고
     // 커서는 이미 상태 문장에 앉아 있어 착지시키면 듣던 문장을 끊는 포커스 강탈이 된다.
     expect(body).not.toContain("previous == .waiting || previous == .boarding");
-    // 호출부 둘(직접 착지·조망 이월)이 상수 대상을 쓴다.
-    expect(SHEET).toContain("if lands { landControlFocus(.status, proxy: proxy) }");
-    expect(SHEET).toContain("if lands { pendingFollowUp = .landStatus }");
     // `.status`는 상태 문장 줄에 달린다(폴백 문장도 같은 조립기를 읽는다 — 드리프트 차단).
     expect(SHEET).toContain("landingTarget(distanceText(text), .status)");
     // 폴백은 화면과 같은 낭독 라벨을 지난다(a11y 감사 L1).
     expect(SHEET).toContain("return spokenUnits(model.statusLineText(state: state, leg: leg))");
+  });
+
+  it("목록 안 포커스 소실 복귀는 질문 라벨 착지와 다른 축이다 — 대상은 `waitingLabel` 고정(a11y 감사 M3)", () => {
+    // ⓐ pickVehicle 질문 라벨과 ⓑ 폴링으로 후보 행이 사라졌을 때의 **목록 안 제자리 복구**가 같은 대상을
+    // 공유한다. ⓐ를 옮기는 사람이 ⓑ까지 옮기면 폴 한 번에 커서가 목록 밖으로 튕긴다(헌장 §5 강탈 금지).
+    const at = SHEET.indexOf(".onChange(of: rows.map(\\.id))");
+    expect(at, "목록 소실 복귀 onChange가 없다").toBeGreaterThan(-1);
+    const body = SHEET.slice(at, at + 400);
+    expect(body).toContain("landControlFocus(.waitingLabel, proxy: proxy, note: \"lost=\\(focused)\")");
   });
 
   it("착지 대상 집합은 상태 문장 + 자기 질문 화면뿐이다 — 죽은 대상도 새 대상도 없다(E38)", () => {
@@ -151,6 +164,39 @@ describe("TransitTrackingSheet 착지 대상 (E38) · boarding 수동 진행 (N3
     ]) {
       expect(SHEET, label).toContain(label);
       expect(SHEET, label).not.toContain(`landingTarget(${label}`);
+    }
+  });
+});
+
+describe("TransitGuidePanel 착지 대상 (E38 웹 미러)", () => {
+  it("전이 착지는 상태 문장이 기본이고 →waiting만 목록 라벨이다 — 컴포넌트 테스트로는 잠기지 않는 축", () => {
+    // ⚠ **이 가드가 필요한 이유**(변이 주입 실측): →waiting 전이 착지를 통째로 지워도 컴포넌트 테스트가
+    // 초록이다. 목록 포커스 소실 복귀(`optionKeys` effect)가 같은 자리로 되돌리기 때문이다 — 후보 행에
+    // 커서를 얹고 열차를 고르면 제거된 행의 blur가 오지 않아 `listHadFocusRef`가 참으로 남고, 나중에
+    // 목록이 갱신될 때 그 안전망이 `waitingLabel`에 착지시킨다. 두 경로가 같은 결과를 내므로 결과 단언은
+    // 어느 쪽이 만든 것인지 구별하지 못한다. 구조를 여기서 잠근다.
+    const at = PANEL.indexOf("const landsOnLabel =");
+    expect(at, "→waiting 전이의 목록 라벨 착지 판정이 없다").toBeGreaterThan(-1);
+    expect(PANEL.slice(at, at + 200)).toContain(
+      'const landsOnLabel = phase === "waiting" && previous !== null && previous !== "waiting";',
+    );
+    // 라벨이 없는 갈래(지방버스)에선 기본값인 상태 문장으로 떨어진다 — iOS `controlExists` 분기의 미러.
+    expect(PANEL).toContain("(waitingLabelRef.current ?? statusRef.current)?.focus();");
+    // 나머지 전이는 상태 문장 하나다. `lands` 술어에 대상 선택이 되살아나면 여기서 걸린다.
+    const landsAt = PANEL.indexOf("const lands =");
+    const lands = PANEL.slice(landsAt, PANEL.indexOf("if (landsOnLabel)", landsAt));
+    expect(lands).not.toContain("Ref.current");
+    for (const t of [
+      '(phase !== null && previous === null) ||',
+      '(phase === "arrived" && previous !== "arrived") ||',
+      '(phase === "boarding" && previous === "waiting") ||',
+      '(phase === "riding" && previous === "waiting");',
+    ]) {
+      expect(lands, t).toContain(t);
+    }
+    // 종전 대상 ref는 사라졌다 — 되살리면 전이마다 대상이 다시 갈린다.
+    for (const dead of ["advanceRef", "changeBoardingRef", "boardAlreadyRef"]) {
+      expect(PANEL, dead).not.toContain(dead);
     }
   });
 });
