@@ -240,7 +240,8 @@ export function waitingEmptyReason(
 export type TransitInput =
   | { kind: "poll"; seq: number; phaseGen: number; poll: TrackPoll }
   | { kind: "board"; lock: TransitLock }
-  /** boarding → riding 사용자 선언("탑승했습니다"). */
+  /** boarding → riding 사용자 선언. 입력 자체는 불변이고 UI가 이 입력을 낼 수 있는 때만 좁혔다
+   *  (N3 ① 2026-09-11 — 관측이 끝난 국면의 [도착 정보 없이 탑승 진행]). Kit `.confirmBoarded` 미러. */
   | { kind: "confirmBoarded" }
   /** "탑승 변경 취소" — previousLock으로 previousPhase 복귀(종전 board(previousLock) 폐기). */
   | { kind: "restoreBoarding" }
@@ -1283,8 +1284,9 @@ function commitBoardingMatched(
 /**
  * boarding 미등장 — 선택 시점에 목록에 있던 차량이라 첫 관측 전에도 센다. 잔여 ≤1에서
  * 사라지면 "지나갔을 수 있다"(vehiclePassed)이지 탑승이 아니다(설계 리뷰 C2). 어느
- * 쪽이든 signalLost 상태로 떨어져 1회만 말하고, 탈출은 사용자 선택(탑승했습니다 /
- * 다른 차량 선택)이다.
+ * 쪽이든 signalLost 상태로 떨어져 1회만 말하고, **그 신호가 곧 수동 진행 수단의 등장
+ * 조건이다**(N3 ① `boardingObservationLost`) — 탈출은 [도착 정보 없이 탑승 진행] 또는
+ * [다른 차량 선택]이다.
  */
 function boardingUnmatched(
   base: TransitGuideState,

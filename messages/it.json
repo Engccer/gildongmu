@@ -1027,7 +1027,7 @@
     "reboardCancel": "Annulla selezione fermata",
     "aboardStationPrompt": "Quale stazione stai attraversando adesso?",
     "pickAnotherStation": "Scegli un'altra stazione",
-    "boardApprox": "Sono salito",
+    "boardApprox": "Sono già a bordo",
     "directionCheck": "Controlla la direzione.",
     "terminatesEarly": "Diretto a {dest}, non arriva a {stop}",
     "expressCheck": "Espresso, verifica la fermata a {stop}",

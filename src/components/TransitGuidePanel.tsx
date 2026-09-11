@@ -229,13 +229,12 @@ export function TransitGuidePanel({
     if (phase === "boarding" && prevPhaseRef.current === "waiting") {
       statusRef.current?.focus();
     }
-    // 탑승 계열 전이(waiting·boarding→riding)는 포커스를 쥔 컨트롤(선택·이미 탔습니다·
-    // 수동 진행 버튼)이나 상태 문장을 통째로 제거·교체한다 — riding 컨트롤로 선점(헌장 §5, 감사 M2).
-    // arrived→riding 자동 복귀(backOnTrack)는 사용자 행동이 아니라 제외.
-    if (
-      phase === "riding" &&
-      (prevPhaseRef.current === "waiting" || prevPhaseRef.current === "boarding")
-    ) {
+    // waiting→riding은 사용자가 고른 열차로 직행하는 전이라 포커스를 쥔 컨트롤(선택 행·
+    // [이미 탔습니다])이 통째로 사라진다 — riding 컨트롤로 선점(헌장 §5, 감사 M2).
+    // ⚠ **boarding→riding은 제외한다**(N3 ① 구현 리뷰 M1): 그 승격은 폴이 일으키고 커서가 얹힌
+    // 상태 문장은 세션 내내 살아 있으므로, 착지시키면 사용자가 요청하지 않은 포커스 강탈이 되어
+    // 듣던 문장을 끊는다. 승격 사실은 통지가 말한다. arrived→riding 자동 복귀도 같은 이유로 제외.
+    if (phase === "riding" && prevPhaseRef.current === "waiting") {
       (advanceRef.current ?? changeBoardingRef.current)?.focus();
     }
     if (phase === null && prevPhaseRef.current !== null) {

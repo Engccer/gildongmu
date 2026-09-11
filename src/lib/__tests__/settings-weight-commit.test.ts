@@ -25,6 +25,11 @@ describe("SettingsView 체중 입력 (A39)", () => {
     expect(SETTINGS).toContain(".onDisappear { commitWeight() }");
     // [닫기]는 dismiss 앞에서 커밋한다(통지가 화면 전환에 묻히지 않게).
     expect(SETTINGS).toMatch(/commitWeight\(\)\n\s+dismiss\(\)/);
+    // 호출부는 **정확히 셋**이다(구현 리뷰 m7): 네 번째가 늘면 멱등 전제와 통지 1회 계약을 다시 따져야 한다.
+    expect(SETTINGS.match(/commitWeight\(\)/g) ?? []).toHaveLength(4);  // 정의 1 + 호출 3
+    // 생명주기 훅은 **행이 아니라 화면 수명**에 걸린다(List는 행을 지연 실현·해제한다).
+    const row = SETTINGS.slice(SETTINGS.indexOf('TextField(appLocalized("ios.settings.weightKg")'));
+    expect(row.slice(0, row.indexOf("} footer:"))).not.toMatch(/\.onDisappear|\.onAppear/);
   });
 
   it("거절은 저장하지 않고 직전 값을 유지하며 .high로 통지한다(3-state)", () => {

@@ -344,7 +344,11 @@ struct TransitTrackingSheet: View {
         if phase == .arrived { return .advance }
         if phase == .waiting, previous != nil, previous != .waiting { return .waitingLabel }
         if phase == .boarding, previous == .waiting { return .status }
-        if phase == .riding, previous == .waiting || previous == .boarding {
+        // waiting → riding은 사용자가 고른 열차로 직행하는 전이라(A34 `boardAboard`) 누른 행이
+        // 사라진다 — 선점 이동이 필요하다(헌장 §5). ⚠ **boarding → riding은 빠져 있다**(N3 ① 구현
+        // 리뷰 M1): 그 승격은 폴이 일으키고 커서가 얹힌 상태 문장은 사라지지 않으므로, 착지시키면
+        // 사용자가 요청하지 않은 포커스 강탈이 되어 듣던 문장을 끊는다. 승격 사실은 통지가 말한다.
+        if phase == .riding, previous == .waiting {
             return model.state?.lock.map(isApproxTransitLock) == true ? .advance : .changeBoarding
         }
         return nil
@@ -844,8 +848,11 @@ struct TransitTrackingSheet: View {
         case .advance: return advanceLabel
         case .changeBoarding: return appLocalized("transitGuide.changeBoarding")
         case .status:
+            // 화면의 그 줄은 `distanceText`가 `spokenUnits`로 낭독 라벨을 바꾼다 — 폴백은 "그 자리에서
+            // 낭독됐을 라벨"이라는 계약이라 같은 변환을 지나야 한다(a11y 감사 L1: 지금은 no-op이지만
+            // 상태 문장에 미터 값이 들어오는 순간 폴백이 "m"으로 읽히고 이중 낭독 억제 비교도 빗나간다).
             guard let state = model.state, let leg = model.currentLeg else { return "" }
-            return model.statusLineText(state: state, leg: leg)
+            return spokenUnits(model.statusLineText(state: state, leg: leg))
         case .waitingLabel: return waitingLabelText
         case .reboardPrompt: return appLocalized(reboardPromptKey)
         case .boardAlready: return appLocalized("transitGuide.boardAlready")

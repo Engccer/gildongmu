@@ -213,11 +213,7 @@ export function useTransitGuide(
    * `boardingManualAvailable` 미러.
    */
   const [boardingManualAvailable, setBoardingManualAvailable] = useState(false);
-  /**
-   * 다음 폴을 주기가 아니라 **즉시** 낸다(그 폴이 다음 예약을 잡는다). 두 소비자 —
-   * 역 선택이 in-flight 폴에 막혀 즉폴을 못 낸 경우(코드 리뷰 M1, iOS는 Task 취소가 막는다)와
-   * 관측 승격(boarding → riding, N3 ①)의 조회 대상 교체.
-   */
+  /** 역 선택 직후 in-flight 폴이 있으면 그 폴이 끝나자마자 새 역을 즉폴한다(iOS Task 취소 동형, 코드 리뷰 M1). */
   const repollRef = useRef(false);
   /** 이 dispatch의 입력이 `boardAboard`였다 — boarded(declared) 통지에 선택 차량 조각을 붙일지의 판별. */
   const aboardBoardRef = useRef(false);
@@ -785,12 +781,6 @@ export function useTransitGuide(
       if (next.phase !== "riding") setReboardPickerActive(false);
       // "이미 탑승" 흐름은 대기 국면 전용 UI — 국면이 바뀌면 소거(같은 국면 기반 규칙).
       if (next.phase !== "waiting") setAboardStep(null);
-      // 관측 승격(boarding → riding, N3 ①)은 조회 대상을 하차 정류소로 바꾼다 — 새 대상의 첫 폴을
-      // 다음 주기(최대 60초)까지 미루면 탑승 직후가 통째로 빈다. 선언 경로는 종전부터 즉폴이었다.
-      // 예약은 그 즉폴이 잡는다(`repollRef` 계약 그대로).
-      if (input.kind === "poll" && s.phase === "boarding" && next.phase === "riding") {
-        repollRef.current = true;
-      }
       // boarding 수동 진행 수단의 래치(N3 ①): 국면에 **들어올 때** 지우고(재진입 = 새 차량 대기),
       // 그 국면 안에서 관측이 끝나면 세운다. 국면 밖에선 언제나 false.
       if (next.phase !== "boarding" || s.phase !== "boarding") setBoardingManualAvailable(false);
@@ -1016,6 +1006,7 @@ export function useTransitGuide(
     setSelectedDescription(null);
     setReboardPickerActive(false);
     setAboardStep(null);
+    setBoardingManualAvailable(false);
     // 다음 세션의 phaseGen도 0에서 시작하므로 세대 결박만으로는 옛 거절 문장이 되살아난다(코드 리뷰 #5).
     setExpressBlockedState(null);
     setState(null);

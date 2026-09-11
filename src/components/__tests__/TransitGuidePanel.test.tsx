@@ -43,9 +43,12 @@ const ROUTE: TransitRoute = {
 const SUBWAY_LEG = ROUTE.legs[0];
 
 /**
- * 종전 "탑승" 한 번 = 지금의 "선택 → 승차역 도착 관측"(N3 ① 2026-09-11: 선언 버튼이 사라져
- * riding 승격은 관측뿐이다). 선택 직후 나가는 첫 boarding 폴의 응답만 **도착 레코드**로 바꿔
- * 종전 riding 궤적을 보존한다 — 호출부의 fetch 목은 그대로 지나간다(URL 수집·분기 보존).
+ * 종전 "탑승" 한 번 = 지금의 "선택 → 승차역 도착 관측"(N3 ① 2026-09-11: 선언 버튼이 사라져 riding
+ * 승격은 관측뿐이다). 선택 직후 나가는 첫 boarding 폴의 응답만 **도착 레코드**로 바꿔 종전 riding
+ * 궤적을 보존한다 — 호출부의 fetch 목은 그대로 지나간다(URL 수집·분기 보존).
+ *
+ * ⚠ 이 헬퍼는 **riding 진입까지**다. riding 첫 폴은 주기 뒤(미등장 60초)라 실제 시계 테스트에서
+ * 기다릴 수 없다 — 하차역 조회가 필요한 테스트는 `boardTrainAndTrack`을 쓴다.
  */
 async function boardTrain(select: RegExp = /selectTrain/) {
   const inner = globalThis.fetch;
@@ -65,6 +68,38 @@ async function boardTrain(select: RegExp = /selectTrain/) {
   fireEvent.click(await screen.findByRole("button", { name: select }));
   // 승격은 그 폴의 결과라 목록이 사라지는 것으로 확인한다(riding 컨트롤은 잠금 종류에 따라 다르다).
   await waitFor(() => expect(screen.queryByRole("button", { name: select })).toBeNull());
+  vi.stubGlobal("fetch", inner);
+}
+
+/**
+ * riding에 들어가고 **하차역 첫 폴까지** 나가게 하는 헬퍼 — [이미 탔습니다] 식별 잠금 경로(A34).
+ * 사용자 조작이라 즉폴이 보장되므로, 하차 추적·도착을 보는 테스트가 주기를 기다리지 않는다.
+ * (관측 승격 경로로는 그 첫 폴이 최대 60초 뒤이고, 그 창을 즉폴로 메우는 안은 `boarded` 통지를
+ * 지연 슬롯에서 버리는 것이 확인돼 채택하지 않았다 — N3 ① 구현 리뷰 H1.)
+ * boarding 국면 자체의 계약은 "boarding 수동 진행" 스위트가 본다.
+ */
+async function boardTrainAndTrack(station = "천호") {
+  const inner = globalThis.fetch;
+  fireEvent.click(await screen.findByRole("button", { name: "transitGuide.boardAlready" }));
+  // 역 목록 조회의 응답 **한 번만** 손댄다: 그 역에 있는 열차만 후보이므로(`aboardCandidates`:
+  // arvlCd 0~5) 목의 99를 0으로 바꿔 세운다. 그 뒤 하차역 폴은 호출부 목 그대로여야 한다.
+  let used = false;
+  vi.stubGlobal("fetch", (async (...args: Parameters<typeof fetch>) => {
+    const res = await inner(...args);
+    if (used) return res;
+    used = true;
+    const body = await res.json();
+    const items = (body.items ?? []).map((it: Record<string, unknown>) => ({
+      ...it,
+      arrivalCode: "0",
+    }));
+    return { ok: true, json: async () => ({ ...body, items }) } as Response;
+  }) as unknown as typeof fetch);
+  fireEvent.click(await screen.findByRole("button", { name: station }));
+  fireEvent.click((await screen.findAllByRole("button", { name: /selectTrain/ }))[0]);
+  await waitFor(() =>
+    expect(screen.queryByRole("button", { name: /selectTrain/ })).toBeNull(),
+  );
   vi.stubGlobal("fetch", inner);
 }
 
@@ -217,12 +252,12 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
 
     render(<TransitGuidePanel route={transferRoute} triggerLabel="시작" walkAccessible={false} />);
     fireEvent.click(screen.getByRole("button", { name: "시작" }));
-    await boardTrain();
+    await boardTrainAndTrack();
 
     // 중간역(군자)을 기준으로 재선택한 뒤 다시 탑승한다.
     fireEvent.click(await screen.findByRole("button", { name: "transitGuide.changeBoarding" }));
     fireEvent.click(await screen.findByRole("button", { name: "군자" }));
-    await boardTrain();
+    await boardTrainAndTrack();
 
     // 도착 → 다음 구간으로 전진하면 leg2의 대기 조회는 leg2 승차역을 봐야 한다.
     // ⚠ 비우는 시점은 클릭 **전**이다 — advance는 즉폴이라 클릭 직후 비우면 그 조회가
@@ -507,7 +542,7 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
     expect(screen.queryAllByRole("button", { name: /selectTrain/ })).toHaveLength(1);
 
     // 탑승 선언 → 하차역 폴 전환 + 탑승 통지
-    await boardTrain();
+    await boardTrainAndTrack();
     await waitFor(() => {
       expect(calls.some((u) => u.includes(encodeURIComponent("여의도")))).toBe(true);
     });
@@ -523,7 +558,7 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
     await waitFor(() => {
       expect(screen.getByRole("button", { name: /selectTrain/ })).toBeTruthy();
     });
-    await boardTrain();
+    await boardTrainAndTrack();
 
     // 2번째 하차 폴(arvlCd 1) → arrived → "다음 구간" 노출 + 포커스 선점(헌장 §5)
     await waitFor(() => {
@@ -812,7 +847,7 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
     expect(screen.getByText("왕십리(성동구청)")).toBeTruthy();
 
     // 탑승 → 하차 폴의 currentLocation이 경유 목록에 현재 위치로 병치된다.
-    await boardTrain();
+    await boardTrainAndTrack();
     await waitFor(() => {
       expect(screen.getByText("왕십리(성동구청), transitGuide.viaCurrent")).toBeTruthy();
     });
@@ -859,7 +894,7 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
       />,
     );
     fireEvent.click(screen.getByRole("button", { name: "시작" }));
-    await boardTrain();
+    await boardTrainAndTrack();
 
     // 도착 관측: 그 자리 버튼이 [다음 구간]이 아니라 [남은 도보 안내 시작]이고 착지가 거기다. 도착 통지는 그
     // 버튼 이름과 도보 분을 담는다(종전 "다음: 대중교통 구간이 끝났습니다…" 조각 없음).
@@ -1273,13 +1308,45 @@ describe("TransitGuidePanel — boarding 수동 진행 (N3 ①)", () => {
     await waitFor(() =>
       expect(screen.getByRole("button", { name: "transitGuide.changeBoarding" })).toBeTruthy(),
     );
-    // 승격 직후 하차역 첫 폴이 **즉시** 나간다(§4.4 — 다음 주기까지 미루면 탑승 직후가 통째로 빈다):
-    // 통지가 이미 하차역 추적 시작으로 넘어가 있다.
-    await waitFor(() =>
-      expect(screen.getAllByRole("status")[0].textContent).toContain(
-        "transitGuide.trackingStarted",
-      ),
-    );
+    // 승격 통지는 "탑승"이고 하차역 추적으로 넘어가지 않는다 — riding 첫 폴은 주기 뒤다
+    // (구현 리뷰 H1: 즉폴을 넣으면 그 응답의 `trackingStarted`가 지연 슬롯의 이 문장을
+    // latest-wins로 버려, 이 흐름에서 가장 중요한 한 문장이 웜/콜드에 따라 사라진다).
+    expect(screen.getAllByRole("status")[0].textContent).toContain("transitGuide.boarded");
+    expect(screen.getAllByRole("status")[0].textContent).not.toContain("trackingStarted");
+  });
+
+  it("새 차량을 고르면 래치가 지워진다 — 관측이 끝나지 않은 국면에 버튼이 서 있지 않다", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      let failing = false;
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => {
+          if (failing) throw new Error("upstream down");
+          return {
+            ok: true,
+            json: async () => ({ mode: "subway", status: "ok", rawCount: 1, items: [trackItem({})] }),
+          } as Response;
+        }) as unknown as typeof fetch,
+      );
+      render(<TransitGuidePanel route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
+      fireEvent.click(screen.getByRole("button", { name: "시작" }));
+      fireEvent.click(await screen.findByRole("button", { name: /selectTrain/ }));
+      failing = true;
+      await vi.advanceTimersByTimeAsync(20_000 * 3 + 500);
+      await screen.findByRole("button", { name: "transitGuide.boardWithoutArrival" });
+
+      // [다른 차량 선택] → 대기 국면 → 새 차량 선택 = 새 boarding. 아직 아무 관측도 끝나지 않았다.
+      failing = false;
+      fireEvent.click(screen.getByRole("button", { name: "transitGuide.reselectVehicle" }));
+      fireEvent.click(await screen.findByRole("button", { name: /selectTrain/ }));
+      await screen.findByRole("button", { name: "transitGuide.reselectVehicle" });
+      expect(
+        screen.queryByRole("button", { name: "transitGuide.boardWithoutArrival" }),
+      ).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("관측이 끝나면 그때 수동 진행 수단이 서고, 관측이 돌아와도 사라지지 않는다(래치)", async () => {
