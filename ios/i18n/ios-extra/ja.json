@@ -238,6 +238,9 @@
       "releaseNotesVersion": "バージョン {version}",
       "releaseNotesError": "アップデート履歴を読み込めませんでした",
       "weightKg": "カロリー推定用の体重(kg)",
+      "weightFooter": "体重は{min}~{max}kgの範囲で入力してください。入力した情報はサーバーに保存されません。",
+      "weightRejected": "体重は{min}~{max}kgの範囲で入力してください。前の値{kg}kgを保持します。",
+      "weightRejectedNone": "体重は{min}~{max}kgの範囲で入力してください。保存しませんでした。",
       "carListener": "車の案内を聞く人（実験）",
       "carListenerPassenger": "同乗者（イヤホン、画面読み上げ）",
       "carListenerDriver": "運転者（スピーカー、短い指示）"

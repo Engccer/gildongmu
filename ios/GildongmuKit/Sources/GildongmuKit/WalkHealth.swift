@@ -69,6 +69,27 @@ public enum WalkHealth {
         return raw
     }
 
+    /// 설정 체중 입력의 편집 종료 판정(A39, spec `2026-09-11-settings-weight-commit-design.md` §2.2).
+    /// 종전엔 뷰가 `normalizedWeight(raw) ?? 0`으로 범위 밖을 **0으로 덮어** "저장됨"과 "무시됨"을
+    /// 뭉갰다(헌장 §1 3-state). 세 결과를 갈라 뷰가 각각 다르게 처리하게 한다.
+    public enum WeightCommitOutcome: Equatable {
+        /// 유효값 — 저장한다.
+        case store(Double)
+        /// 빈 입력 — 미입력(기본 체중)으로 되돌리는 정당한 조작.
+        case clear
+        /// 비수치·범위 밖 — 저장하지 않고 직전 값을 유지하며 통지한다.
+        case reject
+    }
+
+    /// 쉼표 소수점(`62,5`)은 여기서 흡수한다 — 판정과 같은 자리에 둬야 표기 축이 갈리지 않는다.
+    public static func weightCommit(text: String) -> WeightCommitOutcome {
+        let trimmed = text.trimmingCharacters(in: .whitespaces)
+        if trimmed.isEmpty { return .clear }
+        let raw = Double(trimmed.replacingOccurrences(of: ",", with: "."))
+        guard let weight = normalizedWeight(raw) else { return .reject }
+        return .store(weight)
+    }
+
     /// 태운 칼로리를 한국 음식 한 단위에 빗댄다(위원장 요청 2026-08-18 — 수치만으로는
     /// 감이 없고, 외국인에게는 한국 음식 자체가 재미다). 문장은 앱 문자열
     /// `ios.beacon.food.<key>`(단위 1개)와 `ios.beacon.food.<key>Many`(최상단 항목 n단위)에 있다.

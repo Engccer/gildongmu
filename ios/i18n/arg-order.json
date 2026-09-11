@@ -493,6 +493,19 @@
   "ios.settings.releaseNotesVersion": [
     "version"
   ],
+  "ios.settings.weightFooter": [
+    "min",
+    "max"
+  ],
+  "ios.settings.weightRejected": [
+    "min",
+    "max",
+    "kg"
+  ],
+  "ios.settings.weightRejectedNone": [
+    "min",
+    "max"
+  ],
   "ios.station.countNone": [
     "label"
   ],

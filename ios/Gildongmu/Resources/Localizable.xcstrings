@@ -25761,6 +25761,46 @@
         }
       }
     },
+    "ios.settings.weightFooter": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "체중은 %1$@~%2$@kg 사이로 입력해 주세요. 입력한 정보는 서버에 저장되지 않아요."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enter a weight between %1$@ and %2$@ kg. What you enter is not stored on a server."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Introduce un peso entre %1$@ y %2$@ kg. Los datos introducidos no se guardan en ningún servidor."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saisissez un poids entre %1$@ et %2$@ kg. Les informations saisies ne sont pas enregistrées sur un serveur."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inserisci un peso tra %1$@ e %2$@ kg. I dati inseriti non vengono salvati su un server."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "体重は%1$@~%2$@kgの範囲で入力してください。入力した情報はサーバーに保存されません。"
+          }
+        }
+      }
+    },
     "ios.settings.weightKg": {
       "localizations": {
         "ko": {
@@ -25797,6 +25837,86 @@
           "stringUnit": {
             "state": "translated",
             "value": "カロリー推定用の体重(kg)"
+          }
+        }
+      }
+    },
+    "ios.settings.weightRejected": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "체중은 %1$@~%2$@kg 사이여야 합니다. 이전 값 %3$@kg을 유지합니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Weight must be between %1$@ and %2$@ kg. Keeping the previous value, %3$@ kg."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El peso debe estar entre %1$@ y %2$@ kg. Se mantiene el valor anterior, %3$@ kg."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le poids doit être entre %1$@ et %2$@ kg. La valeur précédente, %3$@ kg, est conservée."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il peso deve essere tra %1$@ e %2$@ kg. Mantengo il valore precedente, %3$@ kg."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "体重は%1$@~%2$@kgの範囲で入力してください。前の値%3$@kgを保持します。"
+          }
+        }
+      }
+    },
+    "ios.settings.weightRejectedNone": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "체중은 %1$@~%2$@kg 사이여야 합니다. 저장하지 않았습니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Weight must be between %1$@ and %2$@ kg. Nothing was saved."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El peso debe estar entre %1$@ y %2$@ kg. No se guardó nada."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le poids doit être entre %1$@ et %2$@ kg. Rien n’a été enregistré."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il peso deve essere tra %1$@ e %2$@ kg. Non è stato salvato nulla."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "体重は%1$@~%2$@kgの範囲で入力してください。保存しませんでした。"
           }
         }
       }

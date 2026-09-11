@@ -37,6 +37,9 @@ struct SettingsView: View {
     /// 착지 순서는 목록 포커스 정본(가시화 → 지연 → 대입) 그대로. 일반 진입은 시스템 기본.
     var focusWeightOnAppear = false
     @AccessibilityFocusState private var weightFieldFocused: Bool
+    /// 키보드 포커스 — **편집 종료의 신호**(A39 ⓐ). `.decimalPad`엔 Return이 없어 `onSubmit`이
+    /// 오지 않으므로, 이탈·화면 닫힘 두 경로가 판정 시점이다(spec §2.1).
+    @FocusState private var weightFieldEditing: Bool
     private static let weightRowID = "weightRow"
 
     /// 각 언어는 자국어 표기(고유명사라 로컬라이즈 대상 아님, 웹 nav.* 동일 어휘).
@@ -92,11 +95,34 @@ struct SettingsView: View {
         w == w.rounded() ? String(Int(w)) : String(w)
     }
 
-    /// 입력 문자열 → 저장값. 유효 범위 밖·비수치는 0(미입력)으로 — 잘못된 값으로 계산하지 않는다.
+    /// 편집 종료 시점의 커밋(A39, spec `docs/superpowers/specs/2026-09-11-settings-weight-commit-design.md`).
+    /// 종전엔 타자 한 글자마다 돌며 범위 밖을 **0으로 덮어** "저장됨"과 "무시됨"을 뭉갰다(헌장 §1).
+    /// 거절은 저장하지 않고 직전 값을 유지하며, 화면 변화가 없는 동작이라 통지가 유일한 증거다(헌장 §5 — `.high`).
+    /// **멱등**이다: 거절 뒤 필드가 유효 표기로 되돌아가므로 두 번째 호출은 통지 없이 저장으로 끝난다.
     private func commitWeight() {
-        let raw = Double(weightText.replacingOccurrences(of: ",", with: "."))
-        weightKg = WalkHealth.normalizedWeight(raw) ?? 0
+        switch WalkHealth.weightCommit(text: weightText) {
+        case let .store(weight):
+            weightKg = weight
+            weightText = Self.formatWeight(weight)
+        case .clear:
+            weightKg = 0
+            weightText = ""
+        case .reject:
+            // 포커스는 옮기지 않는다 — 커밋을 부른 것이 사용자의 이탈 자체라 그 자리가 사용자의 의도다.
+            weightText = weightKg > 0 ? Self.formatWeight(weightKg) : ""
+            var message = AttributedString(weightKg > 0
+                ? appLocalized("ios.settings.weightRejected",
+                               Self.weightMin, Self.weightMax, Self.formatWeight(weightKg))
+                : appLocalized("ios.settings.weightRejectedNone", Self.weightMin, Self.weightMax))
+            message.accessibilitySpeechAnnouncementPriority = .high
+            AccessibilityNotification.Announcement(message).post()
+        }
     }
+
+    /// 허용 범위는 Kit `WalkHealth.weightRange`가 정본이다 — 문장에 숫자를 박으면 상수가 바뀔 때
+    /// 문장만 낡는다. 푸터·거절 통지가 같은 값을 인자로 받는다.
+    private static let weightMin = Int(WalkHealth.weightRange.lowerBound)
+    private static let weightMax = Int(WalkHealth.weightRange.upperBound)
 
     /// 배속 선택지 라벨(1배/1.5배/2배). 허용값 정본은 `ListenSpeed.allowedSpeeds`.
     private static func listenSpeedLabel(_ speed: Double) -> String {
@@ -165,8 +191,17 @@ struct SettingsView: View {
                         .keyboardType(.decimalPad)
                         .id(Self.weightRowID)
                         .accessibilityFocused($weightFieldFocused)
+                        .focused($weightFieldEditing)
                         .onAppear { weightText = weightKg > 0 ? Self.formatWeight(weightKg) : "" }
-                        .onChange(of: weightText) { _, _ in commitWeight() }
+                        // 타자 중간값(5 → 50 → 500)은 전부 범위 밖이라 글자마다 판정하면 정상 입력이
+                        // 거절된다 — 판정은 편집이 끝날 때(A39 ⓐ).
+                        .onChange(of: weightFieldEditing) { _, editing in if !editing { commitWeight() } }
+                        // 스와이프·VO escape로 닫힐 때의 폴백(멱등이라 [닫기] 경로와 겹쳐도 안전).
+                        .onDisappear { commitWeight() }
+                } footer: {
+                    // 허용 범위 상시 + "서버에 저장되지 않아요"(E31 §5 잔여 — 권유가 사라진 뒤 이 문장이
+                    // 앱 어디에도 없었다). 두 문장이지만 단일 Text = 한 접근성 객체.
+                    Text(appLocalized("ios.settings.weightFooter", Self.weightMin, Self.weightMax))
                 }
 
                 Section(appLocalized("ios.settings.aiSection")) {
@@ -206,7 +241,11 @@ struct SettingsView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(appLocalized("actions.close")) { dismiss() }
+                    // 닫기 전에 커밋한다 — `onDisappear`에서만 하면 거절 통지가 화면 전환에 묻힌다.
+                    Button(appLocalized("actions.close")) {
+                        commitWeight()
+                        dismiss()
+                    }
                 }
             }
         }

@@ -238,6 +238,9 @@
       "releaseNotesVersion": "Version {version}",
       "releaseNotesError": "Could not load release notes",
       "weightKg": "Weight for calorie estimate (kg)",
+      "weightFooter": "Enter a weight between {min} and {max} kg. What you enter is not stored on a server.",
+      "weightRejected": "Weight must be between {min} and {max} kg. Keeping the previous value, {kg} kg.",
+      "weightRejectedNone": "Weight must be between {min} and {max} kg. Nothing was saved.",
       "carListener": "Car guidance listener (experimental)",
       "carListenerPassenger": "Passenger (earphones, screen reader)",
       "carListenerDriver": "Driver (speaker, short commands)"
