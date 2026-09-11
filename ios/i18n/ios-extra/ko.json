@@ -238,6 +238,9 @@
       "releaseNotesVersion": "버전 {version}",
       "releaseNotesError": "업데이트 이력을 불러올 수 없습니다",
       "weightKg": "칼로리 추정용 체중(kg)",
+      "weightFooter": "체중은 {min}~{max}kg 사이로 입력해 주세요. 입력한 정보는 서버에 저장되지 않아요.",
+      "weightRejected": "체중은 {min}~{max}kg 사이여야 합니다. 이전 값 {kg}kg을 유지합니다.",
+      "weightRejectedNone": "체중은 {min}~{max}kg 사이여야 합니다. 저장하지 않았습니다.",
       "carListener": "자동차 안내 듣는 사람 (실험)",
       "carListenerPassenger": "동승자 (이어폰, 화면 낭독)",
       "carListenerDriver": "운전자 (스피커, 짧은 명령)"

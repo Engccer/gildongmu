@@ -136,4 +136,21 @@ import Testing
         // 카운터 값만이 아니라 사용자에게 드러나는 결과까지 단언한다 — 그 뒤로 권유가 없다.
         #expect(!WalkHealth.shouldShowWeightPrompt(usedDefaultWeight: true, dismissals: count))
     }
+    /// A39(spec `2026-09-11-settings-weight-commit-design.md` §2.2): 설정 입력의 세 결과를 가른다.
+    /// 종전엔 범위 밖이 조용히 0(미입력)이 되어 "저장됨"과 "무시됨"이 뭉개졌다.
+    @Test func weightCommitSplitsThreeOutcomes() {
+        #expect(WalkHealth.weightCommit(text: "") == .clear)
+        #expect(WalkHealth.weightCommit(text: "   ") == .clear)
+        #expect(WalkHealth.weightCommit(text: "65") == .store(65))
+        #expect(WalkHealth.weightCommit(text: "65.5") == .store(65.5))
+        // 쉼표 소수점 로케일(fr·it·es 키패드) — 판정과 같은 자리에서 흡수한다.
+        #expect(WalkHealth.weightCommit(text: "62,5") == .store(62.5))
+        // 경계는 포함(weightRange는 닫힌 구간이다).
+        #expect(WalkHealth.weightCommit(text: "20") == .store(20))
+        #expect(WalkHealth.weightCommit(text: "300") == .store(300))
+        // 타자 중간값(5 → 50 → 500)이 전부 여기 걸린다 — 그래서 판정 시점이 편집 종료다.
+        for text in ["5", "500", "0", "-10", "abc", "nan", "1e400"] {
+            #expect(WalkHealth.weightCommit(text: text) == .reject, "\(text)")
+        }
+    }
 }

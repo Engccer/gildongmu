@@ -238,6 +238,9 @@
       "releaseNotesVersion": "Versione {version}",
       "releaseNotesError": "Impossibile caricare le note di rilascio",
       "weightKg": "Peso per la stima delle calorie (kg)",
+      "weightFooter": "Inserisci un peso tra {min} e {max} kg. I dati inseriti non vengono salvati su un server.",
+      "weightRejected": "Il peso deve essere tra {min} e {max} kg. Mantengo il valore precedente, {kg} kg.",
+      "weightRejectedNone": "Il peso deve essere tra {min} e {max} kg. Non è stato salvato nulla.",
       "carListener": "Chi ascolta la guida in auto (sperimentale)",
       "carListenerPassenger": "Passeggero (auricolari, screen reader)",
       "carListenerDriver": "Conducente (altoparlante, comandi brevi)"
