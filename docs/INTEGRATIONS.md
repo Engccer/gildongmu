@@ -192,7 +192,7 @@ spec `2026-09-02-express-stops-data-design.md`. 둘 다 `includeStops=1` 응답�
 
 ### 시내버스 (CLAUDE.md 이관)
 
-지방=TAGO·서울=TOPIS, `mergeBusStops` allSettled, envelope 다름(위 참조). ⚠ **TAGO 근접 조회는 ~700m 고정 반경이라 0건 대부분이 미커버가 아니라 정상적인 반경 밖**이다. 미커버 판정 정본은 `isUncoveredBusRegion`(라우트·채팅 공용, provider 직접 호출 금지)이고 **이 마커만 upstream 뒤에 온다**. ⚠ **도착 완성 문장(`arrmsg1`)을 다듬는 것은 승차 국면뿐이다**(`rewriteBusArrivalMessage`, 2026-08-16): 승차 상태줄만 잔여 수를 따로 말해 원문 꼬리 `[N번째 전]`과 중복되고, **대기 후보 목록·정류소 도착 목록은 `remainingStops`를 별도로 싣지 않아 그 꼬리가 잔여 정보의 유일한 채널**이다(웹 `TransitGuidePanel`·iOS `TransitTrackingSheet` 모두 `item.message`만 조립). 같은 원문이 국면에 따라 뜻도 다르다 — 대기 중 "2분55초후"는 *버스가 오기까지*, 승차 중에는 *내릴 곳까지*라 어미가 갈린다. 그래서 `slotToItem`의 국면 인자에 **기본값이 없다**. 꼬리 정규식은 `ARRMSG_REMAINING_TAIL` 하나를 읽는 쪽(`remainingFromArrmsg`)과 지우는 쪽이 공유한다 — 한쪽만 무는 변형이 생기면 잔여 수와 문장이 동시에 사라진다. **상세 계약은 [`docs/INTEGRATIONS.md`](docs/INTEGRATIONS.md) §시내버스** — 이 코드를 수정하기 전에 읽는다.
+지방=TAGO·서울=TOPIS, `mergeBusStops` allSettled, envelope 다름(위 참조). ⚠ **TAGO 근접 조회는 ~700m 고정 반경이라 0건 대부분이 미커버가 아니라 정상적인 반경 밖**이다. 미커버 판정 정본은 `isUncoveredBusRegion`(라우트·채팅 공용, provider 직접 호출 금지)이고 **이 마커만 upstream 뒤에 온다**. ⚠ **도착 완성 문장(`arrmsg1`)은 서버가 변형하지 않는다**(E39, 2026-09-12 — 종전 승차 국면 재작성 폐지): 상태 문장은 클라이언트가 `parseBusArrmsg` 구조에서 조립하고, **대기 후보 목록은 원문이 잔여 정보의 유일한 채널**이라 그대로 둔다(웹 `TransitGuidePanel`·iOS `TransitTrackingSheet` 모두 `item.message`만 조립). 같은 원문이 국면에 따라 뜻이 달라(대기 중 "2분55초후"는 *버스가 오기까지*, 승차 중에는 *내릴 곳까지*) 국면 인자에 **기본값이 없다**. 꼬리 정규식 `ARRMSG_REMAINING_TAIL`은 잔여를 읽는 쪽(`remainingFromArrmsg`)과 모양을 읽는 쪽(`parseBusArrmsg`)이 공유한다. **상세 계약은 [`docs/INTEGRATIONS.md`](docs/INTEGRATIONS.md) §시내버스** — 이 코드를 수정하기 전에 읽는다.
 
 
 지방=TAGO·서울=TOPIS, `mergeBusStops`가 `allSettled`로 병합한다(envelope는 서로 다르다 — `CLAUDE.md` 횡단 함정 참조). spec `2026-08-02-bus-uncovered-region-design.md`.
@@ -203,11 +203,13 @@ spec `2026-09-02-express-stops-data-design.md`. 둘 다 `includeStops=1` 응답�
 - 매칭 키는 **시도+시군**(강원/경남 고성군 동명 실사고, 시도는 citycode 앞 2자리)이고 **모르는 시도는 fail-open**이다. 행정구역 개편이 표를 낡게 만든다 — 광주광역시는 전라남도와 통합돼 카카오·juso가 `전남광주통합특별시`로 주는데 TAGO는 여전히 `광주광역시`다.
 - ⚠ seed 빌드는 **`totalCount:0`을 그대로 믿지 않는다**. upstream이 장애를 HTTP 200 + 0으로 내서 천안·함평·산청이 한 빌드에서 가짜 0으로 잡혔다(재확인 + golden 가드).
 
-### 도착 완성 문장(`arrmsg1`)의 국면별 재작성 (`rewriteBusArrivalMessage`, 2026-08-16)
+### 도착 완성 문장(`arrmsg1`)은 서버가 변형하지 않는다 (E39, 2026-09-12 — 종전 `rewriteBusArrivalMessage` 폐지)
 
-- 낭독 정본은 `arrmsg1`·`arrmsg2` 완성 문장이고(`CLAUDE.md` 횡단 함정), **다듬는 것은 승차 국면뿐**이다. 승차 상태줄은 잔여 수를 따로 말해 원문 꼬리 `[N번째 전]`과 중복되므로 꼬리를 떼고 어미를 "남음"으로 바꾼다. **대기 후보 목록·정류소 도착 목록은 `remainingStops`를 별도로 싣지 않아 그 꼬리가 잔여 정보의 유일한 채널**이다(웹 `TransitGuidePanel`·iOS `TransitTrackingSheet` 모두 `item.message`만 조립) — 거기서 떼면 어느 버스를 탈지 고를 정보가 사라진다.
-- 같은 원문이 국면에 따라 뜻이 다르다: 대기 중 "2분55초후"는 *버스가 오기까지*, 승차 중에는 *내릴 곳까지*. 그래서 `slotToItem`의 국면 인자에 **기본값이 없다**([[no-default-for-safety-parameters]]).
-- 꼬리 정규식은 `ARRMSG_REMAINING_TAIL` 하나를 읽는 쪽(`remainingFromArrmsg`)과 지우는 쪽이 공유한다 — 한쪽만 무는 변형이 생기면 잔여 수와 문장이 동시에 사라진다.
+- **provider·라우트는 원문을 그대로 싣는다.** 2026-08-16~2026-09-12에는 승차 국면만 꼬리 `[N번째 전]`을 떼고 어미를 "남음"으로 바꿔 실었는데, 그 재작성은 **안내 시트 상태 문장 하나만을 위한 것**이었다. E39로 그 문장을 클라이언트가 `parseBusArrmsg` 구조에서 조립하게 되면서 재작성본은 파싱을 막는 장애물이 됐고(`…후$` 불일치 → 미지 폴백), 같은 원문을 두 계층이 각자 해석하는 상태가 됐다. 재작성 함수와 그 전용 테스트는 삭제했다.
+- **같은 원문이 국면에 따라 뜻이 다르다**: 대기 중 "2분55초후"는 *버스가 오기까지*, 승차 중에는 *내릴 곳까지*. 그 차이는 이제 영문 투영(`busArrivalMessageEn`의 `In …` ↔ `… left`)과 ko 상태 문장(`arrivalStatusLine`의 `stopsAway` ↔ `remainingCountJoin`)이 각자 국면 인자로 가른다. 그래서 `slotToItem`·`busArrivalMessageEn`·`arrivalStatusLine` 셋 다 국면 인자에 **기본값이 없다**([[no-default-for-safety-parameters]]).
+- **대기 후보 목록은 원문이 잔여 정보의 유일한 채널**이다(웹 `TransitGuidePanel`·iOS `TransitTrackingSheet` 모두 `item.message`만 조립) — 목록에서 꼬리를 떼면 어느 버스를 탈지 고를 정보가 사라진다. 상태 문장만 우리 문장으로 갈아탔고 목록은 그대로다.
+- 꼬리 정규식 `ARRMSG_REMAINING_TAIL`은 잔여를 읽는 쪽(`remainingFromArrmsg`)과 모양을 읽는 쪽(`parseBusArrmsg`)이 공유한다 — 한쪽만 무는 변형이 생기면 잔여 수와 모양 판정이 동시에 사라진다.
+- ⚠ **모양은 실호출이 정본이다**(A41 코퍼스 2,430행, 21개 노선): `N분후` 2,037 · `곧 도착` 255 · **`회차대기` 120** · `N분N초후` 18 · `출발대기` 0 · `운행종료` 0. `회차대기`는 vehId가 붙는 실재 상태(잠글 수 있는 차량, 표본은 잔여 89정거장)라 종류를 따로 둔다. `운행종료`는 차량 상태가 아니라 정류소·노선 상태라 vehId가 없고, `slotToTrack`이 `vehicleId: null`로 접어 **잠금 국면에 도달하지 않는다** — 그래서 우리 문장을 만들지 않는다.
 
 ---
 
