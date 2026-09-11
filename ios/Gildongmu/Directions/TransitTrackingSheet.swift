@@ -43,7 +43,7 @@ struct TransitTrackingSheet: View {
         /// `2026-09-11-boarding-manual-advance-design.md` §4.3). 그 전이엔 "다음 행동"이 없어
         /// (기다리는 국면이다) 지금 무슨 일이 일어나는지를 말하는 유일한 줄에 착지한다.
         case status
-        /// [이미 탑승했습니다] — "이미 탑승" 흐름의 역 선택 취소가 돌아오는 자리(A34 ②, riding 취소의 `.changeBoarding` 동형).
+        /// [이미 탔습니다] — "이미 탑승" 흐름의 역 선택 취소가 돌아오는 자리(A34 ②, riding 취소의 `.changeBoarding` 동형).
         case boardAlready
         /// 급행 확인 프롬프트 헤딩(§6) — 펼친 직후 착지.
         case expressPrompt
@@ -95,7 +95,7 @@ struct TransitTrackingSheet: View {
     }
     @State private var pendingFollowUp: OverviewFollowUp?
 
-    /// 급행 확인 프롬프트 표시(spec 2026-09-02 §6) — "이미 탑승했습니다" 뒤, 급행 집합이 있는 노선만.
+    /// 급행 확인 프롬프트 표시(spec 2026-09-02 §6) — "이미 탔습니다" 뒤, 급행 집합이 있는 노선만.
     @State private var expressPromptActive = false
 
     var body: some View {
@@ -593,7 +593,7 @@ struct TransitTrackingSheet: View {
                     // 착지는 픽커 헤딩의 .task가 맡는다.
                 }
             } else {
-                // [이미 탑승했습니다]: 지하철은 역부터 묻고(A34 ②), 그 밖(서울버스)은 종전대로 곧장 잠금.
+                // [이미 탔습니다]: 지하철은 역부터 묻고(A34 ②), 그 밖(서울버스)은 종전대로 곧장 잠금.
                 landingTarget(Button(appLocalized("transitGuide.boardAlready")) {
                     if leg.trackMode == .subway, !leg.viaStops.isEmpty {
                         expressPromptActive = false
@@ -634,7 +634,7 @@ struct TransitTrackingSheet: View {
     }
 
     /// 근사(비관측) 잠금 진입 — 급행 집합이 있는 노선만 급행 확인을 묻는다(§6), 없으면 즉시 잠금.
-    /// [이미 탑승했습니다](서울버스)와 [열차 정보 없이 계속](지하철 pickVehicle 0건) 공용.
+    /// [이미 탔습니다](서울버스)와 [열차 정보 없이 계속](지하철 pickVehicle 0건) 공용.
     private func boardAlreadyOrAskExpress(_ leg: TransitGuideLeg, proxy: ScrollViewProxy) {
         if transitNeedsExpressPrompt(leg) {
             expressPromptActive = true

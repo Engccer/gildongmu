@@ -196,7 +196,7 @@ export function useTransitGuide(
   /** 역 재선택 단계 표시 여부(A16 L3, 지하철 전용). */
   const [reboardPickerActive, setReboardPickerActive] = useState(false);
   /**
-   * "이미 탑승했습니다" 흐름(A34 ②+①, spec 2026-09-11 §4.2)의 두 단계 — 지나는 역 묻기 → 그 역에 있는
+   * "이미 탔습니다" 흐름(A34 ②+①, spec 2026-09-11 §4.2)의 두 단계 — 지나는 역 묻기 → 그 역에 있는
    * 열차 고르기. 대기 국면 전용이라 국면이 waiting을 벗어나면 소거(dispatch, iOS `aboardStep` 미러).
    */
   const [aboardStep, setAboardStepState] = useState<"pickStation" | "pickVehicle" | null>(null);
@@ -1234,10 +1234,10 @@ export function useTransitGuide(
     void pollOnce();
   }, [clearTimer, dispatch, pollOnce]);
 
-  /** "이미 탑승했습니다"(§13.2) — 식별자 없는 근사 잠금(tagoBus 계약 동형). */
+  /** "이미 탔습니다"(§13.2) — 식별자 없는 근사 잠금(tagoBus 계약 동형). */
 
   /**
-   * "이미 탑승했습니다"(§13.2 근사 잠금). `express`는 급행 확인 프롬프트(spec 2026-09-02 §6, 급행 집합이
+   * "이미 탔습니다"(§13.2 근사 잠금). `express`는 급행 확인 프롬프트(spec 2026-09-02 §6, 급행 집합이
    * 있는 노선에서만 패널이 묻는다)의 답 — true면 하차역 정차를 판정해 통과 급행이면 잠그지 않고 차단
    * 문장을 낸다(결정적 문장 재사용), 정차하면 급행 선언 잠금(상시 문장 근거 — 하차역 목록의 급행 우선 매칭은
    * 2026-09-11 비관측 잠금으로 은퇴). 프롬프트가 없는 노선은 undefined로 종전 그대로.
@@ -1266,7 +1266,7 @@ export function useTransitGuide(
     [board, currentLeg, displayLegOf, isEn, piece],
   );
 
-  /** [이미 탑승했습니다](A34 ②) — 지하철이면 역부터 묻는다. 그 밖(서울버스)은 종전대로 곧장 근사(비관측) 잠금. */
+  /** [이미 탔습니다](A34 ②) — 지하철이면 역부터 묻는다. 그 밖(서울버스)은 종전대로 곧장 근사(비관측) 잠금. */
   const beginAboard = useCallback(() => {
     const leg = currentLeg();
     if (stateRef.current?.phase !== "waiting" || !leg) return;
