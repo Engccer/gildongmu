@@ -26,9 +26,18 @@ const args = Object.fromEntries(
   process.argv.slice(2).map((a, i, arr) => (a.startsWith("--") ? [a.slice(2), arr[i + 1] ?? "1"] : [])).filter((p) => p.length),
 );
 const arsId = args.arsId ?? "03012";
-const intervalMs = Number(args.interval ?? 15) * 1000;
-const maxPolls = Number(args.max ?? 60);
-const byRouteMax = Number(args.byRouteMax ?? 15);
+// 숫자 인자는 유한값만 받고 폴 간격은 5초 하한 — NaN이 setTimeout에 들어가면 쉼 없이 연타한다(프로덕션 쿼터 공유).
+function num(v, fallback, min = 0) {
+  const n = Number(v ?? fallback);
+  if (!Number.isFinite(n) || n < min) {
+    console.error(`잘못된 숫자 인자: ${v} (하한 ${min})`);
+    process.exit(2);
+  }
+  return n;
+}
+const intervalMs = num(args.interval, 15, 5) * 1000;
+const maxPolls = num(args.max, 60);
+const byRouteMax = num(args.byRouteMax, 15);
 const out = args.out ?? `seoul-bus-arrival-${arsId}-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "")}.jsonl`;
 
 const BASE = "http://ws.bus.go.kr/api/rest";
@@ -95,7 +104,7 @@ function summarize(rows) {
   for (const [k, list] of byVeh) {
     list.sort((a, b) => a.t.localeCompare(b.t));
     const uid = list.filter((r) => r.source === "byUid");
-    if (!uid.some((r) => /^곧\s*도착/.test(r.arrmsg) || r.remaining <= 1)) continue; // 근접 관측 없는 차량은 생략
+    if (!uid.some((r) => /^곧\s*도착/.test(r.arrmsg) || (r.remaining !== null && r.remaining <= 1))) continue; // 근접 관측 없는 차량은 생략
     lines.push(`\n## ${k} (staOrd ${list[0].staOrd})`);
     let prev = null;
     let since = null;
@@ -134,7 +143,14 @@ const seen = new Map(); // vehKey → 마지막 stateKey
 let byRouteCalls = 0;
 let polls = 0;
 let stopping = false;
-process.on("SIGINT", () => { stopping = true; });
+let wakeUp = null;
+// Ctrl-C: 대기 중이면 즉시 깨워 요약으로 넘어가고, 두 번째는 그대로 종료한다.
+process.on("SIGINT", () => {
+  if (stopping) process.exit(130);
+  stopping = true;
+  wakeUp?.();
+});
+const sleep = (ms) => new Promise((resolve) => { wakeUp = resolve; setTimeout(resolve, ms); });
 
 console.log(`arsId ${arsId} · ${intervalMs / 1000}s × ${maxPolls}폴 · byRoute ≤${byRouteMax} · out ${out}`);
 
@@ -152,7 +168,7 @@ while (polls < maxPolls && !stopping) {
     }
   } catch (e) {
     console.log(`${t.slice(11, 19)} 폴 실패(격리): ${e.message}`);
-    await new Promise((r) => setTimeout(r, intervalMs));
+    await sleep(intervalMs);
     continue;
   }
   // 근접 차량의 노선은 getArrInfoByRoute도 받아 두 op의 필드를 대조한다.
@@ -198,7 +214,7 @@ while (polls < maxPolls && !stopping) {
     }
   }
   const fast = near.length > 0;
-  await new Promise((r) => setTimeout(r, fast ? Math.min(intervalMs, 10_000) : intervalMs));
+  if (polls < maxPolls && !stopping) await sleep(fast ? Math.min(intervalMs, 10_000) : intervalMs);
 }
 
 console.log(`\n폴 ${polls}회 · byRoute ${byRouteCalls}회 · 행 ${rows.length}`);

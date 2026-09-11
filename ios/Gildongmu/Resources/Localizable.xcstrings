@@ -42532,25 +42532,25 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ is arriving now."
+            "value": "%1$@ is arriving soon."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ está llegando."
+            "value": "%1$@ llegará pronto."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ arrive."
+            "value": "%1$@ arrive bientôt."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ sta arrivando."
+            "value": "%1$@ sta per arrivare."
           }
         },
         "ja": {

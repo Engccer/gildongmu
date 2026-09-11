@@ -159,6 +159,16 @@ describe("pollIntervalMs — 적응 주기(§7)", () => {
       expect(step.state.signal, `seq ${seq}`).toBe("tracking");
       s = step.state;
     }
+    // 경계: 0을 **못 본**(잔여 1 소실) 추정 도착은 종전대로 15초 폴 + signalLost 경고(코드 리뷰 M1 — 한정자 `ladderAnnounced === 0`).
+    let g = initTransitGuide(route, 0);
+    g = transitGuideStep(g, { kind: "board", lock }, route, 0).state;
+    g = transitGuideStep(g, { kind: "confirmBoarded" }, route, 0).state;
+    g = transitGuideStep(g, pollOk(1, 2, [bus(1, "3분후[1번째 전]")]), route, 1).state;
+    g = transitGuideStep(g, pollOk(2, 2, []), route, 2).state;
+    const guess = transitGuideStep(g, pollOk(3, 2, []), route, 3);
+    expect(guess.event).toEqual({ kind: "arrived", certain: false });
+    expect(pollIntervalMs(guess.state)).toBe(15_000);
+    expect(transitGuideStep(guess.state, pollOk(4, 2, []), route, 4).event).toEqual({ kind: "signalLost" });
   });
 
   it("waiting 20s, 미등장 60s, 추적 중 15s(§12 원거리 30s 폐지), done·untrackable 0", () => {

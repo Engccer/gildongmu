@@ -1087,7 +1087,7 @@
     "approachingStarted": "Siguiendo el vehículo seleccionado.",
     "vehicleSelected": "{desc} seleccionado. Esperando su llegada a {stop}.",
     "arrivedAtBoardStop": "{line} ha llegado. Suba ahora.",
-    "arrivingAtBoardStop": "{line} está llegando.",
+    "arrivingAtBoardStop": "{line} llegar\u00e1 pronto.",
     "arrivingAtAlightStop": "Bájese en esta parada.",
     "vehiclePassed": "El vehículo elegido parece haber salido de {stop}. Si vas a bordo, toca Subir sin información de llegada; si no, Elegir otro vehículo.",
     "boardingSignalLost": "No encontramos el vehículo que elegiste. Si ya subiste, toca Subir sin información de llegada.",

@@ -292,6 +292,17 @@ private func kindName(_ event: TransitGuideEvent?) -> String? {
         #expect(step.state.signal == .tracking, "seq \(seq)")
         s = step.state
     }
+    // 경계: 0을 **못 본**(잔여 1 소실) 추정 도착은 종전대로 15초 폴 + signalLost 경고(코드 리뷰 M1 — 한정자 `ladderAnnounced == 0`).
+    var g = initTransitGuide(route: route, now: 0)
+    g = transitGuideStep(state: g, input: .board(lock), route: route, now: 0).state
+    g = transitGuideStep(state: g, input: .confirmBoarded, route: route, now: 0).state
+    g = transitGuideStep(state: g, input: .poll(seq: 1, phaseGen: 2, poll: .ok([bus(1, "3분후[1번째 전]")])), route: route, now: 1).state
+    g = transitGuideStep(state: g, input: .poll(seq: 2, phaseGen: 2, poll: .ok([])), route: route, now: 2).state
+    let guess = transitGuideStep(state: g, input: .poll(seq: 3, phaseGen: 2, poll: .ok([])), route: route, now: 3)
+    #expect(guess.event == .arrived(certain: false))
+    #expect(transitPollIntervalMs(guess.state) == 15_000)
+    let lost = transitGuideStep(state: guess.state, input: .poll(seq: 4, phaseGen: 2, poll: .ok([])), route: route, now: 4)
+    #expect(lost.event == .signalLost)
 }
 
 @Test func adaptivePollingIntervals() throws {
@@ -410,6 +421,11 @@ private func kindName(_ event: TransitGuideEvent?) -> String? {
     #expect(transitEventProfile(.countdown(remaining: 2, message: "", messageEn: nil, currentLocation: nil, currentLocationEn: nil, arrivalCode: nil)).interrupt == false)
     #expect(transitEventProfile(.arrived(certain: true)).interrupt == true)
     #expect(transitEventProfile(.signalLost).interrupt == false)
+    // A41: 곧 도착 이벤트 2종은 imminent·interrupt, boarded(departed)는 비-interrupt·start(웹 eventProfile 미러).
+    #expect(transitEventProfile(.arrivingAtBoardStop) == (true, .imminent))
+    #expect(transitEventProfile(.arrivingAtAlightStop) == (true, .imminent))
+    #expect(transitEventProfile(.boarded(legIndex: 0, cause: .departed)) == (false, .start))
+    #expect(transitEventProfile(.boarded(legIndex: 0, cause: .observed)).interrupt == true)
 }
 
 @Test func odsayLineMapping() {

@@ -1087,7 +1087,7 @@
     "approachingStarted": "Tracking the selected vehicle.",
     "vehicleSelected": "Selected {desc}. Waiting for it to arrive at {stop}.",
     "arrivedAtBoardStop": "{line} has arrived. Board now.",
-    "arrivingAtBoardStop": "{line} is arriving now.",
+    "arrivingAtBoardStop": "{line} is arriving soon.",
     "arrivingAtAlightStop": "Get off at this stop.",
     "vehiclePassed": "The vehicle you selected seems to have left {stop}. If you are on it, tap Board without arrival info; if not, tap Choose another vehicle.",
     "boardingSignalLost": "We cannot find the vehicle you selected. If you are on board, tap Board without arrival info.",
