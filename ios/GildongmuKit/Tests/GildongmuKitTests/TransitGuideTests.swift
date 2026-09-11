@@ -160,6 +160,8 @@ private func kindName(_ event: TransitGuideEvent?) -> String? {
     case .vehicleSelected: "vehicleSelected"
     case .approaching: "approaching"
     case .vehiclePassed: "vehiclePassed"
+    case .arrivingAtBoardStop: "arrivingAtBoardStop"
+    case .arrivingAtAlightStop: "arrivingAtAlightStop"
     case .trackingStarted: "trackingStarted"
     case .countdown: "countdown"
     case .messageChanged: "messageChanged"

@@ -252,8 +252,11 @@ export type TransitInput =
   /** "이미 탔습니다" 흐름의 식별 잠금(A34 ②): 지나는 역 목록의 열차로 waiting → riding(declared) 직행. */
   | { kind: "boardAboard"; lock: TransitLock };
 
-/** riding 진입 경위 — observed=승차 정류소 도착 관측, declared=사용자 선언·근사 잠금. */
-export type TransitBoardedCause = "observed" | "declared";
+/**
+ * riding 진입 경위 — observed=승차 정류소 도착 관측(지하철 진입 0·도착 1), declared=사용자 선언·근사 잠금,
+ * departed=서울버스 "곧 도착"(잔여 0) 뒤 소실 관측(A41 — 그 차량이 서고 떠났다. 정차 자체는 API에 없다).
+ */
+export type TransitBoardedCause = "observed" | "declared" | "departed";
 
 /**
  * 구조화 안내 이벤트 — 한 입력당 최대 1개(§4.2 원자 전이). 문구는 플랫폼이
@@ -265,8 +268,15 @@ export type TransitGuideEvent =
   | { kind: "vehicleSelected"; legIndex: number }
   /** boarding: 선택 차량의 승차 정류소 접근(첫 관측 + 사다리 3·2·1). */
   | { kind: "approaching"; remaining: number | null; message: string; messageEn?: string }
-  /** boarding: 잔여 ≤1에서 소실 — 지나갔을 수 있다. 국면 유지, 사용자 선택 요청. */
+  /** boarding: 잔여 1에서 소실(잔여 0 미관측) — 지나갔을 수 있다. 국면 유지, 사용자 선택 요청. */
   | { kind: "vehiclePassed" }
+  /**
+   * boarding 서울버스: 잔여 0("곧 도착" = 직전 정류소 출발, A41 spec 2026-09-12 §0) 첫 관측. 승격이 아니라
+   * 임박이다. payload 없음 — 문장에 항목 값이 필요 없다("곧 도착" 원문은 `lastMessage`로 이미 흐른다).
+   */
+  | { kind: "arrivingAtBoardStop" }
+  /** riding 서울버스: 하차 정류소 기준 잔여 0 첫 관측 — 차내 "이번 정류장" 방송과 같은 시점(A41). */
+  | { kind: "arrivingAtAlightStop" }
   | {
       kind: "trackingStarted";
       message: string;
@@ -408,10 +418,14 @@ export function eventProfile(event: TransitGuideEvent): {
       return event.remaining != null && event.remaining <= 1
         ? { interrupt: true, tone: "imminent" }
         : { interrupt: false, tone: "ladder" };
+    case "arrivingAtBoardStop":
+    case "arrivingAtAlightStop":
+      // 곧 온다/곧 내린다 — 잔여 ≤1 사다리와 같은 축(A41).
+      return { interrupt: true, tone: "imminent" };
     case "arrived":
       return { interrupt: true, tone: "arrive" };
     case "boarded":
-      // 도착 관측은 "지금 타라"라 interrupting, 선언은 사용자 행동의 응답이라 기본.
+      // 도착 관측은 "지금 타라"라 interrupting, 선언·출발 관측(departed)은 사용자가 이미 행동한 뒤라 기본.
       return { interrupt: event.cause === "observed", tone: "start" };
     case "legAdvanced":
       return { interrupt: false, tone: "start" };
@@ -1232,16 +1246,24 @@ function commitBoardingMatched(
     trackingAnnounced: true,
   };
 
-  // 도착 관측 = riding 승격. 서울버스 잔여 0("곧 도착"·구조 필드) / 지하철 진입 0·도착 1.
-  // 출발 2는 제외 — 이미 떠난 열차에 "탑승하세요"를 말하지 않는다. 동결 레코드
-  // (나이 > BOARD_STOP_FRESH_SECONDS)는 도착으로 보지 않는다(설계 리뷰 C3·M1).
+  // A41(spec 2026-09-12 §0): 서울버스 잔여 0("곧 도착")은 **직전 정류소 출발**이지 정차가 아니다(실호출
+  // 2,430행에서 `isArrive1`은 0 고정 — 정차 신호가 API에 없다). 임박 1회(`ladderAnnounced = 0` 래치)만
+  // 내고 국면을 유지한다. 승격은 그 뒤 소실(boardingUnmatched)이 맡는다. 첫 관측이 곧 잔여 0이어도
+  // 이 문장이 "추적합니다"보다 먼저다(재선택 직후 실사고 2026-09-11 20:43).
+  if (base.lock?.mode === "seoulBus" && item.remainingStops === 0) {
+    const announced = wasTracking && base.ladderAnnounced === 0;
+    next.ladderAnnounced = 0;
+    if (!announced) return { state: next, event: { kind: "arrivingAtBoardStop" } };
+    if (base.signal === "signalLost" && carriedEvent === null) {
+      return { state: next, event: { kind: "signalRecovered" } };
+    }
+    return { state: next, event: carriedEvent };
+  }
+  // 도착 관측 = riding 승격(지하철 진입 0·도착 1). 출발 2는 제외 — 이미 떠난 열차에 "탑승하세요"를
+  // 말하지 않는다. 동결 레코드(나이 > BOARD_STOP_FRESH_SECONDS)는 도착으로 보지 않는다(설계 리뷰 C3·M1).
   const fresh = item.dataAgeSeconds == null || item.dataAgeSeconds <= BOARD_STOP_FRESH_SECONDS;
   const arrivedAtBoardStop =
-    base.lock?.mode === "subway"
-      ? item.arrivalCode === "0" || item.arrivalCode === "1"
-      : base.lock?.mode === "seoulBus"
-        ? item.remainingStops === 0
-        : false;
+    base.lock?.mode === "subway" && (item.arrivalCode === "0" || item.arrivalCode === "1");
   if (base.lock != null && fresh && arrivedAtBoardStop) {
     return enterRiding(next, base.lock, "observed");
   }
@@ -1295,6 +1317,17 @@ function boardingUnmatched(
 ): TransitStepResult {
   const next: TransitGuideState = { ...base, missCount: base.missCount + 1, lastUpdatedAt: now };
   if (next.signal === "signalLost") return { state: next, event: carriedEvent };
+  // A41: 잔여 0("곧 도착")을 본 뒤의 소실 = 그 차량이 서고 떠났다 → riding 승격(departed). 놓쳤으면
+  // [탑승 변경]이 boarding으로 되돌린다(restoreBoarding). 0을 못 본 소실(마을버스 짧은 구간·데이터 공백)은
+  // "서고 떠났다"의 증거가 아니라 아래 vehiclePassed 그대로다.
+  if (
+    base.remaining === 0 &&
+    base.lock != null &&
+    base.lock.mode === "seoulBus" &&
+    next.missCount >= MISS_ARRIVE_COUNT
+  ) {
+    return enterRiding(next, base.lock, "departed");
+  }
   if (base.remaining != null && base.remaining <= 1 && next.missCount >= MISS_ARRIVE_COUNT) {
     next.signal = "signalLost";
     return { state: next, event: { kind: "vehiclePassed" } };
@@ -1383,17 +1416,22 @@ function commitMatched(
     return { state: next, event: carriedEvent };
   }
 
-  // 도착 관측(§4.2): 지하철 arvlCd "1"(도착) / 서울버스 잔여 0(하차 구간 진입).
-  // ⚠ "곧 도착" 문장은 임박이지 확정이 아니다. 근사 잠금은 arrived 전이 없음
+  // 도착 관측(§4.2): 지하철 arvlCd "1"(도착)만 확정. 근사 잠금은 arrived 전이 없음
   // (§5.2·§13.2 — 식별자가 없어 그 도착이 내 차량이라는 확정이 불가능하다).
   const approx = base.lock != null && isApproxTransitLock(base.lock);
-  const arrivedObserved =
-    !approx &&
-    (base.lock?.mode === "subway"
-      ? item.arrivalCode === "1"
-      : base.lock?.mode === "seoulBus"
-        ? item.remainingStops === 0
-        : false);
+  // A41: 서울버스 잔여 0("곧 도착")은 하차 정류소의 **직전 정류소 출발** — 차내 "이번 정류장" 방송 시점이지
+  // 도착이 아니다(실호출 spec 2026-09-12 §0). 임박 1회(`ladderAnnounced = 0` 래치)만 내고 riding 유지.
+  // 확정 도착은 없다(정차 신호가 API에 없다) — 소실이 종전 도착 추정(가역)으로 간다.
+  if (!approx && base.lock?.mode === "seoulBus" && item.remainingStops === 0) {
+    const announced = wasTracking && base.ladderAnnounced === 0;
+    next.ladderAnnounced = 0;
+    if (!announced) return { state: next, event: { kind: "arrivingAtAlightStop" } };
+    if (base.signal === "signalLost" && carriedEvent === null) {
+      return { state: next, event: { kind: "signalRecovered" } };
+    }
+    return { state: next, event: carriedEvent };
+  }
+  const arrivedObserved = !approx && base.lock?.mode === "subway" && item.arrivalCode === "1";
   if (arrivedObserved) {
     next.phase = "arrived";
     next.arrivedCertain = true;
