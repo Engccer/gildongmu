@@ -40,7 +40,7 @@ describe("TransitTrackingSheet 착지 계약 (A35)", () => {
       // 블록이 길어질 수 있어 8줄 창(설계 리뷰 L7). 시트 열림 착지(title/minimize)는 List 수준 `.task`라 대상 뷰가 아니다 — 그 둘만 허용.
       const window = lines.slice(i, i + 8).join(" ");
       // 래퍼(`boardAlreadyOrAskExpress`가 `.expressPrompt`를 착지시킨다)와 변수 인자 호출도 함께 본다(코드 리뷰 m6).
-      if (/landControlFocus\((\.(reboardPrompt|advance|changeBoarding|confirmBoarded|waitingLabel|boardAlready|expressPrompt|expressBlocked|destChangeStatus)|target|inFlight)|boardAlreadyOrAskExpress\(/.test(window)) {
+      if (/landControlFocus\((\.(reboardPrompt|advance|changeBoarding|status|waitingLabel|boardAlready|expressPrompt|expressBlocked|destChangeStatus)|target|inFlight)|boardAlreadyOrAskExpress\(/.test(window)) {
         throw new Error(`${i + 1}: 대상 뷰 .task/.onAppear가 착지를 부른다 — ${lines[i].trim()}`);
       }
     }
@@ -73,6 +73,23 @@ describe("TransitTrackingSheet 착지 계약 (A35)", () => {
     expect(SHEET).not.toMatch(/@State private var rendered: Set</);
     expect(SHEET).toContain("@State private var rendered = RenderedControls()");
     expect(SHEET).toContain("final class RenderedControls");
+  });
+});
+
+describe("TransitTrackingSheet boarding 수동 진행 (N3 ①)", () => {
+  it("[탑승했습니다]는 없다 — boarding 버튼은 래치를 지나고 착지 대상에서도 사라졌다", () => {
+    // 문자열 키와 착지 case가 함께 사라져야 한다(둘 중 하나만 지우면 폴백 문장이나 버튼이 되살아난다).
+    expect(SHEET).not.toContain("transitGuide.confirmBoarded");
+    expect(SHEET).not.toMatch(/case \.confirmBoarded/);
+    expect(SHEET).toContain("if model.boardingManualAvailable {");
+    expect(SHEET).toContain('Button(appLocalized("transitGuide.boardWithoutArrival")) { model.confirmBoarded() }');
+  });
+
+  it("차량 선택 전이의 착지는 상태 문장이다 — 그 국면엔 다음 행동이 없다(§4.3)", () => {
+    expect(SHEET).toContain("if phase == .boarding, previous == .waiting { return .status }");
+    // `.status`는 상태 문장 줄에 달린다(폴백 문장도 같은 조립기를 읽는다 — 드리프트 차단).
+    expect(SHEET).toContain("landingTarget(distanceText(text), .status)");
+    expect(SHEET).toContain("return model.statusLineText(state: state, leg: leg)");
   });
 });
 

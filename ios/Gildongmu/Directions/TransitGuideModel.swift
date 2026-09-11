@@ -285,6 +285,7 @@ final class TransitGuideModel {
         expressBlockedNote = nil
         boardOverrideIndex = nil
         aboardStep = nil
+        boardingManualAvailable = false
         selectedDescription = nil
         reboardPickerActive = false
         // 목적지 전환 준비·억제도 세션과 함께 소거(스펙 §5.4 — 잔류 억제 금지).
@@ -456,7 +457,15 @@ final class TransitGuideModel {
     /// 도중 언어를 바꿨을 때 그 조각만 옛 언어로 남는다 — 값을 쌍으로 들고 렌더가 고른다.
     private(set) var selectedDescription: TransitLabel?
 
-    /// "탑승했습니다"(boarding → riding 사용자 선언).
+    /// boarding 국면에 수동 진행 수단([도착 정보 없이 탑승 진행])을 세울 것인가(N3 ①, spec
+    /// `2026-09-11-boarding-manual-advance-design.md` §4.1). 판정은 Kit 순수 술어이고 여기서
+    /// **래치**한다 — 신호가 회복하면(`upstreamFailed`→`notYetVisible`, `signalLost`→`tracking`)
+    /// 버튼이 사라져 포커스를 쥔 컨트롤이 폴 한 번에 제거된다(헌장 §5). 관측이 돌아와도 수동
+    /// 수단이 남는 것은 해롭지 않다(실제로 탔다면 여전히 맞는 버튼이다).
+    private(set) var boardingManualAvailable = false
+
+    /// "도착 정보 없이 탑승 진행"(boarding → riding 사용자 선언). 종전 [탑승했습니다]와 같은 입력이고
+    /// **언제 낼 수 있는가**만 좁혔다(N3 ①).
     func confirmBoarded() {
         guard state?.phase == .boarding else { return }
         dispatch(.confirmBoarded)
@@ -916,6 +925,7 @@ final class TransitGuideModel {
         pollTask = nil
         pendingWalkHandoff = nil  // 옛 목적지의 핸드오프 제안 무효
         aboardStep = nil  // 새 경로의 대기 국면은 처음부터
+        boardingManualAvailable = false
         // 같은 목적지의 경로 전환이면 메뉴 쪽 목적지 후보는 낡았다(출발점이 바뀌었다).
         destChangeToken += 1
         pendingDestChange = nil
@@ -1059,10 +1069,16 @@ final class TransitGuideModel {
                 guard let self else { return }
                 // 잊힌 세션 안전망(spec §4.2.6): 다음 폴 직전에 유휴를 판정한다.
                 if self.enterIdleIfDue() { return }
+                let phaseBefore = self.state?.phase
                 await self.pollOnce()
                 guard let s = self.state, !Task.isCancelled else { return }
                 let next = transitPollIntervalMs(s)
                 if next <= 0 { return }
+                // 관측 승격(boarding → riding, N3 ①)은 조회 대상을 승차 정류소에서 하차
+                // 정류소로 바꾼다 — 새 대상의 첫 폴을 다음 주기(최대 60초)까지 미루면 탑승
+                // 직후가 통째로 빈다. 선언 경로(`confirmBoarded`)는 종전부터 즉폴이었고,
+                // ①로 관측이 기본 경로가 된 이상 그 비대칭을 남기지 않는다.
+                if phaseBefore == .boarding, s.phase == .riding { continue }
                 self.plannedIntervalMs = next
                 try? await Task.sleep(for: .milliseconds(next))
             }
@@ -1329,6 +1345,14 @@ final class TransitGuideModel {
         if enteredRiding { boardOverrideIndex = nil }
         // "이미 탑승" 흐름은 대기 국면 전용 UI — 국면이 바뀌면 소거(`reboardPickerActive`와 같은 국면 기반 규칙).
         if result.state.phase != .waiting { aboardStep = nil }
+        // boarding 수동 진행 수단의 래치(N3 ①): 국면에 **들어올 때** 지우고(재진입 = 새 차량 대기),
+        // 그 국면 안에서 관측이 끝나면 세운다. 국면 밖에선 언제나 false.
+        if result.state.phase != .boarding || state.phase != .boarding {
+            boardingManualAvailable = false
+        }
+        if result.state.phase == .boarding, transitBoardingObservationLost(result.state.signal) {
+            boardingManualAvailable = true
+        }
         // 급행 거절 문장은 그 대기 국면에 묶인다 — 국면 세대가 바뀌면 낡았다.
         if result.state.phaseGen != state.phaseGen { expressBlockedNote = nil }
         // 픽커는 riding 국면 전용 UI다. 국면이 바뀌면 화면에서는 사라지지만 플래그가
@@ -1521,7 +1545,11 @@ final class TransitGuideModel {
             // 유발하지 않아 잠식 패턴에 해당하지 않는다.
             parts.append(appLocalized("transitGuide.neverSeen"))
         case .upstreamFailed:
-            parts.append(appLocalized("transitGuide.upstreamFailed"))
+            // boarding에서는 이 순간 수동 진행 수단이 조용히 선다(N3 ①) — 통지가 유일한
+            // 발견 경로라 그 버튼 이름을 부른다(헌장 §3).
+            parts.append(appLocalized(
+                state?.phase == .boarding
+                    ? "transitGuide.boardingUpstreamFailed" : "transitGuide.upstreamFailed"))
         case .signalRecovered:
             parts.append(appLocalized("transitGuide.signalRecovered"))
         case .capSlowed:

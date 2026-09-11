@@ -65,6 +65,18 @@ public func transitLockIsUnobserved(_ lock: TransitLock) -> Bool {
     isApproxTransitLock(lock) && lock.mode != .tagoBus
 }
 
+/// boarding 국면에서 **도착 관측이 끝났는가**(N3 ① 2026-09-10 판정, spec
+/// `2026-09-11-boarding-manual-advance-design.md` §4.1). 참일 때만 수동 진행 수단
+/// ([도착 정보 없이 탑승 진행])을 세운다 — 그 밖에는 승차 정류소 도착 관측이 riding
+/// 승격을 자동으로 하므로 선언 버튼을 세울 이유가 없다(위원장: 고른 직후에는 아직
+/// 차량이 오지 않았다).
+/// `signalLost`는 연속 미등장과 `vehiclePassed`가 모이는 자리이고 `upstreamFailed`는
+/// 조회 실패(심야·미제공 포함)다. `neverSeen`은 riding 전용 축이라 이 국면에 없다.
+/// 웹 `boardingObservationLost` 미러.
+public func transitBoardingObservationLost(_ signal: TransitSignal) -> Bool {
+    signal == .signalLost || signal == .upstreamFailed
+}
+
 /// "이미 탑승했습니다" 흐름의 후보 필터(A34 ②, spec §4.2 리뷰 B2): 사용자가 "지금 지나는 역"이라 답한 역의
 /// 도착 목록에서 **그 역에 있는 열차**(진입 0·도착 1·출발 2·전역 출발/진입/도착 3·4·5 — 한 정거장 안)만
 /// 남긴다. `99`(N번째 전역, 두 정거장 이상 밖)는 사용자가 타고 있을 수 없다. 이 필터가 N3의 교차검증
@@ -244,7 +256,8 @@ public func transitWaitingEmptyReason(
 public enum TransitGuideInput: Sendable {
     case poll(seq: Int, phaseGen: Int, poll: TransitTrackPoll)
     case board(TransitLock)
-    /// boarding → riding 사용자 선언("탑승했습니다").
+    /// boarding → riding 사용자 선언. 입력 자체는 불변이고 UI가 이 입력을 낼 수 있는 때만
+    /// 좁혔다(N3 ① 2026-09-11 — 관측이 끝난 국면의 [도착 정보 없이 탑승 진행]).
     case confirmBoarded
     /// "탑승 변경 취소" — previousLock으로 previousPhase 복귀(종전 board(previousLock) 폐기).
     case restoreBoarding

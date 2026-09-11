@@ -121,7 +121,6 @@ export function TransitGuidePanel({
     if (hasExpressNote && !prevExpressNoteRef.current) expressNoteRef.current?.focus();
     prevExpressNoteRef.current = hasExpressNote;
   }, [hasExpressNote]);
-  const confirmBoardedRef = useRef<HTMLButtonElement>(null);
   const waitingLabelRef = useRef<HTMLParagraphElement>(null);
   const statusRef = useRef<HTMLParagraphElement>(null);
   const listHadFocusRef = useRef(false);
@@ -225,13 +224,13 @@ export function TransitGuidePanel({
     if (phase === "waiting" && prevPhaseRef.current !== null && prevPhaseRef.current !== "waiting") {
       waitingLabelRef.current?.focus();
     }
-    // 차량 선택(waiting→boarding, N3): 누른 후보 행이 사라진다 — 다음 행동인
-    // "탑승했습니다"로 선점.
+    // 차량 선택(waiting→boarding, N3 ①): 누른 후보 행이 사라지는데 그 국면엔 "다음 행동"이
+    // 없다(기다리는 국면이다) — 지금 무슨 일이 일어나는지를 말하는 상태 문장으로 선점(iOS `.status` 미러).
     if (phase === "boarding" && prevPhaseRef.current === "waiting") {
-      confirmBoardedRef.current?.focus();
+      statusRef.current?.focus();
     }
-    // 탑승 계열 전이(waiting·boarding→riding)는 포커스를 쥔 컨트롤(선택·이미 탑승·
-    // 탑승했습니다 버튼)을 통째로 제거한다 — riding 컨트롤로 선점(헌장 §5, 감사 M2).
+    // 탑승 계열 전이(waiting·boarding→riding)는 포커스를 쥔 컨트롤(선택·이미 탔습니다·
+    // 수동 진행 버튼)이나 상태 문장을 통째로 제거·교체한다 — riding 컨트롤로 선점(헌장 §5, 감사 M2).
     // arrived→riding 자동 복귀(backOnTrack)는 사용자 행동이 아니라 제외.
     if (
       phase === "riding" &&
@@ -634,19 +633,22 @@ export function TransitGuidePanel({
           )}
 
           {/*
-            boarding(N3): 차량을 골랐고 승차 정류소 도착을 기다린다. 탈출은 사용자
-            선언("탑승했습니다")과 재선택("다른 차량 선택") 둘 — 목록은 보이지 않는다.
+            boarding(N3): 차량을 골랐고 승차 정류소 도착을 기다린다. 도착 관측이 riding 승격을
+            **자동으로** 하므로 선언 버튼은 서지 않는다(위원장 판정 2026-09-10, spec
+            `2026-09-11-boarding-manual-advance-design.md`) — 관측이 끝난 뒤에만 수동 진행 수단.
+            그 사이 실제로 타 버렸으면 [다른 차량 선택] → 대기 국면 [이미 탔습니다]가 탈출구다.
           */}
           {state.phase === "boarding" && (
             <div className="mt-1 flex flex-wrap gap-2">
-              <button
-                type="button"
-                ref={confirmBoardedRef}
-                onClick={guide.confirmBoarded}
-                className="min-h-11 rounded-md border border-blue-700 px-3 text-sm text-blue-700 dark:text-blue-300"
-              >
-                {t("confirmBoarded")}
-              </button>
+              {guide.boardingManualAvailable && (
+                <button
+                  type="button"
+                  onClick={guide.confirmBoarded}
+                  className="min-h-11 rounded-md border border-blue-700 px-3 text-sm text-blue-700 dark:text-blue-300"
+                >
+                  {t("boardWithoutArrival")}
+                </button>
+              )}
               <button
                 type="button"
                 onClick={guide.changeBoarding}
