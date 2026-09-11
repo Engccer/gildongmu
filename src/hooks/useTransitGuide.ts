@@ -7,6 +7,7 @@ import {
   classifyBoardingCandidates,
   initTransitGuide,
   aboardCandidates,
+  boardingObservationLost,
   isUnobservedTransitLock,
   pollIntervalMs,
   subwayIdForOdsayLine,
@@ -205,7 +206,18 @@ export function useTransitGuide(
     aboardStepRef.current = step;
     setAboardStepState(step);
   }, []);
-  /** 역 선택 직후 in-flight 폴이 있으면 그 폴이 끝나자마자 새 역을 즉폴한다(iOS Task 취소 동형, 코드 리뷰 M1). */
+  /**
+   * boarding 국면에 수동 진행 수단([도착 정보 없이 탑승 진행])을 세울 것인가(N3 ①, spec
+   * `2026-09-11-boarding-manual-advance-design.md` §4.1). 판정은 순수 술어이고 여기서 **래치**한다 —
+   * 신호가 회복하면 버튼이 사라져 포커스를 쥔 컨트롤이 폴 한 번에 제거된다(헌장 §5). iOS
+   * `boardingManualAvailable` 미러.
+   */
+  const [boardingManualAvailable, setBoardingManualAvailable] = useState(false);
+  /**
+   * 다음 폴을 주기가 아니라 **즉시** 낸다(그 폴이 다음 예약을 잡는다). 두 소비자 —
+   * 역 선택이 in-flight 폴에 막혀 즉폴을 못 낸 경우(코드 리뷰 M1, iOS는 Task 취소가 막는다)와
+   * 관측 승격(boarding → riding, N3 ①)의 조회 대상 교체.
+   */
   const repollRef = useRef(false);
   /** 이 dispatch의 입력이 `boardAboard`였다 — boarded(declared) 통지에 선택 차량 조각을 붙일지의 판별. */
   const aboardBoardRef = useRef(false);
@@ -695,7 +707,8 @@ export function useTransitGuide(
           parts.push(t("neverSeen"));
           break;
         case "upstreamFailed":
-          parts.push(t("upstreamFailed"));
+          // boarding에서는 이 순간 수동 진행 수단이 조용히 선다(N3 ①) — 통지가 유일한 발견 경로다.
+          parts.push(t(stateRef.current?.phase === "boarding" ? "boardingUpstreamFailed" : "upstreamFailed"));
           break;
         case "signalRecovered":
           parts.push(t("signalRecovered"));
@@ -772,6 +785,18 @@ export function useTransitGuide(
       if (next.phase !== "riding") setReboardPickerActive(false);
       // "이미 탑승" 흐름은 대기 국면 전용 UI — 국면이 바뀌면 소거(같은 국면 기반 규칙).
       if (next.phase !== "waiting") setAboardStep(null);
+      // 관측 승격(boarding → riding, N3 ①)은 조회 대상을 하차 정류소로 바꾼다 — 새 대상의 첫 폴을
+      // 다음 주기(최대 60초)까지 미루면 탑승 직후가 통째로 빈다. 선언 경로는 종전부터 즉폴이었다.
+      // 예약은 그 즉폴이 잡는다(`repollRef` 계약 그대로).
+      if (input.kind === "poll" && s.phase === "boarding" && next.phase === "riding") {
+        repollRef.current = true;
+      }
+      // boarding 수동 진행 수단의 래치(N3 ①): 국면에 **들어올 때** 지우고(재진입 = 새 차량 대기),
+      // 그 국면 안에서 관측이 끝나면 세운다. 국면 밖에선 언제나 false.
+      if (next.phase !== "boarding" || s.phase !== "boarding") setBoardingManualAvailable(false);
+      if (next.phase === "boarding" && boardingObservationLost(next.signal)) {
+        setBoardingManualAvailable(true);
+      }
       commit(next);
       if (event) announceEvent(event);
     },
@@ -1091,7 +1116,7 @@ export function useTransitGuide(
     [board, currentLeg, setSelectedDescription],
   );
 
-  /** "탑승했습니다"(boarding → riding 사용자 선언, N3). */
+  /** "도착 정보 없이 탑승 진행"(boarding → riding 사용자 선언, N3 ① — 관측이 끝난 뒤에만 낼 수 있다). */
   const confirmBoarded = useCallback(() => {
     if (stateRef.current?.phase !== "boarding") return;
     dispatch({ kind: "confirmBoarded" });
@@ -1460,6 +1485,7 @@ export function useTransitGuide(
     cancelReboard,
     changeBoardingAt,
     reboardPickerActive,
+    boardingManualAvailable,
     /** "이미 탑승" 흐름(A34 ②) — null이면 종전 대기 목록. */
     aboardStep,
     beginAboard,

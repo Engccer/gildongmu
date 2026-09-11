@@ -43,12 +43,29 @@ const ROUTE: TransitRoute = {
 const SUBWAY_LEG = ROUTE.legs[0];
 
 /**
- * 종전 "탑승" 한 번 = 지금의 "선택 → 탑승했습니다" 두 번(N3: 탑승은 차량 선택이고
- * riding 승격은 승차 정류소 도착 관측 또는 선언). 종전 riding 궤적을 보존하는 헬퍼.
+ * 종전 "탑승" 한 번 = 지금의 "선택 → 승차역 도착 관측"(N3 ① 2026-09-11: 선언 버튼이 사라져
+ * riding 승격은 관측뿐이다). 선택 직후 나가는 첫 boarding 폴의 응답만 **도착 레코드**로 바꿔
+ * 종전 riding 궤적을 보존한다 — 호출부의 fetch 목은 그대로 지나간다(URL 수집·분기 보존).
  */
-async function boardTrain() {
-  fireEvent.click(await screen.findByRole("button", { name: /selectTrain/ }));
-  fireEvent.click(await screen.findByRole("button", { name: "transitGuide.confirmBoarded" }));
+async function boardTrain(select: RegExp = /selectTrain/) {
+  const inner = globalThis.fetch;
+  let used = false;
+  vi.stubGlobal("fetch", (async (...args: Parameters<typeof fetch>) => {
+    const res = await inner(...args);
+    if (used) return res;
+    used = true;
+    const body = await res.json();
+    const items = (body.items ?? []).map((it: Record<string, unknown>) => ({
+      ...it,
+      arrivalCode: "0",
+      remainingStops: 0,
+    }));
+    return { ok: true, json: async () => ({ ...body, items }) } as Response;
+  }) as unknown as typeof fetch);
+  fireEvent.click(await screen.findByRole("button", { name: select }));
+  // 승격은 그 폴의 결과라 목록이 사라지는 것으로 확인한다(riding 컨트롤은 잠금 종류에 따라 다르다).
+  await waitFor(() => expect(screen.queryByRole("button", { name: select })).toBeNull());
+  vi.stubGlobal("fetch", inner);
 }
 
 /**
@@ -746,8 +763,7 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
     };
     render(<TransitGuidePanel route={BUS_ROUTE} triggerLabel="시작" walkAccessible={false} />);
     fireEvent.click(screen.getByRole("button", { name: "시작" }));
-    fireEvent.click(await screen.findByRole("button", { name: /selectBus/ }));
-    fireEvent.click(await screen.findByRole("button", { name: "transitGuide.confirmBoarded" }));
+    await boardTrain(/selectBus/);
     await waitFor(() => {
       expect(screen.getByText(/transitGuide\.stateRidingNotYetVisibleBus/)).toBeTruthy();
     });
@@ -1049,7 +1065,7 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
     await waitFor(() => {
       expect(screen.getByRole("button", { name: "transitGuide.changeBoarding" })).toBeTruthy();
     });
-    expect(screen.queryByRole("button", { name: "transitGuide.confirmBoarded" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "transitGuide.boardWithoutArrival" })).toBeNull();
     expect(screen.getAllByRole("status")[0].textContent).toContain("transitGuide.boarded");
     expect(screen.getAllByRole("status")[0].textContent).toContain("selectedVehicle");
     await waitFor(() => {
@@ -1202,5 +1218,113 @@ describe("승차 전 도보 핸드오프(A25, spec 2026-08-30 §6)", () => {
     fireEvent.click(screen.getByRole("button", { name: "시작" }));
     await screen.findByRole("button", { name: /selectTrain/ });
     expect(screen.queryByRole("button", { name: /prewalkArrivedButton/ })).toBeNull();
+  });
+});
+
+/**
+ * N3 ①(위원장 판정 2026-09-10, spec `docs/superpowers/specs/2026-09-11-boarding-manual-advance-design.md`):
+ * 차량을 고른 직후 [탑승했습니다]가 서던 것을 없앴다. riding 승격은 승차 정류소 도착 관측이 하고,
+ * 관측이 끝난 뒤(`signalLost`·`upstreamFailed`)에만 다른 문구의 수동 진행 수단이 선다.
+ */
+describe("TransitGuidePanel — boarding 수동 진행 (N3 ①)", () => {
+  it("차량을 고른 직후엔 수동 진행 수단이 없고 커서는 상태 문장에 앉는다", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        json: async () => ({ mode: "subway", status: "ok", rawCount: 1, items: [trackItem({})] }),
+      })) as unknown as typeof fetch,
+    );
+    render(<TransitGuidePanel route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
+    fireEvent.click(screen.getByRole("button", { name: "시작" }));
+    fireEvent.click(await screen.findByRole("button", { name: /selectTrain/ }));
+
+    // boarding 국면: 탈출은 [다른 차량 선택]뿐이고 선언 버튼은 없다.
+    const reselect = await screen.findByRole("button", { name: "transitGuide.reselectVehicle" });
+    expect(reselect).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "transitGuide.boardWithoutArrival" })).toBeNull();
+    // 누른 후보 행이 사라지는 전이인데 그 국면엔 "다음 행동"이 없다 — 상태 문장으로 선점(§4.3).
+    await waitFor(() =>
+      expect(document.activeElement?.textContent).toContain("transitGuide.boardingContext"),
+    );
+  });
+
+  it("승차 정류소 도착이 관측되면 버튼 없이 riding으로 넘어간다", async () => {
+    let arrived = false;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        json: async () => ({
+          mode: "subway",
+          status: "ok",
+          rawCount: 1,
+          items: [
+            trackItem(arrived ? { message: "천호 도착", remainingStops: 0, arrivalCode: "0" } : {}),
+          ],
+        }),
+      })) as unknown as typeof fetch,
+    );
+    render(<TransitGuidePanel route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
+    fireEvent.click(screen.getByRole("button", { name: "시작" }));
+    arrived = true;
+    fireEvent.click(await screen.findByRole("button", { name: /selectTrain/ }));
+    // 사용자가 아무것도 누르지 않았는데 riding 컨트롤이 선다(관측 승격).
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "transitGuide.changeBoarding" })).toBeTruthy(),
+    );
+    // 승격 직후 하차역 첫 폴이 **즉시** 나간다(§4.4 — 다음 주기까지 미루면 탑승 직후가 통째로 빈다):
+    // 통지가 이미 하차역 추적 시작으로 넘어가 있다.
+    await waitFor(() =>
+      expect(screen.getAllByRole("status")[0].textContent).toContain(
+        "transitGuide.trackingStarted",
+      ),
+    );
+  });
+
+  it("관측이 끝나면 그때 수동 진행 수단이 서고, 관측이 돌아와도 사라지지 않는다(래치)", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      let failing = false;
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => {
+          if (failing) throw new Error("upstream down");
+          return {
+            ok: true,
+            json: async () => ({ mode: "subway", status: "ok", rawCount: 1, items: [trackItem({})] }),
+          } as Response;
+        }) as unknown as typeof fetch,
+      );
+      render(<TransitGuidePanel route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
+      fireEvent.click(screen.getByRole("button", { name: "시작" }));
+      fireEvent.click(await screen.findByRole("button", { name: /selectTrain/ }));
+      await screen.findByRole("button", { name: "transitGuide.reselectVehicle" });
+
+      // 조회 실패 3회(FAIL_NOTIFY_COUNT)면 upstreamFailed — 그 순간 버튼이 조용히 서므로
+      // 통지가 그 이름을 부른다(헌장 §3 발견 경로).
+      failing = true;
+      await vi.advanceTimersByTimeAsync(20_000 * 3 + 500);
+      const manual = await screen.findByRole("button", {
+        name: "transitGuide.boardWithoutArrival",
+      });
+      expect(screen.getAllByRole("status")[0].textContent).toContain(
+        "transitGuide.boardingUpstreamFailed",
+      );
+
+      // 회복하면 신호는 tracking으로 돌아가지만 버튼은 남는다 — 사라지면 포커스를 쥔
+      // 컨트롤이 폴 한 번에 제거된다(헌장 §5).
+      failing = false;
+      await vi.advanceTimersByTimeAsync(20_000 * 2 + 500);
+      expect(screen.getByRole("button", { name: "transitGuide.boardWithoutArrival" })).toBe(manual);
+
+      // 누르면 종전 선언과 같은 전이(riding).
+      fireEvent.click(manual);
+      await waitFor(() =>
+        expect(screen.getByRole("button", { name: "transitGuide.changeBoarding" })).toBeTruthy(),
+      );
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

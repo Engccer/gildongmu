@@ -337,6 +337,19 @@ private func kindName(_ event: TransitGuideEvent?) -> String? {
     #expect(transitAboardCandidates(items).map(\.arrivalCode) == ["0", "1", "2", "3", "4", "5"])
 }
 
+/// N3 ①(spec `2026-09-11-boarding-manual-advance-design.md` §4.1): boarding 국면의 수동 진행
+/// 수단은 "관측이 끝났다"에만 선다. 웹 `boardingObservationLost` 미러.
+@Test func boardingObservationLostTruthTable() {
+    #expect(transitBoardingObservationLost(.signalLost))
+    #expect(transitBoardingObservationLost(.upstreamFailed))
+    #expect(!transitBoardingObservationLost(.tracking))
+    #expect(!transitBoardingObservationLost(.notYetVisible))
+    // neverSeen은 riding 전용 축이라 이 국면에 오지 않는다 — 그래도 참으로 새지 않게 못 박는다.
+    #expect(!transitBoardingObservationLost(.neverSeen))
+    // untrackable은 국면보다 앞선 분기(수동 전진 버튼이 따로 있다).
+    #expect(!transitBoardingObservationLost(.untrackable))
+}
+
 @Test func sessionPollCapAnnouncesOnce() throws {
     let fixture = try loadFixture()
     let route = fixture.routes["subwaySingle"]!

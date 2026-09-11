@@ -38,7 +38,11 @@ struct TransitTrackingSheet: View {
     /// 2/2). 옵셔널 단일 바인딩은 "다른 바인딩을 먼저 놓는다"를 구조로 만든다
     /// (`SearchView.applyRowFocus`의 교훈). 후보·경로 목록은 정체성 바인딩을 따로 둔다.
     enum SheetControl: Hashable {
-        case advance, changeBoarding, confirmBoarded, waitingLabel, reboardPrompt
+        case advance, changeBoarding, waitingLabel, reboardPrompt
+        /// 상태 문장 줄 — 차량 선택(waiting→boarding) 전이의 착지 자리(N3 ①, spec
+        /// `2026-09-11-boarding-manual-advance-design.md` §4.3). 그 전이엔 "다음 행동"이 없어
+        /// (기다리는 국면이다) 지금 무슨 일이 일어나는지를 말하는 유일한 줄에 착지한다.
+        case status
         /// [이미 탑승했습니다] — "이미 탑승" 흐름의 역 선택 취소가 돌아오는 자리(A34 ②, riding 취소의 `.changeBoarding` 동형).
         case boardAlready
         /// 급행 확인 프롬프트 헤딩(§6) — 펼친 직후 착지.
@@ -334,12 +338,12 @@ struct TransitTrackingSheet: View {
 
     /// 국면 전이의 착지 대상(기존 분기 그대로): arrived→"다음 구간"(사라진 컨트롤 대신
     /// 다음 행동, 헌장 §5) / 탑승 변경·다른 차량 선택(→waiting)→대기 목록 라벨 / 차량
-    /// 선택(waiting→boarding)→"탑승했습니다"(N3) / 탑승 계열(waiting·boarding→riding)→
+    /// 선택(waiting→boarding)→상태 문장(N3 ① — 그 국면엔 다음 행동이 없다) / 탑승 계열(waiting·boarding→riding)→
     /// riding 컨트롤(감사 M2; arrived→riding 자동 복귀는 사용자 행동이 아니라 제외).
     private func phaseTransitionLanding(previous: TransitPhase?, phase: TransitPhase?) -> SheetControl? {
         if phase == .arrived { return .advance }
         if phase == .waiting, previous != nil, previous != .waiting { return .waitingLabel }
-        if phase == .boarding, previous == .waiting { return .confirmBoarded }
+        if phase == .boarding, previous == .waiting { return .status }
         if phase == .riding, previous == .waiting || previous == .boarding {
             return model.state?.lock.map(isApproxTransitLock) == true ? .advance : .changeBoarding
         }
@@ -434,7 +438,9 @@ struct TransitTrackingSheet: View {
             // 목록 행으로 같은 곳에 간다(정보 정본은 목록). 지하철 leg에서만 판정한다.
             let mentions = leg.mode == "subway" ? transitStationMentions(in: text, stops: leg.viaStops) : []
             let display = model.displayLeg(leg, useOverride: false)
-            distanceText(text)
+            // 착지 대상(N3 ① §4.3): 차량 선택 전이가 여기 앉는다. 줄 내용은 폴마다 바뀌지만
+            // 뷰 종류·정체성은 불변이라 포커스가 재생성으로 튕기지 않는다(E33과 같은 근거).
+            landingTarget(distanceText(text), .status)
                 .foregroundStyle(.secondary)
                 // ⚠ 선언은 역순: VoiceOver 로터가 빌더 선언의 역순으로 노출된다(PlaceRow·채팅 실측).
                 // 액션 라벨은 문장 계층(descriptor)을 지나 영문이 없으면 라벨 전체가 ko(설계 리뷰 E1).
@@ -468,10 +474,14 @@ struct TransitTrackingSheet: View {
             } else if state.phase == .waiting {
                 waitingList(leg: leg, previousLock: state.previousLock, proxy: proxy)
             } else if state.phase == .boarding {
-                // 차량을 골랐고 승차 정류소 도착을 기다린다(N3). 탈출은 사용자 선언
-                // ("탑승했습니다")과 재선택("다른 차량 선택") 둘 — 목록은 보이지 않는다.
-                landingTarget(
-                    Button(appLocalized("transitGuide.confirmBoarded")) { model.confirmBoarded() }, .confirmBoarded)
+                // 차량을 골랐고 승차 정류소 도착을 기다린다(N3). 도착 관측이 riding 승격을
+                // **자동으로** 하므로 선언 버튼은 서지 않는다(위원장 판정 2026-09-10) —
+                // 관측이 끝난 뒤(`boardingManualAvailable` 래치)에만 수동 진행 수단을 낸다.
+                // 그 사이 실제로 타 버렸으면 [다른 차량 선택] → 대기 국면 [이미 탔습니다]가
+                // 탈출구다(spec §5 — 실제 탄 열차를 다시 지목하므로 더 정확한 잠금이 된다).
+                if model.boardingManualAvailable {
+                    Button(appLocalized("transitGuide.boardWithoutArrival")) { model.confirmBoarded() }
+                }
                 Button(appLocalized("transitGuide.reselectVehicle")) { model.changeBoarding() }
             } else {
                 // 근사 잠금은 advance 상시(§13.2 소비 한계 — arrived 전이가 없다).
@@ -833,7 +843,9 @@ struct TransitTrackingSheet: View {
         case .minimize: return appLocalized("guide.minimize")
         case .advance: return advanceLabel
         case .changeBoarding: return appLocalized("transitGuide.changeBoarding")
-        case .confirmBoarded: return appLocalized("transitGuide.confirmBoarded")
+        case .status:
+            guard let state = model.state, let leg = model.currentLeg else { return "" }
+            return model.statusLineText(state: state, leg: leg)
         case .waitingLabel: return waitingLabelText
         case .reboardPrompt: return appLocalized(reboardPromptKey)
         case .boardAlready: return appLocalized("transitGuide.boardAlready")
@@ -859,7 +871,7 @@ struct TransitTrackingSheet: View {
             return model.state?.signal != .untrackable
                 && (phase == .arrived || (phase == .riding && (model.state?.lock.map(isApproxTransitLock) ?? false)))
         case .changeBoarding: return phase == .riding && !model.reboardPickerActive
-        case .confirmBoarded: return phase == .boarding
+        case .status: return model.state != nil && model.currentLeg != nil
         case .waitingLabel:
             // 대기 목록은 untrackable·지방버스 분기에선 렌더되지 않는다(`phaseControls`·`waitingList` 바깥 두 분기, 코드 리뷰 M3).
             return phase == .waiting && model.aboardStep != .pickStation

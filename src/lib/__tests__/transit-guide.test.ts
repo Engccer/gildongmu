@@ -3,6 +3,7 @@ import scenariosFixture from "./fixtures/transit-guide-scenarios.json";
 import { transitPrewalkTarget, withoutPrewalk } from "../transit-guide";
 import {
   aboardCandidates,
+  boardingObservationLost,
   buildTransitGuideRoute,
   classifyBoardingCandidates,
   classifyTrackMode,
@@ -188,6 +189,16 @@ describe("비관측 잠금·이미 탑승 후보 필터(A34, 2026-09-11)", () =>
     expect(isUnobservedTransitLock({ mode: "seoulBus", routeId: "1", direction: "", vehicleId: "" })).toBe(true);
     expect(isUnobservedTransitLock(fixture.locks.tagoApprox)).toBe(false);
     expect(isUnobservedTransitLock(SUBWAY_LOCK())).toBe(false);
+  });
+
+  it("boardingObservationLost: 관측이 끝난 두 신호만(N3 ①) — Kit `transitBoardingObservationLost` 미러", () => {
+    expect(boardingObservationLost("signalLost")).toBe(true);
+    expect(boardingObservationLost("upstreamFailed")).toBe(true);
+    expect(boardingObservationLost("tracking")).toBe(false);
+    expect(boardingObservationLost("notYetVisible")).toBe(false);
+    // neverSeen은 riding 전용 축이라 이 국면에 오지 않는다 — 그래도 참으로 새지 않게 못 박는다.
+    expect(boardingObservationLost("neverSeen")).toBe(false);
+    expect(boardingObservationLost("untrackable")).toBe(false);
   });
 
   it("aboardCandidates: 그 역에 있는 열차(0~5)만 — 99·결측은 제외", () => {
