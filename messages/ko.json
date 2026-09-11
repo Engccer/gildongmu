@@ -1062,7 +1062,7 @@
     "bound": "{dest}행",
     "resumed": "안내를 재개합니다.",
     "refresh": "새로고침",
-    "boardAlready": "이미 탑승했습니다",
+    "boardAlready": "이미 탔습니다",
     "cancelChangeBoarding": "탑승 변경 취소",
     "waitingCount": "탑승 후보 {count}개.",
     "noCandidatesFiltered": "이 노선이 아닌 차량만 조회되고 있습니다",

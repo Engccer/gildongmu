@@ -69,7 +69,7 @@ async function boardTrain(select: RegExp = /selectTrain/) {
 }
 
 /**
- * "이미 탑승했습니다"의 근사(비관측) 잠금 경로(A34 ②+①, 2026-09-11): 역을 먼저 묻고, 그 역에 있는
+ * "이미 탔습니다"의 근사(비관측) 잠금 경로(A34 ②+①, 2026-09-11): 역을 먼저 묻고, 그 역에 있는
  * 열차가 0건일 때만 [열차 정보 없이 계속]이 선다. 호출부의 fetch 목이 그 역에 "99"(두 정거장 밖)만
  * 주거나 비어 있어야 한다.
  */
@@ -270,7 +270,7 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
   it("픽커를 연 채 국면이 바뀌면 다음 구간에서 되살아나지 않는다(A16 L3, 리뷰 MAJOR)", async () => {
     // 리뷰가 준 재현 경로: 픽커를 연 채 riding을 벗어나면 화면에서는 사라지지만
     // 플래그가 남아, 다음 riding 진입에서 묻지도 않은 역 선택 화면이 되살아난다.
-    // 국면 왕복은 근사 잠금("이미 탑승했습니다")으로 만든다 — 그 잠금은 riding에서
+    // 국면 왕복은 근사 잠금("이미 탔습니다")으로 만든다 — 그 잠금은 riding에서
     // advance를 상시 노출하므로 폴 주기(15초)를 기다리지 않고 전이시킬 수 있다.
     const twoLegs: TransitRoute = {
       ...ROUTE,
@@ -386,7 +386,7 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
     expect(screen.queryByText(/expressCheck|expressStopsAt/)).toBeNull();
   });
 
-  it("이미 탑승했습니다 → 급행 확인 프롬프트(헤딩 착지) → 급행이 하차역을 지나면 거절 문장, 일반 열차면 잠금", async () => {
+  it("이미 탔습니다 → 급행 확인 프롬프트(헤딩 착지) → 급행이 하차역을 지나면 거절 문장, 일반 열차면 잠금", async () => {
     const expressRoute: TransitRoute = {
       ...ROUTE,
       legs: [{
@@ -447,7 +447,7 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
     fireEvent.click(screen.getByRole("button", { name: "transitGuide.pickAnotherStation" }));
     await screen.findByRole("heading", { name: "transitGuide.aboardStationPrompt" });
     expect(screen.queryByRole("heading", { name: "transitGuide.expressPrompt" })).toBeNull();
-    // 역 선택 취소는 눌렀던 자리([이미 탑승했습니다])로 돌아간다.
+    // 역 선택 취소는 눌렀던 자리([이미 탔습니다])로 돌아간다.
     fireEvent.click(screen.getByRole("button", { name: "transitGuide.reboardCancel" }));
     await waitFor(() => {
       expect(document.activeElement?.textContent).toBe("transitGuide.boardAlready");
@@ -1017,7 +1017,7 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
     });
   });
 
-  it("이미 탑승했습니다(A34 ② 2026-09-11): 역을 묻고 → 그 역에 있는 열차만 목록 → 고르면 boarding 없이 riding(식별 잠금)", async () => {
+  it("이미 탔습니다(A34 ② 2026-09-11): 역을 묻고 → 그 역에 있는 열차만 목록 → 고르면 boarding 없이 riding(식별 잠금)", async () => {
     const calls: string[] = [];
     vi.stubGlobal(
       "fetch",

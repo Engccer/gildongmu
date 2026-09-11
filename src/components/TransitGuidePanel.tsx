@@ -101,7 +101,7 @@ export function TransitGuidePanel({
   const changeBoardingRef = useRef<HTMLButtonElement>(null);
   /** 역 재선택 프롬프트 착지(A16 L3) — 버튼이 사라지는 전이라 포커스를 선점한다. */
   const reboardPromptRef = useRef<HTMLHeadingElement>(null);
-  /** [이미 탑승했습니다] — "이미 탑승" 흐름의 역 선택 취소가 돌아오는 자리(A34 ②, riding 취소의 `changeBoardingRef` 동형). */
+  /** [이미 탔습니다] — "이미 탑승" 흐름의 역 선택 취소가 돌아오는 자리(A34 ②, riding 취소의 `changeBoardingRef` 동형). */
   const boardAlreadyRef = useRef<HTMLButtonElement>(null);
   /**
    * 급행 확인 프롬프트(spec 2026-09-02 §6) — 버튼으로 펼친 것이라 heading이 발견 경로(헌장 §3).

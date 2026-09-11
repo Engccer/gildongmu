@@ -577,7 +577,7 @@ final class TransitGuideModel {
         restartPollLoop(immediate: false)
     }
 
-    // MARK: - "이미 탑승했습니다" 흐름 (A34 ②+①, spec 2026-09-11 §4.2)
+    // MARK: - "이미 탔습니다" 흐름 (A34 ②+①, spec 2026-09-11 §4.2)
 
     /// 대기 국면의 두 단계: 지나는 역 묻기 → 그 역에 있는 열차 고르기. 국면이 waiting을 벗어나면 소거(`dispatch`).
     enum AboardStep: Equatable { case pickStation, pickVehicle }
@@ -586,7 +586,7 @@ final class TransitGuideModel {
     /// (`firstObservationInStep` 동형. `confirmBoarded`의 declared는 `vehicleSelected`가 이미 말했다).
     private var aboardBoardInStep = false
 
-    /// [이미 탑승했습니다] — 지하철이면 역부터 묻는다. 그 밖(서울버스)은 종전대로 곧장 근사(비관측) 잠금
+    /// [이미 탔습니다] — 지하철이면 역부터 묻는다. 그 밖(서울버스)은 종전대로 곧장 근사(비관측) 잠금
     /// (역 이름 조회가 성립하지 않는다 — `beginReboard`가 지하철 전용인 근거와 같다).
     func beginAboard() {
         touchUserAction()
@@ -679,7 +679,7 @@ final class TransitGuideModel {
         restartPollLoop(immediate: true)
     }
 
-    /// "이미 탑승했습니다"(§13.2) — 식별자 없는 근사 잠금(tagoBus 계약 동형).
+    /// "이미 탔습니다"(§13.2) — 식별자 없는 근사 잠금(tagoBus 계약 동형).
     ///
     /// `express`는 급행 확인 프롬프트(spec 2026-09-02 §6, 위원장 판정 — 급행 집합이 있는 노선에서만 시트가
     /// 묻는다)의 답. true면 하차역 정차를 판정해 통과 급행이면 잠그지 않고 차단 문장(결정적 문장 재사용)을
