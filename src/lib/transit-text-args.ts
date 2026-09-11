@@ -38,7 +38,7 @@ export const TRANSIT_TEXT_ARG_NAMES: Record<string, readonly string[]> = {
   prewalkStart: ["station", "minutes"],
   prewalkArrived: ["station"],
   prewalkArrivedButton: ["station"],
-  openStation: ["name"],
+  openStation: ["station"],
 };
 
 /**

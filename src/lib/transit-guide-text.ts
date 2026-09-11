@@ -323,9 +323,9 @@ export function prewalkArrivedButtonLine(isEn: boolean, station: TransitLabel): 
 }
 
 /**
- * 역 상세 열기 액션 라벨 "{역} 상세 보기"(E33, iOS 상태 문장 로터 액션). 영문이 없으면 라벨 전체가 ko —
- * 한 라벨 안에서 언어를 섞지 않는다(설계 리뷰 E1). 웹 소비자는 아직 없다(웹 세션이 뷰 수명이라 미연결,
- * spec 2026-09-11-transit-station-to-place-and-landing §2) — 키 목록 미러 유지를 위해 둔다.
+ * 역 상세 열기 액션 라벨 "{역} 상세 보기"(E33, iOS 상태 문장 로터 액션). 판정은 다른 descriptor와 같다(영문이
+ * 없으면 `lang: "ko"`). 웹 소비자는 아직 없다(웹 세션이 뷰 수명이라 미연결, spec
+ * 2026-09-11-transit-station-to-place-and-landing §2) — 키 목록 미러 유지를 위해 둔다.
  */
 export function openStationLine(isEn: boolean, station: TransitLabel): TransitTextLine {
   return line(isEn, "openStation", [station], (v) => v);

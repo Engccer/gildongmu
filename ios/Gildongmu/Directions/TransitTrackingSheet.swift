@@ -65,6 +65,8 @@ struct TransitTrackingSheet: View {
     /// 백그라운드에서 난 국면 전이의 착지 대상(A35 L4). VO 커서가 없는 배경에서 시도하지 않고 여기 적어 두었다가
     /// 전경 복귀에 한 번 착지한다(latest-wins). 시트 `.task`는 재표시에만 돌아 이 자리를 대신하지 못한다.
     @State private var deferredLanding: SheetControl?
+    /// 진행 중 착지의 대상 — 배경 전환·모달 등장이 그 시도를 끊고 `deferredLanding`으로 이월할 때 읽는다(코드 리뷰 M1).
+    @State private var landingInFlight: SheetControl?
     @Environment(\.scenePhase) private var scenePhase
     /// 포커스가 얹힌 후보의 정체성(항목 정체성 옵셔널 바인딩 — Bool equals 금지 정본).
     @AccessibilityFocusState private var focusedCandidate: String?
@@ -119,9 +121,9 @@ struct TransitTrackingSheet: View {
                                 heading: appLocalized("beacon.transitHeading"),
                                 label: model.destinationLabel,
                                 onShowDetail: {
-                                    if let dest = detailDest {
-                                        detailPlace = guideDestinationPlace(dest: dest, label: model.destinationLabel)
-                                    }
+                                    guard let dest = detailDest else { return }
+                                    model.touchUserAction()
+                                    detailPlace = guideDestinationPlace(dest: dest, label: model.destinationLabel)
                                 },
                                 onChangeDestination: { changeDestPresented = true }), .title)
                         } trailing: {
@@ -151,10 +153,26 @@ struct TransitTrackingSheet: View {
             }
             .onChange(of: model.state?.legIndex) { viaExpanded = false }
             .onChange(of: scenePhase) { _, phase in
-                guard phase == .active, let target = deferredLanding else { return }
-                deferredLanding = nil
-                landControlFocus(target, proxy: proxy, note: "deferred")
+                switch phase {
+                case .background:
+                    // 진행 중 착지는 VO 커서 없는 배경에서 전부 실패로 기록된다 — 끊고 전경 복귀로 이월(코드 리뷰 M1).
+                    if let inFlight = landingInFlight {
+                        controlFocusTask?.cancel()
+                        landingInFlight = nil
+                        deferredLanding = inFlight
+                        transitGuideLog("controlFocus target=\(inFlight) reason=background deferred=true note=inFlight")
+                    }
+                case .active:
+                    if let target = deferredLanding {
+                        deferredLanding = nil
+                        landControlFocus(target, proxy: proxy, note: "note=deferred")
+                    }
+                default:
+                    break
+                }
             }
+            // 시트 최소화(N1)는 콘텐츠 뷰 파괴다 — `@State` Task 핸들은 사라져도 Task는 돈다(코드 리뷰 M2). 끊는다.
+            .onDisappear { controlFocusTask?.cancel() }
             // 역 선택 화면 착지(A35 §4.1 ③): 트리거는 **화면이 열리는 상태 변화**다. 종전엔 프롬프트 헤딩 자체의
             // `.task`가 불렀는데, 헤딩이 경유역 목록 아래라 실현되지 않으면 시도 자체가 없었다(로그에 남는
             // 시도는 실현된 것만 — 표본 편향). 두 흐름(승차 중 탑승 변경·이미 탑승 pickStation) 공용.
@@ -206,9 +224,12 @@ struct TransitTrackingSheet: View {
             .onChange(of: changeDestPresented) { _, presented in
                 // 검색 시트에 받아쓰기 마이크가 있다 — 열린 동안 통지·톤 억제(스펙 §5.4).
                 model.outputSuppressed = presented
-                // 시트가 닫히고 전환이 준비 중이면 상태 행 착지(스펙 §4.4).
+                // 시트가 닫히고 전환이 준비 중이면 상태 행 착지(스펙 §4.4). 그 밖엔 시트가 떠 있던 동안 이월된 착지.
                 if !presented, model.pendingDestChange != nil {
-                    landDestChangeStatusFocus(proxy)
+                    landControlFocus(.destChangeStatus, proxy: proxy)
+                } else if !presented, let target = deferredLanding {
+                    deferredLanding = nil
+                    landControlFocus(target, proxy: proxy, note: "note=deferred")
                 }
             }
             .onChange(of: model.pendingDestChange?.phase) { _, phase in
@@ -218,7 +239,7 @@ struct TransitTrackingSheet: View {
                     landFirstDestChangeRouteFocus(proxy, result: result)
                 case .empty, .failed:
                     // 조회 중 행이 사라지는 전이(헌장 §5) — 같은 자리 문구 행에 착지.
-                    landDestChangeStatusFocus(proxy)
+                    landControlFocus(.destChangeStatus, proxy: proxy)
                 case .loading:
                     break  // 검색 시트 닫힘 onChange가 이미 착지를 맡았다
                 }
@@ -227,7 +248,13 @@ struct TransitTrackingSheet: View {
             // 목적지는 이미 그곳으로 안내 중이고, 경유역은 시트 뒤 길찾기 폼을 조작해 보이지 않는 상태
             // 변화를 만든다(같은 게이트라 "여기로 목적지 변경"도 숨는다 — 그 일은 제목 메뉴가 맡는다).
             // 닫힌 뒤 VO 커서 복원은 시스템 몫(표시 직전 요소) — 별도 착지 코드 없음(실기기 판정 §7 ②).
-            .sheet(item: $detailPlace) { place in
+            .sheet(item: $detailPlace, onDismiss: {
+                // 상세가 떠 있던 동안의 국면 전이 착지는 여기서 한 번(조망 `pendingFollowUp`과 같은 계약, a11y 감사 A1).
+                // 이월이 없으면 시스템이 표시 직전 요소(눌렀던 행)로 커서를 되돌린다(실기기 판정 §7 ②).
+                guard let target = deferredLanding else { return }
+                deferredLanding = nil
+                landControlFocus(target, proxy: proxy, note: "note=deferred")
+            }) { place in
                 NavigationStack {
                     PlaceDetailView(place: place, showsDirectionsEntry: false)
                 }
@@ -288,7 +315,7 @@ struct TransitTrackingSheet: View {
                             } else {
                                 // stale 재조회(§4.2) — 선택 행들이 사라지고 조회 중
                                 // 상태 행으로 돌아간다(헌장 §5 선점).
-                                landDestChangeStatusFocus(proxy)
+                                landControlFocus(.destChangeStatus, proxy: proxy)
                             }
                         }
                         .accessibilityFocused($focusedDestChangeRoute, equals: entry.route.routeKey)
@@ -337,11 +364,6 @@ struct TransitTrackingSheet: View {
         }
     }
 
-    /// 상태 행 착지 — 공용 정본 시퀀스.
-    private func landDestChangeStatusFocus(_ proxy: ScrollViewProxy) {
-        landControlFocus(.destChangeStatus, proxy: proxy)
-    }
-
     /// 첫 후보 착지(스펙 §4.4) — 도착 통지는 내지 않는다(착지 낭독이 첫 후보를 읽는다).
     private func landFirstDestChangeRouteFocus(_ proxy: ScrollViewProxy, result: TransitRouteResult) {
         guard let first = transitRouteEntries(result).first?.route.routeKey else { return }
@@ -379,7 +401,7 @@ struct TransitTrackingSheet: View {
                         here: index == currentIndex,
                         // 하차역 행에 출구 번호 병기(E25) — 정적 표시, 통지 없음.
                         exit: isAlight ? display.exitAlight : nil)))
-                    if leg.mode == "subway", leg.viaStops.indices.contains(index) {
+                    if leg.mode == "subway" {
                         Button {
                             openStationDetail(leg.viaStops[index], source: "via")
                         } label: {
@@ -462,7 +484,7 @@ struct TransitTrackingSheet: View {
                     if model.reboardPickerActive {
                         // 승차 중 탑승 변경(A16 L3): 하차역이면 도착 선언(A37 ②), 그 밖은 그 역 기준 재선택.
                         stationPicker(
-                            promptKey: reboardPromptKey, leg: leg, proxy: proxy,
+                            leg: leg, proxy: proxy,
                             onPick: { index in
                                 if index == leg.viaStops.count - 1 {
                                     model.cancelReboard()
@@ -493,7 +515,7 @@ struct TransitTrackingSheet: View {
             // "이미 탑승" 흐름 1단(A34 ②): 지나는 역을 묻는다 — 역 선택 화면 재사용, 질문만 전용 키
             // (목록이 성립하는 조건이 "내 열차가 그 역에 접근·정차·출발 중"이라 L3의 "지금 있는 역"과 다른 질문).
             stationPicker(
-                promptKey: reboardPromptKey, leg: leg, proxy: proxy,
+                leg: leg, proxy: proxy,
                 onPick: { index in
                     expressPromptActive = false
                     model.pickAboardStation(at: index)
@@ -639,9 +661,6 @@ struct TransitTrackingSheet: View {
         }
     }
 
-    /// 라벨 복귀는 정본 시퀀스를 따른다(감사 M3): 가시화(scrollTo) → 지연 → 대입 →
-    /// 검증 → 1회 재시도. List 오프스크린 행은 AX 컬링으로 대입이 조용히 되돌아가는
-    /// 실기기 확정 함정이라 동기 대입 한 줄은 실패한다. 로그는 착지 결과까지 남긴다.
     /// 역 선택 화면 — 두 흐름이 재사용한다: 승차 중 탑승 변경(A16 L3, "지금 어느 역에 계신가요?")과
     /// "이미 탑승"(A34 ②, "지금 어느 역을 지나고 계신가요?"). 질문·선택 응답만 다르고 행·취소·착지는 같다.
     /// 마지막 행(하차역)은 두 흐름 모두 도착 선언이다(A37 ②).
@@ -650,11 +669,12 @@ struct TransitTrackingSheet: View {
     /// 않는다. 역 이름은 안내방송으로 사용자가 이미 아는 정보라 목록이 지하·지상
     /// 무관하게 항상 성립한다.
     @ViewBuilder private func stationPicker(
-        promptKey: String, leg: TransitGuideLeg, proxy: ScrollViewProxy,
+        leg: TransitGuideLeg, proxy: ScrollViewProxy,
         onPick: @escaping (Int) -> Void, onCancel: @escaping () -> Void
     ) -> some View {
-        // 착지는 이 뷰가 아니라 화면이 열리는 상태 변화(`reboardPickerActive`·`aboardStep`)가 부른다(A35 §4.1 ③).
-        landingTarget(Text(appLocalized(promptKey)).accessibilityAddTraits(.isHeader), .reboardPrompt)
+        // 질문은 흐름별(`reboardPromptKey` — 뷰·폴백이 같은 식). 착지는 이 뷰가 아니라 화면이 열리는 상태 변화
+        // (`reboardPickerActive`·`aboardStep`)가 부른다(A35 §4.1 ③).
+        landingTarget(Text(appLocalized(reboardPromptKey)).accessibilityAddTraits(.isHeader), .reboardPrompt)
         // 항목 정체성은 순번(웹은 순번+이름 복합) — 동명 정차가 있어도 행이 합쳐지지
         // 않는다. 두 표기가 다르지만 고유성은 양쪽 다 순번이 보장한다.
         // ⚠ **라벨은 표시(en 가능)이고 값은 인덱스**다 — 조회 쿼리는 모델이 인덱스로
@@ -684,7 +704,9 @@ struct TransitTrackingSheet: View {
     private static func controlId(_ control: SheetControl) -> String { "transit-control-\(control)" }
 
     /// 실현 관측 상자(설계 리뷰 L2·L3 — 비관찰 참조 + 카운트). `@Observable` 아님이 의도다.
-    final class RenderedControls {
+    /// ⚠ SwiftUI가 트랜잭션 중 제거된 서브트리의 `onDisappear`를 건너뛰면 카운트가 남아 `contains`가 참으로 굳고,
+    /// 그때 실패 사유는 `notRendered` 대신 `stolen`으로 적힌다(코드 리뷰 m9 — `reason` 집계 때 감안, 리셋 지점 없음).
+    @MainActor final class RenderedControls {
         private var counts: [SheetControl: Int] = [:]
         func appear(_ c: SheetControl) { counts[c, default: 0] += 1 }
         func disappear(_ c: SheetControl) { counts[c] = max(0, (counts[c] ?? 0) - 1) }
@@ -692,7 +714,7 @@ struct TransitTrackingSheet: View {
     }
 
     /// 착지 시도의 끝. 로그 `reason=`의 값이고 다음 로그 회수가 이것으로 원인을 가른다(§4.5).
-    private enum LandingOutcome: String { case ok, notRendered, stolen, vanished, background }
+    private enum LandingOutcome: String { case ok, notRendered, stolen, vanished, background, modal, cancelled }
 
     /// 컨트롤 착지 정본 시퀀스(`docs/PATTERNS.md` "iOS 목록 포커스 이동", A35 재설계 spec 2026-09-11 §4.1):
     /// 직전 착지 취소 → 경합 바인딩 해제 → [가시화(scrollTo, 실현될 때까지 150ms마다 반복) → **실현 대기**(≤500ms) →
@@ -707,15 +729,27 @@ struct TransitTrackingSheet: View {
     /// ⚠ 배경에선 시도하지 않는다(L4) — VO 커서가 없어 전부 실패로 기록돼 판정 축을 오염시킨다. 전경 복귀에 한 번 착지.
     private func landControlFocus(_ target: SheetControl, proxy: ScrollViewProxy, note: String = "") {
         controlFocusTask?.cancel()
-        guard model.isForeground else {
+        landingInFlight = nil
+        // 배경(VO 커서 없음)·모달 위(장소 상세·목적지 검색 — 커서가 모달 안이라 대입이 먹어도 `stolen`으로 끝나고 폴백만
+        // 남는다, a11y 감사 A1)에선 시도하지 않고 이월한다. 조망(`overviewAdapter`)은 자기 `pendingFollowUp` 계약.
+        let blocker: LandingOutcome? = !model.isForeground ? .background
+            : (detailPlace != nil || changeDestPresented) ? .modal : nil
+        if let blocker {
             deferredLanding = target
-            transitGuideLog("controlFocus target=\(target) reason=\(LandingOutcome.background.rawValue) deferred=true"
+            transitGuideLog("controlFocus target=\(target) reason=\(blocker.rawValue) deferred=true"
                 + (note.isEmpty ? "" : " \(note)"))
             return
         }
         deferredLanding = nil
+        landingInFlight = target
         controlFocusTask = Task { @MainActor in
+            defer { if landingInFlight == target { landingInFlight = nil } }
             let started = ProcessInfo.processInfo.systemUptime
+            // 취소(국면 전이·새 착지·배경·최소화)도 표본이다 — 무기록이면 표본 편향(코드 리뷰 m1).
+            func logCancelled(_ attempts: Int) {
+                transitGuideLog("controlFocus target=\(target) reason=\(LandingOutcome.cancelled.rawValue) attempts=\(attempts)"
+                    + (note.isEmpty ? "" : " \(note)"))
+            }
             // 경합 바인딩 해제(설계 리뷰 M7) — 후보·경로 정체성 바인딩이 사라진 항목을
             // 계속 가리키면 새 대상 대입과 경쟁한다.
             focusedCandidate = nil
@@ -731,19 +765,19 @@ struct TransitTrackingSheet: View {
                 scrollTo(target, proxy)
                 while !rendered.contains(target), waited < 500 {
                     try? await Task.sleep(for: .milliseconds(50))
-                    guard !Task.isCancelled else { return }
+                    guard !Task.isCancelled else { logCancelled(attempts); return }
                     waited += 50
                     if waited % 150 == 0 { scrollTo(target, proxy) }
                 }
-                guard controlExists(target) else { outcome = .vanished; break }
                 wasRendered = rendered.contains(target)
+                guard controlExists(target) else { outcome = .vanished; break }
                 if wasRendered { scrollTo(target, proxy) }
                 focusedControl = target
                 // 늦은 검증 — 100ms마다 본다: 착지 확정은 조기 종료, 대상 소멸은 지연 끝이 아니라 그 시점에(L6).
                 var verified = 0
                 while verified < delay {
                     try? await Task.sleep(for: .milliseconds(100))
-                    guard !Task.isCancelled else { return }
+                    guard !Task.isCancelled else { logCancelled(attempts); return }
                     verified += 100
                     if focusedControl == target { outcome = .ok; break attemptLoop }
                     guard controlExists(target) else { outcome = .vanished; break attemptLoop }
@@ -759,13 +793,25 @@ struct TransitTrackingSheet: View {
                     + " attempts=\(attempts) elapsedMs=\(elapsedMs) rendered=\(wasRendered) reason=\(outcome.rawValue)"
                     + " vo=\(voLabel.map { "\"\($0)\"" } ?? "nil")"
                     + (note.isEmpty ? "" : " \(note)"))
-            guard !landed, outcome != .vanished else { return }
+            // 폴백은 `outcome`으로 가른다(`landed` 재계산과 어긋날 수 있다 — 코드 리뷰 m3): `ok`는 착지, `vanished`는
+            // 대상이 사라져 그 라벨을 읽으면 거짓(새 국면의 착지가 대신한다).
+            guard outcome != .ok, outcome != .vanished else { return }
             // 착지 못 했으면 그 자리에서 낭독됐을 라벨을 통지한다(헌장 §5 — 통지가 유일한 증거).
-            // `vanished`는 대상이 사라진 것이라 그 라벨을 읽으면 거짓이 된다 — 새 국면의 착지가 대신한다.
-            // VO 커서가 실제로는 대상 위인데 바인딩만 늦은 경우(`vo` == 라벨)는 이중 낭독이라 내지 않는다(L5 일부).
             let text = landingFallbackText(target)
-            if let voLabel, text.hasPrefix(voLabel) {
+            guard !text.isEmpty else {
+                transitGuideLog("landingFallback target=\(target) skipped=emptyText")
+                return
+            }
+            // VO 커서가 실제로는 대상 위인데 바인딩만 늦은 경우는 이중 낭독이라 내지 않는다(L5 일부). 비교는 **대상 라벨과
+            // 같은 40자 절단** 일치 — 빈 라벨·접두 우연 일치("대중교통 안내"만 읽는 요소)가 침묵을 만들지 않게(spec 리뷰 M1·a11y A4).
+            if let voLabel, !voLabel.isEmpty, voLabel == String(text.prefix(40)) {
                 transitGuideLog("landingFallback target=\(target) skipped=voMatchesLabel")
+                return
+            }
+            // 시도 중 배경으로 내려갔으면 게시하지 않고 이월한다(배경 게시는 `missedAnnouncement`만 세운다 — a11y A2).
+            guard model.isForeground else {
+                deferredLanding = target
+                transitGuideLog("landingFallback target=\(target) skipped=background deferred=true")
                 return
             }
             transitGuideLog("landingFallback target=\(target) text=\(text.prefix(40))")
@@ -808,11 +854,16 @@ struct TransitTrackingSheet: View {
         let phase = model.state?.phase
         switch target {
         case .title, .minimize: return model.state != nil
-        case .advance: return phase == .arrived
-            || (phase == .riding && (model.state?.lock.map(isApproxTransitLock) ?? false))
+        case .advance:
+            // untrackable 분기의 수동 전진 버튼은 착지 바인딩이 없다(코드 리뷰 M3) — 그 국면엔 대상이 없다.
+            return model.state?.signal != .untrackable
+                && (phase == .arrived || (phase == .riding && (model.state?.lock.map(isApproxTransitLock) ?? false)))
         case .changeBoarding: return phase == .riding && !model.reboardPickerActive
         case .confirmBoarded: return phase == .boarding
-        case .waitingLabel: return phase == .waiting && model.aboardStep != .pickStation
+        case .waitingLabel:
+            // 대기 목록은 untrackable·지방버스 분기에선 렌더되지 않는다(`phaseControls`·`waitingList` 바깥 두 분기, 코드 리뷰 M3).
+            return phase == .waiting && model.aboardStep != .pickStation
+                && model.state?.signal != .untrackable && model.currentLeg?.trackMode != .tagoBus
         case .reboardPrompt:
             return (phase == .riding && model.reboardPickerActive)
                 || (phase == .waiting && model.aboardStep == .pickStation)

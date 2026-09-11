@@ -277,8 +277,9 @@ public func transitPrewalkArrivedButtonLine(isEn: Bool, station: TransitLabel) -
 
 // MARK: - 역 상세 열기(E33)
 
-/// 상태 문장 로터 액션 "{역} 상세 보기". 영문이 없으면 라벨 **전체가** ko(줄 원자성 — 설계 리뷰 E1:
-/// "View details for 천호(풍납토성)"처럼 한 라벨 안에서 언어를 섞지 않는다).
+/// 상태 문장 로터 액션 "{역} 상세 보기". 판정은 다른 descriptor와 같다 — 영문이 없으면 `lang: "ko"`.
+/// ⚠ iOS 렌더러는 줄 언어로 포맷 문자열을 고르지 못한다(앱 카탈로그만, `koFallback` 계측 — BACKLOG §2 E28-①) —
+/// en 세션 + 영문 없는 역이면 "View details for 천호(풍납토성)"가 되며 이것은 모든 descriptor 줄의 공통 성질이다.
 public func transitOpenStationLine(isEn: Bool, station: TransitLabel) -> TransitTextLine {
     makeLine(isEn, "openStation", [station]) { $0 }
 }

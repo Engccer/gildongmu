@@ -1076,7 +1076,7 @@
     "walkHandoffStart": "Démarrer le guidage à pied restant",
     "prewalkStart": "{minutes} min à pied jusqu'à l'arrêt d'embarquement {station}. Le guidage à pied commence d'abord.",
     "prewalkArrivedButton": "Arrivé à {station}",
-    "openStation": "Voir les détails de {name}",
+    "openStation": "Voir les détails de {station}",
     "prewalkArrived": "Vous êtes arrivé à l'arrêt d'embarquement {station}.",
     "prewalkUnavailable": "Le guidage à pied n'a pas pu démarrer ; passage direct à l'attente d'embarquement.",
     "prewalkCancelled": "Le guidage des transports n'a pas été lancé.",
