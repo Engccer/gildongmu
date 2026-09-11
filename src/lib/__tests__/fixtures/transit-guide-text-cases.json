@@ -1348,6 +1348,45 @@
    }
   },
   {
+   "name": "openStation en",
+   "fn": "openStation",
+   "isEn": true,
+   "station": {
+    "ko": "승차ᛥ",
+    "en": "Cheonho"
+   },
+   "expect": {
+    "parts": [
+     {
+      "key": "openStation",
+      "args": [
+       "Cheonho"
+      ]
+     }
+    ],
+    "lang": "en"
+   }
+  },
+  {
+   "name": "openStation en 결측 → 라벨 전체 ko(설계 리뷰 E1)",
+   "fn": "openStation",
+   "isEn": true,
+   "station": {
+    "ko": "천호(풍납토성)"
+   },
+   "expect": {
+    "parts": [
+     {
+      "key": "openStation",
+      "args": [
+       "천호(풍납토성)"
+      ]
+     }
+    ],
+    "lang": "ko"
+   }
+  },
+  {
    "name": "vehicleDesc 행선+방향 en",
    "fn": "vehicleDesc",
    "isEn": true,

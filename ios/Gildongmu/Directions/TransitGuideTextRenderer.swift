@@ -60,6 +60,7 @@ enum TransitGuideTextRenderer {
         case "prewalkStart": return appLocalized("transitGuide.prewalkStart", arguments: args)
         case "prewalkArrived": return appLocalized("transitGuide.prewalkArrived", arguments: args)
         case "prewalkArrivedButton": return appLocalized("transitGuide.prewalkArrivedButton", arguments: args)
+        case "openStation": return appLocalized("transitGuide.openStation", arguments: args)
         default:
             // Kit이 키를 늘렸는데 여기 case가 빠진 것 — 문자열 switch라 컴파일러가 못 잡으므로
             // 디버그에서 즉시 드러내고, 릴리스는 키를 그대로 노출해 침묵을 피한다.

@@ -11,6 +11,7 @@ import {
   frameLine,
   overviewLegLine,
   prewalkArrivedButtonLine,
+  openStationLine,
   prewalkArrivedLine,
   prewalkStartLine,
   selectedVehicleLine,
@@ -211,6 +212,11 @@ const CASES: {
     run: (e) => prewalkArrivedButtonLine(e, LEG.board),
     en: { parts: [{ key: "prewalkArrivedButton", args: ["Cheonho"] }], lang: "en" },
   },
+  {
+    fn: openStationLine, name: "openStationLine",
+    run: (e) => openStationLine(e, LEG.board),
+    en: { parts: [{ key: "openStation", args: ["Cheonho"] }], lang: "en" },
+  },
 ];
 
 function textOf(l: TransitTextLine): string {
@@ -385,6 +391,7 @@ function runFixtureCase(c: FixtureCase): TransitTextLine {
     case "prewalkStart": return prewalkStartLine(e, c.station!, c.minutes!);
     case "prewalkArrived": return prewalkArrivedLine(e, c.station!);
     case "prewalkArrivedButton": return prewalkArrivedButtonLine(e, c.station!);
+    case "openStation": return openStationLine(e, c.station!);
     default: throw new Error(`미지 fn: ${c.fn}`);
   }
 }

@@ -810,6 +810,9 @@
   "transitGuide.nextLeg": [
     "context"
   ],
+  "transitGuide.openStation": [
+    "name"
+  ],
   "transitGuide.overviewLeg": [
     "n",
     "line",

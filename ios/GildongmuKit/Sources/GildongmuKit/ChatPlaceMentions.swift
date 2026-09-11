@@ -8,16 +8,24 @@ import Foundation
 /// - 반환은 산문 첫 등장 순. 같은 이름은 한 번만(액션 라벨이 같아 구분 불가).
 /// - LLM이 이름을 줄여 쓰면 그 장소는 잡히지 않는다 — 카드가 안전망이라 의도된 한계.
 public func chatPlaceMentions(in text: String, places: [Place]) -> [Place] {
+    mentionOrder(in: text, names: places.map(\.name)).map { places[$0] }
+}
+
+/// 이름 목록이 산문에 등장하는 순서(인덱스). `chatPlaceMentions`의 알고리즘 그 자체 —
+/// 대중교통 안내 상태 문장의 역 언급(E33, `transitStationMentions`)이 같은 규칙을 쓴다:
+/// 빈 이름 제외, 긴 이름 우선 대응·마스킹, 첫 등장 순, 같은 이름은 첫 인덱스 한 번만.
+public func mentionOrder(in text: String, names: [String]) -> [Int] {
     guard !text.isEmpty else { return [] }
     var masked = Array(text)
-    var found: [(offset: Int, place: Place)] = []
+    var found: [(offset: Int, index: Int)] = []
     var seenNames = Set<String>()
-    let ordered = places
-        .filter { !$0.name.isEmpty }
-        .sorted { $0.name.count > $1.name.count }
-    for place in ordered {
-        guard !seenNames.contains(place.name) else { continue }
-        let name = Array(place.name)
+    let ordered = names.indices
+        .filter { !names[$0].isEmpty }
+        .sorted { names[$0].count > names[$1].count }
+    for index in ordered {
+        let nameText = names[index]
+        guard !seenNames.contains(nameText) else { continue }
+        let name = Array(nameText)
         var offset = 0
         var first: Int?
         while offset + name.count <= masked.count {
@@ -30,9 +38,9 @@ public func chatPlaceMentions(in text: String, places: [Place]) -> [Place] {
             }
         }
         if let first {
-            seenNames.insert(place.name)
-            found.append((first, place))
+            seenNames.insert(nameText)
+            found.append((first, index))
         }
     }
-    return found.sorted { $0.offset < $1.offset }.map(\.place)
+    return found.sorted { $0.offset < $1.offset }.map(\.index)
 }

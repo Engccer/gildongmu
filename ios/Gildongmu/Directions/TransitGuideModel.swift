@@ -353,13 +353,15 @@ final class TransitGuideModel {
 
     /// 게시 시점 조회(캐시 플래그 금지 — BeaconModel 동형): `scenePhase` 전이를 한 번 놓쳐도 전경 발화가
     /// 영구 소실되지 않는다. `.inactive`(제어센터·알림 센터)는 화면을 보고 있는 중이라 전경이다.
-    private var isForeground: Bool {
+    /// 시트의 착지 헬퍼도 본다(A35 L4) — 백그라운드엔 VO 커서가 없어 착지 시도가 무의미하고 판정 로그를 오염시킨다.
+    var isForeground: Bool {
         UIApplication.shared.applicationState != .background
     }
 
     /// 사용자 조작 표식 — 모든 사용자 입력(`dispatch` 비폴 입력·새로고침·역 선택·조망·목적지/경로 변경)과
-    /// 전경 복귀가 부른다. 유휴 정지 중이었으면 재개한다.
-    private func touchUserAction() {
+    /// 전경 복귀가 부른다. 유휴 정지 중이었으면 재개한다. 시트가 직접 부르는 자리는 역 상세 열기(E33)
+    /// 하나 — 착지 재시도(A35)는 조작이 아니라 부르지 않는다.
+    func touchUserAction() {
         noteUserAction()
         resumeIfIdle()
     }
@@ -683,7 +685,7 @@ final class TransitGuideModel {
                 transitExpressSkipsAlightLine(isEn: transitGuideIsEn, leg: displayLeg(leg, useOverride: false)))
             expressBlockedNote = note
             transitGuideLog("boardAlready rejected express skips alight")
-            // 통지는 시트의 착지가 대신한다(문장 행 착지 = 답). 착지 실패 폴백만 `announceExpressBlockedFallback`.
+            // 통지는 시트의 착지가 대신한다(문장 행 착지 = 답). 착지 실패 폴백만 `announceLandingFallback`(전 대상 공용, A35).
             return
         }
         expressBlockedNote = nil
@@ -704,9 +706,12 @@ final class TransitGuideModel {
 
     /// 거절 문장 행 착지가 실패했을 때만(List 컬링) 부르는 폴백 — 활성화 응답이 침묵으로 끝나지 않게 `.high`.
     /// 착지가 성공하면 착지 낭독이 답이라 부르지 않는다(같은 문장 이중 낭독 금지, a11y 감사 2026-09-02).
-    func announceExpressBlockedFallback() {
-        guard let note = expressBlockedNote else { return }
-        announceNow(note, highPriority: true)
+    /// 착지 실패 폴백(A35 spec §4.1): 시트가 대상에 커서를 앉히지 못했을 때 **그 자리에서 낭독됐을 라벨**을
+    /// 즉시 `.high`로 통지한다(헌장 §5 — 착지 못 하면 통지가 유일한 증거). 종전 `announceExpressBlockedFallback`
+    /// (급행 거절 문장 한 곳)을 전 대상으로 일반화한 창구. 빈 문장은 내지 않는다.
+    func announceLandingFallback(_ text: String) {
+        guard !text.isEmpty else { return }
+        announceNow(text, highPriority: true)
     }
 
     /// 새로고침(§13.2) — 즉폴 + 결과를 직접 응답으로 통지(자동 폴 무낭독의 예외).

@@ -275,6 +275,14 @@ public func transitPrewalkArrivedButtonLine(isEn: Bool, station: TransitLabel) -
     makeLine(isEn, "prewalkArrivedButton", [station]) { $0 }
 }
 
+// MARK: - 역 상세 열기(E33)
+
+/// 상태 문장 로터 액션 "{역} 상세 보기". 영문이 없으면 라벨 **전체가** ko(줄 원자성 — 설계 리뷰 E1:
+/// "View details for 천호(풍납토성)"처럼 한 라벨 안에서 언어를 섞지 않는다).
+public func transitOpenStationLine(isEn: Bool, station: TransitLabel) -> TransitTextLine {
+    makeLine(isEn, "openStation", [station]) { $0 }
+}
+
 /// descriptor가 낼 수 있는 전체 키 — 앱 리터럴 `switch` 망라성 대조 축(spec §5.2).
 public let transitTextKeys: [String] = [
     "waitContext", "waitContextWalk", "boardingContext", "context",
@@ -284,4 +292,5 @@ public let transitTextKeys: [String] = [
     "bound", "expressCheck", "expressStopsAt", "expressSkipsAlight", "exitBound", "exitBoundSentence", "departed", "terminatesEarly",
     "viaBoard", "viaAlight", "viaCurrent", "overviewLeg",
     "prewalkStart", "prewalkArrived", "prewalkArrivedButton",
+    "openStation",
 ]

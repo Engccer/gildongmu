@@ -76,6 +76,7 @@ private func run(_ c: TextFixture.Case) -> TransitTextLine {
     case "prewalkArrived": return transitPrewalkArrivedLine(isEn: e, station: c.station!)
     case "prewalkArrivedButton":
         return transitPrewalkArrivedButtonLine(isEn: e, station: c.station!)
+    case "openStation": return transitOpenStationLine(isEn: e, station: c.station!)
     default:
         Issue.record("미지 fn: \(c.fn)")
         return TransitTextLine(parts: [], lang: "ko")

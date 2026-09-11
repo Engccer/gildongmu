@@ -322,6 +322,15 @@ export function prewalkArrivedButtonLine(isEn: boolean, station: TransitLabel): 
   return line(isEn, "prewalkArrivedButton", [station], (v) => v);
 }
 
+/**
+ * 역 상세 열기 액션 라벨 "{역} 상세 보기"(E33, iOS 상태 문장 로터 액션). 영문이 없으면 라벨 전체가 ko —
+ * 한 라벨 안에서 언어를 섞지 않는다(설계 리뷰 E1). 웹 소비자는 아직 없다(웹 세션이 뷰 수명이라 미연결,
+ * spec 2026-09-11-transit-station-to-place-and-landing §2) — 키 목록 미러 유지를 위해 둔다.
+ */
+export function openStationLine(isEn: boolean, station: TransitLabel): TransitTextLine {
+  return line(isEn, "openStation", [station], (v) => v);
+}
+
 /** descriptor가 낼 수 있는 전체 키(iOS 리터럴 switch 망라성 대조 축, spec §5.2). */
 export const TRANSIT_TEXT_KEYS = [
   "waitContext",
@@ -356,4 +365,5 @@ export const TRANSIT_TEXT_KEYS = [
   "prewalkStart",
   "prewalkArrived",
   "prewalkArrivedButton",
+  "openStation",
 ] as const;

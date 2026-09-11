@@ -180,3 +180,46 @@ import Foundation
     #expect(place.roadAddress == "")
     #expect(place.id == "guide-dest:37.5361,127.1462")
 }
+
+// MARK: - 대중교통 경유역 → Place · 상태 문장 역 언급 (E33)
+
+private func viaStop(_ name: String, en: String? = nil, id: String? = nil, lat: Double = 37.5, lng: Double = 127.1) -> TransitLegStop {
+    TransitLegStop(name: name, stationId: id, lat: lat, lng: lng, nameEn: en)
+}
+
+@Test func transitStopPlaceKeepsKoreanNameAsJoinKeyAndPassesIsStation() {
+    let place = transitStopPlace(viaStop("천호(풍납토성)", en: "Cheonho", id: "0554", lat: 37.5386, lng: 127.1236))
+    #expect(place.id == "transit-stop:0554")
+    // 조인 키는 한국어 원문 — 역 섹션 조회(`stationSections.load(stationName:)`)가 이 값으로 돈다.
+    #expect(place.name == "천호(풍납토성)")
+    #expect(place.nameRoman == "Cheonho")
+    #expect(isStation(place))
+    #expect(place.lat == 37.5386)
+    #expect(place.lng == 127.1236)
+    // 소스에 없는 값은 비운다.
+    #expect(place.address == "" && place.roadAddress == "" && place.phone == nil && place.link == nil)
+}
+
+@Test func transitStopPlaceFallsBackToCoordinateIdAndNilRoman() {
+    let place = transitStopPlace(viaStop("여의도", en: "", id: "", lat: 37.5216, lng: 126.9243))
+    #expect(place.id == "transit-stop:37.5216,126.9243")
+    // 빈 영문은 부재다(빈 문자열 병기 금지).
+    #expect(place.nameRoman == nil)
+}
+
+@Test func transitStationMentionsMatchBothLabelsInAppearanceOrder() {
+    let stops = [viaStop("천호(풍납토성)", en: "Cheonho"), viaStop("여의도", en: "Yeouido"), viaStop("신촌", en: "Sinchon")]
+    // ko 문장: 등장 순, 같은 역 두 번은 한 번.
+    #expect(transitStationMentions(in: "5호선 탑승 중, 여의도에서 하차합니다. 다음 역 여의도.", stops: stops) == [1])
+    #expect(transitStationMentions(in: "천호(풍납토성)에서 5호선 탑승 기다리는 중. 하차: 여의도.", stops: stops) == [0, 1])
+    // en 문장·혼합 문장(조각별 언어가 갈린 줄, 설계 리뷰 E3) 모두 잡는다.
+    #expect(transitStationMentions(in: "Riding Line 5, get off at Yeouido.", stops: stops) == [1])
+    #expect(transitStationMentions(in: "Riding Line 5, get off at Yeouido. 다음 역 여의도. Cheonho 출발.", stops: stops) == [1, 0])
+    // 언급 없음.
+    #expect(transitStationMentions(in: "남은 정거장 3개.", stops: stops) == [])
+}
+
+@Test func transitStationMentionsPrefersLongerNameLikeChatMentions() {
+    let stops = [viaStop("신촌"), viaStop("신촌(경의중앙선)")]
+    #expect(transitStationMentions(in: "다음 역 신촌(경의중앙선).", stops: stops) == [1])
+}
