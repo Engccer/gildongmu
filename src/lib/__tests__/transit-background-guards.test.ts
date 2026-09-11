@@ -50,6 +50,16 @@ describe("대중교통 백그라운드 폴 소스 가드 (E36)", () => {
     expect(calls.every((call) => call.includes("allowedInBackground:"))).toBe(true);
   });
 
+  it("유휴 정지는 idlePaused 키를 자동 창구 .high로 게시한다", () => {
+    const idle = body(/private func enterIdleIfDue\(\) -> Bool/);
+    // 정지 사실은 화면 변화가 없어 통지가 유일한 증거다(위원장 판정 2026-09-11, BACKLOG E36).
+    expect(idle).toContain('announce(appLocalized("transitGuide.idlePaused"), highPriority: true)');
+    // 타이머 판정이라 즉시 창구가 아니라 자동 창구다 — 톤이 울리는 중이면 그 뒤에 말한다.
+    expect(idle).not.toContain("announceNow(");
+    // 계측: 전경 여부와 함께 한 줄(백그라운드 정지는 post의 전경 게이트가 버린다).
+    expect(idle).toContain('transitGuideLog("idlePaused announced');
+  });
+
   it("백그라운드 진입은 폴 태스크를 취소하지 않는다(폴 지속 계약)", () => {
     const scene = body(/func handleScenePhaseChange\(to phase: ScenePhase\)/);
     const bg = scene.indexOf("case .background:");

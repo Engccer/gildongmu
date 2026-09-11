@@ -1061,6 +1061,7 @@
     "noCandidates": "まだ到着予定の車両がありません",
     "bound": "{dest}行き",
     "resumed": "案内を再開します。",
+    "idlePaused": "しばらく操作がなかったため、列車の照会を一時停止しました。",
     "refresh": "更新",
     "boardAlready": "すでに乗車しました",
     "cancelChangeBoarding": "乗車変更を取り消す",
