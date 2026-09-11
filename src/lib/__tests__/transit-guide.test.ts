@@ -131,6 +131,36 @@ function item(overrides: Partial<TrackItem>): TrackItem {
 }
 
 describe("pollIntervalMs — 적응 주기(§7)", () => {
+  it("A41: riding 첫 조회 15초 → 미등장 60초(M2), 서울버스 0을 본 뒤 추정 도착은 60초·signalLost 없음(M1)", () => {
+    const route = fixture.routes.seoulBusSingle;
+    const lock = fixture.locks.seoulBusV1;
+    const bus = (remainingStops: number, message: string): TrackItem => ({
+      vehicleId: lock.vehicleId, direction: "", message, remainingStops,
+      destinationName: null, express: false, arrivalCode: null,
+    });
+    let state = initTransitGuide(route, 0);
+    state = transitGuideStep(state, { kind: "board", lock }, route, 0).state;
+    state = transitGuideStep(state, { kind: "confirmBoarded" }, route, 0).state;
+    expect(pollIntervalMs(state)).toBe(15_000);
+    state = transitGuideStep(state, { kind: "poll", seq: 1, phaseGen: 2, poll: { kind: "empty" } }, route, 1).state;
+    expect(state.ridingPolls).toBe(1);
+    expect(pollIntervalMs(state)).toBe(60_000);
+    state = transitGuideStep(state, pollOk(2, 2, [bus(0, "곧 도착")]), route, 2).state;
+    expect(pollIntervalMs(state)).toBe(15_000);
+    state = transitGuideStep(state, pollOk(3, 2, []), route, 3).state;
+    const r = transitGuideStep(state, pollOk(4, 2, []), route, 4);
+    expect(r.event).toEqual({ kind: "arrived", certain: false });
+    expect(pollIntervalMs(r.state)).toBe(60_000);
+    // 소실이 이어져도 signalLost가 나지 않는다(종전 확정 도착이 침묵하던 자리).
+    let s = r.state;
+    for (let seq = 5; seq <= 8; seq += 1) {
+      const step = transitGuideStep(s, pollOk(seq, 2, []), route, seq);
+      expect(step.event, `seq ${seq}`).toBeNull();
+      expect(step.state.signal, `seq ${seq}`).toBe("tracking");
+      s = step.state;
+    }
+  });
+
   it("waiting 20s, 미등장 60s, 추적 중 15s(§12 원거리 30s 폐지), done·untrackable 0", () => {
     const route = SUBWAY_ROUTE();
     let state = initTransitGuide(route, 0);
@@ -139,7 +169,8 @@ describe("pollIntervalMs — 적응 주기(§7)", () => {
     // boarding(차량 선택 뒤 승차 정류소 대기)은 waiting과 같은 엔드포인트라 같은 주기.
     expect(pollIntervalMs(state)).toBe(20_000);
     state = transitGuideStep(state, { kind: "confirmBoarded" }, route, 0).state;
-    expect(pollIntervalMs(state)).toBe(60_000);
+    // A41 M2: riding 첫 조회 한 번만 15초(ridingPolls 0). 그 뒤 미등장은 60초(아래 별도 케이스).
+    expect(pollIntervalMs(state)).toBe(15_000);
     state = transitGuideStep(state, pollOk(1, 2, [item({ remainingStops: 9 })]), route, 1).state;
     expect(pollIntervalMs(state)).toBe(15_000);
     state = transitGuideStep(state, pollOk(2, 2, [item({ remainingStops: 3, message: "x" })]), route, 2).state;
@@ -161,7 +192,7 @@ describe("pollIntervalMs — 적응 주기(§7)", () => {
     const route = SUBWAY_ROUTE();
     // 선언 도착 → 0(폴이 상태를 바꿀 수 없다).
     let state = transitGuideStep(initTransitGuide(route, 0), { kind: "boardAboard", lock: SUBWAY_LOCK() }, route, 0).state;
-    expect(pollIntervalMs(state)).toBe(60_000);
+    expect(pollIntervalMs(state)).toBe(15_000); // riding 첫 조회(A41 M2), 그 뒤 미등장 60초
     state = transitGuideStep(state, { kind: "declareArrived" }, route, 1).state;
     expect(state.phase).toBe("arrived");
     expect(pollIntervalMs(state)).toBe(0);
@@ -179,7 +210,7 @@ describe("pollIntervalMs — 적응 주기(§7)", () => {
     expect(pollIntervalMs(unobserved)).toBe(0);
     const tago = fixture.routes.tagoBusSingle;
     const tagoState = transitGuideStep(initTransitGuide(tago, 0), { kind: "board", lock: fixture.locks.tagoApprox }, tago, 0).state;
-    expect(pollIntervalMs(tagoState)).toBe(60_000);
+    expect(pollIntervalMs(tagoState)).toBe(15_000); // riding 첫 조회(A41 M2), 그 뒤 미등장 60초
   });
 });
 

@@ -262,6 +262,38 @@ private func kindName(_ event: TransitGuideEvent?) -> String? {
 
 // === fixture 밖 단위 검증(웹 unit 테스트 미러) ===
 
+/// A41 웹 미러: riding 첫 조회 15초 → 미등장 60초(M2), 서울버스 0을 본 뒤 추정 도착은 60초·signalLost 없음(M1).
+@Test func a41SeoulBusPollIntervalsAndQuietEstimate() throws {
+    let fixture = try loadFixture()
+    let route = fixture.routes["seoulBusSingle"]!
+    let lock = fixture.locks["seoulBusV1"]!
+    func bus(_ remaining: Int, _ message: String) -> TransitTrackItem {
+        TransitTrackItem(
+            vehicleId: lock.vehicleId, direction: "", message: message, remainingStops: remaining,
+            destinationName: nil, express: false, arrivalCode: nil)
+    }
+    var state = initTransitGuide(route: route, now: 0)
+    state = transitGuideStep(state: state, input: .board(lock), route: route, now: 0).state
+    state = transitGuideStep(state: state, input: .confirmBoarded, route: route, now: 0).state
+    #expect(transitPollIntervalMs(state) == 15_000)
+    state = transitGuideStep(state: state, input: .poll(seq: 1, phaseGen: 2, poll: .empty), route: route, now: 1).state
+    #expect(state.ridingPolls == 1)
+    #expect(transitPollIntervalMs(state) == 60_000)
+    state = transitGuideStep(state: state, input: .poll(seq: 2, phaseGen: 2, poll: .ok([bus(0, "곧 도착")])), route: route, now: 2).state
+    #expect(transitPollIntervalMs(state) == 15_000)
+    state = transitGuideStep(state: state, input: .poll(seq: 3, phaseGen: 2, poll: .ok([])), route: route, now: 3).state
+    let r = transitGuideStep(state: state, input: .poll(seq: 4, phaseGen: 2, poll: .ok([])), route: route, now: 4)
+    #expect(r.event == .arrived(certain: false))
+    #expect(transitPollIntervalMs(r.state) == 60_000)
+    var s = r.state
+    for seq in 5...8 {
+        let step = transitGuideStep(state: s, input: .poll(seq: seq, phaseGen: 2, poll: .ok([])), route: route, now: Double(seq))
+        #expect(step.event == nil, "seq \(seq)")
+        #expect(step.state.signal == .tracking, "seq \(seq)")
+        s = step.state
+    }
+}
+
 @Test func adaptivePollingIntervals() throws {
     let fixture = try loadFixture()
     let route = fixture.routes["subwaySingle"]!
@@ -272,7 +304,8 @@ private func kindName(_ event: TransitGuideEvent?) -> String? {
     // boarding(차량 선택 뒤 승차 정류소 대기)은 waiting과 같은 엔드포인트라 같은 주기.
     #expect(transitPollIntervalMs(state) == 20_000)
     state = transitGuideStep(state: state, input: .confirmBoarded, route: route, now: 0).state
-    #expect(transitPollIntervalMs(state) == 60_000)
+    // A41 M2: riding 첫 조회 한 번만 15초(ridingPolls 0). 그 뒤 미등장 60초는 아래 별도 테스트.
+    #expect(transitPollIntervalMs(state) == 15_000)
     let far = TransitTrackItem(
         vehicleId: "5696", direction: "하행", message: "[9]번째 전역", remainingStops: 9,
         destinationName: "하남검단산", express: false, arrivalCode: "99")
@@ -309,7 +342,7 @@ private func kindName(_ event: TransitGuideEvent?) -> String? {
         state: initTransitGuide(route: route, now: 0), input: .boardAboard(fixture.locks["subway5696"]!),
         route: route, now: 0).state
     #expect(state.phase == .riding)
-    #expect(transitPollIntervalMs(state) == 60_000)
+    #expect(transitPollIntervalMs(state) == 15_000) // riding 첫 조회(A41 M2), 그 뒤 미등장 60초
     state = transitGuideStep(state: state, input: .declareArrived, route: route, now: 1).state
     #expect(state.phase == .arrived && state.arrivedCertain)
     #expect(transitPollIntervalMs(state) == 0)
@@ -322,7 +355,7 @@ private func kindName(_ event: TransitGuideEvent?) -> String? {
     let tagoState = transitGuideStep(
         state: initTransitGuide(route: tago, now: 0), input: .board(fixture.locks["tagoApprox"]!),
         route: tago, now: 0).state
-    #expect(transitPollIntervalMs(tagoState) == 60_000)
+    #expect(transitPollIntervalMs(tagoState) == 15_000) // riding 첫 조회(A41 M2), 그 뒤 미등장 60초
 }
 
 @Test func unobservedLockAndAboardCandidates() throws {
