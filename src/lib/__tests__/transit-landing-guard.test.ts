@@ -89,7 +89,33 @@ describe("TransitTrackingSheet boarding 수동 진행 (N3 ①)", () => {
     expect(SHEET).toContain("if phase == .boarding, previous == .waiting { return .status }");
     // `.status`는 상태 문장 줄에 달린다(폴백 문장도 같은 조립기를 읽는다 — 드리프트 차단).
     expect(SHEET).toContain("landingTarget(distanceText(text), .status)");
-    expect(SHEET).toContain("return model.statusLineText(state: state, leg: leg)");
+    // 폴백은 화면과 같은 낭독 라벨을 지난다(a11y 감사 L1).
+    expect(SHEET).toContain("return spokenUnits(model.statusLineText(state: state, leg: leg))");
+    // ⚠ boarding → riding은 착지 대상이 아니다(구현 리뷰 M1): 그 승격은 폴이 일으키고 커서가 얹힌
+    // 상태 문장은 사라지지 않으므로 착지시키면 포커스 강탈이 된다.
+    expect(SHEET).toContain("if phase == .riding, previous == .waiting {");
+    expect(SHEET).not.toContain("previous == .waiting || previous == .boarding");
+  });
+});
+
+describe("TransitGuideModel boarding 래치·폴 주기 (N3 ①)", () => {
+  const MODEL = readFileSync(join(ROOT, "ios/Gildongmu/Directions/TransitGuideModel.swift"), "utf8");
+
+  it("래치는 국면에 들어올 때 지우고 관측이 끝나면 세운다 — 소거 두 줄이 함께 있어야 한다", () => {
+    expect(MODEL).toContain(
+      "if result.state.phase != .boarding || state.phase != .boarding {",
+    );
+    expect(MODEL).toContain(
+      "if result.state.phase == .boarding, transitBoardingObservationLost(result.state.signal) {",
+    );
+    // 세션 종료·경로 교체도 지운다(웹 `stopSession` 미러). 넷 = 선언 기본값 + stop + changeRoute + dispatch.
+    expect(MODEL.match(/boardingManualAvailable = false/g) ?? []).toHaveLength(4);
+  });
+
+  it("관측 승격 직후 즉폴을 넣지 않는다 — 그 창이 `boarded` 통지의 지연 슬롯과 겹친다(구현 리뷰 H1)", () => {
+    // 되살리면 웜 응답에서 "탑승" 문장이 latest-wins로 버려진다(그 비대칭을 주석이 설명한다).
+    expect(MODEL).not.toMatch(/phaseBefore == \.boarding/);
+    expect(MODEL).toContain("승격 직후 즉폴을 넣으면");
   });
 });
 

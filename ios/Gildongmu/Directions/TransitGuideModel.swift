@@ -1069,16 +1069,10 @@ final class TransitGuideModel {
                 guard let self else { return }
                 // 잊힌 세션 안전망(spec §4.2.6): 다음 폴 직전에 유휴를 판정한다.
                 if self.enterIdleIfDue() { return }
-                let phaseBefore = self.state?.phase
                 await self.pollOnce()
                 guard let s = self.state, !Task.isCancelled else { return }
                 let next = transitPollIntervalMs(s)
                 if next <= 0 { return }
-                // 관측 승격(boarding → riding, N3 ①)은 조회 대상을 승차 정류소에서 하차
-                // 정류소로 바꾼다 — 새 대상의 첫 폴을 다음 주기(최대 60초)까지 미루면 탑승
-                // 직후가 통째로 빈다. 선언 경로(`confirmBoarded`)는 종전부터 즉폴이었고,
-                // ①로 관측이 기본 경로가 된 이상 그 비대칭을 남기지 않는다.
-                if phaseBefore == .boarding, s.phase == .riding { continue }
                 self.plannedIntervalMs = next
                 try? await Task.sleep(for: .milliseconds(next))
             }
@@ -1400,7 +1394,9 @@ final class TransitGuideModel {
         guard !text.isEmpty else { return }
         // 사용자 활성화의 직접 응답(탑승 선언·다음 구간 버튼)은 즉시 창구다(a11y 감사 W1): 지연 슬롯에
         // 두면 같은 함수가 부르는 즉폴의 `trackingStarted`가 latest-wins로 그 문장을 버려, 웜 응답이면
-        // "탑승했습니다"가 사라지고 콜드면 살아남는 비결정이 된다. 도착 관측(`observed`)은 폴 유래라 지연.
+        // 탑승 문장이 사라지고 콜드면 살아남는 비결정이 된다. 도착 관측(`observed`)은 폴 유래라 지연이고,
+        // ⚠ **그 전제는 "관측 승격 뒤 다음 riding 폴이 한참 뒤"라는 것이다** — 승격 직후 즉폴을 넣으면
+        // 이 문장이 그 창 안에서 버려진다(N3 ① 구현 리뷰 H1으로 즉폴 철회, spec §9).
         switch event {
         case .boarded(legIndex: _, cause: .declared), .legAdvanced:
             announceNow(text, highPriority: profile.interrupt)

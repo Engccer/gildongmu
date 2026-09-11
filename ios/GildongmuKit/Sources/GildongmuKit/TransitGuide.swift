@@ -50,7 +50,7 @@ public struct TransitLock: Codable, Sendable, Equatable {
     }
 }
 
-/// 근사 잠금 판별(§13.2): tagoBus(식별자 자체가 없다)와 "이미 탑승했습니다"
+/// 근사 잠금 판별(§13.2): tagoBus(식별자 자체가 없다)와 "이미 탔습니다"
 /// (seoulBus·subway에서 식별자 없이 선언)가 같은 소비 한계를 상속한다 —
 /// arrived 전이 금지·advance 상시·기준 차량 교체 통지·근사 주석.
 public func isApproxTransitLock(_ lock: TransitLock) -> Bool {
@@ -70,14 +70,15 @@ public func transitLockIsUnobserved(_ lock: TransitLock) -> Bool {
 /// ([도착 정보 없이 탑승 진행])을 세운다 — 그 밖에는 승차 정류소 도착 관측이 riding
 /// 승격을 자동으로 하므로 선언 버튼을 세울 이유가 없다(위원장: 고른 직후에는 아직
 /// 차량이 오지 않았다).
-/// `signalLost`는 연속 미등장과 `vehiclePassed`가 모이는 자리이고 `upstreamFailed`는
-/// 조회 실패(심야·미제공 포함)다. `neverSeen`은 riding 전용 축이라 이 국면에 없다.
+/// `signalLost`는 연속 미등장·`vehiclePassed`와 **심야·미제공**(빈 목록은 실패 분기를 지나지
+/// 않고 미등장으로 쌓인다)이 모이는 자리이고, `upstreamFailed`는 조회 실패다. `neverSeen`은
+/// riding 전용 축이라 이 국면에 없다.
 /// 웹 `boardingObservationLost` 미러.
 public func transitBoardingObservationLost(_ signal: TransitSignal) -> Bool {
     signal == .signalLost || signal == .upstreamFailed
 }
 
-/// "이미 탑승했습니다" 흐름의 후보 필터(A34 ②, spec §4.2 리뷰 B2): 사용자가 "지금 지나는 역"이라 답한 역의
+/// "이미 탔습니다" 흐름의 후보 필터(A34 ②, spec §4.2 리뷰 B2): 사용자가 "지금 지나는 역"이라 답한 역의
 /// 도착 목록에서 **그 역에 있는 열차**(진입 0·도착 1·출발 2·전역 출발/진입/도착 3·4·5 — 한 정거장 안)만
 /// 남긴다. `99`(N번째 전역, 두 정거장 이상 밖)는 사용자가 타고 있을 수 없다. 이 필터가 N3의 교차검증
 /// (선택 열차의 승차 정류소 도착 관측)과 같은 급의 증거 — "내가 있다고 말한 역에 그 열차가 있다" — 를
@@ -266,7 +267,7 @@ public enum TransitGuideInput: Sendable {
     /// 하차역 선언(A37 ②, 2026-09-11): 역 선택에서 하차역을 고르면 그 leg를 확정 도착으로 끝낸다.
     /// waiting·riding에서만(대기 국면은 "이미 탑승" 흐름의 역 선택).
     case declareArrived
-    /// "이미 탑승했습니다" 흐름의 식별 잠금(A34 ②, 2026-09-11): 사용자가 지나는 역의 목록에서 고른 열차로
+    /// "이미 탔습니다" 흐름의 식별 잠금(A34 ②, 2026-09-11): 사용자가 지나는 역의 목록에서 고른 열차로
     /// waiting → riding(declared) 직행. boarding(승차 정류소 도착 대기)을 지나지 않는다 — 이미 탔다.
     case boardAboard(TransitLock)
 }
@@ -639,7 +640,7 @@ public func transitExpressVerdict(_ item: TransitTrackItem, leg: TransitGuideLeg
     return expressNames.contains(alight) ? .stops : .skips
 }
 
-/// "이미 탑승했습니다"에서 급행 확인을 물어야 하는 leg인가 — 급행 집합이 있는 노선만(spec §6, 웹 미러).
+/// "이미 탔습니다"에서 급행 확인을 물어야 하는 leg인가 — 급행 집합이 있는 노선만(spec §6, 웹 미러).
 public func transitNeedsExpressPrompt(_ leg: TransitGuideLeg) -> Bool {
     (leg.expressStopIds?.isEmpty == false) || (leg.expressStops?.isEmpty == false)
 }
@@ -779,7 +780,7 @@ private func handleDeclareArrived(
     return (next, .arrived(certain: true))
 }
 
-/// "이미 탑승했습니다" 흐름의 식별 잠금(A34 ②) — 지나는 역의 목록에서 고른 열차로 riding 직행.
+/// "이미 탔습니다" 흐름의 식별 잠금(A34 ②) — 지나는 역의 목록에서 고른 열차로 riding 직행.
 /// 근사 잠금은 이 입력의 대상이 아니다(그쪽은 `board`의 종전 경로). 웹 `handleBoardAboard` 미러.
 private func handleBoardAboard(
     _ state: TransitGuideState, lock: TransitLock
@@ -842,7 +843,7 @@ private func enterBoarding(
     return (next, .vehicleSelected(legIndex: state.legIndex))
 }
 
-/// "탑승" = 차량 선택(N3). 근사 잠금(tagoBus·"이미 탑승했습니다")만 종전대로 riding —
+/// "탑승" = 차량 선택(N3). 근사 잠금(tagoBus·"이미 탔습니다")만 종전대로 riding —
 /// 식별자가 없어 고를 차량도, 기다릴 도착도 없다.
 private func handleBoard(
     _ state: TransitGuideState, lock: TransitLock
@@ -1132,8 +1133,9 @@ private func commitBoardingMatched(
 
 /// boarding 미등장 — 선택 시점에 목록에 있던 차량이라 첫 관측 전에도 센다. 잔여 ≤1에서
 /// 사라지면 "지나갔을 수 있다"(vehiclePassed)이지 탑승이 아니다(설계 리뷰 C2). 어느
-/// 쪽이든 signalLost 상태로 떨어져 1회만 말하고, 탈출은 사용자 선택(탑승했습니다 /
-/// 다른 차량 선택)이다. 웹 boardingUnmatched 미러.
+/// 쪽이든 signalLost 상태로 떨어져 1회만 말하고, **그 신호가 곧 수동 진행 수단의 등장
+/// 조건이다**(N3 ① `transitBoardingObservationLost`) — 탈출은 [도착 정보 없이 탑승 진행]
+/// 또는 [다른 차량 선택]이다. 웹 boardingUnmatched 미러.
 private func boardingUnmatched(
     _ next: TransitGuideState,
     base: TransitGuideState,

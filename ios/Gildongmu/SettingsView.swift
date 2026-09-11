@@ -192,12 +192,9 @@ struct SettingsView: View {
                         .id(Self.weightRowID)
                         .accessibilityFocused($weightFieldFocused)
                         .focused($weightFieldEditing)
-                        .onAppear { weightText = weightKg > 0 ? Self.formatWeight(weightKg) : "" }
                         // 타자 중간값(5 → 50 → 500)은 전부 범위 밖이라 글자마다 판정하면 정상 입력이
                         // 거절된다 — 판정은 편집이 끝날 때(A39 ⓐ).
                         .onChange(of: weightFieldEditing) { _, editing in if !editing { commitWeight() } }
-                        // 스와이프·VO escape로 닫힐 때의 폴백(멱등이라 [닫기] 경로와 겹쳐도 안전).
-                        .onDisappear { commitWeight() }
                 } footer: {
                     // 허용 범위 상시 + "서버에 저장되지 않아요"(E31 §5 잔여 — 권유가 사라진 뒤 이 문장이
                     // 앱 어디에도 없었다). 두 문장이지만 단일 Text = 한 접근성 객체.
@@ -224,6 +221,12 @@ struct SettingsView: View {
                     }
                 }
             }
+            // ⚠ **행이 아니라 화면 수명에 건다**(a11y 감사 M2·구현 리뷰): `List`는 행을 지연 실현·해제하므로
+            // 이 둘을 TextField에 달면 VoiceOver 스와이프로 목록을 훑는 것만으로 커밋이 돌아, 타자 도중
+            // 거절 통지 + 필드 되돌림이 나고 이어친 글자가 엉뚱한 값에 붙는다(A39 ⓐ가 막으려던 바로 그것).
+            .onAppear { weightText = weightKg > 0 ? Self.formatWeight(weightKg) : "" }
+            // 스와이프·VO escape로 닫힐 때의 폴백(멱등이라 [닫기] 경로와 겹쳐도 통지는 최대 1회).
+            .onDisappear { commitWeight() }
             .task {
                 guard focusWeightOnAppear else { return }
                 proxy.scrollTo(Self.weightRowID)

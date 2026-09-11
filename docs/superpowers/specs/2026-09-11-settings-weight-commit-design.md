@@ -64,6 +64,15 @@ public static func weightCommit(text: String) -> WeightCommitOutcome
 - 소스 가드(`settings-weight-commit.test.ts`, Swift 소스를 읽는 웹 테스트 — 뷰 계층엔 테스트 레인이 없다): `onChange(of: weightText)` 커밋이 없다 / 편집 종료 세 자리가 `commitWeight()`를 부른다 / 거절이 `weightKg`를 쓰지 않는다 / 통지가 `.high`다 / 푸터가 범위 인자를 넘긴다.
 - 변이 주입 1회: `.reject`에서 `weightKg = 0`을 쓰도록 되돌리면 소스 가드가 빨간불인지 실측.
 
-## 5. 파일
+## 5. 구현 리뷰 판정 (2026-09-11, HEAD `170ed2b5` → 반영)
+
+- **채택(a11y M2 · spec-compliance M5 · code L5, 셋이 같은 자리를 짚었다)**: `.onAppear` 시딩과 `.onDisappear` 커밋을 **행이 아니라 화면 수명**(List 루트)에 건다. `List`는 행을 지연 실현·해제하므로 행에 달면 **VoiceOver 스와이프로 목록을 훑는 것만으로** 커밋이 돌아, 타자 도중에 거절 통지 + 필드 되돌림이 나고 이어친 글자가 엉뚱한 값에 붙는다(`5` 친 뒤 스크롤 → 되돌림 → `0` → `650`). ⓐ("타자 중간값엔 판정하지 않는다")가 막으려던 상황을 다른 문으로 들이는 것이었다. 이 화면은 그 사실을 스스로 증언한다 — 착지 코드가 `scrollTo(weightRowID)`로 행을 끌어와야 한다.
+- **채택(spec m7)**: 소스 가드에 커밋 호출부 계수와 "행에 생명주기 훅 없음"을 더했다.
+- **실기기 확인으로 유예(a11y M3 · spec M4)**: VO escape(두 손가락 문지르기)로 닫을 때 거절 통지가 실제로 들리는가. **SR 사용자의 1순위 닫기 제스처**라, 잠식되면 A39가 존재하는 이유가 가장 흔한 경로에 남는다. 안 들리면 통지 게시와 `dismiss()` 사이에 한 틱을 두거나 거절 사실을 다음 진입에 남긴다. `docs/BACKLOG.md` §2·`docs/FIELD-TEST.md`에 행을 세웠다.
+- **유예(a11y L4)**: ko·ja의 `{min}~{max}kg` 물결표를 VoiceOver가 어떻게 읽는가. repo 규칙상 낭독 정정은 오독이 실기기에서 확인된 것만 한다(하이픈 선례). 확인되면 "20kg에서 300kg 사이"로.
+- **현행 유지(a11y L5 · code L4)**: 저장 성공의 무신호(매 이탈마다 "저장했습니다"는 소음)와 쉼표 소수점의 마침표 정규화(판정을 통과한 값이고 값이 같다). 둘 다 리뷰어도 현행 유지 의견.
+- **되돌리지 말 것(a11y 감사 명시)**: 거절 통지의 `.high`. 화면 변화가 없는 응답이고 통지 직후 VoiceOver가 새 컨트롤 라벨을 읽으므로 기본 우선순위면 잠식된다.
+
+## 6. 파일
 
 Kit `WalkHealth.swift`(+`WalkHealthTests.swift`) / iOS `SettingsView.swift` / `ios/i18n/ios-extra/*.json` `ios.settings.*` / 소스 가드 `src/lib/__tests__/settings-weight-commit.test.ts` / 생성물 `Localizable.xcstrings`·`arg-order.json`.

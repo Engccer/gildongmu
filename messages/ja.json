@@ -1027,7 +1027,7 @@
     "reboardCancel": "駅の選択を取り消す",
     "aboardStationPrompt": "今どの駅を通過していますか？",
     "pickAnotherStation": "別の駅を選択",
-    "boardApprox": "乗車しました",
+    "boardApprox": "すでに乗車しました",
     "directionCheck": "方面を確認してください。",
     "terminatesEarly": "{dest}行き、{stop}まで行きません",
     "expressCheck": "急行、{stop}停車の確認が必要",
