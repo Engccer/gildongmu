@@ -39,6 +39,7 @@ import {
 import {
   approachFrameLine,
   arrivedAtBoardStopLine,
+  arrivingAtBoardStopLine,
   boardedLine,
   boardingContextLine,
   contextLine,
@@ -600,9 +601,18 @@ export function useTransitGuide(
         case "vehiclePassed":
           if (leg) pushPiece(piece(vehiclePassedLine(isEn, displayLegOf(leg, boardOverrideRef.current))));
           break;
+        case "arrivingAtBoardStop":
+          // A41: "곧 도착" = 직전 정류소 출발. 승격 없이 임박만 — 탑승 문장은 소실 뒤 boarded(departed)가 낸다.
+          if (leg) pushPiece(piece(arrivingAtBoardStopLine(isEn, displayLegOf(leg, null))));
+          break;
+        case "arrivingAtAlightStop":
+          // 차내 "이번 정류장" 방송과 같은 시점. 도착 문장은 소실 뒤 arrived(certain: false)가 낸다.
+          parts.push(t("arrivingAtAlightStop"));
+          break;
         case "boarded": {
           if (!leg) break;
           const d = displayLegOf(leg, null);
+          // departed(A41)는 "도착. 탑승하세요"를 내지 않는다 — 차량은 이미 떠났고 사용자는 그 차 안이다.
           if (event.cause === "observed") pushPiece(piece(arrivedAtBoardStopLine(isEn, d)));
           pushPiece(piece(boardedLine(isEn, d)));
           // "이미 탑승" 식별 잠금(A34 ②)은 vehicleSelected를 내지 않으므로 어느 열차를 잠갔는지 여기서 말한다.

@@ -1459,9 +1459,20 @@ final class TransitGuideModel {
                 parts.append(TransitGuideTextRenderer.render(transitVehiclePassedLine(
                     isEn: transitGuideIsEn, leg: displayLeg(leg, useOverride: true))))
             }
+        case .arrivingAtBoardStop:
+            // A41: "곧 도착" = 직전 정류소 출발. 승격 없이 임박만 — 탑승 문장은 소실 뒤 boarded(departed)가 낸다.
+            if let leg {
+                parts.append(TransitGuideTextRenderer.render(transitArrivingAtBoardStopLine(
+                    isEn: transitGuideIsEn, leg: displayLeg(leg, useOverride: false))))
+            }
+        case .arrivingAtAlightStop:
+            // 차내 "이번 정류장" 방송과 같은 시점. 도착 문장은 소실 뒤 arrived(certain: false)가 낸다.
+            parts.append(appLocalized("transitGuide.arrivingAtAlightStop"))
         case let .boarded(_, cause):
             if let leg {
                 let d = displayLeg(leg, useOverride: false)
+                // departed(A41)는 "도착. 탑승하세요"를 내지 않는다 — 차량은 이미 떠났고 사용자는 그 차 안이다.
+                // 폴 유래라 지연 창구(`handle`의 즉시 분기는 declared뿐).
                 if cause == .observed {
                     parts.append(TransitGuideTextRenderer.render(
                         transitArrivedAtBoardStopLine(isEn: transitGuideIsEn, leg: d)))
