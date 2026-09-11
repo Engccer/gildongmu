@@ -84,7 +84,7 @@
 - **거리 표기는 `formatDistance`만 지난다**(웹 `format.ts` ↔ Kit `Format.swift` ↔ CLI `dist()` 3벌 미러: 1km 미만 `m`, 이상 소수 km 원값). 낭독 정정은 m만(`spokenDistanceUnits`). 소수 km 직접 조립 금지 — `format-drift.test.ts`가 강제. → INTEGRATIONS
 - **3-state 불변식 (시각장애인 정합)**: "0대/없음"과 "정보 없음(`unknown`)"과 "조회 실패(throw→502)"를 **절대 뭉개지 않는다**. 도착·진료·공기질·날씨·시설 전반에 적용. 해석 불가한 수치는 숨기고 등급 단어를 정본으로.
 - **도착 낭독 정본은 완성 문장 필드**: 서울버스 `arrmsg1`·지하철 `arvlMsg2`("곧 도착"·"전역 출발"). ⚠ `traTime1`/`barvlDt`를 슬롯형으로 환산하면 운행종료에도 비0이라 오발화. 한 도착 항목이 1·2번째 버스를 슬롯 페어(`arrmsg1`·`arrmsg2`)로 주므로 둘 다 투영(슬롯2는 메시지가 다를 때만).
-- **도착 줄의 현재역 꼬리는 값 포함으로 가르고 축은 그 줄의 언어다**(A32, `subwayShowsCurrentLocationTail` 웹 `station-arrivals.ts` ↔ Kit `SubwayArrivalLine.swift` + 공유 fixture): 완성 문장이 `arvlMsg3` 값을 담으면 `현재 {역}`을 빼고 아니면 붙인다(못 알아보면 붙인다). ⚠ 글자 패턴 금지(역명에 괄호가 있다)·한국어 축으로 en 판정 금지(영문 문장은 현재역을 담지 않아 en만 정보를 잃는다). → INTEGRATIONS
+- **도착 한 줄의 현재역 꼬리는 값 포함으로 가르고 축은 그 줄의 언어다**(A32, `subwayShowsCurrentLocationTail` 웹 `station-arrivals.ts` ↔ Kit `SubwayArrivalLine.swift` + 공유 fixture): 완성 문장이 `arvlMsg3` 값을 담으면 `현재 {역}`을 빼고 아니면 붙인다(못 알아보면 붙인다). ⚠ 글자 패턴 금지(역명에 괄호가 있다)·한국어 축으로 en 판정 금지(영문 문장은 현재역을 담지 않아 en만 정보를 잃는다). → INTEGRATIONS
 - **역명 매칭은 확장 정규화가 정본**(`station-match.ts` `normalizeStationName`+`lineHintMatches` 재사용, 자체 정규화 금지). → INTEGRATIONS
 - **음성 전사를 검색어로 쓰기 전 `normalizeVoiceQuery` 필수**(웹 `format.ts` ↔ Kit `VoiceQuery.swift`) — STT 후행 마침표에 juso가 0건이 된다. 소비 여부 판정은 별개 층 `hasSpeechContent`(Kit, `SpeechService.stop()` 한 곳). 채팅은 미적용. → INTEGRATIONS
 - **"내 주변" 거리순 정렬은 코드 책임**(Haversine, `totalCount` 신뢰 금지). ⚠ 검색 탭은 거리순이 아니라 정확도순+근접 블렌딩 — 거리 표기만 `annotateDistances`, 재정렬 금지. → INTEGRATIONS
@@ -123,7 +123,7 @@
 - **띠바는 탭 콘텐츠 안에 두지, TabView 자체에 걸지 않는다**(K1: 26.1+ `tabViewBottomAccessory`, 18~25 `withGuideBand` safeAreaInset, 배경 `ignoresSafeAreaEdges: []`). 착지 바인딩은 `bandFocusedTab: AppTab?`. 접기 버튼은 제목 행 `GuideMinimizeButton`, "안내 종료"는 목록 밖 최하단 고정, 시트 앵커는 제목 행. → INTEGRATIONS
 - **`outputSuppressed`는 공유 Bool이라 받아쓰기 억제의 종료는 `이전 값 ∧ 현재 값`이다**(`GuideSession.setDictationActive(_, owner:)` 소유자 집합; 취소된 세대는 풀지 않는다). → INTEGRATIONS
 - **안내 조망은 수단별 시트가 아니라 능력 단위로 공유한다**(E15-1, `GuideOverviewSheet`+`GuideOverviewCapability` 조망 전용 봉인; 판정은 `transitProgressOverview` ↔ `transit-progress-overview.ts`). "현재 위치" 표식은 신선한 추적 관측에서만, 조망 안 착지는 닫힌 뒤 `onDismiss`(`pendingFollowUp`), "다른 경로"는 현재 위치 기준 재조회. → INTEGRATIONS
-- **안내 세션은 앱 수명이고 시트를 내리는 제스처는 최소화다**(N1: `GuideSession.shared`가 모델 소유, 루트 `.sheet(item:)` 하나, 시작은 전부 `startBeacon/startTransit` — `guidance-gate-drift.test.ts`가 호출 수를 센다). dismiss 콜백은 무조건 `isMinimized = true`, 소거는 "닫기" 버튼의 `clearArrival()`·`clearWalkHandoff()`뿐. → INTEGRATIONS
+- **안내 세션은 앱 수명이고 시트를 내리는 제스처는 최소화다**(N1: `GuideSession.shared`가 모델 소유, 루트 `.sheet(item:)` 하나, 시작은 전부 `startBeacon/startTransit` — `guidance-gate-drift.test.ts`가 호출 수를 센다). dismiss 콜백은 무조건 `isMinimized = true`, 소거는 "닫기" 버튼의 `clearArrival()`뿐이다(E34로 인계 제안 화면이 사라져 `clearWalkHandoff()`를 부르는 버튼은 없다 — 지금은 `GuideSession`이 부르는 내부 소거다). → INTEGRATIONS
 - **승차 국면 지하철 상태줄은 `arvlMsg2` 원문을 "{stop}까지" 틀에 넣지 않는다**(A27, `subwayRidingMessage(arrivalCode)` 웹 ↔ Kit 공유 fixture). 버스 승차·대기 후보·내 주변 목록은 완성 문장 그대로. → INTEGRATIONS
 - **근사 잠금은 두 갈래다 — 지방버스만 관측하고, 그 밖은 비관측이다**(A34 ①, 그 밖 = 지하철·서울버스 "열차 정보 없이 계속". `transitLockIsUnobserved` ↔ 웹 `isUnobservedTransitLock`: 폴 0·매칭 0·어림값 표시 0, 상태 문장은 `signalStatusText(…, unobserved:)` 필수 인자로 세 소비자가 같은 선택기). "이미 탑승했습니다"는 역부터 묻고 그 역에 **있는** 열차(arvlCd 0~5, `transitAboardCandidates`)만 세워 `boardAboard`로 riding 직행하며, 역 선택의 하차역 행은 어느 흐름이든 `declareArrived`(확정 도착)다. → INTEGRATIONS
 - **확정 도착·비관측 riding은 폴 주기 0이고 즉폴도 예외가 아니다**(`restartPollLoop`·웹 `pollOnce`가 `interval <= 0`이면 `immediate`와 무관하게 반환 — 종전엔 즉폴이 주기 0을 무시해 선언 도착 직후 폴이 잔여를 되살렸다). 마지막 leg의 `advance` 자리는 `advanceIntoWalkHandoff()`(완료 문장 없음) + `acceptWalkHandoff` 한 동작이고 인계 제안 화면은 없다(E34). → INTEGRATIONS
@@ -218,13 +218,13 @@
 | 키 | 게이트 | 용도·비고 |
 |---|---|---|
 | `KAKAO_REST_API_KEY` | `hasKakaoKey` | 로컬검색+지오코딩+카카오모빌리티 자동차경로 (dodo 앱 공유, 1개로 전부) |
-| `TOUR_API_KEY` = `DATA_GO_KR_API_KEY` | `hasDataGoKrKey` | **동일값** — data.go.kr 계정당 단일키. 코레일·TAGO·서울지하철역시설·소아진료·공기질·날씨·무장애여행정보 공유. 신규 추가는 활용신청만. ⚠ 신규 provider 인증은 게이트와 같은 `DATA_GO_KR_API_KEY`로(`TOUR_API_KEY`로 인증하면 게이트와 split-brain — 거짓 "없음" 음성 위험) |
+| `TOUR_API_KEY` = `DATA_GO_KR_API_KEY` | `hasDataGoKrKey` · `hasTourApiKey`(en 장소 TourAPI 병합 분기만) | **동일값** — data.go.kr 계정당 단일키. 코레일·TAGO·서울지하철역시설·소아진료·공기질·날씨·무장애여행정보 공유. 신규 추가는 활용신청만. ⚠ 신규 provider 인증은 게이트와 같은 `DATA_GO_KR_API_KEY`로(`TOUR_API_KEY`로 인증하면 게이트와 split-brain — 거짓 "없음" 음성 위험) |
 | `NCP_MAPS_CLIENT_ID/SECRET` | `hasNcpMapsKeys` | en 영문주소 보강 폴백 + en 자동차경로. 헤더 `x-ncp-apigw-api-key-id`/`-key` |
 | `JUSO_CONFM_KEY` | `hasJusoKey` | 행안부 도로명주소 검색(영문주소+우편번호), 무료·무제한 |
 | `SEOUL_OPEN_DATA_KEY` | `hasSeoulOpenDataKey` | 서울 열린데이터(따릉이·문화행사·실시간 혼잡도). 일 1,000회를 셋이 **공유**하므로 신규 소비자는 캐시 설계가 필수. ⚠ 실시간 지하철은 별도 키 |
 | `SEOUL_SUBWAY_REALTIME_KEY` | `hasSeoulSubwayRealtimeKey` | "실시간 데이터 인증키"(일반키로 호출 시 `ERROR-338`), 일 1,000회 |
 | `ODSAY_API_KEY` | `hasOdsayKey` | ODsay 대중교통 — URI 전용 앱 `gildongmuweb` 키(~2027-01-04, 일 1,000회). ⚠ `+`/`/` 포함이라 **URL 인코딩 형태로 저장**(provider가 raw로 URL에 붙임), 만료 갱신·dodo 이식 시 해당 도메인 URI 앱 등록 |
-| `DEEPGRAM_API_KEY` | — | STT nova-3 (dodo 공유). ⚠ prod 502면 키 유효성 먼저([[deepgram-prod-key-401]]) |
+| `DEEPGRAM_API_KEY` | `hasDeepgramKey` | STT nova-3 (dodo 공유). ⚠ prod 502면 키 유효성 먼저([[deepgram-prod-key-401]]) |
 | `GOOGLE_CLOUD_TTS_API_KEY` | — (게이트 함수 없음) | iOS TtsPlayer 낭독의 **폴백**(Chirp 3 HD MP3). 정본은 온디바이스 `AVSpeechSynthesizer`(2026-07-27 승격 — 지연 적고 비용 0, 위원장 판정으로 서버·온디바이스 주종 반전). 서버 경로는 현재 로케일 보이스가 기기에 없을 때만이라 지원 6개 로케일에선 사실상 미도달 |
 | `GEMINI_API_KEY` | `hasGeminiKey` | 채팅 FC 엔진(모델은 env가 아니라 코드 상수 `GEMINI_MODEL`=`gemini-3.6-flash`, `src/lib/gemini/client.ts`, 2026-07-31 교체). **길동무 전용 GCP 프로젝트 `gildongmu-prod`**(2026-07-31 신설, 결제 연결·`generativelanguage.googleapis.com`만 허용하는 API 제한 키). ⚠ **dodo와 공유하지 않는다** — 종전 공유 프로젝트는 Converters의 TTS·이미지와 dodo가 섞여 사용량·비용 귀속이 불가능했고, dodo도 같은 모델을 써서 model 라벨 분리조차 성립하지 않았다. 키 교체 시 로컬·Vercel prod·리포트 상수 3곳 동조 |
 | `GOOGLE_PLACES_API_KEY` | `hasGooglePlacesKey` | Google Places API (New) — 장소 상세 영업시간 한 줄(E24, 웹·iOS 장소 상세 — 2026-09-02 정식판 승격). `gildongmu-prod` 키 `gildongmu-places`(Places API만 허용). 무료분(Details Enterprise 1,000/월·Text Search Pro 5,000/월)을 GCP 일일 쿼터로 상한 — 초과는 429라 과금이 구조적으로 0 |
@@ -297,4 +297,4 @@ node scripts/usage-report.mjs   # API 과금·쿼터·키 만료 상태 (로컬 
   - ①**실기기 계측 로그(`guide-diag*.log*`)는 커밋하지 않는다** — 초 단위 위경도는 개발자의 실제 이동 경로다. `.gitignore`가 막고, 원본은 `~/gildongmu-private/field-logs/`에, 색인만 `docs/superpowers/specs/logs/README.md`에 둔다. 게이트 테스트가 로그를 필요로 하면 필요한 축만 익명화 fixture로 뗀다(경도 평행이동은 haversine·방위를 보존한다, 좌표가 불필요하면 t·event만). **자택·지인 주택은 문서·테스트·커밋 메시지 어디서도 실주소·동 호수로 적지 않는다** — "자택"·"주택 A/B"로 쓰고 대응표는 `~/gildongmu-private/places.md`에 둔다(공개 전 이력째 치환한 자리이며, 실보행 코스 설명이 이 규칙을 가장 자주 어긴다).
   - ②**정적 seed를 추가·교체하면 `NOTICE.md` 표에 파일·원출처·이용 조건·재생성 스크립트를 함께 적는다** — 코드는 MIT지만 데이터는 원출처 조건이고, 표에 없으면 MIT로 오인된다. OSM 파생 파일과 공공데이터 파일은 한 파일로 합치지 않는다.
   - ③fork가 바꿔야 할 식별자(도메인·번들 ID·패키지명·연락처)를 새로 박으면 `docs/FORKING.md` 표에 그 자리를 더한다.
-- gildongmu는 리뷰 게이트 통과 후 묻지 말고 commit+push(자동배포 포함, [[gildongmu-auto-commit-push]]). `git add -A` 금지, 의도 파일만([[commit-stage-explicit-files]]).
+- gildongmu는 리뷰 게이트 통과 후 묻지 말고 commit+push(자동배포 포함, [[gildongmu-auto-commit-push]]). ⛔ **2026-09-22 09:00 KST까지 push·재배포만 동결**(WebMCP 챌린지 심사, 로컬 커밋은 허용 — `.git/hooks/pre-push`가 막는다). 그 시각이 지나면 이 문장을 지운다. `git add -A` 금지, 의도 파일만([[commit-stage-explicit-files]]).
