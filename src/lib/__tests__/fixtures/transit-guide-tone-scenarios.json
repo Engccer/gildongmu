@@ -1865,6 +1865,248 @@
           }
         }
       ]
+    },
+    {
+      "name": "⑭ 서울버스(A41): 1→0은 arrivingAtAlightStop 이벤트 소유(closer 없음·앵커 0), 0 지속 무음, 소실 2폴 arrived 이벤트 소유, 그 뒤 0을 본 추정 도착은 signalLost·unreliable 없음(리뷰 M1)",
+      "route": "seoulBusSingle",
+      "steps": [
+        {
+          "at": 0,
+          "input": {
+            "kind": "board",
+            "lock": "seoulBusV1"
+          },
+          "expect": {
+            "tone": null
+          }
+        },
+        {
+          "at": 0,
+          "input": {
+            "kind": "confirmBoarded"
+          },
+          "expect": {
+            "tone": null
+          }
+        },
+        {
+          "at": 15000,
+          "input": {
+            "kind": "poll",
+            "seq": 1,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "ok",
+              "items": [
+                {
+                  "vehicleId": "111033479",
+                  "direction": "",
+                  "message": "5분후[2번째 전]",
+                  "remainingStops": 2,
+                  "destinationName": null,
+                  "express": false,
+                  "arrivalCode": null
+                }
+              ]
+            }
+          },
+          "expect": {
+            "tone": null,
+            "anchor": 2,
+            "event": "trackingStarted"
+          }
+        },
+        {
+          "at": 30000,
+          "input": {
+            "kind": "poll",
+            "seq": 2,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "ok",
+              "items": [
+                {
+                  "vehicleId": "111033479",
+                  "direction": "",
+                  "message": "3분후[1번째 전]",
+                  "remainingStops": 1,
+                  "destinationName": null,
+                  "express": false,
+                  "arrivalCode": null
+                }
+              ]
+            }
+          },
+          "expect": {
+            "tone": null,
+            "anchor": 1,
+            "event": "countdown"
+          }
+        },
+        {
+          "at": 45000,
+          "input": {
+            "kind": "poll",
+            "seq": 3,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "ok",
+              "items": [
+                {
+                  "vehicleId": "111033479",
+                  "direction": "",
+                  "message": "곧 도착",
+                  "remainingStops": 0,
+                  "destinationName": null,
+                  "express": false,
+                  "arrivalCode": null
+                }
+              ]
+            }
+          },
+          "expect": {
+            "tone": null,
+            "anchor": 0,
+            "event": "arrivingAtAlightStop"
+          }
+        },
+        {
+          "at": 60000,
+          "input": {
+            "kind": "poll",
+            "seq": 4,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "ok",
+              "items": [
+                {
+                  "vehicleId": "111033479",
+                  "direction": "",
+                  "message": "곧 도착",
+                  "remainingStops": 0,
+                  "destinationName": null,
+                  "express": false,
+                  "arrivalCode": null
+                }
+              ]
+            }
+          },
+          "expect": {
+            "tone": null,
+            "anchor": 0
+          }
+        },
+        {
+          "at": 75000,
+          "input": {
+            "kind": "poll",
+            "seq": 5,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "ok",
+              "items": []
+            }
+          },
+          "expect": {
+            "tone": null
+          }
+        },
+        {
+          "at": 90000,
+          "input": {
+            "kind": "poll",
+            "seq": 6,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "ok",
+              "items": []
+            }
+          },
+          "expect": {
+            "tone": null,
+            "phase": "arrived",
+            "event": "arrived"
+          }
+        },
+        {
+          "at": 105000,
+          "input": {
+            "kind": "poll",
+            "seq": 7,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "ok",
+              "items": []
+            }
+          },
+          "expect": {
+            "tone": null,
+            "signal": "tracking"
+          }
+        },
+        {
+          "at": 120000,
+          "input": {
+            "kind": "poll",
+            "seq": 8,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "ok",
+              "items": []
+            }
+          },
+          "expect": {
+            "tone": null
+          }
+        },
+        {
+          "at": 135000,
+          "input": {
+            "kind": "poll",
+            "seq": 9,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "ok",
+              "items": []
+            }
+          },
+          "expect": {
+            "tone": null
+          }
+        },
+        {
+          "at": 150000,
+          "input": {
+            "kind": "poll",
+            "seq": 10,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "ok",
+              "items": []
+            }
+          },
+          "expect": {
+            "tone": null,
+            "phase": "arrived",
+            "signal": "tracking"
+          }
+        },
+        {
+          "at": 165000,
+          "input": {
+            "kind": "poll",
+            "seq": 11,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "ok",
+              "items": []
+            }
+          },
+          "expect": {
+            "tone": null
+          }
+        }
+      ]
     }
   ]
 }

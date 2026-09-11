@@ -366,6 +366,15 @@ public let transitSessionPollCap = 240
 public let transitBoardStopFreshSeconds = 120
 
 /// 폴링 주기(ms, §7 적응형). 0 = 폴링 없음(done·untrackable).
+/// A41(설계 리뷰 M1): 서울버스에서 잔여 0("곧 도착")을 본 뒤의 추정 도착 — 소실 지속은 새 정보가 아니라 예상된
+/// 후속이다. 이 상태에선 `signalLost`를 내지 않고 폴을 60초로 늦춘다(0이 아닌 이유: 재관측 `backOnTrack`이
+/// 가역성의 유일한 문). 지하철 추정은 종전대로 경고. 래치 0은 `resetLockTracking`을 지나지 않는 한 유지된다.
+/// 웹 `seoulBusArrivedAfterSoon` 미러.
+private func transitSeoulBusArrivedAfterSoon(_ state: TransitGuideState) -> Bool {
+    state.phase == .arrived && !state.arrivedCertain
+        && state.lock?.mode == .seoulBus && state.ladderAnnounced == 0
+}
+
 public func transitPollIntervalMs(_ state: TransitGuideState) -> Int {
     if state.phase == .done || state.signal == .untrackable { return 0 }
     // 확정 도착(관측·선언) 뒤의 폴은 상태를 바꿀 수 없다(backOnTrack은 추정 도착만) — 예산만 쓴다(A37 ②).
@@ -375,6 +384,11 @@ public func transitPollIntervalMs(_ state: TransitGuideState) -> Int {
     if state.capAnnounced { return 60_000 }
     // boarding은 waiting과 같은 엔드포인트(승차 정류소)라 같은 주기.
     if state.phase == .waiting || state.phase == .boarding { return 20_000 }
+    // A41(설계 리뷰 M2): riding 첫 조회 한 번만 15초 — 서울버스 승격이 "곧 도착 뒤 소실"(출발 20~40초 뒤)로
+    // 밀려 첫 하차 정류소 폴이 60초 뒤면 짧은 구간의 하차 신호를 통째로 놓친다. 즉폴이 아닌 이유는 승격
+    // 문장의 지연 슬롯을 침범하지 않기 위해서(N3 ① H1). 웹 미러.
+    if state.phase == .riding, !state.trackingAnnounced, state.ridingPolls == 0 { return 15_000 }
+    if transitSeoulBusArrivedAfterSoon(state) { return 60_000 }
     // riding·arrived(재관측 감시): 미등장 60s / 추적 중 15s(§12 — 원거리 30s 폐지).
     return state.trackingAnnounced ? 15_000 : 60_000
 }
@@ -1063,6 +1077,9 @@ private func handlePoll(
         next.arrivedCertain = false
         return (next, .arrived(certain: false))
     }
+    // A41(설계 리뷰 M1): 서울버스 "0을 본 뒤의 추정 도착"에선 소실 지속이 예상된 후속이라 signalLost를 내지 않는다
+    // — 내리는 중에 "차량 신호를 찾지 못하고 있습니다"가 거짓이 된다(종전 확정 도착이 침묵하던 자리). 웹 미러.
+    if transitSeoulBusArrivedAfterSoon(state) { return (next, event) }
     if next.missCount >= transitMissLostCount, next.signal != .signalLost {
         next.signal = .signalLost
         return (next, .signalLost)
