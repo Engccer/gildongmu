@@ -766,6 +766,9 @@
   "transitGuide.arrivedWalkNext": [
     "minutes"
   ],
+  "transitGuide.arrivingAtBoardStop": [
+    "line"
+  ],
   "transitGuide.boarded": [
     "line",
     "stop"

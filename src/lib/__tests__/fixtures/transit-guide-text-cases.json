@@ -810,6 +810,94 @@
    }
   },
   {
+   "name": "arrivingAtBoardStop en",
+   "fn": "arrivingAtBoardStop",
+   "isEn": true,
+   "leg": {
+    "mode": "subway",
+    "line": {
+     "ko": "노선ᛥ",
+     "en": "Line 5"
+    },
+    "board": {
+     "ko": "승차ᛥ",
+     "en": "Cheonho"
+    },
+    "alight": {
+     "ko": "하차ᛥ",
+     "en": "Gwanghwamun"
+    },
+    "stops": [
+     {
+      "ko": "경유0ᛥ",
+      "en": "Stop0"
+     },
+     {
+      "ko": "경유1ᛥ",
+      "en": "Stop1"
+     }
+    ],
+    "stationCount": 8,
+    "walkBeforeMinutes": 3,
+    "boardOverridden": false
+   },
+   "expect": {
+    "parts": [
+     {
+      "key": "arrivingAtBoardStop",
+      "args": [
+       "Line 5"
+      ]
+     }
+    ],
+    "lang": "en"
+   }
+  },
+  {
+   "name": "arrivingAtBoardStop ko",
+   "fn": "arrivingAtBoardStop",
+   "isEn": false,
+   "leg": {
+    "mode": "subway",
+    "line": {
+     "ko": "노선ᛥ",
+     "en": "Line 5"
+    },
+    "board": {
+     "ko": "승차ᛥ",
+     "en": "Cheonho"
+    },
+    "alight": {
+     "ko": "하차ᛥ",
+     "en": "Gwanghwamun"
+    },
+    "stops": [
+     {
+      "ko": "경유0ᛥ",
+      "en": "Stop0"
+     },
+     {
+      "ko": "경유1ᛥ",
+      "en": "Stop1"
+     }
+    ],
+    "stationCount": 8,
+    "walkBeforeMinutes": 3,
+    "boardOverridden": false
+   },
+   "expect": {
+    "parts": [
+     {
+      "key": "arrivingAtBoardStop",
+      "args": [
+       "노선ᛥ"
+      ]
+     }
+    ],
+    "lang": "ko"
+   }
+  },
+  {
    "name": "boarded 정거장 수 있음",
    "fn": "boarded",
    "isEn": true,

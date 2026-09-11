@@ -1087,6 +1087,8 @@
     "approachingStarted": "選択した車両を追跡します。",
     "vehicleSelected": "{desc}を選択。{stop}への到着を待ちます。",
     "arrivedAtBoardStop": "{line}が到着。乗車してください。",
+    "arrivingAtBoardStop": "{line}がまもなく到着します。",
+    "arrivingAtAlightStop": "この停留所で降りてください。",
     "vehiclePassed": "選択した車両が{stop}を通過したようです。その車両に乗車済みなら「到着情報なしで乗車」を、乗っていなければ「別の車両を選ぶ」を押してください。",
     "boardingSignalLost": "選択した車両を見つけられていません。乗車済みなら「到着情報なしで乗車」を押してください。",
     "boardingUpstreamFailed": "リアルタイム情報が途切れました。乗車済みなら「到着情報なしで乗車」を押してください。",

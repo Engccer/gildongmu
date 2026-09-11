@@ -1087,6 +1087,8 @@
     "approachingStarted": "선택한 차량을 추적합니다.",
     "vehicleSelected": "{desc} 선택. {stop} 도착을 기다립니다.",
     "arrivedAtBoardStop": "{line} 도착. 탑승하세요.",
+    "arrivingAtBoardStop": "{line} 곧 도착합니다.",
+    "arrivingAtAlightStop": "이번 정류장에서 내리세요.",
     "vehiclePassed": "선택한 차량이 {stop}에서 이미 출발한 것으로 보입니다. 그 차량에 타셨으면 도착 정보 없이 탑승 진행을, 타지 않으셨으면 다른 차량 선택을 눌러 주세요.",
     "boardingSignalLost": "선택한 차량을 찾지 못하고 있습니다. 타셨으면 도착 정보 없이 탑승 진행을 눌러 주세요.",
     "boardingUpstreamFailed": "실시간 신호가 끊겼습니다. 타셨으면 도착 정보 없이 탑승 진행을 눌러 주세요.",

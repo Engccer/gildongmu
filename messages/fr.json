@@ -1087,6 +1087,8 @@
     "approachingStarted": "Suivi du véhicule sélectionné.",
     "vehicleSelected": "{desc} sélectionné. En attente de son arrivée à {stop}.",
     "arrivedAtBoardStop": "{line} est arrivé. Montez maintenant.",
+    "arrivingAtBoardStop": "{line} arrive.",
+    "arrivingAtAlightStop": "Descendez à cet arrêt.",
     "vehiclePassed": "Le véhicule sélectionné semble avoir quitté {stop}. Si vous êtes à bord, appuyez sur Monter sans info d'arrivée ; sinon, sur Choisir un autre véhicule.",
     "boardingSignalLost": "Nous ne trouvons pas le véhicule sélectionné. Si vous êtes à bord, appuyez sur Monter sans info d'arrivée.",
     "boardingUpstreamFailed": "Le flux temps réel est interrompu. Si vous êtes à bord, appuyez sur Monter sans info d'arrivée.",
