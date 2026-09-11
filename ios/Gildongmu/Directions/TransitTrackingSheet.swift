@@ -9,10 +9,13 @@ import SwiftUI
 /// 추적 불가=수동 전진. 공통=중지·진행 상황·상시 표시(신호 상태·마지막 갱신 —
 /// 무통지 구간에도 상태가 보인다, §6.1).
 ///
-/// **착지 대상은 상태 문장 행 하나다**(E38 위원장 판정 2026-09-12): 시트 진입도, 국면 전이도,
-/// 역 선택 취소 복귀도 전부 `SheetControl.status`. 다음 행동 버튼은 거기서 한 번 스와이프 아래다.
-/// 예외는 **자기 질문을 여는 화면**(역 선택·급행 확인·차량 선택 라벨)과 띠바 복귀·목적지 전환
-/// 상태 행뿐이다 — 그 자리는 착지 낭독이 곧 질문이라 상태 문장으로 옮기면 무엇을 고르는지 모른다.
+/// **착지 대상의 기본은 상태 문장 행이다**(E38 위원장 판정 2026-09-12): 시트 진입도, 국면 전이도,
+/// 역 선택 취소 복귀도 전부 `SheetControl.status`. 예외는 **자기 질문을 여는 화면**(역 선택·급행
+/// 확인·차량 선택 라벨)과 띠바 복귀·목적지 전환 상태 행뿐이다 — 그 자리는 착지 낭독이 곧 질문이라
+/// 상태 문장으로 옮기면 무엇을 고르는지 모른 채 목록 위에 선다.
+/// ⚠ 상태 문장과 국면 컨트롤 사이에는 **경유역 목록이 있다**(행 순서: 상태 → 경유역 → 컨트롤).
+/// 다음 행동 버튼은 목록이 접혀 있으면 두 번, 펼쳐 두었으면 정차역 수 + 2번 스와이프 아래다
+/// (판정 문언의 "한 번"은 사실이 아니었다 — a11y 감사 H2, 실승차 대본이 그 비용을 묻는다).
 struct TransitTrackingSheet: View {
     let model: TransitGuideModel
     let onStop: () -> Void
@@ -79,6 +82,12 @@ struct TransitTrackingSheet: View {
     @State private var deferredLanding: SheetControl?
     /// 진행 중 착지의 대상 — 배경 전환·모달 등장이 그 시도를 끊고 `deferredLanding`으로 이월할 때 읽는다(코드 리뷰 M1).
     @State private var landingInFlight: SheetControl?
+    /// 그 표식의 **소유자**(E38 코드 리뷰 MEDIUM-1). 종전엔 정리 시점에 `landingInFlight == target`으로
+    /// 소유권을 판별했는데, E38로 대상이 대개 `.status` 하나가 되면서 **취소된 옛 Task가 새 Task의 표식을
+    /// 자기 것으로 오인해 지운다**(목적지 전환 확정처럼 두 착지가 연달아 나는 경로에서 실재). 그러면
+    /// 배경 전환이 진행 중 착지를 끊지 못해 VO 커서 없는 배경에서 3회 전부 실패로 기록되고, E38·A35의
+    /// 유일한 합격 판정 축(`controlFocus … landed=`)이 오염된다. 세대는 대상과 달리 매 착지마다 다르다.
+    @State private var landingGen = 0
     @Environment(\.scenePhase) private var scenePhase
     /// 포커스가 얹힌 후보의 정체성(항목 정체성 옵셔널 바인딩 — Bool equals 금지 정본).
     @AccessibilityFocusState private var focusedCandidate: String?
@@ -97,8 +106,8 @@ struct TransitTrackingSheet: View {
     /// 아니다), 조망이 열린 채 `beginReboard()`를 부르면 부모 waiting 착지와 프롬프트
     /// 착지가 경쟁한다(설계 리뷰 F2·F4).
     enum OverviewFollowUp: Equatable {
-        /// 조망이 열린 채 난 국면 전이(또는 조망 안 경로 전환)의 착지 — 대상은 언제나 상태 문장(E38).
-        case landStatus
+        /// 조망이 열린 채 난 국면 전이(또는 조망 안 경로 전환)의 착지 — 대상은 전이 판정이 고른다(E38).
+        case land(SheetControl)
         case beginReboard
     }
     @State private var pendingFollowUp: OverviewFollowUp?
@@ -202,17 +211,17 @@ struct TransitTrackingSheet: View {
                 // 급행 확인 프롬프트는 대기 국면 전용(§6) — 국면이 바뀌면 접는다.
                 expressPromptActive = false
                 // 세션 종료(state nil)도 여기로 온다(.some → nil 변화) — 조망을 닫는다.
-                let lands = phaseTransitionLands(previous: previous, phase: phase)
+                let target = phaseTransitionLanding(previous: previous, phase: phase)
                 // 조망이 열려 있으면 그 행·행동은 낡았다 — 닫고, 착지는 onDismiss로 미룬다(§4.3).
                 // 경로 전환이 만든 전이(→waiting)도 여기로 온다: 전환 뒤 착지는 새 세션의
                 // 전이 착지가 정본이고, 전이 착지가 없을 때만 조망이 스스로 세운 후속이 남는다
                 // (메뉴 경유 목적지 전환도 같은 덮임 — spec §7).
                 if overviewAdapter != nil {
-                    if lands { pendingFollowUp = .landStatus }
+                    if let target { pendingFollowUp = .land(target) }
                     overviewAdapter = nil
                     return
                 }
-                if lands { landControlFocus(.status, proxy: proxy) }
+                if let target { landControlFocus(target, proxy: proxy) }
             }
             // 진행 상황 조망(E15-1). 닫힌 뒤 한 곳에서 행동·착지(닫힌 뒤 행동 계약).
             .sheet(item: $overviewAdapter, onDismiss: { runPendingFollowUp(proxy: proxy) }) { adapter in
@@ -220,7 +229,7 @@ struct TransitTrackingSheet: View {
                     pendingFollowUp = switch followUp {
                     case .beginReboard: .beginReboard
                     // 경로 전환 확정도 착지는 상태 문장이다(E38) — 새 경로의 첫 상태를 읽는 자리.
-                    case .routeSwitched: .landStatus
+                    case .routeSwitched: .land(.status)
                     }
                 }
             }
@@ -345,21 +354,28 @@ struct TransitTrackingSheet: View {
         }
     }
 
-    /// 국면 전이가 착지를 일으키는가(E38 — **대상은 물을 것이 없다. 언제나 상태 문장이다**).
-    /// 종전엔 전이마다 다음 행동 버튼을 골랐지만(arrived→"다음 구간", →waiting→대기 라벨,
-    /// →riding→탑승 변경), 위원장 판정으로 대상이 `status` 하나로 접히면서 남은 판정은 **여부**뿐이다.
+    /// 국면 전이의 착지 대상 — **기본은 상태 문장 하나이고**(E38 위원장 판정 2026-09-12: "시트에서
+    /// 무엇을 누르든 커서는 상태 문장 행에 앉는다"), 예외는 **질문 화면으로 가는 전이 하나**뿐이다.
+    /// 종전처럼 전이마다 다음 행동 버튼을 고르지 않는다(arrived→"다음 구간", →riding→탑승 변경은 폐기).
     ///
     /// 참인 전이는 전부 **사용자 행동이 만든 것**이다: 하차역 도착(arrived) · 탑승 변경·다른 차량
     /// 선택(→waiting) · 차량 선택(waiting→boarding) · 고른 열차로 직행(waiting→riding, A34 `boardAboard`).
     /// ⚠ **boarding → riding은 빠져 있다**(N3 ① 구현 리뷰 M1): 그 승격은 폴이 일으키고 커서는 이미 상태
     /// 문장에 앉아 있으므로, 착지시키면 듣던 문장을 끊는 포커스 강탈이 된다. 승격 사실은 통지가 말한다
     /// (arrived→riding 자동 복귀도 같은 이유로 제외).
-    private func phaseTransitionLands(previous: TransitPhase?, phase: TransitPhase?) -> Bool {
-        if phase == .arrived { return true }
-        if phase == .waiting, previous != nil, previous != .waiting { return true }
-        if phase == .boarding, previous == .waiting { return true }
-        if phase == .riding, previous == .waiting { return true }
-        return false
+    private func phaseTransitionLanding(previous: TransitPhase?, phase: TransitPhase?) -> SheetControl? {
+        if phase == .arrived { return .status }
+        if phase == .waiting, previous != nil, previous != .waiting {
+            // 차량 선택 목록으로 가는 전이라 **그 화면의 질문 라벨**에 앉는다(위원장 판정 2026-09-12 —
+            // "이미 탑승" 흐름이 같은 목록에 다른 문으로 들어가면서 라벨에 착지하므로, 두 문의 착지를
+            // 같은 자리로 맞춘다. 목록 라벨은 곧 "어느 차량을 고르는가"라는 질문이다).
+            // ⚠ 목록이 서지 않는 갈래(지방버스 근사 잠금·추적 불가·역 선택 단계)엔 그 라벨이 없다 —
+            // 그때는 기본값인 상태 문장으로(안 그러면 `vanished`로 끝나 착지도 폴백도 없다).
+            return controlExists(.waitingLabel) ? .waitingLabel : .status
+        }
+        if phase == .boarding, previous == .waiting { return .status }
+        if phase == .riding, previous == .waiting { return .status }
+        return nil
     }
 
     /// 조망 `onDismiss` — 닫힌 뒤 행동 계약의 실행 지점(한 곳).
@@ -370,10 +386,10 @@ struct TransitTrackingSheet: View {
         guard let followUp = pendingFollowUp else { return }
         pendingFollowUp = nil
         switch followUp {
-        case .landStatus:
-            landControlFocus(.status, proxy: proxy)
+        case let .land(target):
+            landControlFocus(target, proxy: proxy)
         case .beginReboard:
-            // 지하철은 `reboardPickerActive` 전이의 프롬프트 착지가, 버스는 waiting 전이의 상태 문장 착지가 맡는다.
+            // 지하철은 `reboardPickerActive` 전이의 프롬프트 착지가, 버스는 waiting 전이의 목록 라벨 착지가 맡는다.
             model.beginReboard()
         }
     }
@@ -498,7 +514,7 @@ struct TransitTrackingSheet: View {
                 // 마지막 leg + 말미 도보면 버튼은 하나이고 라벨이 처음부터 "남은 도보 안내 시작"(E34) —
                 // 한 번 누르면 leg 종료와 도보 시작이 함께.
                 // ⚠ 착지 대상이 아니다(E38): 하차 도착의 커서는 상태 문장("하차 지점 도착. …")에 앉고
-                // 이 버튼은 거기서 한 번 스와이프 아래다.
+                // 이 버튼은 그 아래 경유역 목록을 지나야 만난다(접혀 있으면 두 번째 스와이프).
                 if state.phase == .arrived || (state.lock.map(isApproxTransitLock) ?? false) {
                     Button(advanceLabel) { advanceOrHandoff() }
                 }
@@ -762,9 +778,12 @@ struct TransitTrackingSheet: View {
             return
         }
         deferredLanding = nil
+        landingGen += 1
+        let gen = landingGen
         landingInFlight = target
         controlFocusTask = Task { @MainActor in
-            defer { if landingInFlight == target { landingInFlight = nil } }
+            // 내 세대일 때만 표식을 거둔다 — 뒤이은 착지가 세운 표식을 지우지 않게(코드 리뷰 MEDIUM-1).
+            defer { if landingGen == gen { landingInFlight = nil } }
             let started = ProcessInfo.processInfo.systemUptime
             // 취소(국면 전이·새 착지·배경·최소화)도 표본이다 — 무기록이면 표본 편향(코드 리뷰 m1).
             func logCancelled(_ attempts: Int) {

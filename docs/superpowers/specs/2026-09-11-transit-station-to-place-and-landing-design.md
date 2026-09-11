@@ -108,12 +108,15 @@
 >
 > **위 대상 표와 "불변" 줄의 `phaseTransitionLanding` 분기는 더 이상 유효하지 않다.** 이 절의 **기제**(실현 관측 → 반복 가시화 → 대입 → 늦은 검증 → 체증 재시도 → 전 대상 폴백)는 그대로이고, 바뀐 것은 **대상**이다.
 >
-> - 위원장 판정: 시트에서 **무엇을 누르든 커서는 상태 문장 행**(`SheetControl.status`)에 앉는다. 예외 없음 — 하차 도착도 [다음 구간]이 아니라 "하차 지점 도착. …" 문장이고 버튼은 한 번 스와이프 아래다. 근거는 착지 성공률이 아니라 **읽기 순서 비용**이다(액션마다 커서가 컨트롤로 튀는데 확인하고 싶은 정보는 그 위에 있다).
-> - 그래서 `phaseTransitionLanding(previous:phase:) -> SheetControl?`은 **`phaseTransitionLands(previous:phase:) -> Bool`**이 됐다. 남은 판정은 여부뿐이고, 참인 전이 넷(arrived · →waiting · waiting→boarding · waiting→riding)은 전부 사용자 행동이 만든 것이다. boarding→riding 제외는 그대로다(커서가 이미 그 줄에 있다).
+> - 위원장 판정: 시트에서 **무엇을 누르든 커서는 상태 문장 행**(`SheetControl.status`)에 앉는다. 하차 도착도 [다음 구간]이 아니라 "하차 지점 도착. …" 문장이다. 근거는 착지 성공률이 아니라 **읽기 순서 비용**이다(액션마다 커서가 컨트롤로 튀는데 확인하고 싶은 정보는 그 위에 있다).
+> - **구현 중 2차 판정(같은 날)**: ①시트 진입은 `.status` 그대로 두고 **시작 통지가 목적지를 말하게 한다**(도보·자동차 포함 — 상태 문장엔 최종 목적지가 없다; 별도 항목 BACKLOG E40) ②**→waiting 전이만 예외**로 차량 선택 목록의 질문 라벨(`.waitingLabel`)에 앉는다 — "이미 탑승" 흐름이 같은 목록에 다른 문으로 들어가면서 라벨에 착지하므로 두 문을 맞춘다.
+> - 그래서 `phaseTransitionLanding(previous:phase:) -> SheetControl?`은 **이름과 반환형이 그대로이되 고르는 폭이 둘로 좁았다**: `arrived`·`waiting→boarding`·`waiting→riding`은 `.status`, `→waiting`은 `controlExists(.waitingLabel) ? .waitingLabel : .status`(목록이 서지 않는 갈래엔 라벨이 없다). boarding→riding 제외는 그대로다(커서가 이미 그 줄에 있다).
 > - **표에서 사라진 대상**: `.title`(시트 진입 착지가 `.status`로) · `.advance` · `.changeBoarding` · `.boardAlready`(역 선택 취소 복귀가 `.status`로). `.confirmBoarded`는 이미 2026-09-11 N3 ①로 사라졌다. 목적지 전환 확정·취소와 조망 안 경로 전환 착지도 `.title` → `.status`.
-> - **남은 대상과 그 근거**: `status`(전 전이) · `waitingLabel` · `reboardPrompt` · `expressPrompt` · `expressBlocked` · `minimize` · `destChangeStatus`. 뒤 여섯은 **자기 질문을 여는 화면**이거나(착지 낭독이 곧 질문이라 상태 문장으로 옮기면 무엇을 고르는지 모른다) 떠난 자리로의 복귀다.
-> - 소스 가드가 그 집합을 잠근다(`src/lib/__tests__/transit-landing-guard.test.ts` — enum case 집합 ↔ `landControlFocus` 리터럴 대상 집합 일치). §6의 트리거 결손 검사는 면제를 **대상 이름**이 아니라 **자리 표지**(`returnedFromBand`)로 옮겼다 — 열림 착지가 `.status`가 되면서 이름 면제가 대상 뷰 착지까지 함께 눈감게 됐기 때문이다.
-> - ⚠ **대상이 하나가 되면 착지 테스트의 검출력이 0이 된다**(변이 주입 실측): "착지했다"와 "애초에 거기 있었다"가 구별되지 않아 전이 착지를 통째로 지워도 초록이다. 웹 `TransitGuidePanel.test.tsx`는 누르기 전에 그 컨트롤로 커서를 옮겨(`clickFocused`) 실기기 경로를 재현하고, 7개 착지 지점 전부에 대해 변이 주입으로 검출을 확인했다.
+> - **남은 대상과 그 근거**: `status`(기본) · `waitingLabel` · `reboardPrompt` · `expressPrompt` · `expressBlocked` · `minimize` · `destChangeStatus`. 뒤 여섯은 **자기 질문을 여는 화면**이거나(착지 낭독이 곧 질문이라 상태 문장으로 옮기면 무엇을 고르는지 모른다) 떠난 자리로의 복귀다. ⚠ `waitingLabel`은 질문 라벨과 **목록 안 포커스 소실 복구**(§13.4)를 겸하는데 둘은 축이 다르다 — 앞의 것을 옮기는 사람이 뒤의 것까지 옮기면 폴 한 번에 커서가 목록 밖으로 튕긴다(소스 가드가 뒤의 것을 따로 잠근다).
+> - 소스 가드가 그 집합을 잠근다(`src/lib/__tests__/transit-landing-guard.test.ts` — enum case 집합 ↔ `landControlFocus` 리터럴 대상 집합 일치, 전이 판정 본문의 대상이 `{status, waitingLabel}`뿐인지, 웹 `TransitGuidePanel.tsx`의 두 술어). §6의 트리거 결손 검사는 면제를 **대상 이름**이 아니라 **자리 표지**(`returnedFromBand`)로 옮겼다 — 열림 착지가 `.status`가 되면서 이름 면제가 대상 뷰 착지까지 함께 눈감게 됐기 때문이다.
+> - ⚠ **착지가 한 자리로 몰리면 테스트 검출력이 0이 된다**(변이 주입 실측): "착지했다"와 "애초에 거기 있었다"가 구별되지 않아 전이 착지를 통째로 지워도 초록이다. 웹 `TransitGuidePanel.test.tsx`는 누르기 전에 그 컨트롤로 커서를 옮겨(`clickFocused`) 실기기 경로를 재현하고, 착지 지점 8개에 변이 주입으로 검출을 확인했다. 그것으로도 안 되는 자리가 하나 있다 — →waiting 전이는 **목록 포커스 소실 복귀가 같은 자리로 되돌리는** 중복 경로라 결과 단언이 경로를 구별하지 못한다(제거된 후보 행의 blur가 오지 않아 `listHadFocusRef`가 참으로 남는다). 그 축은 웹 소스 가드가 대신 잠근다.
+> - ⚠ **판정을 수락하게 만든 전제 하나가 틀렸다**(a11y 감사 H2): "다음 행동 버튼은 한 번 스와이프 아래"가 실제로는 경유역 목록을 지난 두 번(펼쳐 두면 정차역 수 + 2번)이다. 시트 행 순서가 상태 문장 → `viaStopsRows` → `phaseControls`이기 때문이다. 문서·주석은 사실대로 고쳤고, 그 비용의 수용 여부는 실승차가 답한다.
+> - ⚠ 이 통일이 **착지 낭독과 전이 통지의 중복**을 전 전이에 퍼뜨렸다(a11y 감사 H1 — 상태 문장은 언제나 노선·역 문맥으로 시작하고 통지도 같은 것을 말한다). 별도 항목 BACKLOG E41, E39와 함께 판정.
 
 ### 4.2 E33 — 지하철역 → 장소 상세 (iOS)
 
