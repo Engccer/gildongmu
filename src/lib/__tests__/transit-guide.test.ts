@@ -295,6 +295,9 @@ describe("eventProfile — 통지 채널·톤(§6.1)", () => {
     });
     expect(eventProfile({ kind: "boarded", legIndex: 0, cause: "observed" }).interrupt).toBe(true);
     expect(eventProfile({ kind: "arrived", certain: false }).interrupt).toBe(true);
+    // 여정 완료(final)는 도착 종, 중간 구간 전진은 시작 톤(iOS transitEventProfile 미러).
+    expect(eventProfile({ kind: "legAdvanced", legIndex: 1, final: true })).toEqual({ interrupt: false, tone: "arrive" });
+    expect(eventProfile({ kind: "legAdvanced", legIndex: 1, final: false })).toEqual({ interrupt: false, tone: "start" });
     expect(eventProfile({ kind: "signalLost" }).interrupt).toBe(false);
     expect(eventProfile({ kind: "boarded", legIndex: 0, cause: "declared" }).interrupt).toBe(false);
     expect(eventProfile({ kind: "boarded", legIndex: 0, cause: "observed" }).interrupt).toBe(true);

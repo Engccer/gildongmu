@@ -228,7 +228,7 @@
       "leftRightTonePan": "左右チャンネル(イヤホン)",
       "leftRightTonePitch": "音の高さ(低い=左)",
       "trendHaptics": "振動通知の拡張(実験)",
-      "trendHapticsFooter": "歩行中の接近、停止、案内の信頼性低下を振動でも知らせます。画面が点いている間だけ振動します。",
+      "trendHapticsFooter": "歩行中の接近、停止、案内の信頼性低下を振動でも知らせます。検索、周辺、経路案内の結果と案内中の状態変化も振動で知らせます。画面が点いている間だけ振動します。",
       "listenSpeed": "読み上げ速度",
       "listenSpeed1x": "1倍",
       "listenSpeed15x": "1.5倍",

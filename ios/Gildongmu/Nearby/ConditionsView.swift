@@ -56,11 +56,11 @@ final class ConditionsModel {
                 // ⚠ 혼잡도는 판정에 넣지 않는다: 서울 121개 핫스팟 밖이 정상 상태(서울의 91%)라
                 // 부재를 실패로 세면 대다수 사용자가 매번 "일부 정보를 가져오지 못했습니다"를 듣는다.
                 if payload.freshWeather && payload.freshAir {
-                    appLocalized("ios.nearby.conditionsReady")
+                    NearbyLoadedNotice(message: appLocalized("ios.nearby.conditionsReady"), haptic: .success)
                 } else if payload.freshWeather || payload.freshAir {
-                    appLocalized("ios.nearby.conditionsPartial")
+                    NearbyLoadedNotice(message: appLocalized("ios.nearby.conditionsPartial"), haptic: .attention)
                 } else {
-                    appLocalized("ios.common.failedTitle")
+                    NearbyLoadedNotice(message: appLocalized("ios.common.failedTitle"), haptic: .failure)
                 }
             }))
     }

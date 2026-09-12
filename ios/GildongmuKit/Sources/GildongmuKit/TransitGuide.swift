@@ -412,8 +412,9 @@ public func transitEventProfile(_ event: TransitGuideEvent) -> (interrupt: Bool,
     case let .boarded(_, cause):
         // 도착 관측은 "지금 타라"라 interrupting, 선언·출발 관측(departed)은 사용자가 이미 행동한 뒤라 기본.
         return (cause == .observed, .start)
-    case .legAdvanced:
-        return (false, .start)
+    case let .legAdvanced(_, final):
+        // 마지막 구간 완료는 여정 종료라 도착 종(도보 도착 동형). 중간 구간은 다음 구간 시작.
+        return (false, final ? .arrive : .start)
     case .vehiclePassed:
         return (false, .weak)
     case .trackingStarted:

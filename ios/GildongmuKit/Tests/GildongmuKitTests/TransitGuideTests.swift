@@ -426,6 +426,9 @@ private func kindName(_ event: TransitGuideEvent?) -> String? {
     #expect(transitEventProfile(.arrivingAtAlightStop) == (true, .imminent))
     #expect(transitEventProfile(.boarded(legIndex: 0, cause: .departed)) == (false, .start))
     #expect(transitEventProfile(.boarded(legIndex: 0, cause: .observed)).interrupt == true)
+    // 여정 완료(final)는 도착 종, 중간 구간 전진은 시작 톤(E30 소리 결함 정정, 웹 eventProfile 미러).
+    #expect(transitEventProfile(.legAdvanced(legIndex: 1, final: true)) == (false, .arrive))
+    #expect(transitEventProfile(.legAdvanced(legIndex: 1, final: false)) == (false, .start))
 }
 
 @Test func odsayLineMapping() {

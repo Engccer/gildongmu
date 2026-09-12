@@ -11,6 +11,15 @@
 
 ## 2026-09-13
 
+### 결과 진동 3종을 앱 전반과 안내 중 전이에 + 대중교통 소리 결함 2건 (E30 확장, iOS)
+
+위원장 판정 3건(같은 날 접수 세션: 새 진동 전부 "진동 알림 확장" 스위치 뒤 · 어휘는 iOS 표준 3종만 · 1단계+2단계 한 번에). 단일 창구 `ResultHaptic.fire(.success|.attention|.failure)`(`UINotificationFeedbackGenerator`, 스위치 `TrendHaptics.storageKey`를 그 함수가 읽는다)를 두고 통지를 게시하는 자리에 한 줄씩 붙였다. 3-state를 촉각에도 — 있음·없음(정보 없음·상태 변화)·실패(오류·거부)가 서로 다른 진동이다. 반복 상태 통지에는 넣지 않았다.
+
+- **1단계(결과)**: 검색 결과·0건·실패(`SearchModel`) / 내 주변 11화면 — 완료 문구 조립기가 진동 종류도 함께 돌려주는 `NearbyLoadedNotice`로 바꿔(`nearbyLoadedMessage` → `nearbyLoadedNotice`) 0건·부분 성공·전락 4종까지 가른다 / 길찾기 조회 완료·전멸·권한 거부·정밀도·커버리지 밖(`DirectionsTabView.announce(_:haptic:)` — 인자에 기본값 없음, 무통지 조회는 진동도 삼킨다) / 출발·도착지 후보 결과·0건·실패·좌표 실패 / 주소 복사 완료(`copyAddressToPasteboard`, `@MainActor`로 격리) / 받아쓰기 권한 거부·실패(`SpeechService.phase` 전이) / 체중 입력 거절.
+- **2단계(안내 중 전이, 전경만)**: 경로 복귀(성공 — 이탈 warning 진동의 짝) / 최종 접근 국면 진입(주의, 틱은 없음) / 재조회·전환·자동 채택 성공(성공)·실패(실패) / 대중교통 대안 경로 조회 결과·0건·실패 / 안내 소리 재생 불가(실패 — 진동이 유일한 대체 채널) / 백그라운드 소리 불가 경고(주의, 도보·대중교통).
+- **소리 결함 2건**: 대중교통 여정 완료가 도착 종이 아니라 다음 구간 시작음이었다 — Kit `transitEventProfile` `legAdvanced(final: true)` → `.arrive`(웹 `eventProfile` 미러, 테스트 짝) / 대중교통 유휴 자동 정지에 정지 톤(전경만, 도보 유휴 종료 동형).
+- 설정 footer 문안에 결과 진동 절 추가(6로케일, xcstrings 재생성). 소스 가드 `result-haptic-guard.test.ts`(직접 생성 자리 = 기존 발원지 4곳 + 창구, 스위치 게이트, 길찾기 통지 인자 전수, 유휴 정지 톤). spec 없음(bounded). 손 판정은 `docs/BACKLOG.md` §2 E30 행, 대본 `docs/FIELD-TEST.md` §4-2.
+
 ### 진행 상태 진동 3종 — 실험판 설정 스위치 (E30, iOS)
 
 위원장 판정 "꺼짐 = 현재 동작"(2026-09-11 앱 내 토글 확정의 후속). 설정에 **"진동 알림 확장 (실험)"** 스위치(`TrendHaptics.storageKey`, 기본 꺼짐, `#if DEBUG || EXPERIMENTAL`)를 두고, 켜면 진동이 없던 가까워짐(`closer`)·정지(`tick`)·신뢰 불가(`unreliable`)에 진동을 더한다 — 부드러운 탭 1 / 탭 없는 긴 약한 지속음 / 불규칙한 약한 탭 3. 기존 10종 진동은 스위치와 무관하게 그대로다.

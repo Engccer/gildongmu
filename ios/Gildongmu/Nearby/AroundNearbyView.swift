@@ -60,9 +60,11 @@ final class AroundNearbyModel {
             willCommit: { [weak self] _ in self?.window.reset() },   // 커밋과 원자(스펙 §4)
             onEvent: nearbyAnnouncer(loaded: { _ in
                 // 수동 위치일 때 "현재 위치"라고 알리지 않는다(전역 제약).
-                ManualLocationStore.shared.current == nil
-                    ? appLocalized("ios.nearby.aroundLoaded")
-                    : appLocalized("ios.nearby.aroundLoadedManual")
+                NearbyLoadedNotice(
+                    message: ManualLocationStore.shared.current == nil
+                        ? appLocalized("ios.nearby.aroundLoaded")
+                        : appLocalized("ios.nearby.aroundLoadedManual"),
+                    haptic: .success)
             }))
     }
 

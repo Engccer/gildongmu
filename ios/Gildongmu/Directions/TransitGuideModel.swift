@@ -398,6 +398,9 @@ final class TransitGuideModel {
         guard sinceAction >= limitSeconds else { return false }
         idlePaused = true
         transitGuideLog("idlePause sinceAction=\(Int(sinceAction))s limit=\(Int(limitSeconds))s")
+        // 정지 톤(도보 유휴 종료 동형 — 종전엔 문장만 있어 소리·진동 채널이 비어 있었다). 전경에서만:
+        // 잠근 채 잊은 휴대전화가 한참 뒤 울리면 당황스럽다(BeaconModel 유휴 종료와 같은 판정).
+        playTone(.stop, allowedInBackground: false)
         // 정지 사실은 화면이 바뀌지 않아 통지가 유일한 증거다(CLAUDE.md 통지 우선순위 → `.high`).
         // 재개 문장(`resumeIfIdle`)과 달리 **자동 통지 창구**로 보낸다 — 사용자 활성화의 응답이 아니라
         // 타이머 판정이라 톤이 울리는 중이면 그 뒤에 말해야 한다(`announceNow`는 즉시 창구 전용).
@@ -826,6 +829,7 @@ final class TransitGuideModel {
         guard let resolved = await resolveAltOrigin(declaredBoardStop: declaredBoardStop) else {
             guard token == altRoutesToken, isTracking else { return }
             pendingAltRoutes?.phase = .failed(.noLocation)
+            ResultHaptic.fire(.failure)
             return
         }
         guard token == altRoutesToken, isTracking else { return }
@@ -833,15 +837,19 @@ final class TransitGuideModel {
         do {
             let result = try await fetchTransitCandidates(origin: resolved.origin, dest: dest)
             guard token == altRoutesToken, isTracking else { return }
+            // 결과 진동(E30 확장): 시트가 착지로만 알리는 전이라 진동이 결과 종류를 먼저 말한다.
             if let result {
                 pendingAltRoutes?.phase = .loaded(result)
                 pendingAltRoutes?.fetchedAt = Date()
+                ResultHaptic.fire(.success)
             } else {
                 pendingAltRoutes?.phase = .empty
+                ResultHaptic.fire(.attention)
             }
         } catch {
             guard token == altRoutesToken, isTracking else { return }
             pendingAltRoutes?.phase = .failed(.fetch)
+            ResultHaptic.fire(.failure)
         }
     }
 
@@ -1442,6 +1450,7 @@ final class TransitGuideModel {
         // 그때 `onDropped`가 latch를 풀어 다음 톤이 다시 시도한다 — 지연 창구의 상환 계약 그대로.
         if isTracking, !tones.isBackgroundAudible, !soundDegradedAnnounced {
             soundDegradedAnnounced = true
+            ResultHaptic.fire(.attention)  // 상태 변화 1회(E30 확장) — 문장이 버려져 재시도돼도 진동은 그 전이마다
             deferredAnnouncer.announce(appLocalized("ios.beacon.soundBackgroundUnavailable")) { [weak self] in
                 self?.soundDegradedAnnounced = false
             }

@@ -22,7 +22,7 @@ final class BikeNearbyModel {
                 return try await service.bikeStations(lat: coord.lat, lng: coord.lng)
             },
             onEvent: nearbyAnnouncer(loaded: { stations in
-                nearbyLoadedMessage(count: stations.count, kind: .bikeStations)
+                nearbyLoadedNotice(count: stations.count, kind: .bikeStations)
             }))
     }
 

@@ -45,17 +45,22 @@ final class EndpointSearchModel {
             resultsRevision += 1
             let count = places.count + addresses.count
             let message: String
+            let haptic: ResultHaptic.Kind
             if count > 0 {
                 message = appLocalized("directions.candidateCount", count)
                 notice = ""
+                haptic = .success
             } else if outcome.allFailed {
                 // 3-state: "0건"과 "조회 실패"를 뭉개지 않는다(양쪽 다 실패했을 때만 오류).
                 message = appLocalized("directions.candidateError")
                 notice = message
+                haptic = .failure
             } else {
                 message = appLocalized("directions.candidateNone")
                 notice = message
+                haptic = .attention
             }
+            ResultHaptic.fire(haptic)
             AccessibilityNotification.Announcement(message).post()
         }
     }
@@ -86,6 +91,7 @@ final class EndpointSearchModel {
 
     private func announceCoordError() {
         notice = appLocalized("directions.coordError")
+        ResultHaptic.fire(.failure)
         AccessibilityNotification.Announcement(notice).post()
     }
 }

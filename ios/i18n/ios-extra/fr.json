@@ -228,7 +228,7 @@
       "leftRightTonePan": "Canal stéréo (écouteurs)",
       "leftRightTonePitch": "Hauteur (grave = gauche)",
       "trendHaptics": "Alertes vibrantes étendues (expérimental)",
-      "trendHapticsFooter": "Vibre aussi quand vous vous rapprochez, vous arrêtez ou quand le guidage n'est pas fiable pendant la marche. Vibre uniquement écran allumé.",
+      "trendHapticsFooter": "Vibre aussi quand vous vous rapprochez, vous arrêtez ou quand le guidage n'est pas fiable pendant la marche. Les résultats de recherche, des alentours et d'itinéraire ainsi que les changements d'état pendant le guidage vibrent aussi. Vibre uniquement écran allumé.",
       "listenSpeed": "Vitesse d'écoute",
       "listenSpeed1x": "1x",
       "listenSpeed15x": "1,5x",

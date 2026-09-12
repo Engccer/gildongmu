@@ -12,8 +12,10 @@ import GildongmuKit
 /// 무발화될 수 있다(헌장 §5 — 비요청 interrupt가 아니라 사용자 행동의 응답이라 `.high`가
 /// 의미상 정당). 화면 변화가 없는 동작이라 이 문장이 복사 성공의 **유일한 증거**다 —
 /// 놓치면 "버튼이 동작하지 않는다"가 된다(PATTERNS "iOS 통지 우선순위"의 성공 통지 함정).
+@MainActor
 func copyAddressToPasteboard(_ address: String) {
     UIPasteboard.general.string = address
+    ResultHaptic.fire(.success)
     var copied = AttributedString(appLocalized("place.addressCopied"))
     copied.accessibilitySpeechAnnouncementPriority = .high
     AccessibilityNotification.Announcement(copied).post()

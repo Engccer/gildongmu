@@ -118,6 +118,7 @@ struct SettingsView: View {
                                Self.weightMin, Self.weightMax, Self.formatWeight(weightKg))
                 : appLocalized("ios.settings.weightRejectedNone", Self.weightMin, Self.weightMax))
             message.accessibilitySpeechAnnouncementPriority = .high
+            ResultHaptic.fire(.failure)
             AccessibilityNotification.Announcement(message).post()
         }
     }

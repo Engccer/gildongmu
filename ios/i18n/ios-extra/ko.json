@@ -228,7 +228,7 @@
       "leftRightTonePan": "좌우 채널(이어폰)",
       "leftRightTonePitch": "음높이(낮음=왼쪽)",
       "trendHaptics": "진동 알림 확장 (실험)",
-      "trendHapticsFooter": "걷는 동안 가까워짐, 정지, 안내 신뢰 불가를 진동으로도 알립니다. 화면이 켜져 있을 때만 진동합니다.",
+      "trendHapticsFooter": "걷는 동안 가까워짐, 정지, 안내 신뢰 불가를 진동으로도 알립니다. 검색, 내 주변, 길찾기의 결과와 안내 중 상태 변화도 진동으로 알립니다. 화면이 켜져 있을 때만 진동합니다.",
       "listenSpeed": "듣기 속도",
       "listenSpeed1x": "1배",
       "listenSpeed15x": "1.5배",

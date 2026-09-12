@@ -228,7 +228,7 @@
       "leftRightTonePan": "Stereo channel (earphones)",
       "leftRightTonePitch": "Pitch (low = left)",
       "trendHaptics": "Extended vibration alerts (experimental)",
-      "trendHapticsFooter": "Also vibrates for getting closer, standing still, and unreliable guidance while walking. Vibrates only while the screen is on.",
+      "trendHapticsFooter": "Also vibrates for getting closer, standing still, and unreliable guidance while walking. Search, nearby, and directions results and status changes during guidance also vibrate. Vibrates only while the screen is on.",
       "listenSpeed": "Listening speed",
       "listenSpeed1x": "1x",
       "listenSpeed15x": "1.5x",
