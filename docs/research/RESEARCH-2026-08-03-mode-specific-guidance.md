@@ -26,7 +26,7 @@
 - **ODsay 경로 응답에 전 경유 정류장 목록이 있고 현재 provider가 통째로 버린다.** `subPath[].passStopList.stations[]`: 이름·좌표·`localStationID`·`arsID`(양 끝 포함, `stationCount`는 홉 수라 배열보다 1 작다). `src/lib/providers/odsay.ts`의 `OdsaySubPath`에 선언조차 없다. **추가 API 호출 0회**로 하차 카운트다운의 뼈대가 나온다.
 - **조인 키 검증 완료**: ODsay `localStationID`("123000017") = TOPIS `stId`(동일 값). 문자열 매칭 없이 정류소 ID 직결.
 - **차량 잠금**: 승차 정류소 `getStationByUid`가 `vehId1`·`sectOrd1`·`arrmsg1`을 준다. 승차 시점에 `vehId`를 잠그고, 하차 정류소에 `arrive/getArrInfoByRoute`를 폴링해 같은 `vehId`가 `vehId1`/`vehId2`로 나타나면 `arrmsg1`("6분47초후[4번째 전]")이 곧 하차 카운트다운 완성 문장이다(재조합 금지 규칙과 정합). 뒤차 오인이 구조적으로 없다.
-- ⚠ **TOPIS 버스위치 API(`buspos/getBusPosByRtid`)는 미승인**(headerCd 7, 키 무효 아님 — 같은 키로 도착·정류소 API 정상). **신청 불필요**: 위치 좌표는 정류소 순번으로 재환산해야 하는데 도착 API가 이미 순번·완성 문장으로 준다.
+- ⚠ **TOPIS 버스위치 API(`buspos/getBusPosByRtid`)는 미승인**(headerCd 7, 키 무효 아님 — 같은 키로 도착·정류소 API 정상). **신청 불필요**: 위치 좌표는 정류소 순번으로 재환산해야 하는데 도착 API가 이미 순번·완성 문장으로 준다. ⚠ **이 결론은 머리 배너로 반전됐다(2026-09-12 A41)** — 전제였던 "순번 0 = 정차"가 실호출로 무너졌다.
 
 ### 1.2 버스(지방): 근사 카운트다운만 성립
 
