@@ -64,6 +64,9 @@ struct SettingsView: View {
     @AppStorage(CarListener.storageKey) private var carListenerRaw = CarListener.default.rawValue
     @AppStorage(LeftRightToneScheme.storageKey) private var leftRightToneRaw =
         LeftRightToneScheme.default.rawValue
+    // 진행 상태 진동(E30 실험판) — 켜면 가까워짐·정지·신뢰 불가 3종에 진동을 더한다. 꺼짐 = 종전 동작.
+    // 소비는 `BeaconTonePlayer.haptic(for:)`, 대상 집합은 Kit `BeaconTone.hapticIsOptIn`.
+    @AppStorage(TrendHaptics.storageKey) private var trendHapticsEnabled = false
     #endif
     /// 언어 선택 변경 시 이 뷰를 다시 그리게 하는 관찰 지점(값은 Binding에서 읽지 않는다 —
     /// 미선택 상태 ""를 픽커 태그로 쓸 수 없어 실효 언어를 주는 AppLanguage.current가 정본).
@@ -184,6 +187,13 @@ struct SettingsView: View {
                         .tag(LeftRightToneScheme.pitch.rawValue)
                 }
                 .pickerStyle(.inline)
+
+                Section {
+                    Toggle(appLocalized("ios.settings.trendHaptics"), isOn: $trendHapticsEnabled)
+                } footer: {
+                    // 무엇이 더해지는지 + 조건(화면 켜짐) — 조건은 새 정보라 남긴다(헌장: 원인·조건·한계는 유지).
+                    Text(appLocalized("ios.settings.trendHapticsFooter"))
+                }
                 #endif
 
                 Section {

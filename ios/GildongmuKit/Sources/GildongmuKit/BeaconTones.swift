@@ -51,6 +51,25 @@ public enum BeaconTone: String, Sendable, Equatable, CaseIterable {
         case .warning: self = .warning
         }
     }
+
+    /// 이 톤의 진동이 **설정 스위치(`TrendHaptics`)에 걸리는가**. 참인 셋(가까워짐·정지·
+    /// 신뢰 불가)은 보행 내내 반복되는 상태 신호라 기본은 소리만이고, 스위치를 켠
+    /// 사용자에게만 진동을 더한다(E30 실험판, 위원장 2026-09-13 "꺼짐 = 현재 동작").
+    /// 거짓인 10종(이탈·도착·행동·세션 경계)은 스위치와 무관하게 지금처럼 진동한다.
+    /// 집합은 `TrendHapticsTests`가 잠근다.
+    public var hapticIsOptIn: Bool {
+        switch self {
+        case .closer, .tick, .unreliable: true
+        default: false
+        }
+    }
+}
+
+/// 진행 상태 진동 스위치(E30 실험판) — 저장 키만 여기 둔다(설정 토글과 재생기가 같은 키를
+/// 읽는다, `LeftRightToneScheme.storageKey` 선례). 기본 꺼짐. 정식판엔 토글이 없어 값이
+/// 저장되지 않으므로 동작이 종전과 같다.
+public enum TrendHaptics {
+    public static let storageKey = "trendHapticsEnabled"
 }
 
 /// 왼쪽·오른쪽 톤의 구분 방식 — 실기기 선택 대기 중인 두 후보(spec
