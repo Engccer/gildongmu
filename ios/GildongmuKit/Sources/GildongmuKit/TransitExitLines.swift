@@ -52,3 +52,28 @@ public func boardExitOnBoardLine(_ legs: [TransitRouteLeg], at index: Int) -> St
     if index > 0, legs[index - 1].mode == "walk" { return nil }
     return transitValidExitNo(leg.exit?.board)
 }
+
+// MARK: 줄 단위 영어 자격 (E27 원자성 — 브리핑 구간 줄·하차 줄이 같은 술어를 쓴다)
+
+/// 이 구간의 브리핑 줄이 **영어 이름**으로 설 자격 — 노선·승차·하차 영문이 **다** 있을 때만(도보는 행선지만).
+/// 웹 `TransitRouteBriefing`의 `legEn`과 같은 조건이다. 하나라도 없으면 그 구간의 줄 전부가 한국어 이름이다.
+///
+/// ⚠ 구간 줄과 하차 줄이 **같은 술어**를 봐야 한다 — 구간 줄이 "여의도"라 했는데 하차 줄이 "Yeouido"라 하면
+///   사용자가 둘을 같은 역으로 알아보지 못한다. 종전엔 이 판정이 앱 `transitLegLine` 안에 인라인 `guard`로만
+///   있어 하차 줄이 `toName`을 직접 읽었고, en 세션의 하차 줄만 "Get off at 여의도"로 떨어졌다(2026-09-13).
+public func transitLegUsesEnglish(_ leg: TransitRouteLeg, lang: DataLocale) -> Bool {
+    guard lang == .en else { return false }
+    if leg.mode == "walk" {
+        // 마지막 도보(행선지 없음)는 목적지 문구라 영문 조각이 필요 없다. 행선지가 있으면 영문 행선지 필수.
+        return leg.toName == nil || leg.toNameEn != nil
+    }
+    return leg.lineNameEn != nil
+        && (leg.fromName == nil || leg.fromNameEn != nil)
+        && (leg.toName == nil || leg.toNameEn != nil)
+}
+
+/// 하차 줄에 쓸 역명 — 구간 줄이 영어면 영문, 아니면 한국어. 이름이 없으면 빈 문자열(호출부가 줄을 세우지 않는다).
+public func transitAlightStationName(_ leg: TransitRouteLeg, lang: DataLocale) -> String {
+    if transitLegUsesEnglish(leg, lang: lang), let en = leg.toNameEn { return en }
+    return leg.toName ?? ""
+}
