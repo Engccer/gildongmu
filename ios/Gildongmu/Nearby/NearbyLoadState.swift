@@ -149,39 +149,62 @@ enum NearbyCountKind {
     case places, bikeStations, busStops, stations, events
 }
 
-/// 완료 통지 문구 조립부. 0건도 문장으로. 키는 리터럴 switch(check-xcstrings-keys 린터 계약).
+/// 완료 통지 = 문장 + 결과 진동 종류(E30 확장). 문장을 고르는 판정이 곧 3-state 판정이라 한 값으로
+/// 묶는다 — 따로 두면 "0건 문장에 성공 진동"처럼 두 채널이 갈린다.
+struct NearbyLoadedNotice {
+    let message: String
+    let haptic: ResultHaptic.Kind
+}
+
+/// 완료 통지 조립부. 0건도 문장으로(진동은 `attention`). 키는 리터럴 switch(check-xcstrings-keys 린터 계약).
 @MainActor
-func nearbyLoadedMessage(count: Int, kind: NearbyCountKind) -> String {
-    guard count > 0 else { return appLocalized("ios.nearby.announceEmpty") }
-    switch kind {
-    case .places: return appLocalized("ios.nearby.announcePlaces", count)
-    case .bikeStations: return appLocalized("ios.nearby.announceBikes", count)
-    case .busStops: return appLocalized("ios.nearby.announceStops", count)
-    case .stations: return appLocalized("ios.nearby.announceStations", count)
-    case .events: return appLocalized("ios.nearby.announceEvents", count)
+func nearbyLoadedNotice(count: Int, kind: NearbyCountKind) -> NearbyLoadedNotice {
+    guard count > 0 else {
+        return NearbyLoadedNotice(message: appLocalized("ios.nearby.announceEmpty"), haptic: .attention)
     }
+    let message = switch kind {
+    case .places: appLocalized("ios.nearby.announcePlaces", count)
+    case .bikeStations: appLocalized("ios.nearby.announceBikes", count)
+    case .busStops: appLocalized("ios.nearby.announceStops", count)
+    case .stations: appLocalized("ios.nearby.announceStations", count)
+    case .events: appLocalized("ios.nearby.announceEvents", count)
+    }
+    return NearbyLoadedNotice(message: message, haptic: .success)
 }
 
 /// 이벤트→VO 발화 매퍼 1벌(스펙 §4): 전락 통지 3종은 기존 announce* 그대로,
-/// loaded 문구만 도메인 클로저. emptyResult는 WhereAmI만 문구를 준다.
+/// loaded 문구·진동만 도메인 클로저. emptyResult는 WhereAmI만 문구를 준다.
+/// 결과 진동(E30 확장)은 통지와 같은 자리에서 한 번: loaded는 도메인이 고른 종류, 0건 전락은
+/// `attention`, 실패·권한·정밀도 전락은 `failure`, 커버리지 밖은 오류가 아니라 안내라 `attention`.
 @MainActor
 func nearbyAnnouncer<Payload: Sendable>(
-    loaded: @escaping @MainActor (Payload) -> String,
+    loaded: @escaping @MainActor (Payload) -> NearbyLoadedNotice,
     emptyResult: @autoclosure @escaping () -> String? = nil
 ) -> @MainActor (NearbyLoadEvent<Payload>) -> Void {
     { event in
         switch event {
         case .loaded(let payload):
+            let notice = loaded(payload)
+            ResultHaptic.fire(notice.haptic)
             // 통지도 낭독 채널이다: 거리 포함 문구(지하철 최근접 등)의 단위를 풀어 쓴다
-            AccessibilityNotification.Announcement(spokenUnits(loaded(payload))).post()
+            AccessibilityNotification.Announcement(spokenUnits(notice.message)).post()
         case .emptyResult:
+            ResultHaptic.fire(.attention)
             if let message = emptyResult() {
                 AccessibilityNotification.Announcement(spokenUnits(message)).post()
             }
-        case .refreshFailed: announceRefreshFailed()
-        case .permissionLost: announcePermissionLost()
-        case .accuracyLost: announceAccuracyLost()
-        case .wentOutOfCoverage: announceOutOfCoverage()
+        case .refreshFailed:
+            ResultHaptic.fire(.failure)
+            announceRefreshFailed()
+        case .permissionLost:
+            ResultHaptic.fire(.failure)
+            announcePermissionLost()
+        case .accuracyLost:
+            ResultHaptic.fire(.failure)
+            announceAccuracyLost()
+        case .wentOutOfCoverage:
+            ResultHaptic.fire(.attention)
+            announceOutOfCoverage()
         }
     }
 }

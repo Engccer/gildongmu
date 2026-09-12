@@ -32,7 +32,11 @@ final class WalkInfraModel {
                 let walk = try await service.nearby(lat: coord.lat, lng: coord.lng)
                 return WalkInfraPayload(walk: walk, asOf: Self.timeFormatter.string(from: Date()))
             },
-            onEvent: nearbyAnnouncer(loaded: { walkInfraLiveSummary($0.walk) }))
+            // 두 출처(음향신호기·OSM)가 각각 3-state라 한 줄 요약으로 뭉치는 자리 — 진동은 "조회가 끝났다"만
+            // 말한다(출처별 부재·오류는 문장이 가른다).
+            onEvent: nearbyAnnouncer(loaded: {
+                NearbyLoadedNotice(message: walkInfraLiveSummary($0.walk), haptic: .success)
+            }))
     }
 
     func load(force: Bool = false) async { await core.load(force: force) }

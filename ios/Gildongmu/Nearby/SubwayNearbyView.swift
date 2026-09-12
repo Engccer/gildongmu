@@ -75,10 +75,12 @@ final class SubwayNearbyModel {
                 // 0건이면 최근접 역 거리를 통지에 실어 "1km 안에 없다"와 "이 지역엔
                 // 도시철도가 없다"를 가른다(웹 emptyNearest 미러).
                 if result.stations.isEmpty, let nearest = result.nearest {
-                    return appLocalized("ios.nearby.subwayEmptyNearest",
-                                        nearestLabel(nearest), formatDistance(nearest.distanceMeters))
+                    return NearbyLoadedNotice(
+                        message: appLocalized("ios.nearby.subwayEmptyNearest",
+                                              nearestLabel(nearest), formatDistance(nearest.distanceMeters)),
+                        haptic: .attention)
                 }
-                return nearbyLoadedMessage(count: result.stations.count, kind: .stations)
+                return nearbyLoadedNotice(count: result.stations.count, kind: .stations)
             }))
     }
 

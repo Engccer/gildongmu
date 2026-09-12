@@ -452,7 +452,8 @@ export function eventProfile(event: TransitGuideEvent): {
       // 도착 관측은 "지금 타라"라 interrupting, 선언·출발 관측(departed)은 사용자가 이미 행동한 뒤라 기본.
       return { interrupt: event.cause === "observed", tone: "start" };
     case "legAdvanced":
-      return { interrupt: false, tone: "start" };
+      // 마지막 구간 완료는 여정 종료라 도착 종(도보 도착 동형). 중간 구간은 다음 구간 시작.
+      return { interrupt: false, tone: event.final ? "arrive" : "start" };
     case "vehiclePassed":
       return { interrupt: false, tone: "weak" };
     case "trackingStarted":

@@ -46,7 +46,16 @@ final class SpeechService {
         case recognitionDenied
     }
 
-    private(set) var phase: Phase = .idle
+    private(set) var phase: Phase = .idle {
+        didSet {
+            // 권한 거부·실패 진입에 결과 진동(E30 확장). 알럿 문구 판정(`speechAlertText`)은 뷰 본문에서
+            // 읽히는 순수 함수라 부수효과를 둘 수 없어, 그 판정의 근거인 이 전이에 건다. 같은 값 재대입은 없다.
+            switch phase {
+            case .denied, .failed: ResultHaptic.fire(.failure)
+            default: break
+            }
+        }
+    }
     /// 직전 실패 원인(`.failed` 구간에서만 유효). 알럿 문구를 종별로 가르는 근거 —
     /// 시각장애 사용자는 화면으로 원인을 짐작할 수 없어 문장이 유일한 구분 수단이다.
     private(set) var lastError: SpeechError?

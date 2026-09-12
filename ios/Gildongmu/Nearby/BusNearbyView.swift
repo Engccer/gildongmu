@@ -21,7 +21,7 @@ final class BusNearbyModel {
                 return try await service.busStops(lat: coord.lat, lng: coord.lng)
             },
             onEvent: nearbyAnnouncer(loaded: { stops in
-                nearbyLoadedMessage(count: stops.count, kind: .busStops)
+                nearbyLoadedNotice(count: stops.count, kind: .busStops)
             }))
     }
 

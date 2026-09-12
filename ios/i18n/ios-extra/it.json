@@ -228,7 +228,7 @@
       "leftRightTonePan": "Canale stereo (auricolari)",
       "leftRightTonePitch": "Altezza (grave = sinistra)",
       "trendHaptics": "Avvisi a vibrazione estesi (sperimentale)",
-      "trendHapticsFooter": "Vibra anche quando ti avvicini, ti fermi o quando la guida non è affidabile mentre cammini. Vibra solo con lo schermo acceso.",
+      "trendHapticsFooter": "Vibra anche quando ti avvicini, ti fermi o quando la guida non è affidabile mentre cammini. Vibrano anche i risultati di ricerca, nelle vicinanze e delle indicazioni e i cambi di stato durante la guida. Vibra solo con lo schermo acceso.",
       "listenSpeed": "Velocità di ascolto",
       "listenSpeed1x": "1x",
       "listenSpeed15x": "1,5x",

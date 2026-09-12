@@ -744,7 +744,8 @@ final class BeaconModel {
         tones.beginSession()
         playTone(.start)
         if soundDegraded {
-            // 음성으로 1회 알리고, 지속 상태는 `soundDegraded` 행이 계속 든다.
+            // 음성으로 1회 알리고, 지속 상태는 `soundDegraded` 행이 계속 든다. 진동은 상태 변화(E30 확장).
+            ResultHaptic.fire(.attention)
             announce(appLocalized("ios.beacon.soundBackgroundUnavailable"))
         }
 
@@ -2095,6 +2096,7 @@ final class BeaconModel {
             statusText = text
             lastGuidance = text
             liveTopText = text  // 하단 2행 윗줄 = 기존 최종 접근 문형(§4.2 우선순위 2)
+            ResultHaptic.fire(.attention)  // 국면 진입 1회(E30 확장) — 이후 틱은 진동 없음
             announce(text) { [weak self] in self?.pendingFinalApproachIntro = text }
             return
         }
@@ -2469,6 +2471,8 @@ final class BeaconModel {
             clearProposal()
             let text = appLocalized("guide.backOnRoute")
             statusText = text
+            // 이탈은 warning 톤이 진동을 동반하는데 복귀는 무신호였다 — 짝을 맞춘다(E30 확장).
+            ResultHaptic.fire(.success)
             announce(text)
         case .uncertainEnter:
             statusText = appLocalized("guide.uncertain")
@@ -2643,6 +2647,7 @@ final class BeaconModel {
                 // 경로가 없으면 경로 기반 계단 판정도 없다(3-state) — 폴백과 동형.
                 lastStepFree = nil
                 statusText = appLocalized("guide.rerouteFailed")
+                ResultHaptic.fire(.failure)
                 announce(statusText, highPriority: true)
                 return
             }
@@ -2673,6 +2678,7 @@ final class BeaconModel {
             // 재조회 버튼을 없애고, 시트가 커서를 중지 버튼으로 되돌리며 그 라벨을 낭독한다 —
             // 기본 우선순위 통지는 그 VO 활성화 처리에 잠식된다(헌장 §6 실기기 확정).
             // 바로 아래 실패 경로만 `.high`였던 비대칭이 실사용 무발화의 원인이었다.
+            ResultHaptic.fire(.success)
             announce(text, highPriority: true) { [weak self] in
                 if let notice { self?.pendingStepFreeNotice = notice }
             }
@@ -2683,6 +2689,7 @@ final class BeaconModel {
             guard token == rerouteToken, isTracking else { return }
             lastStepFree = nil
             statusText = appLocalized("guide.rerouteFailed")
+            ResultHaptic.fire(.failure)
             announce(statusText, highPriority: true)
         }
     }
@@ -2796,6 +2803,7 @@ final class BeaconModel {
             let summary = GuideText.autoReroute(route: fetched.route, firstIndices: firstIndices)
             let text = notice.map { "\($0) \(summary)" } ?? summary
             statusText = text
+            ResultHaptic.fire(.success)
             announce(text, highPriority: true) { [weak self] in
                 if let notice { self?.pendingStepFreeNotice = notice }
             }
@@ -3041,6 +3049,7 @@ final class BeaconModel {
             let text = appLocalized("ios.beacon.soundUnavailable")
             guard statusText != text else { return }
             statusText = text
+            ResultHaptic.fire(.failure)  // 소리가 죽었으니 진동이 유일한 대체 채널(E30 확장)
             announce(text)
         }
     }

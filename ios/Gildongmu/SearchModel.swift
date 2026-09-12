@@ -90,13 +90,18 @@ final class SearchModel {
     /// 단일 통지 채널(웹 combinedLiveMessage의 iOS 문법). 실패는 "없음"과 다른 문장으로.
     private func announce() {
         let message: String
+        let haptic: ResultHaptic.Kind
         if failed {
             message = appLocalized("ios.search.announceFailed")
+            haptic = .failure
         } else if totalCount == 0 {
             message = appLocalized("ios.search.announceEmpty")
+            haptic = .attention
         } else {
             message = appLocalized("ios.search.announceCount", totalCount)
+            haptic = .success
         }
+        ResultHaptic.fire(haptic)
         AccessibilityNotification.Announcement(message).post()
     }
 }

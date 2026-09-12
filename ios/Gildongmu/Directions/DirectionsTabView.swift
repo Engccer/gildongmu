@@ -336,7 +336,7 @@ final class DirectionsModel {
         silentQuery = silently
         guard let from, let to else {
             phase = .needEndpoints
-            announce(appLocalized("directions.needEndpoints"))
+            announce(appLocalized("directions.needEndpoints"), haptic: nil)
             return
         }
         isInFlight = true
@@ -378,7 +378,7 @@ final class DirectionsModel {
                 // 안내이므로 일반 phase로 표기(웹 DirectionsView 동형).
                 if let acquired = current, !isInKorea(lat: acquired.lat, lng: acquired.lng) {
                     phase = .outOfCoverage
-                    announce(appLocalized("ios.common.outOfCoverage"))
+                    announce(appLocalized("ios.common.outOfCoverage"), haptic: .attention)
                     return
                 }
                 // 측위 성공 → 라벨 병기 주소도 그 좌표로 동기화(표시 전용, 조회 흐름과
@@ -392,17 +392,17 @@ final class DirectionsModel {
                 // 거부와 취득 실패는 다른 문장(3-state): 거부는 설정 경로, 실패는 검색 우회 안내.
                 if case .denied = error {
                     phase = .geoDenied
-                    announce(appLocalized("ios.common.geoDeniedDesc"))
+                    announce(appLocalized("ios.common.geoDeniedDesc"), haptic: .failure)
                 } else if case .reducedAccuracy = error {
                     // 권한은 있으나 정밀 위치가 꺼진 상태. `geoDenied`를 재사용하면
                     // 통지는 "정확한 위치를 켜"인데 화면에 남는 지속 텍스트는 "위치
                     // 접근을 허용해"가 되어, 통지가 흘러간 뒤 커서를 상태 줄에 두면
                     // 이미 켜 둔 권한을 다시 찾으러 간다(지속 텍스트가 정본이다).
                     phase = .geoReduced
-                    announce(appLocalized("ios.common.geoReducedDesc"))
+                    announce(appLocalized("ios.common.geoReducedDesc"), haptic: .failure)
                 } else {
                     phase = .geoError
-                    announce(appLocalized("directions.geoError"))
+                    announce(appLocalized("directions.geoError"), haptic: .failure)
                 }
                 return
             }
@@ -415,7 +415,7 @@ final class DirectionsModel {
         let viaCoord = via.flatMap { coordinate(of: $0, current: nil) }
         if let viaCoord, !isInKorea(lat: viaCoord.lat, lng: viaCoord.lng) {
             phase = .outOfCoverage
-            announce(appLocalized("ios.common.outOfCoverage"))
+            announce(appLocalized("ios.common.outOfCoverage"), haptic: .attention)
             return
         }
 
@@ -473,7 +473,7 @@ final class DirectionsModel {
         // 한국 밖일 수 있다. 한 수단이라도 감지하면 나머지 결과를 버리고 화면 전체를 전환한다.
         if outcomes.values.contains(where: { $0.isOutOfCoverage }) {
             phase = .outOfCoverage
-            announce(appLocalized("ios.common.outOfCoverage"))
+            announce(appLocalized("ios.common.outOfCoverage"), haptic: .attention)
             return
         }
 
@@ -489,7 +489,8 @@ final class DirectionsModel {
         // 완료 통지는 합산 1문장뿐(수단별 개별 통지 금지). 포커스 이동은 뷰가 revision으로.
         announce(built.successCount > 0
             ? appLocalized("directions.readySummary", built.successCount)
-            : appLocalized("directions.allFailed"))
+            : appLocalized("directions.allFailed"),
+            haptic: built.successCount > 0 ? .success : .failure)
     }
 
     /// 계단 회피 토글(웹 toggleStepFree 동형): 이미 조회된 결과가 있으면 도보만 새
@@ -546,8 +547,11 @@ final class DirectionsModel {
     /// 뒤따르면 자연 복원되고, 진행 중 조회는 하나뿐이라(isInFlight) 혼선이 없다.
     private var silentQuery = false
 
-    private func announce(_ message: String) {
+    /// `haptic`은 기본값 없음 — 호출부가 결과 종류(있음·없음·실패)를 밝히거나 nil(입력 안내처럼 결과가
+    /// 아닌 문장)을 적는다. 무통지 조회는 진동도 삼킨다(안내 발화와 경합할 이유가 없는 같은 근거).
+    private func announce(_ message: String, haptic: ResultHaptic.Kind?) {
         guard !silentQuery else { return }
+        if let haptic { ResultHaptic.fire(haptic) }
         AccessibilityNotification.Announcement(message).post()
     }
 

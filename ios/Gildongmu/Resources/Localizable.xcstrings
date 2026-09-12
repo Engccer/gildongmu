@@ -25806,37 +25806,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "걷는 동안 가까워짐, 정지, 안내 신뢰 불가를 진동으로도 알립니다. 화면이 켜져 있을 때만 진동합니다."
+            "value": "걷는 동안 가까워짐, 정지, 안내 신뢰 불가를 진동으로도 알립니다. 검색, 내 주변, 길찾기의 결과와 안내 중 상태 변화도 진동으로 알립니다. 화면이 켜져 있을 때만 진동합니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Also vibrates for getting closer, standing still, and unreliable guidance while walking. Vibrates only while the screen is on."
+            "value": "Also vibrates for getting closer, standing still, and unreliable guidance while walking. Search, nearby, and directions results and status changes during guidance also vibrate. Vibrates only while the screen is on."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "También vibra al acercarte, al detenerte y cuando la guía no es fiable mientras caminas. Solo vibra con la pantalla encendida."
+            "value": "También vibra al acercarte, al detenerte y cuando la guía no es fiable mientras caminas. Los resultados de búsqueda, cercanos e indicaciones y los cambios de estado durante la guía también vibran. Solo vibra con la pantalla encendida."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Vibre aussi quand vous vous rapprochez, vous arrêtez ou quand le guidage n'est pas fiable pendant la marche. Vibre uniquement écran allumé."
+            "value": "Vibre aussi quand vous vous rapprochez, vous arrêtez ou quand le guidage n'est pas fiable pendant la marche. Les résultats de recherche, des alentours et d'itinéraire ainsi que les changements d'état pendant le guidage vibrent aussi. Vibre uniquement écran allumé."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Vibra anche quando ti avvicini, ti fermi o quando la guida non è affidabile mentre cammini. Vibra solo con lo schermo acceso."
+            "value": "Vibra anche quando ti avvicini, ti fermi o quando la guida non è affidabile mentre cammini. Vibrano anche i risultati di ricerca, nelle vicinanze e delle indicazioni e i cambi di stato durante la guida. Vibra solo con lo schermo acceso."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "歩行中の接近、停止、案内の信頼性低下を振動でも知らせます。画面が点いている間だけ振動します。"
+            "value": "歩行中の接近、停止、案内の信頼性低下を振動でも知らせます。検索、周辺、経路案内の結果と案内中の状態変化も振動で知らせます。画面が点いている間だけ振動します。"
           }
         }
       }

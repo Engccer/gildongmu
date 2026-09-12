@@ -22,7 +22,7 @@ final class EventsNearbyModel {
             },
             willCommit: { [weak self] _ in self?.window.reset() },   // 커밋과 원자
             onEvent: nearbyAnnouncer(loaded: { events in
-                nearbyLoadedMessage(count: events.count, kind: .events)
+                nearbyLoadedNotice(count: events.count, kind: .events)
             }))
     }
 
