@@ -1921,6 +1921,46 @@
         }
       }
     },
+    "route.transit.alightAt": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ 하차"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Get off at %1$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bajada en %1$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descente à %1$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Discesa a %1$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@で下車"
+          }
+        }
+      }
+    },
     "route.transit.alternativeFastest": {
       "localizations": {
         "ko": {
@@ -2361,6 +2401,46 @@
         }
       }
     },
+    "route.transit.legBoardExit": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@번 출구로 진입"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "enter via Exit %1$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "entra por la salida %1$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "entrez par la sortie %1$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "entra dall'uscita %1$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@番出口から入場"
+          }
+        }
+      }
+    },
     "route.transit.legInterval": {
       "localizations": {
         "ko": {
@@ -2637,6 +2717,86 @@
           "stringUnit": {
             "state": "translated",
             "value": "目的地まで徒歩%1$@分"
+          }
+        }
+      }
+    },
+    "route.transit.legWalkToExit": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ %2$@번 출구까지 도보 %3$@분, %4$@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Walk %3$@ min to %1$@ Exit %2$@, %4$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Camina %3$@ min hasta la salida %2$@ de %1$@, %4$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Marchez %3$@ min jusqu'à la sortie %2$@ de %1$@, %4$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cammina %3$@ min fino all'uscita %2$@ di %1$@, %4$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@%2$@番出口まで徒歩%3$@分、%4$@"
+          }
+        }
+      }
+    },
+    "route.transit.legWalkToExitNoDistance": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ %2$@번 출구까지 도보 %3$@분"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Walk %3$@ min to %1$@ Exit %2$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Camina %3$@ min hasta la salida %2$@ de %1$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Marchez %3$@ min jusqu'à la sortie %2$@ de %1$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cammina %3$@ min fino all'uscita %2$@ di %1$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@%2$@番出口まで徒歩%3$@分"
           }
         }
       }

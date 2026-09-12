@@ -15,16 +15,22 @@ import Foundation
 /// 로컬라이즈는 하지 않는다. 키·인자 결정만 Kit이 맡고 문구 조회는 앱 타깃이 한다
 /// (`TransitAlternativeName` 동형 — 앱 카탈로그 키는 리터럴로만 호출한다는 린터 계약).
 public enum TransitWalkLegText {
+    /// `boardExit`은 **다음 구간의 승차 출구**(E25)다 — 걷는 동안 듣고 바로 그 행동을 하므로
+    /// 이 줄이 싣는다. 행선지 이름이 없는 마지막 도보에는 붙일 자리가 없어 종전 문구로 떨어진다.
+    /// ko 순서는 "{name} {exit}번 출구까지 도보 {minutes}분, {distance}" → (name, exit, minutes, distance).
     public static func resolve(
-        name: String?, distance: String?, minutes: Int
+        name: String?, distance: String?, minutes: Int, boardExit: String? = nil
     ) -> (key: String, args: [String]) {
         let name = (name?.isEmpty == false) ? name : nil
+        let boardExit = (boardExit?.isEmpty == false) ? boardExit : nil
         let minutes = String(minutes)
         switch (name, distance) {
         case let (name?, distance?):
-            return ("route.transit.legWalkTo", [name, minutes, distance])
+            guard let boardExit else { return ("route.transit.legWalkTo", [name, minutes, distance]) }
+            return ("route.transit.legWalkToExit", [name, boardExit, minutes, distance])
         case let (name?, nil):
-            return ("route.transit.legWalkToNoDistance", [name, minutes])
+            guard let boardExit else { return ("route.transit.legWalkToNoDistance", [name, minutes]) }
+            return ("route.transit.legWalkToExitNoDistance", [name, boardExit, minutes])
         case let (nil, distance?):
             return ("route.transit.legWalkToDest", [minutes, distance])
         case (nil, nil):

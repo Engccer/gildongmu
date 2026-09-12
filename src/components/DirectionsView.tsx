@@ -51,7 +51,7 @@ import { WalkRouteResult } from "./WalkRouteBriefing";
 import { CarRouteResult } from "./CarRouteBriefing";
 import { carStepItems, walkStepItems } from "@/lib/route-step-items";
 import { hasActiveGuideSession, stopActiveGuideSession } from "@/lib/guide-session-store";
-import { quickExitText } from "@/lib/quick-exit-text";
+import { alightLineText, boardExitAfterWalk, boardExitOnBoardLine } from "@/lib/transit-exit-lines";
 import { isUnwinding, publishView, withdrawView } from "@/lib/webmcp/view-registry";
 import type {
   DirectionsBridge,
@@ -320,6 +320,8 @@ export function DirectionsView({
   const tCar = useTranslations("route.briefing");
   const tCommon = useTranslations("common");
   const tBeacon = useTranslations("beacon");
+  // 출구 문구는 안내 세션·화면 브리핑과 같은 키를 쓴다(E25) — 도구 출력이 화면과 갈리지 않게.
+  const tTransitGuide = useTranslations("transitGuide");
   const tManual = useTranslations("manualLocation");
   const locale = useLocale();
   const manual = useManualLocation();
@@ -1015,14 +1017,21 @@ export function DirectionsView({
    * 렌더마다 다시 만들지만 `planId`가 세대를 대표하므로 객체 정체성은 계약이 아니다.
    */
   const kindOf = (o: ModeOutcome): ModeOutcomeKind => (o.kind === "outOfCoverage" ? "error" : o.kind);
-  function transitLegLine(leg: TransitLeg, boardSeen: number, destName: string): string {
+  function transitLegLine(legs: TransitLeg[], index: number, boardSeen: number, destName: string): string {
+    const leg = legs[index];
     if (leg.mode === "walk") {
       const name = leg.toName ?? destName;
       const distance = leg.distanceMeters != null ? formatDistance(leg.distanceMeters) : null;
+      // 승차 출구(E25)는 화면 브리핑과 같은 규칙으로 이 줄이 싣는다.
+      const boardExit = name ? boardExitAfterWalk(legs, index) : null;
       const key = name
-        ? distance
-          ? "legWalkTo"
-          : "legWalkToNoDistance"
+        ? boardExit
+          ? distance
+            ? "legWalkToExit"
+            : "legWalkToExitNoDistance"
+          : distance
+            ? "legWalkTo"
+            : "legWalkToNoDistance"
         : distance
           ? "legWalkToDest"
           : "legWalkToDestNoDistance";
@@ -1030,15 +1039,19 @@ export function DirectionsView({
         minutes: leg.minutes,
         ...(name ? { name } : {}),
         ...(distance ? { distance } : {}),
+        ...(boardExit ? { exit: boardExit } : {}),
       });
     }
     const lineLabel =
       leg.mode === "bus" && leg.lineName ? tTransit("busNo", { route: leg.lineName }) : (leg.lineName ?? "");
-    return tTransit.markup(boardSeen === 0 ? "legBoard" : "legTransfer", {
+    const line = tTransit.markup(boardSeen === 0 ? "legBoard" : "legTransfer", {
       line: () => lineLabel,
       from: () => leg.fromName ?? "",
       count: leg.stationCount ?? 0,
     });
+    // 앞 도보 줄이 없을 때만 이 줄이 승차 출구를 싣는다(두 줄에 겹치지 않는다).
+    const boardExitTail = boardExitOnBoardLine(legs, index);
+    return boardExitTail ? joinText(line, tTransit("legBoardExit", { exit: boardExitTail })) : line;
   }
   // 경로 순번 표(착지·트리거 속성용)는 렌더에서, 문장 조립은 도구 호출 시점(`read()`)에 한다 —
   // 문장은 도구가 부를 때만 필요하고, 렌더마다 수십 문장을 만드는 비용을 치를 이유가 없다.
@@ -1061,8 +1074,8 @@ export function DirectionsView({
     const routes: PlanTransitRoute[] = entries.map(({ route, name }) => {
       const ref = routeRefs.refOf(route.routeKey) ?? "0";
       let boardSeen = 0;
-      const legLines = route.legs.map((leg) => {
-        const line = transitLegLine(leg, boardSeen, results.destLabel);
+      const legLines = route.legs.map((leg, i) => {
+        const line = transitLegLine(route.legs, i, boardSeen, results.destLabel);
         if (leg.mode !== "walk") boardSeen += 1;
         return line;
       });
@@ -1092,7 +1105,10 @@ export function DirectionsView({
           stationCount: leg.stationCount,
           distanceMeters: leg.distanceMeters,
           quickExit:
-            leg.mode !== "walk" ? (quickExitText(tTransit, leg.toName ?? "", leg.quickExit) ?? undefined) : undefined,
+            leg.mode !== "walk"
+              ? (alightLineText(tTransit, tTransitGuide, leg.toName ?? "", leg.quickExit, leg.exit?.alight) ??
+                undefined)
+              : undefined,
         })),
       };
     });

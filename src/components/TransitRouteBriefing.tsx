@@ -8,7 +8,7 @@ import { isInKorea } from "@/lib/coverage";
 import { isOutOfCoverageBody } from "@/lib/out-of-coverage";
 import { formatDistance, joinText } from "@/lib/format";
 import { alternativeNameKey } from "@/lib/transit-alternative-name";
-import { quickExitText } from "@/lib/quick-exit-text";
+import { alightLineText, boardExitAfterWalk, boardExitOnBoardLine } from "@/lib/transit-exit-lines";
 import { dataLocale, prefersEnglish } from "@/lib/data-locale";
 import { TransitBilingualName } from "./TransitBilingualName";
 
@@ -267,6 +267,8 @@ export function TransitRouteResult({
 }) {
   let boardSeen = 0;
   const isEn = prefersEnglish(locale);
+  // 출구 문구는 안내 세션과 같은 키를 쓴다(E25) — 같은 정보를 두 화면이 다른 낱말로 말하지 않는다.
+  const tGuide = useTranslations("transitGuide");
   return (
     <>
       {includeSummary && (
@@ -292,10 +294,17 @@ export function TransitRouteResult({
             // 거리는 3-state: 필드가 없으면 "0m"가 아니라 거리 없는 문구로 떨어진다
             const distance =
               leg.distanceMeters != null ? formatDistance(leg.distanceMeters) : null;
+            // 다음 구간의 승차 출구(E25)는 이 줄이 싣는다 — 걷는 동안 듣고 바로 그 행동을 하기
+            // 때문이다. 마지막 도보(다음 구간 없음)에는 실릴 값이 없어 종전 문구 그대로다.
+            const boardExit = name ? boardExitAfterWalk(route.legs, i) : null;
             const key = name
-              ? distance
-                ? "legWalkTo"
-                : "legWalkToNoDistance"
+              ? boardExit
+                ? distance
+                  ? "legWalkToExit"
+                  : "legWalkToExitNoDistance"
+                : distance
+                  ? "legWalkTo"
+                  : "legWalkToNoDistance"
               : distance
                 ? "legWalkToDest"
                 : "legWalkToDestNoDistance";
@@ -305,6 +314,7 @@ export function TransitRouteResult({
                   minutes: leg.minutes,
                   ...(name ? { name } : {}),
                   ...(distance ? { distance } : {}),
+                  ...(boardExit ? { exit: boardExit } : {}),
                 })}
               </li>
             );
@@ -315,7 +325,17 @@ export function TransitRouteResult({
           // 같은 조건) — 하나만 영문이면 한 문장(또는 아래 빠른하차 줄) 안에 두 언어가 선다.
           const legEn =
             isEn && Boolean(leg.lineNameEn) && Boolean(leg.fromNameEn) && (leg.toName == null || Boolean(leg.toNameEn));
-          const quickExit = quickExitText(t, (legEn && leg.toNameEn) || leg.toName || "", leg.quickExit);
+          // 하차 줄은 빠른하차 뒤에 출구가 결론으로 붙는다. 빠른하차가 없던 역은 종전에 줄 자체가
+          // 없었으므로 하차역 이름으로 줄이 새로 선다(E25).
+          const alightLine = alightLineText(
+            t,
+            tGuide,
+            (legEn && leg.toNameEn) || leg.toName || "",
+            leg.quickExit,
+            leg.exit?.alight,
+          );
+          // 직전이 도보가 아닐 때만(버스에서 바로 갈아타거나 역에서 출발) 이 줄이 승차 출구를 싣는다.
+          const boardExitTail = boardExitOnBoardLine(route.legs, i);
           return (
             <li key={i}>
               {t.rich(messageKey, {
@@ -343,6 +363,8 @@ export function TransitRouteResult({
               {leg.intervalMinutes != null && (
                 <>, {t("legInterval", { minutes: leg.intervalMinutes })}</>
               )}
+              {/* 승차 출구 폴백(E25) — 앞 도보 줄이 없을 때만 여기 온다. 같은 줄에 쉼표로 잇는다 */}
+              {boardExitTail && <>, {t("legBoardExit", { exit: boardExitTail })}</>}
               {/* 운행 밖만 표기한다. 정상·정보없음까지 표기하면 매 항목에 노이즈가
                   붙는다(조건부 실패 표기 원칙). 같은 li에 쉼표로 이어 한 줄=한 객체 유지 */}
               {leg.serviceStatus === "outside" &&
@@ -356,10 +378,10 @@ export function TransitRouteResult({
                     })}
                   </>
                 )}
-              {/* 빠른하차는 별도 문장이라 같은 줄에 쉼표로 잇지 않고 다음 블록으로 둔다
-                  (한 줄=한 객체는 "한 줄을 쪼개지 말라"이지 "여러 문장을 합치라"가 아니다).
-                  판정 불가·미커버는 필드 부재라 이 자리가 통째로 비고 문구도 없다 */}
-              {quickExit && <p className="mt-0.5">{quickExit}</p>}
+              {/* 하차 줄(빠른하차 + 하차 출구)은 별도 문장이라 같은 줄에 쉼표로 잇지 않고 다음
+                  블록으로 둔다(한 줄=한 객체는 "한 줄을 쪼개지 말라"이지 "여러 문장을 합치라"가
+                  아니다). 둘 다 없으면 이 자리가 통째로 비고 문구도 없다(3-state) */}
+              {alightLine && <p className="mt-0.5">{alightLine}</p>}
             </li>
           );
         })}
