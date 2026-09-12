@@ -58,13 +58,18 @@ final class AroundNearbyModel {
                     placesFailed: places.isFailure)
             },
             willCommit: { [weak self] _ in self?.window.reset() },   // 커밋과 원자(스펙 §4)
-            onEvent: nearbyAnnouncer(loaded: { _ in
+            onEvent: nearbyAnnouncer(loaded: { payload in
                 // 수동 위치일 때 "현재 위치"라고 알리지 않는다(전역 제약).
-                NearbyLoadedNotice(
+                // 진동 3-state(E30 확장): 세 조각 전부 실패 = 실패, 일부 실패·전부 부재 = 주의, 그 밖 = 성공.
+                // 문장은 조각 자리가 각자 말하므로 여기선 진동만 가른다.
+                let failed = [payload.overviewFailed, payload.sceneFailed, payload.placesFailed].filter { $0 }.count
+                let haptic: ResultHaptic.Kind = failed == 3 ? .failure
+                    : (failed > 0 || payload.isAllAbsent) ? .attention : .success
+                return NearbyLoadedNotice(
                     message: ManualLocationStore.shared.current == nil
                         ? appLocalized("ios.nearby.aroundLoaded")
                         : appLocalized("ios.nearby.aroundLoadedManual"),
-                    haptic: .success)
+                    haptic: haptic)
             }))
     }
 

@@ -745,7 +745,7 @@ final class BeaconModel {
         playTone(.start)
         if soundDegraded {
             // 음성으로 1회 알리고, 지속 상태는 `soundDegraded` 행이 계속 든다. 진동은 상태 변화(E30 확장).
-            ResultHaptic.fire(.attention)
+            resultHaptic(.attention)
             announce(appLocalized("ios.beacon.soundBackgroundUnavailable"))
         }
 
@@ -2096,7 +2096,7 @@ final class BeaconModel {
             statusText = text
             lastGuidance = text
             liveTopText = text  // 하단 2행 윗줄 = 기존 최종 접근 문형(§4.2 우선순위 2)
-            ResultHaptic.fire(.attention)  // 국면 진입 1회(E30 확장) — 이후 틱은 진동 없음
+            resultHaptic(.attention)  // 국면 진입 1회(E30 확장) — 이후 틱은 진동 없음
             announce(text) { [weak self] in self?.pendingFinalApproachIntro = text }
             return
         }
@@ -2472,7 +2472,7 @@ final class BeaconModel {
             let text = appLocalized("guide.backOnRoute")
             statusText = text
             // 이탈은 warning 톤이 진동을 동반하는데 복귀는 무신호였다 — 짝을 맞춘다(E30 확장).
-            ResultHaptic.fire(.success)
+            resultHaptic(.success)
             announce(text)
         case .uncertainEnter:
             statusText = appLocalized("guide.uncertain")
@@ -2647,7 +2647,7 @@ final class BeaconModel {
                 // 경로가 없으면 경로 기반 계단 판정도 없다(3-state) — 폴백과 동형.
                 lastStepFree = nil
                 statusText = appLocalized("guide.rerouteFailed")
-                ResultHaptic.fire(.failure)
+                resultHaptic(.failure)
                 announce(statusText, highPriority: true)
                 return
             }
@@ -2678,7 +2678,7 @@ final class BeaconModel {
             // 재조회 버튼을 없애고, 시트가 커서를 중지 버튼으로 되돌리며 그 라벨을 낭독한다 —
             // 기본 우선순위 통지는 그 VO 활성화 처리에 잠식된다(헌장 §6 실기기 확정).
             // 바로 아래 실패 경로만 `.high`였던 비대칭이 실사용 무발화의 원인이었다.
-            ResultHaptic.fire(.success)
+            resultHaptic(.success)
             announce(text, highPriority: true) { [weak self] in
                 if let notice { self?.pendingStepFreeNotice = notice }
             }
@@ -2689,7 +2689,7 @@ final class BeaconModel {
             guard token == rerouteToken, isTracking else { return }
             lastStepFree = nil
             statusText = appLocalized("guide.rerouteFailed")
-            ResultHaptic.fire(.failure)
+            resultHaptic(.failure)
             announce(statusText, highPriority: true)
         }
     }
@@ -2803,7 +2803,7 @@ final class BeaconModel {
             let summary = GuideText.autoReroute(route: fetched.route, firstIndices: firstIndices)
             let text = notice.map { "\($0) \(summary)" } ?? summary
             statusText = text
-            ResultHaptic.fire(.success)
+            resultHaptic(.success)
             announce(text, highPriority: true) { [weak self] in
                 if let notice { self?.pendingStepFreeNotice = notice }
             }
@@ -3036,6 +3036,15 @@ final class BeaconModel {
 
     // MARK: - 출력
 
+    /// 결과 진동 창구(E30 확장) — **억제 중이면 진동도 내지 않는다**. 이 모델의 문장은 `post()`의 억제 가드가
+    /// 조용히 버리므로(받아쓰기 중), 진동만 나가면 뜻을 말해 줄 문장이 없는 신호가 된다(a11y 감사 검출
+    /// 2026-09-13). 짝은 "문장이 나가는 조건 = 진동이 나가는 조건"이다. 호출부가 `ResultHaptic.fire`를 직접
+    /// 부르지 말 것.
+    private func resultHaptic(_ kind: ResultHaptic.Kind) {
+        guard !outputSuppressed else { return }
+        ResultHaptic.fire(kind)
+    }
+
     private func playTone(_ tone: BeaconTone) {
         guard !outputSuppressed else { return }
         tones.play(tone)
@@ -3046,13 +3055,24 @@ final class BeaconModel {
         // 톤이 죽으면 hold·tick엔 통지가 없어 사용자가 침묵의 원인을 모른다.
         // GPS 약신호와 **다른 문구**여야 한다. 취해야 할 행동이 다르다.
         if tones.isSilenced {
+            // 진동은 무음 **진입 1회**(E30 확장 — 소리가 죽었으니 진동이 유일한 대체 채널). 문장 가드
+            // `statusText != text`는 거리 통지가 상태 행을 덮을 때마다 다시 열리므로(반복 통지) 진동의
+            // 근거로 쓰지 않는다 — 리뷰 검출 2026-09-13.
+            if !silencedHapticFired {
+                silencedHapticFired = true
+                resultHaptic(.failure)
+            }
             let text = appLocalized("ios.beacon.soundUnavailable")
             guard statusText != text else { return }
             statusText = text
-            ResultHaptic.fire(.failure)  // 소리가 죽었으니 진동이 유일한 대체 채널(E30 확장)
             announce(text)
+        } else {
+            silencedHapticFired = false
         }
     }
+
+    /// 무음(`tones.isSilenced`) 진입 진동의 에지 래치 — 무음이 풀리면 되돌려 다음 진입에 다시 한 번.
+    private var silencedHapticFired = false
 
     /// ⚠ 거리 3종은 `formatDistance`(Kit 정본)를 태우고 `nearby`만 원시 미터를 쓴다.
     /// nearby의 값은 거리가 아니라 **오차 반경**이라(문구가 "약 ±N m") 거리 포맷에

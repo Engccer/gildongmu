@@ -32,10 +32,10 @@ final class WalkInfraModel {
                 let walk = try await service.nearby(lat: coord.lat, lng: coord.lng)
                 return WalkInfraPayload(walk: walk, asOf: Self.timeFormatter.string(from: Date()))
             },
-            // 두 출처(음향신호기·OSM)가 각각 3-state라 한 줄 요약으로 뭉치는 자리 — 진동은 "조회가 끝났다"만
-            // 말한다(출처별 부재·오류는 문장이 가른다).
+            // 두 출처(음향신호기·OSM)가 각각 3-state라 한 줄 요약으로 뭉치는 자리 — 진동도 같은 축으로 가른다
+            // (E30 확장): 둘 다 오류 = 실패, 하나라도 오류·미지원이거나 둘 다 0건 = 주의, 그 밖 = 성공.
             onEvent: nearbyAnnouncer(loaded: {
-                NearbyLoadedNotice(message: walkInfraLiveSummary($0.walk), haptic: .success)
+                NearbyLoadedNotice(message: walkInfraLiveSummary($0.walk), haptic: walkInfraHaptic($0.walk))
             }))
     }
 
@@ -52,6 +52,24 @@ final class WalkInfraModel {
 /// 완료 통지 문구 = 소스별 요약 결합(웹 buildLive 미러): ok 소스의 수치만 낭독,
 /// error·unsupported는 실패·미제공 문구로("0기" 합성 금지).
 @MainActor
+func walkInfraHaptic(_ walk: WalkInfrastructure) -> ResultHaptic.Kind {
+    let audioError: Bool, audioCount: Int?
+    switch walk.audioSignals {
+    case .ok(let data): audioError = false; audioCount = data.deviceCount
+    case .unsupported: audioError = false; audioCount = nil
+    case .error: audioError = true; audioCount = nil
+    }
+    let osmError: Bool, osmCount: Int?
+    switch walk.osm {
+    case .ok(let data): osmError = false; osmCount = data.listedCount
+    case .unsupported: osmError = false; osmCount = nil
+    case .error: osmError = true; osmCount = nil
+    }
+    if audioError && osmError { return .failure }
+    if audioError || osmError || audioCount == nil || osmCount == nil { return .attention }
+    return (audioCount ?? 0) + (osmCount ?? 0) > 0 ? .success : .attention
+}
+
 func walkInfraLiveSummary(_ walk: WalkInfrastructure) -> String {
     let audio: String
     switch walk.audioSignals {
