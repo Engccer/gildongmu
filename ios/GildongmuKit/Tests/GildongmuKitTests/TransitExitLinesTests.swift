@@ -114,4 +114,45 @@ struct TransitExitLinesTests {
             }
         }
     }
+
+    // MARK: 줄 단위 영어 자격 (하차 줄 역명이 구간 줄과 같은 술어를 본다)
+
+    private func subwayEn(lineEn: String? = "Line 9", fromEn: String? = "Gaehwa", toEn: String? = "VHS Medical Center")
+        -> TransitRouteLeg
+    {
+        TransitRouteLeg(
+            mode: "subway", lineName: "수도권 9호선", fromName: "개화", toName: "중앙보훈병원",
+            stationCount: 15, minutes: 30, serviceStatus: nil, firstServiceTime: nil, lastServiceTime: nil,
+            lineNameEn: lineEn, fromNameEn: fromEn, toNameEn: toEn)
+    }
+
+    @Test func ko_세션은_영문이_다_있어도_한국어() {
+        #expect(transitLegUsesEnglish(subwayEn(), lang: .ko) == false)
+        #expect(transitAlightStationName(subwayEn(), lang: .ko) == "중앙보훈병원")
+    }
+
+    @Test func en_세션은_노선_승차_하차_영문이_다_있을_때만_영어() {
+        #expect(transitLegUsesEnglish(subwayEn(), lang: .en))
+        #expect(transitAlightStationName(subwayEn(), lang: .en) == "VHS Medical Center")
+        // 하나라도 없으면 줄 전체가 한국어 — 하차 역명만 영문으로 바꾸지 않는다(구간 줄과 어긋난다).
+        #expect(transitLegUsesEnglish(subwayEn(lineEn: nil), lang: .en) == false)
+        #expect(transitAlightStationName(subwayEn(lineEn: nil), lang: .en) == "중앙보훈병원")
+        #expect(transitLegUsesEnglish(subwayEn(fromEn: nil), lang: .en) == false)
+        #expect(transitLegUsesEnglish(subwayEn(toEn: nil), lang: .en) == false)
+        #expect(transitAlightStationName(subwayEn(toEn: nil), lang: .en) == "중앙보훈병원")
+    }
+
+    @Test func 도보_구간은_행선지_영문만_본다() {
+        let named = TransitRouteLeg(
+            mode: "walk", lineName: nil, fromName: nil, toName: "개화", stationCount: nil,
+            minutes: 2, serviceStatus: nil, firstServiceTime: nil, lastServiceTime: nil, toNameEn: "Gaehwa")
+        #expect(transitLegUsesEnglish(named, lang: .en))
+        #expect(transitLegUsesEnglish(walk(), lang: .en) == false)
+        // 마지막 도보(행선지 없음)는 영문 조각이 필요 없다.
+        let last = TransitRouteLeg(
+            mode: "walk", lineName: nil, fromName: nil, toName: nil, stationCount: nil,
+            minutes: 2, serviceStatus: nil, firstServiceTime: nil, lastServiceTime: nil)
+        #expect(transitLegUsesEnglish(last, lang: .en))
+        #expect(transitAlightStationName(last, lang: .en) == "")
+    }
 }

@@ -111,6 +111,8 @@ E25(위원장 요청 2026-09-07, 구현 2026-09-13). 판정 정본은 웹 `src/l
 
 소비자는 셋이고 **함께 고쳐야 화면과 도구가 같은 문장을 낸다**: 웹 브리핑 `TransitRouteBriefing` · WebMCP 도구 출력 `DirectionsView.buildToolPlan`(별도 평문 조립기라 같은 규칙을 두 번 쓴다) · iOS 길찾기 행 `RouteBriefing`. 도보 줄의 키·인자 순서는 Kit `TransitWalkLegText.resolve`가 계속 소유한다(ko 순서가 iOS 위치 인자 ABI라 `ios/i18n/arg-order.json`이 잠근다).
 
+**하차 줄의 역명은 구간 줄과 같은 영어 자격을 따른다**(2026-09-13 결함 수정): 웹은 `legEn`(노선·승차·하차 영문이 **다** 있을 때만 영어), iOS는 Kit `transitLegUsesEnglish(_:lang:)` + `transitAlightStationName(_:lang:)`으로 구간 줄(`transitLegLine`)과 하차 줄(`TransitRouteRows`)이 **한 술어**를 본다. 역명만 영문으로 바꾸면 위 줄은 "여의도", 아래 줄은 "Yeouido"가 되어 사용자가 같은 역으로 알아보지 못한다. 종전엔 그 판정이 앱 함수 안 인라인 `guard`라 하차 줄이 `toName`을 직접 읽었고 en 세션에서 "Get off at 여의도"로 떨어졌다. 배선은 `transit-exit-lines.test.ts` 소스 가드가 잠근다(`toName` 직접 읽기·인라인 판정 재도입 금지). WebMCP 도구 출력은 설계상 한국어 이름 고정이라 대상 밖.
+
 ## 강등·통지·표시 규칙
 
 ### iOS 통지 우선순위의 판별선은 "포커스가 움직이고, 그 통지가 착지 라벨로 대체될 수 없을 때 `.high`"다

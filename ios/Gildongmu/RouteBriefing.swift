@@ -62,8 +62,12 @@ struct TransitRouteRows: View {
             // 하차 줄(빠른하차 E5 + 하차 출구 E25)은 별도 문장이라 같은 Text에 합치지 않는다 —
             // 합치면 한 줄이 길어지고, 나누면 스와이프 한 번에 "무슨 열차"와 "어디로 내려 나가나"가
             // 갈린다. 둘 다 없으면 행 자체가 없다(3-state: 문구를 만들지 않는다).
+            // 역명은 구간 줄과 같은 영어 자격을 따른다(Kit `transitLegUsesEnglish`) — 구간 줄이 한국어면
+            // 하차 줄도 한국어 역명이다(줄 단위 원자성, E27). `toName`을 직접 읽지 말 것.
             if let text = alightLineText(
-                leg.quickExit, station: leg.toName ?? "", exitAlight: leg.exit?.alight,
+                leg.quickExit,
+                station: transitAlightStationName(leg, lang: AppLanguage.dataLocaleValue),
+                exitAlight: leg.exit?.alight,
                 lang: AppLanguage.current,
                 // 출구 문구 정본은 안내 세션과 같은 키다(Kit 카탈로그 밖이라 앱이 조회한다).
                 exitBound: { appLocalized("transitGuide.exitBound", $0) })
@@ -119,16 +123,13 @@ func transitLegLine(_ legs: [TransitRouteLeg], at index: Int, destinationName: S
     // 안으로, 앞 도보가 없으면 이 탑승 줄 끝으로.
     let boardExit = leg.mode == "walk" ? boardExitAfterWalk(legs, at: index) : boardExitOnBoardLine(legs, at: index)
     let ko = transitLegText(leg, destinationName: destinationName, boardExit: boardExit)
-    guard AppLanguage.dataLocale == "en" else { return (ko, ko) }
+    // 영어 자격은 Kit 술어 하나다 — 하차 줄(`TransitRouteRows`)이 같은 술어로 역명을 고른다.
+    guard transitLegUsesEnglish(leg, lang: AppLanguage.dataLocaleValue) else { return (ko, ko) }
     if leg.mode == "walk" {
-        // 마지막 도보(행선지 없음)는 목적지 문구라 영문 조각이 필요 없다. 행선지가 있으면 영문 행선지 필수.
-        guard leg.toName == nil || leg.toNameEn != nil else { return (ko, ko) }
         let en = transitLegText(
             leg, destinationName: destinationName, names: .english(bilingual: false), boardExit: boardExit)
         return (en, en)
     }
-    guard leg.lineNameEn != nil, leg.fromName == nil || leg.fromNameEn != nil,
-          leg.toName == nil || leg.toNameEn != nil else { return (ko, ko) }
     return (
         transitLegText(leg, destinationName: destinationName, names: .english(bilingual: true), boardExit: boardExit),
         transitLegText(leg, destinationName: destinationName, names: .english(bilingual: false), boardExit: boardExit)

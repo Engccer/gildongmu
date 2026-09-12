@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { alightLineText, boardExitAfterWalk, boardExitOnBoardLine } from "../transit-exit-lines";
@@ -146,5 +148,19 @@ describe("승차 출구는 정확히 한 줄이 싣는다", () => {
         expect(onWalk ?? onBoard ?? null).toBe(expected);
       });
     }
+  });
+});
+
+describe("iOS 배선 — 뷰 계층은 테스트 레인이 없어 소스로 잠근다", () => {
+  const swift = readFileSync(join(__dirname, "../../../ios/Gildongmu/RouteBriefing.swift"), "utf8");
+
+  it("하차 줄 역명은 구간 줄과 같은 영어 자격 술어를 지난다 (`toName`을 직접 읽지 않는다)", () => {
+    // en 세션에서 하차 줄만 "Get off at 여의도"로 떨어졌던 결함(2026-09-13). 구간 줄(`transitLegLine`)과
+    // 하차 줄(`TransitRouteRows`)이 Kit `transitLegUsesEnglish` 하나를 봐야 같은 역을 같은 이름으로 부른다.
+    expect(swift).toContain("station: transitAlightStationName(leg, lang: AppLanguage.dataLocaleValue)");
+    expect(swift).not.toMatch(/station:\s*leg\.toName/);
+    expect(swift).toContain("guard transitLegUsesEnglish(leg, lang: AppLanguage.dataLocaleValue)");
+    // 종전 인라인 판정이 되살아나면 두 자리가 다시 갈린다.
+    expect(swift).not.toContain('AppLanguage.dataLocale == "en"');
   });
 });
