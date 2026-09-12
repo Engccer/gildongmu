@@ -99,6 +99,18 @@
 
 ---
 
+### 경로 브리핑의 출구 번호는 한 경로에 정확히 한 줄에만 실린다
+
+E25(위원장 요청 2026-09-07, 구현 2026-09-13). 판정 정본은 웹 `src/lib/transit-exit-lines.ts` ↔ Kit `TransitExitLines.swift` 미러.
+
+**승차 출구를 실을 줄은 서버 문맥이 아니라 렌더되는 구간 배열의 직전 항목이 정한다** — 직전이 도보면 그 줄(`boardExitAfterWalk`), 아니면 탑승 줄 끝(`boardExitOnBoardLine`). 서버가 `exit.board`를 싣는 조건은 "역 밖 진입 승차"인데(`odsay.ts`의 `boardKindAt`), 그 판정은 **0m 도보를 건너뛰고** 그 앞을 본다. 반면 화면 목록은 0m 도보 leg를 지운다(`odsay.ts`의 `.filter(({ sp }) => !(sp.trafficType === 3 && (sp.distance ?? 0) === 0))`). 그래서 버스에서 0m 도보로 지하철에 갈아타는 경로는 **서버는 "역 밖 진입"이라 출구를 싣는데 화면엔 붙일 도보 줄이 없다**. 두 술어를 배타로 두면 그 어긋남과 무관하게 겹침도 누락도 불가능해지고, 불변식 테스트가 그것을 잠근다(변이 주입으로 검출 확인: 직전-도보 가드를 지우면 두 줄에 겹친다).
+
+하차 출구는 하차 줄 끝이다(**문 위치 먼저, 출구가 결론** — 위원장 판정 2026-09-13). 빠른하차가 없던 역은 종전에 하차 줄 자체가 없었으므로 `route.transit.alightAt`("{station} 하차")로 줄을 새로 세운다. 둘 다 없으면 줄을 만들지 않는다(3-state).
+
+⚠ **출구 문구는 안내 세션과 같은 키(`transitGuide.exitBound`)를 재사용한다** — 같은 정보를 두 화면이 다른 낱말로 말하면 사용자가 둘을 같은 것으로 알아보지 못한다. 그 대가로 **Kit 판만 `exitBound`를 클로저로 받는다**: `transitGuide`는 `KIT_NAMESPACES`(category·region·route·whereAmI) 밖이라 Kit 카탈로그에 그 키가 없고, `kit-extra`에 복제하면 두 벌이 되어 갈린다. 문자열 해석만 앱 층(`appLocalized`)에 맡기고 **형식 게이트(`transitValidExitNo`)와 분기는 Kit에 남긴다**(호출부가 게이트를 잊을 수 없다). 0 계열 차단은 **서버 `exitNumber`의 몫**이고 소비자 게이트는 안내 세션과 같은 술어다 — 브리핑만 더 조이면 같은 값이 한 화면에선 사라지고 다른 화면에선 들린다.
+
+소비자는 셋이고 **함께 고쳐야 화면과 도구가 같은 문장을 낸다**: 웹 브리핑 `TransitRouteBriefing` · WebMCP 도구 출력 `DirectionsView.buildToolPlan`(별도 평문 조립기라 같은 규칙을 두 번 쓴다) · iOS 길찾기 행 `RouteBriefing`. 도보 줄의 키·인자 순서는 Kit `TransitWalkLegText.resolve`가 계속 소유한다(ko 순서가 iOS 위치 인자 ABI라 `ios/i18n/arg-order.json`이 잠근다).
+
 ## 강등·통지·표시 규칙
 
 ### iOS 통지 우선순위의 판별선은 "포커스가 움직이고, 그 통지가 착지 라벨로 대체될 수 없을 때 `.high`"다
