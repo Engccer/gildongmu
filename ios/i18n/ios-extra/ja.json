@@ -227,6 +227,8 @@
       "leftRightTone": "左右の案内音の区別(実験)",
       "leftRightTonePan": "左右チャンネル(イヤホン)",
       "leftRightTonePitch": "音の高さ(低い=左)",
+      "trendHaptics": "進行状況の振動(実験)",
+      "trendHapticsFooter": "歩行中の接近、停止、案内の信頼性低下を振動でも知らせます。画面が点いている間だけ振動します。",
       "listenSpeed": "読み上げ速度",
       "listenSpeed1x": "1倍",
       "listenSpeed15x": "1.5倍",

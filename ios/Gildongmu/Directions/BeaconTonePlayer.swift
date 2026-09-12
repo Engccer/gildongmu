@@ -73,6 +73,12 @@ final class BeaconTonePlayer {
         ) ?? .default
     }
 
+    /// 진행 상태 진동 스위치(E30 실험판, 기본 꺼짐). 매 재생 시 읽어 전환이 다음 톤부터 반영된다.
+    /// 이 값이 가르는 톤은 `BeaconTone.hapticIsOptIn`이 참인 셋뿐이다.
+    private var trendHapticsEnabled: Bool {
+        UserDefaults.standard.bool(forKey: TrendHaptics.storageKey)
+    }
+
     /// 리소스 이름 키 — 같은 톤이 scheme에 따라 다른 파일을 쓴다(left·right).
     private var players: [String: AVAudioPlayer] = [:]
     private var observers: [NSObjectProtocol] = []
@@ -115,6 +121,8 @@ final class BeaconTonePlayer {
     private var revertTask: Task<Void, Never>?
     private let notifHaptics = UINotificationFeedbackGenerator()
     private let impactHaptics = UIImpactFeedbackGenerator(style: .medium)
+    /// 반복 상태 신호 3종의 폴백(미지원 기기) — 보행 내내 반복되므로 가볍게.
+    private let lightHaptics = UIImpactFeedbackGenerator(style: .light)
 
     /// 계측 라벨(`audioTransfer from=`) — 재생기가 둘이라 로그만으로 누가 넘겼는지 가른다(spec §4.6).
     private let label: String
@@ -232,14 +240,44 @@ final class BeaconTonePlayer {
     /// **모든 햅틱은 그 사운드의 실측 파형에 동기한다**(위원장 판정 2026-08-03 —
     /// 단발 제너레이터는 긴 소리와 어긋난다). 타이밍·세기는 각 mp3의 10ms RMS
     /// 엔벨로프·온셋 분석에서 추출한 값이다. **소리 파일을 갈면 재분석해 갱신할 것.**
-    /// 나머지 톤(closer·tick)은 과잉 진동이라 두지 않는다.
+    ///
+    /// **반복 상태 신호 3종(closer·tick·unreliable)은 설정 스위치를 켠 사용자에게만 진동한다**
+    /// (E30 실험판, 위원장 2026-09-13 — 꺼짐은 종전과 같다). 보행 내내 2~3초마다 반복되는
+    /// 신호라 기본으론 과잉 진동이지만, 소리를 못 듣는 상황(소음·청각 제약)에선 "잘 가고 있다"는
+    /// 긍정 신호가 손에도 있어야 진동만으로 안내를 따라갈 수 있다. 셋은 서로·기존 10종과
+    /// **질감이 다르다**: 가까워짐=부드러운 탭 1(멀어짐은 탭 2), 정지=탭 없는 긴 약한 지속음,
+    /// 신뢰 불가=불규칙한 약한 탭 3. 구분 가능성은 실기기 손 판정이 정본이다.
     ///
     /// ⚠ **햅틱은 백그라운드에서 나지 않는다(플랫폼 제약).** 주머니에 넣고 걷는 세션의
     /// 유일한 채널은 소리이고, 진동은 화면을 켜 두었거나 손에 든 동안의 **보강**이다
     /// (spec 2026-08-08 §"햅틱 백그라운드 확장: 플랫폼 미지원"). 그래서 어떤 신호도
     /// 진동에만 싣지 않는다 — 임박 큐도 소리·문장·진동 셋을 함께 낸다.
     private func haptic(for tone: BeaconTone) {
+        if tone.hapticIsOptIn, !trendHapticsEnabled { return }
         switch tone {
+        case .closer:
+            // 상승 2음(0.235초)이지만 손에는 **탭 하나**만 — 2초마다 반복되는 긍정 신호라 가볍게,
+            // 그리고 멀어짐(탭 2)과 개수로 갈리게 한다.
+            playHaptic(
+                events: [transient(at: 0, intensity: 0.45, sharpness: 0.4)],
+                curves: [],
+                fallback: { self.lightHaptics.impactOccurred() }
+            )
+        case .tick:
+            // 정지(0.52초) — 탭 없는 약한 지속음. 13종 중 유일하게 타격이 없는 질감이라 "멈춰 있음".
+            playHaptic(
+                events: [continuous(from: 0, duration: 0.5, intensity: 0.35, sharpness: 0.2)],
+                curves: [],
+                fallback: { self.lightHaptics.impactOccurred() }
+            )
+        case .unreliable:
+            // 신뢰 불가(0.47초) — 간격이 고르지 않은 약한 탭 3(흔들리는 질감 = 믿을 수 없음).
+            let jitter: [(Double, Float)] = [(0, 0.5), (0.15, 0.4), (0.4, 0.55)]
+            playHaptic(
+                events: jitter.map { transient(at: $0.0, intensity: $0.1, sharpness: 0.7) },
+                curves: [],
+                fallback: { self.lightHaptics.impactOccurred() }
+            )
         case .ahead:
             // 결정 지점 10m 앞 트릴 — 실측 타격 7회(0.68초). 소리와 같은 리듬을 손에
             // 얹어, 이어폰을 안 꽂았거나 소음 속에서도 "지금이다"가 전달되게 한다.
@@ -320,8 +358,6 @@ final class BeaconTonePlayer {
             )
         case .start, .stop:
             longBuzz()
-        default:
-            break
         }
     }
 

@@ -25761,6 +25761,86 @@
         }
       }
     },
+    "ios.settings.trendHaptics": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "진행 상태 진동 (실험)"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Progress vibration (experimental)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vibración de progreso (experimental)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vibration de progression (expérimental)"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vibrazione di avanzamento (sperimentale)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "進行状況の振動(実験)"
+          }
+        }
+      }
+    },
+    "ios.settings.trendHapticsFooter": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "걷는 동안 가까워짐, 정지, 안내 신뢰 불가를 진동으로도 알립니다. 화면이 켜져 있을 때만 진동합니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Also vibrates for getting closer, standing still, and unreliable guidance while walking. Vibrates only while the screen is on."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "También vibra al acercarte, al detenerte y cuando la guía no es fiable mientras caminas. Solo vibra con la pantalla encendida."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vibre aussi quand vous vous rapprochez, vous arrêtez ou quand le guidage n'est pas fiable pendant la marche. Vibre uniquement écran allumé."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vibra anche quando ti avvicini, ti fermi o quando la guida non è affidabile mentre cammini. Vibra solo con lo schermo acceso."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "歩行中の接近、停止、案内の信頼性低下を振動でも知らせます。画面が点いている間だけ振動します。"
+          }
+        }
+      }
+    },
     "ios.settings.weightFooter": {
       "localizations": {
         "ko": {
