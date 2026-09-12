@@ -25766,37 +25766,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "진행 상태 진동 (실험)"
+            "value": "진동 알림 확장 (실험)"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Progress vibration (experimental)"
+            "value": "Extended vibration alerts (experimental)"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Vibración de progreso (experimental)"
+            "value": "Alertas de vibración ampliadas (experimental)"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Vibration de progression (expérimental)"
+            "value": "Alertes vibrantes étendues (expérimental)"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Vibrazione di avanzamento (sperimentale)"
+            "value": "Avvisi a vibrazione estesi (sperimentale)"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "進行状況の振動(実験)"
+            "value": "振動通知の拡張(実験)"
           }
         }
       }

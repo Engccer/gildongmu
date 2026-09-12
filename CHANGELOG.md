@@ -13,7 +13,7 @@
 
 ### 진행 상태 진동 3종 — 실험판 설정 스위치 (E30, iOS)
 
-위원장 판정 "꺼짐 = 현재 동작"(2026-09-11 앱 내 토글 확정의 후속). 설정에 **"진행 상태 진동 (실험)"** 스위치(`TrendHaptics.storageKey`, 기본 꺼짐, `#if DEBUG || EXPERIMENTAL`)를 두고, 켜면 진동이 없던 가까워짐(`closer`)·정지(`tick`)·신뢰 불가(`unreliable`)에 진동을 더한다 — 부드러운 탭 1 / 탭 없는 긴 약한 지속음 / 불규칙한 약한 탭 3. 기존 10종 진동은 스위치와 무관하게 그대로다.
+위원장 판정 "꺼짐 = 현재 동작"(2026-09-11 앱 내 토글 확정의 후속). 설정에 **"진동 알림 확장 (실험)"** 스위치(`TrendHaptics.storageKey`, 기본 꺼짐, `#if DEBUG || EXPERIMENTAL`)를 두고, 켜면 진동이 없던 가까워짐(`closer`)·정지(`tick`)·신뢰 불가(`unreliable`)에 진동을 더한다 — 부드러운 탭 1 / 탭 없는 긴 약한 지속음 / 불규칙한 약한 탭 3. 기존 10종 진동은 스위치와 무관하게 그대로다.
 
 - 대상 집합은 Kit `BeaconTone.hapticIsOptIn`(정확히 셋, `TrendHapticsTests`가 잠금), 게이트는 `BeaconTonePlayer.haptic(for:)` 첫 줄 한 곳. 재생기가 공용이라 대중교통 승차 접근 톤에도 적용된다. 미지원 기기 폴백은 `.light` 임팩트.
 - 백로그 E30 판정문의 "화면 자동 잠금 억제"는 새로 만들지 않았다 — 도보·대중교통 세션이 원래 `isIdleTimerDisabled`를 켠다(백로그에 정정).

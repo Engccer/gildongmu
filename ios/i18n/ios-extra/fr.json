@@ -227,7 +227,7 @@
       "leftRightTone": "Son gauche/droite (expérimental)",
       "leftRightTonePan": "Canal stéréo (écouteurs)",
       "leftRightTonePitch": "Hauteur (grave = gauche)",
-      "trendHaptics": "Vibration de progression (expérimental)",
+      "trendHaptics": "Alertes vibrantes étendues (expérimental)",
       "trendHapticsFooter": "Vibre aussi quand vous vous rapprochez, vous arrêtez ou quand le guidage n'est pas fiable pendant la marche. Vibre uniquement écran allumé.",
       "listenSpeed": "Vitesse d'écoute",
       "listenSpeed1x": "1x",

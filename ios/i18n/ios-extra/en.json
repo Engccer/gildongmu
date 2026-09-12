@@ -227,7 +227,7 @@
       "leftRightTone": "Left/right cue sound (experimental)",
       "leftRightTonePan": "Stereo channel (earphones)",
       "leftRightTonePitch": "Pitch (low = left)",
-      "trendHaptics": "Progress vibration (experimental)",
+      "trendHaptics": "Extended vibration alerts (experimental)",
       "trendHapticsFooter": "Also vibrates for getting closer, standing still, and unreliable guidance while walking. Vibrates only while the screen is on.",
       "listenSpeed": "Listening speed",
       "listenSpeed1x": "1x",
