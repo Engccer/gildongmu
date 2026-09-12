@@ -133,6 +133,8 @@ final class TransitGuideModel {
     private var keepAliveDeniedLogged = false
     /// 승격 실패("화면이 꺼지면 소리가 나지 않는다") 문장 세션당 1회 latch — 판정은 매 톤(M7), 문장은 한 번.
     private var soundDegradedAnnounced = false
+    /// 백그라운드 소리 불가 진동의 세션당 1회 래치(문장 래치와 분리, `start`에서 리셋).
+    private var soundDegradedHapticFired = false
     /// 다음 대기 폴 결과를 직접 응답으로 통지(새로고침, §13.2) — 폴 1회 소비.
     private var refreshAnnounce = false
     /// 목적지 전환 조회의 latest-wins 토큰(스펙 §4.1) — 취소·재시도가 늦은 응답을 폐기.
@@ -228,6 +230,7 @@ final class TransitGuideModel {
         missedAnnouncement = false
         idlePaused = false
         soundDegradedAnnounced = false
+        soundDegradedHapticFired = false
         keepAliveDeniedLogged = false
         lastUserActionAt = ProcessInfo.processInfo.systemUptime
         state = initTransitGuide(route: guideRoute, now: nowMs())
@@ -1450,7 +1453,12 @@ final class TransitGuideModel {
         // 그때 `onDropped`가 latch를 풀어 다음 톤이 다시 시도한다 — 지연 창구의 상환 계약 그대로.
         if isTracking, !tones.isBackgroundAudible, !soundDegradedAnnounced {
             soundDegradedAnnounced = true
-            ResultHaptic.fire(.attention)  // 상태 변화 1회(E30 확장) — 문장이 버려져 재시도돼도 진동은 그 전이마다
+            // 진동은 세션당 1회 별도 래치(E30 확장): 문장 래치는 버려지면 풀려 재시도하지만 진동은
+            // 버려지지 않으므로 같은 래치에 묶으면 문장이 도달할 때까지 톤마다 반복된다(리뷰 검출).
+            if !soundDegradedHapticFired {
+                soundDegradedHapticFired = true
+                ResultHaptic.fire(.attention)
+            }
             deferredAnnouncer.announce(appLocalized("ios.beacon.soundBackgroundUnavailable")) { [weak self] in
                 self?.soundDegradedAnnounced = false
             }

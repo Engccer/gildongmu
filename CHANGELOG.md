@@ -19,6 +19,8 @@
 - **2단계(안내 중 전이, 전경만)**: 경로 복귀(성공 — 이탈 warning 진동의 짝) / 최종 접근 국면 진입(주의, 틱은 없음) / 재조회·전환·자동 채택 성공(성공)·실패(실패) / 대중교통 대안 경로 조회 결과·0건·실패 / 안내 소리 재생 불가(실패 — 진동이 유일한 대체 채널) / 백그라운드 소리 불가 경고(주의, 도보·대중교통).
 - **소리 결함 2건**: 대중교통 여정 완료가 도착 종이 아니라 다음 구간 시작음이었다 — Kit `transitEventProfile` `legAdvanced(final: true)` → `.arrive`(웹 `eventProfile` 미러, 테스트 짝) / 대중교통 유휴 자동 정지에 정지 톤(전경만, 도보 유휴 종료 동형).
 - 설정 footer 문안에 결과 진동 절 추가(6로케일, xcstrings 재생성). 소스 가드 `result-haptic-guard.test.ts`(직접 생성 자리 = 기존 발원지 4곳 + 창구, 스위치 게이트, 길찾기 통지 인자 전수, 유휴 정지 톤). spec 없음(bounded). 손 판정은 `docs/BACKLOG.md` §2 E30 행, 대본 `docs/FIELD-TEST.md` §4-2.
+- 코드 리뷰 반영(같은 날, APPROVE_WITH_FIXES): 소리 재생 불가 진동은 무음 **진입 에지** 1회(문장 가드 `statusText`는 거리 통지가 덮어 반복됐다) / 대중교통 백그라운드 소리 불가 진동은 문장 래치와 분리한 세션당 1회 래치 / 가드 정규식이 `.init`·`.sensoryFeedback`·`CHHapticEngine`·`kSystemSoundID_Vibrate` 우회까지 잡는다 / 제너레이터 재사용+`prepare()`. 기각·수용: 대중교통 완료 도착 종(2.2초) 위에 도보 인계 시작음(600ms 뒤)이 겹치는 것은 prewalk→대중교통과 대칭인 기존 수용 사항(피하려면 인계 지연을 `toneEndsAt` 기준으로 — 실승차 판정 뒤).
+- 접근성 감사 반영(같은 날, APPROVE_WITH_FIXES): 도보 안내 모델의 결과 진동은 `resultHaptic` 창구가 **억제 중(`outputSuppressed`, 받아쓰기) 건너뛴다** — 문장은 `post()`가 버리는데 진동만 나가면 뜻 없는 신호였다(6곳). 둘러보기·보행 인프라 완료 진동을 조각별 실패·부재로 3-state 분기. es·fr·it footer 나열을 병렬 구조로.
 
 ### 진행 상태 진동 3종 — 실험판 설정 스위치 (E30, iOS)
 

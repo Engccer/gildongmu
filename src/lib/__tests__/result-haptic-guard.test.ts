@@ -40,7 +40,12 @@ describe("결과 진동 소스 가드 (E30 확장)", () => {
       "Chat/ChatModel.swift",
     ]);
     const offenders = swiftFiles(APP)
-      .filter((f) => /UI(Notification|Impact|Selection)FeedbackGenerator\(/.test(readFileSync(f, "utf8")))
+      // 우회 형태까지 잡는다: `.init()` 생성, SwiftUI `.sensoryFeedback`, CoreHaptics 엔진, 시스템 진동 사운드.
+      .filter((f) =>
+        /UI(Notification|Impact|Selection)FeedbackGenerator(?:\(|\.init)|\.sensoryFeedback\(|CHHapticEngine|kSystemSoundID_Vibrate/.test(
+          readFileSync(f, "utf8"),
+        ),
+      )
       .map((f) => f.slice(APP.length + 1))
       .filter((rel) => !allowed.has(rel));
     expect(offenders).toEqual([]);
@@ -50,9 +55,9 @@ describe("결과 진동 소스 가드 (E30 확장)", () => {
     const src = read("ResultHaptic.swift");
     const fire = src.slice(src.indexOf("static func fire("));
     const gate = fire.indexOf("UserDefaults.standard.bool(forKey: TrendHaptics.storageKey)");
-    const generator = fire.indexOf("UINotificationFeedbackGenerator()");
+    const prepare = fire.indexOf("generator.prepare()");
     expect(gate).toBeGreaterThanOrEqual(0);
-    expect(gate).toBeLessThan(generator);
+    expect(gate).toBeLessThan(prepare);
     expect(fire).toContain("notificationOccurred(.success)");
     expect(fire).toContain("notificationOccurred(.warning)");
     expect(fire).toContain("notificationOccurred(.error)");
@@ -64,9 +69,21 @@ describe("결과 진동 소스 가드 (E30 확장)", () => {
     const src = read("Directions/DirectionsTabView.swift");
     expect(src).toContain("private func announce(_ message: String, haptic: ResultHaptic.Kind?)");
     expect(src).not.toMatch(/haptic: ResultHaptic\.Kind\? = /);
-    const calls = src.match(/(?<![\w.])announce\((?:[^()]|\([^()]*\))*\)/g) ?? [];
+    const calls = src.match(/(?<![\w])(?:self\.)?announce\((?:[^()]|\([^()]*\))*\)/g) ?? [];
     expect(calls.length).toBeGreaterThan(5);
     expect(calls.every((call) => call.includes("haptic:"))).toBe(true);
+  });
+
+  it("BeaconModel은 억제 가드 창구(resultHaptic)만 지나고 ResultHaptic.fire를 직접 부르지 않는다", () => {
+    // 문장은 post()가 억제 중 버리므로 진동도 같은 조건으로 건너뛴다(a11y 감사 2026-09-13).
+    const src = read("Directions/BeaconModel.swift");
+    const direct = src.match(/ResultHaptic\.fire\(/g) ?? [];
+    expect(direct).toHaveLength(1); // 창구 본문 한 곳
+    const gate = src.indexOf("private func resultHaptic(_ kind: ResultHaptic.Kind)");
+    expect(gate).toBeGreaterThanOrEqual(0);
+    const body = src.slice(gate, src.indexOf("\n    }\n", gate));
+    expect(body.indexOf("guard !outputSuppressed else { return }")).toBeLessThan(body.indexOf("ResultHaptic.fire("));
+    expect((src.match(/(?<![\w])resultHaptic\(\./g) ?? []).length).toBeGreaterThan(5);
   });
 
   it("대중교통 유휴 정지는 전경 한정 정지 톤을 낸다", () => {

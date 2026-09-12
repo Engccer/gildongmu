@@ -23,9 +23,12 @@ enum ResultHaptic {
         case success, attention, failure
     }
 
+    /// 재사용 인스턴스 — 호출마다 새로 만들면 첫 진동이 늦는다. `prepare()`는 발화 직전에.
+    private static let generator = UINotificationFeedbackGenerator()
+
     static func fire(_ kind: Kind) {
         guard UserDefaults.standard.bool(forKey: TrendHaptics.storageKey) else { return }
-        let generator = UINotificationFeedbackGenerator()
+        generator.prepare()
         switch kind {
         case .success: generator.notificationOccurred(.success)
         case .attention: generator.notificationOccurred(.warning)

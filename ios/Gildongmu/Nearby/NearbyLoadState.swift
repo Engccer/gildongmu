@@ -173,7 +173,8 @@ func nearbyLoadedNotice(count: Int, kind: NearbyCountKind) -> NearbyLoadedNotice
 }
 
 /// 이벤트→VO 발화 매퍼 1벌(스펙 §4): 전락 통지 3종은 기존 announce* 그대로,
-/// loaded 문구·진동만 도메인 클로저. emptyResult는 WhereAmI만 문구를 준다.
+/// loaded 문구·진동만 도메인 클로저. emptyResult 문구는 현재 소비 도메인이 없다(계약만 유지 — 11화면의
+/// fetch가 전부 non-nil을 돌려주고 0건은 loaded 문장으로 간다).
 /// 결과 진동(E30 확장)은 통지와 같은 자리에서 한 번: loaded는 도메인이 고른 종류, 0건 전락은
 /// `attention`, 실패·권한·정밀도 전락은 `failure`, 커버리지 밖은 오류가 아니라 안내라 `attention`.
 @MainActor
