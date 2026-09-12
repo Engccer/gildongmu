@@ -88,4 +88,4 @@ iOS는 SwiftUI + GildongmuKit(SPM), 판정 로직은 웹과 미러링해 공유 
 
 ## 관련 프로젝트
 
-[dodo-planet](https://www.dodoplanet.space)(가족 여행 가이드 PWA)과는 상호 보완적인 두 독립 프로젝트로, 검증된 기능의 이식이 **양방향**으로 일어난다. 그래서 스택·컨벤션을 맞추고 `src/lib/`는 React·Next 비의존으로 유지한다.
+[dodo-planet](https://www.dodoplanet.space)(가족 여행 가이드 PWA)과는 상호 보완적인 두 독립 프로젝트로, 검증된 기능의 이식이 **양방향**으로 일어난다. 그래서 스택·컨벤션을 맞추고 `src/lib/`는 React 비의존으로 유지한다(Next 의존은 캐시 래퍼 `unstable_cache`뿐).
