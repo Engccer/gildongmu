@@ -286,6 +286,11 @@ spec `2026-09-02-express-stops-data-design.md`. 둘 다 `includeStops=1` 응답�
 
 ## 실시간 혼잡도 (`seoul-congestion` + `congestion-area.ts` → `congestion.ts`)
 
+### 실시간 혼잡도 (CLAUDE.md 이관)
+
+서울 `citydata_ppltn`, seed 116영역. ⚠ **중심-반경 원 금지** — 판정은 최근접 구성 지점 ≤300m, 중첩 시 중심 최근접 1개. 봉투가 3형째라 공용 파서 스코프 밖. 캐시는 좌표가 아니라 **영역 코드** 단위 5분이고 `area:null`은 오류가 아니다(서울의 91%).
+
+
 서울 `citydata_ppltn`. spec `2026-08-01-realtime-congestion-design.md`.
 
 - 영역 경계가 미공개라 종전엔 착수 불가로 판정했는데, 전체 `citydata`의 `SUB_STTS`·`BUS_STN_STTS`가 **구성 지하철역·버스정류장 좌표(WGS84)**를 준다. seed는 `scripts/build-congestion-areas.mjs`(116영역·1,969지점, 가드 4종).
@@ -336,6 +341,8 @@ ko 기본 Tmap(2026-07-30 위원장 판정). 도보와 반대 구도로, Tmap `d
 ### 결정 지점 안내는 두 층이고 거리가 다르다 (CLAUDE.md 이관)
 
 **결정 지점 안내는 두 층이고 거리가 다르다**(2026-08-09): 40m `announceSteps`(전문)가 *무엇을* 할지, `imminent`(짧은 명령형 + 행동별 톤 + 햅틱, 유도식 10 + `PROJECTION_LAG_M` = 현재 20m — 초기 10m는 투영 지연에 잡아먹혀 회전을 지난 뒤 발화한 위험 실사고로 상향했고, lag 자체는 실보행 재판정 2026-08-12로 15→10)가 *지금이다*를 알린다. **walk 직진 구간의 주기 통지는 단문이다**(같은 재판정 — "{target}까지 {distance} 직진하세요", `walkPeriodicLine` ↔ `GuideText.periodicWalk`): 여러 행동을 한 문장에 싣는 조망은 40m 전문 1회의 몫이고 반복 채널에 실으면 과잉이다(car는 K2부터 `carPeriodic` "{거리} 앞 {명령}" 단문). 문구 선택 분류기 `walkStepAction`(웹 `walk-action.ts`, 재작성 문장에 부분 문자열 판정)은 **서버 `attachStepActions`에서 돌고** 리듀서는 그 결과(`step.action`)만 읽는다(E16 축3) — Kit에는 분류기가 없다(2026-09-02 삭제, `GuideActionSource`·`stepActionFor`·`buildDisplayUnits(source:)`도 함께). 클라이언트에 문장 폴백을 되살리지 말 것. ⚠ **회전 표지를 건널목보다 먼저 본다** — "횡단보도"는 지명의 일부로 등장하므로("천호역 횡단보도에서 왼쪽으로 돌아…") 순서를 뒤집으면 좌회전 지점에서 "횡단보도를 건너세요"가 나간다. "좌측"·"우측"은 회전이 아니라 어느 쪽 횡단보도인지라 **마커가 아니다**. ⚠ **래치는 스텝 단위다** — 유닛 끝으로 뛰면 묶음의 첫 스텝만 분류돼 묶음 **안**의 회전이 통째로 침묵한다(실측 2건). ⚠ **`imminentUpTo < announcedUpTo`가 발화 조건이고 그래서 전문 낭독보다 앞이다.** ⚠ **이미 지난 경계엔 발화 금지**(하한 없으면 uncertain 뒤 창이 경계를 넘겨 착지한 fix에서 모퉁이를 돈 뒤에 명령이 나간다). ⚠ **행동 없는 경계는 발화만 건너뛰고 래치는 전진.** ⚠ **40m 톤은 임박 층이 없는 프로파일(`imminentAheadM === null`)에만 남는 폴백이다** — walk·car 둘 다 임박 층이 있어(2026-08-23 K2부터 car도) 40m에선 톤을 떼지 않는다. 임계 축만 다르다(walk 거리 20m, car는 아래 시간 축). ⚠ **햅틱은 백그라운드 미지원**이라 어떤 신호도 진동에만 싣지 않는다. ⚠ **마지막 결정 지점을 최종 접근이 선점하는 한계는 의도적 수용이다** — 미루게 하면 이탈 판정이 마지막 50m까지 연장돼 A6 헛경고율이 2배가 된다(실측). 설계는 spec `2026-08-09-walk-imminent-cue-design.md`. **임박 큐는 한 결정 지점에 세 번이고 문장은 첫 번만이다**(2026-08-26 위원장 피드백, spec `2026-08-26-imminent-triple-cue-and-session-idle-design.md`): 단계는 `[imminentAheadMeters, ...imminentRepeatM]`(walk 20·15·10m — 5m·0m 요청도 같은 `+lag` 유도식이라 0m 단계가 지난 경계 폐기 하한과 충돌하지 않는다), 상태 `imminentStage`, 이벤트 `stage`. fix당 이벤트 1개라 건너뛴 단계는 소급하지 않고, 반복 단계는 `lastAnnouncedAt`을 갱신하지 않는다(재통독 리듬이 밀린다). car는 `imminentRepeatM: []`. ⚠ 소비자가 `stage > 0`에 문장을 내면 4초 안에 셋이 겹친다. **임박 큐의 소리는 행동별 5종이다**(2026-08-22 N2): `imminentTone(action)`(웹 `walk-action.ts` ↔ Kit `WalkAction.swift`)이 횡단보도·왼쪽·오른쪽·뒤로 돌기(`WalkAction.back`)·그 외(`ahead`)를 가르고, 6a 방출부는 이 함수만 지난다(`"ahead"` 상수로 되돌리면 route-guide fixture 4건이 실패한다). 소리 파일은 손으로 만들지 않는다 — `scripts/build-guide-tones.py`가 정본이고 햅틱 타이밍도 그 상수에서 나온다. ⚠ `BeaconTone.left/.right`는 케이스가 행동이고 파일은 `LeftRightToneScheme`이 고른다(실기기 선택 대기, `docs/BACKLOG.md` N2).
+
+**CLAUDE.md 요지 전문(2026-09-13 축약 전, 원문 그대로)**: **결정 지점 안내는 두 층이고 거리가 다르다**: 40m `announceSteps` 전문 + `imminent` 짧은 명령형(walk 20·15·10m 삼중 큐, 문장은 첫 번만; car는 반복 없음). 분류기 `walkStepAction`은 서버 `attachStepActions`에서만 돌고 리듀서는 `step.action`을 읽는다(클라이언트 폴백 금지). 임박 큐 소리는 행동별 5종 `imminentTone(action)`, 파일은 `scripts/build-guide-tones.py`. 래치·하한·순서 함정이 많다. → INTEGRATIONS
 
 ### 자동차 임박 큐는 문장이 아니라 서버 `turnType` 투영(`action`)으로 행동을 고르고, 없으면 침묵이다 (CLAUDE.md 이관)
 
@@ -390,6 +397,8 @@ spec `2026-09-11-transit-background-poll-design.md` §4.2.1·§4.3(PORTS 세 구
 - **원복 자격 불변식** `didPromote == (마지막으로 낸 적용 동작의 카테고리 == .playback)`은 리듀서 층에서 성립하고 이벤트 9종 길이 ≤5 전수 열(59,049)이 단언한다(PORTS ② 미재현). 앱 층 반례는 `apply` 실패 폴백뿐이고 종료 시 `.ambient` 재적용 1회로 무해.
 - **`.categoryChange` 메아리 식별**(PORTS ③): `routeChangeNotification`을 reason 없이 받으면 자기 `setCategory`마다 `reconcile(rebuild:)`가 다시 돌아 플레이어를 재생성한다(통지가 시작 톤 뒤에 오면 절단 — 전달 순서는 실기기 판정). 판별은 시간 창이 아니라 **통지 시점 세션의 category·options가 우리가 적용한 값(`.mixWithOthers`)과 같은가**: 같으면 메아리(무시), 다르면 남(채팅 TTS `activatePlaybackSession`의 `.duckOthers`)이 갈아치운 것이라 `.categoryTakenOver` → 재생성 없이 재적용. 전면 필터는 그 회복 신호까지 없앤다. 매퍼 `guideAudioRouteChangeEvent(reason:matchesApplied:)`(Kit, AVFoundation 비의존), `mediaServicesWereReset`은 매퍼를 지나지 않고 `.routeChanged`. 재생성 분기는 `toneEndsAt`을 지운다(유령 종료 시각으로 발화가 미뤄지지 않게).
 
+**CLAUDE.md 요지 전문(2026-09-13 축약 전, 원문 그대로)**: **오디오 재생기는 둘(도보·대중교통)이고 미뤄진 원복은 최신 소유자에게 이전된다**(`.ownershipTransferred` — 인계에서 먼저 끝난 쪽의 `.ambient`가 새 세션 위에 떨어지지 않게). 활성화는 카테고리와 다른 축(`isActive`, 인터럽션 `.began`·`play()` 재확보), route 변경 `.categoryChange`는 **현재 세션 값 == 적용값** 대조로 자기 메아리만 거른다(`guideAudioRouteChangeEvent`) — 전면 필터 금지(채팅 TTS 탈취 회복 신호). → INTEGRATIONS
+
 ### riding 미관측 상한은 시계가 아니라 조회 횟수다 (CLAUDE.md 이관, 2026-09-11 A36 ①)
 
 spec 같은 문서 §4.1. 종전 `now - ridingSince >= 10분`은 09-05 실사고에서 주머니에 넣어 둔 9분(폴 0회)을 "차량 확인 안 됨"의 근거로 셌다. 지금은 `ridingPolls`(Kit `TransitGuideState` ↔ 웹) — 이번 riding 진입 이후 하차역 목록 조회가 **결과(ok·empty)를 돌려준 횟수**, 상한 `transitNeverSeenPolls`/`NEVER_SEEN_POLLS` = 10(미등장 riding 주기 60초 × 10 = 종전 10분 등가, 잠정 — BACKLOG §2 A36). 세지 않는 것: `failed`·`unsupported`(관측이 아니다), 세대·순번 불일치 폴, waiting·boarding·arrived 폴(증가에 `phase == riding` 가드 — 필드 이름을 거짓으로 만들지 않기 위해서이고 `enterRiding` 리셋 때문에 실해는 없어 fixture 검출력 0), 비관측 잠금(폴 0 + 조기 반환). `recovered` 폴은 세되 판정하지 않는다(현행). 리셋은 `enterRiding`(관측·선언·**탑승 변경 취소 복귀** — `restoreBoarding`은 `enterRiding`을 지난다)과 riding을 벗어나는 전이 전부. 공유 하네스 `expect.ridingPolls` 키가 두 실행기에서 직접 단언한다. 백그라운드 폴이 살아 있으면 전경·배경 무관하게 약 10분에 차고, 권한이 없어 keep-alive가 못 열리면 전경에서 조회한 횟수만 찬다 — 어느 쪽이든 "조회 10번 만에 못 봤다"는 뜻은 같고, 벽시계 백스톱은 위원장 판정과 충돌해 두지 않았다(설계 리뷰 M1 기각).
@@ -404,6 +413,8 @@ spec 같은 문서 §4.2. 위원장 판정(2026-09-10)의 전제 "도보와 같�
 - **프로세스 생존 = keep-alive 위치 스트림**(위원장 판정 ⓐ 2026-09-11; ⓑ 살리지 않음·ⓒ 무음 오디오 루프(심사 거절 사유)·ⓓ 서버 푸시 기각). `LocationService.startKeepAliveUpdates()`: `kCLLocationAccuracyKilometer`·`distanceFilter 500`·`.otherNavigation`·**`pausesLocationUpdatesAutomatically = false`**(기본값 true면 정차·터널에서 시스템이 정지로 판단해 갱신을 멈추고 백그라운드 근거도 사라진다)·`allowsBackgroundLocationUpdates`(선언 가드). 권한(When In Use)이 없으면 열지 않고 로그 `keepAlive denied` — 팝업을 새로 띄우지 않는다. `TransitGuideModel.updateKeepAlive()`가 **riding ∧ 폴 주기 > 0 ∧ 비유휴**에만 켠다(waiting·boarding·비관측 잠금·확정 도착은 끈다). 좌표는 소비하지 않는다 — keep-alive **단독** 구간의 fix는 공유 스토어에 쓰지 않는다(`isKeepAliveOnly`, 구조로 보장. 저장 게이트 100m는 가정이지 보장이 아니다 — 도심 Wi-Fi에서 그보다 좋은 fix가 온다, 구현 리뷰 M3·C7). 세 스트림(비콘·keep-alive·단발)의 매니저 설정은 `applyProfile(_:)` 한 함수이고, 끄는 쪽(`stopBeaconUpdates`·`endOneShotIfIdle`·`stopKeepAliveUpdates`)은 셋을 다 본다 — 종전엔 단발 취득이 `Best`를 대입하고 되돌리지 않았고 비콘만 보고 매니저를 멈췄다(설계 리뷰 M2). 상태바 위치 표시는 끌 수 없다(도보와 동일). 정식 승격 전엔 "좌표를 실제로 쓰는 ⓐ′" 판정이 필요하다(BACKLOG §2 E36 ⑩).
 - **유휴 폴 정지**(설계 리뷰 B3): `transitSessionPollCap` 240은 상한이 아니라 감속 문턱이고 대중교통엔 A23 안전망이 없어, `pausedInBackground`를 지우면 잊힌 세션이 밤새 폴한다(8시간 ≈ 480회 = 공유 예산 절반 + 위치 스트림). `transitIdlePollLimitMs(legMinutes:)` = max(30분, 2×구간 소요)(Kit `TransitIdle.swift`, 잠정). 축은 **마지막 사용자 조작 이후 경과**(`lastUserActionAt` — 세션 시작·`dispatch`의 비폴 입력·새로고침·역 선택·조망·전경 복귀). 폴 루프가 다음 폴 직전에 판정해 `idlePaused`면 폴·keep-alive를 멈추고 **세션은 유지**(A23과 다르다 — 지연 열차에 타고 있는 사용자를 끊지 않는다). 어떤 조작·전경 복귀든 `touchUserAction()`이 풀며 "안내를 재개합니다. {상태}" + 즉폴. 리듀서에는 시계 축을 넣지 않는다.
 - 백그라운드 전용 주기는 두지 않는다(첫 관측 지연 2배 — E36의 목적 반감). 30분 riding 세션 ≈ 30~120회로 전경에서 화면을 켜 둔 오늘의 세션과 같고, 세션당 상한은 유휴 한계 ÷ 주기. 웹 미러 없음(탭이 살아 있어야 도는 별개 축, `visibilitychange` 정지 유지).
+
+**CLAUDE.md 요지 전문(2026-09-13 축약 전, 원문 그대로)**: **대중교통 안내는 백그라운드에서도 폴하고, 프로세스를 살리는 것은 오디오가 아니라 riding 동안의 keep-alive 위치 스트림이다**(E36 — `audio` 모드는 소리를 내는 동안만 앱을 살린다). 백그라운드 톤 허용 집합은 `trackingStarted` 하나(`playTone(_:allowedInBackground:)` 기본값 없음, 소스 가드), 음성은 `post` 전경 게이트(복귀 시 버린 통지가 있을 때만 상태 한 문장), 세션 수명 상한은 유휴 폴 정지 `transitIdlePollLimitMs`(max(30분, 2×구간 소요) — `transitSessionPollCap`은 상한이 아니라 감속 문턱). `LocationService`의 세 스트림(비콘·keep-alive·단발)은 프로파일 한 함수를 지나고 끄는 쪽이 셋을 다 본다. → INTEGRATIONS
 
 
 ## 이탈 판정 방위 축 (`course-derivation.ts`·`guide-course-axis.ts` ↔ `CourseDerivation.swift`·`GuideCourseAxis.swift`)
@@ -578,9 +589,13 @@ spec 같은 문서 §4.2. 위원장 판정(2026-09-10)의 전제 "도보와 같�
 
 **안내 세션은 앱 수명이고 시트를 내리는 제스처는 최소화다**(2026-08-22 N1, spec `2026-08-22-guide-session-minimize-design.md`): `GuideSession.shared`가 `BeaconModel`·`TransitGuideModel`을 소유하고, 루트 `GildongmuApp`이 `.sheet(item: presentedScreen)` **하나**와 띄우고, 띠바(`GuideBandView`)는 각 탭 콘텐츠가 든다(배치 계약은 위 K1 항목). 길찾기 탭은 모델을 빌려 쓸 뿐이라 `onDisappear`에서 `teardown()`을 부르지 않는다(부르면 탭 전환이 곧 세션 종료 — 원증상). **시작은 전부 `GuideSession.startBeacon/startTransit`을 지난다**(거부 게이트 + 다른 모델 잔여 화면 소거) — `beacon.toggle`은 길찾기 탭 인라인 겸용 버튼(추적 중 "중지") 한 곳뿐이고 `guidance-gate-drift.test.ts`가 네 형태의 호출 수를 센다. `GuideSessionCoordinator.claim`은 점유 중 **nil(거부)**이지 종전처럼 기존 세션을 멈추지 않는다. ⚠ **dismiss 콜백은 모델 상태로 뜻을 정하지 않는다** — `.sheet` set(nil)은 무조건 `isMinimized = true`이고, 도착·중지 종료 화면의 소거는 그 화면 "닫기" 버튼의 명시 `clearArrival()`뿐이다(⚠ 2026-09-11 E34로 **인계 제안 화면이 삭제**돼 `clearWalkHandoff()`를 부르는 버튼은 없다 — 지금 그 함수를 부르는 자리는 뷰가 아니라 `GuideSession`(파일은 `GuideSessionCoordinator.swift` — ⚠ `GuideSessionCoordinator`는 Kit의 **다른 타입**이다)의 `startBeacon`·`acceptWalkHandoff` 둘이고, 아래 §"확정 도착·비관측 riding은 폴 주기 0이고…" 절이 정본이다)(`dismiss()`로 되돌리면 스와이프가 도착 직후 완료될 때 방금 생긴 도착 화면을 지우는 경합이 돌아온다). 루트 시트가 길찾기 폼에 닿는 길은 `GuideFormSyncStore.post/take`(탭이 안 보일 때 쌓인 값은 탭 `.task`가 소비). 폼 도착지 변경은 세션을 멈추지 않는다(조회 허용). 장소 상세가 대중교통 목적지 변경을 준비해도 **시트를 자동으로 올리지 않는다**(장소 상세가 이미 시트인 경로에서 루트 presentation이 조용히 거부된다) — 띠바가 "경로 선택 대기"를 보여 준다. 띠바는 live region이 아니고 거리는 10m 양자화(`bandDistanceMeters`), 낭독은 `spokenDistanceUnits`.
 
+**CLAUDE.md 요지 전문(2026-09-13 축약 전, 원문 그대로)**: **안내 세션은 앱 수명이고 시트를 내리는 제스처는 최소화다**(N1: `GuideSession.shared`가 모델 소유, 루트 `.sheet(item:)` 하나, 시작은 전부 `startBeacon/startTransit` — `guidance-gate-drift.test.ts`가 호출 수를 센다). dismiss 콜백은 무조건 `isMinimized = true`, 소거는 "닫기" 버튼의 `clearArrival()`뿐이다(E34로 인계 제안 화면이 사라져 `clearWalkHandoff()`를 부르는 버튼은 없다 — 지금은 `GuideSession`이 부르는 내부 소거다). → INTEGRATIONS
+
 ### 근사 잠금은 두 갈래다 — 지방버스만 관측하고, 그 밖은 비관측이다
 
 **근사 잠금은 두 갈래다**(2026-09-11 A34 ②+①, spec `2026-09-11-transit-reboard-and-handoff-design.md` §4.2): `isApproxTransitLock`(식별자 없음) 안에서 `transitLockIsUnobserved` = 근사 ∧ `mode != tagoBus`. 지방버스는 설계상 근사가 유일한 추적이라 종전 근사 분기(방향 일치 ∧ 잔여 최소, `approxVehicleChanged`, 근사 주석)를 그대로 소비하고, 지하철·서울버스의 근사("열차 정보 없이 계속"·서울버스 "이미 탑승했습니다")는 **비관측**이다 — `transitPollIntervalMs`가 0을 내고 `handlePoll`이 매칭·미등장 판정을 지나지 않아 `trackingStarted`·`countdown`·`approxVehicleChanged`·`signalLost`·`neverSeen`이 구조적으로 나지 않는다(표시만 가리면 톤 계층이 잔여 앵커로 소리를 낸다 — 1선은 구조). 어림값(하차역 코앞 열차를 내 열차로 잡던 잔여 최소)은 그래서 폐지됐고, 출구는 `advance` 상시 + 탑승 변경 + 안내 종료. **상태 문장 선택기 `signalStatusText(_:phase:isTrain:unobserved:)`(웹 `signalText`)의 두 Bool은 기본값이 없다** — 상시 표시·백그라운드 복귀 통지·조망 침묵 행 세 소비자가 컴파일로 강제되지 않으면 어느 하나가 "하차역에 가까워지면 열차 위치가 표시됩니다"(A33)를 폴을 하지 않는 상태에서 거짓으로 낸다(설계 리뷰 M1). 비관측 riding 상태줄 = 문맥 + `stateRidingUnobserved(Bus)` + 급행 선언 문장 — 잔여·프레임·신선도·근사 주석은 내지 않고(신선도는 폴이 없어 정보가 아니다, 근사 주석의 판별자는 국면이 아니라 `leg.trackMode == .tagoBus`), 계측 `ridePoll`도 0건이다(의도된 상실). ⚠ `transitFindLockedItem`의 급행 우선 분기는 은퇴했다 — 유일한 소비자가 지하철 근사 잠금이었다. 급행 확인 프롬프트에 남는 가치는 통과 급행 잠금 거절(`transitDeclaredExpressVerdict == .skips`)과 `lock.express` 상시 문장이며, 프롬프트는 [열차 정보 없이 계속] 앞에만 선다(목록 경로는 후보 행의 `unreachable(expressSkipsAlight)`가 하차역 기준으로 이미 막는다). **"이미 탑승했습니다" 흐름**(지하철만 — 역 이름 조회가 성립하는 수단): `aboardStep` pickStation(전용 질문 `aboardStationPrompt` "지금 어느 역을 지나고 계신가요?" — L3의 "지금 어느 역에 계신가요?"와 다른 질문이다, 목록이 성립하는 조건이 "내 열차가 그 역에 접근·정차·출발 중"이므로) → pickVehicle(스냅숏·3분 버퍼 소거, `transitAboardCandidates`로 arvlCd 0~5만 — 99는 사용자가 타고 있을 수 없다. 이 필터가 N3의 승차 정류소 도착 관측과 같은 급의 증거라 `boardAboard` 선언 식별 잠금이 확정 도착 권한을 갖는다; 실승차에서 조기 도착 선언이 보이면 `certain: false` 갈래로) → 후보 선택 `boardAboard(lock)`(waiting → riding declared, boarding을 지나지 않는다 — `vehicleSelected` 문장이 이미 탄 사용자에게 거짓이고 boarding 국면의 착지가 예약되기 때문(N3 ① 2026-09-11 이후 그 착지 대상은 `.confirmBoarded`가 아니라 `.status`다 — 근거의 이 절반은 대상 이름만 바뀌었고 여전히 유효하다). `selectedDescription`을 함께 세워 `boarded` 통지·riding 상태줄에 "선택한 차량"을 붙인다) / 0건이면 [열차 정보 없이 계속] → 비관측 잠금. `aboardStep`은 대기 국면 전용이라 국면이 waiting을 벗어나면 `dispatch`가 소거하고(`reboardPickerActive`와 같은 규칙), 단계 변화는 급행 프롬프트도 접는다. **하차역 선언 `declareArrived`**(A37 ②): waiting·riding에서 arrived(certain)로, `phaseGen`을 올려 선언 전에 나간 폴을 폐기, `lock` 유지(급행 문장 근거), `handleChangeBoarding`은 확정 도착에서 no-op(허용하면 previousPhase = riding으로 복귀해 막다른 길이 되살아난다). 통지는 관측 도착과 같은 지연 창구(도착 종 2.25초 뒤 — 즉시 창구는 문장 앞머리를 자른다). arrived 국면 상태 문장은 신호와 무관하게 `stateArrived` 하나.
+
+**CLAUDE.md 요지 전문(2026-09-13 축약 전, 원문 그대로)**: **근사 잠금은 두 갈래다 — 지방버스만 관측하고, 그 밖은 비관측이다**(A34 ①, 그 밖 = 지하철·서울버스 "열차 정보 없이 계속". `transitLockIsUnobserved` ↔ 웹 `isUnobservedTransitLock`: 폴 0·매칭 0·어림값 표시 0, 상태 문장은 `signalStatusText(…, unobserved:)` 필수 인자로 세 소비자가 같은 선택기). "이미 탑승했습니다"는 역부터 묻고 그 역에 **있는** 열차(arvlCd 0~5, `transitAboardCandidates`)만 세워 `boardAboard`로 riding 직행하며, 역 선택의 하차역 행은 어느 흐름이든 `declareArrived`(확정 도착)다. → INTEGRATIONS
 
 ### 확정 도착·비관측 riding은 폴 주기 0이고 즉폴도 예외가 아니다
 
@@ -590,12 +605,21 @@ spec 같은 문서 §4.2. 위원장 판정(2026-09-10)의 전제 "도보와 같�
 
 **승차 전 도보(prewalk)는 대중교통 세션이 아니라 그 앞의 도보 세션이고, 종료 화면을 남기지 않는다**(2026-08-30 A25, spec `2026-08-30-transit-prewalk-handoff-design.md`): `GuideSession.startTransit`이 `transitPrewalkTarget`(Kit ↔ 웹 미러, 공유 fixture `prewalk` 키)이 있으면 `BeaconModel`을 `markPrewalk` 상태로 먼저 돌리고, `onSessionEnd(reason)`로 `startAfterPrewalk(prewalkCompleted:)`를 잇는다(600ms, §14.2 동형). ⚠ **종료 화면 분기(확정·추정·`stopLeavingSummary`)는 `stop()` 뒤에 도는데 `stop()`이 `prewalkTarget`을 지우므로 `stop()` 앞에서 지역 변수로 캡처한다** — 빠뜨리면 `arrivalDest`가 되살아나 `screen`의 비콘 우선순위가 대중교통 시트를 영구 은폐한다. ⚠ **콜백 발화점은 `stop()` 말미(다음 MainActor 턴)와 `begin()` Task 말미(`.startFailed`) 둘뿐**이다 — 종료 경로가 7곳이라 경로마다 부르면 하나를 빠뜨린 경로가 조용히 연결을 끊는다. 사유는 `pendingEndReason` 대입(`stop()` 직전)이고 `stop()`·`begin()`이 `.ended`로 되돌린다. ⚠ prewalk 세션엔 잊힌 세션 안전망(`maybeEndIdleSession`)이 걸리지 않는다 — fix 두절 10분은 대개 지하 진입이고 그때 끝내면 그 경우를 위한 "{역} 도착" 선언 버튼까지 사라진다. 도보 중 사용자 중지·권한 상실은 전체 종료, 시작 실패는 `prewalkCompleted: false`로 바로 대기 국면(도보 문맥 유지 — 아직 걷지 않았다). 웹은 `TransitGuidePanel`의 `prewalk` 상태 + `DistanceBeacon.onSessionEnd`가 같은 정책(선언 버튼의 자기 유도 "ended"는 `declaredRef`로 무시). `transit.start`·`useTransitGuide.start` 시그니처는 불변이라 prewalk가 없는 경로는 새 분기를 지나지 않는다. ⚠ **prewalk 도보 세션의 `destinationLabel`은 표시 전용이라 대중교통 문구와 같은 언어의 같은 이름을 넘긴다**(iOS는 `transitPrewalkLabel`이 Kit 정규화기까지 봉해 준다) — `GuideText.periodicWalk`·`progress`·`finalApproachEnter`로만 가고 조인하는 소비자가 0이다. 한쪽만 영문화하면 en 세션 한 흐름이 `Walk to Cheonho` → `천호까지 200m` → `Arrived at Cheonho`로 들리고, 화면을 못 보는 사용자에겐 두 이름이 같은 곳이라는 근거가 없다(2026-09-01 a11y 감사 검출 — **부분 적용이 무적용보다 나쁜 자리**다).
 
+### 실시간 안내 판정 계층은 전부 순수 함수이고 웹·Kit 미러다
+
+**실시간 안내 판정 계층은 전부 순수 함수이고 웹·Kit 미러다**(`toneLayerStep`·`motionStep`·`trendStep`·`guideAudioStep`, 공유 fixture가 동조 강제). 톤은 **배타적 계층 순서**(신뢰 불가 → 우선 톤 → 이벤트 소유 → 추세 축)로 하나만 나고, 정지 판정은 **도플러 3-state**이며, fix 부재는 **타이머 워치독**이 잡는다(fix 경로에만 걸면 권한 철회 시 영구 침묵). 오디오 카테고리 승격은 `didPromote`일 때만 원복한다(세션이 프로세스 전역 자원이라 무조건 원복하면 다른 소비자를 깬다). **상세 계약은 [§실시간 길 안내](#실시간-길-안내-톤정지-판정오디오-세션)** — 이 코드를 수정하기 전에 읽는다.
+
 
 ---
 
 ## 통합 카탈로그 행 상세
 
 `CLAUDE.md`가 요지만 남기고 여기로 옮긴 상세 계약이다(2026-09-02 문서 축소). 각 절 제목은 `CLAUDE.md`의 해당 항목 제목과 같다.
+
+### 역지오코딩(현위치 주소) (CLAUDE.md 이관)
+
+"현재 위치" 라벨 병기용 경량 라우트. **도로명 보장 3단 체인**: 카카오 road → (null이면) NCP 최근접 도로명 → 지번(정직 최후 폴백). ⚠ 카카오 coord2address는 도로명 건물 미매핑 좌표(공터·블록 내부, GPS 빈발)에서 road_address null(실측 2026-07-22) — 지번 우선 회귀 금지
+
 
 ### 장소 검색
 
@@ -638,3 +662,18 @@ spec 같은 문서 §4.2. 위원장 판정(2026-09-10)의 전제 "도보와 같�
 ### 장소 영업시간(E24, 웹·iOS 장소 상세)
 
 Google Places(New). **어떤 실패도 `{hours:null}`**(키 없음·한국 밖·매칭 실패·부재·429·타임아웃) — 소비자는 줄을 만들지 않는다. 호출이 둘이고 캐시 정책이 정반대다: `place_id`는 **무기한 캐시 허용**(히트 365일·미스 30일 `unstable_cache`), 영업시간은 **캐시 금지**(약관 §3.2.3(b), `no-store`). ⚠ 과금 등급은 파라미터가 아니라 **필드마스크**가 정한다. ⚠ 예산 상한은 코드가 아니라 **GCP 소비자 쿼터**(`GetPlaceRequest` 33/일·`SearchTextRequest` 160/일 = 월 무료분)가 강제하고 초과는 429→침묵. ⚠ **약관 TTS 금지(§3.2.3(a)(iv))**: VoiceOver만 읽는다 — `TtsPlayer`·`speakGuidance`·채팅 산문·CLI/MCP에 절대 싣지 않고 `place-hours-tts-drift.test.ts`가 심볼 등장 파일 allowlist로 막는다(채팅 도구·내 주변 표기·정렬 반영·단정형 "지금 영업 중"은 E24 표기 규칙으로 재도입 금지 — 위험 방향 오류 9.1%). 매칭은 B1'(이름 완전 일치 + ≤50m 또는 도로명 키) / B2(브랜드 코어 + ≤50m)이고 좌표만으로는 매칭하지 않는다(대형 시설은 좌표가 85m 이격되는데 도로명 주소는 같다). "Google Maps"는 attribution 의무 표기(번역·변형 금지). 실호출 게이트 `scripts/verify-place-hours.mjs`. spec `2026-08-30-place-hours-google-design.md`
+
+
+---
+
+## API 키 상세
+
+`CLAUDE.md`가 요지만 남기고 여기로 옮긴 상세 계약이다. 각 절 제목은 `CLAUDE.md`의 해당 항목 제목과 같다.
+
+### GEMINI_API_KEY
+
+채팅 FC 엔진(모델은 env가 아니라 코드 상수 `GEMINI_MODEL`=`gemini-3.6-flash`, `src/lib/gemini/client.ts`, 2026-07-31 교체). **길동무 전용 GCP 프로젝트 `gildongmu-prod`**(2026-07-31 신설, 결제 연결·`generativelanguage.googleapis.com`만 허용하는 API 제한 키). ⚠ **dodo와 공유하지 않는다** — 종전 공유 프로젝트는 Converters의 TTS·이미지와 dodo가 섞여 사용량·비용 귀속이 불가능했고, dodo도 같은 모델을 써서 model 라벨 분리조차 성립하지 않았다. 키 교체 시 로컬·Vercel prod·리포트 상수 3곳 동조
+
+### TMAP_APP_KEY
+
+SK open API 앱 `gildongmu`(2026-07-21 발급, T아이디). **보행자 폴백 + 자동차 기본**(2026-07-29 도보 카카오 기본 전환·2026-07-30 자동차 ko 기본 Tmap 전환)으로 확장, POI도 동일 키 커버. 일 1,000건 무료(경로안내 그룹)를 도보 폴백·자동차 기본이 공유, IPS "Any IP allowed" 유지(IP 제한 금지 — Vercel 가변 egress). ⚠ **2026-08-27부로 dodo-planet과 공유하지 않는다** — dodo가 전용 앱 `Dodoplanet`(pjtSeq 1000055509)으로 분리했다(dodo `d08d5b63`·`ab1e15a5`, 프로덕션 실호출 확인). 이 1,000건은 이제 길동무 단독이다

@@ -48,7 +48,7 @@ function makeNearby(verb: string, catalog: string, description: string) {
 }
 
 export const nearbyCommand = defineCommand({
-  meta: { name: "nearby", description: "내 주변 정보 10종" },
+  meta: { name: "nearby", description: "내 주변 정보 11종" },
   subCommands: Object.fromEntries(
     Object.entries(NEARBY).map(([verb, v]) => [verb, makeNearby(verb, v.catalog, v.description)]),
   ),
