@@ -227,7 +227,7 @@
       "leftRightTone": "Sonido de giro izquierda/derecha (experimental)",
       "leftRightTonePan": "Canal estéreo (auriculares)",
       "leftRightTonePitch": "Tono (grave = izquierda)",
-      "trendHaptics": "Vibración de progreso (experimental)",
+      "trendHaptics": "Alertas de vibración ampliadas (experimental)",
       "trendHapticsFooter": "También vibra al acercarte, al detenerte y cuando la guía no es fiable mientras caminas. Solo vibra con la pantalla encendida.",
       "listenSpeed": "Velocidad de escucha",
       "listenSpeed1x": "1x",
