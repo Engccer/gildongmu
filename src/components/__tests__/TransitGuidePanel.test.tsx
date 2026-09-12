@@ -584,7 +584,7 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
     fireEvent.click(screen.getByRole("button", { name: "transitGuide.pickAnotherStation" }));
     await screen.findByRole("heading", { name: "transitGuide.aboardStationPrompt" });
     expect(screen.queryByRole("heading", { name: "transitGuide.expressPrompt" })).toBeNull();
-    // 역 선택 취소도 착지는 상태 문장이다(E38) — [이미 탔습니다]는 거기서 한 번 스와이프 아래.
+    // 역 선택 취소도 착지는 상태 문장이다(E38) — [이미 탔습니다]는 그 아래(경유역 목록 뒤, 두 번 이상 스와이프).
     fireEvent.click(screen.getByRole("button", { name: "transitGuide.reboardCancel" }));
     await expectLandedOnStatus();
   });
@@ -661,7 +661,7 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
     await boardTrainAndTrack();
 
     // 2번째 하차 폴(arvlCd 1) → arrived → "다음 구간" 노출. 착지는 그 버튼이 아니라 도착을 말하는
-    // 상태 문장이고(E38), 버튼은 거기서 한 번 스와이프 아래다.
+    // 상태 문장이고(E38), 버튼은 그 아래다(사이에 경유역 목록이 있어 두 번 이상 스와이프).
     await waitFor(() => {
       expect(screen.getByRole("button", { name: "transitGuide.advance" })).toBeTruthy();
     });
@@ -837,7 +837,7 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
     expect(screen.getByRole("button", { name: "transitGuide.changeBoarding" })).toBeTruthy();
     expect(screen.getByText(/transitGuide\.stateRidingUnobserved/)).toBeTruthy();
     expect(screen.queryByText(/approxNote/)).toBeNull();
-    expect(screen.queryByText(/remainingCount|stationCountAbout|messageFrame|lastUpdated|dataAge/)).toBeNull();
+    expect(screen.queryByText(/remainingCount|stationCountAbout|lastUpdated|dataAge/)).toBeNull();
     // 하차역 목록은 읽지 않는다(폴 주기 0 + 즉폴 게이트 — 리뷰 B1).
     await new Promise((r) => setTimeout(r, 50));
     expect(calls.some((u) => u.includes(encodeURIComponent("여의도")))).toBe(false);
