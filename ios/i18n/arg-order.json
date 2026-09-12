@@ -603,6 +603,9 @@
     "distance",
     "minutes"
   ],
+  "route.transit.alightAt": [
+    "station"
+  ],
   "route.transit.alternativeHeading": [
     "index"
   ],
@@ -614,6 +617,9 @@
   ],
   "route.transit.legBoard": [
     "count"
+  ],
+  "route.transit.legBoardExit": [
+    "exit"
   ],
   "route.transit.legInterval": [
     "minutes"
@@ -638,6 +644,17 @@
     "distance"
   ],
   "route.transit.legWalkToDestNoDistance": [
+    "minutes"
+  ],
+  "route.transit.legWalkToExit": [
+    "name",
+    "exit",
+    "minutes",
+    "distance"
+  ],
+  "route.transit.legWalkToExitNoDistance": [
+    "name",
+    "exit",
     "minutes"
   ],
   "route.transit.legWalkToNoDistance": [

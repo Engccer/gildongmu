@@ -39,4 +39,35 @@ struct TransitWalkLegTextTests {
         #expect(TransitWalkLegText.resolve(name: "", distance: nil, minutes: 3).key
                 == "route.transit.legWalkToDestNoDistance")
     }
+
+    // MARK: 승차 출구(E25) — 다음 구간의 승차 출구를 이 줄이 싣는다
+
+    @Test("이름 + 출구 + 거리 — (name, exit, minutes, distance)")
+    func nameExitDistance() {
+        let r = TransitWalkLegText.resolve(name: "개화", distance: "131m", minutes: 2, boardExit: "1")
+        #expect(r.key == "route.transit.legWalkToExit")
+        #expect(r.args == ["개화", "1", "2", "131m"])
+    }
+
+    @Test("이름 + 출구, 거리 없음 — (name, exit, minutes)")
+    func nameExitNoDistance() {
+        let r = TransitWalkLegText.resolve(name: "개화", distance: nil, minutes: 2, boardExit: "1")
+        #expect(r.key == "route.transit.legWalkToExitNoDistance")
+        #expect(r.args == ["개화", "1", "2"])
+    }
+
+    @Test("이름이 없으면 출구가 있어도 목적지 문구다(붙일 자리가 없다)")
+    func exitWithoutNameFallsBack() {
+        let r = TransitWalkLegText.resolve(name: nil, distance: "131m", minutes: 2, boardExit: "1")
+        #expect(r.key == "route.transit.legWalkToDest")
+        #expect(r.args == ["2", "131m"])
+    }
+
+    @Test("출구가 없으면 종전 키 그대로다")
+    func noExitKeepsLegacyKeys() {
+        #expect(TransitWalkLegText.resolve(name: "개화", distance: "131m", minutes: 2, boardExit: nil).key
+                == "route.transit.legWalkTo")
+        #expect(TransitWalkLegText.resolve(name: "개화", distance: "131m", minutes: 2, boardExit: "").key
+                == "route.transit.legWalkTo")
+    }
 }
