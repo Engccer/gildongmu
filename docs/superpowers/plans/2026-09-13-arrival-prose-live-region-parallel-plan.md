@@ -28,12 +28,6 @@
 | `전전역 출발` | `2정거장 전 미사에서 출발.` |
 | `서울 도착` / `서울 출발` | `서울 도착.` / `서울 출발.` |
 
-### M2. `live-region` — A40 웹 길찾기 안내 중 polite live region 둘
-
-**출처**: `~/gildongmu-wt/reports/small-batch-review-a11y.md` L7(2026-09-11, 구조 관찰이고 실측 아님). `TransitGuidePanel`과 `DirectionsView`가 각각 polite live region을 문서에 둔다 — 접근성 헌장 §1 "단일 polite live region" 위반.
-
-**설계 판정은 세션이 한다**(제품 판단 아님): 어느 쪽으로 합칠지, `nearbyLiveMessage`류 단일 창구를 새로 세울지 기존 것을 쓸지. 단 **웹 단독**이고 iOS는 건드리지 않는다.
-
 #### 정정 (2026-09-13 11:38 KST, 코디네이터 재현 — 기준 `eb06f467`)
 
 **착수 프롬프트에 실었던 전제 한 줄이 틀렸다.** `arrival-prose`가 코퍼스로 반박했고 코디네이터가 독립으로 재현했다.
@@ -43,6 +37,12 @@
 - **그래서 `CLAUDE.md`의 경고("`barvlDt`를 슬롯형으로 환산하면 운행종료에도 비0이라 오발화")는 지하철에도 성립한다.** 20건 표본이 우연히 깨끗했을 뿐이다.
 - **세션 판정(채택)**: 불변식 I1 — 시간형 조립의 게이트는 **문장 모양 인식**이고 초 수도 문장에서 읽는다. `barvlDt`·`arvlCd`는 판정에도 값에도 쓰지 않는다. (`arvlCd`를 게이트로 썼다면 8호선 심야 `[N]번째 전역` 24행이 코드 1로 와서 가장 난반한 문법이 원문으로 남았을 것이다.)
 - ⚠ **`docs/BACKLOG.md` E37 절의 그 표 문장은 아직 틀린 채 남아 있다.** 그 파일은 `arrival-prose` 소유라 마일스톤을 닫을 때 그 세션이 정정한다.
+
+### M2. `live-region` — A40 웹 길찾기 안내 중 polite live region 둘
+
+**출처**: `~/gildongmu-wt/reports/small-batch-review-a11y.md` L7(2026-09-11, 구조 관찰이고 실측 아님). `TransitGuidePanel`과 `DirectionsView`가 각각 polite live region을 문서에 둔다 — 접근성 헌장 §1 "단일 polite live region" 위반.
+
+**설계 판정은 세션이 한다**(제품 판단 아님): 어느 쪽으로 합칠지, `nearbyLiveMessage`류 단일 창구를 새로 세울지 기존 것을 쓸지. 단 **웹 단독**이고 iOS는 건드리지 않는다.
 
 ### §1-1. 모델 배정
 
