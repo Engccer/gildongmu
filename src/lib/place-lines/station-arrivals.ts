@@ -46,7 +46,10 @@ const VERB: Record<string, SubwayArrivalVerb> = { 진입: "approaching", 도착:
 const PREV_EVENT_RE = /^전역 (진입|도착|출발)$/;
 const PREV_DEPARTED_WITH_STATION_RE = /^(.+?)\s*전역출발$/;
 const STATION_EVENT_RE = /^(.+?) (진입|도착|출발)$/;
-const STOPS_AWAY_RE = /^\[(\d+)\]번째 전역(?:\s*\((.+)\))?$/;
+// ⚠ 괄호는 **필수**다. 코퍼스 254행이 전부 괄호를 다는데, 괄호가 없는 변형이 오면 그 역이 열차
+// 위치라는 보장이 없다(`{X} 전역출발`의 X가 조회 역 자신인 것과 같은 계열일 수 있다) — I2가 막으려는
+// 실패 모드 그 자체라 원문에 맡긴다(설계 리뷰 MAJOR-2).
+const STOPS_AWAY_RE = /^\[(\d+)\]번째 전역\s*\((.+)\)$/;
 // 괄호는 소·대괄호 둘 다 온다(`4분 후 (삼각지)` · `3분48초후[3번째 전]`).
 // ⚠ 문자 클래스 안의 `[`는 Kit 미러(ICU)가 중첩 집합으로 읽으므로 양쪽 다 이스케이프한다.
 const ETA_RE = /^(?:(\d+)분)?(?:\s*(\d+)초)?\s*후(?:\s*[(\[](.+)[)\]])?$/;
@@ -192,7 +195,10 @@ export function arrivalProseSegments(
             : { key: "etaSec", args: [plan.seconds ?? 0] };
       // 정거장이 함께 오면 버스 안내 상태 문장과 같은 순서·구분(정거장 먼저, 쉼표)으로 잇는다(E39 §2.2).
       const joined = plan.stops != null ? [{ key: "stopsJoin", args: [plan.stops] }, eta] : [eta];
-      return { joined, ...(station ? { tail: { key: "nowAt", args: [station] } } : {}) };
+      // 꼬리의 유무는 **계획**이 정하고 역명은 표기일 뿐이다 — 호출자가 넘긴 값으로 가르면
+      // `nowAt` 없는 계획에 en 줄만 꼬리가 붙는다(설계 리뷰 MINOR-4).
+      const tail = plan.nowAt != null ? { key: "nowAt", args: [station ?? plan.nowAt] } : undefined;
+      return { joined, ...(tail ? { tail } : {}) };
     }
   }
 }

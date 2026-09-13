@@ -44,8 +44,11 @@ private func subwayArrivalSegmentText(_ segment: SubwayArrivalSegment) -> String
     case "etaSec": return appLocalized("subwayArrival.etaSec", arguments: args)
     case "nowAt": return appLocalized("subwayArrival.nowAt", arguments: args)
     default:
+        // Kit이 키를 늘렸는데 여기 case가 빠진 것 — 문자열 switch라 컴파일러가 못 잡으므로
+        // 디버그에서 즉시 드러내고, 릴리스는 키를 그대로 노출해 침묵을 피한다(선례와 동일).
+        // ⚠ 빈 문자열을 돌려주면 릴리스에서만 그 줄이 통째로 사라져 3-state가 무너진다.
         assertionFailure("subwayArrivalProseSegments 키 미매핑: \(segment.key)")
-        return ""
+        return segment.key
     }
 }
 
