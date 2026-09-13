@@ -24,30 +24,83 @@ func subwayStationLine(
     return (joinText(b.display, linesText), joinText(b.primary, linesText))
 }
 
+/// 도착 문장 조각 → 카탈로그 문구. 키 선택은 Kit `subwayArrivalProseSegments`(공유 fixture가 웹과 잠근다)이고
+/// 여기서는 **리터럴 `switch`로 조회만** 한다 — 키를 보간으로 조립하면 누락 린터가 못 본다
+/// (`TransitWalkLegText`·`TransitGuideTextRenderer` 선례).
+private func subwayArrivalSegmentText(_ segment: SubwayArrivalSegment) -> String {
+    let args = segment.args
+    switch segment.key {
+    case "approaching": return appLocalized("subwayArrival.approaching", arguments: args)
+    case "arrived": return appLocalized("subwayArrival.arrived", arguments: args)
+    case "departed": return appLocalized("subwayArrival.departed", arguments: args)
+    case "prevApproaching": return appLocalized("subwayArrival.prevApproaching", arguments: args)
+    case "prevArrived": return appLocalized("subwayArrival.prevArrived", arguments: args)
+    case "prevDeparted": return appLocalized("subwayArrival.prevDeparted", arguments: args)
+    case "departedStopsBack": return appLocalized("subwayArrival.departedStopsBack", arguments: args)
+    case "stopsAway": return appLocalized("subwayArrival.stopsAway", arguments: args)
+    case "stopsJoin": return appLocalized("subwayArrival.stopsJoin", arguments: args)
+    case "etaMin": return appLocalized("subwayArrival.etaMin", arguments: args)
+    case "etaMinSec": return appLocalized("subwayArrival.etaMinSec", arguments: args)
+    case "etaSec": return appLocalized("subwayArrival.etaSec", arguments: args)
+    case "nowAt": return appLocalized("subwayArrival.nowAt", arguments: args)
+    default:
+        assertionFailure("subwayArrivalProseSegments 키 미매핑: \(segment.key)")
+        return ""
+    }
+}
+
+/// 계획 → 메시지 문장(한 접근성 객체 안의 한 조각). `joined`는 쉼표로, `tail`은 공백으로 잇는다.
+private func subwayArrivalProseText(_ plan: SubwayArrivalPlan, station: String?) -> String {
+    let segs = subwayArrivalProseSegments(plan, station: station)
+    let body = segs.joined.map(subwayArrivalSegmentText).joined(separator: ", ")
+    guard let tail = segs.tail else { return body }
+    return "\(body) \(subwayArrivalSegmentText(tail))"
+}
+
 /// 도착 한 건 = `Text` 하나 = 접근성 객체 하나. iOS는 웹(두 `div`)과 달리 편성·메시지가 한 객체라 원자 단위도
-/// 한 건 전체다 — 서버 영문(E27) 다섯 조각(노선·방향·행선·문장·현재역)이 **전부** 있을 때만 영어이고, 하나라도
-/// 없으면 한 건 전체가 한국어 완성 문장(spec 리뷰 검출: 부분 영문이 한 객체 안에 두 언어를 세웠다).
+/// 한 건 전체다 — 서버 영문(E27) 조각이 **전부** 있을 때만 영어이고, 하나라도 없으면 한 건 전체가 한국어
+/// (spec 리뷰 검출: 부분 영문이 한 객체 안에 두 언어를 세웠다).
+///
+/// 메시지 자리는 완성 문장을 읽어 쓴 **우리 문장**(E37)이고, 알아보지 못한 문장만 원문 + A32 꼬리로 간다.
 func subwayArrivalLine(_ arrival: SubwayArrival, isEn: Bool) -> String {
     let express = arrival.express ? appLocalized("subwayArrival.express") : nil
-    // 현재역 꼬리는 완성 문장이 그 역을 이미 담고 있으면 뗀다(A32) — 판정은 그 줄에 실제로 쓰는
-    // 값으로 한다(ko는 원문, en은 영문. 계약은 Kit `subwayShowsCurrentLocationTail`).
-    // ⚠ `enLoc`은 아래 `enParts`에 넘기는 바로 그 값이다 — 판정과 렌더가 갈리지 않게 한 번만 만든다.
-    let enLoc: String? = arrival.currentLocation == nil ? "" : arrival.currentLocationEn
+    // 노선 미매핑(`line` nil)은 ko도 그 조각이 없으므로 영문 요구 대상이 아니다("" 자리 표시).
+    let headEnParts: [String?] = [
+        arrival.line == nil ? "" : arrival.lineEn,
+        arrival.directionEn,
+        arrival.trainLineNmEn,
+    ]
+
+    // ── 문장형(E37). 편성 조각과 역명이 그 줄의 언어로 다 갖춰졌을 때만 — 하나라도 모자라면 원문 경로로
+    // 떨어진다. 문장 틀은 앱 선택 언어 하나뿐이라 "이 줄만 한국어"를 만들 수단이 없기 때문이다(E27 원자성).
+    if let plan = subwayArrivalProse(message: arrival.message, currentLocation: arrival.currentLocation) {
+        let koStation = subwayArrivalPlanStation(plan)
+        let station = isEn ? arrival.currentLocationEn : koStation
+        let headReady = !isEn || headEnParts.allSatisfy { $0 != nil }
+        if headReady, koStation == nil || station != nil {
+            let prose = subwayArrivalProseText(plan, station: station)
+            return TransitDisplay.pickLine(
+                isEn: isEn, ko: joinText(arrival.line, express, arrival.trainLineNm, prose),
+                enParts: headEnParts
+            ) { p in
+                joinText("\(p[0].isEmpty ? "" : "\(p[0]) ")\(p[1])", express, p[2], prose)
+            }
+        }
+    }
+
+    // ── 원문 경로. 현재역 꼬리는 완성 문장이 그 역을 이미 담고 있으면 뗀다(A32) — 판정은 그 줄에 실제로 쓰는
+    // 값으로 한다(ko는 원문, en은 영문). ⚠ `enLoc`은 아래 `enParts`에 넘기는 바로 그 값이다.
+    // A38: 영문 자리의 결측은 **영문 값 자신**으로 가른다 — 있으면 그 값, 없고 ko도 없으면 자리 표시 `""`,
+    // 없는데 ko는 있으면 결측(줄 전체 ko). 종전엔 ko 칸이 비었다는 이유로 영문 현재역을 버렸다.
+    let enLoc: String? = arrival.currentLocationEn ?? (arrival.currentLocation == nil ? "" : nil)
     let koTail = subwayShowsCurrentLocationTail(message: arrival.message, currentLocation: arrival.currentLocation)
     let enTail = subwayShowsCurrentLocationTail(message: arrival.messageEn, currentLocation: enLoc)
     let ko = joinText(
         arrival.line, express, arrival.trainLineNm, arrival.message,
         koTail ? arrival.currentLocation.map { appLocalized("subwayArrival.currentLocation", $0) } : nil)
-    // 노선 미매핑(`line` nil)·현재역 부재는 ko도 그 조각이 없으므로 영문 요구 대상이 아니다("" 자리 표시).
     return TransitDisplay.pickLine(
         isEn: isEn, ko: ko,
-        enParts: [
-            arrival.line == nil ? "" : arrival.lineEn,
-            arrival.directionEn,
-            arrival.trainLineNmEn,
-            arrival.messageEn,
-            enLoc,
-        ]
+        enParts: headEnParts + [arrival.messageEn, enLoc]
     ) { p in
         joinText(
             "\(p[0].isEmpty ? "" : "\(p[0]) ")\(p[1])", express, p[2], p[3],

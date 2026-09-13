@@ -721,14 +721,55 @@
   "subway.lineNumber": [
     "line"
   ],
+  "subwayArrival.approaching": [
+    "station"
+  ],
+  "subwayArrival.arrived": [
+    "station"
+  ],
   "subwayArrival.asOf": [
     "time"
   ],
   "subwayArrival.currentLocation": [
     "location"
   ],
+  "subwayArrival.departed": [
+    "station"
+  ],
+  "subwayArrival.departedStopsBack": [
+    "count"
+  ],
+  "subwayArrival.etaMin": [
+    "minutes"
+  ],
+  "subwayArrival.etaMinSec": [
+    "minutes",
+    "seconds"
+  ],
+  "subwayArrival.etaSec": [
+    "seconds"
+  ],
   "subwayArrival.heading": [
     "name"
+  ],
+  "subwayArrival.nowAt": [
+    "station"
+  ],
+  "subwayArrival.prevApproaching": [
+    "station"
+  ],
+  "subwayArrival.prevArrived": [
+    "station"
+  ],
+  "subwayArrival.prevDeparted": [
+    "station"
+  ],
+  "subwayArrival.stopsAway": [
+    "count",
+    "station"
+  ],
+  "subwayArrival.stopsJoin": [
+    "count"
   ],
   "subwayNearby.asOf": [
     "time"

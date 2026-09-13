@@ -247,7 +247,8 @@ describe("place-lines == 화면 문장", () => {
     expect(items[0]).toEqual({
       line: "2호선 외선, 성수행 - 역삼방면",
       direction: "외선",
-      message: '3분 후(2번째 전), subwayArrival.currentLocation{"location":"방배"}',
+      message:
+        'subwayArrival.stopsJoin{"count":2}, subwayArrival.etaMin{"minutes":3} subwayArrival.nowAt{"station":"방배"}',
       state: { kind: "ok" },
     });
     expect(items[1].line).toBe("상행, 신사행 - 신논현방면, subwayArrival.express");

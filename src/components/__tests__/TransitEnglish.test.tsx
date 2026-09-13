@@ -51,7 +51,7 @@ describe("SubwayArrivalList — en 로케일", () => {
     const divs = container.querySelectorAll("li div");
     expect(divs[0].textContent).toBe("Line 2 Outer Circle, To Seongsu via Yeoksam");
     expect(divs[0].getAttribute("lang")).toBeNull();
-    expect(divs[1].textContent).toBe("In 2 min 30 sec, Now at Seolleung");
+    expect(divs[1].textContent).toBe("Arriving in 2 min 30 sec. Now at Seolleung.");
     expect(divs[1].getAttribute("lang")).toBeNull();
   });
 
@@ -61,7 +61,7 @@ describe("SubwayArrivalList — en 로케일", () => {
     const divs = container.querySelectorAll("li div");
     expect(divs[0].textContent).toBe("2호선 외선, 성수행 - 역삼방면");
     expect(divs[0].getAttribute("lang")).toBe("ko");
-    // 현재역 영문이 없으면 메시지 줄도 한국어 원문 — 값이 한국어인 줄은 라벨이 섞여도 통째로 lang=ko(A26 선례)
+    // 현재역 영문이 없으면 문장형을 버리고 한국어 원문 — 값이 한국어인 줄은 라벨이 섞여도 통째로 lang=ko(A26 선례)
     expect(divs[1].textContent).toBe("2분 30초 후, Now at 선릉");
     expect(divs[1].getAttribute("lang")).toBe("ko");
   });
@@ -98,7 +98,7 @@ describe("SubwayArrivalList — en 로케일", () => {
     expect(items[0]).toEqual({
       line: "2호선 외선, 성수행 - 역삼방면",
       direction: "외선",
-      message: '2분 30초 후, currentLocation{"location":"선릉"}',
+      message: 'etaMinSec{"minutes":2,"seconds":30} nowAt{"station":"선릉"}',
       state: { kind: "ok" },
     });
   });
