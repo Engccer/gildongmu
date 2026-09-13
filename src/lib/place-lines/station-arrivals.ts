@@ -71,12 +71,12 @@ function resolveStation(fromText: string | undefined, fromMsg3: string): { ok: t
  * `src/lib/__tests__/fixtures/subway-arrival-prose-cases.json`이 두 구현을 한 표로 잠근다.
  *
  * ⚠ 불변식 I1: 게이트는 **문장의 모양**이고 초 수도 문장에서 읽는다. `barvlDt`(`arrivalSeconds`)·`arvlCd`
- * (`arrivalCode`)는 판정에도 값에도 쓰지 않는다 — 비시간형 행에도 `barvlDt`가 비0으로 오고(코퍼스 71행,
- * 00:30 `전역 출발`에 1200초), `[N]번째 전역`이 코드 1로도 온다(8호선 심야 24행).
+ * (`arrivalCode`)는 판정에도 값에도 쓰지 않는다 — 비시간형 행에도 `barvlDt`가 비0으로 오고(코퍼스 65행,
+ * 심야 `전역 출발`에 1200초), `[N]번째 전역`이 코드 1로도 온다(8호선 심야 24행).
  * ⚠ 불변식 I2: 역명을 싣는 것은 그 역이 열차 위치임이 실측으로 확인된 문법뿐이다(`전역 …` = 1정거장 전,
- * `[N]번째 전역 (X)` = N정거장 전, `N분 후 (X)`). `전전역 출발`의 `arvlMsg3`는 두 역 앞이 아니라 한 역
- * 앞을 가리키고(2/2) `{X} 전역출발`의 X는 조회 역 자신이라(12/12) 열차 위치가 아니다 — 이 둘은 역명을
- * 문장에도 꼬리에도 싣지 않는다. 못 알아보면 `null`(원문 경로) — 역을 지어내지 않는다(3-state).
+ * `[N]번째 전역 (X)` = N정거장 전, `N분 후 (X)`). `{X} 전역출발`의 X는 조회 역 자신이고(12/12)
+ * `전전역 출발`은 관측이 얇아 `arvlMsg3`의 뜻을 모른다 — 이 둘은 역명을 문장에도 꼬리에도 싣지 않는다.
+ * 못 알아보면 `null`(원문 경로) — 역을 지어내지 않는다(3-state).
  */
 export function subwayArrivalProse(
   message: string | undefined | null,
@@ -91,9 +91,10 @@ export function subwayArrivalProse(
     if (!msg3) return null;
     return { kind: "prevStationEvent", verb: VERB[prev[1]], station: msg3 };
   }
-  // ⚠ 이 두 문법은 **위치를 말하지 않는다**(I2). `전전역 출발`의 `arvlMsg3`는 두 역 앞이 아니라
-  // 한 역 앞을 가리키고(코퍼스 2/2), `{X} 전역출발`의 X는 조회 역 자신이라(12/12) 열차 위치가 아니다.
-  // 어긋나는 두 값을 한 줄에 담으면 거짓이 되므로 출발 사실만 싣는다(위원장 확정 2026-09-13).
+  // ⚠ 이 두 문법은 **위치를 말하지 않는다**(I2). `{X} 전역출발`의 X는 조회 역 자신이고(12/12, 문장에
+  // 그 이름이 박혀 온다), `전전역 출발`은 관측이 얇아 `arvlMsg3`의 뜻을 모른다(쓸 수 있는 1행에서 한 역
+  // 앞을 가리켜 문장의 "두 역 앞"과 어긋났다 — 다른 1행은 20분 묵은 레코드라 근거가 못 된다).
+  // 그 역이 열차 위치라는 증거가 없는데 실으면 unknown을 "있음"으로 바꾸는 것이다(위원장 확정 2026-09-13).
   if (msg === "전전역 출발") return { kind: "departedStopsBack", count: 2 };
   const prevDeparted = PREV_DEPARTED_WITH_STATION_RE.exec(msg);
   if (prevDeparted) {
