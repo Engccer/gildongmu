@@ -12,7 +12,8 @@ vi.mock("@/lib/geolocation", () => ({
   })),
 }));
 
-import { DistanceBeacon } from "../DistanceBeacon";
+// 패널·비콘은 자기 live region을 두지 않는다(A40) — 창구 숙주로 감싸 렌더한다.
+import { DistanceBeaconHost } from "./live-region-host";
 import { __resetGuideSessionStoreForTest, hasActiveGuideSession } from "@/lib/guide-session-store";
 
 /**
@@ -76,7 +77,7 @@ afterEach(() => {
 function renderPanel(locale: "ko" | "en") {
   return render(
     <NextIntlClientProvider locale={locale} messages={locale === "ko" ? ko : en}>
-      <DistanceBeacon dest={DEST} accessible={false} />
+      <DistanceBeaconHost dest={DEST} accessible={false} />
     </NextIntlClientProvider>,
   );
 }

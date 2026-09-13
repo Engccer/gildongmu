@@ -16,6 +16,8 @@ vi.mock("next-intl", () => ({
   useLocale: () => "en",
 }));
 
+// 패널·비콘은 자기 live region을 두지 않는다(A40) — 창구 숙주로 감싸 렌더한다.
+import { TransitGuidePanelHost } from "./live-region-host";
 import { TransitGuidePanel } from "../TransitGuidePanel";
 
 const ROUTE: TransitRoute = {
@@ -58,7 +60,7 @@ function mockPoll(items: unknown[]) {
 }
 
 async function startSession() {
-  render(<TransitGuidePanel route={ROUTE} triggerLabel="start" walkAccessible={false} />);
+  render(<TransitGuidePanelHost route={ROUTE} triggerLabel="start" walkAccessible={false} />);
   fireEvent.click(screen.getByRole("button", { name: "start" }));
   await waitFor(() => expect(fetchMock).toHaveBeenCalled());
 }
@@ -91,7 +93,7 @@ describe("en 로케일 대중교통 안내 배선", () => {
       legs: [{ ...ROUTE.legs[0], lineNameEn: undefined }],
     } as unknown as TransitRoute;
     mockPoll([]);
-    render(<TransitGuidePanel route={koRoute} triggerLabel="start" walkAccessible={false} />);
+    render(<TransitGuidePanelHost route={koRoute} triggerLabel="start" walkAccessible={false} />);
     fireEvent.click(screen.getByRole("button", { name: "start" }));
     const el = await screen.findByText(
       /transitGuide\.waitContext:천호,수도권 5호선 transitGuide\.lastUpdated/,
@@ -127,16 +129,29 @@ describe("en 로케일 대중교통 안내 배선", () => {
 });
 
 describe("live region 단일성 (헌장: 통지 객체는 플랫폼당 하나)", () => {
-  it("패널 전체에 aria-live가 정확히 하나다", async () => {
+  it("패널은 자기 live region을 0개 낸다 — 통지는 화면의 창구로 나간다", async () => {
     mockPoll([]);
+    // ⚠ 숙주 없이 패널만 렌더한다(A40). 종전엔 이 패널이 자기 region을 들고 있었고,
+    // 길찾기 뷰의 창구와 겹쳐 발화가 경합했다. 이제 통지는 `announce`로만 나가므로
+    // 패널이 문서에 남기는 live 객체는 0이어야 한다.
+    const seen: string[] = [];
     const { container } = render(
-      <TransitGuidePanel route={ROUTE} triggerLabel="start" walkAccessible={false} />,
+      <TransitGuidePanel
+        route={ROUTE}
+        triggerLabel="start"
+        walkAccessible={false}
+        announce={(text) => seen.push(text)}
+      />,
     );
     fireEvent.click(screen.getByRole("button", { name: "start" }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());
-    // ⚠ `lang`을 새로 붙인 표시 행들이 live로 승격되지 않았는지 본다 — 승격되면 같은 상태가
-    // 두 번 낭독된다(헌장 §5 "이미 보이는 콘텐츠를 live region에 복제하지 말 것").
-    expect(container.querySelectorAll("[aria-live]")).toHaveLength(1);
-    expect(container.querySelectorAll('[role="status"]')).toHaveLength(1);
+    // `lang`을 붙인 표시 행들이 live로 승격되지 않았는지도 함께 본다 — 승격되면 같은
+    // 상태가 두 번 낭독된다(헌장 §5 "이미 보이는 콘텐츠를 live region에 복제하지 말 것").
+    expect(container.querySelectorAll("[aria-live]")).toHaveLength(0);
+    expect(container.querySelectorAll('[role="status"]')).toHaveLength(0);
+    // 그렇다고 침묵이면 안 된다 — 세션 시작 문장은 창구로 나가야 한다.
+    await waitFor(() =>
+      expect(seen.some((t) => t.startsWith("transitGuide.started"))).toBe(true),
+    );
   });
 });

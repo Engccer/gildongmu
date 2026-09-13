@@ -11,7 +11,8 @@ const SCREEN_HINT_DISMISSED_KEY = "gildongmu:screen-hint-dismissed";
 
 /**
  * 실시간 길 안내 UI — disclosure(헤더 버튼)로 접고 펴는 패널 안에 시작/중지 토글 +
- * 안내 컨트롤 + 단일 polite live region.
+ * 안내 컨트롤. **live region은 이 컴포넌트에 없다**(A40) — 통지는 `announce`로
+ * 호출부(길찾기 뷰)의 단일 창구에 게시한다.
  *
  * 안내 방식은 두 가지다(스펙 2026-08-03 §3): 간략 안내(직선거리·추세 톤, 전 수단에서
  * 참)와 상세 안내(도보 경로 추종, 경로 위에서만 참). 시작하면 상세 적격이면 상세로,
@@ -25,7 +26,7 @@ const SCREEN_HINT_DISMISSED_KEY = "gildongmu:screen-hint-dismissed";
  * 형제와의 일관성·First Rule of ARIA). 오버레이/포커스 트랩 없이 시맨틱 HTML만으로
  * 완결한다.
  *
- * 접근성: 연속 피드백은 톤(useBeaconSound), 음성 통지는 단일 polite live region
+ * 접근성: 연속 피드백은 톤(useBeaconSound), 음성 통지는 호출부의 단일 polite 창구
  * 하나로만 나간다(컨트롤 응답·상태 변화·안내 전부 같은 채널). 컨트롤은 죽은 것을
  * 두지 않는다 — 전환은 상세 경로를 쥔 세션에만, 재조회는 이탈 상태에만 나온다.
  * geolocation 미지원이면 렌더 안 함(graceful).
@@ -41,6 +42,7 @@ export function DistanceBeacon({
   autoStart = false,
   focusTriggerOnMount = false,
   triggerLabel,
+  announce,
   onStart,
   onSessionEnd,
 }: {
@@ -73,11 +75,17 @@ export function DistanceBeacon({
   focusTriggerOnMount?: boolean;
   triggerLabel?: string;
   /**
-   * 트리거로 세션을 시작한 직후 1회(startOnOpen·autoStart 전용). 호출부가 자기 채널로 시작
-   * 고지를 내는 자리다(길찾기 뷰의 수동 위치 고지) — 이 컴포넌트의 live region은
-   * 세션 문장이 점유하므로 그 문장과 경합시키지 않는다.
+   * 트리거로 세션을 시작한 직후 1회(startOnOpen·autoStart 전용). 호출부가 시작 고지를
+   * 준비하는 자리다(길찾기 뷰의 수동 위치 고지). ⚠ 그 고지와 세션 시작 문장은 **같은
+   * 커밋에 나오는 한 사건**이라 창구에 따로 게시하면 한쪽이 덮인다 — 호출부가 게시 대신
+   * 대기 꼬리에 넣어 다음 게시(= 시작 문장)에 이어 붙인다(A40).
    */
   onStart?: () => void;
+  /**
+   * 이 화면의 **단일 polite 창구**(A40). 기본값 없음 — 생략이 컴파일을 통과하면
+   * 통지가 조용히 사라진다(안전 인자에 기본값 금지). 빈 문자열은 게시하지 않는다.
+   */
+  announce: (text: string, lang?: "ko") => void;
   /** 세션 종료 1회 통지(A25 승차 전 도보 핸드오프) — `useRouteGuide` 동명 옵션 그대로. */
   onSessionEnd?: (reason: "arrived" | "ended") => void;
 }) {
@@ -94,6 +102,17 @@ export function DistanceBeacon({
     }
   });
   const guide = useRouteGuide(dest, kind, accessible, { onSessionEnd });
+
+  // 안내 문장을 화면의 단일 창구로 올린다(A40). ⚠ **빈 값은 게시하지 않는다** —
+  // 훅은 같은 문장을 다시 말하려고 `"" → 같은 문장`으로 되돌리는데(DOM이 안 바뀌면
+  // aria-live가 침묵하므로), 그 빈 값을 그대로 올리면 창구에 떠 있던 다른 게시자의
+  // 문장을 지운다. 재발화는 창구의 seq 키가 맡으므로 여기선 되돌림의 뒷 edge만 쓴다.
+  // region이 내용과 함께 삽입되면 첫 통지가 무발화되던 결함(a11y 감사)은 창구가
+  // 화면 수명 내내 마운트돼 있으므로 구조적으로 사라졌다.
+  useEffect(() => {
+    if (!guide.liveText) return;
+    announce(guide.liveText);
+  }, [guide.liveText, announce]);
 
   // 재조회 버튼은 성공(offRoute 해제)·경로 자동 복귀 순간 언마운트된다. 포커스를 쥔
   // 요소가 사라지면 커서가 body로 떨어져 걷는 중 맥락을 통째로 잃으므로(헌장 §5),
@@ -291,12 +310,6 @@ export function DistanceBeacon({
           />
         </div>
       )}
-      {/* 단일 polite live region — 패널 열림과 무관하게 상시 마운트한다. region이
-          내용과 함께 삽입되면 대부분의 AT가 첫 통지를 발화하지 않는다(startOnOpen의
-          동기 시작 통지가 en 로케일에서 무발화되던 결함 — a11y 감사 반영). */}
-      <p aria-live="polite" className="mt-2 min-h-5 text-sm">
-        {guide.liveText}
-      </p>
     </section>
   );
 }
