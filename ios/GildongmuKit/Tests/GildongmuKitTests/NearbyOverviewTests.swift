@@ -64,11 +64,11 @@ private func decode(_ json: String) throws -> NearbyOverviewResponse {
 @Test func overviewLinesKoAreOnePerBulletAndDistinctPerState() throws {
     let data = try #require(try decode(fixture).data)
     let lines = buildOverviewLines(data, lang: "ko").map(\.text)
-    // 문장형 + 받침에 따른 조사(이/가·은/는·(으)로)는 코드가 고른다(koParticle).
+    // 문장형 + 받침에 따른 조사(이/가·은/는)는 코드가 고른다(koParticle). 거리·방위가 이름 앞이다.
     #expect(lines == [
-        "가장 가까운 지하철역은 5호선 길동으로 북동쪽 262m입니다. 버스 정류소가 5곳 있습니다. 가장 가까운 곳은 길동사거리로 동쪽 80m, 길동역으로 북쪽 120m입니다.",
-        "식당이 15곳 이상 있습니다. 가장 가까운 곳은 봉래면옥으로 남쪽 40m, 김밥천국으로 동쪽 60m입니다.",
-        "카페가 3곳 있습니다. 가장 가까운 곳은 스타벅스로 서쪽 90m, 카페 1971, 북쪽 200m입니다.",
+        "가장 가까운 지하철역은 북동쪽 262m 지점에 있는 5호선 길동입니다. 버스 정류소가 5곳 있습니다. 가장 가까운 곳은 동쪽 80m 지점에 있는 길동사거리이고, 북쪽 120m 지점에 길동역이 있습니다.",
+        "식당이 15곳 이상 있습니다. 가장 가까운 곳은 남쪽 40m 지점에 있는 봉래면옥이고, 동쪽 60m 지점에 김밥천국이 있습니다.",
+        "카페가 3곳 있습니다. 가장 가까운 곳은 서쪽 90m 지점에 있는 스타벅스이고, 북쪽 200m 지점에 카페 1971 있습니다.",
         "아이 놀 곳은 1km 안에 없습니다.",
         "문화 행사는 서울에서만 안내합니다.",
         "무장애 관광지 정보를 가져오지 못했습니다.",
@@ -85,12 +85,12 @@ private func decode(_ json: String) throws -> NearbyOverviewResponse {
     #expect(try line(#"{"kind":"transit","state":"ok","station":null,"busStops":{"state":"uncovered"}}"#)
         == "1km 안에 지하철역이 없습니다. 버스 정류소 정보는 이 지역에서 제공되지 않습니다.")
     #expect(try line(#"{"kind":"transit","state":"ok","station":{"name":"용문","line":null,"bearing":"w","distanceMeters":910},"busStops":{"state":"failed"}}"#)
-        == "가장 가까운 지하철역은 용문으로 서쪽 910m입니다. 버스 정류소 정보를 가져오지 못했습니다.")
+        == "가장 가까운 지하철역은 서쪽 910m 지점에 있는 용문입니다. 버스 정류소 정보를 가져오지 못했습니다.")
     #expect(try line(#"{"kind":"transit","state":"ok","station":null,"busStops":null}"#)
         == "1km 안에 지하철역이 없습니다.")
     // 버스 조각 자체가 없으면(키 없음) 역 문장만.
     #expect(try line(#"{"kind":"transit","state":"ok","station":{"name":"용문","line":null,"bearing":"w","distanceMeters":910},"busStops":null}"#)
-        == "가장 가까운 지하철역은 용문으로 서쪽 910m입니다.")
+        == "가장 가까운 지하철역은 서쪽 910m 지점에 있는 용문입니다.")
 }
 
 @Test func overviewLinesEnUseLocaleOrder() throws {
@@ -103,13 +103,13 @@ private func decode(_ json: String) throws -> NearbyOverviewResponse {
     #expect(lines[0].hasPrefix("Transit: The nearest subway station is 길동 (5호선), 262m to the northeast."))
 }
 
-@Test func overviewNearestFallsBackToCommaWhenParticleUndecidable() throws {
-    // 비한글 장소명은 조사 판정 불가 → "(으)로" 대신 쉼표(KoreanParticle 계약).
+@Test func overviewNearestUsesSingularSentenceForOnePlace() throws {
+    // 한 곳뿐이면 나열이 없어 조사 자리도 없다(nearestOne). 조사 판정 불가 축은 위 fixture의 "카페 1971"이 덮는다.
     let json = """
     {"data":{"place":null,"radiusMeters":1000,"bullets":[{"kind":"cafe","state":"ok","count":1,"countCapped":false,"nearest":[{"name":"GS25","distanceMeters":40,"bearing":"s"}]}]}}
     """
     let data = try #require(try decode(json).data)
-    #expect(buildOverviewLines(data, lang: "ko").map(\.text) == ["카페가 1곳 있습니다. 가장 가까운 곳은 GS25, 남쪽 40m입니다."])
+    #expect(buildOverviewLines(data, lang: "ko").map(\.text) == ["카페가 1곳 있습니다. 가장 가까운 곳은 남쪽 40m 지점에 있는 GS25입니다."])
 }
 
 @Test func sceneItemToPlaceCarriesCoordinatesAndRawCategory() {

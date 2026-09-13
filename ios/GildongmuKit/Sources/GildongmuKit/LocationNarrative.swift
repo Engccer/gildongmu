@@ -41,14 +41,6 @@ private func withTopic(_ label: String, lang: String) -> String {
     lang == "ko" ? label + (KoreanParticle.topic(label) ?? "") : label
 }
 
-/// "가장 가까운 곳은 {name}(으)로 {direction}쪽 {distance}"의 장소명 자리. 장소명은 동적이라
-/// 조사를 템플릿에 박을 수 없다. 한글이 아니라 판정 불가면 조사 대신 쉼표로 물러난다
-/// ("GS25, 남쪽 40m" — `KoreanParticle` 계약: 조사를 못 정하는 것이 낭독 불능이 되면 안 된다).
-private func nameAsDestination(_ name: String, lang: String) -> String {
-    guard lang == "ko" else { return name }
-    return KoreanParticle.direction(name).map { name + $0 } ?? name + ","
-}
-
 /// 불릿 한 줄의 문장 + 한글 병기 꼬리(E28, 웹 `OverviewLine` 미러). `secondary`는 병기한 이름들의
 /// 한글 원문을 순서대로 쉼표로 이었고, 없으면 nil. 뷰는 `text`를 낭독하고 시각은 `text (secondary)`.
 public struct OverviewLine: Equatable, Sendable {
@@ -74,14 +66,27 @@ private func pickName(_ name: String, en: String?, roman: String?, lang: String,
     return b.primary
 }
 
+/// "가장 가까운 곳은 {첫 곳}이고, {나머지}가 있습니다." — 거리·방위를 이름 앞에 두는 어순
+/// (위원장 판정 2026-09-13, 웹 `nearestSentence` 미러). 첫 곳만 `nearestFirst`("…지점에 있는
+/// {name}")로 서술격 조사를 받고, 나머지는 `nearestItem`으로 나열하며 ko는 마지막 이름에만
+/// 주격 조사가 붙는다(판정 불가면 조사 자리를 비운다 — `KoreanParticle` 계약). 한 곳뿐이면
+/// 나열이 없으므로 `nearestOne`. ⚠ 인자 순서는 ko 플레이스홀더 등장 순서(direction, distance, name).
 private func overviewNearest(_ items: [OverviewPlace], lang: String, sink: KoSink) -> String {
-    let parts = items.map {
-        kitLocalized("whereAmI.overview.nearestItem", lang: lang,
-                     nameAsDestination(pickName($0.name, en: nil, roman: $0.nameRoman, lang: lang, sink: sink), lang: lang),
-                     directionWord($0.bearing, lang: lang),
-                     formatDistance($0.distanceMeters))
+    guard let head = items.first else { return "" }
+    let first = kitLocalized("whereAmI.overview.nearestFirst", lang: lang,
+                             directionWord(head.bearing, lang: lang),
+                             formatDistance(head.distanceMeters),
+                             pickName(head.name, en: nil, roman: head.nameRoman, lang: lang, sink: sink))
+    let rest = items.dropFirst()
+    if rest.isEmpty { return kitLocalized("whereAmI.overview.nearestOne", lang: lang, first) }
+    let parts = rest.enumerated().map { offset, place -> String in
+        let name = pickName(place.name, en: nil, roman: place.nameRoman, lang: lang, sink: sink)
+        return kitLocalized("whereAmI.overview.nearestItem", lang: lang,
+                            directionWord(place.bearing, lang: lang),
+                            formatDistance(place.distanceMeters),
+                            offset == rest.count - 1 ? withSubject(name, lang: lang) : name)
     }
-    return kitLocalized("whereAmI.overview.nearestLead", lang: lang, parts.joined(separator: ", "))
+    return kitLocalized("whereAmI.overview.nearestLead", lang: lang, first, parts.joined(separator: ", "))
 }
 
 /// 불릿당 문장 묶음(한 접근성 객체). 상태별 문장이 전부 다르다(3-state 불변식) — 반경 문구는
@@ -104,11 +109,12 @@ private func overviewBulletText(_ bullet: OverviewBullet, lang: String, radius: 
             var parts: [String] = []
             if let station {
                 let line = station.line.map { kitLocalized("whereAmI.overview.transitLine", lang: lang, $0) } ?? ""
+                // ⚠ 인자 순서는 ko 플레이스홀더 등장 순서(direction, distance, line, name).
                 parts.append(kitLocalized("whereAmI.overview.transitStation", lang: lang,
-                                          line,
-                                          nameAsDestination(pickName(station.name, en: station.nameEn, roman: nil, lang: lang, sink: sink), lang: lang),
                                           directionWord(station.bearing, lang: lang),
-                                          formatDistance(station.distanceMeters)))
+                                          formatDistance(station.distanceMeters),
+                                          line,
+                                          pickName(station.name, en: station.nameEn, roman: nil, lang: lang, sink: sink)))
             } else {
                 parts.append(kitLocalized("whereAmI.overview.transitNoStation", lang: lang, radius))
             }

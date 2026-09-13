@@ -1,7 +1,7 @@
 import type { NearbyOverview, OverviewPlace } from "./nearby-overview";
 import type { CompassDirection } from "./geo/bearing";
 import { formatDistance } from "./format";
-import { directionParticle, subjectParticle, topicParticle } from "./korean-particle";
+import { subjectParticle, topicParticle } from "./korean-particle";
 import { bilingualName } from "./bilingual-name";
 
 /**
@@ -13,8 +13,8 @@ import { bilingualName } from "./bilingual-name";
  * 한 번만 말하고 `none` 문장만 반경을 품는다.
  *
  * 조사는 코드가 고른다(ko만): 라벨은 전부 한글이라 판정 불가가 없고, 장소명은 동적이라 판정
- * 불가(비한글)면 조사 대신 쉼표로 물러난다("GS25, 남쪽 40m" — 조사를 못 정하는 것이 낭독
- * 불능이 되면 안 된다).
+ * 불가(비한글)면 조사 자리를 비운다("… 북쪽 40m 지점에 GS25 있습니다" — 조사를 못 정하는
+ * 것이 낭독 불능이 되면 안 된다).
  */
 
 /** next-intl `useTranslations("whereAmI")`와 같은 모양 — 컴포넌트가 주입한다. */
@@ -43,12 +43,6 @@ function pickName(
   return b.primary;
 }
 
-function nameAsDestination(name: string, ko: boolean): string {
-  if (!ko) return name;
-  const particle = directionParticle(name);
-  return particle === null ? `${name},` : `${name}${particle}`;
-}
-
 function withSubject(label: string, ko: boolean): string {
   return ko ? label + (subjectParticle(label) ?? "") : label;
 }
@@ -61,6 +55,12 @@ function direction(t: OverviewTranslator, bearing: CompassDirection): string {
   return t(`direction.${bearing}`);
 }
 
+/**
+ * "가장 가까운 곳은 {첫 곳}이고, {나머지}가 있습니다." — 거리·방위를 이름 앞에 두는 어순
+ * (위원장 판정 2026-09-13). 첫 곳만 `nearestFirst`("…지점에 있는 {name}")로 서술격 조사를
+ * 받고, 나머지는 `nearestItem`으로 나열하며 ko는 마지막 이름에만 주격 조사가 붙는다.
+ * 한 곳뿐이면 나열이 없으므로 `nearestOne`.
+ */
 function nearestSentence(
   t: OverviewTranslator,
   items: OverviewPlace[],
@@ -68,14 +68,23 @@ function nearestSentence(
   sink: KoSink,
 ): string {
   const ko = locale === "ko";
-  const parts = items.map((p) =>
-    t("overview.nearestItem", {
-      name: nameAsDestination(pickName(p, locale, sink), ko),
+  const [head, ...rest] = items;
+  if (!head) return "";
+  const first = t("overview.nearestFirst", {
+    name: pickName(head, locale, sink),
+    direction: direction(t, head.bearing),
+    distance: formatDistance(head.distanceMeters),
+  });
+  if (rest.length === 0) return t("overview.nearestOne", { first });
+  const parts = rest.map((p, i) => {
+    const name = pickName(p, locale, sink);
+    return t("overview.nearestItem", {
+      name: i === rest.length - 1 ? withSubject(name, ko) : name,
       direction: direction(t, p.bearing),
       distance: formatDistance(p.distanceMeters),
-    }),
-  );
-  return t("overview.nearestLead", { items: parts.join(", ") });
+    });
+  });
+  return t("overview.nearestLead", { first, items: parts.join(", ") });
 }
 
 const LABEL_KEY = {
@@ -116,7 +125,7 @@ function bulletText(
         parts.push(
           t("overview.transitStation", {
             line: b.station.line ? t("overview.transitLine", { line: b.station.line }) : "",
-            name: nameAsDestination(pickName(b.station, locale, sink), ko),
+            name: pickName(b.station, locale, sink),
             direction: direction(t, b.station.bearing),
             distance: formatDistance(b.station.distanceMeters),
           }),

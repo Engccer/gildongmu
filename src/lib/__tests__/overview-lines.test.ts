@@ -33,7 +33,7 @@ describe("buildOverviewLines (ko)", () => {
       "ko",
     );
     expect(line.text).toBe(
-      "가장 가까운 지하철역은 5호선 길동으로 북동쪽 262m입니다. 버스 정류소가 5곳 있습니다. 가장 가까운 곳은 길동사거리로 동쪽 80m, 길동역으로 북쪽 120m입니다.",
+      "가장 가까운 지하철역은 북동쪽 262m 지점에 있는 5호선 길동입니다. 버스 정류소가 5곳 있습니다. 가장 가까운 곳은 동쪽 80m 지점에 있는 길동사거리이고, 북쪽 120m 지점에 길동역이 있습니다.",
     );
   });
 
@@ -74,23 +74,34 @@ describe("buildOverviewLines (ko)", () => {
       "ko",
     );
     expect(lines.map((l) => l.text)).toEqual([
-      "식당이 12곳 있습니다. 가장 가까운 곳은 봉래면옥으로 남쪽 40m입니다.",
-      "카페가 15곳 이상 있습니다. 가장 가까운 곳은 봉래면옥으로 남쪽 40m입니다.",
+      "식당이 12곳 있습니다. 가장 가까운 곳은 남쪽 40m 지점에 있는 봉래면옥입니다.",
+      "카페가 15곳 이상 있습니다. 가장 가까운 곳은 남쪽 40m 지점에 있는 봉래면옥입니다.",
       "아이 놀 곳은 1km 안에 없습니다.",
       "문화 행사는 서울에서만 안내합니다.",
       "무장애 관광지 정보를 가져오지 못했습니다.",
     ]);
   });
 
-  it("비한글 장소명은 조사 대신 쉼표로 물러난다", () => {
+  it("비한글 장소명은 주격 조사 자리를 비운다", () => {
     const [line] = buildOverviewLines(
       overview([
-        { kind: "food", state: "ok", count: 1, countCapped: false, nearest: [{ name: "GS25", distanceMeters: 40, bearing: "s" }] },
+        {
+          kind: "food",
+          state: "ok",
+          count: 2,
+          countCapped: false,
+          nearest: [
+            { name: "봉래면옥", distanceMeters: 40, bearing: "s" },
+            { name: "GS25", distanceMeters: 60, bearing: "e" },
+          ],
+        },
       ]),
       t,
       "ko",
     );
-    expect(line.text).toContain("GS25, 남쪽 40m");
+    expect(line.text).toBe(
+      "식당이 2곳 있습니다. 가장 가까운 곳은 남쪽 40m 지점에 있는 봉래면옥이고, 동쪽 60m 지점에 GS25 있습니다.",
+    );
   });
 });
 
@@ -103,7 +114,7 @@ describe("buildOverviewLines (en)", () => {
       translator("en"),
       "en",
     );
-    expect(line.text).toBe("Places for kids: 3. The nearest are 길동어린이공원, 300m to the west.");
+    expect(line.text).toBe("Places for kids: 3. The nearest is 길동어린이공원, 300m to the west.");
   });
 
   it("비-ko는 로마자를 문장에 넣고 한글은 secondary로 모은다(E28) — 역은 seed 영문 우선", () => {

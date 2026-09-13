@@ -4081,47 +4081,127 @@
         }
       }
     },
-    "whereAmI.overview.nearestItem": {
+    "whereAmI.overview.nearestFirst": {
       "localizations": {
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ %2$@쪽 %3$@"
+            "value": "%1$@쪽 %2$@ 지점에 있는 %3$@"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@, %3$@ to the %2$@"
+            "value": "%3$@, %2$@ to the %1$@"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@, a %3$@ al %2$@"
+            "value": "%3$@, a %2$@ al %1$@"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@, à %3$@ vers le %2$@"
+            "value": "%3$@, à %2$@ vers le %1$@"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@, a %3$@ verso %2$@"
+            "value": "%3$@, a %2$@ verso %1$@"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "%2$@%3$@の%1$@"
+            "value": "%1$@%2$@の%3$@"
+          }
+        }
+      }
+    },
+    "whereAmI.overview.nearestItem": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@쪽 %2$@ 지점에 %3$@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%3$@, %2$@ to the %1$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%3$@, a %2$@ al %1$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%3$@, à %2$@ vers le %1$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%3$@, a %2$@ verso %1$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@%2$@の%3$@"
           }
         }
       }
     },
     "whereAmI.overview.nearestLead": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "가장 가까운 곳은 %1$@이고, %2$@ 있습니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The nearest are %1$@, %2$@."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los más cercanos son %1$@, %2$@."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les plus proches sont %1$@, %2$@."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I più vicini sono %1$@, %2$@."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最寄りは%1$@、%2$@です。"
+          }
+        }
+      }
+    },
+    "whereAmI.overview.nearestOne": {
       "localizations": {
         "ko": {
           "stringUnit": {
@@ -4132,25 +4212,25 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "The nearest are %1$@."
+            "value": "The nearest is %1$@."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Los más cercanos son %1$@."
+            "value": "El más cercano es %1$@."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Les plus proches sont %1$@."
+            "value": "Le plus proche est %1$@."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "I più vicini sono %1$@."
+            "value": "Il più vicino è %1$@."
           }
         },
         "ja": {
@@ -4606,37 +4686,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "가장 가까운 지하철역은 %1$@%2$@ %3$@쪽 %4$@입니다."
+            "value": "가장 가까운 지하철역은 %1$@쪽 %2$@ 지점에 있는 %3$@%4$@입니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "The nearest subway station is %2$@%1$@, %4$@ to the %3$@."
+            "value": "The nearest subway station is %4$@%3$@, %2$@ to the %1$@."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "La estación de metro más cercana es %2$@%1$@, a %4$@ al %3$@."
+            "value": "La estación de metro más cercana es %4$@%3$@, a %2$@ al %1$@."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "La station de métro la plus proche est %2$@%1$@, à %4$@ vers le %3$@."
+            "value": "La station de métro la plus proche est %4$@%3$@, à %2$@ vers le %1$@."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "La stazione della metropolitana più vicina è %2$@%1$@, a %4$@ verso %3$@."
+            "value": "La stazione della metropolitana più vicina è %4$@%3$@, a %2$@ verso %1$@."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "最寄りの地下鉄駅は%3$@%4$@の%2$@%1$@です。"
+            "value": "最寄りの地下鉄駅は%1$@%2$@の%4$@%3$@です。"
           }
         }
       }

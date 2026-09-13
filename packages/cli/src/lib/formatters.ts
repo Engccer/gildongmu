@@ -1,5 +1,5 @@
 import { joinText } from "./output.js";
-import { directionParticle, subjectParticle, topicParticle } from "./korean-particle.js";
+import { subjectParticle, topicParticle } from "./korean-particle.js";
 
 /**
  * 도메인 산문 포매터 — 라우트 응답 body(envelope 포함) → 항목당 한 줄 산문.
@@ -983,14 +983,22 @@ function formatWhereAmI(body: { data: WhereAmIItem | null }): string[] {
 
 const OVERVIEW_LABEL_KO = { food: "식당", cafe: "카페", kids: "아이 놀 곳", events: "문화 행사", barrierFree: "무장애 관광지" } as const;
 
-/** 장소명 + (으)로. 비한글 장소명은 조사 판정 불가라 쉼표로 물러난다("GS25, 남쪽 40m"). */
-function asDestination(name: string): string {
-  const particle = directionParticle(name);
-  return particle === null ? `${name},` : `${name}${particle}`;
-}
-
+/**
+ * "가장 가까운 곳은 {첫 곳}이고, {나머지}가 있습니다." — 거리·방위를 이름 앞에 두는 어순
+ * (위원장 판정 2026-09-13, 웹 `nearestSentence` ↔ Kit `overviewNearest` 미러). 첫 곳만
+ * "…지점에 있는 {name}"으로 서술격 조사를 받고, 마지막 이름에만 주격 조사가 붙는다
+ * (비한글 장소명은 판정 불가라 조사 자리를 비운다 — "… 지점에 GS25 있습니다").
+ */
 function overviewNearest(items: OverviewPlaceItem[]): string {
-  return `가장 가까운 곳은 ${items.map((p) => `${asDestination(p.name)} ${COMPASS_KO[p.bearing]}쪽 ${dist(p.distanceMeters)}`).join(", ")}입니다.`;
+  const [head, ...rest] = items;
+  if (!head) return "";
+  const first = `${COMPASS_KO[head.bearing]}쪽 ${dist(head.distanceMeters)} 지점에 있는 ${head.name}`;
+  if (rest.length === 0) return `가장 가까운 곳은 ${first}입니다.`;
+  const parts = rest.map((p, i) => {
+    const name = i === rest.length - 1 ? `${p.name}${subjectParticle(p.name) ?? ""}` : p.name;
+    return `${COMPASS_KO[p.bearing]}쪽 ${dist(p.distanceMeters)} 지점에 ${name}`;
+  });
+  return `가장 가까운 곳은 ${first}이고, ${parts.join(", ")} 있습니다.`;
 }
 
 /**
@@ -1009,7 +1017,7 @@ function formatNearbyOverview(body: { data: NearbyOverviewItem | null }): string
       const bus = b.busStops;
       parts.push(
         b.station
-          ? `가장 가까운 지하철역은 ${b.station.line ? `${b.station.line} ` : ""}${asDestination(b.station.name)} ${COMPASS_KO[b.station.bearing]}쪽 ${dist(b.station.distanceMeters)}입니다.`
+          ? `가장 가까운 지하철역은 ${COMPASS_KO[b.station.bearing]}쪽 ${dist(b.station.distanceMeters)} 지점에 있는 ${b.station.line ? `${b.station.line} ` : ""}${b.station.name}입니다.`
           : `${dist(d.radiusMeters)} 안에 지하철역이 없습니다.`,
       );
       if (bus) {
