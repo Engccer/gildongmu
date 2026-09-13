@@ -30,8 +30,10 @@ import { DistanceBeacon } from "./DistanceBeacon";
  * 패턴: 평소엔 시작 버튼 하나, 누르면 세션 시작 + 컨트롤 인라인 펼침.
  *
  * 접근성 계약:
- * - 통지는 단일 polite live region 하나(훅의 liveMessage). 최신이 이전을
- *   대체하므로 supersede가 구조적으로 성립(§6.1).
+ * - 통지는 화면의 단일 polite 창구 하나(`announce` prop — 훅의 liveMessage를 올린다).
+ *   최신이 이전을 대체하므로 supersede가 구조적으로 성립(§6.1). ⚠ 이 패널은 자기
+ *   live region을 두지 않는다(A40) — 폴 타이머가 돌리는 채널과 사용자 조작이 돌리는
+ *   채널이 따로 있으면 겹치는 순간 한쪽이 잘린다.
  * - 상시 표시(구간·잔여·최신 문장·신호 상태·마지막 갱신)는 live region 밖
  *   (묶음 A 계약 재사용) — 무통지 구간에도 "무엇을 기다리는지"를 답한다(§6.1).
  * - 대기 목록 항목 정체성은 차량·열차 식별자(폴링 갱신이 포커스를 흔들지
@@ -44,6 +46,7 @@ export function TransitGuidePanel({
   triggerLabel,
   dest,
   walkAccessible,
+  announce,
   onActiveChange,
 }: {
   route: TransitRoute;
@@ -56,6 +59,11 @@ export function TransitGuidePanel({
    * iOS 인계 경로(`DirectionsTabView.startWalkHandoff`)와 계약이 갈리면 안 된다.
    */
   walkAccessible: boolean;
+  /**
+   * 이 화면의 **단일 polite 창구**(A40). 기본값 없음 — 생략이 컴파일을 통과하면
+   * 통지가 조용히 사라진다(안전 인자에 기본값 금지). 아래 도보 비콘에도 그대로 내린다.
+   */
+  announce: (text: string, lang?: "ko") => void;
   /** 세션 활성 전이 통지. 대안 disclosure 안에 마운트된 패널이 접힘으로
       unmount되면 세션이 조용히 죽으므로, 부모가 이 신호로 강제 펼침을 유지한다. */
   onActiveChange?: (active: boolean) => void;
@@ -70,6 +78,17 @@ export function TransitGuidePanel({
     walkHandoffAvailable: dest != null,
     ...(dest?.name ? { destinationLabel: dest.name } : {}),
   });
+
+  // 안내 문장을 화면의 단일 창구로 올린다(A40). ⚠ **빈 값은 게시하지 않는다** — 훅은
+  // 같은 문장을 다시 말하려고 `"" → 같은 문장`으로 되돌리는데, 그 빈 값을 그대로
+  // 올리면 창구에 떠 있던 다른 게시자의 문장을 지운다(대안 경로마다 이 패널이 하나씩
+  // 마운트되므로 세션 없는 패널의 빈 값도 같은 방식으로 새어 나간다). 재발화는 창구의
+  // seq 키가 맡는다. 닫힌 뒤의 중지·완료 통지도 이 경로로 나가므로 open 조건 밖이다.
+  useEffect(() => {
+    if (!guide.liveMessage) return;
+    announce(guide.liveMessage, guide.liveLang);
+  }, [guide.liveMessage, guide.liveLang, announce]);
+
   const locale = useLocale();
   /** 데이터 언어 축 — 비-ko 로케일은 전부 영문 데이터를 공유한다(E27 잔여 ① §3.1). */
   const isEn = prefersEnglish(locale);
@@ -299,13 +318,6 @@ export function TransitGuidePanel({
         </button>
       )}
 
-      {/* 이 패널의 유일한 live region — 훅 liveMessage 단일 채널. 상시 마운트
-          (내용과 함께 삽입되면 무발화 — B1 교훈)이고, 닫힌 뒤에도 중지·완료
-          통지가 이 채널로 나가야 하므로 open 조건 밖이다. */}
-      <p aria-live="polite" role="status" className="min-h-5 text-sm" lang={guide.liveLang}>
-        {guide.liveMessage}
-      </p>
-
       {/* 승차 전 도보(A25): 승차역까지의 도보 안내 + 도착 판정이 닿지 않을 때의 선언 버튼
           (라벨에 역명 — 무엇을 선언하는지 말한다). 세션 단일성은 guide-session-store가 그대로. */}
       {prewalk && !open && (
@@ -318,6 +330,7 @@ export function TransitGuidePanel({
             dest={{ lat: prewalk.lat, lng: prewalk.lng, name: prewalkWalkLabel }}
             kind="walk"
             accessible={walkAccessible}
+            announce={announce}
             startOnOpen
             focusTriggerOnMount
             onSessionEnd={onPrewalkSessionEnd}
@@ -740,6 +753,7 @@ export function TransitGuidePanel({
           dest={dest}
           kind="walk"
           accessible={walkAccessible}
+          announce={announce}
           autoStart
           focusTriggerOnMount
           triggerLabel={t("walkHandoffStart")}

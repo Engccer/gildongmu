@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { ArrowLeft, ArrowUpDown, MapPinPlus } from "lucide-react";
 import type {
@@ -406,8 +406,46 @@ export function DirectionsView({
     setActiveGuideAlt(null);
     resetWalkExpansion();
   }
-  // 후보 검색 등 폼 보조 통지: phase 파생 문구보다 우선하는 최근 1건.
-  const [notice, setNotice] = useState("");
+  /**
+   * **이 뷰의 단일 polite 창구**(A40). 게시자는 셋 — 폼 보조 통지(후보 수·최근 장소
+   * 조작·안내 중지), 조회 국면 파생 문구(`phaseMessage`), 그리고 화면 아래 실시간 안내
+   * 세션(대중교통 패널·거리 비콘)이다. 종전엔 세 번째 게시자가 **자기 region을 따로**
+   * 들고 있었는데, 그 채널은 폴 타이머가 돌리고 이 채널은 사용자 조작이 돌려서 둘이
+   * 겹치면 한쪽이 잘리거나 순서가 뒤집힌다(같은 경합의 실측 기록 = `PlaceSearch`의
+   * `useHeldValue` 주석). 채널을 나누는 것은 직렬화가 아니라 경합의 원인이다.
+   *
+   * `seq`는 **같은 문장 재게시**용이다 — 문자열이 같으면 DOM이 안 바뀌어 aria-live가
+   * 침묵하므로(React 동일 값 bail out), 텍스트 노드를 key로 갈아 끼워 "추가"로 낸다.
+   * 그래서 훅들의 `"" → 같은 문장` 되돌림 우회는 이 층에선 불필요하다(비어 있는 게시는
+   * "말할 것이 없다"이므로 게시자에서 걸러 내보낸다).
+   *
+   * 우선순위는 종전과 같다: 최근 게시 1건이 `phaseMessage`를 덮고, 빈 게시가 그것을 푼다.
+   */
+  const [live, setLive] = useState<{ text: string; lang?: "ko"; seq: number }>({
+    text: "",
+    seq: 0,
+  });
+  /**
+   * 한 사건에 문장이 둘인 유일한 자리(안내 시작 = 세션 시작 문장 + 수동 위치 고지)를
+   * **한 문장으로 합치기 위한 대기 꼬리**. 창구가 하나면 나중 게시가 앞 게시를 덮으므로,
+   * 고지를 따로 게시하지 않고 바로 다음 게시에 공백으로 이어 붙인다(§12.3 완성 문장
+   * 공백 연결). 한 커밋 안에서만 살아 있다.
+   */
+  const pendingSuffixRef = useRef("");
+  const announce = useCallback((text: string, lang?: "ko") => {
+    if (!text) {
+      pendingSuffixRef.current = "";
+      setLive((prev) => (prev.text ? { text: "", seq: prev.seq + 1 } : prev));
+      return;
+    }
+    const suffix = pendingSuffixRef.current;
+    pendingSuffixRef.current = "";
+    setLive((prev) => ({
+      text: suffix ? `${text} ${suffix}` : text,
+      lang,
+      seq: prev.seq + 1,
+    }));
+  }, []);
 
   // 계단 회피(도보 전용) 토글. 초기값은 `?walkAccessible=1`(위 lazy 초기화 참고).
   // ⚠ **비-ko에서는 무조건 꺼진 상태로 시작한다**(리뷰 검출): 토글은 숨겨 두는데
@@ -672,7 +710,7 @@ export function DirectionsView({
     setFromField(toField);
     setToField(fromField);
     discardResults();
-    setNotice(stopped ? tBeacon("stopped") : "");
+    announce(stopped ? tBeacon("stopped") : "");
   }
 
   /**
@@ -690,7 +728,7 @@ export function DirectionsView({
     // 반쯤 적힌 경유지를 조용히 버리고 조회하지 않는다(N4 spec §3).
     const viaEp = request ? request.via : viaField?.resolved ?? null;
     const viaPending = !request && viaField !== null && !viaField.resolved;
-    setNotice("");
+    announce("");
     if (!from || !to || viaPending) {
       setPhase({ kind: "needEndpoints" });
       return;
@@ -705,7 +743,7 @@ export function DirectionsView({
       // 재조회는 패널을 언마운트시키므로 활성 세션을 먼저 명시 중지·통지한다
       // (a11y 감사 HIGH). 이후 종단 phase 통지 시점에 notice를 비워 경합을 푼다.
       const stoppedGuide = stopActiveGuideSession();
-      if (stoppedGuide) setNotice(tBeacon("stopped"));
+      if (stoppedGuide) announce(tBeacon("stopped"));
       // 새 조회는 도보 접힘을 자동 판정으로 되돌린다(전이표 §4.4). 사용자가
       // 펼쳐 둔 것은 그 경로에 대한 조작이지 다음 경로에 대한 조작이 아니다.
       discardResults();
@@ -729,7 +767,7 @@ export function DirectionsView({
         });
         if (myGen !== genRef.current) return;
         if (!effective) {
-          setNotice(""); // 중지 통지가 종단 phase 통지를 가리지 않게
+          announce(""); // 중지 통지가 종단 phase 통지를 가리지 않게
           setPhase({ kind: "geoError" });
           // 도구 대기자에게는 사유를 세분해 준다(스토어가 `denied`에 남긴 부가 필드).
           const geo = getGeolocationSnapshot();
@@ -743,7 +781,7 @@ export function DirectionsView({
         // (수단별 fetch를 하나도 쏘지 않음). 오류가 아니라 커버리지 안내이므로
         // 일반 phase로 표기. 수동 위치도 같은 판정을 받는다(해외 지정도 정직하게).
         if (!isInKorea(effective.lat, effective.lng)) {
-          setNotice("");
+          announce("");
           setPhase({ kind: "outOfCoverage" });
           settleAfterCommit(myGen, { kind: "outOfCoverage" });
           return;
@@ -798,7 +836,7 @@ export function DirectionsView({
       // ?dir= 딥링크로 직접 조작된 좌표)이 한국 밖일 수 있다. 한 수단이라도 감지하면
       // 나머지 수단 결과를 버리고 폼 전체를 outOfCoverage로 전환한다.
       if (activeModes.some((m) => outcomes[m]?.kind === "outOfCoverage")) {
-        setNotice("");
+        announce("");
         setPhase({ kind: "outOfCoverage" });
         settleAfterCommit(myGen, { kind: "outOfCoverage" });
         return;
@@ -826,7 +864,7 @@ export function DirectionsView({
         toLabel: to.kind === "current" ? currentLabel : to.label,
         avoidStairs: stepFreeRef.current,
       });
-      setNotice(""); // 중지 통지 해제 — settled 합산 통지가 이 커밋에서 발화된다
+      announce(""); // 중지 통지 해제 — settled 합산 통지가 이 커밋에서 발화된다
       setPhase({ kind: "settled" });
       settleAfterCommit(myGen, { kind: "settled", planId });
       // 최근 경로 기록(스펙 §1.2): settled 도달 시 1곳. 실패 phase·outOfCoverage·취소 경로는
@@ -935,7 +973,7 @@ export function DirectionsView({
         : phase.kind === "outOfCoverage"
           ? tCommon("outOfCoverage")
           : t(phase.kind);
-  const liveMessage = notice || phaseMessage;
+  const liveMessage = live.text || phaseMessage;
 
   // 안내 시작의 직접 응답: 이 결과가 수동 위치에서 계산됐다면 "현재 위치에서
   // 시작한다"를 그 순간에만 말한다(spec 2026-08-09 §4 "안내 시작 통지").
@@ -943,14 +981,12 @@ export function DirectionsView({
   // 시작뿐이라, 안내를 시작하지 않는 사용자(실내에서 미리 경로만 듣는 수동 위치의
   // 주 용도)에겐 매 조회마다 지나가야 하는 잡음이었다(위원장 판정 2026-08-17).
   // BeaconModel/useRouteGuide는 여전히 실좌표만 쓰므로(소스 가드) 차단이 아니라 고지다.
-  // ⚠ 같은 문장 재대입은 DOM이 안 바뀌어 침묵한다(시작→중지→재시작). 빈 값을 거치면
-  // 그 틈에 phaseMessage 폴백이 잠깐 노출되므로, 대신 live region 안 텍스트 노드를
-  // key로 갈아 끼워 "추가"로 게시한다(같은 문장이라도 새 노드는 additions 통지).
-  const [noticeSeq, setNoticeSeq] = useState(0);
+  // ⚠ **게시하지 않고 대기 꼬리에 넣는다**(A40): 이 고지와 안내 세션의 시작 문장은
+  // 같은 클릭 핸들러에서 같은 커밋에 나오므로, 창구 하나에 따로 게시하면 나중 것이
+  // 앞 것을 덮어 한쪽이 통째로 사라진다. 한 사건이므로 한 문장으로 합쳐 내보낸다.
   function announceGuideStart() {
     if (results?.originSource !== "manual") return;
-    setNotice(tManual("guideStartsFromCurrent"));
-    setNoticeSeq((n) => n + 1);
+    pendingSuffixRef.current = tManual("guideStartsFromCurrent");
   }
 
   function modeHeading(mode: ModeKey): string {
@@ -1295,7 +1331,7 @@ export function DirectionsView({
   function deleteRecentRoute(r: RecentRoute, index: number) {
     const next = removeRecentRoute(r);
     setRecentRoutes(next);
-    setNotice(tRecent("deleted"));
+    announce(tRecent("deleted"));
     const visibleCount = Math.min(next.length, 5);
     if (visibleCount === 0) {
       submitRef.current?.focus();
@@ -1312,7 +1348,7 @@ export function DirectionsView({
     const pinned = !r.pinned;
     setRecentRoutePinned(r, pinned);
     setRecentRoutes((prev) => prev.map((x) => (x === r ? { ...x, pinned } : x)));
-    setNotice(
+    announce(
       tRecent(pinned ? "pinnedItem" : "unpinnedItem", { name: routeItemLabel(r) }),
     );
   }
@@ -1320,11 +1356,11 @@ export function DirectionsView({
     const kept = clearRecentRoutes();
     setRecentRoutes(kept);
     if (kept.length === 0) {
-      setNotice(tRecentRoutes("cleared"));
+      announce(tRecentRoutes("cleared"));
       submitRef.current?.focus(); // 섹션 소멸 — 기존 계약
     } else {
       // 고정이 남아 섹션·버튼이 그대로다 — 포커스 무이동.
-      setNotice(tRecent("clearedExceptPinned"));
+      announce(tRecent("clearedExceptPinned"));
     }
   }
 
@@ -1348,7 +1384,7 @@ export function DirectionsView({
         searchLabel={t("searchFrom")}
         field={displayField(fromField)}
         onTextChange={(text) => {
-          if (stopActiveGuideSession()) setNotice(tBeacon("stopped"));
+          if (stopActiveGuideSession()) announce(tBeacon("stopped"));
           setFromField({ text, resolved: null });
           discardResults();
         }}
@@ -1359,7 +1395,7 @@ export function DirectionsView({
         onUseCurrent={() => void selectCurrentFrom()}
         useCurrentBusy={refreshingCurrent}
         focusAfterResolve={() => toInputRef.current?.focus()}
-        announce={setNotice}
+        announce={announce}
         locale={locale}
         t={t}
         recentEndpoints={recentFrom}
@@ -1395,7 +1431,7 @@ export function DirectionsView({
         searchLabel={t("searchTo")}
         field={displayField(toField)}
         onTextChange={(text) => {
-          if (stopActiveGuideSession()) setNotice(tBeacon("stopped"));
+          if (stopActiveGuideSession()) announce(tBeacon("stopped"));
           setToField({ text, resolved: null });
           discardResults();
         }}
@@ -1404,7 +1440,7 @@ export function DirectionsView({
           // 직행 선택은 onTextChange를 거치지 않아 활성 세션이 옛 목적지를 향해
           // 조용히 계속 추적했다(iOS는 .onChange(of: endpoint(.to))의 모델 레벨
           // 방어가 있어 웹만의 구멍). 결과도 옛 목적지의 산물이라 함께 비운다.
-          if (stopActiveGuideSession()) setNotice(tBeacon("stopped"));
+          if (stopActiveGuideSession()) announce(tBeacon("stopped"));
           recordResolved("to", ep);
           setToField(endpointToField(ep, currentLabel));
           discardResults();
@@ -1413,7 +1449,7 @@ export function DirectionsView({
           toInputRef.current = el;
         }}
         focusAfterResolve={() => submitRef.current?.focus()}
-        announce={setNotice}
+        announce={announce}
         locale={locale}
         t={t}
         recentEndpoints={recentTo}
@@ -1458,12 +1494,12 @@ export function DirectionsView({
             searchLabel={t("searchVia")}
             field={viaField}
             onTextChange={(text) => {
-              if (stopActiveGuideSession()) setNotice(tBeacon("stopped"));
+              if (stopActiveGuideSession()) announce(tBeacon("stopped"));
               setViaField({ text, resolved: null });
               discardResults();
             }}
             onResolve={(ep) => {
-              if (stopActiveGuideSession()) setNotice(tBeacon("stopped"));
+              if (stopActiveGuideSession()) announce(tBeacon("stopped"));
               if (ep.kind === "place") {
                 setRecentVia(
                   recordRecentEndpoint("via", { label: ep.label, lat: ep.coord.lat, lng: ep.coord.lng }),
@@ -1476,7 +1512,7 @@ export function DirectionsView({
               viaInputRef.current = el;
             }}
             focusAfterResolve={() => submitRef.current?.focus()}
-            announce={setNotice}
+            announce={announce}
             locale={locale}
             t={t}
             recentEndpoints={recentVia}
@@ -1501,7 +1537,7 @@ export function DirectionsView({
             type="button"
             onClick={() => {
               submitRef.current?.focus();
-              if (stopActiveGuideSession()) setNotice(tBeacon("stopped"));
+              if (stopActiveGuideSession()) announce(tBeacon("stopped"));
               setViaField(null);
               discardResults();
             }}
@@ -1524,12 +1560,15 @@ export function DirectionsView({
         {t("submit")}
       </button>
 
-      {/* 이 뷰의 유일한 live region. 수단별 개별 통지 금지, 합산 1문장(phaseMessage).
-          보조 통지(notice — 최근 경로 조작·안내 시작 고지)는 같은 채널을 잠시 우선
-          점유한다. 별도 정적 텍스트를 두지 않는다 — 두 곳에 같은 문장을 두면
-          회전자에서 이중 낭독된다. */}
-      <p aria-live="polite" role="status" className="mt-2 min-h-5 text-sm">
-        <span key={noticeSeq}>{liveMessage}</span>
+      {/* 이 뷰의 유일한 live region(A40). 수단별 개별 통지 금지, 합산 1문장
+          (phaseMessage). 게시(`announce` — 폼 보조 통지·안내 중지·**실시간 안내 세션
+          문장**)는 같은 채널을 잠시 우선 점유한다. 별도 정적 텍스트를 두지 않는다 —
+          두 곳에 같은 문장을 두면 회전자에서 이중 낭독된다.
+          ⚠ 아래 패널·비콘은 자기 region을 두지 않는다(`announce` prop으로 여기 게시).
+          상시 표시(구간·잔여·최신 문장)는 종전대로 각 패널 안에 남는다 — 그것은
+          live region 밖이라 이 계약의 대상이 아니다. */}
+      <p aria-live="polite" role="status" className="mt-2 min-h-5 text-sm" lang={live.lang}>
+        <span key={live.seq}>{liveMessage}</span>
       </p>
 
       {/* 최근 경로(스펙 2026-08-10 §1.3): 결과 없는 화면에서만 — 결과 아래 20행은 탐색 방해.
@@ -1619,6 +1658,7 @@ export function DirectionsView({
                     dest={guideDest}
                     kind="walk"
                     accessible={stepFreeEnabled}
+                    announce={announce}
                     startOnOpen
                     onStart={announceGuideStart}
                     triggerLabel={tBeacon("guideStartWalk")}
@@ -1630,6 +1670,7 @@ export function DirectionsView({
                     dest={guideDest}
                     kind="car"
                     accessible={false}
+                    announce={announce}
                     startOnOpen
                     onStart={announceGuideStart}
                     triggerLabel={tBeacon("guideStartCar")}
@@ -1702,6 +1743,7 @@ export function DirectionsView({
                                   triggerLabel={tBeacon("guideStartTransitAlt", { name })}
                                   dest={guideDest ?? undefined}
                                   walkAccessible={stepFreeEnabled}
+                                  announce={announce}
                                   onActiveChange={(active) =>
                                     setActiveGuideAlt((prev) =>
                                       active

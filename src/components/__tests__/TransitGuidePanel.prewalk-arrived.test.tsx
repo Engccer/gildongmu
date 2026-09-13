@@ -26,7 +26,8 @@ vi.mock("../DistanceBeacon", () => ({
   ),
 }));
 
-import { TransitGuidePanel } from "../TransitGuidePanel";
+// 패널·비콘은 자기 live region을 두지 않는다(A40) — 창구 숙주로 감싸 렌더한다.
+import { TransitGuidePanelHost } from "./live-region-host";
 
 const ROUTE: TransitRoute = {
   summary: { totalMinutes: 30, fare: 1550, transfers: 0, walkMinutes: 6 },
@@ -82,7 +83,7 @@ function stubTrack() {
 describe("승차 전 도보 — GPS 도착 콜백(A25 §6)", () => {
   it("onSessionEnd('arrived') → 도착 문장 + 세션 시작, 대기 문맥에 도보 없음", async () => {
     stubTrack();
-    render(<TransitGuidePanel route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
+    render(<TransitGuidePanelHost route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
     fireEvent.click(screen.getByRole("button", { name: "시작" }));
     fireEvent.click(screen.getByRole("button", { name: "fake-arrive" }));
     await screen.findByRole("button", { name: /selectTrain/ });
@@ -95,7 +96,7 @@ describe("승차 전 도보 — GPS 도착 콜백(A25 §6)", () => {
 
   it("onSessionEnd('ended') → 세션 미시작 + 취소 문장 + 트리거 복귀", () => {
     stubTrack();
-    render(<TransitGuidePanel route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
+    render(<TransitGuidePanelHost route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
     fireEvent.click(screen.getByRole("button", { name: "시작" }));
     fireEvent.click(screen.getByRole("button", { name: "fake-end" }));
     expect(screen.getByRole("status").textContent).toBe("transitGuide.prewalkCancelled");

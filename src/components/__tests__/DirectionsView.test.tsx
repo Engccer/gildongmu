@@ -27,8 +27,25 @@ vi.mock("../CarRouteBriefing", () => ({ CarRouteResult: () => null }));
 // 안내 진입점은 트리거 버튼과 시작 콜백만 흉내 낸다 — 이 스위트는 뷰의 통지 계약을
 // 보지 세션(useRouteGuide, jsdom에 geolocation 없음)을 보지 않는다.
 vi.mock("../DistanceBeacon", () => ({
-  DistanceBeacon: ({ triggerLabel, onStart }: { triggerLabel?: string; onStart?: () => void }) => (
-    <button type="button" onClick={() => onStart?.()}>
+  // 실물의 두 가지만 흉내 낸다: 시작 콜백(호출부가 고지를 준비하는 자리)과, 세션이
+  // 자기 첫 문장을 **화면의 창구로 게시**하는 것(A40 — 비콘은 자기 live region이 없다).
+  // 둘은 같은 클릭에서 나오므로 이 모크가 곧 "한 사건에 문장이 둘"인 자리의 재현이다.
+  DistanceBeacon: ({
+    triggerLabel,
+    announce,
+    onStart,
+  }: {
+    triggerLabel?: string;
+    announce: (text: string) => void;
+    onStart?: () => void;
+  }) => (
+    <button
+      type="button"
+      onClick={() => {
+        onStart?.();
+        announce("beaconStarted");
+      }}
+    >
       {triggerLabel}
     </button>
   ),
@@ -313,19 +330,22 @@ describe("DirectionsView 수동 위치(manual location)", () => {
       expect(screen.getByRole("status").textContent).toBe("readySummary");
     });
     // 고지의 자리는 안내 시작의 직접 응답이다. 그 정보로 갈리는 행동이 안내 시작뿐이라
-    // 그 순간에만 말한다(자동차 tmap 성공 → 시작 버튼 노출, DistanceBeacon 모크가
-    // 시작 콜백만 흉내 낸다). 시작→중지→재시작에도 같은 문장이 다시 발화돼야 한다 —
-    // 같은 문자열 재대입은 DOM이 안 바뀌어 침묵하므로 텍스트 노드가 새로 삽입돼야
-    // 한다(노드 정체성으로 판정).
+    // 그 순간에만 말한다(자동차 tmap 성공 → 시작 버튼 노출). ⚠ A40: 세션 시작 문장과
+    // 이 고지는 같은 커밋에 나오는 **한 사건**이라 창구 하나에 따로 게시하면 한쪽이
+    // 통째로 사라진다 — 한 문장으로 합쳐 나가야 한다. 시작→중지→재시작에도 같은 문장이
+    // 다시 발화돼야 한다 — 같은 문자열 재대입은 DOM이 안 바뀌어 침묵하므로 텍스트
+    // 노드가 새로 삽입돼야 한다(노드 정체성으로 판정).
     fireEvent.click(screen.getByRole("button", { name: "guideStartCar" }));
     await waitFor(() => {
-      expect(screen.getByRole("status").textContent).toBe("guideStartsFromCurrent");
+      expect(screen.getByRole("status").textContent).toBe(
+        "beaconStarted guideStartsFromCurrent",
+      );
     });
     const firstNode = screen.getByRole("status").firstChild;
     fireEvent.click(screen.getByRole("button", { name: "guideStartCar" }));
     await waitFor(() => {
       const status = screen.getByRole("status");
-      expect(status.textContent).toBe("guideStartsFromCurrent");
+      expect(status.textContent).toBe("beaconStarted guideStartsFromCurrent");
       expect(status.firstChild).not.toBe(firstNode);
     });
     // 수동 좌표로 조회했다(GPS 아님) — awaitGeolocation 모크는 항상 error라

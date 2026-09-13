@@ -16,6 +16,8 @@ vi.mock("next-intl", () => ({
   useLocale: () => "ko",
 }));
 
+// 패널·비콘은 자기 live region을 두지 않는다(A40) — 창구 숙주로 감싸 렌더한다.
+import { TransitGuidePanelHost } from "./live-region-host";
 import { TransitGuidePanel } from "../TransitGuidePanel";
 
 /** 승차 전 도보 없는 경로 — 종전 여정 테스트의 기본(A25 이후 선행 도보는 도보 안내를 먼저 돈다). */
@@ -213,7 +215,7 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
         json: async () => ({ mode: "subway", status: "ok", items: [trackItem({})] }),
       })) as unknown as typeof fetch,
     );
-    render(<TransitGuidePanel route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
+    render(<TransitGuidePanelHost route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
     const trigger = screen.getByRole("button", { name: "시작" });
     trigger.focus();
     fireEvent.click(trigger);
@@ -233,7 +235,7 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
       })) as unknown as typeof fetch,
     );
     const { unmount } = render(
-      <TransitGuidePanel
+      <TransitGuidePanelHost
         route={ROUTE}
         triggerLabel="시작"
         walkAccessible={false}
@@ -249,7 +251,7 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
     );
     unmount();
 
-    render(<TransitGuidePanel route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
+    render(<TransitGuidePanelHost route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
     fireEvent.click(screen.getByRole("button", { name: "시작" }));
     await waitFor(() =>
       expect(screen.getAllByRole("status")[0].textContent).toContain("transitGuide.started:1"),
@@ -271,7 +273,7 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
       }),
     );
 
-    render(<TransitGuidePanel route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
+    render(<TransitGuidePanelHost route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
     fireEvent.click(screen.getByRole("button", { name: "시작" }));
     await boardTrain();
     fireEvent.click(await screen.findByRole("button", { name: "transitGuide.changeBoarding" }));
@@ -354,7 +356,7 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
       }),
     );
 
-    render(<TransitGuidePanel route={transferRoute} triggerLabel="시작" walkAccessible={false} />);
+    render(<TransitGuidePanelHost route={transferRoute} triggerLabel="시작" walkAccessible={false} />);
     fireEvent.click(screen.getByRole("button", { name: "시작" }));
     await boardTrainAndTrack();
 
@@ -390,7 +392,7 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
       ),
     );
 
-    render(<TransitGuidePanel route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
+    render(<TransitGuidePanelHost route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
     fireEvent.click(screen.getByRole("button", { name: "시작" }));
     await boardTrain();
     fireEvent.click(await screen.findByRole("button", { name: "transitGuide.changeBoarding" }));
@@ -429,7 +431,7 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
       ),
     );
 
-    render(<TransitGuidePanel route={twoLegs} triggerLabel="시작" walkAccessible={false} />);
+    render(<TransitGuidePanelHost route={twoLegs} triggerLabel="시작" walkAccessible={false} />);
     fireEvent.click(screen.getByRole("button", { name: "시작" }));
     // 2026-09-11 A34: "이미 탑승"은 역을 먼저 묻는다 — 목 항목이 "99"라 필터에 걸려 0건 → 비관측 근사 잠금.
     await boardApproxViaAboard();
@@ -464,7 +466,7 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
       ),
     );
 
-    render(<TransitGuidePanel route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
+    render(<TransitGuidePanelHost route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
     fireEvent.click(screen.getByRole("button", { name: "시작" }));
     await boardTrain();
     fireEvent.click(await screen.findByRole("button", { name: "transitGuide.changeBoarding" }));
@@ -513,7 +515,7 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
         throw new Error(`unexpected fetch: ${url}`);
       }),
     );
-    render(<TransitGuidePanel route={expressRoute} triggerLabel="시작" walkAccessible={false} />);
+    render(<TransitGuidePanelHost route={expressRoute} triggerLabel="시작" walkAccessible={false} />);
     fireEvent.click(screen.getByRole("button", { name: "시작" }));
     await waitFor(() => {
       expect(screen.getByText(/expressSkipsAlight/)).toBeTruthy();
@@ -550,7 +552,7 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
         throw new Error(`unexpected fetch: ${url}`);
       }),
     );
-    render(<TransitGuidePanel route={expressRoute} triggerLabel="시작" walkAccessible={false} />);
+    render(<TransitGuidePanelHost route={expressRoute} triggerLabel="시작" walkAccessible={false} />);
     fireEvent.click(screen.getByRole("button", { name: "시작" }));
     // 2026-09-11 A34: 급행 확인은 [열차 정보 없이 계속](역 선택 뒤 0건 폴백) 앞에 선다 — 목록 경로는 후보 행의
     // unreachable 판정이 대신한다.
@@ -631,7 +633,7 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
       }),
     );
 
-    render(<TransitGuidePanel route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
+    render(<TransitGuidePanelHost route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
     fireEvent.click(screen.getByRole("button", { name: "시작" }));
 
     // 대기 목록: 정상 후보는 탑승 행위구 버튼, 조기 종착은 비활성 텍스트(§5.1)
@@ -698,7 +700,7 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
       }),
     );
 
-    render(<TransitGuidePanel route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
+    render(<TransitGuidePanelHost route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
     fireEvent.click(screen.getByRole("button", { name: "시작" }));
 
     // 진짜 0건(rawCount 0) — 현행 문구
@@ -757,7 +759,7 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
       }),
     );
 
-    render(<TransitGuidePanel route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
+    render(<TransitGuidePanelHost route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
     fireEvent.click(screen.getByRole("button", { name: "시작" }));
     await waitFor(() => {
       expect(screen.getByRole("button", { name: /selectTrain/ })).toBeTruthy();
@@ -826,7 +828,7 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
       }),
     );
 
-    render(<TransitGuidePanel route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
+    render(<TransitGuidePanelHost route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
     fireEvent.click(screen.getByRole("button", { name: "시작" }));
     await boardApproxViaAboard();
 
@@ -869,7 +871,7 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
       }),
     );
 
-    const { unmount } = render(<TransitGuidePanel route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
+    const { unmount } = render(<TransitGuidePanelHost route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
     fireEvent.click(screen.getByRole("button", { name: "시작" }));
     await boardTrain();
     await waitFor(() => {
@@ -897,7 +899,7 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
         },
       ],
     };
-    render(<TransitGuidePanel route={BUS_ROUTE} triggerLabel="시작" walkAccessible={false} />);
+    render(<TransitGuidePanelHost route={BUS_ROUTE} triggerLabel="시작" walkAccessible={false} />);
     fireEvent.click(screen.getByRole("button", { name: "시작" }));
     await boardBusByDeparture(/selectBus/);
     await waitFor(() => {
@@ -935,7 +937,7 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
       }),
     );
 
-    render(<TransitGuidePanel route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
+    render(<TransitGuidePanelHost route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
     fireEvent.click(screen.getByRole("button", { name: "시작" }));
 
     // 대기 국면에도 disclosure는 보이고(정적 목록), 펼치면 승차·하차 라벨이 붙는다.
@@ -987,7 +989,7 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
     );
 
     render(
-      <TransitGuidePanel
+      <TransitGuidePanelHost
         route={routeWithTailWalk}
         triggerLabel="시작"
         dest={{ lat: 37.5216, lng: 126.924, name: "여의도" }}
@@ -1047,7 +1049,7 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
       }),
     );
     render(
-      <TransitGuidePanel
+      <TransitGuidePanelHost
         route={twoLegsWalk}
         triggerLabel="시작"
         dest={{ lat: 37.49, lng: 127.02, name: "강남" }}
@@ -1116,7 +1118,7 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
         } as Response;
       }),
     );
-    render(<TransitGuidePanel route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
+    render(<TransitGuidePanelHost route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
     fireEvent.click(screen.getByRole("button", { name: "시작" }));
     await waitFor(() => expect(releaseOld).not.toBeNull());
     // 옛 폴이 in-flight인 채 이미 탑승 → 왕십리 선택.
@@ -1144,7 +1146,7 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
           }) as Response,
       ),
     );
-    render(<TransitGuidePanel route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
+    render(<TransitGuidePanelHost route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
     fireEvent.click(screen.getByRole("button", { name: "시작" }));
     fireEvent.click(await screen.findByRole("button", { name: "transitGuide.boardAlready" }));
     fireEvent.click(await screen.findByRole("button", { name: "왕십리(성동구청)" }));
@@ -1187,7 +1189,7 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
         } as Response;
       }),
     );
-    render(<TransitGuidePanel route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
+    render(<TransitGuidePanelHost route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
     fireEvent.click(screen.getByRole("button", { name: "시작" }));
     fireEvent.click(await screen.findByRole("button", { name: "transitGuide.boardAlready" }));
     // 1단: 전용 질문 헤딩에 착지.
@@ -1223,8 +1225,14 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
       routeKey: "p0",
       legs: [{ mode: "walk", minutes: 10 }],
     };
+    // 숙주 없이 패널만 렌더한다 — "아무것도 내지 않는다"가 판정이라 창구가 섞이면 안 된다.
     const { container } = render(
-      <TransitGuidePanel route={walkOnly} triggerLabel="시작" walkAccessible={false} />,
+      <TransitGuidePanel
+        route={walkOnly}
+        triggerLabel="시작"
+        walkAccessible={false}
+        announce={() => {}}
+      />,
     );
     expect(container.innerHTML).toBe("");
   });
@@ -1257,7 +1265,7 @@ describe("빠른하차 — 대기 국면 발견 경로", () => {
   it("열차 목록 앞에 나온다(포커스 착지점 다음 자리)", async () => {
     stubWaiting();
     const { container } = render(
-      <TransitGuidePanel route={withQuickExit} triggerLabel="시작" walkAccessible={false} />,
+      <TransitGuidePanelHost route={withQuickExit} triggerLabel="시작" walkAccessible={false} />,
     );
     fireEvent.click(screen.getByRole("button", { name: "시작" }));
     await waitFor(() => {
@@ -1274,7 +1282,7 @@ describe("빠른하차 — 대기 국면 발견 경로", () => {
 
   it("통지를 만들지 않는다(정적 정보라 상태 변화가 없다)", async () => {
     stubWaiting();
-    render(<TransitGuidePanel route={withQuickExit} triggerLabel="시작" walkAccessible={false} />);
+    render(<TransitGuidePanelHost route={withQuickExit} triggerLabel="시작" walkAccessible={false} />);
     fireEvent.click(screen.getByRole("button", { name: "시작" }));
     await waitFor(() => {
       expect(screen.getByRole("button", { name: /selectTrain/ })).toBeTruthy();
@@ -1285,7 +1293,7 @@ describe("빠른하차 — 대기 국면 발견 경로", () => {
 
   it("값이 없으면 자리 자체가 없다", async () => {
     stubWaiting();
-    render(<TransitGuidePanel route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
+    render(<TransitGuidePanelHost route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
     fireEvent.click(screen.getByRole("button", { name: "시작" }));
     await waitFor(() => {
       expect(screen.getByRole("button", { name: /selectTrain/ })).toBeTruthy();
@@ -1315,7 +1323,7 @@ describe("승차 전 도보 핸드오프(A25, spec 2026-08-30 §6)", () => {
   it("선행 도보가 있으면 시작은 세션이 아니라 승차역 도보 안내를 연다", async () => {
     stubGeo();
     stubTrack();
-    render(<TransitGuidePanel route={ROUTE_WALK} triggerLabel="시작" walkAccessible={false} />);
+    render(<TransitGuidePanelHost route={ROUTE_WALK} triggerLabel="시작" walkAccessible={false} />);
     fireEvent.click(screen.getByRole("button", { name: "시작" }));
     // 도보 안내 트리거(DistanceBeacon)와 선언 버튼이 뜨고, 열차 목록은 없다.
     expect(screen.getByRole("button", { name: "transitGuide.prewalkArrivedButton:천호" })).toBeTruthy();
@@ -1327,7 +1335,7 @@ describe("승차 전 도보 핸드오프(A25, spec 2026-08-30 §6)", () => {
   it("승차역 도착 선언 → 세션 시작, 대기 문맥에 도보가 없다", async () => {
     stubGeo();
     stubTrack();
-    render(<TransitGuidePanel route={ROUTE_WALK} triggerLabel="시작" walkAccessible={false} />);
+    render(<TransitGuidePanelHost route={ROUTE_WALK} triggerLabel="시작" walkAccessible={false} />);
     fireEvent.click(screen.getByRole("button", { name: "시작" }));
     fireEvent.click(screen.getByRole("button", { name: "transitGuide.prewalkArrivedButton:천호" }));
     await screen.findByRole("button", { name: /selectTrain/ });
@@ -1341,7 +1349,7 @@ describe("승차 전 도보 핸드오프(A25, spec 2026-08-30 §6)", () => {
   it("도보 안내를 사용자가 중지하면 전체 종료 — 세션은 시작되지 않고 취소 문장", async () => {
     stubGeo();
     stubTrack();
-    render(<TransitGuidePanel route={ROUTE_WALK} triggerLabel="시작" walkAccessible={false} />);
+    render(<TransitGuidePanelHost route={ROUTE_WALK} triggerLabel="시작" walkAccessible={false} />);
     fireEvent.click(screen.getByRole("button", { name: "시작" }));
     // DistanceBeacon 트리거(startOnOpen)로 도보 세션 시작 → 같은 버튼이 중지로 바뀐다.
     fireEvent.click(screen.getByRole("button", { name: "beacon.walkHeading" }));
@@ -1356,7 +1364,7 @@ describe("승차 전 도보 핸드오프(A25, spec 2026-08-30 §6)", () => {
 
   it("선행 도보가 없으면 종전대로 곧바로 세션이 시작된다", async () => {
     stubTrack();
-    render(<TransitGuidePanel route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
+    render(<TransitGuidePanelHost route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
     fireEvent.click(screen.getByRole("button", { name: "시작" }));
     await screen.findByRole("button", { name: /selectTrain/ });
     expect(screen.queryByRole("button", { name: /prewalkArrivedButton/ })).toBeNull();
@@ -1377,7 +1385,7 @@ describe("TransitGuidePanel — boarding 수동 진행 (N3 ①)", () => {
         json: async () => ({ mode: "subway", status: "ok", rawCount: 1, items: [trackItem({})] }),
       })) as unknown as typeof fetch,
     );
-    render(<TransitGuidePanel route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
+    render(<TransitGuidePanelHost route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
     fireEvent.click(screen.getByRole("button", { name: "시작" }));
     clickFocused(await screen.findByRole("button", { name: /selectTrain/ }));
 
@@ -1406,7 +1414,7 @@ describe("TransitGuidePanel — boarding 수동 진행 (N3 ①)", () => {
         }),
       })) as unknown as typeof fetch,
     );
-    render(<TransitGuidePanel route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
+    render(<TransitGuidePanelHost route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
     fireEvent.click(screen.getByRole("button", { name: "시작" }));
     arrived = true;
     fireEvent.click(await screen.findByRole("button", { name: /selectTrain/ }));
@@ -1419,10 +1427,14 @@ describe("TransitGuidePanel — boarding 수동 진행 (N3 ①)", () => {
     // latest-wins로 버려, 이 흐름에서 가장 중요한 한 문장이 웜/콜드에 따라 사라진다).
     // ⚠ E41로 통지에서 "탑승했습니다"가 빠졌다 — 관측 승격의 그 순간 유일한 지시는 탑승 요청이고,
     // 노선·하차역은 착지가 앉는 상태 문장이 그대로 말한다.
-    expect(screen.getAllByRole("status")[0].textContent).toContain(
-      "transitGuide.arrivedAtBoardStop",
+    // ⚠ 창구가 화면 소유라(A40) 통지는 패널 effect → 부모 setState의 **렌더 한 홉** 뒤에
+    // 커밋된다 — 동기 단언은 그 홉을 못 기다린다(패시브 effect 상태엔 waitFor).
+    await waitFor(() =>
+      expect(screen.getByRole("status").textContent).toContain(
+        "transitGuide.arrivedAtBoardStop",
+      ),
     );
-    expect(screen.getAllByRole("status")[0].textContent).not.toContain("trackingStarted");
+    expect(screen.getByRole("status").textContent).not.toContain("trackingStarted");
   });
 
   it("새 차량을 고르면 래치가 지워진다 — 관측이 끝나지 않은 국면에 버튼이 서 있지 않다", async () => {
@@ -1439,7 +1451,7 @@ describe("TransitGuidePanel — boarding 수동 진행 (N3 ①)", () => {
           } as Response;
         }) as unknown as typeof fetch,
       );
-      render(<TransitGuidePanel route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
+      render(<TransitGuidePanelHost route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
       fireEvent.click(screen.getByRole("button", { name: "시작" }));
       fireEvent.click(await screen.findByRole("button", { name: /selectTrain/ }));
       failing = true;
@@ -1473,7 +1485,7 @@ describe("TransitGuidePanel — boarding 수동 진행 (N3 ①)", () => {
           } as Response;
         }) as unknown as typeof fetch,
       );
-      render(<TransitGuidePanel route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
+      render(<TransitGuidePanelHost route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
       fireEvent.click(screen.getByRole("button", { name: "시작" }));
       fireEvent.click(await screen.findByRole("button", { name: /selectTrain/ }));
       await screen.findByRole("button", { name: "transitGuide.reselectVehicle" });

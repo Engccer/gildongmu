@@ -29,7 +29,8 @@ vi.mock("@/hooks/useRouteGuide", () => ({
   useRouteGuide: () => guideApi,
 }));
 
-import { DistanceBeacon } from "../DistanceBeacon";
+// 패널·비콘은 자기 live region을 두지 않는다(A40) — 창구 숙주로 감싸 렌더한다.
+import { DistanceBeaconHost } from "./live-region-host";
 
 /**
  * 하단 2행 렌더 계약(spec 2026-08-11 §6): 두 행은 live region 밖 정적 텍스트이고,
@@ -45,7 +46,7 @@ describe("DistanceBeacon 하단 2행", () => {
   const dest = { lat: 37.5380, lng: 127.1430, name: "주택 A" };
 
   function open() {
-    render(<DistanceBeacon dest={dest} accessible={false} />);
+    render(<DistanceBeaconHost dest={dest} accessible={false} />);
     fireEvent.click(screen.getByRole("button", { name: "walkHeading" }));
   }
 
