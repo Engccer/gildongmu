@@ -12,6 +12,56 @@
 
 ---
 
+## 1.17 (빌드 25)
+
+기준은 1.16 아카이브 커밋 `b6a7e5c2`(빌드 24)이며 그 이후 `ios/` 커밋 20건을 판정했다. Release 바이너리에 도달하면서 iOS 사용자에게 보이는 것만 담는다.
+
+포함 판정:
+
+| 기능 | 커밋 | 노트 |
+|---|---|---|
+| 길찾기 결과 브리핑에 **지하철 출구 번호**(E25) — 승차 출구는 직전 도보 줄, 없으면 탑승 줄 끝. 하차 출구는 하차 줄 끝(문 위치 먼저). 빠른하차가 없던 역은 하차역 이름으로 줄이 새로 선다 | `fdddb75d`(en 역명 보정 `6e1b80de`) | ko·en 6로케일. 도달면 `RouteBriefing`은 정식판(안내 세션 봉인 밖). 문구는 안내 세션과 같은 키 `transitGuide.exitBound` |
+| 내 주변·장소 상세의 **지하철 도착 한 줄을 우리 문장으로**(E37) — `[4]번째 전역 (하남검단산)`을 `4정거장 전 하남검단산.`으로, `3분 후(2번째 전)`을 `2정거장 전, 3분 후 도착.`으로. 못 알아본 문장만 원문 폴백 | `8e098b33`·`3cb53c2f`·`3fe34e67`·`5e3143bf` | ko·en 6로케일(신규 13키). 도달면 `SubwayNearbyView`는 정식판 |
+| **영문 도착 줄이 현재역을 통째로 잃던 결함**(A38) — 결측 판정을 ko 값이 아니라 영문 값 자신으로 | `8e098b33` | **en·ja·es·fr·it만.** ko는 종전과 동일(1.16의 A32가 ko 축을 이미 닫았다) |
+| 내 주변 둘러보기 **"한눈에 보기" 어순** — `봉래면옥으로 남쪽 40m`를 `남쪽 40m 지점에 있는 봉래면옥`으로. 첫 곳에도 방위를 싣는다 | `c0d388fb` | ko·en. 부수로 en 단복수가 정확해졌다(`The nearest is` / `are`). 도달면 Kit `LocationNarrative`는 정식판 |
+| **도보 안내 시작 통지가 목적지를 말한다**(E40의 도보 분) — `도보 안내 시작.`에서 `{목적지}까지 도보 안내 시작.`으로. 경로를 못 받아 직선거리로 떨어지는 문장도 같다 | `8df70f76` | ko·en 6로케일. `GuideText.start`·`guide.detailUnavailable`은 도보 안내라 1.7 졸업분(봉인 밖). 같은 커밋의 대중교통 문장은 제외 |
+
+제외 근거:
+
+- **대중교통 실시간 안내 전량**(E38 `8317e4fd`·`d6abbfe9` · A41 `602535e4`·`bc312fe7`·`d5525346`·`38601d3d`·`2988a408` · E39·E41 `8df70f76`의 transit 분·`7bb1ea31`): 대중교통 세션 시작이 `AppConfig.experimentalGuidanceEnabled` 뒤에 봉인돼 있다(`DirectionsTabView` 1152·1166·1178·1190). 커밋 8건이고 `TransitGuideModel`·`TransitTrackingSheet`·Kit `TransitGuide`/`TransitGuideText`만 건드린다. 정식판 사용자에게는 그 기능 자체가 존재하지 않는다.
+- **E40은 한 커밋 안에서 갈렸다**: `8df70f76`의 `GuideText.start`·`carStart`·`detailUnavailable`은 `BeaconModel`(도보 = Release)이 부르고, 같은 커밋의 `TransitGuideText`·`TransitGuideModel` 상태 문장은 봉인 안이다. 판정 단위는 커밋이 아니라 도달면이라 도보 분만 싣는다(`carStart`는 자동차라 제외).
+- **결과 진동 3종 전량**(E30 확장 `43e105f2`·`205d9086`·`856e9487`·`ba058bdf`): 창구 `ResultHaptic.fire`가 `UserDefaults`의 `TrendHaptics.storageKey`를 읽는데, 그 스위치를 세우는 `SettingsView` 블록이 `#if DEBUG || EXPERIMENTAL` 안이다. Release에는 토글이 없어 값이 기본 `false`로 고정되고 모든 호출이 무동작이다. 30개 파일·173줄이 Release 바이너리에 컴파일돼 들어가지만 사용자가 겪는 변화는 0이다. es·fr·it 설정 푸터 문구 손질도 같은 이유로 제외.
+- **동작 변경 0**: 리뷰 반영 커밋의 테스트·소스 가드·fixture 분, `3fe34e67`의 주석 강도 조정(문자열 무변화 확인).
+
+심사 노트는 이번 버전에서 **승계한다**(`--review-notes` 없음). 새 권한·새 데이터 유형이 없고(출구 번호·도착 문장은 기존 ODsay·서울 열린데이터 응답의 재렌더라 개인정보 3자 일치 무변화), §9 문장 중 이번 변경으로 거짓이 된 것도 없다.
+
+### ko
+
+```
+새로운 기능
+- 길찾기 결과에서 지하철 출구 번호를 알려 드립니다. 탈 때 어느 출구로 들어가는지는 그 앞 도보 안내에, 내릴 때 어느 출구로 나가는지는 하차 안내 끝에 붙습니다.
+
+개선
+- 내 주변과 장소 상세의 지하철 도착 안내를 듣기 쉬운 문장으로 다시 썼습니다. "네 번째 전역 하남검단산" 대신 "4정거장 전 하남검단산", "3분 후 두 번째 전" 대신 "2정거장 전, 3분 후 도착"처럼 읽습니다.
+- 내 주변 둘러보기의 한눈에 보기가 거리와 방향을 이름보다 먼저 말합니다. "남쪽 40m 지점에 있는 봉래면옥이고"처럼 어디쯤인지 먼저 듣고 이름을 듣습니다.
+- 도보 안내를 시작할 때 어디로 가는 안내인지 함께 말합니다. 경로를 받지 못해 직선거리로 안내할 때도 목적지를 말합니다.
+```
+
+### en
+
+```
+New
+- Directions results now include subway exit numbers. The exit you enter through is announced with the walking step before it, and the exit you leave by comes at the end of the get-off step.
+
+Improved
+- Subway arrival lines in Nearby and place details are now written as sentences instead of the transit authority's shorthand, so they read naturally end to end.
+- English arrival lines no longer drop the train's current station. It used to disappear whenever the Korean field was empty, which left only English, Japanese, Spanish, French and Italian users without it.
+- The "at a glance" summary in Nearby now leads with distance and direction before the name, so you hear where a place is and then what it is called.
+- Walking guidance names your destination when it starts, including when it falls back to straight-line guidance because no route was available.
+```
+
+---
+
 ## 1.16 (빌드 24)
 
 기준은 1.15 아카이브 커밋 `ff6e1897`(빌드 23)이며 그 이후 `ios/` 커밋 21건을 판정했다. Release 바이너리에 도달하면서 iOS 사용자에게 보이는 것만 담는다.
