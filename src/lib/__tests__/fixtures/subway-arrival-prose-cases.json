@@ -19,7 +19,7 @@
     { "name": "{역} 전역출발 — 역 이름에 괄호", "message": "천호(풍납토성) 전역출발", "currentLocation": "천호(풍납토성)", "expect": {"kind": "departedStopsBack", "count": 1}, "keys": {"joined": ["departedStopsBack"]} },
     { "name": "{역} 전역출발 — arvlMsg3 부재는 문장의 역으로", "message": "강일 전역출발", "currentLocation": null, "expect": {"kind": "departedStopsBack", "count": 1}, "keys": {"joined": ["departedStopsBack"]} },
     { "name": "{역} 전역출발 — 문장의 역과 arvlMsg3가 다르면 모순", "message": "강일 전역출발", "currentLocation": "미사", "expect": null },
-    { "name": "전전역 출발 — arvlMsg3가 한 역 앞을 가리켜(코퍼스 2/2) 위치를 말하지 않는다", "message": "전전역 출발", "currentLocation": "미사", "expect": {"kind": "departedStopsBack", "count": 2}, "keys": {"joined": ["departedStopsBack"]} },
+    { "name": "전전역 출발 — arvlMsg3의 뜻을 확정 못 해(쓸 수 있는 관측 1행) 위치를 말하지 않는다", "message": "전전역 출발", "currentLocation": "미사", "expect": {"kind": "departedStopsBack", "count": 2}, "keys": {"joined": ["departedStopsBack"]} },
     { "name": "전전역 출발 — arvlMsg3가 없어도 같다", "message": "전전역 출발", "currentLocation": null, "expect": {"kind": "departedStopsBack", "count": 2}, "keys": {"joined": ["departedStopsBack"]} },
     { "name": "N번째 전역", "message": "[4]번째 전역 (하남검단산)", "currentLocation": "하남검단산", "expect": {"kind": "stopsAway", "count": 4, "station": "하남검단산"}, "keys": {"joined": ["stopsAway"]} },
     { "name": "N번째 전역 — 두 자리 수", "message": "[14]번째 전역 (광운대)", "currentLocation": "광운대", "expect": {"kind": "stopsAway", "count": 14, "station": "광운대"}, "keys": {"joined": ["stopsAway"]} },
