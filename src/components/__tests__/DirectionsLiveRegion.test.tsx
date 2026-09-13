@@ -209,6 +209,29 @@ describe("A40 — 길찾기 뷰의 단일 polite 창구", () => {
     expect(liveRegions(container)).toHaveLength(1);
   });
 
+  it("세션 없는 패널이 새로 마운트돼도 창구에 떠 있는 문장을 지우지 않는다", async () => {
+    // ⚠ 창구가 공유라 **빈 값을 게시하면 남의 문장이 지워진다**. 경로 대안마다 패널이
+    // 하나씩 마운트되고 그중 세션을 쥔 것은 하나뿐이므로, 나머지의 빈 `liveMessage`가
+    // 그대로 올라가면 안내 문장이 통째로 사라진다(훅의 `"" → 같은 문장` 되돌림도 같은
+    // 경로다). 게시자가 빈 값을 걸러야 성립하는 계약이라 변이 주입으로 확인한 축이다.
+    stubFetch();
+    renderView();
+    await queryRoutes();
+    fireEvent.click(screen.getAllByRole("button", { name: /^guideStartTransitAlt/ })[0]);
+    await waitFor(() => {
+      expect(screen.getByRole("status").textContent).toContain("startedAt");
+    });
+
+    // 대안 disclosure를 펼쳐 세션 없는 패널을 하나 더 마운트한다.
+    fireEvent.click(screen.getByRole("button", { name: /transitRouteLabel|alternative|p1/ }));
+    await waitFor(() =>
+      expect(
+        screen.getAllByRole("button", { name: /^guideStartTransitAlt/ }).length,
+      ).toBeGreaterThanOrEqual(1),
+    );
+    expect(screen.getByRole("status").textContent).toContain("startedAt");
+  });
+
   it("같은 문장을 다시 게시해도 재발화된다 — 판정은 문자열이 아니라 DOM 변경 횟수", async () => {
     stubFetch();
     renderView();

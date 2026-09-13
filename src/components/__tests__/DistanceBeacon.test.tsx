@@ -14,6 +14,7 @@ vi.mock("@/lib/geolocation", () => ({
 
 // 패널·비콘은 자기 live region을 두지 않는다(A40) — 창구 숙주로 감싸 렌더한다.
 import { DistanceBeaconHost } from "./live-region-host";
+import { DistanceBeacon } from "../DistanceBeacon";
 import { __resetGuideSessionStoreForTest, hasActiveGuideSession } from "@/lib/guide-session-store";
 
 /**
@@ -219,6 +220,29 @@ describe("DistanceBeacon 컨트롤 노출", () => {
     expect(
       container.querySelectorAll('[aria-live], [role="status"], [role="alert"]'),
     ).toHaveLength(1);
+  });
+
+  it("빈 문장은 창구에 게시하지 않는다 — 남의 문장을 지우기 때문", async () => {
+    // ⚠ 창구가 화면 소유라(A40) 공유다. 훅은 같은 문장을 다시 말하려고 `"" → 같은
+    // 문장`으로 되돌리는데(DOM이 안 바뀌면 aria-live가 침묵하므로), 그 빈 값을 그대로
+    // 올리면 되돌림 동안 창구가 비어 **다른 게시자의 문장**(조회 국면 요약)이 보행
+    // 중에 끼어들어 낭독된다. 재발화는 창구의 seq 키가 맡으므로 여기선 뒷 edge만 쓴다.
+    // 판정은 렌더 결과가 아니라 **게시 자체**로 한다 — 빈 게시는 화면에 흔적을 남기지
+    // 않아 텍스트 단언으로는 잡히지 않는다(변이 주입으로 확인한 사각지대).
+    const published: string[] = [];
+    render(
+      <NextIntlClientProvider locale="ko" messages={ko}>
+        <DistanceBeacon
+          dest={DEST}
+          accessible={false}
+          announce={(text) => published.push(text)}
+        />
+      </NextIntlClientProvider>,
+    );
+    openAndStart("ko");
+    await waitFor(() => expect(published.length).toBeGreaterThan(0));
+    pushFix(0, 100, 0);
+    expect(published).not.toContain("");
   });
 });
 
