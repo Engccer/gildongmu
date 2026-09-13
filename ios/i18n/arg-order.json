@@ -1067,13 +1067,22 @@
   "whereAmI.overview.failedItem": [
     "label"
   ],
-  "whereAmI.overview.nearestItem": [
-    "name",
+  "whereAmI.overview.nearestFirst": [
     "direction",
-    "distance"
+    "distance",
+    "name"
+  ],
+  "whereAmI.overview.nearestItem": [
+    "direction",
+    "distance",
+    "name"
   ],
   "whereAmI.overview.nearestLead": [
+    "first",
     "items"
+  ],
+  "whereAmI.overview.nearestOne": [
+    "first"
   ],
   "whereAmI.overview.none": [
     "label",
@@ -1106,10 +1115,10 @@
     "distance"
   ],
   "whereAmI.overview.transitStation": [
-    "line",
-    "name",
     "direction",
-    "distance"
+    "distance",
+    "line",
+    "name"
   ],
   "whereAmI.overview.unavailableSeoulOnly": [
     "label"
