@@ -89,6 +89,8 @@ node scripts/usage-report.mjs   # API 비용·쿼터·키 만료
 
 **규모**: 웹 단독, 소규모(한 곳으로 합치고 `nearbyLiveMessage`류 단일 창구를 지나게). ⚠ 웹 배포는 2026-09-22 동결 뒤 — B6·B9 ②와 같은 "웹 실시간 안내를 다음에 지날 때" 묶음.
 
+▶ **위원장 판정(2026-09-13, 코디네이터 세션) — 지금 착수한다.** 웹 단독이라 앱이 새 서버 동작에 의존하지 않고, 동결이 막는 것은 push·재배포이지 로컬 커밋이 아니다. 배포만 2026-09-22 뒤로 미룬다. 합치는 방향·창구 설계는 세션 판정(제품 판단 아님). 세션 `live-region`, 계획 `docs/superpowers/plans/2026-09-13-arrival-prose-live-region-parallel-plan.md`.
+
 ### A38. 영문 도착 한 줄이 현재역을 통째로 잃는다 (🆕 2026-09-11, A32 잔여에서 승격)
 
 **증상**: `arvlMsg3`(`currentLocation`)가 비고 현재역이 `arvlCd` 99 문장의 괄호로만 오는 도착(`5분 후 (종각)`)에서, 한국어 줄은 문장 안에 현재역을 담지만 **영문 줄은 `In 5 min`으로 현재역을 통째로 잃는다**. 한국어 사용자에게는 보이지 않고 en·ja·es·fr·it 사용자만 정보를 잃는다.
@@ -102,6 +104,8 @@ node scripts/usage-report.mjs   # API 비용·쿼터·키 만료
 **관측 빈도**: 실호출 878행(2026-09-10 20건 + 수집기 최종 858행, 2026-09-11 04:46 ~ 09-12 06:46 KST — `arvlMsg3`가 빈 행 0)에서 **0회**. 다만 `subway-arrival-en-cases.json`이 이 모양을 **계약으로 못 박아** 두었으므로 "안 일어난다"로 닫지 않는다.
 
 **착수 시 정할 것**: ①en 자리 기준을 넓히는 것이 E27 원자성 계약과 어디서 충돌하는가(한 줄에 ko 역명이 섞이는가, 아니면 `currentLocationEn`만 쓰는가) ②로마자 원천이 없는 역에서 무엇을 싣는가(E28 `bilingualName`·`romanize.ts`와의 경계) ③판정 함수는 A32와 같은 자리(`station-arrivals.ts` ↔ `SubwayArrivalLine.swift`)이므로 E37 착수와 한 사이클로 묶을 수 있다.
+
+▶ **위원장 판정(2026-09-13, 코디네이터 세션)**: **영문 줄은 자기 값으로 판정한다** — 한국어 칸(`arvlMsg3`)이 비었다는 이유로 `currentLocationEn`을 버리지 않는다. E27 줄 원자성(한 줄 안에서 언어를 섞지 않는다)은 그대로이고, 바뀌는 것은 **영문 자리의 결측 판정 기준을 ko 값에서 떼어내는 것 하나**다(①의 갈래 중 "`currentLocationEn`만 쓴다"). ②는 그 판정의 결과로 en 원천이 없으면 종전대로 필드 부재다. 착수는 E37과 한 세션(`arrival-prose`, 계획 `docs/superpowers/plans/2026-09-13-arrival-prose-live-region-parallel-plan.md`).
 
 ### A39. 설정의 체중 입력이 범위 밖 값을 신호 없이 버린다 — ✅ 코드 종결(2026-09-11, 세션 small-batch, CHANGELOG 같은 날)
 
@@ -649,6 +653,8 @@ spec `2026-08-12-walk-route-alternatives-design.md` §4·§7. 출처 `PORTS.md` 
 2. ~~**운행 종료 시각 `barvlDt` 실측**~~ ✅ 데이터는 같은 코퍼스의 심야 표본에 있다 — 해석(위 게이트)은 spec 착수 때 코퍼스에서 읽는다.
 3. spec 신규 — "완성 문장이 낭독 정본"이라는 계약을 이 화면에서 바꾸는 것이라 근거를 남긴다. 승차 국면(A27)·안내 통지는 범위 밖으로 명시.
 4. 6로케일 문안 + 웹(`station-arrivals.ts`) ↔ iOS(`subwayArrivalLine`) 미러.
+
+▶ **위원장 판정(2026-09-13, 코디네이터 세션) — 범위: 시간형·정거장형 둘 다 바꾼다.** `4분 후 (삼각지)` 계열과 `[4]번째 전역 (하남검단산)`·`전전역 출발` 계열을 모두 우리 문장으로 조립한다. 정거장 수는 글자 파싱이므로 **못 알아보면 그 줄만 서울시 원문 그대로**(실패 방향이 현행 동작이라 정보 손실 0). 문장 초안·게이트(심야 `barvlDt` 해석)·6로케일 문안 확정은 spec에서, 문안은 위원장 왕복으로. 착수는 A38과 한 세션(`arrival-prose`, 계획 `docs/superpowers/plans/2026-09-13-arrival-prose-live-region-parallel-plan.md`).
 
 ### E36. 대중교통 안내를 백그라운드에서도 돌린다 (2026-09-10 위원장 판정) — ✅ 코드 종결(2026-09-11, 세션 transit-2, CHANGELOG 같은 날), 실승차·배터리·쿼터 판정 대기
 
@@ -1370,6 +1376,8 @@ W1 도구 9개를 "데이터 반환형이 주"(W2 spec 판정 ②) 기준으로 
 ## 다음에 할 일
 
 **2026-09-11 백로그 3차 전수 소화 — 이번 웨이브가 착수 목록으로 잡은 코드 항목은 다 닫혔다.** 병렬 세션 6개(from-here·arrival-tail·weight-notice·transit-1·transit-2·transit-3)가 웨이브 3개로 **A32·A33·A34 ②+①·A35·A36 ①·A37 ②·B10·E31·E32·E33(iOS)·E34·E36**을 종결했고(plan `docs/superpowers/plans/2026-09-11-backlog-sweep-3-parallel-plan.md`), 웨이브 4가 이 문서 정합을 맞췄다. **남은 것은 대부분 코드가 아니다.**
+
+▶ **2026-09-13 코디네이터 판정 세션**: 백로그 전수 재검토 결과 **동결 안에서 코드로 열린 것은 셋**(E37·A38·A40)이고 전부 착수했다 — E37·A38은 서버 신규 필드가 필요 없다(`arrivalSeconds`=`barvlDt`·`arrivalCode`=`arvlCd`·`currentLocationEn`이 이미 응답에 있다)는 코드 대조가 착수 근거다. 병렬 세션 2개(`arrival-prose`·`live-region`), 계획 `docs/superpowers/plans/2026-09-13-arrival-prose-live-region-parallel-plan.md`. E35(새 provider·라우트)·E15 ③(iOS 실승차 선행)·E14 ③(설계 선행)은 이번 범위 밖.
 
 **다음 행동(순서)**:
 1. ~~**실기기 재배포**~~ ✅ 2026-09-13 06:21 두 구성 재설치(로컬 main `6e1b80de` — 웨이브 1~2 + E30·E30 확장·E25 브리핑 출구·E25 en 하차 줄까지 전부 포함. 버전 표기는 1.16.0(24) 그대로라 빌드 번호로는 구분되지 않고 로그의 새 이벤트 이름으로 가른다). 다음 실승차부터 §2의 N3 ②·E38·E39·E40·E41·E30·E25 브리핑 출구 행을 잰다.
