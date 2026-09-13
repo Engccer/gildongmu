@@ -81,7 +81,7 @@ describe("renderArrivalProse — ko 문장(실제 문자열 자원)", () => {
     ["강일 전역출발", "강일", "1정거장 전에서 출발."],
     ["전전역 출발", "미사", "2정거장 전에서 출발."],
     ["전전역 출발", null, "2정거장 전에서 출발."],
-    ["[4]번째 전역 (하남검단산)", "하남검단산", "4정거장 전 하남검단산에 있습니다."],
+    ["[4]번째 전역 (하남검단산)", "하남검단산", "4정거장 전 하남검단산."],
     ["4분 후 (삼각지)", "삼각지", "4분 후 도착. 현재 삼각지."],
     ["4분 30초 후", "방배", "4분 30초 후 도착. 현재 방배."],
     ["9분 후", null, "9분 후 도착."],
@@ -127,7 +127,7 @@ describe("en 계열 로케일 — 문장형 줄의 언어(E27 원자성 + A38)",
   it("ja 로케일은 일본어 문장 + 영문 역명이고 lang=en을 달지 않는다(UI 템플릿 줄)", () => {
     const a: SubwayArrival = { ...BASE, ...EN_FIELDS, message: "[4]번째 전역 (하남검단산)", currentLocation: "하남검단산", currentLocationEn: "Hanam Geomdansan" };
     const items = arrivalItems([a], tJa, "ja");
-    expect(items[0].message).toBe("4駅前のHanam Geomdansanにいます。");
+    expect(items[0].message).toBe("4駅前のHanam Geomdansan。");
     expect(items[0].messageLang).toBeUndefined();
   });
 
