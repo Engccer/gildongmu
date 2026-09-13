@@ -11,6 +11,14 @@
 
 ## 2026-09-13
 
+### 웹 길찾기 뷰의 polite live region을 하나로 (A40, 웹 — 배포는 동결 뒤)
+
+대중교통 안내가 도는 동안 `DirectionsView`·`TransitGuidePanel`·`DistanceBeacon`이 각각 polite live region을 문서에 두었다(헌장 §1 위반). **둘이 아니라 넷 이상이다** — 패널은 경로 대안마다, 비콘은 수단(도보·자동차·승차 전 도보·도보 인계)마다 하나씩 마운트된다. 등재는 구조 관찰이었으나(`~/gildongmu-wt/reports/small-batch-review-a11y.md` L7, 실측 아님), 착수해 보니 **같은 커밋에서 두 채널이 동시에 갱신되는 결정적 경로**가 코드에 있었다: `onStart={announceGuideStart}`가 한 클릭 핸들러에서 세션 시작 문장(비콘 채널)과 수동 위치 고지(뷰 채널)를 함께 낸다. 그 자리 주석은 그것을 "경합시키지 않는 분리"로 적어 두었는데, 채널을 나누는 것은 직렬화가 아니라 경합의 원인이다(같은 경합의 실측 기록이 `PlaceSearch`의 `useHeldValue` 주석이다).
+
+`DirectionsView`가 창구(`announce(text, lang?)`)를 소유하고 region 하나만 내며, 패널·비콘은 자기 region을 버리고 그 창구에 게시한다(기본값 없는 필수 prop). 우선순위는 종전과 같고(최근 게시 1건이 `phaseMessage`를 덮고 빈 게시가 푼다), 같은 문장 재게시는 `seq` 키로 텍스트 노드를 갈아 끼워 재발화한다. 한 사건에 문장이 둘인 유일한 자리(안내 시작)는 대기 꼬리로 한 문장에 합친다. 상시 표시 상태 문장(`statusText`·`currentText`)은 live region 밖이라 각 패널에 그대로 남는다.
+
+검증: 웹 4,224 통과, 신규 계약 7건(`DirectionsLiveRegion.test.tsx` 6 + `DistanceBeacon` 1), **변이 주입 5종 전부 검출**. ⚠ 그중 "빈 값을 그대로 게시한다"는 처음에 **전 스위트 초록으로 통과**해 축을 새로 붙였다 — 훅의 `"" → 같은 문장` 되돌림이 창구를 비워 조회 국면 요약이 보행 중에 끼어드는 실경로다. iOS는 이 항목 밖. ⛔ 웹 배포는 2026-09-22 동결 해제 뒤.
+
 ### iOS 브리핑 하차 줄의 역명이 en 세션에서도 한국어이던 결함 (E25 잔여, iOS 정식판)
 
 E25 착수 중 발견한 결함으로 빠른하차 줄(E5) 시절부터 있었다. 웹은 구간 줄의 영어 자격(`legEn` — 노선·승차·하차 영문이 다 있을 때만)으로 하차 줄 역명을 고르는데, iOS `RouteBriefing.TransitRouteRows`는 `leg.toName`을 직접 읽어 en 세션에서 "Get off at 여의도"처럼 한 줄에 두 언어가 섰다(E27·E28 줄 단위 원자성 위반). 원인은 그 판정이 앱 `transitLegLine` 안에 인라인 `guard`로만 있어 두 번째 소비자가 재사용할 수 없었던 것. Kit `TransitExitLines.swift`에 술어 `transitLegUsesEnglish(_:lang:)`와 역명 선택 `transitAlightStationName(_:lang:)`을 두고 구간 줄·하차 줄이 그 하나를 보게 했다(구간 줄이 한국어면 하차 줄도 한국어 역명 — 역명만 영문으로 바꾸면 위아래 줄이 다른 이름으로 같은 역을 부른다). 검증: Kit 신규 3건(ko 세션·en 자격 4분기·도보 행선지), 웹 소스 가드 1건(`transit-exit-lines.test.ts` — `toName` 직접 읽기·인라인 판정 재도입 금지), iOS 시뮬 빌드, 실기기 2구성 설치. 서사 원 자리는 `docs/BACKLOG.md` E25.
