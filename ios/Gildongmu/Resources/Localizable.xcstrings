@@ -38498,19 +38498,19 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "En %1$@."
+            "value": "Llegó a %1$@."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "À %1$@."
+            "value": "Arrivé à %1$@."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "A %1$@."
+            "value": "Arrivato a %1$@."
           }
         },
         "ja": {
@@ -39178,19 +39178,19 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "A 1 parada, en %1$@."
+            "value": "A 1 parada, llegó a %1$@."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "À 1 arrêt, à %1$@."
+            "value": "À 1 arrêt, arrivé à %1$@."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "A 1 fermata, a %1$@."
+            "value": "A 1 fermata, arrivato a %1$@."
           }
         },
         "ja": {

@@ -23,7 +23,9 @@ public enum SubwayArrivalPlan: Equatable, Sendable {
 private let prevEventPattern = #"^전역 (진입|도착|출발)$"#
 private let prevDepartedWithStationPattern = #"^(.+?)\s*전역출발$"#
 private let stationEventPattern = #"^(.+?) (진입|도착|출발)$"#
-private let stopsAwayPattern = #"^\[(\d+)\]번째 전역(?:\s*\((.+)\))?$"#
+/// ⚠ 괄호는 **필수**다. 코퍼스 254행이 전부 괄호를 다는데, 괄호 없는 변형이 오면 그 역이 열차 위치라는
+/// 보장이 없다(`{X} 전역출발`의 X가 조회 역 자신인 것과 같은 계열일 수 있다) — 원문에 맡긴다.
+private let stopsAwayPattern = #"^\[(\d+)\]번째 전역\s*\((.+)\)$"#
 /// 괄호는 소·대괄호 둘 다 온다(`4분 후 (삼각지)` · `3분48초후[3번째 전]`).
 /// ⚠ 문자 클래스 안의 `[`는 반드시 이스케이프한다 — ICU는 `[([]`를 중첩 집합의 시작으로 읽어
 /// 패턴이 통째로 어긋나고(시간형 전량 미인식), JS는 같은 표기를 문자로 읽어 **웹만 통과한다**.
@@ -45,7 +47,7 @@ private let verbs: [String: SubwayArrivalVerb] = ["진입": .approaching, "도�
 /// 문장에서 읽은 역과 `arvlMsg3`를 하나로 — **둘 다 있고 다르면 모순**이라 실패다.
 /// 서버 `enrichArrivalEn`의 "둘이 다르면 부재"와 같은 축(그래야 `currentLocationEn`이 이 역의 영문이다).
 private func resolveStation(_ fromText: String?, _ fromMsg3: String) -> (ok: Bool, station: String?) {
-    let text = fromText?.trimmingCharacters(in: .whitespaces)
+    let text = fromText?.trimmingCharacters(in: .whitespacesAndNewlines)
     let trimmed = (text?.isEmpty ?? true) ? nil : text
     if let trimmed, !fromMsg3.isEmpty, trimmed != fromMsg3 { return (false, nil) }
     return (true, trimmed ?? (fromMsg3.isEmpty ? nil : fromMsg3))
@@ -62,8 +64,10 @@ private func resolveStation(_ fromText: String?, _ fromMsg3: String) -> (ok: Boo
 /// (12/12) 열차 위치가 아니다 — 이 둘은 역명을 문장에도 꼬리에도 싣지 않는다.
 /// 못 알아보면 `nil`(원문 경로) — 역을 지어내지 않는다(3-state).
 public func subwayArrivalProse(message: String?, currentLocation: String?) -> SubwayArrivalPlan? {
-    let msg = (message ?? "").trimmingCharacters(in: .whitespaces)
-    let msg3 = (currentLocation ?? "").trimmingCharacters(in: .whitespaces)
+    // ⚠ trim 집합은 웹 `String.trim()`(개행 포함)에 맞춘다 — `.whitespaces`만 쓰면 `arvlMsg3`에 개행이
+    // 섞였을 때 Kit만 모순 판정으로 떨어져 두 플랫폼이 갈린다(설계 리뷰 MINOR-3).
+    let msg = (message ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+    let msg3 = (currentLocation ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
     guard !msg.isEmpty else { return nil }
 
     if let m = match(prevEventPattern, msg), let verb = m[1].flatMap({ verbs[$0] }) {
@@ -92,7 +96,7 @@ public func subwayArrivalProse(message: String?, currentLocation: String?) -> Su
         let sec = seconds ?? 0
         guard min >= 1 || sec >= 1 else { return nil }
         // 구 문법의 괄호는 역명이 아니라 잔여 정거장이다 — 정거장 조각으로 풀고 현재역은 `arvlMsg3`가 맡는다.
-        let legacy = m[3].flatMap { match(etaStopsParenPattern, $0.trimmingCharacters(in: .whitespaces)) }
+        let legacy = m[3].flatMap { match(etaStopsParenPattern, $0.trimmingCharacters(in: .whitespacesAndNewlines)) }
         let stops = legacy?[1].flatMap(Int.init)
         if let stops, stops < 1 { return nil }
         let r: (ok: Bool, station: String?) =
@@ -103,7 +107,7 @@ public func subwayArrivalProse(message: String?, currentLocation: String?) -> Su
     // ⚠ 당역 문법은 **`arvlMsg3`와 값이 같을 때만** 인정한다 — `{무엇} 도착` 모양은 역명이 아닌 말도
     // 통과시킨다(`곧 도착`의 "곧"을 역으로 읽는다). 코퍼스의 이 문법 228행은 전부 `arvlMsg3`와 같다.
     if let m = match(stationEventPattern, msg), let verb = m[2].flatMap({ verbs[$0] }),
-       !msg3.isEmpty, m[1]?.trimmingCharacters(in: .whitespaces) == msg3 {
+       !msg3.isEmpty, m[1]?.trimmingCharacters(in: .whitespacesAndNewlines) == msg3 {
         return .stationEvent(verb: verb, station: msg3)
     }
     return nil
@@ -151,7 +155,7 @@ public func subwayArrivalProseSegments(_ plan: SubwayArrivalPlan, station: Strin
     case let .stopsAway(count, _):
         return SubwayArrivalSegments(
             joined: [SubwayArrivalSegment(key: "stopsAway", args: [String(count), at])], tail: nil)
-    case let .eta(minutes, seconds, stops, _):
+    case let .eta(minutes, seconds, stops, nowAt):
         let eta: SubwayArrivalSegment
         if let minutes, let seconds {
             eta = SubwayArrivalSegment(key: "etaMinSec", args: [String(minutes), String(seconds)])
@@ -163,7 +167,8 @@ public func subwayArrivalProseSegments(_ plan: SubwayArrivalPlan, station: Strin
         // 정거장이 함께 오면 버스 안내 상태 문장과 같은 순서·구분(정거장 먼저, 쉼표)으로 잇는다(E39).
         let joined =
             stops.map { [SubwayArrivalSegment(key: "stopsJoin", args: [String($0)]), eta] } ?? [eta]
-        let tail = station.map { SubwayArrivalSegment(key: "nowAt", args: [$0]) }
+        // 꼬리의 유무는 **계획**이 정하고 역명은 표기일 뿐이다(설계 리뷰 MINOR-4).
+        let tail = nowAt.map { SubwayArrivalSegment(key: "nowAt", args: [station ?? $0]) }
         return SubwayArrivalSegments(joined: joined, tail: tail)
     }
 }

@@ -105,6 +105,9 @@ private func expected(_ e: ProseCase.ExpectedPlan) -> SubwayArrivalPlan? {
     for c in file.cases {
         let got = subwayArrivalProse(message: c.message, currentLocation: c.currentLocation)
         let want = c.expect.flatMap(expected)
+        // fixture 행의 모양이 어긋나면 `expected`가 nil을 돌려주고 그 행이 조용히 "원문 경로여야 한다"는
+        // 판정으로 바뀐다 — 작성 실수가 초록으로 흡수되지 않게 해독 자체를 단언한다(설계 리뷰 MINOR-7).
+        #expect(c.expect == nil || want != nil, "\(c.name): fixture expect 해독 실패")
         #expect(got == want, "\(c.name): \(describe(got)) ≠ \(describe(want))")
         // 키 선택도 웹과 한 표다 — 같은 계획에서 서로 다른 문장을 고르면 두 플랫폼이 갈린다.
         guard let got, let keys = c.keys else {
