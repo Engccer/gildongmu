@@ -109,4 +109,14 @@ git worktree remove ~/gildongmu-wt/<name>   # 코디네이터 허가 뒤
 
 ## §6. 종료 상태
 
-(웨이브 종료 시 코디네이터가 기록)
+**웨이브 종료 2026-09-13.** 두 세션 모두 완주, 착수한 세 항목(E37·A38·A40) 전부 코드 종결.
+
+| 세션 | 통합 | 실기기 | 남은 것 |
+|---|---|---|---|
+| `live-region` (A40) | 로컬 main `47b838e2` | 해당 없음(웹 단독) | 웹 배포(2026-09-22 동결 해제 뒤) · 실사용 확인 1건(BACKLOG A40 ⏳) |
+| `arrival-prose` (E37·A38) | 로컬 main `5e3143bf` | 2026-09-13 13:02 KST 두 구성 배포(`Release`·`Experimental`, iPhone 13 Pro) | 위원장 실기기 판정(BACKLOG §2 · FIELD-TEST 새 행) |
+
+- 로컬 main 최종 `5e3143bf`. **origin push 0**(심사 동결, `pre-push` 훅 미변경).
+- 코디네이터 몫 완료: `sync_agent_docs.py` 2회(`eb06f467`·`3df39e29`), 착수 전제 정정 절(§1 M1 아래), 소유 밖 자진 신고 2건 승인(`DistanceBeacon.tsx` · `SubwayNearbyView.swift`), 창·worktree 정리.
+- **신규 백로그 2건**: A42(채팅 산문만 원문을 읊는다 — 서버라 동결 대기) · B11(iOS ko 줄에 방향 없음, E37 이전부터).
+- ⚠ **`arrival-prose` 배포분에는 자동 가드가 없는 자리가 있다**(`subwayArrivalLine` 앱 배선) — 위원장 실기기 확인이 그 자리의 유일한 가드다.
