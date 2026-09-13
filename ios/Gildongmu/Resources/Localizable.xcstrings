@@ -39366,7 +39366,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@정거장 전 %2$@에 있습니다."
+            "value": "%1$@정거장 전 %2$@."
           }
         },
         "en": {
@@ -39396,7 +39396,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@駅前の%2$@にいます。"
+            "value": "%1$@駅前の%2$@。"
           }
         }
       }

@@ -276,7 +276,7 @@
     "prevArrived": "1駅前の{station}に到着。",
     "prevDeparted": "1駅前の{station}を出発。",
     "departedStopsBack": "{count}駅前を出発。",
-    "stopsAway": "{count}駅前の{station}にいます。",
+    "stopsAway": "{count}駅前の{station}。",
     "stopsJoin": "{count}駅前",
     "etaMin": "{minutes}分後に到着。",
     "etaMinSec": "{minutes}分{seconds}秒後に到着。",

@@ -276,7 +276,7 @@
     "prevArrived": "1정거장 전 {station} 도착.",
     "prevDeparted": "1정거장 전 {station}에서 출발.",
     "departedStopsBack": "{count}정거장 전에서 출발.",
-    "stopsAway": "{count}정거장 전 {station}에 있습니다.",
+    "stopsAway": "{count}정거장 전 {station}.",
     "stopsJoin": "{count}정거장 전",
     "etaMin": "{minutes}분 후 도착.",
     "etaMinSec": "{minutes}분 {seconds}초 후 도착.",
