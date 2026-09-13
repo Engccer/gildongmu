@@ -46,6 +46,7 @@
 - **"내 주변" 결과 각 항목 이름은 `<h4>`**(계층 nearby 섹션 `h3` → 항목 `h4`, 장소 상세는 `h2`→`h3`→`h4`). 정적 정보 리스트라 heading이 유일한 빠른 점프 수단. 도착편·보행 인프라 항목은 무헤딩. → PATTERNS
 - **한 줄 = 한 접근성 객체 (시각 목적 인라인 분절 금지).** 한 항목의 한 줄을 시각용 인라인 `<span>`으로 쪼개지 말고 `joinText(...)`(`src/lib/format.ts`)로 단일 텍스트로 합친다(구분자 쉼표, 가운뎃점 금지 — `i18n-messages.test.ts`가 6로케일 스캔). 배지는 텍스트로 흡수, 인터랙티브 요소는 절대 합치지 않는다. → PATTERNS
 - **definition list(`<dl>/<dt>/<dd>`)는 단순 라벨-값에 금지.** 평문 단일 텍스트 `<p>{`${라벨} ${값}`}</p>`(라벨 볼드 span도 분절이라 포기). → PATTERNS
+- **polite 창구는 화면이 소유한다 — 자식 패널은 자기 live region을 두지 않는다**(A40, 웹 길찾기 뷰 `DirectionsView.announce`; `TransitGuidePanel`·`DistanceBeacon`은 기본값 없는 `announce` prop으로 게시). ⚠ 게시자는 **빈 값을 올리지 않는다**(훅의 `"" → 같은 문장` 되돌림이 남의 문장을 지운다), 같은 커밋에 두 문장이 나는 자리(안내 시작 고지)는 대기 꼬리로 합친다, 재발화 판정은 문자열이 아니라 DOM 변경 횟수. → PATTERNS
 - **이미 보이는(SR 노출되는) 콘텐츠를 live region에 복제하지 말 것**(WAI-ARIA 모범). 채팅 답변 산문을 sr-only로 복제했다가 회전자에서 중복 낭독된 회귀가 있었다 — 답변은 보이는 `MessageBubble` 한 곳에만.
 - **iOS 채팅·받아쓰기 계약은 헌장 §6이 정본이다.** 여기엔 이 repo의 구현 위치와 헌장에 없는 판정만 남긴다.
   - 산문 블록 분할 `parseChatMarkdownBlocks`(Kit) + 블록별 `Text`(헤딩 `.isHeader`), 질문 말풍선 헤딩 trait. 포커스 계약 구현·계측은 `ios/Gildongmu/Chat/ChatConversationView.swift`·`ChatFocusDiag.swift`.
