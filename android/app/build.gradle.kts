@@ -58,6 +58,7 @@ java {
 
 dependencies {
     implementation(project(":kit"))
+    implementation(libs.kotlinx.coroutines.core)
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)
     implementation(libs.compose.material3)

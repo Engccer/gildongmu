@@ -85,7 +85,7 @@ fun computeFinalApproach(route: GuideRoute, dest: RoutePoint): FinalApproachGeom
         }
         i -= 1
     }
-    if (sqrt(sx * sx + sy * sy) < 1e-9) {
+    if (!(sqrt(sx * sx + sy * sy) >= 1e-9)) { // NaN도 축퇴(Swift `guard … >= 1e-9`)
         return FinalApproachGeometry(offset, null, BearingUnavailable.degenerateGeometry)
     }
     val heading = (atan2(sy, sx) * 180 / PI + 360) % 360

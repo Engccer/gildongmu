@@ -233,8 +233,11 @@ data class WalkRouteBriefing(
 @Serializable
 data class FinalApproachPayload(
     val offsetMeters: Double,
-    val relativeBearing: Double? = null,
-    val bearingUnavailable: String? = null,
+    // ⚠ 기본값을 두지 않는다 — `relativeBearing`과 `bearingUnavailable`은 "방향을 안다"와 "왜 모르는가"의
+    // 짝이라 둘 다 생략한 생성은 계약 위반인데 기본값이 있으면 조용히 컴파일된다. 없는 키의 디코딩은
+    // `KitJson`의 `explicitNulls = false`가 이미 null로 받는다(기본값과 무관).
+    val relativeBearing: Double?,
+    val bearingUnavailable: String?,
 ) {
     val unavailableReason: BearingUnavailable? get() = bearingUnavailable?.let(BearingUnavailable::fromRawValue)
 }

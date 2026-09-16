@@ -13,7 +13,11 @@ import kotlin.math.abs
 // 카탈로그 `gildongmu-kit-strings.json`은 `android/scripts/messages-to-kit-strings.mjs`가
 // `messages/*.json` + `ios/i18n/kit-extra/*.json`에서 생성한다(Kit xcstrings와 같은 입력·같은
 // 네임스페이스·같은 ko 위치 인자 순서, 지정자만 `%N$@` → `%N$s`). 드리프트 가드는 웹 vitest
-// `android-kit-strings-drift.test.ts`. iOS의 lproj 폴백 경로는 안드로이드에 없다.
+// `android-kit-drift.test.ts`. iOS의 lproj 폴백 경로는 안드로이드에 없다.
+//
+// ⚠ 호출부 결함(수량 인자 누락·복수 블록 키를 인자 없이 조회)은 Swift가 `assertionFailure`/`assert`
+// (디버그 전용)로 잡고 릴리스에선 조용히 진행하는데, Kotlin은 모든 빌드에서 던진다(`require`/`check`).
+// 의도된 차이다 — 잘못된 호출은 컴파일 시점에 가까울수록 좋고 릴리스 문장 오류를 남기지 않는다.
 
 /** key → (lang → 문구). 앱 수명 1회 로드(실패 시 빈 사전 = 키 그대로 노출). */
 private val catalogTable: Map<String, Map<String, String>> by lazy {

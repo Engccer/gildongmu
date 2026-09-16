@@ -23,7 +23,7 @@ android/
 |---|---|
 | JDK | 21 (`gradle/gradle-daemon-jvm.properties`가 데몬을 21로 고정하고 없으면 foojay가 `~/.gradle/jdks`에 내려받는다. 기계 경로는 어디에도 없다) |
 | Android SDK | `~/Library/Android/sdk` (platform-tools 37 · platforms;android-37.2(compileSdk) · platforms;android-36 · build-tools;36.0.0). 위치는 `ANDROID_HOME`으로 알린다 |
-| Gradle | 9.7.1 (wrapper) · AGP 9.4.0(built-in Kotlin) · Kotlin 2.4.20 · Compose BOM 2026.09.00 · kotlinx.serialization 1.11.0 · coroutines 1.11.0 (`gradle/libs.versions.toml`) |
+| Gradle | 9.7.1 (wrapper) · AGP 9.4.0(built-in Kotlin — 내장 KGP 2.2.10이 같은 클래스패스에서 2.4.20으로 올라가 :kit·:app이 한 컴파일러를 쓴다, `./gradlew buildEnvironment`로 확인) · Kotlin 2.4.20 · Compose BOM 2026.09.00 · kotlinx.serialization 1.11.0 · coroutines 1.11.0 (`gradle/libs.versions.toml`) |
 | minSdk / targetSdk / compileSdk | 31 / 36 / 37.2 (Compose 1.12가 37 이상을 요구. D8의 min·target은 그대로) |
 
 ```bash
@@ -60,11 +60,17 @@ adb exec-out timeout 10 uiautomator dump /dev/tty   # 접근성 트리(스크린
 | `String(Double)` | `Double.toString()` | 정수는 "1.0"이 남는다(Swift와 같은 함정) — `formatDistance`가 정수 분기를 따로 둔다 |
 | `unicodeScalars.last` | `codePointBefore(length)` / `codePoints()` | UTF-16 단위 `last()` 금지 |
 | `Character.isLetter \|\| isNumber` | `Character.isLetterOrDigit(codePoint)` | |
-| `async let a = …; await a` | `coroutineScope { val a = async { … }; a.await() }` | `try?`는 `APIError`만 잡는 `optional { }` — `runCatching`은 취소까지 삼키니 금지 |
+| `async let a = …; await a` | `coroutineScope { val a = async { optional { … } }; a.await() }` | `try?`는 `APIError`만 잡는 공용 `optional { }`(`APIClient.kt`, internal). `runCatching`은 suspend 블록·`async` 안에서 금지(취소를 삼킨다) — 동기 파싱(`Coverage`·`Localization`의 리소스 로드)은 무방 |
+| `init(from:)`의 `container.decode(_:forKey:)` | `obj.required("k")`·`requiredString`·`requiredInt`·`requiredArray`·`asObjectOrThrow` (`models/JsonSupport.kt`) | **커스텀 serializer가 던지는 것은 `SerializationException`뿐**이다 — `Map.getValue`(NoSuchElementException)는 `APIError` 분류를 뚫어 "조회 실패"가 크래시가 된다. 판별자(`type`·`status`) 부재는 throw, 미지 값은 전방 호환 갈래 |
+| `timeout: TimeInterval?`(초) | `timeoutMs: Long?`(밀리초) | `HttpTransport`·`APIClient.get`의 단위. 구현이 무엇을 던지든(`IOException`·`withTimeout`·런타임 예외) `APIClient`가 `APIError.Network`로 접고 바깥 취소만 통과시킨다 |
 | `Date`·`TimeInterval` | `Double` 초(Swift와 같은 단위) | 판정 함수는 시각을 인자로 받는다. `System.currentTimeMillis()`를 :kit 안에서 부르지 않는다 |
 | 거리 | 미터 `Double`/`Int`(Swift와 같은 필드 타입 그대로) | `formatDistance`만 지난다(소수 km 직접 조립 금지) |
 | `Bundle.module.url(forResource:)` | `X::class.java.getResourceAsStream("/name")` | 리소스는 `kit/src/main/resources/` |
 | `#filePath` 5단계 상위 fixture 로딩 | `Fixtures.shared("x.json")` / `Fixtures.kit("x.json")` (§4) | |
+
+### JDK API 표면은 Android 12(API 31)까지
+
+`:kit`은 JVM 21에서 테스트되지만 실행은 minSdk 31 기기다. 안드로이드 lint `NewApi`는 JVM 모듈을 보지 않으므로 어느 게이트도 못 잡는다 — **API 33에서 추가된 JDK 오버로드를 부르지 않는다**: `URLEncoder.encode(String, Charset)`(→ `encode(s, "UTF-8")`), `InputStream.readAllBytes()`(→ Kotlin `readBytes()`), `String.repeat`류 Java 11+ 문자열 API(→ Kotlin stdlib). 의심되면 Android SDK 문서의 "Added in API level"을 본다(실사고: `URLEncoder.encode(value, Charsets.UTF_8)`가 리뷰에서 잡혔다).
 
 ### 정규식 함정
 
@@ -104,7 +110,7 @@ val lines = Fixtures.kit("chat-stream.ndjson").lines()                          
 
 - 상태는 `pending`(아직) → `ported`(kotlin 경로 실재, test 있으면 그것도) 셋 중 하나이고 `excluded`는 계획 §2의 2건뿐이다(늘리려면 코디네이터).
 - 경로는 **저장소 루트 상대**. 검사는 웹 vitest `src/lib/__tests__/mirror-registry.test.ts`가 매 커밋 돈다(`npm run test:run`): Kit 원본 전수가 정확히 한 등록부에, ported의 경로 실재, iOS에 새 Kit 파일이 생기면 빨강.
-- `foundation.json`의 `deferredTests`는 FOUNDATION 테스트 중 CORE/GUIDE 심볼에 걸려 못 옮긴 케이스 목록이다 — 해당 그룹이 그 파일을 이식할 때 함께 옮기고 항목을 지운다.
+- `foundation.json`의 `deferredTests`는 FOUNDATION 테스트 중 CORE/GUIDE 심볼에 걸려 못 옮긴 케이스 목록이다(`blockedBy` = 막는 Swift 파일). 해당 그룹이 그 파일을 이식할 때 함께 옮기고 항목을 지운다 — `blockedBy` 전부가 `ported`인데 항목이 남아 있으면 검사가 빨개진다.
 - 부분 이식(한 함수만 다른 그룹 의존)은 `ported`로 두고 `note`에 무엇을 뺐는지 적는다(예: `WalkAction.swift`의 `imminentTone` → GUIDE `RouteGuide.kt`).
 
 ## 6. 문자열 카탈로그 (`:kit` i18n)

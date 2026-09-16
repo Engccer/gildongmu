@@ -26,6 +26,9 @@ class LocationFixTest {
     }
 
     @Test fun rejectsStaleFix() {
+        assertFalse(shouldAcceptFix(accuracy = 5.0, age = Double.NaN)) // Swift `guard age >= 0`과 같이 NaN도 거른다
+        assertFalse(isStorableFix(accuracy = 5.0, age = Double.NaN))
+        assertFalse(isCacheFresh(age = Double.NaN, ttl = 60.0))
         assertFalse(shouldAcceptFix(accuracy = 5.0, age = 11.0))
         assertFalse(shouldAcceptFix(accuracy = 5.0, age = 600.0))
         assertFalse(shouldAcceptFix(accuracy = 5.0, age = -1.0)) // 미래 timestamp도 신뢰하지 않는다

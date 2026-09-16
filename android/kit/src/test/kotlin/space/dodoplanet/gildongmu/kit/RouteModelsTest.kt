@@ -142,6 +142,8 @@ class RouteModelsTest {
 
     @Test fun `모르는 행동 문자열은 null로 떨어진다`() {
         assertNull(steps("""{"distanceMeters":1,"durationSeconds":1,"steps":[{"description":"무언가","action":"teleport"}]}""")[0].action)
+        // 명시 null도 null — descriptor가 nullable이라 serializer가 JsonNull을 받는 경로를 잠근다.
+        assertNull(steps("""{"distanceMeters":1,"durationSeconds":1,"steps":[{"description":"무언가","action":null}]}""")[0].action)
     }
 
     @Test fun `자동차 브리핑의 guidanceLang은 선택 디코딩`() {

@@ -6,47 +6,77 @@
     {
       "swift": "Tests/GildongmuKitTests/WalkActionTests.swift",
       "to": "guide",
-      "why": "imminentTone → GuideTone(RouteGuide)"
+      "why": "imminentTone → GuideTone(RouteGuide)",
+      "blockedBy": [
+        "RouteGuide.swift"
+      ]
     },
     {
       "swift": "Tests/GildongmuKitTests/FinalApproachTests.swift#briefArrivalWindowAccuracyCeilingMatchesCar",
       "to": "guide",
-      "why": "carArrivalMaxAccuracyMeters(CarArrival)"
+      "why": "carArrivalMaxAccuracyMeters(CarArrival)",
+      "blockedBy": [
+        "CarArrival.swift"
+      ]
     },
     {
       "swift": "Tests/GildongmuKitTests/RouteGuideTests.swift",
       "to": "guide",
-      "why": "RouteGeometry 소비 시나리오는 리듀서와 함께"
+      "why": "RouteGeometry 소비 시나리오는 리듀서와 함께",
+      "blockedBy": [
+        "RouteGuide.swift"
+      ]
     },
     {
       "swift": "Tests/GildongmuKitTests/KakaoCategoryTests.swift#projectionsCarryCategoryEnAndKeepRawCategory",
       "to": "core",
-      "why": "kidsPlaceToPlace·surroundingPlaceToPlace·sceneItemToPlace(PlaceProjection)·isStation(StationMatch)"
+      "why": "kidsPlaceToPlace·surroundingPlaceToPlace·sceneItemToPlace(PlaceProjection)·isStation(StationMatch)",
+      "blockedBy": [
+        "PlaceProjection.swift",
+        "StationMatch.swift"
+      ]
     },
     {
       "swift": "Tests/GildongmuKitTests/BarrierFreeModelsTests.swift#matchReturnsNilOnNetworkError",
       "to": "core",
-      "why": "BarrierFreeService"
+      "why": "BarrierFreeService",
+      "blockedBy": [
+        "BarrierFreeService.swift"
+      ]
     },
     {
       "swift": "Tests/GildongmuKitTests/ChatModelsTests.swift#parseChatMarkdownBlocks*",
       "to": "core",
-      "why": "ChatMarkdown. decodeChatEventLine(ChatService)은 ChatModelsTest가 KitJson 직접 디코딩으로 덮음"
+      "why": "ChatMarkdown. decodeChatEventLine(ChatService)은 ChatModelsTest가 KitJson 직접 디코딩으로 덮음",
+      "blockedBy": [
+        "ChatMarkdown.swift"
+      ]
     },
     {
       "swift": "Tests/GildongmuKitTests/RouteModelsTests.swift#routeServiceWalk*,transitDisplayPickLineIsAtomic",
       "to": "core",
-      "why": "RouteService·TransitDisplay"
+      "why": "RouteService·TransitDisplay",
+      "blockedBy": [
+        "RouteService.swift",
+        "TransitDisplay.swift"
+      ]
     },
     {
       "swift": "Tests/GildongmuKitTests/StationModelsTests.swift#isStationJudgesCategoryAndNameSuffix",
       "to": "core",
-      "why": "StationMatch"
+      "why": "StationMatch",
+      "blockedBy": [
+        "StationMatch.swift"
+      ]
     },
     {
-      "swift": "Tests/GildongmuKitTests/NearbyOverviewTests.swift#overviewLines*,sceneItemToPlace*",
+      "swift": "Tests/GildongmuKitTests/NearbyOverviewTests.swift#overview*,sceneItemToPlace*",
       "to": "core",
-      "why": "LocationNarrative·PlaceProjection"
+      "why": "buildOverviewLines(LocationNarrative)·sceneItemToPlace(PlaceProjection) — overviewLines*·overviewTransitVariantsKo·overviewNearestUsesSingularSentenceForOnePlace 포함",
+      "blockedBy": [
+        "LocationNarrative.swift",
+        "PlaceProjection.swift"
+      ]
     }
   ],
   "entries": [
@@ -130,7 +160,7 @@
       "status": "ported",
       "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/Localization.kt",
       "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/LocalizationTest.kt",
-      "note": "lproj 폴백 경로 없음(안드로이드에 lproj가 없다). 카탈로그는 `android/scripts/messages-to-kit-strings.mjs` 생성물"
+      "note": "lproj 폴백 경로 없음(안드로이드에 lproj가 없다). 카탈로그는 `android/scripts/messages-to-kit-strings.mjs` 생성물 | 호출부 결함(수량 인자 누락)에 Swift는 assertionFailure(디버그 전용, 릴리스 조용히 진행), Kotlin은 모든 빌드에서 throw — 의도된 차이(코디네이터 판정 대기 없이 채택)"
     },
     {
       "swift": "LocationFix.swift",
@@ -170,7 +200,7 @@
       "status": "ported",
       "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/models/SearchModels.kt",
       "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/SearchModelsTest.kt",
-      "note": "`Place` 등 nullable 필드는 `= null` 기본값(없는 키 허용)"
+      "note": "nullable 필드의 `= null` 기본값은 생성 편의다 — 없는 키를 null로 받는 것은 KitJson explicitNulls=false의 몫. 짝 필드(FinalApproachPayload)는 기본값 금지"
     },
     {
       "swift": "Models/StationModels.swift",
@@ -248,5 +278,6 @@
       "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/WalkActionTest.kt",
       "note": "`imminentTone(action)`은 미이식 — `GuideTone`이 `RouteGuide.swift`에 있어 GUIDE가 `RouteGuide.kt`에 함께 싣는다(WalkActionTests의 두 테스트도 그때)"
     }
-  ]
+  ],
+  "deferredTestsContract": "각 항목: swift = Kit 테스트 파일(#뒤는 함수 글롭), to = 이식 담당 그룹, blockedBy = 그 테스트가 부르는 미이식 Swift 파일. blockedBy 전부가 ported가 된 뒤에도 항목이 남아 있으면 mirror-registry.test.ts가 빨개진다(옮기고 지운다)."
 }

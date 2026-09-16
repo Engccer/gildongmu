@@ -8,8 +8,6 @@ import kotlinx.serialization.descriptors.element
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.JsonDecoder
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 
 // 내 주변 보행 인프라 도메인 모델: 웹 /api/walk/nearby 계약 ↔ Kit `WalkInfraModels.swift` 미러.
 // 두 소스(음향신호기 seed·OSM)는 서로 독립적으로 강등된다 — 両소스 전멸 시에만 서버가 503(throw).
@@ -34,9 +32,10 @@ class WalkSourceStatusSerializer<T>(private val dataSerializer: KSerializer<T>) 
 
     override fun deserialize(decoder: Decoder): WalkSourceStatus<T> {
         val input = decoder as JsonDecoder
-        val obj = input.decodeJsonElement().jsonObject
-        return when (obj["status"]?.jsonPrimitive?.content) {
-            "ok" -> WalkSourceStatus.Ok(input.json.decodeFromJsonElement(dataSerializer, obj.getValue("data")))
+        val obj = input.decodeJsonElement().asObjectOrThrow("WalkSourceStatus")
+        // 판별자 부재는 깨진 응답(throw), 미지 값은 웹 소비자와 동형으로 error.
+        return when (obj.requiredString("status")) {
+            "ok" -> WalkSourceStatus.Ok(input.json.decodeFromJsonElement(dataSerializer, obj.required("data")))
             "unsupported" -> WalkSourceStatus.Unsupported()
             else -> WalkSourceStatus.Error()
         }

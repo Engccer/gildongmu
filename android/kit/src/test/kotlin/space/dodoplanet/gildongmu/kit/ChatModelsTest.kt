@@ -62,6 +62,17 @@ class ChatModelsTest {
         assertIs<ChatRenderPayload.Unsupported>(done.renders[3])
     }
 
+    /** 필수 키 부재·null 값·판별자 부재는 전부 SerializationException이다 — APIClient가 Decoding으로 접는 유일한 형태. */
+    @Test fun missingRequiredKeysThrowSerializationException() {
+        assertFailsWith<SerializationException> { decodeLine("""{"type":"done"}""") }
+        assertFailsWith<SerializationException> { decodeLine("""{"type":"done","text":null}""") }
+        assertFailsWith<SerializationException> { decodeLine("""{"type":"error"}""") }
+        assertFailsWith<SerializationException> { decodeLine("""{"type":"status","categories":[1]}""") }
+        assertFailsWith<SerializationException> { decodeLine("""{"text":"판별자 없음"}""") }
+        assertFailsWith<SerializationException> { KitJson.decodeFromString(ChatRenderPayload.serializer(), """{"type":"places"}""") }
+        assertFailsWith<SerializationException> { KitJson.decodeFromString(ChatRenderPayload.serializer(), """{"places":[]}""") }
+    }
+
     @Test fun invalidJSONLineThrows() {
         assertFailsWith<SerializationException> { decodeLine("not-json") }
         assertFailsWith<SerializationException> { decodeLine("[1,2]") }

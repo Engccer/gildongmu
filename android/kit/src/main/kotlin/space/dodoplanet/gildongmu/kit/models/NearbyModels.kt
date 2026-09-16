@@ -12,9 +12,6 @@ import kotlinx.serialization.json.JsonDecoder
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.int
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
 // 내 주변 도메인 모델 — 웹 `src/lib/types.ts` ↔ Kit `NearbyModels.swift` 미러(계약 정본은 웹 + Kit Fixtures/*-nearby.json).
@@ -345,24 +342,24 @@ object NearbyOverviewSerializer : KSerializer<NearbyOverview> {
     override fun deserialize(decoder: Decoder): NearbyOverview {
         val input = decoder as JsonDecoder
         val json = input.json
-        val c = input.decodeJsonElement().jsonObject
+        val c = input.decodeJsonElement().asObjectOrThrow("NearbyOverview")
         val places = ListSerializer(OverviewPlace.serializer())
         val decoded = ArrayList<OverviewBullet>()
-        for (item in c.getValue("bullets").jsonArray) {
-            val b = item.jsonObject
-            val kind = b.getValue("kind").jsonPrimitive.content
-            val state = b.getValue("state").jsonPrimitive.content
+        for (item in c.requiredArray("bullets")) {
+            val b = item.asObjectOrThrow("NearbyOverview.bullets[]")
+            val kind = b.requiredString("kind")
+            val state = b.requiredString("state")
             if (kind == "transit") {
                 val station = b["station"]?.takeIf { it !is JsonNull }
                     ?.let { json.decodeFromJsonElement(OverviewStation.serializer(), it) }
                 var bus: OverviewBusStops? = null
                 val busElement = b["busStops"]
                 if (busElement != null && busElement !is JsonNull) {
-                    val bc = busElement.jsonObject
-                    bus = when (bc.getValue("state").jsonPrimitive.content) {
+                    val bc = busElement.asObjectOrThrow("NearbyOverview.busStops")
+                    bus = when (bc.requiredString("state")) {
                         "ok" -> OverviewBusStops.Ok(
-                            count = bc.getValue("count").jsonPrimitive.int,
-                            nearest = json.decodeFromJsonElement(places, bc.getValue("nearest")),
+                            count = bc.requiredInt("count"),
+                            nearest = json.decodeFromJsonElement(places, bc.required("nearest")),
                         )
                         "none" -> OverviewBusStops.Empty
                         "uncovered" -> OverviewBusStops.Uncovered
@@ -376,7 +373,7 @@ object NearbyOverviewSerializer : KSerializer<NearbyOverview> {
             val placeKind = OverviewPlaceKind.fromRawValue(kind) ?: continue
             val placeState: OverviewPlaceState? = when (state) {
                 "ok" -> OverviewPlaceState.Ok(
-                    count = b.getValue("count").jsonPrimitive.int,
+                    count = b.requiredInt("count"),
                     countCapped = b["countCapped"]?.jsonPrimitive?.booleanOrNull ?: false,
                     nearest = b["nearest"]?.takeIf { it !is JsonNull }?.let { json.decodeFromJsonElement(places, it) } ?: emptyList(),
                 )
@@ -390,7 +387,7 @@ object NearbyOverviewSerializer : KSerializer<NearbyOverview> {
         return NearbyOverview(
             place = c["place"]?.jsonPrimitive?.contentOrNull,
             placeRoman = c["placeRoman"]?.jsonPrimitive?.contentOrNull,
-            radiusMeters = c.getValue("radiusMeters").jsonPrimitive.int,
+            radiusMeters = c.requiredInt("radiusMeters"),
             bullets = decoded,
         )
     }

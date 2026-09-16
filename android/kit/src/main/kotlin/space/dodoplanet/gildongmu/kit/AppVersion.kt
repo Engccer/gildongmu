@@ -20,7 +20,7 @@ fun compareVersionStrings(lhs: String, rhs: String): Int {
 
 /** 숫자로 읽히지 않는 컴포넌트(`1.7-beta`의 `7-beta`)는 앞쪽 숫자만 취한다(통째로 0이면 옛 버전으로 위장). */
 private fun versionComponents(version: String): List<Int> =
-    version.split(".").map { part -> part.takeWhile { it.isDigit() }.toIntOrNull() ?: 0 }
+    version.split(".").filter { it.isNotEmpty() }.map { part -> part.takeWhile { it.isDigit() }.toIntOrNull() ?: 0 }
 
 /**
  * 이 노트를 설치된 빌드에서 보여 주는가. `appVersion`이 null·빈 문자열이면 거르지 않는다 —
