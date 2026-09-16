@@ -15,7 +15,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.text.input.KeyboardType
+import space.dodoplanet.gildongmu.i18n.appLocalized
+import space.dodoplanet.gildongmu.kit.WalkHealth
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -65,6 +72,10 @@ fun SettingsScreen(onBack: () -> Unit, onOpenDataSources: () -> Unit, takeReturn
     val language by store.language.collectAsState()
     val dictation by store.dictationStyle.collectAsState()
     val haptics by store.resultHapticsEnabled.collectAsState()
+    val weightStored by store.weightText.collectAsState()
+    var weightText by remember(weightStored) { mutableStateOf(weightStored) }
+    val weightMin = WalkHealth.weightRange.start.toInt()
+    val weightMax = WalkHealth.weightRange.endInclusive.toInt()
     var dialog by remember { mutableStateOf<SettingsRow?>(null) }
     var pendingLanding by remember { mutableStateOf<SettingsRow?>(null) }
     var notice by remember { mutableStateOf(Notice(0, "")) }
@@ -76,6 +87,19 @@ fun SettingsScreen(onBack: () -> Unit, onOpenDataSources: () -> Unit, takeReturn
     val tapLabel = stringResource(R.string.android_settings_dictationTap)
     val holdLabel = stringResource(R.string.android_settings_dictationHold)
     fun open(intent: Intent) { if (!context.tryStartActivity(intent)) notice = Notice(notice.seq + 1, noApp) }
+    // 체중 확정(A39 — 편집 종료·화면 이탈, 멱등): 범위 밖은 저장하지 않고 통지(이전 값이 있으면 그 값 유지를 말한다, 3-state).
+    fun commitWeight() {
+        if (weightText == weightStored) return
+        when (store.commitWeight(weightText)) {
+            is WalkHealth.WeightCommitOutcome.Store, WalkHealth.WeightCommitOutcome.Clear -> Unit
+            WalkHealth.WeightCommitOutcome.Reject -> {
+                val prior = weightStored
+                notice = Notice(notice.seq + 1, if (prior.isEmpty()) appLocalized(res, R.string.android_settings_weightRejectedNone, weightMin, weightMax) else appLocalized(res, R.string.android_settings_weightRejected, weightMin, weightMax, prior))
+                weightText = prior
+            }
+        }
+    }
+    DisposableEffect(Unit) { onDispose { commitWeight() } }
 
     // 진입·재생성·pop 복귀 착지(한 프레임 뒤): 정보 출처에서 돌아오면 그 행, 그 밖(push 진입·언어 변경 재생성)은 제목 헤딩.
     LaunchedEffect(Unit) {
@@ -118,6 +142,17 @@ fun SettingsScreen(onBack: () -> Unit, onOpenDataSources: () -> Unit, takeReturn
                                 Switch(checked = haptics, onCheckedChange = null)
                             }
                             Text(stringResource(R.string.android_settings_resultHapticsFooter), Modifier.fillMaxWidth().mergedRow("settings-haptics-footer").padding(vertical = 8.dp))
+                        }
+                        SettingsRow.Weight -> {
+                            OutlinedTextField(
+                                value = weightText,
+                                onValueChange = { weightText = it },
+                                label = { Text(stringResource(R.string.android_settings_weightKg)) },
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                modifier = Modifier.fillMaxWidth().testTag("settings-weight").landingTarget(focus).onFocusChanged { if (!it.isFocused) commitWeight() },
+                            )
+                            Text(appLocalized(res, R.string.android_settings_weightFooter, weightMin, weightMax), Modifier.fillMaxWidth().mergedRow("settings-weight-footer").padding(vertical = 8.dp))
                         }
                         SettingsRow.DataSources -> ValueRow(stringResource(R.string.dataSources_title), "settings-datasources", focus, onOpenDataSources)
                         SettingsRow.PrivacyPolicy -> ValueRow(stringResource(R.string.android_common_privacyPolicy), "settings-privacy", focus) {
