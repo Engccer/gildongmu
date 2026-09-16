@@ -5,7 +5,10 @@
   "entries": [
     {
       "swift": "Beacon.swift",
-      "status": "pending"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/Beacon.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/BeaconTest.kt",
+      "note": "튜플 반환은 BeaconStepResult·TrendStepResult. BeaconTests의 하버사인 웹 출력 단언도 BeaconTest에 있다"
     },
     {
       "swift": "BeaconGate.swift",
@@ -21,7 +24,9 @@
     },
     {
       "swift": "CarListener.swift",
-      "status": "pending"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/CarListener.kt",
+      "note": "Kit 테스트 없음"
     },
     {
       "swift": "CarRouteGuide.swift",
@@ -33,7 +38,9 @@
     },
     {
       "swift": "EndScreen.swift",
-      "status": "pending"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/EndScreen.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/EndScreenTest.kt"
     },
     {
       "swift": "GuideAudioSession.swift",
@@ -61,11 +68,16 @@
     },
     {
       "swift": "GuideSessionCoordinator.swift",
-      "status": "pending"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/GuideSessionCoordinator.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/GuideSessionCoordinatorTest.kt",
+      "note": "@MainActor 대신 동기화 없는 클래스 — 메인 스레드에서만 부른다"
     },
     {
       "swift": "GuideSpeechGate.swift",
-      "status": "pending"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/GuideSpeechGate.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/GuideSpeechGateTest.kt"
     },
     {
       "swift": "GuideToneLayer.swift",
@@ -73,15 +85,23 @@
     },
     {
       "swift": "IdleReset.swift",
-      "status": "pending"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/IdleReset.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/IdleResetTest.kt",
+      "note": "시각 인자는 Swift Date 대신 초 단위 Double"
     },
     {
       "swift": "ListenSpeed.swift",
-      "status": "pending"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/ListenSpeed.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/ListenSpeedTest.kt",
+      "note": "speechRate(forMultiplier:) → speechRate(multiplier). baseSpeechRate·speechRate는 iOS AVSpeechUtterance.rate 축의 실측 표라 [3] :app은 그대로 쓰지 않고 TextToSpeech.setSpeechRate용 매핑을 자기 엔진에서 실측한다(D10)"
     },
     {
       "swift": "RerouteProposalGate.swift",
-      "status": "pending"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/RerouteProposalGate.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/RerouteProposalGateTest.kt"
     },
     {
       "swift": "RouteGuide.swift",
@@ -89,11 +109,16 @@
     },
     {
       "swift": "RouteOrigin.swift",
-      "status": "pending"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/RouteOrigin.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/RouteOriginTest.kt",
+      "note": "RouteOriginDecision은 sealed class(Fetch·Wait)"
     },
     {
       "swift": "SessionIdle.swift",
-      "status": "pending"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/SessionIdle.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/SessionIdleTest.kt"
     },
     {
       "swift": "TransitDisplayProjection.swift",
@@ -101,7 +126,8 @@
     },
     {
       "swift": "TransitGuide.swift",
-      "status": "pending"
+      "status": "pending",
+      "note": "transitValidExitNo만 선이식(CORE TransitExitLines가 쓴다). 리듀서 나머지는 같은 파일에 채운다"
     },
     {
       "swift": "TransitGuideText.swift",
@@ -113,7 +139,9 @@
     },
     {
       "swift": "TransitIdle.swift",
-      "status": "pending"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/TransitIdle.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/TransitIdleTest.kt"
     },
     {
       "swift": "TransitProgressOverview.swift",
