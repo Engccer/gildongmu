@@ -91,7 +91,9 @@
     <string name="android_common_allowPrecise">Consenti posizione precisa</string>
     <string name="android_common_back">Indietro</string>
     <string name="android_common_checking">Controllo in corso</string>
+    <string name="android_common_collapsed">Ridotto</string>
     <string name="android_common_comingSoon">Non ancora disponibile</string>
+    <string name="android_common_expanded">Espanso</string>
     <string name="android_common_failedTitle">Impossibile caricare le informazioni</string>
     <string name="android_common_geoDeniedDesc">Consenti l\'accesso alla posizione per Gildongmu nelle Impostazioni</string>
     <string name="android_common_geoDeniedTitle">Serve il permesso di localizzazione</string>

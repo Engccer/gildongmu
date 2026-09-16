@@ -16,6 +16,42 @@
     "station",
     "distance"
   ],
+  "android.route.alight": [
+    "name"
+  ],
+  "android.route.board": [
+    "name"
+  ],
+  "android.route.durationMinutes": [
+    "minutes"
+  ],
+  "android.route.fare": [
+    "won"
+  ],
+  "android.route.legMinutes": [
+    "minutes"
+  ],
+  "android.route.stationCount": [
+    "count"
+  ],
+  "android.route.stopCount": [
+    "count"
+  ],
+  "android.route.taxiFare": [
+    "won"
+  ],
+  "android.route.tollFare": [
+    "won"
+  ],
+  "android.route.totalDistance": [
+    "distance"
+  ],
+  "android.route.transfers": [
+    "count"
+  ],
+  "android.route.walkMinutes": [
+    "minutes"
+  ],
   "android.search.announceCount": [
     "count"
   ],
@@ -1029,42 +1065,6 @@
   ],
   "android.place.roadAddressLine": [
     "value"
-  ],
-  "android.route.alight": [
-    "name"
-  ],
-  "android.route.board": [
-    "name"
-  ],
-  "android.route.durationMinutes": [
-    "minutes"
-  ],
-  "android.route.fare": [
-    "won"
-  ],
-  "android.route.legMinutes": [
-    "minutes"
-  ],
-  "android.route.stationCount": [
-    "count"
-  ],
-  "android.route.stopCount": [
-    "count"
-  ],
-  "android.route.taxiFare": [
-    "won"
-  ],
-  "android.route.tollFare": [
-    "won"
-  ],
-  "android.route.totalDistance": [
-    "distance"
-  ],
-  "android.route.transfers": [
-    "count"
-  ],
-  "android.route.walkMinutes": [
-    "minutes"
   ],
   "android.settings.releaseNotesVersion": [
     "version"

@@ -91,7 +91,9 @@
     <string name="android_common_allowPrecise">Allow Precise Location</string>
     <string name="android_common_back">Back</string>
     <string name="android_common_checking">Checking</string>
+    <string name="android_common_collapsed">Collapsed</string>
     <string name="android_common_comingSoon">Not available yet</string>
+    <string name="android_common_expanded">Expanded</string>
     <string name="android_common_failedTitle">Couldn\'t load information</string>
     <string name="android_common_geoDeniedDesc">Please allow location access for Gildongmu in Settings</string>
     <string name="android_common_geoDeniedTitle">Location permission needed</string>

@@ -91,7 +91,9 @@
     <string name="android_common_allowPrecise">正確な位置情報を許可</string>
     <string name="android_common_back">戻る</string>
     <string name="android_common_checking">確認中</string>
+    <string name="android_common_collapsed">折りたたみ</string>
     <string name="android_common_comingSoon">まだ準備中です</string>
+    <string name="android_common_expanded">展開</string>
     <string name="android_common_failedTitle">情報を取得できませんでした</string>
     <string name="android_common_geoDeniedDesc">設定でキルドンムの位置情報へのアクセスを許可してください</string>
     <string name="android_common_geoDeniedTitle">位置情報の許可が必要です</string>

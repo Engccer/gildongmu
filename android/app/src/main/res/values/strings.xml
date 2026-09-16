@@ -91,7 +91,9 @@
     <string name="android_common_allowPrecise">정확한 위치 허용</string>
     <string name="android_common_back">뒤로</string>
     <string name="android_common_checking">확인 중</string>
+    <string name="android_common_collapsed">접힘</string>
     <string name="android_common_comingSoon">아직 준비 중입니다</string>
+    <string name="android_common_expanded">펼침</string>
     <string name="android_common_failedTitle">정보를 가져오지 못했습니다</string>
     <string name="android_common_geoDeniedDesc">설정에서 길동무의 위치 접근을 허용해 주세요</string>
     <string name="android_common_geoDeniedTitle">위치 권한이 필요합니다</string>
