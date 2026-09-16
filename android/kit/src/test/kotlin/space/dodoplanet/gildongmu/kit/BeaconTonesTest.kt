@@ -32,7 +32,7 @@ class BeaconTonesTest {
         assertEquals(casesOf("BeaconTone"), BeaconTone.entries.map { it.rawValue })
         assertEquals(casesOf("LeftRightToneScheme"), LeftRightToneScheme.entries.map { it.rawValue })
         // 저장 키는 선언한 enum과 짝으로 대조한다(파일 안 선언 순서에 묶이지 않고, 두 키가 서로 바뀐 것도 잡는다).
-        val keys = Regex("""public enum ([A-Za-z]+)[^{]*\{[^}]*?public static let storageKey = "([A-Za-z]+)"""").findAll(source)
+        val keys = Regex("""public enum ([A-Za-z]+)[^{]*\{[^}]*?public static let storageKey = "([A-Za-z0-9]+)"""").findAll(source)
             .associate { it.groupValues[1] to it.groupValues[2] }
         assertEquals(mapOf("TrendHaptics" to TrendHaptics.storageKey, "LeftRightToneScheme" to LeftRightToneScheme.storageKey), keys)
         assertTrue(source.contains("""public static let `default`: LeftRightToneScheme = .${LeftRightToneScheme.default.rawValue}"""))

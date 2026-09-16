@@ -28,7 +28,7 @@
       "status": "ported",
       "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/ChatService.kt",
       "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/ChatServiceTest.kt",
-      "note": "D5 경계: :kit은 decodeChatEventLine·요청 본문(encodeBody)·예산(timeoutMs)·상태 분류(statusError)·줄 처리(eventFromStreamLine)만, POST·NDJSON 스트림 전송은 :app(M6). Swift struct(URLSession 보유)는 object. 깨진 줄은 APIError.Decoding. 줄 분리는 :kit 소유 splitStreamLines(Swift bytes.lines 실측 미러 — 경계 LF·VT·FF·CR·NEL·LS·PS, 빈 줄 없음, 청크 꼬리는 remainder)이고 :app은 그것만 쓴다(코디네이터 판정 2026-09-16)"
+      "note": "D5 경계: :kit은 decodeChatEventLine·요청 본문(encodeBody)·예산(timeoutMs)·상태 분류(statusError)·줄 처리(eventFromStreamLine)만, POST·NDJSON 스트림 전송은 :app(M6). Swift struct(URLSession 보유)는 object. 깨진 줄은 APIError.Decoding. 줄 분리는 :kit 소유 splitStreamLines(Swift bytes.lines 실측 미러 — 경계 LF·VT·FF·CR·NEL·LS·PS, 빈 줄 없음, 청크 꼬리는 remainder, 유효 UTF-8에서 동치)이고 :app은 그것만 쓴다(코디네이터 판정 2026-09-16)"
     },
     {
       "swift": "ChatSuggestionsService.swift",
