@@ -57,13 +57,11 @@ class ChatServices private constructor(app: Context) {
     }
 }
 
-/** 공유 위치 스토어 사용분(iOS `LocationService.currentCoordinate(timeout: softTimeout)` + `lastCoordinate`). */
+/** 유효 좌표 사용분(iOS `LocationService.currentCoordinate(timeout: softTimeout)` + `lastCoordinate`) — 수동 위치 > GPS 저장 좌표(M2c spec §13-2, 앱 층 진입점은 `EffectiveLocation`뿐). */
 private object StoreChatLocation : ChatLocation {
-    override suspend fun prime() {
-        AppConfig.locationStore.currentCoordinate(timeoutMs = (LocationFixPolicy.softTimeout * 1000).toLong())
-    }
+    override suspend fun prime() = AppConfig.effectiveLocation.prime(timeoutMs = (LocationFixPolicy.softTimeout * 1000).toLong())
 
-    override fun last(): ChatRequestBody.Coordinate? = AppConfig.locationStore.stored?.let { ChatRequestBody.Coordinate(it.lat, it.lng) }
+    override fun last(): ChatRequestBody.Coordinate? = AppConfig.effectiveLocation.last()?.let { ChatRequestBody.Coordinate(it.lat, it.lng) }
 }
 
 /**

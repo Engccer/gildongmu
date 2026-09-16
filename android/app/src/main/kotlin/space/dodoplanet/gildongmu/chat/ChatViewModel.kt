@@ -230,7 +230,7 @@ class ChatViewModel(
     }
 
     /**
-     * 대화 전체 히스토리(실패 문구 포함, iOS 동형) + 장소 앵커. `userLocation`은 GPS 저장 좌표 — 장소 앵커는 서버가 `placeContext`로 처리하고
+     * 대화 전체 히스토리(실패 문구 포함, iOS 동형) + 장소 앵커. `userLocation`은 유효 좌표(수동 위치 > GPS 저장 좌표, M2c) — 장소 앵커는 서버가 `placeContext`로 처리하고
      * 길찾기 출발지는 이 필드를 쓴다(장소로 덮지 않는다). // [M2c] 수동 위치가 GPS보다 앞선다.
      */
     private fun requestBody(): ChatRequestBody = ChatRequestBody(

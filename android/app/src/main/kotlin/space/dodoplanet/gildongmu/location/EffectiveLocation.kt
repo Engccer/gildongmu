@@ -30,6 +30,19 @@ class EffectiveLocation(
         return location.gpsCoordinateForRanking()
     }
 
+    /**
+     * 채팅 전송 직전 prime(iOS `currentCoordinate(timeout: softTimeout)` 자리, M6 spec §4-1): 수동이면 **측위 0**(판정 35 — 수동 상태의 GPS 측위는
+     * 판정뿐), 아니면 soft 상한 GPS(첫 사용이면 권한 다이얼로그 — spec §4의 세 자리 중 하나). 실패는 호출자가 삼킨다(위치는 필수가 아니다).
+     */
+    suspend fun prime(timeoutMs: Long) {
+        manual.awaitHydrated()
+        if (manual.current.value != null) return
+        location.currentCoordinate(timeoutMs = timeoutMs)
+    }
+
+    /** 동기 마지막 좌표(iOS `lastCoordinate` 자리 — 채팅 요청 본문): 수동 > GPS 저장 좌표. suspend 경로(`prime`) **뒤에** 읽는 소비자용(hydration 불변식). */
+    fun last(): NearbyCoord? = manual.current.value?.let { NearbyCoord(it.lat, it.lng) } ?: location.stored?.let { NearbyCoord(it.lat, it.lng) }
+
     /** :kit 코어 어댑터. 취소는 그대로 통과(`LocationException`만 번역), 어댑터 자신의 타임아웃은 `Unavailable`. */
     fun nearbyCoordinateSource(): NearbyCoordinateSource = NearbyCoordinateSource.Current { force ->
         try {
