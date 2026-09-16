@@ -6,17 +6,12 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
-    <!-- M4 도보 실시간 안내(spec 2026-09-16-android-m4 §3-4). 전경 서비스(location 타입)가 안내 세션 동안 위치 스트림을 연다(D11). -->
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <!-- ⚠ 도보 실시간 안내(실험판 봉인)의 전경 서비스(location)·FOREGROUND_SERVICE(_LOCATION)·WAKE_LOCK·ACTIVITY_RECOGNITION은 `src/experimental/AndroidManifest.xml`에만 있다
+         (iOS `Info-Experimental.plist`·백그라운드 모드 미러). 정식 APK에 없음을 `AppSourceGuardTest`·`android/scripts/check-release-manifest.mjs`가 잠근다. 졸업 때 여기로 승격한다. -->
     <!-- 지속 알림(상태 한 줄 + 안내 종료 액션). 거부해도 서비스는 돈다. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- 톤 동기 진동·결과 진동 3종. -->
     <uses-permission android:name="android.permission.VIBRATE" />
-    <!-- 서비스 수명 부분 wake lock — 화면 꺼짐 + fix 두절에서 워치독(8초 톤·15초 음성·도착 추정·잊힌 세션)이 절전과 함께 멎지 않게. -->
-    <uses-permission android:name="android.permission.WAKE_LOCK" />
-    <!-- 종료 화면 걸음·칼로리 요약(TYPE_STEP_COUNTER). 거부면 요약만 없다. -->
-    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
 
     <application
         android:name=".GildongmuApplication"
@@ -35,10 +30,5 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <!-- 도보 실시간 안내 전경 서비스(M4 §4-1). 전경에서만 시작되며 시작 실패는 서비스 안에서 잡아 모델로 되부른다. -->
-        <service
-            android:name=".guide.GuideForegroundService"
-            android:exported="false"
-            android:foregroundServiceType="location" />
     </application>
 </manifest>

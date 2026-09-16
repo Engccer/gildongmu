@@ -203,6 +203,17 @@ class AppSourceGuardTest {
         assertTrue(speech.contains("GuideSession.setOutputSuppressed(active, owner)") && speech.contains("if (changed) onActiveChanged(active)"))
     }
 
+    /** 실험판 봉인의 매니페스트 축(iOS `Info-Experimental.plist` 미러): 도보 안내의 전경 서비스·권한은 실험판 소스셋에만, 정식 매니페스트에 0. 산출물 검사는 `check-release-manifest.mjs`. */
+    @Test fun `도보 안내 전경 서비스·권한은 실험판 매니페스트에만 있다`() {
+        val main = android.resolve("app/src/main/AndroidManifest.xml").readText()
+        val experimental = android.resolve("app/src/experimental/AndroidManifest.xml").readText()
+        val sealed = listOf("foregroundServiceType", "FOREGROUND_SERVICE", "WAKE_LOCK", "ACTIVITY_RECOGNITION", "GuideForegroundService")
+        for (s in sealed) {
+            assertTrue(!Regex("""android:(name|foregroundServiceType)="[^"]*$s""").containsMatchIn(main), "정식 매니페스트에 $s")
+            assertTrue(experimental.contains(s), "실험판 매니페스트에 $s 없음")
+        }
+    }
+
     @Test fun `Google Play 서비스 의존은 0이다`() {
         val gradle = listOf(android.resolve("app/build.gradle.kts"), android.resolve("gradle/libs.versions.toml"))
         assertTrue(gradle.none { it.readText().contains("play-services") })

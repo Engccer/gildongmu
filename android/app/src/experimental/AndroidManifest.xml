@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 실험판 전용 매니페스트(빌드 타입 `experimental` 소스셋, 정식 매니페스트에 병합). iOS `Info-Experimental.plist`·백그라운드 모드 미러:
+     도보 실시간 안내(M4, 실험판 봉인)가 쓰는 전경 서비스와 권한은 여기에만 둔다 — 정식 APK 매니페스트에는 0(Play 전경 서비스 선언·데이터 안전성 대상 밖).
+     도보 안내가 졸업하면 이 파일의 내용을 `src/main/AndroidManifest.xml`로 승격한다(CLAUDE.md "졸업 때 옮겨야 하는 것은 코드 게이트만이 아니다"). -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- M4 도보 실시간 안내(spec 2026-09-16-android-m4 §3-4). 전경 서비스(location 타입)가 안내 세션 동안 위치 스트림을 연다(D11). -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <!-- 서비스 수명 부분 wake lock — 화면 꺼짐 + fix 두절에서 워치독(8초 톤·15초 음성·도착 추정·잊힌 세션)이 절전과 함께 멎지 않게. -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- 종료 화면 걸음·칼로리 요약(TYPE_STEP_COUNTER). 거부면 요약만 없다. -->
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
+
+    <application>
+        <!-- 도보 실시간 안내 전경 서비스(M4 §4-1). 전경에서만 시작되며 시작 실패는 서비스 안에서 잡아 모델로 되부른다. -->
+        <service
+            android:name=".guide.GuideForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="location" />
+    </application>
+</manifest>
