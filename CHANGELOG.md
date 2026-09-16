@@ -15,6 +15,10 @@
 
 안드로이드 앱 착수 웨이브 0(계획 `docs/superpowers/plans/2026-09-16-android-app-parallel-plan.md` §5-1, 판정 `docs/superpowers/specs/2026-09-15-android-app-decisions.md`). `android/`에 `:app`(Compose, minSdk 31·targetSdk 36·compileSdk 37.2, debug·release·experimental 세 구성, 실험판은 `.dev`·"길동무 실험") · `:kit`(순수 Kotlin/JVM, GildongmuKit의 세 번째 미러) 두 모듈. FOUNDATION 그룹(Kit 19파일 + Models 9 + 국경 링 리소스)을 Kotlin으로 옮기고 Kotlin 테스트 260여 건(Swift 케이스 이식 + 신규 가드), 공유 fixture 로더, 판정·실행 경계 인터페이스(`HttpTransport`·`KeyValueStore`), `:kit` 문자열 카탈로그 생성 스크립트, 미러 등록부 3벌 + vitest 검사(`mirror-registry.test.ts`)·드리프트 가드(`android-kit-drift.test.ts`)를 세웠다. 이식 계약은 `android/README.md`.
 
+### 안드로이드 Kit-core — 검색·장소·내 주변·역·길찾기 문장·채팅 판정 이식 (`android/kit`)
+
+웨이브 1 CORE 그룹(계획 §2) Kit 29파일을 Kotlin으로 옮기고 Kit 테스트를 함께 이식했다(Kotlin 테스트 231건, 공유 fixture 4벌 소비, `mirrors/core.json` 29/29 ported). 채팅 두 서비스는 판정 부분만 `:kit`에 두고 POST·스트림 전송은 `:app`(M6) 몫으로 남겼고, GUIDE 선행 묶음의 `BeaconDest`·`speechDeferStep`·`transitValidExitNo` 위에서 `PlaceProjection`·`DeferredAnnouncer`·`TransitExitLines`를 전량 붙였다. `QuickExitGuideRouteTests` 2건은 `core.json` `deferredTests`로 GUIDE(`TransitGuide.swift`)에 넘겼다.
+
 ---
 
 ## 2026-09-13
