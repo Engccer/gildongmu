@@ -6,7 +6,6 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.jsonPrimitive
 
 /**
  * 커스텀 `KSerializer`의 필수 키 읽기(Swift `container.decode(_:forKey:)` 대응). **던지는 것은
@@ -26,8 +25,13 @@ internal fun JsonObject.requiredString(key: String): String {
     return value.content
 }
 
-internal fun JsonObject.requiredInt(key: String): Int =
-    required(key).jsonPrimitive.content.toIntOrNull() ?: throw SerializationException("'$key'는 정수여야 한다")
+internal fun JsonObject.requiredInt(key: String): Int {
+    val value = required(key) as? JsonPrimitive ?: throw SerializationException("'$key'는 정수여야 한다")
+    return value.content.toIntOrNull() ?: throw SerializationException("'$key'는 정수여야 한다")
+}
+
+/** 선택 키의 원시값. 없거나 null이거나 객체·배열이면 null — 던지지 않는다(`jsonPrimitive`는 IllegalArgumentException을 낸다). */
+internal fun JsonObject.optionalPrimitive(key: String): JsonPrimitive? = this[key] as? JsonPrimitive
 
 internal fun JsonObject.requiredObject(key: String): JsonObject =
     required(key) as? JsonObject ?: throw SerializationException("'$key'는 객체여야 한다")

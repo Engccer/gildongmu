@@ -26,7 +26,8 @@ fun hasHangul(text: String): Boolean =
  * 원천이 이미 `Latin (한글)` 병기 형태(TourAPI en `title`)면 라틴 선두가 primary, 괄호 안이
  * secondary다 — 웹 `EMBEDDED_BILINGUAL`·서버 `romanNameOf` 게이트와 같은 정규식.
  */
-private val EMBEDDED_BILINGUAL = Regex("""^([^가-힣()]*[A-Za-z][^가-힣()]*?)\s*\(([^()]*[가-힣][^()]*)\)\s*$""")
+// `\s` 대신 명시 공백 클래스(JVM ASCII ↔ 안드로이드 ICU 차이 회피, README §3).
+private val EMBEDDED_BILINGUAL = Regex("""^([^가-힣()]*[A-Za-z][^가-힣()]*?)[ \t\n\r]*\(([^()]*[가-힣][^()]*)\)[ \t\n\r]*$""")
 
 private fun nfc(text: String): String = Normalizer.normalize(text, Normalizer.Form.NFC)
 

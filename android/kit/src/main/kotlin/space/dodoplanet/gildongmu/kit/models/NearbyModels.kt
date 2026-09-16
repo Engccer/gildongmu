@@ -12,7 +12,6 @@ import kotlinx.serialization.json.JsonDecoder
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.jsonPrimitive
 
 // 내 주변 도메인 모델 — 웹 `src/lib/types.ts` ↔ Kit `NearbyModels.swift` 미러(계약 정본은 웹 + Kit Fixtures/*-nearby.json).
 // distanceMeters는 전 라우트가 정수(m)로 반올림해 내려준다. status·kind류 문자열은 String(신규 값 추가에 관대).
@@ -374,19 +373,19 @@ object NearbyOverviewSerializer : KSerializer<NearbyOverview> {
             val placeState: OverviewPlaceState? = when (state) {
                 "ok" -> OverviewPlaceState.Ok(
                     count = b.requiredInt("count"),
-                    countCapped = b["countCapped"]?.jsonPrimitive?.booleanOrNull ?: false,
+                    countCapped = b.optionalPrimitive("countCapped")?.booleanOrNull ?: false,
                     nearest = b["nearest"]?.takeIf { it !is JsonNull }?.let { json.decodeFromJsonElement(places, it) } ?: emptyList(),
                 )
                 "none" -> OverviewPlaceState.Empty
-                "unavailable" -> if (b["reason"]?.jsonPrimitive?.contentOrNull == "seoulOnly") OverviewPlaceState.UnavailableSeoulOnly else null
+                "unavailable" -> if (b.optionalPrimitive("reason")?.contentOrNull == "seoulOnly") OverviewPlaceState.UnavailableSeoulOnly else null
                 "failed" -> OverviewPlaceState.Failed
                 else -> null
             }
             if (placeState != null) decoded.add(OverviewBullet.Place(placeKind, placeState))
         }
         return NearbyOverview(
-            place = c["place"]?.jsonPrimitive?.contentOrNull,
-            placeRoman = c["placeRoman"]?.jsonPrimitive?.contentOrNull,
+            place = c.optionalPrimitive("place")?.contentOrNull,
+            placeRoman = c.optionalPrimitive("placeRoman")?.contentOrNull,
             radiusMeters = c.requiredInt("radiusMeters"),
             bullets = decoded,
         )
