@@ -1,5 +1,8 @@
 package space.dodoplanet.gildongmu.nearby
 
+import android.content.res.Resources
+import space.dodoplanet.gildongmu.R
+import space.dodoplanet.gildongmu.i18n.appLocalized
 import space.dodoplanet.gildongmu.kit.clinicKindKey
 import space.dodoplanet.gildongmu.kit.joinText
 import space.dodoplanet.gildongmu.kit.models.CultureEvent
@@ -55,3 +58,14 @@ fun kidsInOutLabel(value: String, indoor: String, outdoor: String, unknown: Stri
 /** 요금 — 무료면 "무료"만(요금 원문 중복 낭독 금지), 유료면 원문. 유료·요금 부재는 꼬리 공백을 걷는다. */
 fun eventFeeText(e: CultureEvent, free: String, paid: (String) -> String): String =
     if (e.isFree) free else paid(e.fee ?: "").trim()
+
+/** 리소스 → 소아 진료 낱말 묶음(화면 몫). 장소 상세 도메인 섹션도 같은 함수를 쓴다. */
+fun clinicWords(res: Resources) = ClinicWords(
+    kindClinic = res.getString(R.string.clinicNearby_kind_clinic),
+    kindHospital = res.getString(R.string.clinicNearby_kind_hospital),
+    open = res.getString(R.string.clinicNearby_open),
+    closed = res.getString(R.string.android_nearby_clinicClosed),
+    unknown = res.getString(R.string.android_nearby_clinicUnknown),
+    untilMidnight = res.getString(R.string.android_nearby_untilMidnight),
+    untilTime = { h, m -> appLocalized(res, R.string.android_nearby_untilTime, h, m) },
+)

@@ -333,3 +333,5 @@ M1 §7 게이트 그대로(`:kit:test` · `:app:testDebugUnitTest` · assemble �
 31. **묶음별 리빌 창은 ViewModel 소유 `StateFlow<Map>`** — `NearbyKindSpec` 훅·payload 커밋 ID를 더하지 않는다(기존 `willCommit`이 함께 비운다).
 
 적대적 설계 리뷰 판정(§12, `review-m2b-design.md`): 1차 REQUEST_CHANGES(BLOCKER 1·MAJOR 6·MINOR 14·NIT 7) → 28건 전부 반영(B1 → 판정 29, M1~M6·m1~m14·n1~n7 본문 반영), 기각 0 → 2차 diff 재리뷰 APPROVE_WITH_CHANGES(MAJOR 1 `Coarse` 갈래·MINOR 4·NIT 2) → 7건 전부 반영(1b 갈래, 포맷터 앱 언어, 리빌 창 :kit 산술, `terminusReady`, `settled`, 판정 29 근거, §5 교차 표기). **설계 확정.**
+
+구현 리뷰 판정(§12, `review-m2b-spec.md`·`review-m2b-quality.md`): spec-compliance APPROVE_WITH_CHANGES(MINOR 3·NIT 2 — 세 인자 필수화·착지 순서 가드에 `clickable`+후행 람다·매핑표 resId `internal`+미지 값 단언) · code-quality APPROVE_WITH_CHANGES(MAJOR 2(위와 동일)·MINOR 6·NIT 11 — 0건 문구 거리 풀어쓰기, `contentDescription`은 낭독이 다를 때만, ATF `assert(` 금지 가드, `settled`를 `net/`으로, `Locale.forLanguageTag`, `timetableLineEnName`, 태그 인덱스, `@MainThread`). 전부 반영, 기각 0. 후속(코드 변경 없음): 표시줄이 낡은 좌표를 주소 근거로 쓰는 경로는 iOS·웹과 같은 구멍이라 3자 동조 판정 후보로 코디네이터에 전달(quality MINOR 6). **구현 확정.**

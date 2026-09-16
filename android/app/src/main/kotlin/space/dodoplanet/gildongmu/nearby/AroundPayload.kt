@@ -1,7 +1,7 @@
 package space.dodoplanet.gildongmu.nearby
 
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
+import space.dodoplanet.gildongmu.net.settled
 import kotlinx.coroutines.coroutineScope
 import space.dodoplanet.gildongmu.kit.NearbyCoord
 import space.dodoplanet.gildongmu.kit.models.NearbyOverview
@@ -29,15 +29,6 @@ data class AroundPayload(
 ) {
     /** 세 조각 다 비었고 실패도 아닌 상태(전 키 부재) — 빈 문구 판정. 실패는 조각 자리의 문장이 말한다. */
     val isAllAbsent: Boolean get() = overview == null && !overviewFailed && !placesFailed && places.isNullOrEmpty() && scene == null && !sceneFailed
-}
-
-/** allSettled 한 조각(서버 `Promise.allSettled` 동형). 취소는 삼키지 않는다(README §3 — `runCatching` 금지). */
-suspend fun <T> settled(block: suspend () -> T): Result<T> = try {
-    Result.success(block())
-} catch (e: CancellationException) {
-    throw e
-} catch (e: Exception) {
-    Result.failure(e)
 }
 
 /** 둘러보기 fetch. **셋 다** 실패해야 throw(코어 `FailedServer`, iOS `AroundNearbyView` 동형); 하나라도 성공이면 loaded. */

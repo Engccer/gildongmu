@@ -188,7 +188,7 @@ fun <P : Any> NearbyShell(
         land(l.key, "첫 로드/더 보기")
     }
     // 원인 헤딩 착지: 목록이 통째로 사라지는 전락과 첫 로드 실패 — 진입 뒤 첫 낭독이 원인이 되게(spec §3-5).
-    val causeKind = phase.let { it is NearbyLoadPhase.Denied || it is NearbyLoadPhase.ReducedAccuracy || it is NearbyLoadPhase.OutOfCoverage || it is NearbyLoadPhase.UnavailableHere || it is NearbyLoadPhase.FailedLocation || it is NearbyLoadPhase.FailedServer || it is NearbyLoadPhase.Empty }
+    val causeKind = phase is NearbyLoadPhase.Denied || phase is NearbyLoadPhase.ReducedAccuracy || phase is NearbyLoadPhase.OutOfCoverage || phase is NearbyLoadPhase.UnavailableHere || phase is NearbyLoadPhase.FailedLocation || phase is NearbyLoadPhase.FailedServer || phase is NearbyLoadPhase.Empty
     LaunchedEffect(phase::class, causeKind) {
         if (!causeKind) return@LaunchedEffect
         withFrameNanos { }

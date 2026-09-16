@@ -63,17 +63,6 @@ fun <T : Any, P : Any> PlaceListBody(
 
 private fun distanceLabel(res: Resources, meters: Int) = appLocalized(res, R.string.place_distance, formatDistance(meters))
 
-/** 리소스 → 소아 진료 낱말 묶음(화면 몫). 장소 상세 도메인 섹션도 같은 함수를 쓴다. */
-fun clinicWords(res: Resources) = ClinicWords(
-    kindClinic = res.getString(R.string.clinicNearby_kind_clinic),
-    kindHospital = res.getString(R.string.clinicNearby_kind_hospital),
-    open = res.getString(R.string.clinicNearby_open),
-    closed = res.getString(R.string.android_nearby_clinicClosed),
-    unknown = res.getString(R.string.android_nearby_clinicUnknown),
-    untilMidnight = res.getString(R.string.android_nearby_untilMidnight),
-    untilTime = { h, m -> appLocalized(res, R.string.android_nearby_untilTime, h, m) },
-)
-
 @Composable
 fun ClinicBody(payload: ClinicPayload, vm: NearbyScreenViewModel<ClinicPayload>, requesterFor: (String) -> FocusRequester, onOpen: (NightClinic) -> Unit) {
     val res = LocalContext.current.resources

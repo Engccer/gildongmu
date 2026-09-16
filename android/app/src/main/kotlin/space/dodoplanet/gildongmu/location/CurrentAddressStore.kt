@@ -1,5 +1,6 @@
 package space.dodoplanet.gildongmu.location
 
+import androidx.annotation.MainThread
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,6 +19,7 @@ import java.util.Locale
  * `state`는 표시줄이 읽는 스냅샷(관찰 채널) — `LocationStore`의 권한·좌표·실패 표식은 관찰 불가 필드라 `ensureLoaded`가 찍는다.
  */
 class CurrentAddressStore(private val location: LocationStore, private val search: SearchService) {
+    // 호출은 메인 스레드에서만(`inflight`·`LocationStore` 필드 읽기가 그 위에 선다 — iOS `@MainActor` 동형). 유일한 호출부는 `LaunchedEffect`.
     private val _state = MutableStateFlow(snapshot(null, null))
     val state: StateFlow<LocationBarInput> = _state.asStateFlow()
 
@@ -32,6 +34,7 @@ class CurrentAddressStore(private val location: LocationStore, private val searc
      * 표시용 좌표의 주소를 확보한다. 좌표는 `coordinateForDisplay()`가 준다 — 이미 허용된 세션에서만 값을 돌려주므로 허브 진입만으로
      * 권한 팝업이 뜨지 않는다(판정 28). 미허용·실패면 `loadedKey`를 세우지 않는다(나중에 허용되면 그때 조회된다).
      */
+    @MainThread
     suspend fun ensureLoaded(lang: String) {
         if (inflight) return
         inflight = true

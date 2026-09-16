@@ -5,6 +5,7 @@ import kotlinx.coroutines.coroutineScope
 import space.dodoplanet.gildongmu.kit.APIError
 import space.dodoplanet.gildongmu.kit.ConditionsService
 import space.dodoplanet.gildongmu.kit.NearbyCoord
+import space.dodoplanet.gildongmu.net.settled
 import space.dodoplanet.gildongmu.kit.WalkInfraService
 import space.dodoplanet.gildongmu.kit.models.AirQuality
 import space.dodoplanet.gildongmu.kit.models.Congestion
@@ -35,7 +36,7 @@ data class ConditionsPayload(
     val freshAir: Boolean,
 )
 
-private fun <T> Result<T>.isOutOfCoverage() = exceptionOrNull() === APIError.OutOfCoverage
+private fun <T> Result<T>.isOutOfCoverage() = exceptionOrNull() is APIError.OutOfCoverage
 
 /**
  * iOS `ConditionsModel.fetch` 이식: 조각별 독립(`settled` — 취소는 통과), 서버 커버리지 마커 이중 방어(한쪽이라도 감지하면 부분 데이터를

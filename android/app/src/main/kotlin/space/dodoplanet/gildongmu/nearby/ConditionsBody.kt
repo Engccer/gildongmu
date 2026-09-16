@@ -79,14 +79,9 @@ fun ConditionsBody(p: ConditionsPayload, requesterFor: (String) -> FocusRequeste
     val a = p.air
     if (a != null) {
         val name = bilingualName(lang, a.stationName, en = null, roman = a.stationNameRoman)
-        BodyLine(
-            appLocalized(res, R.string.android_nearby_airStationLine, name.display, numberText(a.distanceKm)),
-            "air-station",
-            appLocalized(res, R.string.android_nearby_airStationLine, name.primary, numberText(a.distanceKm)),
-        )
-        val grades = listOf("good", "moderate", "bad", "veryBad").associateWith { stringResource(gradeResId(it)) }
-        val unknown = stringResource(R.string.airQuality_unknown)
-        val grade = { g: String -> grades[g] ?: unknown }
+        val stationVisual = appLocalized(res, R.string.android_nearby_airStationLine, name.display, numberText(a.distanceKm))
+        BodyLine(stationVisual, "air-station", appLocalized(res, R.string.android_nearby_airStationLine, name.primary, numberText(a.distanceKm)).takeIf { it != stationVisual })
+        val grade = { g: String -> res.getString(gradeResId(g)) }
         BodyLine(pollutantText(stringResource(R.string.airQuality_khai), a.khai, grade), "khai")
         BodyLine(pollutantText(stringResource(R.string.airQuality_pm10), a.pm10, grade), "pm10")
         BodyLine(pollutantText(stringResource(R.string.airQuality_pm25), a.pm25, grade), "pm25")
@@ -98,7 +93,8 @@ fun ConditionsBody(p: ConditionsPayload, requesterFor: (String) -> FocusRequeste
     p.congestion?.let { c ->
         val name = bilingualName(lang, c.name, en = null, roman = c.nameRoman)
         val level = levelResId(c.level)?.let { stringResource(it) } ?: c.level
-        BodyLine(appLocalized(res, R.string.congestion_summary, name.display, level), "congestion", appLocalized(res, R.string.congestion_summary, name.primary, level))
+        val summary = appLocalized(res, R.string.congestion_summary, name.display, level)
+        BodyLine(summary, "congestion", appLocalized(res, R.string.congestion_summary, name.primary, level).takeIf { it != summary })
         if (lang == "ko" && c.message.isNotEmpty()) BodyLine(c.message, "congestion-message") // 서버 한국어 서술은 앱 언어 ko에서만
         BodyLine(appLocalized(res, R.string.congestion_asOf, c.asOf), "congestion-asof")
     }

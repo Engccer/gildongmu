@@ -1,6 +1,5 @@
 package space.dodoplanet.gildongmu.nearby
 
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.test.runTest
 import space.dodoplanet.gildongmu.kit.APIError
 import space.dodoplanet.gildongmu.kit.Fixtures
@@ -50,8 +49,4 @@ class AroundPayloadTest {
         assertEquals(0, p.places!!.size)
     }
 
-    @Test fun `settled는 취소를 삼키지 않는다`() = runTest {
-        assertFailsWith<CancellationException> { settled { throw CancellationException("떠남") } }
-        assertTrue(settled { throw IllegalStateException("x") }.isFailure)
-    }
 }

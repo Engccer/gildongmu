@@ -17,7 +17,7 @@ import space.dodoplanet.gildongmu.kit.models.TimetableDirection
 import space.dodoplanet.gildongmu.kit.models.TimetableLine
 import space.dodoplanet.gildongmu.kit.models.TimetableTrain
 import space.dodoplanet.gildongmu.nearby.LineText
-import space.dodoplanet.gildongmu.nearby.settled
+import space.dodoplanet.gildongmu.net.settled
 
 // 역 자동 섹션 5종의 상태·문장(iOS `StationSections.swift` 이식, spec §12-3). 리소스는 람다·낱말 주입(JVM 검증).
 
@@ -70,9 +70,9 @@ fun lineDisplayName(line: TimetableLine, isEn: Boolean, lineSuffixed: (String) -
 /** 종착이 없으면 영문이 필요 없고, 있으면 영문 종착이 있어야 영어 줄이 된다. */
 fun terminusReady(train: TimetableTrain): Boolean = train.terminus.isEmpty() || train.terminusEn != null
 
-/** 방향 행의 en 자격 — 노선 영문 + 첫차·막차 종착 자격(줄 단위 원자성, E27). */
-fun timetableLineEn(line: TimetableLine, direction: TimetableDirection, isEn: Boolean): Boolean =
-    isEn && line.lineNameEn != null && terminusReady(direction.first) && terminusReady(direction.last)
+/** 방향 행의 영어 노선명 — 노선 영문이 있고 첫차·막차 종착 자격이 다 갖춰질 때만(줄 단위 원자성, E27). 아니면 null(한국어 줄). */
+fun timetableLineEnName(line: TimetableLine, direction: TimetableDirection, isEn: Boolean): String? =
+    line.lineNameEn?.takeIf { isEn && terminusReady(direction.first) && terminusReady(direction.last) }
 
 /**
  * 방향 행 대신 낼 coverage 문구. null이면 방향 행을 그린다(coverage "ok"). 구서버(coverage 없음)·필드 누락은 방향이 비면 가장 덜

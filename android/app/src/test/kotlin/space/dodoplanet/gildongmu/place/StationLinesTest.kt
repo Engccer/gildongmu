@@ -64,10 +64,10 @@ class StationLinesTest {
         assertEquals("05:30 to 왕십리", trainText(TimetableTrain("05:30", terminus = "왕십리"), true, "next") { "to $it" }) // 영문 없으면 원문
         val line = TimetableLine("2", null, emptyList(), lineNameEn = "Line 2")
         val ready = TimetableDirection("up", TimetableTrain("05:30", terminus = "", ), TimetableTrain("23:50", terminus = "왕십리", terminusEn = "Wangsimni"))
-        assertTrue(timetableLineEn(line, ready, isEn = true))
-        assertFalse(timetableLineEn(line, ready, isEn = false))
-        assertFalse(timetableLineEn(line, TimetableDirection("up", TimetableTrain("05:30", terminus = "왕십리"), ready.last), isEn = true))
-        assertFalse(timetableLineEn(line.copy(lineNameEn = null), ready, isEn = true))
+        assertEquals("Line 2", timetableLineEnName(line, ready, isEn = true))
+        assertNull(timetableLineEnName(line, ready, isEn = false))
+        assertNull(timetableLineEnName(line, TimetableDirection("up", TimetableTrain("05:30", terminus = "왕십리"), ready.last), isEn = true))
+        assertNull(timetableLineEnName(line.copy(lineNameEn = null), ready, isEn = true))
     }
 
     @Test fun `시설 이름 — parts compass+meters 우선, 미지 방위는 서버 문장, location+lineEn 차선, 없으면 name`() {

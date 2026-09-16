@@ -59,10 +59,11 @@ fun SceneAutoSection(payload: AroundPayload, vm: NearbyScreenViewModel<AroundPay
                     val name = bilingualName(lang, item.name, en = null, roman = item.nameRoman)
                     val line = { nm: String -> sceneItemLine(item, nm, lang, { d, x, r -> appLocalized(res, R.string.surroundings_itemWithRoad, d, x, r) }) { d, x -> appLocalized(res, R.string.surroundings_item, d, x) } }
                     val key = sceneItemKey(group.bucket, i)
-                    val spoken = spokenDistanceUnits(line(name.primary), meters)
+                    val visual = line(name.display)
+                    val spoken = spokenDistanceUnits(line(name.primary), meters).takeIf { it != visual }
                     // 한 줄 = 한 객체(버튼 → 상세). 착지 requester는 clickable의 focusable 앞(소스 가드 규칙).
                     Text(
-                        line(name.display),
+                        visual,
                         Modifier
                             .fillMaxWidth()
                             .landingTarget(requesterFor(key))
@@ -70,7 +71,7 @@ fun SceneAutoSection(payload: AroundPayload, vm: NearbyScreenViewModel<AroundPay
                             .testTag(key)
                             .defaultMinSize(minHeight = 48.dp)
                             .padding(vertical = 8.dp)
-                            .semantics(mergeDescendants = true) { contentDescription = spoken },
+                            .semantics(mergeDescendants = true) { if (spoken != null) contentDescription = spoken },
                     )
                 }
                 if (group.items.size > visible) {
