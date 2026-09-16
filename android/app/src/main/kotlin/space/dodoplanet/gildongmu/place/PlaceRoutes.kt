@@ -18,14 +18,15 @@ sealed class PlaceDomain {
  * 싣는다 — 프로세스 재생성 뒤에도 백스택이 복원된다(spec §10-7). 도메인 섹션 재료도 같은 이유로 JSON 인자.
  */
 @Serializable
-data class PlaceDetailRoute(val placeJson: String, val domainJson: String? = null) {
+data class PlaceDetailRoute(val placeJson: String, val domainJson: String? = null, /** 채팅에서 연 상세는 "물어보기"를 숨긴다(iOS `showsChatEntry: false`, 순환 방지 — M6 spec §7). */ val showsChatEntry: Boolean = true) {
     val place: Place get() = KitJson.decodeFromString(Place.serializer(), placeJson)
     val domain: PlaceDomain? get() = domainJson?.let { KitJson.decodeFromString(PlaceDomain.serializer(), it) }
 
     companion object {
-        fun of(place: Place, domain: PlaceDomain? = null) = PlaceDetailRoute(
+        fun of(place: Place, domain: PlaceDomain? = null, showsChatEntry: Boolean = true) = PlaceDetailRoute(
             KitJson.encodeToString(Place.serializer(), place),
             domain?.let { KitJson.encodeToString(PlaceDomain.serializer(), it) },
+            showsChatEntry,
         )
     }
 }
