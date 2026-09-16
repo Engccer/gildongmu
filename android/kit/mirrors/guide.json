@@ -60,7 +60,7 @@
     {
       "swift": "GuideAudioSession.swift",
       "status": "excluded",
-      "reason": "D10: iOS AVAudioSession 모델의 리듀서(ambient/playback 카테고리·소유권 이전·ensureActive). 안드로이드는 AudioFocus로 재설계(M4). 목표 계약 5항과 Kit 테스트 시나리오 이름은 android-kit-guide 보고의 M4 입력 목록(코디네이터 판정 2026-09-16)"
+      "reason": "D10: iOS AVAudioSession 모델의 리듀서(ambient/playback 카테고리·소유권 이전·ensureActive). 안드로이드는 AudioFocus로 재설계(M4)하고, 목표 계약은 docs/INTEGRATIONS.md §오디오 세션 (guideAudioStep)·§소리를 낸 직후 세션을 끝내면 그 소리가 잘린다·§오디오 재생기는 둘·§outputSuppressed는 공유 Bool, 시나리오는 ios/GildongmuKit/Tests/GildongmuKitTests/GuideAudioSessionTests.swift가 정본이다(코디네이터 판정 2026-09-16)"
     },
     {
       "swift": "GuideBand.swift",
@@ -162,21 +162,22 @@
       "swift": "TransitDisplayProjection.swift",
       "status": "ported",
       "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/TransitDisplayProjection.kt",
-      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/TransitDisplayProjectionTest.kt"
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/TransitDisplayProjectionTest.kt",
+      "note": "transitLabel의 trim은 Swift whitespacesAndNewlines 집합 미러(SwiftSemantics.kt) — Kotlin trim()은 제어 문자 몇 개가 달라 쓰지 않는다"
     },
     {
       "swift": "TransitGuide.swift",
       "status": "ported",
       "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/TransitGuide.kt",
       "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/TransitGuideTest.kt",
-      "note": "TransitTrackPoll·TransitGuideInput·TransitGuideEvent·SubwayRidingMessage는 sealed class, 튜플 반환은 TransitGuideStepResult·TransitEventProfile·TransitBoardingClassification. withoutPrewalk는 data class copy(필드 누락 불가). normalizeStopName은 internal. 정규식은 명시 공백 클래스([ \\t\\n\\r])만 — Swift ICU 약칭 공백 클래스의 유니코드 공백은 좁혀진다(:kit 규칙). transitValidExitNo의 trim 집합(Kotlin isWhitespace)은 Swift whitespacesAndNewlines와 제어 문자 몇 개가 달라 수용"
+      "note": "TransitTrackPoll·TransitGuideInput·TransitGuideEvent·SubwayRidingMessage는 sealed class, 튜플 반환은 TransitGuideStepResult·TransitEventProfile·TransitBoardingClassification. withoutPrewalk는 data class copy(필드 누락 불가). normalizeStopName은 internal. 정규식 공백은 ICU 약칭 공백의 정의를 명시로 적은 REGEX_SPACE_MEMBERS([\\t\\n\\f\\r\\p{Z}] — NBSP·전각 공백 포함, :kit 규칙 — 웹 JS 약칭 공백보다 수직 탭·U+FEFF만 좁다). trim은 Swift 집합별 미러(SwiftSemantics.kt)"
     },
     {
       "swift": "TransitGuideText.swift",
       "status": "ported",
       "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/TransitGuideText.kt",
       "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/TransitGuideTextTest.kt",
-      "note": "튜플 반환은 PickedLabels, BusArrmsgKind는 internal sealed class. arrmsg 정규식은 명시 클래스([0-9]·[ \\t\\n\\r])만(:kit 규칙 — Swift ICU 약칭 클래스의 유니코드 숫자·공백은 좁혀지고 웹 JS와 같아진다)"
+      "note": "튜플 반환은 PickedLabels, BusArrmsgKind는 internal sealed class. arrmsg 정규식은 명시 클래스만(숫자 [0-9] — 웹 JS와 같음, 공백 REGEX_SPACE_MEMBERS — ICU 약칭 공백과 같음). transitTextKeys는 테스트가 웹 TRANSIT_TEXT_KEYS와 집합 대조한다"
     },
     {
       "swift": "TransitGuideTone.swift",
@@ -209,14 +210,15 @@
       "swift": "TransitTrackService.swift",
       "status": "ported",
       "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/TransitTrackService.kt",
-      "note": "전량 이식 — 전송은 APIClient·HttpTransport 경계라 실제 HTTP 구현은 [3] :app. Kit 테스트 없음"
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/TransitTrackServiceTest.kt",
+      "note": "전량 이식 — 전송은 APIClient·HttpTransport 경계라 실제 HTTP 구현은 [3] :app. Kit 테스트는 없고, TransitTrackServiceTest가 메서드별 쿼리 이름·순서·고정 값을 Swift 원본과 대조한다(웹 가드는 Swift만 읽는다)"
     },
     {
       "swift": "WalkHealth.swift",
       "status": "ported",
       "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/WalkHealth.kt",
       "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/WalkHealthTest.kt",
-      "note": "foodLadder 튜플은 FoodRung, WeightCommitOutcome은 sealed class. weightCommit은 십진 표기만 파싱한다 — JVM만 받는 65d·65f는 Swift처럼 거절하고, Swift가 받는 16진(0x41)·NUL 꼬리는 의도적으로 거절한다(숫자 키패드로 못 넣고 거절이 보수적). rounded()는 SwiftRounding.kt의 roundedAwayFromZero"
+      "note": "foodLadder 튜플은 FoodRung, WeightCommitOutcome은 sealed class. weightCommit은 십진 표기만 파싱한다 — JVM만 받는 65d·65f는 Swift처럼 거절하고, Swift가 받는 16진(0x41)·NUL 꼬리는 의도적으로 거절한다(숫자 키패드로 못 넣고 거절이 보수적). rounded()·whitespaces trim은 SwiftSemantics.kt의 roundedAwayFromZero·trimSwiftWhitespaces"
     }
   ]
 }

@@ -75,30 +75,6 @@ class TransitGuideTest {
         else -> fail("미지 입력 ${raw.kind}")
     }
 
-    /** 이벤트 종류를 fixture 문자열로 환원(웹 event.kind 대응). */
-    private fun kindName(event: TransitGuideEvent?): String? = when (event) {
-        is TransitGuideEvent.Boarded -> "boarded"
-        is TransitGuideEvent.VehicleSelected -> "vehicleSelected"
-        is TransitGuideEvent.Approaching -> "approaching"
-        TransitGuideEvent.VehiclePassed -> "vehiclePassed"
-        TransitGuideEvent.ArrivingAtBoardStop -> "arrivingAtBoardStop"
-        TransitGuideEvent.ArrivingAtAlightStop -> "arrivingAtAlightStop"
-        is TransitGuideEvent.TrackingStarted -> "trackingStarted"
-        is TransitGuideEvent.Countdown -> "countdown"
-        is TransitGuideEvent.MessageChanged -> "messageChanged"
-        is TransitGuideEvent.Arrived -> "arrived"
-        is TransitGuideEvent.BackOnTrack -> "backOnTrack"
-        is TransitGuideEvent.ApproxVehicleChanged -> "approxVehicleChanged"
-        TransitGuideEvent.SignalLost -> "signalLost"
-        TransitGuideEvent.NeverSeen -> "neverSeen"
-        TransitGuideEvent.UpstreamFailed -> "upstreamFailed"
-        TransitGuideEvent.SignalRecovered -> "signalRecovered"
-        is TransitGuideEvent.LegAdvanced -> "legAdvanced"
-        TransitGuideEvent.BoardingReset -> "boardingReset"
-        TransitGuideEvent.CapSlowed -> "capSlowed"
-        null -> null
-    }
-
     // JSON 값 읽기: 키가 없으면 "미지정"(검사 안 함), JsonNull이면 "명시 null".
     private fun JsonObject.str(key: String): String? = (this[key] as? JsonPrimitive)?.takeIf { it.isString }?.content
     private fun JsonObject.int(key: String): Int? = (this[key] as? JsonPrimitive)?.intOrNull
@@ -130,7 +106,7 @@ class TransitGuideTest {
                         assertNull(result.event, "$ctx event null")
                     } else {
                         val e = evJson as? JsonObject ?: fail("$ctx event 형식")
-                        assertEquals(e.str("kind"), kindName(result.event), "$ctx event.kind")
+                        assertEquals(e.str("kind"), transitEventKind(result.event), "$ctx event.kind")
                         assertEventFields(ctx, e, result.event)
                     }
                 }
@@ -313,6 +289,13 @@ class TransitGuideTest {
         // 여정 완료(final)는 도착 종, 중간 구간 전진은 시작 톤(E30 소리 결함 정정).
         assertEquals(TransitEventProfile(false, TransitGuideTone.arrive), transitEventProfile(TransitGuideEvent.LegAdvanced(1, final = true)))
         assertEquals(TransitEventProfile(false, TransitGuideTone.start), transitEventProfile(TransitGuideEvent.LegAdvanced(1, final = false)))
+    }
+
+    /** 공백 클래스는 ICU 약칭 공백과 같은 뜻이다(NBSP·전각 공백 포함) — 명시 클래스로 바꾸며 좁히면 Swift와 갈린다. */
+    @Test fun `NBSP·전각 공백도 공백이다`() {
+        assertEquals("서울", normalizeStopName("서울역\u00A0(1호선)"))
+        assertEquals("1075", subwayIdForOdsayLine("수도권 수인\u3000분당선"))
+        assertEquals("1009", subwayIdForOdsayLine("수도권 9호선(급행)\u00A0"))
     }
 
     @Test fun `ODsay 노선 매핑`() {
@@ -606,4 +589,28 @@ class TransitGuideTest {
             assertEquals(want, subwayRidingMessage(c.arrivalCode), "code ${c.arrivalCode}")
         }
     }
+}
+
+/** 이벤트 종류를 fixture 문자열로 환원(웹 event.kind 대응). `TransitGuideToneTest`와 공유 — 새 케이스는 여기서 컴파일이 막는다. */
+internal fun transitEventKind(event: TransitGuideEvent?): String? = when (event) {
+    is TransitGuideEvent.Boarded -> "boarded"
+    is TransitGuideEvent.VehicleSelected -> "vehicleSelected"
+    is TransitGuideEvent.Approaching -> "approaching"
+    TransitGuideEvent.VehiclePassed -> "vehiclePassed"
+    TransitGuideEvent.ArrivingAtBoardStop -> "arrivingAtBoardStop"
+    TransitGuideEvent.ArrivingAtAlightStop -> "arrivingAtAlightStop"
+    is TransitGuideEvent.TrackingStarted -> "trackingStarted"
+    is TransitGuideEvent.Countdown -> "countdown"
+    is TransitGuideEvent.MessageChanged -> "messageChanged"
+    is TransitGuideEvent.Arrived -> "arrived"
+    is TransitGuideEvent.BackOnTrack -> "backOnTrack"
+    is TransitGuideEvent.ApproxVehicleChanged -> "approxVehicleChanged"
+    TransitGuideEvent.SignalLost -> "signalLost"
+    TransitGuideEvent.NeverSeen -> "neverSeen"
+    TransitGuideEvent.UpstreamFailed -> "upstreamFailed"
+    TransitGuideEvent.SignalRecovered -> "signalRecovered"
+    is TransitGuideEvent.LegAdvanced -> "legAdvanced"
+    TransitGuideEvent.BoardingReset -> "boardingReset"
+    TransitGuideEvent.CapSlowed -> "capSlowed"
+    null -> null
 }

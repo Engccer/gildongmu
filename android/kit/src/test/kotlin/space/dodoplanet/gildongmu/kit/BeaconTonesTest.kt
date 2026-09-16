@@ -3,6 +3,8 @@ package space.dodoplanet.gildongmu.kit
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertTrue
+import kotlin.test.fail
 
 /**
  * 진행 상태 진동(E30 실험판) — Kit `TrendHapticsTests` 미러. 스위치 대상 톤은 **정확히** 가까워짐·정지·신뢰 불가
@@ -19,5 +21,18 @@ class BeaconTonesTest {
             BeaconTone.left, BeaconTone.right, BeaconTone.back, BeaconTone.start, BeaconTone.stop,
         )
         for (tone in alwaysOn) assertFalse(tone.hapticIsOptIn, "$tone")
+    }
+
+    /** 케이스 이름이 곧 소리 파일 이름이고 저장 키는 설정 값의 주소다 — 공유 fixture가 없어 Swift 원본과 직접 대조한다. */
+    @Test fun `톤 케이스·좌우 방식·저장 키는 Swift 원본과 같다`() {
+        val source = SwiftSource.read("BeaconTones.swift")
+        fun casesOf(enumName: String): List<String> =
+            Regex("""public enum $enumName: String[^{]*\{[ \t\r\n]*case ([a-z, ]+)""").find(source)?.groupValues?.get(1)
+                ?.split(",")?.map { it.trim() } ?: fail("$enumName 케이스 선언을 찾지 못했다")
+        assertEquals(casesOf("BeaconTone"), BeaconTone.entries.map { it.rawValue })
+        assertEquals(casesOf("LeftRightToneScheme"), LeftRightToneScheme.entries.map { it.rawValue })
+        val keys = Regex("""public static let storageKey = "([A-Za-z]+)"""").findAll(source).map { it.groupValues[1] }.toList()
+        assertEquals(listOf(TrendHaptics.storageKey, LeftRightToneScheme.storageKey), keys)
+        assertTrue(source.contains("""public static let `default`: LeftRightToneScheme = .${LeftRightToneScheme.default.rawValue}"""))
     }
 }

@@ -55,8 +55,8 @@ data class TransitDisplayItem(
  */
 private fun transitLabel(ko: String?, en: String?): TransitLabel {
     val koText = ko ?: ""
-    val enText = if (en != null && en.trim().isNotEmpty()) en else null
-    if (koText.trim().isEmpty()) return TransitLabel(koText, enText ?: "")
+    val enText = if (en != null && en.trimSwiftWhitespacesAndNewlines().isNotEmpty()) en else null
+    if (koText.trimSwiftWhitespacesAndNewlines().isEmpty()) return TransitLabel(koText, enText ?: "")
     return TransitLabel(koText, enText)
 }
 

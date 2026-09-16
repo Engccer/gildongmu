@@ -104,10 +104,7 @@ internal sealed class BusArrmsgKind {
 
 // :kit 규칙: 약칭 문자 클래스 대신 명시 클래스(안드로이드 ICU에서 약칭 숫자·공백 클래스가 유니코드까지 통과한다).
 private val ARRMSG_TAIL = Regex("""\[([0-9]+)번째 전\]""")
-private val BUS_ETA = Regex("""^(?:([0-9]+)분)?[ \t\n\r]*(?:([0-9]+)초)?[ \t\n\r]*후$""")
-
-/** Swift `trimmingCharacters(in: .whitespaces)` — 공백 구분자 + 탭(줄바꿈 제외). */
-private fun String.trimSwiftWhitespaces(): String = trim { it == '\t' || Character.getType(it) == Character.SPACE_SEPARATOR.toInt() }
+private val BUS_ETA = Regex("""^(?:([0-9]+)분)?[$REGEX_SPACE_MEMBERS]*(?:([0-9]+)초)?[$REGEX_SPACE_MEMBERS]*후$""")
 
 /** 원문 → 모양. 잔여 꼬리는 떼고 본다(잔여 수는 구조 필드가 따로 온다). */
 internal fun parseBusArrmsgKind(message: String): BusArrmsgKind {

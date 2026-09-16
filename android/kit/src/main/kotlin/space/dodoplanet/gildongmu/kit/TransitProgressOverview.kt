@@ -80,13 +80,10 @@ internal object TransitOverviewHereSerializer : KSerializer<TransitOverviewHere>
     }
 }
 
-@Serializable
 enum class TransitOverviewSilenceSignal { neverSeen, notYetVisible, signalLost, upstreamFailed }
 
-@Serializable
 enum class TransitOverviewLegStatus { done, current, upcoming }
 
-@Serializable
 enum class TransitOverviewStopRole { board, via, alight }
 
 @Serializable(with = TransitOverviewRowSerializer::class)

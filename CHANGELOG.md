@@ -13,7 +13,7 @@
 
 ### 안드로이드 Kit-guide — 실시간 안내 판정 계층 이식 (`android/kit`)
 
-웨이브 1 GUIDE 그룹(계획 `docs/superpowers/plans/2026-09-16-android-app-parallel-plan.md` §2·§5-3). iOS `GildongmuKit`의 실시간 안내 순수 로직 31파일을 Kotlin으로 옮기고 Kit 테스트를 함께 옮겼다 — 경로 추종 리듀서(`RouteGuide`)·대중교통 상태 머신(`TransitGuide`)·톤 계층·정지 판정·방위 축·도착 추정 보조·조망·하단 2행·문장 descriptor·추적 서비스. 공유 fixture(route-guide 50·transit-guide 57 시나리오 외 13종)가 웹·iOS와 같은 표로 초록이고 변이 주입으로 검출력을 확인했다. D10 판정으로 `GuideAudioSession`(iOS AVAudioSession 리듀서)은 `excluded`, `ListenSpeed`는 설정 정규화만 부분 이식했다 — 안드로이드 오디오는 M4가 AudioFocus로 재설계한다. 이식 계약은 `android/README.md`, 등록부는 `android/kit/mirrors/guide.json`.
+웨이브 1 GUIDE 그룹(계획 `docs/superpowers/plans/2026-09-16-android-app-parallel-plan.md` §2·§5-3). iOS `GildongmuKit`의 실시간 안내 순수 로직 31파일을 Kotlin으로 옮기고 Kit 테스트를 함께 옮겼다 — 경로 추종 리듀서(`RouteGuide`)·대중교통 상태 머신(`TransitGuide`)·톤 계층·정지 판정·방위 축·도착 추정 보조·조망·하단 2행·문장 descriptor·추적 서비스. 공유 fixture(route-guide 50·transit-guide 57 시나리오 외 11종)가 웹·iOS와 같은 표로 초록이고 변이 주입으로 검출력을 확인했다. D10 판정으로 `GuideAudioSession`(iOS AVAudioSession 리듀서)은 `excluded`, `ListenSpeed`는 설정 정규화만 부분 이식했다 — 안드로이드 오디오는 M4가 AudioFocus로 재설계한다. 이식 계약은 `android/README.md`, 등록부는 `android/kit/mirrors/guide.json`.
 
 ### 안드로이드 M1 — 검색 화면 (`android/app`)
 

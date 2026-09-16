@@ -12,8 +12,8 @@ import kotlin.test.assertTrue
 
 /**
  * 폴리라인 조립·접선 계약. Kit `RouteGuideTests`의 "폴리라인 접선" 스위트와 waypoint 인덱스 테스트를 옮겼다.
- * 리듀서 시나리오(`route-guide-scenarios.json` expect)는 GUIDE(`RouteGuide`) 이식 때 함께 온다 — 여기서는
- * 그 fixture의 스텝 기하가 조립·투영되는지만 본다.
+ * 리듀서 시나리오(`route-guide-scenarios.json` expect)는 `RouteGuideTest`가 든다 — 여기서는 그 fixture의 스텝 기하가
+ * 조립·투영되는지만 본다.
  */
 class RouteGeometryTest {
     private val mPerDegLat = 111_320.0

@@ -63,9 +63,6 @@ class TransitGuideToneTest {
         }
     }
 
-    /** 이벤트 종류를 fixture 문자열로(첫 글자 소문자 — sealed 케이스 이름이 Swift 케이스 이름의 PascalCase다). */
-    private fun eventKind(e: TransitGuideEvent?): String? = e?.let { it::class.simpleName?.replaceFirstChar(Char::lowercaseChar) }
-
     private fun JsonObject.str(key: String): String? = (this[key] as? JsonPrimitive)?.takeIf { it.isString }?.content
     private fun JsonObject.int(key: String): Int? = (this[key] as? JsonPrimitive)?.intOrNull
 
@@ -87,7 +84,7 @@ class TransitGuideToneTest {
                 val ex = step.expect
                 if ("tone" in ex) assertEquals(ex.str("tone"), out.tone?.rawValue, ctx)
                 if ("anchor" in ex) assertEquals(ex.int("anchor"), toneState.anchorRemaining, ctx)
-                if ("event" in ex) assertEquals(ex.str("event"), eventKind(result.event), "$ctx event")
+                if ("event" in ex) assertEquals(ex.str("event"), transitEventKind(result.event), "$ctx event")
                 ex.str("phase")?.let { assertEquals(it, result.state.phase.rawValue, ctx) }
                 ex.str("signal")?.let { assertEquals(it, result.state.signal.rawValue, ctx) }
             }
