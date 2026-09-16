@@ -156,7 +156,7 @@ payload = `AroundPayload(lat, lng, overview: NearbyOverview?, overviewFailed, pl
 - **권한**(`PermissionGate` — 대기 슬롯은 **`LocationStore`(앱 싱글턴)가 쥔다**: `suspend fun requestLocation(): PermissionOutcome`은 스토어의 `CompletableDeferred` 목록에 매달리고, Activity는 "요청을 띄우는 손"(`ActivityResultContracts.RequestMultiplePermissions`, FINE+COARSE 동시 — Android 12 다이얼로그가 "정확한/대략적인" 선택을 준다)과 "결과를 전달하는 손"만 `onCreate`/`onDestroy`에서 등록·해제한다. 다이얼로그 중 Activity가 재생성되면 새 Activity의 콜백이 스토어의 같은 슬롯을 재개한다(iOS `authContinuations` 동형). 동시 요청(검색 랭킹은 요청하지 않으므로 사실상 내 주변 두 화면)은 한 다이얼로그에 전부 재개. 프로세스 재생성 뒤 도착한 결과는 슬롯이 비어 있다 — 로그만 남기고 버린다(화면 `load()`가 `checkSelfPermission`으로 다시 판정한다). `launch()`는 Activity가 STARTED 이후여야 하는데 요청은 화면 진입 로드에서만 시작되므로 성립한다):
   - 매 `currentCoordinate`(ranking 제외)에서 `checkSelfPermission`을 다시 본다. FINE 허가 → 진행. COARSE만 → **`ReducedAccuracy`**(iOS "정확한 위치 꺼짐"의 안드로이드 대응 — 1~3km 오차로 "주변"을 말하면 있지도 않은 정보가 된다, 3-state). 둘 다 없음 → `PermissionGate.requestLocation()` 호출 → 결과 재판정. 시스템이 영구 거부라 다이얼로그를 띄우지 않고 즉시 거부를 돌려주면 `Denied`(설정 열기 안내). "처음 묻기"를 따로 추적하지 않는다 — 안드로이드엔 notDetermined 조회가 없고, 요청 자체가 멱등이다.
   - `allowPrecise` 버튼: 같은 요청을 다시 부른다(Android 12는 대략적 허용 뒤 재요청에서 정밀 업그레이드 다이얼로그를 띄운다). 결과가 여전히 COARSE면 설정 열기.
-  - 권한 요청은 **내 주변 화면 진입(로드)에서만** 일어난다. 검색·상세는 묻지 않는다(iOS "When In Use, 내 주변 최초 사용 시점" 계약). 앱 시작 즉시 요청 금지. `ACCESS_BACKGROUND_LOCATION` 요청 없음(D11).
+  - 권한 요청은 **내 주변 화면 진입(로드)과 길찾기의 현재 위치 조회**에서만 일어난다(M3 판정 반영 — iOS도 두 곳). 검색·상세는 묻지 않는다(iOS "When In Use" 계약). 앱 시작 즉시 요청 금지. `ACCESS_BACKGROUND_LOCATION` 요청 없음(D11). 설정 열기 인텐트는 `location/LocationSettings.kt` 함수 둘(앱 상세·기기 위치)로 통일 — M3도 같은 함수.
 - **:kit 어댑터**: `NearbyCoordinateSource.Current { force -> try store.currentCoordinate(force) catch (LocationException) → NearbyLocationError.{Denied,ReducedAccuracy,Unavailable} }`. `CancellationException`은 그대로 통과(코어 계약). 어댑터 자신의 `withTimeout` 만료는 `Unavailable`로 번역(코어 KDoc 계약). 위치 취득은 `Dispatchers.Main`의 콜백이라 별도 스레드 전환 없음.
 - **Google Play 서비스를 쓰지 않는다**(§10-1): `FUSED_PROVIDER`는 플랫폼 API 31 제공(GMS 기기에서는 GMS FLP가 뒷받침한다). 한소네 7의 GMS 탑재·provider 목록은 조사 문서 §9 미확인 항목이라 위 `hasProvider` 폴백을 둔다. 실기기에서 provider·실내 취득 시간을 §9-11로 본다.
 - 기기 위치 서비스 꺼짐(`isLocationEnabled()` 거짓)은 취득을 시도하지 않고 즉시 `Unavailable`(8초를 기다리지 않는다). 판정 자리는 iOS 절차 순서대로 **권한·정밀도 판정 뒤, 취득 직전**(권한 앞에 두면 위치를 켜고 돌아온 뒤에야 권한 다이얼로그가 떠 두 단계 왕복). 본문 문구는 §3-5 `FailedLocation` 행이 렌더 시 다시 판정한다.
@@ -176,7 +176,7 @@ payload = `AroundPayload(lat, lng, overview: NearbyOverview?, overviewFailed, pl
 | 복사 | `ClipboardManager.setPrimaryClip(ClipData.newPlainText("address", text))` + 통지 |
 | 전화 | `Intent(ACTION_DIAL, Uri.parse("tel:" + phone.replace("-", "")))` |
 | 외부 지도·홈페이지 | `Intent(ACTION_VIEW, uri)`; `ActivityNotFoundException` → 폴백 URL 1회(그것도 실패면 `StatusLine` `android.common.noAppToOpen`). 선택 판정(`chooseFallback(primary, fallback)`)은 순수 함수로 분리해 테스트 |
-| 설정 열기 | 권한: `Intent(ACTION_APPLICATION_DETAILS_SETTINGS, "package:" + packageName)` · 기기 위치 서비스: `ACTION_LOCATION_SOURCE_SETTINGS` |
+| 설정 열기 | `location/LocationSettings.kt`: `appDetailsSettingsIntent(context)`(권한) · `locationSourceSettingsIntent()`(기기 위치 서비스) — M3와 공용 |
 | 위치 | §4 |
 | 이동 | 골격 `navigation-compose`(§2). 탭 루트는 골격의 `SearchRoute`·`NearbyRoute`; 스택 라우트 `place/PlaceDetailRoute(placeJson)` · `nearby/NearbyKindRoute(kind, anchorJson?)` · `nearby/BusRouteStopsRoute(source, cityCode?, routeId, routeNo)` |
 

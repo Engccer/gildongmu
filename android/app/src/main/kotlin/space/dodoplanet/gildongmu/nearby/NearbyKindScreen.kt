@@ -1,8 +1,5 @@
 package space.dodoplanet.gildongmu.nearby
 
-import android.content.Intent
-import android.net.Uri
-import android.provider.Settings
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.defaultMinSize
@@ -60,6 +57,8 @@ import space.dodoplanet.gildongmu.kit.models.Place
 import space.dodoplanet.gildongmu.kit.models.SubwayNearbyResult
 import space.dodoplanet.gildongmu.kit.spokenDistanceUnits
 import space.dodoplanet.gildongmu.kit.surroundingPlaceToPlace
+import space.dodoplanet.gildongmu.location.appDetailsSettingsIntent
+import space.dodoplanet.gildongmu.location.locationSourceSettingsIntent
 import space.dodoplanet.gildongmu.search.PlaceRow
 
 /** 화면이 요청하는 스택 이동(내비게이션은 `AppRoot` 몫). */
@@ -181,7 +180,7 @@ fun <P : Any> NearbyShell(
                 NearbyLoadPhase.Denied -> {
                     Text(stringResource(R.string.android_common_geoDeniedTitle), cause, style = MaterialTheme.typography.titleMedium)
                     Text(stringResource(R.string.android_common_geoDeniedDesc), Modifier.fillMaxWidth().mergedRow("cause-desc").padding(vertical = 8.dp))
-                    Button(onClick = { context.startActivity(appSettingsIntent(context.packageName)) }, Modifier.testTag("openSettings")) { Text(stringResource(R.string.android_common_openSettings)) }
+                    Button(onClick = { context.startActivity(appDetailsSettingsIntent(context)) }, Modifier.testTag("openSettings")) { Text(stringResource(R.string.android_common_openSettings)) }
                 }
                 NearbyLoadPhase.ReducedAccuracy -> {
                     Text(stringResource(R.string.android_common_geoReducedTitle), cause, style = MaterialTheme.typography.titleMedium)
@@ -190,7 +189,7 @@ fun <P : Any> NearbyShell(
                         onClick = {
                             scope.launch {
                                 // 재요청이 업그레이드 다이얼로그를 띄운다(Android 12). 여전히 대략이면 설정으로.
-                                if (requestPrecise()) vm.load(force = true) else context.startActivity(appSettingsIntent(context.packageName))
+                                if (requestPrecise()) vm.load(force = true) else context.startActivity(appDetailsSettingsIntent(context))
                             }
                         },
                         Modifier.testTag("allowPrecise"),
@@ -205,7 +204,7 @@ fun <P : Any> NearbyShell(
                     // 기기 위치 서비스 꺼짐은 렌더 시 다시 판정한다(spec §3-5) — 원인이 다르면 문장도 다르다.
                     if (!isLocationEnabled()) {
                         Text(stringResource(R.string.android_common_locationOff), cause, style = MaterialTheme.typography.titleMedium)
-                        Button(onClick = { context.startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)) }, Modifier.testTag("openLocationSettings")) { Text(stringResource(R.string.android_common_openSettings)) }
+                        Button(onClick = { context.startActivity(locationSourceSettingsIntent()) }, Modifier.testTag("openLocationSettings")) { Text(stringResource(R.string.android_common_openSettings)) }
                     } else {
                         Text(stringResource(R.string.android_common_locationFailed), cause, style = MaterialTheme.typography.titleMedium)
                     }
@@ -215,9 +214,6 @@ fun <P : Any> NearbyShell(
         }
     }
 }
-
-private fun appSettingsIntent(packageName: String) =
-    Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", packageName, null))
 
 // ── 도메인 본문(spec §3-6~3-9). 한 줄 = 한 객체, 거리가 든 줄은 낭독에 단위 풀어쓰기.
 
