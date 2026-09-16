@@ -10,6 +10,9 @@ import space.dodoplanet.gildongmu.net.HttpUrlConnectionTransport
 object AppConfig {
     val experimentalGuidanceEnabled: Boolean = BuildConfig.EXPERIMENTAL
 
+    /** 탭 바 순서(iOS `experimentalTabOrderEnabled` 미러, K1 ① 위원장 판정 2026-08-23 실험판 판정 대기). */
+    val experimentalTabOrderEnabled: Boolean = BuildConfig.EXPERIMENTAL
+
     /** 서버 base URL(대외 정본 도메인). 서버 계약 변경 0 — 기존 라우트만 부른다. */
     const val API_BASE_URL = "https://gildongmu.dodoplanet.space"
 

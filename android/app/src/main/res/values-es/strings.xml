@@ -41,6 +41,7 @@
     <string name="airQuality_source">Fuente: AirKorea (Korea Environment Corporation).</string>
     <string name="airQuality_station">Estación de monitoreo %1$s, %2$s km</string>
     <string name="airQuality_unknown">Sin datos</string>
+    <string name="android_common_comingSoon">Aún no disponible</string>
     <string name="android_search_announceCount">{1, plural, one {%1$s resultado} other {%1$s resultados}}</string>
     <string name="android_search_announceEmpty">Sin resultados</string>
     <string name="android_search_announceFailed">Error en la búsqueda.</string>

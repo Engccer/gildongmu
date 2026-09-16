@@ -41,6 +41,7 @@
     <string name="airQuality_source">출처: 에어코리아(한국환경공단).</string>
     <string name="airQuality_station">%1$s 측정소, %2$skm</string>
     <string name="airQuality_unknown">정보 없음</string>
+    <string name="android_common_comingSoon">아직 준비 중입니다</string>
     <string name="android_search_announceCount">검색 결과 %1$s건</string>
     <string name="android_search_announceEmpty">검색 결과가 없습니다</string>
     <string name="android_search_announceFailed">검색에 실패했습니다.</string>

@@ -15,6 +15,8 @@ android/
   i18n/{arg-order.json,android-extra/}         ko 위치 인자 잠금 · 안드로이드 전용 키
 ```
 
+**화면 패키지 규약**(병렬 세션 소유권): 화면은 하위 패키지 하나씩 — `search/`·`place/`·`nearby/`·`directions/`·`chat/`. 탭·스택 골격은 `nav/`(`AppRoot`가 하단 탭 4개 + 단일 `NavHost`; iOS `AppTab.order` 미러, 실험판 순서 게이트 `AppConfig.experimentalTabOrderEnabled`). 새 화면은 자기 패키지에 `@Serializable` 라우트를 두고 `AppRoot`의 `NavHost`에 **등록 한 줄**만 더한다(자리표시 `PlaceholderScreen` 줄을 자기 화면으로 바꾼다). `nav/`·`a11y/`·`i18n/`·`net/`·`storage/`·매니페스트·gradle·`android/i18n/android-extra/`는 골격 세션(`android-m1`) 소유이고, 다른 세션은 등록 한 줄과 android-extra 키 추가만 additive로 한다. 내비게이션은 `navigation-compose` 2.x(탭별 백스택 `saveState/restoreState`) — Navigation 3는 탭별 백스택을 위해 상태·내비게이터·데코레이터를 앱이 소유해야 해서 택하지 않았다(M2 spec §10).
+
 - `:kit`은 **안드로이드 의존이 0**이다. `import android.`·`import androidx.`가 한 줄이라도 들어오면 `KitPurityTest`가 빨개지고, `kit/build.gradle.kts`에 안드로이드 플러그인·의존성을 더해도 같은 테스트가 잡는다. 저장·네트워크·시계처럼 플랫폼이 필요한 것은 인터페이스(`HttpTransport`·`KeyValueStore`)로 두고 `:app`이 구현한다(D5 경계).
 - 빌드 구성은 셋(iOS Debug/Release/Experimental 미러): `debug` · `release` · `experimental`. 실험판은 applicationId `space.dodoplanet.gildongmu.dev`, 표시 이름 "길동무 실험"(`app/src/experimental/res/values/strings.xml` — 스크린 리더 사용자의 유일한 구분 수단이라 반드시 유지), 아이콘 배경색 구분. 코드 게이트는 `AppConfig.experimentalGuidanceEnabled`(= `BuildConfig.EXPERIMENTAL`).
 - 뼈대 파일(`settings.gradle.kts`·`build.gradle.kts`·`gradle/**`·`gradle.properties`·`kit/build.gradle.kts`·`app/**`·`scripts/**`·이 README)은 `android-m1`만 고친다. 로직 세션이 의존성을 더해야 하면 고치지 말고 코디네이터에 보고한다. **새 Kotlin 파일 추가는 자유**(자기 그룹 파일만).
@@ -30,6 +32,7 @@ android/
 
 ```bash
 export ANDROID_HOME=~/Library/Android/sdk
+export PATH="$PATH:$ANDROID_HOME/platform-tools:$ANDROID_HOME/cmdline-tools/latest/bin"   # adb · android(공식 CLI 1.0)
 cd android
 ./gradlew :kit:test                         # 판정 계층 테스트(fixture 포함)
 ./gradlew :app:testDebugUnitTest            # 화면 상태 머신·언어·소스 가드(JVM)
@@ -43,6 +46,19 @@ adb exec-out timeout 10 uiautomator dump /dev/tty   # 접근성 트리(스크린
 ```
 
 **무거운 게이트는 머신 전역 락 안에서 돈다** — 절차는 §7. Gradle 워커는 `gradle.properties`가 2로 묶어 두었다.
+
+### 실기기 도구 — 구글 공식 `android` CLI(우선) · `adb`(폴백)
+
+`android` CLI는 `cmdline-tools/latest/bin`에 있다(위 PATH). 실기기 작업은 `adb exec-out uiautomator dump`보다 이것을 먼저 쓴다 — 접근성 트리를 JSON으로 주고(`contentDesc`·`interactions`·`state`·`off-screen`), 공식 문서 검색이 붙어 있다. 사용 전 `.claude/skills/android-cli/references/interact.md`를 읽는다.
+
+| 명령 | 용도 |
+|---|---|
+| `android install --apks=<apk>` | APK 설치(증분 배포, adb보다 빠름). `adb install -r`는 폴백 |
+| `android run --apks=<apk> [--activity=…]` | 빌드·배포·실행 |
+| `android layout [--pretty] [--full] [--flat] [-o file]` | 화면의 접근성 트리 JSON. `--full`은 비상호작용·숨김 요소까지. `uiautomator dump`는 폴백 |
+| `android screen capture [--annotate] -o <png>` | 스크린샷(`--annotate`는 요소 번호·경계 상자). WebView·애니메이션으로 `layout`이 실패할 때 |
+| `android docs <키워드>` | 공식 Android 문서 검색(API·마이그레이션·모범 사례) |
+| `android skills add <id> --project=.` | 공식 Android 스킬 설치. **worktree마다** `mkdir -p .claude/skills && android skills add android-cli navigation-3 testing-setup adaptive styles edge-to-edge play-policy-insights --project=.`(`.claude/`가 없으면 `<project>/skills/`에 떨어져 Claude Code가 못 본다). `.claude/skills/`는 `.gitignore`에 있어 커밋되지 않는다 |
 
 ## 3. 이식 관용구 (Swift → Kotlin)
 

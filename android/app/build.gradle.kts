@@ -5,6 +5,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization) // 내비게이션 라우트(@Serializable)
 }
 
 android {
@@ -76,6 +77,8 @@ dependencies {
     implementation(libs.activity.compose)
     implementation(libs.lifecycle.viewmodel.compose)
     implementation(libs.lifecycle.viewmodel.savedstate)
+    implementation(libs.navigation.compose)
+    implementation(libs.kotlinx.serialization.json) // 라우트 인자(Place JSON, M2)
 
     // AGP 내장 Kotlin은 kotlin-test의 JUnit5 변형을 자동 선택하지 않는다 — 명시한다.
     testImplementation(kotlin("test-junit5"))
