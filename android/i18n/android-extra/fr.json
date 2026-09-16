@@ -68,6 +68,9 @@
       "ttsUnavailable": "Le guidage vocal n’est pas disponible dans cette langue. Consultez le texte du guidage à l’écran",
       "serviceStartFailed": "Impossible de démarrer le service de guidage. Gardez l’application à l’écran et redémarrez",
       "notificationChannel": "Guidage à pied"
+    },
+    "settings": {
+      "resultHapticsFooter": "Les résultats de Recherche et À proximité sont aussi signalés par une vibration. Ne vibre que lorsque l'écran est allumé et que le retour haptique de l'appareil est activé."
     }
   },
   "search": {

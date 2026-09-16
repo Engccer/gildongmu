@@ -68,6 +68,9 @@
       "ttsUnavailable": "이 언어의 음성 안내를 쓸 수 없습니다. 화면의 안내 문장을 확인하세요",
       "serviceStartFailed": "안내 서비스를 시작하지 못했습니다. 앱을 화면에 띄운 채 다시 시작하세요",
       "notificationChannel": "도보 안내"
+    },
+    "settings": {
+      "resultHapticsFooter": "검색과 내 주변의 결과를 진동으로도 알립니다. 화면이 켜져 있고 기기의 촉각 피드백 설정이 켜져 있을 때만 진동합니다."
     }
   },
   "search": {

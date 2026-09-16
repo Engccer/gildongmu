@@ -68,6 +68,9 @@
       "ttsUnavailable": "La guía por voz no está disponible en este idioma. Consulta el texto de la guía en pantalla",
       "serviceStartFailed": "No se pudo iniciar el servicio de guía. Mantén la aplicación en pantalla y vuelve a iniciar",
       "notificationChannel": "Guía a pie"
+    },
+    "settings": {
+      "resultHapticsFooter": "Los resultados de Buscar y Cerca de mí también se avisan con vibración. Solo vibra con la pantalla encendida y la respuesta háptica del dispositivo activada."
     }
   },
   "search": {

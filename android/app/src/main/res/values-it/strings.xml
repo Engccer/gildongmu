@@ -265,6 +265,7 @@
     <string name="android_settings_releaseNotesError">Impossibile caricare le note di rilascio</string>
     <string name="android_settings_releaseNotesVersion">Versione %1$s</string>
     <string name="android_settings_reportProblem">Segnala un problema</string>
+    <string name="android_settings_resultHapticsFooter">I risultati di Cerca e Nelle vicinanze vengono segnalati anche con una vibrazione. Vibra solo con lo schermo acceso e il feedback aptico del dispositivo attivo.</string>
     <string name="android_settings_theme">Tema</string>
     <string name="android_settings_themeDark">Scuro</string>
     <string name="android_settings_themeLight">Chiaro</string>

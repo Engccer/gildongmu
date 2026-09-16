@@ -265,6 +265,7 @@
     <string name="android_settings_releaseNotesError">Impossible de charger les notes de version</string>
     <string name="android_settings_releaseNotesVersion">Version %1$s</string>
     <string name="android_settings_reportProblem">Signaler un problème</string>
+    <string name="android_settings_resultHapticsFooter">Les résultats de Recherche et À proximité sont aussi signalés par une vibration. Ne vibre que lorsque l\'écran est allumé et que le retour haptique de l\'appareil est activé.</string>
     <string name="android_settings_theme">Thème</string>
     <string name="android_settings_themeDark">Sombre</string>
     <string name="android_settings_themeLight">Clair</string>
