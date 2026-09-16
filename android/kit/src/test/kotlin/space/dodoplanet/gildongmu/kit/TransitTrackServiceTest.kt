@@ -27,15 +27,18 @@ class TransitTrackServiceTest {
         return queryItemsOf(seen)
     }
 
-    /** Swift 메서드별 `URLQueryItem(name:value:)` — 값이 문자열 리터럴이면 그 값, 아니면 null. */
+    /**
+     * Swift 인스턴스 `public func`별 `URLQueryItem(name:value:)` — 값이 보간 없는 문자열 리터럴이면 그 값, 아니면 null. 본문의 끝은
+     * 가시성·static과 무관하게 다음 `func` 선언이라 사이에 낀 private 헬퍼의 쿼리가 앞 함수로 귀속되지 않는다.
+     */
     private fun swiftQueryItems(): Map<String, List<Pair<String, String?>>> {
         val source = SwiftSource.read("TransitTrackService.swift")
-        val funcs = Regex("""public func ([A-Za-z]+)\(""").findAll(source).toList()
-        return funcs.indices.associate { i ->
-            val body = source.substring(funcs[i].range.last, funcs.getOrNull(i + 1)?.range?.first ?: source.length)
-            val items = Regex("""URLQueryItem\(name: "([A-Za-z]+)", value: (?:"([A-Za-z]+)"|[^\r\n]*)\)""").findAll(body)
-                .map { it.groupValues[1] to it.groupValues[2].ifEmpty { null } }.toList()
-            funcs[i].groupValues[1] to items
+        val decls = Regex("""^[ \t]*(?:[a-z]+[ \t]+)*func ([A-Za-z]+)\(""", RegexOption.MULTILINE).findAll(source).toList()
+        return decls.indices.filter { decls[it].value.trimStart().startsWith("public func ") }.associate { i ->
+            val body = source.substring(decls[i].range.last, decls.getOrNull(i + 1)?.range?.first ?: source.length)
+            val items = Regex("""URLQueryItem\(name: "([A-Za-z]+)", value: (?:"([^"\\]*)"|[^\r\n]*)\)""").findAll(body)
+                .map { it.groupValues[1] to it.groups[2]?.value }.toList()
+            decls[i].groupValues[1] to items
         }
     }
 

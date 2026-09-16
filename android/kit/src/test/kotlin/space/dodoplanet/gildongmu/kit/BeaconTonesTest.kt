@@ -27,12 +27,14 @@ class BeaconTonesTest {
     @Test fun `톤 케이스·좌우 방식·저장 키는 Swift 원본과 같다`() {
         val source = SwiftSource.read("BeaconTones.swift")
         fun casesOf(enumName: String): List<String> =
-            Regex("""public enum $enumName: String[^{]*\{[ \t\r\n]*case ([a-z, ]+)""").find(source)?.groupValues?.get(1)
+            Regex("""public enum $enumName: String[^{]*\{[ \t\r\n]*case ([A-Za-z, ]+)""").find(source)?.groupValues?.get(1)
                 ?.split(",")?.map { it.trim() } ?: fail("$enumName 케이스 선언을 찾지 못했다")
         assertEquals(casesOf("BeaconTone"), BeaconTone.entries.map { it.rawValue })
         assertEquals(casesOf("LeftRightToneScheme"), LeftRightToneScheme.entries.map { it.rawValue })
-        val keys = Regex("""public static let storageKey = "([A-Za-z]+)"""").findAll(source).map { it.groupValues[1] }.toList()
-        assertEquals(listOf(TrendHaptics.storageKey, LeftRightToneScheme.storageKey), keys)
+        // 저장 키는 선언한 enum과 짝으로 대조한다(파일 안 선언 순서에 묶이지 않고, 두 키가 서로 바뀐 것도 잡는다).
+        val keys = Regex("""public enum ([A-Za-z]+)[^{]*\{[^}]*?public static let storageKey = "([A-Za-z]+)"""").findAll(source)
+            .associate { it.groupValues[1] to it.groupValues[2] }
+        assertEquals(mapOf("TrendHaptics" to TrendHaptics.storageKey, "LeftRightToneScheme" to LeftRightToneScheme.storageKey), keys)
         assertTrue(source.contains("""public static let `default`: LeftRightToneScheme = .${LeftRightToneScheme.default.rawValue}"""))
     }
 }
