@@ -17,6 +17,8 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
@@ -75,6 +77,8 @@ fun Modifier.headingText(): Modifier = semantics { heading() }
 fun StatusLine(notice: Notice, modifier: Modifier = Modifier) {
     val app by AppNotices.pending.collectAsState()
     val modalOpen = LocalModalOpen.current
+    val hapticsOn = LocalResultHaptics.current
+    val haptics = LocalHapticFeedback.current
     val owner = LocalLifecycleOwner.current
     var resumed by remember(owner) { mutableStateOf(owner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) }
     DisposableEffect(owner) {
@@ -104,6 +108,16 @@ fun StatusLine(notice: Notice, modifier: Modifier = Modifier) {
         shown = Notice(u.rev, "", null)
         withFrameNanos { }
         shown = u.text
+        // 결과 진동(spec §14-3 판정 40): 문장이 나가는 조건 = 진동이 나가는 조건 — 발화 효과 안, 첫 세대·빈 문자열 프레임 제외. 이 호출은 이 파일 한 곳(소스 가드).
+        if (hapticsOn) u.text.haptic?.let { kind ->
+            haptics.performHapticFeedback(
+                when (kind) {
+                    HapticKind.success -> HapticFeedbackType.Confirm
+                    HapticKind.attention -> HapticFeedbackType.ContextClick
+                    HapticKind.failure -> HapticFeedbackType.Reject
+                },
+            )
+        }
         spokenRev = u.rev
         u.app?.let { AppNotices.consume(it.seq) }
     }
@@ -125,6 +139,9 @@ fun StatusLine(notice: Notice, modifier: Modifier = Modifier) {
 
 /** 다이얼로그를 여는 화면이 참으로 제공한다 — 그 동안 `StatusLine`은 앱 통지를 집지 않는다(spec §13-5). */
 val LocalModalOpen = compositionLocalOf { false }
+
+/** 결과 진동 스위치(실험판 설정, spec §14-3) — `AppRoot`가 `AppConfig.settings.resultHapticsEnabled`로 제공한다(`a11y`는 `settings`를 모른다). */
+val LocalResultHaptics = compositionLocalOf { false }
 
 /** `StatusLine`의 발화 단위 — 세대(단조)·표시/낭독 문장·집은 앱 통지. */
 private class SpokenUnit(val rev: Int, val text: Notice, val app: Notice?)

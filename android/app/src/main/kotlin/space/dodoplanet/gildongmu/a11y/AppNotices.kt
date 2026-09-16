@@ -22,9 +22,10 @@ object AppNotices {
     private var claimed: Notice? = null
     private var seq = 0
 
+    /** `haptic`: 자동 해제 = `attention`, 언어 적용 = `success`(spec §14-3). */
     @Synchronized
-    fun post(text: String, spoken: String? = null) {
-        val notice = Notice(++seq, text, spoken)
+    fun post(text: String, spoken: String? = null, haptic: HapticKind? = null) {
+        val notice = Notice(++seq, text, spoken, haptic)
         if (_pending.value == null) _pending.value = notice else queue.addLast(notice)
     }
 
@@ -63,11 +64,11 @@ object AppNotices {
 /**
  * 화면 통지와 집은 앱 통지의 병합(순수). 앱 통지가 있으면 **한 문장으로 합친다**(앱 통지가 앞 — CLAUDE.md "같은 커밋에 두 문장이 나는 자리는
  * 대기 꼬리로 합친다" 동형: "이동이 감지되어 지정한 위치를 해제했습니다, 주변 역 3곳") 그리고 결과에 호출자가 준 **단조 세대**를 찍는다(두 카운터를
- * 비교하지 않는다; 같은 수의 텍스트 교체가 발화 효과를 건너뛰는 침묵 방지). 앱 통지가 없으면 화면 통지 그대로.
+ * 비교하지 않는다; 같은 수의 텍스트 교체가 발화 효과를 건너뛰는 침묵 방지). 진동은 **앱 통지의 종류가 이긴다**(null이면 화면 것). 앱 통지가 없으면 화면 통지 그대로.
  */
 fun mergeNotices(screen: Notice, app: Notice?, nextSeq: Int): Notice {
     if (app == null) return screen
     val text = joinText(app.text, screen.text)
     val spoken = joinText(app.spoken ?: app.text, screen.spoken ?: screen.text).takeIf { it != text }
-    return Notice(nextSeq, text, spoken)
+    return Notice(nextSeq, text, spoken, app.haptic ?: screen.haptic)
 }

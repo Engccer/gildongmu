@@ -7,6 +7,8 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -21,6 +23,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import space.dodoplanet.gildongmu.AppConfig
+import space.dodoplanet.gildongmu.a11y.LocalResultHaptics
 import space.dodoplanet.gildongmu.chat.ChatTabScreen
 import space.dodoplanet.gildongmu.chat.PlaceChatRoute
 import space.dodoplanet.gildongmu.chat.PlaceChatScreen
@@ -57,7 +60,9 @@ fun AppRoot(factories: AppFactories) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = backStackEntry?.destination
+    val hapticsOn by AppConfig.settings.resultHapticsEnabled.collectAsState()
 
+    CompositionLocalProvider(LocalResultHaptics provides hapticsOn) {
     Scaffold(
         bottomBar = {
             GuideBottomBar {
@@ -143,5 +148,5 @@ fun AppRoot(factories: AppFactories) {
             }
         }
     }
+    }
 }
-
