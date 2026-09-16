@@ -22,6 +22,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import space.dodoplanet.gildongmu.AppConfig
 import space.dodoplanet.gildongmu.directions.DirectionsScreen
+import space.dodoplanet.gildongmu.directions.openDirections
 import androidx.navigation.toRoute
 import space.dodoplanet.gildongmu.nearby.BusRouteStopsRoute
 import space.dodoplanet.gildongmu.nearby.BusRouteStopsScreen
@@ -115,6 +116,7 @@ fun AppRoot(factories: AppFactories) {
                     nav = PlaceNav(
                         onBack = { navController.popBackStack() },
                         onOpenNearby = { kind, anchor -> returnFocus.slot.remember("anchor-${kind.name}"); navController.navigate(NearbyKindRoute.of(kind, anchor)) },
+                        onOpenDirections = navController::openDirections, // 탭 전환 — 상세 스택은 검색 탭 백스택에 저장된다(복귀 착지 없음)
                     ),
                     takeReturnFocus = returnFocus.slot::take,
                 )
