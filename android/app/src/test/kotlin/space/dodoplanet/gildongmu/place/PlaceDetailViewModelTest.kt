@@ -8,6 +8,7 @@ import space.dodoplanet.gildongmu.MainDispatcherExtension
 import space.dodoplanet.gildongmu.kit.HttpResponse
 import space.dodoplanet.gildongmu.kit.PlaceHoursService
 import space.dodoplanet.gildongmu.kit.PlaceHoursToday
+import space.dodoplanet.gildongmu.kit.BarrierFreeService
 import space.dodoplanet.gildongmu.kit.StationService
 import space.dodoplanet.gildongmu.kit.pathOf
 import space.dodoplanet.gildongmu.kit.models.Place
@@ -58,6 +59,18 @@ class PlaceDetailViewModelTest {
         val cafe = PlaceDetailViewModel(place, PlaceHoursService(stubbedClient { HttpResponse(404, "") }), strings, station) { "ko" }
         dispatcher.scheduler.advanceUntilIdle()
         assertNull(cafe.station.value) // 역이 아니면 로드하지 않는다
+    }
+
+    @Test fun `무장애 편의시설 — 시설 1개 이상일 때만, 0건·실패·미매칭은 null(무음 미노출)`() = runTest(dispatcher) {
+        val hours = PlaceHoursService(stubbedClient { HttpResponse(404, "") })
+        val ok = PlaceDetailViewModel(place, hours, strings, barrierFree = BarrierFreeService(stubbedClient { HttpResponse(200, """{"detail":{"contentId":"1","name":"카페","facilities":[{"key":"wheelchair","label":"휠체어","value":"대여 가능"}]}}""") }))
+        dispatcher.scheduler.advanceUntilIdle()
+        assertEquals("wheelchair", assertNotNull(ok.barrierFree.value).facilities.single().key)
+        for (r in listOf(HttpResponse(500, ""), HttpResponse(200, """{"detail":null}"""), HttpResponse(200, """{"detail":{"contentId":"1","name":"카페","facilities":[]}}"""))) {
+            val v = PlaceDetailViewModel(place, hours, strings, barrierFree = BarrierFreeService(stubbedClient { r }))
+            dispatcher.scheduler.advanceUntilIdle()
+            assertNull(v.barrierFree.value); assertEquals("", v.notice.value.text)
+        }
     }
 
     @Test fun `hoursLineText — 24시간·휴무·다음 날 마감`() {

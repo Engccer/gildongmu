@@ -9,8 +9,10 @@ import kotlinx.coroutines.launch
 import space.dodoplanet.gildongmu.a11y.Notice
 import space.dodoplanet.gildongmu.kit.PlaceHoursService
 import space.dodoplanet.gildongmu.kit.PlaceHoursToday
+import space.dodoplanet.gildongmu.kit.BarrierFreeService
 import space.dodoplanet.gildongmu.kit.StationService
 import space.dodoplanet.gildongmu.kit.isStation
+import space.dodoplanet.gildongmu.kit.models.BarrierFreeDetail
 import space.dodoplanet.gildongmu.kit.models.Place
 
 /** 상세 화면 문장(호출 시점 람다). */
@@ -35,14 +37,15 @@ fun hoursLineText(hours: PlaceHoursToday, s: PlaceStrings): String {
 }
 
 /**
- * 장소 상세 상태: 영업시간 줄(진입 시 1회, 조용히) + 통지(복사·열기 실패) + 조용한 조각(역 자동 섹션 5종 — spec §12-3, 역일 때만).
- * `station`은 테스트 편의로 nullable(없으면 역 섹션 로드 없음).
+ * 장소 상세 상태: 영업시간 줄(진입 시 1회, 조용히) + 통지(복사·열기 실패) + 조용한 조각(역 자동 섹션 5종 — 역일 때만, 무장애 편의시설 —
+ * 역 여부 무관; spec §12-3). `station`·`barrierFree`는 테스트 편의로 nullable(없으면 그 조각 로드 없음).
  */
 class PlaceDetailViewModel(
     val place: Place,
     private val hours: PlaceHoursService,
     private val strings: PlaceStrings,
     station: StationService? = null,
+    barrierFree: BarrierFreeService? = null,
     dataLocale: () -> String = { "ko" },
 ) : ViewModel() {
     private val _hoursLine = MutableStateFlow<String?>(null)
@@ -51,6 +54,10 @@ class PlaceDetailViewModel(
     /** 역 자동 섹션 5종 — null = 역이 아니거나 아직 도착 전(로딩 표시 없음, 값이 생기면 조용히 나타난다). */
     private val _station = MutableStateFlow<StationSections?>(null)
     val station: StateFlow<StationSections?> = _station.asStateFlow()
+
+    /** 무장애 편의시설 — 시설이 1개 이상일 때만 non-null(매칭 실패·네트워크 오류·0건은 전부 null = 무음 미노출, `match`는 비-throw). */
+    private val _barrierFree = MutableStateFlow<BarrierFreeDetail?>(null)
+    val barrierFree: StateFlow<BarrierFreeDetail?> = _barrierFree.asStateFlow()
 
     private val _notice = MutableStateFlow(Notice(0, ""))
     val notice: StateFlow<Notice> = _notice.asStateFlow()
@@ -64,6 +71,9 @@ class PlaceDetailViewModel(
         }
         if (station != null && isStation(place)) {
             viewModelScope.launch { _station.value = loadStationSections(station, place.name, dataLocale()) }
+        }
+        if (barrierFree != null) {
+            viewModelScope.launch { _barrierFree.value = barrierFree.match(place.lat, place.lng, place.name)?.takeIf { it.facilities.isNotEmpty() } }
         }
     }
 
