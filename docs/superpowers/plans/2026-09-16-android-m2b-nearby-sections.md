@@ -117,15 +117,16 @@ class NearbyKindSpec<P : Any>(
 // core 배선
 fetch = { coord, previous -> spec.fetch(coord, previous) },
 // 묶음별 리빌 창(주변 상황, 판정 31). RevealWindow 참조 타입을 상태에 두지 않고 공개 수만 든다.
-private val _groupWindows = MutableStateFlow<Map<String, Int>>(emptyMap())
+private val groupReveal = mutableMapOf<String, RevealWindow>()   // 산술은 :kit 한 벌
+private val _groupWindows = MutableStateFlow<Map<String, Int>>(emptyMap())   // 공개 수 투영(참조 타입을 상태에 두지 않는다)
 val groupWindows: StateFlow<Map<String, Int>> = _groupWindows.asStateFlow()
 fun revealMoreInGroup(group: String, totalCount: Int, keyAt: (Int) -> String) {
-    val visible = _groupWindows.value[group] ?: RevealWindow.initialVisible
-    if (visible >= totalCount) return
-    _groupWindows.value = _groupWindows.value + (group to minOf(visible + RevealWindow.revealStep, totalCount))
-    _landing.value = Landing.Key(keyAt(visible), ++landingRev)
+    val window = groupReveal.getOrPut(group) { RevealWindow() }
+    val firstNew = window.revealMore(totalCount) ?: return
+    _groupWindows.value = _groupWindows.value + (group to window.visibleCount)
+    _landing.value = Landing.Key(keyAt(firstNew), ++landingRev)
 }
-// willCommit: reveal.reset(); _visibleCount.value = …; _groupWindows.value = emptyMap()
+// willCommit: reveal.reset(); _visibleCount.value = …; groupReveal.clear(); _groupWindows.value = emptyMap()
 ```
 `emptyCopy`는 `((P) -> String)? = null`로 바꾸고 `NearbyShell`은 `checkNotNull(vm.emptyCopy(payload))`(isEmpty가 참인데 없으면 조립기 결함).
 
@@ -522,7 +523,7 @@ firstKey = { "walkinfra-top" },
 loadedNotice = { strings.walkInfraSummary(it.walk) },
 emptyCopy = { "" },               // 도달 불가(isEmpty false)
 ```
-`now`는 팩토리가 `{ DateFormat.getTimeInstance(DateFormat.SHORT, AppLocale.javaLocale(res)).format(Date()) }`로 준다(로케일 short time — iOS `timeStyle: .short` 동형, `HH:mm` 고정 금지; `AppLocale`에 java `Locale` 접근자가 없으면 `res.configuration.locales[0]`).
+`now`는 팩토리가 `{ DateFormat.getTimeInstance(DateFormat.SHORT, Locale(AppLocale.current(app.resources))).format(Date()) }`로 준다(**앱 언어** short time — 인자 없는 `getTimeInstance`·`configuration.locales[0]`는 시스템 로케일이라 금지; iOS `timeStyle: .short` 동형).
 
 `NearbyStringsRes.kt`: `walkInfraSummary = { walkInfraLiveSummary(it, WalkSummaryWords(audioSummary = { appLocalized(res, R.string.walkInfra_audioSummary, it) }, audioNone = getString(walkInfra_audioNone), audioUnsupported = …, audioError = …, osmSummary = { appLocalized(res, R.string.walkInfra_osmSummary, it) }, osmEmpty = …, osmUnsupported = …, osmError = …)) }`.
 
@@ -637,22 +638,22 @@ class ConditionsPayloadTest {
 ```kotlin
 data class ConditionsPayload(...)
 
-private sealed class Piece<T> { data class Ok<T>(val value: T?) : Piece<T>(); class Failed<T> : Piece<T>(); class OutOfCoverage<T> : Piece<T>() }
-private suspend fun <T> piece(block: suspend () -> T?): Piece<T> = try { Piece.Ok(block()) } catch (e: CancellationException) { throw e } catch (e: APIError.OutOfCoverage) { Piece.OutOfCoverage() } catch (e: Exception) { Piece.Failed() }
+// 조각 포착은 기존 `settled`(취소 재던짐). 커버리지 마커는 실패 Result 안의 예외 타입으로 가른다.
+private fun <T> Result<T>.isOutOfCoverage() = exceptionOrNull() === APIError.OutOfCoverage
 
 /** iOS `ConditionsModel.fetch` 이식: 조각별 독립, 커버리지 마커 이중 방어, 실패 조각은 직전 값, 혼잡도만 성공 null 덮어쓰기. */
 suspend fun fetchConditions(service: ConditionsService, coord: NearbyCoord, previous: ConditionsPayload?): ConditionsPayload = coroutineScope {
-    val w = async { piece { service.weather(coord.lat, coord.lng) } }
-    val a = async { piece { service.air(coord.lat, coord.lng) } }
-    val c = async { piece { service.congestion(coord.lat, coord.lng) } }
+    val w = async { settled { service.weather(coord.lat, coord.lng) } }
+    val a = async { settled { service.air(coord.lat, coord.lng) } }
+    val c = async { settled { service.congestion(coord.lat, coord.lng) } }
     val (wr, ar, cr) = Triple(w.await(), a.await(), c.await())
-    if (wr is Piece.OutOfCoverage || ar is Piece.OutOfCoverage || cr is Piece.OutOfCoverage) throw APIError.OutOfCoverage
-    val weather = (wr as? Piece.Ok)?.value
-    val air = (ar as? Piece.Ok)?.value
+    if (wr.isOutOfCoverage() || ar.isOutOfCoverage() || cr.isOutOfCoverage()) throw APIError.OutOfCoverage
+    val weather = wr.getOrNull()
+    val air = ar.getOrNull()
     ConditionsPayload(
         weather = weather ?: previous?.weather,
         air = air ?: previous?.air,
-        congestion = if (cr is Piece.Ok) cr.value else previous?.congestion,
+        congestion = if (cr.isSuccess) cr.getOrNull() else previous?.congestion,   // 성공한 null은 "핫스팟 밖"이라 덮어쓴다
         freshWeather = weather != null, freshAir = air != null,
     )
 }
@@ -935,7 +936,8 @@ fun coverageText(line: TimetableLine, lineDisplayName: (TimetableLine) -> String
 fun lineKoName(line: TimetableLine, lineSuffixed: (String) -> String): String = line.lineCore?.let(lineSuffixed) ?: line.lineName   // A26, 방향 행
 fun lineDisplayName(line: TimetableLine, isEn: Boolean, lineSuffixed: (String) -> String): String = if (isEn && line.lineNameEn != null) line.lineNameEn!! else lineKoName(line, lineSuffixed)   // coverage 사유 줄
 fun trainText(train: TimetableTrain, en: Boolean, nextDay: String, toTerminus: (String) -> String): String
-fun timetableLineEn(line: TimetableLine, direction: TimetableDirection, dataLocale: String): Boolean   // en 자격(노선 영문 + 종착 영문 둘 다)
+fun terminusReady(train: TimetableTrain): Boolean = train.terminus.isEmpty() || train.terminusEn != null   // 종착이 비면 영문 불필요(N4)
+fun timetableLineEn(line: TimetableLine, direction: TimetableDirection, isEn: Boolean): Boolean = isEn && line.lineNameEn != null && terminusReady(direction.first) && terminusReady(direction.last)
 fun facilityName(f: SeoulMetroFacility, compass: (String) -> String?, elevatorAt: (String, String) -> String, lineNumber: (String) -> String): String
 fun facilityDetail(f: SeoulMetroFacility, wheelchairAccessible: String): String?
 fun stationMetaLine(meta: StationMeta, lang: String, isEn: Boolean, nameSuffixed: (String) -> String, transfer: String): LineText   // ko: joinText(nameSuffixed(name), nameEn, tail) / en: joinText(bilingualName(name, en=nameEn).display, tail)·spoken은 .primary (m2)
@@ -1048,7 +1050,7 @@ class CurrentAddressStore(private val location: LocationStore, private val searc
     suspend fun ensureLoaded(lang: String)   // 좌표당·언어당 1회, 취소는 확정 아님, 좌표 갈리면 옛 주소 먼저 폐기
 }
 // LocationBar.kt
-fun locationBarLabel(input: LocationBarInput, lang: String, needsPermission: String, gps: String, gpsNear: (String) -> String, locating: String, gpsFailed: String): LineText   // None → needsPermission(`android.common.geoDeniedTitle`, 판정 29)
+fun locationBarLabel(input: LocationBarInput, lang: String, needsPermission: String, reducedAccuracy: String, gps: String, gpsNear: (String) -> String, locating: String, gpsFailed: String): LineText   // None → needsPermission(`geoDeniedTitle`), Coarse → reducedAccuracy(`geoReducedTitle`)(판정 29·N1)
 @Composable fun LocationBarRow(store: CurrentAddressStore)
 ```
 `coordinateForDisplay`는 `coordinateForRanking`과 **다른 함수**다(M6: TTL 60초·30m·스토어 폴백 없음 vs 300초·100m·스토어 폴백). 둘 다 `currentCoordinate` 위의 얇은 게이트라 중복은 인자 셋뿐.
@@ -1056,7 +1058,7 @@ fun locationBarLabel(input: LocationBarInput, lang: String, needsPermission: Str
 - [ ] **Step 1: 실패 테스트**
 ```kotlin
 class LocationBarTest {
-    private fun label(i: LocationBarInput, lang: String = "ko") = locationBarLabel(i, lang, "위치 권한이 필요합니다", "현재 위치", { "현재 위치($it 부근)" }, "확인 중", "위치 확인 실패")
+    private fun label(i: LocationBarInput, lang: String = "ko") = locationBarLabel(i, lang, "위치 권한이 필요합니다", "정확한 위치가 꺼져 있습니다", "현재 위치", { "현재 위치($it 부근)" }, "확인 중", "위치 확인 실패")
     @Test fun `4-state — 권한 없음은 실패가 아니라 권한 필요(판정 29)·실패·확인 중·주소`() {
         assertEquals("위치 권한이 필요합니다", label(LocationBarInput(LocationPermission.None, true, true, "길동", null)).visual)   // 권한이 좌표·실패보다 먼저
         assertEquals("위치 확인 실패", label(LocationBarInput(LocationPermission.Fine, false, true, null, null)).visual)
@@ -1066,7 +1068,10 @@ class LocationBarTest {
         val en = label(LocationBarInput(LocationPermission.Fine, true, false, "천호대로 1", "1 Cheonho-daero"), "en")
         assertEquals("현재 위치(1 Cheonho-daero (천호대로 1) 부근)", en.visual); assertEquals("현재 위치(1 Cheonho-daero 부근)", en.spoken)
     }
-    @Test fun `Coarse는 스토어가 lastFixFailed를 세우므로 실패 문구`() { assertEquals("위치 확인 실패", label(LocationBarInput(LocationPermission.Coarse, false, true, null, null)).visual) }
+    @Test fun `Coarse는 시도 여부와 무관하게 "정확한 위치가 꺼져 있습니다"(N1 — 표시용 좌표는 Fine에서만 시도해 확인 중에 갇히지 않는다)`() {
+        assertEquals("정확한 위치가 꺼져 있습니다", label(LocationBarInput(LocationPermission.Coarse, false, false, null, null)).visual)
+        assertEquals("정확한 위치가 꺼져 있습니다", label(LocationBarInput(LocationPermission.Coarse, true, true, "길동", null)).visual)
+    }
 }
 class CurrentAddressStoreTest {   // LocationStoreTest의 페이크 LocationSource·PermissionGate 재사용
     @Test fun `좌표당 1회, 언어가 바뀌면 다시, 좌표가 갈리면 옛 주소 먼저 폐기`() = runTest { ... calls 카운트 1 → 같은 좌표 재호출 0 → lang "en" 호출 1 → 좌표 이동 뒤 state.address null 확인 후 새 주소 }
@@ -1109,6 +1114,7 @@ class CurrentAddressStore(private val location: LocationStore, private val searc
 /** iOS `LocationBarView.state` 4-state(수동 위치 갈래는 M2c). 권한 없음이 좌표보다 먼저 — 권한 회수 뒤에도 좌표가 남는다. */
 fun locationBarLabel(input: LocationBarInput, lang: String, gps: String, gpsNear: (String) -> String, locating: String, gpsFailed: String): LineText {
     if (input.permission == LocationPermission.None) return LineText(needsPermission, needsPermission)   // 안 물음·거부 구분 불가 — 둘 다 참인 문장(판정 29)
+    if (input.permission == LocationPermission.Coarse) return LineText(reducedAccuracy, reducedAccuracy)   // 표시용 좌표는 Fine에서만 시도 — 여기서 갈라야 "확인 중"에 안 갇힌다
     if (!input.hasCoordinate) return (if (input.lastFixFailed) gpsFailed else locating).let { LineText(it, it) }
     val address = input.address ?: return LineText(gps, gps)
     val name = bilingualName(lang, address, en = input.english, roman = null)
@@ -1118,7 +1124,7 @@ fun locationBarLabel(input: LocationBarInput, lang: String, gps: String, gpsNear
 fun LocationBarRow(store: CurrentAddressStore) {
     val res = LocalContext.current.resources; val input by store.state.collectAsState()
     LaunchedEffect(Unit) { store.ensureLoaded(AppLocale.dataLocale(res)) }
-    val line = locationBarLabel(input, AppLocale.current(res), stringResource(R.string.android_common_geoDeniedTitle), stringResource(R.string.manualLocation_gps), { appLocalized(res, R.string.manualLocation_gpsNear, it) }, stringResource(R.string.manualLocation_locating), stringResource(R.string.manualLocation_gpsFailed))
+    val line = locationBarLabel(input, AppLocale.current(res), stringResource(R.string.android_common_geoDeniedTitle), stringResource(R.string.android_common_geoReducedTitle), stringResource(R.string.manualLocation_gps), { appLocalized(res, R.string.manualLocation_gpsNear, it) }, stringResource(R.string.manualLocation_locating), stringResource(R.string.manualLocation_gpsFailed))
     Text(line.visual, Modifier.fillMaxWidth().mergedRow("location-bar", line.spoken.takeIf { it != line.visual }).padding(vertical = 8.dp))
 }
 ```
@@ -1153,4 +1159,5 @@ fun LocationBarRow(store: CurrentAddressStore) {
 - spec §12-1 표 6행 → Task 3·4·5 / §12-1 도메인 섹션 → Task 7 / §12-2 → Task 6 / §12-3 → Task 8·9 / §12-4 → Task 10 / §12-5 테스트 레인 → 각 Task Step 1 + Task 11 / §12-6 판정 22~28 → 후속·Task 4(24)·Task 1(25)·Task 7(26)·Task 8(27)·Task 10(28).
 - 타입 일관: `NearbyKindSpec.fetch(NearbyCoord?, P?)`(Task 1) ↔ Task 3~6 조립기 `{ c, _ -> }`·`{ c, previous -> }`; `landOn`(Task 1) ↔ Task 6; `ClinicWords`·`clinicWords(res)`(Task 2·3) ↔ Task 7; `LineText`(기존) ↔ Task 8·10; `NearbyServices`(Task 3) ↔ Task 4·5 팩토리; `BodyLine`·`HeadingLine`(Task 4에서 `a11y/A11y.kt`에 신설) ↔ Task 5~9.
 - 플레이스홀더: Task 1의 `TODO("M2b")` 분기는 Task 5 끝 0건 확인 단계가 있다(의도된 임시).
+- 설계 리뷰 2차 반영: N1 → Task 10 `Coarse` 갈래 · N2 → Task 4 앱 언어 로케일 · N3 → Task 1 `Map<String, RevealWindow>` 내부 · N4 → Task 8 `terminusReady` · N5 → Task 5 `settled`.
 - 설계 리뷰 1차 반영(2026-09-16): B1 → Task 10 판정 29 · M1 → Task 6 삼항 throw · M2·M3 → Task 1 `groupWindows`/Task 6 자체 행 `scene-item-` · M4 → Task 4 0건 문구 · M5 → 매핑표 기본 분기 단언(각 Task 테스트) · M6 → Task 10 `coordinateForDisplay` 별도 · m1~m3·m12 → Task 8 · m7 → Task 4 · m10 → Task 11 · m13 → Task 10 스냅샷.
