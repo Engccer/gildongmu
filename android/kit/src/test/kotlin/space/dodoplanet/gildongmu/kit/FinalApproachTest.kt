@@ -13,7 +13,6 @@ import kotlin.test.assertTrue
 /**
  * 웹 정본과 같은 공유 fixture 셋(`final-approach-scenarios.json`·`presumed-arrival-scenarios.json`·
  * `brief-arrival-window-cases.json`)을 읽어 같은 경계표를 단언한다(Kit `FinalApproachTests` 미러).
- * `briefArrivalWindowMaxAccuracyMeters == carArrivalMaxAccuracyMeters` 단언은 GUIDE(`CarArrival`) 이식 때.
  */
 class FinalApproachTest {
     private val mPerDegLat = 111_320.0
