@@ -25,6 +25,7 @@ import space.dodoplanet.gildongmu.chat.ChatTabScreen
 import space.dodoplanet.gildongmu.chat.PlaceChatRoute
 import space.dodoplanet.gildongmu.chat.PlaceChatScreen
 import space.dodoplanet.gildongmu.directions.DirectionsScreen
+import space.dodoplanet.gildongmu.guide.ui.GuideBottomBar
 import space.dodoplanet.gildongmu.directions.openDirections
 import space.dodoplanet.gildongmu.location.LOCATION_BAR_KEY
 import space.dodoplanet.gildongmu.location.ManualLocationPickerScreen
@@ -59,6 +60,7 @@ fun AppRoot(factories: AppFactories) {
 
     Scaffold(
         bottomBar = {
+            GuideBottomBar {
             NavigationBar(Modifier.testTag("tabs")) {
                 for (tab in tabs) {
                     val route = tab.route()
@@ -78,6 +80,7 @@ fun AppRoot(factories: AppFactories) {
                         modifier = Modifier.testTag("tab-${tab.rawValue}"),
                     )
                 }
+            }
             }
         },
     ) { padding ->

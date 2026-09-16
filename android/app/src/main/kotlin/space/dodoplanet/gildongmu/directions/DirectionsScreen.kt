@@ -40,6 +40,7 @@ import space.dodoplanet.gildongmu.i18n.AppLocale
 import space.dodoplanet.gildongmu.kit.DataLocale
 import space.dodoplanet.gildongmu.kit.DirectionsMode
 import space.dodoplanet.gildongmu.kit.DirectionsModeOutcome
+import space.dodoplanet.gildongmu.guide.ui.walkGuideStartSlot
 import space.dodoplanet.gildongmu.kit.WalkCollapse
 import space.dodoplanet.gildongmu.location.appDetailsSettingsIntent
 import space.dodoplanet.gildongmu.nav.tryStartActivity
@@ -254,6 +255,7 @@ private fun DirectionsForm(vm: DirectionsViewModel, ui: FormUiState) {
                             onWalkToggle = { ui.walkExpandedOverride = !(ui.walkExpandedOverride ?: !WalkCollapse.shouldCollapse(outcome.briefing.durationSeconds)) },
                             shortestExpanded = ui.shortestExpanded, onShortestToggle = { ui.shortestExpanded = !ui.shortestExpanded },
                             viaLabel = s.via?.label, strings = strings,
+                            guideStart = walkGuideStartSlot(s, lang),
                         )
                         is DirectionsModeOutcome.Car -> CarOutcomeRows(outcome.briefing, s.via?.label, lang, strings)
                         DirectionsModeOutcome.Empty -> TextRow(strings.get(if (mode == DirectionsMode.transit) "route.transit.noRoute" else "route.pedestrian.noRoute"), "empty-${mode.rawValue}")
