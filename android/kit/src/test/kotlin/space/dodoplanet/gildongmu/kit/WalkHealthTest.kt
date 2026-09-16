@@ -141,5 +141,9 @@ class WalkHealthTest {
         for (text in listOf("65d", "65f", "65\n")) {
             assertEquals(WalkHealth.WeightCommitOutcome.Reject, WalkHealth.weightCommit(text), text)
         }
+        // 의도된 차이: Swift가 받는 16진·NUL 꼬리 꼴은 거절한다(숫자 키패드로 넣을 수 없고 거절이 보수적이다).
+        for (text in listOf("0x41", "65\u0000abc")) {
+            assertEquals(WalkHealth.WeightCommitOutcome.Reject, WalkHealth.weightCommit(text), text)
+        }
     }
 }

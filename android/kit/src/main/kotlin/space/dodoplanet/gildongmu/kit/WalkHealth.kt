@@ -98,6 +98,8 @@ object WalkHealth {
      *
      * ⚠ `toDoubleOrNull`만 쓰지 않는다 — JVM 문법은 `65d`·`65f` 접미사와 제어 문자 여백을 받아 Swift
      * `Double(String)`이 거절하는 입력을 저장한다. 십진 표기만 통과시킨 뒤 파싱한다.
+     * **의도된 차이**: Swift는 16진 부동소수(`0x41` → 65)와 NUL 뒤 꼬리(`"65\u0000abc"`)도 받지만 여기선 거절한다.
+     * 숫자 키패드로는 넣을 수 없는 꼴이고 거절 쪽이 보수적이다.
      */
     fun weightCommit(text: String): WeightCommitOutcome {
         val trimmed = text.trim { it == '\t' || Character.getType(it) == Character.SPACE_SEPARATOR.toInt() }

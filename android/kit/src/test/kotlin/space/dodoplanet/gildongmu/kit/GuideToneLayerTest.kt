@@ -8,6 +8,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.test.fail
 
 /**
  * 배타적 톤 계층 — Kit `GuideToneLayerTests` 미러. 공유 fixture(`tone-layer-scenarios.json`)로 **같은 입력 열이 같은
@@ -38,17 +39,10 @@ class GuideToneLayerTest {
         )
     }
 
-    private fun beaconTrend(raw: String) = when (raw) {
-        "closer" -> BeaconTrend.closer
-        "farther" -> BeaconTrend.farther
-        else -> BeaconTrend.none
-    }
+    // 미지 문자열은 기본값으로 접지 않고 실패한다 — fixture 개명·오타가 조용히 통과하면 드리프트 가드가 아니다.
+    private fun beaconTrend(raw: String) = BeaconTrend.entries.firstOrNull { it.name == raw } ?: fail("미지 trend $raw")
 
-    private fun motionState(raw: String) = when (raw) {
-        "stopped" -> MotionState.stopped
-        "speedUnknown" -> MotionState.speedUnknown
-        else -> MotionState.moving
-    }
+    private fun motionState(raw: String) = MotionState.entries.firstOrNull { it.name == raw } ?: fail("미지 motion $raw")
 
     @Test fun `웹 정본 시나리오와 톤 열이 일치한다`() {
         val scenarios = Fixtures.sharedJson("tone-layer-scenarios.json", ToneScenarioFile.serializer()).scenarios
@@ -61,7 +55,7 @@ class GuideToneLayerTest {
             for ((index, step) in scenario.steps.withIndex()) {
                 val input = ToneLayerInput(
                     unreliable = step.unreliable ?: false,
-                    priorityTone = step.priorityTone?.let(BeaconTone::fromRawValue),
+                    priorityTone = step.priorityTone?.let { BeaconTone.fromRawValue(it) ?: fail("미지 tone $it") },
                     eventOwned = step.eventOwned ?: false,
                     trend = step.trend?.let {
                         TrendInput(distance = it.distance, deadBand = it.deadBand, motion = motionState(it.motion), closerIntervalSeconds = it.closerIntervalSeconds)

@@ -7,7 +7,10 @@ package space.dodoplanet.gildongmu.kit
 data class RerouteProposal(
     val originLat: Double,
     val originLng: Double,
-    /** 취득 시각 — 단조 시계 초(iOS `ProcessInfo.systemUptime`, 벽시계 점프 무관). */
+    /**
+     * 취득 시각 — 단조 시계 초(벽시계 점프 무관). iOS는 `ProcessInfo.systemUptime`(깊은 잠자기 중 정지)을 쓴다.
+     * 안드로이드 시계(`uptimeMillis` 대 `elapsedRealtime`)는 [3] `:app`이 정하되 `nowUptime`과 같은 시계여야 한다.
+     */
     val acquiredAt: Double,
 )
 

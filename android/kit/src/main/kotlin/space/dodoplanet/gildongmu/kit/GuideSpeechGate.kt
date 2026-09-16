@@ -2,7 +2,8 @@ package space.dodoplanet.gildongmu.kit
 
 /**
  * 톤 뒤 발화 판정(spec 2026-08-14) — 웹 `src/lib/guide-speech-gate.ts` ↔ Kit `GuideSpeechGate.swift` 미러
- * (웹 `guide-speech-gate.test.ts`의 드리프트 가드가 상수 동조를 강제).
+ * (웹 `guide-speech-gate.test.ts`의 드리프트 가드는 Swift 상수만 읽는다 — Kotlin 상수는 `GuideSpeechGateTest`의
+ * 리터럴이 잠근다).
  *
  * 안내 효과음이 재생 중이면 그 소리가 끝난 뒤에 음성 통지를 게시한다 — 톤과 발화가 같은 청각 채널이라
  * 겹치면 스크린 리더 사용자는 문장 앞머리를 통째로 잃는다(임박 큐 0.73초·도착 종 2.25초가 실사고).
