@@ -17,7 +17,6 @@ import androidx.compose.ui.platform.LocalView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import space.dodoplanet.gildongmu.AppConfig
 import space.dodoplanet.gildongmu.guide.GuideSession
 import space.dodoplanet.gildongmu.guide.guideStrings
 
@@ -28,7 +27,7 @@ import space.dodoplanet.gildongmu.guide.guideStrings
  */
 @Composable
 fun GuideBottomBar(tabs: @Composable () -> Unit) {
-    if (!AppConfig.experimentalGuidanceEnabled) { tabs(); return }
+    if (!GuideSession.experimentalEnabled()) { tabs(); return }   // 기본값 = AppConfig.experimentalGuidanceEnabled(androidTest만 바꿔 끼운다)
     val context = LocalContext.current
     val app = context.applicationContext
     remember { GuideSession.attach(app); Unit }
