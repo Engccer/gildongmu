@@ -44,7 +44,7 @@ object ChatRenderPayloadSerializer : KSerializer<ChatRenderPayload> {
         // 판별자 부재는 깨진 응답(throw), 미지 값은 전방 호환(Unsupported) — 둘을 같은 것으로 접지 않는다.
         return when (obj.requiredString("type")) {
             "places" -> {
-                val sort = if (obj.optionalPrimitive("sort")?.contentOrNull == "review") PlaceSort.review else PlaceSort.accuracy
+                val sort = if (obj.optionalString("sort") == "review") PlaceSort.review else PlaceSort.accuracy
                 ChatRenderPayload.Places(json.decodeFromJsonElement(ListSerializer(Place.serializer()), obj.required("places")), sort)
             }
             "addresses" -> ChatRenderPayload.Addresses(json.decodeFromJsonElement(ListSerializer(JusoAddress.serializer()), obj.required("results")))
