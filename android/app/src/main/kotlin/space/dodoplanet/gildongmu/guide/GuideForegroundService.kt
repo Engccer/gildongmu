@@ -14,7 +14,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -37,7 +36,7 @@ class GuideForegroundService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_STOP -> {
-                if (GuideSession.isAttached) GuideSession.walk.stopByUser()
+                if (GuideSession.isAttached) GuideSession.walk.stopByUser() else stopSelf()
                 return START_NOT_STICKY
             }
             ACTION_START -> start()
@@ -47,11 +46,14 @@ class GuideForegroundService : Service() {
 
     private fun start() {
         if (!GuideSession.isAttached) { stopSelf(); return }
+        // 같은 인스턴스가 ACTION_START를 두 번 받으면(stopService와 새 시작이 onDestroy 전에 겹침) 스트림·wake lock을 덮어써
+        // 옛 wake lock이 영구 보유되고 리스너가 이중 등록된다 — 살아 있는 자원은 그대로 새 세션이 쓴다(모델은 매 호출 조회).
+        if (stream != null) { GuideDiag.log("service start reused"); return }
         val walk = GuideSession.walk
         val strings = guideStrings(resources)
-        GuideNotification.ensureChannel(this)
+        GuideNotification.ensureChannel(this, strings)
         val ui = walk.ui.value
-        val notification = GuideNotification.build(this, notificationTitleText(ui, strings), notificationBodyText(ui, strings))
+        val notification = GuideNotification.build(this, strings, notificationTitleText(ui, strings), notificationBodyText(ui, strings))
         try {
             startForeground(GuideNotification.ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION)
         } catch (e: Exception) {
@@ -77,19 +79,21 @@ class GuideForegroundService : Service() {
     /** 본문·제목이 바뀔 때만 `notify`(매 fix 갱신 금지 — 띠바 거리 10m 양자화가 빈도를 정한다). */
     private fun observeUi(strings: space.dodoplanet.gildongmu.directions.Strings) {
         uiJob?.cancel()
-        val manager = getSystemService(NotificationManager::class.java) ?: return
+        val manager = getSystemService(NotificationManager::class.java)
+        if (manager == null) { GuideDiag.log("notify manager=null"); return }
         uiJob = scope.launch {
             GuideSession.walk.ui
                 .map { notificationTitleText(it, strings) to notificationBodyText(it, strings) }
                 .distinctUntilChanged()
                 .collect { (title, body) ->
                     if (!GuideSession.walk.isTracking) return@collect
-                    manager.notify(GuideNotification.ID, GuideNotification.build(this@GuideForegroundService, title, body))
+                    manager.notify(GuideNotification.ID, GuideNotification.build(this@GuideForegroundService, strings, title, body))
                 }
         }
     }
 
     override fun onDestroy() {
+        stopForeground(STOP_FOREGROUND_REMOVE)  // spec §3-3 ⑦ — 전경 이탈·알림 제거를 명시(OEM 잔존 변종 차단, 멱등)
         uiJob?.cancel()
         uiJob = null
         scope.cancel()

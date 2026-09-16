@@ -1,5 +1,6 @@
 package space.dodoplanet.gildongmu.guide
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -275,7 +276,7 @@ class WalkGuideModel(
 
     /** 유일한 시작 요청 창구(`GuideSession.startWalk`가 부른다). `starting` 재진입 가드. */
     fun requestStart(request: WalkStartRequest) {
-        if (starting) return
+        if (starting || isTracking) return   // 추적 중 재요청이 살아 있는 세션의 인자(경유지·계단 회피)를 갈아엎지 않게
         starting = true
         lastStartRequest = request
         mutate { copy(lastStartVariant = request.variant) }
@@ -288,8 +289,18 @@ class WalkGuideModel(
         startGeneration += 1
         val generation = startGeneration
         startJob = scope.launch {
-            start(request.dest, request.label)
-            if (startGeneration == generation) starting = false
+            try {
+                start(request.dest, request.label)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Throwable) {
+                // 포트(권한 손·서비스 시작)의 동기 throw가 스코프 밖으로 새면 프로세스가 죽고 토큰·starting이 세션 없이 남는다(리뷰 MAJOR).
+                GuideDiag.log("start failed ${e::class.simpleName}: ${e.message}")
+                stop()
+                fail(GuideStatus.unavailable, "android.guide.serviceStartFailed")
+            } finally {
+                if (startGeneration == generation) starting = false
+            }
         }
     }
 
@@ -376,10 +387,12 @@ class WalkGuideModel(
         fail(GuideStatus.unavailable, "android.guide.serviceStartFailed")
     }
 
+    /** 시작 실패 한 판정(§7-6 표): 문장 + `failure` 진동 — 문장이 TalkBack 라벨 낭독이나 타 앱 전경에 삼켜져도 진동은 즉시 신호다. */
     private fun fail(status: GuideStatus, key: String, resolution: FailResolution = FailResolution.none) {
         this.status = status
         failResolution = resolution
         statusText = strings.get(key)
+        resultHaptic(ResultHapticKind.failure)
         announce(statusText)
     }
 
@@ -404,6 +417,10 @@ class WalkGuideModel(
         failResolution = FailResolution.none
         soundDegraded = false
         mediaVolumeNoticed = false
+        pendingFocusDenied = false
+        focusDeniedNoticed = false
+        ttsUnavailableNoticed = false
+        pendingRecovery = null          // 억제 해제(아래)가 끝난 경로의 명령을 되살리지 않게 먼저 비운다
         outputSuppressed = false
         beaconState = BeaconState.initial
         gateState = BeaconGateState.initial
@@ -427,7 +444,6 @@ class WalkGuideModel(
         liveSteps = emptyList()
         liveBaselineD = 0.0
         offRoute = false
-        pendingRecovery = null
         lastFixCoord = null
         lastFixCoordAt = null
         isRerouting = false
@@ -1145,6 +1161,13 @@ class WalkGuideModel(
         return lastGuidance ?: strings.get("guide.noGuidanceYet")
     }
 
+    /** 간략 세션의 진행 상황 발화(시트 버튼 응답 — 상세는 조망 페이지가 대신한다). 비-SR 사용자에게도 보이게 상태 행에 둔다. */
+    fun announceProgress() {
+        val spoken = progressText()
+        statusText = spoken
+        announce(spoken, highPriority = true)
+    }
+
     /** 이탈 중 수동 재조회 — 자동 재조회가 채택하지 못했을 때의 예비 출구. 진행 중 자동 조회는 폐기(토큰 증가). */
     fun requestReroute() {
         if (!isTracking || mode != GuideMode.detail || !offRoute || rerouteInFlight) return
@@ -1339,18 +1362,24 @@ class WalkGuideModel(
 
     private fun isSpeechAllowed(): Boolean = env.isForeground() || !env.isInteractive()
 
-    /** 실제 게시 — 억제 가드 → 음성 게이트 → `missedAnnouncement` → 게시. 이 모델에서 `speaker.speak(`는 여기 한 곳. */
+    /** 실제 게시 — 억제 가드 → 음성 게이트 → `missedAnnouncement` → 게시. 발화 포트 호출은 이 모델에서 여기 한 곳(소스 가드 ④). */
     private fun post(message: String, highPriority: Boolean, bypassSuppression: Boolean): Boolean {
         if (!bypassSuppression && outputSuppressed) return false
         if (!isSpeechAllowed()) { missedAnnouncement = true; return false }
         var spoken = spokenDistanceUnits(message, strings.get("android.unit.spokenMeters"))
-        if (pendingFocusDenied && !tones.focusDenied) {
+        val owesFocusDenied = pendingFocusDenied && !tones.focusDenied
+        if (owesFocusDenied) {
             pendingFocusDenied = false
             spoken = strings.get("android.guide.focusDenied") + " " + spoken
         }
         val ok = speaker.speak(spoken, highPriority)
         syncTtsUnavailable()
-        if (!ok) { missedAnnouncement = true; return false }
+        if (!ok) {
+            // 장부 복원 — "지우고, 못 내면 되돌린다"(다른 장부와 같은 계약).
+            if (owesFocusDenied) pendingFocusDenied = true
+            missedAnnouncement = true
+            return false
+        }
         return true
     }
 

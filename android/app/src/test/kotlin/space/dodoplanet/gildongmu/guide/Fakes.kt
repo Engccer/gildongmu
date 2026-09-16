@@ -61,6 +61,9 @@ class FakeTones : GuideTones {
     override var isSuppressed = false
     /** 다음 N회 재생을 포커스 거절로 흉내 낸다(3회째에 `focusDenied`). */
     var focusDeniedNext = 0
+    /** 0보다 크면 재생마다 `toneEndsAt = clock() + 길이`(톤 뒤 발화 지연 경로가 돈다). */
+    var toneDurationSeconds = 0.0
+    var clock: () -> Double = { 0.0 }
     private var streak = 0
     override fun preload() { preloads++ }
     override fun beginSession() { sessions++ }
@@ -77,6 +80,7 @@ class FakeTones : GuideTones {
         streak = 0
         focusDenied = false
         played += tone
+        if (toneDurationSeconds > 0) toneEndsAt = clock() + toneDurationSeconds
     }
 }
 
@@ -190,7 +194,7 @@ class GuideTestHarness(
     val env = FakeEnv()
     val coordinator = GuideSessionCoordinator()
     val store = InMemoryKeyValueStore()
-    val transport = StubTransport(walkResponder)
+    val transport = StubTransport(walkResponder).also { tones.clock = clock.read }
     /** 모델 스코프의 잡 — 워치독이 무한 루프라 테스트가 끝나면 `close()`로 끊는다(runTest 종료 대기 차단). */
     val job = SupervisorJob()
     val model = WalkGuideModel(

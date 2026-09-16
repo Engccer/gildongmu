@@ -16,7 +16,8 @@ import space.dodoplanet.gildongmu.location.LocationPermission
 class GuidePermissionsImpl(context: Context) : GuidePermissions {
     private val app = context.applicationContext
     private var launch: ((Array<String>) -> Unit)? = null
-    private var waiter: CompletableDeferred<Unit>? = null
+    /** 대기 중인 다이얼로그(권한, 완료 신호) — 다른 권한의 요청은 그 다이얼로그가 끝난 뒤 자기 것을 띄운다. */
+    private var waiter: Pair<String, CompletableDeferred<Unit>>? = null
 
     override fun isLocationEnabled(): Boolean = AppConfig.locationStore.isLocationEnabled()
     override fun currentLocation(): LocationPermission = AppConfig.permissionGate.current()
@@ -38,11 +39,14 @@ class GuidePermissionsImpl(context: Context) : GuidePermissions {
     private suspend fun ask(permission: String) {
         val launcher = launch ?: return
         val existing = waiter
-        if (existing != null) { existing.await(); return }
+        if (existing != null) {
+            existing.second.await()
+            if (existing.first == permission) return
+        }
         val deferred = CompletableDeferred<Unit>()
-        waiter = deferred
+        waiter = permission to deferred
         launcher(arrayOf(permission))
-        try { deferred.await() } finally { if (waiter === deferred) waiter = null }
+        try { deferred.await() } finally { if (waiter?.second === deferred) waiter = null }
     }
 
     fun attach(launch: (Array<String>) -> Unit) { this.launch = launch }
@@ -52,7 +56,7 @@ class GuidePermissionsImpl(context: Context) : GuidePermissions {
     fun deliver() {
         val pending = waiter ?: return
         waiter = null
-        pending.complete(Unit)
+        pending.second.complete(Unit)
     }
 
     private fun granted(permission: String) = app.checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED

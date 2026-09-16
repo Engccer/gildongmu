@@ -10,6 +10,7 @@ import space.dodoplanet.gildongmu.MainDispatcherExtension
 import space.dodoplanet.gildongmu.kit.BeaconTone
 import space.dodoplanet.gildongmu.kit.HttpResponse
 import space.dodoplanet.gildongmu.kit.pathOf
+import space.dodoplanet.gildongmu.kit.WalkRouteVariant
 import space.dodoplanet.gildongmu.kit.spokenDistanceUnits
 import space.dodoplanet.gildongmu.location.LocationPermission
 import kotlin.test.Test
@@ -97,9 +98,34 @@ class WalkGuideModelTest {
         assertEquals(h.catalog.get("android.guide.serviceStartFailed"), h.model.ui.value.statusText)
         assertFalse(h.coordinator.isActive)
         assertFalse(h.model.ui.value.starting)
+        assertEquals(FailResolution.none, h.model.ui.value.failResolution)
+        assertNull(h.model.ui.value.lastStartVariant)
+        assertEquals(listOf(ResultHapticKind.failure), h.haptics.fired)
         // 실패 뒤 반쪽 세션이 살아나지 않는다 — 시작 톤·워치독·TTS 준비 없음.
         assertEquals(emptyList(), h.tones.played)
         assertEquals(0, h.speaker.prepares)
+        // 최단 버튼에서 시작한 실패는 그 버튼 아래 행이 그려지도록 variant를 보존한다.
+        h.model.clearFailure()
+        h.model.requestStart(h.request.copy(variant = WalkRouteVariant.shortest))
+        settle()
+        assertEquals(WalkRouteVariant.shortest, h.model.ui.value.lastStartVariant)
+        assertEquals(GuideStatus.unavailable, h.model.ui.value.status)
+    }
+
+    @Test fun `톤 뒤 발화 — 재생 중인 톤이 끝난 뒤 게시한다(DeferredAnnouncer 배선)`() = guideTest(dispatcher) { h ->
+        h.model.requestStart(h.request)
+        settle()
+        h.speaker.spoken.clear()
+        h.tones.toneEndsAt = h.clock.now + 1.0   // 1초 남은 톤(FakeTones.play는 null로 되돌리므로 직접 대입)
+        h.model.announceNow("즉시 창구")           // 즉시 창구는 미루지 않는다
+        assertEquals(listOf("즉시 창구"), h.speaker.texts)
+        h.speaker.spoken.clear()
+        h.model.handleProviderDisabled()          // 자동 통지(`beacon.weak`) → 톤 잔여 1.0 + 0.15초 지연
+        assertEquals(emptyList(), h.speaker.spoken)
+        h.clock.now += 0.5; advanceTimeBy(500); runCurrent()
+        assertEquals(emptyList(), h.speaker.spoken)
+        h.clock.now += 0.7; advanceTimeBy(700); runCurrent()
+        assertEquals(listOf(h.catalog.get("beacon.weak")), h.speaker.texts)
     }
 
     @Test fun `종료 → 토큰 반납 → 재시작 성공`() = guideTest(dispatcher) { h ->
@@ -290,5 +316,116 @@ class WalkGuideModelTest {
         val last = h.speaker.texts.last()
         assertTrue(last.contains("300 미터"), last)
         assertFalse(last.contains("300m"), last)
+    }
+
+    @Test fun `진행 상황 발화(간략) — 신선한 fix면 직선거리, 없으면 마지막 안내·noGuidanceYet, 상태 행에 남고 high`() = guideTest(dispatcher, { HttpResponse(200, "{\"result\":null}") }) { h ->
+        h.model.requestStart(h.request)
+        settle()
+        h.speaker.spoken.clear()
+        h.model.announceProgress()
+        assertEquals(h.catalog.get("guide.noGuidanceYet") to true, h.speaker.spoken.single())
+        h.walkTo(0.0)
+        settle()   // 경로 없음 → 간략, 첫 fix 거리 통지
+        h.walkTo(10.0)
+        h.speaker.spoken.clear()
+        h.model.announceProgress()
+        val spoken = h.speaker.spoken.single()
+        assertTrue(spoken.first.startsWith("목적지까지 약 "), spoken.first)
+        assertTrue(spoken.second)
+        assertEquals(h.model.ui.value.statusText, spoken.first.replace(" 미터", "m"))
+    }
+
+    @Test fun `톤 뒤 발화 — 시작 톤(1_3초) 직후 문장은 잔여 + 0_15초 뒤, 대기 중 선점되면 상환 장부(onDropped)가 복원된다`() = guideTest(dispatcher, { HttpResponse(200, straightRouteJson().replace("\"steps\"", "\"stepFree\":\"unavailable\",\"stepFreeNotice\":\"계단 회피 경로를 찾지 못했습니다\",\"steps\"")) }) { h ->
+        h.tones.toneDurationSeconds = 1.3
+        h.model.requestStart(h.request.copy(accessible = true))
+        settle()
+        assertEquals(h.clock.now + 1.3, h.tones.toneEndsAt)
+        h.model.handleFix(h.fix(0.0))   // 시작 톤 재생 직후(잔여 1.3초) 경로 커밋 → 시작 문장은 1.45초 지연
+        runCurrent()
+        assertEquals(emptyList(), h.speaker.spoken)
+        h.clock.now += 1.0; advanceTimeBy(1_000); runCurrent()
+        assertEquals(emptyList(), h.speaker.spoken)
+        h.clock.now += 0.5; advanceTimeBy(500); runCurrent()
+        assertEquals(1, h.speaker.spoken.size)
+        assertTrue(h.speaker.texts.single().startsWith("계단 회피 경로를 찾지 못했습니다 "), h.speaker.texts.single())
+
+        // 선점: 대기 중인 문장이 즉시 창구에 밀려나면 열화 문장이 장부로 돌아가 전경 복귀에 갚아진다.
+        h.speaker.spoken.clear()
+        h.model.stopByUser()
+        h.model.requestStart(h.request.copy(accessible = true))
+        settle()
+        h.model.handleFix(h.fix(0.0))
+        runCurrent()
+        assertEquals(emptyList(), h.speaker.spoken)
+        h.model.announceNow("선점 문장")
+        assertEquals(listOf("선점 문장"), h.speaker.texts)
+        h.clock.now += 2.0; advanceTimeBy(2_000); runCurrent()
+        assertEquals(listOf("선점 문장"), h.speaker.texts, "밀려난 문장은 뒤늦게 나가지 않는다")
+        h.speaker.spoken.clear()
+        h.model.setForeground(false)
+        h.model.setForeground(true)
+        assertEquals(1, h.speaker.spoken.size)
+        assertTrue(h.speaker.texts.single().startsWith("계단 회피 경로를 찾지 못했습니다 "), h.speaker.texts.single())
+
+        // 종료는 보류 문장을 onDropped 없이 버린다 — 끝난 세션의 문장이 뒤늦게 나가지 않는다.
+        h.speaker.spoken.clear()
+        h.model.stopByUser()
+        h.model.requestStart(h.request)
+        settle()
+        h.model.handleFix(h.fix(0.0))
+        runCurrent()
+        h.model.stopByUser()
+        h.clock.now += 3.0; advanceTimeBy(3_000); runCurrent()
+        assertEquals(emptyList(), h.speaker.spoken)
+    }
+
+    @Test fun `restart — 저장된 시작 인자(계단 회피·최단·경유지)를 그대로 다시 쓴다, 추적 중·인자 없음은 no-op`() = guideTest(dispatcher) { h ->
+        h.model.restart()
+        assertEquals(0, h.controller.starts)
+        h.perms.location = LocationPermission.Coarse
+        h.model.requestStart(h.request.copy(accessible = true, variant = WalkRouteVariant.shortest))
+        settle()
+        assertEquals(FailResolution.precise, h.model.ui.value.failResolution)
+        h.perms.location = LocationPermission.Fine
+        h.model.clearFailure()
+        h.model.restart()
+        settle()
+        assertEquals(GuideStatus.tracking, h.model.ui.value.status)
+        assertEquals(WalkRouteVariant.shortest, h.model.ui.value.lastStartVariant)
+        h.walkTo(0.0)
+        settle()
+        val url = h.transport.seenUrls.single()
+        assertTrue(url.contains("accessible=true") && url.contains("variant=shortest"), url)
+        h.model.restart()   // 추적 중 no-op
+        assertEquals(1, h.controller.starts)
+    }
+
+    @Test fun `띠바 거리 — 10m 양자화(같은 구간은 유지, 넘으면 갱신)`() = guideTest(dispatcher, { HttpResponse(200, "{\"result\":null}") }) { h ->
+        h.model.requestStart(h.request)
+        settle()
+        h.walkTo(0.0)   // 경로 origin으로 소비 → 경로 없음 → 간략
+        settle()
+        h.walkTo(0.0)   // 첫 간략 fix
+        val first = h.model.ui.value.bandDistanceMeters!!
+        assertTrue(first in 310..320, first.toString())
+        h.walkTo(4.0)
+        assertEquals(first, h.model.ui.value.bandDistanceMeters)
+        h.walkTo(50.0)
+        val second = h.model.ui.value.bandDistanceMeters!!
+        assertTrue(second in 260..270 && second != first, second.toString())
+    }
+
+    @Test fun `속도 없는 fix(hasSpeed 거짓) — 걷는 중이면 정지 tick이 나지 않는다(0_0으로 접으면 거짓 정지)`() = guideTest(dispatcher, { HttpResponse(200, "{\"result\":null}") }) { h ->
+        h.model.requestStart(h.request)
+        settle()
+        h.model.handleFix(h.fix(0.0, speed = null))
+        settle()
+        h.tones.played.clear()
+        for (i in 1..10) {
+            h.clock.now += 2.0
+            h.model.handleFix(h.fix(2.6 * i, speed = null, accuracy = 8.0))
+            advanceTimeBy(2_000); runCurrent()
+        }
+        assertEquals(0, h.tones.played.count { it == BeaconTone.tick }, h.tones.played.toString())
     }
 }

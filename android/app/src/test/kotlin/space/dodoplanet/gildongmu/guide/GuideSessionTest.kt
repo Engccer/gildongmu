@@ -5,7 +5,9 @@ import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.TestScope
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.extension.RegisterExtension
+import space.dodoplanet.gildongmu.AppConfig
 import space.dodoplanet.gildongmu.MainDispatcherExtension
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -24,6 +26,8 @@ class GuideSessionTest {
     @JvmField
     @RegisterExtension
     val main = MainDispatcherExtension(dispatcher)
+
+    @AfterEach fun restoreGate() { GuideSession.experimentalEnabled = { AppConfig.experimentalGuidanceEnabled } }
 
     private data class Owner(val n: Int)
 
@@ -79,5 +83,21 @@ class GuideSessionTest {
         GuideSession.setOutputSuppressed(true, a)
         GuideSession.setOutputSuppressed(false, a)
         assertTrue(h.model.outputSuppressed)
+    }
+
+    @Test fun `세션 경계가 억제를 풀어도 소유자가 남아 있으면 다음 소유자·재요청이 억제를 다시 세운다`() = guideTest(dispatcher) { h ->
+        GuideSession.attachForTest(h.model, h.coordinator)
+        val a = Any()
+        val b = Any()
+        GuideSession.setOutputSuppressed(true, a)
+        h.model.requestStart(h.request)   // 세션 시작 ⑤ = outputSuppressed = false(소유자 집합은 유지)
+        settle()
+        assertFalse(h.model.outputSuppressed)
+        GuideSession.setOutputSuppressed(true, b)
+        assertTrue(h.model.outputSuppressed)
+        GuideSession.setOutputSuppressed(false, b)
+        assertTrue(h.model.outputSuppressed, "a가 아직 소유 중")
+        GuideSession.setOutputSuppressed(false, a)
+        assertFalse(h.model.outputSuppressed)
     }
 }
