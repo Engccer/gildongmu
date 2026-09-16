@@ -175,6 +175,7 @@ M0 체크포인트 뒤 코디네이터가 확정한다. 요지: `~/gildongmu-wt/
 | (재리뷰) GUIDE 사후 커밋 | — | 21:2x | 코디네이터 디스패치 읽기 전용 리뷰(`77aa36e2..73bea1c0`): **BLOCKER 0**. 09f56020의 진단이 한 칸 어긋남 — Apple ICU `\s`는 `\p{White_Space}`라 새 클래스가 U+000B·U+0085 두 문자 좁다(MINOR). Foundation `CharacterSet.whitespaces`는 U+200B 포함(MINOR). **diff 밖 MAJOR**: 다른 그룹 12파일이 Swift `.whitespaces`를 Kotlin `trim()`으로 옮겨 같은 갈림. 후속은 세션 `android-kit-fix`(opus, base `eb7bf0f8`)가 맡는다 — README §3 `\p{…}` 규칙과 `RegexPortabilityTest`만 소유 예외 |
 | `android-m1` M2 조각 1 `location/` | `7a4a9379` | 20:0x | GMS 무의존 `LocationStore`(FUSED_PROVIDER + GPS 폴백), M2 spec `c411c8c7`·계획 포함. M3가 이 시그니처를 직접 소비 |
 | `android-kit-fix` 완료 | `157989f3` | 20:2x | 공백 상수 = `\\p{White_Space}`, 12파일+α trim 재판정(Swift 집합 미러, Kotlin 기본 trim·isBlank 금지 소스 가드), U+200B, README §3 `\\p{…}` 규칙, API 33 `URLDecoder` 제거, `ChatService.splitStreamLines`(CRLF·LF·CR). 리뷰 BLOCKER 0. ⚠ 18:36~20:00 정지는 fable 사용 한도(세션 셋 동시) |
+| `android-m1` 설정·배선·스토어 준비 | `f215b164` → `b5263ce5` | 09-17 03:xx~ | 설정 화면(§14)·openChat 배선·억제 훅·체중 키·README §1·KDoc·PlaceholderScreen 삭제·결과 진동 게이트(㉗) · `docs/playstore/{listing,data-safety,internal-track}.md` + `android/scripts/play-upload.mjs` 골격. 데이터 안전성 판정: 서비스 제공자≠공유 / 값은 ASC 라벨과 일치(Vercel 요청 로그 사실 명시) / **전경 서비스 선언은 실험판 소스셋 매뉴페스트로 이동**(정식 APK 검사 스크립트) |
 | `android-m4` M4 완료 | `6a20cdc5` | 09-17 03:0x | 도보 실시간 안내: 세션 싱글턴·전경 서비스(location)+지속 알림(안내 종료 액션)·안내 위치 스트림·SoundPool+AudioFocus(usage MEDIA, 톤 SONIFICATION·TTS SPEECH)·TTS(speechDeferStep, 배율 1.0=호출 없음)·진동 3종·시트·띠바·종료 화면·계측 로그·실험판 게이트. 리뷰 4회 반영. 매니페스트 additive(서비스·FOREGROUND_SERVICE(_LOCATION)·POST_NOTIFICATIONS·VIBRATE·WAKE_LOCK·ACTIVITY_RECOGNITION), `AppSourceGuardTest` 허용 1줄(소유권 예외). **실보행 대본 25항·회수 명령은 `~/gildongmu-wt/android-m4-reports/report.md`**. 세션 종료·창 닫음(실기기 판정은 별도 세션) |
 | `android-m6` M6 완료 | `87fc6f31` → `45c8c4ab` | 09-17 00:xx | 채팅 탭·장소 채팅·동의 게이트·NDJSON 전송기·질문 헤딩/산문 블록/장소 언급/카드·출처·공유·칩·입력 바(IME 인셋)·온디바이스 받아쓰기(`speech/DictationSession.kt`, API 33 게이트)·`openChat(place?)`. 리뷰 전부 반영. **위원장 판정: 실패 시 실패 답변 블록 착지(헌장 §6 편차 채택, 참조 문서 갱신은 실기기 뒤)**. 실기기 16항목 report §⑤ |
 | `android-m1` M2c 완료 | `cdcdf23b` → `ba43fb0b` | 09-17 0x:xx | 현재 위치 수동 지정(`EffectiveLocation` 단일 진입점·StatusLine 병합·EndpointPicker 추출·표시줄 버튼)·설정 §14 설계 확정. BLOCKER 4 해소(StatusLine seq 충돌 → 발화 단위 세대). ⚠ M6 chat/ 파일 additive 편집(자진 신고, M6 spec §4-1 자리). 실기기 §13-6 23~26 |
@@ -207,8 +208,25 @@ M0 체크포인트 뒤 코디네이터가 확정한다. 요지: `~/gildongmu-wt/
 - **M4 → m1 인계**: 억제 훅 배선(`speech/DictationSession` → `GuideSession.setOutputSuppressed`), 체중 저장소 키 공유(`walkWeightKg`, `SharedPreferencesStore(context)` 기본 이름 — 설정 화면이 같은 키를 쓴다), README §1, `RouteGeometry.kt` KDoc.
 - **M5 착수 조건(코디네이터 판정)**: M4의 [3] 계층(전경 서비스·오디오 포커스·TTS)이 한소네 7에서 최소 스모크(설치·안내 시작·톤·발화·알림 종료)를 통과한 뒤. 그 전에 M5를 쌓으면 [3] 결함이 두 수단에 복제된다.
 - **웹 flake 관찰(android-m4 4차 게이트)**: `src/components/__tests__/TransitGuidePanel.test.tsx` "관측이 끝나면 …(래치)"가 2스레드 병렬에서 2회 실패 뒤 통과, 단독 통과 — `src/` 변경 0. 재발하면 BACKLOG.
+- **정정(09-17, 코디네이터 권고 기각 — android-m1 실측)**: 안내 ATF를 `src/androidTestExperimental/`로 옮기라는 권고는 틀렸다 — `testBuildType` 미지정이라 계측 변형은 debug뿐이고 그 소스셋은 어떤 태스크로도 돌지 않아 테스트가 조용히 사라진다. 현 구조(테스트가 게이트를 켜고 상태만 주입, 서비스 미기동)가 일관되며, 서비스를 실제로 띄우는 ATF가 생기면 `testBuildType = "experimental"` 전환을 코디네이터가 판정한다(README §7).
 - **가드 점검(android-m1)**: 리터럴 스캔 정규식이 `$`가 든 리터럴에서 따옴표 짝이 어긋나 뒤 키를 삼키는 함정 — M1·M2 소스 가드에 같은 꼴이 있는지 확인.
 - **iOS 세션 확인 항목**: Deeplink 쿼리 `=`·`+` 인코딩이 Foundation과 같은지(CORE 미검증, Xcode 라이선스 동의 뒤).
+
+## §5-6. 토큰 감사 (2026-09-17 04:xx, 전사 `~/.claude/projects` usage 합산, 09-16 14:00 이후)
+
+| 세션 | 모델 | 메인 턴 | 캐시 읽기 | 턴당 컨텍스트 중앙값 |
+|---|---|---|---|---|
+| `android-m1`(M0~설정·스토어 준비, 14시간) | fable | 1,708 | 996M | 611K(최대 960K) |
+| `android-m4` | fable | 550 | 320M | 636K |
+| 코디네이터(이 세션) | fable | 494 | 198M | 약 400K |
+| `android-kit-guide` | opus | 536 | 255M | 395K |
+| `android-m6` | opus | 438 | 237M | 586K |
+| `android-kit-core` | opus | 345 | 180M | — |
+| `android-m3` | fable | 243 | 129M | — |
+| `android-kit-fix` | opus | 252 | 68M | — |
+| 서브에이전트 합계 | opus 3,010턴·0.9B / fable 390턴·76M / sonnet 166턴·21M | | | |
+
+**fable 합계 3,379턴·캐시 읽기 1.72B·출력 10.3M. 원인 순위**: ① 한 세션을 7마일스톤 이어 쓴 것(m1 58%) ② 세션들이 600~950K 컨텍스트에서 수백 턴(자동 압축 미발동) ③ 코디네이터 자동 깨움 58건(idle notice 13·세션 메시지 39·sleep 확인 6) ④ `model: opus` 지시 전 fable 서브에이전트 363턴 ⑤ 설계 리뷰 최대 5회전. 교훈은 `parallel-sessions` 스킬 2.4.0에 반영(마일스톤당 새 세션·opus 명시는 착수 프롬프트에·idle 구독 1회·리뷰 2회 상한).
 
 ## §6. 코디네이터 메모
 
