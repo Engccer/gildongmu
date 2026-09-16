@@ -13,14 +13,25 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class AroundPayloadTest {
     private val coord = NearbyCoord(37.538, 127.137)
-    private fun service(overview: HttpResponse, places: HttpResponse) = NearbyService(stubbedClient { url ->
-        when (pathOf(url)) { "/api/nearby/overview" -> overview; "/api/places/around" -> places; else -> HttpResponse(404, "") }
+    private fun service(overview: HttpResponse, places: HttpResponse, scene: HttpResponse = HttpResponse(200, """{"data":null}""")) = NearbyService(stubbedClient { url ->
+        when (pathOf(url)) { "/api/nearby/overview" -> overview; "/api/places/around" -> places; "/api/surroundings/scene" -> scene; else -> HttpResponse(404, "") }
     })
+
+    @Test fun `scene 조각 — 실패는 sceneFailed, 셋 다 부재여야 isAllAbsent, 장면만 성공해도 Loaded(spec §12-2)`() = runTest {
+        val p = fetchAround(service(HttpResponse(200, """{"data":null}"""), HttpResponse(200, """{"places":[]}"""), HttpResponse(500, "")), coord)
+        assertTrue(p.sceneFailed); assertNull(p.scene); assertFalse(p.isAllAbsent)
+        val q = fetchAround(service(HttpResponse(200, """{"data":null}"""), HttpResponse(200, """{"places":[]}""")), coord)
+        assertTrue(q.isAllAbsent)
+        val r = fetchAround(service(HttpResponse(500, ""), HttpResponse(500, ""), HttpResponse(200, Fixtures.kit("surroundings-scene.json"))), coord)
+        assertNotNull(r.scene); assertFalse(r.sceneFailed); assertTrue(r.overviewFailed && r.placesFailed)
+        assertFailsWith<APIError> { fetchAround(service(HttpResponse(500, ""), HttpResponse(502, ""), HttpResponse(503, "")), coord) }
+    }
 
     @Test fun `한 조각 실패는 Loaded + 실패 플래그`() = runTest {
         val p = fetchAround(service(HttpResponse(500, ""), HttpResponse(200, Fixtures.kit("around-nearby.json"))), coord)
@@ -30,7 +41,7 @@ class AroundPayloadTest {
     }
 
     @Test fun `두 조각 다 실패면 throw(코어가 FailedServer로)`() = runTest {
-        assertFailsWith<APIError>{ fetchAround(service(HttpResponse(500, ""), HttpResponse(502, "")), coord) }
+        assertFailsWith<APIError>{ fetchAround(service(HttpResponse(500, ""), HttpResponse(502, ""), HttpResponse(500, "")), coord) }
     }
 
     @Test fun `조망 data null + 목록 0건은 실패가 아니라 전부 부재`() = runTest {
