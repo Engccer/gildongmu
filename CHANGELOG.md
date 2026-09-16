@@ -11,9 +11,9 @@
 
 ## 2026-09-16
 
-### 안드로이드 M6 조각 ① — 채팅 탭·장소 채팅 골격 (`android/app/.../chat`)
+### 안드로이드 M6 — 채팅(AI에게 질문) (`android/app/.../chat`·`speech/DictationSession.kt`)
 
-AI 동의 게이트(인라인 본문 + 전송 가드 이중 방어), `/api/chat` NDJSON 스트리밍 전송기(HttpURLConnection POST, 줄 분리는 :kit `splitStreamLines` 8KB, 취소 시 감시자가 연결을 닫고 그 예외를 취소로 되돌림), 대화 상태 머신(진행 통지·follow-up·주소 카드 지오코딩 3-state·복귀 키), 질문 헤딩·산문 블록별 객체·입력 바(보내기 `stateDescription`·지우기), 전송→보내기 버튼/완료→질문 헤딩(실패는 실패 블록) 착지, 채팅 탭 위치 표시줄, `NavController.openChat(place?)` 진입(장소면 스택 push = 장소마다 새 대화)을 iOS 채팅 미러로 세웠다. 카드·언급·출처·칩은 조각 ②, 받아쓰기는 조각 ③. 프로덕션 follow-up 칩 서버가 6초 상한으로 빈 목록을 주는 것을 실호출로 발견했다(서버 판정은 동결 해제 뒤). spec `docs/superpowers/specs/2026-09-16-android-m6-chat-design.md`(설계 리뷰 2회), 계획 `docs/superpowers/plans/2026-09-16-android-m6-chat.md`.
+AI 동의 게이트(인라인 본문 + 전송 가드 이중 방어), `/api/chat` NDJSON 스트리밍 전송기(HttpURLConnection POST, 줄 분리는 :kit `splitStreamLines` 8KB, 취소 시 감시자가 연결을 닫고 그 예외를 취소로 되돌림), 대화 상태 머신(진행 통지·follow-up·주소 해석 3-state·복귀 키), 질문 헤딩·산문 블록별 객체(장소 언급 1개 = 블록 버튼, 2개 이상 = 커스텀 액션)·카드 묶음(장소·nearby 투영·주소·웹 결과)·출처·공유·follow-up 칩, 입력 바(보내기 `stateDescription`·지우기·키보드 인셋 `fitInside`), 전송→보내기 버튼/완료→질문 헤딩(실패는 실패 블록, 건너뛴 실패는 통지) 착지, 채팅 탭 위치 표시줄, `NavController.openChat(place?)` 진입(장소면 스택 push = 장소마다 새 대화), 온디바이스 받아쓰기(API 33 게이트·탭 토글·인식기 포트 상태 머신·낭독 끊기·정지 3초 상한·60초 캡·다운로드 뒤 청취 안 함·구성 변경 시 정상 정지)를 iOS 채팅 미러로 세웠다. 듣기(TTS) 버튼은 M4 오디오 계층 뒤, 결과 진동은 설정 마일스톤. 프로덕션 follow-up 칩 서버가 6초 상한으로 빈 목록을 주는 것을 실호출로 발견했다(서버 판정은 동결 해제 뒤). spec `docs/superpowers/specs/2026-09-16-android-m6-chat-design.md`(설계 리뷰 2회·조각 ① 구현 리뷰), 계획 `docs/superpowers/plans/2026-09-16-android-m6-chat.md`.
 
 ### 안드로이드 M2b — 내 주변 나머지 6종·주변 상황·역 자동 섹션·무장애·현재 위치 표시줄 (`android/app`)
 

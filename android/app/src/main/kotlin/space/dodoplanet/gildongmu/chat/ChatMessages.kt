@@ -19,6 +19,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import space.dodoplanet.gildongmu.a11y.headingText
 import space.dodoplanet.gildongmu.a11y.mergedRow
+import space.dodoplanet.gildongmu.kit.models.JusoAddress
+import space.dodoplanet.gildongmu.kit.models.Place
 import space.dodoplanet.gildongmu.kit.parseChatMarkdownBlocks
 
 /**
@@ -38,14 +40,39 @@ class ChatFocusTargets {
     fun existingQuestion(id: Long): FocusRequester? = questions[id]
 }
 
-/** 대화 목록(spec §3-3). eager — 화면 밖 메시지도 접근성 트리에 있어야 착지·선형 탐색이 닿는다(가상 스크롤 금지). */
+/**
+ * 대화 목록(spec §3-3). eager — 화면 밖 메시지도 접근성 트리에 있어야 착지·선형 탐색이 닿는다(가상 스크롤 금지).
+ * 답변은 산문 블록(장소 언급 활성화) → 렌더 묶음·출처·응답 액션 → (마지막 성공 답변이면) follow-up 칩 순.
+ */
 @Composable
-fun ChatMessageList(messages: List<ChatMessage>, targets: ChatFocusTargets) {
+fun ChatMessageList(
+    messages: List<ChatMessage>,
+    followUps: List<String>,
+    lang: String,
+    targets: ChatFocusTargets,
+    onOpenPlace: (Place, String) -> Unit,
+    onOpenAddress: (JusoAddress, String) -> Unit,
+    onSubmitFollowUp: (String) -> Unit,
+    onNoApp: () -> Unit,
+) {
+    val lastId = messages.lastOrNull()?.id
     for (message in messages) {
         key(message.id) {
             when (message.role) {
                 ChatRole.user -> QuestionHeading(message, targets)
-                ChatRole.assistant -> AnswerBlocks(message, targets)
+                ChatRole.assistant -> Column(Modifier.fillMaxWidth()) {
+                    val places = cardPlaces(message)
+                    val blocks = parseChatMarkdownBlocks(message.text)
+                    if (blocks.isEmpty()) {
+                        AnswerBlock("block-${message.id}-0", message.text, heading = false, places, lang, targets, onOpenPlace)
+                    } else {
+                        blocks.forEachIndexed { index, block ->
+                            AnswerBlock("block-${message.id}-$index", block.text, block.isHeading, places, lang, targets, onOpenPlace)
+                        }
+                    }
+                    AnswerExtras(message, lang, targets, onOpenPlace, onOpenAddress, onNoApp)
+                    if (message.id == lastId && !message.failed && followUps.isNotEmpty()) FollowUpChips(message.id, followUps, onSubmitFollowUp)
+                }
             }
         }
     }
@@ -64,34 +91,6 @@ private fun QuestionHeading(message: ChatMessage, targets: ChatFocusTargets) {
             .headingText()
             .padding(12.dp),
         style = MaterialTheme.typography.bodyLarge,
-    )
-}
-
-/** 답변 산문: 블록마다 한 객체(통짜 산문은 구조 탐색이 불가능하다, 헌장 §6). 헤딩 블록은 헤딩. */
-@Composable
-private fun AnswerBlocks(message: ChatMessage, targets: ChatFocusTargets) {
-    val blocks = parseChatMarkdownBlocks(message.text)
-    Column(Modifier.fillMaxWidth()) {
-        if (blocks.isEmpty()) {
-            BlockText("block-${message.id}-0", chatInlineText(message.text), heading = false, targets)
-        } else {
-            blocks.forEachIndexed { index, block ->
-                BlockText("block-${message.id}-$index", chatInlineText(block.text), block.isHeading, targets)
-            }
-        }
-    }
-}
-
-@Composable
-private fun BlockText(key: String, inline: ChatInlineText, heading: Boolean, targets: ChatFocusTargets) {
-    Text(
-        inline.annotated(),
-        Modifier
-            .fillMaxWidth()
-            .mergedRow(key, focus = targets.row(key))
-            .let { if (heading) it.headingText() else it }
-            .padding(vertical = 4.dp),
-        style = if (heading) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyLarge,
     )
 }
 

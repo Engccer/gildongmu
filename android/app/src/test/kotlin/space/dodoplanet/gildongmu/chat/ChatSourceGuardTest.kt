@@ -31,9 +31,35 @@ class ChatSourceGuardTest {
     }
 
     @Test fun `채팅 화면이 pop 복귀 슬롯을 실제로 부른다`() {
-        val screen = code("ChatScreen.kt") + code("ChatMessages.kt")
+        val screen = code("ChatScreen.kt")
         assertTrue(screen.contains("vm.takeReturnFocus()"))
-        assertTrue(code("ChatViewModel.kt").contains("fun rememberReturnFocus("))
+        assertTrue(screen.contains("vm.rememberReturnFocus("))
+    }
+
+    private val appMain = root.resolve("android/app/src/main/kotlin/space/dodoplanet/gildongmu")
+    private val appSources = appMain.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
+    private val sessionFile = "speech/DictationSession.kt"
+
+    @Test fun `받아쓰기 세션 생성은 dictationSessionOrNull 한 곳(D9 게이트)이고 화면은 rememberDictation만 부른다`() {
+        val construct = Regex("""(?<!class )\bDictationSession\(""")
+        val constructors = appSources.flatMap { f -> construct.findAll(f.readText()).map { f.relativeTo(appMain).path }.toList() }
+        assertEquals(listOf(sessionFile), constructors)
+        val gate = appMain.resolve(sessionFile).readText().substringAfter("fun dictationSessionOrNull(").substringBefore("\n}")
+        assertTrue(gate.contains("Dictation.isAvailable(context)") && gate.contains("DictationSession("))
+        assertEquals(emptyList(), appSources.filter { it.readText().contains("dictationSessionOrNull(") && it.relativeTo(appMain).path !in setOf(sessionFile, "chat/ChatDictation.kt") }.map { it.name })
+        assertTrue(code("ChatScreen.kt").contains("rememberDictation("))
+    }
+
+    @Test fun `인식기는 온디바이스만(서버 인식 폴백 0 — 개인정보 신고 오디오 미수집)`() {
+        assertEquals(emptyList(), appSources.filter { Regex("""\bcreateSpeechRecognizer\(""").containsMatchIn(it.readText()) }.map { it.name })
+        assertTrue(appMain.resolve(sessionFile).readText().contains("SpeechRecognizer.createOnDeviceSpeechRecognizer("))
+    }
+
+    @Test fun `스크린 리더 낭독 끊기는 한 곳이고 접근성 서비스가 켜졌을 때만(꺼진 기기에서 크래시)`() {
+        val calls = appSources.flatMap { f -> Regex("""\.interrupt\(\)""").findAll(f.readText()).map { f.name }.toList() }
+        assertEquals(listOf("DictationSession.kt"), calls)
+        val body = appMain.resolve(sessionFile).readText().substringAfter("override fun interruptScreenReader()").substringBefore("override fun")
+        assertTrue(body.contains("isEnabled") && body.contains(".interrupt()"))
     }
 
     @Test fun `장소 채팅 예시 프롬프트 표는 kit placeChatPromptKeys 키 전수다(키가 늘면 조용히 빠지지 않게)`() {
