@@ -8,11 +8,15 @@ package space.dodoplanet.gildongmu.kit
  * 링크 `[label](url)`은 label만 남기고 URL을 버린다 — 응답 본문에 링크가 섞여도 TTS가 URL 문자열을
  * 낭독하지 않는다(출처 목록은 애초에 본문 밖 `sources` 필드라 무관).
  *
- * ⚠ JVM `\s`·`\d`·`\w`는 ASCII다(ICU는 유니코드) — NBSP·전각 공백·전각 숫자·비ASCII 코드 펜스 태그에서 iOS와 갈린다.
+ * 정규식 약칭 클래스(공백·숫자·단어 문자)는 쓰지 않는다 — JVM은 ASCII, 안드로이드 ICU·Swift ICU는 유니코드라 테스트와 기기가
+ * 갈린다. 명시 클래스는 ICU 뜻을 옮긴 것이다: 공백은 White_Space 속성, 숫자는 `\p{Nd}`, 단어 문자는 문자·결합 부호·숫자·연결 부호.
  */
 object MarkdownPlainText {
+    private const val WS = """[\t\n\u000B\f\r\u0085\p{Z}]"""
+    private const val WORD = """[\p{L}\p{M}\p{Nd}\p{Pc}]"""
+
     private val inlineCode = Regex("`([^`]+)`")
-    private val heading = Regex("""^#{1,6}\s+""", RegexOption.MULTILINE)
+    private val heading = Regex("""^#{1,6}$WS+""", RegexOption.MULTILINE)
     private val bold = Regex("""\*\*([^*]+)\*\*""")
     private val boldUnderscore = Regex("__([^_]+)__")
     private val italic = Regex("""\*([^*]+)\*""")
@@ -20,13 +24,13 @@ object MarkdownPlainText {
     private val strike = Regex("~~([^~]+)~~")
     private val link = Regex("""\[([^\]]+)\]\([^)]+\)""")
     private val image = Regex("""!\[([^\]]*)\]\([^)]+\)""")
-    private val rule = Regex("""^[-*_]{3,}\s*$""", RegexOption.MULTILINE)
-    private val quote = Regex("""^>\s+""", RegexOption.MULTILINE)
-    private val bullet = Regex("""^\s*[-*+]\s+""", RegexOption.MULTILINE)
-    private val ordered = Regex("""^\s*\d+\.\s+""", RegexOption.MULTILINE)
+    private val rule = Regex("""^[-*_]{3,}$WS*$""", RegexOption.MULTILINE)
+    private val quote = Regex("""^>$WS+""", RegexOption.MULTILINE)
+    private val bullet = Regex("""^$WS*[-*+]$WS+""", RegexOption.MULTILINE)
+    private val ordered = Regex("""^$WS*\p{Nd}+\.$WS+""", RegexOption.MULTILINE)
     private val excessNewlines = Regex("""\n{3,}""")
-    private val codeBlock = Regex("""```[\s\S]*?```""")
-    private val fenceOpen = Regex("""```\w*\n?""")
+    private val codeBlock = Regex("""```(?s:.)*?```""")
+    private val fenceOpen = Regex("""```$WORD*\n?""")
 
     fun strip(markdown: String): String {
         var text = stripCodeBlocks(markdown)

@@ -21,16 +21,17 @@ sealed class ChatMarkdownBlock {
     data class Paragraph(override val text: String) : ChatMarkdownBlock()
 }
 
-private val HEADING_LINE = Regex("""^\s{0,3}#{1,6}\s+(.*)$""")
-private val BULLET_LINE = Regex("""^\s*[-*+]\s+(.*)$""")
-private val ORDERED_LINE = Regex("""^\s*(\d+[.)]\s+.*)$""")
+/** 유니코드 공백(White_Space 속성) — Swift Regex 공백 약칭 클래스와 같은 뜻. 약칭 클래스는 JVM(ASCII)과 기기(ICU)에서 갈려 쓰지 않는다. 숫자는 `\p{Nd}`. */
+private const val WS = """[\t\n\u000B\f\r\u0085\p{Z}]"""
+
+private val HEADING_LINE = Regex("""^$WS{0,3}#{1,6}$WS+(.*)$""")
+private val BULLET_LINE = Regex("""^$WS*[-*+]$WS+(.*)$""")
+private val ORDERED_LINE = Regex("""^$WS*(\p{Nd}+[.)]$WS+.*)$""")
 
 /**
  * 블록 마크다운을 파싱한다. 인라인 강조(`**`)는 건드리지 않고 각 블록 텍스트에 남긴다(화면이 인라인만
  * 마저 해석). 리스트 마커 뒤 공백이 필수라 "**강조**"·"*기울임*" 같은 줄 시작 인라인 문법은 리스트로
  * 오인하지 않는다.
- *
- * ⚠ JVM `\s`·`\d`는 ASCII다(Swift Regex는 유니코드) — NBSP·전각 공백 뒤 헤딩, 전각 숫자 목록은 iOS에서만 블록이 된다.
  */
 fun parseChatMarkdownBlocks(text: String): List<ChatMarkdownBlock> {
     val blocks = ArrayList<ChatMarkdownBlock>()

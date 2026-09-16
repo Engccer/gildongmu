@@ -14,7 +14,7 @@
       "status": "ported",
       "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/ChatMarkdown.kt",
       "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/ChatMarkdownTest.kt",
-      "note": "정규식 \\s·\\d는 JVM에서 ASCII(Swift Regex는 유니코드) — NBSP·전각 공백·전각 숫자 입력에서 갈린다"
+      "note": "정규식 약칭 클래스 대신 명시 클래스(공백=White_Space 속성, 숫자=유니코드 Nd) — Swift Regex와 같은 뜻을 JVM·기기에서 똑같이"
     },
     {
       "swift": "ChatPlaceMentions.swift",
@@ -83,7 +83,7 @@
       "status": "ported",
       "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/MarkdownPlainText.kt",
       "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/MarkdownPlainTextTest.kt",
-      "note": "정규식 \\s·\\d·\\w는 JVM에서 ASCII(ICU는 유니코드) — NBSP·전각 문자·비ASCII 펜스 태그에서 갈린다"
+      "note": "정규식 약칭 클래스 대신 명시 클래스(공백=White_Space 속성, 숫자=유니코드 Nd, 단어=문자·결합 부호·숫자·연결 부호) — ICU와 같은 뜻을 JVM·기기에서 똑같이"
     },
     {
       "swift": "NearbyLoadCore.swift",
@@ -156,7 +156,8 @@
       "swift": "SubwayArrivalLine.swift",
       "status": "ported",
       "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/SubwayArrivalLine.kt",
-      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/SubwayArrivalLineTest.kt"
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/SubwayArrivalLineTest.kt",
+      "note": "정규식 약칭 클래스 대신 명시 클래스(공백=White_Space 속성, 숫자=[0-9] — 웹 JS와 같고, 전각 숫자는 Swift도 Int로 못 읽어 결과 동일)"
     },
     {
       "swift": "TransitAlternativeName.swift",
