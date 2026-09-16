@@ -125,6 +125,7 @@ iOS는 스토어 1.16이, 웹은 배포 동결(2026-09-22 09:00 KST까지)로 20
 |---|---|
 | 웹 PWA | 수제 서비스워커, document network-first |
 | iOS 앱 | SwiftUI + GildongmuKit, 4탭, 설정 업데이트 이력(release notes) 화면 |
+| 안드로이드 앱 | 🚧 M0 뼈대·FOUNDATION 이식 완료(2026-09-16, `41f377b5` — `android/` `:app` Compose + `:kit` 순수 JVM, 미러 등록부 3벌, Kit 테스트 258). CORE·GUIDE 로직 이식과 M1 검색 화면이 웨이브 1 진행 중. 계획 `docs/superpowers/plans/2026-09-16-android-app-parallel-plan.md`, 판정 `docs/superpowers/specs/2026-09-15-android-app-decisions.md` |
 | CLI · MCP | REST 카탈로그 중계 씬 클라이언트. 응답 언어 `lang`은 서버가 받는 9엔드포인트(`route walk`·`car`·`transit`·`station` 계열 4종(meta·metro-facilities·timetable·arrivals)·`nearby subway`·`search` — 정본은 카탈로그 `lang` params)에서 받는다 — CLI 텍스트 표기 자체는 한국어 고정 |
 | 다국어 | ko·en·es·fr·it·ja 6개. 비-ko의 한국어 장소명은 **서버 로마자 + `Roman (한글)` 병기**(E28, 2026-08-31 — 웹 prod·iOS 코드 도달, ⏳ 실기기 판정 6건 BACKLOG §2), 카카오 분류 경로는 **세그먼트 사전 영문**(A28, 2026-08-31 — 실호출 카드 97.0%(프로덕션, spec §11), 미등재는 한국어 원문 + `lang="ko"`). 수동 위치 라벨도 병기하고(웹 2026-09-01, iOS 2026-09-02 `manualLocationLabel` 한 함수), 지하철 시설 노선 라벨은 E27 표를 탄다(iOS 미러 2026-09-02 — 서버 `parts.lineEn` 우선, 표 미스만 조립) |
 | 커스텀 도메인 · GEO 대응 | 소개·FAQ + JSON-LD + llms.txt |
