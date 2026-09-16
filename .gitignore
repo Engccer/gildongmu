@@ -61,3 +61,6 @@ docs/superpowers/specs/logs/*.log.gz
 # repo 밖 ~/gildongmu-private/research/ 보관. 코드를 구속하는 결론만 BACKLOG·CLAUDE.md로 옮긴다.
 docs/research/RESEARCH-*-webmcp-challenge.md
 docs/research/_internal/
+
+# Android CLI가 설치하는 에이전트 스킬(구글 android/skills 사본). 커밋하지 않고 worktree마다 `android skills add <id> --project=.`로 받는다(android/README.md §2)
+.claude/skills/
