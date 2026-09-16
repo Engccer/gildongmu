@@ -45,14 +45,6 @@
       ]
     },
     {
-      "swift": "Tests/GildongmuKitTests/ChatModelsTests.swift#parseChatMarkdownBlocks*",
-      "to": "core",
-      "why": "ChatMarkdown. decodeChatEventLine(ChatService)은 ChatModelsTest가 KitJson 직접 디코딩으로 덮음",
-      "blockedBy": [
-        "ChatMarkdown.swift"
-      ]
-    },
-    {
       "swift": "Tests/GildongmuKitTests/RouteModelsTests.swift#routeServiceWalk*,transitDisplayPickLineIsAtomic",
       "to": "core",
       "why": "RouteService·TransitDisplay",
