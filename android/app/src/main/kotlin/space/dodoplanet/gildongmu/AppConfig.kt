@@ -3,6 +3,8 @@ package space.dodoplanet.gildongmu
 import android.content.Context
 import android.util.Log
 import space.dodoplanet.gildongmu.kit.APIClient
+import space.dodoplanet.gildongmu.kit.SearchService
+import space.dodoplanet.gildongmu.location.CurrentAddressStore
 import space.dodoplanet.gildongmu.location.AndroidLocationSource
 import space.dodoplanet.gildongmu.location.AndroidPermissionGate
 import space.dodoplanet.gildongmu.location.LocationStore
@@ -39,4 +41,7 @@ object AppConfig {
 
     /** 현재 위치 공유 스토어 — 화면마다 `LocationManager`를 만들지 않는다. */
     val locationStore: LocationStore by lazy { LocationStore(AndroidLocationSource(app), permissionGate) { Log.i("Location", it) } }
+
+    /** 현재 위치 주소 캐시(표시줄, spec §12-4) — 좌표당 1회 역지오코딩. */
+    val currentAddressStore: CurrentAddressStore by lazy { CurrentAddressStore(locationStore, SearchService(apiClient)) }
 }

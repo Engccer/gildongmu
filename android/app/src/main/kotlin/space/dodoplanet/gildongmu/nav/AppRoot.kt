@@ -87,6 +87,7 @@ fun AppRoot(factories: AppFactories) {
                 NearbyHubScreen(
                     onOpen = { kind -> returnFocus.slot.remember(hubKey(kind)); navController.navigate(NearbyKindRoute.of(kind, null)) },
                     takeReturnFocus = returnFocus.slot::take,
+                    currentAddress = factories.currentAddress,
                 )
             }
             composable<ChatRoute> { PlaceholderScreen(AppTab.chat) } // M6

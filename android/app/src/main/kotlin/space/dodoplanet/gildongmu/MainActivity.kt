@@ -71,6 +71,7 @@ class MainActivity : ComponentActivity() {
             place = { place -> placeDetailFactory(place, PlaceHoursService(AppConfig.apiClient), placeStrings(app), StationService(AppConfig.apiClient), services.barrierFree) { AppLocale.dataLocale(app.resources) } },
             requestPreciseLocation = { AppConfig.permissionGate.request() == LocationPermission.Fine },
             isLocationEnabled = { AppConfig.locationStore.isLocationEnabled() },
+            currentAddress = AppConfig.currentAddressStore,
         )
         setContent {
             MaterialTheme {

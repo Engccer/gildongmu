@@ -24,10 +24,12 @@ import android.util.Log
 import space.dodoplanet.gildongmu.R
 import space.dodoplanet.gildongmu.a11y.AppScreenScaffold
 import space.dodoplanet.gildongmu.a11y.tapTarget
+import space.dodoplanet.gildongmu.location.CurrentAddressStore
+import space.dodoplanet.gildongmu.location.LocationBarRow
 
 /** 내 주변 허브(spec §3-4·§12-4): 버튼 10개, iOS 순서. 권한은 여기서 요청하지 않는다(각 화면 진입 시). */
 @Composable
-fun NearbyHubScreen(onOpen: (NearbyKind) -> Unit, takeReturnFocus: () -> String?) {
+fun NearbyHubScreen(onOpen: (NearbyKind) -> Unit, takeReturnFocus: () -> String?, currentAddress: CurrentAddressStore) {
     val requesters = remember { mutableMapOf<NearbyKind, FocusRequester>() }
     // pop 복귀 착지: 눌렀던 버튼으로(spec §3-1). 소비는 효과 안에서 한 번(컴포지션 본문에서 부르면 재구성마다 유실).
     LaunchedEffect(Unit) {
@@ -38,6 +40,8 @@ fun NearbyHubScreen(onOpen: (NearbyKind) -> Unit, takeReturnFocus: () -> String?
     }
     AppScreenScaffold(stringResource(R.string.android_tab_nearby), onBack = null) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).semantics { testTagsAsResourceId = true }) {
+            // 첫 행: 현재 위치 표시줄(이 화면의 조회 기준 선언, spec §12-4). 텍스트 행 — 수동 위치 지정 버튼은 M2c.
+            LocationBarRow(currentAddress)
             for (kind in NearbyKind.entries) {
                 Button(
                     onClick = { onOpen(kind) },
