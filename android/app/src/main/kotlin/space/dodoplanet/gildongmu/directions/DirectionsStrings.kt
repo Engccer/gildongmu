@@ -43,6 +43,8 @@ internal fun stringId(key: String): Int? = when (key) {
     "manualLocation.pickTitle" -> R.string.manualLocation_pickTitle
     "manualLocation.useGps" -> R.string.manualLocation_useGps
     "manualLocation.locating" -> R.string.manualLocation_locating
+    "manualLocation.manual" -> R.string.manualLocation_manual
+    "manualLocation.manualUnverifiable" -> R.string.manualLocation_manualUnverifiable
     "directions.searchTo" -> R.string.directions_searchTo
     "directions.searchVia" -> R.string.directions_searchVia
     "directions.currentLocation" -> R.string.directions_currentLocation

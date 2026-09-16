@@ -14,7 +14,7 @@ import space.dodoplanet.gildongmu.kit.models.SurroundingsScene
  * (코어 계약: 첫 착지 1회·통지 1회·latest-wins). 조각별 실패는 payload에 남겨 그 자리에 실패 문장으로.
  */
 data class AroundPayload(
-    /** 조회 좌표 — 지금은 소비처가 없고 M6 "이 위치에 관해 물어보기"(`overviewAnchorPlace`)가 쓴다(iOS 동형). */
+    /** 조회 좌표 — `usedManualCoordinate`(수동 좌표 정확 비교, spec §13-4)와 M6 "이 위치에 관해 물어보기"(`overviewAnchorPlace`)가 쓴다(iOS 동형). */
     val lat: Double,
     val lng: Double,
     /** null = data null(전 키 부재) 또는 실패(`overviewFailed`로 가른다). */

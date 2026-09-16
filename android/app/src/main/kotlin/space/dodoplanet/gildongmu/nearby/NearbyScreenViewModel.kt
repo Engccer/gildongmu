@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import space.dodoplanet.gildongmu.a11y.Notice
+import space.dodoplanet.gildongmu.kit.ManualLocation
 import space.dodoplanet.gildongmu.kit.NearbyCoord
 import space.dodoplanet.gildongmu.kit.NearbyCoordinateSource
 import space.dodoplanet.gildongmu.kit.NearbyCoverage
@@ -49,6 +50,8 @@ class NearbyScreenViewModel<P : Any>(
     coordinate: NearbyCoordinateSource,
     private val strings: NearbyStrings,
     private val savedState: SavedStateHandle,
+    /** 수동 위치(spec §13-4) — 화면이 앱 싱글턴을 직접 잡지 않도록 팩토리가 넣는다. 둘러보기 위치 문장만 읽는다. */
+    val manual: () -> ManualLocation? = { null },
 ) : ViewModel() {
     private val reveal = RevealWindow()
     private val _visibleCount = MutableStateFlow(reveal.visibleCount)

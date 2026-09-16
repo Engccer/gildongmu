@@ -1,6 +1,8 @@
 package space.dodoplanet.gildongmu.nearby
 
+import androidx.annotation.StringRes
 import space.dodoplanet.gildongmu.R
+import space.dodoplanet.gildongmu.kit.ManualLocation
 import space.dodoplanet.gildongmu.kit.models.BikeStation
 import space.dodoplanet.gildongmu.kit.models.BusArrival
 import space.dodoplanet.gildongmu.kit.models.BusStop
@@ -21,6 +23,22 @@ import space.dodoplanet.gildongmu.kit.subwayShowsCurrentLocationTail
 
 // 내 주변 문장 조립(iOS Nearby/*View.swift의 파일 함수 이식). 한 줄 = 한 접근성 객체: 시각 `visual`, 낭독 `spoken`(비-ko 병기는
 // 시각 `Roman (한글)`, 낭독은 로마자만 — E28 판정 ③). 리소스 문장은 람다로 받는다(JVM 테스트 가능, `appLocalized` 호출부는 화면).
+
+/**
+ * 둘러보기가 수동 좌표로 조회됐는가(spec §13-4) — 위치 문장과 완료 통지가 **같은 술어**를 쓴다(iOS `AroundNearbyView` 동형: 수동 위치일 때
+ * "현재 위치"라고 알리지 않는다). 정확 비교: 수동이면 `EffectiveLocation.coordinate()`가 그 좌표를 그대로 돌려준다.
+ */
+fun usedManualCoordinate(payload: AroundPayload, manual: ManualLocation?): Boolean =
+    manual != null && payload.lat == manual.lat && payload.lng == manual.lng
+
+/** 둘러보기 위치 문장 리소스(수동 × 장소 유무 4분기). 리터럴 ID만 — 동적 키 조립 없음(가드). */
+@StringRes
+fun aroundHereResId(payload: AroundPayload, manual: ManualLocation?, hasPlace: Boolean): Int =
+    if (usedManualCoordinate(payload, manual)) {
+        if (hasPlace) R.string.android_nearby_aroundHereManual else R.string.android_nearby_aroundHereManualNoPlace
+    } else {
+        if (hasPlace) R.string.android_nearby_aroundHere else R.string.android_nearby_aroundHereNoPlace
+    }
 
 data class LineText(val visual: String, val spoken: String)
 

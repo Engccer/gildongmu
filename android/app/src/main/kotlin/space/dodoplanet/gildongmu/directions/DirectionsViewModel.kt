@@ -23,6 +23,9 @@ import space.dodoplanet.gildongmu.a11y.Notice
 import space.dodoplanet.gildongmu.kit.APIError
 import space.dodoplanet.gildongmu.kit.DataLocale
 import space.dodoplanet.gildongmu.kit.DirectionsEndpoint
+import space.dodoplanet.gildongmu.kit.ManualLocation
+import space.dodoplanet.gildongmu.kit.ManualVerdict
+import space.dodoplanet.gildongmu.location.manualLocationLabel
 import space.dodoplanet.gildongmu.kit.DirectionsMode
 import space.dodoplanet.gildongmu.kit.DirectionsModeOutcome
 import space.dodoplanet.gildongmu.kit.DirectionsOutcomeClassifier
@@ -110,6 +113,9 @@ class DirectionsViewModel(
     private val takePrefill: (DirectionsPrefill) -> Boolean = DirectionsPrefillStore::take,
     private val io: CoroutineDispatcher = Dispatchers.IO,
     private val queryTimeoutMs: Long = 15_000,
+    /** 수동 위치(spec §13-4) — 출발지 "현재 위치" 필드가 표시줄과 같은 문장을 낸다. 호출 시점 읽기(앱 싱글턴 캡처 없음). */
+    private val manual: () -> ManualLocation? = { null },
+    private val verdict: () -> ManualVerdict? = { null },
 ) : ViewModel() {
     private val _state = MutableStateFlow(
         DirectionsUiState(
@@ -474,6 +480,10 @@ class DirectionsViewModel(
     }
 
     private fun currentLocationText(accessible: Boolean, lang: String): String {
+        // 수동 위치가 있으면 표시줄과 같은 문장(spec §13-4 — 한 함수). 진행 문구보다 먼저: 그때의 재측위는 판정용이고 조회 기준은 여전히 수동이다.
+        manual()?.let { m ->
+            return manualLocationLabel(m, verdict(), lang, accessible, { strings.get("manualLocation.manual", it) }, { strings.get("manualLocation.manualUnverifiable", it) })
+        }
         val s = _state.value
         if (s.isRefreshingCurrent) return strings.get("directions.refreshingCurrent")
         val address = s.currentAddress ?: return strings.get("directions.currentLocation")

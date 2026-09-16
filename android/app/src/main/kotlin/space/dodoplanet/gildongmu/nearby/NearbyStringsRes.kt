@@ -35,6 +35,7 @@ fun nearbyStrings(context: Context): NearbyStrings {
         announceBikes = { appLocalized(res, R.string.android_nearby_announceBikes, it) },
         announceRouteStops = { appLocalized(res, R.string.android_nearby_announceRouteStops, it) },
         aroundLoaded = { context.getString(R.string.android_nearby_aroundLoaded) },
+        aroundLoadedManual = { context.getString(R.string.android_nearby_aroundLoadedManual) },
         subwayEmptyNearest = { station, distance -> appLocalized(res, R.string.android_nearby_subwayEmptyNearest, station, distance) },
         subwayEmpty = { context.getString(R.string.android_nearby_subwayEmpty) },
         busEmpty = { context.getString(R.string.android_nearby_busEmpty) },

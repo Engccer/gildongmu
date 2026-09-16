@@ -4,6 +4,7 @@ import kotlinx.coroutines.test.runTest
 import space.dodoplanet.gildongmu.kit.BarrierFreeService
 import space.dodoplanet.gildongmu.kit.Fixtures
 import space.dodoplanet.gildongmu.kit.HttpResponse
+import space.dodoplanet.gildongmu.kit.ManualLocation
 import space.dodoplanet.gildongmu.kit.NearbyCoord
 import space.dodoplanet.gildongmu.kit.NearbyCoverage
 import space.dodoplanet.gildongmu.kit.NearbyService
@@ -31,6 +32,20 @@ class NearbyKindsTest {
         assertTrue(spec.isEmpty(empty)); assertNull(spec.firstKey(empty))
         assertEquals("주변에 소아 야간진료 기관이 없습니다", spec.loadedNotice(empty)); assertEquals(spec.emptyCopy!!(empty), spec.loadedNotice(empty))
         assertEquals(NearbyCoverage.korea, spec.coverage)
+    }
+
+    @Test fun `around — 완료 통지는 수동 좌표로 조회했을 때만 지정한 위치 주변(위치 문장과 같은 술어), 빈 결과는 수동과 무관`() = runTest {
+        var manual: ManualLocation? = null
+        val spec = NearbyKinds.around(nearby("/api/places/around", "{}"), strings) { manual }
+        val loaded = AroundPayload(37.5, 127.1, overview = null, overviewFailed = false, places = null, placesFailed = true)
+        assertEquals("둘러보기를 확인했습니다", spec.loadedNotice(loaded))
+        manual = ManualLocation(1, "길동역", null, 37.5, 127.1, null, 1.0)
+        assertEquals("지정한 위치 주변을 확인했습니다", spec.loadedNotice(loaded))
+        manual = ManualLocation(2, "다른 곳", null, 37.6, 127.1, null, 1.0) // 조회 좌표와 다르면(지정 직후 갈아탄 경우) 현재 위치 문장
+        assertEquals("둘러보기를 확인했습니다", spec.loadedNotice(loaded))
+        val empty = AroundPayload(37.5, 127.1, null, false, emptyList(), false)
+        manual = ManualLocation(3, "길동역", null, 37.5, 127.1, null, 1.0)
+        assertTrue(spec.isEmpty(empty)); assertEquals("주변에 표시할 장소가 없습니다", spec.loadedNotice(empty))
     }
 
     @Test fun `clinic — basis·supplementFailed 부재는 weekday·false`() = runTest {

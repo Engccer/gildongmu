@@ -12,6 +12,7 @@ import space.dodoplanet.gildongmu.kit.NearbyCoverage
 import space.dodoplanet.gildongmu.kit.NearbyService
 import space.dodoplanet.gildongmu.kit.WalkInfraService
 import space.dodoplanet.gildongmu.kit.models.SubwayNearbyResult
+import space.dodoplanet.gildongmu.kit.ManualLocation
 import space.dodoplanet.gildongmu.kit.formatDistance
 
 /** kind별 조립기 표(spec §5·§12-1). fetch는 전부 non-null(0건 = 빈 리스트); 둘째 인자는 직전 payload(조각 병합 kind만 쓴다). */
@@ -54,12 +55,19 @@ object NearbyKinds {
         emptyCopy = { strings.bikeEmpty() },
     )
 
-    fun around(service: NearbyService, strings: NearbyStrings) = NearbyKindSpec<AroundPayload>(
+    /** `manual`은 호출 시점 읽기 — 완료 통지가 위치 문장과 같은 술어(`usedManualCoordinate`)로 "지정한 위치 주변"을 가른다(spec §13-4). */
+    fun around(service: NearbyService, strings: NearbyStrings, manual: () -> ManualLocation?) = NearbyKindSpec<AroundPayload>(
         coverage = NearbyCoverage.korea,
         fetch = { c, _ -> fetchAround(service, c!!) },
         isEmpty = { it.isAllAbsent },
         firstKey = { if (it.isAllAbsent) null else "around-top" }, // 위치 문장(헤딩)이 착지 지점
-        loadedNotice = { if (it.isAllAbsent) strings.aroundEmpty() else strings.aroundLoaded() },
+        loadedNotice = {
+            when {
+                it.isAllAbsent -> strings.aroundEmpty()
+                usedManualCoordinate(it, manual()) -> strings.aroundLoadedManual()
+                else -> strings.aroundLoaded()
+            }
+        },
         emptyCopy = { strings.aroundEmpty() },
     )
 

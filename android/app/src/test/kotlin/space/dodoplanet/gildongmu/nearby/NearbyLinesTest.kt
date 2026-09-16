@@ -8,6 +8,8 @@ import space.dodoplanet.gildongmu.kit.models.BusArrival
 import space.dodoplanet.gildongmu.kit.models.BusStop
 import space.dodoplanet.gildongmu.kit.Fixtures
 import space.dodoplanet.gildongmu.kit.KitJson
+import space.dodoplanet.gildongmu.kit.ManualLocation
+import space.dodoplanet.gildongmu.R
 import space.dodoplanet.gildongmu.kit.models.SubwayArrival
 import space.dodoplanet.gildongmu.kit.SubwayArrivalSegment
 import space.dodoplanet.gildongmu.kit.models.SurroundingPlace
@@ -17,6 +19,18 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 
 class NearbyLinesTest {
+    @Test fun `usedManualCoordinate는 정확 비교이고 aroundHereResId는 수동 × 장소 4분기`() {
+        val payload = AroundPayload(37.5, 127.1, null, false, null, true)
+        val same = ManualLocation(1, "길동역", null, 37.5, 127.1, null, 1.0)
+        assertEquals(true, usedManualCoordinate(payload, same))
+        assertEquals(false, usedManualCoordinate(payload, null))
+        assertEquals(false, usedManualCoordinate(payload, same.copy(lat = 37.5000001)))
+        assertEquals(R.string.android_nearby_aroundHereManual, aroundHereResId(payload, same, hasPlace = true))
+        assertEquals(R.string.android_nearby_aroundHereManualNoPlace, aroundHereResId(payload, same, hasPlace = false))
+        assertEquals(R.string.android_nearby_aroundHere, aroundHereResId(payload, null, hasPlace = true))
+        assertEquals(R.string.android_nearby_aroundHereNoPlace, aroundHereResId(payload, null, hasPlace = false))
+    }
+
     private val segmentText: (SubwayArrivalSegment) -> String = { "${it.key}(${it.args.joinToString("|")})" }
 
     @Test fun `역 헤딩은 역명·노선이 둘 다 영문일 때만 영어`() {
