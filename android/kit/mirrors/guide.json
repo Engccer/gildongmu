@@ -56,7 +56,8 @@
     },
     {
       "swift": "GuideAudioSession.swift",
-      "status": "pending"
+      "status": "excluded",
+      "reason": "D10: iOS AVAudioSession 모델의 리듀서(ambient/playback 카테고리·소유권 이전·ensureActive). 안드로이드는 AudioFocus로 재설계(M4). 목표 계약 5항과 Kit 테스트 시나리오 이름은 android-kit-guide 보고의 M4 입력 목록(코디네이터 판정 2026-09-16)"
     },
     {
       "swift": "GuideBand.swift",
