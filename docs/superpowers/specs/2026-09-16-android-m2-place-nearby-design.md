@@ -395,39 +395,42 @@ M1 §7 게이트 그대로(`:kit:test` · `:app:testDebugUnitTest` · assemble �
 
 ## 14. 설정 화면 (2026-09-16 추가)
 
-> 코디네이터 지시(M2c에 이어). 동작 정본 iOS `SettingsView.swift`·`DataSourcesView.swift`·`ReleaseNotesView.swift`·`TitleMenu.swift`(진입)·`AppLanguage.swift`·`ResultHaptic.swift`. 범위는 코디네이터 목록 = **언어 · 받아쓰기 방식(탭/홀드) · 결과 진동 스위치 · 업데이트 이력 · 정보 출처 · 개인정보 처리방침·문제 신고 링크 · 실험판 섹션 게이트**. 테마·듣기 속도·자동차 청취자·좌우 안내음·체중·AI 동의는 소비자 마일스톤(M4·M6)이 이 화면에 **행을 additive로 더한다**(자리와 관용구만 여기서 정한다). 신설 문자열 0(`android.settings.*` 27키·`dataSources.*`·`android.common.privacyPolicy`·`chat.source.*` 실재).
+> 코디네이터 지시(M2c에 이어). 동작 정본 iOS `SettingsView.swift`·`DataSourcesView.swift`·`TitleMenu.swift`(진입)·`AppLanguage.swift`·`ResultHaptic.swift`. 범위 = **언어 · 받아쓰기 방식(탭/홀드) · 결과 진동 스위치(실험판) · 정보 출처 · 개인정보 처리방침·문제 신고 링크**. 업데이트 이력은 **유예**(판정 43). 테마·듣기 속도·자동차 청취자·좌우 안내음·체중·AI 동의는 소비 마일스톤(M4·M6)이 이 화면에 **행을 additive로 더한다**(자리와 관용구만 여기서 정한다). 문자열: §14가 쓰는 `android.settings.*` 12키(`title`·`language`·`languageApplied`·`dictationStyle`·`dictationTap`·`dictationHold`·`trendHaptics`·`trendHapticsFooter`·`reportProblem` + 정보 출처 `dataSources.title/osmLicense/osmLink/osmCopyRequest`·`chat.source.*` 16·`android.common.privacyPolicy`) 전수 실재, 신설 0. `dataSources.walkHealth`는 안드로이드 카탈로그에 없고 그 행이 고지하는 걸음 요약 자체가 M4라 **M4가 행과 키를 함께 더한다**. 푸터 `android.settings.trendHapticsFooter`는 **android-extra 오버라이드**로 지금 참인 것만 적는다(내 주변·검색 결과 진동 + "화면이 켜져 있고 기기의 촉각 피드백 설정이 켜져 있을 때만" — M4가 안내 문장을 더한다; 조건 문장은 헌장이 유지하는 정보다).
 
-### 14-1. 진입·구조 (`settings/` 패키지, 이 세션 소유)
+### 14-1. 설정 저장소·진입·구조 (`settings/` 패키지, 이 세션 소유)
 
-- 진입: iOS는 탭 제목 메뉴(`TitleMenu`)의 "설정". 안드로이드는 **탭 루트 4개의 상단 바 끝에 "설정" 아이콘 버튼**(`AppScreenScaffold(settings: (() -> Unit)?)` 인자 신설, `contentDescription = android.settings.title`, `tapTarget`) → `SettingsRoute`(스택, 등록 한 줄). 검색·내 주변 허브는 이 세션이 배선하고 길찾기(M3 파일)·채팅(M6)은 한 줄 additive. pop 복귀 착지는 그 버튼(`ReturnFocusSlot` "settings").
-- 화면: `AppScreenScaffold(title = android.settings.title, onBack)` + `StatusLine`(언어 변경 통지 자리) + 순서 = iOS: ① 언어 ② 받아쓰기 방식 ③ (실험판) 진동 알림 확장 스위치 + 푸터 ④ 정보 출처 → `DataSourcesRoute` ⑤ 업데이트 이력 → `ReleaseNotesRoute` ⑥ 개인정보 처리방침(웹 `AppConfig.privacyPolicyURL`과 같은 URL, `tryStartActivity` + 실패 통지 `noAppToOpen`) ⑦ 문제 신고(`mailto:engccer@gmail.com`). 각 행 한 객체. 실험판 게이트는 `BuildConfig.EXPERIMENTAL`(iOS `#if DEBUG || EXPERIMENTAL` 동형 — 정식판엔 행 자체가 없다).
+- **`settings/SettingsStore(store: KeyValueStore)`**(앱 싱글턴 `AppConfig.settings`, 매체 기존 `SharedPreferencesStore(context)` 기본 파일) — 설정 값의 **단일 소유자**: `language: StateFlow<String?>`(null = 시스템 따름; 값은 `AppLocale.supported` 안 코드만, 밖이면 null로 읽는다) · `dictationStyle: StateFlow<String>`(`"tapToggle"` 기본/`"hold"`, 키 `dictationStyle` = iOS `DictationStyle.key`·값 rawValue 동일 — M6가 같은 키를 읽는다) · `resultHapticsEnabled: StateFlow<Boolean>`(키 `TrendHaptics.storageKey`(:kit `trendHapticsEnabled`), 기본 false). 첫 읽기는 `Dispatchers.IO`(`SharedPreferencesStore` KDoc 계약) — `MainActivity` 첫 진입에서.
+- 진입: iOS는 탭 제목 메뉴의 "설정". 안드로이드는 탭 루트 상단 바의 **기존 `actions` 슬롯**에 공용 `SettingsAction(onOpen)`(아이콘 버튼, `contentDescription = android.settings.title`, `tapTarget`, 새로고침 등 화면 고유 액션 **뒤**) — 검색·내 주변 허브·길찾기(M3 파일, 한 줄 additive)는 이 세션이 배선하고, 채팅 탭은 상단 바가 M6 몫이라 **M6가 자기 상단 바에 같은 한 줄**을 더한다(그때까지 3탭). → `SettingsRoute`(스택, 등록 한 줄). pop 복귀 착지는 그 버튼: 내 주변 허브는 기존 `ReturnFocusViewModel` 슬롯(키 `"settings"`), 검색은 `SearchViewModel`의 슬롯을 같은 키로 공유(동시에 두 대기가 없다), 길찾기는 `AppRoot`에 `ReturnFocusViewModel`을 붙인다(`DirectionsScreen`이 `takeReturnFocus`를 받아 버튼에 착지 — M3 파일 additive).
+- 화면: `AppScreenScaffold(title = android.settings.title, onBack)` + `StatusLine` + 순서 = iOS: ① 언어 ② 받아쓰기 방식 ③ (실험판) 결과 진동 스위치 + 푸터 ④ 정보 출처 → `DataSourcesRoute` ⑤ 개인정보 처리방침(웹 `AppConfig.privacyPolicyURL`과 같은 URL, `ACTION_VIEW`, `tryStartActivity` 실패 → `noAppToOpen`) ⑥ 문제 신고(`ACTION_SENDTO` + `mailto:engccer@gmail.com`, 실패 통지 동일). 각 행 한 객체. 실험판 게이트는 `AppConfig.resultHapticsSettingEnabled = BuildConfig.EXPERIMENTAL`(기존 관용구 — 졸업 때 지울 자리 하나) — 정식판엔 행 자체가 없다. 행 목록은 순수 함수 `settingsRows(experimental): List<SettingsRow>`가 낸다(JVM 검증).
 
 ### 14-2. 언어
 
-- 정본 `AppLocale`(리소스 마커) 유지. 선택은 **앱별 언어**로 — `AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(code))`(API 33+는 `LocaleManager`에 위임, 31~32는 AndroidX가 저장·복원; `MainActivity`를 `AppCompatActivity`로, 매니페스트 `autoStoreLocales` 메타데이터, `appcompat` 의존성 추가 — 새 의존성 한 개, 근거: 두 API 레벨을 한 경로로 덮는 유일한 공식 API). 시스템 "앱 언어" 설정(`locales_config`)과 같은 저장소라 양쪽이 동조한다. 선택지는 자국어 표기 6개(고유명사, 로컬라이즈 대상 아님). 행 = 라벨 + 현재 언어 한 객체("언어, 한국어"), 활성화 → 선택 목록(라디오 6행, `Role.RadioButton`·`selected`).
-- 적용 즉시 액티비티 재생성(AppCompat 기본). 통지 `android.settings.languageApplied`는 **바뀐 언어로** — `AppNotices.post`(§13-2, 프로세스 수명이라 재생성을 넘긴다)로 재생성 뒤 설정 화면 `StatusLine`이 읽는다. 재생성 뒤 착지는 설정 제목(기본).
+- **판정 39(개정)**: 앱별 언어는 **앱이 소유한 저장값 + 로케일 오버라이드 컨텍스트** 한 경로다. `AppCompatDelegate.setApplicationLocales`는 API 32 이하에서 `AppCompatActivity` 컨텍스트에만 적용되고 이 앱의 ViewModel 문장·`dataLocale`·시각 포맷은 전부 앱 컨텍스트에서 나오므로(누수 차단), 안드로이드 12·12L(한소네 6, D8)에서 한 줄 안에 두 언어가 섞인다 — 기각. minSdk 33 상향은 D8(위원장 판정)을 뒤집는 일이라 택하지 않는다.
+- 기제: `AppConfig.localized(base: Context): Context` = `settings.language`가 null이면 `base`, 아니면 `base.createConfigurationContext(config.setLocales(LocaleList(Locale.forLanguageTag(code))))`. `MainActivity.attachBaseContext(base)`가 이것으로 감싸고(화면 `stringResource`), `MainActivity.onCreate`가 ViewModel 문장·`dataLocale`·시각 포맷에 넘기는 앱 컨텍스트도 `AppConfig.localized(applicationContext)`로 만든다(같은 함수 — 두 경로가 갈리지 않는다). `AppLocale.current(res)`는 그대로 리소스 마커를 읽으므로 오버라이드된 리소스에서 새 언어를 판정한다(마커 축 유지). 시스템 "앱 언어" 설정(`locales_config`)은 저장값이 null일 때만 효력(저장값이 시스템 설정을 이긴다 — 표시줄 한 곳에서 고른 값이 정본).
+- 적용: 저장 → `AppNotices.post(languageApplied)` → `activity.recreate()`. 통지는 **바뀐 언어로** 나간다(post 시점의 문장을 새 언어 리소스로 만든다 — `AppConfig.localized(applicationContext)`를 저장 직후 다시 만들어 조회). 재생성을 넘기는 근거는 §13-5: `AppNotices.pending`은 프로세스 수명 큐이고 `StatusLine`은 마운트 시 **대기 중인 앱 통지를 초기 seq 규칙과 무관하게 소비**한다(초기 seq 억제는 화면 통지의 재발화 방지 규칙이지 앱 통지에는 적용하지 않는다 — §13-5에 명시). 재생성 뒤 착지는 설정 제목(기본).
+- 행 = 라벨 + 현재 언어 한 객체("언어, 한국어"), 활성화 → 선택 목록(`AppLocale.supported`에서 유도한 6행, 자국어 표기는 고유명사 표, 컨테이너 `selectableGroup()` + 행 `selectable(selected, role = RadioButton)`; 착지 순서 가드 정규식에 `selectable` 추가).
 
-### 14-3. 받아쓰기 방식·진동
+### 14-3. 받아쓰기 방식·결과 진동
 
-- 받아쓰기: 저장 키 `dictationStyle`(iOS `DictationStyle.key`), 값 `tapToggle`(기본)/`hold`, 라벨 `android.settings.dictationTap/dictationHold`. 소비는 M6(`DictationSession`·마이크 버튼). 저장 매체 `SharedPreferencesStore(context, "gildongmu.settings")`(`KeyValueStore`).
-- 결과 진동(실험판): 키 `TrendHaptics.storageKey`(:kit `BeaconTones.kt`, `trendHapticsEnabled`), 스위치 `android.settings.trendHaptics` + 푸터 `trendHapticsFooter`(한 객체, 조건 문장 유지). **소비 채널은 통지와 같다**(CLAUDE.md "문장이 나가는 조건 = 진동이 나가는 조건"): `a11y/Notice`에 `haptic: HapticKind? = null`(`success/attention/failure`) 필드 추가, `StatusLine`이 seq 변화 때 스위치가 켜져 있으면 `LocalHapticFeedback.performHapticFeedback(Confirm|Reject)`(success·attention = Confirm, failure = Reject — 안드로이드 표준 2종에 접는다, D10). 게시자: `NearbyScreenViewModel.onEvent`(iOS `nearbyAnnouncer` 동형 — Loaded n건 = success, 0건 = attention, RefreshFailed·전락 = failure), 검색 결과(성공·0건·실패), 길찾기 결과(M3 파일 — M4가 안내와 함께 더한다). 1회성 결과에만, 반복 상태 통지엔 금지.
+- 받아쓰기: 라디오 2행(`android.settings.dictationTap/dictationHold`), 저장은 `SettingsStore.dictationStyle`. 소비는 M6(`DictationSession`·마이크 버튼) — **판정 41의 예외**(코디네이터 지시로 선반영, M6가 키를 그대로 읽는다). `speech/Dictation.kt` KDoc의 "M2c/설정 마일스톤"을 "M6 통합 뒤"로 정정한다(같은 커밋).
+- 결과 진동(실험판): 스위치 `android.settings.trendHaptics` + 푸터. **소비 채널은 통지와 같다**(CLAUDE.md "문장이 나가는 조건 = 진동이 나가는 조건"): `a11y/Notice`에 `haptic: HapticKind? = null`(`success/attention/failure` — **3-state 유지**, CLAUDE.md "3-state를 촉각에도"; D10은 판정층 공유·재생만 안드로이드 방식) 추가. `StatusLine`이 seq 변화 때 `LocalResultHaptics`(CompositionLocal, `AppRoot`가 `AppConfig.settings.resultHapticsEnabled`를 제공)가 참이면 `LocalHapticFeedback.performHapticFeedback(성공 = Confirm, 주의 = ContextClick(실기기 판정 — 0건과 N건이 손으로 갈리는가), 실패 = Reject)`. `VIBRATE` 권한 불필요(프레임워크가 낸다); 기기 촉각 피드백 설정이 꺼져 있으면 무동작(푸터 조건 문장). 게시자: `NearbyScreenViewModel.onEvent`(iOS `nearbyAnnouncer` 동형 — Loaded n건 = success, 0건 = attention, RefreshFailed·전락 = failure), 검색 결과(성공·0건·실패, `SearchViewModel`). 1회성 결과에만, 반복 상태 통지·진행 통지엔 금지. 소스 가드: `performHapticFeedback` 호출 파일은 `A11y.kt` 하나(iOS `result-haptic-guard` 동형).
 
-### 14-4. 정보 출처·업데이트 이력
+### 14-4. 정보 출처
 
-- `DataSourcesScreen`: iOS 그대로 — `chat.source.*` 16행(각 한 객체) + `dataSources.walkHealth` + OSM 라이선스 문장 + 링크 2(`dataSources.osmLink` → openstreetmap copyright, `dataSources.osmCopyRequest` → mailto).
-- `ReleaseNotesScreen`: 번들 `assets/release-notes.json`(iOS와 **같은 생성물** — `scripts/build-release-notes.mjs`의 출력을 `android/app/src/main/assets/release-notes.json`에도 쓰고 `release-notes-bundle.test.ts`가 두 파일 동일을 강제한다; 루트 스크립트 한 줄 추가는 코디네이터에 알린다). 버전마다 헤딩 `android.settings.releaseNotesVersion(version)` + 줄 단위 `BodyLine`(앱 언어가 ko면 `ko`, 아니면 `en`), 로드 실패 `releaseNotesError`. 설치 버전 표기는 하지 않는다(iOS도 헤딩 강조뿐).
+- `DataSourcesScreen`: iOS 그대로 — `chat.source.*` 16행(iOS 순서, 각 한 객체) + OSM 라이선스 문장(`dataSources.osmLicense`) + 링크 2(`dataSources.osmLink` → openstreetmap copyright `ACTION_VIEW`, `dataSources.osmCopyRequest` → `ACTION_SENDTO` mailto). `dataSources.walkHealth` 행은 M4.
 
 ### 14-5. 테스트·실기기
 
-- JVM: `SettingsStore`(언어 코드 검증·받아쓰기 기본값·진동 기본 off) · `Notice.haptic` 전파(성공/0건/실패 → 종류) · 릴리스 노트 파서(assets JSON → 버전·언어 분기, 손상 → 오류 문장) · 소스 가드(진동 트리거는 `StatusLine` 한 곳 — `performHapticFeedback` 호출 파일 1개, iOS `result-haptic-guard` 동형) · 드리프트(`release-notes-bundle.test.ts` 두 출력 동일).
-- ATF: 설정 화면 행이 각 한 객체·언어 행 라벨 "언어, 한국어"·실험판 빌드에만 진동 스위치.
-- 실기기: 27 설정 아이콘 → 화면 → 뒤로 복귀 착지 28 언어 변경 → 재생성 뒤 "언어를 바꿨습니다"가 새 언어로 29 진동 스위치 켜고 내 주변 조회 → Confirm 진동 30 업데이트 이력 헤딩 점프.
+- JVM: `SettingsStore`(언어 코드 검증·미지 값 null·받아쓰기 기본값·진동 기본 off·왕복) · `settingsRows(experimental)`(정식판 행 5·실험판 행 6) · `AppConfig.localized`(null → 원본, 코드 → 그 로케일 리소스 마커; `Robolectric` 없이 `Configuration` 조립만 단위 검증) · `Notice.haptic` 게시(내 주변 성공/0건/실패·검색 3분기 → 종류) · 언어 변경 통지가 새 언어 문장인가(문자열 조회 컨텍스트 단언) · 소스 가드(진동 트리거 파일 1개·착지 순서 가드에 `selectable`·설정 아이콘이 3탭 루트 상단 바에 있음).
+- ATF: 설정 화면 행이 각 한 객체·언어 행 라벨 "언어, 한국어"·라디오 목록 집합 맥락. (실험판 스위치 존재는 JVM `settingsRows`가 잠근다 — androidTest는 debug 변형만 돈다.)
+- 실기기: 27 설정 아이콘 → 화면 → 뒤로 복귀 착지 28 언어 변경 → 재생성 뒤 "언어를 바꿨습니다"가 새 언어로, 이후 내 주변 통지도 새 언어 29 진동 스위치 켜고 내 주변 조회 → Confirm, 0건 → ContextClick이 손으로 갈리는가 30 문제 신고가 메일 앱으로 열림.
 
 ### 14-6. 판정 (§13 이어서)
 
-39. **언어는 `AppCompatDelegate.setApplicationLocales` 한 경로**(의존성 +1) — API 31~32와 33+를 갈라 쓰는 두 경로보다 적다. `configuration` 수동 오버라이드(재생성·시스템 설정 불일치)는 기각.
-40. **진동 채널은 `Notice.haptic` → `StatusLine`** — 문장과 진동이 한 게시로 묶여야 "문장이 나가는 조건 = 진동이 나가는 조건"이 구조가 된다. 안드로이드 표준 2종(Confirm/Reject)으로 접는다(D10).
-41. **테마·듣기 속도·체중·AI 동의 행은 소비 마일스톤이 더한다** — 설정 행이 먼저 생기면 소비자 없는 옵션이 된다(YAGNI).
-42. **릴리스 노트는 한 생성물 두 출력** — 안드로이드용 파서·마크다운 재해석을 만들지 않는다.
+39. **언어는 앱 저장값 + `createConfigurationContext` 한 경로**(AppCompat 기각 — API 32 이하 앱 컨텍스트 미적용·테마 교체 요구; minSdk 33 상향은 D8 위반). 저장값이 시스템 앱 언어 설정을 이긴다.
+40. **진동 채널은 `Notice.haptic` → `StatusLine`**, 3종 유지(D10: 판정층 공유·재생만 안드로이드 방식). 주의 질감 `ContextClick`은 실기기 판정.
+41. **테마·듣기 속도·체중·AI 동의 행은 소비 마일스톤이 더한다**(YAGNI). 예외: 받아쓰기 방식 행은 코디네이터 지시로 선반영(M6가 같은 키를 읽는다).
+42. **설정 진입은 기존 `actions` 슬롯의 공용 `SettingsAction`** — Scaffold 인자 신설 없음. 채팅 탭은 M6 몫.
+43. **업데이트 이력은 유예** — 정본 `docs/appstore/release-notes.md`는 "iOS 사용자에게 보이는 변경만"이 스코프이고 iOS는 설치 버전 필터(`AppVersion`)까지 있다. 안드로이드 `versionName` 0.1.0에 그 번들을 얹으면 빈 화면이거나 없는 기능을 읽어 준다. 안드로이드 출시 노트 정본이 생길 때(첫 Play 제출) 절과 화면을 함께 만든다 — 코디네이터 BACKLOG 후보.
 
-적대적 설계 리뷰 판정(§14): (기록 예정)
+적대적 설계 리뷰 판정(§14, `review-settings-design.md`): 1차 REQUEST_CHANGES(BLOCKER 4·MAJOR 7·MINOR 11·NIT 3) → 25건 전부 반영(B1·B2 → 판정 39 개정, B3 → §13-5 앱 통지 소비 규칙, B4 → 판정 43 유예, M1 walkHealth 행 M4, M2 → 판정 40 3종, M3·M4 → `SettingsStore`·`LocalResultHaptics`, M5 → 판정 42, M6 채팅 M6, M7 JVM `settingsRows`, m1~m3·n2·n3 유예로 소멸, m4 `selectableGroup`+가드, m5 예외 명기+KDoc, m6 푸터 오버라이드, m7 `AppConfig` 이름, m8 12키, m9 `ACTION_SENDTO`, m10 슬롯, m11 조건 문장, n1 유도), 기각 0.
