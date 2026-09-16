@@ -34,9 +34,9 @@
 
 ```
 [4] 화면      chat/ChatScreen.kt(탭·장소 화면 + 공용 대화 본문 + 입력 바) · ChatMessages.kt(말풍선·블록·카드·출처·칩)
-              chat/ChatConsent.kt(동의 저장소 + 동의 본문) · chat/ChatLanding.kt(착지 헬퍼 + 진단 로그)
+              chat/ChatConsent.kt(동의 저장소 + 동의 본문) · chat/ChatLanding.kt(착지 `land` + 진단 로그 — 부착 관용구는 `a11y/Landing.kt` `landingTarget`)
 [3] 실행      chat/ChatHttp.kt(POST 한 곳 + 취소 시 disconnect) · ChatStream.kt(스트림 소스 + 순수 리더 readChatStream)
-              chat/ChatSounds.kt(SoundPool) · speech/DictationSession.kt(인식기 포트 + 세션 상태 머신 + 안드로이드 어댑터)
+              chat/ChatFactories.kt(팩토리 + SoundPool 효과음 `USAGE_ASSISTANCE_SONIFICATION`) · speech/DictationSession.kt(인식기 포트 + 세션 상태 머신 + 안드로이드 어댑터)
 [상태]        chat/ChatViewModel.kt(대화 상태 머신) · ChatStrings.kt(문장 람다 + 도구·출처 라벨 리터럴 표)
               chat/ChatInline.kt(블록 인라인 마크다운 → 평문+구간, 순수) · chat/AddressToPlace.kt(웹 jusoAddressToPlace 미러, 순수)
 [진입]        chat/ChatRoutes.kt(PlaceChatRoute + NavController.openChat) · ChatFactories.kt(ViewModel 팩토리)
@@ -87,20 +87,20 @@ res/raw       chat_send.mp3 · chat_receive.mp3 (iOS `Resources/chat-send.mp3`·
 
 ### 3-4. 포커스 계약(헌장 §6 → Compose)
 
-**착지 관용구(`ChatLanding.kt`)**: 행·헤딩·블록은 `mergedRow(focus = r)`(내부 `focusable()`은 항상 포커스 가능). **버튼 착지 대상(보내기 버튼 하나)은 `Modifier.landingTarget(r)` = `focusRequester(r).focusProperties { canFocus = true }`를 `Button` 수식자에 준다** — Compose 1.12의 `clickable`은 입력 모드가 터치면 포커스를 받지 않아(TalkBack 폰 사용자는 터치 모드에 머문다) 그냥 `focusRequester`만 걸면 착지가 조용히 실패한다(리뷰 B1, 바이트코드 확인). 착지는 상태 변화 뒤 `withFrameNanos {}` 한 프레임 뒤 `land(r, tag)` — `requestFocus()`의 **Boolean과 예외 둘 다** 보고 `Log.i("ChatFocus", "$tag ok|fail")`(진단 로그, iOS `ChatFocusDiag` 대응; 모든 빌드, 개인정보 없음). 목록이 eager `Column`이라 화면 밖 노드도 트리에 있고 `focusable`의 bring-into-view가 스크롤한다. ⚠ "TalkBack 접근성 포커스가 입력 포커스를 따라오는가"는 M1 spec §8-2의 미검증 전제이고 §8-1·§8-2가 그 결과에 종속된다.
+**착지 관용구**: 부착은 `a11y/`의 둘뿐이다(main 소스 가드) — 행·헤딩·블록은 `mergedRow(focus = r)`(내부 `focusable()`은 항상 포커스 가능), 버튼·텍스트 필드·클릭 행은 `Modifier.landingTarget(r)`(= `focusRequester(r).focusProperties { canFocus = true }`, `clickable` 체인 **앞**). Compose 1.12의 `clickable`(Material3 `Button` 포함)은 입력 모드가 터치면 포커스를 받지 않아(TalkBack 폰 사용자는 터치 모드에 머문다) 그냥 `focusRequester`만 걸면 착지가 조용히 실패한다(설계 리뷰 B1 — 코디네이터가 `a11y/Landing.kt`로 승격·전수 교체). 착지 실행은 `chat/ChatLanding.kt` `land(r, tag)` — `requestFocus()`의 **Boolean과 예외 둘 다** 보고 `Log.i("ChatFocus", "$tag ok|fail")`(진단 로그, iOS `ChatFocusDiag` 대응; 모든 빌드, 개인정보 없음). 원칙은 상태 변화 뒤 `withFrameNanos {}` 한 프레임 뒤 착지이고, **전송 착지만 예외적으로 같은 핸들러에서 동기**다(사라질 버튼보다 먼저 옮긴다). 목록이 eager `Column`이라 화면 밖 노드도 트리에 있고 `focusable`의 bring-into-view가 스크롤한다. ⚠ "TalkBack 접근성 포커스가 입력 포커스를 따라오는가"는 M1 spec §8-2의 미검증 전제이고 §8-1·§8-2가 그 결과에 종속된다.
 
 | 사건 | 포커스 | 근거 |
 |---|---|---|
-| 전송 — 보내기 버튼·IME 전송 | `vm.sendDraft()`가 받아들였을 때만(초안은 **그때만** 비운다) 같은 핸들러에서 동기로 보내기 버튼 착지 + 목록 끝으로 스크롤 | 헌장 §6. 입력 포커스가 필드를 떠나 소프트 키보드가 내려간다(수용 — 다음 행동은 답변 듣기) |
+| 전송 — 보내기 버튼·IME 전송 | `vm.sendDraft()`가 받아들였을 때만(초안은 **그때만** 비운다) 같은 핸들러에서 동기로 보내기 버튼 착지 + 한 프레임 뒤 목록 끝으로 스크롤(새 질문이 배치된 뒤의 끝) | 헌장 §6. 입력 포커스가 필드를 떠나 소프트 키보드가 내려간다(수용 — 다음 행동은 답변 듣기) |
 | 전송 — 추천 질문·follow-up 칩 | `vm.send(text)`가 받아들였을 때만 보내기 버튼 착지 + 끝으로 스크롤. **초안은 건드리지 않는다**(iOS 동형) | 누른 버튼이 다음 프레임에 사라진다 — 사라지기 전에 안정 요소로 선점(헌장 §5) |
 | 스트리밍 중 | 보내기 버튼 유지. 클릭은 무시(핸들러 가드 + ViewModel in-flight 가드), `enabled = false` 금지, `stateDescription = android.chat.sending` | M1 검색 버튼 관용구(disabled는 포커스를 떨군다). 포커스를 쥔 노드의 상태 설명 변화는 TalkBack이 강제 발화 |
 | 완료 — 성공 | 마지막 **질문 헤딩** 착지 | 헌장 §6 |
-| 완료 — 실패 | 마지막 **실패 답변 블록** 착지(문장 "답변을 가져오지 못했습니다.") | 결과 진동이 빠진 안드로이드에서 성공·실패를 가르는 유일한 비시각 신호가 되고(완료음은 성패 무관), 포커스 낭독은 진행 중 낭독을 끊으므로 헌장 "실패만 interrupting"을 별도 live region·중복 문장 없이 채운다(§11 M4 판정). 질문 헤딩은 바로 위라 한 번 뒤로 가면 된다 |
-| 완료 착지 공통 조건 | ① `answerRevision`이 이 화면 진입 시 값(`remember`)보다 크고 아직 소비 안 함 ② 스트리밍 중이 아님 ③ **받아쓰기 세션이 활성(`isActive`: Starting·Preparing·Listening)이 아님** ④ **텍스트 필드가 입력 포커스를 갖고 있지 않음**(`onFocusChanged`로 화면 상태에 보관). ③·④로 건너뛴 착지는 **소비**(되살리지 않는다) — 그때는 끝으로 스크롤만 | ① 다른 탭에 있는 동안 끝난 답변이 복귀 때 포커스를 끌어가지 않게(StatusLine `initialSeq`와 같은 꼴, iOS `.task(id:)` 금지 사유). ③ 탐색 낭독이 곧 뜨거워질 마이크에 섞인다. ④ 답을 기다리며 다음 질문을 치던 점자 키보드 사용자의 입력을 끊지 않는다(Compose `requestFocus`는 iOS와 달리 입력 포커스 자체를 옮긴다). ③·④ 경우의 완료 신호는 완료음뿐(§8-2) |
+| 완료 — 실패 | 마지막 **실패 답변 블록** 착지(문장 "답변을 가져오지 못했습니다.") | 착지 대상의 낭독이 곧 실패 문장이라, 결과 진동이 빠진 안드로이드에서 성공·실패를 가르는 비시각 신호가 된다(완료음은 성패 무관). 질문 헤딩은 바로 위라 한 번 뒤로 가면 된다. ⚠ 헌장 §6 "완료 시 질문 헤딩"의 **안드로이드 편차**(판정 5) |
+| 완료 착지 공통 조건 | ① `answerRevision`이 이 화면 진입 시 값(`remember`)보다 크고 아직 소비 안 함 ② 스트리밍 중이 아님 ③ **받아쓰기 세션이 활성(`isActive`: Starting·Preparing·Listening)이 아님** ④ **텍스트 필드가 입력 포커스를 갖고 있지 않음**(`onFocusChanged`로 화면 상태에 보관). ③·④로 건너뛴 착지는 **소비**(되살리지 않는다) — 그때는 끝으로 스크롤만. **건너뛴 완료가 실패면** 통지 줄에 실패 문장(`android.chat.failed`)을 게시한다: ④는 즉시, ③이면 받아쓰기 세션이 끝날 때 — 전사가 오면 전사 통지와 한 문장(`실패 문장 + 공백 + 병합 원문`), 전사 없이 끝나면 실패 문장만(리뷰 R2-M1) | ① 다른 탭에 있는 동안 끝난 답변이 복귀 때 포커스를 끌어가지 않게(StatusLine `initialSeq`와 같은 꼴, iOS `.task(id:)` 금지 사유). ③ 탐색 낭독이 곧 뜨거워질 마이크에 섞인다. ④ 답을 기다리며 다음 질문을 치던 점자 키보드 사용자의 입력을 끊지 않는다(Compose `requestFocus`는 iOS와 달리 입력 포커스 자체를 옮긴다). ③·④ 경우 성공은 완료음만, 실패는 완료음 + 실패 통지(§8-2) |
 | 지우기 | 초안 비움 + 텍스트 필드 착지(같은 핸들러) | 지우기 버튼이 자신을 없앤다 |
 | 동의 | 텍스트 필드(§3-2) | |
 | 장소 채팅 진입(push) | 동의 뒤면 제목 헤딩, 동의 전이면 동의 제목 헤딩 | 누른 "물어보기" 버튼이 사라지는 전이. M2 장소 상세 진입 착지와 같은 꼴 |
-| 받아쓰기 전사 도착 | 초안에 병합 → 보내기 버튼 착지 → 통지(병합 원문) | 헌장 §6 받아쓰기 완료. TalkBack polite 통지는 새 발화에 끊기지 않고 포커스 낭독 뒤에 잇는다. 통지 줄의 원문은 다음 전송·지우기에서 비운다(초안과의 중복 잔존 차단) |
+| 받아쓰기 전사 도착 | 초안에 병합 → 대기 중인 완료 착지를 소비(iOS가 전사 도착 시 완료 포커스 시퀀스를 취소하는 것과 같다) → 보내기 버튼 착지 → 통지(병합 원문, 보류된 실패가 있으면 앞에 붙인다) | 헌장 §6 받아쓰기 완료. TalkBack polite 통지는 새 발화에 끊기지 않고 포커스 낭독 뒤에 잇는다. 통지 줄의 원문은 다음 전송·지우기에서 비운다(초안과의 중복 잔존 차단) |
 | 장소 상세에서 pop 복귀 | 연 원점(카드 행 `card-<msg>-<r>-<place.id>`·언급 블록 `block-<msg>-<i>`·주소 행 `address-<msg>-<r>-<roadAddr>`) | `ReturnFocusSlot`(ViewModel `SavedStateHandle`) — 기존 관용구. 소비는 `LaunchedEffect` 안에서 한 번. 묶음 인덱스 `r`은 정확도순·리뷰순 묶음에 같은 장소가 있을 때 키 충돌을 막는다 |
 
 권한 다이얼로그 경계(일반 채팅 첫 전송의 위치 권한, 받아쓰기의 마이크 권한) 뒤 커서 위치는 보장되지 않는다 — 가설 착지를 넣지 않고 §8-13에서 실측한다.
@@ -154,7 +154,7 @@ class ChatViewModel(
 
 ### 4-3. 진행 통지
 
-라벨 = `categories.map(strings.toolLabel)`(19개 리터럴 표, 미지 키는 원문) 쉼표 결합. 비면 `android.chat.progressFallback`, 아니면 `chat.progress.searching`(labels). `Notice(seq+1, 문장)` — status 이벤트당 1회. 답변 산문은 통지하지 않는다(헌장 §5 복제 금지). 실패도 따로 통지하지 않는다 — 실패 블록 착지가 신호다(§3-4). TalkBack의 polite 통지는 새 포커스 낭독에 끊기지 않으므로, 완료 착지 낭독은 말하던 진행 문장 뒤에 이어진다(수용 — 진행 문장은 짧다).
+라벨 = `categories.map(strings.toolLabel)`(19개 리터럴 표, 미지 키는 원문) 쉼표 결합. 비면 `android.chat.progressFallback`, 아니면 `chat.progress.searching`(labels). `Notice(seq+1, 문장)` — status 이벤트당 1회. 답변 산문은 통지하지 않는다(헌장 §5 복제 금지). 실패는 착지가 신호이고, 착지를 건너뛴 실패만 화면이 통지한다(§3-4). TalkBack의 polite 통지는 새 포커스 낭독에 끊기지 않으므로, 완료 착지 낭독은 말하던 진행 문장 뒤에 이어진다(수용 — 진행 문장은 짧다).
 
 ### 4-4. 주소 카드 열기 `suspend fun resolveAddress(address: JusoAddress): Place?`
 
@@ -168,7 +168,7 @@ class ChatViewModel(
 
 ### 5-1. `ChatHttp.post(url, body, timeoutMs, read: suspend (status: Int, stream: InputStream) -> T): T`
 
-`HttpURLConnection` POST 한 곳(스트림·follow-up 공용). **전부 `Dispatchers.IO`에서**. `Content-Type: application/json`, `setFixedLengthStreamingMode`, `connectTimeout = readTimeout = timeoutMs`(URLSession `timeoutInterval`과 같은 **유휴** 상한 — 채팅 180초·칩 6초, `:kit` 상수). 블로킹 읽기는 코루틴 취소를 보지 못하므로 **감시 코루틴(IO 디스패처)**이 취소 시 `disconnect()`해 읽기를 즉시 깨운다(메인 스레드에서 소켓을 닫지 않는다). 감시자는 `try/finally`로 **모든 경로**에서 해제한다(남으면 부모 스코프가 자식 완료를 기다려 스트림이 끝나지 않는다). 2xx가 아니면 `errorStream`(null이면 빈 입력)을 넘긴다. `:app` `net/HttpUrlConnectionTransport`(GET 전용, 소유 밖)는 건드리지 않는다.
+`HttpURLConnection` POST 한 곳(스트림·follow-up 공용), 연결은 `open` 인자(기본 `URL.openConnection`)로 받는다. **전부 `Dispatchers.IO`에서**. `Content-Type: application/json`, `setFixedLengthStreamingMode`, `connectTimeout = readTimeout = timeoutMs`(URLSession `timeoutInterval`과 같은 **유휴** 상한 — 채팅 180초·칩 6초, `:kit` 상수). 블로킹 읽기는 코루틴 취소를 보지 못하므로 **감시 코루틴(IO 디스패처)**이 취소 시 `disconnect()`해 읽기를 즉시 깨운다(메인 스레드에서 소켓을 닫지 않는다). 감시자는 `try/finally`로 **모든 경로**에서 해제한다(남으면 부모 스코프가 자식 완료를 기다려 스트림이 끝나지 않는다). 취소 중에 난 비취소 예외(연결을 닫아 깨운 읽기의 `IOException`)는 `ensureActive()`로 취소로 바꿔 던진다 — 코루틴은 취소 뒤의 비취소 예외를 근본 원인으로 삼아 부모에 실패로 전파한다(구현 중 테스트가 검출). 2xx가 아니면 `errorStream`(null이면 빈 입력)을 넘긴다. ⚠ 읽기를 깨우는 것은 플랫폼 구현이다: JVM 표준 구현(JDK 21)은 청크 응답 읽기 중 `disconnect()`가 읽기 잠금에 막혀 깨우지 못한다(실측·바이트코드 확인) — 그래서 JVM 테스트는 가짜 연결로 계약만 잠그고, 안드로이드(OkHttp 기반) 기기 동작은 §8-16. `:app` `net/HttpUrlConnectionTransport`(GET 전용, 소유 밖)는 건드리지 않는다.
 
 ### 5-2. `ChatStreamSource.events(body): Flow<ChatStreamEvent>`
 
@@ -200,23 +200,24 @@ interface RecognizerPort {                       // 안드로이드 어댑터 An
 interface RecognizerListener { fun onReady(); fun onSegment(text: String); fun onEnd(finalText: String?); fun onError(code: Int) }
 interface DictationEffects { fun startTone(); fun stopTone(); fun interruptScreenReader(); fun postDelayed(ms: Long, block: () -> Unit): () -> Unit }
 
-sealed class DictationPhase { Idle; Starting; Preparing; Listening; Denied; Failed(kind: DictationFailure) }
+sealed class DictationPhase { Idle; Starting; Preparing; Listening; Denied }   // 실패는 통지 뒤 곧바로 Idle이라 phase에 두지 않는다
 enum class DictationFailure { StartFailed, Interrupted, Locale, OnDevice, Audio }
+sealed class DictationNotice { DownloadRequested; DownloadReady; DownloadFailed; Denied; Failure(kind) }
 class DictationSession(port, effects, languageTag: () -> String, onTranscript: (String) -> Unit, onNotice: (DictationNotice) -> Unit) {
     val phase: StateFlow<DictationPhase>
-    val isActive: StateFlow<Boolean>      // Starting·Preparing·Listening — 완료 착지 보류·M4 안내 억제 연동 지점
-    fun toggle(); fun cancel(); fun markDenied()
+    val isActive: StateFlow<Boolean>      // Starting·Listening(마이크가 켜졌거나 곧 켜진다) — 완료 착지·통지 보류·M4 안내 억제 연동 지점
+    fun toggle(); fun cancel(); fun markDenied(); fun dispose(); fun detach()
 }
 ```
 
 - **권한**: 화면이 `rememberLauncherForActivityResult(RequestPermission())`로 `RECORD_AUDIO`를 묻는다(허용 → `toggle()`, 거부 → `markDenied()`). 세션은 권한을 가정한다(`ERROR_INSUFFICIENT_PERMISSIONS`도 `Denied`).
-- **토글** `toggle()`: `Listening` → 정지 / `Starting`·`Preparing` → **`cancel()`**(세대 증가, 전달 0, 라벨 복귀 — 모델 다운로드는 수십 초~수 분이라 거둘 수단이 필요하다. iOS는 자기 세션 준비 중 탭을 "시작 완료 뒤 정지"로 가는데, 그 결과는 다운로드가 끝난 뒤 사용자 의사와 무관하게 마이크가 잠깐 켜지는 것이라 취소가 정직하다 — §10 판정) / `Idle`·`Denied`·`Failed` → 시작.
-- **세대 토큰**: 시작마다 세대를 올리고 **모든 포트 콜백**(지원 조회·다운로드·리스너 전부)이 자기 세대를 확인한다 — 취소·재시작 사이에 늦게 온 옛 콜백이 새 세션에 전사를 붙이거나 상태를 되살리지 못한다(iOS 세대 가드의 확장).
-- **시작**: `Starting` → `checkSupport`(지원 목록의 언어 표기는 `Locale.forLanguageTag`로 정규화해 비교 — `ko_KR`·`ko`·`ko-KR`): Installed → 청취 / NeedsDownload → `Preparing`(라벨 "음성 인식 준비 중"이 곧 신호, **통지 없음** — 같은 문장 이중 발화 방지) → `download`: Ready → 청취, Scheduled → 통지 `android.voice.preparing` + `Idle`(나중에 다시 누르면 된다 — "실패"로 뭉개지 않는다, 3-state), Failed → 통지 `android.voice.errorDownload` + `Idle` / Unsupported → 통지 `android.voice.errorOnDevice` + `Idle` / Unknown(구현이 조회 미지원) → 그대로 청취 시도.
-- **청취 시작**: `Listening`(라벨 "받아쓰기 중지") → 두 프레임 + 150ms 뒤 `effects.interruptScreenReader()` → `port.start` → `onReady`에서 한 번 더 `interruptScreenReader()` + 시작음. 인식 인텐트: `LANGUAGE_MODEL_FREE_FORM`, 언어, 분할 세션 `EXTRA_SEGMENTED_SESSION = EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS` 60,000(말을 멈춰도 정지를 누를 때까지 이어 받기를 요청 — 구현이 무시할 수 있음).
+- **토글** `toggle()`: `Listening` → 정지(정지 중이면 무시) / `Preparing` → **`cancel()`**(세대 증가, 전달 0, 라벨 복귀 — 모델 다운로드는 수십 초~수 분이라 거둘 수단이 필요하다) / `Starting` → 무시(라벨이 Idle과 같은 "받아쓰기 시작"이라 취소가 무신호가 된다, 짧다) / `Idle`·`Denied` → 시작.
+- **세대 토큰**: 시작마다 세대를 올리고 **모든 포트 콜백과 타이머 블록**(지원 조회·다운로드·리스너·낭독 끊기 대기·60초 캡·3초 상한)이 자기 세대를 확인한다. 종결·취소는 세대를 올리고 타이머를 전부 해제한다 — 늦은 콜백·옛 타이머가 새 세션에 전사를 붙이거나 새 세션을 끊지 못한다. 포트 계약: `cancel` 뒤 리스너 콜백 0(어댑터는 `destroy`로 보장, 세대 확인이 이중 방어).
+- **시작**: `Starting` → `checkSupport`(지원 목록의 언어 표기는 `Locale.forLanguageTag`로 정규화해 비교 — `ko_KR`·`ko`·`ko-KR`): Installed → 청취 / NeedsDownload → `Preparing`(라벨 "음성 인식 준비 중"이 곧 신호, **통지 없음** — 같은 문장 이중 발화 방지, 마이크가 없어 `isActive` 아님) → `download`: Ready → **청취하지 않고** 통지 `android.voice.downloadReady`("음성 인식이 준비됐습니다. 다시 눌러 받아쓰세요") + `Idle`(수 분 뒤 사용자가 다른 일을 하는 중에 마이크가 켜져 탐색 낭독이 녹음되는 것을 막는다, 리뷰 R2-m3) / Scheduled → 통지 `android.voice.downloadRequested`("음성 인식 준비를 요청했습니다. 잠시 뒤 다시 눌러 주세요") + `Idle`(진행형 "준비 중"은 기다리게 만든다, R2-m8) / Failed → 통지 `android.voice.errorDownload` + `Idle` / Unsupported → 통지 `android.voice.errorOnDevice` + `Idle` / Unknown(구현이 조회 미지원) → 그대로 청취 시도.
+- **청취 시작**: `Listening`(라벨 "받아쓰기 중지") → 150ms 뒤(두 프레임 포함) 세대를 확인하고 `effects.interruptScreenReader()` → `port.start` → `onReady`(세션당 1회만 반응 — 구현이 반복 호출할 수 있다)에서 한 번 더 `interruptScreenReader()` + 시작음. 대기 중(아직 `port.start` 전) 정지는 인식기를 켜지 않고 `cancel()`(소리·전달 0, R2-m2). 인식 인텐트: `LANGUAGE_MODEL_FREE_FORM`, 언어, 분할 세션 `EXTRA_SEGMENTED_SESSION = EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS` 60,000(말을 멈춰도 정지를 누를 때까지 이어 받기를 요청 — 구현이 무시할 수 있음).
   - `interruptScreenReader()` = `AccessibilityManager`가 `isEnabled`일 때만 `interrupt()` — 꺼진 기기에서 부르면 `IllegalStateException`으로 앱이 죽는다(리뷰 B2, iOS `guard isVoiceOverRunning` 대응). 이 함수 한 곳에서만 부른다(소스 가드). TalkBack은 마이크가 활성화되면 스스로도 발화를 멈추지만 한소네 자체 리더는 미확인이라 둔다.
 - **녹음 중 SR 발화 0**: 세션이 활성(`isActive`)인 동안 화면은 통지 줄의 새 문장을 보류(활성화 시점 `notice`를 표시 유지, 끝나면 최신 문장 하나만 발화)하고 완료 착지를 건너뛴다(§3-4). 라벨은 청취 내내 불변.
-- **정지**(Listening 토글): `stopping = true` → 정지음 → `port.stop()` → **종결 대기 상한 `STOP_FINALIZE_TIMEOUT_MS = 3000`**: 그 안에 `onEnd`·`onError`가 오지 않으면 누적분으로 종결하고 `port.cancel()`(분할 모드에서 `stopListening` 뒤 콜백을 내지 않는 구현에 버튼이 "중지"로 갇히는 것을 막는다, 리뷰 M3). **60초 캡**: 청취 60초가 지나면 같은 정지 경로(iOS엔 없는 경로 — 분할 세션을 요청하므로 생긴다, 자동 전송 없음).
+- **정지**(Listening 토글): `stopping = true` → 정지음 → **종결 대기 상한 `STOP_FINALIZE_TIMEOUT_MS = 3000` 무장**(동기 콜백 구현에서도 순서가 맞게 `port.stop()` 앞) → `port.stop()`: 그 안에 `onEnd`·`onError`가 오지 않으면 누적분으로 종결하고 `port.cancel()`(분할 모드에서 `stopListening` 뒤 콜백을 내지 않는 구현에 버튼이 "중지"로 갇히는 것을 막는다, 리뷰 M3). **60초 캡**: 청취 60초가 지나면 같은 정지 경로(iOS엔 없는 경로 — 분할 세션을 요청하므로 생긴다, 자동 전송 없음).
 - **종결은 한 곳**(`finish(text)`): 정지음을 아직 안 냈으면 한 번(자동 종료 경로에도 끝 신호) → `port.cancel()` → `Idle` → 공백 제거 뒤 `hasSpeechContent`(`:kit`)가 참일 때만 `onTranscript`(문장부호만 나온 무발화 전사 차단, iOS `stop()` 한 곳과 같은 층). 결과 소비는 이 콜백 **단일 채널**(수동 정지·캡·상한 만료·인식기 자체 종료 공통).
 - **결과 조립**: `onSegment` 누적(공백 한 칸 결합) → `onEnd(finalText)`: 분할 모드면 누적, 분할 미지원 구현이면 `finalText`(`onResults` 첫 후보). 
 - **오류 판정** 순수 함수 `dictationErrorOutcome(code, stopping, hasAccumulated): Outcome`:
@@ -224,8 +225,9 @@ class DictationSession(port, effects, languageTag: () -> String, onTranscript: (
   - `INSUFFICIENT_PERMISSIONS` → `Denied`(통지 `android.voice.denied` + 설정 열기 버튼).
   - `LANGUAGE_NOT_SUPPORTED` → `Failed(Locale)`, `LANGUAGE_UNAVAILABLE` → `Failed(OnDevice)`, `AUDIO`·`RECOGNIZER_BUSY` → `Failed(Audio)`, 그 밖 → 청취 전이면 `Failed(StartFailed)`, 청취 중이면 `Failed(Interrupted)`.
   - **Failed 종결이라도 누적분이 `hasSpeechContent`면 먼저 `onTranscript`로 전달**한다(40초 받아쓴 내용을 오류 하나로 잃지 않는다, 리뷰 M3). 누적분을 전달했으면 실패 통지는 내지 않는다(전사 통지가 결과이고 소리가 끝 신호다). 전달할 것이 없을 때만 실패 통지: `StartFailed` → `android.voice.failed`("시작하지 못했습니다"), `Interrupted` → `voice.errors.stt_failed`("음성 인식에 실패했습니다"), `Locale` → `android.voice.errorLocale`, `OnDevice` → `android.voice.errorOnDevice`, `Audio` → `android.voice.errorAudio`. 통지 뒤 `Idle`(즉시 재시도 가능).
-- **취소** `cancel()`: 세대 증가, 타이머 해제, `port.cancel()`, `Idle`, 전달·통지·소리 없음. 화면 `DisposableEffect`의 onDispose가 부른다(탭 전환·pop = 마이크 항상 폐기, iOS `onDisappear`).
-- **소리**: 시작·정지음은 `ToneGenerator(AudioManager.STREAM_SYSTEM)`(`TONE_PROP_BEEP` / `TONE_PROP_ACK`) — 스트림이 `USAGE_ASSISTANCE_SONIFICATION`으로 대응돼 TalkBack이 발화를 끊지 않고(끊는 것은 NAVIGATION_GUIDANCE·ASSISTANT·ALARM 재생 시작), 새 음원 파일이 필요 없다. `MediaActionSound`는 `STREAM_SYSTEM_ENFORCED`라 한국 기기에서 무음 모드도 무시할 수 있어 기각.
+- **취소** `cancel()`: 세대 증가, 타이머 해제, `port.cancel()`, `Idle`, 전달·통지·소리 없음. 화면 `DisposableEffect`의 onDispose가 `dispose()`(= 취소 + 효과 해제)를 부른다(탭 전환·pop = 마이크 항상 폐기, iOS `onDisappear`).
+- **구성 변경**(회전·글꼴 크기·앱 언어 변경 = Activity 재생성, `configChanges` 없음): onDispose에서 `LocalActivity.current?.isChangingConfigurations`가 참이면 `dispose()` 대신 `detach()` — 청취 중이면 **정상 정지 경로**(정지음·3초 상한·누적분 전달, 전달은 살아남는 ViewModel 초안에 병합)를 밟고 끝나면 효과를 해제한다. 청취 전이면 `dispose()`와 같다. 재생성으로 커서는 잃는다(수용, 리뷰 R2-m7).
+- **소리**: 시작·정지음은 `ToneGenerator(AudioManager.STREAM_SYSTEM)`(`TONE_PROP_BEEP` / `TONE_PROP_ACK`) — 기본 오디오 정책에서 `USAGE_ASSISTANCE_SONIFICATION`으로 대응돼 TalkBack이 발화를 끊지 않고(끊는 것은 NAVIGATION_GUIDANCE·ASSISTANT·ALARM 재생 시작), 새 음원 파일이 필요 없다. OEM 정책·진동/무음 모드에서의 가청 여부는 §8-10. `MediaActionSound`는 `STREAM_SYSTEM_ENFORCED`라 한국 기기에서 무음 모드도 무시할 수 있어 기각.
 
 **버튼**(탭 토글, 헌장 §6 ⓐ): 라벨 = `Preparing`이면 `android.voice.preparing`, `Listening`이면 `voice.stop`, 그 밖 `android.voice.start`. `enabled = false` 금지. 누르면 권한이 있으면 `toggle()`, 없고 세션이 비활성이면 권한 요청.
 **거부 안내**: `Denied`이면 받아쓰기 버튼 바로 뒤에 "설정 열기"(`android.common.openSettings`, `location/appDetailsSettingsIntent` + `tryStartActivity`) 버튼이 선다. 다음 시작 시도에서 사라진다(설정에서 허용하고 돌아온 경우도 받아쓰기 버튼 한 번이면 해소되므로 복귀 재판정은 두지 않는다 — §11 n8 기각).
@@ -241,7 +243,7 @@ fun NavController.openChat(place: Place?)
 - `place == null` → 채팅 탭 전환(`openDirections`와 같은 탭 옵션 — `popUpTo(start){saveState}`·`launchSingleTop`·`restoreState`). 대화는 이어진다.
 - `place != null` → **현재 탭 스택에** `PlaceChatRoute.of(place)` push. 백스택 엔트리마다 새 ViewModel = 장소마다 새 대화. 프리필 스토어가 필요 없다(라우트 인자가 곧 앵커이고 탭 루트를 건드리지 않는다).
 - **AppRoot 변경(M6, 두 줄)**: `composable<ChatRoute> { ChatTabScreen(onOpenPlace = { navController.navigate(PlaceDetailRoute.of(it)) }) }`(자리표시 교체) + `composable<PlaceChatRoute> { entry -> PlaceChatScreen(entry.toRoute(), onBack = { navController.popBackStack() }, onOpenPlace = { navController.navigate(PlaceDetailRoute.of(it)) }) }`.
-- **android-m1 배선(M6 통합 뒤)**: `PlaceNav.onOpenChat: (Place) -> Unit` + AppRoot `onOpenChat = { returnFocus.slot.remember("chat"); navController.openChat(it) }` + 상세 `[M6]` 자리에 `placeChat.launch` 버튼(복귀 착지 키 `"chat"`). 채팅에서 연 상세는 "물어보기"를 숨긴다(iOS `showsChatEntry: false`, 순환 방지) — **`PlaceDetailRoute.of(place, showsChatEntry = false)` 플래그는 m1이 그 배선 때 넣고, M6의 두 `onOpenPlace`는 그 뒤 플래그를 전달한다**(그 전엔 기존 `PlaceDetailRoute.of(place)`로 push).
+- **android-m1 배선(M6 통합 뒤)**: `PlaceNav.onOpenChat: (Place) -> Unit` + AppRoot `onOpenChat = { returnFocus.slot.remember("chat"); navController.openChat(it) }` + 상세 `[M6]` 자리에 `placeChat.launch` 버튼(복귀 착지 키 `"chat"`, 버튼은 `landingTarget`으로 복귀 착지 — 그냥 `focusRequester`면 B1과 같은 이유로 실패). 채팅에서 연 상세는 "물어보기"를 숨긴다(iOS `showsChatEntry: false`, 순환 방지) — **`PlaceDetailRoute.of(place, showsChatEntry = false)` 플래그는 m1이 그 배선 때 넣고, M6의 두 `onOpenPlace`는 그 뒤 플래그를 전달한다**(그 전엔 기존 `PlaceDetailRoute.of(place)`로 push).
 
 ## 8. 실기기 판정 항목 (TalkBack 폰 · 한소네 7 키보드·점자)
 
@@ -256,24 +258,25 @@ fun NavController.openChat(place: Place?)
 7. 진행 통지가 한 번씩 발화되고 답변 산문이 통지로 중복 낭독되지 않는다. 구획 헤딩(카드·출처·추가 질문)이 소음인지 발견 경로인지. (TalkBack "모든 진행 상황 업데이트 말하기"를 끈 사용자는 같은 노드 변경을 30초에 한 번만 듣는다 — 참고.)
 8. 효과음(전송·완료) 음량·TalkBack 발화와의 겹침.
 9. 동의 → 텍스트 필드 착지(소프트 키보드가 올라오는 것이 수용 가능한가 — 아니면 제목 헤딩).
-10. 받아쓰기: 한소네 6(Android 12)에서 버튼 없음 · 한소네 7에서 `isOnDeviceRecognitionAvailable`·한국어 지원 조회 결과·온디바이스 서비스가 실제로 없을 때 어느 실패로 가는가 · 라벨 전환 낭독이 전사에 섞이지 않는다(`interrupt()` 시점, 한소네 자체 리더 포함) · 시작/정지음 음량 · 분할 세션이 정지까지 이어지는가(아니면 짧은 침묵에 끊기는가) · `stopListening` 뒤 종결 콜백이 오는가(3초 상한이 필요한가) · 준비 중 탭 = 취소 · 거부 → 설정 열기 버튼.
-11. **전사 통지**: 헤드폰 없이 10회 연속, 보내기 버튼 착지 뒤 전사 원문이 매번 끝까지 낭독된다(TalkBack은 마이크 활성 중 강제 아닌 발화를 무음 처리하므로 인식 서비스의 녹음 해제가 늦으면 잘린다). 실패 시 대안: `AudioManager.activeRecordingConfigurations`가 빌 때 게시, 또는 짧은 지연.
+10. 받아쓰기: 한소네 6(Android 12)에서 버튼 없음 · 한소네 7에서 `isOnDeviceRecognitionAvailable`·한국어 지원 조회 결과·온디바이스 서비스가 실제로 없을 때 어느 실패로 가는가 · 라벨 전환 낭독이 전사에 섞이지 않는다(`interrupt()` 시점, 한소네 자체 리더 포함) · 시작/정지음 음량(**진동·무음 모드 포함** — `STREAM_SYSTEM`은 벨소리 음량에 묶일 수 있다) · 분할 세션이 정지까지 이어지는가(아니면 짧은 침묵에 끊기는가) · `stopListening` 뒤 종결 콜백 지연 분포(3초 상한이 마지막 문장을 자르지 않는가 — 그 값으로 상한 확정) · `onReady` 반복 여부 · 준비 중 탭 = 취소 · 다운로드 요청·완료 통지 · 청취 중 회전 → 누적분이 초안에 남는가 · 거부 → 설정 열기 버튼.
+11. **전사·받아쓰기 실패 통지**: 헤드폰 없이 10회 연속, 보내기 버튼 착지 뒤 전사 원문이(실패면 실패 문장이) 매번 끝까지 낭독된다 — `Audio`(다른 앱이 마이크 사용 중)는 무음 창이 닫히지 않을 수 있다(TalkBack은 마이크 활성 중 강제 아닌 발화를 무음 처리하므로 인식 서비스의 녹음 해제가 늦으면 잘린다). 실패 시 대안: `AudioManager.activeRecordingConfigurations`가 빌 때 게시, 또는 짧은 지연.
 12. 지우기 → 텍스트 필드 착지. 한소네 키보드로 필드·지우기·받아쓰기·보내기 전부 도달, 물리 Enter가 전송.
 13. 권한 다이얼로그 경계: 일반 채팅 첫 전송의 위치 권한, 받아쓰기의 마이크 권한 — 다이얼로그가 닫힌 뒤 커서 위치(가설 착지 없음, 실측 뒤 판정).
 14. 공유 선택기가 뜨고 닫힌 뒤 포커스가 공유 버튼에 남는다.
-15. (알려진 서버 결함) U+2028이 섞인 답변은 실패 문구가 된다 — iOS와 같은 증상 확인만, 우회 없음.
+15. (알려진 서버 결함) U+2028이 섞인 답변은 실패 문구가 된다 — iOS와 같은 증상 확인만, 우회 없음. 또 프로덕션 `/api/chat/suggestions`가 6.1초 뒤 빈 목록을 준다(2026-09-16 실측 3회, 코디네이터가 Vercel 로그로 6초 AbortError·503 확인 — 동결 해제 뒤 서버 판정). follow-up 칩 실기기 판정은 서버가 고쳐진 뒤.
+16. **스트림 취소**: 장소 채팅 답변 생성 중 뒤로 → 연결 종료가 즉시인가(logcat·서버 로그), 완료음·실패 답변 0. 연결 수립 단계 취소가 `connectTimeout`까지 IO 스레드를 잡는지는 참고.
 
 ## 9. 테스트·게이트
 
 | 층 | 내용 |
 |---|---|
 | JVM `ChatStreamReaderTest` | `chat-stream.ndjson` fixture를 1·7·8192바이트 청크로 읽어도 같은 이벤트, 개행 없는 마지막 줄, CRLF, 청크 경계에서 끊긴 다중 바이트, 깨진 줄은 `APIError.Decoding`, U+2028 포함 줄이 쪼개져 디코딩 오류가 되는 현행 계약(서버 결함 문서화) |
-| JVM `ChatHttpTest` | 로컬 `ServerSocket` 서버: POST 본문·헤더 수신, 비-2xx 오류 본문 → `statusError`, **상태 줄 하나 보낸 뒤 멈춘 서버 → 수집 취소 → 짧은 상한 안에 반환·flow 완료**(감시자 disconnect·해제) |
+| JVM `ChatHttpTest` | 로컬 `ServerSocket` 서버: POST 본문·헤더 수신, 비-2xx 오류 본문 → `statusError`, 칩 2xx·전송 실패. **가짜 `HttpURLConnection`**(블로킹 읽기를 `disconnect`가 풀어 주는 스텁): 수집 취소 → 짧은 상한 안에 반환(감시자 disconnect·해제·취소 변환) |
 | JVM `ChatViewModelTest` | 동의·빈 문자열·스트리밍 가드, `sendDraft`는 성공 때만 초안 비움·칩 전송은 초안 유지, 전송 → 효과음·상태·통지 비움, status → 통지 문장(실제 카탈로그 `CatalogStrings`), done → 답변·revision·완료음·follow-up, error 이벤트·예외 → `failed` 답변, 빈 done → emptyAnswer, **취소된 뒤 스트림이 `IOException`으로 끝나도 답변·효과음·revision 0**, 요청 본문(히스토리·일반 채팅 prime 1회·장소 채팅 prime 0·prime 예외 삼킴·placeContext·isStation·category 빈 값 생략), 전송이 칩을 비우고 늦은 제안을 버린다, 주소 해석 성공·0건(찾지 못함)·예외(확인 못함)·in-flight·취소 뒤 가드 해제, 복귀 키, 전사 병합 |
-| JVM `DictationSessionTest`(가짜 `RecognizerPort`·`DictationEffects`) | 지원 판정 3갈래(설치·다운로드 Ready/Scheduled/Failed·미지원·Unknown), 언어 표기 정규화, 청취 시작 순서(interrupt → start → onReady에서 interrupt + 시작음), 분할 누적·`onEnd` 결합·비분할 `finalText`, 무발화 전사 차단, 정지 → 정지음 1회 + 3초 상한 만료 종결, 60초 캡, 자동 종료에도 정지음 1회, **준비 중 토글 = 취소(전달 0)**, **취소 뒤 옛 세대 콜백 무시**, 이중 정지, 오류 판정 표(`dictationErrorOutcome`)와 Failed 전 누적분 전달, Denied 뒤 재시작 |
+| JVM `DictationSessionTest`(가짜 `RecognizerPort`·`DictationEffects`) | 지원 판정 3갈래(설치·다운로드 Ready/Scheduled/Failed 전부 청취 없이 통지·미지원·Unknown), 언어 표기 정규화, 청취 시작 순서(interrupt → start → onReady에서 interrupt + 시작음, onReady 2회 → 1회), 분할 누적·`onEnd` 결합·비분할 `finalText`, 무발화 전사 차단, 정지 → 정지음 1회 + 3초 상한 만료 종결, 동기 콜백 포트에서 전달 1회, 60초 캡, 종결 직후 재시작 뒤 옛 타이머 무발화, 자동 종료에도 정지음 1회, **준비 중 토글 = 취소(전달 0)**·Starting 토글 무시, start 대기 중 정지 → 인식기 0·소리 0, **취소 뒤 옛 세대 콜백 무시**, 이중 정지, 오류 판정 표(`dictationErrorOutcome`)와 Failed 전 누적분 전달, Denied 뒤 재시작, `detach`(청취 중 → 정상 정지·전달 후 해제 / 청취 전 → dispose) |
 | JVM `ChatInlineTest`·`AddressToPlaceTest` | 인라인 규칙 표 / 웹 `address-to-place.test.ts` 6케이스 미러 |
-| JVM `ChatSourceGuardTest` | `chat/`에 줄 분리 API 0·`splitStreamLines` 사용·버퍼 ≥ 8192 / 보내기·받아쓰기 버튼에 `enabled =` 0 / `chat/`의 `focusRequester(`는 `landingTarget` 정의·`mergedRow(focus =`·행 수식자(`PlaceRow`·`AddressRow` 인자) 밖에서 쓰지 않는다(버튼에 `canFocus` 없는 requester 금지) / 받아쓰기 버튼·세션 생성은 `Dictation.isAvailable` 분기 안 / `createSpeechRecognizer(` 0(온디바이스 강제) / `.interrupt()` 호출은 `interruptScreenReader` 한 곳이고 그 함수 안에 `isEnabled` / 채팅 화면이 복귀 슬롯을 실제로 부른다(`rememberReturnFocus`·`takeReturnFocus`) / 도구·출처 라벨 표가 iOS 표와 같은 키 전수 |
-| androidTest `ChatScreenA11yTest`(ATF 레인, adb 연결 시) | 동의 → 필드 `assertIsFocused` → 추천 질문 클릭 → **보내기 버튼 `assertIsFocused`**(계측 테스트는 터치 모드라 B1을 빨갛게 만든다) → 스텁 스트림 완료 → 질문 헤딩 `assertIsFocused` → 블록·카드 행이 단일 노드이고 ATF 검사 통과. 필드에 입력 중 완료 → 필드 포커스 유지 |
+| JVM `ChatSourceGuardTest` | `chat/`에 줄 분리 API 0·`splitStreamLines` 사용·버퍼 ≥ 8192 / 보내기·받아쓰기 버튼에 `enabled =` 0 / 받아쓰기 세션 생성은 `speech/DictationSession.kt` `dictationSessionOrNull` 한 곳(게이트)이고 화면은 그것만 부른다 / `createSpeechRecognizer(` 0(온디바이스 강제) / `.interrupt()` 호출은 `interruptScreenReader` 한 곳이고 그 함수 안에 `isEnabled` / 채팅 화면이 복귀 슬롯을 실제로 부른다(`rememberReturnFocus`·`takeReturnFocus`) / 도구·출처 라벨 표가 iOS 표와 같은 키 전수. (착지 부착 규율은 main `AppSourceGuardTest`가 앱 전체에서 `a11y/` 두 관용구로 잠근다) |
+| androidTest `ChatScreenA11yTest`(ATF 레인, adb 연결 시) | 동의 → 필드 `assertIsFocused` → 추천 질문 클릭 → **보내기 버튼 `assertIsFocused`**(계측 테스트는 터치 모드라 B1을 빨갛게 만든다) → 스텁 스트림 완료 → 질문 헤딩 `assertIsFocused` → 블록·카드 행이 단일 노드이고 ATF 검사 통과. 필드에 입력 중 완료 → 필드 포커스 유지, 스텁 실패면 `status` 노드 텍스트 = 실패 문장 |
 | 실호출 게이트(수동, 환경변수 `GILDONGMU_REAL_CALL=1`일 때만) | 프로덕션 `/api/chat` 1회(장소 카드가 나오는 질의)·`/api/chat/suggestions` 1회 — `ChatStreamSource`가 status ≥ 1·done·renders를 실제로 받는가 |
 | 머신 게이트 | README §7(락 안) |
 
@@ -285,16 +288,18 @@ fun NavController.openChat(place: Place?)
 | 2 | 받아쓰기 세션은 `speech/` 새 파일(코디네이터 승인), 인식기는 포트로 감싼다 | `chat/` 안: 검색·길찾기 마이크가 복제한다. 포트 없이: 세션 상태 머신이 실기기에서만 검증된다 |
 | 3 | 언급 2개 이상은 커스텀 액션만, 인라인 링크 없음 | `LinkAnnotation`: 링크마다 포커스 노드가 서서 블록이 쪼개진다 |
 | 4 | follow-up 묶음은 구획 헤딩 | iOS 컨테이너 라벨: TalkBack에 컨테이너 진입 낭독이 없다 |
-| 5 | 실패는 별도 통지 없이 **실패 블록 착지**로 가른다 | 질문 헤딩 착지 + polite 실패 통지: 같은 문장 중복. assertive live region: 헌장 단일 창구와 `a11y/` 밖 창구 신설. 결과 진동: M2b ㉓ 설정 마일스톤 |
+| 5 | 실패는 **실패 블록 착지**로 가르고, 착지를 건너뛴 실패만 통지 줄에 실패 문장 — 헌장 §6 "완료 시 질문 헤딩"의 **안드로이드 편차**(실패만, 결과 진동 도입 시 재검토, 실기기 §8-2 뒤 참조 문서 반영 여부는 위원장 판정) | 질문 헤딩 착지 + 실패 통지: 착지 낭독과 같은 문장이 연달아 발화. assertive 통지: 같은 이중 발화. 결과 진동: M2b ㉓ 설정 마일스톤. 실패 전용 완료음: 음원 추가·iOS 비대칭 |
 | 6 | 받아쓰기·보내기 버튼은 보이는 텍스트 라벨 | 아이콘 버튼: 코어 아이콘에 마이크가 없어 의존성 추가가 필요하다 |
 | 7 | 라벨 변경 낭독 차단은 `isEnabled` 확인 뒤 `AccessibilityManager.interrupt()` | 빈 문자열 통지: 안드로이드엔 "끊기만 하고 발화 0"인 게시 수단이 이것뿐이다 |
 | 8 | 받아쓰기 실패는 인라인 통지 + (거부만) 설정 열기 버튼 | 다이얼로그: M2·M3 해결 버튼 관용구와 어긋나고 창 전환 포커스 복귀가 실기기 미검증 |
-| 9 | 세션 활성 중 통지·완료 착지 보류(건너뛴 착지는 소비) | 헌장 §6 "녹음 중 SR 발화 0" |
+| 9 | 세션 활성(Starting·Listening) 중 통지·완료 착지 보류(건너뛴 착지는 소비, 실패는 세션 끝에 통지) | 헌장 §6 "녹음 중 SR 발화 0". Preparing은 마이크가 없어 보류하지 않는다 |
 | 10 | 주소 카드 → 지오코딩 → 상세(착수 프롬프트, 웹 동작) | iOS는 복사 액션만. 상세가 주소 복사 버튼을 이미 가진다 |
 | 11 | 버튼 착지 대상은 `focusProperties { canFocus = true }` | 그냥 `focusRequester`: Compose 1.12 `clickable`은 터치 모드에서 포커스 불가 |
-| 12 | 준비 중 받아쓰기 탭 = 취소 | iOS "시작 완료 뒤 정지": 다운로드가 끝난 뒤 사용자 의사와 무관하게 마이크가 켜진다 |
+| 12 | 준비 중 받아쓰기 탭 = 취소, 다운로드가 필요했던 세션은 끝나도 청취하지 않고 "다시 눌러 주세요" | iOS "다운로드 뒤 이어서 청취"·"준비 중 탭은 시작 완료 뒤 정지": 수 분 뒤 사용자 의사와 무관하게 마이크가 켜져 탐색 낭독이 녹음된다 |
 | 13 | 받아쓰기 60초 캡·정지 뒤 3초 종결 상한 | 캡 없음: 분할 세션 요청으로 무기한 청취가 가능해진다. 상한 없음: 콜백을 내지 않는 구현에서 "중지"에 갇힌다 |
 | 14 | 시작·정지음은 `ToneGenerator(STREAM_SYSTEM)` | `MediaActionSound`(무음 모드 무시 가능)·새 음원 파일(미니멀) |
+| 15 | 청취 중 구성 변경은 정상 정지(누적분 초안 병합) | 취소: 회전 한 번에 긴 전사가 소리 없이 사라진다. 세션을 ViewModel로 올리기: 탭 이탈 취소를 화면이 따로 챙겨야 한다 |
+| 16 | `emptyAnswer`("답변을 준비하지 못했습니다")는 성공 갈래(질문 헤딩 착지·follow-up) | iOS 동형 — 서버가 `done`을 보냈다. 실패처럼 들리는지는 실기기 참고 |
 
 ## 11. 설계 리뷰 (2026-09-16)
 
@@ -335,3 +340,5 @@ fun NavController.openChat(place: Place?)
 | n9 진행 업데이트 설정 | 반영 — §8-7 참고 |
 | n10 prime 예외·단위 | 반영 — §4-1 |
 | n11 동의 착지 시점 | 반영 — §3-2 |
+
+2차(`~/gildongmu-wt/android-m6-reports/review-m6-design-r2.md`, 기준 78cc20c5): **APPROVE_WITH_CHANGES** — 1차 33건 중 해결 26·부분 6·기각 타당 1, 신규 MAJOR 1·MINOR 8·NIT 11. 반영: R2-M1(건너뛴 실패 통지·받아쓰기 중 결합), R2-m1(타이머 세대 확인·종결 공통 정리·상한 무장 순서·`onReady` 1회·포트 계약), R2-m2(start 대기 중 정지 = 취소), R2-m3(다운로드 뒤 청취하지 않음, Preparing은 보류 대상 아님), R2-m4(실패 착지 근거 정정·헌장 편차 명시 → 코디네이터 보고), R2-m5(§9 가짜 연결·§8-16), R2-m6(착지 관용구 `a11y/Landing.kt` 승격 완료·§7 "물어보기" `landingTarget`), R2-m7(구성 변경 `detach`), R2-m8(다운로드 요청·완료 문구 신규 키 2개), n1(Starting 탭 무시), n2(부착 가드는 main이 앱 전체로), n3(SoundPool 속성 §2), n4(한 프레임 뒤 스크롤), n5(판정 16), n6·n7·n9(§8), n8(전사 착지가 완료 착지 소비), n10(Failed phase 삭제), n11(표기 — 묶음 인덱스는 키 안의 `r`, 동기 착지 예외 머리말). 재리뷰 없이 구현 진행(리뷰어 권고).
