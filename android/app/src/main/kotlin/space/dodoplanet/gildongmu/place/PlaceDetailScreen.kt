@@ -142,9 +142,9 @@ fun PlaceDetailScreen(factory: ViewModelProvider.Factory, nav: PlaceNav, takeRet
             vm.kakaoPlaceId?.let { id ->
                 Button(onClick = { context.openWithFallback(kakaoPlacePlan(id)) { vm.onOpenFailed() } }, Modifier.tapTarget().testTag("kakaoPlace")) { Text(stringResource(R.string.android_route_kakaoPlace)) }
             }
-            // 16~19. 이 장소 주변(앵커 3행; 날씨·공기질은 M2b)
+            // 16~19. 이 장소 주변(앵커 4행, iOS 순서 — 이용 빈도순)
             Text(stringResource(R.string.android_place_nearbyHeading), Modifier.fillMaxWidth().mergedRow("nearby-heading").headingText().padding(top = 12.dp, bottom = 4.dp), style = MaterialTheme.typography.titleMedium)
-            for (kind in listOf(NearbyKind.subway, NearbyKind.bus, NearbyKind.bike)) {
+            for (kind in listOf(NearbyKind.subway, NearbyKind.bus, NearbyKind.bike, NearbyKind.conditions)) {
                 Button(
                     onClick = { nav.onOpenNearby(kind, anchor) },
                     Modifier.fillMaxWidth().tapTarget().testTag("anchor-${kind.name}").focusRequester(anchorFocus.getOrPut(kind) { FocusRequester() }),
