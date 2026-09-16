@@ -152,6 +152,13 @@ class AppSourceGuardTest {
         assertEquals(emptyList(), offenders)
     }
 
+    /** spec §14-2 판정 39 — 로케일 오버라이드 경로는 하나. */
+    @Test fun `createConfigurationContext 호출은 AppConfig 한 곳이고 설정 파일 이름은 gildongmu다`() {
+        assertEquals(listOf("AppConfig.kt"), sources.filter { it.extension == "kt" && it.readText().contains("createConfigurationContext(") }.map { it.name })
+        assertTrue(android.resolve("app/src/main/kotlin/space/dodoplanet/gildongmu/storage/SharedPreferencesStore.kt").readText().contains("name: String = \"gildongmu\""))
+        assertTrue(android.resolve("app/src/main/kotlin/space/dodoplanet/gildongmu/MainActivity.kt").readText().let { it.contains("override fun attachBaseContext") && it.contains("AppConfig.localized(base)") })
+    }
+
     @Test fun `Google Play 서비스 의존은 0이다`() {
         val gradle = listOf(android.resolve("app/build.gradle.kts"), android.resolve("gradle/libs.versions.toml"))
         assertTrue(gradle.none { it.readText().contains("play-services") })
