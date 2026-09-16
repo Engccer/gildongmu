@@ -36,7 +36,7 @@ data class GuideStepSpan(
     val startD: Double,
     val endD: Double,
     val isLong: Boolean,
-    /** 서버 투영 결정 행동(자동차 `turnType` → `CarAction`). 도보 스텝엔 없다. */
+    /** 서버 투영 결정 행동(서버 `attachStepActions` — 자동차 `turnType`·도보 `walkStepAction` 둘 다, E16 축 3). 서버가 안 주면 null. */
     val action: WalkAction? = null,
 )
 
@@ -59,7 +59,7 @@ data class GuideProjection(
 data class GuideStepGeometry(
     val description: String,
     val pathCoords: List<RoutePoint>?,
-    /** 서버 투영 결정 행동(자동차 전용). 도보는 null. */
+    /** 서버 투영 결정 행동(자동차·도보 둘 다 서버가 준다, E16 축 3). 없으면 null. */
     val action: WalkAction? = null,
 )
 
