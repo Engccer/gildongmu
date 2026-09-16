@@ -76,6 +76,7 @@ describe("안드로이드 미러 등록부", () => {
   it("제외는 계획 §2 목록과 정확히 같다", () => {
     expect(all.filter((e) => e.status === "excluded").map((e) => e.swift).sort()).toEqual([
       "AudioSignalProtocol.swift",
+      "GuideAudioSession.swift",
       "Resources/Localizable.xcstrings",
     ]);
   });
