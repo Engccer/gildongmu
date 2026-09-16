@@ -9,6 +9,12 @@
 
 ---
 
+## 2026-09-17
+
+### 안드로이드 M2c — 현재 위치 수동 지정 (`android/app/.../location`)
+
+사용자가 GPS 대신 장소·주소로 자기 위치를 지정하면 내 주변·검색 거리·길찾기 출발지·끝점 후보 정렬이 그 좌표를 쓴다(우선순위 장소 앵커 > 수동 > GPS, 실시간 안내는 M4). 런타임 정본 `ManualLocationStore`(JSON 영속·IO hydration·판정 비영속), 이동 판정 `ManualLocationJudge`(ON_START·force 조회, CAS·재진입·30초 디바운스, 100m 넘으면 자동 해제 + 앱 통지), 앱 층 좌표 진입점 `EffectiveLocation` 하나(소스 가드), 앱 통지 큐 `AppNotices`를 화면 `StatusLine`이 한 문장으로 병합. 지정 화면은 M3 끝점 검색을 `EndpointPicker`로 추출해 재사용(지정 시 권한 요청 없음 — 판정 37), 허브 표시줄은 버튼("지정한 위치, X, 위치 지정하기"), 둘러보기 문장·통지와 길찾기 출발지 필드가 수동 갈래를 낸다. 신설 문자열 0, 유도형 금지 표현 소스 가드(웹 `manual-location-copy` 축 ①~⑤ 이식). spec `docs/superpowers/specs/2026-09-16-android-m2-place-nearby-design.md` §13, 계획 `docs/superpowers/plans/2026-09-17-android-m2c-manual-location.md`.
+
 ## 2026-09-16
 
 ### 안드로이드 M6 — 채팅(AI에게 질문) (`android/app/.../chat`·`speech/DictationSession.kt`)
