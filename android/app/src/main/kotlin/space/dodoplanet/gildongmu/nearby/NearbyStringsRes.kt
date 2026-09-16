@@ -12,7 +12,6 @@ fun nearbyStrings(context: Context): NearbyStrings {
         lang = { AppLocale.current(res) },
         dataLocale = { AppLocale.dataLocale(res) },
         spokenMeters = { context.getString(R.string.android_unit_spokenMeters) },
-        announceEmpty = { context.getString(R.string.android_nearby_announceEmpty) },
         refreshFailed = { context.getString(R.string.android_nearby_refreshFailed) },
         refreshDenied = { context.getString(R.string.android_nearby_refreshDenied) },
         refreshReduced = { context.getString(R.string.android_nearby_refreshReduced) },
@@ -28,5 +27,6 @@ fun nearbyStrings(context: Context): NearbyStrings {
         bikeEmpty = { context.getString(R.string.android_nearby_bikeEmpty) },
         aroundEmpty = { context.getString(R.string.android_nearby_aroundEmpty) },
         routeStopsEmpty = { context.getString(R.string.android_nearby_routeStopsEmpty) },
+        noAppToOpen = { context.getString(R.string.android_common_noAppToOpen) },
     )
 }

@@ -10,7 +10,7 @@ import kotlin.test.assertNull
 /**
  * 빠른하차 문장(E5) — 웹 `quick-exit-text.test.ts`·Kit `QuickExitTextTests`와 같은 케이스를 본다.
  * 문구가 갈리면 같은 하차역이 웹·CLI·앱에서 다르게 낭독된다. Kit의 `QuickExitGuideRouteTests`
- * (`buildTransitGuideRoute`)는 GUIDE `TransitGuide` 몫이다(core.json 참조).
+ * (`buildTransitGuideRoute`)는 `TransitGuideTest`에 있다(guide.json 참조).
  */
 class QuickExitTextTest {
     private val elevator = QuickExitDoor(kind = "door", doors = listOf("6-4"))

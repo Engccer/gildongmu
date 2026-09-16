@@ -2,13 +2,10 @@ package space.dodoplanet.gildongmu.place
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import space.dodoplanet.gildongmu.a11y.Notice
 import space.dodoplanet.gildongmu.kit.PlaceHoursService
 import space.dodoplanet.gildongmu.kit.PlaceHoursToday
@@ -40,7 +37,6 @@ class PlaceDetailViewModel(
     val place: Place,
     private val hours: PlaceHoursService,
     private val strings: PlaceStrings,
-    private val io: CoroutineDispatcher = Dispatchers.IO,
 ) : ViewModel() {
     private val _hoursLine = MutableStateFlow<String?>(null)
     val hoursLine: StateFlow<String?> = _hoursLine.asStateFlow()
@@ -52,7 +48,7 @@ class PlaceDetailViewModel(
 
     init {
         viewModelScope.launch {
-            val today = withContext(io) { hours.today(place.lat, place.lng, place.name, place.roadAddress) }
+            val today = hours.today(place.lat, place.lng, place.name, place.roadAddress) // 전송 계층이 IO로 옮긴다
             _hoursLine.value = today?.let { hoursLineText(it, strings) }
         }
     }

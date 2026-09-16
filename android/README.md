@@ -8,6 +8,8 @@ iOS 앱과 기능 등가인 안드로이드 네이티브 앱(판정 문서 `docs
 android/
   app/   Jetpack Compose 화면 + 플랫폼 서비스([3]·[4]). 패키지 space.dodoplanet.gildongmu
          location/  현재 위치 공유 스토어(LocationStore: 캐시·권한·정밀도·게이트 취득, GMS 무의존) — M3·M2가 같은 시그니처를 쓴다(M2 spec §4)
+         nearby/    내 주변 허브·공통 껍데기(NearbyScreenViewModel = :kit NearbyLoadCore 소비)·kind 조립기·문장 조립 (M2 spec §3-4~3-9·§5)
+         place/     장소 상세(Place JSON 라우트·영업시간·외부 지도 열기 판정) (M2 spec §3-2)
   kit/   순수 Kotlin/JVM, iOS GildongmuKit의 미러([2] 판정 계층). 패키지 space.dodoplanet.gildongmu.kit
          Models/*.swift → kit/.../kit/models/*.kt (하위 패키지 space.dodoplanet.gildongmu.kit.models)
   kit/mirrors/{foundation,core,guide}.json   미러 등록부(§5)
@@ -151,7 +153,7 @@ iOS Kit 카탈로그와 같은 빌더(`ios/scripts/messages-to-xcstrings.mjs`의
 
 ### 앱 문자열 (`:app`)
 
-`res/values(-lang)/strings.xml`도 **생성물**이다 — 손으로 고치지 않는다. 정본은 `messages/*.json` + `android/i18n/android-extra/*.json`(안드로이드 전용 키 `android.*`, 웹 키를 덮는 오버라이드).
+`res/values(-lang)/strings.xml`도 **생성물**이다 — 손으로 고치지 않는다. 정본은 `messages/*.json` + `ios/i18n/ios-extra/*.json`의 `ios.` 접두 키(→ `android.*`로 개명해 일괄 도입, 읽기만) + `android/i18n/android-extra/*.json`(안드로이드 전용 키·플랫폼 문안 오버라이드 — 같은 이름이면 android-extra가 이긴다). ios-extra의 비접두 키(웹 키를 덮는 iOS 오버라이드, "iPhone 만보계" 등)는 들이지 않는다.
 
 ```bash
 node android/scripts/messages-to-android-strings.mjs            # 생성(기존 키 순서 변경은 exit 1)
@@ -159,10 +161,12 @@ node android/scripts/messages-to-android-strings.mjs --check    # 최신 여부
 node android/scripts/messages-to-android-strings.mjs --update-arg-order   # 호출부 인자 순서를 함께 고친 뒤에만
 ```
 
-- 값은 iOS 카탈로그와 같은 모양(`%N$s` 위치 지정자 + ICU 복수 블록 원문). 복수형은 `<plurals>`가 아니라 `:kit` `formatLocalized`가 런타임에 푼다 — **인자 있는 문자열은 `appLocalized(res, R.string.x, args)` / Compose `appString(...)`만** 지난다(`getString(id, args)`·`stringResource(id, args)`·`pluralStringResource` 금지, `LocalizedCallSiteGuardTest`가 잠근다). 인자 없는 것은 `stringResource(id)` 그대로.
+- 값은 iOS 카탈로그와 같은 모양(`%N$s` 위치 지정자 + ICU 복수 블록 원문). 복수형은 `<plurals>`가 아니라 `:kit` `formatLocalized`가 런타임에 푼다 — **인자 있는 문자열은 `appLocalized(res, R.string.x, args)`만** 지난다(`getString(id, args)`·`stringResource(id, args)`·`pluralStringResource` 금지, `LocalizedCallSiteGuardTest`가 잠근다). 인자 없는 것은 `stringResource(id)` 그대로.
+- ⚠ **`%%`·`%N$s` 밖의 `%`가 남은 값은 스크립트가 거부한다** — iOS 지정자 `%@`가 원문에 박힌 키(`ios.nearby.subwayEmptyNearest`·`subwayClosed`)가 그대로 들어오면 aapt2 거부 또는 `String.format` 예외다. 그런 키는 android-extra에 **명명 플레이스홀더**로 다시 쓰고 드리프트 테스트의 `INTENDED_DIFFERENCES`에 사유를 적는다(iOS 문안과 다른 모든 `android.X`는 그 목록에 있어야 하고, 목록에 있는데 어느 로케일에서도 같으면 낡은 항목으로 잡힌다).
 - 리소스 이름은 키의 `.`→`_`(`search.placeCount` → `R.string.search_placeCount`).
 - 언어 판정은 `AppLocale.current(res)` = 각 로케일 파일의 마커 `app_locale`(리소스 해석기가 고른 폴더가 곧 정답). `dataLocale`은 ko 외 전부 en.
-- ko 위치 인자 순서는 `android/i18n/arg-order.json`이 잠근다(iOS와 같은 게이트). 드리프트 가드 `src/lib/__tests__/android-strings-drift.test.ts`(최신·arg-order·왕복·리소스 이름·ios-extra 문안 동일·`%%`).
+- ko 위치 인자 순서는 `android/i18n/arg-order.json`이 잠근다(iOS와 같은 게이트, 개명 키는 `ios.X` 순서와 대조). 드리프트 가드 `src/lib/__tests__/android-strings-drift.test.ts`(최신·arg-order·왕복·리소스 이름·ios-extra 문안 동일(의도된 차이 목록)·거부 키·도입/무시·개명 arg-order).
+- 문장은 ViewModel에 **호출 시점 람다**로 주입한다(`SearchStrings`·`NearbyStrings`·`PlaceStrings` — 앱별 언어 변경을 따라간다, JVM 테스트 가능). 낭독에 거리가 들면 `spokenDistanceUnits(text, "미터")`를 병합 컨테이너의 `contentDescription`에(실기기 판정 뒤 제거 가능).
 
 ## 7. 게이트 락 절차
 

@@ -45,7 +45,7 @@ android/app/src/main/kotlin/space/dodoplanet/gildongmu/
   nearby/NearbyLines.kt             subwayStationLine·subwayArrivalLine·busArrivalLine·bikeLine·bearingLabel·nearbyTitle
   nearby/NearbyHubScreen.kt         허브
   nearby/NearbyKindScreen.kt        공통 껍데기(TopAppBar·phase 스위치·착지·더 보기) + 4 도메인 본문
-  nearby/BusRouteStopsScreen.kt     경유 정류소
+  (경유 정류소 화면은 NearbyKindScreen.kt 안 — 껍데기 공유)
   place/PlaceRoutes.kt              PlaceDetailRoute(placeJson) + Place JSON 왕복
   place/PlaceDetailViewModel.kt     hours·notice·복사·열기 판정
   place/ExternalOpen.kt             chooseFallback(순수) + openWithFallback(Intent)

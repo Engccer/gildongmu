@@ -27,7 +27,7 @@ class PlaceDetailViewModelTest {
         hoursLine = { "오늘 영업시간 $it (Google Maps)" }, allDay = { "24시간" }, closed = { "오늘 휴무 (Google Maps)" }, nextDay = { "다음 날 $it" },
     )
     private val place = Place(id = "kakao-7", name = "카페", category = "카페", address = "서울", roadAddress = "서울 강동구 천호대로 1", lat = 37.5, lng = 127.1)
-    private fun vm(body: HttpResponse) = PlaceDetailViewModel(place, PlaceHoursService(stubbedClient { body }), strings, io = dispatcher)
+    private fun vm(body: HttpResponse) = PlaceDetailViewModel(place, PlaceHoursService(stubbedClient { body }), strings)
 
     @Test fun `영업시간 200이면 한 줄, 그 밖(429·404·hours null)은 줄 없음·통지 없음`() = runTest(dispatcher) {
         val ok = vm(HttpResponse(200, """{"hours":{"ranges":[{"open":"09:00","close":"18:00","closesNextDay":false}],"allDay":false}}"""))

@@ -14,12 +14,14 @@ object NearbyKinds {
         coverage = NearbyCoverage.korea,
         fetch = { c -> service.subwayArrivals(c!!.lat, c.lng, strings.dataLocale()) },
         isEmpty = { it.stations.isEmpty() },
+        // 역명이 정체성이자 착지 키다 — 근접역 조회가 `dedupeByName`으로 같은 이름을 하나만 남기므로(`subway-nearby.ts`) 이 목록 안에서는
+        // 중복이 생기지 않는다. 버스가 nodeId를 쓰는 것과 조건이 다르다(정류소명 중복 실존).
         firstKey = { it.stations.firstOrNull()?.let { s -> "station-${s.stationName}" } },
         loadedNotice = { r ->
             // 0건이면 최근접 역 거리를 실어 "1km 안에 없다"와 "이 지역엔 도시철도가 없다"를 가른다(웹 emptyNearest 미러).
             if (r.stations.isEmpty()) subwayEmptyCopy(r, strings) else strings.announceStations(r.stations.size)
         },
-        emptyCopy = strings.subwayEmpty,
+        emptyCopy = { subwayEmptyCopy(it, strings) },
     )
 
     /** 0건 문구 — 통지와 본문이 같은 문장(최근접 역이 있으면 거리 포함). */
@@ -34,7 +36,7 @@ object NearbyKinds {
         isEmpty = { it.isEmpty() },
         firstKey = { it.firstOrNull()?.let { s -> "stop-${s.nodeId}" } }, // 정류소명 중복 실존 → nodeId
         loadedNotice = { if (it.isEmpty()) strings.busEmpty() else strings.announceStops(it.size) },
-        emptyCopy = strings.busEmpty,
+        emptyCopy = { strings.busEmpty() },
     )
 
     fun bike(service: NearbyService, strings: NearbyStrings) = NearbyKindSpec<List<BikeStation>>(
@@ -43,7 +45,7 @@ object NearbyKinds {
         isEmpty = { it.isEmpty() },
         firstKey = { it.firstOrNull()?.let { s -> "bike-${s.stationId}" } },
         loadedNotice = { if (it.isEmpty()) strings.bikeEmpty() else strings.announceBikes(it.size) },
-        emptyCopy = strings.bikeEmpty,
+        emptyCopy = { strings.bikeEmpty() },
     )
 
     fun around(service: NearbyService, strings: NearbyStrings) = NearbyKindSpec<AroundPayload>(
@@ -52,7 +54,7 @@ object NearbyKinds {
         isEmpty = { it.isAllAbsent },
         firstKey = { if (it.isAllAbsent) null else "around-top" }, // 위치 문장(헤딩)이 착지 지점
         loadedNotice = { if (it.isAllAbsent) strings.aroundEmpty() else strings.aroundLoaded() },
-        emptyCopy = strings.aroundEmpty,
+        emptyCopy = { strings.aroundEmpty() },
     )
 
     /** 파라미터형(좌표 없음): 경유 정류소. 첫 로드 착지 없음(iOS 동형) — firstKey null. */
@@ -63,6 +65,6 @@ object NearbyKinds {
             isEmpty = { it.isEmpty() },
             firstKey = { null },
             loadedNotice = { if (it.isEmpty()) strings.routeStopsEmpty() else strings.announceRouteStops(it.size) },
-            emptyCopy = strings.routeStopsEmpty,
+            emptyCopy = { strings.routeStopsEmpty() },
         )
 }

@@ -29,7 +29,7 @@ class PlaceDetailA11yTest {
     fun detailLinesAreSingleNodesAndTitleLands() {
         val place = Place(id = "kakao-1", name = "강동역", category = "교통,수송 > 지하철", address = "서울 강동구 천호동 1", roadAddress = "서울 강동구 천호대로 1", lat = 37.535, lng = 127.132, phone = "02-000-0000")
         val factory = placeDetailFactory(place, PlaceHoursService(stubbedClient { HttpResponse(404, "") }), placeStrings(rule.activity.applicationContext))
-        rule.setContent { MaterialTheme { PlaceDetailScreen(PlaceDetailRoute.of(place), factory, PlaceNav({}, { _, _ -> }), returnFocus = null) } }
+        rule.setContent { MaterialTheme { PlaceDetailScreen(factory, PlaceNav({}, { _, _ -> }), takeReturnFocus = { null }) } }
         rule.enableAccessibilityChecks()
         rule.waitForIdle()
         rule.onNodeWithTag("title").assertTextContains("강동역").assertIsFocused()

@@ -40,6 +40,7 @@ class AndroidPermissionGate(context: Context) : PermissionGate {
         val deferred = CompletableDeferred<LocationPermission>()
         val first = waiters.isEmpty()
         waiters += deferred
+        deferred.invokeOnCompletion { waiters.remove(deferred) } // 취소된 대기자가 "다이얼로그 띄울지" 판정에 남지 않게
         if (first) launcher(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
         return deferred.await()
     }

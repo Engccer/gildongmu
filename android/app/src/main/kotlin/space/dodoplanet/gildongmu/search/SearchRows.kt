@@ -32,6 +32,7 @@ import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import space.dodoplanet.gildongmu.a11y.mergedRow
+import space.dodoplanet.gildongmu.a11y.tapTarget
 import space.dodoplanet.gildongmu.kit.formatDistance
 import space.dodoplanet.gildongmu.kit.spokenDistanceUnits
 import space.dodoplanet.gildongmu.i18n.appLocalized
@@ -45,7 +46,6 @@ import space.dodoplanet.gildongmu.kit.pickCategory
 
 // 결과 행·최근 검색 행·칩 축(spec §3-5·§3-7·§3-8). 판정은 :kit, 여기는 시각·시맨틱 조립만.
 
-/** 장소 행: 이름 줄 + `분류, 주소` 줄을 한 객체로. M1은 비활성 텍스트(상세는 M2). 거리는 M1에 좌표가 없어 오지 않는다. */
 /** 장소 행 보조 줄: 분류·주소·거리(좌표 가중 검색이면 서버 주석 `distanceMeters`가 있다 — 재정렬 없이 표기만). */
 fun placeSecondaryLine(place: Place, lang: String, distanceLabel: (String) -> String): String = joinText(
     pickCategory(lang, place.category, place.categoryEn),
@@ -53,6 +53,7 @@ fun placeSecondaryLine(place: Place, lang: String, distanceLabel: (String) -> St
     place.distanceMeters?.let { distanceLabel(formatDistance(it.toInt())) },
 )
 
+/** 장소 행: 이름 줄 + `분류, 주소, 거리` 줄을 한 객체로. `onClick`이 있으면 버튼(→ 상세), 없으면 텍스트 객체. */
 @Composable
 fun PlaceRow(
     place: Place,

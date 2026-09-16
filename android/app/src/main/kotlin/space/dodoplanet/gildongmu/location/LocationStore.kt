@@ -94,8 +94,9 @@ class LocationStore(
             }
             if (shouldAcceptFix(raw.accuracyMeters, age, acceptAccuracy)) accepted.complete(NearbyCoord(raw.lat, raw.lng))
         }
-        val subscriptions = providers.map { source.subscribe(it, onFix) }
+        val subscriptions = ArrayList<AutoCloseable>()
         try {
+            providers.forEach { subscriptions += source.subscribe(it, onFix) } // 둘째가 던져도 첫 구독은 finally가 닫는다
             return withTimeoutOrNull(timeoutMs) { accepted.await() }
                 ?: best?.let { NearbyCoord(it.lat, it.lng) }
                 ?: throw LocationException(LocationException.Kind.Unavailable)

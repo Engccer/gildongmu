@@ -1,6 +1,7 @@
 package space.dodoplanet.gildongmu.nearby
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
@@ -37,15 +38,20 @@ import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.ViewModelProvider
+import android.util.Log
 import kotlinx.coroutines.launch
+import space.dodoplanet.gildongmu.BuildConfig
 import space.dodoplanet.gildongmu.R
 import space.dodoplanet.gildongmu.a11y.AppTopBar
 import space.dodoplanet.gildongmu.a11y.StatusLine
 import space.dodoplanet.gildongmu.a11y.headingText
 import space.dodoplanet.gildongmu.a11y.mergedRow
+import space.dodoplanet.gildongmu.a11y.tapTarget
 import space.dodoplanet.gildongmu.i18n.AppLocale
 import space.dodoplanet.gildongmu.i18n.appLocalized
 import space.dodoplanet.gildongmu.kit.NearbyLoadPhase
+import space.dodoplanet.gildongmu.kit.SubwayArrivalSegment
+import space.dodoplanet.gildongmu.kit.bilingualName
 import space.dodoplanet.gildongmu.kit.UnavailableHereReason
 import space.dodoplanet.gildongmu.kit.buildOverviewLines
 import space.dodoplanet.gildongmu.kit.formatDistance
@@ -59,6 +65,7 @@ import space.dodoplanet.gildongmu.kit.spokenDistanceUnits
 import space.dodoplanet.gildongmu.kit.surroundingPlaceToPlace
 import space.dodoplanet.gildongmu.location.appDetailsSettingsIntent
 import space.dodoplanet.gildongmu.location.locationSourceSettingsIntent
+import space.dodoplanet.gildongmu.nav.tryStartActivity
 import space.dodoplanet.gildongmu.search.PlaceRow
 
 /** 화면이 요청하는 스택 이동(내비게이션은 `AppRoot` 몫). */
@@ -70,12 +77,12 @@ class NearbyNav(
 
 /** kind로 갈라 타입이 맞는 ViewModel과 본문을 고른다. 껍데기는 공통(`NearbyShell`). */
 @Composable
-fun NearbyKindScreen(route: NearbyKindRoute, factory: ViewModelProvider.Factory, nav: NearbyNav, requestPrecise: suspend () -> Boolean, isLocationEnabled: () -> Boolean) {
-    val title = nearbyTitle(stringResource(kindTitle(route.kind)), route.anchor, AppLocale.current(LocalContext.current.resources))
+fun NearbyKindScreen(route: NearbyKindRoute, anchor: PlaceAnchor?, factory: ViewModelProvider.Factory, nav: NearbyNav, requestPrecise: suspend () -> Boolean, isLocationEnabled: () -> Boolean) {
+    val title = nearbyTitle(stringResource(kindTitle(route.kind)), anchor, AppLocale.current(LocalContext.current.resources))
     when (route.kind) {
         NearbyKind.around -> {
             val vm: NearbyScreenViewModel<AroundPayload> = viewModel(factory = factory)
-            NearbyShell(title, vm, nav.onBack, requestPrecise, isLocationEnabled) { p, req -> AroundBody(p, vm, req, nav.onOpenPlace) }
+            NearbyShell(title, vm, nav.onBack, requestPrecise, isLocationEnabled) { p, req -> AroundBody(p, vm, req) { place -> vm.returnFocus.remember("place-${place.id}"); nav.onOpenPlace(place) } }
         }
         NearbyKind.subway -> {
             val vm: NearbyScreenViewModel<SubwayNearbyResult> = viewModel(factory = factory)
@@ -83,7 +90,7 @@ fun NearbyKindScreen(route: NearbyKindRoute, factory: ViewModelProvider.Factory,
         }
         NearbyKind.bus -> {
             val vm: NearbyScreenViewModel<List<BusStop>> = viewModel(factory = factory)
-            NearbyShell(title, vm, nav.onBack, requestPrecise, isLocationEnabled) { p, req -> BusBody(p, req, nav.onOpenRouteStops) }
+            NearbyShell(title, vm, nav.onBack, requestPrecise, isLocationEnabled) { p, req -> BusBody(p, req) { key, route -> vm.returnFocus.remember(key); nav.onOpenRouteStops(route) } }
         }
         NearbyKind.bike -> {
             val vm: NearbyScreenViewModel<List<BikeStation>> = viewModel(factory = factory)
@@ -123,36 +130,46 @@ fun <P : Any> NearbyShell(
     val phase by vm.phase.collectAsState()
     val notice by vm.notice.collectAsState()
     val landing by vm.landing.collectAsState()
+    val isLoading by vm.isLoading.collectAsState()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    // 키 → requester. 커밋마다 비우지 않는다(같은 키가 다시 오면 재사용, 화면 수명이라 누수 규모 무시).
     val requesters = remember { mutableMapOf<String, FocusRequester>() }
     val requesterFor: (String) -> FocusRequester = { key -> requesters.getOrPut(key) { FocusRequester() } }
+    fun land(key: String, what: String) = runCatching { requesters[key]?.requestFocus() }.onFailure { Log.w("Nearby", "$what 착지 실패 $key", it) }
     val causeFocus = remember { FocusRequester() }
     val checking = stringResource(R.string.android_common_checking)
 
-    LaunchedEffect(Unit) { vm.load() }
+    LaunchedEffect(Unit) { vm.loadOnEnter() }
+    // pop 복귀 착지(spec §3-1): 소비는 효과 안에서 한 번.
+    LaunchedEffect(Unit) {
+        val key = vm.returnFocus.take() ?: return@LaunchedEffect
+        withFrameNanos { }
+        land(key, "복귀")
+    }
 
     LaunchedEffect(landing) {
         val l = landing as? Landing.Key ?: return@LaunchedEffect
         if (l.rev <= vm.consumedLanding) return@LaunchedEffect
         vm.consumedLanding = l.rev
         withFrameNanos { }
-        requesters[l.key]?.let { runCatching { it.requestFocus() } }
+        land(l.key, "첫 로드/더 보기")
     }
     // 원인 헤딩 착지: 목록이 통째로 사라지는 전락과 첫 로드 실패 — 진입 뒤 첫 낭독이 원인이 되게(spec §3-5).
     val causeKind = phase.let { it is NearbyLoadPhase.Denied || it is NearbyLoadPhase.ReducedAccuracy || it is NearbyLoadPhase.OutOfCoverage || it is NearbyLoadPhase.UnavailableHere || it is NearbyLoadPhase.FailedLocation || it is NearbyLoadPhase.FailedServer || it is NearbyLoadPhase.Empty }
     LaunchedEffect(phase::class, causeKind) {
         if (!causeKind) return@LaunchedEffect
         withFrameNanos { }
-        runCatching { causeFocus.requestFocus() }
+        runCatching { causeFocus.requestFocus() }.onFailure { Log.w("Nearby", "원인 헤딩 착지 실패", it) }
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0), // 골격 Scaffold가 이미 먹였다(이중 인셋 방지)
         topBar = {
             AppTopBar(title, onBack) {
                 IconButton(
                     onClick = { vm.load(force = true) },
-                    modifier = Modifier.testTag("refresh").semantics { if (phase is NearbyLoadPhase.Loading) stateDescription = checking },
+                    modifier = Modifier.testTag("refresh").semantics { if (isLoading) stateDescription = checking },
                 ) { Icon(Icons.Filled.Refresh, contentDescription = stringResource(R.string.android_common_refresh)) }
             }
         },
@@ -166,12 +183,12 @@ fun <P : Any> NearbyShell(
                 .semantics { testTagsAsResourceId = true },
         ) {
             StatusLine(notice, Modifier.padding(vertical = 8.dp))
-            val cause = Modifier.fillMaxWidth().mergedRow("cause").headingText().focusRequester(causeFocus).padding(vertical = 8.dp)
+            val cause = Modifier.fillMaxWidth().mergedRow("cause", focus = causeFocus).headingText().padding(vertical = 8.dp)
             when (val p = phase) {
                 NearbyLoadPhase.Idle, NearbyLoadPhase.Loading -> Text(loadingText, Modifier.fillMaxWidth().mergedRow("loading").padding(vertical = 8.dp))
                 is NearbyLoadPhase.Loaded -> {
                     if (vm.isEmpty(p.payload)) {
-                        val copy = vm.emptyCopy()
+                        val copy = vm.emptyCopy(p.payload)
                         Text(copy, Modifier.fillMaxWidth().mergedRow("empty", spokenDistanceUnits(copy, stringResource(R.string.android_unit_spokenMeters))).padding(vertical = 8.dp))
                     } else {
                         body(p.payload, requesterFor)
@@ -180,7 +197,7 @@ fun <P : Any> NearbyShell(
                 NearbyLoadPhase.Denied -> {
                     Text(stringResource(R.string.android_common_geoDeniedTitle), cause, style = MaterialTheme.typography.titleMedium)
                     Text(stringResource(R.string.android_common_geoDeniedDesc), Modifier.fillMaxWidth().mergedRow("cause-desc").padding(vertical = 8.dp))
-                    Button(onClick = { context.startActivity(appDetailsSettingsIntent(context)) }, Modifier.testTag("openSettings")) { Text(stringResource(R.string.android_common_openSettings)) }
+                    Button(onClick = { if (!context.tryStartActivity(appDetailsSettingsIntent(context))) vm.notifyNoApp() }, Modifier.tapTarget().testTag("openSettings")) { Text(stringResource(R.string.android_common_openSettings)) }
                 }
                 NearbyLoadPhase.ReducedAccuracy -> {
                     Text(stringResource(R.string.android_common_geoReducedTitle), cause, style = MaterialTheme.typography.titleMedium)
@@ -189,10 +206,10 @@ fun <P : Any> NearbyShell(
                         onClick = {
                             scope.launch {
                                 // 재요청이 업그레이드 다이얼로그를 띄운다(Android 12). 여전히 대략이면 설정으로.
-                                if (requestPrecise()) vm.load(force = true) else context.startActivity(appDetailsSettingsIntent(context))
+                                if (requestPrecise()) vm.load(force = true) else if (!context.tryStartActivity(appDetailsSettingsIntent(context))) vm.notifyNoApp()
                             }
                         },
-                        Modifier.testTag("allowPrecise"),
+                        Modifier.tapTarget().testTag("allowPrecise"),
                     ) { Text(stringResource(R.string.android_common_allowPrecise)) }
                 }
                 NearbyLoadPhase.OutOfCoverage -> Text(stringResource(R.string.android_common_outOfCoverage), cause)
@@ -204,12 +221,14 @@ fun <P : Any> NearbyShell(
                     // 기기 위치 서비스 꺼짐은 렌더 시 다시 판정한다(spec §3-5) — 원인이 다르면 문장도 다르다.
                     if (!isLocationEnabled()) {
                         Text(stringResource(R.string.android_common_locationOff), cause, style = MaterialTheme.typography.titleMedium)
-                        Button(onClick = { context.startActivity(locationSourceSettingsIntent()) }, Modifier.testTag("openLocationSettings")) { Text(stringResource(R.string.android_common_openSettings)) }
+                        Button(onClick = { if (!context.tryStartActivity(locationSourceSettingsIntent())) vm.notifyNoApp() }, Modifier.tapTarget().testTag("openLocationSettings")) { Text(stringResource(R.string.android_common_openSettings)) }
                     } else {
                         Text(stringResource(R.string.android_common_locationFailed), cause, style = MaterialTheme.typography.titleMedium)
                     }
                 }
-                NearbyLoadPhase.FailedServer, NearbyLoadPhase.Empty -> Text(failedText, cause, style = MaterialTheme.typography.titleMedium)
+                NearbyLoadPhase.FailedServer -> Text(failedText, cause, style = MaterialTheme.typography.titleMedium)
+                // M2 kind 5종의 fetch는 non-null이라 도달 불가(spec §3-5). 도달하게 되면 "부재"와 "실패"를 가르는 문장을 따로 둔다 — 지금은 방어.
+                NearbyLoadPhase.Empty -> Text(failedText, cause, style = MaterialTheme.typography.titleMedium)
             }
         }
     }
@@ -224,10 +243,10 @@ private fun SubwayBody(result: SubwayNearbyResult, requesterFor: (String) -> Foc
     val isEn = AppLocale.dataLocale(res) == "en"
     val meters = stringResource(R.string.android_unit_spokenMeters)
     val express = stringResource(R.string.subwayArrival_express)
-    val segmentText = { seg: space.dodoplanet.gildongmu.kit.SubwayArrivalSegment ->
+    val segmentText = { seg: SubwayArrivalSegment ->
         val id = subwayArrivalSegmentResId(seg.key)
         if (id == null) {
-            if (space.dodoplanet.gildongmu.BuildConfig.DEBUG) error("subwayArrivalProseSegments 키 미매핑: ${seg.key}")
+            if (BuildConfig.DEBUG) error("subwayArrivalProseSegments 키 미매핑: ${seg.key}")
             seg.key // 릴리스는 키를 노출해 침묵을 피한다(빈 문자열 금지)
         } else appLocalized(res, id, *seg.args.toTypedArray())
     }
@@ -237,7 +256,7 @@ private fun SubwayBody(result: SubwayNearbyResult, requesterFor: (String) -> Foc
         val key = "station-${station.stationName}"
         Text(
             joinText(line.visual, distance),
-            Modifier.fillMaxWidth().mergedRow(key, spokenDistanceUnits(joinText(line.spoken, distance), meters)).headingText().focusRequester(requesterFor(key)).padding(top = 12.dp, bottom = 4.dp),
+            Modifier.fillMaxWidth().mergedRow(key, spokenDistanceUnits(joinText(line.spoken, distance), meters), focus = requesterFor(key)).headingText().padding(top = 12.dp, bottom = 4.dp),
             style = MaterialTheme.typography.titleMedium,
         )
         // 4-state를 뭉개지 않는다: 조회 실패 / 운행 시간 밖 / 실시간 미제공 / 정상(0건 포함)
@@ -257,7 +276,7 @@ private fun SubwayBody(result: SubwayNearbyResult, requesterFor: (String) -> Foc
 }
 
 @Composable
-private fun BusBody(stops: List<BusStop>, requesterFor: (String) -> FocusRequester, onOpenRouteStops: (BusRouteStopsRoute) -> Unit) {
+private fun BusBody(stops: List<BusStop>, requesterFor: (String) -> FocusRequester, onOpenRouteStops: (returnKey: String, BusRouteStopsRoute) -> Unit) {
     val res = LocalContext.current.resources
     val lang = AppLocale.current(res)
     val meters = stringResource(R.string.android_unit_spokenMeters)
@@ -268,7 +287,7 @@ private fun BusBody(stops: List<BusStop>, requesterFor: (String) -> FocusRequest
         val key = "stop-${stop.nodeId}"
         Text(
             heading.visual,
-            Modifier.fillMaxWidth().mergedRow(key, spokenDistanceUnits(heading.spoken, meters)).headingText().focusRequester(requesterFor(key)).padding(top = 12.dp, bottom = 4.dp),
+            Modifier.fillMaxWidth().mergedRow(key, spokenDistanceUnits(heading.spoken, meters), focus = requesterFor(key)).headingText().padding(top = 12.dp, bottom = 4.dp),
             style = MaterialTheme.typography.titleMedium,
         )
         when {
@@ -287,8 +306,9 @@ private fun BusBody(stops: List<BusStop>, requesterFor: (String) -> FocusRequest
                     line,
                     Modifier
                         .fillMaxWidth()
+                        .focusRequester(requesterFor("$key-arrival-$i")) // pop 복귀 착지 대상(clickable의 focusable 앞)
                         .clickable(onClickLabel = hint, role = Role.Button) {
-                            onOpenRouteStops(BusRouteStopsRoute(stop.source, if (stop.source == "tago") stop.cityCode else null, arrival.routeId, arrival.routeNo))
+                            onOpenRouteStops("$key-arrival-$i", BusRouteStopsRoute(stop.source, if (stop.source == "tago") stop.cityCode else null, arrival.routeId, arrival.routeNo))
                         }
                         .testTag("$key-arrival-$i")
                         .defaultMinSize(minHeight = 48.dp)
@@ -312,7 +332,7 @@ private fun BikeBody(stations: List<BikeStation>, requesterFor: (String) -> Focu
         )
         val key = "bike-${station.stationId}"
         // 헤딩 없음 — 한 줄에 전부 흡수, 첫 행이 착지 지점.
-        Text(line.visual, Modifier.fillMaxWidth().mergedRow(key, spokenDistanceUnits(line.spoken, meters)).focusRequester(requesterFor(key)).padding(vertical = 8.dp))
+        Text(line.visual, Modifier.fillMaxWidth().mergedRow(key, spokenDistanceUnits(line.spoken, meters), focus = requesterFor(key)).padding(vertical = 8.dp))
     }
 }
 
@@ -325,10 +345,10 @@ private fun AroundBody(payload: AroundPayload, vm: NearbyScreenViewModel<AroundP
     val overview = payload.overview
 
     // 1. 위치 문장(헤딩, 첫 로드 착지 지점) — 내가 어디 서 있는지가 먼저 오는 질문이다. M2는 GPS만(수동 위치 없음).
-    val placeName = overview?.place?.let { space.dodoplanet.gildongmu.kit.bilingualName(lang, it, en = null, roman = overview.placeRoman) }
+    val placeName = overview?.place?.let { bilingualName(lang, it, en = null, roman = overview.placeRoman) }
     val hereVisual = placeName?.let { appLocalized(res, R.string.android_nearby_aroundHere, it.display) } ?: stringResource(R.string.android_nearby_aroundHereNoPlace)
     val hereSpoken = placeName?.let { appLocalized(res, R.string.android_nearby_aroundHere, it.primary) }
-    Text(hereVisual, Modifier.fillMaxWidth().mergedRow("around-top", hereSpoken).headingText().focusRequester(requesterFor("around-top")).padding(vertical = 8.dp), style = MaterialTheme.typography.titleMedium)
+    Text(hereVisual, Modifier.fillMaxWidth().mergedRow("around-top", hereSpoken, focus = requesterFor("around-top")).headingText().padding(vertical = 8.dp), style = MaterialTheme.typography.titleMedium)
 
     // 2. 한눈에 보기 — 헤딩 + 반경, 불릿 6개(각 한 객체, 낭독은 text + 단위 풀어쓰기, 시각은 한글 병기 꼬리)
     val overviewHeading = stringResource(R.string.whereAmI_overview_heading)
@@ -361,7 +381,7 @@ private fun AroundBody(payload: AroundPayload, vm: NearbyScreenViewModel<AroundP
             PlaceRow(place, lang, spokenMeters = meters, secondaryOverride = secondary, onClick = { onOpenPlace(place) }, modifier = Modifier.focusRequester(requesterFor("place-${place.id}")))
         }
         if (places.size > visibleCount) {
-            Button(onClick = { vm.revealMore(places.size) { i -> "place-${places[i].id}" } }, Modifier.testTag("showMore")) { Text(stringResource(R.string.actions_showMore)) }
+            Button(onClick = { vm.revealMore(places.size) { i -> "place-${places[i].id}" } }, Modifier.tapTarget().testTag("showMore")) { Text(stringResource(R.string.actions_showMore)) }
         }
     }
 }

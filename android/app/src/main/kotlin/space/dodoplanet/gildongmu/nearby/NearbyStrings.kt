@@ -8,7 +8,6 @@ class NearbyStrings(
     val lang: () -> String,
     val dataLocale: () -> String,
     val spokenMeters: () -> String,
-    val announceEmpty: () -> String,
     val refreshFailed: () -> String,
     val refreshDenied: () -> String,
     val refreshReduced: () -> String,
@@ -24,4 +23,5 @@ class NearbyStrings(
     val bikeEmpty: () -> String,
     val aroundEmpty: () -> String,
     val routeStopsEmpty: () -> String,
+    val noAppToOpen: () -> String,
 )
