@@ -51,6 +51,7 @@ class GuideForegroundService : Service() {
         if (stream != null) { GuideDiag.log("service start reused"); return }
         val walk = GuideSession.walk
         val strings = guideStrings(resources)
+        GuideDiag.attachFileSink(this)
         GuideNotification.ensureChannel(this, strings)
         val ui = walk.ui.value
         val notification = GuideNotification.build(this, strings, notificationTitleText(ui, strings), notificationBodyText(ui, strings))

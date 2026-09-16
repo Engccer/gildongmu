@@ -1,6 +1,9 @@
 package space.dodoplanet.gildongmu.guide
 
+import android.content.Context
 import android.util.Log
+import java.io.File
+import java.util.concurrent.Executors
 import space.dodoplanet.gildongmu.BuildConfig
 import java.time.Instant
 import java.time.ZoneOffset
@@ -22,8 +25,37 @@ object GuideDiag {
     val lines: ArrayDeque<String> = ArrayDeque()
     private const val maxLines = 500
 
-    /** 파일 싱크(있으면). 부착은 조각 ④. 메인에서만 대입·호출한다. */
+    /** 파일 싱크(있으면). 메인에서만 대입·호출한다. */
     var sink: ((String) -> Unit)? = null
+
+    private var fileSinkAttached = false
+
+    /**
+     * 파일 싱크 부착(멱등, 전경 서비스 시작 시). 앱 전용 외부 저장소 `guide-diag.log`, 2MB 초과 시 `guide-diag.old.log`로 교체. 쓰기는
+     * 단일 스레드 실행기(메인을 막지 않는다). 회수:
+     * `adb pull /sdcard/Android/data/space.dodoplanet.gildongmu.dev/files/guide-diag.log ~/gildongmu-private/field-logs/android-<날짜>.log`
+     * (정식 번들은 `space.dodoplanet.gildongmu`). 저장소에 커밋하지 않는다(`guide-diag*.log*`).
+     */
+    fun attachFileSink(context: Context) {
+        if (!isEnabled || fileSinkAttached) return
+        val dir = context.applicationContext.getExternalFilesDir(null) ?: return
+        fileSinkAttached = true
+        val file = File(dir, "guide-diag.log")
+        val executor = Executors.newSingleThreadExecutor { r -> Thread(r, "guide-diag").apply { isDaemon = true } }
+        sink = { line ->
+            executor.execute {
+                runCatching {
+                    if (file.length() > 2L * 1024 * 1024) {
+                        val old = File(dir, "guide-diag.old.log")
+                        old.delete()
+                        file.renameTo(old)
+                    }
+                    file.appendText(line + "\n")
+                }
+            }
+        }
+        emit("fileSink path=${file.absolutePath}")
+    }
 
     inline fun log(msg: () -> String) {
         if (!isEnabled) return
