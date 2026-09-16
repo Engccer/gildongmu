@@ -56,7 +56,10 @@
     },
     {
       "swift": "Directions.swift",
-      "status": "pending"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/Directions.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/DirectionsTest.kt",
+      "note": "classify(transit:)·(walk:)·(car:) → classifyTransit·classifyWalk·classifyCar(Result<T> 타입 인자 오버로드 불가), Swift Result<T, Error> → kotlin.Result<T>"
     },
     {
       "swift": "LocationNarrative.swift",
@@ -67,7 +70,10 @@
     },
     {
       "swift": "ManualLocation.swift",
-      "status": "pending"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/ManualLocation.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/ManualLocationTest.kt",
+      "note": "Kit 테스트의 소스 가드(안내_모델이_수동_위치를_참조하지_않는다)는 iOS 앱 BeaconModel.swift 대상이라 미이식 — 안드로이드 안내 모델(:app)이 같은 가드를 단다"
     },
     {
       "swift": "MarkdownPlainText.swift",
@@ -142,7 +148,9 @@
     },
     {
       "swift": "SubwayArrivalLine.swift",
-      "status": "pending"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/SubwayArrivalLine.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/SubwayArrivalLineTest.kt"
     },
     {
       "swift": "TransitAlternativeName.swift",
