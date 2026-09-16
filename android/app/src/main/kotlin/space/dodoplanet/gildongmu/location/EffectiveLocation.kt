@@ -40,8 +40,15 @@ class EffectiveLocation(
         location.currentCoordinate(timeoutMs = timeoutMs)
     }
 
-    /** 동기 마지막 좌표(iOS `lastCoordinate` 자리 — 채팅 요청 본문): 수동 > GPS 저장 좌표. suspend 경로(`prime`) **뒤에** 읽는 소비자용(hydration 불변식). */
-    fun last(): NearbyCoord? = manual.current.value?.let { NearbyCoord(it.lat, it.lng) } ?: location.stored?.let { NearbyCoord(it.lat, it.lng) }
+    /**
+     * 동기 마지막 좌표(iOS `lastCoordinate` 자리 — 채팅 요청 본문): 수동 > GPS 저장 좌표. 장소 채팅은 `prime`을 지나지 않으므로 hydration 불변식을
+     * 여기서 스스로 지킨다 — 아직이면 멱등·동기화된 `hydrate()`를 먼저 부른다(콜드 스타트 직후 장소 채팅 첫 전송 창에서만 디스크 1회; 그 뒤엔 no-op).
+     * 안 그러면 그 창에서 수동 위치 대신 GPS 저장 좌표가 나가는데 화면으로 반증되지 않는다(설계 리뷰 M13).
+     */
+    fun last(): NearbyCoord? {
+        manual.hydrate()
+        return manual.current.value?.let { NearbyCoord(it.lat, it.lng) } ?: location.stored?.let { NearbyCoord(it.lat, it.lng) }
+    }
 
     /** :kit 코어 어댑터. 취소는 그대로 통과(`LocationException`만 번역), 어댑터 자신의 타임아웃은 `Unavailable`. */
     fun nearbyCoordinateSource(): NearbyCoordinateSource = NearbyCoordinateSource.Current { force ->

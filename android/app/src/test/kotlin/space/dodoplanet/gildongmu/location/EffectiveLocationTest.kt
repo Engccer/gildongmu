@@ -85,6 +85,13 @@ class EffectiveLocationTest {
         assertEquals(NearbyCoord(37.5, 127.1), r.effective.last())
     }
 
+    @Test fun `last — hydration 전 호출은 스스로 hydrate해 저장된 수동 좌표를 돌려준다(장소 채팅 콜드 스타트 창)`() = runTest(dispatcher) {
+        val stored = KitJson.encodeToString(ManualLocation.serializer(), ManualLocation(1, "길동역", null, 37.5, 127.1, null, 1.0))
+        val r = rig(hydrate = false, stored = stored)
+        assertEquals(NearbyCoord(37.5, 127.1), r.effective.last())
+        val d = async { r.effective.coordinateForRanking() }; runCurrent(); assertEquals(NearbyCoord(37.5, 127.1), d.await()) // join도 이미 풀려 있다
+    }
+
     @Test fun `코어 어댑터는 세 원인을 NearbyLocationError로 번역한다`() = runTest(dispatcher) {
         val coarse = (rig(permission = LocationPermission.Coarse).effective.nearbyCoordinateSource() as NearbyCoordinateSource.Current)
         assertEquals(NearbyLocationError.ReducedAccuracy, attempt { coarse.getCoordinate(false) }.await().exceptionOrNull())
