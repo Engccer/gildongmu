@@ -335,3 +335,51 @@ M1 §7 게이트 그대로(`:kit:test` · `:app:testDebugUnitTest` · assemble �
 적대적 설계 리뷰 판정(§12, `review-m2b-design.md`): 1차 REQUEST_CHANGES(BLOCKER 1·MAJOR 6·MINOR 14·NIT 7) → 28건 전부 반영(B1 → 판정 29, M1~M6·m1~m14·n1~n7 본문 반영), 기각 0 → 2차 diff 재리뷰 APPROVE_WITH_CHANGES(MAJOR 1 `Coarse` 갈래·MINOR 4·NIT 2) → 7건 전부 반영(1b 갈래, 포맷터 앱 언어, 리빌 창 :kit 산술, `terminusReady`, `settled`, 판정 29 근거, §5 교차 표기). **설계 확정.**
 
 구현 리뷰 판정(§12, `review-m2b-spec.md`·`review-m2b-quality.md`): spec-compliance APPROVE_WITH_CHANGES(MINOR 3·NIT 2 — 세 인자 필수화·착지 순서 가드에 `clickable`+후행 람다·매핑표 resId `internal`+미지 값 단언) · code-quality APPROVE_WITH_CHANGES(MAJOR 2(위와 동일)·MINOR 6·NIT 11 — 0건 문구 거리 풀어쓰기, `contentDescription`은 낭독이 다를 때만, ATF `assert(` 금지 가드, `settled`를 `net/`으로, `Locale.forLanguageTag`, `timetableLineEnName`, 태그 인덱스, `@MainThread`). 전부 반영, 기각 0. 후속(코드 변경 없음): 표시줄이 낡은 좌표를 주소 근거로 쓰는 경로는 iOS·웹과 같은 구멍이라 3자 동조 판정 후보로 코디네이터에 전달(quality MINOR 6). **구현 확정.**
+
+## 13. M2c — 현재 위치 수동 지정 (2026-09-16 추가)
+
+> M2b 통합(`fc246219`) 뒤 코디네이터 지시. 동작 정본 iOS `ManualLocationStore.swift`·`ManualLocationJudge.swift`·`LocationBarView.swift`(버튼·`commit`)·`Directions/DirectionsEndpointSearchView.swift`(`.manualLocation` 타깃)·`DirectionsTabView.swift`(출발지 라벨·`effectiveCoordinate`)·`Nearby/NearbyLoadState.swift:107`, 판정 계층은 :kit `ManualLocation.kt`(`ManualLocation`·`ManualFix`·`ManualVerdict`·`isEligibleManualFix`·`isManualLocationVerified`·`judgeManualLocation`·`manualLocationBilingualName` — **이미 이식됨, 무변경**), 문구 계약은 웹 `src/lib/__tests__/manual-location-copy.test.ts`(금지 표현 전 네임스페이스 스캔). 신설 문자열 키 0(`manualLocation.*` 11키·`android.nearby.aroundHereManual*`·`directions.*` 전부 실재). §1~§12 계약 승계.
+
+**한 줄 요약**: 사용자가 GPS 대신 자기 위치를 장소·주소로 지정하면 그 좌표가 "내 주변"·검색 거리·길찾기 출발지를 정한다(우선순위 **장소 앵커 > 수동 위치 > GPS**, 실시간 안내만 실좌표 — M4). 지정 화면은 M3의 끝점 검색을 재사용하고, 표시줄은 버튼이 되어 "지정한 위치, X, 위치 지정하기"를 말한다. 100m 넘게 이동한 것이 실측되면 자동 해제하고 통지한다.
+
+### 13-1. 상태·저장 (`location/ManualLocationStore.kt`)
+
+- 런타임 정본 `ManualLocationStore(store: KeyValueStore)`(앱 싱글턴 `AppConfig.manualLocationStore`, 매체 `SharedPreferencesStore(context, "gildongmu.manualLocation")`, 키 `manualLocation`, 값 `KitJson`의 `ManualLocation` JSON): `current: StateFlow<ManualLocation?>` · `verdict: StateFlow<ManualVerdict?>`(**비영속** — 며칠 전 판정이 새 세션 라벨을 정하면 안 된다; `set`/`clear`가 함께 null로) · `set(label, labelRoman, lat, lng, origin)`(revision = 직전+1, `setAt` = epoch 초, `isValid` 통과 시에만 저장·`verdict = null`) · `setVerdict(next)`(같으면 무시; `Judge.run`만 부른다) · `clear()`. 복원 시 `isValid` 실패는 폐기(손상 값이 haversine NaN → 영구 유지되는 최악 방향). `isValid`는 iOS 그대로: lat/lng/setAt 유한·범위, 라벨 공백 아님, origin이 있으면 그 필드도 유한·`accuracy > 0`.
+
+### 13-2. 판정과 유효 좌표 (`location/ManualLocationJudge.kt`·`location/EffectiveLocation.kt`)
+
+- `ManualLocationJudge(manual: ManualLocationStore, location: LocationStore, now: () -> Double)`: `suspend fun run()` — iOS `run()` 그대로: 수동 없음 → 무시 / `origin == null` → `undecidable`(측위 비용 0) / 권한 `Fine` 아니면 → `undecidable`(팝업 없음, 유지하되 라벨이 말한다) / `captured = revision` → `location.currentFix(force = true)`(`ManualFix?`, 실패 null) → `judgeManualLocation(manual, fix, now())` → **CAS**(revision 다르면 폐기) → `drop`이면 `clear()` + `autoCleared` 이벤트, 그 밖은 `setVerdict`. **어느 갈래로 끝나든 결과를 스토어에 남긴다**(결과를 버리면 라벨이 `origin` 유무만 보게 되어 더 나쁜 상태가 더 안심시키는 역전).
+- **트리거 3종**(iOS 미러): ① 앱 시작·② 전경 복귀 = `MainActivity`의 `Lifecycle.Event.ON_START`(단일 액티비티라 프로세스 전경과 같다; 콜드 런치의 첫 ON_START가 ①을 겸한다) ③ `force` 조회(아래 `effectiveCoordinate(force = true)`).
+- **자동 해제 통지**: 사용자가 요청하지 않은 상태 변경이라 반드시 통지한다 — TalkBack은 포커스 밖 텍스트 변경을 읽지 않으므로 "표시줄이 말한다"는 그 줄로 돌아갈 때만 성립. 창구는 **화면의 단일 `StatusLine`**(§3): `a11y/AppNotices`(앱 수준 `StateFlow<Notice>`, `post(text)`)를 두고 `StatusLine`이 화면 통지와 앱 통지 중 **나중에 온 것**을 보인다(한 화면에 라이브 리전은 여전히 하나). 허브에도 `StatusLine`을 둔다(지정·해제 확인 통지 자리). 문구 `manualLocation.autoCleared`.
+- `EffectiveLocation(location, manual, judge)`: `suspend fun coordinate(force): NearbyCoord`(= iOS `effectiveCoordinate`: `force`면 `judge.run()` 먼저 → 수동 있으면 그 좌표 → 아니면 `location.currentCoordinate(force)`) · `suspend fun coordinateForRanking(): NearbyCoord?`(수동 있으면 그 좌표, 아니면 `location.coordinateForRanking()`) · `fun nearbyCoordinateSource(): NearbyCoordinateSource.Current { force -> coordinate(force) }`(번역은 기존 어댑터와 같다). **소비자 전수**(웹 `effective-location` 동형): 내 주변(허브 진입 화면 — 앵커 화면은 `Fixed`라 무관) · 검색 거리 가중(`SearchViewModel.coordinate`) · 길찾기 출발지(`directions/EndpointLocator.currentCoordinate` — M3 파일, 통과 호출을 `effective`로 바꾸는 한 줄) · 채팅 앵커(M6 통합 뒤 M6가 같은 함수를 부른다 — 전파). **표시줄의 주소 조회(`coordinateForDisplay`)와 실시간 안내는 실좌표**(변경 없음).
+- `LocationStore.currentFix(force): ManualFix?` 신설 — `currentCoordinate(force)`를 지나 성공하면 `stored`를 `ManualFix(lat, lng, accuracy, at = 지금 epoch − 나이)`로, 실패는 null. 지정 시점 `origin`과 판정 fix가 같은 함수를 쓴다.
+
+### 13-3. 지정 화면 — M3 끝점 검색 재사용 (`directions/EndpointPicker.kt` 추출)
+
+- 현행 `EndpointSearchContent(vm: DirectionsViewModel, p)`는 뷰모델에 묶여 있어 허브가 못 연다. **끝점 검색 로직을 `EndpointPicker`로 추출**(iOS `EndpointSearchModel`이 별도 모델인 것과 동형): `class EndpointPicker(search: SearchService, store: RecentSearchStore, strings, io, scope: CoroutineScope, onSelect: (DirectionsEndpoint, DirectionsFieldTarget) -> Unit)` — `state: StateFlow<EndpointSearchState?>`·`consumedCandidateRevision`·`open(target)`·`close()`·`submitCandidates()`·`selectPlace/selectRecentEndpoint/selectAddress/selectCurrent`·`removeRecentEndpoint/togglePinRecentEndpoint/clearRecentEndpoints`. `DirectionsViewModel`은 이것을 **합성**하고(`val picker = EndpointPicker(..., onSelect = ::setEndpointAndLand)`), 기존 공개 함수는 위임으로 남겨 M3 테스트·화면 호출부가 그대로 컴파일된다. `EndpointSearchContent(picker: EndpointPicker, p)`. 동작 변화 0(M3 단위 테스트 전량 초록이 게이트).
+- `DirectionsFieldTarget`에 **`manualLocation`** 추가(iOS 동형): `recentScope = to`(전용 스코프 없음 — 자주 가는 곳이 지금 서 있는 곳의 후보이기도 하다), 제목 `manualLocation.pickTitle`, "현재 위치 사용" 자리의 버튼 라벨은 **`manualLocation.useGps`("현재 위치로 되돌리기")**, `selectCurrent`는 `manualLocation`에서도 허용(해제를 뜻한다). ⚠ 이분 삼항(`from ? A : B`) 금지 — exhaustive `when`(iOS가 실제로 겪은 결함: 제목이 "도착지 검색"으로 떨어짐).
+- 허브 진입점: 표시줄 버튼 → `ManualLocationRoute`(스택 화면, `location/ManualLocationPickerScreen.kt`, 등록 한 줄): `ManualLocationPickerViewModel`이 `EndpointPicker`를 `manualLocation` 타깃으로 열고 `onSelect`에서 `commit`: `Current` → `manual.clear()` / `Place(label, lat, lng, labelRoman)` → `origin = location.currentFix(force = true)?.takeIf { isEligibleManualFix(it, now) }` → `manual.set(...)`. 확정·되돌리기 뒤 pop → 허브 복귀 착지는 표시줄 버튼(`ReturnFocusSlot` "location-bar"), 통지는 없음(표시줄 라벨 자체가 결과이고 그 줄에 착지한다 — iOS 동형). 뒤로(취소)도 pop.
+
+### 13-4. 라벨 (`location/LocationBar.kt` 확장)
+
+- `manualLocationLabel(manual, verdict, lang, accessible, verified: (String) -> String, unverifiable: (String) -> String): String?` — 수동 없으면 null; `isManualLocationVerified(manual, verdict)`면 `manualLocation.manual(label)`, 아니면 `manualLocation.manualUnverifiable(label)`; 라벨은 `manualLocationBilingualName`(비-ko `labelRoman` 1순위, 시각 `display`/낭독 `primary`). **표시줄·길찾기 출발지 필드가 이 한 함수를 쓴다**(판정선이 갈리지 않게, iOS `manualLocationLabel` 동형).
+- 표시줄: **버튼**(`landingTarget`, 라벨 = `"{state}, {manualLocation.pickTitle}"` — 상태만 이름으로 쓰면 "현재 위치, 버튼"으로 읽혀 누르면 무엇이 되는지 단서가 0). 갈래: 수동 → `manualLocationLabel` / 그 밖 §12-4의 1a·1b·2·3·4. `CurrentAddressStore.ensureLoaded`는 **수동이 없을 때만**(iOS `.task(id: store.current == nil)`; 수동 해제 뒤 다시 돈다 — 허브 진입마다 호출이라 자연 해소).
+- 길찾기 출발지 필드(M3 `DirectionsViewModel.currentLocationText`, additive): 수동이 있으면 `manualLocationLabel` 문장, 아니면 현행. `directions.useCurrentLocation` 버튼 이름은 그대로(웹 KNOWN_UNBRANCHED 근거 동형).
+- 둘러보기 위치 문장(`AroundBody`): payload의 `lat/lng`(지금까지 미사용)가 수동 좌표와 같으면 `android.nearby.aroundHereManual`/`…ManualNoPlace`, 아니면 현행 `aroundHere*`(iOS `aroundHereManual` 분기 동형). 수동 좌표 비교는 4자리 키 동일.
+- **금지 표현 가드**(웹 `manual-location-copy` 축의 안드로이드판, `AppSourceGuardTest`): 유효 위치를 소비하는 화면 파일(`LocationBar.kt`·`DirectionsViewModel.kt`·`NearbyKindScreen.kt`)이 GPS 문구 키(`manualLocation_gps*`·`directions_currentLocation*`·`android_nearby_aroundHere*`)를 참조하면 같은 파일이 수동 분기 키(`manualLocation_manual*`/`aroundHereManual*`)도 참조해야 한다.
+
+### 13-5. 테스트·실기기
+
+- JVM: `ManualLocationStore`(왕복·손상 폐기·`set`이 verdict 초기화·revision 단조·`clear`) · `ManualLocationJudge`(수동 없음 → 무호출, origin 없음 → undecidable 측위 0, 권한 아님 → undecidable 팝업 0, keep/drop/undecidable 3분기, **CAS**(판정 중 재지정 → 옛 결과 폐기·해제 없음), drop → clear + 이벤트 1회) · `EffectiveLocation`(수동 우선, force가 judge를 먼저, drop 뒤 GPS로 넘어감, ranking 우선순위) · `LocationStore.currentFix`(성공 시 accuracy·at, 실패 null) · `manualLocationLabel`(verified/unverifiable·병기·null) · 표시줄 버튼 라벨 꼬리 · `AroundBody` 문장 분기(순수 함수 `aroundHereResId(payload, manual)`) · `DirectionsViewModel.fieldText` 수동 분기 · **M3 기존 테스트 전량 초록**(추출 회귀 0) · `EndpointPicker` 단독 테스트(기존 DirectionsViewModel 끝점 검색 테스트를 옮기거나 위임 유지) · `AppNotices` 병합(나중에 온 것) · 소스 가드(금지 표현 짝·`ManualLocationStore` 생성 1곳).
+- ATF: 허브 표시줄이 버튼이고 라벨 꼬리가 "위치 지정하기"; 지정 화면 제목 `manualLocation.pickTitle`과 "현재 위치로 되돌리기" 버튼 존재.
+- 실기기(§9 이어서): 23 표시줄 버튼 → 지정 화면 → 장소 선택 → 허브 복귀 착지가 표시줄이고 "지정한 위치, X, 위치 지정하기" 24 지정 뒤 내 주변 지하철이 그 좌표 기준(제목 근처 역이 바뀜) 25 100m 이동 뒤 전경 복귀 → "이동이 감지되어 지정한 위치를 해제했습니다" 통지 26 길찾기 출발지 필드가 "출발지, 지정한 위치, X".
+
+### 13-6. 판정 (§12 이어서)
+
+32. **끝점 검색은 `EndpointPicker` 추출로 재사용**(복붙·허브 전용 검색 화면 금지, iOS `EndpointSearchModel` 동형). M3 세션이 종료돼 `directions/` 파일을 이 세션이 고친다(코디네이터 지시) — 공개 함수 위임으로 M3 호출부·테스트 무변경.
+33. **자동 해제 통지는 `AppNotices` → 화면 `StatusLine` 병합** — 화면당 라이브 리전 하나 유지, 앱 수준 별도 리전·`announceForAccessibility` 금지(뷰 계층 밖 통지는 헌장 위반).
+34. **판정 트리거는 `ON_START`**(앱 시작 겸 전경 복귀) + force 조회. `ProcessLifecycleOwner` 의존성을 더하지 않는다(단일 액티비티).
+35. **표시줄 주소 조회는 수동이 없을 때만**, 수동 상태에서 GPS 측위를 하는 자리는 판정(`run`)뿐.
+36. **`guideStartsFromCurrent`(수동 기준 결과에서 안내 시작 고지)는 M4** — 안내 시작 버튼이 M4 소유.
+
+적대적 설계 리뷰 판정(§13): (기록 예정)
