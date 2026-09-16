@@ -28,8 +28,9 @@ sealed class SubwayArrivalPlan {
 
 /**
  * 정규식 약칭 클래스(공백·숫자)는 쓰지 않는다 — JVM은 ASCII, 안드로이드 ICU·Swift는 유니코드라 테스트와 기기가 갈린다.
- * 공백은 유니코드 공백(White_Space 속성, Swift·JS와 같은 뜻), 숫자는 `[0-9]`(JS와 같다 — 전각 숫자는 Swift도 `Int`로
- * 읽지 못해 결과가 같다. Kotlin `toIntOrNull`은 전각 숫자를 읽으므로 넓히면 갈린다).
+ * 공백은 유니코드 공백(White_Space 속성, Swift·JS와 같은 뜻), 숫자는 `[0-9]`(웹 JS와 같다). 모든 자리가 전각 숫자면 Swift도
+ * `Int`로 읽지 못해 결과가 같고, ASCII·전각 혼합(`3분 ４초 후`)만 Swift가 부분 인식한다(웹·Kotlin은 원문 경로). Kotlin
+ * `toIntOrNull`은 전각 숫자를 읽으므로 클래스를 넓히면 오히려 갈린다.
  */
 private const val WS = """[\t\n\u000B\f\r\u0085\p{Z}]"""
 
@@ -96,7 +97,7 @@ fun subwayArrivalProse(message: String?, currentLocation: String?): SubwayArriva
         }
     }
     // ⚠ 이 두 문법은 **위치를 말하지 않는다**(I2) — 그 역이 열차 위치라는 증거가 없는데 실으면 unknown을
-    // "있음"으로 바꾸는 것이다(위원장 확정 2026-09-13).
+    // "있음"으로 바꾸는 것이다.
     if (msg == "전전역 출발") return SubwayArrivalPlan.DepartedStopsBack(2)
     match(PREV_DEPARTED_WITH_STATION, msg)?.let { m ->
         // 모순(문장의 역 ≠ `arvlMsg3`)은 우리가 모르는 모양이라 원문에 맡긴다 — 값은 쓰지 않지만 판정에는 쓴다.

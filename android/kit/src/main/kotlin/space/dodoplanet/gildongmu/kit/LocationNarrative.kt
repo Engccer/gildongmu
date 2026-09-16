@@ -63,8 +63,8 @@ private fun pickName(name: String, en: String?, roman: String?, lang: String, si
 }
 
 /**
- * "가장 가까운 곳은 {첫 곳}이고, {나머지}가 있습니다." — 거리·방위를 이름 앞에 두는 어순(위원장 판정 2026-09-13,
- * 웹 `nearestSentence` 미러). 첫 곳만 `nearestFirst`("…지점에 있는 {name}")로 서술격 조사를 받고, 나머지는
+ * "가장 가까운 곳은 {첫 곳}이고, {나머지}가 있습니다." — 거리·방위를 이름 앞에 두는 어순(웹 `nearestSentence`
+ * 미러). 첫 곳만 `nearestFirst`("…지점에 있는 {name}")로 서술격 조사를 받고, 나머지는
  * `nearestItem`으로 나열하며 ko는 마지막 이름에만 주격 조사가 붙는다(판정 불가면 조사 자리를 비운다 —
  * `KoreanParticle` 계약). 한 곳뿐이면 나열이 없으므로 `nearestOne`.
  * ⚠ 인자 순서는 ko 플레이스홀더 등장 순서(direction, distance, name).
@@ -94,7 +94,7 @@ private fun overviewNearest(items: List<OverviewPlace>, lang: String, sink: KoSi
 /**
  * 불릿당 문장 묶음(한 접근성 객체). 상태별 문장이 전부 다르다(3-state 불변식) — 반경 문구는 헤딩 부제
  * (`whereAmI.overview.radius`)가 한 번만 말하고, none 문장만 반경을 품는다. 템플릿은 `messages` 로케일
- * JSON의 whereAmI.overview.*(6 로케일, LLM 아님). 문장형은 위원장 판정 2026-08-22.
+ * JSON의 whereAmI.overview.*(6 로케일, LLM 아님).
  */
 fun buildOverviewLines(overview: NearbyOverview, lang: String): List<OverviewLine> {
     val radius = formatDistance(overview.radiusMeters)

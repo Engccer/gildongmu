@@ -2,6 +2,7 @@ package space.dodoplanet.gildongmu.kit
 
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withTimeout
@@ -10,6 +11,7 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -507,6 +509,38 @@ class NearbyLoadCoreTest {
 
         core.load()
         assertEquals("failedServer", core.phaseName())
+    }
+
+    /** 바깥 `withTimeout`이 load를 취소하면 취소 경로다 — 떠난 화면에 조회 실패를 커밋하지 않고 타임아웃을 전파한다. */
+    @Test fun outerTimeoutIsCancellationNotServerFailure() = runTest {
+        val recorder = Recorder()
+        recorder.fetchStub = { _, _ -> CompletableDeferred<Payload>().await() }
+        val core = makeCore(recorder)
+
+        assertFailsWith<TimeoutCancellationException> { withTimeout(10) { core.load() } }
+        assertEquals("idle", core.phaseName())
+        assertTrue(recorder.events.isEmpty())
+    }
+
+    /** 취소된 코루틴에서 load는 복원 뒤 취소를 전파한다 — 호출자의 뒤 코드가 떠난 화면에서 돌지 않는다. */
+    @Test fun cancelledLoadPropagatesToCaller() = runTest {
+        val recorder = Recorder()
+        val gate = Gate()
+        recorder.fetchStub = { _, _ -> gate.arriveAndWait(); "P-late" }
+        val core = makeCore(recorder)
+        var ranAfterLoad = false
+
+        val job = launch {
+            core.load()
+            ranAfterLoad = true
+        }
+        gate.waitForArrival()
+        job.cancel()
+        gate.release()
+        job.join()
+
+        assertFalse(ranAfterLoad)
+        assertEquals("idle", core.phaseName())
     }
 
     // 좌표 소스·force

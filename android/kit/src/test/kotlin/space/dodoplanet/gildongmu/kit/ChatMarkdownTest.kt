@@ -29,11 +29,12 @@ class ChatMarkdownTest {
         assertEquals(listOf(ChatMarkdownBlock.Paragraph(input)), parseChatMarkdownBlocks(input))
     }
 
-    /** 공백·숫자는 유니코드 뜻이다(Swift Regex와 같다, JVM 약칭 클래스의 ASCII 뜻이 아니다) — NBSP 뒤 헤딩, 전각 숫자 목록. */
+    /** 공백·숫자는 유니코드 뜻이다(Swift Regex `Character.isNumber`와 같다) — NBSP 뒤 헤딩, 전각 숫자·로마 숫자 목록. */
     @Test fun unicodeWhitespaceAndDigitsMatchSwift() {
         assertEquals(listOf(ChatMarkdownBlock.Heading("주변 정보")), parseChatMarkdownBlocks("#\u00A0주변 정보"))
         assertEquals(listOf(ChatMarkdownBlock.ListItem("• 항목")), parseChatMarkdownBlocks("-\u3000항목"))
         assertEquals(listOf(ChatMarkdownBlock.ListItem("１. 항목")), parseChatMarkdownBlocks("１. 항목"))
+        assertEquals(listOf(ChatMarkdownBlock.ListItem("Ⅰ. 개요")), parseChatMarkdownBlocks("Ⅰ. 개요"))
     }
 
     /** `isHeading`·`text`는 케이스와 무관하게 표시 텍스트를 준다(장소 언급 대응의 입력). */

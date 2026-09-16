@@ -17,7 +17,7 @@
 
 ### 안드로이드 Kit-core — 검색·장소·내 주변·역·길찾기 문장·채팅 판정 이식 (`android/kit`)
 
-웨이브 1 CORE 그룹(계획 §2) Kit 29파일을 Kotlin으로 옮기고 Kit 테스트를 함께 이식했다(Kotlin 테스트 231건, 공유 fixture 4벌 소비, `mirrors/core.json` 29/29 ported). 채팅 두 서비스는 판정 부분만 `:kit`에 두고 POST·스트림 전송은 `:app`(M6) 몫으로 남겼고, GUIDE 선행 묶음의 `BeaconDest`·`speechDeferStep`·`transitValidExitNo` 위에서 `PlaceProjection`·`DeferredAnnouncer`·`TransitExitLines`를 전량 붙였다. `QuickExitGuideRouteTests` 2건은 `core.json` `deferredTests`로 GUIDE(`TransitGuide.swift`)에 넘겼다.
+웨이브 1 CORE 그룹(계획 §2) Kit 29파일을 Kotlin으로 옮기고 Kit 테스트를 함께 이식했다(Kotlin 테스트 239건, 공유 fixture 4벌 소비, `mirrors/core.json` 29/29 ported). 채팅 두 서비스는 판정 부분만 `:kit`에 두고 POST·스트림 전송은 `:app`(M6) 몫으로 남겼고, GUIDE 선행 묶음의 `BeaconDest`·`speechDeferStep`·`transitValidExitNo` 위에서 `PlaceProjection`·`DeferredAnnouncer`·`TransitExitLines`를 전량 붙였다. `QuickExitGuideRouteTests` 2건은 `core.json` `deferredTests`로 GUIDE(`TransitGuide.swift`)에 넘겼다.
 
 ---
 

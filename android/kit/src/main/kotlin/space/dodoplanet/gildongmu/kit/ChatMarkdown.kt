@@ -3,7 +3,7 @@ package space.dodoplanet.gildongmu.kit
 /**
  * 채팅 산문의 블록 하나. Kit `ChatMarkdown.swift` 미러. 화면이 블록마다 별도 텍스트(=별도 접근성 객체)로
  * 렌더한다. 산문 전체를 한 텍스트로 렌더하면 스크린 리더에 통짜 객체 하나로 노출돼 단락·헤딩 구조 탐색이
- * 불가능하다(위원장 iOS 실기기 실측 2026-07-18). 웹 react-markdown이 블록마다 DOM 노드를 만드는 것의 대응.
+ * 불가능하다(iOS 실기기 실측). 웹 react-markdown이 블록마다 DOM 노드를 만드는 것의 대응.
  */
 sealed class ChatMarkdownBlock {
     /** 블록의 표시 텍스트(인라인 강조 마커 포함). 장소 언급 대응(`chatPlaceMentions`)의 입력. */
@@ -21,12 +21,12 @@ sealed class ChatMarkdownBlock {
     data class Paragraph(override val text: String) : ChatMarkdownBlock()
 }
 
-/** 유니코드 공백(White_Space 속성) — Swift Regex 공백 약칭 클래스와 같은 뜻. 약칭 클래스는 JVM(ASCII)과 기기(ICU)에서 갈려 쓰지 않는다. 숫자는 `\p{Nd}`. */
+/** 유니코드 공백(White_Space 속성) — Swift Regex 공백 약칭 클래스와 같은 뜻. 약칭 클래스는 JVM(ASCII)과 기기(ICU)에서 갈려 쓰지 않는다. 숫자는 `\p{N}`(Swift `Character.isNumber` — 로마 숫자 `Ⅰ`·원문자 `①` 포함, Numeric_Type만 가진 한자 숫자는 JVM 대응 속성이 없어 제외). */
 private const val WS = """[\t\n\u000B\f\r\u0085\p{Z}]"""
 
 private val HEADING_LINE = Regex("""^$WS{0,3}#{1,6}$WS+(.*)$""")
 private val BULLET_LINE = Regex("""^$WS*[-*+]$WS+(.*)$""")
-private val ORDERED_LINE = Regex("""^$WS*(\p{Nd}+[.)]$WS+.*)$""")
+private val ORDERED_LINE = Regex("""^$WS*(\p{N}+[.)]$WS+.*)$""")
 
 /**
  * 블록 마크다운을 파싱한다. 인라인 강조(`**`)는 건드리지 않고 각 블록 텍스트에 남긴다(화면이 인라인만

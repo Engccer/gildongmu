@@ -6,6 +6,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * 지연 발화 슬롯(spec 2026-08-14 §4) — 안내 효과음이 끝난 뒤에 음성 통지를 게시하는 비동기 수명 계약의 소유자.
@@ -23,7 +24,8 @@ class DeferredAnnouncer(
     private val scope: CoroutineScope,
     /** 단조 시각(초) — :app은 `SystemClock.elapsedRealtime()`의 초 환산. */
     private val clock: () -> Double,
-    private val sleeper: suspend (seconds: Double) -> Unit = { seconds -> delay((seconds * 1_000).toLong()) },
+    /** 기본은 `delay(Duration)` — 양수 대기를 1ms 이상으로 올림한다(밀리초 절사는 0ms 대기로 재평가 루프를 스핀시킨다). */
+    private val sleeper: suspend (seconds: Double) -> Unit = { seconds -> delay(seconds.seconds) },
     /** 지금 재생 중인 톤이 끝나는 단조 시각. 미재생·재생 실패면 null. */
     private val toneEndsAt: () -> Double?,
     /**
@@ -99,8 +101,9 @@ class DeferredAnnouncer(
             var pending = wait
             while (true) {
                 sleeper(pending)
-                // §4-3: 코루틴 취소만으로는 부족하다 — sleeper가 취소되어도 반환할 수 있으므로 토큰·세대 일치 확인이
-                // 정본이다. 확인 없이 게시하면 취소한 문장이 그 자리에서 발화된다.
+                // §4-3: sleeper가 취소에 반응하지 않고 반환할 수 있으므로 확인 없이 게시하면 취소한 문장이 그 자리에서
+                // 발화된다. 지금은 모든 무효화 경로가 코루틴을 취소해 `isActive`와 토큰·세대 확인이 겹치지만, 토큰·세대가
+                // 정본이다(취소하지 않는 무효화가 생겨도 지켜진다) — 중복으로 보고 지우지 말 것.
                 if (!isActive || slot?.token != token || generation != gen) return@launch
                 // §4-5: 게시 직전 톤 상태 재평가 — 예약 후 새 톤이 시작됐으면 더 기다리되, 예약 시각부터의 총 대기가 상한을
                 // 넘으면 그대로 게시한다(상한이 무한 연기를 구조적으로 막는다).

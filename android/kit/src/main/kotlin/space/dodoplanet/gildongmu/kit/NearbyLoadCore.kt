@@ -3,6 +3,7 @@ package space.dodoplanet.gildongmu.kit
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -37,7 +38,8 @@ sealed class NearbyLoadPhase<out Payload> {
 
 /**
  * 좌표 어댑터 오류(:app 위치 서비스 오류의 :kit 번역). 어댑터 계약: 취소는 원본 그대로 다시 던진다 — 절대
- * `Unavailable`로 뭉개지 않는다(스펙 §4).
+ * `Unavailable`로 뭉개지 않는다(스펙 §4). 단 어댑터 자신의 측위 시간 초과(`withTimeout` 만료)는 취소가 아니라
+ * `Unavailable`로 번역한다 — 그대로 올리면 코어가 조회 실패(`FailedServer`)로 분류해 원인이 다른 안내가 된다.
  */
 sealed class NearbyLocationError(message: String) : Exception(message) {
     object Denied : NearbyLocationError("denied")
@@ -83,8 +85,12 @@ sealed class NearbyLoadEvent<out Payload> {
  * `isActive`) — 협력적 취소가 성공값을 반환해도 떠난 화면에 커밋·통지하지 않는다.
  *
  * Swift `@Observable @MainActor` 대응: 상태는 `StateFlow`로 노출하고(:app이 수집), 동기화 없는 클래스라 메인 스레드에서만
- * 부른다. 전송 계층 취소(Swift `URLError.cancelled`)에 대응하는 플랫폼 표준 오류형은 없다 — 코루틴 취소는
- * `CancellationException`으로 오고 `APIClient`가 그대로 통과시킨다.
+ * 부른다. ⚠ `StateFlow`는 같은 값의 재대입을 합친다(Swift 관찰은 대입마다 발화) — 조회마다 생기는 부수 효과(포커스 이동
+ * 등)는 phase 수집이 아니라 이벤트로 받는다. 전송 계층 취소(Swift `URLError.cancelled`)에 대응하는 플랫폼 표준 오류형은
+ * 없다 — 코루틴 취소는 `CancellationException`으로 오고 `APIClient`가 그대로 통과시킨다.
+ *
+ * 취소된 코루틴에서 `load()`는 phase를 복원한 뒤 취소를 다시 던진다(Swift는 정상 반환) — 호출자의 뒤 코드가 떠난
+ * 화면에서 돌지 않게 하는 코루틴 관례다. 코루틴이 살아 있는데 취소 예외만 올라온 경우는 복원하고 정상 반환한다.
  */
 class NearbyLoadCore<Payload : Any>(
     private val coordinate: NearbyCoordinateSource,
@@ -121,11 +127,17 @@ class NearbyLoadCore<Payload : Any>(
             mutablePhase.value = entry
         }
 
+        // 커밋 게이트: 코루틴이 취소됐으면 오판·통지 없이 복원하고 취소를 전파한다.
+        suspend fun abandon() {
+            restoreOnCancellation()
+            currentCoroutineContext().ensureActive()
+        }
+
         try {
             val coord: NearbyCoord? = when (val source = coordinate) {
                 is NearbyCoordinateSource.Current -> {
                     val got = source.getCoordinate(force)
-                    if (isCancelled()) return restoreOnCancellation()
+                    if (isCancelled()) return abandon()
                     got
                 }
                 is NearbyCoordinateSource.Fixed -> source.coord // 측위 없음 — force는 재조회 의미만 갖는다
@@ -139,7 +151,7 @@ class NearbyLoadCore<Payload : Any>(
                 return
             }
             val result = fetch(coord, previous)
-            if (isCancelled()) return restoreOnCancellation()
+            if (isCancelled()) return abandon()
             when {
                 result != null -> {
                     willCommit(result) // 부가 상태(리빌 창 리셋)와 원자 커밋
@@ -153,14 +165,16 @@ class NearbyLoadCore<Payload : Any>(
                 }
             }
         } catch (e: TimeoutCancellationException) {
-            // `withTimeout` 만료는 "화면을 떠남"이 아니라 조회 실패다 — 아래 일반 취소보다 먼저 가른다.
-            if (isCancelled()) return restoreOnCancellation()
+            // fetch 안쪽 `withTimeout` 만료는 "화면을 떠남"이 아니라 조회 실패다 — 아래 일반 취소보다 먼저 가른다.
+            // 바깥 `withTimeout`이 이 코루틴을 취소한 것이면 취소 경로다.
+            if (isCancelled()) return abandon()
             fail(e, entry)
-        } catch (_: CancellationException) {
+        } catch (e: CancellationException) {
             restoreOnCancellation()
+            if (isCancelled()) throw e
         } catch (e: Exception) {
-            // 커밋 게이트: 어떤 오류든 취소된 코루틴이면 오판·통지 없이 복원(#17)
-            if (isCancelled()) return restoreOnCancellation()
+            // 어떤 오류든 취소된 코루틴이면 오판·통지 없이 복원(#17)
+            if (isCancelled()) return abandon()
             fail(e, entry)
         }
     }

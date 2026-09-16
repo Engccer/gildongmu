@@ -3,6 +3,7 @@ package space.dodoplanet.gildongmu.kit
 import space.dodoplanet.gildongmu.kit.models.CarRouteBriefing
 import space.dodoplanet.gildongmu.kit.models.TransitRouteResult
 import space.dodoplanet.gildongmu.kit.models.WalkRouteBriefing
+import kotlinx.coroutines.CancellationException
 import kotlin.math.roundToInt
 
 // 길찾기 탭 순수 도메인(웹 DirectionsView 상태 머신의 Kit 판 ↔ Kit `Directions.swift` 미러, 화면 비의존).
@@ -100,6 +101,9 @@ sealed class DirectionsModeOutcome {
  *
  * 이름 변경: Swift `classify(transit:)`·`classify(walk:)`·`classify(car:)`는 인자 라벨 오버로드인데 Kotlin은
  * `Result<T>`의 타입 인자로 오버로드할 수 없어(JVM 시그니처 충돌) 수단별 이름으로 가른다.
+ *
+ * ⚠ `Result`에 담긴 취소(`CancellationException`)는 분류하지 않고 다시 던진다 — `runCatching`으로 만든 값이면 떠난 조회가
+ *   "조회 실패"로 커밋된다(Swift 화면은 분류 전에 `Task.isCancelled`로 거른다).
  */
 object DirectionsOutcomeClassifier {
     /** transit도 walk와 동형으로 envelope result가 nullable: null = "경로 없음"(Empty, 조회 실패 아님, 웹 ODsay `{result:null}` 계약). */
@@ -120,6 +124,7 @@ object DirectionsOutcomeClassifier {
      * origin=현재 위치)가 서비스 지역 밖일 때의 서버 마커 — 게이트·오류와 별개로 화면 전체를 전환하는 신호.
      */
     private fun classifyFailure(error: Throwable): DirectionsModeOutcome = when {
+        error is CancellationException -> throw error
         error is APIError.OutOfCoverage -> DirectionsModeOutcome.OutOfCoverage
         error is APIError.BadStatus && (error.code == 404 || error.code == 503) -> DirectionsModeOutcome.Gated
         else -> DirectionsModeOutcome.Error

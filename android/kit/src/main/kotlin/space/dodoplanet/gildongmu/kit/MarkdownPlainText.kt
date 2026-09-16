@@ -9,11 +9,11 @@ package space.dodoplanet.gildongmu.kit
  * 낭독하지 않는다(출처 목록은 애초에 본문 밖 `sources` 필드라 무관).
  *
  * 정규식 약칭 클래스(공백·숫자·단어 문자)는 쓰지 않는다 — JVM은 ASCII, 안드로이드 ICU·Swift ICU는 유니코드라 테스트와 기기가
- * 갈린다. 명시 클래스는 ICU 뜻을 옮긴 것이다: 공백은 White_Space 속성, 숫자는 `\p{Nd}`, 단어 문자는 문자·결합 부호·숫자·연결 부호.
+ * 갈린다. 명시 클래스는 ICU 뜻을 옮긴 것이다: 공백은 White_Space 속성, 숫자는 `\p{Nd}`, 단어 문자는 ICU 정의(Alphabetic ≈ 문자+문자형 숫자, 결합 부호, 십진 숫자, 연결 부호, ZWNJ·ZWJ).
  */
 object MarkdownPlainText {
     private const val WS = """[\t\n\u000B\f\r\u0085\p{Z}]"""
-    private const val WORD = """[\p{L}\p{M}\p{Nd}\p{Pc}]"""
+    private const val WORD = """[\p{L}\p{Nl}\p{M}\p{Nd}\p{Pc}\u200C\u200D]"""
 
     private val inlineCode = Regex("`([^`]+)`")
     private val heading = Regex("""^#{1,6}$WS+""", RegexOption.MULTILINE)

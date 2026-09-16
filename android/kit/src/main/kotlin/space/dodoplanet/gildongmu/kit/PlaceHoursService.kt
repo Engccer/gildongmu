@@ -13,7 +13,7 @@ data class PlaceHoursToday(val ranges: List<Range>, val allDay: Boolean) {
 }
 
 @Serializable
-internal data class PlaceHoursResponse(val hours: PlaceHoursToday? = null)
+private data class PlaceHoursResponse(val hours: PlaceHoursToday? = null)
 
 /**
  * 요청 상한(밀리초, Swift `requestTimeout` 4초). 캐시 금지(약관)라 상세 열람마다 실호출이 끼므로 상한 없이는
