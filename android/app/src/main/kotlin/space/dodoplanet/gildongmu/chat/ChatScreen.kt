@@ -27,6 +27,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
@@ -47,6 +48,8 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.annotation.StringRes
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 import space.dodoplanet.gildongmu.AppConfig
 import space.dodoplanet.gildongmu.R
 import space.dodoplanet.gildongmu.a11y.AppScreenScaffold
@@ -61,9 +64,7 @@ import space.dodoplanet.gildongmu.location.LocationBarRow
 
 /** 채팅 탭(일반 채팅, spec §3-1). 대화는 이 탭 백스택 엔트리의 ViewModel — 탭 전환에도 이어진다. */
 @Composable
-fun ChatTabScreen(onOpenPlace: (Place) -> Unit) {
-    val context = LocalContext.current
-    val vm: ChatViewModel = viewModel(factory = chatViewModelFactory(context, null))
+fun ChatTabScreen(vm: ChatViewModel = viewModel(factory = chatViewModelFactory(LocalContext.current, null)), onOpenPlace: (Place) -> Unit) {
     val titleFocus = remember { FocusRequester() }
     val suggestions = listOf(
         R.string.android_chat_suggestion1,
@@ -168,13 +169,17 @@ private fun ChatConversation(
     modifier: Modifier,
 ) {
     val s by vm.state.collectAsState()
+    val res = LocalContext.current.resources
+    val lang = remember(res) { AppLocale.current(res) }
     val scroll = rememberScrollState()
+    // 주소 카드 지오코딩은 이 컴포지션 스코프에서 — 화면이 떠나면 취소되어 늦은 결과로 상세를 열지 않는다(spec §4-4)
+    val scope = rememberCoroutineScope()
     val sendFocus = remember { FocusRequester() }
     val targets = remember { ChatFocusTargets() }
     var fieldFocused by remember { mutableStateOf(false) }
-    val dictationActive = false // [조각 ③] 받아쓰기 세션 활성
     val sendingLabel = stringResource(R.string.android_chat_sending)
     val failedText = stringResource(R.string.android_chat_failed)
+    val noAppText = stringResource(R.string.android_common_noAppToOpen)
 
     fun afterSend() {
         land(sendFocus, "send")
@@ -197,8 +202,32 @@ private fun ChatConversation(
     // 스트리밍 중(새 질문)·받아쓰기 활성·입력 중이면 건너뛰되 소비한다 — 그때는 끝으로 스크롤만.
     // 실패인데 착지하지 못했으면 통지 줄에 실패 문장 — 착지가 유일한 성패 신호라 건너뛰면 실패가 조용해진다(리뷰 R2-M1).
     val initialAnswerRevision = remember { s.answerRevision }
-    // 소비한 완료 세대 — [조각 ③] 전사 착지가 대기 중인 완료 착지를 소비할 때 이 값을 올린다.
+    // 소비한 완료 세대 — 전사 착지가 대기 중인 완료 착지를 소비할 때도 올린다.
     var consumedRevision by remember { mutableIntStateOf(initialAnswerRevision) }
+    // 받아쓰기 중이라 착지를 건너뛴 실패 — 세션이 끝날 때 통지(전사가 오면 전사 통지와 한 문장, spec §3-4)
+    var failureHeld by remember { mutableStateOf(false) }
+
+    // 받아쓰기(D9 게이트 — 미충족이면 null = 버튼 0). 전사: 초안 병합 → 대기 중 완료 착지 소비 → 보내기 버튼 착지 → 원문 통지(헌장 §6).
+    val dictation = rememberDictation(
+        onTranscript = { transcript ->
+            consumedRevision = vm.state.value.answerRevision
+            val merged = vm.mergeTranscript(transcript)
+            land(sendFocus, "transcript")
+            vm.announce(if (failureHeld) "$failedText $merged" else merged)
+            failureHeld = false
+        },
+        onNotice = { vm.announce(dictationNoticeText(res, it)) },
+    )
+    val inactive = remember { MutableStateFlow(false) }
+    val dictationActive by (dictation?.isActive ?: inactive).collectAsState()
+    // 녹음 중 스크린 리더 발화 0 — 세션 활성 동안 통지 줄은 활성화 시점 문장을 유지하고, 끝나면 최신 문장 하나만 발화한다.
+    val heldNotice = remember(dictationActive) { s.notice }
+    LaunchedEffect(dictationActive) {
+        if (!dictationActive && failureHeld) {
+            vm.announce(failedText)
+            failureHeld = false
+        }
+    }
     LaunchedEffect(s.answerRevision) {
         val revision = s.answerRevision
         if (revision <= consumedRevision) return@LaunchedEffect
@@ -214,13 +243,14 @@ private fun ChatConversation(
         }
         val landed = target != null && land(target, if (last?.failed == true) "completion-failed" else "completion")
         if (!landed) {
-            if (last?.failed == true && !current.isStreaming) vm.announce(failedText) // [조각 ③] 받아쓰기 활성이면 세션 끝에 전사 통지와 결합
+            if (last?.failed == true && !current.isStreaming) {
+                if (dictationActive) failureHeld = true else vm.announce(failedText)
+            }
             scroll.animateScrollTo(scroll.maxValue)
         }
     }
     // 위치 표시줄은 진입 시점 스냅샷이다 — 같은 화면의 전송(측위·권한 허용)이 상태를 바꿨을 수 있어 답변 뒤 다시 맞춘다(좌표당 1회는 스토어가 막는다).
     if (showsLocationBar) {
-        val res = LocalContext.current.resources
         LaunchedEffect(s.answerRevision) {
             if (s.answerRevision > initialAnswerRevision) AppConfig.currentAddressStore.ensureLoaded(AppLocale.dataLocale(res))
         }
@@ -253,7 +283,25 @@ private fun ChatConversation(
                     ) { Text(text) }
                 }
             }
-            ChatMessageList(s.messages, targets)
+            ChatMessageList(
+                messages = s.messages,
+                followUps = s.followUps,
+                lang = lang,
+                targets = targets,
+                onOpenPlace = { place, key ->
+                    vm.rememberReturnFocus(key)
+                    onOpenPlace(place)
+                },
+                onOpenAddress = { address, key ->
+                    scope.launch {
+                        val place = vm.resolveAddress(address) ?: return@launch
+                        vm.rememberReturnFocus(key)
+                        onOpenPlace(place)
+                    }
+                },
+                onSubmitFollowUp = { submitSuggestion(it) },
+                onNoApp = { vm.announce(noAppText) },
+            )
         }
         // 통지 줄은 스크롤 밖 — 목록을 올려 읽는 중에도 라이브 리전이 화면 안에 있다(읽기 순서는 목록 끝 → 통지 → 입력 그대로).
         Row(Modifier.padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -261,7 +309,7 @@ private fun ChatConversation(
                 // 시각 전용 진행 표시 — 진행 문장은 옆의 통지 줄이 말한다
                 CircularProgressIndicator(Modifier.size(16.dp).clearAndSetSemantics { })
             }
-            StatusLine(s.notice, Modifier.padding(vertical = 4.dp))
+            StatusLine(if (dictationActive) heldNotice else s.notice, Modifier.padding(vertical = 4.dp))
         }
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
             TextField(
@@ -287,8 +335,8 @@ private fun ChatConversation(
                     .landingTarget(fieldFocus)
                     .onFocusChanged { fieldFocused = it.hasFocus },
             )
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
-                // [조각 ③] 받아쓰기 버튼(API 33 게이트) · 거부 시 설정 열기
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End), verticalAlignment = Alignment.CenterVertically) {
+                if (dictation != null) DictationControls(dictation, onNoApp = { vm.announce(noAppText) })
                 Button(
                     // 스트리밍 중엔 무시 — enabled=false는 포커스를 떨군다(헌장 §5 ⓐ). 상태는 stateDescription이 말한다.
                     onClick = { if (!s.isStreaming) submitDraft() },
