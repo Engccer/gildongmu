@@ -22,8 +22,7 @@ class GuideSourceGuardTest {
 
     @Test fun `① startWalk 호출부는 WalkGuideStartButton 한 곳`() {
         val callers = allSources.filter { it.name != "GuideSession.kt" && it.readText().contains("GuideSession.startWalk(") }.map { it.name }
-        // 조각 ③ 전엔 0곳, 뒤엔 정확히 그 한 곳(다른 진입점이 생기면 빨강).
-        assertTrue(callers.isEmpty() || callers == listOf("WalkGuideStartButton.kt"), callers.toString())
+        assertEquals(listOf("WalkGuideStartButton.kt"), callers)
     }
 
     @Test fun `② startWalk·GuideBottomBar는 실험 게이트로 시작한다`() {
@@ -32,12 +31,10 @@ class GuideSourceGuardTest {
         assertTrue(body.contains("experimentalEnabled()"), "startWalk 첫 문장이 게이트다: $body")
         assertTrue(session.contains("var experimentalEnabled: () -> Boolean = { AppConfig.experimentalGuidanceEnabled }"))
         val bar = guide.resolve("ui/GuideBottomBar.kt")
-        if (bar.isFile) {
-            val text = bar.readText()
-            val first = text.substringAfter("fun GuideBottomBar(").substringAfter("{").trim().lineSequence().first()
-            // 게이트 값은 `GuideSession.experimentalEnabled`(기본 = `AppConfig.experimentalGuidanceEnabled`) — androidTest가 바꿔 끼우는 한 자리.
-            assertTrue(first.startsWith("if (!GuideSession.experimentalEnabled())"), "GuideBottomBar 첫 문장이 게이트다: $first")
-        }
+        assertTrue(bar.isFile)
+        val first = bar.readText().substringAfter("fun GuideBottomBar(").substringAfter("{").trim().lineSequence().first()
+        // 게이트 값은 `GuideSession.experimentalEnabled`(기본 = `AppConfig.experimentalGuidanceEnabled`) — androidTest가 바꿔 끼우는 한 자리.
+        assertTrue(first.startsWith("if (!GuideSession.experimentalEnabled())"), "GuideBottomBar 첫 문장이 게이트다: $first")
         val attach = session.substringAfter("fun attach(").substringAfter("{").trim().lineSequence().first()
         assertTrue(attach.startsWith("if (::walk.isInitialized) return"), "attach 첫 줄은 멱등 가드: $attach")
     }

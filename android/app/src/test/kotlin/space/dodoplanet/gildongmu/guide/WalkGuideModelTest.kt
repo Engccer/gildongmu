@@ -428,4 +428,68 @@ class WalkGuideModelTest {
         }
         assertEquals(0, h.tones.played.count { it == BeaconTone.tick }, h.tones.played.toString())
     }
+
+    @Test fun `무음 진입 — 문장·failure 진동은 1회 래치, 톤마다 재발화하지 않는다, 풀리면 다시 무장`() = guideTest(dispatcher) { h ->
+        h.tones.isSilenced = true
+        h.model.requestStart(h.request)
+        settle()
+        val unavailable = h.catalog.get("android.beacon.soundUnavailable")
+        assertEquals(1, h.speaker.texts.count { it == unavailable })
+        assertEquals(1, h.haptics.fired.count { it == ResultHapticKind.failure })
+        assertTrue(h.model.ui.value.isSilenced)
+        // 워치독 unreliable 톤이 여러 번 나도 재발화 없음.
+        repeat(3) { h.clock.now += 10.0; advanceTimeBy(10_000); runCurrent() }
+        assertEquals(1, h.speaker.texts.count { it == unavailable })
+        assertEquals(1, h.haptics.fired.count { it == ResultHapticKind.failure })
+        h.tones.isSilenced = false
+        h.clock.now += 10.0; advanceTimeBy(10_000); runCurrent()
+        assertFalse(h.model.ui.value.isSilenced)
+        h.tones.isSilenced = true
+        h.clock.now += 10.0; advanceTimeBy(10_000); runCurrent()
+        assertEquals(2, h.speaker.texts.count { it == unavailable })
+        h.model.stopByUser()
+        assertFalse(h.model.ui.value.isSilenced)
+    }
+
+    @Test fun `TTS 불가 — 시트 행 + failure 진동 1회, 게시는 false`() = guideTest(dispatcher) { h ->
+        h.speaker.isUnavailable = true
+        h.speaker.allow = false
+        h.model.requestStart(h.request)
+        settle()
+        assertTrue(h.model.ui.value.ttsUnavailable)
+        assertEquals(1, h.haptics.fired.count { it == ResultHapticKind.failure })
+        h.model.announceNow("두 번째")
+        assertEquals(1, h.haptics.fired.count { it == ResultHapticKind.failure })
+        h.model.stopByUser()
+        assertFalse(h.model.ui.value.ttsUnavailable)
+    }
+
+    @Test fun `시작 실패 착지 표식 — 실패 전이마다 failSeq 증가, takeFailLanding은 1회만 참`() = guideTest(dispatcher) { h ->
+        assertFalse(h.model.takeFailLanding())
+        h.perms.location = LocationPermission.Coarse
+        h.model.requestStart(h.request)
+        settle()
+        assertEquals(1, h.model.ui.value.failSeq)
+        assertTrue(h.model.takeFailLanding())
+        assertFalse(h.model.takeFailLanding())
+        h.model.clearFailure()
+        h.model.requestStart(h.request)
+        settle()
+        assertEquals(2, h.model.ui.value.failSeq)
+    }
+
+    @Test fun `종료 화면 닫기 — 상태 행·하단 윗줄을 비운다(상환 꼬리가 종료 문장을 되읽지 않게)`() = guideTest(dispatcher) { h ->
+        h.model.requestStart(h.request)
+        settle()
+        h.steps.liveSample = StepSample(120, null)
+        h.model.stopByUser()
+        assertEquals(h.catalog.get("android.beacon.stopped"), h.model.ui.value.endText)
+        h.model.clearArrival()
+        assertEquals("", h.model.ui.value.statusText)
+        assertNull(h.model.ui.value.liveTopText)
+        h.model.setForeground(false); h.speaker.spoken.clear()
+        h.model.onSpeechDropped()          // 상환 장부만 선 상태
+        h.model.setForeground(true)
+        assertEquals(emptyList(), h.speaker.spoken)
+    }
 }

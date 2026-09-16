@@ -91,7 +91,7 @@ object GuideSession {
             controller = AndroidGuideController(context),
             permissions = permissions,
             tones = GuideTonePlayer(AndroidSoundPort(context), focus, vibrator, AndroidVolumePort(audioManager), store, clock),
-            speaker = TtsGuideSpeaker(AndroidTtsPort(context), focus, store) { AppLocale.current(context.resources) },
+            speaker = TtsGuideSpeaker(AndroidTtsPort(context), focus, store, { AppLocale.current(context.resources) }, onPendingDropped = { walk.onSpeechDropped() }),
             haptics = ResultHaptic(vibrator),
             steps = AndroidStepCounter(context, main),
             env = env,
@@ -110,6 +110,9 @@ object GuideSession {
             walk.announceNow(walk.strings.get("guide.alreadyActive"), highPriority = true, bypassSuppression = true)
             return
         }
+        walk.clearFailure()          // 새 시작이 직전 실패 행을 지운다(§7-1)
+        returnedFromBand = false
+        isMinimized = false
         walk.tones.preload()
         walk.speaker.prepare()
         walk.requestStart(request)

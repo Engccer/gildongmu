@@ -56,7 +56,8 @@ fun WalkGuideStartButton(dest: BeaconDest, label: String, accessible: Boolean, v
         if (showsFailure) {
             // `BodyLine`은 `focus`를 받지 않고 `a11y/`는 m1 소유라 `mergedRow` 직접(리뷰 N3-6).
             Text(ui.statusText, Modifier.fillMaxWidth().mergedRow("guide-fail", focus = failFocus).padding(vertical = 8.dp))
-            LaunchedEffect(ui.status) { if (ui.status.isFailure) land(failFocus, "시작 실패 문장") }
+            // 실패 **전이**에만 착지(모델이 발급한 1회 표식) — 탭 복귀 재컴포지션이 커서를 빼앗지 않는다.
+            LaunchedEffect(ui.failSeq) { if (GuideSession.walk.takeFailLanding()) land(failFocus, "시작 실패 문장") }
             when (ui.failResolution) {
                 FailResolution.precise -> Button(
                     onClick = {

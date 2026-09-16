@@ -66,6 +66,8 @@ data class WalkGuideUiState(
     /** 조망의 경유지 구획 행(stepIndex, 문장). */
     val routeWaypointRow: Pair<Int, String>? = null,
     val failResolution: FailResolution = FailResolution.none,
+    /** 시작 실패 전이 세대 — 실패 행의 착지 키(재컴포지션이 아니라 실패 전이에만 착지). */
+    val failSeq: Int = 0,
     /** 시작 실패 행을 어느 시작 버튼 아래 그릴지(추천 null / 최단). */
     val lastStartVariant: WalkRouteVariant? = null,
 ) {

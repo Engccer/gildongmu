@@ -267,7 +267,7 @@ class WalkGuideModel(
 
     // ── 종료 화면·출력 래치 ──
     private var endedAt: Double? = null
-    private var silencedHapticFired = false
+    private var silencedNoticed = false
     private var focusDeniedNoticed = false
     private var mediaVolumeNoticed = false
     private var ttsUnavailableNoticed = false
@@ -358,7 +358,7 @@ class WalkGuideModel(
         status = GuideStatus.tracking
         statusText = ""
         failResolution = FailResolution.none
-        silencedHapticFired = false
+        silencedNoticed = false
         // ⑥ 걸음 센서(허가 시). 기준값은 첫 이벤트, 거리는 항상 null(보폭 환산은 :kit).
         if (stepsGranted) steps.start()
         // ⑦
@@ -368,15 +368,15 @@ class WalkGuideModel(
         if (!isTracking) return  // 서비스 시작 실패 콜백이 동기로 왔으면(테스트·즉시 실패) 이미 접혔다
         // ⑨ 오디오 — 승격은 첫 톤보다 먼저.
         tones.beginSession()
-        playTone(BeaconTone.start)
-        checkMediaVolume()
+        playTone(BeaconTone.start)   // 미디어 볼륨 0 판정은 playTone 안에서 1회
         // ⑩ 워치독·경로 조회 대기.
         startWatchdog()
         awaitingRoute = true
         routeFetchToken += 1
         startFixWaitWatch(routeFetchToken)
-        // ⑪ TTS 초기화(보류 1문장은 재생기 몫).
+        // ⑪ TTS 초기화(보류 1문장은 재생기 몫). 이미 불가로 판정된 엔진이면 시트 행·진동을 지금 낸다(첫 게시를 기다리지 않는다).
         speaker.prepare()
+        syncTtsUnavailable()
     }
 
     /**
@@ -396,8 +396,19 @@ class WalkGuideModel(
         this.status = status
         failResolution = resolution
         statusText = strings.get(key)
+        pendingFailLanding = true
+        mutate { copy(failSeq = failSeq + 1) }
         resultHaptic(ResultHapticKind.failure)
         announce(statusText)
+    }
+
+    private var pendingFailLanding = false
+
+    /** 시작 실패 행의 착지 1회 소비(전이에만 착지 — 탭 복귀 재컴포지션은 착지하지 않는다). */
+    fun takeFailLanding(): Boolean {
+        val take = pendingFailLanding
+        pendingFailLanding = false
+        return take
     }
 
     // ─────────────────────────── 종료 (§3-3) ───────────────────────────
@@ -421,6 +432,7 @@ class WalkGuideModel(
         failResolution = FailResolution.none
         soundDegraded = false
         mediaVolumeNoticed = false
+        mutate { copy(isSilenced = false, focusDenied = false, ttsUnavailable = false) }
         pendingFocusDenied = false
         focusDeniedNoticed = false
         ttsUnavailableNoticed = false
@@ -494,7 +506,8 @@ class WalkGuideModel(
 
     /** 종료 화면 소거 — "닫기" 버튼과 새 세션 시작만 부른다. */
     fun clearArrival() {
-        mutate { copy(arrivalDest = null, endKind = SessionEndKind.arrived, endText = "", arrivalHealth = null) }
+        mutate { copy(arrivalDest = null, endKind = SessionEndKind.arrived, endText = "", arrivalHealth = null, liveTopText = null) }
+        if (!status.isFailure) statusText = ""   // 종료 문장이 상환 꼬리로 맥락 밖에서 되읽히지 않게(iOS 동형)
         endedAt = null
     }
 
@@ -533,7 +546,8 @@ class WalkGuideModel(
         if (missedAnnouncement || pendingStepFreeNotice != null || pendingFinalApproachIntro != null) {
             missedAnnouncement = false
             val intro = pendingFinalApproachIntro
-            val current = statusText
+            // 상태 행이 비어 있으면(실행 안내 직후 — 역할 분리로 statusText에 실행 안내가 남지 않는다) 마지막 안내가 곧 현재 상태다(iOS 동형).
+            val current = statusText.ifEmpty { lastGuidance.orEmpty() }
             val tail = if (current.isEmpty() || current == intro) null else current
             val owed = listOfNotNull(pendingStepFreeNotice, intro, tail).joinToString(" ")
             if (owed.isNotEmpty()) {
@@ -1327,11 +1341,16 @@ class WalkGuideModel(
         val silenced = tones.isSilenced
         mutate { copy(isSilenced = silenced) }
         if (silenced) {
-            if (!silencedHapticFired) { silencedHapticFired = true; resultHaptic(ResultHapticKind.failure) }
-            val spoken = strings.get("android.beacon.soundUnavailable")
-            if (statusText != spoken) { statusText = spoken; announce(spoken) }
+            // 무음 진입 **1회** 래치(진동·문장 둘 다) — 문자열 비교로 가르면 거리 통지가 상태 행을 덮을 때마다 재발화한다.
+            if (!silencedNoticed) {
+                silencedNoticed = true
+                resultHaptic(ResultHapticKind.failure)
+                val spoken = strings.get("android.beacon.soundUnavailable")
+                statusText = spoken
+                announce(spoken)
+            }
         } else {
-            silencedHapticFired = false
+            silencedNoticed = false
         }
         val denied = tones.focusDenied
         mutate { copy(focusDenied = denied) }
@@ -1386,6 +1405,9 @@ class WalkGuideModel(
         }
         return true
     }
+
+    /** TTS 초기화 전에 보류된 문장이 초기화 실패·언어 미지원으로 버려졌다 — 전경 복귀 상환이 현재 상태를 다시 낸다. */
+    fun onSpeechDropped() { missedAnnouncement = true; syncTtsUnavailable() }
 
     private fun syncTtsUnavailable() {
         val unavailable = speaker.isUnavailable

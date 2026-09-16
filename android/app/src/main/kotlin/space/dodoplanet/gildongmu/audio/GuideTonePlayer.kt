@@ -77,6 +77,9 @@ class GuideTonePlayer(
     /** 세션 시작 — 끝난 세션의 미뤄진 반납을 취소한다. 포커스는 첫 `play`가 잡는다. */
     override fun beginSession() {
         pendingStart = false
+        isSilenced = false
+        focusDenied = false
+        deniedStreak = 0
         focus.cancelPendingRelease()
     }
 

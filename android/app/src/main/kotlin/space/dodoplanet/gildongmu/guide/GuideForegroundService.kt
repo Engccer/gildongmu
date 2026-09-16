@@ -51,7 +51,6 @@ class GuideForegroundService : Service() {
         if (stream != null) { GuideDiag.log("service start reused"); return }
         val walk = GuideSession.walk
         val strings = guideStrings(resources)
-        GuideDiag.attachFileSink(this)
         GuideNotification.ensureChannel(this, strings)
         val ui = walk.ui.value
         val notification = GuideNotification.build(this, strings, notificationTitleText(ui, strings), notificationBodyText(ui, strings))
@@ -63,6 +62,7 @@ class GuideForegroundService : Service() {
             main.post { GuideSession.walk.onServiceStartFailed(e) }
             return
         }
+        GuideDiag.attachFileSink(this)   // startForeground 뒤 — 5초 창의 마진을 깎지 않는다(디렉터리 해석은 실행기 안)
         wakeLock = getSystemService(PowerManager::class.java)
             ?.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "gildongmu:guide")
             ?.apply { setReferenceCounted(false); acquire() }
@@ -93,6 +93,10 @@ class GuideForegroundService : Service() {
         }
     }
 
+    /**
+     * 정리는 **이 인스턴스의 자원만** 만진다. `stopService` 뒤의 새 시작은 AMS가 새 `ServiceRecord`·새 인스턴스로 올리므로(옛 레코드는
+     * bringDown에서 제거) 옛 `onDestroy`가 새 세션의 스트림·wake lock을 닫는 경로는 없다 — 실기기 대본 #24가 이것을 확인한다.
+     */
     override fun onDestroy() {
         stopForeground(STOP_FOREGROUND_REMOVE)  // spec §3-3 ⑦ — 전경 이탈·알림 제거를 명시(OEM 잔존 변종 차단, 멱등)
         uiJob?.cancel()
@@ -102,6 +106,7 @@ class GuideForegroundService : Service() {
         stream = null
         wakeLock?.takeIf { it.isHeld }?.release()
         wakeLock = null
+        GuideDiag.log("service destroy")
         super.onDestroy()
     }
 

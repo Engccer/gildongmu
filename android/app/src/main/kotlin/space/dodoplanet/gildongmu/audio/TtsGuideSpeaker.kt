@@ -33,6 +33,8 @@ class TtsGuideSpeaker(
     private val focus: GuideAudioFocus,
     private val store: KeyValueStore,
     private val language: () -> String,
+    /** 초기화 실패·언어 미지원으로 보류 문장을 버릴 때(호출부가 상환 장부를 세운다). */
+    private val onPendingDropped: () -> Unit = {},
 ) : GuideSpeaker {
     private var ready = false
     private var preparing = false
@@ -49,13 +51,17 @@ class TtsGuideSpeaker(
             preparing = false
             if (!ok) {
                 isUnavailable = true
-                pending = null
+                if (pending != null) { pending = null; onPendingDropped() }
                 GuideDiag.log("tts init failed")
                 return@init
             }
             ready = true
             isUnavailable = !tts.setLanguage(language())
-            if (isUnavailable) GuideDiag.log("tts language unsupported ${language()}")
+            if (isUnavailable) {
+                GuideDiag.log("tts language unsupported ${language()}")
+                if (pending != null) { pending = null; onPendingDropped() }
+                return@init
+            }
             val rate = ListenSpeed.normalizeSpeed(store.getString(ListenSpeed.storageKey)?.toDoubleOrNull())
             if (rate != 1.0) tts.setRate(rate.toFloat())
             tts.setProgressListener { id -> if (id == seq.toString()) focus.releaseAfter(0.15) }

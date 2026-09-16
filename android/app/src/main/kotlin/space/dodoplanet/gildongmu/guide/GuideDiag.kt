@@ -38,23 +38,25 @@ object GuideDiag {
      */
     fun attachFileSink(context: Context) {
         if (!isEnabled || fileSinkAttached) return
-        val dir = context.applicationContext.getExternalFilesDir(null) ?: return
         fileSinkAttached = true
-        val file = File(dir, "guide-diag.log")
+        val app = context.applicationContext
         val executor = Executors.newSingleThreadExecutor { r -> Thread(r, "guide-diag").apply { isDaemon = true } }
+        var file: File? = null
         sink = { line ->
             executor.execute {
                 runCatching {
-                    if (file.length() > 2L * 1024 * 1024) {
-                        val old = File(dir, "guide-diag.old.log")
+                    // 디렉터리 해석(mkdirs·저장소 상태 조회)도 메인 밖에서 — 첫 줄에서 1회.
+                    val f = file ?: (app.getExternalFilesDir(null)?.let { File(it, "guide-diag.log") } ?: return@execute).also { file = it }
+                    if (f.length() > 2L * 1024 * 1024) {
+                        val old = File(f.parentFile, "guide-diag.old.log")
                         old.delete()
-                        file.renameTo(old)
+                        f.renameTo(old)
                     }
-                    file.appendText(line + "\n")
+                    f.appendText(line + "\n")
                 }
             }
         }
-        emit("fileSink path=${file.absolutePath}")
+        emit("fileSink attached")
     }
 
     inline fun log(msg: () -> String) {
