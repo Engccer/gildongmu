@@ -78,13 +78,12 @@ class ChatViewModel(
     private val _state = MutableStateFlow(ChatUiState())
     val state: StateFlow<ChatUiState> = _state.asStateFlow()
 
-    /** AI 전송 동의(앱 전역 저장소 — 탭·장소 화면이 함께 전환된다). */
-    val consentGranted: StateFlow<Boolean> get() = consent.granted
+    /** AI 전송 동의(앱 전역 저장소 — 탭·장소 화면이 함께 전환된다). null = 아직 읽지 않음. */
+    val consentGranted: StateFlow<Boolean?> get() = consent.granted
+
+    suspend fun ensureConsentLoaded() = consent.ensureLoaded()
 
     fun grantConsent() = consent.grant()
-
-    /** 화면이 마지막으로 소비한 완료 세대(비저장 — 프로세스가 새로 뜨면 대화도 없다). */
-    var consumedAnswerRevision = 0
 
     private val returnFocus = ReturnFocusSlot(savedState)
     private var nextId = 1L
@@ -97,7 +96,7 @@ class ChatViewModel(
      */
     fun send(text: String): Boolean {
         val trimmed = text.trim()
-        if (!consent.granted.value || trimmed.isEmpty() || _state.value.isStreaming) return false
+        if (consent.granted.value != true || trimmed.isEmpty() || _state.value.isStreaming) return false
         clearFollowUps()
         val question = ChatMessage(nextId++, ChatRole.user, trimmed)
         _state.update { it.copy(messages = it.messages + question, isStreaming = true, notice = cleared(it.notice)) }

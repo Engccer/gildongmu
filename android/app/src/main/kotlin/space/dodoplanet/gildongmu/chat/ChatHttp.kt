@@ -1,6 +1,7 @@
 package space.dodoplanet.gildongmu.chat
 
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.awaitCancellation
@@ -32,7 +33,8 @@ object ChatHttp {
     ): T =
         withContext(Dispatchers.IO) {
             val connection = open(url)
-            val watcher = launch {
+            // UNDISPATCHED: 시작 전에 취소돼도 try에 들어가 finally(disconnect)가 반드시 돈다
+            val watcher = launch(start = CoroutineStart.UNDISPATCHED) {
                 try {
                     awaitCancellation()
                 } finally {
@@ -47,7 +49,9 @@ object ChatHttp {
                 connection.connectTimeout = timeoutMs.toInt()
                 connection.readTimeout = timeoutMs.toInt()
                 connection.setFixedLengthStreamingMode(bytes.size)
+                ensureActive() // 이미 떠났으면 요청을 보내지 않는다(연결 전 disconnect는 무효일 수 있다)
                 connection.outputStream.use { it.write(bytes) }
+                ensureActive()
                 val status = connection.responseCode
                 val stream = if (status in 200..299) connection.inputStream else connection.errorStream ?: ByteArrayInputStream(ByteArray(0))
                 stream.use { read(status, it) }

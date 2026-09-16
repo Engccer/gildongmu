@@ -20,9 +20,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.withContext
 import space.dodoplanet.gildongmu.AppConfig
 import space.dodoplanet.gildongmu.R
 import space.dodoplanet.gildongmu.a11y.Notice
@@ -38,13 +41,22 @@ import space.dodoplanet.gildongmu.nav.tryStartActivity
  * AI 채팅 데이터 전송 동의(iOS `AIChatConsent` 미러, spec §3-2). 미결정·거부를 구분하지 않는다 — 어느 쪽이든 동의 화면을 보인다.
  * 앱에 하나(탭·장소 화면이 같은 `StateFlow`를 본다). 실험판·정식판은 applicationId가 달라 저장이 자동으로 갈린다.
  */
-class ChatConsentStore(private val store: KeyValueStore) {
-    private val _granted = MutableStateFlow(store.getString(KEY) == "true")
-    val granted: StateFlow<Boolean> = _granted.asStateFlow()
+class ChatConsentStore(private val store: KeyValueStore, private val io: CoroutineDispatcher = Dispatchers.IO) {
+    private val _granted = MutableStateFlow<Boolean?>(null)
+
+    /** null = 아직 읽지 않음(화면은 동의 본문도 대화도 그리지 않는다 — 동의 전 화면이 한 프레임 번쩍이지 않게). */
+    val granted: StateFlow<Boolean?> = _granted.asStateFlow()
+
+    /** 첫 읽기는 IO에서(저장소 계약 — `SharedPreferences` 첫 접근은 디스크 로드). 이미 알면 즉시 반환. */
+    suspend fun ensureLoaded() {
+        if (_granted.value != null) return
+        val stored = withContext(io) { store.getString(KEY) == "true" }
+        _granted.compareAndSet(null, stored)
+    }
 
     fun grant() {
-        store.putString(KEY, "true")
         _granted.value = true
+        store.putString(KEY, "true")
     }
 
     companion object {

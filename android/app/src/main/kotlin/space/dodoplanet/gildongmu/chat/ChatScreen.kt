@@ -24,16 +24,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.layout.WindowInsetsRulers
+import androidx.compose.foundation.layout.fitInside
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -45,7 +47,6 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.annotation.StringRes
 import androidx.lifecycle.viewmodel.compose.viewModel
-import kotlinx.coroutines.launch
 import space.dodoplanet.gildongmu.AppConfig
 import space.dodoplanet.gildongmu.R
 import space.dodoplanet.gildongmu.a11y.AppScreenScaffold
@@ -120,24 +121,31 @@ private fun ChatBody(
     val granted by vm.consentGranted.collectAsState()
     val fieldFocus = remember { FocusRequester() }
     var agreedHere by remember { mutableStateOf(false) }
+    // push 진입 1회 — 백스택 복귀(상세 pop)·구성 변경에 살아남아, 복귀 착지와 겹쳐 제목을 한 번 거치지 않게 한다.
+    var entryLanded by rememberSaveable { mutableStateOf(false) }
 
-    // 장소 채팅 진입(push): 누른 "물어보기" 버튼이 사라지는 전이 — 제목 헤딩으로(M2 장소 상세 진입 착지와 같은 꼴).
-    if (landOnEntry) {
+    LaunchedEffect(Unit) { vm.ensureConsentLoaded() } // 첫 읽기는 IO
+
+    // 장소 채팅 진입(push): 누른 "물어보기" 버튼이 사라지는 전이 — 상단 바 제목 헤딩으로(동의 여부 무관, M2 장소 상세 진입 착지와 같은 꼴).
+    if (landOnEntry && !entryLanded) {
         LaunchedEffect(Unit) {
             withFrameNanos { }
             land(titleFocus, "entry")
+            entryLanded = true
         }
     }
     // 동의 → 텍스트 필드. 동의 상태가 커밋된 뒤 첫 프레임(사라진 동의 버튼에서의 이탈 차단, 헌장 §5).
     LaunchedEffect(granted, agreedHere) {
-        if (granted && agreedHere) {
+        if (granted == true && agreedHere) {
             withFrameNanos { }
             land(fieldFocus, "consent")
             agreedHere = false
         }
     }
 
-    if (!granted) {
+    when (granted) {
+        null -> Unit // 아직 읽는 중 — 한 프레임 수준, 아무것도 그리지 않는다
+        false -> {
         val notice by vm.state.collectAsState()
         ChatConsentContent(
             notice = notice.notice,
@@ -145,12 +153,11 @@ private fun ChatBody(
             onNoApp = { vm.announce(it) },
             modifier = modifier,
         )
-    } else {
-        ChatConversation(vm, suggestions, fieldFocus, onOpenPlace, showsLocationBar, modifier)
+        }
+        true -> ChatConversation(vm, suggestions, fieldFocus, onOpenPlace, showsLocationBar, modifier)
     }
 }
 
-@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 private fun ChatConversation(
     vm: ChatViewModel,
@@ -162,7 +169,6 @@ private fun ChatConversation(
 ) {
     val s by vm.state.collectAsState()
     val scroll = rememberScrollState()
-    val scope = rememberCoroutineScope()
     val sendFocus = remember { FocusRequester() }
     val targets = remember { ChatFocusTargets() }
     var fieldFocused by remember { mutableStateOf(false) }
@@ -172,11 +178,11 @@ private fun ChatConversation(
 
     fun afterSend() {
         land(sendFocus, "send")
-        // 새 질문이 배치된 뒤의 끝으로 — 핸들러 안의 maxValue는 새 질문 이전 값이다
-        scope.launch {
-            withFrameNanos { }
-            scroll.animateScrollTo(scroll.maxValue)
-        }
+    }
+
+    // 전송 뒤 끝으로 스크롤 — 새 질문이 배치된 뒤의 maxValue를 읽도록 메시지 수 변화의 효과에서(핸들러 안의 값은 새 질문 이전이다).
+    LaunchedEffect(s.messages.size) {
+        if (s.messages.lastOrNull()?.role == ChatRole.user) scroll.animateScrollTo(scroll.maxValue)
     }
 
     fun submitDraft() {
@@ -191,10 +197,12 @@ private fun ChatConversation(
     // 스트리밍 중(새 질문)·받아쓰기 활성·입력 중이면 건너뛰되 소비한다 — 그때는 끝으로 스크롤만.
     // 실패인데 착지하지 못했으면 통지 줄에 실패 문장 — 착지가 유일한 성패 신호라 건너뛰면 실패가 조용해진다(리뷰 R2-M1).
     val initialAnswerRevision = remember { s.answerRevision }
+    // 소비한 완료 세대 — [조각 ③] 전사 착지가 대기 중인 완료 착지를 소비할 때 이 값을 올린다.
+    var consumedRevision by remember { mutableIntStateOf(initialAnswerRevision) }
     LaunchedEffect(s.answerRevision) {
         val revision = s.answerRevision
-        if (revision <= initialAnswerRevision || revision <= vm.consumedAnswerRevision) return@LaunchedEffect
-        vm.consumedAnswerRevision = revision
+        if (revision <= consumedRevision) return@LaunchedEffect
+        consumedRevision = revision
         withFrameNanos { }
         val current = vm.state.value
         val last = current.messages.lastOrNull()
@@ -210,6 +218,13 @@ private fun ChatConversation(
             scroll.animateScrollTo(scroll.maxValue)
         }
     }
+    // 위치 표시줄은 진입 시점 스냅샷이다 — 같은 화면의 전송(측위·권한 허용)이 상태를 바꿨을 수 있어 답변 뒤 다시 맞춘다(좌표당 1회는 스토어가 막는다).
+    if (showsLocationBar) {
+        val res = LocalContext.current.resources
+        LaunchedEffect(s.answerRevision) {
+            if (s.answerRevision > initialAnswerRevision) AppConfig.currentAddressStore.ensureLoaded(AppLocale.dataLocale(res))
+        }
+    }
     // pop 복귀: 상세를 연 원점(카드·블록·주소 행)으로. 키는 한 번만 소비된다.
     LaunchedEffect(Unit) {
         val key = vm.takeReturnFocus() ?: return@LaunchedEffect
@@ -217,7 +232,8 @@ private fun ChatConversation(
         land(targets.existingRow(key), "return")
     }
 
-    Column(modifier.fillMaxSize().semantics { testTagsAsResourceId = true }) {
+    // Android 15+ edge-to-edge: adjustResize는 창을 줄이지 않고 IME 인셋만 준다 — 입력 바가 키보드 뒤로 숨지 않게 이 컨테이너를 IME 위로 맞춘다.
+    Column(modifier.fillMaxSize().fitInside(WindowInsetsRulers.Ime.current).semantics { testTagsAsResourceId = true }) {
         if (showsLocationBar) {
             // 대화의 조회 기준 좌표(iOS `LocationBarView`) — 스크롤 밖 첫 줄
             Column(Modifier.padding(horizontal = 16.dp)) { LocationBarRow(AppConfig.currentAddressStore) }
@@ -238,13 +254,14 @@ private fun ChatConversation(
                 }
             }
             ChatMessageList(s.messages, targets)
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (s.isStreaming) {
-                    // 시각 전용 진행 표시 — 진행 문장은 옆의 통지 줄이 말한다
-                    CircularProgressIndicator(Modifier.size(16.dp).clearAndSetSemantics { })
-                }
-                StatusLine(s.notice, Modifier.padding(vertical = 8.dp))
+        }
+        // 통지 줄은 스크롤 밖 — 목록을 올려 읽는 중에도 라이브 리전이 화면 안에 있다(읽기 순서는 목록 끝 → 통지 → 입력 그대로).
+        Row(Modifier.padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (s.isStreaming) {
+                // 시각 전용 진행 표시 — 진행 문장은 옆의 통지 줄이 말한다
+                CircularProgressIndicator(Modifier.size(16.dp).clearAndSetSemantics { })
             }
+            StatusLine(s.notice, Modifier.padding(vertical = 4.dp))
         }
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
             TextField(

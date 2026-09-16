@@ -60,7 +60,8 @@ class ChatStreamReaderTest {
     }
 
     @Test fun `U+2028 날 문자는 줄을 쪼갠다 — 서버 결함(A44 후보)의 현행 계약이고 앱에서 우회하지 않는다`() {
-        val body = "{\"type\":\"done\",\"text\":\"가 나\"}\n".toByteArray()
+        val lineSeparator = Char(0x2028) // 보이지 않는 문자를 소스에 날로 두지 않는다(편집기 정규화로 테스트 의도가 사라진다)
+        val body = "{\"type\":\"done\",\"text\":\"가${lineSeparator}나\"}\n".toByteArray()
         assertFailsWith<APIError.Decoding> { events(body, 8192) }
     }
 }

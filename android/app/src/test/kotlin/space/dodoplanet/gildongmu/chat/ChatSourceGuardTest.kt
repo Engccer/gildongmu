@@ -22,8 +22,10 @@ class ChatSourceGuardTest {
     }
 
     @Test fun `채팅 버튼은 enabled로 끄지 않는다(포커스를 떨군다 — 헌장 §5)`() {
-        // 주석 속 설명("enabled=false는 …")은 빼고 코드만 본다
-        val code = { f: java.io.File -> f.readLines().map { it.substringBefore("//") }.joinToString("\n") }
+        // 주석 속 설명("enabled=false는 …")은 빼고 코드만 본다(줄 주석·KDoc 줄)
+        val code = { f: java.io.File ->
+            f.readLines().filterNot { val t = it.trimStart(); t.startsWith("*") || t.startsWith("/**") }.map { it.substringBefore("//") }.joinToString("\n")
+        }
         assertEquals(emptyList(), chat.filter { Regex("""\benabled\s*=""").containsMatchIn(code(it)) }.map { it.name })
         assertTrue(Regex("""\benabled\s*=""").containsMatchIn("Button(enabled = false)")) // 가드가 살아 있다
     }
@@ -32,6 +34,14 @@ class ChatSourceGuardTest {
         val screen = code("ChatScreen.kt") + code("ChatMessages.kt")
         assertTrue(screen.contains("vm.takeReturnFocus()"))
         assertTrue(code("ChatViewModel.kt").contains("fun rememberReturnFocus("))
+    }
+
+    @Test fun `장소 채팅 예시 프롬프트 표는 kit placeChatPromptKeys 키 전수다(키가 늘면 조용히 빠지지 않게)`() {
+        val key = Regex(""""(placeChat\.prompt\.[A-Za-z]+)"""")
+        val kit = key.findAll(root.resolve("android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/PlaceChatPrompts.kt").readText()).map { it.groupValues[1] }.toSet()
+        val table = Regex(""""(placeChat\.prompt\.[A-Za-z]+)" -> R\.string\.""").findAll(code("ChatScreen.kt")).map { it.groupValues[1] }.toSet()
+        assertEquals(9, kit.size)
+        assertEquals(kit, table)
     }
 
     @Test fun `도구·출처 라벨 표는 iOS 표와 같은 키 전수다`() {
