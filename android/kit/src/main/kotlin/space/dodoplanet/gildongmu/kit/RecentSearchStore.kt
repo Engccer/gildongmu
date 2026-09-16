@@ -134,7 +134,7 @@ class RecentSearchStore(private val store: KeyValueStore) {
 
     /** trim 후 기록. 빈 문자열은 무시(현재 목록 반환). */
     fun recordQuery(raw: String): List<RecentQuery> {
-        val text = raw.trim()
+        val text = raw.trimSwiftWhitespacesAndNewlines()
         if (text.isEmpty()) return queries()
         return save(
             appendKeepingPins(RecentQuery(text), queries(),

@@ -14,6 +14,6 @@ private val STATION_CATEGORY = Regex("지하철|전철|철도|기차|Subway|Metr
 /** 장소가 철도/지하철 역인지: 카테고리 키워드 또는 이름 접미사("역"/"station")로 판정. */
 fun isStation(place: Place): Boolean {
     if (STATION_CATEGORY.containsMatchIn(place.category)) return true
-    val name = place.name.trim()
+    val name = place.name.trimSwiftWhitespacesAndNewlines()
     return name.endsWith("역") || name.lowercase().endsWith("station")
 }

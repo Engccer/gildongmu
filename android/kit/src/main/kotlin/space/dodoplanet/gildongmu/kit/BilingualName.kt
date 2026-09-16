@@ -26,21 +26,21 @@ fun hasHangul(text: String): Boolean =
  * 원천이 이미 `Latin (한글)` 병기 형태(TourAPI en `title`)면 라틴 선두가 primary, 괄호 안이
  * secondary다 — 웹 `EMBEDDED_BILINGUAL`·서버 `romanNameOf` 게이트와 같은 정규식.
  */
-// `\s` 대신 명시 공백 클래스(JVM ASCII ↔ 안드로이드 ICU 차이 회피, README §3).
-private val EMBEDDED_BILINGUAL = Regex("""^([^가-힣()]*[A-Za-z][^가-힣()]*?)[ \t\n\r]*\(([^()]*[가-힣][^()]*)\)[ \t\n\r]*$""")
+// Swift `\s` 대신 같은 뜻의 명시 집합 REGEX_SPACE_MEMBERS(JVM ASCII ↔ 안드로이드 ICU 차이 회피, README §3).
+private val EMBEDDED_BILINGUAL = Regex("""^([^가-힣()]*[A-Za-z][^가-힣()]*?)[$REGEX_SPACE_MEMBERS]*\(([^()]*[가-힣][^()]*)\)[$REGEX_SPACE_MEMBERS]*$""")
 
 private fun nfc(text: String): String = Normalizer.normalize(text, Normalizer.Form.NFC)
 
 internal fun parseEmbeddedBilingual(name: String): BilingualName? {
     val m = EMBEDDED_BILINGUAL.matchEntire(nfc(name)) ?: return null
-    val primary = m.groupValues[1].trim()
+    val primary = m.groupValues[1].trimSwiftWhitespaces()
     if (primary.isEmpty()) return null
-    return BilingualName(primary, m.groupValues[2].trim())
+    return BilingualName(primary, m.groupValues[2].trimSwiftWhitespaces())
 }
 
 /** 한글이 섞인 후보는 후보가 아니다 — 접근 가능한 이름에 한글이 새는 유일한 경로를 막는다. */
 private fun latinCandidate(value: String?): String? {
-    val trimmed = value?.trim() ?: return null
+    val trimmed = value?.trimSwiftWhitespacesAndNewlines() ?: return null
     if (trimmed.isEmpty() || hasHangul(trimmed)) return null
     return trimmed
 }
@@ -55,6 +55,6 @@ fun bilingualName(lang: String, ko: String, en: String?, roman: String?): Biling
     parseEmbeddedBilingual(ko)?.let { return it }
     val candidate = latinCandidate(en) ?: latinCandidate(roman) ?: return BilingualName(ko, null)
     if (!hasHangul(ko)) return BilingualName(candidate, null)
-    if (nfc(candidate) == nfc(ko.trim())) return BilingualName(ko, null)
+    if (nfc(candidate) == nfc(ko.trimSwiftWhitespacesAndNewlines())) return BilingualName(ko, null)
     return BilingualName(candidate, ko)
 }

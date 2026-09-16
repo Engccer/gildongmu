@@ -5,7 +5,7 @@ package space.dodoplanet.gildongmu.kit
  * `ClinicKind.swift` 미러. 값이 두 종("의원"·"병원")뿐이라 사전이 아니라 키 둘이고, 그 밖은 null(원문 그대로).
  * 앱은 `clinicNearby.kind.<키>`를 리터럴로 조회한다(문자열 린터 계약).
  */
-fun clinicKindKey(kind: String): String? = when (kind.trim()) {
+fun clinicKindKey(kind: String): String? = when (kind.trimSwiftWhitespacesAndNewlines()) {
     "의원" -> "clinic"
     "병원" -> "hospital"
     else -> null

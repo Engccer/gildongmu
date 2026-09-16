@@ -27,19 +27,27 @@ internal fun Double.roundedAwayFromZero(): Double {
  */
 internal const val REGEX_SPACE_MEMBERS = """\t\n\u000B\f\r\u0085\p{Z}"""
 
-/**
- * Swift `trimmingCharacters(in: .whitespaces)` 미러 — 공백 구분자(Zs) + 탭, **줄바꿈은 자르지 않는다**.
- *
- * ⚠ Kotlin `trim()`(`isWhitespace`)은 Swift의 두 집합 어느 것과도 같지 않다(줄바꿈·U+001C~U+001F를 자르고 U+0085는 남긴다) —
- * Swift가 trim하는 자리는 그 집합에 맞는 이 파일의 함수로 옮긴다.
- */
-internal fun String.trimSwiftWhitespaces(): String =
-    trim { it == '\t' || Character.getType(it) == Character.SPACE_SEPARATOR.toInt() }
+/** Swift `Character.isWhitespace` 미러 — 유니코드 White_Space(`REGEX_SPACE_MEMBERS`와 같은 집합, 전 코드포인트 실측 일치). */
+internal fun Char.isSwiftWhitespace(): Boolean = this in '\t'..'\r' || code == 0x85 || isUnicodeSeparator()
 
-/** Swift `trimmingCharacters(in: .whitespacesAndNewlines)` 미러 — 탭·U+000A~U+000D·U+0085 + 유니코드 Z*(Zs·Zl·Zp). */
-internal fun String.trimSwiftWhitespacesAndNewlines(): String = trim {
-    it == '\t' || it in '\n'..'\r' || it == '\u0085' || when (Character.getType(it).toByte()) {
-        Character.SPACE_SEPARATOR, Character.LINE_SEPARATOR, Character.PARAGRAPH_SEPARATOR -> true
-        else -> false
-    }
+/** Swift `CharacterSet.whitespaces` 소속 — 탭 + 공백 구분자(Zs), **줄바꿈은 아니다**. */
+internal fun Char.inSwiftWhitespaces(): Boolean = this == '\t' || category == CharCategory.SPACE_SEPARATOR
+
+/** Swift `CharacterSet.whitespacesAndNewlines` 소속 — 탭·U+000A~U+000D·U+0085 + 유니코드 Z*(Zs·Zl·Zp). */
+internal fun Char.inSwiftWhitespacesAndNewlines(): Boolean = isSwiftWhitespace()
+
+private fun Char.isUnicodeSeparator(): Boolean = when (category) {
+    CharCategory.SPACE_SEPARATOR, CharCategory.LINE_SEPARATOR, CharCategory.PARAGRAPH_SEPARATOR -> true
+    else -> false
 }
+
+/**
+ * Swift `trimmingCharacters(in: .whitespaces)` 미러 — 줄바꿈은 자르지 않는다.
+ *
+ * ⚠ Kotlin 기본 공백 판정(`trim()`·`isBlank()`·`Char.isWhitespace()`)은 Swift의 어느 집합과도 같지 않다(U+001C~U+001F를 자르고
+ * U+0085는 남긴다) — :kit main은 그것을 쓰지 않고 Swift 원본의 집합에 맞는 이 파일의 함수를 지난다(`SwiftSemanticsTest`가 잠근다).
+ */
+internal fun String.trimSwiftWhitespaces(): String = trim { it.inSwiftWhitespaces() }
+
+/** Swift `trimmingCharacters(in: .whitespacesAndNewlines)` 미러. */
+internal fun String.trimSwiftWhitespacesAndNewlines(): String = trim { it.inSwiftWhitespacesAndNewlines() }

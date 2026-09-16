@@ -44,7 +44,7 @@ fun parseChatMarkdownBlocks(text: String): List<ChatMarkdownBlock> {
     }
 
     for (line in text.split("\n")) {
-        if (line.isBlank()) {
+        if (line.trimSwiftWhitespaces().isEmpty()) {
             flushParagraph()
             continue
         }

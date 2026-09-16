@@ -48,10 +48,10 @@ object MarkdownPlainText {
         text = bullet.replace(text, "• ")
         text = ordered.replace(text, "")
         text = excessNewlines.replace(text, "\n\n")
-        return text.trim()
+        return text.trimSwiftWhitespacesAndNewlines()
     }
 
     /** 코드 펜스 블록만 언어 태그·펜스를 벗기고 내용을 남긴다(매치별 변형이 필요해 템플릿 치환과 따로 둔다). */
     private fun stripCodeBlocks(text: String): String =
-        codeBlock.replace(text) { match -> fenceOpen.replace(match.value, "").replace("```", "").trim() }
+        codeBlock.replace(text) { match -> fenceOpen.replace(match.value, "").replace("```", "").trimSwiftWhitespacesAndNewlines() }
 }

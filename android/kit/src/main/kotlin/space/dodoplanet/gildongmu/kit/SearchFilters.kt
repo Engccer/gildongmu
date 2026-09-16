@@ -87,8 +87,8 @@ private val regionAliases: Map<String, String> = mapOf(
  * 시·도가 아니면 null(부분 문자열 매칭은 "경기 광주시"를 광주광역시로 오인하므로 첫 토큰 정확 매칭만).
  */
 private fun regionOf(place: Place): String? {
-    val source = place.address.trim().ifEmpty { place.roadAddress.trim() }
-    val firstToken = source.split(Regex("[ \\t\\n\\r]+")).firstOrNull { it.isNotEmpty() } ?: return null
+    val source = place.address.trimSwiftWhitespacesAndNewlines().ifEmpty { place.roadAddress.trimSwiftWhitespacesAndNewlines() }
+    val firstToken = source.split(Regex("[$REGEX_SPACE_MEMBERS]+")).firstOrNull { it.isNotEmpty() } ?: return null
     return regionAliases[firstToken]
 }
 

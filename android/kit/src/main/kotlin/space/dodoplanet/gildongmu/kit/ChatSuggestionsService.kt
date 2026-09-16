@@ -46,7 +46,7 @@ object ChatSuggestionsService {
         val root = runCatching { KitJson.parseToJsonElement(body) }.getOrNull() as? JsonObject ?: return emptyList()
         val list = root["suggestions"] as? JsonArray ?: return emptyList()
         return list.asSequence()
-            .mapNotNull { (it as? JsonPrimitive)?.takeIf { p -> p.isString }?.content?.trim() }
+            .mapNotNull { (it as? JsonPrimitive)?.takeIf { p -> p.isString }?.content?.trimSwiftWhitespacesAndNewlines() }
             .filter { it.isNotEmpty() }
             .take(maxSuggestions)
             .toList()

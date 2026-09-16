@@ -2,6 +2,7 @@ package space.dodoplanet.gildongmu.kit.models
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import space.dodoplanet.gildongmu.kit.trimSwiftWhitespacesAndNewlines
 
 // 역 상세 4종 + 날씨·공기질·혼잡도 도메인 모델: 웹 `src/lib/types.ts` ↔ Kit `StationModels.swift` 미러.
 // 미커버 역·데이터 부재는 envelope 본문 null(graceful degrade). status·grade·label류 문자열은 String.
@@ -203,7 +204,7 @@ enum class CongestionLevelKey {
 
     companion object {
         /** 등급어 원문에서 키를 판정(Swift `init?(levelText:)`). 미등재 값은 null(원문 낭독 폴백). */
-        fun fromLevelText(raw: String): CongestionLevelKey? = when (raw.trim()) {
+        fun fromLevelText(raw: String): CongestionLevelKey? = when (raw.trimSwiftWhitespacesAndNewlines()) {
             "여유" -> relaxed
             "보통" -> normal
             "약간 붐빔" -> slightlyBusy

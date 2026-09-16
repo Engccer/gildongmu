@@ -23,8 +23,8 @@ fun normalizeVoiceQuery(text: String): String {
     var end = text.length
     while (end > 0) {
         val ch = text[end - 1]
-        if (ch in TRAILING_PUNCTUATION || ch.isWhitespace()) end -= 1 else break
+        if (ch in TRAILING_PUNCTUATION || ch.inSwiftWhitespacesAndNewlines()) end -= 1 else break
     }
-    val stripped = text.substring(0, end).trim()
-    return if (stripped.isEmpty()) text.trim() else stripped
+    val stripped = text.substring(0, end).trimSwiftWhitespacesAndNewlines()
+    return if (stripped.isEmpty()) text.trimSwiftWhitespacesAndNewlines() else stripped
 }
