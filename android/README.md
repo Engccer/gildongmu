@@ -7,7 +7,9 @@ iOS 앱과 기능 등가인 안드로이드 네이티브 앱(판정 문서 `docs
 ```
 android/
   app/   Jetpack Compose 화면 + 플랫폼 서비스([3]·[4]). 패키지 space.dodoplanet.gildongmu
-         location/  현재 위치 공유 스토어(LocationStore: 캐시·권한·정밀도·게이트 취득, GMS 무의존) — M3·M2가 같은 시그니처를 쓴다(M2 spec §4) · 표시줄 주소 캐시(CurrentAddressStore·LocationBar, spec §12-4)
+         location/  현재 위치 공유 스토어(LocationStore: 캐시·권한·정밀도·게이트 취득, GMS 무의존 — GPS 층) · 앱 층 좌표 진입점 EffectiveLocation(수동 > GPS, 판정 38 소스 가드) · 수동 위치(ManualLocationStore·ManualLocationJudge·ManualLocationPicker{Route,ViewModel,Screen}) · 표시줄(CurrentAddressStore·LocationBar = 버튼) (M2 spec §4·§12-4·§13)
+         directions/ 길찾기(M3) · 끝점 검색 모델 EndpointPicker(길찾기 폼과 수동 지정 화면이 공유, spec §13-3)
+         a11y/      접근성 기본형(mergedRow·landingTarget·AppScreenScaffold·StatusLine) · 앱 통지 큐 AppNotices(화면 StatusLine이 한 문장으로 병합, spec §13-5)
          nearby/    내 주변 허브·공통 껍데기(NearbyScreenViewModel = :kit NearbyLoadCore 소비)·kind 조립기 10종(NearbyKinds)·payload(NearbyPayloads·AroundPayload)·문장 조립(NearbyLines·DomainLines·WalkInfraLines·ConditionsLines·SceneLines)·본문(NearbyKindScreen·PlaceListBodies·WalkInfraBody·ConditionsBody·SceneSection) (M2 spec §3-4~3-9·§5·§12-1·§12-2)
          place/     장소 상세(Place JSON 라우트 + PlaceDomain·영업시간·외부 지도 열기 판정·도메인 섹션·역 자동 섹션 5종(StationLines·StationSectionsView)·무장애 섹션) (M2 spec §3-2·§12-3)
   kit/   순수 Kotlin/JVM, iOS GildongmuKit의 미러([2] 판정 계층). 패키지 space.dodoplanet.gildongmu.kit
