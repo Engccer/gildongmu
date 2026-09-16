@@ -43,7 +43,7 @@ class SearchScreenA11yTest {
             SearchService(stubbedClient { url -> if (pathOf(url) == "/api/places") HttpResponse(200, places) else HttpResponse(200, emptyAddr) }),
             RecentSearchStore(InMemoryKeyValueStore()),
             { "ko" },
-            searchStrings(rule.activity.applicationContext),
+            searchStrings { rule.activity.resources },
             SavedStateHandle(),
         )
         rule.setContent { MaterialTheme { SearchScreen(vm) } } // 실제 앱과 같은 테마여야 대비 검사가 의미 있다

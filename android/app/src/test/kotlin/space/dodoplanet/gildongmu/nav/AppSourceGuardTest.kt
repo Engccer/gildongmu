@@ -159,6 +159,20 @@ class AppSourceGuardTest {
         assertTrue(android.resolve("app/src/main/kotlin/space/dodoplanet/gildongmu/MainActivity.kt").readText().let { it.contains("override fun attachBaseContext") && it.contains("AppConfig.localized(base)") })
     }
 
+    /** spec §14-2 — 문장·언어는 호출 시점에 `AppConfig.localizedApp()`에서. 목록이 아니라 규약이라 새 팩토리가 자동으로 든다. */
+    @Test fun `리소스는 호출 시점에 localizedApp에서 읽는다 — app·applicationContext 캡처 0`() {
+        val forbidden = Regex("""\b(app|applicationContext)\.(resources|getString\()""")
+        assertEquals(emptyList(), sources.filter { it.extension == "kt" && it.name != "AppConfig.kt" && forbidden.containsMatchIn(it.readText()) }.map { it.name })
+        // applicationContext를 변수에 담지 않는다(별칭으로 새는 경로) — 저장소·서비스 생성자 인자로 넘기는 것만.
+        val alias = Regex("""=\s*(?:\w+\.)*applicationContext\b""")
+        // 플랫폼 서비스 홀더(LocationManager·권한·음성 인식기·SharedPreferences)는 앱 컨텍스트를 붙들되 리소스를 읽지 않는다 — 첫 축이 그것을 잡는다.
+        val serviceHolders = setOf("AppConfig.kt", "AndroidLocationSource.kt", "PermissionGate.kt", "DictationSession.kt", "SharedPreferencesStore.kt")
+        assertEquals(emptyList(), sources.filter { it.extension == "kt" && it.name !in serviceHolders && alias.containsMatchIn(it.readText()) }.map { it.name })
+        val factoryFiles = sources.filter { it.extension == "kt" && (it.name.endsWith("Factory.kt") || it.name.endsWith("Factories.kt") || it.name.endsWith("StringsRes.kt") || it.name == "MainActivity.kt") }
+        assertTrue(factoryFiles.size >= 5, factoryFiles.map { it.name }.toString())
+        assertEquals(emptyList(), factoryFiles.filter { Regex("""\bcontext\.(resources|getString\()""").containsMatchIn(it.readText()) }.map { it.name })
+    }
+
     @Test fun `Google Play 서비스 의존은 0이다`() {
         val gradle = listOf(android.resolve("app/build.gradle.kts"), android.resolve("gradle/libs.versions.toml"))
         assertTrue(gradle.none { it.readText().contains("play-services") })

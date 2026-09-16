@@ -15,8 +15,8 @@ import space.dodoplanet.gildongmu.directions.EndpointSearchContent
  */
 @Composable
 fun ManualLocationPickerScreen(onBack: () -> Unit) {
-    val app = LocalContext.current.applicationContext
-    val factory = remember(app) { manualLocationPickerFactory(app) }
+    val context = LocalContext.current
+    val factory = remember(context) { manualLocationPickerFactory(context) }
     val vm: ManualLocationPickerViewModel = viewModel(factory = factory)
     val p by vm.picker.state.collectAsState()
     val done by vm.done.collectAsState()

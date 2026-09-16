@@ -54,8 +54,8 @@ import space.dodoplanet.gildongmu.nav.tryStartActivity
  */
 @Composable
 fun DirectionsScreen() {
-    val app = LocalContext.current.applicationContext
-    val factory = remember(app) { directionsViewModelFactory(app) }
+    val context = LocalContext.current
+    val factory = remember(context) { directionsViewModelFactory(context) }
     DirectionsScreen(viewModel(factory = factory))
 }
 

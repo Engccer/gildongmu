@@ -1,6 +1,7 @@
 package space.dodoplanet.gildongmu.location
 
 import android.content.Context
+import android.content.res.Resources
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -92,19 +93,20 @@ class ManualLocationPickerViewModel(
 }
 
 /**
- * 지정 화면 ViewModel 팩토리 — 이 패키지가 앱 컨텍스트로 스스로 만든다(길찾기 관용구, Activity 캡처 없음). `LocationStore`는 `location/` 안이라
- * 여기서만 잡는다(판정 38 소스 가드). 문자열·언어는 호출 시점에 읽는다.
+ * 지정 화면 ViewModel 팩토리 — 이 패키지가 스스로 만든다(길찾기 관용구, Activity 캡처 없음). `LocationStore`는 `location/` 안이라
+ * 여기서만 잡는다(판정 38 소스 가드). 문자열·언어는 **호출 시점**에 `AppConfig.localizedApp()`에서 읽는다(spec §14-2).
  */
 fun manualLocationPickerFactory(context: Context): ViewModelProvider.Factory {
-    val app = context.applicationContext
+    val res: () -> Resources = { AppConfig.localizedApp().resources }
+    val store = RecentSearchStore(SharedPreferencesStore(context))
     return viewModelFactory {
         initializer {
             ManualLocationPickerViewModel(
                 search = SearchService(AppConfig.apiClient),
-                store = RecentSearchStore(SharedPreferencesStore(app)),
-                strings = resourceStrings(app.resources),
+                store = store,
+                strings = resourceStrings(res),
                 io = Dispatchers.IO,
-                dataLocale = { AppLocale.dataLocale(app.resources) },
+                dataLocale = { AppLocale.dataLocale(res()) },
                 ranking = { AppConfig.effectiveLocation.coordinateForRanking() },
                 manual = AppConfig.manualLocationStore,
                 location = AppConfig.locationStore,

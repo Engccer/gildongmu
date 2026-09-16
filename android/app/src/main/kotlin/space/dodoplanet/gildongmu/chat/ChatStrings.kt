@@ -22,14 +22,17 @@ class ChatStrings(
     val addressLookupFailed: () -> String,
 )
 
-fun chatStrings(res: Resources): ChatStrings = ChatStrings(
-    failed = { res.getString(R.string.android_chat_failed) },
-    emptyAnswer = { res.getString(R.string.android_chat_emptyAnswer) },
-    progressFallback = { res.getString(R.string.android_chat_progressFallback) },
-    progressSearching = { appLocalized(res, R.string.chat_progress_searching, it) },
-    toolLabel = { category -> toolLabelId(category)?.let(res::getString) ?: category },
-    addressNotFound = { res.getString(R.string.search_addressCoordFailed) },
-    addressLookupFailed = { res.getString(R.string.directions_coordError) },
+fun chatStrings(res: Resources): ChatStrings = chatStrings { res }
+
+/** ViewModel 팩토리용 — **호출 시점**에 `res()`를 읽는다(spec §14-2, 프로덕션은 `{ AppConfig.localizedApp().resources }`). */
+fun chatStrings(res: () -> Resources): ChatStrings = ChatStrings(
+    failed = { res().getString(R.string.android_chat_failed) },
+    emptyAnswer = { res().getString(R.string.android_chat_emptyAnswer) },
+    progressFallback = { res().getString(R.string.android_chat_progressFallback) },
+    progressSearching = { appLocalized(res(), R.string.chat_progress_searching, it) },
+    toolLabel = { category -> toolLabelId(category)?.let(res()::getString) ?: category },
+    addressNotFound = { res().getString(R.string.search_addressCoordFailed) },
+    addressLookupFailed = { res().getString(R.string.directions_coordError) },
 )
 
 /** 도구 카테고리 → 라벨 리소스(iOS `ChatModel.toolLabel` 표 전수, 리터럴 매핑 — 키 린터가 대조할 수 있게). */

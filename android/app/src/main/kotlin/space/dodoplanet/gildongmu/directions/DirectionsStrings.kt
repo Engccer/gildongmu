@@ -21,14 +21,17 @@ fun interface Strings {
  * 미매핑 키는 디버그에서 즉시 드러내고 릴리스는 키 문자열을 노출한다(빈 문자열 금지 — 침묵보다 낫다).
  * 조회는 전부 `appLocalized`를 지난다(ICU 복수 블록, `LocalizedCallSiteGuardTest`).
  */
-fun resourceStrings(res: Resources): Strings = Strings { key, args ->
+fun resourceStrings(res: Resources): Strings = resourceStrings { res }
+
+/** ViewModel 팩토리용 — **호출 시점**에 `res()`를 읽는다(spec §14-2, 프로덕션은 `{ AppConfig.localizedApp().resources }`). */
+fun resourceStrings(res: () -> Resources): Strings = Strings { key, args ->
     val id = stringId(key)
     if (id == null) {
         check(!BuildConfig.DEBUG) { "길찾기 문자열 미매핑 키: $key" }
         key
     } else {
         // 무인자도 같은 경로 — `formatLocalized`의 복수 블록 안전망(원문 낭독 차단)을 우회하지 않는다.
-        appLocalized(res, id, *args)
+        appLocalized(res(), id, *args)
     }
 }
 

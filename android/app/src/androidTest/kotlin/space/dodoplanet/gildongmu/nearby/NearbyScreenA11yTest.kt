@@ -41,7 +41,7 @@ class NearbyScreenA11yTest {
     fun subwayRowsMergeAndFirstStationLands() {
         val body = Fixtures.kit("subway-nearby.json")
         val service = NearbyService(stubbedClient { url -> if (pathOf(url) == "/api/station/subway-arrival/nearby") HttpResponse(200, body) else HttpResponse(404, "") })
-        val strings = nearbyStrings(rule.activity.applicationContext)
+        val strings = nearbyStrings { rule.activity.resources }
         val anchor = PlaceAnchor(37.538, 127.137, "길동역")
         val factory = viewModelFactory {
             initializer { NearbyScreenViewModel(NearbyKinds.subway(service, strings), NearbyCoordinateSource.Fixed(NearbyCoord(anchor.lat, anchor.lng)), strings, SavedStateHandle()) }
@@ -70,7 +70,7 @@ class NearbyScreenA11yTest {
                 else -> HttpResponse(404, "")
             }
         })
-        val strings = nearbyStrings(rule.activity.applicationContext)
+        val strings = nearbyStrings { rule.activity.resources }
         val anchor = PlaceAnchor(37.538, 127.137, "길동역")
         val factory = viewModelFactory {
             initializer { NearbyScreenViewModel(NearbyKinds.conditions(service, strings), NearbyCoordinateSource.Fixed(NearbyCoord(anchor.lat, anchor.lng)), strings, SavedStateHandle()) }
@@ -89,7 +89,7 @@ class NearbyScreenA11yTest {
     @Test
     fun walkInfraHasThreeGroupHeadings() {
         val service = WalkInfraService(stubbedClient { HttpResponse(200, Fixtures.kit("walk-nearby-unsupported.json")) })
-        val strings = nearbyStrings(rule.activity.applicationContext)
+        val strings = nearbyStrings { rule.activity.resources }
         val anchor = PlaceAnchor(35.1, 129.0, "부산")
         val factory = viewModelFactory {
             initializer { NearbyScreenViewModel(NearbyKinds.walkInfra(service, strings) { "오후 3:04" }, NearbyCoordinateSource.Fixed(NearbyCoord(anchor.lat, anchor.lng)), strings, SavedStateHandle()) }

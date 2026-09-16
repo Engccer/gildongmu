@@ -1,6 +1,7 @@
 package space.dodoplanet.gildongmu.chat
 
 import android.content.Context
+import android.content.res.Resources
 import android.media.AudioAttributes
 import android.media.SoundPool
 import androidx.lifecycle.ViewModelProvider
@@ -20,11 +21,12 @@ import space.dodoplanet.gildongmu.storage.SharedPreferencesStore
 
 /**
  * 채팅 ViewModel 팩토리 — 이 패키지가 앱 컨텍스트로 스스로 만든다(`MainActivity`·`AppFactories`는 골격 세션 소유, M3 관례).
- * ⚠ Activity를 캡처하지 않는다. 문자열·언어는 호출 시점에 읽는다.
+ * ⚠ Activity를 캡처하지 않는다. 문자열·언어는 **호출 시점**에 `AppConfig.localizedApp()`에서 읽는다(M2 spec §14-2 — 앱 컨텍스트의 `Resources`는
+ * 오버라이드를 받지 않으므로 캡처하면 언어 변경 뒤 옛 언어로 굳고, `lang`은 서버 요청 파라미터라 답변 언어까지 옛 언어가 된다).
  */
 fun chatViewModelFactory(context: Context, place: Place?): ViewModelProvider.Factory {
-    val app = context.applicationContext
-    val services = ChatServices.get(app)
+    val services = ChatServices.get(context)
+    val res: () -> Resources = { AppConfig.localizedApp().resources }
     return viewModelFactory {
         initializer {
             ChatViewModel(
@@ -34,9 +36,9 @@ fun chatViewModelFactory(context: Context, place: Place?): ViewModelProvider.Fac
                 geocode = { query -> withContext(Dispatchers.IO) { SearchService(AppConfig.apiClient).geocode(query, 1).firstOrNull() } },
                 consent = services.consent,
                 location = StoreChatLocation,
-                lang = { AppLocale.current(app.resources) },
-                dataLocale = { AppLocale.dataLocale(app.resources) },
-                strings = chatStrings(app.resources),
+                lang = { AppLocale.current(res()) },
+                dataLocale = { AppLocale.dataLocale(res()) },
+                strings = chatStrings(res),
                 sounds = services.sounds,
                 savedState = createSavedStateHandle(),
             )
