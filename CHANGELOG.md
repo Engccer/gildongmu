@@ -11,6 +11,10 @@
 
 ## 2026-09-17
 
+### 안드로이드 M4 — 도보 실시간 안내 (`android/app/.../guide`·`audio`, 실험판 전용)
+
+iOS 정식판 도보 안내의 실행 계층·화면을 안드로이드로 옮겼다(판정은 전부 `:kit` 순수 함수, 무수정). 앱 수명 세션 싱글턴(`GuideSession`, 시작은 `startWalk` 한 곳·실험 게이트·억제 소유자 동일성 집합), 오케스트레이터 `WalkGuideModel`(시작 11단계·종료 12단계·간략/상세/최종 접근 fix 파이프라인·자동 채택·수동 재조회·워치독·잊힌 세션·도착 추정·전경 복귀 상환·음성 게이트 = 전경 ∨ 화면 꺼짐), `location` 전경 서비스(startForeground 실패를 잡아 전용 문장으로, 서비스 수명 PARTIAL_WAKE_LOCK, 전용 1초 FUSED→GPS 스트림, 지속 알림 + "안내 종료" 액션), 오디오 D10 재설계(SoundPool 톤 15개 = 웹 파일 바이트 동일, 길이 상수 표 + mp3 프레임 계수 가드, AudioFocus "못 쥐면 내지 않는다"·거절 3-state, 톤 동기 진동·결과 진동 3종, 앱 TTS 한 채널·latest-wins·시스템 속도 따름), 화면(길찾기 도보 행의 시작 버튼 + 시작 실패 행, `AppRoot` 한 자리의 띠바·`ModalBottomSheet` 시트·조망 페이지·종료 화면 걸음·칼로리 문장, live region 0, 착지는 `mergedRow`/`landingTarget`). 매니페스트 additive(전경 서비스·권한 6종, `ACCESS_BACKGROUND_LOCATION` 0), android-extra 신규 키 7개(6로케일). JVM 테스트 112건(공유 fixture 좌표계 시나리오·소스 가드 14건·변이 4건 검출 확인) + androidTest 6건(adb 대기). 실기기 판정 20항은 보고 파일 대본. spec `docs/superpowers/specs/2026-09-16-android-m4-walk-guidance-design.md`(설계 리뷰 3회·구현 리뷰 2회), 계획 `docs/superpowers/plans/2026-09-16-android-m4-walk-guidance.md`.
+
 ### 안드로이드 M2c — 현재 위치 수동 지정 (`android/app/.../location`)
 
 사용자가 GPS 대신 장소·주소로 자기 위치를 지정하면 내 주변·검색 거리·길찾기 출발지·끝점 후보 정렬이 그 좌표를 쓴다(우선순위 장소 앵커 > 수동 > GPS, 실시간 안내는 M4). 런타임 정본 `ManualLocationStore`(JSON 영속·IO hydration·판정 비영속), 이동 판정 `ManualLocationJudge`(ON_START·force 조회, CAS·재진입·30초 디바운스, 100m 넘으면 자동 해제 + 앱 통지), 앱 층 좌표 진입점 `EffectiveLocation` 하나(소스 가드), 앱 통지 큐 `AppNotices`를 화면 `StatusLine`이 한 문장으로 병합. 지정 화면은 M3 끝점 검색을 `EndpointPicker`로 추출해 재사용(지정 시 권한 요청 없음 — 판정 37), 허브 표시줄은 버튼("지정한 위치, X, 위치 지정하기"), 둘러보기 문장·통지와 길찾기 출발지 필드가 수동 갈래를 낸다. 신설 문자열 0, 유도형 금지 표현 소스 가드(웹 `manual-location-copy` 축 ①~⑤ 이식). spec `docs/superpowers/specs/2026-09-16-android-m2-place-nearby-design.md` §13, 계획 `docs/superpowers/plans/2026-09-17-android-m2c-manual-location.md`.
