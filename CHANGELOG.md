@@ -11,6 +11,10 @@
 
 ## 2026-09-16
 
+### 안드로이드 M3 — 길찾기 브리핑 (`android/app/.../directions`)
+
+웨이브 2 — 출발지·도착지(·경유지) 확정(끝점 검색: 장소+주소 후보·최근 장소·지오코딩)·최근 경로·경로 조회(측위 → 커버리지 선분기 → 출입구 승격 → 3수단 병렬 15초 상한 → :kit 분류·순서 스냅샷)·수단별 브리핑(대중교통 추천+대안 펼침 행·구간 줄·출구 한 줄 규칙·하차 줄, 도보 추천·최단 2행 + 계단 회피 토글, 자동차 요약+안내 행)을 iOS `DirectionsTabView`·`RouteBriefing` 미러로 세웠다. 위치는 M2 `LocationStore`를 세 함수 뒤에서 통과 호출, 프리필은 1회 소비 스토어 + `NavController.openDirections()`(장소 상세 배선은 M2 후속). 실시간 안내 시작은 M4·M5(자리만). spec `docs/superpowers/specs/2026-09-16-android-m3-directions-design.md`(설계 리뷰 27건 반영), 계획 `docs/superpowers/plans/2026-09-16-android-m3-directions.md`.
+
 ### 안드로이드 M2 — 장소 상세 + 내 주변 (`android/app`)
 
 검색 결과 → 장소 상세(주소 3종+복사·영업시간·전화·홈페이지·외부 지도 3·이 장소 주변)와 내 주변 탭(둘러보기·지하철·버스+경유 정류소·따릉이)을 세우고, 그것을 받치는 위치 계층(`location/` — GMS 무의존 `LocationManager`, 권한 대기 슬롯, 이번 취득 최선값 폴백), `NearbyLoadCore` 소비 관용구(`NearbyScreenViewModel`), pop 복귀 착지, iOS 전용 카탈로그 일괄 도입을 더했다. 검색은 좌표 가중·거리 표기·리뷰순 토글이 붙었다. M2b로 미룬 것(나머지 6섹션·주변 상황·역 자동 섹션·표시줄/수동 위치)은 spec §1. spec `docs/superpowers/specs/2026-09-16-android-m2-place-nearby-design.md`(설계 리뷰 2회, 구현 리뷰 2건), 계획 `docs/superpowers/plans/2026-09-16-android-m2-place-nearby.md`.
