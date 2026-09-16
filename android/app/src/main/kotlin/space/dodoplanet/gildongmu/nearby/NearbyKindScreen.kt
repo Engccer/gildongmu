@@ -87,7 +87,7 @@ fun NearbyKindScreen(route: NearbyKindRoute, anchor: PlaceAnchor?, factory: View
     when (route.kind) {
         NearbyKind.around -> {
             val vm: NearbyScreenViewModel<AroundPayload> = viewModel(factory = factory)
-            NearbyShell(title, vm, nav.onBack, requestPrecise, isLocationEnabled) { p, req -> AroundBody(p, vm, req) { place -> vm.returnFocus.remember("place-${place.id}"); nav.onOpenPlace(place) } }
+            NearbyShell(title, vm, nav.onBack, requestPrecise, isLocationEnabled) { p, req -> AroundBody(p, vm, req) { place, key -> vm.returnFocus.remember(key); nav.onOpenPlace(place) } }
         }
         NearbyKind.subway -> {
             val vm: NearbyScreenViewModel<SubwayNearbyResult> = viewModel(factory = factory)
@@ -367,7 +367,7 @@ private fun BikeBody(stations: List<BikeStation>, requesterFor: (String) -> Focu
 }
 
 @Composable
-private fun AroundBody(payload: AroundPayload, vm: NearbyScreenViewModel<AroundPayload>, requesterFor: (String) -> FocusRequester, onOpenPlace: (Place) -> Unit) {
+private fun AroundBody(payload: AroundPayload, vm: NearbyScreenViewModel<AroundPayload>, requesterFor: (String) -> FocusRequester, onOpenPlace: (Place, returnKey: String) -> Unit) {
     val res = LocalContext.current.resources
     val lang = AppLocale.current(res)
     val meters = stringResource(R.string.android_unit_spokenMeters)
@@ -392,7 +392,10 @@ private fun AroundBody(payload: AroundPayload, vm: NearbyScreenViewModel<AroundP
         Text(stringResource(R.string.whereAmI_overview_failed), Modifier.fillMaxWidth().mergedRow("overview-failed").padding(vertical = 8.dp))
     }
 
-    // 3. 주변 가게와 시설 — 장소 행은 버튼(상세), 더 보기
+    // 3. 주변 상황(M4 자동 펼침) — 한눈에 보기 다음, 가게 목록 앞(iOS 순서). 조용히 나타나는 섹션이라 헤딩이 발견 경로.
+    SceneAutoSection(payload, vm, requesterFor, onOpenPlace)
+
+    // 4. 주변 가게와 시설 — 장소 행은 버튼(상세), 더 보기
     Text(stringResource(R.string.android_nearby_aroundPlacesHeading), Modifier.fillMaxWidth().mergedRow("places").headingText().padding(top = 12.dp, bottom = 4.dp), style = MaterialTheme.typography.titleMedium)
     val places = payload.places
     if (places == null) {
@@ -408,7 +411,7 @@ private fun AroundBody(payload: AroundPayload, vm: NearbyScreenViewModel<AroundP
                 distance = { appLocalized(res, R.string.place_distance, it) },
             )
             val place = surroundingPlaceToPlace(p)
-            PlaceRow(place, lang, spokenMeters = meters, secondaryOverride = secondary, onClick = { onOpenPlace(place) }, modifier = Modifier.focusRequester(requesterFor("place-${place.id}")))
+            PlaceRow(place, lang, spokenMeters = meters, secondaryOverride = secondary, onClick = { onOpenPlace(place, "place-${place.id}") }, modifier = Modifier.focusRequester(requesterFor("place-${place.id}")))
         }
         if (places.size > visibleCount) {
             Button(onClick = { vm.revealMore(places.size) { i -> "place-${places[i].id}" } }, Modifier.tapTarget().testTag("showMore")) { Text(stringResource(R.string.actions_showMore)) }
