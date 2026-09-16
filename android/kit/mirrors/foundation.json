@@ -2,24 +2,7 @@
   "group": "foundation",
   "owner": "android-m1",
   "description": "미러 등록부(D6 장치 2). 검사 술어와 형식은 src/lib/__tests__/mirror-registry.test.ts, 갱신법은 android/README.md.",
-  "deferredTests": [
-    {
-      "swift": "Tests/GildongmuKitTests/WalkActionTests.swift",
-      "to": "guide",
-      "why": "imminentTone → GuideTone(RouteGuide)",
-      "blockedBy": [
-        "RouteGuide.swift"
-      ]
-    },
-    {
-      "swift": "Tests/GildongmuKitTests/RouteGuideTests.swift",
-      "to": "guide",
-      "why": "RouteGeometry 소비 시나리오는 리듀서와 함께",
-      "blockedBy": [
-        "RouteGuide.swift"
-      ]
-    }
-  ],
+  "deferredTests": [],
   "entries": [
     {
       "swift": "APIClient.swift",

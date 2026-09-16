@@ -67,7 +67,7 @@
       "status": "ported",
       "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/GuideCourse.kt",
       "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/GuideCourseTest.kt",
-      "note": "CourseState는 sealed class(Valid·Unknown·Invalid)"
+      "note": "CourseState는 sealed class(Valid·Unknown·Invalid). 안드로이드 Location은 방위 부재를 0.0으로 주므로 hasBearing()·hasBearingAccuracy() 거짓이면 -1을 넘긴다(KDoc)"
     },
     {
       "swift": "GuideCourseAxis.swift",
@@ -85,7 +85,7 @@
       "status": "ported",
       "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/GuideMotion.kt",
       "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/GuideMotionTest.kt",
-      "note": "튜플 반환은 MotionStepResult"
+      "note": "튜플 반환은 MotionStepResult. 안드로이드 Location은 속도 부재를 0.0으로 주므로 hasSpeed()·hasSpeedAccuracy() 거짓이면 null을 넘긴다(KDoc)"
     },
     {
       "swift": "GuideSessionCoordinator.swift",
@@ -125,12 +125,15 @@
       "swift": "RerouteProposalGate.swift",
       "status": "ported",
       "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/RerouteProposalGate.kt",
-      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/RerouteProposalGateTest.kt"
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/RerouteProposalGateTest.kt",
+      "note": "acquiredAt·nowUptime은 같은 단조 시계 초여야 한다. iOS는 systemUptime(깊은 잠자기 중 정지) — 안드로이드 시계 선택(uptimeMillis 대 elapsedRealtime)은 [3] :app 몫"
     },
     {
       "swift": "RouteGuide.swift",
-      "status": "pending",
-      "note": "GuideTone·imminentTone만 선이식(BeaconTones·GuideToneLayer가 쓴다). 리듀서 나머지는 같은 파일에 채운다"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/RouteGuide.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/RouteGuideTest.kt",
+      "note": "튜플 반환은 InitialGuideState, GuideEvent·GuideEntryProjection은 sealed class(PascalCase), restateAt은 internal. imminentTone(Swift는 WalkAction.swift)은 GuideTone과 함께 이 파일에 둔다. RouteGuideTests의 TangentAtTests·waypointIndexOutOfRangeRejectsRoute는 FOUNDATION RouteGeometryTest가 이미 들고, WalkActionTests 2건은 RouteGuideTest에 있다"
     },
     {
       "swift": "RouteOrigin.swift",
@@ -151,8 +154,10 @@
     },
     {
       "swift": "TransitGuide.swift",
-      "status": "pending",
-      "note": "transitValidExitNo만 선이식(CORE TransitExitLines가 쓴다). 리듀서 나머지는 같은 파일에 채운다"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/TransitGuide.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/TransitGuideTest.kt",
+      "note": "TransitTrackPoll·TransitGuideInput·TransitGuideEvent·SubwayRidingMessage는 sealed class, 튜플 반환은 TransitGuideStepResult·TransitEventProfile·TransitBoardingClassification. withoutPrewalk는 data class copy(필드 누락 불가). normalizeStopName은 internal. 정규식은 명시 공백 클래스([ \\t\\n\\r])만 — Swift ICU 약칭 공백 클래스의 유니코드 공백은 좁혀진다(:kit 규칙). transitValidExitNo의 trim 집합(Kotlin isWhitespace)은 Swift whitespacesAndNewlines와 제어 문자 몇 개가 달라 수용"
     },
     {
       "swift": "TransitGuideText.swift",
@@ -185,7 +190,7 @@
       "status": "ported",
       "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/WalkHealth.kt",
       "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/WalkHealthTest.kt",
-      "note": "foodLadder 튜플은 FoodRung, WeightCommitOutcome은 sealed class. weightCommit은 십진 표기만 파싱한다(JVM toDoubleOrNull이 받는 65d·65f를 Swift처럼 거절). rounded()는 SwiftRounding.kt의 roundedAwayFromZero"
+      "note": "foodLadder 튜플은 FoodRung, WeightCommitOutcome은 sealed class. weightCommit은 십진 표기만 파싱한다 — JVM만 받는 65d·65f는 Swift처럼 거절하고, Swift가 받는 16진(0x41)·NUL 꼬리는 의도적으로 거절한다(숫자 키패드로 못 넣고 거절이 보수적). rounded()는 SwiftRounding.kt의 roundedAwayFromZero"
     }
   ]
 }
