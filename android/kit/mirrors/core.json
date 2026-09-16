@@ -5,7 +5,9 @@
   "entries": [
     {
       "swift": "BarrierFreeService.swift",
-      "status": "pending"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/BarrierFreeService.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/BarrierFreeServiceTest.kt"
     },
     {
       "swift": "ChatMarkdown.swift",
@@ -78,7 +80,10 @@
     },
     {
       "swift": "NearbyService.swift",
-      "status": "pending"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/NearbyService.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/NearbyServiceTest.kt",
+      "note": "Kit NearbyServiceQueryTests + RouteServiceQueryTests.stationAndNearbyLangEnRequestsLangParam의 NearbyService 부분이 NearbyServiceTest에 있다"
     },
     {
       "swift": "PlaceChatPrompts.swift",
@@ -88,7 +93,10 @@
     },
     {
       "swift": "PlaceHoursService.swift",
-      "status": "pending"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/PlaceHoursService.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/PlaceHoursServiceTest.kt",
+      "note": "requestTimeout 4초 → requestTimeoutMs 4000. Kit 테스트 없음 — Swift 주석 계약을 PlaceHoursServiceTest가 단언"
     },
     {
       "swift": "PlaceProjection.swift",
@@ -125,7 +133,10 @@
     },
     {
       "swift": "StationService.swift",
-      "status": "pending"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/StationService.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/StationServiceTest.kt",
+      "note": "같은 파일의 ConditionsService 포함. Kit RouteServiceQueryTests.stationAndNearbyLangEnRequestsLangParam의 StationService 부분이 StationServiceTest에 있다"
     },
     {
       "swift": "SubwayArrivalLine.swift",
@@ -158,11 +169,17 @@
     },
     {
       "swift": "WalkInfraService.swift",
-      "status": "pending"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/WalkInfraService.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/WalkInfraServiceTest.kt",
+      "note": "Kit 테스트 없음"
     },
     {
       "swift": "WhereAmIService.swift",
-      "status": "pending"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/WhereAmIService.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/WhereAmIServiceTest.kt",
+      "note": "Kit 테스트 없음"
     }
   ]
 }

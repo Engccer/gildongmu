@@ -26,14 +26,6 @@
       "blockedBy": [
         "RouteGuide.swift"
       ]
-    },
-    {
-      "swift": "Tests/GildongmuKitTests/BarrierFreeModelsTests.swift#matchReturnsNilOnNetworkError",
-      "to": "core",
-      "why": "BarrierFreeService",
-      "blockedBy": [
-        "BarrierFreeService.swift"
-      ]
     }
   ],
   "entries": [

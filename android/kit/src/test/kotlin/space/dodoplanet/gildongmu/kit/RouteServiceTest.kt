@@ -1,7 +1,6 @@
 package space.dodoplanet.gildongmu.kit
 
 import kotlinx.coroutines.test.runTest
-import java.net.URLDecoder
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -22,16 +21,6 @@ class RouteServiceTest {
         val transport = StubTransport { response }
         return RouteService(APIClient("https://example.test", transport)) to transport
     }
-
-    /** 마지막 요청의 쿼리 항목(디코딩된 이름·값 쌍). */
-    private fun StubTransport.lastQuery(): List<Pair<String, String>> =
-        queryOf(seenUrls.last()).split("&").filter { it.isNotEmpty() }.map {
-            val (name, value) = it.split("=", limit = 2)
-            URLDecoder.decode(name, "UTF-8") to URLDecoder.decode(value, "UTF-8")
-        }
-
-    private fun List<Pair<String, String>>.has(name: String, value: String) = any { it.first == name && it.second == value }
-    private fun List<Pair<String, String>>.hasName(name: String) = any { it.first == name }
 
     @Test fun walkAccessibleRequestsAccessibleTrue() = runTest {
         val (svc, t) = service(nullResult)
