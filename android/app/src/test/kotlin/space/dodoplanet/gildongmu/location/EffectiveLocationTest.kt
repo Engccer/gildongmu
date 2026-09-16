@@ -53,6 +53,14 @@ class EffectiveLocationTest {
         assertEquals(NearbyCoord(37.504, 127.1), d.await())
     }
 
+    @Test fun `force는 keep이면 판정 측위 1회 뒤 수동 좌표를 돌려준다(재측위 없음)`() = runTest(dispatcher) {
+        val r = rig(); r.manual.set("길동역", null, 37.5, 127.1, ManualFix(37.5, 127.1, 20.0, nowSec))
+        val d = async { r.effective.coordinate(force = true) }; runCurrent()
+        r.src.emit(accuracy = 10.0, lat = 37.5001) // 판정 측위 → keep
+        assertEquals(NearbyCoord(37.5, 127.1), d.await()); assertEquals(1, r.src.subscriptions)
+        assertEquals(space.dodoplanet.gildongmu.kit.ManualVerdict.keep, r.manual.verdict.value)
+    }
+
     @Test fun `ranking — 수동이면 측위 0, 없으면 gps soft 게이트`() = runTest(dispatcher) {
         val r = rig(permission = LocationPermission.None); r.manual.set("길동역", null, 37.5, 127.1, null)
         assertEquals(NearbyCoord(37.5, 127.1), r.effective.coordinateForRanking()); assertEquals(0, r.src.subscriptions)

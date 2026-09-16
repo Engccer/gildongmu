@@ -3,6 +3,7 @@ package space.dodoplanet.gildongmu.nearby
 import androidx.annotation.StringRes
 import space.dodoplanet.gildongmu.R
 import space.dodoplanet.gildongmu.kit.ManualLocation
+import space.dodoplanet.gildongmu.kit.NearbyCoord
 import space.dodoplanet.gildongmu.kit.models.BikeStation
 import space.dodoplanet.gildongmu.kit.models.BusArrival
 import space.dodoplanet.gildongmu.kit.models.BusStop
@@ -25,16 +26,18 @@ import space.dodoplanet.gildongmu.kit.subwayShowsCurrentLocationTail
 // 시각 `Roman (한글)`, 낭독은 로마자만 — E28 판정 ③). 리소스 문장은 람다로 받는다(JVM 테스트 가능, `appLocalized` 호출부는 화면).
 
 /**
- * 둘러보기가 수동 좌표로 조회됐는가(spec §13-4) — 위치 문장과 완료 통지가 **같은 술어**를 쓴다(iOS `AroundNearbyView` 동형: 수동 위치일 때
- * "현재 위치"라고 알리지 않는다). 정확 비교: 수동이면 `EffectiveLocation.coordinate()`가 그 좌표를 그대로 돌려준다.
+ * 둘러보기 조회 좌표가 그 시점의 수동 위치인가(spec §13-4) — `fetchAround`가 **조회 시점에** 이 값을 `AroundPayload.usedManual`로 굳히고, 위치
+ * 문장과 완료 통지가 그 한 값을 읽는다(iOS `AroundNearbyView` 동형: 수동 위치일 때 "현재 위치"라고 알리지 않는다). 지금의 수동 위치와 다시
+ * 비교하지 않는 이유: 자동 해제 뒤에도 화면에 남은 데이터의 기준은 수동 좌표다(헤딩은 반복해서 읽히는 문장). 정확 비교: 수동이면
+ * `EffectiveLocation.coordinate()`가 그 좌표를 그대로 돌려준다. 장소 앵커 화면은 `manual`을 넘기지 않는다(같은 장소를 지정해 둔 경우의 오판 방지).
  */
-fun usedManualCoordinate(payload: AroundPayload, manual: ManualLocation?): Boolean =
-    manual != null && payload.lat == manual.lat && payload.lng == manual.lng
+fun usedManualCoordinate(coord: NearbyCoord, manual: ManualLocation?): Boolean =
+    manual != null && coord.lat == manual.lat && coord.lng == manual.lng
 
 /** 둘러보기 위치 문장 리소스(수동 × 장소 유무 4분기). 리터럴 ID만 — 동적 키 조립 없음(가드). */
 @StringRes
-fun aroundHereResId(payload: AroundPayload, manual: ManualLocation?, hasPlace: Boolean): Int =
-    if (usedManualCoordinate(payload, manual)) {
+fun aroundHereResId(payload: AroundPayload, hasPlace: Boolean): Int =
+    if (payload.usedManual) {
         if (hasPlace) R.string.android_nearby_aroundHereManual else R.string.android_nearby_aroundHereManualNoPlace
     } else {
         if (hasPlace) R.string.android_nearby_aroundHere else R.string.android_nearby_aroundHereNoPlace

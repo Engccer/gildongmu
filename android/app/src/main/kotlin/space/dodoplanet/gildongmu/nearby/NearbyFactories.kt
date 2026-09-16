@@ -19,20 +19,22 @@ fun nearbyFactory(
 ): ViewModelProvider.Factory {
     val service = services.nearby
     val coordinate = anchor?.let { NearbyCoordinateSource.Fixed(it.coord) } ?: current()
+    // 앵커 화면의 조회 좌표는 장소이지 수동 위치가 아니다 — 같은 장소를 지정해 둔 경우에도 "지정한 위치 기준"으로 읽히지 않게.
+    val manualForAround: () -> ManualLocation? = if (anchor == null) manual else ({ null })
     return viewModelFactory {
         initializer {
             val handle = createSavedStateHandle()
             when (kind) {
-                NearbyKind.around -> NearbyScreenViewModel(NearbyKinds.around(service, strings, manual), coordinate, strings, handle, manual)
-                NearbyKind.subway -> NearbyScreenViewModel(NearbyKinds.subway(service, strings), coordinate, strings, handle, manual)
-                NearbyKind.bus -> NearbyScreenViewModel(NearbyKinds.bus(service, strings), coordinate, strings, handle, manual)
-                NearbyKind.bike -> NearbyScreenViewModel(NearbyKinds.bike(service, strings), coordinate, strings, handle, manual)
-                NearbyKind.clinic -> NearbyScreenViewModel(NearbyKinds.clinic(service, strings), coordinate, strings, handle, manual)
-                NearbyKind.barrierFree -> NearbyScreenViewModel(NearbyKinds.barrierFree(services.barrierFree, strings), coordinate, strings, handle, manual)
-                NearbyKind.kids -> NearbyScreenViewModel(NearbyKinds.kids(service, strings), coordinate, strings, handle, manual)
-                NearbyKind.events -> NearbyScreenViewModel(NearbyKinds.events(service, strings), coordinate, strings, handle, manual)
-                NearbyKind.walkInfra -> NearbyScreenViewModel(NearbyKinds.walkInfra(services.walkInfra, strings, services.shortTimeNow), coordinate, strings, handle, manual)
-                NearbyKind.conditions -> NearbyScreenViewModel(NearbyKinds.conditions(services.conditions, strings), coordinate, strings, handle, manual)
+                NearbyKind.around -> NearbyScreenViewModel(NearbyKinds.around(service, strings, manualForAround), coordinate, strings, handle)
+                NearbyKind.subway -> NearbyScreenViewModel(NearbyKinds.subway(service, strings), coordinate, strings, handle)
+                NearbyKind.bus -> NearbyScreenViewModel(NearbyKinds.bus(service, strings), coordinate, strings, handle)
+                NearbyKind.bike -> NearbyScreenViewModel(NearbyKinds.bike(service, strings), coordinate, strings, handle)
+                NearbyKind.clinic -> NearbyScreenViewModel(NearbyKinds.clinic(service, strings), coordinate, strings, handle)
+                NearbyKind.barrierFree -> NearbyScreenViewModel(NearbyKinds.barrierFree(services.barrierFree, strings), coordinate, strings, handle)
+                NearbyKind.kids -> NearbyScreenViewModel(NearbyKinds.kids(service, strings), coordinate, strings, handle)
+                NearbyKind.events -> NearbyScreenViewModel(NearbyKinds.events(service, strings), coordinate, strings, handle)
+                NearbyKind.walkInfra -> NearbyScreenViewModel(NearbyKinds.walkInfra(services.walkInfra, strings, services.shortTimeNow), coordinate, strings, handle)
+                NearbyKind.conditions -> NearbyScreenViewModel(NearbyKinds.conditions(services.conditions, strings), coordinate, strings, handle)
             }
         }
     }

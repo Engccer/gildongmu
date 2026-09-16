@@ -35,6 +35,7 @@ class ManualLocationStore(
     private val hydrated = CompletableDeferred<Unit>()
 
     /** 저장값 복원(1회). 두 번째부터 no-op. `KeyValueStore`에 삭제가 없어 빈 문자열이 "없음"이다. */
+    @Synchronized
     fun hydrate() {
         if (hydrated.isCompleted) return
         val raw = store.getString(KEY)
@@ -57,17 +58,18 @@ class ManualLocationStore(
 
     suspend fun awaitHydrated() = hydrated.await()
 
-    /** 지정. `revision`은 이 메서드만 증가시킨다(CAS 토큰의 단일 발급처). `labelRoman`은 지정 화면이 그 시점에 든 라틴 표기(E28). */
-    fun set(label: String, labelRoman: String?, lat: Double, lng: Double, origin: ManualFix?) {
+    /** 지정. `revision`은 이 메서드만 증가시킨다(CAS 토큰의 단일 발급처). `labelRoman`은 지정 화면이 그 시점에 든 라틴 표기(E28). `isValid` 실패면 false(저장 없음 — 호출자가 실패를 말한다, 3-state). */
+    fun set(label: String, labelRoman: String?, lat: Double, lng: Double, origin: ManualFix?): Boolean {
         val next = ManualLocation(
             revision = (_current.value?.revision ?: 0) + 1,
             label = label, labelRoman = labelRoman, lat = lat, lng = lng,
             origin = origin, setAt = now(),
         )
-        if (!isValid(next)) return
+        if (!isValid(next)) return false
         _current.value = next
         _verdict.value = null // 새 위치에는 아직 판정이 없다(옛 위치의 결과를 물려주면 라벨이 거짓말한다)
         store.putString(KEY, KitJson.encodeToString(ManualLocation.serializer(), next))
+        return true
     }
 
     /** 판정 결과 기록 — `ManualLocationJudge.run()`만 부른다(호출부가 CAS를 통과한 뒤). */

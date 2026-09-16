@@ -29,6 +29,9 @@ import space.dodoplanet.gildongmu.kit.joinText
 import space.dodoplanet.gildongmu.kit.manualLocationBilingualName
 import space.dodoplanet.gildongmu.nearby.LineText
 
+/** 표시줄 버튼의 testTag이자 pop 복귀 키(허브·채팅이 같은 상수를 쓴다 — 태그 개명이 복귀 착지를 조용히 죽이지 않게). */
+const val LOCATION_BAR_KEY = "location-bar"
+
 /** 표시줄이 읽는 GPS 스냅샷(`CurrentAddressStore.state`). `LocationStore`의 필드는 관찰 불가라 여기서 찍는다. */
 data class LocationBarInput(
     val permission: LocationPermission,
@@ -137,7 +140,7 @@ fun LocationBarRow(store: CurrentAddressStore, manual: ManualLocationStore, onPi
             .fillMaxWidth()
             .padding(vertical = 4.dp)
             .tapTarget()
-            .testTag("location-bar")
+            .testTag(LOCATION_BAR_KEY)
             .landingTarget(focus)
             .semantics { if (spoken != null) contentDescription = spoken },
     ) { Text(line.visual) }

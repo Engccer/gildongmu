@@ -21,5 +21,6 @@ fun ManualLocationPickerScreen(onBack: () -> Unit) {
     val p by vm.picker.state.collectAsState()
     val done by vm.done.collectAsState()
     LaunchedEffect(done) { if (done) onBack() }
-    EndpointSearchContent(vm.picker, p ?: return, onBack = { vm.cancel(); onBack() })
+    // `init`이 picker를 열므로 null은 도달 불가 — 방어가 아니라 타입 좁히기다.
+    EndpointSearchContent(vm.picker, p!!, onBack = { vm.cancel(); onBack() })
 }

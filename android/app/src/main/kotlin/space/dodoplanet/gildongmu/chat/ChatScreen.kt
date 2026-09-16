@@ -61,6 +61,7 @@ import space.dodoplanet.gildongmu.i18n.AppLocale
 import space.dodoplanet.gildongmu.kit.bilingualName
 import space.dodoplanet.gildongmu.kit.models.Place
 import space.dodoplanet.gildongmu.kit.placeChatPromptKeys
+import space.dodoplanet.gildongmu.location.LOCATION_BAR_KEY
 import space.dodoplanet.gildongmu.location.LocationBarRow
 
 /** 채팅 탭(일반 채팅, spec §3-1). 대화는 이 탭 백스택 엔트리의 ViewModel — 탭 전환에도 이어진다. */
@@ -75,7 +76,8 @@ fun ChatTabScreen(vm: ChatViewModel = viewModel(factory = chatViewModelFactory(L
     ).map { stringResource(it) }
     AppScreenScaffold(stringResource(R.string.android_tab_chat), onBack = null, titleFocus = titleFocus) { padding ->
         // 위치 표시줄은 채팅 탭에만(장소 채팅은 장소 좌표가 앵커라 표시줄이 거짓 신호가 된다, spec §3-1)
-        ChatBody(vm, suggestions, titleFocus, landOnEntry = false, onOpenPlace, Modifier.padding(padding), showsLocationBar = true, onPickLocation = onPickLocation)
+        // 위치 지정 뒤 pop 복귀 착지는 표시줄(허브 동형 — 라벨이 결과를 읽는다, M2c spec §13-3)
+        ChatBody(vm, suggestions, titleFocus, landOnEntry = false, onOpenPlace, Modifier.padding(padding), showsLocationBar = true, onPickLocation = { vm.rememberReturnFocus(LOCATION_BAR_KEY); onPickLocation() })
     }
 }
 
@@ -180,6 +182,7 @@ private fun ChatConversation(
     val scope = rememberCoroutineScope()
     val sendFocus = remember { FocusRequester() }
     val targets = remember { ChatFocusTargets() }
+    val barFocus = remember { FocusRequester() }
     var fieldFocused by remember { mutableStateOf(false) }
     val sendingLabel = stringResource(R.string.android_chat_sending)
     val failedText = stringResource(R.string.android_chat_failed)
@@ -275,14 +278,14 @@ private fun ChatConversation(
     LaunchedEffect(Unit) {
         val key = vm.takeReturnFocus() ?: return@LaunchedEffect
         withFrameNanos { }
-        land(targets.existingRow(key), "return")
+        land(if (key == LOCATION_BAR_KEY) barFocus else targets.existingRow(key), "return")
     }
 
     // Android 15+ edge-to-edge: adjustResize는 창을 줄이지 않고 IME 인셋만 준다 — 입력 바가 키보드 뒤로 숨지 않게 이 컨테이너를 IME 위로 맞춘다.
     Column(modifier.fillMaxSize().fitInside(WindowInsetsRulers.Ime.current).semantics { testTagsAsResourceId = true }) {
         if (showsLocationBar) {
             // 대화의 조회 기준 좌표(iOS `LocationBarView`) — 스크롤 밖 첫 줄
-            Column(Modifier.padding(horizontal = 16.dp)) { LocationBarRow(AppConfig.currentAddressStore, AppConfig.manualLocationStore, onPickLocation, remember { FocusRequester() }) }
+            Column(Modifier.padding(horizontal = 16.dp)) { LocationBarRow(AppConfig.currentAddressStore, AppConfig.manualLocationStore, onPickLocation, barFocus) }
         }
         Column(
             Modifier

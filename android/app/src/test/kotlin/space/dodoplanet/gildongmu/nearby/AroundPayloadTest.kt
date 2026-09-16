@@ -23,28 +23,28 @@ class AroundPayloadTest {
     })
 
     @Test fun `scene 조각 — 실패는 sceneFailed, 셋 다 부재여야 isAllAbsent, 장면만 성공해도 Loaded(spec §12-2)`() = runTest {
-        val p = fetchAround(service(HttpResponse(200, """{"data":null}"""), HttpResponse(200, """{"places":[]}"""), HttpResponse(500, "")), coord)
+        val p = fetchAround(service(HttpResponse(200, """{"data":null}"""), HttpResponse(200, """{"places":[]}"""), HttpResponse(500, "")), coord, usedManual = false)
         assertTrue(p.sceneFailed); assertNull(p.scene); assertFalse(p.isAllAbsent)
-        val q = fetchAround(service(HttpResponse(200, """{"data":null}"""), HttpResponse(200, """{"places":[]}""")), coord)
+        val q = fetchAround(service(HttpResponse(200, """{"data":null}"""), HttpResponse(200, """{"places":[]}""")), coord, usedManual = false)
         assertTrue(q.isAllAbsent)
-        val r = fetchAround(service(HttpResponse(500, ""), HttpResponse(500, ""), HttpResponse(200, Fixtures.kit("surroundings-scene.json"))), coord)
+        val r = fetchAround(service(HttpResponse(500, ""), HttpResponse(500, ""), HttpResponse(200, Fixtures.kit("surroundings-scene.json"))), coord, usedManual = false)
         assertNotNull(r.scene); assertFalse(r.sceneFailed); assertTrue(r.overviewFailed && r.placesFailed)
-        assertFailsWith<APIError> { fetchAround(service(HttpResponse(500, ""), HttpResponse(502, ""), HttpResponse(503, "")), coord) }
+        assertFailsWith<APIError> { fetchAround(service(HttpResponse(500, ""), HttpResponse(502, ""), HttpResponse(503, "")), coord, usedManual = false) }
     }
 
     @Test fun `한 조각 실패는 Loaded + 실패 플래그`() = runTest {
-        val p = fetchAround(service(HttpResponse(500, ""), HttpResponse(200, Fixtures.kit("around-nearby.json"))), coord)
+        val p = fetchAround(service(HttpResponse(500, ""), HttpResponse(200, Fixtures.kit("around-nearby.json"))), coord, usedManual = false)
         assertTrue(p.overviewFailed); assertNull(p.overview)
         assertFalse(p.placesFailed); assertTrue(p.places!!.isNotEmpty())
         assertFalse(p.isAllAbsent)
     }
 
     @Test fun `두 조각 다 실패면 throw(코어가 FailedServer로)`() = runTest {
-        assertFailsWith<APIError>{ fetchAround(service(HttpResponse(500, ""), HttpResponse(502, ""), HttpResponse(500, "")), coord) }
+        assertFailsWith<APIError>{ fetchAround(service(HttpResponse(500, ""), HttpResponse(502, ""), HttpResponse(500, "")), coord, usedManual = false) }
     }
 
     @Test fun `조망 data null + 목록 0건은 실패가 아니라 전부 부재`() = runTest {
-        val p = fetchAround(service(HttpResponse(200, """{"data":null}"""), HttpResponse(200, """{"places":[]}""")), coord)
+        val p = fetchAround(service(HttpResponse(200, """{"data":null}"""), HttpResponse(200, """{"places":[]}""")), coord, usedManual = false)
         assertTrue(p.isAllAbsent); assertFalse(p.overviewFailed); assertFalse(p.placesFailed)
         assertEquals(0, p.places!!.size)
     }

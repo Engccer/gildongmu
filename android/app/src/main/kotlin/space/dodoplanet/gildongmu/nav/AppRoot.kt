@@ -26,6 +26,7 @@ import space.dodoplanet.gildongmu.chat.PlaceChatRoute
 import space.dodoplanet.gildongmu.chat.PlaceChatScreen
 import space.dodoplanet.gildongmu.directions.DirectionsScreen
 import space.dodoplanet.gildongmu.directions.openDirections
+import space.dodoplanet.gildongmu.location.LOCATION_BAR_KEY
 import space.dodoplanet.gildongmu.location.ManualLocationPickerScreen
 import space.dodoplanet.gildongmu.location.ManualLocationRoute
 import androidx.navigation.toRoute
@@ -35,7 +36,6 @@ import space.dodoplanet.gildongmu.nearby.NearbyHubScreen
 import space.dodoplanet.gildongmu.nearby.NearbyKindRoute
 import space.dodoplanet.gildongmu.nearby.NearbyKindScreen
 import space.dodoplanet.gildongmu.nearby.NearbyNav
-import space.dodoplanet.gildongmu.nearby.LOCATION_BAR_KEY
 import space.dodoplanet.gildongmu.nearby.hubKey
 import space.dodoplanet.gildongmu.place.PlaceDetailRoute
 import space.dodoplanet.gildongmu.place.PlaceDetailScreen

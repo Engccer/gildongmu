@@ -371,7 +371,7 @@ private fun AroundBody(payload: AroundPayload, vm: NearbyScreenViewModel<AroundP
 
     // 1. 위치 문장(헤딩, 첫 로드 착지 지점) — 내가 어디 서 있는지가 먼저 오는 질문이다. 수동 좌표로 조회했으면 "지정한 위치 기준"(spec §13-4, 완료 통지와 같은 술어).
     val placeName = overview?.place?.let { bilingualName(lang, it, en = null, roman = overview.placeRoman) }
-    val hereRes = aroundHereResId(payload, vm.manual(), hasPlace = placeName != null)
+    val hereRes = aroundHereResId(payload, hasPlace = placeName != null)
     val hereVisual = placeName?.let { appLocalized(res, hereRes, it.display) } ?: stringResource(hereRes)
     val hereSpoken = placeName?.let { appLocalized(res, hereRes, it.primary) }
     Text(hereVisual, Modifier.fillMaxWidth().mergedRow("around-top", hereSpoken, focus = requesterFor("around-top")).headingText().padding(vertical = 8.dp), style = MaterialTheme.typography.titleMedium)
