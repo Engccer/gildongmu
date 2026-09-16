@@ -6,6 +6,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import space.dodoplanet.gildongmu.R
 import space.dodoplanet.gildongmu.i18n.appLocalized
+import space.dodoplanet.gildongmu.kit.BarrierFreeService
 import space.dodoplanet.gildongmu.kit.PlaceHoursService
 import space.dodoplanet.gildongmu.kit.StationService
 import space.dodoplanet.gildongmu.kit.models.Place
@@ -22,5 +23,11 @@ fun placeStrings(context: Context): PlaceStrings {
     )
 }
 
-fun placeDetailFactory(place: Place, hours: PlaceHoursService, strings: PlaceStrings, station: StationService? = null, dataLocale: () -> String = { "ko" }): ViewModelProvider.Factory =
-    viewModelFactory { initializer { PlaceDetailViewModel(place, hours, strings, station, dataLocale) } }
+fun placeDetailFactory(
+    place: Place,
+    hours: PlaceHoursService,
+    strings: PlaceStrings,
+    station: StationService? = null,
+    barrierFree: BarrierFreeService? = null,
+    dataLocale: () -> String = { "ko" },
+): ViewModelProvider.Factory = viewModelFactory { initializer { PlaceDetailViewModel(place, hours, strings, station, barrierFree, dataLocale) } }
