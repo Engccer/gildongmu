@@ -53,6 +53,10 @@
     },
     "unit": {
       "spokenMeters": "미터"
+    },
+    "voice": {
+      "downloadRequested": "음성 인식 준비를 요청했습니다. 잠시 뒤 다시 눌러 주세요",
+      "downloadReady": "음성 인식이 준비됐습니다. 받아쓰기 시작을 다시 눌러 주세요"
     }
   },
   "search": {

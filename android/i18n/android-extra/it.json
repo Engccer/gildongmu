@@ -53,6 +53,10 @@
     },
     "unit": {
       "spokenMeters": "metri"
+    },
+    "voice": {
+      "downloadRequested": "Preparazione del riconoscimento vocale richiesta. Riprova tra poco.",
+      "downloadReady": "Il riconoscimento vocale è pronto. Tocca di nuovo Avvia dettatura."
     }
   },
   "search": {

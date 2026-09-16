@@ -310,6 +310,8 @@
     <string name="android_unit_spokenMeters">meters</string>
     <string name="android_voice_denied">Please allow microphone access in Settings</string>
     <string name="android_voice_deniedRecognition">Allow speech recognition in Settings.</string>
+    <string name="android_voice_downloadReady">Speech recognition is ready. Tap Start dictation again.</string>
+    <string name="android_voice_downloadRequested">Speech recognition setup requested. Try again in a moment.</string>
     <string name="android_voice_errorAudio">The microphone isn\'t available. Check whether another app is using it.</string>
     <string name="android_voice_errorDownload">Couldn\'t prepare speech recognition. Connect to the network and try again.</string>
     <string name="android_voice_errorLocale">Speech recognition isn\'t available for this language.</string>
