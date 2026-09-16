@@ -61,7 +61,7 @@
 - Test: `app/src/test/.../nearby/NearbyScreenViewModelTest.kt`
 
 **Interfaces:**
-- Produces: `NearbyKindSpec.fetch: suspend (NearbyCoord?, P?) -> P` · `NearbyScreenViewModel.landOn(key: String)` · `NearbyStrings.{announcePlaces(Int), announceEvents(Int), clinicEmpty, barrierFreeEmpty, kidsEmpty, eventsEmpty, conditionsReady, conditionsPartial, failedTitle, walkInfraSummary(WalkInfrastructure)}`
+- Produces: `NearbyKindSpec.fetch: suspend (NearbyCoord?, P?) -> P` · `NearbyKindSpec.emptyCopy: ((P) -> String)? = null`(isEmpty가 항상 false인 kind는 생략) · `NearbyScreenViewModel.groupWindows: StateFlow<Map<String, Int>>` + `revealMoreInGroup(group, totalCount, keyAt)`(판정 31, 커밋마다 `willCommit`이 비운다) · `NearbyStrings.{announcePlaces(Int), announceEvents(Int), clinicEmpty, barrierFreeEmpty, kidsEmpty, eventsEmpty, conditionsReady, conditionsPartial, failedTitle, walkInfraSummary(WalkInfrastructure)}`
 
 - [ ] **Step 1: 실패 테스트 — 재조회 fetch가 직전 payload를 받는다**
 
@@ -81,10 +81,15 @@
     assertEquals(listOf(null, listOf("a")), seen)
 }
 
-@Test fun `landOn은 착지 세대를 올린다`() = runTest {
-    val vm = subwayViewModel() // 기존 헬퍼
-    vm.landOn("scene-left-3")
-    assertEquals(Landing.Key("scene-left-3", 1), vm.landing.value)
+@Test fun `묶음별 더 보기 — 공개 수 StateFlow·첫 새 항목 착지·커밋마다 리셋`() = runTest {
+    val vm = subwayViewModel() // 기존 헬퍼(Loaded까지 진행)
+    vm.revealMoreInGroup("left", totalCount = 25) { i -> "scene-item-left-$i" }
+    assertEquals(20, vm.groupWindows.value["left"]); assertEquals(Landing.Key("scene-item-left-10", 1), vm.landing.value)
+    vm.revealMoreInGroup("left", 25) { i -> "scene-item-left-$i" }
+    assertEquals(25, vm.groupWindows.value["left"])
+    assertNull(vm.groupWindows.value["right"]) // 없는 묶음은 initialVisible
+    vm.load(force = true); advanceUntilIdle()
+    assertTrue(vm.groupWindows.value.isEmpty()) // willCommit 리셋
 }
 ```
 
@@ -111,10 +116,18 @@ class NearbyKindSpec<P : Any>(
 )
 // core 배선
 fetch = { coord, previous -> spec.fetch(coord, previous) },
-// 공개 착지(묶음별 더 보기 등 본문이 자기 리빌 창을 들 때)
-fun landOn(key: String) { _landing.value = Landing.Key(key, ++landingRev) }
+// 묶음별 리빌 창(주변 상황, 판정 31). RevealWindow 참조 타입을 상태에 두지 않고 공개 수만 든다.
+private val _groupWindows = MutableStateFlow<Map<String, Int>>(emptyMap())
+val groupWindows: StateFlow<Map<String, Int>> = _groupWindows.asStateFlow()
+fun revealMoreInGroup(group: String, totalCount: Int, keyAt: (Int) -> String) {
+    val visible = _groupWindows.value[group] ?: RevealWindow.initialVisible
+    if (visible >= totalCount) return
+    _groupWindows.value = _groupWindows.value + (group to minOf(visible + RevealWindow.revealStep, totalCount))
+    _landing.value = Landing.Key(keyAt(visible), ++landingRev)
+}
+// willCommit: reveal.reset(); _visibleCount.value = …; _groupWindows.value = emptyMap()
 ```
-`revealMore`는 내부적으로 `landOn(keyAt(firstNew))`로 바꾼다.
+`emptyCopy`는 `((P) -> String)? = null`로 바꾸고 `NearbyShell`은 `checkNotNull(vm.emptyCopy(payload))`(isEmpty가 참인데 없으면 조립기 결함).
 
 `NearbyKinds.kt` 기존 5행: `fetch = { c, _ -> ... }`.
 
@@ -422,7 +435,7 @@ fun clinicWords(res: Resources) = ClinicWords(
 
 **Interfaces (Produces):**
 ```kotlin
-data class WalkInfraPayload(val walk: WalkInfrastructure, val asOf: String)   // asOf = "HH:mm" 조회 시각
+data class WalkInfraPayload(val walk: WalkInfrastructure, val asOf: String)   // asOf = 커밋 시각의 로케일 short time(m7)
 suspend fun fetchWalkInfra(service: WalkInfraService, coord: NearbyCoord, now: () -> String): WalkInfraPayload
 class WalkSummaryWords(val audioSummary: (Int) -> String, val audioNone: String, val audioUnsupported: String, val audioError: String, val osmSummary: (Int) -> String, val osmEmpty: String, val osmUnsupported: String, val osmError: String)
 fun walkInfraLiveSummary(walk: WalkInfrastructure, w: WalkSummaryWords): String
@@ -509,7 +522,7 @@ firstKey = { "walkinfra-top" },
 loadedNotice = { strings.walkInfraSummary(it.walk) },
 emptyCopy = { "" },               // 도달 불가(isEmpty false)
 ```
-`now`는 팩토리가 `{ java.time.LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm")) }`로 준다(desugaring 불필요 — minSdk 26 이상 확인, 아니면 `SimpleDateFormat`).
+`now`는 팩토리가 `{ DateFormat.getTimeInstance(DateFormat.SHORT, AppLocale.javaLocale(res)).format(Date()) }`로 준다(로케일 short time — iOS `timeStyle: .short` 동형, `HH:mm` 고정 금지; `AppLocale`에 java `Locale` 접근자가 없으면 `res.configuration.locales[0]`).
 
 `NearbyStringsRes.kt`: `walkInfraSummary = { walkInfraLiveSummary(it, WalkSummaryWords(audioSummary = { appLocalized(res, R.string.walkInfra_audioSummary, it) }, audioNone = getString(walkInfra_audioNone), audioUnsupported = …, audioError = …, osmSummary = { appLocalized(res, R.string.walkInfra_osmSummary, it) }, osmEmpty = …, osmUnsupported = …, osmError = …)) }`.
 
@@ -731,7 +744,7 @@ fun ConditionsBody(p: ConditionsPayload, requesterFor: (String) -> FocusRequeste
 fun sceneBucketResId(bucket: String): Int?
 fun sceneBucketTitle(name: String, count: Int, countLabel: (Int) -> String): String   // count > 3이면 "이름 N곳"
 fun sceneItemLine(item: SurroundingsSceneItem, name: String, lang: String, withRoad: (String, String, String) -> String, plain: (String, String) -> String): String
-fun sceneItemKey(bucket: String, index: Int) = "scene-$bucket-$index"
+fun sceneItemKey(bucket: String, index: Int) = "scene-item-$bucket-$index"   // iOS `sceneItemRowID` 동형, pop 복귀 키도 같은 값(판정 30)
 ```
 
 - [ ] **Step 1: 실패 테스트**
@@ -767,7 +780,7 @@ class SceneLinesTest {
 - [ ] **Step 2: 실행 → FAIL**
 - [ ] **Step 3: 구현**
 
-`AroundPayload.kt`: 필드 `scene: SurroundingsScene?`, `sceneFailed: Boolean` 추가; `isAllAbsent = overview == null && !overviewFailed && !placesFailed && !sceneFailed && places.isNullOrEmpty() && scene == null`; `fetchAround`에 `val scene = async { settled { service.surroundingsScene(coord.lat, coord.lng) } }`; 셋 다 실패해야 throw.
+`AroundPayload.kt`: 필드 `scene: SurroundingsScene?`, `sceneFailed: Boolean` 추가; `isAllAbsent = overview == null && !overviewFailed && !placesFailed && !sceneFailed && places.isNullOrEmpty() && scene == null`; `fetchAround`에 `val scene = async { settled { service.surroundingsScene(coord.lat, coord.lng) } }`; **throw는 `o.isFailure && p.isFailure && s.isFailure`일 때만**(M1 — 장면만 성공해도 Loaded).
 
 `SceneLines.kt`:
 ```kotlin
@@ -782,7 +795,7 @@ fun sceneItemLine(item: SurroundingsSceneItem, name: String, lang: String, withR
     val road = item.road ?: return plain(d, name)
     return withRoad(d, name, bilingualName(lang, road, en = null, roman = item.roadRoman).primary)
 }
-fun sceneItemKey(bucket: String, index: Int) = "scene-$bucket-$index"
+fun sceneItemKey(bucket: String, index: Int) = "scene-item-$bucket-$index"
 ```
 (`R` 참조라 :app 안에 두되 순수 함수 — 테스트는 JVM `R` 상수 접근 가능. 안 되면 resId 함수만 `NearbyKindScreen`에 두고 나머지를 테스트한다.)
 
@@ -795,7 +808,7 @@ fun sceneItemKey(bucket: String, index: Int) = "scene-$bucket-$index"
 @Composable
 fun SceneAutoSection(payload: AroundPayload, vm: NearbyScreenViewModel<AroundPayload>, requesterFor: (String) -> FocusRequester, onOpenPlace: (Place) -> Unit) {
     val res = LocalContext.current.resources; val lang = AppLocale.current(res); val meters = stringResource(R.string.android_unit_spokenMeters)
-    val windows = remember(payload) { mutableStateMapOf<String, Int>() }   // bucket → visibleCount(RevealWindow.initialVisible 기본)
+    val windows by vm.groupWindows.collectAsState()   // VM 소유, 커밋마다 리셋(판정 31)
     heading(stringResource(R.string.surroundings_ready), "scene-heading")
     val scene = payload.scene
     when {
@@ -813,7 +826,7 @@ fun SceneAutoSection(payload: AroundPayload, vm: NearbyScreenViewModel<AroundPay
                     Text(line(n.display), Modifier.fillMaxWidth().focusRequester(requesterFor(key)).clickable(role = Role.Button) { onOpenPlace(sceneItemToPlace(item)) }.testTag(key).defaultMinSize(minHeight = 48.dp).padding(vertical = 8.dp).semantics(mergeDescendants = true) { contentDescription = spokenDistanceUnits(line(n.primary), meters) })
                 }
                 if (group.items.size > visible) {
-                    Button(onClick = { windows[group.bucket] = minOf(visible + RevealWindow.revealStep, group.items.size); vm.landOn(sceneItemKey(group.bucket, visible)) }, Modifier.tapTarget().testTag("showMore-${group.bucket}")) { Text(stringResource(R.string.actions_showMore)) }
+                    Button(onClick = { vm.revealMoreInGroup(group.bucket, group.items.size) { i -> sceneItemKey(group.bucket, i) } }, Modifier.tapTarget().testTag("showMore-${group.bucket}")) { Text(stringResource(R.string.actions_showMore)) }
                 }
             }
             row(stringResource(R.string.surroundings_source), "scene-source")
@@ -918,12 +931,14 @@ sealed class TimetableState { data object Hidden; data object Error; data class 
 data class StationSections(val meta: StationMeta?, val arrivals: StationArrivals?, val timetable: TimetableState, val korail: StationFacilities?, val metro: SeoulMetroFacilities?)
 suspend fun loadStationSections(service: StationService, station: String, dataLocale: String): StationSections   // 5 병렬, 시간표만 3-state
 fun countText(label: String, count: Int?, unknown: (String) -> String, none: (String) -> String, some: (String, Int) -> String): String
-fun coverageText(line: TimetableLine, dataLocale: String, lineName: (TimetableLine) -> String, noTrains: (String) -> String, unavailable: (String) -> String, unknown: (String) -> String): String?
+fun coverageText(line: TimetableLine, lineDisplayName: (TimetableLine) -> String, noTrains: (String) -> String, unavailable: (String) -> String, unknown: (String) -> String): String?   // coverage = line.coverage ?: (directions 비면 "unknown" else "ok") (m1)
+fun lineKoName(line: TimetableLine, lineSuffixed: (String) -> String): String = line.lineCore?.let(lineSuffixed) ?: line.lineName   // A26, 방향 행
+fun lineDisplayName(line: TimetableLine, isEn: Boolean, lineSuffixed: (String) -> String): String = if (isEn && line.lineNameEn != null) line.lineNameEn!! else lineKoName(line, lineSuffixed)   // coverage 사유 줄
 fun trainText(train: TimetableTrain, en: Boolean, nextDay: String, toTerminus: (String) -> String): String
 fun timetableLineEn(line: TimetableLine, direction: TimetableDirection, dataLocale: String): Boolean   // en 자격(노선 영문 + 종착 영문 둘 다)
 fun facilityName(f: SeoulMetroFacility, compass: (String) -> String?, elevatorAt: (String, String) -> String, lineNumber: (String) -> String): String
 fun facilityDetail(f: SeoulMetroFacility, wheelchairAccessible: String): String?
-fun stationMetaLine(meta: StationMeta, lang: String, dataLocale: String, nameSuffixed: (String) -> String, transfer: String): LineText
+fun stationMetaLine(meta: StationMeta, lang: String, isEn: Boolean, nameSuffixed: (String) -> String, transfer: String): LineText   // ko: joinText(nameSuffixed(name), nameEn, tail) / en: joinText(bilingualName(name, en=nameEn).display, tail)·spoken은 .primary (m2)
 // PlaceDetailViewModel: val station: StateFlow<StationSections?>  (isStation일 때만 로드)
 ```
 
@@ -931,7 +946,8 @@ fun stationMetaLine(meta: StationMeta, lang: String, dataLocale: String, nameSuf
 ```kotlin
 @Test fun `시설 수 3-state`() { val f = { l: String, c: Int? -> countText(l, c, { "$it 정보 없음" }, { "$it 없음" }) { l2, n -> "$l2 ${n}대" } }
     assertEquals("엘리베이터 정보 없음", f("엘리베이터", null)); assertEquals("엘리베이터 없음", f("엘리베이터", 0)); assertEquals("엘리베이터 3대", f("엘리베이터", 3)) }
-@Test fun `coverage — ok는 null, 부재+방향 0은 unknown`() { ... line(coverage=null, directions=[]) → unknown 문장; coverage="noTrains" → noTrains(lineName) }
+@Test fun `coverage — ok는 null, 부재+방향 0은 unknown(m1), 부재+방향 있음은 ok`() { ... line(coverage=null, directions=[]) → unknown 문장; line(coverage=null, directions=[d]) → null; coverage="noTrains" → noTrains(lineDisplayName) }
+@Test fun `노선명 — 방향 행은 lineCore 접미(A26), coverage 줄은 en 우선`() { assertEquals("2호선", lineKoName(TimetableLine("수도권 2", lineCore = "2", …)) { "${it}호선" }); assertEquals("Line 2", lineDisplayName(line(lineNameEn = "Line 2"), true) { … }) }
 @Test fun `첫차 문장 — 익일 접두·종착 없음·en 종착 폴백`() {
     assertEquals("익일 00:42 왕십리행", trainText(TimetableTrain("00:42", nextDay = true, terminus = "왕십리"), false, "익일") { "${it}행" })
     assertEquals("05:30", trainText(TimetableTrain("05:30", terminus = ""), true, "next") { "to $it" })
@@ -1017,8 +1033,14 @@ class BarrierFreeLinesTest {
 ```kotlin
 // LocationStore
 fun authorization(): LocationPermission = permissions.current()
-/** 표시용 좌표 — 이미 허용된 세션에서만, 팝업 없음, soft 상한, 실패는 스토어 폴백(coordinateForRanking과 같은 게이트). 미허용이면 null. */
-suspend fun coordinateForDisplay(): NearbyCoord? = coordinateForRanking()
+/**
+ * 표시용 좌표(iOS `coordinateForDisplay`): 권한 Fine이 아니면 null(팝업 없음), soft 상한, **TTL·정확도는 기본값**(60초·30m), 실패는 **null — `stored` 폴백 없음**.
+ * `coordinateForRanking`과 세 축이 다르다(M6): 이 좌표는 역지오코딩돼 "현재 위치, 〈주소〉"로 낭독되므로 낡은 좌표의 주소는 화면으로 반증할 수 없는 거짓 위치 주장이다.
+ */
+suspend fun coordinateForDisplay(): NearbyCoord? {
+    if (permissions.current() != LocationPermission.Fine) return null
+    return try { currentCoordinate(timeoutMs = (LocationFixPolicy.softTimeout * 1000).toLong()) } catch (e: LocationException) { null }
+}
 // CurrentAddressStore
 data class LocationBarInput(val permission: LocationPermission, val hasCoordinate: Boolean, val lastFixFailed: Boolean, val address: String?, val english: String?)
 class CurrentAddressStore(private val location: LocationStore, private val search: SearchService) {
@@ -1026,17 +1048,17 @@ class CurrentAddressStore(private val location: LocationStore, private val searc
     suspend fun ensureLoaded(lang: String)   // 좌표당·언어당 1회, 취소는 확정 아님, 좌표 갈리면 옛 주소 먼저 폐기
 }
 // LocationBar.kt
-fun locationBarLabel(input: LocationBarInput, lang: String, gps: String, gpsNear: (String) -> String, locating: String, gpsFailed: String): LineText
+fun locationBarLabel(input: LocationBarInput, lang: String, needsPermission: String, gps: String, gpsNear: (String) -> String, locating: String, gpsFailed: String): LineText   // None → needsPermission(`android.common.geoDeniedTitle`, 판정 29)
 @Composable fun LocationBarRow(store: CurrentAddressStore)
 ```
-`coordinateForDisplay`가 `coordinateForRanking`과 같은 함수라면 **새 이름을 만들지 않는다** — `coordinateForRanking`의 KDoc에 "표시줄도 이 게이트를 쓴다"를 적고 그대로 호출한다(미니멀리즘). 판정: 같은 게이트(권한 있을 때만·soft·팝업 없음·스토어 폴백)라 **같은 함수**를 쓴다. `authorization()`만 신설.
+`coordinateForDisplay`는 `coordinateForRanking`과 **다른 함수**다(M6: TTL 60초·30m·스토어 폴백 없음 vs 300초·100m·스토어 폴백). 둘 다 `currentCoordinate` 위의 얇은 게이트라 중복은 인자 셋뿐.
 
 - [ ] **Step 1: 실패 테스트**
 ```kotlin
 class LocationBarTest {
-    private fun label(i: LocationBarInput, lang: String = "ko") = locationBarLabel(i, lang, "현재 위치", { "현재 위치($it 부근)" }, "확인 중", "위치 확인 실패")
-    @Test fun `4-state — 권한 없음·실패·확인 중·주소`() {
-        assertEquals("위치 확인 실패", label(LocationBarInput(LocationPermission.None, true, false, "길동", null)).visual)   // 권한이 좌표보다 먼저
+    private fun label(i: LocationBarInput, lang: String = "ko") = locationBarLabel(i, lang, "위치 권한이 필요합니다", "현재 위치", { "현재 위치($it 부근)" }, "확인 중", "위치 확인 실패")
+    @Test fun `4-state — 권한 없음은 실패가 아니라 권한 필요(판정 29)·실패·확인 중·주소`() {
+        assertEquals("위치 권한이 필요합니다", label(LocationBarInput(LocationPermission.None, true, true, "길동", null)).visual)   // 권한이 좌표·실패보다 먼저
         assertEquals("위치 확인 실패", label(LocationBarInput(LocationPermission.Fine, false, true, null, null)).visual)
         assertEquals("확인 중", label(LocationBarInput(LocationPermission.Fine, false, false, null, null)).visual)
         assertEquals("현재 위치", label(LocationBarInput(LocationPermission.Fine, true, false, null, null)).visual)
@@ -1044,7 +1066,7 @@ class LocationBarTest {
         val en = label(LocationBarInput(LocationPermission.Fine, true, false, "천호대로 1", "1 Cheonho-daero"), "en")
         assertEquals("현재 위치(1 Cheonho-daero (천호대로 1) 부근)", en.visual); assertEquals("현재 위치(1 Cheonho-daero 부근)", en.spoken)
     }
-    @Test fun `Coarse 권한은 실패가 아니라 확인 중·좌표 경로`() { assertEquals("현재 위치", label(LocationBarInput(LocationPermission.Coarse, true, false, null, null)).visual) }
+    @Test fun `Coarse는 스토어가 lastFixFailed를 세우므로 실패 문구`() { assertEquals("위치 확인 실패", label(LocationBarInput(LocationPermission.Coarse, false, true, null, null)).visual) }
 }
 class CurrentAddressStoreTest {   // LocationStoreTest의 페이크 LocationSource·PermissionGate 재사용
     @Test fun `좌표당 1회, 언어가 바뀌면 다시, 좌표가 갈리면 옛 주소 먼저 폐기`() = runTest { ... calls 카운트 1 → 같은 좌표 재호출 0 → lang "en" 호출 1 → 좌표 이동 뒤 state.address null 확인 후 새 주소 }
@@ -1067,7 +1089,7 @@ class CurrentAddressStore(private val location: LocationStore, private val searc
         if (inflight) return
         inflight = true
         try {
-            val coord = location.coordinateForRanking()   // 허용된 세션에서만·팝업 없음
+            val coord = location.coordinateForDisplay()   // 허용된 세션에서만·팝업 없음·낡은 좌표 없음(M6)
             _state.value = snapshot(_state.value.address, _state.value.english)
             if (coord == null) return
             val key = "%.4f,%.4f|%s".format(Locale.ROOT, coord.lat, coord.lng, lang)
@@ -1086,7 +1108,7 @@ class CurrentAddressStore(private val location: LocationStore, private val searc
 ```kotlin
 /** iOS `LocationBarView.state` 4-state(수동 위치 갈래는 M2c). 권한 없음이 좌표보다 먼저 — 권한 회수 뒤에도 좌표가 남는다. */
 fun locationBarLabel(input: LocationBarInput, lang: String, gps: String, gpsNear: (String) -> String, locating: String, gpsFailed: String): LineText {
-    if (input.permission == LocationPermission.None) return LineText(gpsFailed, gpsFailed)
+    if (input.permission == LocationPermission.None) return LineText(needsPermission, needsPermission)   // 안 물음·거부 구분 불가 — 둘 다 참인 문장(판정 29)
     if (!input.hasCoordinate) return (if (input.lastFixFailed) gpsFailed else locating).let { LineText(it, it) }
     val address = input.address ?: return LineText(gps, gps)
     val name = bilingualName(lang, address, en = input.english, roman = null)
@@ -1096,13 +1118,13 @@ fun locationBarLabel(input: LocationBarInput, lang: String, gps: String, gpsNear
 fun LocationBarRow(store: CurrentAddressStore) {
     val res = LocalContext.current.resources; val input by store.state.collectAsState()
     LaunchedEffect(Unit) { store.ensureLoaded(AppLocale.dataLocale(res)) }
-    val line = locationBarLabel(input, AppLocale.current(res), stringResource(R.string.manualLocation_gps), { appLocalized(res, R.string.manualLocation_gpsNear, it) }, stringResource(R.string.manualLocation_locating), stringResource(R.string.manualLocation_gpsFailed))
+    val line = locationBarLabel(input, AppLocale.current(res), stringResource(R.string.android_common_geoDeniedTitle), stringResource(R.string.manualLocation_gps), { appLocalized(res, R.string.manualLocation_gpsNear, it) }, stringResource(R.string.manualLocation_locating), stringResource(R.string.manualLocation_gpsFailed))
     Text(line.visual, Modifier.fillMaxWidth().mergedRow("location-bar", line.spoken.takeIf { it != line.visual }).padding(vertical = 8.dp))
 }
 ```
 `AppConfig.currentAddressStore by lazy { CurrentAddressStore(locationStore, SearchService(apiClient)) }`; `AppFactories.currentAddress: CurrentAddressStore`; `NearbyHubScreen(onOpen, takeReturnFocus, currentAddress)` 첫 행에 `LocationBarRow(currentAddress)`; `AppRoot`에서 전달.
 
-`LocationStoreTest` 확장: `authorization()`이 게이트 `current()`를 그대로 준다 1건.
+`LocationStoreTest` 확장: `authorization()`이 게이트 `current()`를 그대로 준다 · `coordinateForDisplay()` — 권한 None이면 null이고 `request()` 호출 0 · 낡은 `stored`가 있고 이번 취득이 실패하면 **null**(`coordinateForRanking`은 같은 조건에서 stored 좌표) 2건.
 
 - [ ] **Step 4: PASS** → **Step 5: 커밋** `feat(android): M2b 10 — 현재 위치 표시줄(4-state·좌표당 1회 역지오코딩·위치 요청 없음)`
 
@@ -1114,7 +1136,7 @@ fun LocationBarRow(store: CurrentAddressStore) {
 - Modify: `app/src/test/.../nav/AppSourceGuardTest.kt`, `androidTest/nearby/NearbyScreenA11yTest.kt`, `androidTest/place/PlaceDetailA11yTest.kt`, `CHANGELOG.md`(맨 위 날짜 절 안드로이드 항목), `android/README.md`(§1 트리에 신설 파일), spec §12-6 "적대적 설계 리뷰 판정" 줄·§9 실기기 17~22 확인
 
 - [ ] **Step 1: 소스 가드 추가**(`AppSourceGuardTest`): ① `NearbyKind.entries` 순서가 spec 표(around·subway·bus·bike·clinic·barrierFree·kids·events·walkInfra·conditions)와 같다(`NearbyKindTest`가 아니라 enum 순서 단언) ② `nearby/`·`place/` 본문 파일에서 `LocationManager`·`Scaffold(` 0(기존 가드가 신설 파일도 스캔하는지 glob 확인) ③ `sceneBucketResId`·`barrierFreeFacilityResId`·`metroKindResId` 등 리터럴 `when`에 `R.string.` 동적 조립(`getIdentifier`) 0.
-- [ ] **Step 2: androidTest 2건**(컴파일 게이트만 — 실기기 연결 시 실행): `NearbyScreenA11yTest`에 `conditionsLandsOnWeatherHeading`(conditions kind, 스텁 3경로, `conditions-weather` 노드 헤딩·포커스) · `PlaceDetailA11yTest`에 `stationSectionsAppearQuietly`(역 place + 스텁 5경로 → `station-meta` 헤딩 존재, 통지 텍스트 없음).
+- [ ] **Step 2: androidTest 4건**(컴파일 게이트만 — 실기기 연결 시 실행, m10): `NearbyScreenA11yTest`에 `conditionsLandsOnWeatherHeading`(conditions kind, 스텁 3경로, `conditions-weather` 노드 헤딩·포커스) · `walkInfraHasThreeGroupHeadings`(`walk-nearby.json`, 헤딩 `audio`·`crossing`·`tactile` 존재 + `walkinfra-top` 착지) · `PlaceDetailA11yTest`에 `stationSectionsAppearQuietly`(역 place + 스텁 5경로 → `station-meta` 헤딩 존재, 통지 텍스트 없음) · 허브 `locationBarReadsPermissionNeededWhenNone`(`NearbyHubScreen` + None 권한 스토어 → `location-bar` 텍스트 = 권한 필요 문구). 각각 `tryPerformAccessibilityChecks`.
 - [ ] **Step 3: 문서** — CHANGELOG 항목 2~4줄 + spec 링크; README §1 트리; spec §12-6 판정 22~28 밑에 구현 중 바뀐 것(예: `coordinateForDisplay` 신설 대신 `coordinateForRanking` 공용 — 판정 28 각주).
 - [ ] **Step 4: 게이트(락)** — `until mkdir ~/gildongmu-wt/gate.lock 2>/dev/null; do sleep 30; done` → `cd android && export ANDROID_HOME=~/Library/Android/sdk && ./gradlew :kit:test :app:testDebugUnitTest :app:assembleDebug :app:assembleExperimental :app:compileDebugAndroidTestKotlin && ./gradlew --stop` → `cd .. && VITEST_MAX_THREADS=2 npm run test:run`(기지 실패 1건 `xcstrings-plural` xcrun 라이선스만 허용) → `rmdir ~/gildongmu-wt/gate.lock`.
 - [ ] **Step 5: 커밋** `docs(android): M2b 문서·소스 가드·androidTest` → 구현 리뷰 2건(spec-compliance·code-quality, `model: opus`, 결과 `~/gildongmu-wt/android-m1-reports/review-m2b-{spec,quality}.md`) → 반영 → 게이트 재실행 → `git rebase main` → 게이트 → `git -C ~/Mac-Projects/gildongmu merge --ff-only feat/android-m1` → 보고 ⑤(report.md + 코디네이터).
@@ -1131,3 +1153,4 @@ fun LocationBarRow(store: CurrentAddressStore) {
 - spec §12-1 표 6행 → Task 3·4·5 / §12-1 도메인 섹션 → Task 7 / §12-2 → Task 6 / §12-3 → Task 8·9 / §12-4 → Task 10 / §12-5 테스트 레인 → 각 Task Step 1 + Task 11 / §12-6 판정 22~28 → 후속·Task 4(24)·Task 1(25)·Task 7(26)·Task 8(27)·Task 10(28).
 - 타입 일관: `NearbyKindSpec.fetch(NearbyCoord?, P?)`(Task 1) ↔ Task 3~6 조립기 `{ c, _ -> }`·`{ c, previous -> }`; `landOn`(Task 1) ↔ Task 6; `ClinicWords`·`clinicWords(res)`(Task 2·3) ↔ Task 7; `LineText`(기존) ↔ Task 8·10; `NearbyServices`(Task 3) ↔ Task 4·5 팩토리; `BodyLine`·`HeadingLine`(Task 4에서 `a11y/A11y.kt`에 신설) ↔ Task 5~9.
 - 플레이스홀더: Task 1의 `TODO("M2b")` 분기는 Task 5 끝 0건 확인 단계가 있다(의도된 임시).
+- 설계 리뷰 1차 반영(2026-09-16): B1 → Task 10 판정 29 · M1 → Task 6 삼항 throw · M2·M3 → Task 1 `groupWindows`/Task 6 자체 행 `scene-item-` · M4 → Task 4 0건 문구 · M5 → 매핑표 기본 분기 단언(각 Task 테스트) · M6 → Task 10 `coordinateForDisplay` 별도 · m1~m3·m12 → Task 8 · m7 → Task 4 · m10 → Task 11 · m13 → Task 10 스냅샷.
