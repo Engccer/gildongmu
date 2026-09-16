@@ -1,12 +1,9 @@
 package space.dodoplanet.gildongmu.directions
 
-import android.content.Context
-import android.content.Intent
-import android.net.Uri
-import android.provider.Settings
 import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -35,16 +32,22 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import space.dodoplanet.gildongmu.a11y.AppScreenScaffold
 import space.dodoplanet.gildongmu.a11y.StatusLine
 import space.dodoplanet.gildongmu.a11y.headingText
+import space.dodoplanet.gildongmu.a11y.tapTarget
 import space.dodoplanet.gildongmu.i18n.AppLocale
 import space.dodoplanet.gildongmu.kit.DataLocale
 import space.dodoplanet.gildongmu.kit.DirectionsMode
 import space.dodoplanet.gildongmu.kit.DirectionsModeOutcome
 import space.dodoplanet.gildongmu.kit.WalkCollapse
+import space.dodoplanet.gildongmu.location.appDetailsSettingsIntent
+import space.dodoplanet.gildongmu.nav.tryStartActivity
 
 /**
- * 길찾기 탭 루트(spec §2·§3-1, iOS `DirectionsTabView` 대응). 폼 | 끝점 검색(폼을 통째로 교체) 둘 중 하나를 그린다.
+ * 길찾기 탭 루트(spec §2·§3-1, iOS `DirectionsTabView` 대응). 폼 위에 끝점 검색을 **덮어씌운다**(폼은 컴포즈 유지) —
+ * 형제 교체로 하면 폼의 펼침·스크롤 상태가 피커 왕복(취소 복귀)에 소멸한다(구현 리뷰 MA-1). 보이는 것은 하나뿐이고
+ * 라이브 리전도 하나만 컴포즈된다(폼의 `StatusLine`은 피커가 덮은 동안 숨김 트리 밖).
  * ViewModel 팩토리는 이 패키지가 앱 컨텍스트로 스스로 만든다(`MainActivity`는 골격 세션 소유). 실시간 안내 시작 버튼·
  * 거리 추적 섹션·공지 시트는 M4·M5 — 자리만(§3-1 표 10·11).
  */
@@ -60,33 +63,49 @@ fun DirectionsScreen(vm: DirectionsViewModel) {
     val picker by vm.endpointSearch.collectAsState()
     BackHandler(enabled = picker != null) { vm.closePicker() }
     val p = picker
-    if (p != null) EndpointSearchContent(vm, p) else DirectionsForm(vm)
+    Box(Modifier.fillMaxSize()) {
+        // 폼은 항상 컴포즈된다(상태 보존). 피커가 덮은 동안은 접근성 트리·터치에서 빠져야 하므로 컴포지션에서 뺀다 —
+        // 그 대신 상태를 폼 밖(이 계층)에 든다(`FormUiState`).
+        val formState = rememberFormUiState()
+        if (p == null) DirectionsForm(vm, formState) else EndpointSearchContent(vm, p)
+    }
 }
+
+/** 폼의 화면 상태(펼침·착지 요청자) — 피커 왕복에 살아남도록 `DirectionsScreen` 수준에 든다. 새 조회에서만 초기화(§3-4). */
+class FormUiState {
+    var expandedAlts by mutableStateOf(setOf<String>())
+    var walkExpandedOverride by mutableStateOf<Boolean?>(null)
+    var shortestExpanded by mutableStateOf(false)
+    var seenResultsRevision by mutableStateOf(0)
+    val fromFocus = FocusRequester()
+    val toFocus = FocusRequester()
+    val viaFocus = FocusRequester()
+    val submitFocus = FocusRequester()
+    val walkHeadingFocus = FocusRequester()
+    val recentFocus = mutableMapOf<String, FocusRequester>()
+
+    fun resetExpansion(revision: Int) {
+        expandedAlts = emptySet()
+        walkExpandedOverride = null
+        shortestExpanded = false
+        seenResultsRevision = revision
+    }
+}
+
+@Composable
+private fun rememberFormUiState(): FormUiState = remember { FormUiState() }
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
-private fun DirectionsForm(vm: DirectionsViewModel) {
+private fun DirectionsForm(vm: DirectionsViewModel, ui: FormUiState) {
     val s by vm.state.collectAsState()
     val context = LocalContext.current
     val res = context.resources
     val lang = remember(res) { AppLocale.current(res) }
     val dataLocale = remember(lang) { if (lang == "ko") DataLocale.ko else DataLocale.en }
     val strings = remember(res) { resourceStrings(res) }
-    val fromFocus = remember { FocusRequester() }
-    val toFocus = remember { FocusRequester() }
-    val viaFocus = remember { FocusRequester() }
-    val submitFocus = remember { FocusRequester() }
-    val walkHeadingFocus = remember { FocusRequester() }
-    val recentFocus = remember { mutableMapOf<String, FocusRequester>() }
-    // 펼침 상태(spec §3-4): 새 조회에서만 초기화. 최단 행 펼침·도보 override는 토글 재조회에서 보존.
-    var expandedAlts by remember { mutableStateOf(setOf<String>()) }
-    var walkExpandedOverride by remember { mutableStateOf<Boolean?>(null) }
-    var shortestExpanded by remember { mutableStateOf(false) }
-    LaunchedEffect(s.resultsRevision) {
-        expandedAlts = emptySet()
-        walkExpandedOverride = null
-        shortestExpanded = false
-    }
+    // 새 조회 = 새 경로들이라 펼침을 기본으로 되돌린다(토글 재조회·피커 왕복은 보존).
+    if (s.resultsRevision != ui.seenResultsRevision) ui.resetExpansion(s.resultsRevision)
     // 이미 허가된 세션이면 진입 시 조용히 현재 위치 주소를 병기(권한 팝업 없음).
     LaunchedEffect(Unit) { vm.loadCurrentAddressIfAuthorized() }
     // 착지 요청(spec §3-5): 한 요청 = 한 착지, 재구성이 끝난 다음 프레임에 대입(M1 관용구).
@@ -97,155 +116,161 @@ private fun DirectionsForm(vm: DirectionsViewModel) {
         withFrameNanos { }
         val requester = when (val t = landing.target) {
             is LandingTarget.Field -> when (t.field) {
-                DirectionsFieldTarget.from -> fromFocus
-                DirectionsFieldTarget.to -> toFocus
-                DirectionsFieldTarget.via -> viaFocus
+                DirectionsFieldTarget.from -> ui.fromFocus
+                DirectionsFieldTarget.to -> ui.toFocus
+                DirectionsFieldTarget.via -> ui.viaFocus
             }
-            LandingTarget.Submit -> submitFocus
-            LandingTarget.WalkHeading -> walkHeadingFocus
-            is LandingTarget.RecentRoute -> recentFocus[t.id]
+            LandingTarget.Submit -> ui.submitFocus
+            LandingTarget.WalkHeading -> ui.walkHeadingFocus
+            is LandingTarget.RecentRoute -> ui.recentFocus[t.id]
         }
         runCatching { requester?.requestFocus() }.onFailure { Log.w("DirectionsScreen", "착지 실패 ${landing.target}", it) }
     }
 
-    Column(
-        Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp)
-            .semantics { testTagsAsResourceId = true },
-    ) {
-        Text(strings.get("android.tab.directions"), Modifier.headingText().padding(vertical = 12.dp), style = MaterialTheme.typography.titleLarge)
-
-        // 필드 한 줄 = 한 객체("출발지, 현재 위치"). 비-ko 병기는 낭독만 괄호 없이.
-        ActionRow(
-            visual = vm.fieldText(DirectionsFieldTarget.from, accessible = false, lang = lang),
-            spoken = vm.fieldText(DirectionsFieldTarget.from, accessible = true, lang = lang),
-            tag = "field-from", onClick = { vm.openPicker(DirectionsFieldTarget.from) }, modifier = Modifier.focusRequester(fromFocus),
-        )
-        Button(onClick = vm::swap, modifier = Modifier.testTag("swap")) { Text(strings.get("directions.swap")) }
-        ActionRow(
-            visual = vm.fieldText(DirectionsFieldTarget.to, accessible = false, lang = lang),
-            spoken = vm.fieldText(DirectionsFieldTarget.to, accessible = true, lang = lang),
-            tag = "field-to", onClick = { vm.openPicker(DirectionsFieldTarget.to) }, modifier = Modifier.focusRequester(toFocus),
-        )
-        // 경유지(N4, 선택 사항). 삭제는 자기를 누른 버튼을 없애므로 조회 버튼을 먼저 선점한다(헌장 §5).
-        if (s.via == null) {
-            Button(onClick = { vm.openPicker(DirectionsFieldTarget.via) }, modifier = Modifier.testTag("via-add").focusRequester(viaFocus)) {
-                Text(strings.get("directions.addVia"))
-            }
-        } else {
+    AppScreenScaffold(strings.get("android.tab.directions"), onBack = null) { padding ->
+        Column(
+            Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp)
+                .semantics { testTagsAsResourceId = true },
+        ) {
+            // 필드 한 줄 = 한 객체("출발지, 현재 위치"). 비-ko 병기는 낭독만 괄호 없이.
             ActionRow(
-                visual = vm.fieldText(DirectionsFieldTarget.via, accessible = false, lang = lang),
-                spoken = vm.fieldText(DirectionsFieldTarget.via, accessible = true, lang = lang),
-                tag = "field-via", onClick = { vm.openPicker(DirectionsFieldTarget.via) }, modifier = Modifier.focusRequester(viaFocus),
+                visual = vm.fieldText(DirectionsFieldTarget.from, accessible = false, lang = lang),
+                spoken = vm.fieldText(DirectionsFieldTarget.from, accessible = true, lang = lang),
+                tag = "field-from", onClick = { vm.openPicker(DirectionsFieldTarget.from) }, modifier = Modifier.focusRequester(ui.fromFocus),
             )
-            Button(onClick = { submitFocus.requestFocus(); vm.clearVia() }, modifier = Modifier.testTag("via-remove")) {
-                Text(strings.get("directions.removeVia"))
-            }
-        }
-        val searchingLabel = strings.get("android.directions.searching")
-        Button(
-            onClick = { if (!s.isBusy) vm.runQuery() },
-            modifier = Modifier
-                .testTag("submit")
-                .focusRequester(submitFocus)
-                // disabled는 포커스를 떨군다 — 클릭 무시 + 상태 설명(헌장 §5 ⓐ, M1 관용구)
-                .semantics { if (s.isBusy) stateDescription = searchingLabel },
-        ) { Text(strings.get("directions.submit")) }
-
-        StatusLine(s.notice, Modifier.padding(vertical = 8.dp))
-
-        // 해결 버튼(spec §3-1 표 8). reduced는 재요청이 1순위, 설정 열기는 폴백으로 함께.
-        if (s.phase == DirectionsPhase.GeoReduced) {
-            Button(onClick = vm::requestPreciseLocation, modifier = Modifier.testTag("allow-precise")) { Text(strings.get("android.common.allowPrecise")) }
-        }
-        if (s.phase == DirectionsPhase.GeoDenied || s.phase == DirectionsPhase.GeoReduced) {
-            Button(onClick = { openAppSettings(context) }, modifier = Modifier.testTag("open-settings")) { Text(strings.get("android.common.openSettings")) }
-        }
-
-        // 최근 경로: 결과 없는 화면에서만(실패 phase에서는 보인다 — 우회로).
-        if (s.results == null && !s.isBusy && s.recentRoutes.isNotEmpty()) {
-            SectionHeading(strings.get("recentRoutes.title"))
-            val pinnedLabel = strings.get("recent.pinned")
-            for (route in s.recentRoutes) {
-                val label = vm.recentRouteLabel(route, lang)
+            Button(onClick = vm::swap, modifier = Modifier.tapTarget().testTag("swap")) { Text(strings.get("directions.swap")) }
+            ActionRow(
+                visual = vm.fieldText(DirectionsFieldTarget.to, accessible = false, lang = lang),
+                spoken = vm.fieldText(DirectionsFieldTarget.to, accessible = true, lang = lang),
+                tag = "field-to", onClick = { vm.openPicker(DirectionsFieldTarget.to) }, modifier = Modifier.focusRequester(ui.toFocus),
+            )
+            // 경유지(N4, 선택 사항). 삭제는 자기를 누른 버튼을 없애므로 조회 버튼을 먼저 선점한다(헌장 §5).
+            if (s.via == null) {
+                Button(
+                    onClick = { vm.openPicker(DirectionsFieldTarget.via) },
+                    modifier = Modifier.tapTarget().testTag("via-add").focusRequester(ui.viaFocus),
+                ) { Text(vm.fieldText(DirectionsFieldTarget.via, accessible = true, lang = lang)) }
+            } else {
                 ActionRow(
-                    visual = label, tag = "recent-route-${route.id}",
-                    state = if (route.pinned) pinnedLabel else null,
-                    actions = listOf(
-                        CustomAccessibilityAction(strings.get(if (route.pinned) "recent.unpin" else "recent.pin")) { vm.togglePinRecentRoute(route); true },
-                        CustomAccessibilityAction(strings.get("recent.delete")) { recentFocus.remove(route.id); vm.removeRecentRoute(route); true },
-                    ),
-                    // 결과 도착 시 이 섹션이 통째로 사라지므로 조회 버튼을 먼저 선점한다(헌장 §5).
-                    onClick = { submitFocus.requestFocus(); vm.activateRecentRoute(route) },
-                    modifier = Modifier.focusRequester(recentFocus.getOrPut(route.id) { FocusRequester() }),
+                    visual = vm.fieldText(DirectionsFieldTarget.via, accessible = false, lang = lang),
+                    spoken = vm.fieldText(DirectionsFieldTarget.via, accessible = true, lang = lang),
+                    tag = "field-via", onClick = { vm.openPicker(DirectionsFieldTarget.via) }, modifier = Modifier.focusRequester(ui.viaFocus),
                 )
+                Button(onClick = { ui.submitFocus.requestFocus(); vm.clearVia() }, modifier = Modifier.tapTarget().testTag("via-remove")) {
+                    Text(strings.get("directions.removeVia"))
+                }
             }
-            Button(onClick = vm::clearRecentRoutes, modifier = Modifier.testTag("recent-route-clear")) { Text(strings.get("recentRoutes.clearAll")) }
-        }
+            val searchingLabel = strings.get("android.directions.searching")
+            // 진행 표시는 조회 자신이 도는 동안만 — 계단 회피 재조회는 토글 행이 "조회 중"을 병기한다(구현 리뷰 NIT 7).
+            val querying = s.phase == DirectionsPhase.Locating || s.phase == DirectionsPhase.Loading
+            Button(
+                onClick = { if (!s.isBusy) vm.runQuery() },
+                modifier = Modifier
+                    .tapTarget()
+                    .testTag("submit")
+                    .focusRequester(ui.submitFocus)
+                    // disabled는 포커스를 떨군다 — 클릭 무시 + 상태 설명(헌장 §5 ⓐ, M1 관용구)
+                    .semantics { if (querying) stateDescription = searchingLabel },
+            ) { Text(strings.get("directions.submit")) }
 
-        // (예약) 거리 추적 섹션 — M4. 조회 버튼과 수단 섹션 사이.
+            StatusLine(s.notice, Modifier.padding(vertical = 8.dp))
 
-        val results = s.results
-        if (results != null) {
-            for (mode in results.displayedModes) {
-                val headingKey = when (mode) {
-                    DirectionsMode.transit -> "route.public"
-                    DirectionsMode.walk -> "route.pedestrian.heading"
-                    DirectionsMode.car -> "route.car"
+            // 해결 버튼(spec §3-1 표 8): reduced는 재요청이 1순위, 설정 열기는 재요청이 거부된 뒤의 폴백(iOS는 denied에만).
+            if (s.phase == DirectionsPhase.GeoReduced) {
+                Button(
+                    onClick = vm::requestPreciseLocation,
+                    modifier = Modifier.tapTarget().testTag("allow-precise").semantics { if (s.isRequestingPrecise) stateDescription = searchingLabel },
+                ) { Text(strings.get("android.common.allowPrecise")) }
+            }
+            if (s.phase == DirectionsPhase.GeoDenied || (s.phase == DirectionsPhase.GeoReduced && s.preciseRetryFailed)) {
+                // 처리 앱이 없는 기기에서는 false — 상태 문장이 이미 무엇을 해야 하는지 말한다(크래시 경로 차단).
+                Button(onClick = { context.tryStartActivity(appDetailsSettingsIntent(context)) }, modifier = Modifier.tapTarget().testTag("open-settings")) {
+                    Text(strings.get("android.common.openSettings"))
                 }
-                Text(
-                    strings.get(headingKey),
-                    Modifier
-                        .headingText()
-                        .testTag("heading-${mode.rawValue}")
-                        .then(if (mode == DirectionsMode.walk) Modifier.focusRequester(walkHeadingFocus) else Modifier)
-                        .focusable()
-                        .padding(top = 16.dp, bottom = 4.dp),
-                    style = MaterialTheme.typography.titleMedium,
-                )
-                // (예약) 수단별 안내 시작 버튼 — 자동차는 여기, 도보·대중교통은 각 경로 행 펼침 본문 첫 항목(M4·M5).
-                // 계단 회피 토글은 outcome과 무관하게 도보 섹션이 보이면 노출(ko 전용) — 켠 뒤 실패해도 되돌릴 수단이 남는다.
-                if (mode == DirectionsMode.walk && lang == "ko") {
-                    StepFreeToggleRow(enabled = s.stepFreeEnabled, busy = s.stepFreeBusy, onToggle = vm::toggleStepFree, strings = strings)
-                }
-                when (val outcome = results.outcomes[mode]) {
-                    is DirectionsModeOutcome.Transit -> TransitOutcomeRows(
-                        outcome.result, expandedAlts,
-                        onToggle = { key -> expandedAlts = if (key in expandedAlts) expandedAlts - key else expandedAlts + key },
-                        destinationName = vm.destinationName, lang = lang, dataLocale = dataLocale, strings = strings,
-                    )
-                    is DirectionsModeOutcome.Walk -> WalkOutcomeRows(
-                        outcome.briefing, s.walkShortest,
-                        walkExpandedOverride = walkExpandedOverride,
-                        onWalkToggle = { walkExpandedOverride = !(walkExpandedOverride ?: !WalkCollapse.shouldCollapse(outcome.briefing.durationSeconds)) },
-                        shortestExpanded = shortestExpanded, onShortestToggle = { shortestExpanded = !shortestExpanded },
-                        viaLabel = s.via?.label, strings = strings,
-                    )
-                    is DirectionsModeOutcome.Car -> CarOutcomeRows(outcome.briefing, s.via?.label, lang, strings)
-                    DirectionsModeOutcome.Empty -> TextRow(strings.get(if (mode == DirectionsMode.transit) "route.transit.noRoute" else "route.pedestrian.noRoute"), "empty-${mode.rawValue}")
-                    DirectionsModeOutcome.Error -> TextRow(
-                        strings.get(
-                            when (mode) {
-                                DirectionsMode.transit -> "route.transit.error"
-                                DirectionsMode.walk -> "route.pedestrian.error"
-                                DirectionsMode.car -> "route.briefing.error"
-                            },
+            }
+
+            // 최근 경로: 결과 없는 화면에서만(실패 phase에서는 보인다 — 우회로).
+            if (s.results == null && !s.isBusy && s.recentRoutes.isNotEmpty()) {
+                SectionHeading(strings.get("recentRoutes.title"))
+                val pinnedLabel = strings.get("recent.pinned")
+                for (route in s.recentRoutes) {
+                    val label = vm.recentRouteLabel(route, lang)
+                    ActionRow(
+                        visual = label, tag = "recent-route-${route.id}",
+                        state = if (route.pinned) pinnedLabel else null, pinned = route.pinned,
+                        actions = listOf(
+                            CustomAccessibilityAction(strings.get(if (route.pinned) "recent.unpin" else "recent.pin")) { vm.togglePinRecentRoute(route); true },
+                            CustomAccessibilityAction(strings.get("recent.delete")) { ui.recentFocus.remove(route.id); vm.removeRecentRoute(route); true },
                         ),
-                        "error-${mode.rawValue}",
+                        // 결과 도착 시 이 섹션이 통째로 사라지므로 조회 버튼을 먼저 선점한다(헌장 §5).
+                        onClick = { ui.submitFocus.requestFocus(); vm.activateRecentRoute(route) },
+                        modifier = Modifier.focusRequester(ui.recentFocus.getOrPut(route.id) { FocusRequester() }),
                     )
-                    DirectionsModeOutcome.UnsupportedWaypoint -> TextRow(strings.get("directions.unsupportedWaypoint"), "unsupported-${mode.rawValue}")
-                    DirectionsModeOutcome.Gated, DirectionsModeOutcome.OutOfCoverage, null -> Unit // displayedModes가 걸러 도달하지 않는다
+                }
+                Button(onClick = { ui.recentFocus.clear(); vm.clearRecentRoutes() }, modifier = Modifier.tapTarget().testTag("recent-route-clear")) {
+                    Text(strings.get("recentRoutes.clearAll"))
+                }
+            }
+
+            // (예약) 거리 추적 섹션 — M4. 조회 버튼과 수단 섹션 사이.
+
+            val results = s.results
+            if (results != null) {
+                for (mode in results.displayedModes) {
+                    val headingKey = when (mode) {
+                        DirectionsMode.transit -> "route.public"
+                        DirectionsMode.walk -> "route.pedestrian.heading"
+                        DirectionsMode.car -> "route.car"
+                    }
+                    Text(
+                        strings.get(headingKey),
+                        Modifier
+                            .headingText()
+                            .testTag("heading-${mode.rawValue}")
+                            // 도보 헤딩만 착지 대상(계단 회피 재조회) — 요청자는 focusable 앞(M2 소스 가드).
+                            .then(if (mode == DirectionsMode.walk) Modifier.focusRequester(ui.walkHeadingFocus).focusable() else Modifier)
+                            .padding(top = 16.dp, bottom = 4.dp),
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    // (예약) 수단별 안내 시작 버튼 — 자동차는 여기, 도보·대중교통은 각 경로 행 펼침 본문 첫 항목(M4·M5).
+                    // 계단 회피 토글은 outcome과 무관하게 도보 섹션이 보이면 노출(ko 전용) — 켠 뒤 실패해도 되돌릴 수단이 남는다.
+                    if (mode == DirectionsMode.walk && lang == "ko") {
+                        StepFreeToggleRow(enabled = s.stepFreeEnabled, busy = s.stepFreeBusy, onToggle = vm::toggleStepFree, strings = strings)
+                    }
+                    when (val outcome = results.outcomes[mode]) {
+                        is DirectionsModeOutcome.Transit -> TransitOutcomeRows(
+                            outcome.result, ui.expandedAlts,
+                            onToggle = { key -> ui.expandedAlts = if (key in ui.expandedAlts) ui.expandedAlts - key else ui.expandedAlts + key },
+                            destinationName = vm.destinationName, lang = lang, dataLocale = dataLocale, strings = strings,
+                        )
+                        is DirectionsModeOutcome.Walk -> WalkOutcomeRows(
+                            outcome.briefing, s.walkShortest,
+                            walkExpandedOverride = ui.walkExpandedOverride,
+                            onWalkToggle = { ui.walkExpandedOverride = !(ui.walkExpandedOverride ?: !WalkCollapse.shouldCollapse(outcome.briefing.durationSeconds)) },
+                            shortestExpanded = ui.shortestExpanded, onShortestToggle = { ui.shortestExpanded = !ui.shortestExpanded },
+                            viaLabel = s.via?.label, strings = strings,
+                        )
+                        is DirectionsModeOutcome.Car -> CarOutcomeRows(outcome.briefing, s.via?.label, lang, strings)
+                        DirectionsModeOutcome.Empty -> TextRow(strings.get(if (mode == DirectionsMode.transit) "route.transit.noRoute" else "route.pedestrian.noRoute"), "empty-${mode.rawValue}")
+                        DirectionsModeOutcome.Error -> TextRow(
+                            strings.get(
+                                when (mode) {
+                                    DirectionsMode.transit -> "route.transit.error"
+                                    DirectionsMode.walk -> "route.pedestrian.error"
+                                    DirectionsMode.car -> "route.briefing.error"
+                                },
+                            ),
+                            "error-${mode.rawValue}",
+                        )
+                        DirectionsModeOutcome.UnsupportedWaypoint -> TextRow(strings.get("directions.unsupportedWaypoint"), "unsupported-${mode.rawValue}")
+                        DirectionsModeOutcome.Gated, DirectionsModeOutcome.OutOfCoverage, null -> Unit // displayedModes가 걸러 도달하지 않는다
+                    }
                 }
             }
         }
     }
-}
-
-/** 앱 상세 설정(권한 해결 경로). M2 `nearby/`에도 같은 줄이 생긴다 — 통합 뒤 한 곳으로 합친다(spec §6). */
-private fun openAppSettings(context: Context) {
-    context.startActivity(
-        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + context.packageName)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-    )
 }

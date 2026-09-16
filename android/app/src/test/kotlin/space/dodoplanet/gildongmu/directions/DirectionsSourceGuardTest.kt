@@ -24,19 +24,16 @@ class DirectionsSourceGuardTest {
     }
 
     @Test fun `소스가 쓰는 문자열 키는 전부 매핑 표에 있다`() {
-        val literal = Regex("""(?:strings|ko|ja)\.get\(\s*"([^"]+)"""")
-        val used = sources.flatMap { f -> literal.findAll(f.readText()).map { it.groupValues[1] }.toList() }.toMutableSet()
-        // :kit이 키를 돌려주는 자리 — 리터럴 스캔에 안 잡힌다.
-        used += listOf(
-            "route.transit.legWalkTo", "route.transit.legWalkToNoDistance", "route.transit.legWalkToExit",
-            "route.transit.legWalkToExitNoDistance", "route.transit.legWalkToDest", "route.transit.legWalkToDestNoDistance",
-        )
-        used += TransitWalkLegText.resolve("a", "1m", 1, "3").key
-        used += TransitAlternativeName.key(listOf("fastest"), null).key
-        used += TransitAlternativeName.key(null, 2).key
-        // 화면이 `when`으로 고르는 키(변수 조회)
-        used += listOf("route.public", "route.pedestrian.heading", "route.car", "route.transit.error", "route.pedestrian.error", "route.briefing.error", "recent.unpin", "recent.pin", "recent.cleared", "recent.clearedExceptPinned", "android.common.expanded", "android.common.collapsed", "directions.searchFrom", "directions.searchTo", "directions.searchVia", "android.route.stopCount", "android.route.stationCount")
+        // 리터럴은 **키 모양** 전수 스캔(`get(if (…) "a" else "b")`·`when` 갈래도 잡는다). 로그 태그·testTag 템플릿·"package:"는 모양에서 탈락.
+        val keyShape = Regex("""^[a-z][A-Za-z0-9]*(\.[A-Za-z0-9]+)+$""")
+        // ⚠ 문자열 리터럴 **전체**를 잡는다 — `$`가 든 리터럴을 건너뛰는 꼴은 따옴표 짝이 어긋나 뒤 리터럴을 삼킨다(리뷰 권고 정규식의 함정).
+        val used = sources.flatMap { f -> Regex(""""((?:[^"\\]|\\.)*)"""").findAll(f.readText()).map { it.groupValues[1] }.toList() }
+            .filter { keyShape.matches(it) }.toMutableSet()
+        // :kit이 키를 돌려주는 자리 — 갈래 전수.
+        for (h in listOf(null, listOf("fastest"), listOf("fewestTransfers"), listOf("fastest", "fewestTransfers"))) used += TransitAlternativeName.key(h, 1).key
+        for (name in listOf("a", null)) for (dist in listOf("1m", null)) for (exit in listOf("3", null)) used += TransitWalkLegText.resolve(name, dist, 1, exit).key
         assertTrue(used.size > 40, "스캔이 살아 있다: ${used.size}")
+        assertTrue("route.transit.noRoute" in used && "route.transit.alternativeFastestFewestTransfers" in used) // 갈래 안 키도 잡힌다
         val missing = used.filter { stringId(it) == null }.sorted()
         assertEquals(emptyList(), missing)
     }

@@ -15,7 +15,6 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
@@ -25,6 +24,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -33,18 +33,21 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import space.dodoplanet.gildongmu.a11y.AppScreenScaffold
 import space.dodoplanet.gildongmu.a11y.StatusLine
-import space.dodoplanet.gildongmu.a11y.headingText
+import space.dodoplanet.gildongmu.a11y.tapTarget
 import space.dodoplanet.gildongmu.i18n.AppLocale
 import space.dodoplanet.gildongmu.kit.bilingualName
 import space.dodoplanet.gildongmu.kit.joinText
 
 /**
- * 끝점 검색(spec §3-2, iOS `DirectionsEndpointSearchView` 대응). 폼을 통째로 교체하는 모달 콘텐츠 — 진입 착지는 검색
- * 입력, 후보 도착은 첫 후보. 받아쓰기 행은 없다(D9 — 마이크 마일스톤이 검색 버튼 뒤에 넣는다).
+ * 끝점 검색(spec §3-2, iOS `DirectionsEndpointSearchView` 대응). 폼을 덮는 모달 콘텐츠 — 상단 바의 뒤로 버튼이 닫기(취소)이고
+ * 진입 착지는 검색 입력, 후보 도착은 첫 후보. 받아쓰기 행은 없다(D9 — 마이크 마일스톤이 검색 버튼 뒤에 넣는다).
  */
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun EndpointSearchContent(vm: DirectionsViewModel, p: EndpointSearchState) {
     val res = LocalContext.current.resources
@@ -85,85 +88,96 @@ fun EndpointSearchContent(vm: DirectionsViewModel, p: EndpointSearchState) {
         DirectionsFieldTarget.via -> strings.get("directions.searchVia")
     }
 
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
-        Text(title, Modifier.headingText().padding(vertical = 12.dp), style = MaterialTheme.typography.titleLarge)
-        Button(onClick = vm::closePicker, modifier = Modifier.testTag("ep-close")) { Text(strings.get("actions.close")) }
-
-        TextField(
-            state = p.queryState,
-            lineLimits = TextFieldLineLimits.SingleLine,
-            label = { Text(strings.get("search.label")) },
-            placeholder = { Text(strings.get("android.search.prompt")) },
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-            // 단일행 필드의 하드웨어 Enter도 이 경로로 온다(M1 판정) — 별도 키 폴백은 이중 제출.
-            onKeyboardAction = { if (!p.isSearching) vm.submitCandidates() },
-            trailingIcon = if (p.queryState.text.isNotEmpty()) {
-                {
-                    IconButton(onClick = { p.queryState.clearText(); fieldFocus.requestFocus() }, modifier = Modifier.testTag("ep-clear")) {
-                        Icon(Icons.Filled.Close, contentDescription = strings.get("search.clear"))
+    AppScreenScaffold(title, onBack = vm::closePicker) { padding ->
+        Column(
+            Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp)
+                .semantics { testTagsAsResourceId = true },
+        ) {
+            TextField(
+                state = p.queryState,
+                lineLimits = TextFieldLineLimits.SingleLine,
+                label = { Text(strings.get("search.label")) },
+                placeholder = { Text(strings.get("android.search.prompt")) },
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                // 단일행 필드의 하드웨어 Enter도 이 경로로 온다(M1 판정) — 별도 키 폴백은 이중 제출.
+                onKeyboardAction = { if (!p.isSearching) vm.submitCandidates() },
+                trailingIcon = if (p.queryState.text.isNotEmpty()) {
+                    {
+                        IconButton(onClick = { p.queryState.clearText(); fieldFocus.requestFocus() }, modifier = Modifier.testTag("ep-clear")) {
+                            Icon(Icons.Filled.Close, contentDescription = strings.get("search.clear"))
+                        }
                     }
+                } else null,
+                modifier = Modifier.fillMaxWidth().testTag("ep-query").focusRequester(fieldFocus),
+            )
+            Button(
+                onClick = { if (!p.isSearching) vm.submitCandidates() },
+                modifier = Modifier
+                    .tapTarget()
+                    .testTag("ep-submit")
+                    .focusRequester(searchButtonFocus)
+                    .semantics { if (p.isSearching) stateDescription = searchingLabel },
+            ) { Text(strings.get("search.button")) }
+
+            // 출발지에서만 — 도착지는 스왑이 담당하고 경유지는 장소만.
+            if (p.target == DirectionsFieldTarget.from) {
+                Button(onClick = vm::selectCurrent, modifier = Modifier.tapTarget().testTag("ep-current")) { Text(strings.get("directions.useCurrentLocation")) }
+            }
+
+            StatusLine(p.notice, Modifier.padding(vertical = 8.dp))
+
+            if (!p.hasSearched && p.recentEndpoints.isNotEmpty()) {
+                SectionHeading(strings.get("recent.title"))
+                val pinnedLabel = strings.get("recent.pinned")
+                for (e in p.recentEndpoints) {
+                    ActionRow(
+                        visual = e.label, tag = "ep-recent-${e.id}", spoken = e.label,
+                        state = if (e.pinned) pinnedLabel else null, pinned = e.pinned,
+                        actions = listOf(
+                            CustomAccessibilityAction(strings.get(if (e.pinned) "recent.unpin" else "recent.pin")) { vm.togglePinRecentEndpoint(e); true },
+                            CustomAccessibilityAction(strings.get("recent.delete")) {
+                                val target = vm.removeRecentEndpoint(e)
+                                recentFocus.remove(e.id)
+                                if (target == null) searchButtonFocus.requestFocus() else pendingRecentLanding = target
+                                true
+                            },
+                        ),
+                        onClick = { vm.selectRecentEndpoint(e) },
+                        modifier = Modifier.focusRequester(recentFocus.getOrPut(e.id) { FocusRequester() }),
+                    )
                 }
-            } else null,
-            modifier = Modifier.fillMaxWidth().testTag("ep-query").focusRequester(fieldFocus),
-        )
-        Button(
-            onClick = { if (!p.isSearching) vm.submitCandidates() },
-            modifier = Modifier
-                .testTag("ep-submit")
-                .focusRequester(searchButtonFocus)
-                .semantics { if (p.isSearching) stateDescription = searchingLabel },
-        ) { Text(strings.get("search.button")) }
+                Button(
+                    onClick = {
+                        recentFocus.clear()
+                        vm.clearRecentEndpoints()
+                        if (vm.endpointSearch.value?.recentEndpoints.isNullOrEmpty()) searchButtonFocus.requestFocus()
+                    },
+                    modifier = Modifier.tapTarget().testTag("ep-recent-clear"),
+                ) { Text(strings.get("recent.clearAll")) }
+            }
 
-        // 출발지에서만 — 도착지는 스왑이 담당하고 경유지는 장소만.
-        if (p.target == DirectionsFieldTarget.from) {
-            Button(onClick = vm::selectCurrent, modifier = Modifier.testTag("ep-current")) { Text(strings.get("directions.useCurrentLocation")) }
-        }
-
-        StatusLine(p.notice, Modifier.padding(vertical = 8.dp))
-
-        if (!p.hasSearched && p.recentEndpoints.isNotEmpty()) {
-            SectionHeading(strings.get("recent.title"))
-            val pinnedLabel = strings.get("recent.pinned")
-            for (e in p.recentEndpoints) {
+            // 후보(장소 먼저, 주소 다음). 첫 후보에만 착지 requester.
+            p.places.forEachIndexed { index, place ->
+                val name = bilingualName(lang, place.name, en = null, roman = place.nameRoman)
+                val address = place.roadAddress.ifEmpty { place.address }
                 ActionRow(
-                    visual = e.label, tag = "ep-recent-${e.id}", spoken = e.label,
-                    state = if (e.pinned) pinnedLabel else null,
-                    actions = listOf(
-                        CustomAccessibilityAction(strings.get(if (e.pinned) "recent.unpin" else "recent.pin")) { vm.togglePinRecentEndpoint(e); true },
-                        CustomAccessibilityAction(strings.get("recent.delete")) {
-                            val target = vm.removeRecentEndpoint(e)
-                            recentFocus.remove(e.id)
-                            if (target == null) searchButtonFocus.requestFocus() else pendingRecentLanding = target
-                            true
-                        },
-                    ),
-                    onClick = { vm.selectRecentEndpoint(e) },
-                    modifier = Modifier.focusRequester(recentFocus.getOrPut(e.id) { FocusRequester() }),
+                    visual = joinText(name.display, address), spoken = joinText(name.primary, address), tag = "ep-place-${place.id}",
+                    onClick = { vm.selectPlace(place) },
+                    modifier = if (index == 0) Modifier.focusRequester(firstCandidateFocus) else Modifier,
                 )
             }
-            Button(
-                onClick = { vm.clearRecentEndpoints(); if (vm.endpointSearch.value?.recentEndpoints.isNullOrEmpty()) searchButtonFocus.requestFocus() },
-                modifier = Modifier.testTag("ep-recent-clear"),
-            ) { Text(strings.get("recent.clearAll")) }
-        }
-
-        // 후보(장소 먼저, 주소 다음). 첫 후보에만 착지 requester.
-        p.places.forEachIndexed { index, place ->
-            val name = bilingualName(lang, place.name, en = null, roman = place.nameRoman)
-            val address = place.roadAddress.ifEmpty { place.address }
-            ActionRow(
-                visual = joinText(name.display, address), spoken = joinText(name.primary, address), tag = "ep-place-${place.id}",
-                onClick = { vm.selectPlace(place) },
-                modifier = if (index == 0) Modifier.focusRequester(firstCandidateFocus) else Modifier,
-            )
-        }
-        p.addresses.forEachIndexed { index, address ->
-            val name = bilingualName(lang, address.roadAddr, en = address.engAddr, roman = null)
-            ActionRow(
-                visual = name.display, spoken = name.primary, tag = "ep-address-${address.roadAddr}",
-                onClick = { vm.selectAddress(address) },
-                modifier = if (index == 0 && p.places.isEmpty()) Modifier.focusRequester(firstCandidateFocus) else Modifier,
-            )
+            p.addresses.forEachIndexed { index, address ->
+                val name = bilingualName(lang, address.roadAddr, en = address.engAddr, roman = null)
+                ActionRow(
+                    visual = name.display, spoken = name.primary, tag = "ep-address-${address.roadAddr}",
+                    onClick = { vm.selectAddress(address) },
+                    modifier = if (index == 0 && p.places.isEmpty()) Modifier.focusRequester(firstCandidateFocus) else Modifier,
+                )
+            }
         }
     }
 }

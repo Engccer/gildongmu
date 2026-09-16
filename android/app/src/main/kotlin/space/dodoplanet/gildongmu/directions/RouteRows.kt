@@ -7,6 +7,9 @@ import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -60,6 +63,8 @@ fun ActionRow(
     spoken: String = visual,
     state: String? = null,
     actions: List<CustomAccessibilityAction> = emptyList(),
+    /** 고정 표시 — 시각은 별 아이콘(M1 `RecentRow` 동형), 낭독은 `state`가 맡는다(아이콘은 `clearAndSetSemantics` 안이라 별도 노드가 아니다). */
+    pinned: Boolean = false,
 ) {
     Row(
         modifier
@@ -76,6 +81,7 @@ fun ActionRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(visual, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+        if (pinned) Icon(Icons.Filled.Star, contentDescription = null)
     }
 }
 

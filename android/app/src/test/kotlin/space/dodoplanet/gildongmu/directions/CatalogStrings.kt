@@ -79,9 +79,10 @@ class CatalogStrings(private val lang: String) : Strings {
                 branches[b.groupValues[1]] = body.substring(b.range.last + 1, j - 1)
                 pos = j
             }
-            val n = values[name]?.toIntOrNull() ?: 0
-            val chosen = branches["=$n"] ?: branches[pluralCategory(n, lang)] ?: branches["other"] ?: ""
-            text = text.substring(0, m.range.first) + chosen.replace("#", n.toString()) + text.substring(i)
+            // production `formatLocalized`와 같은 표: 정수로 안 읽히면 other(0이 아니다 — fr은 0도 one).
+            val n = values[name]?.toIntOrNull()
+            val chosen = if (n == null) branches["other"] ?: "" else branches["=$n"] ?: branches[pluralCategory(n, lang)] ?: branches["other"] ?: ""
+            text = text.substring(0, m.range.first) + chosen.replace("#", values[name] ?: "") + text.substring(i)
         }
     }
 

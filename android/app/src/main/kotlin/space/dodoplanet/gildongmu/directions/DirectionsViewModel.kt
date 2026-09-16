@@ -82,6 +82,9 @@ data class DirectionsUiState(
     val stepFreeEnabled: Boolean = false,
     val stepFreeBusy: Boolean = false,
     val isRefreshingCurrent: Boolean = false,
+    /** "정확한 위치 허용" 재요청이 거부된 뒤에만 설정 열기 폴백을 낸다(spec §3-1 표 8). 새 조회·필드 변경에 리셋. */
+    val preciseRetryFailed: Boolean = false,
+    val isRequestingPrecise: Boolean = false,
     val currentAddress: String? = null,
     val currentAddressEnglish: String? = null,
     val recentRoutes: List<RecentRoute> = emptyList(),
@@ -133,6 +136,10 @@ class DirectionsViewModel(
     /** 재진입 가드(웹 in-flight ref). 조회와 토글 재조회가 **같은** 가드를 쓴다(교차 레이스 차단). */
     private var isInFlight = false
     private var hasLoadedCurrentAddress = false
+    /** 주소 병기 요청 세대(latest-wins) — 세 경로(조회 성공·진입·재선택)가 겹칠 때 늦은 옛 좌표의 답이 새 주소를 덮지 않게. */
+    private var addressSeq = 0
+    /** 사용자가 최근 경로 목록을 건드렸으면 늦게 끝난 init 로드가 그 결과를 덮지 않는다. */
+    private var recentRoutesTouched = false
     private var lastCoords: Coords? = null
 
     private data class Coords(val origin: NearbyCoord, val dest: NearbyCoord, val via: RoutePoint?)
@@ -141,7 +148,7 @@ class DirectionsViewModel(
 
     private val initJob: Job = viewModelScope.launch {
         val recent = withContext(io) { store.routes() }
-        _state.update { it.copy(recentRoutes = recent) }
+        if (!recentRoutesTouched) _state.update { it.copy(recentRoutes = recent) }
     }
 
     init {
@@ -207,7 +214,7 @@ class DirectionsViewModel(
         _state.update {
             it.copy(
                 stepFreeBusy = false, results = null, walkShortest = null, promotedDestination = null,
-                phase = DirectionsPhase.Idle, notice = next(""),
+                phase = DirectionsPhase.Idle, notice = next(""), preciseRetryFailed = false,
             )
         }
     }
@@ -224,6 +231,7 @@ class DirectionsViewModel(
             return
         }
         isInFlight = true
+        _state.update { it.copy(preciseRetryFailed = false) }
         // iOS와 같이 진행 국면에 동기로 들어간다 — 버튼 가드·상태 문장이 첫 디스패치를 기다리지 않는다(M1 판정).
         setPhase(if (from == DirectionsEndpoint.Current || to == DirectionsEndpoint.Current) DirectionsPhase.Locating else DirectionsPhase.Loading)
         queryJob = viewModelScope.launch {
@@ -264,8 +272,13 @@ class DirectionsViewModel(
             setPhase(DirectionsPhase.Loading)
         }
         currentCoroutineContext().ensureActive()
-        val origin = coordinateOf(from, current) ?: return
-        val queried = coordinateOf(to, current) ?: return
+        // `Current`가 있으면 위에서 `current`가 채워졌으므로 도달 불가 — 도달하면 침묵 고착이 아니라 사유 있는 상태로(3-state).
+        val origin = coordinateOf(from, current)
+        val queried = coordinateOf(to, current)
+        if (origin == null || queried == null) {
+            setPhase(DirectionsPhase.GeoError)
+            return
+        }
         val viaCoord = via?.let { RoutePoint(it.lat, it.lng) }
         if (viaCoord != null && !isInKorea(viaCoord.lat, viaCoord.lng)) {
             setPhase(DirectionsPhase.OutOfCoverage)
@@ -374,8 +387,19 @@ class DirectionsViewModel(
 
     /** "정확한 위치 허용"(GeoReduced 해결 버튼): 재요청이 FINE이면 재조회, 아니면 통지만. */
     fun requestPreciseLocation() {
+        if (_state.value.isRequestingPrecise) return
+        _state.update { it.copy(isRequestingPrecise = true) }
         viewModelScope.launch {
-            if (locator.requestPreciseLocation()) runQuery() else _state.update { it.copy(notice = next(strings.get("android.common.geoReducedDesc"))) }
+            val granted = try {
+                locator.requestPreciseLocation()
+            } finally {
+                _state.update { it.copy(isRequestingPrecise = false) }
+            }
+            if (granted) {
+                runQuery()
+            } else {
+                _state.update { it.copy(preciseRetryFailed = true, notice = next(strings.get("android.common.geoReducedDesc"))) }
+            }
         }
     }
 
@@ -414,11 +438,13 @@ class DirectionsViewModel(
 
     /** 역지오코딩 실패·매칭 없음은 null로 비운다(옛 좌표의 주소를 남기지 않는다). 주소는 조회 흐름을 막지 않는다. */
     private suspend fun syncCurrentAddress(coord: NearbyCoord) {
+        val seq = ++addressSeq
         val resolved = try {
             withContext(io) { search.reverseGeocode(coord.lat, coord.lng, dataLocale()) }
         } catch (_: APIError) {
             null
         }
+        if (seq != addressSeq) return // 더 새 요청이 이미 떠났다 — 옛 답으로 덮지 않는다
         _state.update { it.copy(currentAddress = resolved?.address, currentAddressEnglish = if (resolved?.address == null) null else resolved.english) }
     }
 
@@ -485,6 +511,7 @@ class DirectionsViewModel(
 
     /** 삭제 — 착지 대상은 다음 → 이전(항목 키), 소멸이면 null(화면이 조회 버튼으로). */
     fun removeRecentRoute(route: RecentRoute): String? {
+        recentRoutesTouched = true
         val before = _state.value.recentRoutes
         val index = before.indexOfFirst { it.id == route.id }
         if (index < 0) return null
@@ -501,6 +528,7 @@ class DirectionsViewModel(
 
     /** 고정 토글: 화면 자리는 유지(정렬은 다음 로드부터), 통지 없음 — `stateDescription` 변화가 신호. */
     fun togglePinRecentRoute(route: RecentRoute) {
+        recentRoutesTouched = true
         val list = _state.value.recentRoutes.toMutableList()
         val index = list.indexOfFirst { it.id == route.id }
         if (index < 0) return
@@ -512,6 +540,7 @@ class DirectionsViewModel(
 
     /** 모두 지우기 — 고정은 보존. 비면 섹션이 소멸해 조회 버튼으로 착지. */
     fun clearRecentRoutes() {
+        recentRoutesTouched = true
         val after = store.clearRoutes()
         _state.update {
             it.copy(
@@ -526,7 +555,12 @@ class DirectionsViewModel(
 
     fun openPicker(target: DirectionsFieldTarget) {
         consumedCandidateRevision = 0
-        _endpointSearch.value = EndpointSearchState(target, recentEndpoints = store.endpoints(target.recentScope))
+        _endpointSearch.value = EndpointSearchState(target)
+        // 첫 로드는 io(spec §7) — 진입 착지가 검색 입력이라 목록이 한 프레임 늦어도 계약이 깨지지 않는다.
+        viewModelScope.launch {
+            val recent = withContext(io) { store.endpoints(target.recentScope) }
+            updatePicker { if (it.target == target) it.copy(recentEndpoints = recent) else it }
+        }
     }
 
     /** 닫힘은 결정과 무관하게 진행 중 후보 검색·지오코딩을 취소한다 — 닫힌 뒤 도착한 응답이 필드를 확정하지 않는다. */
@@ -570,6 +604,7 @@ class DirectionsViewModel(
 
     /** "현재 위치 사용" = 확정 + 강제 재측위·주소 새로고침(F-B). */
     fun selectCurrent() {
+        if (_endpointSearch.value?.target != DirectionsFieldTarget.from) return // 도착지는 스왑이, 경유지는 장소만(spec §3-2 표 5)
         select(DirectionsEndpoint.Current)
         refreshCurrentLocation()
     }
@@ -589,16 +624,17 @@ class DirectionsViewModel(
                 updatePicker { it.copy(notice = pickerNext(it, strings.get("directions.coordError"))) }
                 return@launch
             }
-            // 라틴 표기는 지정 시점의 juso 공식 영문 주소(E28).
-            select(DirectionsEndpoint.Place(target, match.lat, match.lng, address.engAddr.trim().ifEmpty { null }))
+            // 라틴 표기는 지정 시점의 juso 공식 영문 주소(E28). 이 잡 자신이 지오코딩 잡이라 취소 대상에서 뺀다.
+            select(DirectionsEndpoint.Place(target, match.lat, match.lng, address.engAddr.trim().ifEmpty { null }), cancelGeocode = false)
         }
     }
 
-    private fun select(endpoint: DirectionsEndpoint) {
+    /** `cancelGeocode=false`는 지오코딩 경로 자신이 부를 때 — 자기 잡을 취소하면 이 아래 suspend 한 줄이 조용히 건너뛰어진다. */
+    private fun select(endpoint: DirectionsEndpoint, cancelGeocode: Boolean = true) {
         val target = _endpointSearch.value?.target ?: return
         setEndpoint(endpoint, target)
         searchJob?.cancel()
-        geocodeJob?.cancel()
+        if (cancelGeocode) geocodeJob?.cancel()
         _endpointSearch.value = null
         // 확정 뒤 착지: 출발지 → 도착지 버튼, 도착지·경유지 → 조회 버튼(셋 다 "다음에 할 일").
         val landing = if (target == DirectionsFieldTarget.from) LandingTarget.Field(DirectionsFieldTarget.to) else LandingTarget.Submit
