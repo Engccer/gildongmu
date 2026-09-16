@@ -9,7 +9,10 @@ plugins {
 
 android {
     namespace = "space.dodoplanet.gildongmu"
-    compileSdk = 36
+    // Compose 1.12(BOM 2026.09.00)가 compileSdk 37 이상을 요구한다. compileSdk는 컴파일 API 표면이고
+    // targetSdk(런타임 동작 옵트인)·minSdk(설치 하한)와 별개다 — D8의 targetSdk 36·minSdk 31은 그대로.
+    compileSdk = 37
+    compileSdkMinor = 2
 
     defaultConfig {
         applicationId = "space.dodoplanet.gildongmu"
