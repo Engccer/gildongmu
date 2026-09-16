@@ -65,7 +65,7 @@ import space.dodoplanet.gildongmu.location.LocationBarRow
 
 /** 채팅 탭(일반 채팅, spec §3-1). 대화는 이 탭 백스택 엔트리의 ViewModel — 탭 전환에도 이어진다. */
 @Composable
-fun ChatTabScreen(vm: ChatViewModel = viewModel(factory = chatViewModelFactory(LocalContext.current, null)), onOpenPlace: (Place) -> Unit, onPickLocation: () -> Unit) {
+fun ChatTabScreen(vm: ChatViewModel = viewModel(factory = chatViewModelFactory(LocalContext.current, null)), onPickLocation: () -> Unit, onOpenPlace: (Place) -> Unit) {
     val titleFocus = remember { FocusRequester() }
     val suggestions = listOf(
         R.string.android_chat_suggestion1,
