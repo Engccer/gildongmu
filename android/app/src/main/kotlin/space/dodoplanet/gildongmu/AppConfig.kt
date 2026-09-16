@@ -1,7 +1,10 @@
 package space.dodoplanet.gildongmu
 
 import android.content.Context
+import android.content.res.Configuration
+import android.os.LocaleList
 import android.util.Log
+import java.util.Locale
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -17,6 +20,8 @@ import space.dodoplanet.gildongmu.location.ManualLocationJudge
 import space.dodoplanet.gildongmu.location.ManualLocationStore
 import space.dodoplanet.gildongmu.storage.SharedPreferencesStore
 import space.dodoplanet.gildongmu.net.HttpUrlConnectionTransport
+import space.dodoplanet.gildongmu.settings.SettingsStore
+import space.dodoplanet.gildongmu.settings.localeOverride
 
 /**
  * 앱 전역 설정(iOS `AppConfig` 미러). 실험 기능은 플래그 값을 손으로 고치는 것이 아니라
@@ -27,6 +32,9 @@ object AppConfig {
 
     /** 탭 바 순서(iOS `experimentalTabOrderEnabled` 미러, K1 ① 위원장 판정 2026-08-23 실험판 판정 대기). */
     val experimentalTabOrderEnabled: Boolean = BuildConfig.EXPERIMENTAL
+
+    /** 설정 화면의 결과 진동 행(실험판, spec §14-3) — 졸업 때 지울 자리 하나. */
+    val resultHapticsSettingEnabled: Boolean = BuildConfig.EXPERIMENTAL
 
     /** 서버 base URL(대외 정본 도메인). 서버 계약 변경 0 — 기존 라우트만 부른다. */
     const val API_BASE_URL = "https://gildongmu.dodoplanet.space"
@@ -66,4 +74,28 @@ object AppConfig {
 
     /** 앱 층의 좌표 진입점(판정 38) — 화면·ViewModel은 `locationStore`를 직접 잡지 않는다(소스 가드). */
     val effectiveLocation: EffectiveLocation by lazy { EffectiveLocation(locationStore, manualLocationStore, manualLocationJudge) }
+
+    /** 설정 값의 단일 소유자(spec §14-1). 첫 읽기는 `MainActivity.attachBaseContext`(동기, 언어가 첫 프레임에 필요). */
+    val settings: SettingsStore by lazy { SettingsStore(SharedPreferencesStore(app)) }
+
+    /**
+     * 로케일 오버라이드 컨텍스트(spec §14-2 판정 39): 저장값이 없으면 `base` 그대로, 있으면 그 로케일의 구성 사본으로
+     * `createConfigurationContext`. **이 호출은 이 파일 한 곳**(소스 가드). `MainActivity.attachBaseContext`가 감싼다.
+     */
+    fun localized(base: Context): Context {
+        val code = localeOverride(settings.language.value) ?: return base
+        val config = Configuration(base.resources.configuration).apply { setLocales(LocaleList(Locale.forLanguageTag(code))) }
+        return base.createConfigurationContext(config)
+    }
+
+    @Volatile private var localizedAppCache: Context? = null
+
+    /**
+     * ViewModel 문장·`dataLocale`·시각 포맷의 리소스 — **호출 시점**에 읽는다(캡처 금지: ViewModel은 재생성을 넘어 살고
+     * `createConfigurationContext`의 오버라이드는 제자리 갱신되지 않는다). 언어 저장이 무효화한다. 로케일 밖 구성 축(글꼴 크기·야간 모드)은
+     * 생성 시점 스냅샷이라 **문자열·시각 포맷만** 읽을 것.
+     */
+    fun localizedApp(): Context = localizedAppCache ?: localized(app).also { localizedAppCache = it }
+
+    fun invalidateLocalizedApp() { localizedAppCache = null }
 }

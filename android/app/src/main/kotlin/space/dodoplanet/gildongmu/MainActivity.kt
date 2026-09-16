@@ -41,6 +41,12 @@ import space.dodoplanet.gildongmu.storage.SharedPreferencesStore
 
 /** 단일 액티비티. 화면 골격(탭·스택)은 `nav/AppRoot`. */
 class MainActivity : ComponentActivity() {
+    /** 앱 언어 오버라이드(spec §14-2): 설정 첫 읽기는 여기서 동기로(첫 프레임이 옳은 언어여야 한다 — 파일 단위 로드 1회 수용). */
+    override fun attachBaseContext(base: Context) {
+        AppConfig.settings.load()
+        super.attachBaseContext(AppConfig.localized(base))
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // 위치 권한 손 둘(spec §4): 대기 슬롯은 AppConfig.permissionGate(앱 싱글턴)가 쥔다. 등록은 STARTED 전(onCreate).

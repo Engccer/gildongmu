@@ -10,8 +10,8 @@ import space.dodoplanet.gildongmu.kit.formatLocalized
  *
  * 판정 축은 **리소스 해석기가 실제로 고른 폴더**다 — 생성 스크립트가 각 `values(-lang)/strings.xml`에 쓰는
  * 마커 `app_locale`을 읽는다. `configuration.locales[0]`를 읽으면 시스템 목록 `[de, en]`에서 리소스는
- * `values-en`을 고르는데 앱은 ko로 판정해 한 줄 안에서 언어가 섞인다(spec §5). 앱 내 언어 선택은 M1 밖이고,
- * Android 13+ 앱별 언어 설정(`locales_config.xml`)이 리소스 로케일을 바꾸면 이 값도 함께 바뀐다.
+ * `values-en`을 고르는데 앱은 ko로 판정해 한 줄 안에서 언어가 섞인다(spec §5). 앱 내 언어 선택은 `AppConfig.localized`(spec §14-2 — 저장값이
+ * 리소스 로케일을 바꾸므로 이 값도 따라간다)이고, Android 13+ 앱별 언어 설정(`locales_config.xml`)은 저장값이 null("시스템 설정 따름")일 때만 효력이다.
  */
 object AppLocale {
     val supported: List<String> = listOf("ko", "en", "es", "fr", "it", "ja")
