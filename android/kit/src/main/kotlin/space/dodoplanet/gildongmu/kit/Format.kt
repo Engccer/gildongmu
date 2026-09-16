@@ -17,6 +17,12 @@ fun formatDistance(meters: Int): String {
     return "${meters / 1000.0}km"
 }
 
+/**
+ * falsy 조각 제거 + 쉼표 결합(웹 `src/lib/format.ts` `joinText` 미러). 한 줄 = 한 접근성 객체의 조립기 —
+ * 구분자는 쉼표(가운뎃점은 일부 스크린 리더가 단어로 낭독한다, 헌장 §4).
+ */
+fun joinText(vararg parts: String?): String = parts.filter { !it.isNullOrEmpty() }.joinToString(", ")
+
 /** 첫 non-null·non-empty 값(웹 `||` 폴백 동형). 빈 조각이 트레일링 쉼표로 낭독되는 것을 막는다. */
 internal fun firstNonEmpty(vararg values: String?): String? = values.firstOrNull { !it.isNullOrEmpty() }
 

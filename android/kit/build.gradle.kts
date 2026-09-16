@@ -26,6 +26,7 @@ dependencies {
     implementation(libs.kotlinx.coroutines.core)
 
     testFixturesImplementation(libs.kotlinx.coroutines.core)
+    testFixturesImplementation(libs.kotlinx.serialization.json) // Fixtures 로더(공유 fixture JSON 디코딩)
 
     testImplementation(kotlin("test"))
     testImplementation(libs.kotlinx.coroutines.test)

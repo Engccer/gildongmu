@@ -1,6 +1,6 @@
 package space.dodoplanet.gildongmu
 
-import android.content.res.Resources
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -22,13 +22,16 @@ import space.dodoplanet.gildongmu.storage.SharedPreferencesStore
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // ⚠ Activity를 캡처하지 않는다 — ViewModel은 구성 변경을 넘어 살아 첫 Activity를 붙들면 누수다.
+        // 앱 컨텍스트의 리소스도 앱별 언어 변경을 따라간다.
+        val app: Context = applicationContext
         val factory = viewModelFactory {
             initializer {
                 SearchViewModel(
                     service = SearchService(AppConfig.apiClient),
-                    store = RecentSearchStore(SharedPreferencesStore(applicationContext)),
-                    dataLocale = { AppLocale.dataLocale(resources) },
-                    strings = searchStrings(resources),
+                    store = RecentSearchStore(SharedPreferencesStore(app)),
+                    dataLocale = { AppLocale.dataLocale(app.resources) },
+                    strings = searchStrings(app),
                     savedState = createSavedStateHandle(),
                 )
             }
@@ -41,13 +44,13 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-/** ViewModel 통지 문장(리소스는 화면 몫, spec §4). */
-fun searchStrings(res: Resources): SearchStrings = SearchStrings(
-    searchingFor = { appLocalized(res, R.string.search_searchingFor, it) },
-    failed = res.getString(R.string.android_search_announceFailed),
-    empty = res.getString(R.string.android_search_announceEmpty),
-    count = { appLocalized(res, R.string.android_search_announceCount, it) },
-    deleted = res.getString(R.string.recent_deleted),
-    cleared = res.getString(R.string.recent_cleared),
-    clearedExceptPinned = res.getString(R.string.recent_clearedExceptPinned),
+/** ViewModel 통지 문장(리소스는 화면 몫, spec §4). 호출 시점에 읽는다 — 앱별 언어 변경을 따라간다. */
+fun searchStrings(context: Context): SearchStrings = SearchStrings(
+    searchingFor = { appLocalized(context.resources, R.string.search_searchingFor, it) },
+    failed = { context.getString(R.string.android_search_announceFailed) },
+    empty = { context.getString(R.string.android_search_announceEmpty) },
+    count = { appLocalized(context.resources, R.string.android_search_announceCount, it) },
+    deleted = { context.getString(R.string.recent_deleted) },
+    cleared = { context.getString(R.string.recent_cleared) },
+    clearedExceptPinned = { context.getString(R.string.recent_clearedExceptPinned) },
 )

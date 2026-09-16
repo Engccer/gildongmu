@@ -6,7 +6,6 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
-import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.api.extension.RegisterExtension
 import space.dodoplanet.gildongmu.MainDispatcherExtension
 import space.dodoplanet.gildongmu.kit.APIClient
@@ -16,6 +15,7 @@ import space.dodoplanet.gildongmu.kit.InMemoryKeyValueStore
 import space.dodoplanet.gildongmu.kit.RecentSearchStore
 import space.dodoplanet.gildongmu.kit.SearchService
 import space.dodoplanet.gildongmu.kit.pathOf
+import space.dodoplanet.gildongmu.kit.queryOf
 import space.dodoplanet.gildongmu.kit.stubbedClient
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -33,9 +33,10 @@ class SearchViewModelTest {
     val main = MainDispatcherExtension(dispatcher)
 
     private val strings = SearchStrings(
-        searchingFor = { "'$it' 검색 중…" }, failed = "실패", empty = "없음", count = { "결과 $it 건" },
-        deleted = "삭제했습니다", cleared = "모두 지웠습니다", clearedExceptPinned = "고정 제외 지움",
+        searchingFor = { "'$it' 검색 중…" }, failed = { "실패" }, empty = { "없음" }, count = { "결과 $it 건" },
+        deleted = { "삭제했습니다" }, cleared = { "모두 지웠습니다" }, clearedExceptPinned = { "고정 제외 지움" },
     )
+    private val placesK2 = """{"places":[{"id":"k2","name":"강남역","category":"교통,수송 > 지하철","address":"서울 강남구","roadAddress":"서울 강남구 강남대로","lat":37.49,"lng":127.02}],"provider":"kakao-local","query":"강남"}"""
     private val places = """{"places":[{"id":"k1","name":"강동역","category":"교통,수송 > 지하철","address":"서울 강동구","roadAddress":"서울 강동구 천호대로","lat":37.5,"lng":127.1}],"provider":"kakao-local","query":"강동"}"""
     private val emptyPlaces = """{"places":[],"provider":"none","query":"q"}"""
     private val emptyAddr = """{"addresses":[],"query":"q"}"""
@@ -63,8 +64,8 @@ class SearchViewModelTest {
         m.queryState.setTextAndPlaceCursorAtEnd(" 강동 ")
         m.setBucket("food")
         m.submit()
-        dispatcher.scheduler.runCurrent() // 기록·검색 중 상태까지
-        assertTrue(m.state.value.isSearching)
+        assertTrue(m.state.value.isSearching) // 동기 진입(iOS와 같다) — 버튼 가드가 첫 디스패치를 기다리지 않는다
+        dispatcher.scheduler.runCurrent() // 기록까지
         assertEquals("'강동' 검색 중…", m.state.value.notice.text)
         assertNull(m.state.value.bucket)
         assertEquals(listOf("강동"), m.state.value.recentQueries.map { it.text })
@@ -73,7 +74,7 @@ class SearchViewModelTest {
         assertFalse(s.isSearching); assertFalse(s.failed)
         assertEquals(1, s.totalCount); assertEquals(1, s.resultsRevision)
         assertEquals("결과 1 건", s.notice.text)
-        assertEquals("강동", s.outcome?.let { m.queryState.text.toString().trim() })
+        assertEquals(listOf("k1"), s.outcome?.places?.items?.map { it.id })
     }
 
     @Test fun `빈 질의는 무시된다`() = runTest(dispatcher) {
@@ -94,21 +95,32 @@ class SearchViewModelTest {
         assertFalse(empty.state.value.failed); assertEquals(0, empty.state.value.totalCount); assertEquals("없음", empty.state.value.notice.text)
     }
 
-    @Test fun `새 제출은 앞 검색을 취소해 stale 결과가 상태를 쓰지 않는다`() = runTest(dispatcher) {
-        val slow = object : HttpTransport {
+    @Test fun `새 제출은 앞 검색을 취소하고 나중 질의의 응답만 상태에 남는다`() = runTest(dispatcher) {
+        // 첫 질의(강동)는 10초 뒤 k1, 둘째(강남)는 1초 뒤 k2 — 취소가 없으면 k1이 나중에 도착해 상태를 덮는다.
+        val transport = object : HttpTransport {
             override suspend fun get(url: String, timeoutMs: Long?): HttpResponse {
-                if (pathOf(url) == "/api/places") { delay(10_000); return HttpResponse(200, places) }
-                return HttpResponse(200, emptyAddr)
+                if (pathOf(url) != "/api/places") return HttpResponse(200, emptyAddr)
+                val gangdong = queryOf(url).contains("query=%EA%B0%95%EB%8F%99")
+                delay(if (gangdong) 10_000 else 1_000)
+                return HttpResponse(200, if (gangdong) places else placesK2)
             }
         }
-        val m = SearchViewModel(SearchService(APIClient("https://example.test", slow)), RecentSearchStore(InMemoryKeyValueStore()), { "ko" }, strings, SavedStateHandle(), io = dispatcher)
-        m.queryState.setTextAndPlaceCursorAtEnd("느림"); m.submit()
+        val m = SearchViewModel(SearchService(APIClient("https://example.test", transport)), RecentSearchStore(InMemoryKeyValueStore()), { "ko" }, strings, SavedStateHandle(), io = dispatcher)
+        m.queryState.setTextAndPlaceCursorAtEnd("강동"); m.submit()
         dispatcher.scheduler.advanceTimeBy(100)
-        m.queryState.setTextAndPlaceCursorAtEnd("빠름"); m.submit()
+        m.queryState.setTextAndPlaceCursorAtEnd("강남"); m.submit()
         dispatcher.scheduler.advanceUntilIdle()
         assertEquals(1, m.state.value.resultsRevision)
-        assertEquals("빠름", m.state.value.outcome?.places?.let { "빠름" })
-        assertEquals(listOf("빠름", "느림"), m.state.value.recentQueries.map { it.text })
+        assertEquals(listOf("k2"), m.state.value.outcome?.places?.items?.map { it.id })
+        assertEquals(listOf("강남", "강동"), m.state.value.recentQueries.map { it.text })
+    }
+
+    @Test fun `제출은 최근 검색 첫 로드를 기다린 뒤 기록해 로드가 기록을 덮지 않는다`() = runTest(dispatcher) {
+        val store = RecentSearchStore(InMemoryKeyValueStore()).also { it.recordQuery("옛것") }
+        val m = vm(byPath("/api/places" to HttpResponse(200, places), "/api/address/search" to HttpResponse(200, emptyAddr)), store)
+        m.queryState.setTextAndPlaceCursorAtEnd("새것"); m.submit() // init 로드가 아직 돌지 않았다
+        dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(listOf("새것", "옛것"), m.state.value.recentQueries.map { it.text })
     }
 
     @Test fun `통지 seq는 같은 문장이라도 매번 증가한다`() = runTest(dispatcher) {
@@ -120,12 +132,12 @@ class SearchViewModelTest {
         assertEquals(first.text, second.text); assertEquals(first.seq + 1, second.seq)
     }
 
-    @Test fun `최근 검색 삭제의 착지 index는 다음 → 이전 → null`() = runTest(dispatcher) {
+    @Test fun `최근 검색 삭제의 착지 대상은 다음 → 이전 → null`() = runTest(dispatcher) {
         val store = RecentSearchStore(InMemoryKeyValueStore()).also { it.recordQuery("a"); it.recordQuery("b"); it.recordQuery("c") } // [c, b, a]
         val m = vm({ HttpResponse(404, "") }, store)
         dispatcher.scheduler.advanceUntilIdle()
-        assertEquals(1, m.removeRecent("b")) // [c, a] → 다음 행 a
-        assertEquals(0, m.removeRecent("a")) // [c] → 이전 행 c
+        assertEquals("a", m.removeRecent("b")) // [c, a] → 다음 행 a
+        assertEquals("c", m.removeRecent("a")) // [c] → 이전 행 c
         assertNull(m.removeRecent("c")) // 소멸
         assertNull(m.removeRecent("ghost"))
     }
