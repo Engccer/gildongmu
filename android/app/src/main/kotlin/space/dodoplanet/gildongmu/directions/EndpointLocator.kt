@@ -3,7 +3,7 @@ package space.dodoplanet.gildongmu.directions
 import space.dodoplanet.gildongmu.AppConfig
 import space.dodoplanet.gildongmu.kit.NearbyCoord
 import space.dodoplanet.gildongmu.location.LocationPermission
-import space.dodoplanet.gildongmu.location.LocationStore
+import space.dodoplanet.gildongmu.location.EffectiveLocation
 import space.dodoplanet.gildongmu.location.PermissionGate
 
 /**
@@ -22,10 +22,11 @@ interface EndpointLocator {
     suspend fun requestPreciseLocation(): Boolean
 }
 
-class LocationStoreLocator(private val store: LocationStore, private val permissions: PermissionGate) : EndpointLocator {
-    override suspend fun currentCoordinate(force: Boolean): NearbyCoord = store.currentCoordinate(force = force)
-    override suspend fun coordinateForRanking(): NearbyCoord? = store.gpsCoordinateForRanking()
+class LocationStoreLocator(private val effective: EffectiveLocation, private val permissions: PermissionGate) : EndpointLocator {
+    // 유효 좌표(앵커 > 수동 > GPS, spec §13-2): 출발지도 끝점 후보 근접 가중도 수동 위치를 따른다 — 수동이면 측위 0.
+    override suspend fun currentCoordinate(force: Boolean): NearbyCoord = effective.coordinate(force)
+    override suspend fun coordinateForRanking(): NearbyCoord? = effective.coordinateForRanking()
     override suspend fun requestPreciseLocation(): Boolean = permissions.request() == LocationPermission.Fine
 }
 
-fun directionsLocator(): EndpointLocator = LocationStoreLocator(AppConfig.locationStore, AppConfig.permissionGate)
+fun directionsLocator(): EndpointLocator = LocationStoreLocator(AppConfig.effectiveLocation, AppConfig.permissionGate)
