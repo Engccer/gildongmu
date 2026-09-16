@@ -37,6 +37,9 @@ class LocationStore(
     /** 기기 위치 서비스 켜짐 여부(화면의 `FailedLocation` 문구 판정용 — `LocationManager` 접근은 `location/`에서만). */
     fun isLocationEnabled(): Boolean = source.isLocationEnabled()
 
+    /** 권한 스냅샷(표시줄 판정 재료, spec §12-4). ⚠ `None`은 "거부"가 아니다 — 아직 묻지 않은 상태와 같은 값. */
+    fun authorization(): LocationPermission = permissions.current()
+
     private fun ageOf(fix: StoredFix): Double = (source.elapsedRealtimeMs() - fix.fixedAtElapsedMs) / 1000.0
 
     /**
@@ -119,6 +122,20 @@ class LocationStore(
             )
         } catch (e: LocationException) {
             stored?.let { NearbyCoord(it.lat, it.lng) }
+        }
+    }
+
+    /**
+     * 표시용 좌표(iOS `coordinateForDisplay`, spec §12-4): 권한 `Fine`이 아니면 null(팝업 없음 — `Coarse`도 시도하지 않는다), soft 상한,
+     * **TTL·정확도는 기본값**(60초·30m), 실패는 **null — `stored` 폴백 없음**. `coordinateForRanking`과 세 축이 다르다: 이 좌표는 역지오코딩돼
+     * "현재 위치, 〈주소〉"로 낭독되므로 낡은 좌표의 주소는 화면으로 반증할 수 없는 거짓 위치 주장이다(아침 좌표가 점심에 "현재 위치"로).
+     */
+    suspend fun coordinateForDisplay(): NearbyCoord? {
+        if (permissions.current() != LocationPermission.Fine) return null
+        return try {
+            currentCoordinate(timeoutMs = (LocationFixPolicy.softTimeout * 1000).toLong())
+        } catch (e: LocationException) {
+            null
         }
     }
 

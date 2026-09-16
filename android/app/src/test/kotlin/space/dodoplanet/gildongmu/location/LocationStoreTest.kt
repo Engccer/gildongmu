@@ -48,6 +48,25 @@ class LocationStoreTest {
         async { try { Result.success(block()) } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (e: Exception) { Result.failure(e) } }
     private fun kindOf(r: Result<*>): LocationException.Kind = (r.exceptionOrNull() as LocationException).kind
 
+    @Test fun `authorization은 게이트 스냅샷 그대로, coordinateForDisplay는 Fine 아니면 null이고 request를 부르지 않는다(spec §12-4)`() = runTest(dispatcher) {
+        val gate = FakeGate(LocationPermission.None, afterRequest = LocationPermission.Fine)
+        val s = store(FakeSource(), gate)
+        assertEquals(LocationPermission.None, s.authorization())
+        assertNull(s.coordinateForDisplay()); assertEquals(0, gate.requests)
+        assertNull(store(FakeSource(), FakeGate(LocationPermission.Coarse)).coordinateForDisplay())
+    }
+
+    @Test fun `coordinateForDisplay — 낡은 stored가 있어도 이번 취득이 실패하면 null(ranking은 같은 조건에서 stored 폴백)`() = runTest(dispatcher) {
+        val src = FakeSource(); val s = store(src, FakeGate(LocationPermission.Fine))
+        s.stored = LocationStore.StoredFix(37.1, 127.2, 10.0, src.now - 120_000) // 2분 전 — 기본 TTL(60초) 밖, soft TTL(300초) 안
+        val d = async { s.coordinateForDisplay() }; runCurrent(); advanceTimeBy(2_001); runCurrent()
+        assertNull(d.await()); assertEquals(true, s.lastFixFailed)
+        val r = async { s.coordinateForRanking() }; runCurrent()
+        assertEquals(NearbyCoord(37.1, 127.2), r.await()) // 캐시 게이트를 soft TTL로 통과
+        val ok = async { s.coordinateForDisplay() }; runCurrent(); src.emit(accuracy = 12.0, lat = 37.9)
+        assertEquals(NearbyCoord(37.9, 127.1), ok.await())
+    }
+
     @Test fun `수용 정확도 fix가 오면 즉시 반환하고 구독을 닫는다`() = runTest(dispatcher) {
         val src = FakeSource(); val s = store(src, FakeGate(LocationPermission.Fine))
         val d = async { s.currentCoordinate() }; runCurrent()
