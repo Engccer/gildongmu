@@ -1,0 +1,22 @@
+{
+  "android": {
+    "tab": {
+      "chat": "Chat",
+      "search": "Recherche",
+      "directions": "Itinéraire",
+      "nearby": "À proximité"
+    },
+    "search": {
+      "prompt": "Rechercher lieux et adresses",
+      "searching": "Recherche en cours",
+      "failedTitle": "Échec de la recherche",
+      "webSection": "Recherche web",
+      "announceFailed": "Échec de la recherche.",
+      "announceEmpty": "Aucun résultat",
+      "announceCount": "{count, plural, one {# résultat} other {# résultats}}"
+    }
+  },
+  "search": {
+    "button": "Rechercher"
+  }
+}

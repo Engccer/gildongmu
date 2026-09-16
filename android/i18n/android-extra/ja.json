@@ -1,0 +1,22 @@
+{
+  "android": {
+    "tab": {
+      "chat": "チャット",
+      "search": "検索",
+      "directions": "経路",
+      "nearby": "周辺"
+    },
+    "search": {
+      "prompt": "場所、住所を検索",
+      "searching": "検索中",
+      "failedTitle": "検索に失敗しました",
+      "webSection": "ウェブ検索",
+      "announceFailed": "検索に失敗しました。",
+      "announceEmpty": "検索結果がありません",
+      "announceCount": "検索結果{count}件"
+    }
+  },
+  "search": {
+    "button": "検索"
+  }
+}

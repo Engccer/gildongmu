@@ -1,0 +1,22 @@
+{
+  "android": {
+    "tab": {
+      "search": "검색",
+      "directions": "길찾기",
+      "nearby": "내 주변",
+      "chat": "채팅"
+    },
+    "search": {
+      "prompt": "장소, 주소 검색",
+      "searching": "검색 중",
+      "failedTitle": "검색에 실패했습니다",
+      "webSection": "웹 검색",
+      "announceFailed": "검색에 실패했습니다.",
+      "announceEmpty": "검색 결과가 없습니다",
+      "announceCount": "검색 결과 {count}건"
+    }
+  },
+  "search": {
+    "button": "검색"
+  }
+}
