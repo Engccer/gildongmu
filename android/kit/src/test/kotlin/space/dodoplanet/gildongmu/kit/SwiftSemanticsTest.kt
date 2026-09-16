@@ -5,6 +5,18 @@ import kotlin.test.assertEquals
 
 /** Swift 표준 라이브러리 의미 미러 계약. 소비자가 음수·줄바꿈을 넘겨도 경계가 흔들리지 않게 잠근다. */
 class SwiftSemanticsTest {
+    /** Apple ICU 정규식 `\s`가 받는 코드포인트 전수(2026-09-16 실측, NSRegularExpression `^\s$` × 0~U+10FFFF) = 유니코드 White_Space. */
+    private val swiftRegexSpace: Set<Int> =
+        ((0x09..0x0D) + 0x20 + 0x85 + 0xA0 + 0x1680 + (0x2000..0x200A) + 0x2028 + 0x2029 + 0x202F + 0x205F + 0x3000).toSet()
+
+    private fun codePointsWhere(predicate: (String) -> Boolean): Set<Int> =
+        (0..0x10FFFF).filter { it !in 0xD800..0xDFFF && predicate(String(Character.toChars(it))) }.toSet()
+
+    @Test fun `정규식 공백 집합은 Swift 약칭 공백과 전 코드포인트에서 같다`() {
+        val space = Regex("[$REGEX_SPACE_MEMBERS]")
+        assertEquals(swiftRegexSpace, codePointsWhere { space.matches(it) })
+    }
+
     @Test fun `점5는 0에서 먼 쪽이다 — 짝수 반올림도 양의 방향 반올림도 아니다`() {
         assertEquals(3.0, 2.5.roundedAwayFromZero())
         assertEquals(-3.0, (-2.5).roundedAwayFromZero())

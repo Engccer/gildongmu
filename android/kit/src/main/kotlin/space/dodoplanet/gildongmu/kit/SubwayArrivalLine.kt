@@ -28,11 +28,11 @@ sealed class SubwayArrivalPlan {
 
 /**
  * 정규식 약칭 클래스(공백·숫자)는 쓰지 않는다 — JVM은 ASCII, 안드로이드 ICU·Swift는 유니코드라 테스트와 기기가 갈린다.
- * 공백은 유니코드 공백(White_Space 속성, Swift·JS와 같은 뜻), 숫자는 `[0-9]`(웹 JS와 같다). 모든 자리가 전각 숫자면 Swift도
+ * 공백은 Swift와 같은 `REGEX_SPACE_MEMBERS`(SwiftSemantics.kt), 숫자는 `[0-9]`(웹 JS와 같다). 모든 자리가 전각 숫자면 Swift도
  * `Int`로 읽지 못해 결과가 같고, ASCII·전각 혼합(`3분 ４초 후`)만 Swift가 부분 인식한다(웹·Kotlin은 원문 경로). Kotlin
  * `toIntOrNull`은 전각 숫자를 읽으므로 클래스를 넓히면 오히려 갈린다.
  */
-private const val WS = """[\t\n\u000B\f\r\u0085\p{Z}]"""
+private const val WS = "[$REGEX_SPACE_MEMBERS]"
 
 private val PREV_EVENT = Regex("""^전역 (진입|도착|출발)$""")
 private val PREV_DEPARTED_WITH_STATION = Regex("""^(.+?)$WS*전역출발$""")

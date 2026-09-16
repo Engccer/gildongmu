@@ -170,14 +170,14 @@
       "status": "ported",
       "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/TransitGuide.kt",
       "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/TransitGuideTest.kt",
-      "note": "TransitTrackPoll·TransitGuideInput·TransitGuideEvent·SubwayRidingMessage는 sealed class, 튜플 반환은 TransitGuideStepResult·TransitEventProfile·TransitBoardingClassification. withoutPrewalk는 data class copy(필드 누락 불가). normalizeStopName은 internal. 정규식 공백은 ICU 약칭 공백의 정의를 명시로 적은 REGEX_SPACE_MEMBERS([\\t\\n\\f\\r\\p{Z}] — NBSP·전각 공백 포함, :kit 규칙 — 웹 JS 약칭 공백보다 수직 탭·U+FEFF만 좁다). trim은 Swift 집합별 미러(SwiftSemantics.kt)"
+      "note": "TransitTrackPoll·TransitGuideInput·TransitGuideEvent·SubwayRidingMessage는 sealed class, 튜플 반환은 TransitGuideStepResult·TransitEventProfile·TransitBoardingClassification. withoutPrewalk는 data class copy(필드 누락 불가). normalizeStopName은 internal. 정규식 공백은 Swift ICU 약칭 공백(White_Space)을 명시로 적은 REGEX_SPACE_MEMBERS(SwiftSemantics.kt, [\\t\\n\\u000B\\f\\r\\u0085\\p{Z}] — NBSP·전각 공백 포함, :kit 규칙 — 웹 JS 약칭 공백과는 U+FEFF(JS만)·U+0085(Swift만)가 다르다). trim은 Swift 집합별 미러(SwiftSemantics.kt)"
     },
     {
       "swift": "TransitGuideText.swift",
       "status": "ported",
       "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/TransitGuideText.kt",
       "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/TransitGuideTextTest.kt",
-      "note": "튜플 반환은 PickedLabels, BusArrmsgKind는 internal sealed class. arrmsg 정규식은 명시 클래스만(숫자 [0-9] — 웹 JS와 같음, 공백 REGEX_SPACE_MEMBERS — ICU 약칭 공백과 같음). transitTextKeys는 테스트가 웹 TRANSIT_TEXT_KEYS와 집합 대조한다"
+      "note": "튜플 반환은 PickedLabels, BusArrmsgKind는 internal sealed class. arrmsg 정규식은 명시 클래스만(숫자 [0-9] — 웹 JS와 같고 Swift ICU 약칭 숫자보다 좁다(전각 숫자 거절이 보수적), 공백 REGEX_SPACE_MEMBERS — Swift ICU 약칭 공백과 같고 웹 JS와는 U+FEFF·U+0085가 다르다). transitTextKeys는 테스트가 웹 TRANSIT_TEXT_KEYS와 집합 대조한다"
     },
     {
       "swift": "TransitGuideTone.swift",
