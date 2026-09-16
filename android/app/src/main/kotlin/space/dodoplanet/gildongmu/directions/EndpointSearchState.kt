@@ -7,15 +7,19 @@ import space.dodoplanet.gildongmu.kit.RecentEndpointScope
 import space.dodoplanet.gildongmu.kit.models.JusoAddress
 import space.dodoplanet.gildongmu.kit.models.Place
 
-/** 길찾기 필드 식별(iOS `DirectionsFieldTarget` — 수동 위치 지정은 범위 밖이라 셋). */
+/**
+ * 끝점 검색 타깃(iOS `DirectionsFieldTarget` 동형): 길찾기 필드 셋 + 현재 위치 수동 지정(spec §13-3). `manualLocation`은 전용 최근 스코프가 없다 —
+ * 도착지 목록을 재사용한다(자주 가는 곳이 지금 서 있는 곳의 후보이기도 하다). ⚠ 새 타깃을 이분 삼항(`from ? A : B`)에 흡수시키지 말 것 — exhaustive `when`.
+ */
 enum class DirectionsFieldTarget {
-    from, to, via;
+    from, to, via, manualLocation;
 
     val recentScope: RecentEndpointScope
         get() = when (this) {
             from -> RecentEndpointScope.from
             to -> RecentEndpointScope.to
             via -> RecentEndpointScope.via
+            manualLocation -> RecentEndpointScope.to
         }
 }
 

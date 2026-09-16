@@ -120,18 +120,10 @@ class DirectionsViewModel(
     )
     val state: StateFlow<DirectionsUiState> = _state.asStateFlow()
 
-    private val _endpointSearch = MutableStateFlow<EndpointSearchState?>(null)
-    val endpointSearch: StateFlow<EndpointSearchState?> = _endpointSearch.asStateFlow()
-
     /** 화면이 소비한 착지 seq(비저장 — 재생성 뒤 다시 착지하지 않는다). */
     var consumedLanding: Int = 0
 
-    /** 끝점 검색이 소비한 후보 세대(열 때마다 0으로). */
-    var consumedCandidateRevision: Int = 0
-
     private var queryJob: Job? = null
-    private var searchJob: Job? = null
-    private var geocodeJob: Job? = null
 
     /** 재진입 가드(웹 in-flight ref). 조회와 토글 재조회가 **같은** 가드를 쓴다(교차 레이스 차단). */
     private var isInFlight = false
@@ -458,11 +450,13 @@ class DirectionsViewModel(
             DirectionsFieldTarget.from -> strings.get("directions.from")
             DirectionsFieldTarget.to -> strings.get("directions.to")
             DirectionsFieldTarget.via -> strings.get("directions.via")
+            DirectionsFieldTarget.manualLocation -> error("manualLocation은 길찾기 폼 필드가 아니다")
         }
         val endpoint = when (target) {
             DirectionsFieldTarget.from -> s.from
             DirectionsFieldTarget.to -> s.to
             DirectionsFieldTarget.via -> s.via
+            DirectionsFieldTarget.manualLocation -> error("manualLocation은 길찾기 폼 필드가 아니다")
         }
         return when (endpoint) {
             DirectionsEndpoint.Current -> "$label, ${currentLocationText(accessible, lang)}"
@@ -474,6 +468,7 @@ class DirectionsViewModel(
                 DirectionsFieldTarget.from -> strings.get("directions.searchFrom")
                 DirectionsFieldTarget.to -> strings.get("directions.searchTo")
                 DirectionsFieldTarget.via -> strings.get("directions.addVia")
+                DirectionsFieldTarget.manualLocation -> error("manualLocation은 길찾기 폼 필드가 아니다")
             }
         }
     }
@@ -551,127 +546,35 @@ class DirectionsViewModel(
         }
     }
 
-    // ── 끝점 검색 ─────────────────────────────────────────────────────────────
+    // ── 끝점 검색(EndpointPicker 합성, spec §13-3·판정 32) ────────────────────
 
-    fun openPicker(target: DirectionsFieldTarget) {
-        consumedCandidateRevision = 0
-        _endpointSearch.value = EndpointSearchState(target)
-        // 첫 로드는 io(spec §7) — 진입 착지가 검색 입력이라 목록이 한 프레임 늦어도 계약이 깨지지 않는다.
-        viewModelScope.launch {
-            val recent = withContext(io) { store.endpoints(target.recentScope) }
-            updatePicker { if (it.target == target) it.copy(recentEndpoints = recent) else it }
-        }
-    }
-
-    /** 닫힘은 결정과 무관하게 진행 중 후보 검색·지오코딩을 취소한다 — 닫힌 뒤 도착한 응답이 필드를 확정하지 않는다. */
-    fun closePicker() {
-        val target = _endpointSearch.value?.target ?: return
-        searchJob?.cancel()
-        geocodeJob?.cancel()
-        _endpointSearch.value = null
-        _state.update { it.copy(landing = landingNext(LandingTarget.Field(target))) }
-    }
-
-    fun submitCandidates() {
-        val picker = _endpointSearch.value ?: return
-        val trimmed = picker.queryState.text.toString().trim()
-        if (trimmed.isEmpty()) return
-        searchJob?.cancel()
-        val lang = dataLocale()
-        updatePicker { it.copy(hasSearched = true, isSearching = true) }
-        searchJob = viewModelScope.launch {
-            // 허가된 세션이면 좌표를 실어 근접 블렌딩(팝업 없음).
-            val coord = locator.coordinateForRanking()
-            val outcome = withContext(io) { search.search(trimmed, coord?.lat, coord?.lng, lang, includeWeb = false) }
-            currentCoroutineContext().ensureActive()
-            val places = outcome.places.items.take(CANDIDATE_LIMIT)
-            val addresses = outcome.addresses.items.take(CANDIDATE_LIMIT)
-            val count = places.size + addresses.size
-            // 3-state: "0건"과 "조회 실패"(양쪽 다 실패)를 뭉개지 않는다.
-            val message = when {
-                count > 0 -> strings.get("directions.candidateCount", count)
-                outcome.allFailed -> strings.get("directions.candidateError")
-                else -> strings.get("directions.candidateNone")
-            }
-            updatePicker { it.copy(places = places, addresses = addresses, isSearching = false, candidateRevision = it.candidateRevision + 1, notice = pickerNext(it, message)) }
-        }
-    }
-
-    fun selectPlace(place: Place) = select(DirectionsEndpoint.Place(place.name, place.lat, place.lng, place.nameRoman))
-
-    /** 최근 장소 행 활성화 = 재검색 없이 즉시 확정(기록은 `setEndpoint`가 담당 — 이중 기록 금지). */
-    fun selectRecentEndpoint(endpoint: RecentEndpoint) = select(DirectionsEndpoint.Place(endpoint.label, endpoint.lat, endpoint.lng))
-
-    /** "현재 위치 사용" = 확정 + 강제 재측위·주소 새로고침(F-B). */
-    fun selectCurrent() {
-        if (_endpointSearch.value?.target != DirectionsFieldTarget.from) return // 도착지는 스왑이, 경유지는 장소만(spec §3-2 표 5)
-        select(DirectionsEndpoint.Current)
-        refreshCurrentLocation()
-    }
-
-    /** 주소 후보는 지오코딩 성공 시에만 확정. 실패는 coordError 통지 + 화면 유지. 연타는 무시. */
-    fun selectAddress(address: JusoAddress) {
-        if (geocodeJob?.isActive == true) return
-        geocodeJob = viewModelScope.launch {
-            val target = address.roadAddrPart1.ifEmpty { address.roadAddr }
-            val match = try {
-                withContext(io) { search.geocode(target) }.firstOrNull()
-            } catch (_: APIError) {
-                null
-            }
-            currentCoroutineContext().ensureActive()
-            if (match == null) {
-                updatePicker { it.copy(notice = pickerNext(it, strings.get("directions.coordError"))) }
-                return@launch
-            }
-            // 라틴 표기는 지정 시점의 juso 공식 영문 주소(E28). 이 잡 자신이 지오코딩 잡이라 취소 대상에서 뺀다.
-            select(DirectionsEndpoint.Place(target, match.lat, match.lng, address.engAddr.trim().ifEmpty { null }), cancelGeocode = false)
-        }
-    }
-
-    /** `cancelGeocode=false`는 지오코딩 경로 자신이 부를 때 — 자기 잡을 취소하면 이 아래 suspend 한 줄이 조용히 건너뛰어진다. */
-    private fun select(endpoint: DirectionsEndpoint, cancelGeocode: Boolean = true) {
-        val target = _endpointSearch.value?.target ?: return
+    /** 후보·최근 목록·통지는 `EndpointPicker`; 확정의 의미(필드 확정·재측위·착지)는 아래 `onSelect`가 정한다. */
+    val picker = EndpointPicker(search, store, strings, io, viewModelScope, dataLocale, ranking = { locator.coordinateForRanking() }) { endpoint, target ->
         setEndpoint(endpoint, target)
-        searchJob?.cancel()
-        if (cancelGeocode) geocodeJob?.cancel()
-        _endpointSearch.value = null
+        // "현재 위치 사용" 재선택 = 강제 재측위 + 주소 새로고침(F-B) — from에서만(지정 화면의 되돌리기는 이 부수효과가 없다).
+        if (target == DirectionsFieldTarget.from && endpoint == DirectionsEndpoint.Current) refreshCurrentLocation()
         // 확정 뒤 착지: 출발지 → 도착지 버튼, 도착지·경유지 → 조회 버튼(셋 다 "다음에 할 일").
         val landing = if (target == DirectionsFieldTarget.from) LandingTarget.Field(DirectionsFieldTarget.to) else LandingTarget.Submit
         _state.update { it.copy(landing = landingNext(landing)) }
     }
+    val endpointSearch: StateFlow<EndpointSearchState?> get() = picker.state
 
-    fun removeRecentEndpoint(endpoint: RecentEndpoint): String? {
-        val picker = _endpointSearch.value ?: return null
-        val index = picker.recentEndpoints.indexOfFirst { it.id == endpoint.id }
-        if (index < 0) return null
-        val after = store.removeEndpoint(endpoint, picker.target.recentScope)
-        updatePicker { it.copy(recentEndpoints = after, notice = pickerNext(it, strings.get("recent.deleted"))) }
-        return after.getOrNull(minOf(index, after.size - 1))?.id
+    fun openPicker(target: DirectionsFieldTarget) = picker.open(target)
+
+    /** 닫힘은 진행 중 검색을 취소하고(picker) 열었던 필드로 착지한다(여기). */
+    fun closePicker() {
+        val target = picker.close() ?: return
+        _state.update { it.copy(landing = landingNext(LandingTarget.Field(target))) }
     }
 
-    fun togglePinRecentEndpoint(endpoint: RecentEndpoint) {
-        val picker = _endpointSearch.value ?: return
-        val list = picker.recentEndpoints.toMutableList()
-        val index = list.indexOfFirst { it.id == endpoint.id }
-        if (index < 0) return
-        val pinned = !list[index].pinned
-        store.setEndpointPinned(endpoint, picker.target.recentScope, pinned)
-        list[index] = RecentEndpoint(endpoint.label, endpoint.lat, endpoint.lng, pinned)
-        updatePicker { it.copy(recentEndpoints = list) }
-    }
-
-    fun clearRecentEndpoints() {
-        val picker = _endpointSearch.value ?: return
-        val after = store.clearEndpoints(picker.target.recentScope)
-        updatePicker { it.copy(recentEndpoints = after, notice = pickerNext(it, strings.get(if (after.isEmpty()) "recent.cleared" else "recent.clearedExceptPinned"))) }
-    }
-
-    private fun updatePicker(transform: (EndpointSearchState) -> EndpointSearchState) {
-        _endpointSearch.update { it?.let(transform) }
-    }
-
-    private fun pickerNext(picker: EndpointSearchState, text: String) = Notice(picker.notice.seq + 1, text)
+    fun submitCandidates() = picker.submitCandidates()
+    fun selectPlace(place: Place) = picker.selectPlace(place)
+    fun selectRecentEndpoint(endpoint: RecentEndpoint) = picker.selectRecentEndpoint(endpoint)
+    fun selectCurrent() = picker.selectCurrent()
+    fun selectAddress(address: JusoAddress) = picker.selectAddress(address)
+    fun removeRecentEndpoint(endpoint: RecentEndpoint): String? = picker.removeRecentEndpoint(endpoint)
+    fun togglePinRecentEndpoint(endpoint: RecentEndpoint) = picker.togglePinRecentEndpoint(endpoint)
+    fun clearRecentEndpoints() = picker.clearRecentEndpoints()
 
     // ── 프리필(spec §5) ───────────────────────────────────────────────────────
 
@@ -724,6 +627,5 @@ class DirectionsViewModel(
         const val KEY_FROM = "directions.from"
         const val KEY_TO = "directions.to"
         const val KEY_VIA = "directions.via"
-        const val CANDIDATE_LIMIT = 5
     }
 }

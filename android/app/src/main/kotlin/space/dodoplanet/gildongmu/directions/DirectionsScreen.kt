@@ -67,7 +67,7 @@ fun DirectionsScreen(vm: DirectionsViewModel) {
         // 폼은 항상 컴포즈된다(상태 보존). 피커가 덮은 동안은 접근성 트리·터치에서 빠져야 하므로 컴포지션에서 뺀다 —
         // 그 대신 상태를 폼 밖(이 계층)에 든다(`FormUiState`).
         val formState = rememberFormUiState()
-        if (p == null) DirectionsForm(vm, formState) else EndpointSearchContent(vm, p)
+        if (p == null) DirectionsForm(vm, formState) else EndpointSearchContent(vm.picker, p, onBack = vm::closePicker)
     }
 }
 
@@ -119,6 +119,7 @@ private fun DirectionsForm(vm: DirectionsViewModel, ui: FormUiState) {
                 DirectionsFieldTarget.from -> ui.fromFocus
                 DirectionsFieldTarget.to -> ui.toFocus
                 DirectionsFieldTarget.via -> ui.viaFocus
+                DirectionsFieldTarget.manualLocation -> null // 길찾기 폼에 없는 필드 — 착지 하나로 앱을 죽이지 않는다(아래 runCatching 관용구)
             }
             LandingTarget.Submit -> ui.submitFocus
             LandingTarget.WalkHeading -> ui.walkHeadingFocus
