@@ -383,3 +383,42 @@ M1 §7 게이트 그대로(`:kit:test` · `:app:testDebugUnitTest` · assemble �
 36. **`guideStartsFromCurrent`(수동 기준 결과에서 안내 시작 고지)는 M4** — 안내 시작 버튼이 M4 소유.
 
 적대적 설계 리뷰 판정(§13): (기록 예정)
+
+## 14. 설정 화면 (2026-09-16 추가)
+
+> 코디네이터 지시(M2c에 이어). 동작 정본 iOS `SettingsView.swift`·`DataSourcesView.swift`·`ReleaseNotesView.swift`·`TitleMenu.swift`(진입)·`AppLanguage.swift`·`ResultHaptic.swift`. 범위는 코디네이터 목록 = **언어 · 받아쓰기 방식(탭/홀드) · 결과 진동 스위치 · 업데이트 이력 · 정보 출처 · 개인정보 처리방침·문제 신고 링크 · 실험판 섹션 게이트**. 테마·듣기 속도·자동차 청취자·좌우 안내음·체중·AI 동의는 소비자 마일스톤(M4·M6)이 이 화면에 **행을 additive로 더한다**(자리와 관용구만 여기서 정한다). 신설 문자열 0(`android.settings.*` 27키·`dataSources.*`·`android.common.privacyPolicy`·`chat.source.*` 실재).
+
+### 14-1. 진입·구조 (`settings/` 패키지, 이 세션 소유)
+
+- 진입: iOS는 탭 제목 메뉴(`TitleMenu`)의 "설정". 안드로이드는 **탭 루트 4개의 상단 바 끝에 "설정" 아이콘 버튼**(`AppScreenScaffold(settings: (() -> Unit)?)` 인자 신설, `contentDescription = android.settings.title`, `tapTarget`) → `SettingsRoute`(스택, 등록 한 줄). 검색·내 주변 허브는 이 세션이 배선하고 길찾기(M3 파일)·채팅(M6)은 한 줄 additive. pop 복귀 착지는 그 버튼(`ReturnFocusSlot` "settings").
+- 화면: `AppScreenScaffold(title = android.settings.title, onBack)` + `StatusLine`(언어 변경 통지 자리) + 순서 = iOS: ① 언어 ② 받아쓰기 방식 ③ (실험판) 진동 알림 확장 스위치 + 푸터 ④ 정보 출처 → `DataSourcesRoute` ⑤ 업데이트 이력 → `ReleaseNotesRoute` ⑥ 개인정보 처리방침(웹 `AppConfig.privacyPolicyURL`과 같은 URL, `tryStartActivity` + 실패 통지 `noAppToOpen`) ⑦ 문제 신고(`mailto:engccer@gmail.com`). 각 행 한 객체. 실험판 게이트는 `BuildConfig.EXPERIMENTAL`(iOS `#if DEBUG || EXPERIMENTAL` 동형 — 정식판엔 행 자체가 없다).
+
+### 14-2. 언어
+
+- 정본 `AppLocale`(리소스 마커) 유지. 선택은 **앱별 언어**로 — `AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(code))`(API 33+는 `LocaleManager`에 위임, 31~32는 AndroidX가 저장·복원; `MainActivity`를 `AppCompatActivity`로, 매니페스트 `autoStoreLocales` 메타데이터, `appcompat` 의존성 추가 — 새 의존성 한 개, 근거: 두 API 레벨을 한 경로로 덮는 유일한 공식 API). 시스템 "앱 언어" 설정(`locales_config`)과 같은 저장소라 양쪽이 동조한다. 선택지는 자국어 표기 6개(고유명사, 로컬라이즈 대상 아님). 행 = 라벨 + 현재 언어 한 객체("언어, 한국어"), 활성화 → 선택 목록(라디오 6행, `Role.RadioButton`·`selected`).
+- 적용 즉시 액티비티 재생성(AppCompat 기본). 통지 `android.settings.languageApplied`는 **바뀐 언어로** — `AppNotices.post`(§13-2, 프로세스 수명이라 재생성을 넘긴다)로 재생성 뒤 설정 화면 `StatusLine`이 읽는다. 재생성 뒤 착지는 설정 제목(기본).
+
+### 14-3. 받아쓰기 방식·진동
+
+- 받아쓰기: 저장 키 `dictationStyle`(iOS `DictationStyle.key`), 값 `tapToggle`(기본)/`hold`, 라벨 `android.settings.dictationTap/dictationHold`. 소비는 M6(`DictationSession`·마이크 버튼). 저장 매체 `SharedPreferencesStore(context, "gildongmu.settings")`(`KeyValueStore`).
+- 결과 진동(실험판): 키 `TrendHaptics.storageKey`(:kit `BeaconTones.kt`, `trendHapticsEnabled`), 스위치 `android.settings.trendHaptics` + 푸터 `trendHapticsFooter`(한 객체, 조건 문장 유지). **소비 채널은 통지와 같다**(CLAUDE.md "문장이 나가는 조건 = 진동이 나가는 조건"): `a11y/Notice`에 `haptic: HapticKind? = null`(`success/attention/failure`) 필드 추가, `StatusLine`이 seq 변화 때 스위치가 켜져 있으면 `LocalHapticFeedback.performHapticFeedback(Confirm|Reject)`(success·attention = Confirm, failure = Reject — 안드로이드 표준 2종에 접는다, D10). 게시자: `NearbyScreenViewModel.onEvent`(iOS `nearbyAnnouncer` 동형 — Loaded n건 = success, 0건 = attention, RefreshFailed·전락 = failure), 검색 결과(성공·0건·실패), 길찾기 결과(M3 파일 — M4가 안내와 함께 더한다). 1회성 결과에만, 반복 상태 통지엔 금지.
+
+### 14-4. 정보 출처·업데이트 이력
+
+- `DataSourcesScreen`: iOS 그대로 — `chat.source.*` 16행(각 한 객체) + `dataSources.walkHealth` + OSM 라이선스 문장 + 링크 2(`dataSources.osmLink` → openstreetmap copyright, `dataSources.osmCopyRequest` → mailto).
+- `ReleaseNotesScreen`: 번들 `assets/release-notes.json`(iOS와 **같은 생성물** — `scripts/build-release-notes.mjs`의 출력을 `android/app/src/main/assets/release-notes.json`에도 쓰고 `release-notes-bundle.test.ts`가 두 파일 동일을 강제한다; 루트 스크립트 한 줄 추가는 코디네이터에 알린다). 버전마다 헤딩 `android.settings.releaseNotesVersion(version)` + 줄 단위 `BodyLine`(앱 언어가 ko면 `ko`, 아니면 `en`), 로드 실패 `releaseNotesError`. 설치 버전 표기는 하지 않는다(iOS도 헤딩 강조뿐).
+
+### 14-5. 테스트·실기기
+
+- JVM: `SettingsStore`(언어 코드 검증·받아쓰기 기본값·진동 기본 off) · `Notice.haptic` 전파(성공/0건/실패 → 종류) · 릴리스 노트 파서(assets JSON → 버전·언어 분기, 손상 → 오류 문장) · 소스 가드(진동 트리거는 `StatusLine` 한 곳 — `performHapticFeedback` 호출 파일 1개, iOS `result-haptic-guard` 동형) · 드리프트(`release-notes-bundle.test.ts` 두 출력 동일).
+- ATF: 설정 화면 행이 각 한 객체·언어 행 라벨 "언어, 한국어"·실험판 빌드에만 진동 스위치.
+- 실기기: 27 설정 아이콘 → 화면 → 뒤로 복귀 착지 28 언어 변경 → 재생성 뒤 "언어를 바꿨습니다"가 새 언어로 29 진동 스위치 켜고 내 주변 조회 → Confirm 진동 30 업데이트 이력 헤딩 점프.
+
+### 14-6. 판정 (§13 이어서)
+
+37. **언어는 `AppCompatDelegate.setApplicationLocales` 한 경로**(의존성 +1) — API 31~32와 33+를 갈라 쓰는 두 경로보다 적다. `configuration` 수동 오버라이드(재생성·시스템 설정 불일치)는 기각.
+38. **진동 채널은 `Notice.haptic` → `StatusLine`** — 문장과 진동이 한 게시로 묶여야 "문장이 나가는 조건 = 진동이 나가는 조건"이 구조가 된다. 안드로이드 표준 2종(Confirm/Reject)으로 접는다(D10).
+39. **테마·듣기 속도·체중·AI 동의 행은 소비 마일스톤이 더한다** — 설정 행이 먼저 생기면 소비자 없는 옵션이 된다(YAGNI).
+40. **릴리스 노트는 한 생성물 두 출력** — 안드로이드용 파서·마크다운 재해석을 만들지 않는다.
+
+적대적 설계 리뷰 판정(§14): (기록 예정)
