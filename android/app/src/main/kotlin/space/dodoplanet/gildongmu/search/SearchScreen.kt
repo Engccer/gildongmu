@@ -40,6 +40,8 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import android.util.Log
 import space.dodoplanet.gildongmu.R
+import space.dodoplanet.gildongmu.settings.SETTINGS_RETURN_KEY
+import space.dodoplanet.gildongmu.settings.SettingsAction
 import space.dodoplanet.gildongmu.a11y.AppScreenScaffold
 import space.dodoplanet.gildongmu.a11y.StatusLine
 import space.dodoplanet.gildongmu.a11y.headingText
@@ -62,7 +64,14 @@ import space.dodoplanet.gildongmu.kit.regionsPresent
  */
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
-fun SearchScreen(vm: SearchViewModel, onOpenPlace: (Place) -> Unit = {}) {
+fun SearchScreen(vm: SearchViewModel, onOpenPlace: (Place) -> Unit = {}, onOpenSettings: () -> Unit = {}, takeSettingsReturn: () -> String? = { null }) {
+    val settingsFocus = remember { FocusRequester() }
+    // 설정에서 pop 복귀 → 상단 바 설정 버튼(spec §14-1; 결과 행 슬롯과 별개 — 결과 없는 첫 진입에서도 살아 있다)
+    LaunchedEffect(Unit) {
+        if (takeSettingsReturn() != SETTINGS_RETURN_KEY) return@LaunchedEffect
+        withFrameNanos { }
+        runCatching { settingsFocus.requestFocus() }.onFailure { Log.w("SearchScreen", "설정 복귀 착지 실패", it) }
+    }
     val s by vm.state.collectAsState()
     val res = LocalContext.current.resources
     val lang = remember(res) { AppLocale.current(res) }
@@ -100,7 +109,7 @@ fun SearchScreen(vm: SearchViewModel, onOpenPlace: (Place) -> Unit = {}) {
         pendingRecentLanding = null
     }
 
-    AppScreenScaffold(stringResource(R.string.app_title), onBack = null) { padding ->
+    AppScreenScaffold(stringResource(R.string.app_title), onBack = null, actions = { SettingsAction(onOpenSettings, settingsFocus) }) { padding ->
         Column(
             Modifier
                 .fillMaxSize()

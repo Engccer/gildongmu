@@ -45,6 +45,12 @@ import space.dodoplanet.gildongmu.place.PlaceDetailRoute
 import space.dodoplanet.gildongmu.place.PlaceDetailScreen
 import space.dodoplanet.gildongmu.place.PlaceNav
 import space.dodoplanet.gildongmu.search.SearchScreen
+import space.dodoplanet.gildongmu.settings.DATA_SOURCES_RETURN_KEY
+import space.dodoplanet.gildongmu.settings.DataSourcesRoute
+import space.dodoplanet.gildongmu.settings.DataSourcesScreen
+import space.dodoplanet.gildongmu.settings.SETTINGS_RETURN_KEY
+import space.dodoplanet.gildongmu.settings.SettingsRoute
+import space.dodoplanet.gildongmu.settings.SettingsScreen
 
 /**
  * 앱 골격: 하단 탭(iOS 4탭 미러, 순서는 `AppTab.order`) + 단일 `NavHost`. 탭 전환은 `saveState/restoreState`로
@@ -94,19 +100,30 @@ fun AppRoot(factories: AppFactories) {
             startDestination = AppTab.initial(experimental).route(),
             modifier = Modifier.padding(padding),
         ) {
-            composable<SearchRoute> { SearchScreen(viewModel(factory = factories.search)) { navController.navigate(PlaceDetailRoute.of(it)) } }
-            composable<DirectionsRoute> { DirectionsScreen() }
+            // 탭 루트의 설정 버튼(spec §14-1): 복귀 슬롯은 엔트리 스코프 `ReturnFocusViewModel` — 검색 VM 슬롯은 결과 행 전용이라 쓰지 않는다.
+            composable<SearchRoute> { entry ->
+                val rf: ReturnFocusViewModel = viewModel(entry)
+                SearchScreen(viewModel(factory = factories.search), onOpenPlace = { navController.navigate(PlaceDetailRoute.of(it)) }, onOpenSettings = { rf.slot.remember(SETTINGS_RETURN_KEY); navController.navigate(SettingsRoute) }, takeSettingsReturn = rf.slot::take)
+            }
+            composable<DirectionsRoute> { entry ->
+                val rf: ReturnFocusViewModel = viewModel(entry)
+                DirectionsScreen(onOpenSettings = { rf.slot.remember(SETTINGS_RETURN_KEY); navController.navigate(SettingsRoute) }, takeSettingsReturn = rf.slot::take)
+            }
             composable<NearbyRoute> { entry ->
                 val returnFocus: ReturnFocusViewModel = viewModel(entry)
                 NearbyHubScreen(
                     onOpen = { kind -> returnFocus.slot.remember(hubKey(kind)); navController.navigate(NearbyKindRoute.of(kind, null)) },
                     onPick = { returnFocus.slot.remember(LOCATION_BAR_KEY); navController.navigate(ManualLocationRoute) },
+                    onOpenSettings = { returnFocus.slot.remember(SETTINGS_RETURN_KEY); navController.navigate(SettingsRoute) },
                     takeReturnFocus = returnFocus.slot::take,
                     currentAddress = factories.currentAddress,
                     manualLocation = factories.manualLocation,
                 )
             }
-            composable<ChatRoute> { ChatTabScreen(onOpenPlace = { navController.navigate(PlaceDetailRoute.of(it)) }, onPickLocation = { navController.navigate(ManualLocationRoute) }) }
+            composable<ChatRoute> { entry ->
+                val rf: ReturnFocusViewModel = viewModel(entry)
+                ChatTabScreen(onPickLocation = { navController.navigate(ManualLocationRoute) }, onOpenSettings = { rf.slot.remember(SETTINGS_RETURN_KEY); navController.navigate(SettingsRoute) }, takeSettingsReturn = rf.slot::take, onOpenPlace = { navController.navigate(PlaceDetailRoute.of(it)) })
+            }
             // ── 스택 화면(각 화면 패키지 소유 라우트, 등록 한 줄씩)
             composable<NearbyKindRoute> { entry ->
                 val route = entry.toRoute<NearbyKindRoute>()
@@ -142,6 +159,11 @@ fun AppRoot(factories: AppFactories) {
             }
             composable<PlaceChatRoute> { entry -> PlaceChatScreen(entry.toRoute(), { navController.popBackStack() }) { navController.navigate(PlaceDetailRoute.of(it)) } }
             composable<ManualLocationRoute> { ManualLocationPickerScreen { navController.popBackStack() } }
+            composable<SettingsRoute> { entry ->
+                val rf: ReturnFocusViewModel = viewModel(entry)
+                SettingsScreen(onBack = { navController.popBackStack() }, onOpenDataSources = { rf.slot.remember(DATA_SOURCES_RETURN_KEY); navController.navigate(DataSourcesRoute) }, takeReturnFocus = rf.slot::take)
+            }
+            composable<DataSourcesRoute> { DataSourcesScreen { navController.popBackStack() } }
             composable<BusRouteStopsRoute> { entry ->
                 val route = entry.toRoute<BusRouteStopsRoute>()
                 BusRouteStopsScreen(route, factories.busRouteStops(route)) { navController.popBackStack() }

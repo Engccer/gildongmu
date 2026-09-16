@@ -63,18 +63,27 @@ import space.dodoplanet.gildongmu.kit.models.Place
 import space.dodoplanet.gildongmu.kit.placeChatPromptKeys
 import space.dodoplanet.gildongmu.location.LOCATION_BAR_KEY
 import space.dodoplanet.gildongmu.location.LocationBarRow
+import space.dodoplanet.gildongmu.settings.SETTINGS_RETURN_KEY
+import space.dodoplanet.gildongmu.settings.SettingsAction
 
 /** 채팅 탭(일반 채팅, spec §3-1). 대화는 이 탭 백스택 엔트리의 ViewModel — 탭 전환에도 이어진다. */
 @Composable
-fun ChatTabScreen(vm: ChatViewModel = viewModel(factory = chatViewModelFactory(LocalContext.current, null)), onPickLocation: () -> Unit, onOpenPlace: (Place) -> Unit) {
+fun ChatTabScreen(vm: ChatViewModel = viewModel(factory = chatViewModelFactory(LocalContext.current, null)), onPickLocation: () -> Unit, onOpenSettings: () -> Unit = {}, takeSettingsReturn: () -> String? = { null }, onOpenPlace: (Place) -> Unit) {
     val titleFocus = remember { FocusRequester() }
+    val settingsFocus = remember { FocusRequester() }
+    // 설정에서 pop 복귀 → 상단 바 설정 버튼(M2 spec §14-1)
+    LaunchedEffect(Unit) {
+        if (takeSettingsReturn() != SETTINGS_RETURN_KEY) return@LaunchedEffect
+        withFrameNanos { }
+        land(settingsFocus, "settings-return")
+    }
     val suggestions = listOf(
         R.string.android_chat_suggestion1,
         R.string.android_chat_suggestion2,
         R.string.android_chat_suggestion3,
         R.string.android_chat_suggestion4,
     ).map { stringResource(it) }
-    AppScreenScaffold(stringResource(R.string.android_tab_chat), onBack = null, titleFocus = titleFocus) { padding ->
+    AppScreenScaffold(stringResource(R.string.android_tab_chat), onBack = null, titleFocus = titleFocus, actions = { SettingsAction(onOpenSettings, settingsFocus) }) { padding ->
         // 위치 표시줄은 채팅 탭에만(장소 채팅은 장소 좌표가 앵커라 표시줄이 거짓 신호가 된다, spec §3-1)
         // 위치 지정 뒤 pop 복귀 착지는 표시줄(허브 동형 — 라벨이 결과를 읽는다, M2c spec §13-3)
         ChatBody(vm, suggestions, titleFocus, landOnEntry = false, onOpenPlace, Modifier.padding(padding), showsLocationBar = true, onPickLocation = { vm.rememberReturnFocus(LOCATION_BAR_KEY); onPickLocation() })

@@ -30,26 +30,34 @@ import space.dodoplanet.gildongmu.location.CurrentAddressStore
 import space.dodoplanet.gildongmu.location.LOCATION_BAR_KEY
 import space.dodoplanet.gildongmu.location.LocationBarRow
 import space.dodoplanet.gildongmu.location.ManualLocationStore
+import space.dodoplanet.gildongmu.settings.SETTINGS_RETURN_KEY
+import space.dodoplanet.gildongmu.settings.SettingsAction
 
 /** 내 주변 허브(spec §3-4·§12-4·§13-3): 표시줄 버튼 + 버튼 10개(iOS 순서). 권한은 여기서 요청하지 않는다(각 화면 진입 시). */
 @Composable
 fun NearbyHubScreen(
     onOpen: (NearbyKind) -> Unit,
     onPick: () -> Unit,
+    onOpenSettings: () -> Unit,
     takeReturnFocus: () -> String?,
     currentAddress: CurrentAddressStore,
     manualLocation: ManualLocationStore,
 ) {
     val requesters = remember { mutableMapOf<NearbyKind, FocusRequester>() }
     val barFocus = remember { FocusRequester() }
+    val settingsFocus = remember { FocusRequester() }
     // pop 복귀 착지: 눌렀던 버튼으로(spec §3-1) — 종류 버튼 또는 표시줄 버튼(위치 지정 복귀, 라벨은 이미 확정돼 있다). 소비는 효과 안에서 한 번.
     LaunchedEffect(Unit) {
         val key = takeReturnFocus() ?: return@LaunchedEffect
         withFrameNanos { }
-        val requester = if (key == LOCATION_BAR_KEY) barFocus else NearbyKind.entries.firstOrNull { hubKey(it) == key }?.let { requesters[it] }
+        val requester = when (key) {
+            LOCATION_BAR_KEY -> barFocus
+            SETTINGS_RETURN_KEY -> settingsFocus
+            else -> NearbyKind.entries.firstOrNull { hubKey(it) == key }?.let { requesters[it] }
+        }
         runCatching { requester?.requestFocus() }.onFailure { Log.w("Nearby", "허브 복귀 착지 실패 $key", it) }
     }
-    AppScreenScaffold(stringResource(R.string.android_tab_nearby), onBack = null) { padding ->
+    AppScreenScaffold(stringResource(R.string.android_tab_nearby), onBack = null, actions = { SettingsAction(onOpenSettings, settingsFocus) }) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).semantics { testTagsAsResourceId = true }) {
             // 첫 행: 현재 위치 표시줄(이 화면의 조회 기준 선언, spec §12-4) = 위치 지정 버튼(§13-3).
             LocationBarRow(currentAddress, manualLocation, onPick, barFocus)
