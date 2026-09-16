@@ -15,6 +15,7 @@ import space.dodoplanet.gildongmu.location.AndroidLocationSource
 import space.dodoplanet.gildongmu.location.AndroidPermissionGate
 import space.dodoplanet.gildongmu.location.LocationStore
 import space.dodoplanet.gildongmu.a11y.AppNotices
+import space.dodoplanet.gildongmu.a11y.HapticKind
 import space.dodoplanet.gildongmu.location.EffectiveLocation
 import space.dodoplanet.gildongmu.location.ManualLocationJudge
 import space.dodoplanet.gildongmu.location.ManualLocationStore
@@ -69,7 +70,7 @@ object AppConfig {
 
     /** 이동 판정(트리거: `MainActivity` ON_START·force 조회). 자동 해제 통지는 앱 통지 큐로. */
     val manualLocationJudge: ManualLocationJudge by lazy {
-        ManualLocationJudge(manualLocationStore, locationStore, now = { System.currentTimeMillis() / 1000.0 }, notify = { AppNotices.post(it) }, autoClearedText = { localizedApp().getString(R.string.manualLocation_autoCleared) })
+        ManualLocationJudge(manualLocationStore, locationStore, now = { System.currentTimeMillis() / 1000.0 }, notify = { AppNotices.post(it, haptic = HapticKind.attention) }, autoClearedText = { localizedApp().getString(R.string.manualLocation_autoCleared) })
     }
 
     /** 앱 층의 좌표 진입점(판정 38) — 화면·ViewModel은 `locationStore`를 직접 잡지 않는다(소스 가드). */

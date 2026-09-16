@@ -173,6 +173,11 @@ class AppSourceGuardTest {
         assertEquals(emptyList(), factoryFiles.filter { Regex("""\bcontext\.(resources|getString\()""").containsMatchIn(it.readText()) }.map { it.name })
     }
 
+    /** spec §14-3 판정 40 — 진동은 `StatusLine` 발화 효과 한 자리(iOS `result-haptic-guard` 동형). */
+    @Test fun `performHapticFeedback 호출 파일은 A11y 하나다`() {
+        assertEquals(listOf("A11y.kt"), sources.filter { it.extension == "kt" && it.readText().contains("performHapticFeedback(") }.map { it.name })
+    }
+
     @Test fun `Google Play 서비스 의존은 0이다`() {
         val gradle = listOf(android.resolve("app/build.gradle.kts"), android.resolve("gradle/libs.versions.toml"))
         assertTrue(gradle.none { it.readText().contains("play-services") })

@@ -72,14 +72,14 @@ class SearchViewModelTest {
         m.submit()
         assertTrue(m.state.value.isSearching) // 동기 진입(iOS와 같다) — 버튼 가드가 첫 디스패치를 기다리지 않는다
         dispatcher.scheduler.runCurrent() // 기록까지
-        assertEquals("'강동' 검색 중…", m.state.value.notice.text)
+        assertEquals("'강동' 검색 중…", m.state.value.notice.text); assertNull(m.state.value.notice.haptic) // 진행 통지는 진동 없음
         assertNull(m.state.value.bucket)
         assertEquals(listOf("강동"), m.state.value.recentQueries.map { it.text })
         dispatcher.scheduler.advanceUntilIdle()
         val s = m.state.value
         assertFalse(s.isSearching); assertFalse(s.failed)
         assertEquals(1, s.totalCount); assertEquals(1, s.resultsRevision)
-        assertEquals("결과 1 건", s.notice.text)
+        assertEquals("결과 1 건", s.notice.text); assertEquals(space.dodoplanet.gildongmu.a11y.HapticKind.success, s.notice.haptic)
         assertEquals(listOf("k1"), s.outcome?.places?.items?.map { it.id })
     }
 
@@ -94,11 +94,11 @@ class SearchViewModelTest {
     @Test fun `장소·주소 둘 다 실패면 failed, 빈 성공이면 empty`() = runTest(dispatcher) {
         val broken = vm(handler = { HttpResponse(502, """{"error":"실패"}""") })
         broken.queryState.setTextAndPlaceCursorAtEnd("q"); broken.submit(); dispatcher.scheduler.advanceUntilIdle()
-        assertTrue(broken.state.value.failed); assertEquals("실패", broken.state.value.notice.text)
+        assertTrue(broken.state.value.failed); assertEquals("실패", broken.state.value.notice.text); assertEquals(space.dodoplanet.gildongmu.a11y.HapticKind.failure, broken.state.value.notice.haptic)
 
         val empty = vm(byPath("/api/places" to HttpResponse(200, emptyPlaces), "/api/address/search" to HttpResponse(200, emptyAddr), "/api/search/web" to HttpResponse(200, emptyWeb)))
         empty.queryState.setTextAndPlaceCursorAtEnd("q"); empty.submit(); dispatcher.scheduler.advanceUntilIdle()
-        assertFalse(empty.state.value.failed); assertEquals(0, empty.state.value.totalCount); assertEquals("없음", empty.state.value.notice.text)
+        assertFalse(empty.state.value.failed); assertEquals(0, empty.state.value.totalCount); assertEquals("없음", empty.state.value.notice.text); assertEquals(space.dodoplanet.gildongmu.a11y.HapticKind.attention, empty.state.value.notice.haptic)
     }
 
     @Test fun `새 제출은 앞 검색을 취소하고 나중 질의의 응답만 상태에 남는다`() = runTest(dispatcher) {

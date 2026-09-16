@@ -80,7 +80,7 @@ class NearbyScreenViewModelTest {
         vm.load(); dispatcher.scheduler.advanceUntilIdle()
         val loaded = assertIs<NearbyLoadPhase.Loaded<SubwayNearbyResult>>(vm.phase.value)
         assertTrue(loaded.payload.stations.isNotEmpty())
-        assertEquals("주변 역 ${loaded.payload.stations.size}곳", vm.notice.value.text)
+        assertEquals("주변 역 ${loaded.payload.stations.size}곳", vm.notice.value.text); assertEquals(space.dodoplanet.gildongmu.a11y.HapticKind.success, vm.notice.value.haptic)
         assertEquals(Landing.Key("station-${loaded.payload.stations.first().stationName}", 1), vm.landing.value)
     }
 
@@ -98,7 +98,7 @@ class NearbyScreenViewModelTest {
         vm.load(); dispatcher.scheduler.advanceUntilIdle()
         val empty = assertIs<NearbyLoadPhase.Loaded<SubwayNearbyResult>>(vm.phase.value)
         assertTrue(vm.isEmpty(empty.payload))
-        assertEquals("주변에 지하철역이 없습니다. 가장 가까운 역은 천호, 5호선, 8호선, 1.8km 거리입니다", vm.notice.value.text)
+        assertEquals("주변에 지하철역이 없습니다. 가장 가까운 역은 천호, 5호선, 8호선, 1.8km 거리입니다", vm.notice.value.text); assertEquals(space.dodoplanet.gildongmu.a11y.HapticKind.attention, vm.notice.value.haptic)
         assertEquals(Landing.None, vm.landing.value)
         vm.load(force = true); dispatcher.scheduler.advanceUntilIdle()
         assertEquals(1, (vm.landing.value as Landing.Key).rev)
@@ -109,7 +109,7 @@ class NearbyScreenViewModelTest {
         vm.load(); dispatcher.scheduler.advanceUntilIdle()
         vm.load(force = true); dispatcher.scheduler.advanceUntilIdle()
         assertIs<NearbyLoadPhase.Loaded<SubwayNearbyResult>>(vm.phase.value)
-        assertEquals("새로고침 실패, 유지", vm.notice.value.text)
+        assertEquals("새로고침 실패, 유지", vm.notice.value.text); assertEquals(space.dodoplanet.gildongmu.a11y.HapticKind.failure, vm.notice.value.haptic)
     }
 
     @Test fun `첫 로드 서버 실패는 FailedServer, 통지 없음`() = runTest(dispatcher) {

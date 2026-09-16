@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import space.dodoplanet.gildongmu.a11y.HapticKind
 import space.dodoplanet.gildongmu.a11y.Notice
 import space.dodoplanet.gildongmu.kit.NearbyCoord
 import space.dodoplanet.gildongmu.kit.RecentQuery
@@ -130,7 +131,8 @@ class SearchViewModel(
                 s.copy(
                     outcome = result, isSearching = false, failed = failed, resultsRevision = revision, sort = sort,
                     canSortByReview = lang == "ko" && naverBackedSeen,
-                    notice = next(if (failed) strings.failed() else if (total == 0) strings.empty() else strings.count(total)),
+                    // 결과 진동(spec §14-3): 실패·0건·n건 3-state
+                    notice = next(if (failed) strings.failed() else if (total == 0) strings.empty() else strings.count(total), if (failed) HapticKind.failure else if (total == 0) HapticKind.attention else HapticKind.success),
                 )
             }
         }
@@ -200,7 +202,7 @@ class SearchViewModel(
         _state.update { it.copy(recentQueries = after, notice = next(if (after.isEmpty()) strings.cleared() else strings.clearedExceptPinned())) }
     }
 
-    private fun next(text: String): Notice = Notice(_state.value.notice.seq + 1, text)
+    private fun next(text: String, haptic: HapticKind? = null): Notice = Notice(_state.value.notice.seq + 1, text, haptic = haptic)
 
     companion object {
         const val QUERY_KEY = "query"

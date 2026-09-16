@@ -26,6 +26,10 @@ class AppNoticesTest {
         assertNull(same.spoken) // 낭독형이 시각과 같으면 덮지 않는다
         val onlyApp = mergeNotices(Notice(0, ""), Notice(1, "해제"), 9)
         assertEquals("해제", onlyApp.text)
+        // 진동은 앱 통지의 종류가 이기고, null이면 화면 것(spec §14-3)
+        assertEquals(HapticKind.attention, mergeNotices(Notice(3, "주변 역 3곳", haptic = HapticKind.success), Notice(1, "해제", haptic = HapticKind.attention), 10).haptic)
+        assertEquals(HapticKind.success, mergeNotices(Notice(3, "주변 역 3곳", haptic = HapticKind.success), Notice(1, "해제"), 11).haptic)
+        AppNotices.post("언어를 바꿨습니다", haptic = HapticKind.success); assertEquals(HapticKind.success, AppNotices.pending.value!!.haptic)
     }
 
     @Test fun `post는 덮지 않고 큐에 넣고, claim은 한 소유자만, consume은 집은 seq일 때만 다음으로 넘긴다`() {

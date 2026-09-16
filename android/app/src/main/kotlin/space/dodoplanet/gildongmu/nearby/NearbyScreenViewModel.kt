@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import space.dodoplanet.gildongmu.a11y.HapticKind
 import space.dodoplanet.gildongmu.a11y.Notice
 import space.dodoplanet.gildongmu.kit.NearbyCoord
 import space.dodoplanet.gildongmu.kit.NearbyCoordinateSource
@@ -128,7 +129,8 @@ class NearbyScreenViewModel<P : Any>(
     private fun onEvent(event: NearbyLoadEvent<P>) {
         when (event) {
             is NearbyLoadEvent.Loaded -> {
-                post(spec.loadedNotice(event.payload))
+                // 결과 진동(iOS `nearbyAnnouncer` 동형, spec §14-3): n건 = 성공, 0건 = 주의
+                post(spec.loadedNotice(event.payload), if (spec.isEmpty(event.payload)) HapticKind.attention else HapticKind.success)
                 val key = spec.firstKey(event.payload)
                 if (!didLand && previousFirstKey == null && key != null) {
                     didLand = true
@@ -137,10 +139,10 @@ class NearbyScreenViewModel<P : Any>(
                 previousFirstKey = key
             }
             NearbyLoadEvent.EmptyResult -> Unit // 모든 kind(11종)의 fetch가 non-null이라 도달 불가(spec §3-5)
-            NearbyLoadEvent.RefreshFailed -> post(strings.refreshFailed())
-            NearbyLoadEvent.PermissionLost -> post(strings.refreshDenied())
-            NearbyLoadEvent.AccuracyLost -> post(strings.refreshReduced())
-            NearbyLoadEvent.WentOutOfCoverage -> post(strings.outOfCoverage())
+            NearbyLoadEvent.RefreshFailed -> post(strings.refreshFailed(), HapticKind.failure)
+            NearbyLoadEvent.PermissionLost -> post(strings.refreshDenied(), HapticKind.failure)
+            NearbyLoadEvent.AccuracyLost -> post(strings.refreshReduced(), HapticKind.failure)
+            NearbyLoadEvent.WentOutOfCoverage -> post(strings.outOfCoverage(), HapticKind.attention)
         }
     }
 
@@ -148,8 +150,8 @@ class NearbyScreenViewModel<P : Any>(
     fun notifyNoApp() = post(strings.noAppToOpen())
 
     /** 통지도 낭독 채널이다 — 낭독형은 거리 단위를 풀어쓰고(iOS `nearbyAnnouncer` 동형) 시각 텍스트는 원문을 지킨다. */
-    private fun post(text: String) {
+    private fun post(text: String, haptic: HapticKind? = null) {
         val spoken = spokenDistanceUnits(text, strings.spokenMeters())
-        _notice.value = Notice(_notice.value.seq + 1, text, spoken.takeIf { it != text })
+        _notice.value = Notice(_notice.value.seq + 1, text, spoken.takeIf { it != text }, haptic)
     }
 }
