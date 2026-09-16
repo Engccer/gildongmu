@@ -66,6 +66,7 @@ fun PlaceDetailScreen(factory: ViewModelProvider.Factory, nav: PlaceNav, takeRet
     val res = context.resources
     val lang = AppLocale.current(res)
     val hoursLine by vm.hoursLine.collectAsState()
+    val station by vm.station.collectAsState()
     val notice by vm.notice.collectAsState()
     val titleFocus = remember { FocusRequester() }
     val anchorFocus = remember { mutableMapOf<NearbyKind, FocusRequester>() }
@@ -156,6 +157,9 @@ fun PlaceDetailScreen(factory: ViewModelProvider.Factory, nav: PlaceNav, takeRet
                     Modifier.fillMaxWidth().tapTarget().testTag("anchor-${kind.name}").focusRequester(anchorFocus.getOrPut(kind) { FocusRequester() }),
                 ) { Text(stringResource(kindTitle(kind))) }
             }
+            // 20~. 역이면 역 정보·실시간 도착·첫차 막차·교통약자 시설이 자동 등장(조용히 나타남, spec §12-3). "이 장소 주변" 다음인 이유는 iOS 주석 —
+            // 역 섹션은 전부 인라인 전개라 앞에 두면 선형 주파로 앵커 4행에 닿는 비용이 수백 행으로 뒤집힌다.
+            station?.let { StationSectionsView(it) }
         }
     }
 }

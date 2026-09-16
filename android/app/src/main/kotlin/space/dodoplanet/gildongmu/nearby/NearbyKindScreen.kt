@@ -1,5 +1,6 @@
 package space.dodoplanet.gildongmu.nearby
 
+import android.content.res.Resources
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.defaultMinSize
@@ -65,6 +66,7 @@ import space.dodoplanet.gildongmu.kit.nightClinicToPlace
 import space.dodoplanet.gildongmu.kit.models.BusRouteStop
 import space.dodoplanet.gildongmu.kit.models.BusStop
 import space.dodoplanet.gildongmu.kit.models.Place
+import space.dodoplanet.gildongmu.kit.models.SubwayArrival
 import space.dodoplanet.gildongmu.kit.models.SubwayNearbyResult
 import space.dodoplanet.gildongmu.kit.spokenDistanceUnits
 import space.dodoplanet.gildongmu.kit.surroundingPlaceToPlace
@@ -273,14 +275,6 @@ private fun SubwayBody(result: SubwayNearbyResult, requesterFor: (String) -> Foc
     val lang = AppLocale.current(res)
     val isEn = AppLocale.dataLocale(res) == "en"
     val meters = stringResource(R.string.android_unit_spokenMeters)
-    val express = stringResource(R.string.subwayArrival_express)
-    val segmentText = { seg: SubwayArrivalSegment ->
-        val id = subwayArrivalSegmentResId(seg.key)
-        if (id == null) {
-            if (BuildConfig.DEBUG) error("subwayArrivalProseSegments 키 미매핑: ${seg.key}")
-            seg.key // 릴리스는 키를 노출해 침묵을 피한다(빈 문자열 금지)
-        } else appLocalized(res, id, *seg.args.toTypedArray())
-    }
     for (station in result.stations) {
         val line = subwayStationLine(isEn, lang, station.stationName, station.nameEn, station.lines, station.linesEn)
         val distance = formatDistance(station.distanceMeters)
@@ -298,7 +292,7 @@ private fun SubwayBody(result: SubwayNearbyResult, requesterFor: (String) -> Foc
             station.arrivals.isEmpty() -> Text(stringResource(R.string.android_station_noArrivals), Modifier.fillMaxWidth().mergedRow("$key-status").padding(vertical = 8.dp))
             else -> station.arrivals.forEachIndexed { i, arrival ->
                 Text(
-                    subwayArrivalLine(arrival, isEn, segmentText, express) { appLocalized(res, R.string.subwayArrival_currentLocation, it) },
+                    subwayArrivalText(res, isEn, arrival),
                     Modifier.fillMaxWidth().mergedRow("$key-arrival-$i").padding(vertical = 8.dp),
                 )
             }
@@ -418,6 +412,18 @@ private fun AroundBody(payload: AroundPayload, vm: NearbyScreenViewModel<AroundP
             Button(onClick = { vm.revealMore(places.size) { i -> "place-${places[i].id}" } }, Modifier.tapTarget().testTag("showMore")) { Text(stringResource(R.string.actions_showMore)) }
         }
     }
+}
+
+/** 지하철 도착 한 줄(§3-7 `subwayArrivalLine`) — 내 주변 지하철 화면과 장소 상세 역 도착 섹션이 공유한다. */
+internal fun subwayArrivalText(res: Resources, isEn: Boolean, arrival: SubwayArrival): String {
+    val segmentText = { seg: SubwayArrivalSegment ->
+        val id = subwayArrivalSegmentResId(seg.key)
+        if (id == null) {
+            if (BuildConfig.DEBUG) error("subwayArrivalProseSegments 키 미매핑: ${seg.key}")
+            seg.key // 릴리스는 키를 노출해 침묵을 피한다(빈 문자열 금지)
+        } else appLocalized(res, id, *seg.args.toTypedArray())
+    }
+    return subwayArrivalLine(arrival, isEn, segmentText, res.getString(R.string.subwayArrival_express)) { appLocalized(res, R.string.subwayArrival_currentLocation, it) }
 }
 
 /** 소문자 8방위 → 리소스(`surroundingsNearby.direction.*` 재사용). 미지 값 null → 호출부가 방위 조각을 생략한다. */

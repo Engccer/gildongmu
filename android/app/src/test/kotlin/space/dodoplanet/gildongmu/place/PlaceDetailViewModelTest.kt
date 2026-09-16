@@ -8,11 +8,14 @@ import space.dodoplanet.gildongmu.MainDispatcherExtension
 import space.dodoplanet.gildongmu.kit.HttpResponse
 import space.dodoplanet.gildongmu.kit.PlaceHoursService
 import space.dodoplanet.gildongmu.kit.PlaceHoursToday
+import space.dodoplanet.gildongmu.kit.StationService
+import space.dodoplanet.gildongmu.kit.pathOf
 import space.dodoplanet.gildongmu.kit.models.Place
 import space.dodoplanet.gildongmu.kit.stubbedClient
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertNotNull
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class PlaceDetailViewModelTest {
@@ -37,6 +40,24 @@ class PlaceDetailViewModelTest {
             val v = vm(r); dispatcher.scheduler.advanceUntilIdle()
             assertNull(v.hoursLine.value); assertEquals("", v.notice.value.text)
         }
+    }
+
+    @Test fun `역 자동 섹션 — 역 장소만 로드, 시간표 실패는 Error로 남고 나머지 실패는 null(spec 판정 27)`() = runTest(dispatcher) {
+        val station = StationService(stubbedClient { url -> when (pathOf(url)) {
+            "/api/station/meta" -> HttpResponse(200, """{"meta":{"name":"강남","nameEn":"Gangnam","lines":["2호선"],"isTransfer":false,"operator":"서울교통공사"}}""")
+            "/api/station/timetable" -> HttpResponse(500, "")
+            else -> HttpResponse(500, "")
+        } })
+        val gangnam = place.copy(name = "강남역", category = "교통,수송 > 지하철")
+        val v = PlaceDetailViewModel(gangnam, PlaceHoursService(stubbedClient { HttpResponse(404, "") }), strings, station) { "ko" }
+        assertNull(v.station.value)
+        dispatcher.scheduler.advanceUntilIdle()
+        val s = assertNotNull(v.station.value)
+        assertEquals("강남", s.meta?.name); assertEquals(TimetableState.Error, s.timetable); assertNull(s.arrivals); assertNull(s.korail); assertNull(s.metro)
+        assertEquals("", v.notice.value.text) // 조용히 나타난다 — 통지 없음
+        val cafe = PlaceDetailViewModel(place, PlaceHoursService(stubbedClient { HttpResponse(404, "") }), strings, station) { "ko" }
+        dispatcher.scheduler.advanceUntilIdle()
+        assertNull(cafe.station.value) // 역이 아니면 로드하지 않는다
     }
 
     @Test fun `hoursLineText — 24시간·휴무·다음 날 마감`() {
