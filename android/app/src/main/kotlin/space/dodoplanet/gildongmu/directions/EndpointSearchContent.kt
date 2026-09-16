@@ -49,7 +49,7 @@ import space.dodoplanet.gildongmu.kit.joinText
  */
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
-fun EndpointSearchContent(vm: DirectionsViewModel, p: EndpointSearchState) {
+fun EndpointSearchContent(picker: EndpointPicker, p: EndpointSearchState, onBack: () -> Unit) {
     val res = LocalContext.current.resources
     val lang = remember(res) { AppLocale.current(res) }
     val strings = remember(res) { resourceStrings(res) }
@@ -67,8 +67,8 @@ fun EndpointSearchContent(vm: DirectionsViewModel, p: EndpointSearchState) {
     }
     // 후보 도착 시 첫 후보 착지(M1 첫 결과 관용구). 통지가 착지 라벨에 잘리는 것은 iOS와 같이 수용.
     LaunchedEffect(p.candidateRevision) {
-        if (p.candidateRevision > vm.consumedCandidateRevision) {
-            vm.consumedCandidateRevision = p.candidateRevision
+        if (p.candidateRevision > picker.consumedCandidateRevision) {
+            picker.consumedCandidateRevision = p.candidateRevision
             if (p.places.isNotEmpty() || p.addresses.isNotEmpty()) {
                 withFrameNanos { }
                 runCatching { firstCandidateFocus.requestFocus() }.onFailure { Log.w("EndpointSearch", "첫 후보 착지 실패", it) }
@@ -86,9 +86,10 @@ fun EndpointSearchContent(vm: DirectionsViewModel, p: EndpointSearchState) {
         DirectionsFieldTarget.from -> strings.get("directions.searchFrom")
         DirectionsFieldTarget.to -> strings.get("directions.searchTo")
         DirectionsFieldTarget.via -> strings.get("directions.searchVia")
+        DirectionsFieldTarget.manualLocation -> strings.get("manualLocation.pickTitle")
     }
 
-    AppScreenScaffold(title, onBack = vm::closePicker) { padding ->
+    AppScreenScaffold(title, onBack = onBack) { padding ->
         Column(
             Modifier
                 .fillMaxSize()
@@ -104,7 +105,7 @@ fun EndpointSearchContent(vm: DirectionsViewModel, p: EndpointSearchState) {
                 placeholder = { Text(strings.get("android.search.prompt")) },
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 // 단일행 필드의 하드웨어 Enter도 이 경로로 온다(M1 판정) — 별도 키 폴백은 이중 제출.
-                onKeyboardAction = { if (!p.isSearching) vm.submitCandidates() },
+                onKeyboardAction = { if (!p.isSearching) picker.submitCandidates() },
                 trailingIcon = if (p.queryState.text.isNotEmpty()) {
                     {
                         IconButton(onClick = { p.queryState.clearText(); fieldFocus.requestFocus() }, modifier = Modifier.testTag("ep-clear")) {
@@ -115,7 +116,7 @@ fun EndpointSearchContent(vm: DirectionsViewModel, p: EndpointSearchState) {
                 modifier = Modifier.fillMaxWidth().testTag("ep-query").landingTarget(fieldFocus),
             )
             Button(
-                onClick = { if (!p.isSearching) vm.submitCandidates() },
+                onClick = { if (!p.isSearching) picker.submitCandidates() },
                 modifier = Modifier
                     .tapTarget()
                     .testTag("ep-submit")
@@ -123,9 +124,11 @@ fun EndpointSearchContent(vm: DirectionsViewModel, p: EndpointSearchState) {
                     .semantics { if (p.isSearching) stateDescription = searchingLabel },
             ) { Text(strings.get("search.button")) }
 
-            // 출발지에서만 — 도착지는 스왑이 담당하고 경유지는 장소만.
-            if (p.target == DirectionsFieldTarget.from) {
-                Button(onClick = vm::selectCurrent, modifier = Modifier.tapTarget().testTag("ep-current")) { Text(strings.get("directions.useCurrentLocation")) }
+            // 출발지에서는 "현재 위치 사용"이 GPS 선택을, 수동 위치 지정에서는 지정 해제를 뜻한다. 도착지는 스왑이 담당하고 경유지는 장소만.
+            when (p.target) {
+                DirectionsFieldTarget.from -> Button(onClick = picker::selectCurrent, modifier = Modifier.tapTarget().testTag("ep-current")) { Text(strings.get("directions.useCurrentLocation")) }
+                DirectionsFieldTarget.manualLocation -> Button(onClick = picker::selectCurrent, modifier = Modifier.tapTarget().testTag("ep-current")) { Text(strings.get("manualLocation.useGps")) }
+                DirectionsFieldTarget.to, DirectionsFieldTarget.via -> Unit
             }
 
             StatusLine(p.notice, Modifier.padding(vertical = 8.dp))
@@ -138,23 +141,23 @@ fun EndpointSearchContent(vm: DirectionsViewModel, p: EndpointSearchState) {
                         visual = e.label, tag = "ep-recent-${e.id}", spoken = e.label,
                         state = if (e.pinned) pinnedLabel else null, pinned = e.pinned,
                         actions = listOf(
-                            CustomAccessibilityAction(strings.get(if (e.pinned) "recent.unpin" else "recent.pin")) { vm.togglePinRecentEndpoint(e); true },
+                            CustomAccessibilityAction(strings.get(if (e.pinned) "recent.unpin" else "recent.pin")) { picker.togglePinRecentEndpoint(e); true },
                             CustomAccessibilityAction(strings.get("recent.delete")) {
-                                val target = vm.removeRecentEndpoint(e)
+                                val target = picker.removeRecentEndpoint(e)
                                 recentFocus.remove(e.id)
                                 if (target == null) searchButtonFocus.requestFocus() else pendingRecentLanding = target
                                 true
                             },
                         ),
-                        onClick = { vm.selectRecentEndpoint(e) },
+                        onClick = { picker.selectRecentEndpoint(e) },
                         modifier = Modifier.landingTarget(recentFocus.getOrPut(e.id) { FocusRequester() }),
                     )
                 }
                 Button(
                     onClick = {
                         recentFocus.clear()
-                        vm.clearRecentEndpoints()
-                        if (vm.endpointSearch.value?.recentEndpoints.isNullOrEmpty()) searchButtonFocus.requestFocus()
+                        picker.clearRecentEndpoints()
+                        if (picker.state.value?.recentEndpoints.isNullOrEmpty()) searchButtonFocus.requestFocus()
                     },
                     modifier = Modifier.tapTarget().testTag("ep-recent-clear"),
                 ) { Text(strings.get("recent.clearAll")) }
@@ -166,7 +169,7 @@ fun EndpointSearchContent(vm: DirectionsViewModel, p: EndpointSearchState) {
                 val address = place.roadAddress.ifEmpty { place.address }
                 ActionRow(
                     visual = joinText(name.display, address), spoken = joinText(name.primary, address), tag = "ep-place-${place.id}",
-                    onClick = { vm.selectPlace(place) },
+                    onClick = { picker.selectPlace(place) },
                     modifier = if (index == 0) Modifier.landingTarget(firstCandidateFocus) else Modifier,
                 )
             }
@@ -174,7 +177,7 @@ fun EndpointSearchContent(vm: DirectionsViewModel, p: EndpointSearchState) {
                 val name = bilingualName(lang, address.roadAddr, en = address.engAddr, roman = null)
                 ActionRow(
                     visual = name.display, spoken = name.primary, tag = "ep-address-${address.roadAddr}",
-                    onClick = { vm.selectAddress(address) },
+                    onClick = { picker.selectAddress(address) },
                     modifier = if (index == 0 && p.places.isEmpty()) Modifier.landingTarget(firstCandidateFocus) else Modifier,
                 )
             }
