@@ -34,17 +34,14 @@ class NearbyKindsTest {
         assertEquals(NearbyCoverage.korea, spec.coverage)
     }
 
-    @Test fun `around — 완료 통지는 수동 좌표로 조회했을 때만 지정한 위치 주변(위치 문장과 같은 술어), 빈 결과는 수동과 무관`() = runTest {
-        var manual: ManualLocation? = null
+    @Test fun `around — 완료 통지는 조회 시점에 굳힌 usedManual을 읽고(지정한 위치 주변), 빈 결과는 수동과 무관, 지금 수동이 사라져도 payload는 그대로`() = runTest {
+        var manual: ManualLocation? = ManualLocation(1, "길동역", null, 37.5, 127.1, null, 1.0)
         val spec = NearbyKinds.around(nearby("/api/places/around", "{}"), strings) { manual }
-        val loaded = AroundPayload(37.5, 127.1, overview = null, overviewFailed = false, places = null, placesFailed = true)
-        assertEquals("둘러보기를 확인했습니다", spec.loadedNotice(loaded))
-        manual = ManualLocation(1, "길동역", null, 37.5, 127.1, null, 1.0)
+        val loaded = AroundPayload(37.5, 127.1, overview = null, overviewFailed = false, places = null, placesFailed = true, usedManual = true)
+        manual = null // 자동 해제 뒤 — 조회 시점 값이 정본
         assertEquals("지정한 위치 주변을 확인했습니다", spec.loadedNotice(loaded))
-        manual = ManualLocation(2, "다른 곳", null, 37.6, 127.1, null, 1.0) // 조회 좌표와 다르면(지정 직후 갈아탄 경우) 현재 위치 문장
-        assertEquals("둘러보기를 확인했습니다", spec.loadedNotice(loaded))
-        val empty = AroundPayload(37.5, 127.1, null, false, emptyList(), false)
-        manual = ManualLocation(3, "길동역", null, 37.5, 127.1, null, 1.0)
+        assertEquals("둘러보기를 확인했습니다", spec.loadedNotice(loaded.copy(usedManual = false)))
+        val empty = AroundPayload(37.5, 127.1, null, false, emptyList(), false, usedManual = true)
         assertTrue(spec.isEmpty(empty)); assertEquals("주변에 표시할 장소가 없습니다", spec.loadedNotice(empty))
     }
 

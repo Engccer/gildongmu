@@ -14,7 +14,7 @@ import space.dodoplanet.gildongmu.kit.models.SurroundingsScene
  * (코어 계약: 첫 착지 1회·통지 1회·latest-wins). 조각별 실패는 payload에 남겨 그 자리에 실패 문장으로.
  */
 data class AroundPayload(
-    /** 조회 좌표 — `usedManualCoordinate`(수동 좌표 정확 비교, spec §13-4)와 M6 "이 위치에 관해 물어보기"(`overviewAnchorPlace`)가 쓴다(iOS 동형). */
+    /** 조회 좌표 — M6 "이 위치에 관해 물어보기"(`overviewAnchorPlace`)가 쓴다(iOS 동형). 수동 여부는 `usedManual`(조회 시점 굳힘). */
     val lat: Double,
     val lng: Double,
     /** null = data null(전 키 부재) 또는 실패(`overviewFailed`로 가른다). */
@@ -26,13 +26,15 @@ data class AroundPayload(
     /** null = data null(서버 키 미보유) 또는 실패(`sceneFailed`로 가른다). 0건은 `total == 0`으로 온다. */
     val scene: SurroundingsScene? = null,
     val sceneFailed: Boolean = false,
+    /** 조회에 쓴 좌표가 그 시점의 수동 위치였는가 — **조회 시점에 굳힌다**(자동 해제 뒤에도 화면의 데이터 기준은 바뀌지 않는다, spec §13-4). 위치 문장·완료 통지가 함께 읽는다. */
+    val usedManual: Boolean = false,
 ) {
     /** 세 조각 다 비었고 실패도 아닌 상태(전 키 부재) — 빈 문구 판정. 실패는 조각 자리의 문장이 말한다. */
     val isAllAbsent: Boolean get() = overview == null && !overviewFailed && !placesFailed && places.isNullOrEmpty() && scene == null && !sceneFailed
 }
 
 /** 둘러보기 fetch. **셋 다** 실패해야 throw(코어 `FailedServer`, iOS `AroundNearbyView` 동형); 하나라도 성공이면 loaded. */
-suspend fun fetchAround(service: NearbyService, coord: NearbyCoord): AroundPayload = coroutineScope {
+suspend fun fetchAround(service: NearbyService, coord: NearbyCoord, usedManual: Boolean): AroundPayload = coroutineScope {
     val overview = async { settled { service.nearbyOverview(coord.lat, coord.lng) } }
     val scene = async { settled { service.surroundingsScene(coord.lat, coord.lng) } }
     val places = async { settled { service.surroundings(coord.lat, coord.lng) } }
@@ -45,5 +47,6 @@ suspend fun fetchAround(service: NearbyService, coord: NearbyCoord): AroundPaylo
         overview = o.getOrNull(), overviewFailed = o.isFailure,
         places = p.getOrNull(), placesFailed = p.isFailure,
         scene = s.getOrNull(), sceneFailed = s.isFailure,
+        usedManual = usedManual,
     )
 }

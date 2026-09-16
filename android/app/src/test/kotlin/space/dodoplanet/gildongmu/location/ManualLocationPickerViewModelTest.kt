@@ -34,7 +34,12 @@ class ManualLocationPickerViewModelTest {
         val src = FakeSource(); val gate = FakeGate(permission)
         val location = LocationStore(src, gate, epochNow = { nowSec })
         val manual = ManualLocationStore(MemStore()) { nowSec }.also { it.hydrate() }
-        val transport = object : HttpTransport { override suspend fun get(url: String, timeoutMs: Long?) = HttpResponse(404, "") }
+        val transport = object : HttpTransport {
+            override suspend fun get(url: String, timeoutMs: Long?) = when (space.dodoplanet.gildongmu.kit.pathOf(url)) {
+                "/api/geocode" -> HttpResponse(200, """{"matches":[{"addressName":"서울 강동구 천호대로 1","lat":37.55,"lng":127.15}],"query":"q"}""")
+                else -> HttpResponse(404, "")
+            }
+        }
         val vm = ManualLocationPickerViewModel(
             SearchService(APIClient("https://example.test", transport)), RecentSearchStore(InMemoryKeyValueStore()), CatalogStrings("ko"),
             main.dispatcher, { "ko" }, { null }, manual, location, { nowSec },
@@ -57,6 +62,22 @@ class ManualLocationPickerViewModelTest {
         assertEquals("길동역", m.label); assertEquals("Gildong", m.labelRoman); assertEquals(37.53, m.lat); assertEquals(127.13, m.lng)
         val o = assertNotNull(m.origin); assertEquals(37.5, o.lat); assertEquals(10.0, o.accuracy); assertEquals(nowSec, o.at)
         assertTrue(r.vm.done.value); assertEquals(0, r.gate.requests)
+    }
+
+    @Test fun `주소 후보 → 지오코딩 좌표와 juso 영문 주소(labelRoman)로 지정, 권한 없음이면 origin null`() = runTest(main.dispatcher) {
+        val r = rig(LocationPermission.None); runCurrent()
+        r.vm.picker.selectAddress(space.dodoplanet.gildongmu.kit.models.JusoAddress(roadAddr = "서울 강동구 천호대로 1", roadAddrPart1 = "서울 강동구 천호대로 1", jibunAddr = "길동 1", engAddr = "1 Cheonho-daero, Gangdong-gu, Seoul", zipNo = "05300", bdNm = ""))
+        runCurrent()
+        val m = assertNotNull(r.manual.current.value)
+        assertEquals("서울 강동구 천호대로 1", m.label); assertEquals("1 Cheonho-daero, Gangdong-gu, Seoul", m.labelRoman); assertEquals(37.55, m.lat); assertEquals(127.15, m.lng); assertNull(m.origin)
+        assertTrue(r.vm.done.value)
+    }
+
+    @Test fun `유효하지 않은 좌표는 저장하지 않고 실패를 말하며 pop하지 않는다(3-state)`() = runTest(main.dispatcher) {
+        val r = rig(LocationPermission.None); runCurrent()
+        r.vm.picker.selectPlace(place.copy(lat = Double.NaN)); runCurrent()
+        assertNull(r.manual.current.value); assertFalse(r.vm.done.value)
+        assertEquals("선택한 주소의 좌표를 확인하지 못했습니다.", r.vm.picker.state.value!!.notice.text)
     }
 
     @Test fun `Place + Fine, 측위 실패(8초 무응답) → origin null로 set·done, 지정 측위는 silent가 아니라 실패 표식이 선다`() = runTest(main.dispatcher) {

@@ -16,12 +16,6 @@ import kotlin.test.assertTrue
 
 /** spec §13-1 — 왕복·손상 폐기·revision 단조·verdict 비영속·hydration 불변식. */
 class ManualLocationStoreTest {
-    internal class MemStore : KeyValueStore {
-        val map = HashMap<String, String>()
-        override fun getString(key: String) = map[key]
-        override fun putString(key: String, value: String) { map[key] = value }
-    }
-
     private fun manual(revision: Int = 1, origin: ManualFix? = ManualFix(37.5, 127.1, 20.0, 1000.0), label: String = "길동역") =
         ManualLocation(revision, label, "Gildong", 37.5, 127.1, origin, 1000.0)
     private fun encoded(m: ManualLocation) = KitJson.encodeToString(ManualLocation.serializer(), m)

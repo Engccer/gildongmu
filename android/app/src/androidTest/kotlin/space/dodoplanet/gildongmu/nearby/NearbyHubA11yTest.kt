@@ -58,7 +58,7 @@ class NearbyHubA11yTest {
     }
 
     private var calls = 0
-    private val store get() = CurrentAddressStore(LocationStore(NoSource, NoneGate), SearchService(stubbedClient { calls++; HttpResponse(500, "") }))
+    private val store by lazy { CurrentAddressStore(LocationStore(NoSource, NoneGate), SearchService(stubbedClient { calls++; HttpResponse(500, "") })) }
 
     @Test
     fun locationBarReadsPermissionNeededWhenNone() {
@@ -78,13 +78,21 @@ class NearbyHubA11yTest {
         rule.onRoot().tryPerformAccessibilityChecks()
     }
 
+    /** 콜드 스타트 순서 그대로 — 저장된 수동 위치가 있는데 hydration이 컴포지션보다 늦어도 GPS 주소 조회가 나가지 않는다(판정 35). */
     @Test
-    fun locationBarReadsManualLocationAndSkipsAddressLookup() {
-        val manual = ManualLocationStore(InMemoryKeyValueStore()).also { it.hydrate(); it.set("길동역", null, 37.5, 127.1, null) }
-        rule.setContent { MaterialTheme { NearbyHubScreen(onOpen = {}, onPick = {}, takeReturnFocus = { null }, currentAddress = store, manualLocation = manual) } }
+    fun locationBarReadsManualLocationAndSkipsAddressLookupEvenBeforeHydration() {
+        val mem = InMemoryKeyValueStore()
+        ManualLocationStore(mem).also { it.hydrate(); it.set("길동역", null, 37.5, 127.1, null) } // 저장만(이전 실행)
+        val manual = ManualLocationStore(mem) // 아직 hydrate 전
+        val fineStore = CurrentAddressStore(LocationStore(FixSource, FineGate), SearchService(stubbedClient { calls++; HttpResponse(500, "") }))
+        rule.setContent { MaterialTheme { NearbyHubScreen(onOpen = {}, onPick = {}, takeReturnFocus = { null }, currentAddress = fineStore, manualLocation = manual) } }
+        rule.enableAccessibilityChecks()
+        rule.waitForIdle()
+        rule.runOnUiThread { manual.hydrate() }
         rule.waitForIdle()
         rule.onNodeWithTag("location-bar").assertTextContains("지정한 위치, 길동역(위치 확인 불가), 위치 지정하기")
-        assertEquals("수동 위치면 주소 조회가 없다", 0, calls)
+        assertEquals("수동 위치면 주소 조회가 없다(hydration 전 프레임 포함)", 0, calls)
+        rule.onRoot().tryPerformAccessibilityChecks()
     }
 
     @Test

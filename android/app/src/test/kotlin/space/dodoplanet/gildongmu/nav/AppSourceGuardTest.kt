@@ -120,11 +120,16 @@ class AppSourceGuardTest {
 
     /** spec 판정 38 — 앱 층의 좌표 진입점은 `EffectiveLocation`뿐. 화면·ViewModel이 GPS 스토어를 직접 잡으면 그 화면만 수동 위치를 무시하고 화면으로 반증되지 않는다. */
     @Test fun `location 밖에서 LocationStore를 직접 잡지 않는다(수신자 기준)`() {
-        val allowed = setOf("AppConfig.kt")
+        // 자리가 아니라 역할로 면제한다 — `location/` 안이라도 화면·ViewModel이 새로 들어오면 목록에 근거와 함께 올려야 한다.
+        val allowed = setOf("AppConfig.kt", "LocationStore.kt", "EffectiveLocation.kt", "ManualLocationJudge.kt", "CurrentAddressStore.kt", "ManualLocationPickerViewModel.kt")
+        val coordinateCalls = listOf("currentCoordinate", "gpsCoordinateForRanking", "coordinateForDisplay", "currentFix")
+        // 화이트리스트 노후화 방지: `LocationStore`의 공개 suspend 함수 전수와 같아야 한다(새 좌표 함수가 목록 갱신 없이 들어오면 여기서 빨갛다).
+        val declared = Regex("""^\s{4}suspend fun (\w+)\(""", RegexOption.MULTILINE).findAll(android.resolve("app/src/main/kotlin/space/dodoplanet/gildongmu/location/LocationStore.kt").readText()).map { it.groupValues[1] }.toSet()
+        assertEquals(coordinateCalls.toSet(), declared)
         val offenders = sources.filter { f ->
-            f.extension == "kt" && f.name !in allowed && !f.path.contains("/location/") &&
-                // 좌표를 내는 호출·스토어 타입 보유만 잡는다(`isLocationEnabled` 같은 기기 상태 조회는 좌표가 아니다).
-                Regex("""AppConfig\.locationStore\.(currentCoordinate|gpsCoordinateForRanking|coordinateForDisplay|currentFix)\(|:\s*LocationStore\b|\bLocationStore\(""").containsMatchIn(f.readText())
+            f.extension == "kt" && f.name !in allowed &&
+                // 좌표를 내는 호출·스토어 타입 보유만 잡는다(`isLocationEnabled` 같은 기기 상태 조회는 좌표가 아니다). 지역 별칭(`val ls = AppConfig.locationStore`)은 타입 보유 축이 잡는다.
+                Regex("""AppConfig\.locationStore\.(${coordinateCalls.joinToString("|")})\(|:\s*LocationStore\b|\bLocationStore\(|=\s*AppConfig\.locationStore\b""").containsMatchIn(f.readText())
         }.map { it.name }
         assertEquals(emptyList(), offenders)
     }
@@ -154,7 +159,7 @@ class AppSourceGuardTest {
         Regex("""<string name="([^"]+)"[^>]*>(.*?)</string>""").findAll(file.readText()).associate { it.groupValues[1] to it.groupValues[2] }
 
     /** ① 소비자 유니버스 술어 — 유효 좌표·수동 위치를 쓰는 파일은 자동으로 든다(표시줄·허브·내 주변·검색·길찾기 VM). */
-    private val universePredicates = Regex("""EffectiveLocation|effectiveLocation\.|nearbyCoordinateSource\(|manualLocationLabel\(|ManualLocationStore|manualLocationStore\.|usedManualCoordinate\(|aroundHereResId\(""")
+    private val universePredicates = Regex("""EffectiveLocation|effectiveLocation\.|nearbyCoordinateSource\(|manualLocationLabel\(|ManualLocationStore|manualLocationStore\.|usedManualCoordinate\(|aroundHereResId\(|DirectionsFieldTarget\.manualLocation""")
 
     /** 파일이 참조하는 리소스 이름: `R.string.x` + 점 키 리터럴(`"a.b"` → `a_b`, 길찾기 `Strings` 경로). */
     private fun referencedKeys(f: File, names: Set<String>): Set<String> {
@@ -164,8 +169,8 @@ class AppSourceGuardTest {
         return (direct + dotted).filter { it in names }.toSet()
     }
 
-    /** ⑤ 안드로이드가 소비하는 수동 분기 키(웹 미러 `around_*Manual`은 웹 화면의 키라 제외). */
-    private fun isManualKey(name: String) = name.startsWith("manualLocation_manual") || (name.startsWith("android_") && name.contains("Manual"))
+    /** ⑤ 수동 분기 키 — 이름에 `Manual`이 든 키 전부(공유 네임스페이스의 미래 키도 든다). 웹 화면 미러 `around_*Manual`만 제외(안드로이드 소비자 없음). */
+    private fun isManualKey(name: String) = (name.contains("Manual") || name.startsWith("manualLocation_manual")) && !name.startsWith("around_")
 
     /** ③ 근거를 적은 예외 — GPS 문구를 담지만 그 파일에 수동 분기가 없어도 되는 키(웹 `KNOWN_UNBRANCHED` 이식). 죽은 항목은 ④가 잡는다. */
     private val knownUnbranched = mapOf(
@@ -181,6 +186,8 @@ class AppSourceGuardTest {
         "android_nearby_aroundHereNoPlace" to "둘러보기 GPS 갈래 문구 — `aroundHereResId`가 수동을 가른다",
         "android_common_locationFailed" to "측위 실패 제목 — 수동이면 좌표가 측위 없이 나오므로 GPS 갈래에서만 닿는다(웹 근거)",
         "android_common_outOfCoverage" to "제공 지역 밖 안내 — 기능 전체에 대한 참인 문장이고 수동 좌표가 밖이어도 그대로 참이다(웹 근거)",
+        "directions_useCurrentLocation" to "출발지 picker의 GPS 선택 버튼 이름 — 확정 결과는 필드 문장(`currentLocationText`)이 수동을 가른다(웹 근거)",
+        "manualLocation_useGps" to "지정 화면 전용 문구 — 수동 맥락에서만 렌더된다(되돌리기)",
     )
 
     @Test fun `수동 위치 소비자는 GPS 유도 문구를 수동 분기 없이 쓰지 않는다(spec §13-4 축 ①~④)`() {
@@ -191,6 +198,7 @@ class AppSourceGuardTest {
         val manualKeys = names.keys.filter { isManualKey(it) }.toSet()
         val universe = sources.filter { it.extension == "kt" && universePredicates.containsMatchIn(it.readText()) }
         for (must in listOf("LocationBar.kt", "DirectionsViewModel.kt", "NearbyKindScreen.kt", "NearbyLines.kt")) assertTrue(universe.any { it.name == must }, "$must 가 유니버스에 든다")
+        // ⚠ 분기 판정은 파일 단위다(웹 원본과 같은 한계) — 한 자리만 분기하고 나머지는 그대로인 회귀는 리뷰 몫.
         val offenders = ArrayList<String>()
         val referencedKnown = HashSet<String>()
         for (f in universe) {

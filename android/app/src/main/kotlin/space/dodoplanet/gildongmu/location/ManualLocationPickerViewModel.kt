@@ -74,7 +74,11 @@ class ManualLocationPickerViewModel(
                     } else {
                         null
                     }
-                    manual.set(endpoint.label, endpoint.labelRoman, endpoint.lat, endpoint.lng, origin)
+                    // 유효성 실패(좌표 비유한 등)는 저장 없음 — 조용히 pop하면 라벨이 "현재 위치"인 채 성공으로 믿는다(3-state).
+                    if (!manual.set(endpoint.label, endpoint.labelRoman, endpoint.lat, endpoint.lng, origin)) {
+                        picker.postNotice(strings.get("directions.coordError"))
+                        return@launch
+                    }
                 }
             }
             _done.value = true

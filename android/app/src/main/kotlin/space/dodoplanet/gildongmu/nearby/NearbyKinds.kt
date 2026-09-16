@@ -55,16 +55,16 @@ object NearbyKinds {
         emptyCopy = { strings.bikeEmpty() },
     )
 
-    /** `manual`은 호출 시점 읽기 — 완료 통지가 위치 문장과 같은 술어(`usedManualCoordinate`)로 "지정한 위치 주변"을 가른다(spec §13-4). */
+    /** `manual`은 조회 시점 읽기 — 수동 여부를 payload에 굳혀 위치 문장·완료 통지가 같은 값을 읽는다(spec §13-4). 앵커 화면은 `{ null }`. */
     fun around(service: NearbyService, strings: NearbyStrings, manual: () -> ManualLocation?) = NearbyKindSpec<AroundPayload>(
         coverage = NearbyCoverage.korea,
-        fetch = { c, _ -> fetchAround(service, c!!) },
+        fetch = { c, _ -> fetchAround(service, c!!, usedManual = usedManualCoordinate(c, manual())) },
         isEmpty = { it.isAllAbsent },
         firstKey = { if (it.isAllAbsent) null else "around-top" }, // 위치 문장(헤딩)이 착지 지점
         loadedNotice = {
             when {
                 it.isAllAbsent -> strings.aroundEmpty()
-                usedManualCoordinate(it, manual()) -> strings.aroundLoadedManual()
+                it.usedManual -> strings.aroundLoadedManual()
                 else -> strings.aroundLoaded()
             }
         },

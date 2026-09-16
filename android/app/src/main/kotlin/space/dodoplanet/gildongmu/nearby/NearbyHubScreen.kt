@@ -27,6 +27,7 @@ import space.dodoplanet.gildongmu.a11y.Notice
 import space.dodoplanet.gildongmu.a11y.StatusLine
 import space.dodoplanet.gildongmu.a11y.tapTarget
 import space.dodoplanet.gildongmu.location.CurrentAddressStore
+import space.dodoplanet.gildongmu.location.LOCATION_BAR_KEY
 import space.dodoplanet.gildongmu.location.LocationBarRow
 import space.dodoplanet.gildongmu.location.ManualLocationStore
 
@@ -50,9 +51,9 @@ fun NearbyHubScreen(
     }
     AppScreenScaffold(stringResource(R.string.android_tab_nearby), onBack = null) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).semantics { testTagsAsResourceId = true }) {
-            StatusLine(Notice(0, ""), Modifier.padding(vertical = 8.dp)) // 화면 통지는 없다 — 앱 통지(자동 해제) 창구(spec §13-5)
             // 첫 행: 현재 위치 표시줄(이 화면의 조회 기준 선언, spec §12-4) = 위치 지정 버튼(§13-3).
             LocationBarRow(currentAddress, manualLocation, onPick, barFocus)
+            StatusLine(Notice(0, ""), Modifier.padding(vertical = 8.dp)) // 화면 통지는 없다 — 앱 통지(자동 해제) 창구(spec §13-5), 다른 화면처럼 컨트롤 뒤
             for (kind in NearbyKind.entries) {
                 Button(
                     onClick = { onOpen(kind) },
@@ -70,8 +71,6 @@ fun NearbyHubScreen(
 
 fun hubKey(kind: NearbyKind) = "hub-${kind.name}"
 
-/** 표시줄 버튼의 복귀 키(= testTag). */
-const val LOCATION_BAR_KEY = "location-bar"
 
 fun kindTitle(kind: NearbyKind): Int = when (kind) {
     NearbyKind.around -> R.string.android_nearby_around

@@ -33,7 +33,13 @@ class ManualLocationJudge(
         mutex.withLock {
             val last = lastRunAt
             if (!force && last != null && now() - last < minIntervalSeconds) return
-            lastRunAt = now()
+            judge()
+            lastRunAt = now() // 결과를 남긴 시점에만 — 측위 중 취소는 예산을 쓰지 않는다(예외로 빠져나가 여기 닿지 않는다)
+        }
+    }
+
+    private suspend fun judge() {
+        run {
             val current = manual.current.value ?: return
             // origin이 없으면 어떤 fix로도 판정할 수 없다 — 측위 비용을 치르지 않는다.
             if (current.origin == null) { manual.setVerdict(ManualVerdict.undecidable); return }
