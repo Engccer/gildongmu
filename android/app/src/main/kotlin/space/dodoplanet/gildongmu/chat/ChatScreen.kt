@@ -33,7 +33,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -47,14 +46,17 @@ import androidx.compose.ui.unit.dp
 import androidx.annotation.StringRes
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
+import space.dodoplanet.gildongmu.AppConfig
 import space.dodoplanet.gildongmu.R
 import space.dodoplanet.gildongmu.a11y.AppScreenScaffold
 import space.dodoplanet.gildongmu.a11y.StatusLine
+import space.dodoplanet.gildongmu.a11y.landingTarget
 import space.dodoplanet.gildongmu.a11y.tapTarget
 import space.dodoplanet.gildongmu.i18n.AppLocale
 import space.dodoplanet.gildongmu.kit.bilingualName
 import space.dodoplanet.gildongmu.kit.models.Place
 import space.dodoplanet.gildongmu.kit.placeChatPromptKeys
+import space.dodoplanet.gildongmu.location.LocationBarRow
 
 /** 채팅 탭(일반 채팅, spec §3-1). 대화는 이 탭 백스택 엔트리의 ViewModel — 탭 전환에도 이어진다. */
 @Composable
@@ -69,8 +71,8 @@ fun ChatTabScreen(onOpenPlace: (Place) -> Unit) {
         R.string.android_chat_suggestion4,
     ).map { stringResource(it) }
     AppScreenScaffold(stringResource(R.string.android_tab_chat), onBack = null, titleFocus = titleFocus) { padding ->
-        // [M2b] 위치 표시줄(`location/LocationBarRow`) — M2b가 main에 오르면 이 화면 첫 줄(장소 채팅엔 두지 않는다, spec §3-1)
-        ChatBody(vm, suggestions, titleFocus, landOnEntry = false, onOpenPlace, Modifier.padding(padding))
+        // 위치 표시줄은 채팅 탭에만(장소 채팅은 장소 좌표가 앵커라 표시줄이 거짓 신호가 된다, spec §3-1)
+        ChatBody(vm, suggestions, titleFocus, landOnEntry = false, onOpenPlace, Modifier.padding(padding), showsLocationBar = true)
     }
 }
 
@@ -113,6 +115,7 @@ private fun ChatBody(
     landOnEntry: Boolean,
     onOpenPlace: (Place) -> Unit,
     modifier: Modifier,
+    showsLocationBar: Boolean = false,
 ) {
     val granted by vm.consentGranted.collectAsState()
     val fieldFocus = remember { FocusRequester() }
@@ -143,7 +146,7 @@ private fun ChatBody(
             modifier = modifier,
         )
     } else {
-        ChatConversation(vm, suggestions, fieldFocus, onOpenPlace, modifier)
+        ChatConversation(vm, suggestions, fieldFocus, onOpenPlace, showsLocationBar, modifier)
     }
 }
 
@@ -154,6 +157,7 @@ private fun ChatConversation(
     suggestions: List<String>,
     fieldFocus: FocusRequester,
     onOpenPlace: (Place) -> Unit,
+    showsLocationBar: Boolean,
     modifier: Modifier,
 ) {
     val s by vm.state.collectAsState()
@@ -214,6 +218,10 @@ private fun ChatConversation(
     }
 
     Column(modifier.fillMaxSize().semantics { testTagsAsResourceId = true }) {
+        if (showsLocationBar) {
+            // 대화의 조회 기준 좌표(iOS `LocationBarView`) — 스크롤 밖 첫 줄
+            Column(Modifier.padding(horizontal = 16.dp)) { LocationBarRow(AppConfig.currentAddressStore) }
+        }
         Column(
             Modifier
                 .weight(1f)
@@ -259,7 +267,7 @@ private fun ChatConversation(
                 modifier = Modifier
                     .fillMaxWidth()
                     .testTag("chat-field")
-                    .focusRequester(fieldFocus)
+                    .landingTarget(fieldFocus)
                     .onFocusChanged { fieldFocused = it.hasFocus },
             )
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
