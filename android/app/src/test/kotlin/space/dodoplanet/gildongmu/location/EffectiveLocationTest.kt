@@ -68,6 +68,15 @@ class EffectiveLocationTest {
         assertEquals(NearbyCoord(37.5, 127.1), d.await()); assertEquals(0, r.src.subscriptions)
     }
 
+    @Test fun `prime — 수동이면 측위 0, 없으면 soft 상한 GPS, last는 수동 우선 저장 좌표(채팅 앵커)`() = runTest(dispatcher) {
+        val r = rig(); assertNull(r.effective.last())
+        val d = async { r.effective.prime(2_000) }; runCurrent(); r.src.emit(accuracy = 10.0, lat = 37.9); d.await()
+        assertEquals(NearbyCoord(37.9, 127.1), r.effective.last()); assertEquals(1, r.src.subscriptions)
+        r.manual.set("길동역", null, 37.5, 127.1, null)
+        r.effective.prime(2_000); assertEquals(1, r.src.subscriptions) // 수동 상태의 GPS 측위는 판정뿐(판정 35)
+        assertEquals(NearbyCoord(37.5, 127.1), r.effective.last())
+    }
+
     @Test fun `코어 어댑터는 세 원인을 NearbyLocationError로 번역한다`() = runTest(dispatcher) {
         val coarse = (rig(permission = LocationPermission.Coarse).effective.nearbyCoordinateSource() as NearbyCoordinateSource.Current)
         assertEquals(NearbyLocationError.ReducedAccuracy, attempt { coarse.getCoordinate(false) }.await().exceptionOrNull())
