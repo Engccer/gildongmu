@@ -140,6 +140,7 @@ internal fun guideStringId(key: String): Int? = when (key) {
     "android.common.openSettings" -> R.string.android_common_openSettings
     "android.common.geoReducedDesc" -> R.string.android_common_geoReducedDesc
     "directions.viaArrived" -> R.string.directions_viaArrived
+    "android.guide.waypointDropped" -> R.string.android_guide_waypointDropped
     "actions.close" -> R.string.actions_close
     "android.unit.spokenMeters" -> R.string.android_unit_spokenMeters
     else -> null
