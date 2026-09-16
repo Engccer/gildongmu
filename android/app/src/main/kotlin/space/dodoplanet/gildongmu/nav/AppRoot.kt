@@ -28,6 +28,9 @@ import space.dodoplanet.gildongmu.nearby.NearbyKindRoute
 import space.dodoplanet.gildongmu.nearby.NearbyKindScreen
 import space.dodoplanet.gildongmu.nearby.NearbyNav
 import space.dodoplanet.gildongmu.nearby.hubKey
+import space.dodoplanet.gildongmu.place.PlaceDetailRoute
+import space.dodoplanet.gildongmu.place.PlaceDetailScreen
+import space.dodoplanet.gildongmu.place.PlaceNav
 import space.dodoplanet.gildongmu.search.SearchScreen
 
 /**
@@ -92,11 +95,24 @@ fun AppRoot(factories: AppFactories) {
                     factory = factories.nearby(route.kind, route.anchor),
                     nav = NearbyNav(
                         onBack = { navController.popBackStack() },
-                        onOpenPlace = { /* M2 Task 5: PlaceDetailRoute */ },
+                        onOpenPlace = { navController.navigate(PlaceDetailRoute.of(it)) },
                         onOpenRouteStops = { navController.navigate(it) },
                     ),
                     requestPrecise = factories.requestPreciseLocation,
                     isLocationEnabled = factories.isLocationEnabled,
+                )
+            }
+            composable<PlaceDetailRoute> { entry ->
+                val route = entry.toRoute<PlaceDetailRoute>()
+                val returnFocus: ReturnFocusViewModel = viewModel(entry)
+                PlaceDetailScreen(
+                    route = route,
+                    factory = factories.place(route.place),
+                    nav = PlaceNav(
+                        onBack = { navController.popBackStack() },
+                        onOpenNearby = { kind, anchor -> returnFocus.remember("anchor-${kind.name}"); navController.navigate(NearbyKindRoute.of(kind, anchor)) },
+                    ),
+                    returnFocus = returnFocus.take(),
                 )
             }
             composable<BusRouteStopsRoute> { entry ->

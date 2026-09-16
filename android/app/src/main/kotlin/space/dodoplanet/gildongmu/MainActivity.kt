@@ -20,6 +20,9 @@ import space.dodoplanet.gildongmu.nav.AppRoot
 import space.dodoplanet.gildongmu.nearby.busRouteStopsFactory
 import space.dodoplanet.gildongmu.nearby.nearbyFactory
 import space.dodoplanet.gildongmu.nearby.nearbyStrings
+import space.dodoplanet.gildongmu.kit.PlaceHoursService
+import space.dodoplanet.gildongmu.place.placeDetailFactory
+import space.dodoplanet.gildongmu.place.placeStrings
 import space.dodoplanet.gildongmu.search.SearchStrings
 import space.dodoplanet.gildongmu.search.SearchViewModel
 import space.dodoplanet.gildongmu.storage.SharedPreferencesStore
@@ -53,6 +56,7 @@ class MainActivity : ComponentActivity() {
             search = factory,
             nearby = { kind, anchor -> nearbyFactory(kind, anchor, nearbyService, nearby) { AppConfig.locationStore.nearbyCoordinateSource() } },
             busRouteStops = { route -> busRouteStopsFactory(route, nearbyService, nearby) },
+            place = { place -> placeDetailFactory(place, PlaceHoursService(AppConfig.apiClient), placeStrings(app)) },
             requestPreciseLocation = { AppConfig.permissionGate.request() == LocationPermission.Fine },
             isLocationEnabled = { AppConfig.locationStore.isLocationEnabled() },
         )
