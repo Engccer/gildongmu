@@ -100,7 +100,8 @@ adb exec-out timeout 10 uiautomator dump /dev/tty   # 접근성 트리(스크린
 - **문자 클래스 안 `[`는 반드시 `\[`로 이스케이프한다**(`[(\[]`). Java도 Swift(ICU)처럼 `[[]`를 중첩 집합으로 읽어 웹(JS)만 초록이고 Kotlin·iOS만 전량을 놓친다(CLAUDE.md 함정). 공유 fixture를 Kotlin에서도 돌리는 것이 유일한 검출 수단이다.
 - `\b`는 한글·한자를 word character로 본다(웹·Swift와 같다). CJK 직결 꼴에는 부정 전방탐색을 쓴다(`Format.kt`).
 - 전방·후방탐색(`(?<!키즈)카페`)은 Java에서 그대로 통한다.
-- **단축 클래스 `\d`·`\s`·`\w`(대문자 포함)는 쓰지 않는다** — JVM은 ASCII, 기기(ICU)는 유니코드로 읽어 전각 숫자·전각 공백에서 결과가 갈리는데 JVM 테스트는 초록이다. 명시 클래스(`[0-9]`·`[ \t]`·`[A-Za-z0-9_]`)만 쓴다. `RegexPortabilityTest`가 :kit 소스를 스캔한다.
+- **단축 클래스 `\d`·`\s`·`\w`(대문자 포함)는 쓰지 않는다** — JVM은 ASCII, 기기(ICU)는 유니코드로 읽어 전각 숫자·전각 공백에서 결과가 갈리는데 JVM 테스트는 초록이다. 명시 클래스(`[0-9]`·`[ \t]`·`[A-Za-z0-9_]`)만 쓴다. Swift 공백 뜻은 `REGEX_SPACE_MEMBERS`(`SwiftSemantics.kt`). `RegexPortabilityTest`가 :kit 소스를 스캔한다.
+- **유니코드 프로퍼티 클래스 `\p{…}`는 두 엔진 동치를 전수 실측한 일반 카테고리(`Z`·`N`·`Nd`·`L`·`Nl`·`M`·`Pc`)만 쓴다** — POSIX 계열(`\p{Alpha}`·`\p{Punct}`·`\p{Digit}` 등)은 JVM이 ASCII, ICU가 유니코드로 읽어 약칭 클래스와 같은 함정이다. 새 카테고리는 실측한 뒤 `RegexPortabilityTest` 허용 목록에 더한다.
 - 정규식은 raw string `"""…"""`에 쓴다(일반 문자열이면 `\\[`처럼 이중 이스케이프가 필요해 읽기 어렵다).
 - KDoc·주석 안에 `/*`를 쓰지 않는다 — Kotlin은 **중첩 블록 주석**이라 `/api/*` 같은 경로 하나가 주석을 열어 파일 전체를 삼킨다(실사고: `APIClient.kt` "Unclosed comment").
 
