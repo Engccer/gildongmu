@@ -14,6 +14,9 @@
       "announceFailed": "検索に失敗しました。",
       "announceEmpty": "検索結果がありません",
       "announceCount": "検索結果{count}件"
+    },
+    "common": {
+      "comingSoon": "まだ準備中です"
     }
   },
   "search": {

@@ -41,6 +41,7 @@
     <string name="airQuality_source">出典: エアコリア(韓国環境公団)。</string>
     <string name="airQuality_station">%1$s測定所, %2$skm</string>
     <string name="airQuality_unknown">情報なし</string>
+    <string name="android_common_comingSoon">まだ準備中です</string>
     <string name="android_search_announceCount">検索結果%1$s件</string>
     <string name="android_search_announceEmpty">検索結果がありません</string>
     <string name="android_search_announceFailed">検索に失敗しました。</string>

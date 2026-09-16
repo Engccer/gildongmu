@@ -11,6 +11,9 @@
 
 ## 2026-09-16
 
+### 안드로이드 앱 골격 — 하단 탭 4개 + 화면 스택 (`android/app/.../nav`)
+
+iOS 4탭(채팅·검색·길찾기·내 주변, 실험판 순서 게이트 `experimentalTabOrderEnabled` 미러)을 `navigation-compose` 단일 `NavHost` + 탭별 백스택 보존으로 세우고 검색 화면을 그 안에 넣었다. 길찾기·내 주변·채팅은 자리표시 화면이며 M3·M2·M6이 등록 한 줄을 자기 화면으로 바꾼다(패키지 소유권 규약은 `android/README.md` §1). 실기기 도구는 공식 `android` CLI 우선(README §2).
 ### 안드로이드 Kit-guide — 실시간 안내 판정 계층 이식 (`android/kit`)
 
 웨이브 1 GUIDE 그룹(계획 `docs/superpowers/plans/2026-09-16-android-app-parallel-plan.md` §2·§5-3). iOS `GildongmuKit`의 실시간 안내 순수 로직 31파일을 Kotlin으로 옮기고 Kit 테스트를 함께 옮겼다 — 경로 추종 리듀서(`RouteGuide`)·대중교통 상태 머신(`TransitGuide`)·톤 계층·정지 판정·방위 축·도착 추정 보조·조망·하단 2행·문장 descriptor·추적 서비스. 공유 fixture(route-guide 50·transit-guide 57 시나리오 외 11종)가 웹·iOS와 같은 표로 초록이고 변이 주입으로 검출력을 확인했다. D10 판정으로 `GuideAudioSession`(iOS AVAudioSession 리듀서)은 `excluded`, `ListenSpeed`는 설정 정규화만 부분 이식했다 — 안드로이드 오디오는 M4가 AudioFocus로 재설계한다. 이식 계약은 `android/README.md`, 등록부는 `android/kit/mirrors/guide.json`.

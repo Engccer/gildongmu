@@ -14,6 +14,9 @@
       "announceFailed": "Ricerca non riuscita.",
       "announceEmpty": "Nessun risultato",
       "announceCount": "{count, plural, one {# risultato} other {# risultati}}"
+    },
+    "common": {
+      "comingSoon": "Non ancora disponibile"
     }
   },
   "search": {

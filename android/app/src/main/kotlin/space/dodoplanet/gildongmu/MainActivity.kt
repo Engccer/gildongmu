@@ -6,19 +6,18 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.material3.MaterialTheme
 import androidx.lifecycle.createSavedStateHandle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import space.dodoplanet.gildongmu.i18n.AppLocale
 import space.dodoplanet.gildongmu.i18n.appLocalized
 import space.dodoplanet.gildongmu.kit.RecentSearchStore
 import space.dodoplanet.gildongmu.kit.SearchService
-import space.dodoplanet.gildongmu.search.SearchScreen
+import space.dodoplanet.gildongmu.nav.AppRoot
 import space.dodoplanet.gildongmu.search.SearchStrings
 import space.dodoplanet.gildongmu.search.SearchViewModel
 import space.dodoplanet.gildongmu.storage.SharedPreferencesStore
 
-/** 단일 액티비티. M1은 검색 화면 하나(탭·내비게이션은 M2에서). */
+/** 단일 액티비티. 화면 골격(탭·스택)은 `nav/AppRoot`. */
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -38,7 +37,7 @@ class MainActivity : ComponentActivity() {
         }
         setContent {
             MaterialTheme {
-                SearchScreen(viewModel(factory = factory))
+                AppRoot(searchFactory = factory)
             }
         }
     }
