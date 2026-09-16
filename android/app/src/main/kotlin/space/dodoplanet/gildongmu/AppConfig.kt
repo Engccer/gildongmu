@@ -1,6 +1,11 @@
 package space.dodoplanet.gildongmu
 
+import android.content.Context
+import android.util.Log
 import space.dodoplanet.gildongmu.kit.APIClient
+import space.dodoplanet.gildongmu.location.AndroidLocationSource
+import space.dodoplanet.gildongmu.location.AndroidPermissionGate
+import space.dodoplanet.gildongmu.location.LocationStore
 import space.dodoplanet.gildongmu.net.HttpUrlConnectionTransport
 
 /**
@@ -21,4 +26,17 @@ object AppConfig {
 
     /** :kit 판정 계층 + :app 전송 구현의 결합점. 화면들이 공유한다. */
     val apiClient: APIClient by lazy { APIClient(API_BASE_URL, HttpUrlConnectionTransport()) }
+
+    private lateinit var app: Context
+
+    /** `GildongmuApplication.onCreate`가 1회 부른다. */
+    fun attach(context: Context) {
+        app = context.applicationContext
+    }
+
+    /** 권한 대기 슬롯 소유자(spec §4). `MainActivity`가 손 둘을 등록·해제한다. */
+    val permissionGate: AndroidPermissionGate by lazy { AndroidPermissionGate(app) }
+
+    /** 현재 위치 공유 스토어 — 화면마다 `LocationManager`를 만들지 않는다. */
+    val locationStore: LocationStore by lazy { LocationStore(AndroidLocationSource(app), permissionGate) { Log.i("Location", it) } }
 }

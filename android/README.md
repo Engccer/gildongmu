@@ -7,6 +7,7 @@ iOS 앱과 기능 등가인 안드로이드 네이티브 앱(판정 문서 `docs
 ```
 android/
   app/   Jetpack Compose 화면 + 플랫폼 서비스([3]·[4]). 패키지 space.dodoplanet.gildongmu
+         location/  현재 위치 공유 스토어(LocationStore: 캐시·권한·정밀도·게이트 취득, GMS 무의존) — M3·M2가 같은 시그니처를 쓴다(M2 spec §4)
   kit/   순수 Kotlin/JVM, iOS GildongmuKit의 미러([2] 판정 계층). 패키지 space.dodoplanet.gildongmu.kit
          Models/*.swift → kit/.../kit/models/*.kt (하위 패키지 space.dodoplanet.gildongmu.kit.models)
   kit/mirrors/{foundation,core,guide}.json   미러 등록부(§5)
