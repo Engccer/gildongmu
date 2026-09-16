@@ -11,6 +11,9 @@ import org.junit.jupiter.api.extension.RegisterExtension
 import space.dodoplanet.gildongmu.MainDispatcherExtension
 import space.dodoplanet.gildongmu.kit.APIClient
 import space.dodoplanet.gildongmu.kit.DirectionsEndpoint
+import space.dodoplanet.gildongmu.kit.ManualFix
+import space.dodoplanet.gildongmu.kit.ManualLocation
+import space.dodoplanet.gildongmu.kit.ManualVerdict
 import space.dodoplanet.gildongmu.kit.DirectionsMode
 import space.dodoplanet.gildongmu.kit.DirectionsModeOutcome
 import space.dodoplanet.gildongmu.kit.Fixtures
@@ -597,5 +600,21 @@ class DirectionsViewModelTest {
         m.openPicker(DirectionsFieldTarget.from); m.selectCurrent(); dispatcher.scheduler.runCurrent()
         dispatcher.scheduler.advanceUntilIdle()
         assertEquals("주소2", m.state.value.currentAddress)
+    }
+
+    @Test fun `출발지 현재 위치 필드는 수동 위치가 있으면 표시줄과 같은 문장(검증 가능형·불가형·병기)`() = runTest(dispatcher) {
+        val client = APIClient("https://example.test", allOk())
+        var manual: ManualLocation? = ManualLocation(1, "길동역", "Gildong Station", 37.5, 127.1, ManualFix(37.5, 127.1, 20.0, 1.0), 1.0)
+        var verdict: ManualVerdict? = null
+        val m = DirectionsViewModel(RouteService(client), SearchService(client), RecentSearchStore(InMemoryKeyValueStore()), FakeLocator({ seoul }), { "ko" }, ko, SavedStateHandle(), prefill = MutableStateFlow(null), takePrefill = { false }, io = dispatcher, manual = { manual }, verdict = { verdict })
+        m.openPicker(DirectionsFieldTarget.from); m.selectCurrent(); dispatcher.scheduler.advanceUntilIdle()
+        assertEquals("출발지, 지정한 위치, 길동역", m.fieldText(DirectionsFieldTarget.from, accessible = true, lang = "ko"))
+        verdict = ManualVerdict.undecidable
+        assertEquals("출발지, 지정한 위치, 길동역(위치 확인 불가)", m.fieldText(DirectionsFieldTarget.from, accessible = false, lang = "ko"))
+        verdict = ManualVerdict.keep
+        assertEquals("출발지, 지정한 위치, Gildong Station (길동역)", m.fieldText(DirectionsFieldTarget.from, accessible = false, lang = "en"))
+        assertEquals("출발지, 지정한 위치, Gildong Station", m.fieldText(DirectionsFieldTarget.from, accessible = true, lang = "en"))
+        manual = null // 해제되면 현행 GPS 갈래
+        assertEquals("출발지, 현재 위치", m.fieldText(DirectionsFieldTarget.from, accessible = true, lang = "ko"))
     }
 }

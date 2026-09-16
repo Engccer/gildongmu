@@ -19,6 +19,8 @@ class NearbyStrings(
     val announceBikes: (Int) -> String,
     val announceRouteStops: (Int) -> String,
     val aroundLoaded: () -> String,
+    /** 수동 좌표로 조회한 둘러보기 완료 통지(spec §13-4). */
+    val aroundLoadedManual: () -> String,
     val subwayEmptyNearest: (String, String) -> String,
     val subwayEmpty: () -> String,
     val busEmpty: () -> String,

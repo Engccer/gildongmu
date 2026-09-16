@@ -74,7 +74,7 @@ class MainActivity : ComponentActivity() {
         val nearby = nearbyStrings(app)
         val factories = AppFactories(
             search = factory,
-            nearby = { kind, anchor -> nearbyFactory(kind, anchor, services, nearby) { AppConfig.effectiveLocation.nearbyCoordinateSource() } },
+            nearby = { kind, anchor -> nearbyFactory(kind, anchor, services, nearby, current = { AppConfig.effectiveLocation.nearbyCoordinateSource() }, manual = { AppConfig.manualLocationStore.current.value }) },
             busRouteStops = { route -> busRouteStopsFactory(route, nearbyService, nearby) },
             place = { place -> placeDetailFactory(place, PlaceHoursService(AppConfig.apiClient), placeStrings(app), StationService(AppConfig.apiClient), services.barrierFree) { AppLocale.dataLocale(app.resources) } },
             requestPreciseLocation = { AppConfig.permissionGate.request() == LocationPermission.Fine },

@@ -1,6 +1,7 @@
 package space.dodoplanet.gildongmu.nav
 
 import space.dodoplanet.gildongmu.kit.Fixtures
+import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -143,5 +144,78 @@ class AppSourceGuardTest {
     @Test fun `Google Play 서비스 의존은 0이다`() {
         val gradle = listOf(android.resolve("app/build.gradle.kts"), android.resolve("gradle/libs.versions.toml"))
         assertTrue(gradle.none { it.readText().contains("play-services") })
+    }
+
+    // ── spec §13-4 유도형 금지 표현 가드(웹 `manual-location-copy.test.ts`의 안드로이드판, 하드코딩 없음) ──
+
+    private val koStrings = android.resolve("app/src/main/res/values/strings.xml")
+    private fun stringNames(file: File): Map<String, String> =
+        Regex("""<string name="([^"]+)"[^>]*>(.*?)</string>""").findAll(file.readText()).associate { it.groupValues[1] to it.groupValues[2] }
+
+    /** ① 소비자 유니버스 술어 — 유효 좌표·수동 위치를 쓰는 파일은 자동으로 든다(표시줄·허브·내 주변·검색·길찾기 VM). */
+    private val universePredicates = Regex("""EffectiveLocation|effectiveLocation\.|nearbyCoordinateSource\(|manualLocationLabel\(|ManualLocationStore|usedManualCoordinate\(|aroundHereResId\(""")
+
+    /** 파일이 참조하는 리소스 이름: `R.string.x` + 점 키 리터럴(`"a.b"` → `a_b`, 길찾기 `Strings` 경로). */
+    private fun referencedKeys(f: File, names: Set<String>): Set<String> {
+        val text = f.readText()
+        val direct = Regex("""R\.string\.([A-Za-z0-9_]+)""").findAll(text).map { it.groupValues[1] }
+        val dotted = Regex(""""([a-z][A-Za-z0-9]*(?:\.[A-Za-z0-9]+)+)"""").findAll(text).map { it.groupValues[1].replace('.', '_') }
+        return (direct + dotted).filter { it in names }.toSet()
+    }
+
+    /** ⑤ 안드로이드가 소비하는 수동 분기 키(웹 미러 `around_*Manual`은 웹 화면의 키라 제외). */
+    private fun isManualKey(name: String) = name.startsWith("manualLocation_manual") || (name.startsWith("android_") && name.contains("Manual"))
+
+    /** ③ 근거를 적은 예외 — GPS 문구를 담지만 그 파일에 수동 분기가 없어도 되는 키(웹 `KNOWN_UNBRANCHED` 이식). 죽은 항목은 ④가 잡는다. */
+    private val knownUnbranched = mapOf(
+        "manualLocation_locating" to "측위 진행 문구 — 측위가 실제로 일어나는 갈래(권한 Fine)에서만 게시된다(지정 화면 VM)",
+        "manualLocation_gps" to "표시줄 GPS 갈래 문구 — 같은 함수가 수동을 먼저 가른다",
+        "manualLocation_gpsNear" to "표시줄 GPS 갈래 문구 — 같은 함수가 수동을 먼저 가른다",
+        "directions_currentLocation" to "출발지 GPS 갈래 문구 — `currentLocationText` 첫 줄이 수동을 가른다",
+        "directions_currentLocationNear" to "출발지 GPS 갈래 문구 — `currentLocationText` 첫 줄이 수동을 가른다",
+        "directions_refreshingCurrent" to "강제 재측위 진행 문구 — 수동이면 라벨이 먼저 반환돼 닿지 않는다",
+        "directions_locating" to "조회 시작 측위 문구 — 수동이면 좌표가 즉시 나와 사실상 닿지 않고, 닿는다면 GPS 갈래다",
+        "directions_geoError" to "수동이 유지되는 동안 좌표 해석이 성공해 닿지 않고, 닿았다면 직전 판정이 해제한 뒤다(웹 근거)",
+        "android_nearby_aroundHere" to "둘러보기 GPS 갈래 문구 — `aroundHereResId`가 수동을 가른다",
+        "android_nearby_aroundHereNoPlace" to "둘러보기 GPS 갈래 문구 — `aroundHereResId`가 수동을 가른다",
+        "android_common_locationFailed" to "측위 실패 제목 — 수동이면 좌표가 측위 없이 나오므로 GPS 갈래에서만 닿는다(웹 근거)",
+        "android_common_outOfCoverage" to "제공 지역 밖 안내 — 기능 전체에 대한 참인 문장이고 수동 좌표가 밖이어도 그대로 참이다(웹 근거)",
+    )
+
+    @Test fun `수동 위치 소비자는 GPS 유도 문구를 수동 분기 없이 쓰지 않는다(spec §13-4 축 ①~④)`() {
+        val names = stringNames(koStrings)
+        val gpsPhrase = names.getValue("manualLocation_gps") // "현재 위치" — 코드에 문구를 박지 않는다(②)
+        val gpsKeys = names.filterValues { it.contains(gpsPhrase) }.keys
+        assertTrue(gpsKeys.size > 20, "GPS 키 유도가 살아 있다: ${gpsKeys.size}")
+        val manualKeys = names.keys.filter { isManualKey(it) }.toSet()
+        val universe = sources.filter { it.extension == "kt" && universePredicates.containsMatchIn(it.readText()) }
+        for (must in listOf("LocationBar.kt", "DirectionsViewModel.kt", "NearbyKindScreen.kt", "NearbyLines.kt")) assertTrue(universe.any { it.name == must }, "$must 가 유니버스에 든다")
+        val offenders = ArrayList<String>()
+        val referencedKnown = HashSet<String>()
+        for (f in universe) {
+            val refs = referencedKeys(f, names.keys)
+            val gps = refs.filter { it in gpsKeys }
+            val branches = refs.any { it in manualKeys }
+            for (k in gps) if (k in knownUnbranched) referencedKnown += k else if (!branches) offenders += "${f.name}:$k"
+        }
+        assertEquals(emptyList(), offenders, "GPS 문구를 쓰면서 수동 분기가 없는 파일:키")
+        assertEquals(emptyList(), (knownUnbranched.keys - referencedKnown).sorted(), "죽은 예외 항목(축 ④) — 유니버스 어느 파일도 참조하지 않는다")
+    }
+
+    @Test fun `수동 분기 키 전수 — 6로케일 존재·참조 1 이상·GPS 문구를 되풀이하지 않는다(spec §13-4 축 ⑤)`() {
+        val ko = stringNames(koStrings)
+        val gpsPhrase = ko.getValue("manualLocation_gps")
+        val manualKeys = ko.keys.filter { isManualKey(it) }.sorted()
+        assertEquals(listOf("android_nearby_aroundHereManual", "android_nearby_aroundHereManualNoPlace", "android_nearby_aroundLoadedManual", "manualLocation_manual", "manualLocation_manualUnverifiable"), manualKeys)
+        val locales = listOf("en", "es", "fr", "it", "ja").map { l -> l to stringNames(android.resolve("app/src/main/res/values-$l/strings.xml")).keys }
+        val kt = sources.filter { it.extension == "kt" }
+        val problems = manualKeys.flatMap { k ->
+            buildList {
+                for ((l, keys) in locales) if (k !in keys) add("$k: $l 누락")
+                if (kt.none { k in referencedKeys(it, ko.keys) }) add("$k: 참조 0")
+                if (ko.getValue(k).contains(gpsPhrase)) add("$k: GPS 문구 포함")
+            }
+        }
+        assertEquals(emptyList(), problems)
     }
 }
