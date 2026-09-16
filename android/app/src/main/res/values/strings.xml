@@ -57,6 +57,7 @@
     <string name="android_beacon_food_riceBowl">밥 한 공기 분량이에요!</string>
     <string name="android_beacon_food_riceHalfBowl">밥 반 공기 분량이에요!</string>
     <string name="android_beacon_food_tangerine">귤 한 개 분량이에요!</string>
+    <string name="android_beacon_guideStartWalkShortest">최단 경로 안내 시작</string>
     <string name="android_beacon_healthEnterWeight">체중 입력하기</string>
     <string name="android_beacon_healthSummary">이번 구간에서 %1$s걸음 걸으셨어요. 약 %2$skcal를 태우셨어요.</string>
     <string name="android_beacon_healthSummaryWithWeight">이번 구간에서 %1$s걸음 걸으셨어요. %2$skg 기준으로 약 %3$skcal를 태우셨어요.</string>
@@ -121,12 +122,18 @@
     <string name="android_directions_walkNotice_title">도보 안내 기능이 추가되었어요.</string>
     <string name="android_directions_walkRecommended">추천 경로</string>
     <string name="android_directions_walkShortest">최단 경로</string>
+    <string name="android_guide_autoReroute">새 경로로 다시 안내합니다. 안내 %1$s개, 총 %2$s. %3$s</string>
     <string name="android_guide_destChanged">새 목적지 %1$s.</string>
     <string name="android_guide_destChangedFetching">경로를 조회하고 있습니다.</string>
     <string name="android_guide_destMenuChange">목적지 바꾸기</string>
     <string name="android_guide_destMenuDetail">장소 상세 보기</string>
+    <string name="android_guide_focusDenied">다른 앱이 소리를 쓰고 있어 안내 소리를 내지 못하고 있습니다</string>
+    <string name="android_guide_mediaVolumeZero">미디어 볼륨이 꺼져 있어 안내 소리가 나지 않습니다</string>
+    <string name="android_guide_notificationChannel">도보 안내</string>
     <string name="android_guide_routeListCurrent">%1$s. 지금 이 구간, %2$s</string>
     <string name="android_guide_routeListRow">%1$s. %2$s</string>
+    <string name="android_guide_serviceStartFailed">안내 서비스를 시작하지 못했습니다. 앱을 화면에 띄운 채 다시 시작하세요</string>
+    <string name="android_guide_ttsUnavailable">이 언어의 음성 안내를 쓸 수 없습니다. 화면의 안내 문장을 확인하세요</string>
     <string name="android_guide_waypointChange">%1$s, 경유지 변경</string>
     <string name="android_guide_waypointDropped">경유지 %1$s를 포함한 경로를 찾지 못해 경유지 없이 안내합니다</string>
     <string name="android_guide_waypointKept">경유지 %1$s 그대로입니다</string>

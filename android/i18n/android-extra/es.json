@@ -57,6 +57,17 @@
     "voice": {
       "downloadRequested": "Se solicitó preparar el reconocimiento de voz. Vuelve a intentarlo en un momento.",
       "downloadReady": "El reconocimiento de voz está listo. Vuelve a tocar Iniciar dictado."
+    },
+    "beacon": {
+      "guideStartWalkShortest": "Iniciar guía por la ruta más corta"
+    },
+    "guide": {
+      "autoReroute": "Ahora te guío por una nueva ruta. {count, plural, one {# indicación} other {# indicaciones}}, {distance} en total. {first}",
+      "mediaVolumeZero": "El volumen multimedia está apagado, por lo que no sonará la guía",
+      "focusDenied": "Otra aplicación está usando el audio, así que la guía no puede sonar ahora",
+      "ttsUnavailable": "La guía por voz no está disponible en este idioma. Consulta el texto de la guía en pantalla",
+      "serviceStartFailed": "No se pudo iniciar el servicio de guía. Mantén la aplicación en pantalla y vuelve a iniciar",
+      "notificationChannel": "Guía a pie"
     }
   },
   "search": {

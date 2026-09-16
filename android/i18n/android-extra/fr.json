@@ -57,6 +57,17 @@
     "voice": {
       "downloadRequested": "Préparation de la reconnaissance vocale demandée. Réessayez dans un instant.",
       "downloadReady": "La reconnaissance vocale est prête. Touchez à nouveau Démarrer la dictée."
+    },
+    "beacon": {
+      "guideStartWalkShortest": "Démarrer le guidage sur l’itinéraire le plus court"
+    },
+    "guide": {
+      "autoReroute": "Guidage repris sur un nouvel itinéraire. {count, plural, one {# instruction} other {# instructions}}, {distance} au total. {first}",
+      "mediaVolumeZero": "Le volume multimédia est coupé : les sons du guidage ne seront pas audibles",
+      "focusDenied": "Une autre application utilise l’audio : les sons du guidage ne peuvent pas être joués pour le moment",
+      "ttsUnavailable": "Le guidage vocal n’est pas disponible dans cette langue. Consultez le texte du guidage à l’écran",
+      "serviceStartFailed": "Impossible de démarrer le service de guidage. Gardez l’application à l’écran et redémarrez",
+      "notificationChannel": "Guidage à pied"
     }
   },
   "search": {

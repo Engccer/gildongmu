@@ -57,6 +57,17 @@
     "voice": {
       "downloadRequested": "음성 인식 준비를 요청했습니다. 잠시 뒤 다시 눌러 주세요",
       "downloadReady": "음성 인식이 준비됐습니다. 받아쓰기 시작을 다시 눌러 주세요"
+    },
+    "beacon": {
+      "guideStartWalkShortest": "최단 경로 안내 시작"
+    },
+    "guide": {
+      "autoReroute": "새 경로로 다시 안내합니다. 안내 {count}개, 총 {distance}. {first}",
+      "mediaVolumeZero": "미디어 볼륨이 꺼져 있어 안내 소리가 나지 않습니다",
+      "focusDenied": "다른 앱이 소리를 쓰고 있어 안내 소리를 내지 못하고 있습니다",
+      "ttsUnavailable": "이 언어의 음성 안내를 쓸 수 없습니다. 화면의 안내 문장을 확인하세요",
+      "serviceStartFailed": "안내 서비스를 시작하지 못했습니다. 앱을 화면에 띄운 채 다시 시작하세요",
+      "notificationChannel": "도보 안내"
     }
   },
   "search": {
