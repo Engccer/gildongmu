@@ -44,7 +44,8 @@ class LocationStore(
 
     /**
      * 권한 요청(최초 1회 시스템 다이얼로그) + 현재 위치 1회 취득. `force`면 캐시를 버리고 재취득. 실패해도 저장된 좌표는 남는다.
-     * 권한 요청은 **내 주변 화면 로드**에서만 여기로 온다(검색 가중은 `coordinateForRanking`).
+     * 권한 요청(시스템 다이얼로그)이 여기로 오는 자리는 **내 주변 화면 진입·길찾기 조회·채팅 첫 전송의 위치 prime**(spec §4 정정) —
+     * 검색 가중·표시줄은 `coordinateForRanking`/`coordinateForDisplay`(권한이 이미 있을 때만, 팝업 없음).
      */
     suspend fun currentCoordinate(
         force: Boolean = false,

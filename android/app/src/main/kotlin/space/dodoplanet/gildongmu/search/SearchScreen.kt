@@ -13,6 +13,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import space.dodoplanet.gildongmu.a11y.tapTarget
+import space.dodoplanet.gildongmu.a11y.landingTarget
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material.icons.Icons
@@ -126,14 +127,14 @@ fun SearchScreen(vm: SearchViewModel, onOpenPlace: (Place) -> Unit = {}) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .testTag("query")
-                    .focusRequester(fieldFocus),
+                    .landingTarget(fieldFocus),
             )
 
             Button(
                 onClick = { if (!s.isSearching) vm.submit() },
                 modifier = Modifier
                     .tapTarget().testTag("submit")
-                    .focusRequester(buttonFocus)
+                    .landingTarget(buttonFocus)
                     // disabled는 포커스를 떨군다 — 클릭 무시 + 상태 설명(헌장 §5 ⓐ)
                     .semantics { if (s.isSearching) stateDescription = searchingLabel },
             ) { Text(stringResource(R.string.search_button)) }
@@ -218,7 +219,7 @@ private fun ResultSections(
     val sections = outcome.orderedSections
     val showHeadings = sections.size > 1
     // 모든 행이 키로 requester를 받는다(첫 결과 착지·pop 복귀 착지가 같은 맵).
-    fun rowModifier(key: String): Modifier = Modifier.focusRequester(rowFocusFor(key))
+    fun rowModifier(key: String): Modifier = Modifier.landingTarget(rowFocusFor(key))
 
     for (section in sections) {
         when (section) {

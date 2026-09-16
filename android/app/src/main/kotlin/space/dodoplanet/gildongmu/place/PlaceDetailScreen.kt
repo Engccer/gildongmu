@@ -23,7 +23,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -34,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import space.dodoplanet.gildongmu.AppConfig
+import space.dodoplanet.gildongmu.a11y.landingTarget
 import space.dodoplanet.gildongmu.R
 import space.dodoplanet.gildongmu.a11y.AppScreenScaffold
 import space.dodoplanet.gildongmu.a11y.StatusLine
@@ -155,7 +155,7 @@ fun PlaceDetailScreen(factory: ViewModelProvider.Factory, nav: PlaceNav, takeRet
             for (kind in listOf(NearbyKind.subway, NearbyKind.bus, NearbyKind.bike, NearbyKind.conditions)) {
                 Button(
                     onClick = { nav.onOpenNearby(kind, anchor) },
-                    Modifier.fillMaxWidth().tapTarget().testTag("anchor-${kind.name}").focusRequester(anchorFocus.getOrPut(kind) { FocusRequester() }),
+                    Modifier.fillMaxWidth().tapTarget().testTag("anchor-${kind.name}").landingTarget(anchorFocus.getOrPut(kind) { FocusRequester() }),
                 ) { Text(stringResource(kindTitle(kind))) }
             }
             // 20~. 역이면 역 정보·실시간 도착·첫차 막차·교통약자 시설이 자동 등장(조용히 나타남, spec §12-3). "이 장소 주변" 다음인 이유는 iOS 주석 —

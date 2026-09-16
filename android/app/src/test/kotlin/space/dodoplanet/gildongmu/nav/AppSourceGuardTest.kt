@@ -32,6 +32,7 @@ class AppSourceGuardTest {
         // 가드 자체가 살아 있다
         assertTrue(hasRequesterAfterFocusTarget("""Modifier.mergedRow("k", spoken, focus = requesterFor(key)) .headingText() .focusRequester(r)"""))
         assertTrue(hasRequesterAfterFocusTarget("""Modifier.focusable().padding(8.dp).focusRequester(r)"""))
+        assertTrue(hasRequesterAfterFocusTarget("""Modifier.focusable().padding(8.dp).landingTarget(r)"""))
         assertTrue(!hasRequesterAfterFocusTarget("""Modifier.focusRequester(r).mergedRow("k", focus = requesterFor(key)).headingText()"""))
         assertTrue(!hasRequesterAfterFocusTarget("""Modifier.mergedRow("k").padding(4.dp) ; val x = other.focusRequester(r)"""))
     }
@@ -43,7 +44,7 @@ class AppSourceGuardTest {
             var i = skipBalanced(code, m.range.last) ?: continue
             while (true) {
                 val chain = Regex("""^\s*\.([A-Za-z_][A-Za-z0-9_]*)\(""").find(code.substring(i)) ?: break
-                if (chain.groupValues[1] == "focusRequester") return true
+                if (chain.groupValues[1] == "focusRequester" || chain.groupValues[1] == "landingTarget") return true
                 i = skipBalanced(code, i + chain.range.last) ?: break
             }
         }
@@ -81,6 +82,18 @@ class AppSourceGuardTest {
 
     @Test fun `문자열 리소스는 리터럴 ID로만 되받는다 — 동적 키 조립 0(spec §12 매핑표 규율)`() {
         assertTrue(sources.none { it.extension == "kt" && it.readText().contains("getIdentifier(") })
+    }
+
+    /**
+     * Compose 1.12 `clickable`(Material3 Button)은 터치 입력 모드에서 포커스를 받지 않는다(`Focusability.SystemDefined`) — TalkBack 폰에서
+     * 버튼 착지 `requestFocus()`가 조용히 false. 착지 부착은 `mergedRow(focus)`(focusable = Always)와 `landingTarget`(canFocus = true)뿐이다.
+     */
+    @Test fun `focusRequester 부착은 a11y의 두 관용구뿐이다(버튼 착지는 landingTarget)`() {
+        val allowed = setOf("A11y.kt", "Landing.kt")
+        val offenders = sources.filter { it.extension == "kt" && it.name !in allowed && Regex("""\.focusRequester\(""").containsMatchIn(it.readText()) }.map { it.name }
+        assertEquals(emptyList(), offenders)
+        val landing = android.resolve("app/src/main/kotlin/space/dodoplanet/gildongmu/a11y/Landing.kt").readText()
+        assertTrue(landing.contains("focusProperties { canFocus = true }"))
     }
 
     @Test fun `Google Play 서비스 의존은 0이다`() {

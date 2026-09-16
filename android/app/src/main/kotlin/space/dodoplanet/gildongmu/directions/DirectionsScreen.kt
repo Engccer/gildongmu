@@ -23,7 +23,6 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.CustomAccessibilityAction
@@ -33,6 +32,7 @@ import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import space.dodoplanet.gildongmu.a11y.AppScreenScaffold
+import space.dodoplanet.gildongmu.a11y.landingTarget
 import space.dodoplanet.gildongmu.a11y.StatusLine
 import space.dodoplanet.gildongmu.a11y.headingText
 import space.dodoplanet.gildongmu.a11y.tapTarget
@@ -140,25 +140,25 @@ private fun DirectionsForm(vm: DirectionsViewModel, ui: FormUiState) {
             ActionRow(
                 visual = vm.fieldText(DirectionsFieldTarget.from, accessible = false, lang = lang),
                 spoken = vm.fieldText(DirectionsFieldTarget.from, accessible = true, lang = lang),
-                tag = "field-from", onClick = { vm.openPicker(DirectionsFieldTarget.from) }, modifier = Modifier.focusRequester(ui.fromFocus),
+                tag = "field-from", onClick = { vm.openPicker(DirectionsFieldTarget.from) }, modifier = Modifier.landingTarget(ui.fromFocus),
             )
             Button(onClick = vm::swap, modifier = Modifier.tapTarget().testTag("swap")) { Text(strings.get("directions.swap")) }
             ActionRow(
                 visual = vm.fieldText(DirectionsFieldTarget.to, accessible = false, lang = lang),
                 spoken = vm.fieldText(DirectionsFieldTarget.to, accessible = true, lang = lang),
-                tag = "field-to", onClick = { vm.openPicker(DirectionsFieldTarget.to) }, modifier = Modifier.focusRequester(ui.toFocus),
+                tag = "field-to", onClick = { vm.openPicker(DirectionsFieldTarget.to) }, modifier = Modifier.landingTarget(ui.toFocus),
             )
             // 경유지(N4, 선택 사항). 삭제는 자기를 누른 버튼을 없애므로 조회 버튼을 먼저 선점한다(헌장 §5).
             if (s.via == null) {
                 Button(
                     onClick = { vm.openPicker(DirectionsFieldTarget.via) },
-                    modifier = Modifier.tapTarget().testTag("via-add").focusRequester(ui.viaFocus),
+                    modifier = Modifier.tapTarget().testTag("via-add").landingTarget(ui.viaFocus),
                 ) { Text(vm.fieldText(DirectionsFieldTarget.via, accessible = true, lang = lang)) }
             } else {
                 ActionRow(
                     visual = vm.fieldText(DirectionsFieldTarget.via, accessible = false, lang = lang),
                     spoken = vm.fieldText(DirectionsFieldTarget.via, accessible = true, lang = lang),
-                    tag = "field-via", onClick = { vm.openPicker(DirectionsFieldTarget.via) }, modifier = Modifier.focusRequester(ui.viaFocus),
+                    tag = "field-via", onClick = { vm.openPicker(DirectionsFieldTarget.via) }, modifier = Modifier.landingTarget(ui.viaFocus),
                 )
                 Button(onClick = { ui.submitFocus.requestFocus(); vm.clearVia() }, modifier = Modifier.tapTarget().testTag("via-remove")) {
                     Text(strings.get("directions.removeVia"))
@@ -172,7 +172,7 @@ private fun DirectionsForm(vm: DirectionsViewModel, ui: FormUiState) {
                 modifier = Modifier
                     .tapTarget()
                     .testTag("submit")
-                    .focusRequester(ui.submitFocus)
+                    .landingTarget(ui.submitFocus)
                     // disabled는 포커스를 떨군다 — 클릭 무시 + 상태 설명(헌장 §5 ⓐ, M1 관용구)
                     .semantics { if (querying) stateDescription = searchingLabel },
             ) { Text(strings.get("directions.submit")) }
@@ -208,7 +208,7 @@ private fun DirectionsForm(vm: DirectionsViewModel, ui: FormUiState) {
                         ),
                         // 결과 도착 시 이 섹션이 통째로 사라지므로 조회 버튼을 먼저 선점한다(헌장 §5).
                         onClick = { ui.submitFocus.requestFocus(); vm.activateRecentRoute(route) },
-                        modifier = Modifier.focusRequester(ui.recentFocus.getOrPut(route.id) { FocusRequester() }),
+                        modifier = Modifier.landingTarget(ui.recentFocus.getOrPut(route.id) { FocusRequester() }),
                     )
                 }
                 Button(onClick = { ui.recentFocus.clear(); vm.clearRecentRoutes() }, modifier = Modifier.tapTarget().testTag("recent-route-clear")) {
@@ -232,7 +232,7 @@ private fun DirectionsForm(vm: DirectionsViewModel, ui: FormUiState) {
                             .headingText()
                             .testTag("heading-${mode.rawValue}")
                             // 도보 헤딩만 착지 대상(계단 회피 재조회) — 요청자는 focusable 앞(M2 소스 가드).
-                            .then(if (mode == DirectionsMode.walk) Modifier.focusRequester(ui.walkHeadingFocus).focusable() else Modifier)
+                            .then(if (mode == DirectionsMode.walk) Modifier.landingTarget(ui.walkHeadingFocus).focusable() else Modifier)
                             .padding(top = 16.dp, bottom = 4.dp),
                         style = MaterialTheme.typography.titleMedium,
                     )
