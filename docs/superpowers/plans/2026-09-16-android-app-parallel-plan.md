@@ -2,7 +2,7 @@
 
 > 코디네이터 세션이 `docs/superpowers/specs/2026-09-15-android-app-decisions.md`(판정 13건)와 `docs/research/RESEARCH-2026-09-15-android-release.md`(조사)를 입력으로 작성. 작업 세션은 자기 절만 읽어도 착수할 수 있게 자족적으로 쓴다.
 > ⛔ **push 동결 중**(2026-09-22 09:00 KST까지, OpenAI WebMCP Challenge 심사). **통합은 로컬 `main` fast-forward**이고 `origin` push는 `.git/hooks/pre-push`가 막는다. 훅을 지우지 않는다. 안드로이드 작업은 서버를 건드리지 않으므로 동결과 충돌하지 않는다.
-> 종료 상태: (웨이브 진행 중. 끝나면 여기에 세션별 SHA·남은 판정 위치 한 줄)
+> 종료 상태(2026-09-17 04:xx): 웨이브 0~3 종료, 세션 8개 전부 창 닫음·worktree 제거(브랜치 `feat/android-*`는 main에 ff됨). 최종 main `0c3462bc`+CLAUDE.md 안드로이드 절. 남은 것: 실기기 판정 전량(E43)·M5·스토어(위원장 액션 3건은 BACKLOG §8). 통합 기록 §5-4, 보류 판정 §5-5, 토큰 감사 §5-6. 다음 세션은 `doc-audit`부터.
 
 ## §1. 마일스톤과 확정 판정
 
