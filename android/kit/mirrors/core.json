@@ -52,7 +52,10 @@
     },
     {
       "swift": "DeferredAnnouncer.swift",
-      "status": "pending"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/DeferredAnnouncer.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/DeferredAnnouncerTest.kt",
+      "note": "@MainActor → 메인 스레드 전용 클래스 + 주입 scope(메인 디스패처). 예약 코루틴은 LAZY로 슬롯 대입 뒤 시작(즉시 디스패처 대비 — deferredPostSurvivesImmediateDispatcher가 잠금). speechDeferStep·SpeechDeferConstants는 GUIDE GuideSpeechGate.kt 소유"
     },
     {
       "swift": "Directions.swift",
@@ -84,7 +87,10 @@
     },
     {
       "swift": "NearbyLoadCore.swift",
-      "status": "pending"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/NearbyLoadCore.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/NearbyLoadCoreTest.kt",
+      "note": "@Observable @MainActor → 메인 스레드 전용 클래스 + phase: StateFlow. NearbyCoord 튜플 → data class. URLError.cancelled 분기와 그 테스트는 대응 플랫폼 오류형이 없어 미이식(코루틴 CancellationException 경로가 덮는다). withTimeout 만료는 취소가 아니라 조회 실패로 분류"
     },
     {
       "swift": "NearbyService.swift",
