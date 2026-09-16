@@ -35,7 +35,7 @@ fun isStorableFix(
     ceiling: Double = LocationFixPolicy.storeCeiling,
 ): Boolean {
     if (!(accuracy > 0) || !accuracy.isFinite()) return false
-    if (age < 0 || age > acceptAge) return false
+    if (!(age >= 0) || age > acceptAge) return false // NaN age도 거른다(Swift `guard age >= 0`)
     return accuracy <= ceiling
 }
 
@@ -62,7 +62,7 @@ fun shouldAcceptFix(
     acceptAge: Double = LocationFixPolicy.acceptAge,
 ): Boolean {
     if (!(accuracy > 0) || !accuracy.isFinite()) return false
-    if (age < 0 || age > acceptAge) return false
+    if (!(age >= 0) || age > acceptAge) return false
     return accuracy <= acceptAccuracy
 }
 
@@ -75,6 +75,6 @@ fun isBetterFix(candidate: Double, than: Double?): Boolean {
 
 /** 캐시를 그대로 쓸 수 있는가. 나이를 모르면(null) 신선하지 않은 것으로 본다. */
 fun isCacheFresh(age: Double?, ttl: Double): Boolean {
-    if (age == null || age < 0) return false
+    if (age == null || !(age >= 0)) return false
     return age <= ttl
 }

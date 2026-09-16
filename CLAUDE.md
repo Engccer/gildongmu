@@ -253,6 +253,8 @@
 - 비대화형 등록 `printf '%s' "$VALUE" | vercel env add <KEY> production`(`vercel@latest` 사용 — 구버전 빈값 버그 [[vercel-env-add-noninteractive-bug]]). Preview는 `git_branch_required` 결함이라 REST API/대시보드.
 - ⚠ **배포 직후 React #418(hydration) transient**는 스테일 SW 캐시 탓, 코드 결함 아님([[pwa-stale-sw-deploy-hydration-418]]) — dev 클린·캐시제거 먼저 확인. PWA는 수제 서비스워커(`public/sw.js`, Serwist가 Next 16 Turbopack 미지원이라 폴백), document network-first·`/api/` 비캐시.
 
+- **Kit(`ios/GildongmuKit/Sources`)에 파일을 추가·개명·삭제하면 `android/kit/mirrors/<그룹>.json`을 함께 고친다**(새 파일은 `pending`으로 등재) — 안드로이드가 세 번째 미러라 `mirror-registry.test.ts`가 등록부에 없는 Kit 파일을 빨갛게 만든다. 갱신법은 `android/README.md` §5.
+
 ### iOS 실험 기능은 빌드 구성이 가른다 (2026-08-04 신설)
 
 검증 전 기능을 릴리스에서 빼는 방법은 **플래그 값을 손으로 고치는 것이 아니라 빌드 구성을 고르는 것**이다. 구성은 셋: `Debug`(개발) · `Release`(App Store, 실험 제외) · `Experimental`(실기기 실험판, 실험 포함).

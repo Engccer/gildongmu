@@ -45,6 +45,29 @@ class APIClientTest {
         assertEquals("kakao-local", result.provider)
     }
 
+    @Test fun `withTimeout 만료와 런타임 예외도 Network로 접히고 바깥 취소는 통과한다`() = runTest {
+        val slow = APIClient("https://example.test", object : HttpTransport {
+            override suspend fun get(url: String, timeoutMs: Long?): HttpResponse =
+                kotlinx.coroutines.withTimeout(timeoutMs ?: 1) { kotlinx.coroutines.delay(10_000); HttpResponse(200, "{}") }
+        })
+        assertFailsWith<APIError.Network> { slow.get<PlaceSearchResult>("/api/places", emptyList(), timeoutMs = 1) }
+        val broken = APIClient("https://example.test", object : HttpTransport {
+            override suspend fun get(url: String, timeoutMs: Long?): HttpResponse = throw IllegalStateException("client closed")
+        })
+        assertFailsWith<APIError.Network> { broken.get<PlaceSearchResult>("/api/places", emptyList()) }
+        val cancelled = APIClient("https://example.test", object : HttpTransport {
+            override suspend fun get(url: String, timeoutMs: Long?): HttpResponse = throw kotlinx.coroutines.CancellationException("outer")
+        })
+        assertFailsWith<kotlinx.coroutines.CancellationException> { cancelled.get<PlaceSearchResult>("/api/places", emptyList()) }
+        // 공용 optional은 APIError만 접는다 — 타임아웃도 Network라 null이 되고 취소는 통과한다.
+        assertEquals(null, optional { slow.get<PlaceSearchResult>("/api/places", emptyList(), timeoutMs = 1) })
+    }
+
+    @Test fun `문자열 true는 커버리지 마커가 아니다`() = runTest {
+        val client = stubbedClient { HttpResponse(200, """{"outOfCoverage":"true"}""") }
+        assertFailsWith<APIError.Decoding> { client.get<PlaceSearchResult>("/api/places", emptyList()) }
+    }
+
     @Test fun `전송 실패는 Network 깨진 본문은 Decoding`() = runTest {
         val down = APIClient("https://example.test", object : HttpTransport {
             override suspend fun get(url: String, timeoutMs: Long?): HttpResponse = throw java.io.IOException("connection refused")

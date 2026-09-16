@@ -1,8 +1,11 @@
 package space.dodoplanet.gildongmu.kit
 
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.serialization.DeserializationStrategy
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
@@ -22,9 +25,7 @@ sealed class APIError(message: String?, cause: Throwable? = null) : Exception(me
     class Network(cause: Throwable) : APIError(cause.message, cause)
 
     /** 좌표가 대한민국 서비스 커버리지 밖(서버가 `{"outOfCoverage":true}` 마커로 응답). */
-    object OutOfCoverage : APIError("outOfCoverage") {
-        private fun readResolve(): Any = OutOfCoverage
-    }
+    object OutOfCoverage : APIError("outOfCoverage")
 
     /**
      * 한국 **안**이지만 그 도메인 데이터가 그 지역에 없음(따릉이·문화행사 = 서울 전용, 버스 = TAGO
@@ -48,8 +49,12 @@ data class HttpResponse(val status: Int, val body: String)
 
 /**
  * 실행 계층 인터페이스(D5 경계). :kit은 URL 조립·상태 분류·마커 감지·디코딩(판정)만 하고,
- * 실제 전송은 :app이 안드로이드 방식(`HttpURLConnection`·OkHttp)으로 구현한다. 테스트는 스텁.
- * 구현은 전송 실패를 `IOException`으로 던진다 — 그 외 예외는 계약 밖이다.
+ * 실제 전송은 :app이 안드로이드 방식(`HttpURLConnection`)으로 구현한다. 테스트는 스텁.
+ *
+ * 예외 계약: 구현이 던지는 것은 무엇이든 `APIClient`가 `APIError.Network`로 접는다 — `IOException`,
+ * `withTimeout`의 `TimeoutCancellationException`, 그 밖의 런타임 예외 전부(Swift가 `session.data` 실패
+ * 전부를 `.network`로 감싸는 것과 같다). 바깥 코루틴의 취소(`CancellationException`)만 그대로 통과한다.
+ * `timeoutMs`는 밀리초다(Swift `timeout`은 초 — 호출부가 Kotlin뿐이라 단위만 다르다).
  */
 interface HttpTransport {
     suspend fun get(url: String, timeoutMs: Long?): HttpResponse
@@ -72,7 +77,14 @@ class APIClient(val baseURL: String, val transport: HttpTransport) {
     ): T {
         val response = try {
             transport.get(url(path, query), timeoutMs)
+        } catch (e: TimeoutCancellationException) {
+            // `withTimeout`은 자기 호출자에게만 던진다 — 바깥 취소와 혼동되지 않아 Network로 접어도 안전하다.
+            throw APIError.Network(e)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: IOException) {
+            throw APIError.Network(e)
+        } catch (e: RuntimeException) {
             throw APIError.Network(e)
         }
         if (response.status !in 200..299) {
@@ -104,14 +116,29 @@ class APIClient(val baseURL: String, val transport: HttpTransport) {
         return base + "?" + query.joinToString("&") { (name, value) -> encode(name) + "=" + encode(value) }
     }
 
+    // ⚠ `URLEncoder.encode(String, Charset)` 오버로드는 Android API 33에서 추가됐다 — minSdk 31·32 기기에서
+    // NoSuchMethodError. :kit은 JVM 테스트라 어느 게이트도 못 잡으므로 API 1 오버로드(`"UTF-8"`)만 쓴다.
     private fun encode(value: String): String =
-        URLEncoder.encode(value, Charsets.UTF_8).replace("+", "%20").replace("%7E", "~")
+        URLEncoder.encode(value, "UTF-8").replace("+", "%20").replace("%7E", "~")
 
     /** 서버 커버리지 마커 감지. 정상 페이로드엔 이 필드가 없어 오탐 불가(값 비교까지 한다). */
     private fun coverageMarker(element: JsonElement): APIError? {
         val obj = runCatching { element.jsonObject }.getOrNull() ?: return null
-        if (obj["outOfCoverage"]?.jsonPrimitive?.booleanOrNull == true) return APIError.OutOfCoverage
+        // 불리언 타입만 마커다(Swift `OutOfCoverageMarker: Bool`) — 문자열 "true"는 마커가 아니다.
+        val marker = obj["outOfCoverage"] as? JsonPrimitive
+        if (marker != null && !marker.isString && marker.booleanOrNull == true) return APIError.OutOfCoverage
         val reason = obj["unavailableHere"]?.jsonPrimitive?.contentOrNull?.let(UnavailableHereReason::fromRawValue)
         return reason?.let { APIError.UnavailableHere(it) }
     }
+}
+
+/**
+ * Swift `try?` 대응 — 조회 실패(`APIError`)만 null로 접는다. 취소는 통과시킨다. 서비스들이 공유하는
+ * 관용구다(`SearchService`·CORE의 `NearbyService`·`StationService`·`RouteService`…가 각자 복사하지 않는다).
+ * ⚠ `runCatching`은 취소까지 삼키므로 suspend 블록 안에서 쓰지 않는다.
+ */
+internal suspend fun <T> optional(block: suspend () -> T): T? = try {
+    block()
+} catch (_: APIError) {
+    null
 }

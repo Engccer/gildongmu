@@ -32,9 +32,12 @@ describe("안드로이드 :kit 드리프트", () => {
     expect(Object.keys(kotlin.strings).sort()).toEqual(Object.keys(swift.strings).sort());
     const diffs: string[] = [];
     for (const [key, byLang] of Object.entries(kotlin.strings)) {
-      for (const [lang, value] of Object.entries(byLang)) {
-        const swiftValue = swift.strings[key]?.localizations?.[lang]?.stringUnit.value;
-        if (swiftValue === undefined || swiftValue.replace(/%(\d+)\$@/g, "%$1$s") !== value) diffs.push(`${key}/${lang}`);
+      const swiftByLang = swift.strings[key]?.localizations ?? {};
+      // 양쪽 로케일의 합집합을 돈다 — 한쪽에만 있는 로케일도 드리프트다.
+      for (const lang of new Set([...Object.keys(byLang), ...Object.keys(swiftByLang)])) {
+        const swiftValue = swiftByLang[lang]?.stringUnit.value;
+        const value = byLang[lang];
+        if (swiftValue === undefined || value === undefined || swiftValue.replace(/%(\d+)\$@/g, "%$1$s") !== value) diffs.push(`${key}/${lang}`);
       }
     }
     expect(diffs).toEqual([]);

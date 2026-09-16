@@ -6,8 +6,11 @@ import space.dodoplanet.gildongmu.kit.models.OverviewBusStops
 import space.dodoplanet.gildongmu.kit.models.OverviewPlaceKind
 import space.dodoplanet.gildongmu.kit.models.OverviewPlaceState
 import space.dodoplanet.gildongmu.kit.models.SurroundingsSceneItem
+import kotlinx.serialization.SerializationException
 import kotlin.test.Test
+import kotlin.test.assertFailsWith
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
@@ -45,9 +48,9 @@ class NearbyOverviewTest {
         val food = assertIs<OverviewBullet.Place>(data.bullets[1])
         assertEquals(OverviewPlaceKind.food, food.kind)
         val foodState = assertIs<OverviewPlaceState.Ok>(food.state)
-        assertTrue(foodState.count == 15 && foodState.countCapped && foodState.nearest.size == 2)
+        assertEquals(15, foodState.count); assertTrue(foodState.countCapped); assertEquals(2, foodState.nearest.size)
         val cafeState = assertIs<OverviewPlaceState.Ok>(assertIs<OverviewBullet.Place>(data.bullets[2]).state)
-        assertTrue(cafeState.count == 3 && !cafeState.countCapped)
+        assertEquals(3, cafeState.count); assertFalse(cafeState.countCapped)
         assertIs<OverviewPlaceState.Empty>(assertIs<OverviewBullet.Place>(data.bullets[3]).state)
         assertIs<OverviewPlaceState.UnavailableSeoulOnly>(assertIs<OverviewBullet.Place>(data.bullets[4]).state)
         assertIs<OverviewPlaceState.Failed>(assertIs<OverviewBullet.Place>(data.bullets[5]).state)
@@ -62,6 +65,13 @@ class NearbyOverviewTest {
         val json = """{"data":{"place":null,"radiusMeters":1000,"bullets":[{"kind":"transit","state":"ok","station":null,"busStops":null}]}}"""
         val transit = assertIs<OverviewBullet.Transit>(assertNotNull(decode(json).data).bullets[0])
         assertNull(transit.station); assertNull(transit.busStops)
+    }
+
+    @Test fun missingRequiredKeysThrowSerializationException() {
+        assertFailsWith<SerializationException> { decode("""{"data":{"place":null,"radiusMeters":1000}}""") }
+        assertFailsWith<SerializationException> { decode("""{"data":{"place":null,"bullets":[]}}""") }
+        assertFailsWith<SerializationException> { decode("""{"data":{"place":null,"radiusMeters":1000,"bullets":[{"kind":"food"}]}}""") }
+        assertFailsWith<SerializationException> { decode("""{"data":{"place":null,"radiusMeters":1000,"bullets":[{"kind":"food","state":"ok"}]}}""") }
     }
 
     @Test fun sceneItemDecodesNewFields() {

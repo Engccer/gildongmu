@@ -256,11 +256,11 @@ class RecentRouteViaTest {
         assertEquals("C", list.first().via?.label)
         assertNotEquals(RecentRoute(a, b).id, RecentRoute(a, b, c).id)
         val pinned = store.setRoutePinned(RecentRoute(a, b, c), true)
-        assertTrue(pinned.first().via?.label == "C" && pinned.first().pinned)
+        assertEquals("C", pinned.first().via?.label); assertTrue(pinned.first().pinned)
         val again = store.recordRoute(RecentRoute(a, b, c))
-        assertTrue(again.size == 2 && again.first().via?.label == "C" && again.first().pinned)
+        assertEquals(2, again.size); assertEquals("C", again.first().via?.label); assertTrue(again.first().pinned)
         val removed = store.removeRoute(RecentRoute(a, b, c))
-        assertTrue(removed.size == 1 && removed.first().via == null)
+        assertEquals(1, removed.size); assertNull(removed.first().via)
     }
 
     @Test fun legacyRouteWithoutViaDecodes() {

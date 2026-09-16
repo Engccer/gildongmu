@@ -4,7 +4,9 @@ import space.dodoplanet.gildongmu.kit.models.NearbyAudioSignals
 import space.dodoplanet.gildongmu.kit.models.OsmWalkData
 import space.dodoplanet.gildongmu.kit.models.WalkInfraEnvelope
 import space.dodoplanet.gildongmu.kit.models.WalkSourceStatus
+import kotlinx.serialization.SerializationException
 import kotlin.test.Test
+import kotlin.test.assertFailsWith
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
@@ -44,6 +46,11 @@ class WalkInfraModelsTest {
     @Test fun walkNearbyDecodesOsmUnsupportedOutsideKorea() {
         val json = """{"walk":{"audioSignals":{"status":"unsupported","reason":"outsideSeoul"},"osm":{"status":"unsupported","reason":"outsideKorea"}}}"""
         assertIs<WalkSourceStatus.Unsupported<*>>(KitJson.decodeFromString(WalkInfraEnvelope.serializer(), json).walk.osm)
+    }
+
+    @Test fun missingStatusOrDataThrowsSerializationException() {
+        assertFailsWith<SerializationException> { KitJson.decodeFromString(WalkInfraEnvelope.serializer(), """{"walk":{"audioSignals":{"status":"ok"},"osm":{"status":"error"}}}""") }
+        assertFailsWith<SerializationException> { KitJson.decodeFromString(WalkInfraEnvelope.serializer(), """{"walk":{"audioSignals":{},"osm":{"status":"error"}}}""") }
     }
 
     @Test fun walkSourceUnknownStatusFallsBackToError() {

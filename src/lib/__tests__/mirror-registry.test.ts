@@ -18,15 +18,17 @@ const REGISTRY_DIR = "android/kit/mirrors";
 const GROUPS = ["foundation", "core", "guide"] as const;
 
 type Entry = { swift: string; status: "ported" | "excluded" | "pending"; kotlin?: string; test?: string; reason?: string; note?: string };
-type Registry = { group: string; owner: string; entries: Entry[] };
+type DeferredTest = { swift: string; to: string; why: string; blockedBy: string[] };
+type Registry = { group: string; owner: string; entries: Entry[]; deferredTests?: DeferredTest[] };
 
 function kitFiles(dir = KIT_SOURCES, rel = ""): string[] {
   const out: string[] = [];
   for (const name of readdirSync(dir).sort()) {
+    if (name.startsWith(".")) continue; // .DS_Store 류
     const full = join(dir, name);
     const r = rel ? `${rel}/${name}` : name;
     if (statSync(full).isDirectory()) out.push(...kitFiles(full, r));
-    else if (name.endsWith(".swift") || rel === "Resources") out.push(r);
+    else if (name.endsWith(".swift") || r.startsWith("Resources/")) out.push(r);
   }
   return out;
 }
@@ -59,7 +61,9 @@ describe("안드로이드 미러 등록부", () => {
     for (const e of all) {
       if (e.status === "ported") {
         if (!e.kotlin || !existsSync(e.kotlin)) bad.push(`${e.group}: ${e.swift} → kotlin 경로 부재 ${e.kotlin}`);
+        if (e.kotlin && !e.kotlin.startsWith("android/kit/")) bad.push(`${e.group}: ${e.swift} → kotlin 경로가 android/kit/ 밖 ${e.kotlin}`);
         if (e.test && !existsSync(e.test)) bad.push(`${e.group}: ${e.swift} → test 경로 부재 ${e.test}`);
+        if (e.test && !e.test.startsWith("android/kit/src/test/")) bad.push(`${e.group}: ${e.swift} → test 경로가 android/kit/src/test/ 밖 ${e.test}`);
       } else if (e.status === "excluded") {
         if (!e.reason) bad.push(`${e.group}: ${e.swift} → excluded에 reason 없음`);
       } else if (e.status !== "pending") {
@@ -74,6 +78,25 @@ describe("안드로이드 미러 등록부", () => {
       "AudioSignalProtocol.swift",
       "Resources/Localizable.xcstrings",
     ]);
+  });
+
+  it("유예 테스트는 실재하는 Kit 테스트를 가리키고, 막던 파일이 전부 이식되면 남아 있을 수 없다", () => {
+    const bad: string[] = [];
+    for (const r of regs) {
+      for (const d of r.deferredTests ?? []) {
+        const file = join("ios/GildongmuKit", d.swift.split("#")[0]);
+        if (!existsSync(file)) bad.push(`${r.group}: 유예 테스트 파일 부재 ${d.swift}`);
+        if (!GROUPS.includes(d.to as (typeof GROUPS)[number])) bad.push(`${r.group}: 미지 그룹 ${d.to}`);
+        if (!d.blockedBy?.length) bad.push(`${r.group}: ${d.swift} → blockedBy 없음`);
+        for (const b of d.blockedBy ?? []) {
+          const entry = all.find((e) => e.swift === b);
+          if (!entry) bad.push(`${r.group}: ${d.swift} → blockedBy ${b}가 어느 등록부에도 없다`);
+        }
+        const unblocked = (d.blockedBy ?? []).every((b) => all.find((e) => e.swift === b)?.status === "ported");
+        if (d.blockedBy?.length && unblocked) bad.push(`${r.group}: ${d.swift} → ${d.blockedBy.join(",")} 전부 ported인데 유예 항목이 남아 있다(옮기고 지운다)`);
+      }
+    }
+    expect(bad).toEqual([]);
   });
 
   it("FOUNDATION 그룹은 pending이 없다(M0 완료 조건)", () => {

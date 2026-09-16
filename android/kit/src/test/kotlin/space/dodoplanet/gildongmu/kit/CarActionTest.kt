@@ -27,6 +27,8 @@ class CarActionTest {
         assertNull(KitJson.decodeFromString(CarRouteGuide.serializer(), json).action)
         val known = """{"name":"","guidance":"x","distanceMeters":0,"durationSeconds":0,"action":"keepRight"}"""
         assertEquals(CarAction.keepRight, KitJson.decodeFromString(CarRouteGuide.serializer(), known).action)
+        val explicitNull = """{"name":"","guidance":"x","distanceMeters":0,"durationSeconds":0,"action":null}"""
+        assertNull(KitJson.decodeFromString(CarRouteGuide.serializer(), explicitNull).action)
     }
 
     @Test fun guideActionMapsOneToOne() {

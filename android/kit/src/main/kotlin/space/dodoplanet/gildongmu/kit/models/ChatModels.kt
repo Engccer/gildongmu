@@ -11,8 +11,8 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.JsonDecoder
 import kotlinx.serialization.json.JsonNull
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
 
 /** 응답 하단 출처 하나. 웹 SourceAttribution 미러(label은 i18n 키, url은 선택). */
@@ -40,15 +40,16 @@ object ChatRenderPayloadSerializer : KSerializer<ChatRenderPayload> {
 
     override fun deserialize(decoder: Decoder): ChatRenderPayload {
         val input = decoder as JsonDecoder
-        val obj = input.decodeJsonElement() as? JsonObject ?: throw SerializationException("ChatRenderPayload: JSON 객체가 아니다")
+        val obj = input.decodeJsonElement().asObjectOrThrow("ChatRenderPayload")
         val json = input.json
-        return when (obj["type"]?.jsonPrimitive?.content) {
+        // 판별자 부재는 깨진 응답(throw), 미지 값은 전방 호환(Unsupported) — 둘을 같은 것으로 접지 않는다.
+        return when (obj.requiredString("type")) {
             "places" -> {
-                val sort = if (obj["sort"]?.jsonPrimitive?.content == "review") PlaceSort.review else PlaceSort.accuracy
-                ChatRenderPayload.Places(json.decodeFromJsonElement(ListSerializer(Place.serializer()), obj.getValue("places")), sort)
+                val sort = if (obj["sort"]?.jsonPrimitive?.contentOrNull == "review") PlaceSort.review else PlaceSort.accuracy
+                ChatRenderPayload.Places(json.decodeFromJsonElement(ListSerializer(Place.serializer()), obj.required("places")), sort)
             }
-            "addresses" -> ChatRenderPayload.Addresses(json.decodeFromJsonElement(ListSerializer(JusoAddress.serializer()), obj.getValue("results")))
-            "web-results" -> ChatRenderPayload.WebResults(json.decodeFromJsonElement(ListSerializer(WebSearchResult.serializer()), obj.getValue("results")))
+            "addresses" -> ChatRenderPayload.Addresses(json.decodeFromJsonElement(ListSerializer(JusoAddress.serializer()), obj.required("results")))
+            "web-results" -> ChatRenderPayload.WebResults(json.decodeFromJsonElement(ListSerializer(WebSearchResult.serializer()), obj.required("results")))
             // 웹은 self-fetch 카드(타입만)이고, 서버가 앱을 위해 같은 렌더에 공통 Place 투영(`nearby-place.ts`)을
             // `places`로 싣는다. 있으면 장소 카드로 취급, 없으면(옛 서버) 종전대로 미표시.
             "clinics-nearby", "kids-nearby", "surroundings-nearby", "barrier-free-nearby" -> {
@@ -81,18 +82,20 @@ object ChatStreamEventSerializer : KSerializer<ChatStreamEvent> {
 
     override fun deserialize(decoder: Decoder): ChatStreamEvent {
         val input = decoder as JsonDecoder
-        val obj = input.decodeJsonElement() as? JsonObject ?: throw SerializationException("ChatStreamEvent: JSON 객체가 아니다(한 줄 = 한 이벤트 객체)")
+        val obj = input.decodeJsonElement().asObjectOrThrow("ChatStreamEvent(한 줄 = 한 이벤트 객체)")
         val json = input.json
-        return when (obj["type"]?.jsonPrimitive?.content) {
-            "status" -> ChatStreamEvent.Status(obj.getValue("categories").jsonArray.map { it.jsonPrimitive.content })
+        return when (obj.requiredString("type")) {
+            "status" -> ChatStreamEvent.Status(obj.requiredArray("categories").map {
+                (it as? JsonPrimitive)?.takeIf { p -> p.isString }?.content ?: throw SerializationException("categories 원소는 문자열이어야 한다")
+            })
             "done" -> ChatStreamEvent.Done(
-                text = obj.getValue("text").jsonPrimitive.content,
+                text = obj.requiredString("text"),
                 renders = obj["renders"]?.takeIf { it !is JsonNull }
                     ?.let { json.decodeFromJsonElement(ListSerializer(ChatRenderPayloadSerializer), it) } ?: emptyList(),
                 sources = obj["sources"]?.takeIf { it !is JsonNull }
                     ?.let { json.decodeFromJsonElement(ListSerializer(ChatSource.serializer()), it) } ?: emptyList(),
             )
-            "error" -> ChatStreamEvent.Error(obj.getValue("code").jsonPrimitive.content)
+            "error" -> ChatStreamEvent.Error(obj.requiredString("code"))
             else -> ChatStreamEvent.Unknown
         }
     }

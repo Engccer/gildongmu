@@ -134,12 +134,6 @@ class SearchService(val client: APIClient) {
         return response?.entrance
     }
 
-    /** `try?` 대응 — 조회 실패(APIError)만 null로 접는다. 취소는 통과시킨다. */
-    private suspend fun <T> optional(block: suspend () -> T): T? = try {
-        block()
-    } catch (_: APIError) {
-        null
-    }
 }
 
 /** 승격된 출입구. `meters`는 대표 좌표에서의 거리(= 승격 폭). */
