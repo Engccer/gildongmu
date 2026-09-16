@@ -1,5 +1,7 @@
 package space.dodoplanet.gildongmu.audio
 
+import space.dodoplanet.gildongmu.kit.TrendHaptics
+import space.dodoplanet.gildongmu.kit.KeyValueStore
 import android.content.Context
 import android.os.VibrationEffect
 import android.os.Vibrator
@@ -44,8 +46,11 @@ fun toneWaveform(tone: BeaconTone): Waveform = when (tone) {
  * 결과 진동 3종 창구(iOS `ResultHaptic.fire` 미러): success = 시스템 클릭, attention = 짧은 2연타, failure = 3연타. 1회성 결과·전이에만,
  * 반복 상태 통지엔 금지. 실험판 상수 켬(설정 마일스톤에서 스위치). 모델 창구가 `outputSuppressed`면 부르지 않는다.
  */
-class ResultHaptic(private val port: VibratorPort) : GuideHaptics {
-    override fun result(kind: ResultHapticKind) = when (kind) {
+/** 결과 진동 3종 — iOS `ResultHaptic.fire`처럼 **설정 스위치(`TrendHaptics.storageKey`) 뒤**(옵트인 톤 진동과 같은 게이트; CLAUDE.md). 꺼져 있으면 무동작. */
+class ResultHaptic(private val port: VibratorPort, private val store: KeyValueStore) : GuideHaptics {
+    private val enabled: Boolean get() = store.getString(TrendHaptics.storageKey) == "true"
+
+    override fun result(kind: ResultHapticKind) = if (!enabled) Unit else when (kind) {
         ResultHapticKind.success -> port.click()
         ResultHapticKind.attention -> port.vibrate(attention)
         ResultHapticKind.failure -> port.vibrate(failure)

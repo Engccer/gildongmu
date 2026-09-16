@@ -40,9 +40,13 @@ class ToneHapticsTest {
         assertContentEquals(toneWaveform(BeaconTone.start).timings, toneWaveform(BeaconTone.stop).timings)
     }
 
-    @Test fun `결과 진동 3종 — success 클릭, attention 2연타, failure 3연타`() {
+    @Test fun `결과 진동 3종 — success 클릭, attention 2연타, failure 3연타, 설정 스위치가 꺼져 있으면 무동작(iOS 동형)`() {
         val port = FakeVibrator()
-        val h = ResultHaptic(port)
+        val store = space.dodoplanet.gildongmu.kit.InMemoryKeyValueStore()
+        val h = ResultHaptic(port, store)
+        h.result(ResultHapticKind.success); h.result(ResultHapticKind.failure)
+        assertEquals(0, port.clicks); assertEquals(0, port.waveforms.size) // 스위치 기본 off
+        store.putString(space.dodoplanet.gildongmu.kit.TrendHaptics.storageKey, "true")
         h.result(ResultHapticKind.success)
         assertEquals(1, port.clicks)
         h.result(ResultHapticKind.attention)

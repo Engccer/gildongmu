@@ -95,7 +95,7 @@ object GuideSession {
             permissions = permissions,
             tones = GuideTonePlayer(AndroidSoundPort(context), focus, vibrator, AndroidVolumePort(audioManager), store, clock),
             speaker = TtsGuideSpeaker(AndroidTtsPort(context), focus, store, { AppLocale.current(res()) }, onPendingDropped = { walk.onSpeechDropped() }),
-            haptics = ResultHaptic(vibrator),
+            haptics = ResultHaptic(vibrator, store), // 결과 진동도 설정 스위치 뒤(iOS 동형)
             steps = AndroidStepCounter(context, main),
             env = env,
             coordinator = coordinator,
