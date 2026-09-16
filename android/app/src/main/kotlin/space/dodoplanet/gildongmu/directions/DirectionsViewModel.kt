@@ -549,7 +549,7 @@ class DirectionsViewModel(
     // ── 끝점 검색(EndpointPicker 합성, spec §13-3·판정 32) ────────────────────
 
     /** 후보·최근 목록·통지는 `EndpointPicker`; 확정의 의미(필드 확정·재측위·착지)는 아래 `onSelect`가 정한다. */
-    val picker = EndpointPicker(search, store, strings, io, viewModelScope, dataLocale, ranking = { locator.coordinateForRanking() }) { endpoint, target ->
+    val picker = EndpointPicker(search, store, strings, io, viewModelScope, dataLocale, ranking = { locator.coordinateForRanking() }, closesOnSelect = true) { endpoint, target ->
         setEndpoint(endpoint, target)
         // "현재 위치 사용" 재선택 = 강제 재측위 + 주소 새로고침(F-B) — from에서만(지정 화면의 되돌리기는 이 부수효과가 없다).
         if (target == DirectionsFieldTarget.from && endpoint == DirectionsEndpoint.Current) refreshCurrentLocation()

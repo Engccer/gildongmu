@@ -6,6 +6,7 @@ import space.dodoplanet.gildongmu.nearby.NearbyKind
 import space.dodoplanet.gildongmu.nearby.PlaceAnchor
 import space.dodoplanet.gildongmu.kit.models.Place
 import space.dodoplanet.gildongmu.location.CurrentAddressStore
+import space.dodoplanet.gildongmu.location.ManualLocationStore
 
 /**
  * 화면별 ViewModel 팩토리 묶음(`MainActivity`가 앱 컨텍스트로 조립, Activity 캡처 없음). 라우트 인자에 따라 팩토리가
@@ -22,4 +23,6 @@ class AppFactories(
     val isLocationEnabled: () -> Boolean,
     /** 허브 첫 행 표시줄의 주소 스토어(앱 싱글턴, spec §12-4). */
     val currentAddress: CurrentAddressStore,
+    /** 수동 위치 런타임 정본(앱 싱글턴, spec §13-1) — 표시줄이 관찰한다. 화면이 `AppConfig`를 직접 잡지 않는다. */
+    val manualLocation: ManualLocationStore,
 )
