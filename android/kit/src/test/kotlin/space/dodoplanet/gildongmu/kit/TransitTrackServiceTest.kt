@@ -1,7 +1,6 @@
 package space.dodoplanet.gildongmu.kit
 
 import kotlinx.coroutines.test.runTest
-import java.net.URLDecoder
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -15,17 +14,17 @@ class TransitTrackServiceTest {
     private val body = """{"mode":"subway","status":"empty"}"""
 
     /** 한 호출이 실은 쿼리 (이름, 값) — 순서 그대로. */
-    private suspend fun queryItems(call: suspend (TransitTrackService) -> TransitTrackEnvelope): List<Pair<String, String>> {
+    private suspend fun queryItems(call: suspend (TransitTrackService) -> TransitTrackEnvelope): List<QueryItem> {
         var seen = ""
         val service = TransitTrackService(
             stubbedClient { url ->
                 assertEquals("/api/transit/track", pathOf(url))
-                seen = queryOf(url)
+                seen = url
                 HttpResponse(200, body)
             },
         )
         call(service)
-        return seen.split("&").map { it.substringBefore("=") to URLDecoder.decode(it.substringAfter("="), Charsets.UTF_8) }
+        return queryItemsOf(seen)
     }
 
     /** Swift 메서드별 `URLQueryItem(name:value:)` — 값이 문자열 리터럴이면 그 값, 아니면 null. */
@@ -40,7 +39,7 @@ class TransitTrackServiceTest {
         }
     }
 
-    private suspend fun queryItemsOf(swiftName: String): List<Pair<String, String>> = when (swiftName) {
+    private suspend fun queryItemsForSwiftFunc(swiftName: String): List<QueryItem> = when (swiftName) {
         "seoulWait" -> queryItems { it.seoulWait("123", "r", "en") }
         "seoulRide" -> queryItems { it.seoulRide("r", "b", "a", "en") }
         "resolveTagoStop" -> queryItems { it.resolveTagoStop(36.35, 127.38) }
@@ -54,7 +53,7 @@ class TransitTrackServiceTest {
         assertEquals(setOf("seoulWait", "seoulRide", "resolveTagoStop", "tagoTrack", "subwayTrack"), swift.keys)
         for ((name, expected) in swift) {
             assertTrue(expected.isNotEmpty(), name) // 선언 모양이 바뀌어 대조가 공회전하는 것을 막는다
-            val actual = queryItemsOf(name)
+            val actual = queryItemsForSwiftFunc(name)
             assertEquals(expected.map { it.first }, actual.map { it.first }, name)
             for ((i, item) in expected.withIndex()) item.second?.let { assertEquals(it, actual[i].second, "$name.${item.first}") }
         }
