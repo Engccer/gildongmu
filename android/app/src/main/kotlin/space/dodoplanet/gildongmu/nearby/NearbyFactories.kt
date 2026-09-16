@@ -11,10 +11,11 @@ import space.dodoplanet.gildongmu.kit.NearbyService
 fun nearbyFactory(
     kind: NearbyKind,
     anchor: PlaceAnchor?,
-    service: NearbyService,
+    services: NearbyServices,
     strings: NearbyStrings,
     current: () -> NearbyCoordinateSource,
 ): ViewModelProvider.Factory {
+    val service = services.nearby
     val coordinate = anchor?.let { NearbyCoordinateSource.Fixed(it.coord) } ?: current()
     return viewModelFactory {
         initializer {
@@ -24,7 +25,11 @@ fun nearbyFactory(
                 NearbyKind.subway -> NearbyScreenViewModel(NearbyKinds.subway(service, strings), coordinate, strings, handle)
                 NearbyKind.bus -> NearbyScreenViewModel(NearbyKinds.bus(service, strings), coordinate, strings, handle)
                 NearbyKind.bike -> NearbyScreenViewModel(NearbyKinds.bike(service, strings), coordinate, strings, handle)
-                NearbyKind.clinic, NearbyKind.barrierFree, NearbyKind.kids, NearbyKind.events, NearbyKind.walkInfra, NearbyKind.conditions -> TODO("M2b")
+                NearbyKind.clinic -> NearbyScreenViewModel(NearbyKinds.clinic(service, strings), coordinate, strings, handle)
+                NearbyKind.barrierFree -> NearbyScreenViewModel(NearbyKinds.barrierFree(services.barrierFree, strings), coordinate, strings, handle)
+                NearbyKind.kids -> NearbyScreenViewModel(NearbyKinds.kids(service, strings), coordinate, strings, handle)
+                NearbyKind.events -> NearbyScreenViewModel(NearbyKinds.events(service, strings), coordinate, strings, handle)
+                NearbyKind.walkInfra, NearbyKind.conditions -> TODO("M2b")
             }
         }
     }

@@ -1,6 +1,10 @@
 package space.dodoplanet.gildongmu.nearby
 
+import space.dodoplanet.gildongmu.kit.BarrierFreeService
+import space.dodoplanet.gildongmu.kit.models.BarrierFreePlace
 import space.dodoplanet.gildongmu.kit.models.BikeStation
+import space.dodoplanet.gildongmu.kit.models.CultureEvent
+import space.dodoplanet.gildongmu.kit.models.KidsPlace
 import space.dodoplanet.gildongmu.kit.models.BusRouteStop
 import space.dodoplanet.gildongmu.kit.models.BusStop
 import space.dodoplanet.gildongmu.kit.NearbyCoverage
@@ -55,6 +59,44 @@ object NearbyKinds {
         firstKey = { if (it.isAllAbsent) null else "around-top" }, // 위치 문장(헤딩)이 착지 지점
         loadedNotice = { if (it.isAllAbsent) strings.aroundEmpty() else strings.aroundLoaded() },
         emptyCopy = { strings.aroundEmpty() },
+    )
+
+    // ── M2b 목록형 4종(spec §12-1): 착지·복귀 키 `place-{id}`, 0건 통지 = 도메인 빈 문구(M2 관례).
+
+    fun clinic(service: NearbyService, strings: NearbyStrings) = NearbyKindSpec<ClinicPayload>(
+        coverage = NearbyCoverage.korea,
+        fetch = { c, _ -> service.clinics(c!!.lat, c.lng).let { ClinicPayload(it.clinics, it.basis ?: "weekday", it.supplementFailed ?: false) } },
+        isEmpty = { it.clinics.isEmpty() },
+        firstKey = { it.clinics.firstOrNull()?.let { x -> "place-${x.id}" } },
+        loadedNotice = { if (it.clinics.isEmpty()) strings.clinicEmpty() else strings.announcePlaces(it.clinics.size) },
+        emptyCopy = { strings.clinicEmpty() },
+    )
+
+    fun barrierFree(service: BarrierFreeService, strings: NearbyStrings) = NearbyKindSpec<List<BarrierFreePlace>>(
+        coverage = NearbyCoverage.korea,
+        fetch = { c, _ -> service.nearby(c!!.lat, c.lng) },
+        isEmpty = { it.isEmpty() },
+        firstKey = { it.firstOrNull()?.let { x -> "place-${x.contentId}" } },
+        loadedNotice = { if (it.isEmpty()) strings.barrierFreeEmpty() else strings.announcePlaces(it.size) },
+        emptyCopy = { strings.barrierFreeEmpty() },
+    )
+
+    fun kids(service: NearbyService, strings: NearbyStrings) = NearbyKindSpec<List<KidsPlace>>(
+        coverage = NearbyCoverage.korea,
+        fetch = { c, _ -> service.kidsPlaces(c!!.lat, c.lng) },
+        isEmpty = { it.isEmpty() },
+        firstKey = { it.firstOrNull()?.let { x -> "place-${x.id}" } },
+        loadedNotice = { if (it.isEmpty()) strings.kidsEmpty() else strings.announcePlaces(it.size) },
+        emptyCopy = { strings.kidsEmpty() },
+    )
+
+    fun events(service: NearbyService, strings: NearbyStrings) = NearbyKindSpec<List<CultureEvent>>(
+        coverage = NearbyCoverage.korea,
+        fetch = { c, _ -> service.cultureEvents(c!!.lat, c.lng) },
+        isEmpty = { it.isEmpty() },
+        firstKey = { it.firstOrNull()?.let { x -> "place-${x.id}" } },
+        loadedNotice = { if (it.isEmpty()) strings.eventsEmpty() else strings.announceEvents(it.size) },
+        emptyCopy = { strings.eventsEmpty() },
     )
 
     /** 파라미터형(좌표 없음): 경유 정류소. 첫 로드 착지 없음(iOS 동형) — firstKey null. */
