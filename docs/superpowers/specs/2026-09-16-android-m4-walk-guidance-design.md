@@ -1,6 +1,6 @@
 # 안드로이드 M4: 도보 실시간 안내 설계 (2026-09-16)
 
-> **위치**: 판정 문서 `2026-09-15-android-app-decisions.md`(D1~D13, 재논의 금지)와 병렬 계획 `2026-09-16-android-app-parallel-plan.md` §1·§3·§5-4·§5-5 위에 선 M4 spec. 입력은 `~/gildongmu-wt/android-kit-guide-reports/report.md`의 "D10 경계로 [3]에 남긴 것"(TTS 배율·`resourceName` 변환·`Location.hasX()` → null/-1·`GuideSessionCoordinator` 메인 스레드·단조 시계·GuideAudioSession 목표 계약 5항·시나리오 18개), `docs/INTEGRATIONS.md` §실시간 길 안내, `CLAUDE.md`의 실시간 안내 항목 전부, M1·M2·M3 spec의 접근성·위치·길찾기 계약이다. 적대적 설계 리뷰 1차(§13) 반영본.
+> **위치**: 판정 문서 `2026-09-15-android-app-decisions.md`(D1~D13, 재논의 금지)와 병렬 계획 `2026-09-16-android-app-parallel-plan.md` §1·§3·§5-4·§5-5 위에 선 M4 spec. 입력은 `~/gildongmu-wt/android-kit-guide-reports/report.md`의 "D10 경계로 [3]에 남긴 것"(TTS 배율·`resourceName` 변환·`Location.hasX()` → null/-1·`GuideSessionCoordinator` 메인 스레드·단조 시계·GuideAudioSession 목표 계약 5항·시나리오 18개), `docs/INTEGRATIONS.md` §실시간 길 안내, `CLAUDE.md`의 실시간 안내 항목 전부, M1·M2·M3 spec의 접근성·위치·길찾기 계약이다. 적대적 설계 리뷰 1차·2차(§13) 반영본. 착지 관용구는 main `fc246219`(android-m1 M2b)의 `a11y/Landing.kt` `landingTarget`을 따른다.
 >
 > **범위 한 줄**: iOS 정식판 **도보** 실시간 안내(`BeaconModel` walk 절단면 + `BeaconTrackingSheet` + 띠바 + 종료 화면)와 기능 등가를 안드로이드 [3]·[4]로 새로 쓴다. 판정 계층([2])은 `:kit`에 이미 있고(웹·iOS·Kotlin 공유 fixture 동조), 이 spec은 **그것을 소비하는 실행 계층과 화면**만 정한다. `:kit` 무수정, 서버 계약 변경 0.
 >
@@ -16,14 +16,15 @@
 |---|---|---|
 | 진입 | 길찾기 브리핑 도보 추천·최단 행 펼침 본문 **첫 항목**의 "도보 안내 시작"·"최단 경로 안내 시작" 버튼(실험판 전용). 도착지가 현재 위치면 버튼 없음 | `DirectionsTabView` 도보 DisclosureGroup 첫 항목 |
 | 세션 | 앱 수명 싱글턴 `GuideSession`(코디네이터 + 도보 모델 + 최소화 상태). 시작은 **`startWalk` 한 함수**. 안내 중 새 시작 거부. 시트를 내리면 최소화, 종료는 버튼(안내 종료·닫기·알림 액션)뿐 | `GuideSession.shared`·`startBeacon` |
-| [3] 위치 | 안내 전용 연속 스트림(FUSED 1초, GMS 무의존) — **전경 서비스(`location` 타입)** 안에서 돈다. 세션 수명 **부분 wake lock**(§4-1). `ACCESS_BACKGROUND_LOCATION` 선언·요청 0 | `LocationService.startBeaconUpdates` |
+| [3] 위치 | 안내 전용 연속 스트림(FUSED 1초, GMS 무의존) — **전경 서비스(`location` 타입)** 안에서 돈다. 서비스 수명 **부분 wake lock**(§4-1). `ACCESS_BACKGROUND_LOCATION` 선언·요청 0 | `LocationService.startBeaconUpdates` |
 | 지속 알림 | 상태 한 줄 + "안내 종료" 액션. `POST_NOTIFICATIONS` 처리 | (iOS에 없음, D11 자산) |
-| [3] 오디오 | `SoundPool` 톤 15파일 + `AudioFocus`(재생 단위 획득·지연 반납, **못 잡으면 내지 않는다**) + `TextToSpeech` 발화(톤 뒤 발화 `speechDeferStep`, 단일 슬롯 latest-wins `DeferredAnnouncer`) + 억제 소유자 집합 | `BeaconTonePlayer`·`DeferredAnnouncer`·VoiceOver 통지 |
+| [3] 오디오 | `SoundPool` 톤 15파일(`USAGE_MEDIA`) + `AudioFocus`(재생 단위 획득·지연 반납, **못 잡으면 소리는 내지 않되 진동은 낸다**, 거절 지속은 3-state 통지) + `TextToSpeech` 발화(톤 뒤 발화 `speechDeferStep`, 단일 슬롯 latest-wins `DeferredAnnouncer`) + 억제 소유자 집합 | `BeaconTonePlayer`·`DeferredAnnouncer`·VoiceOver 통지 |
 | 진동 | 톤 동기 waveform 13종 + `ResultHaptic` 3종 한 창구 | `BeaconTonePlayer.haptic`·`ResultHaptic` |
 | 화면 | 안내 시트(제목 헤딩·접기·진행 상황·재조회·남은 거리·하단 2행·상태 문장·소리 상태·안내 종료 최하단 고정), 띠바, 조망 목록, 종료 화면(도착·추정·중지 + 걸음·칼로리 요약 + 닫기, 30분 만료), 자동 재조회 채택 + 수동 재조회 | `BeaconTrackingSheet`·`GuideBandView`·`GuideOverviewSheet` 도보부·`arrivalSection` |
 | 안전망·수명 | 워치독(2초 주기, 8초 톤, 15초 음성 — wake lock 위에서), 잊힌 세션(`sessionIdleStep`), 도착 추정(`presumedArrivalStep`), 시트 표시 중 화면 유지, 프로세스 재시작 시 알림 정리 | `BeaconModel` 동형 |
 | 계측 | iOS `guide-diag.log` 동형 파일 로그(앱 전용 외부 저장소, `adb pull`) | `GuideDiag`·`DiagFileLog` |
-| 게이트 | 실험판 전용(`AppConfig.experimentalGuidanceEnabled`) — 정식 빌드 진입점 0(구조 + 소스 가드) | `#if EXPERIMENTAL` |
+| 게이트 | 실험판 전용(`AppConfig.experimentalGuidanceEnabled`) — 정식 빌드 진입점 0(구조 + 소스 가드): `startWalk`·`attach`·`GuideBottomBar` 셋 다 게이트 뒤 | `#if EXPERIMENTAL` |
+| 시작 실패 | 문장 + 해결 버튼 행(시작 버튼 아래, iOS 거리 추적 섹션의 실패 상태부 — M3 spec이 M4로 이월한 자리) | `DirectionsTabView` 거리 추적 섹션 |
 
 ### 1-2. 제외 (후속 마일스톤 — 자리만 남기거나 아예 두지 않는다)
 
@@ -56,11 +57,11 @@
 ```
 
 - **판정은 전부 `:kit`, 여기는 배선이다**(iOS `BeaconModel` 머리 주석 그대로). `WalkGuideModel`은 `BeaconModel`의 walk 절단면이고 상태 필드·처리 순서를 그대로 옮기되 자동차·prewalk·목적지 변경·경유지 변경·프리뷰 갈래는 **두지 않는다**(항상 참인 분기를 남기지 않는다 — 플래그 졸업 방식).
-- **소유권 근거는 코디네이터 착수 프롬프트(2026-09-16, 세션 `android-m4`)다** — 병렬 계획 §2에는 아직 웨이브 3 절이 없다(코디네이터가 그 절을 신설하는 것을 §12-1에서 요청한다). 프롬프트가 준 것: `guide/`·`audio/`·`res/raw/`(신규 소유) · `directions/`의 **안내 시작 버튼 자리 추가만** · `nav/AppRoot.kt` **등록·띠바 삽입 한 자리** · `android/i18n/android-extra/` 키 additive · **매니페스트 additive**(서비스 선언·`FOREGROUND_SERVICE`·`FOREGROUND_SERVICE_LOCATION`·`POST_NOTIFICATIONS`·`VIBRATE` — 한 커밋 분리·보고 명시) · `app/build.gradle.kts` 의존성 additive(필요 시 보고). 프롬프트 밖이라 **판정을 요청하는 것**: ① `AppSourceGuardTest` 허용 목록 1줄(§4-2) ② `ACTIVITY_RECOGNITION`·`WAKE_LOCK` 권한(프롬프트 목록 밖 additive, §3-4) ③ 루트 `.gitignore` 1줄(§8). `app/build.gradle.kts` 의존성 추가는 **0** — 플랫폼 API만 쓴다(`LocationManager`·`SoundPool`·`AudioManager`·`AudioFocusRequest`·`TextToSpeech`·`Vibrator`·`SensorManager`·`NotificationManager`·`Notification.Builder`·`Context.startForegroundService`·`PowerManager`). androidx 전이 의존(`NotificationCompat`·`ContextCompat`)에 기대지 않는다(리뷰 m-3).
+- **소유권 근거는 코디네이터 착수 프롬프트(2026-09-16, 세션 `android-m4`)다** — 병렬 계획 §2에는 아직 웨이브 3 절이 없다(코디네이터가 그 절을 신설하는 것을 §12-1에서 요청한다). 프롬프트가 준 것: `guide/`·`audio/`·`res/raw/`(신규 소유) · `directions/`의 **안내 시작 버튼 자리 추가만** · `nav/AppRoot.kt` **등록·띠바 삽입 한 자리** · `android/i18n/android-extra/` 키 additive · **매니페스트 additive**(서비스 선언·`FOREGROUND_SERVICE`·`FOREGROUND_SERVICE_LOCATION`·`POST_NOTIFICATIONS`·`VIBRATE` — 한 커밋 분리·보고 명시) · `app/build.gradle.kts` 의존성 additive(필요 시 보고). 프롬프트 밖이라 **판정을 요청하는 것**: ① `AppSourceGuardTest` 허용 목록 1줄(§4-2) ② `ACTIVITY_RECOGNITION`·`WAKE_LOCK` 권한(프롬프트 목록 밖 additive, §3-4) ③ 루트 `.gitignore` 1줄(§8) ④ 알림 작은 아이콘 `drawable/ic_guide_notification.xml`(단색 실루엣, additive — 적응형 전경 레이어는 알파 마스크로 렌더돼 덩어리가 된다). 계획 §2 웨이브 3 절 신설은 **`android/README.md` §1 갱신까지 포함**해야 한다(README는 여전히 `nav/`·매니페스트를 m1 전속으로 적는다 — 두 문서가 어긋나면 착수 세션이 멈춘다, 리뷰 N2-2). `app/build.gradle.kts` 의존성 추가는 **0** — 플랫폼 API만 쓴다(`LocationManager`·`SoundPool`·`AudioManager`·`AudioFocusRequest`·`TextToSpeech`·`Vibrator`·`SensorManager`·`NotificationManager`·`Notification.Builder`·`Context.startForegroundService`·`PowerManager`). androidx 전이 의존(`NotificationCompat`·`ContextCompat`)에 기대지 않는다(리뷰 m-3).
 - **위치 계층 예외**: `AppSourceGuardTest`는 `LocationManager` 생성을 `AndroidLocationSource.kt` 한 곳으로 잠근다. 안내 스트림은 속도·방위·`elapsedRealtimeNanos`를 실은 별도 페이로드가 필요하고 서비스 수명에 결박되므로 `guide/GuideLocationStream.kt`가 자기 리스너를 등록한다 — `LocationManager`는 리스너마다 독립 요청을 받으므로(iOS `CLLocationManager`의 단일 프로파일 경합이 **없다**) `LocationStore`의 단발 취득과 공존한다. 가드 허용 목록에 이 파일 한 줄을 더하는 것이 필요하다(§12-1).
 - **스레드**: 모델·코디네이터·`DeferredAnnouncer`·톤 재생기는 **메인 스레드 전용**(Swift `@MainActor` 계약). 위치 콜백은 `mainExecutor`, 서비스 → 모델 호출도 메인, TTS 리스너 콜백·센서 콜백·포커스 콜백은 `Handler(Looper.getMainLooper())`로 반입. `GuideSession`의 `CoroutineScope`는 `Dispatchers.Main`(`immediate` 아님 — `DeferredAnnouncer` KDoc의 LAZY 계약).
 - **시계**: `SystemClock.elapsedRealtime() / 1000.0` **하나**(`uptimeNow`). 잠자기 중에도 흐르므로 `RerouteProposal.acquiredAt`·`nowUptime`·`isEndScreenStale`·`DeferredAnnouncer.clock`·fix 나이(`location.elapsedRealtimeNanos`)·워치독 판정이 전부 같은 축이다. iOS `systemUptime`(잠자기 정지)과의 차이는 §6-3. ⚠ 워치독의 **타이머 축**은 별개 문제다 — `Handler.postDelayed`의 `uptimeMillis`는 깊은 절전에서 멈추므로 §4-1의 wake lock이 그 절전을 막는다.
-- **화면이 보는 상태**: `WalkGuideModel`은 리듀서 내부 상태를 `private var`로 들고, 화면이 읽는 값은 **`StateFlow<WalkGuideUiState>`**(data class: `status`·`destinationLabel`·`statusText`·`statusIsNextPreview`·`mode`·`offRoute`·`isRerouting`·`remainingText`·`liveTopText`·`liveNextText`·`soundDegraded`·`ttsUnavailable`·`isSilenced`·`bandDistanceMeters`·`arrivalDest`·`endKind`·`endText`·`arrivalHealth`·`routeStepDescriptions`·`currentStepIndex`·`routeWaypointRow`·`offRouteEndedByReroute`)로 커밋 지점마다 `update`한다(M1~M3 ViewModel 관용구, `collectAsState`). `GuideSession.isMinimized`·`returnedFromBand`만 `mutableStateOf`(리뷰 m-5).
+- **화면이 보는 상태**: `WalkGuideModel`은 리듀서 내부 상태를 `private var`로 들고, 화면이 읽는 값은 **`StateFlow<WalkGuideUiState>`**(data class: `status`·`destinationLabel`·`statusText`·`statusIsNextPreview`·`mode`·`offRoute`·`isRerouting`·`remainingText`·`liveTopText`·`liveNextText`·`soundDegraded`·`ttsUnavailable`·`isSilenced`·`bandDistanceMeters`·`arrivalDest`·`endKind`·`endText`·`arrivalHealth`(3-state: 표본 ∧ 72걸음 이상 → 요약 / 그 밖 null — 안드로이드는 사후 질의가 없어 `.failed` 재시도 축이 없다, 리뷰 m2-7)·`routeStepDescriptions`·`currentStepIndex`·`routeWaypointRow`·`offRouteEndedByReroute`·**`failResolution`(none|settings|precise)·`lastStartVariant`**)로 커밋 지점마다 `update`한다(M1~M3 ViewModel 관용구, `collectAsState`). `GuideSession.isMinimized`·`returnedFromBand`만 `mutableStateOf`(리뷰 m-5). `hasScreen`·`isActive`도 **`ui.value`에서 유도**한다(`ui.status == tracking || ui.arrivalDest != null`, `coordinator.isActive || ui.starting`) — 동반 변경에 기대지 않는다(리뷰 m2-4).
 
 ---
 
@@ -74,31 +75,31 @@ object GuideSession {
     lateinit var walk: WalkGuideModel                       // attach()가 1회 생성, 멱등
     var isMinimized by mutableStateOf(false)                // 시트가 내려가 띠바가 세션을 대표
     var returnedFromBand by mutableStateOf(false)           // 띠바 복귀 시트의 첫 착지 = 접기 버튼(1회 소비)
-    val isActive: Boolean get() = coordinator.isActive || walk.starting
-    val hasScreen: Boolean get() = walk.isTracking || walk.arrivalDest != null
-    fun attach(app: Context)                                // 멱등 — 이미 초기화됐으면 즉시 반환
+    val isActive: Boolean get() = coordinator.isActive || walk.ui.value.starting
+    val hasScreen: Boolean get() = walk.ui.value.let { it.status == tracking || it.arrivalDest != null }
+    fun attach(app: Context)                                // 실험 게이트 뒤 · 멱등 — 정식 빌드·재호출은 즉시 반환
     fun startWalk(request: WalkStartRequest)                // 유일한 시작 진입점
     fun setOutputSuppressed(active: Boolean, owner: Any)    // 억제 소유자 집합(§5-5)
     fun setForeground(foreground: Boolean)                  // 전경 판정 입력(§5-3)
 }
 ```
 
-- `attach(app)`: `GuideBottomBar`의 첫 컴포지션(`remember`)에서 앱 컨텍스트로 부른다 — `GildongmuApplication`·`AppConfig`는 android-m1 소유. **멱등이다**: Activity 재생성(회전·앱 언어 변경·글꼴 크기)마다 다시 불리므로 `if (::walk.isInitialized) return`(리뷰 M-2 — 아니면 서비스는 옛 모델에 fix를 붓고 화면은 빈 모델을 그린다). `attach`가 하는 일: `walk` 생성, `GuideTonePlayer.preload()`(SoundPool 15개 로드 시작 — 첫 세션 시작 톤이 로드 창에 걸리지 않게, 리뷰 M-7), `GuideSpeaker` 싱글턴 생성(TTS 초기화는 세션 시작에). 서비스·스트림·알림은 `GuideSession.walk`를 **매 호출 시점에 조회**하고 인스턴스를 붙들지 않는다.
-- `startWalk`: ① `AppConfig.experimentalGuidanceEnabled`가 거짓이면 **아무것도 하지 않는다**(정식 빌드 진입점 0의 구조 층 — 버튼 미노출이 1선, 이것이 2선) ② `isActive`면 거부 통지 `guide.alreadyActive`(`announceNow`, 억제 우회) ③ `walk.requestStart(request)`. 소스 가드가 `startWalk(` 호출부를 **`WalkGuideStartButton.kt` 한 곳**으로 잠근다(iOS `guidance-gate-drift` 정신, §10-1).
+- `attach(app)`: `GuideBottomBar`의 첫 컴포지션(`remember`)에서 앱 컨텍스트로 부른다 — `GildongmuApplication`·`AppConfig`는 android-m1 소유. **첫 줄이 실험 게이트**(`if (!AppConfig.experimentalGuidanceEnabled) return` — 정식 빌드에 모델·SoundPool·TTS가 생기면 "진입점 0"과 게이트 패턴 위반, 리뷰 M2-3) 다음이 **멱등 가드**(`if (::walk.isInitialized) return` — Activity 재생성(회전·앱 언어 변경·글꼴 크기)마다 다시 불린다, 리뷰 M-2). `attach`가 하는 일은 `walk` 생성뿐. SoundPool 프리로드·TTS 싱글턴은 **`startWalk` 게이트 통과 직후·권한 대화상자 앞**(§3-1 ③)에서 — 권한 왕복이 디코딩을 덮고 앱을 켜기만 한 사용자에겐 비용이 없다. 서비스·스트림·알림은 `GuideSession.walk`를 **매 호출 시점에 조회**하고 인스턴스를 붙들지 않는다. `GuideBottomBar`의 나머지(띠바·시트·손·전경 관찰·화면 유지)도 같은 게이트 뒤다.
+- `startWalk`: ① `AppConfig.experimentalGuidanceEnabled`가 거짓이면 **아무것도 하지 않는다**(정식 빌드 진입점 0의 구조 층 — 버튼 미노출이 1선, 이것이 2선) ② `isActive`면 거부 통지 `guide.alreadyActive`(`announceNow`, 억제 우회) ③ `GuideTonePlayer.preload()`·`GuideSpeaker.ensure()`(멱등) ④ `walk.requestStart(request)`. 소스 가드가 `startWalk(` 호출부를 **`WalkGuideStartButton.kt` 한 곳**으로, `startWalk`·`attach` 본문의 게이트 존재를 잠근다(iOS `guidance-gate-drift` 정신, §10-1).
 - `WalkStartRequest(dest: BeaconDest, label: String, accessible: Boolean, variant: WalkRouteVariant?, shortestAvailable: Boolean, waypoint: GuideWaypoint?)` — **기본값 없음**(A4·A13). `GuideWaypoint(dest: BeaconDest, label: String)`.
 
 ### 3-2. `WalkGuideModel.requestStart → start` (iOS `begin`/`start` 순서 그대로)
 
-1. `starting` 재진입 가드, `lastStartRequest` 저장(시작 실패 뒤 복구 재시작용 — 정밀 위치 허용 후 `restart()`).
+1. `starting` 재진입 가드, `lastStartRequest` 저장(시작 실패 뒤 복구 재시작용 — 정밀 위치 허용 후 `restart()`), `lastStartVariant`(실패 행을 어느 시작 버튼 아래 그릴지).
 2. **권한 게이트**(`GuidePermissions`, §3-4): 기기 위치 서비스 꺼짐 → `fail(unavailable, "beacon.weak")`. 위치 권한 `None` → `AppConfig.permissionGate.request()`(M2 손) → 재판정. `None` → `fail(denied, "beacon.denied", resolution = settings)`. `Coarse` → `fail(unavailable, "beacon.reduced", resolution = precise)`(iOS reducedAccuracy 대응 — 해결 버튼은 M3 `allowPrecise`와 같은 재요청). `Fine` → 진행.
 3. `POST_NOTIFICATIONS`(API 33+) 미허가면 요청 1회. 거부는 **차단이 아니다** — 서비스는 알림 없이도 돈다(시스템이 "앱이 백그라운드에서 실행 중" 표식으로 대신한다). `ACTIVITY_RECOGNITION` 미허가면 요청 1회. 거부 → 걸음 요약 없음(3-state 부재).
 4. `sessionToken = coordinator.claim { stop() }` — null이면 거부 통지(권한 대기 중 뒤집힌 경합의 최종 게이트). **토큰은 보관하고 `stop()`이 반납한다**(리뷰 M-1 — 반납이 없으면 첫 종료 뒤 모든 재시작이 영구 거부된다).
 5. 상태 초기화(iOS `start` 대입 목록 그대로: `deferredAnnouncer.advanceGeneration()`, `dest`·`arrivalDest = null`·`endKind`·`resetArrivalHealth`·`arrivalSessionToken`·`liveHealthSample = null`·`sessionStartedAt`·`outputSuppressed = false`·`destinationLabel`·`beaconState/gateState/toneState/motionState = initial`·`lastFixAt = null`·`lastStaleNoticeAt = null`·`startedAt = uptimeNow`·세션 진행 앵커·`status = tracking`·`statusText = ""`·`failResolution = none`·`silencedHapticFired = false`).
 6. `StepCounter.start(token)`(허가 시): `TYPE_STEP_COUNTER`는 **부팅 이후 누적**이라 기준값은 **세션 첫 이벤트의 값**이고(그 앞 걸음은 유실 — iOS "첫 라이브 콜백 전 중지는 요약 없음" 수용과 같은 성질), 라이브 표본 = `현재 − 기준값`, 거리는 **항상 null**(안드로이드에 만보계 거리가 없다) → `WalkHealth.effectiveDistanceMeters`가 보폭 0.7m로 환산해 `isMeaningfulWalk` 임계 50m ≈ **72걸음**이다(리뷰 m-4). 센서 콜백은 메인 Handler.
 7. `GuideDiag.log("session kind=walk")`.
-8. **wake lock 획득**(`PowerManager.PARTIAL_WAKE_LOCK`, 태그 `gildongmu:guide`, 시한 없음 — 해제는 `stop()`; §4-1).
+8. (wake lock은 모델이 아니라 **서비스 수명**이 쥔다 — §4-1. 시작 실패는 `stop()`을 지나지 않으므로 모델이 잡으면 새는 경로가 생긴다, 리뷰 M2-2.)
 9. **전경 서비스 시작**: `GuideForegroundController.start(request)` — 실구현은 `Context.startForegroundService(Intent(ACTION_START))`(플랫폼 API 26+). ⚠ **시작 실패는 호출부에서 잡히지 않는다**(리뷰 B-3): `ForegroundServiceStartNotAllowedException`(백그라운드 시작)·`SecurityException`(Android 14+ 위치 권한 미보유)은 서비스 안 `startForeground()` 호출 지점에서 던져진다. 그래서 서비스가 잡아 **`onServiceStartFailed(reason)`**을 메인으로 되부르고(§4-1), 모델은 `fail(unavailable, "android.guide.serviceStartFailed")`로 접는다(위치 문제와 문장을 가른다 — 3-state). 컨트롤러 인터페이스는 실패 콜백을 **필수 인자**로 받아 누락이 컴파일에서 막힌다.
-10. `tones.beginSession()` → `playTone(start)`(SoundPool이 아직 로드 중이면 **시작 톤 1개만 보류**해 로드 완료 콜백에서 재생 — 리뷰 M-7) → `soundDegraded`(미디어 볼륨 0) 판정 1회 통지.
+10. `tones.beginSession()` → `playTone(start)`(SoundPool이 아직 로드 중이면 **시작 톤 1개만 보류**해 로드 완료 콜백에서 **같은 `play()` 경로로** 재생 — 포커스·진동·`toneEndsAt` 전부 지난다, 리뷰 M-7·N2-4) → `soundDegraded`(미디어 볼륨 0) 판정 1회 통지.
 11. `watchdog.start()`(2초), `awaitingRoute = true`, `routeFetchToken += 1`, `startFixWaitWatch(15초)`.
 12. `speaker.prepare()`(TTS 초기화 — 세션 시작 문장이 초기화보다 먼저 오면 **보류 1문장**으로 들고 있다가 초기화 완료 시 발화; 초기화 실패는 `ttsUnavailable` 행 + `ResultHaptic.failure` 1회).
 
@@ -111,10 +112,10 @@ object GuideSession {
 | 추정 도착(`presumedArrivalStep`) | `nearby` **전경에서만** | `.presumed` | `maybePresumeArrival` |
 | 잊힌 세션(`sessionIdleStep`) | `stop` 전경에서만 | `stopLeavingSummary` 동기 판정(`guide.endedIdle`) | 워치독 |
 | 위치 제공자 꺼짐(`onProviderDisabled`) | 없음 | `stopLeavingSummary` 동기 판정(`beacon.weak`) + 실패 상태 잔존(첫 행과 같은 조건 — 리뷰 m-9) | `stopAndFail` |
-| 서비스 시작 실패 | 없음 | 없음(세션이 시작되지 않았다) | `fail(unavailable, serviceStartFailed)` |
+| 서비스 시작 실패 | 없음 | 없음(세션이 시작되지 않았다) — 시작 실패 행(§7-1)이 문장·해결 버튼을 든다 | `fail(unavailable, serviceStartFailed)` |
 | 앱 프로세스 종료 | — | — | 서비스도 함께 죽고 알림은 시스템이 지운다 |
 
-- `stop()` 정리 목록(iOS 그대로 + 안드로이드 추가), **순서가 계약**: ① `pendingStepFreeNotice = null` ② `deferredAnnouncer.advanceGeneration()` ③ `resetFinalApproach(null)` ④ **`sessionToken?.let { coordinator.release(it) }; sessionToken = null`** ⑤ `startJob` 취소·`starting = false` ⑥ 워치독 정지 ⑦ **서비스 정지**(`controller.stop()` → `stopForeground(STOP_FOREGROUND_REMOVE)` → `stopSelf`) + 스트림 닫기 ⑧ `StepCounter.stop()`(값은 남긴다 — 종료 처리가 뒤에 읽는다) ⑨ **wake lock 해제** ⑩ `if (playStopTone && status == tracking) playTone(stop)` ⑪ `tones.endSession()`(정지 톤 뒤 — 잔여 재생 + 0.15초만큼 포커스 반납을 미룬다, §5-2) ⑫ `status = idle`·`statusText = ""`·`failResolution`·`soundDegraded`·`outputSuppressed = false`(소유자 집합은 유지, §5-5)·리듀서 상태 넷 초기화·`dest = null`·경로·토큰·`awaitingRoute`·`mode = brief`·하단 2행·`offRoute`·`pendingRecovery`·`lastFixCoord/At`·`isRerouting`·`carriedCourseDerivation`·`waypoint`·`rerouteToken += 1`·`routeFetchToken += 1`·`clearProposal()`·`proposalFetchCount = 0`.
+- `stop()` 정리 목록(iOS 그대로 + 안드로이드 추가), **순서가 계약**: ① `pendingStepFreeNotice = null` ② `deferredAnnouncer.advanceGeneration()` ③ `resetFinalApproach(null)` ④ **`sessionToken?.let { coordinator.release(it) }; sessionToken = null`** ⑤ `startJob` 취소·`starting = false` ⑥ 워치독 정지 ⑦ **서비스 정지**(`controller.stop()` → `stopForeground(STOP_FOREGROUND_REMOVE)` → `stopSelf`) + 스트림 닫기 ⑧ `StepCounter.stop()`(값은 남긴다 — 종료 처리가 뒤에 읽는다) ⑨ (wake lock은 ⑦의 서비스 정지가 곧 해제 — `onDestroy`) ⑩ `if (playStopTone && status == tracking) playTone(stop)` ⑪ `tones.endSession()`(정지 톤 뒤 — 잔여 재생 + 0.15초만큼 포커스 반납을 미룬다, §5-2) ⑫ `status = idle`·`statusText = ""`·`failResolution`·`soundDegraded`·`outputSuppressed = false`(소유자 집합은 유지, §5-5)·리듀서 상태 넷 초기화·`dest = null`·경로·토큰·`awaitingRoute`·`mode = brief`·하단 2행·`offRoute`·`pendingRecovery`·`lastFixCoord/At`·`isRerouting`·`carriedCourseDerivation`·`waypoint`·`rerouteToken += 1`·`routeFetchToken += 1`·`clearProposal()`·`proposalFetchCount = 0`·`offRouteEndedByReroute = false`(리뷰 m2-8 — `reroutePressed`는 시트 컴포저블 상태라 시트와 함께 소멸한다).
 - 권한 회수는 안드로이드에서 **프로세스 재시작**이다(M2 판정) — iOS `handle(authorization:)` 경로는 없다. 재시작 뒤 `GuideSession`은 빈 상태이고 서비스는 `START_NOT_STICKY`라 되살아나지 않는다.
 - `teardown()`·`tones.shutdown()`은 **두지 않는다**(리뷰 m-11) — 세션·재생기가 프로세스 수명이라 화면 이탈 정리가 없다. `GuideAudioFocus.releaseNow()`는 테스트 전용.
 - 종료 화면 30분 만료: `endedAt = uptimeNow`(elapsedRealtime — 잠자기 중에도 흐른다, `EndScreen.kt` KDoc 요구 충족). 백그라운드를 거쳐 전경으로 돌아올 때(`setForeground(true)`, 직전에 `wasBackgrounded`) `isEndScreenStale`이면 `clearArrival()`.
@@ -141,9 +142,9 @@ object GuideSession {
 
 ### 4-1. `GuideForegroundService` + wake lock
 
-- `Service`(플랫폼, 라이브러리 0). `onStartCommand`: `ACTION_START` → **`try { startForeground(NOTIFICATION_ID, notification, FOREGROUND_SERVICE_TYPE_LOCATION) } catch (e: Exception) { GuideDiag.log("service start failed=${e::class.simpleName}"); stopSelf(); main.post { GuideSession.walk.onServiceStartFailed(e) }; return START_NOT_STICKY }`**(리뷰 B-3 — 잡지 못한 채 5초가 지나면 `ForegroundServiceDidNotStartInTimeException`으로 보행 중 프로세스가 죽고, 잡아도 호출부로는 전파되지 않는다) → `stream.open(onFix = { GuideSession.walk.handleFix(it) }, onProviderDisabled = { GuideSession.walk.handleProviderDisabled() })`(모델은 **매 호출 조회**, 리뷰 M-2). `ACTION_STOP`(알림 액션) → `GuideSession.walk.stopByUser()`(메인). 반환 `START_NOT_STICKY`. `onDestroy` → 스트림 닫기. `onTaskRemoved`(최근 앱에서 스와이프) → **세션 유지**(iOS 백그라운드 계약과 같다 — 사용자가 명시로 끄기 전엔 산다). 이후 알림 탭이 `MainActivity`를 띄우면 `GuideSession`(프로세스 싱글턴)이 그대로라 띠바·시트가 복원된다.
+- `Service`(플랫폼, 라이브러리 0). `onStartCommand`: `ACTION_START` → **`try { startForeground(NOTIFICATION_ID, notification, FOREGROUND_SERVICE_TYPE_LOCATION) } catch (e: Exception) { GuideDiag.log("service start failed=${e::class.simpleName}"); stopSelf(); main.post { GuideSession.walk.onServiceStartFailed(e) }; return START_NOT_STICKY }`**(리뷰 B-3 — 잡지 못한 채 5초가 지나면 `ForegroundServiceDidNotStartInTimeException`으로 보행 중 프로세스가 죽고, 잡아도 호출부로는 전파되지 않는다) → **wake lock 획득**(`PowerManager.PARTIAL_WAKE_LOCK`, 태그 `gildongmu:guide`, `setReferenceCounted(false)`, 시한 없음) → `stream.open(onFix = { GuideSession.walk.handleFix(it) }, onProviderDisabled = { GuideSession.walk.handleProviderDisabled() })`(모델은 **매 호출 조회**, 리뷰 M-2). `ACTION_STOP`(알림 액션) → `GuideSession.walk.stopByUser()`(메인). 반환 `START_NOT_STICKY`. `onDestroy` → 스트림 닫기 + **wake lock 해제**(시작 실패 `stopSelf`·정상 종료·프로세스 종료 어느 경로든 구조적으로 해제 — 리뷰 M2-2). `onTaskRemoved`(최근 앱에서 스와이프) → **세션 유지**(iOS 백그라운드 계약과 같다 — 사용자가 명시로 끄기 전엔 산다). 이후 알림 탭이 `MainActivity`를 띄우면 `GuideSession`(프로세스 싱글턴)이 그대로라 띠바·시트가 복원된다.
 - 시작은 **전경에서만**(`Context.startForegroundService`) — 버튼 활성화가 곧 전경이다. Android 14+에서 위치 타입 FGS는 `ACCESS_FINE_LOCATION` **런타임 허가가 선행**되어야 `startForeground`가 `SecurityException`을 내지 않는다 — §3-2 ②가 ⑨보다 앞선다.
-- **wake lock(리뷰 B-1)**: 전경 서비스는 스스로 CPU를 깨우지 않는다. 화면이 꺼진 채 fix가 끊기면(지하·터널) CPU를 깨울 것이 없어 기기가 깊은 절전에 들고, `Handler.postDelayed`의 시간축(`uptimeMillis`)이 멈춰 2초 워치독이 돌지 않는다 → 8초 `unreliable` 톤·15초 "신호 약함"·도착 추정·잊힌 세션 안전망이 **한꺼번에 멎어** "마지막 정상 톤 이후 영구 침묵"(INTEGRATIONS가 워치독을 만든 이유)이 안드로이드에서 재현된다 — **fix 두절이 곧 감시 중단**이라 두 축이 독립이 아니다. 그래서 세션 수명에 `PowerManager.PARTIAL_WAKE_LOCK`을 묶는다(`location` 전경 서비스의 표준 관행): `start` ⑧에서 획득, `stop()` ⑨에서 해제(어느 종료 경로든 `stop()`을 지나므로 누수 경로가 없다). `AlarmManager.setExactAndAllowWhileIdle`은 Doze 창 제약으로 8초 임계에 못 미쳐 기각. 배터리 대가는 세션 시간에 비례하고 세션은 A23 안전망(600초·1200초)이 닫는다. 워치독은 매 tick의 실제 간격을 `GuideDiag`에 남긴다(`watchdog dt=` — 2초를 크게 넘는 tick이 곧 절전 침입의 증거, §11-1b).
+- **wake lock(리뷰 B-1)**: 전경 서비스는 스스로 CPU를 깨우지 않는다. 화면이 꺼진 채 fix가 끊기면(지하·터널) CPU를 깨울 것이 없어 기기가 깊은 절전에 들고, `Handler.postDelayed`의 시간축(`uptimeMillis`)이 멈춰 2초 워치독이 돌지 않는다 → 8초 `unreliable` 톤·15초 "신호 약함"·도착 추정·잊힌 세션 안전망이 **한꺼번에 멎어** "마지막 정상 톤 이후 영구 침묵"(INTEGRATIONS가 워치독을 만든 이유)이 안드로이드에서 재현된다 — **fix 두절이 곧 감시 중단**이라 두 축이 독립이 아니다. 그래서 **서비스 수명**에 `PowerManager.PARTIAL_WAKE_LOCK`을 묶는다(`location` 전경 서비스의 표준 관행): `startForeground` 성공 직후 획득, `onDestroy`에서 해제 — 모델의 `stop()`에 묶으면 서비스 시작 실패(`fail()` 경로, `stop()` 미경유)에서 시한 없는 lock이 프로세스가 죽을 때까지 남는다(리뷰 M2-2). `setReferenceCounted(false)`라 `restart()` 반복에도 획득·해제 횟수가 어긋나지 않는다. `AlarmManager.setExactAndAllowWhileIdle`은 Doze 창 제약으로 8초 임계에 못 미쳐 기각. 배터리 대가는 세션 시간에 비례하고 세션은 A23 안전망(600초·1200초)이 닫는다. 워치독은 매 tick의 실제 간격을 `GuideDiag`에 남긴다(`watchdog dt=` — 2초를 크게 넘는 tick이 곧 절전 침입의 증거, §11-1b).
 - ⚠ **D11 실측 항목(§11-1·1b)**: 전경에서 시작한 `location` 타입 FGS가 화면 꺼짐·다른 앱 전경에서 fix를 계속 받는가(Android 12+ while-in-use 규칙 — 문서 근거는 있으나 한소네 7(Android 15)에서 실측으로 닫는다) **그리고 fix가 끊겼을 때 워치독이 8초 안에 `unreliable`를 내는가**(후자가 D11의 진짜 위험). 실패하면 세션은 워치독의 `unreliable` 톤 + 15초 "신호 약함"으로 **정직하게** 드러난다(침묵 실패 없음).
 
 ### 4-2. `GuideLocationStream`
@@ -167,10 +168,10 @@ data class GuideFixPayload(
 
 ### 4-3. 알림 (`GuideNotification`)
 
-- 채널 `guide`(`IMPORTANCE_LOW` — 소리·진동 없음, 이름 `android.guide.notificationChannel`), 플랫폼 `Notification.Builder(context, channel)`(androidx 없음 — `setSilent`는 `NotificationCompat` 전용이라 쓰지 않는다, 리뷰 m-3): `setOngoing(true)`·`setOnlyAlertOnce(true)`·`setCategory(CATEGORY_NAVIGATION)`·`setSmallIcon(R.drawable.ic_launcher_foreground)`.
+- 채널 `guide`(`IMPORTANCE_LOW` — 소리·진동 없음, 이름 `android.guide.notificationChannel`), 플랫폼 `Notification.Builder(context, channel)`(androidx 없음 — `setSilent`는 `NotificationCompat` 전용이라 쓰지 않는다, 리뷰 m-3): `setOngoing(true)`·`setOnlyAlertOnce(true)`·`setCategory(CATEGORY_NAVIGATION)`·`setSmallIcon(R.drawable.ic_guide_notification)`(단색 실루엣 additive, 리뷰 N2-3).
 - 제목 = `joinText(beacon.walkHeading, destinationLabel)`(시트 제목과 같은 문장). 본문 = **상태 한 줄** = `statusText`가 비어 있지 않으면 그것, 비면 띠바 요약(`guide.band.remaining`/`starting`) — 시트 상태 행·띠바와 같은 조립기(`bandSummaryText`)를 지난다. 본문이 바뀔 때만 `notify`(매 fix 갱신 금지 — 띠바 거리 10m 양자화가 그 빈도를 정한다).
-- 액션 "안내 종료"(`beacon.stop`) → `PendingIntent.getService(ACTION_STOP)`. 알림 액션의 서비스 시작은 백그라운드 시작 제한을 받지만 우리 서비스는 **이미 전경으로 떠 있고** 알림 상호작용이 임시 허용 창을 준다(리뷰 m-15 "확인 필요" — §11-8이 실측). 다른 앱을 쓰는 중에 알림에서 종료하면 `isSpeechAllowed`가 거짓이라 종료 문장은 나가지 않고 **정지 톤만** 난다(의도 — §7-6).
-- 본문 탭 → `PendingIntent.getActivity(Intent(context, MainActivity::class.java).addFlags(FLAG_ACTIVITY_NEW_TASK or FLAG_ACTIVITY_SINGLE_TOP))` — 매니페스트 `launchMode` 변경 없이 기존 인스턴스를 앞으로 가져온다(리뷰 M-5). **탭은 앱을 전경으로만 가져오고 시트를 펼치지 않는다**(§12-6): 펼침 신호를 `MainActivity`가 받아 넘길 자리(`onNewIntent`)가 android-m1 소유라 없고, `Activity.intent`는 `SINGLE_TOP` 재전달에서 갱신되지 않는다. 돌아온 화면엔 띠바가 있어 "안내 시트 펼치기" 한 번이 더 든다(iOS에도 없던 경로라 등가 손실이 없다).
+- 액션 "안내 종료"(`beacon.stop`) → `PendingIntent.getService(ACTION_STOP, FLAG_IMMUTABLE or FLAG_UPDATE_CURRENT)`(minSdk 31은 가변성 플래그 없이 생성 시 예외 — 리뷰 m2-2). 알림 액션의 서비스 시작은 백그라운드 시작 제한을 받지만 우리 서비스는 **이미 전경으로 떠 있고** 알림 상호작용이 임시 허용 창을 준다(리뷰 m-15 "확인 필요" — §11-8이 실측). 다른 앱을 쓰는 중에 알림에서 종료하면 `isSpeechAllowed`가 거짓이라 종료 문장은 나가지 않고 **정지 톤만** 난다(의도 — §7-6).
+- 본문 탭 → `PendingIntent.getActivity(Intent(context, MainActivity::class.java).addFlags(FLAG_ACTIVITY_NEW_TASK or FLAG_ACTIVITY_SINGLE_TOP), FLAG_IMMUTABLE or FLAG_UPDATE_CURRENT)` — 매니페스트 `launchMode` 변경 없이 기존 인스턴스를 앞으로 가져온다(리뷰 M-5). **탭은 앱을 전경으로만 가져오고 시트를 펼치지 않는다**(§12-6): 펼침 신호를 `MainActivity`가 받아 넘길 자리(`onNewIntent`)가 android-m1 소유라 없고, `Activity.intent`는 `SINGLE_TOP` 재전달에서 갱신되지 않는다. 투명 트램펄린 `Activity`를 additive로 선언하는 길도 있으나(리뷰 m2-6) 액티비티 하나를 더 두는 대가가 "펼치기 한 번"보다 크다(YAGNI). 대신 **백그라운드를 거쳐 돌아온 전경 복귀에서 `hasScreen ∧ isMinimized`면 커서를 띠바에 착지**시킨다(§7-2 — 최소화 직후 착지와 같은 절차, 리뷰 m2-6 ②). iOS에도 없던 경로라 등가 손실이 없다.
 - 종료 화면 상태(추적 끝, `arrivalDest != null`)에는 알림이 **없다** — 서비스가 `stop()`에서 내려갔다. 종료 사실은 띠바(`guide.band.arrived`/`ended`)가 든다.
 - 프로세스가 시스템에 의해 죽으면 FGS 알림은 시스템이 지운다. 앱 재시작 시 `GuideSession`은 빈 상태라 유령 시트도 없다.
 
@@ -180,14 +181,15 @@ data class GuideFixPayload(
 
 ### 5-1. 톤 재생기 `GuideTonePlayer` (`SoundPool`)
 
-- **AudioAttributes(코디네이터 전달 2026-09-16, android-m6 설계 리뷰 출처)**: 오픈소스 TalkBack은 `USAGE_ASSISTANCE_NAVIGATION_GUIDANCE`·`USAGE_ASSISTANT`·`USAGE_ALARM` 재생이 시작되면 진행 중인 자기 발화를 **전부 끊는다**(VoiceActionMonitor/AudioPlaybackMonitor). 안내 톤을 그 usage로 내면 2초마다 TalkBack 낭독이 잘린다. 그래서 톤은 **`USAGE_ASSISTANCE_SONIFICATION` + `CONTENT_TYPE_SONIFICATION`**(TalkBack 끊김과 무관, `STREAM_MUSIC`으로 매핑되어 미디어 볼륨 0 판정과 정합). 발화는 §5-3.
+- **AudioAttributes(코디네이터 전달 2026-09-16, android-m6 설계 리뷰 출처)**: 오픈소스 TalkBack은 `USAGE_ASSISTANCE_NAVIGATION_GUIDANCE`·`USAGE_ASSISTANT`·`USAGE_ALARM` 재생이 시작되면 진행 중인 자기 발화를 **전부 끊는다**(VoiceActionMonitor/AudioPlaybackMonitor). 안내 톤을 그 usage로 내면 2초마다 TalkBack 낭독이 잘린다. 그래서 톤은 **`USAGE_MEDIA` + `CONTENT_TYPE_SONIFICATION`**(TalkBack 끊김 판정 축은 usage이고 `MEDIA`는 무관; `STREAM_MUSIC`으로 매핑되어 미디어 볼륨 0 판정과 정합하고 무음·진동 모드에서도 난다). ⚠ `USAGE_ASSISTANCE_SONIFICATION`은 쓰지 않는다 — `STREAM_SYSTEM`으로 매핑돼 무음 모드에서 안내음이 통째로 죽고 볼륨 판정이 엉뚱한 스트림을 본다(리뷰 B2-1, 매핑 함수는 `@hide`라 §11-12가 실기기로 확정). 발화는 §5-3.
 - `SoundPool.Builder().setMaxStreams(2).setAudioAttributes(위)`. 15개 `res/raw`는 **`GuideSession.attach`(앱 첫 컴포지션)에서 로드 시작**(`load` 비동기, 백그라운드 디코딩 — 버튼을 누를 무렵엔 끝나 있다, 리뷰 M-7). 그래도 로드 전 재생 요청이 오면: **시작 톤(`start`)만 보류 1개**로 들고 `setOnLoadCompleteListener`에서 재생(그 밖의 톤은 버린다 — 1초 미만 창의 추세 톤은 다음 fix가 대신한다).
 - **리소스 이름 규칙(리뷰 m-13)**: 웹 파일 `public/sounds/guide/<이름>.mp3`(접두 없음: `left-pitch.mp3`) ↔ iOS `guide-<이름>.mp3` ↔ 안드로이드 `res/raw/guide_<이름 with - → _>.mp3`(`guide_left_pitch.mp3`). `BeaconTone.resourceName(scheme)`(`guide-left-pitch`)의 `-` → `_`가 안드로이드 이름이고, 웹 경로는 거기서 `guide_` 접두를 떼고 `_` → `-`다. 표는 `toneResource(tone, scheme): Int`(exhaustive `when` → `R.raw.guide_*`). 소스 가드가 ① `res/raw` 파일 이름 집합 == 13톤 × scheme의 변환 집합(15개) ② 각 파일 바이트 == 대응 웹 파일(위 두 단계 역변환)을 단언한다.
-- **길이 정본은 상수 표 `ToneDurations`**(리뷰 m-1 — 런타임 측정은 두지 않는다. mp3 메타데이터 길이는 근사라 발화가 톤 꼬리와 겹칠 수 있다): closer 0.20 · farther 0.20 · nearby 2.20 · tick 0.48 · start 1.30 · stop 1.30 · ahead 0.68 · crosswalk 1.09 · left/right(pan·pitch) 0.40 · back 0.90 · warning 0.80 · unreliable 0.42(초, ffprobe 2026-09-16). `toneEndsAt = uptimeNow + ToneDurations[tone]`. 드리프트 가드(§10-1 ⑤'): JVM 테스트가 `res/raw` mp3의 **프레임 헤더를 세어**(MPEG-1/2 Layer III, Xing/Info 헤더 프레임 수 우선) 길이를 계산하고 표와 ±0.05초로 대조한다 — 소리 파일을 갈면 표가 빨개진다(iOS 햅틱 타이밍 주석 "소리 파일을 갈면 재분석"의 자동화판). `speechDeferThresholdSeconds` 0.6 선이 표를 정확히 가른다(`speechDeferMaxSeconds` 3.0 ≥ 2.2 + 0.15).
+- **길이 정본은 상수 표 `ToneDurations`**(리뷰 m-1 — 런타임 측정은 두지 않는다. mp3 메타데이터 길이는 근사라 발화가 톤 꼬리와 겹칠 수 있다): closer 0.20 · farther 0.20 · nearby 2.20 · tick 0.48 · start 1.30 · stop 1.30 · ahead 0.68 · crosswalk 1.09 · left/right(pan·pitch) 0.40 · back 0.90 · warning 0.80 · unreliable 0.42(초, ffprobe 2026-09-16). `toneEndsAt = uptimeNow + ToneDurations[tone]`. 드리프트 가드(§10-1 ⑤'): JVM 테스트가 `res/raw` mp3의 **프레임 헤더를 세어**(ID3v2 syncsafe 크기 건너뛰기 → MPEG-1 Layer III 동기워드·비트레이트·샘플레이트·패딩으로 프레임 길이 계산 → 후행 ID3v1 128바이트 제외, Xing/Info가 있으면 그 프레임 수 우선; 파일은 ID3v2.4 + 128kbps CBR 44.1kHz 모노/스테레오 혼재) 길이를 계산하고 표와 ±0.05초(≈ ±1.9프레임)로 대조한다 — 소리 파일을 갈면 표가 빨개진다. **파서 자가 시험**(리뷰 m2-3): 합성 바이트열(ID3v2 헤더 + 알려진 N개의 417바이트 프레임 + ID3v1 꼬리)로 `frames == N`·`duration == N × 1152 / 44100`을 먼저 단언한다 — 표를 그대로 돌려주는 파서도 초록이 되는 자기 참조를 막는다. `speechDeferThresholdSeconds` 0.6 선이 표를 정확히 가른다(`speechDeferMaxSeconds` 3.0 ≥ 2.2 + 0.15).
 - **게인**(iOS `gains` 미러): closer/farther 0.35 · nearby 1 · tick 0.3 · start/stop/ahead/crosswalk/left/right/back 0.8 · warning 1 · unreliable 0.45.
 - **선점**: 새 재생은 진행 중 스트림을 `stop`하고 교체(iOS `playing.stop()`).
-- `play(tone)`: ① `toneEndsAt = null`(진입 즉시 — 조기 반환 경로 공통) ② `isSuppressed`면 return ③ **`if (!focus.acquire()) { GuideDiag.log("tone skipped focus"); return }`**(리뷰 M-10 — 포커스는 협약이라 잃어도 소리가 나므로 앱이 스스로 멈춘다) ④ 진동(§5-4) ⑤ `soundPool.play(...)` 반환 0이면 `isSilenced = true`, 아니면 `isSilenced = false`·`toneEndsAt` 대입·`focus.releaseAfter(duration + 0.15)`.
-- **무음 진입 1회(리뷰 m-8, iOS `playTone` 동형)**: 모델의 `playTone` 창구가 재생 뒤 `tones.isSilenced`를 보고, 진입 에지에서만 `ResultHaptic.failure` + 문장 `android.beacon.soundUnavailable`(`silencedHapticFired` 래치, 무음이 풀리면 되돌린다). 시트 행은 상시.
+- `play(tone)`: ① `toneEndsAt = null`(진입 즉시 — 조기 반환 경로 공통) ② `isSuppressed`면 return ③ **진동(§5-4) — 포커스 판정보다 앞**(iOS 순서 그대로: 소리가 죽는 바로 그 순간 대체 채널까지 끄지 않는다, 리뷰 M2-1) ④ **`if (!focus.acquire()) { focusDeniedStreak++; GuideDiag.log("tone skipped focus"); return }`**(리뷰 M-10 — 포커스는 협약이라 잃어도 소리가 나므로 앱이 스스로 멈춘다) ⑤ `focusDeniedStreak = 0`·`soundPool.play(...)` 반환 0이면 `isSilenced = true`, 아니면 `isSilenced = false`·`toneEndsAt` 대입·`focus.releaseAfter(duration + 0.15)`.
+- **거절 지속은 3-state다**(리뷰 M2-1 ② — 통화 말고도 다른 앱의 배타 점유·OEM 상태가 거절을 만들고, 그러면 안내가 멎었는데 침묵이 "정상 진행"과 구분되지 않는다): `focusDeniedStreak ≥ 3`(약 6초)이면 `focusDenied = true` → 모델이 문장 `android.guide.focusDenied` 1회(진동은 이미 매 톤 나간다) + 시트 행 상시; 다음 허가된 재생에서 해제. 판정 축 넷(미디어 볼륨 0·포커스 거절·`isSilenced`·TTS 불가)이 같은 층에서 각자 문장·행을 갖는다.
+- **무음 진입 1회(리뷰 m-8, iOS `playTone` 동형)**: 모델의 `playTone` 창구가 재생 뒤 `tones.isSilenced`·`tones.focusDenied`를 보고, 진입 에지에서만 `ResultHaptic.failure`(무음) / 문장(둘 다)을 낸다(`silencedHapticFired`·`focusDeniedNoticed` 래치, 풀리면 되돌린다). 시트 행은 상시.
 - **`soundDegraded` 판정 축**: iOS "잠금·백그라운드에서 소리가 나는가"는 안드로이드에서 성립하지 않는다(FGS가 살아 있는 한 `SoundPool`은 화면 상태와 무관하게 난다). 남는 무음 원인은 **미디어 볼륨 0**이라 `audioManager.getStreamVolume(STREAM_MUSIC) == 0`을 세션 시작과 매 재생에 판정, 참이면 `soundDegraded = true` + 문장 `android.guide.mediaVolumeZero` 1회(`ResultHaptic.attention`) + 시트 행 상시. DND는 미디어 스트림을 막지 않는다(수용). `isBackgroundAudible` 개념은 두지 않는다.
 
 ### 5-2. `GuideAudioFocus` — 목표 계약 5항의 AudioFocus 판
@@ -209,7 +211,7 @@ class GuideAudioFocus(audioManager, main: Handler) {
 | 목표 계약(kit-guide 보고) | AudioFocus 판 | 달성 |
 |---|---|---|
 | 1. 받아쓰기·TTS 점유 중 억제 | 억제는 오디오 층이 아니라 **모델 창구**(`outputSuppressed`, §5-5)가 막는다. 포커스는 무관 | ✔ |
-| 2. 인터럽션 시작/종료 재조정("`.ended` 유실 대비") | `onAudioFocusChange(LOSS*)` → `held = false`. **다음 `play`/`speak`가 `acquire`로 재요청하고, 거절되면 내지 않는다**(통화 중 무음 — §12-7). GAIN 콜백에 의존하지 않는다(유실돼도 다음 재생이 되살린다) | ✔ |
+| 2. 인터럽션 시작/종료 재조정("`.ended` 유실 대비") | `onAudioFocusChange(LOSS*)` → `held = false`. **다음 `play`/`speak`가 `acquire`로 재요청하고, 거절되면 소리는 내지 않는다**(통화 중 소리 무음·진동은 남는다 — §12-7). GAIN 콜백에 의존하지 않는다(유실돼도 다음 재생이 되살린다). 거절이 지속되면 3-state 통지(§5-1) | ✔ |
 | 3. route 변경: 메아리만 거르고 남의 탈취는 회복 | `SoundPool`은 플레이어가 route에 결박되지 않아 재생성이 없다. `ACTION_AUDIO_BECOMING_NOISY`는 2.2초 이하 큐라 **무시**(문서화). 채팅 TTS(M6)·음악 앱의 포커스 요청은 우리 LOSS*로 와 계약 2와 같은 경로 | ✔(해당 없음 + 2로 흡수) |
 | 4. 원복은 우리가 승격했을 때만(`didPromote`) | `abandonAudioFocusRequest`는 **자기 `AudioFocusRequest` 핸들**에만 작용한다 — 구조적으로 남을 건드릴 수 없다 | ✔(구조) |
 | 5. 소리 직후 종료가 소리를 자른다 → 잔여만큼 대기, 새 세션 시작은 미뤄진 원복 취소 | `releaseAfter(duration + 0.15)` 예약, `acquire`가 예약 취소, `endSession(remaining)`은 잔여 + 0.15 뒤 반납 | ✔ |
@@ -236,19 +238,19 @@ class GuideAudioFocus(audioManager, main: Handler) {
 | 16 | 소유권 이전은 자격만 반납 | 재생기 인스턴스가 하나(M5도 같은 `GuideAudioFocus`를 공유) — 이전 개념 없음. 단언: 예약 반납 중 새 `acquire`가 예약을 취소하고 `held` 유지 |
 | 17 | route 변경 사유 매핑 | 해당 없음 |
 | 18 | 카테고리 탈취는 소유 중에만 재적용, 재생성 없음 | 계약 2·3으로 흡수 |
-| **19** | (안드로이드 추가) 요청 거절 | `requestAudioFocus`가 `FAILED`(통화 중) → `acquire` false·`held` false·**`play`가 `soundPool.play`를 부르지 않는다**·`toneEndsAt == null`. 통화가 끝난 뒤 다음 `play` → 재요청 → GRANTED → 재생 |
+| **19** | (안드로이드 추가) 요청 거절 | `requestAudioFocus`가 `FAILED`(통화 중) → `acquire` false·`held` false·**`play`가 `soundPool.play`를 부르지 않는다**(진동은 이미 나갔다)·`toneEndsAt == null`. 3회 연속 거절 → `focusDenied` 참(통지 1회). 통화가 끝난 뒤 다음 `play` → 재요청 → GRANTED → 재생·`focusDenied` 해제 |
 
 ### 5-3. 발화 `GuideSpeaker` (`TextToSpeech`)
 
 - **채널 판정**: 안내 문장은 앱 자체 TTS **한 채널**로 발화한다(착수 프롬프트 지정). 근거: 안드로이드 접근성 통지(`announceForAccessibility`, API 34 deprecated / Compose live region)는 화면이 살아 있는 동안만 동작하고 한소네 자체 리더가 TalkBack이 아닐 수 있다 — 스크린 리더 유무·전경 여부와 무관한 채널이 필요하다. 대가 둘: ① TalkBack 낭독과 겹칠 수 있다(§11-4 실측) ② **점자 디스플레이에 문장이 오지 않는다** — 점자는 접근성 포커스가 놓인 요소만 표시하므로 시트 상태 행에 커서가 없는 한(걷는 중엔 시트를 훑지 않는 것이 정상) 안내 문장이 점자로 닿지 않는다(리뷰 M-8, D7 점자 축). 소리가 정본이라 기능이 죽진 않지만 §11-16이 이 축을 독립으로 실측하고, 그 결과가 §12-5 대안의 발동 조건이다.
 - 따라서 **안내 시트에는 live region이 없다**(M1 `StatusLine` 관용구의 예외 — 같은 문장을 TTS와 TalkBack이 둘 다 읽는 이중 낭독 차단). 사용자 활성화의 직접 응답도 같은 채널(`announceNow`).
-- **AudioAttributes**: `USAGE_MEDIA` + `CONTENT_TYPE_SPEECH`(코디네이터 전달 — `NAVIGATION_GUIDANCE`는 TalkBack 발화를 끊는다. 대안 `USAGE_ASSISTANCE_ACCESSIBILITY`(접근성 볼륨을 따르게)는 §11-4 실측 뒤 판정).
+- **AudioAttributes**: `USAGE_MEDIA` + `CONTENT_TYPE_SPEECH`(코디네이터 전달 — `NAVIGATION_GUIDANCE`는 TalkBack 발화를 끊는다. 대안 `USAGE_ASSISTANCE_ACCESSIBILITY`(접근성 볼륨을 따르게)는 §11-4 실측 뒤 판정). 적용은 **`onInit(SUCCESS)` 뒤 인스턴스 메서드 `tts.setAudioAttributes(...)` 1회** — `speak()`의 `Bundle`로는 줄 수 없다(리뷰 m2-1).
 - `TextToSpeech(context, initListener)` — 앱 수명 싱글턴(재생성 비용·초기화 지연), 세션 시작에 `prepare()`. 초기화 완료 전 문장은 **최신 1개 보류**(latest-wins). `setLanguage(Locale.forLanguageTag(AppLocale.current))` — `LANG_MISSING_DATA`·`LANG_NOT_SUPPORTED`면 `ttsUnavailable = true`(시트 행 `android.guide.ttsUnavailable` 상시 + `ResultHaptic.failure` 1회 + 상태 행은 계속 갱신).
-- `speak(text)`: ① `if (!focus.acquire()) { GuideDiag.log("speech skipped focus"); return false }`(리뷰 M-10) ② `utteranceId = ++seq` ③ `speak(text, QUEUE_FLUSH, params(위 attributes + `KEY_PARAM_UTTERANCE_ID`))` — **latest-wins**(임박 명령이 전문 뒤에 줄 서지 않는다). `onDone/onError/onStop(id)`(메인 반입)에서 **`id == 최신 seq`일 때만** `focus.releaseAfter(0.15)`(리뷰 m-2 — 플러시된 옛 발화의 `onStop`이 새 발화 도중 포커스를 반납하지 않게). 문장은 `spokenDistanceUnits(text, android.unit.spokenMeters)`를 지난다(iOS `spokenUnits` 동형 — TTS가 `m`을 어떻게 읽는지 §11-5 실측 뒤 정정 유지/제거).
+- `speak(text)`: ① `if (!focus.acquire()) { GuideDiag.log("speech skipped focus"); return false }`(리뷰 M-10) ② `utteranceId = (++seq).toString()` ③ `speak(text, QUEUE_FLUSH, null, utteranceId)`(네 번째 인자가 id — `KEY_PARAM_UTTERANCE_ID`는 레거시 오버로드 전용) — **latest-wins**(임박 명령이 전문 뒤에 줄 서지 않는다). `onDone/onError/onStop(id)`(메인 반입)에서 **`id == 최신 seq`일 때만** `focus.releaseAfter(0.15)`(리뷰 m-2 — 플러시된 옛 발화의 `onStop`이 새 발화 도중 포커스를 반납하지 않게). 문장은 `spokenDistanceUnits(text, android.unit.spokenMeters)`를 지난다(iOS `spokenUnits` 동형 — TTS가 `m`을 어떻게 읽는지 §11-5 실측 뒤 정정 유지/제거).
 - **배율**: `ListenSpeed.normalizeSpeed(저장값)`이 1.0이면 `setSpeechRate`를 **부르지 않는다** — 엔진이 시스템 TTS 기본 속도(설정 > 접근성 > 텍스트 음성 변환 > 말하기 속도)를 쓴다. 스크린 리더 사용자는 그 값을 이미 빠르게 맞춰 두므로 앱 고정값 1.0이 오히려 느리다. 1.5·2.0이면 `setSpeechRate(배율)`. **초기 표: 1.0 → 호출 없음(시스템 기본), 1.5 → 1.5f, 2.0 → 2.0f** — §11-6 실측으로 확정.
 - `highPriority`: 안드로이드 TTS엔 우선순위 축이 없다 — 모든 문장이 flush(latest-wins)라 iOS `.high`의 목적(착지 낭독에 잠식되지 않음)은 채널 분리로 이미 달성된다. 인자는 호출부 의도 기록용으로 유지(계측 로그에 남긴다).
 - **전경 게이트(iOS `isForeground`)의 안드로이드 판정(§12-3)**: `post()`는 억제 가드 → `GuideSession.isSpeechAllowed()` 순으로 판정하고 거짓이면 `missedAnnouncement = true`로 떨어뜨린다. `isSpeechAllowed = 앱 전경(Activity STARTED) ∨ 화면 꺼짐(!powerManager.isInteractive)`. 즉 **다른 앱이 전경**일 때만 음성을 막고(그 사용자는 그 앱을 스크린 리더로 읽는 중이라 우리 TTS가 겹친다 — iOS 규칙의 근거 그대로), **화면이 꺼진 채 걷는 주 사용 상황에서는 음성이 난다**(iOS는 VO 통지가 백그라운드에서 게시되지 않아 막았다 — 그 플랫폼 제약이 안드로이드엔 없다). 실측 §11-3.
-- **전경 복귀 상환(리뷰 M-6 — iOS 불변식 그대로)**: `setForeground(true)`(백그라운드 경유 시)에서 ① 종료 화면 30분 만료 소거 ② **상환 블록은 `isTracking` 판정보다 앞이다** — 다른 앱 전경 중에 확정·추정 도착·잊힌 세션 종료가 나면 세션이 끝난 채 `missedAnnouncement`만 남는데, 가드 뒤에 두면 돌아온 사용자가 아무 말도 듣지 못한 채 종료 화면만 만난다. 합본 규칙: `owed = [pendingStepFreeNotice, pendingFinalApproachIntro, tail]`(`tail` = `statusText`가 비면 `currentGuidanceText`, `intro`와 같으면 생략), 장부를 먼저 지우고 `announce(owed) { onDropped: 장부 복원 }`. ③ 그 뒤 `isTracking` 가드(안드로이드는 앵커 리셋이 없어 가드 뒤에 남는 일이 없다 — §6-3).
+- **전경 복귀 상환(리뷰 M-6 — iOS 불변식 그대로)**: `setForeground(true)`에서 `wasBackgrounded`를 **맨 앞에서 읽고 지운다**(iOS ①) → 백그라운드 경유였으면 ① 종료 화면 30분 만료 소거 (iOS ③ `arrivalHealth` 실패 재시도는 없다 — 걸음 표본이 메모리 누적이라 실패 상태가 없다, 리뷰 m2-7) ② **상환 블록은 `isTracking` 판정보다 앞이다** — 다른 앱 전경 중에 확정·추정 도착·잊힌 세션 종료가 나면 세션이 끝난 채 `missedAnnouncement`만 남는데, 가드 뒤에 두면 돌아온 사용자가 아무 말도 듣지 못한 채 종료 화면만 만난다. 합본 규칙: `owed = [pendingStepFreeNotice, pendingFinalApproachIntro, tail]`(`tail` = `statusText`가 비면 `currentGuidanceText`, `intro`와 같으면 생략), 장부를 먼저 지우고 `announce(owed) { onDropped: 장부 복원 }`. ③ 그 뒤 `isTracking` 가드(안드로이드는 앵커 리셋이 없어 가드 뒤에 남는 일이 없다 — §6-3).
 - 전경 판정 입력: `GuideBottomBar`의 `DisposableEffect(LocalLifecycleOwner)`가 `ON_START/ON_STOP`을 `GuideSession.setForeground`로 넘긴다(`lifecycle-process` 의존성 추가 없이). `wasBackgrounded`는 `ON_STOP`에서 세운다. 전경 판정은 캐시가 아니라 **게시 시점 조회**(플래그 + `powerManager.isInteractive` 실조회).
 
 ### 5-4. 진동
@@ -293,7 +295,7 @@ fun setOutputSuppressed(active: Boolean, owner: Any) {
 
 `consume(event)`(walk만): `AnnounceSteps`·`BundleReread` → `GuideText.unit`, `lastGuidance`, `statusText = ""`, 억제면 `pendingRecovery` / `Imminent(stage 0만 문장)` → `GuideText.imminentText(action)`, `statusText`, 억제 시 보관 안 함 / `Periodic` → `GuideText.periodicWalk(target = liveSteps[i].target)`, `statusIsNextPreview = true` / `WaypointReached` → `waypoint = null`·`clearProposal`·`rerouteToken += 1`·`nearby` 톤·`directions.viaArrived`(억제면 `pendingRecovery`) / `OffRoute` → 회차 시작 = `!offRoute`; `offRoute = true`·문장·회차 시작이면 `maybeFetchProposal` / `BackOnRoute` → `offRouteEndedByReroute = false`·`offRoute = false`·`clearProposal`·`ResultHaptic.success`·문장 / `UncertainEnter`·`UncertainExit`·`Reacquiring`·`Reacquired` → 문장 / `SpeedSuggest` → 무시 / `FarNotice`·`FinalApproachEnter` → 도달하지 않음(walk 프로파일·fix 처리부가 가른다).
 
-`handleFinalApproach`: `isUsableFix` 아니면 `unreliable` → return. `lastFixAt`·`lastStaleNoticeAt = null`·`lastFixCoord/At`·`noteSessionProgress` → 직선거리·`lastUsableDistanceToDest`·띠바 거리·`advanceProgressAnchor` → `arrived = distance ≤ finalApproachArriveMeters` → `final` 로그 → `routeTone(trend = TrendInput(distance, max(15, acc), floor acc, motion, 2초), arrived)` → 진입 서술 1회(`GuideText.finalApproachEnter`, `lastFinalTickAt = now`, `ResultHaptic.attention`, 미게시면 `pendingFinalApproachIntro`) → return → 도착이면 `nearby` 톤·`stop()`·`arrivalDest = dest`·`endKind = arrived`·`loadArrivalHealth()`·문장(`guide.arrived`) → `maybePresumeArrival` → 15초 주기 `GuideText.finalApproachTick(distance, liveDirection, acc)`.
+`handleFinalApproach`: `isUsableFix` 아니면 `unreliable` → return. `lastFixAt`·`lastStaleNoticeAt = null`·`lastFixCoord/At`·`noteSessionProgress` → 직선거리·`lastUsableDistanceToDest`·띠바 거리·`advanceProgressAnchor` → `arrived = distance ≤ finalApproachArriveMeters` → `final` 로그 → `routeTone(trend = TrendInput(distance, max(15, acc), floor acc, motion, 2초), arrived)` → **진입 서술이 아직이면** 1회 내고 return(`GuideText.finalApproachEnter`, `statusText`·`lastGuidance`·`liveTopText` 대입, `lastFinalTickAt = now`, `ResultHaptic.attention`, 미게시면 `pendingFinalApproachIntro`) — ⚠ 도착 판정보다 **앞**이다: 뒤에 두면 오프셋 10~15m 구간에서 진입 fix가 이미 도착 반경 안이라 배치 서술이 한 번도 나가지 않은 채 세션이 끝난다(iOS `BeaconModel.swift:2085`, 리뷰 N2-1) → 서술이 이미 나갔으면 도착 판정: `arrived`면 `nearby` 톤·`stop()`·`arrivalDest = dest`·`endKind = arrived`·`loadArrivalHealth()`·`statusText`·`lastGuidance`·`liveTopText` = `guide.arrived`·문장 → 아니면 `maybePresumeArrival` → 15초 주기 `GuideText.finalApproachTick(distance, liveDirection, acc)`(세 필드 같은 대입, 리뷰 m2-5).
 
 `liveDirection`: `courseStep(course, courseAccuracy, speed ?: -1.0, motion, age)` — `speed`가 null이면 `-1.0`(courseStep의 `speed >= 0.4` 가드가 `Unknown`을 낸다).
 
@@ -313,7 +315,7 @@ fun setOutputSuppressed(active: Boolean, owner: Any) {
 | 백그라운드 복귀 앵커 리셋(`handleScenePhaseChange` 말미) + 그 짝 `suppressNextNotice`(복귀 직후 1회 삼킴) | 미선언 빌드만 리셋 | **둘 다 없음** | 스트림이 FGS로 계속 흘러 상태가 최신(iOS 선언 빌드와 같은 갈래). 리셋이 없으니 삼킬 재발화도 없다(리뷰 N-6) |
 | 음성 전경 게이트 | 전경만 | 전경 ∨ 화면 꺼짐(§5-3) | VO 통지 제약 부재 |
 | `isBackgroundAudible`/`soundDegraded` | 카테고리·활성 | 미디어 볼륨 0 | 카테고리 개념 없음 |
-| 인터럽션 중 재생 | 시스템이 막는다 | 앱이 막는다(포커스 못 잡으면 안 낸다) | 포커스는 협약 |
+| 인터럽션 중 재생 | 시스템이 막는다 | 앱이 막는다(포커스 못 잡으면 소리는 안 낸다, 진동은 낸다, 지속 거절은 통지) | 포커스는 협약 |
 | 진동 백그라운드 | 불가 | 가능(신호를 진동에만 싣지 않는 규칙은 유지) | 플랫폼 |
 | 권한 회수 처리 | 델리게이트로 `stopAndFail` | 없음(프로세스 재시작) | 플랫폼 |
 | 정밀 위치 | `reducedAccuracy` 팝업 | COARSE → 재요청(M3 동형) | 플랫폼 |
@@ -329,7 +331,7 @@ fun setOutputSuppressed(active: Boolean, owner: Any) {
 |---|---|
 | 톤 계층 배타 순서·`needsRebase` | `toneLayerStep` 입력 조립만(§6-1) — 간략 3단·상세 4단 입력이 iOS와 같은 값 |
 | 도플러 3-state 정지, `speedUnknown`엔 tick 없음 | `motionStep`에 `hasSpeed()` 거짓을 **null**로(0.0 금지) |
-| fix 부재 워치독(8초 톤·15초 음성·30초 재통지) — **fix 경로와 독립** | 메인 `Handler.postDelayed` 2초 루프 `tickWatchdog` **+ 세션 수명 부분 wake lock**(§4-1 — 없으면 fix 두절이 곧 절전이라 독립이 아니다) |
+| fix 부재 워치독(8초 톤·15초 음성·30초 재통지) — **fix 경로와 독립** | 메인 `Handler.postDelayed` 2초 루프 `tickWatchdog` **+ 서비스 수명 부분 wake lock**(§4-1 — 없으면 fix 두절이 곧 절전이라 독립이 아니다) |
 | 이탈 두 축·유도기 리듀서 소유 | `guideStep`만 부른다(방위 관측 인자 없음) |
 | 도착 창·`briefArrivalWindowStep`·`resetArrivalWindow` 한 곳 | §6-1 간략·최종 접근 갱신부 |
 | 결정 지점 두 층·임박 삼중 큐·`stage > 0` 무문장 | `consume(Imminent)` |
@@ -354,13 +356,14 @@ fun setOutputSuppressed(active: Boolean, owner: Any) {
 
 ## 7. 화면 ([4])
 
-M1 §3 기본형·M2·M3 관용구(`mergedRow`·`ActionRow`·`tapTarget`·`headingText`·`FocusRequester`는 `focusable`/`clickable` **앞**·48dp·이모지 0)를 전부 승계한다. **이 화면에만 다른 것**: live region이 없다(§5-3). 착지 관용구는 M1~M3의 `runCatching { requester.requestFocus() }.onFailure { Log.w }` 그대로이고(`requestFocus()`는 `void`다 — Boolean 판정 금지, 리뷰 M-3) M4는 **"실패하면 600ms 뒤 한 번 더"**만 더한다: `runCatching { r.requestFocus() }.onFailure { delay(600); runCatching { r.requestFocus() }.onFailure { Log.w(...) } }`.
+M1 §3 기본형·M2·M3 관용구(`mergedRow`·`ActionRow`·`BodyLine`·`HeadingLine`·`tapTarget`·`headingText`·48dp·이모지 0)를 전부 승계한다. **착지 부착은 두 관용구뿐**(main `fc246219` 가드): 텍스트 행은 `mergedRow(tag, spoken, focus)`, 버튼·클릭 행은 `a11y/Landing.kt`의 `landingTarget(requester)`(`clickable`·`Button` 앞에 — 터치 입력 모드에서 `clickable`이 포커스를 못 받는 Compose 1.12.1 결함 처방, `focusProperties { canFocus = true }` 포함). `focusRequester(`를 직접 붙이지 않는다. **이 화면에만 다른 것**: live region이 없다(§5-3). 착지 관용구는 M1~M3의 `runCatching { requester.requestFocus() }.onFailure { Log.w }` 그대로이고(`requestFocus()`는 `void`다 — Boolean 판정 금지, 리뷰 M-3) M4는 **"실패하면 600ms 뒤 한 번 더"**만 더한다: `runCatching { r.requestFocus() }.onFailure { delay(600); runCatching { r.requestFocus() }.onFailure { Log.w(...) } }`.
 
 ### 7-1. 시작 버튼 (`WalkGuideStartButton`, directions 슬롯)
 
 - `WalkOutcomeRows`에 `guideStart: (@Composable (variant: WalkRouteVariant?) -> Unit)?` 인자를 더한다(기본값 null — M3 테스트 호환). `DirectionsForm`은 `AppConfig.experimentalGuidanceEnabled ∧ 도착 좌표 있음`일 때만 슬롯을 넘긴다: `{ variant -> WalkGuideStartButton(dest, label, accessible = s.stepFreeEnabled && lang == ko, variant, shortestAvailable = s.walkShortest != null, waypoint = s.via) }`. 도착 좌표·라벨 = `promotedDestination ?: (to as Place)`(iOS `trackedDestination` 동형); `to == Current`면 슬롯 null(버튼 없음).
 - 버튼 라벨 `beacon.guideStartWalk` / `android.beacon.guideStartWalkShortest`(android-extra 신규), `tapTarget`, testTag `guide-start-walk`/`guide-start-walk-shortest`. 활성화 = `GuideSession.startWalk(request)`. 착지: 시작 즉시 시트가 뜨므로 이동 없음. 시트가 최소화되어 돌아오면 커서는 시스템 복원(버튼이 그대로 있다).
 - 추적 중엔 버튼을 **숨기지 않는다**(누르면 `guide.alreadyActive` 거부 통지 — iOS 동형).
+- **시작 실패 행(리뷰 M2-4 — iOS 거리 추적 섹션의 실패 상태부, M3 spec이 M4로 이월)**: `ui.status.isFailure ∧ statusText.isNotEmpty ∧ ui.lastStartVariant == variant`일 때 그 시작 버튼 **바로 아래**에 ① 문장 행(`BodyLine`, `mergedRow(focus = failFocus)` — 실패 전이에 **착지**: TTS 1회 낭독이 TalkBack 라벨 낭독이나 타 앱 전경에 유실돼도 화면에 원인이 남는다) ② 해결 버튼: `failResolution == precise` → `android.common.allowPrecise`(`AppConfig.permissionGate.request()` 재요청 → `Fine`이면 `walk.restart()`, 아니면 통지 `android.common.geoReducedDesc`) / `settings` → `android.common.openSettings`(`appDetailsSettingsIntent` + `tryStartActivity`, M3와 같은 함수) / `none` → 버튼 없음. 행은 `clearFailure()`(새 시작·다른 버튼 활성화)로 사라진다. 시트·띠바는 `hasScreen` 조건이라 실패 상태를 그리지 않는다 — 이 행이 유일한 자리다.
 
 ### 7-2. `GuideBottomBar` (AppRoot 삽입 한 자리)
 
@@ -370,6 +373,7 @@ M1 §3 기본형·M2·M3 관용구(`mergedRow`·`ActionRow`·`tapTarget`·`headi
     val app = LocalContext.current.applicationContext; remember { GuideSession.attach(app) }   // 멱등
     GuidePermissionsLauncher()                       // rememberLauncherForActivityResult 손 등록(attach/detach)
     ForegroundObserver()                             // ON_START/ON_STOP → GuideSession.setForeground
+    if (!AppConfig.experimentalGuidanceEnabled) { tabs(); return }   // 정식 빌드: 탭 바만(진입점 0)
     val ui by GuideSession.walk.ui.collectAsState()
     val showsSheet = GuideSession.hasScreen && !GuideSession.isMinimized
     KeepScreenOn(showsSheet)                         // 시트가 펼쳐진 동안만 activity.window FLAG_KEEP_SCREEN_ON(§12-8)
@@ -379,20 +383,20 @@ M1 §3 기본형·M2·M3 관용구(`mergedRow`·`ActionRow`·`tapTarget`·`headi
 ```
 
 - `ModalBottomSheet`(Material3 1.3+)는 `Dialog` 기반 별도 윈도라 `Scaffold.bottomBar` 슬롯 안에서 불러도 레이아웃에 기여하지 않는다 — **§10-2 androidTest가 확인**(리뷰 m-16 "확인 필요"). 안 되면 `GuideSheet()` 호출만 `AppRoot`의 `Scaffold` 바깥으로 옮긴다(삽입 자리가 둘이 되므로 그때 코디네이터 보고).
-- 띠바(`GuideBand`): 버튼 하나 = 객체 하나. 시각 두 줄(요약·`guide.band.return`), 낭독 `joinText(spokenDistanceUnits(요약), guide.band.return)`(`clickable + clearAndSetSemantics` 관용구). 요약 = `guide.band.remaining(dest, formatDistance(bandDistanceMeters))` / `starting` / 종료 화면이면 `arrived`·`ended`. 활성화 → `returnedFromBand = true; isMinimized = false`. **최소화 직후 착지 = 띠바**(`FocusRequester`를 `clickable` 앞에, 한 프레임 + 400ms 뒤 착지 관용구).
+- 띠바(`GuideBand`): 버튼 하나 = 객체 하나. 시각 두 줄(요약·`guide.band.return`), 낭독 `joinText(spokenDistanceUnits(요약), guide.band.return)`(`clickable + clearAndSetSemantics` 관용구). 요약 = `guide.band.remaining(dest, formatDistance(bandDistanceMeters))` / `starting` / 종료 화면이면 `arrived`·`ended`. 활성화 → `returnedFromBand = true; isMinimized = false`. **최소화 직후 착지 = 띠바**, **백그라운드를 거친 전경 복귀에서 `hasScreen ∧ isMinimized`면 착지 = 띠바**(알림 탭 복귀가 이 경로다, 리뷰 m2-6) — 둘 다 `landingTarget(bandFocus)`를 `clickable` 앞에, 한 프레임 + 400ms 뒤 착지 관용구.
 - 시트(`GuideSheet`): `ModalBottomSheet(onDismissRequest = { isMinimized = true }, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), dragHandle = null)`. 뒤로 키·바깥 탭·스와이프 = **최소화**(종료가 아니다). 내용은 `Column(verticalScroll)` + 최하단 고정 종료 버튼(스크롤 밖). 조망 페이지가 열려 있을 때는 시트 콘텐츠 안의 `BackHandler(enabled = overviewOpen)`이 뒤로 키를 먼저 받아 조망만 닫는다(`ModalBottomSheet` 자체 핸들러보다 안쪽이라 우선 — §10-2가 확인).
 
 ### 7-3. 안내 시트 읽기 순서 (= 시각 순서)
 
 | 순서 | 요소 | 계약 |
 |---|---|---|
-| 1 | 제목 `Text(joinText(beacon.walkHeading, destinationLabel))` — 헤딩(`headingText`) + `mergedRow("guide-title", focus = titleFocus)`(단일 `Text`에만, 리뷰 N-1). **진입 기본 착지**. 접기 `IconButton`(`guide.minimize`, 48dp, `focusRequester(minimizeFocus)`)은 같은 `Row`의 **형제**(병합 밖) — 띠바 복귀(`returnedFromBand`) 시 착지 | |
-| 2 | 진행 상황 버튼 `guide.progressButton` | 상세(경로 보유) → 조망 페이지(§7-4)로 시트 내용을 교체 / 간략 → `announceNow(progressText(), high)` + `statusText` 갱신 |
+| 1 | 제목 `Text(joinText(beacon.walkHeading, destinationLabel))` — `HeadingLine(focus = titleFocus)`(단일 `Text`에만 `mergedRow`, 리뷰 N-1). **진입 기본 착지**. 접기 `IconButton`(`guide.minimize`, 48dp, `landingTarget(minimizeFocus)`)은 같은 `Row`의 **형제**(병합 밖) — 띠바 복귀(`returnedFromBand`) 시 착지 | |
+| 2 | 진행 상황 버튼 `guide.progressButton`(`landingTarget(progressFocus)` — 조망 닫힘 복귀 착지) | 상세(경로 보유) → 조망 페이지(§7-4)로 시트 내용을 교체 / 간략 → `announceNow(progressText(), high)` + `statusText` 갱신 |
 | 3 | 재조회 버튼(이탈 확정 시만) | 라벨 `isRerouting ? guide.rerouteBusy : guide.rerouteButton`(라벨이 곧 상태). 성공·자동 채택으로 사라질 때 **제목 착지**(`offRoute` false 전이 ∧ `reroutePressed ∨ offRouteEndedByReroute`) |
 | 4 | 간략 주석 `beacon.straightLineNote`(`mode == brief`) | 비상호작용 행 |
 | 5 | 남은 거리·시간(`remainingText`, 상세 ∧ !offRoute) | `TextRow(spoken = spokenDistanceUnits)` — 매 fix 갱신, 통지 없음 |
 | 6 | 상세: 하단 2행(`liveTopText`·`liveNextText`) / 간략: 상태 행(`statusIsNextPreview ? guide.progressNext(statusText) : statusText`) | 비상호작용 행. 값이 null·빈 문자열이면 행 없음 |
-| 7 | 소리 상태 행(`soundDegraded` → `android.guide.mediaVolumeZero`, `ttsUnavailable` → `android.guide.ttsUnavailable`, `isSilenced` → `android.beacon.soundUnavailable`) | 지속 상태라 상태 행과 자리를 다투지 않는다 |
+| 7 | 소리 상태 행(`soundDegraded` → `android.guide.mediaVolumeZero`, `focusDenied` → `android.guide.focusDenied`, `ttsUnavailable` → `android.guide.ttsUnavailable`, `isSilenced` → `android.beacon.soundUnavailable`) | 지속 상태라 상태 행과 자리를 다투지 않는다 |
 | 8 | **최하단 고정** `beacon.stop` 버튼 | 스크롤 밖 `Column` 말미, `tapTarget`, testTag `guide-stop`. 활성화 → `stopByUser()` |
 
 - 착지 절차: `LaunchedEffect(key) { withFrameNanos{}; delay(400); land(requester) }`(위 관용구 + 1회 재시도) — `ModalBottomSheet` 표시 애니메이션이 끝난 뒤 시스템이 포커스를 옮기므로 그보다 늦게 대입(iOS `landTitleFocus` 동형).
@@ -407,7 +411,7 @@ M1 §3 기본형·M2·M3 관용구(`mergedRow`·`ActionRow`·`tapTarget`·`headi
 | 순서 | 요소 |
 |---|---|
 | 1 | 헤딩 `joinText(endHeading, destinationLabel)` — `android.beacon.arrivedHeading`/`arrivedPresumedHeading`/`endedHeading` |
-| 2 | 종료 문장(`guide.arrived`/`guide.arrivedPresumed`/`endText`) — **착지** |
+| 2 | 종료 문장(`guide.arrived`/`guide.arrivedPresumed`/`endText`) — `BodyLine`(`mergedRow(focus = arrivedFocus)`) **착지** |
 | 3 | 걸음·칼로리 문장(있을 때만 — 걸음 센서 허가 ∧ 라이브 표본 ∧ ≥ 72걸음): `usedDefaultWeight ? android.beacon.healthSummaryWithWeight(steps, 65, kcal) : healthSummary(steps, kcal)` + 음식 비유(`WalkHealth.foodComparison` → `android.beacon.food.*` 리터럴 `when`) 한 객체(공백 결합) |
 | 4 | 닫기 `actions.close` → `clearArrival()` |
 
@@ -430,11 +434,12 @@ M1 §3 기본형·M2·M3 관용구(`mergedRow`·`ActionRow`·`tapTarget`·`headi
 | 확정·추정 도착 | `guide.arrived`/`arrivedPresumed` | 종료 문장 | `nearby` 톤 진동 |
 | 사용자 종료(요약 있음) | `android.beacon.stopped` | 종료 문장 | `stop` 톤 진동 |
 | 타 앱 전경 중 알림 액션 종료 | **없음**(전경 게이트 — 정지 톤만) | — | `stop` 톤 진동 |
-| 통화 중(포커스 거절) | **없음**(톤도 없음 — §12-7) | — | 없음 |
+| 통화 중(포커스 거절) | **없음**(톤도 없음 — §12-7) | — | 톤 진동은 난다(포커스 앞) |
+| 포커스 거절 3회 지속 | `android.guide.focusDenied` 1회 | — | (매 톤 진동이 이미 나간다) |
 | 미디어 볼륨 0 | `android.guide.mediaVolumeZero` 1회 | — | `attention` |
 | 소리 재생 불가(`isSilenced` 진입) | `android.beacon.soundUnavailable` 1회 | — | `failure` 1회(래치) |
 | TTS 불가 | (문장 불가 — 행만) | — | `failure` 1회 |
-| 서비스 시작 실패 | `android.guide.serviceStartFailed` | — | `failure` |
+| 서비스 시작 실패·권한·정밀·위치 꺼짐 | 실패 문장 | **시작 실패 행**(§7-1) | `failure` |
 | 거부(이미 안내 중) | `guide.alreadyActive` | — | — |
 
 ---
@@ -449,8 +454,8 @@ M1 §3 기본형·M2·M3 관용구(`mergedRow`·`ActionRow`·`tapTarget`·`headi
 
 ## 9. i18n
 
-- 기존 키 재사용(생성 카탈로그 `strings.xml`과 기계 대조 완료 2026-09-16): `beacon.*`(walkHeading·stop·first·closer·farther·nearby·weak·denied·reduced·straightLineNote·guideStartWalk), `guide.*`(detailStart·bundle·handoff·finalApproach*·arrived·arrivedPresumed·endedIdle·dir*·offRoute·backOnRoute·imminent.*·live*·nextAction·nextStraight*·uncertain*·reacquiring·detailUnavailable·detailNoLocation·progressButton·progressOrdinal·progressCurrent·progressNext·remainingDistance·remainingTime·rerouteButton·rerouteBusy·rerouteFailed·rerouteDone·progressUncertain·progressOffRoute·progressFinalApproach·approx·rough·noGuidanceYet·alreadyActive·minimize·band.return·band.remaining·band.starting·band.arrived·band.ended·periodicStraight·periodicStraightNoName·nextDestination), `android.beacon.*`(soundUnavailable·stopped·arrivedHeading·arrivedPresumedHeading·endedHeading·healthSummary·healthSummaryWithWeight·food.*), `android.guide.*`(routeListCurrent·routeListRow), `directions.viaArrived`, `actions.close`, `android.unit.spokenMeters`.
-- **android-extra 신규(6로케일)**: `android.beacon.guideStartWalkShortest`·`android.guide.autoReroute`(둘 다 ios-extra **비접두** 키라 변환 스크립트가 버린다 — 문안은 ios-extra 그대로, 리뷰 M-4) · `android.guide.mediaVolumeZero`("미디어 볼륨이 꺼져 있어 안내 소리가 나지 않습니다") · `android.guide.ttsUnavailable`("이 언어의 음성 안내를 쓸 수 없습니다. 화면의 안내 문장을 확인하세요") · `android.guide.serviceStartFailed`("안내 서비스를 시작하지 못했습니다. 앱을 화면에 띄운 채 다시 시작하세요") · `android.guide.notificationChannel`("도보 안내"). `%`가 없는 문장이라 거부 규칙 무관, `INTENDED_DIFFERENCES` 대상 아님(iOS에 없는 키).
+- 기존 키 재사용(생성 카탈로그 `strings.xml`과 기계 대조 완료 2026-09-16): `beacon.*`(walkHeading·stop·first·closer·farther·nearby·weak·denied·reduced·straightLineNote·guideStartWalk), `guide.*`(detailStart·bundle·handoff·finalApproach*·arrived·arrivedPresumed·endedIdle·dir*·offRoute·backOnRoute·imminent.*·live*·nextAction·nextStraight*·uncertain*·reacquiring·detailUnavailable·detailNoLocation·progressButton·progressOrdinal·progressCurrent·progressNext·remainingDistance·remainingTime·rerouteButton·rerouteBusy·rerouteFailed·rerouteDone·progressUncertain·progressOffRoute·progressFinalApproach·approx·rough·noGuidanceYet·alreadyActive·minimize·band.return·band.remaining·band.starting·band.arrived·band.ended·periodicStraight·periodicStraightNoName·nextDestination), `android.common.*`(allowPrecise·openSettings·geoReducedDesc), `android.beacon.*`(soundUnavailable·stopped·arrivedHeading·arrivedPresumedHeading·endedHeading·healthSummary·healthSummaryWithWeight·food.*), `android.guide.*`(routeListCurrent·routeListRow), `directions.viaArrived`, `actions.close`, `android.unit.spokenMeters`.
+- **android-extra 신규(6로케일)**: `android.beacon.guideStartWalkShortest`·`android.guide.autoReroute`(둘 다 ios-extra **비접두** 키라 변환 스크립트가 버린다 — 문안은 ios-extra 그대로, 리뷰 M-4) · `android.guide.mediaVolumeZero`("미디어 볼륨이 꺼져 있어 안내 소리가 나지 않습니다") · `android.guide.ttsUnavailable`("이 언어의 음성 안내를 쓸 수 없습니다. 화면의 안내 문장을 확인하세요") · `android.guide.serviceStartFailed`("안내 서비스를 시작하지 못했습니다. 앱을 화면에 띄운 채 다시 시작하세요") · `android.guide.focusDenied`("다른 앱이 소리를 쓰고 있어 안내 소리를 내지 못하고 있습니다") · `android.guide.notificationChannel`("도보 안내"). `%`가 없는 문장이라 거부 규칙 무관, `INTENDED_DIFFERENCES` 대상 아님(iOS에 없는 키).
 - 문자열 창구 `GuideStrings.stringId(key)` 리터럴 표(M3 `DirectionsStrings` 관용구) + `GuideSourceGuardTest`가 소스의 키 모양 리터럴 전수를 표에 대조. `GuideText`는 `Strings` 주입(JVM 테스트는 `CatalogStrings` 재사용 — `directions/` 테스트 픽스처를 `guide/` 테스트가 import한다).
 - 카탈로그 재생성: `node android/scripts/messages-to-android-strings.mjs`(신규 키는 순서 변경이 아니라 exit 0).
 
@@ -460,17 +465,17 @@ M1 §3 기본형·M2·M3 관용구(`mergedRow`·`ActionRow`·`tapTarget`·`headi
 
 ### 10-1. JVM (`:app:testDebugUnitTest`)
 
-- `WalkGuideModelTest`: 페이크 `RouteService`(`stubbedClient`), 페이크 `GuideTones`·`GuideSpeaker`·`StepCounter`·`GuideForegroundController`·`GuideAudioFocus`(인터페이스 — 실구현은 서비스·플랫폼), 주입 시계·`MainDispatcherExtension`. 시나리오: ① 시작 → 수용 fix → 상세 커밋 → 원자 발화 1회 ② 15초 무수용 → 최선값 조회 / 없음 → 간략 폴백 문장 ③ 상세 fix 열(공유 fixture `route-guide-scenarios.json`의 한 케이스를 좌표 열로) → 임박 stage 0만 문장·톤 3회 ④ 이탈 확정 → 자동 조회 1회·채택·`.high` 문장·`ResultHaptic.success` ⑤ 최종 접근 진입 서술 → 도착 → `stop`·`arrivalDest`·종료 문장 ⑥ 사용자 종료: 라이브 누적 72걸음 이상이면 종료 화면, 미만이면 없음(동기) ⑦ 억제 소유자 집합 `이전 ∧ 현재`, 동등한 두 소유자가 따로 셈됨 ⑧ 워치독 8초 `unreliable`·15초 문장·600초 세션 종료; **간략 모드에서 fix가 정상일 때 워치독 통지 0건** ⑨ 전경 게이트: 다른 앱 전경 → `missedAnnouncement` → 복귀 상환 1문장 / 화면 꺼짐 → 발화 / **다른 앱 전경 중 도착 → 세션 종료 뒤 복귀에도 종료 문장 상환** ⑩ 종료 화면 30분 만료 ⑪ 알림 본문 조립기 = 상태 문장 우선 ⑫ 거부(`alreadyActive`) **→ 종료 → 재시작 성공**(토큰 반납) ⑬ `attach` 2회 뒤 같은 모델·같은 상태 ⑭ 서비스 시작 실패 콜백 → `serviceStartFailed` 문장·`tracking` 아님·wake lock 해제 ⑮ 포커스 거절 시 톤·발화 0 → 허가 뒤 재생 ⑯ 조회 중 fix 5개 → `/api/route/walk` 호출 1회(in-flight 가드).
+- `WalkGuideModelTest`: 페이크 `RouteService`(`stubbedClient`), 페이크 `GuideTones`·`GuideSpeaker`·`StepCounter`·`GuideForegroundController`·`GuideAudioFocus`(인터페이스 — 실구현은 서비스·플랫폼), 주입 시계·`MainDispatcherExtension`. 시나리오: ① 시작 → 수용 fix → 상세 커밋 → 원자 발화 1회 ② 15초 무수용 → 최선값 조회 / 없음 → 간략 폴백 문장 ③ 상세 fix 열(공유 fixture `route-guide-scenarios.json`의 한 케이스를 좌표 열로) → 임박 stage 0만 문장·톤 3회 ④ 이탈 확정 → 자동 조회 1회·채택·`.high` 문장·`ResultHaptic.success` ⑤ 최종 접근 진입 서술 → 도착 → `stop`·`arrivalDest`·종료 문장 ⑥ 사용자 종료: 라이브 누적 72걸음 이상이면 종료 화면, 미만이면 없음(동기) ⑦ 억제 소유자 집합 `이전 ∧ 현재`, 동등한 두 소유자가 따로 셈됨 ⑧ 워치독 8초 `unreliable`·15초 문장·600초 세션 종료; **간략 모드에서 fix가 정상일 때 워치독 통지 0건** ⑨ 전경 게이트: 다른 앱 전경 → `missedAnnouncement` → 복귀 상환 1문장 / 화면 꺼짐 → 발화 / **다른 앱 전경 중 도착 → 세션 종료 뒤 복귀에도 종료 문장 상환** ⑩ 종료 화면 30분 만료 ⑪ 알림 본문 조립기 = 상태 문장 우선 ⑫ 거부(`alreadyActive`) **→ 종료 → 재시작 성공**(토큰 반납) ⑬ `attach` 2회 뒤 같은 모델·같은 상태 ⑭ 서비스 시작 실패 콜백 → `serviceStartFailed` 문장·`tracking` 아님·`failResolution`·`lastStartVariant`·(서비스 페이크에서) wake lock 해제 ⑮ 포커스 거절 시 소리·발화 0, 진동은 1 → 3회 연속에 `focusDenied` 통지 1회 → 허가 뒤 재생·해제 ⑯ 조회 중 fix 5개 → `/api/route/walk` 호출 1회(in-flight 가드) ⑰ 최종 접근: 진입 fix가 도착 반경 안이어도 서술이 먼저, 도착은 다음 fix ⑱ 정식 빌드 플래그(페이크 `false`)에서 `attach`·`startWalk`가 아무것도 만들지 않는다.
 - `GuideAudioFocusTest`: §5-2 표의 19항 대응 단언(페이크 `AudioManager` 인터페이스).
 - `GuideTonePlayerTest`(순수부): `toneResource` 전수·게인 표·`toneEndsAt` 대입 조건·보류 시작 톤 1개·`ToneHaptics` 시점 합 ≤ `ToneDurations`.
-- `ToneDurationsTest`: `res/raw` mp3 프레임 헤더 계수 길이 == 표 ±0.05초(⑤').
+- `ToneDurationsTest`: 파서 자가 시험(합성 바이트열) + `res/raw` mp3 프레임 헤더 계수 길이 == 표 ±0.05초(⑤').
 - `GuideTextTest`: `CatalogStrings`로 실문장 단언(시작·주기·임박·최종 접근·조망 헤더·종료 화면 걸음 문장).
 - `DeferredAnnouncer` 배선: 톤 뒤 발화가 `post`를 지연 호출하는지(`toneEndsAt` 주입 확인 1건).
-- **소스 가드 `GuideSourceGuardTest`**: ① `GuideSession.startWalk(` 호출부 == `WalkGuideStartButton.kt` 1곳(+ 테스트) ② `startWalk` 본문에 `experimentalGuidanceEnabled` 가드 존재 ③ `TextToSpeech(`·`SoundPool`·`Vibrator`·`VibrationEffect`·`AudioFocusRequest` 참조는 `audio/` 지정 파일만 ④ `speaker.speak(` 호출부는 `WalkGuideModel.post` 한 곳 ⑤ `res/raw` 이름 집합 == `resourceName` 변환 집합(15개), 바이트 == 대응 웹 파일(§5-1 규칙) ⑥ `guide/`에서 `import android.location`은 `GuideLocationStream.kt`만 ⑦ 매니페스트에 `foregroundServiceType="location"` 서비스 1개, `ACCESS_BACKGROUND_LOCATION` 0(기존 가드), `MainActivity` `launchMode` 무변경 ⑧ 문자열 키 전수 매핑 ⑨ 시트에 `liveRegion` 0 ⑩ `androidx.core` import 0(플랫폼 API만) ⑪ `requestFocus()`는 `runCatching` 안에서만.
+- **소스 가드 `GuideSourceGuardTest`**: ① `GuideSession.startWalk(` 호출부 == `WalkGuideStartButton.kt` 1곳(+ 테스트) ② `startWalk`·`attach`·`GuideBottomBar` 본문에 `experimentalGuidanceEnabled` 가드 존재 ③ `TextToSpeech(`·`SoundPool`·`Vibrator`·`VibrationEffect`·`AudioFocusRequest` 참조는 `audio/` 지정 파일만 ④ `speaker.speak(` 호출부는 `WalkGuideModel.post` 한 곳 ⑤ `res/raw` 이름 집합 == `resourceName` 변환 집합(15개), 바이트 == 대응 웹 파일(§5-1 규칙) ⑥ `guide/`에서 `import android.location`은 `GuideLocationStream.kt`만 ⑦ 매니페스트에 `foregroundServiceType="location"` 서비스 1개, `ACCESS_BACKGROUND_LOCATION` 0(기존 가드), `MainActivity` `launchMode` 무변경 ⑧ 문자열 키 전수 매핑 ⑨ 시트에 `liveRegion` 0 ⑩ `androidx.core` import 0(플랫폼 API만) ⑪ `requestFocus()`는 `runCatching` 안에서만 ⑫ `guide/`에 `.focusRequester(` 직접 부착 0(main 가드 — `mergedRow(focus)`·`landingTarget`만) ⑬ `PendingIntent.get*(` 호출은 전부 `FLAG_IMMUTABLE`을 싣는다.
 
 ### 10-2. androidTest (`connectedDebugAndroidTest`, adb 연결 시)
 
-- `GuideSheetA11yTest`: 페이크 모델 상태로 `AppRoot` 골격 안에서 시트를 띄워 ① 제목 헤딩·행 단일 노드·종료 버튼 48dp·ATF 검사 통과 ② 종료 화면 착지 문장 단일 노드 ③ **조망 열림 → 뒤로 키 → 조망만 닫히고 시트 유지**(리뷰 m-16) ④ `bottomBar` 슬롯에서 연 `ModalBottomSheet`가 탭 바를 밀지 않는다(탭 바 bounds 불변) ⑤ 최소화 → 띠바 노드 존재 → 활성화 → 시트 복귀.
+- `GuideSheetA11yTest`(Kotlin `assert(` 금지 — main 가드, JUnit 단언만): 페이크 모델 상태로 `AppRoot` 골격 안에서 시트를 띄워 ① 제목 헤딩·행 단일 노드·종료 버튼 48dp·ATF 검사 통과 ② 종료 화면 착지 문장 단일 노드 ③ **조망 열림 → 뒤로 키 → 조망만 닫히고 시트 유지**(리뷰 m-16) ④ `bottomBar` 슬롯에서 연 `ModalBottomSheet`가 탭 바를 밀지 않는다(탭 바 bounds 불변) ⑤ 최소화 → 띠바 노드 존재 → 활성화 → 시트 복귀 ⑥ 시작 실패 상태 → 실패 문장 행 + 해결 버튼 노드.
 
 ### 10-3. 게이트 절차
 
@@ -494,18 +499,20 @@ README §7 락 안에서 `:kit:test :app:testDebugUnitTest :app:assembleDebug :a
 | 5 | 주기 통지 "약 120m" | TTS가 `m`을 "미터"로 읽는가(정정 없이) | `spokenDistanceUnits` 유지/제거 |
 | 6 | 시스템 TTS 속도를 빠르게 둔 채 | 안내 속도가 시스템 설정을 따르는가 | §5-3 배율 표 확정 |
 | 7 | 임박 톤 5종·이탈·도착·start/stop | 진동이 나는가, 5종이 손에서 갈리는가, `ResultHaptic` 3종이 갈리는가 | 한소네 진동 유무 |
-| 8 | 알림 그늘(다른 앱 사용 중) | "도보 안내, {dest}" + 상태 한 줄이 점자로 읽히는가, "안내 종료" 액션이 종료하는가(백그라운드 시작 제한 통과), 본문 탭이 앱을 앞으로 가져와 띠바가 보이는가 | D11 자산·§12-6 |
+| 8 | 알림 그늘(다른 앱 사용 중) | "도보 안내, {dest}" + 상태 한 줄이 점자로 읽히는가, "안내 종료" 액션이 종료하는가(백그라운드 시작 제한 통과), 본문 탭이 앱을 앞으로 가져오고 **커서가 띠바에 착지**하는가 | D11 자산·§12-6 |
 | 9 | 접기 → 띠바 | 띠바에 커서가 착지하는가, 펼치면 접기 버튼에 착지하는가 | 착지 표 |
 | 10 | 시트 진입 | 제목 헤딩 착지, 스와이프 순서 = §7-3 표 | |
 | 11 | 도착 | 종 → 도착 문장 착지 → 걸음·칼로리 문장 → 닫기 | 걸음 센서 유무 |
-| 12 | 미디어 볼륨 0으로 시작 | `mediaVolumeZero` 문장·진동, 시트 행 | |
+| 12a | 미디어 볼륨만 0으로 시작 | 톤이 침묵하고 `mediaVolumeZero` 문장·진동·시트 행이 나는가 | `USAGE_MEDIA` → `STREAM_MUSIC` 매핑 확정(§12-9) |
+| 12b | 벨·시스템 볼륨만 0, 무음 모드 | 톤이 **나는가**(나야 한다 — 미디어 스트림) | 매핑이 SYSTEM이면 §5-1 재판정 |
 | 13 | 계단 회피 켠 채 시작 | 열화 문장이 시작 문장 앞에 결합되는가 | |
 | 14 | 이탈(일부러 한 블록 돌기) | `warning` → `offRoute` → 자동 채택 문장 → 커서 제목 착지 | |
-| 15 | 세션 중 전화 수신 | **통화 중** 톤·문장이 안 나는가(§12-7), 통화 뒤 다음 톤이 나는가(계약 2·#19) | |
+| 15 | 세션 중 전화 수신 | **통화 중** 톤·문장이 안 나고 진동은 나는가(§12-7), 6초 뒤 `focusDenied` 문장이 나는가, 통화 뒤 다음 톤이 나는가(계약 2·#19) | 통화 중 진동의 수용 여부는 위원장 판정 |
 | 16 | **점자**: 안내 중 시트를 훑지 않은 채 걷는다 | 점자 줄에 주기 통지·이탈·도착 문장이 나타나는가(안 나타나는 것이 예상) — 그것이 문제인가를 위원장이 판정 | §12-5 대안 발동 조건 |
 | 17 | 설치 직후 첫 안내 시작 | 시작 톤이 나는가(보류 1개) | |
 | 18 | 안내 중 앱 언어 전환·회전 | 세션·톤·시트가 살아 있는가(`attach` 멱등) | |
-| 19 | 앱을 백그라운드로 보낸 직후 알림 액션 등으로 시작 시도 | `serviceStartFailed` 문장이 들리는가("신호 약함"이 아니라) | B-3 |
+| 19 | 앱을 백그라운드로 보낸 직후 알림 액션 등으로 시작 시도 | `serviceStartFailed` 문장이 들리는가("신호 약함"이 아니라), 앱에 돌아오면 시작 실패 행이 있는가 | B-3·M2-4 |
+| 20 | 정확한 위치 꺼진 채 시작 | 실패 문장 착지 → "정확한 위치 허용" 버튼 → 허용 뒤 같은 경로로 재시작되는가 | M2-4 |
 
 **D11 실측 계획**: #1과 #1b를 첫 실보행의 첫 두 항목으로 두고 결과를 spec §4-1에 한 줄로 기록한다(성립/불성립·기기·OS·날짜).
 
@@ -514,14 +521,14 @@ README §7 락 안에서 `:kit:test :app:testDebugUnitTest :app:assembleDebug :a
 ## 12. 판정 목록 (강한 디폴트 — 뒤집으려면 근거)
 
 1. **소유권 근거는 착수 프롬프트**(§2)이고 프롬프트 밖 셋은 코디네이터 판정: ① `AppSourceGuardTest` 허용 목록에 `GuideLocationStream.kt` 1줄(A안, 권고 — 제가 additive로 고치거나 m1이 추가) / B안: android-m1이 `location/LocationSource`에 `subscribeGuide(onFix: GuideRawFix)`(약 20줄) 추가 ② 루트 `.gitignore` 1줄 ③ 계획 §2에 웨이브 3 소유권 절 신설(코디네이터). `LocationManager`는 리스너마다 독립 요청이라 두 스트림이 공존한다(iOS 단일 매니저 경합 없음).
-2. **`ACTIVITY_RECOGNITION`·`WAKE_LOCK` 추가**(§3-4) — 프롬프트 additive 목록 밖. 전자는 걸음 요약(거부해도 안내는 돈다), 후자는 워치독 각성(B-1 — 없으면 안전망이 절전과 함께 멎는다). 기각 시: 전자는 종료 화면을 도착 문장 + 닫기만으로, 후자는 대안이 없다(워치독 계약 불성립을 spec에 기록).
+2. **`ACTIVITY_RECOGNITION`·`WAKE_LOCK` 추가 + 알림 아이콘 드로어블 additive**(§3-4·§4-3) — 프롬프트 additive 목록 밖. 전자는 걸음 요약(거부해도 안내는 돈다), 후자는 워치독 각성(B-1 — 없으면 안전망이 절전과 함께 멎는다). 기각 시: 전자는 종료 화면을 도착 문장 + 닫기만으로, 후자는 대안이 없다(워치독 계약 불성립을 spec에 기록). wake lock은 서비스 수명이 쥔다.
 3. **음성 전경 게이트 = 전경 ∨ 화면 꺼짐**(§5-3). 실측 #3.
 4. **억제 소유자 집합 인터페이스는 `guide/`에 두고 배선은 소유 세션에 요청**(받아쓰기 android-m1, 채팅 TTS M6) — 지금 소비자 0.
 5. **안내 문장 채널은 TTS 하나, 시트는 live region 없음**(§5-3). 실측 #4·#16이 치명적 겹침 또는 점자 부재를 문제로 판정하면 대안: **스크린 리더 활성 ∧ 앱 전경일 때만** 문장을 접근성 채널(시트 `StatusLine` polite live region — TalkBack이 읽고 점자에도 간다)로 보내고 TTS는 그때 침묵, 그 밖(화면 꺼짐·SR 없음)은 TTS. 판정 술어 `accessibilityManager.isEnabled && isTouchExplorationEnabled ∨ 활성 서비스에 스크린 리더`. 지금은 두지 않는다(YAGNI, 이중 낭독 위험).
-6. **알림 본문 탭 = 앱 전경만**(§4-3). 시트 펼침은 띠바 한 번. `MainActivity`·매니페스트 `launchMode`를 건드리지 않는 유일한 수단.
-7. **통화 중(포커스 거절) 무음**(§5-2 #19): 톤·문장 둘 다 내지 않는다. ⚠ **위원장 판정 사안** — 통화 위에 안내를 겹칠지는 사용 판단이다(코디네이터 경유 확인, 실측 #15). 겹치기로 판정되면 `LOSS_TRANSIENT` 중에도 톤만 내는 갈래를 §5-2에 더한다.
+6. **알림 본문 탭 = 앱 전경만 + 복귀 착지는 띠바**(§4-3·§7-2). 시트 펼침은 띠바 한 번. 트램펄린 `Activity`(additive) 대안은 액티비티 하나의 대가가 펼치기 한 번보다 커서 기각.
+7. **통화 중(포커스 거절): 소리·문장은 내지 않고 진동은 낸다, 거절 3회 지속은 통지 1회**(§5-1·§5-2 #19). ⚠ **위원장 판정 사안 둘** — ① 통화 위에 안내 소리를 겹칠지 ② 통화 중 진동을 낼지(코디네이터 경유 확인, 실측 #15). 판정에 따라 `LOSS_TRANSIENT` 갈래를 §5-2에 더한다.
 8. **화면 유지는 시트가 펼쳐진 동안만**(§6-3, 리뷰 m-6) — 손에 들고 읽는 동안의 편의이고, 프로세스 생존은 FGS + wake lock의 몫.
-9. **TTS usage `MEDIA`+`SPEECH`, 톤 usage `ASSISTANCE_SONIFICATION`**(코디네이터 전달 — `NAVIGATION_GUIDANCE`는 TalkBack 발화를 끊는다). 대안 `ASSISTANCE_ACCESSIBILITY`는 실측 #4 뒤.
+9. **톤·TTS 둘 다 usage `MEDIA`**(content type만 SONIFICATION/SPEECH) — 코디네이터 전달(`NAVIGATION_GUIDANCE`는 TalkBack 발화를 끊는다) + 리뷰 B2-1(`ASSISTANCE_SONIFICATION`은 `STREAM_SYSTEM`이라 무음 모드에서 죽는다 — 매핑은 `@hide`라 실측 #12a·12b가 확정, 그 전까지 "매핑 미확인"). TTS 대안 `ASSISTANCE_ACCESSIBILITY`는 실측 #4 뒤.
 10. **톤 길이 정본은 상수 표 + mp3 프레임 계수 드리프트 가드**(§5-1). 런타임 측정 없음.
 11. **포커스는 재생 단위 획득·지연 반납, 못 잡으면 내지 않는다**(§5-2). 세션 단위 보유(GAIN)는 다른 앱 미디어를 세션 내내 끊는다(iOS `.mixWithOthers` 판정과 충돌).
 12. **TTS 배율 1.0 = 호출 없음(시스템 기본)**(§5-3).
@@ -533,10 +540,12 @@ README §7 락 안에서 `:kit:test :app:testDebugUnitTest :app:assembleDebug :a
 18. **서비스 `START_NOT_STICKY`, `onTaskRemoved` 유지, 시작 실패는 서비스 안에서 잡아 모델로 되부른다**(§4-1).
 19. **`POST_NOTIFICATIONS` 거부는 차단 아님**(§3-2 ③).
 20. **`res/raw` 바이트 동일 가드는 `:app` JVM 테스트**(`src/**` 금지, §5-1).
-21. **`AppRoot` 변경은 `bottomBar` 한 자리**(§7-2) — 시트·띠바·손·전경 관찰·화면 유지 전부 `GuideBottomBar` 안. `ModalBottomSheet`가 그 슬롯에서 못 돌면 그때 두 자리로(보고).
+21. **`AppRoot` 변경은 `bottomBar` 한 자리**(§7-2) — 시트·띠바·손·전경 관찰·화면 유지·게이트 전부 `GuideBottomBar` 안. `ModalBottomSheet`가 그 슬롯에서 못 돌면 그때 두 자리로(보고).
+24. **시작 실패 행은 시작 버튼 아래**(§7-1) — `failResolution`·`lastStartVariant`를 UI 상태에 싣는다. 시트·띠바는 `hasScreen` 조건이라 실패를 그리지 않는다.
+25. **프리로드는 `startWalk` 게이트 통과 직후**(§3-1) — `attach`는 모델 생성만.
 22. **GPS 폴백은 NETWORK 없이 단독**(§4-2).
 23. **`teardown`/`shutdown` 없음**(§3-3).
 
 ## 13. 적대적 설계 리뷰 판정
 
-1차(2026-09-16, `~/gildongmu-wt/android-m4-reports/review-m4-design.md`, 리뷰어 opus 별도 컨텍스트, spec `3f0b44cb`): **REQUEST_CHANGES** — BLOCKER 3·MAJOR 10·MINOR 16·NIT 6, 판정 문서 D1~D13 위반 0, 서버 계약 변경 0, `:kit` 무수정 ✔. 리뷰 총평: `:kit` API 대조·iOS 처리 순서·§6-3 차이 10행·오디오 계약 1·4·5는 정확, 결함은 전부 [3] 플랫폼 수단 층. 35건 전부 반영(기각 0): B-1 세션 수명 wake lock + `watchdog dt=` 로그 + 실측 #1b / B-2 소유권 근거를 착수 프롬프트로 정정(계획 §2 인용은 오기)하고 프롬프트 밖 셋을 판정 요청으로 / B-3 서비스 시작 실패를 서비스 안 try/catch → 필수 실패 콜백 → 전용 문장 / M-1 `sessionToken` 보관·`stop()` ④ 반납 / M-2 `attach` 멱등·서비스는 모델을 매 호출 조회 / M-3 `requestFocus` void — `runCatching` 관용구 + 1회 재시도 / M-4 `android.guide.autoReroute` 신규 키 + 인용 키 전량 기계 대조 / M-5 알림 탭은 Intent 플래그로 전경만(§12-6) / M-6 전경 복귀 상환이 추적 가드보다 앞 + 합본·`onDropped` 규칙 / M-7 SoundPool을 `attach`에서 로드 + 시작 톤 보류 1개 / M-8 점자 축 실측 #16 + §12-5 대안 구체화 / M-9 간략·상세·최종 접근 경로의 상태 갱신 목록 전부 + in-flight 가드 / M-10 포커스 못 잡으면 내지 않는다 + 시나리오 #19 + 통화 중 무음 판정(§12-7) / m-1 톤 길이 상수 정본 + 프레임 계수 가드 / m-2 `utteranceId` 최신만 반납 / m-3 플랫폼 `Notification.Builder`·`startForegroundService` / m-4 걸음 기준값·72걸음 / m-5 `StateFlow<WalkGuideUiState>` / m-6 화면 유지는 시트 표시 중만 / m-7 GPS 단독 폴백 / m-8 무음 진입 래치 / m-9 제공자 꺼짐도 동기 판정 / m-10 변이 4건 교체 / m-11 shutdown 없음 명시 / m-12 `action` 경고 + Kit KDoc 정정 보고 / m-13 리소스 두 단계 변환 규칙 / m-14 동일성 집합 / m-15 알림 액션 근거·타 앱 전경 종료 무문장 표기 / m-16 `BackHandler`·androidTest ③④ / N-1~N-6(표현·`/ 1_000_000`·0.15·`android.beacon.stopped`·`suppressNextNotice` 행·`.gitignore` 보고). 같은 개정에 코디네이터 전달(TalkBack `NAVIGATION_GUIDANCE` 끊김) 반영(§5-1·§5-3·§12-9·실측 #4). 2차(diff 재리뷰)는 아래에 기록한다.
+1차(2026-09-16, `~/gildongmu-wt/android-m4-reports/review-m4-design.md`, 리뷰어 opus 별도 컨텍스트, spec `3f0b44cb`): **REQUEST_CHANGES** — BLOCKER 3·MAJOR 10·MINOR 16·NIT 6, 판정 문서 D1~D13 위반 0, 서버 계약 변경 0, `:kit` 무수정 ✔. 리뷰 총평: `:kit` API 대조·iOS 처리 순서·§6-3 차이 10행·오디오 계약 1·4·5는 정확, 결함은 전부 [3] 플랫폼 수단 층. 35건 전부 반영(기각 0): B-1 세션 수명 wake lock + `watchdog dt=` 로그 + 실측 #1b / B-2 소유권 근거를 착수 프롬프트로 정정(계획 §2 인용은 오기)하고 프롬프트 밖 셋을 판정 요청으로 / B-3 서비스 시작 실패를 서비스 안 try/catch → 필수 실패 콜백 → 전용 문장 / M-1 `sessionToken` 보관·`stop()` ④ 반납 / M-2 `attach` 멱등·서비스는 모델을 매 호출 조회 / M-3 `requestFocus` void — `runCatching` 관용구 + 1회 재시도 / M-4 `android.guide.autoReroute` 신규 키 + 인용 키 전량 기계 대조 / M-5 알림 탭은 Intent 플래그로 전경만(§12-6) / M-6 전경 복귀 상환이 추적 가드보다 앞 + 합본·`onDropped` 규칙 / M-7 SoundPool을 `attach`에서 로드 + 시작 톤 보류 1개 / M-8 점자 축 실측 #16 + §12-5 대안 구체화 / M-9 간략·상세·최종 접근 경로의 상태 갱신 목록 전부 + in-flight 가드 / M-10 포커스 못 잡으면 내지 않는다 + 시나리오 #19 + 통화 중 무음 판정(§12-7) / m-1 톤 길이 상수 정본 + 프레임 계수 가드 / m-2 `utteranceId` 최신만 반납 / m-3 플랫폼 `Notification.Builder`·`startForegroundService` / m-4 걸음 기준값·72걸음 / m-5 `StateFlow<WalkGuideUiState>` / m-6 화면 유지는 시트 표시 중만 / m-7 GPS 단독 폴백 / m-8 무음 진입 래치 / m-9 제공자 꺼짐도 동기 판정 / m-10 변이 4건 교체 / m-11 shutdown 없음 명시 / m-12 `action` 경고 + Kit KDoc 정정 보고 / m-13 리소스 두 단계 변환 규칙 / m-14 동일성 집합 / m-15 알림 액션 근거·타 앱 전경 종료 무문장 표기 / m-16 `BackHandler`·androidTest ③④ / N-1~N-6(표현·`/ 1_000_000`·0.15·`android.beacon.stopped`·`suppressNextNotice` 행·`.gitignore` 보고). 같은 개정에 코디네이터 전달(TalkBack `NAVIGATION_GUIDANCE` 끊김) 반영(§5-1·§5-3·§12-9·실측 #4). 2차(diff 재리뷰 `3f0b44cb..b28832cc`, `review-m4-design-2.md`): **REQUEST_CHANGES** — 1차 35건 전부 해소 확인(미해소 0), 신규 BLOCKER 1·MAJOR 4·MINOR 9·NIT 4, 판정·소유권 위반 0. 18건 전부 반영(기각 0): B2-1 톤 usage `MEDIA`(`ASSISTANCE_SONIFICATION`은 `STREAM_SYSTEM` — 실측 #12a/12b) / M2-1 진동을 포커스 앞으로 + 거절 3회 지속 3-state 통지(`focusDenied`) / M2-2 wake lock을 서비스 수명(`startForeground` 성공 → `onDestroy`, 비참조계수)으로 / M2-3 `attach`·`GuideBottomBar` 실험 게이트 + 프리로드를 `startWalk` 게이트 뒤로 + 소스 가드 ② 확장 / M2-4 시작 실패 행(문장 착지 + 해결 버튼, `failResolution`·`lastStartVariant`) / m2-1 `setAudioAttributes` 인스턴스 메서드·`speak` 4번 인자 / m2-2 `FLAG_IMMUTABLE` / m2-3 파서 자가 시험 / m2-4 `hasScreen`·`isActive`를 `ui.value`에서 / m2-5 최종 접근 표시 필드 / m2-6 트램펄린 기각 근거 + 복귀 착지 띠바 / m2-7 `wasBackgrounded` 소비·`arrivalHealth` 3-state·재시도 없음 / m2-8 `offRouteEndedByReroute` 정리 / m2-9 M2-2로 흡수 / N2-1 진입 서술 선행 근거 / N2-2 README §1 갱신 포함 / N2-3 알림 아이콘 / N2-4 보류 톤도 `play()` 경유. 같은 개정에 코디네이터 전파(main `fc246219` `landingTarget` 착지 관용구·androidTest `assert(` 금지) 반영(§7·§10). 3차(diff 확인)는 아래에 기록한다.
