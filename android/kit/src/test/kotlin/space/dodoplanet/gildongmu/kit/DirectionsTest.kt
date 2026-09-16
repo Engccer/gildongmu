@@ -8,9 +8,11 @@ import space.dodoplanet.gildongmu.kit.models.TransitRouteResult
 import space.dodoplanet.gildongmu.kit.models.TransitRouteSummary
 import space.dodoplanet.gildongmu.kit.models.WalkRouteBriefing
 import space.dodoplanet.gildongmu.kit.models.WalkRouteStep
+import kotlinx.coroutines.CancellationException
 import java.io.IOException
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNull
@@ -63,6 +65,12 @@ class DirectionsTest {
         assertEquals("길동", transit.result.recommended.summary.departName)
         assertTrue(DirectionsOutcomeClassifier.classifyCar(Result.success(carFixture())).isSuccess)
         assertIs<DirectionsModeOutcome.Error>(DirectionsOutcomeClassifier.classifyCar(badStatus(500)))
+    }
+
+    /** Result에 담긴 취소는 분류하지 않고 다시 던진다 — 떠난 조회가 "조회 실패"로 커밋되지 않는다(Kotlin 고유). */
+    @Test fun cancellationInResultIsRethrownNotClassified() {
+        assertFailsWith<CancellationException> { DirectionsOutcomeClassifier.classifyWalk(Result.failure(CancellationException("left"))) }
+        assertFailsWith<CancellationException> { DirectionsOutcomeClassifier.classifyCar(Result.failure(CancellationException("left"))) }
     }
 
     /** envelope result null(ODsay graceful) = 경로 없음(3-state, 조회 실패 아님, walk와 동형). */

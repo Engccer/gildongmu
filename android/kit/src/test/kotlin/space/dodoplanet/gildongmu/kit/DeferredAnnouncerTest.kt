@@ -5,6 +5,9 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
+import kotlin.coroutines.Continuation
+import kotlin.coroutines.resume
+import kotlin.coroutines.suspendCoroutine
 import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -15,7 +18,9 @@ import kotlin.test.assertTrue
  *
  * 순수 함수(`speechDeferStep`)만 검사하면 §8의 변이 6종이 전부 통과한다 — 이 스위트의 존재 이유는 비동기 수명
  * 계약(단일 슬롯 latest-wins·세대 토큰·토큰 확인·재평가 상한·onDropped)을 주입 시계·sleeper로 결정론 검증하는 것이다.
- * 테스트 sleeper는 시계를 동기 전진시키고 즉시 반환한다(취소 뒤에도 본문이 계속 실행되는 경로를 재현).
+ * 테스트 sleeper는 시계를 동기 전진시키고 즉시 반환한다. ⚠ 코루틴은 첫 실행 전에 취소되면 본문을 돌리지 않아(Swift
+ * `Task`는 돌린다) 예약 직후 무효화하는 테스트는 토큰·세대 확인에 닿지 않는다 — 그 확인은 `holdSleeper`로 본문을 sleeper
+ * 안에 세운 뒤 무효화하는 `*WhileSleeping*` 테스트가 잠근다.
  */
 class DeferredAnnouncerTest {
     private class Post(val text: String, val highPriority: Boolean, val bypass: Boolean)
@@ -35,6 +40,15 @@ class DeferredAnnouncerTest {
                 toneCallIndex = 0
             }
 
+        /** true면 sleeper가 취소에 반응하지 않고 `releaseSleeper()`까지 멈춘다(Swift sleep의 "취소돼도 반환" 재현). */
+        var holdSleeper = false
+        private var sleepWaiter: Continuation<Unit>? = null
+
+        fun releaseSleeper() {
+            sleepWaiter?.resume(Unit)
+            sleepWaiter = null
+        }
+
         /** 스크립트 대신 동적 판정이 필요할 때(상한 테스트 — 항상 잔여 2초). */
         var toneDynamic: (() -> Double?)? = null
 
@@ -53,6 +67,7 @@ class DeferredAnnouncerTest {
             sleeper = { seconds ->
                 sleeps.add(seconds)
                 now += seconds
+                if (holdSleeper) suspendCoroutine { sleepWaiter = it }
             },
             toneEndsAt = { nextToneEndsAt() },
             post = { text, high, bypass ->
@@ -93,6 +108,38 @@ class DeferredAnnouncerTest {
         h.announcer.invalidatePending()
         drain()
         assertTrue(h.posts.isEmpty())
+    }
+
+    /** §4-3: 본문이 sleeper 안에 있는 동안 무효화되면, sleeper가 취소에 반응하지 않고 반환해도 게시하지 않는다(토큰 확인). */
+    @Test fun invalidatedWhileSleepingNeverPosts() = runTest {
+        val h = Harness(this)
+        h.holdSleeper = true
+        h.toneScript = listOf(2.246, null) // 재평가에 닿으면 즉시 게시하도록 둘째는 톤 없음
+        var dropped = 0
+        h.announcer.announce("버릴 문장") { dropped += 1 }
+        testScheduler.runCurrent()
+        assertEquals(1, h.sleeps.size) // 본문이 sleeper 안에서 멈췄다
+        h.announcer.invalidatePending()
+        h.releaseSleeper()
+        drain()
+        assertTrue(h.posts.isEmpty())
+        assertEquals(1, dropped) // 선점 시점 1회뿐
+    }
+
+    /** §4-2: 세대 경계도 sleeper 안의 본문을 멈춘다(onDropped 없음). */
+    @Test fun generationAdvanceWhileSleepingNeverPosts() = runTest {
+        val h = Harness(this)
+        h.holdSleeper = true
+        h.toneScript = listOf(2.246, null)
+        var dropped = 0
+        h.announcer.announce("끝난 경로의 명령") { dropped += 1 }
+        testScheduler.runCurrent()
+        assertEquals(1, h.sleeps.size)
+        h.announcer.advanceGeneration()
+        h.releaseSleeper()
+        drain()
+        assertTrue(h.posts.isEmpty())
+        assertEquals(0, dropped)
     }
 
     /** §4-2: 세대 증가(stop·teardown·세션 시작)가 보류 문장을 버린다. */
@@ -216,7 +263,10 @@ class DeferredAnnouncerTest {
         assertEquals(0, dropped)
     }
 
-    /** §4-3 ABA: 옛 코루틴의 종료 코드가 새 슬롯 참조를 지우면 이후 invalidate가 아무것도 취소하지 못한다. */
+    /**
+     * 옛 슬롯이 게시를 마치고 해제된 뒤 새 슬롯이 여전히 취소 가능하다. §4-3 ABA(옛 코루틴 종료 코드가 새 슬롯 참조를 지우는
+     * 경합) 자체는 확인과 해제 사이에 중단점이 없어 이 테스트가 재현하지 못한다(Swift 원본도 같다).
+     */
     @Test fun staleTaskDoesNotClearNewSlot() = runTest {
         val h = Harness(this)
         h.toneScript = listOf(2.246, 2.246, 2.246)

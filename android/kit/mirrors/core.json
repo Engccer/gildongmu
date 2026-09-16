@@ -14,7 +14,7 @@
       "status": "ported",
       "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/ChatMarkdown.kt",
       "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/ChatMarkdownTest.kt",
-      "note": "정규식 약칭 클래스 대신 명시 클래스(공백=White_Space 속성, 숫자=유니코드 Nd) — Swift Regex와 같은 뜻을 JVM·기기에서 똑같이"
+      "note": "정규식 약칭 클래스 대신 명시 클래스(공백=White_Space 속성, 숫자=유니코드 N — Swift Character.isNumber. Numeric_Type만 가진 한자 숫자는 JVM 대응 속성이 없어 제외)"
     },
     {
       "swift": "ChatPlaceMentions.swift",
@@ -62,14 +62,13 @@
       "status": "ported",
       "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/Directions.kt",
       "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/DirectionsTest.kt",
-      "note": "classify(transit:)·(walk:)·(car:) → classifyTransit·classifyWalk·classifyCar(Result<T> 타입 인자 오버로드 불가), Swift Result<T, Error> → kotlin.Result<T>"
+      "note": "classify(transit:)·(walk:)·(car:) → classifyTransit·classifyWalk·classifyCar(Result<T> 타입 인자 오버로드 불가), Swift Result<T, Error> → kotlin.Result<T>. Result에 담긴 CancellationException은 분류하지 않고 다시 던진다"
     },
     {
       "swift": "LocationNarrative.swift",
       "status": "ported",
       "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/LocationNarrative.kt",
-      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/LocationNarrativeTest.kt",
-      "note": "directionWord는 Swift처럼 모듈 internal"
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/LocationNarrativeTest.kt"
     },
     {
       "swift": "ManualLocation.swift",
@@ -83,21 +82,21 @@
       "status": "ported",
       "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/MarkdownPlainText.kt",
       "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/MarkdownPlainTextTest.kt",
-      "note": "정규식 약칭 클래스 대신 명시 클래스(공백=White_Space 속성, 숫자=유니코드 Nd, 단어=문자·결합 부호·숫자·연결 부호) — ICU와 같은 뜻을 JVM·기기에서 똑같이"
+      "note": "정규식 약칭 클래스 대신 명시 클래스(공백=White_Space 속성, 숫자=유니코드 Nd, 단어=ICU 정의 근사: 문자·문자형 숫자·결합 부호·십진 숫자·연결 부호·ZWNJ·ZWJ)"
     },
     {
       "swift": "NearbyLoadCore.swift",
       "status": "ported",
       "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/NearbyLoadCore.kt",
       "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/NearbyLoadCoreTest.kt",
-      "note": "@Observable @MainActor → 메인 스레드 전용 클래스 + phase: StateFlow. NearbyCoord 튜플 → data class. URLError.cancelled 분기와 그 테스트는 대응 플랫폼 오류형이 없어 미이식(코루틴 CancellationException 경로가 덮는다). withTimeout 만료는 취소가 아니라 조회 실패로 분류"
+      "note": "@Observable @MainActor → 메인 스레드 전용 클래스 + phase: StateFlow(같은 값 재대입은 합쳐진다 — 조회마다의 부수 효과는 이벤트로). NearbyCoord 튜플 → data class. 취소된 코루틴에서는 복원 뒤 취소를 전파(Swift는 정상 반환). fetch 안쪽 withTimeout 만료는 조회 실패, 바깥 만료는 취소. URLError.cancelled 분기와 그 테스트는 대응 플랫폼 오류형이 없어 미이식"
     },
     {
       "swift": "NearbyService.swift",
       "status": "ported",
       "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/NearbyService.kt",
       "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/NearbyServiceTest.kt",
-      "note": "Kit NearbyServiceQueryTests + RouteServiceQueryTests.stationAndNearbyLangEnRequestsLangParam의 NearbyService 부분이 NearbyServiceTest에 있다"
+      "note": "Kit NearbyServiceQueryTests(barrierFree 1건은 BarrierFreeServiceTest) + RouteServiceQueryTests.stationAndNearbyLangEnRequestsLangParam의 NearbyService 부분이 NearbyServiceTest에 있다"
     },
     {
       "swift": "PlaceChatPrompts.swift",
@@ -157,7 +156,7 @@
       "status": "ported",
       "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/SubwayArrivalLine.kt",
       "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/SubwayArrivalLineTest.kt",
-      "note": "정규식 약칭 클래스 대신 명시 클래스(공백=White_Space 속성, 숫자=[0-9] — 웹 JS와 같고, 전각 숫자는 Swift도 Int로 못 읽어 결과 동일)"
+      "note": "정규식 약칭 클래스 대신 명시 클래스(공백=White_Space 속성, 숫자=[0-9] — 웹 JS와 같다. ASCII·전각 혼합 숫자는 Swift만 부분 인식)"
     },
     {
       "swift": "TransitAlternativeName.swift",

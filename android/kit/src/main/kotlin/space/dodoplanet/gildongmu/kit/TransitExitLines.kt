@@ -3,7 +3,7 @@ package space.dodoplanet.gildongmu.kit
 import space.dodoplanet.gildongmu.kit.models.QuickExit
 import space.dodoplanet.gildongmu.kit.models.TransitRouteLeg
 
-// 경로 브리핑의 출구 번호 줄(E25 — 위원장 요청 2026-09-07). 웹 `src/lib/transit-exit-lines.ts` ↔ Kit
+// 경로 브리핑의 출구 번호 줄(E25). 웹 `src/lib/transit-exit-lines.ts` ↔ Kit
 // `TransitExitLines.swift` 미러.
 //
 // **출구는 한 경로 안에서 정확히 한 줄에만 실린다.** 승차 출구는 직전 도보 줄이 싣고, 그 줄이 없으면(버스에서
