@@ -1,6 +1,8 @@
 package space.dodoplanet.gildongmu.guide
 
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import android.os.SystemClock
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -44,6 +46,9 @@ object GuideSession {
     /** 실험 게이트(정식 빌드는 `startWalk`가 아무것도 하지 않는다). 테스트가 바꿔 끼운다. */
     var experimentalEnabled: () -> Boolean = { AppConfig.experimentalGuidanceEnabled }
 
+    /** `attach`가 지나갔는가 — 서비스 콜백이 `walk`를 만지기 전에 본다. */
+    val isAttached: Boolean get() = ::walk.isInitialized
+
     val isActive: Boolean get() = coordinator.isActive || (::walk.isInitialized && walk.ui.value.starting)
     val hasScreen: Boolean get() = ::walk.isInitialized && walk.ui.value.hasScreen
 
@@ -62,12 +67,12 @@ object GuideSession {
             routes = RouteService(AppConfig.apiClient),
             strings = guideStrings(context.resources),
             dataLocale = { DataLocale.fromRawValue(AppLocale.dataLocale(context.resources)) ?: DataLocale.ko },
-            controller = AndroidForegroundController(context),
+            controller = AndroidGuideController(context),
             permissions = permissions,
             tones = NoopTones,
             speaker = NoopSpeaker,
             haptics = NoopHaptics,
-            steps = NoopStepCounter,
+            steps = AndroidStepCounter(context, Handler(Looper.getMainLooper())),
             env = environment,
             coordinator = coordinator,
             store = SharedPreferencesStore(context),
