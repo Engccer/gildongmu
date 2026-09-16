@@ -7,6 +7,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -65,11 +66,15 @@ fun Modifier.headingText(): Modifier = semantics { heading() }
  * - 소유자는 `RESUMED`인 `StatusLine` 하나(전환 프레임 이중 낭독 방지). 그 판정은 `LifecycleEventObserver`로 **관측 가능한 상태**로 든다 —
  *   `currentState`를 컴포지션에서 그냥 읽으면 구독이 없어 claim이 한 번만 시도되고, 재생성 직후 첫 컴포지션은 아직 `STARTED`라 언어 변경 통지가
  *   영영 침묵한다. claim은 컴포지션 안이 아니라 효과에서(적용되지 않은 컴포지션의 claim은 복구 경로가 돌지 않는다).
+ * - 합치는 화면 문장은 **아직 발화되지 않은 것**뿐 — 이미 읽힌 화면 문장을 앱 통지 뒤에 다시 붙이면 뻔한 꼬리다(CLAUDE.md).
+ * - 모달(다이얼로그)이 떠 있는 화면은 claim하지 않는다(`LocalModalOpen`) — 모달 뒤 라이브 리전은 읽히지 않을 수 있어 `consume`이 "낭독됐다"가 아니라
+ *   "텍스트를 썼다"로 퇴화한다. 큐는 덮이지 않으므로 모달을 닫는 순간 같은 화면이 집어 읽는다.
  * - `consume`은 발화 효과의 끝(발화 성공 시점)에서만, 발화 전에 떠나면 `restore`(발화 성공 latch).
  */
 @Composable
 fun StatusLine(notice: Notice, modifier: Modifier = Modifier) {
     val app by AppNotices.pending.collectAsState()
+    val modalOpen = LocalModalOpen.current
     val owner = LocalLifecycleOwner.current
     var resumed by remember(owner) { mutableStateOf(owner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) }
     DisposableEffect(owner) {
@@ -83,15 +88,15 @@ fun StatusLine(notice: Notice, modifier: Modifier = Modifier) {
     var lastScreenSeq by remember { mutableIntStateOf(notice.seq) }
     var shown by remember { mutableStateOf(notice) }
 
-    LaunchedEffect(notice.seq, app?.seq, resumed, spokenRev) {
+    LaunchedEffect(notice.seq, app?.seq, resumed, modalOpen, spokenRev) {
         val screenChanged = notice.seq != lastScreenSeq
         lastScreenSeq = notice.seq
         val current = unit
         val carried = current.app?.takeIf { spokenRev < current.rev } // 아직 발화되지 않은 앱 통지는 넘긴다
-        val claimed = carried ?: app?.takeIf { resumed }?.let { AppNotices.claim(it.seq) }
+        val claimed = carried ?: app?.takeIf { resumed && !modalOpen }?.let { AppNotices.claim(it.seq) }
         if (!screenChanged && (claimed == null || claimed === carried)) return@LaunchedEffect
         val rev = current.rev + 1
-        unit = SpokenUnit(rev, mergeNotices(notice, claimed, rev), claimed)
+        unit = SpokenUnit(rev, mergeNotices(if (screenChanged) notice else Notice(notice.seq, "", null), claimed, rev), claimed)
     }
     LaunchedEffect(unit.rev) {
         val u = unit
@@ -117,6 +122,9 @@ fun StatusLine(notice: Notice, modifier: Modifier = Modifier) {
             },
     )
 }
+
+/** 다이얼로그를 여는 화면이 참으로 제공한다 — 그 동안 `StatusLine`은 앱 통지를 집지 않는다(spec §13-5). */
+val LocalModalOpen = compositionLocalOf { false }
 
 /** `StatusLine`의 발화 단위 — 세대(단조)·표시/낭독 문장·집은 앱 통지. */
 private class SpokenUnit(val rev: Int, val text: Notice, val app: Notice?)
