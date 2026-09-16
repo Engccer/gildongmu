@@ -175,6 +175,7 @@ M0 체크포인트 뒤 코디네이터가 확정한다. 요지: `~/gildongmu-wt/
 | (재리뷰) GUIDE 사후 커밋 | — | 21:2x | 코디네이터 디스패치 읽기 전용 리뷰(`77aa36e2..73bea1c0`): **BLOCKER 0**. 09f56020의 진단이 한 칸 어긋남 — Apple ICU `\s`는 `\p{White_Space}`라 새 클래스가 U+000B·U+0085 두 문자 좁다(MINOR). Foundation `CharacterSet.whitespaces`는 U+200B 포함(MINOR). **diff 밖 MAJOR**: 다른 그룹 12파일이 Swift `.whitespaces`를 Kotlin `trim()`으로 옮겨 같은 갈림. 후속은 세션 `android-kit-fix`(opus, base `eb7bf0f8`)가 맡는다 — README §3 `\p{…}` 규칙과 `RegexPortabilityTest`만 소유 예외 |
 | `android-m1` M2 조각 1 `location/` | `7a4a9379` | 20:0x | GMS 무의존 `LocationStore`(FUSED_PROVIDER + GPS 폴백), M2 spec `c411c8c7`·계획 포함. M3가 이 시그니처를 직접 소비 |
 | `android-kit-fix` 완료 | `157989f3` | 20:2x | 공백 상수 = `\\p{White_Space}`, 12파일+α trim 재판정(Swift 집합 미러, Kotlin 기본 trim·isBlank 금지 소스 가드), U+200B, README §3 `\\p{…}` 규칙, API 33 `URLDecoder` 제거, `ChatService.splitStreamLines`(CRLF·LF·CR). 리뷰 BLOCKER 0. ⚠ 18:36~20:00 정지는 fable 사용 한도(세션 셋 동시) |
+| `android-m4` M4 완료 | `6a20cdc5` | 09-17 03:0x | 도보 실시간 안내: 세션 싱글턴·전경 서비스(location)+지속 알림(안내 종료 액션)·안내 위치 스트림·SoundPool+AudioFocus(usage MEDIA, 톤 SONIFICATION·TTS SPEECH)·TTS(speechDeferStep, 배율 1.0=호출 없음)·진동 3종·시트·띠바·종료 화면·계측 로그·실험판 게이트. 리뷰 4회 반영. 매니페스트 additive(서비스·FOREGROUND_SERVICE(_LOCATION)·POST_NOTIFICATIONS·VIBRATE·WAKE_LOCK·ACTIVITY_RECOGNITION), `AppSourceGuardTest` 허용 1줄(소유권 예외). **실보행 대본 25항·회수 명령은 `~/gildongmu-wt/android-m4-reports/report.md`**. 세션 종료·창 닫음(실기기 판정은 별도 세션) |
 | `android-m6` M6 완료 | `87fc6f31` → `45c8c4ab` | 09-17 00:xx | 채팅 탭·장소 채팅·동의 게이트·NDJSON 전송기·질문 헤딩/산문 블록/장소 언급/카드·출처·공유·칩·입력 바(IME 인셋)·온디바이스 받아쓰기(`speech/DictationSession.kt`, API 33 게이트)·`openChat(place?)`. 리뷰 전부 반영. **위원장 판정: 실패 시 실패 답변 블록 착지(헌장 §6 편차 채택, 참조 문서 갱신은 실기기 뒤)**. 실기기 16항목 report §⑤ |
 | `android-m1` M2c 완료 | `cdcdf23b` → `ba43fb0b` | 09-17 0x:xx | 현재 위치 수동 지정(`EffectiveLocation` 단일 진입점·StatusLine 병합·EndpointPicker 추출·표시줄 버튼)·설정 §14 설계 확정. BLOCKER 4 해소(StatusLine seq 충돌 → 발화 단위 세대). ⚠ M6 chat/ 파일 additive 편집(자진 신고, M6 spec §4-1 자리). 실기기 §13-6 23~26 |
 | `android-m1` 프리필 배선 + M2b 완료 | `448c4d79` → `fc246219` | 22:0x | 프리필 버튼 2개(`PlaceNav.onOpenDirections`) · M2b(내 주변 6 kind·주변 상황 자동 펼침·장소 상세 도메인 섹션·역 자동 섹션 5종·무장애·현재 위치 표시줄) · `a11y/Landing.kt` `landingTarget`(터치 모드 버튼 착지 결함 처방, 24곳 전수 + 소스 가드) · KDoc 정정. 리뷰 전부 반영. 실기기 항목 +6(§12-5 17~22) + landingTarget TalkBack 터치 실측. 세션은 M2c로 |
@@ -203,6 +204,9 @@ M0 체크포인트 뒤 코디네이터가 확정한다. 요지: `~/gildongmu-wt/
 - **iOS 역이식 후보 ⑥**(android-m1 M2c 판정 37): 수동 위치 지정 순간에 GPS 권한 팝업을 띄우지 않는다(권한 있을 때만 지정 시점 실측, 없으면 팝업 없이 "위치 확인 불가"). iOS·웹은 그 자리에서 권한을 묻는다.
 - **BACKLOG(android-m1 판정 43)**: 안드로이드 설정의 "업데이트 이력"은 안드로이드 출시 노트 정본이 생길 때(첫 Play 제출) 만든다 — `release-notes.md`는 iOS 스코프.
 - **M4 실기기 위원장 판정 예정**: #3 백그라운드 음성(앱 전경 ∨ 화면 꺼짐이면 발화, 타 앱 전경만 억제 — iOS와 다름) · #15 통화 중 소리·문장 억제 + 진동은 냄.
+- **M4 → m1 인계**: 억제 훅 배선(`speech/DictationSession` → `GuideSession.setOutputSuppressed`), 체중 저장소 키 공유(`walkWeightKg`, `SharedPreferencesStore(context)` 기본 이름 — 설정 화면이 같은 키를 쓴다), README §1, `RouteGeometry.kt` KDoc.
+- **M5 착수 조건(코디네이터 판정)**: M4의 [3] 계층(전경 서비스·오디오 포커스·TTS)이 한소네 7에서 최소 스모크(설치·안내 시작·톤·발화·알림 종료)를 통과한 뒤. 그 전에 M5를 쌓으면 [3] 결함이 두 수단에 복제된다.
+- **웹 flake 관찰(android-m4 4차 게이트)**: `src/components/__tests__/TransitGuidePanel.test.tsx` "관측이 끝나면 …(래치)"가 2스레드 병렬에서 2회 실패 뒤 통과, 단독 통과 — `src/` 변경 0. 재발하면 BACKLOG.
 - **가드 점검(android-m1)**: 리터럴 스캔 정규식이 `$`가 든 리터럴에서 따옴표 짝이 어긋나 뒤 키를 삼키는 함정 — M1·M2 소스 가드에 같은 꼴이 있는지 확인.
 - **iOS 세션 확인 항목**: Deeplink 쿼리 `=`·`+` 인코딩이 Foundation과 같은지(CORE 미검증, Xcode 라이선스 동의 뒤).
 
