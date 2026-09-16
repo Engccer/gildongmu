@@ -612,6 +612,10 @@ spec `2026-08-12-walk-route-alternatives-design.md` §4·§7. 출처 `PORTS.md` 
 
 **실호출로 확인한 것과 문서로만 아는 것을 섞지 않는다.** "데이터 실재" 축은 **문서가 아니라 실호출로 판정한다** — 실시간 혼잡도는 이 축의 오판으로 보류돼 있다가 실호출 한 번에 사유가 사라지고 그날 출시됐다.
 
+### E43. 안드로이드 앱 — 🚧 착수(2026-09-16, 병렬 세션 웨이브 0)
+
+판정 정본은 `docs/superpowers/specs/2026-09-15-android-app-decisions.md`(D1~D13), 착수 계획은 `docs/superpowers/plans/2026-09-16-android-app-parallel-plan.md`. 2026-09-16 코디네이터 세션에서 O2(패키지 이름 iOS 체계, 실험판 `.dev`)·O6(실험 빌드 구성 처음부터)을 확정했고 O1·O3·O4·O5는 열린 채다. 마일스톤 M0(뼈대·이식 방식) → M1(검색) → Kit 로직 두 그룹 병렬 → M2·M3 → M4·M5·M6 순. 위원장 직접 액션: Play 개발자 계정 개설(25달러)·한소네 7 무선 디버깅 페어링.
+
 ### E31. 체중 입력 권유를 두 번 무시하면 그만 띄운다 — ✅ 구현 종결(2026-09-11, 병렬 세션 weight-notice, CHANGELOG 같은 날), 실기기 판정 대기
 
 ✅ **2026-09-11 구현**(spec `docs/superpowers/specs/2026-09-11-weight-notice-dismissal-design.md`): "무시" = 권유가 떠 있는 종료 화면에서 [체중 입력하기]를 누르지 않고 **[닫기]를 누른 것**(시트 최소화·스와이프·30분 만료 소거·앱 종료는 세지 않는다). 두 번이면 권유 두 줄이 사라지고 기준 체중이 칼로리 문장 안으로 들어간다(두 벌 키). 판정은 Kit `WalkHealth.shouldShowWeightPrompt`·`nextWeightPromptDismissals`, 카운터는 `walkWeightPromptDismissals`. **남은 것은 실기기 판정**(§2 도보 표 E31 행). ✅ **잔여 후보(a11y 감사 2026-09-11 — 상한 도달 뒤 "서버에 저장되지 않아요"가 앱 어디에도 없다)는 같은 날 A39가 흡수**: 설정 체중 필드 푸터가 허용 범위와 그 문장을 상시로 든다(`SettingsView` `ios.settings.weightFooter`). 아래는 접수 시점 기록이다.
