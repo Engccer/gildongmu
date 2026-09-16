@@ -9,19 +9,30 @@
     },
     {
       "swift": "ChatMarkdown.swift",
-      "status": "pending"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/ChatMarkdown.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/ChatMarkdownTest.kt"
     },
     {
       "swift": "ChatPlaceMentions.swift",
-      "status": "pending"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/ChatPlaceMentions.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/ChatPlaceMentionsTest.kt",
+      "note": "매칭 단위는 UTF-16 문자(Swift는 Character 자소 묶음) — 결합 문자가 이름 경계에 걸릴 때만 갈린다"
     },
     {
       "swift": "ChatService.swift",
-      "status": "pending"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/ChatService.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/ChatServiceTest.kt",
+      "note": "D5 경계(코디네이터 판정 2026-09-16 A안): :kit은 decodeChatEventLine·요청 본문(encodeBody)·예산(timeoutMs)·상태 분류(statusError)·줄 처리(eventFromStreamLine)만. POST·NDJSON 스트림 전송은 :app(M6). Swift struct ChatService(URLSession)는 object ChatService"
     },
     {
       "swift": "ChatSuggestionsService.swift",
-      "status": "pending"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/ChatSuggestionsService.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/ChatSuggestionsServiceTest.kt",
+      "note": "D5 경계(코디네이터 판정 2026-09-16 A안): :kit은 parse·followUps(상태 분류)·encodeBody·상수만. POST 전송(fetchFollowUps)은 :app(M6). timeoutSeconds 6 → timeoutMs 6000"
     },
     {
       "swift": "ClinicKind.swift",
@@ -31,7 +42,10 @@
     },
     {
       "swift": "Deeplink.swift",
-      "status": "pending"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/Deeplink.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/DeeplinkTest.kt",
+      "note": "반환 URL? → String?(:kit에 android.net.Uri 없음, :app이 Uri.parse). buildKakaoPlaceDeeplink는 Swift처럼 nil이 날 수 없어 String. 쿼리 인코딩은 URLComponents 허용 집합 미러(쉼표 비인코딩)"
     },
     {
       "swift": "DeferredAnnouncer.swift",
@@ -51,7 +65,9 @@
     },
     {
       "swift": "MarkdownPlainText.swift",
-      "status": "pending"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/MarkdownPlainText.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/MarkdownPlainTextTest.kt"
     },
     {
       "swift": "NearbyLoadCore.swift",
