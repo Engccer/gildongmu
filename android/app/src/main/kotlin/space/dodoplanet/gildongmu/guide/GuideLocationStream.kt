@@ -19,12 +19,13 @@ import android.location.LocationRequest
  */
 class GuideLocationStream(context: Context) {
     private val app = context.applicationContext
-    private val manager = app.getSystemService(LocationManager::class.java)
+    private val manager: LocationManager? = app.getSystemService(LocationManager::class.java)
     private var listener: LocationListener? = null
 
     /** 스트림을 연다. provider가 하나도 없으면 false(호출부가 제공자 꺼짐과 같은 경로로 접는다). */
     @SuppressLint("MissingPermission") // 권한은 WalkGuideModel.start ②가 먼저 판정하고 startForeground가 그 뒤다
     fun open(onFix: (GuideFixPayload) -> Unit, onProviderDisabled: () -> Unit): Boolean {
+        val manager = manager ?: return false
         val provider = when {
             manager.hasProvider(LocationManager.FUSED_PROVIDER) -> LocationManager.FUSED_PROVIDER
             manager.hasProvider(LocationManager.GPS_PROVIDER) -> LocationManager.GPS_PROVIDER
@@ -46,7 +47,8 @@ class GuideLocationStream(context: Context) {
     }
 
     fun close() {
-        listener?.let(manager::removeUpdates)
+        val l = listener ?: return
+        manager?.removeUpdates(l)
         listener = null
     }
 }

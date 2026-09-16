@@ -28,7 +28,7 @@ interface GuidePermissions {
 
 /** 톤 재생기(§5-1). 억제·포커스·진동·미디어 볼륨 판정을 안에 둔다. */
 interface GuideTones {
-    /** SoundPool 로드 시작(멱등). `startWalk` 게이트 통과 직후에 부른다. */
+    /** 소리 리소스 로드 시작(멱등). `startWalk` 게이트 통과 직후에 부른다. */
     fun preload()
     fun beginSession()
     fun endSession()

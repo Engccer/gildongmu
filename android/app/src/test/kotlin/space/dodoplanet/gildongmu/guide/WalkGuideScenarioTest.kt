@@ -5,7 +5,9 @@ import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.extension.RegisterExtension
+import space.dodoplanet.gildongmu.AppConfig
 import space.dodoplanet.gildongmu.MainDispatcherExtension
 import space.dodoplanet.gildongmu.kit.BeaconTone
 import space.dodoplanet.gildongmu.kit.HttpResponse
@@ -35,6 +37,8 @@ class WalkGuideScenarioTest {
     @JvmField
     @RegisterExtension
     val main = MainDispatcherExtension(dispatcher)
+
+    @AfterEach fun restoreGate() { GuideSession.experimentalEnabled = { AppConfig.experimentalGuidanceEnabled } }
 
     private data class Seg(val len: Double, val desc: String, val action: String? = null, val target: String? = null)
     private data class Fix(val t: Double, val along: Double, val lateral: Double, val acc: Double)
@@ -321,4 +325,39 @@ class WalkGuideScenarioTest {
     private val origin: RoutePoint = north(0.0)
     @Suppress("unused")
     private val rightAction = WalkAction.right
+
+    @Test fun `⑦ 억제 중 실행 안내는 최신 1개만 보관 → 해제 시 1회 복구 발화, 억제 중 종료는 그 문장을 버린다`() = guideTest(dispatcher, { HttpResponse(200, routeJson(longAhead)) }) { h ->
+        val base = startDetail(h, longAheadFixes)
+        h.speaker.spoken.clear()
+        h.model.outputSuppressed = true
+        feed(h, longAheadFixes, base)   // fix 10에서 "우회전B" 실행 안내 → 억제 중이라 보관
+        assertEquals(emptyList(), h.speaker.spoken)
+        h.model.outputSuppressed = false
+        assertEquals(listOf("우회전B"), h.speaker.texts)
+    }
+
+    @Test fun `⑦' 억제 중 종료 — 보관된 실행 안내가 종료 직후 발화되지 않는다`() = guideTest(dispatcher, { HttpResponse(200, routeJson(longAhead)) }) { h ->
+        val base = startDetail(h, longAheadFixes)
+        h.speaker.spoken.clear()
+        h.model.outputSuppressed = true
+        feed(h, longAheadFixes, base)
+        h.model.stopByUser()
+        settle()
+        assertFalse(h.speaker.texts.contains("우회전B"), h.speaker.texts.toString())
+        assertFalse(h.model.outputSuppressed)
+    }
+
+    @Test fun `⑤' 최종 접근 주기 통지 — 진입 서술 뒤 15초 안에는 없고, 15초 뒤 1회`() = guideTest(dispatcher, { HttpResponse(200, routeJson(finalSteps, finalApproachJson)) }) { h ->
+        val fixes = (0..20).map { Fix(it * 10.0, it * 15.0, 0.0, 8.0) }
+        val base = startDetail(h, fixes)
+        feed(h, fixes, base)
+        h.speaker.spoken.clear()
+        // 목적지는 북 315m — 진입 fix(300m, 거리 15m)가 도착 반경 안이어도 서술이 먼저다(⑰). 이후 fix는 16m 밖에서 맴돈다.
+        for ((t, along) in listOf(205.0 to 296.0, 210.0 to 297.0, 214.0 to 298.0)) { h.model.handleFix(h.fixAt(Fix(t, along, 0.0, 8.0), base)); runCurrent() }
+        assertEquals(emptyList(), h.speaker.spoken, "서술 15초 안에는 주기 통지가 없다")
+        h.model.handleFix(h.fixAt(Fix(216.0, 298.5, 0.0, 8.0), base)); runCurrent()
+        assertEquals(1, h.speaker.spoken.size)
+        assertTrue(h.speaker.texts.single().endsWith("입니다."), h.speaker.texts.single())
+        assertEquals(GuideStatus.tracking, h.model.ui.value.status)
+    }
 }

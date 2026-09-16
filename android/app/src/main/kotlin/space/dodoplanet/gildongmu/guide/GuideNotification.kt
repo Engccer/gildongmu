@@ -41,15 +41,13 @@ object GuideNotification {
     const val ID = 4101
     const val CHANNEL = "guide"
 
-    fun ensureChannel(context: Context) {
+    /** 매 세션 시작마다 부른다 — 같은 ID의 재생성은 이름을 갱신한다(앱 언어 변경을 따라간다). */
+    fun ensureChannel(context: Context, strings: Strings) {
         val manager = context.getSystemService(NotificationManager::class.java) ?: return
-        if (manager.getNotificationChannel(CHANNEL) != null) return
-        manager.createNotificationChannel(
-            NotificationChannel(CHANNEL, context.getString(R.string.android_guide_notificationChannel), NotificationManager.IMPORTANCE_LOW),
-        )
+        manager.createNotificationChannel(NotificationChannel(CHANNEL, strings.get("android.guide.notificationChannel"), NotificationManager.IMPORTANCE_LOW))
     }
 
-    fun build(context: Context, title: String, text: String): Notification {
+    fun build(context: Context, strings: Strings, title: String, text: String): Notification {
         val open = PendingIntent.getActivity(
             context, 0,
             Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP),
@@ -68,7 +66,7 @@ object GuideNotification {
             .setContentTitle(title)
             .setContentText(text)
             .setContentIntent(open)
-            .addAction(Notification.Action.Builder(null, context.getString(R.string.beacon_stop), stop).build())
+            .addAction(Notification.Action.Builder(null, strings.get("beacon.stop"), stop).build())
             .build()
     }
 }
