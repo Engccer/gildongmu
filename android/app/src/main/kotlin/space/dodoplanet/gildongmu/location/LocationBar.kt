@@ -112,7 +112,12 @@ fun LocationBarRow(store: CurrentAddressStore, manual: ManualLocationStore, onPi
     val input by store.state.collectAsState()
     val current by manual.current.collectAsState()
     val verdict by manual.verdict.collectAsState()
-    LaunchedEffect(current == null) { if (current == null) store.ensureLoaded(AppLocale.dataLocale(res)) }
+    // hydration 전 첫 프레임은 `current == null`이므로 join 뒤 다시 본다 — 저장된 수동 위치가 있는데 GPS 주소를 조회하지 않게(판정 35).
+    LaunchedEffect(current == null) {
+        if (current != null) return@LaunchedEffect
+        manual.awaitHydrated()
+        if (manual.current.value == null) store.ensureLoaded(AppLocale.dataLocale(res))
+    }
     val words = LocationBarWords(
         needsPermission = stringResource(R.string.android_common_geoDeniedTitle),
         reducedAccuracy = stringResource(R.string.android_common_geoReducedTitle),

@@ -119,7 +119,7 @@ private fun DirectionsForm(vm: DirectionsViewModel, ui: FormUiState) {
                 DirectionsFieldTarget.from -> ui.fromFocus
                 DirectionsFieldTarget.to -> ui.toFocus
                 DirectionsFieldTarget.via -> ui.viaFocus
-                DirectionsFieldTarget.manualLocation -> null // 길찾기 폼에 없는 필드 — 착지 하나로 앱을 죽이지 않는다(아래 runCatching 관용구)
+                DirectionsFieldTarget.manualLocation -> null.also { Log.w("DirectionsScreen", "길찾기 폼에 없는 필드 착지 $t") } // 착지 하나로 앱을 죽이지 않는다
             }
             LandingTarget.Submit -> ui.submitFocus
             LandingTarget.WalkHeading -> ui.walkHeadingFocus

@@ -28,15 +28,30 @@ class AppNoticesTest {
         assertEquals("해제", onlyApp.text)
     }
 
-    @Test fun `post는 덮지 않고 큐에 넣고, consume은 그 seq일 때만 다음으로 넘긴다`() {
+    @Test fun `post는 덮지 않고 큐에 넣고, claim은 한 소유자만, consume은 집은 seq일 때만 다음으로 넘긴다`() {
         AppNotices.post("첫째"); AppNotices.post("둘째")
         val first = AppNotices.pending.value!!
         assertEquals("첫째", first.text)
-        AppNotices.consume(first.seq + 100) // 다른 seq — 무시
-        assertEquals("첫째", AppNotices.pending.value!!.text)
-        AppNotices.consume(first.seq)
-        assertEquals("둘째", AppNotices.pending.value!!.text)
-        AppNotices.consume(AppNotices.pending.value!!.seq)
+        assertNull(AppNotices.claim(first.seq + 100)) // 다른 seq — 못 집는다
+        assertEquals(first, AppNotices.claim(first.seq)); assertNull(AppNotices.pending.value) // 집으면 pending이 빈다(다른 StatusLine이 못 본다)
+        assertNull(AppNotices.claim(first.seq)) // 이미 집혔다
+        AppNotices.consume(first.seq + 100) // 집지 않은 seq — 무시
         assertNull(AppNotices.pending.value)
+        AppNotices.consume(first.seq) // 발화 성공 → 큐 머리 승격
+        assertEquals("둘째", AppNotices.pending.value!!.text)
+        val second = AppNotices.claim(AppNotices.pending.value!!.seq)!!; AppNotices.consume(second.seq)
+        assertNull(AppNotices.pending.value)
+    }
+
+    @Test fun `restore — 발화 전에 떠난 통지는 pending으로 돌아오고, 그 사이 앉은 통지보다 먼저 낭독된다`() {
+        AppNotices.post("첫째")
+        val first = AppNotices.claim(AppNotices.pending.value!!.seq)!!
+        AppNotices.post("둘째") // claim 중 도착 — 빈 pending에 앉는다
+        assertEquals("둘째", AppNotices.pending.value!!.text)
+        AppNotices.restore(first.seq)
+        assertEquals("첫째", AppNotices.pending.value!!.text)
+        AppNotices.restore(first.seq) // 이중 restore 무시
+        val again = AppNotices.claim(AppNotices.pending.value!!.seq)!!; assertEquals("첫째", again.text); AppNotices.consume(again.seq)
+        assertEquals("둘째", AppNotices.pending.value!!.text)
     }
 }
