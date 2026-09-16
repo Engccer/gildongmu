@@ -17,7 +17,9 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import space.dodoplanet.gildongmu.a11y.Notice
+import space.dodoplanet.gildongmu.kit.NearbyCoord
 import space.dodoplanet.gildongmu.kit.RecentQuery
+import space.dodoplanet.gildongmu.kit.models.PlaceSort
 import space.dodoplanet.gildongmu.kit.RecentSearchStore
 import space.dodoplanet.gildongmu.kit.SearchOutcome
 import space.dodoplanet.gildongmu.kit.SearchService
@@ -34,6 +36,10 @@ data class SearchUiState(
     val region: String? = null,
     val recentQueries: List<RecentQuery> = emptyList(),
     val notice: Notice = Notice(0, ""),
+    /** 정렬 축(iOS `SearchModel.sort`). review = 네이버 리뷰순 단독. 라벨 전환이 곧 상태 신호. */
+    val sort: PlaceSort = PlaceSort.accuracy,
+    /** 리뷰순 토글 노출 조건: ko + 이 세션에서 네이버가 답한 응답을 본 적 있음(래치). */
+    val canSortByReview: Boolean = false,
 ) {
     val totalCount: Int get() = outcome?.orderedSections?.sumOf { it.count } ?: 0
 }
@@ -65,6 +71,8 @@ class SearchViewModel(
     private val strings: SearchStrings,
     private val savedState: SavedStateHandle,
     private val io: CoroutineDispatcher = Dispatchers.IO,
+    /** 순위 가중 좌표(spec §3-3). 권한이 이미 있을 때만 값, 팝업 없음. 제출은 이것을 **먼저 기다린다**(iOS 동형, 직렬). */
+    private val coordinate: suspend () -> NearbyCoord? = { null },
 ) : ViewModel() {
     val queryState = TextFieldState(savedState.get<String>(QUERY_KEY) ?: "")
 
@@ -76,35 +84,79 @@ class SearchViewModel(
 
     private var searchJob: Job? = null
 
+    /** 마지막으로 제출된 질의 — 정렬 토글은 입력창의 현재 텍스트가 아니라 이것으로 재조회한다. */
+    private var lastSubmittedQuery = ""
+
+    /** 네이버가 답한 응답을 이 세션에서 본 적 있는가(래치) — 앱은 서버 키를 모르므로 `placesProvider`가 유일한 관측 채널. */
+    private var naverBackedSeen = false
+
     /** 최근 검색 첫 로드. `submit`이 기록하기 전에 join해 로드가 기록을 덮지 않게 한다. */
     private val initJob: Job = viewModelScope.launch {
         val recent = withContext(io) { store.queries() }
         _state.update { it.copy(recentQueries = recent) }
     }
 
-    fun submit() {
+    /**
+     * 제출. `landFocus = false`는 정렬 토글의 재조회(새로고침 계열 — 사용자가 토글에 커서를 둔 채 일으킨 변화)로, 첫 결과
+     * 착지 계약을 적용하지 않고 실패 시 정렬을 되돌린다.
+     */
+    fun submit(landFocus: Boolean = true) {
         val trimmed = queryState.text.toString().trim()
         if (trimmed.isEmpty()) return
         searchJob?.cancel() // 진행 중 검색 폐기: stale 응답 차단
         savedState[QUERY_KEY] = trimmed
+        lastSubmittedQuery = trimmed
         val lang = dataLocale()
+        val requestedSort = _state.value.sort
         // iOS와 같이 동기로 "검색 중"에 들어간다 — 버튼 가드와 통지가 첫 디스패치를 기다리지 않는다.
         _state.update { it.copy(bucket = null, region = null, isSearching = true, notice = next(strings.searchingFor(trimmed))) }
         searchJob = viewModelScope.launch {
             initJob.join()
             _state.update { it.copy(recentQueries = store.recordQuery(trimmed)) } // 제출 = 기록 시점
-            // 좌표는 M1에서 싣지 않는다(spec §9-2) — 전국 정확도순.
-            val result = withContext(io) { service.search(trimmed, lat = null, lng = null, lang = lang) }
+            // 권한이 이미 허용된 세션이면 좌표를 먼저 얻어 싣는다(캐시 우선, 팝업 없음, 2초 상한 — 직렬, iOS 동형).
+            // 좌표 없는 검색은 전국 정확도순이라 근처 결과가 매몰된다. 재정렬은 하지 않는다(서버 근접 블렌딩).
+            val coord = coordinate()
+            val result = withContext(io) { service.search(trimmed, lat = coord?.lat, lng = coord?.lng, lang = lang, sort = requestedSort) }
             ensureActive()
+            if (result.placesProvider == "merged" || result.placesProvider == "naver-local") naverBackedSeen = true
             _state.update { s ->
                 val total = result.orderedSections.sumOf { it.count }
                 val failed = result.allFailed && total == 0
+                // 정렬 재조회의 장소 트랙이 실패하면 라벨(=상태 신호)이 실패한 정렬을 가리키지 않게 되돌린다(웹 롤백 미러).
+                val sort = if (!landFocus && requestedSort == s.sort && result.places.isFailed) flip(requestedSort) else s.sort
+                val revision = s.resultsRevision + 1
+                if (!landFocus) consumedRevision = revision // 착지 없음
                 s.copy(
-                    outcome = result, isSearching = false, failed = failed, resultsRevision = s.resultsRevision + 1,
+                    outcome = result, isSearching = false, failed = failed, resultsRevision = revision, sort = sort,
+                    canSortByReview = lang == "ko" && naverBackedSeen,
                     notice = next(if (failed) strings.failed() else if (total == 0) strings.empty() else strings.count(total)),
                 )
             }
         }
+    }
+
+    /**
+     * 정렬 전환(iOS `toggleSort`): 칩 리셋, 입력창을 마지막 제출 질의로 되돌리고 그것으로 재조회, 착지 없음. 검색 중이거나
+     * 제출 이력이 없으면 무시. `sort`는 다음 일반 제출에도 유지된다.
+     */
+    fun toggleSort() {
+        if (_state.value.isSearching || lastSubmittedQuery.isEmpty()) return
+        _state.update { it.copy(sort = flip(it.sort)) }
+        setQuery(lastSubmittedQuery)
+        submit(landFocus = false)
+    }
+
+    private fun flip(sort: PlaceSort) = if (sort == PlaceSort.review) PlaceSort.accuracy else PlaceSort.review
+
+    /** pop 복귀 착지 키(spec §3-1): 저장은 `SavedStateHandle`, 소비는 한 번 — 결과가 없는 화면(재생성 뒤)은 시도 없이 지운다. */
+    fun rememberReturnFocus(key: String) {
+        savedState[RETURN_FOCUS_KEY] = key
+    }
+
+    fun takeReturnFocus(): String? {
+        val key = savedState.get<String>(RETURN_FOCUS_KEY)
+        savedState.remove<String>(RETURN_FOCUS_KEY)
+        return if (_state.value.outcome == null) null else key
     }
 
     /** 입력만 비운다(결과 유지 — iOS `.searchable` 동형). */
@@ -155,5 +207,6 @@ class SearchViewModel(
 
     companion object {
         const val QUERY_KEY = "query"
+        const val RETURN_FOCUS_KEY = "returnFocus"
     }
 }

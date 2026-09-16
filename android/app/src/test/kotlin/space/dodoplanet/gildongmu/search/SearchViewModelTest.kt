@@ -12,6 +12,8 @@ import space.dodoplanet.gildongmu.kit.APIClient
 import space.dodoplanet.gildongmu.kit.HttpResponse
 import space.dodoplanet.gildongmu.kit.HttpTransport
 import space.dodoplanet.gildongmu.kit.InMemoryKeyValueStore
+import space.dodoplanet.gildongmu.kit.NearbyCoord
+import space.dodoplanet.gildongmu.kit.models.PlaceSort
 import space.dodoplanet.gildongmu.kit.RecentSearchStore
 import space.dodoplanet.gildongmu.kit.SearchService
 import space.dodoplanet.gildongmu.kit.pathOf
@@ -50,7 +52,11 @@ class SearchViewModelTest {
         handler: (String) -> HttpResponse,
         store: RecentSearchStore = RecentSearchStore(InMemoryKeyValueStore()),
         saved: SavedStateHandle = SavedStateHandle(),
-    ) = SearchViewModel(SearchService(stubbedClient(handler)), store, { "ko" }, strings, saved, io = dispatcher)
+        dataLocale: String = "ko",
+        coordinate: suspend () -> NearbyCoord? = { null },
+    ) = SearchViewModel(SearchService(stubbedClient(handler)), store, { dataLocale }, strings, saved, io = dispatcher, coordinate = coordinate)
+
+    private val mergedPlaces = """{"places":[{"id":"k1","name":"강동역","category":"교통","address":"서울 강동구","roadAddress":"서울 강동구 천호대로","lat":37.5,"lng":127.1,"distanceMeters":120}],"provider":"merged","query":"강동"}"""
 
     @Test fun `제출은 기록·필터 리셋·검색 중 통지·결과 통지·세대 증가 순이다`() = runTest(dispatcher) {
         // 전송이 중단점 없이 즉시 답하면 runCurrent가 검색을 끝까지 돌려 중간 상태를 볼 수 없다 — 지연 전송으로 관측한다.
@@ -167,5 +173,80 @@ class SearchViewModelTest {
         val m = vm({ HttpResponse(404, "") }, saved = SavedStateHandle(mapOf(SearchViewModel.QUERY_KEY to "강동")))
         assertEquals("강동", m.queryState.text.toString()); assertNull(m.state.value.outcome)
         m.clearQuery(); assertEquals("", m.queryState.text.toString())
+    }
+
+    // ── M2 §3-3: 좌표 가중(직렬)·리뷰순 토글·pop 복귀 키
+
+    @Test fun `제출은 좌표를 먼저 기다린 뒤 lat·lng를 싣고 거리가 행에 흐른다`() = runTest(dispatcher) {
+        val urls = ArrayList<String>()
+        val m = vm(handler = { url -> urls += url; if (pathOf(url) == "/api/places") HttpResponse(200, mergedPlaces) else HttpResponse(200, emptyAddr) },
+            coordinate = { delay(500); NearbyCoord(37.5, 127.0) })
+        m.queryState.setTextAndPlaceCursorAtEnd("강동"); m.submit()
+        dispatcher.scheduler.advanceTimeBy(100); dispatcher.scheduler.runCurrent()
+        assertTrue(urls.none { pathOf(it) == "/api/places" }) // 좌표 전에 검색을 보내지 않는다(직렬)
+        dispatcher.scheduler.advanceUntilIdle()
+        val places = urls.first { pathOf(it) == "/api/places" }
+        assertTrue(queryOf(places).contains("lat=37.5") && queryOf(places).contains("lng=127.0"), places)
+        assertEquals(120.0, m.state.value.outcome?.places?.items?.first()?.distanceMeters)
+    }
+
+    @Test fun `리뷰순 토글 노출은 ko + 네이버 관측 래치`() = runTest(dispatcher) {
+        val ko = vm(byPath("/api/places" to HttpResponse(200, mergedPlaces), "/api/address/search" to HttpResponse(200, emptyAddr)))
+        ko.queryState.setTextAndPlaceCursorAtEnd("강동"); ko.submit(); dispatcher.scheduler.advanceUntilIdle()
+        assertTrue(ko.state.value.canSortByReview)
+        val kakaoOnly = vm(byPath("/api/places" to HttpResponse(200, places), "/api/address/search" to HttpResponse(200, emptyAddr)))
+        kakaoOnly.queryState.setTextAndPlaceCursorAtEnd("강동"); kakaoOnly.submit(); dispatcher.scheduler.advanceUntilIdle()
+        assertFalse(kakaoOnly.state.value.canSortByReview)
+        val en = vm(byPath("/api/places" to HttpResponse(200, mergedPlaces), "/api/address/search" to HttpResponse(200, emptyAddr)), dataLocale = "en")
+        en.queryState.setTextAndPlaceCursorAtEnd("gangdong"); en.submit(); dispatcher.scheduler.advanceUntilIdle()
+        assertFalse(en.state.value.canSortByReview)
+    }
+
+    @Test fun `토글은 입력창을 마지막 질의로 되돌리고 sort=review로 재조회하며 착지 없음`() = runTest(dispatcher) {
+        val urls = ArrayList<String>()
+        val m = vm(handler = { url -> urls += url; if (pathOf(url) == "/api/places") HttpResponse(200, mergedPlaces) else HttpResponse(200, emptyAddr) })
+        m.queryState.setTextAndPlaceCursorAtEnd("강동"); m.submit(); dispatcher.scheduler.advanceUntilIdle()
+        m.queryState.setTextAndPlaceCursorAtEnd("다른 글"); m.setBucket("food")
+        m.toggleSort(); dispatcher.scheduler.advanceUntilIdle()
+        assertEquals("강동", m.queryState.text.toString())
+        assertEquals(PlaceSort.review, m.state.value.sort); assertNull(m.state.value.bucket)
+        assertTrue(queryOf(urls.last { pathOf(it) == "/api/places" }).contains("sort=review"))
+        assertEquals(2, m.state.value.resultsRevision); assertEquals(2, m.consumedRevision) // 착지 없음
+        // 다음 일반 제출에도 sort 유지
+        m.submit(); dispatcher.scheduler.advanceUntilIdle()
+        assertTrue(queryOf(urls.last { pathOf(it) == "/api/places" }).contains("sort=review"))
+    }
+
+    @Test fun `리뷰순 재조회의 장소 트랙 실패는 정렬을 되돌리고, 일반 제출 실패는 되돌리지 않는다`() = runTest(dispatcher) {
+        var fail = false
+        val m = vm(handler = { url -> if (pathOf(url) == "/api/places") (if (fail) HttpResponse(502, "") else HttpResponse(200, mergedPlaces)) else HttpResponse(200, emptyAddr) })
+        m.queryState.setTextAndPlaceCursorAtEnd("강동"); m.submit(); dispatcher.scheduler.advanceUntilIdle()
+        fail = true
+        m.toggleSort(); dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(PlaceSort.accuracy, m.state.value.sort) // 롤백
+        fail = false
+        m.toggleSort(); dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(PlaceSort.review, m.state.value.sort)
+        fail = true
+        m.submit(); dispatcher.scheduler.advanceUntilIdle() // 일반 제출 실패
+        assertEquals(PlaceSort.review, m.state.value.sort)
+    }
+
+    @Test fun `검색 중이거나 제출 이력이 없으면 토글을 무시한다`() = runTest(dispatcher) {
+        val m = vm(handler = { HttpResponse(404, "") })
+        m.toggleSort(); assertEquals(PlaceSort.accuracy, m.state.value.sort)
+        m.queryState.setTextAndPlaceCursorAtEnd("q"); m.submit()
+        m.toggleSort(); assertEquals(PlaceSort.accuracy, m.state.value.sort) // isSearching
+        dispatcher.scheduler.advanceUntilIdle()
+    }
+
+    @Test fun `pop 복귀 키는 결과가 있을 때 한 번만, 결과가 없으면 null`() = runTest(dispatcher) {
+        val m = vm(handler = { HttpResponse(404, "") })
+        m.rememberReturnFocus("place-k1")
+        assertNull(m.takeReturnFocus()) // outcome 없음 → 시도 없이 지운다
+        val loaded = vm(byPath("/api/places" to HttpResponse(200, places), "/api/address/search" to HttpResponse(200, emptyAddr)))
+        loaded.queryState.setTextAndPlaceCursorAtEnd("강동"); loaded.submit(); dispatcher.scheduler.advanceUntilIdle()
+        loaded.rememberReturnFocus("place-k1")
+        assertEquals("place-k1", loaded.takeReturnFocus()); assertNull(loaded.takeReturnFocus())
     }
 }

@@ -12,6 +12,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material.icons.Icons
@@ -38,6 +39,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import android.util.Log
 import space.dodoplanet.gildongmu.R
+import space.dodoplanet.gildongmu.a11y.AppTopBar
 import space.dodoplanet.gildongmu.a11y.StatusLine
 import space.dodoplanet.gildongmu.a11y.headingText
 import space.dodoplanet.gildongmu.i18n.AppLocale
@@ -49,6 +51,7 @@ import space.dodoplanet.gildongmu.kit.bucketsPresent
 import space.dodoplanet.gildongmu.kit.filterPlacesByBucket
 import space.dodoplanet.gildongmu.kit.filterPlacesByRegion
 import space.dodoplanet.gildongmu.kit.models.Place
+import space.dodoplanet.gildongmu.kit.models.PlaceSort
 import space.dodoplanet.gildongmu.kit.regionLabel
 import space.dodoplanet.gildongmu.kit.regionsPresent
 
@@ -58,13 +61,15 @@ import space.dodoplanet.gildongmu.kit.regionsPresent
  */
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
-fun SearchScreen(vm: SearchViewModel) {
+fun SearchScreen(vm: SearchViewModel, onOpenPlace: (Place) -> Unit = {}) {
     val s by vm.state.collectAsState()
     val res = LocalContext.current.resources
     val lang = remember(res) { AppLocale.current(res) }
     val fieldFocus = remember { FocusRequester() }
     val buttonFocus = remember { FocusRequester() }
-    val firstRowFocus = remember { FocusRequester() }
+    // 결과 행 requester는 행 키로 보관한다 — 첫 결과 착지와 pop 복귀 착지가 같은 맵을 쓴다.
+    val rowFocus = remember { mutableMapOf<String, FocusRequester>() }
+    val rowFocusFor: (String) -> FocusRequester = { key -> rowFocus.getOrPut(key) { FocusRequester() } }
     // 최근 검색 행의 requester는 검색어로 보관한다 — index로 들면 삭제 뒤 옛 목록의 자리를 가리켜 지워질 행에 착지한다.
     val recentFocus = remember { mutableMapOf<String, FocusRequester>() }
     var pendingRecentLanding by remember { mutableStateOf<String?>(null) }
@@ -76,9 +81,15 @@ fun SearchScreen(vm: SearchViewModel) {
             vm.consumedRevision = s.resultsRevision
             if (s.totalCount > 0) {
                 withFrameNanos { }
-                runCatching { firstRowFocus.requestFocus() }.onFailure { Log.w("SearchScreen", "첫 결과 착지 실패", it) }
+                s.outcome?.let { firstRowKey(it) }?.let { key -> runCatching { rowFocus[key]?.requestFocus() }.onFailure { Log.w("SearchScreen", "첫 결과 착지 실패", it) } }
             }
         }
+    }
+    // pop 복귀 착지: 상세에서 돌아오면 눌렀던 행으로(spec §3-1). 키는 한 번만 소비된다(결과가 없으면 null).
+    LaunchedEffect(Unit) {
+        val key = vm.takeReturnFocus() ?: return@LaunchedEffect
+        withFrameNanos { }
+        runCatching { rowFocus[key]?.requestFocus() }.onFailure { Log.w("SearchScreen", "복귀 착지 실패", it) }
     }
     // 최근 검색 삭제 뒤 착지: 재구성이 끝난 다음 프레임에 새 목록의 행으로(첫 결과 착지와 같은 꼴).
     LaunchedEffect(pendingRecentLanding) {
@@ -88,15 +99,15 @@ fun SearchScreen(vm: SearchViewModel) {
         pendingRecentLanding = null
     }
 
+    Scaffold(topBar = { AppTopBar(stringResource(R.string.app_title), onBack = null) }) { padding ->
     Column(
         Modifier
             .fillMaxSize()
+            .padding(padding)
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 16.dp)
             .semantics { testTagsAsResourceId = true },
     ) {
-        Text(stringResource(R.string.app_title), Modifier.headingText().padding(vertical = 12.dp), style = MaterialTheme.typography.titleLarge)
-
         TextField(
             state = vm.queryState,
             lineLimits = TextFieldLineLimits.SingleLine,
@@ -144,10 +155,29 @@ fun SearchScreen(vm: SearchViewModel) {
             )
         }
 
+        // 리뷰순 토글(iOS 동형): ko + 네이버 관측 + 결과 있음. 섹션 밖 — 리뷰순 0건이면 장소 섹션이 사라져도 토글은 남아 되돌아간다.
+        if (s.canSortByReview && s.outcome != null) {
+            Button(onClick = vm::toggleSort, modifier = Modifier.testTag("sort")) {
+                Text(stringResource(if (s.sort == PlaceSort.review) R.string.search_sortByAccuracy else R.string.search_sortByReview))
+            }
+        }
+
         s.outcome?.let { outcome ->
-            ResultSections(outcome, s.bucket, s.region, lang, firstRowFocus, vm::setBucket, vm::setRegion)
+            ResultSections(outcome, s.bucket, s.region, lang, rowFocusFor, vm::setBucket, vm::setRegion) { place ->
+                vm.rememberReturnFocus("place-${place.id}")
+                onOpenPlace(place)
+            }
         }
     }
+    }
+}
+
+/** 첫 결과 착지 키 — 첫 섹션의 첫 항목 하나로 미리 정한다(재구성 순서에 기대지 않는다). */
+fun firstRowKey(outcome: SearchOutcome): String? = when (val first = outcome.orderedSections.firstOrNull()) {
+    is SearchSection.Places -> first.items.firstOrNull()?.let { "place-${it.id}" }
+    is SearchSection.Addresses -> first.items.firstOrNull()?.let { "address-${it.roadAddr}" }
+    is SearchSection.Web -> first.items.firstOrNull()?.let { "web-${it.url}" }
+    null -> null
 }
 
 @Composable
@@ -180,26 +210,21 @@ private fun ResultSections(
     bucket: String?,
     region: String?,
     lang: String,
-    firstRowFocus: FocusRequester,
+    rowFocusFor: (String) -> FocusRequester,
     onBucket: (String?) -> Unit,
     onRegion: (String?) -> Unit,
+    onOpenPlace: (Place) -> Unit,
 ) {
     val sections = outcome.orderedSections
     val showHeadings = sections.size > 1
-    // 착지 대상은 첫 섹션의 첫 항목 하나로 미리 정한다(재구성 순서에 기대지 않는다). FocusRequester는 한 노드에만 붙는다.
-    val firstKey: String? = when (val first = sections.firstOrNull()) {
-        is SearchSection.Places -> first.items.firstOrNull()?.let { "place-${it.id}" }
-        is SearchSection.Addresses -> first.items.firstOrNull()?.let { "address-${it.roadAddr}" }
-        is SearchSection.Web -> first.items.firstOrNull()?.let { "web-${it.url}" }
-        null -> null
-    }
-    fun rowModifier(key: String): Modifier = if (key == firstKey) Modifier.focusRequester(firstRowFocus) else Modifier
+    // 모든 행이 키로 requester를 받는다(첫 결과 착지·pop 복귀 착지가 같은 맵).
+    fun rowModifier(key: String): Modifier = Modifier.focusRequester(rowFocusFor(key))
 
     for (section in sections) {
         when (section) {
             is SearchSection.Places -> {
                 if (showHeadings) SectionHeading(stringResource(R.string.search_placeSection))
-                PlacesSection(section.items, bucket, region, lang, onBucket, onRegion, ::rowModifier)
+                PlacesSection(section.items, bucket, region, lang, onBucket, onRegion, ::rowModifier, onOpenPlace)
             }
             is SearchSection.Addresses -> {
                 if (showHeadings) SectionHeading(stringResource(R.string.search_addressSection))
@@ -228,6 +253,7 @@ private fun PlacesSection(
     onBucket: (String?) -> Unit,
     onRegion: (String?) -> Unit,
     rowModifier: (String) -> Modifier,
+    onOpenPlace: (Place) -> Unit,
 ) {
     val bucketItems = bucketsPresent(base).map { key -> ChipItem(key, bucketLabel(key, lang), filterPlacesByBucket(base, key).size) }
     val regionItems = regionsPresent(base).map { key -> ChipItem(key, regionLabel(key, lang), filterPlacesByRegion(base, key).size) }
@@ -237,6 +263,7 @@ private fun PlacesSection(
     if (filtered.isEmpty()) {
         Text(stringResource(R.string.search_noFilterResults), Modifier.padding(vertical = 8.dp))
     } else {
-        for (place in filtered) PlaceRow(place, lang, spokenMeters = stringResource(R.string.android_unit_spokenMeters), modifier = rowModifier("place-${place.id}"))
+        // 장소 행은 버튼 → 상세(M1 §9-3 해제)
+        for (place in filtered) PlaceRow(place, lang, spokenMeters = stringResource(R.string.android_unit_spokenMeters), onClick = { onOpenPlace(place) }, modifier = rowModifier("place-${place.id}"))
     }
 }

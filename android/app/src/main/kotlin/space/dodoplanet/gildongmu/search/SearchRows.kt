@@ -46,6 +46,13 @@ import space.dodoplanet.gildongmu.kit.pickCategory
 // 결과 행·최근 검색 행·칩 축(spec §3-5·§3-7·§3-8). 판정은 :kit, 여기는 시각·시맨틱 조립만.
 
 /** 장소 행: 이름 줄 + `분류, 주소` 줄을 한 객체로. M1은 비활성 텍스트(상세는 M2). 거리는 M1에 좌표가 없어 오지 않는다. */
+/** 장소 행 보조 줄: 분류·주소·거리(좌표 가중 검색이면 서버 주석 `distanceMeters`가 있다 — 재정렬 없이 표기만). */
+fun placeSecondaryLine(place: Place, lang: String, distanceLabel: (String) -> String): String = joinText(
+    pickCategory(lang, place.category, place.categoryEn),
+    place.roadAddress.ifEmpty { place.address },
+    place.distanceMeters?.let { distanceLabel(formatDistance(it.toInt())) },
+)
+
 @Composable
 fun PlaceRow(
     place: Place,
@@ -57,12 +64,8 @@ fun PlaceRow(
 ) {
     val name = bilingualName(lang, place.name, en = null, roman = place.nameRoman)
     val res = LocalContext.current.resources
-    // 보조 줄: 분류·주소·거리(좌표 가중 검색이면 서버 주석 distanceMeters가 있다). 도메인 화면(둘러보기)은 보조 줄을 대체한다.
-    val secondary = secondaryOverride ?: joinText(
-        pickCategory(lang, place.category, place.categoryEn),
-        place.roadAddress.ifEmpty { place.address },
-        place.distanceMeters?.let { appLocalized(res, R.string.place_distance, formatDistance(it.toInt())) },
-    )
+    // 도메인 화면(둘러보기)은 보조 줄을 대체한다.
+    val secondary = secondaryOverride ?: placeSecondaryLine(place, lang) { appLocalized(res, R.string.place_distance, it) }
     // 낭독: 비-ko 병기는 괄호 없이, 거리 단위는 풀어쓰기(TalkBack `m` 낭독은 §9-12 실기기 판정 — 오독 없으면 뺀다)
     val spokenBase = if (name.secondary == null) joinText(name.display, secondary) else joinText(name.primary, secondary)
     val spoken = spokenDistanceUnits(spokenBase, spokenMeters).takeIf { it != joinText(name.display, secondary) }
