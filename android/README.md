@@ -174,6 +174,8 @@ node android/scripts/messages-to-android-strings.mjs --update-arg-order   # 호�
 ## 7. 게이트 락 절차
 
 1. `until mkdir ~/gildongmu-wt/gate.lock 2>/dev/null; do sleep 30; done`
-2. `cd android && ./gradlew :kit:test :app:testDebugUnitTest :app:assembleDebug :app:assembleExperimental`
+2. `cd android && ./gradlew :kit:test :app:testDebugUnitTest :app:assembleDebug :app:assembleExperimental :app:compileDebugAndroidTestKotlin`
 3. `cd .. && VITEST_MAX_THREADS=2 npm run test:run`
+   - androidTest(ATF)는 기기에서만 돈다(`connectedDebugAndroidTest`, 계측 변형은 `testBuildType` 기본값 = debug 하나뿐이라 `androidTestExperimental/` 소스셋은 **돌지 않는다**). 도보 안내 ATF(`guide/GuideSheetA11yTest`)는 테스트 안에서 `GuideSession.experimentalEnabled = { true }`로 게이트를 켜고 `debugSetUi`로 상태만 넣어 전경 서비스를 띄우지 않으므로 debug 변형에서 유효하다(debug 매니페스트에는 전경 서비스 선언이 없다 — 실험판 소스셋에만). 서비스를 실제로 띄우는 ATF가 생기면 `android.testBuildType = "experimental"`로 계측 변형을 통째로 옮기는 결정이 필요하다(전체 ATF에 파급 — 코디네이터 판정).
+   - 정식 APK 봉인 검사: `node android/scripts/check-release-manifest.mjs android/app/build/outputs/apk/debug/app-debug.apk`(실험판은 `--experimental`).
 4. 성공·실패와 무관하게 `rmdir ~/gildongmu-wt/gate.lock; (cd android && ./gradlew --stop)`
