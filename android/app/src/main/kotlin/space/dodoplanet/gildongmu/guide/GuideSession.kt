@@ -55,13 +55,15 @@ object GuideSession {
     /** 세션 환경(전경 판정 입력·화면 상태). `permissions`는 `GuideBottomBar`가 런처를 붙인다(Task 5). */
     lateinit var permissions: GuidePermissionsImpl
         private set
-    private lateinit var environment: AndroidGuideEnvironment
+    private var environment: AndroidGuideEnvironment? = null
+    private var foreground = false
 
     /** 1회 조립(멱등). Activity 재생성마다 다시 불리므로 첫 줄이 가드다. */
     fun attach(app: Context) {
         if (::walk.isInitialized) return
         val context = app.applicationContext
-        environment = AndroidGuideEnvironment(context)
+        val env = AndroidGuideEnvironment(context).also { it.foreground = foreground }
+        environment = env
         permissions = GuidePermissionsImpl(context)
         walk = WalkGuideModel(
             routes = RouteService(AppConfig.apiClient),
@@ -73,7 +75,7 @@ object GuideSession {
             speaker = NoopSpeaker,
             haptics = NoopHaptics,
             steps = AndroidStepCounter(context, Handler(Looper.getMainLooper())),
-            env = environment,
+            env = env,
             coordinator = coordinator,
             store = SharedPreferencesStore(context),
             scope = CoroutineScope(SupervisorJob() + Dispatchers.Main),
@@ -116,8 +118,9 @@ object GuideSession {
     /** `GuideBottomBar`의 수명 관찰자가 ON_START/ON_STOP을 넘긴다. */
     fun setForeground(foreground: Boolean) {
         if (!::walk.isInitialized) return
-        val wasBackground = !environment.foreground
-        environment.foreground = foreground
+        val wasBackground = !this.foreground
+        this.foreground = foreground
+        environment?.foreground = foreground
         walk.setForeground(foreground)
         if (foreground && wasBackground && walk.ui.value.hasScreen && isMinimized) bandLandingSeq += 1
     }
