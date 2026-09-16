@@ -33,6 +33,18 @@ internal fun JsonObject.requiredInt(key: String): Int {
 /** 선택 키의 원시값. 없거나 null이거나 객체·배열이면 null — 던지지 않는다(`jsonPrimitive`는 IllegalArgumentException을 낸다). */
 internal fun JsonObject.optionalPrimitive(key: String): JsonPrimitive? = this[key] as? JsonPrimitive
 
+/**
+ * 선택 문자열 키(Swift `decodeIfPresent(String.self)` 대응). 없거나 null이면 null, 문자열이면 그 값,
+ * **객체·배열·숫자면 throw** — Swift가 typeMismatch로 실패하는 자리라 관대하게 접지 않는다(깨진 줄은 깨진 줄).
+ */
+internal fun JsonObject.optionalString(key: String): String? {
+    val value = this[key] ?: return null
+    if (value is JsonNull) return null
+    val primitive = value as? JsonPrimitive ?: throw SerializationException("'$key'는 문자열이어야 한다")
+    if (!primitive.isString) throw SerializationException("'$key'는 문자열이어야 한다")
+    return primitive.content
+}
+
 internal fun JsonObject.requiredObject(key: String): JsonObject =
     required(key) as? JsonObject ?: throw SerializationException("'$key'는 객체여야 한다")
 
