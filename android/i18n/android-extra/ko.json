@@ -16,7 +16,18 @@
       "announceCount": "검색 결과 {count}건"
     },
     "common": {
-      "comingSoon": "아직 준비 중입니다"
+      "comingSoon": "아직 준비 중입니다",
+      "back": "뒤로",
+      "noAppToOpen": "열 수 있는 앱이 없습니다",
+      "locationFailed": "현재 위치를 확인하지 못했습니다",
+      "locationOff": "기기의 위치가 꺼져 있습니다",
+      "geoDeniedDesc": "설정에서 길동무의 위치 접근을 허용해 주세요",
+      "geoReducedDesc": "대략적인 위치만 허용되어 있습니다. 정확한 위치를 허용해 주세요"
+    },
+    "nearby": {
+      "announceRouteStops": "경유 정류소 {count}곳",
+      "subwayEmptyNearest": "주변에 지하철역이 없습니다. 가장 가까운 역은 {station}, {distance} 거리입니다",
+      "subwayClosed": "운행 시간이 아닙니다. 첫차 {time}"
     }
   },
   "search": {

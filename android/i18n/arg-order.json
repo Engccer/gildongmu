@@ -6,6 +6,16 @@
     "name",
     "distance"
   ],
+  "android.nearby.announceRouteStops": [
+    "count"
+  ],
+  "android.nearby.subwayClosed": [
+    "time"
+  ],
+  "android.nearby.subwayEmptyNearest": [
+    "station",
+    "distance"
+  ],
   "android.search.announceCount": [
     "count"
   ],
@@ -880,5 +890,222 @@
   ],
   "whereAmI.overview.unavailableSeoulOnly": [
     "label"
+  ],
+  "android.beacon.food.ramyeonMany": [
+    "n"
+  ],
+  "android.beacon.healthSummary": [
+    "steps",
+    "kcal"
+  ],
+  "android.beacon.healthSummaryWithWeight": [
+    "steps",
+    "kg",
+    "kcal"
+  ],
+  "android.beacon.healthWeightNotice": [
+    "kg"
+  ],
+  "android.chat.addressesHeading": [
+    "count"
+  ],
+  "android.chat.openPlace": [
+    "name"
+  ],
+  "android.chat.placesHeading": [
+    "count"
+  ],
+  "android.chat.webResultsHeading": [
+    "count"
+  ],
+  "android.guide.destChanged": [
+    "name"
+  ],
+  "android.guide.routeListCurrent": [
+    "n",
+    "step"
+  ],
+  "android.guide.routeListRow": [
+    "n",
+    "step"
+  ],
+  "android.guide.waypointChange": [
+    "label"
+  ],
+  "android.guide.waypointDropped": [
+    "label"
+  ],
+  "android.guide.waypointKept": [
+    "label"
+  ],
+  "android.guide.waypointRemoved": [
+    "label"
+  ],
+  "android.guide.waypointSet": [
+    "label"
+  ],
+  "android.nearby.airStationLine": [
+    "name",
+    "distance"
+  ],
+  "android.nearby.announceBikes": [
+    "count"
+  ],
+  "android.nearby.announceEvents": [
+    "count"
+  ],
+  "android.nearby.announcePlaces": [
+    "count"
+  ],
+  "android.nearby.announceStations": [
+    "count"
+  ],
+  "android.nearby.announceStops": [
+    "count"
+  ],
+  "android.nearby.aroundHere": [
+    "place"
+  ],
+  "android.nearby.aroundHereManual": [
+    "place"
+  ],
+  "android.nearby.baseTime": [
+    "time"
+  ],
+  "android.nearby.bikesAvailable": [
+    "count"
+  ],
+  "android.nearby.dataTime": [
+    "time"
+  ],
+  "android.nearby.directionSuffixed": [
+    "direction"
+  ],
+  "android.nearby.minutesAway": [
+    "minutes"
+  ],
+  "android.nearby.precipLine": [
+    "value"
+  ],
+  "android.nearby.racksTotal": [
+    "count"
+  ],
+  "android.nearby.routeNo": [
+    "route"
+  ],
+  "android.nearby.routeStopsTitle": [
+    "route"
+  ],
+  "android.nearby.skyLine": [
+    "value"
+  ],
+  "android.nearby.stopsBefore": [
+    "count"
+  ],
+  "android.nearby.tempMax": [
+    "value"
+  ],
+  "android.nearby.tempMin": [
+    "value"
+  ],
+  "android.nearby.tempNow": [
+    "value"
+  ],
+  "android.nearby.untilTime": [
+    "hours",
+    "minutes"
+  ],
+  "android.place.askAbout": [
+    "name"
+  ],
+  "android.place.callLine": [
+    "phone"
+  ],
+  "android.place.englishAddressLine": [
+    "value"
+  ],
+  "android.place.jibunAddressLine": [
+    "value"
+  ],
+  "android.place.roadAddressLine": [
+    "value"
+  ],
+  "android.route.alight": [
+    "name"
+  ],
+  "android.route.board": [
+    "name"
+  ],
+  "android.route.durationMinutes": [
+    "minutes"
+  ],
+  "android.route.fare": [
+    "won"
+  ],
+  "android.route.legMinutes": [
+    "minutes"
+  ],
+  "android.route.stationCount": [
+    "count"
+  ],
+  "android.route.stopCount": [
+    "count"
+  ],
+  "android.route.taxiFare": [
+    "won"
+  ],
+  "android.route.tollFare": [
+    "won"
+  ],
+  "android.route.totalDistance": [
+    "distance"
+  ],
+  "android.route.transfers": [
+    "count"
+  ],
+  "android.route.walkMinutes": [
+    "minutes"
+  ],
+  "android.settings.releaseNotesVersion": [
+    "version"
+  ],
+  "android.settings.weightFooter": [
+    "min",
+    "max"
+  ],
+  "android.settings.weightRejected": [
+    "min",
+    "max",
+    "kg"
+  ],
+  "android.settings.weightRejectedNone": [
+    "min",
+    "max"
+  ],
+  "android.station.countNone": [
+    "label"
+  ],
+  "android.station.countSome": [
+    "label",
+    "count"
+  ],
+  "android.station.countUnknown": [
+    "label"
+  ],
+  "android.station.kindCount": [
+    "label",
+    "count"
+  ],
+  "android.station.nameSuffixed": [
+    "name"
+  ],
+  "android.transitGuide.altFromBoardStop": [
+    "station"
+  ],
+  "android.transitGuide.altHeadingFrom": [
+    "station"
+  ],
+  "android.transitGuide.destChangeHeading": [
+    "name"
   ]
 }

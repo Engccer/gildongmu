@@ -16,7 +16,18 @@
       "announceCount": "検索結果{count}件"
     },
     "common": {
-      "comingSoon": "まだ準備中です"
+      "comingSoon": "まだ準備中です",
+      "back": "戻る",
+      "noAppToOpen": "開けるアプリがありません",
+      "locationFailed": "現在地を確認できませんでした",
+      "locationOff": "端末の位置情報がオフになっています",
+      "geoDeniedDesc": "設定でキルドンムの位置情報へのアクセスを許可してください",
+      "geoReducedDesc": "おおよその位置情報のみ許可されています。正確な位置情報を許可してください"
+    },
+    "nearby": {
+      "announceRouteStops": "経由停留所{count}か所",
+      "subwayEmptyNearest": "周辺に地下鉄駅がありません。最寄りは{station}、{distance}先です",
+      "subwayClosed": "運行時間外です。始発 {time}"
     }
   },
   "search": {

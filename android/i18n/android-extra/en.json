@@ -16,7 +16,18 @@
       "announceCount": "{count, plural, one {# result} other {# results}}"
     },
     "common": {
-      "comingSoon": "Not available yet"
+      "comingSoon": "Not available yet",
+      "back": "Back",
+      "noAppToOpen": "No app can open this",
+      "locationFailed": "Couldn't determine your current location",
+      "locationOff": "Location is turned off on this device",
+      "geoDeniedDesc": "Please allow location access for Gildongmu in Settings",
+      "geoReducedDesc": "Only approximate location is allowed. Please allow precise location"
+    },
+    "nearby": {
+      "announceRouteStops": "{count, plural, one {# stop on this route} other {# stops on this route}}",
+      "subwayEmptyNearest": "No subway stations nearby. The closest is {station}, {distance} away",
+      "subwayClosed": "Not running now. First train {time}"
     }
   },
   "search": {

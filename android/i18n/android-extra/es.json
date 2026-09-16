@@ -16,7 +16,18 @@
       "announceCount": "{count, plural, one {# resultado} other {# resultados}}"
     },
     "common": {
-      "comingSoon": "Aún no disponible"
+      "comingSoon": "Aún no disponible",
+      "back": "Atrás",
+      "noAppToOpen": "No hay ninguna app para abrir esto",
+      "locationFailed": "No se pudo determinar tu ubicación actual",
+      "locationOff": "La ubicación está desactivada en este dispositivo",
+      "geoDeniedDesc": "Permite el acceso a la ubicación de Gildongmu en Ajustes",
+      "geoReducedDesc": "Solo se permite la ubicación aproximada. Permite la ubicación precisa"
+    },
+    "nearby": {
+      "announceRouteStops": "{count, plural, one {# parada en la ruta} other {# paradas en la ruta}}",
+      "subwayEmptyNearest": "No hay estaciones de metro cerca. La más cercana es {station}, a {distance}",
+      "subwayClosed": "Fuera de servicio ahora. Primer tren {time}"
     }
   },
   "search": {

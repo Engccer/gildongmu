@@ -13,6 +13,9 @@
 // 인자 순서 잠금은 iOS `syncArgOrder`를 `android/i18n/arg-order.json`에 그대로 적용한다(기존 키 순서 변경은
 // exit 1, `--update-arg-order`로만, 부트스트랩도 그 플래그로만).
 //
+// ios-extra(`ios.*`)는 `android.*`로 개명해 일괄 들이고(M2 spec §7) android-extra가 같은 이름을 덮는다 — 문안 오버라이드는
+// android-extra에서만. `%%`·`%N$s` 밖의 `%`가 남은 값은 거부한다(iOS 지정자 `%@` 원문 키).
+//
 // 사용법: node android/scripts/messages-to-android-strings.mjs [--check] [--update-arg-order]
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -26,6 +29,10 @@ export const LOCALES = ['ko', 'en', 'es', 'fr', 'it', 'ja'];
 export const SOURCE_LANGUAGE = 'ko';
 export const ARG_ORDER_PATH = path.join(REPO_ROOT, 'android', 'i18n', 'arg-order.json');
 export const EXTRA_DIR = path.join(REPO_ROOT, 'android', 'i18n', 'android-extra');
+export const IOS_EXTRA_DIR = path.join(REPO_ROOT, 'ios', 'i18n', 'ios-extra');
+/** ios-extra에서 안드로이드로 개명해 들이는 접두(`ios.nearby.subway` → `android.nearby.subway`). 나머지 키는 웹 오버라이드라 무시. */
+const IOS_PREFIX = 'ios.';
+const ANDROID_PREFIX = 'android.';
 export const OUTPUT_DIR = path.join(REPO_ROOT, 'android', 'app', 'src', 'main', 'res');
 const TARGET = { namespaces: null, extraDir: EXTRA_DIR, output: null };
 
@@ -70,24 +77,61 @@ export function unescapeAndroid(value) {
     .replace(/\\\\/g, '\\');
 }
 
+/** iOS 전용 카탈로그(`ios/i18n/ios-extra`)만 따로 빌드한다 — `namespaces: []`는 messages를 건너뛰고 extra만 읽는다. */
+export function buildIosExtra() {
+  return buildCatalog({ namespaces: [], extraDir: IOS_EXTRA_DIR, output: null });
+}
+
 /**
- * 로케일별 {키: 값}. `skipped`(지원 밖 ICU·인자 이름 불일치)가 있으면 throw — 조용히 빠져 키 문자열이
- * 낭독되게 두지 않는다. `rejected`는 인자 0인데 `%%`를 담은 키(`stringResource(id)`가 `%%`를 그대로 보인다).
+ * `%%`·`%N$s` 밖의 `%`가 남았는가(iOS 지정자 `%@`가 원문에 박힌 키 등 — aapt2 거부 또는 `String.format` 예외).
+ * 전방탐색 정규식은 `습도 %1$s%%`의 둘째 `%`를 오탐하므로 `%%`·`%N$s`를 먼저 소비하는 스캐너로 쓴다.
  */
-export function buildAndroidStrings(built = buildCatalog(TARGET)) {
-  const { catalog, skipped, argOrder } = built;
+export function hasStrayPercent(value) {
+  let i = 0;
+  while ((i = value.indexOf('%', i)) >= 0) {
+    if (value.startsWith('%%', i)) { i += 2; continue; }
+    const m = /^%\d+\$s/.exec(value.slice(i));
+    if (!m) return true;
+    i += m[0].length;
+  }
+  return false;
+}
+
+/**
+ * 로케일별 {키: 값}. messages + android-extra(`built`)에 ios-extra의 `ios.` 접두 키를 `android.`로 개명해 더한다 —
+ * 같은 이름이 android-extra에 있으면 android-extra가 이긴다(플랫폼 문안 오버라이드). ios-extra의 나머지 키(웹 키를 덮는
+ * iOS 오버라이드, 예: "iPhone 만보계")는 무시하고 수만 센다(`ignoredIosOverrides`). `skipped`(지원 밖 ICU·인자 이름 불일치)가
+ * 있으면 throw — 조용히 빠져 키 문자열이 낭독되게 두지 않는다. `rejected`는 (a) 인자 0인데 `%%`를 담은 키(`stringResource(id)`가
+ * `%%`를 그대로 보인다) (b) `%%`·`%N$s` 밖의 `%`가 남은 값.
+ */
+export function buildAndroidStrings(built = buildCatalog(TARGET), iosExtra = buildIosExtra()) {
+  const { catalog, skipped } = built;
   if (skipped.length > 0) throw new Error(`[android-strings] 변환 불가 키(지원 밖 ICU·인자 이름 불일치): ${skipped.join(', ')}`);
+  if (iosExtra.skipped.length > 0) throw new Error(`[android-strings] ios-extra 변환 불가 키: ${iosExtra.skipped.join(', ')}`);
+  const merged = { ...catalog.strings };
+  const argOrder = { ...built.argOrder };
+  let ignoredIosOverrides = 0;
+  const imported = [];
+  for (const key of Object.keys(iosExtra.catalog.strings)) {
+    if (!key.startsWith(IOS_PREFIX)) { ignoredIosOverrides += 1; continue; }
+    const renamed = ANDROID_PREFIX + key.slice(IOS_PREFIX.length);
+    if (renamed in merged) continue; // android-extra 우선
+    merged[renamed] = iosExtra.catalog.strings[key];
+    if (key in iosExtra.argOrder) argOrder[renamed] = iosExtra.argOrder[key];
+    imported.push(renamed);
+  }
   const strings = Object.fromEntries(LOCALES.map((l) => [l, {}]));
   const rejected = [];
-  for (const key of Object.keys(catalog.strings).sort()) {
-    for (const [lang, unit] of Object.entries(catalog.strings[key].localizations)) {
+  for (const key of Object.keys(merged).sort()) {
+    for (const [lang, unit] of Object.entries(merged[key].localizations)) {
       if (!LOCALES.includes(lang)) throw new Error(`[android-strings] LOCALES 밖 로케일 ${lang} (${key}) — LOCALES와 values-${lang}/를 함께 더한다`);
       const value = unit.stringUnit.value.replace(/%(\d+)\$@/g, '%$1$$s');
-      if (!(key in argOrder) && value.includes('%%')) rejected.push(`${key}/${lang}`);
+      if (!(key in argOrder) && value.includes('%%')) rejected.push(`${key}/${lang}: 인자 0에 %%`);
+      if (hasStrayPercent(value)) rejected.push(`${key}/${lang}: %%·%N$s 밖의 %`);
       strings[lang][key] = value;
     }
   }
-  return { strings, argOrder, rejected };
+  return { strings, argOrder, rejected, imported, ignoredIosOverrides };
 }
 
 /** 한 로케일의 strings.xml 본문(결정론: 키 정렬·끝 개행 1개). */
@@ -118,9 +162,10 @@ if (isCli) {
   const built = buildCatalog(TARGET);
   const android = buildAndroidStrings(built);
   if (android.rejected.length > 0) {
-    console.error(`[android-strings] 인자 없는 키에 %%가 있다(stringResource가 그대로 보인다): ${android.rejected.join(', ')}`);
+    console.error(`[android-strings] 거부 키: ${android.rejected.join(', ')}`);
     process.exit(1);
   }
+  console.log(`[android-strings] ios-extra 도입 ${android.imported.length}키, 웹 오버라이드 ${android.ignoredIosOverrides}키 무시`);
   const sync = syncArgOrder({ update: args.includes(UPDATE_ARG_ORDER_FLAG), manifestPath: ARG_ORDER_PATH, current: android.argOrder });
   if (!sync.ok) process.exit(1);
   let stale = false;
