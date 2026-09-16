@@ -310,6 +310,8 @@
     <string name="android_unit_spokenMeters">mètres</string>
     <string name="android_voice_denied">Autorisez l\'accès au micro dans Réglages</string>
     <string name="android_voice_deniedRecognition">Autorisez la reconnaissance vocale dans Réglages.</string>
+    <string name="android_voice_downloadReady">La reconnaissance vocale est prête. Touchez à nouveau Démarrer la dictée.</string>
+    <string name="android_voice_downloadRequested">Préparation de la reconnaissance vocale demandée. Réessayez dans un instant.</string>
     <string name="android_voice_errorAudio">Le micro n\'est pas disponible. Vérifiez qu\'une autre app ne l\'utilise pas.</string>
     <string name="android_voice_errorDownload">Impossible de préparer la reconnaissance vocale. Connectez-vous au réseau, puis réessayez.</string>
     <string name="android_voice_errorLocale">La reconnaissance vocale n\'est pas disponible pour cette langue.</string>

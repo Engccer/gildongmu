@@ -53,6 +53,10 @@
     },
     "unit": {
       "spokenMeters": "metros"
+    },
+    "voice": {
+      "downloadRequested": "Se solicitó preparar el reconocimiento de voz. Vuelve a intentarlo en un momento.",
+      "downloadReady": "El reconocimiento de voz está listo. Vuelve a tocar Iniciar dictado."
     }
   },
   "search": {

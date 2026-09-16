@@ -53,6 +53,10 @@
     },
     "unit": {
       "spokenMeters": "メートル"
+    },
+    "voice": {
+      "downloadRequested": "音声認識の準備を依頼しました。しばらくしてからもう一度お試しください",
+      "downloadReady": "音声認識の準備ができました。もう一度「音声入力を開始」を押してください"
     }
   },
   "search": {

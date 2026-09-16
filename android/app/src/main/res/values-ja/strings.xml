@@ -310,6 +310,8 @@
     <string name="android_unit_spokenMeters">メートル</string>
     <string name="android_voice_denied">設定でマイクへのアクセスを許可してください</string>
     <string name="android_voice_deniedRecognition">設定で音声認識を許可してください</string>
+    <string name="android_voice_downloadReady">音声認識の準備ができました。もう一度「音声入力を開始」を押してください</string>
+    <string name="android_voice_downloadRequested">音声認識の準備を依頼しました。しばらくしてからもう一度お試しください</string>
     <string name="android_voice_errorAudio">マイクを使用できません。他のアプリが使用中でないか確認してください</string>
     <string name="android_voice_errorDownload">音声認識の準備に失敗しました。ネットワークに接続してからもう一度お試しください</string>
     <string name="android_voice_errorLocale">この言語は音声認識に対応していません</string>

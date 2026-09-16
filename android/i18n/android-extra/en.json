@@ -53,6 +53,10 @@
     },
     "unit": {
       "spokenMeters": "meters"
+    },
+    "voice": {
+      "downloadRequested": "Speech recognition setup requested. Try again in a moment.",
+      "downloadReady": "Speech recognition is ready. Tap Start dictation again."
     }
   },
   "search": {

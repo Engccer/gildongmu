@@ -310,6 +310,8 @@
     <string name="android_unit_spokenMeters">metros</string>
     <string name="android_voice_denied">Permite el acceso al micrófono en Ajustes</string>
     <string name="android_voice_deniedRecognition">Permite el reconocimiento de voz en Ajustes.</string>
+    <string name="android_voice_downloadReady">El reconocimiento de voz está listo. Vuelve a tocar Iniciar dictado.</string>
+    <string name="android_voice_downloadRequested">Se solicitó preparar el reconocimiento de voz. Vuelve a intentarlo en un momento.</string>
     <string name="android_voice_errorAudio">El micrófono no está disponible. Comprueba si otra app lo está usando.</string>
     <string name="android_voice_errorDownload">No se pudo preparar el reconocimiento de voz. Conéctate a la red e inténtalo de nuevo.</string>
     <string name="android_voice_errorLocale">El reconocimiento de voz no está disponible para este idioma.</string>
