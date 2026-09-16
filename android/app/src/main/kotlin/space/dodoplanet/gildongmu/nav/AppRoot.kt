@@ -21,6 +21,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import space.dodoplanet.gildongmu.AppConfig
+import space.dodoplanet.gildongmu.chat.ChatTabScreen
+import space.dodoplanet.gildongmu.chat.PlaceChatRoute
+import space.dodoplanet.gildongmu.chat.PlaceChatScreen
 import space.dodoplanet.gildongmu.directions.DirectionsScreen
 import space.dodoplanet.gildongmu.directions.openDirections
 import androidx.navigation.toRoute
@@ -90,7 +93,7 @@ fun AppRoot(factories: AppFactories) {
                     currentAddress = factories.currentAddress,
                 )
             }
-            composable<ChatRoute> { PlaceholderScreen(AppTab.chat) } // M6
+            composable<ChatRoute> { ChatTabScreen { navController.navigate(PlaceDetailRoute.of(it)) } }
             // ── 스택 화면(각 화면 패키지 소유 라우트, 등록 한 줄씩)
             composable<NearbyKindRoute> { entry ->
                 val route = entry.toRoute<NearbyKindRoute>()
@@ -124,6 +127,7 @@ fun AppRoot(factories: AppFactories) {
                     takeReturnFocus = returnFocus.slot::take,
                 )
             }
+            composable<PlaceChatRoute> { entry -> PlaceChatScreen(entry.toRoute(), { navController.popBackStack() }) { navController.navigate(PlaceDetailRoute.of(it)) } }
             composable<BusRouteStopsRoute> { entry ->
                 val route = entry.toRoute<BusRouteStopsRoute>()
                 BusRouteStopsScreen(route, factories.busRouteStops(route)) { navController.popBackStack() }
