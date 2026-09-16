@@ -10,6 +10,7 @@ import space.dodoplanet.gildongmu.kit.Fixtures
 import space.dodoplanet.gildongmu.kit.HttpResponse
 import space.dodoplanet.gildongmu.kit.NearbyCoord
 import space.dodoplanet.gildongmu.kit.NearbyCoordinateSource
+import space.dodoplanet.gildongmu.kit.NearbyCoverage
 import space.dodoplanet.gildongmu.kit.NearbyLoadPhase
 import space.dodoplanet.gildongmu.kit.NearbyLocationError
 import space.dodoplanet.gildongmu.kit.NearbyService
@@ -44,6 +45,34 @@ class NearbyScreenViewModelTest {
             if (pathOf(url) == "/api/station/subway-arrival/nearby") responses.removeFirst() else HttpResponse(404, "")
         })
         return NearbyScreenViewModel(NearbyKinds.subway(service, testNearbyStrings()), coordinate, testNearbyStrings(), SavedStateHandle())
+    }
+
+    @Test fun `재조회 fetch는 직전 payload를 previous로 받는다(spec 판정 25)`() = runTest(dispatcher) {
+        val seen = mutableListOf<List<String>?>()
+        val spec = NearbyKindSpec<List<String>>(
+            coverage = NearbyCoverage.korea,
+            fetch = { _, previous -> seen += previous; listOf("a") },
+            isEmpty = { it.isEmpty() }, firstKey = { it.firstOrNull() }, loadedNotice = { "n" }, emptyCopy = { "e" },
+        )
+        val vm = NearbyScreenViewModel(spec, gildong, testNearbyStrings(), SavedStateHandle())
+        vm.load(); dispatcher.scheduler.advanceUntilIdle()
+        vm.load(force = true); dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(listOf(null, listOf("a")), seen)
+    }
+
+    @Test fun `묶음별 더 보기 — 공개 수 투영·첫 새 항목 착지·커밋마다 리셋(spec 판정 31)`() = runTest(dispatcher) {
+        val vm = subwayVm(mutableListOf(HttpResponse(200, subwayBody), HttpResponse(200, subwayBody)))
+        vm.load(); dispatcher.scheduler.advanceUntilIdle()
+        val rev = (vm.landing.value as Landing.Key).rev
+        vm.revealMoreInGroup("left", totalCount = 25) { i -> "scene-item-left-$i" }
+        assertEquals(20, vm.groupWindows.value["left"]); assertEquals(Landing.Key("scene-item-left-10", rev + 1), vm.landing.value)
+        vm.revealMoreInGroup("left", 25) { i -> "scene-item-left-$i" }
+        assertEquals(25, vm.groupWindows.value["left"])
+        vm.revealMoreInGroup("left", 25) { i -> "scene-item-left-$i" } // 더 없음 — 착지 발급 없음
+        assertEquals(rev + 2, (vm.landing.value as Landing.Key).rev)
+        assertNull(vm.groupWindows.value["right"]) // 없는 묶음은 initialVisible
+        vm.load(force = true); dispatcher.scheduler.advanceUntilIdle()
+        assertTrue(vm.groupWindows.value.isEmpty()) // willCommit 리셋
     }
 
     @Test fun `첫 로드는 Loaded·건수 통지·첫 역 착지`() = runTest(dispatcher) {

@@ -28,5 +28,15 @@ fun nearbyStrings(context: Context): NearbyStrings {
         aroundEmpty = { context.getString(R.string.android_nearby_aroundEmpty) },
         routeStopsEmpty = { context.getString(R.string.android_nearby_routeStopsEmpty) },
         noAppToOpen = { context.getString(R.string.android_common_noAppToOpen) },
+        announcePlaces = { appLocalized(res, R.string.android_nearby_announcePlaces, it) },
+        announceEvents = { appLocalized(res, R.string.android_nearby_announceEvents, it) },
+        clinicEmpty = { context.getString(R.string.android_nearby_clinicEmpty) },
+        barrierFreeEmpty = { context.getString(R.string.android_nearby_barrierFreeEmpty) },
+        kidsEmpty = { context.getString(R.string.android_nearby_kidsEmpty) },
+        eventsEmpty = { context.getString(R.string.android_nearby_eventsEmpty) },
+        conditionsReady = { context.getString(R.string.android_nearby_conditionsReady) },
+        conditionsPartial = { context.getString(R.string.android_nearby_conditionsPartial) },
+        failedTitle = { context.getString(R.string.android_common_failedTitle) },
+        walkInfraSummary = { "" }, // Task 4가 walkInfraLiveSummary로 바꾼다
     )
 }

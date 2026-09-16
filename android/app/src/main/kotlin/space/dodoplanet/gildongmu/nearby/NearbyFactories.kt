@@ -24,6 +24,7 @@ fun nearbyFactory(
                 NearbyKind.subway -> NearbyScreenViewModel(NearbyKinds.subway(service, strings), coordinate, strings, handle)
                 NearbyKind.bus -> NearbyScreenViewModel(NearbyKinds.bus(service, strings), coordinate, strings, handle)
                 NearbyKind.bike -> NearbyScreenViewModel(NearbyKinds.bike(service, strings), coordinate, strings, handle)
+                NearbyKind.clinic, NearbyKind.barrierFree, NearbyKind.kids, NearbyKind.events, NearbyKind.walkInfra, NearbyKind.conditions -> TODO("M2b")
             }
         }
     }

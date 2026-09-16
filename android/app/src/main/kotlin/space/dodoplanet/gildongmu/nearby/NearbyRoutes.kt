@@ -4,9 +4,9 @@ import kotlinx.serialization.Serializable
 import space.dodoplanet.gildongmu.kit.KitJson
 import space.dodoplanet.gildongmu.kit.NearbyCoord
 
-/** 내 주변 화면 종류(M2: 앞 4개, 허브 순서 = iOS). M2b가 나머지 6개를 더한다. */
+/** 내 주변 화면 종류 — 허브 순서 = iOS `NearbyHubView`(around·subway·bus·bike·clinic·barrierFree·kids·events·walkInfra·conditions). */
 @Serializable
-enum class NearbyKind { around, subway, bus, bike }
+enum class NearbyKind { around, subway, bus, bike, clinic, barrierFree, kids, events, walkInfra, conditions }
 
 /**
  * 장소 앵커 — 좌표와 그 좌표의 이름을 함께 옮긴다(장소 상세 "이 장소 주변"). 이름이 딸려 오는 이유: 앵커 화면의 문구는 전부
