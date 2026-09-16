@@ -100,7 +100,7 @@ fun AppRoot(factories: AppFactories) {
                     factory = factories.nearby(route.kind, anchor),
                     nav = NearbyNav(
                         onBack = { navController.popBackStack() },
-                        onOpenPlace = { navController.navigate(PlaceDetailRoute.of(it)) },
+                        onOpenPlace = { place, domain -> navController.navigate(PlaceDetailRoute.of(place, domain)) },
                         onOpenRouteStops = { navController.navigate(it) },
                     ),
                     requestPrecise = factories.requestPreciseLocation,
@@ -110,9 +110,11 @@ fun AppRoot(factories: AppFactories) {
             composable<PlaceDetailRoute> { entry ->
                 val route = entry.toRoute<PlaceDetailRoute>()
                 val place = remember(route) { route.place } // JSON 디코딩은 한 번
+                val domain = remember(route) { route.domain }
                 val returnFocus: ReturnFocusViewModel = viewModel(entry)
                 PlaceDetailScreen(
                     factory = factories.place(place),
+                    domain = domain,
                     nav = PlaceNav(
                         onBack = { navController.popBackStack() },
                         onOpenNearby = { kind, anchor -> returnFocus.slot.remember("anchor-${kind.name}"); navController.navigate(NearbyKindRoute.of(kind, anchor)) },

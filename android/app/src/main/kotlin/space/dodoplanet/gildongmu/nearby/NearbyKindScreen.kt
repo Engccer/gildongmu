@@ -71,12 +71,13 @@ import space.dodoplanet.gildongmu.kit.surroundingPlaceToPlace
 import space.dodoplanet.gildongmu.location.appDetailsSettingsIntent
 import space.dodoplanet.gildongmu.location.locationSourceSettingsIntent
 import space.dodoplanet.gildongmu.nav.tryStartActivity
+import space.dodoplanet.gildongmu.place.PlaceDomain
 import space.dodoplanet.gildongmu.search.PlaceRow
 
 /** 화면이 요청하는 스택 이동(내비게이션은 `AppRoot` 몫). */
 class NearbyNav(
     val onBack: () -> Unit,
-    val onOpenPlace: (Place) -> Unit,
+    val onOpenPlace: (Place, PlaceDomain?) -> Unit,
     val onOpenRouteStops: (BusRouteStopsRoute) -> Unit,
 )
 
@@ -87,7 +88,7 @@ fun NearbyKindScreen(route: NearbyKindRoute, anchor: PlaceAnchor?, factory: View
     when (route.kind) {
         NearbyKind.around -> {
             val vm: NearbyScreenViewModel<AroundPayload> = viewModel(factory = factory)
-            NearbyShell(title, vm, nav.onBack, requestPrecise, isLocationEnabled) { p, req -> AroundBody(p, vm, req) { place, key -> vm.returnFocus.remember(key); nav.onOpenPlace(place) } }
+            NearbyShell(title, vm, nav.onBack, requestPrecise, isLocationEnabled) { p, req -> AroundBody(p, vm, req) { place, key -> vm.returnFocus.remember(key); nav.onOpenPlace(place, null) } }
         }
         NearbyKind.subway -> {
             val vm: NearbyScreenViewModel<SubwayNearbyResult> = viewModel(factory = factory)
@@ -103,19 +104,19 @@ fun NearbyKindScreen(route: NearbyKindRoute, anchor: PlaceAnchor?, factory: View
         }
         NearbyKind.clinic -> {
             val vm: NearbyScreenViewModel<ClinicPayload> = viewModel(factory = factory)
-            NearbyShell(title, vm, nav.onBack, requestPrecise, isLocationEnabled) { p, req -> ClinicBody(p, vm, req) { c -> vm.returnFocus.remember("place-${c.id}"); nav.onOpenPlace(nightClinicToPlace(c)) } }
+            NearbyShell(title, vm, nav.onBack, requestPrecise, isLocationEnabled) { p, req -> ClinicBody(p, vm, req) { c -> vm.returnFocus.remember("place-${c.id}"); nav.onOpenPlace(nightClinicToPlace(c), PlaceDomain.Clinic(c)) } }
         }
         NearbyKind.barrierFree -> {
             val vm: NearbyScreenViewModel<List<BarrierFreePlace>> = viewModel(factory = factory)
-            NearbyShell(title, vm, nav.onBack, requestPrecise, isLocationEnabled) { p, req -> BarrierFreeBody(p, vm, req) { b -> vm.returnFocus.remember("place-${b.contentId}"); nav.onOpenPlace(barrierFreePlaceToPlace(b)) } }
+            NearbyShell(title, vm, nav.onBack, requestPrecise, isLocationEnabled) { p, req -> BarrierFreeBody(p, vm, req) { b -> vm.returnFocus.remember("place-${b.contentId}"); nav.onOpenPlace(barrierFreePlaceToPlace(b), null) } }
         }
         NearbyKind.kids -> {
             val vm: NearbyScreenViewModel<List<KidsPlace>> = viewModel(factory = factory)
-            NearbyShell(title, vm, nav.onBack, requestPrecise, isLocationEnabled) { p, req -> KidsBody(p, vm, req) { k -> vm.returnFocus.remember("place-${k.id}"); nav.onOpenPlace(kidsPlaceToPlace(k)) } }
+            NearbyShell(title, vm, nav.onBack, requestPrecise, isLocationEnabled) { p, req -> KidsBody(p, vm, req) { k -> vm.returnFocus.remember("place-${k.id}"); nav.onOpenPlace(kidsPlaceToPlace(k), null) } }
         }
         NearbyKind.events -> {
             val vm: NearbyScreenViewModel<List<CultureEvent>> = viewModel(factory = factory)
-            NearbyShell(title, vm, nav.onBack, requestPrecise, isLocationEnabled) { p, req -> EventsBody(p, vm, req) { e -> vm.returnFocus.remember("place-${e.id}"); nav.onOpenPlace(cultureEventToPlace(e)) } }
+            NearbyShell(title, vm, nav.onBack, requestPrecise, isLocationEnabled) { p, req -> EventsBody(p, vm, req) { e -> vm.returnFocus.remember("place-${e.id}"); nav.onOpenPlace(cultureEventToPlace(e), PlaceDomain.Event(e)) } }
         }
         NearbyKind.walkInfra -> {
             val vm: NearbyScreenViewModel<WalkInfraPayload> = viewModel(factory = factory)
