@@ -198,14 +198,5 @@
       "note": "Kit 테스트 없음"
     }
   ],
-  "deferredTests": [
-    {
-      "swift": "Tests/GildongmuKitTests/QuickExitTextTests.swift#QuickExitGuideRouteTests",
-      "to": "guide",
-      "why": "buildTransitGuideRoute(TransitGuide)가 브리핑 leg의 quickExit를 세션 leg로 옮기는지",
-      "blockedBy": [
-        "TransitGuide.swift"
-      ]
-    }
-  ]
+  "deferredTests": []
 }
