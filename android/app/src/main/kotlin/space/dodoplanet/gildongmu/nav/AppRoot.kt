@@ -8,6 +8,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -82,17 +83,19 @@ fun AppRoot(factories: AppFactories) {
             composable<NearbyRoute> { entry ->
                 val returnFocus: ReturnFocusViewModel = viewModel(entry)
                 NearbyHubScreen(
-                    onOpen = { kind -> returnFocus.remember(hubKey(kind)); navController.navigate(NearbyKindRoute.of(kind, null)) },
-                    returnFocus = returnFocus.take(),
+                    onOpen = { kind -> returnFocus.slot.remember(hubKey(kind)); navController.navigate(NearbyKindRoute.of(kind, null)) },
+                    takeReturnFocus = returnFocus.slot::take,
                 )
             }
             composable<ChatRoute> { PlaceholderScreen(AppTab.chat) } // M6
             // ── 스택 화면(각 화면 패키지 소유 라우트, 등록 한 줄씩)
             composable<NearbyKindRoute> { entry ->
                 val route = entry.toRoute<NearbyKindRoute>()
+                val anchor = remember(route) { route.anchor } // JSON 디코딩은 한 번
                 NearbyKindScreen(
                     route = route,
-                    factory = factories.nearby(route.kind, route.anchor),
+                    anchor = anchor,
+                    factory = factories.nearby(route.kind, anchor),
                     nav = NearbyNav(
                         onBack = { navController.popBackStack() },
                         onOpenPlace = { navController.navigate(PlaceDetailRoute.of(it)) },
@@ -104,15 +107,15 @@ fun AppRoot(factories: AppFactories) {
             }
             composable<PlaceDetailRoute> { entry ->
                 val route = entry.toRoute<PlaceDetailRoute>()
+                val place = remember(route) { route.place } // JSON 디코딩은 한 번
                 val returnFocus: ReturnFocusViewModel = viewModel(entry)
                 PlaceDetailScreen(
-                    route = route,
-                    factory = factories.place(route.place),
+                    factory = factories.place(place),
                     nav = PlaceNav(
                         onBack = { navController.popBackStack() },
-                        onOpenNearby = { kind, anchor -> returnFocus.remember("anchor-${kind.name}"); navController.navigate(NearbyKindRoute.of(kind, anchor)) },
+                        onOpenNearby = { kind, anchor -> returnFocus.slot.remember("anchor-${kind.name}"); navController.navigate(NearbyKindRoute.of(kind, anchor)) },
                     ),
-                    returnFocus = returnFocus.take(),
+                    takeReturnFocus = returnFocus.slot::take,
                 )
             }
             composable<BusRouteStopsRoute> { entry ->

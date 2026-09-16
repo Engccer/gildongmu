@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -39,6 +40,7 @@ import space.dodoplanet.gildongmu.a11y.AppTopBar
 import space.dodoplanet.gildongmu.a11y.StatusLine
 import space.dodoplanet.gildongmu.a11y.headingText
 import space.dodoplanet.gildongmu.a11y.mergedRow
+import space.dodoplanet.gildongmu.a11y.tapTarget
 import space.dodoplanet.gildongmu.i18n.AppLocale
 import space.dodoplanet.gildongmu.i18n.appLocalized
 import space.dodoplanet.gildongmu.kit.RouteDestination
@@ -55,7 +57,7 @@ class PlaceNav(val onBack: () -> Unit, val onOpenNearby: (NearbyKind, PlaceAncho
  * 길찾기 프리필 2버튼(M3)·"이 장소에 관해 물어보기"(M6)·안내 중 목적지 변경(M4)은 아래 주석 자리에 그 마일스톤이 넣는다.
  */
 @Composable
-fun PlaceDetailScreen(route: PlaceDetailRoute, factory: ViewModelProvider.Factory, nav: PlaceNav, returnFocus: String?) {
+fun PlaceDetailScreen(factory: ViewModelProvider.Factory, nav: PlaceNav, takeReturnFocus: () -> String?) {
     val vm: PlaceDetailViewModel = viewModel(factory = factory)
     val place = vm.place
     val context = LocalContext.current
@@ -71,11 +73,13 @@ fun PlaceDetailScreen(route: PlaceDetailRoute, factory: ViewModelProvider.Factor
     val anchor = PlaceAnchor(place.lat, place.lng, place.name, place.nameRoman)
 
     // 진입 착지 = 제목 헤딩("뒤로, 버튼"부터 들리는 것을 막는다, §9-6 판정 뒤 제거 가능). pop 복귀면 눌렀던 앵커 버튼으로.
-    LaunchedEffect(returnFocus) {
+    // 복귀 키 소비는 효과 안에서 한 번(컴포지션 본문에서 부르면 재구성마다 유실돼 제목으로 덮인다).
+    LaunchedEffect(Unit) {
+        val key = takeReturnFocus()
         withFrameNanos { }
-        val kind = returnFocus?.removePrefix("anchor-")?.let { k -> NearbyKind.entries.firstOrNull { it.name == k } }
+        val kind = key?.removePrefix("anchor-")?.let { k -> NearbyKind.entries.firstOrNull { it.name == k } }
         val target = kind?.let { anchorFocus[it] } ?: titleFocus
-        runCatching { target.requestFocus() }
+        runCatching { target.requestFocus() }.onFailure { android.util.Log.w("Place", "진입/복귀 착지 실패 $key", it) }
     }
 
     fun copy(text: String) {
@@ -83,7 +87,7 @@ fun PlaceDetailScreen(route: PlaceDetailRoute, factory: ViewModelProvider.Factor
         vm.onCopied()
     }
 
-    Scaffold(topBar = { AppTopBar(title.primary, nav.onBack, titleFocus) }) { padding ->
+    Scaffold(contentWindowInsets = WindowInsets(0, 0, 0, 0), topBar = { AppTopBar(title.primary, nav.onBack, titleFocus) }) { padding ->
         Column(
             Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)
                 .semantics { testTagsAsResourceId = true },
@@ -103,13 +107,13 @@ fun PlaceDetailScreen(route: PlaceDetailRoute, factory: ViewModelProvider.Factor
             place.phone?.takeIf { it.isNotEmpty() }?.let { phone ->
                 Button(
                     onClick = { if (!context.dial(phone)) vm.onOpenFailed() },
-                    Modifier.testTag("call"),
+                    Modifier.tapTarget().testTag("call"),
                 ) { Text(appLocalized(res, R.string.android_place_callLine, phone)) }
             }
             // 11. 홈페이지 — 카카오 장소의 link는 카카오맵 상세라 아래 장소 정보와 중복(숨김). http/https만.
             val homepage = place.link?.takeIf { vm.kakaoPlaceId == null && (it.startsWith("http://") || it.startsWith("https://")) }
             homepage?.let { url ->
-                Button(onClick = { context.openWithFallback(OpenPlan(url, null)) { vm.onOpenFailed() } }, Modifier.testTag("homepage")) { Text(stringResource(R.string.place_homepage)) }
+                Button(onClick = { context.openWithFallback(OpenPlan(url, null)) { vm.onOpenFailed() } }, Modifier.tapTarget().testTag("homepage")) { Text(stringResource(R.string.place_homepage)) }
             }
             // [M6] 이 장소에 관해 물어보기
             // 12. 길찾기 헤딩
@@ -118,20 +122,20 @@ fun PlaceDetailScreen(route: PlaceDetailRoute, factory: ViewModelProvider.Factor
             // [M4] 안내 중 목적지 변경
             // 13~15. 외부 지도(빌더 null = 권역 밖 → 숨김)
             naverRoutePlan(dest, AppConfig.APP_IDENTIFIER)?.let { plan ->
-                Button(onClick = { context.openWithFallback(plan) { vm.onOpenFailed() } }, Modifier.testTag("naver")) { Text(stringResource(R.string.android_route_naver)) }
+                Button(onClick = { context.openWithFallback(plan) { vm.onOpenFailed() } }, Modifier.tapTarget().testTag("naver")) { Text(stringResource(R.string.android_route_naver)) }
             }
             kakaoRoutePlan(dest)?.let { plan ->
-                Button(onClick = { context.openWithFallback(plan) { vm.onOpenFailed() } }, Modifier.testTag("kakao")) { Text(stringResource(R.string.android_route_kakao)) }
+                Button(onClick = { context.openWithFallback(plan) { vm.onOpenFailed() } }, Modifier.tapTarget().testTag("kakao")) { Text(stringResource(R.string.android_route_kakao)) }
             }
             vm.kakaoPlaceId?.let { id ->
-                Button(onClick = { context.openWithFallback(kakaoPlacePlan(id)) { vm.onOpenFailed() } }, Modifier.testTag("kakaoPlace")) { Text(stringResource(R.string.android_route_kakaoPlace)) }
+                Button(onClick = { context.openWithFallback(kakaoPlacePlan(id)) { vm.onOpenFailed() } }, Modifier.tapTarget().testTag("kakaoPlace")) { Text(stringResource(R.string.android_route_kakaoPlace)) }
             }
             // 16~19. 이 장소 주변(앵커 3행; 날씨·공기질은 M2b)
             Text(stringResource(R.string.android_place_nearbyHeading), Modifier.fillMaxWidth().mergedRow("nearby-heading").headingText().padding(top = 12.dp, bottom = 4.dp), style = MaterialTheme.typography.titleMedium)
             for (kind in listOf(NearbyKind.subway, NearbyKind.bus, NearbyKind.bike)) {
                 Button(
                     onClick = { nav.onOpenNearby(kind, anchor) },
-                    Modifier.fillMaxWidth().testTag("anchor-${kind.name}").focusRequester(anchorFocus.getOrPut(kind) { FocusRequester() }),
+                    Modifier.fillMaxWidth().tapTarget().testTag("anchor-${kind.name}").focusRequester(anchorFocus.getOrPut(kind) { FocusRequester() }),
                 ) { Text(stringResource(space.dodoplanet.gildongmu.nearby.kindTitle(kind))) }
             }
         }
@@ -143,7 +147,7 @@ private fun AddressLine(value: String, lineRes: Int, tag: String, copyRes: Int, 
     if (value.isEmpty()) return
     val res = LocalContext.current.resources
     Text(appLocalized(res, lineRes, value), Modifier.fillMaxWidth().mergedRow("address-$tag").padding(vertical = 8.dp))
-    Button(onClick = { copy(value) }, Modifier.testTag("copy-$tag")) { Text(stringResource(copyRes)) }
+    Button(onClick = { copy(value) }, Modifier.tapTarget().testTag("copy-$tag")) { Text(stringResource(copyRes)) }
 }
 
 private fun Context.dial(phone: String): Boolean = try {

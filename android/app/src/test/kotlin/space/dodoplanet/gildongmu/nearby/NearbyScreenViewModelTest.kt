@@ -11,12 +11,14 @@ import space.dodoplanet.gildongmu.kit.HttpResponse
 import space.dodoplanet.gildongmu.kit.NearbyCoord
 import space.dodoplanet.gildongmu.kit.NearbyCoordinateSource
 import space.dodoplanet.gildongmu.kit.NearbyLoadPhase
+import space.dodoplanet.gildongmu.kit.NearbyLocationError
 import space.dodoplanet.gildongmu.kit.NearbyService
 import space.dodoplanet.gildongmu.kit.models.SubwayNearbyResult
 import space.dodoplanet.gildongmu.kit.pathOf
 import space.dodoplanet.gildongmu.kit.stubbedClient
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -111,9 +113,88 @@ class NearbyScreenViewModelTest {
 
     @Test fun `pop 복귀 키는 한 번만 소비된다`() = runTest(dispatcher) {
         val vm = subwayVm(mutableListOf())
-        assertNull(vm.takeReturnFocus())
-        vm.rememberReturnFocus("stop-1")
-        assertEquals("stop-1", vm.takeReturnFocus())
-        assertNull(vm.takeReturnFocus())
+        assertNull(vm.returnFocus.take())
+        vm.returnFocus.remember("stop-1")
+        assertEquals("stop-1", vm.returnFocus.take())
+        assertNull(vm.returnFocus.take())
+    }
+
+    @Test fun `0건 본문은 통지와 같은 문장(최근접 역 포함)이고 통지는 단위를 풀어쓴다`() = runTest(dispatcher) {
+        val vm = subwayVm(mutableListOf(HttpResponse(200, emptySubway)))
+        vm.load(); dispatcher.scheduler.advanceUntilIdle()
+        val p = (vm.phase.value as NearbyLoadPhase.Loaded<SubwayNearbyResult>).payload
+        assertEquals("주변에 지하철역이 없습니다. 가장 가까운 역은 천호, 5호선, 8호선, 1.8km 거리입니다", vm.emptyCopy(p))
+        // 통지 경로는 spokenDistanceUnits를 지난다(1.8km는 km라 그대로; m이면 "미터")
+        val vm2 = subwayVm(mutableListOf(HttpResponse(200, emptySubway.replace("1800", "800"))))
+        vm2.load(); dispatcher.scheduler.advanceUntilIdle()
+        assertTrue(vm2.notice.value.text.endsWith("800 미터 거리입니다"), vm2.notice.value.text)
+    }
+
+    @Test fun `재조회 중에도 isLoading이 참이고 끝나면 거짓(phase는 Loaded 유지)`() = runTest(dispatcher) {
+        val vm = subwayVm(mutableListOf(HttpResponse(200, subwayBody), HttpResponse(200, subwayBody)))
+        vm.load(); dispatcher.scheduler.advanceUntilIdle()
+        assertFalse(vm.isLoading.value)
+        vm.load(force = true)
+        assertTrue(vm.isLoading.value) // launch 직후 동기로 켜진다
+        assertIs<NearbyLoadPhase.Loaded<SubwayNearbyResult>>(vm.phase.value)
+        dispatcher.scheduler.advanceUntilIdle()
+        assertFalse(vm.isLoading.value)
+    }
+
+    @Test fun `loadOnEnter는 첫 진입에서만 조회한다(회전 재진입 무시)`() = runTest(dispatcher) {
+        val calls = Calls()
+        val vm = subwayVm(mutableListOf(HttpResponse(200, subwayBody), HttpResponse(200, subwayBody)), calls)
+        vm.loadOnEnter(); dispatcher.scheduler.advanceUntilIdle()
+        vm.loadOnEnter(); dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(1, calls.count)
+    }
+
+    @Test fun `전락 통지 3종 — 권한 회수·정밀도 상실·권역 밖`() = runTest(dispatcher) {
+        var coord: NearbyCoord = NearbyCoord(37.538, 127.137)
+        var fail: NearbyLocationError? = null
+        val source = NearbyCoordinateSource.Current { _ -> fail?.let { throw it } ?: coord }
+        val vm = subwayVm(mutableListOf(HttpResponse(200, subwayBody), HttpResponse(200, subwayBody), HttpResponse(200, subwayBody)), coordinate = source)
+        vm.load(); dispatcher.scheduler.advanceUntilIdle()
+        fail = NearbyLocationError.Denied; vm.load(force = true); dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(NearbyLoadPhase.Denied, vm.phase.value); assertEquals("권한 꺼짐", vm.notice.value.text)
+
+        val vm2 = subwayVm(mutableListOf(HttpResponse(200, subwayBody)), coordinate = NearbyCoordinateSource.Current { _ -> fail?.let { throw it } ?: coord })
+        fail = null; vm2.load(); dispatcher.scheduler.advanceUntilIdle()
+        fail = NearbyLocationError.ReducedAccuracy; vm2.load(force = true); dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(NearbyLoadPhase.ReducedAccuracy, vm2.phase.value); assertEquals("정확한 위치 꺼짐", vm2.notice.value.text)
+
+        val vm3 = subwayVm(mutableListOf(HttpResponse(200, subwayBody)), coordinate = NearbyCoordinateSource.Current { _ -> coord })
+        vm3.load(); dispatcher.scheduler.advanceUntilIdle()
+        coord = NearbyCoord(35.68, 139.69); vm3.load(force = true); dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(NearbyLoadPhase.OutOfCoverage, vm3.phase.value); assertEquals("대한민국 안에서 제공", vm3.notice.value.text)
+    }
+
+    @Test fun `bus·bike·경유 정류소 조립기 — 첫 로드 착지 키와 건수 통지`() = runTest(dispatcher) {
+        val service = NearbyService(stubbedClient { url ->
+            when (pathOf(url)) {
+                "/api/bus/nearby" -> HttpResponse(200, Fixtures.kit("bus-nearby.json"))
+                "/api/bike/nearby" -> HttpResponse(200, Fixtures.kit("bike-nearby.json"))
+                "/api/bus/route" -> HttpResponse(200, Fixtures.kit("bus-route-stops.json"))
+                else -> HttpResponse(404, "")
+            }
+        })
+        val s = testNearbyStrings()
+        val bus = NearbyScreenViewModel(NearbyKinds.bus(service, s), gildong, s, SavedStateHandle())
+        bus.load(); dispatcher.scheduler.advanceUntilIdle()
+        val stops = (bus.phase.value as NearbyLoadPhase.Loaded).payload
+        assertFalse(bus.isEmpty(stops)); assertEquals("주변 정류소 ${stops.size}곳", bus.notice.value.text)
+        assertEquals(Landing.Key("stop-${stops.first().nodeId}", 1), bus.landing.value)
+
+        val bike = NearbyScreenViewModel(NearbyKinds.bike(service, s), gildong, s, SavedStateHandle())
+        bike.load(); dispatcher.scheduler.advanceUntilIdle()
+        val stations = (bike.phase.value as NearbyLoadPhase.Loaded).payload
+        assertEquals("주변 대여소 ${stations.size}곳", bike.notice.value.text)
+        assertEquals(Landing.Key("bike-${stations.first().stationId}", 1), bike.landing.value)
+
+        val route = NearbyScreenViewModel(NearbyKinds.busRouteStops(service, s, "seoul", null, "100100018"), NearbyCoordinateSource.None, s, SavedStateHandle())
+        route.load(); dispatcher.scheduler.advanceUntilIdle()
+        val routeStops = (route.phase.value as NearbyLoadPhase.Loaded).payload
+        assertTrue(routeStops.isNotEmpty()); assertEquals("경유 정류소 ${routeStops.size}곳", route.notice.value.text)
+        assertEquals(Landing.None, route.landing.value) // 착지 없음(iOS 동형)
     }
 }

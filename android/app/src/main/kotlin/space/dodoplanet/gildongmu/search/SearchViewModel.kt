@@ -20,6 +20,7 @@ import space.dodoplanet.gildongmu.a11y.Notice
 import space.dodoplanet.gildongmu.kit.NearbyCoord
 import space.dodoplanet.gildongmu.kit.RecentQuery
 import space.dodoplanet.gildongmu.kit.models.PlaceSort
+import space.dodoplanet.gildongmu.nav.ReturnFocusSlot
 import space.dodoplanet.gildongmu.kit.RecentSearchStore
 import space.dodoplanet.gildongmu.kit.SearchOutcome
 import space.dodoplanet.gildongmu.kit.SearchService
@@ -119,13 +120,13 @@ class SearchViewModel(
             val result = withContext(io) { service.search(trimmed, lat = coord?.lat, lng = coord?.lng, lang = lang, sort = requestedSort) }
             ensureActive()
             if (result.placesProvider == "merged" || result.placesProvider == "naver-local") naverBackedSeen = true
+            if (!landFocus) consumedRevision = _state.value.resultsRevision + 1 // 착지 없음(update 람다는 재실행될 수 있어 밖에서)
             _state.update { s ->
                 val total = result.orderedSections.sumOf { it.count }
                 val failed = result.allFailed && total == 0
                 // 정렬 재조회의 장소 트랙이 실패하면 라벨(=상태 신호)이 실패한 정렬을 가리키지 않게 되돌린다(웹 롤백 미러).
                 val sort = if (!landFocus && requestedSort == s.sort && result.places.isFailed) flip(requestedSort) else s.sort
                 val revision = s.resultsRevision + 1
-                if (!landFocus) consumedRevision = revision // 착지 없음
                 s.copy(
                     outcome = result, isSearching = false, failed = failed, resultsRevision = revision, sort = sort,
                     canSortByReview = lang == "ko" && naverBackedSeen,
@@ -148,16 +149,12 @@ class SearchViewModel(
 
     private fun flip(sort: PlaceSort) = if (sort == PlaceSort.review) PlaceSort.accuracy else PlaceSort.review
 
-    /** pop 복귀 착지 키(spec §3-1): 저장은 `SavedStateHandle`, 소비는 한 번 — 결과가 없는 화면(재생성 뒤)은 시도 없이 지운다. */
-    fun rememberReturnFocus(key: String) {
-        savedState[RETURN_FOCUS_KEY] = key
-    }
+    private val returnFocus = ReturnFocusSlot(savedState)
 
-    fun takeReturnFocus(): String? {
-        val key = savedState.get<String>(RETURN_FOCUS_KEY)
-        savedState.remove<String>(RETURN_FOCUS_KEY)
-        return if (_state.value.outcome == null) null else key
-    }
+    /** pop 복귀 착지 키(spec §3-1, 공용 슬롯): 결과가 없는 화면(재생성 뒤)은 시도 없이 지운다. */
+    fun rememberReturnFocus(key: String) = returnFocus.remember(key)
+
+    fun takeReturnFocus(): String? = returnFocus.take()?.takeIf { _state.value.outcome != null }
 
     /** 입력만 비운다(결과 유지 — iOS `.searchable` 동형). */
     fun clearQuery() {
@@ -207,6 +204,5 @@ class SearchViewModel(
 
     companion object {
         const val QUERY_KEY = "query"
-        const val RETURN_FOCUS_KEY = "returnFocus"
     }
 }

@@ -15,6 +15,8 @@ import space.dodoplanet.gildongmu.kit.NearbyLoadCore
 import space.dodoplanet.gildongmu.kit.NearbyLoadEvent
 import space.dodoplanet.gildongmu.kit.NearbyLoadPhase
 import space.dodoplanet.gildongmu.kit.RevealWindow
+import space.dodoplanet.gildongmu.kit.spokenDistanceUnits
+import space.dodoplanet.gildongmu.nav.ReturnFocusSlot
 
 /** 착지 지시. `rev`가 화면의 `consumedLanding`보다 크면 한 프레임 뒤 `key`에 착지한다(M1 `resultsRevision` 관용구). */
 sealed class Landing {
@@ -33,7 +35,8 @@ class NearbyKindSpec<P : Any>(
     /** 첫 로드 착지 키. null → non-null 전이가 곧 "목록이 처음 생겼다"(iOS `nearbyFocusOnLoad`). */
     val firstKey: (P) -> String?,
     val loadedNotice: (P) -> String,
-    val emptyCopy: () -> String,
+    /** 0건 본문 — payload를 받는다(지하철은 최근접 역 문장, 통지와 같은 문장). */
+    val emptyCopy: (P) -> String,
 )
 
 /**
@@ -58,6 +61,16 @@ class NearbyScreenViewModel<P : Any>(
     private val _landing = MutableStateFlow<Landing>(Landing.None)
     val landing: StateFlow<Landing> = _landing.asStateFlow()
 
+    /** 진행 중(첫 로드·재조회 모두). 코어는 Loaded를 유지한 채 재조회하므로 phase로는 알 수 없다 — 새로고침 버튼 `stateDescription` 근거. */
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+    private var inFlight = 0
+
+    private var hasLoadedOnce = false
+
+    /** pop 복귀 착지 키(공용 슬롯, spec §3-1). */
+    val returnFocus = ReturnFocusSlot(savedState)
+
     /** 화면이 소비한 착지 세대(비저장 — 구성 변경마다 커서가 튀지 않게, 재생성 뒤엔 0부터). */
     var consumedLanding: Int = 0
     private var landingRev = 0
@@ -74,11 +87,21 @@ class NearbyScreenViewModel<P : Any>(
     val phase: StateFlow<NearbyLoadPhase<P>> = core.phase
 
     fun isEmpty(payload: P): Boolean = spec.isEmpty(payload)
-    fun emptyCopy(): String = spec.emptyCopy()
+    fun emptyCopy(payload: P): String = spec.emptyCopy(payload)
 
     /** 재진입은 코어 가드가 막는다(진행 중 재호출 무시) — 새로고침 버튼을 비활성화하지 않는 근거. */
     fun load(force: Boolean = false) {
-        viewModelScope.launch { core.load(force) }
+        hasLoadedOnce = true
+        inFlight += 1 // launch 전에 동기로(버튼 stateDescription이 첫 디스패치를 기다리지 않는다); 겹친 호출은 코어가 무시해도 카운터로 정확
+        _isLoading.value = true
+        viewModelScope.launch {
+            try { core.load(force) } finally { inFlight -= 1; _isLoading.value = inFlight > 0 }
+        }
+    }
+
+    /** 화면 진입 로드 — 구성 변경(회전) 뒤 재진입은 건너뛴다(재조회 + 통지 재발화 방지, iOS `.task` 동형). */
+    fun loadOnEnter() {
+        if (!hasLoadedOnce) load()
     }
 
     /** "더 보기": 공개 수를 늘리고 첫 새 항목에 착지한다. */
@@ -86,17 +109,6 @@ class NearbyScreenViewModel<P : Any>(
         val firstNew = reveal.revealMore(totalCount) ?: return
         _visibleCount.value = reveal.visibleCount
         _landing.value = Landing.Key(keyAt(firstNew), ++landingRev)
-    }
-
-    /** pop 복귀 착지 키(spec §3-1). 저장은 `SavedStateHandle`, 소비는 한 번(착지 시도 시 무조건 지운다). */
-    fun rememberReturnFocus(key: String) {
-        savedState[RETURN_FOCUS_KEY] = key
-    }
-
-    fun takeReturnFocus(): String? {
-        val key = savedState.get<String>(RETURN_FOCUS_KEY)
-        savedState.remove<String>(RETURN_FOCUS_KEY)
-        return key
     }
 
     private fun onEvent(event: NearbyLoadEvent<P>) {
@@ -118,11 +130,11 @@ class NearbyScreenViewModel<P : Any>(
         }
     }
 
-    private fun post(text: String) {
-        _notice.value = Notice(_notice.value.seq + 1, text)
-    }
+    /** 설정 화면을 열 앱이 없을 때(커스텀 안드로이드) — 통지가 유일한 증거. */
+    fun notifyNoApp() = post(strings.noAppToOpen())
 
-    companion object {
-        const val RETURN_FOCUS_KEY = "returnFocus"
+    /** 통지도 낭독 채널이다 — 거리 단위를 풀어쓴다(iOS `nearbyAnnouncer` 동형). */
+    private fun post(text: String) {
+        _notice.value = Notice(_notice.value.seq + 1, spokenDistanceUnits(text, strings.spokenMeters()))
     }
 }

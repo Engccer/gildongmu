@@ -168,7 +168,7 @@ fun advanceProgressAnchor(
 
 /**
  * 간략 창 정확도 상한(m). `carArrivalMaxAccuracyMeters`(GUIDE `CarArrival`)와 같은 뜻의 같은 값 —
- * GUIDE 이식 뒤 그 동일을 단언하는 테스트를 `CarArrivalTest`에 둔다.
+ * 그 동일은 `CarArrivalTest`가 단언한다.
  */
 const val briefArrivalWindowMaxAccuracyMeters = 30.0
 

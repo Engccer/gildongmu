@@ -2,6 +2,7 @@ package space.dodoplanet.gildongmu.a11y
 
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -47,5 +48,7 @@ fun AppTopBar(
             }
         },
         actions = actions,
+        // 골격의 바깥 Scaffold(AppRoot)가 상태바 인셋을 이미 padding으로 먹였다 — 여기서 또 넣으면 Android 15+에서 두 겹(M2 리뷰 M3).
+        windowInsets = WindowInsets(0, 0, 0, 0),
     )
 }

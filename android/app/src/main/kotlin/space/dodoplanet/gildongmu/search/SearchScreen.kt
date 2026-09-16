@@ -13,6 +13,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.foundation.layout.WindowInsets
+import space.dodoplanet.gildongmu.a11y.tapTarget
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material.icons.Icons
@@ -99,76 +101,76 @@ fun SearchScreen(vm: SearchViewModel, onOpenPlace: (Place) -> Unit = {}) {
         pendingRecentLanding = null
     }
 
-    Scaffold(topBar = { AppTopBar(stringResource(R.string.app_title), onBack = null) }) { padding ->
-    Column(
-        Modifier
-            .fillMaxSize()
-            .padding(padding)
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp)
-            .semantics { testTagsAsResourceId = true },
-    ) {
-        TextField(
-            state = vm.queryState,
-            lineLimits = TextFieldLineLimits.SingleLine,
-            label = { Text(stringResource(R.string.search_label)) },
-            placeholder = { Text(stringResource(R.string.android_search_prompt)) },
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-            // 하드웨어 Enter도 단일행 필드에선 이 경로로 온다(Compose 문서) — 별도 키 폴백을 두면 이중 제출이다.
-            onKeyboardAction = { if (!s.isSearching) vm.submit() },
-            trailingIcon = if (vm.queryState.text.isNotEmpty()) {
-                {
-                    IconButton(onClick = { vm.clearQuery(); fieldFocus.requestFocus() }, modifier = Modifier.testTag("clear")) {
-                        Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.search_clear))
+    Scaffold(contentWindowInsets = WindowInsets(0, 0, 0, 0), topBar = { AppTopBar(stringResource(R.string.app_title), onBack = null) }) { padding ->
+        Column(
+            Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp)
+                .semantics { testTagsAsResourceId = true },
+        ) {
+            TextField(
+                state = vm.queryState,
+                lineLimits = TextFieldLineLimits.SingleLine,
+                label = { Text(stringResource(R.string.search_label)) },
+                placeholder = { Text(stringResource(R.string.android_search_prompt)) },
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                // 하드웨어 Enter도 단일행 필드에선 이 경로로 온다(Compose 문서) — 별도 키 폴백을 두면 이중 제출이다.
+                onKeyboardAction = { if (!s.isSearching) vm.submit() },
+                trailingIcon = if (vm.queryState.text.isNotEmpty()) {
+                    {
+                        IconButton(onClick = { vm.clearQuery(); fieldFocus.requestFocus() }, modifier = Modifier.testTag("clear")) {
+                            Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.search_clear))
+                        }
                     }
-                }
-            } else null,
-            modifier = Modifier
-                .fillMaxWidth()
-                .testTag("query")
-                .focusRequester(fieldFocus),
-        )
-
-        Button(
-            onClick = { if (!s.isSearching) vm.submit() },
-            modifier = Modifier
-                .testTag("submit")
-                .focusRequester(buttonFocus)
-                // disabled는 포커스를 떨군다 — 클릭 무시 + 상태 설명(헌장 §5 ⓐ)
-                .semantics { if (s.isSearching) stateDescription = searchingLabel },
-        ) { Text(stringResource(R.string.search_button)) }
-
-        StatusLine(s.notice, Modifier.padding(vertical = 8.dp))
-
-        if (s.outcome == null && !s.isSearching && s.recentQueries.isNotEmpty()) {
-            RecentSection(
-                queries = s.recentQueries,
-                requesterFor = { text -> recentFocus.getOrPut(text) { FocusRequester() } },
-                onRun = { vm.setQuery(it); vm.submit() },
-                onTogglePin = vm::togglePinRecent,
-                onDelete = { text ->
-                    val target = vm.removeRecent(text)
-                    recentFocus.remove(text)
-                    if (target == null) buttonFocus.requestFocus() else pendingRecentLanding = target
-                },
-                onClearAll = { vm.clearRecent(); if (vm.state.value.recentQueries.isEmpty()) buttonFocus.requestFocus() },
+                } else null,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("query")
+                    .focusRequester(fieldFocus),
             )
-        }
 
-        // 리뷰순 토글(iOS 동형): ko + 네이버 관측 + 결과 있음. 섹션 밖 — 리뷰순 0건이면 장소 섹션이 사라져도 토글은 남아 되돌아간다.
-        if (s.canSortByReview && s.outcome != null) {
-            Button(onClick = vm::toggleSort, modifier = Modifier.testTag("sort")) {
-                Text(stringResource(if (s.sort == PlaceSort.review) R.string.search_sortByAccuracy else R.string.search_sortByReview))
+            Button(
+                onClick = { if (!s.isSearching) vm.submit() },
+                modifier = Modifier
+                    .testTag("submit")
+                    .focusRequester(buttonFocus)
+                    // disabled는 포커스를 떨군다 — 클릭 무시 + 상태 설명(헌장 §5 ⓐ)
+                    .semantics { if (s.isSearching) stateDescription = searchingLabel },
+            ) { Text(stringResource(R.string.search_button)) }
+
+            StatusLine(s.notice, Modifier.padding(vertical = 8.dp))
+
+            if (s.outcome == null && !s.isSearching && s.recentQueries.isNotEmpty()) {
+                RecentSection(
+                    queries = s.recentQueries,
+                    requesterFor = { text -> recentFocus.getOrPut(text) { FocusRequester() } },
+                    onRun = { vm.setQuery(it); vm.submit() },
+                    onTogglePin = vm::togglePinRecent,
+                    onDelete = { text ->
+                        val target = vm.removeRecent(text)
+                        recentFocus.remove(text)
+                        if (target == null) buttonFocus.requestFocus() else pendingRecentLanding = target
+                    },
+                    onClearAll = { vm.clearRecent(); if (vm.state.value.recentQueries.isEmpty()) buttonFocus.requestFocus() },
+                )
+            }
+
+            // 리뷰순 토글(iOS 동형): ko + 네이버 관측 + 결과 있음. 섹션 밖 — 리뷰순 0건이면 장소 섹션이 사라져도 토글은 남아 되돌아간다.
+            if (s.canSortByReview && s.outcome != null) {
+                Button(onClick = vm::toggleSort, modifier = Modifier.tapTarget().testTag("sort")) {
+                    Text(stringResource(if (s.sort == PlaceSort.review) R.string.search_sortByAccuracy else R.string.search_sortByReview))
+                }
+            }
+
+            s.outcome?.let { outcome ->
+                ResultSections(outcome, s.bucket, s.region, lang, rowFocusFor, vm::setBucket, vm::setRegion) { place ->
+                    vm.rememberReturnFocus("place-${place.id}")
+                    onOpenPlace(place)
+                }
             }
         }
-
-        s.outcome?.let { outcome ->
-            ResultSections(outcome, s.bucket, s.region, lang, rowFocusFor, vm::setBucket, vm::setRegion) { place ->
-                vm.rememberReturnFocus("place-${place.id}")
-                onOpenPlace(place)
-            }
-        }
-    }
     }
 }
 
@@ -200,7 +202,7 @@ private fun RecentSection(
             onRun = { onRun(q.text) }, onTogglePin = { onTogglePin(q.text) }, onDelete = { onDelete(q.text) },
         )
     }
-    Button(onClick = onClearAll, modifier = Modifier.testTag("recent-clear")) { Text(stringResource(R.string.recent_clearAll)) }
+    Button(onClick = onClearAll, modifier = Modifier.tapTarget().testTag("recent-clear")) { Text(stringResource(R.string.recent_clearAll)) }
 }
 
 /** 결과 섹션들(건수 내림차순, `SearchOutcome.orderedSections`). 첫 행에만 착지 requester. 섹션이 둘 이상일 때만 헤딩(웹 미러). */

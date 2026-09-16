@@ -46,7 +46,7 @@ class NearbyScreenA11yTest {
         }
         rule.setContent {
             MaterialTheme {
-                NearbyKindScreen(NearbyKindRoute.of(NearbyKind.subway, anchor), factory, NearbyNav({}, {}, {}), requestPrecise = { false }, isLocationEnabled = { true })
+                NearbyKindScreen(NearbyKindRoute.of(NearbyKind.subway, anchor), anchor, factory, NearbyNav({}, {}, {}), requestPrecise = { false }, isLocationEnabled = { true })
             }
         }
         rule.enableAccessibilityChecks()

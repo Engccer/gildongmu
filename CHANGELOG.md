@@ -11,6 +11,10 @@
 
 ## 2026-09-16
 
+### 안드로이드 M2 — 장소 상세 + 내 주변 (`android/app`)
+
+검색 결과 → 장소 상세(주소 3종+복사·영업시간·전화·홈페이지·외부 지도 3·이 장소 주변)와 내 주변 탭(둘러보기·지하철·버스+경유 정류소·따릉이)을 세우고, 그것을 받치는 위치 계층(`location/` — GMS 무의존 `LocationManager`, 권한 대기 슬롯, 이번 취득 최선값 폴백), `NearbyLoadCore` 소비 관용구(`NearbyScreenViewModel`), pop 복귀 착지, iOS 전용 카탈로그 일괄 도입을 더했다. 검색은 좌표 가중·거리 표기·리뷰순 토글이 붙었다. M2b로 미룬 것(나머지 6섹션·주변 상황·역 자동 섹션·표시줄/수동 위치)은 spec §1. spec `docs/superpowers/specs/2026-09-16-android-m2-place-nearby-design.md`(설계 리뷰 2회, 구현 리뷰 2건), 계획 `docs/superpowers/plans/2026-09-16-android-m2-place-nearby.md`.
+
 ### 안드로이드 Kit — 공백 의미를 Swift와 같게, 채팅 스트림 줄 분리 (`android/kit`)
 
 GUIDE 사후 리뷰 후속: 정규식 공백 상수를 유니코드 White_Space로(수직 탭·NEL 추가, 공용 상수로 통합), FOUNDATION·CORE 13파일의 Kotlin 기본 trim·공백 판정을 Swift `CharacterSet`·`Character.isWhitespace` 집합 미러로(U+200B 포함, 전 코드포인트 실측 대조), 채팅 NDJSON 줄 분리를 Swift `bytes.lines` 미러 `ChatService.splitStreamLines`로 :kit이 소유한다. 소스 가드로 Kotlin 기본 공백 판정·POSIX 계열 `\p{…}`·중괄호 없는 `\pL`·`[[:…:]]`·`\h`를 막는다(규칙 `android/README.md` §3).

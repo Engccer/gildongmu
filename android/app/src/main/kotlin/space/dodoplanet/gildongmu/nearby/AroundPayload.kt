@@ -13,8 +13,6 @@ import space.dodoplanet.gildongmu.kit.models.SurroundingPlace
  * fetch로 받아 한 번에 커밋한다(코어 계약: 첫 착지 1회·통지 1회·latest-wins). 조각별 실패는 payload에 남겨 그 자리에 실패 문장으로.
  */
 data class AroundPayload(
-    val lat: Double,
-    val lng: Double,
     /** null = data null(전 키 부재) 또는 실패(`overviewFailed`로 가른다). */
     val overview: NearbyOverview?,
     val overviewFailed: Boolean,
@@ -43,7 +41,6 @@ suspend fun fetchAround(service: NearbyService, coord: NearbyCoord): AroundPaylo
     val p = places.await()
     if (o.isFailure && p.isFailure) throw o.exceptionOrNull()!!
     AroundPayload(
-        lat = coord.lat, lng = coord.lng,
         overview = o.getOrNull(), overviewFailed = o.isFailure,
         places = p.getOrNull(), placesFailed = p.isFailure,
     )

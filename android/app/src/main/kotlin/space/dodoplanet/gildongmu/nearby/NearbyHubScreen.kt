@@ -18,27 +18,34 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.unit.dp
+import android.util.Log
+import androidx.compose.foundation.layout.WindowInsets
 import space.dodoplanet.gildongmu.R
 import space.dodoplanet.gildongmu.a11y.AppTopBar
+import space.dodoplanet.gildongmu.a11y.tapTarget
 
 /** 내 주변 허브(spec §3-4): 버튼 4개, iOS 순서. 위치는 여기서 요청하지 않는다(각 화면 진입 시). */
 @Composable
-fun NearbyHubScreen(onOpen: (NearbyKind) -> Unit, returnFocus: String?) {
+fun NearbyHubScreen(onOpen: (NearbyKind) -> Unit, takeReturnFocus: () -> String?) {
     val requesters = remember { mutableMapOf<NearbyKind, FocusRequester>() }
-    // pop 복귀 착지: 눌렀던 버튼으로(spec §3-1). 키는 호출자가 한 번만 준다.
-    LaunchedEffect(returnFocus) {
-        val key = returnFocus ?: return@LaunchedEffect
+    // pop 복귀 착지: 눌렀던 버튼으로(spec §3-1). 소비는 효과 안에서 한 번(컴포지션 본문에서 부르면 재구성마다 유실).
+    LaunchedEffect(Unit) {
+        val key = takeReturnFocus() ?: return@LaunchedEffect
         withFrameNanos { }
-        NearbyKind.entries.firstOrNull { hubKey(it) == key }?.let { requesters[it]?.requestFocus() }
+        val kind = NearbyKind.entries.firstOrNull { hubKey(it) == key } ?: return@LaunchedEffect
+        runCatching { requesters[kind]?.requestFocus() }.onFailure { Log.w("Nearby", "허브 복귀 착지 실패 $key", it) }
     }
-    Scaffold(topBar = { AppTopBar(stringResource(R.string.android_tab_nearby), onBack = null) }) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
+    Scaffold(contentWindowInsets = WindowInsets(0, 0, 0, 0), topBar = { AppTopBar(stringResource(R.string.android_tab_nearby), onBack = null) }) { padding ->
+        Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).semantics { testTagsAsResourceId = true }) {
             for (kind in NearbyKind.entries) {
                 Button(
                     onClick = { onOpen(kind) },
                     modifier = Modifier
                         .fillMaxWidth()
+                        .tapTarget()
                         .testTag(hubKey(kind))
                         .focusRequester(requesters.getOrPut(kind) { FocusRequester() })
                         .padding(vertical = 4.dp),
