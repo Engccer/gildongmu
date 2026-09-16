@@ -1,0 +1,965 @@
+{
+  "sourceLanguage": "ko",
+  "strings": {
+    "category.all": {
+      "ko": "전체",
+      "en": "All",
+      "es": "Todo",
+      "fr": "Toutes",
+      "it": "Tutte",
+      "ja": "すべて"
+    },
+    "category.attraction": {
+      "ko": "관광·명소",
+      "en": "Attractions",
+      "es": "Atracciones",
+      "fr": "Sites touristiques",
+      "it": "Attrazioni",
+      "ja": "観光・名所"
+    },
+    "category.filterLabel": {
+      "ko": "분류로 거르기",
+      "en": "Filter by category",
+      "es": "Filtrar por categoría",
+      "fr": "Filtrer par catégorie",
+      "it": "Filtra per categoria",
+      "ja": "カテゴリで絞り込む"
+    },
+    "category.food": {
+      "ko": "음식",
+      "en": "Food",
+      "es": "Comida",
+      "fr": "Restauration",
+      "it": "Cibo",
+      "ja": "グルメ"
+    },
+    "category.lodging": {
+      "ko": "숙박",
+      "en": "Lodging",
+      "es": "Alojamiento",
+      "fr": "Hébergement",
+      "it": "Alloggi",
+      "ja": "宿泊"
+    },
+    "category.other": {
+      "ko": "기타",
+      "en": "Other",
+      "es": "Otros",
+      "fr": "Autre",
+      "it": "Altro",
+      "ja": "その他"
+    },
+    "category.public": {
+      "ko": "공공·교육",
+      "en": "Public & education",
+      "es": "Público y educación",
+      "fr": "Public et éducation",
+      "it": "Pubblico e istruzione",
+      "ja": "公共・教育"
+    },
+    "category.shopping": {
+      "ko": "쇼핑",
+      "en": "Shopping",
+      "es": "Compras",
+      "fr": "Shopping",
+      "it": "Shopping",
+      "ja": "ショッピング"
+    },
+    "category.transport": {
+      "ko": "교통",
+      "en": "Transport",
+      "es": "Transporte",
+      "fr": "Transport",
+      "it": "Trasporti",
+      "ja": "交通"
+    },
+    "region.all": {
+      "ko": "전국",
+      "en": "All regions",
+      "es": "Todas las regiones",
+      "fr": "Toutes les régions",
+      "it": "Tutte le regioni",
+      "ja": "全国"
+    },
+    "region.busan": {
+      "ko": "부산",
+      "en": "Busan",
+      "es": "Busan",
+      "fr": "Busan",
+      "it": "Busan",
+      "ja": "釜山"
+    },
+    "region.chungbuk": {
+      "ko": "충북",
+      "en": "Chungbuk",
+      "es": "Chungbuk",
+      "fr": "Chungbuk",
+      "it": "Chungbuk",
+      "ja": "忠北"
+    },
+    "region.chungnam": {
+      "ko": "충남",
+      "en": "Chungnam",
+      "es": "Chungnam",
+      "fr": "Chungnam",
+      "it": "Chungnam",
+      "ja": "忠南"
+    },
+    "region.daegu": {
+      "ko": "대구",
+      "en": "Daegu",
+      "es": "Daegu",
+      "fr": "Daegu",
+      "it": "Daegu",
+      "ja": "大邱"
+    },
+    "region.daejeon": {
+      "ko": "대전",
+      "en": "Daejeon",
+      "es": "Daejeon",
+      "fr": "Daejeon",
+      "it": "Daejeon",
+      "ja": "大田"
+    },
+    "region.filterLabel": {
+      "ko": "지역으로 거르기",
+      "en": "Filter by region",
+      "es": "Filtrar por región",
+      "fr": "Filtrer par région",
+      "it": "Filtra per regione",
+      "ja": "地域で絞り込む"
+    },
+    "region.gangwon": {
+      "ko": "강원",
+      "en": "Gangwon",
+      "es": "Gangwon",
+      "fr": "Gangwon",
+      "it": "Gangwon",
+      "ja": "江原"
+    },
+    "region.gwangju": {
+      "ko": "광주",
+      "en": "Gwangju",
+      "es": "Gwangju",
+      "fr": "Gwangju",
+      "it": "Gwangju",
+      "ja": "光州"
+    },
+    "region.gyeongbuk": {
+      "ko": "경북",
+      "en": "Gyeongbuk",
+      "es": "Gyeongbuk",
+      "fr": "Gyeongbuk",
+      "it": "Gyeongbuk",
+      "ja": "慶北"
+    },
+    "region.gyeonggi": {
+      "ko": "경기",
+      "en": "Gyeonggi",
+      "es": "Gyeonggi",
+      "fr": "Gyeonggi",
+      "it": "Gyeonggi",
+      "ja": "京畿"
+    },
+    "region.gyeongnam": {
+      "ko": "경남",
+      "en": "Gyeongnam",
+      "es": "Gyeongnam",
+      "fr": "Gyeongnam",
+      "it": "Gyeongnam",
+      "ja": "慶南"
+    },
+    "region.incheon": {
+      "ko": "인천",
+      "en": "Incheon",
+      "es": "Incheon",
+      "fr": "Incheon",
+      "it": "Incheon",
+      "ja": "仁川"
+    },
+    "region.jeju": {
+      "ko": "제주",
+      "en": "Jeju",
+      "es": "Jeju",
+      "fr": "Jeju",
+      "it": "Jeju",
+      "ja": "済州"
+    },
+    "region.jeonbuk": {
+      "ko": "전북",
+      "en": "Jeonbuk",
+      "es": "Jeonbuk",
+      "fr": "Jeonbuk",
+      "it": "Jeonbuk",
+      "ja": "全北"
+    },
+    "region.jeonnam": {
+      "ko": "전남",
+      "en": "Jeonnam",
+      "es": "Jeonnam",
+      "fr": "Jeonnam",
+      "it": "Jeonnam",
+      "ja": "全南"
+    },
+    "region.sejong": {
+      "ko": "세종",
+      "en": "Sejong",
+      "es": "Sejong",
+      "fr": "Sejong",
+      "it": "Sejong",
+      "ja": "世宗"
+    },
+    "region.seoul": {
+      "ko": "서울",
+      "en": "Seoul",
+      "es": "Seoul",
+      "fr": "Seoul",
+      "it": "Seoul",
+      "ja": "ソウル"
+    },
+    "region.ulsan": {
+      "ko": "울산",
+      "en": "Ulsan",
+      "es": "Ulsan",
+      "fr": "Ulsan",
+      "it": "Ulsan",
+      "ja": "蔚山"
+    },
+    "route.briefing.button": {
+      "ko": "자동차 경로 안내",
+      "en": "Preview car route as text",
+      "es": "Escuchar la ruta en coche como texto",
+      "fr": "Aperçu de l'itinéraire en voiture en texte",
+      "it": "Anteprima testuale del percorso in auto",
+      "ja": "車の経路案内"
+    },
+    "route.briefing.disclaimer": {
+      "ko": "실시간 교통 기준 예상치입니다.",
+      "en": "Estimates based on live traffic.",
+      "es": "Estimaciones basadas en el tráfico en tiempo real.",
+      "fr": "Estimations basées sur le trafic en temps réel.",
+      "it": "Stime basate sul traffico in tempo reale.",
+      "ja": "リアルタイム交通に基づく推定です。"
+    },
+    "route.briefing.error": {
+      "ko": "경로 브리핑에 실패했습니다.",
+      "en": "Route briefing failed.",
+      "es": "El resumen de la ruta falló.",
+      "fr": "Échec de la présentation de l'itinéraire.",
+      "it": "Riepilogo del percorso non riuscito.",
+      "ja": "経路案内に失敗しました。"
+    },
+    "route.briefing.geoError": {
+      "ko": "현재 위치를 가져올 수 없습니다. 브라우저의 위치 권한을 확인해 주세요.",
+      "en": "Could not get your location. Please check the browser's location permission.",
+      "es": "No se pudo obtener tu ubicación. Revisa el permiso de ubicación del navegador.",
+      "fr": "Impossible d'obtenir votre position. Veuillez vérifier l'autorisation de localisation du navigateur.",
+      "it": "Impossibile ottenere la tua posizione. Controlla le autorizzazioni di localizzazione del browser.",
+      "ja": "現在地を取得できません。ブラウザの位置情報の許可をご確認ください。"
+    },
+    "route.briefing.heading": {
+      "ko": "%1$s까지 자동차 경로",
+      "en": "Car route to %1$s",
+      "es": "Ruta en coche a %1$s",
+      "fr": "Itinéraire en voiture vers %1$s",
+      "it": "Percorso in auto per %1$s",
+      "ja": "%1$sまでの車の経路"
+    },
+    "route.briefing.loading": {
+      "ko": "경로 계산 중…",
+      "en": "Calculating route…",
+      "es": "Calculando la ruta…",
+      "fr": "Calcul de l'itinéraire…",
+      "it": "Calcolo del percorso…",
+      "ja": "経路を計算中…"
+    },
+    "route.briefing.locating": {
+      "ko": "현재 위치 확인 중…",
+      "en": "Getting your location…",
+      "es": "Obteniendo tu ubicación…",
+      "fr": "Localisation en cours…",
+      "it": "Recupero della tua posizione…",
+      "ja": "現在地を確認中…"
+    },
+    "route.briefing.noRoute": {
+      "ko": "경로를 찾지 못했습니다. 출발지와 목적지를 확인해 주세요.",
+      "en": "No route found. Check the start and destination.",
+      "es": "No se encontró ninguna ruta. Comprueba el origen y el destino.",
+      "fr": "Aucun itinéraire trouvé. Vérifiez le départ et la destination.",
+      "it": "Nessun percorso trovato. Controlla partenza e destinazione.",
+      "ja": "経路が見つかりませんでした。出発地と目的地を確認してください。"
+    },
+    "route.briefing.notConfigured": {
+      "ko": "자동차 경로 안내를 사용할 수 없습니다.",
+      "en": "Driving directions are unavailable.",
+      "es": "Las indicaciones en coche no están disponibles.",
+      "fr": "L'itinéraire en voiture n'est pas disponible.",
+      "it": "Le indicazioni in auto non sono disponibili.",
+      "ja": "自動車経路案内は利用できません。"
+    },
+    "route.briefing.rateLimited": {
+      "ko": "요청이 너무 많습니다.",
+      "en": "Too many requests.",
+      "es": "Demasiadas solicitudes.",
+      "fr": "Trop de requêtes.",
+      "it": "Troppe richieste.",
+      "ja": "リクエストが多すぎます。"
+    },
+    "route.briefing.ready": {
+      "ko": "경로 안내가 준비되었습니다.",
+      "en": "Route briefing is ready.",
+      "es": "El resumen de la ruta está listo.",
+      "fr": "La présentation de l'itinéraire est prête.",
+      "it": "Il riepilogo del percorso è pronto.",
+      "ja": "経路案内の準備ができました。"
+    },
+    "route.briefing.summary": {
+      "ko": "총 거리 %1$s, 약 %2$s분 소요. 예상 택시 요금 %3$s원.",
+      "en": "Total %1$s, about %2$s min. Estimated taxi fare %3$s KRW.",
+      "es": "Total %1$s, aprox. %2$s min. Tarifa de taxi estimada %3$s KRW.",
+      "fr": "Total %1$s, environ %2$s min. Tarif estimé du taxi %3$s KRW.",
+      "it": "Totale %1$s, circa %2$s min. Tariffa taxi stimata %3$s KRW.",
+      "ja": "総距離%1$s、約%2$s分。タクシー料金の目安%3$sウォン。"
+    },
+    "route.briefing.toll": {
+      "ko": "통행료 %1$s원 별도.",
+      "en": "Toll %1$s KRW not included.",
+      "es": "Peaje de %1$s KRW no incluido.",
+      "fr": "Péage %1$s KRW non inclus.",
+      "it": "Pedaggio %1$s KRW non incluso.",
+      "ja": "通行料%1$sウォンが別途かかります。"
+    },
+    "route.car": {
+      "ko": "자동차",
+      "en": "Car",
+      "es": "Coche",
+      "fr": "Voiture",
+      "it": "Auto",
+      "ja": "車"
+    },
+    "route.pedestrian.error": {
+      "ko": "도보 경로를 불러오지 못했습니다.",
+      "en": "Couldn't load the walking route.",
+      "es": "No se pudo cargar la ruta a pie.",
+      "fr": "Impossible de charger l'itinéraire à pied.",
+      "it": "Impossibile caricare il percorso a piedi.",
+      "ja": "徒歩経路を取得できませんでした。"
+    },
+    "route.pedestrian.heading": {
+      "ko": "도보",
+      "en": "Walk",
+      "es": "A pie",
+      "fr": "À pied",
+      "it": "A piedi",
+      "ja": "徒歩"
+    },
+    "route.pedestrian.noRoute": {
+      "ko": "도보 경로를 찾지 못했습니다.",
+      "en": "No walking route found.",
+      "es": "No se encontró ninguna ruta a pie.",
+      "fr": "Aucun itinéraire à pied trouvé.",
+      "it": "Nessun percorso a piedi trovato.",
+      "ja": "徒歩経路が見つかりませんでした。"
+    },
+    "route.pedestrian.stepFreeToggle": {
+      "ko": "계단 회피 경로",
+      "en": "Avoid stairs",
+      "es": "Evitar escaleras",
+      "fr": "Éviter les escaliers",
+      "it": "Evita le scale",
+      "ja": "階段を避ける経路"
+    },
+    "route.pedestrian.summary": {
+      "ko": "총 %1$s, 약 %2$s분",
+      "en": "Total %1$s, about %2$s min",
+      "es": "Total %1$s, aprox. %2$s min",
+      "fr": "Total %1$s, environ %2$s min",
+      "it": "Totale %1$s, circa %2$s min",
+      "ja": "計%1$s、約%2$s分"
+    },
+    "route.public": {
+      "ko": "대중교통",
+      "en": "Transit",
+      "es": "Transporte público",
+      "fr": "Transports",
+      "it": "Mezzi pubblici",
+      "ja": "公共交通"
+    },
+    "route.transit.alightAt": {
+      "ko": "%1$s 하차",
+      "en": "Get off at %1$s",
+      "es": "Bajada en %1$s",
+      "fr": "Descente à %1$s",
+      "it": "Discesa a %1$s",
+      "ja": "%1$sで下車"
+    },
+    "route.transit.alternativeFastest": {
+      "ko": "가장 빠른 경로",
+      "en": "Fastest route",
+      "es": "Ruta más rápida",
+      "fr": "Itinéraire le plus rapide",
+      "it": "Percorso più veloce",
+      "ja": "最速ルート"
+    },
+    "route.transit.alternativeFastestFewestTransfers": {
+      "ko": "가장 빠르고 환승도 가장 적은 경로",
+      "en": "Fastest with fewest transfers",
+      "es": "La más rápida y con menos transbordos",
+      "fr": "Le plus rapide avec le moins de correspondances",
+      "it": "Il più veloce con meno cambi",
+      "ja": "最速で乗り換えも最少のルート"
+    },
+    "route.transit.alternativeFewestTransfers": {
+      "ko": "환승이 가장 적은 경로",
+      "en": "Fewest transfers",
+      "es": "Menos transbordos",
+      "fr": "Le moins de correspondances",
+      "it": "Meno cambi",
+      "ja": "乗り換えが最も少ないルート"
+    },
+    "route.transit.alternativeHeading": {
+      "ko": "대안 경로 %1$s",
+      "en": "Alternative %1$s",
+      "es": "Alternativa %1$s",
+      "fr": "Alternative %1$s",
+      "it": "Alternativa %1$s",
+      "ja": "代替経路%1$s"
+    },
+    "route.transit.arrive": {
+      "ko": "<name></name> 도착",
+      "en": "Arrive at <name></name>",
+      "es": "Llega a <name></name>",
+      "fr": "Arrivée à <name></name>",
+      "it": "Arrivo a <name></name>",
+      "ja": "<name></name>に到着"
+    },
+    "route.transit.busNo": {
+      "ko": "%1$s번 버스",
+      "en": "bus %1$s",
+      "es": "autobús %1$s",
+      "fr": "bus %1$s",
+      "it": "autobus %1$s",
+      "ja": "%1$s番バス"
+    },
+    "route.transit.button": {
+      "ko": "여기까지 대중교통 길찾기",
+      "en": "Public transit to here",
+      "es": "Transporte público hasta aquí",
+      "fr": "Transports en commun jusqu'ici",
+      "it": "Mezzi pubblici fin qui",
+      "ja": "ここまで公共交通で経路検索"
+    },
+    "route.transit.error": {
+      "ko": "경로를 불러오지 못했습니다.",
+      "en": "Couldn't load the route.",
+      "es": "No se pudo cargar la ruta.",
+      "fr": "Impossible de charger l'itinéraire.",
+      "it": "Impossibile caricare il percorso.",
+      "ja": "経路を取得できませんでした。"
+    },
+    "route.transit.geoError": {
+      "ko": "현재 위치를 확인할 수 없습니다. 위치 권한을 확인해 주세요.",
+      "en": "Couldn't determine your current location. Please check location permission.",
+      "es": "No se pudo determinar tu ubicación actual. Revisa el permiso de ubicación.",
+      "fr": "Impossible de déterminer votre position actuelle. Vérifiez l'autorisation de localisation.",
+      "it": "Impossibile determinare la posizione attuale. Controlla l'autorizzazione alla localizzazione.",
+      "ja": "現在地を確認できません。位置情報の許可を確認してください。"
+    },
+    "route.transit.heading": {
+      "ko": "%1$s까지 대중교통",
+      "en": "Transit to %1$s",
+      "es": "Transporte público a %1$s",
+      "fr": "Transports vers %1$s",
+      "it": "Mezzi pubblici per %1$s",
+      "ja": "%1$sまでの公共交通"
+    },
+    "route.transit.legBoard": {
+      "ko": "<from></from>에서 <line></line> 승차, %1$s 정거장",
+      "en": "Board <line></line> at <from></from>, {1, plural, one {%1$s stop} other {%1$s stops}}",
+      "es": "Sube a <line></line> en <from></from>, {1, plural, one {%1$s parada} other {%1$s paradas}}",
+      "fr": "Montez à bord de <line></line> à <from></from>, {1, plural, one {%1$s arrêt} other {%1$s arrêts}}",
+      "it": "Sali su <line></line> a <from></from>, {1, plural, one {%1$s fermata} other {%1$s fermate}}",
+      "ja": "<from></from>で<line></line>に乗車、%1$s駅"
+    },
+    "route.transit.legBoardExit": {
+      "ko": "%1$s번 출구로 진입",
+      "en": "enter via Exit %1$s",
+      "es": "entra por la salida %1$s",
+      "fr": "entrez par la sortie %1$s",
+      "it": "entra dall'uscita %1$s",
+      "ja": "%1$s番出口から入場"
+    },
+    "route.transit.legInterval": {
+      "ko": "배차간격 약 %1$s분",
+      "en": "runs about every %1$s min",
+      "es": "pasa cada %1$s min aprox.",
+      "fr": "passage toutes les %1$s min environ",
+      "it": "passa circa ogni %1$s min",
+      "ja": "運転間隔約%1$s分"
+    },
+    "route.transit.legServiceOutside": {
+      "ko": "첫차 %1$s, 막차 %2$s, 지금은 운행하지 않습니다",
+      "en": "First departure %1$s, last departure %2$s, not running now",
+      "es": "Primera salida %1$s, última %2$s, no circula ahora",
+      "fr": "Premier départ %1$s, dernier %2$s, ne circule pas actuellement",
+      "it": "Prima corsa %1$s, ultima %2$s, non in servizio ora",
+      "ja": "始発 %1$s、終発 %2$s、現在は運行していません"
+    },
+    "route.transit.legTransfer": {
+      "ko": "<from></from>에서 <line></line> 환승, %1$s 정거장",
+      "en": "Transfer to <line></line> at <from></from>, {1, plural, one {%1$s stop} other {%1$s stops}}",
+      "es": "Transborda a <line></line> en <from></from>, {1, plural, one {%1$s parada} other {%1$s paradas}}",
+      "fr": "Changez pour <line></line> à <from></from>, {1, plural, one {%1$s arrêt} other {%1$s arrêts}}",
+      "it": "Cambia per <line></line> a <from></from>, {1, plural, one {%1$s fermata} other {%1$s fermate}}",
+      "ja": "<from></from>で<line></line>に乗り換え、%1$s駅"
+    },
+    "route.transit.legWalk": {
+      "ko": "도보 %1$s분",
+      "en": "Walk %1$s min",
+      "es": "Camina %1$s min",
+      "fr": "Marcher %1$s min",
+      "it": "Cammina %1$s min",
+      "ja": "徒歩%1$s分"
+    },
+    "route.transit.legWalkTo": {
+      "ko": "%1$s까지 도보 %2$s분, %3$s",
+      "en": "Walk %2$s min to %1$s, %3$s",
+      "es": "Camina %2$s min hasta %1$s, %3$s",
+      "fr": "Marchez %2$s min jusqu'à %1$s, %3$s",
+      "it": "Cammina %2$s min fino a %1$s, %3$s",
+      "ja": "%1$sまで徒歩%2$s分、%3$s"
+    },
+    "route.transit.legWalkToDest": {
+      "ko": "목적지까지 도보 %1$s분, %2$s",
+      "en": "Walk %1$s min to the destination, %2$s",
+      "es": "Camina %1$s min hasta el destino, %2$s",
+      "fr": "Marchez %1$s min jusqu'à la destination, %2$s",
+      "it": "Cammina %1$s min fino alla destinazione, %2$s",
+      "ja": "目的地まで徒歩%1$s分、%2$s"
+    },
+    "route.transit.legWalkToDestNoDistance": {
+      "ko": "목적지까지 도보 %1$s분",
+      "en": "Walk %1$s min to the destination",
+      "es": "Camina %1$s min hasta el destino",
+      "fr": "Marchez %1$s min jusqu'à la destination",
+      "it": "Cammina %1$s min fino alla destinazione",
+      "ja": "目的地まで徒歩%1$s分"
+    },
+    "route.transit.legWalkToExit": {
+      "ko": "%1$s %2$s번 출구까지 도보 %3$s분, %4$s",
+      "en": "Walk %3$s min to %1$s Exit %2$s, %4$s",
+      "es": "Camina %3$s min hasta la salida %2$s de %1$s, %4$s",
+      "fr": "Marchez %3$s min jusqu'à la sortie %2$s de %1$s, %4$s",
+      "it": "Cammina %3$s min fino all'uscita %2$s di %1$s, %4$s",
+      "ja": "%1$s%2$s番出口まで徒歩%3$s分、%4$s"
+    },
+    "route.transit.legWalkToExitNoDistance": {
+      "ko": "%1$s %2$s번 출구까지 도보 %3$s분",
+      "en": "Walk %3$s min to %1$s Exit %2$s",
+      "es": "Camina %3$s min hasta la salida %2$s de %1$s",
+      "fr": "Marchez %3$s min jusqu'à la sortie %2$s de %1$s",
+      "it": "Cammina %3$s min fino all'uscita %2$s di %1$s",
+      "ja": "%1$s%2$s番出口まで徒歩%3$s分"
+    },
+    "route.transit.legWalkToNoDistance": {
+      "ko": "%1$s까지 도보 %2$s분",
+      "en": "Walk %2$s min to %1$s",
+      "es": "Camina %2$s min hasta %1$s",
+      "fr": "Marchez %2$s min jusqu'à %1$s",
+      "it": "Cammina %2$s min fino a %1$s",
+      "ja": "%1$sまで徒歩%2$s分"
+    },
+    "route.transit.loading": {
+      "ko": "경로를 찾는 중입니다.",
+      "en": "Finding a route…",
+      "es": "Buscando una ruta…",
+      "fr": "Recherche d'un itinéraire…",
+      "it": "Ricerca di un percorso…",
+      "ja": "経路を探しています。"
+    },
+    "route.transit.locating": {
+      "ko": "현재 위치를 확인하는 중입니다.",
+      "en": "Locating you…",
+      "es": "Localizándote…",
+      "fr": "Localisation en cours…",
+      "it": "Localizzazione in corso…",
+      "ja": "現在地を確認しています。"
+    },
+    "route.transit.noRoute": {
+      "ko": "대중교통 경로를 찾지 못했습니다.",
+      "en": "No public transit route found.",
+      "es": "No se encontró ninguna ruta de transporte público.",
+      "fr": "Aucun itinéraire en transports en commun trouvé.",
+      "it": "Nessun percorso con i mezzi pubblici trovato.",
+      "ja": "公共交通の経路が見つかりませんでした。"
+    },
+    "route.transit.notConfigured": {
+      "ko": "대중교통 길찾기를 사용할 수 없습니다.",
+      "en": "Transit directions are unavailable.",
+      "es": "Las indicaciones de transporte público no están disponibles.",
+      "fr": "L'itinéraire en transports en commun n'est pas disponible.",
+      "it": "Le indicazioni con i mezzi pubblici non sono disponibili.",
+      "ja": "公共交通機関の経路案内は利用できません。"
+    },
+    "route.transit.quickExitBetween": {
+      "ko": "%1$s 문과 %2$s 문 사이",
+      "en": "between doors %1$s and %2$s",
+      "es": "entre las puertas %1$s y %2$s",
+      "fr": "entre les portes %1$s et %2$s",
+      "it": "tra le porte %1$s e %2$s",
+      "ja": "%1$sと%2$sのドアの間"
+    },
+    "route.transit.quickExitBoth": {
+      "ko": "%1$s 하차, 엘리베이터 %2$s, 계단 %3$s",
+      "en": "Get off at %1$s, elevator %2$s, stairs %3$s",
+      "es": "Bajada en %1$s, ascensor %2$s, escaleras %3$s",
+      "fr": "Descente à %1$s, ascenseur %2$s, escaliers %3$s",
+      "it": "Discesa a %1$s, ascensore %2$s, scale %3$s",
+      "ja": "%1$sで下車、エレベーターは%2$s、階段は%3$s"
+    },
+    "route.transit.quickExitDoor": {
+      "ko": "%1$s 문",
+      "en": "at door %1$s",
+      "es": "en la puerta %1$s",
+      "fr": "à la porte %1$s",
+      "it": "alla porta %1$s",
+      "ja": "%1$sのドア"
+    },
+    "route.transit.quickExitElevator": {
+      "ko": "%1$s 하차, 엘리베이터 %2$s",
+      "en": "Get off at %1$s, elevator %2$s",
+      "es": "Bajada en %1$s, ascensor %2$s",
+      "fr": "Descente à %1$s, ascenseur %2$s",
+      "it": "Discesa a %1$s, ascensore %2$s",
+      "ja": "%1$sで下車、エレベーターは%2$s"
+    },
+    "route.transit.quickExitStairs": {
+      "ko": "%1$s 하차, 계단 %2$s",
+      "en": "Get off at %1$s, stairs %2$s",
+      "es": "Bajada en %1$s, escaleras %2$s",
+      "fr": "Descente à %1$s, escaliers %2$s",
+      "it": "Discesa a %1$s, scale %2$s",
+      "ja": "%1$sで下車、階段は%2$s"
+    },
+    "route.transit.quickExitTransfer": {
+      "ko": "%1$s 하차, 빠른 환승 %2$s",
+      "en": "Get off at %1$s, quick transfer %2$s",
+      "es": "Bajada en %1$s, transbordo rápido %2$s",
+      "fr": "Descente à %1$s, correspondance rapide %2$s",
+      "it": "Discesa a %1$s, cambio rapido %2$s",
+      "ja": "%1$sで下車、乗り換えは%2$s"
+    },
+    "route.transit.ready": {
+      "ko": "경로 안내가 준비되었습니다.",
+      "en": "Route is ready.",
+      "es": "La ruta está lista.",
+      "fr": "L'itinéraire est prêt.",
+      "it": "Il percorso è pronto.",
+      "ja": "経路案内の準備ができました。"
+    },
+    "route.transit.recommended": {
+      "ko": "추천 경로",
+      "en": "Recommended route",
+      "es": "Ruta recomendada",
+      "fr": "Itinéraire recommandé",
+      "it": "Percorso consigliato",
+      "ja": "おすすめ経路"
+    },
+    "route.transit.summary": {
+      "ko": "총 %1$s분, %2$s원, 환승 %3$s회",
+      "en": "%1$s min, %2$s won, {3, plural, one {%3$s transfer} other {%3$s transfers}}",
+      "es": "%1$s min, %2$s won, {3, plural, one {%3$s transbordo} other {%3$s transbordos}}",
+      "fr": "%1$s min, %2$s won, {3, plural, one {%3$s correspondance} other {%3$s correspondances}}",
+      "it": "%1$s min, %2$s won, {3, plural, one {%3$s cambio} other {%3$s cambi}}",
+      "ja": "計%1$s分、%2$sウォン、乗り換え%3$s回"
+    },
+    "route.transit.walkSummary": {
+      "ko": "도보 %1$s분 포함",
+      "en": "incl. %1$s min walking",
+      "es": "incl. %1$s min a pie",
+      "fr": "dont %1$s min de marche",
+      "it": "inclusi %1$s min a piedi",
+      "ja": "徒歩%1$s分を含む"
+    },
+    "route.walk": {
+      "ko": "도보",
+      "en": "Walk",
+      "es": "A pie",
+      "fr": "À pied",
+      "it": "A piedi",
+      "ja": "徒歩"
+    },
+    "whereAmI.direction.e": {
+      "ko": "동",
+      "en": "east",
+      "es": "este",
+      "fr": "à l'est",
+      "it": "est",
+      "ja": "東"
+    },
+    "whereAmI.direction.n": {
+      "ko": "북",
+      "en": "north",
+      "es": "norte",
+      "fr": "au nord",
+      "it": "nord",
+      "ja": "北"
+    },
+    "whereAmI.direction.ne": {
+      "ko": "북동",
+      "en": "northeast",
+      "es": "noreste",
+      "fr": "au nord-est",
+      "it": "nord-est",
+      "ja": "北東"
+    },
+    "whereAmI.direction.nw": {
+      "ko": "북서",
+      "en": "northwest",
+      "es": "noroeste",
+      "fr": "au nord-ouest",
+      "it": "nord-ovest",
+      "ja": "北西"
+    },
+    "whereAmI.direction.s": {
+      "ko": "남",
+      "en": "south",
+      "es": "sur",
+      "fr": "au sud",
+      "it": "sud",
+      "ja": "南"
+    },
+    "whereAmI.direction.se": {
+      "ko": "남동",
+      "en": "southeast",
+      "es": "sureste",
+      "fr": "au sud-est",
+      "it": "sud-est",
+      "ja": "南東"
+    },
+    "whereAmI.direction.sw": {
+      "ko": "남서",
+      "en": "southwest",
+      "es": "suroeste",
+      "fr": "au sud-ouest",
+      "it": "sud-ovest",
+      "ja": "南西"
+    },
+    "whereAmI.direction.w": {
+      "ko": "서",
+      "en": "west",
+      "es": "oeste",
+      "fr": "à l'ouest",
+      "it": "ovest",
+      "ja": "西"
+    },
+    "whereAmI.overview.failed": {
+      "ko": "한눈에 보기 정보를 가져오지 못했습니다",
+      "en": "Could not load the at-a-glance summary",
+      "es": "No se pudo cargar el resumen",
+      "fr": "Impossible de charger le résumé",
+      "it": "Impossibile caricare il riepilogo",
+      "ja": "周辺の概要を取得できませんでした"
+    },
+    "whereAmI.overview.failedItem": {
+      "ko": "%1$s 정보를 가져오지 못했습니다.",
+      "en": "%1$s: could not load.",
+      "es": "%1$s: no se pudo cargar.",
+      "fr": "%1$s : chargement impossible.",
+      "it": "%1$s: caricamento non riuscito.",
+      "ja": "%1$sの情報を取得できませんでした。"
+    },
+    "whereAmI.overview.heading": {
+      "ko": "한눈에 보기",
+      "en": "At a glance",
+      "es": "De un vistazo",
+      "fr": "En un coup d'œil",
+      "it": "A colpo d'occhio",
+      "ja": "ひと目でわかる周辺"
+    },
+    "whereAmI.overview.labelBarrierFree": {
+      "ko": "무장애 관광지",
+      "en": "Barrier-free attractions",
+      "es": "Atracciones accesibles",
+      "fr": "Sites accessibles",
+      "it": "Attrazioni accessibili",
+      "ja": "バリアフリー観光地"
+    },
+    "whereAmI.overview.labelCafe": {
+      "ko": "카페",
+      "en": "Cafes",
+      "es": "Cafés",
+      "fr": "Cafés",
+      "it": "Caffè",
+      "ja": "カフェ"
+    },
+    "whereAmI.overview.labelEvents": {
+      "ko": "문화 행사",
+      "en": "Cultural events",
+      "es": "Eventos culturales",
+      "fr": "Événements culturels",
+      "it": "Eventi culturali",
+      "ja": "文化イベント"
+    },
+    "whereAmI.overview.labelFood": {
+      "ko": "식당",
+      "en": "Restaurants",
+      "es": "Restaurantes",
+      "fr": "Restaurants",
+      "it": "Ristoranti",
+      "ja": "飲食店"
+    },
+    "whereAmI.overview.labelKids": {
+      "ko": "아이 놀 곳",
+      "en": "Places for kids",
+      "es": "Lugares para niños",
+      "fr": "Lieux pour enfants",
+      "it": "Luoghi per bambini",
+      "ja": "子どもの遊び場"
+    },
+    "whereAmI.overview.nearestFirst": {
+      "ko": "%1$s쪽 %2$s 지점에 있는 %3$s",
+      "en": "%3$s, %2$s to the %1$s",
+      "es": "%3$s, a %2$s al %1$s",
+      "fr": "%3$s, à %2$s vers le %1$s",
+      "it": "%3$s, a %2$s verso %1$s",
+      "ja": "%1$s%2$sの%3$s"
+    },
+    "whereAmI.overview.nearestItem": {
+      "ko": "%1$s쪽 %2$s 지점에 %3$s",
+      "en": "%3$s, %2$s to the %1$s",
+      "es": "%3$s, a %2$s al %1$s",
+      "fr": "%3$s, à %2$s vers le %1$s",
+      "it": "%3$s, a %2$s verso %1$s",
+      "ja": "%1$s%2$sの%3$s"
+    },
+    "whereAmI.overview.nearestLead": {
+      "ko": "가장 가까운 곳은 %1$s이고, %2$s 있습니다.",
+      "en": "The nearest are %1$s, %2$s.",
+      "es": "Los más cercanos son %1$s, %2$s.",
+      "fr": "Les plus proches sont %1$s, %2$s.",
+      "it": "I più vicini sono %1$s, %2$s.",
+      "ja": "最寄りは%1$s、%2$sです。"
+    },
+    "whereAmI.overview.nearestOne": {
+      "ko": "가장 가까운 곳은 %1$s입니다.",
+      "en": "The nearest is %1$s.",
+      "es": "El más cercano es %1$s.",
+      "fr": "Le plus proche est %1$s.",
+      "it": "Il più vicino è %1$s.",
+      "ja": "最寄りは%1$sです。"
+    },
+    "whereAmI.overview.none": {
+      "ko": "%1$s %2$s 안에 없습니다.",
+      "en": "%1$s: none within %2$s.",
+      "es": "%1$s: ninguno a menos de %2$s.",
+      "fr": "%1$s : aucun à moins de %2$s.",
+      "it": "%1$s: nessuno entro %2$s.",
+      "ja": "%1$sは%2$s以内にありません。"
+    },
+    "whereAmI.overview.ok": {
+      "ko": "%1$s %2$s곳 있습니다. %3$s",
+      "en": "%1$s: %2$s. %3$s",
+      "es": "%1$s: %2$s. %3$s",
+      "fr": "%1$s : %2$s. %3$s",
+      "it": "%1$s: %2$s. %3$s",
+      "ja": "%1$sが%2$sか所あります。%3$s"
+    },
+    "whereAmI.overview.okCapped": {
+      "ko": "%1$s %2$s곳 이상 있습니다. %3$s",
+      "en": "%1$s: %2$s or more. %3$s",
+      "es": "%1$s: %2$s o más. %3$s",
+      "fr": "%1$s : %2$s ou plus. %3$s",
+      "it": "%1$s: %2$s o più. %3$s",
+      "ja": "%1$sが%2$sか所以上あります。%3$s"
+    },
+    "whereAmI.overview.radius": {
+      "ko": "%1$s 안",
+      "en": "within %1$s",
+      "es": "a menos de %1$s",
+      "fr": "à moins de %1$s",
+      "it": "entro %1$s",
+      "ja": "%1$s以内"
+    },
+    "whereAmI.overview.transitBus": {
+      "ko": "버스 정류소가 %1$s곳 있습니다. %2$s",
+      "en": "{1, plural, one {There is %1$s bus stop.} other {There are %1$s bus stops.}} %2$s",
+      "es": "{1, plural, one {Hay %1$s parada de autobús.} other {Hay %1$s paradas de autobús.}} %2$s",
+      "fr": "{1, plural, one {Il y a %1$s arrêt de bus.} other {Il y a %1$s arrêts de bus.}} %2$s",
+      "it": "{1, plural, one {C'è %1$s fermata dell'autobus.} other {Ci sono %1$s fermate dell'autobus.}} %2$s",
+      "ja": "バス停が%1$sか所あります。%2$s"
+    },
+    "whereAmI.overview.transitBusFailed": {
+      "ko": "버스 정류소 정보를 가져오지 못했습니다.",
+      "en": "Could not load bus stops.",
+      "es": "No se pudieron cargar las paradas.",
+      "fr": "Impossible de charger les arrêts.",
+      "it": "Impossibile caricare le fermate.",
+      "ja": "バス停情報を取得できませんでした。"
+    },
+    "whereAmI.overview.transitBusNone": {
+      "ko": "버스 정류소가 없습니다.",
+      "en": "There are no bus stops.",
+      "es": "No hay paradas de autobús.",
+      "fr": "Il n'y a pas d'arrêt de bus.",
+      "it": "Non ci sono fermate dell'autobus.",
+      "ja": "バス停はありません。"
+    },
+    "whereAmI.overview.transitBusUncovered": {
+      "ko": "버스 정류소 정보는 이 지역에서 제공되지 않습니다.",
+      "en": "Bus stop data is not available in this area.",
+      "es": "Los datos de paradas no están disponibles en esta zona.",
+      "fr": "Les données des arrêts ne sont pas disponibles dans cette zone.",
+      "it": "I dati delle fermate non sono disponibili in questa zona.",
+      "ja": "この地域ではバス停情報を提供していません。"
+    },
+    "whereAmI.overview.transitLead": {
+      "ko": "%1$s",
+      "en": "Transit: %1$s",
+      "es": "Transporte: %1$s",
+      "fr": "Transports : %1$s",
+      "it": "Trasporti: %1$s",
+      "ja": "%1$s"
+    },
+    "whereAmI.overview.transitLine": {
+      "ko": "%1$s ",
+      "en": " (%1$s)",
+      "es": " (%1$s)",
+      "fr": " (%1$s)",
+      "it": " (%1$s)",
+      "ja": "（%1$s）"
+    },
+    "whereAmI.overview.transitNoStation": {
+      "ko": "%1$s 안에 지하철역이 없습니다.",
+      "en": "No subway station within %1$s.",
+      "es": "No hay estación de metro a menos de %1$s.",
+      "fr": "Aucune station de métro à moins de %1$s.",
+      "it": "Nessuna stazione della metropolitana entro %1$s.",
+      "ja": "%1$s以内に地下鉄駅はありません。"
+    },
+    "whereAmI.overview.transitStation": {
+      "ko": "가장 가까운 지하철역은 %1$s쪽 %2$s 지점에 있는 %3$s%4$s입니다.",
+      "en": "The nearest subway station is %4$s%3$s, %2$s to the %1$s.",
+      "es": "La estación de metro más cercana es %4$s%3$s, a %2$s al %1$s.",
+      "fr": "La station de métro la plus proche est %4$s%3$s, à %2$s vers le %1$s.",
+      "it": "La stazione della metropolitana più vicina è %4$s%3$s, a %2$s verso %1$s.",
+      "ja": "最寄りの地下鉄駅は%1$s%2$sの%4$s%3$sです。"
+    },
+    "whereAmI.overview.unavailableSeoulOnly": {
+      "ko": "%1$s 서울에서만 안내합니다.",
+      "en": "%1$s: available in Seoul only.",
+      "es": "%1$s: solo disponible en Seúl.",
+      "fr": "%1$s : disponible à Séoul uniquement.",
+      "it": "%1$s: disponibile solo a Seul.",
+      "ja": "%1$sはソウルのみ案内します。"
+    },
+    "whereAmI.ready": {
+      "ko": "현재 위치",
+      "en": "Current location",
+      "es": "Ubicación actual",
+      "fr": "Position actuelle",
+      "it": "Posizione attuale",
+      "ja": "現在地"
+    }
+  }
+}
