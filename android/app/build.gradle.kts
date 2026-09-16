@@ -72,8 +72,10 @@ dependencies {
     implementation(libs.compose.ui)
     implementation(libs.compose.foundation)
     implementation(libs.compose.material3)
+    implementation(libs.compose.material.icons.core)
     implementation(libs.activity.compose)
     implementation(libs.lifecycle.viewmodel.compose)
+    implementation(libs.lifecycle.viewmodel.savedstate)
 
     // AGP 내장 Kotlin은 kotlin-test의 JUnit5 변형을 자동 선택하지 않는다 — 명시한다.
     testImplementation(kotlin("test-junit5"))
