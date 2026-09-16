@@ -158,7 +158,7 @@ private fun ChatBody(
             modifier = modifier,
         )
         }
-        true -> ChatConversation(vm, suggestions, fieldFocus, onOpenPlace, showsLocationBar, modifier)
+        true -> ChatConversation(vm, suggestions, fieldFocus, onOpenPlace, showsLocationBar, onPickLocation, modifier)
     }
 }
 
@@ -169,6 +169,7 @@ private fun ChatConversation(
     fieldFocus: FocusRequester,
     onOpenPlace: (Place) -> Unit,
     showsLocationBar: Boolean,
+    onPickLocation: () -> Unit,
     modifier: Modifier,
 ) {
     val s by vm.state.collectAsState()
