@@ -11,9 +11,14 @@ class AppSourceGuardTest {
     private val android = Fixtures.repoRoot.resolve("android")
     private val sources = android.resolve("app/src/main").walkTopDown().filter { it.isFile && (it.extension == "kt" || it.extension == "xml") }.toList()
 
-    @Test fun `LocationManager 생성은 AndroidLocationSource 한 곳뿐이다`() {
+    /**
+     * 단발 취득(`AndroidLocationSource`)과 M4 도보 안내 스트림(`GuideLocationStream`, 1초·속도·방위·elapsedRealtimeNanos 페이로드, 서비스 수명)
+     * 둘뿐이다 — `LocationManager`는 리스너마다 독립 요청이라 두 스트림이 공존한다(iOS 단일 매니저 경합 없음, M4 spec §4-2). 화면·ViewModel은
+     * 여전히 `LocationStore` 경유.
+     */
+    @Test fun `LocationManager 생성은 AndroidLocationSource·GuideLocationStream 두 곳뿐이다`() {
         val creators = sources.filter { f -> f.readText().let { it.contains("LocationManager::class.java") || it.contains("LOCATION_SERVICE") } }
-        assertEquals(listOf("AndroidLocationSource.kt"), creators.map { it.name })
+        assertEquals(setOf("AndroidLocationSource.kt", "GuideLocationStream.kt"), creators.map { it.name }.toSet())
     }
 
     @Test fun `백그라운드 위치 권한 문자열은 0이다`() {
