@@ -8,6 +8,8 @@ import space.dodoplanet.gildongmu.kit.LiveNextRow
 import space.dodoplanet.gildongmu.kit.LiveTopRow
 import space.dodoplanet.gildongmu.kit.RelativeDirection
 import space.dodoplanet.gildongmu.kit.WalkAction
+import space.dodoplanet.gildongmu.kit.WalkHealth
+import space.dodoplanet.gildongmu.kit.WalkHealthSummary
 import space.dodoplanet.gildongmu.kit.finalApproachArriveMeters
 import space.dodoplanet.gildongmu.kit.formatDistance
 import space.dodoplanet.gildongmu.kit.joinText
@@ -202,4 +204,37 @@ class GuideText(private val s: Strings) {
             GuidePhase.finalApproach -> if (straightLineMeters == null) s.get("guide.progressUncertain", lastGuidance ?: s.get("guide.noGuidanceYet"))
             else s.get("guide.progressFinalApproach", formatDistance(straightLineMeters.roundToInt()))
         }
+
+    /**
+     * 종료 화면 걸음·칼로리 문장(iOS `healthSummaryLine` + `foodLine`, spec §7-5): 기본 체중으로 계산했으면 기준 체중을 밝히고, 음식 비유가
+     * 성립하면 완결 문장으로 뒤에 붙인다(공백 결합 — 마침표 뒤에 쉼표를 붙이지 않는다). 한 문단 = 한 접근성 객체.
+     */
+    fun healthLine(health: WalkHealthSummary): String {
+        val summary = if (health.usedDefaultWeight) {
+            s.get("android.beacon.healthSummaryWithWeight", health.steps, WalkHealth.defaultWeightKg.toInt(), health.kcal)
+        } else {
+            s.get("android.beacon.healthSummary", health.steps, health.kcal)
+        }
+        return listOfNotNull(summary, foodLine(health.kcal)).joinToString(" ")
+    }
+
+    /** 칼로리 → 음식 비유 문장. 판정은 :kit `WalkHealth.foodComparison`, 키는 리터럴 `when`(문자열 키 린터·소스 가드 계약). */
+    fun foodLine(kcal: Int): String? {
+        val food = WalkHealth.foodComparison(kcal) ?: return null
+        if (food.count > 1) return if (food.key == "ramyeon") s.get("android.beacon.food.ramyeonMany", food.count) else null
+        return when (food.key) {
+            "cherryTomato" -> s.get("android.beacon.food.cherryTomato")
+            "cucumberHalf" -> s.get("android.beacon.food.cucumberHalf")
+            "kimchi" -> s.get("android.beacon.food.kimchi")
+            "tangerine" -> s.get("android.beacon.food.tangerine")
+            "boiledEgg" -> s.get("android.beacon.food.boiledEgg")
+            "apple" -> s.get("android.beacon.food.apple")
+            "banana" -> s.get("android.beacon.food.banana")
+            "riceHalfBowl" -> s.get("android.beacon.food.riceHalfBowl")
+            "hotteok" -> s.get("android.beacon.food.hotteok")
+            "riceBowl" -> s.get("android.beacon.food.riceBowl")
+            "ramyeon" -> s.get("android.beacon.food.ramyeon")
+            else -> null
+        }
+    }
 }

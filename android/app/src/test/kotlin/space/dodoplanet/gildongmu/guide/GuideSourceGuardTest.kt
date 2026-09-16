@@ -6,7 +6,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * `guide/`·`audio/` 구조 가드(spec §10-1 소스 가드 ①②⑥⑦⑧⑩⑪⑫⑬ — ③④⑤⑨는 조각 ②·③에서 더한다).
+ * `guide/`·`audio/` 구조 가드(spec §10-1 소스 가드 ①②③④⑥⑦⑧⑩⑪⑫⑬ — ⑤는 `ToneDurationsTest`, ⑨는 조각 ③에서 더한다).
  * 값을 특정 경로에서 배제할 때 1선은 구조, 2선이 이 가드다(CLAUDE.md). 어느 컴파일러도 잡지 못하는 배선 계약만 잠근다.
  */
 class GuideSourceGuardTest {
@@ -39,6 +39,24 @@ class GuideSourceGuardTest {
         }
         val attach = session.substringAfter("fun attach(").substringAfter("{").trim().lineSequence().first()
         assertTrue(attach.startsWith("if (::walk.isInitialized) return"), "attach 첫 줄은 멱등 가드: $attach")
+    }
+
+    @Test fun `③ 오디오·진동·TTS 플랫폼 API는 audio 지정 파일만`() {
+        val bad = Regex("""\bSoundPool\b|\bTextToSpeech\(|\bVibrator\b|\bVibrationEffect\b|\bAudioFocusRequest\b|\bVibratorManager\b""")
+        val allowed = setOf("GuideTonePlayer.kt", "TtsGuideSpeaker.kt", "ToneHaptics.kt", "GuideAudioFocus.kt")
+        val files = allSources.filter { bad.containsMatchIn(it.readText()) }
+        assertTrue(files.isNotEmpty())
+        assertEquals(emptySet(), files.map { it.name }.toSet() - allowed, "audio/ 지정 파일 밖의 플랫폼 오디오 참조")
+        assertTrue(files.all { it.parentFile.name == "audio" })
+    }
+
+    @Test fun `④ speaker_speak 호출부는 WalkGuideModel_post 한 곳`() {
+        val callers = allSources.filter { it.name != "TtsGuideSpeaker.kt" && Regex("""speaker\.speak\(""").containsMatchIn(it.readText()) }.map { it.name }
+        assertEquals(listOf("WalkGuideModel.kt"), callers)
+        val model = guide.resolve("WalkGuideModel.kt").readText()
+        assertEquals(1, Regex("""speaker\.speak\(""").findAll(model).count())
+        val postBody = model.substringAfter("private fun post(").substringBefore("\n    }\n")
+        assertTrue(postBody.contains("speaker.speak("))
     }
 
     @Test fun `⑥ 위치 플랫폼 API는 GuideLocationStream 한 곳`() {

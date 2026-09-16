@@ -8,6 +8,7 @@ import space.dodoplanet.gildongmu.kit.LiveTopRow
 import space.dodoplanet.gildongmu.kit.RelativeDirection
 import space.dodoplanet.gildongmu.kit.RoutePoint
 import space.dodoplanet.gildongmu.kit.WalkAction
+import space.dodoplanet.gildongmu.kit.WalkHealthSummary
 import space.dodoplanet.gildongmu.kit.buildGuideRoute
 import space.dodoplanet.gildongmu.kit.initialGuideState
 import space.dodoplanet.gildongmu.kit.models.FinalApproachPayload
@@ -89,6 +90,12 @@ class GuideTextTest {
         assertEquals("16m쯤", t.confidenceDistance(16.0, 30.0))
         assertEquals("250m", t.confidenceDistance(250.0, 60.0))
         assertEquals("약 8m", t.approachDistance(8.0, 3.0))
+    }
+
+    @Test fun `종료 화면 걸음 문장 — 기본 체중 기준 병기 + 음식 비유, 비유 없으면 요약만`() {
+        assertEquals("이번 구간에서 1200걸음 걸으셨어요. 65kg 기준으로 약 27kcal를 태우셨어요. 귤 한 개 분량이에요!", t.healthLine(WalkHealthSummary(1200, 27, usedDefaultWeight = true)))
+        assertEquals("이번 구간에서 100걸음 걸으셨어요. 약 1kcal를 태우셨어요.", t.healthLine(WalkHealthSummary(100, 1, usedDefaultWeight = false)))
+        assertEquals("라면 약 3그릇 분량이에요!", t.foodLine(1500))
     }
 
     @Suppress("unused")
