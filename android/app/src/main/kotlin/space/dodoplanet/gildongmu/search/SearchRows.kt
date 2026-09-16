@@ -32,6 +32,10 @@ import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import space.dodoplanet.gildongmu.a11y.mergedRow
+import space.dodoplanet.gildongmu.kit.formatDistance
+import space.dodoplanet.gildongmu.kit.spokenDistanceUnits
+import space.dodoplanet.gildongmu.i18n.appLocalized
+import space.dodoplanet.gildongmu.R
 import space.dodoplanet.gildongmu.kit.bilingualName
 import space.dodoplanet.gildongmu.kit.joinText
 import space.dodoplanet.gildongmu.kit.models.JusoAddress
@@ -43,14 +47,28 @@ import space.dodoplanet.gildongmu.kit.pickCategory
 
 /** 장소 행: 이름 줄 + `분류, 주소` 줄을 한 객체로. M1은 비활성 텍스트(상세는 M2). 거리는 M1에 좌표가 없어 오지 않는다. */
 @Composable
-fun PlaceRow(place: Place, lang: String, modifier: Modifier = Modifier) {
+fun PlaceRow(
+    place: Place,
+    lang: String,
+    spokenMeters: String,
+    secondaryOverride: String? = null,
+    onClick: (() -> Unit)? = null,
+    modifier: Modifier = Modifier,
+) {
     val name = bilingualName(lang, place.name, en = null, roman = place.nameRoman)
-    val secondary = joinText(
+    val res = LocalContext.current.resources
+    // 보조 줄: 분류·주소·거리(좌표 가중 검색이면 서버 주석 distanceMeters가 있다). 도메인 화면(둘러보기)은 보조 줄을 대체한다.
+    val secondary = secondaryOverride ?: joinText(
         pickCategory(lang, place.category, place.categoryEn),
         place.roadAddress.ifEmpty { place.address },
+        place.distanceMeters?.let { appLocalized(res, R.string.place_distance, formatDistance(it.toInt())) },
     )
-    val spoken = if (name.secondary == null) null else joinText(name.primary, secondary)
-    Column(modifier.fillMaxWidth().mergedRow("place-${place.id}", spoken).padding(vertical = 8.dp)) {
+    // 낭독: 비-ko 병기는 괄호 없이, 거리 단위는 풀어쓰기(TalkBack `m` 낭독은 §9-12 실기기 판정 — 오독 없으면 뺀다)
+    val spokenBase = if (name.secondary == null) joinText(name.display, secondary) else joinText(name.primary, secondary)
+    val spoken = spokenDistanceUnits(spokenBase, spokenMeters).takeIf { it != joinText(name.display, secondary) }
+    val base = modifier.fillMaxWidth()
+    val rowModifier = if (onClick != null) base.clickable(role = Role.Button, onClick = onClick) else base
+    Column(rowModifier.mergedRow("place-${place.id}", spoken).padding(vertical = 8.dp)) {
         Text(name.display, style = MaterialTheme.typography.bodyLarge)
         if (secondary.isNotEmpty()) Text(secondary, style = MaterialTheme.typography.bodyMedium)
     }

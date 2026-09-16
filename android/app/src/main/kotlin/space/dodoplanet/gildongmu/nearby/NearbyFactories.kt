@@ -1,0 +1,39 @@
+package space.dodoplanet.gildongmu.nearby
+
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.createSavedStateHandle
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
+import space.dodoplanet.gildongmu.kit.NearbyCoordinateSource
+import space.dodoplanet.gildongmu.kit.NearbyService
+
+/** kind별 ViewModel 팩토리. 앵커가 있으면 `Fixed`(측위 없음), 없으면 위치 스토어 어댑터(`Current`). */
+fun nearbyFactory(
+    kind: NearbyKind,
+    anchor: PlaceAnchor?,
+    service: NearbyService,
+    strings: NearbyStrings,
+    current: () -> NearbyCoordinateSource,
+): ViewModelProvider.Factory {
+    val coordinate = anchor?.let { NearbyCoordinateSource.Fixed(it.coord) } ?: current()
+    return viewModelFactory {
+        initializer {
+            val handle = createSavedStateHandle()
+            when (kind) {
+                NearbyKind.around -> NearbyScreenViewModel(NearbyKinds.around(service, strings), coordinate, strings, handle)
+                NearbyKind.subway -> NearbyScreenViewModel(NearbyKinds.subway(service, strings), coordinate, strings, handle)
+                NearbyKind.bus -> NearbyScreenViewModel(NearbyKinds.bus(service, strings), coordinate, strings, handle)
+                NearbyKind.bike -> NearbyScreenViewModel(NearbyKinds.bike(service, strings), coordinate, strings, handle)
+            }
+        }
+    }
+}
+
+fun busRouteStopsFactory(route: BusRouteStopsRoute, service: NearbyService, strings: NearbyStrings): ViewModelProvider.Factory = viewModelFactory {
+    initializer {
+        NearbyScreenViewModel(
+            NearbyKinds.busRouteStops(service, strings, route.source, route.cityCode, route.routeId),
+            NearbyCoordinateSource.None, strings, createSavedStateHandle(),
+        )
+    }
+}

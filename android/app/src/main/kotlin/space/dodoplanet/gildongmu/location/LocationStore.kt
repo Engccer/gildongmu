@@ -34,6 +34,9 @@ class LocationStore(
     var lastFixFailed: Boolean = false
         private set
 
+    /** 기기 위치 서비스 켜짐 여부(화면의 `FailedLocation` 문구 판정용 — `LocationManager` 접근은 `location/`에서만). */
+    fun isLocationEnabled(): Boolean = source.isLocationEnabled()
+
     private fun ageOf(fix: StoredFix): Double = (source.elapsedRealtimeMs() - fix.fixedAtElapsedMs) / 1000.0
 
     /**

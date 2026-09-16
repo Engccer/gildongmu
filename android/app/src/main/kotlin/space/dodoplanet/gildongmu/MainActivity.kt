@@ -13,7 +13,13 @@ import space.dodoplanet.gildongmu.i18n.AppLocale
 import space.dodoplanet.gildongmu.i18n.appLocalized
 import space.dodoplanet.gildongmu.kit.RecentSearchStore
 import space.dodoplanet.gildongmu.kit.SearchService
+import space.dodoplanet.gildongmu.kit.NearbyService
+import space.dodoplanet.gildongmu.location.LocationPermission
+import space.dodoplanet.gildongmu.nav.AppFactories
 import space.dodoplanet.gildongmu.nav.AppRoot
+import space.dodoplanet.gildongmu.nearby.busRouteStopsFactory
+import space.dodoplanet.gildongmu.nearby.nearbyFactory
+import space.dodoplanet.gildongmu.nearby.nearbyStrings
 import space.dodoplanet.gildongmu.search.SearchStrings
 import space.dodoplanet.gildongmu.search.SearchViewModel
 import space.dodoplanet.gildongmu.storage.SharedPreferencesStore
@@ -41,9 +47,18 @@ class MainActivity : ComponentActivity() {
                 )
             }
         }
+        val nearbyService = NearbyService(AppConfig.apiClient)
+        val nearby = nearbyStrings(app)
+        val factories = AppFactories(
+            search = factory,
+            nearby = { kind, anchor -> nearbyFactory(kind, anchor, nearbyService, nearby) { AppConfig.locationStore.nearbyCoordinateSource() } },
+            busRouteStops = { route -> busRouteStopsFactory(route, nearbyService, nearby) },
+            requestPreciseLocation = { AppConfig.permissionGate.request() == LocationPermission.Fine },
+            isLocationEnabled = { AppConfig.locationStore.isLocationEnabled() },
+        )
         setContent {
             MaterialTheme {
-                AppRoot(searchFactory = factory)
+                AppRoot(factories)
             }
         }
     }

@@ -11,7 +11,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -21,6 +20,14 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import space.dodoplanet.gildongmu.AppConfig
+import androidx.navigation.toRoute
+import space.dodoplanet.gildongmu.nearby.BusRouteStopsRoute
+import space.dodoplanet.gildongmu.nearby.BusRouteStopsScreen
+import space.dodoplanet.gildongmu.nearby.NearbyHubScreen
+import space.dodoplanet.gildongmu.nearby.NearbyKindRoute
+import space.dodoplanet.gildongmu.nearby.NearbyKindScreen
+import space.dodoplanet.gildongmu.nearby.NearbyNav
+import space.dodoplanet.gildongmu.nearby.hubKey
 import space.dodoplanet.gildongmu.search.SearchScreen
 
 /**
@@ -31,7 +38,7 @@ import space.dodoplanet.gildongmu.search.SearchScreen
  * 등록 규약: 탭 루트 4개는 여기, 스택 화면은 각 화면 패키지가 자기 라우트를 갖고 아래 `NavHost`에 **한 줄**만 더한다.
  */
 @Composable
-fun AppRoot(searchFactory: ViewModelProvider.Factory) {
+fun AppRoot(factories: AppFactories) {
     val experimental = AppConfig.experimentalTabOrderEnabled
     val tabs = AppTab.order(experimental)
     val navController = rememberNavController()
@@ -67,10 +74,35 @@ fun AppRoot(searchFactory: ViewModelProvider.Factory) {
             startDestination = AppTab.initial(experimental).route(),
             modifier = Modifier.padding(padding),
         ) {
-            composable<SearchRoute> { SearchScreen(viewModel(factory = searchFactory)) }
+            composable<SearchRoute> { SearchScreen(viewModel(factory = factories.search)) }
             composable<DirectionsRoute> { PlaceholderScreen(AppTab.directions) } // M3가 자기 화면으로 바꾼다
-            composable<NearbyRoute> { PlaceholderScreen(AppTab.nearby) } // M2
+            composable<NearbyRoute> { entry ->
+                val returnFocus: ReturnFocusViewModel = viewModel(entry)
+                NearbyHubScreen(
+                    onOpen = { kind -> returnFocus.remember(hubKey(kind)); navController.navigate(NearbyKindRoute.of(kind, null)) },
+                    returnFocus = returnFocus.take(),
+                )
+            }
             composable<ChatRoute> { PlaceholderScreen(AppTab.chat) } // M6
+            // ── 스택 화면(각 화면 패키지 소유 라우트, 등록 한 줄씩)
+            composable<NearbyKindRoute> { entry ->
+                val route = entry.toRoute<NearbyKindRoute>()
+                NearbyKindScreen(
+                    route = route,
+                    factory = factories.nearby(route.kind, route.anchor),
+                    nav = NearbyNav(
+                        onBack = { navController.popBackStack() },
+                        onOpenPlace = { /* M2 Task 5: PlaceDetailRoute */ },
+                        onOpenRouteStops = { navController.navigate(it) },
+                    ),
+                    requestPrecise = factories.requestPreciseLocation,
+                    isLocationEnabled = factories.isLocationEnabled,
+                )
+            }
+            composable<BusRouteStopsRoute> { entry ->
+                val route = entry.toRoute<BusRouteStopsRoute>()
+                BusRouteStopsScreen(route, factories.busRouteStops(route)) { navController.popBackStack() }
+            }
         }
     }
 }
