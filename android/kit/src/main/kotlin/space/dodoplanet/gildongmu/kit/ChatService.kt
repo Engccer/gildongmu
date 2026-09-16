@@ -52,7 +52,8 @@ object ChatService {
 
     /**
      * 스트림 바이트를 줄로 나눈다 — Swift `bytes.lines`(AsyncLineSequence) 미러(2026-09-16 실측): 경계는 LF·VT·FF·CR·NEL·LS·PS
-     * (CRLF는 CR 뒤 빈 줄로 흡수), **빈 줄은 내지 않는다**(공백만 있는 줄은 낸다), 줄은 UTF-8로 풀고 깨진 바이트는 U+FFFD다.
+     * (CRLF는 CR 뒤 빈 줄로 흡수), **빈 줄은 내지 않는다**(공백만 있는 줄은 낸다), 줄은 UTF-8로 푼다. 유효한 UTF-8에서 Swift와 같고,
+     * 무효 바이트열에서는 경계 흡수·U+FFFD 개수가 다를 수 있다(서버는 `TextEncoder`로 유효 UTF-8만 보낸다).
      * 호출자는 직전 [ChatStreamLines.remainder] 뒤에 새 청크를 이어 넘기고, 스트림이 끝나면 `endOfStream = true`로 한 번 더
      * 부른다(남은 꼬리가 마지막 줄). 글자·경계의 다중 바이트가 청크 사이에서 끊겨도 꼬리에 남아 다음 호출에서 이어진다.
      */

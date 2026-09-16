@@ -33,12 +33,13 @@ class TransitTrackServiceTest {
      */
     private fun swiftQueryItems(): Map<String, List<Pair<String, String?>>> {
         val source = SwiftSource.read("TransitTrackService.swift")
-        val decls = Regex("""^[ \t]*(?:[a-z]+[ \t]+)*func ([A-Za-z]+)\(""", RegexOption.MULTILINE).findAll(source).toList()
-        return decls.indices.filter { decls[it].value.trimStart().startsWith("public func ") }.associate { i ->
+        val decls = Regex("""^[ \t]*(?:@[A-Za-z]+(?:\([^)]*\))?[ \t]+)*((?:[a-z]+[ \t]+)*)func ([A-Za-z]+)\(""", RegexOption.MULTILINE)
+            .findAll(source).toList()
+        return decls.indices.filter { decls[it].groupValues[1].trim() == "public" }.associate { i ->
             val body = source.substring(decls[i].range.last, decls.getOrNull(i + 1)?.range?.first ?: source.length)
             val items = Regex("""URLQueryItem\(name: "([A-Za-z]+)", value: (?:"([^"\\]*)"|[^\r\n]*)\)""").findAll(body)
                 .map { it.groupValues[1] to it.groups[2]?.value }.toList()
-            decls[i].groupValues[1] to items
+            decls[i].groupValues[2] to items
         }
     }
 

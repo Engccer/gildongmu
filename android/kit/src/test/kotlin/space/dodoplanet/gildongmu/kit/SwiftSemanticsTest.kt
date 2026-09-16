@@ -34,16 +34,13 @@ class SwiftSemanticsTest {
     }
 
     @Test fun `kit main 소스는 Kotlin 기본 공백 판정을 쓰지 않는다 — Swift 원본의 집합 미러를 지난다`() {
-        val kotlinDefault = Regex("""\.(trim|trimStart|trimEnd)\(\)|\.is(Not|NullOr)?Blank\(\)|\.isWhitespace\(\)""")
-        assertTrue(kotlinDefault.containsMatchIn("val s = raw.trim()") && kotlinDefault.containsMatchIn("if (line.isBlank())"))
-        val root = Fixtures.repoRoot.resolve("android/kit/src/main")
-        val sources = root.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
-        assertTrue(sources.isNotEmpty())
-        val offenders = sources.flatMap { f ->
-            f.readLines().withIndex()
-                .filter { (_, line) -> kotlinDefault.containsMatchIn(line) && !line.trimStart().startsWith("//") && !line.trimStart().startsWith("*") }
-                .map { "${f.relativeTo(root).path}:${it.index + 1}" }
+        val kotlinDefault = Regex(
+            """\.(trim|trimStart|trimEnd)\(\)|\.is(Not|NullOr)?Blank\(\)|\.isWhitespace\(\)|\.ifBlank\b|Character\.(isWhitespace|isSpaceChar)\(|::(trim|isBlank|isWhitespace)\b""",
+        )
+        for (sample in listOf("raw.trim()", "line.isBlank()", "s.ifBlank { t }", "Character.isWhitespace(c)", "map(String::trim)")) {
+            assertTrue(kotlinDefault.containsMatchIn(sample), sample)
         }
+        val offenders = kitMainCodeLines().filter { kotlinDefault.containsMatchIn(it.second) }.map { it.first }
         assertEquals(emptyList(), offenders)
     }
 
