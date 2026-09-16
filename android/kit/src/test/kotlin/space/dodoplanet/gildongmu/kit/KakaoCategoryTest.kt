@@ -12,7 +12,7 @@ import kotlin.test.assertTrue
 
 /**
  * 웹 `kakao-category.test.ts`·Kit `KakaoCategoryTests`와 같은 fixture — `pickCategory` 규칙이 한 벌임을 강제(A28).
- * 투영 3종(`kidsPlaceToPlace` 등)의 `categoryEn` 전달 검사는 PlaceProjection(CORE) 이식 때 옮긴다.
+ * 투영 3종(`kidsPlaceToPlace` 등)의 `categoryEn` 전달 검사는 `PlaceProjectionTest`.
  */
 class KakaoCategoryTest {
     @Serializable

@@ -8,7 +8,7 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/** 무장애 여행 계약 테스트 — Kit Fixtures/barrier-free-*.json이 정본. `BarrierFreeService.match` 비-throw 검사는 CORE 이식 때. */
+/** 무장애 여행 계약 테스트 — Kit Fixtures/barrier-free-*.json이 정본. `BarrierFreeService.match` 비-throw 검사는 `BarrierFreeServiceTest`. */
 class BarrierFreeModelsTest {
     @Test fun nearbyFixtureDecodes() {
         val result = Fixtures.kitJson("barrier-free-nearby.json", BarrierFreeNearbyResponse.serializer())

@@ -14,7 +14,7 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/** 역·환경 계약 테스트(Kit `StationModelsTests` 미러). `isStation` 판정은 CORE(`StationMatch`) 이식 때. */
+/** 역·환경 계약 테스트(Kit `StationModelsTests` 미러). `isStation` 판정은 `StationMatchTest`. */
 class StationModelsTest {
     @Test fun stationMetaFixtureDecodes() {
         val meta = assertNotNull(Fixtures.kitJson("station-meta.json", StationMetaResponse.serializer()).meta)

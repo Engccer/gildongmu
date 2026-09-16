@@ -19,7 +19,7 @@ import kotlin.test.assertTrue
 
 /**
  * Kit `ChatModelsTests`의 모델 부분. 줄 디코딩은 여기서 `KitJson`으로 직접 한다(`decodeChatEventLine`은
- * CORE `ChatService`, 마크다운 블록 분할 `parseChatMarkdownBlocks`는 CORE `ChatMarkdown` 이식 때).
+ * `ChatServiceTest`, 마크다운 블록 분할 `parseChatMarkdownBlocks`는 `ChatMarkdownTest`).
  */
 class ChatModelsTest {
     private fun decodeLine(line: String) = KitJson.decodeFromString(ChatStreamEvent.serializer(), line)
