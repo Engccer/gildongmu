@@ -9,6 +9,16 @@
 
 ---
 
+## 2026-09-16
+
+### 안드로이드 M0 — 뼈대·이식 방식 확립 (`android/`)
+
+안드로이드 앱 착수(판정 `docs/superpowers/specs/2026-09-15-android-app-decisions.md`, 계획 `docs/superpowers/plans/2026-09-16-android-app-parallel-plan.md`)의 웨이브 0. 저장소 루트 `android/`에 모듈 둘 — `:app`(Jetpack Compose, minSdk 31·targetSdk 36·compileSdk 37.2, 패키지 `space.dodoplanet.gildongmu`, 빌드 구성 debug·release·experimental로 실험판은 `.dev` 접미와 표시 이름 "길동무 실험") · `:kit`(순수 Kotlin/JVM, iOS GildongmuKit의 세 번째 미러, `KitPurityTest`가 안드로이드 의존 0을 잠근다). JDK 21은 `gradle-daemon-jvm.properties`로 고정(기계 경로 없음).
+
+FOUNDATION 그룹(Kit 19파일 + Models 9파일 + 국경 링 리소스)을 Kotlin으로 옮기고 Kit 테스트 252건을 함께 옮겼다. 세 플랫폼 공유 fixture(`src/lib/__tests__/fixtures`)와 Kit 계약 fixture를 읽는 공용 로더(`Fixtures.kt`, 못 찾으면 실패), 판정·실행 경계(`HttpTransport`·`KeyValueStore` 인터페이스), `:kit` 문자열 카탈로그 생성 스크립트(`android/scripts/messages-to-kit-strings.mjs` — iOS 빌더를 import해 지정자만 `%N$@`→`%N$s`)를 세웠다. 미러 등록부 `android/kit/mirrors/{foundation,core,guide}.json`과 웹 vitest 검사 `mirror-registry.test.ts`(Kit 원본 전수가 정확히 한 등록부에, iOS 새 파일은 빨강)·드리프트 가드 `android-kit-drift.test.ts`(국경 링 바이트 동일·카탈로그 최신·xcstrings 값 대응·거리 표기 표)를 더했다. 이식 관용구·fixture 로더·등록부 갱신법은 `android/README.md`가 계약이다.
+
+환경: brew가 Xcode 라이선스 미동의로 막혀 JDK 21과 SDK(cmdline-tools 23·platform-tools 37.0.1·platforms 36/37.2·build-tools 36.0.0)를 사용자 디렉터리에 직접 설치했다. 게이트: `./gradlew :kit:test :app:assembleDebug :app:assembleExperimental` + `npm run test:run`.
+
 ## 2026-09-13
 
 ### App Store 1.17 심사 제출 (빌드 25)
