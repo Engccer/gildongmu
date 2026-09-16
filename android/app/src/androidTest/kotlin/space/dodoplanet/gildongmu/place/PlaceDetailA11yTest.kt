@@ -4,6 +4,8 @@ import androidx.activity.ComponentActivity
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.junit4.accessibility.enableAccessibilityChecks
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -17,7 +19,10 @@ import org.junit.runner.RunWith
 import org.junit.Assert.assertEquals
 import space.dodoplanet.gildongmu.directions.DirectionsPrefill
 import space.dodoplanet.gildongmu.directions.DirectionsPrefillRole
+import space.dodoplanet.gildongmu.kit.Fixtures
 import space.dodoplanet.gildongmu.kit.HttpResponse
+import space.dodoplanet.gildongmu.kit.StationService
+import space.dodoplanet.gildongmu.kit.pathOf
 import space.dodoplanet.gildongmu.kit.PlaceHoursService
 import space.dodoplanet.gildongmu.kit.models.Place
 import space.dodoplanet.gildongmu.kit.stubbedClient
@@ -45,6 +50,31 @@ class PlaceDetailA11yTest {
         rule.onNodeWithTag("directionsFrom").assertTextContains("여기부터", substring = true).performClick()
         assertEquals(listOf(DirectionsPrefillRole.to, DirectionsPrefillRole.from), prefills.map { it.role })
         assertEquals(DirectionsPrefill(DirectionsPrefillRole.to, "강동역", 37.535, 127.132, null), prefills[0])
+        rule.onRoot().tryPerformAccessibilityChecks()
+    }
+
+    /** spec §12-5: 역이면 자동 섹션이 조용히 나타난다 — 헤딩이 발견 경로, 통지 텍스트 없음. */
+    @Test
+    fun stationSectionsAppearQuietly() {
+        val place = Place(id = "kakao-2", name = "강남역", category = "교통,수송 > 지하철", address = "서울 강남구", roadAddress = "서울 강남구 강남대로 396", lat = 37.498, lng = 127.028)
+        val station = StationService(stubbedClient { url ->
+            when (pathOf(url)) {
+                "/api/station/meta" -> HttpResponse(200, Fixtures.kit("station-meta.json"))
+                "/api/station/subway-arrival" -> HttpResponse(200, Fixtures.kit("station-arrival.json"))
+                "/api/station/timetable" -> HttpResponse(500, "")
+                else -> HttpResponse(500, "")
+            }
+        })
+        val factory = placeDetailFactory(place, PlaceHoursService(stubbedClient { HttpResponse(404, "") }), placeStrings(rule.activity.applicationContext), station)
+        rule.setContent { MaterialTheme { PlaceDetailScreen(factory, PlaceNav({}, { _, _ -> }, {}), takeReturnFocus = { null }) } }
+        rule.enableAccessibilityChecks()
+        rule.waitUntil(5_000) { rule.onAllNodesWithTag("station-meta").fetchSemanticsNodes().isNotEmpty() }
+        rule.waitForIdle()
+        rule.onNodeWithTag("station-meta").assertExists()
+        rule.onNodeWithTag("station-arrivals").assertExists()
+        rule.onNodeWithTag("timetable-error").assertExists() // 시간표만 실패를 문장으로(3-state)
+        rule.onNodeWithTag("status").assertTextEquals("")
+        rule.onNodeWithTag("title").assertIsFocused() // 착지는 제목 그대로 — 자동 섹션은 포커스를 옮기지 않는다
         rule.onRoot().tryPerformAccessibilityChecks()
     }
 }
