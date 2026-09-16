@@ -35,7 +35,8 @@ class GuideSourceGuardTest {
         if (bar.isFile) {
             val text = bar.readText()
             val first = text.substringAfter("fun GuideBottomBar(").substringAfter("{").trim().lineSequence().first()
-            assertTrue(first.contains("experimentalGuidanceEnabled"), "GuideBottomBar 첫 문장이 게이트다: $first")
+            // 게이트 값은 `GuideSession.experimentalEnabled`(기본 = `AppConfig.experimentalGuidanceEnabled`) — androidTest가 바꿔 끼우는 한 자리.
+            assertTrue(first.startsWith("if (!GuideSession.experimentalEnabled())"), "GuideBottomBar 첫 문장이 게이트다: $first")
         }
         val attach = session.substringAfter("fun attach(").substringAfter("{").trim().lineSequence().first()
         assertTrue(attach.startsWith("if (::walk.isInitialized) return"), "attach 첫 줄은 멱등 가드: $attach")
@@ -58,6 +59,17 @@ class GuideSourceGuardTest {
         assertEquals(1, Regex("""speaker\.speak\(""").findAll(model).count())
         val postBody = model.substringAfter("private fun post(").substringBefore("\n    }\n")
         assertTrue(postBody.contains("speaker.speak("))
+    }
+
+    @Test fun `debugSetUi 호출부는 androidTest뿐`() {
+        assertEquals(emptyList(), allSources.filter { it.readText().contains("debugSetUi(") && it.name != "WalkGuideModel.kt" }.map { it.name })
+    }
+
+    @Test fun `⑨ 안내 시트·띠바에 live region 0 — 문장은 TTS 한 채널`() {
+        val ui = guide.resolve("ui")
+        val files = ui.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
+        assertTrue(files.isNotEmpty())
+        assertEquals(emptyList(), offenders(files, Regex("""liveRegion|StatusLine\(""")))
     }
 
     @Test fun `⑥ 위치 플랫폼 API는 GuideLocationStream 한 곳`() {

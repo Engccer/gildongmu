@@ -175,6 +175,10 @@ class WalkGuideModel(
 
     val isTracking: Boolean get() = status == GuideStatus.tracking
 
+    /** androidTest 전용 — 시트·띠바를 특정 상태로 띄운다(세션은 시작하지 않는다). 프로덕션 호출 0(소스 가드). */
+    @androidx.annotation.VisibleForTesting
+    fun debugSetUi(state: WalkGuideUiState) { _ui.value = state }
+
     /**
      * 출력 억제(받아쓰기·채팅 TTS 점유, §5-5). setter가 톤 재생기에 전파하고, 해제 시 보류된 실행 안내 최신 1개를 복구 발화한다.
      * 소유자 집합은 `GuideSession`이 든다 — 여기는 값 하나.
