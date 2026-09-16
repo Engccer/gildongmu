@@ -2,12 +2,17 @@ package space.dodoplanet.gildongmu
 
 import android.content.Context
 import android.util.Log
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import space.dodoplanet.gildongmu.kit.APIClient
 import space.dodoplanet.gildongmu.kit.SearchService
 import space.dodoplanet.gildongmu.location.CurrentAddressStore
 import space.dodoplanet.gildongmu.location.AndroidLocationSource
 import space.dodoplanet.gildongmu.location.AndroidPermissionGate
 import space.dodoplanet.gildongmu.location.LocationStore
+import space.dodoplanet.gildongmu.location.ManualLocationStore
+import space.dodoplanet.gildongmu.storage.SharedPreferencesStore
 import space.dodoplanet.gildongmu.net.HttpUrlConnectionTransport
 
 /**
@@ -44,4 +49,10 @@ object AppConfig {
 
     /** 현재 위치 주소 캐시(표시줄, spec §12-4) — 좌표당 1회 역지오코딩. */
     val currentAddressStore: CurrentAddressStore by lazy { CurrentAddressStore(locationStore, SearchService(apiClient)) }
+
+    /** 앱 수명 코루틴 스코프(hydration 등 프로세스 수명 작업). */
+    val appScope: CoroutineScope by lazy { CoroutineScope(SupervisorJob() + Dispatchers.Default) }
+
+    /** 수동 위치 런타임 정본(spec §13-1) — `GildongmuApplication`이 IO에서 `hydrate()`를 띄운다. */
+    val manualLocationStore: ManualLocationStore by lazy { ManualLocationStore(SharedPreferencesStore(app)) }
 }
