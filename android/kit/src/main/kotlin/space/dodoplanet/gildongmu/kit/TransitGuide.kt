@@ -147,7 +147,7 @@ data class TransitGuideLeg(
  */
 fun transitValidExitNo(raw: String?): String? {
     if (raw == null) return null
-    val t = raw.trim()
+    val t = raw.trimSwiftWhitespacesAndNewlines()
     return if (VALID_EXIT_NO.matches(t)) t else null
 }
 
@@ -423,8 +423,15 @@ private val odsaySubwayLines: Map<String, String> = mapOf(
     "경강선" to "1081", "우이신설선" to "1092", "서해선" to "1093", "신림선" to "1094",
 )
 
-private val EXPRESS_SUFFIX = Regex("""\(급행\)[ \t\n\r]*$""")
-private val LINE_SEPARATORS = Regex("""[.· \t\n\r]""")
+/**
+ * ICU 약칭 공백 클래스의 정의(`[\t\n\f\r\p{Z}]`)를 명시로 적은 문자 집합 — 문자 클래스 안에 끼워 쓴다. :kit은 약칭 클래스를
+ * 쓰지 않는다(안드로이드 ICU와 JVM의 뜻이 갈린다). 뜻을 좁히지 말 것: NBSP·전각 공백이 빠지면 역명 정규화·노선 매핑·도착 문장
+ * 해석이 Swift와 갈린다. 웹 JS의 약칭 공백보다는 수직 탭·U+FEFF만 좁다(Swift 미러라 Swift 뜻을 따른다).
+ */
+internal const val REGEX_SPACE_MEMBERS = """\t\n\f\r\p{Z}"""
+
+private val EXPRESS_SUFFIX = Regex("""\(급행\)[$REGEX_SPACE_MEMBERS]*$""")
+private val LINE_SEPARATORS = Regex("""[.·$REGEX_SPACE_MEMBERS]""")
 
 private fun subwayLineCore(name: String): String {
     var s = name
@@ -432,7 +439,7 @@ private fun subwayLineCore(name: String): String {
     // ODsay 급행 lane은 이름 끝에 "(급행)"을 붙인다(웹 subwayLineCore 미러 — 근거 주석은 그쪽 정본). 괄호 일반이 아니라
     // 이 한 토큰만 벗긴다.
     s = EXPRESS_SUFFIX.replace(s, "")
-    return LINE_SEPARATORS.replace(s, "").trim()
+    return LINE_SEPARATORS.replace(s, "").trimSwiftWhitespaces()
 }
 
 /** ODsay 지하철 노선명 → 서울 실시간 subwayId(미수록 = 실시간 미커버 = null). */
@@ -655,13 +662,13 @@ fun transitUnreachableReason(item: TransitTrackItem, leg: TransitGuideLeg): Tran
     return null
 }
 
-private val STOP_NAME_PARENTHETICAL = Regex("""[ \t\n\r]*\([^)]*\)""")
+private val STOP_NAME_PARENTHETICAL = Regex("""[$REGEX_SPACE_MEMBERS]*\([^)]*\)""")
 
 /** 역명 표기 차이 흡수(부역명 괄호·"역" 접미) — 종착 검사·현재 위치 매칭 공용. */
 internal fun normalizeStopName(s: String): String {
     var out = STOP_NAME_PARENTHETICAL.replace(s, "")
     if (out.endsWith("역")) out = out.dropLast(1)
-    return out.trim()
+    return out.trimSwiftWhitespaces()
 }
 
 /**

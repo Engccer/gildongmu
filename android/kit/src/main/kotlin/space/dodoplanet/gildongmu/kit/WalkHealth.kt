@@ -102,7 +102,7 @@ object WalkHealth {
      * 숫자 키패드로는 넣을 수 없는 꼴이고 거절 쪽이 보수적이다.
      */
     fun weightCommit(text: String): WeightCommitOutcome {
-        val trimmed = text.trim { it == '\t' || Character.getType(it) == Character.SPACE_SEPARATOR.toInt() }
+        val trimmed = text.trimSwiftWhitespaces()
         if (trimmed.isEmpty()) return WeightCommitOutcome.Clear
         val normalized = trimmed.replace(",", ".")
         val raw = if (DECIMAL_NUMBER.matches(normalized)) normalized.toDoubleOrNull() else null

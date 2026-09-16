@@ -10,6 +10,23 @@ class GuideMotionTest {
     private fun step(state: MotionJudgeState, s: MotionSample, speed: Double?, speedAccuracy: Double?) =
         motionStep(state, s, speed, speedAccuracy, maxSpeedMps = 8.0)
 
+    @Test fun `상수는 Swift 원본과 같은 값이다`() {
+        assertEquals(
+            SwiftSource.staticNumbers("GuideMotion.swift"),
+            mapOf(
+                "stopEnterMps" to MotionConstants.stopEnterMps,
+                "stopExitMps" to MotionConstants.stopExitMps,
+                "stopEnterHoldSeconds" to MotionConstants.stopEnterHoldSeconds,
+                "speedAccuracyCeiling" to MotionConstants.speedAccuracyCeiling,
+                "fallbackMinIntervalSeconds" to MotionConstants.fallbackMinIntervalSeconds,
+                "fallbackMaxIntervalSeconds" to MotionConstants.fallbackMaxIntervalSeconds,
+                "fallbackMaxAccuracyMeters" to MotionConstants.fallbackMaxAccuracyMeters,
+                "maxWalkSpeedMps" to MotionConstants.maxWalkSpeedMps,
+                "maxCarSpeedMps" to MotionConstants.maxCarSpeedMps,
+            ),
+        )
+    }
+
     // ── 도플러 신뢰 조건 ──
 
     @Test fun `도플러 속도가 신뢰 조건을 만족하면 그 값을 쓴다`() {

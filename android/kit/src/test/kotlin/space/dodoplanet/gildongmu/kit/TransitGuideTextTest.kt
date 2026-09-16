@@ -90,6 +90,26 @@ class TransitGuideTextTest {
         for (c in fixture.cases) assertEquals(c.expect, run(c), c.name)
     }
 
+    /**
+     * 키 목록은 웹 `TRANSIT_TEXT_KEYS`와 같은 집합이다 — 웹 가드(`transit-display-guard.test.ts`)는 Swift만 읽으므로
+     * Kotlin 쪽 드리프트는 여기서 잡는다(웹 원본은 읽기만 한다).
+     */
+    @Test fun `문장 키 목록은 웹과 같은 집합이다`() {
+        val source = Fixtures.repoRoot.resolve("src/lib/transit-guide-text.ts").readText()
+        val block = Regex("""export const TRANSIT_TEXT_KEYS = \[([^\]]*)\]""").find(source)?.groupValues?.get(1)
+            ?: fail("웹 TRANSIT_TEXT_KEYS 선언을 찾지 못했다")
+        val webKeys = Regex(""""([A-Za-z]+)"""").findAll(block).map { it.groupValues[1] }.toList()
+        assertTrue(webKeys.size > 40) // 파싱 공회전 방지
+        assertEquals(webKeys.toSet(), transitTextKeys.toSet())
+        assertEquals(transitTextKeys.size, transitTextKeys.toSet().size)
+    }
+
+    /** 서울버스 도착 문장의 공백도 ICU 약칭 공백과 같은 뜻이다(NBSP 포함). */
+    @Test fun `도착 문장 해석은 NBSP도 공백으로 본다`() {
+        assertEquals(BusArrmsgKind.Eta(3, null), parseBusArrmsgKind("3분\u00A0후"))
+        assertEquals(BusArrmsgKind.Eta(6, 47), parseBusArrmsgKind("6분47초후[2번째 전]"))
+    }
+
     /** 발화 sentinel 불변식(E27 spec §3.7) — en 케이스의 어떤 조각에도 조인 토큰이 나오면 안 된다. */
     @Test fun `en 줄은 조인 sentinel을 흘리지 않는다`() {
         val enCases = fixture.cases.filter { it.isEn && it.expect.lang == "en" }

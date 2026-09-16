@@ -395,10 +395,6 @@ enum class GuideTone {
     ahead, crosswalk, left, right, back, warning;
 
     val rawValue: String get() = name
-
-    companion object {
-        fun fromRawValue(raw: String): GuideTone? = entries.firstOrNull { it.name == raw }
-    }
 }
 
 /**

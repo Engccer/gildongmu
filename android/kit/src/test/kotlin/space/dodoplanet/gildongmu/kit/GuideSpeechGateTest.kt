@@ -11,10 +11,15 @@ import kotlin.test.assertEquals
  * 쪽 값이 바뀌어도 이 스위트가 초록으로 남는다.
  */
 class GuideSpeechGateTest {
-    @Test fun `상수는 웹·Swift와 같은 값이다`() {
-        assertEquals(0.6, SpeechDeferConstants.speechDeferThresholdSeconds)
-        assertEquals(0.15, SpeechDeferConstants.speechDeferGapSeconds)
-        assertEquals(3.0, SpeechDeferConstants.speechDeferMaxSeconds)
+    @Test fun `상수는 Swift 원본과 같은 값이다`() {
+        assertEquals(
+            SwiftSource.staticNumbers("GuideSpeechGate.swift"),
+            mapOf(
+                "speechDeferThresholdSeconds" to SpeechDeferConstants.speechDeferThresholdSeconds,
+                "speechDeferGapSeconds" to SpeechDeferConstants.speechDeferGapSeconds,
+                "speechDeferMaxSeconds" to SpeechDeferConstants.speechDeferMaxSeconds,
+            ),
+        )
     }
 
     @Test fun `짧은 톤은 즉시 — closer·farther 0점235, unreliable 0점470, tick 0점522`() {
