@@ -9,10 +9,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import space.dodoplanet.gildongmu.i18n.AppLocale
 import space.dodoplanet.gildongmu.i18n.appLocalized
 import space.dodoplanet.gildongmu.kit.RecentSearchStore
 import space.dodoplanet.gildongmu.kit.SearchService
+import java.text.DateFormat
+import java.util.Date
+import java.util.Locale
+import space.dodoplanet.gildongmu.i18n.AppLocale
 import space.dodoplanet.gildongmu.kit.BarrierFreeService
 import space.dodoplanet.gildongmu.kit.ConditionsService
 import space.dodoplanet.gildongmu.kit.NearbyService
@@ -56,7 +59,9 @@ class MainActivity : ComponentActivity() {
             }
         }
         val nearbyService = NearbyService(AppConfig.apiClient)
-        val services = NearbyServices(nearbyService, BarrierFreeService(AppConfig.apiClient), WalkInfraService(AppConfig.apiClient), ConditionsService(AppConfig.apiClient))
+        val services = NearbyServices(nearbyService, BarrierFreeService(AppConfig.apiClient), WalkInfraService(AppConfig.apiClient), ConditionsService(AppConfig.apiClient)) {
+            DateFormat.getTimeInstance(DateFormat.SHORT, Locale(AppLocale.current(app.resources))).format(Date())
+        }
         val nearby = nearbyStrings(app)
         val factories = AppFactories(
             search = factory,

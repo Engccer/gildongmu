@@ -117,7 +117,11 @@ fun NearbyKindScreen(route: NearbyKindRoute, anchor: PlaceAnchor?, factory: View
             val vm: NearbyScreenViewModel<List<CultureEvent>> = viewModel(factory = factory)
             NearbyShell(title, vm, nav.onBack, requestPrecise, isLocationEnabled) { p, req -> EventsBody(p, vm, req) { e -> vm.returnFocus.remember("place-${e.id}"); nav.onOpenPlace(cultureEventToPlace(e)) } }
         }
-        NearbyKind.walkInfra, NearbyKind.conditions -> TODO("M2b")
+        NearbyKind.walkInfra -> {
+            val vm: NearbyScreenViewModel<WalkInfraPayload> = viewModel(factory = factory)
+            NearbyShell(title, vm, nav.onBack, requestPrecise, isLocationEnabled, loadingText = stringResource(R.string.walkInfra_loading), failedText = stringResource(R.string.walkInfra_error)) { p, req -> WalkInfraBody(p, req) }
+        }
+        NearbyKind.conditions -> TODO("M2b")
     }
 }
 
@@ -409,7 +413,8 @@ private fun AroundBody(payload: AroundPayload, vm: NearbyScreenViewModel<AroundP
     }
 }
 
-private fun bearingResId(bearing: String): Int? = when (bearing) {
+/** 소문자 8방위 → 리소스(`surroundingsNearby.direction.*` 재사용). 미지 값 null → 호출부가 방위 조각을 생략한다. */
+internal fun bearingResId(bearing: String): Int? = when (bearing) {
     "n" -> R.string.surroundingsNearby_direction_n
     "ne" -> R.string.surroundingsNearby_direction_ne
     "e" -> R.string.surroundingsNearby_direction_e
