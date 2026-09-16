@@ -3,6 +3,7 @@ package space.dodoplanet.gildongmu.location
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.withTimeoutOrNull
 import space.dodoplanet.gildongmu.kit.LocationFixPolicy
+import space.dodoplanet.gildongmu.kit.ManualFix
 import space.dodoplanet.gildongmu.kit.NearbyCoord
 import space.dodoplanet.gildongmu.kit.NearbyCoordinateSource
 import space.dodoplanet.gildongmu.kit.NearbyLocationError
@@ -25,6 +26,8 @@ class LocationStore(
     private val source: LocationSource,
     private val permissions: PermissionGate,
     private val log: (String) -> Unit = {},
+    /** epoch 초 — 판정용 fix의 `at`(:kit `ManualFix`)을 만들 때만 쓴다. */
+    private val epochNow: () -> Double = { System.currentTimeMillis() / 1000.0 },
 ) {
     data class StoredFix(val lat: Double, val lng: Double, val accuracy: Double, val fixedAtElapsedMs: Long)
 
@@ -45,13 +48,16 @@ class LocationStore(
     /**
      * 권한 요청(최초 1회 시스템 다이얼로그) + 현재 위치 1회 취득. `force`면 캐시를 버리고 재취득. 실패해도 저장된 좌표는 남는다.
      * 권한 요청(시스템 다이얼로그)이 여기로 오는 자리는 **내 주변 화면 진입·길찾기 조회·채팅 첫 전송의 위치 prime**(spec §4 정정) —
-     * 검색 가중·표시줄은 `coordinateForRanking`/`coordinateForDisplay`(권한이 이미 있을 때만, 팝업 없음).
+     * 검색 가중·표시줄은 `gpsCoordinateForRanking`/`coordinateForDisplay`(권한이 이미 있을 때만, 팝업 없음).
+     * `silent` = 화면이 요청하지 않은 측위(수동 위치 판정, spec §13-2): 실패해도 `lastFixFailed`를 세우지 않는다(표시줄의 "이 세션에서
+     * 확정된 실패" 정의가 넓어지지 않게). 성공 fix의 `stored` 갱신은 그대로. 앱 층의 좌표 진입점은 `EffectiveLocation`뿐이다(판정 38).
      */
     suspend fun currentCoordinate(
         force: Boolean = false,
         timeoutMs: Long = (LocationFixPolicy.timeout * 1000).toLong(),
         ttlSeconds: Double = LocationFixPolicy.freshTTL,
         acceptAccuracy: Double = LocationFixPolicy.acceptAccuracy,
+        silent: Boolean = false,
     ): NearbyCoord {
         // ⚠ 나이만 보지 않는다 — 저장 상한(100m)이 재사용 기준(30m)보다 느슨하다.
         stored?.let { if (!force && canReuseCachedFix(it.accuracy, ageOf(it), ttlSeconds, acceptAccuracy)) return NearbyCoord(it.lat, it.lng) }
@@ -61,17 +67,31 @@ class LocationStore(
         when (permission) {
             LocationPermission.None -> throw LocationException(LocationException.Kind.Denied)
             // "대략적인 위치"만 허용 = 1~3km 오차. 그대로 "주변"을 말하면 있지도 않은 정보가 된다 — 별개 상태.
-            LocationPermission.Coarse -> { lastFixFailed = true; throw LocationException(LocationException.Kind.ReducedAccuracy) }
+            LocationPermission.Coarse -> { if (!silent) lastFixFailed = true; throw LocationException(LocationException.Kind.ReducedAccuracy) }
             LocationPermission.Fine -> Unit
         }
         // 권한 뒤, 취득 앞(권한 앞에 두면 위치를 켜고 돌아온 뒤에야 권한 다이얼로그가 떠 두 단계 왕복).
-        if (!source.isLocationEnabled()) { lastFixFailed = true; throw LocationException(LocationException.Kind.Unavailable) }
+        if (!source.isLocationEnabled()) { if (!silent) lastFixFailed = true; throw LocationException(LocationException.Kind.Unavailable) }
         return try {
             acquireGatedFix(timeoutMs, acceptAccuracy).also { lastFixFailed = false }
         } catch (e: LocationException) {
-            lastFixFailed = true
+            if (!silent) lastFixFailed = true
             throw e
         }
+    }
+
+    /**
+     * 판정·지정용 실측 fix(spec §13-2): `currentCoordinate(force, silent)`를 지나 성공하면 `stored`를 `ManualFix`(`at` = epoch 초 − 나이)로,
+     * 실패는 null. 취소는 그대로 통과한다.
+     */
+    suspend fun currentFix(force: Boolean, silent: Boolean): ManualFix? {
+        try {
+            currentCoordinate(force = force, silent = silent)
+        } catch (e: LocationException) {
+            return null
+        }
+        val fix = stored ?: return null
+        return ManualFix(fix.lat, fix.lng, fix.accuracy, epochNow() - ageOf(fix))
     }
 
     /**
@@ -113,7 +133,7 @@ class LocationStore(
      * 검색 순위 가중용. 권한이 없으면 **팝업 없이** null(권한은 내 주변 첫 사용 시점에 묻는다). 짧은 상한·긴 TTL·느슨한
      * 정확도(:kit soft 상수), 실패는 스토어 폴백 — 좌표를 못 얻으면 좌표 없이 검색하는 소비자다.
      */
-    suspend fun coordinateForRanking(): NearbyCoord? {
+    suspend fun gpsCoordinateForRanking(): NearbyCoord? {
         if (permissions.current() != LocationPermission.Fine) return null
         return try {
             currentCoordinate(

@@ -24,7 +24,7 @@ interface EndpointLocator {
 
 class LocationStoreLocator(private val store: LocationStore, private val permissions: PermissionGate) : EndpointLocator {
     override suspend fun currentCoordinate(force: Boolean): NearbyCoord = store.currentCoordinate(force = force)
-    override suspend fun coordinateForRanking(): NearbyCoord? = store.coordinateForRanking()
+    override suspend fun coordinateForRanking(): NearbyCoord? = store.gpsCoordinateForRanking()
     override suspend fun requestPreciseLocation(): Boolean = permissions.request() == LocationPermission.Fine
 }
 
