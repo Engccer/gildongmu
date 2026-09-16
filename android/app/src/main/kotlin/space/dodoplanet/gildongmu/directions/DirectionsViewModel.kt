@@ -123,6 +123,9 @@ class DirectionsViewModel(
     /** 화면이 소비한 착지 seq(비저장 — 재생성 뒤 다시 착지하지 않는다). */
     var consumedLanding: Int = 0
 
+    /** 끝점 검색이 소비한 후보 세대(열 때마다 0으로). */
+    var consumedCandidateRevision: Int = 0
+
     private var queryJob: Job? = null
     private var searchJob: Job? = null
     private var geocodeJob: Job? = null
@@ -522,6 +525,7 @@ class DirectionsViewModel(
     // ── 끝점 검색 ─────────────────────────────────────────────────────────────
 
     fun openPicker(target: DirectionsFieldTarget) {
+        consumedCandidateRevision = 0
         _endpointSearch.value = EndpointSearchState(target, recentEndpoints = store.endpoints(target.recentScope))
     }
 
@@ -560,6 +564,9 @@ class DirectionsViewModel(
     }
 
     fun selectPlace(place: Place) = select(DirectionsEndpoint.Place(place.name, place.lat, place.lng, place.nameRoman))
+
+    /** 최근 장소 행 활성화 = 재검색 없이 즉시 확정(기록은 `setEndpoint`가 담당 — 이중 기록 금지). */
+    fun selectRecentEndpoint(endpoint: RecentEndpoint) = select(DirectionsEndpoint.Place(endpoint.label, endpoint.lat, endpoint.lng))
 
     /** "현재 위치 사용" = 확정 + 강제 재측위·주소 새로고침(F-B). */
     fun selectCurrent() {

@@ -21,6 +21,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import space.dodoplanet.gildongmu.AppConfig
+import space.dodoplanet.gildongmu.directions.DirectionsScreen
 import androidx.navigation.toRoute
 import space.dodoplanet.gildongmu.nearby.BusRouteStopsRoute
 import space.dodoplanet.gildongmu.nearby.BusRouteStopsScreen
@@ -79,7 +80,7 @@ fun AppRoot(factories: AppFactories) {
             modifier = Modifier.padding(padding),
         ) {
             composable<SearchRoute> { SearchScreen(viewModel(factory = factories.search)) { navController.navigate(PlaceDetailRoute.of(it)) } }
-            composable<DirectionsRoute> { PlaceholderScreen(AppTab.directions) } // M3가 자기 화면으로 바꾼다
+            composable<DirectionsRoute> { DirectionsScreen() }
             composable<NearbyRoute> { entry ->
                 val returnFocus: ReturnFocusViewModel = viewModel(entry)
                 NearbyHubScreen(
