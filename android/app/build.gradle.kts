@@ -48,6 +48,15 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+
+    testOptions {
+        unitTests.all { it.useJUnitPlatform() }
+    }
+}
+
+tasks.withType<Test>().configureEach {
+    // 소스 가드·fixture 로더가 저장소 루트를 찾는 기준점.
+    systemProperty("gildongmu.appDir", projectDir.absolutePath)
 }
 
 java {
@@ -61,10 +70,22 @@ dependencies {
     implementation(libs.kotlinx.coroutines.core)
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)
+    implementation(libs.compose.foundation)
     implementation(libs.compose.material3)
     implementation(libs.activity.compose)
+    implementation(libs.lifecycle.viewmodel.compose)
+
+    // AGP 내장 Kotlin은 kotlin-test의 JUnit5 변형을 자동 선택하지 않는다 — 명시한다.
+    testImplementation(kotlin("test-junit5"))
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(testFixtures(project(":kit")))
+    testRuntimeOnly(libs.junit.platform.launcher)
 
     androidTestImplementation(platform(libs.compose.bom))
     androidTestImplementation(libs.compose.ui.test.junit4)
+    androidTestImplementation(libs.compose.ui.test.junit4.accessibility)
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(testFixtures(project(":kit")))
     debugImplementation(libs.compose.ui.test.manifest)
 }
