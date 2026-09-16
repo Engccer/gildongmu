@@ -127,7 +127,8 @@ class NearbyScreenViewModelTest {
         // 통지 경로는 spokenDistanceUnits를 지난다(1.8km는 km라 그대로; m이면 "미터")
         val vm2 = subwayVm(mutableListOf(HttpResponse(200, emptySubway.replace("1800", "800"))))
         vm2.load(); dispatcher.scheduler.advanceUntilIdle()
-        assertTrue(vm2.notice.value.text.endsWith("800 미터 거리입니다"), vm2.notice.value.text)
+        assertTrue(vm2.notice.value.text.endsWith("800m 거리입니다"), vm2.notice.value.text) // 시각은 원문
+        assertTrue(vm2.notice.value.spoken!!.endsWith("800 미터 거리입니다"), vm2.notice.value.spoken!!) // 낭독형
     }
 
     @Test fun `재조회 중에도 isLoading이 참이고 끝나면 거짓(phase는 Loaded 유지)`() = runTest(dispatcher) {

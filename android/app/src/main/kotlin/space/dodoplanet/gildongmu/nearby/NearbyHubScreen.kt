@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -22,9 +21,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.unit.dp
 import android.util.Log
-import androidx.compose.foundation.layout.WindowInsets
 import space.dodoplanet.gildongmu.R
-import space.dodoplanet.gildongmu.a11y.AppTopBar
+import space.dodoplanet.gildongmu.a11y.AppScreenScaffold
 import space.dodoplanet.gildongmu.a11y.tapTarget
 
 /** 내 주변 허브(spec §3-4): 버튼 4개, iOS 순서. 위치는 여기서 요청하지 않는다(각 화면 진입 시). */
@@ -38,17 +36,17 @@ fun NearbyHubScreen(onOpen: (NearbyKind) -> Unit, takeReturnFocus: () -> String?
         val kind = NearbyKind.entries.firstOrNull { hubKey(it) == key } ?: return@LaunchedEffect
         runCatching { requesters[kind]?.requestFocus() }.onFailure { Log.w("Nearby", "허브 복귀 착지 실패 $key", it) }
     }
-    Scaffold(contentWindowInsets = WindowInsets(0, 0, 0, 0), topBar = { AppTopBar(stringResource(R.string.android_tab_nearby), onBack = null) }) { padding ->
+    AppScreenScaffold(stringResource(R.string.android_tab_nearby), onBack = null) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).semantics { testTagsAsResourceId = true }) {
             for (kind in NearbyKind.entries) {
                 Button(
                     onClick = { onOpen(kind) },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .tapTarget()
+                        .padding(vertical = 4.dp)
+                        .tapTarget() // 패딩 뒤에 — 앞에 두면 48dp에 패딩이 포함돼 표면이 40dp가 된다
                         .testTag(hubKey(kind))
-                        .focusRequester(requesters.getOrPut(kind) { FocusRequester() })
-                        .padding(vertical = 4.dp),
+                        .focusRequester(requesters.getOrPut(kind) { FocusRequester() }),
                 ) { Text(stringResource(kindTitle(kind))) }
             }
         }

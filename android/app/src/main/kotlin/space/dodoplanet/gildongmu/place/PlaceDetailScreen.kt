@@ -1,12 +1,12 @@
 package space.dodoplanet.gildongmu.place
 
 import android.content.ClipData
+import android.util.Log
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -14,7 +14,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -36,7 +35,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import space.dodoplanet.gildongmu.AppConfig
 import space.dodoplanet.gildongmu.R
-import space.dodoplanet.gildongmu.a11y.AppTopBar
+import space.dodoplanet.gildongmu.a11y.AppScreenScaffold
 import space.dodoplanet.gildongmu.a11y.StatusLine
 import space.dodoplanet.gildongmu.a11y.headingText
 import space.dodoplanet.gildongmu.a11y.mergedRow
@@ -48,6 +47,7 @@ import space.dodoplanet.gildongmu.kit.bilingualName
 import space.dodoplanet.gildongmu.kit.pickCategory
 import space.dodoplanet.gildongmu.nearby.NearbyKind
 import space.dodoplanet.gildongmu.nearby.PlaceAnchor
+import space.dodoplanet.gildongmu.nearby.kindTitle
 
 /** 화면이 요청하는 이동. `returnFocus`는 pop 복귀 착지 키(앵커 버튼). */
 class PlaceNav(val onBack: () -> Unit, val onOpenNearby: (NearbyKind, PlaceAnchor) -> Unit)
@@ -79,7 +79,7 @@ fun PlaceDetailScreen(factory: ViewModelProvider.Factory, nav: PlaceNav, takeRet
         withFrameNanos { }
         val kind = key?.removePrefix("anchor-")?.let { k -> NearbyKind.entries.firstOrNull { it.name == k } }
         val target = kind?.let { anchorFocus[it] } ?: titleFocus
-        runCatching { target.requestFocus() }.onFailure { android.util.Log.w("Place", "진입/복귀 착지 실패 $key", it) }
+        runCatching { target.requestFocus() }.onFailure { Log.w("Place", "진입/복귀 착지 실패 $key", it) }
     }
 
     fun copy(text: String) {
@@ -87,7 +87,7 @@ fun PlaceDetailScreen(factory: ViewModelProvider.Factory, nav: PlaceNav, takeRet
         vm.onCopied()
     }
 
-    Scaffold(contentWindowInsets = WindowInsets(0, 0, 0, 0), topBar = { AppTopBar(title.primary, nav.onBack, titleFocus) }) { padding ->
+    AppScreenScaffold(title.primary, nav.onBack, titleFocus) { padding ->
         Column(
             Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)
                 .semantics { testTagsAsResourceId = true },
@@ -136,7 +136,7 @@ fun PlaceDetailScreen(factory: ViewModelProvider.Factory, nav: PlaceNav, takeRet
                 Button(
                     onClick = { nav.onOpenNearby(kind, anchor) },
                     Modifier.fillMaxWidth().tapTarget().testTag("anchor-${kind.name}").focusRequester(anchorFocus.getOrPut(kind) { FocusRequester() }),
-                ) { Text(stringResource(space.dodoplanet.gildongmu.nearby.kindTitle(kind))) }
+                ) { Text(stringResource(kindTitle(kind))) }
             }
         }
     }
