@@ -9,6 +9,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.tryPerformAccessibilityChecks
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -48,7 +49,7 @@ class NearbyHubA11yTest {
         rule.waitForIdle()
         rule.onNodeWithTag("location-bar").assertTextContains("위치 권한", substring = true)
         rule.onNodeWithTag(hubKey(NearbyKind.conditions)).assertTextContains("날씨", substring = true)
-        assert(calls == 0) { "권한 없음은 네트워크를 부르지 않는다" }
+        assertEquals("권한 없음은 네트워크를 부르지 않는다", 0, calls)
         rule.onRoot().tryPerformAccessibilityChecks()
     }
 }

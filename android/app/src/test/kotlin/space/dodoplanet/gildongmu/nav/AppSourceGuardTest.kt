@@ -109,6 +109,13 @@ class AppSourceGuardTest {
         assertTrue(landing.contains("focusProperties { canFocus = true }"))
     }
 
+    /** Kotlin `assert(`는 ART에서 기본 비활성이라 실기기 테스트에서 no-op — 초록 스위트가 죽은 단언을 가린다. */
+    @Test fun `androidTest에 Kotlin assert( 사용은 0이다`() {
+        val tests = android.resolve("app/src/androidTest").walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
+        assertTrue(tests.isNotEmpty())
+        assertEquals(emptyList(), tests.filter { Regex("""(^|[^A-Za-z_.])assert\(""").containsMatchIn(it.readText()) }.map { it.name })
+    }
+
     @Test fun `Google Play 서비스 의존은 0이다`() {
         val gradle = listOf(android.resolve("app/build.gradle.kts"), android.resolve("gradle/libs.versions.toml"))
         assertTrue(gradle.none { it.readText().contains("play-services") })

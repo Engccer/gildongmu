@@ -61,7 +61,7 @@ class MainActivity : ComponentActivity() {
         }
         val nearbyService = NearbyService(AppConfig.apiClient)
         val services = NearbyServices(nearbyService, BarrierFreeService(AppConfig.apiClient), WalkInfraService(AppConfig.apiClient), ConditionsService(AppConfig.apiClient)) {
-            DateFormat.getTimeInstance(DateFormat.SHORT, Locale(AppLocale.current(app.resources))).format(Date())
+            DateFormat.getTimeInstance(DateFormat.SHORT, Locale.forLanguageTag(AppLocale.current(app.resources))).format(Date())
         }
         val nearby = nearbyStrings(app)
         val factories = AppFactories(

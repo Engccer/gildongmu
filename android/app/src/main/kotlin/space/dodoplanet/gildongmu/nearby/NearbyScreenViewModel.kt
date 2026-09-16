@@ -136,7 +136,7 @@ class NearbyScreenViewModel<P : Any>(
                 }
                 previousFirstKey = key
             }
-            NearbyLoadEvent.EmptyResult -> Unit // M2 4종은 fetch non-null이라 도달 불가
+            NearbyLoadEvent.EmptyResult -> Unit // 모든 kind(11종)의 fetch가 non-null이라 도달 불가(spec §3-5)
             NearbyLoadEvent.RefreshFailed -> post(strings.refreshFailed())
             NearbyLoadEvent.PermissionLost -> post(strings.refreshDenied())
             NearbyLoadEvent.AccuracyLost -> post(strings.refreshReduced())

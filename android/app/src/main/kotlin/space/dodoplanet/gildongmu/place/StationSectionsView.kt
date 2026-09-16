@@ -96,18 +96,19 @@ fun StationSectionsView(s: StationSections) {
             val last = stringResource(R.string.timetable_last)
             val nextDay = stringResource(R.string.timetable_nextDay)
             val toTerminus = { t2: String -> appLocalized(res, R.string.timetable_toTerminus, t2) }
-            for (line in tt.lines) {
+            for ((li, line) in tt.lines.withIndex()) {
                 // 매칭된 노선은 전부 온다(A19). ok만 방향 행이고 나머지는 왜 없는지를 노선명과 함께 한 줄로.
                 val cov = coverageText(line, { lineDisplayName(it, isEn, suffixed) }, { appLocalized(res, R.string.timetable_coverage_noTrains, it) }, { appLocalized(res, R.string.timetable_coverage_unavailable, it) }) { appLocalized(res, R.string.timetable_coverage_unknown, it) }
                 if (cov != null) {
-                    BodyLine(cov, "timetable-${line.lineName}")
+                    BodyLine(cov, "timetable-$li")
                     continue
                 }
-                for (d in line.directions) {
-                    val en = timetableLineEn(line, d, isEn)
-                    val name = if (en) line.lineNameEn!! else lineKoName(line, suffixed)
+                for ((di, d) in line.directions.withIndex()) {
+                    val enName = timetableLineEnName(line, d, isEn)
+                    val en = enName != null
+                    val name = enName ?: lineKoName(line, suffixed)
                     val direction = directionResId(d.direction)?.let { stringResource(it) } ?: d.direction
-                    BodyLine(joinText("$name $direction", "$first ${trainText(d.first, en, nextDay, toTerminus)}", "$last ${trainText(d.last, en, nextDay, toTerminus)}"), "timetable-${line.lineName}-${d.direction}")
+                    BodyLine(joinText("$name $direction", "$first ${trainText(d.first, en, nextDay, toTerminus)}", "$last ${trainText(d.last, en, nextDay, toTerminus)}"), "timetable-$li-$di")
                 }
             }
         }
@@ -125,12 +126,12 @@ fun StationSectionsView(s: StationSections) {
     s.metro?.let { f ->
         HeadingLine(stringResource(R.string.android_station_seoulFacilities), "metro")
         val wheelchairAccessible = stringResource(R.string.subway_wheelchairAccessible)
-        for (g in f.groups) {
+        for ((gi, g) in f.groups.withIndex()) {
             val kindLabel = metroKindResId(g.kind)?.let { stringResource(it) } ?: g.kind
-            BodyLine(appLocalized(res, R.string.android_station_kindCount, kindLabel, g.facilities.size), "metro-${g.kind}")
+            BodyLine(appLocalized(res, R.string.android_station_kindCount, kindLabel, g.facilities.size), "metro-$gi")
             g.facilities.forEachIndexed { i, fac ->
                 val name = facilityName(fac, { compassResId(it)?.let { id -> res.getString(id) } }, { d, dist -> appLocalized(res, R.string.subway_elevatorAt, d, dist) }) { appLocalized(res, R.string.subway_lineNumber, it) }
-                BodyLine(joinText(name, fac.location, fac.floors, operatingResId(fac.operatingStatus)?.let { res.getString(it) }, facilityDetail(fac, wheelchairAccessible)), "metro-${g.kind}-$i")
+                BodyLine(joinText(name, fac.location, fac.floors, operatingResId(fac.operatingStatus)?.let { res.getString(it) }, facilityDetail(fac, wheelchairAccessible)), "metro-$gi-$i")
             }
         }
         // 보강 소스 실패는 은폐하지 않고 문장으로 병기; 음성유도기 데이터 기준일 고지(정적 seed).
