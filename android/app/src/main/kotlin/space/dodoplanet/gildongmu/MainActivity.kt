@@ -3,6 +3,7 @@ package space.dodoplanet.gildongmu
 import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.setContent
 import androidx.compose.material3.MaterialTheme
 import androidx.lifecycle.createSavedStateHandle
@@ -21,6 +22,11 @@ import space.dodoplanet.gildongmu.storage.SharedPreferencesStore
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // 위치 권한 손 둘(spec §4): 대기 슬롯은 AppConfig.permissionGate(앱 싱글턴)가 쥔다. 등록은 STARTED 전(onCreate).
+        val permissionLauncher = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+            AppConfig.permissionGate.deliver()
+        }
+        AppConfig.permissionGate.attach { permissions -> permissionLauncher.launch(permissions) }
         // ⚠ Activity를 캡처하지 않는다 — ViewModel은 구성 변경을 넘어 살아 첫 Activity를 붙들면 누수다.
         // 앱 컨텍스트의 리소스도 앱별 언어 변경을 따라간다.
         val app: Context = applicationContext
@@ -40,6 +46,11 @@ class MainActivity : ComponentActivity() {
                 AppRoot(searchFactory = factory)
             }
         }
+    }
+
+    override fun onDestroy() {
+        AppConfig.permissionGate.detach()
+        super.onDestroy()
     }
 }
 
