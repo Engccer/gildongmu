@@ -21,8 +21,8 @@ sealed class ChatMarkdownBlock {
     data class Paragraph(override val text: String) : ChatMarkdownBlock()
 }
 
-/** 유니코드 공백(White_Space 속성) — Swift Regex 공백 약칭 클래스와 같은 뜻. 약칭 클래스는 JVM(ASCII)과 기기(ICU)에서 갈려 쓰지 않는다. 숫자는 `\p{N}`(Swift `Character.isNumber` — 로마 숫자 `Ⅰ`·원문자 `①` 포함, Numeric_Type만 가진 한자 숫자는 JVM 대응 속성이 없어 제외). */
-private const val WS = """[\t\n\u000B\f\r\u0085\p{Z}]"""
+/** 공백은 Swift Regex 공백 약칭 클래스와 같은 뜻인 `REGEX_SPACE_MEMBERS`(SwiftSemantics.kt). 숫자는 `\p{N}`(Swift `Character.isNumber` — 로마 숫자 `Ⅰ`·원문자 `①` 포함, Numeric_Type만 가진 한자 숫자는 JVM 대응 속성이 없어 제외). */
+private const val WS = "[$REGEX_SPACE_MEMBERS]"
 
 private val HEADING_LINE = Regex("""^$WS{0,3}#{1,6}$WS+(.*)$""")
 private val BULLET_LINE = Regex("""^$WS*[-*+]$WS+(.*)$""")

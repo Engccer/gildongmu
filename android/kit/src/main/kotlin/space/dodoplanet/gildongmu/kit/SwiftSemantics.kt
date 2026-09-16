@@ -20,6 +20,14 @@ internal fun Double.roundedAwayFromZero(): Double {
 }
 
 /**
+ * Swift 정규식 약칭 공백(ICU `\s`)의 뜻인 유니코드 White_Space 속성을 명시로 적은 문자 집합 — 문자 클래스 안에 끼워 쓴다
+ * (`[$REGEX_SPACE_MEMBERS]`). 제어 문자 U+0009~U+000D·U+0085 + `\p{Z}`(Zs·Zl·Zp)가 곧 White_Space다(전 코드포인트 실측 일치).
+ * :kit은 약칭 클래스를 쓰지 않는다 — JVM은 ASCII, 안드로이드 ICU는 유니코드로 읽어 갈린다. 웹 JS 약칭 공백과는 두 문자가 다르다
+ * (U+FEFF는 JS만, U+0085는 이 집합만). `\u000B`·`\u0085`는 raw string이라 Kotlin이 아니라 정규식 엔진이 푼다.
+ */
+internal const val REGEX_SPACE_MEMBERS = """\t\n\u000B\f\r\u0085\p{Z}"""
+
+/**
  * Swift `trimmingCharacters(in: .whitespaces)` 미러 — 공백 구분자(Zs) + 탭, **줄바꿈은 자르지 않는다**.
  *
  * ⚠ Kotlin `trim()`(`isWhitespace`)은 Swift의 두 집합 어느 것과도 같지 않다(줄바꿈·U+001C~U+001F를 자르고 U+0085는 남긴다) —

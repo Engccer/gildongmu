@@ -423,13 +423,7 @@ private val odsaySubwayLines: Map<String, String> = mapOf(
     "경강선" to "1081", "우이신설선" to "1092", "서해선" to "1093", "신림선" to "1094",
 )
 
-/**
- * ICU 약칭 공백 클래스의 정의(`[\t\n\f\r\p{Z}]`)를 명시로 적은 문자 집합 — 문자 클래스 안에 끼워 쓴다. :kit은 약칭 클래스를
- * 쓰지 않는다(안드로이드 ICU와 JVM의 뜻이 갈린다). 뜻을 좁히지 말 것: NBSP·전각 공백이 빠지면 역명 정규화·노선 매핑·도착 문장
- * 해석이 Swift와 갈린다. 웹 JS의 약칭 공백보다는 수직 탭·U+FEFF만 좁다(Swift 미러라 Swift 뜻을 따른다).
- */
-internal const val REGEX_SPACE_MEMBERS = """\t\n\f\r\p{Z}"""
-
+// 정규식 공백은 Swift `\s`와 같은 REGEX_SPACE_MEMBERS(SwiftSemantics.kt). NBSP·전각 공백이 빠지면 역명 정규화·노선 매핑이 Swift와 갈린다.
 private val EXPRESS_SUFFIX = Regex("""\(급행\)[$REGEX_SPACE_MEMBERS]*$""")
 private val LINE_SEPARATORS = Regex("""[.·$REGEX_SPACE_MEMBERS]""")
 

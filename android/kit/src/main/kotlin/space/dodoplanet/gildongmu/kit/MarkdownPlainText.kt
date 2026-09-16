@@ -12,7 +12,7 @@ package space.dodoplanet.gildongmu.kit
  * 갈린다. 명시 클래스는 ICU 뜻을 옮긴 것이다: 공백은 White_Space 속성, 숫자는 `\p{Nd}`, 단어 문자는 ICU 정의(Alphabetic ≈ 문자+문자형 숫자, 결합 부호, 십진 숫자, 연결 부호, ZWNJ·ZWJ).
  */
 object MarkdownPlainText {
-    private const val WS = """[\t\n\u000B\f\r\u0085\p{Z}]"""
+    private const val WS = "[$REGEX_SPACE_MEMBERS]"
     private const val WORD = """[\p{L}\p{Nl}\p{M}\p{Nd}\p{Pc}\u200C\u200D]"""
 
     private val inlineCode = Regex("`([^`]+)`")
