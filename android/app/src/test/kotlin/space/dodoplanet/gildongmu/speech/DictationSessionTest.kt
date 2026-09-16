@@ -19,14 +19,15 @@ class DictationSessionTest {
         var cancels = 0
         override fun checkSupport(languageTag: String, onResult: (RecognizerSupport) -> Unit) { tags += languageTag; support = onResult }
         override fun download(languageTag: String, onResult: (DownloadResult) -> Unit) { download = onResult }
-        override fun start(languageTag: String, listener: RecognizerListener) { starts++; listeners += listener }
+        var onStart: () -> Unit = {}
+        override fun start(languageTag: String, listener: RecognizerListener) { starts++; listeners += listener; onStart() }
         var onStop: () -> Unit = {}
         override fun stop() { stops++; onStop() }
         override fun cancel() { cancels++ }
         val listener get() = listeners.last()
     }
 
-    private class FakeEffects : DictationEffects {
+    private class FakeEffects(private val ignoreCancel: Boolean = false) : DictationEffects {
         var startTones = 0
         var stopTones = 0
         var interrupts = 0
@@ -38,7 +39,7 @@ class DictationSessionTest {
         override fun postDelayed(ms: Long, block: () -> Unit): () -> Unit {
             val entry = ms to block
             timers += entry
-            return { timers.remove(entry) }
+            return { if (!ignoreCancel) timers.remove(entry) }
         }
         override fun release() { releases++ }
 
@@ -135,6 +136,7 @@ class DictationSessionTest {
         assertEquals(DictationNotice.DownloadFailed, notices.last())
         assertEquals(DictationPhase.Idle, session.phase.value)
         assertEquals(0, port.starts)
+        assertEquals(3, port.cancels) // 세 갈래 모두 인식기를 해제한다(destroy 누락 방지)
     }
 
     @Test fun `지원 조회 중(Starting) 탭은 무시한다 — 라벨이 같아 취소가 무신호가 된다`() {
@@ -150,6 +152,7 @@ class DictationSessionTest {
         port.support!!(RecognizerSupport.Unsupported)
         assertEquals(DictationNotice.Failure(DictationFailure.OnDevice), notices.single())
         assertEquals(DictationPhase.Idle, session.phase.value)
+        assertEquals(1, port.cancels)
         session.toggle()
         port.support!!(RecognizerSupport.Unknown)
         assertEquals(DictationPhase.Listening, session.phase.value)
@@ -285,7 +288,7 @@ class DictationSessionTest {
         assertEquals(DictationNotice.Failure(DictationFailure.Interrupted), notices.single())
     }
 
-    @Test fun `시작 전 오류는 시작 실패 통지이고 소리가 없다`() {
+    @Test fun `준비 신호 전 오디오 오류는 오디오 실패 통지이고 소리가 없다`() {
         session.toggle()
         port.support!!(RecognizerSupport.Installed)
         effects.fire(INTERRUPT_SETTLE_MS)
@@ -335,6 +338,87 @@ class DictationSessionTest {
         assertEquals(DictationPhase.Idle, session.phase.value)
         assertEquals(1, effects.releases)
         assertEquals(0, port.stops)
+    }
+
+    @Test fun `지원 조회가 응답하지 않으면 상한 뒤 시작 실패로 끝내고 인식기를 해제한다`() {
+        session.toggle()
+        assertTrue(session.isActive.value)
+        effects.fire(SUPPORT_CHECK_TIMEOUT_MS)
+        assertEquals(DictationPhase.Idle, session.phase.value)
+        assertFalse(session.isActive.value)
+        assertEquals(DictationNotice.Failure(DictationFailure.StartFailed), notices.single())
+        assertEquals(1, port.cancels)
+        port.support!!(RecognizerSupport.Installed) // 늦은 응답은 무시
+        assertEquals(0, port.starts)
+    }
+
+    @Test fun `지원 조회 중 서비스 연결 실패는 시작 실패로 끝낸다`() {
+        session.toggle()
+        port.support!!(RecognizerSupport.ConnectionFailed)
+        assertEquals(DictationNotice.Failure(DictationFailure.StartFailed), notices.single())
+        assertEquals(DictationPhase.Idle, session.phase.value)
+        assertEquals(1, port.cancels)
+        assertFalse(effects.has(SUPPORT_CHECK_TIMEOUT_MS))
+    }
+
+    @Test fun `준비 신호 전 정지는 정지음 없이(시작음을 들은 적이 없다) 끝낸다`() {
+        session.toggle()
+        port.support!!(RecognizerSupport.Installed)
+        effects.fire(INTERRUPT_SETTLE_MS)
+        session.toggle()
+        assertEquals(0, effects.stopTones)
+        port.listener.onEnd(null)
+        assertEquals(0, effects.stopTones)
+    }
+
+    @Test fun `빈 분할 조각은 누적하지 않는다`() {
+        listen()
+        port.listener.onSegment("강남역")
+        port.listener.onSegment("  ")
+        port.listener.onSegment("근처")
+        port.listener.onEnd(null)
+        assertEquals(listOf("강남역 근처"), transcripts)
+    }
+
+    @Test fun `정지 직후 화면을 떠나도 정지 경로를 완주해 전사를 전달하고 해제한다`() {
+        listen()
+        port.listener.onSegment("떠나기 전에 말한 내용")
+        session.toggle()
+        session.dispose()
+        assertEquals(0, effects.releases)
+        port.listener.onEnd(null)
+        assertEquals(listOf("떠나기 전에 말한 내용"), transcripts)
+        assertEquals(1, effects.releases)
+    }
+
+    @Test fun `캡은 인식기 시작 앞에 무장된다(동기 오류 뒤 남는 타이머 없음)`() {
+        session.toggle()
+        port.support!!(RecognizerSupport.Installed)
+        port.onStart = { port.listener.onError(SpeechRecognizer.ERROR_AUDIO) }
+        effects.fire(INTERRUPT_SETTLE_MS)
+        assertTrue(effects.timers.isEmpty())
+    }
+
+    @Test fun `타이머 취소가 먹지 않아도 세대·국면 확인이 옛 타이머를 무해하게 만든다`() {
+        val port2 = FakePort()
+        val effects2 = FakeEffects(ignoreCancel = true)
+        val got = ArrayList<String>()
+        val s2 = DictationSession(port2, effects2, { "ko-KR" }, { got += it }, {})
+        s2.toggle(); port2.support!!(RecognizerSupport.Installed)
+        effects2.fire(SUPPORT_CHECK_TIMEOUT_MS) // 응답이 온 뒤의 지원 조회 상한 — 청취를 끊지 않는다
+        assertEquals(DictationPhase.Listening, s2.phase.value)
+        effects2.fire(INTERRUPT_SETTLE_MS); port2.listener.onReady(); port2.listener.onSegment("첫")
+        s2.toggle(); port2.listener.onEnd(null)
+        assertEquals(listOf("첫"), got)
+
+        s2.toggle(); port2.support!!(RecognizerSupport.Installed); effects2.fire(INTERRUPT_SETTLE_MS)
+        port2.listener.onReady(); port2.listener.onSegment("둘")
+        effects2.fire(STOP_FINALIZE_TIMEOUT_MS) // 첫 세션의 옛 상한
+        effects2.fire(LISTEN_CAP_MS) // 첫 세션의 옛 캡
+        assertEquals(DictationPhase.Listening, s2.phase.value)
+        assertEquals(listOf("첫"), got)
+        s2.toggle(); port2.listener.onEnd(null)
+        assertEquals(listOf("첫", "둘"), got)
     }
 
     @Test fun `dispose는 취소하고 효과를 해제한다`() {

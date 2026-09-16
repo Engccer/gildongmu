@@ -2,6 +2,7 @@ package space.dodoplanet.gildongmu.chat
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -207,16 +208,26 @@ private fun ChatConversation(
     // 받아쓰기 중이라 착지를 건너뛴 실패 — 세션이 끝날 때 통지(전사가 오면 전사 통지와 한 문장, spec §3-4)
     var failureHeld by remember { mutableStateOf(false) }
 
+    /** 통지 앞에 붙일 실패 문장 — 보류된 실패, 또는 아직 착지 효과가 돌지 않은(미소비) 실패 답변. 가져가면 비운다. */
+    fun takeHeldFailure(consumePending: Boolean): String? {
+        val current = vm.state.value
+        val pending = current.answerRevision > consumedRevision && current.messages.lastOrNull()?.failed == true
+        if (consumePending) consumedRevision = maxOf(consumedRevision, current.answerRevision)
+        val held = failureHeld || (consumePending && pending)
+        failureHeld = false
+        return failedText.takeIf { held }
+    }
+
     // 받아쓰기(D9 게이트 — 미충족이면 null = 버튼 0). 전사: 초안 병합 → 대기 중 완료 착지 소비 → 보내기 버튼 착지 → 원문 통지(헌장 §6).
+    // 받아쓰기 자체의 안내(실패·거부·다운로드)도 보류된 실패 문장과 한 문장으로 — 같은 프레임의 두 게시는 앞 문장을 덮는다.
     val dictation = rememberDictation(
         onTranscript = { transcript ->
-            consumedRevision = vm.state.value.answerRevision
+            val failure = takeHeldFailure(consumePending = true)
             val merged = vm.mergeTranscript(transcript)
             land(sendFocus, "transcript")
-            vm.announce(if (failureHeld) "$failedText $merged" else merged)
-            failureHeld = false
+            vm.announce(listOfNotNull(failure, merged).joinToString(" "))
         },
-        onNotice = { vm.announce(dictationNoticeText(res, it)) },
+        onNotice = { notice -> vm.announce(listOfNotNull(takeHeldFailure(consumePending = false), dictationNoticeText(res, notice)).joinToString(" ")) },
     )
     val inactive = remember { MutableStateFlow(false) }
     val dictationActive by (dictation?.isActive ?: inactive).collectAsState()
@@ -231,11 +242,13 @@ private fun ChatConversation(
     LaunchedEffect(s.answerRevision) {
         val revision = s.answerRevision
         if (revision <= consumedRevision) return@LaunchedEffect
-        consumedRevision = revision
         withFrameNanos { }
+        if (revision <= consumedRevision) return@LaunchedEffect // 그 한 프레임 사이 전사가 소비했다
+        consumedRevision = revision
         val current = vm.state.value
         val last = current.messages.lastOrNull()
-        val blocked = current.isStreaming || dictationActive || fieldFocused
+        val active = dictation?.isActive?.value == true // 수집 지연 없이 지금 값
+        val blocked = current.isStreaming || active || fieldFocused
         val target = when {
             blocked || last == null -> null
             last.failed -> targets.existingRow("block-${last.id}-0")
@@ -244,7 +257,7 @@ private fun ChatConversation(
         val landed = target != null && land(target, if (last?.failed == true) "completion-failed" else "completion")
         if (!landed) {
             if (last?.failed == true && !current.isStreaming) {
-                if (dictationActive) failureHeld = true else vm.announce(failedText)
+                if (active) failureHeld = true else vm.announce(failedText)
             }
             scroll.animateScrollTo(scroll.maxValue)
         }
@@ -335,7 +348,8 @@ private fun ChatConversation(
                     .landingTarget(fieldFocus)
                     .onFocusChanged { fieldFocused = it.hasFocus },
             )
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End), verticalAlignment = Alignment.CenterVertically) {
+            // 좁은 폭·큰 글꼴에서 버튼이 눌리지 않게 줄바꿈(거부 상태면 세 버튼)
+            FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)) {
                 if (dictation != null) DictationControls(dictation, onNoApp = { vm.announce(noAppText) })
                 Button(
                     // 스트리밍 중엔 무시 — enabled=false는 포커스를 떨군다(헌장 §5 ⓐ). 상태는 stateDescription이 말한다.
