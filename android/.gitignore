@@ -1,0 +1,10 @@
+# Gradle·빌드 산출물
+.gradle/
+build/
+*/build/
+.kotlin/
+# 기계 경로(SDK 위치). README의 ANDROID_HOME 절차를 따른다.
+local.properties
+# IDE
+.idea/
+*.iml

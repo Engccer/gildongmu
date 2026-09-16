@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 실험판 표시 이름. 접미사는 스크린 리더 사용자의 유일한 구분 수단이라 반드시 유지한다(O6). -->
+    <string name="app_name">길동무 실험</string>
+</resources>

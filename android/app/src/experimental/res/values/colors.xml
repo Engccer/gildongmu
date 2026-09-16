@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 실험판 아이콘 배경(시각 구분). 이름 접미사가 정본이고 이것은 보조다. -->
+    <color name="ic_launcher_background">#B8471E</color>
+</resources>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- 임시 포그라운드(M0): 원 하나. 정식 아이콘은 스토어 등재(O3) 때 iOS 자산에서 옮긴다. -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,30 a24,24 0 1,0 0.01,0 z" />
+</vector>
