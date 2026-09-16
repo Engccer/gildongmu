@@ -9,6 +9,8 @@ import kotlinx.coroutines.launch
 import space.dodoplanet.gildongmu.a11y.Notice
 import space.dodoplanet.gildongmu.kit.PlaceHoursService
 import space.dodoplanet.gildongmu.kit.PlaceHoursToday
+import space.dodoplanet.gildongmu.kit.StationService
+import space.dodoplanet.gildongmu.kit.isStation
 import space.dodoplanet.gildongmu.kit.models.Place
 
 /** 상세 화면 문장(호출 시점 람다). */
@@ -32,14 +34,23 @@ fun hoursLineText(hours: PlaceHoursToday, s: PlaceStrings): String {
     return s.hoursLine(ranges)
 }
 
-/** 장소 상세 상태: 영업시간 줄(진입 시 1회, 조용히) + 통지(복사·열기 실패). */
+/**
+ * 장소 상세 상태: 영업시간 줄(진입 시 1회, 조용히) + 통지(복사·열기 실패) + 조용한 조각(역 자동 섹션 5종 — spec §12-3, 역일 때만).
+ * `station`은 테스트 편의로 nullable(없으면 역 섹션 로드 없음).
+ */
 class PlaceDetailViewModel(
     val place: Place,
     private val hours: PlaceHoursService,
     private val strings: PlaceStrings,
+    station: StationService? = null,
+    dataLocale: () -> String = { "ko" },
 ) : ViewModel() {
     private val _hoursLine = MutableStateFlow<String?>(null)
     val hoursLine: StateFlow<String?> = _hoursLine.asStateFlow()
+
+    /** 역 자동 섹션 5종 — null = 역이 아니거나 아직 도착 전(로딩 표시 없음, 값이 생기면 조용히 나타난다). */
+    private val _station = MutableStateFlow<StationSections?>(null)
+    val station: StateFlow<StationSections?> = _station.asStateFlow()
 
     private val _notice = MutableStateFlow(Notice(0, ""))
     val notice: StateFlow<Notice> = _notice.asStateFlow()
@@ -50,6 +61,9 @@ class PlaceDetailViewModel(
         viewModelScope.launch {
             val today = hours.today(place.lat, place.lng, place.name, place.roadAddress) // 전송 계층이 IO로 옮긴다
             _hoursLine.value = today?.let { hoursLineText(it, strings) }
+        }
+        if (station != null && isStation(place)) {
+            viewModelScope.launch { _station.value = loadStationSections(station, place.name, dataLocale()) }
         }
     }
 

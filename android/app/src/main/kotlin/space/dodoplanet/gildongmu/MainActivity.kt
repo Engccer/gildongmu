@@ -19,6 +19,7 @@ import space.dodoplanet.gildongmu.i18n.AppLocale
 import space.dodoplanet.gildongmu.kit.BarrierFreeService
 import space.dodoplanet.gildongmu.kit.ConditionsService
 import space.dodoplanet.gildongmu.kit.NearbyService
+import space.dodoplanet.gildongmu.kit.StationService
 import space.dodoplanet.gildongmu.kit.WalkInfraService
 import space.dodoplanet.gildongmu.nearby.NearbyServices
 import space.dodoplanet.gildongmu.location.LocationPermission
@@ -67,7 +68,7 @@ class MainActivity : ComponentActivity() {
             search = factory,
             nearby = { kind, anchor -> nearbyFactory(kind, anchor, services, nearby) { AppConfig.locationStore.nearbyCoordinateSource() } },
             busRouteStops = { route -> busRouteStopsFactory(route, nearbyService, nearby) },
-            place = { place -> placeDetailFactory(place, PlaceHoursService(AppConfig.apiClient), placeStrings(app)) },
+            place = { place -> placeDetailFactory(place, PlaceHoursService(AppConfig.apiClient), placeStrings(app), StationService(AppConfig.apiClient)) { AppLocale.dataLocale(app.resources) } },
             requestPreciseLocation = { AppConfig.permissionGate.request() == LocationPermission.Fine },
             isLocationEnabled = { AppConfig.locationStore.isLocationEnabled() },
         )
