@@ -11,6 +11,10 @@
 
 ## 2026-09-17
 
+### 안드로이드 설정 화면 — 언어·받아쓰기 방식·결과 진동·정보 출처 (`android/app/.../settings`)
+
+탭 루트 4개의 상단 바 "설정" 버튼 → 설정 화면(언어 7행·받아쓰기 방식 2행은 같은 선택 다이얼로그(진입 착지 = 현재 선택 행), 실험판 결과 진동 스위치 + 푸터, 정보 출처 16행 + OSM 라이선스·링크 2, 개인정보 처리방침·문제 신고 링크, 링크 실패는 통지)을 iOS `SettingsView`·`DataSourcesView` 미러로 세웠다. 앱 언어는 저장값 + `createConfigurationContext` 한 경로(AppCompat 기각)이고 ViewModel 문장 팩토리 6곳은 호출 시점에 `AppConfig.localizedApp()`을 읽는다(캡처하면 재생성 뒤 옛 언어 — 규약 가드). 결과 진동은 `Notice.haptic` 3종을 `StatusLine` 발화 효과 안에서 내고(문장이 나가는 조건 = 진동이 나가는 조건), 앱 통지는 모달 뒤에서 집지 않는다. 신설 문자열 1키(`android.settings.resultHapticsFooter`). 업데이트 이력은 유예. spec `docs/superpowers/specs/2026-09-16-android-m2-place-nearby-design.md` §14, 계획 `docs/superpowers/plans/2026-09-17-android-settings.md`.
+
 ### 안드로이드 M4 — 도보 실시간 안내 (`android/app/.../guide`·`audio`, 실험판 전용)
 
 iOS 정식판 도보 안내의 실행 계층·화면을 안드로이드로 옮겼다(판정은 전부 `:kit` 순수 함수, 무수정). 앱 수명 세션 싱글턴(`GuideSession`, 시작은 `startWalk` 한 곳·실험 게이트·억제 소유자 동일성 집합), 오케스트레이터 `WalkGuideModel`(시작 11단계·종료 12단계·간략/상세/최종 접근 fix 파이프라인·자동 채택·수동 재조회·워치독·잊힌 세션·도착 추정·전경 복귀 상환·음성 게이트 = 전경 ∨ 화면 꺼짐), `location` 전경 서비스(startForeground 실패를 잡아 전용 문장으로, 서비스 수명 PARTIAL_WAKE_LOCK, 전용 1초 FUSED→GPS 스트림, 지속 알림 + "안내 종료" 액션), 오디오 D10 재설계(SoundPool 톤 15개 = 웹 파일 바이트 동일, 길이 상수 표 + mp3 프레임 계수 가드, AudioFocus "못 쥐면 내지 않는다"·거절 3-state, 톤 동기 진동·결과 진동 3종, 앱 TTS 한 채널·latest-wins·시스템 속도 따름), 화면(길찾기 도보 행의 시작 버튼 + 시작 실패 행, `AppRoot` 한 자리의 띠바·`ModalBottomSheet` 시트·조망 페이지·종료 화면 걸음·칼로리 문장, live region 0, 착지는 `mergedRow`/`landingTarget`). 매니페스트 additive(전경 서비스·권한 6종, `ACCESS_BACKGROUND_LOCATION` 0), android-extra 신규 키 7개(6로케일). JVM 테스트 112건(공유 fixture 좌표계 시나리오·소스 가드 14건·변이 4건 검출 확인) + androidTest 6건(adb 대기). 실기기 판정 20항은 보고 파일 대본. spec `docs/superpowers/specs/2026-09-16-android-m4-walk-guidance-design.md`(설계 리뷰 3회·구현 리뷰 2회), 계획 `docs/superpowers/plans/2026-09-16-android-m4-walk-guidance.md`.
