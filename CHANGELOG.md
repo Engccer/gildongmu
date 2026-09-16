@@ -11,6 +11,10 @@
 
 ## 2026-09-16
 
+### 안드로이드 Kit — 공백 의미를 Swift와 같게, 채팅 스트림 줄 분리 (`android/kit`)
+
+GUIDE 사후 리뷰 후속: 정규식 공백 상수를 유니코드 White_Space로(수직 탭·NEL 추가, 공용 상수로 통합), FOUNDATION·CORE 13파일의 Kotlin 기본 trim·공백 판정을 Swift `CharacterSet`·`Character.isWhitespace` 집합 미러로(U+200B 포함, 전 코드포인트 실측 대조), 채팅 NDJSON 줄 분리를 Swift `bytes.lines` 미러 `ChatService.splitStreamLines`로 :kit이 소유한다. 소스 가드로 Kotlin 기본 공백 판정·POSIX 계열 `\p{…}`·중괄호 없는 `\pL`·`[[:…:]]`·`\h`를 막는다(규칙 `android/README.md` §3).
+
 ### 안드로이드 앱 골격 — 하단 탭 4개 + 화면 스택 (`android/app/.../nav`)
 
 iOS 4탭(채팅·검색·길찾기·내 주변, 실험판 순서 게이트 `experimentalTabOrderEnabled` 미러)을 `navigation-compose` 단일 `NavHost` + 탭별 백스택 보존으로 세우고 검색 화면을 그 안에 넣었다. 길찾기·내 주변·채팅은 자리표시 화면이며 M3·M2·M6이 등록 한 줄을 자기 화면으로 바꾼다(패키지 소유권 규약은 `android/README.md` §1). 실기기 도구는 공식 `android` CLI 우선(README §2).
