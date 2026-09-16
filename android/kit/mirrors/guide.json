@@ -143,7 +143,7 @@
       "status": "ported",
       "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/RouteGuide.kt",
       "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/RouteGuideTest.kt",
-      "note": "튜플 반환은 InitialGuideState, GuideEvent·GuideEntryProjection은 sealed class(PascalCase), restateAt은 internal. imminentTone(Swift는 WalkAction.swift)은 GuideTone과 함께 이 파일에 둔다. RouteGuideTests의 TangentAtTests·waypointIndexOutOfRangeRejectsRoute는 FOUNDATION RouteGeometryTest가 이미 들고, WalkActionTests 2건은 RouteGuideTest에 있다"
+      "note": "튜플 반환은 InitialGuideState, GuideEvent·GuideEntryProjection은 sealed class(PascalCase), restateAt은 internal. imminentTone(Swift는 WalkAction.swift)은 GuideTone과 함께 이 파일에 둔다. RouteGuideTests의 TangentAtTests·waypointIndexOutOfRangeRejectsRoute는 FOUNDATION RouteGeometryTest가 이미 들고, WalkActionTests 2건은 RouteGuideTest에 있다. GuideTone은 rawValue만 두고 fromRawValue는 두지 않는다 — 문자열에서 되읽는 소비자가 없다(README §3 enum 관용구의 의도적 예외)"
     },
     {
       "swift": "RouteOrigin.swift",
