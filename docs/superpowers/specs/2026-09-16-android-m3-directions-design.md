@@ -122,14 +122,14 @@ M1 §3의 기본형(한 줄 = 한 객체, `headingText`, 화면 소유 단일 `S
 |---|---|---|
 | 끝점 검색 열림 | 검색 입력 | `FocusRequester` 한 프레임 뒤 |
 | 후보 도착(`candidateRevision`) | 첫 후보 행(장소 먼저, 없으면 주소) | M1 첫 결과 관용구(`consumedRevision` 비저장) |
-| 확정으로 닫힘 | `from` → **도착지 버튼**, `to`·`via` → **조회 버튼**(셋 다 "다음에 할 일") | `focusAfterResolve` 예약 → 폼 재컴포즈 뒤 한 프레임 |
+| 확정으로 닫힘 | `from` → **도착지 버튼**, `to`·`via` → **조회 버튼**(셋 다 "다음에 할 일") | `landing` 요청 → 폼 재컴포즈 뒤 한 프레임 |
 | 취소로 닫힘 | 열었던 필드 버튼 | 같은 방식(iOS는 시스템 기본에 맡겼지만 안드로이드는 콘텐츠 교체라 기본 복귀가 없다) |
 | 경유지 삭제 | 조회 버튼(선점) | 핸들러 첫 줄 |
 | 최근 경로 활성화 | 조회 버튼(선점) | 핸들러 첫 줄 |
-| 최근 경로·최근 장소 삭제 | 다음 → 이전 → 소멸 시 조회 버튼 / 검색 버튼 | M1 `pendingLanding` 키 관용구(항목 키 = `RecentRoute.id`·`RecentEndpoint.id`, 인덱스 금지) |
-| 프리필 `from` 진입 | 도착지 버튼 | `prefillFocusRevision` 변화에 한 프레임 뒤(§5) |
+| 최근 경로·최근 장소 삭제 | 다음 → 이전 → 소멸 시 조회 버튼 / 검색 버튼 | 최근 경로는 `landing = RecentRoute(id)`·`Submit`, 최근 장소는 M1 `pendingLanding` 키 관용구(항목 키 = `RecentEndpoint.id`, 인덱스 금지) |
+| 프리필 `from` 진입 | 도착지 버튼 | `landing = Field(to)` 한 프레임 뒤(§5) |
 | 조회 완료(`resultsRevision`) | **이동 없음**(위원장 판정 2026-08-02 — 조회 버튼에 머물면 다음 스와이프가 상태 → (추적) → 수단 순으로 이어진다). 완료는 통지가 알린다 | — |
-| 계단 회피 재조회 완료(`walkRefetchRevision`) | 도보 헤딩 | `FocusRequester` 한 프레임 뒤 |
+| 계단 회피 재조회 완료 | 도보 헤딩 | `landing = WalkHeading` 한 프레임 뒤 |
 | 펼침 토글·고정 토글 | 이동 없음(`stateDescription` 변화가 신호) | — |
 
 ## 4. 상태 머신 (`DirectionsViewModel`, iOS `DirectionsModel` 미러)
@@ -140,7 +140,7 @@ DirectionsUiState(
   phase: Phase = Idle,                       // Idle · NeedEndpoints · Locating · Loading · GeoDenied · GeoReduced · GeoError · OutOfCoverage · Settled(successCount)
   results: DirectionsResults?, walkShortest: WalkRouteBriefing?,    // 같은 응답 쌍만 함께(스냅샷 교체)
   promotedDestination: Promoted(label, lat, lng)?,                   // results와 같은 순간에만 커밋
-  resultsRevision: Int, walkRefetchRevision: Int, prefillFocusRevision: Int,
+  resultsRevision: Int, landing: LandingRequest?(seq + 대상: Field(from|to|via)·Submit·WalkHeading·RecentRoute(id)),   // 착지 요청 하나로 통일(도보 헤딩·프리필·확정 뒤·삭제 뒤 전부)
   stepFreeEnabled: Boolean, stepFreeBusy: Boolean, isRefreshingCurrent: Boolean,
   currentAddress: String?, currentAddressEnglish: String?,
   recentRoutes: List<RecentRoute>,
@@ -160,13 +160,13 @@ endpointSearch: StateFlow<EndpointSearchState?>   // null = 폼. EndpointSearchS
   6. 분류: transit = `include ? classifyTransit(result) : UnsupportedWaypoint`, car = `classifyCar`, walk = `classifyWalk(result.map { it.result })`, `shortestCandidate = 성공이면 pair.shortest`.
   7. 어느 하나 `isOutOfCoverage` → `OutOfCoverage`(전체 전환, 나머지 결과 폐기) return.
   8. `DirectionsResults(outcomes)` 생성 → results·walkShortest·promoted를 **같은 순간** 커밋 → `Settled(successCount)` → `recordRoute(from, to, via)`(Current는 null 투영) → `resultsRevision++` → 통지 `directions.readySummary(count)` 또는 `directions.allFailed`(합산 1문장, 수단별 개별 통지 금지).
-- **`toggleStepFree()`**: `isInFlight`면 무시. `stepFreeEnabled` 반전. `results != null && lastCoords != null`이면 도보만 재조회(`stepFreeBusy=true`, 같은 `queryJob`·가드): `walkAlternatives` → `classifyWalk`(`OutOfCoverage`면 `Error`로 접는다 — 부분 재조회가 다른 수단을 버리지 않는다) → `results.replacingWalk(outcome)`(순서 보존, :kit) → `walkShortest = 새 쌍의 shortest` → `walkRefetchRevision++`(통지 없음 — 도보 헤딩 착지가 신호). 조회 전 토글은 상태만.
+- **`toggleStepFree()`**: `isInFlight`면 무시. `stepFreeEnabled` 반전. `results != null && lastCoords != null`이면 도보만 재조회(`stepFreeBusy=true`, 같은 `queryJob`·가드): `walkAlternatives` → `classifyWalk`(`OutOfCoverage`면 `Error`로 접는다 — 부분 재조회가 다른 수단을 버리지 않는다) → `results.replacingWalk(outcome)`(순서 보존, :kit) → `walkShortest = 새 쌍의 shortest` → `landing = WalkHeading`(통지 없음 — 도보 헤딩 착지가 신호). 조회 전 토글은 상태만.
 - **`refreshCurrentLocation()`**("현재 위치 사용" 재선택, F-B): `isRefreshingCurrent` 가드 → `locator.currentCoordinate(force=true)` → 성공 시 주소 동기화, 실패는 조용히 직전 라벨 유지(재측위 = 재조회이지 데이터 포기 아님). 진행 신호는 필드 라벨의 `directions.refreshingCurrent` 전환만.
 - **`loadCurrentAddressIfAuthorized()`**(화면 진입 1회, `hasLoadedCurrentAddress` 가드): 어느 필드가 `Current`이고 `locator.coordinateForRanking()`이 좌표를 주면 주소 동기화. 팝업 없음.
 - **`requestPreciseLocation()`**(GeoReduced 해결 버튼): `locator.requestPreciseLocation()` 참 → `runQuery()`, 거짓 → 통지 `android.common.geoReducedDesc` 재게시(seq 증가).
 - **최근 경로**: `recentRoutes = store.routes()`(init 로드 — 읽기만), `removeRoute`·`clearRoutes`·`setRoutePinned`(화면 배열은 그 자리 교체). 삭제는 착지 키(`RecentRoute.id`)를 돌려준다(M1 `removeRecent` 동형, 소멸이면 null).
 - **끝점 검색**: `openPicker(target)` → `EndpointSearchState(target, scope 최근 장소 로드)`; `submitCandidates()`(trim 비면 무시, `hasSearched=true`, 앞 Job 취소, `coordinateForRanking()` 좌표 → `search(includeWeb=false)` → 상위 5·5 → `candidateRevision++` → 통지); `geocodeAndSelect(address)`(in-flight 가드, Job 보관); `select(endpoint)` → `setEndpoint`/`setVia` → `closePicker(resolved = target)`; `closePicker(resolved)` = **검색 Job·지오코딩 Job 취소** + `endpointSearch = null`(취소 뒤 도착한 응답은 상태를 쓰지 않는다 — `ensureActive`). 최근 장소 삭제·고정·모두 지우기는 M1 관용구.
-- **프리필 소비**(§5): ViewModel `init`이 `DirectionsPrefillStore.pending`(StateFlow)을 `collect`해 값이 오면 `compareAndSet(value, null)`로 가져가 `applyPrefill(prefill)` = `from = role==from ? place : Current`, `to = role==to ? place : null`, `clearVia()`, `clearResults()`, 장소 `recordEndpoint`(iOS `consumeDirectionsPrefill`이 하던 기록), 그리고 양끝이 다 있으면 `runQuery()`(in-flight 가드에 흡수돼도 소비된 것으로 친다 — 두 번 조회하지 않는다), `to`가 비면 `prefillFocusRevision++`(화면이 도착지 버튼에 착지). 컴포지션 재진입과 무관하게 **값이 오는 즉시** 소비되므로 길찾기 탭이 이미 보이는 상태에서 불려도 남는 값이 없다. ViewModel이 아직 없으면(첫 진입) `StateFlow`가 현재 값을 재생해 `init`에서 소비한다.
+- **프리필 소비**(§5): ViewModel `init`이 `DirectionsPrefillStore.pending`(StateFlow)을 `collect`해 값이 오면 `compareAndSet(value, null)`로 가져가 `applyPrefill(prefill)` = `from = role==from ? place : Current`, `to = role==to ? place : null`, `clearVia()`, `clearResults()`, 장소 `recordEndpoint`(iOS `consumeDirectionsPrefill`이 하던 기록), 그리고 양끝이 다 있으면 `runQuery()`(in-flight 가드에 흡수돼도 소비된 것으로 친다 — 두 번 조회하지 않는다), `to`가 비면 `landing = Field(to)`(화면이 도착지 버튼에 착지). 컴포지션 재진입과 무관하게 **값이 오는 즉시** 소비되므로 길찾기 탭이 이미 보이는 상태에서 불려도 남는 값이 없다. ViewModel이 아직 없으면(첫 진입) `StateFlow`가 현재 값을 재생해 `init`에서 소비한다.
 
 **통지 표**(단일 polite 창구 = 상태 문장, phase가 바뀔 때마다 seq 증가):
 
@@ -248,7 +248,7 @@ interface EndpointLocator {
 
 M1 §7 게이트 그대로(`:kit:test` · `:app:testDebugUnitTest` · assemble 두 구성 · `VITEST_MAX_THREADS=2 npm run test:run`, 락 안). :kit 변경 0(등록부 무변경). `viewModelScope` 테스트는 M1 `MainDispatcherExtension`(JUnit5 `@RegisterExtension`)을 쓴다. M3가 더하는 테스트:
 
-- **JVM(:app) `DirectionsViewModelTest`**(스텁 전송 + Kit 실캡처 fixture `route-transit.json`·`route-walk.json`·`route-walk-no-route.json`·`route-car.json`, 페이크 `EndpointLocator`): 끝점 부재 → NeedEndpoints·조회 0 / 3수단 성공 → Settled(3)·`displayedModes` 순서·통지·최근 경로 기록·revision 1 / **transit 응답 `{}`(result 없음) → `Empty`(`route.transit.noRoute`), 성공 수는 2** / 수단별 15초 초과 → 그 수단만 Error(다른 수단 유지) / 측위 Denied·ReducedAccuracy·Unavailable → 3 phase 3 문장 / `requestPreciseLocation` 참 → 재조회, 거짓 → 통지만 / 현재 위치 한국 밖(후쿠오카) → OutOfCoverage·upstream 호출 0 / 서버 마커 → 전체 전환 / 경유지 → transit 미호출·UnsupportedWaypoint·walk·car 쿼리에 `via` / 경유지 한국 밖 → OutOfCoverage / 계단 회피: 조회 전 토글은 상태만, 조회 후 토글은 walk만 재호출(`accessible=true`)·순서 보존·`walkRefetchRevision` 1·walkShortest 교체 / 필드 변경이 진행 조회를 취소하고 늦은 응답이 상태를 쓰지 않는다 / swap 원자 교환 / 출입구 승격: entrance 응답 시 세 수단 `dest`가 승격 좌표·`promotedDestination` 커밋, 실패·부재 시 원좌표·null, en에서는 미호출 / 프리필 `to` → 자동 조회 1회(재소비 0)·기록, `from` → 조회 0·`prefillFocusRevision` 1, **ViewModel이 살아 있는 채로 스토어에 값이 오면 즉시 소비** / 최근 경로 삭제 착지 다음·이전·null / 끝점 검색: 5·5 절단, 3-state 통지, 지오코딩 실패 → coordError·미확정, in-flight 가드, `from`에만 현재 위치, **지오코딩 왕복 중 닫으면 필드가 바뀌지 않는다**, 닫으면 검색 Job 취소 / 필드 JSON 왕복.
+- **JVM(:app) `DirectionsViewModelTest`**(스텁 전송 + Kit 실캡처 fixture `route-transit.json`·`route-walk.json`·`route-walk-no-route.json`·`route-car.json`, 페이크 `EndpointLocator`): 끝점 부재 → NeedEndpoints·조회 0 / 3수단 성공 → Settled(3)·`displayedModes` 순서·통지·최근 경로 기록·revision 1 / **transit 응답 `{}`(result 없음) → `Empty`(`route.transit.noRoute`), 성공 수는 2** / 수단별 15초 초과 → 그 수단만 Error(다른 수단 유지) / 측위 Denied·ReducedAccuracy·Unavailable → 3 phase 3 문장 / `requestPreciseLocation` 참 → 재조회, 거짓 → 통지만 / 현재 위치 한국 밖(후쿠오카) → OutOfCoverage·upstream 호출 0 / 서버 마커 → 전체 전환 / 경유지 → transit 미호출·UnsupportedWaypoint·walk·car 쿼리에 `via` / 경유지 한국 밖 → OutOfCoverage / 계단 회피: 조회 전 토글은 상태만, 조회 후 토글은 walk만 재호출(`accessible=true`)·순서 보존·`landing = WalkHeading`·walkShortest 교체 / 필드 변경이 진행 조회를 취소하고 늦은 응답이 상태를 쓰지 않는다 / swap 원자 교환 / 출입구 승격: entrance 응답 시 세 수단 `dest`가 승격 좌표·`promotedDestination` 커밋, 실패·부재 시 원좌표·null, en에서는 미호출 / 프리필 `to` → 자동 조회 1회(재소비 0)·기록, `from` → 조회 0·`landing = Field(to)`, **ViewModel이 살아 있는 채로 스토어에 값이 오면 즉시 소비** / 최근 경로 삭제 착지 다음·이전·null / 끝점 검색: 5·5 절단, 3-state 통지, 지오코딩 실패 → coordError·미확정, in-flight 가드, `from`에만 현재 위치, **지오코딩 왕복 중 닫으면 필드가 바뀌지 않는다**, 닫으면 검색 Job 취소 / 필드 JSON 왕복.
 - **JVM(:app) `RouteRowsTest`·`TransitLegTextTest`**(문자열 공급 페이크): fixture 추천 경로의 구간 줄 5개 문장(ko), 승차 출구 배타(도보 뒤 탑승 / 탑승 직행), 하차 줄 유무(quickExit·exit.alight 조합 4), **앱 언어 ja·dataLocale en에서 하차 줄이 일본어(구간 줄은 영어)**, en 자격 원자성(영문 조각 하나 결손 → 한국어 줄 전체), 탑승 줄 병기는 역명만(노선은 `lineNameEn` 그대로), 노선 `" "` → "번 버스" 없음, 마지막 도보의 `destinationName` 우선순위(승격본 → 장소 → null "목적지까지", 빈 `toName`도 폴백), 도보 스텝 번호(notice 생략 뒤에도 원본 인덱스)·경유지 구획 자리, 자동차 행(guidance 폴백 name·거리 0 생략), 요약 문장 3종 + **`walkDisplayMinutes` == `WalkCollapse` 판정 분 동일성**, 대안 이름 키 → 리터럴 4갈래, `wonText`.
 - **화면 구조 단언(androidTest)**: walk outcome이 `Error`일 때도 계단 회피 토글 노드가 있다.
 - **소스 가드**: M2 `AppSourceGuardTest`(LocationManager 한 곳·백그라운드 위치 0) 통과 — `directions/`에 `android.location` import 0.
