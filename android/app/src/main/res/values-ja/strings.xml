@@ -57,6 +57,7 @@
     <string name="android_beacon_food_riceBowl">ごはん一膳分です！</string>
     <string name="android_beacon_food_riceHalfBowl">ごはん半膳分です！</string>
     <string name="android_beacon_food_tangerine">みかん1個分です！</string>
+    <string name="android_beacon_guideStartWalkShortest">最短ルート案内を開始</string>
     <string name="android_beacon_healthEnterWeight">体重を入力する</string>
     <string name="android_beacon_healthSummary">この区間で%1$s歩歩き、約%2$skcalを消費しました。</string>
     <string name="android_beacon_healthSummaryWithWeight">この区間で%1$s歩歩き、%2$skgを基準に約%3$skcalを消費しました。</string>
@@ -121,12 +122,18 @@
     <string name="android_directions_walkNotice_title">徒歩案内機能が追加されました。</string>
     <string name="android_directions_walkRecommended">おすすめルート</string>
     <string name="android_directions_walkShortest">最短ルート</string>
+    <string name="android_guide_autoReroute">新しいルートで案内を再開します。案内%1$s件、合計%2$s。%3$s</string>
     <string name="android_guide_destChanged">新しい目的地 %1$s。</string>
     <string name="android_guide_destChangedFetching">新しいルートを検索しています。</string>
     <string name="android_guide_destMenuChange">目的地を変更</string>
     <string name="android_guide_destMenuDetail">場所の詳細を見る</string>
+    <string name="android_guide_focusDenied">他のアプリが音声を使用中のため、案内音を鳴らせません</string>
+    <string name="android_guide_mediaVolumeZero">メディア音量がオフのため案内音が鳴りません</string>
+    <string name="android_guide_notificationChannel">徒歩案内</string>
     <string name="android_guide_routeListCurrent">%1$s. 現在の区間、%2$s</string>
     <string name="android_guide_routeListRow">%1$s. %2$s</string>
+    <string name="android_guide_serviceStartFailed">案内サービスを開始できませんでした。アプリを画面に表示したまま再開してください</string>
+    <string name="android_guide_ttsUnavailable">この言語の音声案内は利用できません。画面の案内文をご確認ください</string>
     <string name="android_guide_waypointChange">%1$s、経由地を変更</string>
     <string name="android_guide_waypointDropped">経由地 %1$s を通る経路が見つからないため、経由地なしで案内します</string>
     <string name="android_guide_waypointKept">経由地 %1$s はそのままです</string>

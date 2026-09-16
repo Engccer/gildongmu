@@ -57,6 +57,7 @@
     <string name="android_beacon_food_riceBowl">C\'est l\'équivalent d\'un bol de riz (bap) !</string>
     <string name="android_beacon_food_riceHalfBowl">C\'est l\'équivalent d\'un demi-bol de riz (bap) !</string>
     <string name="android_beacon_food_tangerine">C\'est l\'équivalent d\'une mandarine !</string>
+    <string name="android_beacon_guideStartWalkShortest">Démarrer le guidage sur l’itinéraire le plus court</string>
     <string name="android_beacon_healthEnterWeight">Saisir mon poids</string>
     <string name="android_beacon_healthSummary">Sur ce tronçon, vous avez fait %1$s pas et brûlé environ %2$s kcal.</string>
     <string name="android_beacon_healthSummaryWithWeight">Sur ce tronçon, vous avez fait %1$s pas et brûlé environ %3$s kcal, sur la base de %2$s kg.</string>
@@ -121,12 +122,18 @@
     <string name="android_directions_walkNotice_title">Le guidage à pied est arrivé.</string>
     <string name="android_directions_walkRecommended">Itinéraire recommandé</string>
     <string name="android_directions_walkShortest">Itinéraire le plus court</string>
+    <string name="android_guide_autoReroute">Guidage repris sur un nouvel itinéraire. {1, plural, one {%1$s instruction} other {%1$s instructions}}, %2$s au total. %3$s</string>
     <string name="android_guide_destChanged">Nouvelle destination : %1$s.</string>
     <string name="android_guide_destChangedFetching">Recherche d\'un nouvel itinéraire.</string>
     <string name="android_guide_destMenuChange">Changer de destination</string>
     <string name="android_guide_destMenuDetail">Voir les détails du lieu</string>
+    <string name="android_guide_focusDenied">Une autre application utilise l’audio : les sons du guidage ne peuvent pas être joués pour le moment</string>
+    <string name="android_guide_mediaVolumeZero">Le volume multimédia est coupé : les sons du guidage ne seront pas audibles</string>
+    <string name="android_guide_notificationChannel">Guidage à pied</string>
     <string name="android_guide_routeListCurrent">%1$s. Segment actuel, %2$s</string>
     <string name="android_guide_routeListRow">%1$s. %2$s</string>
+    <string name="android_guide_serviceStartFailed">Impossible de démarrer le service de guidage. Gardez l’application à l’écran et redémarrez</string>
+    <string name="android_guide_ttsUnavailable">Le guidage vocal n’est pas disponible dans cette langue. Consultez le texte du guidage à l’écran</string>
     <string name="android_guide_waypointChange">%1$s, changer le point de passage</string>
     <string name="android_guide_waypointDropped">Aucun itinéraire par le point de passage %1$s ; guidage sans lui</string>
     <string name="android_guide_waypointKept">Point de passage %1$s inchangé</string>

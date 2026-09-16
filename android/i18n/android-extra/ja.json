@@ -57,6 +57,17 @@
     "voice": {
       "downloadRequested": "音声認識の準備を依頼しました。しばらくしてからもう一度お試しください",
       "downloadReady": "音声認識の準備ができました。もう一度「音声入力を開始」を押してください"
+    },
+    "beacon": {
+      "guideStartWalkShortest": "最短ルート案内を開始"
+    },
+    "guide": {
+      "autoReroute": "新しいルートで案内を再開します。案内{count}件、合計{distance}。{first}",
+      "mediaVolumeZero": "メディア音量がオフのため案内音が鳴りません",
+      "focusDenied": "他のアプリが音声を使用中のため、案内音を鳴らせません",
+      "ttsUnavailable": "この言語の音声案内は利用できません。画面の案内文をご確認ください",
+      "serviceStartFailed": "案内サービスを開始できませんでした。アプリを画面に表示したまま再開してください",
+      "notificationChannel": "徒歩案内"
     }
   },
   "search": {

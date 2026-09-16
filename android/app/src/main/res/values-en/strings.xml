@@ -57,6 +57,7 @@
     <string name="android_beacon_food_riceBowl">That\'s about one bowl of rice (bap)!</string>
     <string name="android_beacon_food_riceHalfBowl">That\'s about half a bowl of rice (bap)!</string>
     <string name="android_beacon_food_tangerine">That\'s about one tangerine!</string>
+    <string name="android_beacon_guideStartWalkShortest">Start shortest route guidance</string>
     <string name="android_beacon_healthEnterWeight">Enter weight</string>
     <string name="android_beacon_healthSummary">You walked {1, plural, one {%1$s step} other {%1$s steps}} on this leg and burned about %2$s kcal.</string>
     <string name="android_beacon_healthSummaryWithWeight">You walked {1, plural, one {%1$s step} other {%1$s steps}} on this leg and burned about %3$s kcal, based on %2$s kg.</string>
@@ -121,12 +122,18 @@
     <string name="android_directions_walkNotice_title">Walking guidance is here.</string>
     <string name="android_directions_walkRecommended">Recommended route</string>
     <string name="android_directions_walkShortest">Shortest route</string>
+    <string name="android_guide_autoReroute">Now guiding on a new route. {1, plural, one {%1$s step} other {%1$s steps}}, %2$s total. %3$s</string>
     <string name="android_guide_destChanged">New destination: %1$s.</string>
     <string name="android_guide_destChangedFetching">Finding a new route.</string>
     <string name="android_guide_destMenuChange">Change destination</string>
     <string name="android_guide_destMenuDetail">View place details</string>
+    <string name="android_guide_focusDenied">Another app is using audio, so guide sounds cannot play right now</string>
+    <string name="android_guide_mediaVolumeZero">Media volume is off, so guide sounds will not play</string>
+    <string name="android_guide_notificationChannel">Walking guidance</string>
     <string name="android_guide_routeListCurrent">%1$s. Current segment, %2$s</string>
     <string name="android_guide_routeListRow">%1$s. %2$s</string>
+    <string name="android_guide_serviceStartFailed">Could not start the guidance service. Keep the app on screen and start again</string>
+    <string name="android_guide_ttsUnavailable">Voice guidance is not available for this language. Check the guidance text on screen</string>
     <string name="android_guide_waypointChange">%1$s, change waypoint</string>
     <string name="android_guide_waypointDropped">No route found through waypoint %1$s; guiding without it</string>
     <string name="android_guide_waypointKept">Waypoint %1$s unchanged</string>

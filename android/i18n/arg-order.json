@@ -6,6 +6,11 @@
     "name",
     "distance"
   ],
+  "android.guide.autoReroute": [
+    "count",
+    "distance",
+    "first"
+  ],
   "android.nearby.announceRouteStops": [
     "count"
   ],

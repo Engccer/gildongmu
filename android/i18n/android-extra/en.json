@@ -57,6 +57,17 @@
     "voice": {
       "downloadRequested": "Speech recognition setup requested. Try again in a moment.",
       "downloadReady": "Speech recognition is ready. Tap Start dictation again."
+    },
+    "beacon": {
+      "guideStartWalkShortest": "Start shortest route guidance"
+    },
+    "guide": {
+      "autoReroute": "Now guiding on a new route. {count, plural, one {# step} other {# steps}}, {distance} total. {first}",
+      "mediaVolumeZero": "Media volume is off, so guide sounds will not play",
+      "focusDenied": "Another app is using audio, so guide sounds cannot play right now",
+      "ttsUnavailable": "Voice guidance is not available for this language. Check the guidance text on screen",
+      "serviceStartFailed": "Could not start the guidance service. Keep the app on screen and start again",
+      "notificationChannel": "Walking guidance"
     }
   },
   "search": {

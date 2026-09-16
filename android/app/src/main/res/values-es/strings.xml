@@ -57,6 +57,7 @@
     <string name="android_beacon_food_riceBowl">¡Equivale a un cuenco de arroz (bap)!</string>
     <string name="android_beacon_food_riceHalfBowl">¡Equivale a medio cuenco de arroz (bap)!</string>
     <string name="android_beacon_food_tangerine">¡Equivale a una mandarina!</string>
+    <string name="android_beacon_guideStartWalkShortest">Iniciar guía por la ruta más corta</string>
     <string name="android_beacon_healthEnterWeight">Introducir peso</string>
     <string name="android_beacon_healthSummary">En este tramo caminaste {1, plural, one {%1$s paso} other {%1$s pasos}} y quemaste unas %2$s kcal.</string>
     <string name="android_beacon_healthSummaryWithWeight">En este tramo caminaste {1, plural, one {%1$s paso} other {%1$s pasos}} y quemaste unas %3$s kcal, calculadas para %2$s kg.</string>
@@ -121,12 +122,18 @@
     <string name="android_directions_walkNotice_title">Llega la guía a pie.</string>
     <string name="android_directions_walkRecommended">Ruta recomendada</string>
     <string name="android_directions_walkShortest">Ruta más corta</string>
+    <string name="android_guide_autoReroute">Ahora te guío por una nueva ruta. {1, plural, one {%1$s indicación} other {%1$s indicaciones}}, %2$s en total. %3$s</string>
     <string name="android_guide_destChanged">Nuevo destino: %1$s.</string>
     <string name="android_guide_destChangedFetching">Buscando una nueva ruta.</string>
     <string name="android_guide_destMenuChange">Cambiar destino</string>
     <string name="android_guide_destMenuDetail">Ver detalles del lugar</string>
+    <string name="android_guide_focusDenied">Otra aplicación está usando el audio, así que la guía no puede sonar ahora</string>
+    <string name="android_guide_mediaVolumeZero">El volumen multimedia está apagado, por lo que no sonará la guía</string>
+    <string name="android_guide_notificationChannel">Guía a pie</string>
     <string name="android_guide_routeListCurrent">%1$s. Tramo actual, %2$s</string>
     <string name="android_guide_routeListRow">%1$s. %2$s</string>
+    <string name="android_guide_serviceStartFailed">No se pudo iniciar el servicio de guía. Mantén la aplicación en pantalla y vuelve a iniciar</string>
+    <string name="android_guide_ttsUnavailable">La guía por voz no está disponible en este idioma. Consulta el texto de la guía en pantalla</string>
     <string name="android_guide_waypointChange">%1$s, cambiar punto de paso</string>
     <string name="android_guide_waypointDropped">No se encontró ruta por el punto de paso %1$s; se guía sin él</string>
     <string name="android_guide_waypointKept">Punto de paso %1$s sin cambios</string>
