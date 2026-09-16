@@ -18,6 +18,16 @@ class SwiftSemanticsTest {
         assertEquals(swiftRegexSpace, codePointsWhere { space.matches(it) })
     }
 
+    /** Foundation `CharacterSet.whitespaces` 실측 집합(같은 날 전수, 실제 trimmingCharacters 경로로도 확인) — U+200B를 공백으로 든다. */
+    private val swiftWhitespaces: Set<Int> =
+        (listOf(0x09, 0x20, 0xA0, 0x1680) + (0x2000..0x200B) + listOf(0x202F, 0x205F, 0x3000)).toSet()
+
+    /** `whitespacesAndNewlines`는 정규식 약칭 공백 + U+200B였다. */
+    @Test fun `trim 두 집합은 Foundation CharacterSet과 전 코드포인트에서 같다 — U+200B는 레거시로 공백이다`() {
+        assertEquals(swiftWhitespaces, codePointsWhere { it.trimSwiftWhitespaces().isEmpty() })
+        assertEquals(swiftRegexSpace + 0x200B, codePointsWhere { it.trimSwiftWhitespacesAndNewlines().isEmpty() })
+    }
+
     /** Swift `Character.isWhitespace`도 같은 날 전수 실측에서 정규식 약칭 공백과 같은 집합이었다. */
     @Test fun `문자 공백 판정은 Swift Character isWhitespace와 전 코드포인트에서 같다`() {
         assertEquals(swiftRegexSpace, codePointsWhere { it.length == 1 && it[0].isSwiftWhitespace() })

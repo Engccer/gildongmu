@@ -30,11 +30,18 @@ internal const val REGEX_SPACE_MEMBERS = """\t\n\u000B\f\r\u0085\p{Z}"""
 /** Swift `Character.isWhitespace` 미러 — 유니코드 White_Space(`REGEX_SPACE_MEMBERS`와 같은 집합, 전 코드포인트 실측 일치). */
 internal fun Char.isSwiftWhitespace(): Boolean = this in '\t'..'\r' || code == 0x85 || isUnicodeSeparator()
 
-/** Swift `CharacterSet.whitespaces` 소속 — 탭 + 공백 구분자(Zs), **줄바꿈은 아니다**. */
-internal fun Char.inSwiftWhitespaces(): Boolean = this == '\t' || category == CharCategory.SPACE_SEPARATOR
+/** Swift `CharacterSet.whitespaces` 소속 — 탭 + 공백 구분자(Zs) + U+200B, **줄바꿈은 아니다**. */
+internal fun Char.inSwiftWhitespaces(): Boolean =
+    this == '\t' || category == CharCategory.SPACE_SEPARATOR || isFoundationLegacySpace()
 
-/** Swift `CharacterSet.whitespacesAndNewlines` 소속 — 탭·U+000A~U+000D·U+0085 + 유니코드 Z*(Zs·Zl·Zp). */
-internal fun Char.inSwiftWhitespacesAndNewlines(): Boolean = isSwiftWhitespace()
+/** Swift `CharacterSet.whitespacesAndNewlines` 소속 — 탭·U+000A~U+000D·U+0085 + 유니코드 Z*(Zs·Zl·Zp) + U+200B. */
+internal fun Char.inSwiftWhitespacesAndNewlines(): Boolean = isSwiftWhitespace() || isFoundationLegacySpace()
+
+/**
+ * U+200B(폭 없는 공백)는 유니코드 4.0.1에서 Zs → Cf로 바뀌었지만 Foundation `CharacterSet`의 두 공백 집합은 지금도 든다(실측).
+ * 정규식 약칭 공백·`Character.isWhitespace`에는 없다 — CharacterSet 술어에만 더한다.
+ */
+private fun Char.isFoundationLegacySpace(): Boolean = code == 0x200B
 
 private fun Char.isUnicodeSeparator(): Boolean = when (category) {
     CharCategory.SPACE_SEPARATOR, CharCategory.LINE_SEPARATOR, CharCategory.PARAGRAPH_SEPARATOR -> true
