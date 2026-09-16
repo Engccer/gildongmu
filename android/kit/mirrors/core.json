@@ -1,0 +1,123 @@
+{
+  "group": "core",
+  "owner": "android-kit-core",
+  "description": "미러 등록부(D6 장치 2). 검사 술어와 형식은 src/lib/__tests__/mirror-registry.test.ts, 갱신법은 android/README.md.",
+  "entries": [
+    {
+      "swift": "BarrierFreeService.swift",
+      "status": "pending"
+    },
+    {
+      "swift": "ChatMarkdown.swift",
+      "status": "pending"
+    },
+    {
+      "swift": "ChatPlaceMentions.swift",
+      "status": "pending"
+    },
+    {
+      "swift": "ChatService.swift",
+      "status": "pending"
+    },
+    {
+      "swift": "ChatSuggestionsService.swift",
+      "status": "pending"
+    },
+    {
+      "swift": "ClinicKind.swift",
+      "status": "pending"
+    },
+    {
+      "swift": "Deeplink.swift",
+      "status": "pending"
+    },
+    {
+      "swift": "DeferredAnnouncer.swift",
+      "status": "pending"
+    },
+    {
+      "swift": "Directions.swift",
+      "status": "pending"
+    },
+    {
+      "swift": "LocationNarrative.swift",
+      "status": "pending"
+    },
+    {
+      "swift": "ManualLocation.swift",
+      "status": "pending"
+    },
+    {
+      "swift": "MarkdownPlainText.swift",
+      "status": "pending"
+    },
+    {
+      "swift": "NearbyLoadCore.swift",
+      "status": "pending"
+    },
+    {
+      "swift": "NearbyService.swift",
+      "status": "pending"
+    },
+    {
+      "swift": "PlaceChatPrompts.swift",
+      "status": "pending"
+    },
+    {
+      "swift": "PlaceHoursService.swift",
+      "status": "pending"
+    },
+    {
+      "swift": "PlaceProjection.swift",
+      "status": "pending"
+    },
+    {
+      "swift": "QuickExitText.swift",
+      "status": "pending"
+    },
+    {
+      "swift": "RevealWindow.swift",
+      "status": "pending"
+    },
+    {
+      "swift": "RouteService.swift",
+      "status": "pending"
+    },
+    {
+      "swift": "StationMatch.swift",
+      "status": "pending"
+    },
+    {
+      "swift": "StationService.swift",
+      "status": "pending"
+    },
+    {
+      "swift": "SubwayArrivalLine.swift",
+      "status": "pending"
+    },
+    {
+      "swift": "TransitAlternativeName.swift",
+      "status": "pending"
+    },
+    {
+      "swift": "TransitDisplay.swift",
+      "status": "pending"
+    },
+    {
+      "swift": "TransitExitLines.swift",
+      "status": "pending"
+    },
+    {
+      "swift": "TransitWalkLegText.swift",
+      "status": "pending"
+    },
+    {
+      "swift": "WalkInfraService.swift",
+      "status": "pending"
+    },
+    {
+      "swift": "WhereAmIService.swift",
+      "status": "pending"
+    }
+  ]
+}

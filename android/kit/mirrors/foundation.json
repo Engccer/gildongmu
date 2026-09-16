@@ -1,0 +1,252 @@
+{
+  "group": "foundation",
+  "owner": "android-m1",
+  "description": "미러 등록부(D6 장치 2). 검사 술어와 형식은 src/lib/__tests__/mirror-registry.test.ts, 갱신법은 android/README.md.",
+  "deferredTests": [
+    {
+      "swift": "Tests/GildongmuKitTests/WalkActionTests.swift",
+      "to": "guide",
+      "why": "imminentTone → GuideTone(RouteGuide)"
+    },
+    {
+      "swift": "Tests/GildongmuKitTests/FinalApproachTests.swift#briefArrivalWindowAccuracyCeilingMatchesCar",
+      "to": "guide",
+      "why": "carArrivalMaxAccuracyMeters(CarArrival)"
+    },
+    {
+      "swift": "Tests/GildongmuKitTests/RouteGuideTests.swift",
+      "to": "guide",
+      "why": "RouteGeometry 소비 시나리오는 리듀서와 함께"
+    },
+    {
+      "swift": "Tests/GildongmuKitTests/KakaoCategoryTests.swift#projectionsCarryCategoryEnAndKeepRawCategory",
+      "to": "core",
+      "why": "kidsPlaceToPlace·surroundingPlaceToPlace·sceneItemToPlace(PlaceProjection)·isStation(StationMatch)"
+    },
+    {
+      "swift": "Tests/GildongmuKitTests/BarrierFreeModelsTests.swift#matchReturnsNilOnNetworkError",
+      "to": "core",
+      "why": "BarrierFreeService"
+    },
+    {
+      "swift": "Tests/GildongmuKitTests/ChatModelsTests.swift#parseChatMarkdownBlocks*",
+      "to": "core",
+      "why": "ChatMarkdown. decodeChatEventLine(ChatService)은 ChatModelsTest가 KitJson 직접 디코딩으로 덮음"
+    },
+    {
+      "swift": "Tests/GildongmuKitTests/RouteModelsTests.swift#routeServiceWalk*,transitDisplayPickLineIsAtomic",
+      "to": "core",
+      "why": "RouteService·TransitDisplay"
+    },
+    {
+      "swift": "Tests/GildongmuKitTests/StationModelsTests.swift#isStationJudgesCategoryAndNameSuffix",
+      "to": "core",
+      "why": "StationMatch"
+    },
+    {
+      "swift": "Tests/GildongmuKitTests/NearbyOverviewTests.swift#overviewLines*,sceneItemToPlace*",
+      "to": "core",
+      "why": "LocationNarrative·PlaceProjection"
+    }
+  ],
+  "entries": [
+    {
+      "swift": "APIClient.swift",
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/APIClient.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/APIClientTest.kt",
+      "note": "D5 경계: URL 조립·상태 분류·마커 감지·디코딩만 :kit. 전송은 `HttpTransport` 인터페이스로 :app이 구현(M1)"
+    },
+    {
+      "swift": "AppVersion.swift",
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/AppVersion.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/AppVersionTest.kt"
+    },
+    {
+      "swift": "AudioSignalProtocol.swift",
+      "status": "excluded",
+      "reason": "E20 음향신호기 BLE 실험 — 2026-09-01 연동 기종 없음으로 종결(계획 §2)"
+    },
+    {
+      "swift": "BilingualName.swift",
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/BilingualName.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/BilingualNameTest.kt"
+    },
+    {
+      "swift": "CarAction.swift",
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/CarAction.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/CarActionTest.kt"
+    },
+    {
+      "swift": "CoordQuery.swift",
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/CoordQuery.kt",
+      "note": "`QueryItem = Pair<String, String>`(Swift URLQueryItem 대응)"
+    },
+    {
+      "swift": "Coverage.swift",
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/Coverage.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/CoverageTest.kt",
+      "note": "국경 링은 `korea-boundary.json` 리소스(바이트 동일 사본, CoverageTest가 대조)"
+    },
+    {
+      "swift": "FinalApproach.swift",
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/FinalApproach.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/FinalApproachTest.kt",
+      "note": "`briefArrivalWindowMaxAccuracyMeters == carArrivalMaxAccuracyMeters` 단언은 GUIDE `CarArrivalTest`로"
+    },
+    {
+      "swift": "Format.swift",
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/Format.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/FormatTest.kt"
+    },
+    {
+      "swift": "Geo.swift",
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/Geo.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/GeoTest.kt"
+    },
+    {
+      "swift": "KakaoCategory.swift",
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/KakaoCategory.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/KakaoCategoryTest.kt"
+    },
+    {
+      "swift": "KoreanParticle.swift",
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/KoreanParticle.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/KoreanParticleTest.kt",
+      "note": "`object(_:)` → `objectMarker`(Kotlin 예약어), 짝 맞춰 `subjectMarker`·`topicMarker`·`directionMarker`"
+    },
+    {
+      "swift": "Localization.swift",
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/Localization.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/LocalizationTest.kt",
+      "note": "lproj 폴백 경로 없음(안드로이드에 lproj가 없다). 카탈로그는 `android/scripts/messages-to-kit-strings.mjs` 생성물"
+    },
+    {
+      "swift": "LocationFix.swift",
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/LocationFix.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/LocationFixTest.kt"
+    },
+    {
+      "swift": "Models/BarrierFreeModels.swift",
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/models/BarrierFreeModels.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/BarrierFreeModelsTest.kt"
+    },
+    {
+      "swift": "Models/ChatModels.swift",
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/models/ChatModels.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/ChatModelsTest.kt",
+      "note": "커스텀 디코딩(`ChatRenderPayloadSerializer`·`ChatStreamEventSerializer`). 줄 디코딩 `decodeChatEventLine`은 CORE ChatService"
+    },
+    {
+      "swift": "Models/NearbyModels.swift",
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/models/NearbyModels.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/NearbyModelsTest.kt",
+      "note": "`NearbyOverview` 커스텀 디코딩. sealed 케이스는 PascalCase(`.empty` → `Empty`)"
+    },
+    {
+      "swift": "Models/RouteModels.swift",
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/models/RouteModels.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/RouteModelsTest.kt",
+      "note": "전방 호환 enum 디코딩은 `models/LenientEnums.kt`(등록부 밖 직렬화 보조)"
+    },
+    {
+      "swift": "Models/SearchModels.swift",
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/models/SearchModels.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/SearchModelsTest.kt",
+      "note": "`Place` 등 nullable 필드는 `= null` 기본값(없는 키 허용)"
+    },
+    {
+      "swift": "Models/StationModels.swift",
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/models/StationModels.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/StationModelsTest.kt"
+    },
+    {
+      "swift": "Models/SurroundingsSceneModels.swift",
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/models/SurroundingsSceneModels.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/SurroundingsSceneModelsTest.kt"
+    },
+    {
+      "swift": "Models/WalkInfraModels.swift",
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/models/WalkInfraModels.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/WalkInfraModelsTest.kt",
+      "note": "`WalkSourceStatus<T>`는 제네릭 커스텀 직렬화"
+    },
+    {
+      "swift": "Models/WhereAmIModels.swift",
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/models/WhereAmIModels.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/WhereAmIModelsTest.kt"
+    },
+    {
+      "swift": "RecentSearchStore.swift",
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/RecentSearchStore.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/RecentSearchStoreTest.kt",
+      "note": "D5 경계: 저장은 `KeyValueStore` 인터페이스로 :app이 SharedPreferences로 구현(M1). 값은 JSON 문자열"
+    },
+    {
+      "swift": "Resources/Localizable.xcstrings",
+      "status": "excluded",
+      "reason": "Kit 카탈로그 — 안드로이드는 android/scripts/messages-to-kit-strings.mjs가 messages/*.json에서 직접 만든다(계획 §2)"
+    },
+    {
+      "swift": "Resources/korea-boundary.json",
+      "status": "ported",
+      "kotlin": "android/kit/src/main/resources/korea-boundary.json",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/CoverageTest.kt",
+      "note": "바이트 동일 사본. CoverageTest가 웹 정본과 대조"
+    },
+    {
+      "swift": "RouteGeometry.swift",
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/RouteGeometry.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/RouteGeometryTest.kt"
+    },
+    {
+      "swift": "SearchFilters.swift",
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/SearchFilters.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/SearchFiltersTest.kt",
+      "note": "`filterPlaces(_:bucket:)`·`filterPlaces(_:region:)` → `filterPlacesByBucket`·`filterPlacesByRegion`(Kotlin은 인자 라벨 오버로드 불가)"
+    },
+    {
+      "swift": "SearchService.swift",
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/SearchService.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/SearchServiceTest.kt"
+    },
+    {
+      "swift": "VoiceQuery.swift",
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/VoiceQuery.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/VoiceQueryTest.kt"
+    },
+    {
+      "swift": "WalkAction.swift",
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/WalkAction.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/WalkActionTest.kt",
+      "note": "`imminentTone(action)`은 미이식 — `GuideTone`이 `RouteGuide.swift`에 있어 GUIDE가 `RouteGuide.kt`에 함께 싣는다(WalkActionTests의 두 테스트도 그때)"
+    }
+  ]
+}
