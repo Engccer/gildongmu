@@ -1,5 +1,6 @@
 package space.dodoplanet.gildongmu.guide
 
+import space.dodoplanet.gildongmu.AppConfig
 import android.app.NotificationManager
 import android.app.Service
 import android.content.Context
@@ -50,7 +51,7 @@ class GuideForegroundService : Service() {
         // 옛 wake lock이 영구 보유되고 리스너가 이중 등록된다 — 살아 있는 자원은 그대로 새 세션이 쓴다(모델은 매 호출 조회).
         if (stream != null) { GuideDiag.log("service start reused"); return }
         val walk = GuideSession.walk
-        val strings = guideStrings(resources)
+        val strings = guideStrings { AppConfig.localizedApp().resources } // 알림 문장도 앱 언어(M2 spec §14-2)
         GuideNotification.ensureChannel(this, strings)
         val ui = walk.ui.value
         val notification = GuideNotification.build(this, strings, notificationTitleText(ui, strings), notificationBodyText(ui, strings))
