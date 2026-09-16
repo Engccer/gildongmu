@@ -23,7 +23,8 @@ class SettingsStoreTest {
         s.setLanguage("en"); s.setDictationStyle("hold"); s.setResultHaptics(true)
         val again = SettingsStore(mem).also { it.load() }
         assertEquals("en", again.language.value); assertEquals("hold", again.dictationStyle.value); assertTrue(again.resultHapticsEnabled.value)
-        assertEquals("en", SettingsStore(mem).readLanguageSync())
+        var invalidated = 0
+        SettingsStore(mem, onLanguageChanged = { invalidated++ }).also { it.load() }.setLanguage("ja"); assertEquals(1, invalidated) // 저장이 곧 무효화
         s.setLanguage(null); assertNull(SettingsStore(mem).also { it.load() }.language.value) // 시스템 따름으로 복귀
         s.setLanguage("xx"); assertNull(s.language.value)
         mem.putString(SettingsStore.KEY_DICTATION, "weird"); assertEquals("tapToggle", SettingsStore(mem).also { it.load() }.dictationStyle.value)

@@ -77,7 +77,7 @@ object AppConfig {
     val effectiveLocation: EffectiveLocation by lazy { EffectiveLocation(locationStore, manualLocationStore, manualLocationJudge) }
 
     /** 설정 값의 단일 소유자(spec §14-1). 첫 읽기는 `MainActivity.attachBaseContext`(동기, 언어가 첫 프레임에 필요). */
-    val settings: SettingsStore by lazy { SettingsStore(SharedPreferencesStore(app)) }
+    val settings: SettingsStore by lazy { SettingsStore(SharedPreferencesStore(app), onLanguageChanged = ::invalidateLocalizedApp) }
 
     /**
      * 로케일 오버라이드 컨텍스트(spec §14-2 판정 39): 저장값이 없으면 `base` 그대로, 있으면 그 로케일의 구성 사본으로
@@ -93,7 +93,7 @@ object AppConfig {
 
     /**
      * ViewModel 문장·`dataLocale`·시각 포맷의 리소스 — **호출 시점**에 읽는다(캡처 금지: ViewModel은 재생성을 넘어 살고
-     * `createConfigurationContext`의 오버라이드는 제자리 갱신되지 않는다). 언어 저장이 무효화한다. 로케일 밖 구성 축(글꼴 크기·야간 모드)은
+     * `createConfigurationContext`의 오버라이드는 제자리 갱신되지 않는다). `SettingsStore.setLanguage`가 저장 직후 `invalidateLocalizedApp`을 부른다. 로케일 밖 구성 축(글꼴 크기·야간 모드)은
      * 생성 시점 스냅샷이라 **문자열·시각 포맷만** 읽을 것.
      */
     fun localizedApp(): Context = localizedAppCache ?: localized(app).also { localizedAppCache = it }

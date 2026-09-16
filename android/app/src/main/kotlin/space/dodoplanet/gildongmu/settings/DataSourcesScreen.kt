@@ -10,7 +10,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
+import android.util.Log
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.focus.FocusRequester
+import space.dodoplanet.gildongmu.a11y.HapticKind
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -44,15 +49,21 @@ fun DataSourcesScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     var notice by remember { mutableStateOf(Notice(0, "")) }
     val noApp = stringResource(R.string.android_common_noAppToOpen)
-    fun open(intent: Intent) { if (!context.tryStartActivity(intent)) notice = Notice(notice.seq + 1, noApp) }
-    AppScreenScaffold(stringResource(R.string.dataSources_title), onBack = onBack) { padding ->
+    fun open(intent: Intent) { if (!context.tryStartActivity(intent)) notice = Notice(notice.seq + 1, noApp, haptic = HapticKind.failure) }
+    val titleFocus = remember { FocusRequester() }
+    // push 진입 착지 = 제목 헤딩(§3-1 — 19행을 매번 위에서 훑지 않게)
+    LaunchedEffect(Unit) {
+        withFrameNanos { }
+        runCatching { titleFocus.requestFocus() }.onFailure { Log.w("DataSources", "진입 착지 실패", it) }
+    }
+    AppScreenScaffold(stringResource(R.string.dataSources_title), onBack = onBack, titleFocus = titleFocus) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).semantics { testTagsAsResourceId = true }) {
+            StatusLine(notice, Modifier.padding(vertical = 8.dp)) // 상단 바 바로 아래(§3-1)
             SOURCE_IDS.forEachIndexed { i, id -> Text(stringResource(id), Modifier.fillMaxWidth().mergedRow("source-$i").padding(vertical = 8.dp)) }
             Text(stringResource(R.string.dataSources_osmLicense), Modifier.fillMaxWidth().mergedRow("osm-license").padding(vertical = 8.dp))
             Button(onClick = { open(Intent(Intent.ACTION_VIEW, Uri.parse(OSM_COPYRIGHT_URL))) }, modifier = Modifier.tapTarget().testTag("osm-link")) { Text(stringResource(R.string.dataSources_osmLink)) }
             // ODbL 1.0 §4.6 사본 제공 고지 — 문의처가 있어야 이행이 성립하므로 메일 링크(설정의 문제 신고와 같은 주소)
             Button(onClick = { open(Intent(Intent.ACTION_SENDTO, Uri.parse(REPORT_MAILTO))) }, modifier = Modifier.tapTarget().testTag("osm-copy")) { Text(stringResource(R.string.dataSources_osmCopyRequest)) }
-            StatusLine(notice, Modifier.padding(vertical = 8.dp))
         }
     }
 }

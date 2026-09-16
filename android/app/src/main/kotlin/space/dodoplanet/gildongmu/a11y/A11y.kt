@@ -109,6 +109,7 @@ fun StatusLine(notice: Notice, modifier: Modifier = Modifier) {
         withFrameNanos { }
         shown = u.text
         // 결과 진동(spec §14-3 판정 40): 문장이 나가는 조건 = 진동이 나가는 조건 — 발화 효과 안, 첫 세대·빈 문자열 프레임 제외. 이 호출은 이 파일 한 곳(소스 가드).
+        // `hapticsOn`은 효과 시작 시점 값(키에 넣으면 빈 문자열 프레임을 다시 돌린다) — 스위치를 끈 직후 마지막 한 건은 진동할 수 있다(의도).
         if (hapticsOn) u.text.haptic?.let { kind ->
             haptics.performHapticFeedback(
                 when (kind) {

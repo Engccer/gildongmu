@@ -7,3 +7,6 @@ import kotlinx.serialization.Serializable
 
 /** 정보 출처(설정 → 스택, spec §14-4). */
 @Serializable data object DataSourcesRoute
+
+/** 문제 신고·지도 자료 사본 요청의 메일 주소(iOS 동일). */
+const val REPORT_MAILTO = "mailto:engccer@gmail.com"

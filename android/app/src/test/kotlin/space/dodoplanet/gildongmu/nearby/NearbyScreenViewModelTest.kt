@@ -186,17 +186,17 @@ class NearbyScreenViewModelTest {
         val vm = subwayVm(mutableListOf(HttpResponse(200, subwayBody), HttpResponse(200, subwayBody), HttpResponse(200, subwayBody)), coordinate = source)
         vm.load(); dispatcher.scheduler.advanceUntilIdle()
         fail = NearbyLocationError.Denied; vm.load(force = true); dispatcher.scheduler.advanceUntilIdle()
-        assertEquals(NearbyLoadPhase.Denied, vm.phase.value); assertEquals("권한 꺼짐", vm.notice.value.text)
+        assertEquals(NearbyLoadPhase.Denied, vm.phase.value); assertEquals("권한 꺼짐", vm.notice.value.text); assertEquals(space.dodoplanet.gildongmu.a11y.HapticKind.failure, vm.notice.value.haptic)
 
         val vm2 = subwayVm(mutableListOf(HttpResponse(200, subwayBody)), coordinate = NearbyCoordinateSource.Current { _ -> fail?.let { throw it } ?: coord })
         fail = null; vm2.load(); dispatcher.scheduler.advanceUntilIdle()
         fail = NearbyLocationError.ReducedAccuracy; vm2.load(force = true); dispatcher.scheduler.advanceUntilIdle()
-        assertEquals(NearbyLoadPhase.ReducedAccuracy, vm2.phase.value); assertEquals("정확한 위치 꺼짐", vm2.notice.value.text)
+        assertEquals(NearbyLoadPhase.ReducedAccuracy, vm2.phase.value); assertEquals("정확한 위치 꺼짐", vm2.notice.value.text); assertEquals(space.dodoplanet.gildongmu.a11y.HapticKind.failure, vm2.notice.value.haptic)
 
         val vm3 = subwayVm(mutableListOf(HttpResponse(200, subwayBody)), coordinate = NearbyCoordinateSource.Current { _ -> coord })
         vm3.load(); dispatcher.scheduler.advanceUntilIdle()
         coord = NearbyCoord(35.68, 139.69); vm3.load(force = true); dispatcher.scheduler.advanceUntilIdle()
-        assertEquals(NearbyLoadPhase.OutOfCoverage, vm3.phase.value); assertEquals("대한민국 안에서 제공", vm3.notice.value.text)
+        assertEquals(NearbyLoadPhase.OutOfCoverage, vm3.phase.value); assertEquals("대한민국 안에서 제공", vm3.notice.value.text); assertEquals(space.dodoplanet.gildongmu.a11y.HapticKind.attention, vm3.notice.value.haptic)
     }
 
     @Test fun `bus·bike·경유 정류소 조립기 — 첫 로드 착지 키와 건수 통지`() = runTest(dispatcher) {

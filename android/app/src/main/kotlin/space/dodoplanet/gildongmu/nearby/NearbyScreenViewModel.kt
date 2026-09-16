@@ -147,7 +147,7 @@ class NearbyScreenViewModel<P : Any>(
     }
 
     /** 설정 화면을 열 앱이 없을 때(커스텀 안드로이드) — 통지가 유일한 증거. */
-    fun notifyNoApp() = post(strings.noAppToOpen())
+    fun notifyNoApp() = post(strings.noAppToOpen(), HapticKind.failure)
 
     /** 통지도 낭독 채널이다 — 낭독형은 거리 단위를 풀어쓰고(iOS `nearbyAnnouncer` 동형) 시각 텍스트는 원문을 지킨다. */
     private fun post(text: String, haptic: HapticKind? = null) {

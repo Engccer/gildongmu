@@ -16,7 +16,7 @@ fun localeOverride(stored: String?): String? = stored?.takeIf { it in AppLocale.
  * 첫 읽기 `load()`는 `MainActivity.attachBaseContext`가 동기로 부른다(첫 프레임이 옳은 언어여야 한다 — 파일 단위 로드 1회를 시작 경로 비용으로 수용).
  * 받아쓰기 키·값은 iOS `DictationStyle`과 같다(M6가 같은 키를 읽는다). 진동 키는 :kit `TrendHaptics.storageKey`.
  */
-class SettingsStore(private val store: KeyValueStore) {
+class SettingsStore(private val store: KeyValueStore, /** 언어 저장 직후(`AppConfig.localizedApp` 캐시 무효화 — 저장 행위에 묶어 두 번째 호출자가 빠뜨리지 못하게). */ private val onLanguageChanged: () -> Unit = {}) {
     private val _language = MutableStateFlow<String?>(null)
     /** null = 시스템 설정 따름. 값은 `AppLocale.supported` 안 코드만. */
     val language: StateFlow<String?> = _language.asStateFlow()
@@ -31,12 +31,9 @@ class SettingsStore(private val store: KeyValueStore) {
     /** 체중 입력 원문(저장은 `WalkHealth.weightStorageKey` = M4 걸음 요약이 읽는 키, 빈 문자열 = 미입력). */
     val weightText: StateFlow<String> = _weightText.asStateFlow()
 
-    /** `attachBaseContext`용 동기 읽기(언어 키). `load()`와 같은 값. */
-    fun readLanguageSync(): String? = localeOverride(store.getString(KEY_LANGUAGE))
-
-    /** 첫 읽기(멱등). */
+    /** 첫 읽기(멱등) — `MainActivity.attachBaseContext`가 동기로 부른다(언어가 첫 프레임에 필요). */
     fun load() {
-        _language.value = readLanguageSync()
+        _language.value = localeOverride(store.getString(KEY_LANGUAGE))
         _dictationStyle.value = store.getString(KEY_DICTATION)?.takeIf { it == DICTATION_TAP || it == DICTATION_HOLD } ?: DICTATION_TAP
         _resultHaptics.value = store.getString(TrendHaptics.storageKey) == "true"
         _weightText.value = store.getString(WalkHealth.weightStorageKey).orEmpty()
@@ -58,6 +55,7 @@ class SettingsStore(private val store: KeyValueStore) {
         val value = localeOverride(code)
         _language.value = value
         store.putString(KEY_LANGUAGE, value ?: "")
+        onLanguageChanged()
     }
 
     fun setDictationStyle(raw: String) {
