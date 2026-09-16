@@ -3,6 +3,8 @@
 plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.serialization)
+    // 스텁 전송·메모리 저장소(src/testFixtures)를 :app 테스트와 공유한다.
+    `java-test-fixtures`
 }
 
 kotlin {
@@ -22,6 +24,8 @@ java {
 dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.coroutines.core)
+
+    testFixturesImplementation(libs.kotlinx.coroutines.core)
 
     testImplementation(kotlin("test"))
     testImplementation(libs.kotlinx.coroutines.test)
