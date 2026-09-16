@@ -23,6 +23,8 @@ import android.util.Log
 import space.dodoplanet.gildongmu.R
 import space.dodoplanet.gildongmu.a11y.landingTarget
 import space.dodoplanet.gildongmu.a11y.AppScreenScaffold
+import space.dodoplanet.gildongmu.a11y.Notice
+import space.dodoplanet.gildongmu.a11y.StatusLine
 import space.dodoplanet.gildongmu.a11y.tapTarget
 import space.dodoplanet.gildongmu.location.CurrentAddressStore
 import space.dodoplanet.gildongmu.location.LocationBarRow
@@ -40,6 +42,7 @@ fun NearbyHubScreen(onOpen: (NearbyKind) -> Unit, takeReturnFocus: () -> String?
     }
     AppScreenScaffold(stringResource(R.string.android_tab_nearby), onBack = null) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).semantics { testTagsAsResourceId = true }) {
+            StatusLine(Notice(0, ""), Modifier.padding(vertical = 8.dp)) // 화면 통지는 없다 — 앱 통지(자동 해제) 창구(spec §13-5)
             // 첫 행: 현재 위치 표시줄(이 화면의 조회 기준 선언, spec §12-4). 텍스트 행 — 수동 위치 지정 버튼은 M2c.
             LocationBarRow(currentAddress)
             for (kind in NearbyKind.entries) {
