@@ -36,7 +36,7 @@
 - **패키지**: `space.dodoplanet.gildongmu.directions` 하나(README §1 규약). 파일: `DirectionsScreen.kt`(폼·결과 섹션) · `EndpointSearchContent.kt`(끝점 검색) · `RouteRows.kt`(수단별 행 렌더·요약 문장 — iOS `RouteBriefing.swift` 대응) · `TransitLegText.kt`(구간 문장·대안 이름 키→리터럴 조회 — iOS `transitLegText`·`transitAlternativeName` 대응) · `DirectionsViewModel.kt`(상태 머신) · `EndpointSearchState.kt`(후보 검색 상태) · `DirectionsPrefill.kt`(§5 계약) · `EndpointLocator.kt`(§6 인터페이스 + 프로덕션 구현 + 팩토리) · `DirectionsStrings.kt`(통지·문장 공급 람다 + ViewModel 팩토리) · `EndpointJson.kt`(필드 저장용 직렬화 미러).
 - **`nav/AppRoot.kt` 변경은 등록 한 줄 + import 한 줄**: `composable<DirectionsRoute> { DirectionsScreen() }`. ViewModel 팩토리는 `directions/`가 앱 컨텍스트(`LocalContext.current.applicationContext`)로 스스로 만든다(`MainActivity`는 android-m1 소유라 건드리지 않는다 — M1의 `searchFactory` 주입 방식과 갈리지만 소유권 규약이 우선이고, 통합 뒤 골격 세션이 통일하고 싶으면 팩토리 함수 하나를 옮기면 된다).
 - **ViewModel 수명**: 탭 루트 백스택 엔트리에 스코프(`viewModel(factory)` in `composable<DirectionsRoute>`). 탭 전환의 `saveState/restoreState`는 엔트리의 `ViewModelStore`를 보존하므로(공식 문서) 결과·필드가 탭을 떠났다 와도 남는다(iOS `TabView` 안 모델 동형). **탭 이탈은 진행 조회를 취소하지 않는다**(iOS `.onDisappear { model.cancel() }`와 의도된 차이 — ViewModel이 살아 있어 돌아오면 결과가 이미 있고, `StatusLine`은 M1 `initialSeq` 규약으로 재마운트 재발화가 없다). 프로세스 재생성은 **필드(출발·도착·경유)만** `SavedStateHandle`에 JSON으로 복원하고 결과·최근 목록 메모리는 포기한다(iOS는 필드도 잃지만 안드로이드는 백그라운드 프로세스 종료가 잦아 폼을 다시 채우는 비용이 크다 — M1이 검색어를 복원한 것과 같은 판정).
-- **끝점 검색은 내비 목적지가 아니라 화면 내 모달 상태**(`endpointSearch: StateFlow<EndpointSearchState?>` — null이면 폼, 값이 있으면 그 `target`의 끝점 검색. 상태 소유는 이 한 곳이다): 열리면 폼 전체를 끝점 검색 콘텐츠로 교체하고 `BackHandler`가 닫는다(iOS 시트 동형 — 필드 확정은 폼의 국소 동작이고 스택에 남을 화면이 아니다). 등록 한 줄 규약도 이것으로 지켜진다. 한 시점에 라이브 리전은 하나뿐(폼의 `StatusLine`은 그동안 컴포즈되지 않는다).
+- **끝점 검색은 내비 목적지가 아니라 화면 내 모달 상태**(`endpointSearch: StateFlow<EndpointSearchState?>` — null이면 폼, 값이 있으면 그 `target`의 끝점 검색. 상태 소유는 이 한 곳이다): 열리면 폼 자리에 끝점 검색 콘텐츠가 그려지고 `BackHandler`·상단 바 뒤로 버튼이 닫는다(iOS 시트 동형 — 필드 확정은 폼의 국소 동작이고 스택에 남을 화면이 아니다). 폼의 화면 상태(펼침 3종·착지 요청자)는 `DirectionsScreen` 수준(`FormUiState`)에 들어 **취소 복귀에 보존**된다(구현 리뷰 MA-1/N-8 — 형제 교체로 폼 안에 두면 잘못 열었다 닫을 때 읽던 자리를 잃는다). 등록 한 줄 규약도 이것으로 지켜진다. 한 시점에 라이브 리전은 하나뿐(폼의 `StatusLine`은 그동안 컴포즈되지 않는다).
 - **판정은 :kit, 화면은 조립만**: 어느 수단이 성공·없음·실패·게이트인지, 섹션 순서, 성공 수, 출구를 어느 줄이 싣는지, 도보 문구 키와 인자 순서, 대안 이름 키는 전부 :kit 함수 결과다. :app은 키 → 리터럴 리소스 조회(`when` 항등 매핑, iOS 관례: 미매핑 키는 디버그 `check`, 릴리스는 키 문자열 노출 — 빈 문자열 금지)와 시각·시맨틱 조립만 한다.
 
 ## 3. 화면 구조와 접근성 계약
@@ -45,23 +45,23 @@ M1 §3의 기본형(한 줄 = 한 객체, `headingText`, 화면 소유 단일 `S
 
 ### 3-1. 길찾기 폼 (`DirectionsScreen`, iOS `DirectionsTabView` 대응)
 
-읽기 순서 = 시각 순서 = 아래 순서. 제목은 M1 검색 화면과 같은 자리(본문 첫 헤딩 — M2가 상단 바로 통일하면 그 커밋이 함께 옮긴다).
+읽기 순서 = 시각 순서 = 아래 순서. 제목은 M2가 통일한 상단 바(`AppScreenScaffold(title, onBack = null)` — 제목 `Text`가 헤딩, 화면마다 같은 자리)다.
 
 | 순서 | 요소 | 계약 |
 |---|---|---|
-| 1 | 제목 `android.tab.directions`("길찾기") | `headingText()` |
+| 1 | 제목 `android.tab.directions`("길찾기") | 상단 바 제목(`AppScreenScaffold`, 헤딩) |
 | 2 | 출발지 버튼 | 라벨 = `fieldText(from)`: 확정이면 `"{directions.from}, {값}"`(쉼표 결합 한 객체), 미확정이면 `directions.searchFrom`("출발지 검색")이 곧 이름. 값 = 현재 위치(§3-1-a) 또는 장소 `bilingualName(lang, label, en=null, roman=labelRoman)`(시각 `Roman (한글)`, 낭독 primary — E28). 누르면 끝점 검색(`from`) |
 | 3 | 바꾸기 버튼 `directions.swap` | `swap()` — 미확정 null도 그대로 교환, 결과 폐기, 기록 없음 |
 | 4 | 도착지 버튼 | 출발지와 같은 꼴(`directions.to`·`directions.searchTo`). 누르면 끝점 검색(`to`) |
 | 5 | 경유지 | 미확정: 버튼 `directions.addVia` → 끝점 검색(`via`, 장소만). 확정: 버튼 `"{directions.via}, {병기 이름}"`(누르면 재검색) + 버튼 `directions.removeVia`(누르면 자기가 사라지므로 **조회 버튼으로 선점 착지** 뒤 `clearVia()` — 헌장 §5) |
 | 6 | 조회 버튼 `directions.submit` | `runQuery()`. 진행 중(`isBusy` = locating·loading·stepFreeBusy)엔 클릭 무시 + `stateDescription = android.directions.searching`("조회 중")(M1 검색 버튼 동형 — iOS는 라벨 전환이지만 안드로이드 관용구는 상태 설명) |
 | 7 | `StatusLine` | 통지 = 상태 문장(§4 표). phase가 바뀔 때마다 seq 증가 |
-| 8 | 해결 버튼 | `GeoDenied`: `android.common.openSettings`("설정 열기") → 앱 상세 설정 인텐트. `GeoReduced`: `android.common.allowPrecise`("정확한 위치 허용") → `locator.requestPreciseLocation()`(§6 — `PermissionGate.request()` 재요청, Android 12는 대략적 허용 뒤 재요청에서 정밀 업그레이드 다이얼로그를 띄운다, M2 §4) → 참이면 `runQuery()`, 거짓이면 통지 `android.common.geoReducedDesc` 재게시 + 그 아래 `openSettings` 버튼(M2 §4의 설정 폴백). iOS 동형(granted → `runQuery`, denied → 통지) |
+| 8 | 해결 버튼 | `GeoDenied`: `android.common.openSettings`("설정 열기") → 앱 상세 설정 인텐트(M2 `location/LocationSettings.appDetailsSettingsIntent` + `nav/tryStartActivity` — 처리 앱이 없으면 크래시 대신 무반응, 상태 문장이 이미 할 일을 말한다). `GeoReduced`: `android.common.allowPrecise`("정확한 위치 허용") → `locator.requestPreciseLocation()`(§6 — `PermissionGate.request()` 재요청, Android 12는 대략적 허용 뒤 재요청에서 정밀 업그레이드 다이얼로그를 띄운다, M2 §4) → 참이면 `runQuery()`, 거짓이면 통지 `android.common.geoReducedDesc` 재게시 + `preciseRetryFailed` 상태로 **그때부터** `openSettings` 버튼(M2 §4의 설정 폴백 — 첫 진입엔 재요청 버튼만, iOS `geoReduced`가 `allowPrecise`만 두는 것과 같다; 새 조회·필드 변경에 리셋). 재요청 진행 중엔 버튼 `stateDescription`("조회 중") + 연타 무시 |
 | 9 | 최근 경로 섹션 | `results == null && !isBusy && recentRoutes.isNotEmpty()`일 때만(결과 아래 20행은 탐색 방해, 실패 phase에서는 보인다 — 우회로). 헤딩 `recentRoutes.title` + 행(§3-3) + 버튼 `recentRoutes.clearAll` |
 | 10 | (예약) 거리 추적 섹션 | M4 — 조회 버튼과 수단 섹션 사이(iOS 순서). M3에는 없다 |
 | 11~ | 수단 섹션 | `results.displayedModes` 순서(:kit 스냅샷 — 성공 앞·비성공 뒤, 30분 이하 도보 승격). 섹션 = 헤딩(`route.public`·`route.car`·`route.pedestrian.heading`, `headingText()` + 도보 헤딩엔 `FocusRequester`) + (예약: 수단별 안내 시작 버튼 자리 — 자동차는 헤딩 바로 아래, 도보·대중교통은 각 경로 행 펼침 본문 첫 항목, M4·M5) + **도보 섹션만 계단 회피 토글**(`dataLocale == ko`일 때, outcome이 `Empty`·`Error`여도 — 켠 뒤 실패해도 되돌릴 수단이 남아야 한다, iOS `outcomeRows` 바깥 동형) + outcome 본문(§3-4) |
 
-**3-1-a 현재 위치 값 텍스트**(F-B): 재측위 중 → `directions.refreshingCurrent`; 주소 확보 → `directions.currentLocationNear(주소)`(비-ko는 `bilingualName(lang, address, en=english, roman=null)` — 시각 display, 낭독 primary); 그 외 `directions.currentLocation`. 주소는 **이미 허가된 세션에서만 조용히**(`locator.coordinateForRanking()` → `SearchService.reverseGeocode(lat, lng, lang=dataLocale)`) 화면 진입 1회 + 측위 성공 시 + "현재 위치 사용" 재선택(강제 재측위) 시 동기화. 실패·매칭 없음은 null로 비운다(옛 좌표 주소를 남기지 않는다). 주소는 부가 정보라 조회 흐름을 어떤 경우에도 막지 않는다. 수동 위치 분기는 없다(범위 밖).
+**3-1-a 현재 위치 값 텍스트**(F-B, 주소 동기화는 요청 세대 latest-wins — 세 경로가 겹칠 때 늦은 옛 좌표의 답이 새 주소를 덮지 않는다): 재측위 중 → `directions.refreshingCurrent`; 주소 확보 → `directions.currentLocationNear(주소)`(비-ko는 `bilingualName(lang, address, en=english, roman=null)` — 시각 display, 낭독 primary); 그 외 `directions.currentLocation`. 주소는 **이미 허가된 세션에서만 조용히**(`locator.coordinateForRanking()` → `SearchService.reverseGeocode(lat, lng, lang=dataLocale)`) 화면 진입 1회 + 측위 성공 시 + "현재 위치 사용" 재선택(강제 재측위) 시 동기화. 실패·매칭 없음은 null로 비운다(옛 좌표 주소를 남기지 않는다). 주소는 부가 정보라 조회 흐름을 어떤 경우에도 막지 않는다. 수동 위치 분기는 없다(범위 밖).
 
 **계단 회피 토글**: `Row.toggleable(value = stepFreeEnabled, role = Role.Switch, onValueChange = { toggleStepFree() })` + 라벨 `route.pedestrian.stepFreeToggle`(재조회 중 `joinText(라벨, android.directions.searching)` — 이 창의 재탭은 가드로 무시되므로 라벨이 유일한 진행 신호) + `Switch(checked, onCheckedChange = null)`.
 
@@ -71,8 +71,7 @@ M1 §3의 기본형(한 줄 = 한 객체, `headingText`, 화면 소유 단일 `S
 
 | 순서 | 요소 | 계약 |
 |---|---|---|
-| 1 | 제목 헤딩 | `directions.searchFrom`·`searchTo`·`searchVia` — exhaustive `when`(iOS 주석: 이분 삼항이 `manualLocation`을 삼킨 실사고) |
-| 2 | 닫기 버튼 `actions.close` | 취소 닫기 — 콜백 없음, 포커스는 열었던 필드 버튼으로(§3-5) |
+| 1 | 상단 바 제목 + 뒤로 버튼 | `AppScreenScaffold(title, onBack = closePicker)` — 제목 `directions.searchFrom`·`searchTo`·`searchVia`(exhaustive `when`, iOS 주석: 이분 삼항이 `manualLocation`을 삼킨 실사고), 뒤로 버튼(`android.common.back`)이 곧 취소 닫기(별도 닫기 버튼 없음) — 콜백 없음, 포커스는 열었던 필드 버튼으로(§3-5) |
 | 3 | 검색 입력 | M1 §3-2와 같은 `TextField(state = TextFieldState)` + `SingleLine` + `ImeAction.Search` + `onKeyboardAction`이 유일한 제출 경로. 라벨 `search.label`, placeholder `android.search.prompt`. 지우기 버튼(`search.clear`) |
 | 4 | 검색 버튼 `search.button` | 검색 중 클릭 무시 + `stateDescription = android.search.searching`. 목록 소멸(최근 장소 전부 삭제) 착지점 |
 | 5 | "현재 위치 사용" 버튼 `directions.useCurrentLocation` | **`from`에만**(도착지는 스왑이 담당, 경유지는 장소만 — `.Current`가 구조적으로 못 들어온다). 선택 = `.Current` 확정 + 강제 재측위·주소 새로고침 트리거 |
@@ -225,7 +224,7 @@ interface EndpointLocator {
 
 - **프로덕션 구현** `LocationStoreLocator(store = AppConfig.locationStore, permissions = AppConfig.permissionGate)`: 앞 둘은 `store`로 **통과 호출**(이름·인자·반환·예외가 같다 — 번역 층 없음), `requestPreciseLocation() = permissions.request() == LocationPermission.Fine`. 팩토리 `directionsLocator()`는 이 파일에 둔다. 인터페이스가 남는 이유는 하나 — JVM 테스트의 페이크 자리(`LocationStore`를 `LocationSource`·`PermissionGate` 페이크로 조립하는 것보다 세 함수 페이크가 짧다).
 - **의존 문장(코디네이터 전파 요망)**: M2 spec §4는 "권한 요청은 내 주변 화면 진입(로드)에서만"이라고 적었다. 실코드 `LocationStore.currentCoordinate`는 호출 경로를 가리지 않고(길찾기 조회도 iOS와 같이 묻는다 — `DirectionsModel.performQuery` 주석 "권한 팝업도 이 시점") 그대로 성립하지만, 문장은 "내 주변 진입 + 길찾기 조회"로 넓혀야 한다.
-- `directions/`는 `android.location.*`·`LocationManager`를 import하지 않는다(M2 `AppSourceGuardTest`가 이미 잠근다). 앱 설정 열기 인텐트 세 줄은 M2 `nearby/`에도 생긴다 — M2 통합 뒤 `location/`(또는 공용) 함수 하나로 합친다(잉여 회수 약속).
+- `directions/`는 `android.location.*`·`LocationManager`를 import하지 않는다(M2 `AppSourceGuardTest`가 이미 잠근다). 앱 설정 열기는 M2 `location/LocationSettings`·`nav/tryStartActivity` 공용 함수를 쓴다(중복 0).
 
 ## 7. 실행 계층
 
@@ -233,7 +232,7 @@ interface EndpointLocator {
 |---|---|
 | 저장 | M1 `SharedPreferencesStore(app)`(파일 `gildongmu.recent`) → :kit `RecentSearchStore`(키 `recentEndpoints.{scope}.v1`·`recentRoutes.*` — iOS UserDefaults 키 그대로). 첫 로드는 `io`, 이후 갱신은 main(M1 판정 — 착지 대상을 동기로 돌려줘야 한다) |
 | 네트워크 | `AppConfig.apiClient` 공유 → `RouteService`·`SearchService`. 수단 조회는 `Dispatchers.IO`에서 |
-| 앱 설정 열기 | `Intent(ACTION_APPLICATION_DETAILS_SETTINGS, "package:" + packageName)`(§6 잉여 회수 약속) |
+| 앱 설정 열기 | M2 `location/LocationSettings.appDetailsSettingsIntent(context)` + `nav/tryStartActivity`(공용 — 중복 구현 없음) |
 | 필드 저장 | `EndpointJson`(`@Serializable` 미러: `current` / `place{label,lat,lng,labelRoman}`) ↔ `DirectionsEndpoint`. `SavedStateHandle["from"|"to"|"via"]` |
 | 위치 | §6 |
 
@@ -249,7 +248,7 @@ interface EndpointLocator {
 M1 §7 게이트 그대로(`:kit:test` · `:app:testDebugUnitTest` · assemble 두 구성 · `VITEST_MAX_THREADS=2 npm run test:run`, 락 안). :kit 변경 0(등록부 무변경). `viewModelScope` 테스트는 M1 `MainDispatcherExtension`(JUnit5 `@RegisterExtension`)을 쓴다. M3가 더하는 테스트:
 
 - **JVM(:app) `DirectionsViewModelTest`**(스텁 전송 + Kit 실캡처 fixture `route-transit.json`·`route-walk.json`·`route-walk-no-route.json`·`route-car.json`, 페이크 `EndpointLocator`): 끝점 부재 → NeedEndpoints·조회 0 / 3수단 성공 → Settled(3)·`displayedModes` 순서·통지·최근 경로 기록·revision 1 / **transit 응답 `{}`(result 없음) → `Empty`(`route.transit.noRoute`), 성공 수는 2** / 수단별 15초 초과 → 그 수단만 Error(다른 수단 유지) / 측위 Denied·ReducedAccuracy·Unavailable → 3 phase 3 문장 / `requestPreciseLocation` 참 → 재조회, 거짓 → 통지만 / 현재 위치 한국 밖(후쿠오카) → OutOfCoverage·upstream 호출 0 / 서버 마커 → 전체 전환 / 경유지 → transit 미호출·UnsupportedWaypoint·walk·car 쿼리에 `via` / 경유지 한국 밖 → OutOfCoverage / 계단 회피: 조회 전 토글은 상태만, 조회 후 토글은 walk만 재호출(`accessible=true`)·순서 보존·`landing = WalkHeading`·walkShortest 교체 / 필드 변경이 진행 조회를 취소하고 늦은 응답이 상태를 쓰지 않는다 / swap 원자 교환 / 출입구 승격: entrance 응답 시 세 수단 `dest`가 승격 좌표·`promotedDestination` 커밋, 실패·부재 시 원좌표·null, en에서는 미호출 / 프리필 `to` → 자동 조회 1회(재소비 0)·기록, `from` → 조회 0·`landing = Field(to)`, **ViewModel이 살아 있는 채로 스토어에 값이 오면 즉시 소비** / 최근 경로 삭제 착지 다음·이전·null / 끝점 검색: 5·5 절단, 3-state 통지, 지오코딩 실패 → coordError·미확정, in-flight 가드, `from`에만 현재 위치, **지오코딩 왕복 중 닫으면 필드가 바뀌지 않는다**, 닫으면 검색 Job 취소 / 필드 JSON 왕복.
-- **JVM(:app) `RouteRowsTest`·`TransitLegTextTest`**(문자열 공급 페이크): fixture 추천 경로의 구간 줄 5개 문장(ko), 승차 출구 배타(도보 뒤 탑승 / 탑승 직행), 하차 줄 유무(quickExit·exit.alight 조합 4), **앱 언어 ja·dataLocale en에서 하차 줄이 일본어(구간 줄은 영어)**, en 자격 원자성(영문 조각 하나 결손 → 한국어 줄 전체), 탑승 줄 병기는 역명만(노선은 `lineNameEn` 그대로), 노선 `" "` → "번 버스" 없음, 마지막 도보의 `destinationName` 우선순위(승격본 → 장소 → null "목적지까지", 빈 `toName`도 폴백), 도보 스텝 번호(notice 생략 뒤에도 원본 인덱스)·경유지 구획 자리, 자동차 행(guidance 폴백 name·거리 0 생략), 요약 문장 3종 + **`walkDisplayMinutes` == `WalkCollapse` 판정 분 동일성**, 대안 이름 키 → 리터럴 4갈래, `wonText`.
+- **JVM(:app) `RouteTextTest`·`TransitLegTextTest`**(문자열 공급 페이크): fixture 추천 경로의 구간 줄 5개 문장(ko), 승차 출구 배타(도보 뒤 탑승 / 탑승 직행), 하차 줄 유무(quickExit·exit.alight 조합 4), **앱 언어 ja·dataLocale en에서 하차 줄이 일본어(구간 줄은 영어)**, en 자격 원자성(영문 조각 하나 결손 → 한국어 줄 전체), 탑승 줄 병기는 역명만(노선은 `lineNameEn` 그대로), 노선 `" "` → "번 버스" 없음, 마지막 도보의 `destinationName` 우선순위(승격본 → 장소 → null "목적지까지", 빈 `toName`도 폴백), 도보 스텝 번호(notice 생략 뒤에도 원본 인덱스)·경유지 구획 자리, 자동차 행(guidance 폴백 name·거리 0 생략), 요약 문장 3종 + **`walkDisplayMinutes` == `WalkCollapse` 판정 분 동일성**, 대안 이름 키 → 리터럴 4갈래, `wonText`.
 - **화면 구조 단언(androidTest)**: walk outcome이 `Error`일 때도 계단 회피 토글 노드가 있다.
 - **소스 가드**: M2 `AppSourceGuardTest`(LocationManager 한 곳·백그라운드 위치 0) 통과 — `directions/`에 `android.location` import 0.
 - **androidTest(ATF) `DirectionsScreenA11yTest`**: 스텁 전송 + 페이크 locator로 폼 → 도착지 끝점 검색 → 후보 선택 → 조회 → 수단 헤딩·구간 행이 단일 노드, 대안 행 펼침 뒤 본문 노드 등장, `tryPerformAccessibilityChecks`. 실기기 연결 시.
@@ -289,9 +288,11 @@ M1 §7 게이트 그대로(`:kit:test` · `:app:testDebugUnitTest` · assemble �
 13. **진동 없음**(M2 §10-5 승계). **받아쓰기 행 없음**(D9). **안내 시작 3종·거리 추적 섹션·공지 시트는 자리만**(M4·M5).
 14. **요금 천 단위 구분은 앱 UI 로케일**(`wonText`, §3-4) — iOS 기기 로케일 대응. 드리프트 게이트 없음(요금은 표시 전용).
 15. **`ios.route.*` 등은 android-extra 같은 문안**(§8) — M2 일괄 도입과 같은 이름이라 어느 쪽이 먼저 올라도 값이 같다.
-16. **제목 자리는 M1 관용구(본문 첫 헤딩)** — M2가 상단 바로 통일하면 그 커밋이 함께 옮긴다.
+16. **제목·뒤로는 M2 `AppScreenScaffold`**(상단 바 제목 헤딩, 끝점 검색의 취소는 뒤로 버튼). 통합 시점에 M2가 먼저 올라 처음부터 이 관용구로.
 17. **최근 장소 라벨은 원문**(로마자 병기 없음 — :kit `RecentEndpoint`에 필드가 없고 FOUNDATION 소유, iOS 동형).
 
 ## 12. 적대적 설계 리뷰 판정
 
 1차(2026-09-16, `~/gildongmu-wt/android-m3-reports/review-m3-design.md`, 리뷰어 opus 별도 컨텍스트): **REQUEST_CHANGES** — BLOCKER 1·MAJOR 6·MINOR 13·NIT 7, 판정 문서 D1~D13 위반 0, 소유권·금지 목록 위반 0(새 gradle 의존성 0). 27건 전부 반영: B-1 `withTimeoutOrNull` 블록 안 `Result` 박스(transit "경로 없음" null과 만료 null 분리) + §9 transit 무경로 케이스 / M-1 최근 장소 라벨 원문 / M-2 하차 줄 `lang` = 앱 UI 언어(데이터 언어와 다른 축) / M-3 병기는 역명 두 자리만 / M-4 계단 회피 토글을 outcome 밖(§3-1 표 11)으로 / M-5 `closePicker`가 검색·지오코딩 Job 취소 / M-6 프리필 스토어를 StateFlow로 두고 ViewModel이 collect(탭이 보이는 채로 불려도 소비) / N-1 `ifEmpty` / N-2 빈 `toName` 폴백 / N-3 노선 trim / N-4 restoreState 근거를 "확인 필요"로 낮추고 소유권 근거 1순위 / N-5 M2 §4 권한 문장 의존을 §6에 기록(코디네이터 전파) / N-6 `requestPreciseLocation()` 세 번째 메서드 / N-7 탭 이탈 무취소 판정 / N-8 행 관용구 둘 명시 / N-9 Idle 행 / N-10 자기 브리핑 notice / N-11 `walkSummaryText` 정의 + 동일성 단언 / N-12 요금 구분자 앱 로케일 판정 / N-13 설정 열기 잉여 회수 약속 / NIT 7건(펼침 문장 행동형 재작성·`@Serializable` 제거·locator 팩토리 위치·notice 생략 상수화·"한 줄 + import"·상태 소유 단일화·`MainDispatcherExtension` 참조). 같은 커밋에서 main `7a4a9379`의 `LocationStore` 실코드에 맞춰 §6을 "통과 호출"로 단순화(`UnavailableLocator`·`NearbyLocationError` 번역 층 삭제). 설계 확정.
+
+구현 리뷰(2026-09-16, `review-m3-spec.md` APPROVE_WITH_CHANGES MAJOR 1·MINOR 9·NIT 5 / `review-m3-quality.md` APPROVE_WITH_CHANGES MAJOR 2·MINOR 7·NIT 7, 판정·소유권 위반 0): 31건 전부 반영 — 설정 열기 폴백을 재요청 거부 뒤로 한정(`preciseRetryFailed`) · 폼 상태를 `DirectionsScreen` 수준으로 올려 피커 취소 복귀에 펼침 보존 · 주소 병기 latest-wins 세대 · `selectCurrent` from 가드 · 최근 장소 io 로드 · 지오코딩 자기 취소 제거(`cancelGeocode`) · 도달 불가 방어 return → `GeoError` · 도보 헤딩만 focusable · 끝점 검색 `testTagsAsResourceId` · 소스 가드를 키 모양 전수 스캔으로 · `requestPreciseLocation` 연타 가드+상태 설명 · submit 상태 설명은 조회 자신만 · 무인자도 `appLocalized` · 팩토리 파일 분리 · 고정 별 아이콘 · 테스트 7건 추가(지오코딩 in-flight·취소 가드 교차·정밀 재요청 폴백·최근 경로/장소 변경 API·주소 latest-wins·주소 5건 절단·selectCurrent 가드) · androidTest 2건(대안 펼침·도보 실패 토글). iOS 역이식 통보 1건(코디네이터 경유): `syncCurrentAddress` latest-wins는 iOS도 같은 갭. M2 통합(`0e8c1204`) 뒤 rebase하며 `AppScreenScaffold`·`tapTarget`·`LocationSettings`·`tryStartActivity`로 갈아탔다.

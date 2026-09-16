@@ -47,8 +47,8 @@ fun carSummaryText(briefing: CarRouteBriefing, lang: String, strings: Strings): 
  */
 fun walkStepItems(briefing: WalkRouteBriefing, viaLabel: String?, strings: Strings): List<String> {
     val items = ArrayList<String>()
+    val waypoint = briefing.waypoint
     briefing.steps.forEachIndexed { index, step ->
-        val waypoint = briefing.waypoint
         if (waypoint != null && index == waypoint.stepIndex && viaLabel != null) items += strings.get("directions.viaArrived", viaLabel)
         if (step.description.isEmpty()) return@forEachIndexed
         if (index == 0 && step.description == briefing.stepFreeNotice) return@forEachIndexed
@@ -60,8 +60,8 @@ fun walkStepItems(briefing: WalkRouteBriefing, viaLabel: String?, strings: Strin
 /** 자동차 안내 행(iOS 정본: `guidance` 비면 `name`, 둘 다 비면 생략, 거리 0은 미제공이라 생략). */
 fun carStepItems(briefing: CarRouteBriefing, viaLabel: String?, strings: Strings): List<String> {
     val items = ArrayList<String>()
+    val waypoint = briefing.waypoint
     briefing.guides.forEachIndexed { index, guide ->
-        val waypoint = briefing.waypoint
         if (waypoint != null && index == waypoint.stepIndex && viaLabel != null) items += strings.get("directions.viaArrived", viaLabel)
         val text = guide.guidance.ifEmpty { guide.name }
         if (text.isEmpty()) return@forEachIndexed

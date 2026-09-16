@@ -1,21 +1,10 @@
 package space.dodoplanet.gildongmu.directions
 
-import android.content.Context
 import android.content.res.Resources
 import androidx.annotation.StringRes
-import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.createSavedStateHandle
-import androidx.lifecycle.viewmodel.initializer
-import androidx.lifecycle.viewmodel.viewModelFactory
-import space.dodoplanet.gildongmu.AppConfig
 import space.dodoplanet.gildongmu.BuildConfig
 import space.dodoplanet.gildongmu.R
-import space.dodoplanet.gildongmu.i18n.AppLocale
 import space.dodoplanet.gildongmu.i18n.appLocalized
-import space.dodoplanet.gildongmu.kit.RecentSearchStore
-import space.dodoplanet.gildongmu.kit.RouteService
-import space.dodoplanet.gildongmu.kit.SearchService
-import space.dodoplanet.gildongmu.storage.SharedPreferencesStore
 
 /**
  * 길찾기 문자열 조회 창구(spec §2 "판정은 :kit, 화면은 조립만"). 키는 `messages/{lang}.json`·android-extra의 키 그대로라
@@ -30,38 +19,16 @@ fun interface Strings {
 /**
  * 프로덕션 구현 — 키 → `R.string` **리터럴 매핑**(iOS 관례: 변수 키를 그대로 카탈로그에 넘기면 키 린터가 대조하지 못한다).
  * 미매핑 키는 디버그에서 즉시 드러내고 릴리스는 키 문자열을 노출한다(빈 문자열 금지 — 침묵보다 낫다).
- * 인자 있는 조회는 `appLocalized`만 지난다(ICU 복수 블록, `LocalizedCallSiteGuardTest`).
+ * 조회는 전부 `appLocalized`를 지난다(ICU 복수 블록, `LocalizedCallSiteGuardTest`).
  */
 fun resourceStrings(res: Resources): Strings = Strings { key, args ->
     val id = stringId(key)
-    when {
-        id == null -> {
-            check(!BuildConfig.DEBUG) { "길찾기 문자열 미매핑 키: $key" }
-            key
-        }
-        args.isEmpty() -> res.getString(id)
-        else -> appLocalized(res, id, *args)
-    }
-}
-
-/**
- * 길찾기 ViewModel 팩토리 — 이 패키지가 앱 컨텍스트로 스스로 만든다(`MainActivity`는 골격 세션 소유, spec §2).
- * ⚠ Activity를 캡처하지 않는다(ViewModel은 구성 변경을 넘어 산다). 문자열·언어는 호출 시점에 읽어 앱별 언어 변경을 따라간다.
- */
-fun directionsViewModelFactory(context: Context): ViewModelProvider.Factory {
-    val app = context.applicationContext
-    return viewModelFactory {
-        initializer {
-            DirectionsViewModel(
-                routes = RouteService(AppConfig.apiClient),
-                search = SearchService(AppConfig.apiClient),
-                store = RecentSearchStore(SharedPreferencesStore(app)),
-                locator = directionsLocator(),
-                dataLocale = { AppLocale.dataLocale(app.resources) },
-                strings = resourceStrings(app.resources),
-                savedState = createSavedStateHandle(),
-            )
-        }
+    if (id == null) {
+        check(!BuildConfig.DEBUG) { "길찾기 문자열 미매핑 키: $key" }
+        key
+    } else {
+        // 무인자도 같은 경로 — `formatLocalized`의 복수 블록 안전망(원문 낭독 차단)을 우회하지 않는다.
+        appLocalized(res, id, *args)
     }
 }
 

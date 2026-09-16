@@ -82,5 +82,39 @@ class DirectionsScreenA11yTest {
         rule.onNodeWithTag("transit-p0-leg-0").assertIsDisplayed()
         rule.onNodeWithTag("walk-step-0").assertIsDisplayed()
         rule.onRoot().tryPerformAccessibilityChecks()
+
+        // 대안 행은 기본 접힘 — 펼치면 본문 구간 노드가 생긴다(spec §9).
+        val alt = vm.state.value.results!!.let { (it.outcomes[space.dodoplanet.gildongmu.kit.DirectionsMode.transit] as space.dodoplanet.gildongmu.kit.DirectionsModeOutcome.Transit).result.alternatives.first().routeKey }
+        rule.onNodeWithTag("transit-$alt-leg-0").assertDoesNotExist()
+        rule.onNodeWithTag("transit-$alt").performClick()
+        rule.waitForIdle()
+        rule.onNodeWithTag("transit-$alt-leg-0").assertExists()
+    }
+
+    /** 도보가 조회 실패여도 계단 회피 토글은 남는다(spec §3-1 표 11 — 켠 뒤 실패해도 되돌릴 수단). */
+    @Test
+    fun stepFreeToggleSurvivesWalkError() {
+        val transport = StubTransport { url ->
+            when (pathOf(url)) {
+                "/api/places/entrance" -> HttpResponse(200, "{}")
+                "/api/route/transit" -> HttpResponse(200, Fixtures.kit("route-transit.json"))
+                "/api/route/walk" -> HttpResponse(502, """{"error":"upstream"}""")
+                "/api/route/car" -> HttpResponse(200, Fixtures.kit("route-car.json"))
+                else -> HttpResponse(404, "")
+            }
+        }
+        val client = APIClient("https://example.test", transport)
+        val res = rule.activity.applicationContext.resources
+        val vm = DirectionsViewModel(
+            RouteService(client), SearchService(client), RecentSearchStore(InMemoryKeyValueStore()), SeoulLocator,
+            { "ko" }, resourceStrings(res), SavedStateHandle(), prefill = MutableStateFlow(null), takePrefill = { false },
+        )
+        vm.setEndpoint(space.dodoplanet.gildongmu.kit.DirectionsEndpoint.Place("강남역", 37.4979, 127.0276), DirectionsFieldTarget.to)
+        rule.setContent { MaterialTheme { DirectionsScreen(vm) } }
+        rule.onNodeWithTag("submit").performClick()
+        rule.waitUntil(10_000) { vm.state.value.resultsRevision == 1 }
+        rule.waitForIdle()
+        rule.onNodeWithTag("error-walk").assertExists()
+        rule.onNodeWithTag("stepfree").assertExists()
     }
 }

@@ -54,6 +54,7 @@ class DirectionsViewModelTest {
     private val placesK1 = """{"places":[{"id":"k1","name":"강동역","category":"교통,수송 > 지하철","address":"서울 강동구","roadAddress":"서울 강동구 천호대로","lat":37.5,"lng":127.1,"nameRoman":"Gangdong Station"}],"provider":"kakao-local","query":"강동"}"""
     private val sixPlaces = """{"places":[""" + (1..6).joinToString(",") { """{"id":"p$it","name":"장소$it","category":"c","address":"a","roadAddress":"r","lat":37.5,"lng":127.1}""" } + """],"provider":"kakao-local","query":"q"}"""
     private val emptyPlaces = """{"places":[],"provider":"none","query":"q"}"""
+    private val sixAddresses = """{"addresses":[""" + (1..6).joinToString(",") { """{"roadAddr":"서울 강동구 천호대로 $it","roadAddrPart1":"서울 강동구 천호대로 $it","jibunAddr":"길동 $it","engAddr":"$it Cheonho-daero","zipNo":"05300","bdNm":""}""" } + """],"query":"q"}"""
     private val emptyAddr = """{"addresses":[],"query":"q"}"""
     private val oneAddr = """{"addresses":[{"roadAddr":"서울 강동구 천호대로 1","roadAddrPart1":"서울 강동구 천호대로 1","jibunAddr":"길동 1","engAddr":"1 Cheonho-daero, Gangdong-gu, Seoul","zipNo":"05300","bdNm":""}],"query":"q"}"""
     private val gangnam = DirectionsEndpoint.Place("강남역", 37.4979, 127.0276)
@@ -374,8 +375,8 @@ class DirectionsViewModelTest {
         assertEquals(LandingTarget.Submit, m.state.value.landing?.target)
     }
 
-    @Test fun `끝점 검색 - 5건 절단·3-state 통지·현재 위치는 from에만·닫힘이 검색을 취소한다`() = runTest(dispatcher) {
-        val r = Routes(places = sixPlaces, addresses = emptyAddr)
+    @Test fun `끝점 검색 - 장소·주소 각 5건 절단·3-state 통지·현재 위치 확정은 from에서만·닫힘이 검색을 취소한다`() = runTest(dispatcher) {
+        val r = Routes(places = sixPlaces, addresses = sixAddresses)
         val m = vm(r)
         m.openPicker(DirectionsFieldTarget.to)
         val p = m.endpointSearch.value!!
@@ -384,8 +385,11 @@ class DirectionsViewModelTest {
         assertTrue(m.endpointSearch.value!!.isSearching && m.endpointSearch.value!!.hasSearched)
         dispatcher.scheduler.advanceUntilIdle()
         val s = m.endpointSearch.value!!
-        assertEquals(5, s.places.size); assertEquals(1, s.candidateRevision)
-        assertEquals("후보 5건을 찾았습니다.", s.notice.text)
+        assertEquals(5, s.places.size); assertEquals(5, s.addresses.size); assertEquals(1, s.candidateRevision)
+        assertEquals("후보 10건을 찾았습니다.", s.notice.text)
+        // 도착지 피커에서 "현재 위치"는 확정되지 않는다(화면도 버튼을 내지 않는다 — 이중 방어)
+        m.selectCurrent()
+        assertNotNull(m.endpointSearch.value); assertNull(m.state.value.to)
         assertFalse(r.query("/api/places").contains("lat=")) // ranking 좌표 없음 → 미전송
         // 0건과 실패는 다른 문장
         val m2 = vm(Routes(places = emptyPlaces, addresses = emptyAddr))
@@ -479,5 +483,119 @@ class DirectionsViewModelTest {
         assertEquals(DirectionsEndpoint.Current, restored.state.value.to)
         assertEquals("천호역", restored.state.value.via?.label)
         assertNull(restored.state.value.results)
+    }
+
+    @Test fun `지오코딩 연타는 한 번만 왕복한다 - in-flight 가드`() = runTest(dispatcher) {
+        val geocode = """{"matches":[{"addressName":"x","lat":37.55,"lng":127.15}],"query":"q"}"""
+        val r = Routes(places = emptyPlaces, addresses = oneAddr, geocode = geocode, delays = mapOf("/api/geocode" to 1_000L))
+        val m = vm(r)
+        m.openPicker(DirectionsFieldTarget.to); m.endpointSearch.value!!.queryState.setTextAndPlaceCursorAtEnd("천호"); m.submitCandidates(); dispatcher.scheduler.advanceUntilIdle()
+        val address = m.endpointSearch.value!!.addresses.single()
+        m.selectAddress(address); dispatcher.scheduler.runCurrent()
+        m.selectAddress(address); dispatcher.scheduler.runCurrent()
+        dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(1, r.paths().count { it == "/api/geocode" })
+        assertEquals("서울 강동구 천호대로 1", (m.state.value.to as DirectionsEndpoint.Place).label)
+    }
+
+    @Test fun `취소된 조회의 finally가 새 조회의 가드를 풀지 않는다`() = runTest(dispatcher) {
+        val r = allOk(delays = mapOf("/api/route/walk" to 1_000L))
+        val m = vm(r)
+        m.setEndpoint(gangnam, DirectionsFieldTarget.to)
+        m.runQuery(); dispatcher.scheduler.runCurrent()
+        m.swap() // 취소 — 옛 finally는 아직 돌지 않았다(다음 디스패치에 돈다)
+        m.runQuery() // 새 조회 시작(가드 다시 잠김)
+        dispatcher.scheduler.runCurrent() // 여기서 옛 finally가 돈다 — 가드가 없으면 새 조회의 잠금을 푼다
+        m.runQuery() // 새 조회가 아직 도는 중 — 가드가 살아 있으면 무시된다
+        dispatcher.scheduler.advanceUntilIdle()
+        // 첫 조회(취소, car는 이미 호출됨) + 새 조회 = 2. 가드가 풀렸다면 겹친 세 번째 조회가 끼어 3이 된다.
+        assertEquals(2, r.paths().count { it == "/api/route/car" })
+        assertEquals(DirectionsPhase.Settled(3), m.state.value.phase)
+    }
+
+    @Test fun `정확한 위치 허용이 거부되면 설정 열기 폴백 상태가 서고 새 조회에 리셋된다`() = runTest(dispatcher) {
+        val loc = FakeLocator({ throw LocationException(LocationException.Kind.ReducedAccuracy) })
+        val m = vm(allOk(), loc)
+        m.setEndpoint(gangnam, DirectionsFieldTarget.to)
+        m.runQuery(); dispatcher.scheduler.advanceUntilIdle()
+        assertFalse(m.state.value.preciseRetryFailed)
+        m.requestPreciseLocation()
+        assertTrue(m.state.value.isRequestingPrecise)
+        m.requestPreciseLocation() // 연타 무시
+        dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(1, loc.preciseCalls)
+        assertTrue(m.state.value.preciseRetryFailed); assertFalse(m.state.value.isRequestingPrecise)
+        m.runQuery(); dispatcher.scheduler.runCurrent()
+        assertFalse(m.state.value.preciseRetryFailed)
+    }
+
+    @Test fun `최근 경로 모두 지우기 - 고정이 남으면 무이동, 비면 조회 버튼 착지`() = runTest(dispatcher) {
+        val store = RecentSearchStore(InMemoryKeyValueStore())
+        val a = RecentRoute(null, RecentEndpoint("A", 37.5, 127.0))
+        val b = RecentRoute(null, RecentEndpoint("B", 37.6, 127.1))
+        store.recordRoute(a); store.recordRoute(b)
+        val m = vm(allOk(), store = store)
+        dispatcher.scheduler.advanceUntilIdle()
+        m.togglePinRecentRoute(m.state.value.recentRoutes.first { it.to?.label == "A" })
+        assertTrue(m.state.value.recentRoutes.first { it.to?.label == "A" }.pinned)
+        assertEquals(2, m.state.value.recentRoutes.size) // 자리 유지
+        val landingBefore = m.state.value.landing
+        m.clearRecentRoutes()
+        assertEquals(listOf("A"), m.state.value.recentRoutes.map { it.to?.label })
+        assertEquals("고정 항목을 제외하고 모두 지웠습니다", m.state.value.notice.text)
+        assertEquals(landingBefore, m.state.value.landing) // 포커스 무이동
+        m.togglePinRecentRoute(m.state.value.recentRoutes.single())
+        m.clearRecentRoutes()
+        assertTrue(m.state.value.recentRoutes.isEmpty())
+        assertEquals("최근 경로를 모두 지웠습니다", m.state.value.notice.text)
+        assertEquals(LandingTarget.Submit, m.state.value.landing?.target)
+    }
+
+    @Test fun `최근 장소 - 삭제 착지 다음·이전·소멸, 고정 자리 유지, 모두 지우기 고정 보존`() = runTest(dispatcher) {
+        val store = RecentSearchStore(InMemoryKeyValueStore())
+        for (i in 1..3) store.recordEndpoint(RecentEndpoint("P$i", 37.0 + i, 127.0), RecentEndpointScope.to)
+        val m = vm(Routes(), store = store)
+        m.openPicker(DirectionsFieldTarget.to); dispatcher.scheduler.advanceUntilIdle()
+        val list = m.endpointSearch.value!!.recentEndpoints
+        assertEquals(listOf("P3", "P2", "P1"), list.map { it.label })
+        assertEquals(list[1].id, m.removeRecentEndpoint(list[0])) // 첫 삭제 → 다음
+        assertEquals("삭제했습니다", m.endpointSearch.value!!.notice.text)
+        val rest = m.endpointSearch.value!!.recentEndpoints
+        assertEquals(rest[0].id, m.removeRecentEndpoint(rest[1])) // 마지막 삭제 → 이전
+        // 고정: 화면 자리 유지(저장소는 고정 블록을 앞으로 옮기지만 정렬은 다음 로드부터)
+        val p2 = m.endpointSearch.value!!.recentEndpoints.single()
+        assertEquals("P2", p2.label)
+        m.togglePinRecentEndpoint(p2)
+        assertTrue(m.endpointSearch.value!!.recentEndpoints.single().pinned)
+        store.recordEndpoint(RecentEndpoint("P9", 37.9, 127.0), RecentEndpointScope.to)
+        m.openPicker(DirectionsFieldTarget.to); dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(listOf("P2", "P9"), m.endpointSearch.value!!.recentEndpoints.map { it.label }) // 고정 블록 앞
+        m.clearRecentEndpoints()
+        assertEquals(listOf("P2"), m.endpointSearch.value!!.recentEndpoints.map { it.label })
+        assertEquals("고정 항목을 제외하고 모두 지웠습니다", m.endpointSearch.value!!.notice.text)
+        assertNull(m.removeRecentEndpoint(m.endpointSearch.value!!.recentEndpoints.single())) // 소멸 → null(화면이 검색 버튼으로)
+        // 최근 장소 행 활성화 = 즉시 확정
+        m.openPicker(DirectionsFieldTarget.from); dispatcher.scheduler.advanceUntilIdle()
+        m.selectRecentEndpoint(RecentEndpoint("Q", 37.1, 127.1))
+        assertEquals(DirectionsEndpoint.Place("Q", 37.1, 127.1), m.state.value.from)
+    }
+
+    @Test fun `주소 병기는 늦은 옛 응답이 새 응답을 덮지 않는다`() = runTest(dispatcher) {
+        val slow = object : HttpTransport {
+            var calls = 0
+            override suspend fun get(url: String, timeoutMs: Long?): HttpResponse {
+                calls++
+                val n = calls
+                delay(if (n == 1) 2_000 else 100) // 첫 요청이 더 느리다
+                return HttpResponse(200, """{"address":"주소$n"}""")
+            }
+        }
+        val client = APIClient("https://example.test", slow)
+        val loc = FakeLocator({ seoul }, ranking = seoul)
+        val m = DirectionsViewModel(RouteService(client), SearchService(client), RecentSearchStore(InMemoryKeyValueStore()), loc, { "ko" }, ko, SavedStateHandle(), prefill = MutableStateFlow(null), takePrefill = { false }, io = dispatcher)
+        m.loadCurrentAddressIfAuthorized(); dispatcher.scheduler.runCurrent()
+        m.openPicker(DirectionsFieldTarget.from); m.selectCurrent(); dispatcher.scheduler.runCurrent()
+        dispatcher.scheduler.advanceUntilIdle()
+        assertEquals("주소2", m.state.value.currentAddress)
     }
 }
