@@ -47,6 +47,41 @@ class ChatServiceTest {
         assertFailsWith<APIError.Decoding> { ChatService.eventFromStreamLine("not-json") }
     }
 
+    /** Swift `bytes.lines` 실측 표(2026-09-16, AsyncStream 바이트 → `.lines`)를 그대로 옮겼다. */
+    @Test fun streamLinesMatchSwiftAsyncLineSequence() {
+        fun linesOf(bytes: ByteArray) = ChatService.splitStreamLines(bytes, endOfStream = true).lines
+        fun lines(text: String) = linesOf(text.toByteArray())
+        val (vt, ff, nel, ls, ps) = listOf(0x0B, 0x0C, 0x85, 0x2028, 0x2029).map { it.toChar() }
+        assertEquals(listOf("a", "b"), lines("a\nb"))
+        assertEquals(listOf("a", "b", "c", "d"), lines("a\r\nb\rc\n\nd\n"))
+        assertEquals(listOf("a", "b", "c", "d"), lines("a${nel}b${ls}c${ps}d"))
+        assertEquals(listOf("a", "b", "c"), lines("a${vt}b${ff}c"))
+        assertEquals(emptyList<String>(), lines("\n\n"))
+        assertEquals(emptyList<String>(), lines("\r\n\r\n"))
+        assertEquals(emptyList<String>(), lines(""))
+        assertEquals(listOf("a"), lines("a\r"))
+        assertEquals(listOf("a", "b"), lines("a\r\r\nb"))
+        assertEquals(listOf("a", "b"), lines("a\n\rb"))
+        assertEquals(listOf("  \t", "{}"), lines("  \t\n{}"))
+        assertEquals(listOf("a${0xFFFD.toChar()}", "b"), linesOf(byteArrayOf(0x61, 0xFF.toByte(), 0x0A, 0x62)))
+    }
+
+    /** 청크가 어느 바이트에서 끊겨도(한글·LS·NEL의 다중 바이트 한가운데 포함) 한 번에 나눈 것과 같다. 끝나지 않은 꼬리는 줄로 내지 않는다. */
+    @Test fun streamLinesAreChunkBoundaryIndependent() {
+        val bytes = "{\"a\":1}\r\n가${0x2028.toChar()}나${0x85.toChar()}\n  \n끝".toByteArray()
+        val whole = ChatService.splitStreamLines(bytes, endOfStream = true).lines
+        assertEquals(listOf("{\"a\":1}", "가", "나", "  ", "끝"), whole)
+        for (cut in 0..bytes.size) {
+            val first = ChatService.splitStreamLines(bytes.copyOfRange(0, cut), endOfStream = false)
+            val second = ChatService.splitStreamLines(first.remainder + bytes.copyOfRange(cut, bytes.size), endOfStream = true)
+            assertEquals(whole, first.lines + second.lines, "cut=$cut")
+            assertEquals(0, second.remainder.size)
+        }
+        val open = ChatService.splitStreamLines("끝".toByteArray(), endOfStream = false)
+        assertEquals(emptyList<String>(), open.lines)
+        assertEquals("끝", open.remainder.toString(Charsets.UTF_8))
+    }
+
     /** 비-2xx는 오류 본문의 `error`를 message로 승격한 BadStatus, 2xx는 null(스트림 소비로 진행). */
     @Test fun statusErrorPromotesErrorBody() {
         assertNull(ChatService.statusError(200, ""))

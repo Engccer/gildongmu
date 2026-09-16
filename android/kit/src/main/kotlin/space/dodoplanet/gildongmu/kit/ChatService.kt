@@ -8,7 +8,8 @@ import space.dodoplanet.gildongmu.kit.models.ChatStreamEvent
  * NDJSON 한 줄을 채팅 이벤트로 디코딩하는 순수 함수. Kit `ChatService.swift` 미러. 스트림 배관과 분리해
  * 단위 테스트 대상으로 삼는다(스트림 자체는 실기기 실호출 게이트). 깨진 줄은 `APIError.Decoding`으로 던진다 —
  * 커스텀 직렬화의 `jsonPrimitive` 접근은 `SerializationException`이 아닌 `IllegalArgumentException`을 낼 수 있어
- * `APIClient`와 같이 둘 다 접는다(`SerializationException`은 그 하위형).
+ * `APIClient`와 같이 둘 다 접는다(`SerializationException`은 그 하위형). 스트림에서는 `ChatService.splitStreamLines`가
+ * Swift `bytes.lines`와 같은 경계로 나누고 `eventFromStreamLine`이 다듬은 한 줄을 받는다.
  */
 fun decodeChatEventLine(line: String): ChatStreamEvent = try {
     KitJson.decodeFromString(ChatStreamEvent.serializer(), line)
@@ -39,10 +40,51 @@ object ChatService {
         return APIError.BadStatus(status, message)
     }
 
-    /** 스트림 한 줄 처리: 양끝 공백을 걷고 빈 줄은 null(건너뜀), 그 외는 디코딩(실패는 `APIError.Decoding` — 스트림 종료 사유). */
+    /**
+     * 스트림 한 줄 처리: 양끝 공백을 걷고 빈 줄은 null(건너뜀), 그 외는 디코딩(실패는 `APIError.Decoding` — 스트림 종료 사유).
+     * `line`은 [splitStreamLines]가 나눈 한 줄이어야 한다(Swift `bytes.lines`와 같은 경계 — 줄 끝 CR이 남지 않는다).
+     */
     fun eventFromStreamLine(line: String): ChatStreamEvent? {
         val trimmed = line.trimSwiftWhitespaces()
         if (trimmed.isEmpty()) return null
         return decodeChatEventLine(trimmed)
     }
+
+    /**
+     * 스트림 바이트를 줄로 나눈다 — Swift `bytes.lines`(AsyncLineSequence) 미러(2026-09-16 실측): 경계는 LF·VT·FF·CR·NEL·LS·PS
+     * (CRLF는 CR 뒤 빈 줄로 흡수), **빈 줄은 내지 않는다**(공백만 있는 줄은 낸다), 줄은 UTF-8로 풀고 깨진 바이트는 U+FFFD다.
+     * 호출자는 직전 [ChatStreamLines.remainder] 뒤에 새 청크를 이어 넘기고, 스트림이 끝나면 `endOfStream = true`로 한 번 더
+     * 부른다(남은 꼬리가 마지막 줄). 글자·경계의 다중 바이트가 청크 사이에서 끊겨도 꼬리에 남아 다음 호출에서 이어진다.
+     */
+    fun splitStreamLines(buffer: ByteArray, endOfStream: Boolean): ChatStreamLines {
+        val lines = ArrayList<String>()
+        var start = 0
+        var i = 0
+        while (i < buffer.size) {
+            val width = lineBreakWidth(buffer, i)
+            if (width == 0) { i += 1; continue }
+            if (i > start) lines.add(String(buffer, start, i - start, Charsets.UTF_8))
+            i += width
+            start = i
+        }
+        if (endOfStream && start < buffer.size) {
+            lines.add(String(buffer, start, buffer.size - start, Charsets.UTF_8))
+            start = buffer.size
+        }
+        return ChatStreamLines(lines, buffer.copyOfRange(start, buffer.size))
+    }
+
+    /** `i`에서 시작하는 줄 경계의 바이트 길이, 경계가 아니면 0. NEL `C2 85`·LS `E2 80 A8`·PS `E2 80 A9`는 UTF-8 다중 바이트다. */
+    private fun lineBreakWidth(b: ByteArray, i: Int): Int {
+        fun at(k: Int) = if (k < b.size) b[k].toInt() and 0xFF else -1
+        return when {
+            at(i) in 0x0A..0x0D -> 1
+            at(i) == 0xC2 && at(i + 1) == 0x85 -> 2
+            at(i) == 0xE2 && at(i + 1) == 0x80 && (at(i + 2) == 0xA8 || at(i + 2) == 0xA9) -> 3
+            else -> 0
+        }
+    }
 }
+
+/** [ChatService.splitStreamLines] 결과 — [lines]는 완성된 줄, [remainder]는 다음 청크 앞에 이어 붙일 미완성 꼬리 바이트. */
+class ChatStreamLines(val lines: List<String>, val remainder: ByteArray)
