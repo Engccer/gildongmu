@@ -40,6 +40,8 @@ import space.dodoplanet.gildongmu.a11y.StatusLine
 import space.dodoplanet.gildongmu.a11y.headingText
 import space.dodoplanet.gildongmu.a11y.mergedRow
 import space.dodoplanet.gildongmu.a11y.tapTarget
+import space.dodoplanet.gildongmu.directions.DirectionsPrefill
+import space.dodoplanet.gildongmu.directions.DirectionsPrefillRole
 import space.dodoplanet.gildongmu.i18n.AppLocale
 import space.dodoplanet.gildongmu.i18n.appLocalized
 import space.dodoplanet.gildongmu.kit.RouteDestination
@@ -50,11 +52,11 @@ import space.dodoplanet.gildongmu.nearby.PlaceAnchor
 import space.dodoplanet.gildongmu.nearby.kindTitle
 
 /** 화면이 요청하는 이동. `returnFocus`는 pop 복귀 착지 키(앵커 버튼). */
-class PlaceNav(val onBack: () -> Unit, val onOpenNearby: (NearbyKind, PlaceAnchor) -> Unit)
+class PlaceNav(val onBack: () -> Unit, val onOpenNearby: (NearbyKind, PlaceAnchor) -> Unit, val onOpenDirections: (DirectionsPrefill) -> Unit)
 
 /**
  * 장소 상세(spec §3-2, iOS `PlaceDetailView` 대응). 정보 정본은 텍스트 리스트(지도 없음). 실주행은 딥링크 위임. 읽기 순서 = 표 순서.
- * 길찾기 프리필 2버튼(M3)·"이 장소에 관해 물어보기"(M6)·안내 중 목적지 변경(M4)은 아래 주석 자리에 그 마일스톤이 넣는다.
+ * "이 장소에 관해 물어보기"(M6)·안내 중 목적지 변경(M4)은 아래 주석 자리에 그 마일스톤이 넣는다.
  */
 @Composable
 fun PlaceDetailScreen(factory: ViewModelProvider.Factory, nav: PlaceNav, takeReturnFocus: () -> String?) {
@@ -118,7 +120,17 @@ fun PlaceDetailScreen(factory: ViewModelProvider.Factory, nav: PlaceNav, takeRet
             // [M6] 이 장소에 관해 물어보기
             // 12. 길찾기 헤딩
             Text(stringResource(R.string.android_route_section), Modifier.fillMaxWidth().mergedRow("route-heading").headingText().padding(top = 12.dp, bottom = 4.dp), style = MaterialTheme.typography.titleMedium)
-            // [M3] 여기까지 길찾기 · 여기부터 길찾기 (DirectionsRoute prefill 계약 전파 뒤)
+            // 13~14. 길찾기 탭 프리필(M3 계약 `directions/DirectionsPrefill`). 두 버튼은 별개 객체 — 라벨이 각각 동작의 범위를 말한다.
+            // "여기부터"는 도착지가 비므로 길찾기 탭이 조회 대신 도착지 입력에 착지한다(E32, iOS 동형).
+            for ((role, label, tag) in listOf(
+                Triple(DirectionsPrefillRole.to, R.string.directions_toHere, "directionsTo"),
+                Triple(DirectionsPrefillRole.from, R.string.directions_fromHere, "directionsFrom"),
+            )) {
+                Button(
+                    onClick = { nav.onOpenDirections(DirectionsPrefill(role, place.name, place.lat, place.lng, place.nameRoman)) },
+                    Modifier.tapTarget().testTag(tag),
+                ) { Text(stringResource(label)) }
+            }
             // [M4] 안내 중 목적지 변경
             // 13~15. 외부 지도(빌더 null = 권역 밖 → 숨김)
             naverRoutePlan(dest, AppConfig.APP_IDENTIFIER)?.let { plan ->
