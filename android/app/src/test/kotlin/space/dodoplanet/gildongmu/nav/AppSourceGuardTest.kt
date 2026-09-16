@@ -116,6 +116,23 @@ class AppSourceGuardTest {
         assertEquals(emptyList(), tests.filter { Regex("""(^|[^A-Za-z_.])assert\(""").containsMatchIn(it.readText()) }.map { it.name })
     }
 
+    /** spec 판정 38 — 앱 층의 좌표 진입점은 `EffectiveLocation`뿐. 화면·ViewModel이 GPS 스토어를 직접 잡으면 그 화면만 수동 위치를 무시하고 화면으로 반증되지 않는다. */
+    @Test fun `location 밖에서 LocationStore를 직접 잡지 않는다(수신자 기준)`() {
+        val allowed = setOf("AppConfig.kt")
+        val offenders = sources.filter { f ->
+            f.extension == "kt" && f.name !in allowed && !f.path.contains("/location/") &&
+                // 좌표를 내는 호출·스토어 타입 보유만 잡는다(`isLocationEnabled` 같은 기기 상태 조회는 좌표가 아니다).
+                Regex("""AppConfig\.locationStore\.(currentCoordinate|gpsCoordinateForRanking|coordinateForDisplay|currentFix)\(|:\s*LocationStore\b|\bLocationStore\(""").containsMatchIn(f.readText())
+        }.map { it.name }
+        assertEquals(emptyList(), offenders)
+    }
+
+    /** spec 판정 34 — 판정 트리거 ON_START 배선은 뷰 계층이라 소스 가드로 잠근다. */
+    @Test fun `MainActivity가 ON_START에서 수동 위치 판정을 부른다`() {
+        val main = android.resolve("app/src/main/kotlin/space/dodoplanet/gildongmu/MainActivity.kt").readText()
+        assertTrue(main.contains("Lifecycle.Event.ON_START") && main.contains("manualLocationJudge.run("))
+    }
+
     @Test fun `Google Play 서비스 의존은 0이다`() {
         val gradle = listOf(android.resolve("app/build.gradle.kts"), android.resolve("gradle/libs.versions.toml"))
         assertTrue(gradle.none { it.readText().contains("play-services") })

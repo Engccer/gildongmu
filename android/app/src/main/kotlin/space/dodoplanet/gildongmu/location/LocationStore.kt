@@ -5,8 +5,6 @@ import kotlinx.coroutines.withTimeoutOrNull
 import space.dodoplanet.gildongmu.kit.LocationFixPolicy
 import space.dodoplanet.gildongmu.kit.ManualFix
 import space.dodoplanet.gildongmu.kit.NearbyCoord
-import space.dodoplanet.gildongmu.kit.NearbyCoordinateSource
-import space.dodoplanet.gildongmu.kit.NearbyLocationError
 import space.dodoplanet.gildongmu.kit.canReuseCachedFix
 import space.dodoplanet.gildongmu.kit.isBetterFix
 import space.dodoplanet.gildongmu.kit.isStorableFix
@@ -160,16 +158,4 @@ class LocationStore(
         }
     }
 
-    /** :kit 코어 어댑터. 취소는 그대로 통과(`LocationException`만 번역), 어댑터 자신의 타임아웃은 `Unavailable`. */
-    fun nearbyCoordinateSource(): NearbyCoordinateSource = NearbyCoordinateSource.Current { force ->
-        try {
-            currentCoordinate(force)
-        } catch (e: LocationException) {
-            throw when (e.kind) {
-                LocationException.Kind.Denied -> NearbyLocationError.Denied
-                LocationException.Kind.ReducedAccuracy -> NearbyLocationError.ReducedAccuracy
-                LocationException.Kind.Unavailable -> NearbyLocationError.Unavailable
-            }
-        }
-    }
 }

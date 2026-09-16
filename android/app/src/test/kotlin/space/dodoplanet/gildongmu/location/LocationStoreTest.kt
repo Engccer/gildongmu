@@ -7,8 +7,6 @@ import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import space.dodoplanet.gildongmu.kit.NearbyCoord
-import space.dodoplanet.gildongmu.kit.NearbyCoordinateSource
-import space.dodoplanet.gildongmu.kit.NearbyLocationError
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -16,29 +14,6 @@ import kotlin.test.assertNull
 /** spec §4 위치 계층 계약. 플랫폼은 페이크(구독 콜백을 테스트가 직접 부른다), 시간은 가상 시계. */
 @OptIn(ExperimentalCoroutinesApi::class)
 class LocationStoreTest {
-    private class FakeSource(var enabled: Boolean = true, val providers: Set<String> = setOf(LocationSource.FUSED)) : LocationSource {
-        var now = 100_000L
-        val listeners = LinkedHashMap<String, (RawFix) -> Unit>()
-        var closed = 0
-        override fun isLocationEnabled() = enabled
-        override fun hasProvider(name: String) = name in providers
-        override fun subscribe(provider: String, onFix: (RawFix) -> Unit): AutoCloseable {
-            listeners[provider] = onFix
-            return AutoCloseable { closed++; listeners.remove(provider) }
-        }
-        override fun elapsedRealtimeMs() = now
-        fun emit(accuracy: Double, ageSeconds: Double = 0.0, lat: Double = 37.5, lng: Double = 127.1) {
-            val fix = RawFix(lat, lng, accuracy, now - (ageSeconds * 1000).toLong())
-            listeners.values.toList().forEach { it(fix) }
-        }
-    }
-
-    private class FakeGate(var value: LocationPermission, private val afterRequest: LocationPermission = value) : PermissionGate {
-        var requests = 0
-        override fun current() = value
-        override suspend fun request(): LocationPermission { requests++; value = afterRequest; return value }
-    }
-
     private val dispatcher = StandardTestDispatcher()
     private val logs = ArrayList<String>()
     private fun store(src: FakeSource, gate: PermissionGate) = LocationStore(src, gate, log = { logs += it })
@@ -183,12 +158,5 @@ class LocationStoreTest {
         advanceTimeBy(8_001); runCurrent()
         assertEquals(LocationException.Kind.Unavailable, kindOf(d.await()))
         assertNull(s.stored)
-    }
-
-    @Test fun `코어 어댑터는 세 원인을 NearbyLocationError로 번역한다`() = runTest(dispatcher) {
-        val src = FakeSource(); val s = store(src, FakeGate(LocationPermission.Coarse))
-        val source = s.nearbyCoordinateSource() as NearbyCoordinateSource.Current
-        val d = attempt { source.getCoordinate(false) }; runCurrent()
-        assertEquals(NearbyLocationError.ReducedAccuracy, d.await().exceptionOrNull())
     }
 }

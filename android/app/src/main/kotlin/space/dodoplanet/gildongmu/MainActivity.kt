@@ -5,6 +5,10 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.setContent
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import androidx.compose.material3.MaterialTheme
 import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewmodel.initializer
@@ -44,6 +48,10 @@ class MainActivity : ComponentActivity() {
             AppConfig.permissionGate.deliver()
         }
         AppConfig.permissionGate.attach { permissions -> permissionLauncher.launch(permissions) }
+        // 수동 위치 이동 판정 트리거 ①②(spec §13-2·판정 34): 앱 시작 겸 전경 복귀 = ON_START(단일 액티비티). 재생성 과발화는 판정의 30초 디바운스가 막는다.
+        lifecycle.addObserver(LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_START) lifecycleScope.launch { AppConfig.manualLocationJudge.run() }
+        })
         // ⚠ Activity를 캡처하지 않는다 — ViewModel은 구성 변경을 넘어 살아 첫 Activity를 붙들면 누수다.
         // 앱 컨텍스트의 리소스도 앱별 언어 변경을 따라간다.
         val app: Context = applicationContext
@@ -55,7 +63,7 @@ class MainActivity : ComponentActivity() {
                     dataLocale = { AppLocale.dataLocale(app.resources) },
                     strings = searchStrings(app),
                     savedState = createSavedStateHandle(),
-                    coordinate = { AppConfig.locationStore.gpsCoordinateForRanking() },
+                    coordinate = { AppConfig.effectiveLocation.coordinateForRanking() },
                 )
             }
         }
@@ -66,7 +74,7 @@ class MainActivity : ComponentActivity() {
         val nearby = nearbyStrings(app)
         val factories = AppFactories(
             search = factory,
-            nearby = { kind, anchor -> nearbyFactory(kind, anchor, services, nearby) { AppConfig.locationStore.nearbyCoordinateSource() } },
+            nearby = { kind, anchor -> nearbyFactory(kind, anchor, services, nearby) { AppConfig.effectiveLocation.nearbyCoordinateSource() } },
             busRouteStops = { route -> busRouteStopsFactory(route, nearbyService, nearby) },
             place = { place -> placeDetailFactory(place, PlaceHoursService(AppConfig.apiClient), placeStrings(app), StationService(AppConfig.apiClient), services.barrierFree) { AppLocale.dataLocale(app.resources) } },
             requestPreciseLocation = { AppConfig.permissionGate.request() == LocationPermission.Fine },
