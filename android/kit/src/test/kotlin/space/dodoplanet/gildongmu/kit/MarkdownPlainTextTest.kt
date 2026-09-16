@@ -41,6 +41,13 @@ class MarkdownPlainTextTest {
         assertEquals("인용문\n\n본문", MarkdownPlainText.strip("> 인용문\n---\n본문"))
     }
 
+    /** 명시 클래스는 ICU 뜻이다(Kit 테스트 없음 — 플랫폼 차이 가드): 한글 펜스 태그도 벗기고, NBSP 헤딩·전각 숫자 목록도 걷는다. */
+    @Test fun `유니코드 공백 숫자 단어 문자는 ICU와 같다`() {
+        assertEquals("코드", MarkdownPlainText.strip("```한국어 코드```"))
+        assertEquals("제목", MarkdownPlainText.strip("##\u00A0제목"))
+        assertEquals("항목", MarkdownPlainText.strip("１. 항목"))
+    }
+
     @Test fun `평문은 그대로`() {
         assertEquals("그냥 평범한 문장입니다.", MarkdownPlainText.strip("그냥 평범한 문장입니다."))
     }

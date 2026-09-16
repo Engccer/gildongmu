@@ -119,6 +119,12 @@ class SubwayArrivalLineTest {
         assertNotNull(subwayArrivalProse("서울 도착", "서울"))
     }
 
+    /** 공백은 유니코드 뜻(웹 JS·Swift와 같다) — NBSP가 섞인 시간 문장도 인식한다. 숫자는 ASCII만(웹과 같다). */
+    @Test fun unicodeWhitespaceButAsciiDigits() {
+        assertEquals(SubwayArrivalPlan.Eta(3, null, null, "강일"), subwayArrivalProse("3분\u00A0후", "강일"))
+        assertNull(subwayArrivalProse("３분 후", "강일"))
+    }
+
     /**
      * 정규식 미러 함정의 직접 가드: 대괄호 형태 시간 문장이 인식돼야 한다(문자 클래스의 `[`를 이스케이프하지 않으면
      * Java는 패턴 전체를 다르게 읽어 시간형이 전량 원문 경로로 떨어진다). Kit 테스트 없음 — README §3 함정 보강.

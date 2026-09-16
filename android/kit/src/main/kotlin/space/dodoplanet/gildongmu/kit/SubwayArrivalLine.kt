@@ -26,25 +26,32 @@ sealed class SubwayArrivalPlan {
     data class Eta(val minutes: Int?, val seconds: Int?, val stops: Int?, val nowAt: String?) : SubwayArrivalPlan()
 }
 
+/**
+ * 정규식 약칭 클래스(공백·숫자)는 쓰지 않는다 — JVM은 ASCII, 안드로이드 ICU·Swift는 유니코드라 테스트와 기기가 갈린다.
+ * 공백은 유니코드 공백(White_Space 속성, Swift·JS와 같은 뜻), 숫자는 `[0-9]`(JS와 같다 — 전각 숫자는 Swift도 `Int`로
+ * 읽지 못해 결과가 같다. Kotlin `toIntOrNull`은 전각 숫자를 읽으므로 넓히면 갈린다).
+ */
+private const val WS = """[\t\n\u000B\f\r\u0085\p{Z}]"""
+
 private val PREV_EVENT = Regex("""^전역 (진입|도착|출발)$""")
-private val PREV_DEPARTED_WITH_STATION = Regex("""^(.+?)\s*전역출발$""")
+private val PREV_DEPARTED_WITH_STATION = Regex("""^(.+?)$WS*전역출발$""")
 private val STATION_EVENT = Regex("""^(.+?) (진입|도착|출발)$""")
 
 /**
  * ⚠ 괄호는 **필수**다. 코퍼스 254행이 전부 괄호를 다는데, 괄호 없는 변형이 오면 그 역이 열차 위치라는 보장이
  * 없다(`{X} 전역출발`의 X가 조회 역 자신인 것과 같은 계열일 수 있다) — 원문에 맡긴다.
  */
-private val STOPS_AWAY = Regex("""^\[(\d+)\]번째 전역\s*\((.+)\)$""")
+private val STOPS_AWAY = Regex("""^\[([0-9]+)\]번째 전역$WS*\((.+)\)$""")
 
 /**
  * 괄호는 소·대괄호 둘 다 온다(`4분 후 (삼각지)` · `3분48초후[3번째 전]`).
  * ⚠ 문자 클래스 안의 `[`는 반드시 이스케이프한다(`[(\[]`) — Java·ICU는 `[([]`를 중첩 집합의 시작으로 읽어
  * 패턴이 통째로 어긋나고(시간형 전량 미인식), JS는 같은 표기를 문자로 읽어 **웹만 통과한다**.
  */
-private val ETA = Regex("""^(?:(\d+)분)?(?:\s*(\d+)초)?\s*후(?:\s*[(\[](.+)[)\]])?$""")
+private val ETA = Regex("""^(?:([0-9]+)분)?(?:$WS*([0-9]+)초)?$WS*후(?:$WS*[(\[](.+)[)\]])?$""")
 
 /** 구 문법 `3분 후(2번째 전)`의 괄호 — 역명이 아니라 잔여 정거장이다. */
-private val ETA_STOPS_PAREN = Regex("""^\[?(\d+)\]?번째 전$""")
+private val ETA_STOPS_PAREN = Regex("""^\[?([0-9]+)\]?번째 전$""")
 
 /** 첫 매치의 그룹들(참여하지 않은 그룹은 null). Swift `match(_:_:)`가 `NSRegularExpression.firstMatch`로 읽는 것과 같다. */
 private fun match(regex: Regex, text: String): List<String?>? =
