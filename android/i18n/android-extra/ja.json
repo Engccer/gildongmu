@@ -68,6 +68,9 @@
       "ttsUnavailable": "この言語の音声案内は利用できません。画面の案内文をご確認ください",
       "serviceStartFailed": "案内サービスを開始できませんでした。アプリを画面に表示したまま再開してください",
       "notificationChannel": "徒歩案内"
+    },
+    "settings": {
+      "resultHapticsFooter": "検索と周辺の結果を振動でもお知らせします。画面が点灯していて、端末の触覚フィードバック設定がオンのときだけ振動します。"
     }
   },
   "search": {

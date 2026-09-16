@@ -68,6 +68,9 @@
       "ttsUnavailable": "La guida vocale non è disponibile in questa lingua. Controlla il testo della guida sullo schermo",
       "serviceStartFailed": "Impossibile avviare il servizio di guida. Tieni l’app sullo schermo e riavvia",
       "notificationChannel": "Guida a piedi"
+    },
+    "settings": {
+      "resultHapticsFooter": "I risultati di Cerca e Nelle vicinanze vengono segnalati anche con una vibrazione. Vibra solo con lo schermo acceso e il feedback aptico del dispositivo attivo."
     }
   },
   "search": {

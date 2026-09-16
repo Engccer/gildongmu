@@ -265,6 +265,7 @@
     <string name="android_settings_releaseNotesError">アップデート履歴を読み込めませんでした</string>
     <string name="android_settings_releaseNotesVersion">バージョン %1$s</string>
     <string name="android_settings_reportProblem">問題を報告</string>
+    <string name="android_settings_resultHapticsFooter">検索と周辺の結果を振動でもお知らせします。画面が点灯していて、端末の触覚フィードバック設定がオンのときだけ振動します。</string>
     <string name="android_settings_theme">テーマ</string>
     <string name="android_settings_themeDark">ダーク</string>
     <string name="android_settings_themeLight">ライト</string>

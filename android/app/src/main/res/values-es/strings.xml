@@ -265,6 +265,7 @@
     <string name="android_settings_releaseNotesError">No se pudieron cargar las notas de la versión</string>
     <string name="android_settings_releaseNotesVersion">Versión %1$s</string>
     <string name="android_settings_reportProblem">Informar de un problema</string>
+    <string name="android_settings_resultHapticsFooter">Los resultados de Buscar y Cerca de mí también se avisan con vibración. Solo vibra con la pantalla encendida y la respuesta háptica del dispositivo activada.</string>
     <string name="android_settings_theme">Tema</string>
     <string name="android_settings_themeDark">Oscuro</string>
     <string name="android_settings_themeLight">Claro</string>

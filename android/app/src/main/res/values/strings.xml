@@ -265,6 +265,7 @@
     <string name="android_settings_releaseNotesError">업데이트 이력을 불러올 수 없습니다</string>
     <string name="android_settings_releaseNotesVersion">버전 %1$s</string>
     <string name="android_settings_reportProblem">문제 신고</string>
+    <string name="android_settings_resultHapticsFooter">검색과 내 주변의 결과를 진동으로도 알립니다. 화면이 켜져 있고 기기의 촉각 피드백 설정이 켜져 있을 때만 진동합니다.</string>
     <string name="android_settings_theme">테마</string>
     <string name="android_settings_themeDark">다크</string>
     <string name="android_settings_themeLight">라이트</string>

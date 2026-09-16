@@ -68,6 +68,9 @@
       "ttsUnavailable": "Voice guidance is not available for this language. Check the guidance text on screen",
       "serviceStartFailed": "Could not start the guidance service. Keep the app on screen and start again",
       "notificationChannel": "Walking guidance"
+    },
+    "settings": {
+      "resultHapticsFooter": "Search and Nearby results are also signaled with vibration. Vibrates only while the screen is on and the device's haptic feedback setting is enabled."
     }
   },
   "search": {
