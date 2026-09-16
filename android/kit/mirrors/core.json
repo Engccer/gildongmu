@@ -57,7 +57,10 @@
     },
     {
       "swift": "LocationNarrative.swift",
-      "status": "pending"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/LocationNarrative.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/LocationNarrativeTest.kt",
+      "note": "directionWord는 Swift처럼 모듈 internal"
     },
     {
       "swift": "ManualLocation.swift",
@@ -89,7 +92,10 @@
     },
     {
       "swift": "PlaceProjection.swift",
-      "status": "pending"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/PlaceProjection.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/PlaceProjectionTest.kt",
+      "note": "guideDestinationPlace의 BeaconDest는 GUIDE Beacon.kt(선행 묶음 41cd341c). String(format: %.5f) → String.format(Locale.ROOT)"
     },
     {
       "swift": "QuickExitText.swift",
@@ -106,7 +112,10 @@
     },
     {
       "swift": "RouteService.swift",
-      "status": "pending"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/RouteService.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/RouteServiceTest.kt",
+      "note": "via: (lat:, lng:)? 튜플 → RoutePoint?(응답 RouteWaypoint.coord와 같은 타입), walkAlternatives 튜플 반환 → RouteService.WalkAlternatives. Kit RouteServiceQueryTests의 StationService·NearbyService lang 케이스는 StationServiceTest·NearbyServiceTest에 있다"
     },
     {
       "swift": "StationMatch.swift",
@@ -136,7 +145,10 @@
     },
     {
       "swift": "TransitExitLines.swift",
-      "status": "pending"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/TransitExitLines.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/TransitExitLinesTest.kt",
+      "note": "출구 형식 게이트 transitValidExitNo는 GUIDE TransitGuide.kt 소유(선행 묶음 41cd341c). boardExit*(legs, at:) → (legs, index)"
     },
     {
       "swift": "TransitWalkLegText.swift",

@@ -28,38 +28,11 @@
       ]
     },
     {
-      "swift": "Tests/GildongmuKitTests/KakaoCategoryTests.swift#projectionsCarryCategoryEnAndKeepRawCategory",
-      "to": "core",
-      "why": "kidsPlaceToPlace·surroundingPlaceToPlace·sceneItemToPlace(PlaceProjection)·isStation(StationMatch)",
-      "blockedBy": [
-        "PlaceProjection.swift",
-        "StationMatch.swift"
-      ]
-    },
-    {
       "swift": "Tests/GildongmuKitTests/BarrierFreeModelsTests.swift#matchReturnsNilOnNetworkError",
       "to": "core",
       "why": "BarrierFreeService",
       "blockedBy": [
         "BarrierFreeService.swift"
-      ]
-    },
-    {
-      "swift": "Tests/GildongmuKitTests/RouteModelsTests.swift#routeServiceWalk*,transitDisplayPickLineIsAtomic",
-      "to": "core",
-      "why": "RouteService·TransitDisplay",
-      "blockedBy": [
-        "RouteService.swift",
-        "TransitDisplay.swift"
-      ]
-    },
-    {
-      "swift": "Tests/GildongmuKitTests/NearbyOverviewTests.swift#overview*,sceneItemToPlace*",
-      "to": "core",
-      "why": "buildOverviewLines(LocationNarrative)·sceneItemToPlace(PlaceProjection) — overviewLines*·overviewTransitVariantsKo·overviewNearestUsesSingularSentenceForOnePlace 포함",
-      "blockedBy": [
-        "LocationNarrative.swift",
-        "PlaceProjection.swift"
       ]
     }
   ],
