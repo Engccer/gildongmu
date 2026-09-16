@@ -47,6 +47,7 @@ class MainActivity : ComponentActivity() {
                     dataLocale = { AppLocale.dataLocale(app.resources) },
                     strings = searchStrings(app),
                     savedState = createSavedStateHandle(),
+                    coordinate = { AppConfig.locationStore.coordinateForRanking() },
                 )
             }
         }

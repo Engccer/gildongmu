@@ -77,7 +77,7 @@ fun AppRoot(factories: AppFactories) {
             startDestination = AppTab.initial(experimental).route(),
             modifier = Modifier.padding(padding),
         ) {
-            composable<SearchRoute> { SearchScreen(viewModel(factory = factories.search)) }
+            composable<SearchRoute> { SearchScreen(viewModel(factory = factories.search)) { navController.navigate(PlaceDetailRoute.of(it)) } }
             composable<DirectionsRoute> { PlaceholderScreen(AppTab.directions) } // M3가 자기 화면으로 바꾼다
             composable<NearbyRoute> { entry ->
                 val returnFocus: ReturnFocusViewModel = viewModel(entry)
