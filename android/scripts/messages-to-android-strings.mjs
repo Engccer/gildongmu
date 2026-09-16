@@ -45,6 +45,7 @@ export function resourceName(key) {
  */
 export function escapeAndroid(value) {
   let v = value
+    .replace(/\\/g, '\\\\')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
@@ -65,7 +66,8 @@ export function unescapeAndroid(value) {
     .replace(/\\'/g, "'")
     .replace(/&gt;/g, '>')
     .replace(/&lt;/g, '<')
-    .replace(/&amp;/g, '&');
+    .replace(/&amp;/g, '&')
+    .replace(/\\\\/g, '\\');
 }
 
 /**
@@ -79,7 +81,7 @@ export function buildAndroidStrings(built = buildCatalog(TARGET)) {
   const rejected = [];
   for (const key of Object.keys(catalog.strings).sort()) {
     for (const [lang, unit] of Object.entries(catalog.strings[key].localizations)) {
-      if (!LOCALES.includes(lang)) continue;
+      if (!LOCALES.includes(lang)) throw new Error(`[android-strings] LOCALES 밖 로케일 ${lang} (${key}) — LOCALES와 values-${lang}/를 함께 더한다`);
       const value = unit.stringUnit.value.replace(/%(\d+)\$@/g, '%$1$$s');
       if (!(key in argOrder) && value.includes('%%')) rejected.push(`${key}/${lang}`);
       strings[lang][key] = value;

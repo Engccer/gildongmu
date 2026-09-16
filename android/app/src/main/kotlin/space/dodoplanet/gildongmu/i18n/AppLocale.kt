@@ -2,8 +2,6 @@ package space.dodoplanet.gildongmu.i18n
 
 import android.content.res.Resources
 import androidx.annotation.StringRes
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
 import space.dodoplanet.gildongmu.R
 import space.dodoplanet.gildongmu.kit.formatLocalized
 
@@ -27,21 +25,12 @@ object AppLocale {
     fun dataLocaleOf(lang: String): String = if (lang == "ko") "ko" else "en"
 
     fun dataLocale(res: Resources): String = dataLocaleOf(current(res))
-
-    /** 카탈로그 포맷(`%N$s` + ICU 복수 블록) + 인자 → 표시 문자열. :kit `formatLocalized` 한 곳을 지난다(A29). */
-    fun resolveFormat(format: String, lang: String, args: List<Any>): String = formatLocalized(format, lang, args)
 }
 
 /**
- * 인자 있는 문자열 조회의 **유일한** 경로. `getString(id, args)`·`stringResource(id, args)`는 ICU 복수 블록을
- * 풀지 못해 원문이 낭독된다 — `LocalizedCallSiteGuardTest`가 그 호출 꼴을 잠근다. 인자 없는 문자열은
- * `stringResource(id)`를 그대로 쓴다.
+ * 인자 있는 문자열 조회의 **유일한** 경로 — 카탈로그 포맷(`%N$s` + ICU 복수 블록)을 :kit `formatLocalized`가
+ * 푼다(A29). 인자를 붙인 `getString`·`stringResource`는 ICU 복수 블록을 풀지 못해 원문이 낭독된다 —
+ * `LocalizedCallSiteGuardTest`가 그 호출 꼴을 잠근다. 인자 없는 문자열은 `stringResource(id)`를 그대로 쓴다.
  */
 fun appLocalized(res: Resources, @StringRes id: Int, vararg args: Any): String =
-    AppLocale.resolveFormat(res.getString(id), AppLocale.current(res), args.toList())
-
-@Composable
-fun appString(@StringRes id: Int, vararg args: Any): String {
-    val res = LocalContext.current.resources
-    return appLocalized(res, id, *args)
-}
+    formatLocalized(res.getString(id), AppLocale.current(res), args.toList())

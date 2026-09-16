@@ -81,3 +81,10 @@ class SpokenDistanceUnitsTest {
         assertEquals("半径300 미터以内", spoken("半径300m以内"))
     }
 }
+
+class JoinTextTest {
+    @Test fun `빈 조각과 null을 버리고 쉼표로 잇는다`() {
+        assertEquals("음식점, 서울 강동구", joinText("음식점", "", null, "서울 강동구"))
+        assertEquals("", joinText(null, ""))
+    }
+}

@@ -13,7 +13,7 @@
 
 ### 안드로이드 M1 — 검색 화면 (`android/app`)
 
-웨이브 1의 첫 화면. spec `docs/superpowers/specs/2026-09-16-android-app-design.md`(적대적 리뷰 2회 통과), 계획 `docs/superpowers/plans/2026-09-16-android-m1-search.md`. 옴니박스 검색(장소+주소 병렬, 웹 폴백)·정확도순 플랫 리스트·칩 필터 두 축·최근 검색(고정·삭제)을 `SearchViewModel`(iOS `SearchModel` 미러, `TextFieldState`)과 `SearchScreen`(Compose, `Column+verticalScroll`)으로. 접근성 기본형 셋(병합 행 `mergedRow`·헤딩·단일 live region `StatusLine`)과 첫 결과 착지·물리 Enter 제출을 세웠다. 앱 문자열은 `messages/*.json` → `res/values(-lang)/strings.xml` 생성 파이프라인(`%N$s`+ICU 원문, `app_locale` 마커, arg-order 잠금, 드리프트 가드 6종)이고 인자 있는 조회는 `appLocalized`만(소스 가드). 실기기 검사 레인(ATF)은 `adb` 연결 시. M1은 위치를 쓰지 않는다(M2).
+웨이브 1의 첫 화면 — 옴니박스 검색(장소+주소 병렬, 웹 폴백)·정확도순 플랫 리스트·칩 필터 두 축·최근 검색(고정·삭제)을 iOS `SearchModel` 미러 ViewModel과 Compose 화면으로 세우고, 접근성 기본형 셋(병합 행·헤딩·단일 live region)과 첫 결과 착지를 정했다. 앱 문자열은 `messages/*.json` → `res/values(-lang)/strings.xml` 생성 파이프라인(ICU 복수 원문 + arg-order 잠금 + 드리프트 가드). M1은 위치를 쓰지 않는다(M2). spec `docs/superpowers/specs/2026-09-16-android-app-design.md`(설계 리뷰 2회, 구현 리뷰 2건 반영), 계획 `docs/superpowers/plans/2026-09-16-android-m1-search.md`.
 
 ### 안드로이드 M0 — 뼈대·이식 방식 확립 (`android/`)
 

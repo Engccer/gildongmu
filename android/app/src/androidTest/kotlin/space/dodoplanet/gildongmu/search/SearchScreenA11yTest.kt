@@ -4,7 +4,8 @@ import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.accessibility.enableAccessibilityChecks
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
@@ -42,10 +43,10 @@ class SearchScreenA11yTest {
             SearchService(stubbedClient { url -> if (pathOf(url) == "/api/places") HttpResponse(200, places) else HttpResponse(200, emptyAddr) }),
             RecentSearchStore(InMemoryKeyValueStore()),
             { "ko" },
-            searchStrings(rule.activity.resources),
+            searchStrings(rule.activity.applicationContext),
             SavedStateHandle(),
         )
-        rule.setContent { SearchScreen(vm) }
+        rule.setContent { MaterialTheme { SearchScreen(vm) } } // 실제 앱과 같은 테마여야 대비 검사가 의미 있다
         rule.enableAccessibilityChecks()
 
         rule.onNodeWithTag("query").performTextInput("강동")

@@ -18,7 +18,6 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import space.dodoplanet.gildongmu.search.Notice
 
 // 접근성 기본형(spec §3, 헌장 정본 ~/.claude/ACCESSIBILITY.md). 다음 화면(M2~)도 이 셋을 반복한다.
 
@@ -43,8 +42,11 @@ fun Modifier.headingText(): Modifier = semantics { heading() }
  */
 @Composable
 fun StatusLine(notice: Notice, modifier: Modifier = Modifier) {
-    var shown by remember { mutableStateOf("") }
+    // 재마운트(회전·언어 변경·탭 복귀)에서 마지막 문장을 다시 발화하지 않는다 — 첫 seq는 재게시 없이 그대로 둔다.
+    val initialSeq = remember { notice.seq }
+    var shown by remember { mutableStateOf(notice.text) }
     LaunchedEffect(notice.seq) {
+        if (notice.seq == initialSeq) return@LaunchedEffect
         shown = ""
         withFrameNanos { }
         shown = notice.text

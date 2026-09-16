@@ -11,6 +11,8 @@ android/
          Models/*.swift → kit/.../kit/models/*.kt (하위 패키지 space.dodoplanet.gildongmu.kit.models)
   kit/mirrors/{foundation,core,guide}.json   미러 등록부(§5)
   scripts/messages-to-kit-strings.mjs         :kit 문자열 카탈로그 생성(§6)
+  scripts/messages-to-android-strings.mjs     :app res/values(-lang)/strings.xml 생성(§6 앱 문자열)
+  i18n/{arg-order.json,android-extra/}         ko 위치 인자 잠금 · 안드로이드 전용 키
 ```
 
 - `:kit`은 **안드로이드 의존이 0**이다. `import android.`·`import androidx.`가 한 줄이라도 들어오면 `KitPurityTest`가 빨개지고, `kit/build.gradle.kts`에 안드로이드 플러그인·의존성을 더해도 같은 테스트가 잡는다. 저장·네트워크·시계처럼 플랫폼이 필요한 것은 인터페이스(`HttpTransport`·`KeyValueStore`)로 두고 `:app`이 구현한다(D5 경계).
@@ -40,7 +42,7 @@ adb exec-out timeout 10 uiautomator dump /dev/tty   # 접근성 트리(스크린
 ./gradlew --stop                            # 끝나면 데몬을 내린다(16GB 머신)
 ```
 
-**무거운 게이트는 머신 전역 락 안에서 돈다**(계획 §3): `until mkdir ~/gildongmu-wt/gate.lock 2>/dev/null; do sleep 30; done` → `./gradlew :kit:test :app:assembleDebug :app:assembleExperimental` + `VITEST_MAX_THREADS=2 npm run test:run`(저장소 루트) → 실패해도 `rmdir ~/gildongmu-wt/gate.lock`. Gradle 워커는 `gradle.properties`가 2로 묶어 두었다.
+**무거운 게이트는 머신 전역 락 안에서 돈다** — 절차는 §7. Gradle 워커는 `gradle.properties`가 2로 묶어 두었다.
 
 ## 3. 이식 관용구 (Swift → Kotlin)
 
@@ -69,6 +71,8 @@ adb exec-out timeout 10 uiautomator dump /dev/tty   # 접근성 트리(스크린
 | 거리 | 미터 `Double`/`Int`(Swift와 같은 필드 타입 그대로) | `formatDistance`만 지난다(소수 km 직접 조립 금지) |
 | `Bundle.module.url(forResource:)` | `X::class.java.getResourceAsStream("/name")` | 리소스는 `kit/src/main/resources/` |
 | `#filePath` 5단계 상위 fixture 로딩 | `Fixtures.shared("x.json")` / `Fixtures.kit("x.json")` (§4) | |
+| `func f() -> (a: A, b: B)` (튜플 반환) | `data class <함수명 PascalCase>Result(val a: A, val b: B)` | 예: `advanceProgressAnchor` → `AdvanceProgressAnchorResult`. 필드 이름은 튜플 라벨 그대로 |
+| `CLLocation`의 `-1` = 무효(`horizontalAccuracy`·`speed`·`course`) | `Location.hasX()`가 false면 **`-1.0`을 넘긴다** | 판정 함수의 `> 0`·`isFinite` 가드가 Swift와 같이 무효로 거른다. null 인자를 새로 만들지 않는다(시그니처가 Swift와 갈린다) |
 
 ### JDK API 표면은 Android 12(API 31)까지
 
@@ -79,14 +83,15 @@ adb exec-out timeout 10 uiautomator dump /dev/tty   # 접근성 트리(스크린
 - **문자 클래스 안 `[`는 반드시 `\[`로 이스케이프한다**(`[(\[]`). Java도 Swift(ICU)처럼 `[[]`를 중첩 집합으로 읽어 웹(JS)만 초록이고 Kotlin·iOS만 전량을 놓친다(CLAUDE.md 함정). 공유 fixture를 Kotlin에서도 돌리는 것이 유일한 검출 수단이다.
 - `\b`는 한글·한자를 word character로 본다(웹·Swift와 같다). CJK 직결 꼴에는 부정 전방탐색을 쓴다(`Format.kt`).
 - 전방·후방탐색(`(?<!키즈)카페`)은 Java에서 그대로 통한다.
-- Kotlin raw string `"""…"""` 안에서는 `\d`를 그대로 쓴다. 일반 문자열이면 `\\d`.
+- **단축 클래스 `\d`·`\s`·`\w`(대문자 포함)는 쓰지 않는다** — JVM은 ASCII, 기기(ICU)는 유니코드로 읽어 전각 숫자·전각 공백에서 결과가 갈리는데 JVM 테스트는 초록이다. 명시 클래스(`[0-9]`·`[ \t]`·`[A-Za-z0-9_]`)만 쓴다. `RegexPortabilityTest`가 :kit 소스를 스캔한다.
+- 정규식은 raw string `"""…"""`에 쓴다(일반 문자열이면 `\\[`처럼 이중 이스케이프가 필요해 읽기 어렵다).
 - KDoc·주석 안에 `/*`를 쓰지 않는다 — Kotlin은 **중첩 블록 주석**이라 `/api/*` 같은 경로 하나가 주석을 열어 파일 전체를 삼킨다(실사고: `APIClient.kt` "Unclosed comment").
 
 ### 컴파일 규율
 
 `:kit`은 `allWarningsAsErrors`다. 경고 하나가 곧 빌드 실패이므로 미사용 변수·불필요한 캐스트를 남기지 않는다. `ExperimentalSerializationApi`(`descriptor.nullable` 등)는 `@OptIn`으로 명시한다.
 
-## 4. fixture 로더 (`kit/src/test/.../Fixtures.kt`)
+## 4. fixture 로더 (`kit/src/testFixtures/.../Fixtures.kt`)
 
 ```kotlin
 val cases = Fixtures.sharedJson("korea-boundary-cases.json", BoundaryCaseFile.serializer()).cases  // src/lib/__tests__/fixtures/
@@ -97,7 +102,7 @@ val lines = Fixtures.kit("chat-stream.ndjson").lines()                          
 - 저장소 루트는 `:kit build.gradle.kts`가 넘기는 `gildongmu.kitDir`에서 위로 올라가 `package.json` + `ios/GildongmuKit/Package.swift`가 있는 곳. 못 찾거나 파일이 없거나 비면 **실패한다**(조용히 통과하지 않는다).
 - fixture 모양은 테스트 파일 안의 `@Serializable private data class`로 그때그때 선언한다(Swift 테스트의 `private struct … Decodable`과 같은 자리).
 - 두 fixture 디렉터리는 **읽기만** 한다. 틀렸다고 판단되면 고치지 말고 코디네이터에 보고한다(웹·iOS 테스트도 같이 바뀌어야 한다).
-- 네트워크 계층 테스트는 `stubbedClient { url -> HttpResponse(status, body) }` / `StubTransport`(경로 판정은 `pathOf(url)`·`queryOf(url)`), 저장소는 `InMemoryKeyValueStore` — `kit/src/testFixtures`에 있어 `:app` 테스트(`testFixtures(project(":kit"))`)도 같은 것을 쓴다.
+- 네트워크 계층 테스트는 `stubbedClient { url -> HttpResponse(status, body) }` / `StubTransport`(경로 판정은 `pathOf(url)`·`queryOf(url)`), 저장소는 `InMemoryKeyValueStore` — 로더와 함께 `kit/src/testFixtures`에 있어 `:app` 테스트(`testFixtures(project(":kit"))`)도 같은 것을 쓴다(`Fixtures.repoRoot`로 소스 가드의 스캔 루트를 잡는다).
 
 ## 5. 미러 등록부 갱신법 (`kit/mirrors/<그룹>.json`)
 

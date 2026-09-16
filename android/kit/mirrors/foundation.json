@@ -225,7 +225,7 @@
       "status": "ported",
       "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/WalkAction.kt",
       "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/WalkActionTest.kt",
-      "note": "`imminentTone(action)`은 미이식 — `GuideTone`이 `RouteGuide.swift`에 있어 GUIDE가 `RouteGuide.kt`에 함께 싣는다(WalkActionTests의 두 테스트도 그때)"
+      "note": "`imminentTone(action)`은 `GuideTone`과 함께 GUIDE 그룹 `RouteGuide.kt`에 있다(guide.json 참조 — WalkActionTests의 두 테스트도 그쪽)"
     }
   ],
   "deferredTestsContract": "각 항목: swift = Kit 테스트 파일(#뒤는 함수 글롭), to = 이식 담당 그룹, blockedBy = 그 테스트가 부르는 미이식 Swift 파일. blockedBy 전부가 ported가 된 뒤에도 항목이 남아 있으면 mirror-registry.test.ts가 빨개진다(옮기고 지운다)."

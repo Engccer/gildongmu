@@ -8,7 +8,7 @@ import { join } from "node:path";
  * 술어: iOS `GildongmuKit/Sources/GildongmuKit/**` 전수가 `android/kit/mirrors/{foundation,core,guide}.json`
  * 셋 중 **정확히 하나**에 등재되어야 하고, 상태는 셋뿐이다 —
  *   - `ported`: `kotlin` 경로(저장소 상대)가 실재. `test`를 적었으면 그것도 실재
- *   - `excluded`: `reason` 필수(계획 §2가 정한 2건)
+ *   - `excluded`: `reason` 필수(계획 §2 목록과 정확히 같아야 한다)
  *   - `pending`: 아직 이식 전(그 목록이 곧 로직 세션의 할 일)
  * iOS에 새 Kit 파일이 생기면 여기서 빨개진다(등록부에 없다). 등록부가 사라진 Swift 파일을
  * 가리켜도 빨개진다(이름 바꾼 뒤 등록부를 안 고친 경우).
@@ -73,7 +73,7 @@ describe("안드로이드 미러 등록부", () => {
     expect(bad).toEqual([]);
   });
 
-  it("제외는 계획 §2의 두 건뿐이다", () => {
+  it("제외는 계획 §2 목록과 정확히 같다", () => {
     expect(all.filter((e) => e.status === "excluded").map((e) => e.swift).sort()).toEqual([
       "AudioSignalProtocol.swift",
       "Resources/Localizable.xcstrings",
