@@ -76,7 +76,8 @@ class GuideSourceGuardTest {
     }
 
     @Test fun `⑦ 매니페스트 — location 전경 서비스 1개, 배경 위치 0, MainActivity launchMode 무변경`() {
-        val manifest = app.resolve("AndroidManifest.xml").readText()
+        // 전경 서비스 선언은 실험판 소스셋 매니페스트에만(정식 APK에 0 — `AppSourceGuardTest`가 잠근다).
+        val manifest = app.resolve("../experimental/AndroidManifest.xml").readText()
         assertEquals(1, Regex("""foregroundServiceType="location"""").findAll(manifest).count())
         assertTrue(manifest.contains("android:name=\".guide.GuideForegroundService\""))
         assertTrue(!manifest.contains("ACCESS_BACKGROUND_LOCATION"))
