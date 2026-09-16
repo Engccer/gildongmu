@@ -1,6 +1,7 @@
 package space.dodoplanet.gildongmu.place
 
 import kotlinx.coroutines.test.runTest
+import space.dodoplanet.gildongmu.R
 import space.dodoplanet.gildongmu.kit.Fixtures
 import space.dodoplanet.gildongmu.kit.HttpResponse
 import space.dodoplanet.gildongmu.kit.StationService
@@ -23,6 +24,14 @@ import kotlin.test.assertTrue
 /** spec §12-3 — 역 자동 섹션 문장(iOS `StationSections.swift` 이식)과 5조각 로드의 3-state(판정 27). */
 class StationLinesTest {
     private val suffixed = { core: String -> "${core}호선" }
+
+    @Test fun `매핑표 미지 값 — kind·dailyType·direction·compass·operating은 null(원문·서버 문장·조각 생략)`() {
+        assertNull(metroKindResId("teleporter")); assertEquals(R.string.subway_kind_elevator, metroKindResId("elevator"))
+        assertNull(dailyTypeResId("holiday")); assertEquals(R.string.timetable_dailyType_sunday, dailyTypeResId("sunday"))
+        assertNull(directionResId("loop")); assertEquals(R.string.timetable_direction_up, directionResId("up"))
+        assertNull(compassResId("nne")); assertEquals(R.string.subway_direction_nw, compassResId("nw"))
+        assertNull(operatingResId("unknown")); assertNull(operatingResId(null)); assertEquals(R.string.android_station_operatingStopped, operatingResId("stopped"))
+    }
 
     @Test fun `시설 수 3-state`() {
         val f = { l: String, c: Int? -> countText(l, c, { "$it 정보 없음" }, { "$it 없음" }) { l2, n -> "$l2 ${n}대" } }

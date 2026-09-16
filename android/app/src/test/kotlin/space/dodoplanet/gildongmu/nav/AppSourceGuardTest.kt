@@ -33,22 +33,35 @@ class AppSourceGuardTest {
         assertTrue(hasRequesterAfterFocusTarget("""Modifier.mergedRow("k", spoken, focus = requesterFor(key)) .headingText() .focusRequester(r)"""))
         assertTrue(hasRequesterAfterFocusTarget("""Modifier.focusable().padding(8.dp).focusRequester(r)"""))
         assertTrue(hasRequesterAfterFocusTarget("""Modifier.focusable().padding(8.dp).landingTarget(r)"""))
+        assertTrue(hasRequesterAfterFocusTarget("""Modifier.clickable(role = Role.Button) { open() }.testTag(k).landingTarget(r)"""))
         assertTrue(!hasRequesterAfterFocusTarget("""Modifier.focusRequester(r).mergedRow("k", focus = requesterFor(key)).headingText()"""))
         assertTrue(!hasRequesterAfterFocusTarget("""Modifier.mergedRow("k").padding(4.dp) ; val x = other.focusRequester(r)"""))
     }
 
     /** `mergedRow(`·`focusable(`의 닫는 괄호 뒤로 이어지는 `.name(...)` 체인만 따라가며 `focusRequester`를 찾는다. */
     private fun hasRequesterAfterFocusTarget(code: String): Boolean {
-        val starts = Regex("""\b(mergedRow|focusable)\(""")
+        val starts = Regex("""\b(mergedRow|focusable|clickable)\(""")
         for (m in starts.findAll(code)) {
-            var i = skipBalanced(code, m.range.last) ?: continue
+            var i = skipTrailingLambda(code, skipBalanced(code, m.range.last) ?: continue)
             while (true) {
                 val chain = Regex("""^\s*\.([A-Za-z_][A-Za-z0-9_]*)\(""").find(code.substring(i)) ?: break
                 if (chain.groupValues[1] == "focusRequester" || chain.groupValues[1] == "landingTarget") return true
-                i = skipBalanced(code, i + chain.range.last) ?: break
+                i = skipTrailingLambda(code, skipBalanced(code, i + chain.range.last) ?: break)
             }
         }
         return false
+    }
+
+    /** `i` 뒤에 공백을 두고 `{`가 오면(후행 람다 — `clickable(...) { }`) 짝 `}`의 다음 인덱스, 아니면 `i`. */
+    private fun skipTrailingLambda(code: String, i: Int): Int {
+        var j = i
+        while (j < code.length && code[j] == ' ') j++
+        if (j >= code.length || code[j] != '{') return i
+        var depth = 0
+        for (k in j until code.length) {
+            when (code[k]) { '{' -> depth++; '}' -> { depth--; if (depth == 0) return k + 1 } }
+        }
+        return i
     }
 
     /** `openIndex`가 `(`일 때 짝 `)`의 다음 인덱스. 없으면 null. */

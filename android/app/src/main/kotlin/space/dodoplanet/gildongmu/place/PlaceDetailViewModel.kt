@@ -38,15 +38,16 @@ fun hoursLineText(hours: PlaceHoursToday, s: PlaceStrings): String {
 
 /**
  * 장소 상세 상태: 영업시간 줄(진입 시 1회, 조용히) + 통지(복사·열기 실패) + 조용한 조각(역 자동 섹션 5종 — 역일 때만, 무장애 편의시설 —
- * 역 여부 무관; spec §12-3). `station`·`barrierFree`는 테스트 편의로 nullable(없으면 그 조각 로드 없음).
+ * 역 여부 무관; spec §12-3). 세 인자는 기본값이 없다 — 생략이 컴파일을 통과하면 자동 섹션이 조용히 사라지고, `dataLocale` 기본값은 en 사용자에게
+ * 한국어 역 데이터를 준다(spec 리뷰 n7).
  */
 class PlaceDetailViewModel(
     val place: Place,
     private val hours: PlaceHoursService,
     private val strings: PlaceStrings,
-    station: StationService? = null,
-    barrierFree: BarrierFreeService? = null,
-    dataLocale: () -> String = { "ko" },
+    station: StationService,
+    barrierFree: BarrierFreeService,
+    dataLocale: () -> String,
 ) : ViewModel() {
     private val _hoursLine = MutableStateFlow<String?>(null)
     val hoursLine: StateFlow<String?> = _hoursLine.asStateFlow()
@@ -69,12 +70,10 @@ class PlaceDetailViewModel(
             val today = hours.today(place.lat, place.lng, place.name, place.roadAddress) // 전송 계층이 IO로 옮긴다
             _hoursLine.value = today?.let { hoursLineText(it, strings) }
         }
-        if (station != null && isStation(place)) {
+        if (isStation(place)) {
             viewModelScope.launch { _station.value = loadStationSections(station, place.name, dataLocale()) }
         }
-        if (barrierFree != null) {
-            viewModelScope.launch { _barrierFree.value = barrierFree.match(place.lat, place.lng, place.name)?.takeIf { it.facilities.isNotEmpty() } }
-        }
+        viewModelScope.launch { _barrierFree.value = barrierFree.match(place.lat, place.lng, place.name)?.takeIf { it.facilities.isNotEmpty() } }
     }
 
     /** 복사 뒤 통지 — 포커스가 버튼에 그대로 남으므로 통지가 유일한 증거. */

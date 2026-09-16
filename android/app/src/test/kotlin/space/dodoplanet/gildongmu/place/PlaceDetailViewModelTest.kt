@@ -31,7 +31,9 @@ class PlaceDetailViewModelTest {
         hoursLine = { "오늘 영업시간 $it (Google Maps)" }, allDay = { "24시간" }, closed = { "오늘 휴무 (Google Maps)" }, nextDay = { "다음 날 $it" },
     )
     private val place = Place(id = "kakao-7", name = "카페", category = "카페", address = "서울", roadAddress = "서울 강동구 천호대로 1", lat = 37.5, lng = 127.1)
-    private fun vm(body: HttpResponse) = PlaceDetailViewModel(place, PlaceHoursService(stubbedClient { body }), strings)
+    private val down = stubbedClient { HttpResponse(500, "") }
+    private fun vm(body: HttpResponse, station: StationService = StationService(down), barrierFree: BarrierFreeService = BarrierFreeService(down), place: Place = this.place) =
+        PlaceDetailViewModel(place, PlaceHoursService(stubbedClient { body }), strings, station, barrierFree) { "ko" }
 
     @Test fun `영업시간 200이면 한 줄, 그 밖(429·404·hours null)은 줄 없음·통지 없음`() = runTest(dispatcher) {
         val ok = vm(HttpResponse(200, """{"hours":{"ranges":[{"open":"09:00","close":"18:00","closesNextDay":false}],"allDay":false}}"""))
@@ -50,24 +52,23 @@ class PlaceDetailViewModelTest {
             else -> HttpResponse(500, "")
         } })
         val gangnam = place.copy(name = "강남역", category = "교통,수송 > 지하철")
-        val v = PlaceDetailViewModel(gangnam, PlaceHoursService(stubbedClient { HttpResponse(404, "") }), strings, station) { "ko" }
+        val v = vm(HttpResponse(404, ""), station = station, place = gangnam)
         assertNull(v.station.value)
         dispatcher.scheduler.advanceUntilIdle()
         val s = assertNotNull(v.station.value)
         assertEquals("강남", s.meta?.name); assertEquals(TimetableState.Error, s.timetable); assertNull(s.arrivals); assertNull(s.korail); assertNull(s.metro)
         assertEquals("", v.notice.value.text) // 조용히 나타난다 — 통지 없음
-        val cafe = PlaceDetailViewModel(place, PlaceHoursService(stubbedClient { HttpResponse(404, "") }), strings, station) { "ko" }
+        val cafe = vm(HttpResponse(404, ""), station = station)
         dispatcher.scheduler.advanceUntilIdle()
         assertNull(cafe.station.value) // 역이 아니면 로드하지 않는다
     }
 
     @Test fun `무장애 편의시설 — 시설 1개 이상일 때만, 0건·실패·미매칭은 null(무음 미노출)`() = runTest(dispatcher) {
-        val hours = PlaceHoursService(stubbedClient { HttpResponse(404, "") })
-        val ok = PlaceDetailViewModel(place, hours, strings, barrierFree = BarrierFreeService(stubbedClient { HttpResponse(200, """{"detail":{"contentId":"1","name":"카페","facilities":[{"key":"wheelchair","label":"휠체어","value":"대여 가능"}]}}""") }))
+        val ok = vm(HttpResponse(404, ""), barrierFree = BarrierFreeService(stubbedClient { HttpResponse(200, """{"detail":{"contentId":"1","name":"카페","facilities":[{"key":"wheelchair","label":"휠체어","value":"대여 가능"}]}}""") }))
         dispatcher.scheduler.advanceUntilIdle()
         assertEquals("wheelchair", assertNotNull(ok.barrierFree.value).facilities.single().key)
         for (r in listOf(HttpResponse(500, ""), HttpResponse(200, """{"detail":null}"""), HttpResponse(200, """{"detail":{"contentId":"1","name":"카페","facilities":[]}}"""))) {
-            val v = PlaceDetailViewModel(place, hours, strings, barrierFree = BarrierFreeService(stubbedClient { r }))
+            val v = vm(HttpResponse(404, ""), barrierFree = BarrierFreeService(stubbedClient { r }))
             dispatcher.scheduler.advanceUntilIdle()
             assertNull(v.barrierFree.value); assertEquals("", v.notice.value.text)
         }
