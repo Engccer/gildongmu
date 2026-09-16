@@ -30,13 +30,14 @@ sealed class Landing {
  */
 class NearbyKindSpec<P : Any>(
     val coverage: NearbyCoverage,
-    val fetch: suspend (NearbyCoord?) -> P,
+    /** 둘째 인자 = 직전 Loaded payload(재조회 때만 non-null). 조각 병합 kind(conditions)가 쓴다(spec 판정 25). */
+    val fetch: suspend (NearbyCoord?, P?) -> P,
     val isEmpty: (P) -> Boolean,
     /** 첫 로드 착지 키. null → non-null 전이가 곧 "목록이 처음 생겼다"(iOS `nearbyFocusOnLoad`). */
     val firstKey: (P) -> String?,
     val loadedNotice: (P) -> String,
-    /** 0건 본문 — payload를 받는다(지하철은 최근접 역 문장, 통지와 같은 문장). */
-    val emptyCopy: (P) -> String,
+    /** 0건 본문 — payload를 받는다(지하철은 최근접 역 문장, 통지와 같은 문장). `isEmpty`가 항상 거짓인 kind(walkInfra·conditions)는 null. */
+    val emptyCopy: ((P) -> String)? = null,
 )
 
 /**
@@ -61,6 +62,11 @@ class NearbyScreenViewModel<P : Any>(
     private val _landing = MutableStateFlow<Landing>(Landing.None)
     val landing: StateFlow<Landing> = _landing.asStateFlow()
 
+    /** 묶음별 리빌 창(둘러보기 "주변 상황", spec 판정 31). 산술은 :kit `RevealWindow` 한 벌, 상태에는 공개 수만 투영한다. */
+    private val groupReveal = mutableMapOf<String, RevealWindow>()
+    private val _groupWindows = MutableStateFlow<Map<String, Int>>(emptyMap())
+    val groupWindows: StateFlow<Map<String, Int>> = _groupWindows.asStateFlow()
+
     /** 진행 중(첫 로드·재조회 모두). 코어는 Loaded를 유지한 채 재조회하므로 phase로는 알 수 없다 — 새로고침 버튼 `stateDescription` 근거. */
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
@@ -80,14 +86,14 @@ class NearbyScreenViewModel<P : Any>(
     private val core = NearbyLoadCore<P>(
         coordinate = coordinate,
         coverage = spec.coverage,
-        fetch = { coord, _ -> spec.fetch(coord) },
-        willCommit = { reveal.reset(); _visibleCount.value = reveal.visibleCount }, // 커밋과 원자
+        fetch = { coord, previous -> spec.fetch(coord, previous) },
+        willCommit = { reveal.reset(); _visibleCount.value = reveal.visibleCount; groupReveal.clear(); _groupWindows.value = emptyMap() }, // 커밋과 원자
         onEvent = ::onEvent,
     )
     val phase: StateFlow<NearbyLoadPhase<P>> = core.phase
 
     fun isEmpty(payload: P): Boolean = spec.isEmpty(payload)
-    fun emptyCopy(payload: P): String = spec.emptyCopy(payload)
+    fun emptyCopy(payload: P): String = checkNotNull(spec.emptyCopy) { "isEmpty가 참인데 emptyCopy가 없다(조립기 결함)" }(payload)
 
     /** 재진입은 코어 가드가 막는다(진행 중 재호출 무시) — 새로고침 버튼을 비활성화하지 않는 근거. */
     fun load(force: Boolean = false) {
@@ -108,6 +114,14 @@ class NearbyScreenViewModel<P : Any>(
     fun revealMore(totalCount: Int, keyAt: (Int) -> String) {
         val firstNew = reveal.revealMore(totalCount) ?: return
         _visibleCount.value = reveal.visibleCount
+        _landing.value = Landing.Key(keyAt(firstNew), ++landingRev)
+    }
+
+    /** 묶음별 "더 보기"(없는 묶음은 `RevealWindow.initialVisible`부터). 첫 새 항목에 같은 착지 슬롯으로. */
+    fun revealMoreInGroup(group: String, totalCount: Int, keyAt: (Int) -> String) {
+        val window = groupReveal.getOrPut(group) { RevealWindow() }
+        val firstNew = window.revealMore(totalCount) ?: return
+        _groupWindows.value = _groupWindows.value + (group to window.visibleCount)
         _landing.value = Landing.Key(keyAt(firstNew), ++landingRev)
     }
 

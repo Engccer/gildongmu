@@ -25,7 +25,7 @@ import space.dodoplanet.gildongmu.R
 import space.dodoplanet.gildongmu.a11y.AppScreenScaffold
 import space.dodoplanet.gildongmu.a11y.tapTarget
 
-/** 내 주변 허브(spec §3-4): 버튼 4개, iOS 순서. 위치는 여기서 요청하지 않는다(각 화면 진입 시). */
+/** 내 주변 허브(spec §3-4·§12-4): 버튼 10개, iOS 순서. 권한은 여기서 요청하지 않는다(각 화면 진입 시). */
 @Composable
 fun NearbyHubScreen(onOpen: (NearbyKind) -> Unit, takeReturnFocus: () -> String?) {
     val requesters = remember { mutableMapOf<NearbyKind, FocusRequester>() }
@@ -60,4 +60,10 @@ fun kindTitle(kind: NearbyKind): Int = when (kind) {
     NearbyKind.subway -> R.string.android_nearby_subway
     NearbyKind.bus -> R.string.android_nearby_bus
     NearbyKind.bike -> R.string.android_nearby_bike
+    NearbyKind.clinic -> R.string.android_nearby_clinic
+    NearbyKind.barrierFree -> R.string.android_nearby_barrierFree
+    NearbyKind.kids -> R.string.android_nearby_kids
+    NearbyKind.events -> R.string.android_nearby_events
+    NearbyKind.walkInfra -> R.string.walkInfra_button
+    NearbyKind.conditions -> R.string.android_nearby_conditions
 }

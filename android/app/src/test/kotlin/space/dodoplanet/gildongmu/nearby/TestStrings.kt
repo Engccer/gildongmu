@@ -10,4 +10,9 @@ fun testNearbyStrings(lang: String = "ko", dataLocale: String = "ko") = NearbySt
     subwayEmptyNearest = { s, d -> "주변에 지하철역이 없습니다. 가장 가까운 역은 $s, $d 거리입니다" },
     subwayEmpty = { "주변에 지하철역이 없습니다" }, busEmpty = { "주변에 버스 정류소가 없습니다" }, bikeEmpty = { "주변에 따릉이 대여소가 없습니다" },
     aroundEmpty = { "주변에 표시할 장소가 없습니다" }, routeStopsEmpty = { "경유 정류소 정보가 없습니다" }, noAppToOpen = { "열 수 있는 앱이 없습니다" },
+    announcePlaces = { "주변 장소 ${it}곳" }, announceEvents = { "주변 문화행사 ${it}건" },
+    clinicEmpty = { "주변에 소아 야간진료 기관이 없습니다" }, barrierFreeEmpty = { "주변에 무장애 여행지가 없습니다" },
+    kidsEmpty = { "주변에 아이 놀 곳이 없습니다" }, eventsEmpty = { "주변에 문화행사가 없습니다" },
+    conditionsReady = { "날씨와 공기질을 확인했습니다" }, conditionsPartial = { "일부 정보를 가져오지 못했습니다" }, failedTitle = { "정보를 가져오지 못했습니다" },
+    walkInfraSummary = { "요약" },
 )

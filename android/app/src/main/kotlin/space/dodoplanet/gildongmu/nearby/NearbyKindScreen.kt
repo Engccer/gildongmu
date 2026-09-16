@@ -94,6 +94,7 @@ fun NearbyKindScreen(route: NearbyKindRoute, anchor: PlaceAnchor?, factory: View
             val vm: NearbyScreenViewModel<List<BikeStation>> = viewModel(factory = factory)
             NearbyShell(title, vm, nav.onBack, requestPrecise, isLocationEnabled) { p, req -> BikeBody(p, req) }
         }
+        NearbyKind.clinic, NearbyKind.barrierFree, NearbyKind.kids, NearbyKind.events, NearbyKind.walkInfra, NearbyKind.conditions -> TODO("M2b")
     }
 }
 

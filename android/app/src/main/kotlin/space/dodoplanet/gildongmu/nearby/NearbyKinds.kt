@@ -8,11 +8,11 @@ import space.dodoplanet.gildongmu.kit.NearbyService
 import space.dodoplanet.gildongmu.kit.models.SubwayNearbyResult
 import space.dodoplanet.gildongmu.kit.formatDistance
 
-/** kind별 조립기 표(spec §5). M2b는 여기에 행을 더한다. fetch는 전부 non-null(0건 = 빈 리스트). */
+/** kind별 조립기 표(spec §5·§12-1). fetch는 전부 non-null(0건 = 빈 리스트); 둘째 인자는 직전 payload(조각 병합 kind만 쓴다). */
 object NearbyKinds {
     fun subway(service: NearbyService, strings: NearbyStrings) = NearbyKindSpec<SubwayNearbyResult>(
         coverage = NearbyCoverage.korea,
-        fetch = { c -> service.subwayArrivals(c!!.lat, c.lng, strings.dataLocale()) },
+        fetch = { c, _ -> service.subwayArrivals(c!!.lat, c.lng, strings.dataLocale()) },
         isEmpty = { it.stations.isEmpty() },
         // 역명이 정체성이자 착지 키다 — 근접역 조회가 `dedupeByName`으로 같은 이름을 하나만 남기므로(`subway-nearby.ts`) 이 목록 안에서는
         // 중복이 생기지 않는다. 버스가 nodeId를 쓰는 것과 조건이 다르다(정류소명 중복 실존).
@@ -32,7 +32,7 @@ object NearbyKinds {
 
     fun bus(service: NearbyService, strings: NearbyStrings) = NearbyKindSpec<List<BusStop>>(
         coverage = NearbyCoverage.korea,
-        fetch = { c -> service.busStops(c!!.lat, c.lng) },
+        fetch = { c, _ -> service.busStops(c!!.lat, c.lng) },
         isEmpty = { it.isEmpty() },
         firstKey = { it.firstOrNull()?.let { s -> "stop-${s.nodeId}" } }, // 정류소명 중복 실존 → nodeId
         loadedNotice = { if (it.isEmpty()) strings.busEmpty() else strings.announceStops(it.size) },
@@ -41,7 +41,7 @@ object NearbyKinds {
 
     fun bike(service: NearbyService, strings: NearbyStrings) = NearbyKindSpec<List<BikeStation>>(
         coverage = NearbyCoverage.korea,
-        fetch = { c -> service.bikeStations(c!!.lat, c.lng) },
+        fetch = { c, _ -> service.bikeStations(c!!.lat, c.lng) },
         isEmpty = { it.isEmpty() },
         firstKey = { it.firstOrNull()?.let { s -> "bike-${s.stationId}" } },
         loadedNotice = { if (it.isEmpty()) strings.bikeEmpty() else strings.announceBikes(it.size) },
@@ -50,7 +50,7 @@ object NearbyKinds {
 
     fun around(service: NearbyService, strings: NearbyStrings) = NearbyKindSpec<AroundPayload>(
         coverage = NearbyCoverage.korea,
-        fetch = { c -> fetchAround(service, c!!) },
+        fetch = { c, _ -> fetchAround(service, c!!) },
         isEmpty = { it.isAllAbsent },
         firstKey = { if (it.isAllAbsent) null else "around-top" }, // 위치 문장(헤딩)이 착지 지점
         loadedNotice = { if (it.isAllAbsent) strings.aroundEmpty() else strings.aroundLoaded() },
@@ -61,7 +61,7 @@ object NearbyKinds {
     fun busRouteStops(service: NearbyService, strings: NearbyStrings, source: String, cityCode: String?, routeId: String) =
         NearbyKindSpec<List<BusRouteStop>>(
             coverage = NearbyCoverage.none,
-            fetch = { service.busRouteStops(source, cityCode, routeId) },
+            fetch = { _, _ -> service.busRouteStops(source, cityCode, routeId) },
             isEmpty = { it.isEmpty() },
             firstKey = { null },
             loadedNotice = { if (it.isEmpty()) strings.routeStopsEmpty() else strings.announceRouteStops(it.size) },
