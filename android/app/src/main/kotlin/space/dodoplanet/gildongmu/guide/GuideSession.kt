@@ -1,6 +1,7 @@
 package space.dodoplanet.gildongmu.guide
 
 import android.content.Context
+import android.media.AudioManager
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
@@ -12,6 +13,17 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import space.dodoplanet.gildongmu.AppConfig
+import space.dodoplanet.gildongmu.audio.AndroidAudioFocusPort
+import space.dodoplanet.gildongmu.audio.AndroidSoundPort
+import space.dodoplanet.gildongmu.audio.AndroidTtsPort
+import space.dodoplanet.gildongmu.audio.AndroidVibrator
+import space.dodoplanet.gildongmu.audio.AndroidVolumePort
+import space.dodoplanet.gildongmu.audio.GuideAudioFocus
+import space.dodoplanet.gildongmu.audio.GuideTonePlayer
+import space.dodoplanet.gildongmu.audio.ResultHaptic
+import space.dodoplanet.gildongmu.audio.TtsGuideSpeaker
+import space.dodoplanet.gildongmu.audio.handlerPostDelayed
+import space.dodoplanet.gildongmu.audio.toneAudioAttributes
 import space.dodoplanet.gildongmu.i18n.AppLocale
 import space.dodoplanet.gildongmu.kit.DataLocale
 import space.dodoplanet.gildongmu.kit.GuideSessionCoordinator
@@ -65,27 +77,35 @@ object GuideSession {
         val env = AndroidGuideEnvironment(context).also { it.foreground = foreground }
         environment = env
         permissions = GuidePermissionsImpl(context)
+        val main = Handler(Looper.getMainLooper())
+        val clock = { SystemClock.elapsedRealtime() / 1000.0 }
+        val store = SharedPreferencesStore(context)
+        val audioManager = context.getSystemService(AudioManager::class.java)
+        // 포커스 하나·재생기 하나(§5-2 #16 — M5도 이것을 공유한다).
+        val focus = GuideAudioFocus(AndroidAudioFocusPort(audioManager, toneAudioAttributes), handlerPostDelayed(main))
+        val vibrator = AndroidVibrator(context)
         walk = WalkGuideModel(
             routes = RouteService(AppConfig.apiClient),
             strings = guideStrings(context.resources),
             dataLocale = { DataLocale.fromRawValue(AppLocale.dataLocale(context.resources)) ?: DataLocale.ko },
             controller = AndroidGuideController(context),
             permissions = permissions,
-            tones = NoopTones,
-            speaker = NoopSpeaker,
-            haptics = NoopHaptics,
-            steps = AndroidStepCounter(context, Handler(Looper.getMainLooper())),
+            tones = GuideTonePlayer(AndroidSoundPort(context), focus, vibrator, AndroidVolumePort(audioManager), store, clock),
+            speaker = TtsGuideSpeaker(AndroidTtsPort(context), focus, store) { AppLocale.current(context.resources) },
+            haptics = ResultHaptic(vibrator),
+            steps = AndroidStepCounter(context, main),
             env = env,
             coordinator = coordinator,
-            store = SharedPreferencesStore(context),
+            store = store,
             scope = CoroutineScope(SupervisorJob() + Dispatchers.Main),
-            clock = { SystemClock.elapsedRealtime() / 1000.0 },
+            clock = clock,
         )
     }
 
     /** 유일한 시작 진입점. ① 실험 게이트 ② 거부 통지 ③ 프리로드 ④ 요청. */
     fun startWalk(request: WalkStartRequest) {
         if (!experimentalEnabled()) return
+        if (!isAttached) return
         if (isActive) {
             walk.announceNow(walk.strings.get("guide.alreadyActive"), highPriority = true, bypassSuppression = true)
             return
@@ -100,11 +120,12 @@ object GuideSession {
     private var suppressionPrior: Boolean? = null
 
     fun setOutputSuppressed(active: Boolean, owner: Any) {
+        if (!::walk.isInitialized) return  // 정식 빌드는 attach가 불리지 않는다(GuideBottomBar 게이트) — lateinit 예외 차단
         if (active) {
             val wasEmpty = suppressionOwners.isEmpty()
             suppressionOwners += owner
-            if (!wasEmpty) return
-            suppressionPrior = walk.outputSuppressed
+            if (wasEmpty) suppressionPrior = walk.outputSuppressed
+            // 세션 경계가 억제를 풀었어도(§5-5) 소유자가 남아 있는 한 새 소유자·재요청은 억제를 다시 세운다(리뷰 MAJOR).
             walk.outputSuppressed = true
         } else {
             suppressionOwners -= owner
