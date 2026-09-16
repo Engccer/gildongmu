@@ -17,8 +17,8 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
- * "한눈에 보기" 디코딩 계약(Kit `NearbyOverviewTests`의 디코딩 부분). 문장 조립 `buildOverviewLines`·
- * `sceneItemToPlace` 검사는 CORE(`LocationNarrative`·`PlaceProjection`) 이식 때 옮긴다.
+ * "한눈에 보기" 디코딩 계약(Kit `NearbyOverviewTests`의 디코딩 부분). 문장 조립 `buildOverviewLines`는
+ * `LocationNarrativeTest`, `sceneItemToPlace`는 `PlaceProjectionTest`.
  */
 class NearbyOverviewTest {
     private val fixture = """

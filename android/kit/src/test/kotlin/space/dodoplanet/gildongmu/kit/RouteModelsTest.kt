@@ -15,7 +15,7 @@ import kotlin.test.assertTrue
 
 /**
  * 경로 브리핑 계약 테스트(Kit `RouteModelsTests` 미러): Fixtures/route-*.json이 정본.
- * `RouteService.walk` 404·null 검사와 `TransitDisplay.pickLine`은 CORE 이식 때.
+ * `RouteService.walk` 404·null 검사는 `RouteServiceTest`, `TransitDisplay.pickLine`은 `TransitDisplayTest`.
  */
 class RouteModelsTest {
     private fun transit() = assertNotNull(Fixtures.kitJson("route-transit.json", TransitRouteEnvelope.serializer()).result)
