@@ -121,7 +121,10 @@ fun NearbyKindScreen(route: NearbyKindRoute, anchor: PlaceAnchor?, factory: View
             val vm: NearbyScreenViewModel<WalkInfraPayload> = viewModel(factory = factory)
             NearbyShell(title, vm, nav.onBack, requestPrecise, isLocationEnabled, loadingText = stringResource(R.string.walkInfra_loading), failedText = stringResource(R.string.walkInfra_error)) { p, req -> WalkInfraBody(p, req) }
         }
-        NearbyKind.conditions -> TODO("M2b")
+        NearbyKind.conditions -> {
+            val vm: NearbyScreenViewModel<ConditionsPayload> = viewModel(factory = factory)
+            NearbyShell(title, vm, nav.onBack, requestPrecise, isLocationEnabled) { p, req -> ConditionsBody(p, req) }
+        }
     }
 }
 
@@ -254,7 +257,7 @@ fun <P : Any> NearbyShell(
                     }
                 }
                 NearbyLoadPhase.FailedServer -> Text(failedText, cause, style = MaterialTheme.typography.titleMedium)
-                // M2 kind 5종의 fetch는 non-null이라 도달 불가(spec §3-5). 도달하게 되면 "부재"와 "실패"를 가르는 문장을 따로 둔다 — 지금은 방어.
+                // 모든 kind(11종)의 fetch는 non-null이라 도달 불가(spec §3-5). 도달하게 되면 "부재"와 "실패"를 가르는 문장을 따로 둔다 — 지금은 방어.
                 NearbyLoadPhase.Empty -> Text(failedText, cause, style = MaterialTheme.typography.titleMedium)
             }
         }

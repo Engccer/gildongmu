@@ -1,6 +1,7 @@
 package space.dodoplanet.gildongmu.nearby
 
 import space.dodoplanet.gildongmu.kit.BarrierFreeService
+import space.dodoplanet.gildongmu.kit.ConditionsService
 import space.dodoplanet.gildongmu.kit.models.BarrierFreePlace
 import space.dodoplanet.gildongmu.kit.models.BikeStation
 import space.dodoplanet.gildongmu.kit.models.CultureEvent
@@ -110,6 +111,15 @@ object NearbyKinds {
         isEmpty = { false },
         firstKey = { "walkinfra-top" },
         loadedNotice = { strings.walkInfraSummary(it.walk) },
+    )
+
+    /** 날씨·공기질·혼잡도(spec §12-1): 조각 병합이라 `previous`를 쓰는 유일한 kind(판정 25). 본문이 조각별 3-state를 말해 빈 문구 없음. */
+    fun conditions(service: ConditionsService, strings: NearbyStrings) = NearbyKindSpec<ConditionsPayload>(
+        coverage = NearbyCoverage.korea,
+        fetch = { c, previous -> fetchConditions(service, c!!, previous) },
+        isEmpty = { false },
+        firstKey = { "conditions-weather" },
+        loadedNotice = { conditionsNotice(it, strings.conditionsReady(), strings.conditionsPartial(), strings.failedTitle()) },
     )
 
     /** 파라미터형(좌표 없음): 경유 정류소. 첫 로드 착지 없음(iOS 동형) — firstKey null. */
