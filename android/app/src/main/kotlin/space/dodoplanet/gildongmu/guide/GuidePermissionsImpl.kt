@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.withTimeoutOrNull
 import space.dodoplanet.gildongmu.AppConfig
 import space.dodoplanet.gildongmu.location.LocationPermission
 
@@ -47,11 +48,18 @@ class GuidePermissionsImpl(context: Context) : GuidePermissions {
         val deferred = CompletableDeferred<Unit>()
         waiter = permission to deferred
         launcher(arrayOf(permission))
-        try { deferred.await() } finally { if (waiter?.second === deferred) waiter = null }
+        // 결과가 유실되는 경로(런처 재등록 실패·OEM 변종)에서 `starting`이 영구 true가 되지 않게 상한을 둔다 — 만료는 거부와 같이 재판정.
+        try { withTimeoutOrNull(askTimeoutMs) { deferred.await() } } finally { if (waiter?.second === deferred) waiter = null }
     }
 
     fun attach(launch: (Array<String>) -> Unit) { this.launch = launch }
-    fun detach() { launch = null }
+
+    /** 손 해제 — 대기 중인 요청은 지금 값으로 재판정하게 완료시킨다(Activity 소멸에 대기가 남지 않는다). */
+    fun detach() {
+        launch = null
+        waiter?.second?.complete(Unit)
+        waiter = null
+    }
 
     /** 시스템 결과 도착 — 값은 결과 맵이 아니라 `checkSelfPermission` 재판정. */
     fun deliver() {
@@ -59,6 +67,8 @@ class GuidePermissionsImpl(context: Context) : GuidePermissions {
         waiter = null
         pending.second.complete(Unit)
     }
+
+    private companion object { const val askTimeoutMs = 60_000L }
 
     private fun granted(permission: String) = app.checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED
 }

@@ -28,6 +28,7 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import space.dodoplanet.gildongmu.AppConfig
 import space.dodoplanet.gildongmu.guide.ui.GuideBottomBar
 import space.dodoplanet.gildongmu.guide.ui.WalkGuideStartButton
 import space.dodoplanet.gildongmu.kit.BeaconDest
@@ -57,6 +58,7 @@ class GuideSheetA11yTest {
     fun reset() {
         rule.runOnUiThread { GuideSession.walk.debugSetUi(WalkGuideUiState()) }
         GuideSession.isMinimized = false
+        GuideSession.experimentalEnabled = { AppConfig.experimentalGuidanceEnabled }
     }
 
     private fun setBar() {

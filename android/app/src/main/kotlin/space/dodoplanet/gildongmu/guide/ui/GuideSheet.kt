@@ -72,9 +72,13 @@ private fun TrackingContent(ui: WalkGuideUiState, strings: Strings) {
     LaunchedEffect(Unit) {
         if (GuideSession.returnedFromBand) { GuideSession.returnedFromBand = false; land(minimizeFocus, "접기 버튼") } else land(titleFocus, "시트 제목")
     }
-    // 재조회 성공·자동 채택으로 버튼이 사라지면 제목 착지(포커스를 쥔 컨트롤 소멸).
+    // 재조회 성공·자동 채택으로 버튼이 사라지면 제목 착지(포커스를 쥔 컨트롤 소멸) — **전이**(true→false)에만. 컴포지션 진입에 걸면
+    // 자동 채택을 한 번 겪은 세션은 시트를 펼칠 때마다 착지가 둘로 갈린다.
+    var wasOffRoute by remember { mutableStateOf(ui.offRoute) }
     LaunchedEffect(ui.offRoute) {
-        if (!ui.offRoute && (reroutePressed || ui.offRouteEndedByReroute)) { reroutePressed = false; land(titleFocus, "시트 제목(재조회)") }
+        val ended = wasOffRoute && !ui.offRoute
+        wasOffRoute = ui.offRoute
+        if (ended && (reroutePressed || ui.offRouteEndedByReroute)) { reroutePressed = false; land(titleFocus, "시트 제목(재조회)") }
     }
     LaunchedEffect(landProgressSeq) { if (landProgressSeq > 0) land(progressFocus, "진행 상황 버튼") }
 
@@ -133,7 +137,7 @@ private fun TrackingContent(ui: WalkGuideUiState, strings: Strings) {
 private fun OverviewPage(ui: WalkGuideUiState, strings: Strings, onClose: () -> Unit) {
     val meters = strings.get("android.unit.spokenMeters")
     val headerFocus = remember { FocusRequester() }
-    val header = remember(ui.statusText, ui.remainingText, ui.currentStepIndex) { GuideSession.walk.progressText() }
+    val header = remember(ui) { GuideSession.walk.progressText() }
     LaunchedEffect(Unit) { land(headerFocus, "조망 헤더") }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
         Button(onClick = onClose, modifier = Modifier.fillMaxWidth().tapTarget().testTag("guide-overview-close-top")) { Text(strings.get("actions.close")) }
@@ -165,7 +169,7 @@ private fun EndScreen(ui: WalkGuideUiState, strings: Strings) {
         SessionEndKind.presumed -> strings.get("guide.arrivedPresumed")
         SessionEndKind.stopped -> ui.endText
     }
-    LaunchedEffect(Unit) { land(arrivedFocus, "종료 문장") }
+    LaunchedEffect(Unit) { GuideSession.returnedFromBand = false; land(arrivedFocus, "종료 문장") }   // 띠바 복귀 표식은 여기서도 소비
     Column(Modifier.fillMaxWidth().padding(16.dp)) {
         HeadingLine(joinText(strings.get(headingKey), ui.destinationLabel), "guide-end-title")
         Text(sentence, Modifier.fillMaxWidth().mergedRow("guide-end", focus = arrivedFocus).padding(vertical = 8.dp))

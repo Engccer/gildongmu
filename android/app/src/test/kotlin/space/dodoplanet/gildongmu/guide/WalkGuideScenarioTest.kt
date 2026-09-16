@@ -9,6 +9,7 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.extension.RegisterExtension
 import space.dodoplanet.gildongmu.AppConfig
 import space.dodoplanet.gildongmu.MainDispatcherExtension
+import space.dodoplanet.gildongmu.kit.BeaconDest
 import space.dodoplanet.gildongmu.kit.BeaconTone
 import space.dodoplanet.gildongmu.kit.HttpResponse
 import space.dodoplanet.gildongmu.kit.RoutePoint
@@ -359,5 +360,55 @@ class WalkGuideScenarioTest {
         assertEquals(1, h.speaker.spoken.size)
         assertTrue(h.speaker.texts.single().endsWith("입니다."), h.speaker.texts.single())
         assertEquals(GuideStatus.tracking, h.model.ui.value.status)
+    }
+
+    @Test fun `⑨' 타 앱 전경 중 실행 안내(상태 행 비움) → 복귀 상환은 마지막 안내를 꼬리로 읽는다`() = guideTest(dispatcher, { HttpResponse(200, routeJson(longAhead)) }) { h ->
+        val base = startDetail(h, longAheadFixes)
+        h.env.foreground = false
+        h.model.setForeground(false)
+        h.speaker.spoken.clear()
+        feed(h, longAheadFixes, base)   // "우회전B" 실행 안내가 타 앱 전경에 걸린다(statusText는 비어 있다)
+        assertEquals(emptyList(), h.speaker.spoken)
+        assertEquals("", h.model.ui.value.statusText)
+        h.env.foreground = true
+        h.model.setForeground(true)
+        assertEquals(listOf("우회전B"), h.speaker.texts)
+    }
+
+    @Test fun `경유지 있는 세션의 간략 폴백 — 조용히 버리지 않고 waypointDropped를 high로 붙인다, 재시작 인자도 경유지 없이`() = guideTest(dispatcher, { HttpResponse(200, routeJson(longAhead)) }) { h ->
+        val via = GuideWaypoint(BeaconDest(north(100.0).lat, lng0), "장미공원")
+        h.model.requestStart(h.request.copy(waypoint = via))
+        settle()
+        h.walkTo(0.0)   // 응답에 waypoint 표지가 없다 → 상세 부적격 → 간략 폴백
+        settle()
+        assertTrue(h.transport.seenUrls.single().contains("via="))
+        assertEquals(GuideMode.brief, h.model.ui.value.mode)
+        val spoken = h.speaker.spoken.last()
+        assertTrue(spoken.first.endsWith(h.catalog.get("android.guide.waypointDropped", "장미공원")), spoken.first)
+        assertTrue(spoken.second)
+        // 실패 뒤 재시작이 경유지를 되살리지 않는다.
+        h.model.stopByUser()
+        h.transport.seenUrls.clear()
+        h.model.restart(); settle(); h.walkTo(0.0); settle()
+        assertFalse(h.transport.seenUrls.single().contains("via="))
+    }
+
+    @Test fun `경유지 도착 — nearby 톤·viaArrived 문장, 이후 재조회는 경유지 없이`() = guideTest(dispatcher, { url ->
+        if (url.contains("via=")) HttpResponse(200, walkBriefingJson(listOf(TestStep("직진A", listOf(north(0.0), north(150.0)), target = "장미공원"), TestStep("직진B", listOf(north(150.0), north(400.0)))), distanceMeters = 400, waypointStepIndex = 1))
+        else HttpResponse(200, routeJson(listOf(Seg(400.0, "직진"))))
+    }) { h ->
+        val via = GuideWaypoint(BeaconDest(north(150.0).lat, lng0), "장미공원")
+        val fixes = (0..30).map { Fix(it * 8.0, it * 8.0, 0.0, 8.0) }   // 240m까지 1m/s
+        h.model.requestStart(h.request.copy(waypoint = via))
+        settle()
+        h.model.handleFix(h.fixAt(fixes[0], h.clock.now)); settle()
+        assertEquals(GuideMode.detail, h.model.ui.value.mode)
+        assertEquals(1 to "경유지 장미공원 도착", h.model.ui.value.routeWaypointRow)
+        val base = h.clock.now
+        h.tones.played.clear()
+        feed(h, fixes, base)
+        assertTrue(h.tones.played.contains(BeaconTone.nearby), h.tones.played.toString())
+        assertTrue(h.speaker.texts.contains(h.catalog.get("directions.viaArrived", "장미공원")), h.speaker.texts.toString())
+        assertNull(h.model.ui.value.routeWaypointRow?.takeIf { false })
     }
 }
