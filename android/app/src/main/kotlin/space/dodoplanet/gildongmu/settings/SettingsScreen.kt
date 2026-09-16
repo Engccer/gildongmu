@@ -31,6 +31,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
@@ -65,10 +66,9 @@ import space.dodoplanet.gildongmu.nav.tryStartActivity
  * 링크 열기 실패는 화면 로컬 통지 `noAppToOpen`(화면 변화 없는 활성화는 통지가 유일한 증거).
  */
 @Composable
-fun SettingsScreen(onBack: () -> Unit, onOpenDataSources: () -> Unit, takeReturnFocus: () -> String?) {
+fun SettingsScreen(onBack: () -> Unit, onOpenDataSources: () -> Unit, takeReturnFocus: () -> String?, store: SettingsStore = AppConfig.settings) {
     val context = LocalContext.current
     val res = context.resources
-    val store = AppConfig.settings
     val language by store.language.collectAsState()
     val dictation by store.dictationStyle.collectAsState()
     val haptics by store.resultHapticsEnabled.collectAsState()
@@ -76,17 +76,18 @@ fun SettingsScreen(onBack: () -> Unit, onOpenDataSources: () -> Unit, takeReturn
     var weightText by remember(weightStored) { mutableStateOf(weightStored) }
     val weightMin = WalkHealth.weightRange.start.toInt()
     val weightMax = WalkHealth.weightRange.endInclusive.toInt()
-    var dialog by remember { mutableStateOf<SettingsRow?>(null) }
+    var dialog by rememberSaveable { mutableStateOf<SettingsRow?>(null) } // 회전·글꼴 변경에 열려 있던 다이얼로그가 소리 없이 닫히지 않게
     var pendingLanding by remember { mutableStateOf<SettingsRow?>(null) }
     var notice by remember { mutableStateOf(Notice(0, "")) }
     val titleFocus = remember { FocusRequester() }
     val rowFocus = remember { mutableMapOf<SettingsRow, FocusRequester>() }
-    val rows = settingsRows(AppConfig.resultHapticsSettingEnabled)
+    val rows = remember { settingsRows(AppConfig.resultHapticsSettingEnabled) }
     val noApp = stringResource(R.string.android_common_noAppToOpen)
     val systemLabel = stringResource(R.string.android_settings_themeSystem)
     val tapLabel = stringResource(R.string.android_settings_dictationTap)
     val holdLabel = stringResource(R.string.android_settings_dictationHold)
-    fun open(intent: Intent) { if (!context.tryStartActivity(intent)) notice = Notice(notice.seq + 1, noApp) }
+    // 링크 열기 실패 = 화면 변화 없는 활성화의 유일한 증거(통지) + 실패 진동(검색·내 주변 실패와 같은 채널)
+    fun open(intent: Intent) { if (!context.tryStartActivity(intent)) notice = Notice(notice.seq + 1, noApp, haptic = HapticKind.failure) }
     // 체중 확정(A39 — 편집 종료·화면 이탈, 멱등): 범위 밖은 저장하지 않고 통지(이전 값이 있으면 그 값 유지를 말한다, 3-state).
     fun commitWeight() {
         if (weightText == weightStored) return
@@ -122,6 +123,7 @@ fun SettingsScreen(onBack: () -> Unit, onOpenDataSources: () -> Unit, takeReturn
     CompositionLocalProvider(LocalModalOpen provides (dialog != null)) {
         AppScreenScaffold(stringResource(R.string.android_settings_title), onBack = onBack, titleFocus = titleFocus) { padding ->
             Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).semantics { testTagsAsResourceId = true }) {
+                StatusLine(notice, Modifier.padding(vertical = 8.dp)) // 상단 바 바로 아래(§3-1 — 자리를 외워 쓰는 탐색)
                 for (row in rows) {
                     val focus = rowFocus.getOrPut(row) { FocusRequester() }
                     when (row) {
@@ -163,7 +165,6 @@ fun SettingsScreen(onBack: () -> Unit, onOpenDataSources: () -> Unit, takeReturn
                         }
                     }
                 }
-                StatusLine(notice, Modifier.padding(vertical = 8.dp))
             }
         }
         when (dialog) {
@@ -177,10 +178,9 @@ fun SettingsScreen(onBack: () -> Unit, onOpenDataSources: () -> Unit, takeReturn
                     if (code == language) {
                         pendingLanding = SettingsRow.Language
                     } else {
-                        store.setLanguage(code)
-                        AppConfig.invalidateLocalizedApp()
+                        store.setLanguage(code) // 저장이 곧 `localizedApp` 무효화
                         AppNotices.post(AppConfig.localizedApp().getString(R.string.android_settings_languageApplied), haptic = HapticKind.success)
-                        context.findActivity()?.recreate()
+                        context.findActivity()?.recreate() ?: Log.w("Settings", "Activity 없음 — 언어 적용 재생성 미완(통지는 나갔다)")
                     }
                 },
                 onDismiss = { dialog = null; pendingLanding = SettingsRow.Language },
@@ -230,4 +230,3 @@ private fun Context.findActivity(): Activity? = when (this) {
 }
 
 private const val SYSTEM_LANGUAGE = "system"
-const val REPORT_MAILTO = "mailto:engccer@gmail.com"

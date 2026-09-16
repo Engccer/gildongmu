@@ -71,108 +71,108 @@ fun AppRoot(factories: AppFactories) {
     val hapticsOn by AppConfig.settings.resultHapticsEnabled.collectAsState()
 
     CompositionLocalProvider(LocalResultHaptics provides hapticsOn) {
-    Scaffold(
-        bottomBar = {
-            GuideBottomBar {
-            NavigationBar(Modifier.testTag("tabs")) {
-                for (tab in tabs) {
-                    val route = tab.route()
-                    // 현재 탭 = 그 탭의 루트가 현재 목적지의 계층 안에 있는가(스택 화면에서도 소속 탭이 선택 상태).
-                    val selected = currentDestination?.hierarchy?.any { it.hasRoute(route::class) } == true
-                    NavigationBarItem(
-                        selected = selected,
-                        onClick = {
-                            navController.navigate(route) {
-                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        },
-                        icon = { Icon(tab.icon, contentDescription = null) }, // 장식 — 라벨이 이름
-                        label = { Text(stringResource(tab.label)) },
-                        modifier = Modifier.testTag("tab-${tab.rawValue}"),
+        Scaffold(
+            bottomBar = {
+                GuideBottomBar {
+                NavigationBar(Modifier.testTag("tabs")) {
+                    for (tab in tabs) {
+                        val route = tab.route()
+                        // 현재 탭 = 그 탭의 루트가 현재 목적지의 계층 안에 있는가(스택 화면에서도 소속 탭이 선택 상태).
+                        val selected = currentDestination?.hierarchy?.any { it.hasRoute(route::class) } == true
+                        NavigationBarItem(
+                            selected = selected,
+                            onClick = {
+                                navController.navigate(route) {
+                                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            },
+                            icon = { Icon(tab.icon, contentDescription = null) }, // 장식 — 라벨이 이름
+                            label = { Text(stringResource(tab.label)) },
+                            modifier = Modifier.testTag("tab-${tab.rawValue}"),
+                        )
+                    }
+                }
+                }
+            },
+        ) { padding ->
+            NavHost(
+                navController = navController,
+                startDestination = AppTab.initial(experimental).route(),
+                modifier = Modifier.padding(padding),
+            ) {
+                // 탭 루트의 설정 버튼(spec §14-1): 복귀 슬롯은 엔트리 스코프 `ReturnFocusViewModel` — 검색 VM 슬롯은 결과 행 전용이라 쓰지 않는다.
+                composable<SearchRoute> { entry ->
+                    val rf: ReturnFocusViewModel = viewModel(entry)
+                    SearchScreen(viewModel(factory = factories.search), onOpenPlace = { navController.navigate(PlaceDetailRoute.of(it)) }, onOpenSettings = { rf.slot.remember(SETTINGS_RETURN_KEY); navController.navigate(SettingsRoute) { launchSingleTop = true } }, takeSettingsReturn = rf.slot::take)
+                }
+                composable<DirectionsRoute> { entry ->
+                    val rf: ReturnFocusViewModel = viewModel(entry)
+                    DirectionsScreen(onOpenSettings = { rf.slot.remember(SETTINGS_RETURN_KEY); navController.navigate(SettingsRoute) { launchSingleTop = true } }, takeSettingsReturn = rf.slot::take)
+                }
+                composable<NearbyRoute> { entry ->
+                    val returnFocus: ReturnFocusViewModel = viewModel(entry)
+                    NearbyHubScreen(
+                        onOpen = { kind -> returnFocus.slot.remember(hubKey(kind)); navController.navigate(NearbyKindRoute.of(kind, null)) },
+                        onPick = { returnFocus.slot.remember(LOCATION_BAR_KEY); navController.navigate(ManualLocationRoute) },
+                        onOpenSettings = { returnFocus.slot.remember(SETTINGS_RETURN_KEY); navController.navigate(SettingsRoute) { launchSingleTop = true } },
+                        takeReturnFocus = returnFocus.slot::take,
+                        currentAddress = factories.currentAddress,
+                        manualLocation = factories.manualLocation,
                     )
                 }
-            }
-            }
-        },
-    ) { padding ->
-        NavHost(
-            navController = navController,
-            startDestination = AppTab.initial(experimental).route(),
-            modifier = Modifier.padding(padding),
-        ) {
-            // 탭 루트의 설정 버튼(spec §14-1): 복귀 슬롯은 엔트리 스코프 `ReturnFocusViewModel` — 검색 VM 슬롯은 결과 행 전용이라 쓰지 않는다.
-            composable<SearchRoute> { entry ->
-                val rf: ReturnFocusViewModel = viewModel(entry)
-                SearchScreen(viewModel(factory = factories.search), onOpenPlace = { navController.navigate(PlaceDetailRoute.of(it)) }, onOpenSettings = { rf.slot.remember(SETTINGS_RETURN_KEY); navController.navigate(SettingsRoute) }, takeSettingsReturn = rf.slot::take)
-            }
-            composable<DirectionsRoute> { entry ->
-                val rf: ReturnFocusViewModel = viewModel(entry)
-                DirectionsScreen(onOpenSettings = { rf.slot.remember(SETTINGS_RETURN_KEY); navController.navigate(SettingsRoute) }, takeSettingsReturn = rf.slot::take)
-            }
-            composable<NearbyRoute> { entry ->
-                val returnFocus: ReturnFocusViewModel = viewModel(entry)
-                NearbyHubScreen(
-                    onOpen = { kind -> returnFocus.slot.remember(hubKey(kind)); navController.navigate(NearbyKindRoute.of(kind, null)) },
-                    onPick = { returnFocus.slot.remember(LOCATION_BAR_KEY); navController.navigate(ManualLocationRoute) },
-                    onOpenSettings = { returnFocus.slot.remember(SETTINGS_RETURN_KEY); navController.navigate(SettingsRoute) },
-                    takeReturnFocus = returnFocus.slot::take,
-                    currentAddress = factories.currentAddress,
-                    manualLocation = factories.manualLocation,
-                )
-            }
-            composable<ChatRoute> { entry ->
-                val rf: ReturnFocusViewModel = viewModel(entry)
-                ChatTabScreen(onPickLocation = { navController.navigate(ManualLocationRoute) }, onOpenSettings = { rf.slot.remember(SETTINGS_RETURN_KEY); navController.navigate(SettingsRoute) }, takeSettingsReturn = rf.slot::take, onOpenPlace = { navController.navigate(PlaceDetailRoute.of(it, showsChatEntry = false)) })
-            }
-            // ── 스택 화면(각 화면 패키지 소유 라우트, 등록 한 줄씩)
-            composable<NearbyKindRoute> { entry ->
-                val route = entry.toRoute<NearbyKindRoute>()
-                val anchor = remember(route) { route.anchor } // JSON 디코딩은 한 번
-                NearbyKindScreen(
-                    route = route,
-                    anchor = anchor,
-                    factory = factories.nearby(route.kind, anchor),
-                    nav = NearbyNav(
-                        onBack = { navController.popBackStack() },
-                        onOpenPlace = { place, domain -> navController.navigate(PlaceDetailRoute.of(place, domain)) },
-                        onOpenRouteStops = { navController.navigate(it) },
-                    ),
-                    requestPrecise = factories.requestPreciseLocation,
-                    isLocationEnabled = factories.isLocationEnabled,
-                )
-            }
-            composable<PlaceDetailRoute> { entry ->
-                val route = entry.toRoute<PlaceDetailRoute>()
-                val place = remember(route) { route.place } // JSON 디코딩은 한 번
-                val domain = remember(route) { route.domain }
-                val returnFocus: ReturnFocusViewModel = viewModel(entry)
-                PlaceDetailScreen(
-                    factory = factories.place(place),
-                    domain = domain,
-                    nav = PlaceNav(
-                        onBack = { navController.popBackStack() },
-                        onOpenNearby = { kind, anchor -> returnFocus.slot.remember("anchor-${kind.name}"); navController.navigate(NearbyKindRoute.of(kind, anchor)) },
-                        onOpenDirections = navController::openDirections, // 탭 전환 — 상세 스택은 검색 탭 백스택에 저장된다(복귀 착지 없음)
-                        onOpenChat = { returnFocus.slot.remember(CHAT_RETURN_KEY); navController.openChat(it) }, // M6 spec §7
-                    ),
-                    takeReturnFocus = returnFocus.slot::take,
-                    showsChatEntry = route.showsChatEntry,
-                )
-            }
-            composable<PlaceChatRoute> { entry -> PlaceChatScreen(entry.toRoute(), { navController.popBackStack() }) { navController.navigate(PlaceDetailRoute.of(it, showsChatEntry = false)) } }
-            composable<ManualLocationRoute> { ManualLocationPickerScreen { navController.popBackStack() } }
-            composable<SettingsRoute> { entry ->
-                val rf: ReturnFocusViewModel = viewModel(entry)
-                SettingsScreen(onBack = { navController.popBackStack() }, onOpenDataSources = { rf.slot.remember(DATA_SOURCES_RETURN_KEY); navController.navigate(DataSourcesRoute) }, takeReturnFocus = rf.slot::take)
-            }
-            composable<DataSourcesRoute> { DataSourcesScreen { navController.popBackStack() } }
-            composable<BusRouteStopsRoute> { entry ->
-                val route = entry.toRoute<BusRouteStopsRoute>()
-                BusRouteStopsScreen(route, factories.busRouteStops(route)) { navController.popBackStack() }
+                composable<ChatRoute> { entry ->
+                    val rf: ReturnFocusViewModel = viewModel(entry)
+                    ChatTabScreen(onPickLocation = { navController.navigate(ManualLocationRoute) }, onOpenSettings = { rf.slot.remember(SETTINGS_RETURN_KEY); navController.navigate(SettingsRoute) { launchSingleTop = true } }, takeSettingsReturn = rf.slot::take, onOpenPlace = { navController.navigate(PlaceDetailRoute.of(it, showsChatEntry = false)) })
+                }
+                // ── 스택 화면(각 화면 패키지 소유 라우트, 등록 한 줄씩)
+                composable<NearbyKindRoute> { entry ->
+                    val route = entry.toRoute<NearbyKindRoute>()
+                    val anchor = remember(route) { route.anchor } // JSON 디코딩은 한 번
+                    NearbyKindScreen(
+                        route = route,
+                        anchor = anchor,
+                        factory = factories.nearby(route.kind, anchor),
+                        nav = NearbyNav(
+                            onBack = { navController.popBackStack() },
+                            onOpenPlace = { place, domain -> navController.navigate(PlaceDetailRoute.of(place, domain)) },
+                            onOpenRouteStops = { navController.navigate(it) },
+                        ),
+                        requestPrecise = factories.requestPreciseLocation,
+                        isLocationEnabled = factories.isLocationEnabled,
+                    )
+                }
+                composable<PlaceDetailRoute> { entry ->
+                    val route = entry.toRoute<PlaceDetailRoute>()
+                    val place = remember(route) { route.place } // JSON 디코딩은 한 번
+                    val domain = remember(route) { route.domain }
+                    val returnFocus: ReturnFocusViewModel = viewModel(entry)
+                    PlaceDetailScreen(
+                        factory = factories.place(place),
+                        domain = domain,
+                        nav = PlaceNav(
+                            onBack = { navController.popBackStack() },
+                            onOpenNearby = { kind, anchor -> returnFocus.slot.remember("anchor-${kind.name}"); navController.navigate(NearbyKindRoute.of(kind, anchor)) },
+                            onOpenDirections = navController::openDirections, // 탭 전환 — 상세 스택은 검색 탭 백스택에 저장된다(복귀 착지 없음)
+                            onOpenChat = { returnFocus.slot.remember(CHAT_RETURN_KEY); navController.openChat(it) }, // M6 spec §7
+                        ),
+                        takeReturnFocus = returnFocus.slot::take,
+                        showsChatEntry = route.showsChatEntry,
+                    )
+                }
+                composable<PlaceChatRoute> { entry -> PlaceChatScreen(entry.toRoute(), { navController.popBackStack() }) { navController.navigate(PlaceDetailRoute.of(it, showsChatEntry = false)) } }
+                composable<ManualLocationRoute> { ManualLocationPickerScreen { navController.popBackStack() } }
+                composable<SettingsRoute> { entry ->
+                    val rf: ReturnFocusViewModel = viewModel(entry)
+                    SettingsScreen(onBack = { navController.popBackStack() }, onOpenDataSources = { rf.slot.remember(DATA_SOURCES_RETURN_KEY); navController.navigate(DataSourcesRoute) { launchSingleTop = true } }, takeReturnFocus = rf.slot::take)
+                }
+                composable<DataSourcesRoute> { DataSourcesScreen { navController.popBackStack() } }
+                composable<BusRouteStopsRoute> { entry ->
+                    val route = entry.toRoute<BusRouteStopsRoute>()
+                    BusRouteStopsScreen(route, factories.busRouteStops(route)) { navController.popBackStack() }
+                }
             }
         }
-    }
     }
 }

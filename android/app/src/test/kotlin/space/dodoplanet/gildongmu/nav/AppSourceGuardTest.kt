@@ -174,6 +174,8 @@ class AppSourceGuardTest {
         val factoryFiles = sources.filter { it.extension == "kt" && (it.name.endsWith("Factory.kt") || it.name.endsWith("Factories.kt") || it.name.endsWith("StringsRes.kt") || it.name == "MainActivity.kt") }
         assertTrue(factoryFiles.size >= 5, factoryFiles.map { it.name }.toString())
         assertEquals(emptyList(), factoryFiles.filter { Regex("""\bcontext\.(resources|getString\()""").containsMatchIn(it.readText()) }.map { it.name })
+        // 새 규약 위반 꼴: `val r = …localizedApp().resources`처럼 Resources를 한 번 읽어 담는 것(람다 `{ … .resources }`는 `=` 뒤가 `{`라 걸리지 않는다)
+        assertEquals(emptyList(), factoryFiles.filter { Regex("""=\s*\w+(\.\w+\(?\)?)*\.resources\b""").containsMatchIn(it.readText()) }.map { it.name })
     }
 
     /** spec §14-3 판정 40 — 진동은 `StatusLine` 발화 효과 한 자리(iOS `result-haptic-guard` 동형). */
@@ -181,11 +183,18 @@ class AppSourceGuardTest {
         assertEquals(listOf("A11y.kt"), sources.filter { it.extension == "kt" && it.readText().contains("performHapticFeedback(") }.map { it.name })
     }
 
-    /** spec §14-1 판정 42 — 설정 진입은 탭 루트 4개 전부(한 탭에서만 설정 불가한 상태 방지). */
-    @Test fun `설정 버튼은 탭 루트 4개의 상단 바에 있다`() {
+    /** spec §14-1 판정 42·§3-1 — 설정 진입은 탭 루트 4개 전부이고 `actions` 블록의 **마지막** 호출(화면 고유 액션 뒤). */
+    @Test fun `설정 버튼은 탭 루트 4개의 상단 바 actions 블록 마지막에 있다`() {
+        val last = Regex("""actions = \{[^}]*SettingsAction\([^()]*\)\s*\}""")
         for (f in listOf("search/SearchScreen.kt", "directions/DirectionsScreen.kt", "nearby/NearbyHubScreen.kt", "chat/ChatScreen.kt")) {
-            assertTrue(android.resolve("app/src/main/kotlin/space/dodoplanet/gildongmu/$f").readText().contains("SettingsAction("), f)
+            assertTrue(last.containsMatchIn(android.resolve("app/src/main/kotlin/space/dodoplanet/gildongmu/$f").readText()), f)
         }
+    }
+
+    /** spec §14-5 — 실험판 게이트 배선(debug 변형은 EXPERIMENTAL=false라 ATF가 그 행을 렌더하지 않는다 — 소스로 잠근다). */
+    @Test fun `설정 화면은 settingsRows를 실험판 플래그로 부른다`() {
+        assertTrue(android.resolve("app/src/main/kotlin/space/dodoplanet/gildongmu/settings/SettingsScreen.kt").readText().contains("settingsRows(AppConfig.resultHapticsSettingEnabled)"))
+        assertTrue(android.resolve("app/src/main/kotlin/space/dodoplanet/gildongmu/AppConfig.kt").readText().contains("val resultHapticsSettingEnabled: Boolean = BuildConfig.EXPERIMENTAL"))
     }
 
     /** M4 인계 — 받아쓰기가 안내 음성을 억제한다(`GuideSession.setOutputSuppressed`, 시작/모든 종료 경로 = `setPhase` 한 자리). */
