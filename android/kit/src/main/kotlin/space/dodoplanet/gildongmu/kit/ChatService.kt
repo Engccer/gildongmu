@@ -41,7 +41,7 @@ object ChatService {
 
     /** 스트림 한 줄 처리: 양끝 공백을 걷고 빈 줄은 null(건너뜀), 그 외는 디코딩(실패는 `APIError.Decoding` — 스트림 종료 사유). */
     fun eventFromStreamLine(line: String): ChatStreamEvent? {
-        val trimmed = line.trim()
+        val trimmed = line.trimSwiftWhitespaces()
         if (trimmed.isEmpty()) return null
         return decodeChatEventLine(trimmed)
     }

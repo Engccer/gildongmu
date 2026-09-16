@@ -2,6 +2,7 @@ package space.dodoplanet.gildongmu.kit
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 /** Swift 표준 라이브러리 의미 미러 계약. 소비자가 음수·줄바꿈을 넘겨도 경계가 흔들리지 않게 잠근다. */
 class SwiftSemanticsTest {
@@ -15,6 +16,25 @@ class SwiftSemanticsTest {
     @Test fun `정규식 공백 집합은 Swift 약칭 공백과 전 코드포인트에서 같다`() {
         val space = Regex("[$REGEX_SPACE_MEMBERS]")
         assertEquals(swiftRegexSpace, codePointsWhere { space.matches(it) })
+    }
+
+    /** Swift `Character.isWhitespace`도 같은 날 전수 실측에서 정규식 약칭 공백과 같은 집합이었다. */
+    @Test fun `문자 공백 판정은 Swift Character isWhitespace와 전 코드포인트에서 같다`() {
+        assertEquals(swiftRegexSpace, codePointsWhere { it.length == 1 && it[0].isSwiftWhitespace() })
+    }
+
+    @Test fun `kit main 소스는 Kotlin 기본 공백 판정을 쓰지 않는다 — Swift 원본의 집합 미러를 지난다`() {
+        val kotlinDefault = Regex("""\.(trim|trimStart|trimEnd)\(\)|\.is(Not|NullOr)?Blank\(\)|\.isWhitespace\(\)""")
+        assertTrue(kotlinDefault.containsMatchIn("val s = raw.trim()") && kotlinDefault.containsMatchIn("if (line.isBlank())"))
+        val root = Fixtures.repoRoot.resolve("android/kit/src/main")
+        val sources = root.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
+        assertTrue(sources.isNotEmpty())
+        val offenders = sources.flatMap { f ->
+            f.readLines().withIndex()
+                .filter { (_, line) -> kotlinDefault.containsMatchIn(line) && !line.trimStart().startsWith("//") && !line.trimStart().startsWith("*") }
+                .map { "${f.relativeTo(root).path}:${it.index + 1}" }
+        }
+        assertEquals(emptyList(), offenders)
     }
 
     @Test fun `점5는 0에서 먼 쪽이다 — 짝수 반올림도 양의 방향 반올림도 아니다`() {

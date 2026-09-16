@@ -86,21 +86,21 @@ private fun parsePluralBlock(chars: CharArray, open: Int): PluralBlock? {
     val inner = String(chars, open + 1, close - open - 1)
     val comma = inner.indexOf(',')
     if (comma < 0) return null
-    val argIndex = inner.substring(0, comma).trim().toIntOrNull() ?: return null
+    val argIndex = inner.substring(0, comma).trimSwiftWhitespaces().toIntOrNull() ?: return null
     if (argIndex < 1) return null
     var rest = inner.substring(comma + 1)
-    if (!rest.trim().startsWith("plural")) return null
+    if (!rest.trimSwiftWhitespaces().startsWith("plural")) return null
     rest = rest.substring(rest.indexOf("plural") + "plural".length)
     val secondComma = rest.indexOf(',')
-    if (secondComma < 0 || rest.substring(0, secondComma).isNotBlank()) return null
+    if (secondComma < 0 || rest.substring(0, secondComma).trimSwiftWhitespaces().isNotEmpty()) return null
     val tail = rest.substring(secondComma + 1).toCharArray()
     val branches = LinkedHashMap<String, String>()
     var i = 0
     while (i < tail.size) {
-        if (tail[i].isWhitespace()) { i += 1; continue }
+        if (tail[i].isSwiftWhitespace()) { i += 1; continue }
         val name = StringBuilder()
         while (i < tail.size && tail[i].isLetter()) { name.append(tail[i]); i += 1 }
-        while (i < tail.size && tail[i].isWhitespace()) i += 1
+        while (i < tail.size && tail[i].isSwiftWhitespace()) i += 1
         if (name.isEmpty() || i >= tail.size || tail[i] != '{') return null
         val bodyClose = matchingBrace(tail, i) ?: return null
         branches[name.toString()] = String(tail, i + 1, bodyClose - i - 1)

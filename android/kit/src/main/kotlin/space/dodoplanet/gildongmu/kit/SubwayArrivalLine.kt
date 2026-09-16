@@ -67,7 +67,7 @@ private class ResolvedStation(val ok: Boolean, val station: String?)
  * "둘이 다르면 부재"와 같은 축(그래야 `currentLocationEn`이 이 역의 영문이다).
  */
 private fun resolveStation(fromText: String?, fromMsg3: String): ResolvedStation {
-    val trimmed = fromText?.trim()?.ifEmpty { null }
+    val trimmed = fromText?.trimSwiftWhitespacesAndNewlines()?.ifEmpty { null }
     if (trimmed != null && fromMsg3.isNotEmpty() && trimmed != fromMsg3) return ResolvedStation(false, null)
     return ResolvedStation(true, trimmed ?: fromMsg3.ifEmpty { null })
 }
@@ -84,9 +84,9 @@ private fun resolveStation(fromText: String?, fromMsg3: String): ResolvedStation
  * 못 알아보면 `null`(원문 경로) — 역을 지어내지 않는다(3-state).
  */
 fun subwayArrivalProse(message: String?, currentLocation: String?): SubwayArrivalPlan? {
-    // trim은 웹 `String.trim()`(개행 포함)에 맞춘다.
-    val msg = (message ?: "").trim()
-    val msg3 = (currentLocation ?: "").trim()
+    // trim 집합은 Swift와 같이 whitespacesAndNewlines — 웹 `String.trim()`(개행 포함) 근사다.
+    val msg = (message ?: "").trimSwiftWhitespacesAndNewlines()
+    val msg3 = (currentLocation ?: "").trimSwiftWhitespacesAndNewlines()
     if (msg.isEmpty()) return null
 
     match(PREV_EVENT, msg)?.let { m ->
@@ -123,7 +123,7 @@ fun subwayArrivalProse(message: String?, currentLocation: String?): SubwayArriva
             val sec = seconds ?: 0
             if (!(min >= 1 || sec >= 1)) return null
             // 구 문법의 괄호는 역명이 아니라 잔여 정거장이다 — 정거장 조각으로 풀고 현재역은 `arvlMsg3`가 맡는다.
-            val legacy = m[3]?.let { match(ETA_STOPS_PAREN, it.trim()) }
+            val legacy = m[3]?.let { match(ETA_STOPS_PAREN, it.trimSwiftWhitespacesAndNewlines()) }
             val stops = legacy?.get(1)?.toIntOrNull()
             if (stops != null && stops < 1) return null
             val r = if (legacy != null) ResolvedStation(true, msg3.ifEmpty { null }) else resolveStation(m[3], msg3)
@@ -140,7 +140,7 @@ fun subwayArrivalProse(message: String?, currentLocation: String?): SubwayArriva
     // (`곧 도착`의 "곧"을 역으로 읽는다). 코퍼스의 이 문법 228행은 전부 `arvlMsg3`와 같다.
     match(STATION_EVENT, msg)?.let { m ->
         val verb = m[2]?.let { VERBS[it] }
-        if (verb != null && msg3.isNotEmpty() && m[1]?.trim() == msg3) {
+        if (verb != null && msg3.isNotEmpty() && m[1]?.trimSwiftWhitespacesAndNewlines() == msg3) {
             return SubwayArrivalPlan.StationEvent(verb, msg3)
         }
     }
@@ -221,7 +221,7 @@ fun subwayArrivalProseSegments(plan: SubwayArrivalPlan, station: String?): Subwa
  * @return 꼬리(`현재 {역}`)를 붙일 것인가.
  */
 fun subwayShowsCurrentLocationTail(message: String?, currentLocation: String?): Boolean {
-    val location = (currentLocation ?: "").trim()
+    val location = (currentLocation ?: "").trimSwiftWhitespacesAndNewlines()
     // 현재역이 애초에 없으면 붙일 것도 없다("정보 없음"이지 중복이 아니다).
     if (location.isEmpty()) return false
     // 문장은 trim하지 않는다 — 찾는 값의 양끝 공백이 이미 없어 문장 양끝을 다듬어도 포함 여부가 바뀌지 않는다.
