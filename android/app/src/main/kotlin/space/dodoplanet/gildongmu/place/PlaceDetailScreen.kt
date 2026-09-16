@@ -59,7 +59,7 @@ class PlaceNav(val onBack: () -> Unit, val onOpenNearby: (NearbyKind, PlaceAncho
  * "이 장소에 관해 물어보기"(M6)·안내 중 목적지 변경(M4)은 아래 주석 자리에 그 마일스톤이 넣는다.
  */
 @Composable
-fun PlaceDetailScreen(factory: ViewModelProvider.Factory, nav: PlaceNav, takeReturnFocus: () -> String?) {
+fun PlaceDetailScreen(factory: ViewModelProvider.Factory, nav: PlaceNav, takeReturnFocus: () -> String?, domain: PlaceDomain? = null) {
     val vm: PlaceDetailViewModel = viewModel(factory = factory)
     val place = vm.place
     val context = LocalContext.current
@@ -97,6 +97,12 @@ fun PlaceDetailScreen(factory: ViewModelProvider.Factory, nav: PlaceNav, takeRet
             StatusLine(notice, Modifier.padding(vertical = 8.dp))
             // 1. 한글 원문 보조 줄 — 시각 전용(제목이 낭독의 정본, E28 판정 ③)
             title.secondary?.let { Text(it, Modifier.clearAndSetSemantics { }.padding(vertical = 4.dp), style = MaterialTheme.typography.bodyMedium) }
+            // 1-2. 도메인 섹션(그 화면에 온 이유 — 소아 진료 상태·문화행사 개요, spec §12-1). 보조 줄 다음, 분류 앞.
+            when (domain) {
+                is PlaceDomain.Clinic -> ClinicDomainSection(domain.clinic)
+                is PlaceDomain.Event -> CultureEventSection(domain.event)
+                null -> Unit
+            }
             // 2. 분류
             if (displayCategory.isNotEmpty()) Text(displayCategory, Modifier.fillMaxWidth().mergedRow("category").padding(vertical = 8.dp))
             // 3~8. 주소 줄 + 그 줄 전용 복사 버튼(보유한 주소만 — 빈 주소 = 죽은 버튼)
