@@ -119,7 +119,7 @@
       "status": "ported",
       "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/ListenSpeed.kt",
       "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/ListenSpeedTest.kt",
-      "note": "speechRate(forMultiplier:) → speechRate(multiplier). baseSpeechRate·speechRate는 iOS AVSpeechUtterance.rate 축의 실측 표라 [3] :app은 그대로 쓰지 않고 TextToSpeech.setSpeechRate용 매핑을 자기 엔진에서 실측한다(D10)"
+      "note": "부분 이식(코디네이터 판정 2026-09-16): normalizeSpeed·allowedSpeeds·storageKey만. speechRate 표·baseSpeechRate는 iOS AVSpeechUtterance.rate 축이라 미이식, Android 배율은 M4가 실기기 실측으로 정한다(D10). ListenSpeedTests의 speechRate 절도 옮기지 않는다"
     },
     {
       "swift": "RerouteProposalGate.swift",
