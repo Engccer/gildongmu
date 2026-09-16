@@ -1,6 +1,7 @@
 package space.dodoplanet.gildongmu
 
 import android.content.Context
+import android.content.res.Resources
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
@@ -59,15 +60,16 @@ class MainActivity : ComponentActivity() {
             if (event == Lifecycle.Event.ON_START) lifecycleScope.launch { AppConfig.manualLocationJudge.run() }
         })
         // ⚠ Activity를 캡처하지 않는다 — ViewModel은 구성 변경을 넘어 살아 첫 Activity를 붙들면 누수다.
-        // 앱 컨텍스트의 리소스도 앱별 언어 변경을 따라간다.
-        val app: Context = applicationContext
+        // 문자열·언어는 **호출 시점**에 `AppConfig.localizedApp()`에서 읽는다(spec §14-2 — 앱 컨텍스트의 `Resources`를 캡처하면 언어 변경 뒤 옛 언어로 굳는다).
+        val res: () -> Resources = { AppConfig.localizedApp().resources }
+        val recents = RecentSearchStore(SharedPreferencesStore(this))
         val factory = viewModelFactory {
             initializer {
                 SearchViewModel(
                     service = SearchService(AppConfig.apiClient),
-                    store = RecentSearchStore(SharedPreferencesStore(app)),
-                    dataLocale = { AppLocale.dataLocale(app.resources) },
-                    strings = searchStrings(app),
+                    store = recents,
+                    dataLocale = { AppLocale.dataLocale(res()) },
+                    strings = searchStrings(res),
                     savedState = createSavedStateHandle(),
                     coordinate = { AppConfig.effectiveLocation.coordinateForRanking() },
                 )
@@ -75,14 +77,14 @@ class MainActivity : ComponentActivity() {
         }
         val nearbyService = NearbyService(AppConfig.apiClient)
         val services = NearbyServices(nearbyService, BarrierFreeService(AppConfig.apiClient), WalkInfraService(AppConfig.apiClient), ConditionsService(AppConfig.apiClient)) {
-            DateFormat.getTimeInstance(DateFormat.SHORT, Locale.forLanguageTag(AppLocale.current(app.resources))).format(Date())
+            DateFormat.getTimeInstance(DateFormat.SHORT, Locale.forLanguageTag(AppLocale.current(res()))).format(Date())
         }
-        val nearby = nearbyStrings(app)
+        val nearby = nearbyStrings(res)
         val factories = AppFactories(
             search = factory,
             nearby = { kind, anchor -> nearbyFactory(kind, anchor, services, nearby, current = { AppConfig.effectiveLocation.nearbyCoordinateSource() }, manual = { AppConfig.manualLocationStore.current.value }) },
             busRouteStops = { route -> busRouteStopsFactory(route, nearbyService, nearby) },
-            place = { place -> placeDetailFactory(place, PlaceHoursService(AppConfig.apiClient), placeStrings(app), StationService(AppConfig.apiClient), services.barrierFree) { AppLocale.dataLocale(app.resources) } },
+            place = { place -> placeDetailFactory(place, PlaceHoursService(AppConfig.apiClient), placeStrings(res), StationService(AppConfig.apiClient), services.barrierFree) { AppLocale.dataLocale(res()) } },
             requestPreciseLocation = { AppConfig.permissionGate.request() == LocationPermission.Fine },
             isLocationEnabled = { AppConfig.locationStore.isLocationEnabled() },
             currentAddress = AppConfig.currentAddressStore,
@@ -101,13 +103,13 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-/** ViewModel 통지 문장(리소스는 화면 몫, spec §4). 호출 시점에 읽는다 — 앱별 언어 변경을 따라간다. */
-fun searchStrings(context: Context): SearchStrings = SearchStrings(
-    searchingFor = { appLocalized(context.resources, R.string.search_searchingFor, it) },
-    failed = { context.getString(R.string.android_search_announceFailed) },
-    empty = { context.getString(R.string.android_search_announceEmpty) },
-    count = { appLocalized(context.resources, R.string.android_search_announceCount, it) },
-    deleted = { context.getString(R.string.recent_deleted) },
-    cleared = { context.getString(R.string.recent_cleared) },
-    clearedExceptPinned = { context.getString(R.string.recent_clearedExceptPinned) },
+/** ViewModel 통지 문장(리소스는 화면 몫, spec §4). 호출 시점에 `res()`를 읽는다(spec §14-2). */
+fun searchStrings(res: () -> Resources): SearchStrings = SearchStrings(
+    searchingFor = { appLocalized(res(), R.string.search_searchingFor, it) },
+    failed = { res().getString(R.string.android_search_announceFailed) },
+    empty = { res().getString(R.string.android_search_announceEmpty) },
+    count = { appLocalized(res(), R.string.android_search_announceCount, it) },
+    deleted = { res().getString(R.string.recent_deleted) },
+    cleared = { res().getString(R.string.recent_cleared) },
+    clearedExceptPinned = { res().getString(R.string.recent_clearedExceptPinned) },
 )
