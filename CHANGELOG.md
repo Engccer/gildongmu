@@ -11,6 +11,10 @@
 
 ## 2026-09-16
 
+### 안드로이드 M6 조각 ① — 채팅 탭·장소 채팅 골격 (`android/app/.../chat`)
+
+AI 동의 게이트(인라인 본문 + 전송 가드 이중 방어), `/api/chat` NDJSON 스트리밍 전송기(HttpURLConnection POST, 줄 분리는 :kit `splitStreamLines` 8KB, 취소 시 감시자가 연결을 닫고 그 예외를 취소로 되돌림), 대화 상태 머신(진행 통지·follow-up·주소 카드 지오코딩 3-state·복귀 키), 질문 헤딩·산문 블록별 객체·입력 바(보내기 `stateDescription`·지우기), 전송→보내기 버튼/완료→질문 헤딩(실패는 실패 블록) 착지, 채팅 탭 위치 표시줄, `NavController.openChat(place?)` 진입(장소면 스택 push = 장소마다 새 대화)을 iOS 채팅 미러로 세웠다. 카드·언급·출처·칩은 조각 ②, 받아쓰기는 조각 ③. 프로덕션 follow-up 칩 서버가 6초 상한으로 빈 목록을 주는 것을 실호출로 발견했다(서버 판정은 동결 해제 뒤). spec `docs/superpowers/specs/2026-09-16-android-m6-chat-design.md`(설계 리뷰 2회), 계획 `docs/superpowers/plans/2026-09-16-android-m6-chat.md`.
+
 ### 안드로이드 M2b — 내 주변 나머지 6종·주변 상황·역 자동 섹션·무장애·현재 위치 표시줄 (`android/app`)
 
 내 주변 kind 6종(소아 야간진료·무장애 여행지·아이 놀 곳·문화행사·보행 인프라·날씨/공기질/혼잡도 — 허브 10행 iOS 순서), 둘러보기 "주변 상황" 자동 펼침(세 조각 한 커밋, 묶음별 더 보기), 장소 상세 도메인 섹션(진료 상태·행사 개요, 라우트 JSON 인자)·역 자동 섹션 5종(시간표만 3-state 문장)·무장애 편의시설 섹션·앵커 4행, 허브 첫 행 현재 위치 표시줄(권한→확정 실패→좌표→주소; 안드로이드는 "안 물음"과 "거부"를 못 가르므로 권한 없음은 "위치 권한이 필요합니다", 표시용 좌표는 낡은 좌표 폴백 없음)을 iOS 미러로 더했다. 신설 문자열 0. 버튼·클릭 행의 착지 부착을 `a11y/landingTarget`(`focusProperties { canFocus = true }`)으로 통일했다 — Compose 1.12 `clickable`은 터치 입력 모드에서 포커스를 받지 않아 TalkBack 폰에서 버튼 착지가 조용히 실패했다(M6 설계 리뷰 발견, M1·M2·M3 화면 전수 적용 + 소스 가드). 수동 위치 지정은 M2c(M3 끝점 검색 재사용), 결과 진동은 설정 화면 마일스톤. spec `docs/superpowers/specs/2026-09-16-android-m2-place-nearby-design.md` §12(설계 리뷰 2회 35건 반영), 계획 `docs/superpowers/plans/2026-09-16-android-m2b-nearby-sections.md`.
