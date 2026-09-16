@@ -73,7 +73,12 @@ class ChatViewModelTest {
 
     private class Suggestions(var result: suspend () -> List<String> = { listOf("다음 질문") }) : ChatSuggestionsSource {
         var calls = 0
-        override suspend fun fetch(lastUser: String, lastAssistant: String, locale: String, placeName: String?): List<String> { calls++; return result() }
+        val args = ArrayList<List<String?>>()
+        override suspend fun fetch(lastUser: String, lastAssistant: String, locale: String, placeName: String?): List<String> {
+            calls++
+            args += listOf(lastUser, lastAssistant, locale, placeName)
+            return result()
+        }
     }
 
     private val place = Place(id = "k1", name = "강동역", category = "교통,수송 > 지하철,전철 > 수도권5호선", address = "서울 강동구", roadAddress = "서울 강동구 천호대로", lat = 37.5358, lng = 127.1323)
@@ -141,25 +146,26 @@ class ChatViewModelTest {
         assertEquals("", s.notice.text)
     }
 
-    @Test fun `status 이벤트는 도구 라벨 진행 문장을 통지한다`() = runTest(dispatcher) {
-        val notices = ArrayList<String>()
-        val gate = CompletableDeferred<Unit>()
+    @Test fun `status 이벤트마다 진행 문장을 새 seq로 통지한다(빈 목록은 폴백·미지 도구는 원문·같은 문장도 다시)`() = runTest(dispatcher) {
+        val gates = List(4) { CompletableDeferred<Unit>() }
         val f = make(events = {
             flow {
-                emit(ChatStreamEvent.Status(listOf("search_places", "get_weather")))
-                gate.await()
-                emit(ChatStreamEvent.Status(emptyList()))
-                emit(ChatStreamEvent.Status(listOf("x_tool")))
+                emit(ChatStreamEvent.Status(listOf("search_places", "get_weather"))); gates[0].await()
+                emit(ChatStreamEvent.Status(emptyList())); gates[1].await()
+                emit(ChatStreamEvent.Status(listOf("x_tool"))); gates[2].await()
+                emit(ChatStreamEvent.Status(listOf("x_tool"))); gates[3].await()
                 awaitCancellation()
             }
         })
         f.vm.send("질문")
-        advanceUntilIdle()
-        notices += f.vm.state.value.notice.text
-        gate.complete(Unit)
-        advanceUntilIdle()
-        assertEquals("장소, 날씨 조회 중", notices.single())
-        assertEquals("x_tool 조회 중", f.vm.state.value.notice.text)
+        val seen = ArrayList<Pair<Int, String>>()
+        for (gate in gates) {
+            advanceUntilIdle()
+            f.vm.state.value.notice.let { seen += it.seq to it.text }
+            gate.complete(Unit)
+        }
+        assertEquals(listOf("장소, 날씨 조회 중", "정보 확인 중", "x_tool 조회 중", "x_tool 조회 중"), seen.map { it.second })
+        assertTrue(seen.zipWithNext().all { (a, b) -> b.first > a.first }, "seq 단조 증가 $seen")
     }
 
     @Test fun `done은 답변·완료음·세대·follow-up을 커밋한다`() = runTest(dispatcher) {
@@ -178,7 +184,40 @@ class ChatViewModelTest {
         assertEquals(1, f.sounds.receives)
         assertEquals("", s.notice.text)
         assertEquals(1, f.suggestions.calls)
+        assertEquals(listOf<String?>("강동역 근처 카페", done.text, "ko", null), f.suggestions.args.single())
         assertEquals(listOf("다음 질문"), s.followUps)
+    }
+
+    @Test fun `장소 채팅 follow-up은 장소 이름을, 빈 done은 준비 못함 문장을 넘긴다`() = runTest(dispatcher) {
+        val f = make(place = place, events = { flowOf(ChatStreamEvent.Done("", emptyList(), emptyList())) })
+        f.vm.send("이 역 주변")
+        advanceUntilIdle()
+        assertEquals(listOf<String?>("이 역 주변", "답변을 준비하지 못했습니다", "ko", "강동역"), f.suggestions.args.single())
+    }
+
+    @Test fun `측위 뒤에 좌표를 읽는다 — 첫 전송이 측위로 채운 좌표를 싣는다`() = runTest(dispatcher) {
+        val location = object : ChatLocation {
+            var coordinate: ChatRequestBody.Coordinate? = null
+            override suspend fun prime() { coordinate = ChatRequestBody.Coordinate(37.5, 127.1) }
+            override fun last() = coordinate
+        }
+        val consent = ChatConsentStore(InMemoryKeyValueStore()).also { it.grant() }
+        val stream = Stream { flowOf(done) }
+        val vm = ChatViewModel(null, stream, Suggestions(), { null }, consent, location, { "ko" }, { "ko" }, strings, Sounds(), SavedStateHandle())
+        vm.send("질문")
+        advanceUntilIdle()
+        assertEquals(ChatRequestBody.Coordinate(37.5, 127.1), stream.bodies.single().userLocation)
+    }
+
+    @Test fun `동의를 아직 읽지 않았으면 전송하지 않고, 읽으면 저장값을 따른다`() = runTest(dispatcher) {
+        val store = InMemoryKeyValueStore().also { it.putString(ChatConsentStore.KEY, "true") }
+        val consent = ChatConsentStore(store, dispatcher)
+        val vm = ChatViewModel(null, Stream { flowOf(done) }, Suggestions(), { null }, consent, Location(), { "ko" }, { "ko" }, strings, Sounds(), SavedStateHandle())
+        assertNull(vm.consentGranted.value)
+        assertFalse(vm.send("질문"))
+        vm.ensureConsentLoaded()
+        assertEquals(true, vm.consentGranted.value)
+        assertTrue(vm.send("질문"))
     }
 
     @Test fun `error 이벤트·스트림 예외·done 뒤 예외는 실패 답변이고 follow-up을 부르지 않는다`() = runTest(dispatcher) {

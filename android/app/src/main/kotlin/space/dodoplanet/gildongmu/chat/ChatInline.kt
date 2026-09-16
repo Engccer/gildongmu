@@ -11,7 +11,8 @@ private const val ESCAPABLE = "\\`*_~[]()#"
 /**
  * iOS `AttributedString(markdown:, .inlineOnlyPreservingWhitespace)`가 기호를 걷는 것의 최소 대응. 블록 문법(헤딩·목록 표지)은
  * `:kit` `parseChatMarkdownBlocks`가 이미 처리했으므로 인라인만 본다. 짝을 못 찾은 기호는 원문 문자로 남긴다(글자를 잃지 않는다).
- * - `**x**`·`__x__` → 굵게, `` `x` `` → 고정폭, `~~x~~` → 기호만 걷음, `[label](url)` → label(URL 버림)
+ * - `***x***`·`___x___` → 굵게(기울임은 시각 생략), `**x**`·`__x__` → 굵게, `` `x` `` → 고정폭, `~~x~~` → 기호만 걷음,
+ *   `[label](url)` → label(URL 버림 — `[` 뒤 첫 `]`가 곧바로 `(`로 이어질 때만 링크로 본다)
  * - `*x*`는 여는 기호 뒤와 닫는 기호 앞이 공백이 아닐 때만(곱셈 `2 * 3`을 지키려고), `_x_`는 걷지 않는다(snake_case)
  * - `\*` 같은 이스케이프는 역슬래시만 걷는다
  */
@@ -47,6 +48,15 @@ fun chatInlineText(text: String): ChatInlineText {
                 continue
             }
         }
+        if (text.startsWith("***", i) || text.startsWith("___", i)) {
+            val marker = text.substring(i, i + 3)
+            val end = text.indexOf(marker, i + 3)
+            if (end > i + 3) {
+                bold += appendNested(text.substring(i + 3, end))
+                i = end + 3
+                continue
+            }
+        }
         if (text.startsWith("**", i) || text.startsWith("__", i) || text.startsWith("~~", i)) {
             val marker = text.substring(i, i + 2)
             val end = text.indexOf(marker, i + 2)
@@ -58,7 +68,8 @@ fun chatInlineText(text: String): ChatInlineText {
             }
         }
         if (c == '[') {
-            val close = text.indexOf("](", i + 1)
+            val closeBracket = text.indexOf(']', i + 1)
+            val close = if (closeBracket > i + 1 && text.startsWith("](", closeBracket)) closeBracket else -1
             val paren = if (close > i + 1) text.indexOf(')', close + 2) else -1
             if (paren > close + 2) {
                 appendNested(text.substring(i + 1, close))

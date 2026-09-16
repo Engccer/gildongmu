@@ -52,6 +52,16 @@ class ChatInlineTest {
         assertEquals("• 역", t("• 역").plain)
     }
 
+    @Test fun `굵은 기울임 세 글자 표지도 기호를 모두 걷는다`() {
+        val r = t("***강조***")
+        assertEquals("강조", r.plain)
+        assertEquals(listOf(0..1), r.bold)
+    }
+
+    @Test fun `링크가 아닌 대괄호 뒤에 링크가 와도 괄호를 뭉개지 않는다`() {
+        assertEquals("[참고] 서울역 안내", t("[참고] 서울역 [안내](https://x.test)").plain)
+    }
+
     @Test fun `빈 강조는 기호 그대로`() {
         assertEquals("****", t("****").plain)
     }

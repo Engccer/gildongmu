@@ -88,7 +88,7 @@ class ChatHttpTest {
             out.write("HTTP/1.1 200 OK\r\nContent-Type: application/x-ndjson\r\nContent-Length: ${payload.size}\r\nConnection: close\r\n\r\n".toByteArray())
             out.write(payload)
         }.use { server ->
-            val events = runBlocking { HttpChatStreamSource(server.base).events(body).toList() }
+            val events = runBlocking { withTimeout(10_000) { HttpChatStreamSource(server.base).events(body).toList() } }
             assertEquals(2, events.size)
             assertEquals("답", (events[1] as ChatStreamEvent.Done).text)
             val req = server.recorded.get(5, TimeUnit.SECONDS)
@@ -104,21 +104,24 @@ class ChatHttpTest {
             out.write("HTTP/1.1 429 Too Many Requests\r\nContent-Type: application/json\r\nContent-Length: ${err.size}\r\nConnection: close\r\n\r\n".toByteArray())
             out.write(err)
         }.use { server ->
-            val e = assertFailsWith<APIError.BadStatus> { runBlocking { HttpChatStreamSource(server.base).events(body).toList() } }
+            val e = assertFailsWith<APIError.BadStatus> { runBlocking { withTimeout(10_000) { HttpChatStreamSource(server.base).events(body).toList() } } }
             assertEquals(429, e.code)
             assertEquals("rate_limited", e.serverMessage)
         }
     }
 
     /** 읽기가 `disconnect()` 전까지 막히는 가짜 연결 — 취소 → 감시자 disconnect → 읽기 해제 → 즉시 반환 계약을 JDK 내부 동작과 무관하게 잠근다. */
-    private class StalledConnection : HttpURLConnection(URL("http://stalled.test/api/chat")) {
+    private open class StalledConnection(private val status: Int = 200) : HttpURLConnection(URL("http://stalled.test/api/chat")) {
         val disconnected = CountDownLatch(1)
         var disconnectCalls = 0
+        var outputStreamCalls = 0
+        val fixedLength get() = fixedContentLength
         override fun connect() = Unit
         override fun usingProxy() = false
         override fun disconnect() { disconnectCalls++; disconnected.countDown() }
-        override fun getOutputStream(): OutputStream = ByteArrayOutputStream()
-        override fun getResponseCode() = 200
+        override fun getOutputStream(): OutputStream { outputStreamCalls++; return ByteArrayOutputStream() }
+        override fun getResponseCode() = status
+        override fun getErrorStream(): InputStream? = null
         override fun getInputStream(): InputStream = object : InputStream() {
             private val first = "{\"type\":\"status\",\"categories\":[]}\n".toByteArray()
             private var pos = 0
@@ -144,11 +147,46 @@ class ChatHttpTest {
             withTimeout(2_000) { job.cancelAndJoin() }
         }
         assertTrue(connection.disconnectCalls >= 1)
+        assertEquals(2, connection.fixedLength) // "{}" 고정 길이 본문
+        assertEquals(180_000, connection.readTimeout)
+        assertEquals(180_000, connection.connectTimeout)
+    }
+
+    @Test fun `연결을 연 직후 취소되면 요청을 보내지 않고 감시자가 연결을 닫는다`() {
+        val connection = StalledConnection()
+        val jobRef = java.util.concurrent.atomic.AtomicReference<kotlinx.coroutines.Job>()
+        runBlocking {
+            withTimeout(5_000) {
+                val job = launch(Dispatchers.Default, start = kotlinx.coroutines.CoroutineStart.LAZY) {
+                    ChatHttp.post("http://stalled.test/api/chat", "{}", 180_000, open = { jobRef.get().cancel(); connection }) { _, _ -> Unit }
+                }
+                jobRef.set(job)
+                job.start()
+                job.join()
+            }
+        }
+        assertEquals(0, connection.outputStreamCalls)
+        assertTrue(connection.disconnectCalls >= 1)
+    }
+
+    @Test fun `오류 본문이 없는 비-2xx도 BadStatus(메시지 없음)`() {
+        val connection = StalledConnection(status = 503)
+        val e = assertFailsWith<APIError.BadStatus> {
+            runBlocking {
+                withTimeout(5_000) {
+                    ChatHttp.post("http://stalled.test/api/chat", "{}", 180_000, open = { connection }) { status, stream ->
+                        space.dodoplanet.gildongmu.kit.ChatService.statusError(status, stream.readBytes().decodeToString())?.let { throw it }
+                    }
+                }
+            }
+        }
+        assertEquals(503, e.code)
+        assertEquals(null, e.serverMessage)
     }
 
     @Test fun `follow-up 칩 전송 실패는 빈 목록`() {
         val closedPort = ServerSocket(0, 1, InetAddress.getLoopbackAddress()).use { it.localPort }
-        val result = runBlocking { HttpChatSuggestionsSource("http://127.0.0.1:$closedPort").fetch("질문", "답", "ko", null) }
+        val result = runBlocking { withTimeout(10_000) { HttpChatSuggestionsSource("http://127.0.0.1:$closedPort").fetch("질문", "답", "ko", null) } }
         assertEquals(emptyList(), result)
     }
 
@@ -158,7 +196,7 @@ class ChatHttpTest {
             out.write("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: ${json.size}\r\nConnection: close\r\n\r\n".toByteArray())
             out.write(json)
         }.use { server ->
-            val result = runBlocking { HttpChatSuggestionsSource(server.base).fetch("질문", "답", "ko", "강남역") }
+            val result = runBlocking { withTimeout(10_000) { HttpChatSuggestionsSource(server.base).fetch("질문", "답", "ko", "강남역") } }
             assertEquals(listOf("a", "b", "c"), result)
             assertTrue(server.recorded.get(5, TimeUnit.SECONDS).body.contains("\"placeName\":\"강남역\""))
         }

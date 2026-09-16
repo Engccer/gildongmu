@@ -53,15 +53,15 @@ res/raw       chat_send.mp3 · chat_receive.mp3 (iOS `Resources/chat-send.mp3`·
 | # | 요소 | 접근성 계약 |
 |---|---|---|
 | 1 | 상단 바(`AppScreenScaffold`) | 탭: 제목 `android.tab.chat`, 뒤로 없음. 장소: 제목 = 장소 이름(`bilingualName(...).primary`), 뒤로 있음. 제목은 헤딩(기존 `AppTopBar`) |
-| 2 | (탭만) 위치 표시줄 | M2b `LocationBarRow` 자리(§1). 장소 채팅엔 **두지 않는다** — 장소 좌표가 앵커라 표시줄이 거짓 신호가 된다(iOS `showsLocationBar: false`) |
+| 2 | (탭만, 동의 뒤) 위치 표시줄 | M2b `LocationBarRow(AppConfig.currentAddressStore)` — 스크롤 밖 첫 줄. 진입 시점 스냅샷이라 같은 화면의 전송(측위·권한 허용)이 상태를 바꿨을 수 있어 **답변 뒤 `ensureLoaded`를 다시 부른다**(좌표당 1회는 스토어가 막는다). 장소 채팅엔 **두지 않는다** — 장소 좌표가 앵커라 표시줄이 거짓 신호가 된다(iOS `showsLocationBar: false`) |
 | 3 | 동의 전: 동의 본문(§3-2) / 동의 뒤: 대화 목록(§3-3) | 세로 스크롤 `Column`(가상 스크롤 금지 — 헌장 §1, iOS LazyVStack 금지와 같은 결론) |
-| 4 | 통지 줄 `StatusLine(notice)` | 화면의 **단일 polite 창구**. 진행 문장·주소 좌표 실패·받아쓰기 결과·받아쓰기 실패·열기 실패가 전부 여기로. 목록 끝(입력 바 바로 위)에 두고, 스트리밍 중엔 왼쪽에 진행 표시(`CircularProgressIndicator`, `clearAndSetSemantics {}` — 시각 전용) |
-| 5 | 입력 바(스크롤 밖, 하단 고정) | 1행: 텍스트 필드(라벨 `chat.inputLabel`, 한 줄, IME 동작 `Send`, `TextFieldState`는 ViewModel 소유) + 초안이 있을 때만 끝의 지우기 아이콘 버튼(`android.chat.clear`). 2행: 받아쓰기 버튼(게이트 통과 시만, §6) + (거부 상태에서만) 설정 열기 버튼 + 보내기 버튼(`chat.send`). 읽기 순서 필드 → 지우기 → 받아쓰기 → (설정 열기) → 보내기. 버튼은 **보이는 텍스트 라벨**(텍스트면 라벨 = 이름이라 대응 속성 불필요, 코어 아이콘에 마이크도 없다) |
+| 4 | 통지 줄 `StatusLine(notice)` | 화면의 **단일 polite 창구**. 진행 문장·주소 좌표 실패·받아쓰기 결과·받아쓰기 실패·열기 실패가 전부 여기로. **스크롤 밖**, 입력 바 바로 위에 고정(목록을 올려 읽는 중에도 라이브 리전이 화면 안에 있다 — 화면 밖 노드의 라이브 리전 발화는 보장되지 않는다). 스트리밍 중엔 왼쪽에 진행 표시(`CircularProgressIndicator`, `clearAndSetSemantics {}` — 시각 전용) |
+| 5 | 입력 바(스크롤 밖, 하단 고정 — 대화 컨테이너에 `fitInside(WindowInsetsRulers.Ime.current)`: targetSdk 36 edge-to-edge에서 `adjustResize`는 창을 줄이지 않고 IME 인셋만 주므로 앱이 맞춰야 키보드가 입력 바를 덮지 않는다) | 1행: 텍스트 필드(라벨 `chat.inputLabel`, 한 줄, IME 동작 `Send`, `TextFieldState`는 ViewModel 소유) + 초안이 있을 때만 끝의 지우기 아이콘 버튼(`android.chat.clear`). 2행: 받아쓰기 버튼(게이트 통과 시만, §6) + (거부 상태에서만) 설정 열기 버튼 + 보내기 버튼(`chat.send`). 읽기 순서 필드 → 지우기 → 받아쓰기 → (설정 열기) → 보내기. 버튼은 **보이는 텍스트 라벨**(텍스트면 라벨 = 이름이라 대응 속성 불필요, 코어 아이콘에 마이크도 없다) |
 
 ### 3-2. 동의 본문(iOS `ChatConsentView` 미러)
 
 제목 `android.chat.consentTitle`(헤딩, 착지 가능) → `consentData` → `consentAiNotice` → `consentAlt`(각 `mergedRow` 한 객체) → 버튼 `android.common.privacyPolicy`(`{API_BASE_URL}/{AppLocale.current}/privacy`를 `ACTION_VIEW`, `tryStartActivity`가 false면 통지 `android.common.noAppToOpen`) → 버튼 `android.chat.consentAgree`.
-동의 누름 → `ChatConsentStore.grant()`(저장 + `StateFlow` 갱신 — 열린 탭·장소 화면이 함께 전환) → **그 화면만**, 동의 상태가 true로 커밋된 뒤 첫 프레임(`LaunchedEffect(granted)`)에 텍스트 필드로 착지(사라진 동의 버튼에서의 이탈 차단, 헌장 §5; iOS `focusDraftOnAppear`). 저장은 `SharedPreferencesStore(app, "gildongmu.chat")` 키 `aiChatConsent` = `"true"` — 실험판·정식판은 applicationId가 달라 저장이 자동으로 갈린다(iOS 앱별 UserDefaults 동형). 미결정·거부를 구분하지 않는다(iOS와 같다).
+동의 여부의 첫 읽기는 IO에서(`ChatConsentStore.ensureLoaded`, 저장소 계약 — `SharedPreferences` 첫 접근은 디스크 로드). 읽기 전(`granted == null`)엔 동의 본문도 대화도 그리지 않는다(동의 전 화면이 한 프레임 번쩍이지 않게). 동의 누름 → `ChatConsentStore.grant()`(저장 + `StateFlow` 갱신 — 열린 탭·장소 화면이 함께 전환) → **그 화면만**, 동의 상태가 true로 커밋된 뒤 첫 프레임(`LaunchedEffect(granted)`)에 텍스트 필드로 착지(사라진 동의 버튼에서의 이탈 차단, 헌장 §5; iOS `focusDraftOnAppear`). 저장은 `SharedPreferencesStore(app, "gildongmu.chat")` 키 `aiChatConsent` = `"true"` — 실험판·정식판은 applicationId가 달라 저장이 자동으로 갈린다(iOS 앱별 UserDefaults 동형). 미결정·거부를 구분하지 않는다(iOS와 같다).
 
 ### 3-3. 대화 목록
 
@@ -91,7 +91,7 @@ res/raw       chat_send.mp3 · chat_receive.mp3 (iOS `Resources/chat-send.mp3`·
 
 | 사건 | 포커스 | 근거 |
 |---|---|---|
-| 전송 — 보내기 버튼·IME 전송 | `vm.sendDraft()`가 받아들였을 때만(초안은 **그때만** 비운다) 같은 핸들러에서 동기로 보내기 버튼 착지 + 한 프레임 뒤 목록 끝으로 스크롤(새 질문이 배치된 뒤의 끝) | 헌장 §6. 입력 포커스가 필드를 떠나 소프트 키보드가 내려간다(수용 — 다음 행동은 답변 듣기) |
+| 전송 — 보내기 버튼·IME 전송 | `vm.sendDraft()`가 받아들였을 때만(초안은 **그때만** 비운다) 같은 핸들러에서 동기로 보내기 버튼 착지. 목록 끝 스크롤은 메시지 수 변화의 효과에서(새 질문이 배치된 뒤의 `maxValue`) | 헌장 §6. 입력 포커스가 필드를 떠나 소프트 키보드가 내려간다(수용 — 다음 행동은 답변 듣기) |
 | 전송 — 추천 질문·follow-up 칩 | `vm.send(text)`가 받아들였을 때만 보내기 버튼 착지 + 끝으로 스크롤. **초안은 건드리지 않는다**(iOS 동형) | 누른 버튼이 다음 프레임에 사라진다 — 사라지기 전에 안정 요소로 선점(헌장 §5) |
 | 스트리밍 중 | 보내기 버튼 유지. 클릭은 무시(핸들러 가드 + ViewModel in-flight 가드), `enabled = false` 금지, `stateDescription = android.chat.sending` | M1 검색 버튼 관용구(disabled는 포커스를 떨군다). 포커스를 쥔 노드의 상태 설명 변화는 TalkBack이 강제 발화 |
 | 완료 — 성공 | 마지막 **질문 헤딩** 착지 | 헌장 §6 |
@@ -99,7 +99,7 @@ res/raw       chat_send.mp3 · chat_receive.mp3 (iOS `Resources/chat-send.mp3`·
 | 완료 착지 공통 조건 | ① `answerRevision`이 이 화면 진입 시 값(`remember`)보다 크고 아직 소비 안 함 ② 스트리밍 중이 아님 ③ **받아쓰기 세션이 활성(`isActive`: Starting·Preparing·Listening)이 아님** ④ **텍스트 필드가 입력 포커스를 갖고 있지 않음**(`onFocusChanged`로 화면 상태에 보관). ③·④로 건너뛴 착지는 **소비**(되살리지 않는다) — 그때는 끝으로 스크롤만. **건너뛴 완료가 실패면** 통지 줄에 실패 문장(`android.chat.failed`)을 게시한다: ④는 즉시, ③이면 받아쓰기 세션이 끝날 때 — 전사가 오면 전사 통지와 한 문장(`실패 문장 + 공백 + 병합 원문`), 전사 없이 끝나면 실패 문장만(리뷰 R2-M1) | ① 다른 탭에 있는 동안 끝난 답변이 복귀 때 포커스를 끌어가지 않게(StatusLine `initialSeq`와 같은 꼴, iOS `.task(id:)` 금지 사유). ③ 탐색 낭독이 곧 뜨거워질 마이크에 섞인다. ④ 답을 기다리며 다음 질문을 치던 점자 키보드 사용자의 입력을 끊지 않는다(Compose `requestFocus`는 iOS와 달리 입력 포커스 자체를 옮긴다). ③·④ 경우 성공은 완료음만, 실패는 완료음 + 실패 통지(§8-2) |
 | 지우기 | 초안 비움 + 텍스트 필드 착지(같은 핸들러) | 지우기 버튼이 자신을 없앤다 |
 | 동의 | 텍스트 필드(§3-2) | |
-| 장소 채팅 진입(push) | 동의 뒤면 제목 헤딩, 동의 전이면 동의 제목 헤딩 | 누른 "물어보기" 버튼이 사라지는 전이. M2 장소 상세 진입 착지와 같은 꼴 |
+| 장소 채팅 진입(push) | 상단 바 제목 헤딩(동의 여부 무관), **push당 1회**(`rememberSaveable` 표식 — 상세 pop 복귀·구성 변경에서 다시 돌지 않아 복귀 착지와 겹치지 않는다) | 누른 "물어보기" 버튼이 사라지는 전이. M2 장소 상세 진입 착지와 같은 꼴 |
 | 받아쓰기 전사 도착 | 초안에 병합 → 대기 중인 완료 착지를 소비(iOS가 전사 도착 시 완료 포커스 시퀀스를 취소하는 것과 같다) → 보내기 버튼 착지 → 통지(병합 원문, 보류된 실패가 있으면 앞에 붙인다) | 헌장 §6 받아쓰기 완료. TalkBack polite 통지는 새 발화에 끊기지 않고 포커스 낭독 뒤에 잇는다. 통지 줄의 원문은 다음 전송·지우기에서 비운다(초안과의 중복 잔존 차단) |
 | 장소 상세에서 pop 복귀 | 연 원점(카드 행 `card-<msg>-<r>-<place.id>`·언급 블록 `block-<msg>-<i>`·주소 행 `address-<msg>-<r>-<roadAddr>`) | `ReturnFocusSlot`(ViewModel `SavedStateHandle`) — 기존 관용구. 소비는 `LaunchedEffect` 안에서 한 번. 묶음 인덱스 `r`은 정확도순·리뷰순 묶음에 같은 장소가 있을 때 키 충돌을 막는다 |
 
@@ -255,12 +255,12 @@ fun NavController.openChat(place: Place?)
 4. 언급 1개 블록 = "…, 버튼" 한 객체이고 활성화가 상세로 간다(헤딩 + 버튼 조합 낭독 포함).
 5. 언급 2개 이상 블록의 커스텀 액션이 TalkBack 작업 메뉴와 **한소네 점자 탐색**에서 닿는다(못 닿으면 보이는 버튼으로 교체 — M1 §8-8 조건).
 6. 카드·블록·주소 행 → 상세 → 뒤로 → 원점 착지. 주소 지오코딩 왕복 중 탭 전환 → 유령 상세 없음. 장소 채팅 진입 → 제목 착지, 뒤로 → "물어보기" 버튼 착지(m1 배선 뒤).
-7. 진행 통지가 한 번씩 발화되고 답변 산문이 통지로 중복 낭독되지 않는다. 구획 헤딩(카드·출처·추가 질문)이 소음인지 발견 경로인지. (TalkBack "모든 진행 상황 업데이트 말하기"를 끈 사용자는 같은 노드 변경을 30초에 한 번만 듣는다 — 참고.)
+7. 진행 통지가 한 번씩 발화되고(목록을 위로 올려 읽는 중에도) 답변 산문이 통지로 중복 낭독되지 않는다. 구획 헤딩(카드·출처·추가 질문)이 소음인지 발견 경로인지. (TalkBack "모든 진행 상황 업데이트 말하기"를 끈 사용자는 같은 노드 변경을 30초에 한 번만 듣는다 — 참고.)
 8. 효과음(전송·완료) 음량·TalkBack 발화와의 겹침.
 9. 동의 → 텍스트 필드 착지(소프트 키보드가 올라오는 것이 수용 가능한가 — 아니면 제목 헤딩).
 10. 받아쓰기: 한소네 6(Android 12)에서 버튼 없음 · 한소네 7에서 `isOnDeviceRecognitionAvailable`·한국어 지원 조회 결과·온디바이스 서비스가 실제로 없을 때 어느 실패로 가는가 · 라벨 전환 낭독이 전사에 섞이지 않는다(`interrupt()` 시점, 한소네 자체 리더 포함) · 시작/정지음 음량(**진동·무음 모드 포함** — `STREAM_SYSTEM`은 벨소리 음량에 묶일 수 있다) · 분할 세션이 정지까지 이어지는가(아니면 짧은 침묵에 끊기는가) · `stopListening` 뒤 종결 콜백 지연 분포(3초 상한이 마지막 문장을 자르지 않는가 — 그 값으로 상한 확정) · `onReady` 반복 여부 · 준비 중 탭 = 취소 · 다운로드 요청·완료 통지 · 청취 중 회전 → 누적분이 초안에 남는가 · 거부 → 설정 열기 버튼.
 11. **전사·받아쓰기 실패 통지**: 헤드폰 없이 10회 연속, 보내기 버튼 착지 뒤 전사 원문이(실패면 실패 문장이) 매번 끝까지 낭독된다 — `Audio`(다른 앱이 마이크 사용 중)는 무음 창이 닫히지 않을 수 있다(TalkBack은 마이크 활성 중 강제 아닌 발화를 무음 처리하므로 인식 서비스의 녹음 해제가 늦으면 잘린다). 실패 시 대안: `AudioManager.activeRecordingConfigurations`가 빌 때 게시, 또는 짧은 지연.
-12. 지우기 → 텍스트 필드 착지. 한소네 키보드로 필드·지우기·받아쓰기·보내기 전부 도달, 물리 Enter가 전송.
+12. **Android 15+ 폰에서 소프트 키보드가 입력 바(필드·지우기·보내기)를 덮지 않는다**(`fitInside` IME). 지우기 → 텍스트 필드 착지. 한소네 키보드로 필드·지우기·받아쓰기·보내기 전부 도달, 물리 Enter가 전송.
 13. 권한 다이얼로그 경계: 일반 채팅 첫 전송의 위치 권한, 받아쓰기의 마이크 권한 — 다이얼로그가 닫힌 뒤 커서 위치(가설 착지 없음, 실측 뒤 판정).
 14. 공유 선택기가 뜨고 닫힌 뒤 포커스가 공유 버튼에 남는다.
 15. (알려진 서버 결함) U+2028이 섞인 답변은 실패 문구가 된다 — iOS와 같은 증상 확인만, 우회 없음. 또 프로덕션 `/api/chat/suggestions`가 6.1초 뒤 빈 목록을 준다(2026-09-16 실측 3회, 코디네이터가 Vercel 로그로 6초 AbortError·503 확인 — 동결 해제 뒤 서버 판정). follow-up 칩 실기기 판정은 서버가 고쳐진 뒤.
@@ -342,3 +342,5 @@ fun NavController.openChat(place: Place?)
 | n11 동의 착지 시점 | 반영 — §3-2 |
 
 2차(`~/gildongmu-wt/android-m6-reports/review-m6-design-r2.md`, 기준 78cc20c5): **APPROVE_WITH_CHANGES** — 1차 33건 중 해결 26·부분 6·기각 타당 1, 신규 MAJOR 1·MINOR 8·NIT 11. 반영: R2-M1(건너뛴 실패 통지·받아쓰기 중 결합), R2-m1(타이머 세대 확인·종결 공통 정리·상한 무장 순서·`onReady` 1회·포트 계약), R2-m2(start 대기 중 정지 = 취소), R2-m3(다운로드 뒤 청취하지 않음, Preparing은 보류 대상 아님), R2-m4(실패 착지 근거 정정·헌장 편차 명시 → 코디네이터 보고), R2-m5(§9 가짜 연결·§8-16), R2-m6(착지 관용구 `a11y/Landing.kt` 승격 완료·§7 "물어보기" `landingTarget`), R2-m7(구성 변경 `detach`), R2-m8(다운로드 요청·완료 문구 신규 키 2개), n1(Starting 탭 무시), n2(부착 가드는 main이 앱 전체로), n3(SoundPool 속성 §2), n4(한 프레임 뒤 스크롤), n5(판정 16), n6·n7·n9(§8), n8(전사 착지가 완료 착지 소비), n10(Failed phase 삭제), n11(표기 — 묶음 인덱스는 키 안의 `r`, 동기 착지 예외 머리말). 재리뷰 없이 구현 진행(리뷰어 권고).
+
+조각 ① 구현 리뷰(`~/gildongmu-wt/android-m6-reports/review-m6-slice1.md`, 기준 5718d72e): **APPROVE_WITH_CHANGES** — MAJOR 1·MINOR 7·NIT 7. 반영: M1(IME `fitInside`), m1(표시줄 답변 뒤 갱신), m2(진입 착지 push당 1회·동의 무관 제목 — spec 표 정정), m3(감시자 `UNDISPATCHED`·쓰기/응답 앞 `ensureActive` + 연결 직후 취소 테스트), m4(`***`·비링크 대괄호), m5(동의 IO 첫 읽기·미확정 3-state), m6(진행 통지 단계별·seq 단언), m7(측위 뒤 좌표 읽기·follow-up 인자 단언), n1(소비 세대를 화면 상태로), n2(통지 줄 스크롤 밖), n3(스크롤을 메시지 수 효과로), n4(프롬프트 표 kit 전수 가드), n6(서버 테스트 상한·오류 본문 없음·고정 길이·타임아웃 단언), n7(U+2028 표기·OptIn 통일). n5(화면의 `rememberReturnFocus` 호출 가드)는 조각 ②에서 호출이 생길 때 조인다. `nav/PlaceholderScreen.kt` 호출부 0은 코디네이터 전달.
