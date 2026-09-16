@@ -12,8 +12,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.foundation.layout.WindowInsets
 import space.dodoplanet.gildongmu.a11y.tapTarget
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -41,7 +39,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import android.util.Log
 import space.dodoplanet.gildongmu.R
-import space.dodoplanet.gildongmu.a11y.AppTopBar
+import space.dodoplanet.gildongmu.a11y.AppScreenScaffold
 import space.dodoplanet.gildongmu.a11y.StatusLine
 import space.dodoplanet.gildongmu.a11y.headingText
 import space.dodoplanet.gildongmu.i18n.AppLocale
@@ -101,7 +99,7 @@ fun SearchScreen(vm: SearchViewModel, onOpenPlace: (Place) -> Unit = {}) {
         pendingRecentLanding = null
     }
 
-    Scaffold(contentWindowInsets = WindowInsets(0, 0, 0, 0), topBar = { AppTopBar(stringResource(R.string.app_title), onBack = null) }) { padding ->
+    AppScreenScaffold(stringResource(R.string.app_title), onBack = null) { padding ->
         Column(
             Modifier
                 .fillMaxSize()
@@ -134,7 +132,7 @@ fun SearchScreen(vm: SearchViewModel, onOpenPlace: (Place) -> Unit = {}) {
             Button(
                 onClick = { if (!s.isSearching) vm.submit() },
                 modifier = Modifier
-                    .testTag("submit")
+                    .tapTarget().testTag("submit")
                     .focusRequester(buttonFocus)
                     // disabled는 포커스를 떨군다 — 클릭 무시 + 상태 설명(헌장 §5 ⓐ)
                     .semantics { if (s.isSearching) stateDescription = searchingLabel },

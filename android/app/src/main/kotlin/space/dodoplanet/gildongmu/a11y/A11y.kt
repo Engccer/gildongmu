@@ -54,17 +54,22 @@ fun Modifier.headingText(): Modifier = semantics { heading() }
 fun StatusLine(notice: Notice, modifier: Modifier = Modifier) {
     // 재마운트(회전·언어 변경·탭 복귀)에서 마지막 문장을 다시 발화하지 않는다 — 첫 seq는 재게시 없이 그대로 둔다.
     val initialSeq = remember { notice.seq }
-    var shown by remember { mutableStateOf(notice.text) }
+    var shown by remember { mutableStateOf(notice) }
     LaunchedEffect(notice.seq) {
         if (notice.seq == initialSeq) return@LaunchedEffect
-        shown = ""
+        shown = Notice(notice.seq, "", null)
         withFrameNanos { }
-        shown = notice.text
+        shown = notice
     }
+    // 시각은 원문, 낭독형이 따로 있으면 contentDescription(라이브 리전도 그것을 읽는다) — 화면과 낭독이 제 역할을 나눈다.
+    val spoken = shown.spoken?.takeIf { it != shown.text }
     Text(
-        text = shown,
+        text = shown.text,
         modifier = modifier
             .testTag("status")
-            .semantics { liveRegion = LiveRegionMode.Polite },
+            .semantics {
+                liveRegion = LiveRegionMode.Polite
+                if (spoken != null) contentDescription = spoken
+            },
     )
 }

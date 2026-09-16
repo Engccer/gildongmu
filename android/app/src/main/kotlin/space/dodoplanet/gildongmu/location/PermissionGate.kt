@@ -40,9 +40,10 @@ class AndroidPermissionGate(context: Context) : PermissionGate {
         val deferred = CompletableDeferred<LocationPermission>()
         val first = waiters.isEmpty()
         waiters += deferred
-        deferred.invokeOnCompletion { waiters.remove(deferred) } // 취소된 대기자가 "다이얼로그 띄울지" 판정에 남지 않게
         if (first) launcher(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
-        return deferred.await()
+        // 취소된 대기자(다이얼로그 중 화면 이탈)가 "다이얼로그 띄울지" 판정에 남으면 다음 요청이 영원히 기다린다 — finally는 취소에서도 돈다
+        // (부모 없는 CompletableDeferred는 await 취소로 완료되지 않아 invokeOnCompletion으로는 안 된다).
+        return try { deferred.await() } finally { waiters.remove(deferred) }
     }
 
     fun attach(launch: (Array<String>) -> Unit) {

@@ -1,7 +1,6 @@
 package space.dodoplanet.gildongmu.nearby
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,7 +14,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -42,7 +40,7 @@ import android.util.Log
 import kotlinx.coroutines.launch
 import space.dodoplanet.gildongmu.BuildConfig
 import space.dodoplanet.gildongmu.R
-import space.dodoplanet.gildongmu.a11y.AppTopBar
+import space.dodoplanet.gildongmu.a11y.AppScreenScaffold
 import space.dodoplanet.gildongmu.a11y.StatusLine
 import space.dodoplanet.gildongmu.a11y.headingText
 import space.dodoplanet.gildongmu.a11y.mergedRow
@@ -163,15 +161,16 @@ fun <P : Any> NearbyShell(
         runCatching { causeFocus.requestFocus() }.onFailure { Log.w("Nearby", "원인 헤딩 착지 실패", it) }
     }
 
-    Scaffold(
-        contentWindowInsets = WindowInsets(0, 0, 0, 0), // 골격 Scaffold가 이미 먹였다(이중 인셋 방지)
-        topBar = {
-            AppTopBar(title, onBack) {
-                IconButton(
-                    onClick = { vm.load(force = true) },
-                    modifier = Modifier.testTag("refresh").semantics { if (isLoading) stateDescription = checking },
-                ) { Icon(Icons.Filled.Refresh, contentDescription = stringResource(R.string.android_common_refresh)) }
-            }
+    // 컴포지션 시점에 읽는다 — semantics 람다 안에서만 읽으면 값이 바뀌어도 재구성·시맨틱 무효화가 일어나지 않는다(M2 리뷰).
+    val refreshState = if (isLoading) checking else null
+    AppScreenScaffold(
+        title = title,
+        onBack = onBack,
+        actions = {
+            IconButton(
+                onClick = { vm.load(force = true) },
+                modifier = Modifier.testTag("refresh").semantics { refreshState?.let { stateDescription = it } },
+            ) { Icon(Icons.Filled.Refresh, contentDescription = stringResource(R.string.android_common_refresh)) }
         },
     ) { padding ->
         Column(
