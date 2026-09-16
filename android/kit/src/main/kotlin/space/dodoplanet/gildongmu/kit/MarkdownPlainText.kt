@@ -8,8 +8,7 @@ package space.dodoplanet.gildongmu.kit
  * 링크 `[label](url)`은 label만 남기고 URL을 버린다 — 응답 본문에 링크가 섞여도 TTS가 URL 문자열을
  * 낭독하지 않는다(출처 목록은 애초에 본문 밖 `sources` 필드라 무관).
  *
- * ⚠ 문자 클래스 안의 `]`는 이스케이프했다(`[^\]]`, Swift 원문 그대로). 문자 클래스 안에 `[`가 오면
- *   반드시 `\[`로 쓴다(README §3 정규식 함정).
+ * ⚠ JVM `\s`·`\d`·`\w`는 ASCII다(ICU는 유니코드) — NBSP·전각 공백·전각 숫자·비ASCII 코드 펜스 태그에서 iOS와 갈린다.
  */
 object MarkdownPlainText {
     private val inlineCode = Regex("`([^`]+)`")

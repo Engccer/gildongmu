@@ -13,28 +13,29 @@
       "swift": "ChatMarkdown.swift",
       "status": "ported",
       "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/ChatMarkdown.kt",
-      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/ChatMarkdownTest.kt"
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/ChatMarkdownTest.kt",
+      "note": "정규식 \\s·\\d는 JVM에서 ASCII(Swift Regex는 유니코드) — NBSP·전각 공백·전각 숫자 입력에서 갈린다"
     },
     {
       "swift": "ChatPlaceMentions.swift",
       "status": "ported",
       "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/ChatPlaceMentions.kt",
       "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/ChatPlaceMentionsTest.kt",
-      "note": "매칭 단위는 UTF-16 문자(Swift는 Character 자소 묶음) — 결합 문자가 이름 경계에 걸릴 때만 갈린다"
+      "note": "매칭 단위는 UTF-16 문자(Swift는 정준 등가 Character) — NFC/NFD가 섞이거나 결합 문자·서로게이트로 길이가 갈릴 때만 다르다"
     },
     {
       "swift": "ChatService.swift",
       "status": "ported",
       "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/ChatService.kt",
       "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/ChatServiceTest.kt",
-      "note": "D5 경계(코디네이터 판정 2026-09-16 A안): :kit은 decodeChatEventLine·요청 본문(encodeBody)·예산(timeoutMs)·상태 분류(statusError)·줄 처리(eventFromStreamLine)만. POST·NDJSON 스트림 전송은 :app(M6). Swift struct ChatService(URLSession)는 object ChatService"
+      "note": "D5 경계: :kit은 decodeChatEventLine·요청 본문(encodeBody)·예산(timeoutMs)·상태 분류(statusError)·줄 처리(eventFromStreamLine)만, POST·NDJSON 스트림 전송은 :app(M6). Swift struct(URLSession 보유)는 object. 깨진 줄은 APIError.Decoding"
     },
     {
       "swift": "ChatSuggestionsService.swift",
       "status": "ported",
       "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/ChatSuggestionsService.kt",
       "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/ChatSuggestionsServiceTest.kt",
-      "note": "D5 경계(코디네이터 판정 2026-09-16 A안): :kit은 parse·followUps(상태 분류)·encodeBody·상수만. POST 전송(fetchFollowUps)은 :app(M6). timeoutSeconds 6 → timeoutMs 6000"
+      "note": "D5 경계: :kit은 parse·followUps(상태 분류)·encodeBody·상수만, POST 전송(fetchFollowUps)은 :app(M6). timeoutSeconds 6 → timeoutMs 6000"
     },
     {
       "swift": "ClinicKind.swift",
@@ -72,7 +73,8 @@
       "swift": "MarkdownPlainText.swift",
       "status": "ported",
       "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/MarkdownPlainText.kt",
-      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/MarkdownPlainTextTest.kt"
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/MarkdownPlainTextTest.kt",
+      "note": "정규식 \\s·\\d·\\w는 JVM에서 ASCII(ICU는 유니코드) — NBSP·전각 문자·비ASCII 펜스 태그에서 갈린다"
     },
     {
       "swift": "NearbyLoadCore.swift",
@@ -103,20 +105,20 @@
       "status": "ported",
       "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/PlaceProjection.kt",
       "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/PlaceProjectionTest.kt",
-      "note": "guideDestinationPlace의 BeaconDest는 GUIDE Beacon.kt(선행 묶음 41cd341c). String(format: %.5f) → String.format(Locale.ROOT)"
+      "note": "guideDestinationPlace의 BeaconDest는 GUIDE Beacon.kt 소유. String(format: %.5f) → String.format(Locale.ROOT)"
     },
     {
       "swift": "QuickExitText.swift",
       "status": "ported",
       "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/QuickExitText.kt",
-      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/QuickExitTextTest.kt",
-      "note": "Kit QuickExitTextTests의 QuickExitGuideRouteTests 2건(buildTransitGuideRoute)은 GUIDE TransitGuide 몫이라 여기 없다"
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/QuickExitTextTest.kt"
     },
     {
       "swift": "RevealWindow.swift",
       "status": "ported",
       "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/RevealWindow.kt",
-      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/RevealWindowTest.kt"
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/RevealWindowTest.kt",
+      "note": "Swift struct → 참조 타입 class(제자리 변이) — 화면 상태로 쓸 때 visibleCount를 다시 써야 재구성된다"
     },
     {
       "swift": "RouteService.swift",
@@ -159,7 +161,7 @@
       "status": "ported",
       "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/TransitExitLines.kt",
       "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/TransitExitLinesTest.kt",
-      "note": "출구 형식 게이트 transitValidExitNo는 GUIDE TransitGuide.kt 소유(선행 묶음 41cd341c). boardExit*(legs, at:) → (legs, index)"
+      "note": "출구 형식 게이트 transitValidExitNo는 GUIDE TransitGuide.kt 소유. boardExit*(legs, at:) → (legs, index)"
     },
     {
       "swift": "TransitWalkLegText.swift",
@@ -180,6 +182,16 @@
       "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/WhereAmIService.kt",
       "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/WhereAmIServiceTest.kt",
       "note": "Kit 테스트 없음"
+    }
+  ],
+  "deferredTests": [
+    {
+      "swift": "Tests/GildongmuKitTests/QuickExitTextTests.swift#QuickExitGuideRouteTests",
+      "to": "guide",
+      "why": "buildTransitGuideRoute(TransitGuide)가 브리핑 leg의 quickExit를 세션 leg로 옮기는지",
+      "blockedBy": [
+        "TransitGuide.swift"
+      ]
     }
   ]
 }

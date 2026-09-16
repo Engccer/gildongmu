@@ -1,6 +1,5 @@
 package space.dodoplanet.gildongmu.kit
 
-import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.jsonObject
 import space.dodoplanet.gildongmu.kit.models.ChatRequestBody
 import space.dodoplanet.gildongmu.kit.models.ChatStreamEvent
@@ -31,8 +30,13 @@ class ChatServiceTest {
         assertEquals("chat_failed", assertIs<ChatStreamEvent.Error>(decodeChatEventLine("""{"type":"error","code":"chat_failed"}""")).code)
     }
 
-    @Test fun invalidJSONLineThrows() {
-        assertFailsWith<SerializationException> { decodeChatEventLine("not-json") }
+    /** 깨진 줄은 전부 `APIError.Decoding` — JSON 아님, 필수 키 부재, 직렬화기의 `jsonPrimitive` 접근이 내는 `IllegalArgumentException`까지. */
+    @Test fun invalidLineThrowsDecoding() {
+        assertFailsWith<APIError.Decoding> { decodeChatEventLine("not-json") }
+        assertFailsWith<APIError.Decoding> { decodeChatEventLine("""{"type":"done"}""") }
+        assertFailsWith<APIError.Decoding> {
+            decodeChatEventLine("""{"type":"done","text":"t","renders":[{"type":"places","sort":{},"places":[]}]}""")
+        }
     }
 
     /** 스트림 소비: 양끝 공백을 걷고 빈 줄은 건너뛴다. 나머지는 이벤트로. */
@@ -40,7 +44,7 @@ class ChatServiceTest {
         assertNull(ChatService.eventFromStreamLine(""))
         assertNull(ChatService.eventFromStreamLine("   \t"))
         assertEquals("chat_failed", assertIs<ChatStreamEvent.Error>(ChatService.eventFromStreamLine("  {\"type\":\"error\",\"code\":\"chat_failed\"}  ")).code)
-        assertFailsWith<SerializationException> { ChatService.eventFromStreamLine("not-json") }
+        assertFailsWith<APIError.Decoding> { ChatService.eventFromStreamLine("not-json") }
     }
 
     /** 비-2xx는 오류 본문의 `error`를 message로 승격한 BadStatus, 2xx는 null(스트림 소비로 진행). */

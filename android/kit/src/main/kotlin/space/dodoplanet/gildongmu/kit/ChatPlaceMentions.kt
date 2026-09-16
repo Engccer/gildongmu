@@ -22,8 +22,8 @@ private const val MASK = Char.MIN_VALUE
  * 문장의 역 언급(E33, `transitStationMentions`)이 같은 규칙을 쓴다: 빈 이름 제외, 긴 이름 우선 대응·마스킹,
  * 첫 등장 순, 같은 이름은 첫 인덱스 한 번만.
  *
- * 단위는 UTF-16 문자다(Swift는 `Character` 자소 묶음). 결합 문자가 이름 경계에 걸린 경우에만 갈리고
- * 한글 NFC 산문에서는 같다.
+ * 단위는 UTF-16 문자다(Swift는 정준 등가로 비교하는 `Character` 자소 묶음). 산문과 이름의 정규화 형식이 다르거나
+ * (NFC/NFD), 결합 문자·서로게이트로 길이가 갈릴 때만 다르고 NFC 산문에서는 같다.
  */
 fun mentionOrder(text: String, names: List<String>): List<Int> {
     if (text.isEmpty()) return emptyList()

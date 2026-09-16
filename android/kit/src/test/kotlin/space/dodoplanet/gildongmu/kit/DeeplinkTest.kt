@@ -48,6 +48,10 @@ class DeeplinkTest {
         assertTrue(naver.contains("dname=A%26B%20%EC%97%AD&appname=a"), naver)
         val web = assertNotNull(buildKakaoWebRouteUrl(RouteMode.publicTransit, dest))
         assertEquals("https://map.kakao.com/link/by/traffic/A&B%20%EC%97%AD,37.4979,127.0276", web)
+        // 경로 집합에는 `;`가 없어 인코딩되고, 쿼리 집합에는 있어 그대로 남는다.
+        val semi = RouteDestination(lat = 37.4979, lng = 127.0276, name = "a;b")
+        assertEquals("https://map.kakao.com/link/by/walk/a%3Bb,37.4979,127.0276", buildKakaoWebRouteUrl(RouteMode.walk, semi))
+        assertTrue(assertNotNull(buildNaverRouteDeeplink(RouteMode.walk, semi, appname = "a")).contains("dname=a;b&"))
     }
 
     @Test fun routeModeRawValues() {
