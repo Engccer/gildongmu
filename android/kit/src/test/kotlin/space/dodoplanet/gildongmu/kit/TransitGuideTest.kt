@@ -6,6 +6,8 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.intOrNull
+import space.dodoplanet.gildongmu.kit.models.QuickExit
+import space.dodoplanet.gildongmu.kit.models.QuickExitDoor
 import space.dodoplanet.gildongmu.kit.models.TransitLegStop
 import space.dodoplanet.gildongmu.kit.models.TransitRoute
 import space.dodoplanet.gildongmu.kit.models.TransitRouteLeg
@@ -337,6 +339,26 @@ class TransitGuideTest {
             routeKey = "p0",
         )
         assertNull(buildTransitGuideRoute(walkOnly))
+    }
+
+    /** Kit `QuickExitGuideRouteTests` 미러 — 브리핑 leg의 빠른 하차 값이 세션 leg로 그대로 옮겨진다. */
+    private fun quickExitRoute(quickExit: QuickExit?) = TransitRoute(
+        summary = TransitRouteSummary(totalMinutes = 30, fare = 1550, transfers = 0, walkMinutes = 6),
+        legs = listOf(
+            TransitRouteLeg(mode = "subway", lineName = "수도권 5호선", fromName = "천호", toName = "여의도", stationCount = 8, minutes = 24, quickExit = quickExit),
+        ),
+        routeKey = "p0",
+    )
+
+    @Test fun `빠른 하차는 세션 leg로 옮겨진다`() {
+        val value = QuickExit(elevator = QuickExitDoor(kind = "door", doors = listOf("6-4")))
+        assertEquals(value, buildTransitGuideRoute(quickExitRoute(value))?.legs?.first()?.quickExit)
+    }
+
+    @Test fun `빠른 하차 값이 없으면 세션 leg도 null`() {
+        val guide = buildTransitGuideRoute(quickExitRoute(null))
+        assertEquals(1, guide?.legs?.size) // 조립 실패(null)로 공허하게 통과하지 않게
+        assertNull(guide?.legs?.first()?.quickExit)
     }
 
     /**
