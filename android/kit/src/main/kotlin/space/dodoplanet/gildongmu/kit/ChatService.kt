@@ -6,14 +6,19 @@ import space.dodoplanet.gildongmu.kit.models.ChatStreamEvent
 
 /**
  * NDJSON 한 줄을 채팅 이벤트로 디코딩하는 순수 함수. Kit `ChatService.swift` 미러. 스트림 배관과 분리해
- * 단위 테스트 대상으로 삼는다(스트림 자체는 실기기 실호출 게이트). 던지는 것은 `SerializationException`.
+ * 단위 테스트 대상으로 삼는다(스트림 자체는 실기기 실호출 게이트). 깨진 줄은 `APIError.Decoding`으로 던진다 —
+ * 커스텀 직렬화의 `jsonPrimitive` 접근은 `SerializationException`이 아닌 `IllegalArgumentException`을 낼 수 있어
+ * `APIClient`와 같이 둘 다 접는다(`SerializationException`은 그 하위형).
  */
-fun decodeChatEventLine(line: String): ChatStreamEvent =
+fun decodeChatEventLine(line: String): ChatStreamEvent = try {
     KitJson.decodeFromString(ChatStreamEvent.serializer(), line)
+} catch (e: IllegalArgumentException) {
+    throw APIError.Decoding(e)
+}
 
 /**
  * POST /api/chat NDJSON 스트림 소비의 판정 부분(D5 경계). **POST·스트리밍 전송은 :app(M6)**이 안드로이드
- * HTTP 스택으로 구현하고, 요청 본문·예산·상태 분류·줄 처리는 여기를 지난다(코디네이터 판정 2026-09-16).
+ * HTTP 스택으로 구현하고, 요청 본문·예산·상태 분류·줄 처리는 여기를 지난다.
  */
 object ChatService {
     const val path = "/api/chat"
@@ -34,7 +39,7 @@ object ChatService {
         return APIError.BadStatus(status, message)
     }
 
-    /** 스트림 한 줄 처리: 양끝 공백을 걷고 빈 줄은 null(건너뜀), 그 외는 디코딩(실패는 throw — 스트림 종료 사유). */
+    /** 스트림 한 줄 처리: 양끝 공백을 걷고 빈 줄은 null(건너뜀), 그 외는 디코딩(실패는 `APIError.Decoding` — 스트림 종료 사유). */
     fun eventFromStreamLine(line: String): ChatStreamEvent? {
         val trimmed = line.trim()
         if (trimmed.isEmpty()) return null

@@ -9,7 +9,7 @@ import space.dodoplanet.gildongmu.kit.models.OverviewPlaceState
 
 // "한눈에 보기" 문장 빌더 — 웹 `src/lib/overview-lines.ts` ↔ CLI `formatNearbyOverview` ↔ Kit
 // `LocationNarrative.swift` 미러. 템플릿은 `messages/*.json` whereAmI.overview.*(위치 인자), 방위 단어는
-// whereAmI.direction.*. 종전의 "현재 위치 정위" 산문은 2026-08-22 삭제됐다(`/api/where-am-i`는 CLI·채팅 계약).
+// whereAmI.direction.*.
 
 /** 8방위 단어. 미지정 키는 원문 반환(웹 폴백 동형). 키는 리터럴 when(동적 조립 금지, 린터 계약). */
 internal fun directionWord(bearing: String, lang: String): String = when (bearing) {

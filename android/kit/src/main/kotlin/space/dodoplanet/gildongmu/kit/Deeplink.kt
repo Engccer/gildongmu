@@ -72,8 +72,8 @@ private const val UNRESERVED = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuv
 /** Foundation `.urlQueryAllowed`에서 `&`·`=`을 뺀 집합 — `URLComponents.queryItems`가 이름·값에 쓰는 규칙. */
 private const val URL_QUERY_ITEM_ALLOWED = UNRESERVED + "!$'()*+,;:@/?"
 
-/** Foundation `.urlPathAllowed`. */
-private const val URL_PATH_ALLOWED = UNRESERVED + "!$&'()*+,;=:@/"
+/** Foundation `.urlPathAllowed`(`;`는 없다 — 쿼리 집합과 다르다). */
+private const val URL_PATH_ALLOWED = UNRESERVED + "!$&'()*+,=:@/"
 
 private const val HEX = "0123456789ABCDEF"
 

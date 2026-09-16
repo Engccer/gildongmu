@@ -7,7 +7,7 @@ import space.dodoplanet.gildongmu.kit.models.Place
 
 /**
  * "Station"은 카테고리에서 제외한다. "Stationery"(문구) 등을 역으로 오판하기 때문. 영문 역 판정은
- * 이름 접미사(station$, 대소문자 무시)에만 맡긴다. 문자 클래스가 없어 `[` 이스케이프 함정은 없다.
+ * 이름 접미사(station$, 대소문자 무시)에만 맡긴다.
  */
 private val STATION_CATEGORY = Regex("지하철|전철|철도|기차|Subway|Metro|Railway|Train", RegexOption.IGNORE_CASE)
 

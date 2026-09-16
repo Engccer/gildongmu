@@ -230,6 +230,5 @@ fun transitStationMentions(text: String, stops: List<TransitLegStop>): List<Int>
         val en = stop.nameEn
         if (!en.isNullOrEmpty()) { names.add(en); owner.add(index) }
     }
-    val seen = HashSet<Int>()
-    return mentionOrder(text, names).map { owner[it] }.filter { seen.add(it) }
+    return mentionOrder(text, names).map { owner[it] }.distinct()
 }

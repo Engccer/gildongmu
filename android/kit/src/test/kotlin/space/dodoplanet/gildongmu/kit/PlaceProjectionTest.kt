@@ -12,6 +12,7 @@ import space.dodoplanet.gildongmu.kit.models.TransitLegStop
 import space.dodoplanet.gildongmu.kit.models.WhereAmIAddress
 import space.dodoplanet.gildongmu.kit.models.WhereAmIData
 import space.dodoplanet.gildongmu.kit.models.WhereAmIStation
+import java.util.Locale
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -104,6 +105,14 @@ class PlaceProjectionTest {
         assertEquals("길동 247", place.address)
         assertEquals("천호대로 1042", place.roadAddress)
         assertEquals("where-am-i-37.53842-127.14281", place.id)
+        // 소수점이 `,`인 기본 로케일에서도 id는 `.`이다(Locale.ROOT의 검출력).
+        val saved = Locale.getDefault()
+        try {
+            Locale.setDefault(Locale.GERMANY)
+            assertEquals("where-am-i-37.53842-127.14281", whereAmIToPlace(data, lat = 37.53842, lng = 127.14281, lang = "ko").id)
+        } finally {
+            Locale.setDefault(saved)
+        }
         assertEquals(37.53842, place.lat); assertEquals(127.14281, place.lng)
         assertNull(place.phone); assertNull(place.link); assertNull(place.distanceMeters)
     }

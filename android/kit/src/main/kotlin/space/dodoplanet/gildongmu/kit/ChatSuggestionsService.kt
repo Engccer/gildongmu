@@ -16,8 +16,8 @@ internal data class ChatSuggestionsRequestBody(
 
 /**
  * 채팅 답변 뒤 follow-up 질문 제안(spec 2026-08-24 §3.3)의 판정 부분. Kit `ChatSuggestionsService.swift` 미러.
- * **POST 전송은 :app(M6)**이 맡는다(D5 경계, 코디네이터 판정 2026-09-16). 실패·디코딩 불가·취소·타임아웃
- * 전부 빈 목록 — 칩은 없어도 되는 보조 컨트롤이라 어떤 실패도 "칩 없음"이지 오류가 아니다.
+ * **POST 전송은 :app(M6)**이 맡는다(D5 경계). 전송 실패·타임아웃·디코딩 불가는 빈 목록(바깥 코루틴 취소는 전파한다) —
+ * 칩은 없어도 되는 보조 컨트롤이라 어떤 실패도 "칩 없음"이지 오류가 아니다.
  */
 object ChatSuggestionsService {
     const val path = "/api/chat/suggestions"
