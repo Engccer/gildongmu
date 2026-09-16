@@ -80,6 +80,7 @@ class MainActivity : ComponentActivity() {
             requestPreciseLocation = { AppConfig.permissionGate.request() == LocationPermission.Fine },
             isLocationEnabled = { AppConfig.locationStore.isLocationEnabled() },
             currentAddress = AppConfig.currentAddressStore,
+            manualLocation = AppConfig.manualLocationStore,
         )
         setContent {
             MaterialTheme {

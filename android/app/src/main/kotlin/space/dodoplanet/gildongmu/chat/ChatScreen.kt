@@ -65,7 +65,7 @@ import space.dodoplanet.gildongmu.location.LocationBarRow
 
 /** 채팅 탭(일반 채팅, spec §3-1). 대화는 이 탭 백스택 엔트리의 ViewModel — 탭 전환에도 이어진다. */
 @Composable
-fun ChatTabScreen(vm: ChatViewModel = viewModel(factory = chatViewModelFactory(LocalContext.current, null)), onOpenPlace: (Place) -> Unit) {
+fun ChatTabScreen(vm: ChatViewModel = viewModel(factory = chatViewModelFactory(LocalContext.current, null)), onOpenPlace: (Place) -> Unit, onPickLocation: () -> Unit) {
     val titleFocus = remember { FocusRequester() }
     val suggestions = listOf(
         R.string.android_chat_suggestion1,
@@ -75,7 +75,7 @@ fun ChatTabScreen(vm: ChatViewModel = viewModel(factory = chatViewModelFactory(L
     ).map { stringResource(it) }
     AppScreenScaffold(stringResource(R.string.android_tab_chat), onBack = null, titleFocus = titleFocus) { padding ->
         // 위치 표시줄은 채팅 탭에만(장소 채팅은 장소 좌표가 앵커라 표시줄이 거짓 신호가 된다, spec §3-1)
-        ChatBody(vm, suggestions, titleFocus, landOnEntry = false, onOpenPlace, Modifier.padding(padding), showsLocationBar = true)
+        ChatBody(vm, suggestions, titleFocus, landOnEntry = false, onOpenPlace, Modifier.padding(padding), showsLocationBar = true, onPickLocation = onPickLocation)
     }
 }
 
@@ -119,6 +119,8 @@ private fun ChatBody(
     onOpenPlace: (Place) -> Unit,
     modifier: Modifier,
     showsLocationBar: Boolean = false,
+    /** 표시줄 버튼 활성화 = 현재 위치 수동 지정 화면(M2c, spec §13-3). 표시줄이 있는 채팅 탭만 넘긴다. */
+    onPickLocation: () -> Unit = {},
 ) {
     val granted by vm.consentGranted.collectAsState()
     val fieldFocus = remember { FocusRequester() }
@@ -265,7 +267,7 @@ private fun ChatConversation(
     // 위치 표시줄은 진입 시점 스냅샷이다 — 같은 화면의 전송(측위·권한 허용)이 상태를 바꿨을 수 있어 답변 뒤 다시 맞춘다(좌표당 1회는 스토어가 막는다).
     if (showsLocationBar) {
         LaunchedEffect(s.answerRevision) {
-            if (s.answerRevision > initialAnswerRevision) AppConfig.currentAddressStore.ensureLoaded(AppLocale.dataLocale(res))
+            if (s.answerRevision > initialAnswerRevision && AppConfig.manualLocationStore.current.value == null) AppConfig.currentAddressStore.ensureLoaded(AppLocale.dataLocale(res)) // 주소 조회는 수동이 없을 때만(spec §13-4)
         }
     }
     // pop 복귀: 상세를 연 원점(카드·블록·주소 행)으로. 키는 한 번만 소비된다.
@@ -279,7 +281,7 @@ private fun ChatConversation(
     Column(modifier.fillMaxSize().fitInside(WindowInsetsRulers.Ime.current).semantics { testTagsAsResourceId = true }) {
         if (showsLocationBar) {
             // 대화의 조회 기준 좌표(iOS `LocationBarView`) — 스크롤 밖 첫 줄
-            Column(Modifier.padding(horizontal = 16.dp)) { LocationBarRow(AppConfig.currentAddressStore) }
+            Column(Modifier.padding(horizontal = 16.dp)) { LocationBarRow(AppConfig.currentAddressStore, AppConfig.manualLocationStore, onPickLocation, remember { FocusRequester() }) }
         }
         Column(
             Modifier

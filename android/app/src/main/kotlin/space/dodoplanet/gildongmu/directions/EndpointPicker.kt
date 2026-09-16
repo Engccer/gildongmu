@@ -35,6 +35,8 @@ class EndpointPicker(
     private val dataLocale: () -> String,
     /** 후보 근접 가중 좌표(유효 좌표 — 수동이면 측위 없이 그 좌표, spec §13-2). null이면 좌표 없이 검색. */
     private val ranking: suspend () -> NearbyCoord?,
+    /** 확정 뒤 화면을 닫는가 — 길찾기는 폼으로 돌아가고(true), 수동 지정은 측위 통지를 이 화면에서 내야 하므로 호스트가 pop할 때까지 연다(false). */
+    private val closesOnSelect: Boolean,
     private val onSelect: (DirectionsEndpoint, DirectionsFieldTarget) -> Unit,
 ) {
     private val _state = MutableStateFlow<EndpointSearchState?>(null)
@@ -128,7 +130,7 @@ class EndpointPicker(
         onSelect(endpoint, target)
         searchJob?.cancel()
         if (cancelGeocode) geocodeJob?.cancel()
-        _state.value = null
+        if (closesOnSelect) _state.value = null
     }
 
     /** 진행 통지 등 호스트가 이 화면의 단일 창구로 흘리는 문장(수동 지정의 "현재 위치 확인 중"). */

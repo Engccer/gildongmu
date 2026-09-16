@@ -26,6 +26,8 @@ import space.dodoplanet.gildongmu.chat.PlaceChatRoute
 import space.dodoplanet.gildongmu.chat.PlaceChatScreen
 import space.dodoplanet.gildongmu.directions.DirectionsScreen
 import space.dodoplanet.gildongmu.directions.openDirections
+import space.dodoplanet.gildongmu.location.ManualLocationPickerScreen
+import space.dodoplanet.gildongmu.location.ManualLocationRoute
 import androidx.navigation.toRoute
 import space.dodoplanet.gildongmu.nearby.BusRouteStopsRoute
 import space.dodoplanet.gildongmu.nearby.BusRouteStopsScreen
@@ -33,6 +35,7 @@ import space.dodoplanet.gildongmu.nearby.NearbyHubScreen
 import space.dodoplanet.gildongmu.nearby.NearbyKindRoute
 import space.dodoplanet.gildongmu.nearby.NearbyKindScreen
 import space.dodoplanet.gildongmu.nearby.NearbyNav
+import space.dodoplanet.gildongmu.nearby.LOCATION_BAR_KEY
 import space.dodoplanet.gildongmu.nearby.hubKey
 import space.dodoplanet.gildongmu.place.PlaceDetailRoute
 import space.dodoplanet.gildongmu.place.PlaceDetailScreen
@@ -89,11 +92,13 @@ fun AppRoot(factories: AppFactories) {
                 val returnFocus: ReturnFocusViewModel = viewModel(entry)
                 NearbyHubScreen(
                     onOpen = { kind -> returnFocus.slot.remember(hubKey(kind)); navController.navigate(NearbyKindRoute.of(kind, null)) },
+                    onPick = { returnFocus.slot.remember(LOCATION_BAR_KEY); navController.navigate(ManualLocationRoute) },
                     takeReturnFocus = returnFocus.slot::take,
                     currentAddress = factories.currentAddress,
+                    manualLocation = factories.manualLocation,
                 )
             }
-            composable<ChatRoute> { ChatTabScreen { navController.navigate(PlaceDetailRoute.of(it)) } }
+            composable<ChatRoute> { ChatTabScreen(onOpenPlace = { navController.navigate(PlaceDetailRoute.of(it)) }, onPickLocation = { navController.navigate(ManualLocationRoute) }) }
             // ── 스택 화면(각 화면 패키지 소유 라우트, 등록 한 줄씩)
             composable<NearbyKindRoute> { entry ->
                 val route = entry.toRoute<NearbyKindRoute>()
@@ -128,6 +133,7 @@ fun AppRoot(factories: AppFactories) {
                 )
             }
             composable<PlaceChatRoute> { entry -> PlaceChatScreen(entry.toRoute(), { navController.popBackStack() }) { navController.navigate(PlaceDetailRoute.of(it)) } }
+            composable<ManualLocationRoute> { ManualLocationPickerScreen { navController.popBackStack() } }
             composable<BusRouteStopsRoute> { entry ->
                 val route = entry.toRoute<BusRouteStopsRoute>()
                 BusRouteStopsScreen(route, factories.busRouteStops(route)) { navController.popBackStack() }

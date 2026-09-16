@@ -28,23 +28,31 @@ import space.dodoplanet.gildongmu.a11y.StatusLine
 import space.dodoplanet.gildongmu.a11y.tapTarget
 import space.dodoplanet.gildongmu.location.CurrentAddressStore
 import space.dodoplanet.gildongmu.location.LocationBarRow
+import space.dodoplanet.gildongmu.location.ManualLocationStore
 
-/** 내 주변 허브(spec §3-4·§12-4): 버튼 10개, iOS 순서. 권한은 여기서 요청하지 않는다(각 화면 진입 시). */
+/** 내 주변 허브(spec §3-4·§12-4·§13-3): 표시줄 버튼 + 버튼 10개(iOS 순서). 권한은 여기서 요청하지 않는다(각 화면 진입 시). */
 @Composable
-fun NearbyHubScreen(onOpen: (NearbyKind) -> Unit, takeReturnFocus: () -> String?, currentAddress: CurrentAddressStore) {
+fun NearbyHubScreen(
+    onOpen: (NearbyKind) -> Unit,
+    onPick: () -> Unit,
+    takeReturnFocus: () -> String?,
+    currentAddress: CurrentAddressStore,
+    manualLocation: ManualLocationStore,
+) {
     val requesters = remember { mutableMapOf<NearbyKind, FocusRequester>() }
-    // pop 복귀 착지: 눌렀던 버튼으로(spec §3-1). 소비는 효과 안에서 한 번(컴포지션 본문에서 부르면 재구성마다 유실).
+    val barFocus = remember { FocusRequester() }
+    // pop 복귀 착지: 눌렀던 버튼으로(spec §3-1) — 종류 버튼 또는 표시줄 버튼(위치 지정 복귀, 라벨은 이미 확정돼 있다). 소비는 효과 안에서 한 번.
     LaunchedEffect(Unit) {
         val key = takeReturnFocus() ?: return@LaunchedEffect
         withFrameNanos { }
-        val kind = NearbyKind.entries.firstOrNull { hubKey(it) == key } ?: return@LaunchedEffect
-        runCatching { requesters[kind]?.requestFocus() }.onFailure { Log.w("Nearby", "허브 복귀 착지 실패 $key", it) }
+        val requester = if (key == LOCATION_BAR_KEY) barFocus else NearbyKind.entries.firstOrNull { hubKey(it) == key }?.let { requesters[it] }
+        runCatching { requester?.requestFocus() }.onFailure { Log.w("Nearby", "허브 복귀 착지 실패 $key", it) }
     }
     AppScreenScaffold(stringResource(R.string.android_tab_nearby), onBack = null) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).semantics { testTagsAsResourceId = true }) {
             StatusLine(Notice(0, ""), Modifier.padding(vertical = 8.dp)) // 화면 통지는 없다 — 앱 통지(자동 해제) 창구(spec §13-5)
-            // 첫 행: 현재 위치 표시줄(이 화면의 조회 기준 선언, spec §12-4). 텍스트 행 — 수동 위치 지정 버튼은 M2c.
-            LocationBarRow(currentAddress)
+            // 첫 행: 현재 위치 표시줄(이 화면의 조회 기준 선언, spec §12-4) = 위치 지정 버튼(§13-3).
+            LocationBarRow(currentAddress, manualLocation, onPick, barFocus)
             for (kind in NearbyKind.entries) {
                 Button(
                     onClick = { onOpen(kind) },
@@ -61,6 +69,9 @@ fun NearbyHubScreen(onOpen: (NearbyKind) -> Unit, takeReturnFocus: () -> String?
 }
 
 fun hubKey(kind: NearbyKind) = "hub-${kind.name}"
+
+/** 표시줄 버튼의 복귀 키(= testTag). */
+const val LOCATION_BAR_KEY = "location-bar"
 
 fun kindTitle(kind: NearbyKind): Int = when (kind) {
     NearbyKind.around -> R.string.android_nearby_around
