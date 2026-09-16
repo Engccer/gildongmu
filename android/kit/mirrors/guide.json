@@ -39,7 +39,10 @@
     },
     {
       "swift": "CarRouteGuide.swift",
-      "status": "pending"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/CarRouteGuide.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/CarRouteGuideTest.kt",
+      "note": "디코딩 모델 CarRouteGuide는 FOUNDATION models/RouteModels.kt에 있고 이 파일은 buildCarGuide·roadNameAt·CarRoadSpan·CarGuideData만 든다"
     },
     {
       "swift": "CourseDerivation.swift",
@@ -61,7 +64,10 @@
     },
     {
       "swift": "GuideBand.swift",
-      "status": "pending"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/GuideBand.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/GuideBandTest.kt",
+      "note": "GuideBandSummary는 sealed class"
     },
     {
       "swift": "GuideCourse.swift",
@@ -79,7 +85,10 @@
     },
     {
       "swift": "GuideLiveRows.swift",
-      "status": "pending"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/GuideLiveRows.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/GuideLiveRowsTest.kt",
+      "note": "liveStepsFrom의 튜플 원소는 LiveStepFields, LiveTopRow·LiveNextRow는 sealed class. 공유 시나리오 러너는 messages/ko.json을 읽어 최종 ko 문자열로 대조한다"
     },
     {
       "swift": "GuideMotion.swift",
@@ -151,7 +160,9 @@
     },
     {
       "swift": "TransitDisplayProjection.swift",
-      "status": "pending"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/TransitDisplayProjection.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/TransitDisplayProjectionTest.kt"
     },
     {
       "swift": "TransitGuide.swift",
@@ -162,11 +173,17 @@
     },
     {
       "swift": "TransitGuideText.swift",
-      "status": "pending"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/TransitGuideText.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/TransitGuideTextTest.kt",
+      "note": "튜플 반환은 PickedLabels, BusArrmsgKind는 internal sealed class. arrmsg 정규식은 명시 클래스([0-9]·[ \\t\\n\\r])만(:kit 규칙 — Swift ICU 약칭 클래스의 유니코드 숫자·공백은 좁혀지고 웹 JS와 같아진다)"
     },
     {
       "swift": "TransitGuideTone.swift",
-      "status": "pending"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/TransitGuideTone.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/TransitGuideToneTest.kt",
+      "note": "튜플 반환은 TransitToneStepResult. 테스트는 transit-guide-scenarios의 routes·locks를 함께 읽는다(리듀서 입력 단위 fixture)"
     },
     {
       "swift": "TransitIdle.swift",
@@ -176,15 +193,23 @@
     },
     {
       "swift": "TransitProgressOverview.swift",
-      "status": "pending"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/TransitProgressOverview.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/TransitProgressOverviewTest.kt",
+      "note": "TransitOverviewHere·TransitOverviewRow는 kind 판별 sealed class + 커스텀 KSerializer(웹 JSON 모양 — Leg의 stationCount는 null을 명시 인코딩)"
     },
     {
       "swift": "TransitSurroundingsAnchor.swift",
-      "status": "pending"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/TransitSurroundingsAnchor.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/TransitSurroundingsAnchorTest.kt",
+      "note": "sealed class(CurrentStation·AlightStop), stop은 abstract 속성. 웹 미러 없는 Kit 단독 함수"
     },
     {
       "swift": "TransitTrackService.swift",
-      "status": "pending"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/TransitTrackService.kt",
+      "note": "전량 이식 — 전송은 APIClient·HttpTransport 경계라 실제 HTTP 구현은 [3] :app. Kit 테스트 없음"
     },
     {
       "swift": "WalkHealth.swift",
