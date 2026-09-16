@@ -11,6 +11,10 @@
 
 ## 2026-09-16
 
+### 안드로이드 M1 — 검색 화면 (`android/app`)
+
+웨이브 1의 첫 화면. spec `docs/superpowers/specs/2026-09-16-android-app-design.md`(적대적 리뷰 2회 통과), 계획 `docs/superpowers/plans/2026-09-16-android-m1-search.md`. 옴니박스 검색(장소+주소 병렬, 웹 폴백)·정확도순 플랫 리스트·칩 필터 두 축·최근 검색(고정·삭제)을 `SearchViewModel`(iOS `SearchModel` 미러, `TextFieldState`)과 `SearchScreen`(Compose, `Column+verticalScroll`)으로. 접근성 기본형 셋(병합 행 `mergedRow`·헤딩·단일 live region `StatusLine`)과 첫 결과 착지·물리 Enter 제출을 세웠다. 앱 문자열은 `messages/*.json` → `res/values(-lang)/strings.xml` 생성 파이프라인(`%N$s`+ICU 원문, `app_locale` 마커, arg-order 잠금, 드리프트 가드 6종)이고 인자 있는 조회는 `appLocalized`만(소스 가드). 실기기 검사 레인(ATF)은 `adb` 연결 시. M1은 위치를 쓰지 않는다(M2).
+
 ### 안드로이드 M0 — 뼈대·이식 방식 확립 (`android/`)
 
 안드로이드 앱 착수 웨이브 0(계획 `docs/superpowers/plans/2026-09-16-android-app-parallel-plan.md` §5-1, 판정 `docs/superpowers/specs/2026-09-15-android-app-decisions.md`). `android/`에 `:app`(Compose, minSdk 31·targetSdk 36·compileSdk 37.2, debug·release·experimental 세 구성, 실험판은 `.dev`·"길동무 실험") · `:kit`(순수 Kotlin/JVM, GildongmuKit의 세 번째 미러) 두 모듈. FOUNDATION 그룹(Kit 19파일 + Models 9 + 국경 링 리소스)을 Kotlin으로 옮기고 Kotlin 테스트 260여 건(Swift 케이스 이식 + 신규 가드), 공유 fixture 로더, 판정·실행 경계 인터페이스(`HttpTransport`·`KeyValueStore`), `:kit` 문자열 카탈로그 생성 스크립트, 미러 등록부 3벌 + vitest 검사(`mirror-registry.test.ts`)·드리프트 가드(`android-kit-drift.test.ts`)를 세웠다. 이식 계약은 `android/README.md`.

@@ -30,6 +30,8 @@ android/
 export ANDROID_HOME=~/Library/Android/sdk
 cd android
 ./gradlew :kit:test                         # 판정 계층 테스트(fixture 포함)
+./gradlew :app:testDebugUnitTest            # 화면 상태 머신·언어·소스 가드(JVM)
+./gradlew :app:connectedDebugAndroidTest    # 실기기 접근성 검사 레인(ATF) — adb 연결 시에만
 ./gradlew :app:assembleDebug                # 정식 번들 디버그 APK
 ./gradlew :app:assembleExperimental         # 실험판 APK (…gildongmu.dev, "길동무 실험")
 ./gradlew :app:assembleRelease              # 미서명 릴리스(스토어 업로드는 Play App Signing, 계정 개설 뒤)
@@ -95,7 +97,7 @@ val lines = Fixtures.kit("chat-stream.ndjson").lines()                          
 - 저장소 루트는 `:kit build.gradle.kts`가 넘기는 `gildongmu.kitDir`에서 위로 올라가 `package.json` + `ios/GildongmuKit/Package.swift`가 있는 곳. 못 찾거나 파일이 없거나 비면 **실패한다**(조용히 통과하지 않는다).
 - fixture 모양은 테스트 파일 안의 `@Serializable private data class`로 그때그때 선언한다(Swift 테스트의 `private struct … Decodable`과 같은 자리).
 - 두 fixture 디렉터리는 **읽기만** 한다. 틀렸다고 판단되면 고치지 말고 코디네이터에 보고한다(웹·iOS 테스트도 같이 바뀌어야 한다).
-- 네트워크 계층 테스트는 `stubbedClient { url -> HttpResponse(status, body) }` / `StubTransport`(경로 판정은 `pathOf(url)`·`queryOf(url)`), 저장소는 `InMemoryKeyValueStore`.
+- 네트워크 계층 테스트는 `stubbedClient { url -> HttpResponse(status, body) }` / `StubTransport`(경로 판정은 `pathOf(url)`·`queryOf(url)`), 저장소는 `InMemoryKeyValueStore` — `kit/src/testFixtures`에 있어 `:app` 테스트(`testFixtures(project(":kit"))`)도 같은 것을 쓴다.
 
 ## 5. 미러 등록부 갱신법 (`kit/mirrors/<그룹>.json`)
 
@@ -124,11 +126,24 @@ node android/scripts/messages-to-kit-strings.mjs --check  # 최신 여부
 
 iOS Kit 카탈로그와 같은 빌더(`ios/scripts/messages-to-xcstrings.mjs`의 `buildCatalog`)를 import해 만들므로 네임스페이스(`category`·`region`·`route`·`whereAmI`)·ko 위치 인자 순서(`ios/i18n/arg-order.json`)가 iOS와 같고, 지정자만 `%N$@` → `%N$s`다. 복수형은 ICU 블록 `{N, plural, one {…} other {…}}` 문자열 그대로 실려 `formatLocalized`가 푼다(A29). 드리프트 가드 `src/lib/__tests__/android-kit-drift.test.ts`가 (1) 생성물 최신 (2) xcstrings와 값 대응 (3) 국경 링 바이트 동일 (4) 거리 표기 표를 매 커밋 본다. `messages/*.json`을 고쳤으면 iOS 스크립트와 이 스크립트를 둘 다 돌린다.
 
-`:app` 화면 문자열(`res/values-*/strings.xml`)은 M1이 별도 스크립트로 만든다.
+### 앱 문자열 (`:app`)
+
+`res/values(-lang)/strings.xml`도 **생성물**이다 — 손으로 고치지 않는다. 정본은 `messages/*.json` + `android/i18n/android-extra/*.json`(안드로이드 전용 키 `android.*`, 웹 키를 덮는 오버라이드).
+
+```bash
+node android/scripts/messages-to-android-strings.mjs            # 생성(기존 키 순서 변경은 exit 1)
+node android/scripts/messages-to-android-strings.mjs --check    # 최신 여부
+node android/scripts/messages-to-android-strings.mjs --update-arg-order   # 호출부 인자 순서를 함께 고친 뒤에만
+```
+
+- 값은 iOS 카탈로그와 같은 모양(`%N$s` 위치 지정자 + ICU 복수 블록 원문). 복수형은 `<plurals>`가 아니라 `:kit` `formatLocalized`가 런타임에 푼다 — **인자 있는 문자열은 `appLocalized(res, R.string.x, args)` / Compose `appString(...)`만** 지난다(`getString(id, args)`·`stringResource(id, args)`·`pluralStringResource` 금지, `LocalizedCallSiteGuardTest`가 잠근다). 인자 없는 것은 `stringResource(id)` 그대로.
+- 리소스 이름은 키의 `.`→`_`(`search.placeCount` → `R.string.search_placeCount`).
+- 언어 판정은 `AppLocale.current(res)` = 각 로케일 파일의 마커 `app_locale`(리소스 해석기가 고른 폴더가 곧 정답). `dataLocale`은 ko 외 전부 en.
+- ko 위치 인자 순서는 `android/i18n/arg-order.json`이 잠근다(iOS와 같은 게이트). 드리프트 가드 `src/lib/__tests__/android-strings-drift.test.ts`(최신·arg-order·왕복·리소스 이름·ios-extra 문안 동일·`%%`).
 
 ## 7. 게이트 락 절차
 
 1. `until mkdir ~/gildongmu-wt/gate.lock 2>/dev/null; do sleep 30; done`
-2. `cd android && ./gradlew :kit:test :app:assembleDebug :app:assembleExperimental`
+2. `cd android && ./gradlew :kit:test :app:testDebugUnitTest :app:assembleDebug :app:assembleExperimental`
 3. `cd .. && VITEST_MAX_THREADS=2 npm run test:run`
 4. 성공·실패와 무관하게 `rmdir ~/gildongmu-wt/gate.lock; (cd android && ./gradlew --stop)`
