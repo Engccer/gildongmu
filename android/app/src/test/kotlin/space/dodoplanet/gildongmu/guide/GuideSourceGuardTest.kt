@@ -44,7 +44,8 @@ class GuideSourceGuardTest {
     @Test fun `③ 오디오·진동·TTS 플랫폼 API는 audio 지정 파일만`() {
         val bad = Regex("""\bSoundPool\b|\bTextToSpeech\(|\bVibrator\b|\bVibrationEffect\b|\bAudioFocusRequest\b|\bVibratorManager\b""")
         val allowed = setOf("GuideTonePlayer.kt", "TtsGuideSpeaker.kt", "ToneHaptics.kt", "GuideAudioFocus.kt")
-        val files = allSources.filter { bad.containsMatchIn(it.readText()) }
+        // 범위는 소유 패키지(guide/·audio/)다 — 채팅 TTS(`chat/`, M6)는 자기 재생기를 갖는다.
+        val files = guideSources.filter { bad.containsMatchIn(it.readText()) }
         assertTrue(files.isNotEmpty())
         assertEquals(emptySet(), files.map { it.name }.toSet() - allowed, "audio/ 지정 파일 밖의 플랫폼 오디오 참조")
         assertTrue(files.all { it.parentFile.name == "audio" })

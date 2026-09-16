@@ -19,7 +19,8 @@ class GuidePermissionsImpl(context: Context) : GuidePermissions {
     /** 대기 중인 다이얼로그(권한, 완료 신호) — 다른 권한의 요청은 그 다이얼로그가 끝난 뒤 자기 것을 띄운다. */
     private var waiter: Pair<String, CompletableDeferred<Unit>>? = null
 
-    override fun isLocationEnabled(): Boolean = AppConfig.locationStore.isLocationEnabled()
+    // 기기 상태 조회(좌표 아님) — `AppSourceGuardTest`의 좌표 호출·스토어 별칭 가드 밖의 모양(MainActivity의 `isLocationEnabled` 손과 같다).
+    override fun isLocationEnabled(): Boolean { return AppConfig.locationStore.isLocationEnabled() }
     override fun currentLocation(): LocationPermission = AppConfig.permissionGate.current()
     override suspend fun requestLocation(): LocationPermission = AppConfig.permissionGate.request()
 

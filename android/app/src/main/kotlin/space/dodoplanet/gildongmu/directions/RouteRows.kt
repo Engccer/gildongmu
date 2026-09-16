@@ -34,6 +34,7 @@ import space.dodoplanet.gildongmu.kit.models.TransitRoute
 import space.dodoplanet.gildongmu.kit.models.TransitRouteResult
 import space.dodoplanet.gildongmu.kit.models.WalkRouteBriefing
 import space.dodoplanet.gildongmu.kit.spokenDistanceUnits
+import space.dodoplanet.gildongmu.kit.WalkRouteVariant
 
 // 길찾기 행 렌더(spec §3 머리·§3-4, iOS `RouteBriefing.swift`·`outcomeRows` 대응). 문장은 `RouteText`·`TransitLegText`가 만들고
 // 여기는 시각·시맨틱 조립만. 행 관용구 둘: 비상호작용 행은 `mergedRow`, 상호작용 행은 `clickable + clearAndSetSemantics`(M1 `RecentRow`).
@@ -179,16 +180,20 @@ fun WalkOutcomeRows(
     onShortestToggle: () -> Unit,
     viaLabel: String?,
     strings: Strings,
+    /** M4 도보 안내 시작 버튼 슬롯(추천 null / 최단 `shortest`) — 실험판·도착 좌표가 있을 때만 화면이 넘긴다. */
+    guideStart: (@Composable (variant: WalkRouteVariant?) -> Unit)? = null,
 ) {
     val meters = strings.get("android.unit.spokenMeters")
     val walkExpanded = walkExpandedOverride ?: !WalkCollapse.shouldCollapse(briefing.durationSeconds)
     val walkLabel = joinText(strings.get("directions.walkRecommended"), walkSummaryText(briefing, strings), briefing.stepFreeNotice)
     DisclosureRow(label = walkLabel, tag = "walk-recommended", expanded = walkExpanded, onToggle = onWalkToggle, strings = strings, spoken = spokenDistanceUnits(walkLabel, meters)) {
+        guideStart?.invoke(null)
         walkStepItems(briefing, viaLabel, strings).forEachIndexed { i, item -> TextRow(item, "walk-step-$i", spoken = spokenDistanceUnits(item, meters)) }
     }
     if (shortest != null) {
         val shortLabel = joinText(strings.get("directions.walkShortest"), walkSummaryText(shortest, strings), shortest.stepFreeNotice)
         DisclosureRow(label = shortLabel, tag = "walk-shortest", expanded = shortestExpanded, onToggle = onShortestToggle, strings = strings, spoken = spokenDistanceUnits(shortLabel, meters)) {
+            guideStart?.invoke(WalkRouteVariant.shortest)
             walkStepItems(shortest, viaLabel, strings).forEachIndexed { i, item -> TextRow(item, "walk-shortest-step-$i", spoken = spokenDistanceUnits(item, meters)) }
         }
     }

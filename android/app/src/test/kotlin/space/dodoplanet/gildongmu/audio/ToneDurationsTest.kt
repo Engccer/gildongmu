@@ -44,7 +44,8 @@ class ToneDurationsTest {
     }
 
     @Test fun `raw 이름 집합·바이트가 웹 파일과 같다`() {
-        val files = raw.listFiles { f -> f.extension == "mp3" }!!.map { it.nameWithoutExtension }.toSet()
+        // `guide_` 접두만 이 가드의 대상(채팅 효과음 `chat_*`은 M6 소유).
+        val files = raw.listFiles { f -> f.extension == "mp3" && f.name.startsWith("guide_") }!!.map { it.nameWithoutExtension }.toSet()
         assertEquals(expectedNames, files)
         for (name in files) {
             val webName = name.removePrefix("guide_").replace('_', '-') + ".mp3"
