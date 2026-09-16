@@ -237,6 +237,6 @@ private fun PlacesSection(
     if (filtered.isEmpty()) {
         Text(stringResource(R.string.search_noFilterResults), Modifier.padding(vertical = 8.dp))
     } else {
-        for (place in filtered) PlaceRow(place, lang, rowModifier("place-${place.id}"))
+        for (place in filtered) PlaceRow(place, lang, spokenMeters = stringResource(R.string.android_unit_spokenMeters), modifier = rowModifier("place-${place.id}"))
     }
 }
