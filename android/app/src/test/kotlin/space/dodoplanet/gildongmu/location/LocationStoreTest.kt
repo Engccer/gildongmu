@@ -41,7 +41,7 @@ class LocationStoreTest {
 
     private val dispatcher = StandardTestDispatcher()
     private val logs = ArrayList<String>()
-    private fun store(src: FakeSource, gate: PermissionGate) = LocationStore(src, gate) { logs += it }
+    private fun store(src: FakeSource, gate: PermissionGate) = LocationStore(src, gate, log = { logs += it })
 
     /** 실패를 값으로 — `async` 자식의 예외는 부모 `runTest`를 함께 실패시켜 `assertFailsWith`에 닿지 못한다. */
     private fun <T> kotlinx.coroutines.CoroutineScope.attempt(block: suspend () -> T) =
@@ -61,10 +61,28 @@ class LocationStoreTest {
         s.stored = LocationStore.StoredFix(37.1, 127.2, 10.0, src.now - 120_000) // 2분 전 — 기본 TTL(60초) 밖, soft TTL(300초) 안
         val d = async { s.coordinateForDisplay() }; runCurrent(); advanceTimeBy(2_001); runCurrent()
         assertNull(d.await()); assertEquals(true, s.lastFixFailed)
-        val r = async { s.coordinateForRanking() }; runCurrent()
+        val r = async { s.gpsCoordinateForRanking() }; runCurrent()
         assertEquals(NearbyCoord(37.1, 127.2), r.await()) // 캐시 게이트를 soft TTL로 통과
         val ok = async { s.coordinateForDisplay() }; runCurrent(); src.emit(accuracy = 12.0, lat = 37.9)
         assertEquals(NearbyCoord(37.9, 127.1), ok.await())
+    }
+
+    @Test fun `silent 측위는 실패해도 lastFixFailed를 세우지 않고, 성공 fix는 stored를 갱신한다(spec §13-2)`() = runTest(dispatcher) {
+        val src = FakeSource(); val s = store(src, FakeGate(LocationPermission.Fine))
+        val d = async { s.currentFix(force = true, silent = true) }; runCurrent(); advanceTimeBy(8_001); runCurrent()
+        assertNull(d.await()); assertEquals(false, s.lastFixFailed)
+        val ok = async { s.currentFix(force = true, silent = true) }; runCurrent(); src.emit(accuracy = 12.0, lat = 37.9)
+        val fix = ok.await()!!; assertEquals(37.9, fix.lat); assertEquals(12.0, fix.accuracy); assertEquals(37.9, s.stored?.lat)
+        val loud = async { s.currentFix(force = true, silent = false) }; runCurrent(); advanceTimeBy(8_001); runCurrent()
+        assertNull(loud.await()); assertEquals(true, s.lastFixFailed)
+        val coarse = store(FakeSource(), FakeGate(LocationPermission.Coarse))
+        assertNull(coarse.currentFix(force = true, silent = true)); assertEquals(false, coarse.lastFixFailed) // Coarse 갈래도 silent
+    }
+
+    @Test fun `currentFix의 at은 epoch 초에서 fix 나이를 뺀 값`() = runTest(dispatcher) {
+        val src = FakeSource(); val s = LocationStore(src, FakeGate(LocationPermission.Fine), epochNow = { 1_000.0 })
+        val d = async { s.currentFix(force = true, silent = false) }; runCurrent(); src.emit(accuracy = 10.0, ageSeconds = 3.0)
+        assertEquals(997.0, d.await()!!.at)
     }
 
     @Test fun `수용 정확도 fix가 오면 즉시 반환하고 구독을 닫는다`() = runTest(dispatcher) {
@@ -148,13 +166,13 @@ class LocationStoreTest {
 
     @Test fun `ranking은 권한 없으면 팝업 없이 null이고 실패는 스토어 폴백`() = runTest(dispatcher) {
         val gate = FakeGate(LocationPermission.None, afterRequest = LocationPermission.Fine)
-        assertNull(store(FakeSource(), gate).coordinateForRanking()); assertEquals(0, gate.requests)
+        assertNull(store(FakeSource(), gate).gpsCoordinateForRanking()); assertEquals(0, gate.requests)
 
         val src = FakeSource(); val s = store(src, FakeGate(LocationPermission.Fine))
         s.stored = LocationStore.StoredFix(37.3, 127.3, 90.0, src.now - 100_000) // 100초 전, 90m — softTTL 300s·storeCeiling 100m 안이라 재사용
-        assertEquals(NearbyCoord(37.3, 127.3), s.coordinateForRanking()); assertEquals(0, src.listeners.size)
+        assertEquals(NearbyCoord(37.3, 127.3), s.gpsCoordinateForRanking()); assertEquals(0, src.listeners.size)
         src.now += 400_000 // 캐시 만료 → 2초 상한 취득 → fix 0 → 스토어 폴백
-        val d = async { s.coordinateForRanking() }; runCurrent(); advanceTimeBy(2_001); runCurrent()
+        val d = async { s.gpsCoordinateForRanking() }; runCurrent(); advanceTimeBy(2_001); runCurrent()
         assertEquals(NearbyCoord(37.3, 127.3), d.await())
     }
 

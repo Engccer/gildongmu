@@ -45,7 +45,7 @@ object AppConfig {
     val permissionGate: AndroidPermissionGate by lazy { AndroidPermissionGate(app) }
 
     /** 현재 위치 공유 스토어 — 화면마다 `LocationManager`를 만들지 않는다. */
-    val locationStore: LocationStore by lazy { LocationStore(AndroidLocationSource(app), permissionGate) { Log.i("Location", it) } }
+    val locationStore: LocationStore by lazy { LocationStore(AndroidLocationSource(app), permissionGate, log = { Log.i("Location", it) }) }
 
     /** 현재 위치 주소 캐시(표시줄, spec §12-4) — 좌표당 1회 역지오코딩. */
     val currentAddressStore: CurrentAddressStore by lazy { CurrentAddressStore(locationStore, SearchService(apiClient)) }
