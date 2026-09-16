@@ -11,6 +11,10 @@
 
 ## 2026-09-16
 
+### 안드로이드 M2b — 내 주변 나머지 6종·주변 상황·역 자동 섹션·무장애·현재 위치 표시줄 (`android/app`)
+
+내 주변 kind 6종(소아 야간진료·무장애 여행지·아이 놀 곳·문화행사·보행 인프라·날씨/공기질/혼잡도 — 허브 10행 iOS 순서), 둘러보기 "주변 상황" 자동 펼침(세 조각 한 커밋, 묶음별 더 보기), 장소 상세 도메인 섹션(진료 상태·행사 개요, 라우트 JSON 인자)·역 자동 섹션 5종(시간표만 3-state 문장)·무장애 편의시설 섹션·앵커 4행, 허브 첫 행 현재 위치 표시줄(권한→확정 실패→좌표→주소; 안드로이드는 "안 물음"과 "거부"를 못 가르므로 권한 없음은 "위치 권한이 필요합니다", 표시용 좌표는 낡은 좌표 폴백 없음)을 iOS 미러로 더했다. 신설 문자열 0. 수동 위치 지정은 M2c(M3 끝점 검색 재사용), 결과 진동은 설정 화면 마일스톤. spec `docs/superpowers/specs/2026-09-16-android-m2-place-nearby-design.md` §12(설계 리뷰 2회 35건 반영), 계획 `docs/superpowers/plans/2026-09-16-android-m2b-nearby-sections.md`.
+
 ### 안드로이드 M3 — 길찾기 브리핑 (`android/app/.../directions`)
 
 웨이브 2 — 출발지·도착지(·경유지) 확정(끝점 검색: 장소+주소 후보·최근 장소·지오코딩)·최근 경로·경로 조회(측위 → 커버리지 선분기 → 출입구 승격 → 3수단 병렬 15초 상한 → :kit 분류·순서 스냅샷)·수단별 브리핑(대중교통 추천+대안 펼침 행·구간 줄·출구 한 줄 규칙·하차 줄, 도보 추천·최단 2행 + 계단 회피 토글, 자동차 요약+안내 행)을 iOS `DirectionsTabView`·`RouteBriefing` 미러로 세웠다. 위치는 M2 `LocationStore`를 세 함수 뒤에서 통과 호출, 프리필은 1회 소비 스토어 + `NavController.openDirections()`(장소 상세 배선은 M2 후속). 실시간 안내 시작은 M4·M5(자리만). spec `docs/superpowers/specs/2026-09-16-android-m3-directions-design.md`(설계 리뷰 27건 반영), 계획 `docs/superpowers/plans/2026-09-16-android-m3-directions.md`.

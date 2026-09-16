@@ -72,6 +72,17 @@ class AppSourceGuardTest {
         assertEquals(emptyList(), offenders)
     }
 
+    @Test fun `내 주변 허브 순서는 iOS NearbyHubView와 같다(spec §12-1)`() {
+        assertEquals(
+            listOf("around", "subway", "bus", "bike", "clinic", "barrierFree", "kids", "events", "walkInfra", "conditions"),
+            space.dodoplanet.gildongmu.nearby.NearbyKind.entries.map { it.name },
+        )
+    }
+
+    @Test fun `문자열 리소스는 리터럴 ID로만 되받는다 — 동적 키 조립 0(spec §12 매핑표 규율)`() {
+        assertTrue(sources.none { it.extension == "kt" && it.readText().contains("getIdentifier(") })
+    }
+
     @Test fun `Google Play 서비스 의존은 0이다`() {
         val gradle = listOf(android.resolve("app/build.gradle.kts"), android.resolve("gradle/libs.versions.toml"))
         assertTrue(gradle.none { it.readText().contains("play-services") })
