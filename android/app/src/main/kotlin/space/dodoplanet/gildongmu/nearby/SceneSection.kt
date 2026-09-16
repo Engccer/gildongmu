@@ -11,7 +11,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -20,6 +19,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import space.dodoplanet.gildongmu.R
+import space.dodoplanet.gildongmu.a11y.landingTarget
 import space.dodoplanet.gildongmu.a11y.BodyLine
 import space.dodoplanet.gildongmu.a11y.HeadingLine
 import space.dodoplanet.gildongmu.a11y.tapTarget
@@ -65,7 +65,7 @@ fun SceneAutoSection(payload: AroundPayload, vm: NearbyScreenViewModel<AroundPay
                         line(name.display),
                         Modifier
                             .fillMaxWidth()
-                            .focusRequester(requesterFor(key))
+                            .landingTarget(requesterFor(key))
                             .clickable(role = Role.Button) { onOpenPlace(sceneItemToPlace(item), key) }
                             .testTag(key)
                             .defaultMinSize(minHeight = 48.dp)

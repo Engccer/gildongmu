@@ -32,6 +32,7 @@ import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import space.dodoplanet.gildongmu.a11y.mergedRow
+import space.dodoplanet.gildongmu.a11y.landingTarget
 import space.dodoplanet.gildongmu.a11y.tapTarget
 import space.dodoplanet.gildongmu.kit.formatDistance
 import space.dodoplanet.gildongmu.kit.spokenDistanceUnits
@@ -141,7 +142,7 @@ fun RecentRow(
     Row(
         modifier
             .fillMaxWidth()
-            .focusRequester(focusRequester)
+            .landingTarget(focusRequester)
             // clickable이 clearAndSetSemantics보다 바깥이라 onClick 액션은 살아남고, 안쪽(아이콘 등)만 지워진다.
             .clickable(role = Role.Button, onClick = onRun)
             .testTag("recent-$query")

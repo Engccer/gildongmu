@@ -15,10 +15,10 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import space.dodoplanet.gildongmu.R
+import space.dodoplanet.gildongmu.a11y.landingTarget
 
 /**
  * 화면 껍데기: 상단 바 + 본문. 골격의 바깥 `Scaffold`(`AppRoot`)가 상태바·탭 바 인셋을 이미 먹였으므로 여기서는 `WindowInsets(0)` —
@@ -58,7 +58,7 @@ fun AppTopBar(
                 modifier = Modifier
                     .testTag("title")
                     .headingText()
-                    .let { m -> if (titleFocus != null) m.focusRequester(titleFocus).focusable() else m },
+                    .let { m -> if (titleFocus != null) m.landingTarget(titleFocus).focusable() else m },
             )
         },
         navigationIcon = {

@@ -25,7 +25,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -40,6 +39,7 @@ import androidx.lifecycle.ViewModelProvider
 import android.util.Log
 import kotlinx.coroutines.launch
 import space.dodoplanet.gildongmu.BuildConfig
+import space.dodoplanet.gildongmu.a11y.landingTarget
 import space.dodoplanet.gildongmu.R
 import space.dodoplanet.gildongmu.a11y.AppScreenScaffold
 import space.dodoplanet.gildongmu.a11y.StatusLine
@@ -331,7 +331,7 @@ private fun BusBody(stops: List<BusStop>, requesterFor: (String) -> FocusRequest
                     line,
                     Modifier
                         .fillMaxWidth()
-                        .focusRequester(requesterFor("$key-arrival-$i")) // pop 복귀 착지 대상(clickable의 focusable 앞)
+                        .landingTarget(requesterFor("$key-arrival-$i")) // pop 복귀 착지 대상(clickable의 focusable 앞)
                         .clickable(onClickLabel = hint, role = Role.Button) {
                             onOpenRouteStops("$key-arrival-$i", BusRouteStopsRoute(stop.source, if (stop.source == "tago") stop.cityCode else null, arrival.routeId, arrival.routeNo))
                         }
@@ -406,7 +406,7 @@ private fun AroundBody(payload: AroundPayload, vm: NearbyScreenViewModel<AroundP
                 distance = { appLocalized(res, R.string.place_distance, it) },
             )
             val place = surroundingPlaceToPlace(p)
-            PlaceRow(place, lang, spokenMeters = meters, secondaryOverride = secondary, onClick = { onOpenPlace(place, "place-${place.id}") }, modifier = Modifier.focusRequester(requesterFor("place-${place.id}")))
+            PlaceRow(place, lang, spokenMeters = meters, secondaryOverride = secondary, onClick = { onOpenPlace(place, "place-${place.id}") }, modifier = Modifier.landingTarget(requesterFor("place-${place.id}")))
         }
         if (places.size > visibleCount) {
             Button(onClick = { vm.revealMore(places.size) { i -> "place-${places[i].id}" } }, Modifier.tapTarget().testTag("showMore")) { Text(stringResource(R.string.actions_showMore)) }

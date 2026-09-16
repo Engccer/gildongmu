@@ -14,7 +14,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
@@ -22,6 +21,7 @@ import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.unit.dp
 import android.util.Log
 import space.dodoplanet.gildongmu.R
+import space.dodoplanet.gildongmu.a11y.landingTarget
 import space.dodoplanet.gildongmu.a11y.AppScreenScaffold
 import space.dodoplanet.gildongmu.a11y.tapTarget
 import space.dodoplanet.gildongmu.location.CurrentAddressStore
@@ -50,7 +50,7 @@ fun NearbyHubScreen(onOpen: (NearbyKind) -> Unit, takeReturnFocus: () -> String?
                         .padding(vertical = 4.dp)
                         .tapTarget() // 패딩 뒤에 — 앞에 두면 48dp에 패딩이 포함돼 표면이 40dp가 된다
                         .testTag(hubKey(kind))
-                        .focusRequester(requesters.getOrPut(kind) { FocusRequester() }),
+                        .landingTarget(requesters.getOrPut(kind) { FocusRequester() }),
                 ) { Text(stringResource(kindTitle(kind))) }
             }
         }

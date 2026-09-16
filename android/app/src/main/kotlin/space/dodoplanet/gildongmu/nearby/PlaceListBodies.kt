@@ -8,11 +8,11 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import space.dodoplanet.gildongmu.R
+import space.dodoplanet.gildongmu.a11y.landingTarget
 import space.dodoplanet.gildongmu.a11y.BodyLine
 import space.dodoplanet.gildongmu.a11y.tapTarget
 import space.dodoplanet.gildongmu.i18n.AppLocale
@@ -53,7 +53,7 @@ fun <T : Any, P : Any> PlaceListBody(
     header()
     for (item in items.take(visibleCount)) {
         val p = place(item)
-        PlaceRow(p, lang, spokenMeters = meters, secondaryOverride = secondary(item), onClick = { onOpen(item) }, modifier = Modifier.focusRequester(requesterFor("place-${p.id}")))
+        PlaceRow(p, lang, spokenMeters = meters, secondaryOverride = secondary(item), onClick = { onOpen(item) }, modifier = Modifier.landingTarget(requesterFor("place-${p.id}")))
     }
     if (items.size > visibleCount) {
         Button(onClick = { vm.revealMore(items.size) { i -> "place-${place(items[i]).id}" } }, Modifier.tapTarget().testTag("showMore")) { Text(stringResource(R.string.actions_showMore)) }

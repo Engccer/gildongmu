@@ -27,7 +27,6 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.CustomAccessibilityAction
@@ -37,6 +36,7 @@ import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import space.dodoplanet.gildongmu.a11y.AppScreenScaffold
+import space.dodoplanet.gildongmu.a11y.landingTarget
 import space.dodoplanet.gildongmu.a11y.StatusLine
 import space.dodoplanet.gildongmu.a11y.tapTarget
 import space.dodoplanet.gildongmu.i18n.AppLocale
@@ -112,14 +112,14 @@ fun EndpointSearchContent(vm: DirectionsViewModel, p: EndpointSearchState) {
                         }
                     }
                 } else null,
-                modifier = Modifier.fillMaxWidth().testTag("ep-query").focusRequester(fieldFocus),
+                modifier = Modifier.fillMaxWidth().testTag("ep-query").landingTarget(fieldFocus),
             )
             Button(
                 onClick = { if (!p.isSearching) vm.submitCandidates() },
                 modifier = Modifier
                     .tapTarget()
                     .testTag("ep-submit")
-                    .focusRequester(searchButtonFocus)
+                    .landingTarget(searchButtonFocus)
                     .semantics { if (p.isSearching) stateDescription = searchingLabel },
             ) { Text(strings.get("search.button")) }
 
@@ -147,7 +147,7 @@ fun EndpointSearchContent(vm: DirectionsViewModel, p: EndpointSearchState) {
                             },
                         ),
                         onClick = { vm.selectRecentEndpoint(e) },
-                        modifier = Modifier.focusRequester(recentFocus.getOrPut(e.id) { FocusRequester() }),
+                        modifier = Modifier.landingTarget(recentFocus.getOrPut(e.id) { FocusRequester() }),
                     )
                 }
                 Button(
@@ -167,7 +167,7 @@ fun EndpointSearchContent(vm: DirectionsViewModel, p: EndpointSearchState) {
                 ActionRow(
                     visual = joinText(name.display, address), spoken = joinText(name.primary, address), tag = "ep-place-${place.id}",
                     onClick = { vm.selectPlace(place) },
-                    modifier = if (index == 0) Modifier.focusRequester(firstCandidateFocus) else Modifier,
+                    modifier = if (index == 0) Modifier.landingTarget(firstCandidateFocus) else Modifier,
                 )
             }
             p.addresses.forEachIndexed { index, address ->
@@ -175,7 +175,7 @@ fun EndpointSearchContent(vm: DirectionsViewModel, p: EndpointSearchState) {
                 ActionRow(
                     visual = name.display, spoken = name.primary, tag = "ep-address-${address.roadAddr}",
                     onClick = { vm.selectAddress(address) },
-                    modifier = if (index == 0 && p.places.isEmpty()) Modifier.focusRequester(firstCandidateFocus) else Modifier,
+                    modifier = if (index == 0 && p.places.isEmpty()) Modifier.landingTarget(firstCandidateFocus) else Modifier,
                 )
             }
         }
