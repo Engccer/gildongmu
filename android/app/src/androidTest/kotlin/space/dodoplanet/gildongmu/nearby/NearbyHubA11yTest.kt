@@ -64,7 +64,7 @@ class NearbyHubA11yTest {
     fun locationBarReadsPermissionNeededWhenNone() {
         val manual = ManualLocationStore(InMemoryKeyValueStore()).also { it.hydrate() }
         var picks = 0
-        rule.setContent { MaterialTheme { NearbyHubScreen(onOpen = {}, onPick = { picks++ }, takeReturnFocus = { null }, currentAddress = store, manualLocation = manual) } }
+        rule.setContent { MaterialTheme { NearbyHubScreen(onOpen = {}, onPick = { picks++ }, onOpenSettings = {}, takeReturnFocus = { null }, currentAddress = store, manualLocation = manual) } }
         rule.enableAccessibilityChecks()
         rule.waitForIdle()
         val bar = rule.onNodeWithTag("location-bar")
@@ -85,7 +85,7 @@ class NearbyHubA11yTest {
         ManualLocationStore(mem).also { it.hydrate(); it.set("길동역", null, 37.5, 127.1, null) } // 저장만(이전 실행)
         val manual = ManualLocationStore(mem) // 아직 hydrate 전
         val fineStore = CurrentAddressStore(LocationStore(FixSource, FineGate), SearchService(stubbedClient { calls++; HttpResponse(500, "") }))
-        rule.setContent { MaterialTheme { NearbyHubScreen(onOpen = {}, onPick = {}, takeReturnFocus = { null }, currentAddress = fineStore, manualLocation = manual) } }
+        rule.setContent { MaterialTheme { NearbyHubScreen(onOpen = {}, onPick = {}, onOpenSettings = {}, takeReturnFocus = { null }, currentAddress = fineStore, manualLocation = manual) } }
         rule.enableAccessibilityChecks()
         rule.waitForIdle()
         rule.runOnUiThread { manual.hydrate() }
@@ -99,7 +99,7 @@ class NearbyHubA11yTest {
     fun addressLookupRunsAgainWhenManualLocationIsCleared() {
         val manual = ManualLocationStore(InMemoryKeyValueStore()).also { it.hydrate(); it.set("길동역", null, 37.5, 127.1, null) }
         val fineStore = CurrentAddressStore(LocationStore(FixSource, FineGate), SearchService(stubbedClient { calls++; HttpResponse(500, "") }))
-        rule.setContent { MaterialTheme { NearbyHubScreen(onOpen = {}, onPick = {}, takeReturnFocus = { null }, currentAddress = fineStore, manualLocation = manual) } }
+        rule.setContent { MaterialTheme { NearbyHubScreen(onOpen = {}, onPick = {}, onOpenSettings = {}, takeReturnFocus = { null }, currentAddress = fineStore, manualLocation = manual) } }
         rule.waitForIdle()
         assertEquals("수동 위치가 있는 동안은 조회 0(권한 Fine·fix 있어도)", 0, calls)
         rule.runOnUiThread { manual.clear() } // 자동 해제 전이(iOS `.task(id:)` 동형)

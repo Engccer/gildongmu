@@ -178,6 +178,13 @@ class AppSourceGuardTest {
         assertEquals(listOf("A11y.kt"), sources.filter { it.extension == "kt" && it.readText().contains("performHapticFeedback(") }.map { it.name })
     }
 
+    /** spec §14-1 판정 42 — 설정 진입은 탭 루트 4개 전부(한 탭에서만 설정 불가한 상태 방지). */
+    @Test fun `설정 버튼은 탭 루트 4개의 상단 바에 있다`() {
+        for (f in listOf("search/SearchScreen.kt", "directions/DirectionsScreen.kt", "nearby/NearbyHubScreen.kt", "chat/ChatScreen.kt")) {
+            assertTrue(android.resolve("app/src/main/kotlin/space/dodoplanet/gildongmu/$f").readText().contains("SettingsAction("), f)
+        }
+    }
+
     @Test fun `Google Play 서비스 의존은 0이다`() {
         val gradle = listOf(android.resolve("app/build.gradle.kts"), android.resolve("gradle/libs.versions.toml"))
         assertTrue(gradle.none { it.readText().contains("play-services") })

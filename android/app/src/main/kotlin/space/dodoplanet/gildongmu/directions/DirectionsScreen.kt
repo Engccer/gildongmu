@@ -44,6 +44,8 @@ import space.dodoplanet.gildongmu.guide.ui.walkGuideStartSlot
 import space.dodoplanet.gildongmu.kit.WalkCollapse
 import space.dodoplanet.gildongmu.location.appDetailsSettingsIntent
 import space.dodoplanet.gildongmu.nav.tryStartActivity
+import space.dodoplanet.gildongmu.settings.SETTINGS_RETURN_KEY
+import space.dodoplanet.gildongmu.settings.SettingsAction
 
 /**
  * 길찾기 탭 루트(spec §2·§3-1, iOS `DirectionsTabView` 대응). 폼 위에 끝점 검색을 **덮어씌운다**(폼은 컴포즈 유지) —
@@ -53,14 +55,21 @@ import space.dodoplanet.gildongmu.nav.tryStartActivity
  * 거리 추적 섹션·공지 시트는 M4·M5 — 자리만(§3-1 표 10·11).
  */
 @Composable
-fun DirectionsScreen() {
+fun DirectionsScreen(onOpenSettings: () -> Unit, takeSettingsReturn: () -> String?) {
     val context = LocalContext.current
     val factory = remember(context) { directionsViewModelFactory(context) }
-    DirectionsScreen(viewModel(factory = factory))
+    DirectionsScreen(viewModel(factory = factory), onOpenSettings, takeSettingsReturn)
 }
 
 @Composable
-fun DirectionsScreen(vm: DirectionsViewModel) {
+fun DirectionsScreen(vm: DirectionsViewModel, onOpenSettings: () -> Unit = {}, takeSettingsReturn: () -> String? = { null }) {
+    val settingsFocus = remember { FocusRequester() }
+    // 설정에서 pop 복귀 → 상단 바 설정 버튼(spec §14-1)
+    LaunchedEffect(Unit) {
+        if (takeSettingsReturn() != SETTINGS_RETURN_KEY) return@LaunchedEffect
+        withFrameNanos { }
+        runCatching { settingsFocus.requestFocus() }.onFailure { Log.w("DirectionsScreen", "설정 복귀 착지 실패", it) }
+    }
     val picker by vm.endpointSearch.collectAsState()
     BackHandler(enabled = picker != null) { vm.closePicker() }
     val p = picker
@@ -68,7 +77,7 @@ fun DirectionsScreen(vm: DirectionsViewModel) {
         // 폼은 항상 컴포즈된다(상태 보존). 피커가 덮은 동안은 접근성 트리·터치에서 빠져야 하므로 컴포지션에서 뺀다 —
         // 그 대신 상태를 폼 밖(이 계층)에 든다(`FormUiState`).
         val formState = rememberFormUiState()
-        if (p == null) DirectionsForm(vm, formState) else EndpointSearchContent(vm.picker, p, onBack = vm::closePicker)
+        if (p == null) DirectionsForm(vm, formState, onOpenSettings, settingsFocus) else EndpointSearchContent(vm.picker, p, onBack = vm::closePicker)
     }
 }
 
@@ -98,7 +107,7 @@ private fun rememberFormUiState(): FormUiState = remember { FormUiState() }
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
-private fun DirectionsForm(vm: DirectionsViewModel, ui: FormUiState) {
+private fun DirectionsForm(vm: DirectionsViewModel, ui: FormUiState, onOpenSettings: () -> Unit, settingsFocus: FocusRequester) {
     val s by vm.state.collectAsState()
     val context = LocalContext.current
     val res = context.resources
@@ -129,7 +138,7 @@ private fun DirectionsForm(vm: DirectionsViewModel, ui: FormUiState) {
         runCatching { requester?.requestFocus() }.onFailure { Log.w("DirectionsScreen", "착지 실패 ${landing.target}", it) }
     }
 
-    AppScreenScaffold(strings.get("android.tab.directions"), onBack = null) { padding ->
+    AppScreenScaffold(strings.get("android.tab.directions"), onBack = null, actions = { SettingsAction(onOpenSettings, settingsFocus) }) { padding ->
         Column(
             Modifier
                 .fillMaxSize()
