@@ -81,7 +81,7 @@ class ChatScreenA11yTest {
             listOf(ChatSource("source.kakao")),
         )
         val vm = model { flow { emit(ChatStreamEvent.Status(listOf("search_places"))); release.await(); emit(done) } }
-        rule.setContent { MaterialTheme { ChatTabScreen(vm = vm) {} } }
+        rule.setContent { MaterialTheme { ChatTabScreen(vm = vm, onPickLocation = {}) {} } }
         rule.enableAccessibilityChecks()
 
         rule.onNodeWithTag("consent-agree").performClick()
@@ -113,7 +113,7 @@ class ChatScreenA11yTest {
         val release = CompletableDeferred<Unit>()
         val vm = model { flow { release.await(); emit(ChatStreamEvent.Error("chat_failed")) } }
         vm.grantConsent()
-        rule.setContent { MaterialTheme { ChatTabScreen(vm = vm) {} } }
+        rule.setContent { MaterialTheme { ChatTabScreen(vm = vm, onPickLocation = {}) {} } }
 
         rule.onNodeWithTag("suggestion-0").performClick()
         rule.waitForIdle()
