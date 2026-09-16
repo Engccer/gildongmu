@@ -44,6 +44,7 @@ import space.dodoplanet.gildongmu.directions.DirectionsPrefill
 import space.dodoplanet.gildongmu.directions.DirectionsPrefillRole
 import space.dodoplanet.gildongmu.i18n.AppLocale
 import space.dodoplanet.gildongmu.i18n.appLocalized
+import space.dodoplanet.gildongmu.kit.models.Place
 import space.dodoplanet.gildongmu.kit.RouteDestination
 import space.dodoplanet.gildongmu.kit.bilingualName
 import space.dodoplanet.gildongmu.kit.pickCategory
@@ -52,14 +53,14 @@ import space.dodoplanet.gildongmu.nearby.PlaceAnchor
 import space.dodoplanet.gildongmu.nearby.kindTitle
 
 /** 화면이 요청하는 이동. `returnFocus`는 pop 복귀 착지 키(앵커 버튼). */
-class PlaceNav(val onBack: () -> Unit, val onOpenNearby: (NearbyKind, PlaceAnchor) -> Unit, val onOpenDirections: (DirectionsPrefill) -> Unit)
+class PlaceNav(val onBack: () -> Unit, val onOpenNearby: (NearbyKind, PlaceAnchor) -> Unit, val onOpenDirections: (DirectionsPrefill) -> Unit, /** "이 장소에 관해 물어보기"(M6 spec §7) — `AppRoot`가 복귀 키 `chat`을 찍고 `openChat`. */ val onOpenChat: (Place) -> Unit)
 
 /**
  * 장소 상세(spec §3-2, iOS `PlaceDetailView` 대응). 정보 정본은 텍스트 리스트(지도 없음). 실주행은 딥링크 위임. 읽기 순서 = 표 순서.
- * "이 장소에 관해 물어보기"(M6)·안내 중 목적지 변경(M4)은 아래 주석 자리에 그 마일스톤이 넣는다.
+ * 안내 중 목적지 변경(M4)은 아래 주석 자리에 그 마일스톤이 넣는다. `showsChatEntry = false`(채팅에서 연 상세)면 "물어보기" 버튼을 숨긴다(순환 방지).
  */
 @Composable
-fun PlaceDetailScreen(factory: ViewModelProvider.Factory, nav: PlaceNav, takeReturnFocus: () -> String?, domain: PlaceDomain? = null) {
+fun PlaceDetailScreen(factory: ViewModelProvider.Factory, nav: PlaceNav, takeReturnFocus: () -> String?, domain: PlaceDomain? = null, showsChatEntry: Boolean = true) {
     val vm: PlaceDetailViewModel = viewModel(factory = factory)
     val place = vm.place
     val context = LocalContext.current
@@ -70,6 +71,7 @@ fun PlaceDetailScreen(factory: ViewModelProvider.Factory, nav: PlaceNav, takeRet
     val barrierFree by vm.barrierFree.collectAsState()
     val notice by vm.notice.collectAsState()
     val titleFocus = remember { FocusRequester() }
+    val chatFocus = remember { FocusRequester() }
     val anchorFocus = remember { mutableMapOf<NearbyKind, FocusRequester>() }
     val title = bilingualName(lang, place.name, en = null, roman = place.nameRoman)
     val displayCategory = pickCategory(lang, place.category, place.categoryEn)
@@ -82,7 +84,7 @@ fun PlaceDetailScreen(factory: ViewModelProvider.Factory, nav: PlaceNav, takeRet
         val key = takeReturnFocus()
         withFrameNanos { }
         val kind = key?.removePrefix("anchor-")?.let { k -> NearbyKind.entries.firstOrNull { it.name == k } }
-        val target = kind?.let { anchorFocus[it] } ?: titleFocus
+        val target = if (key == CHAT_RETURN_KEY) chatFocus else kind?.let { anchorFocus[it] } ?: titleFocus
         runCatching { target.requestFocus() }.onFailure { Log.w("Place", "진입/복귀 착지 실패 $key", it) }
     }
 
@@ -125,7 +127,10 @@ fun PlaceDetailScreen(factory: ViewModelProvider.Factory, nav: PlaceNav, takeRet
             homepage?.let { url ->
                 Button(onClick = { context.openWithFallback(OpenPlan(url, null)) { vm.onOpenFailed() } }, Modifier.tapTarget().testTag("homepage")) { Text(stringResource(R.string.place_homepage)) }
             }
-            // [M6] 이 장소에 관해 물어보기
+            // 이 장소에 관해 물어보기(M6 spec §7): 장소 채팅 push, pop 복귀 착지는 이 버튼(`landingTarget` — 터치 모드 착지). 채팅에서 연 상세는 숨긴다.
+            if (showsChatEntry) {
+                Button(onClick = { nav.onOpenChat(place) }, Modifier.tapTarget().testTag(CHAT_RETURN_KEY).landingTarget(chatFocus)) { Text(stringResource(R.string.placeChat_launch)) }
+            }
             // 12. 길찾기 헤딩
             Text(stringResource(R.string.android_route_section), Modifier.fillMaxWidth().mergedRow("route-heading").headingText().padding(top = 12.dp, bottom = 4.dp), style = MaterialTheme.typography.titleMedium)
             // 13~14. 길찾기 탭 프리필(M3 계약 `directions/DirectionsPrefill`). 두 버튼은 별개 객체 — 라벨이 각각 동작의 범위를 말한다.
@@ -181,3 +186,6 @@ private fun Context.dial(phone: String): Boolean = try {
 } catch (_: android.content.ActivityNotFoundException) {
     false
 }
+
+/** "물어보기" 버튼의 testTag이자 pop 복귀 키(M6 spec §7). */
+const val CHAT_RETURN_KEY = "chat"

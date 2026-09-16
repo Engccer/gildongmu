@@ -40,7 +40,7 @@ class PlaceDetailA11yTest {
         val down = stubbedClient { HttpResponse(404, "") }
         val factory = placeDetailFactory(place, PlaceHoursService(down), placeStrings { rule.activity.resources }, StationService(down), BarrierFreeService(down)) { "ko" }
         val prefills = mutableListOf<DirectionsPrefill>()
-        rule.setContent { MaterialTheme { PlaceDetailScreen(factory, PlaceNav({}, { _, _ -> }, prefills::add), takeReturnFocus = { null }) } }
+        rule.setContent { MaterialTheme { PlaceDetailScreen(factory, PlaceNav({}, { _, _ -> }, prefills::add, {}), takeReturnFocus = { null }) } }
         rule.enableAccessibilityChecks()
         rule.waitForIdle()
         rule.onNodeWithTag("title").assertTextContains("강동역").assertIsFocused()
@@ -68,7 +68,7 @@ class PlaceDetailA11yTest {
             }
         })
         val factory = placeDetailFactory(place, PlaceHoursService(stubbedClient { HttpResponse(404, "") }), placeStrings { rule.activity.resources }, station, BarrierFreeService(stubbedClient { HttpResponse(500, "") })) { "ko" }
-        rule.setContent { MaterialTheme { PlaceDetailScreen(factory, PlaceNav({}, { _, _ -> }, {}), takeReturnFocus = { null }) } }
+        rule.setContent { MaterialTheme { PlaceDetailScreen(factory, PlaceNav({}, { _, _ -> }, {}, {}), takeReturnFocus = { null }) } }
         rule.enableAccessibilityChecks()
         rule.waitUntil(5_000) { rule.onAllNodesWithTag("station-meta").fetchSemanticsNodes().isNotEmpty() }
         rule.waitForIdle()

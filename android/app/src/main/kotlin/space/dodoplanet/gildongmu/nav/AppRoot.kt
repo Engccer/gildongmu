@@ -25,6 +25,8 @@ import androidx.navigation.compose.rememberNavController
 import space.dodoplanet.gildongmu.AppConfig
 import space.dodoplanet.gildongmu.a11y.LocalResultHaptics
 import space.dodoplanet.gildongmu.chat.ChatTabScreen
+import space.dodoplanet.gildongmu.chat.openChat
+import space.dodoplanet.gildongmu.place.CHAT_RETURN_KEY
 import space.dodoplanet.gildongmu.chat.PlaceChatRoute
 import space.dodoplanet.gildongmu.chat.PlaceChatScreen
 import space.dodoplanet.gildongmu.directions.DirectionsScreen
@@ -122,7 +124,7 @@ fun AppRoot(factories: AppFactories) {
             }
             composable<ChatRoute> { entry ->
                 val rf: ReturnFocusViewModel = viewModel(entry)
-                ChatTabScreen(onPickLocation = { navController.navigate(ManualLocationRoute) }, onOpenSettings = { rf.slot.remember(SETTINGS_RETURN_KEY); navController.navigate(SettingsRoute) }, takeSettingsReturn = rf.slot::take, onOpenPlace = { navController.navigate(PlaceDetailRoute.of(it)) })
+                ChatTabScreen(onPickLocation = { navController.navigate(ManualLocationRoute) }, onOpenSettings = { rf.slot.remember(SETTINGS_RETURN_KEY); navController.navigate(SettingsRoute) }, takeSettingsReturn = rf.slot::take, onOpenPlace = { navController.navigate(PlaceDetailRoute.of(it, showsChatEntry = false)) })
             }
             // ── 스택 화면(각 화면 패키지 소유 라우트, 등록 한 줄씩)
             composable<NearbyKindRoute> { entry ->
@@ -153,11 +155,13 @@ fun AppRoot(factories: AppFactories) {
                         onBack = { navController.popBackStack() },
                         onOpenNearby = { kind, anchor -> returnFocus.slot.remember("anchor-${kind.name}"); navController.navigate(NearbyKindRoute.of(kind, anchor)) },
                         onOpenDirections = navController::openDirections, // 탭 전환 — 상세 스택은 검색 탭 백스택에 저장된다(복귀 착지 없음)
+                        onOpenChat = { returnFocus.slot.remember(CHAT_RETURN_KEY); navController.openChat(it) }, // M6 spec §7
                     ),
                     takeReturnFocus = returnFocus.slot::take,
+                    showsChatEntry = route.showsChatEntry,
                 )
             }
-            composable<PlaceChatRoute> { entry -> PlaceChatScreen(entry.toRoute(), { navController.popBackStack() }) { navController.navigate(PlaceDetailRoute.of(it)) } }
+            composable<PlaceChatRoute> { entry -> PlaceChatScreen(entry.toRoute(), { navController.popBackStack() }) { navController.navigate(PlaceDetailRoute.of(it, showsChatEntry = false)) } }
             composable<ManualLocationRoute> { ManualLocationPickerScreen { navController.popBackStack() } }
             composable<SettingsRoute> { entry ->
                 val rf: ReturnFocusViewModel = viewModel(entry)
