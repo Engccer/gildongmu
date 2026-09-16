@@ -163,11 +163,14 @@ class AppSourceGuardTest {
     @Test fun `리소스는 호출 시점에 localizedApp에서 읽는다 — app·applicationContext 캡처 0`() {
         val forbidden = Regex("""\b(app|applicationContext)\.(resources|getString\()""")
         assertEquals(emptyList(), sources.filter { it.extension == "kt" && it.name != "AppConfig.kt" && forbidden.containsMatchIn(it.readText()) }.map { it.name })
-        // applicationContext를 변수에 담지 않는다(별칭으로 새는 경로) — 저장소·서비스 생성자 인자로 넘기는 것만.
-        val alias = Regex("""=\s*(?:\w+\.)*applicationContext\b""")
-        // 플랫폼 서비스 홀더(LocationManager·권한·음성 인식기·SharedPreferences)는 앱 컨텍스트를 붙들되 리소스를 읽지 않는다 — 첫 축이 그것을 잡는다.
-        val serviceHolders = setOf("AppConfig.kt", "AndroidLocationSource.kt", "PermissionGate.kt", "DictationSession.kt", "SharedPreferencesStore.kt")
-        assertEquals(emptyList(), sources.filter { it.extension == "kt" && it.name !in serviceHolders && alias.containsMatchIn(it.readText()) }.map { it.name })
+        // 별칭으로 새는 경로: `val x = …applicationContext` 뒤 `x.resources`·`x.getString(`(플랫폼 서비스 홀더가 시스템 서비스만 잡는 별칭은 통과).
+        val alias = Regex("""\bval\s+(\w+)\s*(?::\s*Context)?\s*=\s*(?:\w+\.)*applicationContext\s*$""", RegexOption.MULTILINE)
+        val aliasOffenders = sources.filter { f ->
+            f.extension == "kt" && f.name != "AppConfig.kt" && alias.findAll(f.readText()).any { m ->
+                Regex("""\b${m.groupValues[1]}\.(resources|getString\()""").containsMatchIn(f.readText())
+            }
+        }.map { it.name }
+        assertEquals(emptyList(), aliasOffenders)
         val factoryFiles = sources.filter { it.extension == "kt" && (it.name.endsWith("Factory.kt") || it.name.endsWith("Factories.kt") || it.name.endsWith("StringsRes.kt") || it.name == "MainActivity.kt") }
         assertTrue(factoryFiles.size >= 5, factoryFiles.map { it.name }.toString())
         assertEquals(emptyList(), factoryFiles.filter { Regex("""\bcontext\.(resources|getString\()""").containsMatchIn(it.readText()) }.map { it.name })

@@ -14,13 +14,16 @@ import space.dodoplanet.gildongmu.i18n.appLocalized
  * 플레이스홀더 등장 순서(iOS 위치 인자 ABI, `android/i18n/arg-order.json`이 잠근다). 조회는 전부 `appLocalized`를 지난다
  * (무인자도 — `formatLocalized`의 복수 블록 안전망을 우회하지 않는다, `LocalizedCallSiteGuardTest`).
  */
-fun guideStrings(res: Resources): Strings = Strings { key, args ->
+fun guideStrings(res: Resources): Strings = guideStrings { res }
+
+/** 앱 수명 세션·서비스용 — **호출 시점**에 `res()`를 읽는다(M2 spec §14-2: 캡처하면 언어 변경 뒤 옛 언어로 굳는다; 프로덕션은 `{ AppConfig.localizedApp().resources }`). */
+fun guideStrings(res: () -> Resources): Strings = Strings { key, args ->
     val id = guideStringId(key)
     if (id == null) {
         check(!BuildConfig.DEBUG) { "안내 문자열 미매핑 키: $key" }
         key
     } else {
-        appLocalized(res, id, *args)
+        appLocalized(res(), id, *args)
     }
 }
 

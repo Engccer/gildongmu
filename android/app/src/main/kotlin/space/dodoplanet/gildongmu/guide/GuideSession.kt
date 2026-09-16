@@ -1,6 +1,7 @@
 package space.dodoplanet.gildongmu.guide
 
 import android.content.Context
+import android.content.res.Resources
 import android.media.AudioManager
 import android.os.Handler
 import android.os.Looper
@@ -84,14 +85,16 @@ object GuideSession {
         // 포커스 하나·재생기 하나(§5-2 #16 — M5도 이것을 공유한다).
         val focus = GuideAudioFocus(AndroidAudioFocusPort(audioManager, toneAudioAttributes), handlerPostDelayed(main))
         val vibrator = AndroidVibrator(context)
+        // 문장·언어는 호출 시점에 앱 언어 리소스에서(M2 spec §14-2 — 앱 수명 싱글턴이 `Resources`를 캡처하면 언어 변경 뒤 옛 언어로 굳는다).
+        val res: () -> Resources = { AppConfig.localizedApp().resources }
         walk = WalkGuideModel(
             routes = RouteService(AppConfig.apiClient),
-            strings = guideStrings(context.resources),
-            dataLocale = { DataLocale.fromRawValue(AppLocale.dataLocale(context.resources)) ?: DataLocale.ko },
+            strings = guideStrings(res),
+            dataLocale = { DataLocale.fromRawValue(AppLocale.dataLocale(res())) ?: DataLocale.ko },
             controller = AndroidGuideController(context),
             permissions = permissions,
             tones = GuideTonePlayer(AndroidSoundPort(context), focus, vibrator, AndroidVolumePort(audioManager), store, clock),
-            speaker = TtsGuideSpeaker(AndroidTtsPort(context), focus, store, { AppLocale.current(context.resources) }, onPendingDropped = { walk.onSpeechDropped() }),
+            speaker = TtsGuideSpeaker(AndroidTtsPort(context), focus, store, { AppLocale.current(res()) }, onPendingDropped = { walk.onSpeechDropped() }),
             haptics = ResultHaptic(vibrator),
             steps = AndroidStepCounter(context, main),
             env = env,
