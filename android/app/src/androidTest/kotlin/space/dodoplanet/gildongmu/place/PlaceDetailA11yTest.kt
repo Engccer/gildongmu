@@ -19,6 +19,7 @@ import org.junit.runner.RunWith
 import org.junit.Assert.assertEquals
 import space.dodoplanet.gildongmu.directions.DirectionsPrefill
 import space.dodoplanet.gildongmu.directions.DirectionsPrefillRole
+import space.dodoplanet.gildongmu.kit.BarrierFreeService
 import space.dodoplanet.gildongmu.kit.Fixtures
 import space.dodoplanet.gildongmu.kit.HttpResponse
 import space.dodoplanet.gildongmu.kit.StationService
@@ -36,7 +37,8 @@ class PlaceDetailA11yTest {
     @Test
     fun detailLinesAreSingleNodesAndTitleLands() {
         val place = Place(id = "kakao-1", name = "강동역", category = "교통,수송 > 지하철", address = "서울 강동구 천호동 1", roadAddress = "서울 강동구 천호대로 1", lat = 37.535, lng = 127.132, phone = "02-000-0000")
-        val factory = placeDetailFactory(place, PlaceHoursService(stubbedClient { HttpResponse(404, "") }), placeStrings(rule.activity.applicationContext))
+        val down = stubbedClient { HttpResponse(404, "") }
+        val factory = placeDetailFactory(place, PlaceHoursService(down), placeStrings(rule.activity.applicationContext), StationService(down), BarrierFreeService(down)) { "ko" }
         val prefills = mutableListOf<DirectionsPrefill>()
         rule.setContent { MaterialTheme { PlaceDetailScreen(factory, PlaceNav({}, { _, _ -> }, prefills::add), takeReturnFocus = { null }) } }
         rule.enableAccessibilityChecks()
@@ -65,7 +67,7 @@ class PlaceDetailA11yTest {
                 else -> HttpResponse(500, "")
             }
         })
-        val factory = placeDetailFactory(place, PlaceHoursService(stubbedClient { HttpResponse(404, "") }), placeStrings(rule.activity.applicationContext), station)
+        val factory = placeDetailFactory(place, PlaceHoursService(stubbedClient { HttpResponse(404, "") }), placeStrings(rule.activity.applicationContext), station, BarrierFreeService(stubbedClient { HttpResponse(500, "") })) { "ko" }
         rule.setContent { MaterialTheme { PlaceDetailScreen(factory, PlaceNav({}, { _, _ -> }, {}), takeReturnFocus = { null }) } }
         rule.enableAccessibilityChecks()
         rule.waitUntil(5_000) { rule.onAllNodesWithTag("station-meta").fetchSemanticsNodes().isNotEmpty() }

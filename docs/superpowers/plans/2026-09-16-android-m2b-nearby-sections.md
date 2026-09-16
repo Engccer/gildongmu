@@ -1157,7 +1157,7 @@ fun LocationBarRow(store: CurrentAddressStore) {
 ## Self-review 기록
 
 - spec §12-1 표 6행 → Task 3·4·5 / §12-1 도메인 섹션 → Task 7 / §12-2 → Task 6 / §12-3 → Task 8·9 / §12-4 → Task 10 / §12-5 테스트 레인 → 각 Task Step 1 + Task 11 / §12-6 판정 22~28 → 후속·Task 4(24)·Task 1(25)·Task 7(26)·Task 8(27)·Task 10(28).
-- 타입 일관: `NearbyKindSpec.fetch(NearbyCoord?, P?)`(Task 1) ↔ Task 3~6 조립기 `{ c, _ -> }`·`{ c, previous -> }`; `landOn`(Task 1) ↔ Task 6; `ClinicWords`·`clinicWords(res)`(Task 2·3) ↔ Task 7; `LineText`(기존) ↔ Task 8·10; `NearbyServices`(Task 3) ↔ Task 4·5 팩토리; `BodyLine`·`HeadingLine`(Task 4에서 `a11y/A11y.kt`에 신설) ↔ Task 5~9.
+- 타입 일관: `NearbyKindSpec.fetch(NearbyCoord?, P?)`(Task 1) ↔ Task 3~6 조립기 `{ c, _ -> }`·`{ c, previous -> }`; `revealMoreInGroup`/`groupWindows`(Task 1) ↔ Task 6; `ClinicWords`·`clinicWords(res)`(Task 2·3) ↔ Task 7; `LineText`(기존) ↔ Task 8·10; `NearbyServices`(Task 3) ↔ Task 4·5 팩토리; `BodyLine`·`HeadingLine`(Task 4에서 `a11y/A11y.kt`에 신설) ↔ Task 5~9.
 - 플레이스홀더: Task 1의 `TODO("M2b")` 분기는 Task 5 끝 0건 확인 단계가 있다(의도된 임시).
 - 설계 리뷰 2차 반영: N1 → Task 10 `Coarse` 갈래 · N2 → Task 4 앱 언어 로케일 · N3 → Task 1 `Map<String, RevealWindow>` 내부 · N4 → Task 8 `terminusReady` · N5 → Task 5 `settled`.
 - 설계 리뷰 1차 반영(2026-09-16): B1 → Task 10 판정 29 · M1 → Task 6 삼항 throw · M2·M3 → Task 1 `groupWindows`/Task 6 자체 행 `scene-item-` · M4 → Task 4 0건 문구 · M5 → 매핑표 기본 분기 단언(각 Task 테스트) · M6 → Task 10 `coordinateForDisplay` 별도 · m1~m3·m12 → Task 8 · m7 → Task 4 · m10 → Task 11 · m13 → Task 10 스냅샷.

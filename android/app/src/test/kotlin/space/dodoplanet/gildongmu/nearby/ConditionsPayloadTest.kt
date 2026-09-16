@@ -1,6 +1,7 @@
 package space.dodoplanet.gildongmu.nearby
 
 import kotlinx.coroutines.test.runTest
+import space.dodoplanet.gildongmu.R
 import space.dodoplanet.gildongmu.kit.APIError
 import space.dodoplanet.gildongmu.kit.ConditionsService
 import space.dodoplanet.gildongmu.kit.Fixtures
@@ -54,6 +55,13 @@ class ConditionsPayloadTest {
         assertEquals("ready", conditionsNotice(base, "ready", "partial", "failed"))
         assertEquals("partial", conditionsNotice(base.copy(freshAir = false), "ready", "partial", "failed"))
         assertEquals("failed", conditionsNotice(base.copy(freshWeather = false, freshAir = false), "ready", "partial", "failed"))
+    }
+
+    @Test fun `매핑표 미지 값 — 하늘·강수는 weather_unknown, 공기질 등급은 airQuality_unknown(원문 폴백 금지), 혼잡도는 null(원문)`() {
+        assertEquals(R.string.weather_unknown, skyResId("fog")); assertEquals(R.string.weather_sky_clear, skyResId("clear"))
+        assertEquals(R.string.weather_unknown, precipResId("hail")); assertEquals(R.string.android_nearby_rainSnow, precipResId("rainSnow"))
+        assertEquals(R.string.airQuality_unknown, gradeResId("hazardous")); assertEquals(R.string.airQuality_grade_veryBad, gradeResId("veryBad"))
+        assertNull(levelResId("매우 붐빔")); assertEquals(R.string.congestion_levels_busy, levelResId("붐빔"))
     }
 
     @Test fun `수치 표기·오염도 문장(등급 정본 + 수치 보강)`() {

@@ -15,7 +15,7 @@ import space.dodoplanet.gildongmu.kit.models.CongestionLevelKey
 
 // 미지 값 처리(spec §12 머리 표): 하늘·강수는 `weather.unknown`, 공기질 등급은 `airQuality.unknown`(원문 폴백 금지), 혼잡도 등급은 원문.
 
-private fun gradeResId(grade: String) = when (grade) {
+internal fun gradeResId(grade: String) = when (grade) {
     "good" -> R.string.airQuality_grade_good
     "moderate" -> R.string.airQuality_grade_moderate
     "bad" -> R.string.airQuality_grade_bad
@@ -23,14 +23,14 @@ private fun gradeResId(grade: String) = when (grade) {
     else -> R.string.airQuality_unknown
 }
 
-private fun skyResId(label: String) = when (label) {
+internal fun skyResId(label: String) = when (label) {
     "clear" -> R.string.weather_sky_clear
     "partlyCloudy" -> R.string.android_nearby_skyPartly
     "cloudy" -> R.string.weather_sky_cloudy
     else -> R.string.weather_unknown
 }
 
-private fun precipResId(label: String) = when (label) {
+internal fun precipResId(label: String) = when (label) {
     "none" -> R.string.weather_precipitation_none
     "rain" -> R.string.weather_precipitation_rain
     "rainSnow" -> R.string.android_nearby_rainSnow
@@ -40,7 +40,7 @@ private fun precipResId(label: String) = when (label) {
 }
 
 /** 혼잡도 등급 낱말. 표에 없는 신설 등급은 null → 호출부가 원문을 읽는다(정보를 잃느니 한국어 낭독). */
-private fun levelResId(raw: String) = when (CongestionLevelKey.fromLevelText(raw)) {
+internal fun levelResId(raw: String) = when (CongestionLevelKey.fromLevelText(raw)) {
     CongestionLevelKey.relaxed -> R.string.congestion_levels_relaxed
     CongestionLevelKey.normal -> R.string.congestion_levels_normal
     CongestionLevelKey.slightlyBusy -> R.string.congestion_levels_slightlyBusy

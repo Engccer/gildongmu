@@ -13,7 +13,7 @@ import space.dodoplanet.gildongmu.nearby.subwayArrivalText
 
 // 코드→문구 표(리터럴 `when`, 동적 키 조립 금지). 미지 값: kind·dailyType·direction은 원문, operating은 조각 생략, compass는 서버 문장 폴백(spec §12 머리 표).
 
-private fun metroKindResId(kind: String) = when (kind) {
+internal fun metroKindResId(kind: String) = when (kind) {
     "elevator" -> R.string.subway_kind_elevator
     "escalator" -> R.string.subway_kind_escalator
     "wheelchairLift" -> R.string.subway_kind_wheelchairLift
@@ -28,26 +28,26 @@ private fun metroKindResId(kind: String) = when (kind) {
     else -> null
 }
 
-private fun dailyTypeResId(t: String) = when (t) {
+internal fun dailyTypeResId(t: String) = when (t) {
     "weekday" -> R.string.timetable_dailyType_weekday
     "saturday" -> R.string.timetable_dailyType_saturday
     "sunday" -> R.string.timetable_dailyType_sunday
     else -> null
 }
 
-private fun directionResId(d: String) = when (d) {
+internal fun directionResId(d: String) = when (d) {
     "up" -> R.string.timetable_direction_up
     "down" -> R.string.timetable_direction_down
     else -> null
 }
 
-private fun operatingResId(s: String?) = when (s) {
+internal fun operatingResId(s: String?) = when (s) {
     "normal" -> R.string.android_station_operatingNormal
     "stopped" -> R.string.android_station_operatingStopped
     else -> null
 }
 
-private fun compassResId(code: String) = when (code) {
+internal fun compassResId(code: String) = when (code) {
     "n" -> R.string.subway_direction_n
     "ne" -> R.string.subway_direction_ne
     "e" -> R.string.subway_direction_e

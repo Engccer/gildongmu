@@ -27,7 +27,7 @@ fun placeDetailFactory(
     place: Place,
     hours: PlaceHoursService,
     strings: PlaceStrings,
-    station: StationService? = null,
-    barrierFree: BarrierFreeService? = null,
-    dataLocale: () -> String = { "ko" },
+    station: StationService,
+    barrierFree: BarrierFreeService,
+    dataLocale: () -> String,
 ): ViewModelProvider.Factory = viewModelFactory { initializer { PlaceDetailViewModel(place, hours, strings, station, barrierFree, dataLocale) } }
