@@ -35,13 +35,14 @@ class AppSourceGuardTest {
         assertTrue(hasRequesterAfterFocusTarget("""Modifier.focusable().padding(8.dp).focusRequester(r)"""))
         assertTrue(hasRequesterAfterFocusTarget("""Modifier.focusable().padding(8.dp).landingTarget(r)"""))
         assertTrue(hasRequesterAfterFocusTarget("""Modifier.clickable(role = Role.Button) { open() }.testTag(k).landingTarget(r)"""))
+        assertTrue(hasRequesterAfterFocusTarget("""Modifier.selectable(selected, role = Role.RadioButton) { pick() }.landingTarget(r)"""))
         assertTrue(!hasRequesterAfterFocusTarget("""Modifier.focusRequester(r).mergedRow("k", focus = requesterFor(key)).headingText()"""))
         assertTrue(!hasRequesterAfterFocusTarget("""Modifier.mergedRow("k").padding(4.dp) ; val x = other.focusRequester(r)"""))
     }
 
     /** `mergedRow(`·`focusable(`의 닫는 괄호 뒤로 이어지는 `.name(...)` 체인만 따라가며 `focusRequester`를 찾는다. */
     private fun hasRequesterAfterFocusTarget(code: String): Boolean {
-        val starts = Regex("""\b(mergedRow|focusable|clickable)\(""")
+        val starts = Regex("""\b(mergedRow|focusable|clickable|selectable|toggleable)\(""")
         for (m in starts.findAll(code)) {
             var i = skipTrailingLambda(code, skipBalanced(code, m.range.last) ?: continue)
             while (true) {
@@ -153,7 +154,7 @@ class AppSourceGuardTest {
         Regex("""<string name="([^"]+)"[^>]*>(.*?)</string>""").findAll(file.readText()).associate { it.groupValues[1] to it.groupValues[2] }
 
     /** ① 소비자 유니버스 술어 — 유효 좌표·수동 위치를 쓰는 파일은 자동으로 든다(표시줄·허브·내 주변·검색·길찾기 VM). */
-    private val universePredicates = Regex("""EffectiveLocation|effectiveLocation\.|nearbyCoordinateSource\(|manualLocationLabel\(|ManualLocationStore|usedManualCoordinate\(|aroundHereResId\(""")
+    private val universePredicates = Regex("""EffectiveLocation|effectiveLocation\.|nearbyCoordinateSource\(|manualLocationLabel\(|ManualLocationStore|manualLocationStore\.|usedManualCoordinate\(|aroundHereResId\(""")
 
     /** 파일이 참조하는 리소스 이름: `R.string.x` + 점 키 리터럴(`"a.b"` → `a_b`, 길찾기 `Strings` 경로). */
     private fun referencedKeys(f: File, names: Set<String>): Set<String> {
