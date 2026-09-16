@@ -67,9 +67,21 @@
 
 **GUIDE (`android-kit-guide`)**: 실시간 안내 판정 계층.
 
-`Beacon` · `BeaconGate` · `BeaconTones` · `CarArrival` · `CarListener` · `CarRouteGuide` · `CourseDerivation` · `EndScreen` · `GuideAudioSession`(⚠ 판정 부분만: iOS 오디오 세션 API에 붙은 계약은 D10에 따라 이식하지 않는다. 순수 판정 `guideAudioStep`·route 변경 판정 등만) · `GuideBand` · `GuideCourse` · `GuideCourseAxis` · `GuideLiveRows` · `GuideMotion` · `GuideSessionCoordinator` · `GuideSpeechGate` · `GuideToneLayer` · `IdleReset` · `ListenSpeed` · `RerouteProposalGate` · `RouteGuide` · `RouteOrigin` · `SessionIdle` · `TransitDisplayProjection`(`TransitGuide` 타입 의존이라 여기) · `TransitGuide` · `TransitGuideText` · `TransitGuideTone` · `TransitIdle` · `TransitProgressOverview` · `TransitSurroundingsAnchor` · `TransitTrackService` · `WalkHealth`
+`Beacon` · `BeaconGate` · `BeaconTones` · `CarArrival` · `CarListener` · `CarRouteGuide` · `CourseDerivation` · `EndScreen` · `GuideAudioSession`(⚠ 2026-09-16 18:40 정정으로 **excluded** — 아래 제외 목록 참조) · `GuideBand` · `GuideCourse` · `GuideCourseAxis` · `GuideLiveRows` · `GuideMotion` · `GuideSessionCoordinator` · `GuideSpeechGate` · `GuideToneLayer` · `IdleReset` · `ListenSpeed` · `RerouteProposalGate` · `RouteGuide` · `RouteOrigin` · `SessionIdle` · `TransitDisplayProjection`(`TransitGuide` 타입 의존이라 여기) · `TransitGuide` · `TransitGuideText` · `TransitGuideTone` · `TransitIdle` · `TransitProgressOverview` · `TransitSurroundingsAnchor` · `TransitTrackService` · `WalkHealth`
 
-**제외(이식하지 않음, 미러 등록부에 사유와 함께 등재)**: `AudioSignalProtocol`(E20 음향신호기 BLE 실험, 2026-09-01 연동 기종 없음으로 종결) · `Resources/Localizable.xcstrings`(Kit 카탈로그: 안드로이드는 `android/i18n` 변환 스크립트가 `messages/*.json`에서 직접 만든다).
+**제외(이식하지 않음, 미러 등록부에 사유와 함께 등재)**: `AudioSignalProtocol`(E20 음향신호기 BLE 실험, 2026-09-01 연동 기종 없음으로 종결) · `Resources/Localizable.xcstrings`(Kit 카탈로그: 안드로이드는 `android/i18n` 변환 스크립트가 `messages/*.json`에서 직접 만든다). · `GuideAudioSession`(2026-09-16 18:40 정정 — GUIDE 세션 반박을 코디네이터가 승인: 파일 전체가 iOS AVAudioSession 모델의 리듀서라 D10에 따라 미이식. 억제·인터럽션·route 변경·didPromote 원복·잘림 방지 대기의 **목표**는 M4 입력 목록에 계약으로 남기고 안드로이드는 AudioFocus로 재설계한다. 같은 정신으로 `ListenSpeed`는 `normalizeSpeed`만 이식하고 iOS rate 표는 뺐다).
+
+#### 정정 (2026-09-16 17:25 KST, 코디네이터 재현 — 기준 `41f377b5`)
+
+**§2 그룹 경계의 대조가 타입 선언만 보고 함수 참조를 빠뜨렸다.** `android-kit-core`가 스크립트 전수 대조로 반박했고 코디네이터가 독립 재현했다(`grep`으로 호출부 확인).
+
+- `DeferredAnnouncer`(CORE) → GUIDE `GuideSpeechGate`의 `speechDeferStep`·`SpeechDeferConstants`(`DeferredAnnouncer.swift:91·113`).
+- `TransitExitLines`(CORE) 5함수 중 3개 → GUIDE `TransitGuide.swift:164` `transitValidExitNo`(5줄 순수 함수).
+- `QuickExitTextTests`의 `buildTransitGuideRoute` 2건도 GUIDE 몫.
+
+**처리**: GUIDE의 얕은 묶음 중간 통합에 `GuideSpeechGate`·`Beacon`·`transitValidExitNo`(TransitGuide.kt에 그 함수만 선이식)를 넣고, CORE는 그 SHA 위에서 rebase해 붙인다. GUIDE가 늦으면 CORE는 `core.json` `deferredTests(to: guide)`로 넘기고 끝낸다. 소유권 자체는 바꾸지 않는다.
+
+**함께 내린 판정(Q2)**: `ChatService`(POST NDJSON 스트림)·`ChatSuggestionsService`(POST)는 FOUNDATION `HttpTransport`(GET 전용)에 맞지 않아, **순수 부분만 `:kit`**(줄 디코딩·파싱·요청 본문·상수)에 두고 POST·스트리밍 전송은 M6이 `:app`에서 맡는다(D5 경계, M0 `APIClient` 선례와 같은 갈래). 스트림 인터페이스 모양은 M6 맥락 없이 지금 정하지 않는다.
 
 ### 공용 생성물·문서
 
@@ -141,7 +153,17 @@ M0 체크포인트 뒤 코디네이터가 확정한다. 요지: `~/gildongmu-wt/
 
 ### 5-3. `android-kit-guide` (웨이브 1, opus[1m])
 
-같은 틀로 §2 GUIDE 목록. `GuideAudioSession`은 판정 함수만(D10). `TransitGuide`·`RouteGuide`는 1,000줄 넘는 리듀서라 fixture 시나리오(`transit-guide-scenarios.json`·`route-guide-scenarios.json` 등)가 초록이 되기 전엔 통합하지 않는다. 판정 계층 수정 전 `docs/INTEGRATIONS.md` §실시간 길 안내를 읽는다(CLAUDE.md 지시).
+같은 틀로 §2 GUIDE 목록. `GuideAudioSession`은 excluded(D10, §2 정정). `TransitGuide`·`RouteGuide`는 1,000줄 넘는 리듀서라 fixture 시나리오(`transit-guide-scenarios.json`·`route-guide-scenarios.json` 등)가 초록이 되기 전엔 통합하지 않는다. 판정 계층 수정 전 `docs/INTEGRATIONS.md` §실시간 길 안내를 읽는다(CLAUDE.md 지시).
+
+## §5-4. 통합 기록
+
+| 세션 | 통합 SHA | 시각 | 비고 |
+|---|---|---|---|
+| `android-m1` M0 | `41f377b5` | 2026-09-16 16:3x | 환경·뼈대·FOUNDATION 28파일·등록부·README. 리뷰 BLOCKER 1(API 33 전용 호출)·MAJOR 반영 |
+| `android-kit-guide` 선행 | `41cd341c` | 17:4x | Beacon·GuideSpeechGate·transitValidExitNo + 판정 9파일(11/32) |
+| `android-kit-guide` 완료 | `73bea1c0` | 20:1x | 31 ported + 1 excluded, :kit 테스트 764, 리뷰 4건 반영. CORE 유예 2건 흡수. 리뷰 뒤 커밋 2개(09f56020·73bea1c0)는 코디네이터가 별도 재리뷰 디스패치(`~/gildongmu-wt/android-m1-reports/guide-post-review.md`). M4·M5 입력(D10 [3] 잔여·GuideAudioSession 목표 계약 5항·시나리오 18개·ListenSpeed Android 배율 실측)은 `~/gildongmu-wt/android-kit-guide-reports/report.md`가 정본이라 **wave 3 착수 전에 spec으로 옮긴다**. 참고: `RouteGuide`의 `maxOf`/`minOf`는 NaN에서 Swift와 다르다(웹과 같다) — :app fix 경계에서 유한값 가드 판단 재료 |
+| `android-m1` M1 | `65ef75f4` | 19:4x | 검색 화면 구현·정규식 가드·JsonSupport 계약·ATF 검사 레인. 리뷰 2건 반영, 기각 1(`failed` 필드 제거 — 3-state 유지). 실기기 판정 9항목은 spec §8 대기(기기 미연결). 실험판 APK `android/app/build/outputs/apk/experimental/app-experimental.apk`. 세션은 M2 spec으로 이어감 |
+| `android-kit-core` 완료 | `b312ff01` | 19:0x | 29/29, :kit 테스트 573, 리뷰 4건 반영. 인계: QuickExitGuideRouteTests 2건 → GUIDE. 미이식 2(urlErrorCancelled 플랫폼 대응 없음·수동 위치 소스 가드는 안드로이드 안내 모델이 달 것), 미검증 1(Deeplink 쿼리 `=`·`+` 인코딩이 Foundation과 같은지 — Xcode 라이선스 미동의라 이 머신에서 Swift 실행 불가, iOS 세션에서 확인). :app 계약은 `core.json` note가 정본 |
 
 ## §6. 코디네이터 메모
 
