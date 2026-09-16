@@ -13,7 +13,11 @@ import space.dodoplanet.gildongmu.i18n.AppLocale
 import space.dodoplanet.gildongmu.i18n.appLocalized
 import space.dodoplanet.gildongmu.kit.RecentSearchStore
 import space.dodoplanet.gildongmu.kit.SearchService
+import space.dodoplanet.gildongmu.kit.BarrierFreeService
+import space.dodoplanet.gildongmu.kit.ConditionsService
 import space.dodoplanet.gildongmu.kit.NearbyService
+import space.dodoplanet.gildongmu.kit.WalkInfraService
+import space.dodoplanet.gildongmu.nearby.NearbyServices
 import space.dodoplanet.gildongmu.location.LocationPermission
 import space.dodoplanet.gildongmu.nav.AppFactories
 import space.dodoplanet.gildongmu.nav.AppRoot
@@ -52,10 +56,11 @@ class MainActivity : ComponentActivity() {
             }
         }
         val nearbyService = NearbyService(AppConfig.apiClient)
+        val services = NearbyServices(nearbyService, BarrierFreeService(AppConfig.apiClient), WalkInfraService(AppConfig.apiClient), ConditionsService(AppConfig.apiClient))
         val nearby = nearbyStrings(app)
         val factories = AppFactories(
             search = factory,
-            nearby = { kind, anchor -> nearbyFactory(kind, anchor, nearbyService, nearby) { AppConfig.locationStore.nearbyCoordinateSource() } },
+            nearby = { kind, anchor -> nearbyFactory(kind, anchor, services, nearby) { AppConfig.locationStore.nearbyCoordinateSource() } },
             busRouteStops = { route -> busRouteStopsFactory(route, nearbyService, nearby) },
             place = { place -> placeDetailFactory(place, PlaceHoursService(AppConfig.apiClient), placeStrings(app)) },
             requestPreciseLocation = { AppConfig.permissionGate.request() == LocationPermission.Fine },
