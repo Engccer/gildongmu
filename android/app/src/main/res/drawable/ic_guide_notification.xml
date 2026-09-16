@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 안내 알림 작은 아이콘(M4 §4-3): 알림 작은 아이콘은 알파 마스크로 렌더되므로 단색 실루엣이어야 한다(적응형 런처 전경 레이어는 덩어리가 된다). 위를 향한 화살표. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M12,2L4.5,20.3L5.2,21L12,18L18.8,21L19.5,20.3Z" />
+</vector>
