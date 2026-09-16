@@ -62,14 +62,6 @@
       ]
     },
     {
-      "swift": "Tests/GildongmuKitTests/StationModelsTests.swift#isStationJudgesCategoryAndNameSuffix",
-      "to": "core",
-      "why": "StationMatch",
-      "blockedBy": [
-        "StationMatch.swift"
-      ]
-    },
-    {
       "swift": "Tests/GildongmuKitTests/NearbyOverviewTests.swift#overview*,sceneItemToPlace*",
       "to": "core",
       "why": "buildOverviewLines(LocationNarrative)·sceneItemToPlace(PlaceProjection) — overviewLines*·overviewTransitVariantsKo·overviewNearestUsesSingularSentenceForOnePlace 포함",

@@ -25,7 +25,9 @@
     },
     {
       "swift": "ClinicKind.swift",
-      "status": "pending"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/ClinicKind.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/ClinicKindTest.kt"
     },
     {
       "swift": "Deeplink.swift",
@@ -61,7 +63,9 @@
     },
     {
       "swift": "PlaceChatPrompts.swift",
-      "status": "pending"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/PlaceChatPrompts.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/PlaceChatPromptsTest.kt"
     },
     {
       "swift": "PlaceHoursService.swift",
@@ -73,11 +77,16 @@
     },
     {
       "swift": "QuickExitText.swift",
-      "status": "pending"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/QuickExitText.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/QuickExitTextTest.kt",
+      "note": "Kit QuickExitTextTests의 QuickExitGuideRouteTests 2건(buildTransitGuideRoute)은 GUIDE TransitGuide 몫이라 여기 없다"
     },
     {
       "swift": "RevealWindow.swift",
-      "status": "pending"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/RevealWindow.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/RevealWindowTest.kt"
     },
     {
       "swift": "RouteService.swift",
@@ -85,7 +94,9 @@
     },
     {
       "swift": "StationMatch.swift",
-      "status": "pending"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/StationMatch.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/StationMatchTest.kt"
     },
     {
       "swift": "StationService.swift",
@@ -97,11 +108,15 @@
     },
     {
       "swift": "TransitAlternativeName.swift",
-      "status": "pending"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/TransitAlternativeName.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/TransitAlternativeNameTest.kt"
     },
     {
       "swift": "TransitDisplay.swift",
-      "status": "pending"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/TransitDisplay.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/TransitDisplayTest.kt"
     },
     {
       "swift": "TransitExitLines.swift",
@@ -109,7 +124,9 @@
     },
     {
       "swift": "TransitWalkLegText.swift",
-      "status": "pending"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/TransitWalkLegText.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/TransitWalkLegTextTest.kt"
     },
     {
       "swift": "WalkInfraService.swift",
