@@ -372,7 +372,7 @@ M1 §7 게이트 그대로(`:kit:test` · `:app:testDebugUnitTest` · assemble �
 
 - iOS는 `AccessibilityNotification.Announcement`가 화면 라이브 리전과 **다른 큐**라 둘 다 발화한다. 안드로이드는 화면당 라이브 리전 하나(§3)라 병합이 필요하고, 그 규칙이 통지를 삼키면 안 된다.
 - `AppNotices`: 앱 수명 싱글턴 `pending: StateFlow<Notice?>`(**덮이지 않는 큐 1칸** — 소비될 때까지 화면 통지가 밀어내지 못한다), `post(text)`, `consume(seq)`.
-- `StatusLine`이 `AppNotices`를 **스스로** 읽는다(화면마다 배선하지 않는다 — 총체성). 병합은 순수 함수 `mergeNotices(screen: Notice, app: Notice?, nextSeq: Int): Notice` — 앱 통지가 대기 중이면 **한 문장으로 합친다**(`joinText(app.text, screen.text)`, 앱 통지가 앞; 낭독형도 같은 순서) 그리고 결과에 **새 단조 seq**를 찍는다(두 카운터를 비교하지 않는다; 같은 수의 텍스트 교체가 `LaunchedEffect(seq)`를 건너뛰는 침묵 방지). 화면 통지 없이 앱 통지만 오면 그것만. 표시 뒤 `consume`. CLAUDE.md 선례("같은 커밋에 두 문장이 나는 자리는 대기 꼬리로 합친다") 동형 — 새로고침 중 drop이 나면 "이동이 감지되어 지정한 위치를 해제했습니다, 주변 역 3곳"으로 한 번에.
+- `StatusLine`이 `AppNotices`를 **스스로** 읽는다(화면마다 배선하지 않는다 — 총체성). 병합은 순수 함수 `mergeNotices(screen: Notice, app: Notice?, nextSeq: Int): Notice` — 앱 통지가 대기 중이면 **한 문장으로 합친다**(`joinText(app.text, screen.text)`, 앱 통지가 앞; 낭독형도 같은 순서) 그리고 결과에 **새 단조 seq**를 찍는다(두 카운터를 비교하지 않는다; 같은 수의 텍스트 교체가 `LaunchedEffect(seq)`를 건너뛰는 침묵 방지). 화면 통지 없이 앱 통지만 오면 그것만. 표시 뒤 `consume`. **`StatusLine`의 초기 seq 억제(재마운트 재발화 방지)는 화면 통지에만 적용한다** — 마운트 시 대기 중인 앱 통지는 그 규칙과 무관하게 소비·발화한다(언어 변경처럼 액티비티 재생성을 넘겨야 하는 통지가 이 큐를 탄다, §14-2). CLAUDE.md 선례("같은 커밋에 두 문장이 나는 자리는 대기 꼬리로 합친다") 동형 — 새로고침 중 drop이 나면 "이동이 감지되어 지정한 위치를 해제했습니다, 주변 역 3곳"으로 한 번에.
 - 허브·`BusRouteStopsScreen`에 `StatusLine`을 둔다(지금 없는 두 화면). **소스 가드**: `AppScreenScaffold(`를 부르는 파일은 `StatusLine(`도 부른다(앞으로 생기는 화면도 같은 판정).
 
 ### 13-6. 테스트·실기기
