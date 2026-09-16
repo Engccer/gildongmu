@@ -93,6 +93,10 @@ data class MotionStepResult(val state: MotionJudgeState, val motion: MotionState
  * `speed`·`speedAccuracy`가 nullable인 것은 웹과의 계약 통일 때문이다 — 웹 `GeolocationCoordinates.speed`는
  * 무효일 때 **`null`**이고 음수 sentinel이 아니라, `speed < 0` 분기를 그대로 옮기면 `null`이 0으로 암묵
  * 변환되어 거짓 정지가 난다.
+ *
+ * ⚠ 안드로이드 `Location`은 값이 없을 때 음수가 아니라 **0.0**을 준다. `hasSpeed()`가 거짓이면 `speed`에,
+ * `hasSpeedAccuracy()`가 거짓이면 `speedAccuracy`에 0.0이 아니라 null을 넘긴다 — 0.0을 넘기면 도플러가 신뢰
+ * 조건을 통과해 걷는 중에도 거짓 정지 tick이 난다.
  */
 fun motionStep(
     state: MotionJudgeState,

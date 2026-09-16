@@ -31,6 +31,11 @@ sealed class CourseState {
     data object Invalid : CourseState()
 }
 
+/**
+ * ⚠ 안드로이드 `Location`은 방위가 없을 때 음수가 아니라 **0.0**을 준다. `hasBearing()`·`hasBearingAccuracy()`가
+ * 거짓이면 `course`·`courseAccuracy`에 음수(-1)를 넘긴다 — 0.0을 넘기면 북쪽을 향한 것으로 `Valid`가 되어 거짓
+ * 좌우 방향이 발화된다.
+ */
 fun courseStep(
     course: Double,
     courseAccuracy: Double,
