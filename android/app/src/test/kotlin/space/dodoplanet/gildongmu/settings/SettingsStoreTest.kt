@@ -2,6 +2,7 @@ package space.dodoplanet.gildongmu.settings
 
 import space.dodoplanet.gildongmu.kit.InMemoryKeyValueStore
 import space.dodoplanet.gildongmu.kit.TrendHaptics
+import space.dodoplanet.gildongmu.kit.WalkHealth
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -28,5 +29,16 @@ class SettingsStoreTest {
         mem.putString(SettingsStore.KEY_DICTATION, "weird"); assertEquals("tapToggle", SettingsStore(mem).also { it.load() }.dictationStyle.value)
         s.setDictationStyle("weird"); assertEquals("hold", s.dictationStyle.value) // 미지 값은 무시
         assertEquals("true", mem.getString(TrendHaptics.storageKey))
+    }
+
+    @Test fun `체중 — 범위 안은 저장(소수점 0은 정수로), 빈 값은 미입력으로, 범위 밖·잘못된 표기는 저장 없이 Reject(M4 걸음 요약과 같은 키)`() {
+        val mem = InMemoryKeyValueStore(); val s = SettingsStore(mem).also { it.load() }
+        assertEquals("", s.weightText.value)
+        assertTrue(s.commitWeight("65.0") is WalkHealth.WeightCommitOutcome.Store); assertEquals("65", s.weightText.value); assertEquals("65", mem.getString(WalkHealth.weightStorageKey))
+        assertTrue(s.commitWeight("62,5") is WalkHealth.WeightCommitOutcome.Store); assertEquals("62.5", mem.getString(WalkHealth.weightStorageKey))
+        assertEquals(WalkHealth.WeightCommitOutcome.Reject, s.commitWeight("500")); assertEquals("62.5", s.weightText.value)
+        assertEquals(WalkHealth.WeightCommitOutcome.Reject, s.commitWeight("abc")); assertEquals("62.5", mem.getString(WalkHealth.weightStorageKey))
+        assertEquals(WalkHealth.WeightCommitOutcome.Clear, s.commitWeight(" ")); assertEquals("", s.weightText.value); assertEquals("", mem.getString(WalkHealth.weightStorageKey))
+        assertEquals("62.5", SettingsStore(InMemoryKeyValueStore().also { it.putString(WalkHealth.weightStorageKey, "62.5") }).also { it.load() }.weightText.value)
     }
 }

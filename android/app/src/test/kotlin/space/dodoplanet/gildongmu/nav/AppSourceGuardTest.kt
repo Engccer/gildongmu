@@ -188,6 +188,12 @@ class AppSourceGuardTest {
         }
     }
 
+    /** M4 인계 — 받아쓰기가 안내 음성을 억제한다(`GuideSession.setOutputSuppressed`, 시작/모든 종료 경로 = `setPhase` 한 자리). */
+    @Test fun `받아쓰기 세션은 안내 음성 억제 훅을 건다`() {
+        val speech = android.resolve("app/src/main/kotlin/space/dodoplanet/gildongmu/speech/DictationSession.kt").readText()
+        assertTrue(speech.contains("GuideSession.setOutputSuppressed(active, owner)") && speech.contains("if (changed) onActiveChanged(active)"))
+    }
+
     @Test fun `Google Play 서비스 의존은 0이다`() {
         val gradle = listOf(android.resolve("app/build.gradle.kts"), android.resolve("gradle/libs.versions.toml"))
         assertTrue(gradle.none { it.readText().contains("play-services") })

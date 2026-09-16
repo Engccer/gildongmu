@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import space.dodoplanet.gildongmu.i18n.AppLocale
 import space.dodoplanet.gildongmu.kit.KeyValueStore
 import space.dodoplanet.gildongmu.kit.TrendHaptics
+import space.dodoplanet.gildongmu.kit.WalkHealth
 
 /** 저장값 → 언어 오버라이드 코드(순수, spec §14-2). null·공백·미지 코드는 null = 시스템 따름. 최상위 함수 — JVM 테스트가 `AppConfig`를 끌어오지 않는다. */
 fun localeOverride(stored: String?): String? = stored?.takeIf { it in AppLocale.supported }
@@ -26,6 +27,10 @@ class SettingsStore(private val store: KeyValueStore) {
     private val _resultHaptics = MutableStateFlow(false)
     val resultHapticsEnabled: StateFlow<Boolean> = _resultHaptics.asStateFlow()
 
+    private val _weightText = MutableStateFlow("")
+    /** 체중 입력 원문(저장은 `WalkHealth.weightStorageKey` = M4 걸음 요약이 읽는 키, 빈 문자열 = 미입력). */
+    val weightText: StateFlow<String> = _weightText.asStateFlow()
+
     /** `attachBaseContext`용 동기 읽기(언어 키). `load()`와 같은 값. */
     fun readLanguageSync(): String? = localeOverride(store.getString(KEY_LANGUAGE))
 
@@ -34,6 +39,18 @@ class SettingsStore(private val store: KeyValueStore) {
         _language.value = readLanguageSync()
         _dictationStyle.value = store.getString(KEY_DICTATION)?.takeIf { it == DICTATION_TAP || it == DICTATION_HOLD } ?: DICTATION_TAP
         _resultHaptics.value = store.getString(TrendHaptics.storageKey) == "true"
+        _weightText.value = store.getString(WalkHealth.weightStorageKey).orEmpty()
+    }
+
+    /** 체중 확정(A39 — 편집이 끝날 때, 멱등): 판정은 :kit `WalkHealth.weightCommit`. `Reject`는 저장·상태 무변경(호출자가 실패를 말한다, 3-state). */
+    fun commitWeight(text: String): WalkHealth.WeightCommitOutcome {
+        val outcome = WalkHealth.weightCommit(text)
+        when (outcome) {
+            is WalkHealth.WeightCommitOutcome.Store -> { val v = formatWeight(outcome.weight); _weightText.value = v; store.putString(WalkHealth.weightStorageKey, v) }
+            WalkHealth.WeightCommitOutcome.Clear -> { _weightText.value = ""; store.putString(WalkHealth.weightStorageKey, "") }
+            WalkHealth.WeightCommitOutcome.Reject -> Unit
+        }
+        return outcome
     }
 
     /** null·미지 코드는 "시스템 설정 따름"으로 저장(빈 문자열 = 없음, `KeyValueStore`에 삭제가 없다). */
@@ -60,5 +77,8 @@ class SettingsStore(private val store: KeyValueStore) {
         const val KEY_DICTATION = "dictationStyle"
         const val DICTATION_TAP = "tapToggle"
         const val DICTATION_HOLD = "hold"
+
+        /** 65.0 → "65", 62.5 → "62.5"(iOS `formatWeight` 동형). */
+        fun formatWeight(weight: Double): String = if (weight == Math.floor(weight)) weight.toLong().toString() else weight.toString()
     }
 }

@@ -19,6 +19,7 @@ import androidx.annotation.RequiresApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import space.dodoplanet.gildongmu.guide.GuideSession
 import space.dodoplanet.gildongmu.kit.hasSpeechContent
 import java.util.Locale
 
@@ -146,6 +147,8 @@ class DictationSession(
     private val languageTag: () -> String,
     private val onTranscript: (String) -> Unit,
     private val onNotice: (DictationNotice) -> Unit,
+    /** 활성(지원 조회·청취) 전이 — 안내 음성 억제 훅(M4 `GuideSession.setOutputSuppressed`, 시작/모든 종료 경로가 `setPhase`를 지난다). */
+    private val onActiveChanged: (Boolean) -> Unit = {},
 ) {
     private val _phase = MutableStateFlow<DictationPhase>(DictationPhase.Idle)
     val phase: StateFlow<DictationPhase> = _phase.asStateFlow()
@@ -369,7 +372,10 @@ class DictationSession(
 
     private fun setPhase(phase: DictationPhase) {
         _phase.value = phase
-        _isActive.value = phase == DictationPhase.Starting || phase == DictationPhase.Listening
+        val active = phase == DictationPhase.Starting || phase == DictationPhase.Listening
+        val changed = _isActive.value != active
+        _isActive.value = active
+        if (changed) onActiveChanged(active)
     }
 }
 
@@ -385,7 +391,9 @@ fun dictationSessionOrNull(
 ): DictationSession? {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || !Dictation.isAvailable(context)) return null
     val app = context.applicationContext
-    return DictationSession(AndroidRecognizerPort(app), AndroidDictationEffects(app), languageTag, onTranscript, onNotice)
+    // 억제 소유자는 동일성 집합(M4 spec §5-5) — 세션마다 고유 토큰. 시작·모든 종료 경로가 `setPhase`를 지나므로 훅 한 자리로 충분하다.
+    val owner = Any()
+    return DictationSession(AndroidRecognizerPort(app), AndroidDictationEffects(app), languageTag, onTranscript, onNotice) { active -> GuideSession.setOutputSuppressed(active, owner) }
 }
 
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
