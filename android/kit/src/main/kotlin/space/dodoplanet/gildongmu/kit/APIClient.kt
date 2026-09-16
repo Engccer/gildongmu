@@ -9,7 +9,6 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.serializer
 import space.dodoplanet.gildongmu.kit.models.APIErrorBody
 import java.io.IOException
@@ -127,7 +126,7 @@ class APIClient(val baseURL: String, val transport: HttpTransport) {
         // 불리언 타입만 마커다(Swift `OutOfCoverageMarker: Bool`) — 문자열 "true"는 마커가 아니다.
         val marker = obj["outOfCoverage"] as? JsonPrimitive
         if (marker != null && !marker.isString && marker.booleanOrNull == true) return APIError.OutOfCoverage
-        val reason = obj["unavailableHere"]?.jsonPrimitive?.contentOrNull?.let(UnavailableHereReason::fromRawValue)
+        val reason = (obj["unavailableHere"] as? JsonPrimitive)?.contentOrNull?.let(UnavailableHereReason::fromRawValue)
         return reason?.let { APIError.UnavailableHere(it) }
     }
 }

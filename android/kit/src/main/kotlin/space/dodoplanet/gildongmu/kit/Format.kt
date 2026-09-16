@@ -22,8 +22,9 @@ internal fun firstNonEmpty(vararg values: String?): String? = values.firstOrNull
 
 // ⚠ `\b`를 쓰지 않는다. 한글·한자가 word character라 "35m입니다" 같은 CJK 직결 꼴에서
 // 경계가 성립하지 않아 치환이 조용히 no-op이 된다. 부정 전방탐색으로 "라틴 문자가 뒤따르지
-// 않음"만 요구한다. 웹·Swift와 같은 패턴이며 문자 클래스에 `[`가 없어 이스케이프 함정은 없다.
-private val METERS_ABBREVIATION = Regex("""(\d)m(?![A-Za-z])""")
+// 않음"만 요구한다. 숫자는 `\d`가 아니라 `[0-9]` — JVM 테스트의 java.util.regex는 ASCII이고 안드로이드
+// 기기의 것은 ICU라 `\d`가 전각 숫자까지 받아 둘이 갈린다(README §3, `RegexPortabilityTest`).
+private val METERS_ABBREVIATION = Regex("""([0-9])m(?![A-Za-z])""")
 
 /**
  * 낭독 전용: 미터 약어를 로케일 단어로 풀어 쓴다(순수 변환, 단어는 주입). 시각 표기는

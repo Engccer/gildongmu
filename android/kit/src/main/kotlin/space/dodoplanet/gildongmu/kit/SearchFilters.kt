@@ -88,7 +88,7 @@ private val regionAliases: Map<String, String> = mapOf(
  */
 private fun regionOf(place: Place): String? {
     val source = place.address.trim().ifEmpty { place.roadAddress.trim() }
-    val firstToken = source.split(Regex("\\s+")).firstOrNull { it.isNotEmpty() } ?: return null
+    val firstToken = source.split(Regex("[ \\t\\n\\r]+")).firstOrNull { it.isNotEmpty() } ?: return null
     return regionAliases[firstToken]
 }
 
