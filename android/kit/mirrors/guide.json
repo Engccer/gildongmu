@@ -12,15 +12,24 @@
     },
     {
       "swift": "BeaconGate.swift",
-      "status": "pending"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/BeaconGate.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/BeaconGateTest.kt",
+      "note": "BeaconNotice는 sealed class. 미터 반올림은 roundedAwayFromZero(Swift rounded() 미러)"
     },
     {
       "swift": "BeaconTones.swift",
-      "status": "pending"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/BeaconTones.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/BeaconTonesTest.kt",
+      "note": "init(guide:) → BeaconTone.fromGuide. TrendHapticsTests를 BeaconTonesTest로 옮겼다. resourceName은 웹·iOS 파일명(guide-*) — 안드로이드 리소스 이름 규칙 변환은 [3] :app 몫"
     },
     {
       "swift": "CarArrival.swift",
-      "status": "pending"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/CarArrival.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/CarArrivalTest.kt",
+      "note": "FOUNDATION 유예 briefArrivalWindowAccuracyCeilingMatchesCar를 CarArrivalTest에 옮겼다"
     },
     {
       "swift": "CarListener.swift",
@@ -34,7 +43,10 @@
     },
     {
       "swift": "CourseDerivation.swift",
-      "status": "pending"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/CourseDerivation.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/CourseDerivationTest.kt",
+      "note": "튜플 반환은 DeriveCourseResult"
     },
     {
       "swift": "EndScreen.swift",
@@ -52,11 +64,17 @@
     },
     {
       "swift": "GuideCourse.swift",
-      "status": "pending"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/GuideCourse.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/GuideCourseTest.kt",
+      "note": "CourseState는 sealed class(Valid·Unknown·Invalid)"
     },
     {
       "swift": "GuideCourseAxis.swift",
-      "status": "pending"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/GuideCourseAxis.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/GuideCourseAxisTest.kt",
+      "note": "course-axis-scenarios의 votes·verdicts만 여기서, reducer 층은 RouteGuideTest"
     },
     {
       "swift": "GuideLiveRows.swift",
@@ -64,7 +82,10 @@
     },
     {
       "swift": "GuideMotion.swift",
-      "status": "pending"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/GuideMotion.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/GuideMotionTest.kt",
+      "note": "튜플 반환은 MotionStepResult"
     },
     {
       "swift": "GuideSessionCoordinator.swift",
@@ -81,7 +102,10 @@
     },
     {
       "swift": "GuideToneLayer.swift",
-      "status": "pending"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/GuideToneLayer.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/GuideToneLayerTest.kt",
+      "note": "TrendInput.deadBandFloor는 마지막 인자(기본값 = deadBand), 튜플 반환은 ToneLayerStepResult"
     },
     {
       "swift": "IdleReset.swift",
@@ -105,7 +129,8 @@
     },
     {
       "swift": "RouteGuide.swift",
-      "status": "pending"
+      "status": "pending",
+      "note": "GuideTone·imminentTone만 선이식(BeaconTones·GuideToneLayer가 쓴다). 리듀서 나머지는 같은 파일에 채운다"
     },
     {
       "swift": "RouteOrigin.swift",
@@ -157,7 +182,10 @@
     },
     {
       "swift": "WalkHealth.swift",
-      "status": "pending"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/WalkHealth.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/WalkHealthTest.kt",
+      "note": "foodLadder 튜플은 FoodRung, WeightCommitOutcome은 sealed class. weightCommit은 십진 표기만 파싱한다(JVM toDoubleOrNull이 받는 65d·65f를 Swift처럼 거절). rounded()는 SwiftRounding.kt의 roundedAwayFromZero"
     }
   ]
 }

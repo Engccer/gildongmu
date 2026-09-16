@@ -12,14 +12,6 @@
       ]
     },
     {
-      "swift": "Tests/GildongmuKitTests/FinalApproachTests.swift#briefArrivalWindowAccuracyCeilingMatchesCar",
-      "to": "guide",
-      "why": "carArrivalMaxAccuracyMeters(CarArrival)",
-      "blockedBy": [
-        "CarArrival.swift"
-      ]
-    },
-    {
       "swift": "Tests/GildongmuKitTests/RouteGuideTests.swift",
       "to": "guide",
       "why": "RouteGeometry 소비 시나리오는 리듀서와 함께",
