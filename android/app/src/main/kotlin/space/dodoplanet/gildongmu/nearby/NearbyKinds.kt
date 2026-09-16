@@ -9,6 +9,7 @@ import space.dodoplanet.gildongmu.kit.models.BusRouteStop
 import space.dodoplanet.gildongmu.kit.models.BusStop
 import space.dodoplanet.gildongmu.kit.NearbyCoverage
 import space.dodoplanet.gildongmu.kit.NearbyService
+import space.dodoplanet.gildongmu.kit.WalkInfraService
 import space.dodoplanet.gildongmu.kit.models.SubwayNearbyResult
 import space.dodoplanet.gildongmu.kit.formatDistance
 
@@ -97,6 +98,18 @@ object NearbyKinds {
         firstKey = { it.firstOrNull()?.let { x -> "place-${x.id}" } },
         loadedNotice = { if (it.isEmpty()) strings.eventsEmpty() else strings.announceEvents(it.size) },
         emptyCopy = { strings.eventsEmpty() },
+    )
+
+    /**
+     * 보행 인프라(spec §12-1·판정 24): `coverage = none` — 라우트에 커버리지 마커가 없고 두 소스가 각자 `Unsupported`로 말한다(`korea`로
+     * 접으면 소스별 구분이 사라진다). 본문이 3-state를 말하므로 빈 문구가 없다(`isEmpty` 항상 거짓). `now`는 앱 언어 short time.
+     */
+    fun walkInfra(service: WalkInfraService, strings: NearbyStrings, now: () -> String) = NearbyKindSpec<WalkInfraPayload>(
+        coverage = NearbyCoverage.none,
+        fetch = { c, _ -> fetchWalkInfra(service, c!!, now) },
+        isEmpty = { false },
+        firstKey = { "walkinfra-top" },
+        loadedNotice = { strings.walkInfraSummary(it.walk) },
     )
 
     /** 파라미터형(좌표 없음): 경유 정류소. 첫 로드 착지 없음(iOS 동형) — firstKey null. */

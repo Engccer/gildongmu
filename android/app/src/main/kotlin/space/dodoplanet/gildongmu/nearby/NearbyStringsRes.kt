@@ -5,6 +5,20 @@ import space.dodoplanet.gildongmu.R
 import space.dodoplanet.gildongmu.i18n.AppLocale
 import space.dodoplanet.gildongmu.i18n.appLocalized
 
+private fun walkSummaryWords(context: Context): WalkSummaryWords {
+    val res = context.resources
+    return WalkSummaryWords(
+        audioSummary = { appLocalized(res, R.string.walkInfra_audioSummary, it) },
+        audioNone = context.getString(R.string.walkInfra_audioNone),
+        audioUnsupported = context.getString(R.string.walkInfra_audioUnsupported),
+        audioError = context.getString(R.string.walkInfra_audioError),
+        osmSummary = { appLocalized(res, R.string.walkInfra_osmSummary, it) },
+        osmEmpty = context.getString(R.string.walkInfra_osmEmpty),
+        osmUnsupported = context.getString(R.string.walkInfra_osmUnsupported),
+        osmError = context.getString(R.string.walkInfra_osmError),
+    )
+}
+
 /** 리소스에서 읽는 문장 공급(호출 시점) — `MainActivity`가 앱 컨텍스트로 만든다. */
 fun nearbyStrings(context: Context): NearbyStrings {
     val res = context.resources
@@ -37,6 +51,6 @@ fun nearbyStrings(context: Context): NearbyStrings {
         conditionsReady = { context.getString(R.string.android_nearby_conditionsReady) },
         conditionsPartial = { context.getString(R.string.android_nearby_conditionsPartial) },
         failedTitle = { context.getString(R.string.android_common_failedTitle) },
-        walkInfraSummary = { "" }, // Task 4가 walkInfraLiveSummary로 바꾼다
+        walkInfraSummary = { walkInfraLiveSummary(it, walkSummaryWords(context)) },
     )
 }

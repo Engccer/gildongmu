@@ -29,7 +29,8 @@ fun nearbyFactory(
                 NearbyKind.barrierFree -> NearbyScreenViewModel(NearbyKinds.barrierFree(services.barrierFree, strings), coordinate, strings, handle)
                 NearbyKind.kids -> NearbyScreenViewModel(NearbyKinds.kids(service, strings), coordinate, strings, handle)
                 NearbyKind.events -> NearbyScreenViewModel(NearbyKinds.events(service, strings), coordinate, strings, handle)
-                NearbyKind.walkInfra, NearbyKind.conditions -> TODO("M2b")
+                NearbyKind.walkInfra -> NearbyScreenViewModel(NearbyKinds.walkInfra(services.walkInfra, strings, services.shortTimeNow), coordinate, strings, handle)
+                NearbyKind.conditions -> TODO("M2b")
             }
         }
     }
