@@ -91,7 +91,9 @@
     <string name="android_common_allowPrecise">Permitir ubicación precisa</string>
     <string name="android_common_back">Atrás</string>
     <string name="android_common_checking">Comprobando</string>
+    <string name="android_common_collapsed">Contraído</string>
     <string name="android_common_comingSoon">Aún no disponible</string>
+    <string name="android_common_expanded">Expandido</string>
     <string name="android_common_failedTitle">No se pudo obtener la información</string>
     <string name="android_common_geoDeniedDesc">Permite el acceso a la ubicación de Gildongmu en Ajustes</string>
     <string name="android_common_geoDeniedTitle">Se necesita permiso de ubicación</string>

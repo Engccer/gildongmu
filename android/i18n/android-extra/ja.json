@@ -22,12 +22,37 @@
       "locationFailed": "現在地を確認できませんでした",
       "locationOff": "端末の位置情報がオフになっています",
       "geoDeniedDesc": "設定でキルドンムの位置情報へのアクセスを許可してください",
-      "geoReducedDesc": "おおよその位置情報のみ許可されています。正確な位置情報を許可してください"
+      "geoReducedDesc": "おおよその位置情報のみ許可されています。正確な位置情報を許可してください",
+      "outOfCoverage": "現在地に基づく機能は韓国国内でのみご利用いただけます。場所検索、駅情報、経路案内は引き続きご利用いただけます。",
+      "openSettings": "設定を開く",
+      "allowPrecise": "正確な位置情報を許可",
+      "expanded": "展開",
+      "collapsed": "折りたたみ"
     },
     "nearby": {
       "announceRouteStops": "経由停留所{count}か所",
       "subwayEmptyNearest": "周辺に地下鉄駅がありません。最寄りは{station}、{distance}先です",
       "subwayClosed": "運行時間外です。始発 {time}"
+    },
+    "route": {
+      "totalDistance": "計{distance}",
+      "durationMinutes": "約{minutes}分",
+      "taxiFare": "タクシー料金約{won}ウォン",
+      "tollFare": "通行料{won}ウォン",
+      "fare": "料金{won}ウォン",
+      "transfers": "乗り換え{count}回",
+      "walkMinutes": "徒歩{minutes}分",
+      "board": "{name}で乗車",
+      "alight": "{name}で下車",
+      "stopCount": "{count}か所のバス停",
+      "stationCount": "{count}駅",
+      "legMinutes": "{minutes}分"
+    },
+    "directions": {
+      "searching": "照会中"
+    },
+    "unit": {
+      "spokenMeters": "メートル"
     }
   },
   "search": {

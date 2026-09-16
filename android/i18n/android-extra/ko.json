@@ -22,12 +22,37 @@
       "locationFailed": "현재 위치를 확인하지 못했습니다",
       "locationOff": "기기의 위치가 꺼져 있습니다",
       "geoDeniedDesc": "설정에서 길동무의 위치 접근을 허용해 주세요",
-      "geoReducedDesc": "대략적인 위치만 허용되어 있습니다. 정확한 위치를 허용해 주세요"
+      "geoReducedDesc": "대략적인 위치만 허용되어 있습니다. 정확한 위치를 허용해 주세요",
+      "outOfCoverage": "현재 위치 기반 기능은 대한민국 안에서 제공됩니다. 장소 검색, 역 정보, 길찾기는 계속 사용할 수 있습니다.",
+      "openSettings": "설정 열기",
+      "allowPrecise": "정확한 위치 허용",
+      "expanded": "펼침",
+      "collapsed": "접힘"
     },
     "nearby": {
       "announceRouteStops": "경유 정류소 {count}곳",
       "subwayEmptyNearest": "주변에 지하철역이 없습니다. 가장 가까운 역은 {station}, {distance} 거리입니다",
       "subwayClosed": "운행 시간이 아닙니다. 첫차 {time}"
+    },
+    "route": {
+      "totalDistance": "총 {distance}",
+      "durationMinutes": "약 {minutes}분",
+      "taxiFare": "택시 요금 약 {won}원",
+      "tollFare": "통행료 {won}원",
+      "fare": "요금 {won}원",
+      "transfers": "환승 {count}회",
+      "walkMinutes": "도보 {minutes}분",
+      "board": "{name}에서 승차",
+      "alight": "{name}에서 하차",
+      "stopCount": "{count} 정거장",
+      "stationCount": "{count} 정거장",
+      "legMinutes": "{minutes}분 소요"
+    },
+    "directions": {
+      "searching": "조회 중"
+    },
+    "unit": {
+      "spokenMeters": "미터"
     }
   },
   "search": {

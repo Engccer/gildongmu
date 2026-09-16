@@ -22,12 +22,37 @@
       "locationFailed": "No se pudo determinar tu ubicación actual",
       "locationOff": "La ubicación está desactivada en este dispositivo",
       "geoDeniedDesc": "Permite el acceso a la ubicación de Gildongmu en Ajustes",
-      "geoReducedDesc": "Solo se permite la ubicación aproximada. Permite la ubicación precisa"
+      "geoReducedDesc": "Solo se permite la ubicación aproximada. Permite la ubicación precisa",
+      "outOfCoverage": "Las funciones basadas en la ubicación solo están disponibles dentro de Corea del Sur. La búsqueda de lugares, la información de estaciones y las indicaciones siguen disponibles.",
+      "openSettings": "Abrir Ajustes",
+      "allowPrecise": "Permitir ubicación precisa",
+      "expanded": "Expandido",
+      "collapsed": "Contraído"
     },
     "nearby": {
       "announceRouteStops": "{count, plural, one {# parada en la ruta} other {# paradas en la ruta}}",
       "subwayEmptyNearest": "No hay estaciones de metro cerca. La más cercana es {station}, a {distance}",
       "subwayClosed": "Fuera de servicio ahora. Primer tren {time}"
+    },
+    "route": {
+      "totalDistance": "Total {distance}",
+      "durationMinutes": "unos {minutes} min",
+      "taxiFare": "taxi aprox. {won} KRW",
+      "tollFare": "peajes {won} KRW",
+      "fare": "tarifa {won} KRW",
+      "transfers": "{count, plural, one {# transbordo} other {# transbordos}}",
+      "walkMinutes": "a pie {minutes} min",
+      "board": "subir en {name}",
+      "alight": "bajar en {name}",
+      "stopCount": "{count, plural, one {# parada} other {# paradas}}",
+      "stationCount": "{count, plural, one {# estación} other {# estaciones}}",
+      "legMinutes": "{minutes} min"
+    },
+    "directions": {
+      "searching": "Buscando"
+    },
+    "unit": {
+      "spokenMeters": "metros"
     }
   },
   "search": {
