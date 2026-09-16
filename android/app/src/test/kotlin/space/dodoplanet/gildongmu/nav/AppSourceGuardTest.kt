@@ -133,6 +133,13 @@ class AppSourceGuardTest {
         assertTrue(main.contains("Lifecycle.Event.ON_START") && main.contains("manualLocationJudge.run("))
     }
 
+    /** spec §13-5 총체성 — 앱 통지(자동 해제·언어 변경)는 화면의 `StatusLine`이 읽으므로 화면마다 하나가 있어야 어느 화면에서든 들린다. */
+    @Test fun `AppScreenScaffold를 여는 파일은 StatusLine도 연다`() {
+        val allowed = setOf("AppTopBar.kt")
+        val offenders = sources.filter { it.extension == "kt" && it.name !in allowed && it.readText().contains("AppScreenScaffold(") && !it.readText().contains("StatusLine(") }.map { it.name }
+        assertEquals(emptyList(), offenders)
+    }
+
     @Test fun `Google Play 서비스 의존은 0이다`() {
         val gradle = listOf(android.resolve("app/build.gradle.kts"), android.resolve("gradle/libs.versions.toml"))
         assertTrue(gradle.none { it.readText().contains("play-services") })

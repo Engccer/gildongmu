@@ -5,7 +5,9 @@ import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -49,17 +51,25 @@ fun Modifier.headingText(): Modifier = semantics { heading() }
  * 단일 polite 통지 창구(화면에 하나). 항상 존재하는 `Text`이고 `seq`가 바뀌면 한 프레임 빈 문자열을 거쳐
  * 다시 쓴다 — Compose 라이브 리전은 텍스트가 **바뀔 때만** 발화하므로 같은 문장의 연속 통지(삭제 두 번)가
  * 침묵하지 않게 한다. 빈 문자열은 TalkBack·점자가 건너뛴다.
+ *
+ * 앱 통지(`AppNotices`, spec §13-5)는 **스스로** 읽어 화면 통지와 한 문장으로 병합한다(화면마다 배선하지 않아 총체적 — 소스 가드가
+ * `AppScreenScaffold` 화면마다 `StatusLine` 하나를 강제한다). 초기 seq 억제(재마운트 재발화 방지)는 화면 통지만으로 계산하고, 앱 통지가
+ * 붙은 병합 결과는 항상 새 seq를 받아 발화 경로를 지나며 그 끝에서만 `consume`한다(발화 성공 시점 latch).
  */
 @Composable
 fun StatusLine(notice: Notice, modifier: Modifier = Modifier) {
-    // 재마운트(회전·언어 변경·탭 복귀)에서 마지막 문장을 다시 발화하지 않는다 — 첫 seq는 재게시 없이 그대로 둔다.
+    val app by AppNotices.pending.collectAsState()
+    // 재마운트(회전·언어 변경·탭 복귀)에서 마지막 문장을 다시 발화하지 않는다 — 첫 seq는 재게시 없이 그대로 둔다(화면 통지에만).
     val initialSeq = remember { notice.seq }
-    var shown by remember { mutableStateOf(notice) }
-    LaunchedEffect(notice.seq) {
-        if (notice.seq == initialSeq) return@LaunchedEffect
-        shown = Notice(notice.seq, "", null)
+    val counter = remember { mutableIntStateOf(notice.seq) }
+    val merged = remember(notice, app) { if (app == null) notice else mergeNotices(notice, app, ++counter.intValue) }
+    var shown by remember { mutableStateOf(if (app == null) notice else Notice(notice.seq, "", null)) }
+    LaunchedEffect(merged.seq) {
+        if (app == null && merged.seq == initialSeq) return@LaunchedEffect
+        shown = Notice(merged.seq, "", null)
         withFrameNanos { }
-        shown = notice
+        shown = merged
+        app?.let { AppNotices.consume(it.seq) }
     }
     // 시각은 원문, 낭독형이 따로 있으면 contentDescription(라이브 리전도 그것을 읽는다) — 화면과 낭독이 제 역할을 나눈다.
     val spoken = shown.spoken?.takeIf { it != shown.text }
