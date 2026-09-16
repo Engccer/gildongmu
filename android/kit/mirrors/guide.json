@@ -1,0 +1,135 @@
+{
+  "group": "guide",
+  "owner": "android-kit-guide",
+  "description": "미러 등록부(D6 장치 2). 검사 술어와 형식은 src/lib/__tests__/mirror-registry.test.ts, 갱신법은 android/README.md.",
+  "entries": [
+    {
+      "swift": "Beacon.swift",
+      "status": "pending"
+    },
+    {
+      "swift": "BeaconGate.swift",
+      "status": "pending"
+    },
+    {
+      "swift": "BeaconTones.swift",
+      "status": "pending"
+    },
+    {
+      "swift": "CarArrival.swift",
+      "status": "pending"
+    },
+    {
+      "swift": "CarListener.swift",
+      "status": "pending"
+    },
+    {
+      "swift": "CarRouteGuide.swift",
+      "status": "pending"
+    },
+    {
+      "swift": "CourseDerivation.swift",
+      "status": "pending"
+    },
+    {
+      "swift": "EndScreen.swift",
+      "status": "pending"
+    },
+    {
+      "swift": "GuideAudioSession.swift",
+      "status": "pending"
+    },
+    {
+      "swift": "GuideBand.swift",
+      "status": "pending"
+    },
+    {
+      "swift": "GuideCourse.swift",
+      "status": "pending"
+    },
+    {
+      "swift": "GuideCourseAxis.swift",
+      "status": "pending"
+    },
+    {
+      "swift": "GuideLiveRows.swift",
+      "status": "pending"
+    },
+    {
+      "swift": "GuideMotion.swift",
+      "status": "pending"
+    },
+    {
+      "swift": "GuideSessionCoordinator.swift",
+      "status": "pending"
+    },
+    {
+      "swift": "GuideSpeechGate.swift",
+      "status": "pending"
+    },
+    {
+      "swift": "GuideToneLayer.swift",
+      "status": "pending"
+    },
+    {
+      "swift": "IdleReset.swift",
+      "status": "pending"
+    },
+    {
+      "swift": "ListenSpeed.swift",
+      "status": "pending"
+    },
+    {
+      "swift": "RerouteProposalGate.swift",
+      "status": "pending"
+    },
+    {
+      "swift": "RouteGuide.swift",
+      "status": "pending"
+    },
+    {
+      "swift": "RouteOrigin.swift",
+      "status": "pending"
+    },
+    {
+      "swift": "SessionIdle.swift",
+      "status": "pending"
+    },
+    {
+      "swift": "TransitDisplayProjection.swift",
+      "status": "pending"
+    },
+    {
+      "swift": "TransitGuide.swift",
+      "status": "pending"
+    },
+    {
+      "swift": "TransitGuideText.swift",
+      "status": "pending"
+    },
+    {
+      "swift": "TransitGuideTone.swift",
+      "status": "pending"
+    },
+    {
+      "swift": "TransitIdle.swift",
+      "status": "pending"
+    },
+    {
+      "swift": "TransitProgressOverview.swift",
+      "status": "pending"
+    },
+    {
+      "swift": "TransitSurroundingsAnchor.swift",
+      "status": "pending"
+    },
+    {
+      "swift": "TransitTrackService.swift",
+      "status": "pending"
+    },
+    {
+      "swift": "WalkHealth.swift",
+      "status": "pending"
+    }
+  ]
+}
