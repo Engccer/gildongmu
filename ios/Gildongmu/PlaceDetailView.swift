@@ -250,6 +250,29 @@ struct PlaceDetailView<DomainSection: View>: View {
     }
 }
 
+/// 시트로 띄운 장소 상세 — 닫기 버튼을 단다(시트 툴바 관례 `.cancellationAction`, `ChatView` 동형).
+/// ⚠ 시트 안에 장소 상세를 넣는 자리는 전부 이것을 지난다 — 아래로 쓸기·VO 문지르기만 남기면 스크린 리더
+/// 사용자는 빠져나오는 수단을 찾지 못한다(2026-09-16 실승차: 안내 시트의 역 상세에서 닫기를 못 찾았다).
+/// push(`NavigationLink`·`navigationDestination`)는 뒤로 버튼이 있어 해당 없다. 가드 `place-detail-sheet-guard.test.ts`.
+struct PlaceDetailSheet: View {
+    let place: Place
+    var showsDirectionsEntry: Bool = true
+    var showsChatEntry: Bool = true
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            PlaceDetailView(
+                place: place, showsDirectionsEntry: showsDirectionsEntry, showsChatEntry: showsChatEntry)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button(appLocalized("actions.close")) { dismiss() }
+                    }
+                }
+        }
+    }
+}
+
 /// 기존 호출처(`PlaceDetailView(place:)`) 무변경 컴파일용 편의 init — 도메인 섹션 없음.
 extension PlaceDetailView where DomainSection == EmptyView {
     init(place: Place, showsDirectionsEntry: Bool = true, showsChatEntry: Bool = true) {

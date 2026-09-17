@@ -11,6 +11,10 @@
 
 ## 2026-09-17
 
+### iOS 시트로 띄운 장소 상세에 닫기 버튼 (`PlaceDetailSheet`)
+
+대중교통 안내 시트의 경유역 상세·도보 안내의 목적지 상세에 닫기 버튼이 없어 스크린 리더로 빠져나올 길이 없었다(2026-09-16 실승차, 군자역 상세에서 3분 반 정체). 채팅이 쓰던 닫기 달린 상세를 공용 `PlaceDetailSheet`로 올려 세 자리가 같은 화면을 쓰고, 시트에 `PlaceDetailView`를 직접 넣으면 소스 가드 `place-detail-sheet-guard.test.ts`가 막는다. 판독은 `docs/superpowers/specs/logs/README.md` 2026-09-17 행.
+
 ### 안드로이드 설정 화면 — 언어·받아쓰기 방식·결과 진동·정보 출처 (`android/app/.../settings`)
 
 탭 루트 4개의 상단 바 "설정" 버튼 → 설정 화면(언어 7행·받아쓰기 방식 2행은 같은 선택 다이얼로그(진입 착지 = 현재 선택 행), 실험판 결과 진동 스위치 + 푸터, 정보 출처 16행 + OSM 라이선스·링크 2, 개인정보 처리방침·문제 신고 링크, 링크 실패는 통지)을 iOS `SettingsView`·`DataSourcesView` 미러로 세웠다. 앱 언어는 저장값 + `createConfigurationContext` 한 경로(AppCompat 기각)이고 ViewModel 문장 팩토리 6곳은 호출 시점에 `AppConfig.localizedApp()`을 읽는다(캡처하면 재생성 뒤 옛 언어 — 규약 가드). 결과 진동은 `Notice.haptic` 3종을 `StatusLine` 발화 효과 안에서 내고(문장이 나가는 조건 = 진동이 나가는 조건), 앱 통지는 모달 뒤에서 집지 않는다. 신설 문자열 1키(`android.settings.resultHapticsFooter`). 업데이트 이력은 유예. spec `docs/superpowers/specs/2026-09-16-android-m2-place-nearby-design.md` §14, 계획 `docs/superpowers/plans/2026-09-17-android-settings.md`.
