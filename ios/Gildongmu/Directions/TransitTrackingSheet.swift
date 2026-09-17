@@ -277,9 +277,7 @@ struct TransitTrackingSheet: View {
                 deferredLanding = nil
                 landControlFocus(target, proxy: proxy, note: "note=deferred")
             }) { place in
-                NavigationStack {
-                    PlaceDetailView(place: place, showsDirectionsEntry: false)
-                }
+                PlaceDetailSheet(place: place, showsDirectionsEntry: false)
             }
         }
     }

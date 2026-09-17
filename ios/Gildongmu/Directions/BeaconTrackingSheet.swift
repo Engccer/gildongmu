@@ -317,11 +317,9 @@ struct BeaconTrackingSheet: View {
         // 열고, 길찾기 진입 버튼은 숨긴다(이미 그곳으로 안내 중).
         .sheet(isPresented: $showPlaceDetail) {
             if let dest = model.dest {
-                NavigationStack {
-                    PlaceDetailView(
-                        place: guideDestinationPlace(dest: dest, label: model.destinationLabel),
-                        showsDirectionsEntry: false)
-                }
+                PlaceDetailSheet(
+                    place: guideDestinationPlace(dest: dest, label: model.destinationLabel),
+                    showsDirectionsEntry: false)
             }
         }
         // 재조회 성공으로 버튼이 사라진 순간 커서를 제목 행으로(헌장 §5 이탈 방지).

@@ -153,7 +153,8 @@ struct ChatConversationView<EmptyContent: View>: View {
         // 장소 상세: 표준 시트 + 닫기 버튼(장소 채팅 시트·안내 시트 "장소 상세 보기" 동형).
         // 닫히면 연 원점(카드·블록)으로 포커스 복원 — 대입은 지연·검증·1회 재시도(정본 절차).
         .sheet(item: $detailPlace, onDismiss: restoreOriginFocus) { place in
-            ChatPlaceDetailSheet(place: place)
+            // 채팅 안에서 연 상세라 "물어보기"는 숨긴다(채팅 위 채팅 시트 순환 방지).
+            PlaceDetailSheet(place: place, showsChatEntry: false)
         }
         .onAppear {
             #if DEBUG
@@ -688,24 +689,6 @@ private struct MessageBubbleView: View {
         case "source.tmap": return appLocalized("chat.source.tmap")
         case "source.tourapi": return appLocalized("chat.source.tourapi")
         default: return label
-        }
-    }
-}
-
-/// 채팅 안 장소 상세 시트: 닫기 버튼으로 채팅으로 돌아온다(ChatView 시트 툴바 동형).
-private struct ChatPlaceDetailSheet: View {
-    let place: Place
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        NavigationStack {
-            // 채팅 안에서 연 상세라 "물어보기"는 숨긴다(채팅 위 채팅 시트 순환 방지).
-            PlaceDetailView(place: place, showsChatEntry: false)
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button(appLocalized("actions.close")) { dismiss() }
-                    }
-                }
         }
     }
 }
