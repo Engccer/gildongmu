@@ -292,7 +292,7 @@
     <string name="android_station_countSome">%1$s%2$s台</string>
     <string name="android_station_countUnknown">%1$sの情報なし</string>
     <string name="android_station_kindCount">%1$s%2$sか所</string>
-    <string name="android_station_kindCountStopped">%1$s%2$sか所、運行停止%3$sか所</string>
+    <string name="android_station_kindCountStopped">%1$s%2$sか所、稼働停止%3$sか所</string>
     <string name="android_station_nameSuffixed">%1$s駅</string>
     <string name="android_station_noArrivals">到着予定の列車はありません</string>
     <string name="android_station_operatingNormal">通常稼働</string>
