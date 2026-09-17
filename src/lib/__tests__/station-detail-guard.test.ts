@@ -68,9 +68,12 @@ describe("경유역 전화번호 저장소 (spec §5.3·§5.6)", () => {
     expect(STORE).toContain("private init() {}");
   });
 
-  it("번호·없음은 5분 신선, 보관 한도는 그 뒤 30초", () => {
+  it("번호·없음은 5분 신선, 소비자 재확인 30초, 보관 한도는 재확인 간격 둘 뒤(갱신이 삭제를 앞서게)", () => {
     expect(STORE).toContain("static let freshSeconds: TimeInterval = 300");
-    expect(STORE).toContain("static let evictAfterSeconds: TimeInterval = freshSeconds + 30");
+    expect(STORE).toContain("static let recheckSeconds: TimeInterval = 30");
+    expect(STORE).toContain(
+      "static let evictAfterSeconds: TimeInterval = freshSeconds + 2 * recheckSeconds",
+    );
   });
 
   it("표시는 마지막 값 — result는 시계·신선도를 보지 않는다(재렌더로 번호가 조용히 사라지지 않게)", () => {
