@@ -646,6 +646,7 @@ spec `2026-08-12-walk-route-alternatives-design.md` §4·§7. 출처 `PORTS.md` 
 **열린 판정 1건**: spec §3.3의 **뷰 종류 판별선**(*그 줄의 주제가 열 수 있는 대상 하나면 줄 전체가 버튼, 아니면 순수 텍스트에 로터만. 한 섹션 안에서 섞이지 않는다*)을 앱 전반 규칙으로 `docs/PATTERNS.md`에 승격할지. 로터 UI 6곳 실측에서 유도했고 구현으로 검증됐다 — **위원장 확인 뒤** 승격한다.
 
 **인접 결함(미착수)**: `transitLegText`가 빈 `fromName`/`toName`을 통과시켜 "에서 승차"를 낼 수 있다(`lineName`에만 막혀 있다). E45는 진입점 게이트에서만 막았고 렌더 자체는 그대로다.
+- 이 항목을 꺼낼 때 **함께 볼 자리**(구현 리뷰가 넘긴 관찰, E45 범위 밖): `odsay.ts:415-421`이 도보 leg의 `toName`은 무조건 다음 non-walk leg의 `fromName`으로 덮지만 `toNameEn`은 `next.fromNameEn`이 있을 때만 덮는다. 그래서 도보 leg가 `toName`은 다음 leg 것, `toNameEn`은 자기 원래 `endName` 것을 드는 조합이 이론상 가능하다. ⚠ **E45가 만든 불일치는 아니다** — 그때도 줄과 라벨이 같은 값을 쓴다(둘 다 그 도보 leg의 필드를 읽는다).
 
 **미실측**: `lang=en` 실호출 표본(ODsay 일일 쿼터가 ko 표본 10 OD에서 소진됐다). 라벨 언어 축은 기존 술어 `transitLegUsesEnglish` 재사용이고 spec §6 말미의 en 실측(226 leg, 자격 미달 0건)이 그 술어를 덮는다.
 
