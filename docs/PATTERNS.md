@@ -33,6 +33,20 @@
 
 **채팅 산문 블록은 언제나 한 접근성 객체이고, 장소 언급 수로 활성화 방식만 가른다**(2026-08-17 위원장 판정, 실호출 표본 27블록 중 26이 1개): 1개면 **블록 전체가 버튼**(VO "…, 버튼"·더블탭=상세, 시각 사용자는 줄 아무 데나 탭, 이름만 링크색·링크 속성 없음), 2개 이상이면 이름별 인라인 링크(자체 스킴 `gildongmu-place-mention`, `openURL` 가로채기) + 로터 커스텀 액션 "○○ 상세 보기". 근거는 같은 답변의 렌더 카드뿐이라(`chatPlaceMentions`) 카드 없는 답변(장소 앵커 모드)엔 아무것도 붙지 않는다. nearby류 self-fetch 렌더 4종(소아 진료·아이 놀 곳·둘러보기·무장애)은 서버가 `places`(`src/lib/nearby-place.ts` 투영 ↔ Kit `PlaceProjection.swift`)를 함께 실어 iOS가 장소 카드로 디코딩한다 — **새 nearby 도구에 렌더를 달면 이 투영도 함께 싣는다**(안 실으면 iOS에서 그 답변만 상세 진입이 죽는다). 카드 활성화·블록 활성화 모두 상세 **시트**(닫기 버튼, "물어보기" 숨김)로 열고, 닫으면 연 원점(카드·블록)으로 포커스를 복원한다(`focusedOriginKey`). ⚠ 2개 이상 블록의 인라인 링크가 VO 객체를 쪼개는지는 실기기 판정 항목 — 쪼개면 `.accessibilityElement(children: .combine)`으로 묶는다. **말풍선 안 구획(카드 묶음·출처)은 헤딩으로 나눈다**(`sectionHeading`, 수 포함 "장소 N곳"·"출처", 빈 묶음엔 금지) — 산문 → 카드 → 출처 경계가 VO 선형 읽기에서 안 들렸다(위원장 실기기 2026-08-17). 웹 `SourceList`는 "출처 " 접두 텍스트가 같은 역할.
 
+### 경로 브리핑의 역 진입점은 이름 조인이고 줄은 전부 `Text`로 남는다
+
+**경로 브리핑의 역 진입점은 이름 조인이고 줄은 전부 `Text`로 남는다**(E45, spec `docs/superpowers/specs/2026-09-18-briefing-station-entry-design.md`). 판정은 Kit 순수 함수 `transitBriefingStations(legs, row:)`(`TransitBriefingStations.swift`) 하나이고 앱은 라벨 언어만 얹는다(`briefingStationActions`, `RouteBriefing.swift`).
+
+- ⚠ **대상 역을 `stops.first`/`stops.last`로 고르지 말 것.** 서버 `toLegStops`가 이름·좌표 무효 항목을 `flatMap`으로 떨어뜨리므로 목록의 첫·마지막이 조용히 중간역이 되고, 그때 열리는 역은 줄에서 들린 역이 아니다(provider `previousStopName`이 같은 이유로 정규화 비교를 거친 뒤에만 쓴다). **줄에서 들린 이름으로 조인하고**(`normalizeStopName` 재사용, 자체 정규화 금지) **조인 실패는 진입점 0**이다. 승차는 앞에서부터·하차는 뒤에서부터 찾는다(같은 역을 두 번 지나는 노선에서 어느 통과인지가 갈린다).
+- **`.walk` 줄의 대상은 `legs[i+1]`이 아니라 다음 non-walk leg의 승차역**이다 — 서버가 도보 줄의 행선지 이름을 그 술어로 유도하므로(`odsay.ts:413-423`), 게이트가 같은 술어를 써야 도보가 연달아 나오는 응답에서 "같은 이름인데 한 줄에만 진입점"이 생기지 않는다. 그 leg에 `toName`은 실리지 않으므로 `fromName` 하나를 보는 것이 곧 "줄에 들린 이름" 게이트다(실호출 66쌍 불일치 0).
+- **진입은 로터 커스텀 액션뿐이고 역 개수는 액션 수만 정한다.** 선언은 **역순**이되 역별 묶음을 만든 **뒤** 전체를 뒤집어야 쌍 순서까지 함께 뒤집힌다(`actions.flatMap{open, call}.reversed()` — `actions.reversed().flatMap`으로 옮기면 "A 전화 → A 상세"가 된다).
+- **소비자는 옵트인이고 기본은 꺼짐이다**(`TransitRouteRows.stationEntry`, 클로저 옵셔널). `GuideOverviewSheet`(안내 조망 "다른 경로")는 같은 뷰를 쓰지만 `navigationDestination`이 0건이라 켜면 **아무 일도 일어나지 않는 액션**이 선다(스크린 리더 사용자에게 무반응 액션은 진단 불가한 고장). 미리 조회가 후보마다 도는 것과 "시트 안 장소 상세는 닫기 버튼 필수"(E33) 우회도 같은 기본값이 막는다. ⚠ Bool 게이트와 push 클로저를 나눠 두면 "켜졌는데 클로저가 없다"는 조합이 생기므로 **하나로 합친다**.
+- **전화 액션은 저장소 상태와 무관하게 상시이고 라벨만 갈린다**(직통 `transitGuide.callStation` / 대표번호 `…Representative`). 액션을 상태로 거르면 "번호 없음"·"찾는 중"·"조회 실패"가 전부 **액션 부재**로 뭉개진다(헌장 §1 3-state). 안내 시트 경유역 로터도 같은 계약이다(E44 §5.5 개정, 라벨은 이름 없는 `ios.place.call` 계열 — 행 이름이 곧 역명이다).
+- **통지·진동은 한 창구를 지난다**(`callStationPhone`, `StationPhoneStore.swift`): 번호면 걸고 **통지하지 않으며**(전화 앱 전환이 응답), 없음·모름·실패는 `.high` 통지 + 진동. ⚠ **모름(`nil`)은 세 상태를 겹쳐 들고**(조회 전·첫 조회 중·6분 축출) 아무도 다시 조회하지 않으면 "찾고 있습니다"가 영영 거짓이라, **통지 전에 `resolve`를 킥오프**해 문장이 사후적으로 참이 되게 한다. 판정은 Kit `briefingPhoneAnnouncement`이고 호출부는 그 키를 **리터럴 `switch`로 되받는다**(`appLocalized(변수)`는 `check-xcstrings-keys.mjs` 대조를 우회한다).
+- **저장소를 읽는 자리는 하위 뷰다**(`BriefingStationRow`) — 라벨 계산이 `phoneStore.result`를 읽으므로 그 읽기가 `TransitRouteRows` 본문에 있으면 번호 도착·30초 재확인·6분 축출마다 브리핑 전체가 다시 그려진다(E44 리뷰 M5와 같은 경계). 미리 조회는 **그 줄의 역만** 넘긴다(`prefetch(stops: [action.stop], …)` — `leg.stops`를 그대로 주면 leg 하나에 12~20건이 돈다).
+- **라벨의 역 이름은 그 줄이 쓴 언어**다(앱 언어가 아니다). 술어는 구간 줄·하차 줄과 같은 `transitLegUsesEnglish` 하나라 줄이 한국어로 떨어지면 라벨도 함께 떨어진다. ⚠ 역 이름에 "역" 접미가 없다(ODsay 정차역 이름 원문) — 낭독은 "천호에 전화 걸기"다.
+- **가드**: `src/lib/__tests__/briefing-station-entry-guard.test.ts` 7종. ⚠ 술어는 **구조**를 봐야 한다 — 구현 리뷰 실측에서 표면만 보던 넷(옵트인 기본값·액션 상태 분기·로터 역순·줄이 `Text`로 남는지)이 되돌림을 통과시켰다.
+
 ### 자동 등장 보조 섹션은 region 랜드마크 유지
 
 **자동 등장 보조 섹션은 region 랜드마크 유지**(`<section aria-labelledby>`+`useId`+`<h3 id>`). 버튼 없이 조용히 fetch되어 나타나는 섹션(`AirQuality`·`StationMeta` 류)은 region이 **유일한 발견 수단**이라 "불필요한 region" 아님. ⚠ 죽은 코드 청소 시 이 `aria-labelledby`·`useId` 제거 금지. **버튼으로 펼치는 패널은 버튼이 발견 경로라 `<div>` 유지**. 판단 규칙: "사용자가 직접 펼쳤나(버튼·div) vs 조용히 나타났나(자동·region)".
