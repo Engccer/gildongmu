@@ -102,6 +102,15 @@ struct TransitBriefingStationsTests {
         #expect(out.map(\.stop.name) == ["여의도"])
     }
 
+    @Test func 빈_이름끼리_조인되지_않는다() {
+        // 이름 게이트가 **두 겹**이라 이 케이스만이 바깥 겹(non-empty)의 효과를 잰다. 정규화 뒤 빈 문자열을
+        // 거부하는 안쪽 겹은 정상 역 이름만 있는 목록에서 같은 결과를 내기 때문이다. 서버가 이름 무효 항목을
+        // 떨어뜨리지만 만약 남으면 빈 이름끼리 맞아떨어져 라벨이 " 상세 보기"가 된다(spec §3.2 규칙 3).
+        let legs = [subway(from: "", to: "여의도", stops: [stop(""), stop("여의도", lat: 37.521)])]
+        let out = transitBriefingStations(legs, row: .transit(legIndex: 0))
+        #expect(out.map(\.stop.name) == ["여의도"])
+    }
+
     @Test func 조인에_실패하면_진입점이_없다() {
         let legs = [subway(from: "없는역", to: "다른역", stops: line5Stops)]
         #expect(transitBriefingStations(legs, row: .transit(legIndex: 0)).isEmpty)
