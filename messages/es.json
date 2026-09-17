@@ -1096,6 +1096,8 @@
     "prewalkStart": "{minutes} min a pie hasta la parada de embarque {station}. Primero comienza la guía a pie.",
     "prewalkArrivedButton": "Llegada a {station}",
     "openStation": "Ver detalles de {station}",
+    "callStation": "Llamar a {station}",
+    "callStationRepresentative": "Llamar al número central de {station}",
     "prewalkArrived": "Ha llegado a la parada de embarque {station}.",
     "prewalkUnavailable": "No se pudo iniciar la guía a pie; se pasa directamente a la espera de embarque.",
     "prewalkCancelled": "La guía de transporte público no se inició.",

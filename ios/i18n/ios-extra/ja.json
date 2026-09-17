@@ -141,7 +141,9 @@
       "operatingNormal": "通常稼働",
       "operatingStopped": "稼働停止",
       "kindCountStopped": "{label}{count}か所、稼働停止{stopped}か所",
-      "phoneError": "駅の電話番号を読み込めませんでした。"
+      "phoneError": "駅の電話番号を読み込めませんでした。",
+      "phoneMissing": "駅の電話番号がありません。",
+      "phonePending": "駅の電話番号を検索しています。"
     },
     "nearby": {
       "subway": "地下鉄到着",

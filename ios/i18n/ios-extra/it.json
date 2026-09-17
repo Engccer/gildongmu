@@ -141,7 +141,9 @@
       "operatingNormal": "In funzione",
       "operatingStopped": "Fuori servizio",
       "kindCountStopped": "{label}: {count}, {stopped} fuori servizio",
-      "phoneError": "Impossibile caricare il numero della stazione."
+      "phoneError": "Impossibile caricare il numero della stazione.",
+      "phoneMissing": "Nessun numero della stazione.",
+      "phonePending": "Ricerca del numero della stazione."
     },
     "nearby": {
       "subway": "Arrivi della metro",

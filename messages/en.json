@@ -1096,6 +1096,8 @@
     "prewalkStart": "{minutes} min walk to boarding stop {station}. Walking guidance starts first.",
     "prewalkArrivedButton": "Arrived at {station}",
     "openStation": "View details for {station}",
+    "callStation": "Call {station}",
+    "callStationRepresentative": "Call {station} main line",
     "prewalkArrived": "Arrived at boarding stop {station}.",
     "prewalkUnavailable": "Walking guidance could not start; moving straight to boarding wait.",
     "prewalkCancelled": "Transit guidance was not started.",
