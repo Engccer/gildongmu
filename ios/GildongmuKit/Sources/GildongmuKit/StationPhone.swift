@@ -158,26 +158,39 @@ public enum StationPhoneResult: Sendable, Equatable {
 /// 동명이역 차단 상한(spec §5.4-3).
 public let stationPhoneMaxMeters: Double = 1_000
 
+/// 역무실 POI 이름 접미(판정 ⑦). 앞 공백까지가 표기다 — "…역 3호선 역무실".
+let stationOfficeNameSuffix = " 역무실"
+
 /// 후보 선택(spec §5.4): 역 키·노선 키 일치 ∧ 1,000m 이내인 지하철역 POI 중 번호 있는 것의 최근접.
 /// 다른 노선 번호로 떨어지지 않는다(리뷰 M1).
+/// 판정 ⑦(위원장 2026-09-17) — 같은 역·같은 노선의 "… 역무실" POI가 번호를 가지면 그것이 먼저다(환승역 역 POI가 다른 노선
+/// 역무실 번호를 갖는 경우, 게이트 사례 가락시장 3호선). 역무실 POI는 분류로 거르지 않는다.
 public func pickStationPhone(
     places: [Place], stationName: String, lat: Double, lng: Double, lineName: String
 ) -> StationPhoneResult {
     let key = stationNameKey(stationName)
     guard !key.isEmpty, let line = subwayLineIdentity(lineName) else { return .unavailable }
-    var best: (phone: String, meters: Double)?
-    for place in places {
-        guard !place.id.hasPrefix("transit-stop:"), stationLayoutKind(place) == .subway,
-              let space = place.name.lastIndex(of: " ") else { continue }
-        let head = String(place.name[..<space])
-        let tail = String(place.name[place.name.index(after: space)...])
+    var office: (phone: String, meters: Double)?
+    var station: (phone: String, meters: Double)?
+    for place in places where !place.id.hasPrefix("transit-stop:") {
+        // 역무실 POI는 접미를 뗀 이름으로 역 POI와 같은 이름·노선·거리·번호 규칙을 지난다.
+        let isOffice = place.name.hasSuffix(stationOfficeNameSuffix)
+        guard isOffice || stationLayoutKind(place) == .subway else { continue }
+        let label = isOffice ? String(place.name.dropLast(stationOfficeNameSuffix.count)) : place.name
+        guard let space = label.lastIndex(of: " ") else { continue }
+        let head = String(label[..<space])
+        let tail = String(label[label.index(after: space)...])
         guard stationNameKey(head) == key, subwayLineIdentity(tail) == line else { continue }
         let meters = haversineMeters(lat1: lat, lng1: lng, lat2: place.lat, lng2: place.lng)
         guard meters <= stationPhoneMaxMeters,
               let phone = place.phone?.trimmingCharacters(in: .whitespaces), !phone.isEmpty else { continue }
-        if best == nil || meters < best!.meters { best = (phone, meters) }
+        if isOffice {
+            if office == nil || meters < office!.meters { office = (phone, meters) }
+        } else if station == nil || meters < station!.meters {
+            station = (phone, meters)
+        }
     }
-    guard let best else { return .unavailable }
+    guard let best = office ?? station else { return .unavailable }
     return isRepresentativePhone(best.phone) ? .representative(best.phone) : .direct(best.phone)
 }
 
