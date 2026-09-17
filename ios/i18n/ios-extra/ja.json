@@ -140,7 +140,7 @@
       "kindCount": "{label}{count}か所",
       "operatingNormal": "通常稼働",
       "operatingStopped": "稼働停止",
-      "kindCountStopped": "{label}{count}か所、運行停止{stopped}か所",
+      "kindCountStopped": "{label}{count}か所、稼働停止{stopped}か所",
       "phoneError": "駅の電話番号を読み込めませんでした。"
     },
     "nearby": {
