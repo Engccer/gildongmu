@@ -153,7 +153,18 @@ func callStationPhone(
     let result = store.result(stationName: stationName, lat: lat, lng: lng, lineName: lineName)
     switch result {
     case .direct(let phone)?, .representative(let phone)?:
-        if let url = URL(string: "tel:\(phone.replacingOccurrences(of: "-", with: ""))") { openURL(url) }
+        // ⚠ **번호가 있어도 걸지 못할 수 있다** — 카카오 `phone`에 내부 공백·부기가 남아 URL 조립이
+        //   실패하거나, 전화 앱이 없는 기기가 열기를 거부한다. 그때 조용히 반환하면 통지 0·진동 0·
+        //   화면 변화 0이고 라벨은 "…에 전화 걸기" 그대로라, 스크린 리더 사용자에게 남는 단서가 **없다**
+        //   (보이는 전화 줄은 같은 조건에서 줄 자체가 사라져 부재가 단서가 되지만 로터 액션은 그렇지 않다).
+        //   실패는 조회 실패와 같은 창구로 떨어뜨린다 — 사용자가 할 일("다른 수단으로 건다")이 같다.
+        if let url = URL(string: "tel:\(phone.replacingOccurrences(of: "-", with: ""))") {
+            openURL(url) { accepted in
+                if !accepted { announceStationPhone(.failed) }
+            }
+            return
+        }
+        announceStationPhone(.failed)
         return
     default:
         break
@@ -161,6 +172,12 @@ func callStationPhone(
     if result == nil {
         Task { await store.resolve(stationName: stationName, lat: lat, lng: lng, lineName: lineName) }
     }
+    announceStationPhone(result)
+}
+
+/// 전화 액션의 결과 통지·진동 한 자리. 번호를 걸었으면 통지가 없다(전화 앱 전환이 응답이다).
+@MainActor
+private func announceStationPhone(_ result: StationPhoneResult?) {
     guard let notice = briefingPhoneAnnouncement(result) else { return }
     // ⚠ Kit이 돌려준 키를 그대로 `appLocalized(변수)`로 넘기지 않는다. `check-xcstrings-keys.mjs`는
     //   **문자열 리터럴만** 스캔하므로 변수 키는 카탈로그 대조에서 통째로 빠지고, 키가 없으면 VoiceOver가

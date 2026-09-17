@@ -95,10 +95,10 @@ describe("① 소비자는 옵트인이다 (spec §3.5)", () => {
 
   it("옵트인 기본값은 꺼짐이다 — 새 소비자가 생겨도 조용히 켜지지 않는다", () => {
     const body = structBody(BRIEFING, "TransitRouteRows");
-    // ⚠ 타입만 보면 `… -> Void)? = { _, _ in … }` 처럼 **켜진 기본값**을 다는 되돌림을 놓친다. 줄이
-    //   타입에서 끝나는지(= 기본값 없음, 주지 않으면 nil)를 함께 본다.
-    expect(body).toMatch(/var stationEntry: \(\(TransitLegStop, String\?\) -> Void\)\?\s*$/m);
-    expect(body).not.toMatch(/var stationEntry:[^\n]*=/);
+    // ⚠ 부분 매치로 보면 `… -> Void)? = { _, _ in }` 처럼 **켜진 기본값**을 다는 되돌림을 놓친다.
+    //   선언 줄을 통째로 고정한다 — 타입 변경·기본값 부착·이름 변경이 모두 빨개진다.
+    const declaration = body.match(/^\s*var stationEntry:.*$/m)?.[0].trim();
+    expect(declaration).toBe("var stationEntry: ((TransitLegStop, String?) -> Void)?");
   });
 
   it("안내 조망은 push 스택이 없다 — navigationDestination·NavigationLink 0건(무반응 액션 방지 근거)", () => {
@@ -172,6 +172,18 @@ describe("③ 전화 액션은 상태와 무관하게 항상 있다 (spec §5.1�
     expect(fn.slice(0, fn.indexOf("\n}\n"))).toContain("await store.resolve(");
     expect(BRIEFING).toContain("callStationPhone(");
     expect(SHEET).toContain("callStationPhone(");
+  });
+
+  it("번호가 있어도 걸지 못하면 실패로 말한다 — 조용한 반환이 없다", () => {
+    // 로터 액션은 눌러도 화면이 바뀌지 않으므로 통지가 유일한 증거다(헌장 §5). 보이는 전화 줄은 같은
+    // 조건에서 줄 자체가 사라져 부재가 단서가 되지만, 액션은 라벨이 남아 단서가 0이다.
+    const store = read("ios/Gildongmu/StationPhoneStore.swift");
+    const fn = codeOnly(store.slice(store.indexOf("func callStationPhone("), store.indexOf("\n}\n", store.indexOf("func callStationPhone("))));
+    // 열기 거부(전화 앱 없음)를 본다 — completion 없는 `openURL(url)` 단독 호출이면 거부가 침묵이 된다.
+    expect(fn).toMatch(/openURL\(url\)\s*\{\s*accepted in/);
+    expect(fn).toContain("if !accepted { announceStationPhone(.failed) }");
+    // URL 조립 실패(번호에 내부 공백·부기)도 같은 창구로.
+    expect(fn).toMatch(/announceStationPhone\(\.failed\)\s*\n\s*return/);
   });
 });
 
