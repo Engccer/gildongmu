@@ -170,6 +170,11 @@
       "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/TransitAlternativeNameTest.kt"
     },
     {
+      "swift": "TransitBriefingStations.swift",
+      "status": "pending",
+      "note": "E45 브리핑 역 진입. 이름 조인(normalizeStopName은 GUIDE TransitGuide.kt 소유)·전화 3상태 통지 매핑. 정규식 신설 없음, 반환 튜플은 BriefingPhoneAnnouncement로"
+    },
+    {
       "swift": "TransitDisplay.swift",
       "status": "ported",
       "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/TransitDisplay.kt",
