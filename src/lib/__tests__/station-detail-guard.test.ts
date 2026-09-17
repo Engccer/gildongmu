@@ -189,9 +189,37 @@ describe("역 장소 상세 레이아웃 (spec §3)", () => {
     expect([...at].sort((a, b) => a - b)).toEqual(at);
   });
 
+  it("현행 분기 역 섹션은 isStation일 때만(출구 POI 등 드문 경우)", () => {
+    const guardAt = general.indexOf("if isStation(place) {");
+    const metaAt = general.indexOf("StationMetaSection(model: stationSections)");
+    expect(guardAt).toBeGreaterThan(-1);
+    expect(metaAt).toBeGreaterThan(guardAt);
+  });
+
+  it("현행 분기 기본 정보 행은 개편 전 구성·순서 그대로이고 대표번호 표기를 쓰지 않는다(spec §5.5)", () => {
+    const start = VIEW.indexOf("private var generalInfoSection");
+    expect(start).toBeGreaterThan(-1);
+    const info = VIEW.slice(start, VIEW.indexOf("\n    }\n", start));
+    const at = order(info, [
+      "categoryRow",
+      "addressRows",
+      "PlaceHoursLine(model: placeHours)",
+      'Link(appLocalized("ios.place.callLine", phone)',
+      "homepageRow",
+      "chatRow",
+    ]);
+    expect([...at].sort((a, b) => a - b)).toEqual(at);
+    expect(info).not.toContain("stationPhoneLink");
+  });
+
   it("지하철 도착 링크는 includesSubway가 참일 때만", () => {
     const nearby = VIEW.slice(VIEW.indexOf("private func nearbySection("));
     expect(nearby.slice(0, nearby.indexOf("SubwayNearbyView"))).toContain("if includesSubway");
+  });
+
+  it("역 분기에는 지하철 도착 링크가 없다(spec §8 ③)", () => {
+    expect(station).not.toContain("SubwayNearbyView");
+    expect(station).not.toContain("includesSubway: true");
   });
 
   it("역 정보 섹션: 전화 줄이 첫 행, 메타 줄이 다음, 분류 줄은 .rail만, 제목은 항상", () => {
