@@ -25,6 +25,8 @@ struct StationPhoneLiveGateTests {
         let env = ProcessInfo.processInfo.environment
         let path = try #require(env["STATION_PHONE_GATE"])
         let cases = try JSONDecoder().decode([Case].self, from: Data(contentsOf: URL(fileURLWithPath: path)))
+        // 빈 기대표는 불일치 0으로 통과해 버린다 — 판정한 사례가 없는 게이트는 실패다.
+        try #require(!cases.isEmpty, "기대표가 비어 있다")
         let base = URL(string: env["STATION_PHONE_GATE_BASE"] ?? "https://gildongmu.dodoplanet.space")!
         let service = StationPhoneService(client: APIClient(baseURL: base))
         var mismatches: [String] = []

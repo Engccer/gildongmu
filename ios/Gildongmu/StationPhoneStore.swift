@@ -43,7 +43,17 @@ final class StationPhoneStore {
     /// 갱신 실패 표식 — 낡은 번호·없음 위의 갱신이 실패했음을 기억한다(값은 덮지 않는다). 보관 한도에서 실패로 바꿀지 가른다.
     @ObservationIgnored private var refreshFailed: Set<Key> = []
     @ObservationIgnored private var inflight: [Key: Task<StationPhoneResult, Never>] = [:]
-    @ObservationIgnored private let service = StationPhoneService(client: APIClient(baseURL: AppConfig.apiBaseURL))
+    /// 조회 전용 세션 — URL 캐시가 없어 카카오 결과가 디스크(`Cache.db`)에 남지 않는다(spec §7 약관 판정: 보관은 이 저장소의
+    /// 메모리 최대 6분뿐). `/api/places`는 캐시 헤더를 싣지 않아 공유 세션이면 자동 조회 응답이 디스크 캐시에 쌓인다.
+    /// 기존 장소 검색 경로의 공유 세션은 범위 밖이다.
+    private static let session: URLSession = {
+        let config = URLSessionConfiguration.ephemeral
+        config.urlCache = nil
+        config.requestCachePolicy = .reloadIgnoringLocalCacheData
+        return URLSession(configuration: config)
+    }()
+    @ObservationIgnored private let service = StationPhoneService(
+        client: APIClient(baseURL: AppConfig.apiBaseURL, session: StationPhoneStore.session))
 
     /// 노선 표가 모르는 노선이면 nil — 그 역은 조회하지 않고 "없음"이다(spec §5.4-4).
     static func key(stationName: String, lat: Double, lng: Double, lineName: String) -> Key? {
@@ -93,7 +103,8 @@ final class StationPhoneStore {
         if value == .failed {
             if let current = results[key], current != .failed {
                 refreshFailed.insert(key)
-            } else {
+            } else if results[key] != .failed {
+                // 이미 실패 줄이면 다시 대입하지 않는다 — 30초 재확인마다 같은 값으로 관찰자를 깨우지 않게.
                 results[key] = .failed
             }
             return
