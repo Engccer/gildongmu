@@ -19,10 +19,18 @@ public struct TransitBriefingStation: Sendable, Hashable {
     /// 전화번호 조회 노선 힌트(spec §4). `leg.lineName`의 빈 문자열만 접어 넘긴다 —
     /// 노선 표 판정은 `StationPhoneStore.key` 한 곳이 한다(복제하면 표 갱신 때 두 자리가 갈린다).
     public let lineName: String?
+    /// **그 줄이 이 역을 부른 영문 이름**(`leg.fromNameEn`/`toNameEn`). 영문이 없으면 nil.
+    ///
+    /// ⚠ `stop.nameEn`을 쓰지 않는다. 줄의 영어 자격 술어(`transitLegUsesEnglish`)는 **leg 필드**를 보는데
+    ///   `stop.nameEn`은 서버가 다른 원본(`passStopList.stations[].stationName`)에서 채우므로, 한쪽만 빈
+    ///   응답에서 **줄은 영어인데 라벨만 한국어**가 된다(구현 리뷰 2026-09-18). 판정과 값이 같은 필드를
+    ///   보면 술어가 참일 때 이 값의 존재가 함께 보장된다.
+    public let nameEn: String?
 
-    public init(stop: TransitLegStop, lineName: String?) {
+    public init(stop: TransitLegStop, lineName: String?, nameEn: String? = nil) {
         self.stop = stop
         self.lineName = lineName
+        self.nameEn = nameEn
     }
 }
 
@@ -51,12 +59,15 @@ public func transitBriefingStations(
         // ⚠ 이 동치는 서버 계약에 걸려 있다 — 실호출 게이트가 두 필드의 일치를 함께 잰다.
         guard let next = legs[legs.index(after: index)...].first(where: { $0.mode != "walk" }),
               next.mode == "subway" else { return [] }
-        return joinedStation(next, name: next.fromName, fromEnd: false).map { [$0] } ?? []
+        // 영문 이름은 **이 도보 줄**이 쓴 값이다(다음 leg의 `fromNameEn`이 아니다) — 줄의 자격 술어도
+        // 도보 leg 자신을 보므로 판정과 값이 같은 필드에서 온다.
+        return joinedStation(next, name: next.fromName, nameEn: legs[index].toNameEn, fromEnd: false)
+            .map { [$0] } ?? []
     case .transit(let index):
         guard let leg = subwayLeg(legs, at: index) else { return [] }
         var stations: [TransitBriefingStation] = []
-        if let board = joinedStation(leg, name: leg.fromName, fromEnd: false) { stations.append(board) }
-        if let alight = joinedStation(leg, name: leg.toName, fromEnd: true),
+        if let board = joinedStation(leg, name: leg.fromName, nameEn: leg.fromNameEn, fromEnd: false) { stations.append(board) }
+        if let alight = joinedStation(leg, name: leg.toName, nameEn: leg.toNameEn, fromEnd: true),
            // 승차와 하차가 같은 역이면 한 건으로 접는다(판정은 조인과 같은 정규화).
            stations.first.map({ normalizeStopName($0.stop.name) != normalizeStopName(alight.stop.name) }) ?? true {
             stations.append(alight)
@@ -66,7 +77,7 @@ public func transitBriefingStations(
         // 줄 존재 판정(`alightLineText`의 `station`)과 대상 판정이 **같은 필드**를 본다 — 갈라 두면
         // 줄에는 `toName`이 들리는데 다른 역이 열릴 수 있다.
         guard let leg = subwayLeg(legs, at: index) else { return [] }
-        return joinedStation(leg, name: leg.toName, fromEnd: true).map { [$0] } ?? []
+        return joinedStation(leg, name: leg.toName, nameEn: leg.toNameEn, fromEnd: true).map { [$0] } ?? []
     }
 }
 
@@ -80,7 +91,7 @@ private func subwayLeg(_ legs: [TransitRouteLeg], at index: Int) -> TransitRoute
 /// 줄에서 들린 이름으로 그 leg의 정차역을 찾는다. 승차는 앞에서부터, 하차는 뒤에서부터 — 같은 역을 두 번
 /// 지나는 노선(순환·왕복)에서 어느 통과를 가리키는지가 이 방향으로 갈린다.
 private func joinedStation(
-    _ leg: TransitRouteLeg, name: String?, fromEnd: Bool
+    _ leg: TransitRouteLeg, name: String?, nameEn: String?, fromEnd: Bool
 ) -> TransitBriefingStation? {
     guard let name, let stops = leg.stops, !stops.isEmpty else { return nil }
     // 이름 게이트는 non-nil이 아니라 **정규화 뒤 non-empty**다 — `transitLegText`는 `""`도 값으로 통과시켜
@@ -93,7 +104,9 @@ private func joinedStation(
     let ordered = fromEnd ? Array(stops.reversed()) : stops
     guard let stop = ordered.first(where: { normalizeStopName($0.name) == target }) else { return nil }
     let line = leg.lineName
-    return TransitBriefingStation(stop: stop, lineName: (line?.isEmpty == false) ? line : nil)
+    return TransitBriefingStation(
+        stop: stop, lineName: (line?.isEmpty == false) ? line : nil,
+        nameEn: (nameEn?.isEmpty == false) ? nameEn : nil)
 }
 
 /// 결과 진동 어휘(앱 `ResultHaptic.Kind` 미러). Kit은 UIKit을 모르므로 판정만 여기서 내고 발화는 앱이 한다.

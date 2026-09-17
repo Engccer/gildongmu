@@ -16,11 +16,12 @@ struct TransitBriefingStationsTests {
 
     private func subway(
         line: String? = "수도권 5호선", from: String? = "천호", to: String? = "여의도",
-        stops: [TransitLegStop]? = nil
+        stops: [TransitLegStop]? = nil, fromEn: String? = nil, toEn: String? = nil
     ) -> TransitRouteLeg {
         TransitRouteLeg(
             mode: "subway", lineName: line, fromName: from, toName: to, stationCount: 10, minutes: 25,
-            serviceStatus: nil, firstServiceTime: nil, lastServiceTime: nil, stops: stops)
+            serviceStatus: nil, firstServiceTime: nil, lastServiceTime: nil, stops: stops,
+            fromNameEn: fromEn, toNameEn: toEn)
     }
 
     private func bus(from: String? = "천호역", to: String? = "강변역", stops: [TransitLegStop]? = nil) -> TransitRouteLeg {
@@ -29,10 +30,11 @@ struct TransitBriefingStationsTests {
             serviceStatus: nil, firstServiceTime: nil, lastServiceTime: nil, stops: stops)
     }
 
-    private func walk(to: String? = "천호") -> TransitRouteLeg {
+    private func walk(to: String? = "천호", toEn: String? = nil) -> TransitRouteLeg {
         TransitRouteLeg(
             mode: "walk", lineName: nil, fromName: nil, toName: to, stationCount: nil, minutes: 3,
-            serviceStatus: nil, firstServiceTime: nil, lastServiceTime: nil, distanceMeters: 180)
+            serviceStatus: nil, firstServiceTime: nil, lastServiceTime: nil, distanceMeters: 180,
+            toNameEn: toEn)
     }
 
     /// 5호선 천호 → 여의도 정차역(일부)
@@ -232,6 +234,39 @@ struct TransitBriefingStationsTests {
         #expect(transitBriefingStations(legs, row: .transit(legIndex: 3)).isEmpty)
         #expect(transitBriefingStations(legs, row: .alight(legIndex: -1)).isEmpty)
         #expect(transitBriefingStations([], row: .walk(legIndex: 0)).isEmpty)
+    }
+
+    // MARK: 영문 이름은 줄이 쓴 필드에서 온다
+
+    @Test func 영문_이름은_정차역_목록이_아니라_그_줄이_쓴_필드에서_온다() {
+        // ⚠ 줄의 영어 자격 술어(`transitLegUsesEnglish`)는 **leg 필드**(`fromNameEn`·`toNameEn`)를 보는데
+        //   정차역 목록의 `stop.nameEn`은 서버가 다른 원본(`passStopList`)에서 채운다. 라벨이 `stop.nameEn`을
+        //   읽으면 한쪽만 빈 응답에서 **줄은 영어인데 라벨만 한국어**가 된다 — 판정과 값이 같은 필드를 봐야 한다.
+        let legs = [subway(
+            stops: [stop("천호", lat: 37.538), stop("여의도", lat: 37.521)],
+            fromEn: "Cheonho", toEn: "Yeouido")]
+        let out = transitBriefingStations(legs, row: .transit(legIndex: 0))
+        #expect(out.map(\.nameEn) == ["Cheonho", "Yeouido"])
+        #expect(transitBriefingStations(legs, row: .alight(legIndex: 0)).first?.nameEn == "Yeouido")
+    }
+
+    @Test func 정차역_목록에_영문이_있어도_그_값을_쓰지_않는다() {
+        // 두 필드가 어긋나면 줄이 말한 쪽을 따른다(줄과 라벨이 같은 역을 다른 표기로 말하지 않게).
+        let legs = [subway(
+            stops: [stop("천호", lat: 37.538, nameEn: "Cheon-ho"), stop("여의도", lat: 37.521, nameEn: "Yeoui-do")],
+            fromEn: "Cheonho", toEn: "Yeouido")]
+        #expect(transitBriefingStations(legs, row: .transit(legIndex: 0)).map(\.nameEn) == ["Cheonho", "Yeouido"])
+    }
+
+    @Test func 도보_줄의_영문_이름은_그_도보_줄이_쓴_값이다() {
+        // 줄의 자격 술어도 도보 leg 자신을 보므로 값도 거기서 온다(다음 leg의 fromNameEn이 아니다).
+        let legs = [walk(to: "천호", toEn: "Cheonho"), subway(stops: line5Stops, fromEn: "Cheonho")]
+        #expect(transitBriefingStations(legs, row: .walk(legIndex: 0)).first?.nameEn == "Cheonho")
+    }
+
+    @Test func 영문이_없으면_영문_이름도_없다() {
+        let legs = [subway(stops: line5Stops)]
+        #expect(transitBriefingStations(legs, row: .transit(legIndex: 0)).allSatisfy { $0.nameEn == nil })
     }
 
     // MARK: 전화 3상태 → 통지·진동

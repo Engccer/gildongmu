@@ -101,10 +101,14 @@ describe("① 소비자는 옵트인이다 (spec §3.5)", () => {
     expect(declaration).toBe("var stationEntry: ((TransitLegStop, String?) -> Void)?");
   });
 
-  it("안내 조망은 push 스택이 없다 — navigationDestination·NavigationLink 0건(무반응 액션 방지 근거)", () => {
+  it("안내 조망은 push 스택이 없다 — 옵트인 판정(§3.5)의 근거가 유지된다", () => {
+    // ⚠ 이 가드가 빨개졌다면 **가드를 고칠 것이 아니라 판정을 재검토한다**. 조망에 push가 생기면
+    //   "그 화면엔 목적지가 없어 액션이 무반응이 된다"는 옵트인의 근거가 사라지므로, 거기서도 진입점을
+    //   켤지가 새 판정이 된다(불변식은 "진입점 ON ⟺ push 있음"이지 "조망에 push 없음"이 아니다).
     const overview = read("ios/Gildongmu/Directions/GuideOverviewSheet.swift");
-    expect(overview).not.toContain("navigationDestination");
-    expect(overview).not.toContain("NavigationLink");
+    const message = "조망에 push가 생겼다 — spec §3.5 옵트인 판정을 재검토할 것";
+    expect(overview, message).not.toContain("navigationDestination");
+    expect(overview, message).not.toContain("NavigationLink");
   });
 });
 
@@ -241,5 +245,14 @@ describe("라벨의 역 이름은 그 줄의 언어를 따른다 (spec §6)", ()
     // 앱 언어 기준으로 고르면 줄은 한국어인데 라벨만 로마자가 된다.
     expect(body).not.toContain("bilingual(");
     expect(body).not.toContain(".primary");
+  });
+
+  it("영문 이름도 줄이 쓴 필드에서 온다 — 정차역 목록의 영문을 읽지 않는다", () => {
+    // ⚠ 자격 술어는 leg 필드(`*NameEn`)를 보는데 `stop.nameEn`은 서버가 다른 원본(`passStopList`)에서
+    //   채운다. 한쪽만 빈 응답에서 **줄은 영어인데 라벨만 한국어**가 되고, 오류 없이 조용히 그렇게 된다.
+    const fn = BRIEFING.slice(BRIEFING.indexOf("func briefingStationActions("));
+    const body = codeOnly(fn.slice(0, fn.indexOf("\n}\n")));
+    expect(body).not.toContain("stop.nameEn");
+    expect(body).toContain("station.nameEn");
   });
 });

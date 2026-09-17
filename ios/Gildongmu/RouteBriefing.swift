@@ -135,7 +135,9 @@ func briefingStationActions(
     }
     let usesEnglish = transitLegUsesEnglish(legs[legIndex], lang: AppLanguage.dataLocaleValue)
     return stations.map { station in
-        let english = usesEnglish ? station.stop.nameEn.flatMap { $0.isEmpty ? nil : $0 } : nil
+        // ⚠ `station.stop.nameEn`이 아니라 Kit이 실은 `nameEn`(= 그 줄이 쓴 leg 필드)이다. 정차역 목록의
+        //   영문은 서버가 다른 원본에서 채워, 한쪽만 빈 응답에서 줄은 영어인데 라벨만 한국어가 된다.
+        let english = usesEnglish ? station.nameEn : nil
         return BriefingStationAction(
             stop: station.stop, lineName: station.lineName, name: english ?? station.stop.name)
     }
@@ -144,6 +146,9 @@ func briefingStationActions(
 /// 역 로터를 든 브리핑 줄(E45). **저장소는 이 하위 뷰만 관찰한다** — 전화 라벨이 직통·대표번호로 갈리므로
 /// 계산이 `phoneStore.result`를 읽어야 하는데, 그 읽기가 `TransitRouteRows` 본문에 있으면 번호 도착·30초
 /// 재확인·6분 축출마다 브리핑 **전체**가 다시 그려진다(E44가 리뷰 M5로 명시적으로 피한 것).
+///
+/// ⚠ 격리 입자는 "그 줄 하나"가 아니다. `@Observable`은 `results` **프로퍼티 단위**로 추적하므로 어느 역의
+///   번호가 도착하든 화면 위의 이 뷰들이 함께 무효화된다. 막는 것은 브리핑 전체이지 이웃 줄이 아니다.
 ///
 /// 줄 뷰는 그대로 내보내고 로터만 얹는다 — 역 개수는 액션 수만 정하고 뷰 종류를 정하지 않는다.
 private struct BriefingStationRow<Content: View>: View {

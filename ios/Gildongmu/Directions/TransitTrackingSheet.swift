@@ -991,7 +991,8 @@ struct TransitTrackingSheet: View {
 
 /// 지하철 경유역 행(E33 행 전체 버튼 + E44 로터 "전화 걸기"). **저장소는 이 하위 뷰만 관찰한다** — 번호 도착이
 /// 시트 본문 재렌더가 되지 않게(spec §6, `rendered` 참조 상자와 같은 계열). 번호가 늦게 와도 뷰 종류는 언제나
-/// 같은 `Button`이라 포커스가 튀지 않는다. 액션은 번호가 확정된 행에만(보유한 데이터만 — `PlaceRow` 관례).
+/// 같은 `Button`이라 포커스가 튀지 않는다. **액션은 저장소 상태와 무관하게 항상 하나**이고 라벨만 갈린다
+/// (E45 판정 ⑤ — 종전 "번호가 확정된 행에만"은 3상태를 액션 부재로 뭉갰다).
 private struct ViaStopStationRow: View {
     let stop: TransitLegStop
     let lineName: String
