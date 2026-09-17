@@ -152,6 +152,7 @@
 - **런타임 판정이 있는 자리에 상시 고지 문장을 얹지 않는다**(`isBackgroundAudible` 판정 위에 얹힌 "화면이 꺼지면 멈춘다"가 거짓이 된 실사고; 웹은 참). 삭제 범위는 소비자 기준. → PATTERNS
 - **스크린리더 통지에 뻔한 꼬리 문장을 넣지 않는다** — 판정선은 "뒷문장이 새 정보를 주는가"(원인·조건·한계는 유지). 정규식 스캔 말고 여러 문장인 문자열 전부를 판정. → PATTERNS
 - **"내 주변" 장소 목록 5종은 "더 보기" 단계 공개**(10건 + 회당 10; 라우트는 기본 상한 + 옵트인 `limit`≤50 + `total`, 웹 `NEARBY_LIMIT_MAX` ↔ Kit `fetchLimit`). 포커스는 첫 새 항목, 별도 통지 금지. 정본 `NightClinicsNearby.tsx`·`ClinicNearbyView.swift`. → PATTERNS
+- **역 상세 레이아웃은 `stationLayoutKind`(Kit `StationPhone.swift`)가 켠다**(E44) — 넓은 `isStation`으로 켜면 출구 POI·"철도" 업체·이름만 "역"인 장소까지 역 모양이 되므로, `isStation`은 역 섹션 로드와 비역 분기의 역 섹션 표시에만 쓴다. 경유역 전화번호는 같은 역·같은 노선·1km 후보만이고 다른 노선 번호로 떨어지지 않는다. 가드 `station-detail-guard.test.ts`·노선 표 미러 `station-phone-line-table-drift.test.ts`. → INTEGRATIONS
 - **검색→상세 흐름**: 단일 검색창, 카테고리 칩 필터, 장소 선택 시 **History API 뷰 전환**(카카오는 ID 단건조회 없어 메모리 `Place`로 상세). `?q=` URL 동기화 + request-id ref로 stale 응답 폐기.
 - **검색창 3섹션 결정론 병렬**(장소+주소 매 검색 병렬, 웹은 둘 다 0건일 때만, 결과는 정확도순 플랫 리스트). ⚠ 부활 금지 3종: Gemini 자연어 라우터·명소 별도 섹션·버킷 섹션 그룹핑 — 버킷(`category.ts` ↔ `SearchFilters.swift`)은 칩 필터 축으로만. → PATTERNS
 - **프리필 진입과 `?dir=` 복원은 필드 값이 같아도 다른 진입이라 표식으로 가른다**(`openDirections`의 `prefill` ↔ iOS `DirectionsPrefill{role,endpoint}`): 마운트 자동 조회를 `initialTo` 값에 걸면 새로고침·URL 직진입마다 측위 팝업이 뜬다. 판정은 첫 렌더에 굳혀 1회 소비하고 **양끝이 다 있을 때만** 조회한다(출발지만 채운 진입은 조회 대신 도착지 입력 착지). → PATTERNS
@@ -258,6 +259,15 @@
 - **env 변경 후 반드시 재배포**(키는 배포 시점 함수 주입). 수동 배포 `vercel deploy --prod --yes`.
 - 비대화형 등록 `printf '%s' "$VALUE" | vercel env add <KEY> production`(`vercel@latest` 사용 — 구버전 빈값 버그 [[vercel-env-add-noninteractive-bug]]). Preview는 `git_branch_required` 결함이라 REST API/대시보드.
 - ⚠ **배포 직후 React #418(hydration) transient**는 스테일 SW 캐시 탓, 코드 결함 아님([[pwa-stale-sw-deploy-hydration-418]]) — dev 클린·캐시제거 먼저 확인. PWA는 수제 서비스워커(`public/sw.js`, Serwist가 Next 16 Turbopack 미지원이라 폴백), document network-first·`/api/` 비캐시.
+
+- **Kit(`ios/GildongmuKit/Sources`)에 파일을 추가·개명·삭제하면 `android/kit/mirrors/<그룹>.json`을 함께 고친다**(새 파일은 `pending`으로 등재) — 안드로이드가 세 번째 미러라 `mirror-registry.test.ts`가 등록부에 없는 Kit 파일을 빨갛게 만든다. 갱신법은 `android/README.md` §5.
+
+### 안드로이드 앱 (2026-09-16 신설, `android/` — 정본은 `android/README.md`)
+
+- **구조·이식 관용구·게이트는 `android/README.md`가 정본이다**(`:app` Compose + `:kit` 순수 JVM 미러, 화면 패키지 소유권, fixture 로더, 등록부, 게이트 락). 설계 판정은 `docs/superpowers/specs/2026-09-15-android-app-decisions.md`(D1~D13, 재논의 금지), 마일스톤별 spec은 같은 폴더 `2026-09-16-android-*`.
+- ⚠ **`:kit`에서 정규식 약칭 클래스(`\d`·`\s`·`\w`)와 Kotlin 기본 `trim`·`isBlank`·`isWhitespace`를 쓰지 않는다** — 기기 java.util.regex는 ICU 기반이라 JVM 테스트가 기기 동작을 대표하지 못하고, Foundation `CharacterSet`은 U+200B를 공백으로 본다. 명시 클래스 + `SwiftSemantics`만(`RegexPortabilityTest`·trim 가드가 잠근다). → `android/README.md` §3
+- ⚠ **버튼 착지는 `a11y/Landing.kt`의 `landingTarget`만** — Compose 1.12.1은 터치 입력 모드에서 `clickable`이 포커스를 못 받아 `requestFocus()`가 조용히 false다. 한소네(키보드 모드) 실측은 초록이라 TalkBack 폰에서만 드러난다.
+- ⚠ **도보 안내 전경 서비스 선언·`WAKE_LOCK`·`ACTIVITY_RECOGNITION`은 실험판 소스셋 매니페스트에만 있다**(iOS `Info-Experimental.plist` 동형, `android/scripts/check-release-manifest.mjs`가 정식 APK를 검사). 졸업 때 코드 게이트와 함께 승격한다.
 
 ### iOS 실험 기능은 빌드 구성이 가른다 (2026-08-04 신설)
 
