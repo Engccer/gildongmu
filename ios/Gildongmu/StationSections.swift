@@ -48,25 +48,62 @@ final class StationSectionsModel {
     }
 }
 
-/// 역 자동 섹션 5종. 자동 등장 보조 정보라 로딩 표시·통지 없음(조용히 나타남),
-/// 각 섹션 헤더의 heading이 유일한 발견 경로(접근성 헌장 §3, .isHeader 필수).
-/// 로드 트리거는 PlaceDetailView의 .task(조건부 섹션만 있는 초기 상태의 뷰에는
-/// task를 붙일 자식이 없어 뷰 바깥에서 킥오프).
-struct StationSectionsView: View {
+/// 역 정보 섹션(개편 전 모양, 제목 + 메타 한 줄) — `stationLayoutKind == nil`인 장소 상세 전용(E44 spec §3.1).
+/// 자동 등장 보조 정보라 로딩 표시·통지 없음, 제목이 유일한 발견 경로(헌장 §3).
+struct StationMetaSection: View {
     let model: StationSectionsModel
 
     var body: some View {
         if let meta = model.meta {
             Section {
-                // 한 줄=한 객체: 역명·영문명·노선·환승·운영기관을 단일 텍스트로. en 계열은 역명을 병기
-                // `Gangnam (강남)`(낭독은 영문만 — a11y 감사 #3, 웹 `StationMeta` 동형)하고 노선은 서버 영문
-                // (`linesEn`, E27)으로 — 없으면 한국어 원문(줄 단위 원자성).
-                metaLine(meta)
+                StationMetaText(meta: meta)
             } header: {
                 Text(appLocalized("stationMeta.heading")).accessibilityAddTraits(.isHeader)
             }
         }
+    }
+}
 
+/// 역 분기의 역 정보 섹션 안 메타 한 줄(E44 spec §3.2 1-②). 조회 전·null이면 행 없음.
+struct StationMetaLine: View {
+    let model: StationSectionsModel
+
+    var body: some View {
+        if let meta = model.meta {
+            StationMetaText(meta: meta)
+        }
+    }
+}
+
+/// 역 메타 한 줄 — 시각·낭독이 갈리는 것은 병기뿐(ko는 둘이 같다). 한 줄=한 객체: 역명·영문명·노선·환승·운영기관.
+/// en 계열은 역명을 병기 `Gangnam (강남)`(낭독은 영문만 — a11y 감사 #3)하고 노선은 서버 영문(`linesEn`, E27).
+struct StationMetaText: View {
+    let meta: StationMeta
+
+    var body: some View {
+        let isEn = AppLanguage.dataLocale == "en"
+        let lines = TransitDisplay.pickLine(
+            isEn: isEn, ko: meta.lines.joined(separator: ", "),
+            enParts: [meta.linesEn?.joined(separator: ", ")]) { $0[0] }
+        let tail = joinText(lines, meta.isTransfer ? appLocalized("stationMeta.transfer") : nil, meta.operatorName)
+        if isEn {
+            let b = bilingualName(lang: AppLanguage.current, ko: meta.name, en: meta.nameEn, roman: nil)
+            Text(joinText(b.display, tail)).accessibilityLabel(Text(joinText(b.primary, tail)))
+        } else {
+            Text(joinText(appLocalized("ios.station.nameSuffixed", meta.name), meta.nameEn, tail))
+        }
+    }
+}
+
+/// 역 자동 섹션 — 실시간 도착·첫차막차·교통약자 시설 2종. 자동 등장 보조 정보라 로딩 표시·통지 없음(조용히 나타남),
+/// 각 섹션 헤더의 heading이 유일한 발견 경로(접근성 헌장 §3, .isHeader 필수). 로드 트리거는 PlaceDetailView의 .task.
+/// 교통약자 시설(서울 지하철)은 종류마다 접는다(E44 spec §4) — 천호역 72행이 접힘 행 7개가 된다.
+struct StationDetailSections: View {
+    let model: StationSectionsModel
+    /// 펼친 시설 종류(뷰 수명, 영속 안 함). 장소가 바뀌면 새 뷰라 비어서 시작한다.
+    @State private var expandedKinds: Set<String> = []
+
+    var body: some View {
         if let arrivals = model.arrivals {
             Section {
                 if arrivals.arrivals.isEmpty {
@@ -136,27 +173,48 @@ struct StationSectionsView: View {
 
         if let facilities = model.metroFacilities {
             Section {
-                ForEach(facilities.groups, id: \.kind) { group in
-                    // kind 한국어 라벨은 웹 SeoulMetroFacilities.tsx 미러
-                    Text(appLocalized("ios.station.kindCount", metroKindLabel(group.kind), group.facilities.count))
-                    ForEach(Array(group.facilities.enumerated()), id: \.offset) { _, facility in
-                        Text(joinText(
-                            facilityName(facility), facility.location, facility.floors,
-                            operatingStatusText(facility.operatingStatus), facilityDetail(facility)))
-                    }
-                }
-                // 보강 소스(OA-21212) 실패는 은폐하지 않고 문장으로 병기(스펙 §2-C)
+                // 보강 소스(OA-21212) 실패는 은폐하지 않고 문장으로 — 어느 종류를 펼칠지 고르기 전에 알아야 한다(spec §4).
                 if facilities.supplementFailed == true {
                     Text(appLocalized("subway.supplementFailed"))
                 }
-                // 음성유도기 데이터 기준일 고지(정적 seed, 웹 미러)
-                if facilities.groups.contains(where: { $0.kind == "voiceGuide" }) {
-                    Text(appLocalized("subway.voiceGuideSource"))
+                ForEach(facilities.groups, id: \.kind) { group in
+                    // 접힘 행이 곧 개수 줄이다. 펼친 뒤 커서는 이 행에 남고 다음 스와이프가 첫 시설(포커스 코드 없음).
+                    DisclosureGroup(isExpanded: expansion(for: group.kind)) {
+                        ForEach(Array(group.facilities.enumerated()), id: \.offset) { _, facility in
+                            Text(joinText(
+                                facilityName(facility), facility.location, facility.floors,
+                                operatingStatusText(facility.operatingStatus), facilityDetail(facility)))
+                        }
+                        // 음성유도기 데이터 기준일 고지(정적 seed) — 그 묶음을 펼친 사람에게만 의미가 있다.
+                        if group.kind == "voiceGuide" {
+                            Text(appLocalized("subway.voiceGuideSource"))
+                        }
+                    } label: {
+                        Text(kindLabel(group))
+                    }
                 }
             } header: {
                 Text(appLocalized("ios.station.seoulFacilities")).accessibilityAddTraits(.isHeader)
             }
         }
+    }
+
+    /// 종류별 펼침 바인딩.
+    private func expansion(for kind: String) -> Binding<Bool> {
+        Binding(
+            get: { expandedKinds.contains(kind) },
+            set: { expanded in
+                if expanded { expandedKinds.insert(kind) } else { expandedKinds.remove(kind) }
+            })
+    }
+
+    /// 접힘 행 라벨 — 운행 중지가 있으면 그 수를 같은 줄에(spec §4, 리뷰 M8: 접으면 줄마다 보이던 "운행 중지"가 가려진다).
+    private func kindLabel(_ group: SeoulMetroFacilityGroup) -> String {
+        let stopped = group.facilities.filter { $0.operatingStatus == "stopped" }.count
+        if stopped > 0 {
+            return appLocalized("ios.station.kindCountStopped", metroKindLabel(group.kind), group.facilities.count, stopped)
+        }
+        return appLocalized("ios.station.kindCount", metroKindLabel(group.kind), group.facilities.count)
     }
 
     /// 시설 수 3-state 문장: nil="정보 없음" ≠ 0="없음" ≠ n="n대". 절대 뭉개지 않는다.
@@ -213,34 +271,14 @@ struct StationSectionsView: View {
         }
     }
 
-    /// 첫차·막차 한 편성의 표시 텍스트("00:42 왕십리행"·익일 접두·en 종착지 폴백).
-    /// 웹 StationTimetable.tsx의 train() 함수를 그대로 미러.
-    /// 방향 행 대신 낼 coverage 문구. nil이면 방향 행을 그린다(coverage "ok").
-    /// 구서버(coverage 없음)는 directions 빈 노선을 보내지 않지만, 혹시 그 조합이 오면
-    /// 가장 덜 단정적인 "확인 불가"로 떨어뜨린다(운행 없음으로 읽히지 않게). 미지의 값도 같다.
-    /// 서버가 "선"을 덧붙인 노선(lineCore)은 접미를 앱 언어로 단다(A26, 웹 `timetableLineItems` 미러).
-    /// 노선명 자체는 원문 — 영문화는 E27 소관.
-    /// 역 메타 한 줄 — 시각·낭독이 갈리는 것은 병기뿐(ko는 둘이 같다).
-    private func metaLine(_ meta: StationMeta) -> some View {
-        let isEn = AppLanguage.dataLocale == "en"
-        let lines = TransitDisplay.pickLine(
-            isEn: isEn, ko: meta.lines.joined(separator: ", "),
-            enParts: [meta.linesEn?.joined(separator: ", ")]) { $0[0] }
-        let tail = joinText(lines, meta.isTransfer ? appLocalized("stationMeta.transfer") : nil, meta.operatorName)
-        guard isEn else {
-            return Text(joinText(appLocalized("ios.station.nameSuffixed", meta.name), meta.nameEn, tail))
-        }
-        let b = bilingualName(lang: AppLanguage.current, ko: meta.name, en: meta.nameEn, roman: nil)
-        return Text(joinText(b.display, tail)).accessibilityLabel(Text(joinText(b.primary, tail)))
-    }
-
     /// coverage 사유 줄의 노선명 — en 계열은 서버 영문(`lineNameEn`, E27)이 우선, 없으면 접미 조립·원문.
     private func lineDisplayName(_ line: TimetableLine) -> String {
         if AppLanguage.dataLocale == "en", let en = line.lineNameEn { return en }
         return lineKoName(line)
     }
 
-    /// 서버가 "선"을 덧붙인 노선(lineCore)은 접미를 앱 언어로 단다(A26). 노선명 자체는 원문.
+    /// 서버가 "선"을 덧붙인 노선(lineCore)은 접미를 앱 언어로 단다(A26, 웹 `timetableLineItems` 미러).
+    /// 노선명 자체는 원문 — 영문화는 E27 소관.
     private func lineKoName(_ line: TimetableLine) -> String {
         line.lineCore.map { appLocalized("timetable.lineSuffixed", $0) } ?? line.lineName
     }
@@ -291,6 +329,9 @@ struct StationSectionsView: View {
         }
     }
 
+    /// 방향 행 대신 낼 coverage 문구. nil이면 방향 행을 그린다(coverage "ok").
+    /// 구서버(coverage 없음)는 directions 빈 노선을 보내지 않지만, 혹시 그 조합이 오면
+    /// 가장 덜 단정적인 "확인 불가"로 떨어뜨린다(운행 없음으로 읽히지 않게). 미지의 값도 같다.
     private func coverageText(_ line: TimetableLine) -> String? {
         let coverage = line.coverage ?? (line.directions.isEmpty ? "unknown" : "ok")
         switch coverage {
@@ -301,6 +342,8 @@ struct StationSectionsView: View {
         }
     }
 
+    /// 첫차·막차 한 편성의 표시 텍스트("00:42 왕십리행"·익일 접두·en 종착지 폴백).
+    /// 웹 StationTimetable.tsx의 train() 함수를 그대로 미러.
     private func trainText(_ train: TimetableTrain, en: Bool) -> String {
         let time = train.nextDay == true
             ? "\(appLocalized("timetable.nextDay")) \(train.time)"

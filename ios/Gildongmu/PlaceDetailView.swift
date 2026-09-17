@@ -180,7 +180,8 @@ struct PlaceDetailView<DomainSection: View>: View {
 
             // 역이면 역 정보·실시간 도착·교통약자 시설이 자동 등장(조용히 나타남, M3)
             if isStation(place) {
-                StationSectionsView(model: stationSections)
+                StationMetaSection(model: stationSections)
+                StationDetailSections(model: stationSections)
             }
 
             // 무장애 편의시설도 자동 등장(조용히 나타남, 역 여부 무관)
