@@ -37,6 +37,9 @@ struct TransitTrackingSheet: View {
     /// ⚠ N1 M3가 기각한 것은 반대 방향(장소 상세가 떠 있는데 루트 안내 시트를 올리기)이다 —
     /// 안내 시트 위 장소 상세는 현행 정본(spec 2026-09-11 §1.2).
     @State private var detailPlace: Place?
+    /// 경유역 상세의 노선 힌트(E44 spec §5.2) — 행을 누르는 순간의 leg `lineName`으로 확정한다. 시트 클로저에서
+    /// `currentLeg`를 읽으면 목적지 상세에도 붙고, 상세가 열린 채 구간이 바뀌면 힌트가 바뀐다(설계 리뷰 M4).
+    @State private var detailLineHint: String?
     /// 후보 항목 착지 — 항목 정체성 = routeKey(Bool equals 금지 정본).
     @AccessibilityFocusState private var focusedDestChangeRoute: String?
     /// 시트 고정 컨트롤의 착지 대상(A19, 2026-08-22). 종전엔 컨트롤마다 `Bool`
@@ -144,6 +147,7 @@ struct TransitTrackingSheet: View {
                                 onShowDetail: {
                                     guard let dest = detailDest else { return }
                                     model.touchUserAction()
+                                    detailLineHint = nil
                                     detailPlace = guideDestinationPlace(dest: dest, label: model.destinationLabel)
                                 },
                                 onChangeDestination: { changeDestPresented = true })
@@ -173,6 +177,10 @@ struct TransitTrackingSheet: View {
                 }
             }
             .onChange(of: model.state?.legIndex) { viaExpanded = false }
+            // 경유역 목록을 펼치는 순간 그 구간 역의 전화번호를 일괄 조회한다(E44 spec §6, 리뷰 M6).
+            .onChange(of: viaExpanded) { _, expanded in
+                if expanded { prefetchViaPhones() }
+            }
             .onChange(of: scenePhase) { _, phase in
                 switch phase {
                 case .background:
@@ -277,7 +285,7 @@ struct TransitTrackingSheet: View {
                 deferredLanding = nil
                 landControlFocus(target, proxy: proxy, note: "note=deferred")
             }) { place in
-                PlaceDetailSheet(place: place, showsDirectionsEntry: false)
+                PlaceDetailSheet(place: place, showsDirectionsEntry: false, stationLineHint: detailLineHint)
             }
         }
     }
@@ -414,6 +422,7 @@ struct TransitTrackingSheet: View {
     /// **지하철 leg의 각 행은 행 전체가 그 역의 장소 상세를 여는 버튼**(E33, 채팅 산문 선례 "언급 1개 =
     /// 블록 전체 버튼"). 라벨 뷰는 종전 단일 `Text` 그대로라 한 줄 = 한 객체가 유지되고, VO는
     /// "{역}, 승차, 버튼"으로 읽는다. 버스 leg는 종전 `Text`(정류장 상세는 범위 밖, spec §2).
+    /// 지하철 행의 로터 "전화 걸기"(E44)는 하위 뷰 `ViaStopStationRow`가 단다 — 저장소를 시트 본문이 읽지 않게.
     @ViewBuilder private var viaStopsRows: some View {
         if let state = model.state, let leg = model.currentLeg, !leg.viaStops.isEmpty {
             DisclosureGroup(isExpanded: $viaExpanded) {
@@ -430,12 +439,9 @@ struct TransitTrackingSheet: View {
                         // 하차역 행에 출구 번호 병기(E25) — 정적 표시, 통지 없음.
                         exit: isAlight ? display.exitAlight : nil)))
                     if leg.mode == "subway" {
-                        Button {
-                            openStationDetail(leg.viaStops[index], source: "via")
-                        } label: {
-                            line.frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
+                        ViaStopStationRow(stop: leg.viaStops[index], lineName: leg.lineName, label: line) {
+                            openStationDetail(leg.viaStops[index], lineName: leg.lineName, source: "via")
                         }
-                        .buttonStyle(.plain)
                     } else {
                         line
                     }
@@ -472,18 +478,27 @@ struct TransitTrackingSheet: View {
                     ForEach(Array(mentions.reversed()), id: \.self) { index in
                         Button(TransitGuideTextRenderer.render(
                             transitOpenStationLine(isEn: transitGuideIsEn, station: display.stops[index])
-                        )) { openStationDetail(leg.viaStops[index], source: "status") }
+                        )) {
+                            openStationDetail(leg.viaStops[index], lineName: leg.lineName, source: "status")
+                        }
                     }
                 }
         }
     }
 
     /// 지하철 경유역의 장소 상세(E33): 좌표·ID·한국어 이름으로 곧장 연다(이름 재검색 없음). 사용자 조작이라
-    /// 유휴 시계를 되돌린다(E36 `touchUserAction`).
-    private func openStationDetail(_ stop: TransitLegStop, source: String) {
+    /// 유휴 시계를 되돌린다(E36 `touchUserAction`). 노선 힌트는 여기서 확정한다(E44 §5.2).
+    private func openStationDetail(_ stop: TransitLegStop, lineName: String, source: String) {
         model.touchUserAction()
         transitGuideLog("stationDetail open station=\(stop.name) source=\(source)")
+        detailLineHint = lineName
         detailPlace = transitStopPlace(stop)
+    }
+
+    /// 펼친 경유역 목록의 전화번호 일괄 조회(E44 §6). 지하철 leg만.
+    private func prefetchViaPhones() {
+        guard let leg = model.currentLeg, leg.mode == "subway" else { return }
+        StationPhoneStore.shared.prefetch(stops: leg.viaStops, lineName: leg.lineName)
     }
 
     @ViewBuilder private func phaseControls(proxy: ScrollViewProxy) -> some View {
@@ -972,4 +987,46 @@ struct TransitTrackingSheet: View {
         }
     }
 
+}
+
+/// 지하철 경유역 행(E33 행 전체 버튼 + E44 로터 "전화 걸기"). **저장소는 이 하위 뷰만 관찰한다** — 번호 도착이
+/// 시트 본문 재렌더가 되지 않게(spec §6, `rendered` 참조 상자와 같은 계열). 번호가 늦게 와도 뷰 종류는 언제나
+/// 같은 `Button`이라 포커스가 튀지 않는다. 액션은 번호가 확정된 행에만(보유한 데이터만 — `PlaceRow` 관례).
+private struct ViaStopStationRow: View {
+    let stop: TransitLegStop
+    let lineName: String
+    let label: Text
+    let onOpen: () -> Void
+    @Environment(\.openURL) private var openURL
+    private let phoneStore = StationPhoneStore.shared
+
+    var body: some View {
+        Button(action: onOpen) {
+            label.frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityActions {
+            switch phoneStore.result(stationName: stop.name, lat: stop.lat, lng: stop.lng, lineName: lineName) {
+            case .direct(let phone)?:
+                Button(appLocalized("ios.place.call")) { call(phone) }
+            case .representative(let phone)?:
+                Button(appLocalized("ios.place.callRepresentative")) { call(phone) }
+            default:
+                EmptyView()
+            }
+        }
+        // 행이 떠 있는 동안 `recheckSeconds`마다 다시 부른다(펼침 일괄 조회가 1차) — 신선하면 네트워크 없이 돌아오고,
+        // 낡으면 저장소 보관 한도 전에 갱신한다. 같은 키 중복은 저장소가 막는다.
+        .task(id: "\(stop.name)|\(lineName)") {
+            while !Task.isCancelled {
+                await phoneStore.resolve(stationName: stop.name, lat: stop.lat, lng: stop.lng, lineName: lineName)
+                try? await Task.sleep(for: .seconds(StationPhoneStore.recheckSeconds))
+            }
+        }
+    }
+
+    private func call(_ phone: String) {
+        guard let url = URL(string: "tel:\(phone.replacingOccurrences(of: "-", with: ""))") else { return }
+        openURL(url)
+    }
 }
