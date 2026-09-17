@@ -44,3 +44,22 @@ describe("교통약자 시설 종류별 접기 (spec §4)", () => {
     expect(SECTIONS).not.toContain("struct StationSectionsView");
   });
 });
+
+describe("경유역 전화번호 저장소 (spec §5.3·§5.6)", () => {
+  const STORE = read("ios/Gildongmu/StationPhoneStore.swift");
+  const KIT = read("ios/GildongmuKit/Sources/GildongmuKit/StationPhone.swift");
+
+  it("메모리만 쓴다 — 영속 API 0", () => {
+    expect(STORE).not.toMatch(/UserDefaults|AppStorage|FileManager|\.write\(to:|NSCache/);
+  });
+
+  it("번호·없음은 5분 보관, 실패는 신선도 기록을 남기지 않는다", () => {
+    expect(STORE).toContain("static let freshSeconds: TimeInterval = 300");
+    expect(STORE).toContain("fetchedAt[key] = value == .failed ? nil : Date()");
+  });
+
+  it("조회 서비스는 장소 트랙만 부른다(주소·유료 웹검색 0) — 3초 상한", () => {
+    expect(KIT).toContain('client.get("/api/places", query: query, timeout: 3)');
+    expect(KIT).not.toMatch(/\/api\/address\/search|\/api\/search\/web/);
+  });
+});
