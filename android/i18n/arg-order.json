@@ -671,6 +671,12 @@
   "transitGuide.busEtaSec": [
     "seconds"
   ],
+  "transitGuide.callStation": [
+    "station"
+  ],
+  "transitGuide.callStationRepresentative": [
+    "station"
+  ],
   "transitGuide.context": [
     "line",
     "stop"
