@@ -168,3 +168,32 @@ private let subwayCat = "교통,수송 > 지하철,전철 > "
     let places = [poi("천호역 5호선", subwayCat + "수도권5호선", "02-6311-5471", lat: 37.5387, lng: 127.1234)]
     #expect(pickStationPhone(places: places, stationName: "천호", lat: 37.5387, lng: 127.1234, lineName: "화성 트램") == .unavailable)
 }
+
+// MARK: 역무실 POI 우선(판정 ⑦)
+
+private let stationOfficeCat = "교통,수송 > 기차,철도 > 기차역관리운영"
+
+@Test func pickPrefersStationOfficePOIAtTransferStation() {
+    // 실호출 게이트 사례: 환승역 역 POI "가락시장역 3호선"이 8호선 역무실 번호를 갖고, 3호선 번호는 역무실 POI에만 있다.
+    let places = [
+        poi("가락시장역 3호선", subwayCat + "수도권3호선", "02-6311-8171", lat: 37.4922, lng: 127.1177),
+        poi("가락시장역 3호선 역무실", stationOfficeCat, "02-6110-3501", lat: 37.4928, lng: 127.1182, id: "kakao-3"),
+    ]
+    #expect(pickStationPhone(places: places, stationName: "가락시장", lat: 37.4922, lng: 127.1177, lineName: "수도권 3호선") == .direct("02-6110-3501"))
+}
+
+@Test func pickIgnoresStationOfficeOfOtherLine() {
+    let places = [
+        poi("가락시장역 8호선", subwayCat + "수도권8호선", "02-6311-8171", lat: 37.4922, lng: 127.1177),
+        poi("가락시장역 3호선 역무실", stationOfficeCat, "02-6110-3501", lat: 37.4928, lng: 127.1182, id: "kakao-3"),
+    ]
+    #expect(pickStationPhone(places: places, stationName: "가락시장", lat: 37.4922, lng: 127.1177, lineName: "수도권 8호선") == .direct("02-6311-8171"))
+}
+
+@Test func pickFallsBackWhenStationOfficeHasNoPhone() {
+    let places = [
+        poi("가락시장역 3호선", subwayCat + "수도권3호선", "02-6311-8171", lat: 37.4922, lng: 127.1177),
+        poi("가락시장역 3호선 역무실", stationOfficeCat, nil, lat: 37.4928, lng: 127.1182, id: "kakao-3"),
+    ]
+    #expect(pickStationPhone(places: places, stationName: "가락시장", lat: 37.4922, lng: 127.1177, lineName: "수도권 3호선") == .direct("02-6311-8171"))
+}
