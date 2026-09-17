@@ -1062,6 +1062,9 @@
   "android.place.callLine": [
     "phone"
   ],
+  "android.place.callRepresentativeLine": [
+    "phone"
+  ],
   "android.place.englishAddressLine": [
     "value"
   ],
@@ -1100,6 +1103,11 @@
   "android.station.kindCount": [
     "label",
     "count"
+  ],
+  "android.station.kindCountStopped": [
+    "label",
+    "count",
+    "stopped"
   ],
   "android.station.nameSuffixed": [
     "name"

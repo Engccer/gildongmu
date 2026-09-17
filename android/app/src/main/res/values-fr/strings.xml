@@ -216,6 +216,8 @@
     <string name="android_place_askAbout">Poser une question sur %1$s</string>
     <string name="android_place_call">Appeler</string>
     <string name="android_place_callLine">Appeler, %1$s</string>
+    <string name="android_place_callRepresentative">Appeler le standard</string>
+    <string name="android_place_callRepresentativeLine">Appeler, standard %1$s</string>
     <string name="android_place_copyAddress">Copier l\'adresse</string>
     <string name="android_place_englishAddressLine">Adresse en anglais, %1$s</string>
     <string name="android_place_jibunAddressLine">Adresse (parcelle), %1$s</string>
@@ -290,10 +292,12 @@
     <string name="android_station_countSome">%1$s : %2$s</string>
     <string name="android_station_countUnknown">%1$s : aucune donnée</string>
     <string name="android_station_kindCount">%1$s : %2$s</string>
+    <string name="android_station_kindCountStopped">%1$s : %2$s, %3$s hors service</string>
     <string name="android_station_nameSuffixed">Station %1$s</string>
     <string name="android_station_noArrivals">Aucun train prévu</string>
     <string name="android_station_operatingNormal">En service</string>
     <string name="android_station_operatingStopped">Hors service</string>
+    <string name="android_station_phoneError">Impossible de charger le numéro de la gare.</string>
     <string name="android_station_railFacilities">Équipements d\'accessibilité (rail)</string>
     <string name="android_station_seoulFacilities">Équipements d\'accessibilité (métro de Séoul)</string>
     <string name="android_tab_chat">Chat</string>
