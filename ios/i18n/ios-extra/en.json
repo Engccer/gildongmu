@@ -99,7 +99,9 @@
       "englishAddressLine": "English address, {value}",
       "copyAddress": "Copy address",
       "askAbout": "Ask about {name}",
-      "nearbyHeading": "Near this place"
+      "nearbyHeading": "Near this place",
+      "callRepresentativeLine": "Call, main line {phone}",
+      "callRepresentative": "Call main line"
     },
     "clinic": {
       "designated": "Government-designated night pediatric clinic (Moonlight Children's Hospital)."
@@ -137,7 +139,9 @@
       "seoulFacilities": "Accessibility facilities (Seoul subway)",
       "kindCount": "{label}: {count}",
       "operatingNormal": "In service",
-      "operatingStopped": "Out of service"
+      "operatingStopped": "Out of service",
+      "kindCountStopped": "{label}: {count}, {stopped} out of service",
+      "phoneError": "Couldn't load the station phone number."
     },
     "nearby": {
       "subway": "Subway arrivals",

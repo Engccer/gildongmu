@@ -99,7 +99,9 @@
       "englishAddressLine": "Indirizzo in inglese, {value}",
       "copyAddress": "Copia indirizzo",
       "askAbout": "Chiedi informazioni su {name}",
-      "nearbyHeading": "Vicino a questo luogo"
+      "nearbyHeading": "Vicino a questo luogo",
+      "callRepresentativeLine": "Chiama, numero centrale {phone}",
+      "callRepresentative": "Chiama il numero centrale"
     },
     "clinic": {
       "designated": "Clinica pediatrica notturna designata dal governo (Moonlight Children's Hospital)."
@@ -137,7 +139,9 @@
       "seoulFacilities": "Strutture di accessibilità (metro di Seoul)",
       "kindCount": "{label}: {count}",
       "operatingNormal": "In funzione",
-      "operatingStopped": "Fuori servizio"
+      "operatingStopped": "Fuori servizio",
+      "kindCountStopped": "{label}: {count}, {stopped} fuori servizio",
+      "phoneError": "Impossibile caricare il numero della stazione."
     },
     "nearby": {
       "subway": "Arrivi della metro",

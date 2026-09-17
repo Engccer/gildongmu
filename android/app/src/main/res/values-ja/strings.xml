@@ -216,6 +216,8 @@
     <string name="android_place_askAbout">%1$sについて質問する</string>
     <string name="android_place_call">電話をかける</string>
     <string name="android_place_callLine">電話をかける、%1$s</string>
+    <string name="android_place_callRepresentative">代表番号に電話をかける</string>
+    <string name="android_place_callRepresentativeLine">電話をかける、代表番号 %1$s</string>
     <string name="android_place_copyAddress">住所をコピー</string>
     <string name="android_place_englishAddressLine">英語住所、%1$s</string>
     <string name="android_place_jibunAddressLine">地番住所、%1$s</string>
@@ -290,10 +292,12 @@
     <string name="android_station_countSome">%1$s%2$s台</string>
     <string name="android_station_countUnknown">%1$sの情報なし</string>
     <string name="android_station_kindCount">%1$s%2$sか所</string>
+    <string name="android_station_kindCountStopped">%1$s%2$sか所、運行停止%3$sか所</string>
     <string name="android_station_nameSuffixed">%1$s駅</string>
     <string name="android_station_noArrivals">到着予定の列車はありません</string>
     <string name="android_station_operatingNormal">通常稼働</string>
     <string name="android_station_operatingStopped">稼働停止</string>
+    <string name="android_station_phoneError">駅の電話番号を読み込めませんでした。</string>
     <string name="android_station_railFacilities">バリアフリー設備(鉄道)</string>
     <string name="android_station_seoulFacilities">バリアフリー設備(ソウル地下鉄)</string>
     <string name="android_tab_chat">チャット</string>

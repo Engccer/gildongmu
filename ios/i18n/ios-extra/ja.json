@@ -99,7 +99,9 @@
       "englishAddressLine": "英語住所、{value}",
       "copyAddress": "住所をコピー",
       "askAbout": "{name}について質問する",
-      "nearbyHeading": "この場所の周辺"
+      "nearbyHeading": "この場所の周辺",
+      "callRepresentativeLine": "電話をかける、代表番号 {phone}",
+      "callRepresentative": "代表番号に電話をかける"
     },
     "clinic": {
       "designated": "政府指定の小児夜間診療機関(月あかりこども病院)です。"
@@ -137,7 +139,9 @@
       "seoulFacilities": "バリアフリー設備(ソウル地下鉄)",
       "kindCount": "{label}{count}か所",
       "operatingNormal": "通常稼働",
-      "operatingStopped": "稼働停止"
+      "operatingStopped": "稼働停止",
+      "kindCountStopped": "{label}{count}か所、運行停止{stopped}か所",
+      "phoneError": "駅の電話番号を読み込めませんでした。"
     },
     "nearby": {
       "subway": "地下鉄到着",

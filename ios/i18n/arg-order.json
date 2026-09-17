@@ -447,6 +447,9 @@
   "ios.place.callLine": [
     "phone"
   ],
+  "ios.place.callRepresentativeLine": [
+    "phone"
+  ],
   "ios.place.englishAddressLine": [
     "value"
   ],
@@ -524,6 +527,11 @@
   "ios.station.kindCount": [
     "label",
     "count"
+  ],
+  "ios.station.kindCountStopped": [
+    "label",
+    "count",
+    "stopped"
   ],
   "ios.station.nameSuffixed": [
     "name"

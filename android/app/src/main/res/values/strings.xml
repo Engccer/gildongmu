@@ -216,6 +216,8 @@
     <string name="android_place_askAbout">%1$s에 관해 물어보기</string>
     <string name="android_place_call">전화 걸기</string>
     <string name="android_place_callLine">전화 걸기, %1$s</string>
+    <string name="android_place_callRepresentative">대표번호로 전화 걸기</string>
+    <string name="android_place_callRepresentativeLine">전화 걸기, 대표번호 %1$s</string>
     <string name="android_place_copyAddress">주소 복사하기</string>
     <string name="android_place_englishAddressLine">영문 주소, %1$s</string>
     <string name="android_place_jibunAddressLine">지번 주소, %1$s</string>
@@ -290,10 +292,12 @@
     <string name="android_station_countSome">%1$s %2$s대</string>
     <string name="android_station_countUnknown">%1$s 정보 없음</string>
     <string name="android_station_kindCount">%1$s %2$s곳</string>
+    <string name="android_station_kindCountStopped">%1$s %2$s곳, 운행 중지 %3$s곳</string>
     <string name="android_station_nameSuffixed">%1$s역</string>
     <string name="android_station_noArrivals">도착 예정 열차가 없습니다</string>
     <string name="android_station_operatingNormal">정상 가동</string>
     <string name="android_station_operatingStopped">운행 중지</string>
+    <string name="android_station_phoneError">역 전화번호를 불러오지 못했습니다.</string>
     <string name="android_station_railFacilities">교통약자 시설(철도)</string>
     <string name="android_station_seoulFacilities">교통약자 시설(서울 지하철)</string>
     <string name="android_tab_chat">채팅</string>
