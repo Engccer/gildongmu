@@ -1,5 +1,7 @@
 # 역 장소 상세 개편 (E44) Implementation Plan
 
+> 구현 뒤 정정: 저장소 의미(표시·갱신·보관)는 리뷰로 바뀌었다 — spec §5.6이 정본이다. 판정 ⑦(역무실 POI 우선)은 spec §5.4-6.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** iOS 역 장소 상세를 역 정보(전화 맨 위) → 도착·시간표 → 교통약자 시설(종류별 접기) → 무장애 → 길찾기 → 이 장소 주변(지하철 제외) 순으로 바꾸고, 대중교통 안내 시트 경유역에 카카오 검색으로 찾은 역 전화번호(대표번호 표기)를 상세 전화 줄·경유역 로터 "전화 걸기"로 낸다.
