@@ -298,6 +298,8 @@
     <string name="android_station_operatingNormal">En funcionamiento</string>
     <string name="android_station_operatingStopped">Fuera de servicio</string>
     <string name="android_station_phoneError">No se pudo cargar el teléfono de la estación.</string>
+    <string name="android_station_phoneMissing">No hay teléfono de la estación.</string>
+    <string name="android_station_phonePending">Buscando el teléfono de la estación.</string>
     <string name="android_station_railFacilities">Instalaciones de accesibilidad (ferrocarril)</string>
     <string name="android_station_seoulFacilities">Instalaciones de accesibilidad (metro de Seúl)</string>
     <string name="android_tab_chat">Chat</string>
@@ -1113,6 +1115,8 @@
     <string name="transitGuide_busNotDeparted">Aún no ha salido de la cochera.</string>
     <string name="transitGuide_busSoon">Llega pronto.</string>
     <string name="transitGuide_busTurning">Esperando en la terminal.</string>
+    <string name="transitGuide_callStation">Llamar a %1$s</string>
+    <string name="transitGuide_callStationRepresentative">Llamar al número central de %1$s</string>
     <string name="transitGuide_cancelChangeBoarding">Cancelar cambio de embarque</string>
     <string name="transitGuide_capSlowed">Reduciendo la frecuencia de actualización.</string>
     <string name="transitGuide_changeBoarding">Cambiar embarque</string>

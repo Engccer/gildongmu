@@ -1005,15 +1005,12 @@ private struct ViaStopStationRow: View {
             label.frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        // ⚠ 전화 액션은 **저장소 상태와 무관하게 항상 있다**(E45 판정 ⑤ — E44 §5.5 개정). 종전엔 번호가
+        // 확정된 행에만 섰는데, 그러면 "번호 없음"·"찾는 중"·"조회 실패"가 전부 **액션 부재**로 뭉개져
+        // 3상태가 사라진다(헌장 §1). 지하는 통신이 끊기기 쉬워 이 화면에서 특히 필요하다. 액션 목록
+        // 길이가 불변이라 로터를 열어 둔 사이 목록이 변하지도 않는다.
         .accessibilityActions {
-            switch phoneStore.result(stationName: stop.name, lat: stop.lat, lng: stop.lng, lineName: lineName) {
-            case .direct(let phone)?:
-                Button(appLocalized("ios.place.call")) { call(phone) }
-            case .representative(let phone)?:
-                Button(appLocalized("ios.place.callRepresentative")) { call(phone) }
-            default:
-                EmptyView()
-            }
+            Button(callLabel) { call() }
         }
         // 행이 떠 있는 동안 `recheckSeconds`마다 다시 부른다(펼침 일괄 조회가 1차) — 신선하면 네트워크 없이 돌아오고,
         // 낡으면 저장소 보관 한도 전에 갱신한다. 같은 키 중복은 저장소가 막는다.
@@ -1025,8 +1022,18 @@ private struct ViaStopStationRow: View {
         }
     }
 
-    private func call(_ phone: String) {
-        guard let url = URL(string: "tel:\(phone.replacingOccurrences(of: "-", with: ""))") else { return }
-        openURL(url)
+    /// **라벨만** 상태로 갈린다. 행 이름이 곧 역명이라 라벨에는 역 이름을 넣지 않는다.
+    private var callLabel: String {
+        if case .representative? = phoneStore.result(
+            stationName: stop.name, lat: stop.lat, lng: stop.lng, lineName: lineName) {
+            return appLocalized("ios.place.callRepresentative")
+        }
+        return appLocalized("ios.place.call")
+    }
+
+    /// 브리핑 로터와 같은 창구를 지난다 — 번호면 걸고, 그 밖이면 3상태를 통지·진동으로 알린다.
+    private func call() {
+        callStationPhone(
+            stationName: stop.name, lat: stop.lat, lng: stop.lng, lineName: lineName, openURL: openURL)
     }
 }

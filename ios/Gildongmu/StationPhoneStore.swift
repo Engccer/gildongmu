@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import SwiftUI
 import GildongmuKit
 
 /// 경유역 전화번호 조회 결과 저장소(E44 spec §5.6). 역 상세 전화 줄과 경유역 행 로터가 같은 키로 공유한다.
@@ -124,9 +125,54 @@ final class StationPhoneStore {
     }
 
     /// 경유역 목록을 펼치는 순간 그 구간 역 전부를 미리 조회한다(spec §6, 리뷰 M6 — 행 실현 시 조회는 액션이 조용히 늦게 생긴다).
+    ///
+    /// ⚠ 받은 배열 **전부**에 `resolve`를 돈다. 경유역 목록(수십 건)에 맞춰 만든 것이므로, 브리핑처럼 줄마다
+    ///   부르는 소비자는 그 줄의 역만 넘긴다(E45 spec §5.2 — `leg.stops`를 그대로 주면 leg 하나에 12~20건이 돈다).
     func prefetch(stops: [TransitLegStop], lineName: String) {
         for stop in stops {
             Task { await resolve(stationName: stop.name, lat: stop.lat, lng: stop.lng, lineName: lineName) }
         }
+    }
+}
+
+/// 역 전화 액션의 단일 창구(E45 spec §5.1). 경로 브리핑 로터와 안내 시트 경유역 로터가 같은 한 벌을 지난다 —
+/// 두 벌이면 한쪽만 고쳐져 같은 상황에서 다른 말을 하게 된다.
+///
+/// - 번호가 있으면 걸고 **통지하지 않는다**(전화 앱으로 넘어가는 것이 곧 응답이라 통지가 잉여다).
+/// - 없음·모름·실패는 `.high` 통지와 진동을 함께 낸다. 화면이 바뀌지 않는 활성화 응답이라 통지가 유일한
+///   증거이고, 기본 우선순위면 VoiceOver의 활성화 처리에 잠식돼 아무 말도 들리지 않는다(헌장 §5).
+/// - ⚠ 모름(`nil`)은 조회 전·첫 조회 중·보관 한도 축출을 겹쳐 든다. 그대로 "찾고 있습니다"라고만 하면 아무도
+///   다시 조회하지 않는 경우 그 문장이 영영 거짓이므로, **통지 전에 `resolve`를 킥오프**해 사후적으로 참이 되게 한다.
+///
+/// 상태 판정(문구 키·진동 종류)은 Kit 순수 함수 `briefingPhoneAnnouncement`가 한다(뷰 안에 두면 테스트 레인이 없다).
+@MainActor
+func callStationPhone(
+    stationName: String, lat: Double, lng: Double, lineName: String, openURL: OpenURLAction
+) {
+    let store = StationPhoneStore.shared
+    let result = store.result(stationName: stationName, lat: lat, lng: lng, lineName: lineName)
+    switch result {
+    case .direct(let phone)?, .representative(let phone)?:
+        if let url = URL(string: "tel:\(phone.replacingOccurrences(of: "-", with: ""))") { openURL(url) }
+        return
+    default:
+        break
+    }
+    if result == nil {
+        Task { await store.resolve(stationName: stationName, lat: lat, lng: lng, lineName: lineName) }
+    }
+    guard let notice = briefingPhoneAnnouncement(result) else { return }
+    var message = AttributedString(appLocalized(notice.key))
+    message.accessibilitySpeechAnnouncementPriority = .high
+    AccessibilityNotification.Announcement(message).post()
+    ResultHaptic.fire(appHaptic(notice.haptic))
+}
+
+/// Kit 판정 어휘 → 앱 진동 창구(`ResultHaptic`은 UIKit에 기대므로 Kit에 둘 수 없다).
+private func appHaptic(_ kind: ResultHapticKind) -> ResultHaptic.Kind {
+    switch kind {
+    case .success: return .success
+    case .attention: return .attention
+    case .failure: return .failure
     }
 }
