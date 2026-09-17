@@ -162,7 +162,22 @@ func callStationPhone(
         Task { await store.resolve(stationName: stationName, lat: lat, lng: lng, lineName: lineName) }
     }
     guard let notice = briefingPhoneAnnouncement(result) else { return }
-    var message = AttributedString(appLocalized(notice.key))
+    // ⚠ Kit이 돌려준 키를 그대로 `appLocalized(변수)`로 넘기지 않는다. `check-xcstrings-keys.mjs`는
+    //   **문자열 리터럴만** 스캔하므로 변수 키는 카탈로그 대조에서 통째로 빠지고, 키가 없으면 VoiceOver가
+    //   키 문자열을 그대로 낭독한다. 리터럴로 되받는 이 스위치가 그 게이트를 살려 둔다
+    //   (`transitAlternativeName`·`TransitWalkLegText` 소비자와 같은 관례).
+    let text: String
+    switch notice.key {
+    case "ios.station.phoneMissing": text = appLocalized("ios.station.phoneMissing")
+    case "ios.station.phonePending": text = appLocalized("ios.station.phonePending")
+    case "ios.station.phoneError": text = appLocalized("ios.station.phoneError")
+    default:
+        // Kit이 키를 늘렸는데 여기 case가 빠진 것 — 문자열 switch라 컴파일러가 못 잡으므로 디버그에서
+        // 즉시 드러내고, 릴리스는 키를 그대로 노출해 침묵을 피한다.
+        assertionFailure("briefingPhoneAnnouncement 키 미매핑: \(notice.key)")
+        text = notice.key
+    }
+    var message = AttributedString(text)
     message.accessibilitySpeechAnnouncementPriority = .high
     AccessibilityNotification.Announcement(message).post()
     ResultHaptic.fire(appHaptic(notice.haptic))
