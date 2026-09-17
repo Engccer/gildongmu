@@ -82,16 +82,16 @@ describe("경유역 전화번호 저장소 (spec §5.3·§5.6)", () => {
     expect(body).not.toMatch(/Date\(\)|freshSeconds|fetchedAt|evictAfterSeconds/);
   });
 
-  it("resolve: 신선하면 반환 → 진행 중 공유 → 지난 실패 지우기 → 조회 Task 순서", () => {
+  it("resolve: 신선하면 반환 → 진행 중 공유 → 조회 Task 순서, 재시도 시작이 표시 값을 지우지 않는다", () => {
     const body = funcBody("func resolve(");
     const fresh = body.indexOf("Date().timeIntervalSince(at) < Self.freshSeconds");
     const join = body.indexOf("if let running = inflight[key] { return await running.value }");
-    const clear = body.indexOf("if results[key] == .failed { results[key] = nil }");
     const task = body.indexOf("let task = Task {");
     expect(fresh).toBeGreaterThan(-1);
     expect(join).toBeGreaterThan(fresh);
-    expect(clear).toBeGreaterThan(join);
-    expect(task).toBeGreaterThan(clear);
+    expect(task).toBeGreaterThan(join);
+    // 실패 줄은 재시도 중에도 참이다 — 지우면 30초마다 실패 줄 ↔ 빈 줄로 바뀌어 VoiceOver 커서가 떨어진다.
+    expect(body).not.toContain("results[key] = nil");
   });
 
   it("기록은 조회 Task 본문이 한다 — 첫 소비자의 재개 뒤가 아니다", () => {
@@ -106,14 +106,42 @@ describe("경유역 전화번호 저장소 (spec §5.3·§5.6)", () => {
     expect(tail).not.toMatch(/record\(|inflight\[key\] = nil|results\[key\] =/);
   });
 
-  it("실패는 도장 없이 두고, 번호·없음은 도장이 그대로일 때만 보관 한도 뒤 지운다", () => {
+  it("실패 기록: 낡은 번호·없음은 덮지 않고 표식만, 그 밖엔 실패로 — 도장은 건드리지 않는다", () => {
     const body = funcBody("private func record(");
-    const failed = body.indexOf("guard value != .failed else {");
-    const stamp = body.indexOf("fetchedAt[key] = stamp");
-    expect(failed).toBeGreaterThan(-1);
-    expect(body.slice(failed, stamp)).toContain("fetchedAt[key] = nil");
-    expect(body).toContain("try? await Task.sleep(for: .seconds(Self.evictAfterSeconds))");
-    expect(body).toContain("if self.fetchedAt[key] == stamp {");
+    const branch = body.indexOf("if value == .failed {");
+    const current = body.indexOf("if let current = results[key], current != .failed {");
+    const insert = body.indexOf("refreshFailed.insert(key)");
+    const setFailed = body.indexOf("results[key] = .failed");
+    const success = body.indexOf("\n        results[key] = value\n");
+    expect(branch).toBeGreaterThan(-1);
+    expect(current).toBeGreaterThan(branch);
+    expect(insert).toBeGreaterThan(current);
+    expect(setFailed).toBeGreaterThan(insert);
+    expect(success).toBeGreaterThan(setFailed);
+    // 도장을 지우거나 바꾸면 낡은 번호의 보관 한도 예약이 무효가 된다.
+    expect(body.slice(branch, success)).not.toContain("fetchedAt");
+  });
+
+  it("성공 기록은 표식을 지우고 도장을 찍으며, 도장이 그대로일 때만 보관 한도에서 실패 또는 모름으로 바꾼다", () => {
+    const body = funcBody("private func record(");
+    const success = body.indexOf("\n        results[key] = value\n");
+    const clearMark = body.indexOf("\n        refreshFailed.remove(key)\n");
+    const stampDecl = body.indexOf("\n        let stamp = Date()\n");
+    const stampSet = body.indexOf("\n        fetchedAt[key] = stamp\n");
+    const sleep = body.indexOf("try? await Task.sleep(for: .seconds(Self.evictAfterSeconds))");
+    const guardStamp = body.indexOf("guard self.fetchedAt[key] == stamp else { return }");
+    const clearStamp = body.indexOf("self.fetchedAt[key] = nil");
+    const evict = body.indexOf(
+      "self.results[key] = self.refreshFailed.remove(key) != nil ? .failed : nil",
+    );
+    expect(success).toBeGreaterThan(-1);
+    expect(clearMark).toBeGreaterThan(success);
+    expect(stampDecl).toBeGreaterThan(clearMark);
+    expect(stampSet).toBeGreaterThan(stampDecl);
+    expect(sleep).toBeGreaterThan(stampSet);
+    expect(guardStamp).toBeGreaterThan(sleep);
+    expect(clearStamp).toBeGreaterThan(guardStamp);
+    expect(evict).toBeGreaterThan(clearStamp);
   });
 
   it("조회 서비스는 장소 트랙만 부른다(주소·유료 웹검색 0) — 3초 상한", () => {
