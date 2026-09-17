@@ -143,6 +143,22 @@ struct TransitBriefingStationsTests {
         #expect(out.first?.lineName == "수도권 5호선")
     }
 
+    @Test func 하차역_이름이_중간에도_있으면_뒤엣것을_고른다() {
+        // 하차 축의 검출력은 **목록의 마지막이 하차역이 아닌** 배열에서만 생긴다 — 그렇지 않으면
+        // `stops.last` 위치 인덱스로 되돌려도 같은 답이 나온다(리뷰 실측 2026-09-18).
+        let legs = [subway(from: "천호", to: "여의도", stops: [
+            stop("천호", lat: 37.538), stop("여의도", lat: 37.9), stop("광나루", lat: 37.545),
+            stop("여의도", lat: 37.521),
+        ])]
+        #expect(transitBriefingStations(legs, row: .transit(legIndex: 0)).last?.stop.lat == 37.521)
+        #expect(transitBriefingStations(legs, row: .alight(legIndex: 0)).first?.stop.lat == 37.521)
+    }
+
+    @Test func 하차_줄도_역순_목록에서_이름으로_찾는다() {
+        let legs = [subway(stops: line5Stops.reversed())]
+        #expect(transitBriefingStations(legs, row: .alight(legIndex: 0)).map(\.stop.name) == ["여의도"])
+    }
+
     @Test func 하차_줄의_대상은_구간_줄의_하차_항목과_같다() {
         let legs = [subway(from: "시청", to: "시청", stops: [
             stop("시청", lat: 37.5651), stop("을지로입구", lat: 37.566), stop("시청", lat: 37.5659),
@@ -163,6 +179,14 @@ struct TransitBriefingStationsTests {
         let out = transitBriefingStations(legs, row: .walk(legIndex: 0))
         #expect(out.map(\.stop.name) == ["천호"])
         #expect(out.first?.lineName == "수도권 5호선")
+    }
+
+    @Test func 도보_줄은_승차역을_앞에서부터_찾는다() {
+        // 왕복·순환 노선은 승차역 이름이 목록에 두 번 나온다 — 뒤에서 찾으면 돌아오는 쪽 승강장이 열린다.
+        let legs = [walk(to: "천호"), subway(from: "천호", to: "여의도", stops: [
+            stop("천호", lat: 37.538), stop("여의도", lat: 37.521), stop("천호", lat: 37.9),
+        ])]
+        #expect(transitBriefingStations(legs, row: .walk(legIndex: 0)).first?.stop.lat == 37.538)
     }
 
     @Test func 도보가_연달아_둘이면_두_줄이_같은_역을_가리킨다() {

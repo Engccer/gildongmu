@@ -108,6 +108,10 @@ public enum ResultHapticKind: Sendable, Hashable {
 ///   거짓이 되지 않게 하는 것은 호출부의 몫이다 — 통지 전에 `resolve`를 킥오프해 문장이 사후적으로 참이 되게 한다.
 ///
 /// 통지 문구에 역 이름을 넣지 않는다. 방금 누른 액션 라벨이 그 역을 말했다(뻔한 꼬리 문장 금지).
+///
+/// ⚠ 돌려주는 것은 **키**다. 호출부는 `appLocalized(변수)`로 넘기지 말고 리터럴 `switch`로 되받아야 한다 —
+///   `check-xcstrings-keys.mjs`가 문자열 리터럴만 스캔하므로 변수 키는 카탈로그 대조에서 빠지고, 키가
+///   사라지면 VoiceOver가 키 문자열을 그대로 낭독한다(`TransitWalkLegText` 소비자와 같은 관례).
 public func briefingPhoneAnnouncement(
     _ result: StationPhoneResult?
 ) -> (key: String, haptic: ResultHapticKind)? {

@@ -77,13 +77,13 @@ public func transitBriefingStations(
 
 | 줄 | 이름 출처 | 대상 선택 | 개수 |
 |---|---|---|---|
-| `.walk(i)` | `legs[i].toName` (non-empty) | **다음 non-walk leg**가 `subway`일 때 그 leg의 `stops`에서 `legs[next].fromName` 조인 | 0~1 |
+| `.walk(i)` | `legs[next].fromName` (non-empty) | **다음 non-walk leg**가 `subway`일 때 그 leg의 `stops`에서 같은 이름으로 조인 | 0~1 |
 | `.transit(i)` | `fromName`·`toName` (각 non-empty) | 같은 leg `stops`에서 `fromName`은 **앞에서부터** 첫 일치, `toName`은 **뒤에서부터** 첫 일치 | 0~2 |
 | `.alight(i)` | `leg.toName` (줄 존재 조건과 동일) | `.transit`의 하차 항목과 같은 술어 | 0~1 |
 
 **규칙 다섯**:
 1. **조인 실패는 진입점 없음**이다(추측으로 고르지 않는다). 그 줄은 현행 `Text` 그대로다.
-2. **`.walk`의 "다음 leg"는 `legs[i+1]`이 아니라 `next non-walk leg`다** — 서버가 이름을 그렇게 유도한다(`odsay.ts:415` `legs.slice(i+1).find(l => l.mode !== "walk")`). 게이트가 이름의 출처와 같은 술어를 써야 도보가 연달아 나오는 응답에서 "같은 이름인데 한 줄에는 진입점이 있고 한 줄에는 없다"가 생기지 않는다.
+2. **`.walk`의 이름 출처는 `legs[next].fromName`이다**(초안은 `legs[i].toName`이라 적었다 — 구현 리뷰 정정). 서버가 도보 leg에 `toName`을 싣지 않고 파생 루프가 `next.fromName`이 있을 때만 덮으므로(`odsay.ts:341-345`·`:413-423`), 도보 줄의 `toName`은 "부재이거나 `next.fromName`과 같은 값"뿐이다. 두 게이트는 서버 계약상 동치이고 한 필드만 보는 쪽이 출처와 같은 술어다. **그리고 "다음 leg"는 `legs[i+1]`이 아니라 `next non-walk leg`다** — 서버가 이름을 그렇게 유도한다(`odsay.ts:415` `legs.slice(i+1).find(l => l.mode !== "walk")`). 게이트가 이름의 출처와 같은 술어를 써야 도보가 연달아 나오는 응답에서 "같은 이름인데 한 줄에는 진입점이 있고 한 줄에는 없다"가 생기지 않는다.
 3. **이름 게이트는 non-nil이 아니라 non-empty다.** `transitLegText`는 `fromName.map { … }`이라 `""`도 값으로 통과시켜 "에서 승차"를 낸다(같은 파일이 `lineName`에만 이 함정을 막아 뒀다, `RouteBriefing.swift:219-222`). non-nil로 구현하면 라벨이 " 상세 보기"가 된다.
 4. **`.alight`의 줄 존재 판정과 대상 판정이 같은 필드를 본다.** 호출부의 `if let text = alightLineText(…)`는 `station`(= `toName`)으로 줄을 세우고(`TransitExitLines.swift:31`·`QuickExitText.swift:23`), 이 함수도 `toName`으로 대상을 고른다. 초안은 줄 존재를 `toName`, 대상을 `stops.last`로 갈라 두어 두 술어가 어긋날 수 있었다.
 5. **승차·하차가 같은 역이면 1개로 접는다**(정규화 결과 일치).
@@ -279,11 +279,16 @@ E33도 같은 판정이다(설계 리뷰 E1: "영문이 없으면 라벨 전체�
 | 조인을 위치 인덱스(`stops.first`/`last`)로 되돌림 | ✅ Kit 5건 실패(역순 목록·부분 목록 앞·부분 목록 뒤·도보 조인 실패·transit 조인 실패) |
 | 로터 `reversed()` 제거 | ✅ 가드 ② 실패 |
 | `.walk` 게이트를 `legs[i+1]`로 | ✅ Kit `도보가_연달아_둘이면…` 실패 |
-| 이름 게이트를 non-nil로 | ⚠ **처음엔 미검출** — 아래 참조 |
+| 이름 게이트를 non-nil로 | ⚠ **등가 변이** — 아래 참조 |
+| `.alight`를 `stops.last`로 | ✅ 구현 리뷰가 찾은 생존 변이. fixture 보강 후 Kit 2건 실패 |
+| `.transit` 하차 조인을 앞에서부터로 | ✅ 같음. `하차역_이름이_중간에도_있으면…` 실패 |
+| `.walk` 승차 조인을 뒤에서부터로 | ✅ `도보_줄은_승차역을_앞에서부터_찾는다` 실패 |
 | 옵트인을 조망 소비자에도 켬 | ✅ 가드 ① 실패 |
 | `prefetch` 범위를 leg 전체로 | ✅ 가드 ⑦ 실패 |
 
-⚠ **이름 게이트 축은 변이 주입으로 공백이 드러났다.** 게이트를 non-nil로 되돌려도 기존 fixture가 전부 초록이었다 — 정규화(`normalizeStopName`)가 빈 문자열을 이미 걸러 같은 결과를 내기 때문이다. 즉 §3.2 규칙 3이 **검증되지 않은 상태**였다. 진짜 위험은 정차역 목록에도 이름이 빈 항목이 남아 **빈 이름끼리 조인**되는 경로였고(라벨이 " 상세 보기"가 된다) 그 fixture를 더해 축을 잠갔다. 같은 실측으로 원문 `isEmpty` 검사가 순수 중복임이 드러나(`name`이 비면 정규화 결과도 반드시 빈다) 제거했다.
+⚠ **하차 축은 처음에 검출력이 0이었다**(구현 리뷰 실측 2026-09-18). fixture의 하차역이 늘 목록 마지막이라 `.alight`를 `stops.last`로 되돌려도 같은 답이 나왔다 — 이 스위트가 지키겠다고 선언한 축이 정작 비어 있었다. "목록의 마지막이 하차역이 아닌" 배열과 역순 목록 fixture로 닫았고, `.walk`의 탐색 방향도 같은 이유로 잠갔다.
+
+⚠ **이름 게이트 축은 등가 변이다.** 게이트를 non-nil로 되돌려도 기존 fixture가 전부 초록이었다 — 정규화(`normalizeStopName`)가 빈 문자열을 이미 걸러 같은 결과를 내기 때문이다. 즉 §3.2 규칙 3이 **검증되지 않은 상태**였다. 진짜 위험은 정차역 목록에도 이름이 빈 항목이 남아 **빈 이름끼리 조인**되는 경로였고(라벨이 " 상세 보기"가 된다) 그 fixture를 더해 축을 잠갔다. ⚠ 서버가 이름 빈 정차역을 `toLegStops`에서 떨어뜨리므로 실데이터에서는 진짜 등가다 — 앞으로 이 축에서 "변이 생존"이 나와도 테스트 공백으로 오판하지 말 것. 같은 실측으로 원문 `isEmpty` 검사가 순수 중복임이 드러나(`name`이 비면 정규화 결과도 반드시 빈다) 제거했다.
 
 **실호출 게이트**(2단 구조 — 1단 `scripts/verify-briefing-station-join.mjs`가 표본만 모으고, **판정은 실제 구현**인 Kit이 `BriefingStationJoinGateTests`로 한다. 스크립트에 술어를 재현하면 순환 판정이 된다):
 
