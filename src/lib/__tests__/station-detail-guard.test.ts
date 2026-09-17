@@ -247,3 +247,35 @@ describe("역 장소 상세 레이아웃 (spec §3)", () => {
     );
   });
 });
+
+describe("안내 시트 경유역 로터 (spec §5.2·§6)", () => {
+  const SHEET = read("ios/Gildongmu/Directions/TransitTrackingSheet.swift");
+  const row = structBody(SHEET, "ViaStopStationRow");
+
+  it("경유역 행 하위 뷰만 저장소를 읽고, 로터는 직통·대표번호 라벨을 가른다", () => {
+    expect(row).toContain("phoneStore.result(stationName: stop.name");
+    expect(row).toContain('Button(appLocalized("ios.place.call"))');
+    expect(row).toContain('Button(appLocalized("ios.place.callRepresentative"))');
+    // 저장소는 마지막 값을 신선도 없이 돌려준다 — 행이 떠 있는 동안 재확인하지 않으면 보관 한도에 지워진다.
+    expect(row).toContain("while !Task.isCancelled");
+    expect(row).toContain("StationPhoneStore.recheckSeconds");
+    const sheetBody = SHEET.slice(0, SHEET.indexOf("private struct ViaStopStationRow"));
+    // 수신자 이름과 무관하게(`phoneStore`·`StationPhoneStore.shared`) 저장소 읽기 호출 모양으로 잡는다.
+    expect(sheetBody).not.toMatch(/\.result\(stationName:/);
+  });
+
+  it("목록을 펼치는 순간 그 구간 역을 일괄 조회한다", () => {
+    expect(SHEET).toMatch(/\.onChange\(of: viaExpanded\) \{ _, expanded in\s+if expanded \{ prefetchViaPhones\(\) \}/);
+    const fn = SHEET.slice(SHEET.indexOf("private func prefetchViaPhones("));
+    expect(fn.slice(0, fn.indexOf("\n    }\n"))).toContain(
+      "StationPhoneStore.shared.prefetch(stops: leg.viaStops, lineName: leg.lineName)",
+    );
+  });
+
+  it("노선 힌트는 누르는 순간 확정해 상세와 함께 나른다 — 목적지 상세는 nil", () => {
+    const open = SHEET.slice(SHEET.indexOf("private func openStationDetail("));
+    expect(open.slice(0, open.indexOf("\n    }\n"))).toContain("detailLineHint = lineName");
+    expect(SHEET).toContain("detailLineHint = nil");
+    expect(SHEET).toContain("PlaceDetailSheet(place: place, showsDirectionsEntry: false, stationLineHint: detailLineHint)");
+  });
+});
