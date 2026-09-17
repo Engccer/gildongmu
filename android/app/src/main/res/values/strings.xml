@@ -298,6 +298,8 @@
     <string name="android_station_operatingNormal">정상 가동</string>
     <string name="android_station_operatingStopped">운행 중지</string>
     <string name="android_station_phoneError">역 전화번호를 불러오지 못했습니다.</string>
+    <string name="android_station_phoneMissing">역 전화번호가 없습니다.</string>
+    <string name="android_station_phonePending">역 전화번호를 찾고 있습니다.</string>
     <string name="android_station_railFacilities">교통약자 시설(철도)</string>
     <string name="android_station_seoulFacilities">교통약자 시설(서울 지하철)</string>
     <string name="android_tab_chat">채팅</string>
@@ -717,7 +719,7 @@
     <string name="guide_uncertainRecovered">현재 위치를 다시 파악했습니다</string>
     <string name="kidsNearby_asOf">%1$s 기준</string>
     <string name="kidsNearby_button">내 주변 아이 놀 곳</string>
-    <string name="kidsNearby_call">전화하기</string>
+    <string name="kidsNearby_call">전화 걸기</string>
     <string name="kidsNearby_distance">약 %1$s</string>
     <string name="kidsNearby_empty">근처에 아이 놀 곳(키즈카페·놀이터·어린이공원)이 없습니다.</string>
     <string name="kidsNearby_error">아이 놀 곳 조회에 실패했습니다.</string>
@@ -1035,7 +1037,7 @@
     <string name="surroundings_ready">주변 상황</string>
     <string name="surroundings_refresh">주변 다시 확인</string>
     <string name="surroundings_source">출처: 카카오맵</string>
-    <string name="surroundingsNearby_call">전화하기</string>
+    <string name="surroundingsNearby_call">전화 걸기</string>
     <string name="surroundingsNearby_category_academy">학원</string>
     <string name="surroundingsNearby_category_attraction">관광명소</string>
     <string name="surroundingsNearby_category_bank">은행</string>
@@ -1113,6 +1115,8 @@
     <string name="transitGuide_busNotDeparted">아직 차고지에서 출발하지 않음.</string>
     <string name="transitGuide_busSoon">곧 도착.</string>
     <string name="transitGuide_busTurning">종점에서 회차 대기 중.</string>
+    <string name="transitGuide_callStation">%1$s에 전화 걸기</string>
+    <string name="transitGuide_callStationRepresentative">%1$s 대표번호로 전화 걸기</string>
     <string name="transitGuide_cancelChangeBoarding">탑승 변경 취소</string>
     <string name="transitGuide_capSlowed">실시간 조회가 많아 갱신 주기를 늦춥니다.</string>
     <string name="transitGuide_changeBoarding">탑승 변경</string>

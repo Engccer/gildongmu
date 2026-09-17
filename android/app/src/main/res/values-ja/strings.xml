@@ -298,6 +298,8 @@
     <string name="android_station_operatingNormal">通常稼働</string>
     <string name="android_station_operatingStopped">稼働停止</string>
     <string name="android_station_phoneError">駅の電話番号を読み込めませんでした。</string>
+    <string name="android_station_phoneMissing">駅の電話番号がありません。</string>
+    <string name="android_station_phonePending">駅の電話番号を検索しています。</string>
     <string name="android_station_railFacilities">バリアフリー設備(鉄道)</string>
     <string name="android_station_seoulFacilities">バリアフリー設備(ソウル地下鉄)</string>
     <string name="android_tab_chat">チャット</string>
@@ -1113,6 +1115,8 @@
     <string name="transitGuide_busNotDeparted">まだ車庫を出発していません。</string>
     <string name="transitGuide_busSoon">まもなく到着。</string>
     <string name="transitGuide_busTurning">終点で折り返し待機中。</string>
+    <string name="transitGuide_callStation">%1$sに電話をかける</string>
+    <string name="transitGuide_callStationRepresentative">%1$sの代表番号に電話をかける</string>
     <string name="transitGuide_cancelChangeBoarding">乗車変更を取り消す</string>
     <string name="transitGuide_capSlowed">更新間隔を長くします。</string>
     <string name="transitGuide_changeBoarding">乗車変更</string>

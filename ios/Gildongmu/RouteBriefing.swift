@@ -48,6 +48,17 @@ struct TransitRouteRows: View {
     /// 마지막 도보 구간이 가리킬 목적지 이름(spec §4.3). 모르면 nil이고,
     /// 그때도 "목적지까지"라는 구간 의미는 알기 때문에 문구가 사라지지 않는다.
     var destinationName: String?
+    /// 지하철역 로터 진입점(E45) — 대상 역을 받아 상세를 여는 소비자의 동작. **기본은 꺼짐**이다.
+    ///
+    /// 켜는 것은 push 스택이 있는 소비자(길찾기 탭)뿐이다. 안내 조망의 "다른 경로" 후보 목록도 같은
+    /// 이 뷰를 쓰지만 그 화면엔 `navigationDestination`이 없어 액션이 서도 **아무 일도 일어나지 않는다**
+    /// — 스크린 리더 사용자에게 무반응 액션은 진단할 수 없는 고장이다. 미리 조회가 후보마다 도는 것과
+    /// "시트 안 장소 상세는 닫기 버튼 필수"(E33) 우회도 같은 기본값이 막는다.
+    ///
+    /// ⚠ spec은 이 자리를 `Bool`로 적었지만 push 클로저가 함께 있어야 액션이 실제로 동작한다. 둘을 나눠
+    ///   두면 "켜졌는데 클로저가 없다" = 무반응 액션이라는 조합이 생기고, 그것이 정확히 이 옵트인이
+    ///   막으려던 결함이다. 하나로 합치면 그 조합이 구조적으로 불가능해진다.
+    var stationEntry: ((TransitLegStop, String?) -> Void)?
 
     var body: some View {
         if includeSummary {
@@ -58,7 +69,9 @@ struct TransitRouteRows: View {
             // VoiceOver가 숫자 뒤 m을 minutes로 오독하므로 낭독만 풀어 쓴다.
             // en 계열은 서버 영문(`*En`, E27)으로 — 시각은 `Gangnam (강남)` 병기, 낭독은 영문만(한 줄 한 객체).
             // 영문이 모자란 구간은 통째로 한국어(줄 단위 원자성).
-            transitLegRow(route.legs, at: index, destinationName: destinationName)
+            stationRow(leg.mode == "walk" ? .walk(legIndex: index) : .transit(legIndex: index)) {
+                transitLegRow(route.legs, at: index, destinationName: destinationName)
+            }
             // 하차 줄(빠른하차 E5 + 하차 출구 E25)은 별도 문장이라 같은 Text에 합치지 않는다 —
             // 합치면 한 줄이 길어지고, 나누면 스와이프 한 번에 "무슨 열차"와 "어디로 내려 나가나"가
             // 갈린다. 둘 다 없으면 행 자체가 없다(3-state: 문구를 만들지 않는다).
@@ -72,9 +85,143 @@ struct TransitRouteRows: View {
                 // 출구 문구 정본은 안내 세션과 같은 키다(Kit 카탈로그 밖이라 앱이 조회한다).
                 exitBound: { appLocalized("transitGuide.exitBound", $0) })
             {
-                Text(text)
+                stationRow(.alight(legIndex: index)) { Text(text) }
             }
         }
+    }
+
+    /// 줄에 역 진입점을 얹는다(E45). 옵트인이 꺼져 있거나 대상 역이 없으면 줄은 종전 그대로다 —
+    /// 뷰 종류는 어느 경우에도 같은 `Text`이고 로터 액션만 늘어난다(spec §3.3).
+    @ViewBuilder
+    private func stationRow<Content: View>(
+        _ row: TransitBriefingRow, @ViewBuilder content: @escaping () -> Content
+    ) -> some View {
+        if let onOpen = stationEntry {
+            let actions = briefingStationActions(route.legs, row: row)
+            if actions.isEmpty {
+                content()
+            } else {
+                BriefingStationRow(actions: actions, onOpen: onOpen, content: content)
+            }
+        } else {
+            content()
+        }
+    }
+}
+
+/// 브리핑 줄에 달릴 역 액션 하나 — Kit 판정(대상 역·노선 힌트)에 **그 줄의 언어로 고른 표시 이름**을 얹는다.
+struct BriefingStationAction: Hashable {
+    let stop: TransitLegStop
+    /// 전화번호 조회 노선 힌트. 표가 모르는 노선이면 `StationPhoneStore`가 "없음"으로 즉답한다.
+    let lineName: String?
+    /// 라벨에 쓸 역 이름.
+    let name: String
+}
+
+/// 그 줄의 역 액션들(E45 spec §3.2·§6). 대상 역은 Kit이 이름 조인으로 고르고, 여기서는 라벨 이름의
+/// 언어만 정한다.
+///
+/// ⚠ 이름의 언어는 **그 줄이 쓴 언어**다(앱 언어가 아니다). 앱 언어로 고르면 줄은 한국어인데 라벨은
+///   로마자가 되어 같은 역이 한 화면에서 두 언어로 들린다. 술어는 구간 줄·하차 줄이 쓰는 것과 같은
+///   하나이므로(`transitLegUsesEnglish`) 줄이 한국어로 떨어지면 라벨도 함께 떨어진다.
+func briefingStationActions(
+    _ legs: [TransitRouteLeg], row: TransitBriefingRow
+) -> [BriefingStationAction] {
+    let stations = transitBriefingStations(legs, row: row)
+    guard !stations.isEmpty else { return [] }
+    let legIndex: Int
+    switch row {
+    case .walk(let index), .transit(let index), .alight(let index): legIndex = index
+    }
+    let usesEnglish = transitLegUsesEnglish(legs[legIndex], lang: AppLanguage.dataLocaleValue)
+    return stations.map { station in
+        let english = usesEnglish ? station.stop.nameEn.flatMap { $0.isEmpty ? nil : $0 } : nil
+        return BriefingStationAction(
+            stop: station.stop, lineName: station.lineName, name: english ?? station.stop.name)
+    }
+}
+
+/// 역 로터를 든 브리핑 줄(E45). **저장소는 이 하위 뷰만 관찰한다** — 전화 라벨이 직통·대표번호로 갈리므로
+/// 계산이 `phoneStore.result`를 읽어야 하는데, 그 읽기가 `TransitRouteRows` 본문에 있으면 번호 도착·30초
+/// 재확인·6분 축출마다 브리핑 **전체**가 다시 그려진다(E44가 리뷰 M5로 명시적으로 피한 것).
+///
+/// 줄 뷰는 그대로 내보내고 로터만 얹는다 — 역 개수는 액션 수만 정하고 뷰 종류를 정하지 않는다.
+private struct BriefingStationRow<Content: View>: View {
+    let actions: [BriefingStationAction]
+    let onOpen: (TransitLegStop, String?) -> Void
+    @ViewBuilder let content: () -> Content
+    @Environment(\.openURL) private var openURL
+    private let phoneStore = StationPhoneStore.shared
+
+    /// 로터 한 줄 — 라벨과 동작.
+    private struct RotorItem: Identifiable {
+        let id: String
+        let label: String
+        let action: () -> Void
+    }
+
+    var body: some View {
+        content()
+            // ⚠ 선언은 **역순**이다: VoiceOver 로터가 빌더 선언의 역순으로 노출된다(PlaceRow·채팅·E33 실측).
+            //   역별 묶음 안의 (상세 → 전화) 순서도 함께 뒤집혀야 "A 상세 → A 전화 → B 상세 → B 전화"로 들린다.
+            .accessibilityActions {
+                ForEach(rotorItems) { item in
+                    Button(item.label, action: item.action)
+                }
+            }
+            // 줄이 떠 있는 동안 `recheckSeconds`마다 다시 부른다 — 저장소는 갱신되지 않은 값을 6분에 지우고,
+            // 브리핑은 출발 전에 오래 머무는 화면이라 그 시간을 넘기는 것이 평범한 사용이다. 신선하면
+            // 네트워크 없이 돌아오고, 같은 키 중복은 저장소가 막는다.
+            // ⚠ `leg.stops` 전체가 아니라 **이 줄의 역만** 넘긴다(줄당 최대 2건, spec §5.2).
+            .task(id: taskKey) {
+                while !Task.isCancelled {
+                    for action in actions {
+                        phoneStore.prefetch(stops: [action.stop], lineName: action.lineName ?? "")
+                    }
+                    try? await Task.sleep(for: .seconds(StationPhoneStore.recheckSeconds))
+                }
+            }
+    }
+
+    private var taskKey: String {
+        actions.map { "\($0.stop.name)|\($0.lineName ?? "")" }.joined(separator: ",")
+    }
+
+    private var rotorItems: [RotorItem] {
+        let ordered = actions.flatMap { station -> [RotorItem] in
+            let key = "\(station.stop.name)|\(station.lineName ?? "")"
+            return [
+                RotorItem(
+                    id: "open|\(key)",
+                    label: appLocalized("transitGuide.openStation", station.name),
+                    action: { onOpen(station.stop, station.lineName) }),
+                RotorItem(
+                    id: "call|\(key)",
+                    label: callLabel(station),
+                    action: { call(station) }),
+            ]
+        }
+        return ordered.reversed()
+    }
+
+    /// **라벨만** 상태로 갈린다. 액션의 존재는 갈리지 않는다 — 번호 없음·조회 중·실패를 액션 부재로 뭉개면
+    /// 3상태가 사라지고, 로터를 열어 둔 사이 목록 길이가 변한다(spec 판정 ④).
+    private func callLabel(_ station: BriefingStationAction) -> String {
+        switch phoneStore.result(
+            stationName: station.stop.name, lat: station.stop.lat, lng: station.stop.lng,
+            lineName: station.lineName ?? ""
+        ) {
+        case .representative?:
+            return appLocalized("transitGuide.callStationRepresentative", station.name)
+        default:
+            return appLocalized("transitGuide.callStation", station.name)
+        }
+    }
+
+    private func call(_ station: BriefingStationAction) {
+        callStationPhone(
+            stationName: station.stop.name, lat: station.stop.lat, lng: station.stop.lng,
+            lineName: station.lineName ?? "", openURL: openURL)
     }
 }
 

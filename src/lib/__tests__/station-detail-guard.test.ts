@@ -261,10 +261,15 @@ describe("안내 시트 경유역 로터 (spec §5.2·§6)", () => {
   const SHEET = read("ios/Gildongmu/Directions/TransitTrackingSheet.swift");
   const row = structBody(SHEET, "ViaStopStationRow");
 
+  // ⚠ E45 판정 ⑤로 개정: 로터 액션은 **상시 1개**이고 라벨만 직통·대표번호로 갈린다. 종전 계약
+  //   (번호가 확정된 행에만 액션)은 "없음·조회 중·실패"를 액션 부재로 뭉개 3상태를 잃었다.
+  //   spec 2026-09-18-briefing-station-entry-design.md §5.3.
   it("경유역 행 하위 뷰만 저장소를 읽고, 로터는 직통·대표번호 라벨을 가른다", () => {
-    expect(row).toContain("phoneStore.result(stationName: stop.name");
-    expect(row).toContain('Button(appLocalized("ios.place.call"))');
-    expect(row).toContain('Button(appLocalized("ios.place.callRepresentative"))');
+    // 줄바꿈은 계약이 아니다 — 호출과 인자를 따로 본다.
+    expect(row).toContain("phoneStore.result(");
+    expect(row).toContain("stationName: stop.name");
+    expect(row).toContain('appLocalized("ios.place.call")');
+    expect(row).toContain('appLocalized("ios.place.callRepresentative")');
     // 저장소는 마지막 값을 신선도 없이 돌려준다 — 행이 떠 있는 동안 재확인하지 않으면 보관 한도에 지워진다.
     expect(row).toContain("while !Task.isCancelled");
     expect(row).toContain("StationPhoneStore.recheckSeconds");

@@ -17,6 +17,15 @@ final class DirectionsPrefillStore {
     var pending: DirectionsPrefill?
 }
 
+/// 대중교통 브리핑이 push하는 역 상세 목적지(E45). **노선 힌트가 장소와 함께 간다** — 전화번호 조회가
+/// 같은 역·같은 노선 후보만 보기 때문에(E44 §5.2), 힌트 없이 장소만 실으면 환승역에서 다른 노선
+/// 역무실 번호가 나온다. 환승역이 줄에 따라 다른 번호를 내는 것은 의도다(내리는 노선의 역무실이
+/// 그 승강장을 아는 곳이다).
+struct StationDestination: Hashable {
+    let place: Place
+    let lineName: String?
+}
+
 /// 장소 상세·검색 결과가 길찾기 탭에 넘기는 프리필 한 끝(E32). 종전에는 도착지
 /// 전용이라 끝점만 실었다 — "여기부터 길찾기"가 생기며 **어느 필드에 넣는가**가
 /// 페이로드의 일부가 됐다(같은 장소가 출발지도 도착지도 될 수 있다).
@@ -656,6 +665,9 @@ struct DirectionsTabView: View {
     @AccessibilityFocusState private var guideStartFocused: GuideStartButton?
     /// 시트가 닫힐 때 되돌아갈 시작 버튼(방금 떠나온 자리).
     @State private var lastGuideStart: GuideStartButton = .fallback
+    /// 대중교통 브리핑에서 연 역 상세의 push 스택(E45). 로터 커스텀 액션은 값 기반 `NavigationLink`로
+    /// 열 수 없어 프로그래매틱 push가 필요하다. 비어 있으면 화면은 종전과 같다.
+    @State private var stationPath: [StationDestination] = []
 
     /// I4 프리필 지점: 장소 상세·검색 결과의 "여기까지/여기부터 길찾기"가 한 끝을 넘긴다(E32).
     init(prefill: DirectionsPrefill? = nil) {
@@ -663,7 +675,7 @@ struct DirectionsTabView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $stationPath) {
             List {
                 Section {
                     // 비-ko 현재 주소 병기(E28): 시각 `… (한글) …`, 낭독은 영문·로마자만(LocationBar 동형).
@@ -879,6 +891,14 @@ struct DirectionsTabView: View {
             .navigationTitle(appLocalized("ios.tab.directions"))
             .navigationBarTitleDisplayMode(.inline)
             .gildongmuTitleMenu()
+            // 브리핑 로터가 연 역 상세(E45). push라 뒤로 버튼이 있고(시트 닫기 계약 밖), 길찾기 진입은
+            // 숨긴다 — 프리필은 `directionsEpoch`를 올려 이 탭을 **재생성**하므로 조회 결과 전체가
+            // 사라지고 그 기제가 방금 push한 상세까지 함께 파괴한다(spec §7).
+            .navigationDestination(for: StationDestination.self) { destination in
+                PlaceDetailView(
+                    place: destination.place, showsDirectionsEntry: false,
+                    stationLineHint: destination.lineName)
+            }
             .sheet(item: $searchTarget) { target in
                 DirectionsEndpointSearchView(target: target) { endpoint in
                     model.setEndpoint(endpoint, for: target)  // .via는 setVia로 라우팅
@@ -1388,9 +1408,14 @@ struct DirectionsTabView: View {
                             $guideStartFocused, equals: .transitAlt(entry.route.routeKey))
                     }
                     // 라벨이 이미 요약이라 본문은 구간만(인접 중복 금지).
+                    // 역 로터 진입점은 이 화면만 켠다(E45 §3.5) — push 스택이 여기에만 있다.
                     TransitRouteRows(
                         route: entry.route, includeSummary: false,
-                        destinationName: destinationPlaceName)
+                        destinationName: destinationPlaceName,
+                        stationEntry: { stop, lineName in
+                            stationPath.append(StationDestination(
+                                place: transitStopPlace(stop), lineName: lineName))
+                        })
                 } label: {
                     Text(joinText(entry.name, transitSummaryText(entry.route.summary)))
                 }
