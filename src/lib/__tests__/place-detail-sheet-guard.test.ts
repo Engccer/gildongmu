@@ -32,6 +32,15 @@ function precedingCode(lines: string[], index: number, count: number): string {
   return out.join("\n");
 }
 
+/** 호출 줄을 감싸는 가장 가까운 `struct` 선언 이름(들여쓰기 0의 선언만 — 파일 최상위 뷰). */
+function enclosingStruct(lines: string[], index: number): string | null {
+  for (let i = index; i >= 0; i--) {
+    const m = lines[i].match(/^(?:private |fileprivate )?struct (\w+)/);
+    if (m) return m[1];
+  }
+  return null;
+}
+
 describe("장소 상세 시트 닫기 버튼 가드", () => {
   it("PlaceDetailView 호출은 push이거나 PlaceDetailSheet 본문뿐이다", () => {
     const offenders: string[] = [];
@@ -43,7 +52,7 @@ describe("장소 상세 시트 닫기 버튼 가드", () => {
         if (code.startsWith("//") || !/\bPlaceDetailView\(/.test(code)) return;
         const context = precedingCode(lines, i, 3);
         if (/NavigationLink|navigationDestination/.test(context)) return;
-        if (/struct PlaceDetailSheet\b/.test(precedingCode(lines, i, 8))) {
+        if (enclosingStruct(lines, i) === "PlaceDetailSheet") {
           sheetBodies += 1;
           return;
         }

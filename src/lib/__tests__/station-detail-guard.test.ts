@@ -27,6 +27,8 @@ describe("교통약자 시설 종류별 접기 (spec §4)", () => {
   it("접힘 라벨은 운행 중지 수를 싣는다", () => {
     expect(body).toContain('appLocalized("ios.station.kindCountStopped"');
     expect(body).toContain('$0.operatingStatus == "stopped"');
+    // 키가 본문에 있어도 라벨이 kindLabel을 안 거치면 중지 수는 화면에 오지 않는다.
+    expect(body).toMatch(/label:\s*\{\s*Text\(kindLabel\(group\)\)/);
   });
 
   it("보강 실패 줄은 종류 행들 앞, 음성유도기 기준일 줄은 음성유도기 묶음 안", () => {
@@ -147,5 +149,73 @@ describe("경유역 전화번호 저장소 (spec §5.3·§5.6)", () => {
   it("조회 서비스는 장소 트랙만 부른다(주소·유료 웹검색 0) — 3초 상한", () => {
     expect(KIT).toContain('client.get("/api/places", query: query, timeout: 3)');
     expect(KIT).not.toMatch(/\/api\/address\/search|\/api\/search\/web/);
+  });
+});
+
+describe("역 장소 상세 레이아웃 (spec §3)", () => {
+  const VIEW = read("ios/Gildongmu/PlaceDetailView.swift");
+  const bodyStart = VIEW.indexOf("var body: some View {");
+  const stationStart = VIEW.indexOf("if let kind = layoutKind {", bodyStart);
+  const elseStart = VIEW.indexOf("} else {", stationStart);
+  const elseEnd = VIEW.indexOf("\n            }\n", elseStart);
+  const station = VIEW.slice(stationStart, elseStart);
+  const general = VIEW.slice(elseStart, elseEnd);
+  const order = (src: string, marks: string[]) => marks.map((m) => {
+    const at = src.indexOf(m);
+    expect(at, m).toBeGreaterThan(-1);
+    return at;
+  });
+
+  it("역 분기 순서: 역 정보 → 상세 섹션(도착·시간표·시설) → 무장애 → 길찾기 → 이 장소 주변", () => {
+    const at = order(station, [
+      "stationInfoSection(kind)",
+      "StationDetailSections(model: stationSections)",
+      "BarrierFreeInfoSection(model: barrierFreeInfo)",
+      "routeSection",
+      "nearbySection(includesSubway: false)",
+    ]);
+    expect([...at].sort((a, b) => a - b)).toEqual(at);
+  });
+
+  it("현행 분기 순서는 개편 전 그대로: 기본 정보 → 길찾기 → 이 장소 주변(지하철 포함) → 역 섹션 → 무장애", () => {
+    const at = order(general, [
+      "generalInfoSection",
+      "routeSection",
+      "nearbySection(includesSubway: true)",
+      "StationMetaSection(model: stationSections)",
+      "StationDetailSections(model: stationSections)",
+      "BarrierFreeInfoSection(model: barrierFreeInfo)",
+    ]);
+    expect([...at].sort((a, b) => a - b)).toEqual(at);
+  });
+
+  it("지하철 도착 링크는 includesSubway가 참일 때만", () => {
+    const nearby = VIEW.slice(VIEW.indexOf("private func nearbySection("));
+    expect(nearby.slice(0, nearby.indexOf("SubwayNearbyView"))).toContain("if includesSubway");
+  });
+
+  it("역 정보 섹션: 전화 줄이 첫 행, 메타 줄이 다음, 분류 줄은 .rail만, 제목은 항상", () => {
+    const info = VIEW.slice(VIEW.indexOf("private func stationInfoSection("), VIEW.indexOf("private var stationPhoneRow"));
+    const at = order(info, ["stationPhoneRow", "StationMetaLine(model: stationSections)", "if kind == .rail"]);
+    expect([...at].sort((a, b) => a - b)).toEqual(at);
+    expect(info).toContain('Text(appLocalized("stationMeta.heading")).accessibilityAddTraits(.isHeader)');
+  });
+
+  it("전화 줄: 대표번호 표기·조회 실패 줄·조회는 경유역만", () => {
+    expect(VIEW).toContain('appLocalized("ios.place.callRepresentativeLine", phone)');
+    expect(VIEW).toContain('appLocalized("ios.station.phoneError")');
+    const lookup = VIEW.slice(VIEW.indexOf("private func lookupStationPhoneIfNeeded("));
+    const lookupBody = lookup.slice(0, lookup.indexOf("\n    }\n"));
+    expect(lookupBody).toContain('place.id.hasPrefix("transit-stop:")');
+    // 저장소는 마지막 값을 신선도 없이 돌려준다 — 화면에 떠 있는 동안 재확인하지 않으면 보관 한도에 지워진다.
+    expect(lookupBody).toContain("while !Task.isCancelled");
+    expect(lookupBody).toContain("StationPhoneStore.recheckSeconds");
+  });
+
+  it("길찾기 제목은 명시 heading이다(화면 아래로 내려가 제목 점프 의존이 커진다)", () => {
+    const route = VIEW.slice(VIEW.indexOf("private var routeSection"));
+    expect(route.slice(0, route.indexOf("\n    }\n"))).toContain(
+      'Text(appLocalized("ios.route.section")).accessibilityAddTraits(.isHeader)',
+    );
   });
 });
