@@ -146,7 +146,7 @@
 - **런타임 판정이 있는 자리에 상시 고지 문장을 얹지 않는다**(`isBackgroundAudible` 판정 위에 얹힌 "화면이 꺼지면 멈춘다"가 거짓이 된 실사고; 웹은 참). 삭제 범위는 소비자 기준. → PATTERNS
 - **스크린리더 통지에 뻔한 꼬리 문장을 넣지 않는다** — 판정선은 "뒷문장이 새 정보를 주는가"(원인·조건·한계는 유지). 정규식 스캔 말고 여러 문장인 문자열 전부를 판정. → PATTERNS
 - **"내 주변" 장소 목록 5종은 "더 보기" 단계 공개**(10건 + 회당 10; 라우트는 기본 상한 + 옵트인 `limit`≤50 + `total`, 웹 `NEARBY_LIMIT_MAX` ↔ Kit `fetchLimit`). 포커스는 첫 새 항목, 별도 통지 금지. 정본 `NightClinicsNearby.tsx`·`ClinicNearbyView.swift`. → PATTERNS
-- **역 상세 레이아웃은 `stationLayoutKind`(Kit `StationPhone.swift`)가 켜고, 넓은 `isStation`은 역 섹션 로드에만 쓴다**(E44 — 출구 POI·"철도" 업체·이름만 "역"인 장소가 역 모양이 된다). 경유역 전화번호는 같은 역·같은 노선·1km 후보만이고 다른 노선 번호로 떨어지지 않는다. 가드 `station-detail-guard.test.ts`·노선 표 미러 `station-phone-line-table-drift.test.ts`.
+- **역 상세 레이아웃은 `stationLayoutKind`(Kit `StationPhone.swift`)가 켠다**(E44) — 넓은 `isStation`으로 켜면 출구 POI·"철도" 업체·이름만 "역"인 장소까지 역 모양이 되므로, `isStation`은 역 섹션 로드와 비역 분기의 역 섹션 표시에만 쓴다. 경유역 전화번호는 같은 역·같은 노선·1km 후보만이고 다른 노선 번호로 떨어지지 않는다. 가드 `station-detail-guard.test.ts`·노선 표 미러 `station-phone-line-table-drift.test.ts`.
 - **검색→상세 흐름**: 단일 검색창, 카테고리 칩 필터, 장소 선택 시 **History API 뷰 전환**(카카오는 ID 단건조회 없어 메모리 `Place`로 상세). `?q=` URL 동기화 + request-id ref로 stale 응답 폐기.
 - **검색창 3섹션 결정론 병렬**(장소+주소 매 검색 병렬, 웹은 둘 다 0건일 때만, 결과는 정확도순 플랫 리스트). ⚠ 부활 금지 3종: Gemini 자연어 라우터·명소 별도 섹션·버킷 섹션 그룹핑 — 버킷(`category.ts` ↔ `SearchFilters.swift`)은 칩 필터 축으로만. → PATTERNS
 - **프리필 진입과 `?dir=` 복원은 필드 값이 같아도 다른 진입이라 표식으로 가른다**(`openDirections`의 `prefill` ↔ iOS `DirectionsPrefill{role,endpoint}`): 마운트 자동 조회를 `initialTo` 값에 걸면 새로고침·URL 직진입마다 측위 팝업이 뜬다. 판정은 첫 렌더에 굳혀 1회 소비하고 **양끝이 다 있을 때만** 조회한다(출발지만 채운 진입은 조회 대신 도착지 입력 착지). → PATTERNS
