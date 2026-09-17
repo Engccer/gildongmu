@@ -82,9 +82,12 @@ private func subwayLeg(_ legs: [TransitRouteLeg], at index: Int) -> TransitRoute
 private func joinedStation(
     _ leg: TransitRouteLeg, name: String?, fromEnd: Bool
 ) -> TransitBriefingStation? {
-    // 이름 게이트는 non-nil이 아니라 **non-empty**다 — `transitLegText`는 `""`도 값으로 통과시켜
-    // "에서 승차"를 내므로, non-nil로 두면 액션 라벨이 " 상세 보기"가 된다.
-    guard let name, !name.isEmpty, let stops = leg.stops, !stops.isEmpty else { return nil }
+    guard let name, let stops = leg.stops, !stops.isEmpty else { return nil }
+    // 이름 게이트는 non-nil이 아니라 **정규화 뒤 non-empty**다 — `transitLegText`는 `""`도 값으로 통과시켜
+    // "에서 승차"를 내므로, non-nil로 두면 정차역 목록에 이름이 빈 항목이 남아 있을 때 빈 이름끼리
+    // 맞아떨어져 액션 라벨이 " 상세 보기"가 된다.
+    // ⚠ 원문 `isEmpty` 검사를 앞에 겹쳐 두지 말 것 — `name`이 비면 `target`도 반드시 비므로 어떤 입력에서도
+    //   차이를 만들지 않는다(변이 주입 실측 2026-09-18). 겹쳐 두면 검증됐다는 인상만 남는다.
     let target = normalizeStopName(name)
     guard !target.isEmpty else { return nil }
     let ordered = fromEnd ? Array(stops.reversed()) : stops
