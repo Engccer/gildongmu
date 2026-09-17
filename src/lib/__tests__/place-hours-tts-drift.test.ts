@@ -18,6 +18,7 @@ const ALLOWED = new Set([
   "src/app/api/places/hours/route.ts",
   "src/lib/__tests__/place-hours.test.ts",
   "src/lib/__tests__/place-hours-tts-drift.test.ts",
+  "src/lib/__tests__/station-detail-guard.test.ts",
   "ios/GildongmuKit/Sources/GildongmuKit/PlaceHoursService.swift",
   "ios/Gildongmu/PlaceHoursLine.swift",
   "ios/scripts/messages-to-xcstrings.mjs",
