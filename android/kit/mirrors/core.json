@@ -145,6 +145,11 @@
       "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/StationMatchTest.kt"
     },
     {
+      "swift": "StationPhone.swift",
+      "status": "pending",
+      "note": "E44 역 상세 개편. 노선 표는 웹 LINE_EN 미러(드리프트 가드 station-phone-line-table-drift.test.ts). 정규식 약칭 클래스 없음"
+    },
+    {
       "swift": "StationService.swift",
       "status": "ported",
       "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/StationService.kt",
