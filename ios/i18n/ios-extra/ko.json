@@ -141,7 +141,9 @@
       "operatingNormal": "정상 가동",
       "operatingStopped": "운행 중지",
       "kindCountStopped": "{label} {count}곳, 운행 중지 {stopped}곳",
-      "phoneError": "역 전화번호를 불러오지 못했습니다."
+      "phoneError": "역 전화번호를 불러오지 못했습니다.",
+      "phoneMissing": "역 전화번호가 없습니다.",
+      "phonePending": "역 전화번호를 찾고 있습니다."
     },
     "nearby": {
       "subway": "지하철 도착",

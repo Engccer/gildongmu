@@ -425,7 +425,7 @@
       "unknown": "실내외 정보 없음"
     },
     "mapLink": "카카오맵에서 보기",
-    "call": "전화하기",
+    "call": "전화 걸기",
     "geoDenied": "현재 위치 권한이 필요합니다. 브라우저에서 위치 접근을 허용해 주세요.",
     "geoUnsupported": "이 브라우저는 현재 위치를 지원하지 않습니다.",
     "source": "출처: 카카오맵 장소 검색. 실내/실외는 분류 추정이며 방문 전 확인하세요."
@@ -867,7 +867,7 @@
       "w": "서",
       "nw": "북서"
     },
-    "call": "전화하기"
+    "call": "전화 걸기"
   },
   "walkInfra": {
     "button": "주변 보행 인프라",
@@ -1096,6 +1096,8 @@
     "prewalkStart": "승차역 {station}까지 도보 {minutes}분. 도보 안내를 먼저 시작합니다.",
     "prewalkArrivedButton": "{station} 도착",
     "openStation": "{station} 상세 보기",
+    "callStation": "{station}에 전화 걸기",
+    "callStationRepresentative": "{station} 대표번호로 전화 걸기",
     "prewalkArrived": "승차역 {station}에 도착했습니다.",
     "prewalkUnavailable": "도보 안내를 시작할 수 없어 승차 대기로 바로 넘어갑니다.",
     "prewalkCancelled": "대중교통 안내는 시작하지 않았습니다.",

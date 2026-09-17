@@ -141,7 +141,9 @@
       "operatingNormal": "In service",
       "operatingStopped": "Out of service",
       "kindCountStopped": "{label}: {count}, {stopped} out of service",
-      "phoneError": "Couldn't load the station phone number."
+      "phoneError": "Couldn't load the station phone number.",
+      "phoneMissing": "No station phone number available.",
+      "phonePending": "Looking up the station phone number."
     },
     "nearby": {
       "subway": "Subway arrivals",

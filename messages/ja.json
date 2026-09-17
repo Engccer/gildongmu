@@ -1096,6 +1096,8 @@
     "prewalkStart": "乗車駅 {station} まで徒歩 {minutes} 分。先に徒歩案内を開始します。",
     "prewalkArrivedButton": "{station} 到着",
     "openStation": "{station}の詳細を見る",
+    "callStation": "{station}に電話をかける",
+    "callStationRepresentative": "{station}の代表番号に電話をかける",
     "prewalkArrived": "乗車駅 {station} に到着しました。",
     "prewalkUnavailable": "徒歩案内を開始できないため、そのまま乗車待ちに進みます。",
     "prewalkCancelled": "公共交通案内は開始していません。",
