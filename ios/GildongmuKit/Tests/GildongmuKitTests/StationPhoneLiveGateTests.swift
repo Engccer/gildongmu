@@ -7,13 +7,17 @@ import Foundation
 // 적은 기대표와 대조한다(규칙으로 기대표를 만들지 않는다 — 순환 판정 금지). 입력·기대표는 저장소 밖에 둔다.
 @Suite(.enabled(if: ProcessInfo.processInfo.environment["STATION_PHONE_GATE"] != nil))
 struct StationPhoneLiveGateTests {
+    /// 기대 부류. 열거형이라 오타(`"drect"`)는 디코딩에서 실패한다(`unavailable`로 떨어져 거짓 통과하지 않는다).
+    enum Expect: String, Decodable {
+        case direct, representative, unavailable
+    }
+
     struct Case: Decodable {
         let name: String
         let lineName: String
         let lat: Double
         let lng: Double
-        /// "direct" | "representative" | "unavailable"
-        let expect: String
+        let expect: Expect
         let phone: String?
     }
 
@@ -25,18 +29,27 @@ struct StationPhoneLiveGateTests {
         let service = StationPhoneService(client: APIClient(baseURL: base))
         var mismatches: [String] = []
         for item in cases {
+            // 번호 있는 부류는 번호가 반드시 적혀 있어야 하고, unavailable에 번호가 있으면 기대표 자체의 모순이다.
+            let want: StationPhoneResult
+            switch item.expect {
+            case .direct, .representative:
+                let phone = try #require(item.phone, "\(item.name) · \(item.lineName): \(item.expect.rawValue)인데 phone 없음")
+                try #require(!phone.isEmpty, "\(item.name) · \(item.lineName): \(item.expect.rawValue)인데 phone이 빈 문자열")
+                want = item.expect == .direct ? .direct(phone) : .representative(phone)
+            case .unavailable:
+                if let phone = item.phone {
+                    mismatches.append("\(item.name) · \(item.lineName): 기대표 모순 — unavailable인데 phone \(phone)")
+                    continue
+                }
+                want = .unavailable
+            }
             let got = await service.lookup(
                 stationName: item.name, lat: item.lat, lng: item.lng, lineName: item.lineName)
-            let want: StationPhoneResult = switch item.expect {
-            case "direct": .direct(item.phone ?? "")
-            case "representative": .representative(item.phone ?? "")
-            default: .unavailable
-            }
             if got != want { mismatches.append("\(item.name) · \(item.lineName): got \(got), want \(want)") }
             try await Task.sleep(for: .milliseconds(250))
         }
         print("[station-phone-gate] cases=\(cases.count) mismatches=\(mismatches.count)")
         for line in mismatches { print("  x \(line)") }
-        #expect(mismatches.isEmpty)
+        #expect(mismatches.isEmpty, "\(mismatches.joined(separator: "\n"))")
     }
 }
