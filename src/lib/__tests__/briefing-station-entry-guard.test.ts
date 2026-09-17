@@ -42,6 +42,22 @@ function codeOnly(src: string): string {
     .join("\n");
 }
 
+/** `var body: some View` 본문. */
+function bodyOf(src: string): string {
+  const head = src.indexOf("var body: some View");
+  expect(head, "body가 없다").toBeGreaterThan(-1);
+  const end = src.indexOf("\n    }\n", head);
+  return src.slice(head, end === -1 ? undefined : end);
+}
+
+/** `var rotorItems` 본문. */
+function rotorItemsBody(src: string): string {
+  const head = src.indexOf("var rotorItems");
+  expect(head, "rotorItems가 없다").toBeGreaterThan(-1);
+  const end = src.indexOf("\n    }\n", head);
+  return src.slice(head, end === -1 ? undefined : end);
+}
+
 /** `.accessibilityActions {` 블록 본문(중괄호 균형으로 자른다). */
 function actionsBlock(src: string): string {
   const head = src.indexOf(".accessibilityActions {");
@@ -79,8 +95,10 @@ describe("① 소비자는 옵트인이다 (spec §3.5)", () => {
 
   it("옵트인 기본값은 꺼짐이다 — 새 소비자가 생겨도 조용히 켜지지 않는다", () => {
     const body = structBody(BRIEFING, "TransitRouteRows");
-    // 기본값 없는 옵셔널 = 주지 않으면 nil. `= nil`을 적든 생략하든 nil이 기본이므로 타입으로 잠근다.
-    expect(body).toMatch(/var stationEntry: \(\(TransitLegStop, String\?\) -> Void\)\?/);
+    // ⚠ 타입만 보면 `… -> Void)? = { _, _ in … }` 처럼 **켜진 기본값**을 다는 되돌림을 놓친다. 줄이
+    //   타입에서 끝나는지(= 기본값 없음, 주지 않으면 nil)를 함께 본다.
+    expect(body).toMatch(/var stationEntry: \(\(TransitLegStop, String\?\) -> Void\)\?\s*$/m);
+    expect(body).not.toMatch(/var stationEntry:[^\n]*=/);
   });
 
   it("안내 조망은 push 스택이 없다 — navigationDestination·NavigationLink 0건(무반응 액션 방지 근거)", () => {
@@ -93,14 +111,20 @@ describe("① 소비자는 옵트인이다 (spec §3.5)", () => {
 describe("② 로터는 등장 순으로 들린다 (spec §3.3)", () => {
   const row = structBody(BRIEFING, "BriefingStationRow");
 
-  it("로터 선언은 역순을 지난다 — VoiceOver가 빌더 선언의 역순으로 노출한다", () => {
-    expect(row).toContain(".reversed()");
+  it("역 묶음을 만든 **뒤** 전체를 뒤집는다 — 쌍 순서까지 함께 뒤집혀야 등장 순으로 들린다", () => {
+    const items = rotorItemsBody(row);
+    // ⚠ `.reversed()`가 있기만 하면 통과하는 술어는 `actions.reversed().flatMap`으로 옮기는 되돌림을
+    //   놓친다 — 그러면 역 순서는 맞는데 쌍이 "A 전화 → A 상세"로 뒤집힌다. 순서를 본다.
+    const flat = items.indexOf("flatMap");
+    const rev = items.indexOf(".reversed()");
+    expect(flat, "rotorItems가 flatMap으로 역별 묶음을 만들지 않는다").toBeGreaterThan(-1);
+    expect(rev, "역순 선언이 사라졌다").toBeGreaterThan(flat);
     // 역순이 실제로 로터에 쓰이는지: 액션 블록이 그 목록을 순회한다.
     expect(actionsBlock(row)).toContain("ForEach(rotorItems)");
   });
 
   it("역별 묶음은 (상세, 전화) 순이다 — 선언에서는 그 역순이라 open이 먼저 만들어진다", () => {
-    const items = row.slice(row.indexOf("var rotorItems"));
+    const items = rotorItemsBody(row);
     const open = items.indexOf("transitGuide.openStation");
     const call = items.indexOf("callLabel(");
     expect(open).toBeGreaterThan(-1);
@@ -108,18 +132,27 @@ describe("② 로터는 등장 순으로 들린다 (spec §3.3)", () => {
   });
 
   it("줄은 Text로 남는다 — 역이 하나여도 Button으로 감싸지 않는다(spec 정정 ②)", () => {
-    // 하위 뷰는 줄 뷰를 그대로 내보내고 로터만 얹는다.
-    expect(row).toMatch(/content\(\)\s*\n\s*\/\//);
-    expect(row).not.toMatch(/Button\(action: onOpen\)/);
+    // ⚠ "`content()` 다음 줄이 주석인가"로 보면 주석만 지워도 빨개지고(오탐), `Button { … } label:
+    //   { content() }`로 감싸는 진짜 되돌림은 놓친다(미탐). 줄 뷰가 **감싸이지 않고 그대로 나오는지**를 본다.
+    const body = codeOnly(bodyOf(row));
+    const actions = codeOnly(actionsBlock(row));
+    expect(body.replace(actions, "")).not.toMatch(/\b(Button|NavigationLink|onTapGesture)\b/);
+    expect(body).toMatch(/^\s*content\(\)\s*$/m);
     expect(row).not.toContain("contentShape(Rectangle())");
   });
 });
 
 describe("③ 전화 액션은 상태와 무관하게 항상 있다 (spec §5.1·§5.3)", () => {
-  it("브리핑 액션 블록에 저장소 상태 읽기가 없다 — 존재가 아니라 라벨만 갈린다", () => {
-    const block = codeOnly(actionsBlock(structBody(BRIEFING, "BriefingStationRow")));
+  it("브리핑 액션 목록은 상태로 걸러지지 않는다 — 존재가 아니라 라벨만 갈린다", () => {
+    const row = structBody(BRIEFING, "BriefingStationRow");
+    const block = codeOnly(actionsBlock(row));
     expect(block).not.toMatch(/\.result\(stationName:/);
     expect(block).not.toMatch(/case \.(direct|representative|unavailable|failed)/);
+    // ⚠ 액션 블록만 보면 목록을 **만드는 자리**에서 거르는 되돌림을 놓친다(`actions.filter { 번호 있음 }`).
+    //   거기서 걸러도 결과는 같다 — 번호 없는 역의 액션이 사라져 3상태가 액션 부재로 뭉개진다.
+    const items = codeOnly(rotorItemsBody(row));
+    expect(items).not.toMatch(/\.result\(stationName:/);
+    expect(items).not.toMatch(/\.filter\(|\.compactMap\(|\bguard\b|\bif\b/);
   });
 
   it("안내 시트 경유역 로터도 같은 계약이다 — 상태 switch로 액션을 없애지 않는다(판정 ⑤)", () => {
