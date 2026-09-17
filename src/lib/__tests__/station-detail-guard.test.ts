@@ -65,6 +65,12 @@ describe("경유역 전화번호 저장소 (spec §5.3·§5.6)", () => {
     );
   });
 
+  it("조회는 URL 캐시 없는 전용 세션으로 — 공유 세션이면 카카오 결과가 디스크 캐시에 남는다(spec §7)", () => {
+    expect(STORE).toContain("config.urlCache = nil");
+    expect(STORE).toContain("APIClient(baseURL: AppConfig.apiBaseURL, session: StationPhoneStore.session)");
+    expect(STORE).not.toContain("APIClient(baseURL: AppConfig.apiBaseURL))");
+  });
+
   it("싱글턴 하나만 — 인스턴스가 갈라지면 캐시·진행 중 공유가 갈라진다", () => {
     expect(STORE).toContain("static let shared = StationPhoneStore()");
     expect(STORE).toContain("private init() {}");
@@ -113,12 +119,15 @@ describe("경유역 전화번호 저장소 (spec §5.3·§5.6)", () => {
     const branch = body.indexOf("if value == .failed {");
     const current = body.indexOf("if let current = results[key], current != .failed {");
     const insert = body.indexOf("refreshFailed.insert(key)");
+    // 이미 실패면 다시 대입하지 않는다(재확인마다 관찰자를 깨우지 않게).
+    const onlyIfNotFailed = body.indexOf("} else if results[key] != .failed {");
     const setFailed = body.indexOf("results[key] = .failed");
     const success = body.indexOf("\n        results[key] = value\n");
     expect(branch).toBeGreaterThan(-1);
     expect(current).toBeGreaterThan(branch);
     expect(insert).toBeGreaterThan(current);
-    expect(setFailed).toBeGreaterThan(insert);
+    expect(onlyIfNotFailed).toBeGreaterThan(insert);
+    expect(setFailed).toBeGreaterThan(onlyIfNotFailed);
     expect(success).toBeGreaterThan(setFailed);
     // 도장을 지우거나 바꾸면 낡은 번호의 보관 한도 예약이 무효가 된다.
     expect(body.slice(branch, success)).not.toContain("fetchedAt");
