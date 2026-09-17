@@ -7,8 +7,9 @@ import GildongmuKit
 /// - 메모리만. 표시(`result`)는 마지막으로 기록된 값을 그대로 돌려주고 신선도를 보지 않는다 — 오래된 번호는
 ///   갱신이 끝날 때까지 보이고, 재렌더만으로 조용히 사라지지 않는다.
 /// - 신선도는 `resolve`만 본다. "번호·없음"은 5분(서버 `kakao-local` 캐시 300초와 같은 수명) 안이면 그대로 쓰고,
-///   지나면 다시 조회한다. 기록 뒤 갱신되지 않은 값은 보관 한도(5분 30초)에 지운다 — 몇 시간 사는 안내 세션에서
-///   카카오 결과를 무기한 들고 있지 않는다.
+///   지나면 다시 조회한다. 화면에 떠 있는 소비자는 `recheckSeconds`(30초)마다 `resolve`를 다시 불러 낡은 값을 갱신한다.
+/// - 기록 뒤 갱신되지 않은 값은 `evictAfterSeconds`(6분)에 지운다 — 몇 시간 사는 안내 세션에서 카카오 결과를 무기한
+///   들고 있지 않는다.
 /// - 실패는 표시용으로만 두고 신선도를 기록하지 않아 다음 조회가 재시도한다. 재시도가 시작되면 지난 실패를 지워
 ///   조회 중에 "불러오지 못했습니다"를 말하지 않는다.
 /// - 같은 키 진행 중 조회는 공유한다. 조회 Task는 소비자와 무관한 비구조적 Task라 소비자가 사라져도 취소되지 않고,
@@ -28,9 +29,12 @@ final class StationPhoneStore {
 
     /// 번호·없음의 신선 수명(서버 `kakao-local` 캐시 300초와 같다). 이보다 오래된 값은 `resolve`가 다시 조회한다.
     static let freshSeconds: TimeInterval = 300
-    /// 갱신되지 않은 값을 메모리에서 지우기까지의 시간. 화면에 떠 있는 소비자는 `freshSeconds`마다 `resolve`를 다시 부르므로,
-    /// 그 갱신(조회 상한 3초)이 끝날 여유만큼 늦게 지운다 — 지우는 순간과 갱신이 겹쳐 전화 줄이 깜빡이지 않게.
-    static let evictAfterSeconds: TimeInterval = freshSeconds + 30
+    /// 화면에 떠 있는 소비자가 `resolve`를 다시 부르는 간격. 신선한 동안은 네트워크 없이 바로 돌아오고, 값이 낡은 뒤
+    /// 이 간격 안에 갱신이 시작된다 — 소비자가 나타난 시각과 값의 도장이 어긋나도 갱신이 늦지 않게.
+    static let recheckSeconds: TimeInterval = 30
+    /// 갱신되지 않은 값을 메모리에서 지우기까지의 시간. 최악의 갱신은 도장 뒤 `freshSeconds + recheckSeconds`에 시작해
+    /// 조회 상한(3초) 안에 기록되므로, 재확인 간격 하나를 더 두어 지우는 순간이 갱신을 앞지르지 않게 한다(전화 줄 깜빡임 방지).
+    static let evictAfterSeconds: TimeInterval = freshSeconds + 2 * recheckSeconds
 
     private var results: [Key: StationPhoneResult] = [:]
     @ObservationIgnored private var fetchedAt: [Key: Date] = [:]
