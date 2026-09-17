@@ -115,7 +115,7 @@
 ### 3.2 도보·대중교통 현실적 대안
 
 - **TMAP (SK open API)**: 보행자 경로 `apis.openapi.sk.com/tmap/routes/pedestrian`, 대중교통 `apis.openapi.sk.com/transit/routes` (appKey 헤더). 무료 쿼터 수치는 로그인 장벽 — 불확실. ([TMAP transit 가이드](https://transit.tmapmobility.com/docs/routes))
-- **ODsay LAB**: 전국 대중교통 경로검색. **Basic(무료): 일 1,000건, 6개월, 개인/학생/5인 이하** 대상. 유료는 최대 100,000건 + 다국어(국/영/일/중/베). ([lab.odsay.com](https://lab.odsay.com/))
+- **ODsay LAB**: 전국 대중교통 경로검색. ~~**Basic(무료): 일 1,000건, 6개월, 개인/학생/5인 이하** 대상. 유료는 최대 100,000건 + 다국어(국/영/일/중/베).~~ ⚠ **정정 2026-09-18(콘솔 실측)**: Basic은 **일 30건**이고 **기간 제한이 없다**(1,000건·6개월 둘 다 틀렸다). 유료 Standard는 일 100,000건이지만 **언어 지원이 국문**이고 다국어는 별도 문의다 — Basic이 오히려 다국어를 준다. ([lab.odsay.com](https://lab.odsay.com/))
 
 ### 3.3 네이버 지도 앱 딥링크 (nmap:// URL Scheme) — 공식 문서 존재
 
