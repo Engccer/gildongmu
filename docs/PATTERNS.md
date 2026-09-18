@@ -45,6 +45,8 @@
 - **통지·진동은 한 창구를 지난다**(`callStationPhone`, `StationPhoneStore.swift`): 번호면 걸고 **통지하지 않으며**(전화 앱 전환이 응답), 없음·모름·실패는 `.high` 통지 + 진동. ⚠ **모름(`nil`)은 세 상태를 겹쳐 들고**(조회 전·첫 조회 중·6분 축출) 아무도 다시 조회하지 않으면 "찾고 있습니다"가 영영 거짓이라, **통지 전에 `resolve`를 킥오프**해 문장이 사후적으로 참이 되게 한다. 판정은 Kit `briefingPhoneAnnouncement`이고 호출부는 그 키를 **리터럴 `switch`로 되받는다**(`appLocalized(변수)`는 `check-xcstrings-keys.mjs` 대조를 우회한다).
 - **저장소를 읽는 자리는 하위 뷰다**(`BriefingStationRow`) — 라벨 계산이 `phoneStore.result`를 읽으므로 그 읽기가 `TransitRouteRows` 본문에 있으면 번호 도착·30초 재확인·6분 축출마다 브리핑 전체가 다시 그려진다(E44 리뷰 M5와 같은 경계). 미리 조회는 **그 줄의 역만** 넘긴다(`prefetch(stops: [action.stop], …)` — `leg.stops`를 그대로 주면 leg 하나에 12~20건이 돈다).
 - **라벨의 역 이름은 그 줄이 쓴 언어**다(앱 언어가 아니다). 술어는 구간 줄·하차 줄과 같은 `transitLegUsesEnglish` 하나라 줄이 한국어로 떨어지면 라벨도 함께 떨어진다. ⚠ 역 이름에 "역" 접미가 없다(ODsay 정차역 이름 원문) — 낭독은 "천호에 전화 걸기"다.
+- **iOS 빈 이름 판정은 `transitBriefingName`을 공유한다.** `.whitespacesAndNewlines`로 비어 있는지만 가르고 정상 값은 원문을 보존한다. 구간·도보·하차 문장, 영문 자격, 로터 조인 입구가 같은 술어를 지난다. `normalizeStopName`의 `.whitespaces`는 개행을 남기므로 조인 정규화만으로 부재를 판정할 수 없다.
+- 저장 응답은 `node scripts/verify-briefing-station-join.mjs --from-corpus <dump.json>`으로 구성·동치 판정과 실제 Kit 조인을 함께 재검증한다. `--lang` 생략은 저장 언어이고 명시 불일치·`--out` 병용은 실패다. 이 모드는 env·provider·네트워크를 사용하지 않으며 원본과 수집 시각을 보존한다. 과거 응답 재검증을 신규 실호출 증거로 표시하지 않는다.
 - **가드**: `src/lib/__tests__/briefing-station-entry-guard.test.ts` 7종. ⚠ 술어는 **구조**를 봐야 한다 — 구현 리뷰 실측에서 표면만 보던 넷(옵트인 기본값·액션 상태 분기·로터 역순·줄이 `Text`로 남는지)이 되돌림을 통과시켰다.
 
 ### 자동 등장 보조 섹션은 region 랜드마크 유지
@@ -54,6 +56,12 @@
 ---
 
 ## 내 주변·위치·포커스
+
+### iOS 주소 요청은 측위 전부터 같은 세대를 소유한다
+
+`DirectionsAddressState.Request`를 측위 await 전에 발급하고 역지오코딩 완료까지 그대로 전달한다. `DirectionsModel`의 취소·필드 변경은 부모 Task와 세대를 함께 무효화한다. 주소 한글·영문은 요청 언어가 아직 유효할 때 한 번에 커밋하고, 이전 요청의 `finish`는 최신 로딩 상태를 지우지 않는다. `hasLoaded`는 성공적으로 수용한 커밋에서만 설정한다. 함수 내부에서만 세대를 발급하면 취소 뒤 늦은 측위가 새 주소 요청을 만드는 경로가 남는다. 테스트는 `DirectionsAddressStateTests`와 `ios-endpoint-state-guard.test.ts`다.
+
+위치 표시줄은 표시용 `observedAuthorization`·`observedAccuracy`를 읽고, 측위·안내 판정은 기존 실시간 snapshot을 읽는다. 수동 위치 우선순위와 직전 좌표가 남은 실패 정책은 별개 계약이다. `NearbyOverlayCopy.locationFailure`와 서버 `defaultFailure`는 구분하며 경유 정류소 수는 `.routeStops`로 통지한다.
 
 ### iOS "내 주변" 화면도 공유 상태 머신으로 만든다
 
@@ -255,11 +263,15 @@ E25(위원장 요청 2026-09-07, 구현 2026-09-13). 판정 정본은 웹 `src/l
 
 ### 프리필 진입과 `?dir=` 복원은 필드 값이 같아도 다른 진입이라 표식으로 가른다
 
+iOS `RecentEndpoint.labelRoman`은 지정 당시 보유한 표기를 기존 저장 키 아래 선택 필드로 저장한다. 과거 항목은 `decodeIfPresent`로 nil이며 원명으로 폴백한다. 기록·고정 토글·최근 경로의 출발/도착/경유·선택·프리필 전 경로에서 보존하되 좌표 기반 id·중복 판정은 바꾸지 않는다. 표시 시 추가 조회나 로마자 재생성은 하지 않는다.
+
 **프리필 진입과 `?dir=` 복원은 필드 값이 같아도 다른 진입이라 표식으로 가른다**(B10·E32, 2026-09-11): 장소 상세의 "여기까지/여기부터 길찾기"는 **채움 + 조회가 한 동작**이지만(iOS 2026-09-03 선행), 웹 `DirectionsView`의 `initialFrom`·`initialTo`는 그 진입과 `?dir=` 딥링크 복원이 **함께 쓰는 prop**이라 값만으로는 둘을 가를 수 없다 — 값에 조회를 걸면 새로고침·URL 직진입·앞으로가기마다 측위 팝업이 뜬다(측위는 조회 경로에서만 일어난다). 그래서 `PlaceSearch.openDirections(prefill)`만 상태에 `prefill: true`를 싣고 `DirectionsView`는 그 표식에서만 마운트 1회 조회한다. 판정(`prefillActionRef`)은 **첫 렌더 값으로 굳혀** 1회 소비한다 — 이후 사용자가 필드를 고쳐도 다시 판정하지 않는다(iOS `pendingPrefillQuery`·`pendingPrefillFocus`와 같은 규율).
 
 조회 조건은 **양끝이 다 확정**이다. 출발지만 채운 진입("여기부터 길찾기")에서 조회하면 방금 누른 버튼에 "도착지를 입력하세요" 오류로 답하게 되므로, 조회 대신 다음 행동인 **도착지 입력에 착지**한다(iOS는 `landFocusAfterResolve(from:)` 정본 시퀀스 재사용 — 지연·검증·1회 재시도, 시뮬레이터로 검출 불가). 조회는 화면 정본 트랜잭션 `runQuery`를 그대로 지나 세대(`genRef`)를 발급하므로 WebMCP 세대 결박 대기자 계약과 충돌하지 않는다. 프리필 끝점은 **그 필드의 스코프**로 최근 장소에 기록한다(출발지 프리필을 도착지 목록에 넣으면 다음에 그 장소를 출발지로 다시 고를 때 검색부터 해야 한다). ⚠ iOS `DirectionsModel.init`에서 `from`·`to`를 **읽으면** 컴파일되지 않는다(`@Observable`이 저장 프로퍼티를 접근자로 감싼다) — 지역 상수로 받아 판정한다.
 
 ### 딥링크는 장소 상세의 보조 출구다
+
+iOS 지도 버튼·검색 로터 액션은 URL 빌더가 성공할 때만 만들고, 생성한 URL을 실행 클로저가 사용한다. 한 URL의 부재로 다른 유효 액션까지 감추지 않는다.
 
 **딥링크는 장소 상세의 보조 출구다**: `nmap://`(`deeplink.ts`)·`kakaomap://`(`deeplink-kakao.ts`)는 장소 상세에만 있고 길찾기 화면에는 두지 않는다(E17 폐기 2026-08-23). 종전 "실주행은 딥링크 위임, 자체는 텍스트 브리핑만" 방침은 2026-08-23 K2로 폐기됐다 — 도보·자동차·대중교통 셋 다 자체 실시간 안내를 가지며(자동차·대중교통은 실험판 봉인), "출발 전 미리 듣기" 텍스트 브리핑은 그 앞 단계다. **브리핑 진입점은 길찾기 뷰(웹 `DirectionsView`·iOS `DirectionsTab` 3수단 비교)와 채팅 렌더 카드로 일원화**(2026-07-30) — 장소 상세의 단일 수단 브리핑 진입점은 중복이라 제거했고 재도입 금지. 대중교통 대안은 요약 라벨 disclosure(웹 `aria-expanded`·iOS `DisclosureGroup`)로 펼침, 펼침 본문은 `includeSummary=false`로 구간만(라벨이 요약 전문이라 인접 중복 금지, 실기기 VO 합격 2026-07-30). 웹 도보도 `shortest`가 있을 때 같은 2행 disclosure(추천·최단, 2026-08-23 B9 ①)이고 `stepFreeNotice`는 両행 라벨에 병기한다 — 서버 `withStepFree`가 비기하 응답에 그 문장을 **스텝 0으로 삽입하고 경유지 인덱스를 +1 밀어 두므로**, 본문에서 그 스텝을 뗄 때(`WalkRouteResult omitNoticeStep`) 인덱스를 한 칸 되돌려야 "경유지 도착" 구획이 제자리다. `alternatives=1`은 `walkRouteUrl` 인자가 아니라 `DirectionsView`가 덧붙인다(실시간 안내의 `includeGeometry=1`과 조합하면 400). 경로 렌더 카드는 웹 전용, iOS 채팅은 산문이 정본(렌더 3종: places·addresses·webResults, 그 외 타입은 `.unsupported`로 강등).
 
