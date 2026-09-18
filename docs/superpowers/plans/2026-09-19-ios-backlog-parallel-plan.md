@@ -58,7 +58,7 @@ E28의 명시된 코드 잔여와 E43 ④의 재현 가능한 응답 경합을 `
 
 소유: `Nearby/NearbyOverlay.swift`, `Nearby/WalkInfraNearbyView.swift`, `Nearby/NearbyLoadState.swift`, `Nearby/BusRouteStopsView.swift`, `PlaceDetailView.swift`, `SearchView.swift`, `LocationBarView.swift`, `LocationService.swift`, 해당 테스트, `ios/i18n/ios-extra/*.json`, `ios/i18n/arg-order.json`, iOS xcstrings 생성물. 소스 문자열과 생성물은 이 세션만 담당한다. 웹 messages와 서버는 변경하지 않는다.
 
-설계 전 별도 리뷰 생략: 기존 상태의 표시·동작 가용성만 고치며 위치 취득·안내 상태 머신과 저장 계약은 바꾸지 않는다. 완료 시 접근성 관점의 별도 컨텍스트 리뷰를 받는다. 실기기 VoiceOver 확인은 별도 잔여다. E43 ⑥ 수동 지정 시 권한 요청은 사용자 선택 대기이며 응답 전에는 고치지 않는다.
+설계 전 별도 리뷰 생략: 기존 상태의 표시·동작 가용성만 고치며 위치 취득·안내 상태 머신과 저장 계약은 바꾸지 않는다. 완료 시 접근성 관점의 별도 컨텍스트 리뷰를 받는다. 실기기 VoiceOver 확인은 별도 잔여다. E43 ⑥은 수동 위치 지정 시에도 GPS 권한 요청을 유지한다는 위원장 판정으로 현행을 보존한다.
 
 ## 실행 결과와 판정
 
@@ -105,7 +105,7 @@ E28의 명시된 코드 잔여와 E43 ④의 재현 가능한 응답 경합을 `
 
 같은 통합 코드에서 합성 ko/en 코퍼스를 외부 네트워크·env 읽기 차단 아래 각각 실행했고, 표본 구성·동치 6/6 및 실제 Kit 테스트가 모두 통과했다. 저장 코퍼스 검증이 앱의 빈 이름 처리 변경과 함께 동작하는 범위까지 확인했다.
 
-- B11은 `76826dfe`를 통합해 코드 완료했다. `subway-arrival-direction-guard.test.ts`와 기존 도착 줄 테스트를 통과했고, 실제 VoiceOver 판정은 BACKLOG §2 잔여다. E43 ⑥ 수동 지정 시 GPS 권한 팝업 생략은 사용자 선택 대기다.
+- B11은 `76826dfe`를 통합해 코드 완료했다. `subway-arrival-direction-guard.test.ts`와 기존 도착 줄 테스트를 통과했고, 실제 VoiceOver 판정은 BACKLOG §2 잔여다. E43 ⑥은 GPS 권한 요청 유지로 판정해 현행을 보존한다.
 - 실제 VoiceOver 낭독·행 정체성·설정 복귀·로터 가용성은 BACKLOG §2에서 별도 판정한다. 자동 테스트와 시뮬레이터 빌드는 이를 대신하지 않는다.
 - 서버 도보 leg의 한글·영문 행선지 불일치 가능성, 다른 ODsay 게이트, 캐시·seed 정책, 실시간 안내 봉인 해제는 범위 밖이다.
 - push·Vercel 배포/env·실기기 설치·App Store 제출을 하지 않고 pre-push 동결 가드를 유지한다.
