@@ -21,6 +21,10 @@
 
 `verify-briefing-station-join.mjs --from-corpus <dump.json>`이 저장 시각·언어·원본을 보존하며 표본 구성과 실제 Kit 조인을 검증한다. env·provider·네트워크 없이 실행하고 언어 불일치·빈 표본·조인 실패는 실패로 반환한다. 다른 ODsay 게이트와 캐시 정책은 변경하지 않았다. [검증 범위](docs/superpowers/plans/2026-09-19-ios-backlog-parallel-plan.md).
 
+### iOS 한국어 지하철 도착 줄에 방향 추가 (B11)
+
+웹·영문과 동일하게 한국어 도착 줄에도 노선의 `상행`·`하행` 방향을 표시한다. 방향은 노선과 한 텍스트 조각으로 묶고, 방향이 없는 응답은 기존 노선 표기로 보존한다. 실제 VoiceOver 판정은 별도 잔여다. [계획·검증](docs/superpowers/plans/2026-09-19-ios-backlog-parallel-plan.md).
+
 ## 2026-09-18
 
 ### iOS 경로 브리핑에서 지하철역 상세·전화 (E45)
