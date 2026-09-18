@@ -15,14 +15,17 @@ public struct RecentQuery: Codable, Equatable, Hashable, Sendable {
 /// 최근 검색 장소 항목(길찾기 endpoint 기록). 좌표 소수 4자리(≈11m) 일치 = 같은 장소.
 public struct RecentEndpoint: Codable, Equatable, Hashable, Sendable {
     public let label: String
+    /// 지정 시점에 확보한 표기만 보존한다. 기존 기록은 원명으로 폴백한다.
+    public let labelRoman: String?
     public let lat: Double
     public let lng: Double
     /// 고정 여부(스펙 2026-08-12). ⚠ RecentRoute의 from/to에 실릴 때는 무의미하다 —
     /// 경로의 고정은 경로 자체의 pinned이고, 동일 판정(sameCoord)도 이 값을 보지 않는다.
     public let pinned: Bool
 
-    public init(label: String, lat: Double, lng: Double, pinned: Bool = false) {
+    public init(label: String, lat: Double, lng: Double, pinned: Bool = false, labelRoman: String? = nil) {
         self.label = label
+        self.labelRoman = labelRoman
         self.lat = lat
         self.lng = lng
         self.pinned = pinned
@@ -32,6 +35,7 @@ public struct RecentEndpoint: Codable, Equatable, Hashable, Sendable {
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         label = try c.decode(String.self, forKey: .label)
+        labelRoman = try c.decodeIfPresent(String.self, forKey: .labelRoman)
         lat = try c.decode(Double.self, forKey: .lat)
         lng = try c.decode(Double.self, forKey: .lng)
         pinned = try c.decodeIfPresent(Bool.self, forKey: .pinned) ?? false
@@ -178,7 +182,7 @@ public struct RecentSearchStore {
             Self.appendKeepingPins(
                 endpoint, to: endpoints(scope),
                 isSame: Self.sameCoord, isPinned: \.pinned,
-                withPinned: { RecentEndpoint(label: $0.label, lat: $0.lat, lng: $0.lng, pinned: $1) }),
+                withPinned: { RecentEndpoint(label: $0.label, lat: $0.lat, lng: $0.lng, pinned: $1, labelRoman: $0.labelRoman) }),
             forKey: Self.endpointsKey(scope))
     }
 
@@ -199,7 +203,7 @@ public struct RecentSearchStore {
             Self.setPinnedIn(
                 endpoint, in: endpoints(scope), pinned: pinned,
                 isSame: Self.sameCoord, isPinned: \.pinned,
-                withPinned: { RecentEndpoint(label: $0.label, lat: $0.lat, lng: $0.lng, pinned: $1) }),
+                withPinned: { RecentEndpoint(label: $0.label, lat: $0.lat, lng: $0.lng, pinned: $1, labelRoman: $0.labelRoman) }),
             forKey: Self.endpointsKey(scope))
     }
 
