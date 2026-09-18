@@ -21,7 +21,7 @@ public enum TransitWalkLegText {
     public static func resolve(
         name: String?, distance: String?, minutes: Int, boardExit: String? = nil
     ) -> (key: String, args: [String]) {
-        let name = (name?.isEmpty == false) ? name : nil
+        let name = transitBriefingName(name)
         let boardExit = (boardExit?.isEmpty == false) ? boardExit : nil
         let minutes = String(minutes)
         switch (name, distance) {

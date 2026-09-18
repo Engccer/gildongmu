@@ -98,16 +98,14 @@ struct TransitBriefingStationsTests {
     }
 
     @Test func 구간_줄의_이름이_빈_문자열이면_그_쪽은_진입점이_없다() {
-        // `transitLegText`는 ""도 값으로 통과시켜 "에서 승차"를 낸다 — non-nil 게이트면 라벨이 " 상세 보기"가 된다.
+        // 빈 이름은 문구에도 진입점에도 쓰지 않는다.
         let legs = [subway(from: "", stops: line5Stops)]
         let out = transitBriefingStations(legs, row: .transit(legIndex: 0))
         #expect(out.map(\.stop.name) == ["여의도"])
     }
 
     @Test func 빈_이름끼리_조인되지_않는다() {
-        // 이름 게이트가 **두 겹**이라 이 케이스만이 바깥 겹(non-empty)의 효과를 잰다. 정규화 뒤 빈 문자열을
-        // 거부하는 안쪽 겹은 정상 역 이름만 있는 목록에서 같은 결과를 내기 때문이다. 서버가 이름 무효 항목을
-        // 떨어뜨리지만 만약 남으면 빈 이름끼리 맞아떨어져 라벨이 " 상세 보기"가 된다(spec §3.2 규칙 3).
+        // 서버가 이름 무효 항목을 떨어뜨리지만 만약 남아도 빈 이름끼리 조인하지 않는다(spec §3.2 규칙 3).
         let legs = [subway(from: "", to: "여의도", stops: [stop(""), stop("여의도", lat: 37.521)])]
         let out = transitBriefingStations(legs, row: .transit(legIndex: 0))
         #expect(out.map(\.stop.name) == ["여의도"])
@@ -270,6 +268,32 @@ struct TransitBriefingStationsTests {
     }
 
     // MARK: 전화 3상태 → 통지·진동
+
+    @Test(arguments: ["\n", "\r\n", " \t\n ", "\u{00A0}\n\u{3000}"])
+    func 이름과_정차역_양쪽의_개행_공백은_세_진입점에서_조인되지_않는다(_ blank: String) {
+        let legs = [walk(to: blank), subway(from: blank, to: blank, stops: [stop(blank)])]
+        for row: TransitBriefingRow in [.walk(legIndex: 0), .transit(legIndex: 1), .alight(legIndex: 1)] {
+            #expect(transitBriefingStations(legs, row: row).isEmpty)
+        }
+    }
+
+    @Test(arguments: ["", " \t\n", "\u{00A0}\u{200B}\u{3000}"])
+    func 빈_표시_영문과_노선_힌트는_정보_부재다(_ blank: String) {
+        let legs = [walk(toEn: blank), subway(line: blank, stops: line5Stops, fromEn: blank, toEn: blank)]
+        for row: TransitBriefingRow in [.walk(legIndex: 0), .transit(legIndex: 1), .alight(legIndex: 1)] {
+            let out = transitBriefingStations(legs, row: row)
+            #expect(!out.isEmpty)
+            #expect(out.allSatisfy { $0.lineName == nil && $0.nameEn == nil })
+        }
+    }
+
+    @Test(arguments: [nil, "", " \t\n", "\u{00A0}\u{200B}\u{3000}"] as [String?])
+    func 빈_이름은_세_진입점에서_정차역으로_추정하지_않는다(_ blank: String?) {
+        let legs = [walk(to: blank), subway(from: blank, to: blank, stops: line5Stops)]
+        for row: TransitBriefingRow in [.walk(legIndex: 0), .transit(legIndex: 1), .alight(legIndex: 1)] {
+            #expect(transitBriefingStations(legs, row: row).isEmpty)
+        }
+    }
 
     @Test func 번호가_있으면_통지하지_않는다() {
         #expect(briefingPhoneAnnouncement(.direct("02-6311-5331")) == nil)

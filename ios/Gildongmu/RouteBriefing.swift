@@ -303,6 +303,8 @@ func transitLegText(
 ) -> String {
     /// 이름 하나 — 영문 모드면 `*En`(호출부가 존재를 보장), 병기면 `English (한글)`.
     func pick(_ ko: String?, _ en: String?) -> String? {
+        let ko = transitBriefingName(ko)
+        let en = transitBriefingName(en)
         switch names {
         case .korean: return ko
         case .english(let bilingual):
@@ -321,7 +323,7 @@ func transitLegText(
         // 마지막 도보에는 행선지가 없다(provider가 목적지 이름을 모른다). 소비자가
         // 목적지 이름을 알면 그것을 쓰고, 몰라도 "목적지까지"라는 구간 의미는 남긴다
         // (이름 부재와 구간 의미 부재는 다른 층이다).
-        let name = [toName, destinationName].compactMap { $0 }.first { !$0.isEmpty }
+        let name = toName ?? transitBriefingName(destinationName)
         // 거리는 3-state: 필드가 없으면 "0m"가 아니라 거리 없는 문구로 떨어진다.
         // 조립은 formatDistance 정본을 지난다(소수 km 직접 조립 금지).
         // 키·인자 순서 판정은 Kit `TransitWalkLegText`(테스트가 잠근다, D8). 아래
@@ -366,10 +368,9 @@ func transitLegText(
     }
     // 버스 번호는 그대로면 "370"이라 무엇인지 알 수 없다(지하철은 "수도권 5호선"이라
     // 수단이 드러난다). 웹 키를 공유한다 — iOS 전용 사본은 카탈로그 재생성 때 소멸한다.
-    // ⚠ 빈 문자열을 없음으로 접는다: 웹은 falsy 검사가 이미 걸러내는데 Swift `.map`은
-    // ""도 값으로 통과시켜 **iOS만 "번 버스"**를 낸다(ODsay busNo 결측 시 계약 이탈).
-    let lineName = lineNameRaw?.trimmingCharacters(in: .whitespaces)
-    let lineText = (lineName?.isEmpty == false ? lineName : nil).map {
+    // Swift `.map`은 빈값도 통과시킨다. 승하차역과 같은 부재 판정으로 "번 버스"를 막는다.
+    let lineName = transitBriefingName(lineNameRaw)
+    let lineText = lineName.map {
         leg.mode == "bus" ? appLocalized("route.transit.busNo", $0) : $0
     }
     return joinText(

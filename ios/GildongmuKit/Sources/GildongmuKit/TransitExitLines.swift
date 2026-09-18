@@ -22,13 +22,14 @@ public func alightLineText(
     lang: String,
     exitBound: (String) -> String
 ) -> String? {
+    guard let station = transitBriefingName(station) else { return nil }
     let quick = quickExitText(quickExit, station: station, lang: lang)
     // 서버가 형식·문맥을 이미 걸렀지만 소비자 게이트를 이중으로 둔다(spec 2026-09-02 §5.1).
     let bound = transitValidExitNo(exitAlight).map(exitBound)
     if let quick {
         return [quick, bound].compactMap { $0 }.joined(separator: ", ")
     }
-    guard let bound, !station.isEmpty else { return nil }
+    guard let bound else { return nil }
     return [kitLocalized("route.transit.alightAt", lang: lang, station), bound].joined(separator: ", ")
 }
 
@@ -55,6 +56,12 @@ public func boardExitOnBoardLine(_ legs: [TransitRouteLeg], at index: Int) -> St
 
 // MARK: 줄 단위 영어 자격 (E27 원자성 — 브리핑 구간 줄·하차 줄이 같은 술어를 쓴다)
 
+/// 브리핑 이름의 빈값·공백값은 정보 부재다. 정규화는 조인의 몫이며, 표시할 원문은 보존한다.
+public func transitBriefingName(_ name: String?) -> String? {
+    guard let name, !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
+    return name
+}
+
 /// 이 구간의 브리핑 줄이 **영어 이름**으로 설 자격 — 노선·승차·하차 영문이 **다** 있을 때만(도보는 행선지만).
 /// 웹 `TransitRouteBriefing`의 `legEn`과 같은 조건이다. 하나라도 없으면 그 구간의 줄 전부가 한국어 이름이다.
 ///
@@ -65,15 +72,15 @@ public func transitLegUsesEnglish(_ leg: TransitRouteLeg, lang: DataLocale) -> B
     guard lang == .en else { return false }
     if leg.mode == "walk" {
         // 마지막 도보(행선지 없음)는 목적지 문구라 영문 조각이 필요 없다. 행선지가 있으면 영문 행선지 필수.
-        return leg.toName == nil || leg.toNameEn != nil
+        return transitBriefingName(leg.toName) == nil || transitBriefingName(leg.toNameEn) != nil
     }
-    return leg.lineNameEn != nil
-        && (leg.fromName == nil || leg.fromNameEn != nil)
-        && (leg.toName == nil || leg.toNameEn != nil)
+    return transitBriefingName(leg.lineNameEn) != nil
+        && (transitBriefingName(leg.fromName) == nil || transitBriefingName(leg.fromNameEn) != nil)
+        && (transitBriefingName(leg.toName) == nil || transitBriefingName(leg.toNameEn) != nil)
 }
 
 /// 하차 줄에 쓸 역명 — 구간 줄이 영어면 영문, 아니면 한국어. 이름이 없으면 빈 문자열(호출부가 줄을 세우지 않는다).
 public func transitAlightStationName(_ leg: TransitRouteLeg, lang: DataLocale) -> String {
-    if transitLegUsesEnglish(leg, lang: lang), let en = leg.toNameEn { return en }
-    return leg.toName ?? ""
+    if transitLegUsesEnglish(leg, lang: lang), let en = transitBriefingName(leg.toNameEn) { return en }
+    return transitBriefingName(leg.toName) ?? ""
 }

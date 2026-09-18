@@ -16,7 +16,7 @@ public enum TransitBriefingRow: Sendable, Hashable {
 /// 그 줄에서 열 수 있는 역 하나. 순서는 줄에 이름이 들리는 순서다.
 public struct TransitBriefingStation: Sendable, Hashable {
     public let stop: TransitLegStop
-    /// 전화번호 조회 노선 힌트(spec §4). `leg.lineName`의 빈 문자열만 접어 넘긴다 —
+    /// 전화번호 조회 노선 힌트(spec §4). `leg.lineName`의 빈값·공백값을 접어 넘긴다 —
     /// 노선 표 판정은 `StationPhoneStore.key` 한 곳이 한다(복제하면 표 갱신 때 두 자리가 갈린다).
     public let lineName: String?
     /// **그 줄이 이 역을 부른 영문 이름**(`leg.fromNameEn`/`toNameEn`). 영문이 없으면 nil.
@@ -93,20 +93,17 @@ private func subwayLeg(_ legs: [TransitRouteLeg], at index: Int) -> TransitRoute
 private func joinedStation(
     _ leg: TransitRouteLeg, name: String?, nameEn: String?, fromEnd: Bool
 ) -> TransitBriefingStation? {
-    guard let name, let stops = leg.stops, !stops.isEmpty else { return nil }
-    // 이름 게이트는 non-nil이 아니라 **정규화 뒤 non-empty**다 — `transitLegText`는 `""`도 값으로 통과시켜
-    // "에서 승차"를 내므로, non-nil로 두면 정차역 목록에 이름이 빈 항목이 남아 있을 때 빈 이름끼리
-    // 맞아떨어져 액션 라벨이 " 상세 보기"가 된다.
-    // ⚠ 원문 `isEmpty` 검사를 앞에 겹쳐 두지 말 것 — `name`이 비면 `target`도 반드시 비므로 어떤 입력에서도
-    //   차이를 만들지 않는다(변이 주입 실측 2026-09-18). 겹쳐 두면 검증됐다는 인상만 남는다.
+    // 표시와 같은 부재 기준을 먼저 적용한다. 조인 정규화의 `.whitespaces`는 개행을 남기므로,
+    // 이름과 정차역 이름 양쪽이 개행 공백이면 정규화 뒤 non-empty 검사만으로는 조인이 통과한다.
+    guard let name = transitBriefingName(name), let stops = leg.stops, !stops.isEmpty else { return nil }
+    // 부역명·"역" 접미를 제거한 뒤에도 유효한 조인 이름이 남아야 한다.
     let target = normalizeStopName(name)
     guard !target.isEmpty else { return nil }
     let ordered = fromEnd ? Array(stops.reversed()) : stops
     guard let stop = ordered.first(where: { normalizeStopName($0.name) == target }) else { return nil }
-    let line = leg.lineName
     return TransitBriefingStation(
-        stop: stop, lineName: (line?.isEmpty == false) ? line : nil,
-        nameEn: (nameEn?.isEmpty == false) ? nameEn : nil)
+        stop: stop, lineName: transitBriefingName(leg.lineName),
+        nameEn: transitBriefingName(nameEn))
 }
 
 /// 결과 진동 어휘(앱 `ResultHaptic.Kind` 미러). Kit은 UIKit을 모르므로 판정만 여기서 내고 발화는 앱이 한다.
