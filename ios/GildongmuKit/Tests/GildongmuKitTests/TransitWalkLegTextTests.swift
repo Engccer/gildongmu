@@ -42,6 +42,21 @@ struct TransitWalkLegTextTests {
 
     // MARK: 승차 출구(E25) — 다음 구간의 승차 출구를 이 줄이 싣는다
 
+    @Test(arguments: [" ", "\t\n\r", "\u{00A0}\u{200B}\u{3000}"])
+    func blankNameIsAbsent(_ name: String) {
+        let noDistance = TransitWalkLegText.resolve(name: name, distance: nil, minutes: 3, boardExit: "1")
+        #expect(noDistance.key == "route.transit.legWalkToDestNoDistance")
+        #expect(noDistance.args == ["3"])
+        let withDistance = TransitWalkLegText.resolve(name: name, distance: "131m", minutes: 2, boardExit: "1")
+        #expect(withDistance.key == "route.transit.legWalkToDest")
+        #expect(withDistance.args == ["2", "131m"])
+    }
+
+    @Test func normalNameIsPreserved() {
+        let name = "  천호(풍납토성) 역  "
+        #expect(TransitWalkLegText.resolve(name: name, distance: nil, minutes: 3).args == [name, "3"])
+    }
+
     @Test("이름 + 출구 + 거리 — (name, exit, minutes, distance)")
     func nameExitDistance() {
         let r = TransitWalkLegText.resolve(name: "개화", distance: "131m", minutes: 2, boardExit: "1")

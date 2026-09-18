@@ -117,6 +117,59 @@ struct TransitExitLinesTests {
 
     // MARK: 줄 단위 영어 자격 (하차 줄 역명이 구간 줄과 같은 술어를 본다)
 
+    @Test(arguments: [nil, "", " \t\r\n", "\u{00A0}\u{200B}\u{3000}"] as [String?])
+    func 이름의_부재는_문구_인자로_전달되지_않는다(_ name: String?) {
+        #expect(transitBriefingName(name) == nil)
+    }
+
+    @Test(arguments: ["천호(풍납토성)", "  서울 역 \n", "City Hall", "  VHS Medical Center  "])
+    func 정상_이름은_공백과_부역명까지_원문을_보존한다(_ name: String) {
+        #expect(transitBriefingName(name) == name)
+        #expect(alightLineText(nil, station: name, exitAlight: "1", lang: "ko", exitBound: exitBound)
+                == "\(name) 하차, 1번 출구 방면")
+    }
+
+    @Test(arguments: ["", " ", "\t\n\r", "\u{00A0}\u{200B}\u{3000}"])
+    func 빈_영문은_구간과_하차_역명을_함께_한국어로_돌린다(_ blank: String) {
+        for leg in [subwayEn(lineEn: blank), subwayEn(fromEn: blank), subwayEn(toEn: blank)] {
+            #expect(!transitLegUsesEnglish(leg, lang: .en))
+            #expect(transitAlightStationName(leg, lang: .en) == "중앙보훈병원")
+        }
+    }
+
+    @Test(arguments: ["", " ", "\t\n\r", "\u{00A0}\u{200B}\u{3000}"])
+    func 빈_하차역은_빠른하차나_출구가_있어도_문장을_만들지_않는다(_ blank: String) {
+        let quick = QuickExit(transfer: QuickExitDoor(kind: "door", doors: ["6-3"]))
+        for lang in ["ko", "en"] {
+            for detail: QuickExit? in [nil, quick] {
+                #expect(alightLineText(detail, station: blank, exitAlight: "1", lang: lang, exitBound: exitBound) == nil)
+            }
+        }
+    }
+
+    @Test(arguments: [nil, "", " \t\n", "\u{3000}"] as [String?])
+    func 없는_한국어_이름은_영어_자격을_막지_않고_하차역을_추정하지_않는다(_ blank: String?) {
+        let leg = TransitRouteLeg(
+            mode: "subway", lineName: "수도권 9호선", fromName: blank, toName: blank,
+            stationCount: 15, minutes: 30, serviceStatus: nil, firstServiceTime: nil, lastServiceTime: nil,
+            lineNameEn: "Line 9")
+        #expect(transitLegUsesEnglish(leg, lang: .en))
+        #expect(transitAlightStationName(leg, lang: .ko) == "")
+        #expect(transitAlightStationName(leg, lang: .en) == "")
+        let walk = TransitRouteLeg(
+            mode: "walk", lineName: nil, fromName: nil, toName: blank, stationCount: nil,
+            minutes: 2, serviceStatus: nil, firstServiceTime: nil, lastServiceTime: nil)
+        #expect(transitLegUsesEnglish(walk, lang: .en))
+    }
+
+    @Test(arguments: ["", " \t\n", "\u{3000}"])
+    func 도보_행선지의_빈_영문도_한국어로_돌린다(_ blank: String) {
+        let leg = TransitRouteLeg(
+            mode: "walk", lineName: nil, fromName: nil, toName: "개화", stationCount: nil,
+            minutes: 2, serviceStatus: nil, firstServiceTime: nil, lastServiceTime: nil, toNameEn: blank)
+        #expect(!transitLegUsesEnglish(leg, lang: .en))
+    }
+
     private func subwayEn(lineEn: String? = "Line 9", fromEn: String? = "Gaehwa", toEn: String? = "VHS Medical Center")
         -> TransitRouteLeg
     {
