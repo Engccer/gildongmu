@@ -200,11 +200,12 @@ struct DirectionsEndpointSearchView: View {
                         // ⚠ id: \.self 금지 — pinned가 Hashable에 포함되어 토글이 행을
                         // 파괴(포커스 이탈)한다. Identifiable(좌표 4자리 키)로 제자리 유지.
                         ForEach(recentEndpoints) { endpoint in
-                            Button(endpoint.pinned
-                                ? joinText(endpoint.label, appLocalized("recent.pinned"))
-                                : endpoint.label
-                            ) {
-                                select(.place(label: endpoint.label, lat: endpoint.lat, lng: endpoint.lng))
+                            Button {
+                                select(.place(label: endpoint.label, lat: endpoint.lat, lng: endpoint.lng, labelRoman: endpoint.labelRoman))
+                            } label: {
+                                let name = bilingual(endpoint.label, roman: endpoint.labelRoman)
+                                let pin = endpoint.pinned ? appLocalized("recent.pinned") : nil
+                                bilingualLine(visible: joinText(name.display, pin), accessible: joinText(name.primary, pin))
                             }
                             .accessibilityFocused($focusedRecent, equals: endpoint)
                             .swipeActions {
@@ -390,7 +391,8 @@ struct DirectionsEndpointSearchView: View {
     private func togglePinRecent(_ endpoint: RecentEndpoint) {
         guard let index = recentEndpoints.firstIndex(of: endpoint) else { return }
         let updated = RecentEndpoint(
-            label: endpoint.label, lat: endpoint.lat, lng: endpoint.lng, pinned: !endpoint.pinned)
+            label: endpoint.label, lat: endpoint.lat, lng: endpoint.lng, pinned: !endpoint.pinned,
+            labelRoman: endpoint.labelRoman)
         recentEndpoints[index] = updated
         recentStore.setEndpointPinned(endpoint, scope: recentScope, pinned: updated.pinned)
         focusedRecent = updated

@@ -105,9 +105,9 @@ final class DirectionsModel {
     private(set) var walkRefetchRevision = 0
     /// "현재 위치" 라벨에 병기할 역지오코딩 주소(F-B, 웹 currentAddress 미러).
     /// nil=주소 미확보 — 라벨은 "현재 위치"만(주소 없음=정보 없음, 거짓 표시 금지).
-    private(set) var currentAddress: String?
+    var currentAddress: String? { addressState.address.original }
     /// `currentAddress`의 비-ko 1순위 표기(juso 공식 영문 → 로마자, E28). ko 요청·부재는 nil.
-    private(set) var currentAddressEnglish: String?
+    var currentAddressEnglish: String? { addressState.address.english }
     /// `results`가 마지막으로 확정될 때 출발지가 수동 위치였는가(웹 originSource
     /// 미러, DirectionsView.tsx). "지금 수동 위치가 켜져 있는가"가 아니라 **화면에
     /// 보이는 이 경로가 어느 좌표에서 계산됐는가**가 판정 축이다 — 조회 뒤 수동
@@ -130,7 +130,9 @@ final class DirectionsModel {
     private(set) var promotedDestination: (label: String, lat: Double, lng: Double)?
     /// "현재 위치 사용" 강제 재측위 진행 신호. 필드 라벨 전환이 유일한 진행 표시.
     private(set) var isRefreshingCurrent = false
-    private var hasLoadedCurrentAddress = false
+    private var addressState = DirectionsAddressState()
+    private var currentAddressTask: Task<Void, Never>?
+    private var refreshCurrentTask: Task<Void, Never>?
 
     private let service = RouteService(client: APIClient(baseURL: AppConfig.apiBaseURL))
     private let searchService = SearchService(client: APIClient(baseURL: AppConfig.apiBaseURL))
@@ -244,8 +246,8 @@ final class DirectionsModel {
     /// (init은 App body 재평가마다 반복 호출되어 여기서 기록하면 삭제된 최근 장소가
     /// 부활하는 부수효과가 있었다 — 스펙 §5 삭제 계약 위반, 2026-07-26 리뷰 수정).
     private func recordRecent(_ endpoint: DirectionsEndpoint?, scope: RecentEndpointScope) {
-        if case .place(let label, let lat, let lng, _) = endpoint {
-            RecentSearchStore().recordEndpoint(RecentEndpoint(label: label, lat: lat, lng: lng), scope: scope)
+        if case .place(let label, let lat, let lng, let roman) = endpoint {
+            RecentSearchStore().recordEndpoint(RecentEndpoint(label: label, lat: lat, lng: lng, labelRoman: roman), scope: scope)
         }
     }
 
@@ -257,8 +259,8 @@ final class DirectionsModel {
     }
 
     private static func recentSide(_ endpoint: DirectionsEndpoint) -> RecentEndpoint? {
-        if case .place(let label, let lat, let lng, _) = endpoint {
-            return RecentEndpoint(label: label, lat: lat, lng: lng)
+        if case .place(let label, let lat, let lng, let roman) = endpoint {
+            return RecentEndpoint(label: label, lat: lat, lng: lng, labelRoman: roman)
         }
         return nil
     }
@@ -287,6 +289,7 @@ final class DirectionsModel {
     /// 취소 신호를 받아 stale write(결과·통지·포커스)를 막는다.
     private func clearResults() {
         queryTask?.cancel()
+        cancelCurrentAddress()
         isInFlight = false
         stepFreeBusy = false
         results = nil
@@ -300,6 +303,7 @@ final class DirectionsModel {
     /// 탭 전환 취소 후 재진입 시 조회 버튼 고착 방지(취소된 태스크는 말미 가드로 리셋 불가).
     func cancel() {
         queryTask?.cancel()
+        cancelCurrentAddress()
         isInFlight = false
         stepFreeBusy = false
     }
@@ -307,10 +311,13 @@ final class DirectionsModel {
     /// 이미 위치가 허용된 세션에서만 조용히 주소를 병기한다(탭 진입만으론 권한 팝업
     /// 금지 — coordinateForDisplay 관례). 미허용·실패면 라벨은 "현재 위치" 그대로.
     func loadCurrentAddressIfAuthorized() async {
-        guard !hasLoadedCurrentAddress, from == .current || to == .current else { return }
+        guard !Task.isCancelled, !addressState.hasLoaded, !addressState.isLoading,
+              from == .current || to == .current else { return }
+        let request = beginCurrentAddress()
+        defer { addressState.finish(request) }
         guard let coord = await LocationService.shared.coordinateForDisplay() else { return }
-        hasLoadedCurrentAddress = true
-        await syncCurrentAddress(lat: coord.lat, lng: coord.lng)
+        guard acceptsCurrentAddress(request) else { return }
+        await syncCurrentAddress(lat: coord.lat, lng: coord.lng, request: request)
     }
 
     /// "현재 위치" 재선택(F-B) = 강제 재측위 + 주소 새로고침. 진행 신호는 필드 라벨
@@ -318,23 +325,42 @@ final class DirectionsModel {
     /// 실패는 조용히 직전 라벨 유지(새로고침=재조회이지 데이터 포기 아님).
     func refreshCurrentLocation() {
         if isRefreshingCurrent { return }
+        let request = beginCurrentAddress()
         isRefreshingCurrent = true
-        Task {
-            defer { isRefreshingCurrent = false }
+        refreshCurrentTask = Task {
+            defer {
+                if addressState.finish(request) { isRefreshingCurrent = false }
+            }
             guard let coord = try? await ManualLocationJudge.effectiveCoordinate(force: true) else { return }
-            hasLoadedCurrentAddress = true
-            await syncCurrentAddress(lat: coord.lat, lng: coord.lng)
+            guard acceptsCurrentAddress(request) else { return }
+            await syncCurrentAddress(lat: coord.lat, lng: coord.lng, request: request)
         }
+    }
+
+    private func cancelCurrentAddress() {
+        addressState.cancel()
+        currentAddressTask?.cancel()
+        refreshCurrentTask?.cancel()
+        isRefreshingCurrent = false
+    }
+
+    private func beginCurrentAddress() -> DirectionsAddressState.Request {
+        cancelCurrentAddress()
+        return addressState.begin(language: AppLanguage.dataLocale)
+    }
+
+    private func acceptsCurrentAddress(_ request: DirectionsAddressState.Request) -> Bool {
+        addressState.accepts(request, language: AppLanguage.dataLocale, isCancelled: Task.isCancelled)
     }
 
     /// 좌표의 대표 주소를 라벨 병기용으로 동기화. 역지오코딩 실패·매칭 없음은 nil로
     /// 정직하게 비운다(옛 좌표의 주소를 남기지 않는다). 주소는 부가 정보라 조회
     /// 흐름은 어떤 경우에도 막지 않는다.
-    private func syncCurrentAddress(lat: Double, lng: Double) async {
-        let resolved = try? await searchService.reverseGeocode(lat: lat, lng: lng, lang: AppLanguage.dataLocale)
-        currentAddress = resolved?.address
-        // 주소가 없으면 영문도 없다(`CurrentAddressStore` 동형) — 옛 좌표의 영문이 남지 않게 함께 비운다.
-        currentAddressEnglish = resolved?.address == nil ? nil : resolved?.english
+    private func syncCurrentAddress(lat: Double, lng: Double, request: DirectionsAddressState.Request) async {
+        guard acceptsCurrentAddress(request) else { return }
+        let resolved = try? await searchService.reverseGeocode(lat: lat, lng: lng, lang: request.language)
+        addressState.commit(resolved, for: request,
+                            language: AppLanguage.dataLocale, isCancelled: Task.isCancelled)
     }
 
     /// 안내 주도 재조회(스펙 2026-08-12 §5.3)는 silently=true — 완료·실패 통지를
@@ -359,6 +385,7 @@ final class DirectionsModel {
     }
 
     private func performQuery(from: DirectionsEndpoint, to: DirectionsEndpoint) async {
+        guard !Task.isCancelled else { return }
         results = nil
         walkShortest = nil // 스냅샷 교체(spec §4) — 이전 세대 대안을 지우고 시작
         resultsUsedManualOrigin = false
@@ -375,6 +402,7 @@ final class DirectionsModel {
         // 서고 `results`는 여전히 nil인 조합이 관찰 가능한 채로 남지 않도록.
         var usedManualOrigin = false
         if from == .current || to == .current {
+            let addressRequest = beginCurrentAddress()
             phase = .locating
             // 호출 직전 스냅샷(effectiveCoordinate 내부의 분기 판정과 같은 turn) —
             // 측위 대기 중(await) 수동 위치가 새로 켜지는 레이스에서 실제로는 GPS로
@@ -382,21 +410,27 @@ final class DirectionsModel {
             usedManualOrigin = from == .current && ManualLocationStore.shared.current != nil
             do {
                 current = try await ManualLocationJudge.effectiveCoordinate(force: false)
+                guard !Task.isCancelled else { return }
                 // 좌표 해석 시점 선분기 — 현재 위치가 서비스 지역 밖이면 조회 자체를
                 // 중단한다(수단별 fetch·주소 동기화 전부 생략). 오류가 아니라 커버리지
                 // 안내이므로 일반 phase로 표기(웹 DirectionsView 동형).
                 if let acquired = current, !isInKorea(lat: acquired.lat, lng: acquired.lng) {
+                    addressState.finish(addressRequest)
                     phase = .outOfCoverage
                     announce(appLocalized("ios.common.outOfCoverage"), haptic: .attention)
                     return
                 }
-                // 측위 성공 → 라벨 병기 주소도 그 좌표로 동기화(표시 전용, 조회 흐름과
-                // 독립인 비구조 태스크 — clearResults의 조회 취소에 안 딸려간다).
-                if let acquired = current {
-                    hasLoadedCurrentAddress = true
-                    Task { await self.syncCurrentAddress(lat: acquired.lat, lng: acquired.lng) }
+                // 측위 전에 발급한 요청만 넘긴다. 늦은 측위가 최신 주소 요청을 만들지 않는다.
+                if let acquired = current, acceptsCurrentAddress(addressRequest) {
+                    currentAddressTask = Task {
+                        defer { addressState.finish(addressRequest) }
+                        await syncCurrentAddress(lat: acquired.lat, lng: acquired.lng, request: addressRequest)
+                    }
+                } else {
+                    addressState.finish(addressRequest)
                 }
             } catch {
+                addressState.finish(addressRequest)
                 guard !Task.isCancelled else { return }
                 // 거부와 취득 실패는 다른 문장(3-state): 거부는 설정 경로, 실패는 검색 우회 안내.
                 if case .denied = error {
@@ -744,10 +778,12 @@ struct DirectionsTabView: View {
                         // ⚠ id: \.self 금지 — pinned가 Hashable에 포함되어 토글이 행을
                         // 파괴(포커스 이탈)한다. Identifiable(출발·도착 쌍 키)로 제자리 유지.
                         ForEach(model.recentRoutes) { route in
-                            Button(route.pinned
-                                ? joinText(recentRouteLabel(route), appLocalized("recent.pinned"))
-                                : recentRouteLabel(route)
-                            ) { activateRecentRoute(route) }
+                            Button { activateRecentRoute(route) } label: {
+                                let pin = route.pinned ? appLocalized("recent.pinned") : nil
+                                bilingualLine(
+                                    visible: joinText(recentRouteLabel(route, accessible: false), pin),
+                                    accessible: joinText(recentRouteLabel(route, accessible: true), pin))
+                            }
                                 .accessibilityFocused($focusedRecentRoute, equals: route)
                                 .swipeActions {
                                     Button(appLocalized(route.pinned ? "recent.unpin" : "recent.pin")) {
@@ -998,10 +1034,16 @@ struct DirectionsTabView: View {
         }
     }
 
-    private func recentRouteLabel(_ route: RecentRoute) -> String {
-        let from = route.from?.label ?? appLocalized("directions.currentLocation")
-        let to = route.to?.label ?? appLocalized("directions.currentLocation")
-        if let via = route.via?.label {
+    private func recentRouteLabel(_ route: RecentRoute, accessible: Bool) -> String {
+        func name(_ side: RecentEndpoint?) -> String {
+            guard let side else { return appLocalized("directions.currentLocation") }
+            let value = bilingual(side.label, roman: side.labelRoman)
+            return accessible ? value.primary : value.display
+        }
+        let from = name(route.from)
+        let to = name(route.to)
+        if let viaSide = route.via {
+            let via = name(viaSide)
             // ko 목적격 조사는 라벨 받침에 따라 갈려 문자열 자원에 박을 수 없다 — 호출부가
             // 붙이고 한글이 아닌 이름은 조사 없이 물러난다(웹 routeItemLabel 동형).
             let viaText = AppLanguage.current == "ko" ? via + (KoreanParticle.object(via) ?? "") : via
@@ -1011,7 +1053,7 @@ struct DirectionsTabView: View {
     }
 
     private func directionsEndpoint(_ side: RecentEndpoint?) -> DirectionsEndpoint {
-        side.map { .place(label: $0.label, lat: $0.lat, lng: $0.lng) } ?? .current
+        side.map { .place(label: $0.label, lat: $0.lat, lng: $0.lng, labelRoman: $0.labelRoman) } ?? .current
     }
 
     /// 안내 주도 목적지 변경의 폼 동기화(스펙 2026-08-12 §5): 출발지=현재 위치(안내
@@ -1045,7 +1087,7 @@ struct DirectionsTabView: View {
         // 경유지도 원자 확정의 일부(N4): 있으면 세우고 없으면 지운다 — 이전 질의의
         // 경유지가 최근 경로 활성화에 딸려 가지 않는다.
         if let via = route.via {
-            model.setVia(.place(label: via.label, lat: via.lat, lng: via.lng))
+            model.setVia(.place(label: via.label, lat: via.lat, lng: via.lng, labelRoman: via.labelRoman))
         } else {
             model.clearVia()
         }

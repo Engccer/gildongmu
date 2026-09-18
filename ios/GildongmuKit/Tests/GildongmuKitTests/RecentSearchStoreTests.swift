@@ -144,6 +144,80 @@ private func freshDefaults(_ name: String) -> UserDefaults {
 }
 
 @Suite struct RecentEndpointTests {
+    @Test func legacyAndAdditiveRomanizationRoundTrip() throws {
+        let defaults = freshDefaults("ep-roman-legacy")
+        let legacy = Data(#"[{"label":"경복궁","lat":37.579617,"lng":126.977041}]"#.utf8)
+        defaults.set(legacy, forKey: "recentEndpoints.to.v1")
+        let store = RecentSearchStore(defaults: defaults)
+        let old = try #require(store.endpoints(.to).first)
+        #expect(old.labelRoman == nil)
+        #expect(!old.pinned)
+        #expect(bilingualName(lang: "en", ko: old.label, en: nil, roman: old.labelRoman).primary == "경복궁")
+        let new = RecentEndpoint(label: old.label, lat: old.lat, lng: old.lng, labelRoman: "Gyeongbokgung")
+        store.recordEndpoint(new, scope: .to)
+        let reloaded = RecentSearchStore(defaults: defaults).endpoints(.to)
+        #expect(reloaded == [new])
+        #expect(reloaded.first?.id == old.id)
+        let encoded = try #require(defaults.data(forKey: "recentEndpoints.to.v1"))
+        let object = try #require(JSONSerialization.jsonObject(with: encoded) as? [[String: Any]])
+        #expect(object.first?["labelRoman"] as? String == "Gyeongbokgung")
+        // 과거 디코더는 additive 키를 무시하고 원명·좌표를 그대로 읽는다.
+        struct Legacy: Decodable { let label: String; let lat: Double; let lng: Double }
+        #expect(try JSONDecoder().decode([Legacy].self, from: encoded).first?.label == old.label)
+    }
+
+    @Test func romanizationSurvivesPinsAndRouteRoundTrip() throws {
+        let defaults = freshDefaults("ep-route-roman")
+        let store = RecentSearchStore(defaults: defaults)
+        let from = RecentEndpoint(label: "출발", lat: 37.5, lng: 127, labelRoman: "Start")
+        let to = RecentEndpoint(label: "도착", lat: 37.6, lng: 127, labelRoman: "End")
+        let via = RecentEndpoint(label: "경유", lat: 37.55, lng: 127, labelRoman: "Via")
+        for (scope, item) in [(RecentEndpointScope.from, from), (.to, to), (.via, via)] {
+            store.recordEndpoint(item, scope: scope)
+            for pinned in [true, false] {
+                store.setEndpointPinned(item, scope: scope, pinned: pinned)
+                let actual = try #require(store.endpoints(scope).first)
+                #expect(actual.labelRoman == item.labelRoman)
+                #expect(actual.id == item.id)
+                #expect(actual.pinned == pinned)
+            }
+        }
+        let route = RecentRoute(from: from, to: to, via: via)
+        store.recordRoute(route)
+        store.setRoutePinned(route, pinned: true)
+        let restored = try #require(RecentSearchStore(defaults: defaults).routes().first)
+        #expect(restored.from == from)
+        #expect(restored.to == to)
+        #expect(restored.via == via)
+        #expect(restored.id == route.id)
+        #expect(restored.pinned)
+        // 표기만 바뀌어도 같은 경로이며 고정 상태와 자리를 유지한다.
+        let updatedTo = RecentEndpoint(label: to.label, lat: to.lat, lng: to.lng, labelRoman: "Destination")
+        store.recordRoute(RecentRoute(from: from, to: updatedTo, via: via))
+        #expect(store.routes().count == 1)
+        #expect(store.routes().first?.to?.labelRoman == "Destination")
+        #expect(store.routes().first?.pinned == true)
+        store.setRoutePinned(route, pinned: false)
+        #expect(store.routes().first?.to?.labelRoman == "Destination")
+    }
+
+    @Test func pinnedEndpointDedupeKeepsLatestSpellingAndLegacyRouteDecodes() throws {
+        let store = RecentSearchStore(defaults: freshDefaults("ep-roman-dedupe"))
+        let old = RecentEndpoint(label: "이름", lat: 37.5, lng: 127, labelRoman: "Old")
+        store.recordEndpoint(old, scope: .to)
+        store.setEndpointPinned(old, scope: .to, pinned: true)
+        let changed = RecentEndpoint(label: "새 이름", lat: 37.50001, lng: 127, labelRoman: "New")
+        let items = store.recordEndpoint(changed, scope: .to)
+        #expect(items.count == 1)
+        #expect(items.first?.labelRoman == "New")
+        #expect(items.first?.id == old.id)
+        #expect(items.first?.pinned == true)
+        let legacy = Data(#"{"to":{"label":"이름","lat":37.5,"lng":127}}"#.utf8)
+        let route = try JSONDecoder().decode(RecentRoute.self, from: legacy)
+        #expect(route.to?.labelRoman == nil)
+        #expect(route.from == nil && route.via == nil && !route.pinned)
+    }
+
     let gyeongbok = RecentEndpoint(label: "경복궁", lat: 37.579617, lng: 126.977041)
 
     @Test func recordRemoveClear() {
