@@ -14,9 +14,10 @@
 |---|---|
 | O2 패키지 이름 | **iOS와 같은 체계.** 정식 `space.dodoplanet.gildongmu`, 실험판 `space.dodoplanet.gildongmu.dev`(`applicationIdSuffix`) |
 | O6 실험 빌드 구성 | **처음부터 둔다.** build type 또는 flavor로 `debug`·`release`·`experimental` 세 구성. iOS와 같이 실험판은 번들 ID·표시 이름(`…실험`)·아이콘이 다르고 정식판과 한 기기에 공존한다. 표시 이름 접미사는 스크린 리더 사용자의 유일한 구분 수단이라 반드시 유지 |
+| O4 한소네 개발 연결 | **완료(2026-09-19).** 한소네 7 H732B가 USB ADB `device` 상태로 연결됐고, 개발자 옵션·USB 디버깅 활성화와 디버깅 중 정상 점자 출력을 실측했다 |
 | 병렬 구성 | **뼈대 1창 → 3창 병렬**(§4) |
 
-열린 채 두는 것: O1(일반 폰 확보, M4 진입 때 재검토) · O3(스토어 등재 정보, 계정 개설 뒤) · O4·O5(한소네 개발자 옵션·Play Console 앱, 위원장이 실기기에서 확인). Play 개발자 계정 개설(25달러)은 비용 발생이라 위원장이 직접 한다. 개발은 계정 없이 진행되고 내부 테스트 트랙 업로드만 계정을 기다린다.
+열린 채 두는 것: O1(일반 폰 확보, M4 진입 때 재검토) · O3(스토어 등재 정보, 계정 개설 뒤) · O5(Play Console 모바일 앱이 한소네에서 동작하는지 실기기 확인). Play 개발자 계정 개설(25달러)은 비용 발생이라 위원장이 직접 한다. 개발은 계정 없이 진행되고 내부 테스트 트랙 업로드만 계정을 기다린다.
 
 ### 마일스톤 (판정 문서 §2 그대로, 세션 배정만 추가)
 
@@ -124,7 +125,7 @@ git -C ~/Mac-Projects/gildongmu worktree add ~/gildongmu-wt/<name> -b feat/<name
 - rebase 뒤 공유 문서 소실 대조: `base=$(git rev-parse main)` 뒤 `comm -23 <(git show "${base}:CHANGELOG.md" | sort) <(sort CHANGELOG.md)`; 출력은 전부 자기가 지운 줄이어야 한다. **`${base}`처럼 중괄호로 감싼다**(zsh 수정자 함정).
 - 보고 파일: `~/gildongmu-wt/<name>-reports/report.md`(worktree 밖). 체크포인트·통합·막힘마다 갱신하고 코디네이터(`SendMessage`)에도 보낸다. 메시지는 유실될 수 있으므로 **파일이 정본**이다.
 - 세션은 TTS 요약 파일(`~/.claude/tts-summary.txt`)을 쓰지 않는다. 위원장에게 닿아야 하는 것은 코디네이터에게 보낸다.
-- 실기기 설치(`adb install`)는 한 번에 한 세션. 설치 직전 코디네이터에 알리고 허가 뒤에. 기기 페어링(`adb pair`)은 코디네이터가 위원장과 한다: 세션은 `adb devices`가 비어 있으면 APK 경로만 보고하고 기다리지 않고 다음 일을 한다.
+- 실기기 설치(`adb install`)는 한 번에 한 세션. 설치 직전 코디네이터에 알리고 허가 뒤에. 한소네 7은 USB ADB 연결과 이 맥의 접속 허용을 마쳤다. 세션은 연결이 풀렸으면 APK 경로와 연결 상태만 보고하고 기다리지 않고 다음 일을 한다. 무선 페어링은 선택 사항이다.
 
 ## §4. 웨이브
 
@@ -236,7 +237,7 @@ M0 체크포인트 뒤 코디네이터가 확정한다. 요지: `~/gildongmu-wt/
 
 ## §6. 코디네이터 메모
 
-- 기기 페어링: 위원장이 한소네에서 개발자 옵션 → 무선 디버깅 → 페어링 코드를 열면 코디네이터 세션에서 `adb pair`·`adb connect`. USB는 점자 디스플레이로 유지.
+- 기기 연결: 2026-09-19 USB ADB 연결 완료. H732B serial `000000000150`이 `device` 상태이고 디버깅 중 점자 출력도 정상이다. 무선 페어링은 선행 조건이 아니다.
 - Play 개발자 계정: 위원장이 직접(비용). 개설되면 `android-m1`에 내부 테스트 트랙 업로드 절차(keystore는 `~/gildongmu-private/`, Play App Signing 켬)를 추가 지시.
 - iOS 릴리스 절차 `ios-release-submit` 스킬에 "이 변경이 안드로이드에도 필요한가" 한 줄(D6 장치 3)은 자작 스킬 개정이라 코디네이터가 웨이브 종료 때 한다.
 - `xcrun simctl`이 Xcode 라이선스 미동의를 냈다(2026-09-16 15:19). 안드로이드와 무관하지만 다음 iOS 빌드 전에 `sudo xcodebuild -license`가 필요하다.
