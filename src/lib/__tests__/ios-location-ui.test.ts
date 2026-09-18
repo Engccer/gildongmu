@@ -4,6 +4,11 @@ import { resolve } from "node:path";
 import { createTranslator } from "next-intl";
 import { buildCatalog, TARGETS } from "../../../ios/scripts/messages-to-xcstrings.mjs";
 
+type CatalogStrings = Record<
+  string,
+  { localizations: Record<string, { stringUnit: { value: string } }> }
+>;
+
 const root = resolve(__dirname, "../../..");
 const read = (file: string) => readFileSync(resolve(root, file), "utf8");
 
@@ -25,7 +30,7 @@ describe("E43 버스 경유 정류소 통지", () => {
 
   it("생성 카탈로그에 count 첫 인자와 ICU 분기가 보존된다", () => {
     const { catalog } = buildCatalog(TARGETS.app);
-    const entry = catalog.strings["ios.nearby.announceRouteStops"];
+    const entry = (catalog.strings as CatalogStrings)["ios.nearby.announceRouteStops"];
     expect(entry).toBeDefined();
     expect(entry.localizations.ko.stringUnit.value).toBe("경유 정류소 %1$@곳");
     expect(entry.localizations.en.stringUnit.value).toBe(
