@@ -698,9 +698,9 @@ Basic 일 30건(E46) 아래에서 **사용자 몫을 개발이 먹지 않게** �
 
 ### E43. 안드로이드 앱 — 🚧 코드 도달(2026-09-17 `f215b164`, 웨이브 0~3 완료), ⏳ 실기기 판정·M5·스토어
 
-판정 정본 `docs/superpowers/specs/2026-09-15-android-app-decisions.md`(D1~D13), 착수 계획·통합 기록·보류 판정 `docs/superpowers/plans/2026-09-16-android-app-parallel-plan.md`(§5-4·§5-5). 2026-09-16~17 병렬 세션 8개(뼈대·Kit 이식 3·M1~M4·M6·설정)로 **Kit 90파일 중 87 이식·3 제외**(등록부 3벌이 잠금), 화면은 검색·장소 상세·내 주변 10섹션·길찾기 브리핑·채팅·수동 위치·도보 실시간 안내(실험판)·설정까지 도달. 확정 판정: O2(패키지 iOS 체계)·O6(실험 빌드 구성). 열린 것:
+판정 정본 `docs/superpowers/specs/2026-09-15-android-app-decisions.md`(D1~D13), 착수 계획·통합 기록·보류 판정 `docs/superpowers/plans/2026-09-16-android-app-parallel-plan.md`(§5-4·§5-5). 2026-09-16~17 병렬 세션 8개(뼈대·Kit 이식 3·M1~M4·M6·설정)로 **Kit 90파일 중 87 이식·3 제외**(등록부 3벌이 잠금), 화면은 검색·장소 상세·내 주변 10섹션·길찾기 브리핑·채팅·수동 위치·도보 실시간 안내(실험판)·설정까지 도달. 확정 판정: O2(패키지 iOS 체계)·O4(한소네 개발 연결)·O6(실험 빌드 구성). 열린 것:
 
-- **실기기 판정(선행)**: 한소네 7 미연결(O4 — USB 디버깅은 F3-E 안드로이드 시스템 설정에서, 좌측 뒤쪽 USB-C). 누적 항목: M1 9·M2 16·M2b 6·M2c 4·M3 13·M6 16·설정 6·M4 실보행 25(각 세션 `~/gildongmu-wt/<이름>-reports/report.md`). ⚠ Compose 1.12.1 터치 모드 버튼 착지 결함 처방(`landingTarget`)은 TalkBack 폰에서만 검증된다 — O1 일반 폰 필요성의 실례.
+- **실기기 판정(연결 완료, 판정 미착수)**: 한소네 7 USB ADB 연결 선행 조건 O4는 2026-09-19에 종결했다. `adb devices`에서 H732B가 `device` 상태이고, 디버깅 중에도 점자 출력이 정상임을 확인했다. **판정은 아직 0건이다.** 누적 항목: M1 9·M2 16·M2b 6·M2c 4·M3 13·M6 16·설정 6·M4 실보행 25(각 세션 `~/gildongmu-wt/<이름>-reports/report.md`). ⚠ Compose 1.12.1 터치 모드 버튼 착지 결함 처방(`landingTarget`)은 TalkBack 폰에서만 검증된다. O1 일반 폰 필요성의 실례다.
 - **M5 자동차·대중교통 안내**: M4 [3] 계층의 실기기 스모크 뒤 착수(코디네이터 판정). **M4b**: 세션 중 목적지·경유지 변경·대안 프리뷰·장소 상세 중첩·주변 확인.
 - **출시 전 게이트**: 웹 `privacy.dictation` 문구가 "iOS 앱"으로 한정 — 안드로이드 온디바이스 받아쓰기 문구 6로케일(4자 일치: 웹·PrivacyInfo·ASC·Play 데이터 안전성). 안드로이드 출시 노트 정본이 생기면 설정 "업데이트 이력" 화면(판정 43). 스토어 등재(O3)·Play 데이터 안전성(`play-policy-insights` 스킬 감사).
 - **iOS 잔여**: ⑥ 수동 위치 지정 순간에도 GPS 권한 요청을 유지한다(위원장 판정, 2026-09-19). 권한을 허용하지 않은 상태에서 팝업 없이 지정하는 Android식 동작은 적용하지 않는다. ①위치 실패 문구 ②경유 정류소 통지 ③nil 지도 URL 액션 ④주소 latest-wins ⑤위치 표시 상태 구분은 코드 구현을 마쳤고(CHANGELOG 2026-09-19), 실기기 판정은 §2의 E43 iOS 행에 남긴다. 웹의 대응 후보는 동결 해제 뒤 별도 확인한다.
@@ -1422,7 +1422,7 @@ W1 도구 9개를 "데이터 반환형이 주"(W2 spec 판정 ②) 기준으로 
 
 ## 8. 위원장 직접 액션
 
-- **안드로이드(E43)**: ① 한소네 7 USB 디버깅 켜기 + 케이블 연결(첫 실기기 판정 선행) ② Google Play 개발자 계정 개설(25달러, D1 개인 계정) — 내부 테스트 트랙·Play App Signing·keystore(`~/gildongmu-private/`) ③ `sudo xcodebuild -license accept`(brew·`xcstrings-plural` 테스트·iOS 빌드 전부 이것에 걸려 있다).
+- **안드로이드(E43)**: ① ✅ 한소네 7 USB 디버깅·케이블 연결 완료(2026-09-19, O4 종결) ② Google Play 개발자 계정 개설(25달러, D1 개인 계정). 내부 테스트 트랙·Play App Signing·keystore(`~/gildongmu-private/`)가 뒤따른다 ③ `sudo xcodebuild -license accept`(brew·`xcstrings-plural` 테스트·iOS 빌드 전부 이것에 걸려 있다).
 
 코드로 닫을 수 없는 것. *(구 `F-b`.)*
 
