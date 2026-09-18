@@ -67,6 +67,8 @@ private func subwayArrivalProseText(_ plan: SubwayArrivalPlan, station: String?)
 /// 메시지 자리는 완성 문장을 읽어 쓴 **우리 문장**(E37)이고, 알아보지 못한 문장만 원문 + A32 꼬리로 간다.
 func subwayArrivalLine(_ arrival: SubwayArrival, isEn: Bool) -> String {
     let express = arrival.express ? appLocalized("subwayArrival.express") : nil
+    // 웹과 같은 편성 순서: 노선 상·하행, 급행, 행선. 노선·방향이 비어도 joinText 정책을 유지한다.
+    let lineAndDirection = arrival.line.map { joinText($0, arrival.direction) } ?? arrival.direction
     // 노선 미매핑(`line` nil)은 ko도 그 조각이 없으므로 영문 요구 대상이 아니다("" 자리 표시).
     let headEnParts: [String?] = [
         arrival.line == nil ? "" : arrival.lineEn,
@@ -83,7 +85,7 @@ func subwayArrivalLine(_ arrival: SubwayArrival, isEn: Bool) -> String {
         if headReady, koStation == nil || station != nil {
             let prose = subwayArrivalProseText(plan, station: station)
             return TransitDisplay.pickLine(
-                isEn: isEn, ko: joinText(arrival.line, express, arrival.trainLineNm, prose),
+                isEn: isEn, ko: joinText(lineAndDirection, express, arrival.trainLineNm, prose),
                 enParts: headEnParts
             ) { p in
                 joinText("\(p[0].isEmpty ? "" : "\(p[0]) ")\(p[1])", express, p[2], prose)
@@ -99,7 +101,7 @@ func subwayArrivalLine(_ arrival: SubwayArrival, isEn: Bool) -> String {
     let koTail = subwayShowsCurrentLocationTail(message: arrival.message, currentLocation: arrival.currentLocation)
     let enTail = subwayShowsCurrentLocationTail(message: arrival.messageEn, currentLocation: enLoc)
     let ko = joinText(
-        arrival.line, express, arrival.trainLineNm, arrival.message,
+        lineAndDirection, express, arrival.trainLineNm, arrival.message,
         koTail ? arrival.currentLocation.map { appLocalized("subwayArrival.currentLocation", $0) } : nil)
     return TransitDisplay.pickLine(
         isEn: isEn, ko: ko,
