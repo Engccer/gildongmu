@@ -71,7 +71,7 @@ struct LocationBarView: View {
         addressStore.address.map { bilingual($0, en: addressStore.english, roman: nil) }
     }
 
-    /// 4-state(웹 `LocationBar.tsx` 미러): 수동 / GPS 실패 / GPS 좌표 있음 / 확인 중.
+    /// 수동 / 권한 거부 / 대략 위치 / GPS 실패 / GPS 좌표 있음 / 확인 중.
     ///
     /// ⚠ 수동이 아니면 무조건 "현재 위치"라고 말하면 안 된다 — 권한이 없거나 측위가
     /// 실패해도 표시줄만 들어서는 위치가 정상인 것으로 들리고, 그 상태로 "내 주변"에
@@ -84,8 +84,14 @@ struct LocationBarView: View {
         if let manual = manualLocationLabel(store, accessible: accessible) { return manual }
         switch location.observedAuthorization {
         case .denied, .restricted:
-            return appLocalized("manualLocation.gpsFailed")
+            return appLocalized("ios.common.geoDeniedTitle")
         default:
+            // 아직 권한을 묻지 않은 상태는 정확도 허가와 무관하게 확인 중이다.
+            if (location.observedAuthorization == .authorizedWhenInUse
+                || location.observedAuthorization == .authorizedAlways),
+               location.observedAccuracy == .reducedAccuracy {
+                return appLocalized("ios.common.geoReducedTitle")
+            }
             // notDetermined(아직 안 물음)·허용인데 fix 전은 "확인 중"이다 — 실패는
             // 확정됐을 때만 말한다(웹이 idle을 실패로 오판하지 않는 것과 같은 이유).
             //

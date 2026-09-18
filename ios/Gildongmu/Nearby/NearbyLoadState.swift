@@ -146,7 +146,7 @@ func nearbyTitle(_ base: String, anchor: PlaceAnchor?) -> String {
 /// 완료 통지의 대상 종류. 종류별 완성 문장 키(A29) — 종전 "{count} {unit} nearby" +
 /// 단위 낱말 합성은 en "1 place nearby"를 만들 수 없고 fr은 어순까지 달랐다.
 enum NearbyCountKind {
-    case places, bikeStations, busStops, stations, events
+    case places, bikeStations, busStops, routeStops, stations, events
 }
 
 /// 완료 통지 = 문장 + 결과 진동 종류(E30 확장). 문장을 고르는 판정이 곧 3-state 판정이라 한 값으로
@@ -160,12 +160,16 @@ struct NearbyLoadedNotice {
 @MainActor
 func nearbyLoadedNotice(count: Int, kind: NearbyCountKind) -> NearbyLoadedNotice {
     guard count > 0 else {
-        return NearbyLoadedNotice(message: appLocalized("ios.nearby.announceEmpty"), haptic: .attention)
+        let message = kind == .routeStops
+            ? appLocalized("ios.nearby.routeStopsEmpty")
+            : appLocalized("ios.nearby.announceEmpty")
+        return NearbyLoadedNotice(message: message, haptic: .attention)
     }
     let message = switch kind {
     case .places: appLocalized("ios.nearby.announcePlaces", count)
     case .bikeStations: appLocalized("ios.nearby.announceBikes", count)
     case .busStops: appLocalized("ios.nearby.announceStops", count)
+    case .routeStops: appLocalized("ios.nearby.announceRouteStops", count)
     case .stations: appLocalized("ios.nearby.announceStations", count)
     case .events: appLocalized("ios.nearby.announceEvents", count)
     }

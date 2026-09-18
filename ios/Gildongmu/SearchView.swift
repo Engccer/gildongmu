@@ -431,13 +431,11 @@ struct PlaceRow: View {
                 DirectionsPrefillStore.shared.pending = DirectionsPrefill(
                     role: .to, endpoint: .place(label: place.name, lat: place.lat, lng: place.lng))
             }
-            Button(appLocalized("ios.route.naver")) {
-                if let url = buildNaverRouteDeeplink(mode: .walk, dest: dest, appname: AppConfig.appIdentifier) {
-                    openURL(url)
-                }
+            if let url = buildNaverRouteDeeplink(mode: .walk, dest: dest, appname: AppConfig.appIdentifier) {
+                Button(appLocalized("ios.route.naver")) { openURL(url) }
             }
-            Button(appLocalized("ios.route.kakao")) {
-                if let url = buildKakaoRouteDeeplink(mode: .walk, dest: dest) { openURL(url) }
+            if let url = buildKakaoRouteDeeplink(mode: .walk, dest: dest) {
+                Button(appLocalized("ios.route.kakao")) { openURL(url) }
             }
             if !place.roadAddress.isEmpty {
                 Button(appLocalized("ios.place.copyAddress")) { copyAddressToPasteboard(place.roadAddress) }

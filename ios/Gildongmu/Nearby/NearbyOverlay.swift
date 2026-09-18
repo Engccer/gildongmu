@@ -32,6 +32,10 @@ struct NearbyOverlayCopy {
     static var defaultFailure: NearbyOverlayCopy {
         NearbyOverlayCopy(appLocalized("ios.common.failedTitle"), systemImage: "wifi.exclamationmark")
     }
+
+    static var locationFailure: NearbyOverlayCopy {
+        NearbyOverlayCopy(appLocalized("manualLocation.gpsFailed"), systemImage: "location.slash")
+    }
 }
 
 /// 상태 오버레이 디스크립터 — 전용 팩토리 3종만 허용(불법 조합 타입 차단):
@@ -67,7 +71,7 @@ struct NearbyOverlayDescriptor<Payload> {
         empty: NearbyOverlayCopy,
         isEmpty: @escaping (Payload) -> Bool,
         loadingText: String = appLocalized("ios.common.checking"),
-        failedLocation: NearbyOverlayCopy = .defaultFailure,
+        failedLocation: NearbyOverlayCopy = .locationFailure,
         failedServer: NearbyOverlayCopy = .defaultFailure
     ) -> Self {
         Self(loadingText: loadingText, isEmpty: isEmpty, emptyList: empty,
@@ -76,7 +80,7 @@ struct NearbyOverlayDescriptor<Payload> {
 
     static func plain(
         loadingText: String = appLocalized("ios.common.checking"),
-        failedLocation: NearbyOverlayCopy = .defaultFailure,
+        failedLocation: NearbyOverlayCopy = .locationFailure,
         failedServer: NearbyOverlayCopy = .defaultFailure
     ) -> Self {
         Self(loadingText: loadingText, isEmpty: { _ in false }, emptyList: nil,

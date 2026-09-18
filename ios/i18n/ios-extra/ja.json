@@ -216,6 +216,7 @@
       "announcePlaces": "周辺のスポット{count}件",
       "announceBikes": "周辺のステーション{count}件",
       "announceStops": "周辺のバス停{count}件",
+      "announceRouteStops": "経由停留所{count}か所",
       "announceStations": "周辺の駅{count}件",
       "announceEvents": "周辺のイベント{count}件"
     },

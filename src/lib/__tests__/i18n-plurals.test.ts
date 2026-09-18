@@ -197,6 +197,7 @@ describe("수량 문구 복수형(A29)", () => {
     "ios.nearby.announcePlaces": "1 place nearby",
     "ios.nearby.announceBikes": "1 bike station nearby",
     "ios.nearby.announceStops": "1 bus stop nearby",
+    "ios.nearby.announceRouteStops": "1 stop on this route",
     "ios.nearby.announceStations": "1 station nearby",
     "ios.nearby.announceEvents": "1 event nearby",
     "guide.switchedToShortest": "Switched to the shortest route. 1 step, x total. x",

@@ -216,6 +216,7 @@
       "announcePlaces": "{count, plural, one {# lugar} other {# lugares}} cerca",
       "announceBikes": "{count, plural, one {# estación} other {# estaciones}} cerca",
       "announceStops": "{count, plural, one {# parada} other {# paradas}} cerca",
+      "announceRouteStops": "{count, plural, one {# parada en la ruta} other {# paradas en la ruta}}",
       "announceStations": "{count, plural, one {# estación} other {# estaciones}} cerca",
       "announceEvents": "{count, plural, one {# evento} other {# eventos}} cerca"
     },
