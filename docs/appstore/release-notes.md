@@ -12,6 +12,61 @@
 
 ---
 
+## 1.18 (빌드 26)
+
+기준은 1.17 아카이브 커밋 `ff41fdce`(빌드 25)이며 그 이후 `ios/` 커밋 27건을 판정했다. Release 바이너리에 도달하면서 iOS 사용자에게 보이는 것만 담는다. 동결 중(웹은 2026-09-04 `origin/main`) 사이클이라 새 서버 의존을 따로 확인했다: 새로 읽는 값은 이미 배포된 `/api/places`·지하철 도착 `direction`·로컬 저장 `labelRoman`뿐이다.
+
+포함 판정:
+
+| 기능 | 커밋 | 노트 |
+|---|---|---|
+| **역 장소 상세 개편**(E44) — 역 정보(전화 맨 위, 운영사 대표번호는 "대표번호"로 표기) → 실시간 도착·첫차막차 → 교통약자 시설(종류별 접기, 접힌 줄에 운행 중지 수) → 무장애 → 길찾기 → 이 장소 주변(지하철 도착 제외) | `7bbd52d9`·`50c170c0`·`6d1d7278`·`c32fa222`·`be83923d`·`3feee5bc` | ko·en 6로케일. 도달면 `PlaceDetailView`(`stationLayoutKind`)·`StationSections`는 정식판(검색 탭 역 상세 포함) |
+| **길찾기 대중교통 브리핑의 역 로터**(E45) — 지하철 구간 줄에 나온 역마다 "{역} 상세 보기"·"{역}에 전화 걸기". 번호 없음·찾는 중·조회 실패를 통지로 가른다 | `14ab34e0`·`f728e740`·`bff934ce`·`55833a63`·`b2a07ee9`·`c8c73ec5`·`623c1739`(빈 이름 보정 `83f3b42c`) | ko·en 6로케일. 진입점은 `DirectionsTabView` 브리핑 한 곳이고 봉인 밖. 전화번호 조회는 `StationPhoneStore`(E44 `41d3f3a1`~`d6fa3407`)를 공유 |
+| **도보 안내 목적지 상세에 닫기 버튼** — 공용 `PlaceDetailSheet` | `453f3497` | ko·en. 도보 안내(`BeaconTrackingSheet`)는 정식판. 채팅은 종전부터 닫기가 있었고 대중교통 경유역은 봉인 안 |
+| **위치 표시줄·내 주변이 위치 문제의 사유를 가른다**(E43) — 권한 거부는 "위치 권한이 필요합니다", 정확한 위치 꺼짐은 "정확한 위치가 꺼져 있습니다", 내 주변의 측위 실패는 서버 실패와 다른 문장 | `b8c846be` | ko·en. 도달면 `LocationBarView`·`NearbyOverlay`는 정식판 |
+| **한국어 지하철 도착 줄에 상행·하행**(B11) | `c3958432` | **ko만.** en은 종전부터 방향을 냈다 |
+| **최근 장소·경로가 저장 당시의 영문 표기를 유지**(E28) | `0ee2d676` | **en 등 비-ko만.** ko 표시는 바이트 불변 |
+
+제외 근거:
+
+- **대중교통 안내 시트의 경유역 로터·상세 전화**(E44 `bb4764ac`, E45 `623c1739`의 `TransitTrackingSheet` 분): 대중교통 세션 시작이 `AppConfig.experimentalGuidanceEnabled` 뒤라 정식판 도달 0. 같은 저장소를 쓰는 브리핑 로터만 싣는다.
+- **체감 없는 보정**: 길찾기 현재 주소 요청 경합(`0ee2d676`의 `DirectionsAddressState`), 빈·공백 역명 방어(`83f3b42c`), 유효한 지도 URL에만 서는 외부 지도 버튼과 경유 정류소 전용 완료 문장(`b8c846be` 일부). 드러나는 경로가 드물거나 문장 차이가 작다.
+- **동작 변경 0**: 실호출 게이트·fixture·소스 가드(`d86bc1b8`·`81aab293`·`9c18f524`), 안드로이드 미러 등록부.
+
+심사 노트는 이번 버전에서 **승계한다**(`--review-notes` 없음). 새 권한이 없고(전화 걸기는 `tel:` URL이라 권한 불요), 역 전화번호 조회는 기존 장소 검색(`/api/places` → 카카오)에 역명·좌표를 보내는 것이라 개인정보 3자 일치 무변화다. §9 문장 중 거짓이 된 것도 없다.
+
+### ko
+
+```
+새로운 기능
+- 길찾기 대중교통 결과에서 지하철 구간에 나온 역마다 VoiceOver 로터로 역 상세를 열거나 그 역에 전화를 걸 수 있습니다. 운영사 대표번호로 연결될 때는 대표번호라고 알려 드립니다.
+
+개선
+- 역 상세 화면의 순서를 바꿨습니다. 역 정보와 전화번호가 맨 위에 오고, 이어서 실시간 도착, 첫차와 막차, 교통약자 시설이 나옵니다. 교통약자 시설은 종류별로 접혀 있고 접힌 줄에서 운행 중지 수를 먼저 알려 드립니다.
+- 내 주변과 장소 상세의 지하철 도착 안내에 상행, 하행 방향을 함께 알려 드립니다.
+- 위치 권한이 없거나 정확한 위치가 꺼져 있으면 위치 표시줄이 그 이유를 말합니다. 내 주변에서도 위치를 잡지 못한 경우와 정보를 불러오지 못한 경우를 다른 문장으로 알려 드립니다.
+
+오류 수정
+- 도보 안내 중 목적지 상세 화면에 닫기 버튼이 없어 빠져나오기 어렵던 문제를 고쳤습니다.
+```
+
+### en
+
+```
+New
+- In transit directions, every station named on a subway step now has VoiceOver rotor actions to open its details or call the station. When the number is the operator's main line, it is labeled as such.
+
+Improved
+- Station details are reordered: station info and phone come first, followed by live arrivals, first and last trains, and accessibility facilities. Facilities are grouped by type and collapsed, and each collapsed row tells you how many are out of service.
+- When location permission is off or Precise Location is disabled, the location bar now says so. Nearby also tells apart a location failure from a failure to load results.
+- Recent places and routes keep the English name they were saved with.
+
+Fixed
+- Place details opened during walking guidance now have a Close button, so you can get back to the guidance.
+```
+
+---
+
 ## 1.17 (빌드 25)
 
 기준은 1.16 아카이브 커밋 `b6a7e5c2`(빌드 24)이며 그 이후 `ios/` 커밋 20건을 판정했다. Release 바이너리에 도달하면서 iOS 사용자에게 보이는 것만 담는다.
