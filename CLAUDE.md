@@ -100,6 +100,8 @@
 - **카카오 분류 경로의 영문은 세그먼트 사전(`kakao-category-en.json`) + 서버 `categoryEn`이고 "전부-아니면-원문"이다**(A28). 표시는 `pickCategory` 한 자리, 판정 축은 원문 `category`만(소스 가드). 사전은 실호출 스냅샷. → INTEGRATIONS
 
 ### UI·상태 패턴
+- **iOS 주소 요청은 측위 전부터 같은 세대를 소유한다**(`DirectionsAddressState`). 취소·언어 변경·늦은 완료와 종료가 최신 주소·로딩을 건드리지 못하게 한다. → PATTERNS
+- **iOS 브리핑의 빈 이름은 `transitBriefingName`으로 가른다**(문장·영문 자격·로터 조인 공통). 조인 정규화는 개행 부재 판정을 대신하지 못한다. → PATTERNS
 - **신규 "내 주변" 도메인은 공유 계층으로 만든다**: `useNearbyFetch`(요청 ID latest-wins)+`NearbyPanelShell`+`nearbyLiveMessage`+`useRevealMore`. 골격 복붙 금지 — 계약은 `src/components/__tests__/nearby-contract.tsx` 스위트(신규 도메인도 적용), 도메인 고유물(항목 렌더·parse·fetch URL)만 컴포넌트에. → PATTERNS
 - **iOS "내 주변" 화면도 공유 상태 머신으로 만든다**(Kit `NearbyLoadCore`+`RevealWindow`+앱 `nearbyAnnouncer`·`NearbyOverlayDescriptor`; `load()` 복붙 금지, 계약은 `NearbyLoadCoreTests`). → PATTERNS
 - **현재 위치는 공유 스토어 1곳에서만**(`src/lib/geolocation.ts` 모듈 싱글턴 + `useGeolocation`). 신규 "내 주변"은 `getCurrentPosition` 직접 호출 금지, `awaitGeolocation()` 사용(권한 팝업 세션 1회). **"새로고침"은 `awaitGeolocation({force:true})`**로 정밀 재취득(`PRECISE_OPTS`), ⚠ 실패 시 직전 `done` 데이터 복원(`prevStatus`, 새로고침=재조회이지 데이터 포기 아님).
