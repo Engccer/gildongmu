@@ -20841,6 +20841,46 @@
         }
       }
     },
+    "ios.nearby.announceRouteStops": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "경유 정류소 %1$@곳"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{1, plural, one {%1$@ stop on this route} other {%1$@ stops on this route}}"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{1, plural, one {%1$@ parada en la ruta} other {%1$@ paradas en la ruta}}"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{1, plural, one {%1$@ arrêt sur la ligne} other {%1$@ arrêts sur la ligne}}"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{1, plural, one {%1$@ fermata sulla linea} other {%1$@ fermate sulla linea}}"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "経由停留所%1$@か所"
+          }
+        }
+      }
+    },
     "ios.nearby.announceStations": {
       "localizations": {
         "ko": {

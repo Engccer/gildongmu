@@ -216,6 +216,7 @@
       "announcePlaces": "주변 장소 {count}곳",
       "announceBikes": "주변 대여소 {count}곳",
       "announceStops": "주변 정류소 {count}곳",
+      "announceRouteStops": "경유 정류소 {count}곳",
       "announceStations": "주변 역 {count}곳",
       "announceEvents": "주변 문화행사 {count}건"
     },

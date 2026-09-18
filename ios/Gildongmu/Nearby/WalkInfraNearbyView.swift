@@ -134,9 +134,6 @@ struct WalkInfraNearbyView: View {
                 onPreciseGranted: { Task { await model.load(force: true) } },
                 descriptor: .plain(
                 loadingText: appLocalized("walkInfra.loading"),
-                // ⚠ 위치 실패 아이콘이 다른 도메인(wifi.exclamationmark)과 다르다 — 현행 그대로.
-                failedLocation: NearbyOverlayCopy(appLocalized("ios.common.failedTitle"),
-                                                  systemImage: "location.slash"),
                 failedServer: NearbyOverlayCopy(appLocalized("walkInfra.error"),
                                                 systemImage: "wifi.exclamationmark")))
         }

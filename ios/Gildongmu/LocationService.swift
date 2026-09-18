@@ -201,6 +201,9 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
     /// reduced면 좌표가 1~20km 오차이고 `desiredAccuracy` 변경이 무효가 된다.
     var accuracySnapshot: CLAccuracyAuthorization { manager.accuracyAuthorization }
 
+    /// 표시용 정확도 허가 미러. 측위·안내 판정에는 계속 accuracySnapshot을 쓴다.
+    private(set) var observedAccuracy: CLAccuracyAuthorization = .fullAccuracy
+
     /// 기기 위치 서비스 자체가 꺼져 있는지. 권한(앱별)과 다른 축이라 문구도 달라야 한다.
     nonisolated var isLocationServiceEnabled: Bool { CLLocationManager.locationServicesEnabled() }
 
@@ -268,6 +271,7 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
         super.init()
         manager.delegate = self
         observedAuthorization = manager.authorizationStatus
+        observedAccuracy = manager.accuracyAuthorization
     }
 
     /// **순위 가중용**(검색 근접 블렌딩, 2026-07-21). 낡거나 거친 좌표도 좌표
@@ -538,6 +542,7 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
             // 표시용 미러를 continuation 재개보다 **먼저** 갱신한다 — 뒤에 두면
             // 깨어난 호출부가 옛 상태를 읽는 창이 생긴다.
             self.observedAuthorization = status
+            self.observedAccuracy = accuracy
             let continuations = self.authContinuations
             self.authContinuations = []
             for continuation in continuations { continuation.resume() }

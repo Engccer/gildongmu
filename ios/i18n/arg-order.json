@@ -383,6 +383,9 @@
   "ios.nearby.announcePlaces": [
     "count"
   ],
+  "ios.nearby.announceRouteStops": [
+    "count"
+  ],
   "ios.nearby.announceStations": [
     "count"
   ],

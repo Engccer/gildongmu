@@ -259,10 +259,14 @@ struct PlaceDetailView<DomainSection: View>: View {
                     }
                 }
             }
-            Button(appLocalized("ios.route.naver")) { openNaverRoute() }
-            Button(appLocalized("ios.route.kakao")) { openKakaoRoute() }
-            if let kakaoId = kakaoPlaceId {
-                Button(appLocalized("ios.route.kakaoPlace")) { openKakaoPlace(kakaoId) }
+            if let url = buildNaverRouteDeeplink(mode: .walk, dest: destination, appname: AppConfig.appIdentifier) {
+                Button(appLocalized("ios.route.naver")) { openWithFallback(url) }
+            }
+            if let url = buildKakaoRouteDeeplink(mode: .walk, dest: destination) {
+                Button(appLocalized("ios.route.kakao")) { openWithFallback(url) }
+            }
+            if let kakaoId = kakaoPlaceId, let url = buildKakaoPlaceDeeplink(kakaoPlaceId: kakaoId) {
+                Button(appLocalized("ios.route.kakaoPlace")) { openKakaoPlace(kakaoId, url: url) }
             }
         } header: {
             Text(appLocalized("ios.route.section")).accessibilityAddTraits(.isHeader)
@@ -302,19 +306,7 @@ struct PlaceDetailView<DomainSection: View>: View {
         PlaceAnchor(coord: (lat: place.lat, lng: place.lng), name: place.name, nameRoman: place.nameRoman)
     }
 
-    /// 도보 기본(1급 사용자 주 시나리오).
-    private func openNaverRoute() {
-        guard let url = buildNaverRouteDeeplink(mode: .walk, dest: destination, appname: AppConfig.appIdentifier) else { return }
-        openWithFallback(url)
-    }
-
-    private func openKakaoRoute() {
-        guard let url = buildKakaoRouteDeeplink(mode: .walk, dest: destination) else { return }
-        openWithFallback(url)
-    }
-
-    private func openKakaoPlace(_ id: String) {
-        guard let url = buildKakaoPlaceDeeplink(kakaoPlaceId: id) else { return }
+    private func openKakaoPlace(_ id: String, url: URL) {
         // 앱 미설치 폴백은 같은 장소의 카카오맵 웹 상세로(경로 폴백은 다른 화면이라 오동작)
         openURL(url) { accepted in
             if !accepted, let fallback = URL(string: "https://place.map.kakao.com/\(id)") {
