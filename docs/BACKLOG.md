@@ -1422,7 +1422,7 @@ W1 도구 9개를 "데이터 반환형이 주"(W2 spec 판정 ②) 기준으로 
 
 ## 8. 위원장 직접 액션
 
-- **안드로이드(E43)**: ① ✅ 한소네 7 USB 디버깅·케이블 연결 완료(2026-09-19, O4 종결) ② Google Play 개발자 계정 개설(25달러, D1 개인 계정). 내부 테스트 트랙·Play App Signing·keystore(`~/gildongmu-private/`)가 뒤따른다 ③ `sudo xcodebuild -license accept`(brew·`xcstrings-plural` 테스트·iOS 빌드 전부 이것에 걸려 있다).
+- **안드로이드(E43)**: ① ✅ 한소네 7 USB 디버깅·케이블 연결 완료(2026-09-19, O4 종결) ② Google Play 개발자 계정 개설(25달러, D1 개인 계정). 내부 테스트 트랙·Play App Signing·keystore(`~/gildongmu-private/`)가 뒤따른다 ③ ✅ Xcode 라이선스 동의 확인(2026-09-19 — `xcodebuild -checkFirstLaunchStatus` 0, `xcstrings-plural` 테스트 12/12, Kit `swift build` 통과).
 
 코드로 닫을 수 없는 것. *(구 `F-b`.)*
 
