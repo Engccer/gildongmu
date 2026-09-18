@@ -72,13 +72,14 @@ node scripts/usage-report.mjs   # API 비용·쿼터·키 만료 상태(무과�
 | [`docs/INTEGRATIONS.md`](docs/INTEGRATIONS.md) | 외부 통합의 상세 계약. 요지만으로는 지킬 수 없는 것 |
 | [`docs/PATTERNS.md`](docs/PATTERNS.md) | UI·상태·채팅·도구층·빌드 구성의 상세 계약 |
 | [`docs/WEBMCP.md`](docs/WEBMCP.md) | WebMCP 도구층 영문 개요(도구 7개·구현·시험 방법) |
+| [`android/README.md`](android/README.md) | 안드로이드 앱의 구조·이식 관용구·게이트 |
 | `docs/superpowers/specs`·`plans` | 기능별 설계 정본과 검증 기록 |
 | `docs/research/RESEARCH-*.md` | 국내 API 생태계 조사 |
 
 ## 스택
 
 Next.js 16 (App Router) · React 19 · TypeScript · Tailwind 4 · next-intl 4 · zod 4 · Vitest 4
-iOS는 SwiftUI + GildongmuKit(SPM), 판정 로직은 웹과 미러링해 공유 fixture로 드리프트를 막는다.
+iOS는 SwiftUI + GildongmuKit(SPM), 판정 로직은 웹과 미러링해 공유 fixture로 드리프트를 막는다. Android는 Jetpack Compose + `:kit`(Kit의 순수 JVM 미러, 미출시).
 
 ## 라이선스
 

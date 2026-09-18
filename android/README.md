@@ -7,25 +7,27 @@ iOS 앱과 기능 등가인 안드로이드 네이티브 앱(판정 문서 `docs
 ```
 android/
   app/   Jetpack Compose 화면 + 플랫폼 서비스([3]·[4]). 패키지 space.dodoplanet.gildongmu
-         location/  현재 위치 공유 스토어(LocationStore: 캐시·권한·정밀도·게이트 취득, GMS 무의존 — GPS 층) · 앱 층 좌표 진입점 EffectiveLocation(수동 > GPS, 판정 38 소스 가드) · 수동 위치(ManualLocationStore·ManualLocationJudge·ManualLocationPicker{Route,ViewModel,Screen}) · 표시줄(CurrentAddressStore·LocationBar = 버튼) (M2 spec §4·§12-4·§13)
+         location/  현재 위치 공유 스토어(LocationStore: 캐시·권한·정밀도·게이트 취득, GMS 무의존 — GPS 층) · 앱 층 좌표 진입점 EffectiveLocation(수동 > GPS, 판정 38 소스 가드) · 수동 위치(ManualLocationStore·ManualLocationJudge·ManualLocationRoute·ManualLocationPicker{ViewModel,Screen}) · 표시줄(CurrentAddressStore·LocationBar = 버튼) (M2 spec §4·§12-4·§13)
          directions/ 길찾기(M3) · 끝점 검색 모델 EndpointPicker(길찾기 폼과 수동 지정 화면이 공유, spec §13-3)
          a11y/      접근성 기본형(mergedRow·landingTarget·AppScreenScaffold·StatusLine) · 앱 통지 큐 AppNotices(화면 StatusLine이 한 문장으로 병합·RESUMED 소유자 claim, spec §13-5) · 결과 진동 Notice.haptic/LocalResultHaptics(§14-3)
          settings/  설정(SettingsStore 단일 소유자·순수 localeOverride/settingsRows·선택 다이얼로그·정보 출처·SettingsAction) — 언어는 AppConfig.localized/localizedApp 한 경로(spec §14)
          nearby/    내 주변 허브·공통 껍데기(NearbyScreenViewModel = :kit NearbyLoadCore 소비)·kind 조립기 10종(NearbyKinds)·payload(NearbyPayloads·AroundPayload)·문장 조립(NearbyLines·DomainLines·WalkInfraLines·ConditionsLines·SceneLines)·본문(NearbyKindScreen·PlaceListBodies·WalkInfraBody·ConditionsBody·SceneSection) (M2 spec §3-4~3-9·§5·§12-1·§12-2)
+         guide/·audio/ 도보 실시간 안내·톤(M4) · chat/ 채팅(M6) · search/ 검색 · speech/ 받아쓰기 · nav/ 탭·스택 골격 · i18n/·net/·storage/ 앱 층 공통
          place/     장소 상세(Place JSON 라우트 + PlaceDomain·영업시간·외부 지도 열기 판정·도메인 섹션·역 자동 섹션 5종(StationLines·StationSectionsView)·무장애 섹션) (M2 spec §3-2·§12-3)
   kit/   순수 Kotlin/JVM, iOS GildongmuKit의 미러([2] 판정 계층). 패키지 space.dodoplanet.gildongmu.kit
          Models/*.swift → kit/.../kit/models/*.kt (하위 패키지 space.dodoplanet.gildongmu.kit.models)
   kit/mirrors/{foundation,core,guide}.json   미러 등록부(§5)
   scripts/messages-to-kit-strings.mjs         :kit 문자열 카탈로그 생성(§6)
   scripts/messages-to-android-strings.mjs     :app res/values(-lang)/strings.xml 생성(§6 앱 문자열)
+  scripts/check-release-manifest.mjs          정식 APK 봉인 검사(§7)
+  scripts/play-upload.mjs                     Play 내부 테스트 트랙 업로드(골격, 기본 드라이런)
   i18n/{arg-order.json,android-extra/}         ko 위치 인자 잠금 · 안드로이드 전용 키
 ```
 
-**화면 패키지 규약**(병렬 세션 소유권): 화면은 하위 패키지 하나씩 — `search/`·`place/`·`nearby/`·`directions/`·`chat/`. 탭·스택 골격은 `nav/`(`AppRoot`가 하단 탭 4개 + 단일 `NavHost`; iOS `AppTab.order` 미러, 실험판 순서 게이트 `AppConfig.experimentalTabOrderEnabled`). 새 화면은 자기 패키지에 `@Serializable` 라우트를 두고 `AppRoot`의 `NavHost`에 **등록 한 줄**만 더한다. **소유권(웨이브 3, 병렬 계획 §2 표와 동기)**: `android-m1`(골격) = `place/`·`nearby/`·`search/`·`settings/`·`location/`·`speech/`·`nav/`·`a11y/`·`i18n/`·`net/`·`storage/`·매니페스트·gradle·`android/i18n/android-extra/`·`android/scripts/`·이 README · `android-m4` = `guide/`·`audio/`·`res/raw/` 톤·`directions/` 안내 시작 버튼 자리(additive 예외: `AppRoot.kt` 등록·띠바 한 자리, 매니페스트의 서비스·`FOREGROUND_SERVICE`·위치·`POST_NOTIFICATIONS`·`VIBRATE`, `app/build.gradle.kts` 의존성, android-extra 키) · `android-m6` = `chat/`·`res/raw/chat_*`(additive 예외: `AppRoot.kt` 채팅 등록 한 줄, android-extra 키, `app/build.gradle.kts` — 마크다운 라이브러리 금지). **`directions/`는 M3 종료로 소유자가 없다**: 안내 시작 버튼 자리는 M4, 끝점 검색 재사용(`EndpointPicker`)은 `android-m1`이 호출만, 그 밖의 변경은 코디네이터 판정. additive 예외는 전부 보고 필수. 내비게이션은 `navigation-compose` 2.x(탭별 백스택 `saveState/restoreState`) — Navigation 3는 탭별 백스택을 위해 상태·내비게이터·데코레이터를 앱이 소유해야 해서 택하지 않았다(M2 spec §10).
+**화면 패키지 규약**(병렬 세션 소유권): 화면은 하위 패키지 하나씩 — `search/`·`place/`·`nearby/`·`directions/`·`chat/`. 탭·스택 골격은 `nav/`(`AppRoot`가 하단 탭 4개 + 단일 `NavHost`; iOS `AppTab.order` 미러, 실험판 순서 게이트 `AppConfig.experimentalTabOrderEnabled`). 새 화면은 자기 패키지에 `@Serializable` 라우트를 두고 `AppRoot`의 `NavHost`에 **등록 한 줄**만 더한다. 병렬 세션을 다시 열 때 파일 소유권은 병렬 계획 §2 표를 따른다(웨이브 0~3 세션은 2026-09-17 전부 종료). 내비게이션은 `navigation-compose` 2.x(탭별 백스택 `saveState/restoreState`) — Navigation 3는 탭별 백스택을 위해 상태·내비게이터·데코레이터를 앱이 소유해야 해서 택하지 않았다(M2 spec §10).
 
 - `:kit`은 **안드로이드 의존이 0**이다. `import android.`·`import androidx.`가 한 줄이라도 들어오면 `KitPurityTest`가 빨개지고, `kit/build.gradle.kts`에 안드로이드 플러그인·의존성을 더해도 같은 테스트가 잡는다. 저장·네트워크·시계처럼 플랫폼이 필요한 것은 인터페이스(`HttpTransport`·`KeyValueStore`)로 두고 `:app`이 구현한다(D5 경계).
 - 빌드 구성은 셋(iOS Debug/Release/Experimental 미러): `debug` · `release` · `experimental`. 실험판은 applicationId `space.dodoplanet.gildongmu.dev`, 표시 이름 "길동무 실험"(`app/src/experimental/res/values/strings.xml` — 스크린 리더 사용자의 유일한 구분 수단이라 반드시 유지), 아이콘 배경색 구분. 코드 게이트는 `AppConfig.experimentalGuidanceEnabled`(= `BuildConfig.EXPERIMENTAL`).
-- 뼈대 파일(`settings.gradle.kts`·`build.gradle.kts`·`gradle/**`·`gradle.properties`·`kit/build.gradle.kts`·`app/**`·`scripts/**`·이 README)은 `android-m1`만 고친다. 로직 세션이 의존성을 더해야 하면 고치지 말고 코디네이터에 보고한다. **새 Kotlin 파일 추가는 자유**(자기 그룹 파일만).
 
 ## 2. 환경
 
@@ -138,7 +140,7 @@ val lines = Fixtures.kit("chat-stream.ndjson").lines()                          
   "note":   "이름 변경·미이식 함수·경계 판정 같은, 다음 사람이 모르면 틀리는 것" }
 ```
 
-- 상태는 `pending`(아직) → `ported`(kotlin 경로 실재, test 있으면 그것도) 셋 중 하나이고 `excluded`는 계획 §2의 2건뿐이다(늘리려면 코디네이터).
+- 상태는 `pending`(아직) → `ported`(kotlin 경로 실재, test 있으면 그것도) 셋 중 하나이고 `excluded`는 3건뿐이다(AudioSignalProtocol·Localizable.xcstrings·GuideAudioSession — `mirror-registry.test.ts`가 기대 목록을 잠근다).
 - 경로는 **저장소 루트 상대**. 검사는 웹 vitest `src/lib/__tests__/mirror-registry.test.ts`가 매 커밋 돈다(`npm run test:run`): Kit 원본 전수가 정확히 한 등록부에, ported의 경로 실재, iOS에 새 Kit 파일이 생기면 빨강.
 - `foundation.json`의 `deferredTests`는 FOUNDATION 테스트 중 CORE/GUIDE 심볼에 걸려 못 옮긴 케이스 목록이다(`blockedBy` = 막는 Swift 파일). 해당 그룹이 그 파일을 이식할 때 함께 옮기고 항목을 지운다 — `blockedBy` 전부가 `ported`인데 항목이 남아 있으면 검사가 빨개진다.
 - 부분 이식(한 함수만 다른 그룹 의존)은 `ported`로 두고 `note`에 무엇을 뺐는지 적는다(예: `WalkAction.swift`의 `imminentTone` → GUIDE `RouteGuide.kt`).
