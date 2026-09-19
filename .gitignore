@@ -62,8 +62,9 @@ docs/superpowers/specs/logs/*.log.gz
 docs/research/RESEARCH-*-webmcp-challenge.md
 docs/research/_internal/
 
-# Android CLI가 설치하는 에이전트 스킬(구글 android/skills 사본). 커밋하지 않고 worktree마다 `android skills add <id> --project=.`로 받는다(android/README.md §2)
+# Android CLI가 설치하는 에이전트 스킬(구글 android/skills 사본). 커밋하지 않고 worktree마다 Claude Code·Codex 대상으로 받는다(android/README.md §2)
 .claude/skills/
+.agents/skills/
 
 # 실기기 계측 로그(iOS guide-diag*·안드로이드 동형)는 커밋하지 않는다 — 원본은 ~/gildongmu-private/field-logs/
 guide-diag*.log*

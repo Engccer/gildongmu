@@ -66,7 +66,7 @@ adb exec-out timeout 10 uiautomator dump /dev/tty   # 접근성 트리(스크린
 | `android layout [--pretty] [--full] [--flat] [-o file]` | 화면의 접근성 트리 JSON. `--full`은 비상호작용·숨김 요소까지. `uiautomator dump`는 폴백 |
 | `android screen capture [--annotate] -o <png>` | 스크린샷(`--annotate`는 요소 번호·경계 상자). WebView·애니메이션으로 `layout`이 실패할 때 |
 | `android docs <키워드>` | 공식 Android 문서 검색(API·마이그레이션·모범 사례) |
-| `android skills add <id> --project=.` | 공식 Android 스킬 설치. **worktree마다** `mkdir -p .claude/skills && android skills add android-cli navigation-3 testing-setup adaptive styles edge-to-edge play-policy-insights --project=.`(`.claude/`가 없으면 `<project>/skills/`에 떨어져 Claude Code가 못 본다). `.claude/skills/`는 `.gitignore`에 있어 커밋되지 않는다 |
+| `android skills add <id> --agent=claude-code,codex --project=.` | 공식 Android 스킬 설치. **worktree마다** `android skills add android-cli navigation-3 testing-setup adaptive styles edge-to-edge play-policy-insights --agent=claude-code,codex --project=.`로 두 에이전트를 명시한다. 생성물 `.claude/skills/`·`.agents/skills/`는 `.gitignore`에 있어 커밋되지 않는다 |
 
 ## 3. 이식 관용구 (Swift → Kotlin)
 
