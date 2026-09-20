@@ -23,6 +23,7 @@ import space.dodoplanet.gildongmu.a11y.Notice
 import space.dodoplanet.gildongmu.kit.APIError
 import space.dodoplanet.gildongmu.kit.DataLocale
 import space.dodoplanet.gildongmu.kit.DirectionsEndpoint
+import space.dodoplanet.gildongmu.kit.DirectionsAddressState
 import space.dodoplanet.gildongmu.kit.ManualLocation
 import space.dodoplanet.gildongmu.kit.ManualVerdict
 import space.dodoplanet.gildongmu.location.manualLocationLabel
@@ -133,9 +134,9 @@ class DirectionsViewModel(
 
     /** 재진입 가드(웹 in-flight ref). 조회와 토글 재조회가 **같은** 가드를 쓴다(교차 레이스 차단). */
     private var isInFlight = false
-    private var hasLoadedCurrentAddress = false
-    /** 주소 병기 요청 세대(latest-wins) — 세 경로(조회 성공·진입·재선택)가 겹칠 때 늦은 옛 좌표의 답이 새 주소를 덮지 않게. */
-    private var addressSeq = 0
+    private var addressState = DirectionsAddressState()
+    private var addressLanguage = dataLocale()
+    private var addressJob: Job? = null
     /** 사용자가 최근 경로 목록을 건드렸으면 늦게 끝난 init 로드가 그 결과를 덮지 않는다. */
     private var recentRoutesTouched = false
     private var lastCoords: Coords? = null
@@ -208,6 +209,7 @@ class DirectionsViewModel(
     /** 필드가 바뀌면 이전 결과·상태를 폐기하고 진행 조회를 취소한다(늦은 응답이 초기화 화면을 되채우지 않게). */
     private fun clearResults() {
         queryJob?.cancel()
+        cancelCurrentAddress()
         isInFlight = false
         _state.update {
             it.copy(
@@ -232,9 +234,10 @@ class DirectionsViewModel(
         _state.update { it.copy(preciseRetryFailed = false) }
         // iOS와 같이 진행 국면에 동기로 들어간다 — 버튼 가드·상태 문장이 첫 디스패치를 기다리지 않는다(M1 판정).
         setPhase(if (from == DirectionsEndpoint.Current || to == DirectionsEndpoint.Current) DirectionsPhase.Locating else DirectionsPhase.Loading)
+        val addressRequest = if (from == DirectionsEndpoint.Current || to == DirectionsEndpoint.Current) beginCurrentAddress() else null
         queryJob = viewModelScope.launch {
             try {
-                performQuery(from, to, s.via)
+                performQuery(from, to, s.via, addressRequest)
             } finally {
                 // 취소된(옛) 조회가 새 조회의 가드를 풀지 않도록 — 살아 있을 때만 리셋.
                 if (currentCoroutineContext().isActive) isInFlight = false
@@ -242,32 +245,45 @@ class DirectionsViewModel(
         }
     }
 
-    private suspend fun performQuery(from: DirectionsEndpoint, to: DirectionsEndpoint, via: DirectionsEndpoint.Place?) {
+    private suspend fun performQuery(from: DirectionsEndpoint, to: DirectionsEndpoint, via: DirectionsEndpoint.Place?, addressRequest: DirectionsAddressState.Request?) {
         _state.update { it.copy(results = null, walkShortest = null, promotedDestination = null) }
         var current: NearbyCoord? = null
         if (from == DirectionsEndpoint.Current || to == DirectionsEndpoint.Current) {
-            current = try {
-                locator.currentCoordinate(force = false)
-            } catch (e: LocationException) {
-                // 거부·정밀 꺼짐·취득 실패는 다른 문장(3-state).
-                setPhase(
-                    when (e.kind) {
-                        LocationException.Kind.Denied -> DirectionsPhase.GeoDenied
-                        LocationException.Kind.ReducedAccuracy -> DirectionsPhase.GeoReduced
-                        LocationException.Kind.Unavailable -> DirectionsPhase.GeoError
-                    },
-                )
-                return
+            val request = requireNotNull(addressRequest)
+            var handedOff = false
+            try {
+                current = try {
+                    locator.currentCoordinate(force = false)
+                } catch (e: LocationException) {
+                    currentCoroutineContext().ensureActive()
+                    // 거부·정밀 꺼짐·취득 실패는 다른 문장(3-state).
+                    setPhase(
+                        when (e.kind) {
+                            LocationException.Kind.Denied -> DirectionsPhase.GeoDenied
+                            LocationException.Kind.ReducedAccuracy -> DirectionsPhase.GeoReduced
+                            LocationException.Kind.Unavailable -> DirectionsPhase.GeoError
+                        },
+                    )
+                    return
+                }
+                currentCoroutineContext().ensureActive()
+                // 현재 위치가 서비스 지역 밖이면 조회 자체를 중단(upstream 0 호출). 오류가 아니라 커버리지 안내.
+                if (!isInKorea(current.lat, current.lng)) {
+                    setPhase(DirectionsPhase.OutOfCoverage)
+                    return
+                }
+                val acquired = current
+                if (acceptsCurrentAddress(request)) {
+                    addressJob = viewModelScope.launch {
+                        try { syncCurrentAddress(acquired, request) }
+                        finally { finishCurrentAddress(request) }
+                    }
+                    handedOff = true
+                }
+                setPhase(DirectionsPhase.Loading)
+            } finally {
+                if (!handedOff) finishCurrentAddress(request)
             }
-            // 현재 위치가 서비스 지역 밖이면 조회 자체를 중단(upstream 0 호출). 오류가 아니라 커버리지 안내.
-            if (!isInKorea(current.lat, current.lng)) {
-                setPhase(DirectionsPhase.OutOfCoverage)
-                return
-            }
-            hasLoadedCurrentAddress = true
-            val acquired = current
-            viewModelScope.launch { syncCurrentAddress(acquired) } // 조회 취소에 딸려가지 않는 별도 작업
-            setPhase(DirectionsPhase.Loading)
         }
         currentCoroutineContext().ensureActive()
         // `Current`가 있으면 위에서 `current`가 채워졌으므로 도달 불가 — 도달하면 침묵 고착이 아니라 사유 있는 상태로(3-state).
@@ -405,45 +421,79 @@ class DirectionsViewModel(
 
     /** 이미 허가된 세션에서만 조용히 주소를 병기한다(탭 진입만으론 권한 팝업 금지). */
     fun loadCurrentAddressIfAuthorized() {
-        if (hasLoadedCurrentAddress) return
+        resetAddressLanguageIfNeeded()
+        if (addressState.hasLoaded || addressState.isLoading) return
         val s = _state.value
         if (s.from != DirectionsEndpoint.Current && s.to != DirectionsEndpoint.Current) return
-        viewModelScope.launch {
-            val coord = locator.coordinateForRanking() ?: return@launch
-            hasLoadedCurrentAddress = true
-            syncCurrentAddress(coord)
+        val request = beginCurrentAddress()
+        addressJob = viewModelScope.launch {
+            try {
+                val coord = locator.coordinateForRanking() ?: return@launch
+                syncCurrentAddress(coord, request)
+            } finally { finishCurrentAddress(request) }
         }
     }
 
     /** "현재 위치 사용" 재선택 = 강제 재측위 + 주소 새로고침. 실패는 조용히 직전 라벨 유지. */
     fun refreshCurrentLocation() {
+        resetAddressLanguageIfNeeded()
         if (_state.value.isRefreshingCurrent) return
+        val request = beginCurrentAddress()
         _state.update { it.copy(isRefreshingCurrent = true) }
-        viewModelScope.launch {
+        addressJob = viewModelScope.launch {
             try {
                 val coord = try {
                     locator.currentCoordinate(force = true)
                 } catch (_: LocationException) {
                     null
                 } ?: return@launch
-                hasLoadedCurrentAddress = true
-                syncCurrentAddress(coord)
+                syncCurrentAddress(coord, request)
             } finally {
-                _state.update { it.copy(isRefreshingCurrent = false) }
+                finishCurrentAddress(request)
             }
         }
     }
 
     /** 역지오코딩 실패·매칭 없음은 null로 비운다(옛 좌표의 주소를 남기지 않는다). 주소는 조회 흐름을 막지 않는다. */
-    private suspend fun syncCurrentAddress(coord: NearbyCoord) {
-        val seq = ++addressSeq
+    private suspend fun syncCurrentAddress(coord: NearbyCoord, request: DirectionsAddressState.Request) {
+        if (!acceptsCurrentAddress(request)) return
         val resolved = try {
-            withContext(io) { search.reverseGeocode(coord.lat, coord.lng, dataLocale()) }
+            withContext(io) { search.reverseGeocode(coord.lat, coord.lng, request.language) }
         } catch (_: APIError) {
             null
         }
-        if (seq != addressSeq) return // 더 새 요청이 이미 떠났다 — 옛 답으로 덮지 않는다
-        _state.update { it.copy(currentAddress = resolved?.address, currentAddressEnglish = if (resolved?.address == null) null else resolved.english) }
+        if (addressState.commit(resolved, request, dataLocale(), !currentCoroutineContext().isActive)) {
+            _state.update { it.copy(currentAddress = addressState.address.original, currentAddressEnglish = addressState.address.english) }
+        }
+    }
+
+    private fun cancelCurrentAddress() {
+        addressState.cancel()
+        addressJob?.cancel()
+        addressJob = null
+        _state.update { it.copy(isRefreshingCurrent = false) }
+    }
+
+    private fun resetAddressLanguageIfNeeded() {
+        val language = dataLocale()
+        if (addressLanguage == language) return
+        cancelCurrentAddress()
+        addressState = DirectionsAddressState()
+        addressLanguage = language
+        _state.update { it.copy(currentAddress = null, currentAddressEnglish = null) }
+    }
+
+    private fun beginCurrentAddress(): DirectionsAddressState.Request {
+        resetAddressLanguageIfNeeded()
+        cancelCurrentAddress()
+        return addressState.begin(dataLocale())
+    }
+
+    private suspend fun acceptsCurrentAddress(request: DirectionsAddressState.Request): Boolean =
+        addressState.accepts(request, dataLocale(), !currentCoroutineContext().isActive)
+
+    private fun finishCurrentAddress(request: DirectionsAddressState.Request) {
+        if (addressState.finish(request)) _state.update { it.copy(isRefreshingCurrent = false) }
     }
 
     /**

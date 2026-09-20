@@ -5,8 +5,10 @@
   "entries": [
     {
       "swift": "DirectionsAddressState.swift",
-      "status": "pending",
-      "note": "iOS E43 주소 요청 소유 세대 및 한/영 원자 커밋"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/DirectionsAddressState.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/DirectionsAddressStateTest.kt",
+      "note": "iOS E43 주소 요청 소유 세대 및 한/영 원자 커밋. UUID 값 대신 불투명 Request 객체의 동일성으로 요청을 구분한다. 비동기 배선은 앱 DirectionsAddressTest가 검증한다."
     },
     {
       "swift": "BarrierFreeService.swift",
