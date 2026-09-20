@@ -20,7 +20,7 @@ import org.junit.Assert.assertEquals
 import space.dodoplanet.gildongmu.directions.DirectionsPrefill
 import space.dodoplanet.gildongmu.directions.DirectionsPrefillRole
 import space.dodoplanet.gildongmu.kit.BarrierFreeService
-import space.dodoplanet.gildongmu.kit.Fixtures
+import space.dodoplanet.gildongmu.DeviceFixtures
 import space.dodoplanet.gildongmu.kit.HttpResponse
 import space.dodoplanet.gildongmu.kit.StationService
 import space.dodoplanet.gildongmu.kit.pathOf
@@ -61,8 +61,8 @@ class PlaceDetailA11yTest {
         val place = Place(id = "kakao-2", name = "강남역", category = "교통,수송 > 지하철", address = "서울 강남구", roadAddress = "서울 강남구 강남대로 396", lat = 37.498, lng = 127.028)
         val station = StationService(stubbedClient { url ->
             when (pathOf(url)) {
-                "/api/station/meta" -> HttpResponse(200, Fixtures.kit("station-meta.json"))
-                "/api/station/subway-arrival" -> HttpResponse(200, Fixtures.kit("station-arrival.json"))
+                "/api/station/meta" -> HttpResponse(200, DeviceFixtures.kit("station-meta.json"))
+                "/api/station/subway-arrival" -> HttpResponse(200, DeviceFixtures.kit("station-arrival.json"))
                 "/api/station/timetable" -> HttpResponse(500, "")
                 else -> HttpResponse(500, "")
             }

@@ -53,6 +53,11 @@ android {
     testOptions {
         unitTests.all { it.useJUnitPlatform() }
     }
+
+    // 기기에는 저장소 파일 경로가 없으므로 계약 fixture를 테스트 APK에만 포함한다.
+    sourceSets.getByName("androidTest").assets.srcDir(
+        rootProject.file("../ios/GildongmuKit/Tests/GildongmuKitTests/Fixtures"),
+    )
 }
 
 tasks.withType<Test>().configureEach {
