@@ -117,7 +117,7 @@ private fun DirectionsForm(vm: DirectionsViewModel, ui: FormUiState, onOpenSetti
     // 새 조회 = 새 경로들이라 펼침을 기본으로 되돌린다(토글 재조회·피커 왕복은 보존).
     if (s.resultsRevision != ui.seenResultsRevision) ui.resetExpansion(s.resultsRevision)
     // 이미 허가된 세션이면 진입 시 조용히 현재 위치 주소를 병기(권한 팝업 없음).
-    LaunchedEffect(Unit) { vm.loadCurrentAddressIfAuthorized() }
+    LaunchedEffect(lang) { vm.loadCurrentAddressIfAuthorized() }
     // 착지 요청(spec §3-5): 한 요청 = 한 착지, 재구성이 끝난 다음 프레임에 대입(M1 관용구).
     LaunchedEffect(s.landing) {
         val landing = s.landing ?: return@LaunchedEffect
