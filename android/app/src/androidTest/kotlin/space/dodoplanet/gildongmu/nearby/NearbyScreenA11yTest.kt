@@ -17,7 +17,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import space.dodoplanet.gildongmu.kit.Fixtures
+import space.dodoplanet.gildongmu.DeviceFixtures
 import space.dodoplanet.gildongmu.kit.HttpResponse
 import space.dodoplanet.gildongmu.kit.NearbyCoord
 import space.dodoplanet.gildongmu.kit.NearbyCoordinateSource
@@ -39,7 +39,7 @@ class NearbyScreenA11yTest {
 
     @Test
     fun subwayRowsMergeAndFirstStationLands() {
-        val body = Fixtures.kit("subway-nearby.json")
+        val body = DeviceFixtures.kit("subway-nearby.json")
         val service = NearbyService(stubbedClient { url -> if (pathOf(url) == "/api/station/subway-arrival/nearby") HttpResponse(200, body) else HttpResponse(404, "") })
         val strings = nearbyStrings { rule.activity.resources }
         val anchor = PlaceAnchor(37.538, 127.137, "길동역")
@@ -64,9 +64,9 @@ class NearbyScreenA11yTest {
     fun conditionsLandsOnWeatherHeading() {
         val service = ConditionsService(stubbedClient { url ->
             when (pathOf(url)) {
-                "/api/weather/nearby" -> HttpResponse(200, Fixtures.kit("weather-nearby.json"))
-                "/api/air-quality/nearby" -> HttpResponse(200, Fixtures.kit("air-nearby.json"))
-                "/api/congestion/nearby" -> HttpResponse(200, Fixtures.kit("congestion-nearby.json"))
+                "/api/weather/nearby" -> HttpResponse(200, DeviceFixtures.kit("weather-nearby.json"))
+                "/api/air-quality/nearby" -> HttpResponse(200, DeviceFixtures.kit("air-nearby.json"))
+                "/api/congestion/nearby" -> HttpResponse(200, DeviceFixtures.kit("congestion-nearby.json"))
                 else -> HttpResponse(404, "")
             }
         })
@@ -88,7 +88,7 @@ class NearbyScreenA11yTest {
     /** spec §12-5: 보행 인프라는 그룹 헤딩 3개가 상태와 무관하게 있고 착지는 조회 시각 헤딩. */
     @Test
     fun walkInfraHasThreeGroupHeadings() {
-        val service = WalkInfraService(stubbedClient { HttpResponse(200, Fixtures.kit("walk-nearby-unsupported.json")) })
+        val service = WalkInfraService(stubbedClient { HttpResponse(200, DeviceFixtures.kit("walk-nearby-unsupported.json")) })
         val strings = nearbyStrings { rule.activity.resources }
         val anchor = PlaceAnchor(35.1, 129.0, "부산")
         val factory = viewModelFactory {

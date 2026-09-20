@@ -8,6 +8,7 @@ import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.tryPerformAccessibilityChecks
 import androidx.lifecycle.SavedStateHandle
@@ -17,7 +18,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import space.dodoplanet.gildongmu.kit.APIClient
-import space.dodoplanet.gildongmu.kit.Fixtures
+import space.dodoplanet.gildongmu.DeviceFixtures
 import space.dodoplanet.gildongmu.kit.HttpResponse
 import space.dodoplanet.gildongmu.kit.InMemoryKeyValueStore
 import space.dodoplanet.gildongmu.kit.NearbyCoord
@@ -52,9 +53,9 @@ class DirectionsScreenA11yTest {
                 "/api/places" -> HttpResponse(200, places)
                 "/api/address/search" -> HttpResponse(200, emptyAddr)
                 "/api/places/entrance" -> HttpResponse(200, "{}")
-                "/api/route/transit" -> HttpResponse(200, Fixtures.kit("route-transit.json"))
-                "/api/route/walk" -> HttpResponse(200, Fixtures.kit("route-walk.json"))
-                "/api/route/car" -> HttpResponse(200, Fixtures.kit("route-car.json"))
+                "/api/route/transit" -> HttpResponse(200, DeviceFixtures.kit("route-transit.json"))
+                "/api/route/walk" -> HttpResponse(200, DeviceFixtures.kit("route-walk.json"))
+                "/api/route/car" -> HttpResponse(200, DeviceFixtures.kit("route-car.json"))
                 else -> HttpResponse(404, "")
             }
         }
@@ -73,20 +74,21 @@ class DirectionsScreenA11yTest {
         rule.waitUntil(5_000) { vm.endpointSearch.value?.candidateRevision == 1 }
         rule.waitForIdle()
         rule.onNodeWithTag("ep-place-k1").performClick()
+        rule.waitUntil(5_000) { vm.endpointSearch.value == null && vm.state.value.to != null }
         rule.waitForIdle()
         rule.onNodeWithTag("submit").performClick()
         rule.waitUntil(10_000) { vm.state.value.resultsRevision == 1 }
         rule.waitForIdle()
 
-        rule.onNodeWithTag("heading-walk").assertIsDisplayed()
-        rule.onNodeWithTag("transit-p0-leg-0").assertIsDisplayed()
-        rule.onNodeWithTag("walk-step-0").assertIsDisplayed()
+        rule.onNodeWithTag("heading-walk").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithTag("transit-p0-leg-0").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithTag("walk-step-0").performScrollTo().assertIsDisplayed()
         rule.onRoot().tryPerformAccessibilityChecks()
 
         // 대안 행은 기본 접힘 — 펼치면 본문 구간 노드가 생긴다(spec §9).
         val alt = vm.state.value.results!!.let { (it.outcomes[space.dodoplanet.gildongmu.kit.DirectionsMode.transit] as space.dodoplanet.gildongmu.kit.DirectionsModeOutcome.Transit).result.alternatives.first().routeKey }
         rule.onNodeWithTag("transit-$alt-leg-0").assertDoesNotExist()
-        rule.onNodeWithTag("transit-$alt").performClick()
+        rule.onNodeWithTag("transit-$alt").performScrollTo().performClick()
         rule.waitForIdle()
         rule.onNodeWithTag("transit-$alt-leg-0").assertExists()
     }
@@ -97,9 +99,9 @@ class DirectionsScreenA11yTest {
         val transport = StubTransport { url ->
             when (pathOf(url)) {
                 "/api/places/entrance" -> HttpResponse(200, "{}")
-                "/api/route/transit" -> HttpResponse(200, Fixtures.kit("route-transit.json"))
+                "/api/route/transit" -> HttpResponse(200, DeviceFixtures.kit("route-transit.json"))
                 "/api/route/walk" -> HttpResponse(502, """{"error":"upstream"}""")
-                "/api/route/car" -> HttpResponse(200, Fixtures.kit("route-car.json"))
+                "/api/route/car" -> HttpResponse(200, DeviceFixtures.kit("route-car.json"))
                 else -> HttpResponse(404, "")
             }
         }
