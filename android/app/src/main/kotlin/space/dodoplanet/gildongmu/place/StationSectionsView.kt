@@ -1,20 +1,17 @@
 package space.dodoplanet.gildongmu.place
 
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.toMutableStateList
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import space.dodoplanet.gildongmu.R
 import space.dodoplanet.gildongmu.a11y.BodyLine
 import space.dodoplanet.gildongmu.a11y.HeadingLine
-import space.dodoplanet.gildongmu.directions.ActionRow
+import space.dodoplanet.gildongmu.directions.DisclosureRow
+import space.dodoplanet.gildongmu.directions.resourceStrings
 import space.dodoplanet.gildongmu.i18n.AppLocale
 import space.dodoplanet.gildongmu.i18n.appLocalized
 import space.dodoplanet.gildongmu.kit.joinText
@@ -154,6 +151,7 @@ fun StationDetailSections(s: StationSections) {
         // 펼친 종류(백스택 항목 수명 — 다른 화면에 다녀와도 유지, 영속 안 함). 기본 접힘.
         val expanded = rememberSaveable(saver = listSaver(save = { it.toList() }, restore = { it.toMutableStateList() })) { mutableStateListOf<String>() }
         val wheelchairAccessible = stringResource(R.string.subway_wheelchairAccessible)
+        val strings = resourceStrings(res)
         for ((gi, g) in f.groups.withIndex()) {
             val kindLabel = metroKindResId(g.kind)?.let { stringResource(it) } ?: g.kind
             val stopped = stoppedCount(g)
@@ -161,12 +159,9 @@ fun StationDetailSections(s: StationSections) {
             val label = if (stopped > 0) appLocalized(res, R.string.android_station_kindCountStopped, kindLabel, g.facilities.size, stopped)
             else appLocalized(res, R.string.android_station_kindCount, kindLabel, g.facilities.size)
             val open = g.kind in expanded
-            // 펼친 뒤 커서는 이 행에 남고 다음 이동이 첫 시설이다(포커스 코드 없음). 상태는 stateDescription(길찾기 펼침 행 관례).
-            ActionRow(
-                visual = label, tag = "metro-$gi", onClick = { if (open) expanded.remove(g.kind) else expanded.add(g.kind) },
-                state = stringResource(if (open) R.string.android_common_expanded else R.string.android_common_collapsed),
-            )
-            if (open) Column(Modifier.padding(start = 12.dp)) {
+            // 펼침 행 문법은 한 벌(`DisclosureRow` — 라벨 버튼 + stateDescription, 본문은 펼친 동안만). 펼친 뒤 커서는 이 행에 남고
+            // 다음 이동이 첫 시설이다(포커스 코드 없음).
+            DisclosureRow(label = label, tag = "metro-$gi", expanded = open, onToggle = { if (open) expanded.remove(g.kind) else expanded.add(g.kind) }, strings = strings) {
                 g.facilities.forEachIndexed { i, fac ->
                     val name = facilityName(fac, { compassResId(it)?.let { id -> res.getString(id) } }, { d, dist -> appLocalized(res, R.string.subway_elevatorAt, d, dist) }) { appLocalized(res, R.string.subway_lineNumber, it) }
                     BodyLine(joinText(name, fac.location, fac.floors, operatingResId(fac.operatingStatus)?.let { res.getString(it) }, facilityDetail(fac, wheelchairAccessible)), "metro-$gi-$i")

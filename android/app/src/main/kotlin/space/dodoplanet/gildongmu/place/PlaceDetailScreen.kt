@@ -30,7 +30,10 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import space.dodoplanet.gildongmu.AppConfig
 import space.dodoplanet.gildongmu.a11y.landingTarget
@@ -225,7 +228,7 @@ private fun AddressLine(value: String, lineRes: Int, tag: String, copyRes: Int, 
 }
 
 /**
- * 역 상세 전화 줄(E44 spec §5.5). 경유역이면 화면에 떠 있는 동안 저장소를 신선하게 유지한다(`keepFresh` — 컴포지션을 떠나면 취소,
+ * 역 상세 전화 줄(E44 spec §5.5). 경유역이면 화면에 떠 있는 동안 저장소를 신선하게 유지한다(`keepFresh` — 컴포지션을 떠나거나 멈추면 취소,
  * 공유 조회 자체는 저장소 스코프라 끝까지 돈다). 줄은 조용히 나타난다(자동 등장 보조 정보, 통지 없음).
  */
 @Composable
@@ -233,7 +236,11 @@ private fun StationPhoneLine(place: Place, lineHint: String?, store: StationPhon
     val context = LocalContext.current
     val hint = lineHint?.takeIf { needsStationPhoneLookup(place.id, place.phone, it) }
     val results by store.results.collectAsState()
-    if (hint != null) LaunchedEffect(place.id, hint) { store.keepFresh(place.name, place.lat, place.lng, hint) }
+    // 화면이 보이는 동안만(STARTED) — 앱을 이 상세에 둔 채 백그라운드로 보내면 멈추고, 복귀하면 `resolve`가 신선도를 다시 본다.
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    if (hint != null) LaunchedEffect(place.id, hint, lifecycle) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) { store.keepFresh(place.name, place.lat, place.lng, hint) }
+    }
     val looked = hint?.let { StationPhoneStore.key(place.name, place.lat, place.lng, it) }?.let { results[it] }
     when (val row = stationPhoneRow(place.phone, looked)) {
         is StationPhoneRow.Call -> Button(onClick = { if (!context.dial(row.phone)) onDialFailed() }, Modifier.tapTarget().testTag("call")) {

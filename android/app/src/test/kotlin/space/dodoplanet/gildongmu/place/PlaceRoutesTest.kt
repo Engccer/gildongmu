@@ -28,8 +28,10 @@ class PlaceRoutesTest {
     }
 
     @Test fun `경유역 노선 힌트는 라우트로 나르고 기본은 없음이다`() {
-        val stop = transitStopPlace(TransitLegStop(name = "천호", stationId = "2545", lat = 37.5387, lng = 127.1234))
-        assertEquals("수도권 5호선", PlaceDetailRoute.of(stop, stationLineHint = "수도권 5호선").stationLineHint)
-        assertNull(PlaceDetailRoute.of(stop).stationLineHint)
+        val stop = TransitLegStop(name = "천호", stationId = "2545", lat = 37.5387, lng = 127.1234)
+        val route = PlaceDetailRoute.ofTransitStop(stop, lineName = "수도권 5호선")
+        assertEquals("수도권 5호선", route.stationLineHint)
+        assertEquals(transitStopPlace(stop), route.place)
+        assertNull(PlaceDetailRoute.of(transitStopPlace(stop)).stationLineHint)
     }
 }

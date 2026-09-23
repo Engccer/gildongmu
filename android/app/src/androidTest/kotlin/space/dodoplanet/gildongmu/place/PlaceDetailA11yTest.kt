@@ -2,6 +2,10 @@ package space.dodoplanet.gildongmu.place
 
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertContentDescriptionContains
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.assertTextEquals
@@ -19,6 +23,7 @@ import org.junit.runner.RunWith
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.cancel
 import space.dodoplanet.gildongmu.kit.StationPhoneService
 import space.dodoplanet.gildongmu.kit.models.TransitLegStop
 import space.dodoplanet.gildongmu.kit.transitStopPlace
@@ -94,7 +99,8 @@ class PlaceDetailA11yTest {
         val place = Place(id = "kakao-4", name = "강동역 5호선", category = "교통,수송 > 지하철,전철 > 수도권5호선", address = "서울 강동구", roadAddress = "서울 강동구 천호대로 1", lat = 37.535, lng = 127.132, phone = "1544-7788")
         val station = StationService(stubbedClient { url ->
             when (pathOf(url)) {
-                "/api/station/metro-facilities" -> HttpResponse(200, DeviceFixtures.kit("station-metro-facilities.json"))
+                // 보강 실패 표기를 켠 변형 — 종류 행들 앞에 오는지 본다(spec §4).
+                "/api/station/metro-facilities" -> HttpResponse(200, DeviceFixtures.kit("station-metro-facilities.json").replaceFirst("\"groups\"", "\"supplementFailed\": true, \"groups\""))
                 else -> HttpResponse(500, "")
             }
         })
@@ -107,12 +113,19 @@ class PlaceDetailA11yTest {
         rule.onNodeWithTag("category").assertDoesNotExist() // 지하철은 분류 줄 없음(메타 줄과 중복)
         rule.onNodeWithTag("anchor-subway").assertDoesNotExist()
         val top = { tag: String -> rule.onNodeWithTag(tag).fetchSemanticsNode().boundsInRoot.top }
-        assertTrue(top("call") < top("metro-0"))
+        assertTrue(top("call") < top("metro-supplement"))
+        assertTrue(top("metro-supplement") < top("metro-0"))
+        rule.onNodeWithTag("metro-1").assertContentDescriptionContains("운행 중지 2곳", substring = true) // 에스컬레이터 묶음(fixture stopped 2건)
         assertTrue(top("metro-0") < top("route-heading"))
         assertTrue(top("route-heading") < top("nearby-heading"))
+        val state = { v: String -> SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, v) }
         rule.onNodeWithTag("metro-0-0").assertDoesNotExist() // 기본 접힘
-        rule.onNodeWithTag("metro-0").performClick()
+        rule.onNodeWithTag("metro-0").assert(state("접힘")).performClick()
+        rule.onNodeWithTag("metro-0").assert(state("펼침"))
         rule.onNodeWithTag("metro-0-0").assertExists()
+        rule.onNodeWithTag("metro-0").performClick()
+        rule.onNodeWithTag("metro-0-0").assertDoesNotExist()
+        rule.onNodeWithTag("metro-0").assert(state("접힘"))
         rule.onRoot().tryPerformAccessibilityChecks()
     }
 
@@ -121,11 +134,30 @@ class PlaceDetailA11yTest {
     fun transitStopPhoneFailureIsALine() {
         val place = transitStopPlace(TransitLegStop(name = "천호", stationId = "2545", lat = 37.5387, lng = 127.1234))
         val down = stubbedClient { HttpResponse(502, "") }
-        val store = StationPhoneStore(StationPhoneService(down), MainScope()) { System.currentTimeMillis() / 1_000.0 }
+        val scope = MainScope()
+        val store = StationPhoneStore(StationPhoneService(down), scope) { System.currentTimeMillis() / 1_000.0 }
         val factory = placeDetailFactory(place, PlaceHoursService(down), placeStrings { rule.activity.resources }, StationService(down), BarrierFreeService(down)) { "ko" }
         rule.setContent { MaterialTheme { PlaceDetailScreen(factory, PlaceNav({}, { _, _ -> }, {}, {}), takeReturnFocus = { null }, stationLineHint = "수도권 5호선", phoneStore = store) } }
+        rule.enableAccessibilityChecks()
         rule.waitUntil(5_000) { rule.onAllNodesWithTag("call-error").fetchSemanticsNodes().isNotEmpty() }
         rule.onNodeWithTag("call").assertDoesNotExist()
         rule.onNodeWithTag("title").assertIsFocused() // 조용히 나타난다 — 포커스를 옮기지 않는다
+        rule.onRoot().tryPerformAccessibilityChecks()
+        scope.cancel()
+    }
+
+    /** 기차역 레이아웃은 분류 줄을 싣는다(`KTX정차역` 같은 정보가 여기뿐, spec §3.2 1-③). */
+    @Test
+    fun railLayoutKeepsCategoryLine() {
+        val place = Place(id = "kakao-5", name = "서울역", category = "교통,수송 > 기차,철도 > 기차역 > KTX정차역", address = "서울 중구", roadAddress = "서울 중구 한강대로 405", lat = 37.5547, lng = 126.9707, phone = "1544-7788")
+        val down = stubbedClient { HttpResponse(500, "") }
+        val factory = placeDetailFactory(place, PlaceHoursService(down), placeStrings { rule.activity.resources }, StationService(down), BarrierFreeService(down)) { "ko" }
+        rule.setContent { MaterialTheme { PlaceDetailScreen(factory, PlaceNav({}, { _, _ -> }, {}, {}), takeReturnFocus = { null }, stationLineHint = null) } }
+        rule.enableAccessibilityChecks()
+        rule.waitForIdle()
+        rule.onNodeWithTag("station-info").assertExists()
+        rule.onNodeWithTag("category").assertTextContains("KTX정차역", substring = true)
+        rule.onNodeWithTag("call").assertTextContains("대표번호", substring = true)
+        rule.onRoot().tryPerformAccessibilityChecks()
     }
 }

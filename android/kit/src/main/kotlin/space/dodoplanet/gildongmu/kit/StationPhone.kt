@@ -27,7 +27,7 @@ fun stationLayoutKind(place: Place): StationLayoutKind? {
 
 /**
  * 역 이름 비교 키(spec §5.4-1): 괄호 부기·공백·`.`·`·` 제거 뒤 끝 `역` 한 글자를 뗀다.
- * Swift `out.count > 1`은 문자(Character) 수라 코드포인트 수로 센다(UTF-16 길이가 아니다).
+ * Swift `out.count > 1`은 문자(Character, grapheme) 수 — 코드포인트 수로 근사한다(입력 NFC 전제: 카카오·ODsay 응답은 NFC 완성형이다).
  */
 fun stationNameKey(raw: String): String {
     val out = StringBuilder()
