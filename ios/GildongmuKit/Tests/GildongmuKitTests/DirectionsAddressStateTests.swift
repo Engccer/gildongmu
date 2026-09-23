@@ -201,15 +201,19 @@ import Testing
         }
     }
 
-    /// stale-origin 재리뷰 N-3: 비우기는 완료 표식·요청 세대를 건드리지 않는다.
-    @Test func clearAddressLeavesLoadedFlagAndRequestUntouched() {
+    /// stale-origin 재리뷰 N-3·F-3: 비우기는 완료 표식을 내리고 요청 세대는 그대로 둔다.
+    @Test func clearAddressLowersLoadedFlagAndKeepsRequest() {
         var state = DirectionsAddressState()
+        let first = state.begin(language: "ko")
+        let committedFirst = state.commit(response("옛 주소", nil), for: first, language: "ko", isCancelled: false)
+        #expect(committedFirst && state.hasLoaded)
         let request = state.begin(language: "ko")
         state.clearAddress()
         #expect(state.address.original == nil && state.address.english == nil)
-        #expect(!state.hasLoaded)
+        #expect(!state.hasLoaded) // 취소돼도 재진입이 다시 받는다
         #expect(state.isLoading)
-        #expect(state.commit(response("주소", nil), for: request, language: "ko", isCancelled: false))
-        #expect(state.address.original == "주소")
+        let committed = state.commit(response("주소", nil), for: request, language: "ko", isCancelled: false)
+        #expect(committed)
+        #expect(state.address.original == "주소" && state.hasLoaded)
     }
 }

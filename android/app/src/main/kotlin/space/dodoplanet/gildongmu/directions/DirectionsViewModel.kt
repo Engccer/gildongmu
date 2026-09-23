@@ -515,6 +515,8 @@ class DirectionsViewModel(
         val coord = stale?.let { NearbyCoord(it.lat, it.lng) }
         val changed = coord != shownStaleCoord
         shownStaleCoord = coord
+        // 완료 표식도 함께 내린다 — 비운 뒤 요청이 취소되면 재진입이 주소를 다시 받아야 한다(iOS `clearAddress` 동형, F-3).
+        if (changed) addressState.clearAddress()
         _state.update {
             if (changed) it.copy(currentStaleAt = stale?.fixedAtEpoch, currentAddress = null, currentAddressEnglish = null)
             else it.copy(currentStaleAt = stale?.fixedAtEpoch ?: it.currentStaleAt)

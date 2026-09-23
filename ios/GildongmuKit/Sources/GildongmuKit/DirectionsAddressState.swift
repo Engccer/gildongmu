@@ -38,11 +38,13 @@ public struct DirectionsAddressState: Sendable {
         return true
     }
 
-    /// 표시 주소만 비운다(옛 위치 표식이 바뀔 때 — 다른 좌표의 주소가 옛 위치 문장에 실리지 않게).
-    /// ⚠ `hasLoaded`·요청 세대는 건드리지 않는다: 완료 표식은 수락된 주소 커밋에서만 선다 — 비우기로
-    /// 세우면 그 뒤 취소된 요청의 재진입이 주소를 다시 받지 않는다(stale-origin 재리뷰 N-3).
+    /// 표시 주소를 비우고 완료 표식을 내린다(옛 위치 표식이 바뀔 때 — 다른 좌표의 주소가 옛 위치 문장에
+    /// 실리지 않게). 요청 세대는 건드리지 않는다. 표식을 내리는 이유: 비운 뒤 그 요청이 취소되면 재진입이
+    /// 주소를 다시 받아야 한다 — 완료 표식은 "지금 보이는 주소가 수락된 커밋에서 왔다"는 뜻이고, 세우는
+    /// 자리는 여전히 `commit` 한 곳이다(stale-origin 재리뷰 N-3·최종 확인 F-3).
     public mutating func clearAddress() {
         address = Address(original: nil, english: nil)
+        hasLoaded = false
     }
 
     public mutating func cancel() {
