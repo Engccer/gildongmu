@@ -1406,6 +1406,8 @@ export function useTransitGuide(
     (stopIndex: number) => {
       setBoardOverride(stopIndex);
       setReboardPickerActive(false);
+      // in-flight 폴이 있으면 즉폴이 막힌다 — 그 폴의 finally가 대신 낸다(A48, `pickAboardStation` 동형).
+      repollRef.current = inFlightRef.current;
       changeBoarding();
     },
     [changeBoarding, setBoardOverride],
