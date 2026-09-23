@@ -67,12 +67,13 @@ for (const c of CASES) {
     (arr.realtimeArrivalList ?? []).filter((a) => a.subwayId === c.subwayId).map((a) => a.btrainNo).filter(Boolean),
   )].slice(0, 4);
   check(`${c.seoulLine} ${c.station} 도착 목록에 열차번호가 있다`, trains.length > 0, `${trains.length}편성`);
-  // 역명 체계 대조는 노선을 가리지 않는다 — seed는 코레일 구간을 `경부선`, 공항철도를 `인천국제공항선`으로 적어
+  // 역명 체계 대조는 노선을 가리지 않는다(한계: 다른 노선 역명으로 잘못 실린 레코드는 못 잡는다) — seed는 코레일 구간을 `경부선`, 공항철도를 `인천국제공항선`으로 적어
   // 서울 노선명으로 거르면 정상 역이 떨어진다(2026-09-23 실측). 표식 조인 대상은 ODsay 경유역 이름이고 이 대조는
   // "위치 API 역명이 역명 체계 안의 표기인가"만 본다.
   const lineStations = new Set(seed.map((s) => normalize(s.name)));
   let found = 0;
   const unmatched = [];
+  const missing = [];
   for (const t of trains) {
     const r = await position(c.odsayLine, t);
     if (r.status === 200 && r.body?.status === "found") {
@@ -81,8 +82,22 @@ for (const c of CASES) {
       console.log(`  ${t}: ${r.body.station} sttus=${r.body.trainStatus} age=${r.body.dataAgeSeconds}s`);
     } else {
       console.log(`  ${t}: HTTP ${r.status} ${JSON.stringify(r.body)}`);
+      missing.push(t);
     }
   }
+  // 결측과 표기 불일치를 **판정으로** 가른다(검증 리뷰 m2): 표기 불일치는 번호 자릿수에 따라 편성마다 갈릴 수 있다
+  // (선행 0 `0110` ↔ `110`). 조인 안 된 편성을 변형 표기로 다시 물어 변형이 잡히면 불일치다. 노선 캐시(20초) 안이라
+  // upstream 추가 호출은 0건이다.
+  const variantHits = [];
+  for (const t of missing) {
+    const variants = new Set([t.replace(/^0+(?=\d)/, ""), /^\d{1,3}$/.test(t) ? t.padStart(4, "0") : t]);
+    variants.delete(t);
+    for (const v of variants) {
+      const r = await position(c.odsayLine, v);
+      if (r.status === 200 && r.body?.status === "found") variantHits.push(`${t}→${v}`);
+    }
+  }
+  check(`${c.seoulLine} 조인 안 된 편성이 변형 표기로도 없다(= 결측이지 표기 불일치가 아니다)`, variantHits.length === 0, variantHits.join(",") || `결측 ${missing.length}편성`);
   // 판정하는 것은 "도착 `btrainNo`와 위치 `trainNo`가 같은 표기인가"다. 표기 불일치는 노선 단위로 체계적이라
   // 그 노선 전체가 0이 된다 — 그래서 문자열 완전 일치 1편성 이상이면 표기 일치가 입증된다. 목록에 없는 편성(결측)은
   // 판정이 아니라 관측으로 따로 적는다(비율 문턱은 표기 불일치 한 편성을 통과시키는 헐거운 술어였다).

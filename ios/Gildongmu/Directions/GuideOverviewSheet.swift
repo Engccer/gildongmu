@@ -273,7 +273,8 @@ final class TransitOverviewAdapter: GuideOverviewCapability, Identifiable {
         return [
             appLocalized("transitGuide.overviewOrdinal",
                          String(overview.legOrdinal.count), String(overview.legOrdinal.n)),
-            model.statusLineText(state: state, leg: leg, now: model.positionClock),
+            // 조망 머리 문장은 현재역을 말하지 않는다(위원장 판정 2026-09-23) — 안내 행과 정차역 행이 말한다.
+            model.statusLineText(state: state, leg: leg, now: model.positionClock, speaksLocated: false),
         ].joined(separator: " ")
     }
 

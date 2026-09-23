@@ -291,7 +291,8 @@ struct TransitTrackingSheet: View {
     }
 
     /// 주변 확인(E15-2, spec 2026-08-23-transit-surroundings-anchor §4). 앵커는 Kit 판정
-    /// (`transitSurroundingsAnchor`) — 조망 `here`가 역으로 확정됐을 때만 현재역, 그 밖은
+    /// (`transitSurroundingsAnchor(state:leg:)`) — **원시** 조망 판정(`transitOverviewHere`, 실시간 열차 위치 후처리 전)이
+    /// 역으로 확정됐을 때만 현재역, 그 밖은
     /// 하차역. 도보 시트와 달리 앵커가 둘 중 하나로 바뀌므로 **어느 역 주변인지가 곧
     /// 정보**라 헤더가 그 역을 말한다. 본 Section 뒤에 두는 이유: 대기 후보·탑승 변경
     /// 같은 자주 쓰는 컨트롤 앞에 끼우면 SR 읽기 순서 비용이 커진다. 하차역 좌표가
@@ -462,7 +463,7 @@ struct TransitTrackingSheet: View {
             // 상시 표시(통지 채널 밖) — 통지와 같은 조립기 공유(§12.3: 완성 문장
             // 공백 연결, 쉼표 조립(joinText)은 이중 구두점을 만들어 폐기). 여전히
             // 한 줄 = 한 접근성 객체(단일 텍스트).
-            let text = model.statusLineText(state: state, leg: leg, now: model.positionClock)
+            let text = model.statusLineText(state: state, leg: leg, now: model.positionClock, speaksLocated: true)
             // 문장 안 역명은 산문이라 채팅 산문 선례의 **로터 액션** 갈래만 쓴다(E33): 언급 N개 = 커스텀 액션
             // "{역} 상세 보기" N개(역순 선언 = 등장 순 노출). 채팅의 "1개면 블록 전체 버튼"은 쓰지 않는다 — 이 문장은
             // 폴마다 바뀌어 언급 수가 오가고, 뷰 종류가 Button↔Text로 갈리면 포커스가 얹힌 줄이 15초마다 파괴·재생성
@@ -894,7 +895,7 @@ struct TransitTrackingSheet: View {
             // 상태 문장에 미터 값이 들어오는 순간 폴백이 "m"으로 읽히고 이중 낭독 억제 비교도 빗나간다).
             guard let state = model.state, let leg = model.currentLeg else { return "" }
             // 착지했다면 읽었을 라벨 = 화면의 그 줄이라 화면 시계로.
-            return spokenUnits(model.statusLineText(state: state, leg: leg, now: model.positionClock))
+            return spokenUnits(model.statusLineText(state: state, leg: leg, now: model.positionClock, speaksLocated: true))
         case .waitingLabel: return waitingLabelText
         case .reboardPrompt: return appLocalized(reboardPromptKey)
         case .expressPrompt: return appLocalized("transitGuide.expressPrompt")

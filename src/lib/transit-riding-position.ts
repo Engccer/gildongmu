@@ -33,6 +33,8 @@ export const POSITION_BEHIND_RESTART = 2;
  * 서버 upstream 예산(5초)보다 길게 둔다 — 서버가 먼저 502로 답하게.
  */
 export const POSITION_CLIENT_TIMEOUT_MS = 8_000;
+// ⚠ `AbortSignal.timeout`이 없는 브라우저(Safari 15 이하)에선 TypeError가 catch → failed로 접혀 위치가 조용히
+// 무동작이 된다(세지 않으므로 매 폴 다시 시도, 표시 전용이라 해는 표식 부재뿐).
 /** 노선 목록이 0행(INFO-200 — 운행 밖·미제공)으로 이만큼 연속이면 이 결박에선 그만 묻는다. */
 export const POSITION_EMPTY_LINE_STOP = 3;
 

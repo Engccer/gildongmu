@@ -79,7 +79,7 @@ final class TransitGuideModel {
 
     /// 조망 디스크립터(Kit 순수 계층) — 세션이 없으면 nil. 승차 중 현재역(E35)은 기존 판정 위에 **후처리**로
     /// 얹는다(`transitProgressOverview`·그 fixture·안드로이드 이식본은 그대로). 이 값을 읽는 조망·다른 경로
-    /// 출발점·주변 확인 앵커가 같은 "현재역"을 본다.
+    /// 출발점이 같은 "현재역"을 본다. ⚠ 주변 확인 앵커는 이 값을 읽지 않는다(원시 판정 — 시트 `surroundingsSection`).
     var overview: TransitOverview? {
         guard let state, let route else { return nil }
         return transitOverviewApplyingPosition(
@@ -1030,16 +1030,20 @@ final class TransitGuideModel {
     func announceProgress() {
         touchUserAction()
         guard let state, let leg = currentLeg else { return }
-        // 렌더 밖의 판정이라 위치 보존 창은 **지금** 시각으로(E35 구현 리뷰 m1, 웹 동형).
-        announceNow(statusLineText(state: state, leg: leg, now: nowMs()), highPriority: true)
+        // 렌더 밖의 판정이라 위치 보존 창은 **지금** 시각으로(E35 구현 리뷰 m1, 웹 동형). 화면 시계도 같은 틱에
+        // 앞당겨 화면 줄이 이 답과 어긋나지 않게 한다(검증 리뷰 n4).
+        positionClock = nowMs()
+        announceNow(statusLineText(state: state, leg: leg, now: nowMs(), speaksLocated: true), highPriority: true)
     }
 
     /// 상시 표시·진행 상황 공용 조립기(§12.3) — 완성 문장 파트를 공백으로 연결하는
     /// 단일 헬퍼. 종전엔 시트가 쉼표 조립(joinText)을 따로 해 "기준., " 이중
     /// 구두점과 stationCountAbout·lastUpdated 누락 드리프트가 났었다(피드백 #9).
     /// `now`(ms)는 위치 보존 창을 판정할 시각이다 — 화면은 `positionClock`, 통지는 지금(기본값 없음: 생략이
-    /// 컴파일을 통과하면 한쪽이 조용히 다른 시계를 쓴다).
-    func statusLineText(state: TransitGuideState, leg: TransitGuideLeg, now: Double) -> String {
+    /// 컴파일을 통과하면 한쪽이 조용히 다른 시계를 쓴다). `speaksLocated`: 현재역 문장을 이 줄에 싣는가 —
+    /// 조망 머리 문장만 false다(위원장 판정 2026-09-23: 조망은 안내 행·정차역 행 두 곳이 현재역을 말한다).
+    /// false여도 그 자리에 신호 문장을 되살리지 않는다(아래 두 줄과 모순된다).
+    func statusLineText(state: TransitGuideState, leg: TransitGuideLeg, now: Double, speaksLocated: Bool) -> String {
         let boarding = state.phase == .boarding
         let riding = state.phase == .riding
         let arrived = state.phase == .arrived
@@ -1073,7 +1077,7 @@ final class TransitGuideModel {
             // 승차 중 현재역(E35 §6 판정 1): 도착 피드 미관측 구간에 위치가 잡혀 있으면 신호 문장("하차역에
             // 가까워지면 열차 위치가 표시됩니다." 등) 자리를 현재역 문장이 차지한다 — 그대로 두면 경유역 목록의
             // "현재 위치"와 모순된다.
-            parts.append(located)
+            if speaksLocated { parts.append(located) }
         } else if state.phase == .waiting, state.signal == .notYetVisible {
             // 없음
         } else if state.signal == .tracking, live {

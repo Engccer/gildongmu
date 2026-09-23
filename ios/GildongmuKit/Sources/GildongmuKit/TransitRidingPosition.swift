@@ -19,8 +19,10 @@ public let transitPositionHoldMs: Double = 180_000
 public let transitPositionMaxAgeSeconds = 300
 /// 래치보다 뒤 역이 이만큼 연속으로 오면 그 역에서 다시 시작한다 — 튄 값 하나가 구간을 잠그지 않게.
 public let transitPositionBehindRestart = 2
-/// 클라이언트 조회 예산(초) — 웹 `POSITION_CLIENT_TIMEOUT_MS`와 같은 값. 이 조회는 도착 폴 안에 직렬로 끼므로
-/// 상한이 없으면(URLSession 기본 60초) 느린 upstream이 다음 도착 폴을 그만큼 민다(구현 리뷰 M1).
+/// 클라이언트 조회 예산(초) — 웹 `POSITION_CLIENT_TIMEOUT_MS`와 같은 값(소스 가드가 잠근다). 이 조회는 도착 폴
+/// 안에 직렬로 끼므로 상한이 없으면(URLSession 기본 60초) 느린 upstream이 다음 도착 폴을 그만큼 민다(구현 리뷰 M1).
+/// ⚠ 뜻이 조금 다르다: `URLRequest.timeoutInterval`은 바이트 사이 **유휴** 시한이고 웹 `AbortSignal.timeout`은
+/// **총** 시한이다. 서버가 upstream을 5초에 끊어 502로 답하므로 실효 차이는 작다.
 public let transitPositionClientTimeoutSeconds: TimeInterval = 8
 /// 노선 목록이 0행(INFO-200 — 운행 밖·미제공)으로 이만큼 연속이면 이 결박에선 그만 묻는다.
 public let transitPositionEmptyLineStop = 3
