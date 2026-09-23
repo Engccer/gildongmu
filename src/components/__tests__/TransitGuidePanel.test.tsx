@@ -1612,8 +1612,11 @@ describe("TransitGuidePanel — boarding 수동 진행 (N3 ①)", () => {
       const manual = await screen.findByRole("button", {
         name: "transitGuide.boardSelected",
       });
-      expect(screen.getAllByRole("status")[0].textContent).toContain(
-        "transitGuide.boardingUpstreamFailed",
+      // 통지는 버튼과 다른 커밋에 실릴 수 있다 — 버튼이 보인 뒤 동기로 검사하면 간헐 실패한다.
+      await waitFor(() =>
+        expect(screen.getAllByRole("status")[0].textContent).toContain(
+          "transitGuide.boardingUpstreamFailed",
+        ),
       );
 
       // 회복하면 신호는 tracking으로 돌아가지만 버튼은 남는다 — 사라지면 포커스를 쥔
