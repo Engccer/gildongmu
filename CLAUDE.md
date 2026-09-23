@@ -1,5 +1,7 @@
 # CLAUDE.md — 길동무 (gildongmu)
 
+@~/.claude/ACCESSIBILITY.md
+
 > Next.js 16 주의: 학습 데이터와 컨벤션이 다를 수 있다. 코드 작성 전 `node_modules/next/dist/docs/`의 관련 가이드를 먼저 읽을 것 (요청 API 전부 비동기: `await params`, `await cookies()`; `middleware.ts` 대신 `proxy.ts`).
 >
 > 이 파일은 **항구 규칙·패턴·함정의 요지만** 담는다. 매 세션과 매 리뷰어 서브에이전트가 전량 읽으므로 **크기가 곧 토큰 비용**이다. 상한 80KB는 `src/lib/__tests__/claude-md-budget.test.ts`가 강제한다. **항목은 규칙 한두 줄 + `→ INTEGRATIONS`/`→ PATTERNS` 참조**로 쓰고, 근거·실사고·세부 함정은 그 문서의 **같은 제목 절**에 둔다(참조가 붙은 코드를 수정하기 전에 그 절을 읽는다). 나머지는 아래 문서 지도를 따른다.
@@ -320,4 +322,4 @@ node scripts/usage-report.mjs   # API 과금·쿼터·키 만료 상태 (로컬 
   - ①**실기기 계측 로그(`guide-diag*.log*`)는 커밋하지 않는다**(`.gitignore`, 원본 `~/gildongmu-private/field-logs/`, 색인만 `docs/superpowers/specs/logs/README.md`; 게이트 테스트엔 익명화 fixture만). **자택·지인 주택은 어디서도 실주소·동 호수로 적지 않는다** — "자택"·"주택 A/B", 대응표 `~/gildongmu-private/places.md`. → PATTERNS
   - ②**정적 seed를 추가·교체하면 `NOTICE.md` 표에 파일·원출처·이용 조건·재생성 스크립트를 함께 적는다** — 코드는 MIT지만 데이터는 원출처 조건이고, 표에 없으면 MIT로 오인된다. OSM 파생 파일과 공공데이터 파일은 한 파일로 합치지 않는다.
   - ③fork가 바꿔야 할 식별자(도메인·번들 ID·패키지명·연락처)를 새로 박으면 `docs/FORKING.md` 표에 그 자리를 더한다.
-- gildongmu는 리뷰 게이트 통과 후 묻지 말고 commit+push(자동배포 포함, [[gildongmu-auto-commit-push]]). ⛔ **2026-09-22 09:00 KST까지 push·재배포만 동결**(WebMCP 챌린지 심사, 로컬 커밋은 허용 — `.git/hooks/pre-push`가 막는다). 그 시각이 지나면 이 문장을 지운다. `git add -A` 금지, 의도 파일만([[commit-stage-explicit-files]]).
+- gildongmu는 리뷰 게이트 통과 후 묻지 말고 commit+push(자동배포 포함, [[gildongmu-auto-commit-push]]). `git add -A` 금지, 의도 파일만([[commit-stage-explicit-files]]).
