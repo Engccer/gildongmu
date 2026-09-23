@@ -11,6 +11,7 @@ import {
   displayEffectiveD,
   entryProjection,
   finalApproachEntryM,
+  guideNextTarget,
   guideStateAt,
   guideStep,
   HANDOFF_DIST_M,
@@ -21,6 +22,7 @@ import {
   stepActionFor,
   unitAt,
   WALK_TUNING,
+  WAYPOINT_APPROACH_M,
   type GuideEvent,
   type GuideState,
   type GuideTone,
@@ -77,6 +79,8 @@ interface Expectation {
   toneNull?: boolean;
   /** 임박 단계 index(0=20m, 1=15m, 2=10m). `imminent` 이벤트가 그 단계여야 한다. */
   stage?: number;
+  /** 그 fix 뒤 `guideNextTarget`(N4 2026-09-24). 거리는 ±1m(좌표 왕복 오차). */
+  nextTarget?: { kind: string; meters: number };
 }
 
 describe("route-guide 공유 시나리오(경계표)", () => {
@@ -100,7 +104,7 @@ describe("route-guide 공유 시나리오(경계표)", () => {
       let { state } = initialGuideState(route, 0, {
         hasFinalApproachGeometry: sc.geometry === true,
       });
-      const results: { event: GuideEvent | null; tone: GuideTone | null }[] = [];
+      const results: { event: GuideEvent | null; tone: GuideTone | null; state: GuideState }[] = [];
       for (const f of sc.fixes) {
         const out = guideStep(
           state,
@@ -109,7 +113,7 @@ describe("route-guide 공유 시나리오(경계표)", () => {
           f.t,
           tuning);
         state = out.state;
-        results.push({ event: out.event, tone: out.tone });
+        results.push({ event: out.event, tone: out.tone, state: out.state });
       }
       for (const ex of sc.expect) {
         const idx = ex.afterFix ?? ex.afterFixAny!;
@@ -135,6 +139,13 @@ describe("route-guide 공유 시나리오(경계표)", () => {
             rs.some((r) => r.event?.kind === "imminent" && r.event.stage === ex.stage),
             `stage ${ex.stage}`,
           ).toBe(true);
+        }
+        if (ex.nextTarget) {
+          rs.forEach((r) => {
+            const got = guideNextTarget(route, r.state);
+            expect(got.kind).toBe(ex.nextTarget!.kind);
+            expect(Math.abs(got.meters - ex.nextTarget!.meters)).toBeLessThanOrEqual(1);
+          });
         }
       }
     });
@@ -804,5 +815,14 @@ describe("GuideTuning 조합 불변식(K2 설계 리뷰 m3)", () => {
     expect(
       stepActionFor({ description: "메가커피 앞에서 왼쪽으로 돌아 40m 이동" }, WALK_TUNING.actionSource),
     ).toBeNull();
+  });
+});
+
+describe("경유지 접근 예고 프로파일(N4 2026-09-24 §2.1)", () => {
+  it("walk는 옛 최종 접근 진입선과 같은 50m에서 시작하고, 자동차는 예고가 없다", () => {
+    expect(WAYPOINT_APPROACH_M).toBe(HANDOFF_DIST_M);
+    expect(WALK_TUNING.waypointApproachM).toBe(WAYPOINT_APPROACH_M);
+    expect(CAR_TUNING.waypointApproachM).toBeNull();
+    expect(CAR_DRIVER_TUNING.waypointApproachM).toBeNull();
   });
 });

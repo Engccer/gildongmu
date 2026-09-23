@@ -94,6 +94,12 @@ export const ADVANCE_MARGIN_BASE_M = 15;
 export const HANDOFF_DIST_M = 50;
 export const HANDOFF_REARM_M = HANDOFF_DIST_M + 20;
 /**
+ * 경유지 접근 예고 임계(경유지 도착선까지 경로 잔여, m — N4 spec 2026-09-24 §2.1). 옛 최종 접근
+ * 진입선과 같은 값에서 시작하되 이름을 따로 둔다 — 실보행에서 한쪽만 바뀔 수 있다.
+ * ⚠ 잠정(A6 계열, BACKLOG §2 도보 표).
+ */
+export const WAYPOINT_APPROACH_M = HANDOFF_DIST_M;
+/**
  * 경로 종점 도달 판정의 하한(m). 실제 임계는 `max(이 값, fix.accuracy)`다 —
  * 경로 잔여 5m를 정확도 30m fix로 판정하는 것은 거짓 정밀도이고, 정확도가 나쁘면
  * 종점 도달을 일찍 인정하는 것이 정직하다(spec 2026-08-08 §3.2).
@@ -195,6 +201,11 @@ export interface GuideTuning {
   offRouteRenotifyWarns: boolean;
   handoffDistM: number;
   handoffRearmM: number;
+  /**
+   * 경유지 접근 예고 임계(m). null = 예고 없음. walk `WAYPOINT_APPROACH_M`, car는 null —
+   * 속도에 맞춘 자동차 리듬은 판정 밖이다(N4 spec 2026-09-24 §2.1).
+   */
+  waypointApproachM: number | null;
   /** 재획득 전방 연속성 타이브레이크(재획득 경로 한정 — 연속 추적 모호는 거부 유지) */
   reacquireTieBreak: boolean;
   /** 보행 속도 가드(간략 제안). false면 가드 기계 전체 비활성 — 가드가 이탈
@@ -268,6 +279,7 @@ export const WALK_TUNING: GuideTuning = {
   offRouteRenotifyWarns: true,
   handoffDistM: HANDOFF_DIST_M,
   handoffRearmM: HANDOFF_REARM_M,
+  waypointApproachM: WAYPOINT_APPROACH_M,
   reacquireTieBreak: false,
   speedSuggest: true,
   courseAxisEnabled: true,
@@ -311,6 +323,7 @@ export const CAR_TUNING: GuideTuning = {
   offRouteRenotifyWarns: false,
   handoffDistM: 150,
   handoffRearmM: 200,
+  waypointApproachM: null,
   reacquireTieBreak: true,
   speedSuggest: false,
   // ⚠ 차량 궤적으로 측정된 적이 없다. 켜려면 먼저 재라(위 필드 주석).
@@ -464,6 +477,11 @@ export interface GuideState {
   /** 확정됐으나 같은 fix의 임박 큐에 밀려 아직 발화하지 못한 도착. 다음 fix에서 새 임박보다 먼저 나간다. */
   waypointPending: boolean;
   /**
+   * 경유지 접근 예고 소비 래치(N4 spec 2026-09-24 §2.2). 예고를 냈거나, 세대가 이미 접근선 안에서
+   * 시작해 무발화로 소비했을 때 선다. `restateAt`이 승계하고 새 경로 세대에서만 초기화한다.
+   */
+  waypointApproached: boolean;
+  /**
    * uncertain 진입 시점의 **마지막 신뢰 fix 시각**(silentCatchUp ②). uncertain 분기는 불량 fix마다
    * `lastFixAt`을 갱신하므로 복귀 공백을 `lastFixAt`으로 재면 촘촘한 불량 fix(터널 acc 300m가
    * 1Hz로 오는 실측)에서 공백이 늘 ~1초라 절대 걸리지 않는다(spec 리뷰 M3). null=uncertain 아님.
@@ -484,6 +502,8 @@ export type GuideEvent =
   | { kind: "bundleReread"; indices: number[] }
   /** 경유지 도착(N4). 톤 없음 — 도착 종은 오케스트레이터 몫. */
   | { kind: "waypointReached" }
+  /** 경유지 접근 예고(N4 2026-09-24). 경유지 도착선까지 경로 잔여(반올림 m). 톤 없음. */
+  | { kind: "waypointApproaching"; remainingMeters: number }
   | { kind: "finalApproachEnter" }
   | { kind: "offRoute" }
   | { kind: "backOnRoute" }
@@ -576,6 +596,7 @@ export function guideStateAt(
     courseDerivation?: CourseDerivationState;
     waypointReached?: boolean;
     waypointPending?: boolean;
+    waypointApproached?: boolean;
   },
 ): GuideState {
   const step = stepAt(route, d);
@@ -616,6 +637,7 @@ export function guideStateAt(
     courseDerivation: opts?.courseDerivation ?? INITIAL_DERIVATION_STATE,
     waypointReached: opts?.waypointReached ?? false,
     waypointPending: opts?.waypointPending ?? false,
+    waypointApproached: opts?.waypointApproached ?? false,
     uncertainSince: null,
   };
 }
@@ -642,6 +664,7 @@ function restateAt(
     courseDerivation: prev.courseDerivation,
     waypointReached: prev.waypointReached,
     waypointPending: prev.waypointPending,
+    waypointApproached: prev.waypointApproached,
   });
 }
 
@@ -693,6 +716,25 @@ export function finalApproachEntryM(
   return Math.max(ARRIVAL_TOLERANCE_MIN_M, accuracy);
 }
 
+/** 남은 거리 행의 목표(N4 spec 2026-09-24 §2.5). `route`=경유지 없는 세션(총 잔여, 종전 표시). */
+export type GuideNextTargetKind = "route" | "waypoint" | "destination";
+
+/**
+ * 남은 거리 행이 말할 "다음 목표"와 그까지의 경로 잔여(m). 도착 전에는 경유지 도착선까지,
+ * 도착 뒤에는 목적지까지다. 띠바·추세 톤·진행 상황 조망은 이 값이 아니라 총 잔여를 쓴다.
+ */
+export function guideNextTarget(
+  route: GuideRoute,
+  state: Pick<GuideState, "d" | "waypointReached">,
+): { kind: GuideNextTargetKind; meters: number } {
+  const w = route.waypointStepIndex;
+  if (w === undefined) return { kind: "route", meters: Math.max(0, route.totalMeters - state.d) };
+  if (!state.waypointReached) {
+    return { kind: "waypoint", meters: Math.max(0, route.steps[w].startD - state.d) };
+  }
+  return { kind: "destination", meters: Math.max(0, route.totalMeters - state.d) };
+}
+
 /**
  * 이 상태에서의 임박 큐 임계(m) — 6a와 같은 식. 표시 계층(`guideLiveRows`의 `turnApproachM`)이
  * 리듀서와 같은 시점에 "잠시 후"로 넘어가도록 **한 함수**에서 낸다(K2 §4). walk는 20 고정.
@@ -736,6 +778,21 @@ export function guideStep(
   // 0) 역순 시각 방어: now가 과거로 가면 fix 폐기(상태 불변).
   if (state.lastFixAt !== null && now < state.lastFixAt) {
     return { state, event: null, tone: null };
+  }
+
+  // W0) 경로 세대(guideStateAt)가 이미 경유지 접근선 안에서 시작하면 예고를 무발화로 소비한다
+  //     (N4 spec 2026-09-24 §2.4 — 원거리 예고의 "재진입 시점 유닛 소비"와 같은 원리). 시작·재조회
+  //     통지 바로 뒤에 겹치지 않게 한다. 기준은 투영 전인 세대 진입 `state.d`다. 조기 반환 국면보다
+  //     앞이라 첫 fix가 어느 국면이든 한 번만 본다(`lastFixAt === null`은 세대 첫 fix뿐).
+  if (
+    state.lastFixAt === null &&
+    tuning.waypointApproachM !== null &&
+    route.waypointStepIndex !== undefined &&
+    !state.waypointReached &&
+    !state.waypointApproached &&
+    route.steps[route.waypointStepIndex].startD - state.d <= tuning.waypointApproachM
+  ) {
+    state = { ...state, waypointApproached: true };
   }
 
   // 유도기 갱신은 국면과 무관하게 매 fix 1회 — 버퍼는 궤적의 사실이다(spec §2.9).
@@ -1371,6 +1428,26 @@ export function guideStep(
           indices,
           remainingMeters: Math.round(nowRemaining),
         }, null);
+    }
+  }
+
+  // W4) 경유지 접근 예고(N4 spec 2026-09-24 §2.4). **수준 판정 + 래치**다 — 더 급한 이벤트(임박·
+  //     도착·선행 전문)에 이번 fix를 내주면 조건이 계속 참이라 다음 fix에 나간다(교차 판정은 그
+  //     경합에서 예고를 영구히 잃는다). 밀린 사이 도착선을 넘으면 W1이 도착을 세워 예고는 다시 서지
+  //     않는다 — 도착이 예고를 대신한다. `!isOff`·`!jumped`는 W1과 같은 신뢰 조건.
+  if (
+    tuning.waypointApproachM !== null &&
+    route.waypointStepIndex !== undefined &&
+    !next.waypointReached &&
+    !next.waypointApproached &&
+    !isOff &&
+    !jumped
+  ) {
+    const rem = route.steps[route.waypointStepIndex].startD - d;
+    // 1m 미만은 곧 도착이다 — "0m" 예고를 내지 않고 W1에 맡긴다(설계 리뷰 #11).
+    if (rem >= 1 && rem <= tuning.waypointApproachM) {
+      next = { ...next, waypointApproached: true, lastAnnouncedAt: now };
+      return emit(next, { kind: "waypointApproaching", remainingMeters: Math.round(rem) }, null);
     }
   }
 

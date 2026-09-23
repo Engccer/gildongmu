@@ -1,5 +1,5 @@
 {
- "comment": "실시간 길 안내 리듀서 경계표. 웹 route-guide.test.ts와 Kit RouteGuideTests가 함께 소비한다(드리프트 가드). 좌표 규약: lat = 37.5 + along/111320, lng = 127.1 + lateral/(111320·cos 37.5°). 스텝은 len(m) 순서대로 남→북 직선 배치. expect의 afterFix는 0-기반 fix 인덱스. 스텝 `action`은 **서버 투영**이고 도보·자동차 모두 그것만 본다(E16 축3부터 도보도 `actionSource: step`). 도보 fixture의 action은 서버가 최종 문장에 `walkStepAction`을 태워 싣는 값과 같다 — 클라이언트는 문장을 분류하지 않는다. tuning: walk(기본)·car·carDriver.",
+ "comment": "실시간 길 안내 리듀서 경계표. 웹 route-guide.test.ts·Kit RouteGuideTests·:kit RouteGuideTest가 함께 소비한다(드리프트 가드). 좌표 규약: lat = 37.5 + along/111320, lng = 127.1 + lateral/(111320·cos 37.5°). 스텝은 len(m) 순서대로 남→북 직선 배치. expect의 afterFix는 0-기반 fix 인덱스. 스텝 `action`은 **서버 투영**이고 도보·자동차 모두 그것만 본다(E16 축3부터 도보도 `actionSource: step`). 도보 fixture의 action은 서버가 최종 문장에 `walkStepAction`을 태워 싣는 값과 같다 — 클라이언트는 문장을 분류하지 않는다. tuning: walk(기본)·car·carDriver.",
  "scenarios": [
   {
    "name": "긴 구간 선행 낭독과 전진 분리",
@@ -2920,6 +2920,837 @@
     {
      "afterFix": 1,
      "eventNot": "waypointReached"
+    }
+   ]
+  },
+  {
+   "name": "경유지 접근 예고 — 도착선 50m 안 첫 신뢰 fix에서 1회, 톤 없음, 이후 도착(N4 2026-09-24)",
+   "waypointStepIndex": 1,
+   "geometry": true,
+   "steps": [
+    {
+     "len": 100,
+     "desc": "직진A"
+    },
+    {
+     "len": 100,
+     "desc": "직진B"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 10,
+     "along": 12,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 20,
+     "along": 24,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 30,
+     "along": 36,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 40,
+     "along": 48,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 50,
+     "along": 52,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 60,
+     "along": 64,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 70,
+     "along": 76,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 80,
+     "along": 90,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 90,
+     "along": 105,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 100,
+     "along": 120,
+     "lateral": 0,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFixAny": [
+      0,
+      1,
+      2,
+      3,
+      4
+     ],
+     "eventNot": "waypointApproaching"
+    },
+    {
+     "afterFix": 4,
+     "nextTarget": {
+      "kind": "waypoint",
+      "meters": 52
+     }
+    },
+    {
+     "afterFix": 5,
+     "event": "waypointApproaching",
+     "toneNull": true,
+     "nextTarget": {
+      "kind": "waypoint",
+      "meters": 48
+     }
+    },
+    {
+     "afterFixAny": [
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "eventNot": "waypointApproaching"
+    },
+    {
+     "afterFix": 9,
+     "event": "waypointReached"
+    },
+    {
+     "afterFix": 10,
+     "nextTarget": {
+      "kind": "destination",
+      "meters": 80
+     }
+    }
+   ]
+  },
+  {
+   "name": "경로 세대가 이미 경유지 접근선 안에서 시작하면 예고 없이 소비, 도착만 나간다(N4 2026-09-24 W0)",
+   "waypointStepIndex": 1,
+   "geometry": true,
+   "steps": [
+    {
+     "len": 30,
+     "desc": "직진A"
+    },
+    {
+     "len": 100,
+     "desc": "직진B"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 5,
+     "along": 5,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 10,
+     "along": 10,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 15,
+     "along": 15,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 20,
+     "along": 20,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 25,
+     "along": 25,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 30,
+     "along": 32,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 35,
+     "along": 40,
+     "lateral": 0,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFix": 0,
+     "nextTarget": {
+      "kind": "waypoint",
+      "meters": 30
+     }
+    },
+    {
+     "afterFixAny": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+     ],
+     "eventNot": "waypointApproaching"
+    },
+    {
+     "afterFix": 6,
+     "event": "waypointReached"
+    }
+   ]
+  },
+  {
+   "name": "접근 예고와 선행 전문이 같은 fix에 서면 선행 전문 먼저, 예고는 다음 fix(수준 판정 — 유실 없음, N4 2026-09-24)",
+   "waypointStepIndex": 1,
+   "geometry": true,
+   "steps": [
+    {
+     "len": 100,
+     "desc": "직진A"
+    },
+    {
+     "len": 100,
+     "desc": "직진B"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 10,
+     "along": 12,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 20,
+     "along": 24,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 30,
+     "along": 36,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 40,
+     "along": 45,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 50,
+     "along": 62,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 60,
+     "along": 66,
+     "lateral": 0,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFixAny": [
+      0,
+      1,
+      2,
+      3,
+      4
+     ],
+     "eventNot": "waypointApproaching"
+    },
+    {
+     "afterFix": 5,
+     "event": "announceSteps"
+    },
+    {
+     "afterFix": 6,
+     "event": "waypointApproaching"
+    }
+   ]
+  },
+  {
+   "name": "자동차 프로파일은 경유지 접근 예고를 내지 않는다(waypointApproachM null), 도착은 종전대로(N4 2026-09-24)",
+   "tuning": "car",
+   "waypointStepIndex": 1,
+   "steps": [
+    {
+     "len": 300,
+     "desc": "직진A"
+    },
+    {
+     "len": 300,
+     "desc": "직진B"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 10,
+     "along": 100,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 20,
+     "along": 200,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 30,
+     "along": 260,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 32,
+     "along": 290,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 34,
+     "along": 310,
+     "lateral": 0,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFixAny": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+     ],
+     "eventNot": "waypointApproaching"
+    },
+    {
+     "afterFix": 5,
+     "event": "waypointReached"
+    }
+   ]
+  },
+  {
+   "name": "경유지 없는 경로의 다음 목표는 총 잔여(route — 남은 거리 행 종전 표시, N4 2026-09-24)",
+   "steps": [
+    {
+     "len": 100,
+     "desc": "직진A"
+    },
+    {
+     "len": 100,
+     "desc": "직진B"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 10,
+     "along": 12,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 20,
+     "along": 24,
+     "lateral": 0,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFix": 2,
+     "nextTarget": {
+      "kind": "route",
+      "meters": 176
+     }
+    },
+    {
+     "afterFixAny": [
+      0,
+      1,
+      2
+     ],
+     "eventNot": "waypointApproaching"
+    }
+   ]
+  },
+  {
+   "name": "예고 뒤 공백 → 재획득 → 접근선 안: 예고 래치가 재구성에서 승계돼 다시 나가지 않는다(N4 2026-09-24 설계 리뷰 #8)",
+   "waypointStepIndex": 1,
+   "geometry": true,
+   "steps": [
+    {
+     "len": 100,
+     "desc": "직진A"
+    },
+    {
+     "len": 100,
+     "desc": "직진B"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 10,
+     "along": 12,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 20,
+     "along": 24,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 30,
+     "along": 36,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 40,
+     "along": 48,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 50,
+     "along": 52,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 65,
+     "along": 56,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 66,
+     "along": 58,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 67,
+     "along": 60,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 68,
+     "along": 62,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 69,
+     "along": 64,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 78,
+     "along": 76,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 87,
+     "along": 88,
+     "lateral": 0,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFix": 5,
+     "event": "waypointApproaching"
+    },
+    {
+     "afterFix": 6,
+     "event": "reacquiring"
+    },
+    {
+     "afterFix": 7,
+     "event": "reacquired"
+    },
+    {
+     "afterFixAny": [
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12
+     ],
+     "eventNot": "waypointApproaching"
+    }
+   ]
+  },
+  {
+   "name": "예고 전 공백 → 재획득이 접근선 안: 재구성은 W0를 지나지 않으므로 복귀 통지 뒤 예고가 나간다(N4 2026-09-24 설계 리뷰 #1, 의도)",
+   "waypointStepIndex": 1,
+   "geometry": true,
+   "steps": [
+    {
+     "len": 100,
+     "desc": "직진A"
+    },
+    {
+     "len": 100,
+     "desc": "직진B"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 10,
+     "along": 12,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 20,
+     "along": 24,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 30,
+     "along": 36,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 40,
+     "along": 45,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 60,
+     "along": 56,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 61,
+     "along": 58,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 62,
+     "along": 60,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 63,
+     "along": 62,
+     "lateral": 0,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFixAny": [
+      0,
+      1,
+      2,
+      3,
+      4
+     ],
+     "eventNot": "waypointApproaching"
+    },
+    {
+     "afterFix": 5,
+     "event": "reacquiring"
+    },
+    {
+     "afterFix": 6,
+     "event": "reacquired"
+    },
+    {
+     "afterFix": 7,
+     "event": "announceSteps"
+    },
+    {
+     "afterFix": 8,
+     "event": "waypointApproaching"
+    }
+   ]
+  },
+  {
+   "name": "접근 예고와 임박 큐가 같은 fix에 서면 임박 먼저, 예고는 다음 fix(N4 2026-09-24 설계 리뷰 #8)",
+   "waypointStepIndex": 1,
+   "geometry": true,
+   "steps": [
+    {
+     "len": 100,
+     "desc": "직진A"
+    },
+    {
+     "len": 30,
+     "desc": "우회전B",
+     "action": "right"
+    },
+    {
+     "len": 100,
+     "desc": "직진C"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 9,
+     "along": 12,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 18,
+     "along": 24,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 27,
+     "along": 36,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 36,
+     "along": 45,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 45,
+     "along": 60,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 54,
+     "along": 82,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 56,
+     "along": 84,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 58,
+     "along": 86,
+     "lateral": 0,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFixAny": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+     ],
+     "eventNot": "waypointApproaching"
+    },
+    {
+     "afterFix": 5,
+     "event": "announceSteps"
+    },
+    {
+     "afterFix": 6,
+     "event": "imminent",
+     "stage": 0
+    },
+    {
+     "afterFix": 7,
+     "event": "waypointApproaching"
+    }
+   ]
+  },
+  {
+   "name": "접근선 안 fix가 이탈 의심이면 예고를 미루고 다음 정상 fix에서 낸다(N4 2026-09-24 설계 리뷰 #8)",
+   "waypointStepIndex": 1,
+   "geometry": true,
+   "steps": [
+    {
+     "len": 100,
+     "desc": "직진A"
+    },
+    {
+     "len": 100,
+     "desc": "직진B"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 10,
+     "along": 12,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 20,
+     "along": 24,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 30,
+     "along": 36,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 40,
+     "along": 45,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 50,
+     "along": 53,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 52,
+     "along": 55,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 54,
+     "along": 57,
+     "lateral": 0,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFixAny": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+     ],
+     "eventNot": "waypointApproaching"
+    },
+    {
+     "afterFix": 6,
+     "event": "waypointApproaching"
+    },
+    {
+     "afterFix": 7,
+     "eventNot": "waypointApproaching"
     }
    ]
   },
