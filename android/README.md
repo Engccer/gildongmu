@@ -15,12 +15,12 @@ iOS 앱과 기능 등가인 안드로이드 네이티브 앱(판정 문서 `docs
 android/
   app/   Jetpack Compose 화면 + 플랫폼 서비스([3]·[4]). 패키지 space.dodoplanet.gildongmu
          location/  현재 위치 공유 스토어(LocationStore: 캐시·권한·정밀도·게이트 취득, GMS 무의존 — GPS 층) · 앱 층 좌표 진입점 EffectiveLocation(수동 > GPS, 판정 38 소스 가드) · 수동 위치(ManualLocationStore·ManualLocationJudge·ManualLocationRoute·ManualLocationPicker{ViewModel,Screen}) · 표시줄(CurrentAddressStore·LocationBar = 버튼) (M2 spec §4·§12-4·§13)
-         directions/ 길찾기(M3) · 끝점 검색 모델 EndpointPicker(길찾기 폼과 수동 지정 화면이 공유, spec §13-3)
+         directions/ 길찾기(M3) · 끝점 검색 모델 EndpointPicker(길찾기 폼과 수동 지정 화면이 공유, spec §13-3) · 브리핑 역 작업 메뉴 BriefingStations(E45)
          a11y/      접근성 기본형(mergedRow·landingTarget·AppScreenScaffold·StatusLine) · 앱 통지 큐 AppNotices(화면 StatusLine이 한 문장으로 병합·RESUMED 소유자 claim, spec §13-5) · 결과 진동 Notice.haptic/LocalResultHaptics(§14-3)
          settings/  설정(SettingsStore 단일 소유자·순수 localeOverride/settingsRows·선택 다이얼로그·정보 출처·SettingsAction) — 언어는 AppConfig.localized/localizedApp 한 경로(spec §14)
          nearby/    내 주변 허브·공통 껍데기(NearbyScreenViewModel = :kit NearbyLoadCore 소비)·kind 조립기 10종(NearbyKinds)·payload(NearbyPayloads·AroundPayload)·문장 조립(NearbyLines·DomainLines·WalkInfraLines·ConditionsLines·SceneLines)·본문(NearbyKindScreen·PlaceListBodies·WalkInfraBody·ConditionsBody·SceneSection) (M2 spec §3-4~3-9·§5·§12-1·§12-2)
          guide/·audio/ 도보 실시간 안내·톤(M4, 정식 기능) · chat/ 채팅(M6) · search/ 검색 · speech/ 받아쓰기 · nav/ 탭·스택 골격 · i18n/·net/·storage/ 앱 층 공통
-         place/     장소 상세(Place JSON 라우트 + PlaceDomain·영업시간·외부 지도 열기 판정·도메인 섹션·역 자동 섹션 5종(StationLines·StationSectionsView)·무장애 섹션) (M2 spec §3-2·§12-3) · 역 레이아웃 순서 정본 PlaceLayout·경유역 전화 저장소 StationPhoneStore·경유역 라우트 PlaceDetailRoute.ofTransitStop (E44)
+         place/     장소 상세(Place JSON 라우트 + PlaceDomain·영업시간·외부 지도 열기 판정·도메인 섹션·역 자동 섹션 5종(StationLines·StationSectionsView)·무장애 섹션) (M2 spec §3-2·§12-3) · 역 레이아웃 순서 정본 PlaceLayout·경유역 전화 저장소 StationPhoneStore·경유역 라우트 PlaceDetailRoute.ofTransitStop (E44) · 역 전화 단일 창구 callStationPhone (E45)
   kit/   순수 Kotlin/JVM, iOS GildongmuKit의 미러([2] 판정 계층). 패키지 space.dodoplanet.gildongmu.kit
          Models/*.swift → kit/.../kit/models/*.kt (하위 패키지 space.dodoplanet.gildongmu.kit.models)
   kit/mirrors/{foundation,core,guide}.json   미러 등록부(§5)
@@ -106,6 +106,11 @@ adb exec-out timeout 10 uiautomator dump /dev/tty   # 접근성 트리(스크린
 | `#filePath` 5단계 상위 fixture 로딩 | `Fixtures.shared("x.json")` / `Fixtures.kit("x.json")` (§4) | |
 | `func f() -> (a: A, b: B)` (튜플 반환) | `data class <함수명 PascalCase>Result(val a: A, val b: B)` | 예: `advanceProgressAnchor` → `AdvanceProgressAnchorResult`. 필드 이름은 튜플 라벨 그대로 |
 | `CLLocation`의 `-1` = 무효(`horizontalAccuracy`·`speed`·`course`) | `Location.hasX()`가 false면 **`-1.0`을 넘긴다** | 판정 함수의 `> 0`·`isFinite` 가드가 Swift와 같이 무효로 거른다. null 인자를 새로 만들지 않는다(시그니처가 Swift와 갈린다) |
+
+### 화면 관용구 — 작업 메뉴 순서·push 왕복 상태
+
+- **접근성 사용자 지정 액션(`customActions`)은 목록 순서 그대로 노출된다.** iOS가 로터 액션을 역순으로 선언하는 것은 SwiftUI 빌더 고유 함정이라 옮기지 않는다(채팅 산문 블록·E45 브리핑 선례). 액션 목록은 순수 함수로 만들어 JVM이 길이·순서를 잠근다(`briefingCustomActions`).
+- **스택 push로 목적지가 컴포지션에서 내려가면 `remember` 상태는 사라진다**(iOS `NavigationStack`은 루트 `@State`가 산다). 돌아왔을 때 보던 자리가 남아야 하는 상태(펼침)는 `rememberSaveable`, 착지는 엔트리 복귀 슬롯(`ReturnFocusViewModel`) + 그 줄의 `mergedRow(focus)`.
 
 ### JDK API 표면은 Android 12(API 31)까지
 
