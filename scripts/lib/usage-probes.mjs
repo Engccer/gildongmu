@@ -260,7 +260,7 @@ export const AVAILABILITY_PROBES = [
     // 키가 URI에 묶여 있어 Referer가 없으면 인증이 실패한다
     build: (env) => ({
       url: `https://api.odsay.com/v1/api/searchPubTransPathT?SX=${PROBE.lng}&SY=${PROBE.lat}&EX=127.0276&EY=37.4979&apiKey=${env.ODSAY_API_KEY}`,
-      init: { headers: { Referer: "https://gildongmu.vercel.app/" } },
+      init: { headers: { Referer: "https://gildongmu.dodoplanet.space/" } },
     }),
     // 오류는 배열(`error: [{...}]`)로 오고 무효 키 메시지가 ApiKeyAuthFailed다(실측)
     judge: ({ httpStatus, bodyText }) => {

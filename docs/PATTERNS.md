@@ -447,7 +447,7 @@ iOS 지도 버튼·검색 로터 액션은 URL 빌더가 성공할 때만 만들
 
 ### 대외 정본 도메인
 
-**대외 정본 도메인**: https://gildongmu.dodoplanet.space (2026-07-27 확정, DNS는 Cloudflare 와일드카드 CNAME — 상세는 PROGRESS). Vercel 프로젝트 URL https://gildongmu.vercel.app 도 유효(팀 `hunyong-kims-projects`). GitHub `Engccer/gildongmu` 연결 — **push하면 자동 배포**. ⚠ ODsay Referer는 URI 키 묶임이라 `gildongmu.vercel.app` 유지(교체하려면 ODsay 콘솔에 새 도메인 URI 등록 선행).
+**대외 정본 도메인**: https://gildongmu.dodoplanet.space (2026-07-27 확정, DNS는 Cloudflare 와일드카드 CNAME — 상세는 PROGRESS). Vercel 프로젝트 URL https://gildongmu.vercel.app 도 유효(팀 `hunyong-kims-projects`). GitHub `Engccer/gildongmu` 연결 — **push하면 자동 배포**. ⚠ ODsay Referer는 URI 키 묶임이라 `gildongmu.dodoplanet.space`다(2026-09-23 Flex 앱 `gildongmuflex` 전환 때 옛 `gildongmu.vercel.app`에서 교체 — 옛 주소는 Basic 앱 `gildongmuweb`이 점유해 새 앱에 등록할 수 없었다. 다시 바꾸려면 ODsay 콘솔에 새 도메인 URI 등록 선행).
 
 ---
 

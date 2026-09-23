@@ -243,7 +243,7 @@
 | `JUSO_CONFM_KEY` | `hasJusoKey` | 행안부 도로명주소 검색(영문주소+우편번호), 무료·무제한 |
 | `SEOUL_OPEN_DATA_KEY` | `hasSeoulOpenDataKey` | 서울 열린데이터(따릉이·문화행사·실시간 혼잡도). 일 1,000회를 셋이 **공유**하므로 신규 소비자는 캐시 설계가 필수. ⚠ 실시간 지하철은 별도 키 |
 | `SEOUL_SUBWAY_REALTIME_KEY` | `hasSeoulSubwayRealtimeKey` | "실시간 데이터 인증키"(일반키로 호출 시 `ERROR-338`), 일 1,000회를 도착·열차 위치(E35)가 나눈다 |
-| `ODSAY_API_KEY` | `hasOdsayKey` | ODsay 대중교통 — URI 전용 앱 `gildongmuweb` 키. ⚠ **Basic은 일 30회**이고 앱마다 따로 센다(기간 제한 없음. 앱을 나눠 한도를 늘리는 것은 약관 4.5.3 위반). 실사용 몇 건으로 소진되므로 증설 판정은 `docs/BACKLOG.md` E46. ⚠ `+`/`/` 포함이라 **URL 인코딩 형태로 저장**(provider가 raw로 URL에 붙임), dodo 이식 시 해당 도메인 URI 앱 등록 |
+| `ODSAY_API_KEY` | `hasOdsayKey` | ODsay 대중교통 — **Flex(후불 종량제) 앱 `gildongmuflex` 키**(2026-09-23 전환, 건당 25원+VAT·일 10만 건, 매월 5일 카드 자동 결제). URI 전용 키라 Referer `gildongmu.dodoplanet.space`에 묶인다. ⚠ 우리 라우트에 호출 상한이 없어 **호출 수가 곧 비용**이다 — 새 ODsay 호출 경로는 캐시 뒤에 두고 실호출 게이트는 최소로. 옛 Basic 앱 `gildongmuweb`은 쓰지 않는다(같은 서비스 복수 키는 약관 4.5.3). 키에 `+`/`/`가 들어가면 **URL 인코딩 형태로 저장**(provider가 raw로 URL에 붙임), dodo 이식 시 해당 도메인 URI 앱 등록 |
 | `DEEPGRAM_API_KEY` | `hasDeepgramKey` | STT nova-3 (dodo 공유). ⚠ prod 502면 키 유효성 먼저([[deepgram-prod-key-401]]) |
 | `GOOGLE_CLOUD_TTS_API_KEY` | — (게이트 함수 없음) | iOS TtsPlayer 낭독의 **폴백**(Chirp 3 HD MP3). 정본은 온디바이스 `AVSpeechSynthesizer`(2026-07-27 승격 — 지연 적고 비용 0, 위원장 판정으로 서버·온디바이스 주종 반전). 서버 경로는 현재 로케일 보이스가 기기에 없을 때만이라 지원 6개 로케일에선 사실상 미도달 |
 | `GEMINI_API_KEY` | `hasGeminiKey` | 채팅 FC 엔진(모델은 env가 아니라 코드 상수 `GEMINI_MODEL`, `src/lib/gemini/client.ts`). 길동무 전용 GCP 프로젝트 `gildongmu-prod`의 API 제한 키 — ⚠ dodo와 공유하지 않는다. 키 교체 시 로컬·Vercel prod·리포트 상수 3곳 동조. → INTEGRATIONS |
@@ -258,7 +258,7 @@
 
 ## 배포
 
-- **대외 정본 도메인**: https://gildongmu.dodoplanet.space (Vercel URL https://gildongmu.vercel.app 도 유효). GitHub `Engccer/gildongmu` 연결 — **push하면 자동 배포**. ⚠ ODsay Referer는 URI 키 묶임이라 `gildongmu.vercel.app` 유지(교체하려면 ODsay 콘솔 URI 등록 선행). → PATTERNS
+- **대외 정본 도메인**: https://gildongmu.dodoplanet.space (Vercel URL https://gildongmu.vercel.app 도 유효). GitHub `Engccer/gildongmu` 연결 — **push하면 자동 배포**. ⚠ ODsay Referer는 URI 키 묶임이라 `gildongmu.dodoplanet.space`(2026-09-23 Flex 앱 전환 때 교체 — 다시 바꾸려면 ODsay 콘솔 URI 등록 선행). → PATTERNS
 - **env 변경 후 반드시 재배포**(키는 배포 시점 함수 주입). 수동 배포 `vercel deploy --prod --yes`.
 - 비대화형 등록 `printf '%s' "$VALUE" | vercel env add <KEY> production`(`vercel@latest` 사용 — 구버전 빈값 버그 [[vercel-env-add-noninteractive-bug]]). Preview는 `git_branch_required` 결함이라 REST API/대시보드.
 - ⚠ **배포 직후 React #418(hydration) transient**는 스테일 SW 캐시 탓, 코드 결함 아님([[pwa-stale-sw-deploy-hydration-418]]) — dev 클린·캐시제거 먼저 확인. PWA는 수제 서비스워커(`public/sw.js`, Serwist가 Next 16 Turbopack 미지원이라 폴백), document network-first·`/api/` 비캐시.

@@ -10,7 +10,7 @@ import { env } from "../env";
  * ⚠ 무효 키·쿼터 소진(429)도 HTTP 200 + `error` 봉투로 온다 — 상태 코드로 인증 실패를 가를 수 없다.
  *   봉투 판독은 호출자가 `readOdsayError`로 한다.
  */
-export const ODSAY_REFERER = "https://gildongmu.vercel.app/";
+export const ODSAY_REFERER = "https://gildongmu.dodoplanet.space/";
 
 export async function fetchOdsayJson<T>(
   endpoint: string,
