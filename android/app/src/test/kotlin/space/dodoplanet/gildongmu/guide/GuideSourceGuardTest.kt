@@ -28,12 +28,17 @@ class GuideSourceGuardTest {
     /**
      * 도보 안내는 정식 기능이다(E43 우선순위 4, iOS 2026-08-15 졸업 동형) — 진입점·세션·띠바가 빌드 구성 게이트를 보지 않는다.
      * 예외는 진단 로그(`GuideDiag`, iOS도 `DEBUG || EXPERIMENTAL`)뿐. 게이트가 되살아나면 정식판에서 진입점이 조용히 0이 된다.
+     * 밖의 배선 두 자리(길찾기 슬롯·띠바)는 줄 그대로 잠근다. M5(자동차·대중교통) 게이트가 `guide/` 공유 파일에 들어오면 이 스캔을 도보 파일·함수 단위로 좁힌다.
      */
     @Test fun `② 도보 안내 경로는 빌드 구성 게이트를 보지 않는다`() {
         val gate = Regex("""BuildConfig\.EXPERIMENTAL|AppConfig\.experimental|experimentalEnabled""")
         val walkPath = guideSources.filter { it.name != "GuideDiag.kt" }
         assertTrue(walkPath.any { it.name == "WalkGuideStartButton.kt" } && walkPath.any { it.name == "GuideBottomBar.kt" })
         assertEquals(emptyList(), offenders(walkPath, gate))
+        val directions = pkg.resolve("directions/DirectionsScreen.kt").readText()
+        assertTrue(Regex("""\n\s*guideStart = walkGuideStartSlot\(s, lang\),\n""").containsMatchIn(directions), "길찾기 도보 행의 시작 슬롯 배선")
+        val root = pkg.resolve("nav/AppRoot.kt").readText()
+        assertTrue(Regex("""bottomBar = \{\n\s*GuideBottomBar \{""").containsMatchIn(root), "하단 바 = GuideBottomBar(무조건)")
         val session = guide.resolve("GuideSession.kt").readText()
         val attach = session.substringAfter("fun attach(").substringAfter("{").trim().lineSequence().first()
         assertTrue(attach.startsWith("if (::walk.isInitialized) return"), "attach 첫 줄은 멱등 가드: $attach")

@@ -1,5 +1,7 @@
 # 안드로이드 M4: 도보 실시간 안내 설계 (2026-09-16)
 
+> ⚠ **2026-09-23 정식 기능 이동으로 이 spec의 실험 게이트 항목은 폐기**(`startWalk` ① 게이트·`GuideBottomBar` 첫 줄 게이트·소스 가드 ②의 게이트 존재 단언·실험판 소스셋 매니페스트). 현행 계약은 `android/README.md`와 `GuideSourceGuardTest` ②(도보 경로는 빌드 구성 게이트를 보지 않는다)·`AppSourceGuardTest`(도보 매니페스트 항목은 정식 소스셋). 본문은 기록으로 둔다.
+
 > **위치**: 판정 문서 `2026-09-15-android-app-decisions.md`(D1~D13, 재논의 금지)와 병렬 계획 `2026-09-16-android-app-parallel-plan.md` §1·§3·§5-4·§5-5 위에 선 M4 spec. 입력은 `~/gildongmu-wt/android-kit-guide-reports/report.md`의 "D10 경계로 [3]에 남긴 것"(TTS 배율·`resourceName` 변환·`Location.hasX()` → null/-1·`GuideSessionCoordinator` 메인 스레드·단조 시계·GuideAudioSession 목표 계약 5항·시나리오 18개), `docs/INTEGRATIONS.md` §실시간 길 안내, `CLAUDE.md`의 실시간 안내 항목 전부, M1·M2·M3 spec의 접근성·위치·길찾기 계약이다. 적대적 설계 리뷰 1차·2차(§13) 반영본. 착지 관용구는 main `fc246219`(android-m1 M2b)의 `a11y/Landing.kt` `landingTarget`을 따른다.
 >
 > **범위 한 줄**: iOS 정식판 **도보** 실시간 안내(`BeaconModel` walk 절단면 + `BeaconTrackingSheet` + 띠바 + 종료 화면)와 기능 등가를 안드로이드 [3]·[4]로 새로 쓴다. 판정 계층([2])은 `:kit`에 이미 있고(웹·iOS·Kotlin 공유 fixture 동조), 이 spec은 **그것을 소비하는 실행 계층과 화면**만 정한다. `:kit` 무수정, 서버 계약 변경 0.
