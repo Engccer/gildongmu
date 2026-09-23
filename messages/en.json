@@ -80,6 +80,7 @@
     "roadAddress": "Road address",
     "jibunAddress": "Lot address",
     "phone": "Phone",
+    "representativePhone": "main line {phone}",
     "openInNaverMap": "Open in Naver Map",
     "openInKakaoMap": "Open in Kakao Map",
     "homepage": "Website",
@@ -225,6 +226,7 @@
     "ready": "Subway accessibility facilities are ready.",
     "heading": "{name} subway accessibility facilities",
     "count": "{count}",
+    "stoppedCount": "{count} out of service",
     "operatingNormal": "In service",
     "operatingStopped": "Out of service or under maintenance",
     "kind": {

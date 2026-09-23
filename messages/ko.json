@@ -80,6 +80,7 @@
     "roadAddress": "도로명",
     "jibunAddress": "지번",
     "phone": "전화",
+    "representativePhone": "대표번호 {phone}",
     "openInNaverMap": "네이버 지도에서 보기",
     "openInKakaoMap": "카카오맵에서 보기",
     "homepage": "홈페이지",
@@ -225,6 +226,7 @@
     "ready": "지하철역 교통약자 시설 정보가 준비되었습니다.",
     "heading": "{name} 지하철 교통약자 시설",
     "count": "{count}곳",
+    "stoppedCount": "운행 중지 {count}곳",
     "operatingNormal": "정상 운행",
     "operatingStopped": "운행 중지 또는 점검 중",
     "kind": {

@@ -80,6 +80,7 @@
     "roadAddress": "道路名",
     "jibunAddress": "地番",
     "phone": "電話",
+    "representativePhone": "代表番号 {phone}",
     "openInNaverMap": "NAVERマップで見る",
     "openInKakaoMap": "カカオマップで見る",
     "homepage": "ウェブサイト",
@@ -225,6 +226,7 @@
     "ready": "地下鉄駅のバリアフリー設備情報の準備ができました。",
     "heading": "{name}の地下鉄バリアフリー設備",
     "count": "{count}か所",
+    "stoppedCount": "稼働停止{count}か所",
     "operatingNormal": "通常稼働",
     "operatingStopped": "停止または点検中",
     "kind": {

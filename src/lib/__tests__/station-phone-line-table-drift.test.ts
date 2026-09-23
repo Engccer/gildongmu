@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { REPRESENTATIVE_PHONE_DIGITS, REPRESENTATIVE_PHONE_PREFIXES } from "../station-phone";
 
 /**
  * Kit `StationPhone.swift`의 노선명 표는 웹 `subway-line-names.ts` `LINE_EN`의 미러다(E44 spec §5.4-2).
@@ -24,6 +25,18 @@ describe("역 전화번호 노선 표 드리프트", () => {
   it("Kit 표 항목이 웹 LINE_EN과 같다", () => {
     expect(web.size).toBeGreaterThan(50);
     expect([...kit.entries()].sort()).toEqual([...web.entries()].sort());
+  });
+
+  it("웹 판정 미러(station-phone.ts)의 레이아웃 조각·대표번호 상수가 Kit과 같다", () => {
+    const swift = readFileSync(join(ROOT, "ios/GildongmuKit/Sources/GildongmuKit/StationPhone.swift"), "utf8");
+    const ts = readFileSync(join(ROOT, "src/lib/station-phone.ts"), "utf8");
+    for (const token of ['"transit-stop:"', '"지하철,전철"', '"지하철출구"', '"기차역"']) {
+      expect(swift).toContain(token);
+      expect(ts).toContain(token);
+    }
+    const prefixes = swift.match(/\[("[0-9]+"(?:, "[0-9]+")*)\]\.contains\(String\(digits\.prefix\(2\)\)\)/);
+    expect(prefixes?.[1].split(", ").map((s) => JSON.parse(s))).toEqual(REPRESENTATIVE_PHONE_PREFIXES);
+    expect(swift).toContain(`digits.count == ${REPRESENTATIVE_PHONE_DIGITS}`);
   });
 
   it("ODsay 관측 노선명은 전부 표 키를 가진다", () => {

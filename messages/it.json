@@ -80,6 +80,7 @@
     "roadAddress": "Indirizzo stradale",
     "jibunAddress": "Indirizzo catastale",
     "phone": "Telefono",
+    "representativePhone": "numero centrale {phone}",
     "openInNaverMap": "Apri in Naver Map",
     "openInKakaoMap": "Apri in Kakao Map",
     "homepage": "Sito web",
@@ -225,6 +226,7 @@
     "ready": "Le strutture di accessibilità della metro sono pronte.",
     "heading": "Strutture di accessibilità della metro {name}",
     "count": "{count}",
+    "stoppedCount": "{count} fuori servizio",
     "operatingNormal": "In funzione",
     "operatingStopped": "Fuori servizio o in manutenzione",
     "kind": {
