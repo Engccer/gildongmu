@@ -90,6 +90,12 @@ describe("getTransitRoute 파이프라인", () => {
 
   it("수단은 pathType과 구간 구성이 둘 다 맞을 때만 싣는다", async () => {
     const lying = { ...busPath(30, 1), pathType: 1 }; // pathType은 지하철인데 구간은 버스
+    // pathType은 지하철인데 구간이 지하철+버스로 섞였다 — 한쪽만 맞아도 "지하철만"이 아니다
+    const sub = subwayOnlyPath(35);
+    const mixed = { ...sub, subPath: [...sub.subPath, ...busPath(5, 1).subPath] };
+    respond([subwayOnlyPath(20), busPath(25, 1), lying, mixed]);
+    const all = (await getTransitRoute({ ...COORDS, modeAxis: "subwayOnly" }))!;
+    expect(all.totalCandidates).toBe(1); // 지하철만 필터를 지나는 것은 첫 경로 하나뿐
     respond([subwayOnlyPath(20), busPath(25, 1), lying]);
     const result = (await getTransitRoute(COORDS))!;
     expect(result.recommended.vehicle).toBe("subway");
