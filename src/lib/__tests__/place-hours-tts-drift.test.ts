@@ -25,6 +25,7 @@ const ALLOWED = new Set([
   "ios/Gildongmu/PlaceDetailView.swift",
   "src/components/PlaceHoursLine.tsx",
   "src/components/__tests__/PlaceHoursLine.test.tsx",
+  "src/components/__tests__/PlaceDetailStationLayout.test.tsx",
   "src/components/PlaceDetail.tsx",
   "scripts/verify-place-hours.mjs",
 ]);

@@ -28,7 +28,17 @@ type Status =
  * 메인으로(한글명 보조 lang="ko"), ko 로케일은 영문역명을 보조로 한 줄 보강.
  * seed는 서버 전용이라 /api/station/meta 경유. 자동 등장 보조 정보라 live region 불필요.
  */
-export function StationMeta({ stationName }: { stationName: string }) {
+export function StationMeta({
+  stationName,
+  embedded = false,
+}: {
+  stationName: string;
+  /**
+   * 역 상세 레이아웃(E44, `stationLayoutKind`)의 "역 정보" 섹션 안 줄로 그린다 — 제목·region은 섹션이 소유한다
+   * (그 제목은 조회 결과와 무관하게 항상 선다). 끄면 종전처럼 조용히 나타나는 region(현행 레이아웃의 역).
+   */
+  embedded?: boolean;
+}) {
   const t = useTranslations("stationMeta");
   const locale = useLocale();
   // ⚠ 초기 loading의 세대는 마운트 로드의 세대(1)와 같아야 한다 — 도구가 게시 직후(첫 커밋 전)
@@ -105,17 +115,9 @@ export function StationMeta({ stationName }: { stationName: string }) {
   // 문장 정본은 place-lines(도구층과 공용) — 여기서는 렌더만 한다.
   const [nameLine, linesLine, operatorLine] = stationMetaLocalizedLines(meta, t, locale);
 
-  return (
-    // 자동 등장 보조 섹션은 region 랜드마크 유지 — 버튼 없이 조용히 나타나
-    // 회전자 탐색이 유일한 발견 경로다(미니멀 ARIA의 예외, CLAUDE.md 참조).
-    <section
-      aria-labelledby={headingId}
-      className="mt-3 rounded-md border border-border p-3"
-    >
-      <h3 id={headingId} className="text-base font-semibold">
-        {t("heading")}
-      </h3>
-
+  // 문장 줄 — 두 레이아웃이 같은 줄을 쓴다.
+  const body = (
+    <>
       {/* 역명은 현재 언어 하나만 — en은 영문역명, ko는 영문역명 한 줄 보강.
           en에서 한글 보조명은 드롭(블라인드 영어 사용자에겐 한글 낭독이 노이즈,
           한 줄 한 객체 원칙). 단일 언어라 분절 없음. */}
@@ -141,6 +143,21 @@ export function StationMeta({ stationName }: { stationName: string }) {
 
       {/* source는 로케일 메시지(en/ko) — 페이지 기본 lang을 따르므로 lang 미지정. */}
       <p className="mt-2 text-xs opacity-70">{t("source")}</p>
+    </>
+  );
+  if (embedded) return <div className="mt-1">{body}</div>;
+
+  return (
+    // 자동 등장 보조 섹션은 region 랜드마크 유지 — 버튼 없이 조용히 나타나
+    // 회전자 탐색이 유일한 발견 경로다(미니멀 ARIA의 예외, CLAUDE.md 참조).
+    <section
+      aria-labelledby={headingId}
+      className="mt-3 rounded-md border border-border p-3"
+    >
+      <h3 id={headingId} className="text-base font-semibold">
+        {t("heading")}
+      </h3>
+      {body}
     </section>
   );
 }

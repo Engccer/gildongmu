@@ -6,6 +6,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { ArrowLeft, Copy, MessageSquare, Route } from "lucide-react";
 import type { Place } from "@/lib/types";
 import { isStation } from "@/lib/station-match";
+import { isRepresentativePhone, stationLayoutKind } from "@/lib/station-phone";
 import { hasHangul } from "@/lib/format";
 import { pickCategory } from "@/lib/kakao-category";
 import { PlaceBridgeContext } from "@/hooks/useAxisBridge";
@@ -91,7 +92,10 @@ export function PlaceDetail({
   // 축 엔트리 6개는 여기서 만들고 `present`는 props에서 게시 시점에 확정한다. 자식 역 섹션은
   // `useAxisBridge`로 상태 소스·load만 채운다. 정착 통지는 자식이 자기 커밋 뒤에 낸다(useAxisBridge), 언마운트는
   // 대기자 전부 aborted(teardown). 한 마운트 = 한 레지스트리(key 리마운트가 곧 새 장소).
+  // 역 섹션 로드·도구 축은 넓은 `isStation`, 화면 배치는 좁은 `stationLayoutKind`(E44 §3.1) — 출구 POI·"철도" 업체·
+  // 이름만 "역"으로 끝나는 장소가 역 모양이 되지 않게. 역 레이아웃이면 isStation도 참이다(station-phone.test.ts).
   const isStationPlace = isStation(place);
+  const layoutKind = stationLayoutKind(place);
   const axisRegistry = useMemo(() => createAxisRegistry(), []);
   const placeRef = useRef(place);
   const chatOpenRef = useRef(chatOpen);
@@ -230,6 +234,127 @@ export function PlaceDetail({
     },
   ].filter((line) => typeof line === "object");
 
+  // ── 두 레이아웃이 공유하는 조각. 비역 분기는 개편 전 순서 그대로 이 조각들을 늘어놓는다. ──
+
+  // 카카오 분류가 en 페이지에서 한국어로 남으면(categoryEn 부재) 줄 전체에 lang="ko"(A26).
+  const categoryLine = (
+    <p lang={hasHangul(displayCategory) ? "ko" : undefined}>
+      {`${t("place.category")} ${displayCategory}`}
+    </p>
+  );
+
+  // 주소는 종류마다 한 줄 + 그 줄 전용 복사 버튼. 도로명과 지번은 쓰임이 달라(택배·행정서식) 둘 다 복사할 수
+  // 있어야 하고, 복사 대상은 반드시 화면에 보이는 줄과 일치한다. 라벨+주소는 단일 텍스트로 합쳐 한 객체로
+  // 낭독(라벨 볼드 분절 포기). 한글 주소 줄엔 lang="ko"(영문 UI에서도 정확히 읽히게).
+  // 복사 통지 전용 live region은 주소 줄을 감싸지 않는다. 감싸면 장소를 바꿀 때(PlaceDetail 인스턴스 재사용)
+  // 주소 변경이 통째로 재낭독돼, 이미 보이는 콘텐츠를 중복 낭독하게 된다. 내용 없는 빈 컨테이너는 SR 탐색을
+  // 멈추지 않는다.
+  const addressBlock = (
+    <>
+      {addressLines.map(({ key, label, value, copyLabel, korean }) => (
+        <div key={key} className="flex w-fit max-w-full items-start gap-2">
+          <p className="min-w-0" lang={korean ? "ko" : undefined}>
+            {`${label} ${value}`}
+          </p>
+          <button
+            type="button"
+            onClick={() => copyAddress(value)}
+            className="inline-flex min-h-11 min-w-11 shrink-0 items-start justify-center gap-1 pt-0.5 text-xs font-medium text-accent"
+          >
+            <Copy aria-hidden="true" className="h-3.5 w-3.5" />
+            {copyLabel}
+          </button>
+        </div>
+      ))}
+      <div aria-live="polite">
+        {copyAnnouncement && (
+          <span key={copyAnnouncement.id} className="sr-only">
+            {copyAnnouncement.message}
+          </span>
+        )}
+      </div>
+    </>
+  );
+
+  // 역 상세에서만 운영사 대표번호(1544-7788 등)를 "대표번호"라고 밝힌다(E44 판정 ⑥) — 역무실 직통으로
+  // 오해하지 않게. 번호는 링크 안에 두어 링크 목록에서도 대표번호임이 들린다. 비역 장소는 현행 그대로.
+  const phoneLine = place.phone && (
+    <p>
+      {`${t("place.phone")} `}
+      <a href={`tel:${place.phone}`} className="underline">
+        {layoutKind && isRepresentativePhone(place.phone)
+          ? t("place.representativePhone", { phone: place.phone })
+          : place.phone}
+      </a>
+    </p>
+  );
+
+  // 길찾기 두 방향(E32). 별개 버튼 = 별개 접근성 객체이고, 각 라벨이 그 버튼이 채우는 끝(도착지·출발지)을
+  // 말한다. "여기부터"는 도착지가 비어 있으므로 조회하지 않고 도착지 입력에 착지한다.
+  const directionsButtons = (
+    <>
+      {onOpenDirections && (
+        <button
+          type="button"
+          onClick={onOpenDirections}
+          className="mt-4 mr-3 inline-flex min-h-11 items-center gap-2 rounded-md border border-border bg-background px-4 py-2 text-sm font-medium hover:bg-accent/10"
+        >
+          <Route aria-hidden="true" className="h-4 w-4" />
+          {t("directions.toHere")}
+        </button>
+      )}
+      {onOpenDirectionsFrom && (
+        <button
+          type="button"
+          onClick={onOpenDirectionsFrom}
+          className="mt-4 mr-3 inline-flex min-h-11 items-center gap-2 rounded-md border border-border bg-background px-4 py-2 text-sm font-medium hover:bg-accent/10"
+        >
+          <Route aria-hidden="true" className="h-4 w-4" />
+          {t("directions.fromHere")}
+        </button>
+      )}
+    </>
+  );
+
+  const chatButton = canShowChat && (
+    <button
+      type="button"
+      ref={chatTriggerRef}
+      onClick={() => setChatOpen(true)}
+      className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-md border border-border bg-background px-4 py-2 text-sm font-medium hover:bg-accent/10"
+    >
+      <MessageSquare aria-hidden="true" className="h-4 w-4" />
+      {t("placeChat.launch")}
+    </button>
+  );
+
+  // 역 자동 섹션 — 실시간 도착·첫차막차·교통약자 시설 2종(시설은 종류별 접기, E44 §4).
+  const stationSections = (
+    <>
+      {canShowSubway && <SeoulSubwayArrival stationName={place.name} />}
+      <StationTimetable stationName={place.name} />
+      <StationFacilities stationName={place.name} />
+      <SeoulMetroFacilities stationName={place.name} />
+    </>
+  );
+
+  // 이 장소 주변(버스·따릉이·날씨/공기질). 웹 장소 상세엔 근처 지하철 섹션이 없다(E44 판정 ④와 이미 같다).
+  const nearbySections = (
+    <>
+      {canShowBus && (
+        <BusArrivals mode="place" lat={place.lat} lng={place.lng} />
+      )}
+      {canShowBike && (
+        <BikeStations mode="place" lat={place.lat} lng={place.lng} />
+      )}
+      {canShowAir && <LocalConditions lat={place.lat} lng={place.lng} />}
+    </>
+  );
+
+  const barrierFree = canShowBarrierFree && (
+    <BarrierFreeInfo lat={place.lat} lng={place.lng} name={place.name} />
+  );
+
   return (
     <PlaceBridgeContext.Provider value={axisRegistry.registrar}>
       <div>
@@ -252,109 +377,54 @@ export function PlaceDetail({
           <KoTail secondary={bilingualTitle.secondary} />
         </h2>
 
-        {/* 정의 리스트(dl/dt/dd) 대신 평문 단락 — 스크린 리더가 항목마다 "용어/정의"
-          역할과 콜론을 별도 낭독하던 노이즈를 제거한다(라벨은 볼드 시각 구분만).
-          "분류 음식점"처럼 한 호흡에 읽힌다(First Rule of ARIA). */}
-        <div className="mt-2 text-sm leading-relaxed">
-          {/* 카카오 분류가 en 페이지에서 한국어로 남으면(categoryEn 부재) 줄 전체에 lang="ko"(A26). */}
-          <p lang={hasHangul(displayCategory) ? "ko" : undefined}>
-            {`${t("place.category")} ${displayCategory}`}
-          </p>
-          {/* 주소는 종류마다 한 줄 + 그 줄 전용 복사 버튼. 도로명과 지번은 쓰임이
-            달라(택배·행정서식) 둘 다 복사할 수 있어야 하고, 복사 대상은 반드시
-            화면에 보이는 줄과 일치한다. 라벨+주소는 단일 텍스트로 합쳐 한 객체로
-            낭독(라벨 볼드 분절 포기). 한글 주소 줄엔 lang="ko"(영문 UI에서도 정확히
-            읽히게). */}
-          {addressLines.map(({ key, label, value, copyLabel, korean }) => (
-            <div key={key} className="flex w-fit max-w-full items-start gap-2">
-              <p className="min-w-0" lang={korean ? "ko" : undefined}>
-                {`${label} ${value}`}
-              </p>
-              <button
-                type="button"
-                onClick={() => copyAddress(value)}
-                className="inline-flex min-h-11 min-w-11 shrink-0 items-start justify-center gap-1 pt-0.5 text-xs font-medium text-accent"
-              >
-                <Copy aria-hidden="true" className="h-3.5 w-3.5" />
-                {copyLabel}
-              </button>
-            </div>
-          ))}
-          {/* 복사 통지 전용 live region — 주소 줄을 감싸지 않는다. 감싸면 장소를 바꿀 때
-            (PlaceDetail 인스턴스 재사용) 주소 변경이 통째로 재낭독돼, 이미 보이는
-            콘텐츠를 중복 낭독하게 된다. 내용 없는 빈 컨테이너는 SR 탐색을 멈추지 않는다. */}
-          <div aria-live="polite">
-            {copyAnnouncement && (
-              <span key={copyAnnouncement.id} className="sr-only">
-                {copyAnnouncement.message}
-              </span>
-            )}
-          </div>
-          {/* 영업시간(E24): 전화 줄 바로 앞 — 시각이 틀릴 수 있어 확인 경로와 짝짓는다(iOS 미러). */}
-          <PlaceHoursLine place={place} />
-          {place.phone && (
-            <p>
-              {`${t("place.phone")} `}
-              <a href={`tel:${place.phone}`} className="underline">
-                {place.phone}
-              </a>
-            </p>
-          )}
-        </div>
-
-        <RouteLinks place={place} />
-        {/* 길찾기 두 방향(E32). 별개 버튼 = 별개 접근성 객체이고, 각 라벨이 그
-            버튼이 채우는 끝(도착지·출발지)을 말한다. "여기부터"는 도착지가 비어
-            있으므로 조회하지 않고 도착지 입력에 착지한다. */}
-        {onOpenDirections && (
-          <button
-            type="button"
-            onClick={onOpenDirections}
-            className="mt-4 mr-3 inline-flex min-h-11 items-center gap-2 rounded-md border border-border bg-background px-4 py-2 text-sm font-medium hover:bg-accent/10"
-          >
-            <Route aria-hidden="true" className="h-4 w-4" />
-            {t("directions.toHere")}
-          </button>
-        )}
-        {onOpenDirectionsFrom && (
-          <button
-            type="button"
-            onClick={onOpenDirectionsFrom}
-            className="mt-4 mr-3 inline-flex min-h-11 items-center gap-2 rounded-md border border-border bg-background px-4 py-2 text-sm font-medium hover:bg-accent/10"
-          >
-            <Route aria-hidden="true" className="h-4 w-4" />
-            {t("directions.fromHere")}
-          </button>
-        )}
-        {canShowChat && (
-          <button
-            type="button"
-            ref={chatTriggerRef}
-            onClick={() => setChatOpen(true)}
-            className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-md border border-border bg-background px-4 py-2 text-sm font-medium hover:bg-accent/10"
-          >
-            <MessageSquare aria-hidden="true" className="h-4 w-4" />
-            {t("placeChat.launch")}
-          </button>
-        )}
-        {isStation(place) && (
+        {layoutKind ? (
           <>
-            <StationMeta stationName={place.name} />
-            {canShowSubway && <SeoulSubwayArrival stationName={place.name} />}
-            <StationTimetable stationName={place.name} />
-            <StationFacilities stationName={place.name} />
-            <SeoulMetroFacilities stationName={place.name} />
+            {/* 역 상세(E44 §3.2): 역 정보 → 도착·시간표·시설 → 무장애 → 길찾기 → 이 장소 주변(최하단).
+                "역 정보" 제목은 조회 결과와 무관하게 항상 서고, 전화 줄이 맨 위다("가장 많이 쓸 메뉴"). */}
+            <h3 className="mt-4 text-base font-semibold">{t("stationMeta.heading")}</h3>
+            <div className="mt-1 text-sm leading-relaxed">
+              {phoneLine}
+              <StationMeta stationName={place.name} embedded />
+              {/* 분류 줄은 기차역만 — `KTX정차역` 같은 정보가 여기뿐이다. 지하철은 메타 줄 노선과 중복. */}
+              {layoutKind === "rail" && categoryLine}
+              {addressBlock}
+              <PlaceHoursLine place={place} />
+            </div>
+            {chatButton}
+            {stationSections}
+            {barrierFree}
+            {/* 화면 아래로 내려간 길찾기는 제목으로 점프한다(E44 §3.2 7). */}
+            <h3 className="mt-6 text-base font-semibold">{t("directions.title")}</h3>
+            {directionsButtons}
+            <RouteLinks place={place} />
+            {nearbySections}
           </>
-        )}
-        {canShowBus && (
-          <BusArrivals mode="place" lat={place.lat} lng={place.lng} />
-        )}
-        {canShowBike && (
-          <BikeStations mode="place" lat={place.lat} lng={place.lng} />
-        )}
-        {canShowAir && <LocalConditions lat={place.lat} lng={place.lng} />}
-        {canShowBarrierFree && (
-          <BarrierFreeInfo lat={place.lat} lng={place.lng} name={place.name} />
+        ) : (
+          <>
+            {/* 정의 리스트(dl/dt/dd) 대신 평문 단락 — 스크린 리더가 항목마다 "용어/정의"
+              역할과 콜론을 별도 낭독하던 노이즈를 제거한다(라벨은 볼드 시각 구분만).
+              "분류 음식점"처럼 한 호흡에 읽힌다(First Rule of ARIA). */}
+            <div className="mt-2 text-sm leading-relaxed">
+              {categoryLine}
+              {addressBlock}
+              {/* 영업시간(E24): 전화 줄 바로 앞 — 시각이 틀릴 수 있어 확인 경로와 짝짓는다(iOS 미러). */}
+              <PlaceHoursLine place={place} />
+              {phoneLine}
+            </div>
+
+            <RouteLinks place={place} />
+            {directionsButtons}
+            {chatButton}
+            {/* 넓은 isStation이 레이아웃 밖에서 참인 드문 경우(출구 POI 등) — 역 섹션만 종전 자리에 조용히 나타난다. */}
+            {isStationPlace && (
+              <>
+                <StationMeta stationName={place.name} />
+                {stationSections}
+              </>
+            )}
+            {nearbySections}
+            {barrierFree}
+          </>
         )}
         {chatOpen && (
           <ChatOverlay

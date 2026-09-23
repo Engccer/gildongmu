@@ -8,7 +8,7 @@ import type { SeoulMetroFacilities, SeoulMetroFacility } from "../types";
 import type { TranslateFn } from "./translate";
 
 export interface MetroGroupItem {
-  /** 그룹 헤딩(`<h4>`) 문장 — 시설 종류 + 수 */
+  /** 종류 묶음 이름(접힘 행 라벨) — 시설 종류 + 수 + 운행 중지 수 */
   name: string;
   /** 시설 한 줄 = 한 객체(이름·위치·층·설명·가동현황 쉼표 결합) */
   lines: string[];
@@ -75,21 +75,28 @@ export function metroFacilityGroups(
   locale: string = "ko",
 ): MetroGroupItem[] {
   const isEn = prefersEnglish(locale);
-  return f.groups.map((g) => ({
-    name: `${t(`kind.${g.kind}`)} ${t("count", { count: g.facilities.length })}`,
-    // 필드가 전부 빈 항목(교통약자 도우미 — upstream이 수만 준다, 서울역 실측 2026-08-30)은
-    // 빈 <li> = SR에 "이름 없는 항목"이라 떨어뜨린다. 수는 그룹 헤딩이 이미 말한다.
-    lines: g.facilities
-      .map((x) =>
-        joinText(
-          nameOf(x, t, isEn),
-          x.location,
-          x.floors,
-          detailOf(x, t),
-          x.operatingStatus &&
-            (x.operatingStatus === "normal" ? t("operatingNormal") : t("operatingStopped")),
-        ),
-      )
-      .filter((line) => line.length > 0),
-  }));
+  return f.groups.map((g) => {
+    // 종류 묶음은 접혀서 시작하므로(E44 §4) 멈춘 시설 수를 이름에 싣는다 — 줄마다 있던 "운행 중지"가 접히면 가려진다.
+    const stopped = g.facilities.filter((x) => x.operatingStatus === "stopped").length;
+    return {
+      name: joinText(
+        `${t(`kind.${g.kind}`)} ${t("count", { count: g.facilities.length })}`,
+        stopped > 0 && t("stoppedCount", { count: stopped }),
+      ),
+      // 필드가 전부 빈 항목(교통약자 도우미 — upstream이 수만 준다, 서울역 실측 2026-08-30)은
+      // 빈 <li> = SR에 "이름 없는 항목"이라 떨어뜨린다. 수는 묶음 이름이 이미 말한다.
+      lines: g.facilities
+        .map((x) =>
+          joinText(
+            nameOf(x, t, isEn),
+            x.location,
+            x.floors,
+            detailOf(x, t),
+            x.operatingStatus &&
+              (x.operatingStatus === "normal" ? t("operatingNormal") : t("operatingStopped")),
+          ),
+        )
+        .filter((line) => line.length > 0),
+    };
+  });
 }

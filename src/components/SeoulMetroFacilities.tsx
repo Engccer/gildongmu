@@ -150,12 +150,20 @@ export function SeoulMetroFacilities({ stationName }: { stationName: string }) {
             {tActions("close")}
           </button>
 
-          {/* 문장 정본은 place-lines(도구층과 공용) — 그룹 헤딩·시설 줄 모두 */}
-          <div className="mt-2 space-y-3">
+          {/* 보강 실패는 어느 종류를 펼칠지 고르기 전에 알아야 한다 — 종류 묶음 앞(E44 §4). */}
+          {status.facilities.supplementFailed && (
+            <p className="mt-2 text-sm">{t("supplementFailed")}</p>
+          )}
+          {/* 종류마다 접는다(E44 판정 ②, 기본 접힘) — 천호역 72행이 접힘 행 7개가 된다. 네이티브 details라
+              펼침 상태를 브라우저가 낭독하고, 포커스는 펼친 뒤에도 요약 행에 남는다(다음 탐색이 첫 시설).
+              문장 정본은 place-lines(도구층과 공용) — 묶음 이름·시설 줄 모두. */}
+          <div className="mt-2 space-y-1">
             {metroFacilityGroups(status.facilities, t, locale).map((g, gi) => (
-              <div key={status.facilities.groups[gi].kind}>
-                <h4 className="text-sm font-semibold">{g.name}</h4>
-                <ul className="mt-1 space-y-1 text-sm leading-relaxed">
+              <details key={status.facilities.groups[gi].kind}>
+                <summary className="min-h-11 cursor-pointer py-3 text-sm font-semibold">
+                  {g.name}
+                </summary>
+                <ul className="mt-1 mb-2 space-y-1 text-sm leading-relaxed">
                   {/* 시설 줄은 서버 한국어 원문이 대부분이지만 `parts`로 조립한 줄(엘리베이터 위치 등)은
                       비-ko 로케일에서 온전히 번역문일 수 있다 — 한글이 있을 때만 ko(a11y 감사 2026-08-31). */}
                   {g.lines.map((line, i) => (
@@ -167,15 +175,13 @@ export function SeoulMetroFacilities({ stationName }: { stationName: string }) {
                     </li>
                   ))}
                 </ul>
-              </div>
+                {/* 음성유도기 기준일은 그 묶음의 마지막 자식 — 다른 종류와 무관한 설명이다(E44 §4). */}
+                {status.facilities.groups[gi].kind === "voiceGuide" && (
+                  <p className="mb-2 text-xs opacity-70">{t("voiceGuideSource")}</p>
+                )}
+              </details>
             ))}
           </div>
-          {status.facilities.supplementFailed && (
-            <p className="mt-2 text-sm">{t("supplementFailed")}</p>
-          )}
-          {status.facilities.groups.some((g) => g.kind === "voiceGuide") && (
-            <p className="mt-2 text-xs opacity-70">{t("voiceGuideSource")}</p>
-          )}
           <p className="mt-2 text-xs opacity-70">{t("source")}</p>
         </div>
       )}

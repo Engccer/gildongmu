@@ -1,0 +1,22 @@
+{
+  "_comment": "E44 역 상세 레이아웃 종류·대표번호 판별 공유 케이스(웹 station-phone.ts ↔ Kit StationPhone.swift ↔ 안드로이드 :kit). 모양은 2026-09-17 실호출 응답(spec 2026-09-17-station-detail-reorg-design.md §3.1·§5.4-5).",
+  "layoutKind": [
+    { "note": "카카오 지하철역 POI", "id": "kakao-1", "category": "교통,수송 > 지하철,전철 > 수도권5호선", "expected": "subway" },
+    { "note": "경유역", "id": "transit-stop:2544", "category": "지하철역", "expected": "subway" },
+    { "note": "출구 POI", "id": "kakao-2", "category": "교통,수송 > 지하철,전철 > 지하철출구", "expected": null },
+    { "note": "네이버 병합 역 POI(뭉개진 분류)", "id": "naver-local-1", "category": "교통,수송>지하철,전철", "expected": null },
+    { "note": "철도 시공업체", "id": "kakao-3", "category": "산업 > 건설,시공 > 시공업체 > 도로,철도시공", "expected": null },
+    { "note": "이름만 역으로 끝나는 비역", "id": "kakao-4", "category": "음식점 > 술집 > 호프,요리주점", "expected": null },
+    { "note": "KTX 정차역", "id": "kakao-5", "category": "교통,수송 > 기차,철도 > 기차역 > KTX정차역", "expected": "rail" }
+  ],
+  "representativePhone": [
+    { "phone": "1544-7788", "expected": true },
+    { "phone": "1599-7788", "expected": true },
+    { "phone": "1588-7788", "expected": true },
+    { "phone": "1544-5005", "expected": true },
+    { "phone": "02-6110-1281", "expected": false },
+    { "phone": "031-8018-7750", "expected": false },
+    { "phone": "1330", "expected": false },
+    { "phone": "010-1234-5678", "expected": false }
+  ]
+}

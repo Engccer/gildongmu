@@ -167,7 +167,7 @@ describe("place-lines == 화면 문장", () => {
     ]);
   });
 
-  it("서울 지하철 시설 그룹 헤딩 + 시설 줄", async () => {
+  it("서울 지하철 시설 종류 묶음(접힘 행) + 시설 줄", async () => {
     const f: Metro = {
       stationName: "강동",
       line: "5호선",
@@ -187,13 +187,15 @@ describe("place-lines == 화면 문장", () => {
     fireEvent.click(screen.getByRole("button"));
     await screen.findAllByRole("listitem");
     const groups = metroFacilityGroups(f, tFor("subway"));
-    const h4s = Array.from(container.querySelectorAll("h4")).map((h) => h.textContent);
-    expect(h4s).toEqual(groups.map((g) => g.name));
+    const summaries = Array.from(container.querySelectorAll("details > summary")).map((h) => h.textContent);
+    expect(summaries).toEqual(groups.map((g) => g.name));
     const uls = Array.from(container.querySelectorAll("ul"));
     expect(uls.map((ul) => Array.from(ul.querySelectorAll("li")).map((li) => li.textContent))).toEqual(
       groups.map((g) => g.lines),
     );
-    expect(groups[0].name).toBe('subway.kind.elevator subway.count{"count":2}');
+    // 접히면 줄마다 있던 "운행 중지"가 가려지므로 묶음 이름이 멈춘 수를 싣는다(E44 §4). 멈춘 게 없으면 붙이지 않는다.
+    expect(groups[0].name).toBe('subway.kind.elevator subway.count{"count":2}, subway.stoppedCount{"count":1}');
+    expect(groups[1].name).toBe('subway.kind.voiceGuide subway.count{"count":1}');
     expect(groups[0].lines).toEqual([
       "엘리베이터 1호기, 1번 출구, 지하1층~지상, subway.operatingNormal",
       "엘리베이터 2호기, 휠체어 가능, subway.operatingStopped",
