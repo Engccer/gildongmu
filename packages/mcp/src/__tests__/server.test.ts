@@ -1,4 +1,6 @@
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { ENDPOINT_CATALOG } from "../endpoint-catalog-shared.js";
 
 describe("MCP 도구 카탈로그 필터·이름 규칙", () => {
@@ -51,5 +53,26 @@ describe("MCP 도구 카탈로그 필터·이름 규칙", () => {
       const lang = spec.params.find((p) => p.key === "lang");
       if (lang) expect(lang.required).toBe(false);
     }
+  });
+});
+
+describe("route_walk 소비자 쪽 기본값(E42 — 앱 화면 첫 줄)", () => {
+  const walk = ENDPOINT_CATALOG.find((e) => e.name === "route-walk")!;
+
+  it("ko는 최단, 계단 회피 요청·en·명시 variant는 건드리지 않는다", () => {
+    expect(walk.implicitQuery?.({ origin: "a", dest: "b" })).toEqual({ variant: "shortest" });
+    expect(walk.implicitQuery?.({ accessible: "false" })).toEqual({ variant: "shortest" });
+    expect(walk.implicitQuery?.({ accessible: "true" })).toEqual({});
+    expect(walk.implicitQuery?.({ lang: "en" })).toEqual({});
+    expect(walk.implicitQuery?.({ variant: "shortest", lang: "en" })).toEqual({});
+  });
+
+  it("다른 도구엔 기본값이 없다(서버 기본 그대로)", () => {
+    expect(ENDPOINT_CATALOG.filter((e) => e.implicitQuery).map((e) => e.name)).toEqual(["route-walk"]);
+  });
+
+  it("handler가 호출자 인자 뒤에 기본값을 합쳐 URL을 만든다", () => {
+    const src = readFileSync(join(import.meta.dirname, "..", "index.ts"), "utf8");
+    expect(src).toContain("Object.entries({ ...args, ...spec.implicitQuery?.(args) })");
   });
 });

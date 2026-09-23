@@ -9,7 +9,8 @@
 ## [Unreleased]
 
 ### 변경
-- 카탈로그 `route-walk`에 `variant` 파라미터가 실렸다(`shortest`면 최단 경로 — 서버 2026-09-23부터 ko는 카카오 최단, 카카오 장애 시 Tmap 최단, en은 Tmap 최단). `route walk` 명령의 기본 조회는 그대로 기본 경로(ko 큰길 우선)이고, 명령 플래그(`--variant`)는 아직 없다.
+- 카탈로그 `route-walk`에 `variant` 파라미터가 실렸다(`shortest`면 최단 경로 — 서버 2026-09-23부터 ko는 카카오 최단, 카카오 장애 시 Tmap 최단, en은 Tmap 최단). 명령 플래그(`--variant`)는 아직 없다.
+- **`route walk`의 기본 경로가 앱 화면 첫 줄과 같아졌다.** ko는 최단 경로(종전 큰길 우선)이고, `--accessible true`는 종전처럼 계단 회피 경로, `--lang en`은 종전처럼 Tmap 추천 경로다. 서버의 무파라미터 기본 응답은 바뀌지 않았다(CLI가 `variant=shortest`를 붙인다).
 
 ---
 

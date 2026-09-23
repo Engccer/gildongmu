@@ -52,6 +52,19 @@ beforeEach(() => {
   mockTransit.mockReset();
 });
 
+describe("get_walk_route 경로 축 — 앱 화면 첫 줄과 같게(E42)", () => {
+  it("기본은 최단", async () => {
+    await executeFunction("get_walk_route", { destination: "여의도역" }, ctx);
+    expect(mockWalk.mock.calls[0][0].variant).toBe("shortest");
+  });
+
+  it("계단 회피 요청은 variant 없이 accessible만(서버 기본 파이프라인)", async () => {
+    await executeFunction("get_walk_route", { destination: "여의도역", accessible: true }, ctx);
+    expect(mockWalk.mock.calls[0][0]).toMatchObject({ accessible: true });
+    expect(mockWalk.mock.calls[0][0].variant).toBeUndefined();
+  });
+});
+
 describe("get_walk_route via", () => {
   it("경유지 좌표를 서비스에 넘기고 via{name,stepIndex}를 싣는다", async () => {
     const r = await executeFunction("get_walk_route", { destination: "여의도역", via: "천호역" }, ctx);
