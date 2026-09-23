@@ -45,9 +45,9 @@ data class PlaceDetailRoute(
 
         /**
          * 경유역 상세(대중교통 투영 `transitStopPlace`). 노선 힌트는 **기본값 없는 필수 인자**다 — 빠뜨리면 컴파일은 통과하고 경유역
-         * 전화 줄만 조용히 사라진다. `lineName`은 그 역이 속한 leg의 `lineName`(ODsay 표기)을 누르는 순간 확정해 넘긴다(spec §5.2, 리뷰 M4).
+         * 전화 줄만 조용히 사라진다. `lineName`은 그 역이 속한 leg의 `lineName`(ODsay 표기)을 누르는 순간 확정해 넘긴다(spec §5.2, 리뷰 M4). null은 leg에 노선명이 없다는 뜻이고 그때는 조회하지 않는다(iOS nil 동형).
          */
-        fun ofTransitStop(stop: TransitLegStop, lineName: String) = PlaceDetailRoute(
+        fun ofTransitStop(stop: TransitLegStop, lineName: String?) = PlaceDetailRoute(
             KitJson.encodeToString(Place.serializer(), transitStopPlace(stop)),
             stationLineHint = lineName,
             showsDirectionsEntry = false,

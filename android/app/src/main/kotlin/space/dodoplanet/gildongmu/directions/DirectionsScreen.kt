@@ -12,6 +12,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -56,44 +59,61 @@ import space.dodoplanet.gildongmu.settings.SettingsAction
  * 거리 추적 섹션·공지 시트는 M4·M5 — 자리만(§3-1 표 10·11).
  */
 @Composable
-fun DirectionsScreen(onOpenSettings: () -> Unit, takeSettingsReturn: () -> String?, onOpenStation: (TransitLegStop, String?) -> Unit) {
+fun DirectionsScreen(onOpenSettings: () -> Unit, takeSettingsReturn: () -> String?, onOpenStation: (TransitLegStop, String?, returnKey: String) -> Unit) {
     val context = LocalContext.current
     val factory = remember(context) { directionsViewModelFactory(context) }
     DirectionsScreen(viewModel(factory = factory), onOpenSettings, takeSettingsReturn, onOpenStation)
 }
 
-/** `onOpenStation`: 브리핑 지하철역 작업 메뉴의 상세 열기(E45) — null이면 진입점이 없다(push 경로가 없는 기기 테스트 하네스). */
+/**
+ * `onOpenStation`: 브리핑 지하철역 작업 메뉴의 상세 열기(E45) — null이면 진입점이 없다(push 경로가 없는 기기 테스트 하네스). `returnKey`는 pop 복귀
+ * 착지 키(그 줄) — 앱 루트가 복귀 슬롯에 기억하고, 돌아오면 `takeSettingsReturn`(엔트리 복귀 슬롯)으로 받아 그 줄에 착지한다.
+ */
 @Composable
 fun DirectionsScreen(
     vm: DirectionsViewModel,
     onOpenSettings: () -> Unit = {},
     takeSettingsReturn: () -> String? = { null },
-    onOpenStation: ((TransitLegStop, String?) -> Unit)? = null,
+    onOpenStation: ((TransitLegStop, String?, returnKey: String) -> Unit)? = null,
 ) {
     val settingsFocus = remember { FocusRequester() }
-    // 설정에서 pop 복귀 → 상단 바 설정 버튼(spec §14-1)
+    // 폼은 항상 컴포즈된다(상태 보존). 피커가 덮은 동안은 접근성 트리·터치에서 빠져야 하므로 컴포지션에서 뺀다 — 그 대신 상태를 폼 밖(이 계층)에
+    // 든다(`FormUiState`). 펼침은 saveable — 역 상세 push로 이 목적지가 컴포지션에서 내려갔다 돌아와도 보던 경로가 펼친 그대로다.
+    val formState = rememberFormUiState()
+    // pop 복귀 착지: 설정 → 상단 바 설정 버튼(spec §14-1), 역 상세(E45) → 작업 메뉴를 실행한 그 브리핑 줄.
     LaunchedEffect(Unit) {
-        if (takeSettingsReturn() != SETTINGS_RETURN_KEY) return@LaunchedEffect
+        val key = takeSettingsReturn() ?: return@LaunchedEffect
         withFrameNanos { }
-        runCatching { settingsFocus.requestFocus() }.onFailure { Log.w("DirectionsScreen", "설정 복귀 착지 실패", it) }
+        val target = if (key == SETTINGS_RETURN_KEY) settingsFocus else formState.stationRowFocus[key.removePrefix(STATION_RETURN_PREFIX)]
+        runCatching { target?.requestFocus() }.onFailure { Log.w("DirectionsScreen", "복귀 착지 실패 $key", it) }
     }
     val picker by vm.endpointSearch.collectAsState()
     BackHandler(enabled = picker != null) { vm.closePicker() }
     val p = picker
     Box(Modifier.fillMaxSize()) {
-        // 폼은 항상 컴포즈된다(상태 보존). 피커가 덮은 동안은 접근성 트리·터치에서 빠져야 하므로 컴포지션에서 뺀다 —
-        // 그 대신 상태를 폼 밖(이 계층)에 든다(`FormUiState`).
-        val formState = rememberFormUiState()
         if (p == null) DirectionsForm(vm, formState, onOpenSettings, settingsFocus, onOpenStation) else EndpointSearchContent(vm.picker, p, onBack = vm::closePicker)
     }
 }
 
-/** 폼의 화면 상태(펼침·착지 요청자) — 피커 왕복에 살아남도록 `DirectionsScreen` 수준에 든다. 새 조회에서만 초기화(§3-4). */
-class FormUiState {
-    var expandedAlts by mutableStateOf(setOf<String>())
-    var walkExpandedOverride by mutableStateOf<Boolean?>(null)
-    var shortestExpanded by mutableStateOf(false)
-    var seenResultsRevision by mutableStateOf(0)
+/** 역 상세 복귀 착지 키 접두(E45) — 뒤는 그 브리핑 줄의 태그. */
+const val STATION_RETURN_PREFIX = "station-row:"
+
+/**
+ * 폼의 화면 상태(펼침·착지 요청자) — 피커 왕복에 살아남도록 `DirectionsScreen` 수준에 든다. 새 조회에서만 초기화(§3-4).
+ * 펼침 넷은 [Saver]로 백스택 항목 수명을 산다(push 왕복 — E45). 착지 요청자는 컴포지션마다 새로 달린다.
+ */
+class FormUiState(
+    expandedAlts: Set<String> = emptySet(),
+    walkExpandedOverride: Boolean? = null,
+    shortestExpanded: Boolean = false,
+    seenResultsRevision: Int = 0,
+) {
+    var expandedAlts by mutableStateOf(expandedAlts)
+    var walkExpandedOverride by mutableStateOf(walkExpandedOverride)
+    var shortestExpanded by mutableStateOf(shortestExpanded)
+    var seenResultsRevision by mutableStateOf(seenResultsRevision)
+    /** 역 작업 메뉴를 든 브리핑 줄(태그 → 요청자) — 역 상세 pop 복귀 착지. */
+    val stationRowFocus = mutableMapOf<String, FocusRequester>()
     val fromFocus = FocusRequester()
     val toFocus = FocusRequester()
     val viaFocus = FocusRequester()
@@ -107,10 +127,20 @@ class FormUiState {
         shortestExpanded = false
         seenResultsRevision = revision
     }
+
+    companion object {
+        val Saver: Saver<FormUiState, Any> = listSaver(
+            save = { listOf(ArrayList(it.expandedAlts), it.walkExpandedOverride, it.shortestExpanded, it.seenResultsRevision) },
+            restore = {
+                @Suppress("UNCHECKED_CAST")
+                FormUiState((it[0] as List<String>).toSet(), it[1] as Boolean?, it[2] as Boolean, it[3] as Int)
+            },
+        )
+    }
 }
 
 @Composable
-private fun rememberFormUiState(): FormUiState = remember { FormUiState() }
+private fun rememberFormUiState(): FormUiState = rememberSaveable(saver = FormUiState.Saver) { FormUiState() }
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
@@ -119,7 +149,7 @@ private fun DirectionsForm(
     ui: FormUiState,
     onOpenSettings: () -> Unit,
     settingsFocus: FocusRequester,
-    onOpenStation: ((TransitLegStop, String?) -> Unit)?,
+    onOpenStation: ((TransitLegStop, String?, returnKey: String) -> Unit)?,
 ) {
     val s by vm.state.collectAsState()
     val context = LocalContext.current
@@ -127,7 +157,15 @@ private fun DirectionsForm(
     val lang = remember(res) { AppLocale.current(res) }
     val dataLocale = remember(lang) { if (lang == "ko") DataLocale.ko else DataLocale.en }
     val strings = remember(res) { resourceStrings(res) }
-    val stationEntry = remember(onOpenStation, vm) { onOpenStation?.let { BriefingStationEntry(it, vm::announceResult) } }
+    val stationEntry = remember(onOpenStation, vm, ui) {
+        onOpenStation?.let { open ->
+            BriefingStationEntry(
+                onOpen = { stop, lineName, rowTag -> open(stop, lineName, STATION_RETURN_PREFIX + rowTag) },
+                announce = vm::announceResult,
+                rowFocus = { tag -> ui.stationRowFocus.getOrPut(tag) { FocusRequester() } },
+            )
+        }
+    }
     // 새 조회 = 새 경로들이라 펼침을 기본으로 되돌린다(토글 재조회·피커 왕복은 보존).
     if (s.resultsRevision != ui.seenResultsRevision) ui.resetExpansion(s.resultsRevision)
     // 이미 허가된 세션이면 진입 시 조용히 현재 위치 주소를 병기(권한 팝업 없음).

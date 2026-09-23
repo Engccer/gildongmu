@@ -2,6 +2,7 @@ package space.dodoplanet.gildongmu.directions
 
 import space.dodoplanet.gildongmu.kit.DataLocale
 import space.dodoplanet.gildongmu.kit.Fixtures
+import space.dodoplanet.gildongmu.kit.StationPhoneResult
 import space.dodoplanet.gildongmu.kit.TransitBriefingRow
 import space.dodoplanet.gildongmu.kit.models.TransitLegStop
 import space.dodoplanet.gildongmu.kit.models.TransitRouteLeg
@@ -53,9 +54,23 @@ class BriefingStationsTest {
         )
     }
 
-    @Test fun `전화 액션은 역마다 언제나 하나다(상태와 무관한 상시 노출)`() {
+    @Test fun `작업 메뉴 길이는 전화 상태와 무관하게 역마다 둘이고 라벨만 갈린다(상시 노출)`() {
         val actions = briefingStationActions(listOf(subway()), TransitBriefingRow.Transit(0), DataLocale.ko)
-        assertEquals(actions.size, briefingRotorOrder(actions).count { it.second == BriefingRotorKind.call })
+        val ko = CatalogStrings("ko")
+        for (state in listOf(null, StationPhoneResult.Unavailable, StationPhoneResult.Failed, StationPhoneResult.Direct("02"), StationPhoneResult.Representative("1544"))) {
+            val labels = briefingCustomActions(actions, { state }, ko, onOpen = {}, onCall = {}).map { it.label }
+            val call = { name: String -> if (state is StationPhoneResult.Representative) "$name 대표번호로 전화 걸기" else "${name}에 전화 걸기" }
+            assertEquals(listOf("천호 상세 보기", call("천호"), "여의도 상세 보기", call("여의도")), labels, "$state")
+        }
+    }
+
+    @Test fun `작업 메뉴 실행은 그 역을 넘긴다`() {
+        val actions = briefingStationActions(listOf(subway()), TransitBriefingRow.Transit(0), DataLocale.ko)
+        val opened = mutableListOf<String>(); val called = mutableListOf<String>()
+        val custom = briefingCustomActions(actions, { null }, CatalogStrings("ko"), onOpen = { opened += it.name }, onCall = { called += it.name })
+        custom.forEach { assertTrue(it.action()) }
+        assertEquals(listOf("천호", "여의도"), opened)
+        assertEquals(listOf("천호", "여의도"), called)
     }
 
     // 배선 소스 가드
@@ -73,12 +88,16 @@ class BriefingStationsTest {
         assertEquals(listOf("DirectionsScreen.kt"), callers)
         assertTrue(code("directions/DirectionsScreen.kt").contains("stationEntry = stationEntry,"))
         // 앱 루트가 길찾기 탭에만 push 경로를 넘긴다.
-        assertTrue(Regex("""onOpenStation = \{ stop, lineName -> navController\.navigate\(PlaceDetailRoute\.ofTransitStop\(""").containsMatchIn(code("nav/AppRoot.kt")))
+        assertTrue(code("nav/AppRoot.kt").contains("navController.navigate(PlaceDetailRoute.ofTransitStop(stop, lineName = lineName))"))
     }
 
-    @Test fun `작업 메뉴는 순서 함수 결과를 거르지 않고 그대로 싣는다`() {
+    @Test fun `작업 메뉴는 순수 함수 결과를 거르지 않고 그대로 싣는다`() {
         val src = code("directions/BriefingStations.kt")
-        assertTrue(src.contains("val custom = briefingRotorOrder(actions).map {"))
+        assertTrue(src.contains("): List<CustomAccessibilityAction> = briefingRotorOrder(actions).map {"))
+        assertTrue(src.contains("val custom = briefingCustomActions("))
+        // 줄에 싣는 것은 정확히 그 목록이다(뒤에서 거르면 상시 노출이 깨진다) — 착지 요청자도 같은 줄에.
+        assertTrue(src.contains("TextRow(text, tag, spoken = spoken, actions = custom, focus = entry.rowFocus(tag))"))
+        assertEquals(1, Regex("""actions = custom""").findAll(src).count())
         assertFalse(Regex("""briefingRotorOrder\(actions\)\s*\.(filter|reversed|asReversed)""").containsMatchIn(src))
         assertFalse(Regex("""\.reversed\(\)|asReversed""").containsMatchIn(src), "안드로이드는 선언 순서 그대로 노출한다")
     }
@@ -92,10 +111,28 @@ class BriefingStationsTest {
         assertFalse(src.contains("transitStationMentions"), "브리핑은 문장 스캔이 아니라 구조로 확정한다")
     }
 
+    @Test fun `역 상세 왕복은 펼침을 보존하고 그 줄로 돌아온다`() {
+        val screen = code("directions/DirectionsScreen.kt")
+        assertTrue(screen.contains("rememberSaveable(saver = FormUiState.Saver)"), "push 왕복에 펼침이 초기화되면 방금 쓴 줄이 사라진다")
+        assertTrue(screen.contains("open(stop, lineName, STATION_RETURN_PREFIX + rowTag)"))
+        assertTrue(screen.contains("formState.stationRowFocus[key.removePrefix(STATION_RETURN_PREFIX)]"))
+        assertTrue(code("nav/AppRoot.kt").contains("onOpenStation = { stop, lineName, returnKey -> rf.slot.remember(returnKey);"))
+    }
+
+    @Test fun `펼침 상태는 저장·복원으로 왕복한다`() {
+        val before = FormUiState(setOf("r2"), walkExpandedOverride = false, shortestExpanded = true, seenResultsRevision = 3)
+        val saved = with(FormUiState.Saver) { androidx.compose.runtime.saveable.SaverScope { true }.save(before) }!!
+        val after = FormUiState.Saver.restore(saved)!!
+        assertEquals(setOf("r2"), after.expandedAlts)
+        assertEquals(false, after.walkExpandedOverride)
+        assertEquals(true, after.shortestExpanded)
+        assertEquals(3, after.seenResultsRevision)
+    }
+
     @Test fun `전화는 단일 창구를 지나고 통지는 화면 통지 창구로 간다`() {
         val src = code("directions/BriefingStations.kt")
-        assertTrue(src.contains("callStationPhone(store, station.stop"))
+        assertTrue(src.contains("callStationPhone(store, a.stop"))
         assertFalse(src.contains("ACTION_DIAL"))
-        assertTrue(code("directions/DirectionsScreen.kt").contains("BriefingStationEntry(it, vm::announceResult)"))
+        assertTrue(code("directions/DirectionsScreen.kt").contains("announce = vm::announceResult,"))
     }
 }

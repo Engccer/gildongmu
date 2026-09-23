@@ -26,15 +26,11 @@ data class StationPhoneNotice(@param:StringRes val text: Int, val haptic: Haptic
  * `lineName`은 조회 노선 힌트(없으면 빈 문자열 — 노선 표가 모르면 저장소가 "없음"으로 즉답한다, 판정 복제 금지). 메인 스레드 전용(저장소 계약).
  */
 fun callStationPhone(store: StationPhoneStore, stop: TransitLegStop, lineName: String, dial: (String) -> Boolean): StationPhoneNotice? {
-    when (val result = store.result(stop.name, stop.lat, stop.lng, lineName)) {
-        is StationPhoneResult.Direct -> return if (dial(result.phone)) null else stationPhoneNotice(StationPhoneResult.Failed)
-        is StationPhoneResult.Representative -> return if (dial(result.phone)) null else stationPhoneNotice(StationPhoneResult.Failed)
-        null -> {
-            store.prefetch(listOf(stop), lineName)
-            return stationPhoneNotice(null)
-        }
-        else -> return stationPhoneNotice(result)
-    }
+    val result = store.result(stop.name, stop.lat, stop.lng, lineName)
+    val phone = (result as? StationPhoneResult.Direct)?.phone ?: (result as? StationPhoneResult.Representative)?.phone
+    if (phone != null) return if (dial(phone)) null else stationPhoneNotice(StationPhoneResult.Failed)
+    if (result == null) store.prefetch(listOf(stop), lineName)
+    return stationPhoneNotice(result)
 }
 
 /**

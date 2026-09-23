@@ -111,8 +111,8 @@ fun AppRoot(factories: AppFactories) {
                     val rf: ReturnFocusViewModel = viewModel(entry)
                     DirectionsScreen(
                         onOpenSettings = { rf.slot.remember(SETTINGS_RETURN_KEY); navController.navigate(SettingsRoute) { launchSingleTop = true } }, takeSettingsReturn = rf.slot::take,
-                        // 브리핑 지하철역 상세(E45) — 길찾기 탭 스택에 push. 노선 힌트는 누르는 순간 확정한 그 줄의 leg `lineName`(없으면 빈 값 = 표가 모름 → 전화 줄 없음).
-                        onOpenStation = { stop, lineName -> navController.navigate(PlaceDetailRoute.ofTransitStop(stop, lineName = lineName ?: "")) },
+                        // 브리핑 지하철역 상세(E45) — 길찾기 탭 스택에 push, 복귀 착지는 그 줄. 노선 힌트는 누르는 순간 확정한 그 줄의 leg `lineName`.
+                        onOpenStation = { stop, lineName, returnKey -> rf.slot.remember(returnKey); navController.navigate(PlaceDetailRoute.ofTransitStop(stop, lineName = lineName)) },
                     )
                 }
                 composable<NearbyRoute> { entry ->

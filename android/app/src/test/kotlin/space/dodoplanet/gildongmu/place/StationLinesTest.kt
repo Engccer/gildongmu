@@ -98,6 +98,11 @@ class StationLinesTest {
         assertFalse(metroGroupIsPlain(mixed, metroFacilityLines(mixed, line)))
         // 음성유도기는 기준일 고지가 본문이라 줄이 없어도 펼침 행이다.
         assertFalse(metroGroupIsPlain(SeoulMetroFacilityGroup(kind = "voiceGuide", facilities = listOf(SeoulMetroFacility(""))), emptyList()))
+        // 뷰 배선 — 이 결함이 바로 "뷰가 항목 수로 판정했다"였다. 되돌림(항목 수 판정·줄 재조립)을 막는다.
+        val view = Fixtures.repoRoot.resolve("android/app/src/main/kotlin/space/dodoplanet/gildongmu/place/StationSectionsView.kt").readText()
+        assertTrue(view.contains("if (metroGroupIsPlain(g, lines))"))
+        assertTrue(view.contains("lines.forEachIndexed { i, line -> BodyLine(line, \"metro-\$gi-\$i\") }"))
+        assertFalse(view.contains("g.facilities.isEmpty()"))
     }
 
     @Test fun `역 메타 한 줄 — ko는 접미·영문·노선·환승·운영기관, en은 병기(낭독은 영문만)`() {
