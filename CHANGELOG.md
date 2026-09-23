@@ -13,7 +13,7 @@
 
 ### ODsay Flex 후불 종량제 전환
 
-ODsay 대중교통 API를 Basic(일 30건 무료)에서 Flex(건당 25원+VAT, 일 10만 건, 매월 5일 카드 결제)로 옮겼다. 새 앱 `gildongmuflex` 키로 교체했고, 옛 URI를 Basic 앱이 점유해 ODsay 출처 주소(`ODSAY_REFERER`)를 정식 도메인 `gildongmu.dodoplanet.space`로 바꿨다. 월 과금 상한선은 ODsay 사이트에 UI가 아직 없고, 우리 쪽 가드는 두지 않는다(위원장이 사용 추이를 직접 본다). [BACKLOG E46](docs/BACKLOG.md#e46-odsay-일-30건-한도---증설-판정--2026-09-18---종결2026-09-23-flex-후불-종량제-전환)
+ODsay 대중교통 API를 Basic(일 30건 무료)에서 Flex(건당 25원+VAT, 일 10만 건, 매월 5일 카드 결제)로 옮겼다. 새 앱 `gildongmuflex` 키로 교체했고, 옛 URI를 Basic 앱이 점유해 ODsay 출처 주소(`ODSAY_REFERER`)를 정식 도메인 `gildongmu.dodoplanet.space`로 바꿨다. 월 과금 상한선은 ODsay 사이트에 UI가 아직 없고, 우리 쪽 가드는 두지 않는다(위원장이 사용 추이를 직접 본다). [BACKLOG E46](docs/BACKLOG.md#종결된-식별자)
 
 ### 버스 승차 중 현재 정류장 표식 (E48, iOS 실험판·웹)
 
@@ -29,7 +29,7 @@ ODsay 대중교통 API를 Basic(일 30건 무료)에서 Flex(건당 25원+VAT, �
 
 ### 도시철도역 seed 변환기 수정·2026-06-30판 불채택·좌표 이동 가드 (A43)
 
-seed 변환기가 `환승역구분`을 접미 일치로 읽고 모르는 어휘에 중단한다. 2026-06-30판을 현행 seed와 전수 대조한 결과 신분당선 11역 좌표가 카카오 역 POI 대비 전부 멀어져(구판 5~57m → 신판 19~124m) 들이지 않았다. `build-subway-stations.py`는 직전 seed 대비 15m 넘게 움직인 역이 있으면 멈춘다. seed·서버 동작 불변. [BACKLOG A43](docs/BACKLOG.md#a43-도시철도-seed를-최신-xlsx로-갱신하면-신분당선-환승역-8곳이-일반역이-된다---종결2026-09-23-스크립트-세션-server-small판본-판정-세션-seed-refresh-changelog-같은-날-2026-06-30판은-채택하지-않는다)
+seed 변환기가 `환승역구분`을 접미 일치로 읽고 모르는 어휘에 중단한다. 2026-06-30판을 현행 seed와 전수 대조한 결과 신분당선 11역 좌표가 카카오 역 POI 대비 전부 멀어져(구판 5~57m → 신판 19~124m) 들이지 않았다. `build-subway-stations.py`는 직전 seed 대비 15m 넘게 움직인 역이 있으면 멈춘다. seed·서버 동작 불변. [BACKLOG A43](docs/BACKLOG.md#종결된-식별자)
 
 ### 측위 실패 시 옛 위치임과 시각을 밝힌다 (stale-origin, 웹·iOS·안드로이드)
 
