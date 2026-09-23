@@ -5,9 +5,7 @@ import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
-import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.extension.RegisterExtension
-import space.dodoplanet.gildongmu.AppConfig
 import space.dodoplanet.gildongmu.MainDispatcherExtension
 import space.dodoplanet.gildongmu.kit.BeaconDest
 import space.dodoplanet.gildongmu.kit.BeaconTone
@@ -39,7 +37,6 @@ class WalkGuideScenarioTest {
     @RegisterExtension
     val main = MainDispatcherExtension(dispatcher)
 
-    @AfterEach fun restoreGate() { GuideSession.experimentalEnabled = { AppConfig.experimentalGuidanceEnabled } }
 
     private data class Seg(val len: Double, val desc: String, val action: String? = null, val target: String? = null)
     private data class Fix(val t: Double, val along: Double, val lateral: Double, val acc: Double)
@@ -284,11 +281,8 @@ class WalkGuideScenarioTest {
         assertEquals(1, h.haptics.fired.size)
     }
 
-    @Test fun `⑱ 정식 빌드(게이트 거짓) — startWalk는 아무것도 만들지 않고 setForeground·setOutputSuppressed는 예외 없이 돈다`() = guideTest(dispatcher) { h ->
+    @Test fun `⑱ 세션 없이 setForeground·setOutputSuppressed는 예외 없이 돌고 세션을 만들지 않는다`() = guideTest(dispatcher) { h ->
         GuideSession.attachForTest(h.model, h.coordinator)
-        GuideSession.experimentalEnabled = { false }
-        GuideSession.startWalk(h.request)
-        settle()
         GuideSession.setForeground(false)
         GuideSession.setForeground(true)
         val owner = Any()

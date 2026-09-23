@@ -7,7 +7,7 @@ iOS 앱과 기능 등가인 안드로이드 네이티브 앱(판정 문서 `docs
 - 실기기 테스트는 **한소네 7**로 진행한다.
 - 배포 전까지 **정식판을 중점적으로 개발**하고, iOS 앱과의 기능 등가성 유지·동기화도 **iOS 정식판을 기준**으로 한다.
 - 정식 기능 구성의 실기기 개발·검증에는 `debug`, 정식 배포에는 `release`를 쓴다. `experimental`은 별도 실험판이며 기본 개발·동기화 기준이 아니다. 기존 실험 기능의 정식판 승격에는 해당 기능의 검증이 필요하다.
-- **도보 실시간 안내는 iOS 등가성 원칙에 따라 정식판으로 이동한다(결정 확정, 구현 대기).** 이동 작업에 매니페스트·게이트·테스트 변경과 한소네 7 정식 기능 구성 검증을 포함한다. 상세 작업은 `docs/BACKLOG.md` E43의 구현 우선순위를 따른다.
+- **도보 실시간 안내는 정식 기능이다**(iOS 등가성, BACKLOG E43 우선순위 4). 진입점·세션은 빌드 구성 게이트를 보지 않고 전경 서비스·권한은 정식 매니페스트에 있다. 남은 완료 조건은 한소네 7 정식 기능 `debug` 검증이다.
 
 ## 1. 모듈
 
@@ -19,14 +19,14 @@ android/
          a11y/      접근성 기본형(mergedRow·landingTarget·AppScreenScaffold·StatusLine) · 앱 통지 큐 AppNotices(화면 StatusLine이 한 문장으로 병합·RESUMED 소유자 claim, spec §13-5) · 결과 진동 Notice.haptic/LocalResultHaptics(§14-3)
          settings/  설정(SettingsStore 단일 소유자·순수 localeOverride/settingsRows·선택 다이얼로그·정보 출처·SettingsAction) — 언어는 AppConfig.localized/localizedApp 한 경로(spec §14)
          nearby/    내 주변 허브·공통 껍데기(NearbyScreenViewModel = :kit NearbyLoadCore 소비)·kind 조립기 10종(NearbyKinds)·payload(NearbyPayloads·AroundPayload)·문장 조립(NearbyLines·DomainLines·WalkInfraLines·ConditionsLines·SceneLines)·본문(NearbyKindScreen·PlaceListBodies·WalkInfraBody·ConditionsBody·SceneSection) (M2 spec §3-4~3-9·§5·§12-1·§12-2)
-         guide/·audio/ 도보 실시간 안내·톤(M4) · chat/ 채팅(M6) · search/ 검색 · speech/ 받아쓰기 · nav/ 탭·스택 골격 · i18n/·net/·storage/ 앱 층 공통
+         guide/·audio/ 도보 실시간 안내·톤(M4, 정식 기능) · chat/ 채팅(M6) · search/ 검색 · speech/ 받아쓰기 · nav/ 탭·스택 골격 · i18n/·net/·storage/ 앱 층 공통
          place/     장소 상세(Place JSON 라우트 + PlaceDomain·영업시간·외부 지도 열기 판정·도메인 섹션·역 자동 섹션 5종(StationLines·StationSectionsView)·무장애 섹션) (M2 spec §3-2·§12-3)
   kit/   순수 Kotlin/JVM, iOS GildongmuKit의 미러([2] 판정 계층). 패키지 space.dodoplanet.gildongmu.kit
          Models/*.swift → kit/.../kit/models/*.kt (하위 패키지 space.dodoplanet.gildongmu.kit.models)
   kit/mirrors/{foundation,core,guide}.json   미러 등록부(§5)
   scripts/messages-to-kit-strings.mjs         :kit 문자열 카탈로그 생성(§6)
   scripts/messages-to-android-strings.mjs     :app res/values(-lang)/strings.xml 생성(§6 앱 문자열)
-  scripts/check-release-manifest.mjs          정식 APK 봉인 검사(§7)
+  scripts/check-release-manifest.mjs          APK 병합 매니페스트 계약 검사(§7)
   scripts/play-upload.mjs                     Play 내부 테스트 트랙 업로드(골격, 기본 드라이런)
   i18n/{arg-order.json,android-extra/}         ko 위치 인자 잠금 · 안드로이드 전용 키
 ```
@@ -35,7 +35,7 @@ android/
 
 - `:kit`은 **안드로이드 의존이 0**이다. `import android.`·`import androidx.`가 한 줄이라도 들어오면 `KitPurityTest`가 빨개지고, `kit/build.gradle.kts`에 안드로이드 플러그인·의존성을 더해도 같은 테스트가 잡는다. 저장·네트워크·시계처럼 플랫폼이 필요한 것은 인터페이스(`HttpTransport`·`KeyValueStore`)로 두고 `:app`이 구현한다(D5 경계).
 - 길찾기 주소 요청은 `DirectionsAddressState`가 측위 전부터 소유한다. 초기 진입·재선택·경로 조회 모두 같은 요청을 주소 커밋까지 전달하고, 필드 변경은 작업과 요청을 함께 취소한다. 언어 변경은 주소 상태를 초기화하며 이전 요청의 종료는 최신 로딩을 건드리지 않는다. 회귀 검증은 Kit `DirectionsAddressStateTest`와 앱 `DirectionsAddressTest`다.
-- 빌드 구성은 셋(iOS Debug/Release/Experimental 미러): `debug` · `release` · `experimental`. 실험판은 applicationId `space.dodoplanet.gildongmu.dev`, 표시 이름 "길동무 실험"(`app/src/experimental/res/values/strings.xml` — 스크린 리더 사용자의 유일한 구분 수단이라 반드시 유지), 아이콘 배경색 구분. 코드 게이트는 `AppConfig.experimentalGuidanceEnabled`(= `BuildConfig.EXPERIMENTAL`).
+- 빌드 구성은 셋(iOS Debug/Release/Experimental 미러): `debug` · `release` · `experimental`. 실험판은 applicationId `space.dodoplanet.gildongmu.dev`, 표시 이름 "길동무 실험"(`app/src/experimental/res/values/strings.xml` — 스크린 리더 사용자의 유일한 구분 수단이라 반드시 유지), 아이콘 배경색 구분. 코드 게이트는 `AppConfig`의 `BuildConfig.EXPERIMENTAL` 플래그(현재 탭 순서·결과 진동 설정 행)이고, 검증되면 플래그 선언째 지운다. 자동차·대중교통 안내(M5)가 들어오면 iOS와 같은 이름 `experimentalGuidanceEnabled`로 같은 자리에 둔다. 매니페스트 항목도 게이트의 일부다 — 실험 기능 전용 권한·서비스는 `src/experimental/AndroidManifest.xml`에 두고, 졸업 때 코드 게이트와 함께 `src/main`으로 승격한다.
 
 ## 2. 환경
 
@@ -184,9 +184,9 @@ node android/scripts/messages-to-android-strings.mjs --update-arg-order   # 호�
 ## 7. 게이트 락 절차
 
 1. `until mkdir ~/gildongmu-wt/gate.lock 2>/dev/null; do sleep 30; done`
-2. `cd android && ./gradlew :kit:test :app:testDebugUnitTest :app:assembleDebug :app:assembleExperimental :app:compileDebugAndroidTestKotlin`
+2. `cd android && ./gradlew :kit:test :app:testDebugUnitTest :app:assembleDebug :app:assembleRelease :app:assembleExperimental :app:compileDebugAndroidTestKotlin`
 3. `cd .. && VITEST_MAX_THREADS=2 npm run test:run`
-   - androidTest(ATF)는 기기에서만 돈다(`connectedDebugAndroidTest`, 계측 변형은 `testBuildType` 기본값 = debug 하나뿐이라 `androidTestExperimental/` 소스셋은 **돌지 않는다**). 도보 안내 ATF(`guide/GuideSheetA11yTest`)는 테스트 안에서 `GuideSession.experimentalEnabled = { true }`로 게이트를 켜고 `debugSetUi`로 상태만 넣어 전경 서비스를 띄우지 않으므로 debug 변형에서 유효하다(debug 매니페스트에는 전경 서비스 선언이 없다 — 실험판 소스셋에만). 서비스를 실제로 띄우는 ATF가 생기면 `android.testBuildType = "experimental"`로 계측 변형을 통째로 옮기는 결정이 필요하다(전체 ATF에 파급 — 코디네이터 판정).
+   - androidTest(ATF)는 기기에서만 돈다(`connectedDebugAndroidTest`, 계측 변형은 `testBuildType` 기본값 = debug 하나뿐이라 `androidTestExperimental/` 소스셋은 **돌지 않는다**). 도보 안내 ATF(`guide/GuideSheetA11yTest`)는 `debugSetUi`로 상태만 넣어 전경 서비스를 띄우지 않는다(서비스 선언은 정식 매니페스트에 있어 debug 변형에서도 띄울 수 있다).
    - 기기 테스트의 계약 JSON은 `DeviceFixtures`로 테스트 APK assets에서 읽는다. JVM `Fixtures`의 Mac 저장소 탐색은 기기에서 실패한다. 개별 클래스 필터 실행 뒤에는 XML의 실제 클래스·테스트 수를 확인한다.
-   - 정식 APK 봉인 검사: `node android/scripts/check-release-manifest.mjs android/app/build/outputs/apk/debug/app-debug.apk`(실험판은 `--experimental`).
+   - APK 매니페스트 계약 검사(도보 안내 전경 서비스·권한 존재, 백그라운드 위치 0, 패키지): `node android/scripts/check-release-manifest.mjs android/app/build/outputs/apk/debug/app-debug.apk`(release도 같게, 실험판은 `--experimental`).
 4. 성공·실패와 무관하게 `rmdir ~/gildongmu-wt/gate.lock; (cd android && ./gradlew --stop)`

@@ -25,16 +25,16 @@ class GuideSourceGuardTest {
         assertEquals(listOf("WalkGuideStartButton.kt"), callers)
     }
 
-    @Test fun `② startWalk·GuideBottomBar는 실험 게이트로 시작한다`() {
+    /**
+     * 도보 안내는 정식 기능이다(E43 우선순위 4, iOS 2026-08-15 졸업 동형) — 진입점·세션·띠바가 빌드 구성 게이트를 보지 않는다.
+     * 예외는 진단 로그(`GuideDiag`, iOS도 `DEBUG || EXPERIMENTAL`)뿐. 게이트가 되살아나면 정식판에서 진입점이 조용히 0이 된다.
+     */
+    @Test fun `② 도보 안내 경로는 빌드 구성 게이트를 보지 않는다`() {
+        val gate = Regex("""BuildConfig\.EXPERIMENTAL|AppConfig\.experimental|experimentalEnabled""")
+        val walkPath = guideSources.filter { it.name != "GuideDiag.kt" }
+        assertTrue(walkPath.any { it.name == "WalkGuideStartButton.kt" } && walkPath.any { it.name == "GuideBottomBar.kt" })
+        assertEquals(emptyList(), offenders(walkPath, gate))
         val session = guide.resolve("GuideSession.kt").readText()
-        val body = session.substringAfter("fun startWalk(").substringAfter("{").substringBefore("\n        if (isActive)")
-        assertTrue(body.contains("experimentalEnabled()"), "startWalk 첫 문장이 게이트다: $body")
-        assertTrue(session.contains("var experimentalEnabled: () -> Boolean = { AppConfig.experimentalGuidanceEnabled }"))
-        val bar = guide.resolve("ui/GuideBottomBar.kt")
-        assertTrue(bar.isFile)
-        val first = bar.readText().substringAfter("fun GuideBottomBar(").substringAfter("{").trim().lineSequence().first()
-        // 게이트 값은 `GuideSession.experimentalEnabled`(기본 = `AppConfig.experimentalGuidanceEnabled`) — androidTest가 바꿔 끼우는 한 자리.
-        assertTrue(first.startsWith("if (!GuideSession.experimentalEnabled())"), "GuideBottomBar 첫 문장이 게이트다: $first")
         val attach = session.substringAfter("fun attach(").substringAfter("{").trim().lineSequence().first()
         assertTrue(attach.startsWith("if (::walk.isInitialized) return"), "attach 첫 줄은 멱등 가드: $attach")
     }
@@ -76,8 +76,8 @@ class GuideSourceGuardTest {
     }
 
     @Test fun `⑦ 매니페스트 — location 전경 서비스 1개, 배경 위치 0, MainActivity launchMode 무변경`() {
-        // 전경 서비스 선언은 실험판 소스셋 매니페스트에만(정식 APK에 0 — `AppSourceGuardTest`가 잠근다).
-        val manifest = app.resolve("../experimental/AndroidManifest.xml").readText()
+        // 전경 서비스 선언은 정식 매니페스트에(세 구성 공통 — `AppSourceGuardTest`가 다른 소스셋 중복을 막는다).
+        val manifest = app.resolve("AndroidManifest.xml").readText()
         assertEquals(1, Regex("""foregroundServiceType="location"""").findAll(manifest).count())
         assertTrue(manifest.contains("android:name=\".guide.GuideForegroundService\""))
         assertTrue(!manifest.contains("ACCESS_BACKGROUND_LOCATION"))

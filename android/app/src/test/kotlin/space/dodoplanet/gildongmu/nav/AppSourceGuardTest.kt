@@ -203,15 +203,19 @@ class AppSourceGuardTest {
         assertTrue(speech.contains("GuideSession.setOutputSuppressed(active, owner)") && speech.contains("if (changed) onActiveChanged(active)"))
     }
 
-    /** 실험판 봉인의 매니페스트 축(iOS `Info-Experimental.plist` 미러): 도보 안내의 전경 서비스·권한은 실험판 소스셋에만, 정식 매니페스트에 0. 산출물 검사는 `check-release-manifest.mjs`. */
-    @Test fun `도보 안내 전경 서비스·권한은 실험판 매니페스트에만 있다`() {
+    /**
+     * 도보 안내의 전경 서비스·권한은 정식 매니페스트에 있다(E43 우선순위 4 — 졸업 때 코드 게이트와 함께 승격, iOS 백그라운드 모드 동형).
+     * 다른 소스셋 매니페스트에 다시 두면 그 구성에만 들어가 정식판에서 화면을 끄면 안내가 죽는다. 산출물 검사는 `check-release-manifest.mjs`.
+     */
+    @Test fun `도보 안내 전경 서비스·권한은 정식 매니페스트에만 있다`() {
         val main = android.resolve("app/src/main/AndroidManifest.xml").readText()
-        val experimental = android.resolve("app/src/experimental/AndroidManifest.xml").readText()
-        val sealed = listOf("foregroundServiceType", "FOREGROUND_SERVICE", "WAKE_LOCK", "ACTIVITY_RECOGNITION", "GuideForegroundService")
-        for (s in sealed) {
-            assertTrue(!Regex("""android:(name|foregroundServiceType)="[^"]*$s""").containsMatchIn(main), "정식 매니페스트에 $s")
-            assertTrue(experimental.contains(s), "실험판 매니페스트에 $s 없음")
+        val others = android.resolve("app/src").listFiles().orEmpty().filter { it.name != "main" }.map { it.resolve("AndroidManifest.xml") }.filter { it.isFile }
+        val walk = listOf("FOREGROUND_SERVICE", "FOREGROUND_SERVICE_LOCATION", "WAKE_LOCK", "ACTIVITY_RECOGNITION", "GuideForegroundService")
+        for (s in walk) {
+            assertTrue(Regex("""android:name="[^"]*\b$s"""").containsMatchIn(main), "정식 매니페스트에 $s 없음")
+            for (f in others) assertTrue(!f.readText().contains(s), "${f.path}에 $s — 정식 매니페스트 한 곳에만")
         }
+        assertTrue(main.contains("android:foregroundServiceType=\"location\""))
     }
 
     @Test fun `Google Play 서비스 의존은 0이다`() {

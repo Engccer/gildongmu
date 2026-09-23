@@ -29,8 +29,6 @@ import space.dodoplanet.gildongmu.settings.localeOverride
  * 빌드 구성(`experimental`)으로 가른다. 검증되면 참조 자체를 지운다(항상 참 상수를 남기지 않는다).
  */
 object AppConfig {
-    val experimentalGuidanceEnabled: Boolean = BuildConfig.EXPERIMENTAL
-
     /** 탭 바 순서(iOS `experimentalTabOrderEnabled` 미러, K1 ① 위원장 판정 2026-08-23 실험판 판정 대기). */
     val experimentalTabOrderEnabled: Boolean = BuildConfig.EXPERIMENTAL
 

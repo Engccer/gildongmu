@@ -21,13 +21,11 @@ import space.dodoplanet.gildongmu.guide.GuideSession
 import space.dodoplanet.gildongmu.guide.guideStrings
 
 /**
- * `AppRoot`의 `bottomBar` 삽입 한 자리(spec §7-2): 정식 빌드는 탭 바만(진입점 0 — 관찰자·손 등록보다 **앞**의 게이트, 리뷰 N3-1).
- * 실험판은 세션 조립(멱등) → 권한 손 → 전경 관찰자 → 띠바(최소화 시) + 탭 → 시트(`ModalBottomSheet`는 자기 윈도라 bottomBar 측정에
- * 0 기여). 화면 유지(`FLAG_KEEP_SCREEN_ON`)는 시트가 펼쳐진 동안만(§12-8).
+ * `AppRoot`의 `bottomBar` 삽입 한 자리(spec §7-2): 세션 조립(멱등) → 권한 손 → 전경 관찰자 → 띠바(최소화 시) + 탭 → 시트
+ * (`ModalBottomSheet`는 자기 윈도라 bottomBar 측정에 0 기여). 화면 유지(`FLAG_KEEP_SCREEN_ON`)는 시트가 펼쳐진 동안만(§12-8).
  */
 @Composable
 fun GuideBottomBar(tabs: @Composable () -> Unit) {
-    if (!GuideSession.experimentalEnabled()) { tabs(); return }   // 기본값 = AppConfig.experimentalGuidanceEnabled(androidTest만 바꿔 끼운다)
     val context = LocalContext.current
     val app = context.applicationContext
     remember { GuideSession.attach(app); Unit }
