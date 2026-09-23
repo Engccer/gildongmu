@@ -157,7 +157,7 @@
 - **런타임 판정이 있는 자리에 상시 고지 문장을 얹지 않는다**(`isBackgroundAudible` 판정 위에 얹힌 "화면이 꺼지면 멈춘다"가 거짓이 된 실사고; 웹은 참). 삭제 범위는 소비자 기준. → PATTERNS
 - **스크린리더 통지에 뻔한 꼬리 문장을 넣지 않는다** — 판정선은 "뒷문장이 새 정보를 주는가"(원인·조건·한계는 유지). 정규식 스캔 말고 여러 문장인 문자열 전부를 판정. → PATTERNS
 - **"내 주변" 장소 목록 5종은 "더 보기" 단계 공개**(10건 + 회당 10; 라우트는 기본 상한 + 옵트인 `limit`≤50 + `total`, 웹 `NEARBY_LIMIT_MAX` ↔ Kit `fetchLimit`). 포커스는 첫 새 항목, 별도 통지 금지. 정본 `NightClinicsNearby.tsx`·`ClinicNearbyView.swift`. → PATTERNS
-- **역 상세 레이아웃은 `stationLayoutKind`(Kit `StationPhone.swift`)가 켠다**(E44) — `isStation`은 역 섹션 로드와 비역 분기의 역 섹션 표시에만. 경유역 전화번호는 같은 역·같은 노선·1km 후보만. 가드 `station-detail-guard.test.ts`·`station-phone-line-table-drift.test.ts`. → INTEGRATIONS
+- **역 상세 레이아웃은 `stationLayoutKind`(Kit `StationPhone.swift` ↔ 웹 `station-phone.ts`)가 켠다**(E44) — `isStation`은 역 섹션 로드와 비역 분기의 역 섹션 표시에만. 경유역 전화번호는 같은 역·같은 노선·1km 후보만. 가드 `station-detail-guard.test.ts`·`station-phone-line-table-drift.test.ts`, 웹 배치는 `PlaceDetailStationLayout.test.tsx`. → INTEGRATIONS
 - **검색→상세 흐름**: 단일 검색창, 카테고리 칩 필터, 장소 선택 시 **History API 뷰 전환**(카카오는 ID 단건조회 없어 메모리 `Place`로 상세). `?q=` URL 동기화 + request-id ref로 stale 응답 폐기.
 - **검색창 3섹션 결정론 병렬**(장소+주소 매 검색 병렬, 웹은 둘 다 0건일 때만, 결과는 정확도순 플랫 리스트). ⚠ 부활 금지 3종: Gemini 자연어 라우터·명소 별도 섹션·버킷 섹션 그룹핑 — 버킷(`category.ts` ↔ `SearchFilters.swift`)은 칩 필터 축으로만. → PATTERNS
 - **프리필 진입과 `?dir=` 복원은 필드 값이 같아도 다른 진입이라 표식으로 가른다**(`openDirections`의 `prefill` ↔ iOS `DirectionsPrefill`): 자동 조회를 `initialTo` 값에 걸지 말 것. 판정은 첫 렌더에 굳혀 1회 소비, 양끝이 다 있을 때만 조회(출발지만 채운 진입은 도착지 입력 착지). → PATTERNS
@@ -226,7 +226,7 @@
 | 부근 상황 재구성(M1) | road-address+geo/road-axis(순수)+road-axis-service → `surroundings-scene.ts` / `/api/surroundings/scene` | 좌우는 도로명 홀짝+juso 건물 축(POI로 세우지 말 것), 맞은편은 같은 도로+본번+홀짝 반대. `SurroundingsScene`은 임베드 전용(live region 없음). 축 실패=방위 폴백 200. → INTEGRATIONS |
 | 무장애 여행 정보 | tour-barrier-free / `/api/places/barrier-free[/detail/match]` | 한국관광공사 KorWithService2(B551011). 편의시설 화이트리스트 라벨링(⚠ 필드 철자는 실호출 확정), 장소상세 매칭 좌표50m∩이름(코드 거리 가드 병행). **게이트·인증 모두 `DATA_GO_KR_API_KEY`로 일치**(split-brain 금지). ⚠ 활용신청 별도(API별 독립 승인) |
 | 자동차 경로 | **tmap-car(기본)+kakao-navi(폴백)** → `car-route.ts`(ko) / `ncp-directions`(en) / `/api/route/car` | ko 기본 Tmap(완성 문장), 낭독 문장은 `rewriteCarGuidance`(117/118은 회전이 아니라 갈래). 수치 0은 미제공. 게이트 `hasCarRouteKey`. → INTEGRATIONS |
-| 도보 경로 | **kakao-walk(기본)+tmap-pedestrian(폴백)** → `walk-route.ts` / `/api/route/walk` | 경로는 목적지까지 가지 않는다(`finalApproach`). 문장은 서버 `rewriteWalkGuidance`(소비자 재조합 금지), `getWalkRoute`만 호출. `accessible` 요청은 좌표 반올림 금지, 토글 라벨은 "계단 회피 경로". 비-ko는 Tmap 단독 en 문장(`pedestrian-action.ts` 표 하나, 미지 turnType은 throw), `lang`은 필수 인자, 비-ko에 계단 회피 컨트롤 미노출. `action`은 서버 `attachStepActions` 전량 투영. 경로 축 `variant=shortest`·`alternatives=1`. → INTEGRATIONS |
+| 도보 경로 | **kakao-walk(기본)+tmap-pedestrian(폴백)** → `walk-route.ts` / `/api/route/walk` | 경로는 목적지까지 가지 않는다(`finalApproach`). 문장은 서버 `rewriteWalkGuidance`(소비자 재조합 금지), `getWalkRoute`만 호출. `accessible` 요청은 좌표 반올림 금지. 비-ko는 Tmap 단독 en 문장(`pedestrian-action.ts` 표 하나, 미지 turnType은 throw), `lang`은 필수 인자. `action`은 서버 `attachStepActions` 전량 투영. 조회 화면은 `lines=1` 줄 목록(E42 — 줄 이름 `kind`는 서버 판정, 한 응답 provider 혼합 금지·원좌표), `variant=shortest`는 ko 카카오 `SHORTEST`, `alternatives=1`은 옛 앱 호환 봉투. → INTEGRATIONS |
 | 횡단보도 차로 수·도로 폭 | crosswalks(정적 seed 15028201) → `walk-route.ts` `annotateCrosswalkInfo` / 별도 라우트 없음 | 단일 횡단보도 스텝 끝에 `, N차로, 도로 폭 Mm` — 있는 곳만, 3중 게이트 전부 통과일 때만, Tmap·병합 스텝은 침묵. 파이프라인 마지막 단계. → INTEGRATIONS |
 | 대중교통 | odsay + odsay-select + bus-service-hours / `/api/route/transit` | **파이프라인 순서가 계약: 정규화 → 강등 → 선정(5) → 축 라벨.** error 봉투 2형·무효 키도 200(`odsay-envelope.ts`). 강등 정렬 키는 `outside` 유무 하나(A21). 급행은 `(급행)` 한 토큰만 벗긴다. iOS `routeKey` 필수 디코딩이라 **웹 배포가 앱보다 먼저**. 상태 머신의 "탑승"은 차량 선택, riding 승격은 앱(N3). → INTEGRATIONS |
 | 지하철 빠른하차 | subway-quick-exit(정적 seed) → `quick-exit.ts` / 별도 라우트 없음(`TransitLeg.quickExit`) | 거리는 열차 선형 위치, 엘베×계단 쌍 최적화, 방향은 방면 1개 확정일 때만. ⚠ 환승 leg는 ODsay `subPath.door`가 정본(A20, 긍정 정규식만 통과). → INTEGRATIONS |
@@ -272,7 +272,7 @@
 - **구조·이식 관용구·게이트는 `android/README.md`가 정본이다**(`:app` Compose + `:kit` 순수 JVM 미러, 화면 패키지 소유권, fixture 로더, 등록부, 게이트 락). 설계 판정은 `docs/superpowers/specs/2026-09-15-android-app-decisions.md`(D1~D13, 재논의 금지), 마일스톤별 spec은 같은 폴더 `2026-09-16-android-*`.
 - ⚠ **`:kit`에서 정규식 약칭 클래스(`\d`·`\s`·`\w`)와 Kotlin 기본 `trim`·`isBlank`·`isWhitespace`를 쓰지 않는다** — 기기 java.util.regex는 ICU 기반이라 JVM 테스트가 기기 동작을 대표하지 못하고, Foundation `CharacterSet`은 U+200B를 공백으로 본다. 명시 클래스 + `SwiftSemantics`만(`RegexPortabilityTest`·trim 가드가 잠근다). → `android/README.md` §3
 - ⚠ **버튼 착지는 `a11y/Landing.kt`의 `landingTarget`만** — Compose 1.12.1은 터치 입력 모드에서 `clickable`이 포커스를 못 받아 `requestFocus()`가 조용히 false다. 한소네(키보드 모드) 실측은 초록이라 TalkBack 폰에서만 드러난다.
-- ⚠ **도보 안내 전경 서비스 선언·`WAKE_LOCK`·`ACTIVITY_RECOGNITION`은 실험판 소스셋 매니페스트에만 있다**(iOS `Info-Experimental.plist` 동형, `android/scripts/check-release-manifest.mjs`가 정식 APK를 검사). 졸업 때 코드 게이트와 함께 승격한다.
+- ⚠ **도보 안내 전경 서비스(`location`)·`WAKE_LOCK`·`ACTIVITY_RECOGNITION`은 정식 매니페스트(`src/main`)에 있다**(iOS 백그라운드 모드 동형). 다른 소스셋에 옮기면 그 구성에서만 화면을 끄면 안내가 죽는다 — `AppSourceGuardTest`와 산출물 검사 `android/scripts/check-release-manifest.mjs`(정식·실험 APK 모두)가 잠근다. 새 실험 기능 전용 항목은 `src/experimental` 매니페스트에 두고 졸업 때 코드 게이트와 함께 승격한다.
 
 ### iOS 실험 기능은 빌드 구성이 가른다
 
