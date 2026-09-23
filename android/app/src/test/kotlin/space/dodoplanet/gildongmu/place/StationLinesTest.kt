@@ -5,7 +5,9 @@ import space.dodoplanet.gildongmu.R
 import space.dodoplanet.gildongmu.kit.Fixtures
 import space.dodoplanet.gildongmu.kit.HttpResponse
 import space.dodoplanet.gildongmu.kit.StationService
+import space.dodoplanet.gildongmu.kit.joinText
 import space.dodoplanet.gildongmu.kit.models.SeoulMetroFacility
+import space.dodoplanet.gildongmu.kit.models.SeoulMetroFacilityGroup
 import space.dodoplanet.gildongmu.kit.models.SeoulMetroFacilityParts
 import space.dodoplanet.gildongmu.kit.models.StationMeta
 import space.dodoplanet.gildongmu.kit.models.TimetableDirection
@@ -80,6 +82,22 @@ class StationLinesTest {
         assertEquals("서버문장", name(SeoulMetroFacility("서버문장")))
         assertEquals("남녀 공용, 휠체어 접근 가능", facilityDetail(SeoulMetroFacility("x", detail = "d", parts = SeoulMetroFacilityParts(restroomType = "남녀 공용", wheelchairAccessible = true)), "휠체어 접근 가능"))
         assertEquals("d", facilityDetail(SeoulMetroFacility("x", detail = "d", parts = SeoulMetroFacilityParts(location = "l")), "휠체어 접근 가능"))
+    }
+
+    @Test fun `빈 항목만 든 묶음은 평문 한 줄이고 빈 줄은 떨어뜨린다(웹 metroFacilityGroups 동형)`() {
+        val line = { f: SeoulMetroFacility ->
+            joinText(facilityName(f, { null }, { d, dist -> "$d $dist" }) { it }, f.location, f.floors, f.operatingStatus, facilityDetail(f, "휠체어"))
+        }
+        // 서버는 도우미 묶음을 필드 전부 빈 항목 N개로 보낸다(항목 0개 묶음은 오지 않는다) — 항목 수가 아니라 조립된 줄로 판정해야 한다.
+        val helpers = SeoulMetroFacilityGroup(kind = "helper", facilities = List(3) { SeoulMetroFacility("") })
+        assertEquals(emptyList(), metroFacilityLines(helpers, line))
+        assertTrue(metroGroupIsPlain(helpers, metroFacilityLines(helpers, line)))
+        // 섞인 묶음은 펼침 행이고 빈 항목만 빠진다.
+        val mixed = SeoulMetroFacilityGroup(kind = "elevator", facilities = listOf(SeoulMetroFacility("1번 출구"), SeoulMetroFacility("")))
+        assertEquals(listOf("1번 출구"), metroFacilityLines(mixed, line))
+        assertFalse(metroGroupIsPlain(mixed, metroFacilityLines(mixed, line)))
+        // 음성유도기는 기준일 고지가 본문이라 줄이 없어도 펼침 행이다.
+        assertFalse(metroGroupIsPlain(SeoulMetroFacilityGroup(kind = "voiceGuide", facilities = listOf(SeoulMetroFacility(""))), emptyList()))
     }
 
     @Test fun `역 메타 한 줄 — ko는 접미·영문·노선·환승·운영기관, en은 병기(낭독은 영문만)`() {
