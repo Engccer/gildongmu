@@ -113,6 +113,19 @@ fun facilityName(f: SeoulMetroFacility, compass: (String) -> String?, elevatorAt
     return joinText(location, p.lineEn ?: p.line?.let(lineNumber))
 }
 
+/**
+ * 한 묶음의 시설 줄들(웹 `metroFacilityGroups`의 `lines` 동형). 필드가 전부 빈 항목(교통약자 도우미 — upstream이 수만 준다, 서울역 실측
+ * 2026-08-30)은 빈 줄 = 스크린 리더에 "이름 없는 항목"이라 떨어뜨린다. 수는 묶음 이름이 이미 말한다.
+ */
+fun metroFacilityLines(group: SeoulMetroFacilityGroup, line: (SeoulMetroFacility) -> String): List<String> =
+    group.facilities.map(line).filter { it.isNotEmpty() }
+
+/**
+ * 줄이 하나도 없는 묶음은 펼침 행이 아니라 평문 한 줄이다 — 펼쳐도 빈 컨트롤이 된다(웹 `SeoulMetroFacilities` 동형). 음성유도기는 기준일
+ * 고지가 본문이라 예외다. 판정은 항목 수가 아니라 **조립된 줄**로 한다(서버는 도우미 묶음을 빈 항목 N개로 보낸다).
+ */
+fun metroGroupIsPlain(group: SeoulMetroFacilityGroup, lines: List<String>): Boolean = lines.isEmpty() && group.kind != "voiceGuide"
+
 /** 상세 조각도 parts 우선(화장실 종류·휠체어 접근), 없을 때만 서버 `detail`. */
 fun facilityDetail(f: SeoulMetroFacility, wheelchairAccessible: String): String? {
     val p = f.parts

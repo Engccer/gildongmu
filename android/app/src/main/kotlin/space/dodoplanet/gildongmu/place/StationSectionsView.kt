@@ -158,8 +158,12 @@ fun StationDetailSections(s: StationSections) {
             // 접힘 행이 곧 개수 줄이다. 운행 중지가 있으면 그 수를 같은 줄에(리뷰 M8 — 접으면 줄마다 보이던 "운행 중지"가 가려진다).
             val label = if (stopped > 0) appLocalized(res, R.string.android_station_kindCountStopped, kindLabel, g.facilities.size, stopped)
             else appLocalized(res, R.string.android_station_kindCount, kindLabel, g.facilities.size)
-            // 줄 없는 묶음(교통약자 도우미 등)은 평문 한 줄 — 펼쳐도 빈 컨트롤이 되지 않게(웹 동조 리뷰 2026-09-23).
-            if (g.facilities.isEmpty()) {
+            val lines = metroFacilityLines(g) { fac ->
+                val name = facilityName(fac, { compassResId(it)?.let { id -> res.getString(id) } }, { d, dist -> appLocalized(res, R.string.subway_elevatorAt, d, dist) }) { appLocalized(res, R.string.subway_lineNumber, it) }
+                joinText(name, fac.location, fac.floors, operatingResId(fac.operatingStatus)?.let { res.getString(it) }, facilityDetail(fac, wheelchairAccessible))
+            }
+            // 줄 없는 묶음(교통약자 도우미 — 빈 항목 N개로 온다)은 평문 한 줄 — 펼쳐도 빈 컨트롤이 되지 않게(웹 동조).
+            if (metroGroupIsPlain(g, lines)) {
                 BodyLine(label, "metro-$gi")
                 continue
             }
@@ -167,10 +171,7 @@ fun StationDetailSections(s: StationSections) {
             // 펼침 행 문법은 한 벌(`DisclosureRow` — 라벨 버튼 + stateDescription, 본문은 펼친 동안만). 펼친 뒤 커서는 이 행에 남고
             // 다음 이동이 첫 시설이다(포커스 코드 없음).
             DisclosureRow(label = label, tag = "metro-$gi", expanded = open, onToggle = { if (open) expanded.remove(g.kind) else expanded.add(g.kind) }, strings = strings) {
-                g.facilities.forEachIndexed { i, fac ->
-                    val name = facilityName(fac, { compassResId(it)?.let { id -> res.getString(id) } }, { d, dist -> appLocalized(res, R.string.subway_elevatorAt, d, dist) }) { appLocalized(res, R.string.subway_lineNumber, it) }
-                    BodyLine(joinText(name, fac.location, fac.floors, operatingResId(fac.operatingStatus)?.let { res.getString(it) }, facilityDetail(fac, wheelchairAccessible)), "metro-$gi-$i")
-                }
+                lines.forEachIndexed { i, line -> BodyLine(line, "metro-$gi-$i") }
                 // 음성유도기 데이터 기준일 고지(정적 seed) — 그 묶음을 펼친 사람에게만 의미가 있다.
                 if (g.kind == "voiceGuide") BodyLine(stringResource(R.string.subway_voiceGuideSource), "metro-voice")
             }
