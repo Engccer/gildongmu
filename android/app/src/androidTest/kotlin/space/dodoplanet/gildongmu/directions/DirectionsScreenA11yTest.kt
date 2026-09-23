@@ -18,6 +18,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import space.dodoplanet.gildongmu.kit.APIClient
+import space.dodoplanet.gildongmu.location.StaleFix
 import space.dodoplanet.gildongmu.DeviceFixtures
 import space.dodoplanet.gildongmu.kit.HttpResponse
 import space.dodoplanet.gildongmu.kit.InMemoryKeyValueStore
@@ -43,6 +44,8 @@ class DirectionsScreenA11yTest {
     private object SeoulLocator : EndpointLocator {
         override suspend fun currentCoordinate(force: Boolean) = NearbyCoord(37.5385, 127.1355)
         override suspend fun coordinateForRanking(): NearbyCoord? = null
+        override suspend fun coordinateForDisplay(): NearbyCoord? = null
+        override fun staleFix(): StaleFix? = null
         override suspend fun requestPreciseLocation() = false
     }
 

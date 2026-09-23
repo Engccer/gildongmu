@@ -42,9 +42,13 @@ struct LocationBarView: View {
 
     var body: some View {
         Button { pickerOpen = true } label: {
-            // 비-ko 주소·수동 위치 병기(E28): 시각 `… (한글) …`, 낭독은 영문·로마자만.
-            Text(label(addressName?.display, accessible: false))
-                .accessibilityLabel(Text(label(addressName?.primary, accessible: true)))
+            // 옛 위치 문장의 "N분 전"이 열어 둔 화면에서 멈추지 않게 1분마다 다시 그린다
+            // (spec 2026-09-23 stale-origin §3). 다시 그리기는 통지를 만들지 않는다.
+            TimelineView(.everyMinute) { context in
+                // 비-ko 주소·수동 위치 병기(E28): 시각 `… (한글) …`, 낭독은 영문·로마자만.
+                Text(label(addressName?.display, accessible: false, now: context.date))
+                    .accessibilityLabel(Text(label(addressName?.primary, accessible: true, now: context.date)))
+            }
         }
             .frame(minHeight: 44)
             .sheet(isPresented: $pickerOpen) {
@@ -54,7 +58,9 @@ struct LocationBarView: View {
             }
             // 수동 위치가 켜지고 꺼질 때마다 다시 판정한다(`.task`는 등장 시 1회뿐이라
             // 해제 후 주소가 영영 안 붙는다). 조회 자체는 스토어가 좌표당 1회로 막는다.
-            .task(id: store.current == nil) {
+            // 옛 위치가 서거나 바뀌어도 다시 잰다 — 그 좌표의 주소를 받아야 옛 위치 문장에 싣는다.
+            .task(id: AddressTaskKey(manualOff: store.current == nil,
+                                     staleAt: location.staleFix?.fixedAt)) {
                 guard store.current == nil else { return }
                 await addressStore.ensureLoaded()
             }
@@ -62,8 +68,13 @@ struct LocationBarView: View {
 
     /// 상태 + **동작**을 한 텍스트로. 상태만 이름으로 쓰면 VoiceOver가 "현재 위치,
     /// 버튼"으로 읽어 누르면 무엇이 되는지 단서가 0이다 — 이 기능의 유일한 진입점이다.
-    private func label(_ address: String?, accessible: Bool) -> String {
-        "\(state(address: address, accessible: accessible)), \(appLocalized("manualLocation.pickTitle"))"
+    private func label(_ address: String?, accessible: Bool, now: Date) -> String {
+        "\(state(address: address, accessible: accessible, now: now)), \(appLocalized("manualLocation.pickTitle"))"
+    }
+
+    private struct AddressTaskKey: Equatable {
+        let manualOff: Bool
+        let staleAt: Date?
     }
 
     /// 현재 위치 주소의 병기 이름(E28). 주소 미확보면 nil — 라벨은 "현재 위치"로 폴백한다.
@@ -80,7 +91,7 @@ struct LocationBarView: View {
     /// 실패를 좌표 유무보다 먼저 본다 — 권한을 회수해도 `lastCoordinate`는 남으므로
     /// (재취득 실패 시 직전 좌표 보존이 계약이다) 좌표를 먼저 보면 회수를 못 알린다.
     /// 웹도 스토어 status가 `denied`로 덮이므로 같은 순서다.
-    private func state(address: String?, accessible: Bool) -> String {
+    private func state(address: String?, accessible: Bool, now: Date) -> String {
         if let manual = manualLocationLabel(store, accessible: accessible) { return manual }
         switch location.observedAuthorization {
         case .denied, .restricted:
@@ -99,6 +110,13 @@ struct LocationBarView: View {
             // "확인 중"으로 두면 실내 측위 실패·타임아웃 뒤 표시줄이 무기한 진행 중을
             // 말한다 — 거짓 성공이 아니라 멈춘 진행이라 화면으로 반증되지 않는다.
             // 웹은 거부·위치불가·타임아웃을 모두 `denied`로 합쳐 이 갈래가 없다.
+            // 옛 위치(위원장 판정 2026-09-23): 재측위가 취득 실패로 끝났는데 직전 좌표가 있으면
+            // 옛 주소를 "현재 위치"로 말하지 않고 옛 위치임과 시각을 밝힌다. 좌표 분기보다
+            // **앞**이어야 한다 — 뒤면 좌표가 남아 있다는 이유로 "현재 위치"가 먼저 나간다.
+            if let stale = location.staleFix {
+                let staleAddress = addressStore.isAddress(forLat: stale.lat, lng: stale.lng) ? address : nil
+                return staleLocationText(address: staleAddress, fixedAt: stale.fixedAt, now: now)
+            }
             guard location.lastCoordinate != nil else {
                 return appLocalized(location.lastFixFailed
                     ? "manualLocation.gpsFailed"
@@ -128,5 +146,24 @@ struct LocationBarView: View {
             // 라틴 표기는 지정 화면이 이 시점에 든 값(E28) — 스토어가 다시 조회하지 않는다.
             store.set(label: label, labelRoman: labelRoman, lat: lat, lng: lng, origin: origin)
         }
+    }
+}
+
+/// 옛 위치 문장(표시줄·길찾기 "현재 위치" 칸 공용 — 판정선이 갈리면 화면으로 확인 불가).
+@MainActor
+func staleLocationText(address: String?, fixedAt: Date, now: Date) -> String {
+    let age = staleAgeText(fixedAt: fixedAt, now: now)
+    if let address { return appLocalized("manualLocation.gpsStale", address, age) }
+    return appLocalized("manualLocation.gpsStaleNoAddress", age)
+}
+
+/// 옛 위치의 경과 표현("5분 전"). 판정은 Kit `staleFixAge`(웹·안드로이드 미러). 측정 시각은
+/// `Date`라 언제나 유한하다 — nil은 도달하지 않으므로 `justNow`로 접는다.
+@MainActor
+func staleAgeText(fixedAt: Date, now: Date) -> String {
+    switch staleFixAge(ageSeconds: now.timeIntervalSince(fixedAt)) ?? .justNow {
+    case .justNow: appLocalized("manualLocation.staleAgeJustNow")
+    case .minutes(let n): appLocalized("manualLocation.staleAgeMinutes", n)
+    case .hours(let n): appLocalized("manualLocation.staleAgeHours", n)
     }
 }

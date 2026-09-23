@@ -13,6 +13,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import space.dodoplanet.gildongmu.kit.*
+import space.dodoplanet.gildongmu.location.StaleFix
 import kotlin.coroutines.Continuation
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
@@ -41,6 +42,8 @@ class DirectionsAddressDeviceTest {
             object : EndpointLocator {
                 override suspend fun currentCoordinate(force: Boolean) = locations.await()
                 override suspend fun coordinateForRanking(): NearbyCoord? = null
+                override suspend fun coordinateForDisplay(): NearbyCoord? = null
+                override fun staleFix(): StaleFix? = null
                 override suspend fun requestPreciseLocation() = false
             }, { language }, resourceStrings(rule.activity.resources), SavedStateHandle(),
             prefill = MutableStateFlow(null), io = kotlinx.coroutines.Dispatchers.Main.immediate,

@@ -22,6 +22,8 @@ import {
   getGeolocationSnapshot,
 } from "@/lib/geolocation";
 import { awaitEffectiveLocation } from "@/lib/effective-location";
+import { staleAgeMessage, staleFixOf, type StaleAgeMessage } from "@/lib/stale-origin";
+import { useClockWhile } from "@/hooks/useClockWhile";
 import { useManualLocation, useManualLocationLabel } from "@/hooks/useManualLocation";
 import { isInKorea } from "@/lib/coverage";
 import { isOutOfCoverageBody } from "@/lib/out-of-coverage";
@@ -107,15 +109,25 @@ type QueryResults = {
    * "manual"이면 이 브리핑은 지정 위치 기준이지만, 실시간 안내 시작은 실좌표를
    * 다시 조회한다 — 두 출발지가 달라질 수 있음을 안내 시작 버튼 근처에서 말한다.
    */
-  originSource: "gps" | "manual" | null;
+  originSource: "gps" | "manual" | "stale" | null;
+  /**
+   * 현재 위치 끝점이 옛 위치(spec 2026-09-23 stale-origin)로 풀렸으면 조회 시점의 경과 표현.
+   * 완료 통지 뒷문장의 재료다 — 문구 키로 굳혀 두어 시계가 흘러도 통지 문장이 바뀌지 않는다
+   * (live region 문장이 1분마다 바뀌면 그때마다 다시 낭독된다).
+   */
+  staleAge: StaleAgeMessage | null;
   /**
    * 세대 토큰(WebMCP spec §3.4) — settled 커밋마다 `p{gen}`. 도구는 이 값으로 옛 결과 참조를
    * `stalePlan`으로 거른다.
    */
   planId: string;
-  /** 조회 시점의 출발·도착 입력 라벨(도구 `resolved` — 승격본이 아니라 원명). */
-  fromLabel: string;
-  toLabel: string;
+  /**
+   * 조회 시점의 출발·도착 입력 라벨(도구 `resolved` — 승격본이 아니라 원명). null = "현재 위치" 끝점이고,
+   * 도구 출력 시점의 파생 라벨(`currentLabel`)로 푼다 — 옛 위치 판정·주소 병기는 조회 **안에서** 정해져
+   * 조회를 시작한 렌더의 클로저 값에는 아직 없다(stale-origin 설계 리뷰 H4).
+   */
+  fromLabel: string | null;
+  toLabel: string | null;
 };
 
 /** 필드 원자 상태: 라벨 텍스트를 편집하면 resolved(좌표 포함)가 즉시 무효화된다. */
@@ -313,6 +325,9 @@ export function DirectionsView({
   // "현재 위치"만 — 시각으로 위치 오차를 확인할 수 없는 사용자를 위한 병기이므로
   // 모르면 거짓 표시 대신 생략).
   const [currentAddress, setCurrentAddress] = useState<string | null>(null);
+  // 현재 위치 끝점이 옛 위치로 풀렸을 때 그 좌표의 측정 시각(epoch 초, spec 2026-09-23
+  // stale-origin §4.1). null = 신선하거나 모름. `currentAddress`는 이때 그 옛 좌표의 주소다.
+  const [staleOriginAt, setStaleOriginAt] = useState<number | null>(null);
   // "현재 위치 사용" 강제 재측위 진행 신호(버튼 라벨 전환용) + 재진입 ref 가드.
   const [refreshingCurrent, setRefreshingCurrent] = useState(false);
   const refreshCurrentRef = useRef(false);
@@ -320,9 +335,18 @@ export function DirectionsView({
   // GPS가 알아낸 위치와 사용자가 지정한 위치는 다른 것이고 시각장애 사용자는 화면으로
   // 구분할 수 없다). 수동 위치가 이기므로 GPS 역지오코딩 주소(currentAddress)는
   // 무시한다 — 아래에서도 수동 위치 활성 중엔 그 주소를 아예 조회하지 않는다.
+  // 옛 위치 표기는 열어 둔 동안 시각을 다시 계산한다(표시줄과 같은 키 — 판정선 하나).
+  const now = useClockWhile(!manualLabel && staleOriginAt !== null);
+  const staleAge = !manualLabel && staleOriginAt !== null ? staleAgeMessage(staleOriginAt, now) : null;
   const currentLabel =
     manualLabel ??
-    (currentAddress ? t("currentLocationNear", { address: currentAddress }) : t("currentLocation"));
+    (staleAge
+      ? currentAddress
+        ? tManual("gpsStale", { address: currentAddress, age: tManual(staleAge.key, { count: staleAge.count }) })
+        : tManual("gpsStaleNoAddress", { age: tManual(staleAge.key, { count: staleAge.count }) })
+      : currentAddress
+        ? t("currentLocationNear", { address: currentAddress })
+        : t("currentLocation"));
   const [fromField, setFromField] = useState<FieldState>(() =>
     endpointToField(initialFrom ?? { kind: "current" }, currentLabel),
   );
@@ -635,9 +659,19 @@ export function DirectionsView({
       toField.resolved?.kind === "current";
     if (!isCurrent) return;
     const geo = getGeolocationSnapshot();
-    if (geo.status !== "ready") return;
+    if (geo.status === "ready") {
+      addrLoadedRef.current = true;
+      void fetchCurrentAddress(geo.coords).then(setCurrentAddress);
+      return;
+    }
+    // 직전 측위가 취득 실패로 끝났으면 옛 좌표의 주소를 옛 위치임과 함께 말한다.
+    const stale = staleFixOf(geo);
+    if (!stale) return;
     addrLoadedRef.current = true;
-    void fetchCurrentAddress(geo.coords).then(setCurrentAddress);
+    void fetchCurrentAddress(stale).then((address) => {
+      setStaleOriginAt(stale.at);
+      setCurrentAddress(address);
+    });
   }, [fromField.resolved, toField.resolved, manual]);
 
   /**
@@ -656,9 +690,16 @@ export function DirectionsView({
       // gps일 때만 역지오코딩 — manual이면 라벨은 이미 지정 이름을 쓰고 있다.
       if (effective && effective.source === "gps") {
         addrLoadedRef.current = true;
-        setCurrentAddress(
-          await fetchCurrentAddress({ lat: effective.lat, lng: effective.lng }),
-        );
+        const address = await fetchCurrentAddress({ lat: effective.lat, lng: effective.lng });
+        setStaleOriginAt(null);
+        setCurrentAddress(address);
+      } else if (!effective) {
+        // 재측위 실패: 직전 라벨을 "현재 위치"로 두면 옛 주소를 현재로 말한다. 옛 좌표가
+        // 있으면 옛 위치임과 시각을 밝히고, 없으면(권한 거부 등) 주소를 비운다.
+        const stale = staleFixOf(getGeolocationSnapshot());
+        const address = stale ? await fetchCurrentAddress(stale) : null;
+        setStaleOriginAt(stale ? stale.at : null);
+        setCurrentAddress(address);
       }
     } finally {
       refreshCurrentRef.current = false;
@@ -721,14 +762,22 @@ export function DirectionsView({
       // "현재 위치에서 시작한다"를 알려야 할지 판단하는 근거
       // (`announceGuideStart`). 도착지만 현재 위치인 조회는 대상이 아니다 — 안내
       // 출발지는 그때도 실좌표라 화면과 어긋나는 것이 없다.
-      let originSource: "gps" | "manual" | null = null;
+      let originSource: "gps" | "manual" | "stale" | null = null;
+      // 현재 위치 끝점이 옛 위치로 풀렸으면 그 시점의 경과 표현(완료 통지 뒷문장).
+      let staleAgeAtQuery: StaleAgeMessage | null = null;
       if (from.kind === "current" || to.kind === "current") {
         setPhase({ kind: "locating" });
-        const effective = await awaitEffectiveLocation({
+        const acquired = await awaitEffectiveLocation({
           force: false,
           maxAgeSeconds: DIRECTIONS_ORIGIN_MAX_AGE_SECONDS,
         });
         if (myGen !== genRef.current) return;
+        // 재측위가 취득 실패로 끝났고 직전 좌표가 있으면 그 옛 위치로 계속한다(위원장 판정
+        // 2026-09-23). `acquired`가 null이면 수동 위치도 없다(있으면 그것이 답이다).
+        const stale = acquired ? null : staleFixOf(getGeolocationSnapshot());
+        const effective: { lat: number; lng: number; source: "gps" | "manual" | "stale" } | null =
+          acquired ?? (stale ? { lat: stale.lat, lng: stale.lng, source: "stale" } : null);
+        if (stale) staleAgeAtQuery = staleAgeMessage(stale.at, Date.now());
         if (!effective) {
           announce(""); // 중지 통지가 종단 phase 통지를 가리지 않게
           setPhase({ kind: "geoError" });
@@ -754,9 +803,13 @@ export function DirectionsView({
         // gps일 때만 라벨 병기 주소를 동기화한다(표시 전용 fire-and-forget, 실패·
         // 매칭 없음은 null로 정직하게 비운다). manual은 이미 지정 이름을 쓰고
         // 있어 표시되지 않을 라벨을 위해 실좌표를 조회하는 낭비를 만들지 않는다.
-        if (effective.source === "gps") {
+        if (effective.source !== "manual") {
           addrLoadedRef.current = true;
-          void fetchCurrentAddress(cur).then(setCurrentAddress);
+          const staleAt = stale ? stale.at : null;
+          void fetchCurrentAddress(cur).then((address) => {
+            setStaleOriginAt(staleAt);
+            setCurrentAddress(address);
+          });
         }
       }
       const origin = from.kind === "current" ? (cur as Coord) : from.coord;
@@ -821,9 +874,10 @@ export function DirectionsView({
         viaLabel,
         orderedModes,
         originSource,
+        staleAge: staleAgeAtQuery,
         planId,
-        fromLabel: from.kind === "current" ? currentLabel : from.label,
-        toLabel: to.kind === "current" ? currentLabel : to.label,
+        fromLabel: from.kind === "current" ? null : from.label,
+        toLabel: to.kind === "current" ? null : to.label,
       });
       announce(""); // 중지 통지 해제 — settled 합산 통지가 이 커밋에서 발화된다
       setPhase({ kind: "settled" });
@@ -863,12 +917,20 @@ export function DirectionsView({
   const settledCount = results
     ? results.orderedModes.filter((m) => results.outcomes[m]?.kind === "done").length
     : null;
-  const settledSummary =
+  const settledBase =
     phase.kind === "settled" && settledCount !== null
       ? settledCount > 0
         ? t("readySummary", { count: settledCount })
         : t("allFailed")
       : "";
+  // 옛 위치로 찾았으면 그 사실을 같은 통지의 뒷문장으로(출발지 칸에만 있으면 조회 버튼을
+  // 누른 사용자는 칸으로 되돌아가야 안다). 한 사건이라 한 문장 묶음으로 낸다.
+  const settledSummary =
+    settledBase && results?.staleAge
+      ? `${settledBase} ${t("staleOriginNotice", {
+          age: tManual(results.staleAge.key, { count: results.staleAge.count }),
+        })}`
+      : settledBase;
   const phaseMessage =
     phase.kind === "settled"
       ? settledSummary
@@ -889,7 +951,8 @@ export function DirectionsView({
   // 같은 클릭 핸들러에서 같은 커밋에 나오므로, 창구 하나에 따로 게시하면 나중 것이
   // 앞 것을 덮어 한쪽이 통째로 사라진다. 한 사건이므로 한 문장으로 합쳐 내보낸다.
   function announceGuideStart() {
-    if (results?.originSource !== "manual") return;
+    // 옛 위치로 계산한 경로도 같다 — 안내는 실좌표를 새로 재서 시작한다.
+    if (results?.originSource !== "manual" && results?.originSource !== "stale") return;
     pendingSuffixRef.current = tManual("guideStartsFromCurrent");
   }
 
@@ -1113,8 +1176,8 @@ export function DirectionsView({
       planId: results.planId,
       destination: results.destLabel,
       resolved: {
-        from: results.fromLabel,
-        to: results.toLabel,
+        from: results.fromLabel ?? currentLabel,
+        to: results.toLabel ?? currentLabel,
         via: results.viaLabel,
       },
       routeRefs,

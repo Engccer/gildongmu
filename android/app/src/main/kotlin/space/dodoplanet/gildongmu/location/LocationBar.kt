@@ -8,6 +8,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalContext
@@ -23,10 +25,12 @@ import space.dodoplanet.gildongmu.i18n.AppLocale
 import space.dodoplanet.gildongmu.i18n.appLocalized
 import space.dodoplanet.gildongmu.kit.ManualLocation
 import space.dodoplanet.gildongmu.kit.ManualVerdict
+import space.dodoplanet.gildongmu.kit.StaleFixAge
 import space.dodoplanet.gildongmu.kit.bilingualName
 import space.dodoplanet.gildongmu.kit.isManualLocationVerified
 import space.dodoplanet.gildongmu.kit.joinText
 import space.dodoplanet.gildongmu.kit.manualLocationBilingualName
+import space.dodoplanet.gildongmu.kit.staleFixAge
 import space.dodoplanet.gildongmu.nearby.LineText
 
 /** 표시줄 버튼의 testTag이자 pop 복귀 키(허브·채팅이 같은 상수를 쓴다 — 태그 개명이 복귀 착지를 조용히 죽이지 않게). */
@@ -39,7 +43,30 @@ data class LocationBarInput(
     val lastFixFailed: Boolean,
     val address: String?,
     val english: String?,
+    /** 옛 위치(spec 2026-09-23 stale-origin)의 측정 시각(epoch 초). null = 옛 위치 아님. 이때 `address`는 그 옛 좌표의 주소다. */
+    val staleFixAtEpoch: Double? = null,
 )
+
+/**
+ * 옛 위치 문장(표시줄·길찾기 "현재 위치" 칸 공용 — 판정선이 갈리면 화면으로 확인 불가, iOS `staleLocationText` 미러).
+ * 경과 판정은 :kit `staleFixAge`(웹·iOS 미러). 측정 시각은 호출부가 유한값만 넘긴다 — 모르면 옛 위치가 아니다.
+ */
+class StaleWords(
+    val withAddress: (address: String, age: String) -> String,
+    val withoutAddress: (age: String) -> String,
+    val justNow: String,
+    val minutes: (Int) -> String,
+    val hours: (Int) -> String,
+) {
+    fun age(fixedAtEpoch: Double, nowEpoch: Double): String = when (val a = staleFixAge(nowEpoch - fixedAtEpoch) ?: StaleFixAge.JustNow) {
+        StaleFixAge.JustNow -> justNow
+        is StaleFixAge.Minutes -> minutes(a.count)
+        is StaleFixAge.Hours -> hours(a.count)
+    }
+
+    fun line(address: String?, fixedAtEpoch: Double, nowEpoch: Double): String =
+        age(fixedAtEpoch, nowEpoch).let { if (address != null) withAddress(address, it) else withoutAddress(it) }
+}
 
 /** 표시줄 어휘 — 리소스는 화면 몫(spec §4), 인자 있는 문장은 람다. */
 class LocationBarWords(
@@ -52,6 +79,7 @@ class LocationBarWords(
     val manual: (String) -> String,
     val manualUnverifiable: (String) -> String,
     val pickTitle: String,
+    val stale: StaleWords,
 )
 
 /**
@@ -76,9 +104,9 @@ fun manualLocationLabel(
  * 표시줄 최종 문장(순수, spec §13-4): 수동이면 `manualLocationLabel`, 아니면 GPS 갈래(§12-4), 끝에 `, 위치 지정하기` 꼬리 —
  * 행이 버튼이라 상태만 이름으로 쓰면 "현재 위치, 버튼"으로 읽혀 누르면 무엇이 되는지 단서가 0이다.
  */
-fun locationBarLabel(input: LocationBarInput, manual: ManualLocation?, verdict: ManualVerdict?, lang: String, w: LocationBarWords): LineText {
+fun locationBarLabel(input: LocationBarInput, manual: ManualLocation?, verdict: ManualVerdict?, lang: String, w: LocationBarWords, nowEpoch: Double): LineText {
     val status = if (manual == null) {
-        gpsLabel(input, lang, w)
+        gpsLabel(input, lang, w, nowEpoch)
     } else {
         LineText(
             manualLocationLabel(manual, verdict, lang, accessible = false, w.manual, w.manualUnverifiable),
@@ -95,9 +123,15 @@ fun locationBarLabel(input: LocationBarInput, manual: ManualLocation?, verdict: 
  * "위치 권한이 필요합니다"를 쓴다(판정 29). `Coarse`는 표시용 좌표가 시도조차 하지 않아 실패 표식이 서지 않으므로 권한 축에서 먼저 가른다
  * — 그러지 않으면 "확인 중"에 영영 갇힌다. 실패 문구는 이 세션에서 확정된 시도(`lastFixFailed`)에만.
  */
-private fun gpsLabel(input: LocationBarInput, lang: String, w: LocationBarWords): LineText {
+private fun gpsLabel(input: LocationBarInput, lang: String, w: LocationBarWords, nowEpoch: Double): LineText {
     if (input.permission == LocationPermission.None) return LineText(w.needsPermission, w.needsPermission)
     if (input.permission == LocationPermission.Coarse) return LineText(w.reducedAccuracy, w.reducedAccuracy)
+    // 옛 위치(위원장 판정 2026-09-23): 재측위가 취득 실패로 끝났는데 직전 좌표가 있으면 옛 주소를 "현재 위치"로 말하지 않고 옛 위치임과
+    // 시각을 밝힌다. 좌표 분기보다 **앞** — 뒤면 좌표가 남아 있다는 이유로 "현재 위치"가 먼저 나간다.
+    input.staleFixAtEpoch?.let { at ->
+        val name = input.address?.let { bilingualName(lang, it, en = input.english, roman = null) }
+        return LineText(w.stale.line(name?.display, at, nowEpoch), w.stale.line(name?.primary, at, nowEpoch))
+    }
     if (!input.hasCoordinate) return (if (input.lastFixFailed) w.gpsFailed else w.locating).let { LineText(it, it) }
     val address = input.address ?: return LineText(w.gps, w.gps)
     // GPS 상태에서만 실주소를 병기한다 — 주소가 없으면 시각장애 사용자는 GPS가 틀렸다는 사실 자체를 알 방법이 없다. 모르면 거짓을 말하지 않는다.
@@ -121,6 +155,20 @@ fun LocationBarRow(store: CurrentAddressStore, manual: ManualLocationStore, onPi
         manual.awaitHydrated()
         if (manual.current.value == null) store.ensureLoaded(AppLocale.dataLocale(res))
     }
+    // 다른 화면의 측위 성공·실패로 옛 위치가 서거나 풀리면 따라간다(측위 없이 스냅샷·주소만 — 스냅샷은 관찰 불가 필드의 사진이다).
+    val liveStale by store.staleChanges.collectAsState()
+    LaunchedEffect(liveStale) {
+        if (current != null || manual.current.value != null) return@LaunchedEffect
+        store.syncFromStore(AppLocale.dataLocale(res))
+    }
+    // 옛 위치 문장의 "N분 전"이 멈추지 않게 옛 위치인 동안 30초마다 다시 그린다(stale-origin §3). 다시 그리기는 통지를 만들지 않는다.
+    val now by produceState(epochNow(), input.staleFixAtEpoch) {
+        value = epochNow()
+        while (input.staleFixAtEpoch != null) {
+            delay(30_000)
+            value = epochNow()
+        }
+    }
     val words = LocationBarWords(
         needsPermission = stringResource(R.string.android_common_geoDeniedTitle),
         reducedAccuracy = stringResource(R.string.android_common_geoReducedTitle),
@@ -131,8 +179,9 @@ fun LocationBarRow(store: CurrentAddressStore, manual: ManualLocationStore, onPi
         manual = { appLocalized(res, R.string.manualLocation_manual, it) },
         manualUnverifiable = { appLocalized(res, R.string.manualLocation_manualUnverifiable, it) },
         pickTitle = stringResource(R.string.manualLocation_pickTitle),
+        stale = staleWords { key, args -> appLocalized(res, staleResourceIds.getValue(key), *args) },
     )
-    val line = locationBarLabel(input, current, verdict, AppLocale.current(res), words)
+    val line = locationBarLabel(input, current, verdict, AppLocale.current(res), words, now)
     val spoken = line.spoken.takeIf { it != line.visual } // 낭독형이 시각과 같으면 덮지 않는다(M2b 규율)
     Button(
         onClick = onPick,
@@ -145,3 +194,25 @@ fun LocationBarRow(store: CurrentAddressStore, manual: ManualLocationStore, onPi
             .semantics { if (spoken != null) contentDescription = spoken },
     ) { Text(line.visual) }
 }
+
+private fun epochNow(): Double = System.currentTimeMillis() / 1000.0
+
+/**
+ * 옛 위치 어휘를 키 기반 조회 하나로 묶는다 — 길찾기 뷰모델은 `Strings.get`, 표시줄은 리소스(`R.string`)로 같은 키를 푼다.
+ * 키 이름은 웹 메시지 카탈로그(`messages` 폴더 JSON)의 것 그대로다.
+ */
+fun staleWords(get: (key: String, args: Array<Any>) -> String): StaleWords = StaleWords(
+    withAddress = { address, age -> get("manualLocation.gpsStale", arrayOf(address, age)) },
+    withoutAddress = { age -> get("manualLocation.gpsStaleNoAddress", arrayOf(age)) },
+    justNow = get("manualLocation.staleAgeJustNow", emptyArray()),
+    minutes = { n -> get("manualLocation.staleAgeMinutes", arrayOf(n)) },
+    hours = { n -> get("manualLocation.staleAgeHours", arrayOf(n)) },
+)
+
+private val staleResourceIds = mapOf(
+    "manualLocation.gpsStale" to R.string.manualLocation_gpsStale,
+    "manualLocation.gpsStaleNoAddress" to R.string.manualLocation_gpsStaleNoAddress,
+    "manualLocation.staleAgeJustNow" to R.string.manualLocation_staleAgeJustNow,
+    "manualLocation.staleAgeMinutes" to R.string.manualLocation_staleAgeMinutes,
+    "manualLocation.staleAgeHours" to R.string.manualLocation_staleAgeHours,
+)

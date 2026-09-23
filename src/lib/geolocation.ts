@@ -21,7 +21,16 @@ export type GeoState =
    * 권한 거부·위치불가·타임아웃을 합친 "좌표 못 받음". `reason`은 WebMCP 도구층의
    * 사유 세분용(`geoDenied`·`geoUnavailable`·`geoTimeout`) — 화면 소비자는 읽지 않는다.
    */
-  | { status: "denied"; reason?: "denied" | "unavailable" | "timeout" }
+  | {
+      status: "denied";
+      reason?: "denied" | "unavailable" | "timeout";
+      /**
+       * 이번 측위가 **취득 실패**(위치불가·타임아웃)로 끝났을 때 직전 좌표. 권한 거부면
+       * 싣지 않는다. 판정은 `stale-origin.ts`의 `staleFixOf` 하나만 지난다(spec 2026-09-23 stale-origin §4.1) —
+       * 이 필드를 직접 읽지 말 것. 가산 필드라 `ready`만 보는 소비자에게 실패 의미는 그대로다.
+       */
+      last?: Coord;
+    }
   | { status: "unsupported" };
 
 // 서버 스냅샷 + 초기값으로 쓰는 stable 참조(useSyncExternalStore 동일성 요구).
@@ -199,7 +208,21 @@ export function requestLocation(opts?: LocateOptions): void {
       // 조용한 갱신의 실패는 **직전 좌표를 유지**한다(재조회 실패가 데이터 포기는
       // 아니다 — "내 주변" 새로고침의 복원 계약과 같은 방향). 실패 사실은 판정
       // 결과(`undecidable` 라벨)가 전달하므로 여기서 화면을 비울 이유가 없다.
-      setState(silent ? previous : { status: "denied", reason });
+      if (silent) {
+        setState(previous);
+        return;
+      }
+      // 취득 실패면 직전 좌표를 옛 위치로 남긴다(연속 실패도 이어받는다). 권한 거부는
+      // 위치를 쓰지 말라는 뜻이라 남기지 않는다.
+      const last =
+        reason === "denied"
+          ? undefined
+          : previous.status === "ready"
+            ? previous.coords
+            : previous.status === "denied"
+              ? previous.last
+              : undefined;
+      setState(last ? { status: "denied", reason, last } : { status: "denied", reason });
     },
     refetch ? PRECISE_OPTS : FAST_OPTS,
   );

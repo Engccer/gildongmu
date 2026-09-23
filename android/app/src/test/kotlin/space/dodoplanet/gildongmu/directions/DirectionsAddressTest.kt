@@ -7,6 +7,7 @@ import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.extension.RegisterExtension
 import space.dodoplanet.gildongmu.MainDispatcherExtension
+import space.dodoplanet.gildongmu.location.StaleFix
 import space.dodoplanet.gildongmu.kit.*
 import kotlin.coroutines.Continuation
 import kotlin.coroutines.resume
@@ -43,7 +44,9 @@ class DirectionsAddressTest {
             RouteService(client), SearchService(client), RecentSearchStore(InMemoryKeyValueStore()),
             object : EndpointLocator {
                 override suspend fun currentCoordinate(force: Boolean) = locations.wait()
-                override suspend fun coordinateForRanking() = locations.wait()
+                override suspend fun coordinateForRanking(): NearbyCoord? = null
+                override suspend fun coordinateForDisplay() = locations.wait()
+                override fun staleFix(): StaleFix? = null
                 override suspend fun requestPreciseLocation() = false
             }, { language }, CatalogStrings("ko"), SavedStateHandle(),
             prefill = MutableStateFlow(null), io = dispatcher,

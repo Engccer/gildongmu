@@ -93,6 +93,12 @@
       "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/LocationFixTest.kt"
     },
     {
+      "swift": "StaleOrigin.swift",
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/StaleOrigin.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/StaleOriginTest.kt"
+    },
+    {
       "swift": "Models/BarrierFreeModels.swift",
       "status": "ported",
       "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/models/BarrierFreeModels.kt",

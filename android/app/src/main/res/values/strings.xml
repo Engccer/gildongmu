@@ -582,6 +582,7 @@
     <string name="directions_searchFrom">출발지 검색</string>
     <string name="directions_searchTo">도착지 검색</string>
     <string name="directions_searchVia">경유지 검색</string>
+    <string name="directions_staleOriginNotice">현재 위치를 확인하지 못해 %1$s에 확인한 위치로 찾았습니다.</string>
     <string name="directions_submit">경로 조회</string>
     <string name="directions_swap">출발지와 도착지 바꾸기</string>
     <string name="directions_title">길찾기</string>
@@ -747,11 +748,16 @@
     <string name="manualLocation_gps">현재 위치</string>
     <string name="manualLocation_gpsFailed">위치를 확인할 수 없습니다</string>
     <string name="manualLocation_gpsNear">현재 위치(%1$s 부근)</string>
+    <string name="manualLocation_gpsStale">마지막으로 확인한 위치, %1$s, %2$s</string>
+    <string name="manualLocation_gpsStaleNoAddress">마지막으로 확인한 위치, %1$s</string>
     <string name="manualLocation_guideStartsFromCurrent">현재 위치에서 안내를 시작합니다</string>
     <string name="manualLocation_locating">현재 위치 확인 중</string>
     <string name="manualLocation_manual">지정한 위치, %1$s</string>
     <string name="manualLocation_manualUnverifiable">지정한 위치, %1$s(위치 확인 불가)</string>
     <string name="manualLocation_pickTitle">위치 지정하기</string>
+    <string name="manualLocation_staleAgeHours">%1$s시간 전</string>
+    <string name="manualLocation_staleAgeJustNow">방금 전</string>
+    <string name="manualLocation_staleAgeMinutes">%1$s분 전</string>
     <string name="manualLocation_useGps">현재 위치로 되돌리기</string>
     <string name="nav_english">English</string>
     <string name="nav_french">Français</string>

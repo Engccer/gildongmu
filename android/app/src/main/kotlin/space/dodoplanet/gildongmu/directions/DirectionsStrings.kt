@@ -48,6 +48,11 @@ internal fun stringId(key: String): Int? = when (key) {
     "manualLocation.locating" -> R.string.manualLocation_locating
     "manualLocation.manual" -> R.string.manualLocation_manual
     "manualLocation.manualUnverifiable" -> R.string.manualLocation_manualUnverifiable
+    "manualLocation.gpsStale" -> R.string.manualLocation_gpsStale
+    "manualLocation.gpsStaleNoAddress" -> R.string.manualLocation_gpsStaleNoAddress
+    "manualLocation.staleAgeJustNow" -> R.string.manualLocation_staleAgeJustNow
+    "manualLocation.staleAgeMinutes" -> R.string.manualLocation_staleAgeMinutes
+    "manualLocation.staleAgeHours" -> R.string.manualLocation_staleAgeHours
     "directions.searchTo" -> R.string.directions_searchTo
     "directions.searchVia" -> R.string.directions_searchVia
     "directions.currentLocation" -> R.string.directions_currentLocation
@@ -64,6 +69,7 @@ internal fun stringId(key: String): Int? = when (key) {
     "directions.locating" -> R.string.directions_locating
     "directions.loading" -> R.string.directions_loading
     "directions.geoError" -> R.string.directions_geoError
+    "directions.staleOriginNotice" -> R.string.directions_staleOriginNotice
     "directions.readySummary" -> R.string.directions_readySummary
     "directions.allFailed" -> R.string.directions_allFailed
     "directions.candidateCount" -> R.string.directions_candidateCount

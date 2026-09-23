@@ -114,6 +114,8 @@ const KNOWN_UNBRANCHED_KEYS: Record<string, string> = {
   "ios.common.outOfCoverage": "위와 같음.",
   "directions.geoError":
     "GPS 실패 문구. 수동 위치가 유지되는 동안은 좌표 해석이 성공해 닿지 않고, 닿았다면 그 직전 판정이 수동 위치를 해제한 뒤라 수동 상태가 아니다.",
+  "directions.staleOriginNotice":
+    "옛 위치 폴백의 완료 통지 뒷문장(stale-origin). 수동 위치가 있으면 폴백 자체가 일어나지 않는다 — 조회 좌표 해석이 수동 위치를 먼저 돌려준다.",
   "directions.locating":
     "측위 **진행** 상태 문구다(조회 기준의 선언이 아니다). force 조회는 수동 위치가 있어도 이동 판정을 위해 측위하므로 잠깐 나올 수 있고, 그때도 말하는 것은 '무엇을 기다리는 중인가'다.",
   "directions.currentLocation": "수동 분기 뒤의 폴백이라 수동 상태에서 도달 불가.",

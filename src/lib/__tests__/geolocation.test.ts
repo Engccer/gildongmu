@@ -7,6 +7,7 @@ import {
   DIRECTIONS_ORIGIN_MAX_AGE_SECONDS,
   __resetGeolocationForTest,
 } from "../geolocation";
+import { staleFixOf } from "../stale-origin";
 
 type SuccessCb = (pos: {
   coords: { latitude: number; longitude: number };
@@ -241,5 +242,61 @@ describe("나이 기준 재취득 (maxAgeSeconds)", () => {
     await awaitGeolocation();
     requestLocation();
     expect(getPos).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("옛 위치(stale-origin) — 실패가 직전 좌표를 남기는가", () => {
+  const T = Date.now();
+  function fixThenFail(code: number) {
+    let calls = 0;
+    stubGeo((ok, err) => {
+      calls += 1;
+      if (calls === 1) ok({ coords: { latitude: 37.5, longitude: 127.1 }, timestamp: T });
+      else err({ code });
+    });
+  }
+
+  it("취득 실패(위치불가·타임아웃)는 denied에 직전 좌표를 싣고 staleFixOf가 그것을 준다", async () => {
+    for (const code of [2, 3]) {
+      __resetGeolocationForTest();
+      fixThenFail(code);
+      await awaitGeolocation();
+      const failed = await awaitGeolocation({ force: true });
+      expect(failed.status).toBe("denied");
+      expect(staleFixOf(failed)).toMatchObject({ lat: 37.5, lng: 127.1, at: T / 1000 });
+    }
+  });
+
+  it("권한 거부(code 1)는 직전 좌표를 남기지 않는다", async () => {
+    fixThenFail(1);
+    await awaitGeolocation();
+    const failed = await awaitGeolocation({ force: true });
+    expect(failed).toEqual({ status: "denied", reason: "denied" });
+    expect(staleFixOf(failed)).toBeNull();
+  });
+
+  it("연속 실패도 옛 좌표를 이어받는다", async () => {
+    fixThenFail(3);
+    await awaitGeolocation();
+    await awaitGeolocation({ force: true });
+    const again = await awaitGeolocation({ force: true });
+    expect(staleFixOf(again)).toMatchObject({ lat: 37.5, lng: 127.1 });
+  });
+
+  it("좌표가 한 번도 없었으면 옛 위치가 아니다", async () => {
+    stubGeo((_ok, err) => err({ code: 2 }));
+    const failed = await awaitGeolocation();
+    expect(staleFixOf(failed)).toBeNull();
+  });
+
+  it("조용한 갱신의 실패는 여전히 ready를 유지한다(옛 위치로 바꾸지 않는다)", async () => {
+    fixThenFail(2);
+    await awaitGeolocation();
+    const kept = await awaitGeolocation({ force: true, silent: true });
+    expect(kept.status).toBe("ready");
+  });
+
+  it("측정 시각을 모르는 좌표는 옛 위치가 아니다", () => {
+    expect(staleFixOf({ status: "denied", reason: "timeout", last: { lat: 1, lng: 2 } })).toBeNull();
   });
 });

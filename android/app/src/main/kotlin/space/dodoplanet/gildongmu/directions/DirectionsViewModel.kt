@@ -28,6 +28,7 @@ import space.dodoplanet.gildongmu.kit.DirectionsAddressState
 import space.dodoplanet.gildongmu.kit.ManualLocation
 import space.dodoplanet.gildongmu.kit.ManualVerdict
 import space.dodoplanet.gildongmu.location.manualLocationLabel
+import space.dodoplanet.gildongmu.location.staleWords
 import space.dodoplanet.gildongmu.kit.DirectionsMode
 import space.dodoplanet.gildongmu.kit.DirectionsModeOutcome
 import space.dodoplanet.gildongmu.kit.DirectionsOutcomeClassifier
@@ -92,6 +93,8 @@ data class DirectionsUiState(
     val isRequestingPrecise: Boolean = false,
     val currentAddress: String? = null,
     val currentAddressEnglish: String? = null,
+    /** "현재 위치" 끝점이 옛 위치로 풀렸을 때 그 좌표의 측정 시각(epoch 초, spec 2026-09-23 stale-origin §4.3). 이때 `currentAddress`는 그 옛 좌표의 주소다. */
+    val currentStaleAt: Double? = null,
     val recentRoutes: List<RecentRoute> = emptyList(),
     val landing: LandingRequest? = null,
     val notice: Notice = Notice(0, ""),
@@ -118,7 +121,11 @@ class DirectionsViewModel(
     /** 수동 위치(spec §13-4) — 출발지 "현재 위치" 필드가 표시줄과 같은 문장을 낸다. 호출 시점 읽기(앱 싱글턴 캡처 없음). */
     private val manual: () -> ManualLocation? = { null },
     private val verdict: () -> ManualVerdict? = { null },
+    /** epoch 초 — 옛 위치 경과 계산용(테스트가 고정한다). */
+    private val epochNow: () -> Double = { System.currentTimeMillis() / 1000.0 },
 ) : ViewModel() {
+    private val staleWords = staleWords { key, args -> strings.get(key, *args) }
+
     private val _state = MutableStateFlow(
         DirectionsUiState(
             from = if (savedState.contains(KEY_FROM)) endpointFromJson(savedState[KEY_FROM]) else DirectionsEndpoint.Current,
@@ -249,6 +256,8 @@ class DirectionsViewModel(
     private suspend fun performQuery(from: DirectionsEndpoint, to: DirectionsEndpoint, via: DirectionsEndpoint.Place?, addressRequest: DirectionsAddressState.Request?) {
         _state.update { it.copy(results = null, walkShortest = null, promotedDestination = null) }
         var current: NearbyCoord? = null
+        // 현재 위치 끝점이 옛 위치로 풀렸으면 그 좌표의 측정 시각(완료 통지 뒷문장).
+        var staleAt: Double? = null
         if (from == DirectionsEndpoint.Current || to == DirectionsEndpoint.Current) {
             val request = requireNotNull(addressRequest)
             var handedOff = false
@@ -257,15 +266,21 @@ class DirectionsViewModel(
                     locator.currentCoordinate(force = false)
                 } catch (e: LocationException) {
                     currentCoroutineContext().ensureActive()
-                    // 거부·정밀 꺼짐·취득 실패는 다른 문장(3-state).
-                    setPhase(
-                        when (e.kind) {
-                            LocationException.Kind.Denied -> DirectionsPhase.GeoDenied
-                            LocationException.Kind.ReducedAccuracy -> DirectionsPhase.GeoReduced
-                            LocationException.Kind.Unavailable -> DirectionsPhase.GeoError
-                        },
-                    )
-                    return
+                    // 취득 실패인데 옛 좌표가 있으면 그 옛 위치로 계속한다(위원장 판정 2026-09-23). 권한 축은 옛 위치로 답하지 않는다.
+                    val stale = if (e.kind == LocationException.Kind.Unavailable) locator.staleFix() else null
+                    if (stale == null) {
+                        // 거부·정밀 꺼짐·취득 실패는 다른 문장(3-state).
+                        setPhase(
+                            when (e.kind) {
+                                LocationException.Kind.Denied -> DirectionsPhase.GeoDenied
+                                LocationException.Kind.ReducedAccuracy -> DirectionsPhase.GeoReduced
+                                LocationException.Kind.Unavailable -> DirectionsPhase.GeoError
+                            },
+                        )
+                        return
+                    }
+                    staleAt = stale.fixedAtEpoch
+                    NearbyCoord(stale.lat, stale.lng)
                 }
                 currentCoroutineContext().ensureActive()
                 // 현재 위치가 서비스 지역 밖이면 조회 자체를 중단(upstream 0 호출). 오류가 아니라 커버리지 안내.
@@ -275,6 +290,8 @@ class DirectionsViewModel(
                 }
                 val acquired = current
                 if (acceptsCurrentAddress(request)) {
+                    val stalePin = staleAt
+                    _state.update { it.copy(currentStaleAt = stalePin) }
                     addressJob = viewModelScope.launch {
                         try { syncCurrentAddress(acquired, request) }
                         finally { finishCurrentAddress(request) }
@@ -335,6 +352,7 @@ class DirectionsViewModel(
             return
         }
         val results = DirectionsResults(outcomes)
+        val staleNotice = staleAt?.let { strings.get("directions.staleOriginNotice", staleWords.age(it, epochNow())) }
         initJob.join()
         val recent = store.recordRoute(RecentRoute(recentSide(from), recentSide(to), via?.let(::recentSide)))
         _state.update {
@@ -343,7 +361,13 @@ class DirectionsViewModel(
                 phase = DirectionsPhase.Settled(results.successCount), resultsRevision = it.resultsRevision + 1,
                 recentRoutes = recent,
                 // 완료 통지는 합산 1문장(수단별 개별 통지 금지). 포커스는 옮기지 않는다(위원장 판정 2026-08-02).
-                notice = next(if (results.successCount > 0) strings.get("directions.readySummary", results.successCount) else strings.get("directions.allFailed")),
+                // 옛 위치로 찾았으면 같은 통지의 뒷문장으로 밝힌다(출발지 칸에만 있으면 칸으로 되돌아가야 안다).
+                notice = next(
+                    listOfNotNull(
+                        if (results.successCount > 0) strings.get("directions.readySummary", results.successCount) else strings.get("directions.allFailed"),
+                        staleNotice,
+                    ).joinToString(" "),
+                ),
             )
         }
     }
@@ -429,13 +453,21 @@ class DirectionsViewModel(
         val request = beginCurrentAddress()
         addressJob = viewModelScope.launch {
             try {
-                val coord = locator.coordinateForRanking() ?: return@launch
+                // 표시용 좌표(저장 좌표 폴백 없음 — iOS 등가). 없고 직전 측위가 취득 실패였으면 옛 위치로 표기한다(stale-origin).
+                val fresh = locator.coordinateForDisplay()
+                val stale = if (fresh == null) locator.staleFix() else null
+                val coord = fresh ?: stale?.let { NearbyCoord(it.lat, it.lng) } ?: return@launch
+                if (!acceptsCurrentAddress(request)) return@launch
+                _state.update { it.copy(currentStaleAt = stale?.fixedAtEpoch) }
                 syncCurrentAddress(coord, request)
             } finally { finishCurrentAddress(request) }
         }
     }
 
-    /** "현재 위치 사용" 재선택 = 강제 재측위 + 주소 새로고침. 실패는 조용히 직전 라벨 유지. */
+    /**
+     * "현재 위치 사용" 재선택 = 강제 재측위 + 주소 새로고침. 취득 실패면 옛 좌표를 옛 위치로 표기하고(stale-origin), 옛 좌표도 없으면
+     * (권한 없음 등) 주소를 비운다 — 직전 라벨을 "현재 위치"로 남기면 옛 주소를 현재로 말한다.
+     */
     fun refreshCurrentLocation() {
         resetAddressLanguageIfNeeded()
         if (_state.value.isRefreshingCurrent) return
@@ -443,11 +475,23 @@ class DirectionsViewModel(
         _state.update { it.copy(isRefreshingCurrent = true) }
         addressJob = viewModelScope.launch {
             try {
+                var staleAt: Double? = null
                 val coord = try {
                     locator.currentCoordinate(force = true)
-                } catch (_: LocationException) {
-                    null
-                } ?: return@launch
+                } catch (e: LocationException) {
+                    val stale = if (e.kind == LocationException.Kind.Unavailable) locator.staleFix() else null
+                    staleAt = stale?.fixedAtEpoch
+                    stale?.let { NearbyCoord(it.lat, it.lng) }
+                }
+                if (!acceptsCurrentAddress(request)) return@launch
+                val stalePin = staleAt
+                _state.update { it.copy(currentStaleAt = stalePin) }
+                if (coord == null) {
+                    if (addressState.commit(null, request, dataLocale(), !currentCoroutineContext().isActive)) {
+                        _state.update { it.copy(currentAddress = null, currentAddressEnglish = null) }
+                    }
+                    return@launch
+                }
                 syncCurrentAddress(coord, request)
             } finally {
                 finishCurrentAddress(request)
@@ -501,7 +545,7 @@ class DirectionsViewModel(
      * 필드 한 줄 = 한 객체: "출발지, 현재 위치"처럼 라벨+값 단일 텍스트(쉼표 결합). 미확정 필드는 검색 유도 라벨이 곧
      * 버튼 이름. `accessible`은 병기 변종(E28): false = 시각 `Roman (한글)`, true = 낭독(괄호 없이).
      */
-    fun fieldText(target: DirectionsFieldTarget, accessible: Boolean, lang: String): String {
+    fun fieldText(target: DirectionsFieldTarget, accessible: Boolean, lang: String, nowEpoch: Double = epochNow()): String {
         val s = _state.value
         val label = when (target) {
             DirectionsFieldTarget.from -> strings.get("directions.from")
@@ -516,7 +560,7 @@ class DirectionsViewModel(
             DirectionsFieldTarget.manualLocation -> error("manualLocation은 길찾기 폼 필드가 아니다")
         }
         return when (endpoint) {
-            DirectionsEndpoint.Current -> "$label, ${currentLocationText(accessible, lang)}"
+            DirectionsEndpoint.Current -> "$label, ${currentLocationText(accessible, lang, nowEpoch)}"
             is DirectionsEndpoint.Place -> {
                 val name = bilingualName(lang, endpoint.label, en = null, roman = endpoint.labelRoman)
                 "$label, ${if (accessible) name.primary else name.display}"
@@ -530,13 +574,18 @@ class DirectionsViewModel(
         }
     }
 
-    private fun currentLocationText(accessible: Boolean, lang: String): String {
+    private fun currentLocationText(accessible: Boolean, lang: String, nowEpoch: Double): String {
         // 수동 위치가 있으면 표시줄과 같은 문장(spec §13-4 — 한 함수). 진행 문구보다 먼저: 그때의 재측위는 판정용이고 조회 기준은 여전히 수동이다.
         manual()?.let { m ->
             return manualLocationLabel(m, verdict(), lang, accessible, { strings.get("manualLocation.manual", it) }, { strings.get("manualLocation.manualUnverifiable", it) })
         }
         val s = _state.value
         if (s.isRefreshingCurrent) return strings.get("directions.refreshingCurrent")
+        // 옛 위치(stale-origin): 표시줄과 같은 문장(`StaleWords`) — 판정선이 갈리면 화면으로 확인 불가.
+        s.currentStaleAt?.let { at ->
+            val name = s.currentAddress?.let { bilingualName(lang, it, en = s.currentAddressEnglish, roman = null) }
+            return staleWords.line(if (accessible) name?.primary else name?.display, at, nowEpoch)
+        }
         val address = s.currentAddress ?: return strings.get("directions.currentLocation")
         val name = bilingualName(lang, address, en = s.currentAddressEnglish, roman = null)
         return strings.get("directions.currentLocationNear", if (accessible) name.primary else name.display)

@@ -4,6 +4,7 @@ import space.dodoplanet.gildongmu.AppConfig
 import space.dodoplanet.gildongmu.kit.NearbyCoord
 import space.dodoplanet.gildongmu.location.LocationPermission
 import space.dodoplanet.gildongmu.location.EffectiveLocation
+import space.dodoplanet.gildongmu.location.StaleFix
 import space.dodoplanet.gildongmu.location.PermissionGate
 
 /**
@@ -18,6 +19,12 @@ interface EndpointLocator {
     /** 라벨 병기·후보 정렬용 soft 좌표 — 권한 없으면 팝업 없이 null, 실패는 스토어 폴백(없으면 null). */
     suspend fun coordinateForRanking(): NearbyCoord?
 
+    /** "현재 위치" 칸 주소 병기용 표시 좌표 — 권한 없거나 수동 위치면 팝업·측위 없이 null, 실패도 null(저장 좌표 폴백 없음). */
+    suspend fun coordinateForDisplay(): NearbyCoord?
+
+    /** 옛 위치(spec 2026-09-23 stale-origin): 직전 측위가 취득 실패였고 옛 좌표가 있으면 그 좌표와 측정 시각(epoch 초). 수동 위치면 null. */
+    fun staleFix(): StaleFix?
+
     /** "정확한 위치 허용" — 권한 재요청 뒤 FINE이면 true(M2 §4 `allowPrecise` 절차). */
     suspend fun requestPreciseLocation(): Boolean
 }
@@ -26,6 +33,8 @@ class LocationStoreLocator(private val effective: EffectiveLocation, private val
     // 유효 좌표(앵커 > 수동 > GPS, spec §13-2): 출발지도 끝점 후보 근접 가중도 수동 위치를 따른다 — 수동이면 측위 0.
     override suspend fun currentCoordinate(force: Boolean): NearbyCoord = effective.coordinate(force)
     override suspend fun coordinateForRanking(): NearbyCoord? = effective.coordinateForRanking()
+    override suspend fun coordinateForDisplay(): NearbyCoord? = effective.coordinateForDisplay()
+    override fun staleFix(): StaleFix? = effective.staleFix()
     override suspend fun requestPreciseLocation(): Boolean = permissions.request() == LocationPermission.Fine
 }
 

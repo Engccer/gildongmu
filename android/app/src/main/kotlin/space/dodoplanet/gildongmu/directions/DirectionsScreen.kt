@@ -20,6 +20,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
@@ -170,6 +171,14 @@ private fun DirectionsForm(
     if (s.resultsRevision != ui.seenResultsRevision) ui.resetExpansion(s.resultsRevision)
     // 이미 허가된 세션이면 진입 시 조용히 현재 위치 주소를 병기(권한 팝업 없음).
     LaunchedEffect(lang) { vm.loadCurrentAddressIfAuthorized() }
+    // 옛 위치 문장의 "N분 전"이 멈추지 않게 옛 위치인 동안 30초마다 다시 그린다(stale-origin §3). 다시 그리기는 통지를 만들지 않는다.
+    val now by produceState(System.currentTimeMillis() / 1000.0, s.currentStaleAt) {
+        value = System.currentTimeMillis() / 1000.0
+        while (s.currentStaleAt != null) {
+            kotlinx.coroutines.delay(30_000)
+            value = System.currentTimeMillis() / 1000.0
+        }
+    }
     // 착지 요청(spec §3-5): 한 요청 = 한 착지, 재구성이 끝난 다음 프레임에 대입(M1 관용구).
     LaunchedEffect(s.landing) {
         val landing = s.landing ?: return@LaunchedEffect
@@ -201,14 +210,14 @@ private fun DirectionsForm(
         ) {
             // 필드 한 줄 = 한 객체("출발지, 현재 위치"). 비-ko 병기는 낭독만 괄호 없이.
             ActionRow(
-                visual = vm.fieldText(DirectionsFieldTarget.from, accessible = false, lang = lang),
-                spoken = vm.fieldText(DirectionsFieldTarget.from, accessible = true, lang = lang),
+                visual = vm.fieldText(DirectionsFieldTarget.from, accessible = false, lang = lang, nowEpoch = now),
+                spoken = vm.fieldText(DirectionsFieldTarget.from, accessible = true, lang = lang, nowEpoch = now),
                 tag = "field-from", onClick = { vm.openPicker(DirectionsFieldTarget.from) }, modifier = Modifier.landingTarget(ui.fromFocus),
             )
             Button(onClick = vm::swap, modifier = Modifier.tapTarget().testTag("swap")) { Text(strings.get("directions.swap")) }
             ActionRow(
-                visual = vm.fieldText(DirectionsFieldTarget.to, accessible = false, lang = lang),
-                spoken = vm.fieldText(DirectionsFieldTarget.to, accessible = true, lang = lang),
+                visual = vm.fieldText(DirectionsFieldTarget.to, accessible = false, lang = lang, nowEpoch = now),
+                spoken = vm.fieldText(DirectionsFieldTarget.to, accessible = true, lang = lang, nowEpoch = now),
                 tag = "field-to", onClick = { vm.openPicker(DirectionsFieldTarget.to) }, modifier = Modifier.landingTarget(ui.toFocus),
             )
             // 경유지(N4, 선택 사항). 삭제는 자기를 누른 버튼을 없애므로 조회 버튼을 먼저 선점한다(헌장 §5).
