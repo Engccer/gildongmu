@@ -85,6 +85,19 @@ MAX_LINE_GAP_KM = 30
 # 관할이라 두 가드가 30km 경계에서 상보적이다.
 MAX_TRANSFER_GAP_M = 600
 
+# 직전 seed 대비 좌표 이동 가드 — 판본 간 **시간 축**. 위 두 가드는 한 판본 안의 일관성만
+# 보므로 수십 m 퇴행은 정의상 못 본다. 2026-09-23 실측: 2026-06-30판은 신분당선 11역을
+# 18~120m 옮겼는데, 카카오 역 POI 대비 구판 5~57m → 신판 19~124m로 11역 전부 멀어졌고
+# (논현은 7호선 레코드 위로 끌려감) 두 가드는 통과했다. 그래서 채택하지 않았다.
+# 임계값 15m: 같은 판본 재생성은 이동 0이고, 이 퇴행의 최소 이동이 18m(신사)였다.
+MAX_COORD_SHIFT_M = 15
+
+# 검토 후 받아들이는 이동 — (역명, 노선명) → 새 좌표(lat, lng). 키가 아니라 **그 좌표**를
+# 허용한다(키만 허용하면 이후 판본에서 또 움직여도 조용히 통과한다). 카카오 역 POI 등
+# 실좌표로 새 값이 더 정확함을 확인한 경우에만 출처와 함께 더하고, 그 판본을 커밋한 뒤엔
+# 직전 seed가 새 값이 되므로 비워도 된다.
+ACCEPTED_COORD_SHIFTS = {}
+
 
 def clean(v):
     """문자열 trim, 빈값/'-'은 None으로."""
@@ -173,6 +186,31 @@ def transfer_pair_outliers(stations):
     return out
 
 
+def coord_shift_outliers(prev, stations, accepted):
+    """직전 seed의 같은 (역명, 노선) 레코드에서 MAX_COORD_SHIFT_M 넘게 움직인 역들.
+
+    같은 키가 여러 행이면(주안역 경인선 중복 행) 직전 행 중 최근접과 비교한다.
+    직전에 없던 키(신설역)는 비교 대상이 없어 다른 두 가드의 관할이다.
+    """
+    before = {}
+    for rec in prev:
+        before.setdefault((rec["name"], rec["lineName"]), []).append(rec)
+    out = []
+    for rec in stations:
+        key = (rec["name"], rec["lineName"])
+        if key not in before:
+            continue
+        shift_m = min(
+            haversine_km(o["lat"], o["lng"], rec["lat"], rec["lng"]) for o in before[key]
+        ) * 1000
+        if shift_m > MAX_COORD_SHIFT_M and accepted.get(key) != (rec["lat"], rec["lng"]):
+            out.append(
+                f"{rec['name']}({rec['lineName']}) 직전 seed 대비 {shift_m:.0f}m 이동 → "
+                f"({rec['lat']}, {rec['lng']})"
+            )
+    return out
+
+
 def main():
     if len(sys.argv) < 2:
         print("사용: python3 scripts/build-subway-stations.py <xlsx경로>", file=sys.stderr)
@@ -248,6 +286,18 @@ def main():
         for m in outliers:
             print("  ", m, file=sys.stderr)
         sys.exit(1)
+
+    # 좌표 퇴행은 두 거리 가드를 통과한다 — 직전 seed와 대조해 움직인 역을 사람이 확인하게 한다.
+    if OUT.exists():
+        shifts = coord_shift_outliers(
+            json.loads(OUT.read_text(encoding="utf-8")), stations, ACCEPTED_COORD_SHIFTS
+        )
+        if shifts:
+            print(f"직전 seed 대비 좌표 이동 {len(shifts)}건 — 실좌표(카카오 역 POI 등)로 확인 후 "
+                  "ACCEPTED_COORD_SHIFTS에 더하거나 이 판본을 들이지 말 것", file=sys.stderr)
+            for m in shifts:
+                print("  ", m, file=sys.stderr)
+            sys.exit(1)
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
     # ensure_ascii=False로 한글 그대로 — gzip 후 크기 동일, diff 가독성 ↑.
