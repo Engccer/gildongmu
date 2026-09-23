@@ -2,7 +2,6 @@ package space.dodoplanet.gildongmu.directions
 
 import android.util.Log
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -106,12 +105,12 @@ const val STATION_RETURN_PREFIX = "station-row:"
 class FormUiState(
     expandedAlts: Set<String> = emptySet(),
     walkExpandedOverride: Boolean? = null,
-    shortestExpanded: Boolean = false,
+    secondExpanded: Boolean = false,
     seenResultsRevision: Int = 0,
 ) {
     var expandedAlts by mutableStateOf(expandedAlts)
     var walkExpandedOverride by mutableStateOf(walkExpandedOverride)
-    var shortestExpanded by mutableStateOf(shortestExpanded)
+    var secondExpanded by mutableStateOf(secondExpanded)
     var seenResultsRevision by mutableStateOf(seenResultsRevision)
     /** 역 작업 메뉴를 든 브리핑 줄(태그 → 요청자) — 역 상세 pop 복귀 착지. */
     val stationRowFocus = mutableMapOf<String, FocusRequester>()
@@ -119,19 +118,18 @@ class FormUiState(
     val toFocus = FocusRequester()
     val viaFocus = FocusRequester()
     val submitFocus = FocusRequester()
-    val walkHeadingFocus = FocusRequester()
     val recentFocus = mutableMapOf<String, FocusRequester>()
 
     fun resetExpansion(revision: Int) {
         expandedAlts = emptySet()
         walkExpandedOverride = null
-        shortestExpanded = false
+        secondExpanded = false
         seenResultsRevision = revision
     }
 
     companion object {
         val Saver: Saver<FormUiState, Any> = listSaver(
-            save = { listOf(ArrayList(it.expandedAlts), it.walkExpandedOverride, it.shortestExpanded, it.seenResultsRevision) },
+            save = { listOf(ArrayList(it.expandedAlts), it.walkExpandedOverride, it.secondExpanded, it.seenResultsRevision) },
             restore = {
                 @Suppress("UNCHECKED_CAST")
                 FormUiState((it[0] as List<String>).toSet(), it[1] as Boolean?, it[2] as Boolean, it[3] as Int)
@@ -193,7 +191,6 @@ private fun DirectionsForm(
                 DirectionsFieldTarget.manualLocation -> null.also { Log.w("DirectionsScreen", "길찾기 폼에 없는 필드 착지 $t") } // 착지 하나로 앱을 죽이지 않는다
             }
             LandingTarget.Submit -> ui.submitFocus
-            LandingTarget.WalkHeading -> ui.walkHeadingFocus
             is LandingTarget.RecentRoute -> ui.recentFocus[t.id]
         }
         runCatching { requester?.requestFocus() }.onFailure { Log.w("DirectionsScreen", "착지 실패 ${landing.target}", it) }
@@ -303,16 +300,10 @@ private fun DirectionsForm(
                         Modifier
                             .headingText()
                             .testTag("heading-${mode.rawValue}")
-                            // 도보 헤딩만 착지 대상(계단 회피 재조회) — 요청자는 focusable 앞(M2 소스 가드).
-                            .then(if (mode == DirectionsMode.walk) Modifier.landingTarget(ui.walkHeadingFocus).focusable() else Modifier)
                             .padding(top = 16.dp, bottom = 4.dp),
                         style = MaterialTheme.typography.titleMedium,
                     )
                     // (예약) 수단별 안내 시작 버튼 — 자동차는 여기, 도보·대중교통은 각 경로 행 펼침 본문 첫 항목(M4·M5).
-                    // 계단 회피 토글은 outcome과 무관하게 도보 섹션이 보이면 노출(ko 전용) — 켠 뒤 실패해도 되돌릴 수단이 남는다.
-                    if (mode == DirectionsMode.walk && lang == "ko") {
-                        StepFreeToggleRow(enabled = s.stepFreeEnabled, busy = s.stepFreeBusy, onToggle = vm::toggleStepFree, strings = strings)
-                    }
                     when (val outcome = results.outcomes[mode]) {
                         is DirectionsModeOutcome.Transit -> TransitOutcomeRows(
                             outcome.result, ui.expandedAlts,
@@ -320,13 +311,14 @@ private fun DirectionsForm(
                             destinationName = vm.destinationName, lang = lang, dataLocale = dataLocale, strings = strings,
                             stationEntry = stationEntry,
                         )
+                        // outcome의 브리핑은 첫 줄과 같은 응답이다(분류가 첫 줄로 한다) — 줄 목록을 그린다(E42).
                         is DirectionsModeOutcome.Walk -> WalkOutcomeRows(
-                            outcome.briefing, s.walkShortest,
+                            s.walkLines,
                             walkExpandedOverride = ui.walkExpandedOverride,
                             onWalkToggle = { ui.walkExpandedOverride = !(ui.walkExpandedOverride ?: !WalkCollapse.shouldCollapse(outcome.briefing.durationSeconds)) },
-                            shortestExpanded = ui.shortestExpanded, onShortestToggle = { ui.shortestExpanded = !ui.shortestExpanded },
+                            secondExpanded = ui.secondExpanded, onSecondToggle = { ui.secondExpanded = !ui.secondExpanded },
                             viaLabel = s.via?.label, strings = strings,
-                            guideStart = walkGuideStartSlot(s, lang),
+                            guideStart = walkGuideStartSlot(s),
                         )
                         is DirectionsModeOutcome.Car -> CarOutcomeRows(outcome.briefing, s.via?.label, lang, strings)
                         DirectionsModeOutcome.Empty -> TextRow(strings.get(if (mode == DirectionsMode.transit) "route.transit.noRoute" else "route.pedestrian.noRoute"), "empty-${mode.rawValue}")

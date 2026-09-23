@@ -58,9 +58,6 @@
       "downloadRequested": "Speech recognition setup requested. Try again in a moment.",
       "downloadReady": "Speech recognition is ready. Tap Start dictation again."
     },
-    "beacon": {
-      "guideStartWalkShortest": "Start shortest route guidance"
-    },
     "guide": {
       "autoReroute": "Now guiding on a new route. {count, plural, one {# step} other {# steps}}, {distance} total. {first}",
       "mediaVolumeZero": "Media volume is off, so guide sounds will not play",

@@ -58,9 +58,6 @@
       "downloadRequested": "Se solicitó preparar el reconocimiento de voz. Vuelve a intentarlo en un momento.",
       "downloadReady": "El reconocimiento de voz está listo. Vuelve a tocar Iniciar dictado."
     },
-    "beacon": {
-      "guideStartWalkShortest": "Iniciar guía por la ruta más corta"
-    },
     "guide": {
       "autoReroute": "Ahora te guío por una nueva ruta. {count, plural, one {# indicación} other {# indicaciones}}, {distance} en total. {first}",
       "mediaVolumeZero": "El volumen multimedia está apagado, por lo que no sonará la guía",

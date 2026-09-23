@@ -29,6 +29,7 @@ import space.dodoplanet.gildongmu.kit.RecentSearchStore
 import space.dodoplanet.gildongmu.kit.RouteService
 import space.dodoplanet.gildongmu.kit.SearchService
 import space.dodoplanet.gildongmu.kit.models.JusoAddress
+import space.dodoplanet.gildongmu.kit.models.WalkLineKind
 import space.dodoplanet.gildongmu.kit.pathOf
 import space.dodoplanet.gildongmu.kit.queryOf
 import space.dodoplanet.gildongmu.location.LocationException
@@ -51,10 +52,13 @@ class DirectionsViewModelTest {
 
     private val ko = CatalogStrings("ko")
     private val transitBody = Fixtures.kit("route-transit.json")
-    private val walkBody = Fixtures.kit("route-walk.json")
+    /** Kit 옛 봉투 fixture의 경로(fixture 디렉터리는 읽기 전용) — E42 줄 목록 봉투는 이것을 줄마다 싣는다. */
+    private val walkRoute = Fixtures.kit("route-walk.json").substringAfter("\"result\":").trimEnd().removeSuffix("}")
+    private fun linesBody(vararg kinds: String) = """{"lines":[""" + kinds.joinToString(",") { """{"kind":"$it","route":$walkRoute}""" } + "]}"
+    private val walkBody = linesBody("shortest")
     private val carBody = Fixtures.kit("route-car.json")
-    private val walkNoRoute = Fixtures.kit("route-walk-no-route.json")
-    private val walkWithShortest = walkBody.trimEnd().removeSuffix("}") + ",\"shortest\":" + walkBody.substringAfter("\"result\":").trimEnd().removeSuffix("}") + "}"
+    private val walkNoRoute = """{"lines":[]}"""
+    private val walkTwoLines = linesBody("shortest", "accessible")
     private val placesK1 = """{"places":[{"id":"k1","name":"강동역","category":"교통,수송 > 지하철","address":"서울 강동구","roadAddress":"서울 강동구 천호대로","lat":37.5,"lng":127.1,"nameRoman":"Gangdong Station"}],"provider":"kakao-local","query":"강동"}"""
     private val sixPlaces = """{"places":[""" + (1..6).joinToString(",") { """{"id":"p$it","name":"장소$it","category":"c","address":"a","roadAddress":"r","lat":37.5,"lng":127.1}""" } + """],"provider":"kakao-local","query":"q"}"""
     private val emptyPlaces = """{"places":[],"provider":"none","query":"q"}"""
@@ -155,14 +159,14 @@ class DirectionsViewModelTest {
         assertEquals(1, s.resultsRevision)
         // 도보 30분(1806초)은 접히지 않는 경계 안쪽이라 성공군 맨 앞으로 승격된다(:kit DirectionsOrder).
         assertEquals(listOf(DirectionsMode.walk, DirectionsMode.transit, DirectionsMode.car), s.results!!.displayedModes)
-        assertNull(s.walkShortest) // 응답에 shortest 없음
+        assertEquals(listOf(WalkLineKind.shortest), s.walkLines.map { it.lineKind })
         assertEquals(1, store.routes().size)
         assertNull(store.routes()[0].from) // 현재 위치는 null 투영
         assertEquals("강남역", store.routes()[0].to?.label)
         assertEquals(listOf(false), loc.forces)
         assertTrue(r.query("/api/route/transit").contains("includeStops=1"))
         assertFalse(r.query("/api/route/walk").contains("accessible"))
-        assertTrue(r.query("/api/route/walk").contains("alternatives=1"))
+        assertTrue(r.query("/api/route/walk").contains("lines=1"))
         assertEquals("강남역", store.endpoints(RecentEndpointScope.to).single().label)
         assertNull(s.landing) // 조회 완료에 착지 없음
     }
@@ -346,29 +350,19 @@ class DirectionsViewModelTest {
         assertTrue(r.paths().none { it.startsWith("/api/route") })
     }
 
-    @Test fun `계단 회피 - 조회 전 토글은 상태만, 조회 후 토글은 도보만 재조회하고 순서를 보존한다`() = runTest(dispatcher) {
-        val r = Routes(transit = transitBody, walk = walkWithShortest, car = carBody)
+    @Test fun `도보 두 줄 - lines=1 단독 조회, 줄은 같은 응답에서 결과와 함께 커밋되고 첫 줄이 도보 결과다`() = runTest(dispatcher) {
+        val r = Routes(transit = transitBody, walk = walkTwoLines, car = carBody)
         val m = vm(r)
         m.setEndpoint(gangnam, DirectionsFieldTarget.to)
-        m.toggleStepFree()
-        assertTrue(m.state.value.stepFreeEnabled)
-        dispatcher.scheduler.advanceUntilIdle()
-        assertTrue(r.paths().isEmpty())
         m.runQuery(); dispatcher.scheduler.advanceUntilIdle()
-        assertTrue(r.query("/api/route/walk").contains("accessible=true"))
-        assertNotNull(m.state.value.walkShortest)
-        val orderBefore = m.state.value.results!!.orderedModes
-        val callsBefore = r.paths().size
-        m.toggleStepFree()
-        assertTrue(m.state.value.stepFreeBusy)
-        dispatcher.scheduler.advanceUntilIdle()
         val s = m.state.value
-        assertFalse(s.stepFreeEnabled); assertFalse(s.stepFreeBusy)
-        assertEquals(listOf("/api/route/walk"), r.paths().drop(callsBefore))
-        assertFalse(r.seen.last().let(::queryOf).contains("accessible"))
-        assertEquals(orderBefore, s.results!!.orderedModes)
-        assertEquals(LandingTarget.WalkHeading, s.landing?.target)
-        assertEquals(1, s.resultsRevision) // 새 조회가 아니다
+        assertEquals(listOf(WalkLineKind.shortest, WalkLineKind.accessible), s.walkLines.map { it.lineKind })
+        assertEquals(s.walkLines.first().route, assertIs<DirectionsModeOutcome.Walk>(s.results!!.outcomes[DirectionsMode.walk]).briefing)
+        val q = r.query("/api/route/walk")
+        for (name in listOf("accessible", "variant", "alternatives", "includeGeometry")) assertFalse(q.contains("$name="), q)
+        // 필드 변경은 줄 목록까지 비운다(다른 조회 세대의 줄을 남기지 않는다).
+        m.setEndpoint(DirectionsEndpoint.Place("천호역", 37.5385, 127.1237), DirectionsFieldTarget.to)
+        assertTrue(m.state.value.walkLines.isEmpty())
     }
 
     @Test fun `필드 변경은 진행 조회를 취소하고 늦은 응답은 상태를 쓰지 않는다`() = runTest(dispatcher) {

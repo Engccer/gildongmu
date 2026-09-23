@@ -57,7 +57,6 @@
     <string name="android_beacon_food_riceBowl">C\'est l\'équivalent d\'un bol de riz (bap) !</string>
     <string name="android_beacon_food_riceHalfBowl">C\'est l\'équivalent d\'un demi-bol de riz (bap) !</string>
     <string name="android_beacon_food_tangerine">C\'est l\'équivalent d\'une mandarine !</string>
-    <string name="android_beacon_guideStartWalkShortest">Démarrer le guidage sur l’itinéraire le plus court</string>
     <string name="android_beacon_healthEnterWeight">Saisir mon poids</string>
     <string name="android_beacon_healthSummary">Sur ce tronçon, vous avez fait %1$s pas et brûlé environ %2$s kcal.</string>
     <string name="android_beacon_healthSummaryWithWeight">Sur ce tronçon, vous avez fait %1$s pas et brûlé environ %3$s kcal, sur la base de %2$s kg.</string>

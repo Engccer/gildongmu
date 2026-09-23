@@ -58,9 +58,6 @@
       "downloadRequested": "Préparation de la reconnaissance vocale demandée. Réessayez dans un instant.",
       "downloadReady": "La reconnaissance vocale est prête. Touchez à nouveau Démarrer la dictée."
     },
-    "beacon": {
-      "guideStartWalkShortest": "Démarrer le guidage sur l’itinéraire le plus court"
-    },
     "guide": {
       "autoReroute": "Guidage repris sur un nouvel itinéraire. {count, plural, one {# instruction} other {# instructions}}, {distance} au total. {first}",
       "mediaVolumeZero": "Le volume multimédia est coupé : les sons du guidage ne seront pas audibles",

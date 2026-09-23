@@ -2,6 +2,7 @@ package space.dodoplanet.gildongmu.guide
 
 import space.dodoplanet.gildongmu.kit.BeaconDest
 import space.dodoplanet.gildongmu.kit.WalkRouteVariant
+import space.dodoplanet.gildongmu.kit.models.WalkLineKind
 
 /** 경유지(N4). 좌표와 라벨 한 벌. */
 data class GuideWaypoint(val dest: BeaconDest, val label: String)
@@ -16,6 +17,10 @@ data class WalkStartRequest(
     val label: String,
     val accessible: Boolean,
     val variant: WalkRouteVariant?,
-    val shortestAvailable: Boolean,
+    /**
+     * 조회 화면에서 고른 줄(E42). `variant`·`accessible`은 이 종류의 투영이어야 하고 호출부가 셋을 함께 적는다. 시작 실패 행이
+     * 이 줄의 버튼 아래 그려진다. iOS의 `alternate`(안내 중 수동 전환 대상)는 안드로이드에 전환 기능이 없어 두지 않는다.
+     */
+    val line: WalkLineKind?,
     val waypoint: GuideWaypoint?,
 )

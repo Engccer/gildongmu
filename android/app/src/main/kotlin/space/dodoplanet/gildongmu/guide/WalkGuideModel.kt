@@ -283,7 +283,7 @@ class WalkGuideModel(
         if (starting || isTracking) return   // 추적 중 재요청이 살아 있는 세션의 인자(경유지·계단 회피)를 갈아엎지 않게
         starting = true
         lastStartRequest = request
-        mutate { copy(lastStartVariant = request.variant) }
+        mutate { copy(lastStartLine = request.line) }
         accessible = request.accessible
         sessionVariant = request.variant
         waypoint = request.waypoint

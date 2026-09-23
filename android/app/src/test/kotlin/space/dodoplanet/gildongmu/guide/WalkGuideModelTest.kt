@@ -11,6 +11,7 @@ import space.dodoplanet.gildongmu.kit.BeaconTone
 import space.dodoplanet.gildongmu.kit.HttpResponse
 import space.dodoplanet.gildongmu.kit.pathOf
 import space.dodoplanet.gildongmu.kit.WalkRouteVariant
+import space.dodoplanet.gildongmu.kit.models.WalkLineKind
 import space.dodoplanet.gildongmu.kit.spokenDistanceUnits
 import space.dodoplanet.gildongmu.location.LocationPermission
 import kotlin.test.Test
@@ -99,16 +100,16 @@ class WalkGuideModelTest {
         assertFalse(h.coordinator.isActive)
         assertFalse(h.model.ui.value.starting)
         assertEquals(FailResolution.none, h.model.ui.value.failResolution)
-        assertNull(h.model.ui.value.lastStartVariant)
+        assertEquals(WalkLineKind.broad, h.model.ui.value.lastStartLine)
         assertEquals(listOf(ResultHapticKind.failure), h.haptics.fired)
         // 실패 뒤 반쪽 세션이 살아나지 않는다 — 시작 톤·워치독·TTS 준비 없음.
         assertEquals(emptyList(), h.tones.played)
         assertEquals(0, h.speaker.prepares)
-        // 최단 버튼에서 시작한 실패는 그 버튼 아래 행이 그려지도록 variant를 보존한다.
+        // 최단 줄 버튼에서 시작한 실패는 그 버튼 아래 행이 그려지도록 줄 종류를 보존한다.
         h.model.clearFailure()
-        h.model.requestStart(h.request.copy(variant = WalkRouteVariant.shortest))
+        h.model.requestStart(h.request.copy(variant = WalkRouteVariant.shortest, line = WalkLineKind.shortest))
         settle()
-        assertEquals(WalkRouteVariant.shortest, h.model.ui.value.lastStartVariant)
+        assertEquals(WalkLineKind.shortest, h.model.ui.value.lastStartLine)
         assertEquals(GuideStatus.unavailable, h.model.ui.value.status)
     }
 
@@ -383,7 +384,7 @@ class WalkGuideModelTest {
         h.model.restart()
         assertEquals(0, h.controller.starts)
         h.perms.location = LocationPermission.Coarse
-        h.model.requestStart(h.request.copy(accessible = true, variant = WalkRouteVariant.shortest))
+        h.model.requestStart(h.request.copy(accessible = true, variant = WalkRouteVariant.shortest, line = WalkLineKind.shortest))
         settle()
         assertEquals(FailResolution.precise, h.model.ui.value.failResolution)
         h.perms.location = LocationPermission.Fine
@@ -391,7 +392,7 @@ class WalkGuideModelTest {
         h.model.restart()
         settle()
         assertEquals(GuideStatus.tracking, h.model.ui.value.status)
-        assertEquals(WalkRouteVariant.shortest, h.model.ui.value.lastStartVariant)
+        assertEquals(WalkLineKind.shortest, h.model.ui.value.lastStartLine)
         h.walkTo(0.0)
         settle()
         val url = h.transport.seenUrls.single()

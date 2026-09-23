@@ -143,7 +143,7 @@
       "status": "ported",
       "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/RouteService.kt",
       "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/RouteServiceTest.kt",
-      "note": "via: (lat:, lng:)? 튜플 → RoutePoint?(응답 RouteWaypoint.coord와 같은 타입), walkAlternatives 튜플 반환 → RouteService.WalkAlternatives. Kit RouteServiceQueryTests의 StationService·NearbyService lang 케이스는 StationServiceTest·NearbyServiceTest에 있다. ⚠ E42(2026-09-23) `walkLines`·`lines=1` 조회 미이식(E43 몫 — 서버 옛 봉투라 깨지지 않는다)"
+      "note": "via: (lat:, lng:)? 튜플 → RoutePoint?(응답 RouteWaypoint.coord와 같은 타입), walkAlternatives 튜플 반환 → RouteService.WalkAlternatives. Kit RouteServiceQueryTests의 StationService·NearbyService lang 케이스는 StationServiceTest·NearbyServiceTest에 있다. E42 `walkLines`(`lines=1` 단독 옵트인, 모르는 줄 종류는 뺀다)는 이식했다. `walkAlternatives`는 Swift처럼 옛 조회 화면 호환으로 남아 있고 앱은 쓰지 않는다"
     },
     {
       "swift": "StationMatch.swift",

@@ -6,12 +6,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -36,9 +34,9 @@ import space.dodoplanet.gildongmu.kit.models.CarRouteBriefing
 import space.dodoplanet.gildongmu.kit.models.TransitRoute
 import space.dodoplanet.gildongmu.kit.models.TransitRouteLeg
 import space.dodoplanet.gildongmu.kit.models.TransitRouteResult
-import space.dodoplanet.gildongmu.kit.models.WalkRouteBriefing
+import space.dodoplanet.gildongmu.kit.models.WalkLineKind
+import space.dodoplanet.gildongmu.kit.models.WalkRouteLine
 import space.dodoplanet.gildongmu.kit.spokenDistanceUnits
-import space.dodoplanet.gildongmu.kit.WalkRouteVariant
 
 // 길찾기 행 렌더(spec §3 머리·§3-4, iOS `RouteBriefing.swift`·`outcomeRows` 대응). 문장은 `RouteText`·`TransitLegText`가 만들고
 // 여기는 시각·시맨틱 조립만. 행 관용구 둘: 비상호작용 행은 `mergedRow`, 상호작용 행은 `clickable + clearAndSetSemantics`(M1 `RecentRow`).
@@ -127,27 +125,6 @@ fun DisclosureRow(
     if (expanded) Column(Modifier.padding(start = 12.dp)) { content() }
 }
 
-/**
- * 계단 회피 토글(ko 전용, 도보 섹션 상단 — outcome과 무관하게 섹션이 보이면 노출). 재조회 중엔 라벨에 "조회 중"을
- * 병기한다(이 창의 재탭은 가드로 무시되므로 라벨이 유일한 진행 신호). `toggleable`이 자식을 병합하고 스위치 상태를 낸다.
- */
-@Composable
-fun StepFreeToggleRow(enabled: Boolean, busy: Boolean, onToggle: () -> Unit, strings: Strings) {
-    val label = joinText(strings.get("route.pedestrian.stepFreeToggle"), if (busy) strings.get("android.directions.searching") else null)
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .toggleable(value = enabled, role = Role.Switch, onValueChange = { onToggle() })
-            .testTag("stepfree")
-            .defaultMinSize(minHeight = 48.dp)
-            .padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
-        Switch(checked = enabled, onCheckedChange = null)
-    }
-}
-
 /** 대중교통 경로 목록의 한 항목(추천·대안 공통 — 컨트롤이 같고 초기 펼침만 다르다). */
 data class TransitRouteEntry(val route: TransitRoute, val name: String, val defaultExpanded: Boolean)
 
@@ -209,34 +186,33 @@ private fun StationRow(
 }
 
 /**
- * 도보 본문: 추천·최단 2행 펼침(대중교통 대안 동형). 추천 초기 펼침은 :kit `WalkCollapse`(표시 분과 같은 반올림),
- * 최단은 같은 응답 쌍만·기본 접힘. 라벨이 각 행 **자기 브리핑의** `stepFreeNotice`를 병기한다.
+ * 도보 본문: 줄 목록 펼침(E42, 대중교통 대안 동형). 라벨은 `이름, 총 …, 약 …분` 한 객체이고 사유 문장이 없다(이름이 곧 정보다).
+ * 첫 줄 초기 펼침은 :kit `WalkCollapse`(표시 분과 같은 반올림), 나머지는 기본 접힘. 안내 시작 버튼은 줄 **안** 맨 위 —
+ * 라벨이 그 줄 이름이라 버튼 목록에서 어느 경로의 안내인지 구분된다. 줄이 하나여도 같은 모양이다.
  */
 @Composable
 fun WalkOutcomeRows(
-    briefing: WalkRouteBriefing,
-    shortest: WalkRouteBriefing?,
+    lines: List<WalkRouteLine>,
     walkExpandedOverride: Boolean?,
     onWalkToggle: () -> Unit,
-    shortestExpanded: Boolean,
-    onShortestToggle: () -> Unit,
+    secondExpanded: Boolean,
+    onSecondToggle: () -> Unit,
     viaLabel: String?,
     strings: Strings,
-    /** M4 도보 안내 시작 버튼 슬롯(추천 null / 최단 `shortest`) — 실험판·도착 좌표가 있을 때만 화면이 넘긴다. */
-    guideStart: (@Composable (variant: WalkRouteVariant?) -> Unit)? = null,
+    /** 도보 안내 시작 버튼 슬롯(줄 종류) — 도착 좌표가 있을 때만 화면이 넘긴다. */
+    guideStart: (@Composable (line: WalkLineKind) -> Unit)? = null,
 ) {
     val meters = strings.get("android.unit.spokenMeters")
-    val walkExpanded = walkExpandedOverride ?: !WalkCollapse.shouldCollapse(briefing.durationSeconds)
-    val walkLabel = joinText(strings.get("directions.walkRecommended"), walkSummaryText(briefing, strings), briefing.stepFreeNotice)
-    DisclosureRow(label = walkLabel, tag = "walk-recommended", expanded = walkExpanded, onToggle = onWalkToggle, strings = strings, spoken = spokenDistanceUnits(walkLabel, meters)) {
-        guideStart?.invoke(null)
-        walkStepItems(briefing, viaLabel, strings).forEachIndexed { i, item -> TextRow(item, "walk-step-$i", spoken = spokenDistanceUnits(item, meters)) }
-    }
-    if (shortest != null) {
-        val shortLabel = joinText(strings.get("directions.walkShortest"), walkSummaryText(shortest, strings), shortest.stepFreeNotice)
-        DisclosureRow(label = shortLabel, tag = "walk-shortest", expanded = shortestExpanded, onToggle = onShortestToggle, strings = strings, spoken = spokenDistanceUnits(shortLabel, meters)) {
-            guideStart?.invoke(WalkRouteVariant.shortest)
-            walkStepItems(shortest, viaLabel, strings).forEachIndexed { i, item -> TextRow(item, "walk-shortest-step-$i", spoken = spokenDistanceUnits(item, meters)) }
+    lines.forEachIndexed { index, line ->
+        val kind = line.lineKind ?: return@forEachIndexed
+        val expanded = if (index == 0) walkExpandedOverride ?: !WalkCollapse.shouldCollapse(line.route.durationSeconds) else secondExpanded
+        val label = joinText(strings.get(walkLineNameKey(kind)), walkSummaryText(line.route, strings))
+        DisclosureRow(
+            label = label, tag = "walk-line-${kind.rawValue}", expanded = expanded,
+            onToggle = if (index == 0) onWalkToggle else onSecondToggle, strings = strings, spoken = spokenDistanceUnits(label, meters),
+        ) {
+            guideStart?.invoke(kind)
+            walkStepItems(line.route, viaLabel, strings).forEachIndexed { i, item -> TextRow(item, "walk-${kind.rawValue}-step-$i", spoken = spokenDistanceUnits(item, meters)) }
         }
     }
 }

@@ -57,7 +57,6 @@
     <string name="android_beacon_food_riceBowl">ごはん一膳分です！</string>
     <string name="android_beacon_food_riceHalfBowl">ごはん半膳分です！</string>
     <string name="android_beacon_food_tangerine">みかん1個分です！</string>
-    <string name="android_beacon_guideStartWalkShortest">最短ルート案内を開始</string>
     <string name="android_beacon_healthEnterWeight">体重を入力する</string>
     <string name="android_beacon_healthSummary">この区間で%1$s歩歩き、約%2$skcalを消費しました。</string>
     <string name="android_beacon_healthSummaryWithWeight">この区間で%1$s歩歩き、%2$skgを基準に約%3$skcalを消費しました。</string>

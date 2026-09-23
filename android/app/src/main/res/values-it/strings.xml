@@ -57,7 +57,6 @@
     <string name="android_beacon_food_riceBowl">Equivale a una ciotola di riso (bap)!</string>
     <string name="android_beacon_food_riceHalfBowl">Equivale a mezza ciotola di riso (bap)!</string>
     <string name="android_beacon_food_tangerine">Equivale a un mandarino!</string>
-    <string name="android_beacon_guideStartWalkShortest">Avvia la guida sul percorso più breve</string>
     <string name="android_beacon_healthEnterWeight">Inserisci il peso</string>
     <string name="android_beacon_healthSummary">In questo tratto hai fatto {1, plural, one {%1$s passo} other {%1$s passi}} e bruciato circa %2$s kcal.</string>
     <string name="android_beacon_healthSummaryWithWeight">In questo tratto hai fatto {1, plural, one {%1$s passo} other {%1$s passi}} e bruciato circa %3$s kcal, calcolate per %2$s kg.</string>

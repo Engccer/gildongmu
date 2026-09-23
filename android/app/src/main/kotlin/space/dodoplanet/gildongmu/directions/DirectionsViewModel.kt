@@ -47,7 +47,7 @@ import space.dodoplanet.gildongmu.kit.bilingualName
 import space.dodoplanet.gildongmu.kit.isInKorea
 import space.dodoplanet.gildongmu.kit.models.JusoAddress
 import space.dodoplanet.gildongmu.kit.models.Place
-import space.dodoplanet.gildongmu.kit.models.WalkRouteBriefing
+import space.dodoplanet.gildongmu.kit.models.WalkRouteLine
 import space.dodoplanet.gildongmu.location.LocationException
 
 /** 조회 국면(iOS `DirectionsModel.Phase` 미러). 커버리지 밖은 실패가 아니다. */
@@ -70,7 +70,6 @@ data class PromotedDestination(val label: String, val lat: Double, val lng: Doub
 sealed class LandingTarget {
     data class Field(val field: DirectionsFieldTarget) : LandingTarget()
     data object Submit : LandingTarget()
-    data object WalkHeading : LandingTarget()
     data class RecentRoute(val id: String) : LandingTarget()
 }
 
@@ -81,14 +80,16 @@ data class DirectionsUiState(
     val to: DirectionsEndpoint? = null,
     val via: DirectionsEndpoint.Place? = null,
     val phase: DirectionsPhase = DirectionsPhase.Idle,
-    /** 결과·최단·승격본은 **같은 순간에만** 커밋한다(중간 return에서 한쪽만 선 상태가 관찰되지 않게). */
+    /** 결과·도보 줄·승격본은 **같은 순간에만** 커밋한다(중간 return에서 한쪽만 선 상태가 관찰되지 않게). */
     val results: DirectionsResults? = null,
-    val walkShortest: WalkRouteBriefing? = null,
+    /**
+     * 도보 줄 목록(E42, `lines=1`). 서버 순서가 화면 순서이고 첫 줄이 기본 펼침이다. `results`의 도보 결과(= 첫 줄)와 같은
+     * 응답에서 온 것만 노출한다(스냅샷 교체). 빈 목록 = 미조회·경로 없음·조회 실패.
+     */
+    val walkLines: List<WalkRouteLine> = emptyList(),
     val promotedDestination: PromotedDestination? = null,
     /** 조회 완료 세대(화면 펼침 상태 초기화 신호). */
     val resultsRevision: Int = 0,
-    val stepFreeEnabled: Boolean = false,
-    val stepFreeBusy: Boolean = false,
     val isRefreshingCurrent: Boolean = false,
     /** "정확한 위치 허용" 재요청이 거부된 뒤에만 설정 열기 폴백을 낸다(spec §3-1 표 8). 새 조회·필드 변경에 리셋. */
     val preciseRetryFailed: Boolean = false,
@@ -101,7 +102,7 @@ data class DirectionsUiState(
     val landing: LandingRequest? = null,
     val notice: Notice = Notice(0, ""),
 ) {
-    val isBusy: Boolean get() = phase == DirectionsPhase.Locating || phase == DirectionsPhase.Loading || stepFreeBusy
+    val isBusy: Boolean get() = phase == DirectionsPhase.Locating || phase == DirectionsPhase.Loading
 }
 
 /**
@@ -151,9 +152,6 @@ class DirectionsViewModel(
     private var addressJob: Job? = null
     /** 사용자가 최근 경로 목록을 건드렸으면 늦게 끝난 init 로드가 그 결과를 덮지 않는다. */
     private var recentRoutesTouched = false
-    private var lastCoords: Coords? = null
-
-    private data class Coords(val origin: NearbyCoord, val dest: NearbyCoord, val via: RoutePoint?)
 
     private class QueryTimeout : Exception("query timeout")
 
@@ -227,7 +225,7 @@ class DirectionsViewModel(
         isInFlight = false
         _state.update {
             it.copy(
-                stepFreeBusy = false, results = null, walkShortest = null, promotedDestination = null,
+                results = null, walkLines = emptyList(), promotedDestination = null,
                 phase = DirectionsPhase.Idle, notice = next(""), preciseRetryFailed = false,
             )
         }
@@ -260,7 +258,7 @@ class DirectionsViewModel(
     }
 
     private suspend fun performQuery(from: DirectionsEndpoint, to: DirectionsEndpoint, via: DirectionsEndpoint.Place?, addressRequest: DirectionsAddressState.Request?) {
-        _state.update { it.copy(results = null, walkShortest = null, promotedDestination = null) }
+        _state.update { it.copy(results = null, walkLines = emptyList(), promotedDestination = null) }
         var current: NearbyCoord? = null
         // 현재 위치 끝점이 옛 위치로 풀렸으면 그 좌표의 측정 시각(완료 통지 뒷문장).
         var staleAt: Double? = null
@@ -332,16 +330,15 @@ class DirectionsViewModel(
             if (entrance != null) promoted = PromotedDestination(entrance.name, entrance.lat, entrance.lng)
         }
         val dest = promoted?.let { NearbyCoord(it.lat, it.lng) } ?: queried
-        lastCoords = Coords(origin, dest, viaCoord)
 
-        val accessible = _state.value.stepFreeEnabled && lang == "ko"
         val dl = if (lang == "ko") DataLocale.ko else DataLocale.en
         val settled = coroutineScope {
             // 대중교통은 경유지가 있으면 호출하지 않는다(ODsay 미지원) — 실패도 경로 없음도 아닌 별도 상태.
             val transit = async(io) {
                 if (viaCoord == null) timed { routes.transit(origin.lat, origin.lng, dest.lat, dest.lng, includeStops = true, lang = lang) } else null
             }
-            val walk = async(io) { timed { routes.walkAlternatives(origin.lat, origin.lng, dest.lat, dest.lng, accessible, dl, viaCoord) } }
+            // 도보 줄 목록(E42). 첫 줄 실패는 서버 502(→ 실패), 둘째 줄 실패는 서버가 그 줄만 빼서 흡수한다. 빈 목록 = 경로 없음.
+            val walk = async(io) { timed { routes.walkLines(origin.lat, origin.lng, dest.lat, dest.lng, dl, viaCoord) } }
             val car = async(io) { timed { routes.car(origin.lat, origin.lng, dest.lat, dest.lng, lang, via = viaCoord) } }
             Triple(transit.await(), walk.await(), car.await())
         }
@@ -350,7 +347,7 @@ class DirectionsViewModel(
         val outcomes = mapOf(
             DirectionsMode.transit to (transit?.let(DirectionsOutcomeClassifier::classifyTransit) ?: DirectionsModeOutcome.UnsupportedWaypoint),
             DirectionsMode.car to DirectionsOutcomeClassifier.classifyCar(car),
-            DirectionsMode.walk to DirectionsOutcomeClassifier.classifyWalk(walk.map { it.result }),
+            DirectionsMode.walk to DirectionsOutcomeClassifier.classifyWalk(walk.map { it.firstOrNull()?.route }),
         )
         // 서버 마커 이중 방어 — place 종단점이 한국 밖일 수 있다. 하나라도 감지하면 화면 전체를 전환한다.
         if (outcomes.values.any { it.isOutOfCoverage }) {
@@ -364,7 +361,7 @@ class DirectionsViewModel(
         val recent = store.recordRoute(RecentRoute(recentSide(from), recentSide(to), via?.let(::recentSide)))
         _state.update {
             it.copy(
-                results = results, walkShortest = walk.getOrNull()?.shortest, promotedDestination = promoted,
+                results = results, walkLines = walk.getOrNull().orEmpty(), promotedDestination = promoted,
                 phase = DirectionsPhase.Settled(results.successCount), resultsRevision = it.resultsRevision + 1,
                 recentRoutes = recent,
                 // 완료 통지는 합산 1문장(수단별 개별 통지 금지). 포커스는 옮기지 않는다(위원장 판정 2026-08-02).
@@ -394,41 +391,6 @@ class DirectionsViewModel(
         throw e
     } catch (e: Exception) {
         Result.failure(e)
-    }
-
-    /** 계단 회피 토글(웹 toggleStepFree 동형): 결과가 있으면 도보만 재조회, 조회 전이면 상태만. */
-    fun toggleStepFree() {
-        if (isInFlight) return
-        _state.update { it.copy(stepFreeEnabled = !it.stepFreeEnabled) }
-        val coords = lastCoords ?: return
-        if (_state.value.results == null) return
-        isInFlight = true
-        _state.update { it.copy(stepFreeBusy = true) }
-        queryJob = viewModelScope.launch {
-            try {
-                refetchWalk(coords)
-            } finally {
-                if (currentCoroutineContext().isActive) {
-                    isInFlight = false
-                    _state.update { it.copy(stepFreeBusy = false) }
-                }
-            }
-        }
-    }
-
-    private suspend fun refetchWalk(coords: Coords) {
-        val lang = dataLocale()
-        val accessible = _state.value.stepFreeEnabled && lang == "ko"
-        val dl = if (lang == "ko") DataLocale.ko else DataLocale.en
-        val walk = withContext(io) { timed { routes.walkAlternatives(coords.origin.lat, coords.origin.lng, coords.dest.lat, coords.dest.lng, accessible, dl, coords.via) } }
-        currentCoroutineContext().ensureActive()
-        val current = _state.value.results ?: return
-        var outcome = DirectionsOutcomeClassifier.classifyWalk(walk.map { it.result })
-        // 부분 재조회가 다른 수단 결과까지 버리게 하지 않는다 — 커버리지 밖은 도보 오류로.
-        if (outcome.isOutOfCoverage) outcome = DirectionsModeOutcome.Error
-        _state.update {
-            it.copy(results = current.replacingWalk(outcome), walkShortest = walk.getOrNull()?.shortest, landing = landingNext(LandingTarget.WalkHeading))
-        }
     }
 
     /** "정확한 위치 허용"(GeoReduced 해결 버튼): 재요청이 FINE이면 재조회, 아니면 통지만. */

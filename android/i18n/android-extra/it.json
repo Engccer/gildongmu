@@ -58,9 +58,6 @@
       "downloadRequested": "Preparazione del riconoscimento vocale richiesta. Riprova tra poco.",
       "downloadReady": "Il riconoscimento vocale è pronto. Tocca di nuovo Avvia dettatura."
     },
-    "beacon": {
-      "guideStartWalkShortest": "Avvia la guida sul percorso più breve"
-    },
     "guide": {
       "autoReroute": "Ora ti guido su un nuovo percorso. {count, plural, one {# indicazione} other {# indicazioni}}, {distance} in totale. {first}",
       "mediaVolumeZero": "Il volume multimediale è disattivato, quindi i suoni della guida non verranno riprodotti",

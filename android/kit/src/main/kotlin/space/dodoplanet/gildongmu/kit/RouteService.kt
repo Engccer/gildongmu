@@ -5,6 +5,8 @@ import space.dodoplanet.gildongmu.kit.models.TransitRouteEnvelope
 import space.dodoplanet.gildongmu.kit.models.TransitRouteResult
 import space.dodoplanet.gildongmu.kit.models.WalkRouteBriefing
 import space.dodoplanet.gildongmu.kit.models.WalkRouteEnvelope
+import space.dodoplanet.gildongmu.kit.models.WalkRouteLine
+import space.dodoplanet.gildongmu.kit.models.WalkRouteLinesEnvelope
 
 /**
  * 자동차·대중교통·도보 경로 조회 `GET ?origin=lat,lng&dest=lat,lng`. Kit `RouteService.swift` 미러.
@@ -96,7 +98,25 @@ class RouteService(val client: APIClient) {
     }
 
     /**
-     * 추천+최단 병렬 조회(M3, 조회 화면 전용 — 기하 없음). `shortest` null은 "필드 부재(키 없음)"와 "최단 실패
+     * 조회 화면 도보 줄 목록(E42, `lines=1` 단독 옵트인 — 기하 없음). 모르는 종류의 줄은 뺀다.
+     * 빈 목록은 "경로 없음", 첫 줄 실패는 서버 502라 throw(부분 성공 비대칭 — spec 2026-09-23 §2.1).
+     */
+    suspend fun walkLines(
+        originLat: Double, originLng: Double,
+        destLat: Double, destLng: Double,
+        lang: DataLocale,
+        via: RoutePoint?,
+    ): List<WalkRouteLine> {
+        val query = arrayListOf("origin" to coordPair(originLat, originLng), "dest" to coordPair(destLat, destLng))
+        if (lang != DataLocale.ko) query.add("lang" to lang.rawValue)
+        if (via != null) query.add("via" to coordPair(via.lat, via.lng))
+        query.add("lines" to "1")
+        return client.get<WalkRouteLinesEnvelope>("/api/route/walk", query).lines.filter { it.lineKind != null }
+    }
+
+    /**
+     * 추천+최단 병렬 조회(M3, **옛 조회 화면 호환** — 앱은 E42부터 `walkLines`를 쓴다. 서버는 옛 앱을 위해 봉투
+     * 모양을 유지한다 — spec 2026-09-23 §2.3). `shortest` null은 "필드 부재(키 없음)"와 "최단 실패
      * 흡수(null)"를 뭉친 것 — 두 경우 소비자 행동이 같다(최단 행 미노출). 기본 경로 실패는 서버가 502로 던지므로
      * 여기 도달하지 않는다(부분 성공 비대칭, spec §3.1).
      */
@@ -120,7 +140,7 @@ class RouteService(val client: APIClient) {
     }
 }
 
-/** 도보 경로 축(M3). 서버 `variant` 쿼리 값과 1:1. */
+/** 도보 경로 축(M3). 서버 `variant` 쿼리 값과 1:1. E42부터 ko는 카카오 `SHORTEST`(폴백 Tmap), en은 Tmap. */
 enum class WalkRouteVariant {
     shortest;
 
@@ -133,7 +153,7 @@ enum class WalkRouteVariant {
 
 /**
  * 데이터 언어(웹 `data-locale.ts` 동형 — 외부 데이터는 ko 외 전부 en). 서버 `lang` 쿼리 값과 1:1.
- * 도보 경로(`walk`·`walkAlternatives`)와 줄 단위 영어 자격(`transitLegUsesEnglish`)이 이 타입을 받는다.
+ * 도보 경로(`walk`·`walkLines`·`walkAlternatives`)와 줄 단위 영어 자격(`transitLegUsesEnglish`)이 이 타입을 받는다.
  */
 enum class DataLocale {
     ko, en;

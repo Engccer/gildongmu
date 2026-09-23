@@ -2,7 +2,7 @@ package space.dodoplanet.gildongmu.guide
 
 import space.dodoplanet.gildongmu.kit.BeaconDest
 import space.dodoplanet.gildongmu.kit.WalkHealthSummary
-import space.dodoplanet.gildongmu.kit.WalkRouteVariant
+import space.dodoplanet.gildongmu.kit.models.WalkLineKind
 
 /** iOS `BeaconModel.Status`. `denied`·`unavailable`은 사용자가 할 조치가 남은 상태 — 시작 실패 행이 문장·해결 버튼을 든다. */
 enum class GuideStatus {
@@ -68,8 +68,8 @@ data class WalkGuideUiState(
     val failResolution: FailResolution = FailResolution.none,
     /** 시작 실패 전이 세대 — 실패 행의 착지 키(재컴포지션이 아니라 실패 전이에만 착지). */
     val failSeq: Int = 0,
-    /** 시작 실패 행을 어느 시작 버튼 아래 그릴지(추천 null / 최단). */
-    val lastStartVariant: WalkRouteVariant? = null,
+    /** 시작 실패 행을 어느 줄의 시작 버튼 아래 그릴지(E42 줄 종류). */
+    val lastStartLine: WalkLineKind? = null,
 ) {
     val isTracking: Boolean get() = status == GuideStatus.tracking
 

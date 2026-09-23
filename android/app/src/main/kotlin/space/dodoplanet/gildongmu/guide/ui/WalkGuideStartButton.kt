@@ -28,7 +28,7 @@ import space.dodoplanet.gildongmu.guide.WalkStartRequest
 import space.dodoplanet.gildongmu.guide.guideStrings
 import space.dodoplanet.gildongmu.kit.BeaconDest
 import space.dodoplanet.gildongmu.kit.DirectionsEndpoint
-import space.dodoplanet.gildongmu.kit.WalkRouteVariant
+import space.dodoplanet.gildongmu.kit.models.WalkLineKind
 import space.dodoplanet.gildongmu.location.LocationPermission
 import space.dodoplanet.gildongmu.location.appDetailsSettingsIntent
 import space.dodoplanet.gildongmu.nav.tryStartActivity
@@ -39,20 +39,21 @@ import space.dodoplanet.gildongmu.nav.tryStartActivity
  * 시트·띠바는 `hasScreen` 조건이라 실패 상태를 그리지 않는다 — 이 행이 유일한 자리다.
  */
 @Composable
-fun WalkGuideStartButton(dest: BeaconDest, label: String, accessible: Boolean, variant: WalkRouteVariant?, shortestAvailable: Boolean, waypoint: GuideWaypoint?) {
+fun WalkGuideStartButton(dest: BeaconDest, label: String, line: WalkLineKind, waypoint: GuideWaypoint?) {
     val context = LocalContext.current
     val res = context.resources
     val strings = remember(res) { guideStrings(res) }
     val ui by GuideSession.walk.ui.collectAsState()
     val scope = rememberCoroutineScope()
     val failFocus = remember { FocusRequester() }
-    val tag = if (variant == WalkRouteVariant.shortest) "guide-start-walk-shortest" else "guide-start-walk"
+    val tag = "guide-start-walk-${line.rawValue}"
     Column(Modifier.fillMaxWidth()) {
         Button(
-            onClick = { GuideSession.startWalk(WalkStartRequest(dest, label, accessible, variant, shortestAvailable, waypoint)) },
+            // 요청 축은 줄 종류의 투영(E42 — 계단 회피는 이제 줄의 성질이다). 셋을 함께 적는다(A13).
+            onClick = { GuideSession.startWalk(WalkStartRequest(dest, label, line.isAccessible, line.variant, line, waypoint)) },
             modifier = Modifier.fillMaxWidth().tapTarget().testTag(tag).padding(vertical = 4.dp),
-        ) { Text(strings.get(if (variant == WalkRouteVariant.shortest) "android.beacon.guideStartWalkShortest" else "beacon.guideStartWalk")) }
-        val showsFailure = ui.status.isFailure && ui.statusText.isNotEmpty() && ui.lastStartVariant == variant
+        ) { Text(strings.get(walkLineStartKey(line))) }
+        val showsFailure = ui.status.isFailure && ui.statusText.isNotEmpty() && ui.lastStartLine == line
         if (showsFailure) {
             // `BodyLine`은 `focus`를 받지 않고 `a11y/`는 m1 소유라 `mergedRow` 직접(리뷰 N3-6).
             Text(ui.statusText, Modifier.fillMaxWidth().mergedRow("guide-fail", focus = failFocus).padding(vertical = 8.dp))
@@ -78,17 +79,23 @@ fun WalkGuideStartButton(dest: BeaconDest, label: String, accessible: Boolean, v
     }
 }
 
+/** 줄 안 안내 시작 버튼 문구(E42, iOS `WalkLineText.startKey` 미러 — 라벨이 그 줄 이름이라 어느 경로의 안내인지 구분된다). */
+fun walkLineStartKey(line: WalkLineKind): String = when (line) {
+    WalkLineKind.shortest -> "beacon.guideStartWalkShortest"
+    WalkLineKind.accessible -> "beacon.guideStartWalkAccessible"
+    WalkLineKind.broad -> "beacon.guideStartWalkBroad"
+    WalkLineKind.recommended -> "beacon.guideStartWalkRecommended"
+}
+
 /**
  * directions 슬롯 조립(spec §7-1): 도착 좌표가 있을 때만. 도착 = `promotedDestination ?: (to as Place)`(iOS `trackedDestination`
- * 동형), `to == Current`면 버튼 없음. 계단 회피는 ko에서만 서버 축이라 `stepFreeEnabled ∧ lang == ko`.
+ * 동형), `to == Current`면 버튼 없음. 계단 회피·경로 축은 줄 종류가 정한다(E42).
  */
-fun walkGuideStartSlot(s: DirectionsUiState, lang: String): (@Composable (variant: WalkRouteVariant?) -> Unit)? {
+fun walkGuideStartSlot(s: DirectionsUiState): (@Composable (line: WalkLineKind) -> Unit)? {
     val target = s.promotedDestination?.let { it.label to BeaconDest(it.lat, it.lng) }
         ?: (s.to as? DirectionsEndpoint.Place)?.let { it.label to BeaconDest(it.lat, it.lng) }
         ?: return null
     val (label, dest) = target
-    val accessible = s.stepFreeEnabled && lang == "ko"
-    val shortestAvailable = s.walkShortest != null
     val waypoint = s.via?.let { GuideWaypoint(BeaconDest(it.lat, it.lng), it.label) }
-    return { variant -> WalkGuideStartButton(dest, label, accessible, variant, shortestAvailable, waypoint) }
+    return { line -> WalkGuideStartButton(dest, label, line, waypoint) }
 }
