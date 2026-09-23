@@ -134,9 +134,13 @@ final class DirectionsModel {
     private(set) var requeryRevision = 0
     /// 마지막으로 끝난 재조회(포커스 착지 대상 판정용).
     private(set) var lastRequeryResult: (axis: TransitModeAxis, state: TransitRequeryState)?
-    /// 조회 시점의 출발·도착 좌표 — 재조회가 **같은 출발지**로 부른다(현재 위치를 다시 재면 다른 출발지의
-    /// 경로가 한 목록에 섞인다). `results`와 같은 순간에만 커밋한다.
-    private var resultsCoords: (origin: (lat: Double, lng: Double), dest: (lat: Double, lng: Double))?
+    /// 조회 시점의 출발·도착 좌표와 데이터 언어 — 재조회가 **같은 출발지·같은 언어**로 부른다(현재 위치를
+    /// 다시 재면 다른 출발지의 경로가, 언어를 다시 읽으면 다른 언어의 경로가 한 목록에 섞인다).
+    /// `results`와 같은 순간에만 커밋한다.
+    private var resultsCoords: (origin: (lat: Double, lng: Double), dest: (lat: Double, lng: Double), lang: String)?
+    /// 진행 중인 재조회(축별). 화면 이탈(`cancel()`)이 함께 취소한다 — 취소하지 않으면 다른 탭에서 실패
+    /// `.high` 통지·진동이 읽던 문장을 끊는다(접근성 감사 #1).
+    private var requeryTasks: [TransitModeAxis: Task<Void, Never>] = [:]
     /// 찾은 재조회 경로(목록 끝에 대안으로 붙는다, 서버 `requeryAxes` 순서). 이름은 그 축으로 싣는다.
     var requeriedRoutes: [TransitRoute] {
         guard case .transit(let result)? = results?.outcomes[.transit] else { return [] }
@@ -306,7 +310,7 @@ final class DirectionsModel {
         resultsOriginNeedsStartNotice = false
         resultsStaleNotice = nil
         promotedDestination = nil
-        transitRequery = [:]
+        cancelRequeries()
         resultsCoords = nil
         phase = .idle
     }
@@ -319,9 +323,9 @@ final class DirectionsModel {
         guard let coords = resultsCoords, transitRequery[axis] != .loading else { return }
         let revision = resultsRevision
         let service = self.service
-        let lang = AppLanguage.dataLocale
+        let lang = coords.lang
         transitRequery[axis] = .loading
-        Task { @MainActor in
+        requeryTasks[axis] = Task { @MainActor in
             let state: TransitRequeryState
             do {
                 let result = try await withQueryTimeout {
@@ -339,8 +343,9 @@ final class DirectionsModel {
             } catch {
                 state = .failed
             }
-            // 그 사이 새 조회·결과 폐기가 있었으면 옛 세대 결과는 버린다.
-            guard revision == resultsRevision, resultsCoords != nil else { return }
+            // 화면 이탈로 취소됐거나, 그 사이 새 조회·결과 폐기가 있었으면 옛 세대 결과는 버린다.
+            guard !Task.isCancelled, revision == resultsRevision, resultsCoords != nil else { return }
+            requeryTasks[axis] = nil
             transitRequery[axis] = state
             lastRequeryResult = (axis, state)
             requeryRevision += 1
@@ -357,12 +362,25 @@ final class DirectionsModel {
         }
     }
 
+    /// 결과 세대가 끝날 때(폐기·새 조회) 재조회를 모두 끊고 비운다.
+    private func cancelRequeries() {
+        requeryTasks.values.forEach { $0.cancel() }
+        requeryTasks = [:]
+        transitRequery = [:]
+    }
+
     /// 화면 이탈·epoch 재생성 시 진행 조회 폐기(I2 계약: 뷰 로컬 상태 + 명시 cancel).
     /// 탭 전환 취소 후 재진입 시 조회 버튼 고착 방지(취소된 태스크는 말미 가드로 리셋 불가).
     func cancel() {
         queryTask?.cancel()
         cancelCurrentAddress()
         isInFlight = false
+        // 진행 중 재조회도 끊는다. 조회 중이던 축은 버튼으로 되돌린다(`.loading`에 남으면 돌아왔을 때 눌리지 않는다).
+        for (axis, task) in requeryTasks {
+            task.cancel()
+            if transitRequery[axis] == .loading { transitRequery[axis] = nil }
+        }
+        requeryTasks = [:]
     }
 
     /// 이미 위치가 허용된 세션에서만 조용히 주소를 병기한다(탭 진입만으론 권한 팝업
@@ -505,7 +523,7 @@ final class DirectionsModel {
     private func performQuery(from: DirectionsEndpoint, to: DirectionsEndpoint) async {
         guard !Task.isCancelled else { return }
         results = nil
-        transitRequery = [:]
+        cancelRequeries()
         resultsCoords = nil
         walkLines = [] // 스냅샷 교체(spec §4) — 이전 세대 줄을 지우고 시작
         resultsOriginNeedsStartNotice = false
@@ -648,7 +666,7 @@ final class DirectionsModel {
 
         let built = DirectionsResults(outcomes: outcomes)
         results = built
-        resultsCoords = (origin: origin, dest: dest)
+        resultsCoords = (origin: origin, dest: dest, lang: AppLanguage.dataLocale)
         walkLines = linesCandidate
         resultsOriginNeedsStartNotice = usedManualOrigin || (from == .current && staleAt != nil)
         // 경로를 하나도 못 찾았으면 붙이지 않는다 — "찾지 못했습니다. … 찾았습니다."가 되어 앞뒤가
@@ -795,6 +813,7 @@ struct DirectionsTabView: View {
     /// 수단 재조회 결과의 포커스 정체성(E50 §4.3). 찾은 경로는 `routeKey`, 문장은 축으로 식별한다.
     enum RequeryFocus: Hashable { case route(String), notFound(TransitModeAxis) }
     @AccessibilityFocusState private var requeryFocused: RequeryFocus?
+    @State private var requeryLandingTask: Task<Void, Never>?
     /// 시트가 닫힐 때 되돌아갈 시작 버튼(방금 떠나온 자리).
     @State private var lastGuideStart: GuideStartButton = .fallback
     /// 대중교통 브리핑에서 연 역 상세의 push 스택(E45). 로터 커스텀 액션은 값 기반 `NavigationLink`로
@@ -1511,19 +1530,23 @@ struct DirectionsTabView: View {
                 ? appLocalized("route.transit.requeryBusOnlyNone")
                 : appLocalized("route.transit.requerySubwayOnlyNone"))
                 .accessibilityFocused($requeryFocused, equals: .notFound(axis))
-        case .failed?, .loading?, nil:
-            if model.transitRequery[axis] == .failed {
-                // 시각 표시(포커스는 버튼에 머문다 — 통지는 모델이 `.high`로 냈다).
-                Text(bus
-                    ? appLocalized("route.transit.requeryBusOnlyFailed")
-                    : appLocalized("route.transit.requerySubwayOnlyFailed"))
-            }
-            // 조회 중 재탭은 모델이 무시한다(disabled 금지 — 포커스를 떨군다).
-            Button(bus
-                ? appLocalized("route.transit.requeryBusOnly")
-                : appLocalized("route.transit.requerySubwayOnly")) {
-                model.requery(axis)
-            }
+        case .failed?:
+            // 시각 표시(포커스는 버튼에 머문다 — 통지는 모델이 `.high`로 냈다).
+            Text(bus
+                ? appLocalized("route.transit.requeryBusOnlyFailed")
+                : appLocalized("route.transit.requerySubwayOnlyFailed"))
+            requeryButton(axis)
+        case .loading?, nil:
+            requeryButton(axis)
+        }
+    }
+
+    /// 조회 중 재탭은 모델이 무시한다(disabled 금지 — 포커스를 떨군다).
+    private func requeryButton(_ axis: TransitModeAxis) -> some View {
+        Button(axis == .busOnly
+            ? appLocalized("route.transit.requeryBusOnly")
+            : appLocalized("route.transit.requerySubwayOnly")) {
+            model.requery(axis)
         }
     }
 
@@ -1538,11 +1561,14 @@ struct DirectionsTabView: View {
         case .notFound: target = .notFound(last.axis)
         case .failed, .loading: return
         }
-        Task { @MainActor in
+        // 두 축 결과가 가까이 오면 앞 착지를 취소한다(재시도 단계에서 서로 되돌리지 않게).
+        requeryLandingTask?.cancel()
+        requeryLandingTask = Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(400))
+            guard !Task.isCancelled else { return }
             requeryFocused = target
             try? await Task.sleep(for: .milliseconds(600))
-            guard requeryFocused != target else { return }
+            guard !Task.isCancelled, requeryFocused != target else { return }
             requeryFocused = target
         }
     }
@@ -1601,7 +1627,7 @@ struct DirectionsTabView: View {
                 }
                 .accessibilityFocused($requeryFocused, equals: .route(entry.route.routeKey))
             }
-            // 수단 재조회(E50 §4.2·§4.3): 표시 경로에 그 수단만 타는 경로가 없을 때만(서버 `requeryAxes`).
+            // 수단 재조회(E50 §4.2·§4.3): 강등 뒤 전체 후보에 그 수단만 타는 경로가 없을 때만(서버 `requeryAxes`).
             // 찾음 = 버튼이 사라지고 경로가 위 목록 끝에(포커스 이동), 없음 = 버튼 자리의 문장(포커스 이동),
             // 실패 = 버튼 앞 문장 + 버튼 유지(재시도, 포커스 유지 + `.high` 통지).
             ForEach(result.knownRequeryAxes, id: \.self) { axis in

@@ -78,8 +78,8 @@ const AXIS_RULES: AxisRule[] = [
   },
 ];
 
-/** 이름 조립 순서의 정본(웹·Kit·`:kit` 이름 함수가 같은 순서를 쓴다) */
-export const AXIS_ORDER: TransitHighlight[] = AXIS_RULES.map((r) => r.axis);
+/** 응답 `highlight`의 배열 순서(이름 함수들이 쓰는 조립 순서와 같다 — `transit-alternative-name.ts`) */
+const AXIS_ORDER: TransitHighlight[] = AXIS_RULES.map((r) => r.axis);
 
 /**
  * pool(순위 순서)에서 자격 있는 것 중 키가 가장 작은 첫 경로. 키가 전부 같으면 앞선 것이 이긴다.
@@ -131,7 +131,7 @@ const LEGACY_AXES: TransitHighlight[] = ["fastest", "fewestTransfers"];
  * 최종 목록이 확정된 뒤 1순위를 기준으로 축을 판정해 라벨을 싣는다.
  * 1순위 자신은 라벨을 갖지 않는다(자기보다 나은 자기는 없다).
  *
- * `displayIndex`는 **옛 앱 호환 전용**이다(spec §3.2): 옛 Kit은 모르는 축을 무시하고 "대안 경로 N"으로
+ * `displayIndex`는 **옛 앱 호환 전용**이다(spec §3.1): 옛 Kit은 모르는 축을 무시하고 "대안 경로 N"으로
  * 떨어지므로, 옛 앱이 아는 축이 하나도 없는 대안에만 표시 순서대로 1부터 싣는다. 새 클라이언트는 아는
  * 축이 있으면 이 값을 보지 않는다.
  */
@@ -168,11 +168,6 @@ const MODE_AXES: { axis: TransitModeAxis; vehicle: TransitVehicle }[] = [
  */
 export function requeryAxesFor(candidates: TransitRoute[]): TransitModeAxis[] {
   return MODE_AXES.filter(({ vehicle }) => !candidates.some((r) => r.vehicle === vehicle)).map((m) => m.axis);
-}
-
-/** 게이트·테스트용 — 완성된 결과에서 재조회 제안 목록을 다시 읽는다. */
-export function modeRequeryOffers(result: TransitRouteResult): TransitModeAxis[] {
-  return result.requeryAxes ?? [];
 }
 
 /** 수단 재조회 응답에서 그 수단만 타는 경로만 남긴다(ODsay 필터를 믿되 교차 확인한다). */

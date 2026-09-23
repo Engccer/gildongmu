@@ -42,7 +42,7 @@ function route(routeKey: string, totalMinutes: number, extra: Record<string, unk
   };
 }
 
-type RequeryReply = "found" | "none" | "failed";
+type RequeryReply = "found" | "none" | "failed" | Promise<"found" | "none" | "failed">;
 
 function stubFetch(opts: { requeryAxes?: string[]; replies?: RequeryReply[] }) {
   const replies = [...(opts.replies ?? [])];
@@ -55,7 +55,7 @@ function stubFetch(opts: { requeryAxes?: string[]; replies?: RequeryReply[] }) {
       return { ok: true, json: async () => ({ addresses: [] }) } as Response;
     }
     if (url.startsWith("/api/route/transit") && url.includes("pathType=")) {
-      const reply = replies.shift() ?? "failed";
+      const reply = await (replies.shift() ?? "failed");
       if (reply === "failed") return { ok: false, json: async () => ({}) } as Response;
       if (reply === "none") return { ok: true, json: async () => ({ result: null }) } as Response;
       return {
@@ -129,7 +129,9 @@ describe("수단 재조회(E50 §4.3)", () => {
   it("찾음: 버튼이 사라지고 새 경로가 목록 끝에 붙어 포커스를 받는다", async () => {
     const fetchMock = stubFetch({ requeryAxes: ["subwayOnly"], replies: ["found"] });
     await queryTransit();
-    fireEvent.click(screen.getByRole("button", { name: "지하철만 타는 경로 찾기" }));
+    const button = screen.getByRole("button", { name: "지하철만 타는 경로 찾기" });
+    button.focus(); // 스크린 리더가 누르는 버튼은 포커스를 쥐고 있다
+    fireEvent.click(button);
     const found = await screen.findByRole("button", { name: /^지하철만 타는 경로, 총 31분/ });
     await waitFor(() => expect(document.activeElement).toBe(found));
     expect(found.getAttribute("aria-expanded")).toBe("false");
@@ -141,7 +143,9 @@ describe("수단 재조회(E50 §4.3)", () => {
   it("없음: 버튼 자리에 문장이 서고 그 문장이 포커스를 받는다", async () => {
     stubFetch({ requeryAxes: ["busOnly"], replies: ["none"] });
     await queryTransit();
-    fireEvent.click(screen.getByRole("button", { name: "버스만 타는 경로 찾기" }));
+    const button = screen.getByRole("button", { name: "버스만 타는 경로 찾기" });
+    button.focus();
+    fireEvent.click(button);
     const none = await screen.findByText("버스만 타는 경로가 없습니다.");
     await waitFor(() => expect(document.activeElement).toBe(none));
     expect(screen.queryByRole("button", { name: "버스만 타는 경로 찾기" })).toBeNull();
@@ -159,6 +163,48 @@ describe("수단 재조회(E50 §4.3)", () => {
     fireEvent.click(button);
     await screen.findByRole("button", { name: /^버스만 타는 경로, 총 31분/ });
     expect(requeryCalls(fetchMock)).toHaveLength(2);
+    // 재시도가 성공하면 상태 줄에 실패 문장이 남지 않는다(화면과 반대를 말하지 않는다)
+    expect(screen.getByRole("status").textContent).not.toContain("불러오지 못했습니다");
+  });
+
+  it("기다리는 사이 다른 곳으로 옮겨 갔으면 결과가 와도 포커스를 끌어오지 않는다", async () => {
+    let release!: (v: "found") => void;
+    stubFetch({ requeryAxes: ["busOnly"], replies: [new Promise((r) => (release = r))] });
+    await queryTransit();
+    const button = screen.getByRole("button", { name: "버스만 타는 경로 찾기" });
+    button.focus();
+    fireEvent.click(button);
+    const recommended = screen.getByRole("button", { name: /^추천 경로/ });
+    recommended.focus();
+    release("found");
+    await screen.findByRole("button", { name: /^버스만 타는 경로, 총 31분/ });
+    await new Promise((r) => setTimeout(r, 50));
+    expect(document.activeElement).toBe(recommended);
+  });
+
+  it("재조회가 떠 있는 동안 다시 조회하면 옛 응답은 버려지고 새 버튼은 바로 동작한다", async () => {
+    let release!: (v: "failed") => void;
+    const fetchMock = stubFetch({
+      requeryAxes: ["busOnly"],
+      replies: [new Promise((r) => (release = r)), "none"],
+    });
+    await queryTransit();
+    fireEvent.click(screen.getByRole("button", { name: "버스만 타는 경로 찾기" }));
+    // 옛 요청이 떠 있는 채로 새 조회
+    fireEvent.click(screen.getByRole("button", { name: "경로 조회" }));
+    await waitFor(() => expect(document.activeElement?.tagName).toBe("H3"));
+    const fresh = await screen.findByRole("button", { name: "버스만 타는 경로 찾기" });
+    expect(fresh.getAttribute("aria-disabled")).toBeNull();
+    // 새 세대의 같은 축 버튼은 옛 가드에 막히지 않는다
+    fireEvent.click(fresh);
+    await screen.findByText("버스만 타는 경로가 없습니다.");
+    expect(requeryCalls(fetchMock)).toHaveLength(2);
+    // 옛 응답(실패)이 늦게 와도 상태 줄·목록을 건드리지 않는다
+    const before = document.activeElement;
+    release("failed");
+    await new Promise((r) => setTimeout(r, 50));
+    expect(screen.getByRole("status").textContent).not.toContain("불러오지 못했습니다");
+    expect(document.activeElement).toBe(before);
   });
 
   it("조회 중 두 번 눌러도 한 번만 부른다(aria-disabled + in-flight 가드)", async () => {

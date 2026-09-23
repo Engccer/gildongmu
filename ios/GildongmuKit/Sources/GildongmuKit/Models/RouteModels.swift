@@ -368,7 +368,8 @@ public struct TransitRouteResult: Codable, Sendable, Hashable {
     /// 표기 심사는 "사용자 행동을 바꾸는가"이고 후보 총수는 바꾸지 않는다.
     public let totalCandidates: Int
     /// 사용자가 눌러 한 번 더 조회할 수 있는 수단 축(E50 판정 2, 서버 원문 "busOnly"·"subwayOnly").
-    /// 표시 경로에 그 수단만 타는 경로가 없을 때만 온다. 필드 부재 = 제안 없음.
+    /// 강등 뒤 **전체 후보**(운행 종료 포함)에 그 수단만 타는 경로가 없을 때만 온다(표시 경로 기준이 아니다).
+    /// 필드 부재 = 제안 없음.
     /// ⚠ String 배열로 받고 아는 값만 `knownRequeryAxes`로 쓴다(서버가 늘려도 디코딩이 깨지지 않게).
     public let requeryAxes: [String]?
 

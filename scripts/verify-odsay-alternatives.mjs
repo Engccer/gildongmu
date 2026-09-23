@@ -91,6 +91,7 @@ async function loadOrFetch(file, pair, searchPathType) {
   const path = join(corpusDir, file);
   if (existsSync(path)) return JSON.parse(readFileSync(path, "utf8"));
   if (offline) throw new Error(`코퍼스에 ${file}이 없다`);
+  if (!process.env.ODSAY_API_KEY) throw new Error("ODSAY_API_KEY 없음 — 빈 키로 부르면 오류 봉투가 코퍼스에 남는다");
   const used = ledgerCount();
   if (used + 1 > CALL_CAP) throw new Error(`호출 상한 ${CALL_CAP} 도달(원장 ${used}건) — 멈추고 보고한다`);
   const q = new URLSearchParams({
@@ -110,6 +111,10 @@ async function loadOrFetch(file, pair, searchPathType) {
   );
   if (!res.ok) throw new Error(`ODsay HTTP ${res.status} (${pair.id})`);
   const body = await res.json();
+  // 무효 키·쿼터 초과도 HTTP 200 + error 봉투다. 경로 없음류(-98 등)만 사실로 저장하고, 그 밖은 저장하지 않고
+  // 실패로 끝낸다 — 저장하면 이후 --from-corpus 재실행이 영영 그 오류를 "경로 없음"으로 읽는다.
+  const err = readOdsayError(body.error);
+  if (err && !isNoRouteError(err.code)) throw new Error(`ODsay 오류 봉투 ${err.code} ${err.message} (${pair.id}) — 저장하지 않음`);
   writeFileSync(path, JSON.stringify(body));
   return body;
 }
@@ -140,18 +145,21 @@ writeFileSync(
   entryPath,
   [
     `export { normalizeOdsayRoutes } from ${JSON.stringify(resolve("src/lib/providers/odsay"))};`,
-    `export { selectTransitRoutes, annotateHighlights, modeRequeryOffers, filterRoutesByMode } from ${JSON.stringify(resolve("src/lib/providers/odsay-select"))};`,
+    `export { selectTransitRoutes, annotateHighlights, filterRoutesByMode } from ${JSON.stringify(resolve("src/lib/providers/odsay-select"))};`,
+    `export { readOdsayError, isNoRouteError } from ${JSON.stringify(resolve("src/lib/providers/odsay-envelope"))};`,
   ].join("\n"),
 );
 
 let exitCode = 0;
+let normalizeOdsayRoutes, selectTransitRoutes, annotateHighlights, filterRoutesByMode, readOdsayError, isNoRouteError;
+const modeRequeryOffers = (result) => result.requeryAxes ?? [];
 try {
   execFileSync(
     "npx",
     ["esbuild", entryPath, "--bundle", "--format=esm", "--platform=node", `--alias:next/cache=${stubPath}`, `--outfile=${bundlePath}`],
     { stdio: "pipe" },
   );
-  const { normalizeOdsayRoutes, selectTransitRoutes, annotateHighlights, modeRequeryOffers, filterRoutesByMode } = await import(bundlePath);
+  ({ normalizeOdsayRoutes, selectTransitRoutes, annotateHighlights, filterRoutesByMode, readOdsayError, isNoRouteError } = await import(bundlePath));
 
   const rows = [];
   for (const pair of PAIRS) {
@@ -164,6 +172,8 @@ try {
     }
     rows.push({ pair, paths, data });
   }
+
+  check(`표본 ${PAIRS.length}쌍 전부 경로 응답`, rows.filter((r) => r.paths.length > 0).length === PAIRS.length);
 
   // (b) pathType ↔ leg 구성
   let mismatch = 0;
@@ -238,22 +248,29 @@ try {
     });
     check(`${pair.name}: 수단 투영이 원시 pathType·구간과 일치`, vehicleOk);
     const result = annotateHighlights(selectTransitRoutes(routes), routes);
+    // (a′) 축별 기대 집합을 원시 층 값으로 독립 계산해 결과의 (경로, 축) 집합과 **같음**으로 단언한다 — 이름 붙은
+    // 경로의 자격, 빠진 축, 동률 순위를 한 번에 잡는다(코드 품질 리뷰 #1). 게이트는 강등을 태우지 않아 전부 후보다.
     const base = routes[0];
-    // (a′) 이름 붙은 축마다 그 경로가 전체 후보 위의 최선이다(부분 집합이 아니라 전체)
-    for (const alt of result.alternatives) {
-      for (const axis of alt.highlight ?? []) {
-        const better = routes.slice(1).some((r) => {
-          if (r.routeKey === alt.routeKey) return false;
-          const eligible =
-            axis === "busOnly" ? r.vehicle === "bus" && base.vehicle !== "bus"
-            : axis === "subwayOnly" ? r.vehicle === "subway" && base.vehicle !== "subway"
-            : axis === "leastWalk" ? r.summary.walkMeters < base.summary.walkMeters && r.summary.walkMinutes <= base.summary.walkMinutes
-            : lexLess(KEY[axis](r).slice(0, 1), KEY[axis](base).slice(0, 1));
-          return eligible && lexLess(KEY[axis](r), KEY[axis](alt));
-        });
-        check(`${pair.name}: ${axis} 이름을 받은 경로가 전체 후보 위의 최선`, !better, alt.routeKey);
+    const eligible = {
+      fastest: (r) => r.summary.totalMinutes < base.summary.totalMinutes,
+      fewestTransfers: (r) => r.summary.transfers < base.summary.transfers,
+      leastWalk: (r) => r.summary.walkMeters != null && base.summary.walkMeters != null
+        && r.summary.walkMeters < base.summary.walkMeters && r.summary.walkMinutes <= base.summary.walkMinutes,
+      busOnly: (r) => r.vehicle === "bus" && base.vehicle !== "bus",
+      subwayOnly: (r) => r.vehicle === "subway" && base.vehicle !== "subway",
+    };
+    const expected = new Set();
+    for (const axis of Object.keys(KEY)) {
+      let best;
+      for (const r of routes.slice(1)) {
+        if (!eligible[axis](r)) continue;
+        if (!best || lexLess(KEY[axis](r), KEY[axis](best))) best = r;
       }
+      if (best) expected.add(`${best.routeKey}:${axis}`);
     }
+    const actual = new Set(result.alternatives.flatMap((a) => (a.highlight ?? []).map((axis) => `${a.routeKey}:${axis}`)));
+    const same = expected.size === actual.size && [...expected].every((x) => actual.has(x));
+    check(`${pair.name}: 축별 (경로, 축) 집합이 원시 층 기대와 같다`, same, `기대 ${[...expected].join(" ") || "없음"} / 결과 ${[...actual].join(" ") || "없음"}`);
     check(`${pair.name}: 번호만 붙는 대안 0`, result.alternatives.every((a) => a.highlight?.length > 0),
       `대안 ${result.alternatives.length}개 ${result.alternatives.map((a) => a.highlight.join("+")).join(" / ") || "(없음)"}`);
     // (b′) 재조회 제안이 원시 층(파이프라인 밖)의 "그 수단만 타는 경로가 응답에 있는가"와 일치

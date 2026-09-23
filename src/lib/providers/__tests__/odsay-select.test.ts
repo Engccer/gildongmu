@@ -3,8 +3,7 @@ import type { TransitRoute, TransitVehicle } from "@/lib/types";
 import { annotateHighlights as annotate, requeryAxesFor, selectTransitRoutes } from "../odsay-select";
 
 /** 후보 전체를 따로 주지 않는 케이스는 선정 결과 자체를 후보로 본다 */
-const annotateHighlights = (selected: TransitRoute[], candidates: TransitRoute[] | number) =>
-  annotate(selected, typeof candidates === "number" ? selected : candidates);
+const annotateHighlights = (selected: TransitRoute[]) => annotate(selected, selected);
 
 /** 최소 골격 경로 생성기. serviceStatus는 탑승 leg에 싣는다 */
 function route(
@@ -90,13 +89,13 @@ describe("selectTransitRoutes", () => {
   describe("동률 2차 키(PORTS.md pickBest)", () => {
     it("환승이 같으면 빠른 쪽", () => {
       const routes = [route("p0", 40, 2), route("p1", 60, 0), route("p2", 55, 0)];
-      const result = annotateHighlights(selectTransitRoutes(routes), 3);
+      const result = annotateHighlights(selectTransitRoutes(routes));
       expect(result.alternatives.find((a) => a.highlight?.includes("fewestTransfers"))?.routeKey).toBe("p2");
     });
 
     it("시간이 같으면 환승이 적은 쪽", () => {
       const routes = [route("p0", 40, 2), route("p1", 30, 2), route("p2", 30, 1)];
-      const result = annotateHighlights(selectTransitRoutes(routes), 3);
+      const result = annotateHighlights(selectTransitRoutes(routes));
       expect(result.alternatives.find((a) => a.highlight?.includes("fastest"))?.routeKey).toBe("p2");
     });
 
@@ -124,7 +123,7 @@ describe("selectTransitRoutes", () => {
         route("p1", 70, 0, { vehicle: "bus" }),
         route("p2", 60, 1, { vehicle: "bus" }),
       ];
-      const result = annotateHighlights(selectTransitRoutes(routes), 3);
+      const result = annotateHighlights(selectTransitRoutes(routes));
       expect(result.alternatives.find((a) => a.highlight?.includes("busOnly"))?.routeKey).toBe("p2");
     });
 
@@ -134,7 +133,7 @@ describe("selectTransitRoutes", () => {
         route("p1", 50, 0, { vehicle: "bus" }), // busOnly + fewestTransfers
         route("p2", 50, 0), // fewestTransfers 동률(순위 뒤)
       ];
-      const result = annotateHighlights(selectTransitRoutes(routes), 3);
+      const result = annotateHighlights(selectTransitRoutes(routes));
       expect(result.alternatives.map((a) => [a.routeKey, a.highlight])).toEqual([
         ["p1", ["fewestTransfers", "busOnly"]],
       ]);
@@ -155,7 +154,7 @@ describe("selectTransitRoutes", () => {
         route("p0", 20, 0, { walkMeters: 300, walkMinutes: 5 }),
         route("p1", 25, 0, { walkMeters: 250, walkMinutes: 5 }),
       ];
-      expect(annotateHighlights(selectTransitRoutes(routes), 2).alternatives[0].highlight).toEqual(["leastWalk"]);
+      expect(annotateHighlights(selectTransitRoutes(routes)).alternatives[0].highlight).toEqual(["leastWalk"]);
     });
 
     it("도보 거리를 모르면 참여하지 않는다(모름을 0m로 읽지 않는다)", () => {
@@ -179,7 +178,7 @@ describe("selectTransitRoutes", () => {
 
 describe("annotateHighlights", () => {
   it("축은 조립 순서(fastest, fewestTransfers, leastWalk, busOnly, subwayOnly)로 싣는다", () => {
-    const result = annotateHighlights([route("p0", 45, 1, { vehicle: "subway" }), route("p1", 30, 0, { vehicle: "bus" })], 5);
+    const result = annotateHighlights([route("p0", 45, 1, { vehicle: "subway" }), route("p1", 30, 0, { vehicle: "bus" })]);
     expect(result.alternatives[0].highlight).toEqual(["fastest", "fewestTransfers", "busOnly"]);
   });
 
@@ -191,23 +190,22 @@ describe("annotateHighlights", () => {
         route("p2", 50, 1, { vehicle: "bus" }), // busOnly만 → 1
         route("p3", 52, 1, { walkMeters: 100, walkMinutes: 2 }), // leastWalk만 → 2
       ],
-      9,
     );
     expect(result.alternatives.map((a) => a.displayIndex)).toEqual([undefined, 1, 2]);
     expect(result.totalCandidates).toBe(4);
   });
 
   it("1순위 자신은 라벨을 갖지 않는다", () => {
-    const result = annotateHighlights([route("p7", 71, 0), route("p0", 45, 1)], 9);
+    const result = annotateHighlights([route("p7", 71, 0), route("p0", 45, 1)]);
     expect(result.recommended.highlight).toBeUndefined();
     expect(result.alternatives[0].highlight).toEqual(["fastest"]);
   });
 
-  it("재조회 제안은 표시 경로에 그 수단이 없을 때만", () => {
-    expect(annotateHighlights([route("p0", 45, 1)], 1).requeryAxes).toEqual(["busOnly", "subwayOnly"]);
-    expect(annotateHighlights([route("p0", 45, 1, { vehicle: "bus" })], 1).requeryAxes).toEqual(["subwayOnly"]);
+  it("재조회 제안은 후보 전체에 그 수단이 없을 때만", () => {
+    expect(annotateHighlights([route("p0", 45, 1)]).requeryAxes).toEqual(["busOnly", "subwayOnly"]);
+    expect(annotateHighlights([route("p0", 45, 1, { vehicle: "bus" })]).requeryAxes).toEqual(["subwayOnly"]);
     expect(
-      annotateHighlights([route("p0", 45, 1, { vehicle: "subway" }), route("p1", 50, 1, { vehicle: "bus" })], 2).requeryAxes,
+      annotateHighlights([route("p0", 45, 1, { vehicle: "subway" }), route("p1", 50, 1, { vehicle: "bus" })]).requeryAxes,
     ).toBeUndefined();
   });
 });
