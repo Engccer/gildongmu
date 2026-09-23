@@ -145,7 +145,7 @@ class DirectionsViewModel(
 
     private var queryJob: Job? = null
 
-    /** 재진입 가드(웹 in-flight ref). 조회와 토글 재조회가 **같은** 가드를 쓴다(교차 레이스 차단). */
+    /** 재진입 가드(웹 in-flight ref) — 진행 중 재탭은 무시한다. */
     private var isInFlight = false
     private var addressState = DirectionsAddressState()
     private var addressLanguage = dataLocale()

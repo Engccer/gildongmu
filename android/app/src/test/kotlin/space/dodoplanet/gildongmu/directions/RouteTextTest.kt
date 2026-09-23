@@ -7,6 +7,8 @@ import space.dodoplanet.gildongmu.kit.models.CarRouteBriefing
 import space.dodoplanet.gildongmu.kit.models.CarRouteGuide
 import space.dodoplanet.gildongmu.kit.models.RouteWaypoint
 import space.dodoplanet.gildongmu.kit.models.TransitRouteEnvelope
+import space.dodoplanet.gildongmu.guide.ui.walkLineStartKey
+import space.dodoplanet.gildongmu.kit.models.WalkLineKind
 import space.dodoplanet.gildongmu.kit.models.WalkRouteBriefing
 import space.dodoplanet.gildongmu.kit.models.WalkRouteEnvelope
 import space.dodoplanet.gildongmu.kit.models.WalkRouteStep
@@ -24,6 +26,25 @@ class RouteTextTest {
     @Test fun `대중교통 요약 - 도보 0분은 생략`() {
         assertEquals("약 34분, 요금 1,650원, 환승 2회, 도보 9분", transitSummaryText(transit.recommended.summary, "ko", ko))
         assertEquals("약 34분, 요금 1,650원, 환승 2회", transitSummaryText(transit.recommended.summary.copy(walkMinutes = 0), "ko", ko))
+    }
+
+    /** E42 위원장 확정 렌더 — 줄 라벨은 이름·요약뿐(사유 문장 없음), 버튼 문구는 그 줄 이름. 4종 전수, en 포함. */
+    @Test fun `도보 줄 라벨과 안내 시작 버튼 문구`() {
+        val withNotice = walk.copy(stepFreeNotice = "계단 없는 경로를 확정하지 못했습니다.")
+        val expected = mapOf(
+            WalkLineKind.shortest to ("최단 경로, 총 2.078km, 약 30분" to "최단 경로로 안내 시작"),
+            WalkLineKind.accessible to ("계단 회피 경로, 총 2.078km, 약 30분" to "계단 회피 경로로 안내 시작"),
+            WalkLineKind.broad to ("큰길 경로, 총 2.078km, 약 30분" to "큰길 경로로 안내 시작"),
+            WalkLineKind.recommended to ("추천 경로, 총 2.078km, 약 30분" to "추천 경로로 안내 시작"),
+        )
+        assertEquals(WalkLineKind.entries.toSet(), expected.keys)
+        for ((kind, pair) in expected) {
+            assertEquals(pair.first, walkLineLabel(kind, withNotice, ko), kind.name)
+            assertEquals(pair.second, ko.get(walkLineStartKey(kind)), kind.name)
+        }
+        val en = CatalogStrings("en")
+        assertEquals("Recommended route, Total 2.078km, about 30 min", walkLineLabel(WalkLineKind.recommended, walk, en))
+        assertEquals("Start recommended route guidance", en.get(walkLineStartKey(WalkLineKind.recommended)))
     }
 
     @Test fun `도보 요약과 접힘 판정은 같은 반올림 분을 쓴다`() {

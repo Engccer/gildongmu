@@ -384,7 +384,7 @@ class WalkGuideModelTest {
         h.model.restart()
         assertEquals(0, h.controller.starts)
         h.perms.location = LocationPermission.Coarse
-        h.model.requestStart(h.request.copy(accessible = true, variant = WalkRouteVariant.shortest, line = WalkLineKind.shortest))
+        h.model.requestStart(h.request.copy(accessible = true, variant = WalkRouteVariant.shortest, line = null))
         settle()
         assertEquals(FailResolution.precise, h.model.ui.value.failResolution)
         h.perms.location = LocationPermission.Fine
@@ -392,7 +392,7 @@ class WalkGuideModelTest {
         h.model.restart()
         settle()
         assertEquals(GuideStatus.tracking, h.model.ui.value.status)
-        assertEquals(WalkLineKind.shortest, h.model.ui.value.lastStartLine)
+        assertNull(h.model.ui.value.lastStartLine) // 줄 없는 진입(투영 규칙 밖의 축 조합) — 두 축의 재시작 보존만 본다
         h.walkTo(0.0)
         settle()
         val url = h.transport.seenUrls.single()

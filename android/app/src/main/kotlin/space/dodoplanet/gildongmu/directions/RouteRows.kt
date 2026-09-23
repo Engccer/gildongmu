@@ -12,6 +12,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -203,18 +204,19 @@ fun WalkOutcomeRows(
     guideStart: (@Composable (line: WalkLineKind) -> Unit)? = null,
 ) {
     val meters = strings.get("android.unit.spokenMeters")
-    lines.forEachIndexed { index, line ->
-        val kind = line.lineKind ?: return@forEachIndexed
-        val expanded = if (index == 0) walkExpandedOverride ?: !WalkCollapse.shouldCollapse(line.route.durationSeconds) else secondExpanded
-        val label = joinText(strings.get(walkLineNameKey(kind)), walkSummaryText(line.route, strings))
+    // 모르는 종류를 먼저 거르고 인덱싱한다 — "첫 줄"이 하나여야 펼침 규칙이 맞다. 줄 정체성은 종류(`key`, iOS `id: \.kind`):
+    // 새 조회에서 둘째 줄이 계단 회피 → 큰길로 바뀌면 자리 기준 상태를 이어받지 않는다.
+    lines.mapNotNull { line -> line.lineKind?.let { it to line.route } }.forEachIndexed { index, (kind, route) -> key(kind) {
+        val expanded = if (index == 0) walkExpandedOverride ?: !WalkCollapse.shouldCollapse(route.durationSeconds) else secondExpanded
+        val label = walkLineLabel(kind, route, strings)
         DisclosureRow(
             label = label, tag = "walk-line-${kind.rawValue}", expanded = expanded,
             onToggle = if (index == 0) onWalkToggle else onSecondToggle, strings = strings, spoken = spokenDistanceUnits(label, meters),
         ) {
             guideStart?.invoke(kind)
-            walkStepItems(line.route, viaLabel, strings).forEachIndexed { i, item -> TextRow(item, "walk-${kind.rawValue}-step-$i", spoken = spokenDistanceUnits(item, meters)) }
+            walkStepItems(route, viaLabel, strings).forEachIndexed { i, item -> TextRow(item, "walk-${kind.rawValue}-step-$i", spoken = spokenDistanceUnits(item, meters)) }
         }
-    }
+    } }
 }
 
 /** 자동차 본문: 요약 1행 + 안내 행(펼침 없음 — 경로 하나). */
