@@ -1,14 +1,24 @@
 package space.dodoplanet.gildongmu.place
 
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.toMutableStateList
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import space.dodoplanet.gildongmu.R
 import space.dodoplanet.gildongmu.a11y.BodyLine
 import space.dodoplanet.gildongmu.a11y.HeadingLine
+import space.dodoplanet.gildongmu.directions.ActionRow
 import space.dodoplanet.gildongmu.i18n.AppLocale
 import space.dodoplanet.gildongmu.i18n.appLocalized
 import space.dodoplanet.gildongmu.kit.joinText
+import space.dodoplanet.gildongmu.kit.models.StationMeta
 import space.dodoplanet.gildongmu.nearby.subwayArrivalText
 
 // 코드→문구 표(리터럴 `when`, 동적 키 조립 금지). 미지 값: kind·dailyType·direction은 원문, operating은 조각 생략, compass는 서버 문장 폴백(spec §12 머리 표).
@@ -60,20 +70,34 @@ internal fun compassResId(code: String) = when (code) {
 }
 
 /**
- * 역 자동 섹션 5종(iOS `StationSectionsView`, spec §12-3): meta → arrivals → timetable → korail → metro. 자동 등장 보조 정보라 로딩 표시·통지
- * 없음(조용히 나타남), 각 섹션 헤딩이 유일한 발견 경로. 실패·null은 그 섹션만 없음(시간표 실패만 문장).
+ * 역 정보 섹션(개편 전 모양, 제목 + 메타 한 줄 — iOS `StationMetaSection`) — 역 레이아웃이 아닌 장소 전용(E44 spec §3.1). 자동 등장 보조
+ * 정보라 로딩 표시·통지 없음, 제목이 유일한 발견 경로. 역 레이아웃은 제목이 늘 서고 메타 줄만 [StationMetaText]로 싣는다.
  */
 @Composable
-fun StationSectionsView(s: StationSections) {
-    val res = LocalContext.current.resources
-    val lang = AppLocale.current(res)
-    val isEn = AppLocale.dataLocale(res) == "en"
-
+fun StationMetaSection(s: StationSections) {
     s.meta?.let { m ->
         HeadingLine(stringResource(R.string.stationMeta_heading), "station-meta")
-        val line = stationMetaLine(m, lang, isEn, { appLocalized(res, R.string.android_station_nameSuffixed, it) }, stringResource(R.string.stationMeta_transfer))
-        BodyLine(line.visual, "station-meta-line", line.spoken.takeIf { it != line.visual })
+        StationMetaText(m)
     }
+}
+
+/** 역 메타 한 줄 — 한 줄=한 객체: 역명·영문명·노선·환승·운영기관. en 계열은 역명 병기(낭독은 영문만, a11y 감사 #3). */
+@Composable
+fun StationMetaText(m: StationMeta) {
+    val res = LocalContext.current.resources
+    val line = stationMetaLine(m, AppLocale.current(res), AppLocale.dataLocale(res) == "en", { appLocalized(res, R.string.android_station_nameSuffixed, it) }, stringResource(R.string.stationMeta_transfer))
+    BodyLine(line.visual, "station-meta-line", line.spoken.takeIf { it != line.visual })
+}
+
+/**
+ * 역 자동 섹션 — 실시간 도착 → 첫차 막차 → 교통약자 시설(철도) → 교통약자 시설(서울 지하철)(iOS `StationDetailSections`, spec §12-3). 자동 등장
+ * 보조 정보라 로딩 표시·통지 없음(조용히 나타남), 각 섹션 헤딩이 유일한 발견 경로. 실패·null은 그 섹션만 없음(시간표 실패만 문장).
+ * 서울 지하철 시설은 종류마다 접는다(E44 spec §4 — 천호역 72행이 접힘 행 7개가 된다).
+ */
+@Composable
+fun StationDetailSections(s: StationSections) {
+    val res = LocalContext.current.resources
+    val isEn = AppLocale.dataLocale(res) == "en"
 
     s.arrivals?.let { a ->
         HeadingLine(stringResource(R.string.android_station_arrivalHeading), "station-arrivals")
@@ -125,17 +149,31 @@ fun StationSectionsView(s: StationSections) {
 
     s.metro?.let { f ->
         HeadingLine(stringResource(R.string.android_station_seoulFacilities), "metro")
+        // 보강 소스 실패는 은폐하지 않고 문장으로 — 어느 종류를 펼칠지 고르기 전에 알아야 한다(spec §4).
+        if (f.supplementFailed == true) BodyLine(stringResource(R.string.subway_supplementFailed), "metro-supplement")
+        // 펼친 종류(백스택 항목 수명 — 다른 화면에 다녀와도 유지, 영속 안 함). 기본 접힘.
+        val expanded = rememberSaveable(saver = listSaver(save = { it.toList() }, restore = { it.toMutableStateList() })) { mutableStateListOf<String>() }
         val wheelchairAccessible = stringResource(R.string.subway_wheelchairAccessible)
         for ((gi, g) in f.groups.withIndex()) {
             val kindLabel = metroKindResId(g.kind)?.let { stringResource(it) } ?: g.kind
-            BodyLine(appLocalized(res, R.string.android_station_kindCount, kindLabel, g.facilities.size), "metro-$gi")
-            g.facilities.forEachIndexed { i, fac ->
-                val name = facilityName(fac, { compassResId(it)?.let { id -> res.getString(id) } }, { d, dist -> appLocalized(res, R.string.subway_elevatorAt, d, dist) }) { appLocalized(res, R.string.subway_lineNumber, it) }
-                BodyLine(joinText(name, fac.location, fac.floors, operatingResId(fac.operatingStatus)?.let { res.getString(it) }, facilityDetail(fac, wheelchairAccessible)), "metro-$gi-$i")
+            val stopped = stoppedCount(g)
+            // 접힘 행이 곧 개수 줄이다. 운행 중지가 있으면 그 수를 같은 줄에(리뷰 M8 — 접으면 줄마다 보이던 "운행 중지"가 가려진다).
+            val label = if (stopped > 0) appLocalized(res, R.string.android_station_kindCountStopped, kindLabel, g.facilities.size, stopped)
+            else appLocalized(res, R.string.android_station_kindCount, kindLabel, g.facilities.size)
+            val open = g.kind in expanded
+            // 펼친 뒤 커서는 이 행에 남고 다음 이동이 첫 시설이다(포커스 코드 없음). 상태는 stateDescription(길찾기 펼침 행 관례).
+            ActionRow(
+                visual = label, tag = "metro-$gi", onClick = { if (open) expanded.remove(g.kind) else expanded.add(g.kind) },
+                state = stringResource(if (open) R.string.android_common_expanded else R.string.android_common_collapsed),
+            )
+            if (open) Column(Modifier.padding(start = 12.dp)) {
+                g.facilities.forEachIndexed { i, fac ->
+                    val name = facilityName(fac, { compassResId(it)?.let { id -> res.getString(id) } }, { d, dist -> appLocalized(res, R.string.subway_elevatorAt, d, dist) }) { appLocalized(res, R.string.subway_lineNumber, it) }
+                    BodyLine(joinText(name, fac.location, fac.floors, operatingResId(fac.operatingStatus)?.let { res.getString(it) }, facilityDetail(fac, wheelchairAccessible)), "metro-$gi-$i")
+                }
+                // 음성유도기 데이터 기준일 고지(정적 seed) — 그 묶음을 펼친 사람에게만 의미가 있다.
+                if (g.kind == "voiceGuide") BodyLine(stringResource(R.string.subway_voiceGuideSource), "metro-voice")
             }
         }
-        // 보강 소스 실패는 은폐하지 않고 문장으로 병기; 음성유도기 데이터 기준일 고지(정적 seed).
-        if (f.supplementFailed == true) BodyLine(stringResource(R.string.subway_supplementFailed), "metro-supplement")
-        if (f.groups.any { it.kind == "voiceGuide" }) BodyLine(stringResource(R.string.subway_voiceGuideSource), "metro-voice")
     }
 }

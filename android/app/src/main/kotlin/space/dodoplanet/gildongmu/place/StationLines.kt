@@ -9,6 +9,7 @@ import space.dodoplanet.gildongmu.kit.formatDistance
 import space.dodoplanet.gildongmu.kit.joinText
 import space.dodoplanet.gildongmu.kit.models.SeoulMetroFacilities
 import space.dodoplanet.gildongmu.kit.models.SeoulMetroFacility
+import space.dodoplanet.gildongmu.kit.models.SeoulMetroFacilityGroup
 import space.dodoplanet.gildongmu.kit.models.StationArrivals
 import space.dodoplanet.gildongmu.kit.models.StationFacilities
 import space.dodoplanet.gildongmu.kit.models.StationMeta
@@ -53,6 +54,9 @@ suspend fun loadStationSections(service: StationService, station: String, dataLo
         metro = metro.await().getOrNull(),
     )
 }
+
+/** 운행 중지 수 — 접힘 행 라벨에 붙는다(E44 spec §4). 모르는 상태(`operatingStatus` null·미지)는 세지 않는다. */
+fun stoppedCount(group: SeoulMetroFacilityGroup): Int = group.facilities.count { it.operatingStatus == "stopped" }
 
 /** 시설 수 3-state 문장: null="정보 없음" ≠ 0="없음" ≠ n="n대". 절대 뭉개지 않는다. */
 fun countText(label: String, count: Int?, unknown: (String) -> String, none: (String) -> String, some: (String, Int) -> String): String {

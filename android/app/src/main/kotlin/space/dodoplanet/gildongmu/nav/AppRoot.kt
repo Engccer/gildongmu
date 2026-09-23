@@ -158,6 +158,7 @@ fun AppRoot(factories: AppFactories) {
                             onOpenChat = { returnFocus.slot.remember(CHAT_RETURN_KEY); navController.openChat(it) }, // M6 spec §7
                         ),
                         takeReturnFocus = returnFocus.slot::take,
+                        stationLineHint = route.stationLineHint,
                         showsChatEntry = route.showsChatEntry,
                     )
                 }
