@@ -31,6 +31,11 @@ export interface EndpointSpec {
   envelope: string;
   locationParam: boolean;
   mcp: boolean;
+  /**
+   * 호출자가 생략한 파라미터의 소비자 쪽 기본값(CLI `runEndpoint`·MCP handler가 같은 함수를 적용).
+   * 서버 라우트의 무파라미터 응답을 바꾸면 구버전 앱이 받는 값이 바뀌므로 기본값은 여기서 푼다.
+   */
+  implicitQuery?: (query: Record<string, unknown>) => Record<string, string>;
 }
 
 const LATLNG: ParamSpec[] = [
@@ -108,10 +113,13 @@ export const ENDPOINT_CATALOG: EndpointSpec[] = [
     params: [{ key: "origin", type: "string", required: true, description: "출발 좌표 '위도,경도'" },
              { key: "dest", type: "string", required: true, description: "도착 좌표 '위도,경도'" },
              { key: "accessible", type: "string", required: false, description: "true|false, 계단 회피 경로(카카오 전용)" },
-             { key: "variant", type: "string", required: false, description: "shortest면 최단 경로(ko 카카오·폴백 Tmap, en Tmap). 생략하면 기본 경로(ko 큰길 우선)" },
+             { key: "variant", type: "string", required: false, description: "shortest면 최단 경로(ko 카카오·폴백 Tmap, en Tmap). 생략하면 앱 화면 첫 줄과 같은 경로(ko 최단, accessible=true면 계단 회피, en 추천)" },
              { key: "lang", type: "string", required: false, description: "en이면 영문 안내 문장(Tmap 단독)" },
              { key: "via", type: "string", required: false, description: "경유 좌표 '위도,경도' 1개(도보·자동차 — 응답 waypoint.stepIndex가 경유지 도착 뒤 첫 단계)" }],
-    envelope: "result", locationParam: false, mcp: true },
+    envelope: "result", locationParam: false, mcp: true,
+    // 앱 화면 첫 줄(E42)과 맞춘다: ko는 최단. 계단 회피 요청과 en(첫 줄이 Tmap 추천)은 서버 기본 그대로.
+    implicitQuery: (q): Record<string, string> =>
+      q.variant === undefined && q.accessible !== "true" && q.lang !== "en" ? { variant: "shortest" } : {} },
   { name: "weather", description: "이 지역 날씨(기상청 실황+예보)", path: "/api/weather/nearby", method: "GET",
     params: LATLNG, envelope: "weather", locationParam: true, mcp: true },
   { name: "air-quality", description: "이 지역 공기질(에어코리아)", path: "/api/air-quality/nearby", method: "GET",

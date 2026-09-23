@@ -131,7 +131,23 @@ describe("route 명령", () => {
     await runRoute("walk", { origin: "37.53,127.12", dest: "37.49,127.02", output: "text" });
     expect(apiRequest).toHaveBeenCalledWith(
       "/api/route/walk",
-      { query: { origin: "37.53,127.12", dest: "37.49,127.02" } },
+      { query: { origin: "37.53,127.12", dest: "37.49,127.02", variant: "shortest" } },
+    );
+  });
+
+  // E42: 앱 화면 첫 줄과 같은 경로 — ko는 최단, 계단 회피 요청·en은 서버 기본(화면의 그 줄).
+  it.each([
+    ["ko 기본은 최단", {}, { variant: "shortest" }],
+    ["accessible=false도 최단", { accessible: "false" }, { accessible: "false", variant: "shortest" }],
+    ["accessible=true는 variant 없이", { accessible: "true" }, { accessible: "true" }],
+    ["en은 variant 없이(첫 줄이 Tmap 추천)", { lang: "en" }, { lang: "en" }],
+  ] as const)("walk 경로 축: %s", async (_label, flags, expected) => {
+    apiRequest.mockImplementation(async () => ({ result: { distanceMeters: 0, durationSeconds: 0, steps: [] } }));
+
+    await runRoute("walk", { origin: "37.53,127.12", dest: "37.49,127.02", ...flags, output: "text" });
+    expect(apiRequest).toHaveBeenCalledWith(
+      "/api/route/walk",
+      { query: { origin: "37.53,127.12", dest: "37.49,127.02", ...expected } },
     );
   });
 
@@ -166,7 +182,7 @@ describe("route 명령", () => {
     await runRoute("walk", { origin: "37.53,127.12", dest: "37.49,127.02", output: "text" });
     expect(apiRequest).toHaveBeenCalledWith(
       "/api/route/walk",
-      { query: { origin: "37.53,127.12", dest: "37.49,127.02" } },
+      { query: { origin: "37.53,127.12", dest: "37.49,127.02", variant: "shortest" } },
     );
   });
 
@@ -182,7 +198,7 @@ describe("route 명령", () => {
     ).rejects.toThrow("EXIT_2");
     expect(apiRequest).toHaveBeenCalledWith(
       "/api/route/walk",
-      { query: { origin: "37.53,127.12", dest: "37.49,127.02", accessible: "yes" } },
+      { query: { origin: "37.53,127.12", dest: "37.49,127.02", accessible: "yes", variant: "shortest" } },
     );
   });
 

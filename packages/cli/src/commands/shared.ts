@@ -73,6 +73,7 @@ export async function runEndpoint(
 ): Promise<void> {
   const path = catalogPath(name);
   if (lang !== undefined && catalogSupportsLang(name)) query = { ...query, lang };
+  query = { ...query, ...catalogSpec(name).implicitQuery?.(query) };
   const cfg = await readConfig();
   try {
     const data = await apiRequest<Record<string, unknown>>(path, { query });

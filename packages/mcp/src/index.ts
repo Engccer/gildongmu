@@ -59,7 +59,7 @@ for (const spec of ENDPOINT_CATALOG.filter((e) => e.mcp)) {
     { description: spec.description, inputSchema: shape, annotations: { readOnlyHint: true } },
     async (args: Record<string, unknown>) => {
       const url = new URL(spec.path, API_URL);
-      for (const [k, v] of Object.entries(args)) {
+      for (const [k, v] of Object.entries({ ...args, ...spec.implicitQuery?.(args) })) {
         if (v !== undefined) url.searchParams.set(k, String(v));
       }
       const res = await fetch(url.toString());
