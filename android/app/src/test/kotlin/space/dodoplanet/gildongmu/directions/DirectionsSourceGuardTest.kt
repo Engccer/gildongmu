@@ -30,7 +30,8 @@ class DirectionsSourceGuardTest {
         val used = sources.flatMap { f -> Regex(""""((?:[^"\\]|\\.)*)"""").findAll(f.readText()).map { it.groupValues[1] }.toList() }
             .filter { keyShape.matches(it) }.toMutableSet()
         // :kit이 키를 돌려주는 자리 — 갈래 전수.
-        for (h in listOf(null, listOf("fastest", "fewestTransfers"), listOf("fastest", "fewestTransfers", "leastWalk", "busOnly", "subwayOnly"))) {
+        val axes = listOf("fastest", "fewestTransfers", "leastWalk", "busOnly", "subwayOnly")
+        for (h in listOf(null, listOf("fastest", "fewestTransfers")) + axes.map { listOf(it) }) {
             used += TransitAlternativeName.parts(h, 1).map { it.key }
         }
         for (name in listOf("a", null)) for (dist in listOf("1m", null)) for (exit in listOf("3", null)) used += TransitWalkLegText.resolve(name, dist, 1, exit).key

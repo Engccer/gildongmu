@@ -107,6 +107,8 @@ type QueryResults = {
    * 다시 재면 본 조회와 다른 출발지의 경로가 한 목록에 섞이고 캐시 키도 갈린다.
    */
   originCoord: Coord;
+  /** 조회 시점의 데이터 언어 — 수단 재조회가 같은 언어로 부른다(한 목록에 두 언어 경로가 섞이지 않게). */
+  dataLang: "ko" | "en";
   outcomes: Partial<Record<ModeKey, ModeOutcome>>;
   /** 조회 시점의 경유지 라벨(결과 구획 "경유지 C 도착"용, N4). 없으면 null. */
   viaLabel: string | null;
@@ -418,23 +420,35 @@ export function DirectionsView({
     planId: string;
     byAxis: Partial<Record<TransitModeAxis, TransitRequeryOutcome | { kind: "loading" }>>;
   } | null>(null);
-  /** 축별 in-flight 가드(더블 탭 중복 호출 차단 — 호출당 과금이라 클로저 가드만으론 부족하다). */
-  const requeryInFlight = useRef(new Set<TransitModeAxis>());
-  /** 재조회가 끝난 뒤 포커스를 옮길 요소 id(커밋 뒤 effect가 소비한다 — 결과 요소는 그 커밋에서 생긴다). */
-  const requeryFocusRef = useRef<string | null>(null);
+  /**
+   * 세대·축별 in-flight 가드(`${planId}:${axis}` — 더블 탭 중복 호출 차단, 호출당 과금이라 클로저 가드만으론
+   * 부족하다). ⚠ 축만 키로 쓰면 옛 세대 요청이 살아 있는 동안 새 조회의 같은 버튼이 조용히 무시된다.
+   */
+  const requeryInFlight = useRef(new Set<string>());
+  /**
+   * 재조회가 끝난 뒤 포커스를 옮길 요소 id와, 그 이동의 조건이 되는 버튼 id(커밋 뒤 effect가 소비한다 — 결과
+   * 요소는 그 커밋에서 생긴다). 포커스가 아직 그 버튼에 있었을 때만 옮긴다 — 기다리는 사이 사용자가 다른 곳을
+   * 듣고 있으면 옮기는 것은 이득 없이 탐색만 끊는다(헌장 §5 ⓑ는 "쥔 요소가 사라질 때"의 규칙).
+   */
+  const requeryFocusRef = useRef<{ target: string; button: string } | null>(null);
   const requeryIdPrefix = useId();
   /** 지금 화면 결과의 세대(비동기 재조회가 끝났을 때 옛 세대인지 가른다 — 클로저의 `results`는 낡는다). */
   const planIdRef = useRef<string | null>(null);
   useEffect(() => {
     planIdRef.current = results?.planId ?? null;
   }, [results]);
+  // 언마운트 뒤 끝난 재조회는 어떤 세대에도 속하지 않는다(통지·상태 커밋 없음).
+  useEffect(() => () => {
+    planIdRef.current = null;
+  }, []);
   useEffect(() => {
-    const id = requeryFocusRef.current;
-    if (!id) return;
-    const el = document.getElementById(id);
-    if (!el) return;
+    const pending = requeryFocusRef.current;
+    if (!pending) return;
     requeryFocusRef.current = null;
-    el.focus();
+    // 버튼이 사라지면 포커스는 body로 떨어진다 — 그 경우와 버튼이 아직 쥔 경우만 결과로 옮긴다.
+    const active = document.activeElement;
+    if (active && active !== document.body && active.id !== pending.button) return;
+    document.getElementById(pending.target)?.focus();
   }, [requery]);
   function routeExpanded(routeKey: string, defaultExpanded: boolean) {
     return toggledRoutes.has(routeKey) ? !defaultExpanded : defaultExpanded;
@@ -473,7 +487,6 @@ export function DirectionsView({
   /** 결과 폐기 한 곳(편집·스왑·경유지 조작·새 조회 공용). */
   function discardResults() {
     setResults(null);
-    setRequery(null);
     setToggledRoutes(new Set());
     setActiveGuideAlt(null);
     setActiveWalkLine(null);
@@ -881,6 +894,7 @@ export function DirectionsView({
         destLabel,
         destCoord: dest,
         originCoord: origin,
+        dataLang: dataLocale(locale),
         outcomes,
         viaLabel,
         orderedModes,
@@ -1033,16 +1047,23 @@ export function DirectionsView({
         : null,
     );
   }
-  /** 이 세대의 재조회 상태(세대가 다르면 없는 것). */
+  /**
+   * 이 세대의 재조회 상태(세대가 다르면 없는 것 — 새 조회가 옛 결과를 버리는 유일한 장치다).
+   * ⚠ 이 대조를 지우면 새 조회 목록에 옛 세대의 재조회 경로·"없습니다" 문장이 남는다.
+   */
   function requeryOf(axis: TransitModeAxis) {
     return requery && results && requery.planId === results.planId ? requery.byAxis[axis] : undefined;
+  }
+  /** 이 화면이 아는 재조회 축만(서버가 축을 더해도 문구 키 없는 버튼을 그리다 죽지 않게 — Kit `knownRequeryAxes` 동형). */
+  function knownRequeryAxes(result: TransitData): TransitModeAxis[] {
+    return (result.requeryAxes ?? []).filter((axis): axis is TransitModeAxis => Object.hasOwn(REQUERY_KEYS, axis));
   }
   /**
    * 추천·대안을 한 목록으로(이름 산출은 채팅 카드와 공유 — `alternativeName`). 수단 재조회로 찾은 경로는
    * 목록 끝에 대안으로 붙는다(E50 §4.3) — 화면·WebMCP 계획·안내 세션 추적이 모두 이 목록을 읽는다.
    */
   function transitEntries(result: TransitData): Array<{ route: TransitRoute; name: string; defaultExpanded: boolean }> {
-    const requeried = (result.requeryAxes ?? []).flatMap((axis) => {
+    const requeried = knownRequeryAxes(result).flatMap((axis) => {
       const r = requeryOf(axis);
       return r?.kind === "found" ? [r.route] : [];
     });
@@ -1062,24 +1083,35 @@ export function DirectionsView({
    * (헌장 §5 ⓐ 유지 우선) 이 화면의 창구(`announce`, 보이는 상태 줄)에 실패 문장을 게시한다.
    */
   async function runRequery(axis: TransitModeAxis) {
-    if (!results || requeryInFlight.current.has(axis)) return;
-    const { planId, originCoord, destCoord } = results;
-    requeryInFlight.current.add(axis);
+    if (!results) return;
+    const { planId, originCoord, destCoord, dataLang } = results;
+    const guardKey = `${planId}:${axis}`;
+    if (requeryInFlight.current.has(guardKey)) return;
+    requeryInFlight.current.add(guardKey);
+    // 직전 실패 문장을 상태 줄에서 푼다(빈 게시는 발화되지 않는다) — 재시도가 성공한 뒤에도 "불러오지
+    // 못했습니다"가 남으면 화면과 상태 줄이 반대를 말한다.
+    announce("");
     setRequery((prev) => ({
       planId,
       byAxis: { ...(prev?.planId === planId ? prev.byAxis : {}), [axis]: { kind: "loading" } },
     }));
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 15_000);
-    const outcome = await fetchTransitRequery(originCoord, destCoord, dataLocale(locale), axis, ctrl.signal);
-    clearTimeout(timer);
-    requeryInFlight.current.delete(axis);
+    let outcome: TransitRequeryOutcome;
+    try {
+      outcome = await fetchTransitRequery(originCoord, destCoord, dataLang, axis, ctrl.signal);
+    } finally {
+      clearTimeout(timer);
+      requeryInFlight.current.delete(guardKey);
+    }
     // 그 사이 새 조회가 왔으면(세대가 다르면) 옛 세대 결과는 버린다(통지·포커스 이동도 하지 않는다).
     if (planIdRef.current !== planId) return;
     if (outcome.kind === "failed") announce(tTransit(REQUERY_KEYS[axis].failed));
     else {
-      requeryFocusRef.current =
-        outcome.kind === "found" ? `${requeryIdPrefix}-route-${outcome.route.routeKey}` : `${requeryIdPrefix}-${axis}-none`;
+      requeryFocusRef.current = {
+        target: outcome.kind === "found" ? `${requeryIdPrefix}-route-${outcome.route.routeKey}` : `${requeryIdPrefix}-${axis}-none`,
+        button: `${requeryIdPrefix}-${axis}-button`,
+      };
     }
     setRequery((prev) => (prev?.planId === planId ? { planId, byAxis: { ...prev.byAxis, [axis]: outcome } } : prev));
   }
@@ -1765,10 +1797,10 @@ export function DirectionsView({
                         </div>
                       );
                     })}
-                    {/* 수단 재조회(E50 §4.2·§4.3): 표시 경로에 그 수단만 타는 경로가 없을 때만(서버
-                        `requeryAxes`). 찾으면 버튼이 사라지고 경로가 위 목록 끝에 붙는다. 없음은 버튼 자리의
+                    {/* 수단 재조회(E50 §4.2·§4.3): 강등 뒤 전체 후보에 그 수단만 타는 경로가 없을 때만(서버
+                        `requeryAxes`, 이 화면이 아는 축만). 찾으면 버튼이 사라지고 경로가 위 목록 끝에 붙는다. 없음은 버튼 자리의
                         문장(포커스 착지점이라 tabIndex=-1), 실패는 버튼 유지(재시도) + 화면 창구 통지. */}
-                    {(outcome.result.requeryAxes ?? []).map((axis) => {
+                    {knownRequeryAxes(outcome.result).map((axis) => {
                       const r = requeryOf(axis);
                       const keys = REQUERY_KEYS[axis];
                       if (r?.kind === "found") return null;
@@ -1783,9 +1815,10 @@ export function DirectionsView({
                         <div key={axis} className="mt-2">
                           <button
                             type="button"
+                            id={`${requeryIdPrefix}-${axis}-button`}
                             aria-disabled={r?.kind === "loading" || undefined}
                             onClick={() => void runRequery(axis)}
-                            className="min-h-11 rounded-md border border-border px-3 text-sm"
+                            className="min-h-11 rounded-md border border-border px-3 text-sm aria-disabled:opacity-50"
                           >
                             {tTransit(keys.button)}
                           </button>

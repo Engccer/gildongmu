@@ -855,7 +855,8 @@ function transitAlternativeName(route: TransitRouteItem): string {
   const axes = new Set(route.highlight ?? []);
   let names = TRANSIT_AXIS_NAMES.filter(([axis]) => axes.has(axis)).map(([, name]) => name);
   if (axes.has("fastest") && axes.has("fewestTransfers")) {
-    names = ["가장 빠르고 환승도 가장 적은 경로", ...names.slice(2)];
+    const pair = new Set(["가장 빠른 경로", "환승이 가장 적은 경로"]);
+    names = ["가장 빠르고 환승도 가장 적은 경로", ...names.filter((n) => !pair.has(n))];
   }
   if (names.length > 0) return names.join(", ");
   // 축도 번호도 없는 응답은 스키마 위반이다. 없는 번호를 지어내지 않는다.

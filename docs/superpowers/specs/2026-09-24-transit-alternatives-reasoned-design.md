@@ -152,7 +152,7 @@
 
 ### 4.3 재조회 버튼: 동작과 3-state
 
-누르면 **조회 시점의 출발·도착 좌표 스냅샷**과 같은 언어로 `pathType`을 붙여 **1회** 조회한다(현재 위치를 다시 재면 다른 출발지의 경로가 한 목록에 섞인다). 조회 중에는 버튼을 `aria-disabled`(웹)로 두고 in-flight 가드로 중복 호출을 막는다(헌장 §5 ⓐ: `disabled`는 포커스를 떨군다). 그 사이 새 조회가 오면 옛 세대의 결과는 버린다(통지·포커스 이동도 없다).
+누르면 **조회 시점의 출발·도착 좌표와 데이터 언어 스냅샷**으로 `pathType`을 붙여 **1회** 조회한다(현재 위치를 다시 재면 다른 출발지의 경로가 한 목록에 섞인다). 조회 중에는 버튼을 `aria-disabled`(웹)로 두고 in-flight 가드로 중복 호출을 막는다(헌장 §5 ⓐ: `disabled`는 포커스를 떨군다). 그 사이 새 조회가 오면 옛 세대의 결과는 버린다(통지·포커스 이동도 없다).
 
 | 결과 | 화면 | 포커스·통지 |
 |---|---|---|
@@ -160,7 +160,9 @@
 | 없음(`result: null`) | 버튼 자리에 문장 "버스만 타는 경로가 없습니다." | 그 문장(`tabIndex=-1`)으로 이동(별도 통지 없음) |
 | 실패(비-200·네트워크·15초 초과) | 버튼이 남는다(재시도) | 포커스는 버튼에 **머문다**(헌장 §5 ⓐ 유지 우선). 웹은 화면 창구(`announce`, 보이는 상태 줄)에 실패 문장을 게시하고, iOS는 버튼 앞에 같은 문장을 보이게 두고 `.high` 통지 + 실패 진동을 낸다(포커스가 안 움직이는 활성화 응답이라 통지가 유일한 증거) |
 
-- 찾음·없음은 포커스를 쥔 버튼이 사라지는 전이라 반드시 결과 요소로 선점 이동한다(헌장 §5 ⓑ). 결과 요소가 포커스를 받아 읽히므로 같은 문장을 통지 창구에 복제하지 않는다.
+- 찾음·없음은 포커스를 쥔 버튼이 사라지는 전이라 결과 요소로 선점 이동한다(헌장 §5 ⓑ). 결과 요소가 포커스를 받아 읽히므로 같은 문장을 통지 창구에 복제하지 않는다. ⚠ **옮기는 것은 포커스가 아직 그 버튼에 있었을 때만이다**(웹: 활성 요소가 그 버튼이거나 버튼이 사라져 body로 떨어진 경우). 기다리는 사이 사용자가 다른 곳을 듣고 있으면 옮기는 것은 이득 없이 탐색만 끊는다. iOS는 추적되지 않는 요소로 옮겨 간 경우와 버튼이 사라진 경우를 `AccessibilityFocusState`로 가를 수 없어 이 조건이 없다(실기기 판정, BACKLOG §2 E50 행).
+- 세대 결박: 웹 in-flight 가드는 `${planId}:${축}` 키다(축만 쓰면 옛 요청이 살아 있는 동안 새 조회의 같은 버튼이 조용히 무시된다). 재조회를 시작하면 화면 창구의 직전 실패 문장을 푼다. iOS는 재조회 Task를 축별로 보관해 화면 이탈(`cancel()`)·결과 폐기·새 조회가 함께 취소하고, 조회 중이던 축은 버튼으로 되돌린다(취소하지 않으면 다른 탭에서 실패 `.high` 통지가 읽던 문장을 끊는다). 두 축 결과가 가까이 오면 앞 착지 Task를 취소한다.
+- 서버가 재조회 축을 더해도 클라이언트는 아는 축만 그린다(웹 `knownRequeryAxes` ↔ Kit `knownRequeryAxes`).
 - 조회 중 진행 통지는 두지 않는다. ODsay 1회 + 캐시된 운행 시간 조회라 대기가 짧고, 결과가 곧 포커스 이동(또는 실패 통지)으로 온다. 실사용에서 침묵이 길게 들리면 다시 본다(BACKLOG §2 행).
 - **이름 축은 이 한 자리만 클라이언트가 붙인다**(설계 리뷰 #5). "그 수단만 타는가"의 판정은 서버가 파라미터로 끝냈고(§3.2 필터), 클라이언트는 그 결과에 `highlight: [요청한 축]`을 싣기만 한다. 웹·iOS 두 벌이 같은 규칙을 쓰고, 싣는 경로에는 `displayIndex`가 없다. 이 값은 WebMCP `plan_directions` 출력의 `highlight`로도 나간다.
 - 찾은 경로도 운행 종료일 수 있다(수단 재조회는 강등 뒤 1순위를 줄 뿐 운행 중만 고르지 않는다). 이름은 수단을 서술하는 사실이라 권유가 아니고, 운행 상태는 펼친 본문의 구간 문장이 종전대로 말한다. 수단 이름은 "가장 빠른"처럼 우열을 권하는 이름과 층이 다르다.
@@ -187,16 +189,16 @@
 | iOS | Kit `TransitAlternativeName.swift`·`Models/RouteModels.swift`·`RouteService.swift`, 앱 `RouteBriefing.swift`·`Directions/DirectionsTabView.swift` | 이름 조각 미러, 새 필드 디코딩(`requeryAxes`), 재조회 메서드(`transitModeRequery`, 인자 기본값 없음), 재조회 버튼·3-state·포커스 |
 | iOS 안내 시트 | `Directions/GuideOverviewSheet.swift`·`TransitTrackingSheet.swift`("다른 경로" 목록) | 코드 변경 없음. `transitRouteEntries`를 공유해 새 이름을 그대로 쓰고, 목록이 짧아진다(추천만 남는 경우가 흔하다). 그 응답의 `requeryAxes`는 쓰지 않는다(§9) |
 | 안드로이드 | `:kit` `TransitAlternativeName.kt`, `:app` `directions/DirectionsStrings.kt`·`TransitLegText.kt`, strings 재생성 | 이름 조각 미러와 키 매핑까지. 버튼은 E43 등가성 후속 |
-| CLI·MCP | `packages/cli/src/lib/formatters.ts`(+ MCP 미러) | `highlight` union 확장, 이름 조립(한국어 고정 라벨) |
+| CLI·MCP | `packages/cli/src/lib/formatters.ts` | `highlight`는 string 배열로 받고 아는 축만 이름으로 옮긴다(전방 호환), 이름 조립(한국어 고정 라벨). `packages/mcp`는 포매터가 없어(원시 JSON) 변경 없음 |
 | WebMCP | `src/lib/webmcp/tools/plan-directions.ts` | 코드 변경 없음. `highlight`를 문자열 배열로 그대로 투영하고, 화면 `transitEntries`가 재조회로 찾은 경로까지 계획에 싣는다. 재조회 파라미터는 노출하지 않는다 |
 
 i18n: `route.transit.alternativeLeastWalk`·`alternativeBusOnly`·`alternativeSubwayOnly`·`requeryBusOnly`·`requerySubwayOnly`·`requeryBusOnlyNone`·`requerySubwayOnlyNone`·`requeryBusOnlyFailed`·`requerySubwayOnlyFailed` 6로케일. 기존 네 키(`alternativeFastest`·`alternativeFewestTransfers`·`alternativeFastestFewestTransfers`·`alternativeHeading`)는 모두 남는다(조각 키·조합 규칙 3항·번호 폴백이 쓰고, 옛 앱이 읽는다). xcstrings(app·kit)·안드로이드 strings·`:kit` 카탈로그는 스크립트로 재생성한다.
 
 ## 7. 실호출 게이트 설계
 
-`scripts/verify-odsay-alternatives.mjs`. provider 함수를 번들해 그대로 태운다(판정 로직 복제 금지). live는 `--out`(원시 응답 저장)과 `--ledger`(호출 원장) 필수이고, 저장본이 있으면 다시 부르지 않으며, 원장 누적이 40에 닿으면 호출 전에 멈춘다. offline(`--from-corpus`)은 호출 0.
+`scripts/verify-odsay-alternatives.mjs`. provider 함수를 번들해 그대로 태운다(판정 로직 복제 금지). live는 `--out`(원시 응답 저장)과 `--ledger`(호출 원장) 필수이고, 저장본이 있으면 다시 부르지 않으며, 원장 누적이 40에 닿으면 호출 전에 멈춘다. 키가 없으면 부르지 않고, 경로 없음류가 아닌 오류 봉투(무효 키·쿼터 초과도 HTTP 200)는 저장하지 않고 실패로 끝낸다(저장하면 이후 재검증이 그 오류를 "경로 없음"으로 읽는다). offline(`--from-corpus`)은 호출 0.
 
-판정(설계 리뷰 #3: 함수 정의를 되묻는 술어를 버리고 원시 층 사실과 독립 대조한다): (b) `pathType` ↔ 구간 불일치 0, 경로마다 `vehicle` = `pathType` ∧ 구간(교차 확인 생존), 이름 붙은 축마다 그 경로가 **전체 후보 위의** 최선, 번호만 붙는 대안 0, 재조회 제안 = "원시 응답에 그 수단만 타는 경로가 없음", 재조회 응답은 그 수단만. (a)·(c)·(d) 분포는 관측값으로 보고한다(버튼 빈도는 판정 대상이 아니라 설계 근거). 재조회 "없음" 갈래와 강등 상호작용은 표본에서 관측되지 않아 단위 테스트가 잠근다(`odsay-pipeline.test.ts` 없음 갈래, `odsay-select.test.ts` 운행 종료 후보).
+판정(설계 리뷰 #3: 함수 정의를 되묻는 술어를 버리고 원시 층 사실과 독립 대조한다): 표본 10쌍 전부 경로 응답, (b) `pathType` ↔ 구간 불일치 0, 경로마다 `vehicle` = `pathType` ∧ 구간(교차 확인 생존), 축별 (경로, 축) 집합이 원시 층 값으로 독립 계산한 **기대 집합과 같음**(이름 붙은 경로의 자격·빠진 축·동률 순위를 한 번에 잡는다, 코드 품질 리뷰 #1), 번호만 붙는 대안 0, 재조회 제안 = "원시 응답에 그 수단만 타는 경로가 없음", 재조회 응답은 그 수단만. (a)·(c)·(d) 분포는 관측값으로 보고한다(버튼 빈도는 판정 대상이 아니라 설계 근거). 재조회 "없음" 갈래와 강등 상호작용은 표본에서 관측되지 않아 단위 테스트가 잠근다(`odsay-pipeline.test.ts` 없음 갈래, `odsay-select.test.ts` 운행 종료 후보).
 
 머지 전 확인(≤10건): 로컬 서버의 `/api/route/transit`을 표본 몇 쌍에 실제로 불러 응답 직렬화(`requeryAxes`·`displayIndex`·`vehicle`)와 `pathType` 재조회 봉투를 본다.
 
@@ -213,6 +215,8 @@ provider(`odsay-pipeline.test.ts`): `walkMeters` 3-state, `vehicle`(pathType과 
 컴포넌트(웹): 이름 조립, 재조회 버튼 노출 조건, 세 결과의 화면·포커스, 새 조회 시 상태 초기화, in-flight 중복 차단.
 
 변이 주입(생산 코드 경로): ①채움 되살리기 ②도보 분 가드 제거 ③수단 축의 "1순위가 그 수단 아님" 제거 ④2차 키 제거 ⑤선정 결과를 축 순서로 되돌리기 ⑥`displayIndex`를 모든 대안에서 비우기 ⑦재조회 `routeKey` 접두 제거 ⑧찾음 결과의 포커스 이동 제거 ⑨`vehicle`의 구간 교차 확인 제거 ⑩`requeryAxes`를 표시 집합으로 판정 ⑪새 조회 시 재조회 상태 초기화 제거. 하나라도 초록이면 그 축은 지켜지지 않는다.
+
+결과(2026-09-24, 커밋 `2b965ab6` 위): 11건 전부 빨강. ⑨는 처음엔 초록이라(구간이 섞였는데 `pathType`만 맞는 경로를 잡는 테스트가 없었다) `odsay-pipeline.test.ts`에 섞인 경로 케이스를 더해 잡았다. ⑪은 방어가 두 겹(세대 대조·폐기 초기화)이라 한 겹만 지우면 다른 겹이 막아 초록이었고, 코드 품질 리뷰 뒤 폐기 초기화를 지우고 세대 대조 하나로 줄였다(그 한 겹을 지우면 "다시 조회" 테스트가 빨강). 게이트 술어 자체도 변이로 쟀다: 수단 축의 1순위 조건 제거(광주 1쌍 FAIL)·도보 규칙 삭제(하남·대구 2쌍 FAIL).
 
 ## 9. 비범위
 
@@ -241,3 +245,5 @@ provider(`odsay-pipeline.test.ts`): `walkMeters` 3-state, `vehicle`(pathType과 
 | 10 | "경로" 반복 | 위원장 TextEdit 확정에서 조각 이름 유지(ko는 "도보 거리가 가장 짧은 경로" 한 조각만 수정) |
 | 11 | 재조회 `totalCandidates` 의미 | 반영(§3.2) |
 | 12 | 잔존 키 목록 | 반영(§6) |
+
+구현 리뷰 3종(2026-09-24, HEAD `ce6322b5`, opus): spec 준수 MINOR 6·NIT 6, 코드 품질 MAJOR 1·MINOR 6·NIT 5, 접근성 MEDIUM 1·LOW 3·NIT 1. 반영: 게이트 기대 집합 등치(MAJOR), 웹 in-flight 세대 키·재시도 시 실패 문장 해제·아는 축만 그리기·착지 조건·`aria-disabled:opacity-50`·언마운트 세대 무효화, iOS 재조회 Task 보관·화면 이탈 취소·착지 Task 취소·언어 스냅샷, 판정을 거꾸로 적은 주석 5곳, 안드로이드 키 가드 단독 축, 게이트 오류 봉투 비저장·표본 수 단언, 테스트(경합·재시도·옮겨 간 포커스). 남긴 것: iOS 착지의 "아직 버튼에 있는가" 조건과 가시화(scrollTo) 단계는 실기기 판정(BACKLOG §2 E50 행).
