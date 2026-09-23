@@ -208,6 +208,17 @@ describe("버스 승차 중 현재 정류장 — 웹 배선(E48)", () => {
     await waitFor(() => expect(screen.getByText("강동역, transitGuide.viaCurrent")).toBeTruthy());
   });
 
+  it("권한이 거부된 스토어면 스트림을 열지 않는다(시간 초과·위치 불가와 다르다)", async () => {
+    const geo = stubGeolocation();
+    geo.getCurrentPosition.mockImplementation(((_ok: PositionCallback, err?: PositionErrorCallback | null) =>
+      err?.({ code: 1, message: "denied" } as GeolocationPositionError)) as never);
+    await awaitGeolocation();
+    expect(getGeolocationSnapshot()).toMatchObject({ status: "denied", reason: "denied" });
+    await startBusRiding();
+    await new Promise((r) => setTimeout(r, 50));
+    expect(geo.watchPosition).not.toHaveBeenCalled();
+  });
+
   it("탭을 숨기면 스트림을 닫는다", async () => {
     const geo = stubGeolocation();
     await awaitGeolocation();
