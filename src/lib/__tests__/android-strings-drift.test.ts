@@ -44,7 +44,11 @@ function flatten(obj: unknown, prefix = ""): Flat {
 }
 
 describe("안드로이드 앱 문자열 드리프트", () => {
-  const built = buildAndroidStrings();
+  // .mjs 반환값은 {}로 추론되므로 테스트가 읽는 모양만 선언한다(Vitest는 타입을 검사하지 않아 tsc에서만 드러난다).
+  const built = buildAndroidStrings() as ReturnType<typeof buildAndroidStrings> & {
+    strings: Record<string, Record<string, string>>;
+    argOrder: Order;
+  };
 
   it("생성물이 최신이다(byte-identical, 6로케일)", () => {
     for (const locale of LOCALES) {
