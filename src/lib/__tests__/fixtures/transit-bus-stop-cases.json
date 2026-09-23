@@ -1,0 +1,2461 @@
+{
+ "_doc": "E48 버스 승차 중 현재 정류장(표시 전용) 순수 계층 공유 fixture(spec 2026-09-23-bus-current-stop-design.md §2). 웹 transit-bus-stop.test.ts ↔ Kit TransitBusStopTests가 같은 파일을 돈다. state는 TransitGuideState 부분집합, leg는 기본 leg(서울버스, 정류장 간격 약 445m의 남북 직선 6개)에 case의 leg 필드를 덮어쓴다. 기대값은 손으로 적었다(구현에서 뽑지 않는다). fold leg는 회차 노선(1번과 3번이 길 건너 26m), zero leg는 가운데 정류장 좌표가 (0,0)이다.",
+ "leg": {
+  "mode": "bus",
+  "trackMode": "seoulBus",
+  "viaStops": [
+   {
+    "name": "길동사거리",
+    "lat": 37.5,
+    "lng": 127.0
+   },
+   {
+    "name": "강동역",
+    "lat": 37.504,
+    "lng": 127.0
+   },
+   {
+    "name": "천호역",
+    "lat": 37.508,
+    "lng": 127.0
+   },
+   {
+    "name": "천호사거리",
+    "lat": 37.512,
+    "lng": 127.0
+   },
+   {
+    "name": "광나루역",
+    "lat": 37.516,
+    "lng": 127.0
+   },
+   {
+    "name": "워커힐",
+    "lat": 37.52,
+    "lng": 127.0
+   }
+  ]
+ },
+ "cases": [
+  {
+   "name": "국면 밖(대기)",
+   "fn": "step",
+   "state": {
+    "legIndex": 0,
+    "phase": "waiting",
+    "phaseGen": 3,
+    "signal": "notYetVisible",
+    "lock": null,
+    "currentLocation": null
+   },
+   "tracker": null,
+   "fix": {
+    "lat": 37.5,
+    "lng": 127.0,
+    "accuracy": 20,
+    "ageSeconds": 1
+   },
+   "now": 1000,
+   "expected": {
+    "tracker": null,
+    "verdict": "notApplicable"
+   }
+  },
+  {
+   "name": "지하철 leg",
+   "fn": "step",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 3,
+    "signal": "notYetVisible",
+    "lock": null,
+    "currentLocation": null
+   },
+   "tracker": null,
+   "fix": {
+    "lat": 37.5,
+    "lng": 127.0,
+    "accuracy": 20,
+    "ageSeconds": 1
+   },
+   "now": 1000,
+   "expected": {
+    "tracker": null,
+    "verdict": "notApplicable"
+   },
+   "leg": {
+    "mode": "subway",
+    "trackMode": "subway",
+    "viaStops": [
+     {
+      "name": "강동",
+      "lat": 37.5,
+      "lng": 127.0
+     },
+     {
+      "name": "천호",
+      "lat": 37.504,
+      "lng": 127.0
+     },
+     {
+      "name": "광나루",
+      "lat": 37.508,
+      "lng": 127.0
+     },
+     {
+      "name": "아차산",
+      "lat": 37.512,
+      "lng": 127.0
+     },
+     {
+      "name": "군자",
+      "lat": 37.516,
+      "lng": 127.0
+     },
+     {
+      "name": "장한평",
+      "lat": 37.52,
+      "lng": 127.0
+     }
+    ]
+   }
+  },
+  {
+   "name": "경유 정류장 없음",
+   "fn": "step",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 3,
+    "signal": "notYetVisible",
+    "lock": null,
+    "currentLocation": null
+   },
+   "tracker": null,
+   "fix": {
+    "lat": 37.5,
+    "lng": 127.0,
+    "accuracy": 20,
+    "ageSeconds": 1
+   },
+   "now": 1000,
+   "expected": {
+    "tracker": null,
+    "verdict": "notApplicable"
+   },
+   "leg": {
+    "viaStops": []
+   }
+  },
+  {
+   "name": "첫 fix — 승차 정류장 후보",
+   "fn": "step",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 3,
+    "signal": "notYetVisible",
+    "lock": null,
+    "currentLocation": null
+   },
+   "tracker": null,
+   "fix": {
+    "lat": 37.5002,
+    "lng": 127.0,
+    "accuracy": 20,
+    "ageSeconds": 1
+   },
+   "now": 1000,
+   "expected": {
+    "tracker": {
+     "legIndex": 0,
+     "phaseGen": 3,
+     "stopIndex": null,
+     "lastObservedAt": null,
+     "pendingIndex": 0,
+     "behindSince": null
+    },
+    "verdict": "pending"
+   }
+  },
+  {
+   "name": "첫 fix 두 번째 — 래치",
+   "fn": "step",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 3,
+    "signal": "notYetVisible",
+    "lock": null,
+    "currentLocation": null
+   },
+   "tracker": {
+    "legIndex": 0,
+    "phaseGen": 3,
+    "stopIndex": null,
+    "lastObservedAt": null,
+    "pendingIndex": 0,
+    "behindSince": null
+   },
+   "fix": {
+    "lat": 37.5002,
+    "lng": 127.0,
+    "accuracy": 20,
+    "ageSeconds": 1
+   },
+   "now": 2000,
+   "expected": {
+    "tracker": {
+     "legIndex": 0,
+     "phaseGen": 3,
+     "stopIndex": 0,
+     "lastObservedAt": 2000,
+     "pendingIndex": null,
+     "behindSince": null
+    },
+    "verdict": "observed"
+   }
+  },
+  {
+   "name": "첫 fix 두 번이 다른 정류장 — 후보 교체",
+   "fn": "step",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 3,
+    "signal": "notYetVisible",
+    "lock": null,
+    "currentLocation": null
+   },
+   "tracker": {
+    "legIndex": 0,
+    "phaseGen": 3,
+    "stopIndex": null,
+    "lastObservedAt": null,
+    "pendingIndex": 0,
+    "behindSince": null
+   },
+   "fix": {
+    "lat": 37.504,
+    "lng": 127.0,
+    "accuracy": 20,
+    "ageSeconds": 1
+   },
+   "now": 2000,
+   "expected": {
+    "tracker": {
+     "legIndex": 0,
+     "phaseGen": 3,
+     "stopIndex": null,
+     "lastObservedAt": null,
+     "pendingIndex": 1,
+     "behindSince": null
+    },
+    "verdict": "pending"
+   }
+  },
+  {
+   "name": "정확도 150m — 부정확",
+   "fn": "step",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 3,
+    "signal": "notYetVisible",
+    "lock": null,
+    "currentLocation": null
+   },
+   "tracker": {
+    "legIndex": 0,
+    "phaseGen": 3,
+    "stopIndex": 1,
+    "lastObservedAt": 500,
+    "pendingIndex": null,
+    "behindSince": null
+   },
+   "fix": {
+    "lat": 37.504,
+    "lng": 127.0,
+    "accuracy": 150,
+    "ageSeconds": 1
+   },
+   "now": 1000,
+   "expected": {
+    "tracker": {
+     "legIndex": 0,
+     "phaseGen": 3,
+     "stopIndex": 1,
+     "lastObservedAt": 500,
+     "pendingIndex": null,
+     "behindSince": null
+    },
+    "verdict": "inaccurate"
+   }
+  },
+  {
+   "name": "정확도 100m 경계 — 관측",
+   "fn": "step",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 3,
+    "signal": "notYetVisible",
+    "lock": null,
+    "currentLocation": null
+   },
+   "tracker": {
+    "legIndex": 0,
+    "phaseGen": 3,
+    "stopIndex": 1,
+    "lastObservedAt": 500,
+    "pendingIndex": null,
+    "behindSince": null
+   },
+   "fix": {
+    "lat": 37.504,
+    "lng": 127.0,
+    "accuracy": 100,
+    "ageSeconds": 1
+   },
+   "now": 1000,
+   "expected": {
+    "tracker": {
+     "legIndex": 0,
+     "phaseGen": 3,
+     "stopIndex": 1,
+     "lastObservedAt": 1000,
+     "pendingIndex": null,
+     "behindSince": null
+    },
+    "verdict": "observed"
+   }
+  },
+  {
+   "name": "정확도 0 — 무효",
+   "fn": "step",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 3,
+    "signal": "notYetVisible",
+    "lock": null,
+    "currentLocation": null
+   },
+   "tracker": null,
+   "fix": {
+    "lat": 37.504,
+    "lng": 127.0,
+    "accuracy": 0,
+    "ageSeconds": 1
+   },
+   "now": 1000,
+   "expected": {
+    "tracker": {
+     "legIndex": 0,
+     "phaseGen": 3,
+     "stopIndex": null,
+     "lastObservedAt": null,
+     "pendingIndex": null,
+     "behindSince": null
+    },
+    "verdict": "inaccurate"
+   }
+  },
+  {
+   "name": "정확도 음수 — 무효",
+   "fn": "step",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 3,
+    "signal": "notYetVisible",
+    "lock": null,
+    "currentLocation": null
+   },
+   "tracker": null,
+   "fix": {
+    "lat": 37.504,
+    "lng": 127.0,
+    "accuracy": -1,
+    "ageSeconds": 1
+   },
+   "now": 1000,
+   "expected": {
+    "tracker": {
+     "legIndex": 0,
+     "phaseGen": 3,
+     "stopIndex": null,
+     "lastObservedAt": null,
+     "pendingIndex": null,
+     "behindSince": null
+    },
+    "verdict": "inaccurate"
+   }
+  },
+  {
+   "name": "나이 10초 경계 — 관측",
+   "fn": "step",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 3,
+    "signal": "notYetVisible",
+    "lock": null,
+    "currentLocation": null
+   },
+   "tracker": {
+    "legIndex": 0,
+    "phaseGen": 3,
+    "stopIndex": 1,
+    "lastObservedAt": 500,
+    "pendingIndex": null,
+    "behindSince": null
+   },
+   "fix": {
+    "lat": 37.504,
+    "lng": 127.0,
+    "accuracy": 20,
+    "ageSeconds": 10
+   },
+   "now": 1000,
+   "expected": {
+    "tracker": {
+     "legIndex": 0,
+     "phaseGen": 3,
+     "stopIndex": 1,
+     "lastObservedAt": 1000,
+     "pendingIndex": null,
+     "behindSince": null
+    },
+    "verdict": "observed"
+   }
+  },
+  {
+   "name": "나이 10.5초 — 캐시 fix",
+   "fn": "step",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 3,
+    "signal": "notYetVisible",
+    "lock": null,
+    "currentLocation": null
+   },
+   "tracker": {
+    "legIndex": 0,
+    "phaseGen": 3,
+    "stopIndex": 1,
+    "lastObservedAt": 500,
+    "pendingIndex": null,
+    "behindSince": null
+   },
+   "fix": {
+    "lat": 37.504,
+    "lng": 127.0,
+    "accuracy": 20,
+    "ageSeconds": 10.5
+   },
+   "now": 1000,
+   "expected": {
+    "tracker": {
+     "legIndex": 0,
+     "phaseGen": 3,
+     "stopIndex": 1,
+     "lastObservedAt": 500,
+     "pendingIndex": null,
+     "behindSince": null
+    },
+    "verdict": "stale"
+   }
+  },
+  {
+   "name": "미래 시각 11초 — 신뢰 불가",
+   "fn": "step",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 3,
+    "signal": "notYetVisible",
+    "lock": null,
+    "currentLocation": null
+   },
+   "tracker": null,
+   "fix": {
+    "lat": 37.504,
+    "lng": 127.0,
+    "accuracy": 20,
+    "ageSeconds": -11
+   },
+   "now": 1000,
+   "expected": {
+    "tracker": {
+     "legIndex": 0,
+     "phaseGen": 3,
+     "stopIndex": null,
+     "lastObservedAt": null,
+     "pendingIndex": null,
+     "behindSince": null
+    },
+    "verdict": "stale"
+   }
+  },
+  {
+   "name": "노선 밖 353m",
+   "fn": "step",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 3,
+    "signal": "notYetVisible",
+    "lock": null,
+    "currentLocation": null
+   },
+   "tracker": null,
+   "fix": {
+    "lat": 37.5,
+    "lng": 127.004,
+    "accuracy": 20,
+    "ageSeconds": 1
+   },
+   "now": 1000,
+   "expected": {
+    "tracker": {
+     "legIndex": 0,
+     "phaseGen": 3,
+     "stopIndex": null,
+     "lastObservedAt": null,
+     "pendingIndex": null,
+     "behindSince": null
+    },
+    "verdict": "offRoute"
+   }
+  },
+  {
+   "name": "노선 밖은 래치·후보를 두고 간다",
+   "fn": "step",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 3,
+    "signal": "notYetVisible",
+    "lock": null,
+    "currentLocation": null
+   },
+   "tracker": {
+    "legIndex": 0,
+    "phaseGen": 3,
+    "stopIndex": 2,
+    "lastObservedAt": 1000,
+    "pendingIndex": 3,
+    "behindSince": null
+   },
+   "fix": {
+    "lat": 37.5,
+    "lng": 127.004,
+    "accuracy": 20,
+    "ageSeconds": 1
+   },
+   "now": 5000,
+   "expected": {
+    "tracker": {
+     "legIndex": 0,
+     "phaseGen": 3,
+     "stopIndex": 2,
+     "lastObservedAt": 1000,
+     "pendingIndex": 3,
+     "behindSince": null
+    },
+    "verdict": "offRoute"
+   }
+  },
+  {
+   "name": "중간 지점 앞쪽 — 래치 그대로",
+   "fn": "step",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 3,
+    "signal": "notYetVisible",
+    "lock": null,
+    "currentLocation": null
+   },
+   "tracker": {
+    "legIndex": 0,
+    "phaseGen": 3,
+    "stopIndex": 0,
+    "lastObservedAt": 1000,
+    "pendingIndex": null,
+    "behindSince": null
+   },
+   "fix": {
+    "lat": 37.5019,
+    "lng": 127.0,
+    "accuracy": 20,
+    "ageSeconds": 1
+   },
+   "now": 2000,
+   "expected": {
+    "tracker": {
+     "legIndex": 0,
+     "phaseGen": 3,
+     "stopIndex": 0,
+     "lastObservedAt": 2000,
+     "pendingIndex": null,
+     "behindSince": null
+    },
+    "verdict": "observed"
+   }
+  },
+  {
+   "name": "중간 지점 넘음 — 다음 정류장 후보",
+   "fn": "step",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 3,
+    "signal": "notYetVisible",
+    "lock": null,
+    "currentLocation": null
+   },
+   "tracker": {
+    "legIndex": 0,
+    "phaseGen": 3,
+    "stopIndex": 0,
+    "lastObservedAt": 1000,
+    "pendingIndex": null,
+    "behindSince": null
+   },
+   "fix": {
+    "lat": 37.5021,
+    "lng": 127.0,
+    "accuracy": 20,
+    "ageSeconds": 1
+   },
+   "now": 2000,
+   "expected": {
+    "tracker": {
+     "legIndex": 0,
+     "phaseGen": 3,
+     "stopIndex": 0,
+     "lastObservedAt": 1000,
+     "pendingIndex": 1,
+     "behindSince": null
+    },
+    "verdict": "pending"
+   }
+  },
+  {
+   "name": "중간 지점 넘음 두 번째 — 전진",
+   "fn": "step",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 3,
+    "signal": "notYetVisible",
+    "lock": null,
+    "currentLocation": null
+   },
+   "tracker": {
+    "legIndex": 0,
+    "phaseGen": 3,
+    "stopIndex": 0,
+    "lastObservedAt": 1000,
+    "pendingIndex": 1,
+    "behindSince": null
+   },
+   "fix": {
+    "lat": 37.5021,
+    "lng": 127.0,
+    "accuracy": 20,
+    "ageSeconds": 1
+   },
+   "now": 3000,
+   "expected": {
+    "tracker": {
+     "legIndex": 0,
+     "phaseGen": 3,
+     "stopIndex": 1,
+     "lastObservedAt": 3000,
+     "pendingIndex": null,
+     "behindSince": null
+    },
+    "verdict": "observed"
+   }
+  },
+  {
+   "name": "앞으로 튄 fix 뒤 제자리 — 후보 폐기",
+   "fn": "step",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 3,
+    "signal": "notYetVisible",
+    "lock": null,
+    "currentLocation": null
+   },
+   "tracker": {
+    "legIndex": 0,
+    "phaseGen": 3,
+    "stopIndex": 2,
+    "lastObservedAt": 1000,
+    "pendingIndex": 3,
+    "behindSince": null
+   },
+   "fix": {
+    "lat": 37.508,
+    "lng": 127.0,
+    "accuracy": 20,
+    "ageSeconds": 1
+   },
+   "now": 3000,
+   "expected": {
+    "tracker": {
+     "legIndex": 0,
+     "phaseGen": 3,
+     "stopIndex": 2,
+     "lastObservedAt": 3000,
+     "pendingIndex": null,
+     "behindSince": null
+    },
+    "verdict": "observed"
+   }
+  },
+  {
+   "name": "두 정류장 앞 후보 확인 — 전진",
+   "fn": "step",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 3,
+    "signal": "notYetVisible",
+    "lock": null,
+    "currentLocation": null
+   },
+   "tracker": {
+    "legIndex": 0,
+    "phaseGen": 3,
+    "stopIndex": 1,
+    "lastObservedAt": 1000,
+    "pendingIndex": 3,
+    "behindSince": null
+   },
+   "fix": {
+    "lat": 37.512,
+    "lng": 127.0,
+    "accuracy": 20,
+    "ageSeconds": 1
+   },
+   "now": 30000,
+   "expected": {
+    "tracker": {
+     "legIndex": 0,
+     "phaseGen": 3,
+     "stopIndex": 3,
+     "lastObservedAt": 30000,
+     "pendingIndex": null,
+     "behindSince": null
+    },
+    "verdict": "observed"
+   }
+  },
+  {
+   "name": "비관측(부정확)은 후보를 끊지 않는다",
+   "fn": "step",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 3,
+    "signal": "notYetVisible",
+    "lock": null,
+    "currentLocation": null
+   },
+   "tracker": {
+    "legIndex": 0,
+    "phaseGen": 3,
+    "stopIndex": 1,
+    "lastObservedAt": 1000,
+    "pendingIndex": 3,
+    "behindSince": null
+   },
+   "fix": {
+    "lat": 37.512,
+    "lng": 127.0,
+    "accuracy": 150,
+    "ageSeconds": 1
+   },
+   "now": 30000,
+   "expected": {
+    "tracker": {
+     "legIndex": 0,
+     "phaseGen": 3,
+     "stopIndex": 1,
+     "lastObservedAt": 1000,
+     "pendingIndex": 3,
+     "behindSince": null
+    },
+    "verdict": "inaccurate"
+   }
+  },
+  {
+   "name": "뒤 정류장 첫 관측 — 래치 유지",
+   "fn": "step",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 3,
+    "signal": "notYetVisible",
+    "lock": null,
+    "currentLocation": null
+   },
+   "tracker": {
+    "legIndex": 0,
+    "phaseGen": 3,
+    "stopIndex": 3,
+    "lastObservedAt": 10000,
+    "pendingIndex": null,
+    "behindSince": null
+   },
+   "fix": {
+    "lat": 37.508,
+    "lng": 127.0,
+    "accuracy": 20,
+    "ageSeconds": 1
+   },
+   "now": 20000,
+   "expected": {
+    "tracker": {
+     "legIndex": 0,
+     "phaseGen": 3,
+     "stopIndex": 3,
+     "lastObservedAt": 10000,
+     "pendingIndex": null,
+     "behindSince": 20000
+    },
+    "verdict": "behind"
+   }
+  },
+  {
+   "name": "뒤 관측은 앞 후보를 끊는다",
+   "fn": "step",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 3,
+    "signal": "notYetVisible",
+    "lock": null,
+    "currentLocation": null
+   },
+   "tracker": {
+    "legIndex": 0,
+    "phaseGen": 3,
+    "stopIndex": 3,
+    "lastObservedAt": 10000,
+    "pendingIndex": 4,
+    "behindSince": null
+   },
+   "fix": {
+    "lat": 37.508,
+    "lng": 127.0,
+    "accuracy": 20,
+    "ageSeconds": 1
+   },
+   "now": 20000,
+   "expected": {
+    "tracker": {
+     "legIndex": 0,
+     "phaseGen": 3,
+     "stopIndex": 3,
+     "lastObservedAt": 10000,
+     "pendingIndex": null,
+     "behindSince": 20000
+    },
+    "verdict": "behind"
+   }
+  },
+  {
+   "name": "뒤 59.999초 — 아직 유지",
+   "fn": "step",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 3,
+    "signal": "notYetVisible",
+    "lock": null,
+    "currentLocation": null
+   },
+   "tracker": {
+    "legIndex": 0,
+    "phaseGen": 3,
+    "stopIndex": 3,
+    "lastObservedAt": 10000,
+    "pendingIndex": null,
+    "behindSince": 20000
+   },
+   "fix": {
+    "lat": 37.508,
+    "lng": 127.0,
+    "accuracy": 20,
+    "ageSeconds": 1
+   },
+   "now": 79999,
+   "expected": {
+    "tracker": {
+     "legIndex": 0,
+     "phaseGen": 3,
+     "stopIndex": 3,
+     "lastObservedAt": 10000,
+     "pendingIndex": null,
+     "behindSince": 20000
+    },
+    "verdict": "behind"
+   }
+  },
+  {
+   "name": "뒤 60초 연속 — 재시작",
+   "fn": "step",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 3,
+    "signal": "notYetVisible",
+    "lock": null,
+    "currentLocation": null
+   },
+   "tracker": {
+    "legIndex": 0,
+    "phaseGen": 3,
+    "stopIndex": 3,
+    "lastObservedAt": 10000,
+    "pendingIndex": null,
+    "behindSince": 20000
+   },
+   "fix": {
+    "lat": 37.508,
+    "lng": 127.0,
+    "accuracy": 20,
+    "ageSeconds": 1
+   },
+   "now": 80000,
+   "expected": {
+    "tracker": {
+     "legIndex": 0,
+     "phaseGen": 3,
+     "stopIndex": 2,
+     "lastObservedAt": 80000,
+     "pendingIndex": null,
+     "behindSince": null
+    },
+    "verdict": "restarted"
+   }
+  },
+  {
+   "name": "같은 정류장 관측이 뒤 연속을 끊는다",
+   "fn": "step",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 3,
+    "signal": "notYetVisible",
+    "lock": null,
+    "currentLocation": null
+   },
+   "tracker": {
+    "legIndex": 0,
+    "phaseGen": 3,
+    "stopIndex": 3,
+    "lastObservedAt": 10000,
+    "pendingIndex": null,
+    "behindSince": 20000
+   },
+   "fix": {
+    "lat": 37.512,
+    "lng": 127.0,
+    "accuracy": 20,
+    "ageSeconds": 1
+   },
+   "now": 30000,
+   "expected": {
+    "tracker": {
+     "legIndex": 0,
+     "phaseGen": 3,
+     "stopIndex": 3,
+     "lastObservedAt": 30000,
+     "pendingIndex": null,
+     "behindSince": null
+    },
+    "verdict": "observed"
+   }
+  },
+  {
+   "name": "앞 후보도 뒤 연속을 끊는다",
+   "fn": "step",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 3,
+    "signal": "notYetVisible",
+    "lock": null,
+    "currentLocation": null
+   },
+   "tracker": {
+    "legIndex": 0,
+    "phaseGen": 3,
+    "stopIndex": 3,
+    "lastObservedAt": 10000,
+    "pendingIndex": null,
+    "behindSince": 20000
+   },
+   "fix": {
+    "lat": 37.516,
+    "lng": 127.0,
+    "accuracy": 20,
+    "ageSeconds": 1
+   },
+   "now": 30000,
+   "expected": {
+    "tracker": {
+     "legIndex": 0,
+     "phaseGen": 3,
+     "stopIndex": 3,
+     "lastObservedAt": 10000,
+     "pendingIndex": 4,
+     "behindSince": null
+    },
+    "verdict": "pending"
+   }
+  },
+  {
+   "name": "비관측(부정확)은 뒤 연속을 끊지 않는다",
+   "fn": "step",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 3,
+    "signal": "notYetVisible",
+    "lock": null,
+    "currentLocation": null
+   },
+   "tracker": {
+    "legIndex": 0,
+    "phaseGen": 3,
+    "stopIndex": 3,
+    "lastObservedAt": 10000,
+    "pendingIndex": null,
+    "behindSince": 20000
+   },
+   "fix": {
+    "lat": 37.508,
+    "lng": 127.0,
+    "accuracy": 150,
+    "ageSeconds": 1
+   },
+   "now": 30000,
+   "expected": {
+    "tracker": {
+     "legIndex": 0,
+     "phaseGen": 3,
+     "stopIndex": 3,
+     "lastObservedAt": 10000,
+     "pendingIndex": null,
+     "behindSince": 20000
+    },
+    "verdict": "inaccurate"
+   }
+  },
+  {
+   "name": "보존 창 지난 래치는 버리고 새 후보",
+   "fn": "step",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 3,
+    "signal": "notYetVisible",
+    "lock": null,
+    "currentLocation": null
+   },
+   "tracker": {
+    "legIndex": 0,
+    "phaseGen": 3,
+    "stopIndex": 4,
+    "lastObservedAt": 1000,
+    "pendingIndex": null,
+    "behindSince": null
+   },
+   "fix": {
+    "lat": 37.504,
+    "lng": 127.0,
+    "accuracy": 20,
+    "ageSeconds": 1
+   },
+   "now": 100000,
+   "expected": {
+    "tracker": {
+     "legIndex": 0,
+     "phaseGen": 3,
+     "stopIndex": null,
+     "lastObservedAt": null,
+     "pendingIndex": 1,
+     "behindSince": null
+    },
+    "verdict": "pending"
+   }
+  },
+  {
+   "name": "보존 창 지남 + 부정확 — 래치만 버린다",
+   "fn": "step",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 3,
+    "signal": "notYetVisible",
+    "lock": null,
+    "currentLocation": null
+   },
+   "tracker": {
+    "legIndex": 0,
+    "phaseGen": 3,
+    "stopIndex": 4,
+    "lastObservedAt": 1000,
+    "pendingIndex": 5,
+    "behindSince": 5000
+   },
+   "fix": {
+    "lat": 37.504,
+    "lng": 127.0,
+    "accuracy": 150,
+    "ageSeconds": 1
+   },
+   "now": 100000,
+   "expected": {
+    "tracker": {
+     "legIndex": 0,
+     "phaseGen": 3,
+     "stopIndex": null,
+     "lastObservedAt": null,
+     "pendingIndex": null,
+     "behindSince": null
+    },
+    "verdict": "inaccurate"
+   }
+  },
+  {
+   "name": "결박 교체(phaseGen) — 새로 시작",
+   "fn": "step",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 3,
+    "signal": "notYetVisible",
+    "lock": null,
+    "currentLocation": null
+   },
+   "tracker": {
+    "legIndex": 0,
+    "phaseGen": 2,
+    "stopIndex": 4,
+    "lastObservedAt": 1000,
+    "pendingIndex": null,
+    "behindSince": null
+   },
+   "fix": {
+    "lat": 37.504,
+    "lng": 127.0,
+    "accuracy": 20,
+    "ageSeconds": 1
+   },
+   "now": 2000,
+   "expected": {
+    "tracker": {
+     "legIndex": 0,
+     "phaseGen": 3,
+     "stopIndex": null,
+     "lastObservedAt": null,
+     "pendingIndex": 1,
+     "behindSince": null
+    },
+    "verdict": "pending"
+   }
+  },
+  {
+   "name": "결박 교체(구간) — 새로 시작",
+   "fn": "step",
+   "state": {
+    "legIndex": 1,
+    "phase": "riding",
+    "phaseGen": 3,
+    "signal": "notYetVisible",
+    "lock": null,
+    "currentLocation": null
+   },
+   "tracker": {
+    "legIndex": 0,
+    "phaseGen": 3,
+    "stopIndex": 4,
+    "lastObservedAt": 1000,
+    "pendingIndex": null,
+    "behindSince": null
+   },
+   "fix": {
+    "lat": 37.504,
+    "lng": 127.0,
+    "accuracy": 20,
+    "ageSeconds": 1
+   },
+   "now": 2000,
+   "expected": {
+    "tracker": {
+     "legIndex": 1,
+     "phaseGen": 3,
+     "stopIndex": null,
+     "lastObservedAt": null,
+     "pendingIndex": 1,
+     "behindSince": null
+    },
+    "verdict": "pending"
+   }
+  },
+  {
+   "name": "길 건너 정류장 — 모호",
+   "fn": "step",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 3,
+    "signal": "notYetVisible",
+    "lock": null,
+    "currentLocation": null
+   },
+   "tracker": null,
+   "fix": {
+    "lat": 37.504,
+    "lng": 127.0,
+    "accuracy": 20,
+    "ageSeconds": 1
+   },
+   "now": 1000,
+   "expected": {
+    "tracker": {
+     "legIndex": 0,
+     "phaseGen": 3,
+     "stopIndex": null,
+     "lastObservedAt": null,
+     "pendingIndex": null,
+     "behindSince": null
+    },
+    "verdict": "ambiguous"
+   },
+   "leg": {
+    "viaStops": [
+     {
+      "name": "회차A",
+      "lat": 37.5,
+      "lng": 127.0
+     },
+     {
+      "name": "회차B",
+      "lat": 37.504,
+      "lng": 127.0
+     },
+     {
+      "name": "회차점",
+      "lat": 37.508,
+      "lng": 127.0
+     },
+     {
+      "name": "회차B건너편",
+      "lat": 37.504,
+      "lng": 127.0003
+     },
+     {
+      "name": "회차A건너편",
+      "lat": 37.5,
+      "lng": 127.0003
+     }
+    ]
+   }
+  },
+  {
+   "name": "접힘 모호는 래치를 두고 간다",
+   "fn": "step",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 3,
+    "signal": "notYetVisible",
+    "lock": null,
+    "currentLocation": null
+   },
+   "tracker": {
+    "legIndex": 0,
+    "phaseGen": 3,
+    "stopIndex": 1,
+    "lastObservedAt": 1000,
+    "pendingIndex": null,
+    "behindSince": null
+   },
+   "fix": {
+    "lat": 37.504,
+    "lng": 127.0,
+    "accuracy": 20,
+    "ageSeconds": 1
+   },
+   "now": 5000,
+   "expected": {
+    "tracker": {
+     "legIndex": 0,
+     "phaseGen": 3,
+     "stopIndex": 1,
+     "lastObservedAt": 1000,
+     "pendingIndex": null,
+     "behindSince": null
+    },
+    "verdict": "ambiguous"
+   },
+   "leg": {
+    "viaStops": [
+     {
+      "name": "회차A",
+      "lat": 37.5,
+      "lng": 127.0
+     },
+     {
+      "name": "회차B",
+      "lat": 37.504,
+      "lng": 127.0
+     },
+     {
+      "name": "회차점",
+      "lat": 37.508,
+      "lng": 127.0
+     },
+     {
+      "name": "회차B건너편",
+      "lat": 37.504,
+      "lng": 127.0003
+     },
+     {
+      "name": "회차A건너편",
+      "lat": 37.5,
+      "lng": 127.0003
+     }
+    ]
+   }
+  },
+  {
+   "name": "회차점 — 모호 아님",
+   "fn": "step",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 3,
+    "signal": "notYetVisible",
+    "lock": null,
+    "currentLocation": null
+   },
+   "tracker": {
+    "legIndex": 0,
+    "phaseGen": 3,
+    "stopIndex": 1,
+    "lastObservedAt": 500,
+    "pendingIndex": null,
+    "behindSince": null
+   },
+   "fix": {
+    "lat": 37.508,
+    "lng": 127.0,
+    "accuracy": 20,
+    "ageSeconds": 1
+   },
+   "now": 1000,
+   "expected": {
+    "tracker": {
+     "legIndex": 0,
+     "phaseGen": 3,
+     "stopIndex": 1,
+     "lastObservedAt": 500,
+     "pendingIndex": 2,
+     "behindSince": null
+    },
+    "verdict": "pending"
+   },
+   "leg": {
+    "viaStops": [
+     {
+      "name": "회차A",
+      "lat": 37.5,
+      "lng": 127.0
+     },
+     {
+      "name": "회차B",
+      "lat": 37.504,
+      "lng": 127.0
+     },
+     {
+      "name": "회차점",
+      "lat": 37.508,
+      "lng": 127.0
+     },
+     {
+      "name": "회차B건너편",
+      "lat": 37.504,
+      "lng": 127.0003
+     },
+     {
+      "name": "회차A건너편",
+      "lat": 37.5,
+      "lng": 127.0003
+     }
+    ]
+   }
+  },
+  {
+   "name": "(0,0) 정류장은 후보가 아니다 — 원본 index 유지",
+   "fn": "step",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 3,
+    "signal": "notYetVisible",
+    "lock": null,
+    "currentLocation": null
+   },
+   "tracker": null,
+   "fix": {
+    "lat": 37.508,
+    "lng": 127.0,
+    "accuracy": 20,
+    "ageSeconds": 1
+   },
+   "now": 1000,
+   "expected": {
+    "tracker": {
+     "legIndex": 0,
+     "phaseGen": 3,
+     "stopIndex": null,
+     "lastObservedAt": null,
+     "pendingIndex": 2,
+     "behindSince": null
+    },
+    "verdict": "pending"
+   },
+   "leg": {
+    "viaStops": [
+     {
+      "name": "길동사거리",
+      "lat": 37.5,
+      "lng": 127.0
+     },
+     {
+      "name": "좌표없음",
+      "lat": 0,
+      "lng": 0
+     },
+     {
+      "name": "천호역",
+      "lat": 37.508,
+      "lng": 127.0
+     }
+    ]
+   }
+  },
+  {
+   "name": "(0,0) 근처 fix — 노선 밖",
+   "fn": "step",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 3,
+    "signal": "notYetVisible",
+    "lock": null,
+    "currentLocation": null
+   },
+   "tracker": null,
+   "fix": {
+    "lat": 0.0001,
+    "lng": 0.0001,
+    "accuracy": 20,
+    "ageSeconds": 1
+   },
+   "now": 1000,
+   "expected": {
+    "tracker": {
+     "legIndex": 0,
+     "phaseGen": 3,
+     "stopIndex": null,
+     "lastObservedAt": null,
+     "pendingIndex": null,
+     "behindSince": null
+    },
+    "verdict": "offRoute"
+   },
+   "leg": {
+    "viaStops": [
+     {
+      "name": "길동사거리",
+      "lat": 37.5,
+      "lng": 127.0
+     },
+     {
+      "name": "좌표없음",
+      "lat": 0,
+      "lng": 0
+     },
+     {
+      "name": "천호역",
+      "lat": 37.508,
+      "lng": 127.0
+     }
+    ]
+   }
+  },
+  {
+   "name": "보존 창 90초 경계 — 보인다",
+   "fn": "mark",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 3,
+    "signal": "notYetVisible",
+    "lock": null,
+    "currentLocation": null
+   },
+   "now": 91000,
+   "expected": {
+    "legIndex": 0,
+    "phaseGen": 3,
+    "stopIndex": 2
+   },
+   "tracker": {
+    "legIndex": 0,
+    "phaseGen": 3,
+    "stopIndex": 2,
+    "lastObservedAt": 1000,
+    "pendingIndex": null,
+    "behindSince": null
+   }
+  },
+  {
+   "name": "보존 창 지남 — 없음",
+   "fn": "mark",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 3,
+    "signal": "notYetVisible",
+    "lock": null,
+    "currentLocation": null
+   },
+   "now": 91001,
+   "expected": null,
+   "tracker": {
+    "legIndex": 0,
+    "phaseGen": 3,
+    "stopIndex": 2,
+    "lastObservedAt": 1000,
+    "pendingIndex": null,
+    "behindSince": null
+   }
+  },
+  {
+   "name": "now가 관측보다 이르다 — 보인다",
+   "fn": "mark",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 3,
+    "signal": "notYetVisible",
+    "lock": null,
+    "currentLocation": null
+   },
+   "now": 500,
+   "expected": {
+    "legIndex": 0,
+    "phaseGen": 3,
+    "stopIndex": 2
+   },
+   "tracker": {
+    "legIndex": 0,
+    "phaseGen": 3,
+    "stopIndex": 2,
+    "lastObservedAt": 1000,
+    "pendingIndex": null,
+    "behindSince": null
+   }
+  },
+  {
+   "name": "후보·뒤 관측 중에도 래치",
+   "fn": "mark",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 3,
+    "signal": "notYetVisible",
+    "lock": null,
+    "currentLocation": null
+   },
+   "now": 30000,
+   "expected": {
+    "legIndex": 0,
+    "phaseGen": 3,
+    "stopIndex": 3
+   },
+   "tracker": {
+    "legIndex": 0,
+    "phaseGen": 3,
+    "stopIndex": 3,
+    "lastObservedAt": 10000,
+    "pendingIndex": 4,
+    "behindSince": 20000
+   }
+  },
+  {
+   "name": "후보뿐(래치 없음) — 없음",
+   "fn": "mark",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 3,
+    "signal": "notYetVisible",
+    "lock": null,
+    "currentLocation": null
+   },
+   "now": 2000,
+   "expected": null,
+   "tracker": {
+    "legIndex": 0,
+    "phaseGen": 3,
+    "stopIndex": null,
+    "lastObservedAt": null,
+    "pendingIndex": 1,
+    "behindSince": null
+   }
+  },
+  {
+   "name": "국면 밖(도착)",
+   "fn": "mark",
+   "state": {
+    "legIndex": 0,
+    "phase": "arrived",
+    "phaseGen": 3,
+    "signal": "notYetVisible",
+    "lock": null,
+    "currentLocation": null
+   },
+   "now": 2000,
+   "expected": null,
+   "tracker": {
+    "legIndex": 0,
+    "phaseGen": 3,
+    "stopIndex": 2,
+    "lastObservedAt": 1000,
+    "pendingIndex": null,
+    "behindSince": null
+   }
+  },
+  {
+   "name": "결박 불일치",
+   "fn": "mark",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 3,
+    "signal": "notYetVisible",
+    "lock": null,
+    "currentLocation": null
+   },
+   "now": 2000,
+   "expected": null,
+   "tracker": {
+    "legIndex": 0,
+    "phaseGen": 2,
+    "stopIndex": 2,
+    "lastObservedAt": 1000,
+    "pendingIndex": null,
+    "behindSince": null
+   }
+  },
+  {
+   "name": "지하철 leg",
+   "fn": "mark",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 3,
+    "signal": "notYetVisible",
+    "lock": null,
+    "currentLocation": null
+   },
+   "now": 2000,
+   "expected": null,
+   "tracker": {
+    "legIndex": 0,
+    "phaseGen": 3,
+    "stopIndex": 2,
+    "lastObservedAt": 1000,
+    "pendingIndex": null,
+    "behindSince": null
+   },
+   "leg": {
+    "mode": "subway",
+    "trackMode": "subway",
+    "viaStops": [
+     {
+      "name": "강동",
+      "lat": 37.5,
+      "lng": 127.0
+     },
+     {
+      "name": "천호",
+      "lat": 37.504,
+      "lng": 127.0
+     },
+     {
+      "name": "광나루",
+      "lat": 37.508,
+      "lng": 127.0
+     },
+     {
+      "name": "아차산",
+      "lat": 37.512,
+      "lng": 127.0
+     },
+     {
+      "name": "군자",
+      "lat": 37.516,
+      "lng": 127.0
+     },
+     {
+      "name": "장한평",
+      "lat": 37.52,
+      "lng": 127.0
+     }
+    ]
+   }
+  },
+  {
+   "name": "버스 — 기기 위치 표식",
+   "fn": "viaHere",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 3,
+    "signal": "notYetVisible",
+    "lock": null,
+    "currentLocation": null
+   },
+   "now": 2000,
+   "expected": 2,
+   "mark": {
+    "legIndex": 0,
+    "phaseGen": 3,
+    "stopIndex": 2
+   },
+   "position": null
+  },
+  {
+   "name": "버스 — 표식 없음",
+   "fn": "viaHere",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 3,
+    "signal": "notYetVisible",
+    "lock": null,
+    "currentLocation": null
+   },
+   "now": 2000,
+   "expected": null,
+   "mark": null,
+   "position": null
+  },
+  {
+   "name": "옛 결박 표식은 쓰지 않는다",
+   "fn": "viaHere",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 3,
+    "signal": "notYetVisible",
+    "lock": null,
+    "currentLocation": null
+   },
+   "now": 2000,
+   "expected": null,
+   "mark": {
+    "legIndex": 0,
+    "phaseGen": 2,
+    "stopIndex": 2
+   },
+   "position": null
+  },
+  {
+   "name": "국면 밖 표식은 쓰지 않는다",
+   "fn": "viaHere",
+   "state": {
+    "legIndex": 0,
+    "phase": "arrived",
+    "phaseGen": 3,
+    "signal": "notYetVisible",
+    "lock": null,
+    "currentLocation": null
+   },
+   "now": 2000,
+   "expected": null,
+   "mark": {
+    "legIndex": 0,
+    "phaseGen": 3,
+    "stopIndex": 2
+   },
+   "position": null
+  },
+  {
+   "name": "경유 정류장 밖 index는 쓰지 않는다",
+   "fn": "viaHere",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 3,
+    "signal": "notYetVisible",
+    "lock": null,
+    "currentLocation": null
+   },
+   "now": 2000,
+   "expected": null,
+   "mark": {
+    "legIndex": 0,
+    "phaseGen": 3,
+    "stopIndex": 9
+   },
+   "position": null
+  },
+  {
+   "name": "지하철 — 도착 arvlMsg3가 정본(버스 표식 무관)",
+   "fn": "viaHere",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 3,
+    "signal": "tracking",
+    "lock": null,
+    "currentLocation": "광나루"
+   },
+   "now": 2000,
+   "expected": 2,
+   "mark": {
+    "legIndex": 0,
+    "phaseGen": 3,
+    "stopIndex": 4
+   },
+   "leg": {
+    "mode": "subway",
+    "trackMode": "subway",
+    "viaStops": [
+     {
+      "name": "강동",
+      "lat": 37.5,
+      "lng": 127.0
+     },
+     {
+      "name": "천호",
+      "lat": 37.504,
+      "lng": 127.0
+     },
+     {
+      "name": "광나루",
+      "lat": 37.508,
+      "lng": 127.0
+     },
+     {
+      "name": "아차산",
+      "lat": 37.512,
+      "lng": 127.0
+     },
+     {
+      "name": "군자",
+      "lat": 37.516,
+      "lng": 127.0
+     },
+     {
+      "name": "장한평",
+      "lat": 37.52,
+      "lng": 127.0
+     }
+    ]
+   },
+   "position": null
+  },
+  {
+   "name": "버스 해당 없음 → 표식 정류장",
+   "fn": "overview",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 3,
+    "signal": "notYetVisible",
+    "lock": null,
+    "currentLocation": null
+   },
+   "now": 0,
+   "expected": {
+    "legOrdinal": {
+     "n": 1,
+     "count": 1
+    },
+    "rows": [
+     {
+      "kind": "leg",
+      "legIndex": 0,
+      "mode": "bus",
+      "lineName": "340",
+      "boardName": "길동사거리",
+      "alightName": "천호역",
+      "status": "current",
+      "stationCount": 2
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 0,
+      "name": "길동사거리",
+      "role": "board",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 1,
+      "name": "강동역",
+      "role": "via",
+      "here": true
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 2,
+      "name": "천호역",
+      "role": "alight",
+      "here": false
+     }
+    ],
+    "here": {
+     "kind": "station",
+     "stopIndex": 1
+    },
+    "reboardOffered": false,
+    "alternativesOffered": true
+   },
+   "mark": {
+    "legIndex": 0,
+    "phaseGen": 3,
+    "stopIndex": 1
+   },
+   "overview": {
+    "legOrdinal": {
+     "n": 1,
+     "count": 1
+    },
+    "rows": [
+     {
+      "kind": "leg",
+      "legIndex": 0,
+      "mode": "bus",
+      "lineName": "340",
+      "boardName": "길동사거리",
+      "alightName": "천호역",
+      "status": "current",
+      "stationCount": 2
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 0,
+      "name": "길동사거리",
+      "role": "board",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 1,
+      "name": "강동역",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 2,
+      "name": "천호역",
+      "role": "alight",
+      "here": false
+     }
+    ],
+    "here": {
+     "kind": "notApplicable",
+     "reason": "bus"
+    },
+    "reboardOffered": false,
+    "alternativesOffered": true
+   }
+  },
+  {
+   "name": "표식 없음 — 불변",
+   "fn": "overview",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 3,
+    "signal": "notYetVisible",
+    "lock": null,
+    "currentLocation": null
+   },
+   "now": 0,
+   "expected": {
+    "legOrdinal": {
+     "n": 1,
+     "count": 1
+    },
+    "rows": [
+     {
+      "kind": "leg",
+      "legIndex": 0,
+      "mode": "bus",
+      "lineName": "340",
+      "boardName": "길동사거리",
+      "alightName": "천호역",
+      "status": "current",
+      "stationCount": 2
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 0,
+      "name": "길동사거리",
+      "role": "board",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 1,
+      "name": "강동역",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 2,
+      "name": "천호역",
+      "role": "alight",
+      "here": false
+     }
+    ],
+    "here": {
+     "kind": "notApplicable",
+     "reason": "bus"
+    },
+    "reboardOffered": false,
+    "alternativesOffered": true
+   },
+   "mark": null,
+   "overview": {
+    "legOrdinal": {
+     "n": 1,
+     "count": 1
+    },
+    "rows": [
+     {
+      "kind": "leg",
+      "legIndex": 0,
+      "mode": "bus",
+      "lineName": "340",
+      "boardName": "길동사거리",
+      "alightName": "천호역",
+      "status": "current",
+      "stationCount": 2
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 0,
+      "name": "길동사거리",
+      "role": "board",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 1,
+      "name": "강동역",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 2,
+      "name": "천호역",
+      "role": "alight",
+      "here": false
+     }
+    ],
+    "here": {
+     "kind": "notApplicable",
+     "reason": "bus"
+    },
+    "reboardOffered": false,
+    "alternativesOffered": true
+   }
+  },
+  {
+   "name": "지하철 station — 불변",
+   "fn": "overview",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 3,
+    "signal": "notYetVisible",
+    "lock": null,
+    "currentLocation": null
+   },
+   "now": 0,
+   "expected": {
+    "legOrdinal": {
+     "n": 1,
+     "count": 1
+    },
+    "rows": [
+     {
+      "kind": "leg",
+      "legIndex": 0,
+      "mode": "bus",
+      "lineName": "340",
+      "boardName": "길동사거리",
+      "alightName": "천호역",
+      "status": "current",
+      "stationCount": 2
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 0,
+      "name": "길동사거리",
+      "role": "board",
+      "here": true
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 1,
+      "name": "강동역",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 2,
+      "name": "천호역",
+      "role": "alight",
+      "here": false
+     }
+    ],
+    "here": {
+     "kind": "station",
+     "stopIndex": 0
+    },
+    "reboardOffered": false,
+    "alternativesOffered": true
+   },
+   "mark": {
+    "legIndex": 0,
+    "phaseGen": 3,
+    "stopIndex": 1
+   },
+   "overview": {
+    "legOrdinal": {
+     "n": 1,
+     "count": 1
+    },
+    "rows": [
+     {
+      "kind": "leg",
+      "legIndex": 0,
+      "mode": "bus",
+      "lineName": "340",
+      "boardName": "길동사거리",
+      "alightName": "천호역",
+      "status": "current",
+      "stationCount": 2
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 0,
+      "name": "길동사거리",
+      "role": "board",
+      "here": true
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 1,
+      "name": "강동역",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 2,
+      "name": "천호역",
+      "role": "alight",
+      "here": false
+     }
+    ],
+    "here": {
+     "kind": "station",
+     "stopIndex": 0
+    },
+    "reboardOffered": false,
+    "alternativesOffered": true
+   }
+  },
+  {
+   "name": "국면 밖 — 불변",
+   "fn": "overview",
+   "state": {
+    "legIndex": 0,
+    "phase": "boarding",
+    "phaseGen": 3,
+    "signal": "notYetVisible",
+    "lock": null,
+    "currentLocation": null
+   },
+   "now": 0,
+   "expected": {
+    "legOrdinal": {
+     "n": 1,
+     "count": 1
+    },
+    "rows": [
+     {
+      "kind": "leg",
+      "legIndex": 0,
+      "mode": "bus",
+      "lineName": "340",
+      "boardName": "길동사거리",
+      "alightName": "천호역",
+      "status": "current",
+      "stationCount": 2
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 0,
+      "name": "길동사거리",
+      "role": "board",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 1,
+      "name": "강동역",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 2,
+      "name": "천호역",
+      "role": "alight",
+      "here": false
+     }
+    ],
+    "here": {
+     "kind": "notApplicable",
+     "reason": "phase"
+    },
+    "reboardOffered": false,
+    "alternativesOffered": true
+   },
+   "mark": {
+    "legIndex": 0,
+    "phaseGen": 3,
+    "stopIndex": 1
+   },
+   "overview": {
+    "legOrdinal": {
+     "n": 1,
+     "count": 1
+    },
+    "rows": [
+     {
+      "kind": "leg",
+      "legIndex": 0,
+      "mode": "bus",
+      "lineName": "340",
+      "boardName": "길동사거리",
+      "alightName": "천호역",
+      "status": "current",
+      "stationCount": 2
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 0,
+      "name": "길동사거리",
+      "role": "board",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 1,
+      "name": "강동역",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 2,
+      "name": "천호역",
+      "role": "alight",
+      "here": false
+     }
+    ],
+    "here": {
+     "kind": "notApplicable",
+     "reason": "phase"
+    },
+    "reboardOffered": false,
+    "alternativesOffered": true
+   }
+  },
+  {
+   "name": "추적 불가 지하철 leg도 bus 사유를 받는다 — 불변",
+   "fn": "overview",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 3,
+    "signal": "notYetVisible",
+    "lock": null,
+    "currentLocation": null
+   },
+   "now": 0,
+   "expected": {
+    "legOrdinal": {
+     "n": 1,
+     "count": 1
+    },
+    "rows": [
+     {
+      "kind": "leg",
+      "legIndex": 0,
+      "mode": "bus",
+      "lineName": "340",
+      "boardName": "길동사거리",
+      "alightName": "천호역",
+      "status": "current",
+      "stationCount": 2
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 0,
+      "name": "길동사거리",
+      "role": "board",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 1,
+      "name": "강동역",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 2,
+      "name": "천호역",
+      "role": "alight",
+      "here": false
+     }
+    ],
+    "here": {
+     "kind": "notApplicable",
+     "reason": "bus"
+    },
+    "reboardOffered": false,
+    "alternativesOffered": true
+   },
+   "mark": {
+    "legIndex": 0,
+    "phaseGen": 3,
+    "stopIndex": 1
+   },
+   "leg": {
+    "mode": "subway",
+    "trackMode": null,
+    "viaStops": [
+     {
+      "name": "강동",
+      "lat": 37.5,
+      "lng": 127.0
+     },
+     {
+      "name": "천호",
+      "lat": 37.504,
+      "lng": 127.0
+     },
+     {
+      "name": "광나루",
+      "lat": 37.508,
+      "lng": 127.0
+     },
+     {
+      "name": "아차산",
+      "lat": 37.512,
+      "lng": 127.0
+     },
+     {
+      "name": "군자",
+      "lat": 37.516,
+      "lng": 127.0
+     },
+     {
+      "name": "장한평",
+      "lat": 37.52,
+      "lng": 127.0
+     }
+    ]
+   },
+   "overview": {
+    "legOrdinal": {
+     "n": 1,
+     "count": 1
+    },
+    "rows": [
+     {
+      "kind": "leg",
+      "legIndex": 0,
+      "mode": "bus",
+      "lineName": "340",
+      "boardName": "길동사거리",
+      "alightName": "천호역",
+      "status": "current",
+      "stationCount": 2
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 0,
+      "name": "길동사거리",
+      "role": "board",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 1,
+      "name": "강동역",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 2,
+      "name": "천호역",
+      "role": "alight",
+      "here": false
+     }
+    ],
+    "here": {
+     "kind": "notApplicable",
+     "reason": "bus"
+    },
+    "reboardOffered": false,
+    "alternativesOffered": true
+   }
+  }
+ ]
+}

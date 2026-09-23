@@ -205,6 +205,11 @@
       "note": "E35 승차 중 현재역(표시 전용). 공유 fixture transit-riding-position-cases.json. 안드로이드에 대중교통 안내 화면이 생길 때 이식한다 — TransitPositionService(/api/transit/position 조회)도 같은 파일이다"
     },
     {
+      "swift": "TransitBusStop.swift",
+      "status": "pending",
+      "note": "E48 버스 승차 중 현재 정류장(기기 위치, 표시 전용). 공유 fixture transit-bus-stop-cases.json. 안드로이드에 대중교통 안내 화면이 생길 때 이식한다 — 위치 스트림 프로파일(버스 승차 중 정밀)도 함께 옮긴다"
+    },
+    {
       "swift": "TransitSurroundingsAnchor.swift",
       "status": "ported",
       "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/TransitSurroundingsAnchor.kt",
