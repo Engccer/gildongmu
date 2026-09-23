@@ -98,8 +98,8 @@
       "copyAddress": "Copy address",
       "askAbout": "Ask about {name}",
       "nearbyHeading": "Near this place",
-      "callRepresentativeLine": "Call, main line {phone}",
-      "callRepresentative": "Call main line"
+      "callRepresentativeLine": "Call, main number {phone}",
+      "callRepresentative": "Call main number"
     },
     "clinic": {
       "designated": "Government-designated night pediatric clinic (Moonlight Children's Hospital)."

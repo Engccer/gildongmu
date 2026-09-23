@@ -6,6 +6,7 @@ import es from "../../../messages/es.json";
 import fr from "../../../messages/fr.json";
 import itMessages from "../../../messages/it.json";
 import ja from "../../../messages/ja.json";
+import iosExtraEn from "../../../ios/i18n/ios-extra/en.json";
 
 /**
  * 모든 로케일 메시지가 ko(기준)와 (1) 동일한 키 집합 (2) 키마다 동일한 ICU
@@ -100,4 +101,16 @@ describe("i18n 메시지 일관성", () => {
       expect(offenders).toEqual([]);
     });
   }
+});
+
+// 역 화면에서 en "main line"은 철도 본선으로 읽힌다(위원장 판정 2026-09-23) — 대표번호는
+// "main number". 웹 메시지와 iOS 전용 카탈로그를 함께 본다(안드로이드·xcstrings는 이 둘의 생성물).
+describe("en 대표번호 표기", () => {
+  it("main line 대신 main number를 쓴다", () => {
+    const flat = { ...flatten(en), ...flatten(iosExtraEn) };
+    const offenders = Object.entries(flat)
+      .filter(([, value]) => /main line/i.test(value))
+      .map(([key, value]) => `${key} = ${value}`);
+    expect(offenders).toEqual([]);
+  });
 });
