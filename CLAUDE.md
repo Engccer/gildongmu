@@ -78,7 +78,7 @@
 - **좌표 쿼리 파라미터는 `src/lib/coord-param.ts`를 쓴다**(`latParam`/`lngParam`, 선택 좌표는 `.optional().catch(undefined)`) — `Number("")===0`이라 누락이 (0,0)으로 위장해 200 `outOfCoverage`가 된다. 가드 `coord-param-usage.test.ts`. 클라이언트(CLI `resolve-location.ts`)에도 같은 함정. → INTEGRATIONS
 - **서비스 커버리지 마커**: 좌표 의존 라우트는 zod 범위 검증 후 `isInKorea`(`src/lib/coverage.ts`, 국경 폴리곤 `korea-boundary.json` 한 벌, Kit은 바이트 동일 사본) 판정 — 한국 밖이면 키 게이트보다 앞서 200 `{"outOfCoverage":true}`(upstream 미호출). 순서: 파싱→마커→키 게이트→upstream. 프리필터 사각형은 링에서 유도(상수 금지), 클라이언트도 같은 술어. → INTEGRATIONS
 - **국내 지역별 미제공은 커버리지와 다른 층이다**: 한국 안이면 200 `{"unavailableHere":"seoulOnly"}`, 판정선은 그 도메인의 조회 반경(`metersOutsideSeoul`) — 행정경계로 자르지 말고, 연속량 도메인(지하철역 거리)엔 쓰지 말고 `nearest`를 싣는다. → INTEGRATIONS
-- **역 seed는 타 역 좌표 혼입을 의심한다**(양원역·이촌역 실사고). `scripts/build-subway-stations.py`의 `COORD_FIXES` + 가드 2축(노선 내 연속성 30km·환승 쌍 거리)이 빌드를 중단한다. → INTEGRATIONS
+- **역 seed는 타 역 좌표 혼입을 의심한다**(양원역·이촌역 실사고). `scripts/build-subway-stations.py`의 `COORD_FIXES` + 가드 3축(노선 내 연속성 30km·환승 쌍 거리·직전 seed 대비 15m 이동)이 빌드를 중단한다. 새 판본이 좌표를 옮기면 실좌표로 확인한 것만 `ACCEPTED_COORD_SHIFTS`로 받는다. → INTEGRATIONS
 - **좌표는 WGS84 십진 통일.** 단 외부 API별 변환 함정: 에어코리아 측정소=**TM중부원점 EPSG:2097**(proj4, ⚠ 카카오/네이버의 EPSG:5181 아님 — false E/N 같아 혼동, Δ300m+) / 기상청=**격자 nx,ny LCC**(`dfs_xy_conv` 직접 이식) / 네이버 `mapx/mapy`(×10⁷ 정수)는 provider 내부만.
 - **data.go.kr envelope는 공용 파서를 쓴다**(`datagokr-envelope.ts`: `readItems`·`readResultCode`·`fetchDataGoKrJson`, 자체 추출 함수 신설 금지). 모양은 공용, 정책(허용 코드·throw)은 provider. ⚠ 단건 `items.item` 모양·JSON 파라미터 이름이 기관마다 다르고, `apis.data.go.kr`은 반드시 https(http는 hang). 가드 `datagokr-https-usage.test.ts`. → INTEGRATIONS
 - **서울 열린데이터(`openapi.seoul.go.kr`) 본문은 `readSeoulOpenJson`으로 읽는다**(`seoul-open-json.ts` — 무효 키가 200+XML로 온다). 실시간 지하철은 호스트·키가 달라 계약 밖. → INTEGRATIONS
