@@ -21,6 +21,10 @@
 
 조회 화면 도보가 "최단 경로"(카카오 `SHORTEST`, 기본 펼침)와 "계단 회피 경로"(카카오 `ACCESSIBLE`, 없으면 "큰길 경로" `BROAD_FIRST`) 두 줄이 됐다(ko, 웹·iOS). 계단 회피 토글은 없어졌고 안내 시작 버튼은 줄 안으로 들어갔다(웹 B9 ② 흡수). 서버는 `lines=1` 줄 목록을 새로 싣고 `variant=shortest`의 출처를 카카오로 바꿨다(옛 `alternatives=1` 봉투는 그대로 — 배포된 iOS·안드로이드도 최단이 카카오가 된다). en은 추천·최단(Tmap) 그대로. ⚠ 대중교통 승차 전 도보의 계단 회피는 토글과 함께 사라졌다(BACKLOG E42 미결). [spec](docs/superpowers/specs/2026-09-23-walk-two-lines-kakao-design.md)
 
+### E45 경로 브리핑 역 진입·전화 안드로이드 동조(E43 우선순위 3)
+
+안드로이드 길찾기 대중교통 브리핑에서 지하철역 이름이 들리는 줄(구간·하차·다음 지하철로 가는 도보)에 TalkBack 작업 메뉴 "{역} 상세 보기"·"{역}에 전화 걸기"가 붙는다. 줄은 텍스트 한 객체 그대로이고, 메뉴는 역별 묶음·등장 순(iOS의 역순 선언은 SwiftUI 전용이라 옮기지 않았다). 전화 액션은 상시이고 없음·찾는 중·실패·다이얼러 없음은 상태 줄 통지+진동이다. 역 상세에서 돌아오면 그 줄로 착지하고 펼침이 유지된다(펼침 상태 saveable — 설정 왕복의 선재 초기화도 함께 사라짐). `:kit` `TransitBriefingStations.kt` 이식으로 등록부 대기는 E35의 `TransitRidingPosition` 하나. iOS 2026-09-19 빈 이름 부재 판정(`transitBriefingName`)도 `:kit`·앱 구간 줄에 동조했다. 같은 날 역 시설 빈 묶음(교통약자 도우미)이 빈 펼침 행이 되던 결함을 조립된 줄 판정으로 고쳤다(웹 동형). [spec](docs/superpowers/specs/2026-09-18-briefing-station-entry-design.md).
+
 ### E44 역 장소 상세 개편 안드로이드 동조(E43 우선순위 2)
 
 안드로이드 장소 상세도 역(`:kit` `stationLayoutKind`)이면 역 정보(전화 맨 위, 대표번호 표기, 경유역 조회 실패는 한 줄) → 도착·시간표·시설(서울 지하철은 종류별 접기·운행 중지 수) → 무장애 → 길찾기 → 이 장소 주변(지하철 없음)이다. `:kit` `StationPhone.kt` 이식(등록부 대기 → 이식, 노선 표는 웹 드리프트 가드가 세 벌로 잠근다), 경유역 전화 저장소 `StationPhoneStore`(iOS 수명 규칙)와 경유역 라우트 `PlaceDetailRoute.ofTransitStop`(노선 힌트 필수)을 더했다. 경유역 로터는 E45 몫. [spec](docs/superpowers/specs/2026-09-17-station-detail-reorg-design.md).
