@@ -43,8 +43,13 @@ describe("keep-alive fix는 안내 세션만 읽는다(E48 §4.1)", () => {
 
   it("모델: 버스 riding일 때만 정밀 프로파일, 세션 경계에서 표시 상태를 비운다", () => {
     const model = read("ios/Gildongmu/Directions/TransitGuideModel.swift");
-    expect(model).toMatch(/let busRiding = state\?\.phase == \.riding && currentLeg\?\.mode == "bus"/);
-    expect(model).toMatch(/LocationService\.shared\.setKeepAliveBusRiding\(busRiding\)/);
+    // 켜는 조건은 표식의 적용 조건 그 자체다(구현 리뷰 m4).
+    expect(model).toMatch(/transitBusStopApplies\(state: state, leg: leg\)\s*\} else \{\s*false\s*\}\s*if keepAliveActive \{/);
+    // 정상 흐름(boarding에서 켜진 keep-alive를 riding에서 올린다, A46)은 이미 켜진 분기다 — 그 안에서 반영해야 한다(구현 리뷰 m1).
+    const on = model.slice(model.indexOf("if keepAliveActive {"));
+    const branch = on.slice(0, on.indexOf("return\n"));
+    expect(branch).toMatch(/LocationService\.shared\.setKeepAliveBusRiding\(busRiding\)/);
+    expect(model.match(/setKeepAliveBusRiding\(busRiding\)/g)?.length).toBe(2);
     // beginSession·changeRoute·stop(E35 `ridingPosition`을 비우는 세 자리) + 유휴 진입(설계 리뷰 M4).
     expect(model.match(/^\s*clearBusStop\(\)/gm)?.length).toBe(4);
     const idle = model.slice(model.indexOf("private func enterIdleIfDue()"), model.indexOf("private func updateKeepAlive()"));
@@ -57,5 +62,12 @@ describe("keep-alive fix는 안내 세션만 읽는다(E48 §4.1)", () => {
     expect(src.match(/kCLLocationAccuracyNearestTenMeters/g)?.length).toBe(1);
     const profile = src.slice(src.indexOf("private func applyProfile("), src.indexOf("func startKeepAliveUpdates()"));
     expect(profile).toMatch(/if keepAliveBusRiding \{/);
+  });
+});
+
+describe("웹 스트림은 iOS keep-alive와 같은 조건에서만 열린다(접근성 감사 MINOR-1)", () => {
+  it("폴이 도는 버스 riding에서만 — 비관측 잠금·추적 불가 구간은 두 플랫폼 모두 표식이 없다", () => {
+    const hook = read("src/hooks/useTransitGuide.ts");
+    expect(hook).toMatch(/busStopApplies\(state, activeRoute\.legs\[state\.legIndex\]\) &&\s*pollIntervalMs\(state\) > 0;/);
   });
 });

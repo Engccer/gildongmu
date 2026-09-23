@@ -17,14 +17,20 @@ import type { TransitGuideLeg, TransitGuideState } from "./transit-guide";
 import type { TransitOverview } from "./transit-progress-overview";
 import { viaStopHereIndex, type TransitRidingPosition } from "./transit-riding-position";
 
-/** fix 정확도 상한(m) — 앱 공유 스토어 저장 상한과 같다. ⚠ 잠정값(실승차 판정). */
+/** fix 정확도 상한(m) — iOS 공유 스토어 저장 상한(`LocationFixPolicy.storeCeiling`)과 같다. ⚠ 잠정값(실승차 판정). */
 export const BUS_STOP_MAX_ACCURACY_M = 100;
-/** fix 나이 상한(초) — 캐시 fix를 거른다. 웹 위치 스토어의 재측정 나이 상한도 이 값이다. ⚠ 잠정값. */
+/** fix 나이 상한(초) — 캐시 fix를 거른다. ⚠ 잠정값. */
 export const BUS_STOP_FIX_MAX_AGE_SECONDS = 10;
 /** 최근접 정류장까지의 거리 상한(m) — 넘으면 노선 밖이라 관측이 아니다. ⚠ 잠정값. */
 export const BUS_STOP_NEAR_RADIUS_M = 300;
 /** 비인접 정류장이 최근접보다 이만큼 안쪽이면 노선이 접힌 곳이라 모호하다. ⚠ 잠정값. */
 export const BUS_STOP_AMBIGUITY_MARGIN_M = 50;
+/**
+ * 하차 정류장은 이만큼 가까워야 관측으로 친다(m). "하차, 현재 위치"는 "지금 내려라"로 들린다 — 직전 정류장에 문이
+ * 열린 채 서 있는 동안 한쪽으로 치우친 fix 두 건이 중간 지점을 넘겨 그 줄을 먼저 세우지 않게(접근성 감사 MINOR-2).
+ * ⚠ 잠정값.
+ */
+export const BUS_STOP_ALIGHT_RADIUS_M = 50;
 /**
  * 마지막 관측 뒤 표식을 유지하는 창(ms). 만료는 폴 시계가 아니라 **이 시각에 맞춘 한 번짜리 타이머**가 판정한다
  * (설계 리뷰 M2 — 폴에 기대면 실효 창이 창+폴 주기로 늘어난다). ⚠ 잠정값.
@@ -74,6 +80,7 @@ export type TransitBusStopVerdict =
   | "stale"
   | "offRoute"
   | "ambiguous"
+  | "approachingAlight"
   | "pending"
   | "observed"
   | "behind"
@@ -82,6 +89,8 @@ export type TransitBusStopVerdict =
 export interface TransitBusStopStepResult {
   tracker: TransitBusStopTracker | null;
   verdict: TransitBusStopVerdict;
+  /** 이 fix의 최근접 정류장(원본 index) — 거리를 재기 전에 걸러졌으면 null. 계측 전용(구현 리뷰 m3). */
+  nearestIndex: number | null;
 }
 
 type BusStopState = Pick<TransitGuideState, "legIndex" | "phase" | "phaseGen">;
@@ -114,7 +123,7 @@ export function busStopStep(
   fix: TransitDeviceFix,
   now: number,
 ): TransitBusStopStepResult {
-  if (!busStopApplies(state, leg)) return { tracker: null, verdict: "notApplicable" };
+  if (!busStopApplies(state, leg)) return { tracker: null, verdict: "notApplicable", nearestIndex: null };
   let next: TransitBusStopTracker =
     prev && isBound(prev, state)
       ? { ...prev }
@@ -131,9 +140,11 @@ export function busStopStep(
     next = { ...next, stopIndex: null, lastObservedAt: null, pendingIndex: null, behindSince: null };
   }
   if (!(fix.accuracy > 0) || !Number.isFinite(fix.accuracy) || fix.accuracy > BUS_STOP_MAX_ACCURACY_M) {
-    return { tracker: next, verdict: "inaccurate" };
+    return { tracker: next, verdict: "inaccurate", nearestIndex: null };
   }
-  if (!(Math.abs(fix.ageSeconds) <= BUS_STOP_FIX_MAX_AGE_SECONDS)) return { tracker: next, verdict: "stale" };
+  if (!(Math.abs(fix.ageSeconds) <= BUS_STOP_FIX_MAX_AGE_SECONDS)) {
+    return { tracker: next, verdict: "stale", nearestIndex: null };
+  }
 
   // 원본 index를 유지한 채 쓸 수 있는 정류장만 겨룬다.
   const distances = leg.viaStops.map((s) =>
@@ -141,40 +152,39 @@ export function busStopStep(
   );
   let nearest = 0;
   for (let i = 1; i < distances.length; i++) if (distances[i] < distances[nearest]) nearest = i;
-  if (!(distances[nearest] <= BUS_STOP_NEAR_RADIUS_M)) return { tracker: next, verdict: "offRoute" };
+  const result = (tracker: TransitBusStopTracker, verdict: TransitBusStopVerdict): TransitBusStopStepResult => ({
+    tracker,
+    verdict,
+    nearestIndex: nearest,
+  });
+  if (!(distances[nearest] <= BUS_STOP_NEAR_RADIUS_M)) return result(next, "offRoute");
   // 노선이 접힌 곳(회차·U턴·순환 — 길 건너 정류장)은 어느 쪽인지 가를 수 없다. 인접 정류장끼리는 경합이 아니다.
   const folded = distances.some(
     (d, j) => Math.abs(j - nearest) >= 2 && d <= distances[nearest] + BUS_STOP_AMBIGUITY_MARGIN_M,
   );
-  if (folded) return { tracker: next, verdict: "ambiguous" };
+  if (folded) return result(next, "ambiguous");
+  if (nearest === distances.length - 1 && distances[nearest] > BUS_STOP_ALIGHT_RADIUS_M) {
+    return result(next, "approachingAlight");
+  }
 
   if (next.stopIndex === nearest) {
-    return {
-      tracker: { ...next, lastObservedAt: now, pendingIndex: null, behindSince: null },
-      verdict: "observed",
-    };
+    return result({ ...next, lastObservedAt: now, pendingIndex: null, behindSince: null }, "observed");
   }
   if (next.stopIndex == null || nearest > next.stopIndex) {
     // 앞으로는 같은 정류장이 두 번 이어서 관측돼야 옮긴다(설계 리뷰 M1). 뒤 관측의 연속은 끊긴다.
     if (next.pendingIndex === nearest) {
-      return {
-        tracker: { ...next, stopIndex: nearest, lastObservedAt: now, pendingIndex: null, behindSince: null },
-        verdict: "observed",
-      };
+      return result({ ...next, stopIndex: nearest, lastObservedAt: now, pendingIndex: null, behindSince: null }, "observed");
     }
-    return { tracker: { ...next, pendingIndex: nearest, behindSince: null }, verdict: "pending" };
+    return result({ ...next, pendingIndex: nearest, behindSince: null }, "pending");
   }
   // 뒤 정류장 — 60초 동안 이어질 때만 다시 시작한다(첫 래치가 틀렸던 경우의 복구). 중간 지점의 흔들림은
   // 사이에 끼는 같거나 앞 관측이 끊는다. 뒤 관측은 래치를 확인하지 않으므로 `lastObservedAt`을 두고 간다
   // — 그래서 래치 나이가 30초를 넘은 뒤 시작한 뒤 관측은 60초 전에 보존 창 만료가 먼저 래치를 버린다.
   const since = next.behindSince ?? now;
   if (now - since >= BUS_STOP_BEHIND_RESTART_MS) {
-    return {
-      tracker: { ...next, stopIndex: nearest, lastObservedAt: now, pendingIndex: null, behindSince: null },
-      verdict: "restarted",
-    };
+    return result({ ...next, stopIndex: nearest, lastObservedAt: now, pendingIndex: null, behindSince: null }, "restarted");
   }
-  return { tracker: { ...next, pendingIndex: null, behindSince: since }, verdict: "behind" };
+  return result({ ...next, pendingIndex: null, behindSince: since }, "behind");
 }
 
 /** 표식 — 적용 조건·결박·보존 창 안일 때만. `now`가 관측보다 이르면(음수 경과) 보인다. */

@@ -19,6 +19,10 @@ public let transitBusStopFixMaxAgeSeconds: Double = 10
 public let transitBusStopNearRadiusM: Double = 300
 /// 비인접 정류장이 최근접보다 이만큼 안쪽이면 노선이 접힌 곳이라 모호하다. ⚠ 잠정값.
 public let transitBusStopAmbiguityMarginM: Double = 50
+/// 하차 정류장은 이만큼 가까워야 관측으로 친다(m). "하차, 현재 위치"는 "지금 내려라"로 들린다 — 직전 정류장에 문이
+/// 열린 채 서 있는 동안 한쪽으로 치우친 fix 두 건이 중간 지점을 넘겨 그 줄을 먼저 세우지 않게(접근성 감사 MINOR-2).
+/// ⚠ 잠정값.
+public let transitBusStopAlightRadiusM: Double = 50
 /// 마지막 관측 뒤 표식을 유지하는 창(ms). 만료는 폴 시계가 아니라 **이 시각에 맞춘 한 번짜리 타이머**가 판정한다
 /// (설계 리뷰 M2 — 폴에 기대면 실효 창이 창+폴 주기로 늘어난다). ⚠ 잠정값.
 public let transitBusStopHoldMs: Double = 90_000
@@ -80,12 +84,20 @@ public struct TransitBusStopMark: Sendable, Equatable, Codable {
 }
 
 public enum TransitBusStopVerdict: String, Sendable, Equatable, Codable {
-    case notApplicable, inaccurate, stale, offRoute, ambiguous, pending, observed, behind, restarted
+    case notApplicable, inaccurate, stale, offRoute, ambiguous, approachingAlight, pending, observed, behind, restarted
 }
 
 public struct TransitBusStopStepResult: Sendable, Equatable {
     public let tracker: TransitBusStopTracker?
     public let verdict: TransitBusStopVerdict
+    /// 이 fix의 최근접 정류장(원본 index) — 거리를 재기 전에 걸러졌으면 nil. 계측 전용(구현 리뷰 m3).
+    public let nearestIndex: Int?
+
+    public init(tracker: TransitBusStopTracker?, verdict: TransitBusStopVerdict, nearestIndex: Int?) {
+        self.tracker = tracker
+        self.verdict = verdict
+        self.nearestIndex = nearestIndex
+    }
 }
 
 /// 적용 조건(spec §2 ①) — 잠금 종류·신호는 보지 않는다(기기 위치는 도착 피드와 독립이다).
@@ -109,7 +121,7 @@ public func transitBusStopStep(
     fix: TransitDeviceFix, now: Double
 ) -> TransitBusStopStepResult {
     guard transitBusStopApplies(state: state, leg: leg) else {
-        return TransitBusStopStepResult(tracker: nil, verdict: .notApplicable)
+        return TransitBusStopStepResult(tracker: nil, verdict: .notApplicable, nearestIndex: nil)
     }
     var next: TransitBusStopTracker
     if let prev, isBound(legIndex: prev.legIndex, phaseGen: prev.phaseGen, state) {
@@ -126,12 +138,12 @@ public func transitBusStopStep(
     }
     // 음수·0 정확도는 무효 신호(CLLocation 계약).
     guard fix.accuracy > 0, fix.accuracy.isFinite, fix.accuracy <= transitBusStopMaxAccuracyM else {
-        return TransitBusStopStepResult(tracker: next, verdict: .inaccurate)
+        return TransitBusStopStepResult(tracker: next, verdict: .inaccurate, nearestIndex: nil)
     }
     // 캐시 fix(스트림 첫 콜백)·미래 시각을 거른다 — 도보 안내와 같은 판정 함수, 창만 이 계층의 값(기본값 5초를
     // 쓰지 않는다 — 명시).
     guard isUsableFix(accuracy: fix.accuracy, ageSeconds: fix.ageSeconds, maxAge: transitBusStopFixMaxAgeSeconds)
-    else { return TransitBusStopStepResult(tracker: next, verdict: .stale) }
+    else { return TransitBusStopStepResult(tracker: next, verdict: .stale, nearestIndex: nil) }
 
     // 원본 index를 유지한 채 쓸 수 있는 정류장만 겨룬다.
     let distances = leg.viaStops.map {
@@ -139,20 +151,24 @@ public func transitBusStopStep(
     }
     var nearest = 0
     for i in distances.indices.dropFirst() where distances[i] < distances[nearest] { nearest = i }
-    guard distances[nearest] <= transitBusStopNearRadiusM else {
-        return TransitBusStopStepResult(tracker: next, verdict: .offRoute)
+    func result(_ tracker: TransitBusStopTracker, _ verdict: TransitBusStopVerdict) -> TransitBusStopStepResult {
+        TransitBusStopStepResult(tracker: tracker, verdict: verdict, nearestIndex: nearest)
     }
+    guard distances[nearest] <= transitBusStopNearRadiusM else { return result(next, .offRoute) }
     // 노선이 접힌 곳(회차·U턴·순환 — 길 건너 정류장)은 어느 쪽인지 가를 수 없다. 인접 정류장끼리는 경합이 아니다.
     let folded = distances.indices.contains {
         abs($0 - nearest) >= 2 && distances[$0] <= distances[nearest] + transitBusStopAmbiguityMarginM
     }
-    if folded { return TransitBusStopStepResult(tracker: next, verdict: .ambiguous) }
+    if folded { return result(next, .ambiguous) }
+    if nearest == distances.count - 1, distances[nearest] > transitBusStopAlightRadiusM {
+        return result(next, .approachingAlight)
+    }
 
     if next.stopIndex == nearest {
         next.lastObservedAt = now
         next.pendingIndex = nil
         next.behindSince = nil
-        return TransitBusStopStepResult(tracker: next, verdict: .observed)
+        return result(next, .observed)
     }
     if next.stopIndex.map({ nearest > $0 }) ?? true {
         // 앞으로는 같은 정류장이 두 번 이어서 관측돼야 옮긴다(설계 리뷰 M1). 뒤 관측의 연속은 끊긴다.
@@ -161,10 +177,10 @@ public func transitBusStopStep(
             next.stopIndex = nearest
             next.lastObservedAt = now
             next.pendingIndex = nil
-            return TransitBusStopStepResult(tracker: next, verdict: .observed)
+            return result(next, .observed)
         }
         next.pendingIndex = nearest
-        return TransitBusStopStepResult(tracker: next, verdict: .pending)
+        return result(next, .pending)
     }
     // 뒤 정류장 — 60초 동안 이어질 때만 다시 시작한다(첫 래치가 틀렸던 경우의 복구). 중간 지점의 흔들림은
     // 사이에 끼는 같거나 앞 관측이 끊는다. 뒤 관측은 래치를 확인하지 않으므로 `lastObservedAt`을 두고 간다
@@ -175,10 +191,10 @@ public func transitBusStopStep(
         next.stopIndex = nearest
         next.lastObservedAt = now
         next.behindSince = nil
-        return TransitBusStopStepResult(tracker: next, verdict: .restarted)
+        return result(next, .restarted)
     }
     next.behindSince = since
-    return TransitBusStopStepResult(tracker: next, verdict: .behind)
+    return result(next, .behind)
 }
 
 /// 표식 — 적용 조건·결박·보존 창 안일 때만. `now`가 관측보다 이르면(음수 경과) 보인다.

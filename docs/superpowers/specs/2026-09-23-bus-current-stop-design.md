@@ -28,7 +28,8 @@
 TransitDeviceFix       = { lat, lng, accuracy(m), ageSeconds }      // 호출자가 fix 측정 시각으로 나이를 잰다
 TransitBusStopTracker  = { legIndex, phaseGen, stopIndex?, lastObservedAt?, pendingIndex?, behindSince? }
 TransitBusStopMark     = { legIndex, phaseGen, stopIndex }              // 뷰가 읽는 표식 — 시각이 없다
-TransitBusStopVerdict  = notApplicable | inaccurate | stale | offRoute | ambiguous | pending | observed | behind | restarted
+TransitBusStopVerdict  = notApplicable | inaccurate | stale | offRoute | ambiguous | approachingAlight | pending | observed | behind | restarted
+TransitBusStopStepResult = { tracker, verdict, nearestIndex? }          // nearestIndex는 계측 전용
 ```
 
 1. **적용 조건**(`transitBusStopApplies`): `phase == riding` ∧ `leg.mode == "bus"` ∧ 경유 정류장 1개 이상. 잠금 종류(식별·근사)와 신호(`tracking`·`notYetVisible`·소실·실패)는 보지 않는다 — 기기 위치는 도착 피드와 독립이다.
@@ -39,10 +40,11 @@ TransitBusStopVerdict  = notApplicable | inaccurate | stale | offRoute | ambiguo
    - `accuracy ≤ 0` 또는 `> 100m` → `inaccurate`. `|ageSeconds| > 10` → `stale`(Kit은 `isUsableFix(accuracy:ageSeconds:maxAge:)`를 지난다 — 음수 정확도·캐시 fix·미래 시각을 함께 거른다).
    - 경유 정류장 중 최근접 `i`(하버사인, 원본 index 유지). 좌표가 비유한이거나 (0,0)인 정류장은 후보에서 뺀다(설계 리뷰 m5 — `transitPrewalkTarget`이 같은 값을 거른다). `d_i > 300m` → `offRoute`.
    - `|j − i| ≥ 2`인 정류장 `j`가 `d_j ≤ d_i + 50m`면 → `ambiguous`(노선이 접힌다: 회차·U턴·순환에서 길 건너 정류장이 같은 거리에 있다). 인접 정류장끼리 비슷한 거리는 모호가 아니다 — 두 정류장 사이 중간 지점이 곧 표식이 바뀌는 자리다(E35에서 위원장이 요청한 "역간 중간 지점에서 바뀌면 좋겠다"와 같은 모양).
+   - `i`가 **하차 정류장**(마지막 index)인데 `d_i > 50m` → `approachingAlight`(관측 아님). "하차, 현재 위치"는 "지금 내려라"로 들린다 — 직전 정류장에 문이 열린 채 서 있는 동안 한쪽으로 치우친 fix 두 건이 중간 지점을 넘겨 그 줄을 먼저 세우지 않게, 하차 정류장만 "그 정류장에 다 왔다"를 요구한다(접근성 감사 MINOR-2). 그 사이 표식은 직전 정류장에 남고 90초 창으로 거둬진다.
    - `i == 래치` → `observed`: `lastObservedAt = now`, 후보·뒤 연속을 지운다.
    - 래치가 없거나 `i > 래치` → **같은 정류장이 두 번 이어서 관측돼야 옮긴다**(설계 리뷰 M1): `pendingIndex == i`면 `observed`(`stopIndex = i`, `lastObservedAt = now`), 아니면 `pendingIndex = i`로 두고 `pending`. 튄 fix 한 건은 후보로만 남고, 다음 관측이 제자리면 후보는 지워진다. 첫 관측도 같다. 초 단위 fix라 지연은 1~2초다.
    - `i < 래치` → 래치 유지, 후보를 지운다. `behindSince`가 없으면 `now`로 두고 `behind`. `now − behindSince ≥ 60초`면 `restarted`: `stopIndex = i`, `lastObservedAt = now`. 뒤 관측은 `lastObservedAt`을 갱신하지 않는다(래치를 확인하지 않았으므로) — 그래서 래치 나이가 30초를 넘은 뒤 시작된 뒤 관측은 60초가 되기 전에 보존 창 만료가 래치를 먼저 버리고 새로 시작한다(실효 재시작 = min(60초, 90초 − 래치 나이), 설계 리뷰 n6).
-   - `inaccurate`·`stale`·`offRoute`·`ambiguous`는 래치·후보·`behindSince`를 건드리지 않는다(관측이 아니므로 연속도 끊지 않는다 — E35 "연속"의 뜻과 같다).
+   - `inaccurate`·`stale`·`offRoute`·`ambiguous`·`approachingAlight`는 래치·후보·`behindSince`를 건드리지 않는다(관측이 아니므로 연속도 끊지 않는다 — E35 "연속"의 뜻과 같다).
 4. **표식**(`transitBusStopMark(state, leg, tracker, now)` → `TransitBusStopMark?`): 적용 조건 ∧ 결박 일치 ∧ `stopIndex` 있음 ∧ `now − lastObservedAt ≤ 90초`. `now`가 `lastObservedAt`보다 이르면 보인다. 표식에는 **시각이 없다** — 뷰는 이 값만 읽고, 오케스트레이터는 값이 바뀔 때만 쓴다(추적 상태의 `lastObservedAt`은 fix마다 바뀌어 그대로 노출하면 목록이 초마다 다시 그려진다, 설계 리뷰 m3).
 5. **경유 목록의 세 번째 출처**(`transitViaStopHereIndexWithBusStop(state, leg, position, mark, now)`): E35 `transitViaStopHereIndex`(도착 `arvlMsg3` · 열차 위치)와 버스 표식 중 큰 값. 표식은 적용 조건·결박이 지금 상태와 맞고 경유 정류장 범위 안일 때만 쓴다(옛 결박·국면 밖 표식이 새 국면에 새지 않게). 버스 leg에서 앞의 둘은 언제나 없고(서울버스·TAGO 매핑은 `currentLocation`을 싣지 않는다 — 리뷰가 코드로 확인), 지하철 leg에서 버스 표식은 언제나 없다 — `max`는 그 사실을 코드가 가정하지 않게 하는 방어다.
 6. **조망 후처리**(`transitOverviewApplyingBusStop(overview, state, leg, mark)`): 버스 leg에서 `here == .notApplicable(.bus)`이고 표식이 있으면 `.station(p)`로 바꾸고 현재 leg 정차역 행의 `here` 플래그를 맞춘다. 추적 불가 **지하철** leg도 같은 `bus` 사유를 받으므로 leg 종류를 함께 본다(설계 리뷰 n1). 그 밖의 `here`는 불변. silence 행·`reboardOffered`는 불변. E35 후처리 뒤에 얹는다.
@@ -57,6 +59,7 @@ TransitBusStopVerdict  = notApplicable | inaccurate | stale | offRoute | ambiguo
 | 모호 여유 | 50m | 길 건너 정류장(대개 20~40m)을 잡는다 |
 | 보존 창 | 90초 | 두 플랫폼 모두 fix가 흐르는 스트림이라(iOS keep-alive 거리 필터 없음, 웹 `watchPosition`) 90초 공백은 터널·지하차도 같은 실제 공백이다. 만료는 폴 시계가 아니라 **마지막 관측 + 90초에 맞춘 한 번짜리 타이머**가 판정한다 — 폴에 기대면 실효 창이 창 + 폴 주기(최대 150초)로 늘어난다(설계 리뷰 M2) |
 | 뒤 재시작 | 60초 | 뒤 관측이 60초 동안 이어질 때만 그 정류장에서 다시 시작한다. 중간 지점의 흔들림(수 초 간격 fix가 앞뒤로 오간다)은 사이에 같거나 앞 관측이 끼어 끊긴다. E35의 "2회 연속"을 그대로 쓰면 초 단위 fix에서 중간 지점마다 표식이 한 칸 뒤로 튄다 |
+| 하차 정류장 반경 | 50m | 하차 행만 "그 정류장 앞"을 요구한다. 정류장 간격이 200m인 도심에서도 직전 정류장에 선 버스가 이 반경에 들려면 보고 정확도 100m 안에서 150m 넘게 치우친 fix가 두 번 이어져야 한다 |
 | 전진 확인 | 같은 정류장 2회 연속 | 튄 fix 한 건이 아직 오지 않은 정류장을 "현재 위치"로 만들지 않게(설계 리뷰 M1). 초 단위 fix라 지연은 1~2초 |
 
 ## 3. 불변식
@@ -88,8 +91,8 @@ keep-alive 프로파일(`kCLLocationAccuracyKilometer` · 거리 필터 500m)은
 - `NearestTenMeters`: 판정 상한(100m) 때문이 아니라 측위 **원천**을 GPS 쪽으로 기울이려는 것이다. `HundredMeters`는 Wi-Fi 측위로 채워질 수 있고 차내 Wi-Fi AP는 버스와 함께 움직여 보고 정확도 100m 안의 엉뚱한 fix를 낼 수 있다(설계 리뷰 m1). 도보 안내의 `Best`까지는 올리지 않는다.
 - **배터리는 늘어난다** — 버스 승차 구간만이다. 지하철 riding·boarding(A46)·지하철/버스 대기는 현행 저정밀 그대로. 실측은 BACKLOG §2 E36 ③(30분 승차 전후 %)에 버스 축을 더한다.
 - 구현: `LocationService.setKeepAliveBusRiding(_:)` — 플래그를 바꾸고, keep-alive **단독** 구간(비콘·단발 없음)이면 즉시 프로파일을 다시 적용한다. `applyProfile(.keepAlive)`가 이 플래그로 두 설정 중 하나를 고르므로, 단발 취득·비콘이 끝나고 keep-alive로 내려올 때(`endOneShotIfIdle`·`stopBeaconUpdates`)도 같은 값으로 돌아온다. `stopKeepAliveUpdates`는 플래그를 내린다(다음 세션이 정밀로 시작하지 않게).
-- 모델: `updateKeepAlive()`가 keep-alive 상태와 함께 `phase == riding ∧ currentLeg.mode == "bus"`를 매번 반영한다(국면 전이·구간 전진·유휴 정지 경로가 이미 이 함수를 부른다).
-- ⚠ **비관측 잠금 riding**(A34 ① — 서울버스 "이미 탔어요"의 근사 폴백)과 **추적 불가 버스 leg**(`untrackable` — 지방 BIS 미커버 등)는 폴 주기 0이라 keep-alive 자체가 꺼진다 → fix가 없어 표식도 없다(정직한 부재, 설계 리뷰 m2). 웹도 같은 조건에서 폴이 없고, 웹 스트림은 폴과 무관하게 국면으로 켜지므로 웹에서는 이 두 경우에도 표식이 선다 — 웹은 전경 전용이라 백그라운드 생존 문제가 없다. 이 구간을 위해 keep-alive를 따로 켜지 않는다 — 폴 없는 세션을 백그라운드에서 살려 둘 이유를 새로 만드는 일이라 E36 판정 범위 밖이다(§8 열린 판정).
+- 모델: `updateKeepAlive()`가 keep-alive 상태와 함께 **표식의 적용 조건**(`transitBusStopApplies` — 경유 정류장이 없는 구간엔 올리지 않는다, 구현 리뷰 m4)을 매번 반영한다(국면 전이·구간 전진·유휴 정지 경로가 이미 이 함수를 부른다). ⚠ 정상 흐름은 boarding(A46)에서 이미 켜진 keep-alive를 riding에서 **올리는** 분기다 — 시작 분기만 보는 배선은 실승차에서 저정밀로 남는다(구현 리뷰 m1, 소스 가드가 그 분기를 잠근다). 값이 바뀌면 `keepAlive profile=bus|default` 1줄.
+- ⚠ **비관측 잠금 riding**(A34 ① — 서울버스 "이미 탔어요"의 근사 폴백)과 **추적 불가 버스 leg**(`untrackable` — 지방 BIS 미커버 등)는 폴 주기 0이라 keep-alive 자체가 꺼진다 → fix가 없어 표식도 없다(정직한 부재, 설계 리뷰 m2). 웹 스트림도 같은 조건(폴 주기 > 0)에서만 열어 두 플랫폼이 같은 이야기를 한다 — 그렇지 않으면 웹에서 "버스 위치를 표시하지 않습니다"(비관측 잠금 상태 문장)와 목록 "현재 위치"가 한 화면에 선다(접근성 감사 MINOR-1). 이 구간을 위해 keep-alive를 따로 켜지 않는다 — 폴 없는 세션을 백그라운드에서 살려 둘 이유를 새로 만드는 일이라 E36 판정 범위 밖이다(§8 열린 판정).
 
 ### 4.3 모델 배선
 
@@ -97,11 +100,11 @@ keep-alive 프로파일(`kCLLocationAccuracyKilometer` · 거리 필터 500m)은
 - 표식이 서 있으면 마지막 관측 + 보존 창에 한 번 더 판정하는 `Task`를 건다(새 판정마다 교체). fix가 끊긴 터널에서도 창이 정확히 닫힌다.
 - `viaStopHereIndex`는 `transitViaStopHereIndexWithBusStop`, `overview`는 E35 후처리 뒤 `transitOverviewApplyingBusStop`. 조망의 "다른 경로" 출발점은 GPS 우선이고 실패할 때만 `.station`을 읽는다(현행 정책 그대로 — 버스 표식 정류장 좌표는 90초 안의 fix에서 나온 것이다).
 - `beginSession`·`changeRoute`·`stop`(E35 `ridingPosition`과 같은 자리)과 **유휴 정지 진입**(`enterIdleIfDue`, 설계 리뷰 M4)이 표식·추적 상태·타이머를 함께 비운다.
-- 계측(`transitGuideLog`): `busFix verdict= idx= latched= acc= age=` — **판정 종류나 래치가 바뀔 때만** 1줄(초 단위 fix마다 쓰면 로그가 넘친다). 실승차 사후에 "부정확이었나·노선 밖이었나·모호였나"를 가르는 유일한 증거다. keep-alive 시작 줄에 프로파일(`profile=bus|default`)을 싣는다.
+- 계측(`transitGuideLog`): `busFix verdict= idx= latched= acc= age=`(`idx`는 그 fix의 최근접 정류장 — 앞으로 튄 fix·뒤 흔들림을 사후에 재구성하는 열, 구현 리뷰 m3) — **판정 종류나 래치가 바뀔 때만** 1줄(초 단위 fix마다 쓰면 로그가 넘친다). 실승차 사후에 "부정확이었나·노선 밖이었나·모호였나"를 가르는 유일한 증거다. 프로파일은 keep-alive 시작 줄(`keepAlive start profile=`)과 전환 줄(`keepAlive profile=`)이 싣는다.
 
 ## 5. 웹
 
-- 웹은 keep-alive가 없다(전경 전용). 버스 riding ∧ 전경(`visibilityState`) ∧ 공유 위치 스토어가 이미 `ready`일 때 **세션 전용 `watchPosition`**(정밀·캐시 무시, 도보 안내 `useRouteGuide`와 같은 옵션)을 열고, 조건이 깨지면 닫는다.
+- 웹은 keep-alive가 없다(전경 전용). 버스 riding(적용 조건 ∧ 폴 주기 > 0 — iOS keep-alive와 같은 조건) ∧ 전경(`visibilityState`) ∧ 공유 위치 스토어가 `ready`일 때 **세션 전용 `watchPosition`**(정밀·캐시 무시, 도보 안내 `useRouteGuide`와 같은 옵션)을 열고, 조건이 깨지면 닫는다. 스토어 상태는 구독한다 — riding 뒤에 `ready`가 되어도 열린다(구현 리뷰 m5).
 - **공유 위치 스토어를 덮지 않는다**(설계 리뷰 M3): 스토어 좌표를 갈아 끼우면 "현재 위치" 주소 재조회(`current-address-store` — 새로고침에서만 좌표가 바뀐다는 전제)·표시줄 라벨 교체가 승차 내내 반복된다. 안내가 자기 스트림을 쥐는 것은 도보 안내의 선례이고, "`getCurrentPosition` 직접 호출 금지"는 "내 주변" 조회의 규칙이다. iOS keep-alive의 "공유 스토어 미기록"과 같은 원칙이다.
 - 스토어 `ready`는 권한 게이트다 — 아니면(권한 전·거부·실패) 스트림을 열지 않는다. **권한 팝업을 새로 띄우지 않는다**(대중교통 안내는 권한 요청 지점이 아니다).
 - fix는 측정 시각(`timestamp`)으로 나이를 재 도착 시점의 현재 상태로 step한다(§2 ②). 표식·만료 타이머는 iOS와 같은 구조(표식 값이 바뀔 때만 `setState`, 마지막 관측 + 보존 창 타이머).
@@ -128,10 +131,10 @@ keep-alive 프로파일(`kCLLocationAccuracyKilometer` · 거리 필터 500m)은
 
 ## 8. 검증·열린 판정
 
-- **공유 fixture** `transit-bus-stop-cases.json`(56건): 적용 조건·결박 교체·첫 관측 두 번·정확도/나이 경계(100m·10초 포함, 음수·미래)·노선 밖·모호(접힘)·중간 지점·앞으로 튄 fix 폐기·두 번 확인 전진·뒤 1회·뒤 60초 재시작·연속 끊김(같은·앞 관측)·비관측은 연속을 끊지 않음·만료 래치 버림·(0,0) 정류장·표식 보존 창 경계(90초)·옛 결박·국면 밖·범위 밖 표식·세 번째 출처 `max`·조망 후처리(버스 → station, 지하철·국면 밖·추적 불가 지하철 불변). 비유한 좌표는 JSON에 실을 수 없어 웹·Kit 각각 같은 이름 테스트 1건. 웹 vitest·Kit `swift test`가 같은 입력·기대로 돈다.
-- **소스 가드**(`transit-bus-stop-guard.test.ts`): 상태 머신·기존 조망 판정 파일이 새 모듈을 모른다 · keep-alive 단독 fix 미저장 유지 · 싱크는 `isKeepAliveActive ∧ isPrecise` · keep-alive 종료가 버스 플래그·싱크를 푼다 · 모델의 표식 소거 네 자리(유휴 진입 포함)·추적 상태 관측 밖 · 버스 프로파일 대입은 `applyProfile` 한 곳.
-- **웹 배선 테스트**(`TransitGuidePanel.bus-stop.test.tsx`): 스트림 fix 두 번에 "현재 위치"가 서고 한 번으로는 안 선다 · 공유 스토어 좌표·측위 호출이 그대로다 · 탭을 숨기면 스트림을 닫는다 · 스토어가 `ready`가 아니면 스트림을 열지 않는다.
-- **변이 주입**(커밋 뒤): 전진 확인 제거 · 보존 창 무시 · 모호 판정 제거 · 나이 검사 제거 · 웹 `ready` 가드 제거 · 유휴 진입 소거 제거 · 싱크의 `isPrecise` 제거 — 각각 빨개지는지.
+- **공유 fixture** `transit-bus-stop-cases.json`(60건, 최근접 index 포함): 적용 조건·결박 교체·첫 관측 두 번·정확도/나이 경계(100m·10초 포함, 음수·미래)·노선 밖·모호(접힘)·중간 지점·하차 정류장 50m·앞으로 튄 fix 폐기·두 번 확인 전진·뒤 1회·뒤 60초 재시작·연속 끊김(같은·앞 관측)·비관측은 연속을 끊지 않음·만료 래치 버림·(0,0) 정류장·표식 보존 창 경계(90초)·옛 결박·국면 밖·범위 밖 표식·세 번째 출처 `max`·조망 후처리(버스 → station, 지하철·국면 밖·추적 불가 지하철 불변). 비유한 좌표는 JSON에 실을 수 없어 웹·Kit 각각 같은 이름 테스트 1건. 웹 vitest·Kit `swift test`가 같은 입력·기대로 돈다.
+- **소스 가드**(`transit-bus-stop-guard.test.ts`): 상태 머신·기존 조망 판정 파일이 새 모듈을 모른다 · keep-alive 단독 fix 미저장 유지 · 싱크는 `isKeepAliveActive ∧ isPrecise` · keep-alive 종료가 버스 플래그·싱크를 푼다 · 모델의 표식 소거 네 자리(유휴 진입 포함)·추적 상태 관측 밖 · 켜는 조건이 적용 조건이고 이미 켜진 분기에서 반영 · 버스 프로파일 대입은 `applyProfile` 한 곳 · 웹 스트림 조건에 폴 주기.
+- **웹 배선 테스트**(`TransitGuidePanel.bus-stop.test.tsx`): 스트림 fix 두 번에 "현재 위치"가 서고 한 번으로는 안 선다 · 공유 스토어 좌표·측위 호출이 그대로다 · 마지막 관측 + 90초에 표식이 거둬진다(가짜 시계) · riding 뒤 스토어가 `ready`가 되면 열린다 · 탭을 숨기면 닫는다 · 스토어가 `ready`가 아니면 열지 않는다.
+- **변이 주입**(커밋 뒤): 전진 확인 제거 · 하차 반경 제거 · 보존 창 무시 · 모호 판정 제거 · 나이 검사 제거 · 웹 `ready` 가드 제거 · 웹 만료 타이머 제거 · 유휴 진입 소거 제거 · 싱크의 `isPrecise` 제거 · 이미 켜진 분기의 프로파일 반영 제거 — 각각 빨개지는지.
 - **실호출 없음**: 기기 fix 소비라 외부 API를 부르지 않는다.
 - **실승차**(BACKLOG §2 E48 행, 신설): ①표식이 실제 정류장을 따라가는가(중간 지점에서 바뀌는가, 뒤로 튀지 않는가) ②정체·신호 대기에서 표식이 유지되는가 ③지하차도·터널 뒤 복귀 ④회차·U턴 노선에서 모호로 비는 구간의 길이 ⑤배터리(E36 ③에 버스 축) ⑥상태 문장("버스 위치가 표시됩니다")과 목록 "현재 위치"의 공존이 헷갈리는가 — 헷갈리면 E35 판정 1을 버스로 넓히는 판정을 연다.
 - **잠정 상수 여섯**(§2 표) — 실승차 로그(`busFix`)로 판정.
@@ -160,3 +163,24 @@ keep-alive 프로파일(`kCLLocationAccuracyKilometer` · 거리 필터 500m)은
 | n4 `updateKeepAlive` 조기 반환 순서 | 이미 반영 | 켜져 있으면 플래그만 반영하고 돌아간다(boarding→riding 전이 포함) |
 | n5 접힘 구간 `course` 축 | 기록 | §8 열린 판정 |
 | n6 뒤 재시작 실효값 | 수용 | §2 ③ 문장 |
+
+구현 리뷰(opus, HEAD `35275088`, `review-impl-202609231742.md`): BLOCKER 0 · MAJOR 0 · MINOR 5 · NIT 5. 접근성 감사(opus, 같은 HEAD, `review-a11y-202609231739.md`): BLOCKER 0 · MAJOR 0 · MINOR 2 · NIT 3 + 관찰 축 4.
+
+| 지적 | 판정 | 반영 |
+|---|---|---|
+| 구현 m1 가드가 이미 켜진 분기의 프로파일 반영 누락을 못 잡는다 | 수용 | 그 분기 본문을 잘라 단언 + 호출 수 2 |
+| 구현 m2 프로파일 전환이 로그에 없다 | 수용 | `setKeepAliveBusRiding`이 변경 여부를 돌려주고 `keepAlive profile=` 1줄 |
+| 구현 m3 `busFix`에 `idx=` 없음 | 수용 | 결과에 `nearestIndex`(웹·Kit·fixture) |
+| 구현 m4 iOS 켜는 조건 ≠ 적용 조건 | 수용 | `transitBusStopApplies` 재사용 |
+| 구현 m5 웹 권한 게이트가 구독하지 않는다 | 수용(①) | `useGeolocation` 구독 + 테스트. 게이트는 `ready` 유지 — 시간 초과로 `denied`가 된 스토어(stale-origin)까지 넓히면 권한 거부와 사유를 갈라야 해서 범위를 넘는다 |
+| 구현 n1 만료 타이머 배선 무검증 | 수용 | 웹 가짜 시계 테스트(iOS는 레인 없음) |
+| 구현 n2 fix마다 타이머 재생성 | 기각 | 동작이 맞고 조건 분기가 코드만 늘린다 |
+| 구현 n3·n4 주석 사실 오류 | 수용 | 정정 |
+| 구현 n5 문서 분배 | 통합 때 | CHANGELOG·BACKLOG §2 E48 행·PROGRESS·FIELD-TEST |
+| 감사 MINOR-1 웹만 비관측 잠금·추적 불가에서 표식(상태 문장과 충돌) | 수용(ⓐ) | 웹 스트림 조건에 폴 주기 > 0 + 소스 가드 |
+| 감사 MINOR-2 "하차, 현재 위치"가 직전 정류장 정차 중 먼저 설 수 있다 | 수용(ⓑ 변형) | 하차 정류장만 50m 반경(`approachingAlight`) + fixture |
+| 감사 NIT-1 조망 "다른 경로" 헤더가 `.station`에서 한국어 원문 이름 | 이관 | E35 코드(`GuideOverviewSheet` 헤더)라 BACKLOG 한 줄 |
+| 감사 NIT-2 정류장마다 "다른 경로" 채택 재조회 가능 | 관찰 | 실승차 축 |
+| 감사 NIT-3 대본 행 | 통합 때 | FIELD-TEST §5-2 |
+| 감사 관찰 축 4 | 수용 | BACKLOG §2 E48 행·FIELD-TEST에 싣는다 |
+

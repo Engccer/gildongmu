@@ -156,6 +156,40 @@ describe("버스 승차 중 현재 정류장 — 웹 배선(E48)", () => {
     expect(screen.getByText(/transitGuide\.stateRidingNotYetVisibleBus/)).toBeTruthy();
   });
 
+  it("표식은 마지막 관측 + 90초에 거둔다 — 폴 시계를 기다리지 않는다(fix가 끊긴 터널)", async () => {
+    const geo = stubGeolocation();
+    await awaitGeolocation();
+    await startBusRiding();
+    await waitFor(() => expect(geo.watchPosition).toHaveBeenCalled());
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"] });
+    try {
+      geo.emit();
+      geo.emit();
+      expect(screen.getByText("강동역, transitGuide.viaCurrent")).toBeTruthy();
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(89_000);
+      });
+      expect(screen.getByText("강동역, transitGuide.viaCurrent")).toBeTruthy();
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1_100);
+      });
+      expect(screen.queryByText(/transitGuide\.viaCurrent/)).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("riding 뒤에 공유 스토어가 ready가 되어도 스트림이 열린다(스토어 구독)", async () => {
+    const geo = stubGeolocation();
+    await startBusRiding();
+    await new Promise((r) => setTimeout(r, 50));
+    expect(geo.watchPosition).not.toHaveBeenCalled();
+    await act(async () => {
+      await awaitGeolocation(); // 다른 화면(길찾기 등)이 위치를 받는다
+    });
+    await waitFor(() => expect(geo.watchPosition).toHaveBeenCalled());
+  });
+
   it("탭을 숨기면 스트림을 닫는다", async () => {
     const geo = stubGeolocation();
     await awaitGeolocation();
