@@ -29,6 +29,7 @@ import { useCurrentAddress } from "@/hooks/useCurrentAddress";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { bilingualName } from "@/lib/bilingual-name";
 import { useManualLocation, useManualLocationLabel } from "@/hooks/useManualLocation";
+import type { RouteGuideVia } from "@/hooks/useRouteGuide";
 import { isInKorea } from "@/lib/coverage";
 import { isOutOfCoverageBody } from "@/lib/out-of-coverage";
 import { dataLocale, prefersEnglish } from "@/lib/data-locale";
@@ -112,6 +113,11 @@ type QueryResults = {
   outcomes: Partial<Record<ModeKey, ModeOutcome>>;
   /** 조회 시점의 경유지 라벨(결과 구획 "경유지 C 도착"용, N4). 없으면 null. */
   viaLabel: string | null;
+  /**
+   * 조회 시점의 경유지 스냅샷(도보 실시간 안내 입력, N4) — 목적지(`destCoord`)와 같은 이유로 폼이 아니라
+   * 조회 결과에서 읽는다: 조회 뒤 경유지 칸을 고치거나 지워도 화면의 경로와 안내가 같은 경유지를 가리킨다.
+   */
+  via: RouteGuideVia | null;
   /** 표시 순서 스냅샷(spec 2026-08-12 §2) — settled 커밋 시 1회 확정. */
   orderedModes: ModeKey[];
   /**
@@ -897,6 +903,7 @@ export function DirectionsView({
         dataLang: dataLocale(locale),
         outcomes,
         viaLabel,
+        via: via && viaLabel !== null ? { lat: via.lat, lng: via.lng, label: viaLabel } : null,
         orderedModes,
         originSource,
         staleAge: staleAgeAtQuery,
@@ -995,12 +1002,12 @@ export function DirectionsView({
   // 사전 차단), 대중교통은 경로 성공 ∧ ko ∧ 탑승 leg ≥ 1(도보 전용 경로 제외 —
   // 추적 불가 leg는 게이트 축이 아니라 세션 안의 정직 상태).
   const carOutcome = results?.outcomes.car;
-  // 경유지 조회(N4 spec §3)에서는 어떤 안내도 시작하지 않는다 — 안내 훅이 출발지→도착지로
-  // 자기 조회를 다시 해 경유지가 조용히 빠진 경로를 안내하게 되고, 간략 폴백(직선거리)도
-  // 목적지만 본다. 버튼 부재가 정직하다. 경유지 안내는 iOS 실보행 판정 뒤 웹에 얹는다.
+  // 경유지 조회(N4)에서 도보 안내는 경유지를 실어 시작한다(판정 ③ — 훅이 경유지를 조회에 싣고, 경유지
+  // 경로가 없으면 빼고 안내한다고 말한다). 자동차는 여전히 시작하지 않는다 — 자동차 훅은 경유지를 싣지
+  // 않아 경유지가 조용히 빠진 경로를 안내하게 된다(자동차 경유지 개방은 BACKLOG N4 별건).
   const hasVia = results?.viaLabel != null;
   // 도보 상세 안내는 전 로케일에서 시작할 수 있다(E16 축3) — 문장을 서버가 만든다.
-  const walkGuideStartable = results?.outcomes.walk?.kind === "done" && !hasVia;
+  const walkGuideStartable = results?.outcomes.walk?.kind === "done";
   /**
    * 도보 줄 버튼 문장(E42 위원장 확정 렌더: "최단 경로, 총 850m, 약 12분") — 화면과 WebMCP
    * `plan.walk.lines[].label`의 정본. 한 줄 = 한 접근성 객체(joinText, 쉼표). 모르는 종류는
@@ -1870,6 +1877,7 @@ export function DirectionsView({
                                 kind="walk"
                                 accessible={axis.accessible}
                                 variant={axis.variant}
+                                via={results.via}
                                 announce={announce}
                                 startOnOpen
                                 onStart={announceGuideStart}
