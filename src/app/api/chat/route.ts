@@ -20,6 +20,20 @@ interface ChatRequest {
   placeContext?: { name: string; lat: number; lng: number; category?: string; isStation?: boolean };
 }
 
+// A44: JSON.stringify는 U+2028·U+2029·U+0085를 날 문자로 둔다. Swift `bytes.lines`(와 Kotlin 미러)는
+// 그 문자를 줄 경계로 읽어 이벤트 한 줄을 쪼개고, 깨진 조각은 디코딩 실패 → 답변 전체 유실이다.
+// 직렬화 뒤 `\uXXXX` 이스케이프로 바꾼다 — 같은 JSON 값이라 구버전 클라이언트도 그대로 읽는다.
+// (소스에 날 문자·이스케이프 표기를 두지 않으려고 코드 포인트로 조립한다.)
+const LINE_BREAKING_CODE_POINTS = [0x2028, 0x2029, 0x0085];
+
+function toNdjsonLine(event: ChatStreamEvent): string {
+  let json = JSON.stringify(event);
+  for (const cp of LINE_BREAKING_CODE_POINTS) {
+    json = json.split(String.fromCharCode(cp)).join("\\" + "u" + cp.toString(16).padStart(4, "0"));
+  }
+  return json + "\n";
+}
+
 export async function POST(request: Request) {
   // 무인증 공개 API의 유료 호출(Gemini·Perplexity) 비용 방어 — 스펙 §5.
   if (!checkChatRateLimit(clientIpFromHeaders(request.headers), Date.now())) {
@@ -72,7 +86,7 @@ export async function POST(request: Request) {
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     async start(controller) {
-      const send = (e: ChatStreamEvent) => controller.enqueue(encoder.encode(JSON.stringify(e) + "\n"));
+      const send = (e: ChatStreamEvent) => controller.enqueue(encoder.encode(toNdjsonLine(e)));
       try {
         const result = await runAgentLoop({
           ai, model: GEMINI_MODEL, systemInstruction, tools, history, ctx,
