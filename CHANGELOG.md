@@ -13,7 +13,7 @@
 
 ### ODsay Flex 후불 종량제 전환
 
-ODsay 대중교통 API를 Basic(일 30건 무료)에서 Flex(건당 25원+VAT, 일 10만 건, 매월 5일 카드 결제)로 옮겼다. 새 앱 `gildongmuflex` 키로 교체했고, 옛 URI를 Basic 앱이 점유해 ODsay 출처 주소(`ODSAY_REFERER`)를 정식 도메인 `gildongmu.dodoplanet.space`로 바꿨다. 월 과금 상한선은 ODsay 사이트에 UI가 없어 우리 쪽 가드를 [BACKLOG E49](docs/BACKLOG.md)로 열었다.
+ODsay 대중교통 API를 Basic(일 30건 무료)에서 Flex(건당 25원+VAT, 일 10만 건, 매월 5일 카드 결제)로 옮겼다. 새 앱 `gildongmuflex` 키로 교체했고, 옛 URI를 Basic 앱이 점유해 ODsay 출처 주소(`ODSAY_REFERER`)를 정식 도메인 `gildongmu.dodoplanet.space`로 바꿨다. 월 과금 상한선은 ODsay 사이트에 UI가 아직 없고, 우리 쪽 가드는 두지 않는다(위원장이 사용 추이를 직접 본다).
 
 ### 버스 승차 중 현재 정류장 표식 (E48, iOS 실험판·웹)
 
