@@ -35,7 +35,7 @@
 
 ### 경로 브리핑의 역 진입점은 이름 조인이고 줄은 전부 `Text`로 남는다
 
-**경로 브리핑의 역 진입점은 이름 조인이고 줄은 전부 `Text`로 남는다**(E45, spec `docs/superpowers/specs/2026-09-18-briefing-station-entry-design.md`). 판정은 Kit 순수 함수 `transitBriefingStations(legs, row:)`(`TransitBriefingStations.swift`) 하나이고 앱은 라벨 언어만 얹는다(`briefingStationActions`, `RouteBriefing.swift`).
+**경로 브리핑의 역 진입점은 이름 조인이고 줄은 전부 `Text`로 남는다**(E45, spec `docs/superpowers/specs/2026-09-18-briefing-station-entry-design.md`). 판정은 Kit 순수 함수 `transitBriefingStations(legs, row:)`(`TransitBriefingStations.swift`) 하나이고 앱은 라벨 언어만 얹는다(`briefingStationActions`, `RouteBriefing.swift`). 안드로이드는 `:kit` `TransitBriefingStations.kt` 미러 + TalkBack 작업 메뉴이고 메뉴 순서는 등장 순이다(2026-09-23, 상세는 `android/README.md`).
 
 - ⚠ **대상 역을 `stops.first`/`stops.last`로 고르지 말 것.** 서버 `toLegStops`가 이름·좌표 무효 항목을 `flatMap`으로 떨어뜨리므로 목록의 첫·마지막이 조용히 중간역이 되고, 그때 열리는 역은 줄에서 들린 역이 아니다(provider `previousStopName`이 같은 이유로 정규화 비교를 거친 뒤에만 쓴다). **줄에서 들린 이름으로 조인하고**(`normalizeStopName` 재사용, 자체 정규화 금지) **조인 실패는 진입점 0**이다. 승차는 앞에서부터·하차는 뒤에서부터 찾는다(같은 역을 두 번 지나는 노선에서 어느 통과인지가 갈린다).
 - **`.walk` 줄의 대상은 `legs[i+1]`이 아니라 다음 non-walk leg의 승차역**이다 — 서버가 도보 줄의 행선지 이름을 그 술어로 유도하므로(`odsay.ts:413-423`), 게이트가 같은 술어를 써야 도보가 연달아 나오는 응답에서 "같은 이름인데 한 줄에만 진입점"이 생기지 않는다. 그 leg에 `toName`은 실리지 않으므로 `fromName` 하나를 보는 것이 곧 "줄에 들린 이름" 게이트다(실호출 66쌍 불일치 0).
@@ -131,7 +131,7 @@
 
 ### 화면 배치를 바꾸면 그 자리를 지나가는 포커스 점프를 함께 점검한다
 
-**화면 배치를 바꾸면 그 자리를 지나가는 포커스 점프를 함께 점검한다**(2026-08-02): 길찾기 조회 완료 시 첫 성공 수단 heading으로 보내던 계약은 그 자체로 옳았는데, 거리 추적 섹션이 조회 버튼과 수단 섹션 **사이**에 생기자 그 점프가 새 섹션을 통째로 건너뛰게 됐다. 지금은 조회 완료 시 첫 **성공** 수단 heading으로 1회 이동한다(성공 0건이면 무이동, `51a0625` 2026-08-12) — 종전에 이 점프를 뗐던 이유였던 "거리 추적 섹션이 사이에 낀 배치"는 안내 버튼이 수단 섹션 안으로 들어가며 해소됐다. 계단 회피 토글 재조회는 도보 heading으로 이동한다(사용자가 그 섹션 안에서 조작했다).
+**화면 배치를 바꾸면 그 자리를 지나가는 포커스 점프를 함께 점검한다**(2026-08-02): 길찾기 조회 완료 시 첫 성공 수단 heading으로 보내던 계약은 그 자체로 옳았는데, 거리 추적 섹션이 조회 버튼과 수단 섹션 **사이**에 생기자 그 점프가 새 섹션을 통째로 건너뛰게 됐다. 지금은 조회 완료 시 첫 **성공** 수단 heading으로 1회 이동한다(성공 0건이면 무이동, `51a0625` 2026-08-12) — 종전에 이 점프를 뗐던 이유였던 "거리 추적 섹션이 사이에 낀 배치"는 안내 버튼이 수단 섹션 안으로 들어가며 해소됐다.
 
 ### 안내 시트를 최소화하면 콘텐츠 뷰가 파괴되어 뷰 상태가 사라진다
 
@@ -222,7 +222,7 @@ E25(위원장 요청 2026-09-07, 구현 2026-09-13). 판정 정본은 웹 `src/l
 
 - **조건은 순수 술어 하나**: Kit `transitBoardingObservationLost(_:)` ↔ 웹 `boardingObservationLost(signal)` = `signalLost ∨ upstreamFailed`. `signalLost`는 연속 미등장과 `vehiclePassed`(잔여 ≤1 소실)가 모이는 자리이고 `upstreamFailed`는 조회 실패(심야·미제공 포함)다. `neverSeen`은 riding 전용 축이라 이 국면에 없다.
 - **래치는 앱 층에 둔다**(`TransitGuideModel.boardingManualAvailable` ↔ 훅의 같은 이름): 신호는 회복한다(`upstreamFailed` → `notYetVisible`, `signalLost` → `tracking`). 래치가 없으면 **폴 한 번에 포커스를 쥔 버튼이 사라진다**(헌장 §5). 관측이 돌아와도 수동 수단이 남는 것은 해롭지 않다 — 실제로 탔다면 여전히 맞는 버튼이다. 리듀서 상태로 올리지 않는 근거는 화면 표시 수명뿐이고 공유 fixture 전량의 상태 모양을 바꾸기 때문이다(`aboardStep`·`reboardPickerActive`와 같은 자리).
-- **조용히 서는 버튼의 발견 경로는 그 순간의 통지다**(헌장 §3): `boardingSignalLost`·`boardingUpstreamFailed`·`vehiclePassed` 셋이 버튼 이름을 부른다. 이 뒷문장은 "뻔한 꼬리"가 아니라 **새로 생긴 수단**을 알린다.
+- **조용히 서는 버튼의 발견 경로는 그 순간의 통지다**(헌장 §3): `boardingSignalLost`·`boardingUpstreamFailed`·`vehiclePassed` 셋은 상황만 말하고 버튼 이름을 인용하지 않는다(A46, 2026-09-23 위원장 판정) — 버튼 이름 자체([선택한 열차에 탔어요]·[선택한 버스에 탔어요])가 행동을 말한다.
 - **착지는 상태 문장(`SheetControl.status`)이다**: 차량 선택 전이에서 사라지는 것은 누른 후보 행인데 그 국면엔 "다음 행동"이 없다. [다른 차량 선택]에 착지시키면 커서가 "다시 고르라"는 권유 위에 앉아 혼선을 재생산한다. (2026-09-12 E38로 이 자리가 **전 전이의 규칙**이 됐다 — 위 A35 절.)
 - ⚠ **관측 승격 직후에 즉폴을 넣지 말 것**(구현 리뷰 H1로 철회한 자리): 선언 경로(`confirmBoarded`)는 종전부터 즉폴이라 비대칭이 눈에 띄지만, 승격 통지 `boarded(observed)`는 톤(1.33초) 뒤 발화 계약으로 **약 1.48초 지연 슬롯**에 들어가고 즉폴 왕복(300~900ms)이 그 창 안에 돌아와 `trackingStarted`가 **이 흐름에서 가장 중요한 문장을 latest-wins로 버린다**(웜이면 소실, 콜드면 생존 — 비결정). 60초 공백은 A33 문장이 이미 설명하고, 지하철 도착 목록은 근접 열차만 주므로 이득도 하차역 1~2정거장일 때뿐이다. 되살리려면 통지 상환(`onDropped`)이나 슬롯 비움 대기가 선행이다.
 - ⚠ **즉폴은 명시 호출이 아니라 effect 재실행으로도 생긴다**(웹, 2026-09-23): 폴 예약 effect가 `[pollTick, pollOnce]`였을 때 `pollOnce` 정체성이 `boardOverride`·로케일을 따라 바뀌어, 탑승 변경으로 역을 고른 세션의 관측 승격(riding 진입이 재선택을 지운다)이 하차역 폴을 주기 없이 불렀다. 반응 축은 tick 하나이고 최신 `pollOnce`는 `useEffectEvent`로 부른다 — 의존성을 하나씩 안정화하는 길은 새 의존성마다 다시 깨진다. 이 결함은 렌더마다 새 `t`를 주던 테스트 목의 폴 폭주에 가려 있었다(그 폭주에 기대 통과하던 A46 테스트도 있었다). 폴 루프를 마운트하는 테스트의 next-intl 목은 `src/components/__tests__/stable-intl-mock.ts`만 쓰고(소스 가드), 가짜 시계는 한 폴씩 넘긴다(다음 타이머는 앞 폴이 끝난 뒤 `finally`에서 걸려 일괄 전진은 한 폴만 푼다, `advanceOnePoll`).
@@ -401,7 +401,7 @@ iOS 지도 버튼·검색 로터 액션은 URL 빌더가 성공할 때만 만들
 
 ### 봉인의 판정 축은 플래그 참조 목록이 아니라 세션을 시작시키는 호출 전수다
 
-⚠ **봉인의 판정 축은 플래그 참조 목록이 아니라 세션을 시작시키는 호출 전수다**(2026-08-15). 둘은 같은 집합이 아니다 — 참조 중 일부는 진입점이 아니고(사전 고지 문구), 반대로 진입점인데 플래그를 안 보는 자리가 있다(실패 뒤 재시작). 그래서 가드가 `beacon.toggle(`·`beacon.restart(`·`session.startBeacon(`·`self.startBeacon(` **네 형태의 호출 수**를 세고(현재 8곳 — 2026-08-23 K2 자동차 종료 화면의 도보 인계 `acceptCarWalkHandoff`가 7번째, 2026-08-30 A25 승차 전 도보 `GuideSession.startTransit`의 `startBeacon`이 8번째), 늘면 실패해 spec 표를 갱신하며 정식판 도달 여부를 판정하게 한다(`src/lib/__tests__/guidance-gate-drift.test.ts`). ⚠ `restart`가 목록에 있는 이유가 바로 위 "실패 뒤 재시작"이다 — A13이 그것을 더했을 때 `toggle`만 세던 검사가 새 진입점을 통째로 놓쳤다. 게이트 property만 검사하면 새 진입점을 영영 놓친다.
+⚠ **봉인의 판정 축은 플래그 참조 목록이 아니라 세션을 시작시키는 호출 전수다**(2026-08-15). 둘은 같은 집합이 아니다 — 참조 중 일부는 진입점이 아니고(사전 고지 문구), 반대로 진입점인데 플래그를 안 보는 자리가 있다(실패 뒤 재시작). 그래서 가드가 `beacon.toggle(`·`beacon.restart(`·`session.startBeacon(`·`self.startBeacon(` **네 형태의 호출 수**를 세고(현재 7곳 — 2026-08-23 K2 자동차 종료 화면의 도보 인계 `acceptCarWalkHandoff`가 7번째, 2026-08-30 A25 승차 전 도보 `GuideSession.startTransit`의 `startBeacon`이 8번째였고, 2026-09-23 E42가 도보 두 호출을 줄 목록 한 호출로 합쳐 7곳), 늘면 실패해 spec 표를 갱신하며 정식판 도달 여부를 판정하게 한다(`src/lib/__tests__/guidance-gate-drift.test.ts`). ⚠ `restart`가 목록에 있는 이유가 바로 위 "실패 뒤 재시작"이다 — A13이 그것을 더했을 때 `toggle`만 세던 검사가 새 진입점을 통째로 놓쳤다. 게이트 property만 검사하면 새 진입점을 영영 놓친다.
 
 ### `INFOPLIST_KEY_*` 빌드 설정만으로는 구성별 분기가 안 된다
 
@@ -421,7 +421,7 @@ iOS 지도 버튼·검색 로터 액션은 URL 빌더가 성공할 때만 만들
 
 ### 번들 ID가 다르면 UserDefaults도 새로 시작한다
 
-⚠ **번들 ID가 다르면 UserDefaults도 새로 시작한다.** 그래서 실험판 첫 실행은 언어 미선택 상태이고, 기기 시스템 언어가 영어면 `dataLocale`이 `en`이 되어 **ko 전용 게이트(현재 자동차 실시간 안내·계단 회피 토글)가 막힌다** — 검증하려고 깐 기능이 안 보인다(2026-08-04 실측). `AppLanguage.current`가 `#if EXPERIMENTAL`에서 **미선택 폴백만 ko로 고정**해 막았다(사용자 선택은 여전히 1순위). AI 동의·받아쓰기 설정도 같은 이유로 실험판에서 다시 물어본다(정상).
+⚠ **번들 ID가 다르면 UserDefaults도 새로 시작한다.** 그래서 실험판 첫 실행은 언어 미선택 상태이고, 기기 시스템 언어가 영어면 `dataLocale`이 `en`이 되어 **ko 전용 게이트(현재 자동차 실시간 안내)가 막힌다** — 검증하려고 깐 기능이 안 보인다(2026-08-04 실측). `AppLanguage.current`가 `#if EXPERIMENTAL`에서 **미선택 폴백만 ko로 고정**해 막았다(사용자 선택은 여전히 1순위). AI 동의·받아쓰기 설정도 같은 이유로 실험판에서 다시 물어본다(정상).
 
 ---
 

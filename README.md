@@ -58,7 +58,7 @@ npm run lint
 실데이터 연동은 `.env.example`을 `.env.local`로 복사한 뒤 키를 채운다. 키가 없는 기능은 조용히 빠지므로 일부만 채워도 개발할 수 있다.
 
 ```bash
-node scripts/usage-report.mjs   # API 비용·쿼터·키 만료 상태(무과금 프로브)
+node scripts/usage-report.mjs   # API 비용·쿼터·키 만료 상태(ODsay 1건만 과금)
 ```
 
 ## 문서
