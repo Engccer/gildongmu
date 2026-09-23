@@ -15,11 +15,10 @@ import type { Place } from "@/lib/types";
  *
  * 세션 동작·문구는 각 컴포넌트 스위트가 본다 — 여기는 채널 개수와 경유만 본다.
  */
-vi.mock("next-intl", () => ({
-  useTranslations: () => (key: string, values?: Record<string, unknown>) =>
-    values && "name" in values ? `${key}:${String(values.name)}` : key,
-  useLocale: () => "ko",
-}));
+vi.mock("next-intl", async () => {
+  const m = await import("./stable-intl-mock");
+  return m.stableIntlMock("ko", m.keyWithName);
+});
 vi.mock("@/lib/geolocation", () => ({
   awaitGeolocation: vi.fn(async () => ({ status: "error" as const })),
   getGeolocationSnapshot: () => ({ status: "idle" as const }),

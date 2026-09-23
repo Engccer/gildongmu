@@ -3,10 +3,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { RouteGuideApi } from "@/hooks/useRouteGuide";
 
-vi.mock("next-intl", () => ({
-  useTranslations: () => (key: string) => key,
-  useLocale: () => "ko",
-}));
+vi.mock("next-intl", async () => {
+  const m = await import("./stable-intl-mock");
+  return m.stableIntlMock("ko", m.keyOnly);
+});
 vi.mock("../SurroundingsScene", () => ({ SurroundingsScene: () => null }));
 
 const guideApi: RouteGuideApi = {

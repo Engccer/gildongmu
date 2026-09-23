@@ -1676,13 +1676,37 @@ describe("TransitGuidePanel — 폴 예약", () => {
     }
   });
 
-  it("대중교통 패널 테스트는 next-intl을 공유 안정 목으로만 목킹한다(인라인 목 금지)", () => {
-    const files = readdirSync(__dirname).filter((f) => /^TransitGuidePanel.*\.test\.tsx$/.test(f));
-    expect(files.length).toBeGreaterThan(1);
-    for (const file of files) {
-      const mocks = readFileSync(join(__dirname, file), "utf8").match(/vi\.mock\("next-intl"[^\n]*/g) ?? [];
-      expect(mocks, file).toHaveLength(1);
-      expect(mocks[0], file).toContain("stableIntlMock(");
+  it("폴 루프를 마운트하는 테스트는 호출마다 새 t를 만드는 next-intl 목을 쓰지 않는다(공유 안정 목으로)", () => {
+    const root = join(__dirname, "../../..");
+    const tsxUnder = (dir: string) =>
+      (readdirSync(join(root, dir), { recursive: true }) as string[])
+        .filter((f) => f.endsWith(".tsx"))
+        .map((f) => join(root, dir, f));
+    const importsOf = (src: string) =>
+      new Set([...src.matchAll(/from\s+"([^"]+)"/g)].map((m) => m[1].split("/").pop()));
+    // 컴포넌트 import 그래프를 거슬러 올라 폴 루프(TransitGuidePanel)를 마운트하는 모듈 전부.
+    const modules = [...tsxUnder("src/components"), ...tsxUnder("src/app")]
+      .filter((f) => !f.includes("__tests__"))
+      .map((f) => ({ name: f.split("/").pop()!.replace(/\.tsx$/, ""), imports: importsOf(readFileSync(f, "utf8")) }));
+    const mounting = new Set(["TransitGuidePanel", "live-region-host"]);
+    for (let grew = true; grew; ) {
+      grew = false;
+      for (const m of modules) {
+        if (!mounting.has(m.name) && [...m.imports].some((i) => mounting.has(i!))) {
+          mounting.add(m.name);
+          grew = true;
+        }
+      }
     }
+    expect(mounting.has("DirectionsView")).toBe(true);
+    const tests = tsxUnder("src")
+      .filter((f) => f.endsWith(".test.tsx"))
+      .map((f) => ({ file: f.slice(root.length + 1), src: readFileSync(f, "utf8") }))
+      .filter(({ src }) => [...importsOf(src)].some((i) => mounting.has(i!)));
+    expect(tests.length).toBeGreaterThan(10);
+    const unstable = tests
+      .filter(({ src }) => /useTranslations:\s*\([^)]*\)\s*=>\s*[({]/.test(src))
+      .map(({ file }) => file);
+    expect(unstable).toEqual([]);
   });
 });
