@@ -4,12 +4,13 @@ import { join } from "node:path";
 
 /**
  * 대중교통 백그라운드 폴(E36, spec `docs/superpowers/specs/2026-09-11-transit-background-poll-design.md`
- * §4.2.2·§4.2.4)의 소스 가드. 앱 타깃엔 테스트 레인이 없어 두 계약을 정규식으로 잠근다:
+ * §4.2.2·§4.2.4)의 소스 가드. 앱 타깃엔 테스트 레인이 없어 계약을 정규식으로 잠근다:
  *
  * 1. **백그라운드 발화 0** — `TransitGuideModel.post`가 게시 전에 전경 게이트를 지난다. 접근성 헌장
  *    계약(백그라운드는 소리만, 음성은 복귀 시)이라 조용한 회귀의 대가가 크다.
  * 2. **백그라운드 톤 허용 집합 = 첫 관측(`trackingStarted`) 하나** — `allowedInBackground = true`
  *    대입이 파일에 정확히 한 곳. 사다리·도착·추세 톤을 여기 넣는 것은 별건 판정이다(BACKLOG E36).
+ * 3. **keep-alive 국면 = boarding ∨ riding**(A46) — 앱을 살리는 위치 스트림이 켜지는 조건.
  */
 
 const ROOT = join(__dirname, "../../..");
@@ -58,6 +59,17 @@ describe("대중교통 백그라운드 폴 소스 가드 (E36)", () => {
     expect(idle).not.toContain("announceNow(");
     // 계측: 전경 여부와 함께 한 줄(백그라운드 정지는 post의 전경 게이트가 버린다).
     expect(idle).toContain('transitGuideLog("idlePaused announced');
+  });
+
+  it("keep-alive는 boarding·riding 둘 다에서 켠다(A46) — 유휴·폴 주기 0은 riding과 같이 끈다", () => {
+    const keep = body(/private func updateKeepAlive\(\)/);
+    const wants = keep.slice(keep.indexOf("let wants"), keep.indexOf("if wants"));
+    // 고른 차량을 기다리는 동안 앱이 잠들면 도착 관측(`boarded(observed)`)을 놓친다(위원장 판정 2026-09-23).
+    expect(wants).toContain("state.phase == .boarding || state.phase == .riding");
+    expect(wants).toContain("!idlePaused");
+    expect(wants).toContain("transitPollIntervalMs(state) > 0");
+    // waiting은 넣지 않는다 — 고르지도 않은 목록을 배경에서 폴할 이유가 없다.
+    expect(wants).not.toContain(".waiting");
   });
 
   it("백그라운드 진입은 폴 태스크를 취소하지 않는다(폴 지속 계약)", () => {

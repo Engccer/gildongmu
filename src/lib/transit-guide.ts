@@ -46,7 +46,7 @@ export interface TransitLock {
   direction: string;
   vehicleId: string;
   /**
-   * 근사 잠금의 급행 선언(위원장 판정 2026-09-02, spec 2026-09-02 §6): "이미 탔습니다"에서 급행이라
+   * 근사 잠금의 급행 선언(위원장 판정 2026-09-02, spec 2026-09-02 §6): "이미 탔어요"에서 급행이라
    * 답한 세션. 하차역 도착 목록의 최근접 항목을 고를 때 급행 항목을 우선한다 — 완행을 잡으면 카운트다운이
    * 다른 열차 것이 된다. 식별자 잠금엔 의미 없음(부재).
    */
@@ -54,7 +54,7 @@ export interface TransitLock {
 }
 
 /**
- * 근사 잠금 판별(§13.2): tagoBus(식별자 자체가 없다)와 "이미 탔습니다"
+ * 근사 잠금 판별(§13.2): tagoBus(식별자 자체가 없다)와 "이미 탔어요"
  * (seoulBus·subway에서 식별자 없이 선언)가 같은 소비 한계를 상속한다 —
  * arrived 전이 금지·advance 상시·기준 차량 교체 통지·근사 주석.
  */
@@ -76,7 +76,7 @@ export function isUnobservedTransitLock(lock: TransitLock): boolean {
 /**
  * boarding 국면에서 **도착 관측이 끝났는가**(N3 ① 2026-09-10 판정, spec
  * `2026-09-11-boarding-manual-advance-design.md` §4.1). 참일 때만 수동 진행 수단
- * ([도착 정보 없이 탑승 진행])을 세운다 — 그 밖에는 승차 정류소 도착 관측이 riding 승격을
+ * ([선택한 열차에 탔어요])을 세운다 — 그 밖에는 승차 정류소 도착 관측이 riding 승격을
  * 자동으로 하므로 선언 버튼을 세울 이유가 없다(위원장: 고른 직후에는 아직 차량이 오지 않았다).
  * `signalLost`는 연속 미등장과 `vehiclePassed`가 모이는 자리이고 `upstreamFailed`는 조회
  * 실패(심야·미제공 포함)다. `neverSeen`은 riding 전용 축이라 이 국면에 없다.
@@ -87,7 +87,7 @@ export function boardingObservationLost(signal: TransitSignal): boolean {
 }
 
 /**
- * "이미 탔습니다" 흐름의 후보 필터(A34 ②, spec §4.2 리뷰 B2): 사용자가 "지금 지나는 역"이라 답한 역의
+ * "이미 탔어요" 흐름의 후보 필터(A34 ②, spec §4.2 리뷰 B2): 사용자가 "지금 지나는 역"이라 답한 역의
  * 도착 목록에서 **그 역에 있는 열차**(진입 0·도착 1·출발 2·전역 출발/진입/도착 3·4·5 — 한 정거장 안)만
  * 남긴다. `99`(N번째 전역)는 사용자가 타고 있을 수 없다. 이 필터가 N3의 교차검증과 같은 급의 증거를
  * 만들어 선언 식별 잠금(`boardAboard`)이 확정 도착 권한을 갖는 근거다. Kit `transitAboardCandidates` 미러.
@@ -241,7 +241,7 @@ export type TransitInput =
   | { kind: "poll"; seq: number; phaseGen: number; poll: TrackPoll }
   | { kind: "board"; lock: TransitLock }
   /** boarding → riding 사용자 선언. 입력 자체는 불변이고 UI가 이 입력을 낼 수 있는 때만 좁혔다
-   *  (N3 ① 2026-09-11 — 관측이 끝난 국면의 [도착 정보 없이 탑승 진행]). Kit `.confirmBoarded` 미러. */
+   *  (N3 ① 2026-09-11 — 관측이 끝난 국면의 [선택한 열차에 탔어요]). Kit `.confirmBoarded` 미러. */
   | { kind: "confirmBoarded" }
   /** "탑승 변경 취소" — previousLock으로 previousPhase 복귀(종전 board(previousLock) 폐기). */
   | { kind: "restoreBoarding" }
@@ -249,7 +249,7 @@ export type TransitInput =
   | { kind: "advance" }
   /** 하차역 선언(A37 ②, 2026-09-11): 역 선택에서 하차역을 고르면 그 leg를 확정 도착으로 끝낸다. */
   | { kind: "declareArrived" }
-  /** "이미 탔습니다" 흐름의 식별 잠금(A34 ②): 지나는 역 목록의 열차로 waiting → riding(declared) 직행. */
+  /** "이미 탔어요" 흐름의 식별 잠금(A34 ②): 지나는 역 목록의 열차로 waiting → riding(declared) 직행. */
   | { kind: "boardAboard"; lock: TransitLock };
 
 /**
@@ -681,7 +681,7 @@ export function expressVerdict(item: TrackItem, leg: TransitGuideLeg): ExpressVe
   return expressNames.has(alight) ? "stops" : "skips";
 }
 
-/** "이미 탔습니다"에서 급행 확인을 물어야 하는 leg인가 — 급행 집합이 있는 노선만(spec §6). */
+/** "이미 탔어요"에서 급행 확인을 물어야 하는 leg인가 — 급행 집합이 있는 노선만(spec §6). */
 export function needsExpressPrompt(leg: TransitGuideLeg): boolean {
   return (leg.expressStopIds?.length ?? 0) > 0 || (leg.expressStops?.length ?? 0) > 0;
 }
@@ -908,7 +908,7 @@ function handleDeclareArrived(state: TransitGuideState): TransitStepResult {
 }
 
 /**
- * "이미 탔습니다" 흐름의 식별 잠금(A34 ②) — 지나는 역의 목록에서 고른 열차로 riding 직행.
+ * "이미 탔어요" 흐름의 식별 잠금(A34 ②) — 지나는 역의 목록에서 고른 열차로 riding 직행.
  * 근사 잠금은 이 입력의 대상이 아니다(그쪽은 `board`의 종전 경로). Kit `handleBoardAboard` 미러.
  */
 function handleBoardAboard(state: TransitGuideState, lock: TransitLock): TransitStepResult {
@@ -982,7 +982,7 @@ function enterBoarding(state: TransitGuideState, lock: TransitLock): TransitStep
 }
 
 /**
- * "탑승" = 차량 선택(N3). 근사 잠금(tagoBus·"이미 탔습니다")만 종전대로 riding —
+ * "탑승" = 차량 선택(N3). 근사 잠금(tagoBus·"이미 탔어요")만 종전대로 riding —
  * 식별자가 없어 고를 차량도, 기다릴 도착도 없다.
  */
 function handleBoard(state: TransitGuideState, lock: TransitLock): TransitStepResult {
@@ -1339,7 +1339,7 @@ function commitBoardingMatched(
  * 연속 미등장 = 서고 떠났다 → riding 승격(departed, A41) ③잔여 1(0 미관측)에서 사라지면 "지나갔을
  * 수 있다"(vehiclePassed)이지 탑승이 아니다(설계 리뷰 C2) ④그 밖 연속 미등장은 signalLost. ③④는
  * signalLost 상태로 떨어져 1회만 말하고, **그 신호가 곧 수동 진행 수단의 등장 조건이다**(N3 ①
- * `boardingObservationLost`) — 탈출은 [도착 정보 없이 탑승 진행] 또는 [다른 차량 선택]이다.
+ * `boardingObservationLost`) — 탈출은 [선택한 열차에 탔어요] 또는 [다른 차량 선택]이다.
  */
 function boardingUnmatched(
   base: TransitGuideState,

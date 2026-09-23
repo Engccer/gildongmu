@@ -43726,7 +43726,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "이미 탔습니다"
+            "value": "이미 탔어요"
           }
         },
         "en": {
@@ -43766,7 +43766,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "이미 탔습니다"
+            "value": "이미 탔어요"
           }
         },
         "en": {
@@ -43801,42 +43801,82 @@
         }
       }
     },
-    "transitGuide.boardWithoutArrival": {
+    "transitGuide.boardSelected": {
       "localizations": {
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "도착 정보 없이 탑승 진행"
+            "value": "선택한 열차에 탔어요"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Board without arrival info"
+            "value": "I'm on the selected train"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Subir sin información de llegada"
+            "value": "Subí al tren elegido"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Monter sans info d'arrivée"
+            "value": "Je suis dans le train choisi"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Salgo senza info di arrivo"
+            "value": "Sono sul treno scelto"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "到着情報なしで乗車"
+            "value": "選んだ列車に乗りました"
+          }
+        }
+      }
+    },
+    "transitGuide.boardSelectedBus": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "선택한 버스에 탔어요"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I'm on the selected bus"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Subí al autobús elegido"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Je suis dans le bus choisi"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sono sull'autobus scelto"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選んだバスに乗りました"
           }
         }
       }
@@ -44006,37 +44046,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "선택한 차량을 찾지 못하고 있습니다. 타셨으면 도착 정보 없이 탑승 진행을 눌러 주세요."
+            "value": "선택한 차량을 찾지 못하고 있습니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "We cannot find the vehicle you selected. If you are on board, tap Board without arrival info."
+            "value": "We cannot find the vehicle you selected."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No encontramos el vehículo que elegiste. Si ya subiste, toca Subir sin información de llegada."
+            "value": "No encontramos el vehículo que elegiste."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nous ne trouvons pas le véhicule sélectionné. Si vous êtes à bord, appuyez sur Monter sans info d'arrivée."
+            "value": "Nous ne trouvons pas le véhicule sélectionné."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Non troviamo il veicolo che hai scelto. Se sei a bordo, tocca Salgo senza info di arrivo."
+            "value": "Non troviamo il veicolo che hai scelto."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "選択した車両を見つけられていません。乗車済みなら「到着情報なしで乗車」を押してください。"
+            "value": "選択した車両を見つけられていません。"
           }
         }
       }
@@ -44046,37 +44086,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "실시간 신호가 끊겼습니다. 타셨으면 도착 정보 없이 탑승 진행을 눌러 주세요."
+            "value": "실시간 신호가 끊겼습니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "The live feed was interrupted. If you are on board, tap Board without arrival info."
+            "value": "The live feed was interrupted."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Se interrumpió la información en tiempo real. Si ya subiste, toca Subir sin información de llegada."
+            "value": "Se interrumpió la información en tiempo real."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Le flux temps réel est interrompu. Si vous êtes à bord, appuyez sur Monter sans info d'arrivée."
+            "value": "Le flux temps réel est interrompu."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Il flusso in tempo reale si è interrotto. Se sei a bordo, tocca Salgo senza info di arrivo."
+            "value": "Il flusso in tempo reale si è interrotto."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "リアルタイム情報が途切れました。乗車済みなら「到着情報なしで乗車」を押してください。"
+            "value": "リアルタイム情報が途切れました。"
           }
         }
       }
@@ -47886,37 +47926,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "선택한 차량이 %1$@에서 이미 출발한 것으로 보입니다. 그 차량에 타셨으면 도착 정보 없이 탑승 진행을, 타지 않으셨으면 다른 차량 선택을 눌러 주세요."
+            "value": "선택한 차량이 %1$@에서 이미 출발한 것으로 보입니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "The vehicle you selected seems to have left %1$@. If you are on it, tap Board without arrival info; if not, tap Choose another vehicle."
+            "value": "The vehicle you selected seems to have left %1$@."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "El vehículo elegido parece haber salido de %1$@. Si vas a bordo, toca Subir sin información de llegada; si no, Elegir otro vehículo."
+            "value": "El vehículo elegido parece haber salido de %1$@."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Le véhicule sélectionné semble avoir quitté %1$@. Si vous êtes à bord, appuyez sur Monter sans info d'arrivée ; sinon, sur Choisir un autre véhicule."
+            "value": "Le véhicule sélectionné semble avoir quitté %1$@."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Il veicolo scelto sembra aver lasciato %1$@. Se sei a bordo tocca Salgo senza info di arrivo, altrimenti Scegli un altro veicolo."
+            "value": "Il veicolo scelto sembra aver lasciato %1$@."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "選択した車両が%1$@を通過したようです。その車両に乗車済みなら「到着情報なしで乗車」を、乗っていなければ「別の車両を選ぶ」を押してください。"
+            "value": "選択した車両が%1$@を通過したようです。"
           }
         }
       }

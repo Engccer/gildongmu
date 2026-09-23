@@ -128,7 +128,7 @@ final class TransitGuideModel {
     private var lastUserActionAt: Double = 0
     /// 유휴 폴 정지 중(잊힌 세션 안전망 — 세션은 유지, 폴·keep-alive만 멈춘다). 어떤 조작·전경 복귀든 푼다.
     private(set) var idlePaused = false
-    /// 대중교통 keep-alive 위치 스트림을 우리가 열어 두었는가(riding ∧ 폴 주기 > 0 ∧ 유휴 아님).
+    /// 대중교통 keep-alive 위치 스트림을 우리가 열어 두었는가((boarding ∨ riding) ∧ 폴 주기 > 0 ∧ 유휴 아님).
     private var keepAliveActive = false
     private var keepAliveDeniedLogged = false
     /// 승격 실패("화면이 꺼지면 소리가 나지 않는다") 문장 세션당 1회 latch — 판정은 매 톤(M7), 문장은 한 번.
@@ -416,10 +416,12 @@ final class TransitGuideModel {
         return true
     }
 
-    /// riding ∧ 폴 주기 > 0 ∧ 유휴 아님이면 keep-alive 스트림을 켜고, 아니면 끈다. 권한이 없으면 열지 않고
-    /// 로그 한 줄(세션당 1회) — 권한 팝업을 새로 띄우지 않는다.
+    /// (boarding ∨ riding) ∧ 폴 주기 > 0 ∧ 유휴 아님이면 keep-alive 스트림을 켜고, 아니면 끈다. 권한이 없으면
+    /// 열지 않고 로그 한 줄(세션당 1회) — 권한 팝업을 새로 띄우지 않는다. boarding을 넣은 것은 A46(위원장 판정
+    /// 2026-09-23): 고른 차량을 기다리다 화면을 끄면 앱이 잠들어 도착 관측(`boarded(observed)`)을 놓쳤다.
     private func updateKeepAlive() {
-        let wants: Bool = if let state, state.phase == .riding, !idlePaused, transitPollIntervalMs(state) > 0 {
+        let wants: Bool = if let state, state.phase == .boarding || state.phase == .riding, !idlePaused,
+            transitPollIntervalMs(state) > 0 {
             true
         } else {
             false
@@ -472,14 +474,14 @@ final class TransitGuideModel {
     /// 도중 언어를 바꿨을 때 그 조각만 옛 언어로 남는다 — 값을 쌍으로 들고 렌더가 고른다.
     private(set) var selectedDescription: TransitLabel?
 
-    /// boarding 국면에 수동 진행 수단([도착 정보 없이 탑승 진행])을 세울 것인가(N3 ①, spec
+    /// boarding 국면에 수동 진행 수단([선택한 열차에 탔어요])을 세울 것인가(N3 ①, spec
     /// `2026-09-11-boarding-manual-advance-design.md` §4.1). 판정은 Kit 순수 술어이고 여기서
     /// **래치**한다 — 신호가 회복하면(`upstreamFailed`→`notYetVisible`, `signalLost`→`tracking`)
     /// 버튼이 사라져 포커스를 쥔 컨트롤이 폴 한 번에 제거된다(헌장 §5). 관측이 돌아와도 수동
     /// 수단이 남는 것은 해롭지 않다(실제로 탔다면 여전히 맞는 버튼이다).
     private(set) var boardingManualAvailable = false
 
-    /// "도착 정보 없이 탑승 진행"(boarding → riding 사용자 선언). 종전 [탑승했습니다]와 같은 입력이고
+    /// "선택한 열차에 탔어요"(boarding → riding 사용자 선언). 종전 [탑승했습니다]와 같은 입력이고
     /// **언제 낼 수 있는가**만 좁혔다(N3 ①).
     func confirmBoarded() {
         guard state?.phase == .boarding else { return }
@@ -592,7 +594,7 @@ final class TransitGuideModel {
         restartPollLoop(immediate: false)
     }
 
-    // MARK: - "이미 탔습니다" 흐름 (A34 ②+①, spec 2026-09-11 §4.2)
+    // MARK: - "이미 탔어요" 흐름 (A34 ②+①, spec 2026-09-11 §4.2)
 
     /// 대기 국면의 두 단계: 지나는 역 묻기 → 그 역에 있는 열차 고르기. 국면이 waiting을 벗어나면 소거(`dispatch`).
     enum AboardStep: Equatable { case pickStation, pickVehicle }
@@ -601,7 +603,7 @@ final class TransitGuideModel {
     /// (`firstObservationInStep` 동형. `confirmBoarded`의 declared는 `vehicleSelected`가 이미 말했다).
     private var aboardBoardInStep = false
 
-    /// [이미 탔습니다] — 지하철이면 역부터 묻는다. 그 밖(서울버스)은 종전대로 곧장 근사(비관측) 잠금
+    /// [이미 탔어요] — 지하철이면 역부터 묻는다. 그 밖(서울버스)은 종전대로 곧장 근사(비관측) 잠금
     /// (역 이름 조회가 성립하지 않는다 — `beginReboard`가 지하철 전용인 근거와 같다).
     func beginAboard() {
         touchUserAction()
@@ -694,7 +696,7 @@ final class TransitGuideModel {
         restartPollLoop(immediate: true)
     }
 
-    /// "이미 탔습니다"(§13.2) — 식별자 없는 근사 잠금(tagoBus 계약 동형).
+    /// "이미 탔어요"(§13.2) — 식별자 없는 근사 잠금(tagoBus 계약 동형).
     ///
     /// `express`는 급행 확인 프롬프트(spec 2026-09-02 §6, 위원장 판정 — 급행 집합이 있는 노선에서만 시트가
     /// 묻는다)의 답. true면 하차역 정차를 판정해 통과 급행이면 잠그지 않고 차단 문장(결정적 문장 재사용)을

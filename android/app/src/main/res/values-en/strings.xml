@@ -1101,13 +1101,14 @@
     <string name="transitGuide_backOnTrack">Vehicle signal reacquired.</string>
     <string name="transitGuide_boardAlready">I already boarded</string>
     <string name="transitGuide_boardApprox">I already boarded</string>
-    <string name="transitGuide_boardWithoutArrival">Board without arrival info</string>
+    <string name="transitGuide_boardSelected">I\'m on the selected train</string>
+    <string name="transitGuide_boardSelectedBus">I\'m on the selected bus</string>
     <string name="transitGuide_boarded">Boarded.</string>
     <string name="transitGuide_boardedAlight">Get off at %1$s.</string>
     <string name="transitGuide_boardingContext">Waiting to board %2$s at %1$s.</string>
     <string name="transitGuide_boardingContextBus">Waiting to board bus %2$s at %1$s.</string>
-    <string name="transitGuide_boardingSignalLost">We cannot find the vehicle you selected. If you are on board, tap Board without arrival info.</string>
-    <string name="transitGuide_boardingUpstreamFailed">The live feed was interrupted. If you are on board, tap Board without arrival info.</string>
+    <string name="transitGuide_boardingSignalLost">We cannot find the vehicle you selected.</string>
+    <string name="transitGuide_boardingUpstreamFailed">The live feed was interrupted.</string>
     <string name="transitGuide_bound">Bound for %1$s</string>
     <string name="transitGuide_busEtaMin">Arriving in about %1$s min.</string>
     <string name="transitGuide_busEtaMinSec">Arriving in %1$s min %2$s sec.</string>
@@ -1203,7 +1204,7 @@
     <string name="transitGuide_trackingStarted">Tracking started.</string>
     <string name="transitGuide_untrackable">Live information is not available for this segment.</string>
     <string name="transitGuide_upstreamFailed">Live signal lost.</string>
-    <string name="transitGuide_vehiclePassed">The vehicle you selected seems to have left %1$s. If you are on it, tap Board without arrival info; if not, tap Choose another vehicle.</string>
+    <string name="transitGuide_vehiclePassed">The vehicle you selected seems to have left %1$s.</string>
     <string name="transitGuide_vehicleSelected">Selected %1$s. Waiting for it to arrive at %2$s.</string>
     <string name="transitGuide_viaAlight">get off</string>
     <string name="transitGuide_viaBoard">board</string>

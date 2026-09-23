@@ -115,7 +115,7 @@ struct TransitTrackingSheet: View {
     }
     @State private var pendingFollowUp: OverviewFollowUp?
 
-    /// 급행 확인 프롬프트 표시(spec 2026-09-02 §6) — "이미 탔습니다" 뒤, 급행 집합이 있는 노선만.
+    /// 급행 확인 프롬프트 표시(spec 2026-09-02 §6) — "이미 탔어요" 뒤, 급행 집합이 있는 노선만.
     @State private var expressPromptActive = false
 
     var body: some View {
@@ -516,10 +516,11 @@ struct TransitTrackingSheet: View {
                 // 차량을 골랐고 승차 정류소 도착을 기다린다(N3). 도착 관측이 riding 승격을
                 // **자동으로** 하므로 선언 버튼은 서지 않는다(위원장 판정 2026-09-10) —
                 // 관측이 끝난 뒤(`boardingManualAvailable` 래치)에만 수동 진행 수단을 낸다.
-                // 그 사이 실제로 타 버렸으면 [다른 차량 선택] → 대기 국면 [이미 탔습니다]가
+                // 그 사이 실제로 타 버렸으면 [다른 차량 선택] → 대기 국면 [이미 탔어요]가
                 // 탈출구다(spec §5 — 실제 탄 열차를 다시 지목하므로 더 정확한 잠금이 된다).
                 if model.boardingManualAvailable {
-                    Button(appLocalized("transitGuide.boardWithoutArrival")) { model.confirmBoarded() }
+                    Button(appLocalized(leg.mode == "subway"
+                        ? "transitGuide.boardSelected" : "transitGuide.boardSelectedBus")) { model.confirmBoarded() }
                 }
                 Button(appLocalized("transitGuide.reselectVehicle")) { model.changeBoarding() }
             } else {
@@ -633,7 +634,7 @@ struct TransitTrackingSheet: View {
                     // 착지는 픽커 헤딩의 .task가 맡는다.
                 }
             } else {
-                // [이미 탔습니다]: 지하철은 역부터 묻고(A34 ②), 그 밖(서울버스)은 종전대로 곧장 잠금.
+                // [이미 탔어요]: 지하철은 역부터 묻고(A34 ②), 그 밖(서울버스)은 종전대로 곧장 잠금.
                 Button(appLocalized("transitGuide.boardAlready")) {
                     if leg.trackMode == .subway, !leg.viaStops.isEmpty {
                         expressPromptActive = false
@@ -674,7 +675,7 @@ struct TransitTrackingSheet: View {
     }
 
     /// 근사(비관측) 잠금 진입 — 급행 집합이 있는 노선만 급행 확인을 묻는다(§6), 없으면 즉시 잠금.
-    /// [이미 탔습니다](서울버스)와 [열차 정보 없이 계속](지하철 pickVehicle 0건) 공용.
+    /// [이미 탔어요](서울버스)와 [열차 정보 없이 계속](지하철 pickVehicle 0건) 공용.
     private func boardAlreadyOrAskExpress(_ leg: TransitGuideLeg, proxy: ScrollViewProxy) {
         if transitNeedsExpressPrompt(leg) {
             expressPromptActive = true

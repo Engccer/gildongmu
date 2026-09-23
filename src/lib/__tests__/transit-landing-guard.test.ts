@@ -95,7 +95,7 @@ describe("TransitTrackingSheet 착지 대상 (E38) · boarding 수동 진행 (N3
     expect(SHEET).not.toContain("transitGuide.confirmBoarded");
     expect(SHEET).not.toMatch(/case \.confirmBoarded/);
     expect(SHEET).toContain("if model.boardingManualAvailable {");
-    expect(SHEET).toContain('Button(appLocalized("transitGuide.boardWithoutArrival")) { model.confirmBoarded() }');
+    expect(SHEET).toContain('? "transitGuide.boardSelected" : "transitGuide.boardSelectedBus")) { model.confirmBoarded() }');
   });
 
   it("국면 전이 착지는 상태 문장이 기본이고 예외는 차량 선택 목록 하나다(E38)", () => {

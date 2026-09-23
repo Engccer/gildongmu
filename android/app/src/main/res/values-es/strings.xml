@@ -1101,13 +1101,14 @@
     <string name="transitGuide_backOnTrack">Señal del vehículo recuperada.</string>
     <string name="transitGuide_boardAlready">Ya subí</string>
     <string name="transitGuide_boardApprox">Ya subí</string>
-    <string name="transitGuide_boardWithoutArrival">Subir sin información de llegada</string>
+    <string name="transitGuide_boardSelected">Subí al tren elegido</string>
+    <string name="transitGuide_boardSelectedBus">Subí al autobús elegido</string>
     <string name="transitGuide_boarded">A bordo.</string>
     <string name="transitGuide_boardedAlight">Baja en %1$s.</string>
     <string name="transitGuide_boardingContext">Esperando para subir a %2$s en %1$s.</string>
     <string name="transitGuide_boardingContextBus">Esperando para subir al autobús %2$s en %1$s.</string>
-    <string name="transitGuide_boardingSignalLost">No encontramos el vehículo que elegiste. Si ya subiste, toca Subir sin información de llegada.</string>
-    <string name="transitGuide_boardingUpstreamFailed">Se interrumpió la información en tiempo real. Si ya subiste, toca Subir sin información de llegada.</string>
+    <string name="transitGuide_boardingSignalLost">No encontramos el vehículo que elegiste.</string>
+    <string name="transitGuide_boardingUpstreamFailed">Se interrumpió la información en tiempo real.</string>
     <string name="transitGuide_bound">Destino %1$s</string>
     <string name="transitGuide_busEtaMin">Llega en unos %1$s min.</string>
     <string name="transitGuide_busEtaMinSec">Llega en %1$s min %2$s s.</string>
@@ -1203,7 +1204,7 @@
     <string name="transitGuide_trackingStarted">Seguimiento iniciado.</string>
     <string name="transitGuide_untrackable">No hay información en vivo para este tramo.</string>
     <string name="transitGuide_upstreamFailed">Señal en vivo perdida.</string>
-    <string name="transitGuide_vehiclePassed">El vehículo elegido parece haber salido de %1$s. Si vas a bordo, toca Subir sin información de llegada; si no, Elegir otro vehículo.</string>
+    <string name="transitGuide_vehiclePassed">El vehículo elegido parece haber salido de %1$s.</string>
     <string name="transitGuide_vehicleSelected">%1$s seleccionado. Esperando su llegada a %2$s.</string>
     <string name="transitGuide_viaAlight">bajada</string>
     <string name="transitGuide_viaBoard">subida</string>
