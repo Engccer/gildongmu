@@ -869,7 +869,7 @@ export function useTransitGuide(
       commit(next);
       if (event) {
         // 승차 중 현재역(E35 §6 판정 2): `neverSeen` 순간 현재역이 잡혀 있으면 "찾지 못하고 있다"는 전제가
-        // 거짓이라 경고를 결박째 보류한다. 처분(발화·폐기)은 폴마다 `settleNeverSeenPending`이 한다.
+        // 거짓이라 경고를 결박째 보류한다. 처분(발화·폐기)은 폴마다 `refreshPosition` 끝에서 한다.
         const deferred =
           event.kind === "neverSeen" ? neverSeenWarningDeferred(next, positionRef.current, Date.now()) : null;
         if (deferred) neverSeenPendingRef.current = deferred;
@@ -1578,7 +1578,10 @@ export function useTransitGuide(
     const r = routeRef.current;
     const leg = s && r ? r.legs[s.legIndex] : null;
     if (!s || !leg) return;
-    const status = buildStatus(s, leg, positionRef.current, Date.now());
+    // 렌더 밖 판정이라 지금 시각으로 창을 본다. 화면 시계도 같은 틱에 앞당겨 화면 줄과 답이 어긋나지 않게(검증 리뷰 n4).
+    const now = Date.now();
+    setPositionClock(now);
+    const status = buildStatus(s, leg, positionRef.current, now);
     announce(status.text, status.lang);
   }, [announce, buildStatus]);
 
