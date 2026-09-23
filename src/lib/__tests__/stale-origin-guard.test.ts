@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -11,6 +11,13 @@ import { describe, expect, it } from "vitest";
  */
 const ROOT = join(__dirname, "../../..");
 const read = (p: string) => readFileSync(join(ROOT, p), "utf8");
+function walkKotlin(dir: string): string[] {
+  return readdirSync(dir).flatMap((name) => {
+    const path = join(dir, name);
+    if (statSync(path).isDirectory()) return walkKotlin(path);
+    return name.endsWith(".kt") ? [path] : [];
+  });
+}
 const BAR = read("ios/Gildongmu/LocationBarView.swift");
 const SERVICE = read("ios/Gildongmu/LocationService.swift");
 const DIRECTIONS = read("ios/Gildongmu/Directions/DirectionsTabView.swift");
@@ -48,8 +55,16 @@ describe("iOS 옛 위치 배선", () => {
 
   it("안드로이드도 보관 좌표를 쓰는 자리는 하나다(세터가 옛 위치를 푼다, 재리뷰 N-8)", () => {
     const store = read("android/app/src/main/kotlin/space/dodoplanet/gildongmu/location/LocationStore.kt");
+    // `internal set`은 `:app` 모듈 전체에 쓰기를 연다 — 파일 하나가 아니라 모듈 소스 전체에서 센다.
+    const writes = walkKotlin(join(ROOT, "android/app/src/main")).flatMap((f) =>
+      // 대입만 센다(`val stored = …` 같은 지역 선언은 다른 변수다).
+      readFileSync(f, "utf8").match(/(?<!(?:val|var) )\bstored = /g) ?? [],
+    );
+    expect(writes).toHaveLength(1);
     expect(store.match(/\bstored = /g) ?? []).toHaveLength(1);
-    const setter = store.slice(store.indexOf("var stored: StoredFix?"), store.indexOf("var stored: StoredFix?") + 300);
+    const at = store.indexOf("internal set(value)");
+    expect(at).toBeGreaterThan(0);
+    const setter = store.slice(at, at + 300);
     expect(setter).toContain("failedSinceLastStore = false");
   });
 

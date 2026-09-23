@@ -582,7 +582,7 @@
     <string name="directions_searchFrom">出発地を検索</string>
     <string name="directions_searchTo">目的地を検索</string>
     <string name="directions_searchVia">経由地を検索</string>
-    <string name="directions_staleOriginNotice">現在地を取得できなかったため、%1$sに確認した位置で検索しました。</string>
+    <string name="directions_staleOriginNotice">現在地を取得できなかったため、最後に確認した位置（%1$s）で検索しました。</string>
     <string name="directions_submit">経路を照会</string>
     <string name="directions_swap">出発地と目的地を入れ替える</string>
     <string name="directions_title">経路検索</string>
