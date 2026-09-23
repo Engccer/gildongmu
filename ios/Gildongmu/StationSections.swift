@@ -178,25 +178,40 @@ struct StationDetailSections: View {
                     Text(appLocalized("subway.supplementFailed"))
                 }
                 ForEach(facilities.groups, id: \.kind) { group in
-                    // 접힘 행이 곧 개수 줄이다. 펼친 뒤 커서는 이 행에 남고 다음 스와이프가 첫 시설(포커스 코드 없음).
-                    DisclosureGroup(isExpanded: expansion(for: group.kind)) {
-                        ForEach(Array(group.facilities.enumerated()), id: \.offset) { _, facility in
-                            Text(joinText(
-                                facilityName(facility), facility.location, facility.floors,
-                                operatingStatusText(facility.operatingStatus), facilityDetail(facility)))
-                        }
-                        // 음성유도기 데이터 기준일 고지(정적 seed) — 그 묶음을 펼친 사람에게만 의미가 있다.
-                        if group.kind == "voiceGuide" {
-                            Text(appLocalized("subway.voiceGuideSource"))
-                        }
-                    } label: {
+                    let lines = facilityLines(group)
+                    if lines.isEmpty && group.kind != "voiceGuide" {
+                        // 줄이 하나도 없는 묶음(교통약자 도우미 — upstream이 수만 준다)은 펼쳐도 빈 컨트롤이라 평문 한 줄이다(웹 동조).
                         Text(kindLabel(group))
+                    } else {
+                        // 접힘 행이 곧 개수 줄이다. 펼친 뒤 커서는 이 행에 남고 다음 스와이프가 첫 시설(포커스 코드 없음).
+                        DisclosureGroup(isExpanded: expansion(for: group.kind)) {
+                            ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
+                                Text(line)
+                            }
+                            // 음성유도기 데이터 기준일 고지(정적 seed) — 그 묶음을 펼친 사람에게만 의미가 있다.
+                            if group.kind == "voiceGuide" {
+                                Text(appLocalized("subway.voiceGuideSource"))
+                            }
+                        } label: {
+                            Text(kindLabel(group))
+                        }
                     }
                 }
             } header: {
                 Text(appLocalized("ios.station.seoulFacilities")).accessibilityAddTraits(.isHeader)
             }
         }
+    }
+
+    /// 묶음의 시설 줄 — 필드가 전부 빈 항목은 빈 행(SR에 이름 없는 항목)이라 떨어뜨린다. 수는 접힘 행이 이미 말한다.
+    private func facilityLines(_ group: SeoulMetroFacilityGroup) -> [String] {
+        group.facilities
+            .map { facility in
+                joinText(
+                    facilityName(facility), facility.location, facility.floors,
+                    operatingStatusText(facility.operatingStatus), facilityDetail(facility))
+            }
+            .filter { !$0.isEmpty }
     }
 
     /// 종류별 펼침 바인딩.

@@ -197,3 +197,33 @@ private let stationOfficeCat = "교통,수송 > 기차,철도 > 기차역관리�
     ]
     #expect(pickStationPhone(places: places, stationName: "가락시장", lat: 37.4922, lng: 127.1177, lineName: "수도권 3호선") == .direct("02-6311-8171"))
 }
+
+// MARK: 공유 fixture — 웹 station-phone.test.ts·안드로이드 :kit StationPhoneTest와 같은 표
+
+private struct LayoutCaseFile: Decodable {
+    struct LayoutCase: Decodable { let note: String; let id: String; let category: String; let expected: String? }
+    struct PhoneCase: Decodable { let phone: String; let expected: Bool }
+    let layoutKind: [LayoutCase]
+    let representativePhone: [PhoneCase]
+}
+
+private func loadLayoutCases() throws -> LayoutCaseFile {
+    var url = URL(fileURLWithPath: #filePath)
+    for _ in 0..<5 { url.deleteLastPathComponent() }
+    url.appendPathComponent("src/lib/__tests__/fixtures/station-layout-cases.json")
+    return try JSONDecoder().decode(LayoutCaseFile.self, from: Data(contentsOf: url))
+}
+
+@Test func stationLayoutSharedTable() throws {
+    let file = try loadLayoutCases()
+    #expect(!file.layoutKind.isEmpty && !file.representativePhone.isEmpty)
+    for c in file.layoutKind {
+        let kind = stationLayoutKind(poi("x", c.category, nil, lat: 37.5, lng: 127.0, id: c.id))
+        // fixture의 문자열 표기(웹·:kit rawValue)로 옮겨 비교한다 — Kit 열거형엔 raw 값이 없다.
+        let name: String? = switch kind { case .subway: "subway"; case .rail: "rail"; case nil: nil }
+        #expect(name == c.expected, "\(c.note)")
+    }
+    for c in file.representativePhone {
+        #expect(isRepresentativePhone(c.phone) == c.expected, "\(c.phone)")
+    }
+}
