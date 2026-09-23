@@ -111,7 +111,7 @@ final class GuideSession {
         launchingPrewalk = true
         self.startBeacon(BeaconModel.StartRequest(
             dest: BeaconDest(lat: target.lat, lng: target.lng), label: walkLabel, kind: .walk,
-            accessible: accessible, variant: nil, shortestAvailable: false,
+            accessible: accessible, variant: nil, line: nil, alternate: nil,
             waypoint: nil))  // 승차역까지의 도보에 경유지는 없다
         launchingPrewalk = false
         // 동기 거부(requestStart 게이트)면 시작 Task가 없어 실패 콜백도 없다 — 여기서 잇는다.
@@ -182,7 +182,7 @@ final class GuideSession {
             guard !Task.isCancelled, let self else { return }
             self.startBeacon(BeaconModel.StartRequest(
                 dest: dest, label: label, kind: .walk, accessible: accessible,
-                variant: nil, shortestAvailable: false,
+                variant: nil, line: nil, alternate: nil,
                 waypoint: nil))  // 대중교통 세션엔 경유지가 없다(ODsay 미지원)
         }
     }
@@ -195,7 +195,7 @@ final class GuideSession {
         beacon.clearArrival()
         self.startBeacon(BeaconModel.StartRequest(
             dest: dest, label: label, kind: .walk, accessible: false,
-            variant: nil, shortestAvailable: false, waypoint: nil))
+            variant: nil, line: nil, alternate: nil, waypoint: nil))
     }
 
     func handleScenePhaseChange(to phase: ScenePhase) {

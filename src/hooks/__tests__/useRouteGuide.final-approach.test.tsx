@@ -93,7 +93,7 @@ function tick(ms: number) {
 const endSpy = vi.fn<(reason: "arrived" | "ended") => void>();
 
 function Harness() {
-  const g = useRouteGuide(DEST, "walk", false, {
+  const g = useRouteGuide(DEST, "walk", { accessible: false, variant: null }, {
     onSessionEnd: endSpy,
   });
   return (

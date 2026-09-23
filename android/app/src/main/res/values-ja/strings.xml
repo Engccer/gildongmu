@@ -120,8 +120,6 @@
     <string name="android_directions_walkNotice_head2">ご注意いただきたいこと</string>
     <string name="android_directions_walkNotice_intro">キルドンムをご利用いただきありがとうございます!</string>
     <string name="android_directions_walkNotice_title">徒歩案内機能が追加されました。</string>
-    <string name="android_directions_walkRecommended">おすすめルート</string>
-    <string name="android_directions_walkShortest">最短ルート</string>
     <string name="android_guide_autoReroute">新しいルートで案内を再開します。案内%1$s件、合計%2$s。%3$s</string>
     <string name="android_guide_destChanged">新しい目的地 %1$s。</string>
     <string name="android_guide_destChangedFetching">新しいルートを検索しています。</string>
@@ -413,6 +411,10 @@
     <string name="beacon_guideStartCar">自動車案内を開始</string>
     <string name="beacon_guideStartTransitAlt">案内開始: %1$s</string>
     <string name="beacon_guideStartWalk">徒歩案内を開始</string>
+    <string name="beacon_guideStartWalkAccessible">階段回避ルートで案内を開始</string>
+    <string name="beacon_guideStartWalkBroad">大通りルートで案内を開始</string>
+    <string name="beacon_guideStartWalkRecommended">おすすめルートで案内を開始</string>
+    <string name="beacon_guideStartWalkShortest">最短ルートで案内を開始</string>
     <string name="beacon_heading">リアルタイム案内</string>
     <string name="beacon_nearby">目的地付近(約±%1$sm)</string>
     <string name="beacon_reduced">正確な位置情報がオフのため距離を追跡できません</string>
@@ -589,6 +591,8 @@
     <string name="directions_useCurrentLocation">現在地を使う</string>
     <string name="directions_via">経由地</string>
     <string name="directions_viaArrived">経由地 %1$s に到着</string>
+    <string name="directions_walkAccessible">階段回避ルート</string>
+    <string name="directions_walkBroad">大通りルート</string>
     <string name="directions_walkRecommended">おすすめルート</string>
     <string name="directions_walkShortest">最短ルート</string>
     <string name="eventsNearby_asOf">%1$s時点</string>

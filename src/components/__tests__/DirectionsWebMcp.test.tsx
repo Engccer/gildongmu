@@ -146,7 +146,10 @@ function stubFetch(opts: {
         if (opts.deferTransit) return opts.deferTransit.promise;
         return json({ result: transitFixture() });
       }
-      if (url.startsWith("/api/route/walk")) return json({ result: opts.walk === undefined ? walkFixture() : opts.walk, shortest: null });
+      if (url.startsWith("/api/route/walk")) {
+        const route = opts.walk === undefined ? walkFixture() : opts.walk;
+        return json({ lines: route ? [{ kind: "shortest", route }] : [] });
+      }
       if (url.startsWith("/api/route/car")) return json(carFixture());
       throw new Error(`unexpected fetch: ${url}`);
     }),
@@ -226,7 +229,7 @@ describe("read_current_view", () => {
       view: "directions",
       phase: "idle",
       plan: null,
-      fields: { from: "currentLocation", to: "", via: null, avoidStairs: false },
+      fields: { from: "currentLocation", to: "", via: null },
       guidanceActive: false,
     });
   });
@@ -247,14 +250,17 @@ describe("plan_directions", () => {
     const out = await ctx.call("plan_directions", { to: "강남", toCandidateId: candidates[0].candidateId });
     expect(out.ok).toBe(true);
     expect(out.planId).toBe("p1");
-    expect(out.resolved).toEqual({ from: "currentLocation", to: "강남역", via: null, avoidStairs: false });
+    expect(out.resolved).toEqual({ from: "currentLocation", to: "강남역", via: null });
     expect(out.transit).toMatchObject({ outcome: "done", totalCandidates: 3 });
     const transit = out.transit as { recommended: { routeKey: string; legLines: string[] }; alternatives: Array<{ routeKey: string; highlight?: string[] }> };
     expect(transit.recommended.routeKey).toBe("r0");
     expect(transit.recommended.legLines).toHaveLength(3);
     expect(transit.alternatives.map((a) => a.routeKey)).toEqual(["r1", "r2"]);
     expect(transit.alternatives[0].highlight).toEqual(["fastest"]);
-    expect(out.walk).toMatchObject({ outcome: "done", stepCount: 3, distanceMeters: 1500 });
+    expect(out.walk).toEqual({
+      outcome: "done",
+      lines: [{ kind: "shortest", label: "walkShortest, summary", distanceMeters: 1500, durationSeconds: 1200, stepCount: 3 }],
+    });
     expect(out.car).toMatchObject({ outcome: "done", guideCount: 2 });
     // 완전 교체: 화면 필드가 도구 요청으로 바뀌었다.
     expect((screen.getByLabelText("to") as HTMLInputElement).value).toBe("강남역");
@@ -320,7 +326,7 @@ describe("plan_directions", () => {
     renderView();
     await ready(ctx);
     expect((await ctx.call("plan_directions", { to: "강남역" })).ok).toBe(true);
-    fireEvent.click(screen.getByRole("button", { name: "guideStartWalk" }));
+    fireEvent.click(screen.getByRole("button", { name: "guideStartWalkShortest" }));
     expect(hasActiveGuideSession()).toBe(true);
     advanceClock(4_000);
     expect(await ctx.call("plan_directions", { to: "강남역" })).toMatchObject({ ok: false, reason: "sessionActive", userActionRequired: true });
@@ -388,7 +394,7 @@ describe("planId 세대·페이지 도구", () => {
     await ready(ctx);
     const planId = await planned(ctx);
     const steps = await ctx.call("get_route_steps", { planId, mode: "walk" });
-    expect(steps).toEqual({ ok: true, planId, mode: "walk", outcome: "empty", variant: "recommended" });
+    expect(steps).toEqual({ ok: true, planId, mode: "walk", outcome: "empty" });
     expect((await ctx.call("plan_directions", { to: "x" })).reason).toBe("cooldown");
   });
 

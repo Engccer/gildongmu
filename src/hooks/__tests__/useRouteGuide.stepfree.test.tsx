@@ -53,8 +53,14 @@ function walkUrls(): string[] {
     .filter((u) => u.startsWith("/api/route/walk"));
 }
 
-function Harness({ accessible }: { accessible: boolean }) {
-  const g = useRouteGuide(DEST, "walk", accessible);
+function Harness({
+  accessible,
+  variant = null,
+}: {
+  accessible: boolean;
+  variant?: "shortest" | null;
+}) {
+  const g = useRouteGuide(DEST, "walk", { accessible, variant });
   return (
     <div>
       <button onClick={g.start}>start</button>
@@ -102,6 +108,24 @@ afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
+});
+
+describe("최단 줄의 안내(E42)는 시작·재조회 모두 variant=shortest", () => {
+  it("시작 요청과 재조회 요청에 variant=shortest가 붙고 accessible은 붙지 않는다", async () => {
+    render(
+      <NextIntlClientProvider locale="ko" messages={ko}>
+        <Harness accessible={false} variant="shortest" />
+      </NextIntlClientProvider>,
+    );
+    click("start");
+    await settleStart();
+    click("reroute");
+    await waitFor(() => expect(walkUrls().length).toBeGreaterThanOrEqual(1));
+    for (const u of walkUrls()) {
+      expect(u).toContain("variant=shortest");
+      expect(u).not.toContain("accessible=");
+    }
+  });
 });
 
 describe("계단 회피가 안내 조회에 실린다", () => {

@@ -132,14 +132,30 @@ describe("getKakaoWalkBriefing 좌표 정밀도", () => {
 
   it("기본 요청은 4자리로 반올림한다(캐시 키 안정화 — 종전 계약)", async () => {
     const m = stubFetch();
-    await getKakaoWalkBriefing({ origin: EXIT_A, dest: EXIT_B });
+    await getKakaoWalkBriefing({ origin: EXIT_A, dest: EXIT_B, routeMode: "BROAD_FIRST", preciseCoords: false });
     expect(urlOf(m)).toContain("start_x=126.9408");
     expect(urlOf(m)).toContain("end_y=37.5135");
+    // BROAD_FIRST는 미전송이 곧 그 값이다(E42 실측) — 종전 URL·캐시 키 그대로.
+    expect(urlOf(m)).not.toContain("route_mode");
+  });
+
+  it("SHORTEST는 route_mode로 싣고 반올림한다(E42 — 최단은 계단 축이 아니다)", async () => {
+    const m = stubFetch();
+    await getKakaoWalkBriefing({ origin: EXIT_A, dest: EXIT_B, routeMode: "SHORTEST", preciseCoords: false });
+    expect(urlOf(m)).toContain("route_mode=SHORTEST");
+    expect(urlOf(m)).toContain("start_x=126.9408");
+  });
+
+  it("preciseCoords면 모드와 무관하게 원좌표(E42 줄 목록 — 두 줄 거리 비교는 같은 좌표에서만 성립)", async () => {
+    const m = stubFetch();
+    await getKakaoWalkBriefing({ origin: EXIT_A, dest: EXIT_B, routeMode: "SHORTEST", preciseCoords: true });
+    expect(urlOf(m)).toContain(`start_x=${EXIT_A.lng}`);
+    expect(urlOf(m)).toContain(`end_y=${EXIT_B.lat}`);
   });
 
   it("accessible 요청은 원좌표를 보낸다 — 출입구가 합쳐지면 계단 유무가 갈린다", async () => {
     const m = stubFetch();
-    await getKakaoWalkBriefing({ origin: EXIT_A, dest: EXIT_B, accessible: true });
+    await getKakaoWalkBriefing({ origin: EXIT_A, dest: EXIT_B, routeMode: "ACCESSIBLE", preciseCoords: false });
     const url = urlOf(m);
     expect(url).toContain("route_mode=ACCESSIBLE");
     expect(url).toContain(`start_x=${EXIT_A.lng}`);
@@ -160,7 +176,7 @@ describe("getKakaoWalkBriefing 좌표 정밀도", () => {
     );
     vi.stubGlobal("fetch", m);
     await getKakaoWalkBriefing({
-      origin: EXIT_A, dest: EXIT_A, via: EXIT_B, accessible: true,
+      origin: EXIT_A, dest: EXIT_A, via: EXIT_B, routeMode: "ACCESSIBLE", preciseCoords: false,
     });
     expect(urlOf(m)).toContain(`via_x=${EXIT_B.lng}`);
     expect(urlOf(m)).toContain(`via_y=${EXIT_B.lat}`);
@@ -168,11 +184,11 @@ describe("getKakaoWalkBriefing 좌표 정밀도", () => {
 
   it("두 요청이 같은 셀에서 서로 다른 좌표를 보낸다(반올림이 살아 있으면 동일해진다)", async () => {
     const m1 = stubFetch();
-    await getKakaoWalkBriefing({ origin: EXIT_A, dest: EXIT_A, accessible: true });
+    await getKakaoWalkBriefing({ origin: EXIT_A, dest: EXIT_A, routeMode: "ACCESSIBLE", preciseCoords: false });
     const first = urlOf(m1);
     vi.unstubAllGlobals();
     const m2 = stubFetch();
-    await getKakaoWalkBriefing({ origin: EXIT_B, dest: EXIT_B, accessible: true });
+    await getKakaoWalkBriefing({ origin: EXIT_B, dest: EXIT_B, routeMode: "ACCESSIBLE", preciseCoords: false });
     expect(urlOf(m2)).not.toBe(first);
   });
 });

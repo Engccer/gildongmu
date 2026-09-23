@@ -12,7 +12,8 @@ import type {
   TransitLeg,
   TransitRoute,
   TransitRouteResult as TransitData,
-  WalkRouteBriefing,
+  WalkLineKind,
+  WalkRouteLine,
 } from "@/lib/types";
 import { resolveAddressCoord } from "@/lib/resolve-address-coord";
 import { parseDir, serializeDir, type DirEndpoint } from "@/lib/directions-state";
@@ -31,6 +32,7 @@ import { alternativeNameKey } from "@/lib/transit-alternative-name";
 import { shouldCollapseWalk } from "@/lib/walk-collapse";
 import { orderDirectionsModes, type DirectionsModeKey } from "@/lib/directions-order";
 import { walkRouteUrl } from "@/lib/walk-route-url";
+import { walkLineAxis, walkLineNameKey, walkLineStartKey } from "@/lib/walk-line";
 import {
   clearRecentEndpoints,
   loadRecentEndpoints,
@@ -83,11 +85,10 @@ type ModeOutcome =
   | { kind: "unsupportedWaypoint" }
   | { kind: "done"; mode: "transit"; result: TransitData }
   /**
-   * 도보는 `alternatives=1`의 `{ result, shortest }` 쌍(B9 ①). `shortest`는 최단 실패
-   * 흡수·Tmap 키 부재(필드 부재)·null 전부 null — 행동이 같다(최단 행을 그리지 않는다).
-   * ⚠ 생략 불가 필드: 추천·최단은 **같은 응답에서 온 쌍만** 그린다(스냅샷 교체).
+   * 도보는 `lines=1`의 줄 목록(E42) — 서버 순서가 화면 순서, 첫 줄이 기본 펼침. 비어 있으면
+   * `empty`로 접으므로 done은 1줄 이상이다. 줄들은 **같은 응답에서 온 것만** 그린다(스냅샷 교체).
    */
-  | { kind: "done"; mode: "walk"; result: WalkRouteBriefing; shortest: WalkRouteBriefing | null }
+  | { kind: "done"; mode: "walk"; lines: WalkRouteLine[] }
   | { kind: "done"; mode: "car"; result: CarRouteBriefing };
 
 type QueryResults = {
@@ -98,10 +99,7 @@ type QueryResults = {
   outcomes: Partial<Record<ModeKey, ModeOutcome>>;
   /** 조회 시점의 경유지 라벨(결과 구획 "경유지 C 도착"용, N4). 없으면 null. */
   viaLabel: string | null;
-  /**
-   * 표시 순서 스냅샷(spec 2026-08-12 §2) — settled 커밋 시 1회 확정.
-   * 계단 회피 토글은 outcomes.walk만 교체하므로 순서는 자동 불변이다.
-   */
+  /** 표시 순서 스냅샷(spec 2026-08-12 §2) — settled 커밋 시 1회 확정. */
   orderedModes: ModeKey[];
   /**
    * 출발지가 "현재 위치"였을 때 그 좌표의 출처. `from`이 특정 장소면 null(실시간
@@ -111,15 +109,13 @@ type QueryResults = {
    */
   originSource: "gps" | "manual" | null;
   /**
-   * 세대 토큰(WebMCP spec §3.4) — settled 커밋마다 `p{gen}`. 계단 회피 토글 재조회도 새
-   * 값이다(결과 객체가 바뀐다). 도구는 이 값으로 옛 결과 참조를 `stalePlan`으로 거른다.
+   * 세대 토큰(WebMCP spec §3.4) — settled 커밋마다 `p{gen}`. 도구는 이 값으로 옛 결과 참조를
+   * `stalePlan`으로 거른다.
    */
   planId: string;
   /** 조회 시점의 출발·도착 입력 라벨(도구 `resolved` — 승격본이 아니라 원명). */
   fromLabel: string;
   toLabel: string;
-  /** 조회 시점의 계단 회피 설정. */
-  avoidStairs: boolean;
 };
 
 /** 필드 원자 상태: 라벨 텍스트를 편집하면 resolved(좌표 포함)가 즉시 무효화된다. */
@@ -145,19 +141,8 @@ function endpointToField(ep: DirEndpoint, currentLabel: string): FieldState {
 }
 
 /**
- * `?walkAccessible=1` 복원값을 렌더 시점에 동기로 읽는다(SSR엔 window가 없어
- * false 폴백). useEffect+queueMicrotask로 하면 아래 `dir` 동기화 effect가 같은
- * 커밋에서 먼저 동기 실행되며 이 파라미터를 URL에서 지워버린 뒤에야 microtask가
- * 읽으므로 항상 실패한다(리뷰 발견 회귀) — lazy useState 초기화로 그 경쟁을 없앤다.
- */
-function readWalkAccessibleFromUrl(): boolean {
-  if (typeof window === "undefined") return false;
-  return new URLSearchParams(window.location.search).get("walkAccessible") === "1";
-}
-
-/**
- * `?dir=`의 세 번째 토막(경유지, N4)을 렌더 시점에 동기로 읽는다(`readWalkAccessibleFromUrl`
- * 동형 — `dir` 동기화 effect가 같은 커밋에서 URL을 다시 쓰기 전에 읽어야 한다).
+ * `?dir=`의 세 번째 토막(경유지, N4)을 렌더 시점에 동기로 읽는다(lazy useState 초기화 —
+ * `dir` 동기화 effect가 같은 커밋에서 URL을 다시 쓰기 전에 읽어야 한다).
  * `PlaceSearch`의 `initialFrom/To` 경로를 넓히지 않는 이유: 그 경로는 from·to만 나르고,
  * 경유지는 이 뷰의 관심사라 여기서 닫는다.
  */
@@ -235,11 +220,6 @@ async function fetchMode(
   lang: "ko" | "en",
   signal: AbortSignal,
   /**
-   * 계단 회피(도보 전용). ⚠ **선택 인자로 두지 않는다** — A4가 생략 가능한 안전
-   * 인자에서 나왔다(spec §2.5). 도보가 아닌 수단은 `false`를 명시한다.
-   */
-  walkAccessible: boolean,
-  /**
    * 경유지(N4). ⚠ 위와 같은 이유로 선택 인자가 아니다 — 빠뜨리면 오류 없이 경유하지
    * 않는 경로가 온다. 대중교통은 경유지가 있으면 호출하지 않는다(ODsay에 경유지 없음).
    */
@@ -257,26 +237,27 @@ async function fetchMode(
   }
   // 대중교통은 경유 정류장 옵트인(B2 §7) — 실시간 안내(승차·하차 정류소 ID·좌표)의
   // 유일한 데이터원이고, 시작 시 재조회 없이 브리핑과 같은 경로를 안내한다(§2).
-  // 도보는 추천·최단 쌍을 한 조회로 받는다(`alternatives=1`, B9 ①). `walkRouteUrl`의
-  // 인자(안전 인자 전부 required)에 올리지 않고 여기서 덧붙인다 — 브리핑 화면만 쓰는
-  // 옵트인이고, 실시간 안내(`includeGeometry=1`)와 조합하면 서버 400이다.
-  const url =
-    mode === "walk"
-      ? `${walkRouteUrl({ origin, dest, accessible: walkAccessible, includeGeometry: false, via, lang })}&alternatives=1`
-      : `/api/route/transit?${qs}&includeStops=1&lang=${lang}`;
-  const res = await fetch(url, { signal });
+  if (mode === "walk") {
+    // 도보는 줄 목록을 한 조회로 받는다(`lines=1`, E42). `walkRouteUrl`의 인자(안전 인자 전부
+    // required)에 올리지 않고 여기서 덧붙인다 — 조회 화면만 쓰는 단독 옵트인이라 계단 회피·경로
+    // 축·기하와 조합하면 서버 400이다(줄 종류가 그 축들을 이미 담는다).
+    const res = await fetch(
+      `${walkRouteUrl({ origin, dest, accessible: false, includeGeometry: false, via, lang, variant: null })}&lines=1`,
+      { signal },
+    );
+    if (!res.ok) return { kind: "error" };
+    const body = (await res.json()) as { lines?: WalkRouteLine[] };
+    if (isOutOfCoverageBody(body)) return { kind: "outOfCoverage" };
+    // 모르는 종류의 줄은 이름을 붙일 수 없어 뺀다(서버가 종류를 더해도 화면이 거짓 이름을 달지 않는다).
+    const lines = (body.lines ?? []).filter((l) => walkLineNameKey(l.kind) !== null);
+    return lines.length > 0 ? { kind: "done", mode, lines } : { kind: "empty" };
+  }
+  const res = await fetch(`/api/route/transit?${qs}&includeStops=1&lang=${lang}`, { signal });
   if (!res.ok) return { kind: "error" };
-  const body = (await res.json()) as { result: unknown; shortest?: unknown };
+  const body = (await res.json()) as { result: unknown };
   if (isOutOfCoverageBody(body)) return { kind: "outOfCoverage" };
   if (!body.result) return { kind: "empty" };
-  return mode === "transit"
-    ? { kind: "done", mode, result: body.result as TransitData }
-    : {
-        kind: "done",
-        mode,
-        result: body.result as WalkRouteBriefing,
-        shortest: (body.shortest as WalkRouteBriefing | null | undefined) ?? null,
-      };
+  return { kind: "done", mode, result: body.result as TransitData };
 }
 
 /**
@@ -386,24 +367,29 @@ export function DirectionsView({
     });
   }
   /**
-   * 도보 상세 펼침 상태. null = 자동(문턱 판정), boolean = 사용자 조작.
-   * 사용자 조작이 자동 판정을 이긴다: 계단 회피로 경로가 바뀌며 문턱을
-   * 넘나들 때 펼쳐 둔 것이 닫히면 조작이 배신당한다.
+   * 도보 첫 줄 펼침 상태. null = 자동(장거리 접힘 문턱 판정), boolean = 사용자 조작.
+   * 사용자 조작이 자동 판정을 이긴다.
    */
   const [walkExpanded, setWalkExpanded] = useState<boolean | null>(null);
-  // 최단 행 펼침(B9 ①). 기본 접힘이라 null 3-state가 필요 없고, 리셋은 walkExpanded와
+  // 둘째 줄 펼침(E42). 기본 접힘이라 null 3-state가 필요 없고, 리셋은 walkExpanded와
   // 같은 자리(resetWalkExpansion)에서 함께 — 스냅샷 교체 시 이전 세대의 펼침이 남지 않게.
-  const [walkShortestExpanded, setWalkShortestExpanded] = useState(false);
-  /** 결과 폐기·새 조회 시 도보 両행 펼침을 함께 되돌린다(한쪽만 되돌리면 다음 세대 최단 행이 펼쳐진 채 나온다). */
+  const [walkSecondExpanded, setWalkSecondExpanded] = useState(false);
+  /**
+   * 안내 세션이 살아 있는 도보 줄(대중교통 `activeGuideAlt` 동형). 안내 시작 버튼이 줄 **안**에
+   * 있어 그 줄을 접으면 패널이 unmount되며 세션이 조용히 죽는다 — 활성 줄은 강제 펼침.
+   */
+  const [activeWalkLine, setActiveWalkLine] = useState<WalkLineKind | null>(null);
+  /** 결과 폐기·새 조회 시 도보 両줄 펼침을 함께 되돌린다(한쪽만 되돌리면 다음 세대 둘째 줄이 펼쳐진 채 나온다). */
   function resetWalkExpansion() {
     setWalkExpanded(null);
-    setWalkShortestExpanded(false);
+    setWalkSecondExpanded(false);
   }
   /** 결과 폐기 한 곳(편집·스왑·경유지 조작·새 조회 공용). */
   function discardResults() {
     setResults(null);
     setToggledRoutes(new Set());
     setActiveGuideAlt(null);
+    setActiveWalkLine(null);
     resetWalkExpansion();
   }
   /**
@@ -447,26 +433,6 @@ export function DirectionsView({
     }));
   }, []);
 
-  // 계단 회피(도보 전용) 토글. 초기값은 `?walkAccessible=1`(위 lazy 초기화 참고).
-  // ⚠ **비-ko에서는 무조건 꺼진 상태로 시작한다**(리뷰 검출): 토글은 숨겨 두는데
-  // `?walkAccessible=1`이 실린 URL을 en으로 열면 상태만 살아남아 매 조회에 실리고,
-  // 서버가 "Step-free routing is unavailable…"을 스텝 0으로 삽입한다 — 끌 수단이 화면에 없다.
-  const stepFreeSupported = !prefersEnglish(locale);
-  const [stepFreeEnabled, setStepFreeEnabledState] = useState(
-    () => stepFreeSupported && readWalkAccessibleFromUrl(),
-  );
-  // ref는 비동기 콜백에서 "최신" 상태를 동기로 읽기 위함(state는 렌더 시점 클로저라
-  // async 함수 안에서 못 씀). 초기값은 위 state와 같은 렌더에서 이미 확정됐으니
-  // 함수를 다시 부르지 않고 그대로 물려받는다.
-  const stepFreeRef = useRef(stepFreeEnabled);
-  function setStepFreeEnabled(v: boolean) {
-    stepFreeRef.current = v;
-    setStepFreeEnabledState(v);
-  }
-  // 마지막 전체 조회에 실제로 쓰인 좌표(토글 단독 재조회가 같은 좌표를 재사용).
-  const lastCoordsRef = useRef<{ origin: Coord; dest: Coord; via: Coord | null } | null>(null);
-  // 토글 단독 재조회 진행 신호(버튼 aria-busy 표시용, "조회" 버튼과 동일 패턴).
-  const [stepFreeBusy, setStepFreeBusy] = useState(false);
 
   // 최근 장소(스펙 2026-07-26) — 출발지·도착지 **분리** 목록(위원장 지시 2026-07-26:
   // 출발지에서 검색한 곳이 도착지 기록에 뜨는 공유 목록 폐기). 마운트 후 로드(SSR 가드).
@@ -646,13 +612,10 @@ export function DirectionsView({
     if (!from) return;
     const url = new URL(window.location.href);
     url.searchParams.set("dir", serializeDir(from, toField.resolved, viaField?.resolved));
-    // 계단 회피 토큰은 켜짐일 때만(꺼짐=기본이라 URL에 남길 정보가 없다).
-    if (stepFreeEnabled) url.searchParams.set("walkAccessible", "1");
-    else url.searchParams.delete("walkAccessible");
     window.history.replaceState(window.history.state, "", url);
     // LanguageSwitcher가 쿼리 변경을 href에 반영하도록 통지(?q= 동기화와 동형).
     window.dispatchEvent(new Event("gildongmu:locationchange"));
-  }, [fromField.resolved, toField.resolved, viaField?.resolved, stepFreeEnabled]);
+  }, [fromField.resolved, toField.resolved, viaField?.resolved]);
 
   // 현재 위치 필드의 표시 텍스트는 확정 시점 스냅샷이 아니라 파생 라벨을 쓴다
   // (주소 병기·새로고침이 라벨에 즉시 반영, 편집 시작 시엔 resolved가 풀려 원문 유지).
@@ -815,13 +778,12 @@ export function DirectionsView({
           destLabel = entrance.name;
         }
       }
-      lastCoordsRef.current = { origin, dest, via };
 
       const ctrl = new AbortController();
       const timer = setTimeout(() => ctrl.abort(), 15_000);
       const settled = await Promise.allSettled(
         activeModes.map((m) =>
-          fetchMode(m, origin, dest, dataLocale(locale), ctrl.signal, stepFreeRef.current, via),
+          fetchMode(m, origin, dest, dataLocale(locale), ctrl.signal, via),
         ),
       );
       clearTimeout(timer);
@@ -848,7 +810,7 @@ export function DirectionsView({
           activeModes.map((m) => [m, outcomes[m]?.kind === "done"]),
         ),
         walkOutcome?.kind === "done" && walkOutcome.mode === "walk"
-          ? walkOutcome.result.durationSeconds
+          ? walkOutcome.lines[0].route.durationSeconds
           : null,
       );
       const planId = `p${myGen}`;
@@ -862,7 +824,6 @@ export function DirectionsView({
         planId,
         fromLabel: from.kind === "current" ? currentLabel : from.label,
         toLabel: to.kind === "current" ? currentLabel : to.label,
-        avoidStairs: stepFreeRef.current,
       });
       announce(""); // 중지 통지 해제 — settled 합산 통지가 이 커밋에서 발화된다
       setPhase({ kind: "settled" });
@@ -892,64 +853,7 @@ export function DirectionsView({
     }
   }
 
-  /**
-   * 계단 회피 토글: 이미 조회된 결과가 있으면 도보만 새 상태로 재조회하고
-   * (대중교통·자동차 결과는 그대로 유지), 아직 조회 전이면 상태만 바꿔 다음
-   * "조회"에 반영한다(재조회 대상이 없어 가드도 불필요).
-   * 재조회 가드는 "조회" 버튼과 **같은** `inFlight`/`genRef`를 공유한다 —
-   * 별도 ref를 두면 토글끼리의 연타만 막고 "조회"와의 교차 레이스는 못 막는데,
-   * 공유하면 이 뷰에서 도보 재조회(토글이든 전체 조회든)는 항상 하나만 진행되어
-   * 교차 레이스 자체가 구조적으로 불가능해진다(연타 시 재호출은 즉시 무시).
-   */
-  async function toggleStepFree() {
-    // 가드를 맨 위에 둔다(향후 토글 위치가 바뀌어도 상태-요청 불일치를 예방).
-    if (inFlight.current) return;
-    const coords = lastCoordsRef.current;
-    if (!results || !coords) {
-      setStepFreeEnabled(!stepFreeRef.current);
-      return;
-    }
-    const next = !stepFreeRef.current;
-    setStepFreeEnabled(next);
-    inFlight.current = true;
-    setStepFreeBusy(true);
-    const myGen = ++genRef.current;
-    supersedeWaiter(myGen);
-    try {
-      const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 15_000);
-      const settled = await Promise.allSettled([
-        fetchMode("walk", coords.origin, coords.dest, dataLocale(locale), ctrl.signal, next, coords.via),
-      ]);
-      clearTimeout(timer);
-      const s = settled[0];
-      // lastCoordsRef는 이미 outOfCoverage 검증을 통과한 좌표라 이 토글 재조회에서
-      // 서버 마커가 다시 뜰 일은 사실상 없다 — 그래도 도달 시 빈 렌더 대신 오류로
-      // 안내한다(walk 섹션의 outcome 스위치가 outOfCoverage 분기를 갖지 않으므로).
-      const outcome: ModeOutcome =
-        s.status === "fulfilled"
-          ? s.value.kind === "outOfCoverage"
-            ? { kind: "error" }
-            : s.value
-          : { kind: "error" };
-      // 결과 객체가 바뀌므로 새 세대 토큰이다(WebMCP spec §3.4).
-      setResults((prev) =>
-        prev
-          ? { ...prev, outcomes: { ...prev.outcomes, walk: outcome }, planId: `p${myGen}`, avoidStairs: next }
-          : prev,
-      );
-      walkHeadingRef.current?.focus();
-    } finally {
-      if (myGen === genRef.current) inFlight.current = false;
-      setStepFreeBusy(false);
-    }
-  }
-
-  // stepFreeBusy 포함: 토글 재조회 진행 중(inFlight 공유)에도 "조회" 버튼이 같은
-  // 시각·aria 신호를 내야 한다 — 안 그러면 그 15초 창에서 버튼이 멀쩡해 보이는데
-  // 클릭이 무시돼(runQuery 첫 줄 가드) 스크린 리더 사용자가 멈춤으로 오인한다.
-  const busy =
-    phase.kind === "locating" || phase.kind === "loading" || stepFreeBusy;
+  const busy = phase.kind === "locating" || phase.kind === "loading";
   // 요약 수치는 저장하지 않고 results에서 파생한다(A8 + 독립 리뷰 2026-08-11) —
   // phase에 successCount를 들고 다니면 outcomes만 바꾸는 경로(계단 회피 토글)마다
   // 동기화가 필요하고, 편집 경로가 results를 리셋하는 15초 창에서 낡은 클로저로
@@ -1007,6 +911,19 @@ export function DirectionsView({
   const hasVia = results?.viaLabel != null;
   // 도보 상세 안내는 전 로케일에서 시작할 수 있다(E16 축3) — 문장을 서버가 만든다.
   const walkGuideStartable = results?.outcomes.walk?.kind === "done" && !hasVia;
+  /**
+   * 도보 줄 버튼 문장(E42 위원장 확정 렌더: "최단 경로, 총 850m, 약 12분") — 화면과 WebMCP
+   * `plan.walk.lines[].label`의 정본. 한 줄 = 한 접근성 객체(joinText, 쉼표). 모르는 종류는
+   * `fetchMode`가 이미 걸렀다.
+   */
+  const walkLineLabel = (line: WalkRouteLine): string =>
+    joinText(
+      t(walkLineNameKey(line.kind) ?? "walkShortest"),
+      tPed("summary", {
+        distance: formatDistance(line.route.distanceMeters),
+        minutes: Math.round(line.route.durationSeconds / 60),
+      }),
+    );
   const carGuideStartable =
     carOutcome?.kind === "done" &&
     carOutcome.mode === "car" &&
@@ -1122,8 +1039,8 @@ export function DirectionsView({
         oneLine: transitRouteLabel(route, name),
         highlight: route.highlight,
         // E27 잔여 ①(2026-09-01): en 게이트 해제. 서버가 영문 조각을 싣고 표시 계층이
-        // 줄 단위로 고르므로 비-ko에서도 시작할 수 있다. ⚠ 같은 파일의 계단 회피
-        // (`stepFreeSupported`)·자동차(`carGuideStartable`) 게이트는 **다른 축**이라 그대로다.
+        // 줄 단위로 고르므로 비-ko에서도 시작할 수 있다. ⚠ 같은 파일의 자동차
+        // (`carGuideStartable`) 게이트는 **다른 축**이라 그대로다.
         startable: buildTransitGuideRoute(route) !== null,
         summary: {
           totalMinutes: route.summary.totalMinutes,
@@ -1155,30 +1072,17 @@ export function DirectionsView({
         : walkOutcome.kind === "done" && walkOutcome.mode === "walk"
           ? {
               outcome: "done" as const,
-              summary: tPed("summary", {
-                distance: formatDistance(walkOutcome.result.distanceMeters),
-                minutes: Math.round(walkOutcome.result.durationSeconds / 60),
-              }),
-              distanceMeters: walkOutcome.result.distanceMeters,
-              durationSeconds: walkOutcome.result.durationSeconds,
-              stepFree: walkOutcome.result.stepFree ?? undefined,
-              stepFreeNotice: walkOutcome.result.stepFreeNotice ?? undefined,
-              // 화면 규칙과 같은 판정(아래 JSX): 최단 행이 있거나 접히는 길이면 고지 스텝을 뗀다.
-              steps: walkStepItems(
-                walkOutcome.result,
-                Boolean(walkOutcome.shortest) || shouldCollapseWalk(walkOutcome.result.durationSeconds),
-              ).items,
+              // 화면 줄과 같은 순서·같은 문장(E42) — 도구가 돌려준 n번 문장 = 커서가 착지한 n번 항목.
+              lines: walkOutcome.lines.map((line) => ({
+                kind: line.kind,
+                label: walkLineLabel(line),
+                distanceMeters: line.route.distanceMeters,
+                durationSeconds: line.route.durationSeconds,
+                steps: walkStepItems(line.route, true).items,
+              })),
               startable: walkGuideStartable,
-              // 최단 행의 본문은 항상 요약·notice 스텝을 뺀다(화면 `omitNoticeStep`과 동일).
-              shortest: walkOutcome.shortest
-                ? {
-                    distanceMeters: walkOutcome.shortest.distanceMeters,
-                    durationSeconds: walkOutcome.shortest.durationSeconds,
-                    steps: walkStepItems(walkOutcome.shortest, true).items,
-                  }
-                : undefined,
             }
-          : { outcome: kindOf(walkOutcome), steps: [], startable: false };
+          : { outcome: kindOf(walkOutcome), lines: [], startable: false };
     const car =
       carOutcome === undefined
         ? null
@@ -1203,7 +1107,6 @@ export function DirectionsView({
         from: results.fromLabel,
         to: results.toLabel,
         via: results.viaLabel,
-        avoidStairs: results.avoidStairs,
       },
       routeRefs,
       transit: transitOutcome === undefined ? null : { outcome: kindOf(transitOutcome), routes },
@@ -1215,7 +1118,7 @@ export function DirectionsView({
 
   /**
    * 도구 `plan_directions`의 조회(spec §3.4): **완전 교체** — 생략된 출발지는 현재 위치,
-   * 경유지는 없음, 계단 회피는 요청값으로 한 번에 설정하고, 그 요청 스냅샷으로 정본 조회를
+   * 경유지는 없음으로 한 번에 설정하고, 그 요청 스냅샷으로 정본 조회를
    * 돌린다. 완료는 세대 결박 대기자가 알린다. 조회 중이면 `busy`(reject-while-busy).
    */
   function runQueryForTool(request: PlanRequest, signal: AbortSignal): Promise<QueryOutcome> {
@@ -1229,7 +1132,6 @@ export function DirectionsView({
     setFromField(endpointToField(request.from, currentLabel));
     setToField(endpointToField(request.to, currentLabel));
     setViaField(request.via ? endpointToField(request.via, currentLabel) : null);
-    setStepFreeEnabled(stepFreeSupported && request.avoidStairs);
     const gen = genRef.current + 1;
     const onAbort = () => settleWaiter(gen, { kind: "aborted" });
     const promise = new Promise<QueryOutcome>((resolve) => {
@@ -1244,7 +1146,6 @@ export function DirectionsView({
       from: displayField(fromField).text,
       to: toField.text,
       via: viaField ? viaField.text : null,
-      avoidStairs: stepFreeEnabled,
     },
     phase: phase.kind,
     plan: buildToolPlan(),
@@ -1647,54 +1548,28 @@ export function DirectionsView({
                   {modeHeading(mode)}
                 </h3>
                 {/* 수단별 실시간 안내 진입점(§3.1) — 수단 heading 착지 후 **첫
-                    스와이프** 거리(계단 회피 토글보다 앞, iOS 동조 — 독립 리뷰).
+                    스와이프** 거리(iOS 동조 — 독립 리뷰).
                     트리거가 곧 시작(startOnOpen — "시작" 라벨 거짓말 금지).
                     라벨은 수단별 짧은 형(위원장 판정 2026-08-06, 공통 라벨 번복):
                     SR 버튼 목록·항목 선택기는 헤딩 문맥 없이 버튼 이름만 나열해
                     동일 라벨 3개가 구분 불가다. 목적지 변경은 key 재마운트로 세션 정리. */}
-                {mode === "walk" && walkGuideStartable && guideDest && (
-                  <DistanceBeacon
-                    key={`walk-${guideDestKey}`}
-                    dest={guideDest}
-                    kind="walk"
-                    accessible={stepFreeEnabled}
-                    announce={announce}
-                    startOnOpen
-                    onStart={announceGuideStart}
-                    triggerLabel={tBeacon("guideStartWalk")}
-                  />
-                )}
                 {mode === "car" && carGuideStartable && guideDest && (
                   <DistanceBeacon
                     key={`car-${guideDestKey}`}
                     dest={guideDest}
                     kind="car"
                     accessible={false}
+                    variant={null}
                     announce={announce}
                     startOnOpen
                     onStart={announceGuideStart}
                     triggerLabel={tBeacon("guideStartCar")}
                   />
                 )}
-                {/* 대중교통은 안내 시작 버튼이 여기 없다 — 경로가 복수라 버튼이
+                {/* 대중교통·도보는 안내 시작 버튼이 여기 없다 — 경로가 복수라 버튼이
                     경로에 귀속되어야 하고(어느 경로의 안내인지 라벨로 드러난다),
-                    아래 목록의 각 disclosure 안에 하나씩 있다. 도보·자동차는
-                    경로가 하나라 비교 대상이 없어 섹션 상단이 맞다. */}
-                {/* ⚠ 계단 회피는 카카오 전용 축이라 en(Tmap 단독)에서는 항상 unavailable이다.
-                    적용될 수 없는 옵션을 켜게 두고 조회 뒤에야 못 했다고 말하면, 스크린 리더
-                    사용자는 그 사이 적용됐다고 믿는다(spec 2026-08-23-non-ko-walk-guidance §4.7). */}
-                {mode === "walk" && stepFreeSupported && (
-                  <button
-                    type="button"
-                    aria-pressed={stepFreeEnabled}
-                    aria-disabled={busy}
-                    aria-busy={busy}
-                    onClick={() => void toggleStepFree()}
-                    className="mt-1 min-h-11 rounded-md border border-blue-700 px-3 text-sm text-blue-700 aria-disabled:opacity-50 dark:text-blue-300"
-                  >
-                    {tPed("stepFreeToggle")}
-                  </button>
-                )}
+                    아래 목록의 각 disclosure 안에 하나씩 있다(도보는 E42 — B9 ② 흡수).
+                    자동차는 경로가 하나라 비교 대상이 없어 섹션 상단이 맞다. */}
                 {outcome.kind === "error" && (
                   <p className="mt-1 text-sm">{modeErrorText(mode)}</p>
                 )}
@@ -1742,7 +1617,8 @@ export function DirectionsView({
                                   route={route}
                                   triggerLabel={tBeacon("guideStartTransitAlt", { name })}
                                   dest={guideDest ?? undefined}
-                                  walkAccessible={stepFreeEnabled}
+                                  // 승차 전 도보의 계단 회피 출처였던 토글이 E42로 사라졌다(spec §8 미결 1).
+                                  walkAccessible={false}
                                   announce={announce}
                                   onActiveChange={(active) =>
                                     setActiveGuideAlt((prev) =>
@@ -1769,84 +1645,70 @@ export function DirectionsView({
                     })}
                   </>
                 )}
-                {/* 장거리 도보 상세는 접어 둔다(spec §4.4). 세 수단 비교 화면에서
-                    수십 단계짜리 도보 목록이 아래 수단을 화면 밖으로 밀어낸다.
-                    접히는 것은 상세뿐이고 계단 회피 토글·안내 시작 버튼은 위쪽
-                    블록에 그대로 남는다(접힘 안에 넣으면 접힌 상태에서 도달 불가). */}
-                {outcome.kind === "done" && outcome.mode === "walk" && (() => {
-                  const collapsible = shouldCollapseWalk(outcome.result.durationSeconds);
-                  const expanded = walkExpanded ?? !collapsible;
-                  const summaryOf = (b: WalkRouteBriefing) =>
-                    tPed("summary", {
-                      distance: formatDistance(b.distanceMeters),
-                      minutes: Math.round(b.durationSeconds / 60),
-                    });
-                  // 추천·최단 2행 disclosure(B9 ①, spec 2026-08-23 §2 — 대중교통 대안·iOS
-                  // 도보 섹션 동형). "추천"이라는 이름은 대안과 대비될 때만 정보라 최단이
-                  // 없으면 아래 단일 경로 화면(현행)을 그대로 쓴다. 라벨은 한 줄 = 한 객체
-                  // (joinText), stepFreeNotice는 両행 라벨에 병기 — 접힘 상태에선 라벨이 안전
-                  // 문장의 유일한 전달 채널이다. 펼침 본문은 요약·notice 스텝을 뺀다(인접 중복
-                  // 금지). 안내 시작 버튼은 섹션 상단에 남아 추천 경로를 안내한다(B9 ②까지).
-                  if (outcome.shortest) {
-                    const rows = [
-                      { key: "recommended", name: t("walkRecommended"), briefing: outcome.result, expanded, toggle: () => setWalkExpanded(!expanded) },
-                      { key: "shortest", name: t("walkShortest"), briefing: outcome.shortest, expanded: walkShortestExpanded, toggle: () => setWalkShortestExpanded(!walkShortestExpanded) },
-                    ];
-                    return rows.map((row) => (
-                      <div key={row.key} className="mt-2">
+                {/* 도보 줄 목록(E42, 대중교통 대안 disclosure 동형). 라벨은 한 줄 = 한 객체
+                    (joinText: "최단 경로, 총 850m, 약 12분"), 본문은 안내 시작 버튼 + 단계.
+                    첫 줄의 기본 펼침은 장거리 접힘 문턱(spec §4.4 — 수십 단계 목록이 아래 수단을
+                    화면 밖으로 민다), 둘째 줄은 접힘. 안내 시작은 줄에 귀속된다 — 라벨이 곧 그
+                    줄 이름이라 VO 로터 버튼 목록에서 어느 경로의 안내인지 구분된다(B9 ②).
+                    세션이 살아 있는 줄은 강제 펼침(접힘 unmount가 세션을 조용히 죽인다). */}
+                {outcome.kind === "done" && outcome.mode === "walk" &&
+                  outcome.lines.map((line, i) => {
+                    const startKey = walkLineStartKey(line.kind);
+                    if (!startKey) return null;
+                    const active = activeWalkLine === line.kind;
+                    const expanded =
+                      active ||
+                      (i === 0
+                        ? (walkExpanded ?? !shouldCollapseWalk(line.route.durationSeconds))
+                        : walkSecondExpanded);
+                    const toggle = () => {
+                      if (active) return;
+                      if (i === 0) setWalkExpanded(!expanded);
+                      else setWalkSecondExpanded(!expanded);
+                    };
+                    const axis = walkLineAxis(line.kind);
+                    return (
+                      <div key={line.kind} className="mt-2">
                         <button
                           type="button"
-                          aria-expanded={row.expanded}
-                          onClick={row.toggle}
+                          aria-expanded={expanded}
+                          onClick={toggle}
                           className="min-h-11 text-left text-sm text-blue-700 underline dark:text-blue-300"
                         >
-                          {joinText(row.name, summaryOf(row.briefing), row.briefing.stepFreeNotice)}
+                          {walkLineLabel(line)}
                         </button>
-                        {row.expanded && (
-                          <WalkRouteResult
-                            briefing={row.briefing}
-                            t={tPed}
-                            waypointLabel={results.viaLabel}
-                            includeSummary={false}
-                            omitNoticeStep
-                          />
+                        {/* 버튼이 발견 경로라 본문은 div(region·heading 부여 금지). */}
+                        {expanded && (
+                          <>
+                            {walkGuideStartable && guideDest && (
+                              <DistanceBeacon
+                                key={`walk-${line.kind}-${guideDestKey}`}
+                                dest={guideDest}
+                                kind="walk"
+                                accessible={axis.accessible}
+                                variant={axis.variant}
+                                announce={announce}
+                                startOnOpen
+                                onStart={announceGuideStart}
+                                onActiveChange={(on) =>
+                                  setActiveWalkLine((prev) =>
+                                    on ? line.kind : prev === line.kind ? null : prev,
+                                  )
+                                }
+                                triggerLabel={tBeacon(startKey)}
+                              />
+                            )}
+                            <WalkRouteResult
+                              briefing={line.route}
+                              t={tPed}
+                              waypointLabel={results.viaLabel}
+                              includeSummary={false}
+                            />
+                          </>
                         )}
                       </div>
-                    ));
-                  }
-                  if (!collapsible) {
-                    return (
-                      <WalkRouteResult
-                        briefing={outcome.result}
-                        t={tPed}
-                        waypointLabel={results.viaLabel}
-                      />
                     );
-                  }
-                  return (
-                    <div className="mt-2">
-                      <button
-                        type="button"
-                        aria-expanded={expanded}
-                        onClick={() => setWalkExpanded(!expanded)}
-                        className="min-h-11 text-left text-sm text-blue-700 underline dark:text-blue-300"
-                      >
-                        {joinText(summaryOf(outcome.result), outcome.result.stepFreeNotice)}
-                      </button>
-                      {/* 버튼이 발견 경로라 본문은 div(region·heading 부여 금지).
-                          접힘·펼침 통지도 두지 않는다(aria-expanded가 상태다). */}
-                      {expanded && (
-                        <WalkRouteResult
-                          briefing={outcome.result}
-                          t={tPed}
-                          waypointLabel={results.viaLabel}
-                          includeSummary={false}
-                          omitNoticeStep
-                        />
-                      )}
-                    </div>
-                  );
-                })()}
+                  })}
                 {outcome.kind === "done" && outcome.mode === "car" && (
                   <CarRouteResult
                     briefing={outcome.result}

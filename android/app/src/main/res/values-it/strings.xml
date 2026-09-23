@@ -120,8 +120,6 @@
     <string name="android_directions_walkNotice_head2">Da tenere presente</string>
     <string name="android_directions_walkNotice_intro">Grazie per usare Gildongmu!</string>
     <string name="android_directions_walkNotice_title">La guida a piedi è arrivata.</string>
-    <string name="android_directions_walkRecommended">Percorso consigliato</string>
-    <string name="android_directions_walkShortest">Percorso più breve</string>
     <string name="android_guide_autoReroute">Ora ti guido su un nuovo percorso. {1, plural, one {%1$s indicazione} other {%1$s indicazioni}}, %2$s in totale. %3$s</string>
     <string name="android_guide_destChanged">Nuova destinazione: %1$s.</string>
     <string name="android_guide_destChangedFetching">Ricerca di un nuovo percorso.</string>
@@ -413,6 +411,10 @@
     <string name="beacon_guideStartCar">Avvia guida in auto</string>
     <string name="beacon_guideStartTransitAlt">Avvia la guida: %1$s</string>
     <string name="beacon_guideStartWalk">Avvia guida a piedi</string>
+    <string name="beacon_guideStartWalkAccessible">Avvia la guida sul percorso senza scale</string>
+    <string name="beacon_guideStartWalkBroad">Avvia la guida su strade principali</string>
+    <string name="beacon_guideStartWalkRecommended">Avvia la guida sul percorso consigliato</string>
+    <string name="beacon_guideStartWalkShortest">Avvia la guida sul percorso più breve</string>
     <string name="beacon_heading">Guida in tempo reale</string>
     <string name="beacon_nearby">Vicino alla destinazione (circa ±%1$s m)</string>
     <string name="beacon_reduced">Impossibile tracciare la distanza perché la posizione precisa è disattivata</string>
@@ -589,6 +591,8 @@
     <string name="directions_useCurrentLocation">Usa la posizione attuale</string>
     <string name="directions_via">Tappa intermedia</string>
     <string name="directions_viaArrived">Tappa intermedia %1$s raggiunta</string>
+    <string name="directions_walkAccessible">Percorso senza scale</string>
+    <string name="directions_walkBroad">Percorso su strade principali</string>
     <string name="directions_walkRecommended">Percorso consigliato</string>
     <string name="directions_walkShortest">Percorso più breve</string>
     <string name="eventsNearby_asOf">Alle %1$s</string>

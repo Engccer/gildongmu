@@ -202,7 +202,7 @@ describe("경유지 파라미터 직렬화", () => {
 
   it("카카오 도보: via_x/via_y(경도·위도, 4자리)", async () => {
     const f = stub(KAKAO_TWO_LEGS);
-    await getKakaoWalkBriefing({ origin: O, dest: D, via: VIA });
+    await getKakaoWalkBriefing({ origin: O, dest: D, via: VIA, routeMode: "BROAD_FIRST", preciseCoords: false });
     const url = callUrl(f);
     expect(url).toContain("via_x=127.1323");
     expect(url).toContain("via_y=37.5353");
@@ -229,7 +229,7 @@ describe("경유지 파라미터 직렬화", () => {
 
   it("via 없으면 어느 파라미터도 붙지 않는다(현행 URL 불변)", async () => {
     const f = stub(kakaoWalk([KAKAO_TWO_LEGS.route!.legs![0]]));
-    await getKakaoWalkBriefing({ origin: O, dest: D });
+    await getKakaoWalkBriefing({ origin: O, dest: D, routeMode: "BROAD_FIRST", preciseCoords: false });
     expect(callUrl(f)).not.toContain("via_");
   });
 });

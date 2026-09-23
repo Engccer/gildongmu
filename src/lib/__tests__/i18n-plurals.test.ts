@@ -202,6 +202,8 @@ describe("수량 문구 복수형(A29)", () => {
     "ios.nearby.announceEvents": "1 event nearby",
     "guide.switchedToShortest": "Switched to the shortest route. 1 step, x total. x",
     "guide.switchedToRecommended": "Switched to the recommended route. 1 step, x total. x",
+    "guide.switchedToAccessible": "Switched to the step-free route. 1 step, x total. x",
+    "guide.switchedToBroad": "Switched to the main-road route. 1 step, x total. x",
     "guide.autoReroute": "Now guiding on a new route. 1 step, x total. x",
     "ios.beacon.healthSummary": "You walked 1 step on this leg and burned about x kcal.",
     "ios.beacon.healthSummaryWithWeight": "You walked 1 step on this leg and burned about x kcal, based on x kg.",

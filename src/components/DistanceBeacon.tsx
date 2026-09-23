@@ -38,6 +38,7 @@ export function DistanceBeacon({
   dest,
   kind = "walk",
   accessible,
+  variant,
   startOnOpen = false,
   autoStart = false,
   focusTriggerOnMount = false,
@@ -45,6 +46,7 @@ export function DistanceBeacon({
   announce,
   onStart,
   onSessionEnd,
+  onActiveChange,
 }: {
   dest: { lat: number; lng: number; name: string };
   /** 안내 수단(B1 §4.1 봉인 구성 키). 장소 상세는 walk 고정, 길찾기 뷰는 버튼별. */
@@ -55,6 +57,12 @@ export function DistanceBeacon({
    * `false`를 명시한다.
    */
   accessible: boolean;
+  /**
+   * 도보 경로 축(E42): `"shortest"`=최단 줄의 안내, null=그 밖(큰길·추천·계단 회피는 `accessible`로
+   * 갈린다). ⚠ required다 — A13("최단 경로가 추천 경로로 조용히 바뀐다")이 생략 가능한 인자에서
+   * 나왔다. 줄이 없는 진입점(장소 상세·대중교통 인계·자동차)은 `null`을 명시한다.
+   */
+  variant: "shortest" | null;
   /**
    * 트리거를 누르는 순간 세션도 시작한다(길찾기 뷰 "OO 안내 시작" 버튼 계약 —
    * "시작"이라 쓰인 버튼이 패널만 여는 이중 행동은 라벨 거짓말이다). 장소 상세는
@@ -88,6 +96,11 @@ export function DistanceBeacon({
   announce: (text: string, lang?: "ko") => void;
   /** 세션 종료 1회 통지(A25 승차 전 도보 핸드오프) — `useRouteGuide` 동명 옵션 그대로. */
   onSessionEnd?: (reason: "arrived" | "ended") => void;
+  /**
+   * 추적 활성 전이 통지(E42, `TransitGuidePanel` 동명 prop 동형). 도보 줄 disclosure 안에 마운트된
+   * 패널이 접힘으로 unmount되면 세션이 조용히 죽으므로, 부모가 이 신호로 강제 펼침을 유지한다.
+   */
+  onActiveChange?: (active: boolean) => void;
 }) {
   const t = useTranslations("beacon");
   const tGuide = useTranslations("guide");
@@ -101,7 +114,7 @@ export function DistanceBeacon({
       return false;
     }
   });
-  const guide = useRouteGuide(dest, kind, accessible, { onSessionEnd });
+  const guide = useRouteGuide(dest, kind, { accessible, variant }, { onSessionEnd });
 
   // 안내 문장을 화면의 단일 창구로 올린다(A40). ⚠ **빈 값은 게시하지 않는다** —
   // 훅은 같은 문장을 다시 말하려고 `"" → 같은 문장`으로 되돌리는데(DOM이 안 바뀌면
@@ -149,9 +162,19 @@ export function DistanceBeacon({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (!guide.supported) return null;
-
+  // 추적 활성 전이를 부모에 통지(TransitGuidePanel 동형 — 식별자는 ref로 고정, 대입은 effect에서,
+  // unmount 시 false 정리). ⚠ `supported` 조기 반환보다 위에 둔다(훅 순서).
   const tracking = guide.status === "tracking";
+  const onActiveChangeRef = useRef(onActiveChange);
+  useEffect(() => {
+    onActiveChangeRef.current = onActiveChange;
+  });
+  useEffect(() => {
+    onActiveChangeRef.current?.(tracking);
+  }, [tracking]);
+  useEffect(() => () => onActiveChangeRef.current?.(false), []);
+
+  if (!guide.supported) return null;
 
   const togglePanel = () => {
     if (open) {

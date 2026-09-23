@@ -33,12 +33,16 @@ const gangnam: Place = {
   lng: 127.027,
 };
 
-const WALK_SHORT = {
-  result: { distanceMeters: 900, durationSeconds: 20 * 60, steps: [{ description: "직진 900m 이동" }] },
-};
-const WALK_LONG = {
-  result: { distanceMeters: 2500, durationSeconds: 35 * 60, steps: [{ description: "직진 2.5km 이동" }] },
-};
+const walkLines = (distanceMeters: number, minutes: number) => ({
+  lines: [
+    {
+      kind: "shortest",
+      route: { distanceMeters, durationSeconds: minutes * 60, steps: [{ description: `직진 ${distanceMeters}m 이동` }] },
+    },
+  ],
+});
+const WALK_SHORT = walkLines(900, 20);
+const WALK_LONG = walkLines(2500, 35);
 const TRANSIT_OK = {
   result: {
     recommended: {
@@ -51,7 +55,7 @@ const TRANSIT_OK = {
   },
 };
 
-/** walk는 호출 차수별 응답 배열(계단 회피 재조회의 응답 전환용) */
+/** walk는 호출 차수별 응답 배열(재조회의 응답 전환용) */
 function stubFetch(opts: { walks: Array<object | "error">; transit: object | "error" }) {
   let walkCall = 0;
   vi.stubGlobal(
@@ -161,19 +165,4 @@ describe("길찾기 섹션 동적 순서(E11 spec §2)", () => {
     expect(modeHeadings()).toEqual(["대중교통", "도보"]);
   });
 
-  it("계단 회피 재조회는 도보가 empty→성공으로 바뀌어도 순서를 재계산하지 않는다", async () => {
-    stubFetch({ walks: [{ result: null }, WALK_SHORT], transit: TRANSIT_OK });
-    await queryRoutes();
-    expect(modeHeadings()).toEqual(["대중교통", "도보"]);
-
-    fireEvent.click(screen.getByRole("button", { name: "계단 회피 경로" }));
-    await waitFor(() => {
-      expect(
-        screen.getByRole("button", { name: "계단 회피 경로" }).getAttribute("aria-busy"),
-      ).toBe("false");
-    });
-    // 도보가 성공(20분)이 됐지만 순서는 settled 스냅샷 그대로다(spec §2 규칙 3).
-    expect(screen.getByText("도보 구간 상세")).toBeTruthy();
-    expect(modeHeadings()).toEqual(["대중교통", "도보"]);
-  });
 });

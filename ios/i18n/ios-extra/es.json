@@ -8,8 +8,6 @@
     },
     "directions": {
       "searching": "Buscando",
-      "walkRecommended": "Ruta recomendada",
-      "walkShortest": "Ruta más corta",
       "walkNotice": {
         "title": "Llega la guía a pie.",
         "intro": "¡Gracias por usar Gildongmu!",
@@ -326,12 +324,11 @@
       "altRefetching": "Las condiciones cambiaron; buscando otras rutas de nuevo."
     }
   },
-  "beacon": {
-    "guideStartWalkShortest": "Iniciar guía por la ruta más corta"
-  },
   "guide": {
     "switchedToShortest": "Se cambió a la ruta más corta. {count, plural, one {# indicación} other {# indicaciones}}, {distance} en total. {first}",
     "switchedToRecommended": "Se cambió a la ruta recomendada. {count, plural, one {# indicación} other {# indicaciones}}, {distance} en total. {first}",
+    "switchedToAccessible": "Se cambió a la ruta sin escaleras. {count, plural, one {# indicación} other {# indicaciones}}, {distance} en total. {first}",
+    "switchedToBroad": "Se cambió a la ruta por vías principales. {count, plural, one {# indicación} other {# indicaciones}}, {distance} en total. {first}",
     "autoReroute": "Ahora te guío por una nueva ruta. {count, plural, one {# indicación} other {# indicaciones}}, {distance} en total. {first}",
     "viewAlternative": "Ver ruta alternativa",
     "adoptAlternative": "Cambiar la guía a esta ruta",

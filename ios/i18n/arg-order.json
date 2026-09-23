@@ -307,6 +307,16 @@
   "guide.rough": [
     "distance"
   ],
+  "guide.switchedToAccessible": [
+    "count",
+    "distance",
+    "first"
+  ],
+  "guide.switchedToBroad": [
+    "count",
+    "distance",
+    "first"
+  ],
   "guide.switchedToRecommended": [
     "count",
     "distance",

@@ -583,6 +583,26 @@ export interface WalkRouteBriefing {
   finalApproach?: FinalApproachGeometry;
   /** 경유지(`via` 요청 시에만, N4). */
   waypoint?: RouteWaypoint;
+  /**
+   * 이 경로의 줄 종류(E42) — **기하 응답(`includeGeometry=1`)에만** 싣는다. 요청이 아니라 실제로
+   * 돌려준 경로의 성질이다(계단 회피 요청이 큰길로 내려가면 `broad`). 계단 문구가 남은 계단 회피
+   * 응답처럼 어느 이름도 참이 아니면 부재. 안내 세션의 전환·프리뷰 이름이 이것을 쓴다.
+   */
+  kind?: WalkLineKind;
+}
+
+/**
+ * 조회 화면 도보 줄의 종류(E42). 이름이 곧 그 경로의 성질에 대한 약속이라 **서버가 판정**하고
+ * 클라이언트는 이름·안내 요청으로 투영만 한다. ko는 `shortest`·`accessible`|`broad`, en은
+ * `recommended`·`shortest`. 안내 시작 요청: shortest→`variant=shortest`, accessible→`accessible=true`,
+ * broad·recommended→파라미터 없음.
+ */
+export type WalkLineKind = "shortest" | "accessible" | "broad" | "recommended";
+
+/** `/api/route/walk?lines=1` 응답의 한 줄. 줄 경로엔 `stepFree`·`stepFreeNotice`가 없다. */
+export interface WalkRouteLine {
+  kind: WalkLineKind;
+  route: WalkRouteBriefing;
 }
 
 /** 버스 정보 제공자 — 병합 후 정류소/노선이 어느 API 소속인지 구분(라우트 디스패치 키). */

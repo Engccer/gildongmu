@@ -166,4 +166,23 @@ describe("GET /api/route/walk", () => {
       expect("waypoint" in (await res.json()).result).toBe(false);
     });
   });
+
+  it("lines=1(E42): 카카오 키가 없으면 Tmap 최단 한 줄만 `{ lines }`로 싣는다", async () => {
+    vi.mocked(getWalkRouteBriefing).mockClear();
+    const res = await GET(
+      new NextRequest("http://x/api/route/walk?origin=37.5,127.0&dest=37.6,127.1&lines=1"),
+    );
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.lines.map((l: { kind: string }) => l.kind)).toEqual(["shortest"]);
+    expect("result" in body).toBe(false);
+    expect(vi.mocked(getWalkRouteBriefing).mock.calls[0][0]).toMatchObject({ searchOption: "10" });
+  });
+
+  it("lines=1+accessible=true는 400(계단 회피 축은 둘째 줄 안에 있다)", async () => {
+    const res = await GET(
+      new NextRequest("http://x/api/route/walk?origin=37.5,127.0&dest=37.6,127.1&lines=1&accessible=true"),
+    );
+    expect(res.status).toBe(400);
+  });
 });

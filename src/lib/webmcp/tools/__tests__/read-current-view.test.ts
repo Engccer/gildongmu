@@ -56,7 +56,7 @@ describe("read_current_view(spec §3.6)", () => {
     const cafe = await call();
     expect(cafe.axes).toContainEqual({ axis: "timetable", status: "notApplicable" });
     expect(cafe.axes).toContainEqual({ axis: "facilities", status: "notApplicable" });
-    publishView("directions", { read: () => ({ fields: { from: "a", to: "b", via: null, avoidStairs: false }, phase: "idle", plan: null, lang: "ko" }), runQuery: async () => ({ kind: "busy" }) });
+    publishView("directions", { read: () => ({ fields: { from: "a", to: "b", via: null }, phase: "idle", plan: null, lang: "ko" }), runQuery: async () => ({ kind: "busy" }) });
     expect(await call()).toMatchObject({ view: "directions", phase: "idle", plan: null, guidanceActive: false });
   });
 });

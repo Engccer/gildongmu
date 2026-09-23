@@ -171,10 +171,10 @@ enum GuideText {
     }
 
     /// 수동 전환 성공 발화(M3 spec §5). 재조회와 같은 구조(새 경로 규모 + 첫 안내)에
-    /// 첫 문장만 variant를 밝힌다 — "다시 찾았습니다"는 전환에선 거짓 서술이라 대체.
-    static func variantSwitch(route: GuideRoute, firstIndices: [Int], shortest: Bool) -> String {
+    /// 첫 문장만 전환한 줄을 밝힌다 — "다시 찾았습니다"는 전환에선 거짓 서술이라 대체.
+    static func variantSwitch(route: GuideRoute, firstIndices: [Int], to line: WalkLineKind) -> String {
         appLocalized(
-            shortest ? "guide.switchedToShortest" : "guide.switchedToRecommended",
+            WalkLineText.switchedKey(line),
             route.steps.count,
             formatDistance(Int(route.totalMeters.rounded())),
             unit(route: route, indices: firstIndices)
@@ -456,6 +456,37 @@ enum GuideText {
             return appLocalized(
                 "guide.progressFinalApproach", formatDistance(Int(straight.rounded()))
             )
+        }
+    }
+}
+
+/// 도보 줄 종류(E42)의 문구 키 — 조회 화면 줄 이름·안내 시작 버튼·안내 중 전환이 같은 이름을 쓴다
+/// (웹 `walk-line.ts` 동형. 이름이 다르면 VO 로터에서 고른 버튼과 화면의 줄이 다른 것으로 들린다).
+enum WalkLineText {
+    static func nameKey(_ line: WalkLineKind) -> String {
+        switch line {
+        case .shortest: "directions.walkShortest"
+        case .accessible: "directions.walkAccessible"
+        case .broad: "directions.walkBroad"
+        case .recommended: "directions.walkRecommended"
+        }
+    }
+
+    static func startKey(_ line: WalkLineKind) -> String {
+        switch line {
+        case .shortest: "beacon.guideStartWalkShortest"
+        case .accessible: "beacon.guideStartWalkAccessible"
+        case .broad: "beacon.guideStartWalkBroad"
+        case .recommended: "beacon.guideStartWalkRecommended"
+        }
+    }
+
+    static func switchedKey(_ line: WalkLineKind) -> String {
+        switch line {
+        case .shortest: "guide.switchedToShortest"
+        case .accessible: "guide.switchedToAccessible"
+        case .broad: "guide.switchedToBroad"
+        case .recommended: "guide.switchedToRecommended"
         }
     }
 }

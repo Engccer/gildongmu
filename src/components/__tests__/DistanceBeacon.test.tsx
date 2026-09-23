@@ -78,7 +78,7 @@ afterEach(() => {
 function renderPanel(locale: "ko" | "en") {
   return render(
     <NextIntlClientProvider locale={locale} messages={locale === "ko" ? ko : en}>
-      <DistanceBeaconHost dest={DEST} accessible={false} />
+      <DistanceBeaconHost dest={DEST} accessible={false} variant={null} />
     </NextIntlClientProvider>,
   );
 }
@@ -235,6 +235,7 @@ describe("DistanceBeacon 컨트롤 노출", () => {
         <DistanceBeacon
           dest={DEST}
           accessible={false}
+          variant={null}
           announce={(text) => published.push(text)}
         />
       </NextIntlClientProvider>,

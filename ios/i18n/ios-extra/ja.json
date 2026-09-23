@@ -8,8 +8,6 @@
     },
     "directions": {
       "searching": "照会中",
-      "walkRecommended": "おすすめルート",
-      "walkShortest": "最短ルート",
       "walkNotice": {
         "title": "徒歩案内機能が追加されました。",
         "intro": "キルドンムをご利用いただきありがとうございます!",
@@ -326,12 +324,11 @@
       "altRefetching": "条件が変わったため、ほかの経路を再検索します。"
     }
   },
-  "beacon": {
-    "guideStartWalkShortest": "最短ルート案内を開始"
-  },
   "guide": {
     "switchedToShortest": "最短ルートに切り替えました。案内{count}件、合計{distance}。{first}",
     "switchedToRecommended": "おすすめルートに切り替えました。案内{count}件、合計{distance}。{first}",
+    "switchedToAccessible": "階段回避ルートに切り替えました。案内{count}件、合計{distance}。{first}",
+    "switchedToBroad": "大通りルートに切り替えました。案内{count}件、合計{distance}。{first}",
     "autoReroute": "新しいルートで案内を再開します。案内{count}件、合計{distance}。{first}",
     "viewAlternative": "代替ルートを見る",
     "adoptAlternative": "このルートの案内に切り替え",

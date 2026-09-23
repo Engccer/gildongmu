@@ -120,8 +120,6 @@
     <string name="android_directions_walkNotice_head2">À garder à l\'esprit</string>
     <string name="android_directions_walkNotice_intro">Merci d\'utiliser Gildongmu !</string>
     <string name="android_directions_walkNotice_title">Le guidage à pied est arrivé.</string>
-    <string name="android_directions_walkRecommended">Itinéraire recommandé</string>
-    <string name="android_directions_walkShortest">Itinéraire le plus court</string>
     <string name="android_guide_autoReroute">Guidage repris sur un nouvel itinéraire. {1, plural, one {%1$s instruction} other {%1$s instructions}}, %2$s au total. %3$s</string>
     <string name="android_guide_destChanged">Nouvelle destination : %1$s.</string>
     <string name="android_guide_destChangedFetching">Recherche d\'un nouvel itinéraire.</string>
@@ -413,6 +411,10 @@
     <string name="beacon_guideStartCar">Démarrer le guidage en voiture</string>
     <string name="beacon_guideStartTransitAlt">Démarrer le guidage : %1$s</string>
     <string name="beacon_guideStartWalk">Démarrer le guidage à pied</string>
+    <string name="beacon_guideStartWalkAccessible">Démarrer le guidage sur l\'itinéraire sans escaliers</string>
+    <string name="beacon_guideStartWalkBroad">Démarrer le guidage par les grands axes</string>
+    <string name="beacon_guideStartWalkRecommended">Démarrer le guidage sur l\'itinéraire recommandé</string>
+    <string name="beacon_guideStartWalkShortest">Démarrer le guidage sur l\'itinéraire le plus court</string>
     <string name="beacon_heading">Guidage en temps réel</string>
     <string name="beacon_nearby">Près de la destination (environ ±%1$s m)</string>
     <string name="beacon_reduced">Impossible de suivre la distance car la position précise est désactivée</string>
@@ -589,6 +591,8 @@
     <string name="directions_useCurrentLocation">Utiliser la position actuelle</string>
     <string name="directions_via">Étape</string>
     <string name="directions_viaArrived">Étape %1$s atteinte</string>
+    <string name="directions_walkAccessible">Itinéraire sans escaliers</string>
+    <string name="directions_walkBroad">Itinéraire par les grands axes</string>
     <string name="directions_walkRecommended">Itinéraire recommandé</string>
     <string name="directions_walkShortest">Itinéraire le plus court</string>
     <string name="eventsNearby_asOf">à %1$s</string>

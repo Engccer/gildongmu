@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { hasWalkRouteKeyFor } from "@/lib/env";
 import { isInKorea } from "@/lib/coverage";
 import { checkWalkRateLimit, clientIpFromHeaders } from "@/lib/rate-limit";
-import { getWalkRoute, getWalkRouteAlternatives } from "@/lib/walk-route";
+import { getWalkRoute, getWalkRouteAlternatives, getWalkRouteLines } from "@/lib/walk-route";
 import { parseWalkQuery } from "./route-schema";
 import { buildGuideRoute } from "@/lib/route-geometry";
 import { computeFinalApproach } from "@/lib/final-approach";
@@ -54,6 +54,7 @@ export async function GET(request: NextRequest) {
     includeGeometry: request.nextUrl.searchParams.get("includeGeometry"),
     variant: request.nextUrl.searchParams.get("variant"),
     alternatives: request.nextUrl.searchParams.get("alternatives"),
+    lines: request.nextUrl.searchParams.get("lines"),
     via: request.nextUrl.searchParams.get("via"),
     lang: request.nextUrl.searchParams.get("lang"),
   });
@@ -85,6 +86,11 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    if (parsed.data.lines) {
+      // 조회 화면 줄 목록(E42). 기하 없음 — withFinalApproach 미적용. 첫 줄 실패는 catch로 502,
+      // 둘째 줄 실패만 흡수(서비스 계층). `[]`는 "경로 없음".
+      return NextResponse.json({ lines: await getWalkRouteLines({ origin, dest, lang, via }) });
+    }
     if (parsed.data.alternatives) {
       // 추천+최단 병렬(M3). 기하 없음 — withFinalApproach 미적용(조회 화면 전용).
       // 부분 성공 비대칭: 기본 실패는 catch로 떨어져 502, 최단 실패만 null 흡수.

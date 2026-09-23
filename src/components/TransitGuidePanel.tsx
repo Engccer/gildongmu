@@ -330,6 +330,7 @@ export function TransitGuidePanel({
             dest={{ lat: prewalk.lat, lng: prewalk.lng, name: prewalkWalkLabel }}
             kind="walk"
             accessible={walkAccessible}
+            variant={null}
             announce={announce}
             startOnOpen
             focusTriggerOnMount
@@ -753,6 +754,7 @@ export function TransitGuidePanel({
           dest={dest}
           kind="walk"
           accessible={walkAccessible}
+          variant={null}
           announce={announce}
           autoStart
           focusTriggerOnMount

@@ -120,8 +120,6 @@
     <string name="android_directions_walkNotice_head2">유의해야 할 것</string>
     <string name="android_directions_walkNotice_intro">길동무 앱을 이용해 주셔서 감사합니다!</string>
     <string name="android_directions_walkNotice_title">도보 안내 기능이 추가되었어요.</string>
-    <string name="android_directions_walkRecommended">추천 경로</string>
-    <string name="android_directions_walkShortest">최단 경로</string>
     <string name="android_guide_autoReroute">새 경로로 다시 안내합니다. 안내 %1$s개, 총 %2$s. %3$s</string>
     <string name="android_guide_destChanged">새 목적지 %1$s.</string>
     <string name="android_guide_destChangedFetching">경로를 조회하고 있습니다.</string>
@@ -413,6 +411,10 @@
     <string name="beacon_guideStartCar">자동차 안내 시작</string>
     <string name="beacon_guideStartTransitAlt">%1$s 안내 시작</string>
     <string name="beacon_guideStartWalk">도보 안내 시작</string>
+    <string name="beacon_guideStartWalkAccessible">계단 회피 경로로 안내 시작</string>
+    <string name="beacon_guideStartWalkBroad">큰길 경로로 안내 시작</string>
+    <string name="beacon_guideStartWalkRecommended">추천 경로로 안내 시작</string>
+    <string name="beacon_guideStartWalkShortest">최단 경로로 안내 시작</string>
     <string name="beacon_heading">실시간 길 안내</string>
     <string name="beacon_nearby">목적지 근처 (약 ±%1$sm)</string>
     <string name="beacon_reduced">정확한 위치가 꺼져 있어 거리를 추적할 수 없습니다</string>
@@ -589,6 +591,8 @@
     <string name="directions_useCurrentLocation">현재 위치 사용</string>
     <string name="directions_via">경유지</string>
     <string name="directions_viaArrived">경유지 %1$s 도착</string>
+    <string name="directions_walkAccessible">계단 회피 경로</string>
+    <string name="directions_walkBroad">큰길 경로</string>
     <string name="directions_walkRecommended">추천 경로</string>
     <string name="directions_walkShortest">최단 경로</string>
     <string name="eventsNearby_asOf">%1$s 기준</string>

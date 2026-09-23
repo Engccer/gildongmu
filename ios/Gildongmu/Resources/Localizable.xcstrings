@@ -4521,12 +4521,132 @@
         }
       }
     },
+    "beacon.guideStartWalkAccessible": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "계단 회피 경로로 안내 시작"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start step-free route guidance"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Iniciar guía por la ruta sin escaleras"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Démarrer le guidage sur l'itinéraire sans escaliers"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Avvia la guida sul percorso senza scale"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "階段回避ルートで案内を開始"
+          }
+        }
+      }
+    },
+    "beacon.guideStartWalkBroad": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "큰길 경로로 안내 시작"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start main-road route guidance"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Iniciar guía por vías principales"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Démarrer le guidage par les grands axes"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Avvia la guida su strade principali"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "大通りルートで案内を開始"
+          }
+        }
+      }
+    },
+    "beacon.guideStartWalkRecommended": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "추천 경로로 안내 시작"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start recommended route guidance"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Iniciar guía por la ruta recomendada"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Démarrer le guidage sur l'itinéraire recommandé"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Avvia la guida sul percorso consigliato"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "おすすめルートで案内を開始"
+          }
+        }
+      }
+    },
     "beacon.guideStartWalkShortest": {
       "localizations": {
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "최단 경로 안내 시작"
+            "value": "최단 경로로 안내 시작"
           }
         },
         "en": {
@@ -4544,7 +4664,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Démarrer le guidage sur l’itinéraire le plus court"
+            "value": "Démarrer le guidage sur l'itinéraire le plus court"
           }
         },
         "it": {
@@ -4556,7 +4676,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "最短ルート案内を開始"
+            "value": "最短ルートで案内を開始"
           }
         }
       }
@@ -11641,6 +11761,86 @@
         }
       }
     },
+    "directions.walkAccessible": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "계단 회피 경로"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Step-free route"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ruta sin escaleras"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Itinéraire sans escaliers"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Percorso senza scale"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "階段回避ルート"
+          }
+        }
+      }
+    },
+    "directions.walkBroad": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "큰길 경로"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Main-road route"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ruta por vías principales"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Itinéraire par les grands axes"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Percorso su strade principali"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "大通りルート"
+          }
+        }
+      }
+    },
     "directions.walkRecommended": {
       "localizations": {
         "ko": {
@@ -16961,6 +17161,86 @@
         }
       }
     },
+    "guide.switchedToAccessible": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "계단 회피 경로로 전환했습니다. 안내 %1$@개, 총 %2$@. %3$@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Switched to the step-free route. {1, plural, one {%1$@ step} other {%1$@ steps}}, %2$@ total. %3$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se cambió a la ruta sin escaleras. {1, plural, one {%1$@ indicación} other {%1$@ indicaciones}}, %2$@ en total. %3$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Itinéraire sans escaliers activé. {1, plural, one {%1$@ instruction} other {%1$@ instructions}}, %2$@ au total. %3$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Passato al percorso senza scale. {1, plural, one {%1$@ indicazione} other {%1$@ indicazioni}}, %2$@ in totale. %3$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "階段回避ルートに切り替えました。案内%1$@件、合計%2$@。%3$@"
+          }
+        }
+      }
+    },
+    "guide.switchedToBroad": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "큰길 경로로 전환했습니다. 안내 %1$@개, 총 %2$@. %3$@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Switched to the main-road route. {1, plural, one {%1$@ step} other {%1$@ steps}}, %2$@ total. %3$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se cambió a la ruta por vías principales. {1, plural, one {%1$@ indicación} other {%1$@ indicaciones}}, %2$@ en total. %3$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Itinéraire par les grands axes activé. {1, plural, one {%1$@ instruction} other {%1$@ instructions}}, %2$@ au total. %3$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Passato al percorso su strade principali. {1, plural, one {%1$@ indicazione} other {%1$@ indicazioni}}, %2$@ in totale. %3$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "大通りルートに切り替えました。案内%1$@件、合計%2$@。%3$@"
+          }
+        }
+      }
+    },
     "guide.switchedToRecommended": {
       "localizations": {
         "ko": {
@@ -20037,86 +20317,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "徒歩案内機能が追加されました。"
-          }
-        }
-      }
-    },
-    "ios.directions.walkRecommended": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "추천 경로"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Recommended route"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ruta recomendada"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Itinéraire recommandé"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Percorso consigliato"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "おすすめルート"
-          }
-        }
-      }
-    },
-    "ios.directions.walkShortest": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "최단 경로"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Shortest route"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ruta más corta"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Itinéraire le plus court"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Percorso più breve"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "最短ルート"
           }
         }
       }

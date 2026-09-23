@@ -22,8 +22,10 @@ import type { Coord, RouteWaypoint, WalkRouteBriefing, WalkRouteStep } from "../
  * graceful null 처리(실호출 관측분만, 추측 금지) — 그 외 미관측 status는 장애를
  * 경로 없음으로 뭉개지 않도록 throw한다(fail-closed).
  *
- * accessible=true 시 route_mode=ACCESSIBLE(무장애 경로, 실호출 확인) 파라미터를
- * 추가한다. 경유지는 `via_x`/`via_y`(실호출 확정 2026-08-22 — `route.legs`가 2개로
+ * `routeMode`(E42): 허용값은 `BROAD_FIRST`·`SHORTEST`·`ACCESSIBLE` 셋이고 파라미터 미전송의
+ * 기본값이 `BROAD_FIRST`다(실측 50/50 응답 동일, `docs/research/RESEARCH-2026-09-13-walk-route-provider-options.md`).
+ * 그래서 `BROAD_FIRST`는 파라미터를 보내지 않는다 — 기존 URL·캐시 키가 그대로다. 나머지 둘은
+ * `route_mode`로 싣는다. 경유지는 `via_x`/`via_y`(실호출 확정 2026-08-22 — `route.legs`가 2개로
  * 갈린다). ⚠ `waypoints`·`passlist`류 이름은 **무시되고 200 정상 응답**이 오므로
  * 이름 오타는 테스트의 URL 문자열 단언과 legs 수 가드(`expectWaypoint`)만이 잡는다. en 미지원(안내문이 한국어 고정) — V1 ko 전용은 Tmap과 동일 스코프.
  *
@@ -36,7 +38,7 @@ import type { Coord, RouteWaypoint, WalkRouteBriefing, WalkRouteStep } from "../
  * 단위가 곧 계단 유무가 갈리는 단위다 — 계단 회피를 켠 사용자에게 다른 출입구
  * 경로를 주면 토글이 무의미해진다. `roundCoord`가 스스로 정한 적용 기준("반올림
  * 오차가 결과를 못 바꾸는 곳에만")을 이 분기만 만족하지 못한다. 카카오 도보는
- * 무과금이라 히트율 하락 비용이 사실상 0이다.
+ * 일 1,000건 무료 구간 안이라 히트율 하락 비용이 작다(초과분은 건당 10원).
  */
 
 const ENDPOINT = "https://dapi.kakao.com/v2/routing/walk";
@@ -158,10 +160,22 @@ function legEdgeCoord(
  * 스키마 위반은 throw(서비스가 Tmap 폴백으로 전환). 타임아웃 8초: 무한 대기는
  * throw가 아니라서 폴백이 영영 발동하지 않는다(spec §아키텍처).
  */
+/**
+ * 카카오 도보 탐색 옵션. ⚠ **기본값을 두지 않는다** — 생략이 `BROAD_FIRST`로 조용히 복구되면
+ * "최단 경로"라 이름 붙은 줄이 큰길 경로를 낸다(E42, [[no-default-for-safety-parameters]]).
+ */
+export type KakaoWalkRouteMode = "BROAD_FIRST" | "SHORTEST" | "ACCESSIBLE";
+
 export async function getKakaoWalkBriefing(params: {
   origin: Coord;
   dest: Coord;
-  accessible?: boolean;
+  routeMode: KakaoWalkRouteMode;
+  /**
+   * 반올림 없이 원좌표를 보낸다(E42). 조회 화면 줄 목록은 세 모드를 **같은 좌표**로 불러야 두 줄의
+   * 거리 비교가 성립한다 — 반올림은 upstream 좌표 자체를 바꿔(셀 ≈ 11m) 같은 길이 "최단"이 더
+   * 긴 두 줄을 만든다. `ACCESSIBLE`은 이 값과 무관하게 항상 원좌표다(출입구 단위). 기본값 없음.
+   */
+  preciseCoords: boolean;
   /** 경유지 1개(N4). */
   via?: Coord;
   /**
@@ -171,15 +185,16 @@ export async function getKakaoWalkBriefing(params: {
    */
   noStore?: boolean;
 }): Promise<WalkRouteBriefing | null> {
-  const { origin, dest, accessible, via, noStore } = params;
+  const { origin, dest, routeMode, preciseCoords, via, noStore } = params;
+  const precise = routeMode === "ACCESSIBLE" || preciseCoords;
   const url = new URL(ENDPOINT);
-  // 계단 회피는 정확도가 안전과 직결하므로 원좌표 그대로(위 헤더 주석).
-  const c = (v: number) => (accessible ? String(v) : roundCoord(v, 4));
+  // 계단 회피는 정확도가 안전과 직결하므로 원좌표 그대로(위 헤더 주석). 줄 목록도 원좌표(E42).
+  const c = (v: number) => (precise ? String(v) : roundCoord(v, 4));
   url.searchParams.set("start_x", c(origin.lng));
   url.searchParams.set("start_y", c(origin.lat));
   url.searchParams.set("end_x", c(dest.lng));
   url.searchParams.set("end_y", c(dest.lat));
-  if (accessible) url.searchParams.set("route_mode", "ACCESSIBLE");
+  if (routeMode !== "BROAD_FIRST") url.searchParams.set("route_mode", routeMode);
   if (via) {
     url.searchParams.set("via_x", c(via.lng));
     url.searchParams.set("via_y", c(via.lat));

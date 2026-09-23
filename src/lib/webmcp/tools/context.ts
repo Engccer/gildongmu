@@ -9,7 +9,7 @@ import type { DirEndpoint } from "@/lib/directions-state";
 import type { ArrivalItem } from "@/lib/place-lines/station-arrivals";
 import type { MetroGroupItem } from "@/lib/place-lines/station-metro";
 import type { TimetableLineItem } from "@/lib/place-lines/station-timetable";
-import type { JusoAddress } from "@/lib/types";
+import type { JusoAddress, WalkLineKind } from "@/lib/types";
 import type { SearchSnapshot } from "../place-refs";
 import type { ModeKey, RouteRefTable } from "../route-refs";
 import type { Op } from "../tool-lock";
@@ -57,23 +57,24 @@ export interface PlanTransitRoute {
 export interface ToolPlan {
   planId: string;
   destination: string;
-  resolved: { from: string; to: string; via: string | null; avoidStairs: boolean };
+  resolved: { from: string; to: string; via: string | null };
   routeRefs: RouteRefTable;
   /** 수단이 게이트를 통과하지 않았으면 null(출력에서 키 부재 = 제공하지 않는 수단). */
   transit: { outcome: ModeOutcomeKind; routes: PlanTransitRoute[] } | null;
   walk: {
     outcome: ModeOutcomeKind;
-    /** 화면 요약문(`route.pedestrian.summary`). done일 때만. */
-    summary?: string;
-    distanceMeters?: number;
-    durationSeconds?: number;
-    stepFree?: string;
-    stepFreeNotice?: string;
-    /** 화면 `StepList` 항목과 같은 배열(번호 = 인덱스 + 1). */
-    steps: string[];
+    /**
+     * 줄 목록(E42) — 화면 줄과 같은 순서(첫 줄이 기본 펼침). done일 때만 원소가 있다.
+     * `label`은 화면 줄 버튼 문장, `steps`는 그 줄의 `StepList` 항목과 같은 배열(번호 = 인덱스 + 1).
+     */
+    lines: {
+      kind: WalkLineKind;
+      label: string;
+      distanceMeters: number;
+      durationSeconds: number;
+      steps: string[];
+    }[];
     startable: boolean;
-    /** 최단 대안(B9 ①, W1-R #1) — 화면의 "가장 짧은 경로" 행과 같은 배열. 없으면 필드 부재. */
-    shortest?: { distanceMeters: number; durationSeconds: number; steps: string[] };
   } | null;
   car: {
     outcome: ModeOutcomeKind;
@@ -89,7 +90,7 @@ export interface ToolPlan {
 }
 
 export interface DirectionsSnapshot {
-  fields: { from: string; to: string; via: string | null; avoidStairs: boolean };
+  fields: { from: string; to: string; via: string | null };
   phase: PhaseKind;
   plan: ToolPlan | null;
   /** 후보 검색 언어(`dataLocale`). */
@@ -100,7 +101,6 @@ export interface PlanRequest {
   from: DirEndpoint;
   to: DirEndpoint;
   via: DirEndpoint | null;
-  avoidStairs: boolean;
 }
 
 export type QueryOutcome =

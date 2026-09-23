@@ -57,10 +57,14 @@ function planFromFixture(): ToolPlan {
   return {
     planId: "p3",
     destination: "광화문",
-    resolved: { from: "현재 위치", to: "광화문", via: null, avoidStairs: false },
+    resolved: { from: "현재 위치", to: "광화문", via: null },
     routeRefs,
     transit: { outcome: "done", routes },
-    walk: { outcome: "done", summary: "약 2.1km, 31분", distanceMeters: 2100, durationSeconds: 1860, steps: ["a", "b", "c"], startable: true },
+    walk: {
+      outcome: "done",
+      startable: true,
+      lines: [{ kind: "shortest", label: "최단 경로, 총 2.1km, 약 31분", distanceMeters: 2100, durationSeconds: 1860, steps: ["a", "b", "c"] }],
+    },
     car: { outcome: "done", summary: "약 3km, 12분", distanceMeters: 3000, durationSeconds: 720, steps: ["x", "y"], startable: false },
     modes: ["transit", "walk", "car"],
   };

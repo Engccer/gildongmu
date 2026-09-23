@@ -52,11 +52,12 @@ const CAR_OK = {
   guides: [{ name: "", guidance: "직진", distanceMeters: 0, durationSeconds: 0 }],
 };
 const WALK_OK = {
-  result: {
-    distanceMeters: 2000,
-    durationSeconds: 1700,
-    steps: [{ description: "직진 2km 이동" }],
-  },
+  lines: [
+    {
+      kind: "shortest",
+      route: { distanceMeters: 2000, durationSeconds: 1700, steps: [{ description: "직진 2km 이동" }] },
+    },
+  ],
 };
 const TRANSIT_RECOMMENDED = {
   routeKey: "p0",
@@ -167,7 +168,7 @@ describe("A40 — 길찾기 뷰의 단일 polite 창구", () => {
     await queryRoutes();
 
     // 도보·자동차 비콘 트리거와 대중교통 추천 패널이 모두 마운트된 상태.
-    expect(screen.getByRole("button", { name: "guideStartWalk" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "guideStartWalkShortest" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "guideStartCar" })).toBeTruthy();
     // 대안 disclosure를 펼쳐 패널을 하나 더 마운트한다(경로 수만큼 늘던 축).
     fireEvent.click(screen.getByRole("button", { name: /transitRouteLabel|alternative|p1/ }));
