@@ -8,11 +8,7 @@ import type { TransitRoute } from "@/lib/types";
  * `onSessionEnd("arrived")`가 패널의 arrived 분기(세션 시작 + 도착 문장 prefix + 도보 문맥
  * 제거)를 지나는지 본다. 선언 버튼 경로와 달리 `declaredRef` 없이 콜백만으로 이어져야 한다.
  */
-vi.mock("next-intl", () => ({
-  useTranslations: (ns: string) => (key: string, args?: Record<string, unknown>) =>
-    args ? `${ns}.${key}:${Object.values(args).join(",")}` : `${ns}.${key}`,
-  useLocale: () => "ko",
-}));
+vi.mock("next-intl", async () => (await import("./stable-intl-mock")).stableIntlMock("ko"));
 vi.mock("../DistanceBeacon", () => ({
   DistanceBeacon: ({ onSessionEnd }: { onSessionEnd?: (r: "arrived" | "ended") => void }) => (
     <div>

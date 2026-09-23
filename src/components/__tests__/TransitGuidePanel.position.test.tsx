@@ -7,24 +7,8 @@ import type { TransitRoute } from "@/lib/types";
  * 승차 중 현재역(E35)의 **시간 축 배선** — 폴 여러 번에 걸친 `neverSeen` 경고 보류·처분을 가짜 시계로 밟는다.
  * 순수 판정은 공유 fixture(`transit-riding-position-cases.json`)가, 한 폴 안의 배선은 `TransitGuidePanel.test.tsx`
  * E35 두 건이 본다.
- *
- * ⚠ 이 파일이 따로인 이유: `t` 목이 **안정 정체성**이어야 한다(실제 next-intl처럼). 렌더마다 새 함수를 돌려주는
- * 목(`TransitGuidePanel.test.tsx`)에서는 `pollOnce`의 의존성 사슬이 매번 바뀌어 틱 effect가 폴을 연달아 다시
- * 부르고(가짜 시계에서 1분에 수백 폴), 결박당 조회 상한이 순식간에 닳아 시간 축 판정이 무의미해진다.
  */
-const tByNs = new Map<string, (key: string, args?: Record<string, unknown>) => string>();
-vi.mock("next-intl", () => ({
-  useTranslations: (ns: string) => {
-    let t = tByNs.get(ns);
-    if (!t) {
-      t = (key: string, args?: Record<string, unknown>) =>
-        args ? `${ns}.${key}:${Object.values(args).join(",")}` : `${ns}.${key}`;
-      tByNs.set(ns, t);
-    }
-    return t;
-  },
-  useLocale: () => "ko",
-}));
+vi.mock("next-intl", async () => (await import("./stable-intl-mock")).stableIntlMock("ko"));
 
 import { TransitGuidePanelHost } from "./live-region-host";
 

@@ -10,11 +10,7 @@ import type { TransitRoute } from "@/lib/types";
  * ① 안내가 en에서 시작 가능한가 ② 영문 조각이 실제로 화면에 나오는가
  * ③ 폴링 URL에 `lang=en`이 실리는가 ④ 한국어 폴백 줄에 `lang="ko"`가 붙는가.
  */
-vi.mock("next-intl", () => ({
-  useTranslations: (ns: string) => (key: string, args?: Record<string, unknown>) =>
-    args ? `${ns}.${key}:${Object.values(args).join(",")}` : `${ns}.${key}`,
-  useLocale: () => "en",
-}));
+vi.mock("next-intl", async () => (await import("./stable-intl-mock")).stableIntlMock("en"));
 
 // 패널·비콘은 자기 live region을 두지 않는다(A40) — 창구 숙주로 감싸 렌더한다.
 import { TransitGuidePanelHost } from "./live-region-host";

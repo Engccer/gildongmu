@@ -1,4 +1,6 @@
 // @vitest-environment jsdom
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { TransitRoute } from "@/lib/types";
@@ -9,12 +11,8 @@ import type { TransitRoute } from "@/lib/types";
  * 검증한다. 판정 자체는 상태 머신 fixture가 잠그므로 여기서는 배선(폴 대상 전환·
  * 목록 렌더·컨트롤 노출)만 본다.
  */
-vi.mock("next-intl", () => ({
-  useTranslations: (ns: string) => (key: string, args?: Record<string, unknown>) =>
-    args ? `${ns}.${key}:${Object.values(args).join(",")}` : `${ns}.${key}`,
-  // 핸드오프가 마운트하는 DistanceBeacon(useRouteGuide)의 로케일 의존.
-  useLocale: () => "ko",
-}));
+// `t`는 안정 정체성이어야 한다 — 이유는 목 파일 머리(폴 폭주가 시간 축을 가린다).
+vi.mock("next-intl", async () => (await import("./stable-intl-mock")).stableIntlMock("ko"));
 
 // 패널·비콘은 자기 live region을 두지 않는다(A40) — 창구 숙주로 감싸 렌더한다.
 import { TransitGuidePanelHost } from "./live-region-host";
@@ -1444,6 +1442,16 @@ describe("승차 전 도보 핸드오프(A25, spec 2026-08-30 §6)", () => {
  * 차량을 고른 직후 [탑승했습니다]가 서던 것을 없앴다. riding 승격은 승차 정류소 도착 관측이 하고,
  * 관측이 끝난 뒤(`signalLost`·`upstreamFailed`)에만 다른 문구의 수동 진행 수단이 선다.
  */
+/**
+ * 가짜 시계를 폴 한 주기만큼 넘기고 그 폴이 **정확히 한 번** 나갔는지 확인한다. 다음 폴 타이머는 앞 폴이
+ * 커밋된 뒤에야 걸리므로(`scheduleNext`) 시계를 한꺼번에 넘기면 폴이 하나만 풀린다 — 폴 N회는 이 헬퍼 N번이다.
+ */
+async function advanceOnePoll(fetchMock: ReturnType<typeof vi.fn>, ms = 20_000) {
+  const before = fetchMock.mock.calls.length;
+  await vi.advanceTimersByTimeAsync(ms);
+  await waitFor(() => expect(fetchMock.mock.calls.length).toBe(before + 1));
+}
+
 describe("TransitGuidePanel — boarding 수동 진행 (N3 ①)", () => {
   it("차량을 고른 직후엔 수동 진행 수단이 없고 커서는 상태 문장에 앉는다", async () => {
     vi.stubGlobal(
@@ -1509,21 +1517,20 @@ describe("TransitGuidePanel — boarding 수동 진행 (N3 ①)", () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     try {
       let failing = false;
-      vi.stubGlobal(
-        "fetch",
-        vi.fn(async () => {
-          if (failing) throw new Error("upstream down");
-          return {
-            ok: true,
-            json: async () => ({ mode: "subway", status: "ok", rawCount: 1, items: [trackItem({})] }),
-          } as Response;
-        }) as unknown as typeof fetch,
-      );
+      const fetchMock = vi.fn(async () => {
+        if (failing) throw new Error("upstream down");
+        return {
+          ok: true,
+          json: async () => ({ mode: "subway", status: "ok", rawCount: 1, items: [trackItem({})] }),
+        } as Response;
+      });
+      vi.stubGlobal("fetch", fetchMock);
       render(<TransitGuidePanelHost route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
       fireEvent.click(screen.getByRole("button", { name: "시작" }));
       fireEvent.click(await screen.findByRole("button", { name: /selectTrain/ }));
+      await screen.findByRole("button", { name: "transitGuide.reselectVehicle" });
       failing = true;
-      await vi.advanceTimersByTimeAsync(20_000 * 3 + 500);
+      for (let i = 0; i < 3; i++) await advanceOnePoll(fetchMock);
       await screen.findByRole("button", { name: "transitGuide.boardSelected" });
 
       // [다른 차량 선택] → 대기 국면 → 새 차량 선택 = 새 boarding. 아직 아무 관측도 끝나지 않았다.
@@ -1543,16 +1550,14 @@ describe("TransitGuidePanel — boarding 수동 진행 (N3 ①)", () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     try {
       let failing = false;
-      vi.stubGlobal(
-        "fetch",
-        vi.fn(async () => {
-          if (failing) throw new Error("upstream down");
-          return {
-            ok: true,
-            json: async () => ({ mode: "subway", status: "ok", rawCount: 1, items: [trackItem({})] }),
-          } as Response;
-        }) as unknown as typeof fetch,
-      );
+      const fetchMock = vi.fn(async () => {
+        if (failing) throw new Error("upstream down");
+        return {
+          ok: true,
+          json: async () => ({ mode: "subway", status: "ok", rawCount: 1, items: [trackItem({})] }),
+        } as Response;
+      });
+      vi.stubGlobal("fetch", fetchMock);
       render(<TransitGuidePanelHost route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
       fireEvent.click(screen.getByRole("button", { name: "시작" }));
       fireEvent.click(await screen.findByRole("button", { name: /selectTrain/ }));
@@ -1560,7 +1565,10 @@ describe("TransitGuidePanel — boarding 수동 진행 (N3 ①)", () => {
 
       // 조회 실패 3회(FAIL_NOTIFY_COUNT)면 upstreamFailed — 통지는 상황만 말하고(A46) 버튼이 선다.
       failing = true;
-      await vi.advanceTimersByTimeAsync(20_000 * 3 + 500);
+      for (let i = 0; i < 2; i++) await advanceOnePoll(fetchMock);
+      // 문턱 직전(실패 2회)에는 아직 서지 않는다 — 폭주가 문턱을 채워 주던 시절엔 이 단언이 불가능했다.
+      expect(screen.queryByRole("button", { name: "transitGuide.boardSelected" })).toBeNull();
+      await advanceOnePoll(fetchMock);
       const manual = await screen.findByRole("button", {
         name: "transitGuide.boardSelected",
       });
@@ -1571,7 +1579,11 @@ describe("TransitGuidePanel — boarding 수동 진행 (N3 ①)", () => {
       // 회복하면 신호는 tracking으로 돌아가지만 버튼은 남는다 — 사라지면 포커스를 쥔
       // 컨트롤이 폴 한 번에 제거된다(헌장 §5).
       failing = false;
-      await vi.advanceTimersByTimeAsync(20_000 * 2 + 500);
+      await advanceOnePoll(fetchMock);
+      await waitFor(() =>
+        expect(screen.getAllByRole("status")[0].textContent).toContain("transitGuide.signalRecovered"),
+      );
+      await advanceOnePoll(fetchMock);
       expect(screen.getByRole("button", { name: "transitGuide.boardSelected" })).toBe(manual);
 
       // 누르면 종전 선언과 같은 전이(riding).
@@ -1587,21 +1599,19 @@ describe("TransitGuidePanel — boarding 수동 진행 (N3 ①)", () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     try {
       let failing = false;
-      vi.stubGlobal(
-        "fetch",
-        vi.fn(async () => {
-          if (failing) throw new Error("upstream down");
-          return {
-            ok: true,
-            json: async () => ({
-              mode: "seoulBus",
-              status: "ok",
-              rawCount: 1,
-              items: [trackItem({ vehicleId: "111033479", direction: "" })],
-            }),
-          } as Response;
-        }) as unknown as typeof fetch,
-      );
+      const fetchMock = vi.fn(async () => {
+        if (failing) throw new Error("upstream down");
+        return {
+          ok: true,
+          json: async () => ({
+            mode: "seoulBus",
+            status: "ok",
+            rawCount: 1,
+            items: [trackItem({ vehicleId: "111033479", direction: "" })],
+          }),
+        } as Response;
+      });
+      vi.stubGlobal("fetch", fetchMock);
       const BUS_ROUTE: TransitRoute = {
         summary: { totalMinutes: 20, fare: 1500, transfers: 0, walkMinutes: 2 },
         routeKey: "b0",
@@ -1626,7 +1636,7 @@ describe("TransitGuidePanel — boarding 수동 진행 (N3 ①)", () => {
       fireEvent.click(await screen.findByRole("button", { name: /selectBus/ }));
       await screen.findByRole("button", { name: "transitGuide.reselectVehicle" });
       failing = true;
-      await vi.advanceTimersByTimeAsync(20_000 * 3 + 500);
+      for (let i = 0; i < 3; i++) await advanceOnePoll(fetchMock);
       await screen.findByRole("button", { name: "transitGuide.boardSelectedBus" });
       expect(screen.queryByRole("button", { name: "transitGuide.boardSelected" })).toBeNull();
     } finally {
@@ -1634,4 +1644,45 @@ describe("TransitGuidePanel — boarding 수동 진행 (N3 ①)", () => {
     }
   });
 
+});
+
+/**
+ * 폴은 타이머 틱에서만 나간다 — `useEffect(…, [pollTick, pollOnce])`라서 `pollOnce` 정체성이 렌더마다 바뀌면
+ * 렌더마다 폴이 다시 나가고(한 폴의 커밋이 다음 폴을 부르는 자기 유지 폭주), 프로덕션도 upstream 쿼터를
+ * 초 단위로 태운다. 목이 안정 `t`를 주므로(실제 next-intl과 같다) 여기서 폭주가 보이면 그것은 코드의 결함이다.
+ */
+describe("TransitGuidePanel — 폴 예약", () => {
+  it("틱 사이에는 폴이 나가지 않는다(렌더가 폴을 부르지 않는다)", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const fetchMock = vi.fn(
+        async () =>
+          ({
+            ok: true,
+            json: async () => ({ mode: "subway", status: "ok", rawCount: 1, items: [trackItem({})] }),
+          }) as Response,
+      );
+      vi.stubGlobal("fetch", fetchMock);
+      render(<TransitGuidePanelHost route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
+      fireEvent.click(screen.getByRole("button", { name: "시작" }));
+      await screen.findByRole("button", { name: /selectTrain/ });
+      for (let i = 0; i < 2; i++) await advanceOnePoll(fetchMock);
+      const settled = fetchMock.mock.calls.length;
+      // 다음 틱(20초) 전의 실시간 창 — 폴 응답의 커밋·effect는 이미 돌았고, 폴은 더 없어야 한다.
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      expect(fetchMock.mock.calls.length).toBe(settled);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("대중교통 패널 테스트는 next-intl을 공유 안정 목으로만 목킹한다(인라인 목 금지)", () => {
+    const files = readdirSync(__dirname).filter((f) => /^TransitGuidePanel.*\.test\.tsx$/.test(f));
+    expect(files.length).toBeGreaterThan(1);
+    for (const file of files) {
+      const mocks = readFileSync(join(__dirname, file), "utf8").match(/vi\.mock\("next-intl"[^\n]*/g) ?? [];
+      expect(mocks, file).toHaveLength(1);
+      expect(mocks[0], file).toContain("stableIntlMock(");
+    }
+  });
 });
