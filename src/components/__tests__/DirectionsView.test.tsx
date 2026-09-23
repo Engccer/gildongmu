@@ -36,6 +36,8 @@ vi.mock("../WalkRouteBriefing", () => ({ WalkRouteResult: () => null }));
 vi.mock("../CarRouteBriefing", () => ({ CarRouteResult: () => null }));
 // 안내 진입점은 트리거 버튼과 시작 콜백만 흉내 낸다 — 이 스위트는 뷰의 통지 계약을
 // 보지 세션(useRouteGuide, jsdom에 geolocation 없음)을 보지 않는다.
+/** 트리거 라벨별로 마지막 렌더에 받은 경유지(N4) — 뷰가 세션에 무엇을 넘기는지만 본다. */
+const beaconVia = new Map<string, unknown>();
 vi.mock("../DistanceBeacon", () => ({
   // 실물의 두 가지만 흉내 낸다: 시작 콜백(호출부가 고지를 준비하는 자리)과, 세션이
   // 자기 첫 문장을 **화면의 창구로 게시**하는 것(A40 — 비콘은 자기 live region이 없다).
@@ -44,21 +46,26 @@ vi.mock("../DistanceBeacon", () => ({
     triggerLabel,
     announce,
     onStart,
+    via,
   }: {
     triggerLabel?: string;
     announce: (text: string) => void;
     onStart?: () => void;
-  }) => (
-    <button
-      type="button"
-      onClick={() => {
-        onStart?.();
-        announce("beaconStarted");
-      }}
-    >
-      {triggerLabel}
-    </button>
-  ),
+    via?: unknown;
+  }) => {
+    beaconVia.set(triggerLabel ?? "", via);
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          onStart?.();
+          announce("beaconStarted");
+        }}
+      >
+        {triggerLabel}
+      </button>
+    );
+  },
 }));
 
 import { DirectionsView } from "../DirectionsView";
@@ -705,9 +712,8 @@ describe("DirectionsView 경유지(N4)", () => {
     expect(document.activeElement).toBe(screen.getByRole("button", { name: "submit" }));
   });
 
-  it("경유지 확정 후 조회: 도보·자동차엔 via가 붙고 대중교통은 호출하지 않으며 미지원 문장을 낸다; 안내 시작 버튼은 없다", async () => {
-    const calledUrls = stubRoutes();
-    renderView({ initialTo: to });
+  /** 경유지 칸에 "강남" → 강남역을 확정하고 조회를 마친다. */
+  async function queryWithVia() {
     fireEvent.click(screen.getByRole("button", { name: "addVia" }));
     await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText("via")));
     fireEvent.change(screen.getByLabelText("via"), { target: { value: "강남" } });
@@ -716,16 +722,46 @@ describe("DirectionsView 경유지(N4)", () => {
     fireEvent.click(document.activeElement as HTMLElement);
     fireEvent.click(screen.getByRole("button", { name: "submit" }));
     await waitFor(() => expect(screen.getByRole("status").textContent).toBe("readySummary"));
+  }
+  const GANGNAM_VIA = { lat: 37.497, lng: 127.027, label: "강남역" };
+
+  it("경유지 확정 후 조회: 도보·자동차엔 via가 붙고 대중교통은 호출하지 않으며 미지원 문장을 낸다; 도보 안내만 경유지를 싣고 선다", async () => {
+    const calledUrls = stubRoutes();
+    beaconVia.clear();
+    renderView({ initialTo: to });
+    await queryWithVia();
 
     expect(calledUrls.some((u) => u.startsWith("/api/route/walk") && u.includes("&via=37.497,127.027"))).toBe(true);
     expect(calledUrls.some((u) => u.startsWith("/api/route/car") && u.includes("&via=37.497,127.027"))).toBe(true);
     expect(calledUrls.some((u) => u.startsWith("/api/route/transit"))).toBe(false);
     expect(screen.getByText("unsupportedWaypoint")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "guideStartWalkShortest" })).toBeNull();
+    // 판정 ③: 도보 안내는 경유지를 실어 시작한다. 자동차는 경유지를 싣지 못하므로 여전히 없다(BACKLOG N4 별건).
+    expect(screen.getByRole("button", { name: "guideStartWalkShortest" })).toBeTruthy();
+    expect(beaconVia.get("guideStartWalkShortest")).toEqual(GANGNAM_VIA);
     expect(screen.queryByRole("button", { name: "guideStartCar" })).toBeNull();
     expect(screen.queryByRole("button", { name: "briefGuideStart" })).toBeNull();
     // 최근 경로에 via가 기록된다(라벨은 itemVia 키).
     expect(JSON.parse(localStorage.getItem("gildongmu:recent-routes:v1") ?? "[]")[0].via.label).toBe("강남역");
+  });
+
+  it("안내가 받는 경유지는 조회 시점 스냅샷이다 — 조회 뒤 경유지 칸을 지워도 화면의 경로와 같은 경유지를 싣는다", async () => {
+    stubRoutes();
+    beaconVia.clear();
+    renderView({ initialTo: to });
+    await queryWithVia();
+    fireEvent.click(screen.getByRole("button", { name: "removeVia" }));
+    expect(screen.queryByLabelText("via")).toBeNull();
+    expect(beaconVia.get("guideStartWalkShortest")).toEqual(GANGNAM_VIA);
+  });
+
+  it("경유지 없는 조회는 도보 안내에 경유지를 넘기지 않는다(종전 동작)", async () => {
+    stubRoutes();
+    beaconVia.clear();
+    renderView({ initialTo: to });
+    fireEvent.click(screen.getByRole("button", { name: "submit" }));
+    await waitFor(() => expect(screen.getByRole("status").textContent).toBe("readySummary"));
+    expect(screen.getByRole("button", { name: "guideStartWalkShortest" })).toBeTruthy();
+    expect(beaconVia.get("guideStartWalkShortest")).toBeNull();
   });
 
   it("경유지 필드가 열린 채 미확정이면 조회하지 않고 needEndpoints를 통지한다", async () => {
