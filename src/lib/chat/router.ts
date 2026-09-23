@@ -19,7 +19,8 @@ import {
   fetchNearbySubwayArrivals,
   findNearestStationInfo,
 } from "@/lib/providers/subway-nearby";
-import { fetchSubwayArrivals } from "@/lib/providers/seoul-subway-arrival";
+import { fetchSubwayArrivals, withArrivalsEn } from "@/lib/providers/seoul-subway-arrival";
+import { chatArrivalLines } from "./subway-arrival-lines";
 import { fetchNearbyBusStops, isUncoveredBusRegion } from "@/lib/bus";
 import { fetchNearbyBikeStations, isBikeServiceArea } from "@/lib/providers/seoul-bike";
 import { findNightClinicsNow } from "@/lib/clinics";
@@ -185,10 +186,17 @@ export async function executeFunction(
     case "get_subway_arrivals": {
       // 역명 조회(K3 ②): 이름 기반이라 좌표·커버리지 게이트를 타지 않는다(해외에서도 유효).
       // null=서울 도시철도 외·실시간 미제공 역 — 0건과 구분해 그대로 싣는다. 카드 없음(근접 카드는 기기 위치 self-fetch).
+      // 열차마다 카드와 같은 두 줄(`chatArrivalLines`, A42)만 싣는다 — 원문·원재료 필드는 LLM에 가지 않는다.
       const stationName = args.stationName ? String(args.stationName) : undefined;
       if (stationName) {
-        const byName = await fetchSubwayArrivals(stationName);
-        return { data: byName ? { ...byName } : { stationName, arrivals: null }, source: src };
+        const raw = await fetchSubwayArrivals(stationName);
+        const byName = ctx.dataLocale === "en" ? withArrivalsEn(raw) : raw;
+        return {
+          data: byName
+            ? { stationName: byName.stationName, arrivals: chatArrivalLines(byName.arrivals, ctx.dataLocale) }
+            : { stationName, arrivals: null },
+          source: src,
+        };
       }
       const explicit = args.place ? String(args.place) : undefined;
       const anchor = await resolveCoord(explicit, ctx);
@@ -197,7 +205,8 @@ export async function executeFunction(
       if (gated) return gated;
       // 명시 지명·장소 앵커 → 기기 위치 self-fetch 카드는 산문과 좌표가 어긋나므로 생략(산문이 정본).
       const placeMode = !!explicit || !!ctx.placeAnchor;
-      const arrivals = await fetchNearbySubwayArrivals(anchor.lat, anchor.lng);
+      const stations = await fetchNearbySubwayArrivals(anchor.lat, anchor.lng, ctx.dataLocale);
+      const arrivals = stations.map((s) => ({ ...s, arrivals: chatArrivalLines(s.arrivals, ctx.dataLocale) }));
       const render = placeMode ? undefined : ({ type: "subway-nearby" } as const);
       // 0건이면 최근접 역을 함께 넘긴다 — 거리 없이 "없다"고만 하면 LLM이 걸어갈
       // 만한 거리(1.5km)와 도시철도 없는 지역(90km)을 같은 문장으로 답한다.

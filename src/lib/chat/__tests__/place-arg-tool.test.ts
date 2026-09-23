@@ -12,7 +12,10 @@ vi.mock("@/lib/providers/subway-nearby", () => ({
   fetchNearbySubwayArrivals: vi.fn(async () => []),
   findNearestStationInfo: vi.fn(() => null),
 }));
-vi.mock("@/lib/providers/seoul-subway-arrival", () => ({ fetchSubwayArrivals: vi.fn() }));
+vi.mock("@/lib/providers/seoul-subway-arrival", () => ({
+  fetchSubwayArrivals: vi.fn(),
+  withArrivalsEn: vi.fn((r: unknown) => r),
+}));
 vi.mock("@/lib/clinics", () => ({
   findNightClinicsNow: vi.fn(async () => ({ clinics: [], total: 0, basis: "weekday" })),
 }));
@@ -34,7 +37,7 @@ vi.mock("@/lib/walk-infra", () => ({
 import { executeFunction } from "../router";
 import { searchPlaces } from "@/lib/providers/places";
 import { fetchNearbySubwayArrivals } from "@/lib/providers/subway-nearby";
-import { fetchSubwayArrivals } from "@/lib/providers/seoul-subway-arrival";
+import { fetchSubwayArrivals, withArrivalsEn } from "@/lib/providers/seoul-subway-arrival";
 import { findNightClinicsNow } from "@/lib/clinics";
 import { searchBarrierFreeNearby } from "@/lib/providers/tour-barrier-free";
 import { findKidsPlacesNear } from "@/lib/providers/kids-places";
@@ -127,18 +130,36 @@ describe("get_subway_arrivals stationName 인자 (K3 ②)", () => {
   beforeEach(() => {
     mockByName.mockReset();
     vi.mocked(fetchNearbySubwayArrivals).mockClear();
+    vi.mocked(withArrivalsEn).mockClear();
   });
 
   it("역명이 있으면 역명 조회 — 좌표·커버리지 무관(위치 없음·해외에서도 호출)", async () => {
-    const arrivals = { stationName: "천호", arrivals: [{ line: "5호선", message: "곧 도착" }] };
+    const arrivals = {
+      stationName: "천호",
+      arrivals: [{ line: "5호선", direction: "하행", trainLineNm: "마천행", message: "천호 도착", currentLocation: "천호", arrivalSeconds: 0 }],
+    };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     mockByName.mockResolvedValue(arrivals as any);
     const r = await executeFunction("get_subway_arrivals", { stationName: "천호" }, ctx({ userLocation: OSAKA }));
     expect(mockByName).toHaveBeenCalledWith("천호");
     expect(fetchNearbySubwayArrivals).not.toHaveBeenCalled();
-    expect(r.data).toEqual(arrivals);
+    // A42: 카드와 같은 두 줄만 — 원문·원재료 필드는 LLM에 가지 않는다.
+    expect(r.data).toEqual({
+      stationName: "천호",
+      arrivals: [{ line: "5호선 하행, 마천행", message: "천호 도착." }],
+    });
+    expect(withArrivalsEn).not.toHaveBeenCalled();
     expect(r.render).toBeUndefined();
     expect(r.source).toEqual([{ label: "source.seoulopen" }]);
+  });
+
+  it("비-ko 세션은 영문 필드(E27)를 붙여 데이터 로케일(en) 문장으로 — 근접 조회도 en", async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    mockByName.mockResolvedValue({ stationName: "천호", arrivals: [] } as any);
+    await executeFunction("get_subway_arrivals", { stationName: "천호" }, ctx({ locale: "es", dataLocale: "en" }));
+    expect(withArrivalsEn).toHaveBeenCalledTimes(1);
+    await executeFunction("get_subway_arrivals", {}, ctx({ locale: "es", dataLocale: "en", userLocation: HOME }));
+    expect(fetchNearbySubwayArrivals).toHaveBeenCalledWith(expect.any(Number), expect.any(Number), "en");
   });
 
   it("실시간 미제공 역은 arrivals:null을 그대로 싣는다 — 0건과 구분", async () => {
