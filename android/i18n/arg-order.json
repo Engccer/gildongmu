@@ -364,6 +364,9 @@
   "place.distance": [
     "distance"
   ],
+  "place.representativePhone": [
+    "phone"
+  ],
   "placeHours.line": [
     "ranges"
   ],
@@ -529,6 +532,9 @@
   ],
   "subway.lineNumber": [
     "line"
+  ],
+  "subway.stoppedCount": [
+    "count"
   ],
   "subwayArrival.approaching": [
     "station"

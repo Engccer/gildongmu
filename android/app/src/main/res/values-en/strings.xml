@@ -768,9 +768,11 @@
     <string name="place_distance">about %1$s</string>
     <string name="place_homepage">Website</string>
     <string name="place_jibunAddress">Lot address</string>
+    <string name="place_nearbyHeading">Near this place</string>
     <string name="place_openInKakaoMap">Open in Kakao Map</string>
     <string name="place_openInNaverMap">Open in Naver Map</string>
     <string name="place_phone">Phone</string>
+    <string name="place_representativePhone">main line %1$s</string>
     <string name="place_roadAddress">Road address</string>
     <string name="placeChat_close">Close chat</string>
     <string name="placeChat_empty">What would you like to know?</string>
@@ -971,6 +973,7 @@
     <string name="subway_operatingStopped">Out of service or under maintenance</string>
     <string name="subway_ready">Subway accessibility facilities are ready.</string>
     <string name="subway_source">Source: Seoul Metro accessibility facility data (Seoul lines 1–8).</string>
+    <string name="subway_stoppedCount">%1$s out of service</string>
     <string name="subway_supplementFailed">Some facility info couldn\'t be loaded.</string>
     <string name="subway_voiceGuideSource">Audio guidance beacons: provided by Seoul Metro (as of 2025-08)</string>
     <string name="subway_wheelchairAccessible">Wheelchair accessible</string>
