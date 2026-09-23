@@ -915,7 +915,7 @@ W1 도구 9개를 "데이터 반환형이 주"(W2 spec 판정 ②) 기준으로 
 | 2 | `read_current_view` 설명문 "Call this before planning"이 **불필요한 왕복을 유도**한다. 데이터 반환형에선 `plan_directions`를 바로 부르는 것이 정답이고, 이 도구는 `stalePlan`·`focus_item` 전 확인용 | 설명문 대조 | "Call this when a tool returned stalePlan, or before focus_item"으로 축소(Chrome "positive language") |
 | 3 | ~~`get_walk_infrastructure_nearby` 출력 모양~~ | — | 2026-08-29 판정 ⑥으로 도구 자체가 삭제돼 소멸 |
 
-점검해서 **문제없음**으로 닫은 것: `focus_item` 설명("Use only when the user asked to be taken to something")은 축 A 보조 위상과 정합 · 대중교통은 추천 전문 + 대안 한 줄 + 상세 도구로 데이터 반환 완결 · 자동차는 요약 + `get_route_steps(car)` · 계단 회피는 `avoidStairs` 인자 · 경유지는 `via` · 3초 쿨다운·세 수단 병렬 비용은 W1 판정 유지.
+점검해서 **문제없음**으로 닫은 것: `focus_item` 설명("Use only when the user asked to be taken to something")은 축 A 보조 위상과 정합 · 대중교통은 추천 전문 + 대안 한 줄 + 상세 도구로 데이터 반환 완결 · 자동차는 요약 + `get_route_steps(car)` · 계단 회피는 `get_route_steps`의 `variant`로 줄 종류를 고른다(2026-09-23 E42로 `avoidStairs` 입력 폐지) · 경유지는 `via` · 3초 쿨다운·세 수단 병렬 비용은 W1 판정 유지.
 
 ### W1. WebMCP 도구층 — 웹앱 기능을 에이전트에게 선언한다 (신규 2026-08-27)
 
