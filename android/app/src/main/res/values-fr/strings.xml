@@ -598,7 +598,7 @@
     <string name="directions_viaArrived">Étape %1$s atteinte</string>
     <string name="directions_viaArrivedContinue">Étape %1$s atteinte. Guidage vers la destination %2$s</string>
     <string name="directions_viaDestRemaining">%2$s jusqu\'à la destination %1$s</string>
-    <string name="directions_viaDropped">Aucun itinéraire par le point de passage %1$s ; guidage sans lui</string>
+    <string name="directions_viaDropped">Aucun itinéraire par l\'étape %1$s ; guidage sans elle</string>
     <string name="directions_viaRemaining">%2$s jusqu\'à l\'étape %1$s</string>
     <string name="directions_walkAccessible">Itinéraire sans escaliers</string>
     <string name="directions_walkBroad">Itinéraire par les grands axes</string>
