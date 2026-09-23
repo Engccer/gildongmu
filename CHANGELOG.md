@@ -11,6 +11,10 @@
 
 ## 2026-09-24
 
+### 웹 채팅 답변 복사·듣기(B12)
+
+웹 채팅 답변 끝(산문 → 카드 → 출처 뒤)에 [복사][듣기]를 붙였다. 복사는 평문이고 "복사됨"은 채팅 화면의 기존 polite 창구로 나간다. 듣기는 브라우저 내장 음성이 우선이고 그 언어 보이스가 없을 때만 서버 합성(`/api/tts`)을 쓰며, 실패하면 알린다. 평문 변환은 Kit `MarkdownPlainText`와 공유 fixture로 잠갔다. [spec](docs/superpowers/specs/2026-09-24-web-chat-copy-listen-design.md)
+
 ### 웹 탑승 변경 역 즉시 조회(A48)·검증 기준선 복구·거리 표기 가드 4벌
 
 웹 대중교통 안내에서 [탑승 변경]으로 고른 역의 첫 조회가 진행 중 폴과 겹쳐도 다음 주기로 밀리지 않는다(`pickAboardStation`과 같은 재폴 표식). `TransitGuidePanel.test.tsx`의 간헐 실패(통지 단언이 커밋을 기다리지 않음)를 고쳤고, 거리 표기 사본 금지 가드 `format-drift.test.ts`가 안드로이드 `:kit`·`:app`까지 스캔한다. [BACKLOG A48](docs/BACKLOG.md#1-결함)

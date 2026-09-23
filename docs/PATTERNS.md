@@ -341,6 +341,15 @@ iOS 지도 버튼·검색 로터 액션은 URL 빌더가 성공할 때만 만들
 
 `src/lib/chat`·`src/lib/gemini`는 **React 비의존**(dodo 이식성). 진입은 두 갈래: **장소 상세의 "이 장소에 관해 물어보기" 오버레이**(`ChatOverlay` 모달, `canShowChat`=`hasGeminiKey()`, 장소마다 새 대화) + **홈 옴니박스의 [AI에게 질문] 범용 진입**(2026-07-30, `SearchBar`의 `onAsk` prop → `place` 없는 `ChatOverlay`, 검색 `?q=`와 분리된 경로라 URL 미기록). ⚠ 과거 메인 페이지 검색⇄채팅 모드 토글은 폐기(`ModeToggle`·`mode-state.ts` 전부 제거).
 
+### 답변 복사·듣기는 평문 한 벌과 통지 창구 하나를 쓴다
+
+**답변 복사·듣기는 평문 한 벌과 통지 창구 하나를 쓴다**(B12 2026-09-24, spec `2026-09-24-web-chat-copy-listen-design.md`). 웹 [복사][듣기]의 입력은 `markdownToPlainText`(`src/lib/markdown-plain-text.ts`) 하나이고, 결과는 Kit `MarkdownPlainText.strip`과 같아야 한다(공유 fixture `markdown-plain-text-cases.json`을 웹·Kit 테스트가 함께 읽는다).
+
+- ⚠ **이 파일에 JS 약칭 클래스(`\s`·`\w`·`\d`)와 `m` 플래그를 쓰지 않는다.** Kit는 ICU라 `\w`가 한글을 포함하고, `\s`·트림 집합이 다르고(U+FEFF·U+0085·U+200B), 여러 줄 `^`·`$`의 줄 경계가 다르다(ICU는 VT·FF·NEL도 줄 경계이고 CRLF를 한 단위로 본다). dodo 원본 그대로는 무작위 입력 6,000건 중 602건이 Kit와 갈렸다. 규칙을 바꾸면 차분 퍼즈(spec §2)로 다시 잰다.
+- "복사됨"·듣기 실패는 `ChatInterface`의 진행 통지 창구(명령형 `textContent`)로만 낸다. 대입은 같은 문장이어도 텍스트 노드를 갈아 끼워 다시 읽히고, 2초 뒤 빈칸이 아니라 그때의 진행 문장(`progressTextRef`)으로 되돌린다.
+- 듣기(`useTtsPlayback`)는 `speechSynthesis`가 정본이고 `/api/tts`(과금)는 로케일 보이스가 없을 때만이다. 발화 객체는 ref로 붙잡고(GC되면 `onend`가 안 온다), `onend` 없이 멎으면 1초 감시가 라벨을 되돌리며, `cancel()`은 재생 중일 때만 부른다(직후 `speak`를 삼키는 Chrome 함정).
+- 받아쓰기 누름 정지는 `VoiceRecordButton`을 고치지 않고 `ChatInput`의 `display:contents` 래퍼 `onClickCapture`로 건다(녹음 시작보다 먼저).
+
 ---
 
 ## WebMCP 도구층
