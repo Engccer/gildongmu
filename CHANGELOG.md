@@ -19,6 +19,10 @@
 
 `/api/chat` NDJSON이 U+2028·U+2029·U+0085를 이스케이프해 iOS·안드로이드에서 답변이 통째로 사라지던 경로를 막았다(A44). follow-up 칩 생성 예산을 서버 15초·클라이언트 20초로 벌리고 소스 가드로 잠갔다(A45). 채팅 지하철 도착 도구가 LLM에 카드와 같은 우리 문장(E37)만 넘겨 한 답변 안의 표기가 하나로 모인다(A42). seed 변환기가 `환승역구분`을 접미 일치로 읽고 모르는 어휘에 중단한다, seed는 재생성하지 않았다(A43). [계획](docs/superpowers/plans/2026-09-23-backlog-sweep-4-parallel-plan.md).
 
+### 안드로이드 도보 실시간 안내 정식 기능 이동(E43 우선순위 4)
+
+도보 진입점·세션·띠바의 실험 게이트와 `AppConfig.experimentalGuidanceEnabled`(소비자 0)를 삭제하고, 전경 서비스(`location`)·`FOREGROUND_SERVICE(_LOCATION)`·`WAKE_LOCK`·`ACTIVITY_RECOGNITION`을 정식 매니페스트로 승격했다(실험판 매니페스트 삭제, 탭 순서·결과 진동 설정 행·진단 로그의 실험 게이트는 유지). `android/scripts/check-release-manifest.mjs`는 정식·실험 APK 모두에 도보 항목·서비스 유형 location을 요구하고 백그라운드 위치 권한을 거부한다. 정식판 첫 Play 제출에 전경 서비스 선언이 필요해졌다(`docs/playstore/data-safety.md` §4 #14). 남은 것은 한소네 7 `debug` 검증([BACKLOG E43](docs/BACKLOG.md#e43-안드로이드-앱---코드-도달2026-09-17-f215b164-웨이브-03-완료--실기기-판정m5스토어)).
+
 ## 2026-09-21
 
 ### 한소네 7 주소 동기화 실기기 자동 검증

@@ -37,7 +37,6 @@ class WalkGuideScenarioTest {
     @RegisterExtension
     val main = MainDispatcherExtension(dispatcher)
 
-
     private data class Seg(val len: Double, val desc: String, val action: String? = null, val target: String? = null)
     private data class Fix(val t: Double, val along: Double, val lateral: Double, val acc: Double)
 
