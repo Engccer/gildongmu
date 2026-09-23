@@ -67,6 +67,19 @@ describe("서울 지하철 시설 종류별 접기 (E44 판정 ②·spec §4)", 
     expect(voiceGuide.lastElementChild).toBe(source);
   });
 
+  it("줄이 하나도 없는 묶음은 접기 컨트롤이 아니라 평문 한 줄(펼쳐도 빈 컨트롤 금지)", async () => {
+    const { container } = await open({
+      stationName: "서울역",
+      groups: [
+        { kind: "elevator", facilities: [facility("엘리베이터 1호기")] },
+        { kind: "helper", facilities: [facility(""), facility("")] },
+      ],
+    } as Metro);
+    expect(container.querySelectorAll("details")).toHaveLength(1);
+    const helper = screen.getByText("kind.helper count");
+    expect(helper.tagName).toBe("P");
+  });
+
   it("음성유도기 묶음이 없으면 기준일 줄도 없다", async () => {
     await open({
       stationName: "천호",

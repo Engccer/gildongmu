@@ -31,6 +31,7 @@ type Status =
 export function StationMeta({
   stationName,
   embedded = false,
+  onShownChange,
 }: {
   stationName: string;
   /**
@@ -38,6 +39,8 @@ export function StationMeta({
    * (그 제목은 조회 결과와 무관하게 항상 선다). 끄면 종전처럼 조용히 나타나는 region(현행 레이아웃의 역).
    */
   embedded?: boolean;
+  /** embedded에서 메타가 보이는지 알린다 — 출처 줄은 섹션이 그 끝에 둔다(주소 앞을 가르지 않게). */
+  onShownChange?: (shown: boolean) => void;
 }) {
   const t = useTranslations("stationMeta");
   const locale = useLocale();
@@ -107,6 +110,10 @@ export function StationMeta({
   );
   const loadForTool = useCallback((force: boolean, source: "user" | "tool") => void load(force, source), [load]);
   useAxisSource("basic", status, toSnapshot, loadForTool);
+  const shown = status.kind === "done";
+  useEffect(() => {
+    onShownChange?.(shown);
+  }, [onShownChange, shown]);
 
   if (status.kind !== "done") return null;
   const meta = status.meta;
@@ -124,7 +131,10 @@ export function StationMeta({
       {isEn ? (
         // 한 줄 괄호 병기(E27 §3.6): 시각 `Gangnam (강남)`, 접근 가능한 이름은 영문뿐. 순수 데이터 영어 줄이라
         // 비-en 로케일(ja·fr…)에서는 `lang="en"`(일본어 음성이 영문을 읽지 않게).
-        <p className="mt-1 text-lg font-semibold" lang={locale.startsWith("en") ? undefined : "en"}>
+        <p
+          className={embedded ? "mt-1 text-sm" : "mt-1 text-lg font-semibold"}
+          lang={locale.startsWith("en") ? undefined : "en"}
+        >
           <TransitBilingualName en={nameLine.text} ko={meta.name} />
         </p>
       ) : (
@@ -140,9 +150,6 @@ export function StationMeta({
         <p lang={linesLine.lang}>{linesLine.text}</p>
         <p>{operatorLine.text}</p>
       </div>
-
-      {/* source는 로케일 메시지(en/ko) — 페이지 기본 lang을 따르므로 lang 미지정. */}
-      <p className="mt-2 text-xs opacity-70">{t("source")}</p>
     </>
   );
   if (embedded) return <div className="mt-1">{body}</div>;
@@ -158,6 +165,8 @@ export function StationMeta({
         {t("heading")}
       </h3>
       {body}
+      {/* source는 로케일 메시지(en/ko) — 페이지 기본 lang을 따르므로 lang 미지정. */}
+      <p className="mt-2 text-xs opacity-70">{t("source")}</p>
     </section>
   );
 }

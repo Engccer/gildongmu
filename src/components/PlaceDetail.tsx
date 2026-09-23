@@ -6,7 +6,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { ArrowLeft, Copy, MessageSquare, Route } from "lucide-react";
 import type { Place } from "@/lib/types";
 import { isStation } from "@/lib/station-match";
-import { isRepresentativePhone, stationLayoutKind } from "@/lib/station-phone";
+import { isRepresentativeStationPhone, stationLayoutKind } from "@/lib/station-phone";
 import { hasHangul } from "@/lib/format";
 import { pickCategory } from "@/lib/kakao-category";
 import { PlaceBridgeContext } from "@/hooks/useAxisBridge";
@@ -71,6 +71,8 @@ export function PlaceDetail({
   const headingRef = useRef<HTMLHeadingElement>(null);
   // 채팅 오버레이 열림 상태 + 트리거 버튼 ref(닫을 때 포커스 복귀 대상).
   const [chatOpen, setChatOpen] = useState(false);
+  // 역 레이아웃의 메타 출처 줄 표시(메타가 보일 때만, StationMeta가 알린다).
+  const [stationMetaShown, setStationMetaShown] = useState(false);
   const chatTriggerRef = useRef<HTMLButtonElement>(null);
   // 복사 성공 때만 기존 주소 행의 live region에 통지 문구를 추가한다. 평상시에는
   // 빈 status 요소를 남기지 않아 스크린 리더 탐색 중 불필요한 정지를 만들지 않는다.
@@ -122,6 +124,7 @@ export function PlaceDetail({
             jibun: p.address || undefined,
           },
           phone: p.phone || undefined,
+          phoneKind: isRepresentativeStationPhone(p) ? "representative" : undefined,
           chatOpen: chatOpenRef.current,
         };
       },
@@ -282,7 +285,7 @@ export function PlaceDetail({
     <p>
       {`${t("place.phone")} `}
       <a href={`tel:${place.phone}`} className="underline">
-        {layoutKind && isRepresentativePhone(place.phone)
+        {isRepresentativeStationPhone(place)
           ? t("place.representativePhone", { phone: place.phone })
           : place.phone}
       </a>
@@ -384,11 +387,15 @@ export function PlaceDetail({
             <h3 className="mt-4 text-base font-semibold">{t("stationMeta.heading")}</h3>
             <div className="mt-1 text-sm leading-relaxed">
               {phoneLine}
-              <StationMeta stationName={place.name} embedded />
+              <StationMeta stationName={place.name} embedded onShownChange={setStationMetaShown} />
               {/* 분류 줄은 기차역만 — `KTX정차역` 같은 정보가 여기뿐이다. 지하철은 메타 줄 노선과 중복. */}
               {layoutKind === "rail" && categoryLine}
               {addressBlock}
               <PlaceHoursLine place={place} />
+              {/* 메타 출처는 섹션 끝 — 전화·메타 다음 주소까지의 읽기 흐름을 가르지 않는다. 메타가 없으면 없다. */}
+              {stationMetaShown && (
+                <p className="mt-2 text-xs opacity-70">{t("stationMeta.source")}</p>
+              )}
             </div>
             {chatButton}
             {stationSections}
@@ -397,6 +404,10 @@ export function PlaceDetail({
             <h3 className="mt-6 text-base font-semibold">{t("directions.title")}</h3>
             {directionsButtons}
             <RouteLinks place={place} />
+            {/* 이 장소 주변(E44 §3.2 8)은 최하단 — 제목이 없으면 버스·따릉이 버튼이 길찾기 묶음에 섞여 읽힌다. */}
+            {(canShowBus || canShowBike || canShowAir) && (
+              <h3 className="mt-6 text-base font-semibold">{t("place.nearbyHeading")}</h3>
+            )}
             {nearbySections}
           </>
         ) : (

@@ -81,6 +81,7 @@
     "jibunAddress": "Adresse cadastrale",
     "phone": "Téléphone",
     "representativePhone": "standard {phone}",
+    "nearbyHeading": "À proximité de ce lieu",
     "openInNaverMap": "Ouvrir dans Naver Map",
     "openInKakaoMap": "Ouvrir dans Kakao Map",
     "homepage": "Site web",

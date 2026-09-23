@@ -81,6 +81,7 @@
     "jibunAddress": "地番",
     "phone": "電話",
     "representativePhone": "代表番号 {phone}",
+    "nearbyHeading": "この場所の周辺",
     "openInNaverMap": "NAVERマップで見る",
     "openInKakaoMap": "カカオマップで見る",
     "homepage": "ウェブサイト",

@@ -19,7 +19,18 @@ const { marker } = vi.hoisted(() => ({
 }));
 vi.mock("../RouteLinks", () => ({ RouteLinks: marker("RouteLinks") }));
 vi.mock("../PlaceHoursLine", () => ({ PlaceHoursLine: marker("PlaceHoursLine") }));
-vi.mock("../StationMeta", () => ({ StationMeta: marker("StationMeta") }));
+// 메타가 조회된 상태를 흉내 낸다 — 역 레이아웃은 출처 줄을 역 정보 섹션 끝에 붙인다.
+vi.mock("../StationMeta", async () => {
+  const { useEffect } = await import("react");
+  const Marker = marker("StationMeta");
+  return {
+    StationMeta: (props: { embedded?: boolean; onShownChange?: (shown: boolean) => void }) => {
+      const { onShownChange } = props;
+      useEffect(() => onShownChange?.(true), [onShownChange]);
+      return Marker(props);
+    },
+  };
+});
 vi.mock("../StationTimetable", () => ({ StationTimetable: marker("StationTimetable") }));
 vi.mock("../StationFacilities", () => ({ StationFacilities: marker("StationFacilities") }));
 vi.mock("../SeoulMetroFacilities", () => ({ SeoulMetroFacilities: marker("SeoulMetroFacilities") }));
@@ -73,6 +84,7 @@ function readingOrder(container: HTMLElement): string[] {
     if (n.tagName === "H2" || n.tagName === "H3") return [`${n.tagName.toLowerCase()}:${n.textContent}`];
     if (n.tagName === "A") return ["tel"];
     if (n.tagName === "BUTTON") return [`button:${n.textContent}`];
+    if (n.textContent === "stationMeta.source") return ["source"];
     return n.textContent?.startsWith("place.category") ? ["category"] : [];
   });
 }
@@ -89,6 +101,7 @@ describe("역 상세 레이아웃 (E44 spec §3.2)", () => {
       "button:place.copyRoadAddress",
       "button:place.copyJibunAddress",
       "PlaceHoursLine",
+      "source",
       "button:placeChat.launch",
       "SeoulSubwayArrival",
       "StationTimetable",
@@ -99,10 +112,26 @@ describe("역 상세 레이아웃 (E44 spec §3.2)", () => {
       "button:directions.toHere",
       "button:directions.fromHere",
       "RouteLinks",
+      "h3:place.nearbyHeading",
       "BusArrivals",
       "BikeStations",
       "LocalConditions",
     ]);
+  });
+
+  it("이 장소 주변 섹션이 전부 게이트로 빠지면 그 제목도 없다", () => {
+    render(
+      <PlaceDetail
+        place={base}
+        canShowBus={false}
+        canShowBike={false}
+        canShowSubway
+        canShowAir={false}
+        canShowBarrierFree
+        onBack={() => {}}
+      />,
+    );
+    expect(screen.queryByRole("heading", { name: "place.nearbyHeading" })).toBeNull();
   });
 
   it("역 정보 제목은 전화·메타가 없어도 선다", () => {
@@ -160,6 +189,15 @@ describe("역 레이아웃 밖은 개편 전 그대로 (spec §3.1 nil)", () => 
       "LocalConditions",
       "BarrierFreeInfo",
     ]);
+  });
+
+  it("출구 POI는 역 레이아웃이 아니라 대표번호를 밝히지 않는다(spec §5.5 nil 경계)", () => {
+    renderDetail({
+      name: "수원역 1번출구",
+      category: "교통,수송 > 지하철,전철 > 지하철출구",
+      phone: "1544-7788",
+    });
+    expect(screen.getByRole("link").textContent).toBe("1544-7788");
   });
 
   it("비역 장소는 역 섹션이 없고 대표번호도 밝히지 않는다", () => {

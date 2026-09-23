@@ -241,6 +241,8 @@ export interface PlaceBridge {
     isStation: boolean;
     addressLines: { english?: string; road?: string; jibun?: string };
     phone?: string;
+    /** 역 상세가 "대표번호"라고 밝히는 운영사 번호(E44 판정 ⑥) — 화면과 같은 판정. 그 밖엔 없음. */
+    phoneKind?: "representative";
     chatOpen: boolean;
   };
   axes: Record<AxisKey, AxisEntry>;
