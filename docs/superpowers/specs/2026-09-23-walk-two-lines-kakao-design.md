@@ -103,7 +103,7 @@
 ## 6. 문구 (6로케일)
 
 - 새 키: `directions.walkAccessible`(계단 회피 경로) · `directions.walkBroad`(큰길 경로) · `beacon.guideStartWalk{Shortest,Accessible,Broad,Recommended}`(○○ 경로로 안내 시작 — 웹·iOS 공용, 종전 iOS 전용 `beacon.guideStartWalkShortest`는 messages로 옮겼다) · iOS `guide.switchedToAccessible`·`guide.switchedToBroad`.
-- 기존 `directions.walkShortest`·`directions.walkRecommended`는 유지(안드로이드·en이 쓴다). `route.pedestrian.stepFreeToggle`은 안드로이드가 아직 쓰므로 유지한다(웹·iOS에서 참조 0). iOS 전용 `ios.directions.walkShortest`·`ios.directions.walkRecommended`는 지웠다(iOS도 messages `directions.*`를 쓴다).
+- 기존 `directions.walkShortest`·`directions.walkRecommended`는 유지(안드로이드·en이 쓴다). `route.pedestrian.stepFreeToggle`은 유지한다(안드로이드 이식 뒤 제품 참조 0 — 삭제는 BACKLOG E42). iOS 전용 `ios.directions.walkShortest`·`ios.directions.walkRecommended`는 지웠다(iOS도 messages `directions.*`를 쓴다).
 - 비-ko 문구는 ko 뜻을 따른다.
 
 ## 7. 검증
@@ -119,6 +119,7 @@
 2. **채팅·CLI의 기본 도보 경로**는 여전히 큰길(`BROAD_FIRST`)이다. 화면의 첫 줄(최단)과 맞출지.
    → 2026-09-23 코디네이터 판정: 맞춘다. 서버 무파라미터 응답은 그대로 두고 소비자(채팅 도구·CLI·MCP 카탈로그 `implicitQuery`)가 ko에서 `variant=shortest`를 붙인다. 계단 회피 요청·en은 서버 기본.
 3. **안드로이드**는 `alternatives=1`(추천·최단+토글) 그대로다. 최단의 출처만 카카오로 바뀐다. 같은 두 줄로의 이식은 E43 몫.
+   → 2026-09-23 이식 완료(세션 android-e42, CHANGELOG 같은 날). 안내 중 전환은 안드로이드에 원래 없어 제외.
 
 ## 9. 설계 리뷰 게이트 판정
 
