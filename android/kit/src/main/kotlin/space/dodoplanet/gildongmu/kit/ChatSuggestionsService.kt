@@ -25,8 +25,8 @@ object ChatSuggestionsService {
     /** 서버 제한(3개)과 같은 상한. 서버가 더 주더라도 여기서 절단한다. */
     const val maxSuggestions = 3
 
-    /** 본 답변 뒤에 비동기로 붙는 보조 요청이라 예산을 명시한다(Swift `timeoutSeconds` 6초). */
-    const val timeoutMs = 6_000L
+    /** 본 답변 뒤에 비동기로 붙는 보조 요청이라 예산을 명시한다(Swift `timeoutSeconds` 20초 — 서버 생성 예산 15초보다 길게, A45). */
+    const val timeoutMs = 20_000L
 
     fun encodeBody(lastUserMessage: String, lastAssistantMessage: String, locale: String, placeName: String?): String =
         KitJson.encodeToString(

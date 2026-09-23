@@ -16,7 +16,8 @@ public struct ChatSuggestionsService: Sendable {
     /// 서버 제한(3개)과 같은 상한. 서버가 더 주더라도 여기서 절단한다.
     public static let maxSuggestions = 3
     /// 본 답변 뒤에 비동기로 붙는 보조 요청이라 예산을 명시한다(APIClient `timeout` 주석 동형).
-    public static let timeoutSeconds: TimeInterval = 6
+    /// 서버 생성 예산(15초)보다 길게 — 같으면 서버가 답을 만든 순간 여기서 먼저 끊는다(A45).
+    public static let timeoutSeconds: TimeInterval = 20
 
     let session: URLSession
 

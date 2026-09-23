@@ -1,12 +1,13 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 
-const TIMEOUT_MS = 6000;
+// 서버 생성 예산(15초)보다 길게 — 같으면 서버가 답을 만든 순간 여기서 먼저 끊는다(A45).
+const TIMEOUT_MS = 20_000;
 const MAX_CHIPS = 3;
 
 /**
  * 답변이 끝난 뒤 `/api/chat/suggestions`로 follow-up 질문 칩을 가져온다(dodo 이식).
  *
- * - 새 fetch는 이전 fetch를 abort하고, 6초 타임아웃을 둔다. 언마운트 시에도 abort.
+ * - 새 fetch는 이전 fetch를 abort하고, 20초 타임아웃을 둔다. 언마운트 시에도 abort.
  * - 실패·abort·비정상 응답은 전부 빈 배열로 조용히 생략한다 — 칩은 부재가 정상 상태라
  *   오류도 통지도 아니다.
  * - 늦게 도착한 옛 응답이 새 칩을 덮지 않도록, 완료 시점에 자기 controller가 아직
