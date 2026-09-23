@@ -61,8 +61,8 @@ async function main() {
     return;
   }
   if (!o.aab || !existsSync(o.aab)) throw new Error("--aab <app-release.aab> 필요");
-  // 산출물 검사(iOS asc-submit 동형): 정식 번들에 실험판 봉인 항목이 없는지 — 번들은 `bundletool build-apks` 뒤 APK로 검사한다(추후 배선). 지금은 안내만.
-  console.log("⚠ 제출 전 `node android/scripts/check-release-manifest.mjs <정식 APK>`로 봉인 매니페스트 축을 확인한다(internal-track.md §2).");
+  // 산출물 검사(iOS asc-submit 동형): 정식 번들의 매니페스트 계약(도보 안내 항목 존재·백그라운드 위치 0·패키지) — 번들은 `bundletool build-apks` 뒤 APK로 검사한다(추후 배선). 지금은 안내만.
+  console.log("⚠ 제출 전 `node android/scripts/check-release-manifest.mjs <정식 APK>`로 매니페스트 계약을 확인한다(internal-track.md §2).");
   const notes = [["ko-KR", o.notesKo], ["en-US", o.notesEn]].filter(([, p]) => p).map(([language, p]) => ({ language, text: readFileSync(p, "utf8").trim() }));
   const plan = { aab: o.aab, track: "internal", status: o.complete ? "completed" : "draft", notes: notes.map((n) => n.language) };
   console.log(`계획: ${JSON.stringify(plan)}`);

@@ -79,11 +79,10 @@ fun WalkGuideStartButton(dest: BeaconDest, label: String, accessible: Boolean, v
 }
 
 /**
- * directions 슬롯 조립(spec §7-1): 실험판 ∧ 도착 좌표가 있을 때만. 도착 = `promotedDestination ?: (to as Place)`(iOS `trackedDestination`
+ * directions 슬롯 조립(spec §7-1): 도착 좌표가 있을 때만. 도착 = `promotedDestination ?: (to as Place)`(iOS `trackedDestination`
  * 동형), `to == Current`면 버튼 없음. 계단 회피는 ko에서만 서버 축이라 `stepFreeEnabled ∧ lang == ko`.
  */
 fun walkGuideStartSlot(s: DirectionsUiState, lang: String): (@Composable (variant: WalkRouteVariant?) -> Unit)? {
-    if (!AppConfig.experimentalGuidanceEnabled) return null
     val target = s.promotedDestination?.let { it.label to BeaconDest(it.lat, it.lng) }
         ?: (s.to as? DirectionsEndpoint.Place)?.let { it.label to BeaconDest(it.lat, it.lng) }
         ?: return null

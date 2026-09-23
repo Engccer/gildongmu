@@ -25,7 +25,7 @@
 
 - `android/app/build.gradle.kts`에 `signingConfigs.release`를 **`keystore.properties`가 있을 때만** 읽도록 추가한다(파일이 없으면 서명 없이 `assembleDebug`는 그대로 돈다 — 게이트 무영향). 정식판 `applicationId`는 `.dev` 없음, `versionCode`는 업로드마다 +1(`versionName`은 `0.1.0` → 첫 내부 테스트 `0.1.0`, `versionCode 1`).
 - 산출물: `cd android && ./gradlew :app:bundleRelease` → `android/app/build/outputs/bundle/release/app-release.aab`.
-- 산출물 점검(iOS `check-release-artifact.mjs` 동형): `node android/scripts/check-release-manifest.mjs <APK>` — 정식 APK의 병합 매니페스트에 도보 안내 봉인 항목(전경 서비스·`FOREGROUND_SERVICE(_LOCATION)`·`WAKE_LOCK`·`ACTIVITY_RECOGNITION`)이 0이고 패키지에 `.dev`가 없음을 잠근다(`--experimental`이면 반대 기대). 번들(AAB)은 `bundletool build-apks` 뒤 universal APK로 같은 검사. 그 밖: `BuildConfig.EXPERIMENTAL=false`, 6로케일 `strings.xml`.
+- 산출물 점검(iOS `check-release-artifact.mjs` 동형): `node android/scripts/check-release-manifest.mjs <APK>` — 병합 매니페스트에 도보 안내 항목(전경 서비스 `location`·`FOREGROUND_SERVICE(_LOCATION)`·`WAKE_LOCK`·`ACTIVITY_RECOGNITION`)이 있고 백그라운드 위치 권한이 없으며 패키지에 `.dev`가 없음을 잠근다(`--experimental`이면 패키지 `.dev` 기대). 번들(AAB)은 `bundletool build-apks` 뒤 universal APK로 같은 검사. 그 밖: `BuildConfig.EXPERIMENTAL=false`, 6로케일 `strings.xml`.
 
 ## 3. 업로드 (스크립트 골격 `android/scripts/play-upload.mjs`)
 

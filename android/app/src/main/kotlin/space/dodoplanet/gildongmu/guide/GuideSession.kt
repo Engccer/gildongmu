@@ -37,7 +37,7 @@ import java.util.IdentityHashMap
  * 안내 세션 앱 수명 싱글턴(iOS `GuideSession.shared` 미러, spec §3-1). 세션은 화면이 아니라 앱이 소유한다 — 시트를 내리는
  * 제스처는 최소화이고 소거는 "닫기"뿐(N1). 서비스·스트림·알림은 `walk`를 매 호출 시점에 조회하고 인스턴스를 붙들지 않는다.
  *
- * `attach`는 멱등이고 게이트가 없다(리뷰 N3-1) — 실험 게이트는 자원을 만드는 자리(`startWalk` ①·`GuideBottomBar`)가 든다.
+ * `attach`는 멱등이다(리뷰 N3-1). 도보 안내는 정식 기능이라 빌드 구성 게이트가 없다(E43 우선순위 4, iOS 2026-08-15 졸업 동형).
  * 소스 가드가 `startWalk(` 호출부를 `WalkGuideStartButton.kt` 한 곳으로 잠근다.
  */
 object GuideSession {
@@ -55,9 +55,6 @@ object GuideSession {
     /** 전경 복귀(백그라운드 경유) 띠바 착지 트리거 — 증가할 때마다 띠바가 1회 착지한다. */
     var bandLandingSeq by mutableIntStateOf(0)
         private set
-
-    /** 실험 게이트(정식 빌드는 `startWalk`가 아무것도 하지 않는다). 테스트가 바꿔 끼운다. */
-    var experimentalEnabled: () -> Boolean = { AppConfig.experimentalGuidanceEnabled }
 
     /** `attach`가 지나갔는가 — 서비스 콜백이 `walk`를 만지기 전에 본다. */
     val isAttached: Boolean get() = ::walk.isInitialized
@@ -105,9 +102,8 @@ object GuideSession {
         )
     }
 
-    /** 유일한 시작 진입점. ① 실험 게이트 ② 거부 통지 ③ 프리로드 ④ 요청. */
+    /** 유일한 시작 진입점. ① 거부 통지 ② 프리로드 ③ 요청. */
     fun startWalk(request: WalkStartRequest) {
-        if (!experimentalEnabled()) return
         if (!isAttached) return
         if (isActive) {
             walk.announceNow(walk.strings.get("guide.alreadyActive"), highPriority = true, bypassSuppression = true)
@@ -126,7 +122,7 @@ object GuideSession {
     private var suppressionPrior: Boolean? = null
 
     fun setOutputSuppressed(active: Boolean, owner: Any) {
-        if (!::walk.isInitialized) return  // 정식 빌드는 attach가 불리지 않는다(GuideBottomBar 게이트) — lateinit 예외 차단
+        if (!::walk.isInitialized) return  // attach(첫 `GuideBottomBar` 컴포지션) 전 — lateinit 예외 차단
         if (active) {
             val wasEmpty = suppressionOwners.isEmpty()
             suppressionOwners += owner

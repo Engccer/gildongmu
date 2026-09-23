@@ -5,9 +5,7 @@ import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.TestScope
-import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.extension.RegisterExtension
-import space.dodoplanet.gildongmu.AppConfig
 import space.dodoplanet.gildongmu.MainDispatcherExtension
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -27,23 +25,10 @@ class GuideSessionTest {
     @RegisterExtension
     val main = MainDispatcherExtension(dispatcher)
 
-    @AfterEach fun restoreGate() { GuideSession.experimentalEnabled = { AppConfig.experimentalGuidanceEnabled } }
-
     private data class Owner(val n: Int)
 
-    @Test fun `실험 게이트가 거짓이면 startWalk는 아무것도 하지 않는다`() = guideTest(dispatcher) { h ->
+    @Test fun `startWalk → 프리로드·TTS 준비 → 시작`() = guideTest(dispatcher) { h ->
         GuideSession.attachForTest(h.model, h.coordinator)
-        GuideSession.experimentalEnabled = { false }
-        GuideSession.startWalk(h.request)
-        settle()
-        assertEquals(GuideStatus.idle, h.model.ui.value.status)
-        assertEquals(0, h.tones.preloads)
-        assertEquals(0, h.controller.starts)
-    }
-
-    @Test fun `게이트 통과 → 프리로드·TTS 준비 → 시작`() = guideTest(dispatcher) { h ->
-        GuideSession.attachForTest(h.model, h.coordinator)
-        GuideSession.experimentalEnabled = { true }
         GuideSession.startWalk(h.request)
         assertEquals(1, h.tones.preloads)
         assertTrue(h.speaker.prepares >= 1)
