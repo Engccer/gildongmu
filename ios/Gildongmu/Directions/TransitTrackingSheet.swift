@@ -298,8 +298,9 @@ struct TransitTrackingSheet: View {
     /// 없으면(정차역 목록 미보유) 섹션 자체를 내지 않는다. 앵커가 바뀌면
     /// `SurroundingsSceneSection`의 `onChange(of: anchorKey)`가 지난 역 장면을 버린다.
     @ViewBuilder private func surroundingsSection(proxy: ScrollViewProxy) -> some View {
-        if let state = model.state, let leg = model.currentLeg,
-           let anchor = transitSurroundingsAnchor(state: state, leg: leg) {
+        // 앵커는 후처리된 조망 `here`를 본다(E35) — 조망이 "현재역"이라 말하면 주변 확인도 그 역이다.
+        if let leg = model.currentLeg, let here = model.overview?.here,
+           let anchor = transitSurroundingsAnchor(here: here, leg: leg) {
             Section {
                 SurroundingsSceneSection(
                     anchor: (lat: anchor.stop.lat, lng: anchor.stop.lng), proxy: proxy)
@@ -424,10 +425,10 @@ struct TransitTrackingSheet: View {
     /// "{역}, 승차, 버튼"으로 읽는다. 버스 leg는 종전 `Text`(정류장 상세는 범위 밖, spec §2).
     /// 지하철 행의 로터 "전화 걸기"(E44)는 하위 뷰 `ViaStopStationRow`가 단다 — 저장소를 시트 본문이 읽지 않게.
     @ViewBuilder private var viaStopsRows: some View {
-        if let state = model.state, let leg = model.currentLeg, !leg.viaStops.isEmpty {
+        if model.state != nil, let leg = model.currentLeg, !leg.viaStops.isEmpty {
             DisclosureGroup(isExpanded: $viaExpanded) {
-                // ⚠ 현재역 인덱스 판정은 **조인**이라 한국어 원문으로 한다.
-                let currentIndex = viaStopCurrentIndex(leg: leg, currentLocation: state.currentLocation)
+                // 현재역 인덱스(E35): 도착 `arvlMsg3`와 실시간 열차 위치 중 큰 값 — 판정은 모델 한 곳(조인은 한국어 원문).
+                let currentIndex = model.viaStopHereIndex
                 let display = model.displayLeg(leg, useOverride: false)
                 // `display.stops`는 `leg.viaStops.map(stopLabel)`이라 인덱스가 1:1 — 상세 진입은 원본 stop(좌표·ID).
                 ForEach(Array(display.stops.enumerated()), id: \.offset) { index, stop in

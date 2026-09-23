@@ -200,6 +200,11 @@
       "note": "TransitOverviewHere·TransitOverviewRow는 kind 판별 sealed class + 커스텀 KSerializer(웹 JSON 모양 — Leg의 stationCount는 null을 명시 인코딩)"
     },
     {
+      "swift": "TransitRidingPosition.swift",
+      "status": "pending",
+      "note": "E35 승차 중 현재역(표시 전용). 공유 fixture transit-riding-position-cases.json. 안드로이드에 대중교통 안내 화면이 생길 때 이식한다 — TransitPositionService(/api/transit/position 조회)도 같은 파일이다"
+    },
+    {
       "swift": "TransitSurroundingsAnchor.swift",
       "status": "ported",
       "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/TransitSurroundingsAnchor.kt",

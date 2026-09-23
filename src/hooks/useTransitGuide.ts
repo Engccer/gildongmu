@@ -57,6 +57,20 @@ import {
   type TransitStatusPhase,
 } from "@/lib/transit-guide-text";
 import { namedArgs } from "@/lib/transit-text-args";
+import {
+  neverSeenPendingStep,
+  neverSeenWarningDeferred,
+  positionBindingOf,
+  positionLookupDue,
+  positionOutcomeFromBody,
+  positionOutcomeFromHttpStatus,
+  positionStatusIndex,
+  ridingPositionStep,
+  viaStopHereIndex,
+  type TransitPositionBinding,
+  type TransitPositionOutcome,
+  type TransitRidingPosition,
+} from "@/lib/transit-riding-position";
 import type { TransitRoute } from "@/lib/types";
 
 /**
@@ -304,6 +318,16 @@ export function useTransitGuide(
   }, []);
 
   const stateRef = useRef<TransitGuideState | null>(null);
+  /**
+   * 승차 중 현재역(E35) — 상태 머신 **밖**의 표시 상태. 리듀서는 이 값을 모르고 판정에 쓰지 않는다.
+   * `positionClock`은 보존 창 판정의 "지금"이다 — 렌더 중 `Date.now()`를 부르지 않고 조회 시점에 굳힌다
+   * (폴이 60초마다 갱신하므로 창 판정의 해상도는 폴 주기다).
+   */
+  const positionRef = useRef<TransitRidingPosition | null>(null);
+  const [ridingPosition, setRidingPosition] = useState<TransitRidingPosition | null>(null);
+  const [positionClock, setPositionClock] = useState(0);
+  /** 현재역이 잡혀 있어 보류한 `neverSeen` 경고의 결박(spec §6 판정 2) — 폴마다 처분한다. */
+  const neverSeenPendingRef = useRef<TransitPositionBinding | null>(null);
   const routeRef = useRef<TransitGuideRoute | null>(null);
   const seqRef = useRef(0);
   /** 다음 대기 폴 결과를 직접 응답으로 통지(새로고침, §13.2) — 폴 1회 소비. */
@@ -490,7 +514,14 @@ export function useTransitGuide(
    * 단일 헬퍼. 화면과 통지가 같은 파트 목록을 공유해 드리프트를 구조 차단한다.
    */
   const buildStatus = useCallback(
-    (s: TransitGuideState, leg: TransitGuideLeg): { text: string; lang?: "ko" } => {
+    (
+      s: TransitGuideState,
+      leg: TransitGuideLeg,
+      position: TransitRidingPosition | null,
+      now: number,
+    ): { text: string; lang?: "ko" } => {
+      // 비관측 잠금은 열차번호가 없어 위치 결박이 서지 않는다(null) — 별도 가드가 필요 없다.
+      const located = positionStatusIndex(s, position, now);
       const boarding = s.phase === "boarding";
       const riding = s.phase === "riding";
       const arrived = s.phase === "arrived";
@@ -530,15 +561,20 @@ export function useTransitGuide(
         // 지방버스는 근사 잠금이라 riding에서 `stationCountAbout`이 따로 선다. 그래도 두는 이유는
         // 생략 분기가 있는 한 줄이 문맥 문장에서 끝나는 경로가 열려 있고, 그때 "조회가 멈췄나"로
         // 읽히기 때문이다. 실제 도달 여부는 실승차가 답한다(BACKLOG §2 E39 행 ④).
-        ui(
-          !(s.phase === "waiting" && s.signal === "notYetVisible")
-            ? s.signal === "tracking" && live
-              ? arrival.text
-                ? ""
-                : t("noArrivalInfo")
-              : signalText(s.signal, s.phase, leg.mode === "subway", unobserved)
-            : "",
-        ),
+        // 승차 중 현재역(E35 spec §6 판정 1): 도착 피드가 아직 열차를 못 본 구간에 위치가 잡혀 있으면 신호
+        // 문장("하차역에 가까워지면 열차 위치가 표시됩니다." 등) 자리를 현재역 문장이 차지한다 — 그대로 두면
+        // 바로 아래 경유역 목록의 "현재 위치"와 모순된다.
+        located != null
+          ? piece(currentStationLine(isEn, displayLegOf(leg, null).stops[located]))
+          : ui(
+              !(s.phase === "waiting" && s.signal === "notYetVisible")
+                ? s.signal === "tracking" && live
+                  ? arrival.text
+                    ? ""
+                    : t("noArrivalInfo")
+                  : signalText(s.signal, s.phase, leg.mode === "subway", unobserved)
+                : "",
+            ),
         // 선택 차량 조각: boarding 종전대로 + riding(A34 ② — 목록에서 고른 열차를 확인하는 자리, 리뷰 m5).
         (boarding || riding) && selectedDescription
           ? piece(selectedVehicleLine(isEn, selectedDescription))
@@ -830,7 +866,14 @@ export function useTransitGuide(
         setBoardingManualAvailable(true);
       }
       commit(next);
-      if (event) announceEvent(event);
+      if (event) {
+        // 승차 중 현재역(E35 §6 판정 2): `neverSeen` 순간 현재역이 잡혀 있으면 "찾지 못하고 있다"는 전제가
+        // 거짓이라 경고를 결박째 보류한다. 처분(발화·폐기)은 폴마다 `settleNeverSeenPending`이 한다.
+        const deferred =
+          event.kind === "neverSeen" ? neverSeenWarningDeferred(next, positionRef.current, Date.now()) : null;
+        if (deferred) neverSeenPendingRef.current = deferred;
+        else announceEvent(event);
+      }
     },
     [announceEvent, commit, setAboardStep, setBoardOverride, setSelectedDescription],
   );
@@ -891,6 +934,44 @@ export function useTransitGuide(
       setPollTick((n) => n + 1);
     }, interval);
   }, [clearTimer]);
+
+  /**
+   * 승차 중 현재역 조회(E35 spec §5) — 도착 폴 한 번에 최대 1회, **dispatch 뒤** 상태로 켜는 조건을
+   * 판정한다(그 폴로 추적이 시작됐으면 묻지 않는다). 별도 타이머가 없어 폴 주기·전경 전용·즉폴 금지를
+   * 그대로 상속한다. 던지지 않는다 — 위치 실패가 도착 폴을 흔들지 않게.
+   */
+  const refreshPosition = useCallback(async (): Promise<void> => {
+    const s = stateRef.current;
+    const leg = currentLeg();
+    if (!s || !leg) return;
+    const requested = positionBindingOf(s);
+    if (requested && positionLookupDue(s, leg, positionRef.current)) {
+      let outcome: TransitPositionOutcome;
+      try {
+        const res = await fetch(
+          `/api/transit/position?line=${encodeURIComponent(leg.lineName)}&train=${encodeURIComponent(requested.vehicleId)}`,
+        );
+        outcome = res.ok ? positionOutcomeFromBody(await res.json()) : positionOutcomeFromHttpStatus(res.status);
+      } catch {
+        outcome = { kind: "failed" };
+      }
+      // 늦은 응답(조회 중 탑승 변경·다음 구간)은 순수 계층이 요청 결박으로 버린다(설계 리뷰 M1).
+      const now = stateRef.current;
+      const legNow = currentLeg();
+      if (!now || !legNow) return;
+      positionRef.current = ridingPositionStep(positionRef.current, now, legNow, requested, outcome, Date.now());
+      setRidingPosition(positionRef.current);
+    }
+    setPositionClock(Date.now());
+    // 보류한 경고의 처분 — 조회하지 않은 폴(상한·추적 시작)에서도 본다.
+    const pending = neverSeenPendingRef.current;
+    const current = stateRef.current;
+    if (pending && current) {
+      const verdict = neverSeenPendingStep(pending, current, positionRef.current, Date.now());
+      if (verdict !== "keep") neverSeenPendingRef.current = null;
+      if (verdict === "fire") announceEvent({ kind: "neverSeen" });
+    }
+  }, [announceEvent, currentLeg]);
 
   const pollOnce = useCallback(async (): Promise<void> => {
     const s = stateRef.current;
@@ -1013,6 +1094,7 @@ export function useTransitGuide(
       }
       refreshAnnounceRef.current = false;
       dispatch({ kind: "poll", seq, phaseGen, poll });
+      await refreshPosition();
       // 응답은 dispatch 뒤에 게시한다 — 같은 폴의 신호 이벤트 통지(signalRecovered
       // 등)와 배칭될 때 마지막 승자가 새로고침 응답이 되게(감사 M1: 역순이면
       // 응답이 페인트 없이 사라진다).
@@ -1024,6 +1106,7 @@ export function useTransitGuide(
       refreshAnnounceRef.current = false;
       dispatch({ kind: "poll", seq, phaseGen, poll: { kind: "failed" } });
       if (wasRefresh && stillSameWaiting()) announce(reasonText("unavailable"));
+      await refreshPosition();
     } finally {
       inFlightRef.current = false;
       if (repollRef.current) {
@@ -1034,7 +1117,7 @@ export function useTransitGuide(
         scheduleNext();
       }
     }
-  }, [announce, currentLeg, dispatch, reasonText, resolveTagoIfNeeded, scheduleNext, t, locale]);
+  }, [announce, currentLeg, dispatch, reasonText, refreshPosition, resolveTagoIfNeeded, scheduleNext, t, locale]);
 
   const stopSession = useCallback(() => {
     clearTimer();
@@ -1044,6 +1127,9 @@ export function useTransitGuide(
     retainedRef.current.clear();
     tagoResolvedRef.current.clear();
     refreshAnnounceRef.current = false;
+    positionRef.current = null;
+    neverSeenPendingRef.current = null;
+    setRidingPosition(null);
     setBoardOverride(null);
     setSelectedDescription(null);
     setReboardPickerActive(false);
@@ -1072,6 +1158,10 @@ export function useTransitGuide(
       routeRef.current = route;
       setSessionRoute(route);
       seqRef.current = 0;
+      // 다음 세션의 phaseGen도 0에서 시작한다 — 옛 세션의 위치 결박이 같은 세대·열차로 되살아나지 않게.
+      positionRef.current = null;
+      neverSeenPendingRef.current = null;
+      setRidingPosition(null);
       const init = initTransitGuide(route, Date.now());
       commit(init);
       const first = route.legs[0];
@@ -1391,14 +1481,19 @@ export function useTransitGuide(
         return;
       }
       const current = stateRef.current;
+      const legNow = currentLeg();
+      // 숨김 동안 위치가 낡았을 수 있어 보존 창은 **지금** 시각으로 판정한다(렌더 시계는 숨김 전에 멈춰 있다).
+      const located = current ? positionStatusIndex(current, positionRef.current, Date.now()) : null;
       announce(
         [
           t("resumed"),
-          current
+          current && legNow && located != null
+            ? piece(currentStationLine(isEn, displayLegOf(legNow, null).stops[located])).text
+            : current
             ? signalText(
                 current.signal,
                 current.phase,
-                currentLeg()?.mode === "subway",
+                legNow?.mode === "subway",
                 current.lock != null && isUnobservedTransitLock(current.lock),
               )
             : "",
@@ -1410,7 +1505,7 @@ export function useTransitGuide(
     };
     document.addEventListener("visibilitychange", onVisibility);
     return () => document.removeEventListener("visibilitychange", onVisibility);
-  }, [announce, clearTimer, currentLeg, pollOnce, signalText, t]);
+  }, [announce, clearTimer, currentLeg, displayLegOf, isEn, piece, pollOnce, signalText, t]);
 
   // 언마운트: 자원 회수(통지 없음 — 언마운트 전이의 통지는 뷰 몫, §3.3).
   useEffect(() => {
@@ -1474,7 +1569,7 @@ export function useTransitGuide(
     const r = routeRef.current;
     const leg = s && r ? r.legs[s.legIndex] : null;
     if (!s || !leg) return;
-    const status = buildStatus(s, leg);
+    const status = buildStatus(s, leg, positionRef.current, Date.now());
     announce(status.text, status.lang);
   }, [announce, buildStatus]);
 
@@ -1482,8 +1577,8 @@ export function useTransitGuide(
   const activeRoute = sessionRoute ?? guideRoute;
   const status = useMemo(() => {
     const leg = state && activeRoute ? activeRoute.legs[state.legIndex] : null;
-    return state && leg ? buildStatus(state, leg) : { text: "" };
-  }, [activeRoute, buildStatus, state]);
+    return state && leg ? buildStatus(state, leg, ridingPosition, positionClock) : { text: "" };
+  }, [activeRoute, buildStatus, state, ridingPosition, positionClock]);
 
   return {
     startable: guideRoute !== null,
@@ -1491,6 +1586,14 @@ export function useTransitGuide(
     guideRoute: activeRoute,
     prewalkTarget,
     state,
+    /**
+     * 경유역 목록의 "현재 위치" index(E35) — 도착 유래(`arvlMsg3`)와 실시간 열차 위치 중 큰 값.
+     * 조인은 한국어 원문으로 한다(표시 투영과 index 1:1).
+     */
+    viaStopHere:
+      state && activeRoute?.legs[state.legIndex]
+        ? viaStopHereIndex(state, activeRoute.legs[state.legIndex], ridingPosition, positionClock)
+        : null,
     statusText: status.text,
     /** 상시 표시 줄의 `lang`(한국어 폴백일 때만 "ko"). */
     statusLang: status.lang,

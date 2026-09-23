@@ -1,0 +1,2733 @@
+{
+ "_doc": "E35 승차 중 현재역(표시 전용) 순수 계층 공유 fixture(spec 2026-09-23-riding-current-station-design.md §4). 웹 transit-riding-position.test.ts ↔ Kit TransitRidingPositionTests가 같은 파일을 돈다. state는 TransitGuideState 부분집합, leg는 기본 leg(지하철, 경유역 강동·천호·광나루·아차산·군자, 소요 모름)에 case의 leg 필드를 덮어쓴다.",
+ "leg": {
+  "trackMode": "subway",
+  "viaStops": [
+   "강동",
+   "천호",
+   "광나루",
+   "아차산",
+   "군자"
+  ],
+  "minutes": null
+ },
+ "cases": [
+  {
+   "name": "켜짐: riding 미관측·위치 없음",
+   "fn": "lookupDue",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 5,
+    "signal": "notYetVisible",
+    "lock": {
+     "mode": "subway",
+     "routeId": "1005",
+     "direction": "하행",
+     "vehicleId": "5105"
+    },
+    "currentLocation": null
+   },
+   "position": null,
+   "expected": true
+  },
+  {
+   "name": "켜짐: neverSeen도 도착 피드 미관측이다",
+   "fn": "lookupDue",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 5,
+    "signal": "neverSeen",
+    "lock": {
+     "mode": "subway",
+     "routeId": "1005",
+     "direction": "하행",
+     "vehicleId": "5105"
+    },
+    "currentLocation": null
+   },
+   "position": null,
+   "expected": true
+  },
+  {
+   "name": "꺼짐: 도착 피드가 추적 중(tracking)",
+   "fn": "lookupDue",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 5,
+    "signal": "tracking",
+    "lock": {
+     "mode": "subway",
+     "routeId": "1005",
+     "direction": "하행",
+     "vehicleId": "5105"
+    },
+    "currentLocation": null
+   },
+   "position": null,
+   "expected": false
+  },
+  {
+   "name": "꺼짐: 소실(signalLost)은 신호 문장이 정본",
+   "fn": "lookupDue",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 5,
+    "signal": "signalLost",
+    "lock": {
+     "mode": "subway",
+     "routeId": "1005",
+     "direction": "하행",
+     "vehicleId": "5105"
+    },
+    "currentLocation": null
+   },
+   "position": null,
+   "expected": false
+  },
+  {
+   "name": "꺼짐: 조회 실패(upstreamFailed) — 같은 키·호스트라 헛호출",
+   "fn": "lookupDue",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 5,
+    "signal": "upstreamFailed",
+    "lock": {
+     "mode": "subway",
+     "routeId": "1005",
+     "direction": "하행",
+     "vehicleId": "5105"
+    },
+    "currentLocation": null
+   },
+   "position": null,
+   "expected": false
+  },
+  {
+   "name": "꺼짐: boarding",
+   "fn": "lookupDue",
+   "state": {
+    "legIndex": 0,
+    "phase": "boarding",
+    "phaseGen": 5,
+    "signal": "notYetVisible",
+    "lock": {
+     "mode": "subway",
+     "routeId": "1005",
+     "direction": "하행",
+     "vehicleId": "5105"
+    },
+    "currentLocation": null
+   },
+   "position": null,
+   "expected": false
+  },
+  {
+   "name": "꺼짐: 근사·비관측 잠금(열차번호 없음)",
+   "fn": "lookupDue",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 5,
+    "signal": "notYetVisible",
+    "lock": {
+     "mode": "subway",
+     "routeId": "1005",
+     "direction": "하행",
+     "vehicleId": ""
+    },
+    "currentLocation": null
+   },
+   "position": null,
+   "expected": false
+  },
+  {
+   "name": "꺼짐: 버스 구간",
+   "fn": "lookupDue",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 5,
+    "signal": "notYetVisible",
+    "lock": {
+     "mode": "seoulBus",
+     "routeId": "1005",
+     "direction": "하행",
+     "vehicleId": "5105"
+    },
+    "currentLocation": null
+   },
+   "leg": {
+    "trackMode": "seoulBus"
+   },
+   "position": null,
+   "expected": false
+  },
+  {
+   "name": "꺼짐: 하한 상한 30회 도달(구간 소요 모름)",
+   "fn": "lookupDue",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 5,
+    "signal": "notYetVisible",
+    "lock": {
+     "mode": "subway",
+     "routeId": "1005",
+     "direction": "하행",
+     "vehicleId": "5105"
+    },
+    "currentLocation": null
+   },
+   "position": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105",
+    "stopIndex": null,
+    "lastFoundAt": null,
+    "lookups": 30,
+    "behind": 0,
+    "emptyLine": 0,
+    "stopped": false
+   },
+   "expected": false
+  },
+  {
+   "name": "켜짐: 30회 미만",
+   "fn": "lookupDue",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 5,
+    "signal": "notYetVisible",
+    "lock": {
+     "mode": "subway",
+     "routeId": "1005",
+     "direction": "하행",
+     "vehicleId": "5105"
+    },
+    "currentLocation": null
+   },
+   "position": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105",
+    "stopIndex": null,
+    "lastFoundAt": null,
+    "lookups": 29,
+    "behind": 0,
+    "emptyLine": 0,
+    "stopped": false
+   },
+   "expected": true
+  },
+  {
+   "name": "켜짐: 긴 구간은 상한이 2×소요(50분 → 100회)",
+   "fn": "lookupDue",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 5,
+    "signal": "notYetVisible",
+    "lock": {
+     "mode": "subway",
+     "routeId": "1005",
+     "direction": "하행",
+     "vehicleId": "5105"
+    },
+    "currentLocation": null
+   },
+   "leg": {
+    "minutes": 50
+   },
+   "position": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105",
+    "stopIndex": null,
+    "lastFoundAt": null,
+    "lookups": 99,
+    "behind": 0,
+    "emptyLine": 0,
+    "stopped": false
+   },
+   "expected": true
+  },
+  {
+   "name": "꺼짐: 긴 구간 상한 도달",
+   "fn": "lookupDue",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 5,
+    "signal": "notYetVisible",
+    "lock": {
+     "mode": "subway",
+     "routeId": "1005",
+     "direction": "하행",
+     "vehicleId": "5105"
+    },
+    "currentLocation": null
+   },
+   "leg": {
+    "minutes": 50
+   },
+   "position": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105",
+    "stopIndex": null,
+    "lastFoundAt": null,
+    "lookups": 100,
+    "behind": 0,
+    "emptyLine": 0,
+    "stopped": false
+   },
+   "expected": false
+  },
+  {
+   "name": "꺼짐: 결박이 멈췄다(미지원·노선 0행)",
+   "fn": "lookupDue",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 5,
+    "signal": "notYetVisible",
+    "lock": {
+     "mode": "subway",
+     "routeId": "1005",
+     "direction": "하행",
+     "vehicleId": "5105"
+    },
+    "currentLocation": null
+   },
+   "position": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105",
+    "stopIndex": null,
+    "lastFoundAt": null,
+    "lookups": 1,
+    "behind": 0,
+    "emptyLine": 0,
+    "stopped": true
+   },
+   "expected": false
+  },
+  {
+   "name": "켜짐: 옛 riding 진입(phaseGen)의 상한·중단은 새 진입에 넘어오지 않는다",
+   "fn": "lookupDue",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 6,
+    "signal": "notYetVisible",
+    "lock": {
+     "mode": "subway",
+     "routeId": "1005",
+     "direction": "하행",
+     "vehicleId": "5105"
+    },
+    "currentLocation": null
+   },
+   "position": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105",
+    "stopIndex": null,
+    "lastFoundAt": null,
+    "lookups": 30,
+    "behind": 0,
+    "emptyLine": 0,
+    "stopped": true
+   },
+   "expected": true
+  },
+  {
+   "name": "관측: 부역명 포함 역명이 경유역과 조인된다",
+   "fn": "step",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 5,
+    "signal": "notYetVisible",
+    "lock": {
+     "mode": "subway",
+     "routeId": "1005",
+     "direction": "하행",
+     "vehicleId": "5105"
+    },
+    "currentLocation": null
+   },
+   "position": null,
+   "requested": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105"
+   },
+   "outcome": {
+    "kind": "found",
+    "station": "천호(풍납토성)",
+    "dataAgeSeconds": 40
+   },
+   "now": 1000000,
+   "expected": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105",
+    "stopIndex": 1,
+    "lastFoundAt": 1000000,
+    "lookups": 1,
+    "behind": 0,
+    "emptyLine": 0,
+    "stopped": false
+   }
+  },
+  {
+   "name": "늦은 응답: 요청 결박(옛 riding 진입)이 지금과 다르면 버린다",
+   "fn": "step",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 8,
+    "signal": "notYetVisible",
+    "lock": {
+     "mode": "subway",
+     "routeId": "1005",
+     "direction": "하행",
+     "vehicleId": "5105"
+    },
+    "currentLocation": null
+   },
+   "position": null,
+   "requested": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105"
+   },
+   "outcome": {
+    "kind": "found",
+    "station": "천호",
+    "dataAgeSeconds": 40
+   },
+   "now": 1000000,
+   "expected": null
+  },
+  {
+   "name": "늦은 응답: 옛 열차 응답은 새 열차 결박을 건드리지 않는다",
+   "fn": "step",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 8,
+    "signal": "notYetVisible",
+    "lock": {
+     "mode": "subway",
+     "routeId": "1005",
+     "direction": "하행",
+     "vehicleId": "5107"
+    },
+    "currentLocation": null
+   },
+   "position": {
+    "legIndex": 0,
+    "phaseGen": 8,
+    "vehicleId": "5107",
+    "stopIndex": 2,
+    "lastFoundAt": 999000,
+    "lookups": 3,
+    "behind": 0,
+    "emptyLine": 0,
+    "stopped": false
+   },
+   "requested": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105"
+   },
+   "outcome": {
+    "kind": "found",
+    "station": "군자",
+    "dataAgeSeconds": 40
+   },
+   "now": 1000000,
+   "expected": {
+    "legIndex": 0,
+    "phaseGen": 8,
+    "vehicleId": "5107",
+    "stopIndex": 2,
+    "lastFoundAt": 999000,
+    "lookups": 3,
+    "behind": 0,
+    "emptyLine": 0,
+    "stopped": false
+   }
+  },
+  {
+   "name": "동결: 나이 300초 초과는 관측이 아니다",
+   "fn": "step",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 5,
+    "signal": "notYetVisible",
+    "lock": {
+     "mode": "subway",
+     "routeId": "1005",
+     "direction": "하행",
+     "vehicleId": "5105"
+    },
+    "currentLocation": null
+   },
+   "position": null,
+   "requested": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105"
+   },
+   "outcome": {
+    "kind": "found",
+    "station": "천호",
+    "dataAgeSeconds": 301
+   },
+   "now": 1000000,
+   "expected": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105",
+    "stopIndex": null,
+    "lastFoundAt": null,
+    "lookups": 1,
+    "behind": 0,
+    "emptyLine": 0,
+    "stopped": false
+   }
+  },
+  {
+   "name": "경계: 나이 300초는 관측이다",
+   "fn": "step",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 5,
+    "signal": "notYetVisible",
+    "lock": {
+     "mode": "subway",
+     "routeId": "1005",
+     "direction": "하행",
+     "vehicleId": "5105"
+    },
+    "currentLocation": null
+   },
+   "position": null,
+   "requested": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105"
+   },
+   "outcome": {
+    "kind": "found",
+    "station": "천호",
+    "dataAgeSeconds": 300
+   },
+   "now": 1000000,
+   "expected": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105",
+    "stopIndex": 1,
+    "lastFoundAt": 1000000,
+    "lookups": 1,
+    "behind": 0,
+    "emptyLine": 0,
+    "stopped": false
+   }
+  },
+  {
+   "name": "판정 불가: 나이 결측은 관측이 아니다",
+   "fn": "step",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 5,
+    "signal": "notYetVisible",
+    "lock": {
+     "mode": "subway",
+     "routeId": "1005",
+     "direction": "하행",
+     "vehicleId": "5105"
+    },
+    "currentLocation": null
+   },
+   "position": null,
+   "requested": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105"
+   },
+   "outcome": {
+    "kind": "found",
+    "station": "천호",
+    "dataAgeSeconds": null
+   },
+   "now": 1000000,
+   "expected": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105",
+    "stopIndex": null,
+    "lastFoundAt": null,
+    "lookups": 1,
+    "behind": 0,
+    "emptyLine": 0,
+    "stopped": false
+   }
+  },
+  {
+   "name": "조인 실패: 경유역 밖(승차 전·하차 너머)은 관측이 아니다",
+   "fn": "step",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 5,
+    "signal": "notYetVisible",
+    "lock": {
+     "mode": "subway",
+     "routeId": "1005",
+     "direction": "하행",
+     "vehicleId": "5105"
+    },
+    "currentLocation": null
+   },
+   "position": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105",
+    "stopIndex": 1,
+    "lastFoundAt": 940000,
+    "lookups": 3,
+    "behind": 0,
+    "emptyLine": 0,
+    "stopped": false
+   },
+   "requested": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105"
+   },
+   "outcome": {
+    "kind": "found",
+    "station": "상일동",
+    "dataAgeSeconds": 40
+   },
+   "now": 1000000,
+   "expected": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105",
+    "stopIndex": 1,
+    "lastFoundAt": 940000,
+    "lookups": 4,
+    "behind": 0,
+    "emptyLine": 0,
+    "stopped": false
+   }
+  },
+  {
+   "name": "조인 실패: 동명 반복(모호)은 관측이 아니다",
+   "fn": "step",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 5,
+    "signal": "notYetVisible",
+    "lock": {
+     "mode": "subway",
+     "routeId": "1005",
+     "direction": "하행",
+     "vehicleId": "5105"
+    },
+    "currentLocation": null
+   },
+   "leg": {
+    "viaStops": [
+     "신도림",
+     "문래",
+     "신도림"
+    ]
+   },
+   "position": null,
+   "requested": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105"
+   },
+   "outcome": {
+    "kind": "found",
+    "station": "신도림",
+    "dataAgeSeconds": 40
+   },
+   "now": 1000000,
+   "expected": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105",
+    "stopIndex": null,
+    "lastFoundAt": null,
+    "lookups": 1,
+    "behind": 0,
+    "emptyLine": 0,
+    "stopped": false
+   }
+  },
+  {
+   "name": "단조: 래치보다 뒤 역 1회는 무시(시각도 갱신 안 함)",
+   "fn": "step",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 5,
+    "signal": "notYetVisible",
+    "lock": {
+     "mode": "subway",
+     "routeId": "1005",
+     "direction": "하행",
+     "vehicleId": "5105"
+    },
+    "currentLocation": null
+   },
+   "position": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105",
+    "stopIndex": 2,
+    "lastFoundAt": 940000,
+    "lookups": 3,
+    "behind": 0,
+    "emptyLine": 0,
+    "stopped": false
+   },
+   "requested": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105"
+   },
+   "outcome": {
+    "kind": "found",
+    "station": "천호",
+    "dataAgeSeconds": 40
+   },
+   "now": 1000000,
+   "expected": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105",
+    "stopIndex": 2,
+    "lastFoundAt": 940000,
+    "lookups": 4,
+    "behind": 1,
+    "emptyLine": 0,
+    "stopped": false
+   }
+  },
+  {
+   "name": "단조: 뒤 역이 2회 연속이면 튄 값이었다 — 그 역에서 다시 시작",
+   "fn": "step",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 5,
+    "signal": "notYetVisible",
+    "lock": {
+     "mode": "subway",
+     "routeId": "1005",
+     "direction": "하행",
+     "vehicleId": "5105"
+    },
+    "currentLocation": null
+   },
+   "position": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105",
+    "stopIndex": 4,
+    "lastFoundAt": 940000,
+    "lookups": 3,
+    "behind": 1,
+    "emptyLine": 0,
+    "stopped": false
+   },
+   "requested": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105"
+   },
+   "outcome": {
+    "kind": "found",
+    "station": "천호",
+    "dataAgeSeconds": 40
+   },
+   "now": 1000000,
+   "expected": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105",
+    "stopIndex": 1,
+    "lastFoundAt": 1000000,
+    "lookups": 4,
+    "behind": 0,
+    "emptyLine": 0,
+    "stopped": false
+   }
+  },
+  {
+   "name": "단조: 같은 역은 관측 시각만 갱신(뒤 역 연속도 끊는다)",
+   "fn": "step",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 5,
+    "signal": "notYetVisible",
+    "lock": {
+     "mode": "subway",
+     "routeId": "1005",
+     "direction": "하행",
+     "vehicleId": "5105"
+    },
+    "currentLocation": null
+   },
+   "position": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105",
+    "stopIndex": 1,
+    "lastFoundAt": 940000,
+    "lookups": 3,
+    "behind": 1,
+    "emptyLine": 0,
+    "stopped": false
+   },
+   "requested": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105"
+   },
+   "outcome": {
+    "kind": "found",
+    "station": "천호",
+    "dataAgeSeconds": 40
+   },
+   "now": 1000000,
+   "expected": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105",
+    "stopIndex": 1,
+    "lastFoundAt": 1000000,
+    "lookups": 4,
+    "behind": 0,
+    "emptyLine": 0,
+    "stopped": false
+   }
+  },
+  {
+   "name": "전진: 앞 역으로 이동",
+   "fn": "step",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 5,
+    "signal": "notYetVisible",
+    "lock": {
+     "mode": "subway",
+     "routeId": "1005",
+     "direction": "하행",
+     "vehicleId": "5105"
+    },
+    "currentLocation": null
+   },
+   "position": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105",
+    "stopIndex": 1,
+    "lastFoundAt": 940000,
+    "lookups": 3,
+    "behind": 0,
+    "emptyLine": 0,
+    "stopped": false
+   },
+   "requested": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105"
+   },
+   "outcome": {
+    "kind": "found",
+    "station": "아차산",
+    "dataAgeSeconds": 40
+   },
+   "now": 1000000,
+   "expected": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105",
+    "stopIndex": 3,
+    "lastFoundAt": 1000000,
+    "lookups": 4,
+    "behind": 0,
+    "emptyLine": 0,
+    "stopped": false
+   }
+  },
+  {
+   "name": "만료: 보존 창이 지난 래치는 버리고 뒤 역도 받는다",
+   "fn": "step",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 5,
+    "signal": "notYetVisible",
+    "lock": {
+     "mode": "subway",
+     "routeId": "1005",
+     "direction": "하행",
+     "vehicleId": "5105"
+    },
+    "currentLocation": null
+   },
+   "position": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105",
+    "stopIndex": 4,
+    "lastFoundAt": 819999,
+    "lookups": 3,
+    "behind": 0,
+    "emptyLine": 0,
+    "stopped": false
+   },
+   "requested": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105"
+   },
+   "outcome": {
+    "kind": "found",
+    "station": "천호",
+    "dataAgeSeconds": 40
+   },
+   "now": 1000000,
+   "expected": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105",
+    "stopIndex": 1,
+    "lastFoundAt": 1000000,
+    "lookups": 4,
+    "behind": 0,
+    "emptyLine": 0,
+    "stopped": false
+   }
+  },
+  {
+   "name": "만료: 결측이어도 지난 래치는 버린다",
+   "fn": "step",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 5,
+    "signal": "notYetVisible",
+    "lock": {
+     "mode": "subway",
+     "routeId": "1005",
+     "direction": "하행",
+     "vehicleId": "5105"
+    },
+    "currentLocation": null
+   },
+   "position": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105",
+    "stopIndex": 4,
+    "lastFoundAt": 819999,
+    "lookups": 3,
+    "behind": 0,
+    "emptyLine": 0,
+    "stopped": false
+   },
+   "requested": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105"
+   },
+   "outcome": {
+    "kind": "notFound",
+    "lineEmpty": false
+   },
+   "now": 1000000,
+   "expected": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105",
+    "stopIndex": null,
+    "lastFoundAt": null,
+    "lookups": 4,
+    "behind": 0,
+    "emptyLine": 0,
+    "stopped": false
+   }
+  },
+  {
+   "name": "결측: 그 열차만 없음은 횟수만",
+   "fn": "step",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 5,
+    "signal": "notYetVisible",
+    "lock": {
+     "mode": "subway",
+     "routeId": "1005",
+     "direction": "하행",
+     "vehicleId": "5105"
+    },
+    "currentLocation": null
+   },
+   "position": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105",
+    "stopIndex": 1,
+    "lastFoundAt": 940000,
+    "lookups": 3,
+    "behind": 0,
+    "emptyLine": 2,
+    "stopped": false
+   },
+   "requested": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105"
+   },
+   "outcome": {
+    "kind": "notFound",
+    "lineEmpty": false
+   },
+   "now": 1000000,
+   "expected": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105",
+    "stopIndex": 1,
+    "lastFoundAt": 940000,
+    "lookups": 4,
+    "behind": 0,
+    "emptyLine": 0,
+    "stopped": false
+   }
+  },
+  {
+   "name": "노선 0행: 연속 횟수를 센다",
+   "fn": "step",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 5,
+    "signal": "notYetVisible",
+    "lock": {
+     "mode": "subway",
+     "routeId": "1005",
+     "direction": "하행",
+     "vehicleId": "5105"
+    },
+    "currentLocation": null
+   },
+   "position": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105",
+    "stopIndex": null,
+    "lastFoundAt": null,
+    "lookups": 1,
+    "behind": 0,
+    "emptyLine": 1,
+    "stopped": false
+   },
+   "requested": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105"
+   },
+   "outcome": {
+    "kind": "notFound",
+    "lineEmpty": true
+   },
+   "now": 1000000,
+   "expected": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105",
+    "stopIndex": null,
+    "lastFoundAt": null,
+    "lookups": 2,
+    "behind": 0,
+    "emptyLine": 2,
+    "stopped": false
+   }
+  },
+  {
+   "name": "노선 0행: 3회 연속이면 이 결박에선 그만 묻는다",
+   "fn": "step",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 5,
+    "signal": "notYetVisible",
+    "lock": {
+     "mode": "subway",
+     "routeId": "1005",
+     "direction": "하행",
+     "vehicleId": "5105"
+    },
+    "currentLocation": null
+   },
+   "position": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105",
+    "stopIndex": null,
+    "lastFoundAt": null,
+    "lookups": 2,
+    "behind": 0,
+    "emptyLine": 2,
+    "stopped": false
+   },
+   "requested": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105"
+   },
+   "outcome": {
+    "kind": "notFound",
+    "lineEmpty": true
+   },
+   "now": 1000000,
+   "expected": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105",
+    "stopIndex": null,
+    "lastFoundAt": null,
+    "lookups": 3,
+    "behind": 0,
+    "emptyLine": 3,
+    "stopped": true
+   }
+  },
+  {
+   "name": "실패: failed는 세지도 않는다(쿼터 소비가 없다)",
+   "fn": "step",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 5,
+    "signal": "notYetVisible",
+    "lock": {
+     "mode": "subway",
+     "routeId": "1005",
+     "direction": "하행",
+     "vehicleId": "5105"
+    },
+    "currentLocation": null
+   },
+   "position": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105",
+    "stopIndex": 1,
+    "lastFoundAt": 940000,
+    "lookups": 3,
+    "behind": 0,
+    "emptyLine": 0,
+    "stopped": false
+   },
+   "requested": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105"
+   },
+   "outcome": {
+    "kind": "failed"
+   },
+   "now": 1000000,
+   "expected": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105",
+    "stopIndex": 1,
+    "lastFoundAt": 940000,
+    "lookups": 3,
+    "behind": 0,
+    "emptyLine": 0,
+    "stopped": false
+   }
+  },
+  {
+   "name": "미지원: unsupported는 결박을 멈춘다",
+   "fn": "step",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 5,
+    "signal": "notYetVisible",
+    "lock": {
+     "mode": "subway",
+     "routeId": "1005",
+     "direction": "하행",
+     "vehicleId": "5105"
+    },
+    "currentLocation": null
+   },
+   "position": null,
+   "requested": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105"
+   },
+   "outcome": {
+    "kind": "unsupported"
+   },
+   "now": 1000000,
+   "expected": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105",
+    "stopIndex": null,
+    "lastFoundAt": null,
+    "lookups": 1,
+    "behind": 0,
+    "emptyLine": 0,
+    "stopped": true
+   }
+  },
+  {
+   "name": "결박: 새 riding 진입은 옛 래치를 버리고 시작",
+   "fn": "step",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 6,
+    "signal": "notYetVisible",
+    "lock": {
+     "mode": "subway",
+     "routeId": "1005",
+     "direction": "하행",
+     "vehicleId": "5105"
+    },
+    "currentLocation": null
+   },
+   "position": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105",
+    "stopIndex": 3,
+    "lastFoundAt": 999000,
+    "lookups": 9,
+    "behind": 0,
+    "emptyLine": 0,
+    "stopped": false
+   },
+   "requested": {
+    "legIndex": 0,
+    "phaseGen": 6,
+    "vehicleId": "5105"
+   },
+   "outcome": {
+    "kind": "found",
+    "station": "천호",
+    "dataAgeSeconds": 40
+   },
+   "now": 1000000,
+   "expected": {
+    "legIndex": 0,
+    "phaseGen": 6,
+    "vehicleId": "5105",
+    "stopIndex": 1,
+    "lastFoundAt": 1000000,
+    "lookups": 1,
+    "behind": 0,
+    "emptyLine": 0,
+    "stopped": false
+   }
+  },
+  {
+   "name": "근사 잠금은 위치 상태가 없다",
+   "fn": "step",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 5,
+    "signal": "notYetVisible",
+    "lock": {
+     "mode": "subway",
+     "routeId": "1005",
+     "direction": "하행",
+     "vehicleId": ""
+    },
+    "currentLocation": null
+   },
+   "position": null,
+   "requested": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105"
+   },
+   "outcome": {
+    "kind": "found",
+    "station": "천호",
+    "dataAgeSeconds": 40
+   },
+   "now": 1000000,
+   "expected": null
+  },
+  {
+   "name": "보존 창 경계(180초)는 표식",
+   "fn": "shown",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 5,
+    "signal": "notYetVisible",
+    "lock": {
+     "mode": "subway",
+     "routeId": "1005",
+     "direction": "하행",
+     "vehicleId": "5105"
+    },
+    "currentLocation": null
+   },
+   "position": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105",
+    "stopIndex": 2,
+    "lastFoundAt": 820000,
+    "lookups": 5,
+    "behind": 0,
+    "emptyLine": 0,
+    "stopped": false
+   },
+   "now": 1000000,
+   "expected": 2
+  },
+  {
+   "name": "보존 창 밖(180초+1ms)은 표식 없음",
+   "fn": "shown",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 5,
+    "signal": "notYetVisible",
+    "lock": {
+     "mode": "subway",
+     "routeId": "1005",
+     "direction": "하행",
+     "vehicleId": "5105"
+    },
+    "currentLocation": null
+   },
+   "position": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105",
+    "stopIndex": 2,
+    "lastFoundAt": 819999,
+    "lookups": 5,
+    "behind": 0,
+    "emptyLine": 0,
+    "stopped": false
+   },
+   "now": 1000000,
+   "expected": null
+  },
+  {
+   "name": "riding 밖(추정 도착)은 표식 없음",
+   "fn": "shown",
+   "state": {
+    "legIndex": 0,
+    "phase": "arrived",
+    "phaseGen": 5,
+    "signal": "notYetVisible",
+    "lock": {
+     "mode": "subway",
+     "routeId": "1005",
+     "direction": "하행",
+     "vehicleId": "5105"
+    },
+    "currentLocation": null
+   },
+   "position": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105",
+    "stopIndex": 2,
+    "lastFoundAt": 1000000,
+    "lookups": 5,
+    "behind": 0,
+    "emptyLine": 0,
+    "stopped": false
+   },
+   "now": 1000000,
+   "expected": null
+  },
+  {
+   "name": "다른 열차 결박은 표식 없음",
+   "fn": "shown",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 5,
+    "signal": "notYetVisible",
+    "lock": {
+     "mode": "subway",
+     "routeId": "1005",
+     "direction": "하행",
+     "vehicleId": "5107"
+    },
+    "currentLocation": null
+   },
+   "position": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105",
+    "stopIndex": 2,
+    "lastFoundAt": 1000000,
+    "lookups": 5,
+    "behind": 0,
+    "emptyLine": 0,
+    "stopped": false
+   },
+   "now": 1000000,
+   "expected": null
+  },
+  {
+   "name": "관측 전 결박은 표식 없음",
+   "fn": "shown",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 5,
+    "signal": "notYetVisible",
+    "lock": {
+     "mode": "subway",
+     "routeId": "1005",
+     "direction": "하행",
+     "vehicleId": "5105"
+    },
+    "currentLocation": null
+   },
+   "position": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105",
+    "stopIndex": null,
+    "lastFoundAt": null,
+    "lookups": 5,
+    "behind": 0,
+    "emptyLine": 0,
+    "stopped": false
+   },
+   "now": 1000000,
+   "expected": null
+  },
+  {
+   "name": "경유역: 도착 유래 없음 → 위치",
+   "fn": "viaHere",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 5,
+    "signal": "notYetVisible",
+    "lock": {
+     "mode": "subway",
+     "routeId": "1005",
+     "direction": "하행",
+     "vehicleId": "5105"
+    },
+    "currentLocation": null
+   },
+   "position": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105",
+    "stopIndex": 2,
+    "lastFoundAt": 1000000,
+    "lookups": 5,
+    "behind": 0,
+    "emptyLine": 0,
+    "stopped": false
+   },
+   "now": 1000000,
+   "expected": 2
+  },
+  {
+   "name": "경유역: 도착 유래가 앞서면 도착",
+   "fn": "viaHere",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 5,
+    "signal": "tracking",
+    "lock": {
+     "mode": "subway",
+     "routeId": "1005",
+     "direction": "하행",
+     "vehicleId": "5105"
+    },
+    "currentLocation": "아차산"
+   },
+   "position": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105",
+    "stopIndex": 2,
+    "lastFoundAt": 1000000,
+    "lookups": 5,
+    "behind": 0,
+    "emptyLine": 0,
+    "stopped": false
+   },
+   "now": 1000000,
+   "expected": 3
+  },
+  {
+   "name": "경유역: 인계 순간 도착이 한 역 뒤면 위치(뒤로 튀지 않는다)",
+   "fn": "viaHere",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 5,
+    "signal": "tracking",
+    "lock": {
+     "mode": "subway",
+     "routeId": "1005",
+     "direction": "하행",
+     "vehicleId": "5105"
+    },
+    "currentLocation": "천호"
+   },
+   "position": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105",
+    "stopIndex": 2,
+    "lastFoundAt": 1000000,
+    "lookups": 5,
+    "behind": 0,
+    "emptyLine": 0,
+    "stopped": false
+   },
+   "now": 1000000,
+   "expected": 2
+  },
+  {
+   "name": "경유역: 인계 뒤엔 창이 지나도 도착이 따라잡을 때까지 위치를 둔다",
+   "fn": "viaHere",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 5,
+    "signal": "tracking",
+    "lock": {
+     "mode": "subway",
+     "routeId": "1005",
+     "direction": "하행",
+     "vehicleId": "5105"
+    },
+    "currentLocation": "천호"
+   },
+   "position": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105",
+    "stopIndex": 2,
+    "lastFoundAt": 400000,
+    "lookups": 5,
+    "behind": 0,
+    "emptyLine": 0,
+    "stopped": false
+   },
+   "now": 1000000,
+   "expected": 2
+  },
+  {
+   "name": "경유역: 추적 중이 아니면 창이 지난 위치는 빠진다",
+   "fn": "viaHere",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 5,
+    "signal": "signalLost",
+    "lock": {
+     "mode": "subway",
+     "routeId": "1005",
+     "direction": "하행",
+     "vehicleId": "5105"
+    },
+    "currentLocation": "천호"
+   },
+   "position": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105",
+    "stopIndex": 2,
+    "lastFoundAt": 819999,
+    "lookups": 5,
+    "behind": 0,
+    "emptyLine": 0,
+    "stopped": false
+   },
+   "now": 1000000,
+   "expected": 1
+  },
+  {
+   "name": "경유역: 둘 다 없음",
+   "fn": "viaHere",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 5,
+    "signal": "notYetVisible",
+    "lock": {
+     "mode": "subway",
+     "routeId": "1005",
+     "direction": "하행",
+     "vehicleId": "5105"
+    },
+    "currentLocation": null
+   },
+   "position": null,
+   "now": 1000000,
+   "expected": null
+  },
+  {
+   "name": "상태 문장: 미관측 + 표식 → 위치",
+   "fn": "statusIndex",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 5,
+    "signal": "notYetVisible",
+    "lock": {
+     "mode": "subway",
+     "routeId": "1005",
+     "direction": "하행",
+     "vehicleId": "5105"
+    },
+    "currentLocation": null
+   },
+   "position": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105",
+    "stopIndex": 2,
+    "lastFoundAt": 1000000,
+    "lookups": 5,
+    "behind": 0,
+    "emptyLine": 0,
+    "stopped": false
+   },
+   "now": 1000000,
+   "expected": 2
+  },
+  {
+   "name": "상태 문장: neverSeen + 표식 → 위치",
+   "fn": "statusIndex",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 5,
+    "signal": "neverSeen",
+    "lock": {
+     "mode": "subway",
+     "routeId": "1005",
+     "direction": "하행",
+     "vehicleId": "5105"
+    },
+    "currentLocation": null
+   },
+   "position": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105",
+    "stopIndex": 2,
+    "lastFoundAt": 1000000,
+    "lookups": 5,
+    "behind": 0,
+    "emptyLine": 0,
+    "stopped": false
+   },
+   "now": 1000000,
+   "expected": 2
+  },
+  {
+   "name": "상태 문장: 추적 중은 도착 조각이 말한다",
+   "fn": "statusIndex",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 5,
+    "signal": "tracking",
+    "lock": {
+     "mode": "subway",
+     "routeId": "1005",
+     "direction": "하행",
+     "vehicleId": "5105"
+    },
+    "currentLocation": null
+   },
+   "position": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105",
+    "stopIndex": 2,
+    "lastFoundAt": 1000000,
+    "lookups": 5,
+    "behind": 0,
+    "emptyLine": 0,
+    "stopped": false
+   },
+   "now": 1000000,
+   "expected": null
+  },
+  {
+   "name": "상태 문장: 소실 신호는 그 문장이 정본",
+   "fn": "statusIndex",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 5,
+    "signal": "signalLost",
+    "lock": {
+     "mode": "subway",
+     "routeId": "1005",
+     "direction": "하행",
+     "vehicleId": "5105"
+    },
+    "currentLocation": null
+   },
+   "position": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105",
+    "stopIndex": 2,
+    "lastFoundAt": 1000000,
+    "lookups": 5,
+    "behind": 0,
+    "emptyLine": 0,
+    "stopped": false
+   },
+   "now": 1000000,
+   "expected": null
+  },
+  {
+   "name": "조망: 미관측 + 표식 → 현재역, silence·탈출구 불변",
+   "fn": "overview",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 5,
+    "signal": "notYetVisible",
+    "lock": {
+     "mode": "subway",
+     "routeId": "1005",
+     "direction": "하행",
+     "vehicleId": "5105"
+    },
+    "currentLocation": null
+   },
+   "position": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105",
+    "stopIndex": 2,
+    "lastFoundAt": 1000000,
+    "lookups": 5,
+    "behind": 0,
+    "emptyLine": 0,
+    "stopped": false
+   },
+   "now": 1000000,
+   "overview": {
+    "legOrdinal": {
+     "n": 1,
+     "count": 1
+    },
+    "rows": [
+     {
+      "kind": "leg",
+      "legIndex": 0,
+      "mode": "subway",
+      "lineName": "수도권 5호선",
+      "boardName": "강동",
+      "alightName": "군자",
+      "status": "current",
+      "stationCount": 4
+     },
+     {
+      "kind": "silence",
+      "signal": "notYetVisible"
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 0,
+      "name": "강동",
+      "role": "board",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 1,
+      "name": "천호",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 2,
+      "name": "광나루",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 3,
+      "name": "아차산",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 4,
+      "name": "군자",
+      "role": "alight",
+      "here": false
+     }
+    ],
+    "here": {
+     "kind": "unknown",
+     "reason": "noObservation"
+    },
+    "reboardOffered": true,
+    "alternativesOffered": true
+   },
+   "expected": {
+    "legOrdinal": {
+     "n": 1,
+     "count": 1
+    },
+    "rows": [
+     {
+      "kind": "leg",
+      "legIndex": 0,
+      "mode": "subway",
+      "lineName": "수도권 5호선",
+      "boardName": "강동",
+      "alightName": "군자",
+      "status": "current",
+      "stationCount": 4
+     },
+     {
+      "kind": "silence",
+      "signal": "notYetVisible"
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 0,
+      "name": "강동",
+      "role": "board",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 1,
+      "name": "천호",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 2,
+      "name": "광나루",
+      "role": "via",
+      "here": true
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 3,
+      "name": "아차산",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 4,
+      "name": "군자",
+      "role": "alight",
+      "here": false
+     }
+    ],
+    "here": {
+     "kind": "station",
+     "stopIndex": 2
+    },
+    "reboardOffered": true,
+    "alternativesOffered": true
+   }
+  },
+  {
+   "name": "조망: 추적 중 도착 유래보다 위치가 앞서면 위치",
+   "fn": "overview",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 5,
+    "signal": "tracking",
+    "lock": {
+     "mode": "subway",
+     "routeId": "1005",
+     "direction": "하행",
+     "vehicleId": "5105"
+    },
+    "currentLocation": "천호"
+   },
+   "position": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105",
+    "stopIndex": 2,
+    "lastFoundAt": 1000000,
+    "lookups": 5,
+    "behind": 0,
+    "emptyLine": 0,
+    "stopped": false
+   },
+   "now": 1000000,
+   "overview": {
+    "legOrdinal": {
+     "n": 1,
+     "count": 1
+    },
+    "rows": [
+     {
+      "kind": "leg",
+      "legIndex": 0,
+      "mode": "subway",
+      "lineName": "수도권 5호선",
+      "boardName": "강동",
+      "alightName": "군자",
+      "status": "current",
+      "stationCount": 4
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 0,
+      "name": "강동",
+      "role": "board",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 1,
+      "name": "천호",
+      "role": "via",
+      "here": true
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 2,
+      "name": "광나루",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 3,
+      "name": "아차산",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 4,
+      "name": "군자",
+      "role": "alight",
+      "here": false
+     }
+    ],
+    "here": {
+     "kind": "station",
+     "stopIndex": 1
+    },
+    "reboardOffered": false,
+    "alternativesOffered": true
+   },
+   "expected": {
+    "legOrdinal": {
+     "n": 1,
+     "count": 1
+    },
+    "rows": [
+     {
+      "kind": "leg",
+      "legIndex": 0,
+      "mode": "subway",
+      "lineName": "수도권 5호선",
+      "boardName": "강동",
+      "alightName": "군자",
+      "status": "current",
+      "stationCount": 4
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 0,
+      "name": "강동",
+      "role": "board",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 1,
+      "name": "천호",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 2,
+      "name": "광나루",
+      "role": "via",
+      "here": true
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 3,
+      "name": "아차산",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 4,
+      "name": "군자",
+      "role": "alight",
+      "here": false
+     }
+    ],
+    "here": {
+     "kind": "station",
+     "stopIndex": 2
+    },
+    "reboardOffered": false,
+    "alternativesOffered": true
+   }
+  },
+  {
+   "name": "조망: 도착 유래가 앞서면 불변",
+   "fn": "overview",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 5,
+    "signal": "tracking",
+    "lock": {
+     "mode": "subway",
+     "routeId": "1005",
+     "direction": "하행",
+     "vehicleId": "5105"
+    },
+    "currentLocation": "아차산"
+   },
+   "position": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105",
+    "stopIndex": 2,
+    "lastFoundAt": 1000000,
+    "lookups": 5,
+    "behind": 0,
+    "emptyLine": 0,
+    "stopped": false
+   },
+   "now": 1000000,
+   "overview": {
+    "legOrdinal": {
+     "n": 1,
+     "count": 1
+    },
+    "rows": [
+     {
+      "kind": "leg",
+      "legIndex": 0,
+      "mode": "subway",
+      "lineName": "수도권 5호선",
+      "boardName": "강동",
+      "alightName": "군자",
+      "status": "current",
+      "stationCount": 4
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 0,
+      "name": "강동",
+      "role": "board",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 1,
+      "name": "천호",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 2,
+      "name": "광나루",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 3,
+      "name": "아차산",
+      "role": "via",
+      "here": true
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 4,
+      "name": "군자",
+      "role": "alight",
+      "here": false
+     }
+    ],
+    "here": {
+     "kind": "station",
+     "stopIndex": 3
+    },
+    "reboardOffered": false,
+    "alternativesOffered": true
+   },
+   "expected": {
+    "legOrdinal": {
+     "n": 1,
+     "count": 1
+    },
+    "rows": [
+     {
+      "kind": "leg",
+      "legIndex": 0,
+      "mode": "subway",
+      "lineName": "수도권 5호선",
+      "boardName": "강동",
+      "alightName": "군자",
+      "status": "current",
+      "stationCount": 4
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 0,
+      "name": "강동",
+      "role": "board",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 1,
+      "name": "천호",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 2,
+      "name": "광나루",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 3,
+      "name": "아차산",
+      "role": "via",
+      "here": true
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 4,
+      "name": "군자",
+      "role": "alight",
+      "here": false
+     }
+    ],
+    "here": {
+     "kind": "station",
+     "stopIndex": 3
+    },
+    "reboardOffered": false,
+    "alternativesOffered": true
+   }
+  },
+  {
+   "name": "조망: 소실 신호의 모름은 위치가 덮지 않는다",
+   "fn": "overview",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 5,
+    "signal": "signalLost",
+    "lock": {
+     "mode": "subway",
+     "routeId": "1005",
+     "direction": "하행",
+     "vehicleId": "5105"
+    },
+    "currentLocation": null
+   },
+   "position": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105",
+    "stopIndex": 2,
+    "lastFoundAt": 1000000,
+    "lookups": 5,
+    "behind": 0,
+    "emptyLine": 0,
+    "stopped": false
+   },
+   "now": 1000000,
+   "overview": {
+    "legOrdinal": {
+     "n": 1,
+     "count": 1
+    },
+    "rows": [
+     {
+      "kind": "leg",
+      "legIndex": 0,
+      "mode": "subway",
+      "lineName": "수도권 5호선",
+      "boardName": "강동",
+      "alightName": "군자",
+      "status": "current",
+      "stationCount": 4
+     },
+     {
+      "kind": "silence",
+      "signal": "signalLost"
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 0,
+      "name": "강동",
+      "role": "board",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 1,
+      "name": "천호",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 2,
+      "name": "광나루",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 3,
+      "name": "아차산",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 4,
+      "name": "군자",
+      "role": "alight",
+      "here": false
+     }
+    ],
+    "here": {
+     "kind": "unknown",
+     "reason": "signalLost"
+    },
+    "reboardOffered": true,
+    "alternativesOffered": true
+   },
+   "expected": {
+    "legOrdinal": {
+     "n": 1,
+     "count": 1
+    },
+    "rows": [
+     {
+      "kind": "leg",
+      "legIndex": 0,
+      "mode": "subway",
+      "lineName": "수도권 5호선",
+      "boardName": "강동",
+      "alightName": "군자",
+      "status": "current",
+      "stationCount": 4
+     },
+     {
+      "kind": "silence",
+      "signal": "signalLost"
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 0,
+      "name": "강동",
+      "role": "board",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 1,
+      "name": "천호",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 2,
+      "name": "광나루",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 3,
+      "name": "아차산",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 4,
+      "name": "군자",
+      "role": "alight",
+      "here": false
+     }
+    ],
+    "here": {
+     "kind": "unknown",
+     "reason": "signalLost"
+    },
+    "reboardOffered": true,
+    "alternativesOffered": true
+   }
+  },
+  {
+   "name": "조망: 위치 없으면 불변",
+   "fn": "overview",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 5,
+    "signal": "notYetVisible",
+    "lock": {
+     "mode": "subway",
+     "routeId": "1005",
+     "direction": "하행",
+     "vehicleId": "5105"
+    },
+    "currentLocation": null
+   },
+   "position": null,
+   "now": 1000000,
+   "overview": {
+    "legOrdinal": {
+     "n": 1,
+     "count": 1
+    },
+    "rows": [
+     {
+      "kind": "leg",
+      "legIndex": 0,
+      "mode": "subway",
+      "lineName": "수도권 5호선",
+      "boardName": "강동",
+      "alightName": "군자",
+      "status": "current",
+      "stationCount": 4
+     },
+     {
+      "kind": "silence",
+      "signal": "notYetVisible"
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 0,
+      "name": "강동",
+      "role": "board",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 1,
+      "name": "천호",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 2,
+      "name": "광나루",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 3,
+      "name": "아차산",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 4,
+      "name": "군자",
+      "role": "alight",
+      "here": false
+     }
+    ],
+    "here": {
+     "kind": "unknown",
+     "reason": "noObservation"
+    },
+    "reboardOffered": true,
+    "alternativesOffered": true
+   },
+   "expected": {
+    "legOrdinal": {
+     "n": 1,
+     "count": 1
+    },
+    "rows": [
+     {
+      "kind": "leg",
+      "legIndex": 0,
+      "mode": "subway",
+      "lineName": "수도권 5호선",
+      "boardName": "강동",
+      "alightName": "군자",
+      "status": "current",
+      "stationCount": 4
+     },
+     {
+      "kind": "silence",
+      "signal": "notYetVisible"
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 0,
+      "name": "강동",
+      "role": "board",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 1,
+      "name": "천호",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 2,
+      "name": "광나루",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 3,
+      "name": "아차산",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 4,
+      "name": "군자",
+      "role": "alight",
+      "here": false
+     }
+    ],
+    "here": {
+     "kind": "unknown",
+     "reason": "noObservation"
+    },
+    "reboardOffered": true,
+    "alternativesOffered": true
+   }
+  },
+  {
+   "name": "경고 보류: neverSeen 순간 현재역이 잡혀 있으면 결박째 보류",
+   "fn": "neverSeenDeferred",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 5,
+    "signal": "neverSeen",
+    "lock": {
+     "mode": "subway",
+     "routeId": "1005",
+     "direction": "하행",
+     "vehicleId": "5105"
+    },
+    "currentLocation": null
+   },
+   "position": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105",
+    "stopIndex": 2,
+    "lastFoundAt": 1000000,
+    "lookups": 10,
+    "behind": 0,
+    "emptyLine": 0,
+    "stopped": false
+   },
+   "now": 1000000,
+   "expected": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105"
+   }
+  },
+  {
+   "name": "경고 보류 안 함: 현재역이 없으면 그대로 낸다",
+   "fn": "neverSeenDeferred",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 5,
+    "signal": "neverSeen",
+    "lock": {
+     "mode": "subway",
+     "routeId": "1005",
+     "direction": "하행",
+     "vehicleId": "5105"
+    },
+    "currentLocation": null
+   },
+   "position": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105",
+    "stopIndex": null,
+    "lastFoundAt": null,
+    "lookups": 10,
+    "behind": 0,
+    "emptyLine": 0,
+    "stopped": false
+   },
+   "now": 1000000,
+   "expected": null
+  },
+  {
+   "name": "보류 처분: 현재역이 계속 잡혀 있으면 보류",
+   "fn": "neverSeenPending",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 5,
+    "signal": "neverSeen",
+    "lock": {
+     "mode": "subway",
+     "routeId": "1005",
+     "direction": "하행",
+     "vehicleId": "5105"
+    },
+    "currentLocation": null
+   },
+   "pending": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105"
+   },
+   "position": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105",
+    "stopIndex": 2,
+    "lastFoundAt": 1000000,
+    "lookups": 11,
+    "behind": 0,
+    "emptyLine": 0,
+    "stopped": false
+   },
+   "now": 1000000,
+   "expected": "keep"
+  },
+  {
+   "name": "보류 처분: 현재역이 사라지면(보존 창 경과) 그때 낸다",
+   "fn": "neverSeenPending",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 5,
+    "signal": "neverSeen",
+    "lock": {
+     "mode": "subway",
+     "routeId": "1005",
+     "direction": "하행",
+     "vehicleId": "5105"
+    },
+    "currentLocation": null
+   },
+   "pending": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105"
+   },
+   "position": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105",
+    "stopIndex": 2,
+    "lastFoundAt": 819999,
+    "lookups": 13,
+    "behind": 0,
+    "emptyLine": 0,
+    "stopped": false
+   },
+   "now": 1000000,
+   "expected": "fire"
+  },
+  {
+   "name": "보류 처분: 추적이 시작됐으면 버린다(거짓 경고 금지)",
+   "fn": "neverSeenPending",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 5,
+    "signal": "tracking",
+    "lock": {
+     "mode": "subway",
+     "routeId": "1005",
+     "direction": "하행",
+     "vehicleId": "5105"
+    },
+    "currentLocation": null
+   },
+   "pending": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105"
+   },
+   "position": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105",
+    "stopIndex": 2,
+    "lastFoundAt": 819999,
+    "lookups": 13,
+    "behind": 0,
+    "emptyLine": 0,
+    "stopped": false
+   },
+   "now": 1000000,
+   "expected": "drop"
+  },
+  {
+   "name": "보류 처분: 소실 신호로 바뀌었으면 버린다",
+   "fn": "neverSeenPending",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 5,
+    "signal": "signalLost",
+    "lock": {
+     "mode": "subway",
+     "routeId": "1005",
+     "direction": "하행",
+     "vehicleId": "5105"
+    },
+    "currentLocation": null
+   },
+   "pending": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105"
+   },
+   "position": null,
+   "now": 1000000,
+   "expected": "drop"
+  },
+  {
+   "name": "보류 처분: 새 riding 진입(탑승 변경 취소 등)이면 버린다",
+   "fn": "neverSeenPending",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 7,
+    "signal": "neverSeen",
+    "lock": {
+     "mode": "subway",
+     "routeId": "1005",
+     "direction": "하행",
+     "vehicleId": "5105"
+    },
+    "currentLocation": null
+   },
+   "pending": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105"
+   },
+   "position": null,
+   "now": 1000000,
+   "expected": "drop"
+  },
+  {
+   "name": "보류 처분: 도착 국면이면 버린다",
+   "fn": "neverSeenPending",
+   "state": {
+    "legIndex": 0,
+    "phase": "arrived",
+    "phaseGen": 5,
+    "signal": "neverSeen",
+    "lock": {
+     "mode": "subway",
+     "routeId": "1005",
+     "direction": "하행",
+     "vehicleId": "5105"
+    },
+    "currentLocation": null
+   },
+   "pending": {
+    "legIndex": 0,
+    "phaseGen": 5,
+    "vehicleId": "5105"
+   },
+   "position": null,
+   "now": 1000000,
+   "expected": "drop"
+  }
+ ]
+}

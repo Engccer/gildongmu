@@ -4,7 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { FocusEvent } from "react";
 import { useTranslations } from "next-intl";
 import { useTransitGuide } from "@/hooks/useTransitGuide";
-import { isApproxTransitLock, needsExpressPrompt, viaStopCurrentIndex } from "@/lib/transit-guide";
+import { isApproxTransitLock, needsExpressPrompt } from "@/lib/transit-guide";
 import type { TransitGuideLeg, TransitPrewalkTarget } from "@/lib/transit-guide";
 import type { TransitRoute } from "@/lib/types";
 import { joinText } from "@/lib/format";
@@ -377,8 +377,8 @@ export function TransitGuidePanel({
               </button>
               {viaOpen &&
                 (() => {
-                  // ⚠ 현재역 인덱스 판정은 **조인**이라 한국어 원문(`state.currentLocation`)으로 한다.
-                  const currentIndex = viaStopCurrentIndex(leg, state.currentLocation);
+                  // 현재역 인덱스(E35): 도착 `arvlMsg3`와 실시간 열차 위치 중 큰 값 — 판정은 훅 한 곳(조인은 한국어 원문).
+                  const currentIndex = guide.viaStopHere;
                   const display = transitDisplayLeg(leg, null);
                   return (
                     <ul className="mt-1">
