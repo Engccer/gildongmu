@@ -110,7 +110,7 @@ async function boardBusByDeparture(select: RegExp = /selectBus/) {
 }
 
 /**
- * riding에 들어가고 **하차역 첫 폴까지** 나가게 하는 헬퍼 — [이미 탔습니다] 식별 잠금 경로(A34).
+ * riding에 들어가고 **하차역 첫 폴까지** 나가게 하는 헬퍼 — [이미 탔어요] 식별 잠금 경로(A34).
  * 사용자 조작이라 즉폴이 보장되므로, 하차 추적·도착을 보는 테스트가 주기를 기다리지 않는다.
  * (관측 승격 경로로는 그 첫 폴이 최대 60초 뒤이고, 그 창을 즉폴로 메우는 안은 `boarded` 통지를
  * 지연 슬롯에서 버리는 것이 확인돼 채택하지 않았다 — N3 ① 구현 리뷰 H1.)
@@ -142,7 +142,7 @@ async function boardTrainAndTrack(station = "천호") {
 }
 
 /**
- * "이미 탔습니다"의 근사(비관측) 잠금 경로(A34 ②+①, 2026-09-11): 역을 먼저 묻고, 그 역에 있는
+ * "이미 탔어요"의 근사(비관측) 잠금 경로(A34 ②+①, 2026-09-11): 역을 먼저 묻고, 그 역에 있는
  * 열차가 0건일 때만 [열차 정보 없이 계속]이 선다. 호출부의 fetch 목이 그 역에 "99"(두 정거장 밖)만
  * 주거나 비어 있어야 한다.
  */
@@ -411,7 +411,7 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
   it("픽커를 연 채 국면이 바뀌면 다음 구간에서 되살아나지 않는다(A16 L3, 리뷰 MAJOR)", async () => {
     // 리뷰가 준 재현 경로: 픽커를 연 채 riding을 벗어나면 화면에서는 사라지지만
     // 플래그가 남아, 다음 riding 진입에서 묻지도 않은 역 선택 화면이 되살아난다.
-    // 국면 왕복은 근사 잠금("이미 탔습니다")으로 만든다 — 그 잠금은 riding에서
+    // 국면 왕복은 근사 잠금("이미 탔어요")으로 만든다 — 그 잠금은 riding에서
     // advance를 상시 노출하므로 폴 주기(15초)를 기다리지 않고 전이시킬 수 있다.
     const twoLegs: TransitRoute = {
       ...ROUTE,
@@ -525,7 +525,7 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
     expect(screen.queryByText(/expressCheck|expressStopsAt/)).toBeNull();
   });
 
-  it("이미 탔습니다 → 급행 확인 프롬프트(헤딩 착지) → 급행이 하차역을 지나면 거절 문장, 일반 열차면 잠금", async () => {
+  it("이미 탔어요 → 급행 확인 프롬프트(헤딩 착지) → 급행이 하차역을 지나면 거절 문장, 일반 열차면 잠금", async () => {
     const expressRoute: TransitRoute = {
       ...ROUTE,
       legs: [{
@@ -586,7 +586,7 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
     fireEvent.click(screen.getByRole("button", { name: "transitGuide.pickAnotherStation" }));
     await screen.findByRole("heading", { name: "transitGuide.aboardStationPrompt" });
     expect(screen.queryByRole("heading", { name: "transitGuide.expressPrompt" })).toBeNull();
-    // 역 선택 취소도 착지는 상태 문장이다(E38) — [이미 탔습니다]는 그 아래(경유역 목록 뒤, 두 번 이상 스와이프).
+    // 역 선택 취소도 착지는 상태 문장이다(E38) — [이미 탔어요]는 그 아래(경유역 목록 뒤, 두 번 이상 스와이프).
     fireEvent.click(screen.getByRole("button", { name: "transitGuide.reboardCancel" }));
     await expectLandedOnStatus();
   });
@@ -1161,7 +1161,7 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
     });
   });
 
-  it("이미 탔습니다(A34 ② 2026-09-11): 역을 묻고 → 그 역에 있는 열차만 목록 → 고르면 boarding 없이 riding(식별 잠금)", async () => {
+  it("이미 탔어요(A34 ② 2026-09-11): 역을 묻고 → 그 역에 있는 열차만 목록 → 고르면 boarding 없이 riding(식별 잠금)", async () => {
     const calls: string[] = [];
     vi.stubGlobal(
       "fetch",
@@ -1209,7 +1209,7 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
     await waitFor(() => {
       expect(screen.getByRole("button", { name: "transitGuide.changeBoarding" })).toBeTruthy();
     });
-    expect(screen.queryByRole("button", { name: "transitGuide.boardWithoutArrival" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "transitGuide.boardSelected" })).toBeNull();
     expect(screen.getAllByRole("status")[0].textContent).toContain("transitGuide.boarded");
     expect(screen.getAllByRole("status")[0].textContent).toContain("selectedVehicle");
     await waitFor(() => {
@@ -1392,7 +1392,7 @@ describe("TransitGuidePanel — boarding 수동 진행 (N3 ①)", () => {
     // boarding 국면: 탈출은 [다른 차량 선택]뿐이고 선언 버튼은 없다.
     const reselect = await screen.findByRole("button", { name: "transitGuide.reselectVehicle" });
     expect(reselect).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "transitGuide.boardWithoutArrival" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "transitGuide.boardSelected" })).toBeNull();
     // 누른 후보 행이 사라지는 전이 — 상태 문장으로 선점(§4.3·E38).
     await expectLandedOnStatus();
     expect(statusLine().textContent).toContain("transitGuide.boardingContext");
@@ -1456,7 +1456,7 @@ describe("TransitGuidePanel — boarding 수동 진행 (N3 ①)", () => {
       fireEvent.click(await screen.findByRole("button", { name: /selectTrain/ }));
       failing = true;
       await vi.advanceTimersByTimeAsync(20_000 * 3 + 500);
-      await screen.findByRole("button", { name: "transitGuide.boardWithoutArrival" });
+      await screen.findByRole("button", { name: "transitGuide.boardSelected" });
 
       // [다른 차량 선택] → 대기 국면 → 새 차량 선택 = 새 boarding. 아직 아무 관측도 끝나지 않았다.
       failing = false;
@@ -1464,7 +1464,7 @@ describe("TransitGuidePanel — boarding 수동 진행 (N3 ①)", () => {
       fireEvent.click(await screen.findByRole("button", { name: /selectTrain/ }));
       await screen.findByRole("button", { name: "transitGuide.reselectVehicle" });
       expect(
-        screen.queryByRole("button", { name: "transitGuide.boardWithoutArrival" }),
+        screen.queryByRole("button", { name: "transitGuide.boardSelected" }),
       ).toBeNull();
     } finally {
       vi.useRealTimers();
@@ -1490,12 +1490,11 @@ describe("TransitGuidePanel — boarding 수동 진행 (N3 ①)", () => {
       fireEvent.click(await screen.findByRole("button", { name: /selectTrain/ }));
       await screen.findByRole("button", { name: "transitGuide.reselectVehicle" });
 
-      // 조회 실패 3회(FAIL_NOTIFY_COUNT)면 upstreamFailed — 그 순간 버튼이 조용히 서므로
-      // 통지가 그 이름을 부른다(헌장 §3 발견 경로).
+      // 조회 실패 3회(FAIL_NOTIFY_COUNT)면 upstreamFailed — 통지는 상황만 말하고(A46) 버튼이 선다.
       failing = true;
       await vi.advanceTimersByTimeAsync(20_000 * 3 + 500);
       const manual = await screen.findByRole("button", {
-        name: "transitGuide.boardWithoutArrival",
+        name: "transitGuide.boardSelected",
       });
       expect(screen.getAllByRole("status")[0].textContent).toContain(
         "transitGuide.boardingUpstreamFailed",
@@ -1505,7 +1504,7 @@ describe("TransitGuidePanel — boarding 수동 진행 (N3 ①)", () => {
       // 컨트롤이 폴 한 번에 제거된다(헌장 §5).
       failing = false;
       await vi.advanceTimersByTimeAsync(20_000 * 2 + 500);
-      expect(screen.getByRole("button", { name: "transitGuide.boardWithoutArrival" })).toBe(manual);
+      expect(screen.getByRole("button", { name: "transitGuide.boardSelected" })).toBe(manual);
 
       // 누르면 종전 선언과 같은 전이(riding).
       fireEvent.click(manual);

@@ -1101,13 +1101,14 @@
     <string name="transitGuide_backOnTrack">車両の信号を再確認しました。</string>
     <string name="transitGuide_boardAlready">すでに乗車しました</string>
     <string name="transitGuide_boardApprox">すでに乗車しました</string>
-    <string name="transitGuide_boardWithoutArrival">到着情報なしで乗車</string>
+    <string name="transitGuide_boardSelected">選んだ列車に乗りました</string>
+    <string name="transitGuide_boardSelectedBus">選んだバスに乗りました</string>
     <string name="transitGuide_boarded">乗車しました。</string>
     <string name="transitGuide_boardedAlight">降車: %1$s。</string>
     <string name="transitGuide_boardingContext">%1$sで%2$sの乗車待ち。</string>
     <string name="transitGuide_boardingContextBus">%1$sで%2$s番バスの乗車待ち。</string>
-    <string name="transitGuide_boardingSignalLost">選択した車両を見つけられていません。乗車済みなら「到着情報なしで乗車」を押してください。</string>
-    <string name="transitGuide_boardingUpstreamFailed">リアルタイム情報が途切れました。乗車済みなら「到着情報なしで乗車」を押してください。</string>
+    <string name="transitGuide_boardingSignalLost">選択した車両を見つけられていません。</string>
+    <string name="transitGuide_boardingUpstreamFailed">リアルタイム情報が途切れました。</string>
     <string name="transitGuide_bound">%1$s行き</string>
     <string name="transitGuide_busEtaMin">約%1$s分後に到着。</string>
     <string name="transitGuide_busEtaMinSec">%1$s分%2$s秒後に到着。</string>
@@ -1203,7 +1204,7 @@
     <string name="transitGuide_trackingStarted">追跡を開始します。</string>
     <string name="transitGuide_untrackable">この区間はリアルタイム情報が提供されていません。</string>
     <string name="transitGuide_upstreamFailed">リアルタイム信号が途切れました。</string>
-    <string name="transitGuide_vehiclePassed">選択した車両が%1$sを通過したようです。その車両に乗車済みなら「到着情報なしで乗車」を、乗っていなければ「別の車両を選ぶ」を押してください。</string>
+    <string name="transitGuide_vehiclePassed">選択した車両が%1$sを通過したようです。</string>
     <string name="transitGuide_vehicleSelected">%1$sを選択。%2$sへの到着を待ちます。</string>
     <string name="transitGuide_viaAlight">下車</string>
     <string name="transitGuide_viaBoard">乗車</string>

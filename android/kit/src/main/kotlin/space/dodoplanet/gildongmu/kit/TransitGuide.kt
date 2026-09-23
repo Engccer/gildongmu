@@ -72,7 +72,7 @@ data class TransitLock(
 )
 
 /**
- * 근사 잠금 판별(§13.2): tagoBus(식별자 자체가 없다)와 "이미 탔습니다"(seoulBus·subway에서 식별자 없이 선언)가 같은
+ * 근사 잠금 판별(§13.2): tagoBus(식별자 자체가 없다)와 "이미 탔어요"(seoulBus·subway에서 식별자 없이 선언)가 같은
  * 소비 한계를 상속한다 — arrived 전이 금지·advance 상시·기준 차량 교체 통지·근사 주석.
  */
 fun isApproxTransitLock(lock: TransitLock): Boolean = lock.vehicleId.isEmpty()
@@ -85,8 +85,8 @@ fun isApproxTransitLock(lock: TransitLock): Boolean = lock.vehicleId.isEmpty()
 fun transitLockIsUnobserved(lock: TransitLock): Boolean = isApproxTransitLock(lock) && lock.mode != TransitTrackMode.tagoBus
 
 /**
- * boarding 국면에서 **도착 관측이 끝났는가**(N3 ① 2026-09-10 판정). 참일 때만 수동 진행 수단([도착 정보 없이 탑승
- * 진행])을 세운다 — 그 밖에는 승차 정류소 도착 관측이 riding 승격을 자동으로 한다. `signalLost`는 연속 미등장·
+ * boarding 국면에서 **도착 관측이 끝났는가**(N3 ① 2026-09-10 판정). 참일 때만 수동 진행 수단([선택한 열차에
+ * 탔어요])을 세운다 — 그 밖에는 승차 정류소 도착 관측이 riding 승격을 자동으로 한다. `signalLost`는 연속 미등장·
  * `vehiclePassed`와 심야·미제공이 모이는 자리이고, `upstreamFailed`는 조회 실패다. `neverSeen`은 riding 전용 축이라
  * 이 국면에 없다. 웹 `boardingObservationLost` 미러.
  */
@@ -94,7 +94,7 @@ fun transitBoardingObservationLost(signal: TransitSignal): Boolean =
     signal == TransitSignal.signalLost || signal == TransitSignal.upstreamFailed
 
 /**
- * "이미 탔습니다" 흐름의 후보 필터(A34 ②): 사용자가 "지금 지나는 역"이라 답한 역의 도착 목록에서 **그 역에 있는
+ * "이미 탔어요" 흐름의 후보 필터(A34 ②): 사용자가 "지금 지나는 역"이라 답한 역의 도착 목록에서 **그 역에 있는
  * 열차**(진입 0·도착 1·출발 2·전역 출발/진입/도착 3·4·5)만 남긴다. `99`(두 정거장 이상 밖)는 사용자가 타고 있을 수
  * 없다. 이 필터가 선언 식별 잠금(`boardAboard`)이 확정 도착 권한을 갖는 근거다. 웹 `aboardCandidates` 미러.
  */
@@ -225,7 +225,7 @@ sealed class TransitGuideInput {
 
     /**
      * boarding → riding 사용자 선언. 입력 자체는 불변이고 UI가 이 입력을 낼 수 있는 때만 좁혔다(N3 ① — 관측이 끝난
-     * 국면의 [도착 정보 없이 탑승 진행]).
+     * 국면의 [선택한 열차에 탔어요]).
      */
     data object ConfirmBoarded : TransitGuideInput()
 
@@ -238,7 +238,7 @@ sealed class TransitGuideInput {
     data object DeclareArrived : TransitGuideInput()
 
     /**
-     * "이미 탔습니다" 흐름의 식별 잠금(A34 ②): 사용자가 지나는 역의 목록에서 고른 열차로 waiting → riding(declared)
+     * "이미 탔어요" 흐름의 식별 잠금(A34 ②): 사용자가 지나는 역의 목록에서 고른 열차로 waiting → riding(declared)
      * 직행. boarding(승차 정류소 도착 대기)을 지나지 않는다 — 이미 탔다.
      */
     data class BoardAboard(val lock: TransitLock) : TransitGuideInput()
@@ -635,7 +635,7 @@ fun transitExpressVerdict(item: TransitTrackItem, leg: TransitGuideLeg): Transit
     return if (alight in expressNames) TransitExpressVerdict.stops else TransitExpressVerdict.skips
 }
 
-/** "이미 탔습니다"에서 급행 확인을 물어야 하는 leg인가 — 급행 집합이 있는 노선만(spec §6, 웹 미러). */
+/** "이미 탔어요"에서 급행 확인을 물어야 하는 leg인가 — 급행 집합이 있는 노선만(spec §6, 웹 미러). */
 fun transitNeedsExpressPrompt(leg: TransitGuideLeg): Boolean =
     !leg.expressStopIds.isNullOrEmpty() || !leg.expressStops.isNullOrEmpty()
 
@@ -761,7 +761,7 @@ private fun handleDeclareArrived(state: TransitGuideState): TransitGuideStepResu
 }
 
 /**
- * "이미 탔습니다" 흐름의 식별 잠금(A34 ②) — 지나는 역의 목록에서 고른 열차로 riding 직행. 근사 잠금은 이 입력의 대상이
+ * "이미 탔어요" 흐름의 식별 잠금(A34 ②) — 지나는 역의 목록에서 고른 열차로 riding 직행. 근사 잠금은 이 입력의 대상이
  * 아니다(그쪽은 `board`의 종전 경로). 웹 `handleBoardAboard` 미러.
  */
 private fun handleBoardAboard(state: TransitGuideState, lock: TransitLock): TransitGuideStepResult {
@@ -820,7 +820,7 @@ private fun enterBoarding(state: TransitGuideState, lock: TransitLock): TransitG
     return TransitGuideStepResult(next, TransitGuideEvent.VehicleSelected(state.legIndex))
 }
 
-/** "탑승" = 차량 선택(N3). 근사 잠금(tagoBus·"이미 탔습니다")만 종전대로 riding — 식별자가 없어 고를 차량도, 기다릴 도착도 없다. */
+/** "탑승" = 차량 선택(N3). 근사 잠금(tagoBus·"이미 탔어요")만 종전대로 riding — 식별자가 없어 고를 차량도, 기다릴 도착도 없다. */
 private fun handleBoard(state: TransitGuideState, lock: TransitLock): TransitGuideStepResult {
     if (state.phase != TransitPhase.waiting || state.signal == TransitSignal.untrackable) return TransitGuideStepResult(state, null)
     return if (isApproxTransitLock(lock)) enterRiding(state, lock, TransitBoardedCause.declared) else enterBoarding(state, lock)

@@ -1101,13 +1101,14 @@
     <string name="transitGuide_backOnTrack">Segnale del veicolo ritrovato.</string>
     <string name="transitGuide_boardAlready">Sono già a bordo</string>
     <string name="transitGuide_boardApprox">Sono già a bordo</string>
-    <string name="transitGuide_boardWithoutArrival">Salgo senza info di arrivo</string>
+    <string name="transitGuide_boardSelected">Sono sul treno scelto</string>
+    <string name="transitGuide_boardSelectedBus">Sono sull\'autobus scelto</string>
     <string name="transitGuide_boarded">A bordo.</string>
     <string name="transitGuide_boardedAlight">Scendi a %1$s.</string>
     <string name="transitGuide_boardingContext">In attesa di salire su %2$s a %1$s.</string>
     <string name="transitGuide_boardingContextBus">In attesa di salire sull\'autobus %2$s a %1$s.</string>
-    <string name="transitGuide_boardingSignalLost">Non troviamo il veicolo che hai scelto. Se sei a bordo, tocca Salgo senza info di arrivo.</string>
-    <string name="transitGuide_boardingUpstreamFailed">Il flusso in tempo reale si è interrotto. Se sei a bordo, tocca Salgo senza info di arrivo.</string>
+    <string name="transitGuide_boardingSignalLost">Non troviamo il veicolo che hai scelto.</string>
+    <string name="transitGuide_boardingUpstreamFailed">Il flusso in tempo reale si è interrotto.</string>
     <string name="transitGuide_bound">Direzione %1$s</string>
     <string name="transitGuide_busEtaMin">Arriva tra circa %1$s min.</string>
     <string name="transitGuide_busEtaMinSec">Arriva tra %1$s min %2$s s.</string>
@@ -1203,7 +1204,7 @@
     <string name="transitGuide_trackingStarted">Monitoraggio avviato.</string>
     <string name="transitGuide_untrackable">Informazioni in tempo reale non disponibili per questa tratta.</string>
     <string name="transitGuide_upstreamFailed">Segnale in tempo reale perso.</string>
-    <string name="transitGuide_vehiclePassed">Il veicolo scelto sembra aver lasciato %1$s. Se sei a bordo tocca Salgo senza info di arrivo, altrimenti Scegli un altro veicolo.</string>
+    <string name="transitGuide_vehiclePassed">Il veicolo scelto sembra aver lasciato %1$s.</string>
     <string name="transitGuide_vehicleSelected">%1$s selezionato. In attesa del suo arrivo a %2$s.</string>
     <string name="transitGuide_viaAlight">discesa</string>
     <string name="transitGuide_viaBoard">salita</string>

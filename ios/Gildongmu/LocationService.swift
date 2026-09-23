@@ -137,7 +137,7 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
         }
     }
 
-    /// keep-alive 스트림 시작(riding 진입). 권한이 없으면 열지 않고 false — 여기서 권한 팝업을 띄우지
+    /// keep-alive 스트림 시작(boarding·riding 진입). 권한이 없으면 열지 않고 false — 여기서 권한 팝업을 띄우지
     /// 않는다(대중교통 시작은 권한 요청 지점이 아니다). 비콘 스트림이 열려 있으면 플래그만 세운다
     /// (비콘 프로파일이 더 강하고, 비콘이 끝나면 `stopBeaconUpdates`가 이 프로파일로 내려온다).
     func startKeepAliveUpdates() -> Bool {

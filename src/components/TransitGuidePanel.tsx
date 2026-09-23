@@ -249,7 +249,7 @@ export function TransitGuidePanel({
       (phase === "arrived" && previous !== "arrived") ||
       // 차량 선택(waiting→boarding, N3 ①): 누른 후보 행이 사라진다.
       (phase === "boarding" && previous === "waiting") ||
-      // 고른 열차로 직행(waiting→riding, A34 `boardAboard`): 선택 행·[이미 탔습니다]가 통째로 사라진다.
+      // 고른 열차로 직행(waiting→riding, A34 `boardAboard`): 선택 행·[이미 탔어요]가 통째로 사라진다.
       (phase === "riding" && previous === "waiting");
     if (landsOnLabel) {
       (waitingLabelRef.current ?? statusRef.current)?.focus();
@@ -643,7 +643,7 @@ export function TransitGuidePanel({
             boarding(N3): 차량을 골랐고 승차 정류소 도착을 기다린다. 도착 관측이 riding 승격을
             **자동으로** 하므로 선언 버튼은 서지 않는다(위원장 판정 2026-09-10, spec
             `2026-09-11-boarding-manual-advance-design.md`) — 관측이 끝난 뒤에만 수동 진행 수단.
-            그 사이 실제로 타 버렸으면 [다른 차량 선택] → 대기 국면 [이미 탔습니다]가 탈출구다.
+            그 사이 실제로 타 버렸으면 [다른 차량 선택] → 대기 국면 [이미 탔어요]가 탈출구다.
           */}
           {state.phase === "boarding" && (
             <div className="mt-1 flex flex-wrap gap-2">
@@ -653,7 +653,7 @@ export function TransitGuidePanel({
                   onClick={guide.confirmBoarded}
                   className="min-h-11 rounded-md border border-blue-700 px-3 text-sm text-blue-700 dark:text-blue-300"
                 >
-                  {t("boardWithoutArrival")}
+                  {leg.mode === "subway" ? t("boardSelected") : t("boardSelectedBus")}
                 </button>
               )}
               <button
