@@ -67,11 +67,21 @@ import {
   positionStatusIndex,
   POSITION_CLIENT_TIMEOUT_MS,
   ridingPositionStep,
-  viaStopHereIndex,
   type TransitPositionBinding,
   type TransitPositionOutcome,
   type TransitRidingPosition,
 } from "@/lib/transit-riding-position";
+import {
+  busStopApplies,
+  busStopMarkOf,
+  busStopStep,
+  BUS_STOP_HOLD_MS,
+  sameBusStopMark,
+  viaStopHereIndexWithBusStop,
+  type TransitBusStopMark,
+  type TransitBusStopTracker,
+} from "@/lib/transit-bus-stop";
+import { getGeolocationSnapshot } from "@/lib/geolocation";
 import type { TransitRoute } from "@/lib/types";
 
 /**
@@ -327,6 +337,14 @@ export function useTransitGuide(
   const positionRef = useRef<TransitRidingPosition | null>(null);
   const [ridingPosition, setRidingPosition] = useState<TransitRidingPosition | null>(null);
   const [positionClock, setPositionClock] = useState(0);
+  /**
+   * 버스 승차 중 현재 정류장(E48 spec 2026-09-23 bus-current-stop §5) — 세션 전용 위치 스트림의 fix로 채우는 **표시
+   * 전용** 상태(리듀서 밖). 화면은 시각이 빠진 표식만 읽고 바뀔 때만 쓴다(추적 상태는 fix마다 바뀐다). 만료는
+   * 마지막 관측 + 보존 창에 맞춘 타이머가 판정한다.
+   */
+  const busTrackerRef = useRef<TransitBusStopTracker | null>(null);
+  const [busStopMark, setBusStopMark] = useState<TransitBusStopMark | null>(null);
+  const busExpiryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** 현재역이 잡혀 있어 보류한 `neverSeen` 경고의 결박(spec §6 판정 2) — 폴마다 처분한다. */
   const neverSeenPendingRef = useRef<TransitPositionBinding | null>(null);
   const routeRef = useRef<TransitGuideRoute | null>(null);
@@ -1122,6 +1140,36 @@ export function useTransitGuide(
     }
   }, [announce, currentLeg, dispatch, reasonText, refreshPosition, resolveTagoIfNeeded, scheduleNext, t, locale]);
 
+  /** 표식을 다시 판정해 바뀔 때만 쓰고, 표식이 서 있으면 마지막 관측 + 보존 창에 한 번 더 판정한다(설계 리뷰 M2). */
+  const refreshBusStopMark = useCallback(
+    (now: number) => {
+      const judge = (at: number): void => {
+        const s = stateRef.current;
+        const leg = currentLeg();
+        const mark = s && leg ? busStopMarkOf(s, leg, busTrackerRef.current, at) : null;
+        setBusStopMark((prev) => (sameBusStopMark(prev, mark) ? prev : mark));
+        if (busExpiryTimerRef.current) clearTimeout(busExpiryTimerRef.current);
+        busExpiryTimerRef.current = null;
+        const observedAt = busTrackerRef.current?.lastObservedAt;
+        if (mark && observedAt != null) {
+          busExpiryTimerRef.current = setTimeout(
+            () => judge(Date.now()),
+            Math.max(0, observedAt + BUS_STOP_HOLD_MS - at) + 1,
+          );
+        }
+      };
+      judge(now);
+    },
+    [currentLeg],
+  );
+
+  const clearBusStop = useCallback(() => {
+    busTrackerRef.current = null;
+    setBusStopMark(null);
+    if (busExpiryTimerRef.current) clearTimeout(busExpiryTimerRef.current);
+    busExpiryTimerRef.current = null;
+  }, []);
+
   const stopSession = useCallback(() => {
     clearTimer();
     stateRef.current = null;
@@ -1133,6 +1181,7 @@ export function useTransitGuide(
     positionRef.current = null;
     neverSeenPendingRef.current = null;
     setRidingPosition(null);
+    clearBusStop();
     setBoardOverride(null);
     setSelectedDescription(null);
     setReboardPickerActive(false);
@@ -1144,7 +1193,7 @@ export function useTransitGuide(
     setWaiting(EMPTY_WAITING);
     // ⚠ setBoardOverride·setSelectedDescription은 useCallback([])이라 안정 정체성이다 —
     // 아래 주석의 "참조 동일성이 세션 스토어의 소유 판정 키"라는 전제를 깨지 않는다.
-  }, [clearTimer, setAboardStep, setBoardOverride, setSelectedDescription]);
+  }, [clearBusStop, clearTimer, setAboardStep, setBoardOverride, setSelectedDescription]);
   // stopSession은 상태 의존이 없어 안정 정체성이다(참조 동일성이
   // 세션 스토어의 소유 판정 키 — 별도 ref 고정 불필요).
 
@@ -1169,6 +1218,7 @@ export function useTransitGuide(
       positionRef.current = null;
       neverSeenPendingRef.current = null;
       setRidingPosition(null);
+      clearBusStop();
       const init = initTransitGuide(route, Date.now());
       commit(init);
       const first = route.legs[0];
@@ -1188,7 +1238,7 @@ export function useTransitGuide(
       announce(parts.filter(Boolean).join(" "), context.ko || destKo ? "ko" : undefined);
       void pollOnce();
     },
-    [announce, commit, destinationLabel, pollOnce, stopSession, t, waitContextPiece],
+    [announce, clearBusStop, commit, destinationLabel, pollOnce, stopSession, t, waitContextPiece],
   );
 
   const start = useCallback(() => {
@@ -1591,6 +1641,54 @@ export function useTransitGuide(
 
   /** 상시 표시 문자열(§12.3) — 패널이 그대로 렌더한다(별도 조립 금지). */
   const activeRoute = sessionRoute ?? guideRoute;
+
+  /**
+   * 버스 승차 중 세션 전용 위치 스트림(E48 §5, 설계 리뷰 M3) — 공유 위치 스토어를 **덮지 않는다**. 스토어 좌표를 폴마다
+   * 갈아 끼우면 "현재 위치" 주소 재조회·표시줄 라벨 교체가 승차 내내 반복된다(`current-address-store`는 새로고침에서만
+   * 좌표가 바뀐다는 전제다). 도보 안내(`useRouteGuide`)처럼 안내가 자기 watch를 쥐고, fix는 표시 상태에만 들어간다.
+   * 켜는 조건: 버스 riding ∧ 전경 ∧ 공유 스토어가 이미 `ready`(= 권한이 있다 — 팝업을 새로 띄우지 않는다).
+   */
+  const busRiding =
+    state != null && activeRoute?.legs[state.legIndex] != null && busStopApplies(state, activeRoute.legs[state.legIndex]);
+  const [foreground, setForeground] = useState(true);
+  useEffect(() => {
+    const onVisibility = () => setForeground(document.visibilityState !== "hidden");
+    onVisibility();
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, []);
+  useEffect(() => {
+    if (!busRiding || !foreground) return;
+    if (typeof navigator === "undefined" || !navigator.geolocation) return;
+    if (getGeolocationSnapshot().status !== "ready") return;
+    const id = navigator.geolocation.watchPosition(
+      (pos) => {
+        const s = stateRef.current;
+        const leg = currentLeg();
+        if (!s || !leg) return;
+        const now = Date.now();
+        busTrackerRef.current = busStopStep(
+          busTrackerRef.current,
+          s,
+          leg,
+          {
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+            accuracy: pos.coords.accuracy,
+            // 측정 시각 기준 — 값이 이상하면 나이 상한이 `stale`로 거른다(표식 부재가 정직한 폴백).
+            ageSeconds: (now - pos.timestamp) / 1000,
+          },
+          now,
+        ).tracker;
+        refreshBusStopMark(now);
+      },
+      () => {
+        // 오류(일시 실패·타임아웃)는 fix가 없다는 뜻일 뿐이다 — 만료 타이머가 표식을 거둔다.
+      },
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 15_000 },
+    );
+    return () => navigator.geolocation.clearWatch(id);
+  }, [busRiding, foreground, currentLeg, refreshBusStopMark]);
   const status = useMemo(() => {
     const leg = state && activeRoute ? activeRoute.legs[state.legIndex] : null;
     return state && leg ? buildStatus(state, leg, ridingPosition, positionClock) : { text: "" };
@@ -1603,12 +1701,12 @@ export function useTransitGuide(
     prewalkTarget,
     state,
     /**
-     * 경유역 목록의 "현재 위치" index(E35) — 도착 유래(`arvlMsg3`)와 실시간 열차 위치 중 큰 값.
+     * 경유역 목록의 "현재 위치" index — 도착 유래(`arvlMsg3`)·실시간 열차 위치(E35)·버스 기기 위치(E48) 중 큰 값.
      * 조인은 한국어 원문으로 한다(표시 투영과 index 1:1).
      */
     viaStopHere:
       state && activeRoute?.legs[state.legIndex]
-        ? viaStopHereIndex(state, activeRoute.legs[state.legIndex], ridingPosition, positionClock)
+        ? viaStopHereIndexWithBusStop(state, activeRoute.legs[state.legIndex], ridingPosition, busStopMark, positionClock)
         : null,
     statusText: status.text,
     /** 상시 표시 줄의 `lang`(한국어 폴백일 때만 "ko"). */

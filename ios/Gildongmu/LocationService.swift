@@ -101,11 +101,22 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
     private(set) var isBeaconTracking = false
 
     /// 대중교통 승차 국면의 **keep-alive 스트림**이 열려 있는지(E36, spec 2026-09-11 §4.2.3 ⓐ).
-    /// 좌표를 소비하지 않는다 — 소리 없는 대중교통 세션을 iOS가 재우지 않게 하는 것이 유일한
-    /// 목적이다(`audio` 모드는 소리를 내는 동안만 앱을 살린다). 비콘 스트림과 같은 매니저를 쓰되
+    /// 첫 목적은 소리 없는 대중교통 세션을 iOS가 재우지 않게 하는 것이다(`audio` 모드는 소리를 내는
+    /// 동안만 앱을 살린다). 좌표는 버스 승차 중 현재 정류장 표식만 소비한다(E48, `keepAliveFixSink` —
+    /// 공유 스토어에는 쓰지 않는다). 비콘 스트림과 같은 매니저를 쓰되
     /// 프로파일이 다르다(`Profile.keepAlive`). ⚠ 단발 취득(`endOneShotIfIdle`)이 이 플래그를 모르면
     /// 스트림을 끊는다(설계 리뷰 M2) — 끄는 쪽은 셋(비콘·keep-alive·단발) 모두를 본다.
     private(set) var isKeepAliveActive = false
+
+    /// keep-alive 스트림의 fix를 받는 싱크(E48, spec 2026-09-23 bus-current-stop §4.1) — 대중교통 안내 세션만
+    /// 건다. **판정 없이 원값**을 넘기고(판정은 Kit `transitBusStopStep`), 정밀 위치가 꺼진 세션의 fix는 넘기지
+    /// 않는다(공유 스토어 저장과 같은 규칙). ⚠ 공유 스토어 미기록(`isKeepAliveOnly`)은 그대로다 — 이 싱크는
+    /// 그 세션의 표시 상태만 채운다.
+    var keepAliveFixSink: ((BeaconFixPayload) -> Void)?
+
+    /// 버스 승차 중인가 — keep-alive 프로파일을 정류장 판정이 가능한 정밀도로 올린다(spec §4.2). 켜는 쪽은
+    /// `TransitGuideModel.updateKeepAlive`, `stopKeepAliveUpdates`가 내린다(다음 세션이 정밀로 시작하지 않게).
+    private var keepAliveBusRiding = false
 
     /// 매니저 설정 프로파일 — 세 스트림이 한 매니저를 공유하므로 설정 변경을 한 곳에 모은다
     /// (단발 취득이 `desiredAccuracy = Best`를 대입하고 되돌리지 않던 것이 M2의 둘째 구멍).
@@ -126,9 +137,19 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
             // true면 정차·터널에서 시스템이 "정지"로 판단해 갱신을 멈추고 그때 백그라운드 근거도
             // 사라진다. 저정밀·500m 필터라 GPS 칩은 대개 꺼진다(배터리 실측 BACKLOG §2 E36 ③).
             manager.pausesLocationUpdatesAutomatically = false
-            manager.activityType = .otherNavigation
-            manager.desiredAccuracy = kCLLocationAccuracyKilometer
-            manager.distanceFilter = 500
+            if keepAliveBusRiding {
+                // 버스 승차(E48 §4.2): 1km·500m로는 정류장을 가를 수 없다. 10m급을 요청하는 것은 판정 상한(100m)
+                // 때문이 아니라 측위 **원천**을 GPS 쪽으로 기울이려는 것이다 — 100m급은 Wi-Fi로 채워질 수 있고
+                // 차내 Wi-Fi AP는 버스와 함께 움직인다(설계 리뷰 m1). 거리 필터를 끄는 것은 신호 대기·정체 중에도
+                // fix가 흘러 "아직 여기"를 증언하게 하려는 것이다(필터가 있으면 보존 창이 지나 표식이 사라진다).
+                manager.activityType = .automotiveNavigation
+                manager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
+                manager.distanceFilter = kCLDistanceFilterNone
+            } else {
+                manager.activityType = .otherNavigation
+                manager.desiredAccuracy = kCLLocationAccuracyKilometer
+                manager.distanceFilter = 500
+            }
         case .oneShot:
             // 단발 취득은 정확도만 올린다(pauses·activity는 바깥 스트림 것 유지). 거리 필터는 꺼야
             // keep-alive의 500m 필터 아래에서도 개선 fix가 들어온다.
@@ -158,7 +179,18 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
         return true
     }
 
+    /// 버스 승차 프로파일 전환(E48 §4.2). keep-alive **단독** 구간이면 즉시 다시 적용한다 — 비콘·단발 취득이 쥐고
+    /// 있으면 그쪽 프로파일을 존중하고, 끝나며 keep-alive로 내려올 때(`endOneShotIfIdle`·`stopBeaconUpdates`)
+    /// 이 플래그를 읽는다.
+    func setKeepAliveBusRiding(_ on: Bool) {
+        guard keepAliveBusRiding != on else { return }
+        keepAliveBusRiding = on
+        if isKeepAliveOnly { applyProfile(.keepAlive) }
+    }
+
     func stopKeepAliveUpdates() {
+        keepAliveBusRiding = false
+        keepAliveFixSink = nil
         guard isKeepAliveActive else { return }
         isKeepAliveActive = false
         guard !isBeaconTracking else { return }  // 비콘이 쥔 스트림은 비콘이 끈다
@@ -246,8 +278,9 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
         // 한다. When In Use로 충분하다 — 전경에서 시작한 스트림은 이 플래그만으로
         // 백그라운드에서 계속되고, 파란 표시줄은 시스템이 띄운다(끌 수 없음, 감수).
         // 이 스트림의 소비자는 도보·자동차 세션(BeaconModel)뿐이다. 대중교통 추적은 위치가 아니라
-        // 네트워크 폴링이 생명선이라 fix를 소비하지 않지만, 2026-09-11(E36)부터 승차 국면이
-        // **프로세스를 살려 두기 위해** 별도 진입점(`startKeepAliveUpdates`)으로 같은 매니저를 켠다.
+        // 네트워크 폴링이 생명선이지만, 2026-09-11(E36)부터 승차 국면이 **프로세스를 살려 두기 위해**
+        // 별도 진입점(`startKeepAliveUpdates`)으로 같은 매니저를 켠다(버스 승차 중 현재 정류장 표식이
+        // 그 fix를 읽는다 — E48 `keepAliveFixSink`).
         if Self.backgroundLocationDeclared {
             manager.allowsBackgroundLocationUpdates = true
         }
@@ -633,14 +666,17 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
                 }
             }
 
+            let payload = BeaconFixPayload(
+                lat: lat, lng: lng, accuracy: accuracy, timestamp: timestamp,
+                speed: speed, speedAccuracy: speedAccuracy,
+                course: course, courseAccuracy: courseAccuracy
+            )
             if self.isBeaconTracking {
-                self.beaconFixSink?(
-                    BeaconFixPayload(
-                        lat: lat, lng: lng, accuracy: accuracy, timestamp: timestamp,
-                        speed: speed, speedAccuracy: speedAccuracy,
-                        course: course, courseAccuracy: courseAccuracy
-                    )
-                )
+                self.beaconFixSink?(payload)
+            }
+            // keep-alive 소비자(E48): 정밀 위치가 꺼진 세션의 fix는 넘기지 않는다(위 `isPrecise` 주석과 같은 이유).
+            if self.isKeepAliveActive, isPrecise {
+                self.keepAliveFixSink?(payload)
             }
         }
     }

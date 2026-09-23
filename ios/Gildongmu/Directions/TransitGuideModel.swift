@@ -82,24 +82,37 @@ final class TransitGuideModel {
     /// 출발점이 같은 "현재역"을 본다. ⚠ 주변 확인 앵커는 이 값을 읽지 않는다(원시 판정 — 시트 `surroundingsSection`).
     var overview: TransitOverview? {
         guard let state, let route else { return nil }
-        return transitOverviewApplyingPosition(
+        let base = transitOverviewApplyingPosition(
             transitProgressOverview(state: state, route: route),
             state: state, position: ridingPosition, now: positionClock)
+        // 버스 승차 중 현재 정류장(E48) — 기기 위치 표식. E35 후처리와는 다른 leg 종류에서만 일한다.
+        guard let leg = currentLeg else { return base }
+        return transitOverviewApplyingBusStop(base, state: state, leg: leg, mark: busStopMark)
     }
 
     /// 승차 중 현재역(E35 spec §4) — 상태 머신 **밖**의 표시 상태. 리듀서는 이 값을 모르고 판정에 쓰지 않는다.
     private(set) var ridingPosition: TransitRidingPosition?
     /// 보존 창 판정의 "지금"(ms) — 조회 시점에 굳힌다(뷰가 렌더마다 시계를 읽지 않게, 웹 `positionClock` 동형).
     private(set) var positionClock: Double = 0
+    /// 버스 승차 중 현재 정류장(E48 spec 2026-09-23 bus-current-stop §2·§4.3) — keep-alive fix로 채우는 **표시 전용**
+    /// 상태(리듀서 밖). 뷰가 읽는 것은 시각이 빠진 표식이고 **바뀔 때만** 쓴다(추적 상태는 fix마다 바뀌어 관측 밖에
+    /// 둔다 — 설계 리뷰 m3). 만료는 폴 시계가 아니라 마지막 관측 + 보존 창에 맞춘 타이머가 판정한다(설계 리뷰 M2).
+    private(set) var busStopMark: TransitBusStopMark?
+    @ObservationIgnored private var busStopTracker: TransitBusStopTracker?
+    @ObservationIgnored private var busStopExpiryTask: Task<Void, Never>?
+    /// 계측 `busFix` 줄의 직전 (판정, 래치) — 바뀔 때만 쓴다(fix는 초 단위로 온다).
+    @ObservationIgnored private var lastBusFixLog: (verdict: TransitBusStopVerdict, latched: Int?)?
     /// 현재역이 잡혀 있어 보류한 `neverSeen` 경고의 결박(spec §6 판정 2) — 폴마다 처분한다.
     @ObservationIgnored private var neverSeenPending: TransitPositionBinding?
     @ObservationIgnored private let positionService = TransitPositionService(
         client: APIClient(baseURL: AppConfig.apiBaseURL))
 
-    /// 경유역 목록의 "현재 위치" index — 도착 `arvlMsg3`와 실시간 열차 위치 중 큰 값(조인은 한국어 원문).
+    /// 경유역 목록의 "현재 위치" index — 도착 `arvlMsg3`·실시간 열차 위치(E35)·버스 기기 위치(E48) 중 큰 값
+    /// (조인은 한국어 원문).
     var viaStopHereIndex: Int? {
         guard let state, let leg = currentLeg else { return nil }
-        return transitViaStopHereIndex(state: state, leg: leg, position: ridingPosition, now: positionClock)
+        return transitViaStopHereIndexWithBusStop(
+            state: state, leg: leg, position: ridingPosition, busStop: busStopMark, now: positionClock)
     }
 
     /// 신호 문장 자리를 차지할 현재역 문장(E35 §6 판정 1) — 도착 피드 미관측 구간에 위치가 잡혀 있을 때만.
@@ -254,6 +267,7 @@ final class TransitGuideModel {
         tagoUnsupported = []
         // 다음 세션의 phaseGen도 0에서 시작한다 — 옛 위치 결박이 같은 세대·열차로 되살아나지 않게.
         ridingPosition = nil
+        clearBusStop()
         neverSeenPending = nil
         toneState = .initial
         lastPollStartAt = nil
@@ -308,6 +322,7 @@ final class TransitGuideModel {
         state = nil
         route = nil
         ridingPosition = nil
+        clearBusStop()
         neverSeenPending = nil
         waitingLive = []
         waitingDeparted = []
@@ -437,6 +452,9 @@ final class TransitGuideModel {
         let sinceAction = now - lastUserActionAt
         guard sinceAction >= limitSeconds else { return false }
         idlePaused = true
+        // 폴·keep-alive가 멈추면 fix도 만료 판정도 오지 않는다 — 표식을 남기면 재개 전까지 옛 정류장을 무기한 말한다
+        // (설계 리뷰 M4). 재개 뒤 첫 fix들이 다시 세운다.
+        clearBusStop()
         transitGuideLog("idlePause sinceAction=\(Int(sinceAction))s limit=\(Int(limitSeconds))s")
         // 정지 톤(도보 유휴 종료 동형 — 종전엔 문장만 있어 소리·진동 채널이 비어 있었다). 전경에서만:
         // 잠근 채 잊은 휴대전화가 한참 뒤 울리면 당황스럽다(BeaconModel 유휴 종료와 같은 판정).
@@ -464,10 +482,18 @@ final class TransitGuideModel {
             false
         }
         if wants {
-            guard !keepAliveActive else { return }
+            // 버스 승차 중이면 정류장을 가를 수 있는 정밀도로 올린다(E48 §4.2) — 그 밖(지하철·boarding)은 저정밀 그대로.
+            // 국면 전이·구간 전진·유휴 정지가 모두 이 함수를 지나므로 매번 반영한다.
+            let busRiding = state?.phase == .riding && currentLeg?.mode == "bus"
+            if keepAliveActive {
+                LocationService.shared.setKeepAliveBusRiding(busRiding)
+                return
+            }
             if LocationService.shared.startKeepAliveUpdates() {
                 keepAliveActive = true
-                transitGuideLog("keepAlive start")
+                LocationService.shared.keepAliveFixSink = { [weak self] fix in self?.ingestKeepAliveFix(fix) }
+                LocationService.shared.setKeepAliveBusRiding(busRiding)
+                transitGuideLog("keepAlive start profile=\(busRiding ? "bus" : "default")")
             } else if !keepAliveDeniedLogged {
                 keepAliveDeniedLogged = true
                 transitGuideLog("keepAlive denied")
@@ -476,6 +502,55 @@ final class TransitGuideModel {
             LocationService.shared.stopKeepAliveUpdates()
             keepAliveActive = false
             transitGuideLog("keepAlive stop reason=\(idlePaused ? "idle" : "phase")")
+        }
+    }
+
+    /// 표식을 다시 판정해 **바뀔 때만** 쓰고(@Observable은 같은 값 대입에도 뷰를 다시 그린다), 표식이 서 있으면
+    /// 마지막 관측 + 보존 창에 한 번 더 판정하도록 타이머를 건다 — fix가 끊긴 터널에서도 창이 정확히 닫힌다.
+    private func refreshBusStopMark(now: Double) {
+        let mark: TransitBusStopMark? = if let state, let leg = currentLeg {
+            transitBusStopMark(state: state, leg: leg, tracker: busStopTracker, now: now)
+        } else {
+            nil
+        }
+        if mark != busStopMark { busStopMark = mark }
+        busStopExpiryTask?.cancel()
+        busStopExpiryTask = nil
+        guard mark != nil, let at = busStopTracker?.lastObservedAt else { return }
+        let delayMs = max(0, at + transitBusStopHoldMs - now) + 1
+        busStopExpiryTask = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(delayMs))
+            guard !Task.isCancelled, let self else { return }
+            self.refreshBusStopMark(now: self.nowMs())
+        }
+    }
+
+    private func clearBusStop() {
+        busStopTracker = nil
+        busStopMark = nil
+        busStopExpiryTask?.cancel()
+        busStopExpiryTask = nil
+        lastBusFixLog = nil
+    }
+
+    /// keep-alive fix 한 건(E48 §4.3) — 판정은 Kit, 여기는 반영·계측만.
+    private func ingestKeepAliveFix(_ fix: LocationService.BeaconFixPayload) {
+        guard let state, let leg = currentLeg else { return }
+        let age = -fix.timestamp.timeIntervalSinceNow
+        let now = nowMs()
+        let result = transitBusStopStep(
+            busStopTracker, state: state, leg: leg,
+            fix: TransitDeviceFix(lat: fix.lat, lng: fix.lng, accuracy: fix.accuracy, ageSeconds: age),
+            now: now)
+        busStopTracker = result.tracker
+        refreshBusStopMark(now: now)
+        guard result.verdict != .notApplicable else { return }
+        // 계측: 판정 종류나 래치가 바뀔 때만 1줄 — 실승차 사후에 부정확·노선 밖·모호를 가르는 유일한 증거.
+        let latched = result.tracker?.stopIndex
+        if lastBusFixLog?.verdict != result.verdict || lastBusFixLog?.latched != latched {
+            lastBusFixLog = (result.verdict, latched)
+            transitGuideLog("busFix verdict=\(result.verdict.rawValue) latched=\(latched.map(String.init) ?? "-")"
+                + " acc=\(Int(fix.accuracy.rounded())) age=\(String(format: "%.1f", age))s")
         }
     }
 
@@ -1001,6 +1076,7 @@ final class TransitGuideModel {
         refreshAnnounce = false
         expressBlockedNote = nil  // 옛 경로의 하차역 이름이 든 문장(코드 리뷰 #4)
         ridingPosition = nil  // 새 경로는 phaseGen 0부터 — 옛 결박이 되살아나지 않게(E35)
+        clearBusStop()  // 같은 이유(E48)
         neverSeenPending = nil
         toneState = .initial
         lastPollStartAt = nil
