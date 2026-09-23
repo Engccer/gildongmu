@@ -1201,6 +1201,44 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
     expect(rows[0].textContent).not.toContain("천호 도착");
   });
 
+  it("탑승 변경 역 선택이 in-flight 폴과 겹쳐도 그 폴이 끝나자마자 새 역을 조회한다(A48)", async () => {
+    // 하차역(여의도) 폴을 붙들어 둔 채 탑승 변경 → 왕십리를 고른다. 즉폴은 in-flight에 막히므로
+    // 옛 폴의 완료가 대신 내야 한다 — 안 그러면 새 역 첫 조회가 다음 주기(수십 초)로 밀린다.
+    let holdAlight = false;
+    let releaseOld: (() => void) | null = null;
+    const calls: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        calls.push(url);
+        if (holdAlight && url.includes("station=" + encodeURIComponent("여의도"))) {
+          await new Promise<void>((r) => {
+            releaseOld = r;
+          });
+        }
+        return {
+          ok: true,
+          json: async () => ({ mode: "subway", status: "ok", rawCount: 1, items: [trackItem({})] }),
+        } as Response;
+      }),
+    );
+    render(<TransitGuidePanelHost route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
+    fireEvent.click(screen.getByRole("button", { name: "시작" }));
+    holdAlight = true;
+    await boardTrainAndTrack();
+    await waitFor(() => expect(releaseOld).not.toBeNull());
+
+    fireEvent.click(await screen.findByRole("button", { name: "transitGuide.changeBoarding" }));
+    calls.length = 0;
+    fireEvent.click(await screen.findByRole("button", { name: "왕십리(성동구청)" }));
+    const isNewStation = (u: string) => u.includes("station=" + encodeURIComponent("왕십리(성동구청)"));
+    // 아직 in-flight — 즉폴은 막혀 있다(이 단언이 아래 대기의 전제다).
+    expect(calls.some(isNewStation)).toBe(false);
+    releaseOld!();
+    await waitFor(() => expect(calls.some(isNewStation)).toBe(true));
+  });
+
   it("pickVehicle에서 그 역에 있는 열차가 없으면 사유가 '진짜 0건'과 다르다(코드 리뷰 M3)", async () => {
     vi.stubGlobal(
       "fetch",
