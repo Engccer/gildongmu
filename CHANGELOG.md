@@ -11,6 +11,12 @@
 
 ## 2026-09-23
 
+### 웨이브 1 후속 소규모 묶음
+
+- 채팅 도보 도구·CLI `route walk`·MCP `route_walk`의 기본 경로가 앱 화면 첫 줄과 같은 경로 종류가 됐다(ko 최단, 계단 회피 요청·en은 종전 그대로). 서버 무파라미터 응답은 불변(옛 앱 호환), 소비자가 `variant=shortest`를 붙인다.
+- iOS 서울 지하철 시설에서 줄이 하나도 없는 묶음(교통약자 도우미)은 펼침 행이 아니라 평문 한 줄이다(웹 동조). Kit 테스트도 공유 fixture `station-layout-cases.json`을 읽어 웹·Kit·`:kit`이 한 표로 잠긴다.
+- en 대표번호 표기 "main line" → "main number"(철도 본선으로 읽히던 문제, 웹·iOS·안드로이드).
+
 ### 도보 경로 두 줄을 카카오 안에서 (E42)
 
 조회 화면 도보가 "최단 경로"(카카오 `SHORTEST`, 기본 펼침)와 "계단 회피 경로"(카카오 `ACCESSIBLE`, 없으면 "큰길 경로" `BROAD_FIRST`) 두 줄이 됐다(ko, 웹·iOS). 계단 회피 토글은 없어졌고 안내 시작 버튼은 줄 안으로 들어갔다(웹 B9 ② 흡수). 서버는 `lines=1` 줄 목록을 새로 싣고 `variant=shortest`의 출처를 카카오로 바꿨다(옛 `alternatives=1` 봉투는 그대로 — 배포된 iOS·안드로이드도 최단이 카카오가 된다). en은 추천·최단(Tmap) 그대로. ⚠ 대중교통 승차 전 도보의 계단 회피는 토글과 함께 사라졌다(BACKLOG E42 미결). [spec](docs/superpowers/specs/2026-09-23-walk-two-lines-kakao-design.md)
