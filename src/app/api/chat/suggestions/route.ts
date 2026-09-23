@@ -22,6 +22,11 @@ const schema = z.object({
 
 const EMPTY = { suggestions: [] as string[] };
 
+// 생성 예산(A45). 스트림이 끝난 뒤 비동기로 붙는 보조 호출이라 사용자 대기와 무관하다 — 종전 6초는
+// 모델 지연(503 high demand 포함)에 걸려 프로덕션 칩이 사실상 0이었다. 클라이언트 3벌(웹 훅·Kit·:kit)은
+// 이보다 길게(20초) 기다린다: 같으면 서버가 답을 만든 순간 클라이언트가 먼저 끊는다. 가드 `budget-guard.test.ts`.
+const SERVER_BUDGET_MS = 15_000;
+
 export async function POST(request: Request) {
   if (!checkSuggestionsRateLimit(clientIpFromHeaders(request.headers), Date.now())) {
     return NextResponse.json({ error: "rate_limited" }, { status: 429 });
@@ -42,8 +47,8 @@ export async function POST(request: Request) {
     const res = await ai.models.generateContent({
       model: GEMINI_MODEL,
       contents: buildFollowUpPrompt(parsed.data),
-      // 클라이언트가 6초에 abort하므로 서버도 같은 상한 — 람다가 버려진 응답을 끝까지 기다리지 않게.
-      config: { thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }, abortSignal: AbortSignal.timeout(6000) },
+      // 상한을 두는 이유: 람다가 클라이언트가 이미 포기한 응답을 끝까지 기다리지 않게.
+      config: { thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }, abortSignal: AbortSignal.timeout(SERVER_BUDGET_MS) },
     });
     return NextResponse.json({ suggestions: parseFollowUps(res.text) });
   } catch (e) {
