@@ -310,6 +310,31 @@ spec `2026-09-02-express-stops-data-design.md`. 둘 다 `includeStops=1` 응답�
 
 ---
 
+## 지하철 열차 위치 (`seoul-subway-position` → `/api/transit/position`, E35)
+
+### 승차 중 현재역(실시간 열차 위치)은 상태 머신 밖 표시 상태다
+
+정본 spec `docs/superpowers/specs/2026-09-23-riding-current-station-design.md`. `realtimePosition`을 승차 상태 머신에 접붙인 설계는 2026-08-23에 BLOCKER 11건으로 기각됐다(판정서 `2026-08-23-express-stop-data-verdict-design.md` §3) — 기각 사유는 전부 "판정을 위치로 대체"에서 나왔다. 그래서 위치는 **표식만** 채운다.
+
+- **리듀서는 위치를 모른다.** 위치 상태(`TransitRidingPosition`)는 오케스트레이터(웹 `useTransitGuide`·iOS `TransitGuideModel`)가 들고, 소스 가드 `transit-riding-position-guard.test.ts`가 리듀서·기존 조망·앵커 파일의 참조를 막는다. 도착·승격·하차·`neverSeen` 판정은 도착 API가 한다.
+- **켜는 구간**: riding ∧ 지하철 ∧ 식별 잠금 ∧ `signal ∈ {notYetVisible, neverSeen}`(도착 피드 미관측). 별도 타이머 없이 **도착 폴 한 번에 최대 1회**, dispatch 뒤 상태로 판정한다 — 주기·백그라운드 폴·유휴 정지·즉폴 금지를 상속한다. 결박(riding 진입 × 열차)당 max(30, 2×구간 소요)회, 실패는 세지 않는다.
+- **결박 = `legIndex`·`phaseGen`·`vehicleId`.** 리듀서가 riding 진입마다 `phaseGen`을 올리므로 리셋 지점을 나열하지 않아도 옛 관측이 무효가 된다. ⚠ 응답은 **요청 시점 결박**을 함께 넘겨 거른다 — 없으면 탑승 변경 뒤 옛 열차의 늦은 응답이 새 결박에 "새로 시작"으로 흡수된다(설계 리뷰 M1).
+- **표식 수명**: 단조 래치(뒤 역은 2회 연속일 때만 재시작), 보존 창 180초(만료 시 래치 소거), 동결 레코드(나이 300초 초과) 무시, 조인은 `uniqueViaStopIndex`(유일 매칭). 경유역 표식은 도착 유래(`arvlMsg3`)와 위치 중 **큰 값** — 위치 피드가 전역 출발(`trainSttus` 3)에서 한 역 먼저 바뀌어 작은 값을 고르면 인계 순간 뒤로 튄다. 인계 뒤(`tracking`)엔 도착 쪽이 따라잡을 때까지 래치를 둔다.
+- **상태 문장**: 위치가 잡혀 있으면 신호 문장(A33 "하차역에 가까워지면…"·`neverSeen` 상태 문장) 자리를 "현재 위치 {역}."이 차지한다. 상시 표시·조망 silence 행·복귀 낭독·웹 탭 복귀가 같은 선택기를 지난다. 화면은 조회 시계(`positionClock`), 렌더 밖 통지(진행 상황·복귀)는 지금 시각으로 창을 판정한다.
+- **`neverSeen` 경고 보류**: 그 순간 현재역이 보이면 경고(문장·약한 톤)를 결박째 보류하고 폴마다 처분한다 — 결박이 바뀌거나 신호가 `neverSeen`이 아니게 되면 버리고, 신호가 그대로인데 현재역을 잃으면 그때 이벤트 창구로 낸다. 배선은 소스 가드가 잠근다(10폴 × 60초라 실제 시계 테스트 불가).
+- ⚠ **주변 확인 앵커는 위치를 따르지 않는다**(접근성 감사 M1) — 승차 내내 약 2분마다 앵커가 바뀌면 `SurroundingsSceneSection`이 읽던 장면을 버린다. 앵커는 종전 `transitSurroundingsAnchor(state:leg:)` 그대로다.
+- ⚠ **위치 조회는 도착 폴 직렬 구간 안이라 시간 상한이 필수다**(서버 upstream 5초, 웹 `AbortSignal.timeout` 8초, iOS `APIClient.get(timeout: 8)`). iOS는 위치 조회를 `pollOnce` 밖(폴 루프)에서 불러 `pollEnd elapsed` 계측에 섞지 않는다.
+
+### 지하철 열차 위치 API (`realtimePosition`, 2026-09-23 실측)
+
+- 도착 API와 같은 호스트·키·http 전용·**같은 봉투 계열**(정상 중첩 `errorMessage.code`, 에러 평면 `code`) — 결과 코드 판독 `swopenResultCode`를 공유하고, 서울 열린데이터·data.go.kr 공용 파서에는 넣지 않는다.
+- `trainNo` = 도착 `btrainNo`(5·2·1호선·공항철도 완전 일치, 선행 0 `0110`·영문 접두 `A…` 포함). 한 편성이 위치 목록에 없는 결측은 있다(공항철도 4편성 중 1). `statnNm`은 부역명 포함.
+- `trainSttus` 0 진입 · 1 도착 · 2 출발 · 3 전역 출발. `updnLine`은 **파싱하지 않는다**(규격 문언과 실측 방향 불일치 기록 — 소스 가드).
+- INFO-200 = 0행(운행 밖과 노선 미제공이 같은 코드). 매핑표 20노선 중 `중앙선`만 미제공 — 클라이언트는 노선 0행 3회 연속이면 그 결박에서 그만 묻는다.
+- ⚠ **조회 창 끝 번호가 곧 행 수다**(`0/5` → 5행). 비혼잡 1호선이 69행이라 `0/200`. `total > 받은 행 수`면 서버 로그(`조회 창 초과`).
+- 노선 단위 **인메모리** 캐시 20초 + 비행 공유, 실패 비캐시. ⚠ Next 데이터 캐시는 stale-while-revalidate라 한동안 조회가 없던 노선의 첫 요청이 낡은 목록을 받는다 — 실시간 표식에선 그것이 곧 거짓 위치다.
+- 실호출 게이트 `scripts/verify-transit-position.mjs`(dev 서버 필요, 낮 시간대, `--all-lines`는 20노선 제공 여부). 표기 일치 판정은 "완전 일치 조인 ≥ 1"이고 결측은 관측으로 따로 적는다 — 표기 불일치는 노선 단위로 체계적이라 노선 전체가 0이 된다. 역명 대조는 seed **전체** 역명으로(코레일 구간은 `경부선`, 공항철도는 `인천국제공항선`으로 적혀 있다).
+
 ## 카카오 지하철역 POI — 역 전화번호 (E44, `StationPhone.swift`)
 
 iOS 역 상세 전화 줄·경유역 로터 "전화 걸기"가 기대는 카카오 키워드 검색의 모양이다. 설계 정본은 spec `docs/superpowers/specs/2026-09-17-station-detail-reorg-design.md` §5.
