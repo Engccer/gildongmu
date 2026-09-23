@@ -162,6 +162,34 @@ describe("get_subway_arrivals stationName 인자 (K3 ②)", () => {
     expect(fetchNearbySubwayArrivals).toHaveBeenCalledWith(expect.any(Number), expect.any(Number), "en");
   });
 
+  it("근접 경로도 역마다 카드와 같은 두 줄만 — 원재료 필드는 빠지고 역 상태(3-state)는 보존", async () => {
+    vi.mocked(fetchNearbySubwayArrivals).mockResolvedValueOnce([
+      {
+        stationName: "구로",
+        lines: ["1호선"],
+        distanceMeters: 120,
+        arrivalStatus: "ok",
+        arrivals: [
+          {
+            line: "1호선", direction: "상행", trainLineNm: "청량리행 - 신도림방면", destination: "청량리",
+            message: "[8]번째 전역 (구로)", currentLocation: "구로", arrivalSeconds: 1200, express: false, arrivalCode: "99",
+          },
+        ],
+      },
+      { stationName: "신도림", lines: ["2호선"], distanceMeters: 800, arrivalStatus: "closed", arrivals: [], firstTime: "05:30" },
+    ]);
+    const r = await executeFunction("get_subway_arrivals", {}, ctx({ userLocation: HOME }));
+    const data = r.data as { count: number; arrivals: Array<Record<string, unknown>> };
+    expect(data.count).toBe(2);
+    expect(data.arrivals[0]).toEqual({
+      stationName: "구로", lines: ["1호선"], distanceMeters: 120, arrivalStatus: "ok",
+      arrivals: [{ line: "1호선 상행, 청량리행 - 신도림방면", message: "8정거장 전 구로." }],
+    });
+    expect(data.arrivals[1]).toEqual({
+      stationName: "신도림", lines: ["2호선"], distanceMeters: 800, arrivalStatus: "closed", arrivals: [], firstTime: "05:30",
+    });
+  });
+
   it("실시간 미제공 역은 arrivals:null을 그대로 싣는다 — 0건과 구분", async () => {
     mockByName.mockResolvedValue(null);
     const r = await executeFunction("get_subway_arrivals", { stationName: "부산역" }, ctx());

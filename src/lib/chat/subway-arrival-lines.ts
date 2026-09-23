@@ -12,7 +12,8 @@
  *
  * 문장 언어는 데이터 로케일(ko|en)이다 — 비-ko 세션은 영문 데이터(`*En`, E27)를 받아야 영문 문장이 선다.
  */
-import { createTranslator } from "next-intl";
+// React 비의존(src/lib/chat 계약) — next-intl 루트가 아니라 그 코어(use-intl/core)에서 번역기만 가져온다.
+import { createTranslator } from "use-intl/core";
 import ko from "../../../messages/ko.json";
 import en from "../../../messages/en.json";
 import { arrivalItems } from "../place-lines/station-arrivals";
