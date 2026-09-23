@@ -4,10 +4,10 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import type { JusoAddress, Place } from "@/lib/types";
 
 /** 비-ko(en) 길찾기 후보 목록의 병기 계약(E28 후속) — 장소는 로마자, 주소는 juso 공식 영문. */
-vi.mock("next-intl", () => ({
-  useTranslations: () => (key: string) => key,
-  useLocale: () => "en",
-}));
+vi.mock("next-intl", async () => {
+  const m = await import("./stable-intl-mock");
+  return m.stableIntlMock("en", m.keyOnly);
+});
 vi.mock("@/lib/geolocation", () => ({
   awaitGeolocation: vi.fn(async () => ({ status: "error" as const })),
   getGeolocationSnapshot: () => ({ status: "idle" as const }),

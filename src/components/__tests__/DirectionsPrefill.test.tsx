@@ -14,10 +14,10 @@ import { awaitGeolocation } from "@/lib/geolocation";
 import { loadRecentEndpoints } from "@/lib/recent-searches";
 import { markUnwinding } from "@/lib/webmcp/view-registry";
 
-vi.mock("next-intl", () => ({
-  useTranslations: () => (key: string) => key,
-  useLocale: () => "ko",
-}));
+vi.mock("next-intl", async () => {
+  const m = await import("./stable-intl-mock");
+  return m.stableIntlMock("ko", m.keyOnly);
+});
 vi.mock("@/lib/geolocation", () => ({
   awaitGeolocation: vi.fn(async () => ({ status: "error" as const })),
   getGeolocationSnapshot: () => ({ status: "idle" as const }),

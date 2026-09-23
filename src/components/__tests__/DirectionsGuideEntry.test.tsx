@@ -10,14 +10,13 @@ import type { Place } from "@/lib/types";
  * 판정은 리듀서 fixture가 잠그므로 여기서는 노출 게이트만 본다.
  */
 let mockLocale = "ko";
-vi.mock("next-intl", () => ({
-  // `name` 인자를 이름에 반영한다 — 대중교통 시작 버튼은 추천·대안이 **같은 키**를
-  // 쓰고 경로 이름만 다르므로(2026-08-07 컨트롤 통일), 키만 반환하면 둘을 구분할 수
-  // 없어 "추천 버튼이 대안으로 세어지는" 변이를 통과시킨다.
-  useTranslations: () => (key: string, values?: Record<string, unknown>) =>
-    values && "name" in values ? `${key}:${String(values.name)}` : key,
-  useLocale: () => mockLocale,
-}));
+// `name` 인자를 이름에 반영한다(keyWithName) — 대중교통 시작 버튼은 추천·대안이 **같은 키**를
+// 쓰고 경로 이름만 다르므로(2026-08-07 컨트롤 통일), 키만 반환하면 둘을 구분할 수
+// 없어 "추천 버튼이 대안으로 세어지는" 변이를 통과시킨다.
+vi.mock("next-intl", async () => {
+  const m = await import("./stable-intl-mock");
+  return m.stableIntlMock(() => mockLocale, m.keyWithName);
+});
 vi.mock("@/lib/geolocation", () => ({
   awaitGeolocation: vi.fn(async () => ({ status: "error" as const })),
   getGeolocationSnapshot: () => ({ status: "idle" as const }),
