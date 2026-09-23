@@ -77,10 +77,41 @@ final class TransitGuideModel {
     private(set) var pendingAltRoutes: PendingAltRoutes?
     private var altRoutesToken = 0
 
-    /// 조망 디스크립터(Kit 순수 계층) — 세션이 없으면 nil.
+    /// 조망 디스크립터(Kit 순수 계층) — 세션이 없으면 nil. 승차 중 현재역(E35)은 기존 판정 위에 **후처리**로
+    /// 얹는다(`transitProgressOverview`·그 fixture·안드로이드 이식본은 그대로). 이 값을 읽는 조망·다른 경로
+    /// 출발점·주변 확인 앵커가 같은 "현재역"을 본다.
     var overview: TransitOverview? {
         guard let state, let route else { return nil }
-        return transitProgressOverview(state: state, route: route)
+        return transitOverviewApplyingPosition(
+            transitProgressOverview(state: state, route: route),
+            state: state, position: ridingPosition, now: positionClock)
+    }
+
+    /// 승차 중 현재역(E35 spec §4) — 상태 머신 **밖**의 표시 상태. 리듀서는 이 값을 모르고 판정에 쓰지 않는다.
+    private(set) var ridingPosition: TransitRidingPosition?
+    /// 보존 창 판정의 "지금"(ms) — 조회 시점에 굳힌다(뷰가 렌더마다 시계를 읽지 않게, 웹 `positionClock` 동형).
+    private(set) var positionClock: Double = 0
+    /// 현재역이 잡혀 있어 보류한 `neverSeen` 경고의 결박(spec §6 판정 2) — 폴마다 처분한다.
+    @ObservationIgnored private var neverSeenPending: TransitPositionBinding?
+    @ObservationIgnored private let positionService = TransitPositionService(
+        client: APIClient(baseURL: AppConfig.apiBaseURL))
+
+    /// 경유역 목록의 "현재 위치" index — 도착 `arvlMsg3`와 실시간 열차 위치 중 큰 값(조인은 한국어 원문).
+    var viaStopHereIndex: Int? {
+        guard let state, let leg = currentLeg else { return nil }
+        return transitViaStopHereIndex(state: state, leg: leg, position: ridingPosition, now: positionClock)
+    }
+
+    /// 신호 문장 자리를 차지할 현재역 문장(E35 §6 판정 1) — 도착 피드 미관측 구간에 위치가 잡혀 있을 때만.
+    /// 상시 표시·조망 silence 행·복귀 낭독이 같은 선택을 지난다. `now`는 호출자가 고른다(렌더는 조회 시계,
+    /// 복귀 낭독은 지금 — 백그라운드 동안 창이 지났을 수 있다).
+    func positionStatusText(now: Double) -> String? {
+        guard let state, let leg = currentLeg,
+              let index = transitPositionStatusIndex(state: state, position: ridingPosition, now: now)
+        else { return nil }
+        let stops = displayLeg(leg, useOverride: false).stops
+        guard stops.indices.contains(index) else { return nil }
+        return TransitGuideTextRenderer.render(transitCurrentStationLine(isEn: transitGuideIsEn, location: stops[index]))
     }
 
     enum AltRouteCommit { case committed, refetching, invalidCandidate, sessionEnded }
@@ -222,6 +253,9 @@ final class TransitGuideModel {
         retained = [:]
         tagoResolved = [:]
         tagoUnsupported = []
+        // 다음 세션의 phaseGen도 0에서 시작한다 — 옛 위치 결박이 같은 세대·열차로 되살아나지 않게.
+        ridingPosition = nil
+        neverSeenPending = nil
         toneState = .initial
         lastPollStartAt = nil
         plannedIntervalMs = nil
@@ -274,6 +308,8 @@ final class TransitGuideModel {
         }
         state = nil
         route = nil
+        ridingPosition = nil
+        neverSeenPending = nil
         waitingLive = []
         waitingDeparted = []
         waitingReason = nil
@@ -349,6 +385,8 @@ final class TransitGuideModel {
     /// 없다 — 억제 해제 복구(`droppedWhileSuppressed`)와 같은 근거(memory once-only-warning-delivery-contract).
     private func returnStatusText() -> String {
         guard let s = state, let leg = currentLeg else { return "" }
+        // 현재역이 잡혀 있으면 그것이 상태다(E35 §6). 창은 **지금** 시각으로 — 백그라운드 동안 지났을 수 있다.
+        if let located = positionStatusText(now: nowMs()) { return located }
         let unobserved = s.lock.map(transitLockIsUnobserved) ?? false
         if s.signal == .neverSeen, !unobserved { return appLocalized("transitGuide.neverSeen") }
         return signalStatusText(s.signal, phase: s.phase, isTrain: leg.mode == "subway", unobserved: unobserved)
@@ -963,6 +1001,8 @@ final class TransitGuideModel {
         waitingReason = nil
         refreshAnnounce = false
         expressBlockedNote = nil  // 옛 경로의 하차역 이름이 든 문장(코드 리뷰 #4)
+        ridingPosition = nil  // 새 경로는 phaseGen 0부터 — 옛 결박이 되살아나지 않게(E35)
+        neverSeenPending = nil
         toneState = .initial
         lastPollStartAt = nil
         plannedIntervalMs = nil
@@ -1027,7 +1067,12 @@ final class TransitGuideModel {
         // 오는지 못 받았다"(3-state의 unknown).
         // ⚠ `noArrivalInfo`는 **관측된 도달 사례가 없는 방어선**이다(웹 미러 주석 참조) — 실제
         // 도달 여부는 실승차가 답한다(BACKLOG §2 E39 행 ④).
-        if state.phase == .waiting, state.signal == .notYetVisible {
+        if let located = positionStatusText(now: positionClock) {
+            // 승차 중 현재역(E35 §6 판정 1): 도착 피드 미관측 구간에 위치가 잡혀 있으면 신호 문장("하차역에
+            // 가까워지면 열차 위치가 표시됩니다." 등) 자리를 현재역 문장이 차지한다 — 그대로 두면 경유역 목록의
+            // "현재 위치"와 모순된다.
+            parts.append(located)
+        } else if state.phase == .waiting, state.signal == .notYetVisible {
             // 없음
         } else if state.signal == .tracking, live {
             if arrival.isEmpty { parts.append(appLocalized("transitGuide.noArrivalInfo")) }
@@ -1161,11 +1206,59 @@ final class TransitGuideModel {
         }
         refreshAnnounce = false
         dispatch(.poll(seq: mySeq, phaseGen: phaseGen, poll: poll))
+        await refreshPosition(seq: mySeq)
         // 응답은 dispatch 뒤에 .high로 게시한다 — 같은 폴의 신호 이벤트 통지가
         // 먼저 나가고 .high가 큐를 끊어 응답이 최종 승자가 된다(감사 M1: 역순이면
         // 동어반복 두 문장이 연달아 나가거나 응답이 잠식된다). 사용자 활성화(새로고침)의
         // 직접 응답이라 즉시 창구(보류 슬롯 무효화 — 이벤트 문장이 뒤늦게 발화하는 역전 차단).
         if let refreshResponse { announceNow(refreshResponse, highPriority: true) }
+    }
+
+    /// 승차 중 현재역 조회(E35 spec §5) — 도착 폴 한 번에 최대 1회, **dispatch 뒤** 상태로 켜는 조건을
+    /// 판정한다(그 폴로 추적이 시작됐으면 묻지 않는다). 별도 타이머가 없어 폴 주기·백그라운드 폴·유휴
+    /// 정지·즉폴 금지를 그대로 상속한다. 위치 실패는 도착 폴을 흔들지 않는다(throw 없음).
+    /// 계측 `posPoll`은 3-state(found·notFound·failed)와 조인 결과를 가른다 — 실승차 사후 판정의 유일한 증거.
+    private func refreshPosition(seq: Int) async {
+        guard let state, let leg = currentLeg else { return }
+        if let requested = transitPositionBinding(of: state),
+           transitPositionLookupDue(state: state, leg: leg, position: ridingPosition) {
+            let outcome: TransitPositionOutcome
+            do {
+                outcome = TransitPositionService.outcome(
+                    from: try await positionService.lookup(line: leg.lineName, train: requested.vehicleId))
+            } catch {
+                outcome = TransitPositionService.outcome(from: error)
+            }
+            guard !Task.isCancelled, let now = self.state, let legNow = currentLeg else { return }
+            let at = nowMs()
+            // 늦은 응답(조회 중 탑승 변경·다음 구간)은 순수 계층이 요청 결박으로 버린다(설계 리뷰 M1).
+            ridingPosition = transitRidingPositionStep(
+                ridingPosition, state: now, leg: legNow, requested: requested, outcome: outcome, now: at)
+            transitGuideLog({
+                let kind: String = switch outcome {
+                case let .found(station, age): "found station=\(station) age=\(age.map(String.init) ?? "-")"
+                case let .notFound(lineEmpty): "notFound lineEmpty=\(lineEmpty)"
+                case .unsupported: "unsupported"
+                case .failed: "failed"
+                }
+                let latched = ridingPosition?.stopIndex.map(String.init) ?? "-"
+                let shown = transitPositionShownIndex(state: now, position: ridingPosition, now: at)
+                    .map(String.init) ?? "-"
+                return "posPoll seq=\(seq) train=\(requested.vehicleId) \(kind) latched=\(latched) shown=\(shown)"
+                    + " lookups=\(ridingPosition?.lookups ?? 0) signal=\(now.signal.rawValue)"
+            }())
+        }
+        positionClock = nowMs()
+        // 보류한 경고의 처분 — 조회하지 않은 폴(상한·추적 시작)에서도 본다.
+        if let pending = neverSeenPending, let current = self.state {
+            let verdict = transitNeverSeenPendingStep(
+                pending, state: current, position: ridingPosition, now: positionClock)
+            if verdict != .keep {
+                neverSeenPending = nil
+                transitGuideLog("neverSeen pending=\(verdict.rawValue)")
+            }
+            if verdict == .fire { handle(event: .neverSeen) }
+        }
     }
 
     private static func pollStatusText(_ poll: TransitTrackPoll) -> String {
@@ -1398,7 +1491,18 @@ final class TransitGuideModel {
         // approaching 첫 관측 판별(직전 상태의 trackingAnnounced) — 이벤트는 첫 관측과
         // 사다리를 구분하지 않으므로 문구 조립이 전이 전 상태를 본다.
         firstObservationInStep = !state.trackingAnnounced && result.state.trackingAnnounced
-        if let event = result.event { handle(event: event) }
+        if let event = result.event {
+            // 승차 중 현재역(E35 §6 판정 2): `neverSeen` 순간 현재역이 잡혀 있으면 "찾지 못하고 있다"는 전제가
+            // 거짓이라 경고(문장·약한 톤)를 결박째 보류한다. 처분(발화·폐기)은 폴마다 `refreshPosition` 끝에서.
+            if case .neverSeen = event,
+               let deferred = transitNeverSeenWarningDeferred(
+                   state: result.state, position: ridingPosition, now: nowMs()) {
+                neverSeenPending = deferred
+                transitGuideLog("neverSeen deferred reason=positionShown")
+            } else {
+                handle(event: event)
+            }
+        }
         if let tone = toned.tone {
             transitGuideLog("tone kind=\(tone.rawValue) anchor=\(toned.state.anchorRemaining.map(String.init) ?? "-")")
             playTone(tone, allowedInBackground: false)

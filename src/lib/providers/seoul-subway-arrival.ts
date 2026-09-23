@@ -88,8 +88,11 @@ export function resolveArrivalQueryName(input: string): string {
   return stripStationSuffixKeepParens(input);
 }
 
-/** 응답에서 결과 코드를 읽는다 — 정상은 errorMessage.code(중첩), 에러는 최상위 code(평면). */
-function resultCode(raw: unknown): string {
+/**
+ * 응답에서 결과 코드를 읽는다 — 정상은 errorMessage.code(중첩), 에러는 최상위 code(평면).
+ * swopenapi 실시간 지하철 계열(도착·열차 위치)이 같은 봉투라 위치 provider도 이것을 쓴다.
+ */
+export function swopenResultCode(raw: unknown): string {
   const r = raw as { errorMessage?: { code?: unknown }; code?: unknown };
   return str(r?.errorMessage?.code) || str(r?.code);
 }
@@ -124,7 +127,7 @@ export function parseSubwayArrivals(
   raw: unknown,
   stationName: string,
 ): SubwayStationArrivals | null {
-  const code = resultCode(raw);
+  const code = swopenResultCode(raw);
   if (code === "INFO-200") return null; // 해당 데이터 없음 — 미커버 역
   if (code !== "INFO-000") {
     throw new Error(`서울 지하철 실시간 도착 오류: ${code || "unknown"}`);

@@ -135,6 +135,17 @@ export function checkTransitTrackRateLimit(ip: string, now: number): boolean {
   return evaluateRateLimit(transitTrackStore, ip, now, TRANSIT_TRACK_LIMIT, WINDOW_MS).allowed;
 }
 
+// 승차 중 열차 위치(E35): riding 미관측 폴에 한 번씩 얹히므로 세션당 분당 1~2회. 추적 라우트와 같은
+// NAT 공유 근거로 60초 20회 — 429는 클라이언트에서 조용한 표식 부재가 된다. 1차 방어는 결박당 조회 상한과
+// 노선 캐시(20초)이고 이건 2차다.
+const TRANSIT_POSITION_LIMIT = 20;
+const transitPositionStore = new Map<string, RateLimitEntry>();
+
+/** /api/transit/position 전용 레이트 리밋(60초 20회). 허용이면 true. */
+export function checkTransitPositionRateLimit(ip: string, now: number): boolean {
+  return evaluateRateLimit(transitPositionStore, ip, now, TRANSIT_POSITION_LIMIT, WINDOW_MS).allowed;
+}
+
 // 혼잡도는 서울 열린데이터 일 1,000회를 따릉이·문화행사와 나눠 쓰므로 동일하게
 // 60초 10회. 영역 코드 단위 5분 캐시가 1차 방어이고 이건 2차다.
 const CONGESTION_LIMIT = 10;

@@ -956,6 +956,74 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
     });
   });
 
+  it("승차 중 현재역(E35): 하차역 목록에 아직 없는 열차를 실시간 위치로 표식하고, 상태 문장의 미관측 문장 자리를 현재역 문장이 차지한다", async () => {
+    const positionUrls: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.startsWith("/api/transit/position")) {
+          positionUrls.push(url);
+          // 부역명 포함 원문(위치 API `statnNm`) — 경유역 "왕십리(성동구청)"와 정규화 조인.
+          return {
+            ok: true,
+            json: async () => ({ status: "found", station: "왕십리(성동구청)", trainStatus: "3", dataAgeSeconds: 30 }),
+          } as Response;
+        }
+        if (url.includes("station=" + encodeURIComponent("천호"))) {
+          return {
+            ok: true,
+            json: async () => ({ mode: "subway", status: "ok", rawCount: 1, items: [trackItem({})] }),
+          } as Response;
+        }
+        // 하차역(여의도) 목록엔 아직 내 열차가 없다 — riding notYetVisible(A33 구간).
+        return { ok: true, json: async () => ({ mode: "subway", status: "empty", rawCount: 0 }) } as Response;
+      }),
+    );
+
+    render(<TransitGuidePanelHost route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
+    fireEvent.click(screen.getByRole("button", { name: "시작" }));
+    await boardTrainAndTrack();
+
+    await waitFor(() => expect(statusLine().textContent).toContain("transitGuide.currentStation"));
+    expect(statusLine().textContent).toContain("왕십리(성동구청)");
+    expect(statusLine().textContent).not.toContain("stateRidingNotYetVisible");
+    // 조회는 잠근 열차번호와 ODsay 노선명으로(서버가 서울 표기로 매핑한다).
+    expect(positionUrls[0]).toBe(
+      `/api/transit/position?line=${encodeURIComponent("수도권 5호선")}&train=5696`,
+    );
+    fireEvent.click(await screen.findByRole("button", { name: "transitGuide.viaStopsTrain:3" }));
+    expect(screen.getByText("왕십리(성동구청), transitGuide.viaCurrent")).toBeTruthy();
+  });
+
+  it("승차 중 현재역(E35): 위치가 없으면(열차 없음) 표식도 문장 교체도 없다 — 현행 미관측 문장 그대로", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.startsWith("/api/transit/position")) {
+          return { ok: true, json: async () => ({ status: "notFound", total: 33 }) } as Response;
+        }
+        if (url.includes("station=" + encodeURIComponent("천호"))) {
+          return {
+            ok: true,
+            json: async () => ({ mode: "subway", status: "ok", rawCount: 1, items: [trackItem({})] }),
+          } as Response;
+        }
+        return { ok: true, json: async () => ({ mode: "subway", status: "empty", rawCount: 0 }) } as Response;
+      }),
+    );
+
+    render(<TransitGuidePanelHost route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
+    fireEvent.click(screen.getByRole("button", { name: "시작" }));
+    await boardTrainAndTrack();
+
+    await waitFor(() => expect(statusLine().textContent).toContain("stateRidingNotYetVisible"));
+    expect(statusLine().textContent).not.toContain("transitGuide.currentStation");
+    fireEvent.click(await screen.findByRole("button", { name: "transitGuide.viaStopsTrain:3" }));
+    expect(screen.queryByText(/transitGuide\.viaCurrent/)).toBeNull();
+  });
+
   it("도보 인계 단일 버튼(E34, 2026-09-11): 마지막 leg 도착 뒤 버튼은 '남은 도보 안내 시작' 하나, 한 번 누르면 도보 세션이 시작된다", async () => {
     // DistanceBeacon은 geolocation 미지원이면 렌더하지 않으므로 스텁이 전제다(watchPosition이 id를 돌려주면 추적 상태).
     Object.defineProperty(navigator, "geolocation", {
