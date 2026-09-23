@@ -882,10 +882,13 @@
     <string name="route_pedestrian_summary">Total %1$s, environ %2$s min</string>
     <string name="route_public">Transports</string>
     <string name="route_transit_alightAt">Descente à %1$s</string>
+    <string name="route_transit_alternativeBusOnly">Bus uniquement</string>
     <string name="route_transit_alternativeFastest">Itinéraire le plus rapide</string>
     <string name="route_transit_alternativeFastestFewestTransfers">Le plus rapide avec le moins de correspondances</string>
     <string name="route_transit_alternativeFewestTransfers">Le moins de correspondances</string>
     <string name="route_transit_alternativeHeading">Alternative %1$s</string>
+    <string name="route_transit_alternativeLeastWalk">Le moins de marche</string>
+    <string name="route_transit_alternativeSubwayOnly">Métro uniquement</string>
     <string name="route_transit_arrive">Arrivée à &lt;name&gt;&lt;/name&gt;</string>
     <string name="route_transit_busNo">bus %1$s</string>
     <string name="route_transit_button">Transports en commun jusqu\'ici</string>
@@ -916,6 +919,12 @@
     <string name="route_transit_quickExitTransfer">Descente à %1$s, correspondance rapide %2$s</string>
     <string name="route_transit_ready">L\'itinéraire est prêt.</string>
     <string name="route_transit_recommended">Itinéraire recommandé</string>
+    <string name="route_transit_requeryBusOnly">Chercher un itinéraire en bus uniquement</string>
+    <string name="route_transit_requeryBusOnlyFailed">Impossible de charger l\'itinéraire en bus uniquement.</string>
+    <string name="route_transit_requeryBusOnlyNone">Aucun itinéraire en bus uniquement.</string>
+    <string name="route_transit_requerySubwayOnly">Chercher un itinéraire en métro uniquement</string>
+    <string name="route_transit_requerySubwayOnlyFailed">Impossible de charger l\'itinéraire en métro uniquement.</string>
+    <string name="route_transit_requerySubwayOnlyNone">Aucun itinéraire en métro uniquement.</string>
     <string name="route_transit_summary">%1$s min, %2$s won, {3, plural, one {%3$s correspondance} other {%3$s correspondances}}</string>
     <string name="route_transit_walkSummary">dont %1$s min de marche</string>
     <string name="route_walk">À pied</string>

@@ -882,10 +882,13 @@
     <string name="route_pedestrian_summary">총 %1$s, 약 %2$s분</string>
     <string name="route_public">대중교통</string>
     <string name="route_transit_alightAt">%1$s 하차</string>
+    <string name="route_transit_alternativeBusOnly">버스만 타는 경로</string>
     <string name="route_transit_alternativeFastest">가장 빠른 경로</string>
     <string name="route_transit_alternativeFastestFewestTransfers">가장 빠르고 환승도 가장 적은 경로</string>
     <string name="route_transit_alternativeFewestTransfers">환승이 가장 적은 경로</string>
     <string name="route_transit_alternativeHeading">대안 경로 %1$s</string>
+    <string name="route_transit_alternativeLeastWalk">도보 거리가 가장 짧은 경로</string>
+    <string name="route_transit_alternativeSubwayOnly">지하철만 타는 경로</string>
     <string name="route_transit_arrive">&lt;name&gt;&lt;/name&gt; 도착</string>
     <string name="route_transit_busNo">%1$s번 버스</string>
     <string name="route_transit_button">여기까지 대중교통 길찾기</string>
@@ -916,6 +919,12 @@
     <string name="route_transit_quickExitTransfer">%1$s 하차, 빠른 환승 %2$s</string>
     <string name="route_transit_ready">경로 안내가 준비되었습니다.</string>
     <string name="route_transit_recommended">추천 경로</string>
+    <string name="route_transit_requeryBusOnly">버스만 타는 경로 찾기</string>
+    <string name="route_transit_requeryBusOnlyFailed">버스만 타는 경로를 불러오지 못했습니다.</string>
+    <string name="route_transit_requeryBusOnlyNone">버스만 타는 경로가 없습니다.</string>
+    <string name="route_transit_requerySubwayOnly">지하철만 타는 경로 찾기</string>
+    <string name="route_transit_requerySubwayOnlyFailed">지하철만 타는 경로를 불러오지 못했습니다.</string>
+    <string name="route_transit_requerySubwayOnlyNone">지하철만 타는 경로가 없습니다.</string>
     <string name="route_transit_summary">총 %1$s분, %2$s원, 환승 %3$s회</string>
     <string name="route_transit_walkSummary">도보 %1$s분 포함</string>
     <string name="route_walk">도보</string>

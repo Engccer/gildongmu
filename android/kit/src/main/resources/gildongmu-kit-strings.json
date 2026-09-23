@@ -385,6 +385,14 @@
       "it": "Discesa a %1$s",
       "ja": "%1$sで下車"
     },
+    "route.transit.alternativeBusOnly": {
+      "ko": "버스만 타는 경로",
+      "en": "Bus only",
+      "es": "Solo autobús",
+      "fr": "Bus uniquement",
+      "it": "Solo autobus",
+      "ja": "バスだけのルート"
+    },
     "route.transit.alternativeFastest": {
       "ko": "가장 빠른 경로",
       "en": "Fastest route",
@@ -416,6 +424,22 @@
       "fr": "Alternative %1$s",
       "it": "Alternativa %1$s",
       "ja": "代替経路%1$s"
+    },
+    "route.transit.alternativeLeastWalk": {
+      "ko": "도보 거리가 가장 짧은 경로",
+      "en": "Least walking",
+      "es": "Menos caminata",
+      "fr": "Le moins de marche",
+      "it": "Meno cammino",
+      "ja": "徒歩の距離が最も短いルート"
+    },
+    "route.transit.alternativeSubwayOnly": {
+      "ko": "지하철만 타는 경로",
+      "en": "Subway only",
+      "es": "Solo metro",
+      "fr": "Métro uniquement",
+      "it": "Solo metropolitana",
+      "ja": "地下鉄だけのルート"
     },
     "route.transit.arrive": {
       "ko": "<name></name> 도착",
@@ -656,6 +680,54 @@
       "fr": "Itinéraire recommandé",
       "it": "Percorso consigliato",
       "ja": "おすすめ経路"
+    },
+    "route.transit.requeryBusOnly": {
+      "ko": "버스만 타는 경로 찾기",
+      "en": "Find a bus-only route",
+      "es": "Buscar ruta solo en autobús",
+      "fr": "Chercher un itinéraire en bus uniquement",
+      "it": "Cerca un percorso solo in autobus",
+      "ja": "バスだけのルートを探す"
+    },
+    "route.transit.requeryBusOnlyFailed": {
+      "ko": "버스만 타는 경로를 불러오지 못했습니다.",
+      "en": "Couldn't load a bus-only route.",
+      "es": "No se pudo cargar la ruta solo en autobús.",
+      "fr": "Impossible de charger l'itinéraire en bus uniquement.",
+      "it": "Impossibile caricare il percorso solo in autobus.",
+      "ja": "バスだけのルートを取得できませんでした。"
+    },
+    "route.transit.requeryBusOnlyNone": {
+      "ko": "버스만 타는 경로가 없습니다.",
+      "en": "No bus-only route.",
+      "es": "No hay ruta solo en autobús.",
+      "fr": "Aucun itinéraire en bus uniquement.",
+      "it": "Nessun percorso solo in autobus.",
+      "ja": "バスだけのルートはありません。"
+    },
+    "route.transit.requerySubwayOnly": {
+      "ko": "지하철만 타는 경로 찾기",
+      "en": "Find a subway-only route",
+      "es": "Buscar ruta solo en metro",
+      "fr": "Chercher un itinéraire en métro uniquement",
+      "it": "Cerca un percorso solo in metropolitana",
+      "ja": "地下鉄だけのルートを探す"
+    },
+    "route.transit.requerySubwayOnlyFailed": {
+      "ko": "지하철만 타는 경로를 불러오지 못했습니다.",
+      "en": "Couldn't load a subway-only route.",
+      "es": "No se pudo cargar la ruta solo en metro.",
+      "fr": "Impossible de charger l'itinéraire en métro uniquement.",
+      "it": "Impossibile caricare il percorso solo in metropolitana.",
+      "ja": "地下鉄だけのルートを取得できませんでした。"
+    },
+    "route.transit.requerySubwayOnlyNone": {
+      "ko": "지하철만 타는 경로가 없습니다.",
+      "en": "No subway-only route.",
+      "es": "No hay ruta solo en metro.",
+      "fr": "Aucun itinéraire en métro uniquement.",
+      "it": "Nessun percorso solo in metropolitana.",
+      "ja": "地下鉄だけのルートはありません。"
     },
     "route.transit.summary": {
       "ko": "총 %1$s분, %2$s원, 환승 %3$s회",

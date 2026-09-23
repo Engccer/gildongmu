@@ -94,6 +94,9 @@ internal fun stringId(key: String): Int? = when (key) {
     "route.transit.alternativeFastest" -> R.string.route_transit_alternativeFastest
     "route.transit.alternativeFewestTransfers" -> R.string.route_transit_alternativeFewestTransfers
     "route.transit.alternativeFastestFewestTransfers" -> R.string.route_transit_alternativeFastestFewestTransfers
+    "route.transit.alternativeLeastWalk" -> R.string.route_transit_alternativeLeastWalk
+    "route.transit.alternativeBusOnly" -> R.string.route_transit_alternativeBusOnly
+    "route.transit.alternativeSubwayOnly" -> R.string.route_transit_alternativeSubwayOnly
     "route.transit.busNo" -> R.string.route_transit_busNo
     "route.transit.legBoardExit" -> R.string.route_transit_legBoardExit
     "route.transit.legServiceOutside" -> R.string.route_transit_legServiceOutside

@@ -126,6 +126,24 @@ final class DirectionsModel {
     private(set) var promotedDestination: (label: String, lat: Double, lng: Double)?
     /// "현재 위치 사용" 강제 재측위 진행 신호. 필드 라벨 전환이 유일한 진행 표시.
     private(set) var isRefreshingCurrent = false
+    /// 수단 재조회 결과(E50 §4.3, 웹 `DirectionsView` `requery` 미러). 3-state(찾음·없음·실패) + 조회 중.
+    /// `results`와 같은 세대에만 산다 — 새 조회·결과 폐기가 비운다(옛 세대 결과를 새 목록에 붙이지 않는다).
+    enum TransitRequeryState: Equatable { case loading, found(TransitRoute), notFound, failed }
+    private(set) var transitRequery: [TransitModeAxis: TransitRequeryState] = [:]
+    /// 재조회가 끝난 세대 신호(뷰가 결과 요소로 포커스를 옮기는 시점, `resultsRevision` 동형).
+    private(set) var requeryRevision = 0
+    /// 마지막으로 끝난 재조회(포커스 착지 대상 판정용).
+    private(set) var lastRequeryResult: (axis: TransitModeAxis, state: TransitRequeryState)?
+    /// 조회 시점의 출발·도착 좌표 — 재조회가 **같은 출발지**로 부른다(현재 위치를 다시 재면 다른 출발지의
+    /// 경로가 한 목록에 섞인다). `results`와 같은 순간에만 커밋한다.
+    private var resultsCoords: (origin: (lat: Double, lng: Double), dest: (lat: Double, lng: Double))?
+    /// 찾은 재조회 경로(목록 끝에 대안으로 붙는다, 서버 `requeryAxes` 순서). 이름은 그 축으로 싣는다.
+    var requeriedRoutes: [TransitRoute] {
+        guard case .transit(let result)? = results?.outcomes[.transit] else { return [] }
+        return result.knownRequeryAxes.compactMap {
+            if case .found(let route)? = transitRequery[$0] { route } else { nil }
+        }
+    }
     private var addressState = DirectionsAddressState()
     private var currentAddressTask: Task<Void, Never>?
     private var refreshCurrentTask: Task<Void, Never>?
@@ -288,7 +306,55 @@ final class DirectionsModel {
         resultsOriginNeedsStartNotice = false
         resultsStaleNotice = nil
         promotedDestination = nil
+        transitRequery = [:]
+        resultsCoords = nil
         phase = .idle
+    }
+
+    /// 수단 재조회 1회(E50 판정 2) — 사용자가 버튼을 눌렀을 때만(ODsay 호출당 과금, 자동 조회 금지).
+    /// 조회 중 재탭은 무시한다(웹 in-flight 가드 미러). 끝나면 그 세대가 아직 살아 있을 때만 커밋하고
+    /// `requeryRevision`으로 뷰에 포커스 착지를 알린다. 찾음·없음은 결과 요소가 포커스를 받아 읽히므로 통지가
+    /// 없고, 실패만 버튼이 남아 포커스가 그대로라 `.high` 통지를 낸다.
+    func requery(_ axis: TransitModeAxis) {
+        guard let coords = resultsCoords, transitRequery[axis] != .loading else { return }
+        let revision = resultsRevision
+        let service = self.service
+        let lang = AppLanguage.dataLocale
+        transitRequery[axis] = .loading
+        Task { @MainActor in
+            let state: TransitRequeryState
+            do {
+                let result = try await withQueryTimeout {
+                    try await service.transitModeRequery(
+                        originLat: coords.origin.lat, originLng: coords.origin.lng,
+                        destLat: coords.dest.lat, destLng: coords.dest.lng,
+                        axis: axis, lang: lang)
+                }
+                // 이름은 서버 파라미터가 이미 판정한 그 축이다(판정 복제 없음).
+                state = result.map { found in
+                    let r = found.recommended
+                    return .found(TransitRoute(
+                        summary: r.summary, legs: r.legs, routeKey: r.routeKey, highlight: [axis.rawValue]))
+                } ?? .notFound
+            } catch {
+                state = .failed
+            }
+            // 그 사이 새 조회·결과 폐기가 있었으면 옛 세대 결과는 버린다.
+            guard revision == resultsRevision, resultsCoords != nil else { return }
+            transitRequery[axis] = state
+            lastRequeryResult = (axis, state)
+            requeryRevision += 1
+            // 실패는 버튼이 남아 포커스가 움직이지 않는다(헌장 §5 ⓐ) — 화면 변화 없는 활성화 응답이라
+            // 통지가 유일한 증거이고 `.high`로 낸다(VO 활성화 처리에 잠식되지 않게, CLAUDE.md 판별선).
+            if state == .failed {
+                ResultHaptic.fire(.failure)
+                var message = AttributedString(axis == .busOnly
+                    ? appLocalized("route.transit.requeryBusOnlyFailed")
+                    : appLocalized("route.transit.requerySubwayOnlyFailed"))
+                message.accessibilitySpeechAnnouncementPriority = .high
+                AccessibilityNotification.Announcement(message).post()
+            }
+        }
     }
 
     /// 화면 이탈·epoch 재생성 시 진행 조회 폐기(I2 계약: 뷰 로컬 상태 + 명시 cancel).
@@ -439,6 +505,8 @@ final class DirectionsModel {
     private func performQuery(from: DirectionsEndpoint, to: DirectionsEndpoint) async {
         guard !Task.isCancelled else { return }
         results = nil
+        transitRequery = [:]
+        resultsCoords = nil
         walkLines = [] // 스냅샷 교체(spec §4) — 이전 세대 줄을 지우고 시작
         resultsOriginNeedsStartNotice = false
         resultsStaleNotice = nil
@@ -580,6 +648,7 @@ final class DirectionsModel {
 
         let built = DirectionsResults(outcomes: outcomes)
         results = built
+        resultsCoords = (origin: origin, dest: dest)
         walkLines = linesCandidate
         resultsOriginNeedsStartNotice = usedManualOrigin || (from == .current && staleAt != nil)
         // 경로를 하나도 못 찾았으면 붙이지 않는다 — "찾지 못했습니다. … 찾았습니다."가 되어 앞뒤가
@@ -723,6 +792,9 @@ struct DirectionsTabView: View {
     /// ⚠ 도보는 줄 종류로 식별한다(E42 — 배열 인덱스는 새 조회에서 다른 줄을 가리킬 수 있다).
     enum GuideStartButton: Hashable { case fallback, walkLine(WalkLineKind), car, transitAlt(String) }
     @AccessibilityFocusState private var guideStartFocused: GuideStartButton?
+    /// 수단 재조회 결과의 포커스 정체성(E50 §4.3). 찾은 경로는 `routeKey`, 문장은 축으로 식별한다.
+    enum RequeryFocus: Hashable { case route(String), notFound(TransitModeAxis) }
+    @AccessibilityFocusState private var requeryFocused: RequeryFocus?
     /// 시트가 닫힐 때 되돌아갈 시작 버튼(방금 떠나온 자리).
     @State private var lastGuideStart: GuideStartButton = .fallback
     /// 대중교통 브리핑에서 연 역 상세의 push 스택(E45). 로터 커스텀 액션은 값 기반 `NavigationLink`로
@@ -988,6 +1060,7 @@ struct DirectionsTabView: View {
             // 수단 섹션 **사이**에 생기면서 그 점프가 섹션을 통째로 건너뛰게 됐다.
             // 조회 버튼에 머물면 다음 스와이프가 상태 → 거리 추적 → 수단 순서로
             // 자연히 이어진다. 완료 자체는 단일 통지(수단 수 합산)가 이미 알린다.
+            .onChange(of: model.requeryRevision) { landRequeryFocus() }
             .onChange(of: model.resultsRevision) {
                 expandedAlts = []
                 // 새 조회 = 새 경로들이라 도보 접힘도 자동 판정으로 되돌린다(spec §4.4).
@@ -1426,6 +1499,54 @@ struct DirectionsTabView: View {
         }
     }
 
+    /// 재조회 한 축의 행들(E50 §4.3). 문구 키는 린터가 보도록 리터럴로 둔다.
+    @ViewBuilder
+    private func requeryRows(_ axis: TransitModeAxis) -> some View {
+        let bus = axis == .busOnly
+        switch model.transitRequery[axis] {
+        case .found?:
+            EmptyView()
+        case .notFound?:
+            Text(bus
+                ? appLocalized("route.transit.requeryBusOnlyNone")
+                : appLocalized("route.transit.requerySubwayOnlyNone"))
+                .accessibilityFocused($requeryFocused, equals: .notFound(axis))
+        case .failed?, .loading?, nil:
+            if model.transitRequery[axis] == .failed {
+                // 시각 표시(포커스는 버튼에 머문다 — 통지는 모델이 `.high`로 냈다).
+                Text(bus
+                    ? appLocalized("route.transit.requeryBusOnlyFailed")
+                    : appLocalized("route.transit.requerySubwayOnlyFailed"))
+            }
+            // 조회 중 재탭은 모델이 무시한다(disabled 금지 — 포커스를 떨군다).
+            Button(bus
+                ? appLocalized("route.transit.requeryBusOnly")
+                : appLocalized("route.transit.requerySubwayOnly")) {
+                model.requery(axis)
+            }
+        }
+    }
+
+    /// 재조회가 끝난 뒤 결과 요소로 포커스를 옮긴다(웹 동형: 찾음 = 새 경로 행, 없음 = 그 문장, 실패 = 이동 없음).
+    /// 찾음·없음은 포커스를 쥔 버튼이 사라지는 전이라 반드시 선점한다(헌장 §5). 지연·검증·1회 재시도는
+    /// `landBeaconStartFocus`와 같은 패턴이다(동기 대입은 새 행이 AX 트리에 오르기 전이라 되돌려진다).
+    private func landRequeryFocus() {
+        guard let last = model.lastRequeryResult else { return }
+        let target: RequeryFocus
+        switch last.state {
+        case .found(let route): target = .route(route.routeKey)
+        case .notFound: target = .notFound(last.axis)
+        case .failed, .loading: return
+        }
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(400))
+            requeryFocused = target
+            try? await Task.sleep(for: .milliseconds(600))
+            guard requeryFocused != target else { return }
+            requeryFocused = target
+        }
+    }
+
     /// 수단 섹션 본문. 대중교통은 추천 경로 전체 + 대안은 요약 라벨 DisclosureGroup
     /// (웹 disclosure 버튼 동형) — 펼치면 추천 수준의 구간 상세. 라벨이 이미 요약이라
     /// 펼침 본문은 구간만(includeSummary=false, 인접 중복 금지).
@@ -1437,7 +1558,7 @@ struct DirectionsTabView: View {
             // 본문 구성이 모두 같고 **초기 펼침 상태만** 다르다 — 추천만 펼친 채로
             // 시작한다. 종전엔 추천만 라벨 없이 통째로 펼쳐져 있어 같은 지위의
             // 경로들이 서로 다른 컨트롤로 보였다(위원장 지적 2026-08-07).
-            ForEach(transitRouteEntries(result), id: \.route.routeKey) { entry in
+            ForEach(transitRouteEntries(result, requeried: model.requeriedRoutes), id: \.route.routeKey) { entry in
                 DisclosureGroup(isExpanded: Binding(
                     get: {
                         expandedAlts.contains(entry.route.routeKey)
@@ -1478,6 +1599,13 @@ struct DirectionsTabView: View {
                 } label: {
                     Text(joinText(entry.name, transitSummaryText(entry.route.summary)))
                 }
+                .accessibilityFocused($requeryFocused, equals: .route(entry.route.routeKey))
+            }
+            // 수단 재조회(E50 §4.2·§4.3): 표시 경로에 그 수단만 타는 경로가 없을 때만(서버 `requeryAxes`).
+            // 찾음 = 버튼이 사라지고 경로가 위 목록 끝에(포커스 이동), 없음 = 버튼 자리의 문장(포커스 이동),
+            // 실패 = 버튼 앞 문장 + 버튼 유지(재시도, 포커스 유지 + `.high` 통지).
+            ForEach(result.knownRequeryAxes, id: \.self) { axis in
+                requeryRows(axis)
             }
         case .walk:
             // 도보 줄 목록(E42, 대중교통 대안 동형 disclosure). 라벨은 위원장 확정 렌더("최단 경로,
@@ -1542,12 +1670,15 @@ struct TransitRouteEntry {
 /// 고정 이름이 정답이다. 대안은 축 이름(가장 빠른·환승이 가장 적은)이 번호보다 구분에
 /// 강하고, 같은 이름을 라벨과 안내 시작 버튼이 공유해야 VO 로터에서 고른 버튼과 화면의
 /// 항목이 같은 것으로 들린다(spec §4.1·§4.2).
-func transitRouteEntries(_ result: TransitRouteResult) -> [TransitRouteEntry] {
+///
+/// `requeried`는 길찾기 탭의 수단 재조회(E50 §4.3)로 찾은 경로 — 목록 끝에 대안으로 붙는다(웹 동형).
+/// 안내 시트의 "다른 경로" 섹션은 재조회가 없어 빈 배열을 넘긴다.
+func transitRouteEntries(_ result: TransitRouteResult, requeried: [TransitRoute] = []) -> [TransitRouteEntry] {
     [TransitRouteEntry(
         route: result.recommended,
         name: appLocalized("route.transit.recommended"),
         defaultExpanded: true)]
-        + result.alternatives.map {
+        + (result.alternatives + requeried).map {
             TransitRouteEntry(
                 route: $0, name: transitAlternativeName($0), defaultExpanded: false)
         }

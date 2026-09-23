@@ -163,3 +163,33 @@ describe("GET /api/route/transit — lang(E27)", () => {
     expect(getTransitRoute).not.toHaveBeenCalled();
   });
 });
+
+// E50 판정 2: 수단 재조회 옵트인 `pathType`.
+describe("GET /api/route/transit — pathType(E50)", () => {
+  beforeEach(() => {
+    vi.mocked(hasOdsayKey).mockReturnValue(true);
+    vi.mocked(getTransitRoute).mockClear();
+  });
+  const req = (pathType?: string) => {
+    const params = new URLSearchParams({ origin: "37.5,127.0", dest: "37.6,127.1" });
+    if (pathType !== undefined) params.set("pathType", pathType);
+    return new NextRequest(`http://x/api/route/transit?${params.toString()}`);
+  };
+  it("미지정은 modeAxis를 넘기지 않는다(현행 byte-호환)", async () => {
+    await GET(req());
+    expect(vi.mocked(getTransitRoute).mock.calls[0][0]).not.toHaveProperty("modeAxis");
+  });
+  it("2는 버스만, 1은 지하철만", async () => {
+    await GET(req("2"));
+    await GET(req("1"));
+    expect(vi.mocked(getTransitRoute).mock.calls[0][0]).toMatchObject({ modeAxis: "busOnly" });
+    expect(vi.mocked(getTransitRoute).mock.calls[1][0]).toMatchObject({ modeAxis: "subwayOnly" });
+  });
+  it("그 밖의 값(3 혼합 포함)은 400(provider 미호출)", async () => {
+    for (const v of ["3", "bus", ""]) {
+      const res = await GET(req(v));
+      expect(res.status).toBe(400);
+    }
+    expect(getTransitRoute).not.toHaveBeenCalled();
+  });
+});

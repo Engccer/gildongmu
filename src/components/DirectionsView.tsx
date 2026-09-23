@@ -10,6 +10,7 @@ import type {
   Place,
   PlaceSearchResult,
   TransitLeg,
+  TransitModeAxis,
   TransitRoute,
   TransitRouteResult as TransitData,
   WalkLineKind,
@@ -33,7 +34,7 @@ import { isOutOfCoverageBody } from "@/lib/out-of-coverage";
 import { dataLocale, prefersEnglish } from "@/lib/data-locale";
 import { durationToMinutes, formatDistance, joinText, normalizeVoiceQuery } from "@/lib/format";
 import { objectParticle } from "@/lib/korean-particle";
-import { alternativeNameKey } from "@/lib/transit-alternative-name";
+import { alternativeName } from "@/lib/transit-alternative-name";
 import { shouldCollapseWalk } from "@/lib/walk-collapse";
 import { orderDirectionsModes, type DirectionsModeKey } from "@/lib/directions-order";
 import { walkRouteUrl } from "@/lib/walk-route-url";
@@ -101,6 +102,11 @@ type QueryResults = {
   destLabel: string;
   /** 조회 시점의 도착 좌표 스냅샷 — 실시간 안내 진입점의 목적지(렌더 중 ref 접근 금지). */
   destCoord: Coord;
+  /**
+   * 조회 시점의 출발 좌표 스냅샷 — 수단 재조회(E50)가 **같은 출발지**로 한 번 더 부른다. 현재 위치를
+   * 다시 재면 본 조회와 다른 출발지의 경로가 한 목록에 섞이고 캐시 키도 갈린다.
+   */
+  originCoord: Coord;
   outcomes: Partial<Record<ModeKey, ModeOutcome>>;
   /** 조회 시점의 경유지 라벨(결과 구획 "경유지 C 도착"용, N4). 없으면 null. */
   viaLabel: string | null;
@@ -260,6 +266,42 @@ async function fetchMode(
   return { kind: "done", mode, result: body.result as TransitData };
 }
 
+/** 수단 재조회(E50 판정 2)의 결과. 3-state: 찾음(경로) · 없음 · 실패. */
+type TransitRequeryOutcome = { kind: "found"; route: TransitRoute } | { kind: "none" } | { kind: "failed" };
+
+/**
+ * 수단 재조회 1회 — 사용자가 버튼을 눌렀을 때만(ODsay는 호출당 과금이라 자동 추가 조회 금지, 위원장 기각).
+ * 서버가 그 수단만 타는 경로 중 1순위 하나를 `recommended`로 준다(spec §3.2). 이름은 서버 파라미터가
+ * 이미 판정했으므로 그 축을 `highlight`로 싣기만 한다.
+ */
+async function fetchTransitRequery(
+  origin: Coord,
+  dest: Coord,
+  lang: "ko" | "en",
+  axis: TransitModeAxis,
+  signal: AbortSignal,
+): Promise<TransitRequeryOutcome> {
+  const qs = `origin=${origin.lat},${origin.lng}&dest=${dest.lat},${dest.lng}`;
+  try {
+    const res = await fetch(
+      `/api/route/transit?${qs}&includeStops=1&lang=${lang}&pathType=${axis === "busOnly" ? "2" : "1"}`,
+      { signal },
+    );
+    if (!res.ok) return { kind: "failed" };
+    const body = (await res.json()) as { result?: TransitData | null };
+    const found = body.result?.recommended;
+    return found ? { kind: "found", route: { ...found, highlight: [axis] } } : { kind: "none" };
+  } catch {
+    return { kind: "failed" };
+  }
+}
+
+/** 재조회 문구 키(축마다 버튼·없음·실패). 동적 키를 한 표에 모아 로케일 누락을 한 곳에서 본다. */
+const REQUERY_KEYS: Record<TransitModeAxis, { button: string; none: string; failed: string }> = {
+  busOnly: { button: "requeryBusOnly", none: "requeryBusOnlyNone", failed: "requeryBusOnlyFailed" },
+  subwayOnly: { button: "requerySubwayOnly", none: "requerySubwayOnlyNone", failed: "requerySubwayOnlyFailed" },
+};
+
 /**
  * 길찾기 뷰: 출발지·도착지를 정해 3수단(대중교통·자동차·도보)을 한 번에 비교하는
  * 텍스트 브리핑 화면. 시각장애인 1급 시민 계약:
@@ -368,6 +410,32 @@ export function DirectionsView({
   // 안내 세션이 살아 있는 경로의 routeKey(M5 선행분). 세션 중 disclosure가 접혀
   // 패널이 unmount되면 세션이 조용히 죽으므로, 활성 경로는 강제 펼침 유지.
   const [activeGuideAlt, setActiveGuideAlt] = useState<string | null>(null);
+  /**
+   * 수단 재조회 상태(E50 §4.3). 조회 세대(`planId`)에 귀속된다 — 새 조회가 오면 옛 세대의 결과를 쓰지
+   * 않는다(키가 다르면 없는 것으로 읽는다). `loading`은 버튼 `aria-disabled`, 나머지는 3-state 결과다.
+   */
+  const [requery, setRequery] = useState<{
+    planId: string;
+    byAxis: Partial<Record<TransitModeAxis, TransitRequeryOutcome | { kind: "loading" }>>;
+  } | null>(null);
+  /** 축별 in-flight 가드(더블 탭 중복 호출 차단 — 호출당 과금이라 클로저 가드만으론 부족하다). */
+  const requeryInFlight = useRef(new Set<TransitModeAxis>());
+  /** 재조회가 끝난 뒤 포커스를 옮길 요소 id(커밋 뒤 effect가 소비한다 — 결과 요소는 그 커밋에서 생긴다). */
+  const requeryFocusRef = useRef<string | null>(null);
+  const requeryIdPrefix = useId();
+  /** 지금 화면 결과의 세대(비동기 재조회가 끝났을 때 옛 세대인지 가른다 — 클로저의 `results`는 낡는다). */
+  const planIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    planIdRef.current = results?.planId ?? null;
+  }, [results]);
+  useEffect(() => {
+    const id = requeryFocusRef.current;
+    if (!id) return;
+    const el = document.getElementById(id);
+    if (!el) return;
+    requeryFocusRef.current = null;
+    el.focus();
+  }, [requery]);
   function routeExpanded(routeKey: string, defaultExpanded: boolean) {
     return toggledRoutes.has(routeKey) ? !defaultExpanded : defaultExpanded;
   }
@@ -405,6 +473,7 @@ export function DirectionsView({
   /** 결과 폐기 한 곳(편집·스왑·경유지 조작·새 조회 공용). */
   function discardResults() {
     setResults(null);
+    setRequery(null);
     setToggledRoutes(new Set());
     setActiveGuideAlt(null);
     setActiveWalkLine(null);
@@ -811,6 +880,7 @@ export function DirectionsView({
       setResults({
         destLabel,
         destCoord: dest,
+        originCoord: origin,
         outcomes,
         viaLabel,
         orderedModes,
@@ -963,16 +1033,55 @@ export function DirectionsView({
         : null,
     );
   }
-  /** 추천·대안을 한 목록으로(이름 산출은 채팅 카드와 공유 — `alternativeNameKey`). */
+  /** 이 세대의 재조회 상태(세대가 다르면 없는 것). */
+  function requeryOf(axis: TransitModeAxis) {
+    return requery && results && requery.planId === results.planId ? requery.byAxis[axis] : undefined;
+  }
+  /**
+   * 추천·대안을 한 목록으로(이름 산출은 채팅 카드와 공유 — `alternativeName`). 수단 재조회로 찾은 경로는
+   * 목록 끝에 대안으로 붙는다(E50 §4.3) — 화면·WebMCP 계획·안내 세션 추적이 모두 이 목록을 읽는다.
+   */
   function transitEntries(result: TransitData): Array<{ route: TransitRoute; name: string; defaultExpanded: boolean }> {
+    const requeried = (result.requeryAxes ?? []).flatMap((axis) => {
+      const r = requeryOf(axis);
+      return r?.kind === "found" ? [r.route] : [];
+    });
     return [
       // 1순위는 축 라벨을 갖지 않는다(annotateHighlights: "자기보다 나은 자기는 없다") — 고정 이름.
       { route: result.recommended, name: tTransit("recommended"), defaultExpanded: true },
-      ...result.alternatives.map((alt) => {
-        const named = alternativeNameKey(alt);
-        return { route: alt, name: tTransit(named.key, named.values), defaultExpanded: false };
-      }),
+      ...[...result.alternatives, ...requeried].map((alt) => ({
+        route: alt,
+        name: alternativeName(alt, (key, values) => tTransit(key, values)),
+        defaultExpanded: false,
+      })),
     ];
+  }
+  /**
+   * 수단 재조회 버튼(E50 §4.3). 찾음·없음은 포커스를 쥔 버튼이 사라지는 전이라 결과 요소로 선점 이동하고
+   * (헌장 §5 ⓑ, 결과 요소가 포커스를 받아 읽히므로 별도 통지 없음), 실패는 버튼이 남으므로 포커스를 두고
+   * (헌장 §5 ⓐ 유지 우선) 이 화면의 창구(`announce`, 보이는 상태 줄)에 실패 문장을 게시한다.
+   */
+  async function runRequery(axis: TransitModeAxis) {
+    if (!results || requeryInFlight.current.has(axis)) return;
+    const { planId, originCoord, destCoord } = results;
+    requeryInFlight.current.add(axis);
+    setRequery((prev) => ({
+      planId,
+      byAxis: { ...(prev?.planId === planId ? prev.byAxis : {}), [axis]: { kind: "loading" } },
+    }));
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 15_000);
+    const outcome = await fetchTransitRequery(originCoord, destCoord, dataLocale(locale), axis, ctrl.signal);
+    clearTimeout(timer);
+    requeryInFlight.current.delete(axis);
+    // 그 사이 새 조회가 왔으면(세대가 다르면) 옛 세대 결과는 버린다(통지·포커스 이동도 하지 않는다).
+    if (planIdRef.current !== planId) return;
+    if (outcome.kind === "failed") announce(tTransit(REQUERY_KEYS[axis].failed));
+    else {
+      requeryFocusRef.current =
+        outcome.kind === "found" ? `${requeryIdPrefix}-route-${outcome.route.routeKey}` : `${requeryIdPrefix}-${axis}-none`;
+    }
+    setRequery((prev) => (prev?.planId === planId ? { planId, byAxis: { ...prev.byAxis, [axis]: outcome } } : prev));
   }
   /**
    * WebMCP 도구 계획(spec §3.4·§8.3) — 화면 상태(`results`)에서 **같은 i18n 키**로 조립한 투영.
@@ -1021,10 +1130,7 @@ export function DirectionsView({
   const transitOutcomeNow = results?.outcomes.transit;
   const routeRefs = buildRouteRefTable(
     transitOutcomeNow?.kind === "done" && transitOutcomeNow.mode === "transit"
-      ? [
-          transitOutcomeNow.result.recommended.routeKey,
-          ...transitOutcomeNow.result.alternatives.map((a) => a.routeKey),
-        ]
+      ? transitEntries(transitOutcomeNow.result).map((e) => e.route.routeKey)
       : [],
   );
   function buildToolPlan(): ToolPlan | null {
@@ -1615,6 +1721,7 @@ export function DirectionsView({
                         <div key={route.routeKey} className="mt-2">
                           <button
                             type="button"
+                            id={`${requeryIdPrefix}-route-${route.routeKey}`}
                             aria-expanded={expanded}
                             onClick={() => toggleRoute(route.routeKey)}
                             className="min-h-11 text-left text-sm text-blue-700 underline dark:text-blue-300"
@@ -1655,6 +1762,33 @@ export function DirectionsView({
                               />
                             </>
                           )}
+                        </div>
+                      );
+                    })}
+                    {/* 수단 재조회(E50 §4.2·§4.3): 표시 경로에 그 수단만 타는 경로가 없을 때만(서버
+                        `requeryAxes`). 찾으면 버튼이 사라지고 경로가 위 목록 끝에 붙는다. 없음은 버튼 자리의
+                        문장(포커스 착지점이라 tabIndex=-1), 실패는 버튼 유지(재시도) + 화면 창구 통지. */}
+                    {(outcome.result.requeryAxes ?? []).map((axis) => {
+                      const r = requeryOf(axis);
+                      const keys = REQUERY_KEYS[axis];
+                      if (r?.kind === "found") return null;
+                      if (r?.kind === "none") {
+                        return (
+                          <p key={axis} id={`${requeryIdPrefix}-${axis}-none`} tabIndex={-1} className="mt-2 text-sm">
+                            {tTransit(keys.none)}
+                          </p>
+                        );
+                      }
+                      return (
+                        <div key={axis} className="mt-2">
+                          <button
+                            type="button"
+                            aria-disabled={r?.kind === "loading" || undefined}
+                            onClick={() => void runRequery(axis)}
+                            className="min-h-11 rounded-md border border-border px-3 text-sm"
+                          >
+                            {tTransit(keys.button)}
+                          </button>
                         </div>
                       );
                     })}

@@ -882,10 +882,13 @@
     <string name="route_pedestrian_summary">Total %1$s, about %2$s min</string>
     <string name="route_public">Transit</string>
     <string name="route_transit_alightAt">Get off at %1$s</string>
+    <string name="route_transit_alternativeBusOnly">Bus only</string>
     <string name="route_transit_alternativeFastest">Fastest route</string>
     <string name="route_transit_alternativeFastestFewestTransfers">Fastest with fewest transfers</string>
     <string name="route_transit_alternativeFewestTransfers">Fewest transfers</string>
     <string name="route_transit_alternativeHeading">Alternative %1$s</string>
+    <string name="route_transit_alternativeLeastWalk">Least walking</string>
+    <string name="route_transit_alternativeSubwayOnly">Subway only</string>
     <string name="route_transit_arrive">Arrive at &lt;name&gt;&lt;/name&gt;</string>
     <string name="route_transit_busNo">bus %1$s</string>
     <string name="route_transit_button">Public transit to here</string>
@@ -916,6 +919,12 @@
     <string name="route_transit_quickExitTransfer">Get off at %1$s, quick transfer %2$s</string>
     <string name="route_transit_ready">Route is ready.</string>
     <string name="route_transit_recommended">Recommended route</string>
+    <string name="route_transit_requeryBusOnly">Find a bus-only route</string>
+    <string name="route_transit_requeryBusOnlyFailed">Couldn\'t load a bus-only route.</string>
+    <string name="route_transit_requeryBusOnlyNone">No bus-only route.</string>
+    <string name="route_transit_requerySubwayOnly">Find a subway-only route</string>
+    <string name="route_transit_requerySubwayOnlyFailed">Couldn\'t load a subway-only route.</string>
+    <string name="route_transit_requerySubwayOnlyNone">No subway-only route.</string>
     <string name="route_transit_summary">%1$s min, %2$s won, {3, plural, one {%3$s transfer} other {%3$s transfers}}</string>
     <string name="route_transit_walkSummary">incl. %1$s min walking</string>
     <string name="route_walk">Walk</string>

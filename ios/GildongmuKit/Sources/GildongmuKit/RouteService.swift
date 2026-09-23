@@ -61,6 +61,27 @@ public struct RouteService: Sendable {
         return envelope.result
     }
 
+    /// 수단 재조회(E50 판정 2) — 사용자가 버튼을 눌렀을 때만 부른다(ODsay 호출당 과금, 자동 조회 금지).
+    /// 서버가 그 수단만 타는 경로 중 1순위 하나를 `recommended`로 준다(`alternatives` 빈 배열).
+    /// nil = 그런 경로 없음, throw = 조회 실패(3-state). 본 조회와 같은 경유 정류장 옵트인을 싣는다 —
+    /// 찾은 경로도 안내를 시작할 수 있어야 한다. ⚠ 인자 전부 기본값 없음(빠뜨린 호출은 컴파일이 잡는다).
+    public func transitModeRequery(
+        originLat: Double, originLng: Double,
+        destLat: Double, destLng: Double,
+        axis: TransitModeAxis,
+        lang: String
+    ) async throws -> TransitRouteResult? {
+        var query = [
+            URLQueryItem(name: "origin", value: coordPair(originLat, originLng)),
+            URLQueryItem(name: "dest", value: coordPair(destLat, destLng)),
+            URLQueryItem(name: "includeStops", value: "1"),
+        ]
+        if lang != "ko" { query.append(URLQueryItem(name: "lang", value: lang)) }
+        query.append(URLQueryItem(name: "pathType", value: axis.pathType))
+        let envelope: TransitRouteEnvelope = try await client.get("/api/route/transit", query: query)
+        return envelope.result
+    }
+
     /// nil = 경로 없음(3-state, throw 아님). 키 없음(404)·조회 실패(502)는 여느 라우트와
     /// 동형으로 throw.
     /// accessible=true는 계단 회피 모드(웹 `?accessible=true` 계약). 미적용 시 서버가

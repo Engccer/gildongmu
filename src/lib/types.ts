@@ -466,8 +466,18 @@ export interface QuickExit {
   stairs?: QuickExitDoor;
 }
 
-/** 대안 경로의 축. 한 경로가 둘 다일 수 있어 배열이다(spec §3.3) */
-export type TransitHighlight = "fastest" | "fewestTransfers";
+/**
+ * 대안 경로의 축. 한 경로가 여럿일 수 있어 배열이다(원설계 2026-08-07 §3.3).
+ * ⚠ 값은 **더하기만** 한다(E50): 스토어 옛 앱은 모르는 값을 무시하고 `displayIndex`로 떨어진다.
+ * 이 목록은 웹 ↔ Kit `TransitAlternativeName` ↔ `:kit` ↔ CLI `formatters.ts`가 미러한다.
+ */
+export type TransitHighlight = "fastest" | "fewestTransfers" | "leastWalk" | "busOnly" | "subwayOnly";
+
+/** 재조회로 열 수 있는 수단 축(E50 판정 2) */
+export type TransitModeAxis = "busOnly" | "subwayOnly";
+
+/** 한 수단만 타는 경로의 그 수단. 혼합·판정 불가는 필드 부재 */
+export type TransitVehicle = "bus" | "subway";
 
 /** 대중교통 경로 1개(요약 + 구간 리스트). */
 export interface TransitRoute {
@@ -479,6 +489,11 @@ export interface TransitRoute {
     transfers: number;
     /** 총 도보 시간(분) */
     walkMinutes: number;
+    /**
+     * 총 도보 거리(미터, ODsay `info.totalWalk` — 환승 통로 0m 제외). 도보 최소 축(E50)의 판정원이고
+     * 표시하지 않는다. 유한한 0 이상 수가 아니면 필드 부재(모름을 0m로 뭉개지 않는다).
+     */
+    walkMeters?: number;
     /** 첫 승차 정류장 (한국어 원문) */
     departName?: string;
     /** 막 하차 정류장 (한국어 원문) */
@@ -496,11 +511,20 @@ export interface TransitRoute {
   routeKey: string;
   /** 이 경로가 1순위보다 나은 축. 없으면 필드 부재(spec §3.3 3단계) */
   highlight?: TransitHighlight[];
-  /** 축 라벨이 없는 대안의 표시 번호(1부터). 서버가 정해 3플랫폼 갈림을 막는다 */
+  /**
+   * 옛 앱 호환 번호(1부터, E50). 옛 앱이 아는 축(`fastest`·`fewestTransfers`)이 하나도 없는 대안에만
+   * 싣는다 — 옛 Kit은 모르는 축을 무시하고 "대안 경로 N"으로 떨어지기 때문이다. 새 클라이언트는 아는 축이
+   * 있으면 보지 않는다. 필드를 지우지 말 것(스토어 1.18·1.19가 읽는다).
+   */
   displayIndex?: number;
+  /**
+   * 한 수단만 타는 경로면 그 수단(ODsay `pathType` 1·2와 비도보 구간 구성이 **둘 다** 그 수단일 때만).
+   * 수단 축(E50)의 판정원. 혼합·불일치는 필드 부재.
+   */
+  vehicle?: TransitVehicle;
 }
 
-/** 대중교통 길찾기 결과: 추천 1개 + 대안 최대 4개(spec §2). */
+/** 대중교통 길찾기 결과: 추천 1개 + 축 이름이 붙는 대안만(E50 — 번호로 채우지 않는다). */
 export interface TransitRouteResult {
   recommended: TransitRoute;
   alternatives: TransitRoute[];
@@ -510,6 +534,11 @@ export interface TransitRouteResult {
    * (표기 심사는 "사용자 행동을 바꾸는가"이고 총수는 바꾸지 않는다).
    */
   totalCandidates: number;
+  /**
+   * 사용자가 눌러 한 번 더 조회할 수 있는 수단 축(E50 판정 2). 표시 경로 어디에도 그 수단만 타는
+   * 경로가 없을 때만 싣고, 없으면 필드 부재. 수단 재조회(`pathType`) 응답에는 싣지 않는다.
+   */
+  requeryAxes?: TransitModeAxis[];
 }
 
 /**

@@ -7,7 +7,7 @@ import { awaitGeolocation } from "@/lib/geolocation";
 import { isInKorea } from "@/lib/coverage";
 import { isOutOfCoverageBody } from "@/lib/out-of-coverage";
 import { formatDistance, joinText } from "@/lib/format";
-import { alternativeNameKey } from "@/lib/transit-alternative-name";
+import { alternativeName } from "@/lib/transit-alternative-name";
 import { alightLineText, boardExitAfterWalk, boardExitOnBoardLine } from "@/lib/transit-exit-lines";
 import { dataLocale, prefersEnglish } from "@/lib/data-locale";
 import { TransitBilingualName } from "./TransitBilingualName";
@@ -191,10 +191,9 @@ export function TransitRouteBriefing({
             ...status.result.alternatives.map((alt) => {
               // 이름 산출은 길찾기 뷰와 공유한다(두 화면의 이름이 갈리면
               // 같은 경로가 다른 이름으로 불린다)
-              const named = alternativeNameKey(alt);
               return {
                 route: alt,
-                name: t(named.key, named.values),
+                name: alternativeName(alt, (key, values) => t(key, values)),
                 defaultExpanded: false,
               };
             }),
