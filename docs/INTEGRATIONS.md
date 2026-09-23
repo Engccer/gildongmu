@@ -254,7 +254,7 @@ spec `2026-09-02-express-stops-data-design.md`. 둘 다 `includeStops=1` 응답�
 - ⚠ **`[N]번째 전역`의 괄호는 필수다.** 괄호 없는 변형에서 `arvlMsg3`를 역으로 삼으면 그 역이 열차 위치라는 보장이 없다(설계 리뷰 MAJOR-2). 코퍼스 254행은 전부 괄호를 단다.
 - **영문 화면에서 역명이 필요한데 `currentLocationEn`이 없으면 문장형을 버리고 원문 경로로 떨어진다.** 문장 틀이 UI 번역기 하나뿐이라 "그 줄만 한국어 문장형"을 만들 수단이 없고, 영어 문장에 한국어 역명을 끼우면 E27 줄 원자성 위반이다. iOS는 편성·메시지가 한 객체라 같은 판정이 편성 조각(`lineEn`·`directionEn`·`trainLineNmEn`)에도 걸린다.
 - **iOS는 Kit이 키를 돌려주고 앱이 리터럴 `switch`로 조회한다**(`TransitWalkLegText` 선례). ⚠ 미매핑 폴백은 **키를 그대로 노출**한다 — 빈 문자열을 돌려주면 `assertionFailure`가 컴파일아웃되는 **릴리스에서만** 그 줄이 통째로 사라져 3-state가 무너진다(설계 리뷰 MAJOR-1).
-- **미적용 소비자 하나**: 채팅 **산문**. `src/lib/chat/router.ts`가 LLM에 넘기는 `data.message`는 여전히 `arvlMsg2` 원문이라, 같은 답변에서 카드는 우리 문장을 그리고 산문은 원문을 읊는다. 서버 코드라 동결 때문에 미뤘다(`docs/BACKLOG.md` A42).
+- **채팅 산문도 같은 문장이다**: `get_subway_arrivals`는 카드와 같은 두 줄(`chatArrivalLines` → `arrivalItems`)만 LLM에 싣는다(A42, 2026-09-23). en 데이터 로케일에서 영문 역명이 없으면 원문 줄이 가는 것은 `docs/BACKLOG.md` §2 관찰 A42.
 
 **CLAUDE.md 요지 전문(2026-09-19 축약 전, 원문 그대로)**: **지하철 도착 목록의 줄은 완성 문장을 읽어 쓴 우리 문장이고, 못 알아본 문장만 원문이다**(E37, 순수 `subwayArrivalProse`+`arrivalProseSegments` 웹 `station-arrivals.ts` ↔ Kit `SubwayArrivalLine.swift` + 공유 fixture가 **계획과 키 선택을 함께** 잠근다): 게이트는 **문장 모양**이고 초 수도 문장에서 읽는다 — `barvlDt`·`arvlCd`는 판정에도 값에도 쓰지 않는다(비시간형 65행이 비0, 심야 `전역 출발`에 1200초). **역명은 그 역이 열차 위치임이 실측된 문법에만 싣는다**(`전전역 출발`의 `arvlMsg3`는 한 역 앞, `{X} 전역출발`의 X는 조회 역 자신). → INTEGRATIONS
 

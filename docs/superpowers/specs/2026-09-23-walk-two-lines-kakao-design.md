@@ -103,7 +103,7 @@
 ## 6. 문구 (6로케일)
 
 - 새 키: `directions.walkAccessible`(계단 회피 경로) · `directions.walkBroad`(큰길 경로) · `beacon.guideStartWalk{Shortest,Accessible,Broad,Recommended}`(○○ 경로로 안내 시작 — 웹·iOS 공용, 종전 iOS 전용 `beacon.guideStartWalkShortest`는 messages로 옮겼다) · iOS `guide.switchedToAccessible`·`guide.switchedToBroad`.
-- 기존 `directions.walkShortest`·`directions.walkRecommended`는 유지(안드로이드·en이 쓴다). `route.pedestrian.stepFreeToggle`은 유지한다(안드로이드 이식 뒤 제품 참조 0 — 삭제는 BACKLOG E42). iOS 전용 `ios.directions.walkShortest`·`ios.directions.walkRecommended`는 지웠다(iOS도 messages `directions.*`를 쓴다).
+- 기존 `directions.walkShortest`·`directions.walkRecommended`는 유지(안드로이드·en이 쓴다). `route.pedestrian.stepFreeToggle`은 유지한다(안드로이드 이식 뒤 제품 참조 0 — 2026-09-23 삭제, 6로케일·생성물·부재 단언). iOS 전용 `ios.directions.walkShortest`·`ios.directions.walkRecommended`는 지웠다(iOS도 messages `directions.*`를 쓴다).
 - 비-ko 문구는 ko 뜻을 따른다.
 
 ## 7. 검증
