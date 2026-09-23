@@ -11,7 +11,7 @@ A3 받침대: 1,099개 도시철도역의 한/영/한자 역명 + WGS84 좌표 +
 의존: openpyxl (pip3 install openpyxl). 일회성 갱신 도구라 프로젝트 런타임 의존 아님.
 사용: python3 scripts/build-subway-stations.py <xlsx경로>
 
-생성물: src/lib/data/subway-stations.json (역 레코드 배열 + 메타)
+생성물: src/lib/data/subway-stations.json (역 레코드 배열)
 """
 import json
 import re
@@ -95,7 +95,7 @@ MAX_COORD_SHIFT_M = 15
 # 검토 후 받아들이는 이동 — (역명, 노선명) → 새 좌표(lat, lng). 키가 아니라 **그 좌표**를
 # 허용한다(키만 허용하면 이후 판본에서 또 움직여도 조용히 통과한다). 카카오 역 POI 등
 # 실좌표로 새 값이 더 정확함을 확인한 경우에만 출처와 함께 더하고, 그 판본을 커밋한 뒤엔
-# 직전 seed가 새 값이 되므로 비워도 된다.
+# 직전 seed가 새 값이 되므로 비워도 된다. COORD_FIXES의 보정 좌표도 검토한 좌표라 허용으로 친다.
 ACCEPTED_COORD_SHIFTS = {}
 
 
@@ -290,7 +290,8 @@ def main():
     # 좌표 퇴행은 두 거리 가드를 통과한다 — 직전 seed와 대조해 움직인 역을 사람이 확인하게 한다.
     if OUT.exists():
         shifts = coord_shift_outliers(
-            json.loads(OUT.read_text(encoding="utf-8")), stations, ACCEPTED_COORD_SHIFTS
+            json.loads(OUT.read_text(encoding="utf-8")), stations,
+            {**COORD_FIXES, **ACCEPTED_COORD_SHIFTS},
         )
         if shifts:
             print(f"직전 seed 대비 좌표 이동 {len(shifts)}건 — 실좌표(카카오 역 POI 등)로 확인 후 "

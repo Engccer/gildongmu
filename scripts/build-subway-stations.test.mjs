@@ -99,10 +99,10 @@ describe.skipIf(!hasPython)("coord_shift_outliers", () => {
   it("15m 이하 이동은 통과하고 넘으면 역 이름과 거리를 낸다", () => {
     const r = run(
       [rec("가", 37.5), rec("나", 37.5), rec("다", 37.5)],
-      [rec("가", 37.5), rec("나", 37.5001), rec("다", 37.5002)],
+      [rec("가", 37.5), rec("나", 37.5001), rec("다", 37.50015)],
     );
     expect(r.stderr).toBe("");
-    expect(JSON.parse(r.stdout)).toEqual(["다(가상선) 직전 seed 대비 22m 이동 → (37.5002, 127)"]);
+    expect(JSON.parse(r.stdout)).toEqual(["다(가상선) 직전 seed 대비 17m 이동 → (37.50015, 127)"]);
   });
 
   it("노선이 다르면 같은 역명이라도 다른 키다 — 직전에 없던 키(신설역)는 비교하지 않는다", () => {
@@ -124,14 +124,15 @@ describe.skipIf(!hasPython)("coord_shift_outliers", () => {
 });
 
 describe.skipIf(!hasOpenpyxl)("main — 직전 seed에서 좌표가 움직인 XLSX", () => {
+  const header = ["역번호", "역사명", "노선번호", "노선명", "영문역사명", "한자역사명",
+    "환승역구분", "환승노선번호", "환승노선명", "역위도", "역경도",
+    "운영기관명", "역사도로명주소", "역사전화번호", "데이터기준일자"];
+  const row = (name, lat) => ["1", name, "L1", "가상선", "", "", "일반역", "", "", lat, 127.0, "가상공사", "", "", "2026-06-30"];
+
   it("종료 코드 1로 중단하고 직전 seed를 그대로 둔다", () => {
     const dir = mkdtempSync(join(tmpdir(), "subway-stations-test-"));
     dirs.push(dir);
     const xlsx = join(dir, "stations.xlsx");
-    const header = ["역번호", "역사명", "노선번호", "노선명", "영문역사명", "한자역사명",
-      "환승역구분", "환승노선번호", "환승노선명", "역위도", "역경도",
-      "운영기관명", "역사도로명주소", "역사전화번호", "데이터기준일자"];
-    const row = (name, lat) => ["1", name, "L1", "가상선", "", "", "일반역", "", "", lat, 127.0, "가상공사", "", "", "2026-06-30"];
     const made = spawnSync("python3", ["-c", [
       "import json, sys, openpyxl",
       "wb = openpyxl.Workbook(); ws = wb.active",
@@ -160,5 +161,36 @@ describe.skipIf(!hasOpenpyxl)("main — 직전 seed에서 좌표가 움직인 XL
     expect(r.stderr).toContain("나상역(가상선)");
     expect(r.stderr).not.toContain("가상역(가상선)");
     expect(readFileSync(out, "utf8")).toBe(prev);
+  });
+
+  it("COORD_FIXES의 보정 좌표로 움직인 것은 허용한다 — 보정을 새로 더해도 두 표에 이중 등록하지 않는다", () => {
+    const dir = mkdtempSync(join(tmpdir(), "subway-stations-test-"));
+    dirs.push(dir);
+    const xlsx = join(dir, "stations.xlsx");
+    const made = spawnSync("python3", ["-c", [
+      "import json, sys, openpyxl",
+      "wb = openpyxl.Workbook(); ws = wb.active",
+      "for r in json.loads(sys.argv[2]): ws.append(r)",
+      "wb.save(sys.argv[1])",
+    ].join("\n"), xlsx, JSON.stringify([header, row("가상역", 37.5), row("나상역", 37.5)])], { encoding: "utf8" });
+    expect(made.status, made.stderr).toBe(0);
+    const out = join(dir, "out.json");
+    writeFileSync(out, JSON.stringify([
+      { name: "가상역", lineName: "가상선", lat: 37.5, lng: 127.0 },
+      { name: "나상역", lineName: "가상선", lat: 37.5, lng: 127.0 },
+    ]));
+    const r = py(
+      [
+        "from pathlib import Path",
+        "m.OUT = Path(sys.argv[2])",
+        "m.ROOT = m.OUT.parent  # 성공 경로의 완료 줄이 OUT을 ROOT 기준 상대 경로로 찍는다",
+        'm.COORD_FIXES = {("나상역", "가상선"): (37.501, 127.0)}',
+        'sys.argv = ["build-subway-stations.py", sys.argv[1]]',
+        "m.main()",
+      ].join("\n"),
+      [xlsx, out],
+    );
+    expect(r.status, r.stderr).toBe(0);
+    expect(JSON.parse(readFileSync(out, "utf8")).find((s) => s.name === "나상역").lat).toBe(37.501);
   });
 });
