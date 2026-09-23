@@ -1373,6 +1373,15 @@ W1 도구 9개를 "데이터 반환형이 주"(W2 spec 판정 ②) 기준으로 
 
 사용자 비가시. 기본은 편승이고 편승할 작업이 없으면 별도 정리한다.
 
+### 2026-09-23 doc-audit 후속 (코디네이터 판정, 다음 문서·도구 작업에 편승)
+
+출처 `~/gildongmu-wt/doc-audit-reports/judgment-202609231922.md`.
+1. **usage-report ODsay 프로브는 그대로 둔다**(실행마다 1건 과금, 25원 수준). `scripts/lib/usage-probes.mjs` 391~393행 주석 "ODsay의 진짜 제약은 일 30회"는 Basic 전제라 낡았다 — 다음에 그 파일을 만질 때 Flex 기준으로 고친다.
+2. **INTEGRATIONS 12곳·PATTERNS 17곳의 "CLAUDE.md 요지 전문(축약 전, 원문 그대로)" 보관 문단**이 현재 규칙과 어긋난다. 다음 doc-audit이 본문에 없는 규칙이 있는지 대조한 뒤 삭제한다(보관 관행 자체는 `doc-audit` 스킬 §5 3-b 개정 대상).
+3. **거리 표기·둘러보기 불릿은 실제로 4벌 미러**(웹·Kit·CLI·안드로이드 `:kit` `Format.kt`·`LocationNarrative.kt`)인데 `format-drift.test.ts`는 안드로이드를 스캔하지 않는다. 가드를 `:kit`까지 넓히고 문서를 4벌로 고친다(코드, 다음 안드로이드 작업에 편승).
+4. **옛 종결 항목 본문 잔존**(E12·E24·E19·K3, §2 행 없음) — 종결 표 행만 남기고 본문을 지운다. E19의 "0건 문장 갈림" 판정 1건은 지우기 전에 §2로 옮긴다.
+5. **E42 ④ CLI `--variant` 플래그**는 0.11.0에 없이 나갔다 — 다음 CLI 릴리스로 이월(종결하지 않는다).
+
 ### 검증 기준선 복구: 독립 항목
 
 - `TransitGuidePanel.test.tsx`의 `boardingUpstreamFailed` 통지 단언은 수동 진행 버튼만 기다린 뒤 부모 통지 영역을 동기 검사해 간헐 실패한다. 통지의 추가 커밋 자체를 `waitFor`로 기다리는 수정이 필요하다. iOS 변경 전 main `3fb486ea`에서도 5회 중 1회 동일 실패를 재현했다.
