@@ -13,69 +13,72 @@
 
 ### ODsay Flex 후불 종량제 전환
 
-ODsay 대중교통 API를 Basic(일 30건 무료)에서 Flex(건당 25원+VAT, 일 10만 건, 매월 5일 카드 결제)로 옮겼다. 새 앱 `gildongmuflex` 키로 교체했고, 옛 URI를 Basic 앱이 점유해 ODsay 출처 주소(`ODSAY_REFERER`)를 정식 도메인 `gildongmu.dodoplanet.space`로 바꿨다. 월 과금 상한선은 ODsay 사이트에 UI가 아직 없고, 우리 쪽 가드는 두지 않는다(위원장이 사용 추이를 직접 본다).
+ODsay 대중교통 API를 Basic(일 30건 무료)에서 Flex(건당 25원+VAT, 일 10만 건, 매월 5일 카드 결제)로 옮겼다. 새 앱 `gildongmuflex` 키로 교체했고, 옛 URI를 Basic 앱이 점유해 ODsay 출처 주소(`ODSAY_REFERER`)를 정식 도메인 `gildongmu.dodoplanet.space`로 바꿨다. 월 과금 상한선은 ODsay 사이트에 UI가 아직 없고, 우리 쪽 가드는 두지 않는다(위원장이 사용 추이를 직접 본다). [BACKLOG E46](docs/BACKLOG.md#e46-odsay-일-30건-한도---증설-판정--2026-09-18---종결2026-09-23-flex-후불-종량제-전환)
 
 ### 버스 승차 중 현재 정류장 표식 (E48, iOS 실험판·웹)
 
-버스를 타고 가는 동안 경유 정류장 목록과 iOS 조망에 "현재 위치"가 기기 위치로 붙는다(표시 전용, 상태 머신·하차 판정은 도착 API 그대로). 최근접 정류장 300m 이내, 길 건너 정류장이 경합하면 비우고, 같은 정류장 두 번 연속일 때만 앞으로, 하차 정류장은 50m 안일 때만, 마지막 관측 90초 뒤 거둔다. iOS는 E36 keep-alive 스트림의 fix를 안내 세션에만 넘기고(공유 스토어 미기록) 버스 riding 동안만 10m급·거리 필터 없음으로 올린다(E36 ⓐ′ 첫 좌표 소비). 웹은 버스 riding 동안 세션 전용 `watchPosition`. [spec](docs/superpowers/specs/2026-09-23-bus-current-stop-design.md)
+버스를 타고 가는 동안 경유 정류장 목록과 iOS 조망에 "현재 위치"가 기기 위치로 붙는다(표시 전용, 상태 머신·하차 판정은 도착 API 그대로). iOS는 E36 keep-alive 스트림의 좌표를 안내 세션에만 넘기고 버스 승차 중에만 정밀 위치로 올린다(E36 ⓐ′ 첫 좌표 소비), 웹은 버스 승차 중 세션 전용 위치 구독. [spec](docs/superpowers/specs/2026-09-23-bus-current-stop-design.md)
 
 ### 안드로이드 도보 경로 두 줄 (E42 이식)
 
-안드로이드 길찾기 도보를 iOS 정식판과 같은 두 줄(ko 최단·계단 회피 또는 큰길, en 추천·최단)로 바꿨다. `:kit`에 `lines=1` 조회·`WalkLineKind`(속성은 enum 항목과 겹쳐 `isAccessible`)·`WalkRouteLine`·브리핑 `kind`를 이식하고, 줄 안 맨 위에 "○○ 경로로 안내 시작" 버튼(요청 축은 줄 종류의 투영)을 두고, 계단 회피 토글과 도보 단독 재조회를 지웠다. 안내 중 경로 전환·대안 프리뷰는 안드로이드에 원래 없어 이식하지 않았다. spec `docs/superpowers/specs/2026-09-23-walk-two-lines-kakao-design.md`.
+안드로이드 길찾기 도보를 iOS 정식판과 같은 두 줄(ko 최단·계단 회피 또는 큰길, en 추천·최단)로 바꿨다. `:kit`에 `lines=1` 조회·`WalkLineKind`·`WalkRouteLine`·브리핑 `kind`를 이식하고, 줄 안 맨 위에 "○○ 경로로 안내 시작" 버튼(요청 축은 줄 종류의 투영)을 두고, 계단 회피 토글과 도보 단독 재조회를 지웠다. 안내 중 경로 전환·대안 프리뷰는 안드로이드에 원래 없어 이식하지 않았다. [spec](docs/superpowers/specs/2026-09-23-walk-two-lines-kakao-design.md)
 
-### 도시철도역 seed 2026-06-30판 불채택·좌표 이동 가드 (A43 후속)
+### CLI/MCP 0.11.0 발행 (`cli-v0.11.0`)
 
-2026-06-30판을 현행 seed와 전수 대조한 결과 신분당선 11역 좌표가 카카오 역 POI 대비 전부 멀어져(구판 5~57m → 신판 19~124m) 들이지 않았다. 대전 1호선 `stationId` 형식 변화는 읽는 코드가 없어 문제가 아니었다. 이 퇴행이 기존 두 거리 가드를 통과했으므로 `build-subway-stations.py`가 직전 seed 대비 15m 넘게 움직인 역을 나열하고 중단한다(받을 이동은 `ACCEPTED_COORD_SHIFTS`에 좌표로). seed·서버 동작 불변.
+기본 도보 경로 변경(아래 도보 기본 경로 항목)·카탈로그 `variant` 파라미터·CLI `nearby overview` 어순(거리·방위를 이름 앞으로)을 묶어 両패키지 0.11.0을 발행했다. 릴리스 노트 정본 `packages/cli/CHANGELOG.md`·`packages/mcp/CHANGELOG.md` §0.11.0.
+
+### 도시철도역 seed 변환기 수정·2026-06-30판 불채택·좌표 이동 가드 (A43)
+
+seed 변환기가 `환승역구분`을 접미 일치로 읽고 모르는 어휘에 중단한다. 2026-06-30판을 현행 seed와 전수 대조한 결과 신분당선 11역 좌표가 카카오 역 POI 대비 전부 멀어져(구판 5~57m → 신판 19~124m) 들이지 않았다. `build-subway-stations.py`는 직전 seed 대비 15m 넘게 움직인 역이 있으면 멈춘다. seed·서버 동작 불변. [BACKLOG A43](docs/BACKLOG.md#a43-도시철도-seed를-최신-xlsx로-갱신하면-신분당선-환승역-8곳이-일반역이-된다---종결2026-09-23-스크립트-세션-server-small판본-판정-세션-seed-refresh-changelog-같은-날-2026-06-30판은-채택하지-않는다)
 
 ### 측위 실패 시 옛 위치임과 시각을 밝힌다 (stale-origin, 웹·iOS·안드로이드)
 
-재측위가 취득 실패로 끝났는데 직전 좌표가 있으면 표시줄·길찾기 "현재 위치" 칸이 옛 주소를 "현재 위치"로 말하던 것을 "마지막으로 확인한 위치, 주소, N분 전"으로 바꿨다(열어 둔 동안 1분마다 재계산). 길찾기는 그 옛 위치로 계속하고, 경로가 있으면 완료 통지 뒷문장("현재 위치를 확인하지 못해 5분 전에 확인한 위치로 찾았습니다.")으로 밝히며, 안내 시작 순간엔 수동 위치와 같은 고지를 낸다(웹·iOS). 권한 거부·대략적 위치는 대상 밖. 안드로이드 길찾기 칸의 주소 좌표는 저장 좌표 폴백에서 표시용 좌표로 바뀌었다(iOS 등가). [spec](docs/superpowers/specs/2026-09-23-stale-origin-disclosure-design.md)
+재측위가 취득 실패로 끝났는데 직전 좌표가 있으면 표시줄·길찾기 "현재 위치" 칸이 옛 주소를 "현재 위치"로 말하던 것을 "마지막으로 확인한 위치, 주소, N분 전"으로 바꿨다(열어 둔 동안 1분마다 재계산). 길찾기는 그 옛 위치로 계속하고, 경로가 있으면 완료 통지 뒷문장("현재 위치를 확인하지 못해 5분 전에 확인한 위치로 찾았습니다.")으로 밝히며, 안내 시작 순간엔 수동 위치와 같은 고지를 낸다(웹·iOS). 권한 거부·대략적 위치는 대상 밖. [spec](docs/superpowers/specs/2026-09-23-stale-origin-disclosure-design.md)
 
 ### 대중교통 안내 폴 예약 수정·패널 테스트 목 정리
 
-웹 대중교통 안내에서 탑승 변경으로 역을 고른 뒤 승차 정류소 도착이 관측되면, 하차역 조회가 주기 없이 곧바로 나가 "도착했으니 타세요"가 추적 시작 문장에 덮이던 결함을 고쳤다(폴 예약 effect가 `pollOnce` 정체성 변화에 반응했다 → `useEffectEvent`로 tick만). 이 결함과 A46 수동 진행 테스트 3건의 잘못된 시간 축은 렌더마다 새 `t`를 주던 next-intl 목의 폴 폭주에 가려 있었다 — 폴 루프를 마운트하는 컴포넌트 테스트 13개가 공유 안정 목 `stable-intl-mock.ts`를 쓰고 소스 가드가 이를 잠근다.
+웹 대중교통 안내에서 탑승 변경 뒤 승차 정류소 도착이 관측되면 하차역 조회가 곧바로 나가 "도착했으니 타세요"가 추적 시작 문장에 덮이던 결함을 고쳤다. 폴 루프를 띄우는 컴포넌트 테스트 13개는 공유 안정 목 `stable-intl-mock.ts`를 쓴다(그 목의 폴 폭주가 이 결함을 가리고 있었다). [계획](docs/superpowers/plans/2026-09-23-backlog-sweep-4-parallel-plan.md)
 
-### CLI/MCP 0.11.0 발행 (`cli-v0.11.0`, 위원장 승인 2026-09-23)
+### E45 경로 브리핑 역 진입·전화 안드로이드 동조
 
-0.10.0 이후 묶음: `route walk`·`route_walk` 기본 경로가 앱 화면 첫 줄(ko 최단)로 바뀌고(E42, 기본 동작 변경이라 minor), 카탈로그에 `variant` 파라미터, CLI `nearby overview` 어순(거리·방위를 이름 앞으로). 버전 4곳 + CHANGELOG 2곳 동조, 발행 워크플로 성공·`npm view` 両패키지 0.11.0. 릴리스 노트 정본 `packages/cli/CHANGELOG.md`·`packages/mcp/CHANGELOG.md` §0.11.0.
+안드로이드 길찾기 대중교통 브리핑에서 지하철역 이름이 들리는 줄(구간·하차·다음 지하철로 가는 도보)에 TalkBack 작업 메뉴 "{역} 상세 보기"·"{역}에 전화 걸기"가 붙는다. 줄은 텍스트 한 객체 그대로이고, 메뉴는 역별 묶음·등장 순이다. 전화 액션은 상시이고 없음·찾는 중·실패·다이얼러 없음은 상태 줄 통지+진동이다. 역 상세에서 돌아오면 그 줄로 착지하고 펼침이 유지된다. `:kit` `TransitBriefingStations.kt`를 이식했다. iOS 2026-09-19 빈 이름 부재 판정(`transitBriefingName`)도 `:kit`·앱 구간 줄에 동조했다. [spec](docs/superpowers/specs/2026-09-18-briefing-station-entry-design.md).
 
-### 웨이브 1 후속 소규모 묶음
+### 도보 기본 경로 맞춤·역 시설 평문 줄·en 대표번호 표기
 
 - 채팅 도보 도구·CLI `route walk`·MCP `route_walk`의 기본 경로가 앱 화면 첫 줄과 같은 경로 종류가 됐다(ko 최단, 계단 회피 요청·en은 종전 그대로). 서버 무파라미터 응답은 불변(옛 앱 호환), 소비자가 `variant=shortest`를 붙인다.
-- iOS 서울 지하철 시설에서 줄이 하나도 없는 묶음(교통약자 도우미)은 펼침 행이 아니라 평문 한 줄이다(웹 동조). Kit 테스트도 공유 fixture `station-layout-cases.json`을 읽어 웹·Kit·`:kit`이 한 표로 잠긴다.
+- 서울 지하철 시설에서 줄이 하나도 없는 묶음(교통약자 도우미)은 펼침 행이 아니라 평문 한 줄이다(웹·iOS·안드로이드). 역 판정 표는 공유 fixture `station-layout-cases.json`으로 웹·Kit·`:kit` 세 벌이 한 표로 잠긴다.
 - en 대표번호 표기 "main line" → "main number"(철도 본선으로 읽히던 문제, 웹·iOS·안드로이드).
+- 제품 참조가 없어진 `route.pedestrian.stepFreeToggle` 키를 6로케일·생성물에서 지웠다.
 
-### 도보 경로 두 줄을 카카오 안에서 (E42)
-
-조회 화면 도보가 "최단 경로"(카카오 `SHORTEST`, 기본 펼침)와 "계단 회피 경로"(카카오 `ACCESSIBLE`, 없으면 "큰길 경로" `BROAD_FIRST`) 두 줄이 됐다(ko, 웹·iOS). 계단 회피 토글은 없어졌고 안내 시작 버튼은 줄 안으로 들어갔다(웹 B9 ② 흡수). 서버는 `lines=1` 줄 목록을 새로 싣고 `variant=shortest`의 출처를 카카오로 바꿨다(옛 `alternatives=1` 봉투는 그대로 — 배포된 iOS·안드로이드도 최단이 카카오가 된다). en은 추천·최단(Tmap) 그대로. ⚠ 대중교통 승차 전 도보의 계단 회피는 토글과 함께 사라졌다(BACKLOG E42 미결). [spec](docs/superpowers/specs/2026-09-23-walk-two-lines-kakao-design.md)
-
-### E45 경로 브리핑 역 진입·전화 안드로이드 동조(E43 우선순위 3)
-
-안드로이드 길찾기 대중교통 브리핑에서 지하철역 이름이 들리는 줄(구간·하차·다음 지하철로 가는 도보)에 TalkBack 작업 메뉴 "{역} 상세 보기"·"{역}에 전화 걸기"가 붙는다. 줄은 텍스트 한 객체 그대로이고, 메뉴는 역별 묶음·등장 순(iOS의 역순 선언은 SwiftUI 전용이라 옮기지 않았다). 전화 액션은 상시이고 없음·찾는 중·실패·다이얼러 없음은 상태 줄 통지+진동이다. 역 상세에서 돌아오면 그 줄로 착지하고 펼침이 유지된다(펼침 상태 saveable — 설정 왕복의 선재 초기화도 함께 사라짐). `:kit` `TransitBriefingStations.kt` 이식으로 등록부 대기는 E35의 `TransitRidingPosition` 하나. iOS 2026-09-19 빈 이름 부재 판정(`transitBriefingName`)도 `:kit`·앱 구간 줄에 동조했다. 같은 날 역 시설 빈 묶음(교통약자 도우미)이 빈 펼침 행이 되던 결함을 조립된 줄 판정으로 고쳤다(웹 동형). [spec](docs/superpowers/specs/2026-09-18-briefing-station-entry-design.md).
-
-### E44 역 장소 상세 개편 안드로이드 동조(E43 우선순위 2)
-
-안드로이드 장소 상세도 역(`:kit` `stationLayoutKind`)이면 역 정보(전화 맨 위, 대표번호 표기, 경유역 조회 실패는 한 줄) → 도착·시간표·시설(서울 지하철은 종류별 접기·운행 중지 수) → 무장애 → 길찾기 → 이 장소 주변(지하철 없음)이다. `:kit` `StationPhone.kt` 이식(등록부 대기 → 이식, 노선 표는 웹 드리프트 가드가 세 벌로 잠근다), 경유역 전화 저장소 `StationPhoneStore`(iOS 수명 규칙)와 경유역 라우트 `PlaceDetailRoute.ofTransitStop`(노선 힌트 필수)을 더했다. 경유역 로터는 E45 몫. [spec](docs/superpowers/specs/2026-09-17-station-detail-reorg-design.md).
-
-### E44 역 장소 상세 개편 웹 동조
-
-웹 장소 상세도 역(`stationLayoutKind` 웹 미러 `src/lib/station-phone.ts`)이면 역 정보(제목 항상, 전화 맨 위, 운영사 번호는 "대표번호", 출처는 섹션 끝) → 도착·시간표·시설 → 무장애 → 길찾기(제목) → 이 장소 주변(제목) 순서다. 서울 지하철 시설은 버튼으로 연 뒤 종류마다 접히고 접힘 줄에 운행 중지 수가 붙는다(줄 없는 묶음은 평문). WebMCP `get_place_info`는 `basic.phoneKind`로 대표번호를 알린다. 비역 장소는 그대로이고 경유역 번호 조회는 웹에 경유역 진입이 없어 옮기지 않았다. [spec](docs/superpowers/specs/2026-09-17-station-detail-reorg-design.md).
+[계획](docs/superpowers/plans/2026-09-23-backlog-sweep-4-parallel-plan.md)
 
 ### E35 승차 중 현재역 — 실시간 열차 위치로 표식 채우기
 
 서울 실시간 열차 위치(`realtimePosition`)를 새 provider·`/api/transit/position` 라우트(노선 단위 20초 캐시)로 붙였다. 승차 중 하차역 도착 정보에 아직 열차가 없는 구간(종전 10분 안팎 표식 없음)에서 경유역 목록의 "현재 위치"·상태 문장("현재 위치 {역}.")·조망을 잠근 열차의 실제 현재역으로 채운다(웹·iOS 실험판). 표시 전용이라 승차 상태 머신 판정은 그대로이고, 현재역이 보이는 동안 `neverSeen` 경고는 보류한다. 실호출 게이트 4노선 표기 일치·20노선 중 19노선 제공. [spec](docs/superpowers/specs/2026-09-23-riding-current-station-design.md)
 
+### 도보 경로 두 줄을 카카오 안에서 (E42)
+
+조회 화면 도보가 "최단 경로"(카카오 `SHORTEST`, 기본 펼침)와 "계단 회피 경로"(카카오 `ACCESSIBLE`, 없으면 "큰길 경로" `BROAD_FIRST`) 두 줄이 됐다(ko, 웹·iOS). 계단 회피 토글은 없어졌고 안내 시작 버튼은 줄 안으로 들어갔다(웹 B9 ② 흡수). 서버는 `lines=1` 줄 목록을 새로 싣고 `variant=shortest`의 출처를 카카오로 바꿨다(옛 `alternatives=1` 봉투는 그대로 — 배포된 iOS·안드로이드도 최단이 카카오가 된다). en은 추천·최단(Tmap) 그대로. 대중교통 승차 전 도보의 계단 회피도 토글과 함께 없어졌다. [spec](docs/superpowers/specs/2026-09-23-walk-two-lines-kakao-design.md)
+
+### E44 역 장소 상세 개편 안드로이드 동조
+
+안드로이드 장소 상세도 역(`:kit` `stationLayoutKind`)이면 역 정보(전화 맨 위, 대표번호 표기, 경유역 조회 실패는 한 줄) → 도착·시간표·시설(서울 지하철은 종류별 접기·운행 중지 수) → 무장애 → 길찾기 → 이 장소 주변(지하철 없음)이다. `:kit` `StationPhone.kt` 이식, 경유역 전화 저장소 `StationPhoneStore`(iOS 수명 규칙)와 경유역 라우트 `PlaceDetailRoute.ofTransitStop`(노선 힌트 필수)을 더했다. 경유역 로터는 E45 몫. [spec](docs/superpowers/specs/2026-09-17-station-detail-reorg-design.md).
+
+### E44 역 장소 상세 개편 웹 동조
+
+웹 장소 상세도 역(`stationLayoutKind` 웹 미러 `src/lib/station-phone.ts`)이면 역 정보(제목 항상, 전화 맨 위, 운영사 번호는 "대표번호", 출처는 섹션 끝) → 도착·시간표·시설 → 무장애 → 길찾기(제목) → 이 장소 주변(제목) 순서다. 서울 지하철 시설은 버튼으로 연 뒤 종류마다 접히고 접힘 줄에 운행 중지 수가 붙는다. WebMCP `get_place_info`는 `basic.phoneKind`로 대표번호를 알린다. 비역 장소는 그대로이고 경유역 번호 조회는 웹에 경유역 진입이 없어 옮기지 않았다. [spec](docs/superpowers/specs/2026-09-17-station-detail-reorg-design.md).
+
+### 안드로이드 도보 실시간 안내 정식 기능 이동
+
+도보 진입점·세션·띠바의 실험 게이트와 `AppConfig.experimentalGuidanceEnabled`(소비자 0)를 삭제하고, 전경 서비스(`location`)·`FOREGROUND_SERVICE(_LOCATION)`·`WAKE_LOCK`·`ACTIVITY_RECOGNITION`을 정식 매니페스트로 승격했다(실험판 매니페스트 삭제, 탭 순서·결과 진동 설정 행·진단 로그의 실험 게이트는 유지). 산출물 검사(`check-release-manifest.mjs`)가 정식·실험 APK 모두를 잠근다. 정식판 첫 Play 제출에 전경 서비스 선언이 필요해졌다(`docs/playstore/data-safety.md` §4 #14). 남은 것은 한소네 7 `debug` 검증([BACKLOG E43](docs/BACKLOG.md#e43-안드로이드-앱---코드-도달2026-09-17-f215b164-웨이브-03-완료--실기기-판정m5스토어)).
+
+### 채팅 서버 소규모 묶음 (A44·A45·A42)
+
+`/api/chat` NDJSON이 U+2028·U+2029·U+0085를 이스케이프해 iOS·안드로이드에서 답변이 통째로 사라지던 경로를 막았다(A44). follow-up 칩 생성 예산을 서버 15초·클라이언트 20초로 벌리고 소스 가드로 잠갔다(A45). 채팅 지하철 도착 도구가 LLM에 카드와 같은 우리 문장(E37)만 넘겨 한 답변 안의 표기가 하나로 모인다(A42). [계획](docs/superpowers/plans/2026-09-23-backlog-sweep-4-parallel-plan.md).
+
 ### A46 승차 대기 배경 관측·수동 진행 버튼 이름
 
 고른 차량을 기다리는(boarding) 동안에도 keep-alive 위치 스트림을 켜서, 화면을 끄거나 다른 앱을 써도 폴이 돌고 도착 관측 승격이 기본 경로가 되게 했다(iOS 실험판). 관측이 끝난 뒤의 수동 진행 버튼은 [선택한 열차에 탔어요]·[선택한 버스에 탔어요], 대기 국면은 [이미 탔어요]로 바꾸고, 세 안내 문장(`vehiclePassed`·`boardingSignalLost`·`boardingUpstreamFailed`)에서 버튼 이름을 인용하던 꼬리를 뺐다(웹·iOS, 6로케일). [BACKLOG A46](docs/BACKLOG.md#a46-고른-열차를-기다리다-화면을-끄면-앱이-도착을-못-보고-돌아오면-도착-정보-없이를-묻는다--2026-09-23-위원장-실승차-피드백-ios-실험판).
-
-### 채팅 서버 소규모 묶음 (A44·A45·A42·A43)
-
-`/api/chat` NDJSON이 U+2028·U+2029·U+0085를 이스케이프해 iOS·안드로이드에서 답변이 통째로 사라지던 경로를 막았다(A44). follow-up 칩 생성 예산을 서버 15초·클라이언트 20초로 벌리고 소스 가드로 잠갔다(A45). 채팅 지하철 도착 도구가 LLM에 카드와 같은 우리 문장(E37)만 넘겨 한 답변 안의 표기가 하나로 모인다(A42). seed 변환기가 `환승역구분`을 접미 일치로 읽고 모르는 어휘에 중단한다, seed는 재생성하지 않았다(A43). [계획](docs/superpowers/plans/2026-09-23-backlog-sweep-4-parallel-plan.md).
-
-### 안드로이드 도보 실시간 안내 정식 기능 이동(E43 우선순위 4)
-
-도보 진입점·세션·띠바의 실험 게이트와 `AppConfig.experimentalGuidanceEnabled`(소비자 0)를 삭제하고, 전경 서비스(`location`)·`FOREGROUND_SERVICE(_LOCATION)`·`WAKE_LOCK`·`ACTIVITY_RECOGNITION`을 정식 매니페스트로 승격했다(실험판 매니페스트 삭제, 탭 순서·결과 진동 설정 행·진단 로그의 실험 게이트는 유지). `android/scripts/check-release-manifest.mjs`는 정식·실험 APK 모두에 도보 항목·서비스 유형 location을 요구하고 백그라운드 위치 권한을 거부한다. 정식판 첫 Play 제출에 전경 서비스 선언이 필요해졌다(`docs/playstore/data-safety.md` §4 #14). 남은 것은 한소네 7 `debug` 검증([BACKLOG E43](docs/BACKLOG.md#e43-안드로이드-앱---코드-도달2026-09-17-f215b164-웨이브-03-완료--실기기-판정m5스토어)).
 
 ## 2026-09-21
 
