@@ -18,7 +18,6 @@ import re
 import sys
 from pathlib import Path
 
-import openpyxl
 
 # XLSX 컬럼 순서(2026-02-28 기준 헤더와 일치):
 # 역번호, 역사명, 노선번호, 노선명, 영문역사명, 한자역사명, 환승역구분,
@@ -95,6 +94,22 @@ def clean(v):
     return s if s and s != "-" else None
 
 
+# 환승역구분 값 어휘 가드(A43). 제공처가 2026-06-30판부터 신분당선 16행에만 `도시철도 환승역`·
+# `도시철도 일반역`을 쓴다 — 정확일치(`== "환승역"`)는 그 8개 환승역을 경고 없이 일반역으로 뒤집었다.
+# 판정은 접미 일치로 넓히되, 어휘가 또 바뀌면 넓힌 규칙도 틀릴 수 있으므로 **모르는 값이 나오면 중단**한다
+# (헤더 가드와 같은 사상: 열 순서만 보던 가드와 거리 가드 둘은 플래그 뒤집힘을 구조적으로 볼 수 없다).
+# 새 값을 만나면 제공처 원본으로 뜻을 확인해 이 목록에 더하고 재실행할 것.
+KNOWN_TRANSFER_TYPES = ("일반역", "환승역", "도시철도 일반역", "도시철도 환승역")
+
+
+def is_transfer(value):
+    """환승역구분 셀 → 환승 여부. 알려진 어휘 밖(빈 값 포함)이면 ValueError."""
+    v = clean(value)
+    if v not in KNOWN_TRANSFER_TYPES:
+        raise ValueError(f"모르는 환승역구분 값: {v!r}")
+    return v.endswith("환승역")
+
+
 def haversine_km(lat1, lng1, lat2, lng2):
     from math import asin, cos, radians, sin, sqrt
 
@@ -167,6 +182,8 @@ def main():
         print(f"파일 없음: {src}", file=sys.stderr)
         sys.exit(1)
 
+    import openpyxl  # 판정 함수(is_transfer)만 쓰는 테스트가 openpyxl 없이 import하도록 여기서
+
     wb = openpyxl.load_workbook(src, read_only=True)
     ws = wb.active
     rows = list(ws.iter_rows(values_only=True))
@@ -183,6 +200,7 @@ def main():
         sys.exit(1)
 
     stations = []
+    unknown_types = {}
     for r in rows[1:]:
         lat, lng = r[COL["lat"]], r[COL["lng"]]
         # 좌표는 필수 — 받침대의 핵심(근접 검색). 숫자 아니면 스킵.
@@ -197,8 +215,13 @@ def main():
             "lng": round(float(lng), 6),
             "operator": clean(r[COL["operator"]]),
             "roadAddress": clean(r[COL["roadAddress"]]),
-            "isTransfer": clean(r[COL["transferType"]]) == "환승역",
         }
+        try:
+            rec["isTransfer"] = is_transfer(r[COL["transferType"]])
+        except ValueError:
+            key = clean(r[COL["transferType"]])
+            unknown_types.setdefault(key, []).append(f"{rec['name']}({rec['lineName']})")
+            continue
         hanja = clean(r[COL["nameHanja"]])
         if hanja:
             rec["nameHanja"] = hanja
@@ -209,6 +232,12 @@ def main():
         if fix:
             rec["lat"], rec["lng"] = fix
         stations.append(rec)
+
+    if unknown_types:
+        print(f"모르는 환승역구분 값 {len(unknown_types)}종 — KNOWN_TRANSFER_TYPES 확인 필요", file=sys.stderr)
+        for value, where in unknown_types.items():
+            print(f"   {value!r}: {len(where)}행 (예: {', '.join(where[:3])})", file=sys.stderr)
+        sys.exit(1)
 
     # 보정 후에도 남은 이상치는 **중단**한다. 잘못된 좌표는 조용히 통과하면
     # "그 역이 검색되지 않는다"는 형태로만 드러나 원인을 찾기 어렵다(양원역 실사고).
