@@ -57,9 +57,9 @@ node scripts/usage-report.mjs   # API 비용·쿼터·키 만료
 
 있는 기능이 틀린 답을 낸다. **여기가 비면 축 3(도달)부터 다시 본다** — 2026-08-02에 "코드 마일스톤 0"이라는 결론이 그 축의 부재 때문에 틀렸다.
 
-### A49. 웹 대중교통 안내의 국면 전이 즉폴도 진행 중 폴에 삼켜진다 — `board`·`confirmBoarded`·`cancelChangeBoarding`·`completeOrAdvance` (🆕 2026-09-24, small-5 관찰 · doc-audit-w5 코드 대조)
+### A49. 웹 대중교통 안내의 국면 전이 즉폴도 진행 중 폴에 삼켜진다: `board`·`confirmBoarded`·`cancelChangeBoarding`·`completeOrAdvance`·`boardAboardCandidate`·`changeBoarding` (🆕 2026-09-24, small-5 관찰 · doc-audit-w5 코드 대조)
 
-네 함수는 국면을 바꾸는 dispatch 뒤 `clearTimer()` + `void pollOnce()`로 즉폴을 낸다(`src/hooks/useTransitGuide.ts`). in-flight 폴이 있으면 `pollOnce`는 `inFlightRef` 가드에서 조용히 돌아가고, 그 폴의 응답은 리듀서가 `phaseGen` 불일치로 버리며, 그 폴의 `finally`는 `repollRef`가 서 있지 않아 `scheduleNext()`만 한다. 그래서 **새 국면의 첫 조회가 한 주기 밀린다**(A48과 같은 모양). `completeOrAdvance`는 `setWaiting(EMPTY_WAITING)`까지 해서 다음 leg 목록이 빈 채 한 주기 머문다. 회귀가 아니다. iOS는 `restartPollLoop`이 진행 중 폴 Task를 취소하고 새로 세워 이 틈이 없다. 처방 후보: 네 자리에 A48과 같은 `repollRef.current = inFlightRef.current`. 얹힐 곳: 웹 실시간 대중교통 안내 실승차 검증 묶음(A48·E33 웹·B6).
+여섯 함수는 국면을 바꾸는 dispatch 뒤 `clearTimer()` + `void pollOnce()`로 즉폴을 낸다(`src/hooks/useTransitGuide.ts`). in-flight 폴이 있으면 `pollOnce`는 `inFlightRef` 가드에서 조용히 돌아가고, 그 폴의 응답은 리듀서가 `phaseGen` 불일치로 버리며, 그 폴의 `finally`는 `repollRef`가 서 있지 않아 `scheduleNext()`만 한다. 그래서 **새 국면의 첫 조회가 한 주기 밀린다**(A48과 같은 모양). `completeOrAdvance`와 `changeBoarding`(버스 leg에서 `beginReboard`가 직접 부르는 경로, `changeBoardingAt` 경유만 A48로 막혔다)은 `setWaiting(EMPTY_WAITING)`까지 해서 목록이 빈 채 한 주기 머문다. 회귀가 아니다. iOS는 `restartPollLoop`이 진행 중 폴 Task를 취소하고 새로 세워 이 틈이 없다. 처방 후보: `pollOnce` 즉폴 호출 자리 전수에서 즉폴 앞에 A48과 같은 `repollRef.current = inFlightRef.current`를 세운다. 출처 `~/gildongmu-wt/small-5-reports/done-202609240223.md`(네 자리 관찰), 나머지 둘은 doc-audit-w5 리뷰가 찾았다. 얹힐 곳: 웹 실시간 대중교통 안내 실승차 검증 묶음(A48·E33 웹·B6).
 
 ### A48. 웹 탑승 변경 역 선택(`changeBoardingAt`)이 진행 중 폴과 겹치면 새 역 조회가 다음 주기로 밀린다 (🆕 2026-09-23, test-mock 리뷰 관찰) · ✅ 코드 종결(2026-09-24, 세션 small-5, CHANGELOG 같은 날), 웹 실승차 판정 대기
 
@@ -430,7 +430,7 @@ en(및 es/fr/it/ja) 사용에서 **우리 코드 결함**으로 한국어가 노
 무고가 확인된 것: 대기 국면 폴 자체는 건강했다(`candidates=1 vehIdless=0 terminates=0`) — 후보 필터 계열은 원인이 아니다.
 
 **처방(층별로 다르다)**
-- ~~**L2**: 미관측에 시간 상한~~ — ✅ 종결. `ridingSince` + `neverSeen` 신호(상한 10분 **잠정**). ⚠ **폴 횟수가 아니라 시계인 근거가 아래 미확정 ②에 있다**: 화면 잠금 중 타이머가 멎으면 횟수 기반은 화면을 끌수록 시한이 늦게 온다.
+- ~~**L2**: 미관측에 시간 상한~~ — ✅ 종결. `ridingSince` + `neverSeen` 신호(당시 상한 10분 잠정). → 2026-09-11 A36 ①이 상한을 조회 10회로 바꿨다(벽시계 백스톱은 되살리지 않는다).
 - ~~**L3**: 탑승 변경의 조회 기준~~ — ✅ 종결. 단 **현재 위치가 아니라 경유역 목록에서 고른다**(위원장 판정 2026-08-16): 지하철 안에서는 GPS가 잡히지 않아 위치 기반이면 정작 필요한 곳에서 못 쓴다. 종전 처방이 지목한 `findStationsNear`는 쓰지 않았다. **지하철 전용** — 조회 파라미터가 수단마다 다르고(지하철만 역 이름, 서울버스는 정류소 ID) 버스는 갈아타면 대개 다른 leg다.
 - **L1**: **데이터원 판정 종결(2026-08-23) — "데이터원 부재"는 틀렸다.** 급행 정차역 집합은 **ODsay가 이미 준다**(급행 leg의 `passStopList`가 급행 정차역만 담는다 — 급행 13역 vs 완행 29역, ODsay 직접 호출과 프로덕션 `/api/route/transit` 両표면 확인). 잠금 열차 현재역은 서울 실시간 `realtimePosition`이 주고 그 `trainNo`는 도착 API `btrainNo`와 **동일 식별자**다(14/14 교차 대조). 조사 `docs/research/RESEARCH-2026-08-23-express-stop-data.md`, 판정서 `docs/superpowers/specs/2026-08-23-express-stop-data-verdict-design.md`.
   - ⏳ **지배적 경로에 대한 처방은 들어갔고 판정은 실승차다**: `subwayLineCore`가 ODsay `(급행)` 접미를 안 벗겨 **급행 leg가 통째로 추적 불가**였던 선행 결함을 고쳤다. 코드상 급행 경로를 고르면 안내가 열리고 그 leg의 하차역은 정의상 급행 정차역이라 L1이 발생하지 않는다 — **다만 이 경로는 실승차로 한 번도 행사되지 않았고 실호출 게이트도 아직 통과 실행이 없다.** 판정은 §2 A16 실승차 ⑥.
@@ -561,7 +561,7 @@ en(및 es/fr/it/ja) 사용에서 **우리 코드 결함**으로 한국어가 노
 - **A44·A45 채팅 수신**(코드 종결 2026-09-23, iOS·안드로이드): 답변 뒤 follow-up 칩이 뜨는가(여전히 비면 모델 가용성 쪽이라 `eval:ab`로 재판정) · U+2028·U+2029·U+0085를 유도하는 질문에도 답변이 통째로 사라지지 않는가.
 - **B12 웹 채팅 복사·듣기**(코드 종결 2026-09-24, 웹): VoiceOver(Safari)·NVDA(Chrome)에서 ①답변 끝 [복사][듣기]가 출처 뒤에 차례로 들리는가 ②[듣기]를 누르면 라벨이 "재생 중지"로 바뀌어 그 자리에서 들리는가 ③"복사됨"이 매번(연속 두 번도) 들리는가 ④긴 답변을 끝까지 들은 뒤 라벨이 "듣기"로 돌아오는가(Chrome 원격 보이스 절단 시 남는지, spec §5). 대본 `docs/FIELD-TEST.md` §4-8.
 - **E50 대중교통 대안 이름·수단 재조회**(코드 종결 2026-09-24, 웹·iOS 길찾기, 안드로이드는 이름만, spec `docs/superpowers/specs/2026-09-24-transit-alternatives-reasoned-design.md`, 대본 `docs/FIELD-TEST.md` §1 E50 행): ①접힌 대안이 이제 열 이유를 이름으로 말하는가("환승이 가장 적은 경로, 버스만 타는 경로, 총 71분, …") ②축 여럿을 쉼표로 이은 이름이 두 경로처럼 들리지 않는가 ③"도보 거리가 가장 짧은 경로"의 요약 도보 분이 다른 대안보다 많게 들리는 경우가 거슬리는가(1순위 대비만 가드) ④재조회 버튼("…타는 경로 찾기")을 누른 뒤 조회 중 침묵이 길게 들리는가, 찾은 경로·"없습니다"로 커서가 옮겨 가는가, 실패 때 버튼에 머문 채 실패 문장이 들리는가 ⑤iOS 안내 조망·안내 시트 "다른 경로" 목록이 짧아진(추천만 남는 경우가 흔하다) 것이 안내 중 전환에 불편한가.
-- **0건 문장 갈림**(E19 잔여, 실측표 `docs/research/RESEARCH-2026-08-23-empty-result-sentences.md`, 2026-09-02 코디네이터 판정으로 ①·③ 정리): ②`route/car` 실패 문장이 소비자마다 다르다 — 채팅카드만 서버 문장("경로를 찾지 못했습니다…")이 살아남고 비교 화면은 "경로 브리핑에 실패했습니다."로 접혀, 원인(경로 없음)과 실패(조회 오류)가 한 문장으로 뭉개진다. 문장 판정 미결 ④0건에 가장 가까운 거리를 싣는 예외가 지하철 하나인데, 같은 연속량 논리가 따릉이·버스·문화행사에도 맞는지 미판정.
+- **0건 문장 갈림**(E19 잔여, 실측표 `docs/research/RESEARCH-2026-08-23-empty-result-sentences.md`, 2026-09-02 코디네이터 판정: ①·④ 현행 유지, ③ 종결, ②만 열림): ②`route/car` 실패 문장이 소비자마다 다르다. 채팅카드만 서버 문장("경로를 찾지 못했습니다…")이 살아남고 비교 화면은 "경로 브리핑에 실패했습니다."로 접혀, 원인(경로 없음)과 실패(조회 오류)가 한 문장으로 뭉개진다. 문장 판정 미결.
 - **K4 한눈에 보기 캡·follow-up 칩**(코드 종결 2026-08-24, spec `docs/superpowers/specs/2026-08-24-chat-overview-cards-followup-chips-design.md`): 판정 ①~④는 §5 K4 본문 "남은 판정"이 정본이다(실사용에서 이미 소화됐는지 기록이 없어 여기 올린다).
 - **E25 en 하차 줄**(결함 종결 2026-09-13, iOS en, 대본 `docs/FIELD-TEST.md` §4-6): 길찾기 대중교통 결과의 하차 줄이 한 언어로만 들리는가(영문 역명이 있으면 "Get off at …", 없으면 그 구간 줄과 하차 줄이 함께 한국어), 위 구간 줄과 같은 이름으로 역을 부르는가.
 - **W2 WebMCP 실기기**(위원장, ChatGPT 데스크톱 + VoiceOver, 대본 `docs/FIELD-TEST.md` §8 ⑦~⑪): §5 W2 게이트 ③의 사후 확인. 판정 축은 대본이 정본이다.
@@ -737,7 +737,7 @@ ODsay가 건당 과금(Flex, 2026-09-23 전환)이라 **개발·검증 호출이
 - **3자 동조**: ✅ **옛 위치 표기 코드 도달(2026-09-23, 세션 stale-origin, CHANGELOG 같은 날)** — 측위 실패 시 옛 주소를 "현재 위치"로 말하던 것을 "마지막으로 확인한 위치, 주소, N분 전"으로, 길찾기는 옛 위치로 계속(spec `docs/superpowers/specs/2026-09-23-stale-origin-disclosure-design.md`). ⏳ 실기기 판정은 §2 stale-origin 행. 후속 후보 둘: ①웹·안드로이드 안내 스트림 fix가 공유 위치 스토어로 오지 않아, 실내 출발 뒤 안내로 회복해도 복귀한 표시줄은 출발 전 좌표를 옛 위치로 말한다(iOS만 스트림이 스토어를 갱신 — spec §5, 신선 상태에서도 웹은 출발 전 좌표를 "현재 위치"로 말하는 기존 한계) ②안드로이드 길찾기에 안내 시작 고지("현재 위치에서 안내를 시작합니다")가 없다(수동·옛 위치 공통, 등가성) ③옛 위치가 아닌 상태에서 권한을 거두면 iOS 길찾기 칸은 여전히 "현재 위치(직전 주소 부근)"다(웹은 주소 없는 "현재 위치", 기존 동작 — 칸의 주소 갈래를 권한 있을 때만 허용하는 안, 최종 확인 리뷰 F-5) ④iOS xcstrings 생성물 최신성 게이트가 없다(안드로이드 `android-strings-drift`만 byte 비교 — 이번 ja 정정 누락을 안드로이드 쪽이 잡았다). 남은 후보: 언어 변경 뒤 이미 로드된 payload는 옛 dataLocale(안드로이드 ㉖).
 - **N4 경유지 진행 표시 등가성(2026-09-24)**: `:kit` 리듀서(`GuideEvent.WaypointApproaching`·`guideNextTarget`)·strings는 미러됐고 앱 배선 4항이 남았다 — ①`WalkGuideModel.consume`의 무동작 분기를 접근 예고 통지(`directions.viaRemaining`)로 ②도착 문장을 `directions.viaArrivedContinue`(ko 방향 조사)로 ③남은 거리 행을 다음 목표 기준으로 ④경유지를 지난 세션의 재조회 경로도 목적지 목표로(spec `docs/superpowers/specs/2026-09-24-waypoint-progress-design.md` §4.1·§6). 그때까지 안드로이드 사용자는 종전 문장·총 잔여 행을 듣고, `WalkGuideModel`의 프로파일은 `GuideTuning.walk.copy(waypointApproachM = null)`이다(배선할 때 되돌린다).
 - **E50 수단 재조회 등가성(2026-09-24)**: `:kit` 이름 조각(`TransitAlternativeName.parts`)·strings는 미러됐고 안드로이드 길찾기에 재조회 버튼이 없다. 필요한 것은 서버 `requeryAxes`의 축마다 "…타는 경로 찾기" 버튼, 찾음·없음은 결과로 착지, 실패는 버튼 유지 + 통지(spec `docs/superpowers/specs/2026-09-24-transit-alternatives-reasoned-design.md` §4.3). Kit `RouteService.transitModeRequery` 동형 메서드와 `TransitRouteResult.requeryAxes` 디코딩이 선행이다.
-- **B12 평문 변환 등가성(2026-09-24)**: 안드로이드 `:kit` `MarkdownPlainTextTest.kt`는 옛 10건을 제 손으로 들고 있어 공유 fixture `src/lib/__tests__/fixtures/markdown-plain-text-cases.json`(웹·Kit가 읽는다)을 읽지 않는다. fixture 소비로 바꾸고 java.util.regex 줄 경계(CRLF·VT·FF·NEL)를 함께 대조한다(spec `docs/superpowers/specs/2026-09-24-web-chat-copy-listen-design.md` §5).
+- **B12 평문 변환 등가성(2026-09-24)**: 안드로이드 `:kit` `MarkdownPlainTextTest.kt`는 수기 케이스를 제 손으로 들고 있어 공유 fixture `src/lib/__tests__/fixtures/markdown-plain-text-cases.json`(웹·Kit가 읽는다)을 읽지 않는다. fixture 소비로 바꾸고 java.util.regex 줄 경계(CRLF·VT·FF·NEL)를 함께 대조한다(spec `docs/superpowers/specs/2026-09-24-web-chat-copy-listen-design.md` §5).
 - **iOS 확인 후보**: Deeplink 쿼리 `=`·`+` 인코딩이 Foundation과 같은지(CORE 미검증), Foundation `CharacterSet` 실측 집합(U+200B 포함)을 iOS Kit 테스트로도 잠글지, `ChatMarkdown` CRLF 분리 차이.
 
 **구현 우선순위(2026-09-20 합의)**:
@@ -1365,11 +1365,9 @@ W1 도구 9개를 "데이터 반환형이 주"(W2 spec 판정 ②) 기준으로 
 
 사용자 비가시. 기본은 편승이고 편승할 작업이 없으면 별도 정리한다.
 
-### 2026-09-23 doc-audit 후속 (코디네이터 판정, 다음 문서·도구 작업에 편승)
+### 2026-09-23 doc-audit 후속
 
-출처 `~/gildongmu-wt/doc-audit-reports/judgment-202609231922.md`.
-1. ✅ **INTEGRATIONS 12곳·PATTERNS 17곳의 "CLAUDE.md 요지 전문(축약 전, 원문 그대로)" 보관 문단**이 현재 규칙과 어긋난다. 2026-09-24 doc-audit-w5가 본문·CLAUDE.md 포인터와 대조해 빠진 규칙 없음을 확인하고 29곳 모두 지웠다(보관 관행 자체는 `doc-audit` 스킬 §5 3-b 개정 대상).
-2. ✅ **옛 종결 항목 본문 잔존**(E12·E24·E19·K3, §2 행 없음) → 2026-09-24 doc-audit-w5가 본문을 지우고 종결 표에 행을 달았다(네 항목 모두 표 행이 없었다). E19의 열린 판정은 §2 관찰 항목 "0건 문장 갈림"으로, 실측표는 `docs/research/RESEARCH-2026-08-23-empty-result-sentences.md`로, E12의 seed 갱신은 §6 시한 표로 옮겼다. K3의 확인 3건은 이미 §2 "채팅 심야 지하철 4-state"에 있었다.
+출처 `~/gildongmu-wt/doc-audit-reports/judgment-202609231922.md`. 전건 종결(2026-09-24, CHANGELOG 같은 날). 보관 관행(`doc-audit` 스킬 §5 3-b) 개정은 스킬 쪽 후속이다.
 
 ⚠ **편승은 얹힐 작업이 실제로 올 때만 유효한 정책이다.** 그렇지 않았던 D2·D3은 얹힐 작업이 예정에 없어 **편승이 무기한 보류로 작동**했고 결국 단독 정리로 종결했다. **그래서 새 항목에는 "얹힐 곳"을 함께 적는다** — 그 답이 없으면 편승이 아니라 **크기가 작을 뿐인 독립 항목**이다.
 
@@ -1462,7 +1460,7 @@ W1 도구 9개를 "데이터 반환형이 주"(W2 spec 판정 ②) 기준으로 
 |---|---|---|
 | E12 | OSM 보행 노드 정적 seed화(전국 79,575 노드, 조회 1.4~3.9초 → 4~8ms) | 2026-08-16 · spec `docs/superpowers/specs/2026-08-16-osm-walk-nodes-seed-design.md`, CHANGELOG 같은 날. 연 1회 갱신은 §6 시한 표 2027-08 행 |
 | E19 | 커버리지 판정을 국경 폴리곤(`isInKorea`)으로 승격 | 2026-08-23 · spec `docs/superpowers/specs/2026-08-23-coverage-boundary-polygon-design.md`, CHANGELOG 같은 날. 0건 문장 갈림 판정은 §2 관찰 항목, 실측표는 `docs/research/RESEARCH-2026-08-23-empty-result-sentences.md` |
-| E24 | 장소 "지금 영업 중" 표기(Google Places, 웹·iOS 정식판) | 2026-09-02 정식판 승격 · CHANGELOG 같은 날. 관측만 남는다: 실사용에서 줄이 자주 안 나오면 GCP 콘솔 쿼터 사용량부터 본다. 정확도 대조 표본은 n=22·금요일 저녁 한 시점이다. 표기·약관 규칙은 `CLAUDE.md` 통합 카탈로그와 GitHub 이슈 #2 |
+| E24 | 장소 "지금 영업 중" 표기(Google Places, 웹·iOS 정식판) | 2026-09-02 정식판 승격 · CHANGELOG 같은 날. 관측만 남는다: 실사용에서 줄이 자주 안 나오면 GCP 콘솔 쿼터 사용량부터 보고, 잦으면 대안 소스(HERE·Mapbox, 한국 채움률·약관 미확인) 판정으로. 정확도 대조 표본은 n=22·금요일 저녁 한 시점·5개 지역이고 아침·심야·요일 경계는 미검증이다. 표기·약관 규칙은 `CLAUDE.md` 통합 카탈로그와 GitHub 이슈 #2 |
 | K3 | 채팅 function-calling 도구 7종 확장 | 2026-08-23 · spec `docs/superpowers/specs/2026-08-23-chat-tools-expansion-design.md`, CHANGELOG 같은 날. 실사용 확인 3건은 §2 관찰 항목 "채팅 심야 지하철 4-state" |
 | A43 | 도시철도 seed `환승역구분` 어휘 변화(신분당선 환승역 8곳) — 접미 일치 + 모르는 어휘 중단 가드, 직전 seed 대비 좌표 이동 가드(15m), 2026-06-30판 불채택(신분당선 좌표 퇴행) | 2026-09-23 · CHANGELOG 같은 날. 다음 판본에서 같은 대조를 반복(가드가 목록을 낸다). 원본·갱신 절차는 `~/gildongmu-private/datasets/README.md`(제공처는 최신판만 준다) |
 | E46 | ODsay 일 30건 한도 — 증설 판정 | 2026-09-23 · Flex 후불 종량제 앱 `gildongmuflex`로 전환(CHANGELOG 같은 날). 월 과금 상한은 ODsay 사이트에 UI가 없고 우리 쪽 가드도 두지 않는다(E49). `/api/route/transit`에 레이트 리밋이 없고 4xx 응답도 과금된다(약관 13.3), 사용량 정본은 ODsay 콘솔 `gildongmuflex` 사용량 탭. 옛 `gildongmuweb`은 호출하지 않는다(약관 4.5.3) |

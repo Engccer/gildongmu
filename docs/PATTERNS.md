@@ -283,7 +283,7 @@ iOS 지도 버튼·검색 로터 액션은 URL 빌더가 성공할 때만 만들
 
 ### 데이터 언어 분리
 
-**데이터 언어 분리**(`src/lib/data-locale.ts`): 외부 API는 ko/en만 제공 → 비한국어(en/es/fr/it/ja)는 영문 데이터 공유. **외부 fetch·영문 분기에 `useLocale()` 원시값 직접 금지, `dataLocale`/`prefersEnglish` 경유**(예외: STT Deepgram은 es/fr/it/ja 직접 인식). i18n 키 일관성은 `i18n-messages.test.ts`가 머지 게이트. 언어 선택 UI는 disclosure 메뉴(국기 이모지 금지, 각 언어 자국어 텍스트+`lang` 속성). ⚠ **iOS에서 문장 안 수치는 기기 로케일이 아니라 앱 선택 언어로 포맷한다**(`NumberFormatter.locale = Locale(identifier: AppLanguage.current)`, 매 호출 생성 — 2026-08-17 걸음 수 천 단위 구분자 실사고): `appLocalized` 문장은 앱 언어를 따르는데 숫자만 기기 로케일이면 한 문장 안에서 언어가 갈린다.
+**데이터 언어 분리**(`src/lib/data-locale.ts`): 외부 API는 ko/en만 제공 → 비한국어(en/es/fr/it/ja)는 영문 데이터 공유. **외부 fetch·영문 분기에 `useLocale()` 원시값 직접 금지, `dataLocale`/`prefersEnglish` 경유**(예외: STT Deepgram은 es/fr/it/ja 직접 인식). i18n 키 일관성은 `i18n-messages.test.ts`가 머지 게이트. 언어 선택 UI는 disclosure 메뉴(국기 이모지 금지, 각 언어 자국어 텍스트+`lang` 속성). ⚠ **iOS에서 문장 안 수치는 기기 로케일이 아니라 앱 선택 언어로 포맷한다**(`NumberFormatter.locale = Locale(identifier: AppLanguage.current)`, 매 호출 생성 — 2026-08-17 걸음 수 천 단위 구분자 실사고): `appLocalized` 문장은 앱 언어를 따르는데 숫자만 기기 로케일이면 한 문장 안에서 언어가 갈린다. ⚠ 웹 "내 주변" 0건 문장(`messages/*.json`)과 iOS `ios-extra`의 `ios.nearby.*Empty`는 자동 동기 대상이 아니다. 한쪽을 고치면 다른 쪽도 함께 고친다(2026-09-02 한정어 탈락 실사고).
 
 ---
 
