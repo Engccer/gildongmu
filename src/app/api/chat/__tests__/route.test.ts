@@ -40,6 +40,24 @@ describe("POST /api/chat", () => {
     });
   });
 
+  it("A44: U+2028·U+2029·U+0085는 날 문자로 나가지 않고 이스케이프되어 같은 값으로 되읽힌다", async () => {
+    // 소스에 날 문자를 두지 않으려고 코드 포인트로 조립한다.
+    const breakers = [0x2028, 0x2029, 0x0085].map((cp) => String.fromCharCode(cp));
+    const text = `주소${breakers[0]}서울${breakers[1]}강동구${breakers[2]}길동`;
+    const { runAgentLoop } = await import("@/lib/chat/agent-loop");
+    vi.mocked(runAgentLoop).mockResolvedValueOnce({ text, renders: [], sources: [] });
+    const req = new Request("http://x/api/chat", {
+      method: "POST",
+      body: JSON.stringify({ messages: [{ role: "user", text: "q" }], locale: "ko" }),
+    });
+    const raw = await (await POST(req)).text();
+    for (const ch of breakers) expect(raw.includes(ch)).toBe(false);
+    for (const cp of ["2028", "2029", "0085"]) expect(raw).toContain("\\" + "u" + cp);
+    const lines = raw.trim().split("\n");
+    expect(lines).toHaveLength(1);
+    expect(JSON.parse(lines[0])).toEqual({ type: "done", text, renders: [], sources: [] });
+  });
+
   it("키 없으면 502", async () => {
     const { getGeminiClient } = await import("@/lib/gemini/client");
     vi.mocked(getGeminiClient).mockReturnValueOnce(null);
