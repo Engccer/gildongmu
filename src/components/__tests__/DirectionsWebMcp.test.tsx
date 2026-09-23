@@ -19,10 +19,9 @@ import { __resetToolBudgetForTest } from "@/lib/webmcp/tool-budget";
 import { buildAppTools } from "@/lib/webmcp/tools";
 import { __resetToolLockForTest } from "@/lib/webmcp/tool-lock";
 
-vi.mock("next-intl", () => {
-  const t = (key: string) => key;
-  Object.assign(t, { markup: (key: string) => key, rich: (key: string) => key, raw: (key: string) => key, has: () => true });
-  return { useTranslations: () => t, useLocale: () => "ko" };
+vi.mock("next-intl", async () => {
+  const m = await import("./stable-intl-mock");
+  return m.stableIntlMock("ko", m.keyOnly);
 });
 vi.mock("@/lib/geolocation", () => ({
   awaitGeolocation: vi.fn(async () => ({ status: "ready" as const, coords: { lat: 37.53, lng: 127.12, at: Date.now() / 1000 } })),

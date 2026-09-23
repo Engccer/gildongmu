@@ -1438,20 +1438,22 @@ describe("승차 전 도보 핸드오프(A25, spec 2026-08-30 §6)", () => {
 });
 
 /**
+ * 가짜 시계를 폴 한 주기만큼 넘기고 도착 폴(`/api/transit/track`)이 **정확히 한 번** 나갔는지 확인한다. 다음 폴
+ * 타이머는 앞 폴이 커밋된 뒤에야 걸리므로(`scheduleNext`) 시계를 한꺼번에 넘기면 폴이 하나만 풀린다 — 폴 N회는
+ * 이 헬퍼 N번이다. 폴 안에서 도는 현재역 조회(E35 `/api/transit/position`)는 폴이 아니라 세지 않는다.
+ */
+async function advanceOnePoll(fetchMock: ReturnType<typeof vi.fn>, ms = 20_000) {
+  const polls = () => fetchMock.mock.calls.filter((c) => String(c[0]).startsWith("/api/transit/track")).length;
+  const before = polls();
+  await vi.advanceTimersByTimeAsync(ms);
+  await waitFor(() => expect(polls()).toBe(before + 1));
+}
+
+/**
  * N3 ①(위원장 판정 2026-09-10, spec `docs/superpowers/specs/2026-09-11-boarding-manual-advance-design.md`):
  * 차량을 고른 직후 [탑승했습니다]가 서던 것을 없앴다. riding 승격은 승차 정류소 도착 관측이 하고,
  * 관측이 끝난 뒤(`signalLost`·`upstreamFailed`)에만 다른 문구의 수동 진행 수단이 선다.
  */
-/**
- * 가짜 시계를 폴 한 주기만큼 넘기고 그 폴이 **정확히 한 번** 나갔는지 확인한다. 다음 폴 타이머는 앞 폴이
- * 커밋된 뒤에야 걸리므로(`scheduleNext`) 시계를 한꺼번에 넘기면 폴이 하나만 풀린다 — 폴 N회는 이 헬퍼 N번이다.
- */
-async function advanceOnePoll(fetchMock: ReturnType<typeof vi.fn>, ms = 20_000) {
-  const before = fetchMock.mock.calls.length;
-  await vi.advanceTimersByTimeAsync(ms);
-  await waitFor(() => expect(fetchMock.mock.calls.length).toBe(before + 1));
-}
-
 describe("TransitGuidePanel — boarding 수동 진행 (N3 ①)", () => {
   it("차량을 고른 직후엔 수동 진행 수단이 없고 커서는 상태 문장에 앉는다", async () => {
     vi.stubGlobal(
@@ -1595,6 +1597,50 @@ describe("TransitGuidePanel — boarding 수동 진행 (N3 ①)", () => {
       vi.useRealTimers();
     }
   });
+  it("재선택 역이 있는 세션도 관측 승격 직후 폴이 나가지 않는다 — 승격 문장이 추적 시작에 덮이지 않는다", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      let arrived = false;
+      const alightCalls: string[] = [];
+      const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("station=" + encodeURIComponent("여의도"))) alightCalls.push(url);
+        const here = url.includes("station=" + encodeURIComponent("왕십리(성동구청)")) && arrived;
+        return {
+          ok: true,
+          json: async () => ({
+            mode: "subway",
+            status: "ok",
+            rawCount: 1,
+            items: [trackItem(here ? { message: "왕십리 도착", remainingStops: 0, arrivalCode: "0" } : {})],
+          }),
+        } as Response;
+      });
+      vi.stubGlobal("fetch", fetchMock);
+      render(<TransitGuidePanelHost route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
+      fireEvent.click(screen.getByRole("button", { name: "시작" }));
+      await boardTrain();
+      // 탑승 변경으로 왕십리를 조회 기준 역으로 고른다(A16 L3) — riding 진입이 그 재선택을 지운다.
+      fireEvent.click(await screen.findByRole("button", { name: "transitGuide.changeBoarding" }));
+      fireEvent.click(await screen.findByRole("button", { name: "왕십리(성동구청)" }));
+      fireEvent.click(await screen.findByRole("button", { name: /selectTrain/ }));
+      await screen.findByRole("button", { name: "transitGuide.reselectVehicle" });
+
+      arrived = true;
+      alightCalls.length = 0;
+      await advanceOnePoll(fetchMock);
+      await waitFor(() =>
+        expect(screen.getAllByRole("status")[0].textContent).toContain("transitGuide.arrivedAtBoardStop"),
+      );
+      // riding 첫 폴은 주기(15초) 뒤다 — 그 전의 실시간 창에 하차역 폴이 없어야 한다.
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      expect(alightCalls).toEqual([]);
+      expect(screen.getAllByRole("status")[0].textContent).toContain("transitGuide.arrivedAtBoardStop");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("버스 boarding의 수동 진행 버튼은 버스 라벨이다(A46) — 버스 승차에 열차 라벨이 붙으면 회귀", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     try {
@@ -1647,9 +1693,9 @@ describe("TransitGuidePanel — boarding 수동 진행 (N3 ①)", () => {
 });
 
 /**
- * 폴은 타이머 틱에서만 나간다 — `useEffect(…, [pollTick, pollOnce])`라서 `pollOnce` 정체성이 렌더마다 바뀌면
- * 렌더마다 폴이 다시 나가고(한 폴의 커밋이 다음 폴을 부르는 자기 유지 폭주), 프로덕션도 upstream 쿼터를
- * 초 단위로 태운다. 목이 안정 `t`를 주므로(실제 next-intl과 같다) 여기서 폭주가 보이면 그것은 코드의 결함이다.
+ * 폴은 타이머 틱과 사용자 조작에서만 나간다 — 폴 예약 effect의 반응 축은 `pollTick` 하나다(`useEffectEvent`).
+ * `pollOnce`는 재선택 역·로케일을 따라 정체성이 바뀌므로 effect 의존성에 두면 그 변화만으로 폴이 나간다
+ * (상태 변화 경로는 "재선택 역이 있는 세션도 관측 승격 직후" 테스트가 본다).
  */
 describe("TransitGuidePanel — 폴 예약", () => {
   it("틱 사이에는 폴이 나가지 않는다(렌더가 폴을 부르지 않는다)", async () => {
@@ -1676,37 +1722,41 @@ describe("TransitGuidePanel — 폴 예약", () => {
     }
   });
 
-  it("폴 루프를 마운트하는 테스트는 호출마다 새 t를 만드는 next-intl 목을 쓰지 않는다(공유 안정 목으로)", () => {
+  it("폴 루프를 마운트하는 테스트는 next-intl을 공유 안정 목으로만 목킹한다", () => {
     const root = join(__dirname, "../../..");
-    const tsxUnder = (dir: string) =>
+    const sourcesUnder = (dir: string) =>
       (readdirSync(join(root, dir), { recursive: true }) as string[])
-        .filter((f) => f.endsWith(".tsx"))
+        .filter((f) => /\.tsx?$/.test(f))
         .map((f) => join(root, dir, f));
     const importsOf = (src: string) =>
-      new Set([...src.matchAll(/from\s+"([^"]+)"/g)].map((m) => m[1].split("/").pop()));
-    // 컴포넌트 import 그래프를 거슬러 올라 폴 루프(TransitGuidePanel)를 마운트하는 모듈 전부.
-    const modules = [...tsxUnder("src/components"), ...tsxUnder("src/app")]
-      .filter((f) => !f.includes("__tests__"))
-      .map((f) => ({ name: f.split("/").pop()!.replace(/\.tsx$/, ""), imports: importsOf(readFileSync(f, "utf8")) }));
-    const mounting = new Set(["TransitGuidePanel", "live-region-host"]);
+      new Set([...src.matchAll(/from\s+["']([^"']+)["']/g)].map((m) => m[1].split("/").pop()));
+    const sources = sourcesUnder("src").map((f) => ({
+      file: f.slice(root.length + 1),
+      name: f.split("/").pop()!.replace(/\.tsx?$/, ""),
+      src: readFileSync(f, "utf8"),
+    }));
+    // import 그래프를 거슬러 올라 폴 루프(useTransitGuide)를 마운트하는 모듈 전부.
+    const mounting = new Set(["useTransitGuide", "live-region-host"]);
+    const modules = sources.filter((m) => !/\.test\.tsx?$/.test(m.file));
     for (let grew = true; grew; ) {
       grew = false;
       for (const m of modules) {
-        if (!mounting.has(m.name) && [...m.imports].some((i) => mounting.has(i!))) {
+        if (!mounting.has(m.name) && [...importsOf(m.src)].some((i) => mounting.has(i!))) {
           mounting.add(m.name);
           grew = true;
         }
       }
     }
-    expect(mounting.has("DirectionsView")).toBe(true);
-    const tests = tsxUnder("src")
-      .filter((f) => f.endsWith(".test.tsx"))
-      .map((f) => ({ file: f.slice(root.length + 1), src: readFileSync(f, "utf8") }))
-      .filter(({ src }) => [...importsOf(src)].some((i) => mounting.has(i!)));
+    expect(mounting.has("TransitGuidePanel") && mounting.has("DirectionsView")).toBe(true);
+    const tests = sources
+      .filter((m) => /\.test\.tsx?$/.test(m.file))
+      .filter((m) => [...importsOf(m.src)].some((i) => mounting.has(i!)));
     expect(tests.length).toBeGreaterThan(10);
-    const unstable = tests
-      .filter(({ src }) => /useTranslations:\s*\([^)]*\)\s*=>\s*[({]/.test(src))
+    // 목이 없으면 실제 프로바이더(`NextIntlClientProvider`)를 쓰는 것이라 안정하다.
+    const shared = /vi\.mock\("next-intl",\s*async\s*\(\)\s*=>\s*(\(await import\("\.\/stable-intl-mock"\)\)|\{\s*const m = await import\("\.\/stable-intl-mock"\);)/g;
+    const offenders = tests
+      .filter(({ src }) => (src.match(/vi\.(do)?[mM]ock\(["']next-intl["']/g) ?? []).length !== (src.match(shared) ?? []).length)
       .map(({ file }) => file);
-    expect(unstable).toEqual([]);
+    expect(offenders).toEqual([]);
   });
 });
