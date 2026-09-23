@@ -103,9 +103,9 @@ describe("소수 km 지역 사본 금지", () => {
   const SWIFT_INTERP_METERS = /\\\([^)\n]*\)k?m"/;
   const INTERP_ALLOWED = ["ios/GildongmuKit/Sources/GildongmuKit/Format.swift"];
 
-  // Kotlin 판: 문자열 템플릿으로 미터·km를 직접 조립하는 꼴(`"${x}m"`·`"$x km"`)과
+  // Kotlin 판: 문자열 템플릿으로 미터·km를 직접 조립하는 꼴(`"${x}m"`·`"$x km"`·`"${x}m 앞"`, 문자열 끝이 아니어도)과
   // `"%.1f".format(m / 1000.0)`. 정본 `Format.kt` 자신만 예외다(Swift 보간 가드와 같은 구조).
-  const KOTLIN_TEMPLATE_METERS = /\$\{[^}\n]*\}\s?k?m"|\$[A-Za-z_]\w*(?!\w)\s?k?m"/;
+  const KOTLIN_TEMPLATE_METERS = /\$\{[^}\n]*\}\s?k?m(?![A-Za-z])|\$[A-Za-z_]\w*(?!\w)\s?k?m(?![A-Za-z])/;
   const KOTLIN_FORMAT_KM = /"%\.\d+f[^"]*"\.format\([^\n]*\/\s*1000/;
 
   it("어떤 소스도 거리 km를 직접 조립하지 않는다", () => {
@@ -156,6 +156,8 @@ describe("소수 km 지역 사본 금지", () => {
     // Kotlin: 정본 Format.kt의 꼴이 실제로 매칭되고(예외 목록이 필요한 이유), 정본 경유는 매칭되지 않는다.
     expect(KOTLIN_TEMPLATE_METERS.test('return "${meters / 1000.0}km"')).toBe(true);
     expect(KOTLIN_TEMPLATE_METERS.test('joinText(stop.name, "$distance m")')).toBe(true);
+    expect(KOTLIN_TEMPLATE_METERS.test('"${d}m 앞에서 우회전"')).toBe(true);
+    expect(KOTLIN_TEMPLATE_METERS.test('"${elapsed}ms"')).toBe(false);
     expect(KOTLIN_FORMAT_KM.test('"%.1fkm".format(meters / 1000.0)')).toBe(true);
     expect(KOTLIN_TEMPLATE_METERS.test("formatDistance(station.distanceMeters)")).toBe(false);
     // m으로 끝나는 식별자(`$item`)는 거리 조립이 아니다.
