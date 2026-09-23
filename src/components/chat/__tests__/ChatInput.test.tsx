@@ -7,8 +7,13 @@ vi.mock("next-intl", () => ({
   useLocale: () => "ko",
 }));
 
+const order: string[] = [];
 vi.mock("@/components/VoiceRecordButton", () => ({
-  VoiceRecordButton: () => <button>mic</button>,
+  VoiceRecordButton: () => (
+    <button type="button" onClick={() => order.push("record")}>
+      mic
+    </button>
+  ),
 }));
 
 import { ChatInput } from "../ChatInput";
@@ -31,5 +36,12 @@ describe("ChatInput", () => {
     render(<ChatInput onSend={onSend} disabled={false} />);
     fireEvent.submit(screen.getByRole("textbox").closest("form")!);
     expect(onSend).not.toHaveBeenCalled();
+  });
+
+  it("받아쓰기 버튼을 누르면 녹음 처리보다 먼저 onDictationPress(답변 듣기 정지)", () => {
+    order.length = 0;
+    render(<ChatInput onSend={vi.fn()} disabled={false} onDictationPress={() => order.push("stop")} />);
+    fireEvent.click(screen.getByRole("button", { name: "mic" }));
+    expect(order).toEqual(["stop", "record"]);
   });
 });

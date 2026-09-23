@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { renderHook, act, waitFor, cleanup } from "@testing-library/react";
-import { useTtsPlayback, pickVoice, VOICES_WAIT_MS } from "../useTtsPlayback";
+import { useTtsPlayback, pickVoice, VOICES_WAIT_MS, SPEECH_WATCHDOG_MS } from "../useTtsPlayback";
 
 // 브라우저 합성·서버 합성 둘 다 스텁 — /api/tts는 Google Cloud TTS 과금 경로라 실호출하지 않는다.
 
@@ -22,10 +22,18 @@ function stubSynth(initialVoices: Voice[]) {
   let voices = initialVoices;
   const listeners = new Set<() => void>();
   const spoken: FakeUtterance[] = [];
+  // 발화 중 상태 — speak로 켜지고 cancel·onend 재현에서 끈다(감시가 읽는다).
   const synth = {
+    speaking: false,
+    pending: false,
     getVoices: () => voices,
-    speak: vi.fn((u: FakeUtterance) => spoken.push(u)),
-    cancel: vi.fn(),
+    speak: vi.fn((u: FakeUtterance) => {
+      spoken.push(u);
+      synth.speaking = true;
+    }),
+    cancel: vi.fn(() => {
+      synth.speaking = false;
+    }),
     addEventListener: (_: string, fn: () => void) => listeners.add(fn),
     removeEventListener: (_: string, fn: () => void) => listeners.delete(fn),
   };
@@ -44,7 +52,12 @@ function stubSynth(initialVoices: Voice[]) {
 function stubServer(response: Response) {
   const fetchMock = vi.fn(async () => response);
   vi.stubGlobal("fetch", fetchMock);
-  const audios: { play: ReturnType<typeof vi.fn>; pause: ReturnType<typeof vi.fn>; onended: (() => void) | null }[] = [];
+  const audios: {
+    src: string;
+    play: ReturnType<typeof vi.fn>;
+    pause: ReturnType<typeof vi.fn>;
+    onended: (() => void) | null;
+  }[] = [];
   vi.stubGlobal(
     "Audio",
     class {
@@ -184,6 +197,62 @@ describe("useTtsPlayback", () => {
     await act(async () => resolve(new Response(null, { status: 502 })));
     expect(onFailed).not.toHaveBeenCalled();
     expect(result.current.playingId).toBeNull();
+  });
+
+  it("정지 뒤 늦게 도착한 200 응답은 재생하지 않는다(끈 답변이 다시 들리지 않게)", async () => {
+    stubSynth([EN]);
+    let resolve!: (r: Response) => void;
+    const { audios } = stubServer(new Response(null));
+    vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>((r) => (resolve = r))));
+    const { result } = renderHook(() => useTtsPlayback("ko", vi.fn()));
+    act(() => result.current.toggle("m1", "안녕"));
+    act(() => result.current.stop());
+    await act(async () => resolve(new Response(new Blob(["mp3"]), { status: 200 })));
+    expect(audios).toHaveLength(0);
+    expect(result.current.playingId).toBeNull();
+  });
+
+  it("합성 오류(중단이 아닌 것)는 실패로 통지한다", () => {
+    const { spoken } = stubSynth([KO_LOCAL]);
+    const onFailed = vi.fn();
+    const { result } = renderHook(() => useTtsPlayback("ko", onFailed));
+    act(() => result.current.toggle("m1", "안녕"));
+    act(() => spoken[0].onerror?.({ error: "synthesis-failed" }));
+    expect(onFailed).toHaveBeenCalledTimes(1);
+    expect(result.current.playingId).toBeNull();
+  });
+
+  it("onend 없이 합성이 멎으면 감시가 라벨을 되돌린다(재생 중지에 갇히지 않게)", () => {
+    vi.useFakeTimers();
+    const { synth } = stubSynth([KO_LOCAL]);
+    const onFailed = vi.fn();
+    const { result } = renderHook(() => useTtsPlayback("ko", onFailed));
+    act(() => result.current.toggle("m1", "긴 답변"));
+    act(() => vi.advanceTimersByTime(SPEECH_WATCHDOG_MS));
+    expect(result.current.playingId).toBe("m1");
+    synth.speaking = false;
+    act(() => vi.advanceTimersByTime(SPEECH_WATCHDOG_MS));
+    expect(result.current.playingId).toBeNull();
+    expect(onFailed).not.toHaveBeenCalled();
+  });
+
+  it("재생 중이 아니면 cancel()을 부르지 않는다(첫 재생 직전 cancel이 speak를 삼키는 Chrome 함정)", () => {
+    const { synth } = stubSynth([KO_LOCAL]);
+    const { result } = renderHook(() => useTtsPlayback("ko", vi.fn()));
+    act(() => result.current.toggle("m1", "안녕"));
+    expect(synth.cancel).not.toHaveBeenCalled();
+    expect(synth.speak).toHaveBeenCalledTimes(1);
+  });
+
+  it("서버 음성 재생 중 언마운트하면 멈추고 blob URL을 해제한다", async () => {
+    stubSynth([EN]);
+    const { audios } = stubServer(new Response(new Blob(["mp3"]), { status: 200 }));
+    const { result, unmount } = renderHook(() => useTtsPlayback("ko", vi.fn()));
+    act(() => result.current.toggle("m1", "안녕"));
+    await waitFor(() => expect(audios).toHaveLength(1));
+    unmount();
+    expect(audios[0].pause).toHaveBeenCalled();
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:tts");
   });
 
   it("언마운트(화면 이탈) 시 합성을 멈춘다", () => {

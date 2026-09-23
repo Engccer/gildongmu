@@ -546,6 +546,13 @@ describe("MessageBubble", () => {
       expect(onCopied).not.toHaveBeenCalled();
     });
 
+    it("평문으로 바꾸면 빈 답변(기호뿐)에도 버튼이 없다", () => {
+      render(
+        <MessageBubble message={{ id: "h", role: "assistant", text: "***" }} onCopied={vi.fn()} onToggleListen={vi.fn()} />,
+      );
+      expect(screen.queryByRole("button", { name: "copy" })).toBeNull();
+    });
+
     it("사용자 질문·산문 없는 답변에는 버튼이 없다", () => {
       render(
         <>
