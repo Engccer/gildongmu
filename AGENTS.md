@@ -89,7 +89,7 @@
 - **data.go.kr envelope는 공용 파서를 쓴다**(`datagokr-envelope.ts`: `readItems`·`readResultCode`·`fetchDataGoKrJson`, 자체 추출 함수 신설 금지). 모양은 공용, 정책(허용 코드·throw)은 provider. ⚠ 단건 `items.item` 모양·JSON 파라미터 이름이 기관마다 다르고, `apis.data.go.kr`은 반드시 https(http는 hang). 가드 `datagokr-https-usage.test.ts`. → INTEGRATIONS
 - **서울 열린데이터(`openapi.seoul.go.kr`) 본문은 `readSeoulOpenJson`으로 읽는다**(`seoul-open-json.ts` — 무효 키가 200+XML로 온다). 실시간 지하철은 호스트·키가 달라 계약 밖. → INTEGRATIONS
 - **envelope 비표준 주의(공용 파서 스코프 밖 — `response` 래퍼가 없다)**: 서울버스(TOPIS)·서울지하철 실시간·서울 열린데이터는 봉투가 각각 다르다. **봉투가 다르면 파서도 다르다** — 공용 모듈에 넣지 말 것. → INTEGRATIONS
-- **경유지(`via`)는 응답 `waypoint{stepIndex,coord}` 하나로만 드러나고 스텝 문장은 불변이다**: provider가 경유지 표지를 못 찾으면 throw, 대중교통은 `unsupported:"waypoint"`. iOS 실시간 안내의 `via`·`waypoint`는 기본값 없는 필수 인자이고 요청·판정·상태 세 층이 갈린다. → INTEGRATIONS
+- **경유지(`via`)는 응답 `waypoint{stepIndex,coord}` 하나로만 드러나고 스텝 문장은 불변이다**: provider가 경유지 표지를 못 찾으면 throw, 대중교통은 `unsupported:"waypoint"`. iOS 실시간 안내의 `via`·`waypoint`는 기본값 없는 필수 인자이고 요청·판정·상태 세 층이 갈린다. 웹 훅은 지난 경유지를 좌표 정체성으로 빼고, 왕복 중 그 경유지를 담아 착지한 재조회 응답은 폐기한다. → INTEGRATIONS
 - **단위 함정**: NCP Directions `duration`=**밀리초**(카카오·`durationSeconds`=초, 미변환 시 28분→468시간). ODsay `totalTime`=분·`payment`=원·`totalWalk`=미터.
 - **거리 표기는 `formatDistance`만 지난다**(웹 `format.ts` ↔ Kit `Format.swift` ↔ CLI `dist()` ↔ 안드로이드 `:kit` `Format.kt` 4벌 미러: 1km 미만 `m`, 이상 소수 km 원값). 낭독 정정은 m만(`spokenDistanceUnits`). 소수 km 직접 조립 금지 — `format-drift.test.ts`가 강제. → INTEGRATIONS
 - **3-state 불변식 (시각장애인 정합)**: "0대/없음"과 "정보 없음(`unknown`)"과 "조회 실패(throw→502)"를 **절대 뭉개지 않는다**. 도착·진료·공기질·날씨·시설 전반에 적용. 해석 불가한 수치는 숨기고 등급 단어를 정본으로.
