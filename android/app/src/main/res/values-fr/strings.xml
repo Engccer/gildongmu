@@ -870,7 +870,6 @@
     <string name="route_pedestrian_error">Impossible de charger l\'itinéraire à pied.</string>
     <string name="route_pedestrian_heading">À pied</string>
     <string name="route_pedestrian_noRoute">Aucun itinéraire à pied trouvé.</string>
-    <string name="route_pedestrian_stepFreeToggle">Éviter les escaliers</string>
     <string name="route_pedestrian_summary">Total %1$s, environ %2$s min</string>
     <string name="route_public">Transports</string>
     <string name="route_transit_alightAt">Descente à %1$s</string>

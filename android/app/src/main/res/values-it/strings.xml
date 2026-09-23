@@ -870,7 +870,6 @@
     <string name="route_pedestrian_error">Impossibile caricare il percorso a piedi.</string>
     <string name="route_pedestrian_heading">A piedi</string>
     <string name="route_pedestrian_noRoute">Nessun percorso a piedi trovato.</string>
-    <string name="route_pedestrian_stepFreeToggle">Evita le scale</string>
     <string name="route_pedestrian_summary">Totale %1$s, circa %2$s min</string>
     <string name="route_public">Mezzi pubblici</string>
     <string name="route_transit_alightAt">Discesa a %1$s</string>

@@ -870,7 +870,6 @@
     <string name="route_pedestrian_error">徒歩経路を取得できませんでした。</string>
     <string name="route_pedestrian_heading">徒歩</string>
     <string name="route_pedestrian_noRoute">徒歩経路が見つかりませんでした。</string>
-    <string name="route_pedestrian_stepFreeToggle">階段を避ける経路</string>
     <string name="route_pedestrian_summary">計%1$s、約%2$s分</string>
     <string name="route_public">公共交通</string>
     <string name="route_transit_alightAt">%1$sで下車</string>

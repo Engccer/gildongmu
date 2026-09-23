@@ -870,7 +870,6 @@
     <string name="route_pedestrian_error">도보 경로를 불러오지 못했습니다.</string>
     <string name="route_pedestrian_heading">도보</string>
     <string name="route_pedestrian_noRoute">도보 경로를 찾지 못했습니다.</string>
-    <string name="route_pedestrian_stepFreeToggle">계단 회피 경로</string>
     <string name="route_pedestrian_summary">총 %1$s, 약 %2$s분</string>
     <string name="route_public">대중교통</string>
     <string name="route_transit_alightAt">%1$s 하차</string>

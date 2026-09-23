@@ -162,8 +162,7 @@
       "heading": "À pied",
       "summary": "Total {distance}, environ {minutes} min",
       "noRoute": "Aucun itinéraire à pied trouvé.",
-      "error": "Impossible de charger l'itinéraire à pied.",
-      "stepFreeToggle": "Éviter les escaliers"
+      "error": "Impossible de charger l'itinéraire à pied."
     }
   },
   "directions": {

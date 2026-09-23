@@ -162,8 +162,7 @@
       "heading": "도보",
       "summary": "총 {distance}, 약 {minutes}분",
       "noRoute": "도보 경로를 찾지 못했습니다.",
-      "error": "도보 경로를 불러오지 못했습니다.",
-      "stepFreeToggle": "계단 회피 경로"
+      "error": "도보 경로를 불러오지 못했습니다."
     }
   },
   "directions": {

@@ -870,7 +870,6 @@
     <string name="route_pedestrian_error">No se pudo cargar la ruta a pie.</string>
     <string name="route_pedestrian_heading">A pie</string>
     <string name="route_pedestrian_noRoute">No se encontró ninguna ruta a pie.</string>
-    <string name="route_pedestrian_stepFreeToggle">Evitar escaleras</string>
     <string name="route_pedestrian_summary">Total %1$s, aprox. %2$s min</string>
     <string name="route_public">Transporte público</string>
     <string name="route_transit_alightAt">Bajada en %1$s</string>
