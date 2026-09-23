@@ -23852,7 +23852,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Call main line"
+            "value": "Call main number"
           }
         },
         "es": {
@@ -23892,7 +23892,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Call, main line %1$@"
+            "value": "Call, main number %1$@"
           }
         },
         "es": {
@@ -30852,7 +30852,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "main line %1$@"
+            "value": "main number %1$@"
           }
         },
         "es": {
@@ -44772,7 +44772,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Call %1$@ main line"
+            "value": "Call %1$@ main number"
           }
         },
         "es": {

@@ -214,8 +214,8 @@
     <string name="android_place_askAbout">Ask about %1$s</string>
     <string name="android_place_call">Call</string>
     <string name="android_place_callLine">Call, %1$s</string>
-    <string name="android_place_callRepresentative">Call main line</string>
-    <string name="android_place_callRepresentativeLine">Call, main line %1$s</string>
+    <string name="android_place_callRepresentative">Call main number</string>
+    <string name="android_place_callRepresentativeLine">Call, main number %1$s</string>
     <string name="android_place_copyAddress">Copy address</string>
     <string name="android_place_englishAddressLine">English address, %1$s</string>
     <string name="android_place_jibunAddressLine">Lot address, %1$s</string>
@@ -776,7 +776,7 @@
     <string name="place_openInKakaoMap">Open in Kakao Map</string>
     <string name="place_openInNaverMap">Open in Naver Map</string>
     <string name="place_phone">Phone</string>
-    <string name="place_representativePhone">main line %1$s</string>
+    <string name="place_representativePhone">main number %1$s</string>
     <string name="place_roadAddress">Road address</string>
     <string name="placeChat_close">Close chat</string>
     <string name="placeChat_empty">What would you like to know?</string>
@@ -1124,7 +1124,7 @@
     <string name="transitGuide_busSoon">Arriving soon.</string>
     <string name="transitGuide_busTurning">Waiting at the terminus.</string>
     <string name="transitGuide_callStation">Call %1$s</string>
-    <string name="transitGuide_callStationRepresentative">Call %1$s main line</string>
+    <string name="transitGuide_callStationRepresentative">Call %1$s main number</string>
     <string name="transitGuide_cancelChangeBoarding">Cancel boarding change</string>
     <string name="transitGuide_capSlowed">Slowing the update interval.</string>
     <string name="transitGuide_changeBoarding">Change boarding</string>
