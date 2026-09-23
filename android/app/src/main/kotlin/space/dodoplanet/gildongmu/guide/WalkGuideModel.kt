@@ -120,7 +120,9 @@ class WalkGuideModel(
     private val io: CoroutineDispatcher = Dispatchers.IO,
 ) {
     private val text = GuideText(strings)
-    private val tuning = GuideTuning.walk
+    // 경유지 접근 예고는 앱 배선 전까지 끈다 — 이벤트를 삼키기만 하면 그 fix의 추세 톤·주기 리듬이 흔들린다
+    // (BACKLOG E43 N4 경유지 진행 등가성, 배선할 때 되돌린다).
+    private val tuning = GuideTuning.walk.copy(waypointApproachM = null)
 
     private val _ui = MutableStateFlow(WalkGuideUiState())
     val ui: StateFlow<WalkGuideUiState> = _ui.asStateFlow()

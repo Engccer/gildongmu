@@ -199,7 +199,7 @@
     "viaRemaining": "{distance} hasta el punto intermedio {label}",
     "viaDestRemaining": "{distance} hasta el destino {dest}",
     "viaArrivedContinue": "Punto intermedio {label} alcanzado. Ahora te guiamos al destino {dest}",
-    "viaDropped": "No se encontró ruta por el punto de paso {label}; se guía sin él",
+    "viaDropped": "No se encontró ruta por el punto intermedio {label}; se guía sin él",
     "unsupportedWaypoint": "Las rutas de transporte público no admiten puntos intermedios.",
     "walkRecommended": "Ruta recomendada",
     "walkShortest": "Ruta más corta",

@@ -1513,6 +1513,8 @@ final class BeaconModel {
         }
         dest = newDest
         destinationLabel = label
+        // 새 목적지는 새 여정이다 — 지난 경유지의 "목적지 {dest}까지" 행 유지를 잇지 않는다(코드 리뷰 L4).
+        waypointPassedInSession = false
         syncStartRequestWithSession()
         reacquireRoute()
         // 즉시 확인 통지(§3.1: 조회 완료에 결박하지 않는 활성화 응답, 억제 우회).
@@ -2507,10 +2509,10 @@ final class BeaconModel {
         case let .waypointApproaching(meters):
             // 경유지 접근 예고(N4 spec 2026-09-24 §4.1): 1회, 톤 없음. 실행 안내가 아니라 `lastGuidance`는
             // 덮지 않고, 억제 중이면 보관하지 않는다(거리 문장은 시간이 지나면 거짓 — 주기 통지와 같은 취급).
+            // `statusText`에도 두지 않는다: 같은 정보를 남은 거리 행이 실시간으로 보이고, 전경 복귀 재생이
+            // 낡은 거리를 읽게 된다(코드 리뷰 M3).
             guard let label = routeWaypointLabel else { break }
-            let text = appLocalized("directions.viaRemaining", label, formatDistance(meters))
-            statusText = text
-            announce(text)
+            announce(appLocalized("directions.viaRemaining", label, formatDistance(meters)))
         case .finalApproachEnter:
             // 여기서는 처리하지 않는다. 진입은 **fix를 쥔 `handleDetail`이** 톤 조립 앞에서
             // 가른다 — 소유권 전환과 같은 fix의 첫 발화가 한 묶음이어야 하고, 이 함수는

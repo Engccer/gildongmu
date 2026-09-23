@@ -67,7 +67,7 @@ import { claimGuideSession, releaseGuideSession } from "@/lib/guide-session-stor
 import { isOutOfCoverageBody } from "@/lib/out-of-coverage";
 import type { CarRouteBriefing, WalkRouteBriefing } from "@/lib/types";
 import { walkRouteUrl } from "@/lib/walk-route-url";
-import { directionParticle } from "@/lib/korean-particle";
+import { directionParticle, objectParticle } from "@/lib/korean-particle";
 import {
   SPEECH_DEFER_MAX_S,
   speechDeferStep,
@@ -1184,7 +1184,12 @@ export function useRouteGuide(
     /** 이 경로가 지나가는 경유지(N4 2026-09-24). 경유지 없이 조회했으면 null. */
     via: RouteGuideVia | null;
     ok: true;
-  } | { ok: false; failure: GuideRouteFailure }> => {
+  } | {
+    ok: false;
+    failure: GuideRouteFailure;
+    /** 실제로 실어 보낸 경유지(경유지 경로가 없어 `unavailable`일 때만) — 강등 통지가 요청 뒤 바뀐 입력을 읽지 않게. */
+    via?: RouteGuideVia;
+  }> => {
     // fail-closed: 실좌표가 없으면 안내를 시작하지 않는다. 수동 위치로 만든
     // 기존 경로 기하를 재사용하면 첫 실제 fix에서 즉시 이탈 판정이 난다.
     const fix = await awaitRealFix({ force });
@@ -1224,7 +1229,9 @@ export function useRouteGuide(
       }
       // 경유지(N4 spec 2026-09-24 §5.1): 이 세션이 이미 도착을 확정했으면 싣지 않는다 — 재조회는
       // 출발→도착이다(iOS `waypoint = nil` 동형).
-      const via = sameVia(viaRef.current, excludedViaRef.current) ? null : viaRef.current;
+      // 자동차 세션은 경유지를 받지 않는다(범위 밖) — 도보 조회만 싣는다.
+      const via =
+        kindFixed !== "walk" || sameVia(viaRef.current, excludedViaRef.current) ? null : viaRef.current;
       const res = await fetch(
         walkRouteUrl({
           origin: { lat: fix.lat, lng: fix.lng },
@@ -1241,10 +1248,10 @@ export function useRouteGuide(
       if (isOutOfCoverageBody(body)) return { ok: false, failure: "outOfCoverage" };
       const result = (body as { result?: WalkRouteBriefing | null }).result;
       // 서버가 null을 주는 것은 TOO_FAR_AWAY·ROUTE_RESULT_NOT_FOUND — 재시도해도 같다.
-      if (!result) return { ok: false, failure: "unavailable" };
+      if (!result) return { ok: false, failure: "unavailable", ...(via ? { via } : {}) };
       // 경유지를 보냈는데 응답이 경유지 위치를 모르면 상세 불가다 — 경유지를 모르는 경로로 조용히
       // 안내하지 않는다(iOS `fetchDetailData` 동형). 범위 밖 index는 `buildGuideRoute`가 null로 거른다.
-      if (via && !result.waypoint) return { ok: false, failure: "unavailable" };
+      if (via && !result.waypoint) return { ok: false, failure: "unavailable", via };
       const route = buildGuideRoute(
         result.steps,
         via && result.waypoint ? { waypointStepIndex: result.waypoint.stepIndex } : undefined,
@@ -1555,6 +1562,12 @@ export function useRouteGuide(
       // 검증됐으므로 웹 실보행 검증은 spec §7 3단계 관측 항목이다.
       const result = guideStep(state, fix, route, now, tuning);
       guideRef.current = result.state;
+      // 경유지 도착선 통과는 **감지(W1) 전이**에서 기록한다 — 발화가 임박 큐에 밀려 한 fix 늦어도(W2) 그 사이
+      // 착지한 재조회를 폐기하고, 이후 재조회는 출발→도착이다(iOS `waypoint = nil` 동형, 코드 리뷰 L2).
+      if (!state.waypointReached && result.state.waypointReached) {
+        excludedViaRef.current = routeViaRef.current;
+        viaPassedRef.current = true;
+      }
       setOffRoute(result.state.phase === "offRoute");
       setProgress(progressOf(route, result.state));
       if (kindFixed === "walk") {
@@ -1626,10 +1639,6 @@ export function useRouteGuide(
       // 경유지 도착(N4): 이후 재조회는 경유지를 싣지 않는다(iOS `waypoint = nil` 동형). 도착 종은
       // 리듀서가 내지 않으므로 여기서 우선 톤으로 얹는다(iOS `playTone(.nearby)` 동형).
       const waypointReached = result.event?.kind === "waypointReached";
-      if (waypointReached) {
-        excludedViaRef.current = routeViaRef.current;
-        viaPassedRef.current = true;
-      }
       // 추세 축은 정상 추종에서만 유효하다(이탈 중 잔여 거리는 낡은 투영이다).
       const trendable = (phase === "following" || phase === "bundle") && !jumped;
       emitTone(
@@ -1780,6 +1789,9 @@ export function useRouteGuide(
     resetFinalApproach(null);
     routeRef.current = null;
     routeDurationRef.current = null;
+    routeViaRef.current = null;
+    excludedViaRef.current = null;
+    viaPassedRef.current = false;
     roadSpansRef.current = [];
     etaRef.current = null;
     etaCallCountRef.current = 0;
@@ -1870,15 +1882,20 @@ export function useRouteGuide(
         lastStepFreeRef.current = null;
         // 조용한 강등 금지. ⚠ 모드 이름이 아니라 **사유와 동작**을 말한다(E16 축2 §A2) —
         // 이름을 주면 고를 수 있는 모드로 읽힌다([[degraded-guidance-gets-no-mode-name]]).
-        // 경유지를 요청한 세션은 간략(목적지 직선) 안내가 경유지를 지나지 않는다는 사실도 말한다 —
-        // 화면엔 경유지가 남아 있어 말하지 않으면 거짓이 된다(iOS `waypointDropped` 동형, 설계 리뷰 #6).
-        const droppedVia = viaRef.current;
+        // 경유지 경로가 없어(`unavailable`) 간략(목적지 직선) 안내로 내려가면 경유지를 빼고 안내한다는
+        // 사실도 말한다 — 화면엔 경유지가 남아 있어 말하지 않으면 거짓이 된다(iOS `waypointDropped` 동형,
+        // 설계 리뷰 #6). ⚠ 그 문장의 원인절("경로를 찾지 못해")이 참인 사유에서만 붙인다 — 위치·네트워크·
+        // 커버리지 실패에 붙이면 거짓 원인이 된다(a11y 감사 #1). ko는 호출부가 목적격 조사를 붙인다.
+        // 실제로 실어 보낸 경유지만 말한다(자동차 조회는 싣지 않는다, 요청 뒤 바뀐 입력은 읽지 않는다).
+        const droppedVia = fetched.via ?? null;
         if (droppedVia) {
           excludedViaRef.current = droppedVia;
           setDegrade(fetched.failure, { announce: false });
-          announce(
-            `${degradeMessage(fetched.failure)} ${tDirections("viaDropped", { label: droppedVia.label })}`,
-          );
+          const label =
+            locale === "ko"
+              ? droppedVia.label + (objectParticle(droppedVia.label) ?? "를")
+              : droppedVia.label;
+          announce(`${degradeMessage(fetched.failure)} ${tDirections("viaDropped", { label })}`);
         } else {
           setDegrade(fetched.failure);
         }
@@ -1945,6 +1962,7 @@ export function useRouteGuide(
     refreshCarEta,
     rememberGuidance,
     resetFinalApproach,
+    locale,
     supported,
     t,
     tDirections,
@@ -2064,7 +2082,8 @@ export function useRouteGuide(
         // 도착 응답 폐기: 세대 불일치·중지·언마운트(채팅 이탈 게이트 동형).
         if (gen !== genRef.current || !trackingRef.current || !mountedRef.current) return;
         // 왕복 중에 그 경유지를 지났으면 응답 경로는 지난 경유지를 되살린다 — 폐기한다(iOS `rerouteToken`
-        // 동형, 설계 리뷰 #2). 이탈 상태는 남으므로 버튼으로 다시 누를 수 있다.
+        // 동형, 설계 리뷰 #2). 이탈 상태는 남으므로 버튼으로 다시 누를 수 있고, 무통지인 것은 직전의 도착
+        // 문장이 이 활성화의 응답을 대신하기 때문이다(도착은 이탈 의심이 아닌 fix에서만 선다).
         if (fetched.ok && sameVia(fetched.via, excludedViaRef.current)) return;
         if (!fetched.ok) {
           // 경로가 없으면 경로 기반 계단 판정도 없다(3-state) — 시작 폴백과 동형.

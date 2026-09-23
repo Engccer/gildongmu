@@ -64,8 +64,8 @@ function tick(ms: number) {
   });
 }
 
-function Harness({ via }: { via?: RouteGuideVia | null }) {
-  const g = useRouteGuide(DEST, "walk", { accessible: false, variant: null }, { via });
+function Harness({ via, kind = "walk" }: { via?: RouteGuideVia | null; kind?: "walk" | "car" }) {
+  const g = useRouteGuide(DEST, kind, { accessible: false, variant: null }, { via });
   return (
     <div>
       <button onClick={g.start}>start</button>
@@ -96,10 +96,10 @@ async function flush() {
   });
 }
 
-async function startGuide(via: RouteGuideVia | null | undefined) {
+async function startGuide(via: RouteGuideVia | null | undefined, kind: "walk" | "car" = "walk") {
   render(
     <NextIntlClientProvider locale="ko" messages={ko}>
-      <Harness via={via} />
+      <Harness via={via} kind={kind} />
     </NextIntlClientProvider>,
   );
   fireEvent.click(screen.getByText("start"));
@@ -219,11 +219,20 @@ describe("웹 안내 훅의 경유지(N4 2026-09-24)", () => {
     expect(target()).toBe(JSON.stringify({ kind: "destination", label: "강동구청" }));
   });
 
-  it("경유지 경로를 못 받아 간략 안내로 내려가면 경유지를 빼고 안내한다고 말한다(설계 리뷰 #6)", async () => {
+  it("자동차 세션은 경유지를 싣지도, 뺐다고 말하지도 않는다(범위 밖, 코드 리뷰 M1)", async () => {
+    await startGuide(VIA, "car");
+    const urls = fetchMock.mock.calls.map((c) => String(c[0]));
+    expect(urls.some((u) => u.startsWith("/api/route/car"))).toBe(true);
+    expect(urls.every((u) => !u.includes("via="))).toBe(true);
+    expect(live()).not.toContain("경유지");
+  });
+
+  it("조회 자체가 실패한 강등에는 '경로를 찾지 못해'를 붙이지 않는다(거짓 원인 금지, a11y 감사 #1)", async () => {
     fetchStatus = 502;
     await startGuide(VIA);
     expect(mode()).toBe("brief");
-    expect(live()).toContain("경유지 길동시장를 포함한 경로를 찾지 못해 경유지 없이 안내합니다");
+    expect(live()).not.toBe("");
+    expect(live()).not.toContain("찾지 못해");
   });
 
   it("경유지를 보냈는데 응답이 경유지 위치를 모르면 상세를 세우지 않는다", async () => {
@@ -232,5 +241,7 @@ describe("웹 안내 훅의 경유지(N4 2026-09-24)", () => {
     expect(walkVias()).toEqual([`${VIA.lat},${VIA.lng}`]);
     expect(mode()).toBe("brief");
     expect(target()).toBe("");
+    // 경유지를 빼고 안내한다고 말한다 — ko 목적격 조사는 받침으로 가른다("길동시장을").
+    expect(live()).toContain("경유지 길동시장을 포함한 경로를 찾지 못해 경유지 없이 안내합니다");
   });
 });

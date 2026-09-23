@@ -12086,7 +12086,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "경유지 %1$@를 포함한 경로를 찾지 못해 경유지 없이 안내합니다"
+            "value": "경유지 %1$@ 포함한 경로를 찾지 못해 경유지 없이 안내합니다"
           }
         },
         "en": {
@@ -12098,19 +12098,19 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No se encontró ruta por el punto de paso %1$@; se guía sin él"
+            "value": "No se encontró ruta por el punto intermedio %1$@; se guía sin él"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aucun itinéraire par le point de passage %1$@ ; guidage sans lui"
+            "value": "Aucun itinéraire par l'étape %1$@ ; guidage sans elle"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nessun percorso tramite il punto intermedio %1$@; guida senza di esso"
+            "value": "Nessun percorso tramite la tappa intermedia %1$@; guida senza di essa"
           }
         },
         "ja": {

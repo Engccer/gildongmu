@@ -3755,6 +3755,254 @@
    ]
   },
   {
+   "name": "예고가 밀린 사이 도착선을 넘으면 도착이 예고를 대신한다 — 예고 0회(N4 2026-09-24 spec 준수 리뷰)",
+   "waypointStepIndex": 1,
+   "geometry": true,
+   "steps": [
+    {
+     "len": 100,
+     "desc": "직진A"
+    },
+    {
+     "len": 100,
+     "desc": "직진B"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 9,
+     "along": 12,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 18,
+     "along": 24,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 27,
+     "along": 36,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 36,
+     "along": 45,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 45,
+     "along": 60,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 54,
+     "along": 105,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 63,
+     "along": 115,
+     "lateral": 0,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFixAny": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+     ],
+     "eventNot": "waypointApproaching"
+    },
+    {
+     "afterFix": 5,
+     "event": "announceSteps"
+    },
+    {
+     "afterFix": 6,
+     "event": "waypointReached"
+    }
+   ]
+  },
+  {
+   "name": "도착선까지 1m 미만이면 \"0m\" 예고를 내지 않고 도착에 맡긴다(N4 2026-09-24 설계 리뷰 #11)",
+   "waypointStepIndex": 1,
+   "geometry": true,
+   "steps": [
+    {
+     "len": 100,
+     "desc": "직진A"
+    },
+    {
+     "len": 100,
+     "desc": "직진B"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 9,
+     "along": 12,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 18,
+     "along": 24,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 27,
+     "along": 36,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 36,
+     "along": 45,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 45,
+     "along": 60,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 54,
+     "along": 99.6,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 56,
+     "along": 102,
+     "lateral": 0,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFixAny": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+     ],
+     "eventNot": "waypointApproaching"
+    },
+    {
+     "afterFix": 7,
+     "event": "waypointReached"
+    }
+   ]
+  },
+  {
+   "name": "투영 점프 fix는 접근선 안이어도 예고하지 않고 다음 정상 fix에서 낸다(N4 2026-09-24, W1과 같은 신뢰 조건)",
+   "waypointStepIndex": 1,
+   "geometry": true,
+   "steps": [
+    {
+     "len": 100,
+     "desc": "직진A"
+    },
+    {
+     "len": 100,
+     "desc": "직진B"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 10,
+     "along": 12,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 20,
+     "along": 24,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 30,
+     "along": 36,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 40,
+     "along": 45,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 41,
+     "along": 58,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 42,
+     "along": 59,
+     "lateral": 0,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFixAny": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+     ],
+     "eventNot": "waypointApproaching"
+    },
+    {
+     "afterFix": 6,
+     "event": "waypointApproaching"
+    }
+   ]
+  },
+  {
    "name": "car: 임박 시간 축 — 20m/s에서 경계 120m(=v×6초) 안에서만 큐, 140m 앞은 무발화(K2 §3.2)",
    "tuning": "car",
    "steps": [
