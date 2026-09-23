@@ -60,13 +60,16 @@ export function ChatInterface({
   }, [initialMessage, sendMessage]);
   const progressRef = useRef<HTMLDivElement>(null);
   const announceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // 창구에 지금 있어야 할 진행 문장 — 1회성 통지가 덮었다가 비울 때 이 값으로 되돌린다
+  // (진행 effect는 도구 목록이 바뀔 때만 돌아서, 빈칸으로 비우면 생성 중 진행 문장이 사라진다).
+  const progressTextRef = useRef("");
   useEffect(
     () => () => {
       if (announceTimerRef.current) clearTimeout(announceTimerRef.current);
     },
     [],
   );
-  // 진행 통지 창구에 1회성 문장을 싣고 2초 뒤 비운다(잔상 방지). textContent 대입은 같은 문장이어도
+  // 진행 통지 창구에 1회성 문장을 싣고 2초 뒤 진행 문장(없으면 빈칸)으로 되돌린다(잔상 방지). textContent 대입은 같은 문장이어도
   // 텍스트 노드를 갈아 끼우므로 연속 복사도 매번 다시 읽힌다(React 동일 값 bail out과 다르다).
   const announce = useCallback((message: string) => {
     const region = progressRef.current;
@@ -74,7 +77,7 @@ export function ChatInterface({
     region.textContent = message;
     if (announceTimerRef.current) clearTimeout(announceTimerRef.current);
     announceTimerRef.current = setTimeout(() => {
-      if (progressRef.current?.textContent === message) progressRef.current.textContent = "";
+      if (progressRef.current?.textContent === message) progressRef.current.textContent = progressTextRef.current;
       announceTimerRef.current = null;
     }, 2000);
   }, []);
@@ -133,11 +136,10 @@ export function ChatInterface({
   // 진행 상태 통지 — progressCategories 변화 시 별도 polite 채널에 갱신.
   // 18개 도구 전 라벨 보유 — 새 도구 추가 시 `chat.progress.tool.<name>` 6로케일 동반 추가.
   useEffect(() => {
-    if (progressRef.current) {
-      progressRef.current.textContent = progressCategories.length
-        ? t("progress.searching", { tools: progressCategories.map((c) => t(`progress.tool.${c}`)).join(", ") })
-        : "";
-    }
+    progressTextRef.current = progressCategories.length
+      ? t("progress.searching", { tools: progressCategories.map((c) => t(`progress.tool.${c}`)).join(", ") })
+      : "";
+    if (progressRef.current) progressRef.current.textContent = progressTextRef.current;
   }, [progressCategories, t]);
 
   return (

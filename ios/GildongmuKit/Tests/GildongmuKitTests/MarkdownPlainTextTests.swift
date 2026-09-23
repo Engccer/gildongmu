@@ -20,7 +20,7 @@ private struct PlainTextCase: Decodable {
 @Test func markdownPlainTextMatchesSharedFixture() throws {
     struct File: Decodable { let cases: [PlainTextCase] }
     let file = try JSONDecoder().decode(File.self, from: Data(contentsOf: fixtureURL("markdown-plain-text-cases.json")))
-    #expect(file.cases.count >= 28)
+    #expect(file.cases.count >= 34)
     for c in file.cases {
         #expect(MarkdownPlainText.strip(from: c.input) == c.expect, "\(c.name)")
     }

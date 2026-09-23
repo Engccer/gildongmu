@@ -62,11 +62,13 @@ export function MessageBubble({
 }) {
   const tChat = useTranslations("chat");
   const isUser = message.role === "user";
+  // 평문이 비면(기호뿐인 답변) 복사·듣기할 것이 없다 — 빈 "복사됨"·서버 400을 만들지 않는다.
+  const plainText = isUser ? "" : markdownToPlainText(message.text);
   // 붙여넣을 곳이 메모·메시지라 마크다운 기호는 노이즈 — 평문으로 복사한다. 실패는 통지하지 않는다
   // (PlaceDetail 주소 복사 선례: "복사됨"이 안 들리는 것이 곧 실패 신호).
   async function copy() {
     try {
-      await navigator.clipboard.writeText(markdownToPlainText(message.text));
+      await navigator.clipboard.writeText(plainText);
     } catch {
       return;
     }
@@ -104,7 +106,7 @@ export function MessageBubble({
       {!isUser && <SourceList sources={message.sources} />}
       {/* 복사·듣기는 답변 끝(산문 → 카드 → 출처 뒤). 듣기 상태는 라벨 교체만으로 전한다
           (aria-pressed 병기 금지 — "듣기, 눌림"과 "재생 중지"가 겹쳐 읽힌다). */}
-      {!isUser && message.text && onCopied && onToggleListen && (
+      {plainText && onCopied && onToggleListen && (
         <div className="mt-2 flex gap-2">
           <button type="button" onClick={() => void copy()} className={ACTION_BUTTON}>
             {tChat("copy")}

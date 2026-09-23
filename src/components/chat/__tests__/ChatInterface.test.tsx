@@ -7,15 +7,19 @@ import { render, screen, cleanup, fireEvent, act } from "@testing-library/react"
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  vi.useRealTimers();
+  tts.playingId = null;
+  chatState.progressCategories = [];
 });
 
 vi.mock("next-intl", () => ({ useTranslations: () => (k: string) => k, useLocale: () => "ko" }));
+const chatState = vi.hoisted(() => ({ progressCategories: [] as string[] }));
 vi.mock("@/hooks/useChat", () => ({
   useChat: () => ({
     messages: [{ id: "1", role: "assistant", text: "안녕하세요" }, { id: "2", role: "assistant", text: "**둘째** 답" }],
     isLoading: false,
     error: null,
-    progressCategories: [],
+    progressCategories: chatState.progressCategories,
     sendMessage: vi.fn(),
     dismissError: vi.fn(),
   }),
@@ -122,7 +126,18 @@ describe("ChatInterface", () => {
       expect(politeRegions(container)[0].textContent).toBe("copied");
       act(() => vi.advanceTimersByTime(2000));
       expect(politeRegions(container)[0].textContent).toBe("");
-      vi.useRealTimers();
+    });
+
+    it("생성 중에 복사하면 2초 뒤 빈칸이 아니라 진행 문장으로 돌아간다", () => {
+      vi.useFakeTimers();
+      chatState.progressCategories = ["search_places"];
+      const { container } = render(<ChatInterface />);
+      const region = politeRegions(container)[0];
+      expect(region.textContent).toBe("progress.searching");
+      fireEvent.click(screen.getAllByText("copied-stub")[0]);
+      expect(region.textContent).toBe("copied");
+      act(() => vi.advanceTimersByTime(2000));
+      expect(region.textContent).toBe("progress.searching");
     });
 
     it("듣기는 메시지 id와 평문으로 토글하고, 재생 중인 답변만 라벨이 바뀐다", () => {
@@ -134,7 +149,6 @@ describe("ChatInterface", () => {
       expect(tts.toggle).toHaveBeenCalledWith("1", "안녕하세요");
       fireEvent.click(screen.getByText("stop-stub"));
       expect(tts.toggle).toHaveBeenLastCalledWith("2", "둘째 답");
-      tts.playingId = null;
     });
 
     it("받아쓰기 버튼을 누르면 듣기를 멈춘다", () => {
