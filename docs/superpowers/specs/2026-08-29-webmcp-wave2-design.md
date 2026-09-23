@@ -1,5 +1,7 @@
 # WebMCP 도구층 W2 설계 — 이동 계획 보조 상시 집합 7개 (2026-08-29)
 
+> ⚠ 2026-09-23 E42: 도보 투영이 바뀌었다 — `plan_directions` 입력 `avoidStairs`·출력 `resolved.avoidStairs`·`walk.stepFree`·`walk.shortest`는 삭제되고 `walk.lines[{kind,label,…}]`가 됐으며, `get_route_steps.variant`는 줄 종류(`shortest`·`accessible`·`broad`·`recommended`)를 받는다. 정본 `2026-09-23-walk-two-lines-kakao-design.md` §5.
+
 `docs/BACKLOG.md` W2의 정본. 오전판 `2026-08-28-webmcp-wave2-design.md`(화면별 배타 4집합·도구 31개)를 **대체**한다 — 같은 날 저녁 위원장 재판정(사용 사례 관점)으로 범위·등록 구조가 바뀌었다. W1(`2026-08-27-webmcp-tool-layer-design.md`)의 공통 계약(§3.0 discriminated union·사유 코드 표·§4 출력 분할·§6 접근성)은 그대로 상속하고, 오전판에서 살아남는 기반(불투명 `ref`·예산 버킷·구조 상태·codex 리뷰 14건 반영분)은 §5에 다시 적는다. 여기엔 **이 판이 새로 정하는 것**만 쓴다.
 
 **설계 리뷰 판정**: codex 적대적 리뷰 **실시**(CLAUDE.md 게이트 조건 ① — 새 불변식 셋: 도구층 단일 실행 잠금·뷰 레지스트리 대기·상시 등록에서의 `ref` 세대). 1차 초안에 17건(high 11·med 6)이 나왔고 반영·기각 기록이 §9다. 아래 본문은 반영 후 판이다. 2차 리뷰는 W1·오전판과 같은 이유로 돌리지 않는다(같은 리뷰어의 재검토는 자기 처방 확인).

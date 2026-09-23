@@ -1,5 +1,7 @@
 # WebMCP 도구층 설계 (2026-08-27)
 
+> ⚠ 2026-09-23 E42: 도보 투영이 바뀌었다 — `plan_directions` 입력 `avoidStairs`·출력 `resolved.avoidStairs`·`walk.stepFree`·`walk.shortest`는 삭제되고 `walk.lines[{kind,label,…}]`가 됐으며, `get_route_steps.variant`는 줄 종류(`shortest`·`accessible`·`broad`·`recommended`)를 받는다. 정본 `2026-09-23-walk-two-lines-kakao-design.md` §5.
+
 `docs/BACKLOG.md` W1 게이트 2의 정본. 웹앱(길동무 길찾기 뷰)이 `document.modelContext.registerTool`로 자기 기능을 브라우저 에이전트에게 선언하는 계층의 **도구 목록·계약·출력 분할·등록 수명·접근성 계약·구현 인계**를 여기에 못박는다. 설계 근거는 이 문서 하나에 둔다. 구현은 Codex가 `feat/webmcp`에서 하고, 이 문서와 어긋나는 실측이 나오면 구현을 멈추고 이 문서로 돌아온다(AUTONOMY §역방향 전이).
 
 **설계 리뷰 판정**: codex 적대적 리뷰 **실시**(CLAUDE.md 마일스톤 게이트 조건 ② — 새 외부 통합의 계약 가정을 여기서 처음 정의한다). 1차 초안에 36건이 나왔고 그 반영·기각 기록이 §9다. 아래 본문은 반영 후 판이다.
