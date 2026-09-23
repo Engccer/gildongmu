@@ -768,9 +768,11 @@
     <string name="place_distance">약 %1$s</string>
     <string name="place_homepage">홈페이지</string>
     <string name="place_jibunAddress">지번</string>
+    <string name="place_nearbyHeading">이 장소 주변</string>
     <string name="place_openInKakaoMap">카카오맵에서 보기</string>
     <string name="place_openInNaverMap">네이버 지도에서 보기</string>
     <string name="place_phone">전화</string>
+    <string name="place_representativePhone">대표번호 %1$s</string>
     <string name="place_roadAddress">도로명</string>
     <string name="placeChat_close">채팅 닫기</string>
     <string name="placeChat_empty">무엇이 궁금하세요?</string>
@@ -971,6 +973,7 @@
     <string name="subway_operatingStopped">운행 중지 또는 점검 중</string>
     <string name="subway_ready">지하철역 교통약자 시설 정보가 준비되었습니다.</string>
     <string name="subway_source">출처: 서울교통공사 교통약자이용정보(서울 1~8호선).</string>
+    <string name="subway_stoppedCount">운행 중지 %1$s곳</string>
     <string name="subway_supplementFailed">일부 시설 정보를 불러오지 못했습니다.</string>
     <string name="subway_voiceGuideSource">음성유도기: 서울교통공사 제공(2025-08 기준)</string>
     <string name="subway_wheelchairAccessible">휠체어 접근 가능</string>

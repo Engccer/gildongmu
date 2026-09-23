@@ -768,9 +768,11 @@
     <string name="place_distance">約%1$s</string>
     <string name="place_homepage">ウェブサイト</string>
     <string name="place_jibunAddress">地番</string>
+    <string name="place_nearbyHeading">この場所の周辺</string>
     <string name="place_openInKakaoMap">カカオマップで見る</string>
     <string name="place_openInNaverMap">NAVERマップで見る</string>
     <string name="place_phone">電話</string>
+    <string name="place_representativePhone">代表番号 %1$s</string>
     <string name="place_roadAddress">道路名</string>
     <string name="placeChat_close">チャットを閉じる</string>
     <string name="placeChat_empty">何が知りたいですか?</string>
@@ -971,6 +973,7 @@
     <string name="subway_operatingStopped">停止または点検中</string>
     <string name="subway_ready">地下鉄駅のバリアフリー設備情報の準備ができました。</string>
     <string name="subway_source">出典: ソウル交通公社バリアフリー利用情報(ソウル1〜8号線)。</string>
+    <string name="subway_stoppedCount">稼働停止%1$sか所</string>
     <string name="subway_supplementFailed">一部の設備情報を取得できませんでした。</string>
     <string name="subway_voiceGuideSource">音声誘導装置: ソウル交通公社提供(2025年8月時点)</string>
     <string name="subway_wheelchairAccessible">車いす利用可</string>

@@ -768,9 +768,11 @@
     <string name="place_distance">aprox. %1$s</string>
     <string name="place_homepage">Sitio web</string>
     <string name="place_jibunAddress">Dirección catastral</string>
+    <string name="place_nearbyHeading">Cerca de este lugar</string>
     <string name="place_openInKakaoMap">Abrir en Kakao Map</string>
     <string name="place_openInNaverMap">Abrir en Naver Map</string>
     <string name="place_phone">Teléfono</string>
+    <string name="place_representativePhone">número central %1$s</string>
     <string name="place_roadAddress">Dirección vial</string>
     <string name="placeChat_close">Cerrar chat</string>
     <string name="placeChat_empty">¿Qué te gustaría saber?</string>
@@ -971,6 +973,7 @@
     <string name="subway_operatingStopped">Fuera de servicio o en mantenimiento</string>
     <string name="subway_ready">Las instalaciones de accesibilidad del metro están listas.</string>
     <string name="subway_source">Fuente: datos de instalaciones de accesibilidad de Seoul Metro (líneas 1–8 de Seoul).</string>
+    <string name="subway_stoppedCount">%1$s fuera de servicio</string>
     <string name="subway_supplementFailed">No se pudo cargar parte de la información de las instalaciones.</string>
     <string name="subway_voiceGuideSource">Balizas de guía sonora: datos de Seoul Metro (a partir de 2025-08)</string>
     <string name="subway_wheelchairAccessible">Accesible en silla de ruedas</string>
