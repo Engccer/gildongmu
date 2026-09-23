@@ -954,6 +954,7 @@ class WalkGuideModel(
                 statusText = spoken
                 if (outputSuppressed) pendingRecovery = spoken else announce(spoken)
             }
+            is GuideEvent.WaypointApproaching -> Unit // 경유지 접근 예고 배선은 BACKLOG E43 등가성 후속(N4 2026-09-24)
             GuideEvent.FinalApproachEnter -> Unit // fix를 쥔 handleDetail이 가른다
             GuideEvent.OffRoute -> {
                 val isEpisodeStart = !offRoute

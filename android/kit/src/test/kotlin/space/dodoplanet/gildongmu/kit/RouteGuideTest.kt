@@ -59,7 +59,12 @@ class RouteGuideTest {
             val toneNull: Boolean? = null,
             /** 임박 단계 index(0=20m, 1=15m, 2=10m). */
             val stage: Int? = null,
+            /** 그 fix 뒤 `guideNextTarget`(N4 2026-09-24). 거리는 ±1m(좌표 왕복 오차). */
+            val nextTarget: NextTarget? = null,
         )
+
+        @Serializable
+        data class NextTarget(val kind: String, val meters: Double)
     }
 
     private data class Seg(val len: Double, val desc: String, val action: String? = null)
@@ -89,6 +94,7 @@ class RouteGuideTest {
         is GuideEvent.Periodic -> "periodic"
         is GuideEvent.BundleReread -> "bundleReread"
         GuideEvent.WaypointReached -> "waypointReached"
+        is GuideEvent.WaypointApproaching -> "waypointApproaching"
         GuideEvent.FinalApproachEnter -> "finalApproachEnter"
         GuideEvent.OffRoute -> "offRoute"
         GuideEvent.BackOnRoute -> "backOnRoute"
@@ -136,8 +142,23 @@ class RouteGuideTest {
                 ex.tone?.let { t -> assertTrue(rs.any { it.tone?.rawValue == t }, "${sc.name}: tone $t") }
                 ex.stage?.let { st -> assertTrue(rs.any { (it.event as? GuideEvent.Imminent)?.stage == st }, "${sc.name}: stage $st") }
                 if (ex.toneNull == true) for (r in rs) assertNull(r.tone, "${sc.name}: toneNull")
+                ex.nextTarget?.let { want ->
+                    for (r in rs) {
+                        val got = guideNextTarget(route, r.state)
+                        assertEquals(want.kind, got.kind.name, "${sc.name}: nextTarget kind")
+                        assertTrue(abs(got.meters - want.meters) <= 1, "${sc.name}: nextTarget meters ${got.meters}")
+                    }
+                }
             }
         }
+    }
+
+    /** 경유지 접근 예고 프로파일(N4 2026-09-24 §2.1, 웹 route-guide.test.ts 미러). */
+    @Test fun `경유지 접근 예고 프로파일`() {
+        assertEquals(handoffDistMeters, waypointApproachMeters)
+        assertEquals(waypointApproachMeters, GuideTuning.walk.waypointApproachM)
+        assertNull(GuideTuning.car.waypointApproachM)
+        assertNull(GuideTuning.carDriver.waypointApproachM)
     }
 
     /**

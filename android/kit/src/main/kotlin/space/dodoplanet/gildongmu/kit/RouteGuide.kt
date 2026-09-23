@@ -56,6 +56,12 @@ const val handoffDistMeters = 50.0
 const val handoffRearmMeters = handoffDistMeters + 20
 
 /**
+ * 경유지 접근 예고 임계(경유지 도착선까지 경로 잔여, m — N4 spec 2026-09-24 §2.1, 웹 `WAYPOINT_APPROACH_M` 미러).
+ * 옛 최종 접근 진입선과 같은 값에서 시작하되 이름을 따로 둔다. ⚠ 잠정(A6 계열, BACKLOG §2 도보 표).
+ */
+const val waypointApproachMeters = handoffDistMeters
+
+/**
  * 경로 종점 도달 판정의 하한(m). 실제 임계는 `max(이 값, fix.accuracy)`다 — 경로 잔여 5m를 정확도 30m fix로
  * 판정하는 것은 거짓 정밀도이고, 정확도가 나쁘면 종점 도달을 일찍 인정하는 것이 정직하다.
  * ⚠ 실보행 판정 전까지 동결(spec §6-1).
@@ -121,6 +127,8 @@ data class GuideTuning(
     val offRouteRenotifyWarns: Boolean,
     val handoffDistM: Double,
     val handoffRearmM: Double,
+    /** 경유지 접근 예고 임계(m). null = 예고 없음(car — 속도에 맞춘 리듬은 판정 밖, N4 2026-09-24 §2.1). */
+    val waypointApproachM: Double?,
     /** 재획득 전방 연속성 타이브레이크(재획득 경로 한정) */
     val reacquireTieBreak: Boolean,
     /** 보행 속도 가드. false면 가드 기계 전체 비활성(차량 상시 활성 → 이탈 재통지 잠식 차단). */
@@ -174,6 +182,7 @@ data class GuideTuning(
             offRouteTrend = false,
             offRouteRenotifyS = offRouteRenotifySeconds, offRouteRenotifyWarns = true,
             handoffDistM = handoffDistMeters, handoffRearmM = handoffRearmMeters,
+            waypointApproachM = waypointApproachMeters,
             reacquireTieBreak = false, speedSuggest = true,
             courseAxisEnabled = true,
             presumedArrival = PresumedArrivalThresholds.walk,
@@ -196,6 +205,7 @@ data class GuideTuning(
             offRouteTrend = true,
             offRouteRenotifyS = 180.0, offRouteRenotifyWarns = false,
             handoffDistM = 150.0, handoffRearmM = 200.0,
+            waypointApproachM = null,
             reacquireTieBreak = true, speedSuggest = false,
             // ⚠ 차량 궤적으로 측정된 적이 없다. 켜려면 먼저 재라(위 필드 주석).
             courseAxisEnabled = false,
@@ -219,6 +229,24 @@ const val carFixLagSeconds = 1.0
 const val carImminentAheadSeconds = 5.0 + carFixLagSeconds
 const val carDriverImminentAheadSeconds = 8.0 + carFixLagSeconds
 const val carImminentUnknownSpeedMeters = 60.0
+
+/** 남은 거리 행의 목표(N4 spec 2026-09-24 §2.5, 웹 `GuideNextTargetKind` 미러). `route`=경유지 없는 세션. */
+enum class GuideNextTargetKind { route, waypoint, destination }
+
+/** `guideNextTarget` 결과(Swift 튜플 `(kind, meters)` 대응). */
+data class GuideNextTarget(val kind: GuideNextTargetKind, val meters: Double)
+
+/**
+ * 남은 거리 행이 말할 "다음 목표"와 그까지의 경로 잔여(m) — 웹 `guideNextTarget` 미러. 도착 전은 경유지 도착선까지,
+ * 도착 뒤는 목적지까지. 띠바·추세 톤·진행 상황 조망은 총 잔여를 쓴다.
+ */
+fun guideNextTarget(route: GuideRoute, state: GuideState): GuideNextTarget {
+    val w = route.waypointStepIndex ?: return GuideNextTarget(GuideNextTargetKind.route, maxOf(0.0, route.totalMeters - state.d))
+    if (!state.waypointReached) {
+        return GuideNextTarget(GuideNextTargetKind.waypoint, maxOf(0.0, route.steps[w].startD - state.d))
+    }
+    return GuideNextTarget(GuideNextTargetKind.destination, maxOf(0.0, route.totalMeters - state.d))
+}
 
 /**
  * 이 상태의 임박 임계(m) — 6a와 같은 식. 표시 계층(`guideLiveRows`의 `turnApproachM`)이 같은 시점에 전환하도록 한
@@ -354,6 +382,11 @@ data class GuideState(
      */
     val waypointPending: Boolean,
     /**
+     * 경유지 접근 예고 소비 래치(N4 2026-09-24 §2.2). 예고를 냈거나 세대가 이미 접근선 안에서 시작해 무발화로
+     * 소비했을 때 선다. `restateAt`이 승계하고 새 경로 세대에서만 초기화한다.
+     */
+    val waypointApproached: Boolean,
+    /**
      * uncertain 진입 시점의 **마지막 신뢰 fix 시각**(silentCatchUp ②, 웹 `uncertainSince` 미러). 불량 fix마다
      * 갱신되는 `lastFixAt`으로 복귀 공백을 재면 촘촘한 불량 fix에서 절대 걸리지 않는다.
      */
@@ -377,6 +410,9 @@ sealed class GuideEvent {
 
     /** 경유지 도착(N4). 톤 없음 — 도착 종은 오케스트레이터가 `nearby`로 낸다. */
     data object WaypointReached : GuideEvent()
+
+    /** 경유지 접근 예고(N4 2026-09-24). 경유지 도착선까지 경로 잔여(반올림 m). 톤 없음. */
+    data class WaypointApproaching(val remainingMeters: Int) : GuideEvent()
     data object FinalApproachEnter : GuideEvent()
     data object OffRoute : GuideEvent()
     data object BackOnRoute : GuideEvent()
@@ -465,6 +501,7 @@ fun guideStateAt(
     courseDerivation: CourseDerivationState = initialDerivationState,
     waypointReached: Boolean = false,
     waypointPending: Boolean = false,
+    waypointApproached: Boolean = false,
 ): GuideState {
     val step = stepAt(route, d)
     val unit = unitAt(route, step.index)
@@ -502,6 +539,7 @@ fun guideStateAt(
         courseDerivation = courseDerivation,
         waypointReached = waypointReached,
         waypointPending = waypointPending,
+        waypointApproached = waypointApproached,
         uncertainSince = null,
     )
 }
@@ -537,6 +575,7 @@ internal fun restateAt(route: GuideRoute, d: Double, now: Double, prev: GuideSta
         courseDerivation = prev.courseDerivation,
         waypointReached = prev.waypointReached,
         waypointPending = prev.waypointPending,
+        waypointApproached = prev.waypointApproached,
     )
 
 /** 최종 접근 진입선(경로 잔여 m). 기하를 알면 경로 종점까지 가고, 모르면 옛 50m다. 웹 `finalApproachEntryM` 미러. */
@@ -581,7 +620,17 @@ fun guideStep(state: GuideState, fix: GuideFix, route: GuideRoute, now: Double, 
     // 유도기 갱신은 국면과 무관하게 매 fix 1회 — 버퍼는 궤적의 사실이다(spec §2.9).
     // finalApproach·uncertain 조기 반환보다 앞이라 어느 국면에서도 버퍼가 이어진다.
     val dv = deriveCourse(state.courseDerivation, fix.lat, fix.lng, now)
-    val base = state.copy(courseDerivation = dv.state)
+    // W0) 경로 세대가 이미 경유지 접근선 안에서 시작하면 예고를 무발화로 소비한다(N4 2026-09-24 §2.4 — 원거리 예고의
+    //     재진입 유닛 소비와 같은 원리). 기준은 투영 전인 세대 진입 `state.d`, 조기 반환 국면보다 앞이라 세대 첫
+    //     fix(`lastFixAt == null`)에서 한 번만 본다.
+    val approachM = tuning.waypointApproachM
+    val wp = route.waypointStepIndex
+    val seedApproached = state.lastFixAt == null && approachM != null && wp != null &&
+        !state.waypointReached && !state.waypointApproached && route.steps[wp].startD - state.d <= approachM
+    val base = state.copy(
+        courseDerivation = dv.state,
+        waypointApproached = state.waypointApproached || seedApproached,
+    )
     // 프로파일 게이트는 여기 한 곳뿐이다 — 조건을 하위 분기마다 흩으면 하나를 빠뜨리고, 그 하나가 조용히 축을 살린다.
     val derived: DerivedCourse? = if (tuning.courseAxisEnabled) dv.obs else null
 
@@ -1023,6 +1072,21 @@ fun guideStep(state: GuideState, fix: GuideFix, route: GuideRoute, now: Double, 
             next = next.copy(farNoticedUpTo = indices[indices.size - 1], lastAnnouncedAt = now)
             // 낭독 거리는 크로싱 시점의 실측 잔여(§4.7 — 상수 낭독 금지, 리뷰 검출).
             return emit(next, GuideEvent.FarNotice(indices, nowRemaining.roundedAwayFromZero().toInt()), null)
+        }
+    }
+
+    // W4) 경유지 접근 예고(N4 2026-09-24 §2.4). 수준 판정 + 래치 — 더 급한 이벤트에 이번 fix를 내주면 다음 fix에
+    //     나간다(교차 판정은 그 경합에서 영구히 잃는다). 밀린 사이 도착선을 넘으면 W1이 도착을 세워 다시 서지 않는다
+    //     (도착이 예고를 대신한다). 신뢰 조건은 W1과 같다.
+    if (approachM != null && wp != null && !next.waypointReached && !next.waypointApproached && !isOff && !jumped) {
+        val rem = route.steps[wp].startD - d
+        // 1m 미만은 곧 도착이다 — "0m" 예고를 내지 않고 W1에 맡긴다(설계 리뷰 #11).
+        if (rem >= 1 && rem <= approachM) {
+            return emit(
+                next.copy(waypointApproached = true, lastAnnouncedAt = now),
+                GuideEvent.WaypointApproaching(rem.roundedAwayFromZero().toInt()),
+                null,
+            )
         }
     }
 

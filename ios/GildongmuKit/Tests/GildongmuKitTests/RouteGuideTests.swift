@@ -59,6 +59,13 @@ private struct Scenario: Decodable {
         let toneNull: Bool?
         /// 임박 단계 index(0=20m, 1=15m, 2=10m). `imminent` 이벤트가 그 단계여야 한다.
         let stage: Int?
+        /// 그 fix 뒤 `guideNextTarget`(N4 2026-09-24). 거리는 ±1m(좌표 왕복 오차).
+        let nextTarget: NextTarget?
+    }
+
+    struct NextTarget: Decodable {
+        let kind: String
+        let meters: Double
     }
 }
 
@@ -104,6 +111,7 @@ private func kindName(_ event: GuideEvent?) -> String? {
     case .periodic: "periodic"
     case .bundleReread: "bundleReread"
     case .waypointReached: "waypointReached"
+    case .waypointApproaching: "waypointApproaching"
     case .finalApproachEnter: "finalApproachEnter"
     case .offRoute: "offRoute"
     case .backOnRoute: "backOnRoute"
@@ -141,7 +149,7 @@ private func stageOf(_ event: GuideEvent?) -> Int? {
         var state = initialGuideState(
             route: route, now: 0, hasFinalApproachGeometry: sc.geometry == true
         ).state
-        var results: [(event: GuideEvent?, tone: GuideTone?)] = []
+        var results: [(event: GuideEvent?, tone: GuideTone?, state: GuideState)] = []
         for f in sc.fixes {
             let out = guideStep(
                 state: state,
@@ -151,7 +159,7 @@ private func stageOf(_ event: GuideEvent?) -> Int? {
                 tuning: tuning
             )
             state = out.state
-            results.append((out.event, out.tone))
+            results.append((out.event, out.tone, out.state))
         }
         for ex in sc.expect {
             let idxs: [Int] = ex.afterFix.map { [$0] } ?? ex.afterFixAny ?? []
@@ -189,8 +197,23 @@ private func stageOf(_ event: GuideEvent?) -> Int? {
             if ex.toneNull == true {
                 for r in rs { #expect(r.tone == nil, "\(sc.name): toneNull") }
             }
+            if let target = ex.nextTarget {
+                for r in rs {
+                    let got = guideNextTarget(route: route, state: r.state)
+                    #expect(got.kind.rawValue == target.kind, "\(sc.name): nextTarget kind")
+                    #expect(abs(got.meters - target.meters) <= 1, "\(sc.name): nextTarget meters")
+                }
+            }
         }
     }
+}
+
+/// 경유지 접근 예고 프로파일(N4 2026-09-24 §2.1, 웹 route-guide.test.ts 미러).
+@Test func waypointApproachProfile() {
+    #expect(waypointApproachMeters == handoffDistMeters)
+    #expect(GuideTuning.walk.waypointApproachM == waypointApproachMeters)
+    #expect(GuideTuning.car.waypointApproachM == nil)
+    #expect(GuideTuning.carDriver.waypointApproachM == nil)
 }
 
 /// 속도 가드 표본 소멸 시 해제(정확도 배제의 2차 회귀 차단 — 웹 route-guide.test.ts 미러).
