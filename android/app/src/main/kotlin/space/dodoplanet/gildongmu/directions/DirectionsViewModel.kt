@@ -19,6 +19,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import space.dodoplanet.gildongmu.a11y.HapticKind
 import space.dodoplanet.gildongmu.a11y.Notice
 import space.dodoplanet.gildongmu.kit.APIError
 import space.dodoplanet.gildongmu.kit.DataLocale
@@ -604,6 +605,14 @@ class DirectionsViewModel(
                 landing = if (after.isEmpty()) landingNext(LandingTarget.Submit) else it.landing,
             )
         }
+    }
+
+    /**
+     * 화면 변화가 없는 활성화 응답의 결과 통지(E45 브리핑 역 전화 — 없음·찾는 중·실패). 단일 통지 창구로 싣고 진동을 함께(문장이 나가는
+     * 조건 = 진동이 나가는 조건). 통지가 그 활성화의 유일한 증거다.
+     */
+    fun announceResult(text: String, haptic: HapticKind) {
+        _state.update { it.copy(notice = next(text).copy(haptic = haptic)) }
     }
 
     // ── 끝점 검색(EndpointPicker 합성, spec §13-3·판정 32) ────────────────────

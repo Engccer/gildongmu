@@ -61,4 +61,21 @@ class TransitWalkLegTextTest {
         assertEquals("route.transit.legWalkTo", TransitWalkLegText.resolve(name = "개화", distance = "131m", minutes = 2, boardExit = null).key)
         assertEquals("route.transit.legWalkTo", TransitWalkLegText.resolve(name = "개화", distance = "131m", minutes = 2, boardExit = "").key)
     }
+
+    // 빈 이름은 정보 부재(iOS 2026-09-19) — 행선지 없는 문구로 떨어지고, 정상 이름은 공백까지 원문을 보존한다.
+    @Test fun blankNameIsAbsent() {
+        for (name in listOf(" ", "\t\n\r", "\u00A0\u200B\u3000")) {
+            val noDistance = TransitWalkLegText.resolve(name = name, distance = null, minutes = 3, boardExit = "1")
+            assertEquals("route.transit.legWalkToDestNoDistance", noDistance.key)
+            assertEquals(listOf("3"), noDistance.args)
+            val withDistance = TransitWalkLegText.resolve(name = name, distance = "131m", minutes = 2, boardExit = "1")
+            assertEquals("route.transit.legWalkToDest", withDistance.key)
+            assertEquals(listOf("2", "131m"), withDistance.args)
+        }
+    }
+
+    @Test fun normalNameIsPreserved() {
+        val name = "  천호(풍납토성) 역  "
+        assertEquals(listOf(name, "3"), TransitWalkLegText.resolve(name = name, distance = null, minutes = 3).args)
+    }
 }

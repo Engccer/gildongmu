@@ -37,6 +37,7 @@ import space.dodoplanet.gildongmu.a11y.StatusLine
 import space.dodoplanet.gildongmu.a11y.headingText
 import space.dodoplanet.gildongmu.a11y.tapTarget
 import space.dodoplanet.gildongmu.i18n.AppLocale
+import space.dodoplanet.gildongmu.kit.models.TransitLegStop
 import space.dodoplanet.gildongmu.kit.DataLocale
 import space.dodoplanet.gildongmu.kit.DirectionsMode
 import space.dodoplanet.gildongmu.kit.DirectionsModeOutcome
@@ -55,14 +56,20 @@ import space.dodoplanet.gildongmu.settings.SettingsAction
  * 거리 추적 섹션·공지 시트는 M4·M5 — 자리만(§3-1 표 10·11).
  */
 @Composable
-fun DirectionsScreen(onOpenSettings: () -> Unit, takeSettingsReturn: () -> String?) {
+fun DirectionsScreen(onOpenSettings: () -> Unit, takeSettingsReturn: () -> String?, onOpenStation: (TransitLegStop, String?) -> Unit) {
     val context = LocalContext.current
     val factory = remember(context) { directionsViewModelFactory(context) }
-    DirectionsScreen(viewModel(factory = factory), onOpenSettings, takeSettingsReturn)
+    DirectionsScreen(viewModel(factory = factory), onOpenSettings, takeSettingsReturn, onOpenStation)
 }
 
+/** `onOpenStation`: 브리핑 지하철역 작업 메뉴의 상세 열기(E45) — null이면 진입점이 없다(push 경로가 없는 기기 테스트 하네스). */
 @Composable
-fun DirectionsScreen(vm: DirectionsViewModel, onOpenSettings: () -> Unit = {}, takeSettingsReturn: () -> String? = { null }) {
+fun DirectionsScreen(
+    vm: DirectionsViewModel,
+    onOpenSettings: () -> Unit = {},
+    takeSettingsReturn: () -> String? = { null },
+    onOpenStation: ((TransitLegStop, String?) -> Unit)? = null,
+) {
     val settingsFocus = remember { FocusRequester() }
     // 설정에서 pop 복귀 → 상단 바 설정 버튼(spec §14-1)
     LaunchedEffect(Unit) {
@@ -77,7 +84,7 @@ fun DirectionsScreen(vm: DirectionsViewModel, onOpenSettings: () -> Unit = {}, t
         // 폼은 항상 컴포즈된다(상태 보존). 피커가 덮은 동안은 접근성 트리·터치에서 빠져야 하므로 컴포지션에서 뺀다 —
         // 그 대신 상태를 폼 밖(이 계층)에 든다(`FormUiState`).
         val formState = rememberFormUiState()
-        if (p == null) DirectionsForm(vm, formState, onOpenSettings, settingsFocus) else EndpointSearchContent(vm.picker, p, onBack = vm::closePicker)
+        if (p == null) DirectionsForm(vm, formState, onOpenSettings, settingsFocus, onOpenStation) else EndpointSearchContent(vm.picker, p, onBack = vm::closePicker)
     }
 }
 
@@ -107,13 +114,20 @@ private fun rememberFormUiState(): FormUiState = remember { FormUiState() }
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
-private fun DirectionsForm(vm: DirectionsViewModel, ui: FormUiState, onOpenSettings: () -> Unit, settingsFocus: FocusRequester) {
+private fun DirectionsForm(
+    vm: DirectionsViewModel,
+    ui: FormUiState,
+    onOpenSettings: () -> Unit,
+    settingsFocus: FocusRequester,
+    onOpenStation: ((TransitLegStop, String?) -> Unit)?,
+) {
     val s by vm.state.collectAsState()
     val context = LocalContext.current
     val res = context.resources
     val lang = remember(res) { AppLocale.current(res) }
     val dataLocale = remember(lang) { if (lang == "ko") DataLocale.ko else DataLocale.en }
     val strings = remember(res) { resourceStrings(res) }
+    val stationEntry = remember(onOpenStation, vm) { onOpenStation?.let { BriefingStationEntry(it, vm::announceResult) } }
     // 새 조회 = 새 경로들이라 펼침을 기본으로 되돌린다(토글 재조회·피커 왕복은 보존).
     if (s.resultsRevision != ui.seenResultsRevision) ui.resetExpansion(s.resultsRevision)
     // 이미 허가된 세션이면 진입 시 조용히 현재 위치 주소를 병기(권한 팝업 없음).
@@ -257,6 +271,7 @@ private fun DirectionsForm(vm: DirectionsViewModel, ui: FormUiState, onOpenSetti
                             outcome.result, ui.expandedAlts,
                             onToggle = { key -> ui.expandedAlts = if (key in ui.expandedAlts) ui.expandedAlts - key else ui.expandedAlts + key },
                             destinationName = vm.destinationName, lang = lang, dataLocale = dataLocale, strings = strings,
+                            stationEntry = stationEntry,
                         )
                         is DirectionsModeOutcome.Walk -> WalkOutcomeRows(
                             outcome.briefing, s.walkShortest,

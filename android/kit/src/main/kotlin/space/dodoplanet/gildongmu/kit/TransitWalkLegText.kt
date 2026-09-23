@@ -22,7 +22,7 @@ object TransitWalkLegText {
      * ko 순서는 "{name} {exit}번 출구까지 도보 {minutes}분, {distance}" → (name, exit, minutes, distance).
      */
     fun resolve(name: String?, distance: String?, minutes: Int, boardExit: String? = null): Resolved {
-        val named = name?.takeIf { it.isNotEmpty() }
+        val named = transitBriefingName(name)
         val exit = boardExit?.takeIf { it.isNotEmpty() }
         val min = minutes.toString()
         return when {

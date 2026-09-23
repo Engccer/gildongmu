@@ -141,4 +141,51 @@ class TransitExitLinesTest {
         assertTrue(transitLegUsesEnglish(last, DataLocale.en))
         assertEquals("", transitAlightStationName(last, DataLocale.en))
     }
+
+    // 빈 이름은 정보 부재 — Kit `TransitExitLinesTests` 미러(iOS 2026-09-19). 공백 뜻은 Swift `.whitespacesAndNewlines`(U+200B 포함).
+
+    @Test fun `이름의 부재는 문구 인자로 전달되지 않는다`() {
+        for (name in listOf(null, "", " \t\r\n", "\u00A0\u200B\u3000")) assertNull(transitBriefingName(name), "$name")
+    }
+
+    @Test fun `정상 이름은 공백과 부역명까지 원문을 보존한다`() {
+        for (name in listOf("천호(풍납토성)", "  서울 역 \n", "City Hall", "  VHS Medical Center  ")) {
+            assertEquals(name, transitBriefingName(name))
+            assertEquals("$name 하차, 1번 출구 방면", alightLineText(null, name, "1", "ko", exitBound))
+        }
+    }
+
+    @Test fun `빈 영문은 구간과 하차 역명을 함께 한국어로 돌린다`() {
+        for (blank in listOf("", " ", "\t\n\r", "\u00A0\u200B\u3000")) {
+            for (leg in listOf(subwayEn(lineEn = blank), subwayEn(fromEn = blank), subwayEn(toEn = blank))) {
+                assertFalse(transitLegUsesEnglish(leg, DataLocale.en))
+                assertEquals("중앙보훈병원", transitAlightStationName(leg, DataLocale.en))
+            }
+        }
+    }
+
+    @Test fun `빈 하차역은 빠른하차나 출구가 있어도 문장을 만들지 않는다`() {
+        val quick = QuickExit(transfer = QuickExitDoor(kind = "door", doors = listOf("6-3")))
+        for (blank in listOf("", " ", "\t\n\r", "\u00A0\u200B\u3000")) {
+            for (lang in listOf("ko", "en")) {
+                for (detail in listOf(null, quick)) assertNull(alightLineText(detail, blank, "1", lang, exitBound))
+            }
+        }
+    }
+
+    @Test fun `없는 한국어 이름은 영어 자격을 막지 않고 하차역을 추정하지 않는다`() {
+        for (blank in listOf(null, "", " \t\n", "\u3000")) {
+            val leg = TransitRouteLeg(mode = "subway", lineName = "수도권 9호선", fromName = blank, toName = blank, stationCount = 15, minutes = 30, lineNameEn = "Line 9")
+            assertTrue(transitLegUsesEnglish(leg, DataLocale.en))
+            assertEquals("", transitAlightStationName(leg, DataLocale.ko))
+            assertEquals("", transitAlightStationName(leg, DataLocale.en))
+            assertTrue(transitLegUsesEnglish(TransitRouteLeg(mode = "walk", toName = blank, minutes = 2), DataLocale.en))
+        }
+    }
+
+    @Test fun `도보 행선지의 빈 영문도 한국어로 돌린다`() {
+        for (blank in listOf("", " \t\n", "\u3000")) {
+            assertFalse(transitLegUsesEnglish(TransitRouteLeg(mode = "walk", toName = "개화", minutes = 2, toNameEn = blank), DataLocale.en))
+        }
+    }
 }

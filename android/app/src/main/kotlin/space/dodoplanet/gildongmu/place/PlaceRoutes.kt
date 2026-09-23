@@ -27,6 +27,11 @@ data class PlaceDetailRoute(
     val showsChatEntry: Boolean = true,
     /** 경유역 전화번호 조회의 노선 힌트(E44 spec §5.2, iOS `stationLineHint`) — [ofTransitStop]만 싣는다. 그 밖의 상세는 null(자기 `phone`이 전부다). */
     val stationLineHint: String? = null,
+    /**
+     * "여기까지/여기부터 길찾기"를 보이는가. 경유역 상세([ofTransitStop])는 숨긴다(E45 spec §7, iOS `showsDirectionsEntry: false`) — 길찾기 탭
+     * 스택 위에서 열린 상세가 길찾기 탭을 다시 열면 방금 본 조회 결과를 프리필 재조회로 덮는다.
+     */
+    val showsDirectionsEntry: Boolean = true,
 ) {
     val place: Place get() = KitJson.decodeFromString(Place.serializer(), placeJson)
     val domain: PlaceDomain? get() = domainJson?.let { KitJson.decodeFromString(PlaceDomain.serializer(), it) }
@@ -45,6 +50,7 @@ data class PlaceDetailRoute(
         fun ofTransitStop(stop: TransitLegStop, lineName: String) = PlaceDetailRoute(
             KitJson.encodeToString(Place.serializer(), transitStopPlace(stop)),
             stationLineHint = lineName,
+            showsDirectionsEntry = false,
         )
     }
 }

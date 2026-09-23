@@ -22,15 +22,18 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import space.dodoplanet.gildongmu.a11y.headingText
 import space.dodoplanet.gildongmu.a11y.mergedRow
 import space.dodoplanet.gildongmu.kit.DataLocale
+import space.dodoplanet.gildongmu.kit.TransitBriefingRow
 import space.dodoplanet.gildongmu.kit.WalkCollapse
 import space.dodoplanet.gildongmu.kit.joinText
 import space.dodoplanet.gildongmu.kit.models.CarRouteBriefing
 import space.dodoplanet.gildongmu.kit.models.TransitRoute
+import space.dodoplanet.gildongmu.kit.models.TransitRouteLeg
 import space.dodoplanet.gildongmu.kit.models.TransitRouteResult
 import space.dodoplanet.gildongmu.kit.models.WalkRouteBriefing
 import space.dodoplanet.gildongmu.kit.spokenDistanceUnits
@@ -39,10 +42,24 @@ import space.dodoplanet.gildongmu.kit.WalkRouteVariant
 // 길찾기 행 렌더(spec §3 머리·§3-4, iOS `RouteBriefing.swift`·`outcomeRows` 대응). 문장은 `RouteText`·`TransitLegText`가 만들고
 // 여기는 시각·시맨틱 조립만. 행 관용구 둘: 비상호작용 행은 `mergedRow`, 상호작용 행은 `clickable + clearAndSetSemantics`(M1 `RecentRow`).
 
-/** 비상호작용 한 줄 = 한 객체. 거리 표기가 든 줄은 낭독에서 단위를 풀어 쓴다(`spoken`). */
+/**
+ * 비상호작용 한 줄 = 한 객체. 거리 표기가 든 줄은 낭독에서 단위를 풀어 쓴다(`spoken`). `actions`는 접근성 작업 메뉴(사용자 지정 액션) —
+ * 줄은 여전히 텍스트 한 객체로 남고 뷰 종류가 바뀌지 않는다(E45, 채팅 산문 블록 동형).
+ */
 @Composable
-fun TextRow(text: String, tag: String, spoken: String? = null, modifier: Modifier = Modifier) {
-    Text(text, modifier.fillMaxWidth().mergedRow(tag, spoken).padding(vertical = 8.dp), style = MaterialTheme.typography.bodyLarge)
+fun TextRow(
+    text: String,
+    tag: String,
+    spoken: String? = null,
+    modifier: Modifier = Modifier,
+    actions: List<CustomAccessibilityAction> = emptyList(),
+) {
+    val row = modifier.fillMaxWidth().mergedRow(tag, spoken)
+    Text(
+        text,
+        (if (actions.isEmpty()) row else row.semantics { customActions = actions }).padding(vertical = 8.dp),
+        style = MaterialTheme.typography.bodyLarge,
+    )
 }
 
 @Composable
@@ -138,6 +155,7 @@ fun transitRouteEntries(result: TransitRouteResult, strings: Strings): List<Tran
 /**
  * 대중교통 본문: 추천+대안을 한 목록의 펼침 행으로. 펼침 상태 키는 `routeKey`(배열 인덱스·표시 번호 금지) —
  * `expandedAlts`는 "기본값과 다른 것"의 집합. 라벨이 요약이라 본문에 요약 재낭독 없음.
+ * `stationEntry`는 지하철역 작업 메뉴 옵트인(E45) — **기본값이 없다**: push 경로가 없는 소비자가 조용히 켜지 않게 소비자마다 정한다.
  */
 @Composable
 fun TransitOutcomeRows(
@@ -148,6 +166,7 @@ fun TransitOutcomeRows(
     lang: String,
     dataLocale: DataLocale,
     strings: Strings,
+    stationEntry: BriefingStationEntry?,
 ) {
     val meters = strings.get("android.unit.spokenMeters")
     for (entry in transitRouteEntries(result, strings)) {
@@ -158,12 +177,32 @@ fun TransitOutcomeRows(
             val legs = entry.route.legs
             for (index in legs.indices) {
                 val line = transitLegLine(legs, index, destinationName, lang, dataLocale, strings)
-                TextRow(line.visual, "transit-$key-leg-$index", spoken = spokenDistanceUnits(line.spoken, meters))
+                val legRow = if (legs[index].mode == "walk") TransitBriefingRow.Walk(index) else TransitBriefingRow.Transit(index)
+                StationRow(line.visual, "transit-$key-leg-$index", spokenDistanceUnits(line.spoken, meters), legs, legRow, dataLocale, stationEntry, strings)
                 // 하차 줄은 별개 객체 — "무슨 열차"와 "어디로 내려 나가나"가 스와이프 한 번에 갈린다. 없으면 행 자체가 없다.
-                alightLine(legs[index], lang, dataLocale, strings)?.let { TextRow(it, "transit-$key-alight-$index") }
+                alightLine(legs[index], lang, dataLocale, strings)?.let {
+                    StationRow(it, "transit-$key-alight-$index", null, legs, TransitBriefingRow.Alight(index), dataLocale, stationEntry, strings)
+                }
             }
         }
     }
+}
+
+/** 브리핑 줄 하나 — 옵트인이 꺼져 있거나 대상 역이 없으면 종전 텍스트 줄 그대로다(저장소도 관찰하지 않는다). */
+@Composable
+private fun StationRow(
+    text: String,
+    tag: String,
+    spoken: String?,
+    legs: List<TransitRouteLeg>,
+    row: TransitBriefingRow,
+    dataLocale: DataLocale,
+    entry: BriefingStationEntry?,
+    strings: Strings,
+) {
+    val actions = if (entry == null) emptyList() else briefingStationActions(legs, row, dataLocale)
+    if (entry == null || actions.isEmpty()) TextRow(text, tag, spoken = spoken)
+    else BriefingStationRow(text, tag, spoken, actions, entry, strings)
 }
 
 /**

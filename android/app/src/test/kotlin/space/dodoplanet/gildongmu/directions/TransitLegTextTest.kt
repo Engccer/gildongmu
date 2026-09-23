@@ -56,6 +56,19 @@ class TransitLegTextTest {
         assertEquals("목적지까지 도보 1분", lines(listOf(subway(), walk(minutes = 1, distance = null))).last().spoken)
     }
 
+    @Test fun `공백뿐인 이름은 정보 부재다 - 승하차 조각·노선·목적지 폴백에 쓰지 않는다(iOS 2026-09-19)`() {
+        val blankFrom = lines(listOf(subway(from = " \t", to = "강남"))).single().spoken
+        assertEquals("수도권 2호선, 강남에서 하차, 6 정거장, 11분 소요", blankFrom)
+        val blankLine = transitLegText(
+            TransitRouteLeg(mode = "bus", lineName = " ", fromName = "정류소", toName = "환승정류소", stationCount = 5, minutes = 10),
+            null, LegNames.Korean, null, "ko", ko,
+        )
+        assertFalse(blankLine.contains("번 버스"), blankLine)
+        assertEquals("목적지까지 도보 1분, 72m", lines(listOf(subway(), walk(toName = "\n", minutes = 1, distance = 72)), dest = "  ").last().spoken)
+        // 정상 이름은 원문 그대로(공백·부역명 보존 — 정규화는 조인의 몫).
+        assertEquals("천호(풍납토성)까지 도보 3분, 178m", lines(listOf(walk(toName = "천호(풍납토성)", minutes = 3), subway())).first().spoken)
+    }
+
     @Test fun `승차 출구는 도보 줄이 있으면 도보 줄이, 없으면 탑승 줄 끝이 싣는다 - 배타`() {
         val withWalk = listOf(walk(toName = "길동"), subway(exit = TransitLegExit(board = "3")))
         val l1 = lines(withWalk).map { it.spoken }
