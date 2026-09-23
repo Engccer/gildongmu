@@ -327,7 +327,7 @@
   "guide": {
     "switchedToShortest": "Switched to the shortest route. {count, plural, one {# step} other {# steps}}, {distance} total. {first}",
     "switchedToRecommended": "Switched to the recommended route. {count, plural, one {# step} other {# steps}}, {distance} total. {first}",
-    "switchedToAccessible": "Switched to the step-free route. {count, plural, one {# step} other {# steps}}, {distance} total. {first}",
+    "switchedToAccessible": "Switched to the route avoiding stairs. {count, plural, one {# step} other {# steps}}, {distance} total. {first}",
     "switchedToBroad": "Switched to the main-road route. {count, plural, one {# step} other {# steps}}, {distance} total. {first}",
     "autoReroute": "Now guiding on a new route. {count, plural, one {# step} other {# steps}}, {distance} total. {first}",
     "viewAlternative": "View alternative route",

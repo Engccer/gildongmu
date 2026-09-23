@@ -177,6 +177,16 @@ export function DistanceBeacon({
   if (!guide.supported) return null;
 
   const togglePanel = () => {
+    // 시작/중지 겸용 트리거(startOnOpen·autoStart)는 **추적 상태로 동작을 고른다** — 라벨이 이미
+    // 추적 상태로 정해지므로(아래) 동작도 같은 축이어야 한다. 다른 패널의 시작이 이 세션을
+    // 끝내면(웹 claim 규칙 — 도보 줄 바꾸기, E42 접근성 감사 M1) 패널은 열린 채 추적만 멈춘다.
+    // 그때 "안내 시작"이라 읽히는 버튼이 접기만 하면 라벨 거짓말이다.
+    if ((startOnOpen || autoStart) && !tracking) {
+      guide.start();
+      onStart?.();
+      setOpen(true);
+      return;
+    }
     if (open) {
       guide.stop();
     } else if (startOnOpen || autoStart) {

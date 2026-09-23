@@ -711,7 +711,7 @@
     "guideStartWalk": "Démarrer le guidage à pied",
     "guideStartWalkShortest": "Démarrer le guidage sur l'itinéraire le plus court",
     "guideStartWalkAccessible": "Démarrer le guidage sur l'itinéraire sans escaliers",
-    "guideStartWalkBroad": "Démarrer le guidage par les grands axes",
+    "guideStartWalkBroad": "Démarrer le guidage sur l'itinéraire par les grands axes",
     "guideStartWalkRecommended": "Démarrer le guidage sur l'itinéraire recommandé",
     "guideStartCar": "Démarrer le guidage en voiture",
     "guideStartTransitAlt": "Démarrer le guidage : {name}",

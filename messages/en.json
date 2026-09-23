@@ -199,7 +199,7 @@
     "unsupportedWaypoint": "Waypoints are not supported for public transit routes.",
     "walkRecommended": "Recommended route",
     "walkShortest": "Shortest route",
-    "walkAccessible": "Step-free route",
+    "walkAccessible": "Route avoiding stairs",
     "walkBroad": "Main-road route"
   },
   "detail": {
@@ -710,7 +710,7 @@
     "stopped": "Live guidance stopped",
     "guideStartWalk": "Start walking guidance",
     "guideStartWalkShortest": "Start shortest route guidance",
-    "guideStartWalkAccessible": "Start step-free route guidance",
+    "guideStartWalkAccessible": "Start guidance on the route avoiding stairs",
     "guideStartWalkBroad": "Start main-road route guidance",
     "guideStartWalkRecommended": "Start recommended route guidance",
     "guideStartCar": "Start car guidance",

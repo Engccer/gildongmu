@@ -4532,7 +4532,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Start step-free route guidance"
+            "value": "Start guidance on the route avoiding stairs"
           }
         },
         "es": {
@@ -4556,7 +4556,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "階段回避ルートで案内を開始"
+            "value": "階段を避けるルートで案内を開始"
           }
         }
       }
@@ -4578,19 +4578,19 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Iniciar guía por vías principales"
+            "value": "Iniciar guía por la ruta por vías principales"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Démarrer le guidage par les grands axes"
+            "value": "Démarrer le guidage sur l'itinéraire par les grands axes"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Avvia la guida su strade principali"
+            "value": "Avvia la guida sul percorso su strade principali"
           }
         },
         "ja": {
@@ -11772,7 +11772,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Step-free route"
+            "value": "Route avoiding stairs"
           }
         },
         "es": {
@@ -11796,7 +11796,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "階段回避ルート"
+            "value": "階段を避けるルート"
           }
         }
       }
@@ -17172,7 +17172,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Switched to the step-free route. {1, plural, one {%1$@ step} other {%1$@ steps}}, %2$@ total. %3$@"
+            "value": "Switched to the route avoiding stairs. {1, plural, one {%1$@ step} other {%1$@ steps}}, %2$@ total. %3$@"
           }
         },
         "es": {
@@ -17196,7 +17196,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "階段回避ルートに切り替えました。案内%1$@件、合計%2$@。%3$@"
+            "value": "階段を避けるルートに切り替えました。案内%1$@件、合計%2$@。%3$@"
           }
         }
       }

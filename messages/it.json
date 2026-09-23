@@ -711,7 +711,7 @@
     "guideStartWalk": "Avvia guida a piedi",
     "guideStartWalkShortest": "Avvia la guida sul percorso più breve",
     "guideStartWalkAccessible": "Avvia la guida sul percorso senza scale",
-    "guideStartWalkBroad": "Avvia la guida su strade principali",
+    "guideStartWalkBroad": "Avvia la guida sul percorso su strade principali",
     "guideStartWalkRecommended": "Avvia la guida sul percorso consigliato",
     "guideStartCar": "Avvia guida in auto",
     "guideStartTransitAlt": "Avvia la guida: {name}",

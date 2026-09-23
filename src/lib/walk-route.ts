@@ -500,10 +500,11 @@ export async function getWalkRouteAlternatives(params: {
     resolveWalkRoute({ origin, dest, lang, accessible, via, variant: "shortest", preciseCoords: false }),
   ]);
   if (primary.status === "rejected") throw primary.reason;
-  // provider 혼합 금지(E42 설계 리뷰 MAJOR 2): 추천이 카카오인데 최단만 Tmap 폴백이면 두 provider의
-  // 거리를 나란히 놓게 된다 — 조사 §4의 "최단이 더 긴" 역전이 그대로 돌아온다. 최단 실패로 흡수한다.
-  const mixed = primary.value?.provider === "kakao" &&
-    shortest.status === "fulfilled" && shortest.value?.provider === "tmap";
+  // provider 혼합 금지(E42 설계 리뷰 MAJOR 2): 두 줄의 provider가 다르면 거리를 나란히 놓을 수 없다 —
+  // 조사 §4의 "최단이 더 긴" 역전이 그대로 돌아온다. 방향을 가리지 않고 최단 실패로 흡수한다.
+  const mixed = primary.value != null &&
+    shortest.status === "fulfilled" && shortest.value != null &&
+    primary.value.provider !== shortest.value.provider;
   return {
     result: primary.value?.briefing ?? null,
     shortest: shortest.status === "fulfilled" && !mixed ? (shortest.value?.briefing ?? null) : null,

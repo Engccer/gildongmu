@@ -411,7 +411,7 @@
     <string name="beacon_guideStartCar">自動車案内を開始</string>
     <string name="beacon_guideStartTransitAlt">案内開始: %1$s</string>
     <string name="beacon_guideStartWalk">徒歩案内を開始</string>
-    <string name="beacon_guideStartWalkAccessible">階段回避ルートで案内を開始</string>
+    <string name="beacon_guideStartWalkAccessible">階段を避けるルートで案内を開始</string>
     <string name="beacon_guideStartWalkBroad">大通りルートで案内を開始</string>
     <string name="beacon_guideStartWalkRecommended">おすすめルートで案内を開始</string>
     <string name="beacon_guideStartWalkShortest">最短ルートで案内を開始</string>
@@ -591,7 +591,7 @@
     <string name="directions_useCurrentLocation">現在地を使う</string>
     <string name="directions_via">経由地</string>
     <string name="directions_viaArrived">経由地 %1$s に到着</string>
-    <string name="directions_walkAccessible">階段回避ルート</string>
+    <string name="directions_walkAccessible">階段を避けるルート</string>
     <string name="directions_walkBroad">大通りルート</string>
     <string name="directions_walkRecommended">おすすめルート</string>
     <string name="directions_walkShortest">最短ルート</string>

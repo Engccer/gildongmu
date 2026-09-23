@@ -412,7 +412,7 @@
     <string name="beacon_guideStartTransitAlt">Démarrer le guidage : %1$s</string>
     <string name="beacon_guideStartWalk">Démarrer le guidage à pied</string>
     <string name="beacon_guideStartWalkAccessible">Démarrer le guidage sur l\'itinéraire sans escaliers</string>
-    <string name="beacon_guideStartWalkBroad">Démarrer le guidage par les grands axes</string>
+    <string name="beacon_guideStartWalkBroad">Démarrer le guidage sur l\'itinéraire par les grands axes</string>
     <string name="beacon_guideStartWalkRecommended">Démarrer le guidage sur l\'itinéraire recommandé</string>
     <string name="beacon_guideStartWalkShortest">Démarrer le guidage sur l\'itinéraire le plus court</string>
     <string name="beacon_heading">Guidage en temps réel</string>

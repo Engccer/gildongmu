@@ -855,8 +855,8 @@ export function DirectionsView({
 
   const busy = phase.kind === "locating" || phase.kind === "loading";
   // 요약 수치는 저장하지 않고 results에서 파생한다(A8 + 독립 리뷰 2026-08-11) —
-  // phase에 successCount를 들고 다니면 outcomes만 바꾸는 경로(계단 회피 토글)마다
-  // 동기화가 필요하고, 편집 경로가 results를 리셋하는 15초 창에서 낡은 클로저로
+  // phase에 successCount를 들고 다니면 outcomes만 바꾸는 경로가 생길 때마다
+  // 동기화가 필요하고(종전 계단 회피 토글 재조회가 그 경로였다), 편집 경로가 results를 리셋하는 15초 창에서 낡은 클로저로
   // 커밋되는 상태 불일치가 재발한다. 낭독되는 수치라 시각으로 반증되지 않으므로
   // 진실원을 하나(results.outcomes)로 줄이는 것이 수정이다. settled인데 results가
   // 없으면(재조회 중 편집으로 리셋) 요약도 없다 — 없는 경로를 세지 않는다.
@@ -914,16 +914,20 @@ export function DirectionsView({
   /**
    * 도보 줄 버튼 문장(E42 위원장 확정 렌더: "최단 경로, 총 850m, 약 12분") — 화면과 WebMCP
    * `plan.walk.lines[].label`의 정본. 한 줄 = 한 접근성 객체(joinText, 쉼표). 모르는 종류는
-   * `fetchMode`가 이미 걸렀다.
+   * null — 이름을 지어 붙이지 않는다(`fetchMode`가 이미 거르지만 이 함수가 폴백 이름을 갖지 않는다).
    */
-  const walkLineLabel = (line: WalkRouteLine): string =>
-    joinText(
-      t(walkLineNameKey(line.kind) ?? "walkShortest"),
-      tPed("summary", {
-        distance: formatDistance(line.route.distanceMeters),
-        minutes: Math.round(line.route.durationSeconds / 60),
-      }),
-    );
+  const walkLineLabel = (line: WalkRouteLine): string | null => {
+    const nameKey = walkLineNameKey(line.kind);
+    return nameKey
+      ? joinText(
+          t(nameKey),
+          tPed("summary", {
+            distance: formatDistance(line.route.distanceMeters),
+            minutes: Math.round(line.route.durationSeconds / 60),
+          }),
+        )
+      : null;
+  };
   const carGuideStartable =
     carOutcome?.kind === "done" &&
     carOutcome.mode === "car" &&
@@ -1073,13 +1077,18 @@ export function DirectionsView({
           ? {
               outcome: "done" as const,
               // 화면 줄과 같은 순서·같은 문장(E42) — 도구가 돌려준 n번 문장 = 커서가 착지한 n번 항목.
-              lines: walkOutcome.lines.map((line) => ({
-                kind: line.kind,
-                label: walkLineLabel(line),
-                distanceMeters: line.route.distanceMeters,
-                durationSeconds: line.route.durationSeconds,
-                steps: walkStepItems(line.route, true).items,
-              })),
+              lines: walkOutcome.lines.flatMap((line) => {
+                const label = walkLineLabel(line);
+                return label
+                  ? [{
+                      kind: line.kind,
+                      label,
+                      distanceMeters: line.route.distanceMeters,
+                      durationSeconds: line.route.durationSeconds,
+                      steps: walkStepItems(line.route, true).items,
+                    }]
+                  : [];
+              }),
               startable: walkGuideStartable,
             }
           : { outcome: kindOf(walkOutcome), lines: [], startable: false };
@@ -1654,7 +1663,8 @@ export function DirectionsView({
                 {outcome.kind === "done" && outcome.mode === "walk" &&
                   outcome.lines.map((line, i) => {
                     const startKey = walkLineStartKey(line.kind);
-                    if (!startKey) return null;
+                    const label = walkLineLabel(line);
+                    if (!startKey || !label) return null;
                     const active = activeWalkLine === line.kind;
                     const expanded =
                       active ||
@@ -1675,7 +1685,7 @@ export function DirectionsView({
                           onClick={toggle}
                           className="min-h-11 text-left text-sm text-blue-700 underline dark:text-blue-300"
                         >
-                          {walkLineLabel(line)}
+                          {label}
                         </button>
                         {/* 버튼이 발견 경로라 본문은 div(region·heading 부여 금지). */}
                         {expanded && (

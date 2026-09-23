@@ -99,6 +99,28 @@ function pushFix(atSeconds: number, along: number, lateral: number) {
   });
 }
 
+describe("시작/중지 겸용 트리거는 추적 상태로 동작한다(E42 접근성 감사 M1)", () => {
+  it("다른 패널의 시작이 이 세션을 끝내면, 이 패널의 '안내 시작'은 접지 않고 다시 시작한다", async () => {
+    render(
+      <NextIntlClientProvider locale="ko" messages={ko}>
+        <DistanceBeaconHost dest={DEST} accessible={false} variant="shortest" startOnOpen triggerLabel="A 시작" />
+        <DistanceBeaconHost dest={DEST} accessible={true} variant={null} startOnOpen triggerLabel="B 시작" />
+      </NextIntlClientProvider>,
+    );
+    const a = screen.getByRole("button", { name: "A 시작" });
+    fireEvent.click(a);
+    await waitFor(() => expect(a.textContent).toBe(ko.beacon.stop));
+    // B 시작이 claim으로 A 세션을 끝낸다 — A 패널은 열린 채 라벨만 "A 시작"으로 돌아온다.
+    fireEvent.click(screen.getByRole("button", { name: "B 시작" }));
+    await waitFor(() => expect(a.textContent).toBe("A 시작"));
+    expect(a.getAttribute("aria-expanded")).toBe("true");
+    // 이 버튼 한 번으로 A가 다시 시작돼야 한다(종전엔 접히기만 했다).
+    fireEvent.click(a);
+    await waitFor(() => expect(a.textContent).toBe(ko.beacon.stop));
+    expect(a.getAttribute("aria-expanded")).toBe("true");
+  });
+});
+
 describe("DistanceBeacon 컨트롤 노출", () => {
   // E16 축2: 전환 버튼이 사라졌으므로 "상세가 섰다"의 신호는 **경로 기준 잔여 표시**다
   // (간략에는 경로가 없어 그 줄이 없다). 강등 문구가 없다는 것도 함께 본다.

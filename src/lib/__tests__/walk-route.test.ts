@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../providers/kakao-walk", () => ({ getKakaoWalkBriefing: vi.fn() }));
 vi.mock("../providers/tmap-pedestrian", () => ({ getWalkRouteBriefing: vi.fn() }));
@@ -886,6 +886,16 @@ describe("provider 혼합 금지·같은 좌표(E42 설계 리뷰 MAJOR 2)", () 
     expect(r.shortest).toBeNull();
   });
 
+  it("alternatives: 역방향(추천만 Tmap 폴백, 최단은 카카오)도 섞지 않는다", async () => {
+    vi.mocked(getKakaoWalkBriefing).mockImplementation(async (p) => {
+      if (p.routeMode === "BROAD_FIRST") throw new Error("kakao broad down");
+      return KAKAO_BRIEFING;
+    });
+    const r = await getWalkRouteAlternatives({ lang: "ko", origin: ORIGIN, dest: DEST });
+    expect(r.result).not.toBeNull();
+    expect(r.shortest).toBeNull();
+  });
+
   it("lines: 첫 줄이 Tmap 폴백이면 카카오 둘째 줄을 싣지 않는다", async () => {
     vi.mocked(getKakaoWalkBriefing).mockImplementation(async (p) => {
       if (p.routeMode === "SHORTEST") throw new Error("kakao shortest down");
@@ -917,6 +927,33 @@ describe("provider 혼합 금지·같은 좌표(E42 설계 리뷰 MAJOR 2)", () 
       throw new Error("kakao down");
     });
     await expect(getWalkRouteLines({ lang: "ko", origin: ORIGIN, dest: DEST })).rejects.toThrow();
+  });
+});
+
+describe("둘째 줄 10초 예산(구현 리뷰 m2)", () => {
+  afterEach(() => vi.useRealTimers());
+
+  it("계단 회피 → 큰길이 이어져 10초를 넘기면 첫 줄만 싣는다(첫 줄을 잃지 않는다)", async () => {
+    vi.useFakeTimers();
+    vi.mocked(getKakaoWalkBriefing).mockImplementation((p) =>
+      p.routeMode === "SHORTEST"
+        ? Promise.resolve(KAKAO_BRIEFING)
+        : new Promise(() => {}), // ACCESSIBLE이 응답하지 않는다
+    );
+    const pending = getWalkRouteLines({ lang: "ko", origin: ORIGIN, dest: DEST });
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect((await pending).map((l) => l.kind)).toEqual(["shortest"]);
+  });
+
+  it("첫 줄이 경로 없음인데 둘째 줄이 예산을 넘기면 경로 없음이 아니라 throw", async () => {
+    vi.useFakeTimers();
+    vi.mocked(getKakaoWalkBriefing).mockImplementation((p) =>
+      p.routeMode === "SHORTEST" ? Promise.resolve(null) : new Promise(() => {}),
+    );
+    const pending = getWalkRouteLines({ lang: "ko", origin: ORIGIN, dest: DEST });
+    const assertion = expect(pending).rejects.toThrow(/예산/);
+    await vi.advanceTimersByTimeAsync(10_000);
+    await assertion;
   });
 });
 

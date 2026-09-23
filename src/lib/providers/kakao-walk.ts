@@ -35,8 +35,8 @@ import type { Coord, RouteWaypoint, WalkRouteBriefing, WalkRouteStep } from "../
  * ⚠ **accessible 요청만은 반올림하지 않는다**(dodo 역이식 2026-08-23, codex 적대적
  * 리뷰 ②): 반올림은 캐시 키만 바꾸는 것이 아니라 **upstream에 보내는 좌표 자체**를
  * 바꾼다. 4자리 격자는 약 11m인데 지하철 출입구 두 개가 같은 셀에 들어가고, 그
- * 단위가 곧 계단 유무가 갈리는 단위다 — 계단 회피를 켠 사용자에게 다른 출입구
- * 경로를 주면 토글이 무의미해진다. `roundCoord`가 스스로 정한 적용 기준("반올림
+ * 단위가 곧 계단 유무가 갈리는 단위다 — 계단 회피를 고른 사용자에게 다른 출입구
+ * 경로를 주면 "계단 회피 경로"라는 약속이 무의미해진다. `roundCoord`가 스스로 정한 적용 기준("반올림
  * 오차가 결과를 못 바꾸는 곳에만")을 이 분기만 만족하지 못한다. 카카오 도보는
  * 일 1,000건 무료 구간 안이라 히트율 하락 비용이 작다(초과분은 건당 10원).
  */
@@ -156,16 +156,16 @@ function legEdgeCoord(
 }
 
 /**
- * 카카오 도보 경로 조회. 경로 없으면 null(graceful), HTTP 실패·미관측 status·
- * 스키마 위반은 throw(서비스가 Tmap 폴백으로 전환). 타임아웃 8초: 무한 대기는
- * throw가 아니라서 폴백이 영영 발동하지 않는다(spec §아키텍처).
- */
-/**
  * 카카오 도보 탐색 옵션. ⚠ **기본값을 두지 않는다** — 생략이 `BROAD_FIRST`로 조용히 복구되면
  * "최단 경로"라 이름 붙은 줄이 큰길 경로를 낸다(E42, [[no-default-for-safety-parameters]]).
  */
 export type KakaoWalkRouteMode = "BROAD_FIRST" | "SHORTEST" | "ACCESSIBLE";
 
+/**
+ * 카카오 도보 경로 조회. 경로 없으면 null(graceful), HTTP 실패·미관측 status·
+ * 스키마 위반은 throw(서비스가 Tmap 폴백으로 전환). 타임아웃 8초: 무한 대기는
+ * throw가 아니라서 폴백이 영영 발동하지 않는다(spec §아키텍처).
+ */
 export async function getKakaoWalkBriefing(params: {
   origin: Coord;
   dest: Coord;

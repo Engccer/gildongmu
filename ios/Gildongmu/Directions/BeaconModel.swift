@@ -628,8 +628,8 @@ final class BeaconModel {
         guard !starting else { return }
         starting = true
         lastStartRequest = request
-        // 세션 시작 시점 값이 세션 내내 유효하다 — 추적 중에는 시트가 화면을
-        // 덮어 토글에 물리적으로 도달할 수 없다(spec §2.2).
+        // 요청 축·줄 종류는 시작 값으로 정하고, 이후엔 수동 전환 커밋(`commitLineSwitch`)에서만
+        // 바뀐다(E42 — 계단 회피는 이제 줄의 성질이라 세션 중 전환될 수 있다).
         self.accessible = request.accessible
         sessionVariant = request.variant
         sessionLine = request.line
@@ -2872,7 +2872,11 @@ final class BeaconModel {
             } else {
                 nil
             }
-            return joinText(summary, time, remaining)
+            // 서버가 이름을 주지 못한 응답(계단 문구가 남은 계단 회피)은 요청한 줄 이름으로 부르므로
+            // 경고 문장을 헤더에 함께 싣는다 — 착지 첫 문장에 경고가 없으면 계단 사실이 스텝 원문을
+            // 훑어야만 드러난다(E42 접근성 감사 M2). 이름이 참인 응답에는 붙이지 않는다.
+            let notice = fetched.lineKind == nil ? fetched.stepFreeNotice : nil
+            return joinText(summary, time, remaining, notice)
         }
     }
 
