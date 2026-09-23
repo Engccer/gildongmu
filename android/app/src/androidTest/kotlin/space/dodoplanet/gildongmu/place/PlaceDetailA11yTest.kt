@@ -17,6 +17,11 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import kotlinx.coroutines.MainScope
+import space.dodoplanet.gildongmu.kit.StationPhoneService
+import space.dodoplanet.gildongmu.kit.models.TransitLegStop
+import space.dodoplanet.gildongmu.kit.transitStopPlace
 import space.dodoplanet.gildongmu.directions.DirectionsPrefill
 import space.dodoplanet.gildongmu.directions.DirectionsPrefillRole
 import space.dodoplanet.gildongmu.kit.BarrierFreeService
@@ -40,7 +45,7 @@ class PlaceDetailA11yTest {
         val down = stubbedClient { HttpResponse(404, "") }
         val factory = placeDetailFactory(place, PlaceHoursService(down), placeStrings { rule.activity.resources }, StationService(down), BarrierFreeService(down)) { "ko" }
         val prefills = mutableListOf<DirectionsPrefill>()
-        rule.setContent { MaterialTheme { PlaceDetailScreen(factory, PlaceNav({}, { _, _ -> }, prefills::add, {}), takeReturnFocus = { null }) } }
+        rule.setContent { MaterialTheme { PlaceDetailScreen(factory, PlaceNav({}, { _, _ -> }, prefills::add, {}), takeReturnFocus = { null }, stationLineHint = null) } }
         rule.enableAccessibilityChecks()
         rule.waitForIdle()
         rule.onNodeWithTag("title").assertTextContains("강동역").assertIsFocused()
@@ -68,7 +73,7 @@ class PlaceDetailA11yTest {
             }
         })
         val factory = placeDetailFactory(place, PlaceHoursService(stubbedClient { HttpResponse(404, "") }), placeStrings { rule.activity.resources }, station, BarrierFreeService(stubbedClient { HttpResponse(500, "") })) { "ko" }
-        rule.setContent { MaterialTheme { PlaceDetailScreen(factory, PlaceNav({}, { _, _ -> }, {}, {}), takeReturnFocus = { null }) } }
+        rule.setContent { MaterialTheme { PlaceDetailScreen(factory, PlaceNav({}, { _, _ -> }, {}, {}), takeReturnFocus = { null }, stationLineHint = null) } }
         rule.enableAccessibilityChecks()
         rule.waitUntil(5_000) { rule.onAllNodesWithTag("station-meta").fetchSemanticsNodes().isNotEmpty() }
         rule.waitForIdle()
@@ -78,5 +83,49 @@ class PlaceDetailA11yTest {
         rule.onNodeWithTag("status").assertTextEquals("")
         rule.onNodeWithTag("title").assertIsFocused() // 착지는 제목 그대로 — 자동 섹션은 포커스를 옮기지 않는다
         rule.onRoot().tryPerformAccessibilityChecks()
+    }
+
+    /**
+     * E44 역 레이아웃(spec §3.2·§4·§5.5): 역 정보 제목이 서고 전화 줄(대표번호 표기)이 그 바로 아래, 서울 지하철 시설은 종류 행만 접힌 채
+     * 나오며 펼치면 시설 줄이 나온다, "이 장소 주변"은 최하단이고 지하철 도착 행이 없다.
+     */
+    @Test
+    fun stationLayoutPutsPhoneFirstFoldsFacilitiesAndDropsSubwayAnchor() {
+        val place = Place(id = "kakao-4", name = "강동역 5호선", category = "교통,수송 > 지하철,전철 > 수도권5호선", address = "서울 강동구", roadAddress = "서울 강동구 천호대로 1", lat = 37.535, lng = 127.132, phone = "1544-7788")
+        val station = StationService(stubbedClient { url ->
+            when (pathOf(url)) {
+                "/api/station/metro-facilities" -> HttpResponse(200, DeviceFixtures.kit("station-metro-facilities.json"))
+                else -> HttpResponse(500, "")
+            }
+        })
+        val factory = placeDetailFactory(place, PlaceHoursService(stubbedClient { HttpResponse(404, "") }), placeStrings { rule.activity.resources }, station, BarrierFreeService(stubbedClient { HttpResponse(500, "") })) { "ko" }
+        rule.setContent { MaterialTheme { PlaceDetailScreen(factory, PlaceNav({}, { _, _ -> }, {}, {}), takeReturnFocus = { null }, stationLineHint = null) } }
+        rule.enableAccessibilityChecks()
+        rule.waitUntil(5_000) { rule.onAllNodesWithTag("metro-0").fetchSemanticsNodes().isNotEmpty() }
+        rule.onNodeWithTag("station-info").assertExists()
+        rule.onNodeWithTag("call").assertTextContains("대표번호", substring = true)
+        rule.onNodeWithTag("category").assertDoesNotExist() // 지하철은 분류 줄 없음(메타 줄과 중복)
+        rule.onNodeWithTag("anchor-subway").assertDoesNotExist()
+        val top = { tag: String -> rule.onNodeWithTag(tag).fetchSemanticsNode().boundsInRoot.top }
+        assertTrue(top("call") < top("metro-0"))
+        assertTrue(top("metro-0") < top("route-heading"))
+        assertTrue(top("route-heading") < top("nearby-heading"))
+        rule.onNodeWithTag("metro-0-0").assertDoesNotExist() // 기본 접힘
+        rule.onNodeWithTag("metro-0").performClick()
+        rule.onNodeWithTag("metro-0-0").assertExists()
+        rule.onRoot().tryPerformAccessibilityChecks()
+    }
+
+    /** 경유역(transit-stop)은 노선 힌트로 번호를 조회하고, 조회 실패는 없음과 가른 문장 한 줄이다(3-state, spec §5.5). */
+    @Test
+    fun transitStopPhoneFailureIsALine() {
+        val place = transitStopPlace(TransitLegStop(name = "천호", stationId = "2545", lat = 37.5387, lng = 127.1234))
+        val down = stubbedClient { HttpResponse(502, "") }
+        val store = StationPhoneStore(StationPhoneService(down), MainScope()) { System.currentTimeMillis() / 1_000.0 }
+        val factory = placeDetailFactory(place, PlaceHoursService(down), placeStrings { rule.activity.resources }, StationService(down), BarrierFreeService(down)) { "ko" }
+        rule.setContent { MaterialTheme { PlaceDetailScreen(factory, PlaceNav({}, { _, _ -> }, {}, {}), takeReturnFocus = { null }, stationLineHint = "수도권 5호선", phoneStore = store) } }
+        rule.waitUntil(5_000) { rule.onAllNodesWithTag("call-error").fetchSemanticsNodes().isNotEmpty() }
+        rule.onNodeWithTag("call").assertDoesNotExist()
+        rule.onNodeWithTag("title").assertIsFocused() // 조용히 나타난다 — 포커스를 옮기지 않는다
     }
 }
