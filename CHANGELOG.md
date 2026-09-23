@@ -29,6 +29,10 @@
 
 웹 대중교통 안내에서 [탑승 변경]으로 고른 역의 첫 조회가 진행 중 폴과 겹쳐도 다음 주기로 밀리지 않는다(`pickAboardStation`과 같은 재폴 표식). `TransitGuidePanel.test.tsx`의 간헐 실패(통지 단언이 커밋을 기다리지 않음)를 고쳤고, 거리 표기 사본 금지 가드 `format-drift.test.ts`가 안드로이드 `:kit`·`:app`까지 스캔한다. [BACKLOG A48](docs/BACKLOG.md#1-결함)
 
+### 문서 만료 점검(5차 웨이브 뒤)
+
+`docs/INTEGRATIONS.md`·`docs/PATTERNS.md`의 "CLAUDE.md 요지 전문" 보관 문단 29곳을 본문·포인터와 대조해 빠진 규칙이 없음을 확인하고 지웠다(그중 넷은 옛 규칙이었다). BACKLOG의 옛 종결 본문 넷(E12·E19·E24·K3)은 종결 표 행으로 줄이고, E19 실측표는 `docs/research/RESEARCH-2026-08-23-empty-result-sentences.md`로 옮겼다. 신규 A49(웹 대중교통 국면 전이 즉폴이 진행 중 폴에 삼켜지는 틈)를 등재했다. 그 밖에 미러 수(3벌 → 4벌), 스토어 빌드 표시, 가짜 링크, 버튼 라벨 목록 같은 낡은 서술을 코드에 맞췄다.
+
 ## 2026-09-23
 
 ### App Store 1.19 심사 제출 (빌드 27)

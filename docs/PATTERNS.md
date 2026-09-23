@@ -49,8 +49,6 @@
 - 저장 응답은 `node scripts/verify-briefing-station-join.mjs --from-corpus <dump.json>`으로 구성·동치 판정과 실제 Kit 조인을 함께 재검증한다. `--lang` 생략은 저장 언어이고 명시 불일치·`--out` 병용은 실패다. 이 모드는 env·provider·네트워크를 사용하지 않으며 원본과 수집 시각을 보존한다. 과거 응답 재검증을 신규 실호출 증거로 표시하지 않는다.
 - **가드**: `src/lib/__tests__/briefing-station-entry-guard.test.ts`(①~⑦ 판정 + 라벨 언어). ⚠ 술어는 **구조**를 봐야 한다 — 구현 리뷰 실측에서 표면만 보던 넷(옵트인 기본값·액션 상태 분기·로터 역순·줄이 `Text`로 남는지)이 되돌림을 통과시켰다.
 
-**CLAUDE.md 요지 전문(2026-09-19 축약 전, 원문 그대로)**: **경로 브리핑의 역 진입점은 이름 조인이고 줄은 전부 `Text`로 남는다**(E45, Kit `transitBriefingStations` — `stops.first`/`last` 위치 인덱스 금지, 조인 실패는 진입점 0, `.walk`는 다음 non-walk leg의 승차역). 진입은 로터뿐이고 역 개수는 액션 수만 정하며, 선언은 역별 묶음을 만든 **뒤** 뒤집는다. 소비자는 옵트인(`stationEntry`, 기본 꺼짐 — 안내 조망엔 push 스택이 0이라 켜면 무반응 액션). **전화 액션은 저장소 상태와 무관하게 상시이고 라벨만 갈린다**(경유역 로터도 통일, E44 §5.5 개정), 모름은 `resolve` 킥오프 뒤 통지. 저장소 읽기는 하위 뷰에, 미리 조회는 그 줄의 역만. → PATTERNS
-
 ### 자동 등장 보조 섹션은 region 랜드마크 유지
 
 **자동 등장 보조 섹션은 region 랜드마크 유지**(`<section aria-labelledby>`+`useId`+`<h3 id>`). 버튼 없이 조용히 fetch되어 나타나는 섹션(`AirQuality`·`StationMeta` 류)은 region이 **유일한 발견 수단**이라 "불필요한 region" 아님. ⚠ 죽은 코드 청소 시 이 `aria-labelledby`·`useId` 제거 금지. **버튼으로 펼치는 패널은 버튼이 발견 경로라 `<div>` 유지**. 판단 규칙: "사용자가 직접 펼쳤나(버튼·div) vs 조용히 나타났나(자동·region)".
@@ -97,17 +95,13 @@
 
 ### 둘러보기는 세 요청(조망·장면·목록)을 한 fetch로 묶어 한 번에 커밋한다
 
-**둘러보기는 세 요청(조망·장면·목록)을 한 fetch로 묶어 한 번에 커밋한다**(iOS `AroundNearbyModel` ↔ 웹 `AroundNearby.tsx`의 `fetchAround`, 2026-08-22 M4·B9): 완료 시점이 다른 로드를 따로 커밋하면 늦게 온 쪽이 포커스를 끌어간다(착지는 위치 문장 1회가 계약). 조각별 실패는 payload 안에 남겨 그 자리에 실패 문장으로 — `NearbyLoadCore`는 "payload가 있다/없다"만 본다. "한눈에 보기" 반경은 `OVERVIEW_RADIUS_M` **한 상수**(1km, 실호출 근거 spec §5)이고 불릿마다 다른 "가까운"을 쓰면 조망만 듣는 SR 사용자에게 브리핑이 거짓이 된다. 자동 펼침 장면(`SurroundingsSceneAutoSection`)은 트리거·닫기·착지가 없고 헤딩이 유일한 발견 경로다 — 버튼형(`SurroundingsSceneSection`, 안내 시트)은 종전 계약 그대로. 웹은 `useNearbyFetch`가 `ok`·`json()`만 읽는 점을 이용해 세 응답을 **합성 Response 하나**로 돌려준다(셋 다 실패해야 `error`, 전 키 부재만 `empty`, 조각 실패는 payload 안 플래그로 그 자리 문장). 불릿 문장은 `src/lib/overview-lines.ts` ↔ Kit `buildOverviewLines` ↔ CLI `formatNearbyOverview` 3벌 미러(템플릿은 `whereAmI.overview.*` 한 곳, 조사만 코드). 종전 "현재 위치 확인"(`WhereAmI`·`buildLocationNarrative`·`whereAmI.narrative.*`)은 웹·Kit 모두 삭제됐고 `/api/where-am-i`는 CLI·채팅 계약이라 남아 있다 — 웹 둘러보기에 되살리지 말 것. iOS의 "이 위치에 관해 물어보기" 버튼도 웹엔 없다(홈 범용 채팅·상세 앵커 채팅이 그 자리 — 의도된 비대칭). 장면·목록의 장소 행은 `requestOpenPlace`로 상세를 연다(자동 펼침 장면은 `showPlace={false}` — 패널 헤딩이 이미 같은 위치 문장이다).
+**둘러보기는 세 요청(조망·장면·목록)을 한 fetch로 묶어 한 번에 커밋한다**(iOS `AroundNearbyModel` ↔ 웹 `AroundNearby.tsx`의 `fetchAround`, 2026-08-22 M4·B9): 완료 시점이 다른 로드를 따로 커밋하면 늦게 온 쪽이 포커스를 끌어간다(착지는 위치 문장 1회가 계약). 조각별 실패는 payload 안에 남겨 그 자리에 실패 문장으로 — `NearbyLoadCore`는 "payload가 있다/없다"만 본다. "한눈에 보기" 반경은 `OVERVIEW_RADIUS_M` **한 상수**(1km, 실호출 근거 spec §5)이고 불릿마다 다른 "가까운"을 쓰면 조망만 듣는 SR 사용자에게 브리핑이 거짓이 된다. 자동 펼침 장면(`SurroundingsSceneAutoSection`)은 트리거·닫기·착지가 없고 헤딩이 유일한 발견 경로다 — 버튼형(`SurroundingsSceneSection`, 안내 시트)은 종전 계약 그대로. 웹은 `useNearbyFetch`가 `ok`·`json()`만 읽는 점을 이용해 세 응답을 **합성 Response 하나**로 돌려준다(셋 다 실패해야 `error`, 전 키 부재만 `empty`, 조각 실패는 payload 안 플래그로 그 자리 문장). 불릿 문장은 `src/lib/overview-lines.ts` ↔ Kit `buildOverviewLines` ↔ CLI `formatNearbyOverview` ↔ 안드로이드 `:kit` `LocationNarrative.kt` 4벌 미러(템플릿은 `whereAmI.overview.*` 한 곳, 조사만 코드). 종전 "현재 위치 확인"(`WhereAmI`·`buildLocationNarrative`·`whereAmI.narrative.*`)은 웹·Kit 모두 삭제됐고 `/api/where-am-i`는 CLI·채팅 계약이라 남아 있다 — 웹 둘러보기에 되살리지 말 것. iOS의 "이 위치에 관해 물어보기" 버튼도 웹엔 없다(홈 범용 채팅·상세 앵커 채팅이 그 자리 — 의도된 비대칭). 장면·목록의 장소 행은 `requestOpenPlace`로 상세를 연다(자동 펼침 장면은 `showPlace={false}` — 패널 헤딩이 이미 같은 위치 문장이다).
 
 ### iOS 목록 포커스 이동은 "가시화 → 지연 → 경합 해제 → 대입 → 검증 → 1회 재시도"가 정본
 
 **iOS 목록 포커스 이동은 "가시화 → 지연 → 경합 해제 → 대입 → 검증 → 1회 재시도"가 정본**(정본 구현 `SearchView.landFirstRowFocus`·`DirectionsEndpointSearchView.landFirstCandidateFocus`, 선례 `ChatConversationView`). **동기 대입 한 줄은 실패한다** — `List`의 오프스크린 행은 AX 트리에서 컬링되고, 대상이 트리에 없으면 SwiftUI가 대입을 조용히 되돌린다(대상이 화면 밖이면 무이동, 걸치면 엉뚱한 행 착지라 증상이 갈려 원인이 안 보인다). ⚠ **함정 셋**: ①`.accessibilityFocused($binding, equals:)`에 **`Bool` 바인딩을 여러 행에 붙이지 말 것**(나머지 행 전부가 포커스를 주장한다 — **항목 정체성 옵셔널 바인딩**이 정본) ②**`scrollTo` 인자는 포커스 키와 다르다**(포커스는 복합 키, `ForEach` 정체성은 원시 id라 복합 키를 넘기면 가시화가 조용히 실패한다) ③**시뮬레이터로는 검출 불가**(AX 트리는 어느 행이 포커스를 주장하는지 보여 주지 않는다) — 실패 시 가설 패치를 반복하지 말고 `ChatFocusDiag` 로그로 실착지를 확정한다. **"내 주변"·"이 장소 주변"은 공유 계층 `nearbyFocusOnLoad`/`NearbyFocusLander`를 쓴다**(복붙 금지). 그 계층의 계약 셋: **첫 로드에만 착지**(새로고침은 사용자가 그 버튼에 커서를 둔 채 일으키는 행동이다), **`anchor` 미지정**(`.top`을 주면 sticky 섹션 헤더가 네비게이션 바 뒤로 잘린다), **결과 통지 완료를 기다리지 않는다**(`awaitAnnouncementFinish` 부활 금지).
 
 **정본이 둘이다(2026-09-11 A35) — 대중교통 안내 시트(`TransitTrackingSheet.landControlFocus`)만 위 시퀀스의 3단 위에 있고, 그 밖(검색·길찾기 검색·내 주변)은 종전 2단 그대로다.** 위 정본대로 고친 A19(2026-08-22)가 실승차 두 세션에서 1/6~5/6이었기 때문이고(spec `docs/superpowers/specs/2026-09-11-transit-station-to-place-and-landing-design.md` §1.1), 로그가 갈라낸 기제는 셋이다: ①오프스크린 컬링(가설 — `actual=nil`은 "대입이 되돌아감"과 "VO 커서가 바인딩 없는 요소에 있음"을 구분하지 못한다) ②VoiceOver 자체 재배치(헤더로 되돌아간 실패 4/4가 전경 복귀·시트 등장 14초 안 — screen-changed가 우리 대입 뒤에 오면 덮는다) ③트리거 결손(대상 뷰의 `.task`가 착지를 불러 대상이 실현되지 않으면 시도 자체가 없다 — 로그 성공률은 실현된 시도만의 것). 3단 시퀀스: **실현 관측**(`landingTarget` 헬퍼가 `.accessibilityFocused`·`.id`·onAppear/onDisappear를 한 번에 달고, 관측값은 `@State` Set이 아니라 **비관찰 참조 카운트 상자** — Set이면 스와이프마다 시트가 재렌더되고 뷰 교체 시 onAppear/onDisappear 순서 역전으로 빠진다) → **실현될 때까지 반복 가시화**(아직 없는 id에 `scrollTo`는 조용히 무효, 전 대상 — 종전 "상단 버튼은 첫 화면 안" 전제가 거짓) → 대입 → **100ms 단위 늦은 검증**(600·900·1200ms 체증, 확정 즉시 종료·대상 소멸 즉시 `vanished`) × 3 → 실패 시 **전 대상 공용 폴백 통지** `.high`(그 자리에서 낭독됐을 라벨, `vo` 커서가 이미 대상이면 침묵). **착지 트리거는 상태 변화**(`reboardPickerActive`·`aboardStep` onChange)이고 대상 뷰의 `.task`가 아니다. **배경·모달 위에선 시도하지 않는다**(E36 배경 폴로 국면 전이가 배경에서도 나므로 그대로 두면 전부 실패로 기록돼 판정 축을 오염시키고, 장소 상세·검색 시트 위에선 커서가 모달 안이라 폴백만 낭독을 끊는다 — `deferredLanding`이 전경 복귀·`onDismiss`·시트 닫힘에 한 번, 진행 중 착지도 배경 전환이 끊고 이월, 최소화는 List `onDisappear`가 Task를 끊는다). `controlExists`는 `phaseControls`의 바깥 분기(untrackable·지방버스)까지 본다 — 아니면 그 화면에 없는 문장을 폴백으로 낭독한다. 계측 `controlFocus target= landed= actual= attempts= elapsedMs= rendered= reason=<ok|notRendered|stolen|vanished|background|modal|cancelled> vo="…"`가 다음 로그 회수의 판정 축이다(`vo`와 그 침묵 가드는 DEBUG·EXPERIMENTAL 안 — 졸업 시 게이트 이동). 다른 화면으로의 **승격 조건은 실승차 성공률**(BACKLOG §2 A35 행)이다 — 그 전엔 두 정본을 합치지 않는다.
-
-**CLAUDE.md 요지 전문(2026-09-13 축약 전, 원문 그대로)**: **iOS 목록 포커스 이동은 "가시화 → 지연 → 경합 해제 → 대입 → 검증 → 1회 재시도"가 정본**(`SearchView.landFirstRowFocus`; 동기 대입 한 줄은 실패). Bool 바인딩 다중 부착 금지·`scrollTo` 인자는 포커스 키와 다름·시뮬레이터 검출 불가. "내 주변"은 `nearbyFocusOnLoad`/`NearbyFocusLander` 공유. **대중교통 안내 시트만 3단 위**(A35, `TransitTrackingSheet.landControlFocus` — 실현 관측 → 반복 가시화 → 늦은 검증 3회 → 폴백 통지 `.high`, 트리거는 대상 뷰 `.task`가 아니라 상태 변화, 배경·모달 위에선 시도하지 않는다). 착지 대상 부착은 `landingTarget` 한 자리(소스 가드 `transit-landing-guard.test.ts`). → PATTERNS
-
-**CLAUDE.md 요지 전문(2026-09-19 축약 전, 원문 그대로)**: **iOS 목록 포커스 이동은 "가시화 → 지연 → 경합 해제 → 대입 → 검증 → 1회 재시도"가 정본**(`SearchView.landFirstRowFocus`; 동기 대입 한 줄은 실패, Bool 바인딩 다중 부착 금지, 시뮬레이터 검출 불가). "내 주변"은 `nearbyFocusOnLoad`/`NearbyFocusLander` 공유, **대중교통 안내 시트만 3단 위**(A35 `TransitTrackingSheet.landControlFocus`, 트리거는 상태 변화). 착지 대상 부착은 `landingTarget` 한 자리(소스 가드 `transit-landing-guard.test.ts`). → PATTERNS
 
 ### 그 시트의 착지 대상은 기본이 상태 문장 행이다 (E38, 2026-09-12)
 
@@ -121,13 +115,9 @@
 
 ⚠ **착지 대상이 한 자리로 몰리면 테스트 검출력이 조용히 0이 된다** — "착지했다"와 "애초에 거기 있었다"가 구별되지 않아 전이 착지를 통째로 지워도 초록이다(변이 주입 실측). 웹 테스트는 **누르기 전에 그 컨트롤로 커서를 옮겨**(`clickFocused`) 실기기 경로를 재현한다. 그것으로도 부족한 자리가 있다: →waiting 전이는 **목록 포커스 소실 복귀가 같은 자리로 되돌리는** 중복 경로라 결과 단언이 어느 경로 덕인지 구별하지 못한다(후보 행을 고르면 제거된 행의 blur가 오지 않아 `listHadFocusRef`가 참으로 남는다) — 그런 자리는 결과가 아니라 **구조를 소스 가드로** 잠근다(웹 컴포넌트도 소스로 읽는다).
 
-**CLAUDE.md 요지 전문(2026-09-13 축약 전, 원문 그대로)**: **그 시트의 착지 대상은 기본이 상태 문장 행이다**(E38, `SheetControl.status` — 하차 도착도 [다음 구간]이 아니라 문장에 앉는다). 예외는 자기 질문을 여는 화면(역 선택·급행 확인 헤딩, 차량 선택 라벨 — →waiting 전이 포함)과 띠바 복귀·목적지 전환 상태 행뿐이고, 허용 집합은 소스 가드 `transit-landing-guard.test.ts`가 잠근다. ⚠ 대상이 하나로 몰리면 착지 테스트의 검출력이 0이 되므로 **누르기 전에 그 컨트롤로 커서를 옮긴다**(`clickFocused`). → PATTERNS
-
 ### 안내 시트에서 장소 상세는 중첩 시트 하나(`detailPlace`)로 열고, 산문 속 역 언급은 로터 액션이다
 
 **안내 시트에서 장소 상세는 중첩 시트 하나(`detailPlace`)로 열고, 산문 속 역 언급은 로터 액션이다**(E33, 2026-09-11, spec `docs/superpowers/specs/2026-09-11-transit-station-to-place-and-landing-design.md` §1.2·§4.2). ⚠ **"시트 위 시트 금지"라는 전제는 N1 M3의 오독이다** — M3가 기각한 것은 장소 상세가 이미 시트로 떠 있는 경로(채팅·내 주변)에서 **루트 안내 시트**를 자동으로 올리는 것이고, 안내 시트 **위에** 장소 상세를 중첩 시트로 올리는 것은 2026-08-12 §2가 채택한 현행 정본이다(제목 메뉴 "장소 상세 보기", 진행 상황 조망도 같은 계층). 그래서 `TransitTrackingSheet`는 `showPlaceDetail: Bool` 대신 `.sheet(item: $detailPlace)` 하나를 두고 목적지(`guideDestinationPlace`)·지하철 경유역(`transitStopPlace` — `name`은 한국어 조인 키, `nameRoman`에 영문, `category` "지하철역"으로 `isStation` 통과)이 같은 시트를 지난다. NavigationStack push를 고르지 않은 근거는 선례 일치·시스템 포커스 복원(⚠ 이 repo에서 미검증 — BACKLOG §2 E33 ②가 블로킹 판정)·레이아웃 무변경. **지하철 leg의 경유역 행은 행 전체가 버튼**(단일 `Text` 라벨 그대로 — 헌장 §4), **상태 문장은 뷰 불변 + 역 언급 수만큼 `.accessibilityActions`** — 채팅 산문 선례의 "1개면 블록 전체 버튼" 갈래는 **정적 산문 전제**라 여기서 쓰지 않는다(폴마다 언급 수가 오가 Button↔Text가 갈리면 포커스가 얹힌 줄이 15초마다 파괴·재생성된다, 헌장 §5). 액션 라벨은 descriptor 키 `openStation`(다른 descriptor와 같은 언어 규칙 — ⚠ "영문 없으면 라벨 전체 ko"는 iOS에서 성립하지 않는다: 렌더러가 줄 언어를 `koFallback` 계측에만 쓰고 포맷은 앱 카탈로그라 en 세션 + 영문 없는 역은 "View details for 천호(풍납토성)"가 되며, 판정 정본은 BACKLOG §2 E28-①), 언급 대응은 ko·en 라벨 둘 다(`transitStationMentions` — 상태 문장은 조각별로 줄 언어가 갈린다). 역 상세 열기는 사용자 조작이라 `touchUserAction()`. **웹은 미연결**: 웹 대중교통 세션은 `TransitGuidePanel` 컴포넌트 수명이라 `requestOpenPlace`가 길찾기 뷰를 언마운트하는 순간 `stopSession()`이 통지 없이 안내를 끝낸다(선행 조건은 앱 수준 세션 또는 오버레이 표현 — BACKLOG E33 잔여). 버스 정류장·역 선택 행(이미 답 버튼)·주변 확인 헤더(헤딩이 발견 경로)·빠른하차 줄(경유역 행이 같은 곳)은 범위 밖(spec §2).
-
-**CLAUDE.md 요지 전문(2026-09-19 축약 전, 원문 그대로)**: **안내 시트에서 장소 상세는 중첩 시트 하나(`detailPlace`)로 열고, 산문 속 역 언급은 로터 액션이다**(E33). "시트 위 시트 금지"(N1 M3)는 반대 방향 — 장소 상세가 떠 있을 때 **루트 안내 시트**를 올리는 것의 기각이다. 상태 문장처럼 폴마다 바뀌는 문장엔 채팅의 "1개면 블록 버튼" 갈래를 쓰지 않는다(뷰 종류가 갈리면 포커스가 얹힌 줄이 재생성된다). 역 Place는 `transitStopPlace`(`name`=ko 조인 키). 웹은 세션이 길찾기 뷰 수명이라 미연결. → PATTERNS
 
 ### 화면 배치를 바꾸면 그 자리를 지나가는 포커스 점프를 함께 점검한다
 
@@ -141,8 +131,6 @@
 - **복구 경로가 없다.** `arrivalDest`는 그 사이 바뀌지 않으므로 도착 전이 `onChange`가 다시 돌지 않는다. 같은 이유로 **도착 전이 리셋은 신뢰할 수 있는 소비 지점이 아니다**(최소화 중 도착하면 뷰가 없어 아예 돌지 않는다) — 소비는 사용자가 누르는 버튼의 핸들러에서 한다.
 - **판별 질문**: *"이 표식이 사라지면 화면만 어긋나는가, 저장되는 값이 틀리는가?"* 후자면 `@AppStorage`(또는 모델의 에피소드 상태)다.
 - **뷰 계층은 테스트 레인이 없으므로 배선을 소스 가드로 잠근다**(`src/lib/__tests__/weight-prompt-wiring.test.ts`, `beacon-tuning-wiring` 관례). E31에서 잠근 축 다섯: 표식이 `@AppStorage`인가 · 카운터 대입 지점이 1곳인가 · **[닫기]에서 카운터 갱신이 `clearArrival()`보다 앞인가**(뒤집으면 `arrivalHealth`가 nil이라 카운터가 영영 안 올라 기능이 조용히 죽는다) · 표식을 소비하는가 · 두 벌 키가 화면에 남아 있는가.
-
-**CLAUDE.md 요지 전문(2026-09-13 축약 전, 원문 그대로)**: **안내 시트를 최소화하면 콘텐츠 뷰가 파괴되어 `@State`가 사라진다**(루트 `.sheet(item:)` 하나 + `presentedScreen = isMinimized ? nil : screen`; 종료 화면의 스와이프·VO escape가 곧 최소화라 일상 경로다). 화면만 어긋나는 표식은 종전대로 `@State`지만 **영속 값을 바꾸는 판정에 쓰이는 표식은 `@AppStorage`**이고, 소비는 도착 전이 `onChange`가 아니라 사용자가 누르는 버튼 핸들러에서 한다. 뷰 계층은 테스트 레인이 없어 배선을 소스 가드로 잠근다. → PATTERNS
 
 ---
 
@@ -159,10 +147,6 @@ E25(위원장 요청 2026-09-07, 구현 2026-09-13). 판정 정본은 웹 `src/l
 소비자는 셋이고 **함께 고쳐야 화면과 도구가 같은 문장을 낸다**: 웹 브리핑 `TransitRouteBriefing` · WebMCP 도구 출력 `DirectionsView.buildToolPlan`(별도 평문 조립기라 같은 규칙을 두 번 쓴다) · iOS 길찾기 행 `RouteBriefing`. 도보 줄의 키·인자 순서는 Kit `TransitWalkLegText.resolve`가 계속 소유한다(ko 순서가 iOS 위치 인자 ABI라 `ios/i18n/arg-order.json`이 잠근다).
 
 **하차 줄의 역명은 구간 줄과 같은 영어 자격을 따른다**(2026-09-13 결함 수정): 웹은 `legEn`(노선·승차·하차 영문이 **다** 있을 때만 영어), iOS는 Kit `transitLegUsesEnglish(_:lang:)` + `transitAlightStationName(_:lang:)`으로 구간 줄(`transitLegLine`)과 하차 줄(`TransitRouteRows`)이 **한 술어**를 본다. 역명만 영문으로 바꾸면 위 줄은 "여의도", 아래 줄은 "Yeouido"가 되어 사용자가 같은 역으로 알아보지 못한다. 종전엔 그 판정이 앱 함수 안 인라인 `guard`라 하차 줄이 `toName`을 직접 읽었고 en 세션에서 "Get off at 여의도"로 떨어졌다. 배선은 `transit-exit-lines.test.ts` 소스 가드가 잠근다(`toName` 직접 읽기·인라인 판정 재도입 금지). WebMCP 도구 출력은 설계상 한국어 이름 고정이라 대상 밖.
-
-**CLAUDE.md 요지 전문(2026-09-13 축약 전, 원문 그대로)**: **경로 브리핑의 출구 번호는 한 경로에 정확히 한 줄에만 실린다**(E25): 승차 출구는 **직전이 도보면 그 줄, 아니면 탑승 줄 끝**(`boardExitAfterWalk`·`boardExitOnBoardLine` 배타 술어 — 서버 문맥이 아니라 렌더 배열의 직전 항목으로 가른다. 0m 도보 leg가 목록에서 지워져 둘이 어긋난다), 하차 출구는 하차 줄 끝(문 먼저). 문구는 안내 세션과 같은 키(`transitGuide.exitBound`) 재사용이고 Kit 판만 클로저로 받는다(그 네임스페이스가 Kit 카탈로그 밖). 소비자 셋(웹 브리핑·WebMCP 도구 출력·iOS 길찾기 행)을 함께 고친다. 하차 줄 역명은 구간 줄과 같은 영어 자격 술어(웹 `legEn` ↔ Kit `transitLegUsesEnglish`)를 지난다 — `toName` 직접 읽기 금지. → PATTERNS
-
-**CLAUDE.md 요지 전문(2026-09-19 축약 전, 원문 그대로)**: **경로 브리핑의 출구 번호는 한 경로에 정확히 한 줄에만 실린다**(E25): 승차 출구는 직전이 도보면 그 줄, 아니면 탑승 줄 끝(`boardExitAfterWalk`·`boardExitOnBoardLine` 배타 술어 — 렌더 배열의 직전 항목으로 가른다), 하차 출구는 하차 줄 끝(문 먼저). 문구는 안내 세션과 같은 키 `transitGuide.exitBound`(Kit 판만 클로저). 소비자 셋(웹 브리핑·WebMCP 도구 출력·iOS 길찾기 행)을 함께 고치고, 하차 줄 역명은 구간 줄과 같은 영어 자격 술어(웹 `legEn` ↔ Kit `transitLegUsesEnglish`)를 지난다(`toName` 직접 읽기 금지). → PATTERNS
 
 ### 신규 "내 주변" 도메인은 공유 계층으로 만든다
 
@@ -185,8 +169,6 @@ E25(위원장 요청 2026-09-07, 구현 2026-09-13). 판정 정본은 웹 `src/l
 - ⚠ **창구가 위로 올라가 통지가 렌더 한 홉 뒤에 커밋된다**(자식 effect → 부모 setState → 재렌더). jsdom 동기 단언은 그 홉을 못 기다려 **실행 순서에 따라 깨진다** — 패시브 effect가 만든 상태엔 `waitFor`([[jsdom-sync-focus-assertion-flake]] 동형).
 - 계약은 `src/components/__tests__/DirectionsLiveRegion.test.tsx`(실물 컴포넌트: 개수 1·세션 문장 경유·조작 응답 경유·빈 게시 가드·창구 제거 시 잔여 0)가 잠그고, 패널·비콘을 단독 렌더하는 스위트는 `__tests__/live-region-host.tsx` 숙주로 감싼다. **재발화 판정은 문자열이 아니라 DOM 변경 횟수**다(같은 문장 재대입은 텍스트가 같아 문자열 비교로는 침묵을 통과시킨다, [[live-region-same-string-is-silent]]). 변이 주입 5종으로 검출력을 실측했다 — 그중 "빈 값을 그대로 게시한다"는 처음에 전 스위트 초록으로 통과해 축을 새로 붙였다.
 
-**CLAUDE.md 요지 전문(2026-09-19 축약 전, 원문 그대로)**: **polite 창구는 화면이 소유한다 — 자식 패널은 자기 live region을 두지 않는다**(A40, 웹 길찾기 뷰 `DirectionsView.announce`; `TransitGuidePanel`·`DistanceBeacon`은 기본값 없는 `announce` prop으로 게시). ⚠ 게시자는 **빈 값을 올리지 않는다**(훅의 `"" → 같은 문장` 되돌림이 남의 문장을 지운다), 같은 커밋에 두 문장이 나는 자리(안내 시작 고지)는 대기 꼬리로 합친다, 재발화 판정은 문자열이 아니라 DOM 변경 횟수. → PATTERNS
-
 ### 안내 시트 상태 문장은 한 조립기가 만들고, 통지는 그 문장에 없는 것만 말한다
 
 **안내 시트 상태 문장은 한 조립기가 만들고, 통지는 그 문장에 없는 것만 말한다**(E39·E41, spec `docs/superpowers/specs/2026-09-12-transit-status-prose-design.md`, 위원장 문안 확정 2026-09-12). 종전 문장은 조각을 공백으로 이어 붙인 목록이라 같은 사실을 두 번 말했다 — 실승차 실측 `갈월동에서 421 탑승 기다리는 중. 차량 접근 중. 갈월동에 4분후[1번째 전]. 마지막 갱신 21:03.`에서 "차량 접근 중"과 "4분후"가 같은 사실이고, "갈월동"이 한 문장 안에 두 번 나온다.
@@ -203,10 +185,6 @@ E25(위원장 요청 2026-09-07, 구현 2026-09-13). 판정 정본은 웹 `src/l
 - ⚠ **축소의 전제는 "그 전이가 상태 문장에 착지한다"이고, 두 전이는 그렇지 않다**(a11y 감사 2026-09-12 — 착지 표 `TransitTrackingSheet.phaseTransitionLanding`이 정본이다. **통지를 줄이기 전에 그 표를 읽는다**): ①`legAdvanced`는 차량 선택 목록 라벨(`waitingLabel`)에 착지하므로 **다음 구간 문맥을 통지가 말한다**(축소 철회). 추적 불가 구간을 수동으로 넘길 때는 앞선 도착 통지조차 없어 문맥을 빼면 완전 공백이다. ②`boarding → riding` 자동 승격은 **착지 대상이 아니다**(N3 ① — 커서가 이미 그 줄에 있고 줄이 사라지지 않아 VoiceOver가 다시 읽지 않는다) — 하차역 조각 `boardedAlight`을 자동 승격(`observed`·`departed`)에만 잇고, 사용자가 버튼으로 선언한 승차(`declared`)는 착지가 그 줄을 읽어 주므로 붙이지 않는다.
 - **추정 도착의 유보는 통지가 나르는 유일한 축이다**: 상태 문장 `stateArrived`는 확정형이 정본이라(A37 ②) "도착했다"와 "도착한 것 같다"를 가르지 못한다. `arrived`/`arrivedGuess` 쌍의 어미를 6로케일에서 **각자 다르게** 유지한다 — 통지를 줄일 때 ja가 바이트 동일이 된 적이 있다.
 - **A41 인계 기각**: `boarded(cause: "departed")`에 관측 서술("{노선} 출발")을 넣는 안은 채택하지 않았다 — 통지가 "무슨 일이 일어났나"만 말하는데 사용자에게 일어난 일은 탑승이지 버스의 출발이 아니다.
-
-**CLAUDE.md 요지 전문(2026-09-13 축약 전, 원문 그대로)**: **안내 시트 상태 문장은 한 조립기(`arrivalStatusLine` ↔ Kit `transitArrivalStatusLine`)가 만들고 통지는 그 문장에 없는 것만 말한다**(E39·E41): 쉼표 결합이고 결합용 키엔 마침표가 없으며, 서울버스는 `parseBusArrmsg` 구조로 조립(미지는 원문 병치), 수단 낱말은 `*Bus` 키로(라벨 합성 금지). ⚠ 통지를 줄이기 전에 착지 표 `phaseTransitionLanding`을 읽는다(상태 문장이 아닌 전이가 둘 있다). 시작 통지는 목적지를 말한다(E40, 3수단). → PATTERNS
-
-**CLAUDE.md 요지 전문(2026-09-19 축약 전, 원문 그대로)**: **안내 시트 상태 문장은 한 조립기(`arrivalStatusLine` ↔ Kit `transitArrivalStatusLine`)가 만들고 통지는 그 문장에 없는 것만 말한다**(E39·E41): 쉼표 결합, 결합용 키엔 마침표 없음, 서울버스는 `parseBusArrmsg` 구조로, 수단 낱말은 `*Bus` 키로(라벨 합성 금지). ⚠ 통지를 줄이기 전에 착지 표 `phaseTransitionLanding`을 읽는다. 시작 통지는 목적지를 말한다(E40). → PATTERNS
 
 ### 안내 시작 통지는 목적지를 말한다
 
@@ -228,10 +206,6 @@ E25(위원장 요청 2026-09-07, 구현 2026-09-13). 판정 정본은 웹 `src/l
 - ⚠ **즉폴은 명시 호출이 아니라 effect 재실행으로도 생긴다**(웹, 2026-09-23): 폴 예약 effect가 `[pollTick, pollOnce]`였을 때 `pollOnce` 정체성이 `boardOverride`·로케일을 따라 바뀌어, 탑승 변경으로 역을 고른 세션의 관측 승격(riding 진입이 재선택을 지운다)이 하차역 폴을 주기 없이 불렀다. 반응 축은 tick 하나이고 최신 `pollOnce`는 `useEffectEvent`로 부른다 — 의존성을 하나씩 안정화하는 길은 새 의존성마다 다시 깨진다. 이 결함은 렌더마다 새 `t`를 주던 테스트 목의 폴 폭주에 가려 있었다(그 폭주에 기대 통과하던 A46 테스트도 있었다). 폴 루프를 마운트하는 테스트의 next-intl 목은 `src/components/__tests__/stable-intl-mock.ts`만 쓰고(소스 가드), 가짜 시계는 한 폴씩 넘긴다(다음 타이머는 앞 폴이 끝난 뒤 `finally`에서 걸려 일괄 전진은 한 폴만 푼다, `advanceOnePoll`).
 - ⚠ **boarding → riding 전이는 착지 대상이 아니다**: 종전엔 그 순간 [탑승했습니다]가 사라져 선점 이동이 헌장 §5였지만, 이제 커서가 얹힌 상태 문장은 사라지지 않고 승격은 폴이 일으킨다 — 착지시키면 듣던 문장을 끊는 포커스 강탈이다. `waiting → riding`(사용자가 고른 열차로 직행)은 종전대로 착지한다. E38로 대상이 통일된 뒤엔 이 제외의 근거가 더 단순해졌다 — **커서는 이미 그 줄에 있다**.
 - **탈출구는 ②가 대신한다**: 버튼이 없는 동안 실제로 타 버렸으면 [다른 차량 선택] → 대기 국면 [이미 탔어요](A34 — 역을 묻고 그 역에 있는 열차를 고른다) → 식별 잠금으로 riding 직행. 실제 탄 열차를 다시 지목하므로 **더 정확한 잠금**이 된다.
-
-**CLAUDE.md 요지 전문(2026-09-13 축약 전, 원문 그대로)**: **boarding 국면의 선언 버튼은 관측이 끝났을 때만 선다**(N3 ① — 승차 정류소 도착 관측이 riding 승격을 자동으로 한다). 조건은 순수 술어 `transitBoardingObservationLost` ↔ 웹 `boardingObservationLost`(`signalLost`·`upstreamFailed`)이고 래치는 앱 층에 둔다(회복에 버튼이 사라지면 포커스를 쥔 컨트롤이 폴 한 번에 제거된다). ⚠ **관측 승격 직후 즉폴 금지**(`boarded` 통지의 지연 슬롯을 latest-wins로 덮는다). 그 승격 전이는 **착지 대상도 아니다**. → PATTERNS
-
-**CLAUDE.md 요지 전문(2026-09-19 축약 전, 원문 그대로)**: **boarding 국면의 선언 버튼은 관측이 끝났을 때만 선다**(N3 ①, 순수 술어 `transitBoardingObservationLost` ↔ 웹 `boardingObservationLost`, 래치는 앱 층 — 회복에 버튼이 사라지면 포커스를 쥔 컨트롤이 제거된다). ⚠ **관측 승격 직후 즉폴 금지**(`boarded` 통지의 지연 슬롯을 덮는다), 그 승격 전이는 착지 대상도 아니다. → PATTERNS
 
 ### 텍스트 입력의 확정 시점은 키보드 종류가 정한다
 
@@ -259,7 +233,7 @@ E25(위원장 요청 2026-09-07, 구현 2026-09-13). 판정 정본은 웹 `src/l
 
 ### 값을 특정 경로에서 배제할 때 1선은 구조, 2선은 소스 가드, 브랜드 타입은 3선이다
 
-**값을 특정 경로에서 배제할 때 1선은 구조, 2선은 소스 가드, 브랜드 타입은 3선이다**(2026-08-09 실측으로 순서 정정). 실시간 안내가 수동 좌표를 못 보게 만든 실제 방어선은 **진입점이 좌표를 아예 주입받지 않는 구조**였다(`useRouteGuide(dest, kind, accessible)`에 좌표 인자 없음, `BeaconModel.toggle()`도 origin 없음). ⚠ **브랜드 타입은 함수 바꿔치기를 못 잡는다** — `awaitRealFix`를 `awaitEffectiveLocation`으로 바꿔도 반환형에 `lat`/`lng`가 있어 `fix.lat`이 그대로 컴파일된다. 그 회귀를 잡는 것은 소스 가드다("타입이 정본, 스캔은 보조"는 틀렸다).
+**값을 특정 경로에서 배제할 때 1선은 구조, 2선은 소스 가드, 브랜드 타입은 3선이다**(2026-08-09 실측으로 순서 정정). 실시간 안내가 수동 좌표를 못 보게 만든 실제 방어선은 **진입점이 좌표를 아예 주입받지 않는 구조**였다(`useRouteGuide`에 출발 좌표 인자 없음(네 번째 인자의 `via`는 경유지다), `BeaconModel.toggle()`도 origin 없음). ⚠ **브랜드 타입은 함수 바꿔치기를 못 잡는다** — `awaitRealFix`를 `awaitEffectiveLocation`으로 바꿔도 반환형에 `lat`/`lng`가 있어 `fix.lat`이 그대로 컴파일된다. 그 회귀를 잡는 것은 소스 가드다("타입이 정본, 스캔은 보조"는 틀렸다).
 
 ### 런타임 판정이 있는 자리에 상시 고지 문장을 얹지 않는다
 
@@ -277,8 +251,6 @@ E25(위원장 요청 2026-09-07, 구현 2026-09-13). 판정 정본은 웹 `src/l
 
 **결과 진동은 `ResultHaptic.fire(.success|.attention|.failure)` 한 창구다**(E30 확장, iOS 표준 3종만·스위치 `TrendHaptics.storageKey` 뒤). 통지를 게시하는 자리에 1회성 결과·전이에만 붙이고 반복 상태 통지에는 넣지 않는다. 3-state를 촉각에도 지킨다(있음·없음·실패가 다른 진동). **문장이 나가는 조건 = 진동이 나가는 조건**: 억제 가드가 문장을 버리는 모델(`BeaconModel`)은 `resultHaptic` 창구가 `outputSuppressed`면 건너뛴다. 제너레이터 직접 생성은 기존 발원지 4곳뿐이고 `result-haptic-guard.test.ts`가 잠근다.
 
-**CLAUDE.md 요지 전문(2026-09-19 축약 전, 원문 그대로)**: **결과 진동은 `ResultHaptic.fire(.success|.attention|.failure)` 한 창구다**(iOS 표준 3종만, 스위치 `TrendHaptics.storageKey` 뒤). 1회성 결과·전이에만, 반복 상태 통지엔 금지, 3-state를 촉각에도. **문장이 나가는 조건 = 진동이 나가는 조건**(`BeaconModel`은 `outputSuppressed`면 건너뛴다). 제너레이터 직접 생성은 기존 4곳뿐, `result-haptic-guard.test.ts`가 잠근다. → PATTERNS
-
 ---
 
 ## 검색·딥링크·i18n
@@ -291,19 +263,15 @@ E25(위원장 요청 2026-09-07, 구현 2026-09-13). 판정 정본은 웹 `src/l
 
 iOS `RecentEndpoint.labelRoman`은 지정 당시 보유한 표기를 기존 저장 키 아래 선택 필드로 저장한다. 과거 항목은 `decodeIfPresent`로 nil이며 원명으로 폴백한다. 기록·고정 토글·최근 경로의 출발/도착/경유·선택·프리필 전 경로에서 보존하되 좌표 기반 id·중복 판정은 바꾸지 않는다. 표시 시 추가 조회나 로마자 재생성은 하지 않는다.
 
-**프리필 진입과 `?dir=` 복원은 필드 값이 같아도 다른 진입이라 표식으로 가른다**(B10·E32, 2026-09-11): 장소 상세의 "여기까지/여기부터 길찾기"는 **채움 + 조회가 한 동작**이지만(iOS 2026-09-03 선행), 웹 `DirectionsView`의 `initialFrom`·`initialTo`는 그 진입과 `?dir=` 딥링크 복원이 **함께 쓰는 prop**이라 값만으로는 둘을 가를 수 없다 — 값에 조회를 걸면 새로고침·URL 직진입·앞으로가기마다 측위 팝업이 뜬다(측위는 조회 경로에서만 일어난다). 그래서 `PlaceSearch.openDirections(prefill)`만 상태에 `prefill: true`를 싣고 `DirectionsView`는 그 표식에서만 마운트 1회 조회한다. 판정(`prefillActionRef`)은 **첫 렌더 값으로 굳혀** 1회 소비한다 — 이후 사용자가 필드를 고쳐도 다시 판정하지 않는다(iOS `pendingPrefillQuery`·`pendingPrefillFocus`와 같은 규율).
+**프리필 진입과 `?dir=` 복원은 필드 값이 같아도 다른 진입이라 표식으로 가른다**(B10·E32, 2026-09-11): 장소 상세의 "여기까지/여기부터 길찾기"는 **채움 + 조회가 한 동작**이지만(iOS 2026-09-03 선행, 표식은 `DirectionsPrefill{role,endpoint}`), 웹 `DirectionsView`의 `initialFrom`·`initialTo`는 그 진입과 `?dir=` 딥링크 복원이 **함께 쓰는 prop**이라 값만으로는 둘을 가를 수 없다 — 값에 조회를 걸면 새로고침·URL 직진입·앞으로가기마다 측위 팝업이 뜬다(측위는 조회 경로에서만 일어난다). 그래서 `PlaceSearch.openDirections(prefill)`만 상태에 `prefill: true`를 싣고 `DirectionsView`는 그 표식에서만 마운트 1회 조회한다. 판정(`prefillActionRef`)은 **첫 렌더 값으로 굳혀** 1회 소비한다 — 이후 사용자가 필드를 고쳐도 다시 판정하지 않는다(iOS `pendingPrefillQuery`·`pendingPrefillFocus`와 같은 규율).
 
 조회 조건은 **양끝이 다 확정**이다. 출발지만 채운 진입("여기부터 길찾기")에서 조회하면 방금 누른 버튼에 "도착지를 입력하세요" 오류로 답하게 되므로, 조회 대신 다음 행동인 **도착지 입력에 착지**한다(iOS는 `landFocusAfterResolve(from:)` 정본 시퀀스 재사용 — 지연·검증·1회 재시도, 시뮬레이터로 검출 불가). 조회는 화면 정본 트랜잭션 `runQuery`를 그대로 지나 세대(`genRef`)를 발급하므로 WebMCP 세대 결박 대기자 계약과 충돌하지 않는다. 프리필 끝점은 **그 필드의 스코프**로 최근 장소에 기록한다(출발지 프리필을 도착지 목록에 넣으면 다음에 그 장소를 출발지로 다시 고를 때 검색부터 해야 한다). ⚠ iOS `DirectionsModel.init`에서 `from`·`to`를 **읽으면** 컴파일되지 않는다(`@Observable`이 저장 프로퍼티를 접근자로 감싼다) — 지역 상수로 받아 판정한다.
-
-**CLAUDE.md 요지 전문(2026-09-19 축약 전, 원문 그대로)**: **프리필 진입과 `?dir=` 복원은 필드 값이 같아도 다른 진입이라 표식으로 가른다**(`openDirections`의 `prefill` ↔ iOS `DirectionsPrefill{role,endpoint}`): 마운트 자동 조회를 `initialTo` 값에 걸면 새로고침·URL 직진입마다 측위 팝업이 뜬다. 판정은 첫 렌더에 굳혀 1회 소비하고 **양끝이 다 있을 때만** 조회한다(출발지만 채운 진입은 조회 대신 도착지 입력 착지). → PATTERNS
 
 ### 딥링크는 장소 상세의 보조 출구다
 
 iOS 지도 버튼·검색 로터 액션은 URL 빌더가 성공할 때만 만들고, 생성한 URL을 실행 클로저가 사용한다. 한 URL의 부재로 다른 유효 액션까지 감추지 않는다.
 
 **딥링크는 장소 상세의 보조 출구다**: `nmap://`(`deeplink.ts`)·`kakaomap://`(`deeplink-kakao.ts`)는 장소 상세에만 있고 길찾기 화면에는 두지 않는다(E17 폐기 2026-08-23). 종전 "실주행은 딥링크 위임, 자체는 텍스트 브리핑만" 방침은 2026-08-23 K2로 폐기됐다 — 도보·자동차·대중교통 셋 다 자체 실시간 안내를 가지며(자동차·대중교통은 실험판 봉인), "출발 전 미리 듣기" 텍스트 브리핑은 그 앞 단계다. **브리핑 진입점은 길찾기 뷰(웹 `DirectionsView`·iOS `DirectionsTab` 3수단 비교)와 채팅 렌더 카드로 일원화**(2026-07-30) — 장소 상세의 단일 수단 브리핑 진입점은 중복이라 제거했고 재도입 금지. 대중교통 대안은 요약 라벨 disclosure(웹 `aria-expanded`·iOS `DisclosureGroup`)로 펼침, 펼침 본문은 `includeSummary=false`로 구간만(라벨이 요약 전문이라 인접 중복 금지, 실기기 VO 합격 2026-07-30). 웹·iOS 도보는 줄 목록(E42 `lines=1` — ko 최단·계단 회피|큰길, en 추천·최단)의 같은 disclosure이고 안내 시작 버튼은 줄 안에 있다(라벨이 곧 그 줄 이름). 줄 경로엔 `stepFreeNotice`·스텝 0 문장이 없다. 산문 소비자(채팅·CLI)의 계단 회피 응답은 여전히 서버 `withStepFree`가 **스텝 0을 삽입하고 경유지 인덱스를 +1 밀어 두므로**, 본문에서 그 스텝을 뗄 때(`WalkRouteResult omitNoticeStep`) 인덱스를 한 칸 되돌려야 "경유지 도착" 구획이 제자리다. `lines=1`은 `walkRouteUrl` 인자가 아니라 `DirectionsView`가 덧붙인다(실시간 안내의 `includeGeometry=1`과 조합하면 400). 경로 렌더 카드는 웹 전용, iOS 채팅은 산문이 정본(렌더 3종: places·addresses·webResults, 그 외 타입은 `.unsupported`로 강등).
-
-**CLAUDE.md 요지 전문(2026-09-19 축약 전, 원문 그대로)**: **딥링크(`nmap://`·`kakaomap://`)는 장소 상세의 보조 출구이고, 브리핑 진입점은 길찾기 뷰(`DirectionsView`·`DirectionsTab`)와 채팅 렌더 카드로 일원화**(장소 상세 단일 수단 브리핑 재도입 금지). 대안·최단은 disclosure, 서버 `withStepFree`가 스텝 0을 삽입하며 경유지 인덱스를 +1 밀어 두므로, 본문에서 그 스텝을 뗄 때(`omitNoticeStep`) 한 칸 되돌린다. → PATTERNS
 
 ### 수량 문구는 ICU plural이고 iOS는 카탈로그의 ICU 블록을 Kit 해석기가 푼다
 
@@ -345,7 +313,7 @@ iOS 지도 버튼·검색 로터 액션은 URL 빌더가 성공할 때만 만들
 
 **답변 복사·듣기는 평문 한 벌과 통지 창구 하나를 쓴다**(B12 2026-09-24, spec `2026-09-24-web-chat-copy-listen-design.md`). 웹 [복사][듣기]의 입력은 `markdownToPlainText`(`src/lib/markdown-plain-text.ts`) 하나이고, 결과는 Kit `MarkdownPlainText.strip`과 같아야 한다(공유 fixture `markdown-plain-text-cases.json`을 웹·Kit 테스트가 함께 읽는다).
 
-- ⚠ **이 파일에 JS 약칭 클래스(`\s`·`\w`·`\d`)와 `m` 플래그를 쓰지 않는다.** Kit는 ICU라 `\w`가 한글을 포함하고, `\s`·트림 집합이 다르고(U+FEFF·U+0085·U+200B), 여러 줄 `^`·`$`의 줄 경계가 다르다(ICU는 VT·FF·NEL도 줄 경계이고 CRLF를 한 단위로 본다). dodo 원본 그대로는 무작위 입력 6,000건 중 602건이 Kit와 갈렸다. 규칙을 바꾸면 차분 퍼즈(spec §2)로 다시 잰다.
+- ⚠ **이 파일에 JS 약칭 클래스(`\s`·`\w`·`\d`)와 `m` 플래그를 쓰지 않는다(예외: 임의 문자 `[\s\S]`는 두 엔진에서 같다).** Kit는 ICU라 `\w`가 한글을 포함하고, `\s`·트림 집합이 다르고(U+FEFF·U+0085·U+200B), 여러 줄 `^`·`$`의 줄 경계가 다르다(ICU는 VT·FF·NEL도 줄 경계이고 CRLF를 한 단위로 본다). dodo 원본 그대로는 무작위 입력 6,000건 중 602건이 Kit와 갈렸다. 규칙을 바꾸면 차분 퍼즈(spec §2)로 다시 잰다.
 - "복사됨"·듣기 실패는 `ChatInterface`의 진행 통지 창구(명령형 `textContent`)로만 낸다. 대입은 같은 문장이어도 텍스트 노드를 갈아 끼워 다시 읽히고, 2초 뒤 빈칸이 아니라 그때의 진행 문장(`progressTextRef`)으로 되돌린다.
 - 듣기(`useTtsPlayback`)는 `speechSynthesis`가 정본이고 `/api/tts`(과금)는 로케일 보이스가 없을 때만이다. 발화 객체는 ref로 붙잡고(GC되면 `onend`가 안 온다), `onend` 없이 멎으면 1초 감시가 라벨을 되돌리며, `cancel()`은 재생 중일 때만 부른다(직후 `speak`를 삼키는 Chrome 함정).
 - 받아쓰기 누름 정지는 `VoiceRecordButton`을 고치지 않고 `ChatInput`의 `display:contents` 래퍼 `onClickCapture`로 건다(녹음 시작보다 먼저).
@@ -389,8 +357,6 @@ iOS 지도 버튼·검색 로터 액션은 URL 빌더가 성공할 때만 만들
 ### 도구의 길찾기 조회는 화면 정본 `runQuery(request)`를 부르고 세대 결박 대기자로 기다린다
 
 **도구의 길찾기 조회는 화면 정본 `runQuery(request)`를 부르고 세대 결박 대기자로 기다린다**(`DirectionsView`): 종단 phase의 resolve는 **커밋 뒤 effect**(`settleAfterCommit` → `pendingOutcomeRef`)에서, `bridgeRef` 갱신 effect **뒤에** 선언되고 커밋된 `results.planId`·`phase`가 일치할 때만 푼다. 안내 세션이 살아 있으면 `sessionActive`로 거절하고 **세션을 끊지 않는다**(화면의 사용자 조회는 끊는다 — 그 차이가 의도다). 새 세대 시작이 앞 대기자를 `superseded`로 끝낸다.
-
-**CLAUDE.md 요지 전문(2026-09-19 축약 전, 원문 그대로)**: **도구의 길찾기 조회는 화면 정본 `runQuery(request)`를 부르고 세대 결박 대기자로 기다린다**(`DirectionsView`): resolve는 커밋 뒤 effect(`settleAfterCommit`, `bridgeRef` 갱신 effect 뒤에 선언)에서 `planId`·`phase` 일치 때만. 안내 세션이 살아 있으면 `sessionActive`로 거절하고 **세션을 끊지 않는다**(화면의 사용자 조회는 끊는다). 새 세대가 앞 대기자를 `superseded`로. → PATTERNS
 
 ---
 
