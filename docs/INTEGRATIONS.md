@@ -195,7 +195,7 @@ spec `2026-09-02-express-stops-data-design.md`. 둘 다 `includeStops=1` 응답�
 - `includeStops`와 무관하게 **항상 계산한다**(그 플래그는 방출만 통제 — 옵트인으로 두면 CLI·MCP·iOS가 조용히 침묵한다).
 - 문장은 소비자가 만든다(provider가 문장을 주지 않는다): 웹 `quick-exit-text.ts` ↔ Kit `QuickExitText.swift` ↔ CLI `transitQuickExitLine` ↔ 안드로이드 `:kit` `QuickExitText.kt` 4벌 미러, 웹↔CLI 동조는 `packages/cli/src/__tests__/format-drift.test.ts`가 웹 정본 실행 대조로 강제. **3분기 × 2형태로 키를 나눈다**(변수만 비우면 로케일별 절 순서가 깨지고, `"3-2,3-3 사이"`를 문 번호 자리에 넣으면 문장이 깨진다).
 - 노출은 경로 브리핑 + 안내 세션 **대기 국면**(포커스 착지점 뒤·열차 목록 앞), 통지는 만들지 않는다.
-- **환승 leg는 seed가 아니라 ODsay `subPath.door`가 정본이다**(A20, spec `2026-08-25-subway-transfer-door-design.md`): `quickExit.transfer` 단독("사당 하차, 빠른 환승 5-2 문"), seed 엘베·계단은 최종 하차 leg에만. 하차 종류 판정(`alightKindAt`)은 환승 통로 필터 **전** 원본 subPath 인덱스에서 — 0m 도보가 역내 환승의 단서다. 역내 환승인데 `door`가 없으면 필드 부재(거짓보다 침묵). `door`의 부재 표기는 문자열 `"null"`이라 긍정 정규식 매칭만 통과시킨다. 소비자 3벌은 `transfer`를 먼저 보고 있으면 그 문장만 낸다(배타).
+- **환승 leg는 seed가 아니라 ODsay `subPath.door`가 정본이다**(A20, spec `2026-08-25-subway-transfer-door-design.md`): `quickExit.transfer` 단독("사당 하차, 빠른 환승 5-2 문"), seed 엘베·계단은 최종 하차 leg에만. 하차 종류 판정(`alightKindAt`)은 환승 통로 필터 **전** 원본 subPath 인덱스에서 — 0m 도보가 역내 환승의 단서다. 역내 환승인데 `door`가 없으면 필드 부재(거짓보다 침묵). `door`의 부재 표기는 문자열 `"null"`이라 긍정 정규식 매칭만 통과시킨다. 소비자 4벌은 `transfer`를 먼저 보고 있으면 그 문장만 낸다(배타).
 
 ---
 
