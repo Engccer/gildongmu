@@ -76,7 +76,7 @@ guideNextTarget(route, state) -> { kind: "route" | "waypoint" | "destination"; m
   w != nil ∧ waypointReached  → { destination, max(0, totalMeters - d) }
 ```
 
-`route`는 경유지 없는 세션이다 — 표시는 종전 그대로("남은 거리 …", 바이트 동일). 3벌 미러 + fixture `expect.nextTarget`로 잠근다. 소비자는 남은 거리 행 하나다(iOS `updateRemaining`, 웹 `progressOf`). 띠바·추세 톤·진행 상황 조망은 총 잔여를 계속 쓴다(①·§1).
+`route`는 경유지 없는 세션이다 — 표시는 종전 그대로("남은 거리 …"). 단 잔여 1m 미만 시간 생략(§4.1·§5.1)은 목표 공통이라 경유지 없는 세션·조망에도 적용된다(종전 "0m, 약 1분"은 근거 없는 수치였다. 최종 접근 진입이 먼저라 실제로는 거의 도달하지 않는다). 3벌 미러 + fixture `expect.nextTarget`로 잠근다. 소비자는 남은 거리 행 하나다(iOS `updateRemaining`, 웹 `progressOf`). 띠바·추세 톤·진행 상황 조망은 총 잔여를 계속 쓴다(①·§1).
 
 ### 2.6 fixture 시나리오 (`route-guide-scenarios.json`)
 
@@ -89,6 +89,9 @@ guideNextTarget(route, state) -> { kind: "route" | "waypoint" | "destination"; m
 7. 예고 전 공백 → 재획득이 접근선 안: 복귀 통지(`reacquired`) → 선행 전문 → 예고(재구성은 W0를 지나지 않는다).
 8. 임박 큐와 같은 fix: 임박 먼저, 예고는 다음 fix.
 9. 접근선 안 fix가 이탈 의심(수직거리 40m): 그 fix는 예고 없음, 다음 정상 fix에서 예고.
+10. 예고가 밀린 사이 도착선을 넘음: 예고 0회, 도착 1회(도착이 예고를 대신한다).
+11. 도착선까지 1m 미만 fix: 예고 없음, 다음 fix 도착.
+12. 투영 점프 fix: 예고 없음, 다음 정상 fix에서 예고.
 
 ## 3. 문장 (6로케일, `directions` 네임스페이스)
 
@@ -97,7 +100,7 @@ guideNextTarget(route, state) -> { kind: "route" | "waypoint" | "destination"; m
 | `directions.viaRemaining` | `경유지 {label}까지 {distance}` | 접근 예고 통지 + 남은 거리 행(도착 전)의 거리 조각 |
 | `directions.viaDestRemaining` | `목적지 {dest}까지 {distance}` | 남은 거리 행(도착 뒤)의 거리 조각 |
 | `directions.viaArrivedContinue` | `경유지 {label} 도착. 이제 목적지 {dest} 안내합니다` | 도착 통지 |
-| `directions.viaDropped` | `경유지 {label}를 포함한 경로를 찾지 못해 경유지 없이 안내합니다` | 웹: 경유지 경로를 못 받아 간략 안내로 내려갈 때(iOS `ios.guide.waypointDropped`와 같은 문장, 6로케일 동일 사본) |
+| `directions.viaDropped` | `경유지 {label} 포함한 경로를 찾지 못해 경유지 없이 안내합니다`(ko `{label}`에 호출부가 목적격 조사) | 웹: 경유지 경로가 없어(`unavailable`) 간략 안내로 내려갈 때만. 원인절이 참인 사유에서만 붙인다(위치·네트워크·커버리지 실패엔 거짓 원인). 문장은 iOS `ios.guide.waypointDropped`를 따르되 ko 조사·es/fr/it 경유지 용어는 각 로케일 `addVia`와 맞췄다(a11y 감사 #2·#3) |
 
 - 행은 `joinText(거리 조각, guide.remainingTime)` — 종전 행과 같은 조립(쉼표, 한 객체). 시간 조각은 근거 없으면 생략(3-state).
 - **ko `{dest}`에는 호출부가 방향 조사를 붙인다**(`directionParticle`·`KoreanParticle.direction` — "서울역으로"·"학교로"·"길동으로"). 그래서 ko 문자열 자원은 조사 없이 `{dest} 안내합니다`로 저장되고, `{dest}`를 조사 없이 넣는 소비자를 새로 만들면 안 된다(소비자는 두 플랫폼의 도착 통지 한 곳씩). 받침 판정이 안 되는 이름(영문·숫자·괄호 끝)은 **`로`로 물러난다** — 조사를 빼면 "목적지 GS25 안내합니다"로 문장이 깨지기 때문이다. ⚠ 이 폴백은 **추측**이다: 읽는 소리가 모음·ㄹ로 끝나면 맞고(에스·오·일·엘), 3·6·0·M·N·"…Market"·"(…점)"처럼 받침 소리로 끝나면 틀린다. 받침에 무관한 문형("{dest}까지 안내합니다")으로 물러나는 안은 새 문안이라 채택하지 않았다 — 실보행 판정(§8 ④)에서 거슬리면 그때 문안 왕복으로 연다. 비-ko 로케일은 조사 없이 `{dest}` 원문.
@@ -112,7 +115,7 @@ guideNextTarget(route, state) -> { kind: "route" | "waypoint" | "destination"; m
 - 행은 감지(W1) 시점에 바뀌고 문장은 발화 시점에 나간다 — 도착이 임박 큐에 밀린 fix(W2)에서는 행이 문장보다 한 fix 먼저 "목적지 {dest}까지"가 된다(의도, 실보행에서 결함으로 읽지 말 것).
 - 시간 조각: walk는 총 소요의 **목표 잔여 비례**(`duration × meters / totalMeters`, 종전 식의 분자만 목표 잔여로). car는 `waypoint` 목표에서 **생략**(재조회 ETA는 목적지까지라 경유지 시간이 아니다 — 날조 금지), 그 밖은 종전 ETA 카운트다운. 목표 잔여 1m 미만이면 생략("0m, 약 1분" 금지). `etaMinutesNow`(조망이 쓰는 총 잔여 산식)는 목표 잔여를 받는 `etaMinutes`의 총 잔여 호출로 둔다(사본 금지).
 - 띠바 `updateBandDistance`는 총 잔여 유지.
-- `consume(.waypointApproaching(m))`: `text = viaRemaining(label, formatDistance(m))`, `statusText = text`, `announce(text)`. 톤 없음. `lastGuidance`는 덮지 않는다(실행 안내가 아니다). 억제 중이면 발화하지 않고 보관하지 않는다(거리 문장은 시간이 지나면 거짓 — 주기 통지와 같은 취급). 라벨이 nil이면 무발화.
+- `consume(.waypointApproaching(m))`: `announce(viaRemaining(label, formatDistance(m)))`. 톤 없음. `statusText`에는 두지 않는다 — 같은 정보를 남은 거리 행이 실시간으로 보이고, 전경 복귀 재생(`missedAnnouncement`)이 낡은 거리를 읽게 된다. `lastGuidance`는 덮지 않는다(실행 안내가 아니다). 억제 중이면 발화하지 않고 보관하지 않는다(거리 문장은 시간이 지나면 거짓 — 주기 통지와 같은 취급). 라벨이 nil이면 무발화.
 - `consume(.waypointReached)`: 문장만 `viaArrivedContinue(reached.label, destinationLabel + 조사)`로 바꾼다. 나머지(도착 종·`waypoint = nil`·파생물 폐기·억제 중 보관)는 불변.
 - 운전자 채널: car 프로파일은 예고를 내지 않으므로 해당 없음.
 
@@ -125,9 +128,10 @@ guideNextTarget(route, state) -> { kind: "route" | "waypoint" | "destination"; m
 ### 5.1 `useRouteGuide`
 
 - 입력: `options.via?: RouteGuideVia | null`(`{ lat, lng, label }`). **기본 없음 = 종전 동작 바이트 동일**. 기존 네 번째 인자 객체에 선택 필드로 더하므로 기존 호출부가 그대로 컴파일된다. 매 렌더 ref로 두고 조회 직전에 읽는다(`walkAxis` 동형 — 봉인하지 않는다).
-- walk 조회만 `walkRouteUrl({ via })`에 싣는다(자동차 경유지 개방은 범위 밖 — car 조회는 계속 `via` 없음). 세션이 더는 싣지 않는 경유지는 **좌표 정체성**으로 든다(`excludedViaRef`): 도착을 확정하면(`waypointReached` 소비) 그 경로의 경유지를, 경유지 경로를 못 받아 간략으로 내려가면 요청한 경유지를 넣는다. 조회 직전 입력 `via`가 그것과 같으면 빼고 다르면 싣는다 — 세션 중 입력이 다른 경유지로 바뀌면 그것은 다시 간다. `start()`가 비운다.
+- walk 조회만 `walkRouteUrl({ via })`에 싣는다(자동차 경유지 개방은 범위 밖 — car 세션은 `via` 입력을 무시한다: 조회에도, 강등 통지에도 쓰지 않는다). 세션이 더는 싣지 않는 경유지는 **좌표 정체성**으로 든다(`excludedViaRef`): 도착을 확정하면(`waypointReached` 소비) 그 경로의 경유지를, 경유지 경로를 못 받아 간략으로 내려가면 요청한 경유지를 넣는다. 조회 직전 입력 `via`가 그것과 같으면 빼고 다르면 싣는다 — 세션 중 입력이 다른 경유지로 바뀌면 그것은 다시 간다. `start()`가 비운다.
 - **왕복 중 도착**: 재조회 응답이 착지했는데 그 경로의 경유지가 이미 제외 대상이면(왕복 중 지났다) **폐기**한다(iOS `rerouteToken += 1` 동형). 커밋하면 새 세대가 지난 경유지를 되살려 도착이 두 번 난다. 이탈 상태는 남아 버튼으로 다시 누를 수 있다.
-- **경유지 부재 강등**: 시작 조회가 실패해 간략 안내로 내려가는데 경유지를 요청했다면, 강등 통지 뒤에 `directions.viaDropped`를 붙인다(화면엔 경유지가 남아 있어 말하지 않으면 간략 직선 안내가 경유지를 지나는 것처럼 들린다 — iOS `waypointDropped` 동형). 상시 표시는 종전 강등 문구.
+- **제외 시점은 감지 전이**: `excludedViaRef`·`viaPassedRef`는 이벤트 발화가 아니라 리듀서 상태의 `waypointReached` false→true 전이에서 세운다 — 도착이 임박 큐에 밀려(W2) 한 fix 늦게 발화해도 그 사이 착지한 재조회를 폐기한다. `stop()`·`start()`가 셋을 비운다. (iOS는 종전대로 이벤트 소비 시점에 `waypoint = nil` — 한 fix 창의 비대칭은 알려진 대가다.)
+- **경유지 부재 강등**: 시작 조회가 경유지 경로를 못 받아(`unavailable`, 실패 결과가 실어 보낸 `via`를 돌려준다 — 요청 뒤 바뀐 입력을 읽지 않는다) 간략 안내로 내려가면, 강등 통지 뒤에 `directions.viaDropped`를 붙인다(화면엔 경유지가 남아 있어 말하지 않으면 간략 직선 안내가 경유지를 지나는 것처럼 들린다 — iOS `waypointDropped` 동형). 상시 표시는 종전 강등 문구.
 - 응답 `waypoint.stepIndex`를 `buildGuideRoute(steps, { waypointStepIndex })`에 넘긴다. 경유지를 보냈는데 응답에 `waypoint`가 없으면 **상세 불가**(`unavailable`, iOS `fetchDetailData` 동형 — 경유지를 모르는 경로로 조용히 안내하지 않는다). 커밋 시 경로 결박 라벨 `routeViaLabelRef`를 기록한다.
 - `GuideProgress`에 `target: { kind: "route" } | { kind: "waypoint"; label } | { kind: "destination"; label }`을 더하고 `remainingMeters`·`etaSeconds`는 그 목표 기준(walk 비례, car는 `waypoint`에서 null, 1m 미만 null). 경유지를 지난 세션(`viaPassedRef`)은 재조회 경로에서도 `destination`(iOS 동형). 시간은 `etaSecondsFor(route, 잔여, toWaypoint)` 한 함수이고 **조망(`announceProgress`)은 총 잔여로 부른다** — 행의 경유지 시간을 조망의 총 거리에 붙이면 "1.2km, 약 8분" 같은 거짓 수치가 된다.
 - 이벤트: `waypointApproaching` → `viaRemaining` 통지(`rememberGuidance` 안 함), `waypointReached` → 톤 계층 `priorityTone: "nearby"` + `viaArrivedContinue` 통지 + `viaPassedRef = true`. 통지는 기존 `announce` 창구 하나(A40).
@@ -145,11 +149,11 @@ guideNextTarget(route, state) -> { kind: "route" | "waypoint" | "destination"; m
 
 `:kit` `RouteGuide.kt`에 §2 전량(필드·상태·이벤트·W0·W4·`guideNextTarget`) 미러 + `RouteGuideTest`가 같은 fixture를 소비. `:app` `WalkGuideModel.consume`의 `when`은 봉인 클래스라 새 이벤트에 **무동작 분기 1줄**이 컴파일에 필요하다. strings는 재생성만.
 
-**안드로이드 사용자는 이번 웨이브에서 종전 그대로 듣는다(의도)**: 예고 없음, 도착 문장 "경유지 X 도착", 남은 거리 행은 총 잔여. 등가성 4항(예고 소비·도착 문장 교체·행 다음 목표·경유지 지난 세션의 행)은 BACKLOG E43에 등재한다.
+**안드로이드 사용자는 이번 웨이브에서 종전 그대로 듣는다(의도)**: 예고 없음, 도착 문장 "경유지 X 도착", 남은 거리 행은 총 잔여. 이벤트를 삼키기만 하면 그 fix의 추세 톤·주기 리듬이 흔들리므로 `:app`은 프로파일을 `GuideTuning.walk.copy(waypointApproachM = null)`로 둔다(배선할 때 되돌린다). 등가성 4항(예고 소비·도착 문장 교체·행 다음 목표·경유지 지난 세션의 행)은 BACKLOG E43에 등재한다.
 
 ## 7. 테스트·게이트
 
-- fixture §2.6 5건 — 웹 `route-guide.test.ts`·Kit `RouteGuideTests`·`:kit` `RouteGuideTest`가 같은 파일을 읽는다(`expect.nextTarget` 판정 3벌).
+- fixture §2.6 12건 — 웹 `route-guide.test.ts`·Kit `RouteGuideTests`·`:kit` `RouteGuideTest`가 같은 파일을 읽는다(`expect.nextTarget` 판정 3벌).
 - 웹 jsdom: `useRouteGuide`(경유지 옵션이 `via` 파라미터로 나가는가, 도착 뒤 재조회에서 빠지는가, 경유지 응답 부재면 상세 불가), `DistanceBeacon`(행 라벨 전환, `via` 미지정 시 종전 문구).
 - iOS: `BeaconModel` 배선은 테스트 레인이 없어 순수 계층(`guideNextTarget`)과 fixture가 잠그고 실기기 판정으로 넘긴다.
 - 게이트: `test:run`·`tsc`·`lint`·Kit `swift test`·`:kit` 테스트·xcodebuild 실험판 빌드 1회.
@@ -178,3 +182,5 @@ guideNextTarget(route, state) -> { kind: "route" | "waypoint" | "destination"; m
 | 12 LOW | 재조회 세대 초기화로 예고 두 번 | 수용 — "세대당 1회"로 명시 |
 | 13 LOW | 웹 도착 톤·행 전환 시점·라벨 폴백 서술 | 수용 — §4.1·§5.1 서술 |
 | 14 | ④ 충돌 없음, 억제 복귀 경로 | 수용 — §8 ②에 포함 |
+
+구현 리뷰(2026-09-24, `0504247e`, 서브에이전트 opus 3종): spec 준수 MEDIUM 1·LOW 6, 코드 품질 MEDIUM 4·LOW 7, 접근성 MEDIUM 1·LOW 2. 반영 — `viaDropped` 조사·용어·`unavailable` 한정·자동차 제외·실어 보낸 via(준수 M·품질 M1·M2·L1·접근성 1~3), iOS 예고의 `statusText` 제외(품질 M3), 안드로이드 프로파일 끔(품질 M4), 웹 제외 시점을 감지 전이로(품질 L2), iOS 목적지 전환 초기화(품질 L4), 웹 `stop()` 정리(품질 L5), 재조회 폐기 무통지 근거 주석(품질 L7), fixture 3건 추가(준수 LOW·품질 L6ⓐ), 1m 규칙 서술(품질 L3). 미반영 — 품질 L6ⓑ~ⓔ(도착 뒤 재투영 후퇴·"로" 폴백·W0 위치·`sameVia` 변경 jsdom): 가드가 다른 조건과 겹쳐 fixture로 분리하기 어렵거나 실보행 판정(§8 ④)으로 보는 축이다. iOS `waypointDropped` 문구 교정은 BACKLOG N4 후속.

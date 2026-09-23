@@ -11,6 +11,10 @@
 
 ## 2026-09-24
 
+### N4 경유지 진행 표시 (iOS·웹 훅)
+
+경유지 도보 안내가 경유지 50m 앞에서 "경유지 {이름}까지 {거리}"를 한 번 말하고, 도착 문장은 "경유지 {이름} 도착. 이제 목적지 {목적지}로 안내합니다"로 바뀌었다. 상세 시트·웹 패널의 남은 거리 행은 다음 목표 기준(도착 전 경유지, 뒤 목적지, 경유지 없는 세션은 종전 그대로). 리듀서 3벌(웹·Kit·`:kit`)에 접근 예고 이벤트·`guideNextTarget`·공유 fixture 12건, 웹 안내 훅·`DistanceBeacon`이 경유지를 받는다(길찾기 화면 배선은 후속, 안드로이드 앱 배선은 E43). [spec](docs/superpowers/specs/2026-09-24-waypoint-progress-design.md)
+
 ### 웹 채팅 답변 복사·듣기(B12)
 
 웹 채팅 답변 끝(산문 → 카드 → 출처 뒤)에 [복사][듣기]를 붙였다. 복사는 평문이고 "복사됨"은 채팅 화면의 기존 polite 창구로 나간다. 듣기는 브라우저 내장 음성이 우선이고 그 언어 보이스가 없을 때만 서버 합성(`/api/tts`)을 쓰며, 실패하면 알린다. 평문 변환은 Kit `MarkdownPlainText`와 공유 fixture로 잠갔다. [spec](docs/superpowers/specs/2026-09-24-web-chat-copy-listen-design.md)
