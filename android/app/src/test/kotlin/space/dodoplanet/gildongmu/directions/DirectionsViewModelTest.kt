@@ -71,6 +71,7 @@ class DirectionsViewModelTest {
         var precise: Boolean = false,
         var display: NearbyCoord? = null,
         var stale: StaleFix? = null,
+        var stored: NearbyCoord? = null,
     ) : EndpointLocator {
         val forces = ArrayList<Boolean>()
         var preciseCalls = 0
@@ -78,6 +79,8 @@ class DirectionsViewModelTest {
         override suspend fun coordinateForRanking(): NearbyCoord? = ranking
         override suspend fun coordinateForDisplay(): NearbyCoord? = display
         override fun staleFix(): StaleFix? = stale
+        var storedCalls = 0
+        override fun storedCoordinate(): NearbyCoord? { storedCalls++; return stored }
         override suspend fun requestPreciseLocation(): Boolean { preciseCalls++; return precise }
     }
 
@@ -235,7 +238,10 @@ class DirectionsViewModelTest {
         loc.stale = stale; flow.value = stale; dispatcher.scheduler.advanceUntilIdle()
         assertEquals("출발지, 마지막으로 확인한 위치, 서울 강동구 길동, 5분 전", m.fieldText(DirectionsFieldTarget.from, accessible = true, lang = "ko"))
         assertEquals(listOf<Boolean>(), loc.forces) // 측위 없음
+        loc.display = null // 풀림 뒤 표시용 측위를 부르면 주소가 안 붙는다 — 보관 좌표로만 받아야 한다(재리뷰 N-2)
+        loc.stored = NearbyCoord(37.54, 127.14)
         loc.stale = null; flow.value = null; dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(1, loc.storedCalls)
         assertEquals("출발지, 현재 위치(서울 강동구 길동 부근)", m.fieldText(DirectionsFieldTarget.from, accessible = true, lang = "ko"))
     }
 
@@ -245,8 +251,16 @@ class DirectionsViewModelTest {
         val m = vm(r, loc)
         m.setEndpoint(gangnam, DirectionsFieldTarget.to)
         m.runQuery(); dispatcher.scheduler.advanceUntilIdle()
-        loc.stale = null // 권한 회수 — 스토어의 옛 위치가 사라진다
-        assertEquals("출발지, 현재 위치(서울 강동구 길동 부근)", m.fieldText(DirectionsFieldTarget.from, accessible = true, lang = "ko"))
+        loc.stale = null // 권한 회수 — 스토어의 옛 위치가 사라진다(흐름은 내보내지 않는다)
+        assertEquals("출발지, 현재 위치", m.fieldText(DirectionsFieldTarget.from, accessible = true, lang = "ko")) // 옛 주소를 현재로 말하지 않는다(N-1)
+    }
+
+    @Test fun `옛 위치로 찾았는데 경로가 0건이면 뒷문장을 붙이지 않는다(위원장 판정)`() = runTest(dispatcher) {
+        val r = Routes(reverse = """{"address":"서울 강동구 길동"}""")
+        val m = vm(r, FakeLocator({ throw LocationException(LocationException.Kind.Unavailable) }, stale = StaleFix(37.53, 127.14, 1.0)))
+        m.setEndpoint(gangnam, DirectionsFieldTarget.to)
+        m.runQuery(); dispatcher.scheduler.advanceUntilIdle()
+        assertEquals("경로를 찾지 못했습니다.", m.state.value.notice.text)
     }
 
     @Test fun `옛 위치가 있어도 권한 축 실패는 옛 위치로 계속하지 않는다`() = runTest(dispatcher) {

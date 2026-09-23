@@ -29,6 +29,11 @@ class DirectionsAddressState {
         return true
     }
 
+    /** 표시 주소만 비운다(옛 위치 표식 전환 — iOS `clearAddress` 미러). `hasLoaded`·요청 세대는 건드리지 않는다(완료 표식은 수락된 커밋에서만). */
+    fun clearAddress() {
+        address = Address(null, null)
+    }
+
     fun cancel() {
         latest = null
         isLoading = false

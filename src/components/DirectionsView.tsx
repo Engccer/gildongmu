@@ -865,9 +865,11 @@ export function DirectionsView({
         : t("allFailed")
       : "";
   // 옛 위치로 찾았으면 그 사실을 같은 통지의 뒷문장으로(출발지 칸에만 있으면 조회 버튼을
-  // 누른 사용자는 칸으로 되돌아가야 안다). 한 사건이라 한 문장 묶음으로 낸다.
+  // 누른 사용자는 칸으로 되돌아가야 안다). 한 사건이라 한 문장 묶음으로 낸다. 경로를 하나도
+  // 못 찾았으면 붙이지 않는다 — "찾지 못했습니다. … 찾았습니다."가 되어 앞뒤가 모순된다(위원장
+  // 판정 2026-09-23, 단서는 출발지 칸에 남는다).
   const settledSummary =
-    settledBase && results?.staleAge
+    settledBase && settledCount && results?.staleAge
       ? `${settledBase} ${t("staleOriginNotice", {
           age: tManual(results.staleAge.key, { count: results.staleAge.count }),
         })}`

@@ -41,6 +41,14 @@ class EffectiveLocation(
         return location.coordinateForDisplay()
     }
 
+    /** 보관 좌표(측위 없음): 수동 위치면 null, 권한 `Fine`일 때만 `LocationStore.stored`(표시줄 `syncFromStore`와 같은 식). */
+    fun storedCoordinate(): NearbyCoord? {
+        manual.hydrate()
+        if (manual.current.value != null) return null
+        if (location.authorization() != LocationPermission.Fine) return null
+        return location.stored?.let { NearbyCoord(it.lat, it.lng) }
+    }
+
     /** 옛 위치 전이 채널(`LocationStore.staleChanges`). 수동 위치 판정은 구독자 몫이다(길찾기 뷰모델이 `manual()`을 먼저 본다). */
     val staleChanges: StateFlow<StaleFix?> get() = location.staleChanges
 

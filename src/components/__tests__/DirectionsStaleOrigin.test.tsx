@@ -132,6 +132,26 @@ describe("DirectionsView 옛 위치", () => {
     });
   });
 
+  it("경로를 하나도 못 찾으면 뒷문장을 붙이지 않는다(위원장 판정 — 앞뒤 모순 방지)", async () => {
+    geo.snapshot = stale;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.startsWith("/api/geocode/reverse")) {
+          return { ok: true, json: async () => ({ address: "성내로 12" }) } as Response;
+        }
+        return { ok: false, status: 502, json: async () => ({}) } as Response;
+      }),
+    );
+    renderView();
+    submit();
+    await waitFor(() => {
+      expect(screen.getByRole("status").textContent).toBe(ko.directions.allFailed);
+    });
+    expect(fromValue()).toBe("마지막으로 확인한 위치, 성내로 12, 5분 전"); // 단서는 칸에 남는다
+  });
+
   it("진입만으로 칸이 스토어의 옛 위치를 따른다(측위·조회 없이)", async () => {
     geo.snapshot = stale;
     stubRoutes([]);

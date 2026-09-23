@@ -47,6 +47,7 @@ class DirectionsAddressTest {
                 override suspend fun coordinateForRanking(): NearbyCoord? = null
                 override suspend fun coordinateForDisplay() = locations.wait()
                 override fun staleFix(): StaleFix? = null
+                override fun storedCoordinate(): NearbyCoord? = null
                 override suspend fun requestPreciseLocation() = false
             }, { language }, CatalogStrings("ko"), SavedStateHandle(),
             prefill = MutableStateFlow(null), io = dispatcher,

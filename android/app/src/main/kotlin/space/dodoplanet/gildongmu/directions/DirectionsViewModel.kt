@@ -358,7 +358,8 @@ class DirectionsViewModel(
             return
         }
         val results = DirectionsResults(outcomes)
-        val staleNotice = staleAt?.let { strings.get("directions.staleOriginNotice", staleWords.age(it, epochNow())) }
+        // 경로를 하나도 못 찾았으면 붙이지 않는다 — "찾지 못했습니다. … 찾았습니다."가 되어 앞뒤가 모순된다(위원장 판정 2026-09-23).
+        val staleNotice = staleAt?.takeIf { results.successCount > 0 }?.let { strings.get("directions.staleOriginNotice", staleWords.age(it, epochNow())) }
         initJob.join()
         val recent = store.recordRoute(RecentRoute(recentSide(from), recentSide(to), via?.let(::recentSide)))
         _state.update {
@@ -450,10 +451,10 @@ class DirectionsViewModel(
 
     // ── 현재 위치 라벨(F-B) ──────────────────────────────────────────────────
 
-    /** 이미 허가된 세션에서만 조용히 주소를 병기한다(탭 진입만으론 권한 팝업 금지). `force`는 옛 위치가 풀린 뒤 다시 받을 때. */
-    fun loadCurrentAddressIfAuthorized(force: Boolean = false) {
+    /** 이미 허가된 세션에서만 조용히 주소를 병기한다(탭 진입만으론 권한 팝업 금지). */
+    fun loadCurrentAddressIfAuthorized() {
         resetAddressLanguageIfNeeded()
-        if (!force && (addressState.hasLoaded || addressState.isLoading)) return
+        if (addressState.hasLoaded || addressState.isLoading) return
         val s = _state.value
         if (s.from != DirectionsEndpoint.Current && s.to != DirectionsEndpoint.Current) return
         val request = beginCurrentAddress()
@@ -472,7 +473,7 @@ class DirectionsViewModel(
 
     /**
      * 다른 화면의 측위 성공·실패로 옛 위치가 서거나 풀렸을 때 칸이 따라가게 한다 — **측위 없이**(구현 리뷰 M-2). 섰으면 그 옛 좌표의 주소,
-     * 풀렸으면 표시용 좌표로 다시 받는다(`force` — 방금 쓰인 신선한 보관 좌표라 대개 캐시 재사용이다).
+     * 풀렸으면 방금 쓰인 보관 좌표의 주소다.
      */
     private fun syncCurrentFromStore(stale: StaleFix?) {
         val s = _state.value
@@ -480,8 +481,17 @@ class DirectionsViewModel(
         if (s.from != DirectionsEndpoint.Current && s.to != DirectionsEndpoint.Current) return
         if (stale == null) {
             if (s.currentStaleAt == null) return
+            // 풀림 = 새 좌표가 쓰였다. **측위 없이** 그 보관 좌표의 주소를 받는다 — 여기서 다시 재면 흐린 GPS에서
+            // 방금 풀린 옛 위치를 스스로 다시 세운다(재리뷰 N-2). 보관 좌표가 없으면(권한 회수) 주소 없이 둔다.
+            val coord = locator.storedCoordinate()
+            resetAddressLanguageIfNeeded()
+            val request = beginCurrentAddress()
             markStale(null)
-            loadCurrentAddressIfAuthorized(force = true)
+            if (coord == null) { finishCurrentAddress(request); return }
+            addressJob = viewModelScope.launch {
+                try { syncCurrentAddress(coord, request) }
+                finally { finishCurrentAddress(request) }
+            }
             return
         }
         if (stale.lat == shownStaleCoord?.lat && stale.lng == shownStaleCoord?.lng) return
@@ -629,8 +639,10 @@ class DirectionsViewModel(
         val s = _state.value
         if (s.isRefreshingCurrent) return strings.get("directions.refreshingCurrent")
         // 옛 위치(stale-origin): 표시줄과 같은 문장(`StaleWords`) — 판정선이 갈리면 화면으로 확인 불가.
-        // 권한을 거두면(스토어의 옛 위치가 사라지면) 칸도 옛 위치를 말하지 않는다(구현 리뷰 L-4).
-        s.currentStaleAt?.takeIf { locator.staleFix() != null }?.let { at ->
+        // 권한을 거두면(스토어의 옛 위치가 사라지면) 옛 위치도 옛 주소도 말하지 않는다 — "없음"은 주소 없는 "현재 위치"다
+        // (웹과 같음, 재리뷰 N-1). 새 좌표로 풀린 경우는 `syncCurrentFromStore`가 표식을 내리고 새 주소를 받는다.
+        if (s.currentStaleAt != null && locator.staleFix() == null) return strings.get("directions.currentLocation")
+        s.currentStaleAt?.let { at ->
             val name = s.currentAddress?.let { bilingualName(lang, it, en = s.currentAddressEnglish, roman = null) }
             return staleWords.line(if (accessible) name?.primary else name?.display, at, nowEpoch)
         }
