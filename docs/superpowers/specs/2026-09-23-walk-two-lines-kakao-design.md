@@ -96,14 +96,14 @@
 
 ## 5. WebMCP·CLI
 
-- `plan_directions`: 입력 `avoidStairs` 삭제(토글이 없다). 출력 `walk`는 `lines: [{ kind, distanceMeters, durationSeconds, stepCount }]`로 바뀌고 `stepFree`·`stepFreeNotice`·`shortest`는 사라진다. `resolved.avoidStairs`·`read_current_view.fields.avoidStairs`도 삭제.
+- `plan_directions`: 입력 `avoidStairs` 삭제(토글이 없다). 출력 `walk`는 `lines: [{ kind, label, distanceMeters, durationSeconds, stepCount }]`(`label`은 화면 줄 버튼 문장, `read_current_view`의 도보 요약도 첫 줄 `label`)로 바뀌고 `stepFree`·`stepFreeNotice`·`shortest`는 사라진다. `resolved.avoidStairs`·`read_current_view.fields.avoidStairs`도 삭제.
 - `get_route_steps`: 파라미터 이름 `variant`는 유지하고 값을 줄 종류(`shortest`·`accessible`·`broad`·`recommended`)로 바꾼다(이름까지 바꾸면 옛 호출이 스키마 위반이 된다). 생략 시 첫 줄. 계획에 없는 종류는 `unsupported{detail:"noLine"}`.
 - CLI·MCP 카탈로그 `route-walk`: `variant` 파라미터를 싣는다("shortest면 최단 경로 — ko 카카오·폴백 Tmap, en Tmap"). `lines`는 싣지 않는다(봉투가 `result`가 아니라 CLI 포매터 계약 밖이고, 조회 화면 전용이다). `accessible` 설명은 유지. 두 미러 바이트 동일. npm 릴리스는 이 마일스톤에서 하지 않는다.
 
 ## 6. 문구 (6로케일)
 
-- 새 키: `directions.walkAccessible`(계단 회피 경로) · `directions.walkBroad`(큰길 경로) · `beacon.walkLineStart.{shortest,accessible,broad,recommended}`(○○ 경로로 안내 시작) · iOS `guide.switchedToAccessible`·`guide.switchedToBroad`.
-- 기존 `directions.walkShortest`·`directions.walkRecommended`는 유지(안드로이드·en이 쓴다). `route.pedestrian.stepFreeToggle`은 안드로이드가 아직 쓰므로 유지한다(웹·iOS에서 참조 0). iOS 전용 `ios.directions.walkShortest`·`ios.directions.walkRecommended`·`beacon.guideStartWalkShortest`는 참조가 0이 되면 지운다.
+- 새 키: `directions.walkAccessible`(계단 회피 경로) · `directions.walkBroad`(큰길 경로) · `beacon.guideStartWalk{Shortest,Accessible,Broad,Recommended}`(○○ 경로로 안내 시작 — 웹·iOS 공용, 종전 iOS 전용 `beacon.guideStartWalkShortest`는 messages로 옮겼다) · iOS `guide.switchedToAccessible`·`guide.switchedToBroad`.
+- 기존 `directions.walkShortest`·`directions.walkRecommended`는 유지(안드로이드·en이 쓴다). `route.pedestrian.stepFreeToggle`은 안드로이드가 아직 쓰므로 유지한다(웹·iOS에서 참조 0). iOS 전용 `ios.directions.walkShortest`·`ios.directions.walkRecommended`는 지웠다(iOS도 messages `directions.*`를 쓴다).
 - 비-ko 문구는 ko 뜻을 따른다.
 
 ## 7. 검증
@@ -123,4 +123,6 @@
 
 **실시한다** — ②새 외부 통합의 계약 가정(카카오 `route_mode` 두 값의 운용) + 서버 응답 계약 추가(옛 앱 호환이 걸린 봉투). `model: fable` 적대적 리뷰, 회전 2회 상한.
 
-**1회 실시(2026-09-23, HEAD `3af8ffe5`, BLOCKER 0·MAJOR 3·MINOR 11).** 수용: MAJOR 1(세션 이름을 응답 `kind`로, 프리뷰 축 인자화) · MAJOR 2(provider 혼합 금지·줄 목록 원좌표·거리 단언 게이트) · 둘째 줄 예산·0줄+실패 502·경유지 게이트·`walkLine(kind)` 착지·`toggle` 기본값 삭제·웹 다른 줄 버튼 동작 명시·장거리 접힘 안 버튼 의도 표기·옛 앱 `shortest` 값 불변식 테스트·WebMCP `variant` 이름 유지·CLI CHANGELOG·문서 분배 자리. MAJOR 3(B9 ② 흡수)은 착수 지시가 명시한 범위라 흡수로 판정하고 §3에 기록. `accessibleRef` 갱신 effect는 유지한다(줄마다 `key` 재마운트라 실질 불변이지만, 삭제는 이 마일스톤의 요구가 아니다). 회전 2는 불필요로 판정 — 수용분이 새 판정 계층이 아니라 기존 계약(provider 게이트·내부 필드 게이트)의 재적용이다.
+**구현 리뷰(opus, HEAD `853e3400`, BLOCKER 0·MAJOR 1·MINOR 9)·접근성 감사(opus, HIGH 0·MEDIUM 3·LOW 3)** 반영: 프리뷰 헤더가 이름을 못 받은 응답에 경고를 싣는다, 세션을 잃은 웹 패널의 "안내 시작"은 다시 시작한다(종전엔 접기만), `alternatives=1` provider 혼합 금지를 양방향으로, iOS 배선 소스 가드(`walk-line-ios-guard.test.ts`), 10초 예산 테스트, 거짓 이름 폴백 제거, 비-ko 문구(en "Route avoiding stairs", ja 「階段を避けるルート」, es·fr·it 큰길 버튼에 줄 이름). 넘긴 판정: 안내 중 전환이 큰길로 내려갈 때 경고 문장을 남길지(§2.4 현행 유지), 이름을 못 받은 응답의 이름.
+
+**설계 리뷰 1회 실시(2026-09-23, HEAD `3af8ffe5`, BLOCKER 0·MAJOR 3·MINOR 11).** 수용: MAJOR 1(세션 이름을 응답 `kind`로, 프리뷰 축 인자화) · MAJOR 2(provider 혼합 금지·줄 목록 원좌표·거리 단언 게이트) · 둘째 줄 예산·0줄+실패 502·경유지 게이트·`walkLine(kind)` 착지·`toggle` 기본값 삭제·웹 다른 줄 버튼 동작 명시·장거리 접힘 안 버튼 의도 표기·옛 앱 `shortest` 값 불변식 테스트·WebMCP `variant` 이름 유지·CLI CHANGELOG·문서 분배 자리. MAJOR 3(B9 ② 흡수)은 착수 지시가 명시한 범위라 흡수로 판정하고 §3에 기록. `accessibleRef` 갱신 effect는 유지한다(줄마다 `key` 재마운트라 실질 불변이지만, 삭제는 이 마일스톤의 요구가 아니다). 회전 2는 불필요로 판정 — 수용분이 새 판정 계층이 아니라 기존 계약(provider 게이트·내부 필드 게이트)의 재적용이다.

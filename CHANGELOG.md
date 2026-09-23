@@ -11,6 +11,10 @@
 
 ## 2026-09-23
 
+### 도보 경로 두 줄을 카카오 안에서 (E42)
+
+조회 화면 도보가 "최단 경로"(카카오 `SHORTEST`, 기본 펼침)와 "계단 회피 경로"(카카오 `ACCESSIBLE`, 없으면 "큰길 경로" `BROAD_FIRST`) 두 줄이 됐다(ko, 웹·iOS). 계단 회피 토글은 없어졌고 안내 시작 버튼은 줄 안으로 들어갔다(웹 B9 ② 흡수). 서버는 `lines=1` 줄 목록을 새로 싣고 `variant=shortest`의 출처를 카카오로 바꿨다(옛 `alternatives=1` 봉투는 그대로 — 배포된 iOS·안드로이드도 최단이 카카오가 된다). en은 추천·최단(Tmap) 그대로. ⚠ 대중교통 승차 전 도보의 계단 회피는 토글과 함께 사라졌다(BACKLOG E42 미결). [spec](docs/superpowers/specs/2026-09-23-walk-two-lines-kakao-design.md)
+
 ### E44 역 장소 상세 개편 안드로이드 동조(E43 우선순위 2)
 
 안드로이드 장소 상세도 역(`:kit` `stationLayoutKind`)이면 역 정보(전화 맨 위, 대표번호 표기, 경유역 조회 실패는 한 줄) → 도착·시간표·시설(서울 지하철은 종류별 접기·운행 중지 수) → 무장애 → 길찾기 → 이 장소 주변(지하철 없음)이다. `:kit` `StationPhone.kt` 이식(등록부 대기 → 이식, 노선 표는 웹 드리프트 가드가 세 벌로 잠근다), 경유역 전화 저장소 `StationPhoneStore`(iOS 수명 규칙)와 경유역 라우트 `PlaceDetailRoute.ofTransitStop`(노선 힌트 필수)을 더했다. 경유역 로터는 E45 몫. [spec](docs/superpowers/specs/2026-09-17-station-detail-reorg-design.md).
