@@ -202,6 +202,8 @@ i18n: `route.transit.alternativeLeastWalk`·`alternativeBusOnly`·`alternativeSu
 
 머지 전 확인(≤10건): 로컬 서버의 `/api/route/transit`을 표본 몇 쌍에 실제로 불러 응답 직렬화(`requeryAxes`·`displayIndex`·`vehicle`)와 `pathType` 재조회 봉투를 본다.
 
+결과(2026-09-24 03:01 KST, 프로덕션 배포 `8c889f0b`, 호출 4건 + 캐시 재확인 1건, 누적 18/40): `pathType=3`은 400(호출 0). 광주송정역→광주시청은 `requeryAxes: ["subwayOnly"]`, 지하철만 재조회는 `routeKey` `s0`·`vehicle` subway·31분·경유 정류장 포함·대안 0. 심야라 길동→서울역·강동역은 1순위를 포함해 모든 탑승 구간이 운행 종료(`outside`)여서 축 후보가 비어 대안 0개였고, 버스만·지하철만 경로가 운행 종료로라도 후보에 있어 재조회 제안도 없었다(§3 전체 후보 판정이 실제로 과금 버튼을 막은 사례). 주간 목록 모양은 저장 응답 게이트(§0.2)가 대신한다.
+
 ## 8. 테스트·변이 주입
 
 순수 함수(`odsay-select.test.ts`): 축 5개 각각의 자격·2차 키·순서 동률, 도보 분 가드, 도보 거리 부재, 수단 축이 1순위와 같은 수단이면 서지 않음, `outside` 제외, 채움 없음(축 없는 경로는 빠짐), 결과가 순위 순서, `displayIndex`는 옛 앱이 아는 축이 없는 대안에만, `requeryAxes`.
