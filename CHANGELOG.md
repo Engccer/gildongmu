@@ -23,6 +23,10 @@
 
 웹 대중교통 안내에서 탑승 변경으로 역을 고른 뒤 승차 정류소 도착이 관측되면, 하차역 조회가 주기 없이 곧바로 나가 "도착했으니 타세요"가 추적 시작 문장에 덮이던 결함을 고쳤다(폴 예약 effect가 `pollOnce` 정체성 변화에 반응했다 → `useEffectEvent`로 tick만). 이 결함과 A46 수동 진행 테스트 3건의 잘못된 시간 축은 렌더마다 새 `t`를 주던 next-intl 목의 폴 폭주에 가려 있었다 — 폴 루프를 마운트하는 컴포넌트 테스트 13개가 공유 안정 목 `stable-intl-mock.ts`를 쓰고 소스 가드가 이를 잠근다.
 
+### CLI/MCP 0.11.0 발행 (`cli-v0.11.0`, 위원장 승인 2026-09-23)
+
+0.10.0 이후 묶음: `route walk`·`route_walk` 기본 경로가 앱 화면 첫 줄(ko 최단)로 바뀌고(E42, 기본 동작 변경이라 minor), 카탈로그에 `variant` 파라미터, CLI `nearby overview` 어순(거리·방위를 이름 앞으로). 버전 4곳 + CHANGELOG 2곳 동조, 발행 워크플로 성공·`npm view` 両패키지 0.11.0. 릴리스 노트 정본 `packages/cli/CHANGELOG.md`·`packages/mcp/CHANGELOG.md` §0.11.0.
+
 ### 웨이브 1 후속 소규모 묶음
 
 - 채팅 도보 도구·CLI `route walk`·MCP `route_walk`의 기본 경로가 앱 화면 첫 줄과 같은 경로 종류가 됐다(ko 최단, 계단 회피 요청·en은 종전 그대로). 서버 무파라미터 응답은 불변(옛 앱 호환), 소비자가 `variant=shortest`를 붙인다.

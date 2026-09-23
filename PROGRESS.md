@@ -21,7 +21,7 @@
 | 웹 | https://gildongmu.dodoplanet.space (push = 자동 배포). ⛔ **2026-09-22 09:00 KST까지 push·재배포 동결**(근거는 `docs/BACKLOG.md` 머리) — 로컬 main이 origin보다 앞선다 |
 | iOS | 스토어 최신 **1.17 `READY_FOR_SALE`**(빌드 25), **1.18 `WAITING_FOR_REVIEW`**(빌드 26, 아카이브 커밋 `edc8cbdc`, 제출 2026-09-19 08:26 KST) — ASC `--check` 실측. ⚠ 1.18 아카이브 뒤 iOS 커밋은 스토어에 없다 — `git log edc8cbdc..HEAD -- ios/`. ⚠ 아카이브 커밋은 **로컬 main에만 있다**(동결) |
 | iOS 최소 지원 | **18.0**(2026-08-19 하향, 1.10부터 적용 — 스토어 반영 완료) |
-| npm | `gildongmu` · `gildongmu-mcp` **v0.10.0**(2026-09-02, `cli-v0.10.0` 태그 → Trusted Publishing 워크플로 성공, `npm view` 両패키지 0.10.0 확인). 미발행 변경 3건(`c0d388fb` 한눈에 보기 어순 · `7fc1e832` `nearby --help` 11종 · `ac2d8fb5` mcp README — `packages/*/CHANGELOG.md`에 `[미출시]` 절은 아직 없다) |
+| npm | `gildongmu` · `gildongmu-mcp` **v0.11.0**(2026-09-23, `cli-v0.11.0` 태그 → Trusted Publishing 워크플로 성공, `npm view` 両패키지 0.11.0·SLSA provenance 확인). 미발행 변경 없음 |
 | 저장소 | GitHub **public**(2026-08-17 전환) — https://github.com/Engccer/gildongmu. 코드 MIT, 번들 데이터는 `NOTICE.md`. **모든 커밋이 즉시 공개된다** — 실주소·계측 로그·키를 넣지 않는 규칙은 `CLAUDE.md` 개발 규칙 |
 
 - iOS 심사 상태 조회: `node ios/scripts/asc-submit.mjs --check`
