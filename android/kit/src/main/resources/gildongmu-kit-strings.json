@@ -361,14 +361,6 @@
       "it": "Nessun percorso a piedi trovato.",
       "ja": "徒歩経路が見つかりませんでした。"
     },
-    "route.pedestrian.stepFreeToggle": {
-      "ko": "계단 회피 경로",
-      "en": "Avoid stairs",
-      "es": "Evitar escaleras",
-      "fr": "Éviter les escaliers",
-      "it": "Evita le scale",
-      "ja": "階段を避ける経路"
-    },
     "route.pedestrian.summary": {
       "ko": "총 %1$s, 약 %2$s분",
       "en": "Total %1$s, about %2$s min",

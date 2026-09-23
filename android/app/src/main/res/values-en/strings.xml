@@ -870,7 +870,6 @@
     <string name="route_pedestrian_error">Couldn\'t load the walking route.</string>
     <string name="route_pedestrian_heading">Walk</string>
     <string name="route_pedestrian_noRoute">No walking route found.</string>
-    <string name="route_pedestrian_stepFreeToggle">Avoid stairs</string>
     <string name="route_pedestrian_summary">Total %1$s, about %2$s min</string>
     <string name="route_public">Transit</string>
     <string name="route_transit_alightAt">Get off at %1$s</string>

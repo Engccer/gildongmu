@@ -162,8 +162,7 @@
       "heading": "Walk",
       "summary": "Total {distance}, about {minutes} min",
       "noRoute": "No walking route found.",
-      "error": "Couldn't load the walking route.",
-      "stepFreeToggle": "Avoid stairs"
+      "error": "Couldn't load the walking route."
     }
   },
   "directions": {

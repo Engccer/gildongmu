@@ -162,8 +162,7 @@
       "heading": "A pie",
       "summary": "Total {distance}, aprox. {minutes} min",
       "noRoute": "No se encontró ninguna ruta a pie.",
-      "error": "No se pudo cargar la ruta a pie.",
-      "stepFreeToggle": "Evitar escaleras"
+      "error": "No se pudo cargar la ruta a pie."
     }
   },
   "directions": {

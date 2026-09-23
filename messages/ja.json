@@ -162,8 +162,7 @@
       "heading": "徒歩",
       "summary": "計{distance}、約{minutes}分",
       "noRoute": "徒歩経路が見つかりませんでした。",
-      "error": "徒歩経路を取得できませんでした。",
-      "stepFreeToggle": "階段を避ける経路"
+      "error": "徒歩経路を取得できませんでした。"
     }
   },
   "directions": {

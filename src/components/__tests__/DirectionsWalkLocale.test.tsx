@@ -147,7 +147,7 @@ describe("비-ko 도보 상세 (E16 축3)", () => {
     expect(walkUrls.every((u) => !u.includes("lang="))).toBe(true);
   });
 
-  it("en 로케일은 추천·최단 두 줄이고 안내 시작 버튼이 줄 이름을 쓴다(계단 회피 토글 없음)", async () => {
+  it("en 로케일은 추천·최단 두 줄이고 안내 시작 버튼이 줄 이름을 쓴다", async () => {
     stubFetch();
     await queryRoutes("en");
     await waitFor(() => expect(screen.queryByText("walk steps")).not.toBeNull());
@@ -156,13 +156,5 @@ describe("비-ko 도보 상세 (E16 축3)", () => {
     expect(rec.getAttribute("aria-expanded")).toBe("true");
     expect(sho.getAttribute("aria-expanded")).toBe("false");
     expect(screen.getByRole("button", { name: enMessages.beacon.guideStartWalkRecommended })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: enMessages.route.pedestrian.stepFreeToggle })).toBeNull();
-  });
-
-  it("ko 로케일에도 계단 회피 토글이 없다(E42 — 둘째 줄이 그 자리를 대신한다)", async () => {
-    stubFetch();
-    await queryRoutes("ko");
-    await waitFor(() => expect(screen.queryByText("walk steps")).not.toBeNull());
-    expect(screen.queryByRole("button", { name: koMessages.route.pedestrian.stepFreeToggle })).toBeNull();
   });
 });

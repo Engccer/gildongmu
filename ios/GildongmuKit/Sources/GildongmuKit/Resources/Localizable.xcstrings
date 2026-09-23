@@ -1801,46 +1801,6 @@
         }
       }
     },
-    "route.pedestrian.stepFreeToggle": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "계단 회피 경로"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Avoid stairs"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Evitar escaleras"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Éviter les escaliers"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Evita le scale"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "階段を避ける経路"
-          }
-        }
-      }
-    },
     "route.pedestrian.summary": {
       "localizations": {
         "ko": {
