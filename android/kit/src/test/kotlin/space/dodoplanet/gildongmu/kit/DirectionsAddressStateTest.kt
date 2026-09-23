@@ -98,4 +98,15 @@ class DirectionsAddressStateTest {
         assertFalse(state.finish(old))
         assertTrue(state.isLoading)
     }
+
+    @Test fun `주소만 비우기는 완료 표식·요청 세대를 건드리지 않는다(stale-origin N-3)`() {
+        val state = DirectionsAddressState()
+        val request = state.begin("ko")
+        state.clearAddress()
+        assertEquals(DirectionsAddressState.Address(null, null), state.address)
+        assertFalse(state.hasLoaded)
+        assertTrue(state.isLoading)
+        assertTrue(state.commit(ReverseGeocodeResponse("주소"), request, "ko", false))
+        assertEquals("주소", state.address.original)
+    }
 }

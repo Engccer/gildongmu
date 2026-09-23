@@ -37,6 +37,7 @@ class LocationStore(
 
 
     var stored: StoredFix? = null
+        // `internal`은 테스트가 캐시를 심는 자리다 — 운영 코드의 쓰기는 `acquireGatedFix` 한 곳(소스 가드 `stale-origin-guard.test.ts`).
         internal set(value) {
             field = value
             // 좌표가 새로 들어왔다 — 옛 위치를 푼다(단발·타임아웃 최선값 공통, stale-origin §2).

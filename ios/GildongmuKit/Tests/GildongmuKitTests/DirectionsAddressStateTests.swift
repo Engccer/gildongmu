@@ -200,4 +200,16 @@ import Testing
             #expect(state.hasLoaded)
         }
     }
+
+    /// stale-origin 재리뷰 N-3: 비우기는 완료 표식·요청 세대를 건드리지 않는다.
+    @Test func clearAddressLeavesLoadedFlagAndRequestUntouched() {
+        var state = DirectionsAddressState()
+        let request = state.begin(language: "ko")
+        state.clearAddress()
+        #expect(state.address.original == nil && state.address.english == nil)
+        #expect(!state.hasLoaded)
+        #expect(state.isLoading)
+        #expect(state.commit(response("주소", nil), for: request, language: "ko", isCancelled: false))
+        #expect(state.address.original == "주소")
+    }
 }

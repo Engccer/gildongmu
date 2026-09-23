@@ -46,6 +46,7 @@ class DirectionsScreenA11yTest {
         override suspend fun coordinateForRanking(): NearbyCoord? = null
         override suspend fun coordinateForDisplay(): NearbyCoord? = null
         override fun staleFix(): StaleFix? = null
+        override fun storedCoordinate(): NearbyCoord? = null
         override suspend fun requestPreciseLocation() = false
     }
 

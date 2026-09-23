@@ -22,6 +22,9 @@ interface EndpointLocator {
     /** "현재 위치" 칸 주소 병기용 표시 좌표 — 권한 없거나 수동 위치면 팝업·측위 없이 null, 실패도 null(저장 좌표 폴백 없음). */
     suspend fun coordinateForDisplay(): NearbyCoord?
 
+    /** 보관 좌표(측위 없음) — 권한 `Fine`이고 수동 위치가 아닐 때만. 옛 위치가 풀린 뒤 칸 주소를 받는 자리(재리뷰 N-2). */
+    fun storedCoordinate(): NearbyCoord?
+
     /** 옛 위치(spec 2026-09-23 stale-origin): 직전 측위가 취득 실패였고 옛 좌표가 있으면 그 좌표와 측정 시각(epoch 초). 수동 위치면 null. */
     fun staleFix(): StaleFix?
 
@@ -35,6 +38,7 @@ class LocationStoreLocator(private val effective: EffectiveLocation, private val
     override suspend fun coordinateForRanking(): NearbyCoord? = effective.coordinateForRanking()
     override suspend fun coordinateForDisplay(): NearbyCoord? = effective.coordinateForDisplay()
     override fun staleFix(): StaleFix? = effective.staleFix()
+    override fun storedCoordinate(): NearbyCoord? = effective.storedCoordinate()
     override suspend fun requestPreciseLocation(): Boolean = permissions.request() == LocationPermission.Fine
 }
 

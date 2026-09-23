@@ -9,6 +9,13 @@ import {
 } from "@/lib/manual-location-store";
 import { awaitGeolocation } from "@/lib/geolocation";
 
+// 스냅샷은 고정 참조여야 한다(`useSyncExternalStore`) — 테스트가 갈아 끼울 때만 바뀐다.
+const geoSnap = vi.hoisted(() => ({
+  value: { status: "idle" } as
+    | { status: "idle" }
+    | { status: "ready"; coords: { lat: number; lng: number; accuracy: number; at: number } },
+}));
+
 vi.mock("next-intl", async () => {
   const m = await import("./stable-intl-mock");
   return m.stableIntlMock("ko", m.keyOnly);
@@ -18,7 +25,7 @@ vi.mock("@/lib/geolocation", () => ({
   subscribeGeolocation: () => () => {},
   getGeolocationServerSnapshot: () => ({ status: "idle" as const }),
   awaitGeolocation: vi.fn(async () => ({ status: "error" as const })),
-  getGeolocationSnapshot: ((snapshot) => () => snapshot)({ status: "idle" as const }),
+  getGeolocationSnapshot: () => geoSnap.value,
   // 조회 출발지의 나이 상한(A7). 모듈을 통째로 대체하므로 상수도 함께 준다 —
   // 빠뜨리면 런타임에 `undefined` 참조로 죽고 증상은 "phase가 locating에 멈춤"이다.
   DIRECTIONS_ORIGIN_MAX_AGE_SECONDS: 180,
@@ -265,6 +272,7 @@ describe("DirectionsView 수동 위치(manual location)", () => {
     // 동형 정리, 리뷰 발견).
     localStorage.clear();
     __resetManualLocationForTest();
+    geoSnap.value = { status: "idle" };
   });
 
   it("origin 있는 수동 위치는 출발지 필드에 manual 라벨로 표시된다", () => {
@@ -294,6 +302,8 @@ describe("DirectionsView 수동 위치(manual location)", () => {
   });
 
   it("수동 위치 출발지로 조회하면 역지오코딩 없이 그 좌표로 조회하고, 조회 완료 통지에는 고지를 싣지 않으며, 안내 시작 순간에만 '현재 위치에서 시작' 고지를 발화한다", async () => {
+    // GPS 좌표가 있어도(ready) 수동 위치면 칸 주소를 조회하지 않아야 한다 — idle이면 이 단언이 공회전한다(재리뷰 N-6).
+    geoSnap.value = { status: "ready", coords: { lat: 37.6, lng: 127.2, accuracy: 10, at: Date.now() / 1000 } };
     setManualLocation({
       label: "길동 카페",
       lat: 37.5384,
@@ -356,7 +366,7 @@ describe("DirectionsView 수동 위치(manual location)", () => {
     expect(
       calledUrls.some((u) => u.startsWith("/api/route/car?origin=37.5384,127.1432")),
     ).toBe(true);
-    // 수동 위치일 때는 역지오코딩(fetchCurrentAddress)을 호출하지 않는다.
+    // 수동 위치일 때는 GPS 좌표가 있어도(`ready`) 칸 주소 역지오코딩을 하지 않는다.
     expect(calledUrls.some((u) => u.startsWith("/api/geocode/reverse"))).toBe(false);
   });
 });

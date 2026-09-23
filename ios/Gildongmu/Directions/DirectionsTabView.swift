@@ -357,6 +357,10 @@ final class DirectionsModel {
         let location = LocationService.shared
         let stale = location.staleFix
         guard stale?.fixedAt != currentStaleAt else { return }
+        // 옛 위치가 사라진 이유가 새 좌표가 아니라 권한 회수·정밀 위치 끔이면(표식은 그대로) 옛 좌표의
+        // 주소를 받지 않는다 — 받으면 "현재 위치(옛 주소 부근)"가 된다(재리뷰 N-1). 라벨이 주소 없는
+        // "현재 위치"로 둔다.
+        if stale == nil, location.failedSinceLastStore { return }
         guard let coord = stale.map({ (lat: $0.lat, lng: $0.lng) }) ?? location.lastCoordinate else { return }
         let request = beginCurrentAddress()
         markStale(stale?.fixedAt, request: request)
@@ -368,12 +372,12 @@ final class DirectionsModel {
 
     /// 옛 위치 표식을 세우거나 내린다. 표식이 바뀌면 주소를 먼저 비운다 — 표식은 즉시인데 주소는
     /// 비동기라, 그 사이 다른 좌표의 주소가 옛 위치 문장에 실리지 않게(구현 리뷰 L-3).
-    /// ⚠ 이미 가진 요청으로 비운다 — 측위 뒤에 새 세대를 발급하면 늦은 측위가 최신 주소 요청을
-    /// 만드는 경로가 된다(`ios-endpoint-state-guard.test.ts`). `commit`은 요청을 끝내지 않고
-    /// 로딩만 내리므로 같은 요청으로 이어서 받을 수 있다.
+    /// ⚠ 새 요청 세대를 발급하지 않고(측위 뒤 발급은 늦은 측위가 최신 주소 요청을 만드는 경로 —
+    /// `ios-endpoint-state-guard.test.ts`), 완료 표식도 세우지 않는다(`clearAddress` — 비우기 커밋으로
+    /// 세우면 그 뒤 취소된 재진입이 주소를 다시 받지 않는다, 재리뷰 N-3). 요청은 호출부가 이어 쓴다.
     private func markStale(_ staleAt: Date?, request: DirectionsAddressState.Request) {
         guard staleAt != currentStaleAt else { return }
-        addressState.commit(nil, for: request, language: AppLanguage.dataLocale, isCancelled: false)
+        addressState.clearAddress()
         currentStaleAt = staleAt
     }
 
@@ -578,9 +582,11 @@ final class DirectionsModel {
         results = built
         walkLines = linesCandidate
         resultsOriginNeedsStartNotice = usedManualOrigin || (from == .current && staleAt != nil)
-        resultsStaleNotice = staleAt.map {
+        // 경로를 하나도 못 찾았으면 붙이지 않는다 — "찾지 못했습니다. … 찾았습니다."가 되어 앞뒤가
+        // 모순된다(위원장 판정 2026-09-23, 단서는 출발지 칸에 남는다).
+        resultsStaleNotice = built.successCount > 0 ? staleAt.map {
             appLocalized("directions.staleOriginNotice", staleAgeText(fixedAt: $0, now: Date()))
-        }
+        } : nil
         promotedDestination = promoted
         phase = .settled(successCount: built.successCount)
         hasQueriedOnce = true
@@ -1359,8 +1365,12 @@ struct DirectionsTabView: View {
         if let manual = manualLocationLabel(manualLocationStore, accessible: accessible) { return manual }
         if model.isRefreshingCurrent { return appLocalized("directions.refreshingCurrent") }
         // 옛 위치(stale-origin): 표시줄과 같은 문장 함수 — 판정선이 갈리면 화면으로 확인 불가.
-        // 권한을 거두면(스토어의 옛 위치가 사라지면) 칸도 옛 위치를 말하지 않는다(구현 리뷰 L-4).
-        if let staleAt = model.currentStaleAt, locationService.staleFix != nil {
+        if let staleAt = model.currentStaleAt {
+            // 권한을 거두면(스토어의 옛 위치가 사라지면) 옛 위치도 옛 주소도 말하지 않는다 — "없음"은
+            // 주소 없는 "현재 위치"다(웹과 같음, 재리뷰 N-1). 새 좌표로 풀린 경우는 `syncCurrentFromStore`가
+            // 표식을 내리고 새 주소를 받는다. 권한 축은 관찰되는 미러를 읽어 회수 즉시 다시 그린다.
+            _ = (locationService.observedAuthorization, locationService.observedAccuracy)
+            guard locationService.staleFix != nil else { return appLocalized("directions.currentLocation") }
             let name = model.currentAddress.map { bilingual($0, en: model.currentAddressEnglish, roman: nil) }
             return staleLocationText(address: accessible ? name?.primary : name?.display, fixedAt: staleAt, now: now)
         }

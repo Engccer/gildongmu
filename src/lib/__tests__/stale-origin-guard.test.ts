@@ -46,6 +46,13 @@ describe("iOS 옛 위치 배선", () => {
     expect(DIRECTIONS).toMatch(/\.onChange\(of: locationService\.staleFix\?\.fixedAt\) \{ model\.syncCurrentFromStore\(\) \}/);
   });
 
+  it("안드로이드도 보관 좌표를 쓰는 자리는 하나다(세터가 옛 위치를 푼다, 재리뷰 N-8)", () => {
+    const store = read("android/app/src/main/kotlin/space/dodoplanet/gildongmu/location/LocationStore.kt");
+    expect(store.match(/\bstored = /g) ?? []).toHaveLength(1);
+    const setter = store.slice(store.indexOf("var stored: StoredFix?"), store.indexOf("var stored: StoredFix?") + 300);
+    expect(setter).toContain("failedSinceLastStore = false");
+  });
+
   it("길찾기 조회·재선택 실패는 같은 폴백 판정을 지난다", () => {
     const calls = DIRECTIONS.match(/staleOriginFallback\(after: error\)/g) ?? [];
     expect(calls).toHaveLength(2);

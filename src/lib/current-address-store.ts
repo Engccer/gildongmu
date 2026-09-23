@@ -60,7 +60,7 @@ export function getCurrentAddressServerSnapshot(): CurrentAddressEntry | null {
 
 /**
  * 좌표 → 대표 주소. 매칭 없음·실패 모두 조용히 null(라벨은 "현재 위치"만 남아
- * 거짓 표시가 없다). `DirectionsView.fetchCurrentAddress`와 같은 라우트·같은 계약.
+ * 거짓 표시가 없다). 표시줄과 길찾기 "현재 위치" 칸이 함께 쓴다.
  */
 async function fetchAddress(coord: Coord, lang: AddressLang): Promise<CurrentAddress | null> {
   try {
