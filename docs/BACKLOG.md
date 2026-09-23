@@ -610,7 +610,7 @@ en(및 es/fr/it/ja) 사용에서 **우리 코드 결함**으로 한국어가 노
 
 ### B12. 웹 채팅 답변에 복사·듣기 버튼 없음 (iOS 선행 2026-07-20, 🆕 2026-09-24 위원장 피드백 — bounded, 착수 대기)
 
-웹에는 처음부터 없었다(빠진 게 아니라 `0f549d8a` 이식 때 `/api/tts` 라우트·`chirp.ts`만 받고 UI는 iOS에만 붙었다). iOS 계약: 어시스턴트 말풍선 끝(산문 → 카드 → 출처 뒤)에 **듣기**(라벨 토글 "듣기" ↔ "재생 중지", 같은 메시지 재탭 정지, 앱 전체 동시 1개, 온디바이스 음성 우선·서버 TTS는 보이스 없을 때 폴백, 입력은 마크다운 원문을 `MarkdownPlainText.strip`으로 평문화)와 **공유**(복사는 공유 시트 안, 마크다운 원문). ▶ **웹 설계(2026-09-24 접수 세션 강한 디폴트)**: 답변마다 **복사 + 듣기** 두 버튼, 같은 자리. 복사는 **평문**(붙여넣을 곳이 메모·메시지라 마크다운 기호는 노이즈 — 웹에 `markdownToPlainText`가 없으니 dodo `src/lib/utils.ts`의 것을 이식하고 Kit `MarkdownPlainText` fixture와 공유해 미러 게이트), 완료 통지는 `PlaceDetail` 주소 복사와 같은 keyed sr-only polite("복사됨"). 듣기는 **브라우저 내장 `speechSynthesis` 우선, `/api/tts`는 로케일 보이스가 없을 때만**(iOS와 주종 동형, 비용 0 우선 — dodo `useTtsPlayback`은 서버 우선이라 순서를 뒤집어 이식), 토글은 라벨 교체만(aria-pressed 병기 금지, `DistanceBeacon` 선례), 화면 이탈·받아쓰기 시작 시 정지. 지켜야 할 기존 계약: 답변 산문 live region 복제 금지, 카드 done 1회 마운트, `min-h-11`. 테스트 레인 `src/components/chat/__tests__/MessageBubble.test.tsx`에 버튼 존재·토글 라벨·평문 복사 단언.
+웹에는 처음부터 없었다(빠진 게 아니라 `0f549d8a` 이식 때 `/api/tts` 라우트·`chirp.ts`만 받고 UI는 iOS에만 붙었다). iOS 계약: 어시스턴트 말풍선 끝(산문 → 카드 → 출처 뒤)에 **듣기**(라벨 토글 "듣기" ↔ "재생 중지", 같은 메시지 재탭 정지, 앱 전체 동시 1개, 온디바이스 음성 우선·서버 TTS는 보이스 없을 때 폴백, 입력은 마크다운 원문을 `MarkdownPlainText.strip`으로 평문화)와 **공유**(복사는 공유 시트 안, 마크다운 원문). ▶ **웹 설계(2026-09-24 접수 세션 강한 디폴트)**: 답변마다 **복사 + 듣기** 두 버튼, 같은 자리. 복사는 **평문**(붙여넣을 곳이 메모·메시지라 마크다운 기호는 노이즈 — 웹에 `markdownToPlainText`가 없으니 dodo-planet `src/lib/utils.ts`(gildongmu 밖)의 것을 이식하고 Kit `MarkdownPlainText` fixture와 공유해 미러 게이트), 완료 통지는 `PlaceDetail` 주소 복사와 같은 keyed sr-only polite("복사됨"). 듣기는 **브라우저 내장 Web Speech 합성(브라우저 API) 우선, `/api/tts`는 로케일 보이스가 없을 때만**(iOS와 주종 동형, 비용 0 우선 — dodo-planet `src/hooks/useTtsPlayback.ts`(gildongmu 밖)는 서버 우선이라 순서를 뒤집어 이식), 토글은 라벨 교체만(aria-pressed 병기 금지, `DistanceBeacon` 선례), 화면 이탈·받아쓰기 시작 시 정지. 지켜야 할 기존 계약: 답변 산문 live region 복제 금지, 카드 done 1회 마운트, `min-h-11`. 테스트 레인 `src/components/chat/__tests__/MessageBubble.test.tsx`에 버튼 존재·토글 라벨·평문 복사 단언.
 
 ### B6. 웹 실시간 안내에 목적지 메뉴 없음 (iOS 선행 2026-08-12)
 
@@ -1401,9 +1401,9 @@ W1 도구 9개를 "데이터 반환형이 주"(W2 spec 판정 ②) 기준으로 
 ### 검증 기준선 복구: 독립 항목
 
 - `TransitGuidePanel.test.tsx`의 `boardingUpstreamFailed` 통지 단언은 수동 진행 버튼만 기다린 뒤 부모 통지 영역을 동기 검사해 간헐 실패한다. 통지의 추가 커밋 자체를 `waitFor`로 기다리는 수정이 필요하다. iOS 변경 전 main `3fb486ea`에서도 5회 중 1회 동일 실패를 재현했다.
-- `android-strings-drift.test.ts`가 가져오는 생성기 결과의 타입 추론을 보강해야 한다. `npx tsc --noEmit`에 오류 8건이 있고 같은 main 기준선에서도 출력이 동일하다. Vitest 통과를 전체 타입 검사 통과로 대신하지 않는다.
+- ~~`android-strings-drift.test.ts` 타입 추론 보강(`tsc` 오류 8건)~~ ✅ 2026-09-23 `a4c86c37`에서 복구, 2026-09-24 `9ec4d95d`에서 `npx tsc --noEmit` 오류 0 재확인(코디네이터). Vitest 통과를 전체 타입 검사 통과로 대신하지 않는다는 규칙은 그대로.
 
-둘 다 이번 iOS 구현과 분리한 기존 결함이다. 진단과 검증 증거는 `docs/superpowers/plans/2026-09-19-ios-backlog-parallel-plan.md`에 있다. iOS 작업에 얹어 웹·Android 범위를 넓히지 않고 별도로 처리한다.
+위 간헐 실패는 이번 iOS 구현과 분리한 기존 결함이다(2026-09-24 5차 웨이브 `small-5`가 처리). 진단과 검증 증거는 `docs/superpowers/plans/2026-09-19-ios-backlog-parallel-plan.md`에 있다. iOS 작업에 얹어 웹·Android 범위를 넓히지 않고 별도로 처리한다.
 
 ⚠ **편승은 얹힐 작업이 실제로 올 때만 유효한 정책이다.** 그렇지 않았던 D2·D3은 얹힐 작업이 예정에 없어 **편승이 무기한 보류로 작동**했고 결국 단독 정리로 종결했다. **그래서 새 항목에는 "얹힐 곳"을 함께 적는다** — 그 답이 없으면 편승이 아니라 **크기가 작을 뿐인 독립 항목**이다.
 
@@ -1577,6 +1577,8 @@ W1 도구 9개를 "데이터 반환형이 주"(W2 spec 판정 ②) 기준으로 
 ---
 
 ## 다음에 할 일
+
+**2026-09-24 5차 웨이브 진행 중**(계획 `docs/superpowers/plans/2026-09-24-backlog-sweep-5-parallel-plan.md`): E50 · N4 경유지 진행 표시(웹·iOS) · B12 · A48+§7 편승 묶음, 웨이브 2에 N4 웹 배선·doc-audit. 아래는 그 직전 상태다.
 
 **2026-09-23 기준 다음 행동(순서)** — 백로그 4차 소화(병렬 세션 15개, 계획 `docs/superpowers/plans/2026-09-23-backlog-sweep-4-parallel-plan.md`)로 착수 목록의 코드 항목은 닫혔다. 남은 것은 대부분 판정이다.
 
