@@ -1439,7 +1439,7 @@ describe("승차 전 도보 핸드오프(A25, spec 2026-08-30 §6)", () => {
 
 /**
  * 가짜 시계를 폴 한 주기만큼 넘기고 도착 폴(`/api/transit/track`)이 **정확히 한 번** 나갔는지 확인한다. 다음 폴
- * 타이머는 앞 폴이 커밋된 뒤에야 걸리므로(`scheduleNext`) 시계를 한꺼번에 넘기면 폴이 하나만 풀린다 — 폴 N회는
+ * 타이머는 앞 폴이 끝난 뒤에야 걸리므로(`finally`의 `scheduleNext`) 시계를 한꺼번에 넘기면 폴이 하나만 풀린다 — 폴 N회는
  * 이 헬퍼 N번이다. 폴 안에서 도는 현재역 조회(E35 `/api/transit/position`)는 폴이 아니라 세지 않는다.
  */
 async function advanceOnePoll(fetchMock: ReturnType<typeof vi.fn>, ms = 20_000) {
@@ -1736,7 +1736,7 @@ describe("TransitGuidePanel — 폴 예약", () => {
       src: readFileSync(f, "utf8"),
     }));
     // import 그래프를 거슬러 올라 폴 루프(useTransitGuide)를 마운트하는 모듈 전부.
-    const mounting = new Set(["useTransitGuide", "live-region-host"]);
+    const mounting = new Set(["useTransitGuide"]);
     const modules = sources.filter((m) => !/\.test\.tsx?$/.test(m.file));
     for (let grew = true; grew; ) {
       grew = false;
