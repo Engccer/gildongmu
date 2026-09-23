@@ -23,6 +23,10 @@
 
 웹 장소 상세도 역(`stationLayoutKind` 웹 미러 `src/lib/station-phone.ts`)이면 역 정보(제목 항상, 전화 맨 위, 운영사 번호는 "대표번호", 출처는 섹션 끝) → 도착·시간표·시설 → 무장애 → 길찾기(제목) → 이 장소 주변(제목) 순서다. 서울 지하철 시설은 버튼으로 연 뒤 종류마다 접히고 접힘 줄에 운행 중지 수가 붙는다(줄 없는 묶음은 평문). WebMCP `get_place_info`는 `basic.phoneKind`로 대표번호를 알린다. 비역 장소는 그대로이고 경유역 번호 조회는 웹에 경유역 진입이 없어 옮기지 않았다. [spec](docs/superpowers/specs/2026-09-17-station-detail-reorg-design.md).
 
+### E35 승차 중 현재역 — 실시간 열차 위치로 표식 채우기
+
+서울 실시간 열차 위치(`realtimePosition`)를 새 provider·`/api/transit/position` 라우트(노선 단위 20초 캐시)로 붙였다. 승차 중 하차역 도착 정보에 아직 열차가 없는 구간(종전 10분 안팎 표식 없음)에서 경유역 목록의 "현재 위치"·상태 문장("현재 위치 {역}.")·조망을 잠근 열차의 실제 현재역으로 채운다(웹·iOS 실험판). 표시 전용이라 승차 상태 머신 판정은 그대로이고, 현재역이 보이는 동안 `neverSeen` 경고는 보류한다. 실호출 게이트 4노선 표기 일치·20노선 중 19노선 제공. [spec](docs/superpowers/specs/2026-09-23-riding-current-station-design.md)
+
 ### A46 승차 대기 배경 관측·수동 진행 버튼 이름
 
 고른 차량을 기다리는(boarding) 동안에도 keep-alive 위치 스트림을 켜서, 화면을 끄거나 다른 앱을 써도 폴이 돌고 도착 관측 승격이 기본 경로가 되게 했다(iOS 실험판). 관측이 끝난 뒤의 수동 진행 버튼은 [선택한 열차에 탔어요]·[선택한 버스에 탔어요], 대기 국면은 [이미 탔어요]로 바꾸고, 세 안내 문장(`vehiclePassed`·`boardingSignalLost`·`boardingUpstreamFailed`)에서 버튼 이름을 인용하던 꼬리를 뺐다(웹·iOS, 6로케일). [BACKLOG A46](docs/BACKLOG.md#a46-고른-열차를-기다리다-화면을-끄면-앱이-도착을-못-보고-돌아오면-도착-정보-없이를-묻는다--2026-09-23-위원장-실승차-피드백-ios-실험판).
