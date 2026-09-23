@@ -1,6 +1,7 @@
 package space.dodoplanet.gildongmu.place
 
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.async
@@ -32,7 +33,8 @@ import kotlin.math.roundToLong
  * - 같은 키 진행 중 조회는 공유한다. 조회는 저장소 스코프에서 돌아 소비자가 사라져도 취소되지 않고, 기록도 그 조회가 한다.
  * - ⚠ **메인 스레드 전용**(iOS `@MainActor`). 호출부는 컴포지션 효과·메인 스코프뿐이고 조회 본체만 전송 계층이 IO로 옮긴다.
  * - 디스크 캐시 없음: 앱 전송(`HttpUrlConnectionTransport`)에 `HttpResponseCache`가 설치돼 있지 않아 응답이 기기에 남지 않는다
- *   (iOS가 전용 ephemeral 세션을 쓰는 이유 — spec §7 약관 판정 — 가 여기선 기본값으로 성립한다).
+ *   (iOS가 전용 ephemeral 세션을 쓰는 이유 — spec §7 약관 판정 — 가 여기선 기본값으로 성립한다). ⚠ 설치하면 이 경로가 조용히 약관
+ *   위반이 된다 — `StationPhoneStoreTest`의 소스 가드가 앱 소스의 `HttpResponseCache`를 막는다.
  */
 class StationPhoneStore(
     private val service: StationPhoneService,
@@ -70,14 +72,19 @@ class StationPhoneStore(
         val at = fetchedAt[key]
         if (value != null && value != StationPhoneResult.Failed && at != null && now() - at < FRESH_SECONDS) return value
         inflight[key]?.let { return it.await() }
-        val task = scope.async {
-            val result = service.lookup(stationName, lat, lng, lineName)
-            // 기록은 조회가 한다 — 기다리던 소비자가 사라져도 장부가 정리된다(공유 조회는 취소하지 않는다).
-            inflight.remove(key)
-            record(result, key)
-            result
+        // 장부 대입 뒤에 시작한다(LAZY) — 즉시 실행 디스패처·중단 없는 반환에서 본문의 정리가 대입보다 먼저 돌면 완료된 조회가
+        // 장부에 고착돼 이후 재조회가 영영 일어나지 않는다. 정리는 finally에서 자기 것일 때만.
+        lateinit var task: Deferred<StationPhoneResult>
+        task = scope.async(start = CoroutineStart.LAZY) {
+            try {
+                // 기록은 조회가 한다 — 기다리던 소비자가 사라져도 장부가 정리된다(공유 조회는 취소하지 않는다).
+                service.lookup(stationName, lat, lng, lineName).also { record(it, key) }
+            } finally {
+                if (inflight[key] === task) inflight.remove(key)
+            }
         }
         inflight[key] = task
+        task.start()
         return task.await()
     }
 

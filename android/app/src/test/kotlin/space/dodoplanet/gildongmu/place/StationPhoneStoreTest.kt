@@ -1,14 +1,17 @@
 package space.dodoplanet.gildongmu.place
 
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import space.dodoplanet.gildongmu.kit.APIClient
+import space.dodoplanet.gildongmu.kit.Fixtures
 import space.dodoplanet.gildongmu.kit.HttpResponse
 import space.dodoplanet.gildongmu.kit.HttpTransport
 import space.dodoplanet.gildongmu.kit.StationPhoneResult
@@ -141,5 +144,45 @@ class StationPhoneStoreTest {
         assertEquals(2, t.calls)
         assertEquals(StationPhoneResult.Direct("02-6311-5471"), s.shown())
         assertEquals(StationPhoneResult.Unavailable, s.result("강동", 37.5358, 127.1323, line)) // 강동 POI가 응답에 없다
+    }
+
+    @Test fun `이미 실패 줄이면 재시도 실패가 관찰자를 다시 깨우지 않는다`() = runTest {
+        val t = ScriptedTransport(down)
+        val s = store(t)
+        val emissions = mutableListOf<Map<StationPhoneStore.Key, StationPhoneResult>>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { s.results.collect { emissions.add(it) } }
+        s.resolve("천호", 37.5387, 127.1234, line)
+        s.resolve("천호", 37.5387, 127.1234, line)
+        assertEquals(2, t.calls)
+        assertEquals(2, emissions.size) // 빈 맵 + 실패 한 번
+    }
+
+    @Test fun `없음도 번호처럼 5분 신선하다`() = runTest {
+        val t = ScriptedTransport { HttpResponse(200, """{"places":[],"provider":"kakao","query":"천호역"}""") }
+        val s = store(t)
+        assertEquals(StationPhoneResult.Unavailable, s.resolve("천호", 37.5387, 127.1234, line))
+        advanceTimeBy(200_000)
+        s.resolve("천호", 37.5387, 127.1234, line)
+        assertEquals(1, t.calls)
+    }
+
+    /** 즉시 실행 디스패처·중단 없는 전송에서도 완료된 조회가 장부에 고착되지 않는다(리뷰 L1 — 고착되면 신선도가 지나도 재조회가 없다). */
+    @Test fun `즉시 실행 스코프에서도 낡으면 다시 조회한다`() = runTest {
+        var calls = 0
+        val instant = object : HttpTransport {
+            override suspend fun get(url: String, timeoutMs: Long?): HttpResponse { calls++; return HttpResponse(200, stationBody) }
+        }
+        val s = StationPhoneStore(StationPhoneService(APIClient("https://example.test", instant)), CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler))) { testScheduler.currentTime / 1_000.0 }
+        s.resolve("천호", 37.5387, 127.1234, line)
+        advanceTimeBy(301_000)
+        s.resolve("천호", 37.5387, 127.1234, line)
+        assertEquals(2, calls)
+    }
+
+    /** spec §7 약관: 역 전화 조회 응답은 기기 디스크에 남지 않는다 — 안드로이드는 HTTP 디스크 캐시를 설치하지 않는 것이 그 근거다(리뷰 L2). */
+    @Test fun `앱 소스에 HTTP 디스크 캐시 설치가 없다`() {
+        val main = Fixtures.repoRoot.resolve("android/app/src/main")
+        val hits = main.walkTopDown().filter { it.isFile && it.extension == "kt" && it.readText().contains("HttpResponseCache.install") }.map { it.name }.toList()
+        assertEquals(emptyList(), hits)
     }
 }

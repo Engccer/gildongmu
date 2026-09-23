@@ -5,6 +5,8 @@ import space.dodoplanet.gildongmu.kit.KitJson
 import space.dodoplanet.gildongmu.kit.models.CultureEvent
 import space.dodoplanet.gildongmu.kit.models.NightClinic
 import space.dodoplanet.gildongmu.kit.models.Place
+import space.dodoplanet.gildongmu.kit.models.TransitLegStop
+import space.dodoplanet.gildongmu.kit.transitStopPlace
 
 /** 장소 상세 최상단 도메인 섹션 재료(iOS `domainSection` — 그 화면에 온 이유라 서열 1위). 라우트 JSON이라 재생성 뒤에도 남는다(spec 판정 26). */
 @Serializable
@@ -23,21 +25,26 @@ data class PlaceDetailRoute(
     val domainJson: String? = null,
     /** 채팅에서 연 상세는 "물어보기"를 숨긴다(iOS `showsChatEntry: false`, 순환 방지 — M6 spec §7). */
     val showsChatEntry: Boolean = true,
-    /**
-     * 경유역 전화번호 조회의 노선 힌트(E44 spec §5.2, iOS `stationLineHint`) — 경유역(`transitStopPlace`)을 여는 소비자만, **누르는 순간**
-     * 확정한 leg `lineName`(ODsay 표기)을 싣는다. 그 밖의 상세는 null(자기 `phone`이 전부다).
-     */
+    /** 경유역 전화번호 조회의 노선 힌트(E44 spec §5.2, iOS `stationLineHint`) — [ofTransitStop]만 싣는다. 그 밖의 상세는 null(자기 `phone`이 전부다). */
     val stationLineHint: String? = null,
 ) {
     val place: Place get() = KitJson.decodeFromString(Place.serializer(), placeJson)
     val domain: PlaceDomain? get() = domainJson?.let { KitJson.decodeFromString(PlaceDomain.serializer(), it) }
 
     companion object {
-        fun of(place: Place, domain: PlaceDomain? = null, showsChatEntry: Boolean = true, stationLineHint: String? = null) = PlaceDetailRoute(
+        fun of(place: Place, domain: PlaceDomain? = null, showsChatEntry: Boolean = true) = PlaceDetailRoute(
             KitJson.encodeToString(Place.serializer(), place),
             domain?.let { KitJson.encodeToString(PlaceDomain.serializer(), it) },
             showsChatEntry,
-            stationLineHint,
+        )
+
+        /**
+         * 경유역 상세(대중교통 투영 `transitStopPlace`). 노선 힌트는 **기본값 없는 필수 인자**다 — 빠뜨리면 컴파일은 통과하고 경유역
+         * 전화 줄만 조용히 사라진다. `lineName`은 그 역이 속한 leg의 `lineName`(ODsay 표기)을 누르는 순간 확정해 넘긴다(spec §5.2, 리뷰 M4).
+         */
+        fun ofTransitStop(stop: TransitLegStop, lineName: String) = PlaceDetailRoute(
+            KitJson.encodeToString(Place.serializer(), transitStopPlace(stop)),
+            stationLineHint = lineName,
         )
     }
 }
