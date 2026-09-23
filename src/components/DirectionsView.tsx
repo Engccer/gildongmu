@@ -903,7 +903,7 @@ export function DirectionsView({
         dataLang: dataLocale(locale),
         outcomes,
         viaLabel,
-        via: via && viaLabel !== null ? { lat: via.lat, lng: via.lng, label: viaLabel } : null,
+        via: viaEp?.kind === "place" ? { ...viaEp.coord, label: viaEp.label } : null,
         orderedModes,
         originSource,
         staleAge: staleAgeAtQuery,
