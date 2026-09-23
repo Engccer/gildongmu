@@ -31,6 +31,19 @@ describe("교통약자 시설 종류별 접기 (spec §4)", () => {
     expect(body).toMatch(/label:\s*\{\s*Text\(kindLabel\(group\)\)/);
   });
 
+  it("줄이 하나도 없는 묶음(교통약자 도우미)은 접기 행이 아니라 평문 한 줄 — 웹 SeoulMetroFacilities 동조", () => {
+    // 판정은 항목 수가 아니라 조립된 줄 — 도우미는 필드가 전부 빈 항목 N개로 온다.
+    expect(body).toMatch(/\.filter \{ !\$0\.isEmpty \}/);
+    const groups = body.indexOf("ForEach(facilities.groups");
+    const plain = body.indexOf('if lines.isEmpty && group.kind != "voiceGuide" {', groups);
+    const disclosure = body.indexOf("DisclosureGroup(isExpanded:", groups);
+    expect(plain).toBeGreaterThan(groups);
+    expect(plain).toBeLessThan(disclosure);
+    expect(body.slice(plain, disclosure)).toMatch(/Text\(kindLabel\(group\)\)\s*\} else \{/);
+    // 펼친 본문은 걸러진 줄만 그린다(빈 Text 행 0).
+    expect(body.slice(disclosure)).toContain("ForEach(Array(lines.enumerated())");
+  });
+
   it("보강 실패 줄은 종류 행들 앞, 음성유도기 기준일 줄은 음성유도기 묶음 안", () => {
     const failed = body.indexOf('appLocalized("subway.supplementFailed")');
     const groups = body.indexOf("ForEach(facilities.groups");
