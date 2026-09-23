@@ -1586,7 +1586,85 @@
    }
   },
   {
-   "name": "하차 정류장 100m 앞은 후보도 만들지 않는다",
+   "name": "하차 정류장 100m 앞은 기존 후보를 건드리지 않는다",
+   "fn": "step",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 3,
+    "signal": "notYetVisible",
+    "lock": null,
+    "currentLocation": null
+   },
+   "tracker": {
+    "legIndex": 0,
+    "phaseGen": 3,
+    "stopIndex": 4,
+    "lastObservedAt": 1000,
+    "pendingIndex": 5,
+    "behindSince": null
+   },
+   "fix": {
+    "lat": 37.5191,
+    "lng": 127.0,
+    "accuracy": 20,
+    "ageSeconds": 1
+   },
+   "now": 5000,
+   "expected": {
+    "tracker": {
+     "legIndex": 0,
+     "phaseGen": 3,
+     "stopIndex": 4,
+     "lastObservedAt": 1000,
+     "pendingIndex": 5,
+     "behindSince": null
+    },
+    "verdict": "approachingAlight",
+    "nearestIndex": 5
+   }
+  },
+  {
+   "name": "래치가 하차 정류장인데 60m로 멀어짐 — 갱신 없음",
+   "fn": "step",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 3,
+    "signal": "notYetVisible",
+    "lock": null,
+    "currentLocation": null
+   },
+   "tracker": {
+    "legIndex": 0,
+    "phaseGen": 3,
+    "stopIndex": 5,
+    "lastObservedAt": 1000,
+    "pendingIndex": null,
+    "behindSince": null
+   },
+   "fix": {
+    "lat": 37.51946,
+    "lng": 127.0,
+    "accuracy": 20,
+    "ageSeconds": 1
+   },
+   "now": 5000,
+   "expected": {
+    "tracker": {
+     "legIndex": 0,
+     "phaseGen": 3,
+     "stopIndex": 5,
+     "lastObservedAt": 1000,
+     "pendingIndex": null,
+     "behindSince": null
+    },
+    "verdict": "approachingAlight",
+    "nearestIndex": 5
+   }
+  },
+  {
+   "name": "하차 정류장 49.5m — 후보(경계 안)",
    "fn": "step",
    "state": {
     "legIndex": 0,
@@ -1605,7 +1683,46 @@
     "behindSince": null
    },
    "fix": {
-    "lat": 37.5191,
+    "lat": 37.519554835818504,
+    "lng": 127.0,
+    "accuracy": 20,
+    "ageSeconds": 1
+   },
+   "now": 5000,
+   "expected": {
+    "tracker": {
+     "legIndex": 0,
+     "phaseGen": 3,
+     "stopIndex": 4,
+     "lastObservedAt": 1000,
+     "pendingIndex": 5,
+     "behindSince": null
+    },
+    "verdict": "pending",
+    "nearestIndex": 5
+   }
+  },
+  {
+   "name": "하차 정류장 50.5m — 관측 아님(경계 밖)",
+   "fn": "step",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 3,
+    "signal": "notYetVisible",
+    "lock": null,
+    "currentLocation": null
+   },
+   "tracker": {
+    "legIndex": 0,
+    "phaseGen": 3,
+    "stopIndex": 4,
+    "lastObservedAt": 1000,
+    "pendingIndex": null,
+    "behindSince": null
+   },
+   "fix": {
+    "lat": 37.51954584260272,
     "lng": 127.0,
     "accuracy": 20,
     "ageSeconds": 1

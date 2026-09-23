@@ -100,8 +100,8 @@ final class TransitGuideModel {
     private(set) var busStopMark: TransitBusStopMark?
     @ObservationIgnored private var busStopTracker: TransitBusStopTracker?
     @ObservationIgnored private var busStopExpiryTask: Task<Void, Never>?
-    /// 계측 `busFix` 줄의 직전 (판정, 래치) — 바뀔 때만 쓴다(fix는 초 단위로 온다).
-    @ObservationIgnored private var lastBusFixLog: (verdict: TransitBusStopVerdict, latched: Int?)?
+    /// 계측 `busFix` 줄의 직전 (판정, 최근접, 래치) — 바뀔 때만 쓴다(fix는 초 단위로 온다).
+    @ObservationIgnored private var lastBusFixLog: (verdict: TransitBusStopVerdict, nearest: Int?, latched: Int?)?
     /// 현재역이 잡혀 있어 보류한 `neverSeen` 경고의 결박(spec §6 판정 2) — 폴마다 처분한다.
     @ObservationIgnored private var neverSeenPending: TransitPositionBinding?
     @ObservationIgnored private let positionService = TransitPositionService(
@@ -555,8 +555,9 @@ final class TransitGuideModel {
         guard result.verdict != .notApplicable else { return }
         // 계측: 판정 종류나 래치가 바뀔 때만 1줄 — 실승차 사후에 부정확·노선 밖·모호를 가르는 유일한 증거.
         let latched = result.tracker?.stopIndex
-        if lastBusFixLog?.verdict != result.verdict || lastBusFixLog?.latched != latched {
-            lastBusFixLog = (result.verdict, latched)
+        if lastBusFixLog?.verdict != result.verdict || lastBusFixLog?.nearest != result.nearestIndex
+            || lastBusFixLog?.latched != latched {
+            lastBusFixLog = (result.verdict, result.nearestIndex, latched)
             transitGuideLog("busFix verdict=\(result.verdict.rawValue)"
                 + " idx=\(result.nearestIndex.map(String.init) ?? "-") latched=\(latched.map(String.init) ?? "-")"
                 + " acc=\(Int(fix.accuracy.rounded())) age=\(String(format: "%.1f", age))s")

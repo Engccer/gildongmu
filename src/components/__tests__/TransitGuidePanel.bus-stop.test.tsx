@@ -190,6 +190,24 @@ describe("버스 승차 중 현재 정류장 — 웹 배선(E48)", () => {
     await waitFor(() => expect(geo.watchPosition).toHaveBeenCalled());
   });
 
+  it("다른 화면의 재측위가 시간 초과로 끝나도 스트림은 열려 있다(권한은 그대로다)", async () => {
+    const geo = stubGeolocation();
+    await awaitGeolocation();
+    await startBusRiding();
+    await waitFor(() => expect(geo.watchPosition).toHaveBeenCalledTimes(1));
+    geo.getCurrentPosition.mockImplementation(((_ok: PositionCallback, err?: PositionErrorCallback | null) =>
+      err?.({ code: 3, message: "timeout" } as GeolocationPositionError)) as never);
+    await act(async () => {
+      await awaitGeolocation({ force: true }); // 길찾기 "현재 위치" 다시 고르기 등
+    });
+    expect(getGeolocationSnapshot()).toMatchObject({ status: "denied", reason: "timeout" });
+    // locating 동안 한 번 닫혔다 다시 열린다 — 마지막 스트림이 살아 있어야 한다.
+    await waitFor(() => expect(geo.watchPosition.mock.calls.length).toBe(geo.clearWatch.mock.calls.length + 1));
+    geo.emit();
+    geo.emit();
+    await waitFor(() => expect(screen.getByText("강동역, transitGuide.viaCurrent")).toBeTruthy());
+  });
+
   it("탭을 숨기면 스트림을 닫는다", async () => {
     const geo = stubGeolocation();
     await awaitGeolocation();

@@ -46,7 +46,8 @@ describe("keep-alive fix는 안내 세션만 읽는다(E48 §4.1)", () => {
     // 켜는 조건은 표식의 적용 조건 그 자체다(구현 리뷰 m4).
     expect(model).toMatch(/transitBusStopApplies\(state: state, leg: leg\)\s*\} else \{\s*false\s*\}\s*if keepAliveActive \{/);
     // 정상 흐름(boarding에서 켜진 keep-alive를 riding에서 올린다, A46)은 이미 켜진 분기다 — 그 안에서 반영해야 한다(구현 리뷰 m1).
-    const on = model.slice(model.indexOf("if keepAliveActive {"));
+    const fn = model.slice(model.indexOf("private func updateKeepAlive()"));
+    const on = fn.slice(fn.indexOf("if keepAliveActive {"));
     const branch = on.slice(0, on.indexOf("return\n"));
     expect(branch).toMatch(/LocationService\.shared\.setKeepAliveBusRiding\(busRiding\)/);
     expect(model.match(/setKeepAliveBusRiding\(busRiding\)/g)?.length).toBe(2);
