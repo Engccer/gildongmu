@@ -220,6 +220,35 @@ class DirectionsViewModelTest {
         assertEquals("출발지, 마지막으로 확인한 위치, 서울 강동구 길동, 5분 전", m.fieldText(DirectionsFieldTarget.from, accessible = true, lang = "ko"))
     }
 
+    @Test fun `옛 위치 전이 — 다른 화면의 실패·성공을 칸이 측위 없이 따라간다(M-2)`() = runTest(dispatcher) {
+        val reverse = """{"address":"서울 강동구 길동"}"""
+        val flow = MutableStateFlow<StaleFix?>(null)
+        val loc = FakeLocator({ seoul }, display = seoul)
+        val client = APIClient("https://example.test", Routes(reverse = reverse))
+        val m = DirectionsViewModel(
+            RouteService(client), SearchService(client), RecentSearchStore(InMemoryKeyValueStore()), loc, { "ko" }, ko, SavedStateHandle(),
+            prefill = MutableStateFlow(null), takePrefill = { false }, io = dispatcher, staleChanges = flow,
+        )
+        m.loadCurrentAddressIfAuthorized(); dispatcher.scheduler.advanceUntilIdle()
+        assertEquals("출발지, 현재 위치(서울 강동구 길동 부근)", m.fieldText(DirectionsFieldTarget.from, accessible = true, lang = "ko"))
+        val stale = StaleFix(37.5385, 127.1355, System.currentTimeMillis() / 1000.0 - 5 * 60 - 10)
+        loc.stale = stale; flow.value = stale; dispatcher.scheduler.advanceUntilIdle()
+        assertEquals("출발지, 마지막으로 확인한 위치, 서울 강동구 길동, 5분 전", m.fieldText(DirectionsFieldTarget.from, accessible = true, lang = "ko"))
+        assertEquals(listOf<Boolean>(), loc.forces) // 측위 없음
+        loc.stale = null; flow.value = null; dispatcher.scheduler.advanceUntilIdle()
+        assertEquals("출발지, 현재 위치(서울 강동구 길동 부근)", m.fieldText(DirectionsFieldTarget.from, accessible = true, lang = "ko"))
+    }
+
+    @Test fun `권한을 거두면 칸은 옛 위치를 말하지 않는다(L-4)`() = runTest(dispatcher) {
+        val r = Routes(transit = transitBody, walk = walkBody, car = carBody, reverse = """{"address":"서울 강동구 길동"}""")
+        val loc = FakeLocator({ throw LocationException(LocationException.Kind.Unavailable) }, stale = StaleFix(37.53, 127.14, 1.0))
+        val m = vm(r, loc)
+        m.setEndpoint(gangnam, DirectionsFieldTarget.to)
+        m.runQuery(); dispatcher.scheduler.advanceUntilIdle()
+        loc.stale = null // 권한 회수 — 스토어의 옛 위치가 사라진다
+        assertEquals("출발지, 현재 위치(서울 강동구 길동 부근)", m.fieldText(DirectionsFieldTarget.from, accessible = true, lang = "ko"))
+    }
+
     @Test fun `옛 위치가 있어도 권한 축 실패는 옛 위치로 계속하지 않는다`() = runTest(dispatcher) {
         val r = allOk()
         val m = vm(r, FakeLocator({ throw LocationException(LocationException.Kind.Denied) }, stale = StaleFix(37.53, 127.14, 1.0)))

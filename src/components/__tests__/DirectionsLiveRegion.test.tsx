@@ -20,8 +20,11 @@ vi.mock("next-intl", async () => {
   return m.stableIntlMock("ko", m.keyWithName);
 });
 vi.mock("@/lib/geolocation", () => ({
+  // DirectionsView가 `useGeolocation`으로 스토어를 구독한다(stale-origin) — 구독 두 함수도 함께 준다.
+  subscribeGeolocation: () => () => {},
+  getGeolocationServerSnapshot: () => ({ status: "idle" as const }),
   awaitGeolocation: vi.fn(async () => ({ status: "error" as const })),
-  getGeolocationSnapshot: () => ({ status: "idle" as const }),
+  getGeolocationSnapshot: ((snapshot) => () => snapshot)({ status: "idle" as const }),
 }));
 vi.mock("../VoiceRecordButton", () => ({ VoiceRecordButton: () => null }));
 vi.mock("../TransitRouteBriefing", () => ({ TransitRouteResult: () => null }));

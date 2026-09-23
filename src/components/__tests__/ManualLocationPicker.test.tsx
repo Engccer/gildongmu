@@ -9,6 +9,12 @@ import {
   getManualLocation,
   setManualLocation,
 } from "@/lib/manual-location-store";
+import {
+  DIRECTIONS_ORIGIN_MAX_AGE_SECONDS,
+  __resetGeolocationForTest,
+  getGeolocationSnapshot,
+  requestLocation,
+} from "@/lib/geolocation";
 import { ManualLocationPicker } from "../ManualLocationPicker";
 
 // 지정 시점의 실측 fix는 이 테스트의 축이 아니다(origin 없음 = undecidable로 정상 동작).
@@ -103,5 +109,52 @@ describe("ManualLocationPicker", () => {
     expect(
       screen.getByRole("button", { name: "현재 위치로 되돌리기" }),
     ).toBeTruthy();
+  });
+});
+
+/**
+ * stale-origin 설계 리뷰 M1: 수동 위치 동안의 판정 측위는 조용해서(silent) 실패해도 옛 좌표를
+ * `ready`로 남긴다. 해제는 "그럼 지금 어디냐"라 캐시가 낡았으면 다시 재고, 신선하거나 좌표가
+ * 없던 세션(권한 팝업 위험)이면 재지 않는다.
+ */
+describe("ManualLocationPicker — 해제 시 낡은 캐시 재측위", () => {
+  const getPos = vi.fn();
+  beforeEach(() => {
+    localStorage.clear();
+    __resetManualLocationForTest();
+    __resetGeolocationForTest();
+    getPos.mockReset();
+    vi.stubGlobal("navigator", { geolocation: { getCurrentPosition: getPos } });
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  function seed(ageSeconds: number) {
+    getPos.mockImplementationOnce((ok: PositionCallback) =>
+      ok({ coords: { latitude: 37.5, longitude: 127.1, accuracy: 10 }, timestamp: Date.now() - ageSeconds * 1000 } as GeolocationPosition),
+    );
+    requestLocation();
+    expect(getGeolocationSnapshot().status).toBe("ready");
+  }
+
+  async function clickRestore() {
+    renderPicker();
+    await userEvent.click(screen.getByRole("button", { name: "현재 위치로 되돌리기" }));
+  }
+
+  it("캐시가 나이 상한보다 낡았으면 다시 잰다", async () => {
+    seed(DIRECTIONS_ORIGIN_MAX_AGE_SECONDS + 60);
+    await clickRestore();
+    expect(getPos).toHaveBeenCalledTimes(2);
+  });
+
+  it("신선하면 재지 않는다", async () => {
+    seed(10);
+    await clickRestore();
+    expect(getPos).toHaveBeenCalledTimes(1);
+  });
+
+  it("좌표가 없던 세션은 재지 않는다(권한 팝업을 띄우지 않는다)", async () => {
+    await clickRestore();
+    expect(getPos).not.toHaveBeenCalled();
   });
 });

@@ -14,8 +14,11 @@ vi.mock("next-intl", async () => {
   return m.stableIntlMock("ko", m.keyOnly);
 });
 vi.mock("@/lib/geolocation", () => ({
+  // DirectionsView가 `useGeolocation`으로 스토어를 구독한다(stale-origin) — 구독 두 함수도 함께 준다.
+  subscribeGeolocation: () => () => {},
+  getGeolocationServerSnapshot: () => ({ status: "idle" as const }),
   awaitGeolocation: vi.fn(async () => ({ status: "error" as const })),
-  getGeolocationSnapshot: () => ({ status: "idle" as const }),
+  getGeolocationSnapshot: ((snapshot) => () => snapshot)({ status: "idle" as const }),
   // 조회 출발지의 나이 상한(A7). 모듈을 통째로 대체하므로 상수도 함께 준다 —
   // 빠뜨리면 런타임에 `undefined` 참조로 죽고 증상은 "phase가 locating에 멈춤"이다.
   DIRECTIONS_ORIGIN_MAX_AGE_SECONDS: 180,

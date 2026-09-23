@@ -33,6 +33,7 @@ fun directionsViewModelFactory(context: Context): ViewModelProvider.Factory {
                 savedState = createSavedStateHandle(),
                 manual = { AppConfig.manualLocationStore.current.value },
                 verdict = { AppConfig.manualLocationStore.verdict.value },
+                staleChanges = AppConfig.effectiveLocation.staleChanges,
             )
         }
     }

@@ -24,8 +24,11 @@ vi.mock("next-intl", async () => {
   return m.stableIntlMock("ko", m.keyOnly);
 });
 vi.mock("@/lib/geolocation", () => ({
+  // DirectionsView가 `useGeolocation`으로 스토어를 구독한다(stale-origin) — 구독 두 함수도 함께 준다.
+  subscribeGeolocation: () => () => {},
+  getGeolocationServerSnapshot: () => ({ status: "idle" as const }),
   awaitGeolocation: vi.fn(async () => ({ status: "ready" as const, coords: { lat: 37.53, lng: 127.12, at: Date.now() / 1000 } })),
-  getGeolocationSnapshot: () => ({ status: "ready" as const, coords: { lat: 37.53, lng: 127.12 } }),
+  getGeolocationSnapshot: ((snapshot) => () => snapshot)({ status: "ready" as const, coords: { lat: 37.53, lng: 127.12 } }),
   DIRECTIONS_ORIGIN_MAX_AGE_SECONDS: 180,
 }));
 vi.mock("../VoiceRecordButton", () => ({ VoiceRecordButton: () => null }));

@@ -63,6 +63,41 @@ class CurrentAddressStoreTest {
         assertEquals("천호대로 1", store.state.value.address)
     }
 
+    @Test fun `syncFromStore는 측위하지 않고 옛 위치 좌표의 주소를 옛 위치 표식과 함께 싣는다(stale-origin H3)`() = runTest(dispatcher) {
+        val src = FakeSource(); val loc = LocationStore(src, FakeGate(LocationPermission.Fine), epochNow = { 1_000.0 })
+        loc.stored = LocationStore.StoredFix(37.5, 127.1, 10.0, src.now - 300_000)
+        val fail = launch { runCatching { loc.currentCoordinate(force = true) } }
+        runCurrent(); testScheduler.advanceTimeBy(8_001); runCurrent(); fail.join()
+        val subscriptionsBefore = src.subscriptions
+        val store = CurrentAddressStore(loc, SearchService(stubbedClient { HttpResponse(200, """{"address":"성내로 12"}""") }))
+        store.syncFromStore("ko")
+        assertEquals(subscriptionsBefore, src.subscriptions) // 측위 0
+        assertEquals("성내로 12", store.state.value.address)
+        assertEquals(700.0, store.state.value.staleFixAtEpoch)
+    }
+
+    @Test fun `진행 중에 온 syncFromStore는 버리지 않고 끝난 뒤 한 번 더 맞춘다(M-4)`() = runTest(dispatcher) {
+        val hold = CompletableDeferred<Unit>()
+        var calls = 0
+        val transport = object : HttpTransport {
+            override suspend fun get(url: String, timeoutMs: Long?): HttpResponse {
+                calls++
+                if (calls == 1) hold.await()
+                return HttpResponse(200, """{"address":"주소$calls"}""")
+            }
+        }
+        val src = FakeSource(); val loc = LocationStore(src, FakeGate(LocationPermission.Fine), epochNow = { 1_000.0 })
+        loc.stored = LocationStore.StoredFix(37.5, 127.1, 10.0, src.now - 1_000) // 신선 — 첫 ensureLoaded는 측위 없이 이 좌표
+        val store = CurrentAddressStore(loc, SearchService(APIClient("https://example.test", transport)))
+        val first = launch { store.ensureLoaded("ko") }
+        runCurrent() // 첫 역지오코딩이 붙잡혀 있다
+        loc.stored = LocationStore.StoredFix(37.6, 127.2, 10.0, src.now) // 다른 화면이 새 좌표를 썼다
+        store.syncFromStore("ko") // inflight — 요청만 남긴다
+        hold.complete(Unit); runCurrent(); first.join()
+        assertEquals(2, calls) // 끝난 뒤 새 좌표로 한 번 더
+        assertEquals("주소2", store.state.value.address)
+    }
+
     @Test fun `미허용이면 네트워크 0·loadedKey 미확정 — 허용 뒤 조회되고 스냅샷은 권한을 반영한다`() = runTest(dispatcher) {
         var calls = 0
         val gate = Gate(LocationPermission.None)

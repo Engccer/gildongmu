@@ -24,6 +24,9 @@ import {
 import { awaitEffectiveLocation } from "@/lib/effective-location";
 import { staleAgeMessage, staleFixOf, type StaleAgeMessage } from "@/lib/stale-origin";
 import { useClockWhile } from "@/hooks/useClockWhile";
+import { useCurrentAddress } from "@/hooks/useCurrentAddress";
+import { useGeolocation } from "@/hooks/useGeolocation";
+import { bilingualName } from "@/lib/bilingual-name";
 import { useManualLocation, useManualLocationLabel } from "@/hooks/useManualLocation";
 import { isInKorea } from "@/lib/coverage";
 import { isOutOfCoverageBody } from "@/lib/out-of-coverage";
@@ -161,21 +164,6 @@ function endpointToField(ep: DirEndpoint, currentLabel: string): FieldState {
 function readViaFromUrl(): DirEndpoint | null {
   if (typeof window === "undefined") return null;
   return parseDir(new URLSearchParams(window.location.search).get("dir"))?.via ?? null;
-}
-
-/**
- * 좌표 → 대표 주소 문자열("현재 위치" 라벨 병기용). 주소는 부가 정보이므로
- * 매칭 없음·실패 모두 조용히 null(3-state: 라벨은 "현재 위치"만 남아 거짓 표시 없음).
- */
-async function fetchCurrentAddress(coord: Coord): Promise<string | null> {
-  try {
-    const res = await fetch(`/api/geocode/reverse?lat=${coord.lat}&lng=${coord.lng}`);
-    if (!res.ok) return null;
-    const body = (await res.json()) as { address: string | null };
-    return body.address;
-  } catch {
-    return null;
-  }
 }
 
 /**
@@ -321,23 +309,29 @@ export function DirectionsView({
   // 검증 가능/불가 판정은 표시줄과 한 훅을 공유한다(판정선이 갈리면 화면으로 확인 불가).
   const manualLabel = useManualLocationLabel();
 
-  // "현재 위치" 라벨에 병기할 역지오코딩 주소(F-B). null=주소 미확보(라벨은 기본
-  // "현재 위치"만 — 시각으로 위치 오차를 확인할 수 없는 사용자를 위한 병기이므로
-  // 모르면 거짓 표시 대신 생략).
-  const [currentAddress, setCurrentAddress] = useState<string | null>(null);
-  // 현재 위치 끝점이 옛 위치로 풀렸을 때 그 좌표의 측정 시각(epoch 초, spec 2026-09-23
-  // stale-origin §4.1). null = 신선하거나 모름. `currentAddress`는 이때 그 옛 좌표의 주소다.
-  const [staleOriginAt, setStaleOriginAt] = useState<number | null>(null);
+  // "현재 위치" 칸의 위치 주장은 공유 위치 스토어에서 **파생**한다 — 신선한 좌표, 옛 위치
+  // (spec 2026-09-23 stale-origin), 없음. 칸이 따로 상태를 들면 다른 화면의 측위 성공·실패를
+  // 못 따라가 표시줄과 같은 좌표를 반대로 말하고, 늦은 역지오코딩 응답이 신선/옛 판정을 뒤집는다
+  // (구현 리뷰 M-1·M-2). 주소는 표시줄과 같은 좌표 키 캐시(`useCurrentAddress`) — 좌표가 다르면
+  // 그 주소를 흘리지 않고, 비-ko는 영문·로마자가 1순위다(E28).
+  const geo = useGeolocation();
+  const liveStale = manual ? null : staleFixOf(geo);
+  const currentAddr = useCurrentAddress(
+    manual ? null : geo.status === "ready" ? geo.coords : liveStale,
+    prefersEnglish(locale) ? "en" : "ko",
+  );
+  const currentAddress = currentAddr
+    ? bilingualName(locale, currentAddr.address, { en: currentAddr.english }).primary
+    : null;
   // "현재 위치 사용" 강제 재측위 진행 신호(버튼 라벨 전환용) + 재진입 ref 가드.
   const [refreshingCurrent, setRefreshingCurrent] = useState(false);
   const refreshCurrentRef = useRef(false);
   // 수동 위치가 켜져 있으면 "현재 위치"라는 표현을 쓰지 않는다(LocationBar와 동형 —
   // GPS가 알아낸 위치와 사용자가 지정한 위치는 다른 것이고 시각장애 사용자는 화면으로
-  // 구분할 수 없다). 수동 위치가 이기므로 GPS 역지오코딩 주소(currentAddress)는
-  // 무시한다 — 아래에서도 수동 위치 활성 중엔 그 주소를 아예 조회하지 않는다.
+  // 구분할 수 없다). 수동 위치가 이기므로 GPS 역지오코딩 주소는 조회조차 하지 않는다.
   // 옛 위치 표기는 열어 둔 동안 시각을 다시 계산한다(표시줄과 같은 키 — 판정선 하나).
-  const now = useClockWhile(!manualLabel && staleOriginAt !== null);
-  const staleAge = !manualLabel && staleOriginAt !== null ? staleAgeMessage(staleOriginAt, now) : null;
+  const now = useClockWhile(liveStale !== null);
+  const staleAge = liveStale ? staleAgeMessage(liveStale.at, now) : null;
   const currentLabel =
     manualLabel ??
     (staleAge
@@ -646,38 +640,10 @@ export function DirectionsView({
   const displayField = (field: FieldState): FieldState =>
     field.resolved?.kind === "current" ? { ...field, text: currentLabel } : field;
 
-  // 이미 위치가 허용·확보된 세션에서만 조용히 주소를 병기한다(뷰 진입만으로 권한
-  // 팝업·재측위 금지 — 스토어의 ready 캐시 좌표만 읽는다). 미확보면 라벨은 "현재
-  // 위치" 그대로(주소 없음=정보 없음). 수동 위치가 켜져 있으면 이 GPS 역지오코딩은
-  // 애초에 표시되지 않을 라벨을 위해 실좌표를 조회하는 낭비이므로 건너뛴다.
-  const addrLoadedRef = useRef(false);
-  useEffect(() => {
-    if (addrLoadedRef.current) return;
-    if (manual) return;
-    const isCurrent =
-      fromField.resolved?.kind === "current" ||
-      toField.resolved?.kind === "current";
-    if (!isCurrent) return;
-    const geo = getGeolocationSnapshot();
-    if (geo.status === "ready") {
-      addrLoadedRef.current = true;
-      void fetchCurrentAddress(geo.coords).then(setCurrentAddress);
-      return;
-    }
-    // 직전 측위가 취득 실패로 끝났으면 옛 좌표의 주소를 옛 위치임과 함께 말한다.
-    const stale = staleFixOf(geo);
-    if (!stale) return;
-    addrLoadedRef.current = true;
-    void fetchCurrentAddress(stale).then((address) => {
-      setStaleOriginAt(stale.at);
-      setCurrentAddress(address);
-    });
-  }, [fromField.resolved, toField.resolved, manual]);
-
   /**
-   * "현재 위치" 재선택(F-B) = 강제 재측위 + 주소 새로고침. 갱신 신호는 라벨(주소)의
-   * 변화 자체이고 진행 신호는 해당 버튼의 라벨 전환뿐(별도 통지 중복 금지).
-   * 재측위 실패 시 직전 주소를 유지한다(새로고침=재조회이지 데이터 포기 아님).
+   * "현재 위치" 재선택(F-B) = 강제 재측위. 갱신 신호는 라벨(주소)의 변화 자체이고 진행
+   * 신호는 해당 버튼의 라벨 전환뿐(별도 통지 중복 금지). 라벨은 스토어에서 파생되므로
+   * 성공이면 새 주소, 취득 실패면 옛 위치, 권한 거부면 "현재 위치"로 스스로 바뀐다.
    */
   async function selectCurrentFrom() {
     setFromField(endpointToField({ kind: "current" }, currentLabel));
@@ -686,21 +652,7 @@ export function DirectionsView({
     setRefreshingCurrent(true);
     try {
       // force:true는 수동 위치가 있어도 판정을 동반한다(이동했으면 GPS로 복귀).
-      const effective = await awaitEffectiveLocation({ force: true });
-      // gps일 때만 역지오코딩 — manual이면 라벨은 이미 지정 이름을 쓰고 있다.
-      if (effective && effective.source === "gps") {
-        addrLoadedRef.current = true;
-        const address = await fetchCurrentAddress({ lat: effective.lat, lng: effective.lng });
-        setStaleOriginAt(null);
-        setCurrentAddress(address);
-      } else if (!effective) {
-        // 재측위 실패: 직전 라벨을 "현재 위치"로 두면 옛 주소를 현재로 말한다. 옛 좌표가
-        // 있으면 옛 위치임과 시각을 밝히고, 없으면(권한 거부 등) 주소를 비운다.
-        const stale = staleFixOf(getGeolocationSnapshot());
-        const address = stale ? await fetchCurrentAddress(stale) : null;
-        setStaleOriginAt(stale ? stale.at : null);
-        setCurrentAddress(address);
-      }
+      await awaitEffectiveLocation({ force: true });
     } finally {
       refreshCurrentRef.current = false;
       setRefreshingCurrent(false);
@@ -800,17 +752,6 @@ export function DirectionsView({
         }
         cur = { lat: effective.lat, lng: effective.lng };
         if (from.kind === "current") originSource = effective.source;
-        // gps일 때만 라벨 병기 주소를 동기화한다(표시 전용 fire-and-forget, 실패·
-        // 매칭 없음은 null로 정직하게 비운다). manual은 이미 지정 이름을 쓰고
-        // 있어 표시되지 않을 라벨을 위해 실좌표를 조회하는 낭비를 만들지 않는다.
-        if (effective.source !== "manual") {
-          addrLoadedRef.current = true;
-          const staleAt = stale ? stale.at : null;
-          void fetchCurrentAddress(cur).then((address) => {
-            setStaleOriginAt(staleAt);
-            setCurrentAddress(address);
-          });
-        }
       }
       const origin = from.kind === "current" ? (cur as Coord) : from.coord;
       let dest = to.kind === "current" ? (cur as Coord) : to.coord;
