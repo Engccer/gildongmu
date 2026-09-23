@@ -111,6 +111,7 @@
 - ⚠ **위치 스토어에는 TTL이 없다 — "지금 어디 있는가"가 답의 일부인 조회는 전부 `{force:true}`다**(안내 시작·이탈 재조회·ETA 갱신). `useRouteGuide`의 `fetchGuideRoute(force)`는 기본값 없는 필수 인자. → PATTERNS
 - **그 사이에 세 번째 축이 있다: 나이 상한**(`LocateOptions.maxAgeSeconds`, 길찾기는 3분 `DIRECTIONS_ORIGIN_MAX_AGE_SECONDS`; `Coord.at` 없으면 신선하지 않은 것으로). iOS는 스토어 자체의 `freshTTL` 60초. → PATTERNS
 - ⚠ **화면이 요청하지 않은 측위는 표시 상태를 흔들지 않는다**(`silent` — `ready` 유지한 채 좌표만 갱신, 실패해도 직전 좌표). 나이 상한과 한 쌍이라 한쪽만 되돌리지 말 것. → PATTERNS
+- **측위가 취득 실패로 끝났는데 직전 좌표가 있으면 "옛 위치"다 — "현재 위치"로 말하지 않고 옛 위치임과 시각을 밝히며, 길찾기는 그 좌표로 계속한다**(stale-origin: 웹 `denied`+`last`→`staleFixOf`, iOS·안드로이드 `failedSinceLastStore`는 좌표를 스토어에 쓰는 자리 하나에서 내린다 — 시각 비교 금지). 권한 거부·대략적 위치는 옛 위치가 아니다. 표시줄·길찾기 칸은 같은 문장 함수, 경과는 Kit `staleFixAge` 미러. → PATTERNS
 - **"내 주변" 섹션들(현재 10개)은 허브 뷰(`NearbyHub`, `?panel=nearby`)에 있고 패널은 `nearby-panel-store.ts` 싱글턴으로 접는다**(직접 닫기·Esc는 `restoreFocus=true`, 자동 닫힘은 `false`). → PATTERNS
 - **둘러보기는 세 요청(조망·장면·목록)을 한 fetch로 묶어 한 번에 커밋한다**(iOS `AroundNearbyModel` ↔ 웹 `fetchAround` 합성 Response). 반경은 `OVERVIEW_RADIUS_M` 한 상수, 불릿 문장은 `overview-lines.ts` ↔ Kit ↔ CLI 3벌 미러. 종전 "현재 위치 확인"은 웹·Kit에서 삭제(되살리지 말 것). → PATTERNS
 - **안내 시트를 최소화하면 콘텐츠 뷰가 파괴되어 `@State`가 사라진다**(루트 `.sheet(item:)` 하나 + `presentedScreen = isMinimized ? nil : screen`). 영속 값을 바꾸는 판정에 쓰이는 표식은 `@AppStorage`, 소비는 `onChange`가 아니라 사용자가 누르는 버튼 핸들러에서. 뷰 계층은 테스트 레인이 없어 배선을 소스 가드로 잠근다. → PATTERNS

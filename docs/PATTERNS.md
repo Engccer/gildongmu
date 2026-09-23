@@ -81,6 +81,16 @@
 
 ⚠ **화면이 요청하지 않은 측위는 표시 상태를 흔들지 않는다**(`silent`, 2026-08-16 D19). 수동 위치 이동 판정은 포그라운드 복귀마다 `force:true`로 도는데, 그때 공유 스토어가 `locating`으로 후퇴하면 그 좌표를 쓰는 섹션이 통째로 **언마운트·재마운트**된다(포커스 이탈 + 재fetch). `silent`는 `ready`를 유지한 채 좌표만 갈고 실패해도 직전 좌표를 남긴다. ⚠ **그래서 silent 실패 뒤에는 옛 좌표를 받을 수 있다** — 그것이 안전한 이유는 `Coord.at`이 있고 판정 자격이 나이 상한(10초)을 보기 때문이다(옛 fix는 `undecidable`로 떨어진다). 두 기능이 서로를 떠받치므로 한쪽만 되돌리지 말 것.
 
+### 측위 실패 뒤 직전 좌표는 "옛 위치"다
+
+**측위가 취득 실패로 끝났는데 직전 좌표가 있으면 "옛 위치"다**(stale-origin, 위원장 판정 2026-09-23, spec `docs/superpowers/specs/2026-09-23-stale-origin-disclosure-design.md`). 위치 주장은 신선·옛 위치·없음 셋이고, 옛 위치는 "마지막으로 확인한 위치, 주소, N분 전"(표시줄·길찾기 칸 같은 문장 함수, 웹 `LocationBar`·`DirectionsView` / iOS `staleLocationText` / 안드로이드 `StaleWords`)으로 말하며 길찾기는 그 좌표로 계속하고 완료 통지 뒷문장으로 밝힌다. 권한 거부·대략적 위치는 옛 위치가 아니다(사용자가 고칠 설정이 있다).
+
+- **판정 단위는 "좌표를 쓴 뒤 취득 실패가 있었는가" 표식 하나이고, 내리는 자리는 스토어에 좌표를 쓰는 곳 하나다**(iOS `didUpdateLocations`의 `stored = fix`, 안드로이드 `stored` 세터). ⚠ **"실패 시각 > 측정 시각" 비교는 쓰지 않는다** — 측정 시각은 수신보다 최대 10초 앞서므로 2초 표시용 측위 실패 직후 다른 화면의 측위가 성공해도 옛 위치가 남는다(설계 리뷰 H1). 웹은 성공이 상태를 `ready`로 통째로 바꿔 같은 뜻이다(`denied`의 가산 필드 `last`, 판정은 순수 모듈 `stale-origin.ts`의 `staleFixOf` — 여러 테스트가 `@/lib/geolocation`을 통째로 목킹해 거기 두면 런타임에 죽는다).
+- **표시줄과 길찾기 칸은 옛 위치 전이를 측위 없이 따라간다**(다른 화면의 성공·실패): 웹 칸은 스토어 파생(`useGeolocation`+`staleFixOf`, 주소는 좌표 키 캐시 `useCurrentAddress`), iOS는 `.onChange(of: staleFix?.fixedAt)` → `syncFromStore`·`syncCurrentFromStore`, 안드로이드는 `staleChanges` 구독. ⚠ 옛 위치를 **뷰 태스크 키**로 두지 말 것 — 태스크 안의 측위 실패가 키를 바꿔 자기를 취소한다(iOS 구현 리뷰 H-1). 전이 때 다시 재면 실패와 성공이 번갈아 서로를 부르는 측위 반복이 된다. 표식이 바뀌면 주소를 먼저 비운다(다른 좌표의 주소가 옛 위치 문장에 실리지 않게).
+- "N분 전"은 렌더 시점의 지금으로 계산하고 옛 위치인 동안 1분 이내로 다시 그린다(웹 `useClockWhile`, iOS `TimelineView(.everyMinute)`, Compose 틱). 완료 통지 문장은 조회 시점 경과로 굳힌다(live region 문장이 1분마다 바뀌면 그때마다 다시 낭독된다).
+- 웹 WebMCP `resolved.from/to`는 현재 위치 끝점이면 출력 시점 파생 라벨이다 — 조회를 시작한 렌더의 클로저에는 옛 위치 판정·주소가 아직 없다.
+- iOS 배선은 소스 가드 `stale-origin-guard.test.ts`가 잠근다(옛 위치 분기가 좌표 분기보다 앞, `stored` 쓰기 한 자리가 해제). ⚠ 한계: 웹·안드로이드 안내 스트림은 공유 스토어에 쓰지 않아 안내로 회복해도 복귀 표시줄은 출발 전 좌표를 옛 위치로 말한다(BACKLOG E43 후속).
+
 ### "내 주변" 섹션들(현재 10개)은 홈이 아니라 허브 뷰(`NearbyHub`, `?panel=nearby` URL+History 연동)에 있다
 
 **"내 주변" 섹션들(현재 10개)은 홈이 아니라 허브 뷰(`NearbyHub`, `?panel=nearby` URL+History 연동)에 있다**(2026-07-30 옴니박스 IA 재편 — 홈은 "길찾기"·"내 주변" 칩 2개로 축소). 허브 안 각 패널은 닫기·Esc·아코디언으로 접는다(`nearby-panel-store.ts` 싱글턴 + `useNearbyPanel`). `claim()`/`close(restoreFocus)`. **포커스 비대칭**: 직접 닫기·Esc는 `restoreFocus=true`(trigger 복귀), 다른 패널이 점유 가져가 자동 닫힐 땐 `false`. ⚠ 채팅 오버레이가 열린 동안은 `engaged:false`로 패널 Esc 비활성(스택된 전역 Esc 경합 — [[stacked-global-esc-listener-conflict]]. 현재 허브 안 채팅 경로 없음 — 재도입 시 적용).
