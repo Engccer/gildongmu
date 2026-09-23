@@ -165,7 +165,7 @@ private fun DirectionsForm(
             )
         }
     }
-    // 새 조회 = 새 경로들이라 펼침을 기본으로 되돌린다(토글 재조회·피커 왕복은 보존).
+    // 새 조회 = 새 경로들이라 펼침을 기본으로 되돌린다(피커 왕복은 보존).
     if (s.resultsRevision != ui.seenResultsRevision) ui.resetExpansion(s.resultsRevision)
     // 이미 허가된 세션이면 진입 시 조용히 현재 위치 주소를 병기(권한 팝업 없음).
     LaunchedEffect(lang) { vm.loadCurrentAddressIfAuthorized() }
@@ -234,7 +234,7 @@ private fun DirectionsForm(
                 }
             }
             val searchingLabel = strings.get("android.directions.searching")
-            // 진행 표시는 조회 자신이 도는 동안만 — 계단 회피 재조회는 토글 행이 "조회 중"을 병기한다(구현 리뷰 NIT 7).
+            // 진행 표시는 조회 자신이 도는 동안만.
             val querying = s.phase == DirectionsPhase.Locating || s.phase == DirectionsPhase.Loading
             Button(
                 onClick = { if (!s.isBusy) vm.runQuery() },

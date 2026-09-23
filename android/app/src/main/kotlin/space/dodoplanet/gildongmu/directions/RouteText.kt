@@ -50,6 +50,13 @@ fun walkLineNameKey(line: WalkLineKind): String = when (line) {
 }
 
 /**
+ * 도보 줄 라벨(E42, 위원장 확정 렌더 `최단 경로, 총 850m, 약 12분`) — 이름과 요약뿐이다. **사유 문장(`stepFreeNotice`)을
+ * 붙이지 않는다**: 이름이 곧 그 경로의 성질이다.
+ */
+fun walkLineLabel(line: WalkLineKind, route: WalkRouteBriefing, strings: Strings): String =
+    joinText(strings.get(walkLineNameKey(line)), walkSummaryText(route, strings))
+
+/**
  * 도보 스텝 행 문장들(구획 행 포함). 번호는 **원본 인덱스 + 1**(웹 `<ol>`·CLI·iOS와 같은 값 — 생략으로 밀지 않는다).
  * 서버가 스텝 0에 삽입한 `stepFreeNotice`는 생략한다(iOS `omitNoticeStep` — E42 줄 경로엔 싣지 않지만 삽입 계약은 남아 있다).
  * `viaLabel`이 있으면 `waypoint.stepIndex` 자리 **앞**에 "경유지 {label} 도착" 구획 행(번호 없음).

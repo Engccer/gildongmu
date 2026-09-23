@@ -93,6 +93,7 @@ class DirectionsViewModelTest {
         val transit: String? = null, val walk: String? = null, val car: String? = null,
         val entrance: String = "{}", val places: String = "", val addresses: String = "", val geocode: String = "", val reverse: String = "",
         val delays: Map<String, Long> = emptyMap(),
+        val walkStatus: Int = 200,
     ) : HttpTransport {
         val seen = ArrayList<String>()
         override suspend fun get(url: String, timeoutMs: Long?): HttpResponse {
@@ -110,7 +111,7 @@ class DirectionsViewModelTest {
                 "/api/geocode/reverse" -> reverse
                 else -> null
             } ?: return HttpResponse(404, "")
-            return HttpResponse(200, body)
+            return HttpResponse(if (path == "/api/route/walk") walkStatus else 200, body)
         }
         fun paths() = seen.map(::pathOf)
         fun query(path: String) = seen.first { pathOf(it) == path }.let(::queryOf)
@@ -197,6 +198,18 @@ class DirectionsViewModelTest {
         m.setEndpoint(gangnam, DirectionsFieldTarget.to)
         m.runQuery(); dispatcher.scheduler.advanceUntilIdle()
         assertEquals(DirectionsModeOutcome.Empty, m.state.value.results!!.outcomes[DirectionsMode.walk])
+        assertTrue(m.state.value.walkLines.isEmpty())
+    }
+
+    @Test fun `도보 조회 실패(첫 줄 502)는 Error이고 줄 목록은 비며 다른 수단은 정상이다`() = runTest(dispatcher) {
+        val m = vm(Routes(transit = transitBody, walk = """{"error":"upstream"}""", car = carBody, walkStatus = 502))
+        m.setEndpoint(gangnam, DirectionsFieldTarget.to)
+        m.runQuery(); dispatcher.scheduler.advanceUntilIdle()
+        val s = m.state.value
+        assertEquals(DirectionsModeOutcome.Error, s.results!!.outcomes[DirectionsMode.walk])
+        assertTrue(s.walkLines.isEmpty())
+        assertIs<DirectionsModeOutcome.Transit>(s.results!!.outcomes[DirectionsMode.transit])
+        assertIs<DirectionsModeOutcome.Car>(s.results!!.outcomes[DirectionsMode.car])
     }
 
     @Test fun `측위 실패 3종은 3 phase 3 문장`() = runTest(dispatcher) {
