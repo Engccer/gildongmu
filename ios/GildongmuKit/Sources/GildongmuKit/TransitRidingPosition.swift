@@ -19,6 +19,9 @@ public let transitPositionHoldMs: Double = 180_000
 public let transitPositionMaxAgeSeconds = 300
 /// 래치보다 뒤 역이 이만큼 연속으로 오면 그 역에서 다시 시작한다 — 튄 값 하나가 구간을 잠그지 않게.
 public let transitPositionBehindRestart = 2
+/// 클라이언트 조회 예산(초) — 웹 `POSITION_CLIENT_TIMEOUT_MS`와 같은 값. 이 조회는 도착 폴 안에 직렬로 끼므로
+/// 상한이 없으면(URLSession 기본 60초) 느린 upstream이 다음 도착 폴을 그만큼 민다(구현 리뷰 M1).
+public let transitPositionClientTimeoutSeconds: TimeInterval = 8
 /// 노선 목록이 0행(INFO-200 — 운행 밖·미제공)으로 이만큼 연속이면 이 결박에선 그만 묻는다.
 public let transitPositionEmptyLineStop = 3
 
@@ -144,6 +147,7 @@ public func transitRidingPositionStep(
         guard let age = dataAgeSeconds, age <= transitPositionMaxAgeSeconds,
               let index = uniqueViaStopIndex(leg: leg, currentLocation: station)
         else { return next }
+        // "연속"은 뒤 역 관측끼리의 연속이다 — 사이의 결측·동결·조인 실패는 끊지 않는다(관측이 아니므로).
         if let latched = next.stopIndex, index < latched {
             next.behind += 1
             if next.behind < transitPositionBehindRestart { return next }
@@ -260,25 +264,12 @@ public func transitNeverSeenPendingStep(
     return transitPositionStatusIndex(state: state, position: position, now: now) == nil ? .fire : .keep
 }
 
-/// "주변 확인" 앵커의 위치 반영판 — 규칙은 `transitSurroundingsAnchor`와 같고(조망 `here`가 역으로
-/// 확정됐을 때만 현재역, 그 밖은 하차역) 후처리된 조망의 `here`를 받는다. 기존 함수는 안드로이드
-/// 이식본과 짝이라 그대로 둔다.
-public func transitSurroundingsAnchor(here: TransitOverviewHere, leg: TransitGuideLeg) -> TransitSurroundingsAnchor? {
-    if case let .station(idx) = here, leg.viaStops.indices.contains(idx) {
-        return .currentStation(leg.viaStops[idx])
-    }
-    guard let alight = leg.alightStop else { return nil }
-    return .alightStop(alight)
-}
-
 // MARK: - 조회 서비스
 
 /// `/api/transit/position` 판별 union(spec §3.2). 502는 APIClient가 throw(호출자가 `.failed`로 소비).
 public struct TransitPositionEnvelope: Codable, Sendable {
     public let status: String
     public let station: String?
-    public let trainStatus: String?
-    public let dataStamp: String?
     public let dataAgeSeconds: Int?
     public let total: Int?
 }
@@ -293,7 +284,7 @@ public struct TransitPositionService: Sendable {
         try await client.get("/api/transit/position", query: [
             URLQueryItem(name: "line", value: line),
             URLQueryItem(name: "train", value: train),
-        ])
+        ], timeout: transitPositionClientTimeoutSeconds)
     }
 
     /// 응답 → 소비 형태. 알 수 없는 status는 판정 불가라 `failed`(표식을 만들지 않는다).

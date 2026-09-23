@@ -105,9 +105,8 @@ final class TransitGuideModel {
     /// 신호 문장 자리를 차지할 현재역 문장(E35 §6 판정 1) — 도착 피드 미관측 구간에 위치가 잡혀 있을 때만.
     /// 상시 표시·조망 silence 행·복귀 낭독이 같은 선택을 지난다. `now`는 호출자가 고른다(렌더는 조회 시계,
     /// 복귀 낭독은 지금 — 백그라운드 동안 창이 지났을 수 있다).
-    func positionStatusText(now: Double) -> String? {
-        guard let state, let leg = currentLeg,
-              let index = transitPositionStatusIndex(state: state, position: ridingPosition, now: now)
+    func positionStatusText(state: TransitGuideState, leg: TransitGuideLeg, now: Double) -> String? {
+        guard let index = transitPositionStatusIndex(state: state, position: ridingPosition, now: now)
         else { return nil }
         let stops = displayLeg(leg, useOverride: false).stops
         guard stops.indices.contains(index) else { return nil }
@@ -386,7 +385,7 @@ final class TransitGuideModel {
     private func returnStatusText() -> String {
         guard let s = state, let leg = currentLeg else { return "" }
         // 현재역이 잡혀 있으면 그것이 상태다(E35 §6). 창은 **지금** 시각으로 — 백그라운드 동안 지났을 수 있다.
-        if let located = positionStatusText(now: nowMs()) { return located }
+        if let located = positionStatusText(state: s, leg: leg, now: nowMs()) { return located }
         let unobserved = s.lock.map(transitLockIsUnobserved) ?? false
         if s.signal == .neverSeen, !unobserved { return appLocalized("transitGuide.neverSeen") }
         return signalStatusText(s.signal, phase: s.phase, isTrain: leg.mode == "subway", unobserved: unobserved)
@@ -1031,13 +1030,16 @@ final class TransitGuideModel {
     func announceProgress() {
         touchUserAction()
         guard let state, let leg = currentLeg else { return }
-        announceNow(statusLineText(state: state, leg: leg), highPriority: true)
+        // 렌더 밖의 판정이라 위치 보존 창은 **지금** 시각으로(E35 구현 리뷰 m1, 웹 동형).
+        announceNow(statusLineText(state: state, leg: leg, now: nowMs()), highPriority: true)
     }
 
     /// 상시 표시·진행 상황 공용 조립기(§12.3) — 완성 문장 파트를 공백으로 연결하는
     /// 단일 헬퍼. 종전엔 시트가 쉼표 조립(joinText)을 따로 해 "기준., " 이중
     /// 구두점과 stationCountAbout·lastUpdated 누락 드리프트가 났었다(피드백 #9).
-    func statusLineText(state: TransitGuideState, leg: TransitGuideLeg) -> String {
+    /// `now`(ms)는 위치 보존 창을 판정할 시각이다 — 화면은 `positionClock`, 통지는 지금(기본값 없음: 생략이
+    /// 컴파일을 통과하면 한쪽이 조용히 다른 시계를 쓴다).
+    func statusLineText(state: TransitGuideState, leg: TransitGuideLeg, now: Double) -> String {
         let boarding = state.phase == .boarding
         let riding = state.phase == .riding
         let arrived = state.phase == .arrived
@@ -1067,7 +1069,7 @@ final class TransitGuideModel {
         // 오는지 못 받았다"(3-state의 unknown).
         // ⚠ `noArrivalInfo`는 **관측된 도달 사례가 없는 방어선**이다(웹 미러 주석 참조) — 실제
         // 도달 여부는 실승차가 답한다(BACKLOG §2 E39 행 ④).
-        if let located = positionStatusText(now: positionClock) {
+        if let located = positionStatusText(state: state, leg: leg, now: now) {
             // 승차 중 현재역(E35 §6 판정 1): 도착 피드 미관측 구간에 위치가 잡혀 있으면 신호 문장("하차역에
             // 가까워지면 열차 위치가 표시됩니다." 등) 자리를 현재역 문장이 차지한다 — 그대로 두면 경유역 목록의
             // "현재 위치"와 모순된다.
@@ -1146,6 +1148,10 @@ final class TransitGuideModel {
                 // 잊힌 세션 안전망(spec §4.2.6): 다음 폴 직전에 유휴를 판정한다.
                 if self.enterIdleIfDue() { return }
                 await self.pollOnce()
+                guard !Task.isCancelled else { return }
+                // 승차 중 현재역(E35): 도착 폴의 계측(`pollEnd elapsed`) **밖**에서 — 위치 조회 시간이 도착 지연으로
+                // 섞이지 않게(구현 리뷰 m4). dispatch 뒤 상태로 켜는 조건을 판정한다.
+                await self.refreshPosition(seq: self.seq)
                 guard let s = self.state, !Task.isCancelled else { return }
                 let next = transitPollIntervalMs(s)
                 if next <= 0 { return }
@@ -1206,7 +1212,6 @@ final class TransitGuideModel {
         }
         refreshAnnounce = false
         dispatch(.poll(seq: mySeq, phaseGen: phaseGen, poll: poll))
-        await refreshPosition(seq: mySeq)
         // 응답은 dispatch 뒤에 .high로 게시한다 — 같은 폴의 신호 이벤트 통지가
         // 먼저 나가고 .high가 큐를 끊어 응답이 최종 승자가 된다(감사 M1: 역순이면
         // 동어반복 두 문장이 연달아 나가거나 응답이 잠식된다). 사용자 활성화(새로고침)의
@@ -1222,6 +1227,7 @@ final class TransitGuideModel {
         guard let state, let leg = currentLeg else { return }
         if let requested = transitPositionBinding(of: state),
            transitPositionLookupDue(state: state, leg: leg, position: ridingPosition) {
+            let startedAt = ProcessInfo.processInfo.systemUptime
             let outcome: TransitPositionOutcome
             do {
                 outcome = TransitPositionService.outcome(
@@ -1229,11 +1235,12 @@ final class TransitGuideModel {
             } catch {
                 outcome = TransitPositionService.outcome(from: error)
             }
-            guard !Task.isCancelled, let now = self.state, let legNow = currentLeg else { return }
+            guard !Task.isCancelled, let stateNow = self.state, let legNow = currentLeg else { return }
             let at = nowMs()
+            let elapsed = ProcessInfo.processInfo.systemUptime - startedAt
             // 늦은 응답(조회 중 탑승 변경·다음 구간)은 순수 계층이 요청 결박으로 버린다(설계 리뷰 M1).
             ridingPosition = transitRidingPositionStep(
-                ridingPosition, state: now, leg: legNow, requested: requested, outcome: outcome, now: at)
+                ridingPosition, state: stateNow, leg: legNow, requested: requested, outcome: outcome, now: at)
             transitGuideLog({
                 let kind: String = switch outcome {
                 case let .found(station, age): "found station=\(station) age=\(age.map(String.init) ?? "-")"
@@ -1242,10 +1249,11 @@ final class TransitGuideModel {
                 case .failed: "failed"
                 }
                 let latched = ridingPosition?.stopIndex.map(String.init) ?? "-"
-                let shown = transitPositionShownIndex(state: now, position: ridingPosition, now: at)
+                let shown = transitPositionShownIndex(state: stateNow, position: ridingPosition, now: at)
                     .map(String.init) ?? "-"
                 return "posPoll seq=\(seq) train=\(requested.vehicleId) \(kind) latched=\(latched) shown=\(shown)"
-                    + " lookups=\(ridingPosition?.lookups ?? 0) signal=\(now.signal.rawValue)"
+                    + " lookups=\(ridingPosition?.lookups ?? 0) signal=\(stateNow.signal.rawValue)"
+                    + " elapsed=\(String(format: "%.2f", elapsed))s"
             }())
         }
         positionClock = nowMs()

@@ -273,7 +273,7 @@ final class TransitOverviewAdapter: GuideOverviewCapability, Identifiable {
         return [
             appLocalized("transitGuide.overviewOrdinal",
                          String(overview.legOrdinal.count), String(overview.legOrdinal.n)),
-            model.statusLineText(state: state, leg: leg),
+            model.statusLineText(state: state, leg: leg, now: model.positionClock),
         ].joined(separator: " ")
     }
 
@@ -350,7 +350,10 @@ final class TransitOverviewAdapter: GuideOverviewCapability, Identifiable {
         if recovered { return appLocalized("transitGuide.signalRecovered") }
         // 승차 중 현재역(E35 §6 판정 1): 상시 표시와 같은 선택 — 위치가 잡혀 있으면 신호 문장 대신 현재역 문장.
         // 행은 그대로 둔다(래치·탈출구 불변 — 행이 사라지면 그 위의 포커스가 튄다).
-        if let located = model.positionStatusText(now: model.positionClock) { return located }
+        if let state = model.state, let leg = model.currentLeg,
+           let located = model.positionStatusText(state: state, leg: leg, now: model.positionClock) {
+            return located
+        }
         // 상시 표시와 같은 선택기(A33 수단 축·A34 비관측 축) — 리뷰 M1: 이 행이 따로 키를 부르면 비관측 riding에서
         // "하차역에 가까워지면 표시됩니다"가 거짓으로 남는다. neverSeen만 통지 문장(탈출구 안내)을 쓴다.
         let isTrain = model.currentLeg?.mode == "subway"

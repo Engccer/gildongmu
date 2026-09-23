@@ -298,9 +298,10 @@ struct TransitTrackingSheet: View {
     /// 없으면(정차역 목록 미보유) 섹션 자체를 내지 않는다. 앵커가 바뀌면
     /// `SurroundingsSceneSection`의 `onChange(of: anchorKey)`가 지난 역 장면을 버린다.
     @ViewBuilder private func surroundingsSection(proxy: ScrollViewProxy) -> some View {
-        // 앵커는 후처리된 조망 `here`를 본다(E35) — 조망이 "현재역"이라 말하면 주변 확인도 그 역이다.
-        if let leg = model.currentLeg, let here = model.overview?.here,
-           let anchor = transitSurroundingsAnchor(here: here, leg: leg) {
+        // ⚠ 앵커는 도착 유래 판정 그대로다(E35 접근성 감사 M1) — 실시간 위치를 따르면 승차 내내 역마다 앵커가
+        // 바뀌어 사용자가 연 장면을 읽는 도중에 버리고(포커스 튐), 하차역 주변 미리 듣기가 막힌다.
+        if let state = model.state, let leg = model.currentLeg,
+           let anchor = transitSurroundingsAnchor(state: state, leg: leg) {
             Section {
                 SurroundingsSceneSection(
                     anchor: (lat: anchor.stop.lat, lng: anchor.stop.lng), proxy: proxy)
@@ -461,7 +462,7 @@ struct TransitTrackingSheet: View {
             // 상시 표시(통지 채널 밖) — 통지와 같은 조립기 공유(§12.3: 완성 문장
             // 공백 연결, 쉼표 조립(joinText)은 이중 구두점을 만들어 폐기). 여전히
             // 한 줄 = 한 접근성 객체(단일 텍스트).
-            let text = model.statusLineText(state: state, leg: leg)
+            let text = model.statusLineText(state: state, leg: leg, now: model.positionClock)
             // 문장 안 역명은 산문이라 채팅 산문 선례의 **로터 액션** 갈래만 쓴다(E33): 언급 N개 = 커스텀 액션
             // "{역} 상세 보기" N개(역순 선언 = 등장 순 노출). 채팅의 "1개면 블록 전체 버튼"은 쓰지 않는다 — 이 문장은
             // 폴마다 바뀌어 언급 수가 오가고, 뷰 종류가 Button↔Text로 갈리면 포커스가 얹힌 줄이 15초마다 파괴·재생성
@@ -892,7 +893,8 @@ struct TransitTrackingSheet: View {
             // 낭독됐을 라벨"이라는 계약이라 같은 변환을 지나야 한다(a11y 감사 L1: 지금은 no-op이지만
             // 상태 문장에 미터 값이 들어오는 순간 폴백이 "m"으로 읽히고 이중 낭독 억제 비교도 빗나간다).
             guard let state = model.state, let leg = model.currentLeg else { return "" }
-            return spokenUnits(model.statusLineText(state: state, leg: leg))
+            // 착지했다면 읽었을 라벨 = 화면의 그 줄이라 화면 시계로.
+            return spokenUnits(model.statusLineText(state: state, leg: leg, now: model.positionClock))
         case .waitingLabel: return waitingLabelText
         case .reboardPrompt: return appLocalized(reboardPromptKey)
         case .expressPrompt: return appLocalized("transitGuide.expressPrompt")

@@ -27,6 +27,12 @@ export const POSITION_HOLD_MS = 180_000;
 export const POSITION_MAX_AGE_SECONDS = 300;
 /** 래치보다 뒤 역이 이만큼 연속으로 오면 그 역에서 다시 시작한다 — 튄 값 하나가 구간을 잠그지 않게. */
 export const POSITION_BEHIND_RESTART = 2;
+/**
+ * 클라이언트 조회 예산(ms) — 웹 `AbortSignal.timeout` ↔ iOS `APIClient.get(timeout:)` 같은 값. 이 조회는 도착 폴
+ * 안에 직렬로 끼므로 상한이 없으면 느린 upstream이 다음 도착 폴(첫 관측·카운트다운)을 그만큼 민다(구현 리뷰 M1).
+ * 서버 upstream 예산(5초)보다 길게 둔다 — 서버가 먼저 502로 답하게.
+ */
+export const POSITION_CLIENT_TIMEOUT_MS = 8_000;
 /** 노선 목록이 0행(INFO-200 — 운행 밖·미제공)으로 이만큼 연속이면 이 결박에선 그만 묻는다. */
 export const POSITION_EMPTY_LINE_STOP = 3;
 
@@ -140,6 +146,7 @@ export function ridingPositionStep(
       if (age == null || age > POSITION_MAX_AGE_SECONDS) return next;
       const index = uniqueViaStopIndex(leg, outcome.station);
       if (index == null) return next;
+      // "연속"은 뒤 역 관측끼리의 연속이다 — 사이의 결측·동결·조인 실패는 끊지 않는다(관측이 아니므로).
       if (next.stopIndex != null && index < next.stopIndex) {
         const behind = next.behind + 1;
         if (behind < POSITION_BEHIND_RESTART) return { ...next, behind };
