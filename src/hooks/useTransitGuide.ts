@@ -65,6 +65,7 @@ import {
   positionOutcomeFromBody,
   positionOutcomeFromHttpStatus,
   positionStatusIndex,
+  POSITION_CLIENT_TIMEOUT_MS,
   ridingPositionStep,
   viaStopHereIndex,
   type TransitPositionBinding,
@@ -948,18 +949,20 @@ export function useTransitGuide(
     if (requested && positionLookupDue(s, leg, positionRef.current)) {
       let outcome: TransitPositionOutcome;
       try {
+        // 도착 폴 안에 직렬로 끼므로 예산을 건다(구현 리뷰 M1) — 초과는 catch → failed(세지 않는다).
         const res = await fetch(
           `/api/transit/position?line=${encodeURIComponent(leg.lineName)}&train=${encodeURIComponent(requested.vehicleId)}`,
+          { signal: AbortSignal.timeout(POSITION_CLIENT_TIMEOUT_MS) },
         );
         outcome = res.ok ? positionOutcomeFromBody(await res.json()) : positionOutcomeFromHttpStatus(res.status);
       } catch {
         outcome = { kind: "failed" };
       }
       // 늦은 응답(조회 중 탑승 변경·다음 구간)은 순수 계층이 요청 결박으로 버린다(설계 리뷰 M1).
-      const now = stateRef.current;
+      const stateNow = stateRef.current;
       const legNow = currentLeg();
-      if (!now || !legNow) return;
-      positionRef.current = ridingPositionStep(positionRef.current, now, legNow, requested, outcome, Date.now());
+      if (!stateNow || !legNow) return;
+      positionRef.current = ridingPositionStep(positionRef.current, stateNow, legNow, requested, outcome, Date.now());
       setRidingPosition(positionRef.current);
     }
     setPositionClock(Date.now());
@@ -1484,11 +1487,16 @@ export function useTransitGuide(
       const legNow = currentLeg();
       // 숨김 동안 위치가 낡았을 수 있어 보존 창은 **지금** 시각으로 판정한다(렌더 시계는 숨김 전에 멈춰 있다).
       const located = current ? positionStatusIndex(current, positionRef.current, Date.now()) : null;
+      // 현재역 조각은 한국어 폴백일 수 있다 — 다른 통지 경로처럼 `lang: "ko"`를 싣는다(구현 리뷰 m2).
+      const locatedPiece =
+        current && legNow && located != null
+          ? piece(currentStationLine(isEn, displayLegOf(legNow, null).stops[located]))
+          : null;
       announce(
         [
           t("resumed"),
-          current && legNow && located != null
-            ? piece(currentStationLine(isEn, displayLegOf(legNow, null).stops[located])).text
+          locatedPiece
+            ? locatedPiece.text
             : current
             ? signalText(
                 current.signal,
@@ -1500,6 +1508,7 @@ export function useTransitGuide(
         ]
           .filter(Boolean)
           .join(" "),
+        locatedPiece?.ko ? "ko" : undefined,
       );
       void pollOnce();
     };

@@ -125,7 +125,7 @@ describe("TransitTrackingSheet 착지 대상 (E38) · boarding 수동 진행 (N3
     // `.status`는 상태 문장 줄에 달린다(폴백 문장도 같은 조립기를 읽는다 — 드리프트 차단).
     expect(SHEET).toContain("landingTarget(distanceText(text), .status)");
     // 폴백은 화면과 같은 낭독 라벨을 지난다(a11y 감사 L1).
-    expect(SHEET).toContain("return spokenUnits(model.statusLineText(state: state, leg: leg))");
+    expect(SHEET).toContain("return spokenUnits(model.statusLineText(state: state, leg: leg, now: model.positionClock))");
   });
 
   it("목록 안 포커스 소실 복귀는 질문 라벨 착지와 다른 축이다 — 대상은 `waitingLabel` 고정(a11y 감사 M3)", () => {

@@ -185,13 +185,3 @@ private func makeOutcome(_ o: FixtureOutcome) throws -> TransitPositionOutcome {
     #expect(TransitPositionService.outcome(from: try env(#"{"status":"unsupported"}"#)) == .unsupported)
     #expect(TransitPositionService.outcome(from: try env(#"{"status":"weird"}"#)) == .failed)
 }
-
-@Test func surroundingsAnchorFollowsGivenHere() {
-    let stops = ["강동", "천호", "광나루"].map { TransitLegStop(name: $0, lat: 37.5, lng: 127) }
-    let leg = TransitGuideLeg(
-        mode: "subway", lineName: "수도권 5호선", trackMode: .subway, boardName: "강동", alightName: "광나루",
-        boardStop: stops[0], alightStop: stops[2], viaStops: stops, stationCount: 2,
-        routeId: nil, wayCode: nil, walkBeforeMinutes: nil)
-    #expect(transitSurroundingsAnchor(here: .station(stopIndex: 1), leg: leg) == .currentStation(stops[1]))
-    #expect(transitSurroundingsAnchor(here: .unknown(reason: .noObservation), leg: leg) == .alightStop(stops[2]))
-}

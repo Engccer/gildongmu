@@ -26,6 +26,12 @@ const BASE = "http://swopenapi.seoul.go.kr/api/subway";
  */
 const ROWS = 200;
 
+/**
+ * upstream 예산(ms). 이 조회는 클라이언트의 도착 폴 안에 직렬로 끼므로(구현 리뷰 M1) 느린 upstream이 라우트를
+ * 함수 최대 실행 시간까지 붙잡지 않게 자른다. 초과는 throw → 502 → 클라이언트 `failed`(세지 않는다).
+ */
+const UPSTREAM_TIMEOUT_MS = 5_000;
+
 /** 노선 캐시 TTL(ms) — 세션들의 60초 주기 조회를 노선 단위로 합친다(spec §3.1). */
 export const POSITION_CACHE_TTL_MS = 20_000;
 
@@ -110,7 +116,7 @@ export async function fetchSubwayLinePositions(
 
   const task = (async () => {
     const url = `${BASE}/${key}/json/realtimePosition/0/${ROWS}/${encodeURIComponent(line)}`;
-    const res = await fetch(url, { cache: "no-store" });
+    const res = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS) });
     if (!res.ok) throw new Error(`서울 지하철 실시간 위치 조회 실패: HTTP ${res.status}`);
     const value = parseSubwayPositions(await res.json());
     if (value.truncated) {

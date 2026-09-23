@@ -7,7 +7,7 @@
 // ④ 조회 창 밖이 있으면 upstream이 total로 말하는가(`truncated` 판정의 전제).
 //
 // ⚠ 낮 시간대에 돌린다 — 심야에는 열차가 없어 결측과 운행 밖을 가를 수 없다.
-// upstream 호출: 도착 2 + 위치 2(노선 캐시로 노선당 1) + 창 확인 1 = 5건. ODsay는 부르지 않는다.
+// upstream 호출: 도착 4 + 위치 4(노선 캐시로 노선당 1) + 창 확인 1 = 9건. ODsay는 부르지 않는다.
 //
 // 사용법: (dev 서버를 띄운 뒤) node scripts/verify-transit-position.mjs [BASE_URL=http://localhost:3000] [--all-lines]
 // --all-lines는 매핑표 20노선의 제공 여부를 노선당 1건으로 더 본다(설계 리뷰 M5).
@@ -50,6 +50,10 @@ async function position(line, train) {
 const CASES = [
   { odsayLine: "수도권 5호선", seoulLine: "5호선", subwayId: "1005", station: "강동" },
   { odsayLine: "수도권 2호선", seoulLine: "2호선", subwayId: "1002", station: "강남" },
+  // 열차번호 표기가 다른 노선(구현 리뷰 m5): 1호선은 선행 0(`0106`), 공항철도는 영문 접두(`A2123`)가 위치 목록에
+  // 있다 — 도착 `btrainNo`가 같은 표기가 아니면 조인이 조용히 0이 된다.
+  { odsayLine: "수도권 1호선", seoulLine: "1호선", subwayId: "1001", station: "종로3가" },
+  { odsayLine: "공항철도", seoulLine: "공항철도", subwayId: "1065", station: "공덕" },
 ];
 
 const missing = await position("수도권 5호선", "99999");
@@ -63,7 +67,10 @@ for (const c of CASES) {
     (arr.realtimeArrivalList ?? []).filter((a) => a.subwayId === c.subwayId).map((a) => a.btrainNo).filter(Boolean),
   )].slice(0, 4);
   check(`${c.seoulLine} ${c.station} 도착 목록에 열차번호가 있다`, trains.length > 0, `${trains.length}편성`);
-  const lineStations = new Set(seed.filter((s) => s.lineName === c.seoulLine).map((s) => normalize(s.name)));
+  // 역명 체계 대조는 노선을 가리지 않는다 — seed는 코레일 구간을 `경부선`, 공항철도를 `인천국제공항선`으로 적어
+  // 서울 노선명으로 거르면 정상 역이 떨어진다(2026-09-23 실측). 표식 조인 대상은 ODsay 경유역 이름이고 이 대조는
+  // "위치 API 역명이 역명 체계 안의 표기인가"만 본다.
+  const lineStations = new Set(seed.map((s) => normalize(s.name)));
   let found = 0;
   const unmatched = [];
   for (const t of trains) {
@@ -76,7 +83,11 @@ for (const c of CASES) {
       console.log(`  ${t}: HTTP ${r.status} ${JSON.stringify(r.body)}`);
     }
   }
-  check(`${c.seoulLine} 도착 열차번호 → 위치 found 조인`, trains.length > 0 && found >= Math.ceil(trains.length * 0.75), `${found}/${trains.length}`);
+  // 판정하는 것은 "도착 `btrainNo`와 위치 `trainNo`가 같은 표기인가"다. 표기 불일치는 노선 단위로 체계적이라
+  // 그 노선 전체가 0이 된다 — 그래서 문자열 완전 일치 1편성 이상이면 표기 일치가 입증된다. 목록에 없는 편성(결측)은
+  // 판정이 아니라 관측으로 따로 적는다(비율 문턱은 표기 불일치 한 편성을 통과시키는 헐거운 술어였다).
+  check(`${c.seoulLine} 도착 btrainNo ↔ 위치 trainNo 표기 일치(완전 일치 조인 ≥ 1)`, found >= 1, `${found}/${trains.length}`);
+  if (found < trains.length) console.log(`  관측: ${c.seoulLine} 위치 목록 결측 ${trains.length - found}편성`);
   check(`${c.seoulLine} 현재역이 seed 역명과 정규화 일치`, found > 0 && unmatched.length === 0, unmatched.join(",") || "전부 일치");
 }
 
