@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import {
   buildTransitGuideRoute,
@@ -1145,13 +1145,17 @@ export function useTransitGuide(
     // ⚠ setBoardOverride·setSelectedDescription은 useCallback([])이라 안정 정체성이다 —
     // 아래 주석의 "참조 동일성이 세션 스토어의 소유 판정 키"라는 전제를 깨지 않는다.
   }, [clearTimer, setAboardStep, setBoardOverride, setSelectedDescription]);
-  // stopSession·pollOnce는 상태 의존이 없어 안정 정체성이다(참조 동일성이
+  // stopSession은 상태 의존이 없어 안정 정체성이다(참조 동일성이
   // 세션 스토어의 소유 판정 키 — 별도 ref 고정 불필요).
 
   // tick이 오르면 1폴(마운트 직후 tick 0은 세션 없음 가드로 무시된다).
+  // ⚠ 반응 축은 tick 하나다 — pollOnce는 `boardOverride`·로케일을 따라 정체성이 바뀌므로 의존성에
+  // 두면 그 변화만으로 폴이 나간다(재선택 역이 있는 세션의 관측 승격 직후 즉폴 → 승격 문장이
+  // `trackingStarted`에 덮였다). 이벤트 함수가 최신 pollOnce를 부른다.
+  const onPollTick = useEffectEvent(() => void pollOnce());
   useEffect(() => {
-    if (pollTick > 0) void pollOnce();
-  }, [pollTick, pollOnce]);
+    if (pollTick > 0) onPollTick();
+  }, [pollTick]);
 
   /** 게이트 뒤 세션 초기화 공통부(`start`·`startAfterPrewalk`). `prefix`는 시작 문장 앞 한 문장. */
   const beginSession = useCallback(

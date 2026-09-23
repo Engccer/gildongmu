@@ -15,10 +15,9 @@ import { __resetOpenPlaceForTest } from "@/lib/place-open-request";
 import type { DirEndpoint } from "@/lib/directions-state";
 import type { Place } from "@/lib/types";
 
-vi.mock("next-intl", () => {
-  const t = (k: string) => k;
-  Object.assign(t, { rich: t, markup: t, raw: t, has: () => true });
-  return { useTranslations: () => t, useLocale: () => "ko" };
+vi.mock("next-intl", async () => {
+  const m = await import("./stable-intl-mock");
+  return m.stableIntlMock("ko", m.keyOnly);
 });
 vi.mock("../VoiceRecordButton", () => ({ VoiceRecordButton: () => null }));
 vi.mock("../NearbyHub", () => ({ NearbyHub: () => null }));

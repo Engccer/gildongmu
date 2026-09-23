@@ -12,10 +12,9 @@ import { __resetOpenPlaceForTest } from "@/lib/place-open-request";
 import type { HomeBridge } from "@/lib/webmcp/tools/context";
 import type { JusoAddress, Place } from "@/lib/types";
 
-vi.mock("next-intl", () => {
-  const t = (k: string) => k;
-  Object.assign(t, { rich: t, markup: t, raw: t, has: () => true });
-  return { useTranslations: () => t, useLocale: () => "ko" };
+vi.mock("next-intl", async () => {
+  const m = await import("./stable-intl-mock");
+  return m.stableIntlMock("ko", m.keyOnly);
 });
 // 음성 전사는 로딩 가드 없이 새 검색을 시작한다 — 사용자 우선(superseded) 재현용.
 vi.mock("../VoiceRecordButton", () => ({
