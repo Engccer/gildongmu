@@ -1,4 +1,4 @@
-// 프로브 카탈로그. 유료 API는 무과금 경로만 쓴다(스펙 §3.3 실호출 확정)
+// 프로브 카탈로그. 유료 API는 무과금 경로만 쓴다(스펙 §3.3 실호출 확정). 예외: ODsay 가용성 프로브는 Flex 전환(2026-09-23) 뒤 1건 과금이다
 import { STATUS, defaultJudge, maskSecrets } from "./usage-report-core.mjs";
 
 const DEEPGRAM_PROJECT_ID = "9fe1af22-f34f-490f-9ecd-d6855e52c7d6";
@@ -390,7 +390,7 @@ export const AVAILABILITY_PROBES = [
 export const DEADLINES = [
   // ⚠ ODsay 키 만료 항목을 두지 않는다 — 콘솔이 "활성화 상태(기한제한 없음)"이고 구매문의 페이지도
   //    "Basic은 기간 제한 없이 무료"라고 적는다(실측 2026-09-18). 종전 2027-01-04은 2026-06 조사의
-  //    "무료 6개월" 가정에서 나온 값이고 그 가정이 틀렸다. ODsay의 진짜 제약은 시한이 아니라 **일 30회**다.
+  //    "무료 6개월" 가정에서 나온 값이고 그 가정이 틀렸다. Flex 후불(2026-09-23 전환)도 기간 제한이 없다.
   { label: "네이버 API Hub 이관", date: "2027-06-30" },
   { label: "Apple 배포 인증서 만료", date: "2027-07-18" },
 ];
