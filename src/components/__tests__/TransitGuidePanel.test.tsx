@@ -1515,4 +1515,55 @@ describe("TransitGuidePanel — boarding 수동 진행 (N3 ①)", () => {
       vi.useRealTimers();
     }
   });
+  it("버스 boarding의 수동 진행 버튼은 버스 라벨이다(A46) — 버스 승차에 열차 라벨이 붙으면 회귀", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      let failing = false;
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => {
+          if (failing) throw new Error("upstream down");
+          return {
+            ok: true,
+            json: async () => ({
+              mode: "seoulBus",
+              status: "ok",
+              rawCount: 1,
+              items: [trackItem({ vehicleId: "111033479", direction: "" })],
+            }),
+          } as Response;
+        }) as unknown as typeof fetch,
+      );
+      const BUS_ROUTE: TransitRoute = {
+        summary: { totalMinutes: 20, fare: 1500, transfers: 0, walkMinutes: 2 },
+        routeKey: "b0",
+        legs: [
+          {
+            mode: "bus",
+            lineName: "3318",
+            fromName: "길동사거리",
+            toName: "천호역",
+            stationCount: 5,
+            minutes: 12,
+            serviceRouteId: "227000006",
+            stops: [
+              { name: "길동사거리", lat: 37.5, lng: 127.1, cityCode: "1000", arsId: "24101", localId: "123000017" },
+              { name: "천호역", lat: 37.53, lng: 127.12, cityCode: "1000", arsId: "24102", localId: "123000043" },
+            ],
+          },
+        ],
+      };
+      render(<TransitGuidePanelHost route={BUS_ROUTE} triggerLabel="시작" walkAccessible={false} />);
+      fireEvent.click(screen.getByRole("button", { name: "시작" }));
+      fireEvent.click(await screen.findByRole("button", { name: /selectBus/ }));
+      await screen.findByRole("button", { name: "transitGuide.reselectVehicle" });
+      failing = true;
+      await vi.advanceTimersByTimeAsync(20_000 * 3 + 500);
+      await screen.findByRole("button", { name: "transitGuide.boardSelectedBus" });
+      expect(screen.queryByRole("button", { name: "transitGuide.boardSelected" })).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
 });
