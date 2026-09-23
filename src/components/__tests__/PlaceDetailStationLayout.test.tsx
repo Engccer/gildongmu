@@ -10,7 +10,8 @@ vi.mock("next-intl", () => ({
 }));
 
 // 자식 섹션은 표식으로만 그린다 — 이 파일은 배치(순서·구성)만 본다.
-const { marker } = vi.hoisted(() => ({
+const { marker, metaState } = vi.hoisted(() => ({
+  metaState: { shown: true },
   marker:
     (name: string) =>
     ({ embedded }: { embedded?: boolean }): ReactNode => (
@@ -26,7 +27,7 @@ vi.mock("../StationMeta", async () => {
   return {
     StationMeta: (props: { embedded?: boolean; onShownChange?: (shown: boolean) => void }) => {
       const { onShownChange } = props;
-      useEffect(() => onShownChange?.(true), [onShownChange]);
+      useEffect(() => onShownChange?.(metaState.shown), [onShownChange]);
       return Marker(props);
     },
   };
@@ -44,7 +45,10 @@ vi.mock("../chat/ChatOverlay", () => ({ ChatOverlay: () => null }));
 import { PlaceDetail } from "../PlaceDetail";
 import type { Place } from "@/lib/types";
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  metaState.shown = true;
+});
 
 const base: Place = {
   id: "kakao-21160622",
@@ -134,8 +138,10 @@ describe("역 상세 레이아웃 (E44 spec §3.2)", () => {
     expect(screen.queryByRole("heading", { name: "place.nearbyHeading" })).toBeNull();
   });
 
-  it("역 정보 제목은 전화·메타가 없어도 선다", () => {
-    renderDetail({ phone: undefined });
+  it("역 정보 제목은 전화·메타가 없어도 서고, 메타가 없으면 출처 줄도 없다", () => {
+    metaState.shown = false;
+    const { container } = renderDetail({ phone: undefined });
+    expect(readingOrder(container)).not.toContain("source");
     expect(screen.getByRole("heading", { level: 3, name: "stationMeta.heading" })).toBeTruthy();
     expect(screen.queryByRole("link")).toBeNull();
   });
