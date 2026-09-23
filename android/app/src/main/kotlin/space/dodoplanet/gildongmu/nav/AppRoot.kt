@@ -109,7 +109,11 @@ fun AppRoot(factories: AppFactories) {
                 }
                 composable<DirectionsRoute> { entry ->
                     val rf: ReturnFocusViewModel = viewModel(entry)
-                    DirectionsScreen(onOpenSettings = { rf.slot.remember(SETTINGS_RETURN_KEY); navController.navigate(SettingsRoute) { launchSingleTop = true } }, takeSettingsReturn = rf.slot::take)
+                    DirectionsScreen(
+                        onOpenSettings = { rf.slot.remember(SETTINGS_RETURN_KEY); navController.navigate(SettingsRoute) { launchSingleTop = true } }, takeSettingsReturn = rf.slot::take,
+                        // 브리핑 지하철역 상세(E45) — 길찾기 탭 스택에 push. 노선 힌트는 누르는 순간 확정한 그 줄의 leg `lineName`(없으면 빈 값 = 표가 모름 → 전화 줄 없음).
+                        onOpenStation = { stop, lineName -> navController.navigate(PlaceDetailRoute.ofTransitStop(stop, lineName = lineName ?: "")) },
+                    )
                 }
                 composable<NearbyRoute> { entry ->
                     val returnFocus: ReturnFocusViewModel = viewModel(entry)
@@ -160,6 +164,7 @@ fun AppRoot(factories: AppFactories) {
                         takeReturnFocus = returnFocus.slot::take,
                         stationLineHint = route.stationLineHint,
                         showsChatEntry = route.showsChatEntry,
+                        showsDirectionsEntry = route.showsDirectionsEntry,
                     )
                 }
                 composable<PlaceChatRoute> { entry -> PlaceChatScreen(entry.toRoute(), { navController.popBackStack() }) { navController.navigate(PlaceDetailRoute.of(it, showsChatEntry = false)) } }

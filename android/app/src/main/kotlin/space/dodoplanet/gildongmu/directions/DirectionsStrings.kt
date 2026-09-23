@@ -138,5 +138,8 @@ internal fun stringId(key: String): Int? = when (key) {
     "recentRoutes.clearAll" -> R.string.recentRoutes_clearAll
     "recentRoutes.cleared" -> R.string.recentRoutes_cleared
     "transitGuide.exitBound" -> R.string.transitGuide_exitBound
+    "transitGuide.openStation" -> R.string.transitGuide_openStation
+    "transitGuide.callStation" -> R.string.transitGuide_callStation
+    "transitGuide.callStationRepresentative" -> R.string.transitGuide_callStationRepresentative
     else -> null
 }

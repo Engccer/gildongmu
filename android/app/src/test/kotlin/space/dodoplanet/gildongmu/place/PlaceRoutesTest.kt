@@ -8,7 +8,9 @@ import space.dodoplanet.gildongmu.kit.models.TransitLegStop
 import space.dodoplanet.gildongmu.kit.transitStopPlace
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class PlaceRoutesTest {
     @Test fun `Place는 JSON 라우트 인자로 왕복된다(옵션 null 포함)`() {
@@ -33,5 +35,11 @@ class PlaceRoutesTest {
         assertEquals("수도권 5호선", route.stationLineHint)
         assertEquals(transitStopPlace(stop), route.place)
         assertNull(PlaceDetailRoute.of(transitStopPlace(stop)).stationLineHint)
+    }
+
+    @Test fun `경유역 상세는 여기까지 길찾기를 숨기고 그 밖의 상세는 보인다(E45 spec 7)`() {
+        val stop = TransitLegStop(name = "천호", lat = 37.5387, lng = 127.1234)
+        assertFalse(PlaceDetailRoute.ofTransitStop(stop, lineName = "수도권 5호선").showsDirectionsEntry)
+        assertTrue(PlaceDetailRoute.of(transitStopPlace(stop)).showsDirectionsEntry)
     }
 }

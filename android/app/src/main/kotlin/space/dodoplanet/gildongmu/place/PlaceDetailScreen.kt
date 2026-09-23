@@ -77,6 +77,8 @@ fun PlaceDetailScreen(
     stationLineHint: String?,
     domain: PlaceDomain? = null,
     showsChatEntry: Boolean = true,
+    /** false면 "여기까지/여기부터 길찾기"를 숨긴다(경유역 상세 — 라우트가 나른다, E45 §7). */
+    showsDirectionsEntry: Boolean = true,
     phoneStore: StationPhoneStore = StationPhoneStore.shared,
 ) {
     val vm: PlaceDetailViewModel = viewModel(factory = factory)
@@ -183,7 +185,7 @@ fun PlaceDetailScreen(
                     Text(stringResource(R.string.android_route_section), Modifier.fillMaxWidth().mergedRow("route-heading").headingText().padding(top = 12.dp, bottom = 4.dp), style = MaterialTheme.typography.titleMedium)
                     // 길찾기 탭 프리필(M3 계약 `directions/DirectionsPrefill`). 두 버튼은 별개 객체 — 라벨이 각각 동작의 범위를 말한다.
                     // "여기부터"는 도착지가 비므로 길찾기 탭이 조회 대신 도착지 입력에 착지한다(E32, iOS 동형).
-                    for ((role, label, tag) in listOf(
+                    if (showsDirectionsEntry) for ((role, label, tag) in listOf(
                         Triple(DirectionsPrefillRole.to, R.string.directions_toHere, "directionsTo"),
                         Triple(DirectionsPrefillRole.from, R.string.directions_fromHere, "directionsFrom"),
                     )) {

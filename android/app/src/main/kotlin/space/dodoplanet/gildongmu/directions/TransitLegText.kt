@@ -12,6 +12,7 @@ import space.dodoplanet.gildongmu.kit.joinText
 import space.dodoplanet.gildongmu.kit.models.TransitRoute
 import space.dodoplanet.gildongmu.kit.models.TransitRouteLeg
 import space.dodoplanet.gildongmu.kit.transitAlightStationName
+import space.dodoplanet.gildongmu.kit.transitBriefingName
 import space.dodoplanet.gildongmu.kit.transitLegUsesEnglish
 
 // 대중교통 구간 문장(spec §3-4-a·b, iOS `RouteBriefing.swift` `transitLegLine`·`transitLegText`·`transitAlternativeName` 대응).
@@ -66,20 +67,25 @@ fun transitLegText(
     lang: String,
     strings: Strings,
 ): String {
-    fun pick(ko: String?, en: String?): String? = when (names) {
-        LegNames.Korean -> ko
-        is LegNames.English -> when {
-            en == null -> ko
-            // 병기 정본은 E28 `bilingualName`(한 줄 괄호, 낭독은 primary만) — roman은 ODsay 영문이 있어 null.
-            names.bilingual -> bilingualName(lang, ko ?: en, en, roman = null).display
-            else -> en
+    // 빈값·공백값은 정보 부재 — 한국어와 영문을 고르기 전에 같은 판정을 지난다(:kit `transitBriefingName`, iOS 동형).
+    fun pick(koRaw: String?, enRaw: String?): String? {
+        val ko = transitBriefingName(koRaw)
+        val en = transitBriefingName(enRaw)
+        return when (names) {
+            LegNames.Korean -> ko
+            is LegNames.English -> when {
+                en == null -> ko
+                // 병기 정본은 E28 `bilingualName`(한 줄 괄호, 낭독은 primary만) — roman은 ODsay 영문이 있어 null.
+                names.bilingual -> bilingualName(lang, ko ?: en, en, roman = null).display
+                else -> en
+            }
         }
     }
     val fromName = pick(leg.fromName, leg.fromNameEn)
     val toName = pick(leg.toName, leg.toNameEn)
     if (leg.mode == "walk") {
-        // 마지막 도보에는 행선지가 없다(provider가 목적지 이름을 모른다). 빈 문자열도 폴백 대상(iOS `first { !$0.isEmpty }`).
-        val name = toName?.takeIf { it.isNotEmpty() } ?: destinationName?.takeIf { it.isNotEmpty() }
+        // 마지막 도보에는 행선지가 없다(provider가 목적지 이름을 모른다). 공백뿐인 목적지 이름도 폴백으로 쓰지 않는다.
+        val name = toName ?: transitBriefingName(destinationName)
         val resolved = TransitWalkLegText.resolve(
             name = name, distance = leg.distanceMeters?.let(::formatDistance), minutes = leg.minutes, boardExit = boardExit,
         )
@@ -94,9 +100,9 @@ fun transitLegText(
     } else {
         null
     }
-    // 노선 이름은 영어 모드에서도 `lineNameEn` 그대로(병기 없음). ⚠ trim 뒤 빈 문자열은 없음 — ODsay `busNo` 결측 `" "`가
-    // "번 버스"로 낭독된 iOS 실사고.
-    val lineName = (if (names is LegNames.English) leg.lineNameEn ?: leg.lineName else leg.lineName)?.trim()?.takeIf { it.isNotEmpty() }
+    // 노선 이름은 영어 모드에서도 `lineNameEn` 그대로(병기 없음). ⚠ 공백뿐인 값은 없음 — ODsay `busNo` 결측 `" "`가
+    // "번 버스"로 낭독된 iOS 실사고. 승하차역과 같은 부재 판정(원문 보존).
+    val lineName = transitBriefingName(if (names is LegNames.English) leg.lineNameEn ?: leg.lineName else leg.lineName)
     val lineText = lineName?.let { if (leg.mode == "bus") strings.get("route.transit.busNo", it) else it }
     return joinText(
         lineText,

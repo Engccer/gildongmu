@@ -27,12 +27,13 @@ fun alightLineText(
     lang: String,
     exitBound: (String) -> String,
 ): String? {
-    val quick = quickExitText(quickExit, station, lang)
+    val name = transitBriefingName(station) ?: return null
+    val quick = quickExitText(quickExit, name, lang)
     // 서버가 형식·문맥을 이미 걸렀지만 소비자 게이트를 이중으로 둔다(spec 2026-09-02 §5.1).
     val bound = transitValidExitNo(exitAlight)?.let(exitBound)
     if (quick != null) return listOfNotNull(quick, bound).joinToString(", ")
-    if (bound == null || station.isEmpty()) return null
-    return listOf(kitLocalized("route.transit.alightAt", lang, station), bound).joinToString(", ")
+    if (bound == null) return null
+    return listOf(kitLocalized("route.transit.alightAt", lang, name), bound).joinToString(", ")
 }
 
 /** 이 도보 구간 줄이 실을 승차 출구 — 다음 구간이 탑승이고 승차 출구가 있을 때만. `index`는 도보 구간 자신의 자리다. */
@@ -58,6 +59,13 @@ fun boardExitOnBoardLine(legs: List<TransitRouteLeg>, index: Int): String? {
 // 줄 단위 영어 자격 (E27 원자성 — 브리핑 구간 줄·하차 줄이 같은 술어를 쓴다)
 
 /**
+ * 브리핑 이름의 빈값·공백값은 정보 부재다. 정규화는 조인의 몫이며, 표시할 원문은 보존한다.
+ * 공백 뜻은 Swift `.whitespacesAndNewlines`(U+200B 포함) — Kotlin `isBlank`는 집합이 달라 쓰지 않는다.
+ */
+fun transitBriefingName(name: String?): String? =
+    name?.takeIf { it.trimSwiftWhitespacesAndNewlines().isNotEmpty() }
+
+/**
  * 이 구간의 브리핑 줄이 **영어 이름**으로 설 자격 — 노선·승차·하차 영문이 **다** 있을 때만(도보는 행선지만).
  * 웹 `TransitRouteBriefing`의 `legEn`과 같은 조건이다. 하나라도 없으면 그 구간의 줄 전부가 한국어 이름이다.
  *
@@ -68,16 +76,16 @@ fun transitLegUsesEnglish(leg: TransitRouteLeg, lang: DataLocale): Boolean {
     if (lang != DataLocale.en) return false
     if (leg.mode == "walk") {
         // 마지막 도보(행선지 없음)는 목적지 문구라 영문 조각이 필요 없다. 행선지가 있으면 영문 행선지 필수.
-        return leg.toName == null || leg.toNameEn != null
+        return transitBriefingName(leg.toName) == null || transitBriefingName(leg.toNameEn) != null
     }
-    return leg.lineNameEn != null &&
-        (leg.fromName == null || leg.fromNameEn != null) &&
-        (leg.toName == null || leg.toNameEn != null)
+    return transitBriefingName(leg.lineNameEn) != null &&
+        (transitBriefingName(leg.fromName) == null || transitBriefingName(leg.fromNameEn) != null) &&
+        (transitBriefingName(leg.toName) == null || transitBriefingName(leg.toNameEn) != null)
 }
 
 /** 하차 줄에 쓸 역명 — 구간 줄이 영어면 영문, 아니면 한국어. 이름이 없으면 빈 문자열(호출부가 줄을 세우지 않는다). */
 fun transitAlightStationName(leg: TransitRouteLeg, lang: DataLocale): String {
-    val en = leg.toNameEn
+    val en = transitBriefingName(leg.toNameEn)
     if (transitLegUsesEnglish(leg, lang) && en != null) return en
-    return leg.toName ?: ""
+    return transitBriefingName(leg.toName) ?: ""
 }
