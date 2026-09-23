@@ -12,6 +12,51 @@
 
 ---
 
+## 1.19 (빌드 27)
+
+기준은 1.18 아카이브 커밋 `edc8cbdc`(빌드 26)이며 그 이후 `ios/` 커밋 23건을 판정했다. Release 바이너리에 도달하면서 iOS 사용자에게 보이는 것만 담는다. 새로 읽는 서버 응답(도보 `lines=1` 줄 목록)은 프로덕션에서 `shortest`·`accessible` 두 줄로 응답함을 실호출로 확인했다.
+
+포함 판정:
+
+| 기능 | 커밋 | 노트 |
+|---|---|---|
+| **도보 경로 두 줄**(E42) — ko는 최단 경로와 계단 회피 경로(없으면 큰길 경로), 계단 회피 토글 삭제, 줄마다 안내 시작 버튼, 안내 중 다른 줄로 전환 | `c9eaa160`·`d1206ba7` | **ko만.** en은 추천·최단 두 줄 그대로이고 시작 버튼 이름만 바뀌었다. 도달면 `DirectionsTabView`·`BeaconModel`(도보 안내)은 정식판 |
+| **측위 실패 시 옛 위치임과 시각을 밝힌다**(stale-origin) — 위치 표시줄·길찾기 현재 위치 칸이 "마지막으로 확인한 위치, 주소, N분 전", 길찾기는 그 위치로 계속하고 완료 통지에서 밝힌다 | `be203749`·`87dbab1f`·`dfca7e60`·`1dcb120c` | ko·en 6로케일. 도달면 `LocationBarView`·`DirectionsTabView`·`CurrentAddressStore`는 정식판 |
+| **교통약자 도우미처럼 세부 줄이 없는 시설 묶음은 평문 한 줄** — 펼치면 빈 행만 나오던 문제 | `2a199716` | ko·en. 도달면 `StationSections`(역 상세)는 정식판 |
+
+제외 근거:
+
+- **대중교통 실시간 안내 계층**(E35 `667a8632`·`ef9c1487`·`eaf8e879`, E48 `de1968b7`·`d15282af`·`80e6d540`, A46 `866babe0`·`fd03dc66`·`bef6b9c2`): 대중교통 세션 시작이 `AppConfig.experimentalGuidanceEnabled` 뒤라 정식판 도달 0. 공유 표면 `GuideOverviewSheet`는 `TransitOverviewAdapter`만, `LocationService`는 keep-alive 프로파일(대중교통 세션 전용)만 바뀌었다.
+- **체감 없는 보정**: en 대표번호 표기 "main line" → "main number"(`5e7e00ae`), 채팅 추천 질문 조회 상한 20초(`b2f177ee`).
+- **동작 변경 0**: Swift 미참조 xcstrings 동조(`ab72bf0d`), 참조 0 키 삭제(`700f65c5`), Kit 주석(`88e64dcc`·`6ef79c50`), 기기 배포 스크립트(`dcd20e82`).
+
+심사 노트는 이번 버전에서 **승계한다**(`--review-notes` 없음). 새 권한·새 데이터 유형이 없고(옛 위치는 이미 기기에 있던 좌표), §9 문장 중 거짓이 된 것도 없다.
+
+### ko
+
+```
+새로운 기능
+- 길찾기 도보 결과가 최단 경로와 계단 회피 경로 두 가지로 나옵니다. 계단을 피하는 길이 없으면 큰길 경로를 대신 보여 드립니다. 계단 회피 스위치는 없어졌고, 각 경로 안에 그 경로로 안내를 시작하는 버튼이 있습니다. 안내 중에도 다른 쪽 경로로 바꿀 수 있습니다.
+
+개선
+- 지금 위치를 잡지 못했을 때 예전 위치를 현재 위치처럼 말하지 않습니다. 위치 표시줄과 길찾기 출발지가 "마지막으로 확인한 위치"와 몇 분 전인지를 알려 드리고, 길찾기는 그 위치로 계속 찾으면서 그 사실을 함께 알려 드립니다.
+
+오류 수정
+- 역 상세의 교통약자 시설에서 교통약자 도우미처럼 세부 항목이 없는 시설을 펼치면 빈 줄만 나오던 문제를 고쳤습니다. 이제 한 줄로 바로 읽힙니다.
+```
+
+### en
+
+```
+Improved
+- When your current location can't be found, the app no longer presents an old location as current. The location bar and the directions starting point say "Last known location" and how long ago it was, and directions keep searching from there while telling you so.
+
+Fixed
+- In station accessibility facilities, groups with no individual entries, such as Accessibility helper, used to open to empty rows. They now read as a single line.
+```
+
+---
+
 ## 1.18 (빌드 26)
 
 기준은 1.17 아카이브 커밋 `ff41fdce`(빌드 25)이며 그 이후 `ios/` 커밋 27건을 판정했다. Release 바이너리에 도달하면서 iOS 사용자에게 보이는 것만 담는다. 동결 중(웹은 2026-09-04 `origin/main`) 사이클이라 새 서버 의존을 따로 확인했다: 새로 읽는 값은 이미 배포된 `/api/places`·지하철 도착 `direction`·로컬 저장 `labelRoman`뿐이다.
