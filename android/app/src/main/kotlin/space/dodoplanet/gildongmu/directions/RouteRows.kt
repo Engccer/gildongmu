@@ -16,6 +16,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
@@ -53,8 +54,10 @@ fun TextRow(
     spoken: String? = null,
     modifier: Modifier = Modifier,
     actions: List<CustomAccessibilityAction> = emptyList(),
+    /** 착지 대상이면(역 상세 복귀) — `mergedRow` 안 `focusable()` 앞에 붙는다. */
+    focus: FocusRequester? = null,
 ) {
-    val row = modifier.fillMaxWidth().mergedRow(tag, spoken)
+    val row = modifier.fillMaxWidth().mergedRow(tag, spoken, focus)
     Text(
         text,
         (if (actions.isEmpty()) row else row.semantics { customActions = actions }).padding(vertical = 8.dp),

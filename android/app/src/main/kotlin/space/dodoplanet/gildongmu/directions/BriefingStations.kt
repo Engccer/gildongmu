@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.lifecycle.Lifecycle
@@ -33,10 +34,12 @@ import space.dodoplanet.gildongmu.place.dial
  * 조합을 구조적으로 막는다(iOS `stationEntry` 클로저와 같은 판단).
  */
 class BriefingStationEntry(
-    /** 역 상세 열기 — 노선 힌트는 누르는 순간 확정한 그 줄의 `lineName`(없으면 null). */
-    val onOpen: (TransitLegStop, String?) -> Unit,
+    /** 역 상세 열기 — 노선 힌트는 누르는 순간 확정한 그 줄의 `lineName`(없으면 null), `rowTag`는 pop 복귀 착지할 그 줄. */
+    val onOpen: (stop: TransitLegStop, lineName: String?, rowTag: String) -> Unit,
     /** 전화 결과 통지 — 화면의 단일 통지 창구로(진동은 문장이 나가는 조건과 같다). */
     val announce: (text: String, haptic: HapticKind) -> Unit,
+    /** 그 줄의 착지 요청자(역 상세에서 돌아오면 커서가 그 줄로 — iOS NavigationStack pop 동형). */
+    val rowFocus: (rowTag: String) -> FocusRequester,
 )
 
 /** 브리핑 줄에 달릴 역 액션 하나 — :kit 판정(대상 역·노선 힌트)에 **그 줄의 언어로 고른 표시 이름**을 얹는다. */
@@ -66,6 +69,26 @@ fun briefingRotorOrder(actions: List<BriefingStationAction>): List<Pair<Briefing
     actions.flatMap { listOf(it to BriefingRotorKind.open, it to BriefingRotorKind.call) }
 
 /**
+ * 작업 메뉴 항목 전부 — 길이는 언제나 `actions.size * 2`다(전화 액션은 상태와 무관하게 상시, 판정 ④). 상태로 갈리는 것은 전화 **라벨**뿐이고
+ * (대표번호면 "대표번호로 전화 걸기"), 동작은 누르는 순간 저장소를 다시 읽는 단일 창구가 정한다. 컴포저블 밖 순수 함수라 JVM이 잠근다.
+ */
+fun briefingCustomActions(
+    actions: List<BriefingStationAction>,
+    lookedUp: (BriefingStationAction) -> StationPhoneResult?,
+    strings: Strings,
+    onOpen: (BriefingStationAction) -> Unit,
+    onCall: (BriefingStationAction) -> Unit,
+): List<CustomAccessibilityAction> = briefingRotorOrder(actions).map { (station, kind) ->
+    when (kind) {
+        BriefingRotorKind.open -> CustomAccessibilityAction(strings.get("transitGuide.openStation", station.name)) { onOpen(station); true }
+        BriefingRotorKind.call -> {
+            val label = if (lookedUp(station) is StationPhoneResult.Representative) "transitGuide.callStationRepresentative" else "transitGuide.callStation"
+            CustomAccessibilityAction(strings.get(label, station.name)) { onCall(station); true }
+        }
+    }
+}
+
+/**
  * 역 액션을 든 브리핑 줄. **저장소는 이 하위 컴포저블만 관찰한다** — 전화 라벨이 직통·대표번호로 갈리므로 라벨 계산이 저장소를 읽어야 하는데,
  * 그 읽기가 브리핑 본문에 있으면 번호 도착·30초 재확인·6분 축출마다 브리핑 전체가 다시 그려진다(E44 리뷰 M5).
  *
@@ -87,29 +110,22 @@ fun BriefingStationRow(
     // 줄이 보이는 동안(STARTED) 이 줄의 역만 신선하게 유지한다 — 저장소는 갱신되지 않은 값을 6분에 지우고, 브리핑은 출발 전에 오래 머무는
     // 화면이다. ⚠ `leg.stops` 전체가 아니라 이 줄의 역만(줄당 최대 2건, spec §5.2). 공유 조회 자체는 저장소 스코프라 취소되지 않는다.
     val lifecycle = LocalLifecycleOwner.current.lifecycle
-    LaunchedEffect(actions, lifecycle) {
+    // 키는 대상(역·노선)만 — 표시 이름이 언어로 바뀌어도 루프를 다시 시작하지 않는다(iOS `taskKey` 동형).
+    LaunchedEffect(actions.map { it.stop to it.lineName }, lifecycle) {
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             coroutineScope {
                 for (a in actions) launch { store.keepFresh(a.stop.name, a.stop.lat, a.stop.lng, a.lineName ?: "") }
             }
         }
     }
-    val custom = briefingRotorOrder(actions).map { (station, kind) ->
-        when (kind) {
-            BriefingRotorKind.open -> CustomAccessibilityAction(strings.get("transitGuide.openStation", station.name)) {
-                entry.onOpen(station.stop, station.lineName)
-                true
-            }
-            BriefingRotorKind.call -> {
-                val looked = StationPhoneStore.key(station.stop.name, station.stop.lat, station.stop.lng, station.lineName ?: "")?.let { results[it] }
-                val label = if (looked is StationPhoneResult.Representative) "transitGuide.callStationRepresentative" else "transitGuide.callStation"
-                CustomAccessibilityAction(strings.get(label, station.name)) {
-                    callStationPhone(store, station.stop, station.lineName ?: "", context::dial)
-                        ?.let { entry.announce(appLocalized(context.resources, it.text), it.haptic) }
-                    true
-                }
-            }
-        }
-    }
-    TextRow(text, tag, spoken = spoken, actions = custom)
+    val custom = briefingCustomActions(
+        actions,
+        lookedUp = { a -> StationPhoneStore.key(a.stop.name, a.stop.lat, a.stop.lng, a.lineName ?: "")?.let { results[it] } },
+        strings = strings,
+        onOpen = { a -> entry.onOpen(a.stop, a.lineName, tag) },
+        onCall = { a ->
+            callStationPhone(store, a.stop, a.lineName ?: "", context::dial)?.let { entry.announce(appLocalized(context.resources, it.text), it.haptic) }
+        },
+    )
+    TextRow(text, tag, spoken = spoken, actions = custom, focus = entry.rowFocus(tag))
 }
