@@ -4,6 +4,8 @@ import { useLocale, useTranslations } from "next-intl";
 import { useChat, type PlaceContext } from "@/hooks/useChat";
 import { useChatSound } from "@/hooks/useChatSound";
 import { useFollowUpSuggestions } from "@/hooks/useFollowUpSuggestions";
+import { useTtsPlayback } from "@/hooks/useTtsPlayback";
+import { markdownToPlainText } from "@/lib/markdown-plain-text";
 import { MessageBubble } from "./MessageBubble";
 import { ChatInput } from "./ChatInput";
 import { FollowUpChips } from "./FollowUpChips";
@@ -17,7 +19,8 @@ import { FollowUpChips } from "./FollowUpChips";
  *   않는다 — 복제하면 스크린 리더가 보이는 답변과 sr-only 답변을 중복 낭독한다(과거 결함).
  *   포커스가 질문 heading으로 가면 사용자가 답변·카드·출처를 한 번씩 읽어 내려간다.
  * - 진행 통지(progressCategories)는 polite live region — 도구 호출 진행을 알리는 용도
- *   (assertive 미사용).
+ *   (assertive 미사용). 답변 [복사]의 "복사됨"·[듣기] 실패도 이 창구 하나로 낸다(새 live region 금지).
+ * - [듣기]는 화면당 재생 1개(useTtsPlayback) — 받아쓰기를 누르면·화면을 떠나면 멈춘다.
  * - error는 role="alert"(assertive 없이 네이티브 role 사용).
  * - inputRef: 부모(PlaceSearch)가 전달해 Shift+Esc 포커스를 채팅 입력창에 건다.
  * - initialMessage: 옴니박스 등 place 없는 범용 진입점이 첫 질문을 마운트 1회 자동 전송한다.
@@ -56,6 +59,27 @@ export function ChatInterface({
     void sendMessage(initialMessage);
   }, [initialMessage, sendMessage]);
   const progressRef = useRef<HTMLDivElement>(null);
+  const announceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (announceTimerRef.current) clearTimeout(announceTimerRef.current);
+    },
+    [],
+  );
+  // 진행 통지 창구에 1회성 문장을 싣고 2초 뒤 비운다(잔상 방지). textContent 대입은 같은 문장이어도
+  // 텍스트 노드를 갈아 끼우므로 연속 복사도 매번 다시 읽힌다(React 동일 값 bail out과 다르다).
+  const announce = useCallback((message: string) => {
+    const region = progressRef.current;
+    if (!region) return;
+    region.textContent = message;
+    if (announceTimerRef.current) clearTimeout(announceTimerRef.current);
+    announceTimerRef.current = setTimeout(() => {
+      if (progressRef.current?.textContent === message) progressRef.current.textContent = "";
+      announceTimerRef.current = null;
+    }, 2000);
+  }, []);
+  const tts = useTtsPlayback(locale, () => announce(t("listenFailed")));
+  const handleCopied = useCallback(() => announce(t("copied")), [announce, t]);
   // 최신 사용자 질문 heading 참조 — 응답 완료 후 포커스 이동 앵커.
   const lastQueryRef = useRef<HTMLHeadingElement>(null);
   // 직전 isLoading 값 — true→false 전환으로 "방금 응답 완료"를 감지한다.
@@ -125,6 +149,9 @@ export function ChatInterface({
             message={m}
             isLastQuery={m.role === "user" && m.id === lastUserId}
             lastQueryRef={lastQueryRef}
+            listening={tts.playingId === m.id}
+            onCopied={handleCopied}
+            onToggleListen={() => tts.toggle(m.id, markdownToPlainText(m.text))}
           />
         ))}
       </div>
@@ -151,7 +178,13 @@ export function ChatInterface({
       {/* 진행 통지 polite live region — 답변 산문은 MessageBubble에만(중복 낭독 방지) */}
       <div ref={progressRef} aria-live="polite" className="sr-only" />
       {error && <p role="alert">{t(`error.${error}`)}</p>}
-      <ChatInput onSend={handleSend} disabled={isLoading} inputRef={inputRef} sendButtonRef={sendButtonRef} />
+      <ChatInput
+        onSend={handleSend}
+        disabled={isLoading}
+        inputRef={inputRef}
+        sendButtonRef={sendButtonRef}
+        onDictationPress={tts.stop}
+      />
     </div>
   );
 }

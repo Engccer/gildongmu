@@ -8,6 +8,7 @@ import { remarkTightLists } from "@/lib/chat/remark-tight-lists";
 import type { AddressMatch, JusoAddress, Place } from "@/lib/types";
 import type { ChatMessage, RenderPayload } from "@/lib/chat/types";
 import { jusoAddressToPlace } from "@/lib/address-to-place";
+import { markdownToPlainText } from "@/lib/markdown-plain-text";
 import { dataLocale } from "@/lib/data-locale";
 import { requestOpenPlace } from "@/lib/place-open-request";
 import { ResultList } from "@/components/ResultList";
@@ -38,19 +39,39 @@ import { SourceList } from "./SourceList";
  * @param isLastQuery - 이 메시지가 가장 최근 사용자 질문인지. true면 lastQueryRef를 연결해
  *   응답 완료 후 포커스가 이 heading으로 이동한다(턴별 탐색).
  * @param lastQueryRef - 최신 질문 heading 참조(ChatInterface가 포커스 이동에 사용).
+ * - 어시스턴트 답변 끝에 [복사][듣기](B12, iOS 듣기·공유 계약의 웹판).
  */
 export function MessageBubble({
   message,
   onOpenPlace,
   isLastQuery,
   lastQueryRef,
+  listening,
+  onCopied,
+  onToggleListen,
 }: {
   message: ChatMessage;
   onOpenPlace?: (place: Place) => void;
   isLastQuery?: boolean;
   lastQueryRef?: RefObject<HTMLHeadingElement | null>;
+  /** 이 답변을 지금 읽고 있는가 — [듣기] 라벨이 "재생 중지"로 바뀐다. */
+  listening?: boolean;
+  /** 평문 복사 성공 — "복사됨" 통지는 채팅 화면의 창구 몫. 복사·듣기 둘 다 주어질 때만 버튼이 선다. */
+  onCopied?: () => void;
+  onToggleListen?: () => void;
 }) {
+  const tChat = useTranslations("chat");
   const isUser = message.role === "user";
+  // 붙여넣을 곳이 메모·메시지라 마크다운 기호는 노이즈 — 평문으로 복사한다. 실패는 통지하지 않는다
+  // (PlaceDetail 주소 복사 선례: "복사됨"이 안 들리는 것이 곧 실패 신호).
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(markdownToPlainText(message.text));
+    } catch {
+      return;
+    }
+    onCopied?.();
+  }
   return (
     <div className={isUser ? "text-right" : "text-left"}>
       {/* 사용자 질문은 heading — 회전자 heading 점프로 대화 턴을 순회하고,
@@ -81,9 +102,24 @@ export function MessageBubble({
       ))}
       {/* 어시스턴트 메시지에만 출처 푸터 표시 */}
       {!isUser && <SourceList sources={message.sources} />}
+      {/* 복사·듣기는 답변 끝(산문 → 카드 → 출처 뒤). 듣기 상태는 라벨 교체만으로 전한다
+          (aria-pressed 병기 금지 — "듣기, 눌림"과 "재생 중지"가 겹쳐 읽힌다). */}
+      {!isUser && message.text && onCopied && onToggleListen && (
+        <div className="mt-2 flex gap-2">
+          <button type="button" onClick={() => void copy()} className={ACTION_BUTTON}>
+            {tChat("copy")}
+          </button>
+          <button type="button" onClick={onToggleListen} className={ACTION_BUTTON}>
+            {listening ? tChat("stopListening") : tChat("listen")}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
+
+const ACTION_BUTTON =
+  "min-h-11 rounded-md border border-border px-3 text-sm hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent";
 
 /**
  * 채팅 답변 마크다운 헤딩(#/##/...)을 강조 단락으로 다운그레이드.

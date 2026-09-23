@@ -600,7 +600,12 @@
       "heading": "참고한 웹 결과"
     },
     "reviewPlacesHeading": "네이버 리뷰순 {count}곳",
-    "followUpGroupLabel": "추가 질문"
+    "followUpGroupLabel": "추가 질문",
+    "copy": "복사",
+    "copied": "복사됨",
+    "listen": "듣기",
+    "stopListening": "재생 중지",
+    "listenFailed": "듣기를 재생하지 못했습니다."
   },
   "placeChat": {
     "launch": "이 장소에 관해 물어보기",
