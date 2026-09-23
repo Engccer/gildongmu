@@ -167,16 +167,12 @@ describe("대중교통 안내 시작 게이트 (조건으로 본다, 개수로 �
   });
 
   it("다른 축의 게이트는 **여전히 있다**(같이 지워지지 않았음을 증명)", () => {
-    // 반대 방향 단언 — 계단 회피·자동차·도보는 이 마일스톤의 대상이 아니다.
-    const web = read("src/components/DirectionsView.tsx");
-    expect(web).toContain("const stepFreeSupported = !prefersEnglish(locale)");
+    // 반대 방향 단언 — 자동차·도보는 이 마일스톤의 대상이 아니다(계단 회피 토글은 E42가 지웠다).
     const ios = read("ios/Gildongmu/Directions/DirectionsTabView.swift");
     const car = ios.slice(
       ios.indexOf("private var carGuideStartable"),
       ios.indexOf("private var transitGuideStartable"),
     );
     expect(car).toContain('AppLanguage.dataLocale == "ko"');
-    // 계단 회피 토글의 무력화(비-ko에서 값 자체를 끈다)도 그대로.
-    expect(ios).toContain('let accessible = stepFreeEnabled && AppLanguage.dataLocale == "ko"');
   });
 });

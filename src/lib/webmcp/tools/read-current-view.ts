@@ -25,7 +25,7 @@ export const SHAPE = withFailure({
   counts: { places: true, addresses: true, web: true },
   chatOpen: true,
   // 길찾기
-  fields: { from: true, to: true, via: true, avoidStairs: true },
+  fields: { from: true, to: true, via: true },
   phase: true,
   plan: {
     planId: true,
@@ -48,6 +48,10 @@ function modeSummary(plan: ToolPlan, mode: ModeKey) {
   if (mode === "transit") {
     const first = plan.transit?.routes[0];
     return { mode, outcome: plan.transit?.outcome ?? "error", summary: first?.oneLine, routeKey: first?.routeKey };
+  }
+  if (mode === "walk") {
+    // 도보는 줄 목록(E42) — 첫 줄(기본 펼침)의 화면 문장이 요약이다.
+    return { mode, outcome: plan.walk?.outcome ?? "error", summary: plan.walk?.lines[0]?.label };
   }
   const m = plan[mode];
   return { mode, outcome: m?.outcome ?? "error", summary: m?.summary };

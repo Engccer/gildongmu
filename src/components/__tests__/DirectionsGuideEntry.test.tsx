@@ -46,12 +46,18 @@ const CAR_OK = {
   tollFare: 0,
   guides: [{ name: "", guidance: "직진", distanceMeters: 0, durationSeconds: 0 }],
 };
+// 줄 목록(E42) — 둘째 줄은 접힘이라 안내 시작 버튼이 첫 줄에만 보인다.
 const WALK_OK = {
-  result: {
-    distanceMeters: 2000,
-    durationSeconds: 1700,
-    steps: [{ description: "직진 2km 이동" }],
-  },
+  lines: [
+    {
+      kind: "shortest",
+      route: { distanceMeters: 2000, durationSeconds: 1700, steps: [{ description: "직진 2km 이동" }] },
+    },
+    {
+      kind: "accessible",
+      route: { distanceMeters: 2100, durationSeconds: 1800, steps: [{ description: "직진 2.1km 이동" }] },
+    },
+  ],
 };
 
 // 탑승 leg 1개(수도권 지하철, stops 포함) — transit 시작 게이트의 성립 조합.
@@ -208,9 +214,9 @@ afterEach(() => {
 });
 
 // 라벨은 수단별 짧은 형(위원장 판정 2026-08-06, 공통 라벨 번복) — 세 키를 한 번에 조회.
-// ⚠ 대중교통만 형태가 다르다: 경로가 복수라 버튼이 경로 disclosure 안으로 들어갔고
-//   라벨이 경로 이름을 담는다. "수단 1개당 진입점 1개"에 해당하는 것은 추천 경로 버튼이다.
-const GUIDE_START_NAME = /^guideStart(Walk|Car|TransitAlt:recommended)$/;
+// ⚠ 대중교통·도보는 경로가 복수라 버튼이 경로 disclosure 안으로 들어갔고 라벨이 경로 이름을
+//   담는다(도보는 E42). "수단 1개당 진입점 1개"에 해당하는 것은 기본 펼침 경로의 버튼이다.
+const GUIDE_START_NAME = /^guideStart(Walk(Shortest|Accessible|Broad|Recommended)|Car|TransitAlt:recommended)$/;
 const guideStartButtons = () =>
   screen.queryAllByRole("button", { name: GUIDE_START_NAME });
 
@@ -218,7 +224,7 @@ describe("수단별 안내 진입점 게이트(§3.1)", () => {
   it("ko + 도보·자동차(tmap) 성공: 수단별 시작 버튼 노출, 간략 폴백 없음", async () => {
     stubFetch({ walk: "ok", car: "tmap" });
     await queryRoutes();
-    expect(screen.getByRole("button", { name: "guideStartWalk" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "guideStartWalkShortest" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "guideStartCar" })).toBeTruthy();
     expect(guideStartButtons()).toHaveLength(2);
     expect(screen.queryByRole("button", { name: "briefGuideStart" })).toBeNull();
@@ -282,7 +288,7 @@ describe("수단별 안내 진입점 게이트(§3.1)", () => {
 
   it("en + 대중교통 성공: 버튼이 있다(E27 잔여 ① 게이트 해제, 2026-09-01)", async () => {
     // 종전엔 ko 전용이라 0이었다. 서버가 영문 조각을 싣고 표시 계층이 줄 단위로 고르므로
-    // 비-ko에서도 시작할 수 있다 — 반대로 계단 회피·자동차는 여전히 비-ko 미노출이다.
+    // 비-ko에서도 시작할 수 있다 — 반대로 자동차는 여전히 비-ko 미노출이다.
     mockLocale = "en";
     stubFetch({ walk: "fail", car: "fail", transit: "ok" });
     await queryRoutes();

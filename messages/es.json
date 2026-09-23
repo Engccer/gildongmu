@@ -198,7 +198,9 @@
     "viaArrived": "Punto intermedio {label} alcanzado",
     "unsupportedWaypoint": "Las rutas de transporte público no admiten puntos intermedios.",
     "walkRecommended": "Ruta recomendada",
-    "walkShortest": "Ruta más corta"
+    "walkShortest": "Ruta más corta",
+    "walkAccessible": "Ruta sin escaleras",
+    "walkBroad": "Ruta por vías principales"
   },
   "detail": {
     "back": "Volver a los resultados"
@@ -707,6 +709,10 @@
     "briefGuideStart": "Iniciar guía en línea recta",
     "stopped": "Guía en tiempo real detenida",
     "guideStartWalk": "Iniciar guía a pie",
+    "guideStartWalkShortest": "Iniciar guía por la ruta más corta",
+    "guideStartWalkAccessible": "Iniciar guía por la ruta sin escaleras",
+    "guideStartWalkBroad": "Iniciar guía por vías principales",
+    "guideStartWalkRecommended": "Iniciar guía por la ruta recomendada",
     "guideStartCar": "Iniciar guía en coche",
     "guideStartTransitAlt": "Iniciar guía: {name}",
     "transitHeading": "Guía de transporte"

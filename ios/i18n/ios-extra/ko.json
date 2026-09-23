@@ -8,8 +8,6 @@
     },
     "directions": {
       "searching": "조회 중",
-      "walkRecommended": "추천 경로",
-      "walkShortest": "최단 경로",
       "walkNotice": {
         "title": "도보 안내 기능이 추가되었어요.",
         "intro": "길동무 앱을 이용해 주셔서 감사합니다!",
@@ -326,12 +324,11 @@
       "altRefetching": "조건이 바뀌어 다른 경로를 다시 조회합니다."
     }
   },
-  "beacon": {
-    "guideStartWalkShortest": "최단 경로 안내 시작"
-  },
   "guide": {
     "switchedToShortest": "최단 경로로 전환했습니다. 안내 {count}개, 총 {distance}. {first}",
     "switchedToRecommended": "추천 경로로 전환했습니다. 안내 {count}개, 총 {distance}. {first}",
+    "switchedToAccessible": "계단 회피 경로로 전환했습니다. 안내 {count}개, 총 {distance}. {first}",
+    "switchedToBroad": "큰길 경로로 전환했습니다. 안내 {count}개, 총 {distance}. {first}",
     "autoReroute": "새 경로로 다시 안내합니다. 안내 {count}개, 총 {distance}. {first}",
     "viewAlternative": "대안 경로 보기",
     "adoptAlternative": "이 경로 안내로 전환",

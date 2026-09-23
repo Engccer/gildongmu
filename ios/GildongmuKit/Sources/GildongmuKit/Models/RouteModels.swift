@@ -479,11 +479,17 @@ public struct WalkRouteBriefing: Codable, Sendable, Hashable {
     public let finalApproach: FinalApproachPayload?
     /// 경유지(N4, `via` 요청에만). 선택 디코딩 — 없는 응답에서 브리핑이 깨지면 안 된다.
     public let waypoint: RouteWaypoint?
+    /// 이 경로의 줄 종류(E42, 원시 문자열) — 기하 응답(`includeGeometry=1`)에만 온다. 요청이 아니라
+    /// 서버가 실제로 돌려준 경로의 성질이다(계단 회피 요청이 큰길로 내려가면 `broad`). 판독은 `lineKind`.
+    public let kind: String?
 
     /// 알려진 상태만 매핑하고 미지의 값은 nil("판정 없음")이다.
     public var stepFreeStatus: StepFreeStatus? {
         stepFree.flatMap(StepFreeStatus.init(rawValue:))
     }
+
+    /// 알려진 줄 종류만 매핑하고 미지의 값·부재는 nil — 이름을 지어 붙이지 않는다.
+    public var lineKind: WalkLineKind? { kind.flatMap(WalkLineKind.init(rawValue:)) }
 }
 
 /// 서버 `FinalApproachGeometry`의 디코딩 표면.
@@ -525,4 +531,33 @@ public struct FinalApproachPayload: Codable, Sendable, Hashable {
 public struct WalkRouteEnvelope: Codable, Sendable {
     public let result: WalkRouteBriefing?
     public let shortest: WalkRouteBriefing?
+}
+
+/// 조회 화면 도보 줄의 종류(E42, 웹 `WalkLineKind` 미러). 이름이 곧 그 경로의 성질에 대한
+/// 약속이라 **서버가 판정**하고 클라이언트는 이름·안내 요청으로 투영만 한다.
+/// ko는 `shortest`·`accessible`|`broad`, en은 `recommended`·`shortest`.
+public enum WalkLineKind: String, Sendable, Hashable, CaseIterable {
+    case shortest, accessible, broad, recommended
+
+    /// 안내 요청의 경로 축 — 최단 줄만 `.shortest`.
+    public var variant: WalkRouteVariant? { self == .shortest ? .shortest : nil }
+    /// 안내 요청의 계단 회피 — 계단 회피 줄만 참. 큰길·추천은 기본 파이프라인이다.
+    public var accessible: Bool { self == .accessible }
+}
+
+/// `/api/route/walk?lines=1` 응답의 한 줄. 줄 경로엔 `stepFree`·`stepFreeNotice`가 없다(이름이 그 정보다).
+public struct WalkRouteLine: Codable, Sendable, Hashable {
+    /// 줄 종류(원시 문자열). ⚠ **raw enum으로 디코딩하지 않는다** — 서버가 다섯째 종류를 더하면
+    /// 응답 전체의 디코딩이 실패한다(`stepFree` 규율 동형). 판독은 `lineKind`가 한다.
+    public let kind: String
+    public let route: WalkRouteBriefing
+
+    /// 알려진 종류만 매핑하고 미지의 값은 nil — 이름을 지어 붙이지 않고 화면에서 뺀다.
+    public var lineKind: WalkLineKind? { WalkLineKind(rawValue: kind) }
+}
+
+/// `/api/route/walk?lines=1` envelope(E42). 배열 순서가 화면 순서이고 첫 원소가 기본 펼침이다.
+/// 빈 배열은 "경로 없음"(3-state — 조회 실패는 서버가 502로 던진다).
+public struct WalkRouteLinesEnvelope: Codable, Sendable {
+    public let lines: [WalkRouteLine]
 }

@@ -9,6 +9,7 @@ import { coordSchema } from "@/lib/route-coord-schema";
  * - variant+alternatives: 상호 배타(単경로 조회와 복수 조회는 다른 소비자).
  * - alternatives+includeGeometry: 조회 화면은 기하 불필요, 両경로 기하는 응답만
  *   키운다(기하는 안내 시작 시 variant 단일 조회로).
+ * - lines(E42)+variant·alternatives·includeGeometry·accessible=true: 줄 목록은 단독 옵트인.
  */
 const querySchema = z
   .object({
@@ -28,8 +29,12 @@ const querySchema = z
     variant: z
       .union([z.literal("shortest"), z.null()])
       .transform((v) => v ?? undefined),
-    // 추천+최단 병렬 조회 옵트인(M3): 누락 또는 정확히 "1"만.
+    // 추천+최단 병렬 조회 옵트인(M3): 누락 또는 정확히 "1"만. 옛 조회 화면(iOS 1.x·안드로이드) 호환.
     alternatives: z
+      .union([z.literal("1"), z.null()])
+      .transform((v) => v === "1"),
+    // 조회 화면 줄 목록 옵트인(E42): 누락 또는 정확히 "1"만. 응답 `{ lines }`.
+    lines: z
       .union([z.literal("1"), z.null()])
       .transform((v) => v === "1"),
     // 경유지 1개(N4): 누락=없음, 형식은 origin·dest와 같다. 형식 오류는 400 —
@@ -55,6 +60,14 @@ const querySchema = z
         message: "alternatives 조회는 includeGeometry를 지원하지 않습니다.",
       });
     }
+    // 줄 목록(E42)은 조회 화면 전용 단독 옵트인이다 — 줄 종류가 탐색 축(최단·계단 회피)을 이미
+    // 담으므로 variant·accessible과 겹치면 어느 축인지 모호하고, 기하는 안내 시작의 단일 조회가 싣는다.
+    if (data.lines && (data.variant || data.alternatives || data.includeGeometry || data.accessible)) {
+      ctx.addIssue({
+        code: "custom",
+        message: "lines 조회는 variant·alternatives·includeGeometry·accessible=true와 함께 지정할 수 없습니다.",
+      });
+    }
   });
 
 export type WalkQuery = z.infer<typeof querySchema>;
@@ -70,6 +83,7 @@ export function parseWalkQuery(raw: {
   includeGeometry: string | null;
   variant: string | null;
   alternatives: string | null;
+  lines: string | null;
   via: string | null;
   lang: string | null;
 }): ParseWalkQueryResult {

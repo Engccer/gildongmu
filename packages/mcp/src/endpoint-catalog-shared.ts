@@ -108,6 +108,7 @@ export const ENDPOINT_CATALOG: EndpointSpec[] = [
     params: [{ key: "origin", type: "string", required: true, description: "출발 좌표 '위도,경도'" },
              { key: "dest", type: "string", required: true, description: "도착 좌표 '위도,경도'" },
              { key: "accessible", type: "string", required: false, description: "true|false, 계단 회피 경로(카카오 전용)" },
+             { key: "variant", type: "string", required: false, description: "shortest면 최단 경로(ko 카카오·폴백 Tmap, en Tmap). 생략하면 기본 경로(ko 큰길 우선)" },
              { key: "lang", type: "string", required: false, description: "en이면 영문 안내 문장(Tmap 단독)" },
              { key: "via", type: "string", required: false, description: "경유 좌표 '위도,경도' 1개(도보·자동차 — 응답 waypoint.stepIndex가 경유지 도착 뒤 첫 단계)" }],
     envelope: "result", locationParam: false, mcp: true },

@@ -136,11 +136,10 @@ final class BeaconModel {
         case .uncertain, .reacquiring, .offRoute, .finalApproach: return nil
         }
     }
-    /// 조망 모달 "대안 경로 보기" 노출 조건(spec 2026-08-14 §2): 반대 축이 성립하는
-    /// 세션. `shortestVariantAvailable`은 세션 시작 시 최단 세션이면 참으로 강제되므로
-    /// (최단 안내 중의 반대 축 = 추천은 항상 성립) 이 플래그 하나가 両방향을 담는다.
+    /// 조망 모달 "대안 경로 보기" 노출 조건(spec 2026-08-14 §2): 조회 화면에 다른 줄이
+    /// 있던 세션(E42 — 두 줄 사이의 전환이라 `alternateLine`이 곧 반대편이다).
     var alternativePreviewAvailable: Bool {
-        sessionKind == .walk && mode == .detail && shortestVariantAvailable
+        sessionKind == .walk && mode == .detail && alternateLine != nil
     }
 
     /// 프리뷰 스텝 목록(조망 행 문법 재사용) — ready에서만. "지금 이 구간" 표식은
@@ -312,17 +311,19 @@ final class BeaconModel {
     /// 초기값이며 실사용 판정 대상이다.
     private let noFixSeconds = 8.0
 
-    /// 이 세션의 계단 회피(도보 전용). `toggle`이 시작 시점 값을 받아 보관한다.
+    /// 이 세션의 계단 회피(도보 전용). 시작 시점 값을 받아 보관하고, 수동 전환의 fetch 성공
+    /// 커밋에서만 `sessionVariant`와 함께 바뀐다(E42 — 계단 회피는 이제 줄의 성질이다).
     private var accessible = false
-    /// 이 세션의 도보 경로 축(M3, nil=추천·`.shortest`=최단). 세션 시작 시 확정되고
-    /// 세션 수명 동안 불변 — **수동 전환의 fetch 성공 커밋에서만** 바뀐다(실패 시
-    /// 기존 경로·기존 variant 유지). 재조회·이탈 자동 재조회는 이 값을 그대로 쓴다(spec §3.2
-    /// — 경로 정체성은 세션 인자가 고정하고 variant만 축이다).
+    /// 이 세션의 도보 경로 축(M3, nil=기본 파이프라인·`.shortest`=최단). 세션 시작 시 확정되고
+    /// **수동 전환의 fetch 성공 커밋에서만** 바뀐다(실패 시 기존 경로·기존 축 유지). 재조회·이탈
+    /// 자동 재조회는 이 값을 그대로 쓴다(spec §3.2 — 경로 정체성은 세션 인자가 고정한다).
     private(set) var sessionVariant: WalkRouteVariant?
-    /// 이 목적지에 최단 축이 성립하는가(조회 화면의 `walkShortest` 존재 스냅샷).
-    /// 전환 버튼 노출 게이트 — 죽은 버튼(키 부재·해당 구간 최단 실패)을 사전
-    /// 차단한다(`carGuideStartable` 선례). 최단 세션은 자명히 true(추천은 항상 있다).
-    private(set) var shortestVariantAvailable = false
+    /// 이 세션의 줄 종류(E42 조회 화면의 줄). 줄이 없는 세션(승차 전 도보·인계·간략 폴백)은 nil.
+    /// 전환 문장·프리뷰 헤더가 이 이름을 쓴다 — 요청 축(`sessionVariant`·`accessible`)과 한 쌍으로만 바뀐다.
+    private(set) var sessionLine: WalkLineKind?
+    /// 조회 화면의 다른 줄(전환 대상). nil이면 전환 진입점이 없다 — 죽은 버튼(둘째 줄 부재)을
+    /// 사전 차단한다(`carGuideStartable` 선례). 전환 커밋에서 `sessionLine`과 맞바뀐다.
+    private(set) var alternateLine: WalkLineKind?
 
     // MARK: - 이탈 시 자동 재조회 (E10ⓑ 자동 채택, 2026-09-02)
 
@@ -364,9 +365,16 @@ final class BeaconModel {
     /// 채택 성공 세대 — 시트(프리뷰·조망)가 onChange로 연쇄 닫힘·포커스 복귀에 쓴다.
     /// 값 자체는 의미 없고 증가가 이벤트다(offRoute onChange 관례의 세대 판).
     private(set) var variantAdoptedSeq = 0
-    /// 반대 variant(추천⇄최단) — 헤더 라벨·프리뷰 조회·채택·수동 전환이 같은 판정을
-    /// 공유한다(사본 4곳 drift 방지 — 이 파일은 단위 테스트 레인이 없다).
-    private var oppositeVariant: WalkRouteVariant? { sessionVariant == nil ? .shortest : nil }
+    /// 전환 커밋(E42): 요청 축과 두 줄 종류를 **한 원자 블록에서** 맞바꾼다 — 헤더 라벨·프리뷰
+    /// 조회·채택·수동 전환이 같은 판정을 공유한다(사본 drift 방지 — 이 파일은 단위 테스트 레인이 없다).
+    private func commitLineSwitch(to target: WalkLineKind) {
+        sessionVariant = target.variant
+        accessible = target.accessible
+        alternateLine = sessionLine
+        sessionLine = target
+        // 전환 뒤의 복구 재시작은 전환된 줄로 시작해야 한다(A13 — 고른 경로가 조용히 바뀌지 않게).
+        syncStartRequestWithSession()
+    }
 
     // MARK: - 최종 접근 (spec 2026-08-08 §3.0·§3.4)
 
@@ -548,7 +556,7 @@ final class BeaconModel {
     /// 세션 시작 인자 **한 벌**. 재시작이 이것을 그대로 다시 쓴다.
     ///
     /// ⚠ 인자가 호출부마다 흩어져 있는 것이 A13의 근본 원인이었다: 정밀 위치 복구
-    /// 경로가 `dest`·`label`·`accessible`만 다시 적고 `variant`·`shortestAvailable`·
+    /// 경로가 `dest`·`label`·`accessible`만 다시 적고 `variant`·(당시)`shortestAvailable`·
     /// `kind`를 빠뜨려, **최단 경로로 시작한 세션이 재시작 뒤 추천 경로가 되고**
     /// 자동차 세션은 도보가 됐다. 증상이 조용하다(재시작은 성공하고 안내도 정상이라
     /// 사용자는 자기가 고른 경로가 아니라는 것을 한참 듣고서야 안다). 인자를 하나 더
@@ -559,7 +567,11 @@ final class BeaconModel {
         let kind: GuideSessionKind
         let accessible: Bool
         let variant: WalkRouteVariant?
-        let shortestAvailable: Bool
+        /// 조회 화면에서 고른 줄(E42). 줄이 없는 진입(승차 전 도보·인계·간략 폴백·자동차)은 nil.
+        /// ⚠ 기본값 없음 — `variant`·`accessible`은 이 종류의 투영이어야 하고, 호출부가 셋을 함께 적는다.
+        let line: WalkLineKind?
+        /// 조회 화면의 다른 줄(수동 전환 대상). 없으면 nil — 전환 진입점을 그리지 않는다.
+        let alternate: WalkLineKind?
         /// 경유지(N4). 기본값 없음 — 호출부가 nil을 적어야 한다(경유지가 있는 조회에서 시작
         /// 버튼이 이 인자를 빠뜨리면 경유지 없는 안내가 조용히 시작된다, A13 동형).
         let waypoint: Waypoint?
@@ -573,17 +585,18 @@ final class BeaconModel {
     /// 생략 가능한 안전 인자가 만든 결함이었다(spec 2026-08-08 §2.5,
     /// [[no-default-for-safety-parameters]]). 계단 회피 개념이 없는 수단은 호출부가
     /// `false`를 적고, 그 사실이 코드에 드러나는 것이 이 required의 목적이다.
+    /// 줄이 없는 진입(간략 폴백 한 곳)만 쓴다 — 경로 축·줄 종류는 여기서 정하지 않는다(E42 설계 리뷰:
+    /// 기본값을 둔 인자는 A13의 재발 자리라 인자 자체를 두지 않는다).
     func toggle(
         dest: BeaconDest, label: String, kind: GuideSessionKind, accessible: Bool,
-        waypoint: Waypoint?,
-        variant: WalkRouteVariant? = nil, shortestAvailable: Bool = false
+        waypoint: Waypoint?
     ) {
         if isTracking {
             stopByUser()
         } else {
             requestStart(StartRequest(
                 dest: dest, label: label, kind: kind, accessible: accessible,
-                variant: variant, shortestAvailable: shortestAvailable, waypoint: waypoint))
+                variant: nil, line: nil, alternate: nil, waypoint: waypoint))
         }
     }
 
@@ -619,7 +632,8 @@ final class BeaconModel {
         // 덮어 토글에 물리적으로 도달할 수 없다(spec §2.2).
         self.accessible = request.accessible
         sessionVariant = request.variant
-        shortestVariantAvailable = request.variant == .shortest || request.shortestAvailable
+        sessionLine = request.line
+        alternateLine = request.alternate
         waypoint = request.waypoint
         routeWaypointLabel = nil
         lastStepFree = nil
@@ -800,7 +814,10 @@ final class BeaconModel {
     typealias DetailFetchResult = (
         route: GuideRoute, spans: [CarRoadSpan], durationSeconds: Int?,
         stepFreeRaw: String?, stepFree: StepFreeStatus?, stepFreeNotice: String?,
-        finalApproach: FinalApproachPayload?, liveSteps: [LiveStepInput]
+        finalApproach: FinalApproachPayload?, liveSteps: [LiveStepInput],
+        /// 서버가 실제로 돌려준 경로의 줄 종류(E42 — 요청이 아니라 응답). 전환·프리뷰 문장의 이름.
+        /// nil = 자동차·구버전 서버·어느 이름도 참이 아닌 응답(계단 문구가 남은 계단 회피).
+        lineKind: WalkLineKind?
     )
 
     /// `waypoint`는 **인자로 받는다**(가변 `self.waypoint`를 읽지 않는다 — 왕복 중 경유지가
@@ -809,7 +826,7 @@ final class BeaconModel {
     /// 클라 가드로 한 번 더. "경유 안 한 경로"를 "경유한 경로"로 안내하는 것이 최악이다.
     private func fetchDetailData(
         origin: (lat: Double, lng: Double), dest: BeaconDest,
-        variant: WalkRouteVariant?, waypoint: Waypoint?
+        variant: WalkRouteVariant?, accessible: Bool, waypoint: Waypoint?
     ) async throws -> DetailFetchResult? {
         let via = waypoint.map { (lat: $0.dest.lat, lng: $0.dest.lng) }
         if sessionKind == .car {
@@ -827,7 +844,7 @@ final class BeaconModel {
             // 자동차에는 계단 회피·최종 접근 기하가 없다 — 타입이 그 사실을 말한다.
             // 하단 2행 입력(K2 §4): live 조각(target·anchor)은 없고 행동은 스텝의 서버 투영.
             return (car.route, car.roadSpans, briefing.durationSeconds, nil, nil, nil, nil,
-                    liveStepsFrom(route: car.route, steps: []))
+                    liveStepsFrom(route: car.route, steps: []), nil)
         }
         let briefing = try await routeService.walk(
             originLat: origin.lat, originLng: origin.lng,
@@ -858,7 +875,8 @@ final class BeaconModel {
             // 스팬과 응답 스텝(live 조각·횡단 플래그)을 index로 짝지어 표시 입력을 만든다(spec §5, A26).
             liveStepsFrom(route: route, steps: briefing.steps.map {
                 (target: $0.live?.target, anchor: $0.live?.anchor, crossing: $0.crossing ?? false)
-            })
+            }),
+            briefing.lineKind
         )
     }
 
@@ -916,7 +934,8 @@ final class BeaconModel {
         let waypointAtFetch = waypoint
         do {
             let fetched = try await fetchDetailData(
-                origin: origin, dest: dest, variant: sessionVariant, waypoint: waypointAtFetch)
+                origin: origin, dest: dest, variant: sessionVariant, accessible: accessible,
+                waypoint: waypointAtFetch)
             // 커밋 가드: 세대 토큰 + 목적지·경유지 스냅샷(왕복 중 경유지 추가·변경·도착이면
             // 도착 응답 폐기 — 그 전이가 토큰을 올려 새 조회를 시작한다).
             guard !Task.isCancelled, token == routeFetchToken, isTracking,
@@ -1130,13 +1149,14 @@ final class BeaconModel {
     /// 전환·경유지 추가/변경·경유지 도착·폴백 소거가 일어나면 시작 시점 스냅샷은 낡는데,
     /// 실패(정밀 위치 꺼짐 등) 뒤 `restart()`가 그 낡은 값으로 시작하면 사용자가 마지막에
     /// 정한 목적지·경유지가 **조용히** 되돌아간다 — A13이 경계한 바로 그 패턴의 다른
-    /// 진입점(code-quality 리뷰 2026-08-22). 수단·계단 회피·variant는 세션 불변이라 승계.
+    /// 진입점(code-quality 리뷰 2026-08-22). 수단은 세션 불변이라 승계하고, 요청 축·줄 종류는
+    /// **세션 현재값**을 쓴다 — 수동 전환(E42)이 그 넷을 함께 바꾸므로 시작 시점 값은 낡는다.
     private func syncStartRequestWithSession() {
         guard let request = lastStartRequest, let dest else { return }
         lastStartRequest = StartRequest(
             dest: dest, label: destinationLabel, kind: request.kind,
-            accessible: request.accessible, variant: request.variant,
-            shortestAvailable: request.shortestAvailable, waypoint: waypoint)
+            accessible: accessible, variant: sessionVariant,
+            line: sessionLine, alternate: alternateLine, waypoint: waypoint)
     }
 
     /// 경로 기준 잔여 거리·예상 시간 갱신(웹 `progressOf` 미러). walk는 provider
@@ -2592,19 +2612,20 @@ final class BeaconModel {
         }
     }
 
-    /// 재조회 의도(M3): 이탈 재조회·자동 재조회는 세션 variant 유지, 수동 전환만 반대 variant.
+    /// 재조회 의도(M3): 이탈 재조회·자동 재조회는 세션 축 유지, 수동 전환만 조회 화면의 다른 줄(E42).
     private enum RerouteIntent {
         case keepVariant
-        case switchTo(WalkRouteVariant?)
+        case switchTo(WalkLineKind)
     }
 
-    /// 안내 중 수동 전환(M3 spec §5): **현위치 기준으로 반대 variant 재조회**. 정상
+    /// 안내 중 수동 전환(M3 spec §5): **현위치 기준으로 다른 줄(`alternateLine`) 재조회**. 정상
     /// 추종 중에도 가능(offRoute 조건 없음 — requestReroute와의 유일한 가드 차이).
     /// walk 전용(variant는 도보 축, car는 M3 범위 밖). 그 외 토큰·latest-wins·커밋은
     /// performReroute 기존 계약 그대로. 출발 전에 받아 둔 대안을 재사용하지 않는
     /// 이유: 걷는 중이라 그 경로의 출발점이 낡았다.
     func requestVariantSwitch() {
-        guard sessionKind == .walk, isTracking, mode == .detail, !rerouteInFlight else { return }
+        guard sessionKind == .walk, isTracking, mode == .detail, !rerouteInFlight,
+              let target = alternateLine else { return }
         // 진행 중 자동 재조회(이탈 확정 회차)는 폐기한다 — 자동 채택이 능동 커밋자가 된
         // 뒤로 두 커밋이 잇달아 나갈 수 있다(리뷰 MAJOR 2026-09-02, requestReroute 동형).
         clearProposal()
@@ -2614,7 +2635,6 @@ final class BeaconModel {
         isSwitchingVariant = true
         rerouteToken += 1
         let token = rerouteToken
-        let target = oppositeVariant
         Task { [weak self] in
             await self?.performReroute(token: token, intent: .switchTo(target))
         }
@@ -2627,19 +2647,21 @@ final class BeaconModel {
             isSwitchingVariant = false
         }
         guard let dest else { return }
-        // 전환은 fetch 성공 커밋 전까지 sessionVariant를 건드리지 않는다(실패 시
-        // 기존 경로·기존 variant 유지 — 라벨·다음 전환 방향이 실제 경로와 어긋나지 않게).
+        // 전환은 fetch 성공 커밋 전까지 세션 축을 건드리지 않는다(실패 시
+        // 기존 경로·기존 축 유지 — 라벨·다음 전환 방향이 실제 경로와 어긋나지 않게).
         let fetchVariant: WalkRouteVariant?
+        let fetchAccessible: Bool
         switch intent {
-        case .keepVariant: fetchVariant = sessionVariant
-        case .switchTo(let target): fetchVariant = target
+        case .keepVariant: (fetchVariant, fetchAccessible) = (sessionVariant, accessible)
+        case .switchTo(let target): (fetchVariant, fetchAccessible) = (target.variant, target.accessible)
         }
         do {
             let origin = try await LocationService.shared.currentCoordinate()
             guard token == rerouteToken, isTracking, mode == .detail, self.dest == dest else { return }
             let waypointAtFetch = waypoint
             let fetched = try await fetchDetailData(
-                origin: origin, dest: dest, variant: fetchVariant, waypoint: waypointAtFetch)
+                origin: origin, dest: dest, variant: fetchVariant, accessible: fetchAccessible,
+                waypoint: waypointAtFetch)
             // latest-wins: 왕복 중 중지·전환·목적지 변경·경유지 변경/도착이면 도착 응답 폐기.
             guard token == rerouteToken, isTracking, mode == .detail, self.dest == dest,
                   self.waypoint == waypointAtFetch else { return }
@@ -2652,8 +2674,8 @@ final class BeaconModel {
                 return
             }
             // 재조회 출발지가 현재 위치이므로 새 경로의 d=0이 곧 현 위치다(전역 재투영 불요).
-            // 전환 커밋: 경로 교체와 같은 원자 블록에서만 variant가 바뀐다(세션 수명 불변식).
-            if case .switchTo(let target) = intent { sessionVariant = target }
+            // 전환 커밋: 경로 교체와 같은 원자 블록에서만 세션 축·줄 종류가 바뀐다(세션 수명 불변식).
+            if case .switchTo(let target) = intent { commitLineSwitch(to: target) }
             let firstIndices = commitReroutedRoute(fetched)
             // 재조회는 출발지가 달라 계단 회피 판정이 바뀔 수 있다 — 열화로 전이하면
             // 그 조회의 발화에 결합해 1회 통지한다(spec §2.3).
@@ -2667,10 +2689,10 @@ final class BeaconModel {
             case .keepVariant:
                 summary = GuideText.reroute(route: fetched.route, firstIndices: firstIndices)
             case .switchTo(let target):
+                // 이름은 받은 경로의 성질(E42 설계 리뷰 MAJOR 1) — 계단 회피를 요청했는데 큰길이 오면
+                // "큰길 경로로 전환"이고, 서버가 이름을 못 주면 요청한 줄 이름 + 경고 문장이 말한다.
                 summary = GuideText.variantSwitch(
-                    route: fetched.route, firstIndices: firstIndices,
-                    shortest: target == .shortest
-                )
+                    route: fetched.route, firstIndices: firstIndices, to: fetched.lineKind ?? target)
             }
             let text = notice.map { "\($0) \(summary)" } ?? summary
             statusText = text
@@ -2774,7 +2796,8 @@ final class BeaconModel {
                   self.dest == dest else { return }
             let waypointAtFetch = waypoint
             let fetched = try await fetchDetailData(
-                origin: origin, dest: dest, variant: sessionVariant, waypoint: waypointAtFetch)
+                origin: origin, dest: dest, variant: sessionVariant, accessible: accessible,
+                waypoint: waypointAtFetch)
             // 채택 가드: 토큰 일치 ∧ 이탈 지속 중 ∧ 수동 조회 비진행일 때만(복귀 후 늦은
             // 응답이 경로를 갈아치우는 경로 차단 — latest-wins, spec §6 리뷰 #1. 수동
             // 재조회·전환과의 이중 커밋은 양방향으로 막는다 — 리뷰 MAJOR 2026-09-02).
@@ -2831,9 +2854,9 @@ final class BeaconModel {
         case .failed:
             return appLocalized("guide.altPreviewFailed")
         case .ready(_, let fetched):
-            // 대안 = 반대 variant의 라벨(조회 화면과 같은 이름 — 다른 이름 금지).
-            let label = appLocalized(oppositeVariant == .shortest
-                ? "ios.directions.walkShortest" : "ios.directions.walkRecommended")
+            // 대안 = 다른 줄의 이름(조회 화면과 같은 이름 — 다른 이름 금지).
+            // 이름은 받은 경로의 성질이 우선(E42 설계 리뷰 MAJOR 1 — 계단 회피를 요청했는데 큰길이 오면 "큰길 경로").
+            let label = (fetched.lineKind ?? alternateLine).map { appLocalized(WalkLineText.nameKey($0)) } ?? ""
             let summary = appLocalized(
                 "guide.altPreviewSummary", label,
                 formatDistance(Int(fetched.route.totalMeters.rounded())))
@@ -2874,7 +2897,7 @@ final class BeaconModel {
     }
 
     private func fetchAlternativePreview(token: Int, dest: BeaconDest) async {
-        let target = oppositeVariant
+        guard let target = alternateLine else { return }
         do {
             let origin = try await LocationService.shared.currentCoordinate()
             // 신선도 기준값은 좌표와 한 쌍(E10ⓑ 동형 — fetch 완료 후 시각을 쓰면
@@ -2884,7 +2907,8 @@ final class BeaconModel {
                   self.dest == dest else { return }
             let waypointAtFetch = waypoint
             let fetched = try await fetchDetailData(
-                origin: origin, dest: dest, variant: target, waypoint: waypointAtFetch)
+                origin: origin, dest: dest, variant: target.variant, accessible: target.accessible,
+                waypoint: waypointAtFetch)
             // 커밋 가드: 닫힘·재열림·세션 변화 후 도착한 응답 폐기(latest-wins).
             guard token == alternativePreviewToken, isTracking, mode == .detail,
                   self.dest == dest, self.waypoint == waypointAtFetch else { return }
@@ -2911,19 +2935,18 @@ final class BeaconModel {
     /// 폴백(requestVariantSwitch 재사용, 진행 신호는 isSwitchingVariant 라벨 병기).
     func adoptAlternativePreview() {
         guard case .ready(let proposal, let fetched) = alternativePreviewState,
-              !rerouteInFlight else { return }
-        let target = oppositeVariant
+              !rerouteInFlight, let target = alternateLine else { return }
         if let c = lastFixCoord, let at = lastFixCoordAt, uptimeNow - at <= 15,
            RerouteProposalGate.isFresh(
                proposal, nowUptime: uptimeNow, currentLat: c.lat, currentLng: c.lng) {
-            // 전환 커밋: 경로 교체와 같은 원자 블록에서만 variant가 바뀐다
+            // 전환 커밋: 경로 교체와 같은 원자 블록에서만 세션 축·줄 종류가 바뀐다
             // (performReroute 동형 — commitReroutedRoute가 프리뷰도 함께 리셋).
-            sessionVariant = target
+            commitLineSwitch(to: target)
             let firstIndices = commitReroutedRoute(fetched)
             let notice = consumeStepFreeNotice(
                 fetched.stepFreeRaw, fetched.stepFree, fetched.stepFreeNotice)
             let summary = GuideText.variantSwitch(
-                route: fetched.route, firstIndices: firstIndices, shortest: target == .shortest)
+                route: fetched.route, firstIndices: firstIndices, to: fetched.lineKind ?? target)
             let text = notice.map { "\($0) \(summary)" } ?? summary
             statusText = text
             // `.high`: 채택 성공으로 시트가 닫히고 포커스가 중지 버튼으로 옮겨가며

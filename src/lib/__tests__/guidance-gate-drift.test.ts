@@ -264,12 +264,12 @@ describe("2. 도보 경로는 플래그를 졸업했다", () => {
         line.includes("beacon.toggle(") || line.includes("session.startBeacon(") ? i : -1,
       )
       .filter((i) => i >= 0);
-    // 간략 폴백(toggle)·자동차·도보 추천·도보 최단.
-    expect(starts.length).toBe(4);
+    // 간략 폴백(toggle)·자동차·도보 줄(E42 — 줄 목록 `ForEach` 안 한 호출이 모든 줄을 맡는다).
+    expect(starts.length).toBe(3);
     const announced = starts.filter((i) =>
       lines.slice(Math.max(0, i - 3), i).some((l) => l.includes("announceGuideStartIfManualOrigin()")),
     );
-    expect(announced.length).toBe(4);
+    expect(announced.length).toBe(3);
     // 핸드오프 진입점은 GuideSession 안에 둘이다 — 대중교통→도보(`acceptWalkHandoff`. 사용자
     // 활성화가 맞다 — 2026-09-11 E34부터 마지막 leg의 "남은 도보 안내 시작" 한 버튼이 leg 종료와
     // 함께 부른다. 대중교통 세션이 봉인 안이라 도달 불가이고 그 세션은 이미 실좌표 위에 있었으므로
@@ -301,6 +301,8 @@ describe("3. 안내 세션 진입점이 늘지 않았다", () => {
    * 승차 전 도보 `GuideSession.startTransit`, 대중교통 시작 버튼이 봉인 안이라 도달 불가)를 더했다.
    * 2026-09-11 E34(마지막 leg 단일 버튼)는 진입점을 더하지 않았다 — 시트가 `acceptWalkHandoff`를
    * 클로저(`onWalkHandoff`)로 부를 뿐 `startBeacon(` 형태가 늘지 않는다(설계 리뷰 확인).
+   * 2026-09-23 E42는 도보 추천·최단 두 호출을 줄 목록 `ForEach` 안 한 호출로 합쳐 **7곳**이 됐다
+   * (진입점이 준 것이 아니라 호출 형태가 합쳐졌다 — 도보 줄은 여전히 정식판 도달).
    *
    * ⚠ 판정 축은 "`toggle`을 부르는가"가 아니라 **세션을 시작시키는가**다. A13이
    * 정밀 위치 복구 경로를 `beacon.restart()`로 바꿨을 때 `toggle`만 세는 검사는
@@ -318,12 +320,12 @@ describe("3. 안내 세션 진입점이 늘지 않았다", () => {
    */
   const ENTRY_CALL = /(?:beacon\.(?:toggle|restart)|(?:session|self)\.startBeacon)\(/g;
 
-  it("안내 세션 진입점 호출이 정확히 8곳이다", () => {
+  it("안내 세션 진입점 호출이 정확히 7곳이다", () => {
     const sites = swiftFiles(IOS_DIR).flatMap((file) => {
       const hits = readFileSync(file, "utf8").match(ENTRY_CALL) ?? [];
       return hits.map(() => file);
     });
-    expect(sites).toHaveLength(8);
+    expect(sites).toHaveLength(7);
   });
 
   it("재시작 진입점은 인자를 다시 조립하지 않는다(A13)", () => {

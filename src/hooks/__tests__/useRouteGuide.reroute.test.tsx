@@ -66,7 +66,7 @@ function walkOrigins(): string[] {
 }
 
 function Harness() {
-  const g = useRouteGuide(DEST, "walk", false);
+  const g = useRouteGuide(DEST, "walk", { accessible: false, variant: null });
   return (
     <div>
       <button onClick={g.start}>start</button>

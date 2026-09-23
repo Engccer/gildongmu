@@ -12,6 +12,7 @@ import {
   annotateCrosswalkInfo,
   getWalkRoute,
   getWalkRouteAlternatives,
+  getWalkRouteLines,
 } from "../walk-route";
 import { rewriteWalkBriefing } from "../walk-guidance";
 import { walkStepAction } from "../walk-action";
@@ -182,6 +183,13 @@ const TMAP_BRIEFING = {
   distanceMeters: 1100,
   durationSeconds: 950,
   steps: [{ description: "보행자도로를 따라 100m 이동" }],
+};
+
+/** en 파이프라인은 구조화 필드(turnType)에서 문장을 새로 만든다 — 11=직진. */
+const TMAP_EN_BRIEFING: WalkRouteBriefing = {
+  distanceMeters: 1100,
+  durationSeconds: 950,
+  steps: [{ description: "보행자도로를 따라 100m 이동", distanceMeters: 100, turnType: 11 }],
 };
 
 /**
@@ -437,7 +445,7 @@ describe("getWalkRoute provider 선택·폴백", () => {
 describe("getWalkRoute 계단 회피(stepFree)", () => {
   it("ACCESSIBLE 성공(계단 문구 없음)은 applied — accessible 플래그가 provider에 전달된다", async () => {
     const r = await getWalkRoute({ lang: "ko", origin: ORIGIN, dest: DEST, accessible: true });
-    expect(vi.mocked(getKakaoWalkBriefing).mock.calls[0][0].accessible).toBe(true);
+    expect(vi.mocked(getKakaoWalkBriefing).mock.calls[0][0].routeMode).toBe("ACCESSIBLE");
     expect(r?.stepFree).toBe("applied");
     expect(r?.steps[0].description).toContain("역사 내 이동"); // 안내 문장 미삽입
   });
@@ -680,23 +688,54 @@ describe("includeGeometry (실시간 길 안내, 2026-08-03 스펙 §7.2)", () =
   });
 });
 
-describe("variant=shortest (M3, Tmap searchOption=10 단독)", () => {
-  it("tmap이 searchOption '10'으로 호출되고 카카오는 미호출", async () => {
+describe("variant=shortest (E42: ko 카카오 SHORTEST·폴백 Tmap 10, en Tmap 10)", () => {
+  it("ko는 카카오 SHORTEST로 조회하고 Tmap은 부르지 않는다", async () => {
     const r = await getWalkRoute({ lang: "ko", origin: ORIGIN, dest: DEST, variant: "shortest" });
-    expect(getKakaoWalkBriefing).not.toHaveBeenCalled();
-    expect(vi.mocked(getWalkRouteBriefing).mock.calls[0][0]).toMatchObject({
-      searchOption: "10",
-    });
+    expect(vi.mocked(getKakaoWalkBriefing).mock.calls[0][0]).toMatchObject({ routeMode: "SHORTEST" });
+    expect(getWalkRouteBriefing).not.toHaveBeenCalled();
+    expect(r?.steps[0].description).toContain("역사 내 이동");
+  });
+
+  it("카카오 throw면 Tmap searchOption '10'으로 폴백한다", async () => {
+    vi.mocked(getKakaoWalkBriefing).mockRejectedValue(new Error("kakao down"));
+    const r = await getWalkRoute({ lang: "ko", origin: ORIGIN, dest: DEST, variant: "shortest" });
+    expect(vi.mocked(getWalkRouteBriefing).mock.calls[0][0]).toMatchObject({ searchOption: "10" });
     expect(r?.steps[0].description).toContain("보행자도로");
   });
 
-  it("accessible과의 곱은 unavailable + 최단 전용 경고 문장(비기하는 스텝 0번 삽입)", async () => {
+  it("카카오 경로 없음(null)은 폴백하지 않는다 — 가용성 장치이지 커버리지 보강이 아니다", async () => {
+    vi.mocked(getKakaoWalkBriefing).mockResolvedValue(null);
+    const r = await getWalkRoute({ lang: "ko", origin: ORIGIN, dest: DEST, variant: "shortest" });
+    expect(r).toBeNull();
+    expect(getWalkRouteBriefing).not.toHaveBeenCalled();
+  });
+
+  it("en은 Tmap searchOption '10' 단독", async () => {
+    vi.mocked(getWalkRouteBriefing).mockResolvedValue(TMAP_EN_BRIEFING);
+    await getWalkRoute({ lang: "en", origin: ORIGIN, dest: DEST, variant: "shortest" });
+    expect(getKakaoWalkBriefing).not.toHaveBeenCalled();
+    expect(vi.mocked(getWalkRouteBriefing).mock.calls[0][0]).toMatchObject({ searchOption: "10" });
+  });
+
+  it("최단은 카카오 스텝이라 횡단보도 차로 수 주석을 얻는다(종전 Tmap 최단은 못 얻었다)", async () => {
+    vi.mocked(getKakaoWalkBriefing).mockResolvedValue({
+      distanceMeters: 100,
+      durationSeconds: 90,
+      steps: [{ description: "서달로에서 횡단보도 이용", distanceMeters: 14, pathCoords: SEODAL_PATH }],
+    });
+    const r = await getWalkRoute({ lang: "ko", origin: ORIGIN, dest: DEST, variant: "shortest" });
+    expect(r?.steps[0].description).toMatch(/\d+차로, 도로 폭 \d+m$/);
+  });
+
+  it("accessible과의 곱은 unavailable + 최단 전용 경고 문장(옛 앱 토글 호환)", async () => {
     const r = await getWalkRoute({ lang: "ko",
       origin: ORIGIN,
       dest: DEST,
       variant: "shortest",
       accessible: true,
     });
+    // 최단 요청은 계단 축이 아니다 — accessible이 와도 카카오 모드는 SHORTEST.
+    expect(vi.mocked(getKakaoWalkBriefing).mock.calls[0][0]).toMatchObject({ routeMode: "SHORTEST" });
     expect(r?.stepFree).toBe("unavailable");
     expect(r?.stepFreeNotice).toBe(
       "최단 경로에는 계단 회피가 적용되지 않습니다. 계단이 포함될 수 있습니다.",
@@ -706,13 +745,11 @@ describe("variant=shortest (M3, Tmap searchOption=10 단독)", () => {
     );
   });
 
-  it("includeGeometry면 tmap에 기하 보존·noStore를 전파한다", async () => {
-    await getWalkRoute({ lang: "ko",
-      origin: ORIGIN,
-      dest: DEST,
-      variant: "shortest",
-      includeGeometry: true,
-    });
+  it("includeGeometry면 noStore를 전파하고 폴백 Tmap에도 기하 보존을 싣는다", async () => {
+    await getWalkRoute({ lang: "ko", origin: ORIGIN, dest: DEST, variant: "shortest", includeGeometry: true });
+    expect(vi.mocked(getKakaoWalkBriefing).mock.calls[0][0]).toMatchObject({ noStore: true });
+    vi.mocked(getKakaoWalkBriefing).mockRejectedValue(new Error("kakao down"));
+    await getWalkRoute({ lang: "ko", origin: ORIGIN, dest: DEST, variant: "shortest", includeGeometry: true });
     expect(vi.mocked(getWalkRouteBriefing).mock.calls[0][0]).toMatchObject({
       searchOption: "10",
       includeLineGeometry: true,
@@ -720,33 +757,42 @@ describe("variant=shortest (M3, Tmap searchOption=10 단독)", () => {
     });
   });
 
-  it("Tmap throw면 카카오 폴백 없이 throw(502 전파)", async () => {
+  it("両 provider throw면 throw(502 전파)", async () => {
+    vi.mocked(getKakaoWalkBriefing).mockRejectedValue(new Error("kakao down"));
     vi.mocked(getWalkRouteBriefing).mockRejectedValue(new Error("tmap down"));
     await expect(
       getWalkRoute({ lang: "ko", origin: ORIGIN, dest: DEST, variant: "shortest" }),
     ).rejects.toThrow();
-    expect(getKakaoWalkBriefing).not.toHaveBeenCalled();
   });
 
-  it("Tmap 키 부재면 throw(최단 축 자체가 성립 안 함 — null로 위장 금지)", async () => {
+  it("최단 축 키가 없으면 throw(null로 위장 금지) — ko는 두 키 모두, en은 Tmap 키", async () => {
+    vi.mocked(hasKakaoKey).mockReturnValue(false);
     vi.mocked(hasTmapKey).mockReturnValue(false);
     await expect(
       getWalkRoute({ lang: "ko", origin: ORIGIN, dest: DEST, variant: "shortest" }),
     ).rejects.toThrow();
+    vi.mocked(hasKakaoKey).mockReturnValue(true);
+    await expect(
+      getWalkRoute({ lang: "en", origin: ORIGIN, dest: DEST, variant: "shortest" }),
+    ).rejects.toThrow();
   });
 });
 
-describe("getWalkRouteAlternatives (추천+최단 병렬, 부분 성공 비대칭)", () => {
-  it("両성공이면 { result, shortest } — 최단은 searchOption '10'", async () => {
+describe("getWalkRouteAlternatives (옛 조회 화면 호환 — 추천+최단, 부분 성공 비대칭)", () => {
+  it("両성공이면 { result, shortest } — 추천은 BROAD_FIRST, 최단은 카카오 SHORTEST", async () => {
     const r = await getWalkRouteAlternatives({ lang: "ko", origin: ORIGIN, dest: DEST });
-    expect(r.result?.steps[0].description).toContain("역사 내 이동");
-    expect(r.shortest?.steps[0].description).toContain("보행자도로");
-    expect(vi.mocked(getWalkRouteBriefing).mock.calls[0][0]).toMatchObject({
-      searchOption: "10",
-    });
+    const modes = vi.mocked(getKakaoWalkBriefing).mock.calls.map((c) => c[0].routeMode).sort();
+    expect(modes).toEqual(["BROAD_FIRST", "SHORTEST"]);
+    expect(getWalkRouteBriefing).not.toHaveBeenCalled();
+    expect(r.result).not.toBeNull();
+    expect(r.shortest).not.toBeNull();
   });
 
   it("기본 성공 + 최단 throw → shortest: null (최단 실패 흡수)", async () => {
+    vi.mocked(getKakaoWalkBriefing).mockImplementation(async (p) => {
+      if (p.routeMode === "SHORTEST") throw new Error("kakao down");
+      return KAKAO_BRIEFING;
+    });
     vi.mocked(getWalkRouteBriefing).mockRejectedValue(new Error("tmap down"));
     const r = await getWalkRouteAlternatives({ lang: "ko", origin: ORIGIN, dest: DEST });
     expect(r.result?.steps[0].description).toContain("역사 내 이동");
@@ -762,12 +808,16 @@ describe("getWalkRouteAlternatives (추천+최단 병렬, 부분 성공 비대�
     ).rejects.toThrow();
   });
 
-  it("Tmap 키 부재면 shortest 키 자체 생략 + 최단 조회 미발생", async () => {
+  it("ko는 Tmap 키가 없어도 카카오로 최단 축이 성립한다", async () => {
     vi.mocked(hasTmapKey).mockReturnValue(false);
     const r = await getWalkRouteAlternatives({ lang: "ko", origin: ORIGIN, dest: DEST });
-    expect(r.result?.steps[0].description).toContain("역사 내 이동");
+    expect(r.shortest).not.toBeNull();
+  });
+
+  it("en은 Tmap 키가 없으면 shortest 키 자체를 생략한다", async () => {
+    vi.mocked(hasTmapKey).mockReturnValue(false);
+    const r = await getWalkRouteAlternatives({ lang: "en", origin: ORIGIN, dest: DEST });
     expect("shortest" in r).toBe(false);
-    expect(getWalkRouteBriefing).not.toHaveBeenCalled();
   });
 
   it("accessible은 両경로에 전달된다(추천 applied·최단 경고)", async () => {
@@ -776,10 +826,208 @@ describe("getWalkRouteAlternatives (추천+최단 병렬, 부분 성공 비대�
       dest: DEST,
       accessible: true,
     });
-    expect(vi.mocked(getKakaoWalkBriefing).mock.calls[0][0].accessible).toBe(true);
+    const modes = vi.mocked(getKakaoWalkBriefing).mock.calls.map((c) => c[0].routeMode).sort();
+    expect(modes).toEqual(["ACCESSIBLE", "SHORTEST"]);
     expect(r.result?.stepFree).toBe("applied");
     expect(r.shortest?.stepFree).toBe("unavailable");
     expect(r.shortest?.stepFreeNotice).toContain("최단 경로에는");
+  });
+});
+
+describe("줄 종류 kind는 기하 응답에만 — 받은 경로의 성질(E42 설계 리뷰 MAJOR 1)", () => {
+  it("기하 응답: 최단→shortest, 기본(카카오)→broad, 계단 회피 applied→accessible", async () => {
+    const g = { lang: "ko" as const, origin: ORIGIN, dest: DEST, includeGeometry: true };
+    vi.mocked(getKakaoWalkBriefing).mockResolvedValue(briefingWithGeometry(2));
+    expect((await getWalkRoute({ ...g, variant: "shortest" }))?.kind).toBe("shortest");
+    expect((await getWalkRoute(g))?.kind).toBe("broad");
+    expect((await getWalkRoute({ ...g, accessible: true }))?.kind).toBe("accessible");
+  });
+
+  it("계단 회피 요청이 큰길로 내려가면 kind=broad(요청이 아니라 받은 경로)", async () => {
+    vi.mocked(getKakaoWalkBriefing)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(briefingWithGeometry(2));
+    const r = await getWalkRoute({ lang: "ko", origin: ORIGIN, dest: DEST, includeGeometry: true, accessible: true });
+    expect(r?.stepFree).toBe("no_stepfree_route");
+    expect(r?.kind).toBe("broad");
+  });
+
+  it("계단 문구가 남은 계단 회피 응답은 어느 이름도 참이 아니라 kind 부재", async () => {
+    vi.mocked(getKakaoWalkBriefing).mockResolvedValue({
+      ...briefingWithGeometry(1),
+      steps: [{ description: "호텔마누 앞에서 계단이용", pathCoords: [ORIGIN, DEST] }],
+    });
+    const r = await getWalkRoute({ lang: "ko", origin: ORIGIN, dest: DEST, includeGeometry: true, accessible: true });
+    expect(r?.stepFree).toBe("no_stepfree_route");
+    expect("kind" in (r ?? {})).toBe(false);
+  });
+
+  it("Tmap 폴백 기본 경로는 recommended", async () => {
+    vi.mocked(getKakaoWalkBriefing).mockRejectedValue(new Error("kakao down"));
+    vi.mocked(getWalkRouteBriefing).mockResolvedValue(briefingWithGeometry(2));
+    expect((await getWalkRoute({ lang: "ko", origin: ORIGIN, dest: DEST, includeGeometry: true }))?.kind)
+      .toBe("recommended");
+  });
+
+  it("브리핑 응답(기하 없음)엔 kind가 없다 — CLI·채팅·옛 앱 byte-identical", async () => {
+    const r = await getWalkRoute({ lang: "ko", origin: ORIGIN, dest: DEST, variant: "shortest" });
+    expect("kind" in (r ?? {})).toBe(false);
+  });
+});
+
+describe("provider 혼합 금지·같은 좌표(E42 설계 리뷰 MAJOR 2)", () => {
+  it("alternatives: 추천이 카카오인데 최단만 Tmap 폴백이면 shortest를 싣지 않는다", async () => {
+    vi.mocked(getKakaoWalkBriefing).mockImplementation(async (p) => {
+      if (p.routeMode === "SHORTEST") throw new Error("kakao shortest down");
+      return KAKAO_BRIEFING;
+    });
+    const r = await getWalkRouteAlternatives({ lang: "ko", origin: ORIGIN, dest: DEST });
+    expect(r.result).not.toBeNull();
+    expect(r.shortest).toBeNull();
+  });
+
+  it("lines: 첫 줄이 Tmap 폴백이면 카카오 둘째 줄을 싣지 않는다", async () => {
+    vi.mocked(getKakaoWalkBriefing).mockImplementation(async (p) => {
+      if (p.routeMode === "SHORTEST") throw new Error("kakao shortest down");
+      return KAKAO_BRIEFING;
+    });
+    const lines = await getWalkRouteLines({ lang: "ko", origin: ORIGIN, dest: DEST });
+    expect(lines.map((l) => l.kind)).toEqual(["shortest"]);
+    expect(vi.mocked(getWalkRouteBriefing).mock.calls[0][0]).toMatchObject({ searchOption: "10" });
+  });
+
+  it("lines: 세 모드 모두 원좌표로 부른다(두 줄 거리 비교의 전제)", async () => {
+    vi.mocked(getKakaoWalkBriefing).mockImplementation(async (p) =>
+      p.routeMode === "ACCESSIBLE" ? null : KAKAO_BRIEFING,
+    );
+    await getWalkRouteLines({ lang: "ko", origin: ORIGIN, dest: DEST });
+    const calls = vi.mocked(getKakaoWalkBriefing).mock.calls.map((c) => c[0]);
+    expect(calls.map((c) => c.routeMode).sort()).toEqual(["ACCESSIBLE", "BROAD_FIRST", "SHORTEST"]);
+    for (const c of calls) expect(c.preciseCoords).toBe(true);
+  });
+
+  it("단일 조회(안내·옛 화면)는 종전대로 반올림 좌표", async () => {
+    await getWalkRoute({ lang: "ko", origin: ORIGIN, dest: DEST, variant: "shortest" });
+    expect(vi.mocked(getKakaoWalkBriefing).mock.calls[0][0].preciseCoords).toBe(false);
+  });
+
+  it("lines: 싣는 줄이 0개인데 실패가 섞였으면 경로 없음이 아니라 throw(502)", async () => {
+    vi.mocked(getKakaoWalkBriefing).mockImplementation(async (p) => {
+      if (p.routeMode === "SHORTEST") return null;
+      throw new Error("kakao down");
+    });
+    await expect(getWalkRouteLines({ lang: "ko", origin: ORIGIN, dest: DEST })).rejects.toThrow();
+  });
+});
+
+describe("옛 앱 alternatives=1 — 최단 출처가 카카오로 바뀐 뒤의 값 불변식(설계 리뷰 MINOR)", () => {
+  it("accessible+via: shortest는 정수 거리·시간, stepFree 경고, waypoint를 그대로 갖는다", async () => {
+    const VIA = { lat: 37.51, lng: 127.12 };
+    vi.mocked(getKakaoWalkBriefing).mockResolvedValue({
+      distanceMeters: 700,
+      durationSeconds: 600,
+      steps: [{ description: "직진 300m" }, { description: "우회전 후 400m" }],
+      waypoint: { stepIndex: 1, coord: VIA },
+    });
+    const r = await getWalkRouteAlternatives({ lang: "ko", origin: ORIGIN, dest: DEST, accessible: true, via: VIA });
+    const sh = r.shortest!;
+    expect(Number.isInteger(sh.distanceMeters) && Number.isInteger(sh.durationSeconds)).toBe(true);
+    expect(sh.stepFree).toBe("unavailable");
+    expect(sh.stepFreeNotice).toContain("최단 경로에는");
+    // 비기하라 경고 문장이 스텝 0으로 들어가고 경유지 인덱스가 한 칸 밀린다(종전 계약).
+    expect(sh.waypoint?.stepIndex).toBe(2);
+  });
+});
+
+describe("getWalkRouteLines (E42 조회 화면 줄 목록)", () => {
+  /** routeMode별 응답을 정하는 카카오 목. 값이 Error면 throw. */
+  function kakaoByMode(map: Partial<Record<string, WalkRouteBriefing | null | Error>>) {
+    vi.mocked(getKakaoWalkBriefing).mockImplementation(async (p) => {
+      const v = map[p.routeMode];
+      if (v instanceof Error) throw v;
+      return v === undefined ? KAKAO_BRIEFING : v;
+    });
+  }
+  const named = (d: string): WalkRouteBriefing => ({
+    distanceMeters: 500, durationSeconds: 400, steps: [{ description: d }],
+  });
+
+  it("ko: [최단, 계단 회피] — 둘 다 카카오, Tmap 미호출, 줄 경로엔 stepFree가 없다", async () => {
+    kakaoByMode({ SHORTEST: named("최단 문장"), ACCESSIBLE: named("무장애 문장") });
+    const lines = await getWalkRouteLines({ lang: "ko", origin: ORIGIN, dest: DEST });
+    expect(lines.map((l) => l.kind)).toEqual(["shortest", "accessible"]);
+    expect(lines[0].route.steps[0].description).toContain("최단 문장");
+    expect(lines[1].route.steps[0].description).toContain("무장애 문장");
+    expect(getWalkRouteBriefing).not.toHaveBeenCalled();
+    for (const l of lines) {
+      expect("stepFree" in l.route).toBe(false);
+      expect("stepFreeNotice" in l.route).toBe(false);
+    }
+  });
+
+  it("계단 회피 경로가 없으면 BROAD_FIRST를 '큰길'로 싣는다 — 사유 문장·유사 스텝 없음", async () => {
+    kakaoByMode({ ACCESSIBLE: null, BROAD_FIRST: named("큰길 문장") });
+    const lines = await getWalkRouteLines({ lang: "ko", origin: ORIGIN, dest: DEST });
+    expect(lines.map((l) => l.kind)).toEqual(["shortest", "broad"]);
+    expect(lines[1].route.steps).toHaveLength(1);
+    expect(lines[1].route.steps[0].description).toContain("큰길 문장");
+  });
+
+  it("ACCESSIBLE 원문에 계단이 남으면 '계단 회피'라 부르지 않고 큰길로 간다(이름이 거짓이 되는 쪽 금지)", async () => {
+    kakaoByMode({ ACCESSIBLE: briefingWithStairs(), BROAD_FIRST: named("큰길 문장") });
+    const lines = await getWalkRouteLines({ lang: "ko", origin: ORIGIN, dest: DEST });
+    expect(lines[1].kind).toBe("broad");
+    expect(lines[1].route.steps[0].description).toContain("큰길 문장");
+  });
+
+  it("둘째 줄 카카오 throw는 흡수한다 — Tmap으로 대신하지 않는다", async () => {
+    kakaoByMode({ ACCESSIBLE: new Error("kakao down") });
+    const lines = await getWalkRouteLines({ lang: "ko", origin: ORIGIN, dest: DEST });
+    expect(lines.map((l) => l.kind)).toEqual(["shortest"]);
+  });
+
+  it("카카오 전면 장애: 첫 줄은 Tmap 10 폴백, 둘째 줄은 없다", async () => {
+    vi.mocked(getKakaoWalkBriefing).mockRejectedValue(new Error("kakao down"));
+    const lines = await getWalkRouteLines({ lang: "ko", origin: ORIGIN, dest: DEST });
+    expect(lines.map((l) => l.kind)).toEqual(["shortest"]);
+    expect(vi.mocked(getWalkRouteBriefing).mock.calls[0][0]).toMatchObject({ searchOption: "10" });
+  });
+
+  it("첫 줄 throw는 전체 throw(502)", async () => {
+    vi.mocked(getKakaoWalkBriefing).mockRejectedValue(new Error("kakao down"));
+    vi.mocked(getWalkRouteBriefing).mockRejectedValue(new Error("tmap down"));
+    await expect(getWalkRouteLines({ lang: "ko", origin: ORIGIN, dest: DEST })).rejects.toThrow();
+  });
+
+  it("첫 줄 경로 없음이면 둘째 줄이 첫 원소가 된다, 둘 다 없으면 []", async () => {
+    kakaoByMode({ SHORTEST: null });
+    expect((await getWalkRouteLines({ lang: "ko", origin: ORIGIN, dest: DEST })).map((l) => l.kind))
+      .toEqual(["accessible"]);
+    kakaoByMode({ SHORTEST: null, ACCESSIBLE: null, BROAD_FIRST: null });
+    expect(await getWalkRouteLines({ lang: "ko", origin: ORIGIN, dest: DEST })).toEqual([]);
+  });
+
+  it("카카오 키가 없으면 첫 줄만(Tmap 10)", async () => {
+    vi.mocked(hasKakaoKey).mockReturnValue(false);
+    const lines = await getWalkRouteLines({ lang: "ko", origin: ORIGIN, dest: DEST });
+    expect(lines.map((l) => l.kind)).toEqual(["shortest"]);
+    expect(getKakaoWalkBriefing).not.toHaveBeenCalled();
+  });
+
+  it("경유지는 두 줄 모두에 전달된다", async () => {
+    const VIA = { lat: 37.51, lng: 127.12 };
+    kakaoByMode({});
+    await getWalkRouteLines({ lang: "ko", origin: ORIGIN, dest: DEST, via: VIA });
+    for (const c of vi.mocked(getKakaoWalkBriefing).mock.calls) expect(c[0].via).toEqual(VIA);
+  });
+
+  it("en: [추천(Tmap 0), 최단(Tmap 10)] — 카카오 미호출", async () => {
+    vi.mocked(getWalkRouteBriefing).mockResolvedValue(TMAP_EN_BRIEFING);
+    const lines = await getWalkRouteLines({ lang: "en", origin: ORIGIN, dest: DEST });
+    expect(lines.map((l) => l.kind)).toEqual(["recommended", "shortest"]);
+    expect(getKakaoWalkBriefing).not.toHaveBeenCalled();
+    const opts = vi.mocked(getWalkRouteBriefing).mock.calls.map((c) => c[0].searchOption ?? null).sort();
+    expect(opts).toEqual(["10", null]);
   });
 });
 
@@ -811,7 +1059,7 @@ describe("getWalkRoute 경유지(N4)", () => {
     expect(vi.mocked(getWalkRouteBriefing).mock.calls[0][0].via).toEqual(VIA);
 
     await getWalkRoute({ lang: "ko", origin: O, dest: D, via: VIA, variant: "shortest" });
-    expect(vi.mocked(getWalkRouteBriefing).mock.calls[1][0]).toMatchObject({ via: VIA, searchOption: "10" });
+    expect(vi.mocked(getKakaoWalkBriefing).mock.calls.at(-1)?.[0]).toMatchObject({ via: VIA, routeMode: "SHORTEST" });
   });
 
   it("waypoint는 재작성·주석을 지나 응답에 남는다", async () => {

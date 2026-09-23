@@ -16,12 +16,16 @@ const home = (): HomeBridge => ({
   openAddress: async () => ({ ok: true }),
 });
 const plan = (): ToolPlan => ({
-  planId: "P1", destination: "강동역", resolved: { from: "현재 위치", to: "강동역", via: null, avoidStairs: false },
+  planId: "P1", destination: "강동역", resolved: { from: "현재 위치", to: "강동역", via: null },
   routeRefs: { refOf: () => null, keyOf: () => null, size: 0 }, transit: null, car: null, modes: ["walk"],
-  walk: { outcome: "done", steps: ["직진"], startable: true },
+  walk: {
+    outcome: "done",
+    startable: true,
+    lines: [{ kind: "shortest", label: "최단 경로, 총 500m, 약 7분", distanceMeters: 500, durationSeconds: 420, steps: ["직진"] }],
+  },
 });
 function directions(runQuery: DirectionsBridge["runQuery"]): DirectionsBridge {
-  return { read: () => ({ fields: { from: "", to: "", via: null, avoidStairs: false }, phase: "settled", plan: plan(), lang: "ko" }), runQuery };
+  return { read: () => ({ fields: { from: "", to: "", via: null }, phase: "settled", plan: plan(), lang: "ko" }), runQuery };
 }
 afterEach(() => {
   __resetViewRegistryForTest();

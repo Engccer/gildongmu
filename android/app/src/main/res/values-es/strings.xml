@@ -120,8 +120,6 @@
     <string name="android_directions_walkNotice_head2">A tener en cuenta</string>
     <string name="android_directions_walkNotice_intro">¡Gracias por usar Gildongmu!</string>
     <string name="android_directions_walkNotice_title">Llega la guía a pie.</string>
-    <string name="android_directions_walkRecommended">Ruta recomendada</string>
-    <string name="android_directions_walkShortest">Ruta más corta</string>
     <string name="android_guide_autoReroute">Ahora te guío por una nueva ruta. {1, plural, one {%1$s indicación} other {%1$s indicaciones}}, %2$s en total. %3$s</string>
     <string name="android_guide_destChanged">Nuevo destino: %1$s.</string>
     <string name="android_guide_destChangedFetching">Buscando una nueva ruta.</string>
@@ -413,6 +411,10 @@
     <string name="beacon_guideStartCar">Iniciar guía en coche</string>
     <string name="beacon_guideStartTransitAlt">Iniciar guía: %1$s</string>
     <string name="beacon_guideStartWalk">Iniciar guía a pie</string>
+    <string name="beacon_guideStartWalkAccessible">Iniciar guía por la ruta sin escaleras</string>
+    <string name="beacon_guideStartWalkBroad">Iniciar guía por vías principales</string>
+    <string name="beacon_guideStartWalkRecommended">Iniciar guía por la ruta recomendada</string>
+    <string name="beacon_guideStartWalkShortest">Iniciar guía por la ruta más corta</string>
     <string name="beacon_heading">Guía en tiempo real</string>
     <string name="beacon_nearby">Cerca del destino (unos ±%1$s m)</string>
     <string name="beacon_reduced">No se puede seguir la distancia porque la ubicación precisa está desactivada</string>
@@ -589,6 +591,8 @@
     <string name="directions_useCurrentLocation">Usar ubicación actual</string>
     <string name="directions_via">Punto intermedio</string>
     <string name="directions_viaArrived">Punto intermedio %1$s alcanzado</string>
+    <string name="directions_walkAccessible">Ruta sin escaleras</string>
+    <string name="directions_walkBroad">Ruta por vías principales</string>
     <string name="directions_walkRecommended">Ruta recomendada</string>
     <string name="directions_walkShortest">Ruta más corta</string>
     <string name="eventsNearby_asOf">A las %1$s</string>

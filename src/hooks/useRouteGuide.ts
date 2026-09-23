@@ -441,16 +441,24 @@ export interface RouteGuideApi {
   requestReroute: () => void;
 }
 
+/** 도보 안내 조회의 요청 축(E42). 자동차는 `{ accessible: false, variant: null }`을 명시한다. */
+export interface WalkGuideAxis {
+  accessible: boolean;
+  variant: "shortest" | null;
+}
+
 export function useRouteGuide(
   dest: RouteGuideDest,
   kind: GuideKind = "walk",
   /**
-   * 계단 회피(도보 전용). ⚠ **봉인하지 않는다** — `useState` 초기값 고정은
-   * *컴포넌트 마운트* 수명이라 세션 종료 후 값이 바뀌어도 같은 마운트에서는 옛
-   * 값이 남는다(spec 2026-08-08 §2.2). 매 렌더 갱신되는 ref로 두고 조회 직전에
-   * 읽는다. ⚠ **기본값을 두지 않는다** — A4가 생략 가능한 안전 인자에서 나왔다.
+   * 도보 요청 축(E42): 계단 회피 + 경로 축(`"shortest"`=최단 줄). 조회 화면의 줄 종류가
+   * 이 둘로 투영된다(최단→variant, 계단 회피→accessible, 큰길·추천→둘 다 꺼짐).
+   * ⚠ **봉인하지 않는다** — `useState` 초기값 고정은 *컴포넌트 마운트* 수명이라 세션 종료
+   * 후 값이 바뀌어도 같은 마운트에서는 옛 값이 남는다(spec 2026-08-08 §2.2). 매 렌더 갱신되는
+   * ref로 두고 조회 직전에 읽는다. ⚠ **기본값을 두지 않는다** — A4(계단 회피)·A13(최단이 추천으로)이
+   * 생략 가능한 안전 인자에서 나왔다.
    */
-  accessible: boolean,
+  walkAxis: WalkGuideAxis,
   /**
    * 세션 종료 1회 통지(A25 승차 전 도보 핸드오프): 확정 도착은 "arrived", 그 밖의 종료(사용자
    * 중지·다른 세션의 claim·탭 숨김·권한 실패)는 "ended". 도착 문장을 live region에 커밋한 **뒤**
@@ -489,8 +497,8 @@ export function useRouteGuide(
   const [rerouting, setRerouting] = useState(false);
 
   const destRef = useRef(dest);
-  /** 계단 회피 최신값(조회 시점 판독 — spec 2026-08-08 §2.2). */
-  const accessibleRef = useRef(accessible);
+  /** 도보 요청 축 최신값(조회 시점 판독 — spec 2026-08-08 §2.2). */
+  const walkAxisRef = useRef(walkAxis);
   /**
    * 직전 계단 회피 판정(열화 전이 통지의 기준 — spec 2026-08-08 §2.3).
    * 원시 문자열이다: 알려진 셋 밖의 값도 중복 통지를 막는 식별자로 쓴다.
@@ -1135,7 +1143,8 @@ export function useRouteGuide(
         walkRouteUrl({
           origin: { lat: fix.lat, lng: fix.lng },
           dest: { lat: target.lat, lng: target.lng },
-          accessible: accessibleRef.current,
+          accessible: walkAxisRef.current.accessible,
+          variant: walkAxisRef.current.variant,
           includeGeometry: true,
           // 웹 실시간 안내는 경유지를 아직 받지 않는다(N4 spec §3 — 경유지 조회에선
           // 안내 시작 버튼 자체가 없다). 경유지 안내는 iOS 실보행 판정 뒤 웹에 얹는다.
@@ -2022,7 +2031,7 @@ export function useRouteGuide(
   // 유일한 갱신 지점 — 렌더 중 ref 쓰기는 금지다(useNearbyFetch 관례 동형).
   useEffect(() => {
     destRef.current = dest;
-    accessibleRef.current = accessible;
+    walkAxisRef.current = walkAxis;
     onSessionEndRef.current = options.onSessionEnd;
     handleFixRef.current = handleFix;
     handleErrorRef.current = handleError;

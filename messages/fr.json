@@ -198,7 +198,9 @@
     "viaArrived": "Étape {label} atteinte",
     "unsupportedWaypoint": "Les itinéraires en transports en commun ne prennent pas en charge les étapes.",
     "walkRecommended": "Itinéraire recommandé",
-    "walkShortest": "Itinéraire le plus court"
+    "walkShortest": "Itinéraire le plus court",
+    "walkAccessible": "Itinéraire sans escaliers",
+    "walkBroad": "Itinéraire par les grands axes"
   },
   "detail": {
     "back": "Retour aux résultats"
@@ -707,6 +709,10 @@
     "briefGuideStart": "Démarrer le guidage à vol d'oiseau",
     "stopped": "Guidage en temps réel arrêté",
     "guideStartWalk": "Démarrer le guidage à pied",
+    "guideStartWalkShortest": "Démarrer le guidage sur l'itinéraire le plus court",
+    "guideStartWalkAccessible": "Démarrer le guidage sur l'itinéraire sans escaliers",
+    "guideStartWalkBroad": "Démarrer le guidage par les grands axes",
+    "guideStartWalkRecommended": "Démarrer le guidage sur l'itinéraire recommandé",
     "guideStartCar": "Démarrer le guidage en voiture",
     "guideStartTransitAlt": "Démarrer le guidage : {name}",
     "transitHeading": "Guidage transports"

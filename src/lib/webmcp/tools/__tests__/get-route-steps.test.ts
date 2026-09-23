@@ -10,42 +10,49 @@ function tool(b: DirectionsBridge) {
 }
 import type { DirectionsBridge, ToolPlan } from "../context";
 
-const plan = (withShortest = true): ToolPlan => ({
+const plan = (withSecond = true): ToolPlan => ({
   planId: "P1",
   destination: "d",
-  resolved: { from: "a", to: "b", via: null, avoidStairs: false },
+  resolved: { from: "a", to: "b", via: null },
   routeRefs: { refOf: () => null, keyOf: () => null, size: 0 },
   transit: null,
   car: { outcome: "done", steps: ["출발", "우회전"], startable: false },
   modes: ["walk", "car"],
   walk: {
     outcome: "done",
-    steps: ["직진", "좌회전"],
     startable: true,
-    shortest: withShortest
-      ? { distanceMeters: 900, durationSeconds: 700, steps: ["최단1", "최단2", "최단3"] }
-      : undefined,
+    lines: [
+      { kind: "shortest", label: "최단 경로, 총 900m, 약 12분", distanceMeters: 900, durationSeconds: 700, steps: ["최단1", "최단2", "최단3"] },
+      ...(withSecond
+        ? [{ kind: "accessible" as const, label: "계단 회피 경로, 총 950m, 약 13분", distanceMeters: 950, durationSeconds: 760, steps: ["직진", "좌회전"] }]
+        : []),
+    ],
   },
 });
 const bridge = (p: ToolPlan): DirectionsBridge => ({
-  read: () => ({ fields: { from: "", to: "", via: null, avoidStairs: false }, phase: "settled", plan: p, lang: "ko" }),
+  read: () => ({ fields: { from: "", to: "", via: null }, phase: "settled", plan: p, lang: "ko" }),
   runQuery: async () => ({ kind: "busy" }),
 });
 
-describe("get_route_steps variant(W1-R #1)", () => {
-  it("shortest는 최단 배열을 페이지하고 variant를 되돌려 준다", async () => {
-    const out = JSON.parse(await tool(bridge(plan())).execute({ planId: "P1", mode: "walk", variant: "shortest" }));
-    expect(out.steps.map((s: { text: string }) => s.text)).toEqual(["최단1", "최단2", "최단3"]);
-    expect(out).toMatchObject({ variant: "shortest", total: 3 });
-  });
-  it("기본은 recommended", async () => {
-    const out = JSON.parse(await tool(bridge(plan())).execute({ planId: "P1", mode: "walk" }));
+describe("get_route_steps variant = 줄 종류(E42)", () => {
+  it("variant로 고른 줄의 배열을 페이지하고 variant를 되돌려 준다", async () => {
+    const out = JSON.parse(await tool(bridge(plan())).execute({ planId: "P1", mode: "walk", variant: "accessible" }));
     expect(out.steps.map((s: { text: string }) => s.text)).toEqual(["직진", "좌회전"]);
-    expect(out.variant).toBe("recommended");
+    expect(out).toMatchObject({ variant: "accessible", total: 2 });
   });
-  it("shortest가 없으면 unsupported{noShortest}, 자동차엔 variantWalkOnly", async () => {
-    expect(JSON.parse(await tool(bridge(plan(false))).execute({ planId: "P1", mode: "walk", variant: "shortest" }))).toMatchObject({ ok: false, reason: "unsupported", detail: "noShortest" });
+  it("기본은 첫 줄(화면 기본 펼침)", async () => {
+    const out = JSON.parse(await tool(bridge(plan())).execute({ planId: "P1", mode: "walk" }));
+    expect(out.steps.map((s: { text: string }) => s.text)).toEqual(["최단1", "최단2", "최단3"]);
+    expect(out.variant).toBe("shortest");
+  });
+  it("계획에 없는 줄은 unsupported{noLine}, 자동차엔 variantWalkOnly", async () => {
+    expect(JSON.parse(await tool(bridge(plan(false))).execute({ planId: "P1", mode: "walk", variant: "accessible" }))).toMatchObject({ ok: false, reason: "unsupported", detail: "noLine" });
     expect(JSON.parse(await tool(bridge(plan())).execute({ planId: "P1", mode: "car", variant: "shortest" }))).toMatchObject({ ok: false, reason: "unsupported", detail: "variantWalkOnly" });
+  });
+  it("자동차는 variant 없이 자기 스텝", async () => {
+    const out = JSON.parse(await tool(bridge(plan())).execute({ planId: "P1", mode: "car" }));
+    expect(out.steps.map((s: { text: string }) => s.text)).toEqual(["출발", "우회전"]);
+    expect("variant" in out).toBe(false);
   });
   it("길찾기 뷰가 없으면 noResult{noDirectionsView}", async () => {
     __resetViewRegistryForTest();

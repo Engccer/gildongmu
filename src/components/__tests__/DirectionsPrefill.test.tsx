@@ -142,7 +142,10 @@ describe("자동 조회 진입의 최종 착지", () => {
       vi.fn(async (input: RequestInfo | URL) => {
         const url = String(input);
         if (url.startsWith("/api/route/walk")) {
-          return { ok: true, json: async () => ({ result: { steps: [] } }) } as Response;
+          return {
+            ok: true,
+            json: async () => ({ lines: [{ kind: "shortest", route: { distanceMeters: 100, durationSeconds: 90, steps: [] } }] }),
+          } as Response;
         }
         throw new Error(`unexpected fetch: ${url}`);
       }),

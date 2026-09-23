@@ -36,12 +36,22 @@ const gangnam: Place = {
   lng: 127.027,
 };
 
+// en 줄 목록(E42 §2.1): 현행 Tmap 2행 그대로 — 추천이 위, 최단이 아래.
 const WALK_EN = {
-  result: {
-    distanceMeters: 900,
-    durationSeconds: 20 * 60,
-    steps: [{ description: "Turn right, then walk 294m along Gangnam-daero" }],
-  },
+  lines: [
+    {
+      kind: "recommended",
+      route: {
+        distanceMeters: 900,
+        durationSeconds: 20 * 60,
+        steps: [{ description: "Turn right, then walk 294m along Gangnam-daero" }],
+      },
+    },
+    {
+      kind: "shortest",
+      route: { distanceMeters: 850, durationSeconds: 18 * 60, steps: [{ description: "Walk 850m" }] },
+    },
+  ],
 };
 
 let walkUrls: string[] = [];
@@ -134,17 +144,22 @@ describe("비-ko 도보 상세 (E16 축3)", () => {
     expect(walkUrls.every((u) => !u.includes("lang="))).toBe(true);
   });
 
-  it("en 로케일에는 계단 회피 토글이 없다 — 적용될 수 없는 옵션을 노출하지 않는다", async () => {
+  it("en 로케일은 추천·최단 두 줄이고 안내 시작 버튼이 줄 이름을 쓴다(계단 회피 토글 없음)", async () => {
     stubFetch();
     await queryRoutes("en");
     await waitFor(() => expect(screen.queryByText("walk steps")).not.toBeNull());
+    const rec = screen.getByRole("button", { name: /^Recommended route, / });
+    const sho = screen.getByRole("button", { name: /^Shortest route, / });
+    expect(rec.getAttribute("aria-expanded")).toBe("true");
+    expect(sho.getAttribute("aria-expanded")).toBe("false");
+    expect(screen.getByRole("button", { name: enMessages.beacon.guideStartWalkRecommended })).toBeTruthy();
     expect(screen.queryByRole("button", { name: enMessages.route.pedestrian.stepFreeToggle })).toBeNull();
   });
 
-  it("ko 로케일에는 계단 회피 토글이 그대로 있다", async () => {
+  it("ko 로케일에도 계단 회피 토글이 없다(E42 — 둘째 줄이 그 자리를 대신한다)", async () => {
     stubFetch();
     await queryRoutes("ko");
     await waitFor(() => expect(screen.queryByText("walk steps")).not.toBeNull());
-    expect(screen.queryByRole("button", { name: koMessages.route.pedestrian.stepFreeToggle })).not.toBeNull();
+    expect(screen.queryByRole("button", { name: koMessages.route.pedestrian.stepFreeToggle })).toBeNull();
   });
 });

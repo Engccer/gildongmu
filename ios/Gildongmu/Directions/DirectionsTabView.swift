@@ -77,11 +77,10 @@ final class DirectionsModel {
     private(set) var via: DirectionsEndpoint?
     private(set) var phase: Phase = .idle
     private(set) var results: DirectionsResults?
-    /// 최단 도보 경로(M3, `alternatives=1`의 `shortest`). **`results`의 도보 결과와
-    /// 같은 응답에서 온 쌍만** 함께 노출한다(spec §4 스냅샷 교체 — 다른 조회 세대의
-    /// 결과를 조합하지 않는다). nil = 미조회·최단 실패 흡수·Tmap 키 부재(전부
-    /// "최단 행을 그리지 않는다"로 행동이 같다).
-    private(set) var walkShortest: WalkRouteBriefing?
+    /// 도보 줄 목록(E42, `lines=1`). 서버 순서가 화면 순서이고 첫 줄이 기본 펼침이다.
+    /// **`results`의 도보 결과(= 첫 줄)와 같은 응답에서 온 것만** 노출한다(스냅샷 교체 —
+    /// 다른 조회 세대의 결과를 조합하지 않는다). 빈 배열 = 미조회·경로 없음·조회 실패.
+    private(set) var walkLines: [WalkRouteLine] = []
     /// 조회 완료 세대. 뷰가 포커스 이동 시점을 아는 신호(SearchModel.resultsRevision 동형).
     private(set) var resultsRevision = 0
     /// 이 세션에서 조회를 한 번이라도 마쳤는가. `results`는 필드 변경·재조회 시작에
@@ -90,19 +89,10 @@ final class DirectionsModel {
     /// 추적 중 출발지를 바꾸거나 재조회하는 순간 중지 버튼이 화면에서 사라져
     /// 탭 이탈 말고는 멈출 방법이 없어진다(리뷰 C-1).
     private(set) var hasQueriedOnce = false
-    /// 계단 회피(도보 전용) 토글 상태(웹 stepFreeEnabled 미러). 조회 전 토글은 상태만
-    /// 바꿔 다음 조회에 반영, 조회 후 토글은 도보만 재조회한다(toggleStepFree).
-    private(set) var stepFreeEnabled = false
-    /// 토글 재조회 진행 신호(웹 stepFreeBusy 미러). isBusy에 합산되어 그 15초 창에서도
-    /// 조회 버튼이 같은 "조회 중" 라벨을 낸다(멀쩡해 보이는데 무시되는 버튼 방지).
-    private(set) var stepFreeBusy = false
     /// 최근 조회 경로(스펙 2026-08-10). 결과 없는 화면에서만 뷰가 노출한다.
     /// init 로드는 읽기 전용이라 State(initialValue:) 재평가에도 안전(기록 부수효과 금지).
     private(set) var recentRoutes: [RecentRoute]
     private let recentStore = RecentSearchStore()
-    /// 도보 단독 재조회 완료 세대. 뷰가 도보 heading으로 포커스를 옮기는 신호
-    /// (resultsRevision과 분리 — 전체 조회는 첫 성공 수단, 토글 재조회는 항상 도보).
-    private(set) var walkRefetchRevision = 0
     /// "현재 위치" 라벨에 병기할 역지오코딩 주소(F-B, 웹 currentAddress 미러).
     /// nil=주소 미확보 — 라벨은 "현재 위치"만(주소 없음=정보 없음, 거짓 표시 금지).
     var currentAddress: String? { addressState.address.original }
@@ -192,7 +182,7 @@ final class DirectionsModel {
         return true
     }
 
-    var isBusy: Bool { phase == .locating || phase == .loading || stepFreeBusy }
+    var isBusy: Bool { phase == .locating || phase == .loading }
 
     func endpoint(for target: DirectionsFieldTarget) -> DirectionsEndpoint? {
         switch target {
@@ -291,9 +281,8 @@ final class DirectionsModel {
         queryTask?.cancel()
         cancelCurrentAddress()
         isInFlight = false
-        stepFreeBusy = false
         results = nil
-        walkShortest = nil
+        walkLines = []
         resultsUsedManualOrigin = false
         promotedDestination = nil
         phase = .idle
@@ -305,7 +294,6 @@ final class DirectionsModel {
         queryTask?.cancel()
         cancelCurrentAddress()
         isInFlight = false
-        stepFreeBusy = false
     }
 
     /// 이미 위치가 허용된 세션에서만 조용히 주소를 병기한다(탭 진입만으론 권한 팝업
@@ -387,7 +375,7 @@ final class DirectionsModel {
     private func performQuery(from: DirectionsEndpoint, to: DirectionsEndpoint) async {
         guard !Task.isCancelled else { return }
         results = nil
-        walkShortest = nil // 스냅샷 교체(spec §4) — 이전 세대 대안을 지우고 시작
+        walkLines = [] // 스냅샷 교체(spec §4) — 이전 세대 줄을 지우고 시작
         resultsUsedManualOrigin = false
         promotedDestination = nil
         // 현재 위치 endpoint는 조회 시점에 측위(권한 팝업도 이 시점, 캐시 좌표 재사용).
@@ -488,14 +476,10 @@ final class DirectionsModel {
         let locale = AppLanguage.dataLocaleValue
         let lang = locale.rawValue
         let service = self.service
-        // ⚠ 앱 언어를 ko에서 바꾸면 토글은 숨겨지는데 모델 상태는 남는다 — 끌 수단이 없는
-        // 채로 매 조회에 실려 "Step-free routing is unavailable…"이 스텝 0으로 삽입된다
-        // (리뷰 검출). 토글 노출 조건과 **같은 조건**으로 값 자체를 무력화한다.
-        let accessible = stepFreeEnabled && locale == .ko
         // 대중교통은 경유지가 있으면 호출하지 않는다(ODsay 미지원 — 서버 spec §2.1).
         // "경로 없음"이 아니라 "미지원"이라 별도 상태로 섹션에 사유를 남긴다.
         async let transitSettled = Self.settleTransit(service, include: viaCoord == nil, origin: origin, dest: dest)
-        async let walkSettled = Self.settleWalk(service, include: true, origin: origin, dest: dest, accessible: accessible, lang: locale, via: viaCoord)
+        async let walkSettled = Self.settleWalk(service, origin: origin, dest: dest, lang: locale, via: viaCoord)
         async let carSettled = Self.settleCar(service, origin: origin, dest: dest, lang: lang, via: viaCoord)
         let (transit, walk, car) = await (transitSettled, walkSettled, carSettled)
         guard !Task.isCancelled else { return }
@@ -504,13 +488,10 @@ final class DirectionsModel {
             .transit: transit.map { DirectionsOutcomeClassifier.classify(transit: $0) } ?? .unsupportedWaypoint,
             .car: DirectionsOutcomeClassifier.classify(car: car),
         ]
-        // 추천은 현행 분류 그대로, 최단은 같은 응답에서만 커밋(spec §4 — 커버리지
-        // 밖 등 중간 return에서 노출되지 않도록 로컬에 들었다가 results와 함께 커밋).
-        var shortestCandidate: WalkRouteBriefing?
-        if let walk {
-            outcomes[.walk] = DirectionsOutcomeClassifier.classify(walk: walk.map(\.result))
-            if case .success(let pair) = walk { shortestCandidate = pair.shortest }
-        }
+        // 첫 줄은 현행 분류 그대로(빈 목록 = 경로 없음), 줄 목록은 같은 응답에서만 커밋(스냅샷 —
+        // 커버리지 밖 등 중간 return에서 노출되지 않도록 로컬에 들었다가 results와 함께 커밋).
+        outcomes[.walk] = DirectionsOutcomeClassifier.classify(walk: walk.map { $0.first?.route })
+        let linesCandidate = (try? walk.get()) ?? []
 
         // 서버 마커 이중 방어 — 위 "cur" 선분기를 통과했어도 place 종단점(검색 선택)이
         // 한국 밖일 수 있다. 한 수단이라도 감지하면 나머지 결과를 버리고 화면 전체를 전환한다.
@@ -522,7 +503,7 @@ final class DirectionsModel {
 
         let built = DirectionsResults(outcomes: outcomes)
         results = built
-        walkShortest = shortestCandidate
+        walkLines = linesCandidate
         resultsUsedManualOrigin = usedManualOrigin
         promotedDestination = promoted
         phase = .settled(successCount: built.successCount)
@@ -534,47 +515,6 @@ final class DirectionsModel {
             ? appLocalized("directions.readySummary", built.successCount)
             : appLocalized("directions.allFailed"),
             haptic: built.successCount > 0 ? .success : .failure)
-    }
-
-    /// 계단 회피 토글(웹 toggleStepFree 동형): 이미 조회된 결과가 있으면 도보만 새
-    /// 상태로 재조회하고(대중교통·자동차 유지), 조회 전이면 상태만 바꿔 다음 조회에
-    /// 반영한다. 재조회는 "조회"와 같은 isInFlight·queryTask를 공유해 교차 레이스가
-    /// 구조적으로 불가능하다(진행 중 재탭은 상태 변화 없이 무시 — 토글 시각값도 불변).
-    func toggleStepFree() {
-        if isInFlight { return }
-        stepFreeEnabled.toggle()
-        guard results != nil, let coords = lastCoords else { return }
-        isInFlight = true
-        stepFreeBusy = true
-        queryTask = Task {
-            await refetchWalk(origin: coords.origin, dest: coords.dest, via: coords.via)
-            guard !Task.isCancelled else { return }
-            isInFlight = false
-            stepFreeBusy = false
-        }
-    }
-
-    private func refetchWalk(
-        origin: (lat: Double, lng: Double), dest: (lat: Double, lng: Double), via: (lat: Double, lng: Double)?
-    ) async {
-        let service = self.service
-        // 위 query()와 같은 무력화(계단 회피는 ko/카카오 전용 축이다).
-        let accessible = stepFreeEnabled && AppLanguage.dataLocale == "ko"
-        let settled = await Self.settleWalk(
-            service, include: true, origin: origin, dest: dest, accessible: accessible,
-            lang: AppLanguage.dataLocaleValue, via: via)
-        guard !Task.isCancelled, let settled, let current = results else { return }
-        // lastCoords는 이미 커버리지 검증을 통과한 좌표라 재조회에서 서버 마커가 다시
-        // 뜰 일은 사실상 없다 — 그래도 도달 시 화면 전체 전환 대신 도보 오류로 안내한다
-        // (웹 동형: 부분 재조회가 다른 수단 결과까지 버리게 하지 않는다).
-        var outcome = DirectionsOutcomeClassifier.classify(walk: settled.map(\.result))
-        if outcome.isOutOfCoverage { outcome = .error }
-        // 순서는 settled 스냅샷을 보존한다(E11 spec §2 규칙 3) — 재계산 init 금지.
-        results = current.replacingWalk(outcome)
-        // 최단도 같은 응답 쌍으로 교체(실패 응답이면 nil — 세대 혼합 금지, spec §4).
-        walkShortest = (try? settled.get())?.shortest
-        // 재조회 완료 신호는 도보 heading 포커스 이동뿐(웹 동형, 별도 통지 중복 금지).
-        walkRefetchRevision += 1
     }
 
     private func coordinate(
@@ -618,17 +558,16 @@ final class DirectionsModel {
     }
 
     nonisolated private static func settleWalk(
-        _ service: RouteService, include: Bool, origin: (lat: Double, lng: Double), dest: (lat: Double, lng: Double),
-        accessible: Bool, lang: DataLocale, via: (lat: Double, lng: Double)?
-    ) async -> Result<(result: WalkRouteBriefing?, shortest: WalkRouteBriefing?), any Error>? {
-        guard include else { return nil }
+        _ service: RouteService, origin: (lat: Double, lng: Double), dest: (lat: Double, lng: Double),
+        lang: DataLocale, via: (lat: Double, lng: Double)?
+    ) async -> Result<[WalkRouteLine], any Error> {
         do {
             return .success(try await withQueryTimeout {
-                // 추천+최단 병렬(M3, alternatives=1). 기본 실패는 서버가 502로
-                // 던지고(.failure), 최단 실패만 shortest nil로 흡수된다(spec §3.1).
-                try await service.walkAlternatives(
+                // 줄 목록(E42, lines=1). 첫 줄 실패는 서버가 502로 던지고(.failure), 둘째 줄
+                // 실패는 서버가 그 줄만 빼서 흡수한다(spec §2.1). 빈 목록 = 경로 없음.
+                try await service.walkLines(
                     originLat: origin.lat, originLng: origin.lng, destLat: dest.lat, destLng: dest.lng,
-                    accessible: accessible, lang: lang, via: via)
+                    lang: lang, via: via)
             })
         } catch { return .failure(error) }
     }
@@ -666,12 +605,11 @@ struct DirectionsTabView: View {
     ///   다른 경로를 가리키고, 표시 번호는 축 라벨이 붙은 대안을 건너뛰어 또 다른
     ///   좌표계다. 둘 중 어느 것도 상태 키로 쓰지 않는다(spec §4.2).
     @State private var expandedAlts: Set<String> = []
-    /// 도보 상세 펼침 상태(spec §4.4). nil = 자동(문턱 판정), 값 = 사용자 조작 결과.
-    /// 새 조회에서만 자동으로 되돌리고, 계단 회피 토글 재조회에서는 보존한다
-    /// (그 재조회는 사용자가 도보 섹션 안에서 일으킨 것이라 맥락이 이어진다).
+    /// 도보 첫 줄 펼침 상태(spec §4.4). nil = 자동(문턱 판정), 값 = 사용자 조작 결과.
+    /// 새 조회에서만 자동으로 되돌린다.
     @State private var walkExpandedOverride: Bool?
-    /// 최단 도보 행 펼침(M3). 대중교통 대안 동형 — 기본 접힘, 새 조회에서 원복.
-    @State private var walkShortestExpanded = false
+    /// 도보 둘째 줄 펼침(E42). 대중교통 대안 동형 — 기본 접힘, 새 조회에서 원복.
+    @State private var walkSecondExpanded = false
     /// 안내 세션은 앱 수명(N1, `GuideSession`) — 이 뷰는 소유하지 않고 빌려 쓴다.
     /// 탭 전환·`.id` 재생성·시트 닫힘이 세션을 끝내지 않는다. 시트는 루트가 띄운다.
     private let session = GuideSession.shared
@@ -695,7 +633,8 @@ struct DirectionsTabView: View {
     /// 안내 시작 버튼 3종(간략 폴백·도보·자동차)의 포커스 정체성. ⚠ Bool 바인딩을
     /// 여러 행에 붙이는 함정 회피 — 항목 정체성 옵셔널 바인딩이 정본(repo 규칙).
     /// ⚠ 대안은 `routeKey`로 식별한다(표시 번호·배열 인덱스 둘 다 포커스 키 금지).
-    enum GuideStartButton: Hashable { case fallback, walk, walkShortest, car, transitAlt(String) }
+    /// ⚠ 도보는 줄 종류로 식별한다(E42 — 배열 인덱스는 새 조회에서 다른 줄을 가리킬 수 있다).
+    enum GuideStartButton: Hashable { case fallback, walkLine(WalkLineKind), car, transitAlt(String) }
     @AccessibilityFocusState private var guideStartFocused: GuideStartButton?
     /// 시트가 닫힐 때 되돌아갈 시작 버튼(방금 떠나온 자리).
     @State private var lastGuideStart: GuideStartButton = .fallback
@@ -826,7 +765,7 @@ struct DirectionsTabView: View {
                                 announceGuideStartIfManualOrigin()
                                 beacon.toggle(
                                     dest: tracked.dest, label: tracked.label, kind: .walk,
-                                    accessible: model.stepFreeEnabled, waypoint: sessionWaypoint
+                                    accessible: false, waypoint: sessionWaypoint
                                 )
                             }
                             .accessibilityFocused($guideStartFocused, equals: .fallback)
@@ -891,7 +830,7 @@ struct DirectionsTabView: View {
                                     announceGuideStartIfManualOrigin()
                                     session.startBeacon(BeaconModel.StartRequest(
                                         dest: tracked.dest, label: tracked.label, kind: .car,
-                                        accessible: false, variant: nil, shortestAvailable: false,
+                                        accessible: false, variant: nil, line: nil, alternate: nil,
                                         waypoint: sessionWaypoint
                                     ))
                                 }
@@ -901,20 +840,6 @@ struct DirectionsTabView: View {
                             // 버튼이 경로에 귀속되어야 하고(라벨이 곧 그 경로 이름),
                             // 아래 목록의 각 disclosure 안에 하나씩 있다. 도보·자동차는
                             // 경로가 하나라 비교 대상이 없어 이 자리가 맞다.
-                            // 계단 회피 토글은 도보 섹션에만(웹 동형 — 결과 유무·오류와
-                            // 무관하게 섹션이 보이면 노출). 켬/끔 낭독이 상태 신호이고,
-                            // 재조회 중엔 라벨에 "조회 중"을 병기한다(웹 aria-busy 대응 —
-                            // 방금 조작한 요소가 스스로 진행을 확인시키는 라벨 전환 관례).
-                            // ⚠ 계단 회피는 카카오 전용 축이라 en(Tmap 단독)에서는 항상
-                            // unavailable이다 — 적용될 수 없는 옵션을 켜게 두고 조회 뒤에야
-                            // 못 했다고 말하면 SR 사용자는 그 사이 적용됐다고 믿는다
-                            // (spec 2026-08-23-non-ko-walk-guidance-design.md §4.7).
-                            if mode == .walk, AppLanguage.dataLocale == "ko" {
-                                Toggle(stepFreeToggleText, isOn: Binding(
-                                    get: { model.stepFreeEnabled },
-                                    set: { _ in model.toggleStepFree() }
-                                ))
-                            }
                             outcomeRows(mode, results.outcomes[mode])
                         } header: {
                             Text(headingText(mode))
@@ -969,16 +894,12 @@ struct DirectionsTabView: View {
             // 수단 섹션 **사이**에 생기면서 그 점프가 섹션을 통째로 건너뛰게 됐다.
             // 조회 버튼에 머물면 다음 스와이프가 상태 → 거리 추적 → 수단 순서로
             // 자연히 이어진다. 완료 자체는 단일 통지(수단 수 합산)가 이미 알린다.
-            // ⚠ 계단 회피 토글 재조회(walkRefetchRevision)는 별개다. 사용자가 도보
-            // 섹션 안에서 조작한 것이라 그 heading으로 돌려보내는 게 맞다.
             .onChange(of: model.resultsRevision) {
                 expandedAlts = []
                 // 새 조회 = 새 경로들이라 도보 접힘도 자동 판정으로 되돌린다(spec §4.4).
                 walkExpandedOverride = nil
-                walkShortestExpanded = false
+                walkSecondExpanded = false
             }
-            // 계단 회피 토글 재조회 완료 시엔 항상 도보 heading으로(웹 walkHeadingRef 동형).
-            .onChange(of: model.walkRefetchRevision) { focusedModeHeading = .walk }
             // 탭 전환·epoch 재생성 시 진행 조회 폐기(늦은 응답이 초기화 화면을 되채우는 경합 차단).
             // 전경 전용 계약의 구현부. ⚠ 행 수준이 아니라 **화면 수준**이어야 한다 —
             // List는 lazy라 행에 붙이면 도보 안내를 읽으려 스크롤하는 순간 추적이 죽는다.
@@ -1171,25 +1092,20 @@ struct DirectionsTabView: View {
     /// 다른 탭에서 세션이 끝나도 불리지만, 보이지 않는 뷰에 대한 대입은 no-op이라
     /// 따로 가르지 않는다.
     private func landBeaconStartFocus() {
-        // 도보 시작 버튼이 경로 행 disclosure 안으로 이동(M3)해, 접힌 행 안의 버튼은
+        // 도보 시작 버튼이 줄 disclosure 안에 있어(M3·E42), 접힌 줄 안의 버튼은
         // AX 트리에 없어 대입이 조용히 되돌려진다(오프스크린 컬링과 같은 기제) —
-        // 대입 전에 소유 행을 강제 펼친다(a11y 감사 HIGH 2026-08-12). 최단 행이
-        // 새 조회에서 사라졌으면(.walkShortest인데 walkShortest nil — 최단 실패
-        // 흡수·스냅샷 교체) 항상 존재하는 추천 행 버튼으로 폴백한다.
+        // 대입 전에 소유 줄을 강제 펼친다(a11y 감사 HIGH 2026-08-12). 그 줄이 새 조회에서
+        // 사라졌으면(둘째 줄 실패 흡수·스냅샷 교체) 항상 존재하는 첫 줄 버튼으로 폴백한다.
         // transitAlt는 종전 동작 유지(M3 비범위 — 대안 행 접힘은 기존 계약).
         var target = lastGuideStart
-        switch target {
-        case .walk:
-            walkExpandedOverride = true
-        case .walkShortest:
-            if model.walkShortest == nil {
-                target = .walk
+        if case .walkLine(let kind) = target {
+            let kinds = model.walkLines.compactMap(\.lineKind)
+            if let index = kinds.firstIndex(of: kind), index > 0 {
+                walkSecondExpanded = true
+            } else if let first = kinds.first {
+                target = .walkLine(first)
                 walkExpandedOverride = true
-            } else {
-                walkShortestExpanded = true
             }
-        default:
-            break
         }
         let landTarget = target
         Task { @MainActor in
@@ -1364,13 +1280,6 @@ struct DirectionsTabView: View {
         model.isBusy ? appLocalized("ios.directions.searching") : appLocalized("directions.submit")
     }
 
-    /// 토글 재조회 중 라벨 병기(한 줄 = 한 객체, 쉼표 결합). 이 창의 재탭은 가드로
-    /// 무시되므로 라벨이 유일한 진행 신호다.
-    private var stepFreeToggleText: String {
-        let label = appLocalized("route.pedestrian.stepFreeToggle")
-        return model.stepFreeBusy ? "\(label), \(appLocalized("ios.directions.searching"))" : label
-    }
-
     private var statusText: String {
         switch model.phase {
         case .idle: ""
@@ -1443,7 +1352,8 @@ struct DirectionsTabView: View {
                             lastGuideStart = .transitAlt(entry.route.routeKey)
                             session.startTransit(
                                 route: entry.route, destinationLabel: tracked.label,
-                                dest: tracked.dest, accessible: model.stepFreeEnabled
+                                // 승차 전 도보의 계단 회피 출처였던 토글이 E42로 사라졌다(spec §8 미결 1).
+                                dest: tracked.dest, accessible: false
                             )
                         }
                         .accessibilityFocused(
@@ -1462,69 +1372,44 @@ struct DirectionsTabView: View {
                     Text(joinText(entry.name, transitSummaryText(entry.route.summary)))
                 }
             }
-        case .walk(let briefing):
-            // 추천·최단 2행 disclosure(M3 spec §4, 대중교통 대안 동형). 라벨이 곧
-            // 요약 전문이라 본문은 단계만 낸다. 한 줄 = 한 접근성 객체(쉼표 결합).
-            // 추천 행 기본 펼침은 종전 문턱 판정 유지(장거리 도보 상세는 채택
-            // 가능성이 사실상 0인데 수백 행으로 페이지 끝단을 채운다 — 위원장 판정
-            // 2026-08-07), 최단 행은 대안 동형으로 기본 접힘.
-            // ⚠ 계단 회피 토글은 이 접힘 **밖**(섹션 상단)이지만, 안내 시작 버튼은
-            //   경로가 복수가 되며 대중교통과 같은 이유로 각 행 **안**에 있다(버튼이
-            //   경로에 귀속 — 라벨과 행이 같은 경로를 가리켜야 한다).
-            DisclosureGroup(isExpanded: Binding(
-                get: {
-                    walkExpandedOverride
-                        ?? (walkDisplayMinutes(briefing) <= walkCollapseThresholdMinutes)
-                },
-                set: { walkExpandedOverride = $0 }
-            )) {
-                if walkGuideStartable, let tracked = trackedDestination {
-                    Button(appLocalized("beacon.guideStartWalk")) {
-                        lastGuideStart = .walk
-                        announceGuideStartIfManualOrigin()
-                        session.startBeacon(BeaconModel.StartRequest(
-                            dest: tracked.dest, label: tracked.label, kind: .walk,
-                            accessible: model.stepFreeEnabled, variant: nil,
-                            shortestAvailable: model.walkShortest != nil,
-                            waypoint: sessionWaypoint
-                        ))
-                    }
-                    .accessibilityFocused($guideStartFocused, equals: .walk)
-                }
-                WalkRouteRows(briefing: briefing, includeSummary: false, omitNoticeStep: true,
-                              waypointLabel: model.viaLabel)
-            } label: {
-                // stepFreeNotice는 両행 라벨에 병기한다(a11y 감사 — 안전 문장이 접힘
-                // 뒤에 갇히면 안 되고, 접힘 상태에선 라벨이 유일한 전달 채널이다).
-                distanceText(joinText(
-                    appLocalized("ios.directions.walkRecommended"),
-                    walkSummaryText(briefing),
-                    briefing.stepFreeNotice))
-            }
-            // 최단 행: 같은 응답에서 온 쌍만(model.walkShortest 계약). 실패·부재 시
-            // 행 자체를 그리지 않는다(死행 금지, spec §4). stepFreeNotice는 요약 뒤
-            // 쉼표 병기 — 기본 접힘이라 라벨이 유일한 전달 채널이다.
-            if let shortest = model.walkShortest {
-                DisclosureGroup(isExpanded: $walkShortestExpanded) {
-                    if walkGuideStartable, let tracked = trackedDestination {
-                        Button(appLocalized("beacon.guideStartWalkShortest")) {
-                            lastGuideStart = .walkShortest
-                            announceGuideStartIfManualOrigin()
-                            session.startBeacon(BeaconModel.StartRequest(
-                                dest: tracked.dest, label: tracked.label, kind: .walk,
-                                accessible: model.stepFreeEnabled, variant: .shortest,
-                                shortestAvailable: false, waypoint: sessionWaypoint
-                            ))
+        case .walk:
+            // 도보 줄 목록(E42, 대중교통 대안 동형 disclosure). 라벨은 위원장 확정 렌더("최단 경로,
+            // 총 850m, 약 12분") — 한 줄 = 한 접근성 객체(쉼표 결합)이고 본문은 안내 시작 버튼 + 단계.
+            // 첫 줄 기본 펼침은 종전 문턱 판정 유지(장거리 도보 상세는 페이지 끝단을 수백 행으로
+            // 채운다 — 위원장 판정 2026-08-07), 둘째 줄은 기본 접힘. 안내 시작 버튼은 줄 **안**에
+            // 있다 — 라벨이 그 줄 이름이라 로터 버튼 목록에서 어느 경로의 안내인지 구분된다.
+            ForEach(Array(model.walkLines.enumerated()), id: \.element.kind) { index, line in
+                if let kind = line.lineKind {
+                    DisclosureGroup(isExpanded: index == 0
+                        ? Binding(
+                            get: {
+                                walkExpandedOverride
+                                    ?? (walkDisplayMinutes(line.route) <= walkCollapseThresholdMinutes)
+                            },
+                            set: { walkExpandedOverride = $0 })
+                        : $walkSecondExpanded
+                    ) {
+                        if walkGuideStartable, let tracked = trackedDestination {
+                            Button(appLocalized(WalkLineText.startKey(kind))) {
+                                lastGuideStart = .walkLine(kind)
+                                announceGuideStartIfManualOrigin()
+                                session.startBeacon(BeaconModel.StartRequest(
+                                    dest: tracked.dest, label: tracked.label, kind: .walk,
+                                    accessible: kind.accessible, variant: kind.variant,
+                                    line: kind,
+                                    alternate: model.walkLines.lazy.compactMap(\.lineKind).first { $0 != kind },
+                                    waypoint: sessionWaypoint
+                                ))
+                            }
+                            .accessibilityFocused($guideStartFocused, equals: .walkLine(kind))
                         }
-                        .accessibilityFocused($guideStartFocused, equals: .walkShortest)
+                        WalkRouteRows(briefing: line.route, includeSummary: false, omitNoticeStep: true,
+                                      waypointLabel: model.viaLabel)
+                    } label: {
+                        distanceText(joinText(
+                            appLocalized(WalkLineText.nameKey(kind)),
+                            walkSummaryText(line.route)))
                     }
-                    WalkRouteRows(briefing: shortest, includeSummary: false, omitNoticeStep: true,
-                                  waypointLabel: model.viaLabel)
-                } label: {
-                    distanceText(joinText(
-                        appLocalized("ios.directions.walkShortest"),
-                        walkSummaryText(shortest),
-                        shortest.stepFreeNotice))
                 }
             }
         case .car(let briefing): CarRouteRows(briefing: briefing, waypointLabel: model.viaLabel)

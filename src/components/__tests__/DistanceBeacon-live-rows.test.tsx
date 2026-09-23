@@ -46,7 +46,7 @@ describe("DistanceBeacon 하단 2행", () => {
   const dest = { lat: 37.5380, lng: 127.1430, name: "주택 A" };
 
   function open() {
-    render(<DistanceBeaconHost dest={dest} accessible={false} />);
+    render(<DistanceBeaconHost dest={dest} accessible={false} variant={null} />);
     fireEvent.click(screen.getByRole("button", { name: "walkHeading" }));
   }
 

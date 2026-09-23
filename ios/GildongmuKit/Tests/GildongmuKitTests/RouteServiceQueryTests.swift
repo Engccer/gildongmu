@@ -117,6 +117,46 @@ extension StubNetworkTests {
         // 조회 화면 전용 — 기하는 싣지 않는다(조합표: alternatives+includeGeometry는 400).
         #expect(capturedQuery?.contains(where: { $0.name == "includeGeometry" }) == false)
     }
+
+    /// 줄 목록(E42)은 `lines=1` 단독 옵트인 — 계단 회피·경로 축·기하·alternatives와 조합하면 서버 400이다.
+    /// 모르는 종류의 줄은 이름을 지어 붙이지 않고 뺀다(`stepFree` 원시 문자열 규율 동형).
+    @Test func walkLinesIsSoloOptInAndDropsUnknownKinds() async throws {
+        var capturedQuery: [URLQueryItem]?
+        StubURLProtocol.handler = { request in
+            capturedQuery = URLComponents(url: request.url!, resolvingAgainstBaseURL: false)?.queryItems
+            let body = #"{"lines":[{"kind":"scenic","route":{"distanceMeters":900,"durationSeconds":700,"steps":[]}},"#
+                + #"{"kind":"shortest","route":{"distanceMeters":850,"durationSeconds":720,"steps":[]}},"#
+                + #"{"kind":"broad","route":{"distanceMeters":880,"durationSeconds":780,"steps":[]}}]}"#
+            return (200, Data(body.utf8))
+        }
+        let lines = try await RouteService(client: stubbedClient()).walkLines(
+            originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1, lang: .ko, via: nil)
+        #expect(lines.map(\.lineKind) == [.shortest, .broad])
+        #expect(capturedQuery?.contains(where: { $0.name == "lines" && $0.value == "1" }) == true)
+        for name in ["accessible", "variant", "includeGeometry", "alternatives", "lang"] {
+            #expect(capturedQuery?.contains(where: { $0.name == name }) == false)
+        }
+    }
+
+    /// 기하 응답의 `kind`(E42)는 받은 경로의 성질 — 원시 문자열로 받아 모르는 값·부재는 nil.
+    @Test func walkBriefingKindDecodesLeniently() throws {
+        func decode(_ kind: String?) throws -> WalkRouteBriefing {
+            let tail = kind.map { #","kind":"\#($0)""# } ?? ""
+            let json = #"{"distanceMeters":1,"durationSeconds":1,"steps":[]"# + tail + "}"
+            return try JSONDecoder().decode(WalkRouteBriefing.self, from: Data(json.utf8))
+        }
+        #expect(try decode("broad").lineKind == .broad)
+        #expect(try decode("scenic").lineKind == nil)
+        #expect(try decode(nil).lineKind == nil)
+    }
+
+    /// 줄 종류의 안내 요청 축(E42): 최단→variant, 계단 회피→accessible, 큰길·추천→기본.
+    @Test func walkLineKindProjectsGuideRequestAxis() {
+        #expect(WalkLineKind.shortest.variant == .shortest && !WalkLineKind.shortest.accessible)
+        #expect(WalkLineKind.accessible.variant == nil && WalkLineKind.accessible.accessible)
+        #expect(WalkLineKind.broad.variant == nil && !WalkLineKind.broad.accessible)
+        #expect(WalkLineKind.recommended.variant == nil && !WalkLineKind.recommended.accessible)
+    }
 }
 
 // 경유지(N4): `via`는 "위도,경도" 한 파라미터(서버 spec §2.1). nil이면 파라미터 자체를

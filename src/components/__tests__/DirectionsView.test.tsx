@@ -314,7 +314,7 @@ describe("DirectionsView 수동 위치(manual location)", () => {
           return { ok: true, json: async () => ({ result: null }) } as Response;
         }
         if (url.startsWith("/api/route/walk")) {
-          return { ok: true, json: async () => ({ result: null }) } as Response;
+          return { ok: true, json: async () => ({ lines: [] }) } as Response;
         }
         throw new Error(`unexpected fetch: ${url}`);
       }),
@@ -443,58 +443,6 @@ describe("DirectionsView 출입구 승격(A11)", () => {
       expect(screen.getByRole("status").textContent).toBe("readySummary");
     });
     expect(calledUrls.some((u) => u.includes("dest=37.5335,127.131"))).toBe(true);
-  });
-});
-
-// A8: 계단 회피 토글은 outcomes.walk만 갈아끼우는데 요약 수치("N개 수단 준비됨")는
-// phase.successCount가 든다 — 토글이 성공↔실패를 뒤집으면 수치가 함께 움직여야 한다.
-// 낭독되는 수치라 시각으로 반증되지 않는다(백로그 A8, 2026-08-09 최종 리뷰 검출).
-describe("DirectionsView 계단 회피 토글 요약 수치(A8)", () => {
-  afterEach(() => {
-    localStorage.clear();
-    __resetManualLocationForTest();
-  });
-
-  it("토글 재조회가 도보를 실패로 뒤집으면 요약도 성공 0으로 갱신된다", async () => {
-    setManualLocation({
-      label: "길동 카페",
-      lat: 37.5384,
-      lng: 127.1432,
-      origin: { lat: 37.5384, lng: 127.1432, accuracy: 10, at: Date.now() / 1000 },
-      setAt: 1,
-    });
-    let walkCalls = 0;
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (input: RequestInfo | URL) => {
-        const url = String(input);
-        if (url.startsWith("/api/route/walk")) {
-          walkCalls += 1;
-          // 1회차(조회) 성공 → 2회차(토글 재조회) 실패.
-          return walkCalls === 1
-            ? ({ ok: true, json: async () => ({ result: { steps: [] } }) } as Response)
-            : ({ ok: false, status: 502, json: async () => ({}) } as Response);
-        }
-        throw new Error(`unexpected fetch: ${url}`);
-      }),
-    );
-    render(
-      <DirectionsView
-        canShowWalk
-        canShowTransit={false}
-        canBriefCarRoute={false}
-        initialTo={{ kind: "place", label: "잠실역", coord: { lat: 37.5, lng: 127.1 } }}
-        onBack={() => {}}
-      />,
-    );
-    fireEvent.click(screen.getByRole("button", { name: "submit" }));
-    await waitFor(() => {
-      expect(screen.getByRole("status").textContent).toContain("readySummary");
-    });
-    fireEvent.click(screen.getByRole("button", { name: "stepFreeToggle" }));
-    await waitFor(() => {
-      expect(screen.getByRole("status").textContent).toContain("allFailed");
-    });
   });
 });
 
@@ -714,7 +662,7 @@ describe("DirectionsView 경유지(N4)", () => {
         if (url.startsWith("/api/route/walk")) {
           return {
             ok: true,
-            json: async () => ({ result: { distanceMeters: 900, durationSeconds: 800, steps: [{ description: "a" }], waypoint: { stepIndex: 1, coord: { lat: 37.497, lng: 127.027 } } } }),
+            json: async () => ({ lines: [{ kind: "shortest", route: { distanceMeters: 900, durationSeconds: 800, steps: [{ description: "a" }], waypoint: { stepIndex: 1, coord: { lat: 37.497, lng: 127.027 } } } }] }),
           } as Response;
         }
         if (url.startsWith("/api/route/transit")) {
@@ -760,7 +708,7 @@ describe("DirectionsView 경유지(N4)", () => {
     expect(calledUrls.some((u) => u.startsWith("/api/route/car") && u.includes("&via=37.497,127.027"))).toBe(true);
     expect(calledUrls.some((u) => u.startsWith("/api/route/transit"))).toBe(false);
     expect(screen.getByText("unsupportedWaypoint")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "guideStartWalk" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "guideStartWalkShortest" })).toBeNull();
     expect(screen.queryByRole("button", { name: "guideStartCar" })).toBeNull();
     expect(screen.queryByRole("button", { name: "briefGuideStart" })).toBeNull();
     // 최근 경로에 via가 기록된다(라벨은 itemVia 키).

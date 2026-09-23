@@ -38,23 +38,25 @@ const gangnam: Place = {
   lng: 127.027,
 };
 
-/** 35분(반올림) 도보: 문턱 초과라 접힌 상태로 시작한다 */
+/** 35분(반올림) 도보: 문턱 초과라 첫 줄이 접힌 상태로 시작한다 */
 const WALK_LONG = {
-  result: {
-    distanceMeters: 2000,
-    durationSeconds: 35 * 60,
-    steps: [{ description: "직진 2km 이동" }],
-  },
+  lines: [
+    {
+      kind: "shortest",
+      route: { distanceMeters: 2000, durationSeconds: 35 * 60, steps: [{ description: "직진 2km 이동" }] },
+    },
+  ],
 };
-const WALK_LONG_LABEL = "총 2km, 약 35분";
+const WALK_LONG_LABEL = "최단 경로, 총 2km, 약 35분";
 
-/** 20분 도보: 문턱 이하라 disclosure 없이 바로 펼쳐진다 */
+/** 20분 도보: 문턱 이하라 첫 줄이 펼친 채로 시작한다 */
 const WALK_SHORT = {
-  result: {
-    distanceMeters: 900,
-    durationSeconds: 20 * 60,
-    steps: [{ description: "직진 900m 이동" }],
-  },
+  lines: [
+    {
+      kind: "shortest",
+      route: { distanceMeters: 900, durationSeconds: 20 * 60, steps: [{ description: "직진 900m 이동" }] },
+    },
+  ],
 };
 
 /** 탑승 leg 1개(경유 정류장 포함): 대안 안내 시작 게이트가 성립하는 최소 골격 */
@@ -110,7 +112,7 @@ const TRANSIT_WITH_ALTS = {
 type WalkKind = "long" | "short" | "empty" | "error";
 
 function stubFetch(opts: { walk?: WalkKind; transit?: boolean } = {}) {
-  const walkBodies = { long: WALK_LONG, short: WALK_SHORT, empty: { result: null } };
+  const walkBodies = { long: WALK_LONG, short: WALK_SHORT, empty: { lines: [] } };
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: RequestInfo | URL) => {
@@ -232,10 +234,12 @@ describe("도보 섹션 조건부 접힘(spec §4.4)", () => {
     expect(walkDetail()).not.toBeNull();
   });
 
-  it("문턱 이하 도보는 disclosure 없이 바로 펼쳐진다", async () => {
+  it("문턱 이하 도보는 펼친 채로 시작한다", async () => {
     stubFetch({ walk: "short" });
     await queryRoutes("walk");
-    expect(screen.queryByRole("button", { name: /^총 900m/ })).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "최단 경로, 총 900m, 약 20분" }).getAttribute("aria-expanded"),
+    ).toBe("true");
     expect(walkDetail()).not.toBeNull();
   });
 
@@ -243,39 +247,13 @@ describe("도보 섹션 조건부 접힘(spec §4.4)", () => {
     stubFetch({ walk: "empty" });
     await queryRoutes("walk");
     expect(screen.getByText("도보 경로를 찾지 못했습니다.")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: /^총 / })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^최단 경로, / })).toBeNull();
     cleanup();
 
     stubFetch({ walk: "error" });
     await queryRoutes("walk");
     expect(screen.getByText("도보 경로를 불러오지 못했습니다.")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: /^총 / })).toBeNull();
-  });
-
-  it("계단 회피 토글과 안내 시작 버튼은 접힘 밖에 남는다", async () => {
-    stubFetch({ walk: "long" });
-    await queryRoutes("walk");
-    // 접힌 상태에서도 둘 다 도달 가능해야 한다(접힘 안에 넣으면 영영 못 누른다).
-    expect(walkDetail()).toBeNull();
-    expect(screen.getByRole("button", { name: "계단 회피 경로" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "도보 안내 시작" })).toBeTruthy();
-  });
-
-  it("계단 회피 재조회는 사용자가 펼친 상태를 보존한다", async () => {
-    stubFetch({ walk: "long" });
-    await queryRoutes("walk");
-    fireEvent.click(walkDisclosure()!);
-    expect(walkDetail()).not.toBeNull();
-
-    fireEvent.click(screen.getByRole("button", { name: "계단 회피 경로" }));
-    await waitFor(() => {
-      expect(
-        screen.getByRole("button", { name: "계단 회피 경로" }).getAttribute("aria-busy"),
-      ).toBe("false");
-    });
-    // 사용자 조작이 자동 판정을 이긴다. 재조회로 닫히면 조작이 배신당한다.
-    expect(walkDisclosure()?.getAttribute("aria-expanded")).toBe("true");
-    expect(walkDetail()).not.toBeNull();
+    expect(screen.queryByRole("button", { name: /^최단 경로, / })).toBeNull();
   });
 
   it("새 조회는 자동 판정으로 복귀한다", async () => {

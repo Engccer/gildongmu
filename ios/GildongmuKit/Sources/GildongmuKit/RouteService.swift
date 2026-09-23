@@ -107,7 +107,27 @@ public struct RouteService: Sendable {
         return envelope.result
     }
 
-    /// 추천+최단 병렬 조회(M3, 조회 화면 전용 — 기하 없음).
+    /// 조회 화면 도보 줄 목록(E42, `lines=1` 단독 옵트인 — 기하 없음). 모르는 종류의 줄은 뺀다.
+    /// 빈 배열은 "경로 없음", 첫 줄 실패는 서버 502라 throw(부분 성공 비대칭 — spec §2.1).
+    public func walkLines(
+        originLat: Double, originLng: Double,
+        destLat: Double, destLng: Double,
+        lang: DataLocale,
+        via: (lat: Double, lng: Double)?
+    ) async throws -> [WalkRouteLine] {
+        var query = [
+            URLQueryItem(name: "origin", value: coordPair(originLat, originLng)),
+            URLQueryItem(name: "dest", value: coordPair(destLat, destLng)),
+        ]
+        if lang != .ko { query.append(URLQueryItem(name: "lang", value: lang.rawValue)) }
+        if let via { query.append(URLQueryItem(name: "via", value: coordPair(via.lat, via.lng))) }
+        query.append(URLQueryItem(name: "lines", value: "1"))
+        let envelope: WalkRouteLinesEnvelope = try await client.get("/api/route/walk", query: query)
+        return envelope.lines.filter { $0.lineKind != nil }
+    }
+
+    /// 추천+최단 병렬 조회(M3, **옛 조회 화면 호환** — iOS 앱은 E42부터 `walkLines`를 쓰고, 안드로이드
+    /// 미러가 아직 이 계약을 쓴다. 서버는 봉투 모양을 유지한다 — spec 2026-09-23 §2.3).
     /// `shortest` nil은 "필드 부재(키 없음)"와 "최단 실패 흡수(null)"를 뭉친 것 —
     /// 両경우 소비자 행동이 같다(최단 행 미노출). 기본 경로 실패는 서버가 502로
     /// 던지므로 여기 도달하지 않는다(부분 성공 비대칭, spec §3.1).
@@ -131,7 +151,7 @@ public struct RouteService: Sendable {
     }
 }
 
-/// 도보 경로 축(M3). 서버 `variant` 쿼리 값과 1:1.
+/// 도보 경로 축(M3). 서버 `variant` 쿼리 값과 1:1. E42부터 ko는 카카오 `SHORTEST`(폴백 Tmap), en은 Tmap.
 public enum WalkRouteVariant: String, Sendable {
     case shortest
 }

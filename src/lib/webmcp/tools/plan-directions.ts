@@ -30,7 +30,7 @@ export const SHAPE = withFailure({
   ok: true,
   view: true,
   planId: true,
-  resolved: { from: true, to: true, via: true, avoidStairs: true },
+  resolved: { from: true, to: true, via: true },
   transit: {
     outcome: true,
     recommended: {
@@ -46,12 +46,7 @@ export const SHAPE = withFailure({
   },
   walk: {
     outcome: true,
-    distanceMeters: true,
-    durationSeconds: true,
-    stepCount: true,
-    stepFree: true,
-    stepFreeNotice: true,
-    shortest: { distanceMeters: true, durationSeconds: true, stepCount: true },
+    lines: [{ kind: true, label: true, distanceMeters: true, durationSeconds: true, stepCount: true }],
   },
   car: { outcome: true, distanceMeters: true, durationSeconds: true, guideCount: true },
 });
@@ -180,7 +175,7 @@ export function planDirectionsTool(): WebMcpTool {
   return {
     name: "plan_directions",
     description:
-      "Plan a trip: resolve the destination (to, or toRef from search_places), optional origin, one via point and stair-avoiding walk, run the search for transit, walking and driving as the user would, and return a summary per mode with a planId and route keys. Origin defaults to the user's current location, which stays in the browser. Ambiguous names return candidates. The app moves to the directions screen.",
+      "Plan a trip: resolve the destination (to, or toRef from search_places), optional origin and one via point, run the search for transit, walking and driving as the user would, and return a summary per mode with a planId and route keys. Walking returns its lines as shown on screen (Korean data: shortest, then step-free or, if none, main-road). Origin defaults to the user's current location, which stays in the browser. Ambiguous names return candidates. The app moves to the directions screen.",
     inputSchema: {
       type: "object",
       properties: {
@@ -206,10 +201,6 @@ export function planDirectionsTool(): WebMcpTool {
           description: "One via point. Transit does not support via and reports unsupportedWaypoint.",
         },
         viaCandidateId: { type: "string" },
-        avoidStairs: {
-          type: "boolean",
-          description: "Prefer a stair-free walking route. Default false.",
-        },
       },
       additionalProperties: false,
     },
@@ -255,9 +246,9 @@ export function planDirectionsTool(): WebMcpTool {
       }
       if (signal?.aborted) return finish(failure("aborted"), SHAPE);
 
-      // 완전 교체(리뷰 #24): 생략된 from은 현재 위치, via는 없음, avoidStairs는 false로 한 번에.
+      // 완전 교체(리뷰 #24): 생략된 from은 현재 위치, via는 없음으로 한 번에.
       const outcome = await bridge.runQuery(
-        { from, to: to.endpoint, via, avoidStairs: input.avoidStairs === true },
+        { from, to: to.endpoint, via },
         signal ?? new AbortController().signal,
       );
       switch (outcome.kind) {
@@ -354,18 +345,14 @@ export function summarizePlan(plan: ToolPlan): Record<string, unknown> {
   const walk = plan.walk
     ? {
         outcome: plan.walk.outcome,
-        distanceMeters: plan.walk.distanceMeters,
-        durationSeconds: plan.walk.durationSeconds,
-        stepCount: plan.walk.outcome === "done" ? plan.walk.steps.length : undefined,
-        stepFree: plan.walk.stepFree,
-        stepFreeNotice: plan.walk.stepFreeNotice,
-        shortest: plan.walk.shortest
-          ? {
-              distanceMeters: plan.walk.shortest.distanceMeters,
-              durationSeconds: plan.walk.shortest.durationSeconds,
-              stepCount: plan.walk.shortest.steps.length,
-            }
-          : undefined,
+        // 줄 목록(E42) — 화면 순서·화면 문장. 줄을 고른 단계 조회는 get_route_steps의 `variant`(줄 종류).
+        lines: plan.walk.lines.map((l) => ({
+          kind: l.kind,
+          label: l.label,
+          distanceMeters: l.distanceMeters,
+          durationSeconds: l.durationSeconds,
+          stepCount: l.steps.length,
+        })),
       }
     : undefined;
   const car = plan.car

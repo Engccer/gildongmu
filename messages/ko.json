@@ -198,7 +198,9 @@
     "viaArrived": "경유지 {label} 도착",
     "unsupportedWaypoint": "경유지는 대중교통 경로에서 지원하지 않습니다.",
     "walkRecommended": "추천 경로",
-    "walkShortest": "최단 경로"
+    "walkShortest": "최단 경로",
+    "walkAccessible": "계단 회피 경로",
+    "walkBroad": "큰길 경로"
   },
   "detail": {
     "back": "검색 결과로 돌아가기"
@@ -707,6 +709,10 @@
     "briefGuideStart": "직선거리 안내 시작",
     "stopped": "실시간 안내를 종료했습니다",
     "guideStartWalk": "도보 안내 시작",
+    "guideStartWalkShortest": "최단 경로로 안내 시작",
+    "guideStartWalkAccessible": "계단 회피 경로로 안내 시작",
+    "guideStartWalkBroad": "큰길 경로로 안내 시작",
+    "guideStartWalkRecommended": "추천 경로로 안내 시작",
     "guideStartCar": "자동차 안내 시작",
     "guideStartTransitAlt": "{name} 안내 시작",
     "transitHeading": "대중교통 안내"

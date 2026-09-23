@@ -8,6 +8,7 @@ const base = {
   includeGeometry: null,
   variant: null,
   alternatives: null,
+  lines: null,
   via: null,
   lang: null,
 };
@@ -105,6 +106,27 @@ describe("walk 파라미터 조합표 (M3 spec §3.1)", () => {
       expect(parseWalkQuery({ ...base, via: "37.5,127.1", variant: "shortest" }).ok).toBe(true);
       expect(parseWalkQuery({ ...base, via: "37.5,127.1", alternatives: "1" }).ok).toBe(true);
       expect(parseWalkQuery({ ...base, via: "37.5,127.1", accessible: "true" }).ok).toBe(true);
+    });
+  });
+
+  describe("lines (E42)", () => {
+    it("정확히 1만 받는다", () => {
+      const r = parseWalkQuery({ ...base, lines: "1" });
+      expect(r.ok).toBe(true);
+      if (r.ok) expect(r.data.lines).toBe(true);
+      expect(parseWalkQuery({ ...base, lines: "true" }).ok).toBe(false);
+    });
+
+    it("단독 옵트인 — variant·alternatives·includeGeometry·accessible=true와 조합하면 400", () => {
+      expect(parseWalkQuery({ ...base, lines: "1", variant: "shortest" }).ok).toBe(false);
+      expect(parseWalkQuery({ ...base, lines: "1", alternatives: "1" }).ok).toBe(false);
+      expect(parseWalkQuery({ ...base, lines: "1", includeGeometry: "1" }).ok).toBe(false);
+      expect(parseWalkQuery({ ...base, lines: "1", accessible: "true" }).ok).toBe(false);
+    });
+
+    it("via·lang·accessible=false와는 조합된다", () => {
+      expect(parseWalkQuery({ ...base, lines: "1", via: "37.505,127.105", lang: "en" }).ok).toBe(true);
+      expect(parseWalkQuery({ ...base, lines: "1", accessible: "false" }).ok).toBe(true);
     });
   });
 });

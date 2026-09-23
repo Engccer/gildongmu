@@ -23,12 +23,18 @@ export function walkRouteUrl(params: {
    * 주고, 그 사실은 비-ko 사용자에게 낭독으로만 드러난다.
    */
   lang: "ko" | "en";
+  /**
+   * 경로 축(E42): `"shortest"`=최단 줄의 안내, null=기본 파이프라인(큰길·추천·계단 회피). 같은 이유로
+   * required — 빠뜨린 조회는 오류 없이 **다른 줄의 경로**를 준다(A13 "최단 경로가 추천 경로로 조용히 바뀐다").
+   */
+  variant: "shortest" | null;
 }): string {
-  const { origin, dest, accessible, includeGeometry, via, lang } = params;
+  const { origin, dest, accessible, includeGeometry, via, lang, variant } = params;
   let url = `/api/route/walk?origin=${origin.lat},${origin.lng}&dest=${dest.lat},${dest.lng}`;
   if (via) url += `&via=${via.lat},${via.lng}`;
   if (accessible) url += "&accessible=true";
   if (includeGeometry) url += "&includeGeometry=1";
+  if (variant) url += `&variant=${variant}`;
   // ko는 파라미터를 붙이지 않는다 — 기존 캐시 키·기존 테스트 단언 유지(옵트인 관례).
   if (lang !== "ko") url += `&lang=${lang}`;
   return url;
