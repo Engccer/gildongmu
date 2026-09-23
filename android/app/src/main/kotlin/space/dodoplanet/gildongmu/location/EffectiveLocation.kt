@@ -31,6 +31,23 @@ class EffectiveLocation(
     }
 
     /**
+     * 표시용 GPS 좌표(길찾기 "현재 위치" 칸 주소 병기, iOS `loadCurrentAddressIfAuthorized` 자리): 수동이면 **측위 0**(null — 칸은 수동 문장을
+     * 쓴다, 판정 35), 아니면 `LocationStore.coordinateForDisplay`(권한 있을 때만·저장 좌표 폴백 없음). 폴백 대신 `staleFix`가 옛 위치를 밝힌다.
+     */
+    suspend fun coordinateForDisplay(): NearbyCoord? {
+        manual.awaitHydrated()
+        if (manual.current.value != null) return null
+        return location.coordinateForDisplay()
+    }
+
+    /** 옛 위치(spec 2026-09-23 stale-origin): 수동 위치가 이긴다(null), 아니면 `LocationStore.staleFix`. 동기 — hydration은 스스로 보장한다. */
+    fun staleFix(): StaleFix? {
+        manual.hydrate()
+        if (manual.current.value != null) return null
+        return location.staleFix()
+    }
+
+    /**
      * 채팅 전송 직전 prime(iOS `currentCoordinate(timeout: softTimeout)` 자리, M6 spec §4-1): 수동이면 **측위 0**(판정 35 — 수동 상태의 GPS 측위는
      * 판정뿐), 아니면 soft 상한 GPS(첫 사용이면 권한 다이얼로그 — spec §4의 세 자리 중 하나). 실패는 호출자가 삼킨다(위치는 필수가 아니다).
      */

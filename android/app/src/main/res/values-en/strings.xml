@@ -582,6 +582,7 @@
     <string name="directions_searchFrom">Search starting point</string>
     <string name="directions_searchTo">Search destination</string>
     <string name="directions_searchVia">Search waypoint</string>
+    <string name="directions_staleOriginNotice">Couldn\'t get your current location, so routes use where you were %1$s.</string>
     <string name="directions_submit">Get routes</string>
     <string name="directions_swap">Swap start and destination</string>
     <string name="directions_title">Directions</string>
@@ -747,11 +748,16 @@
     <string name="manualLocation_gps">Current location</string>
     <string name="manualLocation_gpsFailed">Location unavailable</string>
     <string name="manualLocation_gpsNear">Current location (near %1$s)</string>
+    <string name="manualLocation_gpsStale">Last known location, %1$s, %2$s</string>
+    <string name="manualLocation_gpsStaleNoAddress">Last known location, %1$s</string>
     <string name="manualLocation_guideStartsFromCurrent">Guidance starts from your current location.</string>
     <string name="manualLocation_locating">Checking current location</string>
     <string name="manualLocation_manual">Set location, %1$s</string>
     <string name="manualLocation_manualUnverifiable">Set location, %1$s (cannot verify)</string>
     <string name="manualLocation_pickTitle">Set your location</string>
+    <string name="manualLocation_staleAgeHours">{1, plural, one {%1$s hour ago} other {%1$s hours ago}}</string>
+    <string name="manualLocation_staleAgeJustNow">just now</string>
+    <string name="manualLocation_staleAgeMinutes">{1, plural, one {%1$s minute ago} other {%1$s minutes ago}}</string>
     <string name="manualLocation_useGps">Back to current location</string>
     <string name="nav_english">English</string>
     <string name="nav_french">Français</string>

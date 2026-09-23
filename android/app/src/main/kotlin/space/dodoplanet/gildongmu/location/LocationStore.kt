@@ -1,6 +1,9 @@
 package space.dodoplanet.gildongmu.location
 
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withTimeoutOrNull
 import space.dodoplanet.gildongmu.kit.LocationFixPolicy
 import space.dodoplanet.gildongmu.kit.ManualFix
@@ -9,6 +12,9 @@ import space.dodoplanet.gildongmu.kit.canReuseCachedFix
 import space.dodoplanet.gildongmu.kit.isBetterFix
 import space.dodoplanet.gildongmu.kit.isStorableFix
 import space.dodoplanet.gildongmu.kit.shouldAcceptFix
+
+/** 옛 위치(spec 2026-09-23 stale-origin §4.3): 좌표 + 측정 시각(epoch 초). `location` 밖에서도 쓰는 값이라 최상위 타입이다. */
+data class StaleFix(val lat: Double, val lng: Double, val fixedAtEpoch: Double)
 
 /** 위치 취득 실패의 세 원인(iOS `LocationError` 미러). 조회 실패와 뭉개지 않는다(3-state). */
 class LocationException(val kind: Kind) : Exception(kind.name) {
@@ -29,11 +35,47 @@ class LocationStore(
 ) {
     data class StoredFix(val lat: Double, val lng: Double, val accuracy: Double, val fixedAtElapsedMs: Long)
 
+
     var stored: StoredFix? = null
+        internal set(value) {
+            field = value
+            // 좌표가 새로 들어왔다 — 옛 위치를 푼다(단발·타임아웃 최선값 공통, stale-origin §2).
+            failedSinceLastStore = false
+            publishStale()
+        }
 
     /** 시도해서 실패한 상태(확정된 실패, 표시줄 판정 재료 — iOS `lastFixFailed`). */
     var lastFixFailed: Boolean = false
         private set
+
+    /**
+     * 보관 좌표를 마지막으로 쓴 뒤 **취득 실패**(시간 초과·fix 0·기기 위치 꺼짐)가 있었는가(iOS `failedSinceLastStore` 미러). 권한 없음·
+     * 대략적 위치·조용한 측위의 실패는 세우지 않는다 — 앞의 둘은 옛 위치로 답하지 않는 상태이고, 조용한 측위는 표시를 흔들지 않는다.
+     * 내리는 자리는 `stored` 쓰기 하나다.
+     */
+    private var failedSinceLastStore = false
+
+    private val _staleChanges = MutableStateFlow<StaleFix?>(null)
+
+    /**
+     * 옛 위치의 관찰 채널(표시줄이 구독한다 — `ensureLoaded` 스냅샷만으로는 다른 화면의 성공·실패를 못 따라간다). 값은 옛 위치가 서거나
+     * 풀리는 순간의 `staleFix()`이고, 판정 자체는 늘 `staleFix()`가 정본이다(권한은 호출 시점에 다시 본다).
+     */
+    val staleChanges: StateFlow<StaleFix?> = _staleChanges.asStateFlow()
+
+    /** 옛 위치: 보관 좌표를 쓴 뒤 취득 실패가 있었으면 그 좌표와 측정 시각(epoch 초), 아니면 null(iOS `staleFix` 미러). 권한 `Fine`이 먼저다. */
+    fun staleFix(): StaleFix? {
+        if (!failedSinceLastStore || permissions.current() != LocationPermission.Fine) return null
+        val fix = stored ?: return null
+        return StaleFix(fix.lat, fix.lng, epochNow() - ageOf(fix))
+    }
+
+    private fun publishStale() {
+        val next = staleFix()
+        // 측정 시각은 epoch 환산이라 호출마다 미세하게 다르다 — 같은 좌표·같은 옛 위치면 다시 내보내지 않는다.
+        val prev = _staleChanges.value
+        if (next == null || prev == null || next.lat != prev.lat || next.lng != prev.lng) _staleChanges.value = next
+    }
 
     /** 기기 위치 서비스 켜짐 여부(화면의 `FailedLocation` 문구 판정용 — `LocationManager` 접근은 `location/`에서만). */
     fun isLocationEnabled(): Boolean = source.isLocationEnabled()
@@ -69,13 +111,19 @@ class LocationStore(
             LocationPermission.Fine -> Unit
         }
         // 권한 뒤, 취득 앞(권한 앞에 두면 위치를 켜고 돌아온 뒤에야 권한 다이얼로그가 떠 두 단계 왕복).
-        if (!source.isLocationEnabled()) { if (!silent) lastFixFailed = true; throw LocationException(LocationException.Kind.Unavailable) }
+        if (!source.isLocationEnabled()) { if (!silent) markUnavailable(); throw LocationException(LocationException.Kind.Unavailable) }
         return try {
             acquireGatedFix(timeoutMs, acceptAccuracy).also { lastFixFailed = false }
         } catch (e: LocationException) {
-            if (!silent) lastFixFailed = true
+            if (!silent) markUnavailable()
             throw e
         }
+    }
+
+    private fun markUnavailable() {
+        lastFixFailed = true
+        failedSinceLastStore = true
+        publishStale()
     }
 
     /**

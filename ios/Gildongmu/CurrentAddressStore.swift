@@ -26,8 +26,8 @@ final class CurrentAddressStore {
     /// 비-ko 1순위 표시 후보(juso 공식 영문 → 규칙 로마자, E28). ko 언어 조회는 nil.
     private(set) var english: String?
 
-    /// 주소가 확정된 좌표의 키. 조회 중복 판정에만 쓴다.
-    @ObservationIgnored private var loadedKey: String?
+    /// 주소가 확정된 좌표의 키. 조회 중복 판정과 옛 위치 주소 대조(`isAddress(forLat:lng:)`)에 쓴다.
+    private var loadedKey: String?
     /// 진행 중 조회 가드. 세 화면이 동시에 나타나도 왕복은 한 번이다.
     @ObservationIgnored private var inflight = false
     @ObservationIgnored private let service = SearchService(client: APIClient(baseURL: AppConfig.apiBaseURL))
@@ -38,6 +38,12 @@ final class CurrentAddressStore {
     /// 않으면서, 실제로 움직였으면 키가 갈린다(웹 `coordAddressKey` 미러).
     private static func key(lat: Double, lng: Double) -> String {
         String(format: "%.4f,%.4f", lat, lng)
+    }
+
+    /// 지금 들고 있는 주소가 이 좌표의 주소인가(언어 포함). 옛 위치 문장은 옛 좌표의 주소만
+    /// 싣는다 — 표시줄이 그 뒤 다른 좌표로 주소를 받아 두었으면 섞지 않는다.
+    func isAddress(forLat lat: Double, lng: Double) -> Bool {
+        loadedKey == Self.key(lat: lat, lng: lng) + "|" + AppLanguage.dataLocale
     }
 
     /// 표시용 좌표의 주소를 확보한다.
@@ -51,7 +57,11 @@ final class CurrentAddressStore {
         defer { inflight = false }
         // 미허용이면 loadedKey를 세우지 않는다 — 나중에 권한을 허용하면 그때
         // 조회된다. 이 경로는 네트워크도 팝업도 없이 즉시 nil이라 재시도가 싸다.
-        guard let coord = await LocationService.shared.coordinateForDisplay() else { return }
+        // 표시용 좌표가 없으면 옛 위치 좌표로 잇는다(spec 2026-09-23 stale-origin §4.2) — 그
+        // 주소는 옛 위치 문장으로만 표시된다(`coordinateForDisplay`의 "낡은 좌표 금지"는 그대로).
+        let fresh = await LocationService.shared.coordinateForDisplay()
+        guard let coord = fresh ?? LocationService.shared.staleFix.map({ (lat: $0.lat, lng: $0.lng) })
+        else { return }
         // 언어가 바뀌면 같은 좌표라도 다시 받는다(영문 병기는 en 응답에만 실린다).
         let lang = AppLanguage.dataLocale
         let key = Self.key(lat: coord.lat, lng: coord.lng) + "|" + lang

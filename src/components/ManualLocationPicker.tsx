@@ -10,6 +10,11 @@ import { resolveAddressCoord } from "@/lib/resolve-address-coord";
 import { awaitRealFix } from "@/lib/effective-location";
 import { isEligibleFix } from "@/lib/manual-location";
 import { clearManualLocation, setManualLocation } from "@/lib/manual-location-store";
+import {
+  DIRECTIONS_ORIGIN_MAX_AGE_SECONDS,
+  getGeolocationSnapshot,
+  requestLocation,
+} from "@/lib/geolocation";
 import { orderResultSections, combinedLiveMessage } from "@/lib/search-sections";
 import { SearchBar } from "./SearchBar";
 import { ResultList } from "./ResultList";
@@ -262,6 +267,13 @@ export function ManualLocationPicker({ onClose }: { onClose: () => void }) {
         type="button"
         onClick={() => {
           clearManualLocation();
+          // 수동 위치 동안의 판정 측위는 조용해서(silent) 실패해도 옛 좌표를 `ready`로 남긴다.
+          // 해제는 "그럼 지금 어디냐"이므로 캐시가 낡았으면 다시 잰다 — 안 그러면 옛 주소가
+          // "현재 위치"로 돌아온다(stale-origin 설계 리뷰 M1). 신선하면 아무 일도 없고, 좌표가
+          // 없던 세션(`ready` 아님)은 건드리지 않는다 — 여기서 권한 팝업을 띄우지 않는다.
+          if (getGeolocationSnapshot().status === "ready") {
+            requestLocation({ maxAgeSeconds: DIRECTIONS_ORIGIN_MAX_AGE_SECONDS });
+          }
           onClose();
         }}
         className="mt-1 min-h-11 w-full rounded-md border border-border px-3 py-2 text-left hover:bg-accent/10"

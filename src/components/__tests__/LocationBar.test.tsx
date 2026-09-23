@@ -322,3 +322,83 @@ describe("LocationBar — GPS 주소 병기", () => {
     });
   });
 });
+
+/**
+ * 옛 위치(위원장 판정 2026-09-23, spec stale-origin): 재측위가 취득 실패로 끝났는데 직전
+ * 좌표가 있으면 옛 주소를 "현재 위치"로 말하지 않고 옛 위치임과 시각을 밝힌다.
+ */
+describe("LocationBar — 옛 위치", () => {
+  const FIX_MS = Date.parse("2026-09-23T06:00:00Z");
+  let fail = false;
+  let failCode = 3;
+
+  beforeEach(() => {
+    localStorage.clear();
+    __resetGeolocationForTest();
+    __resetManualLocationForTest();
+    __resetCurrentAddressForTest();
+    fail = false;
+    failCode = 3;
+    vi.stubGlobal("navigator", {
+      geolocation: {
+        getCurrentPosition: (ok: PositionCallback, err: PositionErrorCallback) =>
+          fail
+            ? err({ code: failCode } as GeolocationPositionError)
+            : ok({
+                coords: {
+                  latitude: 37.5384, longitude: 127.1432, accuracy: 10,
+                  altitude: null, altitudeAccuracy: null, heading: null, speed: null,
+                },
+                timestamp: FIX_MS,
+              } as GeolocationPosition),
+      },
+    });
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ address: "성내로 12" }) })));
+    // 결정론: 시계와 타이머를 손으로만 진행한다(waitFor는 가짜 타이머 아래서 부하에 흔들린다).
+    vi.useFakeTimers({ toFake: ["Date", "setInterval", "setTimeout", "clearInterval", "clearTimeout"] });
+    vi.setSystemTime(FIX_MS + 5 * 60_000);
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  /** 첫 틱(0ms)과 역지오코딩 응답을 흘려보낸다. */
+  async function settle(ms = 0) {
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(ms);
+    });
+  }
+
+  function staleAfterRefetch(code = 3) {
+    requestLocation();
+    fail = true;
+    failCode = code;
+    requestLocation({ force: true });
+  }
+
+  it("재측위 실패 뒤 '마지막으로 확인한 위치, 주소, N분 전'으로 읽힌다", async () => {
+    staleAfterRefetch();
+    renderBar();
+    await settle();
+    expect(
+      screen.getByRole("button", { name: "마지막으로 확인한 위치, 성내로 12, 5분 전, 위치 지정하기" }),
+    ).toBeTruthy();
+  });
+
+  it("열어 둔 동안 시각을 다시 계산한다", async () => {
+    staleAfterRefetch();
+    renderBar();
+    await settle();
+    expect(screen.getByRole("button", { name: /5분 전/ })).toBeTruthy();
+    await settle(61 * 60_000);
+    expect(screen.getByRole("button", { name: /1시간 전/ })).toBeTruthy();
+  });
+
+  it("권한 거부는 옛 위치로 말하지 않는다(위치를 확인할 수 없습니다)", async () => {
+    staleAfterRefetch(1);
+    renderBar();
+    await settle();
+    expect(screen.getByRole("button", { name: "위치를 확인할 수 없습니다, 위치 지정하기" })).toBeTruthy();
+  });
+});

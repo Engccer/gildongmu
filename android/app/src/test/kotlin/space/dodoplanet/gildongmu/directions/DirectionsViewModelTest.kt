@@ -9,6 +9,7 @@ import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.extension.RegisterExtension
 import space.dodoplanet.gildongmu.MainDispatcherExtension
+import space.dodoplanet.gildongmu.location.StaleFix
 import space.dodoplanet.gildongmu.kit.APIClient
 import space.dodoplanet.gildongmu.kit.DirectionsEndpoint
 import space.dodoplanet.gildongmu.kit.ManualFix
@@ -68,11 +69,15 @@ class DirectionsViewModelTest {
         var current: () -> NearbyCoord,
         var ranking: NearbyCoord? = null,
         var precise: Boolean = false,
+        var display: NearbyCoord? = null,
+        var stale: StaleFix? = null,
     ) : EndpointLocator {
         val forces = ArrayList<Boolean>()
         var preciseCalls = 0
         override suspend fun currentCoordinate(force: Boolean): NearbyCoord { forces += force; return current() }
         override suspend fun coordinateForRanking(): NearbyCoord? = ranking
+        override suspend fun coordinateForDisplay(): NearbyCoord? = display
+        override fun staleFix(): StaleFix? = stale
         override suspend fun requestPreciseLocation(): Boolean { preciseCalls++; return precise }
     }
 
@@ -201,6 +206,43 @@ class DirectionsViewModelTest {
             assertEquals(text, m.state.value.notice.text)
             assertTrue(r.paths().none { it.startsWith("/api/route") })
         }
+    }
+
+    @Test fun `옛 위치 — 취득 실패면 옛 좌표로 조회하고 칸·완료 통지가 옛 위치를 밝힌다`() = runTest(dispatcher) {
+        val r = Routes(transit = transitBody, walk = walkBody, car = carBody, reverse = """{"address":"서울 강동구 길동"}""")
+        val fixedAt = System.currentTimeMillis() / 1000.0 - 5 * 60 - 10
+        val m = vm(r, FakeLocator({ throw LocationException(LocationException.Kind.Unavailable) }, stale = StaleFix(37.53, 127.14, fixedAt)))
+        m.setEndpoint(gangnam, DirectionsFieldTarget.to)
+        m.runQuery(); dispatcher.scheduler.advanceUntilIdle()
+        assertTrue(m.state.value.phase is DirectionsPhase.Settled)
+        assertTrue(m.state.value.notice.text.endsWith(" 현재 위치를 확인하지 못해 5분 전에 확인한 위치로 찾았습니다."), m.state.value.notice.text)
+        assertTrue(r.seen.any { it.contains("/api/route/") && it.contains("37.53") })
+        assertEquals("출발지, 마지막으로 확인한 위치, 서울 강동구 길동, 5분 전", m.fieldText(DirectionsFieldTarget.from, accessible = true, lang = "ko"))
+    }
+
+    @Test fun `옛 위치가 있어도 권한 축 실패는 옛 위치로 계속하지 않는다`() = runTest(dispatcher) {
+        val r = allOk()
+        val m = vm(r, FakeLocator({ throw LocationException(LocationException.Kind.Denied) }, stale = StaleFix(37.53, 127.14, 1.0)))
+        m.setEndpoint(gangnam, DirectionsFieldTarget.to)
+        m.runQuery(); dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(DirectionsPhase.GeoDenied, m.state.value.phase)
+        assertTrue(r.paths().none { it.startsWith("/api/route") })
+    }
+
+    @Test fun `재선택이 취득 실패면 옛 위치로, 옛 좌표도 없으면 주소를 비운다`() = runTest(dispatcher) {
+        val reverse = """{"address":"서울 강동구 길동"}"""
+        val loc = FakeLocator({ seoul }, display = seoul)
+        val m = vm(Routes(reverse = reverse), loc)
+        m.loadCurrentAddressIfAuthorized(); dispatcher.scheduler.advanceUntilIdle()
+        assertEquals("출발지, 현재 위치(서울 강동구 길동 부근)", m.fieldText(DirectionsFieldTarget.from, accessible = true, lang = "ko"))
+        loc.current = { throw LocationException(LocationException.Kind.Unavailable) }
+        loc.stale = StaleFix(37.5385, 127.1355, System.currentTimeMillis() / 1000.0 - 30)
+        m.refreshCurrentLocation(); dispatcher.scheduler.advanceUntilIdle()
+        assertEquals("출발지, 마지막으로 확인한 위치, 서울 강동구 길동, 방금 전", m.fieldText(DirectionsFieldTarget.from, accessible = true, lang = "ko"))
+        loc.stale = null
+        loc.current = { throw LocationException(LocationException.Kind.Denied) }
+        m.refreshCurrentLocation(); dispatcher.scheduler.advanceUntilIdle()
+        assertEquals("출발지, 현재 위치", m.fieldText(DirectionsFieldTarget.from, accessible = true, lang = "ko"))
     }
 
     @Test fun `정확한 위치 허용 - 참이면 재조회, 거짓이면 통지만`() = runTest(dispatcher) {
@@ -467,10 +509,10 @@ class DirectionsViewModelTest {
 
     @Test fun `주소 병기는 허가된 세션에서만 조용히`() = runTest(dispatcher) {
         val reverse = """{"address":"서울 강동구 길동"}"""
-        val m = vm(Routes(reverse = reverse), FakeLocator({ seoul }, ranking = null))
+        val m = vm(Routes(reverse = reverse), FakeLocator({ seoul }, display = null))
         m.loadCurrentAddressIfAuthorized(); dispatcher.scheduler.advanceUntilIdle()
         assertNull(m.state.value.currentAddress)
-        val m2 = vm(Routes(reverse = reverse), FakeLocator({ seoul }, ranking = seoul))
+        val m2 = vm(Routes(reverse = reverse), FakeLocator({ seoul }, display = seoul))
         m2.loadCurrentAddressIfAuthorized(); dispatcher.scheduler.advanceUntilIdle()
         assertEquals("서울 강동구 길동", m2.state.value.currentAddress)
     }
@@ -594,7 +636,7 @@ class DirectionsViewModelTest {
             }
         }
         val client = APIClient("https://example.test", slow)
-        val loc = FakeLocator({ seoul }, ranking = seoul)
+        val loc = FakeLocator({ seoul }, display = seoul)
         val m = DirectionsViewModel(RouteService(client), SearchService(client), RecentSearchStore(InMemoryKeyValueStore()), loc, { "ko" }, ko, SavedStateHandle(), prefill = MutableStateFlow(null), takePrefill = { false }, io = dispatcher)
         m.loadCurrentAddressIfAuthorized(); dispatcher.scheduler.runCurrent()
         m.openPicker(DirectionsFieldTarget.from); m.selectCurrent(); dispatcher.scheduler.runCurrent()

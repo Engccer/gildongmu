@@ -117,6 +117,9 @@
   "directions.readySummary": [
     "count"
   ],
+  "directions.staleOriginNotice": [
+    "age"
+  ],
   "directions.viaArrived": [
     "label"
   ],
@@ -567,11 +570,24 @@
   "manualLocation.gpsNear": [
     "address"
   ],
+  "manualLocation.gpsStale": [
+    "address",
+    "age"
+  ],
+  "manualLocation.gpsStaleNoAddress": [
+    "age"
+  ],
   "manualLocation.manual": [
     "label"
   ],
   "manualLocation.manualUnverifiable": [
     "label"
+  ],
+  "manualLocation.staleAgeHours": [
+    "count"
+  ],
+  "manualLocation.staleAgeMinutes": [
+    "count"
   ],
   "place.distance": [
     "distance"

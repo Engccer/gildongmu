@@ -98,14 +98,20 @@ final class DirectionsModel {
     var currentAddress: String? { addressState.address.original }
     /// `currentAddress`의 비-ko 1순위 표기(juso 공식 영문 → 로마자, E28). ko 요청·부재는 nil.
     var currentAddressEnglish: String? { addressState.address.english }
-    /// `results`가 마지막으로 확정될 때 출발지가 수동 위치였는가(웹 originSource
-    /// 미러, DirectionsView.tsx). "지금 수동 위치가 켜져 있는가"가 아니라 **화면에
+    /// "현재 위치" 끝점이 옛 위치로 풀렸을 때 그 좌표의 측정 시각(spec 2026-09-23 stale-origin
+    /// §4.2). nil = 신선하거나 모름. 이때 `currentAddress`는 그 옛 좌표의 주소다.
+    private(set) var currentStaleAt: Date?
+    /// 옛 위치로 계산한 결과면 완료 통지·상태 줄의 뒷문장(조회 시점의 경과로 굳힌다 — 상태 줄이
+    /// 1분마다 바뀌지 않게). `results`와 같은 순간에만 커밋한다.
+    private(set) var resultsStaleNotice: String?
+    /// `results`가 마지막으로 확정될 때 출발지가 수동 위치 **또는 옛 위치**였는가(웹 originSource
+    /// 미러, DirectionsView.tsx) — 안내 시작 순간 "현재 위치에서 시작한다" 고지의 근거. "지금 수동 위치가 켜져 있는가"가 아니라 **화면에
     /// 보이는 이 경로가 어느 좌표에서 계산됐는가**가 판정 축이다 — 조회 뒤 수동
     /// 위치를 껐다 켰다 해도 이 값은 그 조회 시점 그대로다(안내 시작 사전 고지의
     /// 근거, 정정 1~3). ⚠ `results`와 **항상 같은 순간에만** 커밋한다(성공 경로
     /// 단 한 곳) — 커버리지 밖 등 중간 return에서 `true·results=nil` 조합이
     /// 관찰 가능한 채로 남지 않도록(fix 라운드 1 Minor 2).
-    private(set) var resultsUsedManualOrigin = false
+    private(set) var resultsOriginNeedsStartNotice = false
     /// 이 조회의 목적지가 출입구로 승격됐으면 그 이름·좌표(A11). nil이면 승격 없음
     /// — **조회 실패와 구분하지 않는다**(둘 다 대표 좌표로 안내하므로 행동이 같다).
     ///
@@ -115,7 +121,7 @@ final class DirectionsModel {
     /// (그 상태로 두면 브리핑은 정문까지인데 안내 세션은 본관으로 가고, 화면은
     /// "정문까지 안내합니다"라고 말한다 — 거짓 문장).
     ///
-    /// ⚠ `results`와 **같은 순간에만** 커밋한다(`resultsUsedManualOrigin` 동형) —
+    /// ⚠ `results`와 **같은 순간에만** 커밋한다(`resultsOriginNeedsStartNotice` 동형) —
     /// 중간 return에서 승격본만 먼저 선 상태가 관찰 가능하면 안 된다.
     private(set) var promotedDestination: (label: String, lat: Double, lng: Double)?
     /// "현재 위치 사용" 강제 재측위 진행 신호. 필드 라벨 전환이 유일한 진행 표시.
@@ -279,7 +285,8 @@ final class DirectionsModel {
         isInFlight = false
         results = nil
         walkLines = []
-        resultsUsedManualOrigin = false
+        resultsOriginNeedsStartNotice = false
+        resultsStaleNotice = nil
         promotedDestination = nil
         phase = .idle
     }
@@ -299,14 +306,19 @@ final class DirectionsModel {
               from == .current || to == .current else { return }
         let request = beginCurrentAddress()
         defer { addressState.finish(request) }
-        guard let coord = await LocationService.shared.coordinateForDisplay() else { return }
+        // 표시용 좌표가 없고 직전 측위가 취득 실패였으면 옛 위치로 표기한다(stale-origin).
+        let fresh = await LocationService.shared.coordinateForDisplay()
+        let stale = fresh == nil ? LocationService.shared.staleFix : nil
+        guard let coord = fresh ?? stale.map({ (lat: $0.lat, lng: $0.lng) }) else { return }
         guard acceptsCurrentAddress(request) else { return }
+        currentStaleAt = stale?.fixedAt
         await syncCurrentAddress(lat: coord.lat, lng: coord.lng, request: request)
     }
 
     /// "현재 위치" 재선택(F-B) = 강제 재측위 + 주소 새로고침. 진행 신호는 필드 라벨
-    /// 전환뿐이고 갱신 신호는 라벨(주소)의 변화 자체(별도 통지 중복 금지). 재측위
-    /// 실패는 조용히 직전 라벨 유지(새로고침=재조회이지 데이터 포기 아님).
+    /// 전환뿐이고 갱신 신호는 라벨(주소)의 변화 자체(별도 통지 중복 금지). 재측위가
+    /// 취득 실패로 끝나면 옛 좌표를 옛 위치로 표기하고(stale-origin), 옛 좌표도 없으면
+    /// (권한 거부 등) 주소를 비운다 — 직전 라벨을 "현재 위치"로 남기면 옛 주소를 현재로 말한다.
     func refreshCurrentLocation() {
         if isRefreshingCurrent { return }
         let request = beginCurrentAddress()
@@ -315,10 +327,31 @@ final class DirectionsModel {
             defer {
                 if addressState.finish(request) { isRefreshingCurrent = false }
             }
-            guard let coord = try? await ManualLocationJudge.effectiveCoordinate(force: true) else { return }
+            var staleAt: Date?
+            let coord: (lat: Double, lng: Double)?
+            do throws(LocationService.LocationError) {
+                coord = try await ManualLocationJudge.effectiveCoordinate(force: true)
+            } catch {
+                let stale = staleOriginFallback(after: error)
+                coord = stale.map { (lat: $0.lat, lng: $0.lng) }
+                staleAt = stale?.fixedAt
+            }
             guard acceptsCurrentAddress(request) else { return }
+            currentStaleAt = staleAt
+            guard let coord else {
+                addressState.commit(nil, for: request, language: AppLanguage.dataLocale, isCancelled: Task.isCancelled)
+                return
+            }
             await syncCurrentAddress(lat: coord.lat, lng: coord.lng, request: request)
         }
+    }
+
+    /// 조회·재선택이 실패했을 때 옛 위치로 계속할 좌표(위원장 판정 2026-09-23). 취득 실패이고
+    /// 수동 위치가 없고 옛 좌표가 있을 때만 — 권한 거부·정밀 위치 꺼짐은 옛 위치로 답하지 않는다.
+    private func staleOriginFallback(after error: LocationService.LocationError)
+        -> (lat: Double, lng: Double, fixedAt: Date)? {
+        guard case .unavailable = error, ManualLocationStore.shared.current == nil else { return nil }
+        return LocationService.shared.staleFix
     }
 
     private func cancelCurrentAddress() {
@@ -372,7 +405,8 @@ final class DirectionsModel {
         guard !Task.isCancelled else { return }
         results = nil
         walkLines = [] // 스냅샷 교체(spec §4) — 이전 세대 줄을 지우고 시작
-        resultsUsedManualOrigin = false
+        resultsOriginNeedsStartNotice = false
+        resultsStaleNotice = nil
         promotedDestination = nil
         // 현재 위치 endpoint는 조회 시점에 측위(권한 팝업도 이 시점, 캐시 좌표 재사용).
         // effectiveCoordinate는 수동 위치가 켜져 있으면 그 좌표를 돌려준다(웹
@@ -385,6 +419,8 @@ final class DirectionsModel {
         // 인스턴스 프로퍼티에 커밋한다 — 커버리지 밖 등 중간 return에서 값만 먼저
         // 서고 `results`는 여전히 nil인 조합이 관찰 가능한 채로 남지 않도록.
         var usedManualOrigin = false
+        // 현재 위치 끝점이 옛 위치로 풀렸으면 그 좌표의 측정 시각(완료 통지 뒷문장·안내 시작 고지).
+        var staleAt: Date?
         if from == .current || to == .current {
             let addressRequest = beginCurrentAddress()
             phase = .locating
@@ -392,8 +428,15 @@ final class DirectionsModel {
             // 측위 대기 중(await) 수동 위치가 새로 켜지는 레이스에서 실제로는 GPS로
             // 받아온 좌표를 수동 기원으로 오분류하지 않는다.
             usedManualOrigin = from == .current && ManualLocationStore.shared.current != nil
-            do {
-                current = try await ManualLocationJudge.effectiveCoordinate(force: false)
+            do throws(LocationService.LocationError) {
+                do throws(LocationService.LocationError) {
+                    current = try await ManualLocationJudge.effectiveCoordinate(force: false)
+                } catch {
+                    // 취득 실패인데 옛 좌표가 있으면 그 옛 위치로 계속한다(stale-origin). 아니면 원래 실패 갈래로.
+                    guard let stale = staleOriginFallback(after: error) else { throw error }
+                    current = (lat: stale.lat, lng: stale.lng)
+                    staleAt = stale.fixedAt
+                }
                 guard !Task.isCancelled else { return }
                 // 좌표 해석 시점 선분기 — 현재 위치가 서비스 지역 밖이면 조회 자체를
                 // 중단한다(수단별 fetch·주소 동기화 전부 생략). 오류가 아니라 커버리지
@@ -406,6 +449,7 @@ final class DirectionsModel {
                 }
                 // 측위 전에 발급한 요청만 넘긴다. 늦은 측위가 최신 주소 요청을 만들지 않는다.
                 if let acquired = current, acceptsCurrentAddress(addressRequest) {
+                    currentStaleAt = staleAt
                     currentAddressTask = Task {
                         defer { addressState.finish(addressRequest) }
                         await syncCurrentAddress(lat: acquired.lat, lng: acquired.lng, request: addressRequest)
@@ -502,16 +546,22 @@ final class DirectionsModel {
         let built = DirectionsResults(outcomes: outcomes)
         results = built
         walkLines = linesCandidate
-        resultsUsedManualOrigin = usedManualOrigin
+        resultsOriginNeedsStartNotice = usedManualOrigin || (from == .current && staleAt != nil)
+        resultsStaleNotice = staleAt.map {
+            appLocalized("directions.staleOriginNotice", staleAgeText(fixedAt: $0, now: Date()))
+        }
         promotedDestination = promoted
         phase = .settled(successCount: built.successCount)
         hasQueriedOnce = true
         recordRecentRoute(from: from, to: to, via: via)
         resultsRevision += 1
         // 완료 통지는 합산 1문장뿐(수단별 개별 통지 금지). 포커스 이동은 뷰가 revision으로.
-        announce(built.successCount > 0
+        // 옛 위치로 찾았으면 같은 통지의 뒷문장으로 밝힌다(출발지 칸에만 있으면 조회 버튼을 누른
+        // 사용자는 칸으로 되돌아가야 안다). 한 사건이라 한 통지로 낸다.
+        let summary = built.successCount > 0
             ? appLocalized("directions.readySummary", built.successCount)
-            : appLocalized("directions.allFailed"),
+            : appLocalized("directions.allFailed")
+        announce([summary, resultsStaleNotice].compactMap { $0 }.joined(separator: " "),
             haptic: built.successCount > 0 ? .success : .failure)
     }
 
@@ -650,13 +700,20 @@ struct DirectionsTabView: View {
             List {
                 Section {
                     // 비-ko 현재 주소 병기(E28): 시각 `… (한글) …`, 낭독은 영문·로마자만(LocationBar 동형).
+                    // 옛 위치 문장의 "N분 전"이 멈추지 않게 1분마다 다시 그린다(stale-origin §3).
                     Button { searchTarget = .from } label: {
-                        bilingualLine(visible: fieldText(.from, accessible: false), accessible: fieldText(.from, accessible: true))
+                        TimelineView(.everyMinute) { context in
+                            bilingualLine(visible: fieldText(.from, accessible: false, now: context.date),
+                                          accessible: fieldText(.from, accessible: true, now: context.date))
+                        }
                     }
                         .accessibilityFocused($focusedEndpointField, equals: .from)
                     Button(appLocalized("directions.swap")) { model.swap() }
                     Button { searchTarget = .to } label: {
-                        bilingualLine(visible: fieldText(.to, accessible: false), accessible: fieldText(.to, accessible: true))
+                        TimelineView(.everyMinute) { context in
+                            bilingualLine(visible: fieldText(.to, accessible: false, now: context.date),
+                                          accessible: fieldText(.to, accessible: true, now: context.date))
+                        }
                     }
                         .accessibilityFocused($focusedEndpointField, equals: .to)
                     // 경유지(N4, 선택 사항) — 도착지와 경로 조회 사이. 확정되면 필드 버튼
@@ -1188,7 +1245,7 @@ struct DirectionsTabView: View {
     /// (리뷰 검출). 가드를 호출부가 아니라 여기 두는 이유: 호출부 넷이 각자 검사하면
     /// 하나가 빠진다.
     private func announceGuideStartIfManualOrigin() {
-        guard !beacon.isTracking, model.resultsUsedManualOrigin else { return }
+        guard !beacon.isTracking, model.resultsOriginNeedsStartNotice else { return }
         var message = AttributedString(appLocalized("manualLocation.guideStartsFromCurrent"))
         message.accessibilitySpeechAnnouncementPriority = .high
         AccessibilityNotification.Announcement(message).post()
@@ -1237,11 +1294,11 @@ struct DirectionsTabView: View {
     /// 필드 한 줄 = 한 객체: "출발지, 현재 위치"처럼 라벨+값 단일 텍스트(쉼표 결합).
     /// 미확정 필드는 검색 유도 라벨이 곧 버튼 이름.
     /// `accessible`은 병기 변종이다(E28): false=시각 `Roman (한글)`, true=낭독(괄호 없이). 한글 원문만이면 둘이 같다.
-    private func fieldText(_ target: DirectionsFieldTarget, accessible: Bool) -> String {
+    private func fieldText(_ target: DirectionsFieldTarget, accessible: Bool, now: Date) -> String {
         let label = target == .from ? appLocalized("directions.from") : appLocalized("directions.to")  // via는 위 폼 인라인
         switch model.endpoint(for: target) {
         case .current:
-            return "\(label), \(currentLocationText(accessible: accessible))"
+            return "\(label), \(currentLocationText(accessible: accessible, now: now))"
         case .place(let name, _, _, let roman):
             // 확정 필드도 후보 목록과 같은 이름으로 들려야 한다(a11y 감사 2026-09-02 — 후보는 로마자,
             // 필드는 한글이면 같은 곳이라는 근거가 SR 사용자에게 없다). 결과 행·세션 요청의 라벨은
@@ -1263,9 +1320,14 @@ struct DirectionsTabView: View {
     /// 써 검증 가능/불가 판정선이 갈리지 않게 한다 — 3-state 정직성), 그 외 재측위 중 →
     /// 진행 라벨, 주소 확보 → 주소 병기, 기본 "현재 위치". 한 줄 = 한 객체(필드
     /// 버튼 단일 텍스트에 흡수). 주소는 비-ko에서 영문·로마자 병기(E28, `LocationBarView` 동형).
-    private func currentLocationText(accessible: Bool) -> String {
+    private func currentLocationText(accessible: Bool, now: Date) -> String {
         if let manual = manualLocationLabel(manualLocationStore, accessible: accessible) { return manual }
         if model.isRefreshingCurrent { return appLocalized("directions.refreshingCurrent") }
+        // 옛 위치(stale-origin): 표시줄과 같은 문장 함수 — 판정선이 갈리면 화면으로 확인 불가.
+        if let staleAt = model.currentStaleAt {
+            let name = model.currentAddress.map { bilingual($0, en: model.currentAddressEnglish, roman: nil) }
+            return staleLocationText(address: accessible ? name?.primary : name?.display, fixedAt: staleAt, now: now)
+        }
         if let address = model.currentAddress {
             let name = bilingual(address, en: model.currentAddressEnglish, roman: nil)
             return appLocalized("directions.currentLocationNear", accessible ? name.primary : name.display)
@@ -1289,7 +1351,8 @@ struct DirectionsTabView: View {
         case .geoError: appLocalized("directions.geoError")
         case .outOfCoverage: appLocalized("ios.common.outOfCoverage")
         case .settled(let count):
-            count > 0 ? appLocalized("directions.readySummary", count) : appLocalized("directions.allFailed")
+            [count > 0 ? appLocalized("directions.readySummary", count) : appLocalized("directions.allFailed"),
+             model.resultsStaleNotice].compactMap { $0 }.joined(separator: " ")
         }
     }
 

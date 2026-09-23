@@ -197,6 +197,23 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
     /// 모두 `denied`로 합쳐 이 갈래가 애초에 없다.
     private(set) var lastFixFailed = false
 
+    /// 보관 좌표를 마지막으로 쓴 뒤 **취득 실패**(시간 초과·fix 0·추적 중 재사용 거부)가 있었는가.
+    /// 권한 거부·정밀 위치 꺼짐은 세우지 않는다 — 그 둘은 옛 위치로 답하지 않는 상태다.
+    /// 내리는 자리는 `stored`를 쓰는 곳 하나(`didUpdateLocations`)다: 단발·스트림·타임아웃 최선값
+    /// 어느 경로든 좌표가 새로 들어오면 옛 위치가 풀린다(spec 2026-09-23 stale-origin §2).
+    private(set) var failedSinceLastStore = false
+
+    /// 옛 위치: 보관 좌표를 쓴 뒤 취득 실패가 있었으면 그 좌표와 측정 시각. 아니면 nil.
+    ///
+    /// 표시줄·길찾기 "현재 위치"는 이것이 있으면 옛 주소를 "현재 위치"로 말하지 않고 옛 위치임과
+    /// 시각을 밝히며, 길찾기 조회는 이 좌표로 계속한다(위원장 판정 2026-09-23).
+    var staleFix: (lat: Double, lng: Double, fixedAt: Date)? {
+        guard failedSinceLastStore, isAuthorized, manager.accuracyAuthorization == .fullAccuracy,
+              let stored
+        else { return nil }
+        return (lat: stored.coord.lat, lng: stored.coord.lng, fixedAt: stored.fixedAt)
+    }
+
     /// 현재 정밀도 허가. 권한(허용/거부)과 **다른 축**이라 따로 노출한다 —
     /// reduced면 좌표가 1~20km 오차이고 `desiredAccuracy` 변경이 무효가 된다.
     var accuracySnapshot: CLAccuracyAuthorization { manager.accuracyAuthorization }
@@ -420,7 +437,12 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
         if isBeaconTracking {
             guard let latest = stored,
                   canReuseCachedFix(accuracy: latest.accuracy, age: latest.age, ttl: ttl, acceptAccuracy: acceptAccuracy)
-            else { throw LocationError.unavailable }
+            else {
+                // 동결된 스트림(정확도가 저장 상한을 계속 넘는 구간)에서 옛 좌표를 "현재"로 말하지 않게
+                // 실패로 기록한다 — 다음 storable 스트림 fix가 곧바로 풀어 준다(stale-origin §2).
+                failedSinceLastStore = true
+                throw LocationError.unavailable
+            }
             return latest.coord
         }
 
@@ -460,9 +482,11 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
             return coord
         } catch let error as LocationError {
             lastFixFailed = true
+            if case .unavailable = error { failedSinceLastStore = true }
             throw error
         } catch {
             lastFixFailed = true
+            failedSinceLastStore = true
             throw LocationError.unavailable
         }
     }
@@ -590,7 +614,11 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
             // 스트림 fix도 공유 스토어를 갱신한다. 안 하면 500m 걷고 조회했을 때
             // 출발 전 캐시 좌표로 경로가 계산된다("현재 위치는 한 곳" 불변식은
             // 호출 경로만이 아니라 값의 단일성까지를 뜻한다).
-            if storable, !self.isKeepAliveOnly { self.stored = fix }
+            if storable, !self.isKeepAliveOnly {
+                self.stored = fix
+                // 좌표가 새로 들어왔다 — 옛 위치를 푼다(단발·스트림 공통, stale-origin §2).
+                self.failedSinceLastStore = false
+            }
 
             if self.isOneShotActive {
                 if accepted {

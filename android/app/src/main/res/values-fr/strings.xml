@@ -582,6 +582,7 @@
     <string name="directions_searchFrom">Rechercher un départ</string>
     <string name="directions_searchTo">Rechercher une arrivée</string>
     <string name="directions_searchVia">Rechercher une étape</string>
+    <string name="directions_staleOriginNotice">Position actuelle introuvable : les itinéraires utilisent votre position connue %1$s.</string>
     <string name="directions_submit">Rechercher les itinéraires</string>
     <string name="directions_swap">Inverser le départ et l\'arrivée</string>
     <string name="directions_title">Itinéraire</string>
@@ -747,11 +748,16 @@
     <string name="manualLocation_gps">Position actuelle</string>
     <string name="manualLocation_gpsFailed">Position introuvable</string>
     <string name="manualLocation_gpsNear">Position actuelle (près de %1$s)</string>
+    <string name="manualLocation_gpsStale">Dernière position connue, %1$s, %2$s</string>
+    <string name="manualLocation_gpsStaleNoAddress">Dernière position connue, %1$s</string>
     <string name="manualLocation_guideStartsFromCurrent">Le guidage démarre depuis votre position actuelle.</string>
     <string name="manualLocation_locating">Vérification de la position actuelle</string>
     <string name="manualLocation_manual">Position définie, %1$s</string>
     <string name="manualLocation_manualUnverifiable">Position définie, %1$s (impossible à vérifier)</string>
     <string name="manualLocation_pickTitle">Définir votre position</string>
+    <string name="manualLocation_staleAgeHours">{1, plural, one {il y a %1$s heure} other {il y a %1$s heures}}</string>
+    <string name="manualLocation_staleAgeJustNow">à l\'instant</string>
+    <string name="manualLocation_staleAgeMinutes">{1, plural, one {il y a %1$s minute} other {il y a %1$s minutes}}</string>
     <string name="manualLocation_useGps">Revenir à la position actuelle</string>
     <string name="nav_english">English</string>
     <string name="nav_french">Français</string>

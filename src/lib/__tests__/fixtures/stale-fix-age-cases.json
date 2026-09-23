@@ -1,0 +1,15 @@
+{
+  "comment": "옛 위치 시간 표현(staleFixAge) 웹·Kit·:kit 동조 fixture (spec 2026-09-23-stale-origin-disclosure-design.md §3). 1분 미만 justNow, 1~59분 minutes(내림), 60분 이상 hours(내림). 음수(시계 역행)는 0으로 접는다. 비유한 값은 null(옛 위치 아님) — 각 플랫폼 단위 테스트가 커버.",
+  "ageCases": [
+    { "name": "0초 → 방금", "ageSeconds": 0, "expect": { "unit": "justNow", "count": 0 } },
+    { "name": "59.9초 → 방금", "ageSeconds": 59.9, "expect": { "unit": "justNow", "count": 0 } },
+    { "name": "60초 → 1분", "ageSeconds": 60, "expect": { "unit": "minutes", "count": 1 } },
+    { "name": "119초 → 1분(내림)", "ageSeconds": 119, "expect": { "unit": "minutes", "count": 1 } },
+    { "name": "300초 → 5분", "ageSeconds": 300, "expect": { "unit": "minutes", "count": 5 } },
+    { "name": "3599초 → 59분", "ageSeconds": 3599, "expect": { "unit": "minutes", "count": 59 } },
+    { "name": "3600초 → 1시간", "ageSeconds": 3600, "expect": { "unit": "hours", "count": 1 } },
+    { "name": "7199초 → 1시간(내림)", "ageSeconds": 7199, "expect": { "unit": "hours", "count": 1 } },
+    { "name": "90000초 → 25시간(일 단위 없음)", "ageSeconds": 90000, "expect": { "unit": "hours", "count": 25 } },
+    { "name": "음수(시계 역행) → 방금", "ageSeconds": -30, "expect": { "unit": "justNow", "count": 0 } }
+  ]
+}

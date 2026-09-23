@@ -158,6 +158,8 @@ describe("수량 문구 복수형(A29)", () => {
     "route.transit.legTransfer": "Transfer to  at , 1 stop",
     "route.transit.summary": "x min, x won, 1 transfer",
     "directions.candidateCount": "Found 1 candidate.",
+    "manualLocation.staleAgeMinutes": "1 minute ago",
+    "manualLocation.staleAgeHours": "1 hour ago",
     "directions.readySummary": "Route guidance is ready for 1 mode.",
     "guide.detailStart": "Walking guidance to x started. 1 instruction, x total. x",
     "guide.rerouteDone": "Route recalculated from your current location. 1 instruction, x total. x",

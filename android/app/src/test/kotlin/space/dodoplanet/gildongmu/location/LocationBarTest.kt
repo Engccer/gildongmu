@@ -11,8 +11,10 @@ class LocationBarTest {
     private val w = LocationBarWords(
         "위치 권한이 필요합니다", "정확한 위치가 꺼져 있습니다", "현재 위치", { "현재 위치($it 부근)" }, "확인 중", "위치 확인 실패",
         { "지정한 위치, $it" }, { "지정한 위치, $it(위치 확인 불가)" }, "위치 지정하기",
+        StaleWords({ a, age -> "마지막으로 확인한 위치, $a, $age" }, { "마지막으로 확인한 위치, $it" }, "방금 전", { "${it}분 전" }, { "${it}시간 전" }),
     )
-    private fun label(i: LocationBarInput, lang: String = "ko", manual: ManualLocation? = null, verdict: ManualVerdict? = null) = locationBarLabel(i, manual, verdict, lang, w)
+    private val now = 10_000.0
+    private fun label(i: LocationBarInput, lang: String = "ko", manual: ManualLocation? = null, verdict: ManualVerdict? = null) = locationBarLabel(i, manual, verdict, lang, w, now)
     private val fine = LocationBarInput(LocationPermission.Fine, true, false, "천호대로 1", "1 Cheonho-daero")
     private fun manual(origin: ManualFix? = ManualFix(37.5, 127.1, 20.0, 1.0), roman: String? = null) = ManualLocation(1, "길동역", roman, 37.5, 127.1, origin, 1.0)
 
@@ -64,5 +66,24 @@ class LocationBarTest {
         val m = manual(roman = "Gildong Station")
         assertEquals("지정한 위치, Gildong Station", manualLocationLabel(m, ManualVerdict.keep, "en", accessible = true, w.manual, w.manualUnverifiable))
         assertEquals("지정한 위치, Gildong Station (길동역)(위치 확인 불가)", manualLocationLabel(m, ManualVerdict.undecidable, "en", accessible = false, w.manual, w.manualUnverifiable))
+    }
+
+    @Test fun `옛 위치 — 좌표·주소보다 먼저, 주소와 경과를 밝힌다(주소 없으면 경과만)`() {
+        val stale = LocationBarInput(LocationPermission.Fine, true, true, "천호대로 1", null, staleFixAtEpoch = now - 5 * 60 - 10)
+        assertEquals("마지막으로 확인한 위치, 천호대로 1, 5분 전, 위치 지정하기", label(stale).visual)
+        assertEquals("마지막으로 확인한 위치, 방금 전, 위치 지정하기", label(stale.copy(address = null, staleFixAtEpoch = now - 20)).visual)
+        assertEquals("마지막으로 확인한 위치, 2시간 전, 위치 지정하기", label(stale.copy(address = null, staleFixAtEpoch = now - 7300)).visual)
+    }
+
+    @Test fun `옛 위치여도 권한 축이 먼저다`() {
+        val stale = LocationBarInput(LocationPermission.None, true, true, "천호대로 1", null, staleFixAtEpoch = now - 300)
+        assertEquals("위치 권한이 필요합니다, 위치 지정하기", label(stale).visual)
+        assertEquals("정확한 위치가 꺼져 있습니다, 위치 지정하기", label(stale.copy(permission = LocationPermission.Coarse)).visual)
+    }
+
+    @Test fun `옛 위치 비-ko 병기 — 시각은 영문 (한글), 낭독은 영문만`() {
+        val en = label(LocationBarInput(LocationPermission.Fine, true, true, "천호대로 1", "1 Cheonho-daero", staleFixAtEpoch = now - 120), "en")
+        assertEquals("마지막으로 확인한 위치, 1 Cheonho-daero (천호대로 1), 2분 전, 위치 지정하기", en.visual)
+        assertEquals("마지막으로 확인한 위치, 1 Cheonho-daero, 2분 전, 위치 지정하기", en.spoken)
     }
 }

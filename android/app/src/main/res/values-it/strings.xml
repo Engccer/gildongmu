@@ -582,6 +582,7 @@
     <string name="directions_searchFrom">Cerca partenza</string>
     <string name="directions_searchTo">Cerca destinazione</string>
     <string name="directions_searchVia">Cerca tappa intermedia</string>
+    <string name="directions_staleOriginNotice">Impossibile ottenere la posizione attuale: i percorsi usano la tua posizione di %1$s.</string>
     <string name="directions_submit">Cerca percorsi</string>
     <string name="directions_swap">Scambia partenza e destinazione</string>
     <string name="directions_title">Indicazioni</string>
@@ -747,11 +748,16 @@
     <string name="manualLocation_gps">Posizione attuale</string>
     <string name="manualLocation_gpsFailed">Impossibile determinare la posizione</string>
     <string name="manualLocation_gpsNear">Posizione attuale (vicino a %1$s)</string>
+    <string name="manualLocation_gpsStale">Ultima posizione nota, %1$s, %2$s</string>
+    <string name="manualLocation_gpsStaleNoAddress">Ultima posizione nota, %1$s</string>
     <string name="manualLocation_guideStartsFromCurrent">La guida parte dalla tua posizione attuale.</string>
     <string name="manualLocation_locating">Verifica della posizione attuale</string>
     <string name="manualLocation_manual">Posizione impostata, %1$s</string>
     <string name="manualLocation_manualUnverifiable">Posizione impostata, %1$s (impossibile verificare)</string>
     <string name="manualLocation_pickTitle">Imposta la tua posizione</string>
+    <string name="manualLocation_staleAgeHours">{1, plural, one {%1$s ora fa} other {%1$s ore fa}}</string>
+    <string name="manualLocation_staleAgeJustNow">poco fa</string>
+    <string name="manualLocation_staleAgeMinutes">{1, plural, one {%1$s minuto fa} other {%1$s minuti fa}}</string>
     <string name="manualLocation_useGps">Torna alla posizione attuale</string>
     <string name="nav_english">English</string>
     <string name="nav_french">Français</string>
