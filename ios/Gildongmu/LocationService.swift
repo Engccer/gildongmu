@@ -135,7 +135,7 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
         case .keepAlive:
             // ⚠ `pausesLocationUpdatesAutomatically = false`가 전제의 일부다(설계 리뷰 M3): 기본값
             // true면 정차·터널에서 시스템이 "정지"로 판단해 갱신을 멈추고 그때 백그라운드 근거도
-            // 사라진다. 저정밀·500m 필터라 GPS 칩은 대개 꺼진다(배터리 실측 BACKLOG §2 E36 ③).
+            // 사라진다.
             manager.pausesLocationUpdatesAutomatically = false
             if keepAliveBusRiding {
                 // 버스 승차(E48 §4.2): 1km·500m로는 정류장을 가를 수 없다. 10m급을 요청하는 것은 판정 상한(100m)
@@ -146,6 +146,7 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
                 manager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
                 manager.distanceFilter = kCLDistanceFilterNone
             } else {
+                // 저정밀·500m 필터라 GPS 칩은 대개 꺼진다(배터리 실측 BACKLOG §2 E36 ③).
                 manager.activityType = .otherNavigation
                 manager.desiredAccuracy = kCLLocationAccuracyKilometer
                 manager.distanceFilter = 500
@@ -181,11 +182,13 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
 
     /// 버스 승차 프로파일 전환(E48 §4.2). keep-alive **단독** 구간이면 즉시 다시 적용한다 — 비콘·단발 취득이 쥐고
     /// 있으면 그쪽 프로파일을 존중하고, 끝나며 keep-alive로 내려올 때(`endOneShotIfIdle`·`stopBeaconUpdates`)
-    /// 이 플래그를 읽는다.
-    func setKeepAliveBusRiding(_ on: Bool) {
-        guard keepAliveBusRiding != on else { return }
+    /// 이 플래그를 읽는다. 값이 바뀌었으면 true(호출부 계측용).
+    @discardableResult
+    func setKeepAliveBusRiding(_ on: Bool) -> Bool {
+        guard keepAliveBusRiding != on else { return false }
         keepAliveBusRiding = on
         if isKeepAliveOnly { applyProfile(.keepAlive) }
+        return true
     }
 
     func stopKeepAliveUpdates() {

@@ -81,7 +81,7 @@ import {
   type TransitBusStopMark,
   type TransitBusStopTracker,
 } from "@/lib/transit-bus-stop";
-import { getGeolocationSnapshot } from "@/lib/geolocation";
+import { useGeolocation } from "./useGeolocation";
 import type { TransitRoute } from "@/lib/types";
 
 /**
@@ -1646,10 +1646,16 @@ export function useTransitGuide(
    * 버스 승차 중 세션 전용 위치 스트림(E48 §5, 설계 리뷰 M3) — 공유 위치 스토어를 **덮지 않는다**. 스토어 좌표를 폴마다
    * 갈아 끼우면 "현재 위치" 주소 재조회·표시줄 라벨 교체가 승차 내내 반복된다(`current-address-store`는 새로고침에서만
    * 좌표가 바뀐다는 전제다). 도보 안내(`useRouteGuide`)처럼 안내가 자기 watch를 쥐고, fix는 표시 상태에만 들어간다.
-   * 켜는 조건: 버스 riding ∧ 전경 ∧ 공유 스토어가 이미 `ready`(= 권한이 있다 — 팝업을 새로 띄우지 않는다).
+   * 켜는 조건: 버스 riding(폴이 도는 동안 — iOS keep-alive와 같은 조건이라 비관측 잠금·추적 불가 구간은 두 플랫폼 모두
+   * 표식이 없다, 접근성 감사 MINOR-1) ∧ 전경 ∧ 공유 스토어가 `ready`(= 권한이 있다 — 팝업을 새로 띄우지 않는다).
+   * 스토어는 구독한다 — riding 뒤에 `ready`가 되어도 스트림이 열린다(구현 리뷰 m5).
    */
   const busRiding =
-    state != null && activeRoute?.legs[state.legIndex] != null && busStopApplies(state, activeRoute.legs[state.legIndex]);
+    state != null &&
+    activeRoute?.legs[state.legIndex] != null &&
+    busStopApplies(state, activeRoute.legs[state.legIndex]) &&
+    pollIntervalMs(state) > 0;
+  const geoReady = useGeolocation().status === "ready";
   const [foreground, setForeground] = useState(true);
   useEffect(() => {
     const onVisibility = () => setForeground(document.visibilityState !== "hidden");
@@ -1658,9 +1664,8 @@ export function useTransitGuide(
     return () => document.removeEventListener("visibilitychange", onVisibility);
   }, []);
   useEffect(() => {
-    if (!busRiding || !foreground) return;
+    if (!busRiding || !foreground || !geoReady) return;
     if (typeof navigator === "undefined" || !navigator.geolocation) return;
-    if (getGeolocationSnapshot().status !== "ready") return;
     const id = navigator.geolocation.watchPosition(
       (pos) => {
         const s = stateRef.current;
@@ -1688,7 +1693,7 @@ export function useTransitGuide(
       { enableHighAccuracy: true, maximumAge: 0, timeout: 15_000 },
     );
     return () => navigator.geolocation.clearWatch(id);
-  }, [busRiding, foreground, currentLeg, refreshBusStopMark]);
+  }, [busRiding, foreground, geoReady, currentLeg, refreshBusStopMark]);
   const status = useMemo(() => {
     const leg = state && activeRoute ? activeRoute.legs[state.legIndex] : null;
     return state && leg ? buildStatus(state, leg, ridingPosition, positionClock) : { text: "" };

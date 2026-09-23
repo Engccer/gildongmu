@@ -483,10 +483,18 @@ final class TransitGuideModel {
         }
         if wants {
             // 버스 승차 중이면 정류장을 가를 수 있는 정밀도로 올린다(E48 §4.2) — 그 밖(지하철·boarding)은 저정밀 그대로.
-            // 국면 전이·구간 전진·유휴 정지가 모두 이 함수를 지나므로 매번 반영한다.
-            let busRiding = state?.phase == .riding && currentLeg?.mode == "bus"
+            // 켜는 조건은 표식의 적용 조건 그 자체다(경유 정류장이 없는 구간에 배터리를 쓰지 않게, 구현 리뷰 m4).
+            // 국면 전이·구간 전진·유휴 정지가 모두 이 함수를 지나므로 매번 반영한다. ⚠ 버스 승차의 정상 흐름은
+            // boarding에서 이미 켜진 keep-alive를 riding에서 올리는 이 분기다(A46) — 시작 분기만 보고 빼지 말 것.
+            let busRiding: Bool = if let state, let leg = currentLeg {
+                transitBusStopApplies(state: state, leg: leg)
+            } else {
+                false
+            }
             if keepAliveActive {
-                LocationService.shared.setKeepAliveBusRiding(busRiding)
+                if LocationService.shared.setKeepAliveBusRiding(busRiding) {
+                    transitGuideLog("keepAlive profile=\(busRiding ? "bus" : "default")")
+                }
                 return
             }
             if LocationService.shared.startKeepAliveUpdates() {
@@ -549,7 +557,8 @@ final class TransitGuideModel {
         let latched = result.tracker?.stopIndex
         if lastBusFixLog?.verdict != result.verdict || lastBusFixLog?.latched != latched {
             lastBusFixLog = (result.verdict, latched)
-            transitGuideLog("busFix verdict=\(result.verdict.rawValue) latched=\(latched.map(String.init) ?? "-")"
+            transitGuideLog("busFix verdict=\(result.verdict.rawValue)"
+                + " idx=\(result.nearestIndex.map(String.init) ?? "-") latched=\(latched.map(String.init) ?? "-")"
                 + " acc=\(Int(fix.accuracy.rounded())) age=\(String(format: "%.1f", age))s")
         }
     }

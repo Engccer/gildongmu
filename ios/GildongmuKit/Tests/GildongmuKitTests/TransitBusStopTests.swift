@@ -24,6 +24,7 @@ private struct FixtureLeg: Decodable {
 private struct StepExpected: Decodable {
     let tracker: TransitBusStopTracker?
     let verdict: TransitBusStopVerdict
+    let nearestIndex: Int?
 }
 private struct Case: Decodable {
     let name: String
@@ -113,6 +114,7 @@ private func makeState(_ s: FixtureState, route: TransitGuideRoute) throws -> Tr
             let expected = try #require(c.expectedStep)
             #expect(out.verdict == expected.verdict, "\(c.name)")
             #expect(out.tracker == expected.tracker, "\(c.name)")
+            #expect(out.nearestIndex == expected.nearestIndex, "\(c.name)")
         case "mark":
             #expect(transitBusStopMark(state: state, leg: leg, tracker: c.tracker, now: now) == c.expectedMark,
                     "\(c.name)")
