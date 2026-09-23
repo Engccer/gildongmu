@@ -519,8 +519,10 @@ struct TransitTrackingSheet: View {
                 // 그 사이 실제로 타 버렸으면 [다른 차량 선택] → 대기 국면 [이미 탔어요]가
                 // 탈출구다(spec §5 — 실제 탄 열차를 다시 지목하므로 더 정확한 잠금이 된다).
                 if model.boardingManualAvailable {
-                    Button(appLocalized(leg.mode == "subway"
-                        ? "transitGuide.boardSelected" : "transitGuide.boardSelectedBus")) { model.confirmBoarded() }
+                    // 키는 리터럴로 쓴다 — 카탈로그 키 린터는 `appLocalized("…"` 형태만 참조로 센다.
+                    Button(leg.mode == "subway"
+                        ? appLocalized("transitGuide.boardSelected")
+                        : appLocalized("transitGuide.boardSelectedBus")) { model.confirmBoarded() }
                 }
                 Button(appLocalized("transitGuide.reselectVehicle")) { model.changeBoarding() }
             } else {
