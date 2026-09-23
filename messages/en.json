@@ -600,7 +600,12 @@
       "heading": "Web results"
     },
     "reviewPlacesHeading": "Top {count} by Naver reviews",
-    "followUpGroupLabel": "Follow-up questions"
+    "followUpGroupLabel": "Follow-up questions",
+    "copy": "Copy",
+    "copied": "Copied",
+    "listen": "Listen",
+    "stopListening": "Stop playback",
+    "listenFailed": "Couldn't play the audio."
   },
   "placeChat": {
     "launch": "Ask about this place",

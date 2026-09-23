@@ -1,0 +1,145 @@
+{
+  "description": "마크다운 → 평문 변환 공유 fixture. 웹 src/lib/markdown-plain-text.ts와 Kit MarkdownPlainText.strip이 같은 결과를 내야 한다(듣기 입력·복사 평문). 규칙 순서가 결과를 바꾸므로 기이한 결과도 두 플랫폼 공통이면 그대로 잠근다.",
+  "cases": [
+    {
+      "name": "헤딩 기호 제거",
+      "input": "## 경복궁 안내\n본문",
+      "expect": "경복궁 안내\n본문"
+    },
+    {
+      "name": "강조·취소선 언랩",
+      "input": "**맑음**과 *바람*, ~~비~~",
+      "expect": "맑음과 바람, 비"
+    },
+    {
+      "name": "링크는 라벨만 남기고 URL 폐기",
+      "input": "자세한 정보는 [카카오맵](https://map.kakao.com/place/123)을 확인하세요.",
+      "expect": "자세한 정보는 카카오맵을 확인하세요."
+    },
+    {
+      "name": "리스트 마커는 불릿으로",
+      "input": "- 첫째\n- 둘째",
+      "expect": "• 첫째\n• 둘째"
+    },
+    {
+      "name": "번호 목록 마커 제거",
+      "input": "1. 첫째\n2. 둘째",
+      "expect": "첫째\n둘째"
+    },
+    {
+      "name": "코드블록은 펜스만 벗기고 내용 유지",
+      "input": "```swift\nlet a = 1\n```",
+      "expect": "let a = 1"
+    },
+    {
+      "name": "인라인 코드 백틱 제거",
+      "input": "`nmap://` 스킴",
+      "expect": "nmap:// 스킴"
+    },
+    {
+      "name": "과잉 개행 축소와 트림",
+      "input": "\n\n첫 단락\n\n\n\n둘째 단락\n",
+      "expect": "첫 단락\n\n둘째 단락"
+    },
+    {
+      "name": "인용부호·수평선 제거",
+      "input": "> 인용문\n---\n본문",
+      "expect": "인용문\n\n본문"
+    },
+    {
+      "name": "평문은 그대로",
+      "input": "그냥 평범한 문장입니다.",
+      "expect": "그냥 평범한 문장입니다."
+    },
+    {
+      "name": "굵은 기울임 중첩",
+      "input": "***중요***",
+      "expect": "중요"
+    },
+    {
+      "name": "밑줄 굵게",
+      "input": "__강조__ 끝",
+      "expect": "강조 끝"
+    },
+    {
+      "name": "링크 여러 개",
+      "input": "[가](https://a.kr)와 [나](https://b.kr)",
+      "expect": "가와 나"
+    },
+    {
+      "name": "이미지는 링크 규칙이 먼저 먹어 느낌표가 남는다(두 플랫폼 공통 순서)",
+      "input": "![지도](https://x.kr/y.png)",
+      "expect": "!지도"
+    },
+    {
+      "name": "밑줄 사이 글자는 기울임으로 벗겨진다(두 플랫폼 공통)",
+      "input": "snake_case_name",
+      "expect": "snakecasename"
+    },
+    {
+      "name": "들여쓴 하위 목록도 불릿",
+      "input": "- 상위\n  - 하위",
+      "expect": "• 상위\n• 하위"
+    },
+    {
+      "name": "별표·더하기 목록 마커",
+      "input": "* 하나\n+ 둘",
+      "expect": "• 하나\n• 둘"
+    },
+    {
+      "name": "언어 태그 없는 코드블록과 앞뒤 본문",
+      "input": "앞\n```\ncode\n```\n뒤",
+      "expect": "앞\ncode\n뒤"
+    },
+    {
+      "name": "한글 언어 태그 코드블록(ICU \\w는 한글 포함)",
+      "input": "```한국어\n본문\n```",
+      "expect": "본문"
+    },
+    {
+      "name": "헤딩 레벨 6",
+      "input": "###### 작은 제목",
+      "expect": "작은 제목"
+    },
+    {
+      "name": "해시 뒤 공백 없으면 헤딩 아님",
+      "input": "#해시태그",
+      "expect": "#해시태그"
+    },
+    {
+      "name": "줄 머리 아닌 번호는 유지",
+      "input": "2호선 1. 출구",
+      "expect": "2호선 1. 출구"
+    },
+    {
+      "name": "Gemini 답변 형태 조합(번호 목록 규칙의 줄머리 공백이 앞 빈 줄을 먹는다)",
+      "input": "### 추천 카페\n\n1. **스타벅스 길동점**: 도보 3분\n2. **투썸플레이스**: [지도](https://map.kakao.com/1)\n\n> 영업시간은 바뀔 수 있습니다.",
+      "expect": "추천 카페\n스타벅스 길동점: 도보 3분\n투썸플레이스: 지도\n\n영업시간은 바뀔 수 있습니다."
+    },
+    {
+      "name": "줄바꿈 없는 별표 수평선",
+      "input": "***",
+      "expect": ""
+    },
+    {
+      "name": "앞뒤 줄바꿈 없는 공백(NBSP) 트림",
+      "input": "\u00a0본문\u00a0",
+      "expect": "본문"
+    },
+    {
+      "name": "앞 폭 없는 공백(U+200B)은 Foundation 트림이 자른다",
+      "input": "\u200b본문",
+      "expect": "본문"
+    },
+    {
+      "name": "BOM(U+FEFF)은 Foundation 트림이 남긴다(JS trim과 반대)",
+      "input": "\ufeff본문",
+      "expect": "\ufeff본문"
+    },
+    {
+      "name": "NEL(U+0085)은 트림된다(JS trim과 반대)",
+      "input": "\u0085본문\u0085",
+      "expect": "본문"
+    }
+  ]
+}

@@ -600,7 +600,12 @@
       "heading": "参考にしたウェブ結果"
     },
     "reviewPlacesHeading": "Naverレビュー順{count}件",
-    "followUpGroupLabel": "追加の質問"
+    "followUpGroupLabel": "追加の質問",
+    "copy": "コピー",
+    "copied": "コピーしました",
+    "listen": "聞く",
+    "stopListening": "再生を停止",
+    "listenFailed": "読み上げを再生できませんでした。"
   },
   "placeChat": {
     "launch": "この場所について質問する",

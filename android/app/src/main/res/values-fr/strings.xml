@@ -473,6 +473,8 @@
     <string name="category_public">Public et éducation</string>
     <string name="category_shopping">Shopping</string>
     <string name="category_transport">Transport</string>
+    <string name="chat_copied">Copié</string>
+    <string name="chat_copy">Copier</string>
     <string name="chat_error_chat_failed">Impossible d\'obtenir une réponse.</string>
     <string name="chat_error_chat_unavailable">Le chat n\'est pas disponible.</string>
     <string name="chat_error_rate_limited">Trop de requêtes.</string>
@@ -481,6 +483,8 @@
     <string name="chat_generalEmpty">Posez une question sur des lieux, un itinéraire ou les environs.</string>
     <string name="chat_generalTitle">Demander à l\'IA</string>
     <string name="chat_inputLabel">Message</string>
+    <string name="chat_listen">Écouter</string>
+    <string name="chat_listenFailed">Impossible de lire l\'audio.</string>
     <string name="chat_progress_searching">Recherche de %1$s</string>
     <string name="chat_progress_tool_get_air_quality">qualité de l\'air</string>
     <string name="chat_progress_tool_get_bike_stations">stations de vélo</string>
@@ -521,6 +525,7 @@
     <string name="chat_source_tmap">Tmap</string>
     <string name="chat_source_tourapi">TourAPI de l\'Organisation du Tourisme Coréen</string>
     <string name="chat_sources">Sources</string>
+    <string name="chat_stopListening">Arrêter la lecture</string>
     <string name="chat_webResults_heading">Résultats web</string>
     <string name="clinicNearby_asOf">à %1$s</string>
     <string name="clinicNearby_basisHoliday">Selon les horaires des jours fériés d\'aujourd\'hui.</string>

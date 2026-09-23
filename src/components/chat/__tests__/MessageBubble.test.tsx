@@ -483,4 +483,81 @@ describe("MessageBubble", () => {
       expect(screen.getByText("addressCoordFailed")).toBeTruthy();
     });
   });
+
+  describe("복사·듣기(B12)", () => {
+    const answer = {
+      id: "a1",
+      role: "assistant" as const,
+      text: "**길동 카페**는 [지도](https://map.kakao.com/1)에 있어요.",
+      renders: [{ type: "station-meta" as const, stationName: "길동" }],
+      sources: [{ label: "source.kakao" }],
+    };
+
+    it("답변 끝(산문 → 카드 → 출처 뒤)에 [복사][듣기] 순서로 선다", () => {
+      const { container } = render(
+        <MessageBubble message={answer} onCopied={vi.fn()} onToggleListen={vi.fn()} />,
+      );
+      const buttons = screen.getAllByRole("button");
+      expect(buttons.slice(-2).map((b) => b.textContent)).toEqual(["copy", "listen"]);
+      // 카드·출처보다 문서 순서상 뒤
+      const card = screen.getByTestId("station-meta");
+      const sources = screen.getByText(/^sources/);
+      for (const el of [card, sources]) {
+        expect(el.compareDocumentPosition(buttons.at(-2)!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      }
+      // 토글 상태는 라벨로만 — aria-pressed 병기 금지
+      expect(container.querySelector("[aria-pressed]")).toBeNull();
+      expect(buttons.at(-1)!.className).toContain("min-h-11");
+    });
+
+    it("듣는 중이면 라벨이 재생 중지로 바뀌고 누르면 토글 콜백", () => {
+      const onToggleListen = vi.fn();
+      const { rerender } = render(
+        <MessageBubble message={answer} onCopied={vi.fn()} onToggleListen={onToggleListen} />,
+      );
+      fireEvent.click(screen.getByRole("button", { name: "listen" }));
+      expect(onToggleListen).toHaveBeenCalledTimes(1);
+      rerender(
+        <MessageBubble message={answer} listening onCopied={vi.fn()} onToggleListen={onToggleListen} />,
+      );
+      expect(screen.getByRole("button", { name: "stopListening" })).toBeTruthy();
+      expect(screen.queryByRole("button", { name: "listen" })).toBeNull();
+    });
+
+    it("복사는 마크다운 기호를 벗긴 평문을 쓰고 성공 뒤에만 onCopied", async () => {
+      const writeText = vi.fn(async () => {});
+      vi.stubGlobal("navigator", { clipboard: { writeText } });
+      const onCopied = vi.fn();
+      render(<MessageBubble message={answer} onCopied={onCopied} onToggleListen={vi.fn()} />);
+      fireEvent.click(screen.getByRole("button", { name: "copy" }));
+      await waitFor(() => expect(onCopied).toHaveBeenCalledTimes(1));
+      expect(writeText).toHaveBeenCalledWith("길동 카페는 지도에 있어요.");
+    });
+
+    it("클립보드 거부면 onCopied를 부르지 않는다(거짓 복사됨 금지)", async () => {
+      const writeText = vi.fn(async () => {
+        throw new Error("denied");
+      });
+      vi.stubGlobal("navigator", { clipboard: { writeText } });
+      const onCopied = vi.fn();
+      render(<MessageBubble message={answer} onCopied={onCopied} onToggleListen={vi.fn()} />);
+      fireEvent.click(screen.getByRole("button", { name: "copy" }));
+      await waitFor(() => expect(writeText).toHaveBeenCalled());
+      expect(onCopied).not.toHaveBeenCalled();
+    });
+
+    it("사용자 질문·산문 없는 답변에는 버튼이 없다", () => {
+      render(
+        <>
+          <MessageBubble message={{ id: "u", role: "user", text: "질문" }} onCopied={vi.fn()} onToggleListen={vi.fn()} />
+          <MessageBubble
+            message={{ id: "c", role: "assistant", text: "", renders: [{ type: "station-meta", stationName: "길동" }] }}
+            onCopied={vi.fn()}
+            onToggleListen={vi.fn()}
+          />
+        </>,
+      );
+      expect(screen.queryByRole("button", { name: "copy" })).toBeNull();
+    });
+  });
 });

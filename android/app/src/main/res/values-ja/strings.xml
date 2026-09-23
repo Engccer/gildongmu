@@ -473,6 +473,8 @@
     <string name="category_public">公共・教育</string>
     <string name="category_shopping">ショッピング</string>
     <string name="category_transport">交通</string>
+    <string name="chat_copied">コピーしました</string>
+    <string name="chat_copy">コピー</string>
     <string name="chat_error_chat_failed">回答を取得できませんでした。</string>
     <string name="chat_error_chat_unavailable">チャットを利用できません。</string>
     <string name="chat_error_rate_limited">リクエストが多すぎます。</string>
@@ -481,6 +483,8 @@
     <string name="chat_generalEmpty">場所、道案内、周辺情報について聞いてみましょう。</string>
     <string name="chat_generalTitle">AIに質問</string>
     <string name="chat_inputLabel">メッセージを入力</string>
+    <string name="chat_listen">聞く</string>
+    <string name="chat_listenFailed">読み上げを再生できませんでした。</string>
     <string name="chat_progress_searching">%1$sを照会中</string>
     <string name="chat_progress_tool_get_air_quality">大気質</string>
     <string name="chat_progress_tool_get_bike_stations">タルンイ</string>
@@ -521,6 +525,7 @@
     <string name="chat_source_tmap">Tmap</string>
     <string name="chat_source_tourapi">韓国観光公社TourAPI</string>
     <string name="chat_sources">出典</string>
+    <string name="chat_stopListening">再生を停止</string>
     <string name="chat_webResults_heading">参考にしたウェブ結果</string>
     <string name="clinicNearby_asOf">%1$s時点</string>
     <string name="clinicNearby_basisHoliday">今日は祝日の診療時間基準です。</string>

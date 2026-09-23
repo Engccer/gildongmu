@@ -600,7 +600,12 @@
       "heading": "Résultats web"
     },
     "reviewPlacesHeading": "{count, plural, one {# lieu} other {# lieux}} par avis Naver",
-    "followUpGroupLabel": "Questions de suivi"
+    "followUpGroupLabel": "Questions de suivi",
+    "copy": "Copier",
+    "copied": "Copié",
+    "listen": "Écouter",
+    "stopListening": "Arrêter la lecture",
+    "listenFailed": "Impossible de lire l'audio."
   },
   "placeChat": {
     "launch": "Poser une question sur ce lieu",
