@@ -596,6 +596,10 @@
     <string name="directions_useCurrentLocation">Use current location</string>
     <string name="directions_via">Via</string>
     <string name="directions_viaArrived">Waypoint %1$s reached</string>
+    <string name="directions_viaArrivedContinue">Waypoint %1$s reached. Now guiding you to destination %2$s</string>
+    <string name="directions_viaDestRemaining">%2$s to destination %1$s</string>
+    <string name="directions_viaDropped">No route found through waypoint %1$s; guiding without it</string>
+    <string name="directions_viaRemaining">%2$s to waypoint %1$s</string>
     <string name="directions_walkAccessible">Route avoiding stairs</string>
     <string name="directions_walkBroad">Main-road route</string>
     <string name="directions_walkRecommended">Recommended route</string>

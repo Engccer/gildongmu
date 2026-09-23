@@ -596,6 +596,10 @@
     <string name="directions_useCurrentLocation">現在地を使う</string>
     <string name="directions_via">経由地</string>
     <string name="directions_viaArrived">経由地 %1$s に到着</string>
+    <string name="directions_viaArrivedContinue">経由地 %1$s に到着。これから目的地 %2$s へ案内します</string>
+    <string name="directions_viaDestRemaining">目的地 %1$sまで%2$s</string>
+    <string name="directions_viaDropped">経由地 %1$s を通る経路が見つからないため、経由地なしで案内します</string>
+    <string name="directions_viaRemaining">経由地 %1$sまで%2$s</string>
     <string name="directions_walkAccessible">階段を避けるルート</string>
     <string name="directions_walkBroad">大通りルート</string>
     <string name="directions_walkRecommended">おすすめルート</string>

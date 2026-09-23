@@ -123,6 +123,21 @@
   "directions.viaArrived": [
     "label"
   ],
+  "directions.viaArrivedContinue": [
+    "label",
+    "dest"
+  ],
+  "directions.viaDestRemaining": [
+    "dest",
+    "distance"
+  ],
+  "directions.viaDropped": [
+    "label"
+  ],
+  "directions.viaRemaining": [
+    "label",
+    "distance"
+  ],
   "eventsNearby.asOf": [
     "time"
   ],
