@@ -1,6 +1,7 @@
 package space.dodoplanet.gildongmu.kit
 
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.Serializable
 import space.dodoplanet.gildongmu.kit.models.Place
 import space.dodoplanet.gildongmu.kit.models.TransitLegStop
 import java.io.IOException
@@ -236,16 +237,18 @@ class StationPhoneTest {
         assertEquals(StationPhoneResult.Failed, down.lookup("천호", 37.5387, 127.1234, "수도권 5호선"))
     }
 
-    // 노선 표 드리프트 — 웹 `LINE_EN`이 정본(웹 ↔ Swift는 `station-phone-line-table-drift.test.ts`, 웹 ↔ Kotlin은 여기).
+    // 공유 fixture(웹·안드로이드가 같은 표로 잠긴다) — 노선 표 세 벌 대조는 웹 `station-phone-line-table-drift.test.ts`.
 
-    @Test fun lineTableMatchesWebLineEn() {
-        val src = Fixtures.repoRoot.resolve("src/lib/subway-line-names.ts").readText()
-        val from = src.indexOf("const LINE_EN")
-        assertTrue(from >= 0, "웹 LINE_EN 선언을 찾지 못했다")
-        val block = src.substring(from, src.indexOf("};", from))
-        val web = Regex("""^[ \t]*"([^"]+)":[ \t]*"([^"]+)",[ \t]*$""", RegexOption.MULTILINE).findAll(block)
-            .associate { it.groupValues[1] to it.groupValues[2] }
-        assertTrue(web.size > 50, "웹 표 항목이 너무 적다(모양이 바뀌어 대조가 공회전): ${web.size}")
-        assertEquals(web.toSortedMap(), subwayLineIdentityTable.toSortedMap())
+    @Serializable private data class LayoutCase(val note: String, val id: String, val category: String, val expected: String? = null)
+    @Serializable private data class PhoneCase(val phone: String, val expected: Boolean)
+    @Serializable private data class LayoutCases(val layoutKind: List<LayoutCase>, val representativePhone: List<PhoneCase>)
+
+    @Test fun sharedLayoutAndRepresentativeCases() {
+        val file = Fixtures.sharedJson("station-layout-cases.json", LayoutCases.serializer())
+        assertTrue(file.layoutKind.isNotEmpty() && file.representativePhone.isNotEmpty())
+        for (c in file.layoutKind) {
+            assertEquals(c.expected, stationLayoutKind(poi("x", c.category, null, 37.5, 127.0, id = c.id))?.rawValue, c.note)
+        }
+        for (c in file.representativePhone) assertEquals(c.expected, isRepresentativePhone(c.phone), c.phone)
     }
 }

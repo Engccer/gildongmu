@@ -10,7 +10,13 @@ import space.dodoplanet.gildongmu.kit.models.PlaceSearchResult
  * 역 상세 레이아웃 종류(spec §3.1). `isStation`보다 좁다 — 출구 POI·시공업체·이름만 `역`으로 끝나는 장소는 null이고
  * null 장소의 상세는 개편 전 레이아웃 그대로다.
  */
-enum class StationLayoutKind { subway, rail }
+enum class StationLayoutKind {
+    subway,
+    rail,
+    ;
+
+    val rawValue: String get() = name
+}
 
 /**
  * Swift `category.split(separator: ">")`는 빈 조각을 버린다(`omittingEmptySubsequences` 기본값) — 자르기 **전에** 거르고,
@@ -65,8 +71,8 @@ fun subwayLineIdentity(raw: String): String? {
 }
 
 /**
- * 웹 `src/lib/subway-line-names.ts` `LINE_EN` 미러(Swift `subwayLineIdentityTable`과 같은 순서) — 항목 동일은 `StationPhoneTest`가
- * 웹 원본을 읽어 강제한다(웹 ↔ Swift는 `station-phone-line-table-drift.test.ts`).
+ * 웹 `src/lib/subway-line-names.ts` `LINE_EN` 미러(Swift `subwayLineIdentityTable`과 같은 순서) — 세 벌 항목 동일은
+ * `station-phone-line-table-drift.test.ts`가 강제한다. ⚠ 줄 모양 `"키" to "값",` 한 줄 하나를 지킨다(가드가 그 모양으로 읽는다).
  */
 internal val subwayLineIdentityTable: Map<String, String> = mapOf(
     "1호선" to "Line 1",

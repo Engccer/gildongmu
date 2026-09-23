@@ -20,7 +20,7 @@ android/
          settings/  설정(SettingsStore 단일 소유자·순수 localeOverride/settingsRows·선택 다이얼로그·정보 출처·SettingsAction) — 언어는 AppConfig.localized/localizedApp 한 경로(spec §14)
          nearby/    내 주변 허브·공통 껍데기(NearbyScreenViewModel = :kit NearbyLoadCore 소비)·kind 조립기 10종(NearbyKinds)·payload(NearbyPayloads·AroundPayload)·문장 조립(NearbyLines·DomainLines·WalkInfraLines·ConditionsLines·SceneLines)·본문(NearbyKindScreen·PlaceListBodies·WalkInfraBody·ConditionsBody·SceneSection) (M2 spec §3-4~3-9·§5·§12-1·§12-2)
          guide/·audio/ 도보 실시간 안내·톤(M4, 정식 기능) · chat/ 채팅(M6) · search/ 검색 · speech/ 받아쓰기 · nav/ 탭·스택 골격 · i18n/·net/·storage/ 앱 층 공통
-         place/     장소 상세(Place JSON 라우트 + PlaceDomain·영업시간·외부 지도 열기 판정·도메인 섹션·역 자동 섹션 5종(StationLines·StationSectionsView)·무장애 섹션) (M2 spec §3-2·§12-3)
+         place/     장소 상세(Place JSON 라우트 + PlaceDomain·영업시간·외부 지도 열기 판정·도메인 섹션·역 자동 섹션 5종(StationLines·StationSectionsView)·무장애 섹션) (M2 spec §3-2·§12-3) · 역 레이아웃 순서 정본 PlaceLayout·경유역 전화 저장소 StationPhoneStore·경유역 라우트 PlaceDetailRoute.ofTransitStop (E44)
   kit/   순수 Kotlin/JVM, iOS GildongmuKit의 미러([2] 판정 계층). 패키지 space.dodoplanet.gildongmu.kit
          Models/*.swift → kit/.../kit/models/*.kt (하위 패키지 space.dodoplanet.gildongmu.kit.models)
   kit/mirrors/{foundation,core,guide}.json   미러 등록부(§5)
@@ -90,6 +90,7 @@ adb exec-out timeout 10 uiautomator dump /dev/tty   # 접근성 트리(스크린
 | `flatMap(E.init(rawValue:))` 전방 호환 디코딩 | `@Serializable(with = LenientXSerializer::class) val action: E? = null` | 모르는 문자열은 실패가 아니라 null(`models/LenientEnums.kt`) |
 | `public let fooBar = 40.0` | `const val fooBar = 40.0` | **식별자는 camelCase 그대로**(세 플랫폼 grep이 통하게). Kotlin 예약어(`object`)만 개명하고 등록부 `note`에 적는다 |
 | `func f(_ x: [A], bucket: String?)` / `func f(_ x: [A], region: String?)` (라벨 오버로드) | `filterPlacesByBucket` / `filterPlacesByRegion` | Kotlin은 인자 이름으로 오버로드 못 한다 — 웹 이름을 따른다 |
+| `s.split(separator: ">")` | `s.split('>').filter { it.isNotEmpty() }` | Swift는 빈 조각을 버린다(Kotlin은 남긴다) — 끝 구분자가 있으면 "마지막 조각"이 빈 문자열이 되어 판정이 갈린다(`StationPhone.kt` `stationLayoutKind`) |
 | `Double.truncatingRemainder(dividingBy:)` | `%` | 부호 규약 같다 |
 | `x.isFinite`, `accuracy > 0` 가드 | `x.isFinite()`, `!(accuracy > 0)` | NaN 비교는 false라 Swift와 같은 식으로 쓰면 결과도 같다 |
 | `String(format: "%.4f", v)` | `String.format(Locale.ROOT, "%.4f", v)` | 로케일을 반드시 ROOT로(소수점 `,` 지역) |

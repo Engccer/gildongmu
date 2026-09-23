@@ -156,7 +156,7 @@
       "status": "ported",
       "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/StationPhone.kt",
       "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/StationPhoneTest.kt",
-      "note": "E44 역 상세 개편. 노선 표는 웹 LINE_EN 미러 — 웹 ↔ Kotlin 대조는 StationPhoneTest.lineTableMatchesWebLineEn(웹 ↔ Swift는 station-phone-line-table-drift.test.ts). 결과 enum은 sealed class(Direct·Representative·Unavailable·Failed). 실호출 게이트 StationPhoneLiveGateTests.swift는 미이식(프로덕션 호출·저장소 밖 기대표 — 같은 규칙을 iOS에서 110건 검증). 정규식 없음"
+      "note": "E44 역 상세 개편. 노선 표는 웹 LINE_EN 미러 — 세 벌 대조는 station-phone-line-table-drift.test.ts. 레이아웃·대표번호는 공유 fixture station-layout-cases.json을 읽는다. 결과 enum은 sealed class(Direct·Representative·Unavailable·Failed). 실호출 게이트 StationPhoneLiveGateTests.swift는 미이식(프로덕션 호출·저장소 밖 기대표 — 같은 규칙을 iOS에서 110건 검증). 정규식 없음"
     },
     {
       "swift": "StationService.swift",

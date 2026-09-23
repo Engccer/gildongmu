@@ -5,7 +5,8 @@ import { REPRESENTATIVE_PHONE_DIGITS, REPRESENTATIVE_PHONE_PREFIXES } from "../s
 
 /**
  * Kit `StationPhone.swift`의 노선명 표는 웹 `subway-line-names.ts` `LINE_EN`의 미러다(E44 spec §5.4-2).
- * 경유역 전화번호 선택의 노선 일치가 이 표에 달려 있어, 한쪽만 늘면 iOS만 조용히 "번호 없음"이 된다.
+ * 경유역 전화번호 선택의 노선 일치가 이 표에 달려 있어, 한쪽만 늘면 그 플랫폼만 조용히 "번호 없음"이 된다.
+ * 안드로이드 :kit `StationPhone.kt`도 같은 표를 든다(세 벌).
  */
 const ROOT = join(__dirname, "../../..");
 const entries = (src: string, start: string, end: string) => {
@@ -25,6 +26,14 @@ describe("역 전화번호 노선 표 드리프트", () => {
   it("Kit 표 항목이 웹 LINE_EN과 같다", () => {
     expect(web.size).toBeGreaterThan(50);
     expect([...kit.entries()].sort()).toEqual([...web.entries()].sort());
+  });
+
+  it("안드로이드 :kit 표(StationPhone.kt) 항목이 웹 LINE_EN과 같다", () => {
+    const src = readFileSync(join(ROOT, "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/StationPhone.kt"), "utf8");
+    const from = src.indexOf("val subwayLineIdentityTable");
+    const block = src.slice(from, src.indexOf("\n)", from));
+    const kotlin = new Map([...block.matchAll(/^\s*"([^"]+)" to "([^"]+)",\s*$/gm)].map((m) => [m[1], m[2]]));
+    expect([...kotlin.entries()].sort()).toEqual([...web.entries()].sort());
   });
 
   it("웹 판정 미러(station-phone.ts)의 레이아웃 조각·대표번호 상수가 Kit과 같다", () => {

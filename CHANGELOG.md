@@ -11,6 +11,10 @@
 
 ## 2026-09-23
 
+### E44 역 장소 상세 개편 안드로이드 동조(E43 우선순위 2)
+
+안드로이드 장소 상세도 역(`:kit` `stationLayoutKind`)이면 역 정보(전화 맨 위, 대표번호 표기, 경유역 조회 실패는 한 줄) → 도착·시간표·시설(서울 지하철은 종류별 접기·운행 중지 수) → 무장애 → 길찾기 → 이 장소 주변(지하철 없음)이다. `:kit` `StationPhone.kt` 이식(등록부 대기 → 이식, 노선 표는 웹 드리프트 가드가 세 벌로 잠근다), 경유역 전화 저장소 `StationPhoneStore`(iOS 수명 규칙)와 경유역 라우트 `PlaceDetailRoute.ofTransitStop`(노선 힌트 필수)을 더했다. 경유역 로터는 E45 몫. [spec](docs/superpowers/specs/2026-09-17-station-detail-reorg-design.md).
+
 ### E44 역 장소 상세 개편 웹 동조
 
 웹 장소 상세도 역(`stationLayoutKind` 웹 미러 `src/lib/station-phone.ts`)이면 역 정보(제목 항상, 전화 맨 위, 운영사 번호는 "대표번호", 출처는 섹션 끝) → 도착·시간표·시설 → 무장애 → 길찾기(제목) → 이 장소 주변(제목) 순서다. 서울 지하철 시설은 버튼으로 연 뒤 종류마다 접히고 접힘 줄에 운행 중지 수가 붙는다(줄 없는 묶음은 평문). WebMCP `get_place_info`는 `basic.phoneKind`로 대표번호를 알린다. 비역 장소는 그대로이고 경유역 번호 조회는 웹에 경유역 진입이 없어 옮기지 않았다. [spec](docs/superpowers/specs/2026-09-17-station-detail-reorg-design.md).
