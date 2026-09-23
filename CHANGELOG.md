@@ -11,6 +11,10 @@
 
 ## 2026-09-23
 
+### 버스 승차 중 현재 정류장 표식 (E48, iOS 실험판·웹)
+
+버스를 타고 가는 동안 경유 정류장 목록과 iOS 조망에 "현재 위치"가 기기 위치로 붙는다(표시 전용, 상태 머신·하차 판정은 도착 API 그대로). 최근접 정류장 300m 이내, 길 건너 정류장이 경합하면 비우고, 같은 정류장 두 번 연속일 때만 앞으로, 하차 정류장은 50m 안일 때만, 마지막 관측 90초 뒤 거둔다. iOS는 E36 keep-alive 스트림의 fix를 안내 세션에만 넘기고(공유 스토어 미기록) 버스 riding 동안만 10m급·거리 필터 없음으로 올린다(E36 ⓐ′ 첫 좌표 소비). 웹은 버스 riding 동안 세션 전용 `watchPosition`. [spec](docs/superpowers/specs/2026-09-23-bus-current-stop-design.md)
+
 ### 안드로이드 도보 경로 두 줄 (E42 이식)
 
 안드로이드 길찾기 도보를 iOS 정식판과 같은 두 줄(ko 최단·계단 회피 또는 큰길, en 추천·최단)로 바꿨다. `:kit`에 `lines=1` 조회·`WalkLineKind`(속성은 enum 항목과 겹쳐 `isAccessible`)·`WalkRouteLine`·브리핑 `kind`를 이식하고, 줄 안 맨 위에 "○○ 경로로 안내 시작" 버튼(요청 축은 줄 종류의 투영)을 두고, 계단 회피 토글과 도보 단독 재조회를 지웠다. 안내 중 경로 전환·대안 프리뷰는 안드로이드에 원래 없어 이식하지 않았다. spec `docs/superpowers/specs/2026-09-23-walk-two-lines-kakao-design.md`.
