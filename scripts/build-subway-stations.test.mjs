@@ -19,7 +19,10 @@ function py(code, args = []) {
   return spawnSync("python3", ["-c", `${prelude}\n${code}`, ...args], { encoding: "utf8" });
 }
 
-describe("is_transfer (A43)", () => {
+// 루트 게이트는 Windows 클론에서도 돈다 — python3가 없으면 실패가 아니라 건너뛴다.
+const hasPython = spawnSync("python3", ["--version"]).status === 0;
+
+describe.skipIf(!hasPython)("is_transfer (A43)", () => {
   it("알려진 어휘 4종 — 신분당선의 `도시철도 …`도 접미로 판정한다", () => {
     const r = py(
       'print(json.dumps([m.is_transfer(v) for v in ["환승역", "일반역", "도시철도 환승역", "도시철도 일반역", "  환승역 "]]))',
@@ -42,7 +45,7 @@ describe("is_transfer (A43)", () => {
   });
 });
 
-const hasOpenpyxl = spawnSync("python3", ["-c", "import openpyxl"]).status === 0;
+const hasOpenpyxl = hasPython && spawnSync("python3", ["-c", "import openpyxl"]).status === 0;
 
 describe.skipIf(!hasOpenpyxl)("main — 모르는 어휘가 섞인 XLSX", () => {
   it("종료 코드 1로 중단하고 seed를 쓰지 않는다", () => {
