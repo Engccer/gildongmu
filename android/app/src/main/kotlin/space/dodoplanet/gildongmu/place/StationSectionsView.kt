@@ -158,6 +158,11 @@ fun StationDetailSections(s: StationSections) {
             // 접힘 행이 곧 개수 줄이다. 운행 중지가 있으면 그 수를 같은 줄에(리뷰 M8 — 접으면 줄마다 보이던 "운행 중지"가 가려진다).
             val label = if (stopped > 0) appLocalized(res, R.string.android_station_kindCountStopped, kindLabel, g.facilities.size, stopped)
             else appLocalized(res, R.string.android_station_kindCount, kindLabel, g.facilities.size)
+            // 줄 없는 묶음(교통약자 도우미 등)은 평문 한 줄 — 펼쳐도 빈 컨트롤이 되지 않게(웹 동조 리뷰 2026-09-23).
+            if (g.facilities.isEmpty()) {
+                BodyLine(label, "metro-$gi")
+                continue
+            }
             val open = g.kind in expanded
             // 펼침 행 문법은 한 벌(`DisclosureRow` — 라벨 버튼 + stateDescription, 본문은 펼친 동안만). 펼친 뒤 커서는 이 행에 남고
             // 다음 이동이 첫 시설이다(포커스 코드 없음).
