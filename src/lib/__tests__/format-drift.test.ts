@@ -6,8 +6,8 @@ import { DISTANCE_CASES } from "./format.test";
 /**
  * 거리 표기 웹-iOS 드리프트 가드.
  *
- * `formatDistance`는 웹·Kit·CLI 세 벌로 각자 구현돼 있는데 종전엔 가드가 없었다.
- * 셋이 갈리면 같은 앱에서 같은 거리가 다르게 낭독된다.
+ * `formatDistance`는 웹·Kit·CLI·안드로이드 `:kit`(`Format.kt`) 네 벌로 각자 구현돼 있는데 종전엔 가드가 없었다.
+ * 넷이 갈리면 같은 앱에서 같은 거리가 다르게 낭독된다. 안드로이드 경계표 대조는 `android-kit-drift.test.ts`가 본다.
  *
  * ⚠ Swift 상수를 Swift 리터럴과 비교하는 테스트는 웹이 바뀌어도 실패하지 않는다.
  * 정본(웹 `DISTANCE_CASES`)을 Swift **테스트 파일의 표**와 교차 대조해야 드리프트가
@@ -19,6 +19,7 @@ import { DISTANCE_CASES } from "./format.test";
  */
 
 const SWIFT_TEST = "ios/GildongmuKit/Tests/GildongmuKitTests/FormatTests.swift";
+const KOTLIN_FORMAT = "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/Format.kt";
 
 /** Swift 테스트의 `distanceCases` 표에서 `(입력, "기대")` 쌍을 뽑는다. */
 function swiftCases(source: string): [number, string][] {
@@ -50,6 +51,10 @@ describe("거리 표기 웹-iOS 드리프트", () => {
     );
     expect(impl).not.toMatch(/%\.\d*fkm/);
   });
+
+  it("Kotlin 구현이 소수 km 표기로 되돌아가지 않았다", () => {
+    expect(readFileSync(KOTLIN_FORMAT, "utf8")).not.toMatch(/%\.\d*fkm/);
+  });
 });
 
 /**
@@ -59,7 +64,8 @@ describe("거리 표기 웹-iOS 드리프트", () => {
  * CLI 자동차·도보 요약, iOS 자동차·도보 요약. 그중 CLI·iOS 도보는 1km 미만 분기를
  * 건너뛰어 **850m를 "0.8km"로** 내고 있었다. 표기가 갈리는 것보다 나쁜 실제 결함이다.
  *
- * 거리 표기는 언제나 `formatDistance`(웹·Kit) 또는 `dist()`(CLI)를 지난다.
+ * 거리 표기는 언제나 `formatDistance`(웹·Kit·안드로이드) 또는 `dist()`(CLI)를 지난다.
+ * 안드로이드는 `:kit`(둘러보기 불릿 `LocationNarrative.kt` 포함)과 `:app` 소스를 함께 본다.
  */
 const SCAN_ROOTS = [
   "src",
@@ -67,6 +73,8 @@ const SCAN_ROOTS = [
   "ios/GildongmuKit/Sources",
   "packages/cli/src",
   "packages/mcp/src",
+  "android/kit/src/main/kotlin",
+  "android/app/src/main/kotlin",
 ];
 
 function sourceFiles(dir: string): string[] {
@@ -76,7 +84,7 @@ function sourceFiles(dir: string): string[] {
     if (name === "__tests__" || name === "Tests" || name === "node_modules") continue;
     const full = join(dir, name);
     if (statSync(full).isDirectory()) out.push(...sourceFiles(full));
-    else if (/\.(ts|tsx|swift)$/.test(name)) out.push(full);
+    else if (/\.(ts|tsx|swift|kt)$/.test(name)) out.push(full);
   }
   return out;
 }
@@ -94,6 +102,11 @@ describe("소수 km 지역 사본 금지", () => {
   // 2026-08-02 리뷰 검출). 정본 `Format.swift` 자신만 예외다.
   const SWIFT_INTERP_METERS = /\\\([^)\n]*\)k?m"/;
   const INTERP_ALLOWED = ["ios/GildongmuKit/Sources/GildongmuKit/Format.swift"];
+
+  // Kotlin 판: 문자열 템플릿으로 미터·km를 직접 조립하는 꼴(`"${x}m"`·`"$x km"`)과
+  // `"%.1f".format(m / 1000.0)`. 정본 `Format.kt` 자신만 예외다(Swift 보간 가드와 같은 구조).
+  const KOTLIN_TEMPLATE_METERS = /\$\{[^}\n]*\}\s?k?m"|\$[A-Za-z_]\w*(?!\w)\s?k?m"/;
+  const KOTLIN_FORMAT_KM = /"%\.\d+f[^"]*"\.format\([^\n]*\/\s*1000/;
 
   it("어떤 소스도 거리 km를 직접 조립하지 않는다", () => {
     const offenders: string[] = [];
@@ -118,6 +131,18 @@ describe("소수 km 지역 사본 금지", () => {
     expect(offenders).toEqual([]);
   });
 
+  it("어떤 Kotlin 소스도 템플릿·format으로 거리를 직접 조립하지 않는다", () => {
+    const offenders: string[] = [];
+    for (const root of SCAN_ROOTS) {
+      for (const file of sourceFiles(root)) {
+        if (!file.endsWith(".kt") || file === KOTLIN_FORMAT) continue;
+        const text = readFileSync(file, "utf8");
+        if (KOTLIN_TEMPLATE_METERS.test(text) || KOTLIN_FORMAT_KM.test(text)) offenders.push(file);
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
   it("가드 자체가 살아 있다 (패턴이 실제로 매칭된다)", () => {
     expect(BYPASS[0].test("`${(n / 1000).toFixed(1)}km`")).toBe(true);
     expect(BYPASS[1].test('String(format: "%.1f", Double(m) / 1000)')).toBe(true);
@@ -128,5 +153,13 @@ describe("소수 km 지역 사본 금지", () => {
     expect(SWIFT_INTERP_METERS.test('"\\(km)km \\(rest)m"')).toBe(true);
     expect(SWIFT_INTERP_METERS.test("formatDistance(stop.distanceMeters)")).toBe(false);
     expect(SWIFT_INTERP_METERS.test('appLocalized("place.distance", formatDistance(m))')).toBe(false);
+    // Kotlin: 정본 Format.kt의 꼴이 실제로 매칭되고(예외 목록이 필요한 이유), 정본 경유는 매칭되지 않는다.
+    expect(KOTLIN_TEMPLATE_METERS.test('return "${meters / 1000.0}km"')).toBe(true);
+    expect(KOTLIN_TEMPLATE_METERS.test('joinText(stop.name, "$distance m")')).toBe(true);
+    expect(KOTLIN_FORMAT_KM.test('"%.1fkm".format(meters / 1000.0)')).toBe(true);
+    expect(KOTLIN_TEMPLATE_METERS.test("formatDistance(station.distanceMeters)")).toBe(false);
+    // m으로 끝나는 식별자(`$item`)는 거리 조립이 아니다.
+    expect(KOTLIN_TEMPLATE_METERS.test('Text("$item")')).toBe(false);
+    expect(KOTLIN_FORMAT_KM.test('"%.1f".format(fix.accuracy)')).toBe(false);
   });
 });
