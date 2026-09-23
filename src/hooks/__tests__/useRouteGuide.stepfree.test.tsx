@@ -119,8 +119,11 @@ describe("최단 줄의 안내(E42)는 시작·재조회 모두 variant=shortest
     );
     click("start");
     await settleStart();
+    const started = walkUrls().length;
     click("reroute");
-    await waitFor(() => expect(walkUrls().length).toBeGreaterThanOrEqual(1));
+    // 재조회 요청이 실제로 발행될 때까지 기다린다(시작 요청 하나로 조건이 먼저 참이 되지 않게).
+    await waitFor(() => expect(walkUrls().length).toBeGreaterThan(started));
+    expect(walkUrls().at(-1)).toContain("variant=shortest");
     for (const u of walkUrls()) {
       expect(u).toContain("variant=shortest");
       expect(u).not.toContain("accessible=");

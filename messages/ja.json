@@ -199,7 +199,7 @@
     "unsupportedWaypoint": "公共交通機関の経路では経由地に対応していません。",
     "walkRecommended": "おすすめルート",
     "walkShortest": "最短ルート",
-    "walkAccessible": "階段回避ルート",
+    "walkAccessible": "階段を避けるルート",
     "walkBroad": "大通りルート"
   },
   "detail": {
@@ -710,7 +710,7 @@
     "stopped": "リアルタイム案内を停止しました",
     "guideStartWalk": "徒歩案内を開始",
     "guideStartWalkShortest": "最短ルートで案内を開始",
-    "guideStartWalkAccessible": "階段回避ルートで案内を開始",
+    "guideStartWalkAccessible": "階段を避けるルートで案内を開始",
     "guideStartWalkBroad": "大通りルートで案内を開始",
     "guideStartWalkRecommended": "おすすめルートで案内を開始",
     "guideStartCar": "自動車案内を開始",

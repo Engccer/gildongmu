@@ -33,7 +33,7 @@ export function getRouteStepsTool(): WebMcpTool {
         variant: {
           type: "string",
           enum: ["shortest", "accessible", "broad", "recommended"],
-          description: "walk only: a walk line kind from plan_directions (accessible = step-free, broad = main-road). Default: the first line.",
+          description: "walk only: a walk line kind from plan_directions (accessible = avoiding stairs, broad = main-road). Default: the first line.",
         },
         offset: { type: "integer", minimum: 0, description: "0-based start index. Default 0." },
         limit: {

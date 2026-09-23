@@ -128,11 +128,7 @@ final class DirectionsModel {
     private let searchService = SearchService(client: APIClient(baseURL: AppConfig.apiBaseURL))
     private var queryTask: Task<Void, Never>?
     /// 재진입 가드(웹 in-flight ref 미러): 진행 중 재탭은 무시(disabled 금지 계약의 짝).
-    /// 토글 재조회도 **같은** 가드를 공유한다(웹 계약 동형) — 분리하면 토글끼리의
-    /// 연타만 막고 "조회"와의 교차 레이스는 못 막는다.
     private var isInFlight = false
-    /// 직전 조회에 쓴 해석 좌표(웹 lastCoordsRef 미러). 토글 재조회가 재측위 없이 재사용.
-    private var lastCoords: (origin: (lat: Double, lng: Double), dest: (lat: Double, lng: Double), via: (lat: Double, lng: Double)?)?
 
     /// 프리필 진입(장소 상세·검색 결과 "여기까지 길찾기")의 자동 조회 1회분(위원장 실사용
     /// 2026-09-02). 종전엔 도착지만 채워 놓고 사용자가 조회 버튼까지 스와이프해 다시
@@ -469,7 +465,6 @@ final class DirectionsModel {
         // Swift 동시성이 data race로 거부한다(빌드 실패로 드러났다).
         let promoted = entrance.map { (label: $0.name, lat: $0.lat, lng: $0.lng) }
         let dest = promoted.map { (lat: $0.lat, lng: $0.lng) } ?? queried
-        lastCoords = (origin: origin, dest: dest, via: viaCoord)
 
         // 3수단 병렬. 도보의 ko 전용 게이트는 E16 축3으로 사라졌다 — 서버가 en 문장을 만든다.
         // 언어는 한 번만 읽는다 — 세 수단이 같은 스냅샷을 쓴다는 사실이 코드에 보이게.
@@ -490,8 +485,11 @@ final class DirectionsModel {
         ]
         // 첫 줄은 현행 분류 그대로(빈 목록 = 경로 없음), 줄 목록은 같은 응답에서만 커밋(스냅샷 —
         // 커버리지 밖 등 중간 return에서 노출되지 않도록 로컬에 들었다가 results와 함께 커밋).
-        outcomes[.walk] = DirectionsOutcomeClassifier.classify(walk: walk.map { $0.first?.route })
-        let linesCandidate = (try? walk.get()) ?? []
+        // 모르는 종류의 줄은 여기서 거른다 — 분류·렌더·착지가 같은 배열을 봐야 "첫 줄"이 하나다
+        // (E42 접근성 감사 L1. Kit `walkLines`도 거르지만 화면 계약을 그 구현에 기대지 않는다).
+        let known = walk.map { $0.filter { $0.lineKind != nil } }
+        outcomes[.walk] = DirectionsOutcomeClassifier.classify(walk: known.map { $0.first?.route })
+        let linesCandidate = (try? known.get()) ?? []
 
         // 서버 마커 이중 방어 — 위 "cur" 선분기를 통과했어도 place 종단점(검색 선택)이
         // 한국 밖일 수 있다. 한 수단이라도 감지하면 나머지 결과를 버리고 화면 전체를 전환한다.
