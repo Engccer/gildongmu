@@ -1647,15 +1647,17 @@ export function useTransitGuide(
    * 갈아 끼우면 "현재 위치" 주소 재조회·표시줄 라벨 교체가 승차 내내 반복된다(`current-address-store`는 새로고침에서만
    * 좌표가 바뀐다는 전제다). 도보 안내(`useRouteGuide`)처럼 안내가 자기 watch를 쥐고, fix는 표시 상태에만 들어간다.
    * 켜는 조건: 버스 riding(폴이 도는 동안 — iOS keep-alive와 같은 조건이라 비관측 잠금·추적 불가 구간은 두 플랫폼 모두
-   * 표식이 없다, 접근성 감사 MINOR-1) ∧ 전경 ∧ 공유 스토어가 `ready`(= 권한이 있다 — 팝업을 새로 띄우지 않는다).
-   * 스토어는 구독한다 — riding 뒤에 `ready`가 되어도 스트림이 열린다(구현 리뷰 m5).
+   * 표식이 없다, 접근성 감사 MINOR-1) ∧ 전경 ∧ **권한이 있다고 알려진 스토어**(`ready`, 또는 시간 초과·위치 불가로 끝난
+   * `denied` — 그 둘은 권한이 허용된 뒤에만 나서 팝업을 만들지 않는다). 스토어는 구독한다 — riding 뒤에 권한이 확인되어도
+   * 열리고(구현 리뷰 m5), 다른 화면의 강제 재측위가 시간 초과로 끝나도 스트림을 닫지 않는다(검증 리뷰 MINOR-1).
    */
   const busRiding =
     state != null &&
     activeRoute?.legs[state.legIndex] != null &&
     busStopApplies(state, activeRoute.legs[state.legIndex]) &&
     pollIntervalMs(state) > 0;
-  const geoReady = useGeolocation().status === "ready";
+  const geo = useGeolocation();
+  const geoAllowed = geo.status === "ready" || (geo.status === "denied" && geo.reason != null && geo.reason !== "denied");
   const [foreground, setForeground] = useState(true);
   useEffect(() => {
     const onVisibility = () => setForeground(document.visibilityState !== "hidden");
@@ -1664,7 +1666,7 @@ export function useTransitGuide(
     return () => document.removeEventListener("visibilitychange", onVisibility);
   }, []);
   useEffect(() => {
-    if (!busRiding || !foreground || !geoReady) return;
+    if (!busRiding || !foreground || !geoAllowed) return;
     if (typeof navigator === "undefined" || !navigator.geolocation) return;
     const id = navigator.geolocation.watchPosition(
       (pos) => {
@@ -1693,7 +1695,7 @@ export function useTransitGuide(
       { enableHighAccuracy: true, maximumAge: 0, timeout: 15_000 },
     );
     return () => navigator.geolocation.clearWatch(id);
-  }, [busRiding, foreground, geoReady, currentLeg, refreshBusStopMark]);
+  }, [busRiding, foreground, geoAllowed, currentLeg, refreshBusStopMark]);
   const status = useMemo(() => {
     const leg = state && activeRoute ? activeRoute.legs[state.legIndex] : null;
     return state && leg ? buildStatus(state, leg, ridingPosition, positionClock) : { text: "" };
