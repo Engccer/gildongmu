@@ -35,7 +35,7 @@ See [`docs/WEBMCP.md`](docs/WEBMCP.md) for the implementation, contracts, and va
 
 ## Core design
 
-- **Lists and text are the source of truth.** Map SDKs render to a canvas that screen readers cannot read, so information available only on a map is a bug. Gildongmu provides text briefings before departure and **live guidance** (walking is released; driving and public transit are experimental). Links to map apps (`nmap://`, `kakaomap://`) are secondary options on place detail screens.
+- **Lists and text are the source of truth.** Map SDKs render to a canvas that screen readers cannot read, so information available only on a map is a bug. Gildongmu provides text briefings before departure and **live guidance** (walking is released on web and iOS; driving and public transit are released on web and experimental on iOS). Links to map apps (`nmap://`, `kakaomap://`) are secondary options on place detail screens.
 - **Keep result states distinct.** “No results,” “information unavailable,” and “request failed” must be distinguishable in text. “Outside the service area” is another explicit state.
 - **Features without an API key stay hidden.** No unusable buttons or fake live data. Place search is the one exception: it has a mock fallback for local development. `PLACES_PROVIDER` can also force a provider for A/B comparisons.
 - **One logical line is one accessibility object.** Splitting a line into styled inline `<span>` elements can make VoiceOver stop at each fragment.
@@ -58,7 +58,7 @@ npm run lint
 For live data, copy `.env.example` to `.env.local` and fill in the keys you need. Features without keys stay hidden, so you can develop with only a subset configured.
 
 ```bash
-node scripts/usage-report.mjs   # API cost, quota, and key expiry checks using non-billable probes
+node scripts/usage-report.mjs   # API cost, quota, and key expiry checks (only the ODsay probe is billed)
 ```
 
 ## Documentation
