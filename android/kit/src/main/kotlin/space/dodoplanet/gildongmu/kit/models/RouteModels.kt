@@ -5,6 +5,7 @@ import space.dodoplanet.gildongmu.kit.BearingUnavailable
 import space.dodoplanet.gildongmu.kit.CarAction
 import space.dodoplanet.gildongmu.kit.RoutePoint
 import space.dodoplanet.gildongmu.kit.WalkAction
+import space.dodoplanet.gildongmu.kit.WalkRouteVariant
 
 // 경로 브리핑 도메인 모델: 웹 /api/route/car·transit·walk 계약 ↔ Kit `RouteModels.swift` 미러
 // (계약 정본은 Kit Fixtures/route-*.json). 단위 함정: durationSeconds=초·totalMinutes/walkMinutes/minutes=분·fare류=원.
@@ -221,9 +222,17 @@ data class WalkRouteBriefing(
     val finalApproach: FinalApproachPayload? = null,
     /** 경유지(N4, `via` 요청에만). */
     val waypoint: RouteWaypoint? = null,
+    /**
+     * 이 경로의 줄 종류(E42, 원시 문자열) — 기하 응답(`includeGeometry=1`)에만 온다. 요청이 아니라 서버가 실제로
+     * 돌려준 경로의 성질이다(계단 회피 요청이 큰길로 내려가면 `broad`). 판독은 `lineKind`.
+     */
+    val kind: String? = null,
 ) {
     /** 알려진 상태만 매핑하고 미지의 값은 null("판정 없음")이다. */
     val stepFreeStatus: StepFreeStatus? get() = stepFree?.let(StepFreeStatus::fromRawValue)
+
+    /** 알려진 줄 종류만 매핑하고 미지의 값·부재는 null — 이름을 지어 붙이지 않는다. */
+    val lineKind: WalkLineKind? get() = kind?.let(WalkLineKind::fromRawValue)
 }
 
 /**
@@ -248,3 +257,47 @@ data class FinalApproachPayload(
  */
 @Serializable
 data class WalkRouteEnvelope(val result: WalkRouteBriefing? = null, val shortest: WalkRouteBriefing? = null)
+
+/**
+ * 조회 화면 도보 줄의 종류(E42, 웹 `WalkLineKind` 미러). 이름이 곧 그 경로의 성질에 대한 약속이라 **서버가 판정**하고
+ * 클라이언트는 이름·안내 요청으로 투영만 한다. ko는 `shortest`·`accessible`|`broad`, en은 `recommended`·`shortest`.
+ */
+enum class WalkLineKind {
+    shortest, accessible, broad, recommended;
+
+    val rawValue: String get() = name
+
+    /** 안내 요청의 경로 축 — 최단 줄만 `shortest`. */
+    val variant: WalkRouteVariant? get() = if (this == shortest) WalkRouteVariant.shortest else null
+
+    /**
+     * 안내 요청의 계단 회피 — 계단 회피 줄만 참. 큰길·추천은 기본 파이프라인이다. Swift `accessible`이지만 Kotlin enum은 항목
+     * `accessible`과 같은 이름의 속성을 둘 수 없어 개명했다.
+     */
+    val isAccessible: Boolean get() = this == accessible
+
+    companion object {
+        fun fromRawValue(raw: String): WalkLineKind? = entries.firstOrNull { it.name == raw }
+    }
+}
+
+/** `/api/route/walk?lines=1` 응답의 한 줄. 줄 경로엔 `stepFree`·`stepFreeNotice`가 없다(이름이 그 정보다). */
+@Serializable
+data class WalkRouteLine(
+    /**
+     * 줄 종류(원시 문자열). ⚠ **enum으로 디코딩하지 않는다** — 서버가 다섯째 종류를 더하면 응답 전체의 디코딩이
+     * 실패한다(`stepFree` 규율 동형). 판독은 `lineKind`가 한다.
+     */
+    val kind: String,
+    val route: WalkRouteBriefing,
+) {
+    /** 알려진 종류만 매핑하고 미지의 값은 null — 이름을 지어 붙이지 않고 화면에서 뺀다. */
+    val lineKind: WalkLineKind? get() = WalkLineKind.fromRawValue(kind)
+}
+
+/**
+ * `/api/route/walk?lines=1` envelope(E42). 배열 순서가 화면 순서이고 첫 원소가 기본 펼침이다.
+ * 빈 배열은 "경로 없음"(3-state — 조회 실패는 서버가 502로 던진다).
+ */
+@Serializable
+data class WalkRouteLinesEnvelope(val lines: List<WalkRouteLine>)

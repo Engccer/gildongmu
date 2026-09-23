@@ -78,13 +78,14 @@ internal fun stringId(key: String): Int? = when (key) {
     "directions.coordError" -> R.string.directions_coordError
     "directions.walkRecommended" -> R.string.directions_walkRecommended
     "directions.walkShortest" -> R.string.directions_walkShortest
+    "directions.walkAccessible" -> R.string.directions_walkAccessible
+    "directions.walkBroad" -> R.string.directions_walkBroad
     "route.public" -> R.string.route_public
     "route.car" -> R.string.route_car
     "route.pedestrian.heading" -> R.string.route_pedestrian_heading
     "route.pedestrian.summary" -> R.string.route_pedestrian_summary
     "route.pedestrian.noRoute" -> R.string.route_pedestrian_noRoute
     "route.pedestrian.error" -> R.string.route_pedestrian_error
-    "route.pedestrian.stepFreeToggle" -> R.string.route_pedestrian_stepFreeToggle
     "route.briefing.error" -> R.string.route_briefing_error
     "route.transit.noRoute" -> R.string.route_transit_noRoute
     "route.transit.error" -> R.string.route_transit_error

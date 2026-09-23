@@ -40,6 +40,11 @@ class DirectionsScreenA11yTest {
 
     private val places = """{"places":[{"id":"k1","name":"강남역","category":"교통,수송 > 지하철","address":"서울 강남구","roadAddress":"서울 강남구 강남대로","lat":37.4979,"lng":127.0276}],"provider":"kakao-local","query":"강남"}"""
     private val emptyAddr = """{"addresses":[],"query":"q"}"""
+    /** E42 줄 목록 봉투 — Kit 옛 봉투 fixture의 경로를 줄마다 싣는다(fixture 디렉터리는 읽기 전용). */
+    private fun walkLines(vararg kinds: String): String {
+        val route = DeviceFixtures.kit("route-walk.json").substringAfter("\"result\":").trimEnd().removeSuffix("}")
+        return """{"lines":[""" + kinds.joinToString(",") { """{"kind":"$it","route":$route}""" } + "]}"
+    }
 
     private object SeoulLocator : EndpointLocator {
         override suspend fun currentCoordinate(force: Boolean) = NearbyCoord(37.5385, 127.1355)
@@ -58,7 +63,7 @@ class DirectionsScreenA11yTest {
                 "/api/address/search" -> HttpResponse(200, emptyAddr)
                 "/api/places/entrance" -> HttpResponse(200, "{}")
                 "/api/route/transit" -> HttpResponse(200, DeviceFixtures.kit("route-transit.json"))
-                "/api/route/walk" -> HttpResponse(200, DeviceFixtures.kit("route-walk.json"))
+                "/api/route/walk" -> HttpResponse(200, walkLines("shortest", "accessible"))
                 "/api/route/car" -> HttpResponse(200, DeviceFixtures.kit("route-car.json"))
                 else -> HttpResponse(404, "")
             }
@@ -86,7 +91,7 @@ class DirectionsScreenA11yTest {
 
         rule.onNodeWithTag("heading-walk").performScrollTo().assertIsDisplayed()
         rule.onNodeWithTag("transit-p0-leg-0").performScrollTo().assertIsDisplayed()
-        rule.onNodeWithTag("walk-step-0").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithTag("walk-shortest-step-0").performScrollTo().assertIsDisplayed()
         rule.onRoot().tryPerformAccessibilityChecks()
 
         // 대안 행은 기본 접힘 — 펼치면 본문 구간 노드가 생긴다(spec §9).
@@ -97,14 +102,17 @@ class DirectionsScreenA11yTest {
         rule.onNodeWithTag("transit-$alt-leg-0").assertExists()
     }
 
-    /** 도보가 조회 실패여도 계단 회피 토글은 남는다(spec §3-1 표 11 — 켠 뒤 실패해도 되돌릴 수단). */
+    /**
+     * E42 두 줄: 첫 줄(최단)은 펼쳐져 줄 안 맨 위에 "최단 경로로 안내 시작"이 있고, 둘째 줄(큰길)은 접혀 본문이 없다.
+     * 계단 회피 토글은 없다(위원장 판정).
+     */
     @Test
-    fun stepFreeToggleSurvivesWalkError() {
+    fun walkTwoLinesFirstExpandedSecondCollapsedNoToggle() {
         val transport = StubTransport { url ->
             when (pathOf(url)) {
                 "/api/places/entrance" -> HttpResponse(200, "{}")
                 "/api/route/transit" -> HttpResponse(200, DeviceFixtures.kit("route-transit.json"))
-                "/api/route/walk" -> HttpResponse(502, """{"error":"upstream"}""")
+                "/api/route/walk" -> HttpResponse(200, walkLines("shortest", "broad"))
                 "/api/route/car" -> HttpResponse(200, DeviceFixtures.kit("route-car.json"))
                 else -> HttpResponse(404, "")
             }
@@ -117,10 +125,14 @@ class DirectionsScreenA11yTest {
         )
         vm.setEndpoint(space.dodoplanet.gildongmu.kit.DirectionsEndpoint.Place("강남역", 37.4979, 127.0276), DirectionsFieldTarget.to)
         rule.setContent { MaterialTheme { DirectionsScreen(vm) } }
+        rule.enableAccessibilityChecks()
         rule.onNodeWithTag("submit").performClick()
         rule.waitUntil(10_000) { vm.state.value.resultsRevision == 1 }
         rule.waitForIdle()
-        rule.onNodeWithTag("error-walk").assertExists()
-        rule.onNodeWithTag("stepfree").assertExists()
+        rule.onNodeWithTag("guide-start-walk-shortest").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithTag("walk-line-broad").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithTag("walk-broad-step-0").assertDoesNotExist()
+        rule.onNodeWithTag("stepfree").assertDoesNotExist()
+        rule.onRoot().tryPerformAccessibilityChecks()
     }
 }

@@ -58,9 +58,6 @@
       "downloadRequested": "음성 인식 준비를 요청했습니다. 잠시 뒤 다시 눌러 주세요",
       "downloadReady": "음성 인식이 준비됐습니다. 받아쓰기 시작을 다시 눌러 주세요"
     },
-    "beacon": {
-      "guideStartWalkShortest": "최단 경로 안내 시작"
-    },
     "guide": {
       "autoReroute": "새 경로로 다시 안내합니다. 안내 {count}개, 총 {distance}. {first}",
       "mediaVolumeZero": "미디어 볼륨이 꺼져 있어 안내 소리가 나지 않습니다",

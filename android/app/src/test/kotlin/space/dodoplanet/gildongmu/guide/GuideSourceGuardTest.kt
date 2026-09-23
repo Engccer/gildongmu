@@ -36,7 +36,7 @@ class GuideSourceGuardTest {
         assertTrue(walkPath.any { it.name == "WalkGuideStartButton.kt" } && walkPath.any { it.name == "GuideBottomBar.kt" })
         assertEquals(emptyList(), offenders(walkPath, gate))
         val directions = pkg.resolve("directions/DirectionsScreen.kt").readText()
-        assertTrue(Regex("""\n\s*guideStart = walkGuideStartSlot\(s, lang\),\n""").containsMatchIn(directions), "길찾기 도보 행의 시작 슬롯 배선")
+        assertTrue(Regex("""\n\s*guideStart = walkGuideStartSlot\(s\),\n""").containsMatchIn(directions), "길찾기 도보 행의 시작 슬롯 배선")
         val root = pkg.resolve("nav/AppRoot.kt").readText()
         assertTrue(Regex("""bottomBar = \{\n\s*GuideBottomBar \{""").containsMatchIn(root), "하단 바 = GuideBottomBar(무조건)")
         val session = guide.resolve("GuideSession.kt").readText()

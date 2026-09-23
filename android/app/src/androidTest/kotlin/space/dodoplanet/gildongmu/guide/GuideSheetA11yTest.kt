@@ -32,6 +32,7 @@ import space.dodoplanet.gildongmu.guide.ui.GuideBottomBar
 import space.dodoplanet.gildongmu.guide.ui.WalkGuideStartButton
 import space.dodoplanet.gildongmu.kit.BeaconDest
 import space.dodoplanet.gildongmu.kit.WalkHealthSummary
+import space.dodoplanet.gildongmu.kit.models.WalkLineKind
 
 /**
  * 실기기 검사 레인(spec §10-2 ①~⑥): 페이크 상태로 시트·띠바·종료 화면·시작 실패 행을 띄워 노드 계약과 ATF 검사를 본다.
@@ -143,13 +144,13 @@ class GuideSheetA11yTest {
     /** ⑥ 시작 실패 상태 → 시작 버튼 아래 실패 문장 행 + 해결 버튼. */
     @Test
     fun startFailureRowAndResolutionButton() {
-        rule.setContent { MaterialTheme { WalkGuideStartButton(dest, "길동역", accessible = false, variant = null, shortestAvailable = false, waypoint = null) } }
+        rule.setContent { MaterialTheme { WalkGuideStartButton(dest, "길동역", line = WalkLineKind.shortest, waypoint = null) } }
         rule.enableAccessibilityChecks()
-        rule.onNodeWithTag("guide-start-walk").assertIsDisplayed().assertHeightIsAtLeast(48.dp)
-        setUi(WalkGuideUiState(status = GuideStatus.denied, statusText = "위치 권한이 필요합니다", failResolution = FailResolution.settings, lastStartVariant = null))
+        rule.onNodeWithTag("guide-start-walk-shortest").assertIsDisplayed().assertHeightIsAtLeast(48.dp)
+        setUi(WalkGuideUiState(status = GuideStatus.denied, statusText = "위치 권한이 필요합니다", failResolution = FailResolution.settings, lastStartLine = WalkLineKind.shortest))
         rule.onNodeWithTag("guide-fail").assertIsDisplayed()
         rule.onNodeWithTag("guide-fail-settings").assertIsDisplayed().assertHeightIsAtLeast(48.dp)
-        setUi(WalkGuideUiState(status = GuideStatus.unavailable, statusText = "정확한 위치가 꺼져 있어 거리를 추적할 수 없습니다", failResolution = FailResolution.precise, lastStartVariant = null))
+        setUi(WalkGuideUiState(status = GuideStatus.unavailable, statusText = "정확한 위치가 꺼져 있어 거리를 추적할 수 없습니다", failResolution = FailResolution.precise, lastStartLine = WalkLineKind.shortest))
         rule.onNodeWithTag("guide-fail-precise").assertIsDisplayed()
         checkAllRoots()
     }

@@ -4,6 +4,7 @@ import space.dodoplanet.gildongmu.kit.formatDistance
 import space.dodoplanet.gildongmu.kit.joinText
 import space.dodoplanet.gildongmu.kit.models.CarRouteBriefing
 import space.dodoplanet.gildongmu.kit.models.TransitRouteSummary
+import space.dodoplanet.gildongmu.kit.models.WalkLineKind
 import space.dodoplanet.gildongmu.kit.models.WalkRouteBriefing
 import java.text.NumberFormat
 import java.util.Locale
@@ -40,9 +41,17 @@ fun carSummaryText(briefing: CarRouteBriefing, lang: String, strings: Strings): 
     if (briefing.tollFare > 0) strings.get("android.route.tollFare", wonText(briefing.tollFare, lang)) else null,
 )
 
+/** 도보 줄 이름(E42, iOS `WalkLineText.nameKey` 미러) — 조회 화면 줄 이름과 안내 시작 버튼이 같은 이름을 쓴다. */
+fun walkLineNameKey(line: WalkLineKind): String = when (line) {
+    WalkLineKind.shortest -> "directions.walkShortest"
+    WalkLineKind.accessible -> "directions.walkAccessible"
+    WalkLineKind.broad -> "directions.walkBroad"
+    WalkLineKind.recommended -> "directions.walkRecommended"
+}
+
 /**
  * 도보 스텝 행 문장들(구획 행 포함). 번호는 **원본 인덱스 + 1**(웹 `<ol>`·CLI·iOS와 같은 값 — 생략으로 밀지 않는다).
- * 서버가 스텝 0에 삽입한 `stepFreeNotice`는 두 도보 행 라벨이 이미 병기하므로 항상 생략한다(iOS `omitNoticeStep`).
+ * 서버가 스텝 0에 삽입한 `stepFreeNotice`는 생략한다(iOS `omitNoticeStep` — E42 줄 경로엔 싣지 않지만 삽입 계약은 남아 있다).
  * `viaLabel`이 있으면 `waypoint.stepIndex` 자리 **앞**에 "경유지 {label} 도착" 구획 행(번호 없음).
  */
 fun walkStepItems(briefing: WalkRouteBriefing, viaLabel: String?, strings: Strings): List<String> {

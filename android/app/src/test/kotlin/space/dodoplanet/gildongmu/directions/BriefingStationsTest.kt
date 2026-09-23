@@ -120,12 +120,12 @@ class BriefingStationsTest {
     }
 
     @Test fun `펼침 상태는 저장·복원으로 왕복한다`() {
-        val before = FormUiState(setOf("r2"), walkExpandedOverride = false, shortestExpanded = true, seenResultsRevision = 3)
+        val before = FormUiState(setOf("r2"), walkExpandedOverride = false, secondExpanded = true, seenResultsRevision = 3)
         val saved = with(FormUiState.Saver) { androidx.compose.runtime.saveable.SaverScope { true }.save(before) }!!
         val after = FormUiState.Saver.restore(saved)!!
         assertEquals(setOf("r2"), after.expandedAlts)
         assertEquals(false, after.walkExpandedOverride)
-        assertEquals(true, after.shortestExpanded)
+        assertEquals(true, after.secondExpanded)
         assertEquals(3, after.seenResultsRevision)
     }
 

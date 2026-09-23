@@ -57,7 +57,6 @@
     <string name="android_beacon_food_riceBowl">¡Equivale a un cuenco de arroz (bap)!</string>
     <string name="android_beacon_food_riceHalfBowl">¡Equivale a medio cuenco de arroz (bap)!</string>
     <string name="android_beacon_food_tangerine">¡Equivale a una mandarina!</string>
-    <string name="android_beacon_guideStartWalkShortest">Iniciar guía por la ruta más corta</string>
     <string name="android_beacon_healthEnterWeight">Introducir peso</string>
     <string name="android_beacon_healthSummary">En este tramo caminaste {1, plural, one {%1$s paso} other {%1$s pasos}} y quemaste unas %2$s kcal.</string>
     <string name="android_beacon_healthSummaryWithWeight">En este tramo caminaste {1, plural, one {%1$s paso} other {%1$s pasos}} y quemaste unas %3$s kcal, calculadas para %2$s kg.</string>

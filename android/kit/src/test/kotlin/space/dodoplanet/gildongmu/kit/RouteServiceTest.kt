@@ -1,6 +1,8 @@
 package space.dodoplanet.gildongmu.kit
 
 import kotlinx.coroutines.test.runTest
+import space.dodoplanet.gildongmu.kit.models.WalkLineKind
+import space.dodoplanet.gildongmu.kit.models.WalkRouteBriefing
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -74,6 +76,41 @@ class RouteServiceTest {
         assertTrue(q.has("accessible", "true"))
         assertFalse(q.hasName("includeGeometry"))
         assertNull(alt.result); assertNull(alt.shortest)
+    }
+
+    /**
+     * 줄 목록(E42)은 `lines=1` 단독 옵트인 — 계단 회피·경로 축·기하·alternatives와 조합하면 서버 400이다.
+     * 모르는 종류의 줄은 이름을 지어 붙이지 않고 뺀다(`stepFree` 원시 문자열 규율 동형).
+     */
+    @Test fun walkLinesIsSoloOptInAndDropsUnknownKinds() = runTest {
+        val body = """{"lines":[{"kind":"scenic","route":{"distanceMeters":900,"durationSeconds":700,"steps":[]}},""" +
+            """{"kind":"shortest","route":{"distanceMeters":850,"durationSeconds":720,"steps":[]}},""" +
+            """{"kind":"broad","route":{"distanceMeters":880,"durationSeconds":780,"steps":[]}}]}"""
+        val (svc, t) = service(HttpResponse(200, body))
+        val lines = svc.walkLines(37.5, 127.0, 37.6, 127.1, lang = DataLocale.ko, via = null)
+        assertEquals(listOf(WalkLineKind.shortest, WalkLineKind.broad), lines.map { it.lineKind })
+        val q = t.lastQuery()
+        assertTrue(q.has("lines", "1"))
+        for (name in listOf("accessible", "variant", "includeGeometry", "alternatives", "lang")) assertFalse(q.hasName(name), name)
+    }
+
+    /** 기하 응답의 `kind`(E42)는 받은 경로의 성질 — 원시 문자열로 받아 모르는 값·부재는 null. */
+    @Test fun walkBriefingKindDecodesLeniently() {
+        fun decode(kind: String?): WalkRouteBriefing {
+            val tail = kind?.let { ""","kind":"$it"""" } ?: ""
+            return KitJson.decodeFromString(WalkRouteBriefing.serializer(), """{"distanceMeters":1,"durationSeconds":1,"steps":[]$tail}""")
+        }
+        assertEquals(WalkLineKind.broad, decode("broad").lineKind)
+        assertNull(decode("scenic").lineKind)
+        assertNull(decode(null).lineKind)
+    }
+
+    /** 줄 종류의 안내 요청 축(E42): 최단→variant, 계단 회피→accessible, 큰길·추천→기본. */
+    @Test fun walkLineKindProjectsGuideRequestAxis() {
+        assertTrue(WalkLineKind.shortest.variant == WalkRouteVariant.shortest && !WalkLineKind.shortest.isAccessible)
+        assertTrue(WalkLineKind.accessible.variant == null && WalkLineKind.accessible.isAccessible)
+        assertTrue(WalkLineKind.broad.variant == null && !WalkLineKind.broad.isAccessible)
+        assertTrue(WalkLineKind.recommended.variant == null && !WalkLineKind.recommended.isAccessible)
     }
 
     /** 경유지(N4): `via`는 "위도,경도" 한 파라미터. null이면 키 자체를 생략. */

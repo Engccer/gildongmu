@@ -40,8 +40,10 @@ internal fun guideStringId(key: String): Int? = when (key) {
     "beacon.denied" -> R.string.beacon_denied
     "beacon.reduced" -> R.string.beacon_reduced
     "beacon.straightLineNote" -> R.string.beacon_straightLineNote
-    "beacon.guideStartWalk" -> R.string.beacon_guideStartWalk
-    "android.beacon.guideStartWalkShortest" -> R.string.android_beacon_guideStartWalkShortest
+    "beacon.guideStartWalkShortest" -> R.string.beacon_guideStartWalkShortest
+    "beacon.guideStartWalkAccessible" -> R.string.beacon_guideStartWalkAccessible
+    "beacon.guideStartWalkBroad" -> R.string.beacon_guideStartWalkBroad
+    "beacon.guideStartWalkRecommended" -> R.string.beacon_guideStartWalkRecommended
     "guide.detailStart" -> R.string.guide_detailStart
     "guide.bundle" -> R.string.guide_bundle
     "guide.handoff" -> R.string.guide_handoff

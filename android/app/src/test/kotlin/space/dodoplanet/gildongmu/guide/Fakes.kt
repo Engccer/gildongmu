@@ -17,6 +17,7 @@ import space.dodoplanet.gildongmu.kit.RoutePoint
 import space.dodoplanet.gildongmu.kit.RouteService
 import space.dodoplanet.gildongmu.kit.StubTransport
 import space.dodoplanet.gildongmu.kit.APIClient
+import space.dodoplanet.gildongmu.kit.models.WalkLineKind
 import space.dodoplanet.gildongmu.location.LocationPermission
 
 // 페이크 포트(spec §10 — 판정은 :kit, 여기는 "실제로 했는가"를 기록한다).
@@ -216,7 +217,7 @@ class GuideTestHarness(
     ).also { controller.model = it }
 
     val dest = BeaconDest(north(315.0).lat, lng0)
-    val request = WalkStartRequest(dest = dest, label = "길동역", accessible = false, variant = null, shortestAvailable = true, waypoint = null)
+    val request = WalkStartRequest(dest = dest, label = "길동역", accessible = false, variant = null, line = WalkLineKind.broad, waypoint = null)
 
     fun close() { job.cancel() }
 

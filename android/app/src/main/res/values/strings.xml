@@ -57,7 +57,6 @@
     <string name="android_beacon_food_riceBowl">밥 한 공기 분량이에요!</string>
     <string name="android_beacon_food_riceHalfBowl">밥 반 공기 분량이에요!</string>
     <string name="android_beacon_food_tangerine">귤 한 개 분량이에요!</string>
-    <string name="android_beacon_guideStartWalkShortest">최단 경로 안내 시작</string>
     <string name="android_beacon_healthEnterWeight">체중 입력하기</string>
     <string name="android_beacon_healthSummary">이번 구간에서 %1$s걸음 걸으셨어요. 약 %2$skcal를 태우셨어요.</string>
     <string name="android_beacon_healthSummaryWithWeight">이번 구간에서 %1$s걸음 걸으셨어요. %2$skg 기준으로 약 %3$skcal를 태우셨어요.</string>

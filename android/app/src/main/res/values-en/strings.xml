@@ -57,7 +57,6 @@
     <string name="android_beacon_food_riceBowl">That\'s about one bowl of rice (bap)!</string>
     <string name="android_beacon_food_riceHalfBowl">That\'s about half a bowl of rice (bap)!</string>
     <string name="android_beacon_food_tangerine">That\'s about one tangerine!</string>
-    <string name="android_beacon_guideStartWalkShortest">Start shortest route guidance</string>
     <string name="android_beacon_healthEnterWeight">Enter weight</string>
     <string name="android_beacon_healthSummary">You walked {1, plural, one {%1$s step} other {%1$s steps}} on this leg and burned about %2$s kcal.</string>
     <string name="android_beacon_healthSummaryWithWeight">You walked {1, plural, one {%1$s step} other {%1$s steps}} on this leg and burned about %3$s kcal, based on %2$s kg.</string>
