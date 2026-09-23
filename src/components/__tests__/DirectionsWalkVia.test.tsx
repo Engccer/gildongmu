@@ -47,9 +47,12 @@ const gangnam: Place = {
 const to: DirEndpoint = { kind: "place", label: "길동", coord: { lat: 37.5272, lng: 127.1268 } };
 
 let calledUrls: string[] = [];
+/** 안내 훅의 조회 응답이 경유지 위치를 아는가(false = 경유지 경로 없음과 같은 갈래). */
+let guideHasWaypoint = false;
 
 beforeEach(() => {
   calledUrls = [];
+  guideHasWaypoint = false;
   Object.defineProperty(navigator, "geolocation", {
     configurable: true,
     value: { watchPosition: vi.fn(() => 1), clearWatch: vi.fn(), getCurrentPosition: vi.fn() },
@@ -72,14 +75,21 @@ beforeEach(() => {
         return { ok: true, json: async () => ({ provider: "tmap", durationSeconds: 600, guides: [] }) } as Response;
       }
       if (url.startsWith("/api/route/walk") && url.includes("includeGeometry=1")) {
-        // 안내 훅의 조회 — 응답이 경유지 위치를 모른다(경유지 경로 없음과 같은 갈래).
+        // 안내 훅의 조회. 경유지(37.497,127.027)가 스텝 1의 시작이다.
+        const origin = { lat: 37.5352, lng: 127.1441 };
+        const via = { lat: 37.497, lng: 127.027 };
+        const dest = { lat: 37.5272, lng: 127.1268 };
         return {
           ok: true,
           json: async () => ({
             result: {
-              distanceMeters: 900,
-              durationSeconds: 800,
-              steps: [{ description: "직진 900m 이동", pathCoords: [{ lat: 37.5352, lng: 127.1441 }, { lat: 37.5272, lng: 127.1268 }] }],
+              distanceMeters: 9000,
+              durationSeconds: 7000,
+              steps: [
+                { description: "직진 5km 이동", pathCoords: [origin, via] },
+                { description: "직진 4km 이동", pathCoords: [via, dest] },
+              ],
+              ...(guideHasWaypoint ? { waypoint: { stepIndex: 1, coord: via } } : {}),
             },
           }),
         } as Response;
@@ -115,21 +125,25 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+/** 경유지 강남역으로 조회하고 도보 안내를 시작한다. */
+async function startWalkGuideWithVia() {
+  render(<DirectionsView canShowWalk canShowTransit canBriefCarRoute onBack={() => {}} initialTo={to} />);
+  fireEvent.click(screen.getByRole("button", { name: "directions.addVia" }));
+  await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText("directions.via")));
+  fireEvent.change(screen.getByLabelText("directions.via"), { target: { value: "강남" } });
+  fireEvent.click(screen.getByRole("button", { name: "directions.searchVia" }));
+  await waitFor(() => expect(document.activeElement?.textContent).toContain("강남역,"));
+  fireEvent.click(document.activeElement as HTMLElement);
+  fireEvent.click(screen.getByRole("button", { name: "directions.submit" }));
+  const start = await screen.findByRole("button", { name: /^beacon\.guideStartWalkShortest/ });
+  await act(async () => {
+    fireEvent.click(start);
+  });
+}
+
 describe("경유지 조회의 도보 안내(화면 통합)", () => {
   it("안내 조회가 경유지를 싣고, 경유지 경로가 없으면 빼고 안내한다고 화면 창구로 말한다", async () => {
-    render(<DirectionsView canShowWalk canShowTransit canBriefCarRoute onBack={() => {}} initialTo={to} />);
-    fireEvent.click(screen.getByRole("button", { name: "directions.addVia" }));
-    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText("directions.via")));
-    fireEvent.change(screen.getByLabelText("directions.via"), { target: { value: "강남" } });
-    fireEvent.click(screen.getByRole("button", { name: "directions.searchVia" }));
-    await waitFor(() => expect(document.activeElement?.textContent).toContain("강남역,"));
-    fireEvent.click(document.activeElement as HTMLElement);
-    fireEvent.click(screen.getByRole("button", { name: "directions.submit" }));
-    const start = await screen.findByRole("button", { name: /^beacon\.guideStartWalkShortest/ });
-
-    await act(async () => {
-      fireEvent.click(start);
-    });
+    await startWalkGuideWithVia();
 
     await waitFor(() => {
       const guideCalls = calledUrls.filter((u) => u.includes("includeGeometry=1"));
@@ -140,5 +154,18 @@ describe("경유지 조회의 도보 안내(화면 통합)", () => {
     await waitFor(() => {
       expect(screen.getByRole("status").textContent).toContain("directions.viaDropped:강남역을");
     });
+  });
+
+  it("안내 중에 경유지를 지우면 세션을 멈추고 그 사실을 말한다 — 지운 경유지로 계속 안내하지 않는다", async () => {
+    guideHasWaypoint = true;
+    await startWalkGuideWithVia();
+    await waitFor(() => expect(calledUrls.filter((u) => u.includes("includeGeometry=1"))).toHaveLength(1));
+    const guideCalls = () => calledUrls.filter((u) => u.includes("includeGeometry=1")).length;
+
+    fireEvent.click(screen.getByRole("button", { name: "directions.removeVia" }));
+
+    await waitFor(() => expect(screen.getByRole("status").textContent).toContain("beacon.stopped"));
+    expect(screen.queryByRole("button", { name: /^beacon\.guideStartWalkShortest/ })).toBeNull();
+    expect(guideCalls()).toBe(1);
   });
 });

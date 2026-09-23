@@ -744,16 +744,6 @@ describe("DirectionsView 경유지(N4)", () => {
     expect(JSON.parse(localStorage.getItem("gildongmu:recent-routes:v1") ?? "[]")[0].via.label).toBe("강남역");
   });
 
-  it("안내가 받는 경유지는 조회 시점 스냅샷이다 — 조회 뒤 경유지 칸을 지워도 화면의 경로와 같은 경유지를 싣는다", async () => {
-    stubRoutes();
-    beaconVia.clear();
-    renderView({ initialTo: to });
-    await queryWithVia();
-    fireEvent.click(screen.getByRole("button", { name: "removeVia" }));
-    expect(screen.queryByLabelText("via")).toBeNull();
-    expect(beaconVia.get("guideStartWalkShortest")).toEqual(GANGNAM_VIA);
-  });
-
   it("경유지 없는 조회는 도보 안내에 경유지를 넘기지 않는다(종전 동작)", async () => {
     stubRoutes();
     beaconVia.clear();
