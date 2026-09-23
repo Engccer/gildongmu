@@ -16,8 +16,8 @@
  *
  * 정밀도는 종전과 같다(소수 1자리 == 100m 단위). 바뀐 것은 표기뿐이다.
  *
- * 미러 3벌: Kit `Format.swift` · CLI `formatters.ts` `dist()`.
- * 드리프트 가드는 `__tests__/format.test.ts`.
+ * 미러 3벌: Kit `Format.swift` · CLI `formatters.ts` `dist()` · 안드로이드 `:kit` `Format.kt`.
+ * 드리프트 가드는 `__tests__/format-drift.test.ts`·`android-kit-drift.test.ts`.
  */
 export function formatDistance(meters: number): string {
   // 1,000 미만 판정을 반올림 **뒤에** 한다. 앞에서 하면 999.6이 "1000m"가 된다.
