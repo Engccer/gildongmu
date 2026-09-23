@@ -47,12 +47,19 @@ export function LocationBar({ onPick }: { onPick: () => void }) {
     ? bilingualName(locale, current.address, { en: current.english })
     : null;
 
-  function staleText(fixedAt: number): string {
+  // 옛 위치 문장은 주소가 문장 **가운데**라 괄호 한글을 주소 바로 뒤에 둔다(끝에 두면 비-ko에서
+  // "5 minutes ago (한글)"로 경과에 붙어 보인다 — 버튼 안이라 가운데 둬도 한 객체다, E28 R2).
+  // 번역 문장을 주소 자리에서 가른다: 어순은 로케일이 정하고 코드는 자리만 안다.
+  const ADDRESS_SLOT = "\u0000";
+  const staleParts = (() => {
+    if (!stale || geo.status === "ready" || manual) return null;
     // staleFixOf가 측정 시각을 보장하므로 null이 아니다(시각을 모르면 옛 위치가 아니다).
-    const ageMsg = staleAgeMessage(fixedAt, now)!;
+    const ageMsg = staleAgeMessage(stale.at, now)!;
     const age = t(ageMsg.key, { count: ageMsg.count });
-    return address ? t("gpsStale", { address: address.primary, age }) : t("gpsStaleNoAddress", { age });
-  }
+    if (!address) return { before: t("gpsStaleNoAddress", { age }), after: "" };
+    const [before, after = ""] = t("gpsStale", { address: ADDRESS_SLOT, age }).split(ADDRESS_SLOT);
+    return { before: before + address.primary, after };
+  })();
 
   const state =
     manual?.text ??
@@ -61,8 +68,8 @@ export function LocationBar({ onPick }: { onPick: () => void }) {
         address
         ? t("gpsNear", { address: address.primary })
         : t("gps")
-      : stale
-        ? staleText(stale.at)
+      : staleParts
+        ? staleParts.before + staleParts.after
         : geo.status === "denied" || geo.status === "unsupported"
           ? t("gpsFailed")
           : // idle(요청 전, 부모 마운트 effect가 아직 안 돎)·locating 둘 다 "확인 중" —
@@ -82,9 +89,19 @@ export function LocationBar({ onPick }: { onPick: () => void }) {
       className="min-h-11 w-full text-left underline"
     >
       {/* 버튼은 이름이 계산되는 요소라 괄호를 상태 문장 바로 뒤에 둬도 한 객체다(E28 R2). 접근 이름은 상태 문장, 동작 문장이다. */}
-      {state}
-      {/* 수동·GPS는 배타 상태다(수동이면 주소를 조회하지 않는다) — 괄호는 언제나 하나뿐. */}
-      <KoTail secondary={manual ? manual.secondary : address?.secondary} />
+      {staleParts ? (
+        <>
+          {staleParts.before}
+          <KoTail secondary={address?.secondary} />
+          {staleParts.after}
+        </>
+      ) : (
+        <>
+          {state}
+          {/* 수동·GPS는 배타 상태다(수동이면 주소를 조회하지 않는다) — 괄호는 언제나 하나뿐. */}
+          <KoTail secondary={manual ? manual.secondary : address?.secondary} />
+        </>
+      )}
       {`, ${pickTitle}`}
     </button>
   );

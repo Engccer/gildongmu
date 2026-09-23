@@ -37,7 +37,7 @@ GPS 갈래(수동 위치·장소 앵커가 아닐 때)의 위치 주장은 **셋
 
 **옛 좌표의 나이 상한은 두지 않는다.** 경과가 문장(표시줄·출발지 칸·완료 통지)에 들어가므로 "4시간 전에 확인한 위치로 찾았습니다"를 듣고 사용자가 판단한다. 판정("길찾기는 그 위치로 계속할 수 있다")에 상한이 없고, 상한을 두면 그 밖에서 다시 "없음"이 되어 3-state에 네 번째 경계가 생긴다(리뷰 M2).
 
-**웹 예외**: 브라우저가 OS 위치 서비스 꺼짐을 권한 거부(`code 1`)로 보고하는 구현이 있어, 그때 웹은 "없음", iOS·안드로이드는 "옛 위치"다. 불가피한 차이이며 실기기 대본에서 결함으로 읽지 않는다(리뷰 L3).
+**기기 위치 서비스 꺼짐은 플랫폼마다 다르게 보고된다**: iOS는 전역 위치 서비스 꺼짐을 `CLAuthorizationStatus.denied`로 보고하고(Apple 문서), 브라우저도 권한 거부(`code 1`)로 보고하는 구현이 있어 둘은 "없음"(권한 안내)이다. 안드로이드만 `isLocationEnabled()`로 가려 "옛 위치"다. 불가피한 차이이며 실기기 대본에서 결함으로 읽지 않는다. 비행기 모드는 위치 서비스를 끄지 않으므로 세 플랫폼 모두 "옛 위치"다(설계 리뷰 L3·구현 리뷰 L-5).
 
 ## 3. 시간 표현 (공유 순수 함수)
 
@@ -54,7 +54,7 @@ GPS 갈래(수동 위치·장소 앵커가 아닐 때)의 위치 주장은 **셋
 - **스토어**(`geolocation.ts`): `denied` 상태에 선택 필드 `last?: Coord`(판정 `staleFixOf`는 순수 모듈 `stale-origin.ts` — 여러 테스트가 `@/lib/geolocation`을 통째로 목킹한다). 조용하지 않은 실패에서 사유가 `denied`(권한)가 아니면 직전 좌표를 싣는다 — 직전 상태가 `ready`면 그 좌표, 직전이 `denied`+`last`면 그대로 이어받는다(연속 실패가 옛 좌표를 잃지 않게). 권한 거부면 싣지 않는다. 기존 소비자(`status === "ready"`만 보는 "내 주변" 등)는 **무변경** — 가산 필드라 실패 의미가 그대로다.
 - `staleFixOf(state): Coord | null` — `denied` ∧ `reason !== "denied"` ∧ `last` ∧ `last.at` 유한. 판정은 이 함수 하나만 지난다.
 - **표시줄**(`LocationBar`): 수동 → 수동 라벨, 그 외 `staleFixOf(geo)`가 있으면 옛 위치 문장 + 그 좌표의 주소(`useCurrentAddress(stale)`), 아니면 지금 그대로.
-- **길찾기**(`DirectionsView`): 상태 `staleOriginAt: number | null`(옛 좌표의 측정 시각, epoch 초). `currentLabel`은 수동 > 재측위 중 > 옛 위치 > 주소 > 기본.
+- **길찾기**(`DirectionsView`): 칸의 위치 주장은 공유 위치 스토어에서 **파생**한다(`useGeolocation` + `staleFixOf`, 주소는 표시줄과 같은 좌표 키 캐시 `useCurrentAddress` — 비-ko는 영문·로마자 1순위). 칸이 상태를 따로 들면 다른 화면의 전이를 못 따라가고 늦은 역지오코딩이 신선/옛 판정을 뒤집는다(구현 리뷰 M-1·M-2). `currentLabel`은 수동 > 옛 위치 > 주소 > 기본.
   - 조회(`runQuery`): `awaitEffectiveLocation`이 null이고 수동 위치가 없으며 `staleFixOf(snapshot)`이 있으면 그 좌표로 진행, `originSource = "stale"`(출발지가 현재 위치일 때), 주소 재동기화, 완료 통지에 뒷문장. 성공하면 `staleOriginAt = null`.
   - "현재 위치 사용" 재선택(`selectCurrentFrom`): 실패 시 옛 좌표가 있으면 옛 위치 표기로 전환하고, 옛 좌표도 없으면(권한 거부 등) 주소를 비운다(지금은 조용히 직전 라벨 유지 — 그 라벨이 옛 주소를 "현재 위치"로 말한다). 세 플랫폼 같다.
   - 진입 시 주소 병기 effect: 스냅샷이 옛 위치면 그 좌표 주소 + 옛 위치 표기.
@@ -68,7 +68,8 @@ GPS 갈래(수동 위치·장소 앵커가 아닐 때)의 위치 주장은 **셋
 - **표시줄**(`LocationBarView.state`): 권한·정밀도 분기 뒤, 좌표 분기 **앞**에 옛 위치 분기. 주소는 `CurrentAddressStore`가 옛 좌표로 조회한 것만.
 - **`CurrentAddressStore.ensureLoaded`**: `coordinateForDisplay()`가 nil이면 `staleFix`의 좌표로 조회를 이어 간다. 표시줄은 스토어가 든 주소가 **옛 좌표의 주소일 때만**(`isAddress(forLat:lng:)`) 옛 위치 문장에 싣고, 옛 위치가 서거나 바뀌면(`.task(id:)`) 다시 잰다. `coordinateForDisplay`의 "낡은 좌표 금지" 계약은 그대로다 — 옛 좌표는 옛 위치 문장으로만 표시된다.
 - **길찾기**(`DirectionsModel`): `private(set) var currentStaleAt: Date?`. 조회 catch의 `unavailable` 갈래에서 수동 위치 없음 ∧ `staleFix` → 그 좌표로 진행(커버리지 판정·주소 동기화는 성공 경로와 같은 자리). `loadCurrentAddressIfAuthorized`·`refreshCurrentLocation`도 실패 시 같은 폴백. 성공하면 nil. `resultsUsedManualOrigin`은 의미를 넓혀 `resultsOriginNeedsStartNotice`(수동 ∨ 옛 위치)로 개명한다 — 안내 시작 고지 판정 하나.
-- 필드 라벨(`currentLocationText`): 수동 > 재측위 중 > 옛 위치 > 주소 > 기본. `TimelineView(.everyMinute)`로 감싼다.
+- 필드 라벨(`currentLocationText`): 수동 > 재측위 중 > 옛 위치 > 주소 > 기본. `TimelineView(.everyMinute)`로 감싼다. 옛 위치는 모델 표식 ∧ 스토어의 살아 있는 `staleFix`(권한을 거두면 칸도 옛 위치를 말하지 않는다, 구현 리뷰 L-4).
+- 전이 추종: 표시줄은 `.task(id:)` 키에 옛 위치를 넣지 않고 `.onChange(of: staleFix?.fixedAt)` → `CurrentAddressStore.syncFromStore()`(측위 없음, 스토어 소유 태스크)로 따른다 — 키로 두면 태스크 안의 측위 실패가 자기를 취소한다(구현 리뷰 H-1). 길찾기 칸도 같은 관찰 → `DirectionsModel.syncCurrentFromStore()`. 표식이 바뀌면 주소를 먼저 비운다(L-3).
 
 ### 4.3 안드로이드
 
@@ -76,7 +77,7 @@ GPS 갈래(수동 위치·장소 앵커가 아닐 때)의 위치 주장은 **셋
 - **표시줄**: `LocationBarInput`에 `staleFixAtEpoch: Double?`. `gpsLabel` 순서 = 권한 → **옛 위치** → 확정 실패 → 좌표 → 주소. 나이는 렌더 시점 틱으로 계산(`LocationBarRow`). 입력은 `ensureLoaded` 스냅샷이라 다른 화면의 성공·실패를 못 따라가므로, 표시줄이 `staleChanges`를 구독해 **측위 없이** 스냅샷·주소를 다시 맞춘다(`syncFromStore` — 여기서 다시 재면 실패와 성공이 번갈아 서로를 부르는 측위 반복이 된다, 리뷰 H3).
 - **`CurrentAddressStore.ensureLoaded`**: iOS와 같이 옛 좌표로 이어 조회.
 - **`EffectiveLocation`**: `staleFix()` — 수동 위치가 있으면 null(수동이 이긴다). 길찾기 `EndpointLocator`에 `staleFix()`·`coordinateForDisplay()` 추가.
-- **길찾기**(`DirectionsViewModel`): `currentStaleAt: Double?`(UI 상태). 조회의 `Unavailable` 갈래 폴백, `refreshCurrentLocation` 폴백. `loadCurrentAddressIfAuthorized`는 `coordinateForRanking`(저장 좌표 폴백 = 이번 결함의 한 경로) 대신 표시용 좌표 + 옛 위치 폴백으로 바꾼다(iOS 등가). 안드로이드에는 안내 시작 고지("현재 위치에서 안내를 시작합니다")가 아직 없다 — 이번 범위 밖, 등가성 후보로 BACKLOG에 남긴다.
+- **길찾기**(`DirectionsViewModel`): `currentStaleAt: Double?`(UI 상태). 팩토리가 `staleChanges`를 주입하고 뷰모델이 전이를 측위 없이 따라간다(`syncCurrentFromStore`, 구현 리뷰 M-2), 표식이 바뀌면 주소를 먼저 비우고(L-3), 라벨은 살아 있는 `staleFix()`도 본다(L-4). 표시줄 `syncFromStore`는 진행 중에 온 전이를 버리지 않고 끝난 뒤 한 번 더 맞춘다(M-4). 조회의 `Unavailable` 갈래 폴백, `refreshCurrentLocation` 폴백. `loadCurrentAddressIfAuthorized`는 `coordinateForRanking`(저장 좌표 폴백 = 이번 결함의 한 경로) 대신 표시용 좌표 + 옛 위치 폴백으로 바꾼다(iOS 등가). 안드로이드에는 안내 시작 고지("현재 위치에서 안내를 시작합니다")가 아직 없다 — 이번 범위 밖, 등가성 후보로 BACKLOG에 남긴다.
 
 ## 5. 범위 밖
 
@@ -97,3 +98,7 @@ GPS 갈래(수동 위치·장소 앵커가 아닐 때)의 위치 주장은 **셋
 ## 7. 설계 리뷰 판정 (2026-09-23, fable, `review-design-202609231552.md`)
 
 채택: H1(저장 시 해제로 판정 단위 교체, 시각 비교·fixture 축 삭제) · H3(안드로이드 관찰 채널) · H4(도구 출력 라벨을 출력 시점 파생으로) · M1(웹 수동 해제 시 낡은 캐시 재측위) · L1·L3(문장 정정) · L5(추적 중 실패 기록). 판정으로 닫음: M2(나이 상한 없음, 위 §2). 범위 밖: H2(위 §5, BACKLOG). 실기기로 넘김: M3(§6 대본). L2(도착지 현재 위치 + 옛 위치): 완료 통지 뒷문장은 끝점 어느 쪽이든 나오고, 안내 시작 고지만 출발지일 때다(안내 출발지는 그때도 실좌표). L4(안드로이드 epoch 이중 시계): 관찰 채널은 좌표로만 변화를 가르고 나이는 표시 시점 벽시계로 구한다 — NTP 보정 수 초 오차는 분 단위 문장을 바꾸지 않아 수용.
+
+## 8. 구현 리뷰 판정 (2026-09-23, opus, `review-impl-202609231620.md`) · 접근성 감사 (`review-a11y-202609231617.md`)
+
+채택: H-1(iOS 표시줄 태스크 자기 취소 → 측위 없는 스토어 소유 동기화) · M-1·M-2(칸의 옛 위치 파생·전이 추종, 웹은 공유 주소 캐시로 순서 역전 소멸) · M-3(안드로이드 스토어 불변식·`syncFromStore` 테스트) · M-4(진행 중 전이 재동기화) · L-3(표식 전환 시 주소 선비움) · L-4(권한 회수 뒤 칸) · L-5(위 §2 정정) · L-7(웹 테스트를 실제 ko 카탈로그로, 진입·권한 거부·수동 해제 재측위 추가). 감사 I1(웹 비-ko 괄호 한글을 주소 바로 뒤로) 채택. 코디네이터 판정으로 넘김: 리뷰 L-2 = 감사 W1(결과 0건일 때 뒷문장 동사) · L-6 = I5(ja "たった今に"). 기록만: L-8(도착지가 현재 위치일 때 `destLabel`은 조회 시작 렌더 라벨 — 드문 조합), 감사 I3·I4(실기기 대본 D6·경계 1분 차), I2·I6(BACKLOG 후속 — I2는 웹 칸이 공유 주소 캐시로 바뀌며 함께 해소).

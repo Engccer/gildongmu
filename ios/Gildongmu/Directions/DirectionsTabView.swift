@@ -311,7 +311,7 @@ final class DirectionsModel {
         let stale = fresh == nil ? LocationService.shared.staleFix : nil
         guard let coord = fresh ?? stale.map({ (lat: $0.lat, lng: $0.lng) }) else { return }
         guard acceptsCurrentAddress(request) else { return }
-        currentStaleAt = stale?.fixedAt
+        markStale(stale?.fixedAt, request: request)
         await syncCurrentAddress(lat: coord.lat, lng: coord.lng, request: request)
     }
 
@@ -337,13 +337,44 @@ final class DirectionsModel {
                 staleAt = stale?.fixedAt
             }
             guard acceptsCurrentAddress(request) else { return }
-            currentStaleAt = staleAt
             guard let coord else {
+                currentStaleAt = nil
                 addressState.commit(nil, for: request, language: AppLanguage.dataLocale, isCancelled: Task.isCancelled)
                 return
             }
+            markStale(staleAt, request: request)
+            // ⚠ 여기서 새 요청을 발급하지 않는다 — `beginCurrentAddress`는 이 태스크(`refreshCurrentTask`)를 취소한다.
             await syncCurrentAddress(lat: coord.lat, lng: coord.lng, request: request)
         }
+    }
+
+    /// 다른 화면의 측위 성공·실패로 옛 위치가 서거나 풀렸을 때 칸을 따라가게 한다 — **측위 없이**
+    /// (구현 리뷰 M-2: 진입 때 한 번 받은 주소로 칸이 "현재 위치"를 말하는 동안 표시줄은 옛 위치라고
+    /// 하는 갈림). 섰으면 옛 좌표의 주소를, 풀렸으면 방금 쓰인 보관 좌표의 주소를 받는다.
+    func syncCurrentFromStore() {
+        guard ManualLocationStore.shared.current == nil,
+              from == .current || to == .current, !isRefreshingCurrent else { return }
+        let location = LocationService.shared
+        let stale = location.staleFix
+        guard stale?.fixedAt != currentStaleAt else { return }
+        guard let coord = stale.map({ (lat: $0.lat, lng: $0.lng) }) ?? location.lastCoordinate else { return }
+        let request = beginCurrentAddress()
+        markStale(stale?.fixedAt, request: request)
+        currentAddressTask = Task {
+            defer { addressState.finish(request) }
+            await syncCurrentAddress(lat: coord.lat, lng: coord.lng, request: request)
+        }
+    }
+
+    /// 옛 위치 표식을 세우거나 내린다. 표식이 바뀌면 주소를 먼저 비운다 — 표식은 즉시인데 주소는
+    /// 비동기라, 그 사이 다른 좌표의 주소가 옛 위치 문장에 실리지 않게(구현 리뷰 L-3).
+    /// ⚠ 이미 가진 요청으로 비운다 — 측위 뒤에 새 세대를 발급하면 늦은 측위가 최신 주소 요청을
+    /// 만드는 경로가 된다(`ios-endpoint-state-guard.test.ts`). `commit`은 요청을 끝내지 않고
+    /// 로딩만 내리므로 같은 요청으로 이어서 받을 수 있다.
+    private func markStale(_ staleAt: Date?, request: DirectionsAddressState.Request) {
+        guard staleAt != currentStaleAt else { return }
+        addressState.commit(nil, for: request, language: AppLanguage.dataLocale, isCancelled: false)
+        currentStaleAt = staleAt
     }
 
     /// 조회·재선택이 실패했을 때 옛 위치로 계속할 좌표(위원장 판정 2026-09-23). 취득 실패이고
@@ -449,7 +480,7 @@ final class DirectionsModel {
                 }
                 // 측위 전에 발급한 요청만 넘긴다. 늦은 측위가 최신 주소 요청을 만들지 않는다.
                 if let acquired = current, acceptsCurrentAddress(addressRequest) {
-                    currentStaleAt = staleAt
+                    markStale(staleAt, request: addressRequest)
                     currentAddressTask = Task {
                         defer { addressState.finish(addressRequest) }
                         await syncCurrentAddress(lat: acquired.lat, lng: acquired.lng, request: addressRequest)
@@ -668,6 +699,8 @@ struct DirectionsTabView: View {
     @State private var walkNoticePresented = false
     /// 필드 라벨의 수동 위치 분기(LocationBarView 동형 관찰 패턴).
     @State private var manualLocationStore = ManualLocationStore.shared
+    /// 옛 위치 전이 관찰(칸이 표시줄과 같은 판정을 따라가게, stale-origin 구현 리뷰 M-2).
+    @State private var locationService = LocationService.shared
     /// 시트에서 끝점을 확정한 뒤 포커스를 보낼 곳(웹 `focusAfterResolve` 대응).
     /// 실기기 확인(2026-08-02): 시트가 닫히면 VO 커서가 **화면 최상단으로 이탈**한다.
     /// 사용자는 방금 고른 다음 행동 지점(도착지 입력·조회 버튼)까지 다시 스와이프해
@@ -1007,6 +1040,8 @@ struct DirectionsTabView: View {
                 if model.consumePrefillFocusIfPending() { landFocusAfterResolve(from: .from) }
                 await model.loadCurrentAddressIfAuthorized()
             }
+            // 다른 화면의 측위 성공·실패로 옛 위치가 서거나 풀리면 칸이 따라간다(측위 없이).
+            .onChange(of: locationService.staleFix?.fixedAt) { model.syncCurrentFromStore() }
         }
     }
 
@@ -1324,7 +1359,8 @@ struct DirectionsTabView: View {
         if let manual = manualLocationLabel(manualLocationStore, accessible: accessible) { return manual }
         if model.isRefreshingCurrent { return appLocalized("directions.refreshingCurrent") }
         // 옛 위치(stale-origin): 표시줄과 같은 문장 함수 — 판정선이 갈리면 화면으로 확인 불가.
-        if let staleAt = model.currentStaleAt {
+        // 권한을 거두면(스토어의 옛 위치가 사라지면) 칸도 옛 위치를 말하지 않는다(구현 리뷰 L-4).
+        if let staleAt = model.currentStaleAt, locationService.staleFix != nil {
             let name = model.currentAddress.map { bilingual($0, en: model.currentAddressEnglish, roman: nil) }
             return staleLocationText(address: accessible ? name?.primary : name?.display, fixedAt: staleAt, now: now)
         }

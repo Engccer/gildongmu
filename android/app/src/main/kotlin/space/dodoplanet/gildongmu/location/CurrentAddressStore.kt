@@ -27,6 +27,8 @@ class CurrentAddressStore(private val location: LocationStore, private val searc
     /** 주소가 확정된 좌표·언어의 키. 조회 중복 판정에만 쓴다. */
     private var loadedKey: String? = null
     private var inflight = false
+    /** 진행 중에 온 옛 위치 전이 — 끝난 뒤 한 번 더 맞춘다(버리면 다음 전이까지 옛 좌표를 현재로 말한다, 구현 리뷰 M-4). */
+    private var resyncRequested = false
 
     private fun snapshot(address: String?, english: String?, staleFixAtEpoch: Double?) =
         LocationBarInput(location.authorization(), location.stored != null, location.lastFixFailed, address, english, staleFixAtEpoch)
@@ -51,6 +53,7 @@ class CurrentAddressStore(private val location: LocationStore, private val searc
         } finally {
             inflight = false
         }
+        resyncIfRequested(lang)
     }
 
     /**
@@ -59,7 +62,10 @@ class CurrentAddressStore(private val location: LocationStore, private val searc
      */
     @MainThread
     suspend fun syncFromStore(lang: String) {
-        if (inflight) return
+        if (inflight) {
+            resyncRequested = true
+            return
+        }
         inflight = true
         try {
             val stale = location.staleFix()
@@ -69,6 +75,13 @@ class CurrentAddressStore(private val location: LocationStore, private val searc
         } finally {
             inflight = false
         }
+        resyncIfRequested(lang)
+    }
+
+    private suspend fun resyncIfRequested(lang: String) {
+        if (!resyncRequested) return
+        resyncRequested = false
+        syncFromStore(lang)
     }
 
     private suspend fun resolve(coord: NearbyCoord?, staleAt: Double?, lang: String) {

@@ -58,11 +58,15 @@ struct LocationBarView: View {
             }
             // 수동 위치가 켜지고 꺼질 때마다 다시 판정한다(`.task`는 등장 시 1회뿐이라
             // 해제 후 주소가 영영 안 붙는다). 조회 자체는 스토어가 좌표당 1회로 막는다.
-            // 옛 위치가 서거나 바뀌어도 다시 잰다 — 그 좌표의 주소를 받아야 옛 위치 문장에 싣는다.
-            .task(id: AddressTaskKey(manualOff: store.current == nil,
-                                     staleAt: location.staleFix?.fixedAt)) {
+            .task(id: store.current == nil) {
                 guard store.current == nil else { return }
                 await addressStore.ensureLoaded()
+            }
+            // 다른 화면의 측위 성공·실패로 옛 위치가 서거나 풀리면 **측위 없이** 그 좌표의 주소만
+            // 맞춘다. 태스크 키로 두면 태스크 안의 측위 실패가 자기를 취소한다(구현 리뷰 H-1).
+            .onChange(of: location.staleFix?.fixedAt) {
+                guard store.current == nil else { return }
+                addressStore.syncFromStore()
             }
     }
 
@@ -72,10 +76,6 @@ struct LocationBarView: View {
         "\(state(address: address, accessible: accessible, now: now)), \(appLocalized("manualLocation.pickTitle"))"
     }
 
-    private struct AddressTaskKey: Equatable {
-        let manualOff: Bool
-        let staleAt: Date?
-    }
 
     /// 현재 위치 주소의 병기 이름(E28). 주소 미확보면 nil — 라벨은 "현재 위치"로 폴백한다.
     private var addressName: BilingualName? {

@@ -1,5 +1,6 @@
 package space.dodoplanet.gildongmu.location
 
+import kotlinx.coroutines.flow.StateFlow
 import space.dodoplanet.gildongmu.kit.NearbyCoord
 import space.dodoplanet.gildongmu.kit.NearbyCoordinateSource
 import space.dodoplanet.gildongmu.kit.NearbyLocationError
@@ -39,6 +40,9 @@ class EffectiveLocation(
         if (manual.current.value != null) return null
         return location.coordinateForDisplay()
     }
+
+    /** 옛 위치 전이 채널(`LocationStore.staleChanges`). 수동 위치 판정은 구독자 몫이다(길찾기 뷰모델이 `manual()`을 먼저 본다). */
+    val staleChanges: StateFlow<StaleFix?> get() = location.staleChanges
 
     /** 옛 위치(spec 2026-09-23 stale-origin): 수동 위치가 이긴다(null), 아니면 `LocationStore.staleFix`. 동기 — hydration은 스스로 보장한다. */
     fun staleFix(): StaleFix? {

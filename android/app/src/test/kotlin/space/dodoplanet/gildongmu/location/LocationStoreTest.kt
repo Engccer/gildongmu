@@ -10,6 +10,7 @@ import space.dodoplanet.gildongmu.kit.NearbyCoord
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 /** spec §4 위치 계층 계약. 플랫폼은 페이크(구독 콜백을 테스트가 직접 부른다), 시간은 가상 시계. */
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -52,6 +53,41 @@ class LocationStoreTest {
         assertNull(loud.await()); assertEquals(true, s.lastFixFailed)
         val coarse = store(FakeSource(), FakeGate(LocationPermission.Coarse))
         assertNull(coarse.currentFix(force = true, silent = true)); assertEquals(false, coarse.lastFixFailed) // Coarse 갈래도 silent
+    }
+
+    @Test fun `옛 위치 — 취득 실패에서 서고 좌표 저장에서 풀린다, 권한 축·silent는 세우지 않는다(stale-origin)`() = runTest(dispatcher) {
+        val src = FakeSource(); val gate = FakeGate(LocationPermission.Fine)
+        val s = LocationStore(src, gate, epochNow = { 1_000.0 })
+        assertNull(s.staleFix()) // 좌표 없음
+        s.stored = LocationStore.StoredFix(37.1, 127.2, 10.0, src.now - 300_000) // 5분 전
+        assertNull(s.staleFix()); assertNull(s.staleChanges.value) // 실패 없음 = 옛 위치 아님
+        val silent = attempt { s.currentCoordinate(force = true, silent = true) }; runCurrent(); advanceTimeBy(8_001); runCurrent()
+        assertEquals(LocationException.Kind.Unavailable, kindOf(silent.await()))
+        assertNull(s.staleFix()) // 조용한 측위는 세우지 않는다
+        val loud = attempt { s.currentCoordinate(force = true) }; runCurrent(); advanceTimeBy(8_001); runCurrent()
+        assertEquals(LocationException.Kind.Unavailable, kindOf(loud.await()))
+        assertEquals(StaleFix(37.1, 127.2, 700.0), s.staleFix()) // 측정 시각 = epoch − 나이(300초)
+        assertEquals(StaleFix(37.1, 127.2, 700.0), s.staleChanges.value)
+        gate.value = LocationPermission.Coarse
+        assertNull(s.staleFix()) // 권한 축이 먼저다
+        gate.value = LocationPermission.Fine
+        val ok = async { s.currentCoordinate(force = true) }; runCurrent(); src.emit(accuracy = 12.0, lat = 37.9); ok.await()
+        assertNull(s.staleFix()); assertNull(s.staleChanges.value) // 새 좌표가 쓰이면 풀린다
+    }
+
+    @Test fun `옛 위치 — 위치 꺼짐도 취득 실패, 권한 없음은 아니다, 같은 좌표 재실패는 다시 내보내지 않는다`() = runTest(dispatcher) {
+        val src = FakeSource(enabled = false); val s = store(src, FakeGate(LocationPermission.Fine))
+        s.stored = LocationStore.StoredFix(37.1, 127.2, 10.0, src.now - 120_000)
+        val off = attempt { s.currentCoordinate(force = true) }; runCurrent()
+        assertEquals(LocationException.Kind.Unavailable, kindOf(off.await()))
+        val first = s.staleChanges.value!!
+        val again = attempt { s.currentCoordinate(force = true) }; runCurrent(); again.await()
+        assertTrue(first === s.staleChanges.value) // 같은 좌표면 새 값을 내보내지 않는다(관찰자가 다시 돌지 않게)
+        val denied = store(FakeSource(), FakeGate(LocationPermission.None))
+        denied.stored = LocationStore.StoredFix(37.1, 127.2, 10.0, 0)
+        val d = attempt { denied.currentCoordinate(force = true) }; runCurrent()
+        assertEquals(LocationException.Kind.Denied, kindOf(d.await()))
+        assertNull(denied.staleFix())
     }
 
     @Test fun `currentFix의 at은 epoch 초에서 fix 나이를 뺀 값`() = runTest(dispatcher) {

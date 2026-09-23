@@ -12,6 +12,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -28,6 +29,7 @@ import space.dodoplanet.gildongmu.kit.DirectionsAddressState
 import space.dodoplanet.gildongmu.kit.ManualLocation
 import space.dodoplanet.gildongmu.kit.ManualVerdict
 import space.dodoplanet.gildongmu.location.manualLocationLabel
+import space.dodoplanet.gildongmu.location.StaleFix
 import space.dodoplanet.gildongmu.location.staleWords
 import space.dodoplanet.gildongmu.kit.DirectionsMode
 import space.dodoplanet.gildongmu.kit.DirectionsModeOutcome
@@ -123,6 +125,8 @@ class DirectionsViewModel(
     private val verdict: () -> ManualVerdict? = { null },
     /** epoch 초 — 옛 위치 경과 계산용(테스트가 고정한다). */
     private val epochNow: () -> Double = { System.currentTimeMillis() / 1000.0 },
+    /** 옛 위치 전이(`LocationStore.staleChanges`) — 다른 화면의 측위 성공·실패를 칸이 따라가게 한다(구현 리뷰 M-2). */
+    staleChanges: StateFlow<StaleFix?> = MutableStateFlow(null),
 ) : ViewModel() {
     private val staleWords = staleWords { key, args -> strings.get(key, *args) }
 
@@ -163,6 +167,8 @@ class DirectionsViewModel(
         viewModelScope.launch {
             prefill.collect { p -> if (p != null && takePrefill(p)) applyPrefill(p) }
         }
+        // 첫 값은 진입 때 `loadCurrentAddressIfAuthorized`가 맡는다 — 전이만 따라간다.
+        viewModelScope.launch { staleChanges.drop(1).collect(::syncCurrentFromStore) }
     }
 
     // ── 필드 ──────────────────────────────────────────────────────────────────
@@ -291,7 +297,7 @@ class DirectionsViewModel(
                 val acquired = current
                 if (acceptsCurrentAddress(request)) {
                     val stalePin = staleAt
-                    _state.update { it.copy(currentStaleAt = stalePin) }
+                    markStale(stalePin?.let { StaleFix(acquired.lat, acquired.lng, it) })
                     addressJob = viewModelScope.launch {
                         try { syncCurrentAddress(acquired, request) }
                         finally { finishCurrentAddress(request) }
@@ -444,10 +450,10 @@ class DirectionsViewModel(
 
     // ── 현재 위치 라벨(F-B) ──────────────────────────────────────────────────
 
-    /** 이미 허가된 세션에서만 조용히 주소를 병기한다(탭 진입만으론 권한 팝업 금지). */
-    fun loadCurrentAddressIfAuthorized() {
+    /** 이미 허가된 세션에서만 조용히 주소를 병기한다(탭 진입만으론 권한 팝업 금지). `force`는 옛 위치가 풀린 뒤 다시 받을 때. */
+    fun loadCurrentAddressIfAuthorized(force: Boolean = false) {
         resetAddressLanguageIfNeeded()
-        if (addressState.hasLoaded || addressState.isLoading) return
+        if (!force && (addressState.hasLoaded || addressState.isLoading)) return
         val s = _state.value
         if (s.from != DirectionsEndpoint.Current && s.to != DirectionsEndpoint.Current) return
         val request = beginCurrentAddress()
@@ -458,9 +464,50 @@ class DirectionsViewModel(
                 val stale = if (fresh == null) locator.staleFix() else null
                 val coord = fresh ?: stale?.let { NearbyCoord(it.lat, it.lng) } ?: return@launch
                 if (!acceptsCurrentAddress(request)) return@launch
-                _state.update { it.copy(currentStaleAt = stale?.fixedAtEpoch) }
+                markStale(stale)
                 syncCurrentAddress(coord, request)
             } finally { finishCurrentAddress(request) }
+        }
+    }
+
+    /**
+     * 다른 화면의 측위 성공·실패로 옛 위치가 서거나 풀렸을 때 칸이 따라가게 한다 — **측위 없이**(구현 리뷰 M-2). 섰으면 그 옛 좌표의 주소,
+     * 풀렸으면 표시용 좌표로 다시 받는다(`force` — 방금 쓰인 신선한 보관 좌표라 대개 캐시 재사용이다).
+     */
+    private fun syncCurrentFromStore(stale: StaleFix?) {
+        val s = _state.value
+        if (manual() != null || s.isRefreshingCurrent) return
+        if (s.from != DirectionsEndpoint.Current && s.to != DirectionsEndpoint.Current) return
+        if (stale == null) {
+            if (s.currentStaleAt == null) return
+            markStale(null)
+            loadCurrentAddressIfAuthorized(force = true)
+            return
+        }
+        if (stale.lat == shownStaleCoord?.lat && stale.lng == shownStaleCoord?.lng) return
+        resetAddressLanguageIfNeeded()
+        val request = beginCurrentAddress()
+        markStale(stale)
+        addressJob = viewModelScope.launch {
+            try { syncCurrentAddress(NearbyCoord(stale.lat, stale.lng), request) }
+            finally { finishCurrentAddress(request) }
+        }
+    }
+
+    /** 칸이 옛 위치로 말하는 좌표(전이 중복 판정용 — 측정 시각은 epoch 환산이라 호출마다 미세하게 달라 비교 축이 못 된다). */
+    private var shownStaleCoord: NearbyCoord? = null
+
+    /**
+     * 옛 위치 표식을 세우거나 내린다. 좌표가 바뀌면 주소를 먼저 비운다 — 표식은 즉시인데 주소는 비동기라, 그 사이 다른 좌표의 주소가 옛 위치
+     * 문장에 실리지 않게(구현 리뷰 L-3).
+     */
+    private fun markStale(stale: StaleFix?) {
+        val coord = stale?.let { NearbyCoord(it.lat, it.lng) }
+        val changed = coord != shownStaleCoord
+        shownStaleCoord = coord
+        _state.update {
+            if (changed) it.copy(currentStaleAt = stale?.fixedAtEpoch, currentAddress = null, currentAddressEnglish = null)
+            else it.copy(currentStaleAt = stale?.fixedAtEpoch ?: it.currentStaleAt)
         }
     }
 
@@ -485,7 +532,7 @@ class DirectionsViewModel(
                 }
                 if (!acceptsCurrentAddress(request)) return@launch
                 val stalePin = staleAt
-                _state.update { it.copy(currentStaleAt = stalePin) }
+                markStale(stalePin?.let { at -> coord?.let { StaleFix(it.lat, it.lng, at) } })
                 if (coord == null) {
                     if (addressState.commit(null, request, dataLocale(), !currentCoroutineContext().isActive)) {
                         _state.update { it.copy(currentAddress = null, currentAddressEnglish = null) }
@@ -582,7 +629,8 @@ class DirectionsViewModel(
         val s = _state.value
         if (s.isRefreshingCurrent) return strings.get("directions.refreshingCurrent")
         // 옛 위치(stale-origin): 표시줄과 같은 문장(`StaleWords`) — 판정선이 갈리면 화면으로 확인 불가.
-        s.currentStaleAt?.let { at ->
+        // 권한을 거두면(스토어의 옛 위치가 사라지면) 칸도 옛 위치를 말하지 않는다(구현 리뷰 L-4).
+        s.currentStaleAt?.takeIf { locator.staleFix() != null }?.let { at ->
             val name = s.currentAddress?.let { bilingualName(lang, it, en = s.currentAddressEnglish, roman = null) }
             return staleWords.line(if (accessible) name?.primary else name?.display, at, nowEpoch)
         }

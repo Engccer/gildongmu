@@ -30,6 +30,8 @@ final class CurrentAddressStore {
     private var loadedKey: String?
     /// 진행 중 조회 가드. 세 화면이 동시에 나타나도 왕복은 한 번이다.
     @ObservationIgnored private var inflight = false
+    /// 역지오코딩 중인 좌표 키(중복 조회 차단·늦은 응답 폐기).
+    @ObservationIgnored private var pendingKey: String?
     @ObservationIgnored private let service = SearchService(client: APIClient(baseURL: AppConfig.apiBaseURL))
 
     private init() {}
@@ -62,13 +64,35 @@ final class CurrentAddressStore {
         let fresh = await LocationService.shared.coordinateForDisplay()
         guard let coord = fresh ?? LocationService.shared.staleFix.map({ (lat: $0.lat, lng: $0.lng) })
         else { return }
+        await resolve(lat: coord.lat, lng: coord.lng)
+    }
+
+    /// 옛 위치가 서거나 풀렸을 때(다른 화면의 측위 성공·실패) **측위 없이** 스토어 좌표의 주소를 맞춘다.
+    ///
+    /// ⚠ 호출부 뷰 태스크 수명과 분리한다(스토어가 소유한 태스크). 옛 위치 표식을 뷰 태스크 키로
+    /// 쓰면 그 태스크 안의 측위 실패가 키를 바꿔 자기 자신을 취소하고, 주소가 영영 안 붙는다
+    /// (구현 리뷰 H-1). 여기서 다시 재지 않는 이유는 안드로이드 `syncFromStore`와 같다 — 재면
+    /// 실패와 성공이 번갈아 서로를 부른다. 풀렸으면 방금 쓰인 보관 좌표(신선)의 주소다.
+    func syncFromStore() {
+        let location = LocationService.shared
+        guard let coord = location.staleFix.map({ (lat: $0.lat, lng: $0.lng) }) ?? location.lastCoordinate
+        else { return }
+        Task { await resolve(lat: coord.lat, lng: coord.lng) }
+    }
+
+    /// 좌표 → 주소 커밋. 같은 좌표·언어는 한 번(조회 중이어도), 늦게 온 옛 좌표 응답은 버린다.
+    private func resolve(lat: Double, lng: Double) async {
         // 언어가 바뀌면 같은 좌표라도 다시 받는다(영문 병기는 en 응답에만 실린다).
         let lang = AppLanguage.dataLocale
-        let key = Self.key(lat: coord.lat, lng: coord.lng) + "|" + lang
-        if key == loadedKey { return }
+        let key = Self.key(lat: lat, lng: lng) + "|" + lang
+        if key == loadedKey || key == pendingKey { return }
+        pendingKey = key
         // 좌표가 갈렸으면 새 주소가 오기 전에 옛 주소를 버린다.
-        if loadedKey != nil { address = nil; english = nil }
-        let resolved = try? await service.reverseGeocode(lat: coord.lat, lng: coord.lng, lang: lang)
+        if loadedKey != nil { address = nil; english = nil; loadedKey = nil }
+        let resolved = try? await service.reverseGeocode(lat: lat, lng: lng, lang: lang)
+        // 더 새 좌표가 앞질렀으면 이 응답은 옛 자리의 주소다(latest-wins).
+        guard pendingKey == key else { return }
+        pendingKey = nil
         // ⚠ **취소는 "그 좌표를 확정했다"가 아니다.** 호출부 `.task(id:)`는 수동 위치가
         // 켜지는 순간 이 태스크를 취소하는데(정상 흐름이다 — 사용자가 위치를 지정했다),
         // 그때 loadedKey를 세워 두면 나중에 수동 위치를 해제해도 "이미 조회한 좌표"로

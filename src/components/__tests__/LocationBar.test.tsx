@@ -395,6 +395,25 @@ describe("LocationBar — 옛 위치", () => {
     expect(screen.getByRole("button", { name: /1시간 전/ })).toBeTruthy();
   });
 
+  it("비-ko는 괄호 한글이 경과가 아니라 주소 바로 뒤에 붙고, 낭독엔 한글이 없다", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        json: async () => ({ address: "성내로 12", addressEn: "12 Seongnae-ro" }),
+      })),
+    );
+    staleAfterRefetch();
+    renderBarEn();
+    await settle();
+    const button = screen.getByRole("button", {
+      name: "Last known location, 12 Seongnae-ro, 5 minutes ago, Set your location",
+    });
+    expect(button.textContent).toBe(
+      "Last known location, 12 Seongnae-ro (성내로 12), 5 minutes ago, Set your location",
+    );
+  });
+
   it("권한 거부는 옛 위치로 말하지 않는다(위치를 확인할 수 없습니다)", async () => {
     staleAfterRefetch(1);
     renderBar();

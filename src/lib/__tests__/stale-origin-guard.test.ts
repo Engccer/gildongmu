@@ -38,6 +38,14 @@ describe("iOS 옛 위치 배선", () => {
     expect(SERVICE.match(/\bstored = /g) ?? []).toHaveLength(1);
   });
 
+  it("옛 위치 전이는 뷰 태스크 키가 아니라 측위 없는 동기화로 따라간다(태스크 키면 자기 측위 실패가 자기를 취소한다, 구현 리뷰 H-1)", () => {
+    expect(BAR).toContain(".task(id: store.current == nil)");
+    expect(BAR).not.toMatch(/\.task\(id:[^)]*staleFix/);
+    expect(BAR).toMatch(/\.onChange\(of: location\.staleFix\?\.fixedAt\)[\s\S]{0,200}addressStore\.syncFromStore\(\)/);
+    // 길찾기 칸도 같은 전이를 따라간다(구현 리뷰 M-2).
+    expect(DIRECTIONS).toMatch(/\.onChange\(of: locationService\.staleFix\?\.fixedAt\) \{ model\.syncCurrentFromStore\(\) \}/);
+  });
+
   it("길찾기 조회·재선택 실패는 같은 폴백 판정을 지난다", () => {
     const calls = DIRECTIONS.match(/staleOriginFallback\(after: error\)/g) ?? [];
     expect(calls).toHaveLength(2);
