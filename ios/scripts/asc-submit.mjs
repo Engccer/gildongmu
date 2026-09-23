@@ -203,6 +203,40 @@ async function main() {
     return;
   }
 
+  // 심사 취소(`--cancel-review 1.19 [--apply]`). 대기·진행 중인 review submission 가운데
+  // 그 버전을 담은 것만 `canceled: true`로 닫는다. 버전을 지우지는 않으므로 같은 빌드로
+  // 다시 제출할 수 있다. 기본은 드라이런이다.
+  const cancelVersion = arg("cancel-review");
+  if (cancelVersion) {
+    const app = (await api("GET", `/apps?filter[bundleId]=${BUNDLE_ID}`)).data[0];
+    if (!app) throw new Error(`앱을 찾지 못함: ${BUNDLE_ID}`);
+    const states = "READY_FOR_REVIEW,WAITING_FOR_REVIEW,IN_REVIEW,UNRESOLVED_ISSUES";
+    const subs = (
+      await api("GET", `/reviewSubmissions?filter[app]=${app.id}&filter[state]=${states}&limit=10`)
+    ).data;
+    let target = null;
+    for (const s of subs) {
+      const items = (await api("GET", `/reviewSubmissions/${s.id}/items?include=appStoreVersion`)).included ?? [];
+      if (items.some((i) => i.type === "appStoreVersions" && i.attributes.versionString === cancelVersion)) {
+        target = s;
+        break;
+      }
+    }
+    if (!target) throw new Error(`버전 ${cancelVersion}을 담은 대기·진행 중 심사 제출이 없다(상태 ${states})`);
+    console.log(`\n[${APPLY ? "APPLY" : "DRY RUN"}] 심사 취소 — 제출 ${target.id} (${target.attributes.state}, 버전 ${cancelVersion})\n`);
+    step("reviewSubmission canceled: true");
+    if (APPLY) {
+      await api("PATCH", `/reviewSubmissions/${target.id}`, {
+        data: { type: "reviewSubmissions", id: target.id, attributes: { canceled: true } },
+      });
+      const v = (
+        await api("GET", `/apps/${app.id}/appStoreVersions?filter[versionString]=${cancelVersion}&limit=1`)
+      ).data[0];
+      console.log(`  취소 완료. 버전 ${cancelVersion} 상태: ${v?.attributes.appStoreState}`);
+    }
+    return;
+  }
+
   const version = arg("version");
   const buildNumber = arg("build");
   if (!version || !buildNumber) {
