@@ -57,7 +57,7 @@ try {
   /** provider 캐시 밖 raw 호출 — 급행 전수 검사용(선정 5개에 가려지지 않게). */
   async function fetchOdsayRaw(origin, dest) {
     const q = new URLSearchParams({ SX: String(origin.lng), SY: String(origin.lat), EX: String(dest.lng), EY: String(dest.lat), OPT: "0", lang: "1" });
-    const res = await fetch(`https://api.odsay.com/v1/api/searchPubTransPathT?${q}&apiKey=${process.env.ODSAY_API_KEY ?? ""}`, { headers: { Referer: "https://gildongmu.vercel.app/" } });
+    const res = await fetch(`https://api.odsay.com/v1/api/searchPubTransPathT?${q}&apiKey=${process.env.ODSAY_API_KEY ?? ""}`, { headers: { Referer: "https://gildongmu.dodoplanet.space/" } });
     if (!res.ok) throw new Error(`ODsay raw HTTP ${res.status}`);
     return res.json();
   }

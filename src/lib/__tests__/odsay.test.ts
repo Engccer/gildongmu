@@ -267,7 +267,7 @@ describe("getTransitRoute", () => {
     });
     const init = spy.mock.calls[0][1] as RequestInit;
     expect(init.headers).toMatchObject({
-      Referer: "https://gildongmu.vercel.app/",
+      Referer: "https://gildongmu.dodoplanet.space/",
     });
   });
 });

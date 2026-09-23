@@ -46,7 +46,7 @@ const url =
 
 // ⚠ URI 전용 키라 Referer 필수(provider와 같은 값).
 const res = await fetch(url, {
-  headers: { Referer: "https://gildongmu.vercel.app/" },
+  headers: { Referer: "https://gildongmu.dodoplanet.space/" },
   signal: AbortSignal.timeout(20000),
 });
 const text = await res.text();

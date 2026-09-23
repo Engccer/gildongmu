@@ -11,6 +11,10 @@
 
 ## 2026-09-23
 
+### ODsay Flex 후불 종량제 전환
+
+ODsay 대중교통 API를 Basic(일 30건 무료)에서 Flex(건당 25원+VAT, 일 10만 건, 매월 5일 카드 결제)로 옮겼다. 새 앱 `gildongmuflex` 키로 교체했고, 옛 URI를 Basic 앱이 점유해 ODsay 출처 주소(`ODSAY_REFERER`)를 정식 도메인 `gildongmu.dodoplanet.space`로 바꿨다. 월 과금 상한선은 ODsay 사이트에 UI가 없어 우리 쪽 가드를 [BACKLOG E49](docs/BACKLOG.md)로 열었다.
+
 ### 버스 승차 중 현재 정류장 표식 (E48, iOS 실험판·웹)
 
 버스를 타고 가는 동안 경유 정류장 목록과 iOS 조망에 "현재 위치"가 기기 위치로 붙는다(표시 전용, 상태 머신·하차 판정은 도착 API 그대로). 최근접 정류장 300m 이내, 길 건너 정류장이 경합하면 비우고, 같은 정류장 두 번 연속일 때만 앞으로, 하차 정류장은 50m 안일 때만, 마지막 관측 90초 뒤 거둔다. iOS는 E36 keep-alive 스트림의 fix를 안내 세션에만 넘기고(공유 스토어 미기록) 버스 riding 동안만 10m급·거리 필터 없음으로 올린다(E36 ⓐ′ 첫 좌표 소비). 웹은 버스 riding 동안 세션 전용 `watchPosition`. [spec](docs/superpowers/specs/2026-09-23-bus-current-stop-design.md)
