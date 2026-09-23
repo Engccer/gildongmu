@@ -81,6 +81,7 @@
     "jibunAddress": "지번",
     "phone": "전화",
     "representativePhone": "대표번호 {phone}",
+    "nearbyHeading": "이 장소 주변",
     "openInNaverMap": "네이버 지도에서 보기",
     "openInKakaoMap": "카카오맵에서 보기",
     "homepage": "홈페이지",

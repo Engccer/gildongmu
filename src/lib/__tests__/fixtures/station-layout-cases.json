@@ -1,5 +1,5 @@
 {
-  "_comment": "E44 역 상세 레이아웃 종류·대표번호 판별 공유 케이스(웹 station-phone.ts ↔ Kit StationPhone.swift ↔ 안드로이드 :kit). 모양은 2026-09-17 실호출 응답(spec 2026-09-17-station-detail-reorg-design.md §3.1·§5.4-5).",
+  "_comment": "E44 역 상세 레이아웃 종류·대표번호 판별 케이스 — Kit StationPhoneTests.swift의 케이스를 옮긴 표. 지금은 웹 station-phone.test.ts만 읽는다(Kit·안드로이드 :kit이 읽으면 세 미러가 한 표로 잠긴다). 모양은 2026-09-17 실호출 응답(spec 2026-09-17-station-detail-reorg-design.md §3.1·§5.4-5).",
   "layoutKind": [
     { "note": "카카오 지하철역 POI", "id": "kakao-1", "category": "교통,수송 > 지하철,전철 > 수도권5호선", "expected": "subway" },
     { "note": "경유역", "id": "transit-stop:2544", "category": "지하철역", "expected": "subway" },

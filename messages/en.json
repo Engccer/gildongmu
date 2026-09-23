@@ -81,6 +81,7 @@
     "jibunAddress": "Lot address",
     "phone": "Phone",
     "representativePhone": "main line {phone}",
+    "nearbyHeading": "Near this place",
     "openInNaverMap": "Open in Naver Map",
     "openInKakaoMap": "Open in Kakao Map",
     "homepage": "Website",

@@ -40,6 +40,7 @@ export const SHAPE = withFailure({
     status: true,
     address: { english: true, road: true, jibun: true },
     phone: true,
+    phoneKind: true,
     stationMeta: { status: true, lines: LINES, linesReturnedCount: true, linesTotalCount: true, refreshError: true },
   },
   timetable: {
@@ -294,6 +295,7 @@ function projectAxis(
       status: "done",
       address: info.addressLines,
       phone: info.phone,
+      phoneKind: info.phoneKind,
       stationMeta: info.isStation
         ? { ...base(meta), lines: data ? slice(data.lines, offset) : undefined }
         : undefined,

@@ -158,7 +158,13 @@ export function SeoulMetroFacilities({ stationName }: { stationName: string }) {
               펼침 상태를 브라우저가 낭독하고, 포커스는 펼친 뒤에도 요약 행에 남는다(다음 탐색이 첫 시설).
               문장 정본은 place-lines(도구층과 공용) — 묶음 이름·시설 줄 모두. */}
           <div className="mt-2 space-y-1">
-            {metroFacilityGroups(status.facilities, t, locale).map((g, gi) => (
+            {metroFacilityGroups(status.facilities, t, locale).map((g, gi) =>
+              // 줄이 하나도 없는 묶음(교통약자 도우미 — upstream이 수만 준다)은 펼쳐도 빈 컨트롤이라 평문 한 줄이다.
+              g.lines.length === 0 && status.facilities.groups[gi].kind !== "voiceGuide" ? (
+                <p key={status.facilities.groups[gi].kind} className="py-3 text-sm font-semibold">
+                  {g.name}
+                </p>
+              ) : (
               <details key={status.facilities.groups[gi].kind}>
                 <summary className="min-h-11 cursor-pointer py-3 text-sm font-semibold">
                   {g.name}
@@ -180,7 +186,8 @@ export function SeoulMetroFacilities({ stationName }: { stationName: string }) {
                   <p className="mb-2 text-xs opacity-70">{t("voiceGuideSource")}</p>
                 )}
               </details>
-            ))}
+              ),
+            )}
           </div>
           <p className="mt-2 text-xs opacity-70">{t("source")}</p>
         </div>

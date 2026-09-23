@@ -100,6 +100,20 @@ describe("get_place_info(spec §3.3)", () => {
     expect(out.timetable).toBeUndefined();
   });
 
+  it("역 basic: 화면이 대표번호라고 밝히는 번호는 phoneKind로 싣는다(E44 판정 ⑥)", async () => {
+    __setNonceForTest("n");
+    publishView("home", home());
+    const base = placeBridge(station, { basic: { snapshot: { status: "done", gen: 1 } } });
+    const bridge: PlaceBridge = {
+      ...base,
+      read: () => ({ ...base.read(), phone: "1544-7788", phoneKind: "representative" }),
+    };
+    publishView("place", bridge, station.id);
+    nav();
+    const out = await call({ ref: encodeRef(2, "p", 0), axes: ["basic"] });
+    expect(out.basic).toMatchObject({ phone: "1544-7788", phoneKind: "representative" });
+  });
+
   it("역 facilities 첫 호출: korail·metro 둘 다 idle이면 두 소스를 모두 fetch해 done(W2-B1 회귀)", async () => {
     __setNonceForTest("n");
     publishView("home", home());
