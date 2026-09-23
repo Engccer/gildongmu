@@ -2,7 +2,12 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { useRouteGuide, type GuideKind } from "@/hooks/useRouteGuide";
+import {
+  useRouteGuide,
+  type GuideKind,
+  type GuideProgress,
+  type RouteGuideVia,
+} from "@/hooks/useRouteGuide";
 import { formatDistance, joinText } from "@/lib/format";
 import { SurroundingsScene } from "@/components/SurroundingsScene";
 
@@ -47,6 +52,7 @@ export function DistanceBeacon({
   onStart,
   onSessionEnd,
   onActiveChange,
+  via,
 }: {
   dest: { lat: number; lng: number; name: string };
   /** 안내 수단(B1 §4.1 봉인 구성 키). 장소 상세는 walk 고정, 길찾기 뷰는 버튼별. */
@@ -101,9 +107,15 @@ export function DistanceBeacon({
    * 패널이 접힘으로 unmount되면 세션이 조용히 죽으므로, 부모가 이 신호로 강제 펼침을 유지한다.
    */
   onActiveChange?: (active: boolean) => void;
+  /**
+   * 도보 경유지(N4 spec 2026-09-24 §5.2). 지정하면 도보 안내 조회가 경유지를 지나가고, 남은 거리 행이
+   * "다음 목표"(경유지 → 목적지) 기준이 된다. 미지정 = 경유지 없음(종전 동작).
+   */
+  via?: RouteGuideVia | null;
 }) {
   const t = useTranslations("beacon");
   const tGuide = useTranslations("guide");
+  const tDirections = useTranslations("directions");
   const [open, setOpen] = useState(autoStart);
   // 학습되면 잉여인 안내가 매 세션 한 행을 차지했다(13번) — 첫 사용 안내 +
   // "다시 보지 않음". localStorage 불가 환경은 항상 표시로 수렴(편의 기능).
@@ -114,7 +126,20 @@ export function DistanceBeacon({
       return false;
     }
   });
-  const guide = useRouteGuide(dest, kind, { accessible, variant }, { onSessionEnd });
+  const guide = useRouteGuide(dest, kind, { accessible, variant }, { onSessionEnd, via });
+
+  /** 남은 거리 행의 거리 조각 — 목표(N4 2026-09-24 §5.2)에 따라 라벨이 값과 함께 바뀐다. */
+  function remainingDistanceText(progress: GuideProgress): string {
+    const distance = formatDistance(progress.remainingMeters);
+    switch (progress.target.kind) {
+      case "waypoint":
+        return tDirections("viaRemaining", { label: progress.target.label, distance });
+      case "destination":
+        return tDirections("viaDestRemaining", { dest: progress.target.label, distance });
+      case "route":
+        return tGuide("remainingDistance", { distance });
+    }
+  }
 
   // 안내 문장을 화면의 단일 창구로 올린다(A40). ⚠ **빈 값은 게시하지 않는다** —
   // 훅은 같은 문장을 다시 말하려고 `"" → 같은 문장`으로 되돌리는데(DOM이 안 바뀌면
@@ -301,9 +326,7 @@ export function DistanceBeacon({
           {tracking && guide.mode === "detail" && !guide.offRoute && guide.progress && (
             <p className="mt-2 text-sm">
               {joinText(
-                tGuide("remainingDistance", {
-                  distance: formatDistance(guide.progress.remainingMeters),
-                }),
+                remainingDistanceText(guide.progress),
                 guide.progress.etaSeconds !== null &&
                   tGuide("remainingTime", {
                     minutes: Math.max(1, Math.round(guide.progress.etaSeconds / 60)),

@@ -29,6 +29,7 @@ import {
 } from "@/lib/guide-tone-layer";
 import {
   buildGuideRoute,
+  guideNextTarget,
   CAR_TUNING,
   guideStep,
   initialGuideState,
@@ -66,6 +67,7 @@ import { claimGuideSession, releaseGuideSession } from "@/lib/guide-session-stor
 import { isOutOfCoverageBody } from "@/lib/out-of-coverage";
 import type { CarRouteBriefing, WalkRouteBriefing } from "@/lib/types";
 import { walkRouteUrl } from "@/lib/walk-route-url";
+import { directionParticle } from "@/lib/korean-particle";
 import {
   SPEECH_DEFER_MAX_S,
   speechDeferStep,
@@ -396,12 +398,38 @@ function isGuidanceEvent(kind: GuideEvent["kind"]): boolean {
   );
 }
 
+/**
+ * 남은 거리 행의 목표(N4 spec 2026-09-24 §2.5). `route`=경유지 없는 세션(종전 "남은 거리" 행),
+ * 경유지 세션은 도착 전 `waypoint`, 도착 뒤 `destination`. 라벨은 경로에 결박된 경유지 이름·목적지 이름.
+ */
+export type GuideProgressTarget =
+  | { kind: "route" }
+  | { kind: "waypoint"; label: string }
+  | { kind: "destination"; label: string };
+
 /** 상세 모드 상시 표시용 경로 기준 진행 상황(위원장 실측 판정 2026-08-03 묶음 A). */
 export interface GuideProgress {
-  /** 경로 기준 잔여 거리(m) — 직선거리가 아니다. */
+  /** 목표까지의 경로 기준 잔여 거리(m) — 직선거리가 아니다. */
   remainingMeters: number;
-  /** 경로 총 소요시간을 잔여 비례로 축소한 추정(초). 근거 없으면 null(날조 금지). */
+  /** 경로 총 소요시간을 목표 잔여 비례로 축소한 추정(초). 근거 없으면 null(날조 금지). */
   etaSeconds: number | null;
+  /** 이 행이 말하는 목표(N4 2026-09-24). */
+  target: GuideProgressTarget;
+}
+
+/**
+ * 도보 안내의 경유지(N4 spec 2026-09-24 §5.1). 조회 직전에 읽으며(봉인하지 않는다) 세션 안에서 도착을
+ * 확정하면 이후 재조회는 출발→도착으로 간다(iOS `waypoint = nil` 동형). 자동차 조회에는 싣지 않는다.
+ */
+export interface RouteGuideVia {
+  lat: number;
+  lng: number;
+  label: string;
+}
+
+/** 같은 경유지인가(좌표 정체성 — 이름은 판정에 쓰지 않는다). */
+function sameVia(a: RouteGuideVia | null, b: RouteGuideVia | null): boolean {
+  return a !== null && b !== null && a.lat === b.lat && a.lng === b.lng;
 }
 
 export interface RouteGuideApi {
@@ -464,7 +492,11 @@ export function useRouteGuide(
    * 중지·다른 세션의 claim·탭 숨김·권한 실패)는 "ended". 도착 문장을 live region에 커밋한 **뒤**
    * 불린다. 언마운트 정리는 세션 종료가 아니라 자원 회수라 부르지 않는다.
    */
-  options: { onSessionEnd?: (reason: "arrived" | "ended") => void } = {},
+  options: {
+    onSessionEnd?: (reason: "arrived" | "ended") => void;
+    /** 도보 경유지(N4 2026-09-24). 미지정·null = 경유지 없음(종전 동작). */
+    via?: RouteGuideVia | null;
+  } = {},
 ): RouteGuideApi {
   const locale = useLocale();
   const onSessionEndRef = useRef(options.onSessionEnd);
@@ -472,6 +504,7 @@ export function useRouteGuide(
   const arrivedRef = useRef(false);
   const t = useTranslations("guide");
   const tBeacon = useTranslations("beacon");
+  const tDirections = useTranslations("directions");
   // 커버리지 문구는 repo 전역 계층이 소유한다(§A2 — 강등 사유에서 새로 쓰지 않는다).
   const tCommon = useTranslations("common");
   // kind는 세션 봉인 구성의 키 — 첫 렌더 값으로 고정한다(중도 변경 미지원.
@@ -499,6 +532,17 @@ export function useRouteGuide(
   const destRef = useRef(dest);
   /** 도보 요청 축 최신값(조회 시점 판독 — spec 2026-08-08 §2.2). */
   const walkAxisRef = useRef(walkAxis);
+  /** 경유지 최신값(조회 시점 판독 — walkAxis 동형). */
+  const viaRef = useRef(options.via ?? null);
+  /**
+   * 이 세션이 더는 싣지 않는 경유지(지났거나, 경유지 경로를 못 받아 뺐다). **정체성(좌표)으로** 든다 —
+   * 세션 중 입력이 다른 경유지로 바뀌면 그것은 다시 싣는다(설계 리뷰 #5). `start()`가 비운다.
+   */
+  const excludedViaRef = useRef<RouteGuideVia | null>(null);
+  /** 이 세션이 경유지를 지났는가 — 이후 재조회 경로의 행도 "목적지 {dest}까지"로 둔다(설계 리뷰 #7). */
+  const viaPassedRef = useRef(false);
+  /** 현재 경로에 결박된 경유지(경로가 경유지를 알 때만). 도착 뒤에도 남는다(행·도착 문장). */
+  const routeViaRef = useRef<RouteGuideVia | null>(null);
   /**
    * 직전 계단 회피 판정(열화 전이 통지의 기준 — spec 2026-08-08 §2.3).
    * 원시 문자열이다: 알려진 셋 밖의 값도 중복 통지를 막는 식별자로 쓴다.
@@ -877,29 +921,51 @@ export function useRouteGuide(
    * 잔여 거리 비례로 축소한 값이다 — 실측 속도로 재추정하지 않는다(보행 멈춤·GPS
    * 잡음에 출렁이는 수치는 상시 표시로 부적합, 결정론 우선).
    */
-  const progressOf = useCallback(
-    (route: GuideRoute, state: GuideState): GuideProgress => {
-      const remaining = Math.max(0, route.totalMeters - state.d);
-      // car ETA는 재조회 값의 경과 차감 카운트다운(§4.6 — 비례 축소는 정체
-      // 국소성에 취약해 폐기). walk는 총 소요의 잔여 비례(묶음 A 계약 유지).
+  /**
+   * 목표 잔여(m)까지의 예상 시간(초). 상시 표시 행과 진행 상황 조망이 같은 산식을 쓴다(사본 금지).
+   * car ETA는 재조회 값의 경과 차감 카운트다운(§4.6 — 비례 축소는 정체 국소성에 취약해 폐기)이고
+   * 목적지까지라 **경유지 목표에는 없다**(날조 금지, N4 2026-09-24). walk는 총 소요의 잔여 비례.
+   */
+  const etaSecondsFor = useCallback(
+    (route: GuideRoute, remainingMeters: number, toWaypoint: boolean): number | null => {
+      // 목표를 이미 밟은 값(0m)에 "약 1분"을 붙이지 않는다(설계 리뷰 #11 — 근거 없는 수치).
+      if (remainingMeters < 1) return null;
       if (kindFixed === "car") {
-        const eta = etaRef.current;
-        const elapsed = eta ? performance.now() / 1000 - eta.updatedAt : 0;
-        return {
-          remainingMeters: remaining,
-          etaSeconds: eta ? Math.max(0, eta.seconds - elapsed) : null,
-        };
+        const eta = toWaypoint ? null : etaRef.current;
+        if (!eta) return null;
+        return Math.max(0, eta.seconds - (performance.now() / 1000 - eta.updatedAt));
       }
       const dur = routeDurationRef.current;
-      return {
-        remainingMeters: remaining,
-        etaSeconds:
-          dur !== null && dur > 0 && route.totalMeters > 0
-            ? (dur * remaining) / route.totalMeters
-            : null,
-      };
+      return dur !== null && dur > 0 && route.totalMeters > 0
+        ? (dur * remainingMeters) / route.totalMeters
+        : null;
     },
     [kindFixed],
+  );
+
+  const progressOf = useCallback(
+    (route: GuideRoute, state: GuideState): GuideProgress => {
+      // 다음 목표 기준(N4 spec 2026-09-24 §2.5): 경유지 세션은 도착 전 경유지, 뒤 목적지까지.
+      // 라벨이 없으면(방어) 종전 총 잔여 행으로 물러난다.
+      const next = guideNextTarget(route, state);
+      const viaLabel = routeViaRef.current?.label ?? null;
+      // 경유지를 지난 세션의 재조회 경로(경유지 없음)도 목적지 목표다 — 같은 행이 이유 없이 "남은 거리"로
+      // 되돌아가지 않게 한다(설계 리뷰 #7). 경유지 없는 세션은 종전 그대로.
+      const target: GuideProgressTarget =
+        next.kind === "waypoint" && viaLabel !== null
+          ? { kind: "waypoint", label: viaLabel }
+          : (next.kind === "destination" && viaLabel !== null) || viaPassedRef.current
+            ? { kind: "destination", label: destRef.current.name }
+            : { kind: "route" };
+      const remaining =
+        target.kind === "waypoint" ? next.meters : Math.max(0, route.totalMeters - state.d);
+      return {
+        remainingMeters: remaining,
+        etaSeconds: etaSecondsFor(route, remaining, target.kind === "waypoint"),
+        target,
+      };
+    },
+    [etaSecondsFor],
   );
 
   /** 수단별 물리 상한(정지 판정 폴백 + 투영 점프 가드). */
@@ -1037,13 +1103,26 @@ export function useRouteGuide(
           // 이벤트는 공유 계약이라 남기고(iOS도 이미 무시한다) 여기 매핑만 끊는다.
           // 빈 문자열은 호출부 `if (!text) return`이 걸러 낸다(무발화 — live region 미갱신).
           return "";
-        case "waypointReached":
-          // 웹 실시간 안내는 경유지를 모른다(서버 spec §3 — 경유지 조회엔 시작 버튼이 없다).
-          // 리듀서 미러를 위해 이벤트만 존재하고 도달하지 않는다. iOS 판정 뒤 같은 계약으로.
-          return "";
+        case "waypointApproaching": {
+          // 경유지 접근 예고(N4 spec 2026-09-24 §5.1) — 1회, 톤 없음.
+          const label = routeViaRef.current?.label;
+          return label
+            ? tDirections("viaRemaining", { label, distance: formatDistance(event.remainingMeters) })
+            : "";
+        }
+        case "waypointReached": {
+          // 경유지 도착(N4): 도착 종은 톤 계층(priorityTone), 문장은 다음 목표까지 말한다. ko는 목적지에
+          // 방향 조사를 붙이고 받침을 모르는 이름은 `로`로 물러난다(조사를 빼면 문장이 깨진다 — spec §3).
+          const label = routeViaRef.current?.label;
+          if (!label) return "";
+          const destName = destRef.current.name;
+          const dest =
+            locale === "ko" ? destName + (directionParticle(destName) ?? "로") : destName;
+          return tDirections("viaArrivedContinue", { label, dest });
+        }
       }
     },
-    [t, kindFixed],
+    [t, tDirections, kindFixed, locale],
   );
 
   /** 상세 모드 확정 — 전환·재획득·재조회가 공유하는 커밋 지점. */
@@ -1102,6 +1181,8 @@ export function useRouteGuide(
     finalApproach: FinalApproachGeometry | null;
     /** 하단 2행 표시 입력(walk 전용 — 스팬 + 서버 live 조각, spec 2026-08-11). car는 []. */
     liveSteps: ReturnType<typeof liveStepsFrom>;
+    /** 이 경로가 지나가는 경유지(N4 2026-09-24). 경유지 없이 조회했으면 null. */
+    via: RouteGuideVia | null;
     ok: true;
   } | { ok: false; failure: GuideRouteFailure }> => {
     // fail-closed: 실좌표가 없으면 안내를 시작하지 않는다. 수동 위치로 만든
@@ -1137,8 +1218,13 @@ export function useRouteGuide(
           finalApproach: null,
           // 하단 2행 입력(K2 §4): live 조각 없음, 행동은 스텝의 서버 투영(liveStepsFrom이 싣는다).
           liveSteps: liveStepsFrom(carGuide.route, []),
+          // 자동차 경유지 안내는 범위 밖(N4 spec 2026-09-24 §1) — 조회에 싣지 않는다.
+          via: null,
         };
       }
+      // 경유지(N4 spec 2026-09-24 §5.1): 이 세션이 이미 도착을 확정했으면 싣지 않는다 — 재조회는
+      // 출발→도착이다(iOS `waypoint = nil` 동형).
+      const via = sameVia(viaRef.current, excludedViaRef.current) ? null : viaRef.current;
       const res = await fetch(
         walkRouteUrl({
           origin: { lat: fix.lat, lng: fix.lng },
@@ -1146,9 +1232,7 @@ export function useRouteGuide(
           accessible: walkAxisRef.current.accessible,
           variant: walkAxisRef.current.variant,
           includeGeometry: true,
-          // 웹 실시간 안내는 경유지를 아직 받지 않는다(N4 spec §3 — 경유지 조회에선
-          // 안내 시작 버튼 자체가 없다). 경유지 안내는 iOS 실보행 판정 뒤 웹에 얹는다.
-          via: null,
+          via: via ? { lat: via.lat, lng: via.lng } : null,
           lang: dataLocale(locale) === "ko" ? "ko" : "en",
         }),
       );
@@ -1158,7 +1242,13 @@ export function useRouteGuide(
       const result = (body as { result?: WalkRouteBriefing | null }).result;
       // 서버가 null을 주는 것은 TOO_FAR_AWAY·ROUTE_RESULT_NOT_FOUND — 재시도해도 같다.
       if (!result) return { ok: false, failure: "unavailable" };
-      const route = buildGuideRoute(result.steps);
+      // 경유지를 보냈는데 응답이 경유지 위치를 모르면 상세 불가다 — 경유지를 모르는 경로로 조용히
+      // 안내하지 않는다(iOS `fetchDetailData` 동형). 범위 밖 index는 `buildGuideRoute`가 null로 거른다.
+      if (via && !result.waypoint) return { ok: false, failure: "unavailable" };
+      const route = buildGuideRoute(
+        result.steps,
+        via && result.waypoint ? { waypointStepIndex: result.waypoint.stepIndex } : undefined,
+      );
       if (!route) return { ok: false, failure: "unavailable" };
       return {
         ok: true,
@@ -1172,6 +1262,7 @@ export function useRouteGuide(
         stepFreeNotice: result.stepFreeNotice ?? null,
         finalApproach: result.finalApproach ?? null,
         liveSteps: liveStepsFrom(route, result.steps),
+        via: route.waypointStepIndex !== undefined ? via : null,
       };
     } catch {
       // 네트워크 예외·JSON 파싱 실패 — 잘린 응답과 구분되지 않으므로 재시도 가능으로 본다.
@@ -1532,12 +1623,19 @@ export function useRouteGuide(
         stepFinalApproach(fix, motion, now);
         return;
       }
+      // 경유지 도착(N4): 이후 재조회는 경유지를 싣지 않는다(iOS `waypoint = nil` 동형). 도착 종은
+      // 리듀서가 내지 않으므로 여기서 우선 톤으로 얹는다(iOS `playTone(.nearby)` 동형).
+      const waypointReached = result.event?.kind === "waypointReached";
+      if (waypointReached) {
+        excludedViaRef.current = routeViaRef.current;
+        viaPassedRef.current = true;
+      }
       // 추세 축은 정상 추종에서만 유효하다(이탈 중 잔여 거리는 낡은 투영이다).
       const trendable = (phase === "following" || phase === "bundle") && !jumped;
       emitTone(
         {
           unreliable: phase === "uncertain" || phase === "reacquiring",
-          priorityTone: result.tone,
+          priorityTone: waypointReached ? "nearby" : result.tone,
           eventOwned: result.event !== null,
           trend: trendable
             ? {
@@ -1726,6 +1824,9 @@ export function useRouteGuide(
     guideRef.current = null;
     routeRef.current = null;
     routeDurationRef.current = null;
+    routeViaRef.current = null;
+    excludedViaRef.current = null;
+    viaPassedRef.current = false;
     roadSpansRef.current = [];
     etaRef.current = null;
     etaCallCountRef.current = 0;
@@ -1769,13 +1870,25 @@ export function useRouteGuide(
         lastStepFreeRef.current = null;
         // 조용한 강등 금지. ⚠ 모드 이름이 아니라 **사유와 동작**을 말한다(E16 축2 §A2) —
         // 이름을 주면 고를 수 있는 모드로 읽힌다([[degraded-guidance-gets-no-mode-name]]).
-        setDegrade(fetched.failure);
+        // 경유지를 요청한 세션은 간략(목적지 직선) 안내가 경유지를 지나지 않는다는 사실도 말한다 —
+        // 화면엔 경유지가 남아 있어 말하지 않으면 거짓이 된다(iOS `waypointDropped` 동형, 설계 리뷰 #6).
+        const droppedVia = viaRef.current;
+        if (droppedVia) {
+          excludedViaRef.current = droppedVia;
+          setDegrade(fetched.failure, { announce: false });
+          announce(
+            `${degradeMessage(fetched.failure)} ${tDirections("viaDropped", { label: droppedVia.label })}`,
+          );
+        } else {
+          setDegrade(fetched.failure);
+        }
         return;
       }
       const { route } = fetched;
       // 상세가 섰다 — 강등 문구를 지운다(설계 리뷰 #6: 복구 전이가 정의돼야 패널이 낡지 않는다).
       clearDegrade();
       routeDurationRef.current = fetched.durationSeconds;
+      routeViaRef.current = fetched.via;
       roadSpansRef.current = fetched.roadSpans;
       // 하단 2행 표시 유닛은 경로와 수명이 같다 — commitDetail(refreshLiveRows)보다 앞.
       displayUnitsRef.current =
@@ -1819,6 +1932,7 @@ export function useRouteGuide(
   }, [
     announce,
     clearDegrade,
+    degradeMessage,
     setDegrade,
     tuning,
     clearEtaTimer,
@@ -1833,6 +1947,7 @@ export function useRouteGuide(
     resetFinalApproach,
     supported,
     t,
+    tDirections,
     wakeLock,
   ]);
 
@@ -1901,8 +2016,9 @@ export function useRouteGuide(
           t("etaStale", { minutes: Math.round(etaAgeS / 60) }),
       );
     };
-    // 잔여 시간은 상시 표시 행과 같은 산식(progressOf)을 재사용한다(사본 금지).
-    const etaSeconds = progressOf(route, state).etaSeconds;
+    // 잔여 시간은 상시 표시 행과 같은 산식(etaSecondsFor)을 쓰되, 조망은 **총 잔여** 기준이다
+    // (행은 다음 목표 기준 — N4 2026-09-24 판정 ①).
+    const etaSeconds = etaSecondsFor(route, Math.max(0, route.totalMeters - state.d), false);
     const etaMinutes =
       etaSeconds !== null ? Math.max(1, Math.round(etaSeconds / 60)) : null;
     if (state.phase === "bundle") {
@@ -1932,7 +2048,7 @@ export function useRouteGuide(
         ),
       ),
     );
-  }, [announce, kindFixed, progressOf, t, tBeacon]);
+  }, [announce, etaSecondsFor, kindFixed, t, tBeacon]);
 
   const requestReroute = useCallback(() => {
     if (!trackingRef.current || rerouteInFlightRef.current) return;
@@ -1947,6 +2063,9 @@ export function useRouteGuide(
         const fetched = await fetchGuideRoute(true);
         // 도착 응답 폐기: 세대 불일치·중지·언마운트(채팅 이탈 게이트 동형).
         if (gen !== genRef.current || !trackingRef.current || !mountedRef.current) return;
+        // 왕복 중에 그 경유지를 지났으면 응답 경로는 지난 경유지를 되살린다 — 폐기한다(iOS `rerouteToken`
+        // 동형, 설계 리뷰 #2). 이탈 상태는 남으므로 버튼으로 다시 누를 수 있다.
+        if (fetched.ok && sameVia(fetched.via, excludedViaRef.current)) return;
         if (!fetched.ok) {
           // 경로가 없으면 경로 기반 계단 판정도 없다(3-state) — 시작 폴백과 동형.
           lastStepFreeRef.current = null;
@@ -1961,6 +2080,7 @@ export function useRouteGuide(
         // 상세가 섰다 — 강등 문구를 지운다(설계 리뷰 #6: 복구 전이 정의).
         clearDegrade();
         routeDurationRef.current = fetched.durationSeconds;
+        routeViaRef.current = fetched.via;
         roadSpansRef.current = fetched.roadSpans;
         // 새 경로 = 새 표시 유닛(commitDetail의 rows 리셋·재계산보다 앞).
         displayUnitsRef.current =
@@ -2032,6 +2152,7 @@ export function useRouteGuide(
   useEffect(() => {
     destRef.current = dest;
     walkAxisRef.current = walkAxis;
+    viaRef.current = options.via ?? null;
     onSessionEndRef.current = options.onSessionEnd;
     handleFixRef.current = handleFix;
     handleErrorRef.current = handleError;

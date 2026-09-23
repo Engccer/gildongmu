@@ -596,6 +596,10 @@
     <string name="directions_useCurrentLocation">Usa la posizione attuale</string>
     <string name="directions_via">Tappa intermedia</string>
     <string name="directions_viaArrived">Tappa intermedia %1$s raggiunta</string>
+    <string name="directions_viaArrivedContinue">Tappa intermedia %1$s raggiunta. Ora ti guidiamo alla destinazione %2$s</string>
+    <string name="directions_viaDestRemaining">%2$s fino alla destinazione %1$s</string>
+    <string name="directions_viaDropped">Nessun percorso tramite il punto intermedio %1$s; guida senza di esso</string>
+    <string name="directions_viaRemaining">%2$s fino alla tappa intermedia %1$s</string>
     <string name="directions_walkAccessible">Percorso senza scale</string>
     <string name="directions_walkBroad">Percorso su strade principali</string>
     <string name="directions_walkRecommended">Percorso consigliato</string>

@@ -12001,6 +12001,166 @@
         }
       }
     },
+    "directions.viaArrivedContinue": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "경유지 %1$@ 도착. 이제 목적지 %2$@ 안내합니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Waypoint %1$@ reached. Now guiding you to destination %2$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Punto intermedio %1$@ alcanzado. Ahora te guiamos al destino %2$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Étape %1$@ atteinte. Guidage vers la destination %2$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tappa intermedia %1$@ raggiunta. Ora ti guidiamo alla destinazione %2$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "経由地 %1$@ に到着。これから目的地 %2$@ へ案内します"
+          }
+        }
+      }
+    },
+    "directions.viaDestRemaining": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "목적지 %1$@까지 %2$@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%2$@ to destination %1$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%2$@ hasta el destino %1$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%2$@ jusqu'à la destination %1$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%2$@ fino alla destinazione %1$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "目的地 %1$@まで%2$@"
+          }
+        }
+      }
+    },
+    "directions.viaDropped": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "경유지 %1$@를 포함한 경로를 찾지 못해 경유지 없이 안내합니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No route found through waypoint %1$@; guiding without it"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se encontró ruta por el punto de paso %1$@; se guía sin él"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun itinéraire par le point de passage %1$@ ; guidage sans lui"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessun percorso tramite il punto intermedio %1$@; guida senza di esso"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "経由地 %1$@ を通る経路が見つからないため、経由地なしで案内します"
+          }
+        }
+      }
+    },
+    "directions.viaRemaining": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "경유지 %1$@까지 %2$@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%2$@ to waypoint %1$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%2$@ hasta el punto intermedio %1$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%2$@ jusqu'à l'étape %1$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%2$@ fino alla tappa intermedia %1$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "経由地 %1$@まで%2$@"
+          }
+        }
+      }
+    },
     "directions.walkAccessible": {
       "localizations": {
         "ko": {

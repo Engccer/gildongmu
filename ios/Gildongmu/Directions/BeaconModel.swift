@@ -254,6 +254,9 @@ final class BeaconModel {
     /// 시점에 기록되어 도착 뒤 `waypoint`가 nil이 돼도 조망의 "경유지 C 도착" 행이 남고,
     /// 새 경유지 D를 더해 경로를 다시 받기 전까지 옛 경로에 D가 붙지 않는다.
     private(set) var routeWaypointLabel: String?
+    /// 이 세션이 경유지를 지났는가(N4 2026-09-24). 지난 뒤 재조회 경로(경유지 없음)에서도 남은 거리 행을
+    /// "목적지 {dest}까지"로 둔다 — 같은 행이 이유 없이 "남은 거리"로 되돌아가지 않게(설계 리뷰 #7).
+    private var waypointPassedInSession = false
     /// 목적지 전환이 보관한 유도기 버퍼(스펙 2026-08-12 §3.1 승계 조항) —
     /// 다음 fetchGuideRoute 성공이 1회 소비한다. stop()이 소거.
     private var carriedCourseDerivation: CourseDerivationState?
@@ -636,6 +639,7 @@ final class BeaconModel {
         alternateLine = request.alternate
         waypoint = request.waypoint
         routeWaypointLabel = nil
+        waypointPassedInSession = false
         lastStepFree = nil
         pendingStepFreeNotice = nil
         pendingEndReason = .ended
@@ -1162,14 +1166,30 @@ final class BeaconModel {
     /// 경로 기준 잔여 거리·예상 시간 갱신(웹 `progressOf` 미러). walk는 provider
     /// 총 소요시간의 잔여 비례 축소, car는 재조회 ETA의 경과 차감 카운트다운(§4.6 —
     /// 비례 축소는 정체 국소성에 취약해 폐기). 근거 없으면 시간 생략(날조 금지).
+    ///
+    /// 경유지가 있는 세션은 **다음 목표** 기준 한 줄이다(N4 spec 2026-09-24 §4.1 — 도착 전 경유지,
+    /// 도착 뒤 목적지). 띠바는 총 잔여를 유지한다. 라벨은 경로에 결박된 `routeWaypointLabel`
+    /// (도착 뒤 `waypoint = nil`이어도 남는다)이고, 없으면 종전 행으로 물러난다.
     private func updateRemaining(route: GuideRoute, state: GuideState) {
         let remainingMeters = Int(max(0, route.totalMeters - state.d).rounded())
         updateBandDistance(remainingMeters)
-        let distancePart = appLocalized(
-            "guide.remainingDistance", formatDistance(remainingMeters)
-        )
-        let timePart = etaMinutesNow(route: route, state: state)
-            .map { appLocalized("guide.remainingTime", String($0)) }
+        let target = guideNextTarget(route: route, state: state)
+        let distancePart: String
+        let minutes: Int?
+        if target.kind == .waypoint, let viaLabel = routeWaypointLabel {
+            distancePart = appLocalized(
+                "directions.viaRemaining", viaLabel, formatDistance(Int(target.meters.rounded())))
+            minutes = etaMinutes(route: route, remainingMeters: target.meters, toWaypoint: true)
+        } else if (target.kind == .destination && routeWaypointLabel != nil) || waypointPassedInSession {
+            // 경유지를 지난 세션은 재조회 경로(경유지 없음)에서도 목적지 목표다(설계 리뷰 #7).
+            distancePart = appLocalized(
+                "directions.viaDestRemaining", destinationLabel, formatDistance(remainingMeters))
+            minutes = etaMinutesNow(route: route, state: state)
+        } else {
+            distancePart = appLocalized("guide.remainingDistance", formatDistance(remainingMeters))
+            minutes = etaMinutesNow(route: route, state: state)
+        }
+        let timePart = minutes.map { appLocalized("guide.remainingTime", String($0)) }
         remainingText = joinText(distancePart, timePart)
     }
 
@@ -1183,13 +1203,29 @@ final class BeaconModel {
     /// 잔여 시간(분) — 상시 표시와 진행 상황 조망이 같은 산식을 쓴다(사본 금지).
     /// 근거 없으면 nil(3-state — 날조 금지).
     private func etaMinutesNow(route: GuideRoute, state: GuideState) -> Int? {
+        etaMinutes(
+            route: route, remainingMeters: max(0, route.totalMeters - state.d), toWaypoint: false)
+    }
+
+    /// ko 도착 문장의 목적지 + 방향 조사("서울역으로"·"학교로"). 받침을 모르는 이름(영문·숫자 끝)은 `로` —
+    /// 읽는 소리(에스·오·일·엘)는 대부분 `로`를 받고, 조사를 빼면 문장이 깨진다(N4 spec 2026-09-24 §3).
+    /// 비-ko는 원문(웹 `useRouteGuide` 동형).
+    private func destinationWithDirectionParticle(_ label: String) -> String {
+        guard AppLanguage.current == "ko" else { return label }
+        return label + (KoreanParticle.direction(label) ?? "로")
+    }
+
+    /// 목표 잔여(m)까지의 시간(분). walk는 총 소요의 잔여 비례, car는 재조회 ETA 카운트다운이다 —
+    /// 그 ETA는 목적지까지라 **경유지 목표에는 없다**(nil, 날조 금지 — N4 spec 2026-09-24 §4.1).
+    private func etaMinutes(route: GuideRoute, remainingMeters: Double, toWaypoint: Bool) -> Int? {
+        // 목표를 이미 밟은 값(0m)에 "약 1분"을 붙이지 않는다(설계 리뷰 #11 — 근거 없는 수치).
+        if remainingMeters < 1 { return nil }
         if sessionKind == .car {
-            guard let eta = etaSeconds, let at = etaUpdatedAt else { return nil }
+            guard !toWaypoint, let eta = etaSeconds, let at = etaUpdatedAt else { return nil }
             return max(1, Int((max(0, eta - (uptimeNow - at)) / 60).rounded()))
         }
         guard let dur = guideRouteDurationSeconds, dur > 0, route.totalMeters > 0 else { return nil }
-        let remaining = max(0, route.totalMeters - state.d)
-        return max(1, Int((Double(dur) * remaining / route.totalMeters / 60).rounded()))
+        return max(1, Int((Double(dur) * remainingMeters / route.totalMeters / 60).rounded()))
     }
 
     private func fail(with status: Status, key: String, resolution: FailResolution = .none) {
@@ -1280,6 +1316,7 @@ final class BeaconModel {
         carriedCourseDerivation = nil
         waypoint = nil
         routeWaypointLabel = nil
+        waypointPassedInSession = false
         rerouteToken += 1  // in-flight 재조회 응답 폐기(latest-wins)
         routeFetchToken += 1  // stale 경로 조회 defer 무효화
         // 세션 종료 = 진행 중 자동 재조회·회차 카운터 전부 무효(E10ⓑ — 상한은 세션당이다).
@@ -2453,15 +2490,27 @@ final class BeaconModel {
             // 버튼으로 다시 누를 수 있다. 재시작 요청에서도 지운다(#11).
             guard let reached = waypoint else { break }
             waypoint = nil
+            waypointPassedInSession = true
             syncStartRequestWithSession()
             clearProposal()
             resetAlternativePreview()
             rerouteToken += 1
             playTone(.nearby)
-            let text = appLocalized("directions.viaArrived", reached.label)
+            // 도착 문장은 다음 목표(목적지)까지 말한다(N4 spec 2026-09-24 §3). ko는 목적지에 방향
+            // 조사를 붙이고, 받침을 모르는 이름은 `로`로 물러난다 — 조사를 빼면 문장이 깨진다.
+            let text = appLocalized(
+                "directions.viaArrivedContinue", reached.label,
+                destinationWithDirectionParticle(destinationLabel))
             statusText = text
             // 지나간 사실이라 억제 해제 뒤에 갚아도 참이다(실행 안내와 같은 취급).
             if outputSuppressed { pendingRecovery = text } else { announce(text) }
+        case let .waypointApproaching(meters):
+            // 경유지 접근 예고(N4 spec 2026-09-24 §4.1): 1회, 톤 없음. 실행 안내가 아니라 `lastGuidance`는
+            // 덮지 않고, 억제 중이면 보관하지 않는다(거리 문장은 시간이 지나면 거짓 — 주기 통지와 같은 취급).
+            guard let label = routeWaypointLabel else { break }
+            let text = appLocalized("directions.viaRemaining", label, formatDistance(meters))
+            statusText = text
+            announce(text)
         case .finalApproachEnter:
             // 여기서는 처리하지 않는다. 진입은 **fix를 쥔 `handleDetail`이** 톤 조립 앞에서
             // 가른다 — 소유권 전환과 같은 fix의 첫 발화가 한 묶음이어야 하고, 이 함수는

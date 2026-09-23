@@ -596,6 +596,10 @@
     <string name="directions_useCurrentLocation">현재 위치 사용</string>
     <string name="directions_via">경유지</string>
     <string name="directions_viaArrived">경유지 %1$s 도착</string>
+    <string name="directions_viaArrivedContinue">경유지 %1$s 도착. 이제 목적지 %2$s 안내합니다</string>
+    <string name="directions_viaDestRemaining">목적지 %1$s까지 %2$s</string>
+    <string name="directions_viaDropped">경유지 %1$s를 포함한 경로를 찾지 못해 경유지 없이 안내합니다</string>
+    <string name="directions_viaRemaining">경유지 %1$s까지 %2$s</string>
     <string name="directions_walkAccessible">계단 회피 경로</string>
     <string name="directions_walkBroad">큰길 경로</string>
     <string name="directions_walkRecommended">추천 경로</string>
