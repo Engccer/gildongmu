@@ -120,6 +120,20 @@ describe("route transit 대안 표시 이름", () => {
     expect(out).not.toContain("환승이 가장 적은");
   });
 
+  it("E50 새 축은 조각을 쉼표로 이은 한 이름이고 옛 앱용 번호를 쓰지 않는다", () => {
+    const out = formatTransit(withAlternatives([alt({ highlight: ["busOnly", "fewestTransfers"], displayIndex: 1 })]));
+    expect(out).toContain("환승이 가장 적은 경로, 버스만 타는 경로");
+    expect(out).not.toContain("대안 경로 1");
+    const walk = formatTransit(withAlternatives([alt({ highlight: ["leastWalk"], displayIndex: 1 })]));
+    expect(walk).toContain("도보 거리가 가장 짧은 경로");
+    const sub = formatTransit(withAlternatives([alt({ highlight: ["subwayOnly", "fastest", "fewestTransfers"] })]));
+    expect(sub).toContain("가장 빠르고 환승도 가장 적은 경로, 지하철만 타는 경로");
+  });
+
+  it("모르는 축만 있으면 서버 번호로 떨어진다", () => {
+    expect(formatTransit(withAlternatives([alt({ highlight: ["scenic"], displayIndex: 2 })]))).toContain("대안 경로 2");
+  });
+
   it("축이 없으면 배열 위치가 아니라 서버 displayIndex로 번호를 쓴다", () => {
     // 첫 대안이지만 축 경로 둘이 앞서 번호를 소비했다고 가정한다.
     const out = formatTransit(withAlternatives([alt({ displayIndex: 3 })]));

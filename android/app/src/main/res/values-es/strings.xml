@@ -882,10 +882,13 @@
     <string name="route_pedestrian_summary">Total %1$s, aprox. %2$s min</string>
     <string name="route_public">Transporte público</string>
     <string name="route_transit_alightAt">Bajada en %1$s</string>
+    <string name="route_transit_alternativeBusOnly">Solo autobús</string>
     <string name="route_transit_alternativeFastest">Ruta más rápida</string>
     <string name="route_transit_alternativeFastestFewestTransfers">La más rápida y con menos transbordos</string>
     <string name="route_transit_alternativeFewestTransfers">Menos transbordos</string>
     <string name="route_transit_alternativeHeading">Alternativa %1$s</string>
+    <string name="route_transit_alternativeLeastWalk">Menos caminata</string>
+    <string name="route_transit_alternativeSubwayOnly">Solo metro</string>
     <string name="route_transit_arrive">Llega a &lt;name&gt;&lt;/name&gt;</string>
     <string name="route_transit_busNo">autobús %1$s</string>
     <string name="route_transit_button">Transporte público hasta aquí</string>
@@ -916,6 +919,12 @@
     <string name="route_transit_quickExitTransfer">Bajada en %1$s, transbordo rápido %2$s</string>
     <string name="route_transit_ready">La ruta está lista.</string>
     <string name="route_transit_recommended">Ruta recomendada</string>
+    <string name="route_transit_requeryBusOnly">Buscar ruta solo en autobús</string>
+    <string name="route_transit_requeryBusOnlyFailed">No se pudo cargar la ruta solo en autobús.</string>
+    <string name="route_transit_requeryBusOnlyNone">No hay ruta solo en autobús.</string>
+    <string name="route_transit_requerySubwayOnly">Buscar ruta solo en metro</string>
+    <string name="route_transit_requerySubwayOnlyFailed">No se pudo cargar la ruta solo en metro.</string>
+    <string name="route_transit_requerySubwayOnlyNone">No hay ruta solo en metro.</string>
     <string name="route_transit_summary">%1$s min, %2$s won, {3, plural, one {%3$s transbordo} other {%3$s transbordos}}</string>
     <string name="route_transit_walkSummary">incl. %1$s min a pie</string>
     <string name="route_walk">A pie</string>

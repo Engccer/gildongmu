@@ -130,9 +130,13 @@ fun alightLine(leg: TransitRouteLeg, lang: String, dataLocale: DataLocale, strin
         exitBound = { strings.get("transitGuide.exitBound", it) },
     )
 
-/** 대안 경로 표시 이름(spec §4.1). 축 판정은 서버, 키 선택은 :kit, 문구 조회만 여기. */
-fun transitAlternativeName(route: TransitRoute, strings: Strings): String {
-    val resolved = TransitAlternativeName.key(highlight = route.highlight, displayIndex = route.displayIndex)
-    val index = resolved.index
-    return if (index == null) strings.get(resolved.key) else strings.get(resolved.key, index)
-}
+/**
+ * 대안 경로 표시 이름(spec 2026-09-24 §4.1). 축 판정은 서버, 키 조각 선택은 :kit, 문구 조회와 쉼표 결합만 여기
+ * (한 줄 = 한 접근성 객체, 가운뎃점·사유 문장 금지).
+ */
+fun transitAlternativeName(route: TransitRoute, strings: Strings): String =
+    TransitAlternativeName.parts(highlight = route.highlight, displayIndex = route.displayIndex)
+        .joinToString(", ") { part ->
+            val index = part.index
+            if (index == null) strings.get(part.key) else strings.get(part.key, index)
+        }

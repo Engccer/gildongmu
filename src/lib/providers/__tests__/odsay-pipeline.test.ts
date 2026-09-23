@@ -27,6 +27,18 @@ beforeEach(() => {
   busHours.clear();
 });
 
+function subwayOnlyPath(minutes: number) {
+  return {
+    pathType: 1,
+    info: { totalTime: minutes, payment: 1550, totalWalk: 300 },
+    subPath: [
+      { trafficType: 3, distance: 100, sectionTime: 2 },
+      { trafficType: 1, distance: 5000, sectionTime: minutes, stationCount: 5, startName: "갑", endName: "을", lane: [{ name: "수도권 5호선" }] },
+      { trafficType: 3, distance: 200, sectionTime: 3 },
+    ],
+  };
+}
+
 function busPath(minutes: number, boards: number, routeId?: string) {
   const subPath: unknown[] = [{ trafficType: 3, distance: 100, sectionTime: 2 }];
   for (let i = 0; i < boards; i++) {
@@ -57,11 +69,64 @@ function respond(paths: unknown[]) {
 const COORDS = { origin: { lat: 37.5, lng: 127.1 }, dest: { lat: 37.55, lng: 126.97 } };
 
 describe("getTransitRoute 파이프라인", () => {
-  it("5개까지만 돌려주고 후보 총수를 보존한다", async () => {
+  it("이유 없는 경로는 번호로 채우지 않고 후보 총수를 보존한다(E50 판정 1)", async () => {
     respond(Array.from({ length: 9 }, (_, i) => busPath(20 + i, 1)));
     const result = (await getTransitRoute(COORDS))!;
-    expect(1 + result.alternatives.length).toBe(5);
+    expect(result.alternatives).toHaveLength(0);
     expect(result.totalCandidates).toBe(9);
+    // 1순위가 버스만이라 지하철만 재조회만 제안한다
+    expect(result.requeryAxes).toEqual(["subwayOnly"]);
+  });
+
+  it("도보 거리는 totalWalk이고 유한한 0 이상 수가 아니면 싣지 않는다", async () => {
+    const withWalk = { ...busPath(20, 1), info: { totalTime: 20, payment: 1500, totalWalk: 412 } };
+    const bogus = { ...busPath(21, 1), info: { totalTime: 21, payment: 1500, totalWalk: -1 } };
+    respond([withWalk, bogus]);
+    const result = (await getTransitRoute(COORDS))!;
+    expect(result.recommended.summary.walkMeters).toBe(412);
+    respond([bogus]);
+    expect("walkMeters" in (await getTransitRoute(COORDS))!.recommended.summary).toBe(false);
+  });
+
+  it("수단은 pathType과 구간 구성이 둘 다 맞을 때만 싣는다", async () => {
+    const lying = { ...busPath(30, 1), pathType: 1 }; // pathType은 지하철인데 구간은 버스
+    respond([subwayOnlyPath(20), busPath(25, 1), lying]);
+    const result = (await getTransitRoute(COORDS))!;
+    expect(result.recommended.vehicle).toBe("subway");
+    const bus = result.alternatives.find((a) => a.highlight?.includes("busOnly"));
+    expect(bus?.vehicle).toBe("bus");
+    expect(result.requeryAxes).toBeUndefined();
+  });
+
+  describe("수단 재조회(modeAxis)", () => {
+    it("SearchPathType을 붙이고, 그 수단의 1순위 하나만 접두 키로 돌려준다", async () => {
+      respond([subwayOnlyPath(30), busPath(40, 1), busPath(35, 1)]);
+      const result = (await getTransitRoute({ ...COORDS, modeAxis: "busOnly" }))!;
+      const url = String(fetchMock.mock.calls[0][0]);
+      expect(url).toContain("SearchPathType=2");
+      expect(result.recommended.vehicle).toBe("bus");
+      expect(result.recommended.routeKey).toBe("b1");
+      expect(result.alternatives).toEqual([]);
+      expect(result.requeryAxes).toBeUndefined();
+    });
+
+    it("지하철은 SearchPathType=1·접두 s", async () => {
+      respond([subwayOnlyPath(30)]);
+      const result = (await getTransitRoute({ ...COORDS, modeAxis: "subwayOnly" }))!;
+      expect(String(fetchMock.mock.calls[0][0])).toContain("SearchPathType=1");
+      expect(result.recommended.routeKey).toBe("s0");
+    });
+
+    it("그 수단만 타는 경로가 걸러져 없으면 null(없음)", async () => {
+      respond([subwayOnlyPath(30)]);
+      expect(await getTransitRoute({ ...COORDS, modeAxis: "busOnly" })).toBeNull();
+    });
+
+    it("본 조회 URL에는 SearchPathType이 없다(캐시 키 불변)", async () => {
+      respond([busPath(20, 1)]);
+      await getTransitRoute(COORDS);
+      expect(String(fetchMock.mock.calls[0][0])).not.toContain("SearchPathType");
+    });
   });
 
   it("무환승 경로가 뒤에 있어도 대안에 오른다", async () => {
@@ -123,10 +188,8 @@ describe("getTransitRoute 파이프라인", () => {
       // ⚠ 1순위는 축 라벨을 갖지 않는다. 라벨을 강등 앞에서 붙이면 p1이 옛 1순위
       //   기준으로 "환승이 가장 적은 경로" 라벨을 받은 채 승격돼 이 단언이 깨진다.
       expect(result.recommended.highlight).toBeUndefined();
-      // 강등된 옛 1순위는 운행 밖이라 축 후보에서 빠지고 번호만 받는다
-      expect(result.alternatives[0].routeKey).toBe("p0");
-      expect(result.alternatives[0].highlight).toBeUndefined();
-      expect(result.alternatives[0].displayIndex).toBe(1);
+      // 강등된 옛 1순위는 운행 밖이라 축 후보에서 빠지고, 이유 없는 대안은 싣지 않는다(E50)
+      expect(result.alternatives.map((a) => a.routeKey)).not.toContain("p0");
     } finally {
       vi.useRealTimers();
     }

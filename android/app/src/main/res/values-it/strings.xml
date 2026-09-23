@@ -882,10 +882,13 @@
     <string name="route_pedestrian_summary">Totale %1$s, circa %2$s min</string>
     <string name="route_public">Mezzi pubblici</string>
     <string name="route_transit_alightAt">Discesa a %1$s</string>
+    <string name="route_transit_alternativeBusOnly">Solo autobus</string>
     <string name="route_transit_alternativeFastest">Percorso più veloce</string>
     <string name="route_transit_alternativeFastestFewestTransfers">Il più veloce con meno cambi</string>
     <string name="route_transit_alternativeFewestTransfers">Meno cambi</string>
     <string name="route_transit_alternativeHeading">Alternativa %1$s</string>
+    <string name="route_transit_alternativeLeastWalk">Meno cammino</string>
+    <string name="route_transit_alternativeSubwayOnly">Solo metropolitana</string>
     <string name="route_transit_arrive">Arrivo a &lt;name&gt;&lt;/name&gt;</string>
     <string name="route_transit_busNo">autobus %1$s</string>
     <string name="route_transit_button">Mezzi pubblici fin qui</string>
@@ -916,6 +919,12 @@
     <string name="route_transit_quickExitTransfer">Discesa a %1$s, cambio rapido %2$s</string>
     <string name="route_transit_ready">Il percorso è pronto.</string>
     <string name="route_transit_recommended">Percorso consigliato</string>
+    <string name="route_transit_requeryBusOnly">Cerca un percorso solo in autobus</string>
+    <string name="route_transit_requeryBusOnlyFailed">Impossibile caricare il percorso solo in autobus.</string>
+    <string name="route_transit_requeryBusOnlyNone">Nessun percorso solo in autobus.</string>
+    <string name="route_transit_requerySubwayOnly">Cerca un percorso solo in metropolitana</string>
+    <string name="route_transit_requerySubwayOnlyFailed">Impossibile caricare il percorso solo in metropolitana.</string>
+    <string name="route_transit_requerySubwayOnlyNone">Nessun percorso solo in metropolitana.</string>
     <string name="route_transit_summary">%1$s min, %2$s won, {3, plural, one {%3$s cambio} other {%3$s cambi}}</string>
     <string name="route_transit_walkSummary">inclusi %1$s min a piedi</string>
     <string name="route_walk">A piedi</string>

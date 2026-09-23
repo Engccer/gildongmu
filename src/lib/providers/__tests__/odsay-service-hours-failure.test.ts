@@ -16,24 +16,25 @@ import { getTransitRoute } from "../odsay";
  * 리팩터링해도 어떤 테스트도 잡지 못한다(브랜치 리뷰 지적, 2026-08-01).
  */
 
-// ODsay 최소 응답: 버스 3개 대안(추천 342 → 대안 370 → 대안 30-3)
+// ODsay 최소 응답: 버스 3개(추천 342 → 대안 370 → 대안 30-3). 대안은 각자 이유가 있어야 실린다(E50):
+// 370은 더 빠르고, 30-3은 도보가 더 짧다.
 const ODSAY_BODY = {
   result: {
     path: [
-      makePath("342", "124000038"),
-      makePath("370", "100100061"),
-      makePath("30-3", "227000006"),
+      makePath("342", "124000038", 22, 300),
+      makePath("370", "100100061", 20, 300),
+      makePath("30-3", "227000006", 25, 100),
     ],
   },
 };
 
-function makePath(busNo: string, blID: string) {
+function makePath(busNo: string, blID: string, totalTime: number, totalWalk: number) {
   return {
     pathType: 2,
     info: {
-      totalTime: 22,
+      totalTime,
       payment: 1500,
-      totalWalk: 300,
+      totalWalk,
       firstStartStation: "출발",
       lastEndStation: "도착",
     },

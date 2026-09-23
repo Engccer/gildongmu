@@ -30,7 +30,9 @@ class DirectionsSourceGuardTest {
         val used = sources.flatMap { f -> Regex(""""((?:[^"\\]|\\.)*)"""").findAll(f.readText()).map { it.groupValues[1] }.toList() }
             .filter { keyShape.matches(it) }.toMutableSet()
         // :kit이 키를 돌려주는 자리 — 갈래 전수.
-        for (h in listOf(null, listOf("fastest"), listOf("fewestTransfers"), listOf("fastest", "fewestTransfers"))) used += TransitAlternativeName.key(h, 1).key
+        for (h in listOf(null, listOf("fastest", "fewestTransfers"), listOf("fastest", "fewestTransfers", "leastWalk", "busOnly", "subwayOnly"))) {
+            used += TransitAlternativeName.parts(h, 1).map { it.key }
+        }
         for (name in listOf("a", null)) for (dist in listOf("1m", null)) for (exit in listOf("3", null)) used += TransitWalkLegText.resolve(name, dist, 1, exit).key
         assertTrue(used.size > 40, "스캔이 살아 있다: ${used.size}")
         assertTrue("route.transit.noRoute" in used && "route.transit.alternativeFastestFewestTransfers" in used) // 갈래 안 키도 잡힌다

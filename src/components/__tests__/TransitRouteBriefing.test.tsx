@@ -2,7 +2,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { NextIntlClientProvider, useTranslations } from "next-intl";
-import { alternativeNameKey } from "@/lib/transit-alternative-name";
 import type { TransitLeg, TransitRoute } from "@/lib/types";
 import { TransitRouteBriefing, TransitRouteResult } from "../TransitRouteBriefing";
 import messages from "../../../messages/ko.json";
@@ -153,37 +152,6 @@ describe("도착 문구", () => {
   });
 });
 
-describe("alternativeNameKey", () => {
-  const base: TransitRoute = {
-    summary: { totalMinutes: 40, fare: 1500, transfers: 0, walkMinutes: 5 },
-    legs: [],
-    routeKey: "p1",
-  };
-
-  it("두 축이면 조합 키", () => {
-    expect(
-      alternativeNameKey({ ...base, highlight: ["fewestTransfers", "fastest"] }).key,
-    ).toBe("alternativeFastestFewestTransfers");
-  });
-
-  it("환승 축만이면 환승 키", () => {
-    expect(alternativeNameKey({ ...base, highlight: ["fewestTransfers"] }).key).toBe(
-      "alternativeFewestTransfers",
-    );
-  });
-
-  it("시간 축만이면 시간 키", () => {
-    expect(alternativeNameKey({ ...base, highlight: ["fastest"] }).key).toBe("alternativeFastest");
-  });
-
-  it("축이 없으면 번호 키에 displayIndex를 넘긴다", () => {
-    expect(alternativeNameKey({ ...base, displayIndex: 2 })).toEqual({
-      key: "alternativeHeading",
-      values: { index: 2 },
-    });
-  });
-});
-
 describe("채팅 카드 대안 라벨", () => {
   const alt = (over: Partial<TransitRoute>): TransitRoute => ({
     summary: { totalMinutes: 50, fare: 1750, transfers: 1, walkMinutes: 6 },
@@ -201,6 +169,7 @@ describe("채팅 카드 대안 라벨", () => {
           alternatives: [
             alt({ routeKey: "p1", highlight: ["fastest"] }),
             alt({ routeKey: "p2", displayIndex: 1 }),
+            alt({ routeKey: "p3", highlight: ["fewestTransfers", "busOnly"] }),
           ],
           totalCandidates: 9,
         },
@@ -219,6 +188,10 @@ describe("채팅 카드 대안 라벨", () => {
     // 라벨이 곧 요약 전문이다(joinText 한 줄 = 한 객체)
     expect(axis.textContent).toBe("가장 빠른 경로, 총 50분, 1,750원, 환승 1회, 도보 6분 포함");
     expect(screen.getByRole("button", { name: /대안 경로 1/ })).toBeTruthy();
+    // 축 여럿은 조각을 쉼표로 이은 한 줄(E50 §4.1)
+    expect(screen.getByRole("button", { name: /버스만 타는 경로/ }).textContent).toBe(
+      "환승이 가장 적은 경로, 버스만 타는 경로, 총 50분, 1,750원, 환승 1회, 도보 6분 포함",
+    );
     vi.unstubAllGlobals();
   });
 });

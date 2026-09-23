@@ -7,7 +7,14 @@ import { normalizeStationName } from "../station-match";
 import { subwayLineNameEn } from "../subway-line-names";
 import { toDisplayEnglish } from "../transit-name-en";
 import { hasHangul } from "../format";
-import { annotateHighlights, isOutside, selectTransitRoutes } from "./odsay-select";
+import {
+  annotateHighlights,
+  filterRoutesByMode,
+  isOutside,
+  SEARCH_PATH_TYPE,
+  selectTransitRoutes,
+  VEHICLE_OF_AXIS,
+} from "./odsay-select";
 import { fetchSubwayServiceHoursMap, subwayHoursKey } from "./subway-service-hours";
 import { fetchOdsayJson } from "./odsay-fetch";
 import { fetchExpressStopsMap } from "./odsay-express-stops";
@@ -16,8 +23,10 @@ import type {
   Coord,
   TransitLeg,
   TransitLegStop,
+  TransitModeAxis,
   TransitRoute,
   TransitRouteResult,
+  TransitVehicle,
 } from "../types";
 
 /**
@@ -428,12 +437,15 @@ function toTransitRoute(
   const walkMinutes = path.subPath
     .filter((sp) => sp.trafficType === 3)
     .reduce((sum, sp) => sum + (sp.sectionTime ?? 0), 0);
+  const walkMeters = path.info.totalWalk;
+  const vehicle = vehicleOf(path);
   return {
     summary: {
       totalMinutes: path.info.totalTime,
       fare: path.info.payment,
       transfers: Math.max(0, boardCount - 1),
       walkMinutes,
+      ...(typeof walkMeters === "number" && Number.isFinite(walkMeters) && walkMeters >= 0 ? { walkMeters } : {}),
       departName: lang === "en" ? path.info.firstStartStationKor : path.info.firstStartStation,
       arriveName: lang === "en" ? path.info.lastEndStationKor : path.info.lastEndStation,
       ...(departNameEn ? { departNameEn } : {}),
@@ -441,7 +453,21 @@ function toTransitRoute(
     },
     legs,
     routeKey,
+    ...(vehicle ? { vehicle } : {}),
   };
+}
+
+/**
+ * 한 수단만 타는 경로의 그 수단(E50 수단 축). ODsay `pathType`(1 지하철·2 버스·3 혼합)이 정본이고
+ * 비도보 구간 구성과 **둘 다** 맞을 때만 인정한다 — 한쪽만 맞는 경로에 "버스만"을 붙이면 거짓 이름이다
+ * (실호출 게이트 `verify-odsay-alternatives.mjs` (b)가 둘의 일치를 잰다).
+ */
+function vehicleOf(path: OdsayPath): TransitVehicle | undefined {
+  const kinds = new Set(path.subPath.filter((sp) => sp.trafficType !== 3).map((sp) => sp.trafficType));
+  if (kinds.size !== 1) return undefined;
+  if (path.pathType === 2 && kinds.has(2)) return "bus";
+  if (path.pathType === 1 && kinds.has(1)) return "subway";
+  return undefined;
 }
 
 /**
@@ -456,7 +482,7 @@ function toTransitRoute(
  */
 export function normalizeOdsayRoutes(
   data: OdsayResponse,
-  opts?: { includeStops?: boolean; lang?: OdsayLang },
+  opts?: { includeStops?: boolean; lang?: OdsayLang; keyPrefix?: string },
 ): TransitRoute[] | null {
   const err = readOdsayError(data.error);
   if (err) {
@@ -471,7 +497,7 @@ export function normalizeOdsayRoutes(
   }
   if (paths.length === 0) return null;
   return paths.map((p, i) =>
-    toTransitRoute(p, opts?.includeStops === true, `p${i}`, opts?.lang ?? "ko"),
+    toTransitRoute(p, opts?.includeStops === true, `${opts?.keyPrefix ?? "p"}${i}`, opts?.lang ?? "ko"),
   );
 }
 
@@ -541,7 +567,12 @@ export function annotateServiceStatus(
  * HTTP·Referer·apiKey 처리는 `odsay-fetch.ts` 한 곳(급행 정차역 조회와 공용).
  * ODsay 좌표 파라미터는 SX/EX=경도(lng), SY/EY=위도(lat).
  */
-async function fetchOdsay(origin: Coord, dest: Coord, lang: OdsayLang): Promise<OdsayResponse> {
+async function fetchOdsay(
+  origin: Coord,
+  dest: Coord,
+  lang: OdsayLang,
+  modeAxis: TransitModeAxis | undefined,
+): Promise<OdsayResponse> {
   const q = new URLSearchParams({
     SX: roundCoord(origin.lng, 4),
     SY: roundCoord(origin.lat, 4),
@@ -551,6 +582,9 @@ async function fetchOdsay(origin: Coord, dest: Coord, lang: OdsayLang): Promise<
   });
   // en은 `lang=1`(영문 + `*Kor` 병기). ko는 파라미터 자체가 없어 종전 URL·캐시 키와 같다(E27 §3.0 원칙 3).
   if (lang === "en") q.set("lang", "1");
+  // 수단 재조회(E50)는 `SearchPathType`(1 지하철·2 버스). 없으면 파라미터 자체가 없어 종전 URL·캐시 키와 같고,
+  // 있으면 URL이 달라 같은 좌표쌍 안에서도 캐시 항목이 갈린다(급행 정차역 조회 선례 `odsay-express-stops.ts`).
+  if (modeAxis) q.set("SearchPathType", SEARCH_PATH_TYPE[modeAxis]);
   // 경로는 준정적, 같은 좌표쌍 캐시로 1,000회/일 쿼터를 보호.
   // 좌표는 4자리 반올림으로 캐시 키 안정화(측위마다 키가 달라지는 것 방지)
   return fetchOdsayJson<OdsayResponse>("searchPubTransPathT", q, { revalidate: 3600 });
@@ -567,21 +601,33 @@ export async function getTransitRoute(params: {
    *   한국어 자리에 들어가면 조인 경로가 조용히 죽는다(설계 리뷰 #1). 부재·`ko`는 종전 경로.
    */
   lang?: OdsayLang;
+  /**
+   * 수단 재조회(E50 판정 2) — 사용자가 버튼을 눌렀을 때만 온다. 있으면 그 수단만 타는 경로 중 **1순위 하나**를
+   * `recommended`로 돌려주고(대안·재조회 제안 없음), 그런 경로가 없으면 null이다. routeKey는 본 조회와 겹치지
+   * 않게 접두가 다르다(`b0`·`s0` — 클라이언트가 두 응답을 한 목록에 합친다).
+   */
+  modeAxis?: TransitModeAxis;
 }): Promise<TransitRouteResult | null> {
-  const { origin, dest } = params;
+  const { origin, dest, modeAxis } = params;
   let lang: OdsayLang = params.lang ?? "ko";
-  let data = await fetchOdsay(origin, dest, lang);
+  let data = await fetchOdsay(origin, dest, lang, modeAxis);
   if (lang === "en") {
     const missing = assertKorComplete(data);
     if (missing) {
       console.warn(`[odsay] lang=1 응답 *Kor 결측(${missing}) — ko로 재조회, 영문 없이 응답`);
       lang = "ko";
-      data = await fetchOdsay(origin, dest, "ko");
+      data = await fetchOdsay(origin, dest, "ko", modeAxis);
     }
   }
   // 0단계 정규화(전체). 봉투 3-state는 normalizeOdsayRoutes가 담당한다.
-  const routes = normalizeOdsayRoutes(data, { includeStops: params.includeStops, lang });
-  if (!routes) return null;
+  const normalized = normalizeOdsayRoutes(data, {
+    includeStops: params.includeStops,
+    lang,
+    ...(modeAxis ? { keyPrefix: modeAxis === "busOnly" ? "b" : "s" } : {}),
+  });
+  // 수단 재조회는 ODsay 필터를 믿되 우리 판정(`vehicle`)으로 한 번 더 거른다 — 섞인 경로에 수단 이름을 붙이지 않는다.
+  const routes = modeAxis ? filterRoutesByMode(normalized, VEHICLE_OF_AXIS[modeAxis]) : normalized;
+  if (!routes || routes.length === 0) return null;
 
   // 1단계 강등(전체). ⚠ 선정보다 **먼저** 돈다: 선정 밖의 유일한 운행 중 경로를
   // 못 보는 결함을 막는다. 시간표 조회는 노선·역 단위 중복 제거 + 24시간 캐시라
@@ -614,6 +660,8 @@ export async function getTransitRoute(params: {
     kstNowMinutes(new Date()),
   );
 
+  // 수단 재조회는 그 수단의 1순위 하나만(강등 뒤 — 운행 중인 경로가 앞선다).
+  if (modeAxis) return { recommended: ranked[0], alternatives: [], totalCandidates: ranked.length };
   // 2단계 선정 → 3단계 라벨. 순서를 바꾸면 축의 기준점이 낡는다.
-  return annotateHighlights(selectTransitRoutes(ranked), ranked.length);
+  return annotateHighlights(selectTransitRoutes(ranked), ranked);
 }

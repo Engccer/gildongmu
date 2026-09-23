@@ -452,3 +452,33 @@ struct TransitLegExpressExitTests {
         #expect(leg.exit == nil)
     }
 }
+
+// MARK: - 수단 재조회(E50 판정 2)
+
+extension StubNetworkTests {
+    @Test func 재조회는_pathType과_경유정류장_옵트인을_싣는다() async throws {
+        var items: [URLQueryItem] = []
+        StubURLProtocol.handler = { request in
+            items = URLComponents(url: request.url!, resolvingAgainstBaseURL: false)?.queryItems ?? []
+            return (200, Data(#"{"result":null}"#.utf8))
+        }
+        let service = RouteService(client: stubbedClient())
+        let result = try await service.transitModeRequery(
+            originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1, axis: .busOnly, lang: "ko")
+        #expect(result == nil)  // 없음은 nil(throw 아님)
+        #expect(items.contains(URLQueryItem(name: "pathType", value: "2")))
+        #expect(items.contains(URLQueryItem(name: "includeStops", value: "1")))
+        #expect(!items.contains { $0.name == "lang" })
+        #expect(TransitModeAxis.subwayOnly.pathType == "1")
+    }
+
+    @Test func 재조회_축은_아는_값만_읽는다() throws {
+        let json = Data("""
+        {"recommended":{"summary":{"totalMinutes":30,"fare":1500,"transfers":0,"walkMinutes":5,"walkMeters":300},
+         "legs":[],"routeKey":"p0","vehicle":"subway"},
+         "alternatives":[],"totalCandidates":3,"requeryAxes":["busOnly","scenic","busOnly"]}
+        """.utf8)
+        let result = try JSONDecoder().decode(TransitRouteResult.self, from: json)
+        #expect(result.knownRequeryAxes == [.busOnly])
+    }
+}

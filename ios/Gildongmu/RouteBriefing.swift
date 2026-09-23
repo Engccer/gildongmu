@@ -230,25 +230,38 @@ private struct BriefingStationRow<Content: View>: View {
     }
 }
 
-/// 대안 경로의 표시 이름(spec §4.1). 축 판정은 서버가 끝냈고 Kit이 키를 고른다.
+/// 대안 경로의 표시 이름(spec 2026-09-24 §4.1). 축 판정은 서버가 끝냈고 Kit이 키 조각을 고르며,
+/// 여기서 조각을 쉼표로 잇는다(한 줄 = 한 접근성 객체, 가운뎃점·사유 문장 금지).
 ///
 /// ⚠ Kit이 돌려준 키를 그대로 `appLocalized(변수)`로 넘기지 않는다.
 ///   `check-xcstrings-keys.mjs`는 **문자열 리터럴만** 스캔하므로 변수 키는 카탈로그
 ///   대조에서 통째로 빠지고, 키가 없으면 VoiceOver가 키 문자열을 그대로 낭독한다.
 ///   리터럴로 되받는 이 스위치가 그 게이트를 살려 둔다.
 func transitAlternativeName(_ route: TransitRoute) -> String {
-    let resolved = TransitAlternativeName.key(
-        highlight: route.highlight, displayIndex: route.displayIndex)
-    switch resolved.key {
-    case "route.transit.alternativeFastestFewestTransfers":
-        return appLocalized("route.transit.alternativeFastestFewestTransfers")
-    case "route.transit.alternativeFewestTransfers":
-        return appLocalized("route.transit.alternativeFewestTransfers")
-    case "route.transit.alternativeFastest":
-        return appLocalized("route.transit.alternativeFastest")
-    default:
-        return appLocalized("route.transit.alternativeHeading", String(resolved.index ?? 1))
-    }
+    transitAlternativeName(highlight: route.highlight, displayIndex: route.displayIndex)
+}
+
+func transitAlternativeName(highlight: [String]?, displayIndex: Int?) -> String {
+    TransitAlternativeName.parts(highlight: highlight, displayIndex: displayIndex)
+        .map { part -> String in
+            switch part.key {
+            case "route.transit.alternativeFastestFewestTransfers":
+                return appLocalized("route.transit.alternativeFastestFewestTransfers")
+            case "route.transit.alternativeFewestTransfers":
+                return appLocalized("route.transit.alternativeFewestTransfers")
+            case "route.transit.alternativeFastest":
+                return appLocalized("route.transit.alternativeFastest")
+            case "route.transit.alternativeLeastWalk":
+                return appLocalized("route.transit.alternativeLeastWalk")
+            case "route.transit.alternativeBusOnly":
+                return appLocalized("route.transit.alternativeBusOnly")
+            case "route.transit.alternativeSubwayOnly":
+                return appLocalized("route.transit.alternativeSubwayOnly")
+            default:
+                return appLocalized("route.transit.alternativeHeading", String(part.index ?? 1))
+            }
+        }
+        .joined(separator: ", ")
 }
 
 func transitSummaryText(_ summary: TransitRouteSummary) -> String {

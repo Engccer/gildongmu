@@ -1,0 +1,20 @@
+{
+  "_comment": "대안 경로 이름 조립 규칙(spec 2026-09-24-transit-alternatives-reasoned-design.md §4.1). 웹 transit-alternative-name.ts ↔ Kit TransitAlternativeName.swift ↔ :kit TransitAlternativeName.kt가 같은 표를 읽는다. parts는 조립 순서대로의 조각이고 index는 번호 인자(없으면 null).",
+  "cases": [
+    { "name": "시간 축만", "highlight": ["fastest"], "displayIndex": null, "parts": [{ "key": "route.transit.alternativeFastest", "index": null }] },
+    { "name": "환승 축만", "highlight": ["fewestTransfers"], "displayIndex": null, "parts": [{ "key": "route.transit.alternativeFewestTransfers", "index": null }] },
+    { "name": "도보 축만", "highlight": ["leastWalk"], "displayIndex": 1, "parts": [{ "key": "route.transit.alternativeLeastWalk", "index": null }] },
+    { "name": "버스만", "highlight": ["busOnly"], "displayIndex": 1, "parts": [{ "key": "route.transit.alternativeBusOnly", "index": null }] },
+    { "name": "지하철만", "highlight": ["subwayOnly"], "displayIndex": 2, "parts": [{ "key": "route.transit.alternativeSubwayOnly", "index": null }] },
+    { "name": "시간·환승은 기존 조합 키", "highlight": ["fewestTransfers", "fastest"], "displayIndex": null, "parts": [{ "key": "route.transit.alternativeFastestFewestTransfers", "index": null }] },
+    { "name": "조합 키 뒤에 나머지 축", "highlight": ["busOnly", "fastest", "fewestTransfers"], "displayIndex": null, "parts": [{ "key": "route.transit.alternativeFastestFewestTransfers", "index": null }, { "key": "route.transit.alternativeBusOnly", "index": null }] },
+    { "name": "환승·버스만(길동→서울역 370번 실측)", "highlight": ["fewestTransfers", "busOnly"], "displayIndex": null, "parts": [{ "key": "route.transit.alternativeFewestTransfers", "index": null }, { "key": "route.transit.alternativeBusOnly", "index": null }] },
+    { "name": "배열 순서는 조립 순서를 바꾸지 않는다", "highlight": ["subwayOnly", "leastWalk", "fastest"], "displayIndex": null, "parts": [{ "key": "route.transit.alternativeFastest", "index": null }, { "key": "route.transit.alternativeLeastWalk", "index": null }, { "key": "route.transit.alternativeSubwayOnly", "index": null }] },
+    { "name": "축이 있으면 번호를 쓰지 않는다", "highlight": ["leastWalk"], "displayIndex": 3, "parts": [{ "key": "route.transit.alternativeLeastWalk", "index": null }] },
+    { "name": "축 없으면 번호", "highlight": null, "displayIndex": 2, "parts": [{ "key": "route.transit.alternativeHeading", "index": 2 }] },
+    { "name": "빈 축 배열은 축 없음", "highlight": [], "displayIndex": 1, "parts": [{ "key": "route.transit.alternativeHeading", "index": 1 }] },
+    { "name": "번호도 없으면 1", "highlight": null, "displayIndex": null, "parts": [{ "key": "route.transit.alternativeHeading", "index": 1 }] },
+    { "name": "모르는 축만 있으면 번호로 떨어진다", "highlight": ["scenic"], "displayIndex": 4, "parts": [{ "key": "route.transit.alternativeHeading", "index": 4 }] },
+    { "name": "모르는 축은 버리고 아는 축만", "highlight": ["scenic", "busOnly"], "displayIndex": 1, "parts": [{ "key": "route.transit.alternativeBusOnly", "index": null }] }
+  ]
+}

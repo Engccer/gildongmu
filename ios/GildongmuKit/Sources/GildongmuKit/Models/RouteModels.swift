@@ -339,11 +339,13 @@ public struct TransitRoute: Codable, Sendable, Hashable {
     /// ⚠ 펼침 상태·안내 세션 추적·포커스 복귀는 **배열 인덱스가 아니라 이 키로** 한다.
     ///   강등 정렬·재조회로 표시 순서가 바뀌면 인덱스는 다른 경로를 가리킨다.
     public let routeKey: String
-    /// 이 경로가 1순위보다 나은 축("fastest"·"fewestTransfers", 둘 다일 수 있다).
-    /// 축 없는 대안은 필드 부재. 표시 이름은 `TransitAlternativeName`이 고른다.
-    /// ⚠ 서버가 축을 늘려도 깨지지 않도록 String 배열로 둔다(mode와 같은 원칙).
+    /// 이 경로가 1순위보다 나은 축(여럿일 수 있다. E50에서 "leastWalk"·"busOnly"·"subwayOnly" 추가).
+    /// 표시 이름은 `TransitAlternativeName`이 조각으로 고른다.
+    /// ⚠ 서버가 축을 늘려도 깨지지 않도록 String 배열로 둔다(mode와 같은 원칙). 스토어 1.18·1.19가 이
+    ///   원칙으로 새 축을 받는다(모르는 축은 무시 → 번호 이름).
     public let highlight: [String]?
-    /// 축 라벨이 없는 대안의 표시 번호(1부터). 번호를 서버가 정해 3플랫폼이 갈리지 않는다.
+    /// 옛 앱 호환 번호(1부터). 서버는 옛 앱이 아는 축(`fastest`·`fewestTransfers`)이 없는 대안에만
+    /// 싣는다(E50 §3.1). 이름 조각은 아는 축이 하나도 없을 때만 이 값을 쓴다.
     public let displayIndex: Int?
 
     public init(
@@ -358,21 +360,41 @@ public struct TransitRoute: Codable, Sendable, Hashable {
     }
 }
 
-/// 추천 1건 + 대안 최대 4건. 대안은 뷰가 요약 라벨로 접어 표시(spec §2).
+/// 추천 1건 + 축 이름이 붙는 대안만(E50 — 번호로 채우지 않는다). 대안은 뷰가 요약 라벨로 접어 표시.
 public struct TransitRouteResult: Codable, Sendable, Hashable {
     public let recommended: TransitRoute
     public let alternatives: [TransitRoute]
     /// 절단 전 후보 경로 총수(조용한 절단 금지). 표시하지는 않는다.
     /// 표기 심사는 "사용자 행동을 바꾸는가"이고 후보 총수는 바꾸지 않는다.
     public let totalCandidates: Int
+    /// 사용자가 눌러 한 번 더 조회할 수 있는 수단 축(E50 판정 2, 서버 원문 "busOnly"·"subwayOnly").
+    /// 표시 경로에 그 수단만 타는 경로가 없을 때만 온다. 필드 부재 = 제안 없음.
+    /// ⚠ String 배열로 받고 아는 값만 `knownRequeryAxes`로 쓴다(서버가 늘려도 디코딩이 깨지지 않게).
+    public let requeryAxes: [String]?
 
     public init(
-        recommended: TransitRoute, alternatives: [TransitRoute], totalCandidates: Int
+        recommended: TransitRoute, alternatives: [TransitRoute], totalCandidates: Int,
+        requeryAxes: [String]? = nil
     ) {
         self.recommended = recommended
         self.alternatives = alternatives
         self.totalCandidates = totalCandidates
+        self.requeryAxes = requeryAxes
     }
+
+    /// 아는 재조회 축만(서버 순서 유지, 중복 제거).
+    public var knownRequeryAxes: [TransitModeAxis] {
+        var seen = Set<TransitModeAxis>()
+        return (requeryAxes ?? []).compactMap(TransitModeAxis.init(rawValue:)).filter { seen.insert($0).inserted }
+    }
+}
+
+/// 수단 재조회 축(E50 판정 2, 웹 `TransitModeAxis` 미러). 원시값이 서버 `highlight`·`requeryAxes` 문자열이다.
+public enum TransitModeAxis: String, Sendable, Hashable, CaseIterable {
+    case busOnly, subwayOnly
+
+    /// `/api/route/transit?pathType=` 값(ODsay `SearchPathType`: 2 버스·1 지하철).
+    public var pathType: String { self == .busOnly ? "2" : "1" }
 }
 
 /// /api/route/transit envelope(자동차와 달리 result로 감싼다). ⚠ result는 optional.

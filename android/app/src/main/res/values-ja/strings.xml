@@ -882,10 +882,13 @@
     <string name="route_pedestrian_summary">計%1$s、約%2$s分</string>
     <string name="route_public">公共交通</string>
     <string name="route_transit_alightAt">%1$sで下車</string>
+    <string name="route_transit_alternativeBusOnly">バスだけのルート</string>
     <string name="route_transit_alternativeFastest">最速ルート</string>
     <string name="route_transit_alternativeFastestFewestTransfers">最速で乗り換えも最少のルート</string>
     <string name="route_transit_alternativeFewestTransfers">乗り換えが最も少ないルート</string>
     <string name="route_transit_alternativeHeading">代替経路%1$s</string>
+    <string name="route_transit_alternativeLeastWalk">徒歩の距離が最も短いルート</string>
+    <string name="route_transit_alternativeSubwayOnly">地下鉄だけのルート</string>
     <string name="route_transit_arrive">&lt;name&gt;&lt;/name&gt;に到着</string>
     <string name="route_transit_busNo">%1$s番バス</string>
     <string name="route_transit_button">ここまで公共交通で経路検索</string>
@@ -916,6 +919,12 @@
     <string name="route_transit_quickExitTransfer">%1$sで下車、乗り換えは%2$s</string>
     <string name="route_transit_ready">経路案内の準備ができました。</string>
     <string name="route_transit_recommended">おすすめ経路</string>
+    <string name="route_transit_requeryBusOnly">バスだけのルートを探す</string>
+    <string name="route_transit_requeryBusOnlyFailed">バスだけのルートを取得できませんでした。</string>
+    <string name="route_transit_requeryBusOnlyNone">バスだけのルートはありません。</string>
+    <string name="route_transit_requerySubwayOnly">地下鉄だけのルートを探す</string>
+    <string name="route_transit_requerySubwayOnlyFailed">地下鉄だけのルートを取得できませんでした。</string>
+    <string name="route_transit_requerySubwayOnlyNone">地下鉄だけのルートはありません。</string>
     <string name="route_transit_summary">計%1$s分、%2$sウォン、乗り換え%3$s回</string>
     <string name="route_transit_walkSummary">徒歩%1$s分を含む</string>
     <string name="route_walk">徒歩</string>

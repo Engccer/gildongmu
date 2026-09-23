@@ -300,9 +300,12 @@ interface QuickExitItem {
 interface TransitRouteItem {
   summary: { totalMinutes: number; fare: number; transfers: number; walkMinutes: number };
   legs: TransitLegItem[];
-  /** 1순위보다 나은 축(둘 다일 수 있어 배열). 서버가 판정한다. */
-  highlight?: ("fastest" | "fewestTransfers")[];
-  /** 축 라벨이 없는 대안의 표시 번호(1부터). 서버가 정해 3플랫폼 갈림을 막는다. */
+  /**
+   * 1순위보다 나은 축(여럿일 수 있어 배열). 서버가 판정한다. 웹 `TransitHighlight` 미러(E50에서 셋 추가).
+   * ⚠ 서버가 모르는 값을 더해도 파싱이 깨지지 않게 string으로 받고 아는 것만 이름으로 옮긴다.
+   */
+  highlight?: string[];
+  /** 옛 앱 호환 번호(1부터). 아는 축이 하나도 없을 때만 이름에 쓴다(E50 §3.1). */
   displayIndex?: number;
 }
 
@@ -837,15 +840,24 @@ function transitWalkLegLine(leg: TransitLegItem): string {
 }
 
 /**
- * 대안 표시 이름(spec §4.1). 축 라벨도 번호도 서버 판정을 옮기기만 한다.
- * 번호를 CLI가 세면 웹·iOS와 갈리고 그 갈림을 잡는 테스트가 없다.
+ * 대안 표시 이름(spec 2026-09-24 §4.1, 웹 `transit-alternative-name.ts` 미러 — CLI 라벨은 한국어 고정).
+ * 축 하나에 조각 하나를 조립 순서로 내고 쉼표로 잇는다. 시간·환승이 함께면 기존 조합 이름 하나.
+ * 번호는 아는 축이 없을 때만 서버 `displayIndex`를 쓴다 — CLI가 세면 웹·iOS와 갈린다.
  */
+const TRANSIT_AXIS_NAMES: [string, string][] = [
+  ["fastest", "가장 빠른 경로"],
+  ["fewestTransfers", "환승이 가장 적은 경로"],
+  ["leastWalk", "도보 거리가 가장 짧은 경로"],
+  ["busOnly", "버스만 타는 경로"],
+  ["subwayOnly", "지하철만 타는 경로"],
+];
 function transitAlternativeName(route: TransitRouteItem): string {
-  const fastest = route.highlight?.includes("fastest") ?? false;
-  const fewestTransfers = route.highlight?.includes("fewestTransfers") ?? false;
-  if (fastest && fewestTransfers) return "가장 빠르고 환승도 가장 적은 경로";
-  if (fewestTransfers) return "환승이 가장 적은 경로";
-  if (fastest) return "가장 빠른 경로";
+  const axes = new Set(route.highlight ?? []);
+  let names = TRANSIT_AXIS_NAMES.filter(([axis]) => axes.has(axis)).map(([, name]) => name);
+  if (axes.has("fastest") && axes.has("fewestTransfers")) {
+    names = ["가장 빠르고 환승도 가장 적은 경로", ...names.slice(2)];
+  }
+  if (names.length > 0) return names.join(", ");
   // 축도 번호도 없는 응답은 스키마 위반이다. 없는 번호를 지어내지 않는다.
   return typeof route.displayIndex === "number" ? `대안 경로 ${route.displayIndex}` : "대안 경로";
 }

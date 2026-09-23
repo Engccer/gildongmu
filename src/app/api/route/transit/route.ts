@@ -28,6 +28,11 @@ const querySchema = z.object({
   // 응답 언어(E27): en이면 ODsay `lang=1`로 영문을 받아 `*En`에 additive로 싣는다. 한국어 필드는
   // 어느 응답에서도 그대로(조인 키). 미지정·ko는 종전과 byte-identical(CLI/MCP 무변화).
   lang: langParam(),
+  // 수단 재조회(E50 판정 2): 사용자가 버튼을 눌렀을 때만. "2" 버스만·"1" 지하철만(ODsay `SearchPathType`),
+  // 누락=현행(URL·캐시 키 불변), 그 밖은 400(조용한 무시 금지 — includeStops 동형).
+  pathType: z
+    .union([z.literal("1"), z.literal("2"), z.null()])
+    .transform((v) => (v === "2" ? "busOnly" : v === "1" ? "subwayOnly" : undefined)),
 });
 
 export async function GET(request: NextRequest) {
@@ -37,6 +42,7 @@ export async function GET(request: NextRequest) {
     via: request.nextUrl.searchParams.get("via"),
     includeStops: request.nextUrl.searchParams.get("includeStops"),
     lang: request.nextUrl.searchParams.get("lang"),
+    pathType: request.nextUrl.searchParams.get("pathType"),
   });
   if (!parsed.success) {
     return NextResponse.json(
@@ -73,6 +79,7 @@ export async function GET(request: NextRequest) {
       dest: parsed.data.dest,
       includeStops: parsed.data.includeStops === "1",
       lang: parsed.data.lang,
+      ...(parsed.data.pathType ? { modeAxis: parsed.data.pathType } : {}),
     });
     // null = 경로 없음(graceful). 컴포넌트가 "찾지 못함"으로 표시.
     return NextResponse.json({ result });
