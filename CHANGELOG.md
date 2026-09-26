@@ -11,6 +11,13 @@
 
 ## 2026-09-26
 
+### iOS 대중교통 누른 버튼 착지·경유지 포기 문장·Kit 확인 테스트 3건 (A47 iOS · N4 iOS · E43 · E51 문안)
+
+- A47 iOS: 모델 dispatch가 폴 아닌 입력의 국면 전이마다 `userTransitionSeq`를 올리고, 시트는 사용자 전이만 상태 문장(→waiting은 목록 라벨)에 착지시킨다. [선택한 열차에 탔어요]와 대기 국면 [다음 구간]이 새로 착지하고, 관측 전이가 커서를 쥔 국면 버튼을 없애면 상태 문장으로 복구한다(실기기 판정 BACKLOG §2).
+- N4 iOS: 간략 폴백은 경로 실패에서만 경유지를 버리고 강등 문장을 위원장 확정 문안(두 인자, 6로케일 = 웹 `viaDropped`)으로 대체하고, 위치 실패는 "경유지(…)를 제외하고 안내합니다."를 덧붙인다(2026-09-27 확정). 안드로이드 `WalkGuideModel` 동형.
+- E43 iOS 확인 후보: 딥링크 쿼리 인코딩·`CharacterSet` 공백 집합은 `:kit`과 같음을 Kit 테스트로 잠그고, 채팅 블록 줄 경계는 CRLF에서 Swift만 다름을 공유 fixture로 잠갔다(수정 없음). 나들이 방향 행에 쉼표(ko·ja, a11y m10).
+- 계획 `docs/superpowers/plans/2026-09-26-backlog-sweep-6-parallel-plan.md` §1.
+
 ### ODsay 실호출 게이트 5종이 저장 응답을 한 규약으로 재사용한다 (E47-1)
 
 `verify-odsay-alternatives.mjs`의 저장·재생 규약을 `scripts/lib/odsay-corpus.mjs`로 뽑았다(요청 하나 = 파일 하나, 실패 응답 미저장, `--from-corpus`는 읽기 전용·호출 0, corpus는 저장소 밖). provider를 태우는 게이트는 전역 `fetch`를 가로채 ODsay 호출만 corpus를 지나므로 판정 로직은 그대로다. `express-lane`·`express-stops`·`lang`·`transfer-door`에 `--out`/`--from-corpus`를 달았고 저장 없는 실호출 모드는 없앴다(corpus에 없는 요청은 exit 3). 기존 corpus 재생 판정은 종전과 같다(45건 통과, 재생 13·실호출 0). [계획](docs/superpowers/plans/2026-09-26-backlog-sweep-6-parallel-plan.md)
