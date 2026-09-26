@@ -3,19 +3,20 @@
  * 몇 시간이고 켜져 있었다). 도착 추정(`final-approach.ts` `presumedArrivalStep`)은 최종 접근
  * 국면에 들어간 세션만 정리하므로, 그 문을 못 지난 세션(GPS 두절·이탈 상태로 종점 접근·
  * 간략 강등·목적지 150m 밖 실내 진입)에는 종전에 어떤 상한도 없었다. 이 판정은 국면을
- * 보지 않는다 — 그래서 상수가 도착 추정보다 훨씬 길다(경로 중간의 정상 보행을 끊으면 안 된다).
+ * 보지 않는다. 두절 축은 도착 추정보다 길고, 무이동 축은 도착 추정과 같은 5분이다(2026-09-26 위원장
+ * 판정, 나들이 spec §9). 같은 워치독 틱에서는 도착 추정이 먼저 판정되므로 동점이면 도착이 이긴다.
  *
  * Kit `SessionIdle.swift` 미러, 공유 fixture `session-idle-scenarios.json`. 웹은 소비자가 없다
  * (브라우저 탭은 백그라운드에서 멈춘다) — iOS `BeaconModel` 워치독이 유일한 배선.
  */
 
-/** usable fix 두절이 이만큼 지속되면 세션을 끝낸다(잠정 — 실사용 재판정). */
-export const SESSION_IDLE_NO_FIX_S = 600;
-/** usable fix는 오는데 앵커 기준 이동이 이만큼 없으면 끝낸다(신호 대기·잠시 멈춤보다 훨씬 길게). */
-export const SESSION_IDLE_STATIONARY_S = 1200;
+/** usable fix 두절이 이만큼 지속되면 세션을 끝낸다(2026-09-26 위원장 판정 5분). */
+export const SESSION_IDLE_NO_FIX_S = 300;
+/** usable fix는 오는데 앵커 기준 이동이 이만큼 없으면 끝낸다(2026-09-26 위원장 판정 5분, 신호 대기보다 길게). */
+export const SESSION_IDLE_STATIONARY_S = 300;
 /**
  * 세션 진행 앵커 이탈 하한(m). 도착 추정의 10m보다 큰 이유: 실내 wifi 측위 지터가 10m를 넘어
- * 20분 내내 "이동"으로 읽히면 이 축이 영영 안 열린다(도착 추정 spec §7 미탐 수용 사례).
+ * 무이동 축 내내 "이동"으로 읽히면 이 축이 영영 안 열린다(도착 추정 spec §7 미탐 수용 사례).
  */
 export const SESSION_PROGRESS_EPSILON_M = 25;
 

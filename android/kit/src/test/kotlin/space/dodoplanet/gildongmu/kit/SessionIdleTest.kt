@@ -32,16 +32,17 @@ class SessionIdleTest {
         assertNull(sessionIdleStep(0.0, Double.POSITIVE_INFINITY))
     }
 
-    @Test fun `국면 무관 안전망은 도착 추정보다 모든 축이 느슨하다 — 두 프로파일`() {
+    @Test fun `국면 무관 안전망은 도착 추정보다 조이지 않는다 — 두 프로파일, 두절은 더 길고 무이동은 같거나 길다`() {
         for (p in listOf(PresumedArrivalThresholds.walk, PresumedArrivalThresholds.car)) {
             assertTrue(sessionIdleNoFixSeconds > p.noFixSeconds)
-            assertTrue(sessionIdleStationarySeconds > p.stationarySeconds)
+            assertTrue(sessionIdleStationarySeconds >= p.stationarySeconds)
         }
         assertTrue(sessionProgressEpsilonMeters > progressEpsilonMeters)
     }
 
     @Test fun `무이동 축이 없으면 두절 축만 산다`() {
-        assertEquals(SessionIdleReason.noFix, sessionIdleStep(600.0, null))
+        assertEquals(SessionIdleReason.noFix, sessionIdleStep(sessionIdleNoFixSeconds, null))
+        assertNull(sessionIdleStep(1.0, null))
         assertNull(sessionIdleStep(Double.NaN, null))
     }
 }

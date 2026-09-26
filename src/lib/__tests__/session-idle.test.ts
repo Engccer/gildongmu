@@ -26,16 +26,17 @@ describe("sessionIdleStep (공유 fixture)", () => {
     expect(sessionIdleStep({ secondsSinceUsableFix: 0, secondsSinceProgress: Infinity })).toBeNull();
   });
 
-  it("국면 무관 안전망은 도착 추정보다 모든 축이 느슨하다(両프로파일 — 경로 중간 정상 이동을 끊지 않는 조건)", () => {
+  it("국면 무관 안전망은 도착 추정보다 조이지 않는다(両프로파일 — 두절은 더 길고 무이동은 같거나 길다)", () => {
     for (const p of [PRESUMED_ARRIVAL_WALK, PRESUMED_ARRIVAL_CAR]) {
       expect(SESSION_IDLE_NO_FIX_S).toBeGreaterThan(p.noFixSeconds);
-      expect(SESSION_IDLE_STATIONARY_S).toBeGreaterThan(p.stationarySeconds);
+      expect(SESSION_IDLE_STATIONARY_S).toBeGreaterThanOrEqual(p.stationarySeconds);
     }
     expect(SESSION_PROGRESS_EPSILON_M).toBeGreaterThan(PROGRESS_EPSILON_M);
   });
 
   it("무이동 축이 없으면(null) 두절 축만 산다", () => {
-    expect(sessionIdleStep({ secondsSinceUsableFix: 600, secondsSinceProgress: null })).toBe("noFix");
+    expect(sessionIdleStep({ secondsSinceUsableFix: SESSION_IDLE_NO_FIX_S, secondsSinceProgress: null })).toBe("noFix");
+    expect(sessionIdleStep({ secondsSinceUsableFix: 1, secondsSinceProgress: null })).toBeNull();
     expect(sessionIdleStep({ secondsSinceUsableFix: NaN, secondsSinceProgress: null })).toBeNull();
   });
 });

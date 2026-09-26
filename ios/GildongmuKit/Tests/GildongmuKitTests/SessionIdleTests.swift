@@ -40,17 +40,18 @@ func sessionIdleRejectsInvalid() {
     #expect(sessionIdleStep(secondsSinceUsableFix: 0, secondsSinceProgress: .infinity) == nil)
 }
 
-@Test("국면 무관 안전망은 도착 추정보다 모든 축이 느슨하다 (両프로파일)")
+@Test("국면 무관 안전망은 도착 추정보다 조이지 않는다 (両프로파일 — 두절은 더 길고 무이동은 같거나 길다)")
 func sessionIdleIsLooserThanPresumedArrival() {
     for p in [PresumedArrivalThresholds.walk, .car] {
         #expect(sessionIdleNoFixSeconds > p.noFixSeconds)
-        #expect(sessionIdleStationarySeconds > p.stationarySeconds)
+        #expect(sessionIdleStationarySeconds >= p.stationarySeconds)
     }
     #expect(sessionProgressEpsilonMeters > progressEpsilonMeters)
 }
 
 @Test("무이동 축이 없으면(nil) 두절 축만 산다")
 func sessionIdleWithoutStationaryAxis() {
-    #expect(sessionIdleStep(secondsSinceUsableFix: 600, secondsSinceProgress: nil) == .noFix)
+    #expect(sessionIdleStep(secondsSinceUsableFix: sessionIdleNoFixSeconds, secondsSinceProgress: nil) == .noFix)
+    #expect(sessionIdleStep(secondsSinceUsableFix: 1, secondsSinceProgress: nil) == nil)
     #expect(sessionIdleStep(secondsSinceUsableFix: .nan, secondsSinceProgress: nil) == nil)
 }
