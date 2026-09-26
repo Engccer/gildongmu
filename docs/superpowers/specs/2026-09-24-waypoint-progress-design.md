@@ -18,7 +18,7 @@
 ## 1. 범위
 
 - **안에**: 리듀서 3벌(웹 `route-guide.ts` ↔ Kit `RouteGuide.swift` ↔ `:kit` `RouteGuide.kt`) + 공유 fixture, iOS `BeaconModel`·`BeaconTrackingSheet`, 웹 `useRouteGuide`·`DistanceBeacon`, 문장 4개(6로케일·xcstrings·`arg-order.json`·안드로이드 strings 재생성).
-- **밖에**: 웹 길찾기 화면의 `walkGuideStartable` `!hasVia` 해제·경유지 전달(웨이브 2 `n4-web-wire`), 자동차 경유지 접근 예고(프로파일 값 null — N4에 남김), 안드로이드 앱 UI 배선(`WalkGuideModel.kt`·`GuideSheet.kt` — BACKLOG E43 등가성 후속; 컴파일에 필요한 무동작 분기 1줄만 넣는다), 띠바 거리(총 잔여 유지, 경유지 spec §4.4 판정 그대로).
+- **밖에**: 웹 길찾기 화면의 `walkGuideStartable` `!hasVia` 해제·경유지 전달(웨이브 2 `n4-web-wire`), 자동차 경유지 접근 예고(프로파일 값 null — N4에 남김), 안드로이드 앱 UI 배선(`WalkGuideModel.kt`·`GuideSheet.kt` — BACKLOG E43 등가성 후속, ✅ 2026-09-27 §6; 컴파일에 필요한 무동작 분기 1줄만 넣는다), 띠바 거리(총 잔여 유지, 경유지 spec §4.4 판정 그대로).
 
 ## 2. 리듀서
 

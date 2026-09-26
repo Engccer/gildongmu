@@ -247,7 +247,7 @@
 | `SEOUL_SUBWAY_REALTIME_KEY` | `hasSeoulSubwayRealtimeKey` | "실시간 데이터 인증키"(일반키로 호출 시 `ERROR-338`), 일 1,000회를 도착·열차 위치(E35)가 나눈다 |
 | `ODSAY_API_KEY` | `hasOdsayKey` | ODsay 대중교통 — Flex(후불 종량제) 앱 `gildongmuflex` 키, Referer `gildongmu.dodoplanet.space`에 묶인다. ⚠ **호출 수가 곧 비용**이다 — 새 호출 경로는 캐시 뒤, 실호출 게이트는 최소로(corpus 재생 `--from-corpus` 우선, 실호출은 `--out`으로 저장). 옛 Basic 앱 `gildongmuweb`은 쓰지 않는다(약관 4.5.3). → INTEGRATIONS |
 | `DEEPGRAM_API_KEY` | `hasDeepgramKey` | STT nova-3 (dodo 공유). ⚠ prod 502면 키 유효성 먼저([[deepgram-prod-key-401]]) |
-| `GOOGLE_CLOUD_TTS_API_KEY` | — (게이트 함수 없음) | `/api/tts`(Chirp 3 HD MP3): iOS TtsPlayer 낭독과 웹 채팅 [듣기](B12)의 **폴백**. 정본은 기기 음성(iOS `AVSpeechSynthesizer`·웹 `speechSynthesis`, 2026-07-27 위원장 판정)이고 서버 경로는 현재 로케일 보이스가 기기에 없을 때만 탄다 |
+| `GOOGLE_CLOUD_TTS_API_KEY` | — (게이트 함수 없음) | `/api/tts`(Chirp 3 HD MP3): iOS TtsPlayer 낭독과 웹(B12)·안드로이드 채팅 [듣기]의 **폴백**. 정본은 기기 음성(iOS `AVSpeechSynthesizer`·웹 `speechSynthesis`·안드로이드 `TextToSpeech`, 2026-07-27 위원장 판정)이고 서버 경로는 현재 로케일 보이스가 기기에 없을 때만 탄다 |
 | `GEMINI_API_KEY` | `hasGeminiKey` | 채팅 FC 엔진(모델은 env가 아니라 코드 상수 `GEMINI_MODEL`, `src/lib/gemini/client.ts`). 길동무 전용 GCP 프로젝트 `gildongmu-prod`의 API 제한 키 — ⚠ dodo와 공유하지 않는다. 키 교체 시 로컬·Vercel prod·리포트 상수 3곳 동조. → INTEGRATIONS |
 | `GOOGLE_PLACES_API_KEY` | `hasGooglePlacesKey` | Google Places API (New) — 장소 상세 영업시간 한 줄(E24, 웹·iOS 장소 상세 — 2026-09-02 정식판 승격). `gildongmu-prod` 키 `gildongmu-places`(Places API만 허용). 무료분(Details Enterprise 1,000/월·Text Search Pro 5,000/월)을 GCP 일일 쿼터로 상한 — 초과는 429라 과금이 구조적으로 0 |
 | `PERPLEXITY_API_KEY` | `hasPerplexityKey` | 검색창 웹섹션 + 채팅 `search_web`. 유료($5/1,000req). dodo 공유 |

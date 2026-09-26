@@ -189,7 +189,7 @@
 | 채팅 카드 | `src/components/TransitRouteBriefing.tsx` | 이름 조립만(버튼 없음) |
 | iOS | Kit `TransitAlternativeName.swift`·`Models/RouteModels.swift`·`RouteService.swift`, 앱 `RouteBriefing.swift`·`Directions/DirectionsTabView.swift` | 이름 조각 미러, 새 필드 디코딩(`requeryAxes`), 재조회 메서드(`transitModeRequery`, 인자 기본값 없음), 재조회 버튼·3-state·포커스 |
 | iOS 안내 시트 | `Directions/GuideOverviewSheet.swift`·`TransitTrackingSheet.swift`("다른 경로" 목록) | 코드 변경 없음. `transitRouteEntries`를 공유해 새 이름을 그대로 쓰고, 목록이 짧아진다(추천만 남는 경우가 흔하다). 그 응답의 `requeryAxes`는 쓰지 않는다(§9) |
-| 안드로이드 | `:kit` `TransitAlternativeName.kt`, `:app` `directions/DirectionsStrings.kt`·`TransitLegText.kt`, strings 재생성 | 이름 조각 미러와 키 매핑까지. 버튼은 E43 등가성 후속 |
+| 안드로이드 | `:kit` `TransitAlternativeName.kt`, `:app` `directions/DirectionsStrings.kt`·`TransitLegText.kt`, strings 재생성 | 이름 조각 미러와 키 매핑까지. 버튼은 E43 등가성 후속(✅ 2026-09-27 android-e50, §4.2) |
 | CLI·MCP | `packages/cli/src/lib/formatters.ts` | `highlight`는 string 배열로 받고 아는 축만 이름으로 옮긴다(전방 호환), 이름 조립(한국어 고정 라벨). `packages/mcp`는 포매터가 없어(원시 JSON) 변경 없음 |
 | WebMCP | `src/lib/webmcp/tools/plan-directions.ts` | 코드 변경 없음. `highlight`를 문자열 배열로 그대로 투영하고, 화면 `transitEntries`가 재조회로 찾은 경로까지 계획에 싣는다. 재조회 파라미터는 노출하지 않는다 |
 
@@ -224,7 +224,7 @@ provider(`odsay-pipeline.test.ts`): `walkMeters` 3-state, `vehicle`(pathType과 
 ## 9. 비범위
 
 - 선호 수단 설정, 자동 추가 조회: 위원장 기각(재논의 금지).
-- 안드로이드 재조회 버튼: BACKLOG E43 등가성 후속.
+- 안드로이드 재조회 버튼: BACKLOG E43 등가성 후속(✅ 2026-09-27 android-e50, §4.2).
 - 채팅 카드의 재조회: 카드는 대화 속 요약이라 조작 표면을 늘리지 않는다.
 - iOS 안내 조망·안내 시트 "다른 경로"의 재조회 버튼: 이름과 목록 축소만 따라가고 버튼은 없다. 안내 중 전환 목록의 쓸모가 바뀌는지는 실사용 판정(BACKLOG §2)으로 본다(설계 리뷰 #2).
 - 대안 수 상한: 축이 5개라 자연 상한이 1 + 5다. 별도 절단은 두지 않는다.

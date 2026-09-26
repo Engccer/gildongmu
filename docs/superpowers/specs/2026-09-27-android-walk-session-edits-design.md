@@ -17,7 +17,7 @@
 | ⑤ | 주변 확인 | — | 추적 중 시트(진행 상황 다음)·종료 화면(`endKind != stopped`, 닫기 앞)에 목적지 기준 버튼형 `SceneButtonSection` |
 | 폼 | 길찾기 폼 동기화 | `GuideFormSync`(iOS `GuideFormSyncStore`) | `DirectionsViewModel.applyGuideFormSync()` + 무통지 조회 |
 
-**범위 밖**: 장소 상세 화면의 "여기로 목적지 변경"·"여기를 경유지로" 버튼(iOS `PlaceDetailView` N1 §2.5) — 안드로이드 장소 상세에 아직 없고 `place/**`는 이번 소유가 아니다(BACKLOG E43 등가성 후속으로 남긴다). 자동차·대중교통 안내(M5)의 목적지 변경.
+**범위 밖**: 장소 상세 화면의 "여기로 목적지 변경"·"여기를 경유지로" 버튼(iOS `PlaceDetailView` N1 §2.5) — 안드로이드 장소 상세에 아직 없고 `place/**`는 이번 소유가 아니다(BACKLOG E43 M4b 항목의 후속으로 남긴다). 자동차·대중교통 안내(M5)의 목적지 변경.
 
 ## §2. 모델 상태·전이 (`WalkGuideModel`)
 
