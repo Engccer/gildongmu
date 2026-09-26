@@ -159,7 +159,7 @@ public func decayedDeadBand(
 public func isActionTone(_ tone: BeaconTone) -> Bool {
     switch tone {
     case .ahead, .crosswalk, .left, .right, .back, .warning: true
-    case .closer, .farther, .nearby, .tick, .start, .stop, .unreliable: false
+    case .closer, .farther, .nearby, .tick, .start, .stop, .unreliable, .stroll: false
     }
 }
 

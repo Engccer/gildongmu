@@ -276,9 +276,11 @@ describe("2. 도보 경로는 플래그를 졸업했다", () => {
     // 수동 위치 고지 대상이 아니다)와
     // 자동차 도착→도보(`acceptCarWalkHandoff`, 2026-08-23 K2. 자동차 세션이 봉인 안이라 도달
     // 불가이지만 도보 세션 자체는 졸업한 기능이라 별도 게이트가 없다 — spec K2 §6.4).
-    // 승차 전 도보(A25, 2026-08-30 — `startTransit` 안. 대중교통 시작 버튼이 봉인 안이라 도달 불가)까지 셋.
+    // 승차 전 도보(A25, 2026-08-30 — `startTransit` 안. 대중교통 시작 버튼이 봉인 안이라 도달 불가)까지 셋,
+    // 나들이 귀환(E51, 2026-09-26 — `acceptOutingReturn`. 나들이 세션은 이미 실좌표 위에 있었다)까지 넷.
     const session = readFileSync(GUIDE_SESSION, "utf8");
-    expect(session.match(/self\.startBeacon\(/g)).toHaveLength(3);
+    expect(session.match(/self\.startBeacon\(/g)).toHaveLength(4);
+    expect(declarationBody(session, "acceptOutingReturn")).toContain("self.startBeacon(");
     expect(declarationBody(session, "acceptWalkHandoff")).toContain("self.startBeacon(");
     expect(declarationBody(session, "acceptCarWalkHandoff")).toContain("self.startBeacon(");
     expect(declarationBody(session, "startTransit")).toContain("self.startBeacon(");
@@ -303,6 +305,8 @@ describe("3. 안내 세션 진입점이 늘지 않았다", () => {
    * 클로저(`onWalkHandoff`)로 부를 뿐 `startBeacon(` 형태가 늘지 않는다(설계 리뷰 확인).
    * 2026-09-23 E42는 도보 추천·최단 두 호출을 줄 목록 `ForEach` 안 한 호출로 합쳐 **7곳**이 됐다
    * (진입점이 준 것이 아니라 호출 형태가 합쳐졌다 — 도보 줄은 여전히 정식판 도달).
+   * 2026-09-26 E51이 **8곳**으로 늘렸다: 나들이 귀환 인계 `GuideSession.acceptOutingReturn`(정식판 도달 —
+   * 나들이는 정식 코드 경로다, 위원장 판정). 나들이 세션 자체의 시작은 도보 세션이 아니라 아래 별도 검사가 센다.
    *
    * ⚠ 판정 축은 "`toggle`을 부르는가"가 아니라 **세션을 시작시키는가**다. A13이
    * 정밀 위치 복구 경로를 `beacon.restart()`로 바꿨을 때 `toggle`만 세는 검사는
@@ -320,12 +324,31 @@ describe("3. 안내 세션 진입점이 늘지 않았다", () => {
    */
   const ENTRY_CALL = /(?:beacon\.(?:toggle|restart)|(?:session|self)\.startBeacon)\(/g;
 
-  it("안내 세션 진입점 호출이 정확히 7곳이다", () => {
+  it("안내 세션 진입점 호출이 정확히 8곳이다", () => {
     const sites = swiftFiles(IOS_DIR).flatMap((file) => {
       const hits = readFileSync(file, "utf8").match(ENTRY_CALL) ?? [];
       return hits.map(() => file);
     });
-    expect(sites).toHaveLength(7);
+    expect(sites).toHaveLength(8);
+  });
+
+  /**
+   * 나들이(E51) 세션의 시작은 `GuideSession.startOuting` 한 곳이고(거부 게이트·다른 모델 잔여 화면 소거),
+   * 그것을 부르는 진입점은 둘(제목 메뉴·길찾기 탭 도착지 없는 조회의 거절 자리 버튼)이다. `outing.requestStart(`를
+   * 다른 자리에서 부르면 거부 게이트를 건너뛴다.
+   */
+  it("나들이 시작은 startOuting 한 경로, 진입점 둘", () => {
+    const calls = swiftFiles(IOS_DIR).flatMap((file) =>
+      (readFileSync(file, "utf8").match(/GuideSession\.shared\.startOuting\(\)/g) ?? []).map(() =>
+        file.split("/").pop(),
+      ),
+    );
+    expect(calls.sort()).toEqual(["DirectionsTabView.swift", "TitleMenu.swift"]);
+    const starts = swiftFiles(IOS_DIR).flatMap((file) =>
+      (readFileSync(file, "utf8").match(/outing\.requestStart\(/g) ?? []).map(() => file.split("/").pop()),
+    );
+    expect(starts).toEqual(["GuideSessionCoordinator.swift"]);
+    expect(declarationBody(readFileSync(GUIDE_SESSION, "utf8"), "startOuting")).toContain("outing.requestStart(");
   });
 
   it("재시작 진입점은 인자를 다시 조립하지 않는다(A13)", () => {

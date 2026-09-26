@@ -473,6 +473,52 @@
     "hours",
     "minutes"
   ],
+  "ios.outing.aheadLandmark": [
+    "name",
+    "distance"
+  ],
+  "ios.outing.band": [
+    "distance"
+  ],
+  "ios.outing.itemLeft": [
+    "distance"
+  ],
+  "ios.outing.itemRight": [
+    "distance"
+  ],
+  "ios.outing.lastHeading": [
+    "dir"
+  ],
+  "ios.outing.moving": [
+    "dir"
+  ],
+  "ios.outing.narration": [
+    "level"
+  ],
+  "ios.outing.originLabel": [
+    "label"
+  ],
+  "ios.outing.passLeft": [
+    "name"
+  ],
+  "ios.outing.passRight": [
+    "name"
+  ],
+  "ios.outing.passSide": [
+    "name"
+  ],
+  "ios.outing.roadEntered": [
+    "road"
+  ],
+  "ios.outing.walked": [
+    "distance"
+  ],
+  "ios.outing.zoneAhead": [
+    "distance"
+  ],
+  "ios.outing.zoneBehind": [
+    "distance"
+  ],
   "ios.place.askAbout": [
     "name"
   ],

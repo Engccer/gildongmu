@@ -14,6 +14,8 @@ import Foundation
 public let outingBesideBandMeters = 10.0
 /// ⚠ 잠정값(spec §10). 유도 방위 표의 유효 나이(초). 표는 2m 전진마다 나오므로 보행 중엔 수 초 간격이다.
 public let outingHeadingMaxAgeSeconds = 10.0
+/// ⚠ 잠정값(spec §10). 조망 반경(m) — "주변 보기"의 앞·옆·지나온 구획이 이 거리 안만 싣는다.
+public let outingOverviewRadiusMeters = 50.0
 /// 유도 방위의 불확실성 상한(도). 4분할 버킷 반폭(`courseAccuracyMaxDegrees`)과 같은 수.
 public let outingHeadingMaxUncertaintyDegrees = courseAccuracyMaxDegrees
 

@@ -120,6 +120,12 @@ struct GildongmuApp: App {
                         onDestinationCommitted: { GuideFormSyncStore.shared.post($0) },
                         onMinimize: { guideSession.isMinimized = true }
                     )
+                case .outing:
+                    OutingSheet(
+                        model: guideSession.outing,
+                        onMinimize: { guideSession.isMinimized = true },
+                        onReturn: { guideSession.acceptOutingReturn() }
+                    )
                 }
             }
             // 화면이 사라지면 최소화·복귀 플래그·띠바 포커스를 되돌린다(설계 리뷰 M1·M9).
@@ -388,6 +394,9 @@ struct GuideBandView: View {
                 beacon.endKind == .stopped ? "guide.band.ended" : "guide.band.arrived",
                 beacon.destinationLabel)
         }
+        // 나들이(E51) — 비콘 다음·대중교통 앞(`GuideSession.screen`과 같은 순서).
+        let outing = session.outing
+        if outing.isTracking || outing.endScreen != nil { return outing.bandLine }
         let transit = session.transit
         let leg = transit.currentLeg
         switch guideBandSummary(

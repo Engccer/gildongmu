@@ -5,7 +5,7 @@ import GildongmuKit
 /// 않는다(설계 리뷰 M2: 한 갱신에서 한 시트가 내려가며 다른 시트가 올라오면
 /// presentation이 무시될 수 있다).
 enum GuideScreenKind: String, Identifiable {
-    case beacon, transit
+    case beacon, transit, outing
     var id: String { rawValue }
 }
 
@@ -24,6 +24,8 @@ final class GuideSession {
     let coordinator = GuideSessionCoordinator()
     let beacon = BeaconModel()
     let transit = TransitGuideModel()
+    /// 나들이(E51) — 도착지 없는 도보 안내. 세 번째 안내 모델이고 같은 잠금·같은 시트 자리를 쓴다.
+    let outing = OutingModel()
 
     /// 시트가 내려가 있고 띠바가 세션을 대표하는 상태. `hasScreen`이 false로 떨어질 때
     /// `GildongmuApp`이 명시적으로 되돌린다(설계 리뷰 M1).
@@ -52,11 +54,16 @@ final class GuideSession {
     /// `startTransit`의 prewalk 경로가 `startBeacon`을 부르는 동안 true — 그 호출의 취소 게이트가
     /// 자기 컨텍스트를 지우지 않게.
     private var launchingPrewalk = false
+    /// 나들이 귀환 인계(E51 §5.3)의 컨텍스트 id. 도보 세션의 `.startFailed`만 인계 실패로 소비한다.
+    private var outingReturnID: UUID?
+    /// `acceptOutingReturn`이 `startBeacon`을 부르는 동안 true — `cancelPrewalk()`가 인계 콜백(`onSessionEnd`)을
+    /// 지우지 않게(`launchingPrewalk` 동형).
+    private var launchingOutingReturn = false
 
     private init() {}
 
     /// 세션 활성 = 코디네이터 점유 ∨ 비콘 시작 대기(권한 팝업 등, 설계 리뷰 M5).
-    var isActive: Bool { coordinator.isActive || beacon.starting }
+    var isActive: Bool { coordinator.isActive || beacon.starting || outing.starting }
 
     /// 안내 화면이 존재해야 하는가 — 추적 중이거나 세션 뒤에 남은 화면이 있을 때.
     var hasScreen: Bool { screen != nil }
@@ -64,6 +71,7 @@ final class GuideSession {
     /// 어느 화면인가. 둘 다면 비콘(핸드오프 600ms 창에서 비콘이 이긴다).
     var screen: GuideScreenKind? {
         if beacon.isTracking || beacon.arrivalDest != nil { return .beacon }
+        if outing.isTracking || outing.endScreen != nil { return .outing }
         if transit.isTracking || transit.pendingWalkHandoff != nil { return .transit }
         return nil
     }
@@ -74,15 +82,56 @@ final class GuideSession {
 
     func startBeacon(_ request: BeaconModel.StartRequest) {
         guard !refuseIfActive() else { return }
-        if !launchingPrewalk { cancelPrewalk() }
+        if !launchingPrewalk, !launchingOutingReturn { cancelPrewalk() }
         transit.clearWalkHandoff()
+        outing.clearEnd()
         beacon.requestStart(request)
+    }
+
+    /// 나들이 시작(E51 §5.1) — 진입점 둘(제목 메뉴·길찾기 탭 거절 자리의 버튼)이 부르는 **유일한** 시작 경로.
+    func startOuting() {
+        guard !refuseIfActive() else { return }
+        cancelPrewalk()
+        beacon.clearArrival()
+        transit.clearWalkHandoff()
+        outing.requestStart()
+    }
+
+    /// "출발점으로"(E51 §5.3) — 나들이 세션(또는 종료 화면)을 치우고 출발점까지 도보 안내로 인계한다.
+    /// 승차 전 도보(A25)와 같은 모양: 컨텍스트 id + 인계 플래그 아래 `startBeacon`, 실패(`.startFailed`)면
+    /// 길찾기 탭 도착지에 출발점을 프리필한다(§12). 인계 발화점은 이 함수 하나다.
+    func acceptOutingReturn() {
+        guard let target = outing.returnTarget else { return }
+        outing.endForReturn()
+        outing.announceReturn()
+        let id = UUID()
+        outingReturnID = id
+        beacon.onSessionEnd = { [weak self] reason in self?.endOutingReturn(id, reason: reason, target: target) }
+        launchingOutingReturn = true
+        self.startBeacon(BeaconModel.StartRequest(
+            dest: BeaconDest(lat: target.lat, lng: target.lng), label: target.label, kind: .walk,
+            accessible: false, variant: nil, line: nil, alternate: nil,
+            waypoint: nil))  // 귀환 경로에 경유지는 없다
+        launchingOutingReturn = false
+        // 동기 거부(requestStart 게이트)면 시작 Task가 없어 실패 콜백도 없다 — 여기서 잇는다.
+        if !beacon.starting, !beacon.isTracking { endOutingReturn(id, reason: .startFailed, target: target) }
+    }
+
+    private func endOutingReturn(_ id: UUID, reason: BeaconModel.EndReason, target: OutingModel.ReturnTarget) {
+        guard outingReturnID == id else { return }
+        outingReturnID = nil
+        beacon.onSessionEnd = nil
+        guard reason == .startFailed else { return }
+        // 도보 안내의 실패 문장은 그 모델이 이미 냈다. 사용자가 길찾기 탭에서 출발점을 찾을 수 있게만 한다.
+        DirectionsPrefillStore.shared.pending = DirectionsPrefill(
+            role: .to, endpoint: .place(label: target.label, lat: target.lat, lng: target.lng))
     }
 
     func startTransit(route: TransitRoute, destinationLabel: String, dest: BeaconDest, accessible: Bool) {
         guard !refuseIfActive() else { return }
         cancelPrewalk()
         beacon.clearArrival()
+        outing.clearEnd()
         // 승차 전 도보(A25): 첫 탑승 leg 앞 도보가 있으면 도보 실시간 안내를 먼저 돌리고, 도착하면
         // 같은 요청으로 대중교통 세션을 잇는다. 판정은 순수 함수(웹 미러) — nil이면 종전 경로.
         guard let target = buildTransitGuideRoute(route).flatMap(transitPrewalkTarget) else {
@@ -201,12 +250,13 @@ final class GuideSession {
     func handleScenePhaseChange(to phase: ScenePhase) {
         beacon.handleScenePhaseChange(to: phase)
         transit.handleScenePhaseChange(to: phase)
+        outing.handleScenePhaseChange(to: phase)
     }
 
     // MARK: - 받아쓰기 중 출력 억제 (K1 ④, N1 후속)
 
-    /// 받아쓰기 시작 직전 두 모델의 억제 값. nil이면 받아쓰기가 억제를 쥐고 있지 않다.
-    private var dictationPrior: (beacon: Bool, transit: Bool)?
+    /// 받아쓰기 시작 직전 세 모델의 억제 값. nil이면 받아쓰기가 억제를 쥐고 있지 않다.
+    private var dictationPrior: (beacon: Bool, transit: Bool, outing: Bool)?
     /// 억제를 쥔 받아쓰기 소유자들. `SpeechService`는 화면마다 인스턴스가 따로라(검색·도착지
     /// 검색·채팅) 두 세션이 겹칠 수 있다 — 마지막 소유자가 떠날 때만 푼다(리뷰 2026-08-23).
     private var dictationOwners = Set<ObjectIdentifier>()
@@ -224,15 +274,17 @@ final class GuideSession {
             let wasEmpty = dictationOwners.isEmpty
             dictationOwners.insert(owner)
             guard wasEmpty else { return }
-            dictationPrior = (beacon.outputSuppressed, transit.outputSuppressed)
+            dictationPrior = (beacon.outputSuppressed, transit.outputSuppressed, outing.outputSuppressed)
             beacon.outputSuppressed = true
             transit.outputSuppressed = true
+            outing.outputSuppressed = true
         } else {
             dictationOwners.remove(owner)
             guard dictationOwners.isEmpty, let prior = dictationPrior else { return }
             dictationPrior = nil
             beacon.outputSuppressed = prior.beacon && beacon.outputSuppressed
             transit.outputSuppressed = prior.transit && transit.outputSuppressed
+            outing.outputSuppressed = prior.outing && outing.outputSuppressed
         }
     }
 }

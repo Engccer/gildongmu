@@ -29,7 +29,12 @@ const SOUNDS = [
   "right-pan",
   "left-pitch",
   "right-pitch",
+  // 나들이 10m 비프(E51, 2026-09-26). iOS가 먼저 쓰고 웹 재생기 등록은 웹 이식 때(아래 대기 목록).
+  "stroll",
 ] as const;
+
+/** 파일은 두었지만 웹 재생기(`useBeaconSound`)에 아직 등록하지 않은 소리 — 웹 기능이 없어서다(나들이는 iOS 1차). */
+const WEB_PLAYER_PENDING = new Set<string>(["stroll"]);
 
 /** iOS `BeaconTone` 케이스(파일이 아니라 톤 — left·right는 scheme이 파일을 고른다). */
 const TONE_CASES =
@@ -50,7 +55,10 @@ describe("실시간 길 안내 사운드 파일 동조", () => {
 
   it("웹 재생기가 파일 전부를 알고 있다(누락 시 조용한 폴백 금지)", () => {
     const hook = readFileSync(path.join(ROOT, "src/hooks/useBeaconSound.ts"), "utf8");
-    for (const name of SOUNDS) expect(hook).toContain(`"${name}"`);
+    for (const name of SOUNDS) {
+      if (WEB_PLAYER_PENDING.has(name)) continue;
+      expect(hook).toContain(`"${name}"`);
+    }
   });
 
   it("iOS BeaconTone 케이스와 파일 집합이 일치한다", () => {
@@ -59,5 +67,7 @@ describe("실시간 길 안내 사운드 파일 동조", () => {
       "utf8",
     );
     expect(kit).toContain(`case ${TONE_CASES}`);
+    // iOS 전용 대기 케이스(나들이 비프)는 공유 목록과 다른 줄에 선언한다.
+    expect(kit).toContain("    case stroll\n");
   });
 });

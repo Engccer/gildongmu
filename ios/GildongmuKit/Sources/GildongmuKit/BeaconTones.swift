@@ -29,6 +29,10 @@ import Foundation
 /// `scripts/build-guide-tones.py`(합성, 결정론 재생성).
 public enum BeaconTone: String, Sendable, Equatable, CaseIterable {
     case closer, farther, nearby, tick, start, stop, ahead, crosswalk, left, right, back, warning, unreliable
+    /// 나들이 10m 비프(E51, spec 2026-09-26 §7.1) — 낮고 짧은 단음. **iOS 전용 대기 케이스**다: 안드로이드
+    /// `:kit` 미러는 나들이 이식 때 케이스·리소스를 함께 옮긴다(`BeaconTonesTest`의 대기 목록). 웹 파일은
+    /// 바이트 동일로 먼저 둔다(`sounds-drift.test.ts`).
+    case stroll
 
     /// 앱 번들 리소스 파일명(확장자 제외). 웹 파일명과 1:1 대응.
     /// ⚠ `left`·`right`는 케이스가 행동이고 파일은 표현이라 scheme이 파일을 고른다.
@@ -54,12 +58,13 @@ public enum BeaconTone: String, Sendable, Equatable, CaseIterable {
 
     /// 이 톤의 진동이 **설정 스위치(`TrendHaptics`)에 걸리는가**. 참인 셋(가까워짐·정지·
     /// 신뢰 불가)은 보행 내내 반복되는 상태 신호라 기본은 소리만이고, 스위치를 켠
-    /// 사용자에게만 진동을 더한다(E30 실험판, 위원장 2026-09-13 "꺼짐 = 현재 동작").
+    /// 사용자에게만 진동을 더한다(E30 실험판, 위원장 2026-09-13 "꺼짐 = 현재 동작"). 나들이 비프(`stroll`)도
+    /// 걷는 내내 10m마다 반복되는 상태 신호라 같은 쪽이다(spec 2026-09-26 §7.1 "기본은 진동 없음").
     /// 거짓인 10종(이탈·도착·행동·세션 경계)은 스위치와 무관하게 지금처럼 진동한다.
     /// 집합은 `TrendHapticsTests`가 잠근다.
     public var hapticIsOptIn: Bool {
         switch self {
-        case .closer, .tick, .unreliable: true
+        case .closer, .tick, .unreliable, .stroll: true
         default: false
         }
     }

@@ -29,6 +29,12 @@ class BeaconTonesTest {
         fun casesOf(enumName: String): List<String> =
             Regex("""public enum $enumName: String[^{]*\{[ \t\r\n]*case ([A-Za-z, ]+)""").find(source)?.groupValues?.get(1)
                 ?.split(",")?.map { it.trim() } ?: fail("$enumName 케이스 선언을 찾지 못했다")
+        // Swift의 iOS 전용 대기 케이스(나들이 비프 `stroll`, E51)는 안드로이드 나들이 이식 때 케이스·리소스를 함께 옮긴다.
+        // 첫 case 줄이 공유 계약이고 대기 케이스는 따로 선언된 줄이다 — 그 줄이 이 목록 밖으로 늘면 여기서 빨개진다.
+        val iosOnlyPending = setOf("stroll")
+        val body = source.substringAfter("public enum BeaconTone").substringBefore("public func resourceName")
+        val extraCases = Regex("""^    case ([A-Za-z]+)$""", RegexOption.MULTILINE).findAll(body).map { it.groupValues[1] }.toSet()
+        assertEquals(iosOnlyPending, extraCases)
         assertEquals(casesOf("BeaconTone"), BeaconTone.entries.map { it.rawValue })
         assertEquals(casesOf("LeftRightToneScheme"), LeftRightToneScheme.entries.map { it.rawValue })
         // 저장 키는 선언한 enum과 짝으로 대조한다(파일 안 선언 순서에 묶이지 않고, 두 키가 서로 바뀐 것도 잡는다).

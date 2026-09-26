@@ -1100,6 +1100,52 @@
     "hours",
     "minutes"
   ],
+  "android.outing.aheadLandmark": [
+    "name",
+    "distance"
+  ],
+  "android.outing.band": [
+    "distance"
+  ],
+  "android.outing.itemLeft": [
+    "distance"
+  ],
+  "android.outing.itemRight": [
+    "distance"
+  ],
+  "android.outing.lastHeading": [
+    "dir"
+  ],
+  "android.outing.moving": [
+    "dir"
+  ],
+  "android.outing.narration": [
+    "level"
+  ],
+  "android.outing.originLabel": [
+    "label"
+  ],
+  "android.outing.passLeft": [
+    "name"
+  ],
+  "android.outing.passRight": [
+    "name"
+  ],
+  "android.outing.passSide": [
+    "name"
+  ],
+  "android.outing.roadEntered": [
+    "road"
+  ],
+  "android.outing.walked": [
+    "distance"
+  ],
+  "android.outing.zoneAhead": [
+    "distance"
+  ],
+  "android.outing.zoneBehind": [
+    "distance"
+  ],
   "android.place.askAbout": [
     "name"
   ],

@@ -33,10 +33,12 @@ enum GuideOverviewRow: Identifiable, Equatable {
     case text(id: String, String)
     /// 버튼 행(침묵 탈출구 등) — 실행은 `perform(id)`.
     case action(id: String, label: String)
+    /// 구획 헤딩(나들이 조망의 앞·옆·지나온, E51 §8.2) — 헤딩 로터로 구획 사이를 뛴다.
+    case heading(id: String, String)
 
     var id: String {
         switch self {
-        case let .text(id, _), let .action(id, _): id
+        case let .text(id, _), let .action(id, _), let .heading(id, _): id
         }
     }
 }
@@ -67,6 +69,9 @@ enum GuideOverviewActionResult {
     /// 만든 시점과 누른 시점 사이에 국면이 바뀌었다 — 셸은 아무것도 덧붙이지 않는다.
     case stale
     case dismissThen(GuideOverviewFollowUp)
+    /// 후속 없이 닫는다 — 부모가 할 일은 능력 쪽이 이미 부모에게 넘겼다(나들이 장소 상세, E51 §8.2).
+    /// `GuideOverviewFollowUp`에 케이스를 더하지 않는 이유: 대중교통 시트가 그 enum을 망라 switch한다.
+    case dismiss
 }
 
 extension GuideOverviewCapability {
@@ -109,6 +114,9 @@ struct GuideOverviewSheet<Capability: GuideOverviewCapability>: View {
                         distanceText(text)
                     case let .action(id, label):
                         Button(label) { run(id) }
+                    case let .heading(_, text):
+                        distanceText(text)
+                            .accessibilityAddTraits(.isHeader)
                     }
                 }
                 // 행동 슬롯은 행 목록 뒤·말미 닫기 앞 — 조망의 주 목적(진행 확인)을 밀지
@@ -141,6 +149,9 @@ struct GuideOverviewSheet<Capability: GuideOverviewCapability>: View {
             break
         case let .dismissThen(followUp):
             onFollowUp(followUp)
+            subsheet = nil
+            dismiss()
+        case .dismiss:
             subsheet = nil
             dismiss()
         }

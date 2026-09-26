@@ -68,6 +68,9 @@ final class TtsPlayer {
         synthesizer.speak(utterance)
     }
 
+    /// 기기 음성이 말하는 중인가 — 나들이의 대기 한 칸(선점 금지)이 읽는다(spec 2026-09-26 §7.3).
+    var isSpeaking: Bool { synthesizer.isSpeaking }
+
     func stop() {
         generation += 1
         audioPlayer?.stop()

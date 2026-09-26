@@ -872,6 +872,11 @@ struct DirectionsTabView: View {
                         Text(statusText)
                             .foregroundStyle(.secondary)
                     }
+                    // 나들이 진입점(E51 §8.4, 위원장 판정 2026-09-26): 도착지 없이 조회하면 거절 통지는 그대로 두고
+                    // 이 버튼 한 행을 더한다. 도착지 입력을 빠뜨린 실수와 구분되지 않아 자동으로 시작하지 않는다.
+                    if model.phase == .needEndpoints, model.from == .current, model.to == nil {
+                        Button(appLocalized("ios.outing.start")) { GuideSession.shared.startOuting() }
+                    }
                     // "설정 앱에서 …" 안내에는 해결 버튼을 함께(NearbyOverlay 동형).
                     // ⚠ reduced는 설정 열기가 아니라 그 자리 시스템 팝업이다.
                     // openSettingsURLString이 여는 화면에는 정확한 위치 토글이 없다

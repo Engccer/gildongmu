@@ -64,6 +64,8 @@ final class BeaconTonePlayer {
         .start: 0.8, .stop: 0.8, .ahead: 0.8, .warning: 1, .unreliable: 0.45,
         // 결정 지점 행동 톤 4종 — ahead 동급(같은 자리의 소리).
         .crosswalk: 0.8, .left: 0.8, .right: 0.8, .back: 0.8,
+        // 나들이 10m 비프(E51) — 걷는 내내 반복되는 상태 신호라 추세음(closer) 동급으로 낮게.
+        .stroll: 0.35,
     ]
 
     /// 좌우 구분 방식(실기기 선택 대기, 설정 실험 피커). 매 재생 시 읽어 전환이 즉시 듣는다.
@@ -358,6 +360,13 @@ final class BeaconTonePlayer {
             )
         case .start, .stop:
             longBuzz()
+        case .stroll:
+            // 나들이 10m 비프(0.16초 단음) — 부드러운 탭 하나. 설정 스위치를 켠 사용자에게만(옵트인 집합).
+            playHaptic(
+                events: [transient(at: 0, intensity: 0.35, sharpness: 0.2)],
+                curves: [],
+                fallback: { self.lightHaptics.impactOccurred() }
+            )
         }
     }
 
