@@ -1958,7 +1958,6 @@ export function useRouteGuide(
     refreshCarEta,
     rememberGuidance,
     resetFinalApproach,
-    locale,
     supported,
     t,
     tDirections,
