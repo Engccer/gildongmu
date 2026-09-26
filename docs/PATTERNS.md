@@ -55,11 +55,11 @@
 
 ### 실브라우저 접근성 게이트(`npm run test:a11y`)
 
-`tests/a11y/`가 프로덕션 빌드를 Chromium으로 띄워 axe로 감사한다(D27, webfortd 이식, spec `docs/superpowers/specs/2026-09-26-a11y-browser-gate-port-design.md`). critical은 0이어야 하고, serious는 화면 키별 `{ruleId: count}` baseline(`tests/a11y/axe-serious-baseline.json`)보다 늘거나 새 규칙이 나오면 실패, 줄면 권고 로그만 낸다. 대상은 정적 5(`/ko`·`/en`·`/ko/about`·`/ko/privacy`·`/ko/offline`)와 상태 4(검색 결과·장소 상세·내 주변 허브·길찾기 결과)다.
+`tests/a11y/`가 프로덕션 빌드를 Chromium으로 띄워 axe(WCAG 2.0~2.2 A·AA 태그, `best-practice`는 헌장 §2와 충돌해 뺀다)로 감사한다(D27, webfortd 이식, spec `docs/superpowers/specs/2026-09-26-a11y-browser-gate-port-design.md`). critical은 0이어야 하고, serious는 화면 키별 `{ruleId: count}` baseline(`tests/a11y/axe-serious-baseline.json`)보다 늘거나 새 규칙이 나오면 실패, 줄면 권고 로그만 낸다. 대상은 정적 5(`/ko`·`/en`·`/ko/about`·`/ko/privacy`·`/ko/offline`)와 상태 4(검색 결과·장소 상세·내 주변 허브·길찾기 결과)다.
 
 - **baseline 갱신은 파일 직접 수정**이다(자동 갱신 스크립트 없음). 감소 로그를 보고 숫자를 내리고, 새 위반은 고치는 것이 기본이다. critical은 baseline으로 넘기지 않는다: 고칠 수 없으면 그 테스트를 `test.fixme`로 표시하고 이유를 적는다.
-- **fixture 물리기**: 상태 화면은 `isolateNetwork(page, fixtures)`(`tests/a11y/network.ts`)가 외부 출처를 끊고 `/api/**`를 pathname으로 fixture에 대응시키며, 없는 경로는 502로 답한다(라우트의 실제 실패 계약이라 실패 문장 화면도 감사 대상). 새 상태 화면을 넣을 때 필요한 응답만 `tests/a11y/fixtures.ts`에 더한다. 실호출은 0이다.
-- **결정론의 세 받침**: 키 게이트는 `playwright.config.ts`가 더미 값으로 전부 켠다(`.env.local` 유무와 무관), 서버는 게이트 전용 포트 3100(개발 서버 재사용 금지), 서비스 워커는 차단(`serviceWorkers: "block"`, 워커가 가로챈 요청은 `page.route`에 안 보인다). 셋 중 하나를 빼면 baseline이 머신마다 달라진다.
+- **fixture 물리기**: 상태 화면은 `isolateNetwork(page, fixtures)`(`tests/a11y/network.ts`)가 외부 출처를 끊고 `/api/**`를 pathname으로 fixture에 대응시키며, 없는 경로는 502로 답한다(라우트의 실제 실패 계약이라 실패 문장 화면도 감사 대상). 새 상태 화면을 넣을 때 필요한 응답만 `tests/a11y/fixtures.ts`에 더하고, 감사 전에 그 화면에 도달했는지 단언한다(단언이 없으면 복원이 깨져도 홈을 감사하고 초록이 된다). 실호출은 0이다. ⚠ fixture가 없는 자동 등장 섹션(장소 상세·허브의 "내 주변" 목록 등)은 실패 문장 상태로만 감사된다. 성공 상태의 목록·`<h4>` 구조는 이 게이트 밖이다.
+- **결정론의 세 받침**: 키 게이트 17개는 `playwright.config.ts`가 더미 값으로 전부 켠다(`.env.local` 유무와 무관, 그 밖의 변수는 고정하지 않는다), 서버는 게이트 전용 포트 3100이고 떠 있는 서버를 재사용하지 않는다(`reuseExistingServer: false`, 병렬 worktree의 3100을 재사용하면 남의 빌드를 감사한다), 서비스 워커는 차단(`serviceWorkers: "block"`, 워커가 가로챈 요청은 `page.route`에 안 보인다). 셋 중 하나를 빼면 baseline이 머신마다 달라진다.
 - ⚠ **`?dir=` 복원은 폼만 채운다**. 길찾기 결과를 보려면 "경로 조회"를 눌러야 한다(프리필과 다른 진입, §프리필 진입과 `?dir=` 복원).
 - ⚠ **실기기 판정을 대체하지 않는다.** axe는 표준 위반(대비·계산된 접근명·중복 id 등)만 보고, 헌장 §2 과잉 ARIA·"한 줄 = 한 접근성 객체" 분절·포커스 착지·낭독 순서는 못 본다. 그 축은 jsdom 계약 테스트·`a11y-auditor`·실기기 VoiceOver 몫이다.
 

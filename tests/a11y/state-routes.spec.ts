@@ -25,6 +25,7 @@ test("a11y: 장소 상세 (검색 결과 항목 활성화)", async ({ page }, in
 test("a11y: 내 주변 허브 (/ko?panel=nearby)", async ({ page }, info) => {
   await isolateNetwork(page);
   await page.goto("/ko?panel=nearby");
+  await expect(page.getByRole("heading", { level: 2, name: "내 주변" })).toBeVisible();
   await page.waitForLoadState("networkidle");
   await expectNoAxeViolationsOnPage(page, info, "nearby-hub");
 });

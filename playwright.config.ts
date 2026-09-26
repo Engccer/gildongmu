@@ -2,11 +2,12 @@
 // 레인은 `test:run`과 별개다(빌드+크롬이라 무겁다). PR·릴리스 직전, 접근성 변경 뒤에 돌린다.
 import { defineConfig } from "@playwright/test";
 
-// 개발 서버(3000)를 재사용하면 그 서버의 키 구성으로 화면이 달라진다 — 게이트 전용 포트.
+// 게이트 전용 포트. 떠 있는 서버를 재사용하지 않는다: 개발 서버(3000)나 다른 worktree가 띄운
+// 3100을 재사용하면 남의 빌드·키 구성을 감사하고 초록을 낸다(점유 중이면 크게 실패한다).
 const PORT = 3100;
 
 // 키 게이트(`src/lib/env.ts`)는 값의 유무만 본다. 더미 값으로 전 섹션을 켠 화면을 결정론적으로
-// 만든다(`.env.local` 유무와 무관, 프로세스 env가 .env 파일보다 우선). 브라우저의 `/api/**`는
+// 만든다(이 17개는 `.env.local` 유무와 무관, 프로세스 env가 .env 파일보다 우선. 그 밖의 변수는 고정하지 않는다). 브라우저의 `/api/**`는
 // 전부 fixture로 가로채므로 이 값이 upstream에 닿는 경로는 없다.
 const GATE_KEYS = [
   "KAKAO_REST_API_KEY",
@@ -31,12 +32,10 @@ const GATE_KEYS = [
 export default defineConfig({
   testDir: "./tests/a11y",
   fullyParallel: false,
-  retries: process.env.CI ? 1 : 0,
   workers: 1,
-  reporter: process.env.CI ? "github" : "list",
+  reporter: "list",
   use: {
     baseURL: `http://localhost:${PORT}`,
-    trace: "on-first-retry",
     // 서비스 워커가 가로챈 요청은 page.route에 보이지 않는다 — fixture 격리가 새지 않게 막는다.
     serviceWorkers: "block",
     locale: "ko-KR",
@@ -54,7 +53,10 @@ export default defineConfig({
     command: `npm run build && npm run start -- -p ${PORT}`,
     url: `http://localhost:${PORT}/ko`,
     timeout: 600_000,
-    reuseExistingServer: !process.env.CI,
-    env: Object.fromEntries(GATE_KEYS.map((k) => [k, "a11y-gate-dummy"])),
+    reuseExistingServer: false,
+    env: {
+      ...Object.fromEntries(GATE_KEYS.map((k) => [k, "a11y-gate-dummy"])),
+      NEXT_TELEMETRY_DISABLED: "1",
+    },
   },
 });

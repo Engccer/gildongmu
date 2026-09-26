@@ -35,17 +35,23 @@ function countByRule(violations: Array<{ id: string }>): RouteBaseline {
   return counts;
 }
 
-/** 정적 라우트: 이동 후 현재 화면을 감사한다. 키는 라우트 문자열 그대로. */
+/**
+ * 정적 라우트: 이동 후 현재 화면을 감사한다. 키는 라우트 문자열 그대로.
+ * 404·리다이렉트 화면을 그 키로 감사해 초록을 내지 않게 응답과 최종 경로를 단언한다.
+ * 수화 뒤 요청(측위 → 역지오코딩 등)이 끝난 화면을 본다.
+ */
 export async function expectNoAxeViolations(page: Page, info: TestInfo, route: string) {
-  await page.goto(route, { waitUntil: "domcontentloaded" });
-  await page.waitForLoadState("load");
+  const res = await page.goto(route);
+  expect(res?.status(), `${route} — 응답 상태`).toBe(200);
+  expect(new URL(page.url()).pathname).toBe(route);
+  await page.waitForLoadState("networkidle");
   await expectNoAxeViolationsOnPage(page, info, route);
 }
 
 /** 상태 화면: 호출자가 화면을 세운 뒤 현재 DOM을 감사한다. `key`는 baseline 키. */
 export async function expectNoAxeViolationsOnPage(page: Page, info: TestInfo, key: string) {
   const results = await new AxeBuilder({ page })
-    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
     .analyze();
 
   const critical = results.violations.filter((v) => BLOCKING_IMPACTS.has(v.impact ?? ""));

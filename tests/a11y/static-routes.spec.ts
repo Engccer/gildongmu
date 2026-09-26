@@ -1,4 +1,4 @@
-// 정적 라우트 a11y 검증 — 외부 요청은 끊고(지도 SDK·분석) 서버가 렌더한 첫 화면을 본다.
+// 정적 라우트 a11y 검증. 외부 요청은 끊고(지도 SDK·분석) `/api/**`는 502로 답한 화면을 본다.
 import { test } from "@playwright/test";
 import { expectNoAxeViolations } from "./axe-helper";
 import { isolateNetwork } from "./network";
