@@ -3,7 +3,9 @@ package space.dodoplanet.gildongmu.guide
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
@@ -186,7 +188,10 @@ class GuideTestHarness(
     dispatcher: CoroutineDispatcher,
     val clock: FakeClock = FakeClock(100.0),
     walkResponder: (url: String) -> HttpResponse = { HttpResponse(200, straightRouteJson()) },
-    /** URL별 가상 지연(ms) — 시간 초과 갈래(15초)를 가상 시계로 밟는다. */
+    /**
+     * URL별 가상 지연(ms) — 시간 초과 갈래(15초)를 가상 시계로 밟는다. 지연은 **취소되지 않는다**(실기기 전송의 블로킹 IO 모양): 만료가 전송 안에서
+     * 예외로 접히지 않고 `withTimeoutOrNull`이 null을 돌려주는 경로를 재현한다.
+     */
     delayFor: (url: String) -> Long = { 0L },
 ) {
     val catalog = CatalogStrings("ko")
@@ -205,7 +210,7 @@ class GuideTestHarness(
     val model = WalkGuideModel(
         routes = RouteService(APIClient("https://example.test", object : HttpTransport {
             override suspend fun get(url: String, timeoutMs: Long?): HttpResponse {
-                delayFor(url).takeIf { it > 0 }?.let { delay(it) }
+                delayFor(url).takeIf { it > 0 }?.let { withContext(NonCancellable) { delay(it) } }
                 return transport.get(url, timeoutMs)
             }
         })),

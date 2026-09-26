@@ -286,7 +286,7 @@ class WalkGuideSessionEditsTest {
     @Test fun `대안 조회 시간 초과도 "없음"이 아니라 실패다`() = guideTest(dispatcher, responder(), delayFor = { if (it.contains("variant=shortest")) 20_000L else 0L }) { h ->
         startDetail(h)
         h.model.openAlternativePreview()
-        advanceTimeBy(15_500); runCurrent()
+        advanceTimeBy(20_500); runCurrent()   // 만료(15초) 뒤 블로킹 전송이 끝나는 시각(20초)까지
         assertEquals("대안 경로 조회에 실패했습니다", h.model.altPreviewHeaderText())
     }
 
