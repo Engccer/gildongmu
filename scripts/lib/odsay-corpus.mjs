@@ -8,8 +8,9 @@
 //   - 오프라인 모드(`--from-corpus <dir>`): 원본 읽기 전용, 호출 0. 없는 파일은 호출 없이 "없음"(null)이다.
 //   - corpus는 저장소 밖(`~/gildongmu-private/probes/<스크립트>-<YYYY-MM-DD>/`)에 둔다 — 공개 저장소라 응답 dump를
 //     커밋하지 않는다. 저장소 안 경로는 거절한다.
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { isAbsolute, join, relative, resolve } from "node:path";
+import { execFileSync } from "node:child_process";
+import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const REPO_ROOT = fileURLToPath(new URL("../..", import.meta.url));
@@ -42,7 +43,7 @@ export function requestKey(url) {
   const endpoint = u.pathname.split("/").filter(Boolean).pop() ?? "root";
   const params = [...u.searchParams]
     .filter(([k]) => k !== "apiKey")
-    .map(([k, v]) => `${k}=${encodeURIComponent(v)}`)
+    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
     .sort();
   return [endpoint, ...params].join("__");
 }
@@ -58,23 +59,61 @@ export function storableOdsayBody({ readOdsayError, isNoRouteError }) {
   };
 }
 
+/** 아직 없는 경로도 심링크를 풀어 비교한다: 가장 가까운 기존 조상의 실경로 + 나머지. */
+function realish(path) {
+  const rest = [];
+  let cur = resolve(path);
+  while (!existsSync(cur)) {
+    rest.unshift(basename(cur));
+    const up = dirname(cur);
+    if (up === cur) break;
+    cur = up;
+  }
+  return join(realpathSync(cur), ...rest);
+}
+
+/** 이 worktree와 (worktree라면) 메인 체크아웃. 둘 다 공개 저장소의 작업 트리다. */
+function repoRoots() {
+  const roots = [realpathSync(REPO_ROOT)];
+  try {
+    const common = execFileSync("git", ["-C", REPO_ROOT, "rev-parse", "--path-format=absolute", "--git-common-dir"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+    roots.push(realpathSync(dirname(common)));
+  } catch { /* git 없는 환경 — 이 트리만 본다 */ }
+  return roots;
+}
+
+/** corpus 디렉터리가 쓸 수 없으면 그 사유, 쓸 수 있으면 null. */
+export function corpusDirProblem(dir, offline) {
+  if (!dir) return "corpus 디렉터리가 필요하다";
+  const root = realish(dir);
+  for (const repo of repoRoots()) {
+    const rel = relative(repo, root);
+    if (rel === "" || (rel.split(sep)[0] !== ".." && !isAbsolute(rel))) {
+      return `corpus는 저장소 밖에 둔다(공개 저장소): ${resolve(dir)}`;
+    }
+  }
+  if (offline && !existsSync(root)) return `corpus 디렉터리가 없다: ${resolve(dir)}`;
+  return null;
+}
+
 /**
  * @param {{ dir: string, offline: boolean, shouldStore: (body: unknown) => boolean }} opts
  *   shouldStore는 기본값이 없다 — 빠뜨리면 오류 봉투가 corpus에 남는 조용한 결함이 된다.
  */
 export function openCorpus({ dir, offline, shouldStore }) {
-  if (!dir) throw new Error("corpus 디렉터리가 필요하다");
   if (typeof offline !== "boolean") throw new Error("offline은 true/false로 명시한다");
   if (typeof shouldStore !== "function") throw new Error("shouldStore(저장 술어)가 필요하다");
+  const problem = corpusDirProblem(dir, offline);
+  if (problem) throw new Error(problem);
   const root = resolve(dir);
-  const rel = relative(REPO_ROOT, root);
-  if (rel === "" || (!rel.startsWith("..") && !isAbsolute(rel))) {
-    throw new Error(`corpus는 저장소 밖에 둔다(공개 저장소): ${root}`);
-  }
-  if (offline && !existsSync(root)) throw new Error(`corpus 디렉터리가 없다: ${root}`);
   if (!offline) mkdirSync(root, { recursive: true });
 
   const stats = { replayed: 0, fetched: 0, stored: 0, missed: [] };
+  /** 같은 키의 동시 요청은 한 번만 부른다(과금 1회). */
+  const inflight = new Map();
   const fileOf = (key) => join(root, `${key}.json`);
 
   const corpus = {
@@ -86,6 +125,7 @@ export function openCorpus({ dir, offline, shouldStore }) {
     /**
      * 저장본이 있으면 읽고, 없으면 저장 모드에서만 `doFetch()`(본문을 돌려주거나 throw)를 한 번 부르고 저장한다.
      * 오프라인에서 없으면 호출 없이 null. doFetch가 throw하면 아무것도 저장하지 않고 그대로 던진다.
+     * 같은 키로 진행 중인 호출이 있으면 그 결과를 함께 기다린다.
      */
     async fetchOrReplay(key, doFetch) {
       const path = fileOf(key);
@@ -97,13 +137,22 @@ export function openCorpus({ dir, offline, shouldStore }) {
         stats.missed.push(key);
         return null;
       }
-      stats.fetched++;
-      const body = await doFetch();
-      if (shouldStore(body)) {
-        writeFileSync(path, JSON.stringify(body));
-        stats.stored++;
+      if (inflight.has(key)) return inflight.get(key);
+      const pending = (async () => {
+        stats.fetched++;
+        const body = await doFetch();
+        if (shouldStore(body)) {
+          writeFileSync(path, JSON.stringify(body));
+          stats.stored++;
+        }
+        return body;
+      })();
+      inflight.set(key, pending);
+      try {
+        return await pending;
+      } finally {
+        inflight.delete(key);
       }
-      return body;
     },
 
     /**
@@ -117,16 +166,16 @@ export function openCorpus({ dir, offline, shouldStore }) {
         const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
         if (new URL(url).hostname !== ODSAY_HOST) return original(input, init);
         const key = requestKey(url);
-        let passthrough = null;
         let body;
         try {
           body = await corpus.fetchOrReplay(key, async () => {
             const res = await original(input, init);
             const text = await res.text();
-            const failed = () => {
-              passthrough = new Response(text, { status: res.status, statusText: res.statusText, headers: res.headers });
-              return new Error("pass-through");
-            };
+            // 실패 응답은 저장하지 않고 원문 그대로 호출자에게 돌려준다(함께 기다린 호출자도 각자 새 Response를 받는다).
+            const failed = () =>
+              Object.assign(new Error("pass-through"), {
+                passthrough: { text, status: res.status, statusText: res.statusText, headers: [...res.headers] },
+              });
             if (!res.ok) throw failed();
             try {
               return JSON.parse(text);
@@ -135,7 +184,10 @@ export function openCorpus({ dir, offline, shouldStore }) {
             }
           });
         } catch (e) {
-          if (passthrough) return passthrough;
+          if (e?.passthrough) {
+            const { text, ...init } = e.passthrough;
+            return new Response(text, init);
+          }
           throw e;
         }
         if (body === null) throw new CorpusMissError(key);
@@ -185,13 +237,15 @@ export function parseCorpusArgs(argv) {
 }
 
 /**
- * 게이트 머리에서 `.env.local`을 읽기 **전에** 부른다: 인자를 읽고(틀리면 exit 64), 오프라인이면 ODsay 키 자리에
+ * 게이트 머리에서 `.env.local`을 읽기 **전에** 부른다: 인자와 corpus 디렉터리를 검사하고(틀리면 exit 64), 오프라인이면 ODsay 키 자리에
  * 자리 표시를 먼저 넣어 실제 키가 들어오지 못하게 한다.
  */
 export function corpusArgsOrExit(argv) {
   let args;
   try {
     args = parseCorpusArgs(argv);
+    const problem = corpusDirProblem(args.dir, args.offline);
+    if (problem) throw new Error(problem);
   } catch (e) {
     console.error(`인자 오류: ${e.message}`);
     process.exit(EXIT_USAGE);

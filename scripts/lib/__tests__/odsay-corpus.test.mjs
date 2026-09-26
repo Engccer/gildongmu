@@ -1,10 +1,11 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { existsSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, rmSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   CorpusMissError,
+  corpusDirProblem,
   openCorpus,
   parseCorpusArgs,
   requestKey,
@@ -95,6 +96,15 @@ describe("openCorpus", () => {
     expect(existsSync(join(repo, "tmp-corpus"))).toBe(false);
   });
 
+  it("저장소 판정은 심링크를 풀고, `..`로 시작하는 이름을 밖으로 오인하지 않는다", () => {
+    const repo = fileURLToPath(new URL("../../..", import.meta.url));
+    const link = join(tempDir(), "link-to-repo");
+    symlinkSync(repo, link);
+    expect(corpusDirProblem(join(link, "x"), false)).toMatch(/저장소 밖/);
+    expect(corpusDirProblem(join(repo, "..x"), false)).toMatch(/저장소 밖/);
+    expect(corpusDirProblem(join(tempDir(), "ok"), false)).toBeNull();
+  });
+
   it("오프라인에서 디렉터리가 없으면 빈 corpus로 위장하지 않고 던진다", () => {
     expect(() => openCorpus({ dir: join(tempDir(), "nope"), offline: true, shouldStore: always })).toThrow(/디렉터리가 없다/);
   });
@@ -135,8 +145,11 @@ describe("installFetch", () => {
   it("저장 모드: 200 JSON은 저장하고 재호출은 재생, 비-2xx는 원 응답 그대로·미저장", async () => {
     const dir = tempDir();
     const corpus = openCorpus({ dir, offline: false, shouldStore: always });
+    // 실패 응답 본문도 JSON이다 — `res.ok` 분기가 없으면 JSON 파싱이 통과해 저장되는 변이를 잡는다.
     const original = vi.fn(async (url) =>
-      String(url).includes("SX=9") ? new Response("down", { status: 503 }) : new Response(JSON.stringify({ result: 1 })),
+      String(url).includes("SX=9")
+        ? new Response(JSON.stringify({ error: "down" }), { status: 503 })
+        : new Response(JSON.stringify({ result: 1 })),
     );
     install(corpus, original);
     const url = `${ODSAY}?SX=1&apiKey=k`;
@@ -145,8 +158,34 @@ describe("installFetch", () => {
     expect(original).toHaveBeenCalledTimes(1);
     const failed = await fetch(`${ODSAY}?SX=9&apiKey=k`);
     expect(failed.status).toBe(503);
-    expect(await failed.text()).toBe("down");
+    expect(await failed.json()).toEqual({ error: "down" });
     expect(readdirSync(dir)).toEqual(["searchPubTransPathT__SX=1.json"]);
+  });
+
+  it("같은 요청이 동시에 오면 원래 fetch는 한 번이고, 실패 원문도 각자 받는다", async () => {
+    const dir = tempDir();
+    const corpus = openCorpus({ dir, offline: false, shouldStore: always });
+    let release;
+    const gate = new Promise((r) => { release = r; });
+    const original = vi.fn(async () => { await gate; return new Response("busy", { status: 500 }); });
+    install(corpus, original);
+    const both = Promise.all([fetch(new URL(`${ODSAY}?SX=1`)), fetch(new Request(`${ODSAY}?SX=1&apiKey=z`))]);
+    release();
+    const [a, b] = await both;
+    expect(original).toHaveBeenCalledTimes(1);
+    expect([await a.text(), await b.text()]).toEqual(["busy", "busy"]);
+    expect(readdirSync(dir)).toEqual([]);
+  });
+
+  it("되돌리면 원래 fetch로 돌아간다", () => {
+    const corpus = openCorpus({ dir: tempDir(), offline: true, shouldStore: always });
+    const original = vi.fn();
+    globalThis.fetch = original;
+    const restore = corpus.installFetch();
+    expect(globalThis.fetch).not.toBe(original);
+    restore();
+    expect(globalThis.fetch).toBe(original);
+    globalThis.fetch = saved;
   });
 
   it("JSON이 아닌 200 응답도 저장하지 않고 원문 그대로 돌려준다", async () => {
