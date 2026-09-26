@@ -471,14 +471,15 @@ class DirectionsViewModel(
             val settled = withContext(io) {
                 timed { routes.transitModeRequery(coords.origin.lat, coords.origin.lng, coords.dest.lat, coords.dest.lng, axis, coords.lang) }
             }
-            // 화면 이탈로 취소됐거나 그 사이 새 조회·결과 폐기가 있었으면 옛 세대 결과는 버린다(통지·포커스 이동도 없다).
+            // 화면 이탈로 취소됐거나 그 사이 새 조회·결과 폐기가 있었으면 옛 세대 결과는 버린다(통지·포커스 이동도 없다). 세대를 끝내는
+            // 경로는 전부 `cancelRequeries()`로 먼저 끊으므로 아래 세대 비교는 취소 누락 대비다.
             currentCoroutineContext().ensureActive()
             if (revision != _state.value.resultsRevision || resultsCoords == null) return@launch
             requeryJobs.remove(axis)
             // 이름은 서버 파라미터가 이미 판정한 그 축이다(판정 복제 없음) — 싣는 경로에는 `displayIndex`가 없다.
             val state = settled.fold(
                 onSuccess = { found ->
-                    found?.recommended?.let { TransitRequeryState.Found(TransitRoute(it.summary, it.legs, it.routeKey, highlight = listOf(axis.rawValue))) }
+                    found?.recommended?.let { TransitRequeryState.Found(it.copy(highlight = listOf(axis.rawValue), displayIndex = null)) }
                         ?: TransitRequeryState.NotFound
                 },
                 onFailure = { TransitRequeryState.Failed },

@@ -20,6 +20,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -50,6 +51,7 @@ import space.dodoplanet.gildongmu.kit.DirectionsModeOutcome
 import space.dodoplanet.gildongmu.guide.GuideSession
 import space.dodoplanet.gildongmu.guide.ui.WalkGuideNotice
 import space.dodoplanet.gildongmu.guide.ui.WalkGuideNoticeSheet
+import space.dodoplanet.gildongmu.guide.ui.land
 import space.dodoplanet.gildongmu.guide.ui.walkGuideStartSlot
 import space.dodoplanet.gildongmu.kit.joinText
 import space.dodoplanet.gildongmu.storage.SharedPreferencesStore
@@ -103,14 +105,21 @@ fun DirectionsScreen(
     val context = LocalContext.current
     val notice = remember(context) { WalkGuideNotice(SharedPreferencesStore(context)) }
     var noticeOpen by remember { mutableStateOf(false) }
+    // 시트 창이 닫히면 확인 버튼(포커스를 쥔 요소)이 창째 사라진다 — 폼 첫 필드로 착지시킨다(헌장 §5, 한 번 닫을 때 한 번).
+    var noticeClosed by remember { mutableIntStateOf(0) }
     LaunchedEffect(notice) { if (!notice.isConfirmed()) noticeOpen = true }
+    LaunchedEffect(noticeClosed) { if (noticeClosed > 0) land(formState.fromFocus, "공지 닫힘 뒤 출발지") }
     val p = picker
     CompositionLocalProvider(LocalModalOpen provides noticeOpen) {
         Box(Modifier.fillMaxSize()) {
             if (p == null) DirectionsForm(vm, formState, onOpenSettings, settingsFocus, onOpenStation) else EndpointSearchContent(vm.picker, p, onBack = vm::closePicker)
         }
     }
-    if (noticeOpen) WalkGuideNoticeSheet(onConfirm = { notice.confirm(); noticeOpen = false }, onDismiss = { noticeOpen = false })
+    // 저장은 확인만 한다 — 닫기(뒤로·바깥 탭)는 저장하지 않아 다음 진입에 다시 뜬다(iOS 계약, 소스 가드).
+    if (noticeOpen) WalkGuideNoticeSheet(
+        onConfirm = { notice.confirm(); noticeOpen = false; noticeClosed++ },
+        onDismiss = { noticeOpen = false; noticeClosed++ },
+    )
 }
 
 /** 역 상세 복귀 착지 키 접두(E45) — 뒤는 그 브리핑 줄의 태그. */

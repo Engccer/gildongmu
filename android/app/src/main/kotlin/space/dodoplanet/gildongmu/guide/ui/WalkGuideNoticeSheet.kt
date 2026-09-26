@@ -11,7 +11,10 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -50,14 +53,17 @@ class WalkGuideNotice(private val store: KeyValueStore, private val io: Coroutin
 @Composable
 fun WalkGuideNoticeSheet(onConfirm: () -> Unit, onDismiss: () -> Unit) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+    val titleFocus = remember { FocusRequester() }
+    // 표시 애니메이션 뒤 제목으로 착지한다(`GuideSheet` 동형). 드래그 핸들은 두지 않는다 — 제목보다 먼저 읽히는 잡음이고, 닫기는 뒤로·바깥 탭으로 충분하다.
+    LaunchedEffect(Unit) { land(titleFocus, "공지 제목") }
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState, dragHandle = null) {
         Column(
             Modifier
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp, vertical = 8.dp),
         ) {
-            HeadingLine(stringResource(R.string.android_directions_walkNotice_title), "walk-notice-title")
+            HeadingLine(stringResource(R.string.android_directions_walkNotice_title), "walk-notice-title", focus = titleFocus)
             BodyLine(stringResource(R.string.android_directions_walkNotice_intro), "walk-notice-intro")
             HeadingLine(stringResource(R.string.android_directions_walkNotice_head1), "walk-notice-head1")
             BodyLine(stringResource(R.string.android_directions_walkNotice_body1), "walk-notice-body1")

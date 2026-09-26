@@ -36,7 +36,11 @@ class GuideSourceGuardTest {
         assertTrue(walkPath.any { it.name == "WalkGuideStartButton.kt" } && walkPath.any { it.name == "GuideBottomBar.kt" })
         assertEquals(emptyList(), offenders(walkPath, gate))
         val directions = pkg.resolve("directions/DirectionsScreen.kt").readText()
-        assertTrue(Regex("""\n\s*guideStart = walkGuideStartSlot\(s\),\n""").containsMatchIn(directions), "길찾기 도보 행의 시작 슬롯 배선")
+        // 시작 고지(stale-origin §4.4) 배선까지 잠근다 — `onStart = {}`로 퇴행하면 수동·옛 위치 출발의 고지가 조용히 사라진다.
+        assertTrue(
+            Regex("""\n\s*guideStart = walkGuideStartSlot\(s, onStart = \{ vm\.announceGuideStartIfManualOrigin\(GuideSession\.isActive\) \}\),\n""").containsMatchIn(directions),
+            "길찾기 도보 행의 시작 슬롯 배선",
+        )
         // E42: 줄 안 버튼의 요청 축은 줄 종류의 투영이다 — 하드코딩하면 "계단 회피 경로로 안내 시작"이 기본 파이프라인으로 조용히 시작된다(A13 계열).
         val startButton = guide.resolve("ui/WalkGuideStartButton.kt").readText()
         assertTrue(startButton.contains("WalkStartRequest(dest, label, line.isAccessible, line.variant, line, waypoint)"), "줄 안내 시작의 요청 축 배선")

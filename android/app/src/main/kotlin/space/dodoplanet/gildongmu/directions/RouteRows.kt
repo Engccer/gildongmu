@@ -202,26 +202,34 @@ fun requeryNoneFocusKey(axis: TransitModeAxis): String = "none:${axis.rawValue}"
  */
 @Composable
 fun TransitRequeryRows(requery: TransitRequeryRowsState, strings: Strings) {
-    for (axis in requery.axes) {
+    for (axis in requery.axes) key(axis) {
         val bus = axis == TransitModeAxis.busOnly
-        when (requery.states[axis]) {
-            is TransitRequeryState.Found -> Unit
-            TransitRequeryState.NotFound -> TextRow(
+        val state = requery.states[axis]
+        if (state == TransitRequeryState.NotFound) {
+            TextRow(
                 strings.get(if (bus) "route.transit.requeryBusOnlyNone" else "route.transit.requerySubwayOnlyNone"),
                 "requery-none-${axis.rawValue}", focus = requery.focus(requeryNoneFocusKey(axis)),
             )
-            TransitRequeryState.Failed -> {
-                TextRow(strings.get(if (bus) "route.transit.requeryBusOnlyFailed" else "route.transit.requerySubwayOnlyFailed"), "requery-failed-${axis.rawValue}")
-                RequeryButton(axis, requery, strings)
-            }
-            TransitRequeryState.Loading, null -> RequeryButton(axis, requery, strings)
+        }
+        if (state == TransitRequeryState.Failed) {
+            TextRow(strings.get(if (bus) "route.transit.requeryBusOnlyFailed" else "route.transit.requerySubwayOnlyFailed"), "requery-failed-${axis.rawValue}")
+        }
+        // ⚠ 버튼 호출 자리는 하나다 — 조회 중·실패·미조회가 `when` 갈래마다 따로 부르면 Compose가 갈래 전이(조회 중 → 실패, 실패 → 재시도)에서
+        // 버튼 노드를 새로 만들어 쥐고 있던 포커스가 떨어진다(헌장 §5 ⓐ "실패는 포커스가 버튼에 머문다").
+        if (state == null || state == TransitRequeryState.Loading || state == TransitRequeryState.Failed) {
+            RequeryButton(axis, loading = state == TransitRequeryState.Loading, requery, strings)
         }
     }
 }
 
+/** 조회 중엔 라벨을 두고 상태만 알린다(조회 버튼과 같은 관용구) — 재탭이 무시될 때 무반응으로 들리지 않게. */
 @Composable
-private fun RequeryButton(axis: TransitModeAxis, requery: TransitRequeryRowsState, strings: Strings) {
-    Button(onClick = { requery.onRequery(axis) }, modifier = Modifier.tapTarget().testTag("requery-${axis.rawValue}")) {
+private fun RequeryButton(axis: TransitModeAxis, loading: Boolean, requery: TransitRequeryRowsState, strings: Strings) {
+    val searching = strings.get("android.directions.searching")
+    Button(
+        onClick = { requery.onRequery(axis) },
+        modifier = Modifier.tapTarget().testTag("requery-${axis.rawValue}").semantics { if (loading) stateDescription = searching },
+    ) {
         Text(strings.get(if (axis == TransitModeAxis.busOnly) "route.transit.requeryBusOnly" else "route.transit.requerySubwayOnly"))
     }
 }

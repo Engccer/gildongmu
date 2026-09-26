@@ -809,6 +809,30 @@ class DirectionsViewModelTest {
         assertEquals(emptyMap(), m.state.value.transitRequery)
     }
 
+    @Test fun `같은 끝점 재조회 버튼 - 진행 중 수단 재조회는 버려지고 새 목록에 붙지 않는다`() = runTest(dispatcher) {
+        val m = settledVm(requeryRoutes(delay = 1_000))
+        m.requery(TransitModeAxis.busOnly)
+        val landing = m.state.value.landing
+        m.runQuery() // 조회 버튼을 다시 누른다(필드 변경 없음 — performQuery 경로)
+        dispatcher.scheduler.advanceUntilIdle()
+        assertNotNull(m.state.value.results)
+        assertEquals(emptyMap(), m.state.value.transitRequery)
+        assertEquals(emptyList(), m.state.value.requeriedRoutes)
+        assertEquals(landing, m.state.value.landing)
+    }
+
+    @Test fun `재조회는 다시 측위하지 않고 조회 시점 출발 좌표를 쓴다`() = runTest(dispatcher) {
+        var here = seoul
+        val locator = FakeLocator({ here })
+        val r = requeryRoutes()
+        val m = settledVm(r, locator = locator)
+        val calls = locator.forces.size
+        here = NearbyCoord(37.4, 127.2) // 조회 뒤 사용자가 움직였다
+        m.requery(TransitModeAxis.busOnly); dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(calls, locator.forces.size)
+        assertEquals(r.param(r.seen.first { pathOf(it) == "/api/route/transit" }, "origin"), r.param(r.seen.last { pathOf(it) == "/api/route/transit" }, "origin"))
+    }
+
     @Test fun `화면 이탈은 조회 중 축을 버튼으로 되돌리고 끝난 축은 남긴다`() = runTest(dispatcher) {
         val m = settledVm(requeryRoutes(delay = 1_000))
         m.requery(TransitModeAxis.subwayOnly); dispatcher.scheduler.advanceUntilIdle()
