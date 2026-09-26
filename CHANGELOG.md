@@ -11,6 +11,11 @@
 
 ## 2026-09-27
 
+### 안드로이드 길찾기 탭 iOS 정식판 동조: E50 수단 재조회·안내 시작 고지·최근 장소 병기 표기·안내 종료·도보 공지
+
+- 대중교통 목록 뒤에 서버 `requeryAxes` 축마다 "버스만(지하철만) 타는 경로 찾기" 버튼(`:kit` `TransitModeAxis`·`requeryAxes`·`RouteService.transitModeRequery`). 조회 시점 좌표·언어로 1회, 찾음은 접힌 대안으로 붙어 그 행에 착지, 없음은 문장에 착지, 실패는 버튼 유지 + 통지·실패 진동. spec `docs/superpowers/specs/2026-09-24-transit-alternatives-reasoned-design.md` §4.3.
+- 수동·옛 위치 출발로 조회한 결과에서 도보 안내를 시작하면 "현재 위치에서 안내를 시작합니다"를 한 번 알린다(stale-origin §4.4). 최근 장소·경로가 비-ko 병기 표기(`labelRoman`)를 보존하고, 추적 중엔 길찾기 탭에 "안내 종료"가, 첫 진입엔 도보 안내 공지 시트(확인 전까지 진입마다)가 선다. 세션 android-e50, 한소네 7 판정 대기.
+
 ### 안드로이드 도보 안내: 경유지 진행 표시 등가성(N4)·체중 입력 권유 무시 상한(E31)
 
 - 경유지가 있는 도보 안내가 iOS와 같게 말한다: 접근 예고 "경유지 {label}까지 {거리}"(1회, 톤 없음), 도착 "경유지 {label} 도착. 이제 목적지 {dest}로 안내합니다"(ko 방향 조사), 남은 거리 행은 다음 목표 기준(경유지를 지난 세션은 재조회 뒤에도 목적지). 도보 프로파일을 `GuideTuning.walk` 원본으로 되돌렸다. spec `docs/superpowers/specs/2026-09-24-waypoint-progress-design.md` §6.

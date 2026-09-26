@@ -110,6 +110,7 @@ adb exec-out timeout 10 uiautomator dump /dev/tty   # 접근성 트리(스크린
 ### 화면 관용구 — 작업 메뉴 순서·push 왕복 상태
 
 - **접근성 사용자 지정 액션(`customActions`)은 목록 순서 그대로 노출된다.** iOS가 로터 액션을 역순으로 선언하는 것은 SwiftUI 빌더 고유 함정이라 옮기지 않는다(채팅 산문 블록·E45 브리핑 선례). 액션 목록은 순수 함수로 만들어 JVM이 길이·순서를 잠근다(`briefingCustomActions`).
+- **상태에 따라 남거나 바뀌는 버튼은 호출 자리를 하나로 둔다.** `when` 갈래마다 같은 버튼을 부르면 Compose가 갈래 전이(조회 중 → 실패 → 재시도)에서 노드를 새로 만들어 쥐고 있던 포커스가 떨어진다. 문장만 `if`로 앞에 두고 버튼은 한 자리에서(`RouteRows.kt` `TransitRequeryRows`, E50).
 - **스택 push로 목적지가 컴포지션에서 내려가면 `remember` 상태는 사라진다**(iOS `NavigationStack`은 루트 `@State`가 산다). 돌아왔을 때 보던 자리가 남아야 하는 상태(펼침)는 `rememberSaveable`, 착지는 엔트리 복귀 슬롯(`ReturnFocusViewModel`) + 그 줄의 `mergedRow(focus)`.
 
 ### JDK API 표면은 Android 12(API 31)까지
