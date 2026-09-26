@@ -94,6 +94,19 @@ describe("GET /api/walk/nearby", () => {
     expect(res.status).toBe(429);
     expect(mockGetWalk).not.toHaveBeenCalled();
   });
+
+  it("coords 미지정은 종전 호출(coords false), coords=1은 옵트인(나들이)", async () => {
+    await GET(makeRequest("?lat=37.5&lng=127.0"));
+    expect(mockGetWalk).toHaveBeenLastCalledWith(37.5, 127.0, { coords: false });
+    await GET(makeRequest("?lat=37.5&lng=127.0&coords=1"));
+    expect(mockGetWalk).toHaveBeenLastCalledWith(37.5, 127.0, { coords: true });
+  });
+
+  it("coords가 1 말고 다른 값이면 400(조용히 기본값으로 접지 않는다)", async () => {
+    const res = await GET(makeRequest("?lat=37.5&lng=127.0&coords=yes"));
+    expect(res.status).toBe(400);
+    expect(mockGetWalk).not.toHaveBeenCalled();
+  });
 });
 
 /**

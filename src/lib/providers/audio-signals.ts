@@ -25,6 +25,15 @@ export interface AudioSignalSite {
   distanceMeters: number;
   bearing: CompassDirection;
   deviceCount: number;
+  /** 대표점 좌표 — `withCoords` 옵트인(나들이 횡단보도 예고, spec 2026-09-26 §6.3)일 때만. */
+  lat?: number;
+  lng?: number;
+}
+
+/** 옵트인 조회 모양. 기본(미지정)은 종전 계약 그대로(좌표 없음·최근접 5곳). */
+export interface AudioSignalQueryOptions {
+  withCoords: boolean;
+  maxSites: number;
 }
 
 export interface NearbyAudioSignals {
@@ -42,6 +51,7 @@ export interface NearbyAudioSignals {
 export function clusterSites(
   points: Array<[number, number]>,
   origin: { lat: number; lng: number },
+  options?: AudioSignalQueryOptions,
 ): AudioSignalSite[] {
   const groups = new Map<string, Array<[number, number]>>();
   for (const p of points) {
@@ -66,10 +76,11 @@ export function clusterSites(
       distanceMeters: Math.round(nearestDist),
       bearing: bearingToCompass8(bearingDegrees(origin.lat, origin.lng, nearest[0], nearest[1])),
       deviceCount: group.length,
+      ...(options?.withCoords ? { lat: nearest[0], lng: nearest[1] } : {}),
     });
   }
 
-  return sites.sort((a, b) => a.distanceMeters - b.distanceMeters).slice(0, MAX_SITES);
+  return sites.sort((a, b) => a.distanceMeters - b.distanceMeters).slice(0, options?.maxSites ?? MAX_SITES);
 }
 
 function inSeoulBbox(lat: number, lng: number): boolean {
@@ -102,6 +113,7 @@ export function findAudioSignalsNear(
   lat: number,
   lng: number,
   radiusMeters: number = DEFAULT_RADIUS_METERS,
+  options?: AudioSignalQueryOptions,
 ): NearbyAudioSignals | null {
   if (!inSeoulBbox(lat, lng)) {
     return null;
@@ -112,7 +124,7 @@ export function findAudioSignalsNear(
   );
   return {
     deviceCount: within.length,
-    sites: clusterSites(within, origin),
+    sites: clusterSites(within, origin, options),
     baseDate: SEED.meta.baseDate,
   };
 }

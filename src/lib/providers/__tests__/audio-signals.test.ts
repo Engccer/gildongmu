@@ -85,4 +85,21 @@ describe("clusterSites — 좌표 4자리 군집", () => {
       expect(sites[i].distanceMeters).toBeGreaterThanOrEqual(sites[i - 1].distanceMeters);
     }
   });
+
+  it("기본 모양엔 좌표가 없다(종전 계약)", () => {
+    const sites = clusterSites([[37.53781, 127.14001]], origin);
+    expect(sites[0]).not.toHaveProperty("lat");
+    expect(sites[0]).not.toHaveProperty("lng");
+  });
+
+  it("좌표 옵트인은 대표점(최근접 원시 점) 좌표를 싣고 상한을 넓힌다(나들이)", () => {
+    const points: Array<[number, number]> = Array.from({ length: 8 }, (_, i) => {
+      const offset = (i + 1) * 0.001;
+      return [origin.lat + offset, origin.lng + offset] as [number, number];
+    });
+    points.push([37.53783, 127.14004], [37.53781, 127.14001]);
+    const sites = clusterSites(points, origin, { withCoords: true, maxSites: 40 });
+    expect(sites.length).toBe(9);
+    expect(sites[0]).toMatchObject({ lat: 37.53781, lng: 127.14001, deviceCount: 2 });
+  });
 });

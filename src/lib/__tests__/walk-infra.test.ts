@@ -143,4 +143,23 @@ describe("getWalkInfrastructure", () => {
     expect(result.audioSignals).toEqual({ status: "unsupported", reason: "outsideSeoul" });
     expect(result.osm.status).toBe("ok");
   });
+
+  it("좌표 옵트인: 횡단보도 상한이 넓어지고 feature 좌표가 실리며 음향신호기는 좌표 옵션으로 조회(나들이)", async () => {
+    mockAudioSignals.mockReturnValue(SAMPLE_AUDIO);
+    const crossings = Array.from({ length: 15 }, (_, i) =>
+      rawFeature({ osmId: `node/c-${i}`, crossing: true, lat: 37.5 + i * 0.0001, lng: 127.0 }),
+    );
+    mockWalkNodes.mockReturnValue(crossings);
+
+    const plain = await getWalkInfrastructure(37.5, 127.0);
+    expect(plain.osm.status === "ok" && plain.osm.data.features.length).toBe(10);
+    expect(mockAudioSignals).toHaveBeenLastCalledWith(37.5, 127.0);
+
+    const withCoords = await getWalkInfrastructure(37.5, 127.0, { coords: true });
+    if (withCoords.osm.status !== "ok") throw new Error("osm ok 기대");
+    expect(withCoords.osm.data.features.length).toBe(15);
+    expect(withCoords.osm.data.truncated).toBe(false);
+    expect(withCoords.osm.data.features[0]).toMatchObject({ lat: 37.5, lng: 127.0 });
+    expect(mockAudioSignals).toHaveBeenLastCalledWith(37.5, 127.0, 300, { withCoords: true, maxSites: 40 });
+  });
 });

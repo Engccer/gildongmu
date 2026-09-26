@@ -45,12 +45,31 @@ const USER_RADIUS_METERS = 300;
 const GROUP_CAP = 10;
 
 /**
+ * 좌표 옵트인(`coords=1`, 나들이 횡단보도 예고 — spec 2026-09-26 §6.3)의 상한. 걷는 사람은 조회점에서
+ * 최대 100m(재조회 간격)까지 멀어지므로 "조회점에서 가까운 10곳"으로는 그 사람 앞의 횡단보도가
+ * 잘린다. 횡단보도는 300m 안 전부에 가깝게, 음향신호기 지점은 횡단보도와 짝지을 만큼 싣는다.
+ * OSM feature는 원래 `lat`·`lng`를 싣는다(원시 feature 전개) — 옵트인이 바꾸는 것은 상한과 음향신호기 좌표다.
+ */
+const COORDS_CROSSING_CAP = 60;
+const COORDS_AUDIO_SITE_CAP = 40;
+
+export interface WalkInfraOptions {
+  /** 나들이용 좌표 옵트인. 미지정·false는 종전 계약과 바이트 동일. */
+  coords: boolean;
+}
+
+/**
  * seed 원시 feature → 사용자 실좌표 기준 거리·방위 부가, 300m 필터, 거리순 정렬,
  * crossing·비-crossing tactile 각 projection cap 10 후 합집합(spec §2-C·§2-E).
  * 데이터원이 정적 seed로 바뀌어도 이 표현 계층은 그대로다 — 거리·방위·cap은
  * 데이터가 어디서 왔는지와 무관한 관심사다.
  */
-function projectOsmData(rawFeatures: RawWalkFeature[], lat: number, lng: number): OsmWalkData {
+function projectOsmData(
+  rawFeatures: RawWalkFeature[],
+  lat: number,
+  lng: number,
+  crossingCap: number = GROUP_CAP,
+): OsmWalkData {
   const withDistance: WalkFeature[] = rawFeatures
     .map((feature) => ({
       ...feature,
@@ -63,7 +82,7 @@ function projectOsmData(rawFeatures: RawWalkFeature[], lat: number, lng: number)
   const crossingGroup = withDistance.filter((feature) => feature.crossing);
   const tactileGroup = withDistance.filter((feature) => !feature.crossing && feature.tactilePaving);
 
-  const cappedCrossing = crossingGroup.slice(0, GROUP_CAP);
+  const cappedCrossing = crossingGroup.slice(0, crossingCap);
   const cappedTactile = tactileGroup.slice(0, GROUP_CAP);
   const features = [...cappedCrossing, ...cappedTactile].sort((a, b) => a.distanceMeters - b.distanceMeters);
 
@@ -71,24 +90,33 @@ function projectOsmData(rawFeatures: RawWalkFeature[], lat: number, lng: number)
     features,
     totalCount: withDistance.length,
     listedCount: features.length,
-    truncated: crossingGroup.length > GROUP_CAP || tactileGroup.length > GROUP_CAP,
+    truncated: crossingGroup.length > crossingCap || tactileGroup.length > GROUP_CAP,
     crossingTotal: crossingGroup.length,
     tactileTotal: tactileGroup.length,
   };
 }
 
-async function loadAudioSignals(lat: number, lng: number): Promise<SourceStatus<NearbyAudioSignals>> {
-  const result = findAudioSignalsNear(lat, lng);
+async function loadAudioSignals(
+  lat: number,
+  lng: number,
+  coords: boolean,
+): Promise<SourceStatus<NearbyAudioSignals>> {
+  const result = coords
+    ? findAudioSignalsNear(lat, lng, USER_RADIUS_METERS, { withCoords: true, maxSites: COORDS_AUDIO_SITE_CAP })
+    : findAudioSignalsNear(lat, lng);
   if (result === null) return { status: "unsupported", reason: "outsideSeoul" };
   return { status: "ok", data: result };
 }
 
-async function loadOsm(lat: number, lng: number): Promise<SourceStatus<OsmWalkData>> {
+async function loadOsm(lat: number, lng: number, coords: boolean): Promise<SourceStatus<OsmWalkData>> {
   const rawFeatures = findWalkFeaturesNear(lat, lng, USER_RADIUS_METERS);
   // seed 범위 밖은 "0건"이 아니라 미제공이다 — 시각장애 사용자는 화면으로 그 차이를
   // 확인할 수 없으므로 "이 근처에 횡단보도가 없다"로 읽히면 위험한 오해가 된다.
   if (rawFeatures === null) return { status: "unsupported", reason: "outsideKorea" };
-  return { status: "ok", data: projectOsmData(rawFeatures, lat, lng) };
+  return {
+    status: "ok",
+    data: projectOsmData(rawFeatures, lat, lng, coords ? COORDS_CROSSING_CAP : GROUP_CAP),
+  };
 }
 
 /**
@@ -97,10 +125,15 @@ async function loadOsm(lat: number, lng: number): Promise<SourceStatus<OsmWalkDa
  * throw를 구분하지 않고 그대로 던지며, allSettled가 유일한 포착 지점이다. 동기
  * throw(findAudioSignalsNear 모킹 실패 등)도 rejected로 정상 포착된다.
  */
-export async function getWalkInfrastructure(lat: number, lng: number): Promise<WalkInfrastructure> {
+export async function getWalkInfrastructure(
+  lat: number,
+  lng: number,
+  options?: WalkInfraOptions,
+): Promise<WalkInfrastructure> {
+  const coords = options?.coords ?? false;
   const [audioSignalsResult, osmResult] = await Promise.allSettled([
-    loadAudioSignals(lat, lng),
-    loadOsm(lat, lng),
+    loadAudioSignals(lat, lng, coords),
+    loadOsm(lat, lng, coords),
   ]);
 
   if (audioSignalsResult.status === "rejected") {
