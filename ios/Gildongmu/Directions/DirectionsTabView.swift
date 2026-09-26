@@ -874,7 +874,9 @@ struct DirectionsTabView: View {
                     }
                     // 나들이 진입점(E51 §8.4, 위원장 판정 2026-09-26): 도착지 없이 조회하면 거절 통지는 그대로 두고
                     // 이 버튼 한 행을 더한다. 도착지 입력을 빠뜨린 실수와 구분되지 않아 자동으로 시작하지 않는다.
-                    if model.phase == .needEndpoints, model.from == .current, model.to == nil {
+                    // 실험판 봉인(2026-09-27): 정식판에서는 행 자체가 없고 거절 통지만 남는다.
+                    if AppConfig.experimentalOutingEnabled,
+                       model.phase == .needEndpoints, model.from == .current, model.to == nil {
                         Button(appLocalized("ios.outing.start")) { GuideSession.shared.startOuting() }
                     }
                     // "설정 앱에서 …" 안내에는 해결 버튼을 함께(NearbyOverlay 동형).
