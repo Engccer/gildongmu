@@ -2,7 +2,7 @@
 
 코디네이터 세션 `gildongmu-d9`. 기준 SHA `96175514`(main, 2026-09-27).
 
-**종료 상태(2026-09-27 07:4x KST)**: 웨이브 1·2 전부 로컬 `main` ff 통합(`d26f1cfe` n4 → `9ee6360a` e50 → `4e175ed3` chat → `db891307` m4b), origin push 없음(동결 해제 뒤 push). 웨이브 3 `android-doc-audit` 착수. 남은 사용자 판정은 BACKLOG E43(한소네 7 실기기 목록·듣기 속도 뜻·체중 착지 대상). **push 동결 중**(2026-09-29 08:00 KST까지, CLAUDE.md "gildongmu push 동결") — 통합은 로컬 `main` fast-forward이고 `origin` push는 없다. 위원장 지시: "안드로이드 앱을 iOS 정식판 최신 빌드에 맞게 동기화. 배포된 1.18은 무시하고 최신 개발 상태로. 병렬 세션으로 구현하고 판정은 코디네이터 세션에서."
+**종료 상태(2026-09-27 07:4x KST)**: 웨이브 1·2 전부 로컬 `main` ff 통합(`d26f1cfe` n4 → `9ee6360a` e50 → `4e175ed3` chat → `db891307` m4b), origin push 없음(동결 해제 뒤 push). 웨이브 3 `android-doc-audit` 통합 `ed7756e5`(문서 11개 정정, CLAUDE.md 여유 1.7KB — 다음 웨이브 전 다이어트 권고). 남은 worktree 0·`feat/*` 0. 남은 사용자 판정은 BACKLOG E43(한소네 7 실기기 목록·듣기 속도 뜻·체중 착지 대상). **push 동결 중**(2026-09-29 08:00 KST까지, CLAUDE.md "gildongmu push 동결") — 통합은 로컬 `main` fast-forward이고 `origin` push는 없다. 위원장 지시: "안드로이드 앱을 iOS 정식판 최신 빌드에 맞게 동기화. 배포된 1.18은 무시하고 최신 개발 상태로. 병렬 세션으로 구현하고 판정은 코디네이터 세션에서."
 
 ## §1. 마일스톤과 확정 판정
 
