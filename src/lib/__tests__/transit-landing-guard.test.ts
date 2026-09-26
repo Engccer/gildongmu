@@ -134,15 +134,30 @@ describe("TransitTrackingSheet 착지 대상 (E38) · boarding 수동 진행 (N3
       "return nil",
     ]);
     // 소실 복구는 커서가 **사라진 국면의 버튼** 위에 있었을 때만이다(남은 컨트롤 위의 커서는 그대로).
-    expect(SHEET).toContain("lostFocus: old.phase != nil && focusedPhaseButton == old.phase)");
+    expect(SHEET).toContain("let lostFocus = old.phase != nil && focusedPhaseButton?.phase == old.phase");
+    // 버튼마다 값이 다르고 어느 버튼에 붙었는지까지 잠근다(같은 값 다중 부착은 커서 이동 여지, 증분 리뷰 M1).
+    for (const bound of [
+      '{ model.confirmBoarded() }\n                    .accessibilityFocused($focusedPhaseButton, equals: .boardSelected)',
+      '{ model.changeBoarding() }\n                    .accessibilityFocused($focusedPhaseButton, equals: .reselect)',
+      'Button(advanceLabel) { advanceOrHandoff() }\n                        .accessibilityFocused($focusedPhaseButton, equals: .advance)',
+    ]) {
+      expect(SHEET, bound).toContain(bound);
+    }
     expect(SHEET.match(/\.accessibilityFocused\(\$focusedPhaseButton, equals: /g) ?? []).toHaveLength(3);
+    // 소실 복구 착지는 로그 표식을 단다 — 실기기에서 발화 여부를 가르는 유일한 축.
+    expect(SHEET).toContain('note: !byUser && lostFocus ? "lost=phaseButton" : ""');
     expect(SHEET).not.toMatch(/focusedPhaseButton = /);
     expect(body).not.toMatch(/previous == \.(waiting|boarding)/);
     // 출처는 입력이 정한다: 순번이 오르는 자리는 dispatch(폴 제외)와 경로 전환 두 곳이다. 경로 전환은 dispatch 밖이라
     // 빠지면 승차 중 목적지 전환이 관측 전이로 읽혀 핸들러의 착지까지 취소된다(spec 리뷰 H1).
     const model = readFileSync(join(ROOT, "ios/Gildongmu/Directions/TransitGuideModel.swift"), "utf8");
     expect(model.match(/userTransitionSeq \+= 1/g) ?? []).toHaveLength(2);
-    expect(model).toContain("if state?.phase != previousPhase { userTransitionSeq += 1 }");
+    // 순번 증가는 새 상태 대입 **뒤**여야 한다(앞이면 비교가 옛 국면끼리라 영영 오르지 않는다 — H1 재발).
+    const change = model.slice(model.indexOf("private func changeRoute("));
+    const init = change.indexOf("state = initTransitGuide(route: guideRoute, now: nowMs())");
+    expect(init).toBeGreaterThan(-1);
+    expect(change.indexOf("let previousPhase = state?.phase")).toBeLessThan(init);
+    expect(change.indexOf("if state?.phase != previousPhase { userTransitionSeq += 1 }")).toBeGreaterThan(init);
     expect(model).toContain(
       "if userAction, result.state.phase != state.phase || result.state.phaseGen != state.phaseGen {",
     );
@@ -150,7 +165,8 @@ describe("TransitTrackingSheet 착지 대상 (E38) · boarding 수동 진행 (N3
     expect(SHEET).toContain(
       ".onChange(of: PhaseTransitionKey(phase: model.state?.phase, userSeq: model.userTransitionSeq)) { old, new in",
     );
-    expect(SHEET).toContain("previous: old.phase, phase: new.phase, byUser: new.userSeq != old.userSeq,");
+    expect(SHEET).toContain("let byUser = new.userSeq != old.userSeq");
+    expect(SHEET).toContain("previous: old.phase, phase: new.phase, byUser: byUser, lostFocus: lostFocus)");
     expect(SHEET).not.toContain(".onChange(of: model.state?.phase)");
   });
 

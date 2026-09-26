@@ -83,9 +83,20 @@ struct TransitTrackingSheet: View {
     /// 백그라운드에서 난 국면 전이의 착지 대상(A35 L4). VO 커서가 없는 배경에서 시도하지 않고 여기 적어 두었다가
     /// 전경 복귀에 한 번 착지한다(latest-wins). 시트 `.task`는 재표시에만 돌아 이 자리를 대신하지 못한다.
     @State private var deferredLanding: SheetControl?
-    /// 커서가 **국면 전용 버튼** 위에 있으면 그 국면(A47 소실 복구 — 웹 `focusLost` 동형). 읽기 전용이다: 대입하지 않고
-    /// 관측 전이가 그 국면의 버튼을 없앨 때 커서를 쥐고 있었는지만 본다(후보 행의 `focusedCandidate`와 같은 기제).
-    @AccessibilityFocusState private var focusedPhaseButton: TransitPhase?
+    /// 커서가 올라탄 **국면 전용 버튼**(A47 소실 복구 — 웹 `focusLost` 동형). 읽기 전용이다: 대입하지 않고 관측 전이가
+    /// 그 버튼의 국면을 끝낼 때 커서를 쥐고 있었는지만 본다(후보 행의 `focusedCandidate`와 같은 기제). 버튼마다 값이
+    /// 다르다 — 같은 값을 두 버튼에 달면 한쪽이 새로 설 때 SwiftUI가 커서를 옮길 여지가 생긴다(증분 리뷰 M1).
+    @AccessibilityFocusState private var focusedPhaseButton: PhaseButton?
+    private enum PhaseButton: Hashable {
+        case boardSelected, reselect, advance
+        /// 이 버튼이 서는 국면. [다음 구간]은 근사 잠금 riding에도 서지만 근사 잠금엔 관측 전이가 없다.
+        var phase: TransitPhase {
+            switch self {
+            case .boardSelected, .reselect: .boarding
+            case .advance: .arrived
+            }
+        }
+    }
     /// 진행 중 착지의 대상 — 배경 전환·모달 등장이 그 시도를 끊고 `deferredLanding`으로 이월할 때 읽는다(코드 리뷰 M1).
     @State private var landingInFlight: SheetControl?
     /// 그 표식의 **소유자**(E38 코드 리뷰 MEDIUM-1). 종전엔 정리 시점에 `landingInFlight == target`으로
@@ -224,9 +235,10 @@ struct TransitTrackingSheet: View {
                 // 급행 확인 프롬프트는 대기 국면 전용(§6) — 국면이 바뀌면 접는다.
                 expressPromptActive = false
                 // 세션 종료(state nil)도 여기로 온다(.some → nil 변화) — 조망을 닫는다.
+                let byUser = new.userSeq != old.userSeq
+                let lostFocus = old.phase != nil && focusedPhaseButton?.phase == old.phase
                 let target = phaseTransitionLanding(
-                    previous: old.phase, phase: new.phase, byUser: new.userSeq != old.userSeq,
-                    lostFocus: old.phase != nil && focusedPhaseButton == old.phase)
+                    previous: old.phase, phase: new.phase, byUser: byUser, lostFocus: lostFocus)
                 // 조망이 열려 있으면 그 행·행동은 낡았다 — 닫고, 착지는 onDismiss로 미룬다(§4.3).
                 // 경로 전환이 만든 전이(→waiting)도 여기로 온다: 전환 뒤 착지는 새 세션의
                 // 전이 착지가 정본이고, 전이 착지가 없을 때만 조망이 스스로 세운 후속이 남는다
@@ -236,7 +248,10 @@ struct TransitTrackingSheet: View {
                     overviewAdapter = nil
                     return
                 }
-                if let target { landControlFocus(target, proxy: proxy) }
+                // 소실 복구 착지는 로그로 가른다 — 실기기에서 바인딩이 그 순간 값을 들고 있는지가 판정 축이다.
+                if let target {
+                    landControlFocus(target, proxy: proxy, note: !byUser && lostFocus ? "lost=phaseButton" : "")
+                }
             }
             // 진행 상황 조망(E15-1). 닫힌 뒤 한 곳에서 행동·착지(닫힌 뒤 행동 계약).
             .sheet(item: $overviewAdapter, onDismiss: { runPendingFollowUp(proxy: proxy) }) { adapter in
@@ -549,10 +564,10 @@ struct TransitTrackingSheet: View {
                     Button(leg.mode == "subway"
                         ? appLocalized("transitGuide.boardSelected")
                         : appLocalized("transitGuide.boardSelectedBus")) { model.confirmBoarded() }
-                    .accessibilityFocused($focusedPhaseButton, equals: .boarding)
+                    .accessibilityFocused($focusedPhaseButton, equals: .boardSelected)
                 }
                 Button(appLocalized("transitGuide.reselectVehicle")) { model.changeBoarding() }
-                    .accessibilityFocused($focusedPhaseButton, equals: .boarding)
+                    .accessibilityFocused($focusedPhaseButton, equals: .reselect)
             } else {
                 // 근사 잠금은 advance 상시(§13.2 소비 한계 — arrived 전이가 없다).
                 // 마지막 leg + 말미 도보면 버튼은 하나이고 라벨이 처음부터 "남은 도보 안내 시작"(E34) —
@@ -561,7 +576,7 @@ struct TransitTrackingSheet: View {
                 // 이 버튼은 그 아래 경유역 목록을 지나야 만난다(접혀 있으면 두 번째 스와이프).
                 if state.phase == .arrived || (state.lock.map(isApproxTransitLock) ?? false) {
                     Button(advanceLabel) { advanceOrHandoff() }
-                        .accessibilityFocused($focusedPhaseButton, equals: state.phase)
+                        .accessibilityFocused($focusedPhaseButton, equals: .advance)
                 }
                 if state.phase == .riding, leg.trackMode != .tagoBus {
                     if model.reboardPickerActive {

@@ -175,6 +175,11 @@ class WalkGuideModelTest {
         assertEquals(expected, h.model.ui.value.statusText)
         assertEquals(expected, h.speaker.spoken.last().first)
         assertTrue(h.speaker.spoken.last().second)
+        // 경유지는 세션과 재시작 인자에서 함께 비워진다 — 다시 시작한 조회가 경유지를 되살리지 않는다.
+        h.model.stopByUser()
+        h.transport.seenUrls.clear()
+        h.model.restart(); settle(); h.walkTo(0.0); settle()
+        assertFalse(h.transport.seenUrls.single().contains("via="))
     }
 
     @Test fun `대기 중 미달 fix만 오면 15초에 최선값으로 조회한다`() = guideTest(dispatcher) { h ->
