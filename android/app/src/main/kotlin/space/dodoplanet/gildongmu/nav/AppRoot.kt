@@ -106,12 +106,12 @@ fun AppRoot(factories: AppFactories) {
                 // 탭 루트의 설정 버튼(spec §14-1): 복귀 슬롯은 엔트리 스코프 `ReturnFocusViewModel` — 검색 VM 슬롯은 결과 행 전용이라 쓰지 않는다.
                 composable<SearchRoute> { entry ->
                     val rf: ReturnFocusViewModel = viewModel(entry)
-                    SearchScreen(viewModel(factory = factories.search), onOpenPlace = { navController.navigate(PlaceDetailRoute.of(it)) }, onOpenSettings = { rf.slot.remember(SETTINGS_RETURN_KEY); navController.navigate(SettingsRoute) { launchSingleTop = true } }, takeSettingsReturn = rf.slot::take)
+                    SearchScreen(viewModel(factory = factories.search), onOpenPlace = { navController.navigate(PlaceDetailRoute.of(it)) }, onOpenSettings = { rf.slot.remember(SETTINGS_RETURN_KEY); navController.navigate(SettingsRoute()) { launchSingleTop = true } }, takeSettingsReturn = rf.slot::take)
                 }
                 composable<DirectionsRoute> { entry ->
                     val rf: ReturnFocusViewModel = viewModel(entry)
                     DirectionsScreen(
-                        onOpenSettings = { rf.slot.remember(SETTINGS_RETURN_KEY); navController.navigate(SettingsRoute) { launchSingleTop = true } }, takeSettingsReturn = rf.slot::take,
+                        onOpenSettings = { rf.slot.remember(SETTINGS_RETURN_KEY); navController.navigate(SettingsRoute()) { launchSingleTop = true } }, takeSettingsReturn = rf.slot::take,
                         // 브리핑 지하철역 상세(E45) — 길찾기 탭 스택에 push, 복귀 착지는 그 줄. 노선 힌트는 누르는 순간 확정한 그 줄의 leg `lineName`.
                         onOpenStation = { stop, lineName, returnKey -> rf.slot.remember(returnKey); navController.navigate(PlaceDetailRoute.ofTransitStop(stop, lineName = lineName)) },
                     )
@@ -121,7 +121,7 @@ fun AppRoot(factories: AppFactories) {
                     NearbyHubScreen(
                         onOpen = { kind -> returnFocus.slot.remember(hubKey(kind)); navController.navigate(NearbyKindRoute.of(kind, null)) },
                         onPick = { returnFocus.slot.remember(LOCATION_BAR_KEY); navController.navigate(ManualLocationRoute) },
-                        onOpenSettings = { returnFocus.slot.remember(SETTINGS_RETURN_KEY); navController.navigate(SettingsRoute) { launchSingleTop = true } },
+                        onOpenSettings = { returnFocus.slot.remember(SETTINGS_RETURN_KEY); navController.navigate(SettingsRoute()) { launchSingleTop = true } },
                         takeReturnFocus = returnFocus.slot::take,
                         currentAddress = factories.currentAddress,
                         manualLocation = factories.manualLocation,
@@ -129,7 +129,7 @@ fun AppRoot(factories: AppFactories) {
                 }
                 composable<ChatRoute> { entry ->
                     val rf: ReturnFocusViewModel = viewModel(entry)
-                    ChatTabScreen(onPickLocation = { navController.navigate(ManualLocationRoute) }, onOpenSettings = { rf.slot.remember(SETTINGS_RETURN_KEY); navController.navigate(SettingsRoute) { launchSingleTop = true } }, takeSettingsReturn = rf.slot::take, onOpenPlace = { navController.navigate(PlaceDetailRoute.of(it, showsChatEntry = false)) })
+                    ChatTabScreen(onPickLocation = { navController.navigate(ManualLocationRoute) }, onOpenSettings = { rf.slot.remember(SETTINGS_RETURN_KEY); navController.navigate(SettingsRoute()) { launchSingleTop = true } }, takeSettingsReturn = rf.slot::take, onOpenPlace = { navController.navigate(PlaceDetailRoute.of(it, showsChatEntry = false)) })
                 }
                 // ── 스택 화면(각 화면 패키지 소유 라우트, 등록 한 줄씩)
                 composable<NearbyKindRoute> { entry ->
@@ -172,7 +172,7 @@ fun AppRoot(factories: AppFactories) {
                 composable<ManualLocationRoute> { ManualLocationPickerScreen { navController.popBackStack() } }
                 composable<SettingsRoute> { entry ->
                     val rf: ReturnFocusViewModel = viewModel(entry)
-                    SettingsScreen(onBack = { navController.popBackStack() }, onOpenDataSources = { rf.slot.remember(DATA_SOURCES_RETURN_KEY); navController.navigate(DataSourcesRoute) { launchSingleTop = true } }, takeReturnFocus = rf.slot::take)
+                    SettingsScreen(onBack = { navController.popBackStack() }, onOpenDataSources = { rf.slot.remember(DATA_SOURCES_RETURN_KEY); navController.navigate(DataSourcesRoute) { launchSingleTop = true } }, takeReturnFocus = rf.slot::take, focusRow = entry.toRoute<SettingsRoute>().focusRow)
                 }
                 composable<DataSourcesRoute> { DataSourcesScreen { navController.popBackStack() } }
                 composable<BusRouteStopsRoute> { entry ->

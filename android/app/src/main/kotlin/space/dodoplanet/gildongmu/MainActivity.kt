@@ -10,7 +10,15 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
+import android.view.WindowInsetsController
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import space.dodoplanet.gildongmu.settings.resolveDarkTheme
 import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
@@ -91,7 +99,15 @@ class MainActivity : ComponentActivity() {
             manualLocation = AppConfig.manualLocationStore,
         )
         setContent {
-            MaterialTheme {
+            // 테마(iOS `preferredColorScheme`): 설정 값이 바뀌면 재생성 없이 즉시 반영. 시스템 막대 아이콘도 앱 테마를 따른다(창 테마는 DayNight라
+            // 앱을 시스템과 다르게 두면 투명 막대 위 아이콘이 배경과 같은 색이 된다).
+            val theme by AppConfig.settings.themePreference.collectAsState()
+            val dark = resolveDarkTheme(theme, isSystemInDarkTheme())
+            SideEffect {
+                val light = WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
+                window.insetsController?.setSystemBarsAppearance(if (dark) 0 else light, light)
+            }
+            MaterialTheme(colorScheme = if (dark) darkColorScheme() else lightColorScheme()) {
                 AppRoot(factories)
             }
         }

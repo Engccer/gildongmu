@@ -3,15 +3,22 @@ package space.dodoplanet.gildongmu.chat
 import android.content.Context
 import android.content.res.Resources
 import android.media.AudioAttributes
+import android.media.AudioManager
 import android.media.SoundPool
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.withContext
 import space.dodoplanet.gildongmu.AppConfig
 import space.dodoplanet.gildongmu.R
+import space.dodoplanet.gildongmu.audio.AndroidChatClip
+import space.dodoplanet.gildongmu.audio.AndroidChatFocus
+import space.dodoplanet.gildongmu.audio.AndroidChatSpeech
+import space.dodoplanet.gildongmu.audio.ChatTtsPlayer
+import space.dodoplanet.gildongmu.audio.systemTtsRate
 import space.dodoplanet.gildongmu.i18n.AppLocale
 import space.dodoplanet.gildongmu.kit.LocationFixPolicy
 import space.dodoplanet.gildongmu.kit.SearchService
@@ -46,10 +53,24 @@ fun chatViewModelFactory(context: Context, place: Place?): ViewModelProvider.Fac
     }
 }
 
-/** 앱에 하나인 채팅 부속(동의 저장소·효과음). 탭·장소 화면이 같은 인스턴스를 본다. */
+/** 앱에 하나인 채팅 부속(동의 저장소·효과음·듣기 재생기). 탭·장소 화면·설정이 같은 인스턴스를 본다. */
 class ChatServices private constructor(app: Context) {
     val consent = ChatConsentStore(SharedPreferencesStore(app, "gildongmu.chat"))
     val sounds: ChatSounds = SoundPoolChatSounds(app)
+
+    /** 답변 듣기 — 앱 전역 재생 1개(iOS `TtsPlayer.shared`). 엔진은 첫 [듣기]에서 만든다. 언어·배속은 재생 시점에 읽는다. */
+    val tts: ChatTtsPlayer by lazy {
+        ChatTtsPlayer(
+            speech = AndroidChatSpeech(app),
+            clip = AndroidChatClip(),
+            focus = AndroidChatFocus(app.getSystemService(AudioManager::class.java)),
+            fetchServer = { text, locale -> fetchChatTtsMp3(AppConfig.API_BASE_URL, text, locale) },
+            scope = MainScope(),
+            speed = { AppConfig.settings.listenSpeed.value },
+            appLanguage = { AppLocale.current(AppConfig.localizedApp().resources) },
+            systemRate = { systemTtsRate(app) },
+        )
+    }
 
     companion object {
         @Volatile private var instance: ChatServices? = null

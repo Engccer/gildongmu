@@ -59,6 +59,12 @@ class ChatConsentStore(private val store: KeyValueStore, private val io: Corouti
         store.putString(KEY, "true")
     }
 
+    /** 철회(설정 토글, iOS 5.1.2(i)) — 열린 채팅 화면은 같은 흐름을 봐서 곧바로 동의 본문으로 돌아가고, `ChatViewModel.send`도 막힌다(이중 방어). */
+    fun revoke() {
+        _granted.value = false
+        store.putString(KEY, "false")
+    }
+
     companion object {
         const val KEY = "aiChatConsent"
     }

@@ -46,6 +46,8 @@ class SettingsScreenA11yTest {
         rule.onNodeWithTag("settings-language").assertTextEquals("언어, 시스템 설정 따름")
         rule.onNodeWithTag("settings-dictation").assertTextEquals("받아쓰기 방식, 탭으로 시작하고 정지")
         rule.onNodeWithTag("settings-datasources").assertTextEquals("정보 출처")
+        rule.onNodeWithTag("settings-theme").assertTextEquals("테마, 시스템 설정 따름")
+        rule.onNodeWithTag("settings-listenspeed").assertTextEquals("듣기 속도, 1배")
         rule.onNodeWithTag("title").assertIsFocused() // push 진입 착지 = 제목
         rule.onRoot().tryPerformAccessibilityChecks()
     }

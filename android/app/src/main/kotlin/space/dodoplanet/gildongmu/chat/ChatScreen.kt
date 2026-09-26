@@ -22,6 +22,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -54,6 +55,7 @@ import kotlinx.coroutines.launch
 import space.dodoplanet.gildongmu.AppConfig
 import space.dodoplanet.gildongmu.R
 import space.dodoplanet.gildongmu.a11y.AppScreenScaffold
+import space.dodoplanet.gildongmu.a11y.HapticKind
 import space.dodoplanet.gildongmu.a11y.StatusLine
 import space.dodoplanet.gildongmu.a11y.landingTarget
 import space.dodoplanet.gildongmu.a11y.tapTarget
@@ -184,7 +186,8 @@ private fun ChatConversation(
     modifier: Modifier,
 ) {
     val s by vm.state.collectAsState()
-    val res = LocalContext.current.resources
+    val context = LocalContext.current
+    val res = context.resources
     val lang = remember(res) { AppLocale.current(res) }
     val scroll = rememberScrollState()
     // 주소 카드 지오코딩은 이 컴포지션 스코프에서 — 화면이 떠나면 취소되어 늦은 결과로 상세를 열지 않는다(spec §4-4)
@@ -196,8 +199,14 @@ private fun ChatConversation(
     val sendingLabel = stringResource(R.string.android_chat_sending)
     val failedText = stringResource(R.string.android_chat_failed)
     val noAppText = stringResource(R.string.android_common_noAppToOpen)
+    val listenFailedText = stringResource(R.string.chat_listenFailed)
+    // 답변 듣기(앱 전역 재생 1개) — 화면을 떠나면 정지(유령 낭독 방지, iOS `onDisappear` 동형: 탭 전환·상세 push·동의 철회 포함)
+    val tts = remember { ChatServices.get(context).tts }
+    val playingId by tts.playingId.collectAsState()
+    DisposableEffect(tts) { onDispose { tts.stop() } }
 
     fun afterSend() {
+        tts.stop() // 새 질문의 진행 통지·완료음과 낭독이 겹치지 않게
         land(sendFocus, "send")
     }
 
@@ -329,6 +338,9 @@ private fun ChatConversation(
                 },
                 onSubmitFollowUp = { submitSuggestion(it) },
                 onNoApp = { vm.announce(noAppText) },
+                playingId = playingId,
+                // 실패(포커스 거절·서버 실패·합성 오류)는 화면 통지 창구 하나로 + 실패 진동(문장이 나가는 조건 = 진동 조건)
+                onListen = { message -> tts.toggle(message.id, message.text) { vm.announce(listenFailedText, HapticKind.failure) } },
             )
         }
         // 통지 줄은 스크롤 밖 — 목록을 올려 읽는 중에도 라이브 리전이 화면 안에 있다(읽기 순서는 목록 끝 → 통지 → 입력 그대로).
@@ -365,7 +377,8 @@ private fun ChatConversation(
             )
             // 좁은 폭·큰 글꼴에서 버튼이 눌리지 않게 줄바꿈(거부 상태면 세 버튼)
             FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)) {
-                if (dictation != null) DictationControls(dictation, onNoApp = { vm.announce(noAppText) })
+                // 받아쓰기 버튼을 누르면(시작·정지 모두) 낭독 정지 — 낭독이 녹음에 섞이지 않게(iOS `TtsPlayer.shared.stop()`·웹 캡처 단계 정지)
+                if (dictation != null) DictationControls(dictation, onNoApp = { vm.announce(noAppText) }, onPress = tts::stop)
                 Button(
                     // 스트리밍 중엔 무시 — enabled=false는 포커스를 떨군다(헌장 §5 ⓐ). 상태는 stateDescription이 말한다.
                     onClick = { if (!s.isStreaming) submitDraft() },

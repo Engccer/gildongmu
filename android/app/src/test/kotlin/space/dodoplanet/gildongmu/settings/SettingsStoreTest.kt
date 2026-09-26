@@ -1,6 +1,7 @@
 package space.dodoplanet.gildongmu.settings
 
 import space.dodoplanet.gildongmu.kit.InMemoryKeyValueStore
+import space.dodoplanet.gildongmu.kit.ListenSpeed
 import space.dodoplanet.gildongmu.kit.TrendHaptics
 import space.dodoplanet.gildongmu.kit.WalkHealth
 import kotlin.test.Test
@@ -30,6 +31,27 @@ class SettingsStoreTest {
         mem.putString(SettingsStore.KEY_DICTATION, "weird"); assertEquals("tapToggle", SettingsStore(mem).also { it.load() }.dictationStyle.value)
         s.setDictationStyle("weird"); assertEquals("hold", s.dictationStyle.value) // 미지 값은 무시
         assertEquals("true", mem.getString(TrendHaptics.storageKey))
+    }
+
+    @Test fun `테마·듣기 속도 왕복과 기본값, 허용 밖 값은 무시하고 저장값 이상은 기본으로(iOS 키 이름)`() {
+        val mem = InMemoryKeyValueStore()
+        val s = SettingsStore(mem).also { it.load() }
+        assertEquals("system", s.themePreference.value); assertEquals(1.0, s.listenSpeed.value)
+        s.setTheme("dark"); s.setListenSpeed(1.5)
+        assertEquals("dark", mem.getString("themePreference")); assertEquals("1.5", mem.getString(ListenSpeed.storageKey))
+        val again = SettingsStore(mem).also { it.load() }
+        assertEquals("dark", again.themePreference.value); assertEquals(1.5, again.listenSpeed.value)
+        s.setTheme("sepia"); assertEquals("dark", s.themePreference.value)
+        s.setListenSpeed(3.0); assertEquals(1.5, s.listenSpeed.value)
+        mem.putString(SettingsStore.KEY_THEME, "weird"); mem.putString(ListenSpeed.storageKey, "9")
+        val odd = SettingsStore(mem).also { it.load() }
+        assertEquals("system", odd.themePreference.value); assertEquals(1.0, odd.listenSpeed.value)
+    }
+
+    @Test fun `resolveDarkTheme — 라이트·다크는 고정, 시스템·미지 값은 시스템 모드`() {
+        assertFalse(resolveDarkTheme("light", systemDark = true)); assertTrue(resolveDarkTheme("dark", systemDark = false))
+        assertTrue(resolveDarkTheme("system", systemDark = true)); assertFalse(resolveDarkTheme("system", systemDark = false))
+        assertTrue(resolveDarkTheme("weird", systemDark = true))
     }
 
     @Test fun `체중 — 범위 안은 저장(소수점 0은 정수로), 빈 값은 미입력으로, 범위 밖·잘못된 표기는 저장 없이 Reject(M4 걸음 요약과 같은 키)`() {

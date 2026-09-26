@@ -59,7 +59,7 @@ fun rememberDictation(onTranscript: (String) -> Unit, onNotice: (DictationNotice
  * 권한은 비활성 세션에서 누를 때 묻는다(허용 → 시작, 거부 → Denied 통지).
  */
 @Composable
-fun DictationControls(session: DictationSession, onNoApp: () -> Unit) {
+fun DictationControls(session: DictationSession, onNoApp: () -> Unit, onPress: () -> Unit = {}) {
     val context = LocalContext.current
     val phase by session.phase.collectAsState()
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -72,6 +72,7 @@ fun DictationControls(session: DictationSession, onNoApp: () -> Unit) {
     }
     OutlinedButton(
         onClick = {
+            onPress()
             val idle = phase == DictationPhase.Idle || phase == DictationPhase.Denied
             if (!idle || context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
                 session.toggle()

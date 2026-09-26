@@ -14,8 +14,11 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.key
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -33,6 +36,7 @@ import space.dodoplanet.gildongmu.a11y.landingTarget
 import space.dodoplanet.gildongmu.a11y.mergedRow
 import space.dodoplanet.gildongmu.a11y.tapTarget
 import space.dodoplanet.gildongmu.i18n.appLocalized
+import space.dodoplanet.gildongmu.kit.MarkdownPlainText
 import space.dodoplanet.gildongmu.kit.bilingualName
 import space.dodoplanet.gildongmu.kit.chatPlaceMentions
 import space.dodoplanet.gildongmu.kit.models.ChatRenderPayload
@@ -112,6 +116,8 @@ fun AnswerExtras(
     onOpenPlace: (Place, String) -> Unit,
     onOpenAddress: (JusoAddress, String) -> Unit,
     onNoApp: () -> Unit,
+    playing: Boolean,
+    onListen: () -> Unit,
 ) {
     val context = LocalContext.current
     val res = context.resources
@@ -161,8 +167,16 @@ fun AnswerExtras(
                 Text(label, row.mergedRow("source-${message.id}-$i").padding(vertical = 4.dp), style = MaterialTheme.typography.bodyMedium)
             }
         }
-        // 응답 액션 행 — 답변 원문 공유(선택기는 항상 있어 실패 분기 없음). [M4 뒤] 듣기(TTS) 버튼 자리
-        Row(Modifier.fillMaxWidth()) {
+        // 응답 액션 행(iOS 순서: 듣기 → 공유). 듣기는 보이는 글자가 곧 이름이고 라벨 전환(듣기 ↔ 재생 중지)이 상태 신호다(선택 상태 병기 금지).
+        // 공유는 답변 원문(선택기는 항상 있어 실패 분기 없음).
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            // 읽을 평문이 없는 답변엔 버튼을 두지 않는다(눌러도 아무 일이 없는 버튼은 SR 사용자에게 고장으로 들린다)
+            val speakable = remember(message.text) { MarkdownPlainText.strip(message.text).isNotEmpty() }
+            if (speakable) {
+                TextButton(onClick = onListen, modifier = Modifier.tapTarget().testTag("listen-${message.id}")) {
+                    Text(stringResource(if (playing) R.string.android_chat_listenStop else R.string.android_chat_listen))
+                }
+            }
             IconButton(
                 onClick = {
                     val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, message.text)

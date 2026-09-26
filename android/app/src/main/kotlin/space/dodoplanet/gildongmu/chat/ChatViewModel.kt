@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import space.dodoplanet.gildongmu.a11y.HapticKind
 import space.dodoplanet.gildongmu.a11y.Notice
 import space.dodoplanet.gildongmu.kit.isStation
 import space.dodoplanet.gildongmu.kit.models.AddressMatch
@@ -125,8 +126,8 @@ class ChatViewModel(
         return merged
     }
 
-    fun announce(text: String) {
-        _state.update { it.copy(notice = Notice(it.notice.seq + 1, text)) }
+    fun announce(text: String, haptic: HapticKind? = null) {
+        _state.update { it.copy(notice = Notice(it.notice.seq + 1, text, haptic = haptic)) }
     }
 
     fun rememberReturnFocus(key: String) = returnFocus.remember(key)

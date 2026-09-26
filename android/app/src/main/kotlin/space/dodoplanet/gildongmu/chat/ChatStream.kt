@@ -7,11 +7,16 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import space.dodoplanet.gildongmu.kit.ChatService
 import space.dodoplanet.gildongmu.kit.ChatSuggestionsService
 import space.dodoplanet.gildongmu.kit.models.ChatRequestBody
 import space.dodoplanet.gildongmu.kit.models.ChatStreamEvent
+import java.io.IOException
 import java.io.InputStream
+import java.net.HttpURLConnection
+import java.net.URL
 
 /** 읽기 버퍼 — `ChatService.splitStreamLines`가 미완성 꼬리를 매번 재스캔하므로 작게 잡지 않는다(병렬 계획 §5-5 M6 입력). */
 const val STREAM_READ_BUFFER_BYTES = 8192
@@ -69,3 +74,21 @@ class HttpChatSuggestionsSource(private val baseUrl: String) : ChatSuggestionsSo
         emptyList()
     }
 }
+
+/**
+ * 채팅 듣기 서버 음성(iOS `TtsPlayer.requestServerTts` 요청 계약 그대로: `POST /api/tts` `{text, locale}` → MP3, 상한 30초). 비-2xx는 예외
+ * (502 `fallback` 포함 — 재생기가 실패 통지로 접는다). 기기에 현재 언어 보이스가 없을 때만 불린다(과금).
+ */
+suspend fun fetchChatTtsMp3(
+    baseUrl: String,
+    text: String,
+    locale: String,
+    open: (String) -> HttpURLConnection = { URL(it).openConnection() as HttpURLConnection },
+): ByteArray =
+    ChatHttp.post(baseUrl + TTS_PATH, buildJsonObject { put("text", text); put("locale", locale) }.toString(), TTS_TIMEOUT_MS, open) { status, stream ->
+        if (status !in 200..299) throw IOException("tts HTTP $status")
+        stream.readBytes()
+    }
+
+const val TTS_PATH = "/api/tts"
+private const val TTS_TIMEOUT_MS = 30_000L

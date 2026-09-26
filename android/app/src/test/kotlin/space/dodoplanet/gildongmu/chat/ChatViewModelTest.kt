@@ -126,6 +126,19 @@ class ChatViewModelTest {
         assertEquals(0, f.stream.bodies.size)
     }
 
+    @Test fun `설정에서 동의를 철회하면 다음 전송이 막히고 저장도 거짓이 된다(재진입 시 동의 화면)`() = runTest(dispatcher) {
+        val store = InMemoryKeyValueStore()
+        val consent = ChatConsentStore(store, dispatcher).also { it.grant() }
+        val vm = ChatViewModel(null, Stream { flowOf(done) }, Suggestions(), { null }, consent, Location(), { "ko" }, { "ko" }, strings, Sounds(), SavedStateHandle())
+        assertTrue(vm.send("첫 질문"))
+        advanceUntilIdle()
+        consent.revoke()
+        assertEquals(false, vm.consentGranted.value)
+        assertFalse(vm.send("둘째 질문"))
+        val reloaded = ChatConsentStore(store, dispatcher).also { it.ensureLoaded() }
+        assertEquals(false, reloaded.granted.value)
+    }
+
     @Test fun `빈 문자열·스트리밍 중 전송은 받지 않는다`() = runTest(dispatcher) {
         val f = make(events = { flow { awaitCancellation() } })
         assertFalse(f.vm.send("   "))

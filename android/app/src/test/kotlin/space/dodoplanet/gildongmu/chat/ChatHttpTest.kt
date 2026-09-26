@@ -201,4 +201,26 @@ class ChatHttpTest {
             assertTrue(server.recorded.get(5, TimeUnit.SECONDS).body.contains("\"placeName\":\"강남역\""))
         }
     }
+
+    @Test fun `듣기 서버 음성 — iOS 요청 계약(POST api tts, text·locale JSON)이고 2xx 본문 바이트를 그대로, 비-2xx는 예외`() {
+        val mp3 = byteArrayOf(0x49, 0x44, 0x33, 0x04)
+        OneShotServer { out ->
+            out.write("HTTP/1.1 200 OK\r\nContent-Type: audio/mpeg\r\nContent-Length: ${mp3.size}\r\nConnection: close\r\n\r\n".toByteArray())
+            out.write(mp3)
+        }.use { server ->
+            val bytes = runBlocking { withTimeout(10_000) { fetchChatTtsMp3(server.base, "제목\n\"따옴표\"", "ja") } }
+            assertTrue(mp3.contentEquals(bytes))
+            val req = server.recorded.get(5, TimeUnit.SECONDS)
+            assertEquals("POST /api/tts HTTP/1.1", req.requestLine)
+            assertTrue(req.headers["content-type"]!!.startsWith("application/json"))
+            assertEquals("{\"text\":\"제목\\n\\\"따옴표\\\"\",\"locale\":\"ja\"}", req.body)
+        }
+        val err = "{\"error\":\"tts_failed\",\"fallback\":true}".toByteArray()
+        OneShotServer { out ->
+            out.write("HTTP/1.1 502 Bad Gateway\r\nContent-Type: application/json\r\nContent-Length: ${err.size}\r\nConnection: close\r\n\r\n".toByteArray())
+            out.write(err)
+        }.use { server ->
+            assertFailsWith<IOException> { runBlocking { withTimeout(10_000) { fetchChatTtsMp3(server.base, "본문", "ko") } } }
+        }
+    }
 }

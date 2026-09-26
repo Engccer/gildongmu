@@ -54,6 +54,9 @@ fun ChatMessageList(
     onOpenAddress: (JusoAddress, String) -> Unit,
     onSubmitFollowUp: (String) -> Unit,
     onNoApp: () -> Unit,
+    /** 재생 중인 답변 id(듣기 버튼 라벨 전환의 원천). */
+    playingId: Long?,
+    onListen: (ChatMessage) -> Unit,
 ) {
     val lastId = messages.lastOrNull()?.id
     for (message in messages) {
@@ -70,7 +73,7 @@ fun ChatMessageList(
                             AnswerBlock("block-${message.id}-$index", block.text, block.isHeading, places, lang, targets, onOpenPlace)
                         }
                     }
-                    AnswerExtras(message, lang, targets, onOpenPlace, onOpenAddress, onNoApp)
+                    AnswerExtras(message, lang, targets, onOpenPlace, onOpenAddress, onNoApp, playing = message.id == playingId, onListen = { onListen(message) })
                     if (message.id == lastId && !message.failed && followUps.isNotEmpty()) FollowUpChips(message.id, followUps, onSubmitFollowUp)
                 }
             }
