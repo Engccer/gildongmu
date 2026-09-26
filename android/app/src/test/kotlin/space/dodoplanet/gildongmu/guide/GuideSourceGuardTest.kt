@@ -133,11 +133,11 @@ class GuideSourceGuardTest {
         assertTrue(calls.all { it.contains("FLAG_IMMUTABLE") }, calls.joinToString("\n---\n"))
     }
 
-    /** 안전망 무이동 축은 도착 추정이 발동할 수 있는 동안(창 ∧ 거리 캡)만 끈다(나들이 spec §9, iOS 동형). */
-    @Test fun `⑭ 안전망 무이동 축은 도착 추정이 발동할 수 있는 동안만 끈다`() {
+    /** 안전망 무이동 축은 도착 추정이 발동할 수 있는 동안(창 ∧ 거리 캡) 유예를 두고 늦게 켠다(나들이 spec §9, iOS 동형). */
+    @Test fun `⑭ 안전망 무이동 축은 도착 추정이 발동할 수 있는 동안 늦게 켠다`() {
         val src = guide.resolve("WalkGuideModel.kt").readText()
         val idle = src.substring(src.indexOf("fun maybeEndIdleSession"), src.indexOf("fun maybePresumeArrival"))
         assertTrue(idle.contains("(lastUsableDistanceToDest ?: Double.POSITIVE_INFINITY) <= it.maxDistanceMeters"), idle)
-        assertTrue(idle.contains("tuning.sessionIdleStationaryAxis && !presumedArrivalCanFire"), idle)
+        assertTrue(idle.contains("sessionIdleStationaryElapsed(now - progressRef, presumedArrivalCanFire)"), idle)
     }
 }

@@ -2238,16 +2238,19 @@ final class BeaconModel {
         guard isTracking, prewalkTarget == nil, let startedAt else { return false }
         let fixRef = max(startedAt, lastFixAt ?? startedAt)
         let progressRef = max(startedAt, sessionLastProgressAt ?? startedAt)
-        // 무이동 축은 **도착 추정이 발동할 수 있는 동안만** 끈다(나들이 spec §9, 2026-09-26). 무이동 300초가
-        // 도착 추정 제자리 300초와 같아서, 그 동안 이 축을 켜면 25m 앵커 시계가 10m 앵커 시계보다 늘 같거나
-        // 먼저 차 목적지 앞에 선 사용자가 추정 도착 대신 안전망 종료를 듣는다. "발동할 수 있다" = 도착 창 ∧
-        // 마지막 확인 거리가 도착 추정의 거리 캡 안 — 창만 보면 목적지를 지나 150m 밖에서 머문 세션을 두 판정
-        // 모두 놓쳐 영영 끝나지 않는다(구현 리뷰). 두절 축은 그대로(180 < 300이라 도착 추정이 먼저 판정한다).
+        // 무이동 축은 **도착 추정이 발동할 수 있는 동안 늦게 켠다**(Kit `sessionIdleStationaryElapsed`, 나들이 spec §9,
+        // 2026-09-26). 무이동 300초가 도착 추정 제자리 300초와 같아서 그대로면 25m 앵커 시계가 10m 앵커 시계보다
+        // 먼저 차 목적지 앞에 선 사용자가 추정 도착 대신 안전망 종료를 듣고, 아예 끄면 실내 wifi 지터가 10m 앵커를
+        // 계속 밀어 두 판정 모두 영영 끝나지 않는다. "발동할 수 있다" = 도착 창 ∧ 마지막 확인 거리가 거리 캡 안.
+        // 두절 축은 그대로(180 < 300이라 도착 추정이 먼저 판정한다).
         let presumedArrivalCanFire = inArrivalWindow
             && (tuning.presumedArrival.map { (lastUsableDistanceToDest ?? .infinity) <= $0.maxDistanceMeters } ?? false)
         guard let reason = sessionIdleStep(
             secondsSinceUsableFix: now - fixRef,
-            secondsSinceProgress: tuning.sessionIdleStationaryAxis && !presumedArrivalCanFire ? now - progressRef : nil
+            secondsSinceProgress: tuning.sessionIdleStationaryAxis
+                ? sessionIdleStationaryElapsed(
+                    secondsSinceProgress: now - progressRef, presumedArrivalCanFire: presumedArrivalCanFire)
+                : nil
         ) else { return false }
         guideDiagLog("sessionIdleEnd reason=\(reason.rawValue)")
         let text = appLocalized("guide.endedIdle")

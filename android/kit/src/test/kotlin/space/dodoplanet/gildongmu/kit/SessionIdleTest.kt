@@ -9,7 +9,13 @@ import kotlin.test.assertTrue
 /** 웹 정본과 같은 공유 fixture(`session-idle-scenarios.json`)를 읽는다 — Kit `SessionIdleTests` 미러. */
 class SessionIdleTest {
     @Serializable
-    private data class FixtureFile(val scenarios: List<Scenario>) {
+    private data class FixtureFile(val scenarios: List<Scenario>, val graceScenarios: List<GraceScenario> = emptyList()) {
+        @Serializable
+        data class GraceScenario(val name: String, val input: GraceInput, val expect: Double)
+
+        @Serializable
+        data class GraceInput(val secondsSinceProgress: Double, val presumedArrivalCanFire: Boolean)
+
         @Serializable
         data class Scenario(val name: String, val input: Input, val expect: String? = null)
 
@@ -44,5 +50,11 @@ class SessionIdleTest {
         assertEquals(SessionIdleReason.noFix, sessionIdleStep(sessionIdleNoFixSeconds, null))
         assertNull(sessionIdleStep(1.0, null))
         assertNull(sessionIdleStep(Double.NaN, null))
+    }
+
+    @Test fun `무이동 유예 공유 fixture 동조`() {
+        val grace = Fixtures.sharedJson("session-idle-scenarios.json", FixtureFile.serializer()).graceScenarios
+        assertTrue(grace.isNotEmpty())
+        for (s in grace) assertEquals(s.expect, sessionIdleStationaryElapsed(s.input.secondsSinceProgress, s.input.presumedArrivalCanFire), s.name)
     }
 }

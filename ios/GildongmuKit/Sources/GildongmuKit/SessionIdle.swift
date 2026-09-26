@@ -15,6 +15,16 @@ public let sessionIdleStationarySeconds = 300.0
 /// 세션 진행 앵커 이탈 하한(m). 실내 wifi 지터가 도착 추정의 10m를 넘어 "이동"으로 읽히는 것을 막는다.
 public let sessionProgressEpsilonMeters = 25.0
 
+/// 도착 추정이 발동할 수 있는 동안(도착 창 ∧ 거리 캡 안) 무이동 축에 주는 유예(초). 끄지 않고 늦게 켠다 — 그대로면
+/// 25m 앵커 시계가 10m 앵커 시계보다 먼저 차 추정 도착을 선점하고, 아예 끄면 실내 wifi 지터가 10m 앵커를 계속 밀어
+/// 두 판정 모두 영영 안 끝난다(2026-09-26 구현 검증 N2). 웹 `SESSION_IDLE_ARRIVAL_GRACE_S` 미러.
+public let sessionIdleArrivalGraceSeconds = 120.0
+
+/// 무이동 축에 넣을 경과 시간 — 도착 추정이 발동할 수 있으면 유예만큼 뺀다(음수는 0). 웹 `sessionIdleStationaryElapsed` 미러.
+public func sessionIdleStationaryElapsed(secondsSinceProgress: Double, presumedArrivalCanFire: Bool) -> Double {
+    presumedArrivalCanFire ? max(0, secondsSinceProgress - sessionIdleArrivalGraceSeconds) : secondsSinceProgress
+}
+
 public enum SessionIdleReason: String, Sendable, Equatable {
     case noFix
     case stationary

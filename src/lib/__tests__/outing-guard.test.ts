@@ -118,7 +118,7 @@ describe("나들이 문장 창구", () => {
   it("기기 음성은 대기 한 칸이고 말하는 중엔 선점하지 않는다", () => {
     const speak = functionBody(readFileSync(MODEL, "utf8"), "speakDevice");
     expect(speak).toMatch(/guard TtsPlayer\.shared\.isSpeaking else/);
-    expect(speak).toContain("speechPending = (text, uptimeNow)");
+    expect(speak).toContain("speechPending = (text, uptimeNow, high, keep)");
     expect(speak).toContain("speechPendingTTL");
   });
 });

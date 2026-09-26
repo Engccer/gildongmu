@@ -11,5 +11,11 @@
     { "name": "car(무이동 축 없음): noFix 300s 발동", "input": { "secondsSinceUsableFix": 300, "secondsSinceProgress": null }, "expect": "noFix" },
     { "name": "car(무이동 축 없음): 무이동 축이 null이면 fix가 살아 있는 한 none — 정체·휴게소 정차와 구분 불가", "input": { "secondsSinceUsableFix": 1, "secondsSinceProgress": null }, "expect": null },
     { "name": "car(무이동 축 없음): noFix 임계 직전은 none", "input": { "secondsSinceUsableFix": 299.9, "secondsSinceProgress": null }, "expect": null }
+  ],
+  "graceScenarios": [
+    { "name": "도착 추정이 발동할 수 없으면 경과 그대로", "input": { "secondsSinceProgress": 300, "presumedArrivalCanFire": false }, "expect": 300 },
+    { "name": "도착 추정이 발동할 수 있으면 120초 유예 — 300초면 아직 180", "input": { "secondsSinceProgress": 300, "presumedArrivalCanFire": true }, "expect": 180 },
+    { "name": "유예를 넘겨도 무이동이 이어지면 7분에 300에 닿는다(실내 wifi 지터 사각)", "input": { "secondsSinceProgress": 420, "presumedArrivalCanFire": true }, "expect": 300 },
+    { "name": "유예보다 짧으면 0(음수 금지)", "input": { "secondsSinceProgress": 60, "presumedArrivalCanFire": true }, "expect": 0 }
   ]
 }

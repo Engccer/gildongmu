@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import fixture from "./fixtures/session-idle-scenarios.json";
 import {
+  SESSION_IDLE_ARRIVAL_GRACE_S,
+  sessionIdleStationaryElapsed,
   SESSION_IDLE_NO_FIX_S,
   SESSION_IDLE_STATIONARY_S,
   SESSION_PROGRESS_EPSILON_M,
@@ -38,5 +40,17 @@ describe("sessionIdleStep (공유 fixture)", () => {
     expect(sessionIdleStep({ secondsSinceUsableFix: SESSION_IDLE_NO_FIX_S, secondsSinceProgress: null })).toBe("noFix");
     expect(sessionIdleStep({ secondsSinceUsableFix: 1, secondsSinceProgress: null })).toBeNull();
     expect(sessionIdleStep({ secondsSinceUsableFix: NaN, secondsSinceProgress: null })).toBeNull();
+  });
+});
+
+describe("sessionIdleStationaryElapsed (공유 fixture graceScenarios)", () => {
+  for (const s of fixture.graceScenarios) {
+    it(s.name, () => {
+      expect(sessionIdleStationaryElapsed(s.input.secondsSinceProgress, s.input.presumedArrivalCanFire)).toBe(s.expect);
+    });
+  }
+
+  it("유예는 도착 추정 제자리 축(300초)이 먼저 판정할 기회를 준다", () => {
+    expect(SESSION_IDLE_STATIONARY_S + SESSION_IDLE_ARRIVAL_GRACE_S).toBeGreaterThan(PRESUMED_ARRIVAL_WALK.stationarySeconds);
   });
 });

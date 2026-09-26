@@ -90,7 +90,9 @@ final class OutingModel {
     /// 구획 사이를 옮겨 다닌다(접근성 감사 M4) — "지금 둘러보기"라 열린 동안 몇 초의 낡음은 손실이 아니다.
     private(set) var overviewRelations: [String: OutingRelation] = [:]
     private(set) var overviewHeadingValid = false
-    private var refreshOverviewOnNextFix = false
+    /// 조망을 연 뒤 첫 조회 커밋에서 스냅샷을 다시 찍는다 — 조회가 진행 중이거나 출발점 확정 전에 연 조망이 빈 스냅샷을
+    /// 든 채 "없음"을 말하지 않게(구현 검증 N1). 조망이 따로 거는 재조회든 진행 중이던 조회든 같은 표식이다.
+    private var overviewAwaitingCommit = false
     private var road = OutingRoadState()
     /// 방향 행의 앞쪽 이정표 문구 — 방위가 valid인 마지막 fix에서 정한다(정지 중에도 "…, 마지막 진행 방향"과 함께 남는다).
     private(set) var aheadText: String?
@@ -99,10 +101,14 @@ final class OutingModel {
     /// 주변을 말하는 것이 핵심이라 도보 안내와 같은 문장으로 알리고 시트에 행으로 남긴다(spec §13).
     private(set) var soundDegraded = false
     private var silencedNoticed = false
+    /// 시작 문장이 나갔는가 — 그 뒤의 무음 전이(인터럽션·route 변경 뒤 재승격 실패)는 따로 알린다.
+    private var startAnnounced = false
     /// 안전 문장(시작·횡단보도)이 나간 뒤 이 시각까지는 주변 문장을 미룬다 — 두 대기 칸(톤 뒤 지연·기기 음성)이
     /// 모두 새 문장이 옛 문장을 버리는 방식이라, 같은 fix의 지나침이 횡단보도 예고를 지울 수 있다(spec 준수 리뷰 M-2).
     private var protectedUntil: Double = 0
     private var deferredLow: String?
+    /// 마지막 안전 문장 — 기기 음성 대기 칸이 유효 시간에서 제외한다(버려지면 안 되는 문장).
+    private var protectedText: String?
 
     // MARK: 세션 기계
 
@@ -131,7 +137,7 @@ final class OutingModel {
         }
     )
     /// 기기 음성 대기 한 칸(spec §7.3 — 선점하지 않는다). 말하는 중 새 문장이 오면 옛 대기 문장을 버리고 이것을 둔다.
-    private var speechPending: (text: String, at: Double)?
+    private var speechPending: (text: String, at: Double, high: Bool, keep: Bool)?
     private var speechDrain: Task<Void, Never>?
     /// 대기 칸 문장의 유효 시간(초). 채팅 듣기가 긴 답을 읽는 동안 들어간 지나침이 한참 뒤 나오지 않게 한다.
     private let speechPendingTTL = 6.0
@@ -217,12 +223,7 @@ final class OutingModel {
         }
 
         tones.beginSession()
-        playTone(.start)
-        if isTracking, !tones.isBackgroundAudible {
-            soundDegraded = true
-            ResultHaptic.fire(.attention)
-            say(appLocalized("ios.beacon.soundBackgroundUnavailable"), highPriority: true)
-        }
+        playTone(.start)  // 가청 판정(`soundDegraded`)도 여기서 처음 선다 — 통지는 아래 시작 문장이 함께 낸다
         LocationService.shared.startBeaconUpdates(
             onFix: { [weak self] fix in self?.handle(fix: fix) },
             onError: { [weak self] code in self?.handle(locationError: code) },
@@ -231,10 +232,16 @@ final class OutingModel {
         )
         startWatchdog()
         // 전경 VoiceOver에선 시트 제목과 상태 행 착지가 시작을 알린다 — 통지는 착지와 경합만 한다(접근성 감사 m2).
-        // VoiceOver가 꺼졌거나 백그라운드에서 시작한 경우에만 기기 음성으로 말한다.
+        // VoiceOver가 꺼졌거나 백그라운드에서 시작한 경우에만 기기 음성으로 말한다. 잠금 무음 경고는 시작 문장과 **한
+        // 문장**으로 낸다 — 따로 내면 지연 슬롯의 최신 우선 규칙에 경고가 지워진다(구현 검증 N3).
+        let warning = soundDegraded ? appLocalized("ios.beacon.soundBackgroundUnavailable") : nil
+        if soundDegraded { ResultHaptic.fire(.attention) }
         if !(isForeground && UIAccessibility.isVoiceOverRunning) {
-            sayProtected(appLocalized("ios.outing.started"))
+            sayProtected([appLocalized("ios.outing.started"), warning].compactMap { $0 }.joined(separator: ". "))
+        } else if let warning {
+            sayProtected(warning)
         }
+        startAnnounced = true
     }
 
     /// 시작 거절 — 버튼 활성화의 직접 응답이라 `.high`(헌장 §5).
@@ -269,7 +276,7 @@ final class OutingModel {
         queryTask = nil
         overviewRelations = [:]
         overviewHeadingValid = false
-        refreshOverviewOnNextFix = false
+        overviewAwaitingCommit = false
         road = OutingRoadState()
         aheadText = nil
         lastFix = nil
@@ -281,6 +288,7 @@ final class OutingModel {
         lastBeepMeters = 0
         soundDegraded = false
         silencedNoticed = false
+        startAnnounced = false
         protectedUntil = 0
         deferredLow = nil
         speechPending = nil
@@ -570,7 +578,10 @@ final class OutingModel {
         surroundingsStatus = next.status
         surroundingsFailures = next.failures
         lastQueryFailedAt = outcome == .failure ? uptimeNow : nil
-        if reason == "overview" { refreshOverviewOnNextFix = true }
+        if overviewAwaitingCommit {
+            overviewAwaitingCommit = false
+            snapshotOverview(projectingFrom: lastFix)
+        }
         if case .ok(let osm) = walk?.osm {
             for f in osm.features where f.crossing {
                 if let lat = f.lat, let lng = f.lng { crosswalks[f.osmId] = OutingCrosswalk(id: f.osmId, lat: lat, lng: lng) }
@@ -643,10 +654,6 @@ final class OutingModel {
         }
         relations = next
         if case .valid = heading { aheadText = aheadLandmarkText(next) }
-        if refreshOverviewOnNextFix {
-            refreshOverviewOnNextFix = false
-            snapshotOverview()
-        }
     }
 
     /// 방향 행 앞 절반의 이정표 — 앞 구획의 가장 가까운 landmark(10m 양자화).
@@ -748,14 +755,24 @@ final class OutingModel {
 
     /// 조망 열기 — 현재 위치로 1회 재조회(사용자 요청이라 비용 정당, spec §8.2).
     func refreshForOverview() {
-        snapshotOverview()
-        guard isTracking, origin != nil, queryTask == nil, let fix = lastFix else { return }
+        snapshotOverview(projectingFrom: lastFix)
+        guard isTracking else { return }
+        overviewAwaitingCommit = true
+        guard origin != nil, queryTask == nil, let fix = lastFix else { return }
         requery(at: RoutePoint(lat: fix.lat, lng: fix.lng), reason: "overview")
     }
 
-    private func snapshotOverview() {
-        overviewRelations = relations
+    /// 조망 스냅샷 — 마지막 fix에서 받아 둔 장소 전부를 투영한다(지나침 판정의 `relations`는 건드리지 않는다).
+    private func snapshotOverview(projectingFrom fix: (lat: Double, lng: Double, accuracy: Double)?) {
         if case .valid = heading { overviewHeadingValid = true } else { overviewHeadingValid = false }
+        guard let fix else { overviewRelations = relations; return }
+        var snapshot: [String: OutingRelation] = [:]
+        for (id, p) in places {
+            snapshot[id] = outingProject(
+                fixLat: fix.lat, fixLng: fix.lng, accuracy: fix.accuracy,
+                heading: heading, placeLat: p.lat, placeLng: p.lng)
+        }
+        overviewRelations = snapshot
     }
 
     func place(id: String) -> SurroundingPlace? { places[id] }
@@ -836,6 +853,16 @@ final class OutingModel {
     private func playTone(_ tone: BeaconTone) {
         guard !outputSuppressed else { return }
         tones.play(tone)
+        // 가청 상태는 세션 중에도 바뀐다 — 톤마다 다시 판정한다(도보 `playTone` 동형, 구현 검증 N4). 시작 뒤의
+        // "들림 → 안 들림" 전이만 알린다(시작 때는 시작 문장이 함께 말한다).
+        let degraded = isTracking && !tones.isBackgroundAudible
+        if degraded != soundDegraded {
+            soundDegraded = degraded
+            if degraded, startAnnounced {
+                ResultHaptic.fire(.attention)
+                say(appLocalized("ios.beacon.soundBackgroundUnavailable"))
+            }
+        }
         // 재생 수단이 죽었으면 침묵의 원인을 알린다(도보 안내와 같은 문장·같은 진입 1회 진동).
         if tones.isSilenced {
             guard !silencedNoticed else { return }
@@ -855,6 +882,7 @@ final class OutingModel {
     /// 안전 문장(시작·횡단보도) — 나간 뒤 보호 창 동안 주변 문장을 미룬다.
     private func sayProtected(_ text: String) {
         protectedUntil = uptimeNow + protectSeconds
+        protectedText = text
         say(text)
     }
 
@@ -864,6 +892,7 @@ final class OutingModel {
             deferredLow = text
             return
         }
+        deferredLow = nil  // 미뤄 둔 옛 문장보다 지금 문장이 이긴다 — 다음 틱에 옛 문장이 뒤늦게 나오지 않게(구현 검증 N8)
         say(text)
     }
 
@@ -878,18 +907,21 @@ final class OutingModel {
             if highPriority { attributed.accessibilitySpeechAnnouncementPriority = .high }
             AccessibilityNotification.Announcement(attributed).post()
         } else {
-            speakDevice(spokenUnits(message))
+            // 종료·거절(.high)과 안전 문장은 대기 칸의 유효 시간에서 뺀다 — 버려지면 세션이 끝난 것도 모른다(구현 검증 N6).
+            speakDevice(spokenUnits(message), high: highPriority, keep: highPriority || message == protectedText)
         }
         return true
     }
 
     /// 기기 음성 — 말하는 중이면 대기 한 칸(선점 금지, spec §7.3).
-    private func speakDevice(_ text: String) {
+    private func speakDevice(_ text: String, high: Bool, keep: Bool) {
         guard TtsPlayer.shared.isSpeaking else {
             TtsPlayer.shared.speakGuidance(text)
             return
         }
-        speechPending = (text, uptimeNow)
+        // 지켜야 할 문장이 대기 중이면 평범한 문장으로 덮지 않는다.
+        if let pending = speechPending, pending.keep, !keep { return }
+        speechPending = (text, uptimeNow, high, keep)
         guard speechDrain == nil else { return }
         speechDrain = Task { [weak self] in
             while !Task.isCancelled {
@@ -901,9 +933,13 @@ final class OutingModel {
                 self.speechPending = nil
                 // 너무 오래 기다린 문장은 버린다(그 장소는 이미 한참 뒤다). 꺼내는 순간 채널을 다시 고른다 —
                 // 잠금 중 대기한 문장이 전경 VoiceOver 위에 기기 음성으로 겹치지 않게.
-                guard self.uptimeNow - next.at <= self.speechPendingTTL else { return }
+                // 받아쓰기가 그 사이 시작됐으면 버린다 — 녹음 중 발화 0(헌장 §6, 구현 검증 N7).
+                guard !self.outputSuppressed else { return }
+                guard next.keep || self.uptimeNow - next.at <= self.speechPendingTTL else { return }
                 if self.isForeground && UIAccessibility.isVoiceOverRunning {
-                    AccessibilityNotification.Announcement(AttributedString(next.text)).post()
+                    var attributed = AttributedString(next.text)
+                    if next.high { attributed.accessibilitySpeechAnnouncementPriority = .high }
+                    AccessibilityNotification.Announcement(attributed).post()
                 } else {
                     TtsPlayer.shared.speakGuidance(next.text)
                 }

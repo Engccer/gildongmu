@@ -17,6 +17,13 @@ const val sessionIdleStationarySeconds = 300.0
 /** 세션 진행 앵커 이탈 하한(m). 실내 wifi 지터가 도착 추정의 10m를 넘어 "이동"으로 읽히는 것을 막는다. */
 const val sessionProgressEpsilonMeters = 25.0
 
+/** 도착 추정이 발동할 수 있는 동안 무이동 축에 주는 유예(초) — 끄지 않고 늦게 켠다(Kit·웹 미러, 2026-09-26 구현 검증 N2). */
+const val sessionIdleArrivalGraceSeconds = 120.0
+
+/** 무이동 축에 넣을 경과 시간 — 도착 추정이 발동할 수 있으면 유예만큼 뺀다(음수는 0). */
+fun sessionIdleStationaryElapsed(secondsSinceProgress: Double, presumedArrivalCanFire: Boolean): Double =
+    if (presumedArrivalCanFire) maxOf(0.0, secondsSinceProgress - sessionIdleArrivalGraceSeconds) else secondsSinceProgress
+
 enum class SessionIdleReason {
     noFix,
     stationary;

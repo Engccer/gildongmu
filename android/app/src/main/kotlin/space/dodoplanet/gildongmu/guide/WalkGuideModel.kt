@@ -85,6 +85,7 @@ import space.dodoplanet.gildongmu.kit.presumedArrivalStep
 import space.dodoplanet.gildongmu.kit.rebaseBeaconState
 import space.dodoplanet.gildongmu.kit.relativeDirection
 import space.dodoplanet.gildongmu.kit.routeOriginStep
+import space.dodoplanet.gildongmu.kit.sessionIdleStationaryElapsed
 import space.dodoplanet.gildongmu.kit.sessionIdleStep
 import space.dodoplanet.gildongmu.kit.sessionProgressEpsilonMeters
 import space.dodoplanet.gildongmu.kit.spokenDistanceUnits
@@ -1121,12 +1122,12 @@ class WalkGuideModel(
         val startedAt = startedAt ?: return false
         val fixRef = max(startedAt, lastFixAt ?: startedAt)
         val progressRef = max(startedAt, sessionLastProgressAt ?: startedAt)
-        // 무이동 축은 도착 추정이 발동할 수 있는 동안(도착 창 ∧ 마지막 확인 거리 ≤ 거리 캡)만 끈다(나들이 spec §9, iOS 동형) —
-        // 무이동 300초가 도착 추정 제자리 300초와 같아 그 동안 켜면 추정 도착을 선점하고, 창만 보면 150m 밖에서 머문 세션이
-        // 영영 안 끝난다. 두절 축은 그대로.
+        // 무이동 축은 도착 추정이 발동할 수 있는 동안(도착 창 ∧ 마지막 확인 거리 ≤ 거리 캡) 늦게 켠다(`sessionIdleStationaryElapsed`,
+        // 나들이 spec §9, iOS 동형) — 그대로면 추정 도착을 선점하고, 끄면 실내 지터가 10m 앵커를 밀어 두 판정 모두 영영 안 끝난다.
+        // 두절 축은 그대로.
         val presumedArrivalCanFire = inArrivalWindow &&
             (tuning.presumedArrival?.let { (lastUsableDistanceToDest ?: Double.POSITIVE_INFINITY) <= it.maxDistanceMeters } ?: false)
-        val stationary = if (tuning.sessionIdleStationaryAxis && !presumedArrivalCanFire) now - progressRef else null
+        val stationary = if (tuning.sessionIdleStationaryAxis) sessionIdleStationaryElapsed(now - progressRef, presumedArrivalCanFire) else null
         val reason = sessionIdleStep(now - fixRef, stationary) ?: return false
         GuideDiag.log("sessionIdleEnd reason=${reason.rawValue}")
         val spoken = strings.get("guide.endedIdle")

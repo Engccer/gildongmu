@@ -4,7 +4,19 @@ import Testing
 
 /// 웹 정본과 같은 공유 fixture(`src/lib/__tests__/fixtures/session-idle-scenarios.json`)를
 /// 레포 상대 경로로 읽는다(사본 금지 — `FinalApproachTests` 관례 동형).
-private struct FixtureFile: Decodable { let scenarios: [Scenario] }
+private struct FixtureFile: Decodable {
+    let scenarios: [Scenario]
+    let graceScenarios: [GraceScenario]
+}
+private struct GraceScenario: Decodable {
+    let name: String
+    let input: Input
+    let expect: Double
+    struct Input: Decodable {
+        let secondsSinceProgress: Double
+        let presumedArrivalCanFire: Bool
+    }
+}
 private struct Scenario: Decodable {
     let name: String
     let input: Input
@@ -19,7 +31,24 @@ private func loadScenarios() throws -> [Scenario] {
     var url = URL(fileURLWithPath: #filePath)
     for _ in 0..<5 { url.deleteLastPathComponent() } // GildongmuKitTests→Tests→GildongmuKit→ios→repo
     url.appendPathComponent("src/lib/__tests__/fixtures/session-idle-scenarios.json")
-    return try JSONDecoder().decode(FixtureFile.self, from: Data(contentsOf: url)).scenarios
+    return try loadFixture().scenarios
+}
+
+private func loadFixture() throws -> FixtureFile {
+    var url = URL(fileURLWithPath: #filePath)
+    for _ in 0..<5 { url.deleteLastPathComponent() }
+    url.appendPathComponent("src/lib/__tests__/fixtures/session-idle-scenarios.json")
+    return try JSONDecoder().decode(FixtureFile.self, from: Data(contentsOf: url))
+}
+
+@Test("무이동 유예 공유 fixture 동조")
+func sessionIdleGraceMatchesSharedFixture() throws {
+    for s in try loadFixture().graceScenarios {
+        let got = sessionIdleStationaryElapsed(
+            secondsSinceProgress: s.input.secondsSinceProgress,
+            presumedArrivalCanFire: s.input.presumedArrivalCanFire)
+        #expect(got == s.expect, "\(s.name)")
+    }
 }
 
 @Test("공유 fixture 동조")
