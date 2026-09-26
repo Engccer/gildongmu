@@ -244,7 +244,7 @@
 | `JUSO_CONFM_KEY` | `hasJusoKey` | 행안부 도로명주소 검색(영문주소+우편번호), 무료·무제한 |
 | `SEOUL_OPEN_DATA_KEY` | `hasSeoulOpenDataKey` | 서울 열린데이터(따릉이·문화행사·실시간 혼잡도). 일 1,000회를 셋이 **공유**하므로 신규 소비자는 캐시 설계가 필수. ⚠ 실시간 지하철은 별도 키 |
 | `SEOUL_SUBWAY_REALTIME_KEY` | `hasSeoulSubwayRealtimeKey` | "실시간 데이터 인증키"(일반키로 호출 시 `ERROR-338`), 일 1,000회를 도착·열차 위치(E35)가 나눈다 |
-| `ODSAY_API_KEY` | `hasOdsayKey` | ODsay 대중교통 — Flex(후불 종량제) 앱 `gildongmuflex` 키, Referer `gildongmu.dodoplanet.space`에 묶인다. ⚠ **호출 수가 곧 비용**이다 — 새 호출 경로는 캐시 뒤, 실호출 게이트는 최소로. 옛 Basic 앱 `gildongmuweb`은 쓰지 않는다(약관 4.5.3). → INTEGRATIONS |
+| `ODSAY_API_KEY` | `hasOdsayKey` | ODsay 대중교통 — Flex(후불 종량제) 앱 `gildongmuflex` 키, Referer `gildongmu.dodoplanet.space`에 묶인다. ⚠ **호출 수가 곧 비용**이다 — 새 호출 경로는 캐시 뒤, 실호출 게이트는 최소로(corpus 재생 `--from-corpus` 우선, 실호출은 `--out`으로 저장). 옛 Basic 앱 `gildongmuweb`은 쓰지 않는다(약관 4.5.3). → INTEGRATIONS |
 | `DEEPGRAM_API_KEY` | `hasDeepgramKey` | STT nova-3 (dodo 공유). ⚠ prod 502면 키 유효성 먼저([[deepgram-prod-key-401]]) |
 | `GOOGLE_CLOUD_TTS_API_KEY` | — (게이트 함수 없음) | `/api/tts`(Chirp 3 HD MP3): iOS TtsPlayer 낭독과 웹 채팅 [듣기](B12)의 **폴백**. 정본은 기기 음성(iOS `AVSpeechSynthesizer`·웹 `speechSynthesis`, 2026-07-27 위원장 판정)이고 서버 경로는 현재 로케일 보이스가 기기에 없을 때만 탄다 |
 | `GEMINI_API_KEY` | `hasGeminiKey` | 채팅 FC 엔진(모델은 env가 아니라 코드 상수 `GEMINI_MODEL`, `src/lib/gemini/client.ts`). 길동무 전용 GCP 프로젝트 `gildongmu-prod`의 API 제한 키 — ⚠ dodo와 공유하지 않는다. 키 교체 시 로컬·Vercel prod·리포트 상수 3곳 동조. → INTEGRATIONS |

@@ -6,11 +6,19 @@
 // 경로 셋: 길동→강남(지하철 3구간) · 김포공항→신논현(9호선 급행 **필수 표본** — 급행 lane이 없으면 FAIL) ·
 // 길동→하남(버스 정류소 복합명). 각각 en·ko로 조회해 대조하고, 실시간 도착 en(강남·서울역)도 관측한다.
 //
-// 사용법: node scripts/verify-odsay-lang.mjs
+// 저장 응답(corpus): 공용 규약 `scripts/lib/odsay-corpus.mjs`. 돌리기 전에 corpus를 먼저 찾는다
+//   (`~/gildongmu-private/probes/odsay-lang-*`). ODsay Flex는 호출당 과금이라 실호출은 반드시 `--out`으로 저장한다.
+//   ODsay 밖 호출(운행시간·실시간 도착 등)은 가로채지 않는다 — 오프라인에서도 그쪽은 실호출이다.
+//
+// 사용법: node scripts/verify-odsay-lang.mjs --out <dir> | --from-corpus <dir>
+//   exit 0 = 통과 / 1 = 계약 위반 / 3 = 오프라인 corpus에 없는 요청(호출 0, 판정 불가) / 64 = 인자 오류
 import { readFileSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { CorpusMissError, corpusArgsOrExit, openCorpus, storableOdsayBody } from "./lib/odsay-corpus.mjs";
+
+const corpusArgs = corpusArgsOrExit(process.argv.slice(2));
 
 try {
   for (const line of readFileSync(".env.local", "utf8").split("\n")) {
@@ -42,8 +50,10 @@ writeFileSync(
   [
     `export { getTransitRoute, normalizeOdsayRoutes, assertKorComplete } from ${JSON.stringify(resolve("src/lib/providers/odsay"))};`,
     `export { fetchSubwayArrivals, withArrivalsEn } from ${JSON.stringify(resolve("src/lib/providers/seoul-subway-arrival"))};`,
+    `export { readOdsayError, isNoRouteError } from ${JSON.stringify(resolve("src/lib/providers/odsay-envelope"))};`,
   ].join("\n"),
 );
+let corpus;
 try {
   execFileSync(
     "npx",
@@ -53,7 +63,9 @@ try {
     { stdio: "pipe" },
   );
   const mod = await import(bundlePath);
-  const { getTransitRoute, normalizeOdsayRoutes, fetchSubwayArrivals, withArrivalsEn } = mod;
+  const { getTransitRoute, normalizeOdsayRoutes, fetchSubwayArrivals, withArrivalsEn, readOdsayError, isNoRouteError } = mod;
+  corpus = openCorpus({ ...corpusArgs, shouldStore: storableOdsayBody({ readOdsayError, isNoRouteError }) });
+  corpus.installFetch();
   /** provider 캐시 밖 raw 호출 — 급행 전수 검사용(선정 5개에 가려지지 않게). */
   async function fetchOdsayRaw(origin, dest) {
     const q = new URLSearchParams({ SX: String(origin.lng), SY: String(origin.lat), EX: String(dest.lng), EY: String(dest.lat), OPT: "0", lang: "1" });
@@ -169,10 +181,17 @@ try {
     check(`도착 ${station}: 한국어 원문 불변`, en.arrivals.every((a, i) => a.message === raw.arrivals[i].message && a.trainLineNm === raw.arrivals[i].trainLineNm));
     console.log(`  표본: ${en.arrivals.slice(0, 3).map((a) => `${a.lineEn} ${a.directionEn}, ${a.trainLineNmEn}, ${a.messageEn}`).join(" / ")}`);
   }
+} catch (e) {
+  // 오프라인 corpus에 없는 요청은 아래 exitIfMissed가 판정 불가(exit 3)로 끝낸다.
+  if (!(e instanceof CorpusMissError)) throw e;
 } finally {
   rmSync(workDir, { recursive: true, force: true });
 }
 
+if (corpus) {
+  console.log(corpus.summary());
+  corpus.exitIfMissed();
+}
 const failed = results.filter((r) => !r.pass);
 console.log(`\n${results.length - failed.length}/${results.length} PASS`);
 process.exit(failed.length === 0 ? 0 : 1);

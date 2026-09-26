@@ -11,25 +11,21 @@
 // 그 수단만 타는 경로가 없음. 재조회 "없음" 갈래는 표본에서 관측되지 않아 단위 테스트(odsay-pipeline)가 잠근다.
 //
 // ⚠ ODsay Flex는 호출당 과금이다. 실호출은 `--ledger`(호출 원장) 필수이고 원장 누적이 상한(40)에 닿으면
-//   호출 전에 멈춘다. `--out` 디렉터리에 이미 있는 응답은 다시 부르지 않는다(재실행 = 재사용).
+//   호출 전에 멈춘다. 저장·재생은 공용 corpus 규약(`scripts/lib/odsay-corpus.mjs`)을 따른다 — 돌리기 전에 corpus를
+//   먼저 찾는다(`~/gildongmu-private/probes/odsay-alternatives-*`). `--out` 디렉터리에 이미 있는 응답은 다시 부르지 않는다.
+//   파일 이름은 이 게이트 고유의 `full-<쌍>`·`pt<1|2>-<쌍>`이다(2026-09-24 corpus 호환 — 공용 `requestKey`를 쓰지 않는다).
 //
 // 사용법:
 //   live:    node scripts/verify-odsay-alternatives.mjs --out <dir> --ledger <file> [--requery]
 //   offline: node scripts/verify-odsay-alternatives.mjs --from-corpus <dir>
-//   (원시 응답은 사설 경로에 둔다 — 저장소에 커밋하지 않는다)
-import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+//   (원시 응답은 저장소 밖 사설 경로에 둔다 — 저장소 안 경로는 lib가 거절한다)
+import { appendFileSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { OFFLINE_KEY_PLACEHOLDER, openCorpus, storableOdsayBody } from "./lib/odsay-corpus.mjs";
 
 const CALL_CAP = 40;
-
-try {
-  for (const line of readFileSync(".env.local", "utf8").split("\n")) {
-    const m = line.match(/^([A-Z_]+)=(.*)$/);
-    if (m && !process.env[m[1]]) process.env[m[1]] = m[2];
-  }
-} catch { /* CI 등에서는 환경변수 직접 주입 */ }
 
 function parseArgs(argv) {
   const opts = {};
@@ -57,9 +53,17 @@ try {
   console.error(`FAIL: ${e.message}`);
   process.exit(2);
 }
-const corpusDir = resolve(opts["--from-corpus"] ?? opts["--out"]);
 const offline = Boolean(opts["--from-corpus"]);
-if (!offline) mkdirSync(corpusDir, { recursive: true });
+// 오프라인은 키를 읽지 않는다(자리 표시가 먼저 들어가 .env.local 값을 막는다).
+if (offline) process.env.ODSAY_API_KEY = OFFLINE_KEY_PLACEHOLDER;
+try {
+  for (const line of readFileSync(".env.local", "utf8").split("\n")) {
+    const m = line.match(/^([A-Z_]+)=(.*)$/);
+    if (m && !process.env[m[1]]) process.env[m[1]] = m[2];
+  }
+} catch { /* CI 등에서는 환경변수 직접 주입 */ }
+/** 번들 import 뒤에 연다(저장 술어가 provider 봉투 판독을 쓴다). */
+let corpus;
 
 // 표본: 수도권 6 + 광역시 4. 좌표는 역·공공 지점(자택 좌표 금지).
 export const PAIRS = [
@@ -87,10 +91,13 @@ function ledgerCount() {
 }
 
 /** 저장본이 있으면 읽고, 없으면(live) 한 번 부르고 저장한다. offline에서 없으면 throw. */
-async function loadOrFetch(file, pair, searchPathType) {
-  const path = join(corpusDir, file);
-  if (existsSync(path)) return JSON.parse(readFileSync(path, "utf8"));
-  if (offline) throw new Error(`코퍼스에 ${file}이 없다`);
+async function loadOrFetch(key, pair, searchPathType) {
+  const body = await corpus.fetchOrReplay(key, () => fetchOnce(pair, searchPathType));
+  if (body === null) throw new Error(`코퍼스에 ${key}.json이 없다`);
+  return body;
+}
+
+async function fetchOnce(pair, searchPathType) {
   if (!process.env.ODSAY_API_KEY) throw new Error("ODSAY_API_KEY 없음 — 빈 키로 부르면 오류 봉투가 코퍼스에 남는다");
   const used = ledgerCount();
   if (used + 1 > CALL_CAP) throw new Error(`호출 상한 ${CALL_CAP} 도달(원장 ${used}건) — 멈추고 보고한다`);
@@ -115,7 +122,6 @@ async function loadOrFetch(file, pair, searchPathType) {
   // 실패로 끝낸다 — 저장하면 이후 --from-corpus 재실행이 영영 그 오류를 "경로 없음"으로 읽는다.
   const err = readOdsayError(body.error);
   if (err && !isNoRouteError(err.code)) throw new Error(`ODsay 오류 봉투 ${err.code} ${err.message} (${pair.id}) — 저장하지 않음`);
-  writeFileSync(path, JSON.stringify(body));
   return body;
 }
 
@@ -160,10 +166,15 @@ try {
     { stdio: "pipe" },
   );
   ({ normalizeOdsayRoutes, selectTransitRoutes, annotateHighlights, filterRoutesByMode, readOdsayError, isNoRouteError } = await import(bundlePath));
+  corpus = openCorpus({
+    dir: opts["--from-corpus"] ?? opts["--out"],
+    offline,
+    shouldStore: storableOdsayBody({ readOdsayError, isNoRouteError }),
+  });
 
   const rows = [];
   for (const pair of PAIRS) {
-    const data = await loadOrFetch(`full-${pair.id}.json`, pair, null);
+    const data = await loadOrFetch(`full-${pair.id}`, pair, null);
     const paths = data.result?.path;
     if (!Array.isArray(paths) || paths.length === 0) {
       console.log(`SKIP — ${pair.name}: 경로 없음·오류 (${JSON.stringify(data.error ?? null).slice(0, 120)})`);
@@ -293,11 +304,11 @@ try {
       const probes = FIDELITY_PROBES.filter((f) => f.pairId === pair.id && !offers.includes(f.axis)).map((f) => f.axis);
       for (const axis of [...offers, ...probes]) {
         const spt = axis === "busOnly" ? "2" : "1";
-        const file = `pt${spt}-${pair.id}.json`;
-        if (offline && !existsSync(join(corpusDir, file))) continue;
+        const key = `pt${spt}-${pair.id}`;
+        if (offline && !corpus.has(key)) continue;
         let body;
         try {
-          body = await loadOrFetch(file, pair, spt);
+          body = await loadOrFetch(key, pair, spt);
         } catch (e) {
           if (/호출 상한/.test(e.message)) throw e;
           outcome.failed++;
@@ -323,6 +334,7 @@ try {
     console.log(`(d) 재조회 결과 찾음 ${outcome.found} · 없음 ${outcome.none} · 실패 ${outcome.failed}`);
   }
 
+  console.log(corpus.summary());
   if (!offline) console.log(`호출 원장 누적 ${ledgerCount()}/${CALL_CAP}건 (${opts["--ledger"]})`);
   const failed = results.filter((r) => !r.pass);
   console.log(failed.length === 0 ? `\n전부 통과 (${results.length}건)` : `\nFAIL ${failed.length}/${results.length}건`);

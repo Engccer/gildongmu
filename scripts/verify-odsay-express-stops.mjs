@@ -17,12 +17,20 @@
 // ⚠ ODsay 일 1,000회를 프로덕션과 공유한다. 이 게이트는 **6콜**(집합 정·역 2 + 9호선 길찾기 1 + 그 안의 express
 //   조회 2(캐시 없는 환경) + 1호선 길찾기 1)을 쓴다. 429면 재시도하지 않는다(exit 2).
 //
-// 사용법: node scripts/verify-odsay-express-stops.mjs
+// 저장 응답(corpus): 공용 규약 `scripts/lib/odsay-corpus.mjs`. 돌리기 전에 corpus를 먼저 찾는다
+//   (`~/gildongmu-private/probes/odsay-express-stops-*`). ODsay Flex는 호출당 과금이라 실호출은 반드시 `--out`으로 저장한다.
+//   ODsay 밖 호출(운행시간·실시간 도착 등)은 가로채지 않는다 — 오프라인에서도 그쪽은 실호출이다.
+//
+// 사용법: node scripts/verify-odsay-express-stops.mjs --out <dir> | --from-corpus <dir>
 //   exit 0 = 통과 / 1 = 계약 위반 또는 호출 불가 / 2 = ODsay 일일 쿼터 소진
+//   3 = 오프라인 corpus에 없는 요청(호출 0, 판정 불가) / 64 = 인자 오류
 import { readFileSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { corpusArgsOrExit, openCorpus, storableOdsayBody } from "./lib/odsay-corpus.mjs";
+
+const corpusArgs = corpusArgsOrExit(process.argv.slice(2));
 
 try {
   for (const line of readFileSync(".env.local", "utf8").split("\n")) {
@@ -57,15 +65,19 @@ writeFileSync(
   entryPath,
   `export { getTransitRoute } from ${JSON.stringify(resolve("src/lib/providers/odsay"))};
 export { fetchExpressStopsUncached } from ${JSON.stringify(resolve("src/lib/providers/odsay-express-stops"))};
-export { EXPRESS_LINES } from ${JSON.stringify(resolve("src/lib/express-stops"))};`,
+export { EXPRESS_LINES } from ${JSON.stringify(resolve("src/lib/express-stops"))};
+export { readOdsayError, isNoRouteError } from ${JSON.stringify(resolve("src/lib/providers/odsay-envelope"))};`,
 );
+let corpus;
 try {
   execFileSync(
     "npx",
     ["esbuild", entryPath, "--bundle", "--format=esm", "--platform=node", `--alias:next/cache=${stubPath}`, `--outfile=${bundlePath}`],
     { stdio: "pipe" },
   );
-  const { getTransitRoute, fetchExpressStopsUncached, EXPRESS_LINES } = await import(bundlePath);
+  const { getTransitRoute, fetchExpressStopsUncached, EXPRESS_LINES, readOdsayError, isNoRouteError } = await import(bundlePath);
+  corpus = openCorpus({ ...corpusArgs, shouldStore: storableOdsayBody({ readOdsayError, isNoRouteError }) });
+  corpus.installFetch();
   const line9 = EXPRESS_LINES.find((e) => e.line === "수도권 9호선");
 
   // ① 집합 골든 전수(정·역방향 2콜)
@@ -158,6 +170,10 @@ try {
   rmSync(workDir, { recursive: true, force: true });
 }
 
+if (corpus) {
+  console.log(corpus.summary());
+  corpus.exitIfMissed();
+}
 const failed = results.filter((r) => !r.pass);
 console.log(`\n${results.length - failed.length}/${results.length} PASS`);
 process.exit(quota ? 2 : failed.length > 0 ? 1 : 0);

@@ -9,6 +9,12 @@
 
 ---
 
+## 2026-09-26
+
+### ODsay 실호출 게이트 5종이 저장 응답을 한 규약으로 재사용한다 (E47-1)
+
+`verify-odsay-alternatives.mjs`의 저장·재생 규약을 `scripts/lib/odsay-corpus.mjs`로 뽑았다(요청 하나 = 파일 하나, 실패 응답 미저장, `--from-corpus`는 읽기 전용·호출 0, corpus는 저장소 밖). provider를 태우는 게이트는 전역 `fetch`를 가로채 ODsay 호출만 corpus를 지나므로 판정 로직은 그대로다. `express-lane`·`express-stops`·`lang`·`transfer-door`에 `--out`/`--from-corpus`를 달았고 저장 없는 실호출 모드는 없앴다(corpus에 없는 요청은 exit 3). 기존 corpus 재생 판정은 종전과 같다(45건 통과, 재생 13·실호출 0). 이 세션의 ODsay 실호출 0건. [계획](docs/superpowers/plans/2026-09-26-backlog-sweep-6-parallel-plan.md)
+
 ## 2026-09-24
 
 ### 챌린지 발표 연기에 따른 재동결 — 프로덕션을 제출 당일 배포본으로

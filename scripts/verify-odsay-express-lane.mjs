@@ -15,9 +15,19 @@
 //   문자열 그대로를 `subwayIdForOdsayLine`에 넣어 단언한다). 둘이 합쳐야 축이
 //   덮인다 — 이 게이트만으로는 `subwayLineCore`가 바뀌어도 통과한다.
 //
-// 사용법: node scripts/verify-odsay-express-lane.mjs
+// 저장 응답(corpus): 공용 규약 `scripts/lib/odsay-corpus.mjs`. 돌리기 전에 corpus를 먼저 찾는다
+//   (`~/gildongmu-private/probes/odsay-express-lane-*`). ODsay Flex는 호출당 과금이라 실호출은 반드시 `--out`으로 저장한다.
+//
+// 사용법: node scripts/verify-odsay-express-lane.mjs --out <dir> | --from-corpus <dir>
 //   exit 0 = 통과 / 1 = 계약 위반 또는 호출 불가 / 2 = ODsay 일일 쿼터 소진
-import { readFileSync } from "node:fs";
+//   3 = 오프라인 corpus에 없는 요청(호출 0, 판정 불가) / 64 = 인자 오류
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
+import { CorpusMissError, corpusArgsOrExit, openCorpus, storableOdsayBody } from "./lib/odsay-corpus.mjs";
+
+const corpusArgs = corpusArgsOrExit(process.argv.slice(2));
 
 try {
   for (const line of readFileSync(".env.local", "utf8").split("\n")) {
@@ -44,11 +54,35 @@ const url =
   `https://api.odsay.com/v1/api/searchPubTransPathT?apiKey=${KEY}` +
   `&SX=126.8018&SY=37.5629&EX=127.0733&EY=37.5110&OPT=0&SearchPathType=1`;
 
+// 저장 술어는 provider 봉투 판독을 그대로 쓴다(판정 복제 금지 — 다른 ODsay 게이트와 같은 esbuild 번들).
+const workDir = mkdtempSync(join(tmpdir(), "odsay-lane-gate-"));
+const bundlePath = join(workDir, "envelope.mjs");
+let envelope;
+try {
+  execFileSync(
+    "npx",
+    ["esbuild", resolve("src/lib/providers/odsay-envelope.ts"), "--bundle", "--format=esm", "--platform=node", `--outfile=${bundlePath}`],
+    { stdio: "pipe" },
+  );
+  envelope = await import(bundlePath);
+} finally {
+  rmSync(workDir, { recursive: true, force: true });
+}
+const corpus = openCorpus({ ...corpusArgs, shouldStore: storableOdsayBody(envelope) });
+corpus.installFetch();
+
 // ⚠ URI 전용 키라 Referer 필수(provider와 같은 값).
-const res = await fetch(url, {
-  headers: { Referer: "https://gildongmu.dodoplanet.space/" },
-  signal: AbortSignal.timeout(20000),
-});
+let res;
+try {
+  res = await fetch(url, {
+    headers: { Referer: "https://gildongmu.dodoplanet.space/" },
+    signal: AbortSignal.timeout(20000),
+  });
+} catch (e) {
+  if (e instanceof CorpusMissError) corpus.exitIfMissed();
+  throw e;
+}
+console.log(corpus.summary());
 const text = await res.text();
 let json;
 try {
