@@ -132,7 +132,7 @@ fun SettingsScreen(
         focusRowConsumed = true
         withFrameNanos { }
         val target = row?.let { rowFocus[it] } ?: titleFocus
-        runCatching { target?.requestFocus() }.onFailure { Log.w("Settings", "착지 실패 $key", it) }
+        runCatching { target.requestFocus() }.onFailure { Log.w("Settings", "착지 실패 $key", it) }
     }
     // 다이얼로그가 닫힌 뒤 복귀 착지 = 연 행
     LaunchedEffect(pendingLanding) {
