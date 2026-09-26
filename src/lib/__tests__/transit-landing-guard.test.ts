@@ -187,7 +187,8 @@ describe("TransitGuidePanel 착지 대상 (E38 웹 미러 · A47 출처 축)", (
     const landsAt = PANEL.indexOf("const lands =");
     const lands = PANEL.slice(landsAt, PANEL.indexOf("if (landsOnLabel)", landsAt));
     expect(lands).not.toContain("Ref.current");
-    // 웹 허용 집합(A47): 세션 시작 · 사용자 입력 유래 전이 전부 · 관측 도착. 세 갈래 밖의 착지는 없다.
+    // 웹 허용 집합(A47): 세션 시작 · 사용자 입력 유래 전이 전부 · 관측 도착 · 관측 전이의 포커스 소실 복구(a11y 감사 M1).
+    // 네 갈래 밖의 착지는 없다 — 관측 전이에서 남은 컨트롤 위의 커서를 옮기는 절이 생기면 포커스 강탈이다.
     const clauses = lands
       .split("\n")
       .map((l) => l.trim())
@@ -195,7 +196,8 @@ describe("TransitGuidePanel 착지 대상 (E38 웹 미러 · A47 출처 축)", (
     expect(clauses).toEqual([
       "previous === null ||",
       "byUser ||",
-      '(phase === "arrived" && previous !== "arrived");',
+      '(phase === "arrived" && previous !== "arrived") ||',
+      "(phase !== previous && focusLost);",
     ]);
     // 종전 대상 ref는 사라졌다 — 되살리면 전이마다 대상이 다시 갈린다.
     for (const dead of ["advanceRef", "changeBoardingRef", "boardAlreadyRef"]) {

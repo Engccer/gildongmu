@@ -34,6 +34,8 @@ const DEST = { ...along(200), name: "강동구청" };
 const VIA: RouteGuideVia = { ...along(100), label: "길동시장" };
 
 let withWaypoint = true;
+/** 응답의 경유지 스텝 인덱스(범위 밖이면 `buildGuideRoute`가 거른다). */
+let waypointStep = 1;
 /** 도보 조회를 붙잡아 두는 관문(재조회 왕복 창 모사). null이면 즉시 응답. */
 let fetchGate: Promise<void> | null = null;
 let fetchStatus = 200;
@@ -111,6 +113,7 @@ beforeEach(() => {
     toFake: ["setInterval", "clearInterval", "setTimeout", "clearTimeout", "performance"],
   });
   withWaypoint = true;
+  waypointStep = 1;
   fetchGate = null;
   fetchStatus = 200;
   watchCb = null;
@@ -136,7 +139,7 @@ beforeEach(() => {
           distanceMeters: 200,
           durationSeconds: 160,
           steps: WALK_STEPS,
-          ...(hasVia && withWaypoint ? { waypoint: { stepIndex: 1, coord: along(100) } } : {}),
+          ...(hasVia && withWaypoint ? { waypoint: { stepIndex: waypointStep, coord: along(100) } } : {}),
         },
       }),
     };
@@ -247,5 +250,14 @@ describe("웹 안내 훅의 경유지(N4 2026-09-24)", () => {
       "경유지(길동시장)를 포함한 경로를 찾지 못했습니다. 경유지 없이 목적지(강동구청)로 안내합니다.",
     );
     expect(live()).not.toContain(ko.guide.degradedUnavailable);
+  });
+
+  it("응답의 경유지 표지가 범위 밖이라 경로가 안 서도 경유지 문장 하나를 말하고 그 경유지를 뺀다(N4)", async () => {
+    waypointStep = 99;
+    await startGuide(VIA);
+    expect(mode()).toBe("brief");
+    expect(live()).toBe(
+      "경유지(길동시장)를 포함한 경로를 찾지 못했습니다. 경유지 없이 목적지(강동구청)로 안내합니다.",
+    );
   });
 });

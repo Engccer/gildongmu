@@ -1154,7 +1154,7 @@ export function useTransitGuide(
    * 버린다. 표식(`repollRef`)이 없으면 그 폴의 `finally`가 `scheduleNext()`만 해서 **새 국면의 첫 조회가 한
    * 주기 밀린다** — 표식을 세워 그 폴의 완료가 대신 즉폴을 내게 한다(A48 기제, iOS `restartPollLoop` 동형).
    * ⚠ 호출부에서 `pollOnce`를 직접 부르지 않는다 — 한 자리라도 우회하면 그 전이만 한 주기 밀린다
-   * (`transit-poll-request-guard.test.ts`가 직접 호출을 `finally` 재폴·타이머 틱 두 자리로 잠근다).
+   * (`transit-landing-guard.test.ts`가 직접 호출을 창구·`finally` 재폴·타이머 틱 세 자리로 잠근다).
    */
   const requestImmediatePoll = useCallback(() => {
     clearTimer();

@@ -208,7 +208,7 @@
     "viaRemaining": "{distance} fino alla tappa intermedia {label}",
     "viaDestRemaining": "{distance} fino alla destinazione {dest}",
     "viaArrivedContinue": "Tappa intermedia {label} raggiunta. Ora ti guidiamo alla destinazione {dest}",
-    "viaDropped": "Nessun percorso trovato attraverso la tappa intermedia ({label}). Guida verso la destinazione ({dest}) senza la tappa intermedia.",
+    "viaDropped": "Non è stato trovato alcun percorso che passi per la tappa intermedia ({label}). Ti guidiamo alla destinazione ({dest}) senza la tappa intermedia.",
     "unsupportedWaypoint": "I percorsi con i mezzi pubblici non supportano tappe intermedie.",
     "walkRecommended": "Percorso consigliato",
     "walkShortest": "Percorso più breve",

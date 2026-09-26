@@ -1256,7 +1256,8 @@ export function useRouteGuide(
         result.steps,
         via && result.waypoint ? { waypointStepIndex: result.waypoint.stepIndex } : undefined,
       );
-      if (!route) return { ok: false, failure: "unavailable" };
+      // 경유지 표지가 범위 밖이라 걸러졌으면 그 실패도 경유지 몫이다 — 목적지 강등 문장이 아니라 경유지 문장을 낸다(N4).
+      if (!route) return { ok: false, failure: "unavailable", ...(via && result.waypoint ? { via } : {}) };
       return {
         ok: true,
         route,

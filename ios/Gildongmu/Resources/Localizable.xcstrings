@@ -12098,7 +12098,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No se encontró una ruta por el punto intermedio (%1$@). Se guía al destino (%2$@) sin el punto intermedio."
+            "value": "No se encontró ninguna ruta que pase por el punto intermedio (%1$@). Te guiamos al destino (%2$@) sin el punto intermedio."
           }
         },
         "fr": {
@@ -12110,7 +12110,7 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nessun percorso trovato attraverso la tappa intermedia (%1$@). Guida verso la destinazione (%2$@) senza la tappa intermedia."
+            "value": "Non è stato trovato alcun percorso che passi per la tappa intermedia (%1$@). Ti guidiamo alla destinazione (%2$@) senza la tappa intermedia."
           }
         },
         "ja": {

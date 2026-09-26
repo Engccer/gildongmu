@@ -1859,6 +1859,63 @@ describe("TransitGuidePanel — 국면 전이 즉폴 (A49) · 사용자 전이 �
     }
   });
 
+  // 관측 승격 두 갈래: 커서가 이미 상태 문장에 있으면 착지와 비착지가 구별되지 않는다(검출력 0) — 다른 컨트롤로 옮겨 둔다.
+  /** 선택 뒤 첫 boarding 폴을 붙들어 두고, 풀면 승차역 도착이 관측되는 세션(관측 승격 직전 상태). */
+  async function heldObservedPromotion() {
+    let hold = false;
+    let release: (() => void) | null = null;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        if (hold) {
+          hold = false;
+          await new Promise<void>((r) => {
+            release = r;
+          });
+          return {
+            ok: true,
+            json: async () => ({
+              mode: "subway",
+              status: "ok",
+              rawCount: 1,
+              items: [trackItem({ message: "천호 도착", remainingStops: 0, arrivalCode: "0" })],
+            }),
+          } as Response;
+        }
+        return {
+          ok: true,
+          json: async () => ({ mode: "subway", status: "ok", rawCount: 1, items: [trackItem({})] }),
+        } as Response;
+      }),
+    );
+    render(<TransitGuidePanelHost route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
+    fireEvent.click(screen.getByRole("button", { name: "시작" }));
+    const row = await screen.findByRole("button", { name: /selectTrain/ });
+    hold = true;
+    clickFocused(row);
+    await screen.findByRole("button", { name: "transitGuide.reselectVehicle" });
+    await waitFor(() => expect(release).not.toBeNull());
+    return () => release!();
+  }
+
+  it("관측 승격(boarding→riding)은 착지하지 않는다 — 남아 있는 컨트롤 위의 커서는 그 자리에 머문다", async () => {
+    const promote = await heldObservedPromotion();
+    const progress = screen.getByRole("button", { name: "guide.progressButton" });
+    progress.focus();
+    promote();
+    await screen.findByRole("button", { name: "transitGuide.changeBoarding" });
+    expect(document.activeElement).toBe(progress);
+  });
+
+  it("관측 승격이 커서를 쥔 버튼을 없애면 상태 문장으로 되찾는다(a11y 감사 M1) — body로 떨어지지 않는다", async () => {
+    const promote = await heldObservedPromotion();
+    const reselect = screen.getByRole("button", { name: "transitGuide.reselectVehicle" });
+    reselect.focus();
+    promote();
+    await screen.findByRole("button", { name: "transitGuide.changeBoarding" });
+    await expectLandedOnStatus();
+  });
+
   it("[다음 구간]: in-flight 폴이 끝나자마자 다음 구간 목록을 조회해 빈 목록으로 한 주기 머물지 않는다", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     try {

@@ -231,7 +231,7 @@ export function TransitGuidePanel({
    *
    * **착지 여부는 전이의 출처가 가른다**(A47 위원장 판정 2026-09-26): 사용자 입력이 일으킨 전이
    * (`userTransitionSeq`가 오른 커밋 — 누른 버튼이 사라진다)는 전부 착지하고, 폴 응답이 일으킨 관측
-   * 전이는 도착 하나만 착지한다. ⚠ 관측 boarding→riding 승격은 착지하지 않는다(N3 ① 구현 리뷰 M1):
+   * 전이는 도착과 포커스 소실 복구만 착지한다. ⚠ 관측 boarding→riding 승격은 착지하지 않는다(N3 ① 구현 리뷰 M1):
    * 커서는 이미 상태 문장에 앉아 있어 착지시키면 듣던 문장을 끊는 포커스 강탈이 된다(승격 사실은 통지가
    * 말한다, arrived→riding 자동 복귀도 같은 이유). 같은 쌍의 사용자 선언([선택한 열차에 탔어요])은
    * 누른 버튼이 사라지므로 착지한다 — 그래서 국면 쌍이 아니라 출처로 판정한다.
@@ -255,6 +255,7 @@ export function TransitGuidePanel({
     // 다른 문으로 들어가면서 라벨에 착지하므로 두 문을 맞춘다). 목록이 서지 않는 갈래(지방버스·추적 불가)엔
     // 라벨이 없어 상태 문장으로.
     const landsOnLabel = byUser && phase === "waiting";
+    const focusLost = document.activeElement === document.body || document.activeElement === null;
     const lands =
       // 세션 시작(B4): 트리거 버튼이 unmount되며 커서가 body로 떨어지는 전이다(헌장 §5
       // "포커스를 쥔 요소를 제거하는 상태 전이"). 시작 통지는 live region이 이미 낸다.
@@ -262,7 +263,11 @@ export function TransitGuidePanel({
       // 사용자 입력 유래 전이(A47): 차량 선택·선언·직행·탑승 변경 취소·하차역 선언 — 누른 버튼이 사라진다.
       byUser ||
       // 관측 도착 — [다음 구간]이 아니라 도착을 말하는 문장이 착지점이다(E38 판정 문언).
-      (phase === "arrived" && previous !== "arrived");
+      (phase === "arrived" && previous !== "arrived") ||
+      // 관측 전이가 커서를 쥔 버튼을 없앴다(boarding의 [선택한 열차에 탔어요]·[다른 차량 선택] 위에서 승격,
+      // 추정 도착의 [다음 구간] 위에서 재관측) — 강탈이 아니라 **잃은 포커스의 복구**다(헌장 §5, a11y 감사 M1).
+      // 레이아웃 effect는 DOM 커밋 뒤라 제거된 버튼의 포커스는 이미 body에 있다. 남은 컨트롤 위의 커서는 그대로.
+      (phase !== previous && focusLost);
     if (landsOnLabel) {
       (waitingLabelRef.current ?? statusRef.current)?.focus();
     } else if (lands) {

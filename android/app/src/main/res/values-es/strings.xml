@@ -598,7 +598,7 @@
     <string name="directions_viaArrived">Punto intermedio %1$s alcanzado</string>
     <string name="directions_viaArrivedContinue">Punto intermedio %1$s alcanzado. Ahora te guiamos al destino %2$s</string>
     <string name="directions_viaDestRemaining">%2$s hasta el destino %1$s</string>
-    <string name="directions_viaDropped">No se encontró una ruta por el punto intermedio (%1$s). Se guía al destino (%2$s) sin el punto intermedio.</string>
+    <string name="directions_viaDropped">No se encontró ninguna ruta que pase por el punto intermedio (%1$s). Te guiamos al destino (%2$s) sin el punto intermedio.</string>
     <string name="directions_viaRemaining">%2$s hasta el punto intermedio %1$s</string>
     <string name="directions_walkAccessible">Ruta sin escaleras</string>
     <string name="directions_walkBroad">Ruta por vías principales</string>
