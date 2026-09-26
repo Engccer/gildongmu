@@ -1,0 +1,15 @@
+{
+  "_comment": "Kit parseChatMarkdownBlocks의 줄 경계 실측(E43 iOS 확인 후보 ③). Swift는 CRLF를 한 글자(그래핌)로 봐서 \"\\n\" 분리에 걸리지 않는다 — CRLF 입력은 단락 하나로 남는다. 안드로이드 :kit ChatMarkdown.kt(split(\"\\n\"))와 웹 react-markdown(CommonMark)은 CRLF에서 줄을 가르므로 crlf-heading·crlf-list는 셋이 다르다(BACKLOG E43). CR 단독·VT·FF·NEL은 셋 다 줄 경계로 쓰지 않는다(Kit·:kit). kind: heading·listItem·paragraph.",
+  "cases": [
+    { "name": "crlf-heading-first", "input": "## 제목\r\n본문", "expect": [{ "kind": "paragraph", "text": "## 제목\r\n본문" }] },
+    { "name": "crlf-heading", "input": "본문\r\n## 제목", "expect": [{ "kind": "paragraph", "text": "본문\r\n## 제목" }] },
+    { "name": "crlf-list", "input": "- 하나\r\n- 둘", "expect": [{ "kind": "paragraph", "text": "- 하나\r\n- 둘" }] },
+    { "name": "crlf-blank-line", "input": "가\r\n\r\n나", "expect": [{ "kind": "paragraph", "text": "가\r\n\r\n나" }] },
+    { "name": "cr-alone", "input": "가\r\r나", "expect": [{ "kind": "paragraph", "text": "가\r\r나" }] },
+    { "name": "vt", "input": "가\u000B나", "expect": [{ "kind": "paragraph", "text": "가\u000B나" }] },
+    { "name": "ff", "input": "가\u000C나", "expect": [{ "kind": "paragraph", "text": "가\u000C나" }] },
+    { "name": "nel", "input": "## 제목\u0085본문", "expect": [{ "kind": "paragraph", "text": "## 제목\u0085본문" }] },
+    { "name": "nel-line-not-blank", "input": "가\n\u0085\n나", "expect": [{ "kind": "paragraph", "text": "가\n\u0085\n나" }] },
+    { "name": "lf-control", "input": "본문\n## 제목\n- 하나", "expect": [{ "kind": "paragraph", "text": "본문" }, { "kind": "heading", "text": "제목" }, { "kind": "listItem", "text": "• 하나" }] }
+  ]
+}
