@@ -267,6 +267,7 @@ export function TransitGuidePanel({
       // 관측 전이가 커서를 쥔 버튼을 없앴다(boarding의 [선택한 열차에 탔어요]·[다른 차량 선택] 위에서 승격,
       // 추정 도착의 [다음 구간] 위에서 재관측) — 강탈이 아니라 **잃은 포커스의 복구**다(헌장 §5, a11y 감사 M1).
       // 레이아웃 effect는 DOM 커밋 뒤라 제거된 버튼의 포커스는 이미 body에 있다. 남은 컨트롤 위의 커서는 그대로.
+      // ⚠ 국면이 바뀔 때만 본다 — 국면 안에서 버튼이 사라지는 전이가 생기면 이 절로는 복구되지 않는다.
       (phase !== previous && focusLost);
     if (landsOnLabel) {
       (waitingLabelRef.current ?? statusRef.current)?.focus();

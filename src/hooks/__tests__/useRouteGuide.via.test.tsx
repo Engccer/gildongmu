@@ -252,7 +252,7 @@ describe("웹 안내 훅의 경유지(N4 2026-09-24)", () => {
     expect(live()).not.toContain(ko.guide.degradedUnavailable);
   });
 
-  it("응답의 경유지 표지가 범위 밖이라 경로가 안 서도 경유지 문장 하나를 말하고 그 경유지를 뺀다(N4)", async () => {
+  it("응답의 경유지 표지가 범위 밖이라 경로가 안 서도 목적지 강등 문장이 아니라 경유지 문장 하나를 말한다(N4)", async () => {
     waypointStep = 99;
     await startGuide(VIA);
     expect(mode()).toBe("brief");
