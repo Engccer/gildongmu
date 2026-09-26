@@ -36,9 +36,8 @@ enum AppConfig {
     #endif
 
     /// 나들이 모드(E51)의 봉인. 1차는 실험판에서만 — 다듬을 것이 많다(위원장 재판정 2026-09-27).
-    /// 진입점 둘(제목 메뉴·길찾기 탭 도착지 없는 조회의 거절 자리 버튼)이 이 값을 읽고, 정식판에서는
-    /// 둘 다 렌더되지 않는다(`guidance-gate-drift.test.ts`가 잠근다). 실보행 판정을 통과하면 이 검사를
-    /// 삭제한다(플래그 졸업).
+    /// 나들이 진입점 둘이 이 값을 읽는다(`guidance-gate-drift.test.ts`가 잠근다). 실보행 판정을 통과하면
+    /// 이 검사를 삭제한다(플래그 졸업).
     #if EXPERIMENTAL
     static let experimentalOutingEnabled = true
     #else

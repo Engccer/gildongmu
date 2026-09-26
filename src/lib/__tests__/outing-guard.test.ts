@@ -72,7 +72,7 @@ describe("나들이 좌우 표현은 OutingSide에서만 나온다(spec §6.1)",
 });
 
 describe("나들이 진입점", () => {
-  it("제목 메뉴는 나들이 시작·새로고침·설정 세 항목이다", () => {
+  it("제목 메뉴 버튼은 나들이 시작(실험판 전용)·새로고침·설정 순서다", () => {
     const menu = readFileSync(TITLE_MENU, "utf8");
     const buttons = menu.match(/Button\(appLocalized\("[^"]+"\)\)/g) ?? [];
     expect(buttons).toEqual([
