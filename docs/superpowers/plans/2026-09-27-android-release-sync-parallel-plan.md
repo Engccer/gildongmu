@@ -40,6 +40,16 @@
 | `android-chat` | `A/chat/**` · `A/settings/**` · `A/MainActivity.kt`(테마 적용) · `A/audio/ChatTtsPlayer.kt`(**새 파일**) · `app/src/test/.../{chat,settings}/**` · `:kit` `MarkdownPlainTextTest.kt`·`ChatMarkdownTest.kt`(신설 가능) · `K/ChatMarkdown.kt`(필요 시) · **iOS** `ios/GildongmuKit/Sources/GildongmuKit/ChatMarkdown.swift` · `ios/GildongmuKit/Tests/GildongmuKitTests/ChatMarkdownLineBreakTests.swift` · `src/lib/__tests__/fixtures/chat-markdown-line-break-cases.json` | `A/audio/TtsGuideSpeaker.kt`·`GuideAudioFocus.kt`(재사용 가능하면 재사용, 수정이 필요하면 자진 신고), `K/ListenSpeed.kt`, `ios/Gildongmu/Chat/TtsPlayer.swift` |
 | `android-m4b` (웨이브 2) | `A/guide/**` · `A/directions/DirectionsViewModel.kt`·`DirectionsScreen.kt`(폼 동기화 자리만) · `A/place/PlaceRoutes.kt`·`PlaceDetailScreen.kt`(길찾기 진입 숨김 플래그) · `A/nearby/SceneSection.kt`(임베드 인자 추가 수준) · 관련 테스트 | `A/directions/EndpointPicker.kt`·`EndpointSearchContent.kt`(재사용) |
 
+#### 정정 (2026-09-27 06:3x KST, 코디네이터 판정 — 기준 `6471e316`)
+
+- `A/guide/ui/WalkGuideStartButton.kt`는 이번 웨이브에서 **`android-e50` 소유**로 옮긴다(안내 시작 고지의 트리거가 그 버튼의 `onClick`이라 "호출하는가" 술어로 e50 것이 맞다. n4의 범위(N4·E31)는 이 파일을 부르지 않는다). e50은 `WalkGuideStartButton`·`walkGuideStartSlot`에 기본값 없는 `onStart: () -> Unit` 인자를 더해 `startWalk` 직전에 부른다(안 A). `WalkStartRequest`는 여전히 손대지 않는다. n4는 이 파일을 읽기만 한다.
+
+- E31 체중 권유의 [체중 입력하기] 착지(n4 경계 질의): 웨이브 1에서는 **n4가 기존 `SettingsRoute`(제목 착지)로 push**하고 `nav/AppRoot.kt`의 `GuideBottomBar` 호출에 `onOpenSettings` 람다 1줄을 더한다(자진 신고). **chat은 `SettingsRoute`에 선택 인자 `focusRow: SettingsRow? = null`을 열고 `Weight`면 체중 필드로 착지**(`landingTarget`)시킨다. 두 세션이 같은 웨이브라 컴파일 결합을 피하려고 호출 전환은 **웨이브 2 `android-m4b`가 인계**받아 한 줄로 바꾼다(guide/** 소유). 착지 없이 통합되는 구간은 BACKLOG E43 한 줄로 남긴다.
+
+- `nav/AppRoot.kt`는 웨이브 1에서 n4(`GuideBottomBar` `onOpenSettings` 1줄)와 chat(`SettingsRoute` data class 전환에 따른 호출부 4곳 기계적 치환)이 함께 건드린다. 겹침을 알고 수용한다: 자리가 다르고 둘 다 기계적이라 rebase 충돌은 뒤에 통합하는 쪽이 해소한다(자진 신고 대상). chat의 설계 디폴트(듣기 실패는 웹 B12처럼 통지, 포커스 상실 시 정지, 배속 = 시스템 속도 × 배율)는 착수 보고 `start-202609270627.md`가 정본.
+
+- 정정(2026-09-27 06:44, e50 보고): 착수 프롬프트의 전제 "`ios.directions.walkNotice.*`가 안드로이드 strings에 없다"는 **틀렸다**. ios-extra 도입으로 `android.directions.walkNotice.*` 9키가 전 로케일에 이미 있었다(코디네이터 grep이 키 이름을 잘못 변환). i18n 편집 0. 저장소에 `zh` 로케일은 없다.
+
 **겹침 → 직렬**: `A/guide/**`는 n4(웨이브 1) → m4b(웨이브 2). `A/directions/**`는 e50(웨이브 1) → m4b(웨이브 2). 웨이브 1 세 세션은 소유 파일이 겹치지 않는다.
 
 **경계 인터페이스(병렬 전 고정)**:
@@ -87,6 +97,13 @@ git -C ~/Mac-Projects/gildongmu worktree add ~/gildongmu-wt/<name> -b feat/<name
 ## §5-4. 통합 기록
 
 (코디네이터가 채운다: 세션 · 통합 SHA · 시각 · 자진 신고 · 남은 판정)
+
+| 세션 | 통합 SHA | 시각 | 자진 신고 | 남은 판정 |
+|---|---|---|---|---|
+| `android-n4` | `d26f1cfe` | 2026-09-27 06:39 | `nav/AppRoot.kt` 1줄(허가) · 새 파일 `guide/ui/WeightSettingsNav.kt` | 한소네 7: 예고 50m·도착 조사·행 전환·권유 2회 닫기·설정 왕복 착지 / iOS 역이식 후보(E31 응답 표식 수명) / m4b 인계 4항은 `integrated-202609270639.md` |
+| `android-e50` | `9ee6360a` | 2026-09-27 06:44 | `WalkGuideStartButton.kt` 소유 이전 반영(정정 절) · 실패 통지 `.high` 등가는 StatusLine+진동 · 안내 종료 섹션 제목은 세션 목적지 | 한소네 7: 안내 시작 고지가 시트 등장·TTS에 묻히는가(묻히면 발화 창구를 `WalkGuideModel`로 — m4b 이후) · 재조회 실패 뒤 커서·실패 문장 중복 · 공지 시트 중 조회 완료 통지 |
+| `android-chat` | `4e175ed3` | 2026-09-27 06:50 | `nav/AppRoot.kt` 호출부 치환 · `guide/ui/WeightSettingsNav.kt` 치환(focusRow 기본값) · `GuideSourceGuardTest` ③ 허용 목록 1줄 · Settings ATF 단언 2줄 · CLAUDE.md 수정 → AGENTS.md는 코디네이터가 재생성 | 배속 뜻 불일치(채팅 = 시스템 속도×배율, 도보 안내 `TtsGuideSpeaker` = 절대 배율) → BACKLOG E43 판정 행 · TalkBack 공존 실기기 3항 · m4b 인계: focusRow=Weight 착지는 텍스트 필드라 키보드가 뜸(한 프레임 뒤 `requestFocus` 1회, 착지 대상 실기기 판정) · 기존 `GuideAudioFocus` LOSS 뒤 핸들 덮임 관찰 |
+
 
 ## §6. 코디네이터 메모
 
