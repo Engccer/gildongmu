@@ -245,15 +245,17 @@ import Foundation
 // E27: 영문 additive 필드 디코딩 — ⚠ 선언하지 않으면 서버가 실어도 값이 오지 않는다(additive 계약).
 @Test func stationMetaLinesEnDecodesOptionally() throws {
     let json = #"""
-    {"meta":{"name":"강남","nameEn":"Gangnam","lines":["2호선","신분당선"],"linesEn":["Line 2","Shinbundang Line"],"isTransfer":true,"operator":"서울교통공사"}}
+    {"meta":{"name":"강남","nameEn":"Gangnam","lines":["2호선","신분당선"],"linesEn":["Line 2","Shinbundang Line"],"isTransfer":true,"operator":"서울교통공사","operatorEn":"Seoul Metro"}}
     """#
     let meta = try #require(try JSONDecoder().decode(StationMetaResponse.self, from: Data(json.utf8)).meta)
     #expect(meta.linesEn == ["Line 2", "Shinbundang Line"])
+    #expect(meta.operatorEn == "Seoul Metro")
     let koJson = #"""
     {"meta":{"name":"강남","nameEn":"Gangnam","lines":["2호선"],"isTransfer":false,"operator":"서울교통공사"}}
     """#
     let ko = try #require(try JSONDecoder().decode(StationMetaResponse.self, from: Data(koJson.utf8)).meta)
     #expect(ko.linesEn == nil)
+    #expect(ko.operatorEn == nil)
 }
 
 @Test func stationTimetableLineNameEnDecodesOptionally() throws {

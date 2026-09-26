@@ -20,6 +20,7 @@ export interface Place {
   /**
    * 이름의 로마자(국어원 표기법, 서버 `romanize.ts`, E28). 한글이 있는 이름에만 실리고
    * 영문 원천 이름(TourAPI en 등)에는 없다. 비-ko 로케일이 `Roman (한글)` 병기에 쓴다.
+   * 역 POI는 음차가 아니라 영문 역명 `Yeouido Station, Line 5`다(`station-name-en.ts`).
    */
   nameRoman?: string;
   /** 카테고리 경로 (예: "음식점>한식") */
@@ -753,6 +754,8 @@ export interface StationMeta {
   isTransfer: boolean;
   /** 운영기관명(대표, 첫 행 기준) */
   operator: string;
+  /** `operator`의 영문(`lang=en`에만, 운영기관명 표). 미지면 부재 */
+  operatorEn?: string;
 }
 
 /** TAGO 지하철 노선정보(B-3) 원시 행에서 파생한 시간표 편성 하나(첫차 또는 막차). */

@@ -137,11 +137,11 @@ fun facilityDetail(f: SeoulMetroFacility, wheelchairAccessible: String): String?
 
 /**
  * 역 메타 한 줄 — ko: `joinText(nameSuffixed(name), nameEn, tail)`, en: `joinText(bilingualName(name, en = nameEn).display, tail)`(낭독은 영문만).
- * `tail = joinText(노선(en이면 linesEn — 줄 단위 원자성), 환승?, 운영기관)`.
+ * `tail = joinText(노선(en이면 linesEn — 줄 단위 원자성), 환승?, 운영기관(en이면 operatorEn))`.
  */
 fun stationMetaLine(meta: StationMeta, lang: String, isEn: Boolean, nameSuffixed: (String) -> String, transfer: String): LineText {
     val lines = TransitDisplay.pickLine(isEn = isEn, ko = meta.lines.joinToString(", "), enParts = listOf(meta.linesEn?.joinToString(", "))) { it[0] }
-    val tail = joinText(lines, if (meta.isTransfer) transfer else null, meta.operatorName)
+    val tail = joinText(lines, if (meta.isTransfer) transfer else null, if (isEn) meta.operatorEn ?: meta.operatorName else meta.operatorName)
     if (!isEn) {
         val ko = joinText(nameSuffixed(meta.name), meta.nameEn, tail)
         return LineText(ko, ko)

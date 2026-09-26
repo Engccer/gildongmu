@@ -11,6 +11,11 @@
 
 ## 2026-09-27
 
+### 영어 화면의 역 이름·운영기관 영문화 (E44 ⑨ 후속)
+
+- 역 POI의 `nameRoman`이 음차("Yeouidoyeok 5hoseon") 대신 영문 역명 "Yeouido Station, Line 5"다(위원장 판정 형식). 역 seed 영문명(괄호 부기명 제거)과 노선명 표를 쓰고, 역 레이아웃 분류이며 600m 안 같은 이름 seed가 있을 때만 적용한다(`station-name-en.ts`, 장소 검색·둘러보기). 실호출 15개 역 확인.
+- `/api/station/meta`가 `lang=en`에서 운영기관 영문 `operatorEn`(표 `subway-operator-names.ts`, seed 20종 전수 drift 가드)을 싣고 웹·iOS·안드로이드 역 정보 줄이 영어 화면에서 그것을 쓴다. 서버 변경은 재배포(2026-09-29 동결 해제) 뒤 반영된다.
+
 ### 나들이 모드(E51)를 실험판 빌드 구성 뒤로 봉인 (iOS)
 
 - 위원장 재판정으로 1차는 `Experimental` 구성에만 둔다. `AppConfig.experimentalOutingEnabled`가 진입점 둘(제목 메뉴 "나들이 시작"·길찾기 탭 도착지 없는 조회의 거절 자리 버튼)을 가르고, 정식판은 두 자리 모두 없이 거절 통지만 남는다. 나들이 코드·Kit 판정 계층은 그대로이고 졸업 때 `#if`를 지운다.

@@ -11,6 +11,7 @@ import { searchPlacesKakaoLocal } from "./kakao-local";
 import { searchPlacesMock } from "./mock";
 import { searchPlacesNaverLocal } from "./naver-local";
 import { romanNameOf } from "../romanize";
+import { stationPlaceNameEn } from "../station-name-en";
 import { geocodeEnglishAddress } from "./ncp-geocode";
 import { geocodeEnglishAddressJuso } from "./juso-address";
 import { searchPlacesTourApi } from "./tour-api";
@@ -98,10 +99,13 @@ export async function searchPlaces(
   return romanized;
 }
 
-/** `nameRoman` 주석 — 정렬·필터 없음. 이미 실린 값(provider 투영)은 존중한다. */
+/**
+ * `nameRoman` 주석 — 정렬·필터 없음. 역 POI는 음차 대신 영문 역명(`stationPlaceNameEn`)이 먼저고,
+ * 그 밖은 이미 실린 값(provider 투영)을 존중한다.
+ */
 function annotateRoman(places: Place[]): Place[] {
   return places.map((p) => {
-    const nameRoman = p.nameRoman ?? romanNameOf(p.name);
+    const nameRoman = stationPlaceNameEn(p) ?? p.nameRoman ?? romanNameOf(p.name);
     return nameRoman ? { ...p, nameRoman } : p;
   });
 }

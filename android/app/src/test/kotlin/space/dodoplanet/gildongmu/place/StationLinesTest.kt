@@ -114,6 +114,9 @@ class StationLinesTest {
         assertEquals("Gangnam, Line 2, Shinbundang, Transfer, 서울교통공사", en.spoken)
         val noEn = stationMetaLine(meta.copy(linesEn = null), "en", isEn = true, nameSuffixed = { "${it}역" }, transfer = "Transfer")
         assertEquals("Gangnam, 2호선, 신분당선, Transfer, 서울교통공사", noEn.spoken) // 노선 영문이 없으면 그 조각은 한국어(줄 단위 원자성)
+        val opEn = stationMetaLine(meta.copy(operatorEn = "Seoul Metro"), "en", isEn = true, nameSuffixed = { "${it}역" }, transfer = "Transfer")
+        assertEquals("Gangnam, Line 2, Shinbundang, Transfer, Seoul Metro", opEn.spoken) // 운영기관 영문이 있으면 en 줄은 영문
+        assertEquals("강남역, Gangnam, 2호선, 신분당선, 환승역, 서울교통공사", stationMetaLine(meta.copy(operatorEn = "Seoul Metro"), "ko", isEn = false, nameSuffixed = { "${it}역" }, transfer = "환승역").visual)
     }
 
     @Test fun `5조각 로드 — 시간표만 실패를 Error로, null은 Hidden, 나머지 실패는 null(판정 27)`() = runTest {

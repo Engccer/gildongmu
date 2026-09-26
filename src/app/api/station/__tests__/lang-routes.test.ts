@@ -42,6 +42,9 @@ describe("GET /api/station/meta — lang", () => {
     expect(JSON.stringify(ko2)).toBe(JSON.stringify(ko));
     expect(en.meta.lines).toEqual(ko.meta.lines);
     expect(en.meta.linesEn).toEqual(["Line 2", "Shinbundang Line"]);
+    expect(ko.meta.operatorEn).toBeUndefined();
+    expect(en.meta.operator).toBe(ko.meta.operator);
+    expect(en.meta.operatorEn).toBe("Seoul Metro");
   });
   it("미지 lang은 400", async () => {
     expect((await metaGET(req("meta", { station: "강남역", lang: "jp" }))).status).toBe(400);

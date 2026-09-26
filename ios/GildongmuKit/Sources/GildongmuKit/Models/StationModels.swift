@@ -23,10 +23,13 @@ public struct StationMeta: Codable, Sendable, Hashable {
     public let isTransfer: Bool
     /// 운영기관명. JSON 키 "operator"는 Swift 예약어라 이름만 변경
     public let operatorName: String
+    /// `operatorName`의 영문(`lang=en`에만, 운영기관명 표 — 미지면 nil)
+    public let operatorEn: String?
 
     enum CodingKeys: String, CodingKey {
         case name, nameEn, nameHanja, lines, linesEn, isTransfer
         case operatorName = "operator"
+        case operatorEn
     }
 }
 

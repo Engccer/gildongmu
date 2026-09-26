@@ -26,7 +26,14 @@ export function stationMetaLocalizedLines(
     ([en]) => joinText(`${t("lines")} ${en}`, transfer),
     { pure: false },
   );
-  return [{ text: meta.nameEn }, lines, { text: `${t("operator")} ${meta.operator}` }];
+  const operator = pickLine(
+    locale,
+    `${t("operator")} ${meta.operator}`,
+    [meta.operatorEn],
+    ([en]) => `${t("operator")} ${en}`,
+    { pure: false },
+  );
+  return [{ text: meta.nameEn }, lines, operator];
 }
 
 /** 도구층·테스트용 평문(언어 태그 없음). */

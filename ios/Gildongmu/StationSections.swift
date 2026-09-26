@@ -76,7 +76,7 @@ struct StationMetaLine: View {
 }
 
 /// 역 메타 한 줄 — 시각·낭독이 갈리는 것은 병기뿐(ko는 둘이 같다). 한 줄=한 객체: 역명·영문명·노선·환승·운영기관.
-/// en 계열은 역명을 병기 `Gangnam (강남)`(낭독은 영문만 — a11y 감사 #3)하고 노선은 서버 영문(`linesEn`, E27).
+/// en 계열은 역명을 병기 `Gangnam (강남)`(낭독은 영문만 — a11y 감사 #3)하고 노선·운영기관은 서버 영문(`linesEn`, E27·`operatorEn`).
 struct StationMetaText: View {
     let meta: StationMeta
 
@@ -85,7 +85,9 @@ struct StationMetaText: View {
         let lines = TransitDisplay.pickLine(
             isEn: isEn, ko: meta.lines.joined(separator: ", "),
             enParts: [meta.linesEn?.joined(separator: ", ")]) { $0[0] }
-        let tail = joinText(lines, meta.isTransfer ? appLocalized("stationMeta.transfer") : nil, meta.operatorName)
+        let tail = joinText(
+            lines, meta.isTransfer ? appLocalized("stationMeta.transfer") : nil,
+            isEn ? (meta.operatorEn ?? meta.operatorName) : meta.operatorName)
         if isEn {
             let b = bilingualName(lang: AppLanguage.current, ko: meta.name, en: meta.nameEn, roman: nil)
             Text(joinText(b.display, tail)).accessibilityLabel(Text(joinText(b.primary, tail)))

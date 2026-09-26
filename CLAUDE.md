@@ -99,7 +99,7 @@
 - **실시간 안내의 표시는 조인과 타입 수준에서 갈려 있다**(E27 잔여 ①): 조인 필드(노선·역명)는 en 세션에서도 한국어로 동결, 문장 계층은 조인 필드가 없는 투영(`transit-display.ts` ↔ `TransitDisplayProjection.swift`)만 받고, 문장 판정은 공유 descriptor `transit-guide-text.ts` ↔ `TransitGuideText.swift`. 이벤트는 ko·en을 함께 나른다. → INTEGRATIONS
 - **대중교통·역 정보의 영문은 `lang=en` 응답의 additive `*En`이고 한국어 필드는 어느 응답에서도 그대로다**(E27, `langParam()` — 누락=ko·미지 값 400, 자체 `catch("ko")` 금지). 표 미지·미매칭은 필드 부재(폴백 금지), 한 줄 안에서 언어를 섞지 않는다(`pickLine`). → INTEGRATIONS
 - **서버가 합성하는 한국어 문장은 구조화 원재료를 함께 싣고, 클라이언트가 자기 언어로 조립한다**(A26: 문자열 필드 불변 + additive `parts`·`lineCore`·`key`·`guidanceLang`). 판정을 문장 부분 문자열에 걸지 말 것(`crossing` 플래그). 노선 이름만 예외로 표(`subwayLineNameEn`)가 정본. → INTEGRATIONS
-- **영문 원천 없는 이름의 병기는 서버 로마자(`romanize.ts` 한 곳) + 클라이언트 `bilingualName`이고, 괄호 한글은 접근성 객체의 마지막 노드다**(E28 — `<KoTail>` `aria-hidden`을 줄 가운데 두지 말 것). → INTEGRATIONS
+- **영문 원천 없는 이름의 병기는 서버 로마자(`romanize.ts` 한 곳) + 클라이언트 `bilingualName`이고, 괄호 한글은 접근성 객체의 마지막 노드다**(E28 — `<KoTail>` `aria-hidden`을 줄 가운데 두지 말 것). 역 POI의 `nameRoman`은 음차가 아니라 영문 역명 `Yeouido Station, Line 5`(`station-name-en.ts`, 역 레이아웃 분류 ∧ 600m 안 seed)다. → INTEGRATIONS
 - **카카오 분류 경로의 영문은 세그먼트 사전(`kakao-category-en.json`) + 서버 `categoryEn`이고 "전부-아니면-원문"이다**(A28). 표시는 `pickCategory` 한 자리, 판정 축은 원문 `category`만(소스 가드). 사전은 실호출 스냅샷. → INTEGRATIONS
 
 ### UI·상태 패턴

@@ -145,10 +145,10 @@ export function StationMeta({
 
       {/* 정의 리스트 대신 평문 한 줄 = 한 객체 — 라벨+값+환승 배지를 단일
           텍스트로 합친다(볼드 라벨·배지 분절 제거, 환승은 의미 정보라 텍스트 흡수). */}
-      {/* 노선 줄은 en에서 `linesEn`이 있을 때만 영문이고 없으면 한국어 원문 + lang="ko"(줄 단위 원자성, E27). */}
+      {/* 노선·운영기관 줄은 en에서 `linesEn`·`operatorEn`이 있을 때만 영문이고 없으면 한국어 원문 + lang="ko"(줄 단위 원자성, E27). */}
       <div className="mt-1 text-sm leading-relaxed">
         <p lang={linesLine.lang}>{linesLine.text}</p>
-        <p>{operatorLine.text}</p>
+        <p lang={operatorLine.lang}>{operatorLine.text}</p>
       </div>
     </>
   );

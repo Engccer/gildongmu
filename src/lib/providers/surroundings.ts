@@ -3,6 +3,7 @@ import { bearingDegrees, bearingToCompass8 } from "../geo/bearing";
 import { haversineMeters } from "../geo";
 import type { SurroundingCategory, SurroundingPlace } from "../types";
 import { romanNameOf } from "../romanize";
+import { stationPlaceNameEn } from "../station-name-en";
 import { categoryEnField } from "../kakao-category";
 
 /**
@@ -90,12 +91,16 @@ export function normalizeSurroundingDoc(
     ? Math.round(haversineMeters(userLat, userLng, lat, lng))
     : Math.round(kakaoDist);
   const bearing = bearingToCompass8(bearingDegrees(userLat, userLng, lat, lng));
+  const id = `kakao-${doc.id}`;
+  const categoryRaw = doc.category_name ?? "";
   return {
-    id: `kakao-${doc.id}`,
+    id,
     name: doc.place_name,
-    nameRoman: romanNameOf(doc.place_name),
+    nameRoman:
+      stationPlaceNameEn({ id, name: doc.place_name, category: categoryRaw, lat, lng }) ??
+      romanNameOf(doc.place_name),
     category,
-    categoryRaw: doc.category_name ?? "",
+    categoryRaw,
     ...categoryEnField(doc.category_name ?? ""),
     distanceMeters,
     bearing,

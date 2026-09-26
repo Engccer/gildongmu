@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { findStationMeta } from "@/lib/subway-stations";
 import { subwayLineNamesEn } from "@/lib/subway-line-names";
+import { subwayOperatorNameEn } from "@/lib/subway-operator-names";
 import { langParam } from "@/lib/lang-param";
 
 /**
@@ -13,7 +14,8 @@ import { langParam } from "@/lib/lang-param";
  * 연 1회 갱신(차기 2026-12)이라 응답을 하루 캐시한다.
  */
 
-// `lang=en`은 `linesEn`(노선명 영문 표)을 additive로 싣는다(E27). 미지정·ko는 종전과 byte-identical.
+// `lang=en`은 `linesEn`(노선명 영문 표, E27)과 `operatorEn`(운영기관 영문 표)을 additive로 싣는다.
+// 미지정·ko는 종전과 byte-identical.
 const schema = z.object({ station: z.string().trim().min(1).max(50), lang: langParam() });
 
 export const revalidate = 86_400; // 하루 — seed는 연 1회 갱신
@@ -27,7 +29,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "잘못된 요청" }, { status: 400 });
   }
   const found = findStationMeta(parsed.data.station); // 미커버 역이면 null
-  const linesEn = found && parsed.data.lang === "en" ? subwayLineNamesEn(found.lines) : undefined;
-  const meta = found && linesEn ? { ...found, linesEn } : found;
+  const isEn = parsed.data.lang === "en";
+  const linesEn = found && isEn ? subwayLineNamesEn(found.lines) : undefined;
+  const operatorEn = found && isEn ? subwayOperatorNameEn(found.operator) : null;
+  const meta = found
+    ? { ...found, ...(linesEn ? { linesEn } : {}), ...(operatorEn ? { operatorEn } : {}) }
+    : found;
   return NextResponse.json({ meta });
 }

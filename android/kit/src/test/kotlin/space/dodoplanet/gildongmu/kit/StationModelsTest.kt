@@ -135,10 +135,12 @@ class StationModelsTest {
     }
 
     @Test fun stationMetaLinesEnDecodesOptionally() {
-        val meta = assertNotNull(KitJson.decodeFromString(StationMetaResponse.serializer(), """{"meta":{"name":"강남","nameEn":"Gangnam","lines":["2호선","신분당선"],"linesEn":["Line 2","Shinbundang Line"],"isTransfer":true,"operator":"서울교통공사"}}""").meta)
+        val meta = assertNotNull(KitJson.decodeFromString(StationMetaResponse.serializer(), """{"meta":{"name":"강남","nameEn":"Gangnam","lines":["2호선","신분당선"],"linesEn":["Line 2","Shinbundang Line"],"isTransfer":true,"operator":"서울교통공사","operatorEn":"Seoul Metro"}}""").meta)
         assertEquals(listOf("Line 2", "Shinbundang Line"), meta.linesEn)
+        assertEquals("Seoul Metro", meta.operatorEn)
         val ko = assertNotNull(KitJson.decodeFromString(StationMetaResponse.serializer(), """{"meta":{"name":"강남","nameEn":"Gangnam","lines":["2호선"],"isTransfer":false,"operator":"서울교통공사"}}""").meta)
         assertNull(ko.linesEn)
+        assertNull(ko.operatorEn)
     }
 
     @Test fun stationTimetableLineNameEnDecodesOptionally() {
