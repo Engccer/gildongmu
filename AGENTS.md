@@ -146,7 +146,7 @@
 - **안내 시트 상태 문장은 한 조립기(`arrivalStatusLine` ↔ Kit `transitArrivalStatusLine`)가 만들고 통지는 그 문장에 없는 것만 말한다**(E39·E41): 쉼표 결합, 결합용 키엔 마침표 없음, 수단 낱말은 `*Bus` 키로(라벨 합성 금지). 시작 통지는 목적지를 말한다(E40). 통지를 줄이기 전에 `phaseTransitionLanding`을 읽는다. → PATTERNS
 - **근사 잠금은 두 갈래다 — 지방버스만 관측하고, 그 밖은 비관측이다**(A34 ①, `transitLockIsUnobserved` ↔ 웹 `isUnobservedTransitLock`: 폴 0·매칭 0·어림값 표시 0, 상태 문장은 `signalStatusText(…, unobserved:)` 필수 인자). [이미 탔어요]는 역부터 묻고 그 역에 있는 열차(`transitAboardCandidates`)만 `boardAboard`로 riding 직행, 역 선택의 하차역 행은 `declareArrived`. → INTEGRATIONS
 - **확정 도착·비관측 riding은 폴 주기 0이고 즉폴도 예외가 아니다**(`restartPollLoop`·웹 `pollOnce`: `interval <= 0`이면 `immediate`와 무관하게 반환). 마지막 leg는 `advanceIntoWalkHandoff()`(완료 문장 없음) + `acceptWalkHandoff` 한 동작, 인계 제안 화면 없음(E34). → INTEGRATIONS
-- **boarding 국면의 선언 버튼은 관측이 끝났을 때만 선다**(N3 ①, `transitBoardingObservationLost` ↔ 웹 `boardingObservationLost`, 래치는 앱 층). ⚠ 관측 승격 직후 즉폴 금지(웹 폴 예약 effect는 tick만 반응 — `pollOnce`를 의존성에 두면 상태 변화만으로 폴이 나간다), 그 승격 전이는 착지 대상도 아니다. → PATTERNS
+- **boarding 국면의 선언 버튼은 관측이 끝났을 때만 선다**(N3 ①, `transitBoardingObservationLost` ↔ 웹 `boardingObservationLost`, 래치는 앱 층). ⚠ 관측 승격 직후 즉폴 금지(웹 폴 예약 effect는 tick만 반응 — `pollOnce`를 의존성에 두면 상태 변화만으로 폴이 나간다), 그 승격 전이는 착지 대상도 아니다(iOS). 웹은 착지를 **전이의 출처**로 가른다(A47: 사용자 입력 유래 = `userTransitionSeq`만 착지, 관측 전이는 도착과 포커스 소실 복구만. 국면 쌍으로 추정 금지), 즉폴은 `requestImmediatePoll` 창구만 지난다(A49). → PATTERNS
 - **riding 미관측 상한은 시계가 아니라 조회 횟수다**(A36 ①, `transitNeverSeenPolls` 10 ↔ 웹 `NEVER_SEEN_POLLS`): 실패 폴·boarding 폴·비관측 잠금은 세지 않고 riding 진입(탑승 변경 취소 복귀 포함)에서 0. 벽시계 백스톱을 되살리지 말 것(위원장 판정). → INTEGRATIONS
 - **대중교통 안내는 백그라운드에서도 폴하고, 프로세스를 살리는 것은 오디오가 아니라 boarding·riding 동안의 keep-alive 위치 스트림이다**(E36·A46). 백그라운드 톤은 `trackingStarted` 하나(`playTone(_:allowedInBackground:)` 기본값 없음), 상한은 유휴 폴 정지 `transitIdlePollLimitMs`, keep-alive fix는 공유 스토어가 아니라 `keepAliveFixSink`로 안내 세션에만(E48). → INTEGRATIONS
 - **승차 전 도보(prewalk)는 대중교통 세션이 아니라 그 앞의 도보 세션이고, 종료 화면을 남기지 않는다**(A25: `transitPrewalkTarget` → `BeaconModel.markPrewalk` → `onSessionEnd(reason)`). `prewalkTarget`은 `stop()` 앞에서 캡처, 콜백 발화점은 둘뿐, 잊힌 세션 안전망 비적용, `destinationLabel`은 대중교통 문구와 같은 언어. → INTEGRATIONS
@@ -250,7 +250,7 @@
 | `JUSO_CONFM_KEY` | `hasJusoKey` | 행안부 도로명주소 검색(영문주소+우편번호), 무료·무제한 |
 | `SEOUL_OPEN_DATA_KEY` | `hasSeoulOpenDataKey` | 서울 열린데이터(따릉이·문화행사·실시간 혼잡도). 일 1,000회를 셋이 **공유**하므로 신규 소비자는 캐시 설계가 필수. ⚠ 실시간 지하철은 별도 키 |
 | `SEOUL_SUBWAY_REALTIME_KEY` | `hasSeoulSubwayRealtimeKey` | "실시간 데이터 인증키"(일반키로 호출 시 `ERROR-338`), 일 1,000회를 도착·열차 위치(E35)가 나눈다 |
-| `ODSAY_API_KEY` | `hasOdsayKey` | ODsay 대중교통 — Flex(후불 종량제) 앱 `gildongmuflex` 키, Referer `gildongmu.dodoplanet.space`에 묶인다. ⚠ **호출 수가 곧 비용**이다 — 새 호출 경로는 캐시 뒤, 실호출 게이트는 최소로. 옛 Basic 앱 `gildongmuweb`은 쓰지 않는다(약관 4.5.3). → INTEGRATIONS |
+| `ODSAY_API_KEY` | `hasOdsayKey` | ODsay 대중교통 — Flex(후불 종량제) 앱 `gildongmuflex` 키, Referer `gildongmu.dodoplanet.space`에 묶인다. ⚠ **호출 수가 곧 비용**이다 — 새 호출 경로는 캐시 뒤, 실호출 게이트는 최소로(corpus 재생 `--from-corpus` 우선, 실호출은 `--out`으로 저장). 옛 Basic 앱 `gildongmuweb`은 쓰지 않는다(약관 4.5.3). → INTEGRATIONS |
 | `DEEPGRAM_API_KEY` | `hasDeepgramKey` | STT nova-3 (dodo 공유). ⚠ prod 502면 키 유효성 먼저([[deepgram-prod-key-401]]) |
 | `GOOGLE_CLOUD_TTS_API_KEY` | — (게이트 함수 없음) | `/api/tts`(Chirp 3 HD MP3): iOS TtsPlayer 낭독과 웹 채팅 [듣기](B12)의 **폴백**. 정본은 기기 음성(iOS `AVSpeechSynthesizer`·웹 `speechSynthesis`, 2026-07-27 위원장 판정)이고 서버 경로는 현재 로케일 보이스가 기기에 없을 때만 탄다 |
 | `GEMINI_API_KEY` | `hasGeminiKey` | 채팅 FC 엔진(모델은 env가 아니라 코드 상수 `GEMINI_MODEL`, `src/lib/gemini/client.ts`). 길동무 전용 GCP 프로젝트 `gildongmu-prod`의 API 제한 키 — ⚠ dodo와 공유하지 않는다. 키 교체 시 로컬·Vercel prod·리포트 상수 3곳 동조. → INTEGRATIONS |
@@ -315,6 +315,8 @@ npm run test:run   # Vitest (게이트 테스트 — 매 커밋 통과 필수)
                    # 여기서 이름을 넘겨도 "No test files found"로 **통과가 아니라 무실행**이 된다.
                    # 그 둘은 해당 디렉터리에서 `npx vitest run`으로 돌려야 실제로 돈다.
 
+npm run test:a11y  # 실브라우저 접근성 게이트(axe, 빌드+Chromium). test:run과 별개 레인: PR·릴리스 직전, 접근성 변경 뒤 → PATTERNS
+
 node scripts/usage-report.mjs   # API 과금·쿼터·키 만료 상태 (로컬 전용, 프로브 돈 5·가용성 13 — ODsay 1건만 과금)
 ```
 
@@ -325,7 +327,7 @@ node scripts/usage-report.mjs   # API 과금·쿼터·키 만료 상태 (로컬 
 - 기능·버그픽스는 같은 커밋에 테스트 동반. Vitest 전역은 node-env지만 **컴포넌트 테스트는 파일 상단 `// @vitest-environment jsdom` 프라그마 + @testing-library/react 레인이 관례**(`PlaceDetail.test.tsx`·nearby 계약 스위트가 선례). 순수 로직은 node-env fixture 단위테스트, 외부 API 통합은 **실호출이 머지 게이트**.
 - **외부 API 통합은 실호출(실데이터)을 머지 게이트로 박는다** — fixture green ≠ 실계약 검증(데이터 커버리지 현실은 정적 리뷰가 못 잡음).
 - 커밋 이메일 `engccer@gmail.com`. 주석·커밋·문서 한국어, 변수/함수명 영어.
-- a11y 변경 후 `a11y-auditor` 서브에이전트 점검.
+- a11y 변경 후 `a11y-auditor` 서브에이전트 점검 + `npm run test:a11y`.
 - **신규 국내 서비스는 대장과 작업 큐가 다른 문서다**: `docs/SPEC.md` §3 "실험 백로그"는 **조사한 서비스의 대장**(존재하는가·쓸 만한가)이고, `docs/BACKLOG.md` E는 **착수 후보 큐**(다음에 뭘 할까)다. 발굴하면 SPEC에 등록하고, 착수를 결정하면 BACKLOG로 올린다. 둘은 중복이 아니라 파이프라인이다.
 - **마일스톤을 닫을 때 문서를 분배한다**(위 §문서 체계). iOS 릴리스는 What's New를 `docs/appstore/release-notes.md`에 남기고 `node scripts/build-release-notes.mjs`로 번들 JSON을 재생성한다(드리프트 테스트). ⚠ 번들은 아카이브 시점에 굳으므로 아카이브 뒤 고쳤으면 빌드 번호를 올린다. → PATTERNS
 - **저장소는 공개 전제로 다룬다(2026-08-17 오픈소스 준비)**. **기준 절차의 정본은 `sanitize-for-release` 스킬**(공개 저장소 `Engccer/sanitize-for-release`)이며, gildongmu는 그 스킬의 **유형 C(원본 격리형)** 다. 유형별 절차·스윕 축은 스킬을 따르고 여기서는 이 저장소의 자리만 적는다.
