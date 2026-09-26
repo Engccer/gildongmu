@@ -11,6 +11,12 @@
 
 ## 2026-09-27
 
+### 안드로이드 채팅 답변 듣기·설정 3행·채팅 산문 CRLF 정렬 (E43 정식판 동기화, `android-chat`)
+
+- 채팅 답변 끝에 [듣기]↔[재생 중지]: 기기 음성 우선, 앱 언어 보이스가 없을 때만 `/api/tts`, 서버까지 실패하면 "듣기를 재생하지 못했습니다." 통지. 배속은 설정값, 전송·화면 이탈·받아쓰기 누름에 정지하고, 도보 안내 세션 중엔 안내 소리에 양보한다(TalkBack 발화에는 계속 읽는다).
+- 설정에 테마(즉시 반영)·듣기 속도·AI 채팅 동의 스위치(끄면 채팅이 동의 화면으로)를 iOS 순서로 더했다. 설정 라우트가 첫 착지 행(`focusRow`)을 받는다(웨이브 2 체중 입력 진입용).
+- 채팅 산문 줄 경계를 CommonMark 쪽으로(위원장 판정): CRLF가 헤딩·목록을 가른다(iOS Kit·안드로이드 `:kit`·공유 fixture). `:kit` 평문 변환·블록 파서가 공유 fixture를 읽는다(B12 등가성). 계획 `docs/superpowers/plans/2026-09-27-android-release-sync-parallel-plan.md`.
+
 ### 안드로이드 길찾기 탭 iOS 정식판 동조: E50 수단 재조회·안내 시작 고지·최근 장소 병기 표기·안내 종료·도보 공지
 
 - 대중교통 목록 뒤에 서버 `requeryAxes` 축마다 "버스만(지하철만) 타는 경로 찾기" 버튼(`:kit` `TransitModeAxis`·`requeryAxes`·`RouteService.transitModeRequery`). 조회 시점 좌표·언어로 1회, 찾음은 접힌 대안으로 붙어 그 행에 착지, 없음은 문장에 착지, 실패는 버튼 유지 + 통지·실패 진동. spec `docs/superpowers/specs/2026-09-24-transit-alternatives-reasoned-design.md` §4.3.
