@@ -31,6 +31,9 @@ public struct AudioSignalSite: Decodable, Sendable, Hashable {
     public let distanceMeters: Int
     public let bearing: String
     public let deviceCount: Int
+    /// 대표점 좌표 — `coords=1` 옵트인 응답(나들이)에만 있다.
+    public var lat: Double? = nil
+    public var lng: Double? = nil
 }
 
 /// 반경 300m 음향신호기 요약. deviceCount는 sites(최대 5) 절단 전 총수(침묵 절단 금지).
@@ -52,6 +55,9 @@ public struct WalkFeature: Decodable, Sendable, Hashable {
     public let hostFeature: String?
     public let distanceMeters: Int
     public let bearing: String
+    /// 노드 좌표 — 서버가 원시 feature를 전개해 늘 싣는다(나들이 투영이 쓴다, spec 2026-09-26 §6.3).
+    public var lat: Double? = nil
+    public var lng: Double? = nil
 }
 
 /// OSM 데이터 묶음. crossingTotal·tactileTotal은 cap(각 10) 전 실개수 —
