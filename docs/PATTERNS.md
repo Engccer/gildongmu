@@ -384,11 +384,11 @@ iOS 지도 버튼·검색 로터 액션은 URL 빌더가 성공할 때만 만들
 
 ### 코드 게이트
 
-**코드 게이트**: `AppConfig.experimentalGuidanceEnabled`가 `#if EXPERIMENTAL`로 갈린다(자동차·대중교통·간략 단독 진입 봉인. 도보는 2026-08-15 졸업해 플래그를 보지 않는다). 같은 자리의 `experimentalTabOrderEnabled`(2026-08-23 K1)는 탭 순서·기본 탭(실험판 검색 - 길찾기 - 내 주변 - 채팅 / 정식판 채팅 첫 탭)을 `AppTab.order`로 가른다 — 판정 뒤 졸업 또는 삭제. 실험 기능을 새로 넣을 때도 같은 자리에 플래그를 두고, **기능이 검증되면 `#if`를 지운다(플래그 졸업)** — 안 지우면 플래그가 쌓인다. 항상 참인 상수(`walkGuidanceEnabled = true`)를 남기는 것이 바로 그 쌓임이라, 졸업은 검사 **삭제**로 한다.
+**코드 게이트**: `AppConfig.experimentalGuidanceEnabled`가 `#if EXPERIMENTAL`로 갈린다(자동차·대중교통·간략 단독 진입 봉인. 도보는 2026-08-15 졸업해 플래그를 보지 않는다). 같은 자리의 `experimentalTabOrderEnabled`(2026-08-23 K1)는 탭 순서·기본 탭(실험판 검색 - 길찾기 - 내 주변 - 채팅 / 정식판 채팅 첫 탭)을 `AppTab.order`로 가른다 — 판정 뒤 졸업 또는 삭제. `experimentalOutingEnabled`(2026-09-27 E51 나들이)는 진입점 둘(제목 메뉴·길찾기 탭 거절 자리 버튼)을 가르고 실보행 판정 뒤 졸업한다(BACKLOG G5). 실험 기능을 새로 넣을 때도 같은 자리에 플래그를 두고, **기능이 검증되면 `#if`를 지운다(플래그 졸업)** — 안 지우면 플래그가 쌓인다. 항상 참인 상수(`walkGuidanceEnabled = true`)를 남기는 것이 바로 그 쌓임이라, 졸업은 검사 **삭제**로 한다.
 
 ### 봉인의 판정 축은 플래그 참조 목록이 아니라 세션을 시작시키는 호출 전수다
 
-⚠ **봉인의 판정 축은 플래그 참조 목록이 아니라 세션을 시작시키는 호출 전수다**(2026-08-15). 둘은 같은 집합이 아니다 — 참조 중 일부는 진입점이 아니고(사전 고지 문구), 반대로 진입점인데 플래그를 안 보는 자리가 있다(실패 뒤 재시작). 그래서 가드가 `beacon.toggle(`·`beacon.restart(`·`session.startBeacon(`·`self.startBeacon(` **네 형태의 호출 수**를 세고(현재 8곳 — 2026-08-23 K2 자동차 종료 화면의 도보 인계 `acceptCarWalkHandoff`가 7번째, 2026-08-30 A25 승차 전 도보 `GuideSession.startTransit`의 `startBeacon`이 8번째였고, 2026-09-23 E42가 도보 두 호출을 줄 목록 한 호출로 합쳐 7곳, 2026-09-26 E51 나들이 귀환 인계 `acceptOutingReturn`의 `startBeacon`으로 8곳), 늘면 실패해 spec 표를 갱신하며 정식판 도달 여부를 판정하게 한다(`src/lib/__tests__/guidance-gate-drift.test.ts`). ⚠ `restart`가 목록에 있는 이유가 바로 위 "실패 뒤 재시작"이다 — A13이 그것을 더했을 때 `toggle`만 세던 검사가 새 진입점을 통째로 놓쳤다. 게이트 property만 검사하면 새 진입점을 영영 놓친다.
+⚠ **봉인의 판정 축은 플래그 참조 목록이 아니라 세션을 시작시키는 호출 전수다**(2026-08-15). 둘은 같은 집합이 아니다 — 참조 중 일부는 진입점이 아니고(사전 고지 문구), 반대로 진입점인데 플래그를 안 보는 자리가 있다(실패 뒤 재시작). 그래서 가드가 `beacon.toggle(`·`beacon.restart(`·`session.startBeacon(`·`self.startBeacon(` **네 형태의 호출 수**를 세고(현재 8곳 — 2026-08-23 K2 자동차 종료 화면의 도보 인계 `acceptCarWalkHandoff`가 7번째, 2026-08-30 A25 승차 전 도보 `GuideSession.startTransit`의 `startBeacon`이 8번째였고, 2026-09-23 E42가 도보 두 호출을 줄 목록 한 호출로 합쳐 7곳, 2026-09-26 E51 나들이 귀환 인계 `acceptOutingReturn`의 `startBeacon`으로 8곳. 나들이 세션 자체의 시작 `startOuting`은 별도 단언이 진입점 둘과 그 둘의 `experimentalOutingEnabled` 조건을 본다), 늘면 실패해 spec 표를 갱신하며 정식판 도달 여부를 판정하게 한다(`src/lib/__tests__/guidance-gate-drift.test.ts`). ⚠ `restart`가 목록에 있는 이유가 바로 위 "실패 뒤 재시작"이다 — A13이 그것을 더했을 때 `toggle`만 세던 검사가 새 진입점을 통째로 놓쳤다. 게이트 property만 검사하면 새 진입점을 영영 놓친다.
 
 ### `INFOPLIST_KEY_*` 빌드 설정만으로는 구성별 분기가 안 된다
 
