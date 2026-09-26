@@ -137,6 +137,7 @@
     <string name="android_guide_waypointRemove">Rimuovi tappa</string>
     <string name="android_guide_waypointRemoved">Tappa %1$s rimossa, nuova ricerca del percorso</string>
     <string name="android_guide_waypointSet">Punto intermedio %1$s, ricerca del percorso in corso</string>
+    <string name="android_guide_waypointSkipped">Ti guidiamo senza la tappa intermedia (%1$s).</string>
     <string name="android_nearby_airFailed">Impossibile caricare la qualità dell\'aria</string>
     <string name="android_nearby_airStationLine">Stazione di monitoraggio %1$s, %2$skm</string>
     <string name="android_nearby_announceBikes">{1, plural, one {%1$s stazione} other {%1$s stazioni}} nelle vicinanze</string>

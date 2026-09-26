@@ -137,6 +137,7 @@
     <string name="android_guide_waypointRemove">経由地を削除</string>
     <string name="android_guide_waypointRemoved">経由地 %1$s を削除し、経路を再検索します</string>
     <string name="android_guide_waypointSet">経由地 %1$s、経路を再検索します</string>
+    <string name="android_guide_waypointSkipped">経由地（%1$s）を除いて案内します。</string>
     <string name="android_nearby_airFailed">大気質情報を取得できませんでした</string>
     <string name="android_nearby_airStationLine">%1$s測定所、%2$skm</string>
     <string name="android_nearby_announceBikes">周辺のステーション%1$s件</string>

@@ -21201,6 +21201,46 @@
         }
       }
     },
+    "ios.guide.waypointSkipped": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "경유지(%1$@)를 제외하고 안내합니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guiding without the waypoint (%1$@)."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Te guiamos sin el punto intermedio (%1$@)."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guidage sans l'étape (%1$@)."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ti guidiamo senza la tappa intermedia (%1$@)."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "経由地（%1$@）を除いて案内します。"
+          }
+        }
+      }
+    },
     "ios.nearby.airFailed": {
       "localizations": {
         "ko": {

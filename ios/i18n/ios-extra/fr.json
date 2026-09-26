@@ -303,6 +303,7 @@
       "waypointSet": "Point de passage {label}, nouvelle recherche d’itinéraire",
       "waypointKept": "Point de passage {label} inchangé",
       "waypointDropped": "Aucun itinéraire passant par l'étape ({label}) n'a été trouvé. Guidage vers la destination ({dest}) sans l'étape.",
+      "waypointSkipped": "Guidage sans l'étape ({label}).",
       "waypointRemove": "Supprimer l’étape",
       "waypointRemoved": "Étape {label} supprimée, nouvelle recherche d’itinéraire"
     },

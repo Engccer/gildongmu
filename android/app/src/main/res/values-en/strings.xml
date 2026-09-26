@@ -137,6 +137,7 @@
     <string name="android_guide_waypointRemove">Remove waypoint</string>
     <string name="android_guide_waypointRemoved">Waypoint %1$s removed, re-fetching the route</string>
     <string name="android_guide_waypointSet">Waypoint %1$s, fetching the route again</string>
+    <string name="android_guide_waypointSkipped">Guiding without the waypoint (%1$s).</string>
     <string name="android_nearby_airFailed">Couldn\'t load air quality</string>
     <string name="android_nearby_airStationLine">%1$s monitoring station, %2$skm</string>
     <string name="android_nearby_announceBikes">{1, plural, one {%1$s bike station} other {%1$s bike stations}} nearby</string>

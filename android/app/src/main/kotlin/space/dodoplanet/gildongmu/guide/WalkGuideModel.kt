@@ -670,8 +670,8 @@ class WalkGuideModel(
 
     /**
      * 상세 불가 시 간략 폴백 — 조용한 강등 금지, 문구는 원인별로 가른다. 경유지가 있으면 사실을 말하고 비운다.
-     * N4(iOS `BeaconModel.fallbackToBrief` 동형): 경로 실패에서만 버리고 강등 문장을 경유지 문장으로 **대체**한다.
-     * 위치 실패에 붙이면 거짓 원인이라 경유지를 그대로 둔다.
+     * N4(iOS `BeaconModel.fallbackToBrief` 동형): 경로 실패는 강등 문장을 경유지 문장으로 **대체**하고, 위치 실패는
+     * 원인 없는 문장(`waypointSkipped`)을 덧붙인다(원인절을 붙이면 거짓 원인).
      */
     private fun fallbackToBrief(key: String = "guide.detailUnavailable") {
         resetArrivalWindow()
@@ -682,13 +682,13 @@ class WalkGuideModel(
         pendingStepFreeNotice = null
         var spoken = if (key == "guide.detailUnavailable") strings.get(key, destinationLabel) else strings.get(key)
         var droppedWaypoint = false
-        val dropped = waypoint
-        if (key == "guide.detailUnavailable" && dropped != null) {
+        waypoint?.let { dropped ->
             waypoint = null
             routeWaypointLabel = null
             syncStartRequestWithSession()
             droppedWaypoint = true
-            spoken = strings.get("android.guide.waypointDropped", dropped.label, destinationLabel)
+            spoken = if (key == "guide.detailUnavailable") strings.get("android.guide.waypointDropped", dropped.label, destinationLabel)
+            else spoken + " " + strings.get("android.guide.waypointSkipped", dropped.label)
         }
         syncOverview()
         statusText = spoken

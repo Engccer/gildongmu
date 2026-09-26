@@ -303,6 +303,7 @@
       "waypointSet": "Waypoint {label}, fetching the route again",
       "waypointKept": "Waypoint {label} unchanged",
       "waypointDropped": "No route through the waypoint ({label}) was found. Guiding to the destination ({dest}) without the waypoint.",
+      "waypointSkipped": "Guiding without the waypoint ({label}).",
       "waypointRemove": "Remove waypoint",
       "waypointRemoved": "Waypoint {label} removed, re-fetching the route"
     },

@@ -118,19 +118,31 @@ describe("TransitTrackingSheet 착지 대상 (E38) · boarding 수동 진행 (N3
     expect(SHEET).toContain("return spokenUnits(model.statusLineText(state: state, leg: leg, now: model.positionClock, speaksLocated: true))");
   });
 
-  it("착지 여부는 전이의 출처가 가른다 — 사용자 전이는 전부, 관측 전이는 도착만(A47 iOS)", () => {
+  it("착지 여부는 전이의 출처가 가른다 — 사용자 전이는 전부, 관측 전이는 도착과 포커스 소실 복구만(A47 iOS)", () => {
     const start = SHEET.indexOf("private func phaseTransitionLanding(");
     const body = SHEET.slice(start, SHEET.indexOf("\n    }\n", start));
-    // 관측 갈래(byUser 절 밖)의 착지는 도착 하나다. 관측 boarding→riding 승격을 여기에 더하면 듣던 상태
-    // 문장을 끊는 포커스 강탈이다(N3 ① 구현 리뷰 M1) — 국면 쌍 절이 되살아나면 걸린다.
+    // 관측 갈래(byUser 절 밖)의 착지는 도착과 소실 복구 둘이다. 관측 boarding→riding 승격을 무조건 더하면 듣던
+    // 상태 문장을 끊는 포커스 강탈이다(N3 ① 구현 리뷰 M1) — 국면 쌍 절이 되살아나면 걸린다.
     const observed = body.slice(body.indexOf("return .status\n        }") + 1);
-    const observedReturns = [...observed.matchAll(/return \.(\w+)/g)].map((m) => m[1]);
-    expect(observedReturns).toEqual(["status"]);
-    expect(observed).toContain("if phase == .arrived, previous != .arrived { return .status }");
+    const observedLines = observed
+      .split("\n")
+      .map((l) => l.trim())
+      .filter((l) => l.startsWith("if ") || l.startsWith("return "));
+    expect(observedLines).toEqual([
+      "if phase == .arrived, previous != .arrived { return .status }",
+      "if lostFocus { return .status }",
+      "return nil",
+    ]);
+    // 소실 복구는 커서가 **사라진 국면의 버튼** 위에 있었을 때만이다(남은 컨트롤 위의 커서는 그대로).
+    expect(SHEET).toContain("lostFocus: old.phase != nil && focusedPhaseButton == old.phase)");
+    expect(SHEET.match(/\.accessibilityFocused\(\$focusedPhaseButton, equals: /g) ?? []).toHaveLength(3);
+    expect(SHEET).not.toMatch(/focusedPhaseButton = /);
     expect(body).not.toMatch(/previous == \.(waiting|boarding)/);
-    // 출처는 dispatch 입력이 정한다: 순번이 오르는 자리는 모델 dispatch 한 곳, 폴은 올리지 않는다.
+    // 출처는 입력이 정한다: 순번이 오르는 자리는 dispatch(폴 제외)와 경로 전환 두 곳이다. 경로 전환은 dispatch 밖이라
+    // 빠지면 승차 중 목적지 전환이 관측 전이로 읽혀 핸들러의 착지까지 취소된다(spec 리뷰 H1).
     const model = readFileSync(join(ROOT, "ios/Gildongmu/Directions/TransitGuideModel.swift"), "utf8");
-    expect(model.match(/userTransitionSeq \+= 1/g) ?? []).toHaveLength(1);
+    expect(model.match(/userTransitionSeq \+= 1/g) ?? []).toHaveLength(2);
+    expect(model).toContain("if state?.phase != previousPhase { userTransitionSeq += 1 }");
     expect(model).toContain(
       "if userAction, result.state.phase != state.phase || result.state.phaseGen != state.phaseGen {",
     );
@@ -138,7 +150,7 @@ describe("TransitTrackingSheet 착지 대상 (E38) · boarding 수동 진행 (N3
     expect(SHEET).toContain(
       ".onChange(of: PhaseTransitionKey(phase: model.state?.phase, userSeq: model.userTransitionSeq)) { old, new in",
     );
-    expect(SHEET).toContain("previous: old.phase, phase: new.phase, byUser: new.userSeq != old.userSeq)");
+    expect(SHEET).toContain("previous: old.phase, phase: new.phase, byUser: new.userSeq != old.userSeq,");
     expect(SHEET).not.toContain(".onChange(of: model.state?.phase)");
   });
 

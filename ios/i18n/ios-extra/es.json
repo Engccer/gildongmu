@@ -303,6 +303,7 @@
       "waypointSet": "Punto de paso {label}, consultando la ruta de nuevo",
       "waypointKept": "Punto de paso {label} sin cambios",
       "waypointDropped": "No se encontró ninguna ruta que pase por el punto intermedio ({label}). Te guiamos al destino ({dest}) sin el punto intermedio.",
+      "waypointSkipped": "Te guiamos sin el punto intermedio ({label}).",
       "waypointRemove": "Quitar punto intermedio",
       "waypointRemoved": "Punto intermedio {label} quitado, consultando la ruta de nuevo"
     },

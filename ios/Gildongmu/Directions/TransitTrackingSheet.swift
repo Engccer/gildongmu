@@ -83,6 +83,9 @@ struct TransitTrackingSheet: View {
     /// 백그라운드에서 난 국면 전이의 착지 대상(A35 L4). VO 커서가 없는 배경에서 시도하지 않고 여기 적어 두었다가
     /// 전경 복귀에 한 번 착지한다(latest-wins). 시트 `.task`는 재표시에만 돌아 이 자리를 대신하지 못한다.
     @State private var deferredLanding: SheetControl?
+    /// 커서가 **국면 전용 버튼** 위에 있으면 그 국면(A47 소실 복구 — 웹 `focusLost` 동형). 읽기 전용이다: 대입하지 않고
+    /// 관측 전이가 그 국면의 버튼을 없앨 때 커서를 쥐고 있었는지만 본다(후보 행의 `focusedCandidate`와 같은 기제).
+    @AccessibilityFocusState private var focusedPhaseButton: TransitPhase?
     /// 진행 중 착지의 대상 — 배경 전환·모달 등장이 그 시도를 끊고 `deferredLanding`으로 이월할 때 읽는다(코드 리뷰 M1).
     @State private var landingInFlight: SheetControl?
     /// 그 표식의 **소유자**(E38 코드 리뷰 MEDIUM-1). 종전엔 정리 시점에 `landingInFlight == target`으로
@@ -222,7 +225,8 @@ struct TransitTrackingSheet: View {
                 expressPromptActive = false
                 // 세션 종료(state nil)도 여기로 온다(.some → nil 변화) — 조망을 닫는다.
                 let target = phaseTransitionLanding(
-                    previous: old.phase, phase: new.phase, byUser: new.userSeq != old.userSeq)
+                    previous: old.phase, phase: new.phase, byUser: new.userSeq != old.userSeq,
+                    lostFocus: old.phase != nil && focusedPhaseButton == old.phase)
                 // 조망이 열려 있으면 그 행·행동은 낡았다 — 닫고, 착지는 onDismiss로 미룬다(§4.3).
                 // 경로 전환이 만든 전이(→waiting)도 여기로 온다: 전환 뒤 착지는 새 세션의
                 // 전이 착지가 정본이고, 전이 착지가 없을 때만 조망이 스스로 세운 후속이 남는다
@@ -382,10 +386,12 @@ struct TransitTrackingSheet: View {
     /// ⚠ **관측 boarding → riding 승격은 착지가 아니다**(N3 ① 구현 리뷰 M1): 커서는 이미 상태 문장에 앉아
     /// 있으므로 착지시키면 듣던 문장을 끊는 포커스 강탈이 된다. 승격 사실은 통지가 말한다(arrived→riding
     /// 자동 복귀도 같은 이유). 같은 쌍의 사용자 선언은 누른 버튼이 사라지므로 착지한다 — 그래서 쌍이 아니라 출처다.
-    /// ⚠ 웹의 "관측 전이의 포커스 소실 복구"는 iOS에 없다: VoiceOver는 커서를 쥔 요소가 사라지면 이웃 요소로
-    /// 스스로 옮겨 읽고(웹의 body 낙하에 해당하는 "커서 없음" 상태가 없다), 사라진 버튼이 커서를 쥐었는지 알
-    /// 방법도 없다(그 버튼들은 착지 바인딩이 없다). 실기기 판정은 BACKLOG §2 A47 iOS 행.
-    private func phaseTransitionLanding(previous: TransitPhase?, phase: TransitPhase?, byUser: Bool) -> SheetControl? {
+    /// 관측 전이가 **커서를 쥔 국면 버튼**을 없앴으면(boarding의 [선택한 열차에 탔어요]·[다른 차량 선택] 위에서 승격,
+    /// 추정 도착의 [다음 구간] 위에서 재관측) 강탈이 아니라 잃은 포커스의 복구다(헌장 §5, 웹 a11y 감사 M1 동형 —
+    /// SwiftUI List는 사라진 요소 대신 시트 맨 위로 커서를 보내기도 한다). 남은 컨트롤 위의 커서는 그대로.
+    private func phaseTransitionLanding(
+        previous: TransitPhase?, phase: TransitPhase?, byUser: Bool, lostFocus: Bool
+    ) -> SheetControl? {
         guard let phase, phase != .done else { return nil }
         if byUser {
             if phase == .waiting {
@@ -400,6 +406,7 @@ struct TransitTrackingSheet: View {
         }
         // 관측 도착 — [다음 구간]이 아니라 도착을 말하는 문장이 착지점이다(E38 판정 문언).
         if phase == .arrived, previous != .arrived { return .status }
+        if lostFocus { return .status }
         return nil
     }
 
@@ -542,8 +549,10 @@ struct TransitTrackingSheet: View {
                     Button(leg.mode == "subway"
                         ? appLocalized("transitGuide.boardSelected")
                         : appLocalized("transitGuide.boardSelectedBus")) { model.confirmBoarded() }
+                    .accessibilityFocused($focusedPhaseButton, equals: .boarding)
                 }
                 Button(appLocalized("transitGuide.reselectVehicle")) { model.changeBoarding() }
+                    .accessibilityFocused($focusedPhaseButton, equals: .boarding)
             } else {
                 // 근사 잠금은 advance 상시(§13.2 소비 한계 — arrived 전이가 없다).
                 // 마지막 leg + 말미 도보면 버튼은 하나이고 라벨이 처음부터 "남은 도보 안내 시작"(E34) —
@@ -552,6 +561,7 @@ struct TransitTrackingSheet: View {
                 // 이 버튼은 그 아래 경유역 목록을 지나야 만난다(접혀 있으면 두 번째 스와이프).
                 if state.phase == .arrived || (state.lock.map(isApproxTransitLock) ?? false) {
                     Button(advanceLabel) { advanceOrHandoff() }
+                        .accessibilityFocused($focusedPhaseButton, equals: state.phase)
                 }
                 if state.phase == .riding, leg.trackMode != .tagoBus {
                     if model.reboardPickerActive {

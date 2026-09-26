@@ -400,6 +400,9 @@
   "ios.guide.waypointSet": [
     "label"
   ],
+  "ios.guide.waypointSkipped": [
+    "label"
+  ],
   "ios.nearby.airStationLine": [
     "name",
     "distance"

@@ -303,6 +303,7 @@
       "waypointSet": "경유지 {label}, 경로를 다시 조회합니다",
       "waypointKept": "경유지 {label} 그대로입니다",
       "waypointDropped": "경유지({label})를 포함한 경로를 찾지 못했습니다. 경유지 없이 목적지({dest})로 안내합니다.",
+      "waypointSkipped": "경유지({label})를 제외하고 안내합니다.",
       "waypointRemove": "경유지 삭제",
       "waypointRemoved": "경유지 {label} 삭제, 경로를 다시 조회합니다"
     },

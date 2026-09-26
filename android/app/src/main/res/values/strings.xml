@@ -137,6 +137,7 @@
     <string name="android_guide_waypointRemove">경유지 삭제</string>
     <string name="android_guide_waypointRemoved">경유지 %1$s 삭제, 경로를 다시 조회합니다</string>
     <string name="android_guide_waypointSet">경유지 %1$s, 경로를 다시 조회합니다</string>
+    <string name="android_guide_waypointSkipped">경유지(%1$s)를 제외하고 안내합니다.</string>
     <string name="android_nearby_airFailed">공기질 정보를 가져오지 못했습니다</string>
     <string name="android_nearby_airStationLine">%1$s 측정소, %2$skm</string>
     <string name="android_nearby_announceBikes">주변 대여소 %1$s곳</string>

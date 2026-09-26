@@ -25,7 +25,7 @@ struct TransitWalkHandoff: Equatable {
 final class TransitGuideModel {
     private(set) var state: TransitGuideState?
     /// 사용자 입력 유래 국면 전이의 순번(A47, 웹 `userTransitionSeq` 동형). 폴 응답은 올리지 않는다 —
-    /// 오르는 자리는 `dispatch` 한 곳이다.
+    /// 오르는 자리는 `dispatch`와 경로 전환(`changeRoute`) 두 곳이다.
     private(set) var userTransitionSeq = 0
     private(set) var route: TransitGuideRoute?
     private(set) var destinationLabel = ""
@@ -1095,7 +1095,11 @@ final class TransitGuideModel {
         lastPollStartAt = nil
         plannedIntervalMs = nil
         deferredAnnouncer.advanceGeneration()
+        let previousPhase = state?.phase
         state = initTransitGuide(route: guideRoute, now: nowMs())
+        // 경로 전환도 사용자 입력(후보 버튼이 사라진다, A47) — dispatch 밖이라 여기서 순번을 올린다. 국면이 그대로(대기 →
+        // 대기)면 올리지 않는다: 그때 착지는 누른 버튼의 핸들러가 이미 세웠다(상태 문장).
+        if state?.phase != previousPhase { userTransitionSeq += 1 }
         let first = guideRoute.legs[0]
         // 목적지가 같은 경로 전환에 "목적지가 바뀌었다"를 말하면 거짓이다 — 종류별 첫 문장.
         let lead = switch announcement {

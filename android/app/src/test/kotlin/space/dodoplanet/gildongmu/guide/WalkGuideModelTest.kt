@@ -7,6 +7,7 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.TestScope
 import org.junit.jupiter.api.extension.RegisterExtension
 import space.dodoplanet.gildongmu.MainDispatcherExtension
+import space.dodoplanet.gildongmu.kit.BeaconDest
 import space.dodoplanet.gildongmu.kit.BeaconTone
 import space.dodoplanet.gildongmu.kit.HttpResponse
 import space.dodoplanet.gildongmu.kit.pathOf
@@ -163,6 +164,17 @@ class WalkGuideModelTest {
         assertEquals(GuideMode.brief, h.model.ui.value.mode)
         assertTrue(h.speaker.texts.contains(h.catalog.get("guide.detailNoLocation")))
         assertEquals(0, h.transport.seenUrls.size)
+    }
+
+    @Test fun `위치 실패 간략 폴백에 경유지가 있으면 빼고 원인 없는 문장을 덧붙인다(N4)`() = guideTest(dispatcher) { h ->
+        h.model.requestStart(h.request.copy(waypoint = GuideWaypoint(BeaconDest(37.6, 127.1), "장미공원")))
+        settle()
+        h.clock.now += 15.5
+        advanceTimeBy(16_000)
+        val expected = h.catalog.get("guide.detailNoLocation") + " " + h.catalog.get("android.guide.waypointSkipped", "장미공원")
+        assertEquals(expected, h.model.ui.value.statusText)
+        assertEquals(expected, h.speaker.spoken.last().first)
+        assertTrue(h.speaker.spoken.last().second)
     }
 
     @Test fun `대기 중 미달 fix만 오면 15초에 최선값으로 조회한다`() = guideTest(dispatcher) { h ->
