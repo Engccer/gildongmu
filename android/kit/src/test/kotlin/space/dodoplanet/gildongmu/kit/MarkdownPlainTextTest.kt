@@ -27,14 +27,14 @@ class MarkdownPlainTextTest {
     @Test fun `유니코드 공백 숫자 단어 문자는 ICU와 같다`() {
         assertEquals("코드", MarkdownPlainText.strip("```한국어 코드```"))
         assertEquals("코드", MarkdownPlainText.strip("```Ⅻ\n코드```"))
-        assertEquals("제목", MarkdownPlainText.strip("## 제목"))
+        assertEquals("제목", MarkdownPlainText.strip("##\u00A0제목"))
         assertEquals("항목", MarkdownPlainText.strip("１. 항목"))
     }
 
     /** LS·PS도 ICU 줄 경계다(fixture엔 없다), CR 단독 뒤도 줄 머리. */
     @Test fun `LS PS CR 단독도 줄 경계`() {
-        assertEquals("가 • 나", MarkdownPlainText.strip("가 - 나"))
-        assertEquals("가 제목", MarkdownPlainText.strip("가 # 제목"))
+        assertEquals("가\u2028• 나", MarkdownPlainText.strip("가\u2028- 나"))
+        assertEquals("가\u2029제목", MarkdownPlainText.strip("가\u2029# 제목"))
         assertEquals("가\r• 나", MarkdownPlainText.strip("가\r- 나"))
     }
 }

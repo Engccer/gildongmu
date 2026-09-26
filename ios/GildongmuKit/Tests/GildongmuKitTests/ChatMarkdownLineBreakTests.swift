@@ -31,7 +31,7 @@ private func kindAndText(_ block: ChatMarkdownBlock) -> [String] {
     struct File: Decodable { let cases: [LineBreakCase] }
     let data = try Data(contentsOf: fixtureURL("chat-markdown-line-break-cases.json"))
     let file = try JSONDecoder().decode(File.self, from: data)
-    #expect(file.cases.count == 11)
+    #expect(file.cases.count == 12)
     for c in file.cases {
         let got = parseChatMarkdownBlocks(c.input).map(kindAndText)
         #expect(got == c.expect.map { [$0.kind, $0.text] }, "\(c.name)")

@@ -38,11 +38,12 @@ public func parseChatMarkdownBlocks(_ text: String) -> [ChatMarkdownBlock] {
         paragraph = []
     }
 
-    // CRLF는 줄 경계 하나다(CommonMark·웹·안드로이드 :kit과 같다, 위원장 판정 2026-09-27). Swift `Character`는 CRLF를
-    // 그래핌 하나로 봐서 "\n" 분리에 걸리지 않으므로 먼저 LF로 접는다. CR 단독·VT·FF·NEL은 경계가 아니다(공유 fixture).
+    // CRLF는 줄 경계 하나다(CommonMark·웹·안드로이드 :kit과 같다, 위원장 판정 2026-09-27). 먼저 LF로 접고, 분리는
+    // `Character`가 아니라 유니코드 스칼라 단위로 한다 — Swift `Character`는 CRLF를 그래핌 하나로 봐서 "\n"에 걸리지 않고,
+    // 접은 뒤에도 "\r\r\n"이 새 CRLF를 남긴다(`:kit` `split("\n")`과 같은 결과). CR 단독·VT·FF·NEL은 경계가 아니다(공유 fixture).
     let normalized = text.replacingOccurrences(of: "\r\n", with: "\n")
-    for lineSub in normalized.split(separator: "\n", omittingEmptySubsequences: false) {
-        let line = String(lineSub)
+    for lineScalars in normalized.unicodeScalars.split(separator: "\n", omittingEmptySubsequences: false) {
+        let line = String(String.UnicodeScalarView(lineScalars))
         if line.trimmingCharacters(in: .whitespaces).isEmpty {
             flushParagraph()
         } else if let match = line.wholeMatch(of: /^\s{0,3}#{1,6}\s+(.*)$/) {

@@ -26,7 +26,7 @@ class ChatMarkdownTest {
     /** 줄 경계 공유 fixture(Kit·:kit 공통): CRLF는 경계 하나, CR 단독·VT·FF·NEL은 경계 아님. */
     @Test fun lineBreaksMatchSharedFixture() {
         val cases = Fixtures.sharedJson("chat-markdown-line-break-cases.json", LineBreakFile.serializer()).cases
-        assertEquals(11, cases.size)
+        assertEquals(12, cases.size)
         for (c in cases) {
             assertEquals(c.expect.map { listOf(it.kind, it.text) }, parseChatMarkdownBlocks(c.input).map(::kindAndText), c.name)
         }

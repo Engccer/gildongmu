@@ -155,8 +155,11 @@ fun SettingsScreen(
                     when (row) {
                         SettingsRow.Theme -> ValueRow(joinText(stringResource(R.string.android_settings_theme), themeValue), "settings-theme", focus) { dialog = row }
                         SettingsRow.ListenSpeed -> ValueRow(joinText(stringResource(R.string.android_settings_listenSpeed), stringResource(listenSpeedLabelId(listenSpeed))), "settings-listenspeed", focus) { dialog = row }
-                        SettingsRow.AiConsent -> SwitchRow(stringResource(R.string.android_settings_aiConsentToggle), aiConsent == true, "settings-aiconsent", focus) { on ->
-                            if (on) consent.grant() else consent.revoke()
+                        // 읽는 중(null)엔 그리지 않는다 — "꺼짐"으로 보이고 읽히다 눌리면 이미 동의한 사용자의 뜻과 반대가 된다(3-state, 한 프레임 수준)
+                        SettingsRow.AiConsent -> aiConsent?.let { granted ->
+                            SwitchRow(stringResource(R.string.android_settings_aiConsentToggle), granted, "settings-aiconsent", focus) { on ->
+                                if (on) consent.grant() else consent.revoke()
+                            }
                         }
                         SettingsRow.Language -> ValueRow(joinText(stringResource(R.string.android_settings_language), languageValue), "settings-language", focus) { dialog = row }
                         SettingsRow.Dictation -> ValueRow(joinText(stringResource(R.string.android_settings_dictationStyle), dictationValue), "settings-dictation", focus) { dialog = row }

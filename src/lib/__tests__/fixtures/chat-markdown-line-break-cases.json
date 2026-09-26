@@ -6,6 +6,7 @@
     { "name": "crlf-list", "input": "- 하나\r\n- 둘", "expect": [{ "kind": "listItem", "text": "• 하나" }, { "kind": "listItem", "text": "• 둘" }] },
     { "name": "crlf-blank-line", "input": "가\r\n\r\n나", "expect": [{ "kind": "paragraph", "text": "가" }, { "kind": "paragraph", "text": "나" }] },
     { "name": "crlf-paragraph-join", "input": "가\r\n나", "expect": [{ "kind": "paragraph", "text": "가\n나" }] },
+    { "name": "cr-then-crlf", "input": "가\r\r\n## 제목", "expect": [{ "kind": "paragraph", "text": "가\r" }, { "kind": "heading", "text": "제목" }] },
     { "name": "cr-alone", "input": "가\r\r나", "expect": [{ "kind": "paragraph", "text": "가\r\r나" }] },
     { "name": "vt", "input": "가\u000B나", "expect": [{ "kind": "paragraph", "text": "가\u000B나" }] },
     { "name": "ff", "input": "가\u000C나", "expect": [{ "kind": "paragraph", "text": "가\u000C나" }] },

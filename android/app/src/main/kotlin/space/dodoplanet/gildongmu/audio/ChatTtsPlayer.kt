@@ -46,9 +46,9 @@ interface ChatClipPort {
     fun stop()
 }
 
-/** 채팅 듣기 전용 오디오 포커스(도보 안내 `GuideAudioFocus`와 다른 핸들). 잃으면 `onLost`(메인). */
+/** 채팅 듣기 전용 오디오 포커스(도보 안내 `GuideAudioFocus`와 다른 핸들). 잃으면 `onLost(duckOnly)`(메인) — `duckOnly`는 "잠깐 소리를 줄여 달라"(CAN_DUCK)다. */
 interface ChatFocusPort {
-    fun acquire(onLost: () -> Unit): Boolean
+    fun acquire(onLost: (duckOnly: Boolean) -> Unit): Boolean
 
     fun release()
 }
@@ -60,7 +60,9 @@ interface ChatFocusPort {
  *   (웹 계약 — 로케일 보이스 없는 엔진으로 다른 언어를 읽히면 알아들을 수 없어 iOS의 기본 보이스 최후 낭독은 옮기지 않는다).
  * - 배속은 재생 시점에 읽는다: 기기 음성은 시스템 기본 속도 × 배율(1배 = 사용자가 둔 시스템 속도 — iOS 캘리브레이션 표의 "1배 = 기본 속도"와 같은 뜻),
  *   서버 MP3는 `PlaybackParams.speed`에 배율 그대로.
- * - 안내 우선: 자기 오디오 포커스를 쥐고 **잃으면 정지**한다 — 도보 안내 발화·톤이 포커스를 요청하면 채팅 낭독이 멈춘다(iOS `speakGuidance`의 `stop()` 동형).
+ * - 안내 우선: 자기 오디오 포커스를 쥐고 잃으면 정지한다(iOS `speakGuidance`의 `stop()` 동형). 단 "잠깐 줄여 달라"(CAN_DUCK)는 **도보 안내 세션이 살아 있을
+ *   때만** 정지 사유다 — TalkBack도 오디오 덕킹(기본 켬)으로 말할 때마다 같은 요청을 보내므로, 그것까지 멈추면 SR 사용자는 스와이프 한 번에 낭독을 잃는다.
+ *   안내와 TalkBack은 요청 종류로 구분되지 않아(둘 다 GAIN_TRANSIENT_MAY_DUCK) 세션 활성이 판별선이다.
  * - 늦은 콜백·늦은 서버 응답은 세대(`generation`)로 거른다. ⚠ 메인 스레드 전용.
  */
 class ChatTtsPlayer(
@@ -75,6 +77,8 @@ class ChatTtsPlayer(
     private val appLanguage: () -> String,
     /** 시스템 TTS 기본 속도(1.0 = 보통). */
     private val systemRate: () -> Float = { 1f },
+    /** 도보 안내 세션이 살아 있는가(`GuideSession.isActive`) — CAN_DUCK 상실을 정지로 볼지의 판별선. */
+    private val guideActive: () -> Boolean = { false },
 ) {
     private val _playingId = MutableStateFlow<Long?>(null)
 
@@ -83,6 +87,8 @@ class ChatTtsPlayer(
 
     private var generation = 0
     private var serverJob: Job? = null
+    /** 마지막 서버 MP3 한 칸(iOS `audioCache` 축소판) — 같은 답변을 멈췄다 다시 들을 때 과금 호출을 되풀이하지 않는다. */
+    private var cachedMp3: Pair<Long, ByteArray>? = null
 
     /** 같은 id면 정지, 아니면 기존 재생을 끊고 이 답변을 읽는다. 실패(포커스 거절·서버 실패·합성 오류)는 `onFailed` 한 번. */
     fun toggle(id: Long, markdown: String, onFailed: () -> Unit) {
@@ -95,7 +101,7 @@ class ChatTtsPlayer(
         if (text.isEmpty()) return
         val gen = generation
         _playingId.value = id
-        if (!focus.acquire(onLost = { if (gen == generation) stop() })) {
+        if (!focus.acquire(onLost = { duckOnly -> if (gen == generation && (!duckOnly || guideActive())) stop() })) {
             finish(gen, failed = true, onFailed)
             return
         }
@@ -109,8 +115,8 @@ class ChatTtsPlayer(
                 if (!started) finish(gen, failed = true, onFailed)
             } else {
                 serverJob = scope.launch {
-                    val mp3 = try {
-                        fetchServer(text, lang)
+                    val mp3 = cachedMp3?.takeIf { it.first == id }?.second ?: try {
+                        fetchServer(text, lang).also { cachedMp3 = id to it }
                     } catch (e: CancellationException) {
                         throw e
                     } catch (_: Exception) { // 네트워크·비-2xx·502 fallback 전부 — 통지가 유일한 증거다
@@ -139,6 +145,11 @@ class ChatTtsPlayer(
         if (gen != generation) return
         generation++ // 같은 세대의 두 번째 콜백(오류 뒤 onStop 류)을 거른다
         serverJob = null
+        if (failed) {
+            // 긴 답변의 한 조각이 실패해도 남은 조각이 큐에서 계속 읽히지 않게(실패 통지 뒤 소리가 이어지면 멈출 수단이 없다)
+            speech.stop()
+            clip.stop()
+        }
         focus.release()
         _playingId.value = null
         if (failed) onFailed()
@@ -147,7 +158,7 @@ class ChatTtsPlayer(
 
 /**
  * 엔진 입력 상한(`TextToSpeech.getMaxSpeechInputLength`, 보통 4000자)에 맞춘 분할(순수). 줄바꿈 경계에서 탐욕적으로 묶고, 한 줄이 상한을 넘으면
- * 공백 경계, 그것도 없으면 상한에서 자른다. 빈 조각은 내지 않는다. 합치면 원문과 같다(경계 문자는 앞 조각에 남긴다).
+ * 공백 경계, 그것도 없으면 상한에서 자르되 서로게이트 쌍은 가르지 않는다. 경계 문자는 앞 조각에 남기고 공백만 남은 조각은 버린다.
  */
 fun chunkForSpeech(text: String, max: Int): List<String> {
     require(max > 0)
@@ -155,7 +166,8 @@ fun chunkForSpeech(text: String, max: Int): List<String> {
     var rest = text
     while (rest.length > max) {
         val window = rest.substring(0, max)
-        val cut = (window.lastIndexOf('\n').takeIf { it > 0 } ?: window.lastIndexOf(' ').takeIf { it > 0 })?.plus(1) ?: max
+        var cut = (window.lastIndexOf('\n').takeIf { it > 0 } ?: window.lastIndexOf(' ').takeIf { it > 0 })?.plus(1) ?: max
+        if (cut > 1 && Character.isLowSurrogate(rest[cut]) && Character.isHighSurrogate(rest[cut - 1])) cut--
         out += rest.substring(0, cut)
         rest = rest.substring(cut)
     }
@@ -174,18 +186,30 @@ private val CHAT_AUDIO: AudioAttributes by lazy {
         .build()
 }
 
+/**
+ * 엔진 콜백이 지금 재생을 끝내는가(순수). 발화 id는 `chat-<묶음>-<조각>`이고 **콜백 인자의 id**로만 가른다 — 옛 묶음(교체·정지로 끊긴 발화)의
+ * `onStop`·`onError`는 비동기로 늦게 와서 그때의 "현재" 값을 읽으면 새 재생을 끝내 버린다. 오류·중단은 조각과 무관하게 끝, 정상 완료는 마지막 조각만.
+ */
+fun chatUtteranceEnds(utteranceId: String?, batch: Int, lastIndex: Int, ended: Boolean): Boolean {
+    val prefix = "chat-$batch-"
+    if (utteranceId == null || !utteranceId.startsWith(prefix)) return false
+    val index = utteranceId.removePrefix(prefix).toIntOrNull() ?: return false
+    return ended || index == lastIndex
+}
+
 /** 플랫폼 포트 — 채팅 전용 `TextToSpeech`(도보 안내 엔진과 따로, 한 엔진의 `QUEUE_FLUSH`가 서로를 끊지 않게). 긴 답변은 `chunkForSpeech`로 나눠 큐에 잇는다. */
 class AndroidChatSpeech(private val context: Context) : ChatSpeechPort {
     private val main = Handler(Looper.getMainLooper())
     private var tts: TextToSpeech? = null
-    private var ready: Boolean? = null
+    private var ready = false
     private val waiting = ArrayList<(Boolean) -> Unit>()
-    private var utterance = 0
-    private var lastId: String? = null
+    /** 현재 발화 묶음 번호·마지막 조각·완료 콜백 — 메인 스레드에서만 읽고 쓴다(엔진 콜백은 id만 들고 메인으로 넘어온다). */
+    private var batch = 0
+    private var lastIndex = 0
     private var done: ((Boolean) -> Unit)? = null
 
     override fun prepare(onReady: (Boolean) -> Unit) {
-        ready?.let { onReady(it); return }
+        if (ready) { onReady(true); return }
         waiting += onReady
         if (tts != null) return
         var engine: TextToSpeech? = null
@@ -195,6 +219,10 @@ class AndroidChatSpeech(private val context: Context) : ChatSpeechPort {
                 if (ok) {
                     engine?.setAudioAttributes(CHAT_AUDIO)
                     engine?.setOnUtteranceProgressListener(listener)
+                } else {
+                    // 실패는 캐시하지 않는다 — 다음 [듣기]가 다시 시도한다(엔진을 나중에 설치·활성화한 경우)
+                    engine?.shutdown()
+                    tts = null
                 }
                 ready = ok
                 val callbacks = waiting.toList()
@@ -216,12 +244,12 @@ class AndroidChatSpeech(private val context: Context) : ChatSpeechPort {
         if (lang == TextToSpeech.LANG_MISSING_DATA || lang == TextToSpeech.LANG_NOT_SUPPORTED) return false
         engine.setSpeechRate(rate)
         val chunks = chunkForSpeech(text, TextToSpeech.getMaxSpeechInputLength())
-        val base = ++utterance
+        batch++
+        lastIndex = chunks.lastIndex
         done = onDone
-        lastId = "chat-$base-${chunks.lastIndex}"
         chunks.forEachIndexed { i, chunk ->
             val mode = if (i == 0) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD
-            if (engine.speak(chunk, mode, Bundle(), "chat-$base-$i") != TextToSpeech.SUCCESS) {
+            if (engine.speak(chunk, mode, Bundle(), "chat-$batch-$i") != TextToSpeech.SUCCESS) {
                 done = null
                 engine.stop()
                 return false
@@ -235,11 +263,10 @@ class AndroidChatSpeech(private val context: Context) : ChatSpeechPort {
         tts?.stop()
     }
 
-    private fun deliver(id: String?, failed: Boolean) {
+    private fun deliver(id: String?, ended: Boolean, failed: Boolean) {
         main.post {
+            if (!chatUtteranceEnds(id, batch, lastIndex, ended)) return@post
             val callback = done ?: return@post
-            // 마지막 조각의 끝, 또는 어느 조각의 오류·중단이면 끝이다
-            if (!failed && id != lastId) return@post
             done = null
             callback(failed)
         }
@@ -247,12 +274,12 @@ class AndroidChatSpeech(private val context: Context) : ChatSpeechPort {
 
     private val listener = object : UtteranceProgressListener() {
         override fun onStart(utteranceId: String?) = Unit
-        override fun onDone(utteranceId: String?) = deliver(utteranceId, failed = false)
+        override fun onDone(utteranceId: String?) = deliver(utteranceId, ended = false, failed = false)
         @Deprecated("플랫폼 시그니처")
-        override fun onError(utteranceId: String?) = deliver(utteranceId, failed = true)
-        override fun onError(utteranceId: String?, errorCode: Int) = deliver(utteranceId, failed = true)
-        // 사용자·교체 정지는 `stop()`이 콜백을 먼저 떼므로 여기 오는 중단은 엔진 쪽 중단이다 — 실패가 아니라 끝으로 본다
-        override fun onStop(utteranceId: String?, interrupted: Boolean) = deliver(lastId, failed = false)
+        override fun onError(utteranceId: String?) = deliver(utteranceId, ended = true, failed = true)
+        override fun onError(utteranceId: String?, errorCode: Int) = deliver(utteranceId, ended = true, failed = true)
+        // 현재 묶음의 중단은 엔진 쪽 중단(우리 정지·교체는 묶음 번호가 이미 바뀌었다) — 실패가 아니라 끝으로 본다
+        override fun onStop(utteranceId: String?, interrupted: Boolean) = deliver(utteranceId, ended = true, failed = false)
     }
 }
 
@@ -269,8 +296,12 @@ class AndroidChatClip : ChatClipPort {
             mp.setDataSource(ByteArrayMediaSource(mp3))
             mp.setOnPreparedListener {
                 if (player !== it) return@setOnPreparedListener
-                it.playbackParams = it.playbackParams.setSpeed(speed)
-                if (!it.isPlaying) it.start()
+                // 기기가 이 속도를 거부하면(IllegalArgument·IllegalState) 크래시 대신 실패로
+                val started = runCatching {
+                    it.playbackParams = it.playbackParams.setSpeed(speed)
+                    if (!it.isPlaying) it.start()
+                }
+                if (started.isFailure) { stop(); onDone(true) }
             }
             mp.setOnCompletionListener { if (player === it) { stop(); onDone(false) } }
             mp.setOnErrorListener { p, _, _ -> if (player === p) { stop(); onDone(true) }; true }
@@ -311,12 +342,14 @@ class AndroidChatFocus(private val audioManager: AudioManager) : ChatFocusPort {
     private val main = Handler(Looper.getMainLooper())
     private var current: AudioFocusRequest? = null
 
-    override fun acquire(onLost: () -> Unit): Boolean {
+    override fun acquire(onLost: (duckOnly: Boolean) -> Unit): Boolean {
         release()
         val req = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)
             .setAudioAttributes(CHAT_AUDIO)
             .setWillPauseWhenDucked(true)
-            .setOnAudioFocusChangeListener({ change -> if (change < 0) onLost() }, main)
+            .setOnAudioFocusChangeListener({ change ->
+                if (change < 0) onLost(change == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK)
+            }, main)
             .build()
         val granted = audioManager.requestAudioFocus(req) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
         current = req.takeIf { granted }

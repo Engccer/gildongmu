@@ -19,6 +19,7 @@ import space.dodoplanet.gildongmu.audio.AndroidChatFocus
 import space.dodoplanet.gildongmu.audio.AndroidChatSpeech
 import space.dodoplanet.gildongmu.audio.ChatTtsPlayer
 import space.dodoplanet.gildongmu.audio.systemTtsRate
+import space.dodoplanet.gildongmu.guide.GuideSession
 import space.dodoplanet.gildongmu.i18n.AppLocale
 import space.dodoplanet.gildongmu.kit.LocationFixPolicy
 import space.dodoplanet.gildongmu.kit.SearchService
@@ -69,6 +70,7 @@ class ChatServices private constructor(app: Context) {
             speed = { AppConfig.settings.listenSpeed.value },
             appLanguage = { AppLocale.current(AppConfig.localizedApp().resources) },
             systemRate = { systemTtsRate(app) },
+            guideActive = { GuideSession.isActive },
         )
     }
 
