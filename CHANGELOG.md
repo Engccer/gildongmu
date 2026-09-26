@@ -13,7 +13,7 @@
 
 ### ODsay 실호출 게이트 5종이 저장 응답을 한 규약으로 재사용한다 (E47-1)
 
-`verify-odsay-alternatives.mjs`의 저장·재생 규약을 `scripts/lib/odsay-corpus.mjs`로 뽑았다(요청 하나 = 파일 하나, 실패 응답 미저장, `--from-corpus`는 읽기 전용·호출 0, corpus는 저장소 밖). provider를 태우는 게이트는 전역 `fetch`를 가로채 ODsay 호출만 corpus를 지나므로 판정 로직은 그대로다. `express-lane`·`express-stops`·`lang`·`transfer-door`에 `--out`/`--from-corpus`를 달았고 저장 없는 실호출 모드는 없앴다(corpus에 없는 요청은 exit 3). 기존 corpus 재생 판정은 종전과 같다(45건 통과, 재생 13·실호출 0). 이 세션의 ODsay 실호출 0건. [계획](docs/superpowers/plans/2026-09-26-backlog-sweep-6-parallel-plan.md)
+`verify-odsay-alternatives.mjs`의 저장·재생 규약을 `scripts/lib/odsay-corpus.mjs`로 뽑았다(요청 하나 = 파일 하나, 실패 응답 미저장, `--from-corpus`는 읽기 전용·호출 0, corpus는 저장소 밖). provider를 태우는 게이트는 전역 `fetch`를 가로채 ODsay 호출만 corpus를 지나므로 판정 로직은 그대로다. `express-lane`·`express-stops`·`lang`·`transfer-door`에 `--out`/`--from-corpus`를 달았고 저장 없는 실호출 모드는 없앴다(corpus에 없는 요청은 exit 3). 기존 corpus 재생 판정은 종전과 같다(45건 통과, 재생 13·실호출 0). [계획](docs/superpowers/plans/2026-09-26-backlog-sweep-6-parallel-plan.md)
 
 ### 실브라우저 접근성 회귀 게이트 (D27)
 
@@ -21,11 +21,11 @@
 
 ### 웹 대중교통 안내: 국면 전이 즉폴 창구·누른 버튼 착지(A49·A47 웹), 경유지 포기 문장(N4 웹)
 
-웹 대중교통 안내의 즉시 조회 10곳이 `requestImmediatePoll` 하나를 지나, 진행 중 조회와 겹쳐도 새 국면의 첫 조회가 그 조회 완료 직후에 나간다(종전엔 한 주기 밀렸다, A49). 사용자 버튼이 일으킨 국면 전이는 상태 문장(대기로 가면 목록 질문 라벨)에 착지하고, 폴 응답이 일으킨 전이는 커서를 쥔 버튼을 없앴을 때만 상태 문장으로 포커스를 되찾는다([선택한 열차에 탔어요]를 누르면 커서가 페이지 맨 위로 떨어지던 전이, A47 웹. iOS는 `ios-small`). 도보 안내가 경유지 경로를 못 받으면 강등 문장 대신 "경유지({label})를 포함한 경로를 찾지 못했습니다. 경유지 없이 목적지({dest})로 안내합니다." 한 문장만 낸다(N4 문안 위원장 확정, 6로케일). [계획](docs/superpowers/plans/2026-09-26-backlog-sweep-6-parallel-plan.md)
+웹 대중교통 안내의 즉시 조회 10곳이 `requestImmediatePoll` 하나를 지나, 진행 중 조회와 겹쳐도 새 국면의 첫 조회가 그 조회 완료 직후에 나간다(종전엔 한 주기 밀렸다, A49). 사용자 버튼이 일으킨 국면 전이는 상태 문장(대기로 가면 목록 질문 라벨)에 착지하고, 폴 응답이 일으킨 전이는 커서를 쥔 버튼을 없앴을 때만 상태 문장으로 포커스를 되찾는다([선택한 열차에 탔어요]를 누르면 커서가 페이지 맨 위로 떨어지던 전이, A47 웹. iOS는 BACKLOG A47). 도보 안내가 경유지 경로를 못 받으면 강등 문장 대신 "경유지({label})를 포함한 경로를 찾지 못했습니다. 경유지 없이 목적지({dest})로 안내합니다." 한 문장만 낸다(N4 문안 위원장 확정, 6로케일). [계획](docs/superpowers/plans/2026-09-26-backlog-sweep-6-parallel-plan.md)
 
 ### 나들이 모드 — 도착지 없는 도보 안내 (E51, iOS)
 
-목적지 없이 걷는 세 번째 안내 세션(`OutingModel`)을 iOS 정식 코드 경로로 더했다. 만보계 거리 10m 비프, 유도 방위 기준 앞·옆·뒤 투영으로 지나친 이정표·횡단보도 예고·도로명 변경 낭독(끔·이정표만·전부), "주변 보기" 조망, 종료 화면, "출발점으로"(도보 안내 인계). 화면이 꺼져도 기기 음성으로 말하고(백그라운드 음성 명시 예외), 진입점은 제목 메뉴와 길찾기 탭 도착지 없는 조회의 거절 자리 버튼이다. 서버는 `/api/walk/nearby?coords=1` 옵트인(음향신호기 좌표·상한 완화)을 열었다. spec `docs/superpowers/specs/2026-09-26-outing-mode-design.md`(적대적 설계 리뷰 반영 절 포함).
+목적지 없이 걷는 세 번째 안내 세션(`OutingModel`)을 iOS 정식 코드 경로로 더했다. 만보계 거리 10m 비프, 유도 방위 기준 앞·옆·뒤 투영으로 지나친 이정표·횡단보도 예고·도로명 변경 낭독(끔·이정표만·전부), "주변 보기" 조망, 종료 화면, "출발점으로"(도보 안내 인계). 화면이 꺼져도 기기 음성으로 말하고(백그라운드 음성 명시 예외), 진입점은 제목 메뉴와 길찾기 탭 도착지 없는 조회의 거절 자리 버튼이다. 서버는 `/api/walk/nearby?coords=1` 옵트인(음향신호기 좌표·상한 완화)을 열었다. [spec](docs/superpowers/specs/2026-09-26-outing-mode-design.md).
 
 ### 잊힌 세션 안전망 5분·5분 + 추정 도착이 가능한 동안 무이동 축 유예 (E51 §9)
 

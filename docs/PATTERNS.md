@@ -59,7 +59,7 @@
 
 - **baseline 갱신은 파일 직접 수정**이다(자동 갱신 스크립트 없음). 감소 로그를 보고 숫자를 내리고, 새 위반은 고치는 것이 기본이다. critical은 baseline으로 넘기지 않는다: 고칠 수 없으면 그 테스트를 `test.fixme`로 표시하고 이유를 적는다.
 - **fixture 물리기**: 상태 화면은 `isolateNetwork(page, fixtures)`(`tests/a11y/network.ts`)가 외부 출처를 끊고 `/api/**`를 pathname으로 fixture에 대응시키며, 없는 경로는 502로 답한다(라우트의 실제 실패 계약이라 실패 문장 화면도 감사 대상). 새 상태 화면을 넣을 때 필요한 응답만 `tests/a11y/fixtures.ts`에 더하고, 감사 전에 그 화면에 도달했는지 단언한다(단언이 없으면 복원이 깨져도 홈을 감사하고 초록이 된다). 실호출은 0이다. ⚠ fixture가 없는 자동 등장 섹션(장소 상세·허브의 "내 주변" 목록 등)은 실패 문장 상태로만 감사된다. 성공 상태의 목록·`<h4>` 구조는 이 게이트 밖이다.
-- **결정론의 세 받침**: 키 게이트 17개는 `playwright.config.ts`가 더미 값으로 전부 켠다(`.env.local` 유무와 무관, 그 밖의 변수는 고정하지 않는다), 서버는 게이트 전용 포트 3100이고 떠 있는 서버를 재사용하지 않는다(`reuseExistingServer: false`, 병렬 worktree의 3100을 재사용하면 남의 빌드를 감사한다), 서비스 워커는 차단(`serviceWorkers: "block"`, 워커가 가로챈 요청은 `page.route`에 안 보인다). 셋 중 하나를 빼면 baseline이 머신마다 달라진다.
+- **결정론의 세 받침**: 게이트가 보는 키 환경변수 17개는 `playwright.config.ts`가 더미 값으로 전부 켠다(`.env.local` 유무와 무관, 그 밖의 변수는 고정하지 않는다), 서버는 게이트 전용 포트 3100이고 떠 있는 서버를 재사용하지 않는다(`reuseExistingServer: false`, 병렬 worktree의 3100을 재사용하면 남의 빌드를 감사한다), 서비스 워커는 차단(`serviceWorkers: "block"`, 워커가 가로챈 요청은 `page.route`에 안 보인다). 셋 중 하나를 빼면 baseline이 머신마다 달라진다.
 - ⚠ **`?dir=` 복원은 폼만 채운다**. 길찾기 결과를 보려면 "경로 조회"를 눌러야 한다(프리필과 다른 진입, §프리필 진입과 `?dir=` 복원).
 - ⚠ **실기기 판정을 대체하지 않는다.** axe는 표준 위반(대비·계산된 접근명·중복 id 등)만 보고, 헌장 §2 과잉 ARIA·"한 줄 = 한 접근성 객체" 분절·포커스 착지·낭독 순서는 못 본다. 그 축은 jsdom 계약 테스트·`a11y-auditor`·실기기 VoiceOver 몫이다.
 
@@ -93,7 +93,7 @@
 
 **측위가 취득 실패로 끝났는데 직전 좌표가 있으면 "옛 위치"다**(stale-origin, 위원장 판정 2026-09-23, spec `docs/superpowers/specs/2026-09-23-stale-origin-disclosure-design.md`). 위치 주장은 신선·옛 위치·없음 셋이고, 옛 위치는 "마지막으로 확인한 위치, 주소, N분 전"(표시줄·길찾기 칸 같은 문장 함수, 웹 `LocationBar`·`DirectionsView` / iOS `staleLocationText` / 안드로이드 `StaleWords`)으로 말하며 길찾기는 그 좌표로 계속하고 완료 통지 뒷문장으로 밝힌다. 권한 거부·대략적 위치는 옛 위치가 아니다(사용자가 고칠 설정이 있다).
 
-- **판정 단위는 "좌표를 쓴 뒤 취득 실패가 있었는가" 표식 하나이고, 내리는 자리는 스토어에 좌표를 쓰는 곳 하나다**(iOS `didUpdateLocations`의 `stored = fix`, 안드로이드 `stored` 세터). ⚠ **"실패 시각 > 측정 시각" 비교는 쓰지 않는다** — 측정 시각은 수신보다 최대 10초 앞서므로 2초 표시용 측위 실패 직후 다른 화면의 측위가 성공해도 옛 위치가 남는다(설계 리뷰 H1). 웹은 성공이 상태를 `ready`로 통째로 바꿔 같은 뜻이다(`denied`의 가산 필드 `last`, 판정은 순수 모듈 `stale-origin.ts`의 `staleFixOf` — 여러 테스트가 `@/lib/geolocation`을 통째로 목킹해 거기 두면 런타임에 죽는다).
+- **판정 단위는 "좌표를 쓴 뒤 취득 실패가 있었는가" 표식 하나이고, 내리는 자리는 스토어에 좌표를 쓰는 곳 하나다**(iOS `didUpdateLocations`의 `stored = fix`, 안드로이드 `stored` 세터. 표식 이름은 iOS·안드로이드 `failedSinceLastStore`, 웹은 `denied`+`last` → `staleFixOf`, 경과 계산은 Kit `staleFixAge` 미러). ⚠ **"실패 시각 > 측정 시각" 비교는 쓰지 않는다** — 측정 시각은 수신보다 최대 10초 앞서므로 2초 표시용 측위 실패 직후 다른 화면의 측위가 성공해도 옛 위치가 남는다(설계 리뷰 H1). 웹은 성공이 상태를 `ready`로 통째로 바꿔 같은 뜻이다(`denied`의 가산 필드 `last`, 판정은 순수 모듈 `stale-origin.ts`의 `staleFixOf` — 여러 테스트가 `@/lib/geolocation`을 통째로 목킹해 거기 두면 런타임에 죽는다).
 - **표시줄과 길찾기 칸은 옛 위치 전이를 측위 없이 따라간다**(다른 화면의 성공·실패): 웹 칸은 스토어 파생(`useGeolocation`+`staleFixOf`, 주소는 좌표 키 캐시 `useCurrentAddress`), iOS는 `.onChange(of: staleFix?.fixedAt)` → `syncFromStore`·`syncCurrentFromStore`, 안드로이드는 `staleChanges` 구독. ⚠ 옛 위치를 **뷰 태스크 키**로 두지 말 것 — 태스크 안의 측위 실패가 키를 바꿔 자기를 취소한다(iOS 구현 리뷰 H-1). 전이 때 다시 재면 실패와 성공이 번갈아 서로를 부르는 측위 반복이 된다. 표식이 바뀌면 주소를 먼저 비운다(다른 좌표의 주소가 옛 위치 문장에 실리지 않게).
 - "N분 전"은 렌더 시점의 지금으로 계산하고 옛 위치인 동안 1분 이내로 다시 그린다(웹 `useClockWhile`, iOS `TimelineView(.everyMinute)`, Compose 틱). 완료 통지 문장은 조회 시점 경과로 굳힌다(live region 문장이 1분마다 바뀌면 그때마다 다시 낭독된다).
 - 웹 WebMCP `resolved.from/to`는 현재 위치 끝점이면 출력 시점 파생 라벨이다 — 조회를 시작한 렌더의 클로저에는 옛 위치 판정·주소가 아직 없다.
@@ -388,7 +388,7 @@ iOS 지도 버튼·검색 로터 액션은 URL 빌더가 성공할 때만 만들
 
 ### 봉인의 판정 축은 플래그 참조 목록이 아니라 세션을 시작시키는 호출 전수다
 
-⚠ **봉인의 판정 축은 플래그 참조 목록이 아니라 세션을 시작시키는 호출 전수다**(2026-08-15). 둘은 같은 집합이 아니다 — 참조 중 일부는 진입점이 아니고(사전 고지 문구), 반대로 진입점인데 플래그를 안 보는 자리가 있다(실패 뒤 재시작). 그래서 가드가 `beacon.toggle(`·`beacon.restart(`·`session.startBeacon(`·`self.startBeacon(` **네 형태의 호출 수**를 세고(현재 7곳 — 2026-08-23 K2 자동차 종료 화면의 도보 인계 `acceptCarWalkHandoff`가 7번째, 2026-08-30 A25 승차 전 도보 `GuideSession.startTransit`의 `startBeacon`이 8번째였고, 2026-09-23 E42가 도보 두 호출을 줄 목록 한 호출로 합쳐 7곳), 늘면 실패해 spec 표를 갱신하며 정식판 도달 여부를 판정하게 한다(`src/lib/__tests__/guidance-gate-drift.test.ts`). ⚠ `restart`가 목록에 있는 이유가 바로 위 "실패 뒤 재시작"이다 — A13이 그것을 더했을 때 `toggle`만 세던 검사가 새 진입점을 통째로 놓쳤다. 게이트 property만 검사하면 새 진입점을 영영 놓친다.
+⚠ **봉인의 판정 축은 플래그 참조 목록이 아니라 세션을 시작시키는 호출 전수다**(2026-08-15). 둘은 같은 집합이 아니다 — 참조 중 일부는 진입점이 아니고(사전 고지 문구), 반대로 진입점인데 플래그를 안 보는 자리가 있다(실패 뒤 재시작). 그래서 가드가 `beacon.toggle(`·`beacon.restart(`·`session.startBeacon(`·`self.startBeacon(` **네 형태의 호출 수**를 세고(현재 8곳 — 2026-08-23 K2 자동차 종료 화면의 도보 인계 `acceptCarWalkHandoff`가 7번째, 2026-08-30 A25 승차 전 도보 `GuideSession.startTransit`의 `startBeacon`이 8번째였고, 2026-09-23 E42가 도보 두 호출을 줄 목록 한 호출로 합쳐 7곳, 2026-09-26 E51 나들이 귀환 인계 `acceptOutingReturn`의 `startBeacon`으로 8곳), 늘면 실패해 spec 표를 갱신하며 정식판 도달 여부를 판정하게 한다(`src/lib/__tests__/guidance-gate-drift.test.ts`). ⚠ `restart`가 목록에 있는 이유가 바로 위 "실패 뒤 재시작"이다 — A13이 그것을 더했을 때 `toggle`만 세던 검사가 새 진입점을 통째로 놓쳤다. 게이트 property만 검사하면 새 진입점을 영영 놓친다.
 
 ### `INFOPLIST_KEY_*` 빌드 설정만으로는 구성별 분기가 안 된다
 
