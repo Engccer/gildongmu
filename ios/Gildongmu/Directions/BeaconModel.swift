@@ -2233,14 +2233,18 @@ final class BeaconModel {
     /// 걸 수 없다). true = 끝냈다.
     @discardableResult
     private func maybeEndIdleSession(now: Double) -> Bool {
-        // 승차 전 도보(prewalk)는 제외 — fix 두절 10분은 대개 지하 역사 진입이고, 그때 끝내면 바로
+        // 승차 전 도보(prewalk)는 제외 — fix 두절 5분은 대개 지하 역사 진입이고, 그때 끝내면 바로
         // 그 경우를 위한 "승차역 도착" 선언 버튼까지 사라진다(A25 spec §2).
         guard isTracking, prewalkTarget == nil, let startedAt else { return false }
         let fixRef = max(startedAt, lastFixAt ?? startedAt)
         let progressRef = max(startedAt, sessionLastProgressAt ?? startedAt)
+        // 무이동 축은 **도착 창 밖에서만**(나들이 spec §9, 2026-09-26). 무이동 300초가 도착 추정 제자리
+        // 300초와 같아서, 창 안에서 이 축을 켜면 25m 앵커 시계가 10m 앵커 시계보다 늘 같거나 먼저 차
+        // 목적지 앞에 선 사용자가 추정 도착 대신 안전망 종료를 듣는다. 창 안의 무이동은 도착 추정의 몫이다.
+        // 두절 축은 창과 무관하게 그대로(180 < 300이라 도착 추정이 먼저 판정한다).
         guard let reason = sessionIdleStep(
             secondsSinceUsableFix: now - fixRef,
-            secondsSinceProgress: tuning.sessionIdleStationaryAxis ? now - progressRef : nil
+            secondsSinceProgress: tuning.sessionIdleStationaryAxis && !inArrivalWindow ? now - progressRef : nil
         ) else { return false }
         guideDiagLog("sessionIdleEnd reason=\(reason.rawValue)")
         let text = appLocalized("guide.endedIdle")

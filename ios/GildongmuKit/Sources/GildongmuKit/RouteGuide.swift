@@ -133,7 +133,7 @@ public struct GuideTuning: Sendable, Equatable {
     /// 도보는 false: 기하 없는 응답(구버전)은 간략 인계로 남긴다.
     public var entersFinalApproachWithoutGeometry: Bool
     /// 국면 무관 세션 안전망(`SessionIdle.swift`)의 무이동 축을 켜는가. 자동차는 false —
-    /// 정체·휴게소 정차와 구분할 수 없다. 두절 축(600초)은 両수단 공통(spec 2026-08-31 §4).
+    /// 정체·휴게소 정차와 구분할 수 없다. 두절 축(300초)은 両수단 공통(spec 2026-08-31 §4).
     public var sessionIdleStationaryAxis: Bool
     /// 수단별 물리 속도 상한(m/s) — 투영 점프 판정의 기준(웹 `maxSpeedMps` 미러).
     /// 직전 fix 대비 진행거리 증가가 `maxSpeedMps × dt × 1.5`를 넘으면 투영이 튄 것이다.

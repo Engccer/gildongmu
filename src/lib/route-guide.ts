@@ -236,7 +236,7 @@ export interface GuideTuning {
   entersFinalApproachWithoutGeometry: boolean;
   /**
    * 국면 무관 세션 안전망(`session-idle.ts`)의 무이동 축을 켜는가. 자동차는 false —
-   * 정체·휴게소 정차와 구분할 수 없다. 두절 축(600초)은 両수단 공통(spec 2026-08-31 §4).
+   * 정체·휴게소 정차와 구분할 수 없다. 두절 축(300초)은 両수단 공통(spec 2026-08-31 §4).
    */
   sessionIdleStationaryAxis: boolean;
   /**

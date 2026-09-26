@@ -152,7 +152,7 @@ data class GuideTuning(
     val entersFinalApproachWithoutGeometry: Boolean,
     /**
      * 국면 무관 세션 안전망(`SessionIdle.kt`)의 무이동 축을 켜는가. 자동차는 false — 정체·휴게소 정차와 구분할 수
-     * 없다. 두절 축(600초)은 두 수단 공통(spec 2026-08-31 §4). ⚠ 소비자가 수단 switch로 다시 쓰지 말 것.
+     * 없다. 두절 축(300초)은 두 수단 공통(spec 2026-08-31 §4). ⚠ 소비자가 수단 switch로 다시 쓰지 말 것.
      */
     val sessionIdleStationaryAxis: Boolean,
     /**
