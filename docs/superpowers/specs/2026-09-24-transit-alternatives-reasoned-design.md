@@ -148,6 +148,7 @@
 
 - 길찾기 화면(웹 `DirectionsView`, iOS `DirectionsTabView`)의 대중교통 섹션에서, 경로 목록 **뒤**에 `requeryAxes`의 축마다 버튼 하나. 라벨 시안: "버스만 타는 경로 찾기", "지하철만 타는 경로 찾기".
 - 채팅 카드·CLI·MCP·WebMCP는 버튼이 없다(이름 소비만). 안드로이드는 `:kit` 이름 미러와 문자열까지이고 버튼은 BACKLOG E43 등가성 후속이다.
+  - ✅ **안드로이드 버튼 이식(2026-09-27, 세션 android-e50)**: `directions/RouteRows.kt` `TransitRequeryRows`, `:kit` `RouteService.transitModeRequery`. 한소네 7 판정은 BACKLOG E43.
 - 새 조회(출발·도착 변경, 다시 조회)는 재조회 상태를 모두 비운다. 재조회 결과는 그 조회 결과에 귀속된다.
 
 ### 4.3 재조회 버튼: 동작과 3-state
