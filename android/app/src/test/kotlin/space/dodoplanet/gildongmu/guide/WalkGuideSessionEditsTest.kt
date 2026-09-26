@@ -35,12 +35,15 @@ class WalkGuideSessionEditsTest {
     val main = MainDispatcherExtension(dispatcher)
 
     private val urls = mutableListOf<String>()
+    /** 최단 줄 조회 횟수 — 둘째 조회(낡음 폴백 전환)만 지연시키는 테스트가 쓴다. */
+    private var shortestCalls = 0
     private val newDest = BeaconDest(north(500.0).lat, lng0)
 
     /** 기본 400m 단일 스텝, 최단 줄(`variant=shortest`)은 250m, 경유지는 150m에서 갈리는 두 스텝. */
     private fun responder(shortest: String? = walkBriefingJson(listOf(TestStep("최단 직진", listOf(north(0.0), north(250.0)))), distanceMeters = 250, durationSeconds = 200)): (String) -> HttpResponse = { url ->
         urls += url
         when {
+            url.contains("variant=shortest") && url.contains("via=") -> HttpResponse(200, walkBriefingJson(listOf(TestStep("최단A", listOf(north(0.0), north(150.0))), TestStep("최단B", listOf(north(150.0), north(250.0)))), distanceMeters = 250, durationSeconds = 200, waypointStepIndex = 1))
             url.contains("variant=shortest") -> HttpResponse(200, shortest ?: "{\"result\":null}")
             url.contains("via=") -> HttpResponse(200, walkBriefingJson(listOf(TestStep("직진A", listOf(north(0.0), north(150.0))), TestStep("직진B", listOf(north(150.0), north(400.0)))), distanceMeters = 400, durationSeconds = 400, waypointStepIndex = 1))
             else -> HttpResponse(200, walkBriefingJson(listOf(TestStep("직진C", listOf(north(0.0), north(400.0)))), distanceMeters = 400, durationSeconds = 400))
@@ -270,5 +273,62 @@ class WalkGuideSessionEditsTest {
         while (h.model.ui.value.altPreviewOpen && d <= 420.0) { h.clock.now += 8.0; h.model.handleFix(h.fix(d)); advanceTimeBy(8_000); runCurrent(); d += 8.0 }
         assertFalse(h.model.ui.value.altPreviewOpen, "경로 끝 접근(최종 접근·간략 인계)이 프리뷰를 비웠다")
         assertTrue(d > 300.0, "경로 끝 근처에서야 비워졌다: $d")
+    }
+
+    @Test fun `대안 조회 실패는 "없음"이 아니다 — 서버 오류`() = guideTest(dispatcher, { url -> if (url.contains("variant=shortest")) HttpResponse(502, "{}") else responder()(url) }) { h ->
+        startDetail(h)
+        h.model.openAlternativePreview(); settle()
+        assertFalse(h.model.ui.value.altPreviewReady)
+        assertEquals("대안 경로 조회에 실패했습니다", h.model.altPreviewHeaderText())
+        assertEquals("대안 경로 조회에 실패했습니다", h.speaker.texts.last())
+    }
+
+    @Test fun `대안 조회 시간 초과도 "없음"이 아니라 실패다`() = guideTest(dispatcher, responder(), delayFor = { if (it.contains("variant=shortest")) 20_000L else 0L }) { h ->
+        startDetail(h)
+        h.model.openAlternativePreview()
+        advanceTimeBy(15_500); runCurrent()
+        assertEquals("대안 경로 조회에 실패했습니다", h.model.altPreviewHeaderText())
+    }
+
+    @Test fun `경유지 도착이 프리뷰를 비우고 진행 중 전환을 버려도 표식이 풀린다 — 다음 채택이 막히지 않는다`() = guideTest(dispatcher, responder(), delayFor = { if (it.contains("variant=shortest") && ++shortestCalls == 2) 10_000L else 0L }) { h ->
+        startDetail(h, GuideWaypoint(BeaconDest(north(150.0).lat, lng0), "장미공원"))
+        h.model.openAlternativePreview(); settle()
+        assertTrue(h.model.ui.value.altPreviewReady)
+        // 낡게 만든 뒤 채택 → 폴백 전환 조회가 떠 있는(10초 지연 — 가상 시계를 밀지 않는 동안 멈춰 있다) 동안 경유지 도착선을 넘는다.
+        repeat(13) { h.clock.now += 10.0; h.model.handleFix(h.fix(0.0)); advanceTimeBy(10_000); runCurrent() }
+        h.model.adoptAlternativePreview()
+        assertTrue(h.model.ui.value.isSwitchingVariant)
+        var d = 8.0
+        while (h.model.ui.value.waypointLabel != null && d <= 200.0) { h.clock.now += 8.0; h.model.handleFix(h.fix(d)); runCurrent(); d += 8.0 }
+        advanceTimeBy(10_001); runCurrent()   // 버린 전환의 응답이 도착해도 커밋·표식 해제 없음(토큰 불일치)
+        assertNull(h.model.ui.value.waypointLabel)
+        assertFalse(h.model.ui.value.altPreviewOpen, "프리뷰는 경유지를 담은 경로 기준이었다")
+        assertFalse(h.model.ui.value.isSwitchingVariant, "버린 전환의 표식이 풀린다")
+        // 표식이 풀렸으니 새 프리뷰·신선 채택이 커밋된다.
+        h.clock.now += 1; h.model.handleFix(h.fix(d)); settle()
+        h.model.openAlternativePreview(); settle()
+        h.model.adoptAlternativePreview()
+        assertEquals(1, h.model.ui.value.variantAdoptedSeq)
+    }
+
+    @Test fun `최종 접근 중엔 대안 보기가 없고, 진입 전에 떠난 전환은 문 앞에서 커밋되지 않는다`() = guideTest(dispatcher, { url ->
+        urls += url
+        if (url.contains("variant=shortest")) HttpResponse(200, straightRouteJson(lengthMeters = 300.0, target = "최단"))
+        else HttpResponse(200, straightRouteJson())
+    }, delayFor = { if (it.contains("variant=shortest") && ++shortestCalls == 2) 10_000L else 0L }) { h ->
+        startDetail(h)
+        h.model.openAlternativePreview(); settle()
+        assertTrue(h.model.ui.value.altPreviewReady)
+        repeat(13) { h.clock.now += 10.0; h.model.handleFix(h.fix(0.0)); advanceTimeBy(10_000); runCurrent() }
+        h.model.adoptAlternativePreview()   // 낡음 → 폴백 전환 조회(10초, 시계를 밀지 않는 동안 멈춰 있다)
+        assertTrue(h.model.ui.value.isSwitchingVariant)
+        var d = 8.0
+        while (h.model.ui.value.alternativePreviewAvailable && d <= 320.0) { h.clock.now += 8.0; h.model.handleFix(h.fix(d)); runCurrent(); d += 8.0 }
+        assertFalse(h.model.ui.value.alternativePreviewAvailable, "최종 접근 진입이 대안 보기를 거뒀다")
+        assertEquals(GuideMode.detail, h.model.ui.value.mode, "기하 있는 최종 접근(간략 인계가 아니다)")
+        assertFalse(h.model.ui.value.isSwitchingVariant)
+        advanceTimeBy(10_001); runCurrent()
+        assertEquals(0, h.model.ui.value.variantAdoptedSeq)
+        assertTrue(h.speaker.texts.none { it.contains("전환했습니다") }, h.speaker.texts.toString())
     }
 }

@@ -667,6 +667,9 @@ class WalkGuideModel(
 
     // ─────────────────────────── 경로 조회 (§6-2) ───────────────────────────
 
+    /** 상세 조회 시간 초과 — 호출부 셋(시작·재조회·자동 재조회)은 예외를 이미 실패로 접고, 프리뷰는 `Failed`로 간다. */
+    private class DetailFetchTimeout : Exception("detail fetch timeout")
+
     private class DetailFetchResult(
         val route: GuideRoute,
         val durationSeconds: Int?,
@@ -714,11 +717,15 @@ class WalkGuideModel(
      */
     private suspend fun fetchDetailData(origin: RoutePoint, dest: BeaconDest, variant: WalkRouteVariant?, accessible: Boolean, waypoint: GuideWaypoint?): DetailFetchResult? {
         val via = waypoint?.let { RoutePoint(it.dest.lat, it.dest.lng) }
-        val briefing = withTimeoutOrNull(queryTimeoutMs) {
-            withContext(io) {
-                routes.walk(origin.lat, origin.lng, dest.lat, dest.lng, accessible = accessible, lang = dataLocale(), includeGeometry = true, variant = variant, via = via)
-            }
-        } ?: return null
+        // ⚠ 블록 값을 상자에 담는다 — 그대로 두면 서버의 정상 "경로 없음"(null)이 만료 null과 같은 값이 된다. 시간 초과는 경로 없음이 아니라 조회 실패다
+        // (3-state — 프리뷰가 "대안 없음"으로 읽지 않게, 길찾기 VM `timed` 동형).
+        val briefing = (
+            withTimeoutOrNull(queryTimeoutMs) {
+                withContext(io) {
+                    Result.success(routes.walk(origin.lat, origin.lng, dest.lat, dest.lng, accessible = accessible, lang = dataLocale(), includeGeometry = true, variant = variant, via = via))
+                }
+            } ?: throw DetailFetchTimeout()
+        ).getOrThrow() ?: return null
         if (via != null && briefing.waypoint == null) return null
         val route = buildGuideRoute(
             briefing.steps.map { GuideStepGeometry(it.description, it.pathCoords, it.action) },
@@ -900,7 +907,8 @@ class WalkGuideModel(
         val descriptions = if (detail) route!!.steps.map { it.description } else null
         val waypointRow = if (detail) route!!.waypointStepIndex?.let { idx -> routeWaypointLabel?.let { idx to strings.get("directions.viaArrived", it) } } else null
         val current = if (detail && state != null && (state.phase == GuidePhase.following || state.phase == GuidePhase.bundle)) state.stepIndex else null
-        val altAvailable = mode == GuideMode.detail && alternateLine != null
+        // 최종 접근 중엔 대안 보기가 없다 — 채택이 막혀(방어 2선) 누를 수 없는 전환 버튼이 선다(죽은 버튼 금지).
+        val altAvailable = mode == GuideMode.detail && alternateLine != null && !inFinalApproach
         mutate { copy(routeStepDescriptions = descriptions, routeWaypointRow = waypointRow, currentStepIndex = current, alternativePreviewAvailable = altAvailable) }
     }
 
@@ -1106,7 +1114,7 @@ class WalkGuideModel(
                 syncStartRequestWithSession()
                 clearProposal()
                 resetAlternativePreview()   // 프리뷰는 경유지를 담은 경로 기준이었다(iOS 동형)
-                rerouteToken += 1
+                abandonReroute()
                 playTone(BeaconTone.nearby)
                 // 도착 문장은 다음 목표(목적지)까지 말한다(N4 spec §3). 지나간 사실이라 억제 해제 뒤에 갚아도 참이다.
                 val spoken = strings.get("directions.viaArrivedContinue", reached.label, destinationWithDirectionParticle(destinationLabel))
@@ -1176,6 +1184,7 @@ class WalkGuideModel(
     private fun beginFinalApproach() {
         clearProposal()
         resetAlternativePreview()   // 문 앞에서 다른 줄로 전환하면 최종 접근이 풀린다(iOS 동형)
+        abandonReroute()            // 이미 떠난 전환(낡음 폴백)·재조회가 진입 뒤 커밋되면 같은 이유로 최종 접근이 풀린다
         remainingText = null
         clearLiveRows()
         rebaseForAxisChange()
@@ -1481,15 +1490,13 @@ class WalkGuideModel(
      * 옛 경로의 회전·도착 신호가 나갈 창이 구조적으로 없다). 승계: 도플러(`motionState`)·유도기 버퍼·자동 조회 회차(세션당).
      */
     private fun reacquireRoute() {
+        // 톤 뒤로 미뤄진 옛 경로 문장의 복원 콜백(계단 경고 장부)이 새 목적지 세션에 되살아나지 않게 — 복원이 먼저 일어나고 아래 소거가 이긴다.
+        deferredAnnouncer.invalidatePending()
         routeFetchJob?.cancel(); routeFetchJob = null
         fixWaitJob?.cancel(); fixWaitJob = null
         routeOriginBest = null; routeOriginBestAt = null   // 옛 목적지의 최선값이 새 origin으로 새지 않게
-        rerouteToken += 1      // 진행 중 재조회·전환 응답 폐기(latest-wins)
+        abandonReroute()
         routeFetchToken += 1
-        // ⚠ 토큰이 바뀌면 옛 재조회의 finally가 플래그를 풀지 않는다(토큰 일치 때만) — 여기서 풀지 않으면 다음 재조회·전환이 영영 막힌다.
-        rerouteInFlight = false
-        isRerouting = false
-        isSwitchingVariant = false
         offRoute = false
         clearProposal()
         resetAlternativePreview()
@@ -1519,6 +1526,17 @@ class WalkGuideModel(
 
     /** 경유지 추가·변경 진입점 노출(iOS `waypointAvailable`) — 추적 중 ∧ ko(상세 조회 경유지는 ko 기능으로 출하됐다). 삭제·변경은 경유지가 있을 때만(화면 몫). */
     fun waypointAvailable(): Boolean = isTracking && dataLocale() == DataLocale.ko
+
+    /**
+     * 진행 중 재조회·전환을 버린다(토큰 증가 + 표식 해제 한 자리). ⚠ 토큰이 바뀌면 옛 조회의 `finally`는 표식을 풀지 않는다(토큰 일치 때만) — 여기서 함께
+     * 풀지 않으면 그 세션은 끝까지 재조회·자동 재조회·채택이 막힌다(리뷰 MAJOR). 경로 재획득·경유지 도착·최종 접근 진입이 부른다.
+     */
+    private fun abandonReroute() {
+        rerouteToken += 1
+        rerouteInFlight = false
+        isRerouting = false
+        isSwitchingVariant = false
+    }
 
     /** 재획득 뒤 경로 대기 — 시작과 같은 기계(§2.2). */
     private fun awaitNewRoute() {

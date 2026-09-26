@@ -451,6 +451,8 @@ class DirectionsViewModel(
                 // 옛 위치로 찾았으면 같은 통지의 뒷문장으로 밝힌다(출발지 칸에만 있으면 칸으로 되돌아가야 안다).
                 notice = queryNotice(
                     it.notice,
+                    isFailure = results.successCount == 0,
+                    text =
                     listOfNotNull(
                         if (results.successCount > 0) strings.get("directions.readySummary", results.successCount) else strings.get("directions.allFailed"),
                         staleNotice,
@@ -894,11 +896,18 @@ class DirectionsViewModel(
     // ── 공용 ──────────────────────────────────────────────────────────────────
 
     private fun setPhase(phase: DirectionsPhase) {
-        _state.update { it.copy(phase = phase, notice = queryNotice(it.notice, phaseText(phase))) }
+        _state.update { it.copy(phase = phase, notice = queryNotice(it.notice, phaseText(phase), isFailure = phase.isFailureNotice)) }
     }
 
-    /** 조회 경로의 통지 — 무통지 조회면 직전 통지를 그대로 둔다(세대를 올리지 않으면 상태 줄이 낭독하지 않는다). */
-    private fun queryNotice(current: Notice, text: String): Notice = if (silentQuery) current else next(text)
+    /**
+     * 조회 경로의 통지 — 무통지 조회면 직전 통지를 그대로 둔다(세대를 올리지 않으면 상태 줄이 낭독하지 않는다). 단 **실패는 무통지를 무시한다**: 이 화면에서
+     * 국면 문장이 보이는 자리는 상태 줄 하나라, 삼키면 실패가 이유 없는 빈 화면으로 보인다(3-state, 리뷰 MINOR — 실패는 드물고 한 번 읽혀도 거짓이 아니다).
+     */
+    private fun queryNotice(current: Notice, text: String, isFailure: Boolean): Notice = if (silentQuery && !isFailure) current else next(text)
+
+    private val DirectionsPhase.isFailureNotice: Boolean
+        get() = this is DirectionsPhase.GeoDenied || this is DirectionsPhase.GeoReduced || this is DirectionsPhase.GeoError ||
+            this is DirectionsPhase.OutOfCoverage || this is DirectionsPhase.NeedEndpoints || (this is DirectionsPhase.Settled && successCount == 0)
 
     private fun phaseText(phase: DirectionsPhase): String = when (phase) {
         DirectionsPhase.Idle -> ""

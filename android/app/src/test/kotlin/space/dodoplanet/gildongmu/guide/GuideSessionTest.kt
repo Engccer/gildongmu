@@ -93,10 +93,14 @@ class GuideSessionTest {
         GuideSession.isMinimized = true
         GuideSession.pendingSheetReturn = "scene-item-left-0"
         GuideSession.suppressNextBandLanding = true
-        GuideSession.reopenAfterNestedScreen()
-        assertTrue(GuideSession.isMinimized)
-        assertNull(GuideSession.pendingSheetReturn)
-        assertFalse(GuideSession.suppressNextBandLanding)
+        try {
+            GuideSession.reopenAfterNestedScreen()
+            assertTrue(GuideSession.isMinimized)
+            assertNull(GuideSession.pendingSheetReturn)
+            assertFalse(GuideSession.suppressNextBandLanding)
+        } finally {
+            GuideSession.isMinimized = false
+        }
     }
 
     @Test fun `장소 상세에서 돌아왔을 때 안내가 살아 있으면 시트를 다시 열고 착지 표식은 시트 진입이 소비한다`() = guideTest(dispatcher) { h ->
@@ -104,9 +108,13 @@ class GuideSessionTest {
         GuideSession.startWalk(h.request); settle()
         GuideSession.isMinimized = true
         GuideSession.pendingSheetReturn = "guide-title"
-        GuideSession.reopenAfterNestedScreen()
-        assertFalse(GuideSession.isMinimized)
-        assertEquals("guide-title", GuideSession.pendingSheetReturn)
-        GuideSession.pendingSheetReturn = null
+        try {
+            GuideSession.reopenAfterNestedScreen()
+            assertFalse(GuideSession.isMinimized)
+            assertEquals("guide-title", GuideSession.pendingSheetReturn)
+        } finally {
+            GuideSession.pendingSheetReturn = null
+            GuideSession.isMinimized = false
+        }
     }
 }

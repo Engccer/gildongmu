@@ -3,6 +3,7 @@ package space.dodoplanet.gildongmu.guide
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
@@ -12,6 +13,7 @@ import space.dodoplanet.gildongmu.kit.BeaconTone
 import space.dodoplanet.gildongmu.kit.DataLocale
 import space.dodoplanet.gildongmu.kit.GuideSessionCoordinator
 import space.dodoplanet.gildongmu.kit.HttpResponse
+import space.dodoplanet.gildongmu.kit.HttpTransport
 import space.dodoplanet.gildongmu.kit.InMemoryKeyValueStore
 import space.dodoplanet.gildongmu.kit.RoutePoint
 import space.dodoplanet.gildongmu.kit.RouteService
@@ -184,6 +186,8 @@ class GuideTestHarness(
     dispatcher: CoroutineDispatcher,
     val clock: FakeClock = FakeClock(100.0),
     walkResponder: (url: String) -> HttpResponse = { HttpResponse(200, straightRouteJson()) },
+    /** URL별 가상 지연(ms) — 시간 초과 갈래(15초)를 가상 시계로 밟는다. */
+    delayFor: (url: String) -> Long = { 0L },
 ) {
     val catalog = CatalogStrings("ko")
     val controller = FakeController()
@@ -199,7 +203,12 @@ class GuideTestHarness(
     /** 모델 스코프의 잡 — 워치독이 무한 루프라 테스트가 끝나면 `close()`로 끊는다(runTest 종료 대기 차단). */
     val job = SupervisorJob()
     val model = WalkGuideModel(
-        routes = RouteService(APIClient("https://example.test", transport)),
+        routes = RouteService(APIClient("https://example.test", object : HttpTransport {
+            override suspend fun get(url: String, timeoutMs: Long?): HttpResponse {
+                delayFor(url).takeIf { it > 0 }?.let { delay(it) }
+                return transport.get(url, timeoutMs)
+            }
+        })),
         strings = catalog,
         dataLocale = { DataLocale.ko },
         controller = controller,
@@ -241,8 +250,9 @@ class GuideTestHarness(
 fun guideTest(
     dispatcher: TestDispatcher,
     walkResponder: (url: String) -> HttpResponse = { HttpResponse(200, straightRouteJson()) },
+    delayFor: (url: String) -> Long = { 0L },
     body: suspend TestScope.(GuideTestHarness) -> Unit,
 ) = runTest(dispatcher) {
-    val h = GuideTestHarness(dispatcher, walkResponder = walkResponder)
+    val h = GuideTestHarness(dispatcher, walkResponder = walkResponder, delayFor = delayFor)
     try { body(h) } finally { h.close() }
 }

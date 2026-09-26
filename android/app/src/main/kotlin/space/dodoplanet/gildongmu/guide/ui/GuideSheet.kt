@@ -44,6 +44,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import space.dodoplanet.gildongmu.AppConfig
@@ -122,7 +123,6 @@ private fun TrackingContent(ui: WalkGuideUiState, strings: Strings, nav: GuideNa
     val titleFocus = remember { FocusRequester() }
     val minimizeFocus = remember { FocusRequester() }
     val progressFocus = remember { FocusRequester() }
-    val viewAltFocus = remember { FocusRequester() }
     val sceneFocus = remember { mutableMapOf<String, FocusRequester>() }
     val requesterFor: (String) -> FocusRequester = { key -> if (key == GUIDE_TITLE_RETURN) titleFocus else sceneFocus.getOrPut(key) { FocusRequester() } }
     var page by remember { mutableStateOf<GuidePage>(GuidePage.Tracking) }
@@ -130,12 +130,14 @@ private fun TrackingContent(ui: WalkGuideUiState, strings: Strings, nav: GuideNa
     // 착지 요청 세대(페이지가 바뀐 뒤 그 페이지의 요소가 컴포지션에 올라온 다음 대입한다).
     var landTitleSeq by remember { mutableIntStateOf(0) }
     var landProgressSeq by remember { mutableIntStateOf(0) }
-    var landViewAltSeq by remember { mutableIntStateOf(0) }
+    // 조망 진입 착지 = 헤더(Tracking에서 들어옴) 또는 [대안 경로 보기](프리뷰에서 돌아옴). 조망은 돌아올 때 새로 컴포즈되므로 착지를 그 진입 효과 한 곳이
+    // 고른다 — 부모에 따로 착지 효과를 두면 두 착지가 갈려 헤더가 이긴다(리뷰 MAJOR, iOS는 중첩 시트라 트리거로 복원된다).
+    var overviewReturnsFromPreview by remember { mutableStateOf(false) }
     val toTracking: () -> Unit = { page = GuidePage.Tracking; landTitleSeq += 1 }
 
     BackHandler(enabled = page != GuidePage.Tracking) {
         when (page) {
-            GuidePage.AltPreview -> { page = GuidePage.Overview; landViewAltSeq++ }
+            GuidePage.AltPreview -> { overviewReturnsFromPreview = true; page = GuidePage.Overview }
             GuidePage.Overview -> { page = GuidePage.Tracking; landProgressSeq++ }
             is GuidePage.Search -> toTracking()
             GuidePage.Tracking -> Unit
@@ -145,7 +147,11 @@ private fun TrackingContent(ui: WalkGuideUiState, strings: Strings, nav: GuideNa
     LaunchedEffect(Unit) {
         val back = GuideSession.pendingSheetReturn
         when {
-            GuideSession.returnedFromBand -> { GuideSession.returnedFromBand = false; land(minimizeFocus, "접기 버튼") }
+            GuideSession.returnedFromBand -> {
+                GuideSession.returnedFromBand = false
+                GuideSession.pendingSheetReturn = null   // 1회 표식 — 띠바로 돌아왔으면 장소 상세 복귀 착지는 쓰이지 않았다
+                land(minimizeFocus, "접기 버튼")
+            }
             // 돌아온 자리의 행이 없으면(앵커가 바뀌어 장면이 새로 시작됐다) 제목으로 물러난다 — 없는 키에 착지하면 커서가 어디에도 가지 않는다.
             back != null -> { GuideSession.pendingSheetReturn = null; land(sceneFocus[back] ?: titleFocus, "장소 상세 복귀") }
             else -> land(titleFocus, "시트 제목")
@@ -171,20 +177,19 @@ private fun TrackingContent(ui: WalkGuideUiState, strings: Strings, nav: GuideNa
         wasAltOpen = ui.altPreviewOpen
         when {
             adopted -> if (page == GuidePage.Overview || page == GuidePage.AltPreview) toTracking()
-            dropped -> if (ui.routeStepDescriptions != null) { page = GuidePage.Overview; landViewAltSeq++ } else toTracking()
+            dropped -> if (ui.routeStepDescriptions != null) { overviewReturnsFromPreview = true; page = GuidePage.Overview } else toTracking()
         }
     }
     LaunchedEffect(landTitleSeq) { if (landTitleSeq > 0) land(titleFocus, "시트 제목") }
     LaunchedEffect(landProgressSeq) { if (landProgressSeq > 0) land(progressFocus, "진행 상황 버튼") }
-    LaunchedEffect(landViewAltSeq) { if (landViewAltSeq > 0) land(viewAltFocus, "대안 경로 보기 버튼") }
 
     when (val p = page) {
         GuidePage.Overview -> {
-            OverviewPage(ui, strings, viewAltFocus, onViewAlternative = { page = GuidePage.AltPreview }, onClose = { page = GuidePage.Tracking; landProgressSeq++ })
+            OverviewPage(ui, strings, overviewReturnsFromPreview, onViewAlternative = { page = GuidePage.AltPreview }, onClose = { page = GuidePage.Tracking; landProgressSeq++ })
             return
         }
         GuidePage.AltPreview -> {
-            AltPreviewPage(ui, strings, onClose = { page = GuidePage.Overview; landViewAltSeq++ })
+            AltPreviewPage(ui, strings, onClose = { overviewReturnsFromPreview = true; page = GuidePage.Overview })
             return
         }
         is GuidePage.Search -> {
@@ -231,7 +236,7 @@ private fun TrackingContent(ui: WalkGuideUiState, strings: Strings, nav: GuideNa
             }
             Button(
                 onClick = {
-                    if (ui.mode == GuideMode.detail && ui.routeStepDescriptions != null) page = GuidePage.Overview
+                    if (ui.mode == GuideMode.detail && ui.routeStepDescriptions != null) { overviewReturnsFromPreview = false; page = GuidePage.Overview }
                     else GuideSession.walk.announceProgress()
                 },
                 modifier = Modifier.fillMaxWidth().tapTarget().landingTarget(progressFocus).testTag("guide-progress"),
@@ -307,11 +312,15 @@ private fun GuideTitleMenu(title: String, strings: Strings, focus: FocusRequeste
  * 상세 세션만, 행 목록 뒤·말미 닫기 앞 — 조망의 주 목적을 밀지 않는다), 닫기 두 곳.
  */
 @Composable
-private fun OverviewPage(ui: WalkGuideUiState, strings: Strings, viewAltFocus: FocusRequester, onViewAlternative: () -> Unit, onClose: () -> Unit) {
+private fun OverviewPage(ui: WalkGuideUiState, strings: Strings, returnsFromPreview: Boolean, onViewAlternative: () -> Unit, onClose: () -> Unit) {
     val meters = strings.get("android.unit.spokenMeters")
     val headerFocus = remember { FocusRequester() }
+    val viewAltFocus = remember { FocusRequester() }
     val header = remember(ui) { GuideSession.walk.progressText() }
-    LaunchedEffect(Unit) { land(headerFocus, "조망 헤더") }
+    // 진입 착지는 여기 한 곳. 프리뷰에서 돌아왔는데 버튼이 없으면(최종 접근 등으로 노출이 꺼졌다) 헤더로 물러난다 — 없는 버튼에 착지하면 커서가 어디에도 가지 않는다.
+    LaunchedEffect(Unit) {
+        if (returnsFromPreview && ui.alternativePreviewAvailable) land(viewAltFocus, "대안 경로 보기 버튼") else land(headerFocus, "조망 헤더")
+    }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
         Button(onClick = onClose, modifier = Modifier.fillMaxWidth().tapTarget().testTag("guide-overview-close-top")) { Text(strings.get("actions.close")) }
         HeadingLine(header, "guide-overview-header", focus = headerFocus, spoken = spokenDistanceUnits(header, meters))
@@ -350,11 +359,12 @@ private fun AltPreviewPage(ui: WalkGuideUiState, strings: Strings, onClose: () -
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
         HeadingLine(header, "guide-alt-header", focus = headerFocus, spoken = spokenDistanceUnits(header, meters))
         if (ui.altPreviewReady) {
-            // 낡음 폴백 재조회 중엔 라벨 병기(한 줄 = 한 객체, 쉼표).
-            val adopt = strings.get("android.guide.adoptAlternative")
-            Button(onClick = { GuideSession.walk.adoptAlternativePreview() }, modifier = Modifier.fillMaxWidth().tapTarget().testTag("guide-alt-adopt")) {
-                Text(if (ui.isSwitchingVariant) joinText(adopt, strings.get("android.directions.searching")) else adopt)
-            }
+            // 낡음 폴백 재조회 중엔 상태 설명(라벨 불변 — 포커스를 쥔 노드의 텍스트 교체는 TalkBack이 다시 읽는다는 보장이 없다, E50·주변 확인 관례).
+            val searching = strings.get("android.directions.searching")
+            Button(
+                onClick = { GuideSession.walk.adoptAlternativePreview() },
+                modifier = Modifier.fillMaxWidth().tapTarget().testTag("guide-alt-adopt").semantics { if (ui.isSwitchingVariant) stateDescription = searching },
+            ) { Text(strings.get("android.guide.adoptAlternative")) }
         }
         // "지금 이 구간" 표식 없음 — 대안 경로 위에 현재 위치가 없다.
         ui.altPreviewSteps?.forEachIndexed { i, desc ->
