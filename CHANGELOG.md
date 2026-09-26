@@ -11,6 +11,11 @@
 
 ## 2026-09-27
 
+### 안드로이드 도보 안내: 경유지 진행 표시 등가성(N4)·체중 입력 권유 무시 상한(E31)
+
+- 경유지가 있는 도보 안내가 iOS와 같게 말한다: 접근 예고 "경유지 {label}까지 {거리}"(1회, 톤 없음), 도착 "경유지 {label} 도착. 이제 목적지 {dest}로 안내합니다"(ko 방향 조사), 남은 거리 행은 다음 목표 기준(경유지를 지난 세션은 재조회 뒤에도 목적지). 도보 프로파일을 `GuideTuning.walk` 원본으로 되돌렸다. spec `docs/superpowers/specs/2026-09-24-waypoint-progress-design.md` §6.
+- 종료 화면에 체중 입력 권유(고지 + [체중 입력하기] → 설정)를 두고 [닫기]로 두 번 무시하면 거두며, 그 뒤 기준 체중이 칼로리 문장 안으로 들어간다(키는 iOS와 같은 이름). 설정에서 돌아오면 시트를 다시 열어 요약을 재계산한다. spec `docs/superpowers/specs/2026-09-11-weight-notice-dismissal-design.md`. 세션 android-n4, 한소네 7 판정 대기.
+
 ### 영어 화면의 역 이름·운영기관 영문화 (E44 ⑨ 후속)
 
 - 역 POI의 `nameRoman`이 음차("Yeouidoyeok 5hoseon") 대신 영문 역명 "Yeouido Station, Line 5"다(위원장 판정 형식). 역 seed 영문명(괄호 부기명 제거)과 노선명 표를 쓰고, 역 레이아웃 분류이며 600m 안 같은 이름 seed가 있을 때만 적용한다(`station-name-en.ts`, 장소 검색·둘러보기). 실호출 15개 역 확인.

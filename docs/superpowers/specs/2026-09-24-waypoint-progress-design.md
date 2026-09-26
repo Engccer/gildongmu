@@ -151,6 +151,8 @@ guideNextTarget(route, state) -> { kind: "route" | "waypoint" | "destination"; m
 
 **안드로이드 사용자는 이번 웨이브에서 종전 그대로 듣는다(의도)**: 예고 없음, 도착 문장 "경유지 X 도착", 남은 거리 행은 총 잔여. 이벤트를 삼키기만 하면 그 fix의 추세 톤·주기 리듬이 흔들리므로 `:app`은 프로파일을 `GuideTuning.walk.copy(waypointApproachM = null)`로 둔다(배선할 때 되돌린다). 등가성 4항(예고 소비·도착 문장 교체·행 다음 목표·경유지 지난 세션의 행)은 BACKLOG E43에 등재한다.
 
+✅ **이식 완료(2026-09-27, 세션 android-n4)**: 4항 배선과 프로파일 원본 복원(`GuideTuning.walk`). 앱 테스트 `WalkGuideWaypointProgressTest`.
+
 ## 7. 테스트·게이트
 
 - fixture §2.6 12건 — 웹 `route-guide.test.ts`·Kit `RouteGuideTests`·`:kit` `RouteGuideTest`가 같은 파일을 읽는다(`expect.nextTarget` 판정 3벌).
