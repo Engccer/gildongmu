@@ -1,6 +1,7 @@
 package space.dodoplanet.gildongmu.kit
 
 import kotlinx.coroutines.test.runTest
+import space.dodoplanet.gildongmu.kit.models.TransitModeAxis
 import space.dodoplanet.gildongmu.kit.models.WalkLineKind
 import space.dodoplanet.gildongmu.kit.models.WalkRouteBriefing
 import kotlin.test.Test
@@ -169,5 +170,25 @@ class RouteServiceTest {
         assertEquals(listOf("ko", "en"), DataLocale.entries.map { it.rawValue })
         assertEquals(DataLocale.en, DataLocale.fromRawValue("en"))
         assertNull(DataLocale.fromRawValue("ja"))
+    }
+
+    /** E50: 재조회는 pathType과 경유 정류장 옵트인을 싣고, 없음은 null(throw 아님) — Kit `재조회는_pathType과_경유정류장_옵트인을_싣는다` 미러. */
+    @Test fun transitModeRequeryCarriesPathTypeAndStops() = runTest {
+        val (svc, t) = service(nullResult)
+        assertNull(svc.transitModeRequery(37.5, 127.0, 37.6, 127.1, TransitModeAxis.busOnly, lang = "ko"))
+        val q = t.lastQuery()
+        assertTrue(q.has("pathType", "2"))
+        assertTrue(q.has("includeStops", "1"))
+        assertFalse(q.hasName("lang"))
+        assertTrue(t.seenUrls.last().contains("/api/route/transit"))
+        svc.transitModeRequery(37.5, 127.0, 37.6, 127.1, TransitModeAxis.subwayOnly, lang = "en")
+        val en = t.lastQuery()
+        assertTrue(en.has("pathType", "1"))
+        assertTrue(en.has("lang", "en"))
+    }
+
+    @Test fun transitModeRequeryFailureThrows() = runTest {
+        val (svc, _) = service(HttpResponse(502, "{}"))
+        assertFailsWith<APIError> { svc.transitModeRequery(37.5, 127.0, 37.6, 127.1, TransitModeAxis.busOnly, lang = "ko") }
     }
 }

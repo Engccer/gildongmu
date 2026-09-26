@@ -268,3 +268,73 @@ class RecentRouteViaTest {
         assertNull(r.via); assertFalse(r.pinned); assertEquals("B", r.to?.label)
     }
 }
+
+/** Kit `RecentEndpointTests`의 로마자 표기 3케이스(2026-09-18) 미러 — 기존 저장분 null·고정 토글·재기록·경로 왕복에서 보존. */
+class RecentEndpointRomanTest {
+    @Test fun legacyAndAdditiveRomanizationRoundTrip() {
+        val kv = fresh()
+        kv.putString("recentEndpoints.to.v1", """[{"label":"경복궁","lat":37.579617,"lng":126.977041}]""")
+        val store = RecentSearchStore(kv)
+        val old = store.endpoints(RecentEndpointScope.to).first()
+        assertNull(old.labelRoman)
+        assertFalse(old.pinned)
+        assertEquals("경복궁", bilingualName("en", old.label, en = null, roman = old.labelRoman).primary)
+        val new = RecentEndpoint(old.label, old.lat, old.lng, labelRoman = "Gyeongbokgung")
+        store.recordEndpoint(new, RecentEndpointScope.to)
+        val reloaded = RecentSearchStore(kv).endpoints(RecentEndpointScope.to)
+        assertEquals(listOf(new), reloaded)
+        assertEquals(old.id, reloaded.first().id)
+        assertTrue(kv.getString("recentEndpoints.to.v1")!!.contains(""""labelRoman":"Gyeongbokgung""""))
+    }
+
+    @Test fun romanizationSurvivesPinsAndRouteRoundTrip() {
+        val kv = fresh()
+        val store = RecentSearchStore(kv)
+        val from = RecentEndpoint("출발", 37.5, 127.0, labelRoman = "Start")
+        val to = RecentEndpoint("도착", 37.6, 127.0, labelRoman = "End")
+        val via = RecentEndpoint("경유", 37.55, 127.0, labelRoman = "Via")
+        for ((scope, item) in listOf(RecentEndpointScope.from to from, RecentEndpointScope.to to to, RecentEndpointScope.via to via)) {
+            store.recordEndpoint(item, scope)
+            for (pinned in listOf(true, false)) {
+                store.setEndpointPinned(item, scope, pinned)
+                val actual = store.endpoints(scope).first()
+                assertEquals(item.labelRoman, actual.labelRoman)
+                assertEquals(item.id, actual.id)
+                assertEquals(pinned, actual.pinned)
+            }
+        }
+        val route = RecentRoute(from, to, via)
+        store.recordRoute(route)
+        store.setRoutePinned(route, pinned = true)
+        val restored = RecentSearchStore(kv).routes().first()
+        assertEquals(from, restored.from); assertEquals(to, restored.to); assertEquals(via, restored.via)
+        assertEquals(route.id, restored.id)
+        assertTrue(restored.pinned)
+        // 표기만 바뀌어도 같은 경로이며 고정 상태와 자리를 유지한다.
+        val updatedTo = RecentEndpoint(to.label, to.lat, to.lng, labelRoman = "Destination")
+        store.recordRoute(RecentRoute(from, updatedTo, via))
+        assertEquals(1, store.routes().size)
+        assertEquals("Destination", store.routes().first().to?.labelRoman)
+        assertEquals(true, store.routes().first().pinned)
+        store.setRoutePinned(route, pinned = false)
+        assertEquals("Destination", store.routes().first().to?.labelRoman)
+    }
+
+    @Test fun pinnedEndpointDedupeKeepsLatestSpellingAndLegacyRouteDecodes() {
+        val kv = fresh()
+        val store = RecentSearchStore(kv)
+        val old = RecentEndpoint("이름", 37.5, 127.0, labelRoman = "Old")
+        store.recordEndpoint(old, RecentEndpointScope.to)
+        store.setEndpointPinned(old, RecentEndpointScope.to, pinned = true)
+        val changed = RecentEndpoint("새 이름", 37.50001, 127.0, labelRoman = "New")
+        val items = store.recordEndpoint(changed, RecentEndpointScope.to)
+        assertEquals(1, items.size)
+        assertEquals("New", items.first().labelRoman)
+        assertEquals(old.id, items.first().id)
+        assertTrue(items.first().pinned)
+        kv.putString("recentRoutes.v1", """[{"to":{"label":"이름","lat":37.5,"lng":127}}]""")
+        val route = RecentSearchStore(kv).routes().first()
+        assertNull(route.to?.labelRoman)
+        assertTrue(route.from == null && route.via == null && !route.pinned)
+    }
+}

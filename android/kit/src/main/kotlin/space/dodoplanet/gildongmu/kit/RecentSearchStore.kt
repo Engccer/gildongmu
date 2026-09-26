@@ -19,6 +19,8 @@ data class RecentQuery(val text: String, val pinned: Boolean = false) {
 data class RecentEndpoint(val label: String, val lat: Double, val lng: Double,
     /** 고정 여부. ⚠ RecentRoute의 from/to에 실릴 때는 무의미하다. 부재(v1 데이터)는 false. */
     val pinned: Boolean = false,
+    /** 지정 시점에 확보한 비-ko 병기 표기만 보존한다(Kit 2026-09-18). 기존 기록은 null — 원명으로 폴백. 정체성·동일 판정은 보지 않는다. */
+    val labelRoman: String? = null,
 ) {
     /** 좌표 4자리 키 — sameCoord와 같은 축(라벨 변형·고정 토글에 불변). */
     val id: String get() = String.format(Locale.ROOT, "%.4f,%.4f", lat, lng)
@@ -167,7 +169,7 @@ class RecentSearchStore(private val store: KeyValueStore) {
         save(
             appendKeepingPins(endpoint, endpoints(scope),
                 isSame = ::sameCoord, isPinned = { it.pinned },
-                withPinned = { e, p -> RecentEndpoint(e.label, e.lat, e.lng, p) }),
+                withPinned = { e, p -> RecentEndpoint(e.label, e.lat, e.lng, p, e.labelRoman) }),
             endpointsKey(scope), RecentEndpoint.serializer())
 
     fun removeEndpoint(endpoint: RecentEndpoint, scope: RecentEndpointScope): List<RecentEndpoint> =
@@ -181,7 +183,7 @@ class RecentSearchStore(private val store: KeyValueStore) {
         save(
             setPinnedIn(endpoint, endpoints(scope), pinned,
                 isSame = ::sameCoord, isPinned = { it.pinned },
-                withPinned = { e, p -> RecentEndpoint(e.label, e.lat, e.lng, p) }),
+                withPinned = { e, p -> RecentEndpoint(e.label, e.lat, e.lng, p, e.labelRoman) }),
             endpointsKey(scope), RecentEndpoint.serializer())
 
     // MARK: 경로 (출발·도착 쌍)

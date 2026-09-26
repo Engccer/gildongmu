@@ -159,7 +159,7 @@ class GuideSheetA11yTest {
     /** ⑥ 시작 실패 상태 → 시작 버튼 아래 실패 문장 행 + 해결 버튼. */
     @Test
     fun startFailureRowAndResolutionButton() {
-        rule.setContent { MaterialTheme { WalkGuideStartButton(dest, "길동역", line = WalkLineKind.shortest, waypoint = null) } }
+        rule.setContent { MaterialTheme { WalkGuideStartButton(dest, "길동역", line = WalkLineKind.shortest, waypoint = null, onStart = {}) } }
         rule.enableAccessibilityChecks()
         rule.onNodeWithTag("guide-start-walk-shortest").assertIsDisplayed().assertHeightIsAtLeast(48.dp)
         setUi(WalkGuideUiState(status = GuideStatus.denied, statusText = "위치 권한이 필요합니다", failResolution = FailResolution.settings, lastStartLine = WalkLineKind.shortest))

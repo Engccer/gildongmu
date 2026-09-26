@@ -169,7 +169,30 @@ data class TransitRouteResult(
     val alternatives: List<TransitRoute>,
     /** 절단 전 후보 경로 총수(조용한 절단 금지). 표시하지는 않는다. */
     val totalCandidates: Int,
-)
+    /**
+     * 수단 재조회를 제안할 축(E50 §3, "busOnly"·"subwayOnly"). 강등 뒤 전체 후보에 그 수단만 타는 경로가 없을 때만 서버가 싣는다.
+     * ⚠ String 목록으로 받고 아는 값만 [knownRequeryAxes]로 쓴다(서버가 늘려도 디코딩이 깨지지 않게).
+     */
+    val requeryAxes: List<String>? = null,
+) {
+    /** 아는 재조회 축만(서버 순서 유지, 중복 제거). */
+    val knownRequeryAxes: List<TransitModeAxis>
+        get() = requeryAxes.orEmpty().mapNotNull(TransitModeAxis::fromRawValue).distinct()
+}
+
+/** 수단 재조회 축(E50 판정 2, Kit `TransitModeAxis` 미러). 원시값이 서버 `highlight`·`requeryAxes` 문자열이다. */
+enum class TransitModeAxis {
+    busOnly, subwayOnly;
+
+    val rawValue: String get() = name
+
+    /** `/api/route/transit?pathType=` 값(ODsay `SearchPathType`: 2 버스·1 지하철). */
+    val pathType: String get() = if (this == busOnly) "2" else "1"
+
+    companion object {
+        fun fromRawValue(raw: String): TransitModeAxis? = entries.firstOrNull { it.name == raw }
+    }
+}
 
 /** /api/route/transit envelope. ⚠ result는 optional — null은 ODsay 경로 없음(3-state: 조회 실패 아님). */
 @Serializable

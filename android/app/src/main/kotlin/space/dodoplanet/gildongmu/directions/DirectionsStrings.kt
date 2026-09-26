@@ -97,6 +97,15 @@ internal fun stringId(key: String): Int? = when (key) {
     "route.transit.alternativeLeastWalk" -> R.string.route_transit_alternativeLeastWalk
     "route.transit.alternativeBusOnly" -> R.string.route_transit_alternativeBusOnly
     "route.transit.alternativeSubwayOnly" -> R.string.route_transit_alternativeSubwayOnly
+    "route.transit.requeryBusOnly" -> R.string.route_transit_requeryBusOnly
+    "route.transit.requerySubwayOnly" -> R.string.route_transit_requerySubwayOnly
+    "route.transit.requeryBusOnlyNone" -> R.string.route_transit_requeryBusOnlyNone
+    "route.transit.requerySubwayOnlyNone" -> R.string.route_transit_requerySubwayOnlyNone
+    "route.transit.requeryBusOnlyFailed" -> R.string.route_transit_requeryBusOnlyFailed
+    "route.transit.requerySubwayOnlyFailed" -> R.string.route_transit_requerySubwayOnlyFailed
+    "manualLocation.guideStartsFromCurrent" -> R.string.manualLocation_guideStartsFromCurrent
+    "beacon.heading" -> R.string.beacon_heading
+    "beacon.stop" -> R.string.beacon_stop
     "route.transit.busNo" -> R.string.route_transit_busNo
     "route.transit.legBoardExit" -> R.string.route_transit_legBoardExit
     "route.transit.legServiceOutside" -> R.string.route_transit_legServiceOutside

@@ -1,6 +1,7 @@
 package space.dodoplanet.gildongmu.kit
 
 import space.dodoplanet.gildongmu.kit.models.CarRouteBriefing
+import space.dodoplanet.gildongmu.kit.models.TransitModeAxis
 import space.dodoplanet.gildongmu.kit.models.TransitRouteEnvelope
 import space.dodoplanet.gildongmu.kit.models.TransitRouteResult
 import space.dodoplanet.gildongmu.kit.models.WalkRouteBriefing
@@ -61,6 +62,25 @@ class RouteService(val client: APIClient) {
         val query = arrayListOf("origin" to coordPair(originLat, originLng), "dest" to coordPair(destLat, destLng))
         if (includeStops) query.add("includeStops" to "1")
         if (lang != "ko") query.add("lang" to lang)
+        return client.get<TransitRouteEnvelope>("/api/route/transit", query).result
+    }
+
+    /**
+     * 수단 재조회(E50 판정 2) — 사용자가 버튼을 눌렀을 때만 부른다(ODsay 호출당 과금, 자동 조회 금지). 서버가 그 수단만 타는 경로 중
+     * 1순위 하나를 `recommended`로 준다(`alternatives` 빈 배열). null = 그런 경로 없음, throw = 조회 실패(3-state). 본 조회와 같은
+     * 경유 정류장 옵트인을 싣는다 — 찾은 경로도 안내를 시작할 수 있어야 한다. ⚠ 인자 전부 기본값 없음(빠뜨린 호출은 컴파일이 잡는다).
+     */
+    suspend fun transitModeRequery(
+        originLat: Double, originLng: Double,
+        destLat: Double, destLng: Double,
+        axis: TransitModeAxis,
+        lang: String,
+    ): TransitRouteResult? {
+        val query = arrayListOf(
+            "origin" to coordPair(originLat, originLng), "dest" to coordPair(destLat, destLng), "includeStops" to "1",
+        )
+        if (lang != "ko") query.add("lang" to lang)
+        query.add("pathType" to axis.pathType)
         return client.get<TransitRouteEnvelope>("/api/route/transit", query).result
     }
 

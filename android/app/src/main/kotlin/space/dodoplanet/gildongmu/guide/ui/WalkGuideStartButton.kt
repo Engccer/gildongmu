@@ -39,7 +39,7 @@ import space.dodoplanet.gildongmu.nav.tryStartActivity
  * 시트·띠바는 `hasScreen` 조건이라 실패 상태를 그리지 않는다 — 이 행이 유일한 자리다.
  */
 @Composable
-fun WalkGuideStartButton(dest: BeaconDest, label: String, line: WalkLineKind, waypoint: GuideWaypoint?) {
+fun WalkGuideStartButton(dest: BeaconDest, label: String, line: WalkLineKind, waypoint: GuideWaypoint?, onStart: () -> Unit) {
     val context = LocalContext.current
     val res = context.resources
     val strings = remember(res) { guideStrings(res) }
@@ -50,7 +50,11 @@ fun WalkGuideStartButton(dest: BeaconDest, label: String, line: WalkLineKind, wa
     Column(Modifier.fillMaxWidth()) {
         Button(
             // 요청 축은 줄 종류의 투영(E42 — 계단 회피는 이제 줄의 성질이다). 셋을 함께 적는다(A13).
-            onClick = { GuideSession.startWalk(WalkStartRequest(dest, label, line.isAccessible, line.variant, line, waypoint)) },
+            // `onStart`는 시작 요청 직전에 — 화면이 "현재 위치에서 시작한다" 고지를 낸다(iOS `announceGuideStartIfManualOrigin` 자리).
+            onClick = {
+                onStart()
+                GuideSession.startWalk(WalkStartRequest(dest, label, line.isAccessible, line.variant, line, waypoint))
+            },
             modifier = Modifier.fillMaxWidth().tapTarget().testTag(tag).padding(vertical = 4.dp),
         ) { Text(strings.get(walkLineStartKey(line))) }
         val showsFailure = ui.status.isFailure && ui.statusText.isNotEmpty() && ui.lastStartLine == line
@@ -89,13 +93,14 @@ fun walkLineStartKey(line: WalkLineKind): String = when (line) {
 
 /**
  * directions 슬롯 조립(spec §7-1): 도착 좌표가 있을 때만. 도착 = `promotedDestination ?: (to as Place)`(iOS `trackedDestination`
- * 동형), `to == Current`면 버튼 없음. 계단 회피·경로 축은 줄 종류가 정한다(E42).
+ * 동형), `to == Current`면 버튼 없음. 계단 회피·경로 축은 줄 종류가 정한다(E42). `onStart`는 기본값 없음 — 시작 고지를 빠뜨린 호출이 조용히
+ * 컴파일되지 않게.
  */
-fun walkGuideStartSlot(s: DirectionsUiState): (@Composable (line: WalkLineKind) -> Unit)? {
+fun walkGuideStartSlot(s: DirectionsUiState, onStart: () -> Unit): (@Composable (line: WalkLineKind) -> Unit)? {
     val target = s.promotedDestination?.let { it.label to BeaconDest(it.lat, it.lng) }
         ?: (s.to as? DirectionsEndpoint.Place)?.let { it.label to BeaconDest(it.lat, it.lng) }
         ?: return null
     val (label, dest) = target
     val waypoint = s.via?.let { GuideWaypoint(BeaconDest(it.lat, it.lng), it.label) }
-    return { line -> WalkGuideStartButton(dest, label, line, waypoint) }
+    return { line -> WalkGuideStartButton(dest, label, line, waypoint, onStart) }
 }

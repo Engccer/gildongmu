@@ -29,7 +29,9 @@ import space.dodoplanet.gildongmu.kit.RecentSearchStore
 import space.dodoplanet.gildongmu.kit.RouteService
 import space.dodoplanet.gildongmu.kit.SearchService
 import space.dodoplanet.gildongmu.kit.models.JusoAddress
+import space.dodoplanet.gildongmu.kit.models.TransitModeAxis
 import space.dodoplanet.gildongmu.kit.models.WalkLineKind
+import space.dodoplanet.gildongmu.a11y.HapticKind
 import space.dodoplanet.gildongmu.kit.pathOf
 import space.dodoplanet.gildongmu.kit.queryOf
 import space.dodoplanet.gildongmu.location.LocationException
@@ -94,12 +96,19 @@ class DirectionsViewModelTest {
         val entrance: String = "{}", val places: String = "", val addresses: String = "", val geocode: String = "", val reverse: String = "",
         val delays: Map<String, Long> = emptyMap(),
         val walkStatus: Int = 200,
+        /** 수단 재조회(E50) 응답 — `pathType` 값별. 부재면 본 조회 응답을 쓴다. `requeryDelay`는 재조회에만 거는 가상 지연. */
+        val requery: Map<String, HttpResponse> = emptyMap(),
+        val requeryDelay: Long = 0,
     ) : HttpTransport {
         val seen = ArrayList<String>()
         override suspend fun get(url: String, timeoutMs: Long?): HttpResponse {
             seen += url
             val path = pathOf(url)
             delays[path]?.let { delay(it) }
+            param(url, "pathType")?.let { pathType ->
+                if (requeryDelay > 0) delay(requeryDelay)
+                requery[pathType]?.let { return it }
+            }
             val body = when (path) {
                 "/api/route/transit" -> transit
                 "/api/route/walk" -> walk
@@ -114,6 +123,7 @@ class DirectionsViewModelTest {
             return HttpResponse(if (path == "/api/route/walk") walkStatus else 200, body)
         }
         fun paths() = seen.map(::pathOf)
+        fun param(url: String, name: String): String? = queryOf(url).split('&').firstOrNull { it.startsWith("$name=") }?.substringAfter('=')
         fun query(path: String) = seen.first { pathOf(it) == path }.let(::queryOf)
     }
 
@@ -127,11 +137,12 @@ class DirectionsViewModelTest {
         saved: SavedStateHandle = SavedStateHandle(),
         prefill: MutableStateFlow<DirectionsPrefill?> = MutableStateFlow(null),
         timeout: Long = 15_000,
+        manual: () -> ManualLocation? = { null },
     ): DirectionsViewModel {
         val client = APIClient("https://example.test", routes)
         return DirectionsViewModel(
             RouteService(client), SearchService(client), store, locator, { lang }, ko, saved,
-            prefill = prefill, takePrefill = { prefill.compareAndSet(it, null) }, io = dispatcher, queryTimeoutMs = timeout,
+            prefill = prefill, takePrefill = { prefill.compareAndSet(it, null) }, io = dispatcher, queryTimeoutMs = timeout, manual = manual,
         )
     }
 
@@ -708,5 +719,183 @@ class DirectionsViewModelTest {
         assertEquals("출발지, 지정한 위치, Gildong Station", m.fieldText(DirectionsFieldTarget.from, accessible = true, lang = "en"))
         manual = null // 해제되면 현행 GPS 갈래
         assertEquals("출발지, 현재 위치", m.fieldText(DirectionsFieldTarget.from, accessible = true, lang = "ko"))
+    }
+
+    // ── E50 수단 재조회 ──────────────────────────────────────────────────────
+
+    private val transitWithAxes = transitBody.replace("\"totalCandidates\":", "\"requeryAxes\":[\"busOnly\",\"subwayOnly\",\"scenic\"],\"totalCandidates\":")
+    private val busOnlyFound = HttpResponse(200, """{"result":{"recommended":{"summary":{"totalMinutes":71,"fare":1500,"transfers":0,"walkMinutes":18},"legs":[],"routeKey":"b0"},"alternatives":[],"totalCandidates":1}}""")
+    private val noneBody = HttpResponse(200, """{"result":null}""")
+
+    private fun requeryRoutes(bus: HttpResponse = busOnlyFound, subway: HttpResponse = noneBody, delay: Long = 0) =
+        Routes(transit = transitWithAxes, walk = walkBody, car = carBody, requery = mapOf("2" to bus, "1" to subway), requeryDelay = delay)
+
+    private fun settledVm(r: Routes, lang: String = "ko", locator: FakeLocator = FakeLocator({ seoul })): DirectionsViewModel {
+        val m = vm(r, locator = locator, lang = lang)
+        m.setEndpoint(gangnam, DirectionsFieldTarget.to)
+        m.runQuery(); dispatcher.scheduler.advanceUntilIdle()
+        return m
+    }
+
+    @Test fun `재조회 찾음 - 조회 시점 좌표로 pathType을 싣고 요청 축 이름으로 목록 끝에 붙고 그 행으로 착지`() = runTest(dispatcher) {
+        val r = requeryRoutes()
+        val m = settledVm(r)
+        val transit = assertIs<DirectionsModeOutcome.Transit>(m.state.value.results!!.outcomes[DirectionsMode.transit])
+        assertEquals(listOf(TransitModeAxis.busOnly, TransitModeAxis.subwayOnly), transit.result.knownRequeryAxes)
+        val before = m.state.value.landing?.seq ?: 0
+        m.requery(TransitModeAxis.busOnly)
+        assertEquals(TransitRequeryState.Loading, m.state.value.transitRequery[TransitModeAxis.busOnly])
+        dispatcher.scheduler.advanceUntilIdle()
+        val url = r.seen.last { pathOf(it) == "/api/route/transit" }
+        assertEquals("2", r.param(url, "pathType"))
+        assertEquals("1", r.param(url, "includeStops"))
+        assertEquals(r.param(r.seen.first { pathOf(it) == "/api/route/transit" }, "origin"), r.param(url, "origin")) // 같은 출발지
+        val found = assertIs<TransitRequeryState.Found>(m.state.value.transitRequery[TransitModeAxis.busOnly]).route
+        assertEquals(listOf("busOnly"), found.highlight)
+        assertNull(found.displayIndex)
+        assertEquals(listOf(found), m.state.value.requeriedRoutes)
+        assertEquals(LandingTarget.RequeriedRoute("b0"), m.state.value.landing?.target)
+        assertTrue(m.state.value.landing!!.seq > before)
+        assertEquals(ko.get("route.transit.alternativeBusOnly"), transitAlternativeName(found, ko)) // 이름 = 요청 축
+    }
+
+    @Test fun `재조회 없음 - 문장으로 착지하고 통지 없음`() = runTest(dispatcher) {
+        val m = settledVm(requeryRoutes())
+        val notice = m.state.value.notice
+        m.requery(TransitModeAxis.subwayOnly); dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(TransitRequeryState.NotFound, m.state.value.transitRequery[TransitModeAxis.subwayOnly])
+        assertEquals(LandingTarget.RequeryNone(TransitModeAxis.subwayOnly), m.state.value.landing?.target)
+        assertEquals(notice, m.state.value.notice)
+        assertEquals(emptyList(), m.state.value.requeriedRoutes)
+    }
+
+    @Test fun `재조회 실패 - 버튼 유지, 착지 없음, 실패 통지와 실패 진동`() = runTest(dispatcher) {
+        val m = settledVm(requeryRoutes(bus = HttpResponse(502, "{}")))
+        val landing = m.state.value.landing
+        m.requery(TransitModeAxis.busOnly); dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(TransitRequeryState.Failed, m.state.value.transitRequery[TransitModeAxis.busOnly])
+        assertEquals(landing, m.state.value.landing)
+        assertEquals(ko.get("route.transit.requeryBusOnlyFailed"), m.state.value.notice.text)
+        assertEquals(HapticKind.failure, m.state.value.notice.haptic)
+        // 재시도가 된다(실패 뒤 버튼이 남는다).
+        m.requery(TransitModeAxis.busOnly)
+        assertEquals(TransitRequeryState.Loading, m.state.value.transitRequery[TransitModeAxis.busOnly])
+    }
+
+    @Test fun `재조회 15초 초과는 실패`() = runTest(dispatcher) {
+        val m = settledVm(requeryRoutes(delay = 20_000))
+        m.requery(TransitModeAxis.busOnly); dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(TransitRequeryState.Failed, m.state.value.transitRequery[TransitModeAxis.busOnly])
+    }
+
+    @Test fun `조회 중 재탭은 무시한다`() = runTest(dispatcher) {
+        val r = requeryRoutes(delay = 1_000)
+        val m = settledVm(r)
+        m.requery(TransitModeAxis.busOnly); m.requery(TransitModeAxis.busOnly)
+        dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(1, r.seen.count { r.param(it, "pathType") != null })
+    }
+
+    @Test fun `새 조회·필드 변경은 진행 중 재조회를 버리고 상태를 비운다`() = runTest(dispatcher) {
+        val m = settledVm(requeryRoutes(delay = 1_000))
+        m.requery(TransitModeAxis.busOnly)
+        m.setEndpoint(DirectionsEndpoint.Place("역삼역", 37.5006, 127.0364), DirectionsFieldTarget.to)
+        val landing = m.state.value.landing
+        dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(emptyMap(), m.state.value.transitRequery)
+        assertEquals(landing, m.state.value.landing)
+        // 결과가 없으니(폐기) 재조회도 부르지 않는다.
+        m.requery(TransitModeAxis.busOnly)
+        assertEquals(emptyMap(), m.state.value.transitRequery)
+    }
+
+    @Test fun `화면 이탈은 조회 중 축을 버튼으로 되돌리고 끝난 축은 남긴다`() = runTest(dispatcher) {
+        val m = settledVm(requeryRoutes(delay = 1_000))
+        m.requery(TransitModeAxis.subwayOnly); dispatcher.scheduler.advanceUntilIdle()
+        m.requery(TransitModeAxis.busOnly)
+        val landing = m.state.value.landing
+        m.onScreenExit()
+        dispatcher.scheduler.advanceUntilIdle()
+        assertNull(m.state.value.transitRequery[TransitModeAxis.busOnly])
+        assertEquals(TransitRequeryState.NotFound, m.state.value.transitRequery[TransitModeAxis.subwayOnly])
+        assertEquals(landing, m.state.value.landing) // 늦은 결과가 착지하지 않는다
+    }
+
+    @Test fun `재조회는 조회 시점 데이터 언어로 부른다`() = runTest(dispatcher) {
+        var lang = "en"
+        val r = requeryRoutes()
+        val client = APIClient("https://example.test", r)
+        val m = DirectionsViewModel(RouteService(client), SearchService(client), RecentSearchStore(InMemoryKeyValueStore()), FakeLocator({ seoul }), { lang }, ko, SavedStateHandle(), prefill = MutableStateFlow(null), takePrefill = { false }, io = dispatcher)
+        m.setEndpoint(gangnam, DirectionsFieldTarget.to)
+        m.runQuery(); dispatcher.scheduler.advanceUntilIdle()
+        lang = "ko"
+        m.requery(TransitModeAxis.busOnly); dispatcher.scheduler.advanceUntilIdle()
+        assertEquals("en", r.param(r.seen.last { pathOf(it) == "/api/route/transit" }, "lang"))
+    }
+
+    // ── 안내 시작 고지(stale-origin §4.4) ────────────────────────────────────
+
+    private val manualAt = ManualLocation(1, "길동역", "Gildong Station", 37.5385, 127.1355, ManualFix(37.5385, 127.1355, 20.0, 1.0), 1.0)
+
+    @Test fun `수동 위치 출발로 조회한 결과에서 시작하면 한 번 고지하고 세션이 살아 있으면 말하지 않는다`() = runTest(dispatcher) {
+        var manual: ManualLocation? = manualAt
+        val m = vm(allOk(), manual = { manual })
+        m.setEndpoint(gangnam, DirectionsFieldTarget.to)
+        m.runQuery(); dispatcher.scheduler.advanceUntilIdle()
+        assertTrue(m.state.value.resultsOriginNeedsStartNotice)
+        manual = null // 조회 뒤 수동 위치를 꺼도 화면의 경로는 그 좌표에서 계산된 것이다
+        val seq = m.state.value.notice.seq
+        m.announceGuideStartIfManualOrigin(sessionActive = true)
+        assertEquals(seq, m.state.value.notice.seq)
+        m.announceGuideStartIfManualOrigin(sessionActive = false)
+        assertEquals(ko.get("manualLocation.guideStartsFromCurrent"), m.state.value.notice.text)
+        assertNull(m.state.value.notice.haptic)
+    }
+
+    @Test fun `옛 위치 출발도 고지 대상이고 GPS 출발·도착만 현재 위치는 아니다`() = runTest(dispatcher) {
+        val stale = vm(allOk(), FakeLocator({ throw LocationException(LocationException.Kind.Unavailable) }, stale = StaleFix(37.53, 127.14, 1.0)))
+        stale.setEndpoint(gangnam, DirectionsFieldTarget.to)
+        stale.runQuery(); dispatcher.scheduler.advanceUntilIdle()
+        assertTrue(stale.state.value.resultsOriginNeedsStartNotice)
+
+        val gps = vm(allOk())
+        gps.setEndpoint(gangnam, DirectionsFieldTarget.to)
+        gps.runQuery(); dispatcher.scheduler.advanceUntilIdle()
+        assertFalse(gps.state.value.resultsOriginNeedsStartNotice)
+        val seq = gps.state.value.notice.seq
+        gps.announceGuideStartIfManualOrigin(sessionActive = false)
+        assertEquals(seq, gps.state.value.notice.seq)
+
+        val toCurrent = vm(allOk(), manual = { manualAt })
+        toCurrent.setEndpoint(gangnam, DirectionsFieldTarget.from)
+        toCurrent.setEndpoint(DirectionsEndpoint.Current, DirectionsFieldTarget.to)
+        toCurrent.runQuery(); dispatcher.scheduler.advanceUntilIdle()
+        assertFalse(toCurrent.state.value.resultsOriginNeedsStartNotice)
+    }
+
+    @Test fun `고지 표식은 결과 폐기와 함께 내려간다`() = runTest(dispatcher) {
+        val m = vm(allOk(), manual = { manualAt })
+        m.setEndpoint(gangnam, DirectionsFieldTarget.to)
+        m.runQuery(); dispatcher.scheduler.advanceUntilIdle()
+        assertTrue(m.state.value.resultsOriginNeedsStartNotice)
+        m.swap()
+        assertFalse(m.state.value.resultsOriginNeedsStartNotice)
+        assertNull(m.state.value.results)
+    }
+
+    // ── RecentEndpoint.labelRoman 왕복 ──────────────────────────────────────
+
+    @Test fun `로마자 표기는 최근 장소·최근 경로·경로 복원을 왕복한다`() = runTest(dispatcher) {
+        val store = RecentSearchStore(InMemoryKeyValueStore())
+        val m = vm(allOk(), store = store)
+        val place = DirectionsEndpoint.Place("강남역", 37.4979, 127.0276, "Gangnam Station")
+        m.setEndpoint(place, DirectionsFieldTarget.to)
+        assertEquals("Gangnam Station", store.endpoints(RecentEndpointScope.to).first().labelRoman)
+        m.runQuery(); dispatcher.scheduler.advanceUntilIdle()
+        val route = store.routes().first()
+        assertEquals("Gangnam Station", route.to?.labelRoman)
+        m.setEndpoint(DirectionsEndpoint.Current, DirectionsFieldTarget.to)
+        m.activateRecentRoute(route)
+        assertEquals(place, m.state.value.to)
     }
 }

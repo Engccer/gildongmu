@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -26,12 +27,15 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import space.dodoplanet.gildongmu.a11y.headingText
+import space.dodoplanet.gildongmu.a11y.landingTarget
+import space.dodoplanet.gildongmu.a11y.tapTarget
 import space.dodoplanet.gildongmu.a11y.mergedRow
 import space.dodoplanet.gildongmu.kit.DataLocale
 import space.dodoplanet.gildongmu.kit.TransitBriefingRow
 import space.dodoplanet.gildongmu.kit.WalkCollapse
 import space.dodoplanet.gildongmu.kit.joinText
 import space.dodoplanet.gildongmu.kit.models.CarRouteBriefing
+import space.dodoplanet.gildongmu.kit.models.TransitModeAxis
 import space.dodoplanet.gildongmu.kit.models.TransitRoute
 import space.dodoplanet.gildongmu.kit.models.TransitRouteLeg
 import space.dodoplanet.gildongmu.kit.models.TransitRouteResult
@@ -117,10 +121,12 @@ fun DisclosureRow(
     onToggle: () -> Unit,
     strings: Strings,
     spoken: String = label,
+    /** 착지 대상이면 `landingTarget`(E50 재조회로 찾은 경로 행). */
+    modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
     ActionRow(
-        visual = label, tag = tag, onClick = onToggle, spoken = spoken,
+        visual = label, tag = tag, onClick = onToggle, spoken = spoken, modifier = modifier,
         state = strings.get(if (expanded) "android.common.expanded" else "android.common.collapsed"),
     )
     if (expanded) Column(Modifier.padding(start = 12.dp)) { content() }
@@ -129,9 +135,10 @@ fun DisclosureRow(
 /** 대중교통 경로 목록의 한 항목(추천·대안 공통 — 컨트롤이 같고 초기 펼침만 다르다). */
 data class TransitRouteEntry(val route: TransitRoute, val name: String, val defaultExpanded: Boolean)
 
-fun transitRouteEntries(result: TransitRouteResult, strings: Strings): List<TransitRouteEntry> =
+/** `requeried`: 수단 재조회로 찾은 경로(E50) — 목록 끝에 접힌 대안으로 붙고 이름은 실린 축(`highlight`)이 정한다. */
+fun transitRouteEntries(result: TransitRouteResult, requeried: List<TransitRoute>, strings: Strings): List<TransitRouteEntry> =
     listOf(TransitRouteEntry(result.recommended, strings.get("route.transit.recommended"), defaultExpanded = true)) +
-        result.alternatives.map { TransitRouteEntry(it, transitAlternativeName(it, strings), defaultExpanded = false) }
+        (result.alternatives + requeried).map { TransitRouteEntry(it, transitAlternativeName(it, strings), defaultExpanded = false) }
 
 /**
  * 대중교통 본문: 추천+대안을 한 목록의 펼침 행으로. 펼침 상태 키는 `routeKey`(배열 인덱스·표시 번호 금지) —
@@ -148,13 +155,17 @@ fun TransitOutcomeRows(
     dataLocale: DataLocale,
     strings: Strings,
     stationEntry: BriefingStationEntry?,
+    /** 수단 재조회(E50): 찾은 경로·축별 상태·버튼 동작·착지 요청자(키 = [requeryFocusKey]). */
+    requery: TransitRequeryRowsState,
 ) {
     val meters = strings.get("android.unit.spokenMeters")
-    for (entry in transitRouteEntries(result, strings)) {
+    val requeriedKeys = requery.found.map { it.routeKey }.toSet()
+    for (entry in transitRouteEntries(result, requery.found, strings)) {
         val key = entry.route.routeKey
         val expanded = if (key in expandedAlts) !entry.defaultExpanded else entry.defaultExpanded
         val label = joinText(entry.name, transitSummaryText(entry.route.summary, lang, strings))
-        DisclosureRow(label = label, tag = "transit-$key", expanded = expanded, onToggle = { onToggle(key) }, strings = strings) {
+        val landing = if (key in requeriedKeys) Modifier.landingTarget(requery.focus(requeryRouteFocusKey(key))) else Modifier
+        DisclosureRow(label = label, tag = "transit-$key", expanded = expanded, onToggle = { onToggle(key) }, strings = strings, modifier = landing) {
             val legs = entry.route.legs
             for (index in legs.indices) {
                 val line = transitLegLine(legs, index, destinationName, lang, dataLocale, strings)
@@ -166,6 +177,52 @@ fun TransitOutcomeRows(
                 }
             }
         }
+    }
+    TransitRequeryRows(requery, strings)
+}
+
+/** 수단 재조회 행의 입력(E50) — 화면 상태를 한 묶음으로 넘긴다. */
+class TransitRequeryRowsState(
+    /** 서버 `requeryAxes` 중 아는 축(순서 유지). */
+    val axes: List<TransitModeAxis>,
+    val states: Map<TransitModeAxis, TransitRequeryState>,
+    /** 찾은 경로(목록 끝 대안). */
+    val found: List<TransitRoute>,
+    val onRequery: (TransitModeAxis) -> Unit,
+    val focus: (key: String) -> FocusRequester,
+)
+
+fun requeryRouteFocusKey(routeKey: String): String = "route:$routeKey"
+fun requeryNoneFocusKey(axis: TransitModeAxis): String = "none:${axis.rawValue}"
+
+/**
+ * 재조회 한 축의 행들(E50 §4.2·§4.3, iOS `requeryRows`). 경로 목록 **뒤**, 대안이 0개여도 추천 뒤에 선다. 찾음 = 행 없음(경로가 위 목록 끝에),
+ * 없음 = 버튼 자리의 문장(착지 대상), 실패 = 버튼 앞 문장 + 버튼 유지(포커스는 버튼에 머물고 통지는 모델이 냈다). 조회 중 라벨은 불변이고
+ * 재탭은 모델이 무시한다(`enabled=false` 금지 — 포커스를 떨군다).
+ */
+@Composable
+fun TransitRequeryRows(requery: TransitRequeryRowsState, strings: Strings) {
+    for (axis in requery.axes) {
+        val bus = axis == TransitModeAxis.busOnly
+        when (requery.states[axis]) {
+            is TransitRequeryState.Found -> Unit
+            TransitRequeryState.NotFound -> TextRow(
+                strings.get(if (bus) "route.transit.requeryBusOnlyNone" else "route.transit.requerySubwayOnlyNone"),
+                "requery-none-${axis.rawValue}", focus = requery.focus(requeryNoneFocusKey(axis)),
+            )
+            TransitRequeryState.Failed -> {
+                TextRow(strings.get(if (bus) "route.transit.requeryBusOnlyFailed" else "route.transit.requerySubwayOnlyFailed"), "requery-failed-${axis.rawValue}")
+                RequeryButton(axis, requery, strings)
+            }
+            TransitRequeryState.Loading, null -> RequeryButton(axis, requery, strings)
+        }
+    }
+}
+
+@Composable
+private fun RequeryButton(axis: TransitModeAxis, requery: TransitRequeryRowsState, strings: Strings) {
+    Button(onClick = { requery.onRequery(axis) }, modifier = Modifier.tapTarget().testTag("requery-${axis.rawValue}")) {
+        Text(strings.get(if (axis == TransitModeAxis.busOnly) "route.transit.requeryBusOnly" else "route.transit.requerySubwayOnly"))
     }
 }
 

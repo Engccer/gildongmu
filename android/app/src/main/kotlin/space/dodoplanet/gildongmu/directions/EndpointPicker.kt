@@ -95,7 +95,7 @@ class EndpointPicker(
     fun selectPlace(place: Place) = select(DirectionsEndpoint.Place(place.name, place.lat, place.lng, place.nameRoman))
 
     /** 최근 장소 행 활성화 = 재검색 없이 즉시 확정(기록은 `onSelect` 쪽 — 이중 기록 금지). */
-    fun selectRecentEndpoint(endpoint: RecentEndpoint) = select(DirectionsEndpoint.Place(endpoint.label, endpoint.lat, endpoint.lng))
+    fun selectRecentEndpoint(endpoint: RecentEndpoint) = select(DirectionsEndpoint.Place(endpoint.label, endpoint.lat, endpoint.lng, endpoint.labelRoman))
 
     /** "현재 위치 사용"(from) / "현재 위치로 되돌리기"(manualLocation). 도착지는 스왑이, 경유지는 장소만(spec §3-2 표 5). */
     fun selectCurrent() {
@@ -152,7 +152,7 @@ class EndpointPicker(
         if (index < 0) return
         val pinned = !list[index].pinned
         store.setEndpointPinned(endpoint, picker.target.recentScope, pinned)
-        list[index] = RecentEndpoint(endpoint.label, endpoint.lat, endpoint.lng, pinned)
+        list[index] = RecentEndpoint(endpoint.label, endpoint.lat, endpoint.lng, pinned, endpoint.labelRoman)
         update { it.copy(recentEndpoints = list) }
     }
 

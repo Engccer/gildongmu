@@ -15,6 +15,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -35,6 +37,7 @@ import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import space.dodoplanet.gildongmu.a11y.AppScreenScaffold
+import space.dodoplanet.gildongmu.a11y.LocalModalOpen
 import space.dodoplanet.gildongmu.a11y.landingTarget
 import space.dodoplanet.gildongmu.a11y.StatusLine
 import space.dodoplanet.gildongmu.a11y.headingText
@@ -44,7 +47,12 @@ import space.dodoplanet.gildongmu.kit.models.TransitLegStop
 import space.dodoplanet.gildongmu.kit.DataLocale
 import space.dodoplanet.gildongmu.kit.DirectionsMode
 import space.dodoplanet.gildongmu.kit.DirectionsModeOutcome
+import space.dodoplanet.gildongmu.guide.GuideSession
+import space.dodoplanet.gildongmu.guide.ui.WalkGuideNotice
+import space.dodoplanet.gildongmu.guide.ui.WalkGuideNoticeSheet
 import space.dodoplanet.gildongmu.guide.ui.walkGuideStartSlot
+import space.dodoplanet.gildongmu.kit.joinText
+import space.dodoplanet.gildongmu.storage.SharedPreferencesStore
 import space.dodoplanet.gildongmu.kit.WalkCollapse
 import space.dodoplanet.gildongmu.location.appDetailsSettingsIntent
 import space.dodoplanet.gildongmu.nav.tryStartActivity
@@ -55,8 +63,8 @@ import space.dodoplanet.gildongmu.settings.SettingsAction
  * 길찾기 탭 루트(spec §2·§3-1, iOS `DirectionsTabView` 대응). 폼 위에 끝점 검색을 **덮어씌운다**(폼은 컴포즈 유지) —
  * 형제 교체로 하면 폼의 펼침·스크롤 상태가 피커 왕복(취소 복귀)에 소멸한다(구현 리뷰 MA-1). 보이는 것은 하나뿐이고
  * 라이브 리전도 하나만 컴포즈된다(폼의 `StatusLine`은 피커가 덮은 동안 숨김 트리 밖).
- * ViewModel 팩토리는 이 패키지가 앱 컨텍스트로 스스로 만든다(`MainActivity`는 골격 세션 소유). 실시간 안내 시작 버튼·
- * 거리 추적 섹션·공지 시트는 M4·M5 — 자리만(§3-1 표 10·11).
+ * ViewModel 팩토리는 이 패키지가 앱 컨텍스트로 스스로 만든다(`MainActivity`는 골격 세션 소유). 도보 안내 시작 버튼은 도보 줄 안,
+ * 추적 중 "안내 종료" 이중 방어는 조회 버튼 아래, 도보 안내 공지 시트는 진입 때(확인 전까지). 자동차·대중교통 안내는 M5.
  */
 @Composable
 fun DirectionsScreen(onOpenSettings: () -> Unit, takeSettingsReturn: () -> String?, onOpenStation: (TransitLegStop, String?, returnKey: String) -> Unit) {
@@ -89,10 +97,20 @@ fun DirectionsScreen(
     }
     val picker by vm.endpointSearch.collectAsState()
     BackHandler(enabled = picker != null) { vm.closePicker() }
+    // 화면 이탈(탭 전환·역 상세 push·재생성)은 진행 중 수단 재조회를 끊는다 — 돌아왔을 때 늦은 결과의 착지가 커서를 빼앗지 않게(E50 §4.3).
+    DisposableEffect(vm) { onDispose { vm.onScreenExit() } }
+    // 도보 안내 1회성 공지(iOS `DirectionsTabView` `.task`): 진입마다 판정하고, 확인을 누르기 전까지는 다음 진입에 다시 뜬다.
+    val context = LocalContext.current
+    val notice = remember(context) { WalkGuideNotice(SharedPreferencesStore(context)) }
+    var noticeOpen by remember { mutableStateOf(false) }
+    LaunchedEffect(notice) { if (!notice.isConfirmed()) noticeOpen = true }
     val p = picker
-    Box(Modifier.fillMaxSize()) {
-        if (p == null) DirectionsForm(vm, formState, onOpenSettings, settingsFocus, onOpenStation) else EndpointSearchContent(vm.picker, p, onBack = vm::closePicker)
+    CompositionLocalProvider(LocalModalOpen provides noticeOpen) {
+        Box(Modifier.fillMaxSize()) {
+            if (p == null) DirectionsForm(vm, formState, onOpenSettings, settingsFocus, onOpenStation) else EndpointSearchContent(vm.picker, p, onBack = vm::closePicker)
+        }
     }
+    if (noticeOpen) WalkGuideNoticeSheet(onConfirm = { notice.confirm(); noticeOpen = false }, onDismiss = { noticeOpen = false })
 }
 
 /** 역 상세 복귀 착지 키 접두(E45) — 뒤는 그 브리핑 줄의 태그. */
@@ -119,9 +137,12 @@ class FormUiState(
     val viaFocus = FocusRequester()
     val submitFocus = FocusRequester()
     val recentFocus = mutableMapOf<String, FocusRequester>()
+    /** 수단 재조회 착지 대상(E50) — 키는 `requeryRouteFocusKey`·`requeryNoneFocusKey`. */
+    val requeryFocus = mutableMapOf<String, FocusRequester>()
 
     fun resetExpansion(revision: Int) {
         expandedAlts = emptySet()
+        requeryFocus.clear()
         walkExpandedOverride = null
         secondExpanded = false
         seenResultsRevision = revision
@@ -192,6 +213,8 @@ private fun DirectionsForm(
             }
             LandingTarget.Submit -> ui.submitFocus
             is LandingTarget.RecentRoute -> ui.recentFocus[t.id]
+            is LandingTarget.RequeriedRoute -> ui.requeryFocus[requeryRouteFocusKey(t.routeKey)]
+            is LandingTarget.RequeryNone -> ui.requeryFocus[requeryNoneFocusKey(t.axis)]
         }
         runCatching { requester?.requestFocus() }.onFailure { Log.w("DirectionsScreen", "착지 실패 ${landing.target}", it) }
     }
@@ -285,7 +308,16 @@ private fun DirectionsForm(
                 }
             }
 
-            // (예약) 거리 추적 섹션 — M4. 조회 버튼과 수단 섹션 사이.
+            // 추적 중 "안내 종료" 이중 방어(iOS `DirectionsTabView` 선두 섹션): 시트가 어떤 이유로 뜨지 않아도 중지 수단이 화면에 남는다.
+            // 제목은 세션이 든 목적지(폼 도착지는 안내 중 바뀔 수 있다). 누르면 섹션이 사라지므로 조회 버튼을 먼저 선점한다(헌장 §5).
+            val guideUi = if (GuideSession.isAttached) GuideSession.walk.ui.collectAsState().value else null
+            if (guideUi?.isTracking == true) {
+                SectionHeading(joinText(strings.get("beacon.heading"), guideUi.destinationLabel))
+                Button(
+                    onClick = { ui.submitFocus.requestFocus(); GuideSession.walk.stopByUser() },
+                    modifier = Modifier.tapTarget().testTag("directions-guide-stop"),
+                ) { Text(strings.get("beacon.stop")) }
+            }
 
             val results = s.results
             if (results != null) {
@@ -310,6 +342,10 @@ private fun DirectionsForm(
                             onToggle = { key -> ui.expandedAlts = if (key in ui.expandedAlts) ui.expandedAlts - key else ui.expandedAlts + key },
                             destinationName = vm.destinationName, lang = lang, dataLocale = dataLocale, strings = strings,
                             stationEntry = stationEntry,
+                            requery = TransitRequeryRowsState(
+                                axes = outcome.result.knownRequeryAxes, states = s.transitRequery, found = s.requeriedRoutes,
+                                onRequery = vm::requery, focus = { key -> ui.requeryFocus.getOrPut(key) { FocusRequester() } },
+                            ),
                         )
                         // outcome의 브리핑은 첫 줄과 같은 응답이다(분류가 첫 줄로 한다) — 줄 목록을 그린다(E42).
                         is DirectionsModeOutcome.Walk -> WalkOutcomeRows(
@@ -318,7 +354,7 @@ private fun DirectionsForm(
                             onWalkToggle = { ui.walkExpandedOverride = !(ui.walkExpandedOverride ?: !WalkCollapse.shouldCollapse(outcome.briefing.durationSeconds)) },
                             secondExpanded = ui.secondExpanded, onSecondToggle = { ui.secondExpanded = !ui.secondExpanded },
                             viaLabel = s.via?.label, strings = strings,
-                            guideStart = walkGuideStartSlot(s),
+                            guideStart = walkGuideStartSlot(s, onStart = { vm.announceGuideStartIfManualOrigin(GuideSession.isActive) }),
                         )
                         is DirectionsModeOutcome.Car -> CarOutcomeRows(outcome.briefing, s.via?.label, lang, strings)
                         DirectionsModeOutcome.Empty -> TextRow(strings.get(if (mode == DirectionsMode.transit) "route.transit.noRoute" else "route.pedestrian.noRoute"), "empty-${mode.rawValue}")

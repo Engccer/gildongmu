@@ -123,7 +123,7 @@
       "status": "ported",
       "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/models/RouteModels.kt",
       "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/RouteModelsTest.kt",
-      "note": "전방 호환 enum 디코딩은 `models/LenientEnums.kt`(등록부 밖 직렬화 보조). E42 `WalkLineKind`(enum — `WalkRouteVariant` import, 속성 `accessible`은 항목 이름과 겹쳐 `isAccessible`로 개명)·`WalkRouteLine`·`WalkRouteLinesEnvelope`·브리핑 `kind`/`lineKind`는 이식했고, 그 테스트는 Swift처럼 `RouteServiceTest`에 있다(`walkBriefingKindDecodesLeniently`·`walkLineKindProjectsGuideRequestAxis`)"
+      "note": "전방 호환 enum 디코딩은 `models/LenientEnums.kt`(등록부 밖 직렬화 보조). E42 `WalkLineKind`(enum — `WalkRouteVariant` import, 속성 `accessible`은 항목 이름과 겹쳐 `isAccessible`로 개명)·`WalkRouteLine`·`WalkRouteLinesEnvelope`·브리핑 `kind`/`lineKind`는 이식했고, 그 테스트는 Swift처럼 `RouteServiceTest`에 있다(`walkBriefingKindDecodesLeniently`·`walkLineKindProjectsGuideRequestAxis`). E50 `TransitModeAxis`(enum, `rawValue`·`fromRawValue`)·`TransitRouteResult.requeryAxes`/`knownRequeryAxes`는 이식했다"
     },
     {
       "swift": "Models/SearchModels.swift",
@@ -162,7 +162,7 @@
       "status": "ported",
       "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/RecentSearchStore.kt",
       "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/RecentSearchStoreTest.kt",
-      "note": "D5 경계: 저장은 `KeyValueStore` 인터페이스로 :app이 SharedPreferences로 구현(M1). 값은 JSON 문자열"
+      "note": "D5 경계: 저장은 `KeyValueStore` 인터페이스로 :app이 SharedPreferences로 구현(M1). 값은 JSON 문자열. `RecentEndpoint.labelRoman`(2026-09-18, 고정 토글·재기록 보존, 기존 저장분 null)은 이식했다 — Swift는 `pinned` 뒤 인자 순서라 Kotlin도 `pinned` 다음 필드다"
     },
     {
       "swift": "Resources/Localizable.xcstrings",

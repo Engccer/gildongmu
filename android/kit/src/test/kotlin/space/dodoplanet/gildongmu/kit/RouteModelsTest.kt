@@ -2,7 +2,9 @@ package space.dodoplanet.gildongmu.kit
 
 import space.dodoplanet.gildongmu.kit.models.CarRouteBriefing
 import space.dodoplanet.gildongmu.kit.models.StepFreeStatus
+import space.dodoplanet.gildongmu.kit.models.TransitModeAxis
 import space.dodoplanet.gildongmu.kit.models.TransitRouteEnvelope
+import space.dodoplanet.gildongmu.kit.models.TransitRouteResult
 import space.dodoplanet.gildongmu.kit.models.TransitRouteLeg
 import space.dodoplanet.gildongmu.kit.models.WalkRouteBriefing
 import space.dodoplanet.gildongmu.kit.models.WalkRouteEnvelope
@@ -230,5 +232,17 @@ class RouteModelsTest {
         assertEquals("1", leg.exit?.alight); assertNull(leg.exit?.board)
         val bare = KitJson.decodeFromString(TransitRouteLeg.serializer(), """{"mode":"subway","lineName":"수도권 5호선","minutes":6}""")
         assertNull(bare.expressStops); assertNull(bare.expressStopIds); assertNull(bare.exit)
+    }
+
+    /** E50: 재조회 축은 아는 값만(서버 순서 유지, 중복 제거) — Kit `재조회_축은_아는_값만_읽는다` 미러. */
+    @Test fun `재조회 축은 아는 값만 읽는다`() {
+        val r = KitJson.decodeFromString(TransitRouteResult.serializer(), """{"recommended":{"summary":{"totalMinutes":30,"fare":1500,"transfers":0,"walkMinutes":5,"walkMeters":300},
+          "legs":[],"routeKey":"p0","vehicle":"subway"},"alternatives":[],"totalCandidates":3,"requeryAxes":["busOnly","scenic","busOnly"]}""")
+        assertEquals(listOf(TransitModeAxis.busOnly), r.knownRequeryAxes)
+        val none = KitJson.decodeFromString(TransitRouteResult.serializer(), """{"recommended":{"summary":{"totalMinutes":30,"fare":1500,"transfers":0,"walkMinutes":5},"legs":[],"routeKey":"p0"},"alternatives":[],"totalCandidates":1}""")
+        assertNull(none.requeryAxes)
+        assertEquals(emptyList(), none.knownRequeryAxes)
+        assertEquals("2", TransitModeAxis.busOnly.pathType)
+        assertEquals("1", TransitModeAxis.subwayOnly.pathType)
     }
 }

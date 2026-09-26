@@ -47,6 +47,8 @@ import space.dodoplanet.gildongmu.kit.bilingualName
 import space.dodoplanet.gildongmu.kit.isInKorea
 import space.dodoplanet.gildongmu.kit.models.JusoAddress
 import space.dodoplanet.gildongmu.kit.models.Place
+import space.dodoplanet.gildongmu.kit.models.TransitModeAxis
+import space.dodoplanet.gildongmu.kit.models.TransitRoute
 import space.dodoplanet.gildongmu.kit.models.WalkRouteLine
 import space.dodoplanet.gildongmu.location.LocationException
 
@@ -71,6 +73,19 @@ sealed class LandingTarget {
     data class Field(val field: DirectionsFieldTarget) : LandingTarget()
     data object Submit : LandingTarget()
     data class RecentRoute(val id: String) : LandingTarget()
+    /** 수단 재조회로 찾은 경로의 펼침 행(E50 §4.3 — 라벨이 이름 + 요약이라 그것이 곧 결과 통지다). */
+    data class RequeriedRoute(val routeKey: String) : LandingTarget()
+    /** 수단 재조회 "없음" 문장(버튼 자리). */
+    data class RequeryNone(val axis: TransitModeAxis) : LandingTarget()
+}
+
+/** 수단 재조회 한 축의 상태(E50 §4.3, iOS `TransitRequeryState` 미러). 부재 = 아직 누르지 않음(버튼). */
+sealed class TransitRequeryState {
+    data object Loading : TransitRequeryState()
+    /** 이름 축(`highlight = [요청 축]`)을 실은 경로 — 목록 끝에 접힌 대안으로 붙는다. */
+    data class Found(val route: TransitRoute) : TransitRequeryState()
+    data object NotFound : TransitRequeryState()
+    data object Failed : TransitRequeryState()
 }
 
 data class LandingRequest(val seq: Int, val target: LandingTarget)
@@ -99,10 +114,24 @@ data class DirectionsUiState(
     /** "현재 위치" 끝점이 옛 위치로 풀렸을 때 그 좌표의 측정 시각(epoch 초, spec 2026-09-23 stale-origin §4.3). 이때 `currentAddress`는 그 옛 좌표의 주소다. */
     val currentStaleAt: Double? = null,
     val recentRoutes: List<RecentRoute> = emptyList(),
+    /**
+     * `results`가 확정될 때 출발지가 수동 위치 **또는 옛 위치**였는가(iOS `resultsOriginNeedsStartNotice`) — 안내 시작 순간 "현재 위치에서 시작한다"
+     * 고지의 근거. "지금 수동 위치가 켜져 있는가"가 아니라 **화면에 보이는 이 경로가 어느 좌표에서 계산됐는가**가 판정 축이다. `results`와 같은 순간에만 커밋한다.
+     */
+    val resultsOriginNeedsStartNotice: Boolean = false,
+    /** 수단 재조회(E50). `results`와 같은 세대에만 산다 — 새 조회·결과 폐기가 비운다. */
+    val transitRequery: Map<TransitModeAxis, TransitRequeryState> = emptyMap(),
     val landing: LandingRequest? = null,
     val notice: Notice = Notice(0, ""),
 ) {
     val isBusy: Boolean get() = phase == DirectionsPhase.Locating || phase == DirectionsPhase.Loading
+
+    /** 찾은 재조회 경로(서버 `requeryAxes` 순서) — 목록 끝에 대안으로 붙는다. */
+    val requeriedRoutes: List<TransitRoute>
+        get() {
+            val transit = results?.outcomes?.get(DirectionsMode.transit) as? DirectionsModeOutcome.Transit ?: return emptyList()
+            return transit.result.knownRequeryAxes.mapNotNull { (transitRequery[it] as? TransitRequeryState.Found)?.route }
+        }
 }
 
 /**
@@ -154,6 +183,12 @@ class DirectionsViewModel(
     private var recentRoutesTouched = false
 
     private class QueryTimeout : Exception("query timeout")
+
+    /** 조회 시점의 출발·도착 좌표와 데이터 언어 — 재조회가 **같은 출발지·같은 언어**로 부른다(현재 위치를 다시 재면 다른 출발지의 경로가 섞인다). `results`와 같은 순간에만 커밋. */
+    private data class ResultsCoords(val origin: NearbyCoord, val dest: NearbyCoord, val lang: String)
+    private var resultsCoords: ResultsCoords? = null
+    /** 진행 중인 재조회(축별). 새 조회·결과 폐기·화면 이탈이 함께 취소한다. */
+    private val requeryJobs = HashMap<TransitModeAxis, Job>()
 
     private val initJob: Job = viewModelScope.launch {
         val recent = withContext(io) { store.routes() }
@@ -207,7 +242,7 @@ class DirectionsViewModel(
 
     private fun recordRecent(endpoint: DirectionsEndpoint, target: DirectionsFieldTarget) {
         if (endpoint is DirectionsEndpoint.Place) {
-            store.recordEndpoint(RecentEndpoint(endpoint.label, endpoint.lat, endpoint.lng), target.recentScope)
+            store.recordEndpoint(RecentEndpoint(endpoint.label, endpoint.lat, endpoint.lng, labelRoman = endpoint.labelRoman), target.recentScope)
         }
     }
 
@@ -223,9 +258,10 @@ class DirectionsViewModel(
         queryJob?.cancel()
         cancelCurrentAddress()
         isInFlight = false
+        cancelRequeries()
         _state.update {
             it.copy(
-                results = null, walkLines = emptyList(), promotedDestination = null,
+                results = null, walkLines = emptyList(), promotedDestination = null, resultsOriginNeedsStartNotice = false,
                 phase = DirectionsPhase.Idle, notice = next(""), preciseRetryFailed = false,
             )
         }
@@ -258,12 +294,17 @@ class DirectionsViewModel(
     }
 
     private suspend fun performQuery(from: DirectionsEndpoint, to: DirectionsEndpoint, via: DirectionsEndpoint.Place?, addressRequest: DirectionsAddressState.Request?) {
-        _state.update { it.copy(results = null, walkLines = emptyList(), promotedDestination = null) }
+        cancelRequeries()
+        _state.update { it.copy(results = null, walkLines = emptyList(), promotedDestination = null, resultsOriginNeedsStartNotice = false) }
         var current: NearbyCoord? = null
-        // 현재 위치 끝점이 옛 위치로 풀렸으면 그 좌표의 측정 시각(완료 통지 뒷문장).
+        // 현재 위치 끝점이 옛 위치로 풀렸으면 그 좌표의 측정 시각(완료 통지 뒷문장·안내 시작 고지).
         var staleAt: Double? = null
+        // 이 조회의 **출발지**가 수동 위치였는가(안내 시작 고지 근거). 측위 호출 직전 스냅샷 — 대기 중 수동 위치가 새로 켜지는 경합에서 GPS 좌표를
+        // 수동 기원으로 오분류하지 않는다. 로컬로 들고 있다가 `results`와 같은 순간에만 커밋한다.
+        var usedManualOrigin = false
         if (from == DirectionsEndpoint.Current || to == DirectionsEndpoint.Current) {
             val request = requireNotNull(addressRequest)
+            usedManualOrigin = from == DirectionsEndpoint.Current && manual() != null
             var handedOff = false
             try {
                 current = try {
@@ -355,13 +396,16 @@ class DirectionsViewModel(
             return
         }
         val results = DirectionsResults(outcomes)
+        val needsStartNotice = usedManualOrigin || (from == DirectionsEndpoint.Current && staleAt != null)
         // 경로를 하나도 못 찾았으면 붙이지 않는다 — "찾지 못했습니다. … 찾았습니다."가 되어 앞뒤가 모순된다(위원장 판정 2026-09-23).
         val staleNotice = staleAt?.takeIf { results.successCount > 0 }?.let { strings.get("directions.staleOriginNotice", staleWords.age(it, epochNow())) }
         initJob.join()
         val recent = store.recordRoute(RecentRoute(recentSide(from), recentSide(to), via?.let(::recentSide)))
+        resultsCoords = ResultsCoords(origin, dest, lang)
         _state.update {
             it.copy(
                 results = results, walkLines = walk.getOrNull().orEmpty(), promotedDestination = promoted,
+                resultsOriginNeedsStartNotice = needsStartNotice,
                 phase = DirectionsPhase.Settled(results.successCount), resultsRevision = it.resultsRevision + 1,
                 recentRoutes = recent,
                 // 완료 통지는 합산 1문장(수단별 개별 통지 금지). 포커스는 옮기지 않는다(위원장 판정 2026-08-02).
@@ -409,6 +453,80 @@ class DirectionsViewModel(
                 _state.update { it.copy(preciseRetryFailed = true, notice = next(strings.get("android.common.geoReducedDesc"))) }
             }
         }
+    }
+
+    // ── 수단 재조회(E50 §4.3) ─────────────────────────────────────────────────
+
+    /**
+     * 수단 재조회 1회 — 사용자가 버튼을 눌렀을 때만(ODsay 호출당 과금, 자동 조회 금지). 조회 중 재탭은 무시한다(버튼은 `enabled=false`가 아니라
+     * 이 가드 — 비활성은 포커스를 떨군다). 끝나면 그 세대가 살아 있을 때만 커밋한다: 찾음·없음은 결과 요소로 착지(결과 요소가 읽히므로 통지 없음),
+     * 실패는 버튼이 남아 포커스가 그대로라 통지 + 실패 진동(화면 변화 없는 활성화 응답 — 통지가 유일한 증거, iOS `.high` 동형·E45 선례).
+     */
+    fun requery(axis: TransitModeAxis) {
+        val coords = resultsCoords ?: return
+        if (_state.value.transitRequery[axis] == TransitRequeryState.Loading) return
+        val revision = _state.value.resultsRevision
+        _state.update { it.copy(transitRequery = it.transitRequery + (axis to TransitRequeryState.Loading)) }
+        requeryJobs[axis] = viewModelScope.launch {
+            val settled = withContext(io) {
+                timed { routes.transitModeRequery(coords.origin.lat, coords.origin.lng, coords.dest.lat, coords.dest.lng, axis, coords.lang) }
+            }
+            // 화면 이탈로 취소됐거나 그 사이 새 조회·결과 폐기가 있었으면 옛 세대 결과는 버린다(통지·포커스 이동도 없다).
+            currentCoroutineContext().ensureActive()
+            if (revision != _state.value.resultsRevision || resultsCoords == null) return@launch
+            requeryJobs.remove(axis)
+            // 이름은 서버 파라미터가 이미 판정한 그 축이다(판정 복제 없음) — 싣는 경로에는 `displayIndex`가 없다.
+            val state = settled.fold(
+                onSuccess = { found ->
+                    found?.recommended?.let { TransitRequeryState.Found(TransitRoute(it.summary, it.legs, it.routeKey, highlight = listOf(axis.rawValue))) }
+                        ?: TransitRequeryState.NotFound
+                },
+                onFailure = { TransitRequeryState.Failed },
+            )
+            _state.update {
+                val updated = it.copy(transitRequery = it.transitRequery + (axis to state))
+                when (state) {
+                    is TransitRequeryState.Found -> updated.copy(landing = landingNext(LandingTarget.RequeriedRoute(state.route.routeKey)))
+                    TransitRequeryState.NotFound -> updated.copy(landing = landingNext(LandingTarget.RequeryNone(axis)))
+                    TransitRequeryState.Failed -> updated.copy(
+                        notice = next(strings.get(if (axis == TransitModeAxis.busOnly) "route.transit.requeryBusOnlyFailed" else "route.transit.requerySubwayOnlyFailed"))
+                            .copy(haptic = HapticKind.failure),
+                    )
+                    TransitRequeryState.Loading -> updated
+                }
+            }
+        }
+    }
+
+    /** 결과 세대가 끝날 때(폐기·새 조회) 재조회를 모두 끊고 비운다. */
+    private fun cancelRequeries() {
+        requeryJobs.values.forEach { it.cancel() }
+        requeryJobs.clear()
+        resultsCoords = null
+        _state.update { if (it.transitRequery.isEmpty()) it else it.copy(transitRequery = emptyMap()) }
+    }
+
+    /**
+     * 화면 이탈(탭 전환·역 상세 push·재생성) — 진행 중 재조회를 끊고 조회 중이던 축은 버튼으로 되돌린다(`Loading`에 남으면 돌아왔을 때 눌리지 않는다).
+     * 끊지 않으면 돌아왔을 때 늦은 결과의 착지가 커서를 빼앗는다. 본 조회는 끊지 않는다(탭 이탈은 조회를 취소하지 않는다 — ViewModel이 산다).
+     */
+    fun onScreenExit() {
+        if (requeryJobs.isEmpty()) return
+        requeryJobs.values.forEach { it.cancel() }
+        requeryJobs.clear()
+        _state.update { s -> s.copy(transitRequery = s.transitRequery.filterValues { it != TransitRequeryState.Loading }) }
+    }
+
+    // ── 안내 시작 고지(stale-origin §4.4) ─────────────────────────────────────
+
+    /**
+     * 수동 위치·옛 위치로 계산한 경로에서 안내를 시작할 때 "현재 위치에서 안내를 시작합니다"를 한 번 통지한다(iOS `announceGuideStartIfManualOrigin`).
+     * 안내는 실좌표에서 시작하므로 화면의 경로와 어긋난다는 것을 시작 순간에 알린다. 세션이 이미 살아 있으면 그 탭은 거부 통지로 끝나므로 말하지 않는다
+     * (가드를 호출부가 아니라 여기 둔다 — 호출부마다 검사하면 하나가 빠진다).
+     */
+    fun announceGuideStartIfManualOrigin(sessionActive: Boolean) {
+        if (sessionActive || !_state.value.resultsOriginNeedsStartNotice) return
+        _state.update { it.copy(notice = next(strings.get("manualLocation.guideStartsFromCurrent"))) }
     }
 
     // ── 현재 위치 라벨(F-B) ──────────────────────────────────────────────────
@@ -761,9 +879,9 @@ class DirectionsViewModel(
     }
 
     private fun recentSide(endpoint: DirectionsEndpoint): RecentEndpoint? =
-        (endpoint as? DirectionsEndpoint.Place)?.let { RecentEndpoint(it.label, it.lat, it.lng) }
+        (endpoint as? DirectionsEndpoint.Place)?.let { RecentEndpoint(it.label, it.lat, it.lng, labelRoman = it.labelRoman) }
 
-    private fun endpointOf(side: RecentEndpoint): DirectionsEndpoint.Place = DirectionsEndpoint.Place(side.label, side.lat, side.lng)
+    private fun endpointOf(side: RecentEndpoint): DirectionsEndpoint.Place = DirectionsEndpoint.Place(side.label, side.lat, side.lng, side.labelRoman)
 
     companion object {
         const val KEY_FROM = "directions.from"
