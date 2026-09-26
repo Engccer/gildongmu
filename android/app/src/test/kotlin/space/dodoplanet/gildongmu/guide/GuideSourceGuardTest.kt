@@ -43,9 +43,9 @@ class GuideSourceGuardTest {
         )
         // E42: 줄 안 버튼의 요청 축은 줄 종류의 투영이다 — 하드코딩하면 "계단 회피 경로로 안내 시작"이 기본 파이프라인으로 조용히 시작된다(A13 계열).
         val startButton = guide.resolve("ui/WalkGuideStartButton.kt").readText()
-        assertTrue(startButton.contains("WalkStartRequest(dest, label, line.isAccessible, line.variant, line, waypoint)"), "줄 안내 시작의 요청 축 배선")
+        assertTrue(startButton.contains("WalkStartRequest(dest, label, line.isAccessible, line.variant, line, alternate, waypoint)"), "줄 안내 시작의 요청 축 배선")
         val root = pkg.resolve("nav/AppRoot.kt").readText()
-        assertTrue(Regex("""bottomBar = \{\n\s*GuideBottomBar\(onOpenSettings = [^\n]*\) \{""").containsMatchIn(root), "하단 바 = GuideBottomBar(무조건)")
+        assertTrue(Regex("""bottomBar = \{\n\s*GuideBottomBar\(GuideNav\([^\n]*\)\) \{""").containsMatchIn(root), "하단 바 = GuideBottomBar(무조건)")
         val session = guide.resolve("GuideSession.kt").readText()
         val attach = session.substringAfter("fun attach(").substringAfter("{").trim().lineSequence().first()
         assertTrue(attach.startsWith("if (::walk.isInitialized) return"), "attach 첫 줄은 멱등 가드: $attach")

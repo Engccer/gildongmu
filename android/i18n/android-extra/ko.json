@@ -64,7 +64,19 @@
       "focusDenied": "다른 앱이 소리를 쓰고 있어 안내 소리를 내지 못하고 있습니다",
       "ttsUnavailable": "이 언어의 음성 안내를 쓸 수 없습니다. 화면의 안내 문장을 확인하세요",
       "serviceStartFailed": "안내 서비스를 시작하지 못했습니다. 앱을 화면에 띄운 채 다시 시작하세요",
-      "notificationChannel": "도보 안내"
+      "notificationChannel": "도보 안내",
+      "viewAlternative": "대안 경로 보기",
+      "adoptAlternative": "이 경로 안내로 전환",
+      "altPreviewLoading": "대안 경로 조회 중",
+      "altPreviewNone": "대안 경로가 없습니다",
+      "altPreviewFailed": "대안 경로 조회에 실패했습니다",
+      "altPreviewSummary": "{variant}, 총 {distance}",
+      "altPreviewTime": "도보 약 {minutes}분",
+      "altPreviewRemaining": "지금 경로 잔여 {distance}",
+      "switchedToShortest": "최단 경로로 전환했습니다. 안내 {count}개, 총 {distance}. {first}",
+      "switchedToAccessible": "계단 회피 경로로 전환했습니다. 안내 {count}개, 총 {distance}. {first}",
+      "switchedToBroad": "큰길 경로로 전환했습니다. 안내 {count}개, 총 {distance}. {first}",
+      "switchedToRecommended": "추천 경로로 전환했습니다. 안내 {count}개, 총 {distance}. {first}"
     },
     "settings": {
       "resultHapticsFooter": "검색과 내 주변의 결과를 진동으로도 알립니다. 화면이 켜져 있고 기기의 촉각 피드백 설정이 켜져 있을 때만 진동합니다."

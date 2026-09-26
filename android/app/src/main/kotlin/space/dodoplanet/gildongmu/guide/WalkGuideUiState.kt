@@ -72,6 +72,22 @@ data class WalkGuideUiState(
     val failSeq: Int = 0,
     /** 시작 실패 행을 어느 줄의 시작 버튼 아래 그릴지(E42 줄 종류). */
     val lastStartLine: WalkLineKind? = null,
+    /** 세션 목적지 좌표(M4b — 제목 메뉴 "장소 상세"·주변 확인 앵커). 추적 중에만. */
+    val dest: BeaconDest? = null,
+    /** 미도착 경유지 라벨(M4b — "{C}, 경유지 변경" 버튼 라벨이 곧 상태). */
+    val waypointLabel: String? = null,
+    /** 조망의 "대안 경로 보기" 노출(상세 ∧ 다른 줄 있음, iOS `alternativePreviewAvailable`). */
+    val alternativePreviewAvailable: Boolean = false,
+    /** 대안 프리뷰가 열려 있는가(Idle 아님) — 프리뷰 페이지 헤더가 모델 문장을 다시 읽는 근거. */
+    val altPreviewOpen: Boolean = false,
+    /** 대안 프리뷰 준비됨 — 전환 버튼은 이때만(조회 중·실패에 죽은 버튼 금지). */
+    val altPreviewReady: Boolean = false,
+    /** 프리뷰 단계 문장(준비됨에서만, "지금 이 구간" 표식 없음). */
+    val altPreviewSteps: List<String>? = null,
+    /** 낡음 폴백 재조회 진행 중 — 전환 버튼 라벨에 "조회 중" 병기. */
+    val isSwitchingVariant: Boolean = false,
+    /** 전환 채택 성공 세대 — 증가가 이벤트(시트가 조망·프리뷰를 닫고 제목에 착지). */
+    val variantAdoptedSeq: Int = 0,
 ) {
     val isTracking: Boolean get() = status == GuideStatus.tracking
 

@@ -11,7 +11,9 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -51,6 +53,7 @@ import space.dodoplanet.gildongmu.kit.models.TransitModeAxis
 import space.dodoplanet.gildongmu.kit.models.TransitRoute
 import space.dodoplanet.gildongmu.kit.models.WalkRouteLine
 import space.dodoplanet.gildongmu.location.LocationException
+import space.dodoplanet.gildongmu.guide.GuideFormSync
 
 /** 조회 국면(iOS `DirectionsModel.Phase` 미러). 커버리지 밖은 실패가 아니다. */
 sealed class DirectionsPhase {
@@ -157,6 +160,10 @@ class DirectionsViewModel(
     private val epochNow: () -> Double = { System.currentTimeMillis() / 1000.0 },
     /** 옛 위치 전이(`LocationStore.staleChanges`) — 다른 화면의 측위 성공·실패를 칸이 따라가게 한다(구현 리뷰 M-2). */
     staleChanges: StateFlow<StaleFix?> = MutableStateFlow(null),
+    /** 안내 주도 목적지·경유지 변경(M4b §3, iOS `GuideFormSyncStore`). 값이 오면 `applyGuideFormSync`가 읽고 비운다(`take`). */
+    guideFormPending: Flow<DirectionsEndpoint.Place?> = merge(GuideFormSync.pending, GuideFormSync.pendingWaypoint),
+    private val takeGuideDestination: () -> DirectionsEndpoint.Place? = GuideFormSync::take,
+    private val takeGuideWaypoint: () -> DirectionsEndpoint.Place? = GuideFormSync::takeWaypoint,
 ) : ViewModel() {
     private val staleWords = staleWords { key, args -> strings.get(key, *args) }
 
@@ -173,6 +180,8 @@ class DirectionsViewModel(
     var consumedLanding: Int = 0
 
     private var queryJob: Job? = null
+    /** 무통지 조회 표식(M4b §3) — `runQuery` 진입이 매번 다시 정한다. 진행 중 조회는 하나뿐이라(`isInFlight`) 혼선이 없다. */
+    private var silentQuery = false
 
     /** 재진입 가드(웹 in-flight ref) — 진행 중 재탭은 무시한다. */
     private var isInFlight = false
@@ -200,6 +209,8 @@ class DirectionsViewModel(
         viewModelScope.launch {
             prefill.collect { p -> if (p != null && takePrefill(p)) applyPrefill(p) }
         }
+        // 안내 주도 폼 동기화(M4b §3): 탭이 안 보이는 동안 쌓인 값도 VM이 생기거나 살아 있는 즉시 소비한다(iOS는 TabView가 탭을 살려 둔다).
+        viewModelScope.launch { guideFormPending.collect { if (it != null) applyGuideFormSync() } }
         // 첫 값은 진입 때 `loadCurrentAddressIfAuthorized`가 맡는다 — 전이만 따라간다.
         viewModelScope.launch { staleChanges.drop(1).collect(::syncCurrentFromStore) }
     }
@@ -231,6 +242,29 @@ class DirectionsViewModel(
         _state.update { it.copy(via = null) }
         saveFields()
         clearResults()
+    }
+
+    /**
+     * 안내 주도 목적지·경유지 변경의 폼 반영(M4b §3, iOS `consumeGuideFormSync`) — 이 VM의 유일한 진입점. 목적지: 출발지 = 현재 위치(안내 세션이
+     * 실제로 그렇다 — 재조회 결과의 출발점 의미 일치) + 도착지 확정(`setEndpoint` — 최근 기록 경로 그대로). 경유지: `setVia`. 같은 값 재선택은 전부
+     * 생략하고, 바뀐 것이 있으면 무통지 조회.
+     */
+    fun applyGuideFormSync() {
+        var changed = false
+        takeGuideDestination()?.let { endpoint ->
+            if (endpoint != _state.value.to) {
+                if (_state.value.from != DirectionsEndpoint.Current) setEndpoint(DirectionsEndpoint.Current, DirectionsFieldTarget.from)
+                setEndpoint(endpoint, DirectionsFieldTarget.to)
+                changed = true
+            }
+        }
+        takeGuideWaypoint()?.let { via ->
+            if (via != _state.value.via) {
+                setVia(via)
+                changed = true
+            }
+        }
+        if (changed) runQuery(silently = true)
     }
 
     /** 출발↔도착 원자 교환(미확정 null도 그대로). 기록 없음 — 재배치일 뿐 새 확정이 아니다. */
@@ -269,8 +303,13 @@ class DirectionsViewModel(
 
     // ── 조회 ──────────────────────────────────────────────────────────────────
 
-    fun runQuery() {
+    /**
+     * `silently`(M4b, iOS `runQuery(silently:)` spec 2026-08-12 §5.3) = 안내 주도 폼 동기화 재조회 — 국면·완료 문장으로 `notice`(상태 줄 = 라이브 리전)를
+     * 올리지 않는다. 결과는 안내 시트 뒤 화면 최신화용이라 통지가 안내 발화와 경합할 이유가 없다. 표식은 다음 진입이 매번 다시 정한다.
+     */
+    fun runQuery(silently: Boolean = false) {
         if (isInFlight) return
+        silentQuery = silently
         val s = _state.value
         val from = s.from
         val to = s.to
@@ -410,7 +449,8 @@ class DirectionsViewModel(
                 recentRoutes = recent,
                 // 완료 통지는 합산 1문장(수단별 개별 통지 금지). 포커스는 옮기지 않는다(위원장 판정 2026-08-02).
                 // 옛 위치로 찾았으면 같은 통지의 뒷문장으로 밝힌다(출발지 칸에만 있으면 칸으로 되돌아가야 안다).
-                notice = next(
+                notice = queryNotice(
+                    it.notice,
                     listOfNotNull(
                         if (results.successCount > 0) strings.get("directions.readySummary", results.successCount) else strings.get("directions.allFailed"),
                         staleNotice,
@@ -854,8 +894,11 @@ class DirectionsViewModel(
     // ── 공용 ──────────────────────────────────────────────────────────────────
 
     private fun setPhase(phase: DirectionsPhase) {
-        _state.update { it.copy(phase = phase, notice = next(phaseText(phase))) }
+        _state.update { it.copy(phase = phase, notice = queryNotice(it.notice, phaseText(phase))) }
     }
+
+    /** 조회 경로의 통지 — 무통지 조회면 직전 통지를 그대로 둔다(세대를 올리지 않으면 상태 줄이 낭독하지 않는다). */
+    private fun queryNotice(current: Notice, text: String): Notice = if (silentQuery) current else next(text)
 
     private fun phaseText(phase: DirectionsPhase): String = when (phase) {
         DirectionsPhase.Idle -> ""

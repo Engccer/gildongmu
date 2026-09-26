@@ -138,12 +138,80 @@ class DirectionsViewModelTest {
         prefill: MutableStateFlow<DirectionsPrefill?> = MutableStateFlow(null),
         timeout: Long = 15_000,
         manual: () -> ManualLocation? = { null },
+        guideDest: MutableStateFlow<DirectionsEndpoint.Place?> = MutableStateFlow(null),
+        guideVia: MutableStateFlow<DirectionsEndpoint.Place?> = MutableStateFlow(null),
     ): DirectionsViewModel {
         val client = APIClient("https://example.test", routes)
         return DirectionsViewModel(
             RouteService(client), SearchService(client), store, locator, { lang }, ko, saved,
             prefill = prefill, takePrefill = { prefill.compareAndSet(it, null) }, io = dispatcher, queryTimeoutMs = timeout, manual = manual,
+            // 앱 싱글턴(`GuideFormSync`)을 쓰지 않는다 — 테스트끼리 게시가 새지 않게.
+            guideFormPending = kotlinx.coroutines.flow.merge(guideDest, guideVia),
+            takeGuideDestination = { guideDest.value.also { guideDest.value = null } },
+            takeGuideWaypoint = { guideVia.value.also { guideVia.value = null } },
         )
+    }
+
+    // ── 안내 주도 폼 동기화(M4b §3, iOS `consumeGuideFormSync`) ──
+
+    private val cheonho = DirectionsEndpoint.Place("천호역", 37.5386, 127.1237)
+
+    @Test fun `안내 목적지 변경 — 출발지는 현재 위치·도착지 교체·최근 기록·무통지 조회`() = runTest(dispatcher) {
+        val r = allOk()
+        val store = RecentSearchStore(InMemoryKeyValueStore())
+        val guideDest = MutableStateFlow<DirectionsEndpoint.Place?>(null)
+        val m = vm(r, store = store, guideDest = guideDest)
+        m.setEndpoint(DirectionsEndpoint.Place("길동역", 37.5378, 127.1400), DirectionsFieldTarget.from)
+        m.setEndpoint(gangnam, DirectionsFieldTarget.to)
+        dispatcher.scheduler.advanceUntilIdle()
+        val noticeSeq = m.state.value.notice.seq
+        guideDest.value = cheonho
+        dispatcher.scheduler.advanceUntilIdle()
+        val s = m.state.value
+        assertEquals(DirectionsEndpoint.Current, s.from, "안내 세션의 출발점 = 현재 위치")
+        assertEquals(cheonho, s.to)
+        assertNull(guideDest.value, "읽고 비운다")
+        assertEquals(DirectionsPhase.Settled(3), s.phase, "무통지 조회도 결과는 커밋한다")
+        assertTrue(r.paths().contains("/api/route/walk"))
+        // 필드 변경의 결과 폐기가 통지를 빈 문장으로 비운 뒤로 조회 국면·완료 문장은 올리지 않는다.
+        assertEquals("", s.notice.text)
+        assertTrue(s.notice.seq <= noticeSeq + 2, "필드 확정 두 번의 비움 외에 통지 세대가 오르지 않는다: ${s.notice.seq - noticeSeq}")
+        assertEquals("천호역", store.endpoints(RecentEndpointScope.to).first().label)
+    }
+
+    @Test fun `같은 목적지는 아무것도 하지 않는다`() = runTest(dispatcher) {
+        val r = allOk()
+        val guideDest = MutableStateFlow<DirectionsEndpoint.Place?>(null)
+        val m = vm(r, guideDest = guideDest)
+        m.setEndpoint(cheonho, DirectionsFieldTarget.to)
+        dispatcher.scheduler.advanceUntilIdle()
+        guideDest.value = cheonho
+        dispatcher.scheduler.advanceUntilIdle()
+        assertTrue(r.paths().none { it.startsWith("/api/route") })
+        assertEquals(DirectionsPhase.Idle, m.state.value.phase)
+    }
+
+    @Test fun `안내 경유지 변경 — 폼 경유지 교체와 via 조회`() = runTest(dispatcher) {
+        val r = allOk()
+        val guideVia = MutableStateFlow<DirectionsEndpoint.Place?>(null)
+        val m = vm(r, guideVia = guideVia)
+        m.setEndpoint(gangnam, DirectionsFieldTarget.to)
+        dispatcher.scheduler.advanceUntilIdle()
+        guideVia.value = cheonho
+        dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(cheonho, m.state.value.via)
+        assertNotNull(r.param(r.seen.last { pathOf(it) == "/api/route/walk" }, "via"))
+    }
+
+    @Test fun `수동 조회는 통지를 되살린다 — 무통지 표식은 조회마다 다시 정한다`() = runTest(dispatcher) {
+        val r = allOk()
+        val guideDest = MutableStateFlow<DirectionsEndpoint.Place?>(null)
+        val m = vm(r, guideDest = guideDest)
+        m.setEndpoint(gangnam, DirectionsFieldTarget.to)
+        guideDest.value = cheonho
+        dispatcher.scheduler.advanceUntilIdle()
+        m.runQuery(); dispatcher.scheduler.advanceUntilIdle()
+        assertEquals("3개 수단의 경로 안내가 준비되었습니다.", m.state.value.notice.text)
     }
 
     @Test fun `끝점이 비면 조회 없이 NeedEndpoints 통지`() = runTest(dispatcher) {

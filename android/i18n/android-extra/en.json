@@ -64,7 +64,19 @@
       "focusDenied": "Another app is using audio, so guide sounds cannot play right now",
       "ttsUnavailable": "Voice guidance is not available for this language. Check the guidance text on screen",
       "serviceStartFailed": "Could not start the guidance service. Keep the app on screen and start again",
-      "notificationChannel": "Walking guidance"
+      "notificationChannel": "Walking guidance",
+      "viewAlternative": "View alternative route",
+      "adoptAlternative": "Switch guidance to this route",
+      "altPreviewLoading": "Finding alternative route",
+      "altPreviewNone": "No alternative route",
+      "altPreviewFailed": "Couldn't load the alternative route",
+      "altPreviewSummary": "{variant}, {distance} total",
+      "altPreviewTime": "about {minutes} min walk",
+      "altPreviewRemaining": "current route remaining {distance}",
+      "switchedToShortest": "Switched to the shortest route. {count, plural, one {# step} other {# steps}}, {distance} total. {first}",
+      "switchedToAccessible": "Switched to the route avoiding stairs. {count, plural, one {# step} other {# steps}}, {distance} total. {first}",
+      "switchedToBroad": "Switched to the main-road route. {count, plural, one {# step} other {# steps}}, {distance} total. {first}",
+      "switchedToRecommended": "Switched to the recommended route. {count, plural, one {# step} other {# steps}}, {distance} total. {first}"
     },
     "settings": {
       "resultHapticsFooter": "Search and Nearby results are also signaled with vibration. Vibrates only while the screen is on and the device's haptic feedback setting is enabled."

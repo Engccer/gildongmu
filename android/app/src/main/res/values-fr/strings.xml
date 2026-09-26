@@ -119,6 +119,13 @@
     <string name="android_directions_walkNotice_head2">À garder à l\'esprit</string>
     <string name="android_directions_walkNotice_intro">Merci d\'utiliser Gildongmu !</string>
     <string name="android_directions_walkNotice_title">Le guidage à pied est arrivé.</string>
+    <string name="android_guide_adoptAlternative">Basculer le guidage sur cet itinéraire</string>
+    <string name="android_guide_altPreviewFailed">Échec du chargement de l’itinéraire alternatif</string>
+    <string name="android_guide_altPreviewLoading">Recherche d’itinéraire alternatif</string>
+    <string name="android_guide_altPreviewNone">Aucun itinéraire alternatif</string>
+    <string name="android_guide_altPreviewRemaining">itinéraire actuel restant %1$s</string>
+    <string name="android_guide_altPreviewSummary">%1$s, %2$s au total</string>
+    <string name="android_guide_altPreviewTime">environ %1$s min à pied</string>
     <string name="android_guide_autoReroute">Guidage repris sur un nouvel itinéraire. {1, plural, one {%1$s instruction} other {%1$s instructions}}, %2$s au total. %3$s</string>
     <string name="android_guide_destChanged">Nouvelle destination : %1$s.</string>
     <string name="android_guide_destChangedFetching">Recherche d\'un nouvel itinéraire.</string>
@@ -130,7 +137,12 @@
     <string name="android_guide_routeListCurrent">%1$s. Segment actuel, %2$s</string>
     <string name="android_guide_routeListRow">%1$s. %2$s</string>
     <string name="android_guide_serviceStartFailed">Impossible de démarrer le service de guidage. Gardez l’application à l’écran et redémarrez</string>
+    <string name="android_guide_switchedToAccessible">Itinéraire sans escaliers activé. {1, plural, one {%1$s instruction} other {%1$s instructions}}, %2$s au total. %3$s</string>
+    <string name="android_guide_switchedToBroad">Itinéraire par les grands axes activé. {1, plural, one {%1$s instruction} other {%1$s instructions}}, %2$s au total. %3$s</string>
+    <string name="android_guide_switchedToRecommended">Itinéraire recommandé activé. {1, plural, one {%1$s instruction} other {%1$s instructions}}, %2$s au total. %3$s</string>
+    <string name="android_guide_switchedToShortest">Itinéraire le plus court activé. {1, plural, one {%1$s instruction} other {%1$s instructions}}, %2$s au total. %3$s</string>
     <string name="android_guide_ttsUnavailable">Le guidage vocal n’est pas disponible dans cette langue. Consultez le texte du guidage à l’écran</string>
+    <string name="android_guide_viewAlternative">Voir l’itinéraire alternatif</string>
     <string name="android_guide_waypointChange">%1$s, changer le point de passage</string>
     <string name="android_guide_waypointDropped">Aucun itinéraire passant par l\'étape (%1$s) n\'a été trouvé. Guidage vers la destination (%2$s) sans l\'étape.</string>
     <string name="android_guide_waypointKept">Point de passage %1$s inchangé</string>

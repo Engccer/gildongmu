@@ -14,6 +14,7 @@ import space.dodoplanet.gildongmu.kit.finalApproachArriveMeters
 import space.dodoplanet.gildongmu.kit.formatDistance
 import space.dodoplanet.gildongmu.kit.joinText
 import space.dodoplanet.gildongmu.kit.models.FinalApproachPayload
+import space.dodoplanet.gildongmu.kit.models.WalkLineKind
 import space.dodoplanet.gildongmu.kit.relativeDirection
 import space.dodoplanet.gildongmu.kit.unitAt
 import kotlin.math.max
@@ -107,6 +108,20 @@ class GuideText(private val s: Strings) {
     /** 재조회 성공 원자 발화 — "출발지가 현재 위치로 바뀌었다"를 전할 채널은 이 문장뿐이다. */
     fun reroute(route: GuideRoute, firstIndices: List<Int>): String =
         s.get("guide.rerouteDone", route.steps.size, formatDistance(route.totalMeters.roundToInt()), unit(route, firstIndices))
+
+    /**
+     * 수동 전환 성공(M4b, iOS `GuideText.variantSwitch`) — 재조회와 같은 구조(새 경로 규모 + 첫 안내)에 첫 문장만 전환한 줄을 밝힌다("다시 찾았습니다"는
+     * 전환에선 거짓 서술). `line`은 받은 경로의 성질(서버가 이름을 못 주면 요청한 줄).
+     */
+    fun variantSwitch(route: GuideRoute, firstIndices: List<Int>, line: WalkLineKind): String {
+        val key = when (line) {
+            WalkLineKind.shortest -> "android.guide.switchedToShortest"
+            WalkLineKind.accessible -> "android.guide.switchedToAccessible"
+            WalkLineKind.broad -> "android.guide.switchedToBroad"
+            WalkLineKind.recommended -> "android.guide.switchedToRecommended"
+        }
+        return s.get(key, route.steps.size, formatDistance(route.totalMeters.roundToInt()), unit(route, firstIndices))
+    }
 
     /** 이탈 시 자동 재조회 채택 통지(E10ⓑ). 형제와 같은 "규모 → 첫 안내" 구조. */
     fun autoReroute(route: GuideRoute, firstIndices: List<Int>): String =

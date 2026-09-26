@@ -19,8 +19,13 @@ data class WalkStartRequest(
     val variant: WalkRouteVariant?,
     /**
      * 조회 화면에서 고른 줄(E42). `variant`·`accessible`은 이 종류의 투영이어야 하고 호출부가 셋을 함께 적는다. 시작 실패 행이
-     * 이 줄의 버튼 아래 그려진다. iOS의 `alternate`(안내 중 수동 전환 대상)는 안드로이드에 전환 기능이 없어 두지 않는다.
+     * 이 줄의 버튼 아래 그려진다.
      */
     val line: WalkLineKind?,
+    /**
+     * 조회 화면의 다른 줄(M4b — 안내 중 대안 프리뷰·전환 대상, iOS `alternate`). null이면 조망에 "대안 경로 보기"가 없다(죽은 버튼 사전 차단).
+     * 전환 커밋에서 `line`과 맞바뀐다.
+     */
+    val alternate: WalkLineKind?,
     val waypoint: GuideWaypoint?,
 )

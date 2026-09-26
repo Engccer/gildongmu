@@ -15,6 +15,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import space.dodoplanet.gildongmu.directions.Strings
+import space.dodoplanet.gildongmu.directions.walkLineNameKey
 import space.dodoplanet.gildongmu.kit.AnnounceKind
 import space.dodoplanet.gildongmu.kit.BeaconConstants
 import space.dodoplanet.gildongmu.kit.BeaconDest
@@ -24,6 +25,7 @@ import space.dodoplanet.gildongmu.kit.BeaconNotice
 import space.dodoplanet.gildongmu.kit.BeaconState
 import space.dodoplanet.gildongmu.kit.BeaconTone
 import space.dodoplanet.gildongmu.kit.BearingUnavailable
+import space.dodoplanet.gildongmu.kit.CourseDerivationState
 import space.dodoplanet.gildongmu.kit.CourseState
 import space.dodoplanet.gildongmu.kit.DataLocale
 import space.dodoplanet.gildongmu.kit.DeferredAnnouncer
@@ -84,6 +86,7 @@ import space.dodoplanet.gildongmu.kit.isUsableFix
 import space.dodoplanet.gildongmu.kit.joinText
 import space.dodoplanet.gildongmu.kit.liveStepsFrom
 import space.dodoplanet.gildongmu.kit.models.FinalApproachPayload
+import space.dodoplanet.gildongmu.kit.models.WalkLineKind
 import space.dodoplanet.gildongmu.kit.motionStep
 import space.dodoplanet.gildongmu.kit.presumedArrivalStep
 import space.dodoplanet.gildongmu.kit.rebaseBeaconState
@@ -203,9 +206,17 @@ class WalkGuideModel(
     // ── 세션 인자 ──
     private var lastStartRequest: WalkStartRequest? = null
     private var dest: BeaconDest? = null
+        set(v) { field = v; if (_ui.value.dest != v) mutate { copy(dest = v) } }
     private var accessible = false
     private var sessionVariant: WalkRouteVariant? = null
+    /**
+     * 이 세션의 줄 종류와 조회 화면의 다른 줄(E42, M4b — iOS `sessionLine`·`alternateLine`). 시작 값으로 정하고 **전환 커밋(`commitLineSwitch`)
+     * 에서만** 요청 축(`accessible`·`sessionVariant`)과 함께 바뀐다. `alternateLine`이 null이면 대안 프리뷰 진입점이 없다.
+     */
+    private var sessionLine: WalkLineKind? = null
+    private var alternateLine: WalkLineKind? = null
     private var waypoint: GuideWaypoint? = null
+        set(v) { field = v; if (_ui.value.waypointLabel != v?.label) mutate { copy(waypointLabel = v?.label) } }
     private var routeWaypointLabel: String? = null
     /**
      * 이 세션이 경유지를 지났는가(N4 spec 2026-09-24 §4.1, iOS 동형). 지난 뒤 재조회 경로(경유지 없음)에서도 남은 거리 행을
@@ -249,6 +260,20 @@ class WalkGuideModel(
     private var proposalToken = 0
     private var proposalFetchCount = 0
     private var lastStepFree: String? = null
+    /** 경로 재획득(목적지·경유지 변경)이 승계하는 방위 유도기 버퍼 — 위치 종속이라 버리지 않는다. 다음 `fetchGuideRoute` 성공이 1회 소비(iOS 동형). */
+    private var carriedCourseDerivation: CourseDerivationState? = null
+    private var isSwitchingVariant: Boolean
+        get() = _ui.value.isSwitchingVariant
+        set(v) { if (_ui.value.isSwitchingVariant != v) mutate { copy(isSwitchingVariant = v) } }
+
+    // ── 대안 프리뷰(M4b, iOS spec 2026-08-14 §3) — 자동 재조회와 같은 latest-wins 토큰 ──
+    private var altPreviewState: AltPreviewState = AltPreviewState.Idle
+        set(v) {
+            field = v
+            val ready = v as? AltPreviewState.Ready
+            mutate { copy(altPreviewOpen = v != AltPreviewState.Idle, altPreviewReady = ready != null, altPreviewSteps = ready?.fetched?.route?.steps?.map { it.description }) }
+        }
+    private var altPreviewToken = 0
 
     // ── 발화 장부 ──
     private var lastGuidance: String? = null
@@ -296,6 +321,8 @@ class WalkGuideModel(
         mutate { copy(lastStartLine = request.line) }
         accessible = request.accessible
         sessionVariant = request.variant
+        sessionLine = request.line
+        alternateLine = request.alternate
         waypoint = request.waypoint
         routeWaypointLabel = null
         waypointPassedInSession = false
@@ -478,9 +505,12 @@ class WalkGuideModel(
         waypoint = null
         routeWaypointLabel = null
         waypointPassedInSession = false
+        isSwitchingVariant = false
+        carriedCourseDerivation = null
         rerouteToken += 1
         routeFetchToken += 1
         clearProposal()
+        resetAlternativePreview()
         proposalFetchCount = 0
         offRouteEndedByReroute = false
         syncOverview()
@@ -645,6 +675,8 @@ class WalkGuideModel(
         val stepFreeNotice: String?,
         val finalApproach: FinalApproachPayload?,
         val liveSteps: List<LiveStepInput>,
+        /** 받은 경로의 줄 종류(응답 `kind`) — 전환 문장·프리뷰 헤더가 요청이 아니라 받은 성질로 부른다(E42 설계 리뷰 MAJOR 1). */
+        val lineKind: WalkLineKind?,
     )
 
     /** 수용 fix가 15초 안에 오지 않으면 최선 fix로 조회하고, 그것도 없으면 간략 폴백(`guide.detailNoLocation`). */
@@ -680,7 +712,7 @@ class WalkGuideModel(
      * `RouteService.walk(includeGeometry)` → `buildGuideRoute`. null = 상세 부적격(간략 폴백). ⚠ `GuideStepGeometry.action`을
      * 빠뜨리면 walk 프로파일에서 임박 큐가 전면 침묵한다(E16 축3). 경유지를 보냈는데 응답에 표지가 없으면 null.
      */
-    private suspend fun fetchDetailData(origin: RoutePoint, dest: BeaconDest, variant: WalkRouteVariant?, waypoint: GuideWaypoint?): DetailFetchResult? {
+    private suspend fun fetchDetailData(origin: RoutePoint, dest: BeaconDest, variant: WalkRouteVariant?, accessible: Boolean, waypoint: GuideWaypoint?): DetailFetchResult? {
         val via = waypoint?.let { RoutePoint(it.dest.lat, it.dest.lng) }
         val briefing = withTimeoutOrNull(queryTimeoutMs) {
             withContext(io) {
@@ -695,6 +727,7 @@ class WalkGuideModel(
         return DetailFetchResult(
             route, briefing.durationSeconds, briefing.stepFree, briefing.stepFreeStatus, briefing.stepFreeNotice, briefing.finalApproach,
             liveStepsFrom(route, briefing.steps.map { LiveStepFields(it.live?.target, it.live?.anchor, it.crossing ?: false) }),
+            briefing.lineKind,
         )
     }
 
@@ -710,7 +743,7 @@ class WalkGuideModel(
     private suspend fun fetchGuideRoute(origin: RoutePoint, dest: BeaconDest, token: Int) {
         val waypointAtFetch = waypoint
         try {
-            val fetched = runCatching { fetchDetailData(origin, dest, sessionVariant, waypointAtFetch) }
+            val fetched = runCatching { fetchDetailData(origin, dest, sessionVariant, accessible, waypointAtFetch) }
             if (token != routeFetchToken || !isTracking || this.dest != dest || this.waypoint != waypointAtFetch) return
             val result = fetched.getOrElse { fallbackToBrief(); return }
             if (result == null) { fallbackToBrief(); return }
@@ -718,7 +751,11 @@ class WalkGuideModel(
             routeWaypointLabel = waypointAtFetch?.label
             guideRouteDurationSeconds = result.durationSeconds
             resetFinalApproach(result.finalApproach)
-            val initial = initialGuideState(result.route, clock(), hasFinalApproachGeometry = result.finalApproach != null)
+            val initial = initialGuideState(
+                result.route, clock(), hasFinalApproachGeometry = result.finalApproach != null,
+                courseDerivation = carriedCourseDerivation ?: initialDerivationState,
+            )
+            carriedCourseDerivation = null
             guideState = initial.state
             mode = GuideMode.detail
             offRoute = false
@@ -745,6 +782,7 @@ class WalkGuideModel(
      */
     private fun fallbackToBrief(key: String = "guide.detailUnavailable") {
         resetArrivalWindow()
+        carriedCourseDerivation = null   // 소비되지 못한 유도기 버퍼가 다음 재조회로 옛 위치 이력을 옮기지 않게
         mode = GuideMode.brief
         remainingText = null
         clearLiveRows()
@@ -768,7 +806,11 @@ class WalkGuideModel(
     private fun syncStartRequestWithSession() {
         val request = lastStartRequest ?: return
         val dest = dest ?: return
-        lastStartRequest = request.copy(dest = dest, label = destinationLabel, waypoint = waypoint)
+        // 요청 축·줄 종류도 세션 현재값 — 수동 전환(E42)이 넷을 함께 바꾸므로 시작 시점 값은 낡는다(iOS 동형, A13).
+        lastStartRequest = request.copy(
+            dest = dest, label = destinationLabel, accessible = accessible, variant = sessionVariant,
+            line = sessionLine, alternate = alternateLine, waypoint = waypoint,
+        )
     }
 
     /**
@@ -858,7 +900,8 @@ class WalkGuideModel(
         val descriptions = if (detail) route!!.steps.map { it.description } else null
         val waypointRow = if (detail) route!!.waypointStepIndex?.let { idx -> routeWaypointLabel?.let { idx to strings.get("directions.viaArrived", it) } } else null
         val current = if (detail && state != null && (state.phase == GuidePhase.following || state.phase == GuidePhase.bundle)) state.stepIndex else null
-        mutate { copy(routeStepDescriptions = descriptions, routeWaypointRow = waypointRow, currentStepIndex = current) }
+        val altAvailable = mode == GuideMode.detail && alternateLine != null
+        mutate { copy(routeStepDescriptions = descriptions, routeWaypointRow = waypointRow, currentStepIndex = current, alternativePreviewAvailable = altAvailable) }
     }
 
     // ─────────────────────────── 톤·모션 배선 ───────────────────────────
@@ -1062,7 +1105,7 @@ class WalkGuideModel(
                 waypointPassedInSession = true
                 syncStartRequestWithSession()
                 clearProposal()
-                // 대안 프리뷰 초기화(iOS `resetAlternativePreview()`) 자리 — 안내 중 변경(M4b)이 채운다.
+                resetAlternativePreview()   // 프리뷰는 경유지를 담은 경로 기준이었다(iOS 동형)
                 rerouteToken += 1
                 playTone(BeaconTone.nearby)
                 // 도착 문장은 다음 목표(목적지)까지 말한다(N4 spec §3). 지나간 사실이라 억제 해제 뒤에 갚아도 참이다.
@@ -1132,6 +1175,7 @@ class WalkGuideModel(
     /** 진입 처리 — 플래그와 거리 축만 바꾸고 **말하지 않는다**. 첫 발화는 같은 fix의 `handleFinalApproach`. */
     private fun beginFinalApproach() {
         clearProposal()
+        resetAlternativePreview()   // 문 앞에서 다른 줄로 전환하면 최종 접근이 풀린다(iOS 동형)
         remainingText = null
         clearLiveRows()
         rebaseForAxisChange()
@@ -1333,25 +1377,34 @@ class WalkGuideModel(
         return if (clock() - at <= freshFixSeconds) c else null
     }
 
-    private suspend fun performReroute(token: Int) {
+    /**
+     * 재조회(`switchTo == null` — 세션 축 유지) 또는 수동 전환(`switchTo` — 다른 줄, M4b). 전환은 fetch 성공 커밋 전까지 세션 축을 건드리지 않는다
+     * (실패하면 기존 경로·기존 축 유지 — 라벨·다음 전환 방향이 실제 경로와 어긋나지 않게, iOS `performReroute(intent:)` 동형).
+     */
+    private suspend fun performReroute(token: Int, switchTo: WalkLineKind? = null) {
         try {
             val dest = dest ?: return
             val origin = rerouteOrigin()
             if (origin == null) { rerouteFailed(); return }
             val waypointAtFetch = waypoint
-            val fetched = runCatching { fetchDetailData(origin, dest, sessionVariant, waypointAtFetch) }
+            val fetched = runCatching {
+                fetchDetailData(origin, dest, switchTo?.variant ?: sessionVariant, switchTo?.isAccessible ?: accessible, waypointAtFetch)
+            }
             if (token != rerouteToken || !isTracking || mode != GuideMode.detail || this.dest != dest || this.waypoint != waypointAtFetch) return
             val result = fetched.getOrNull()
             if (result == null) { rerouteFailed(); return }
+            // 전환 커밋: 경로 교체와 같은 원자 블록에서만 세션 축·줄 종류가 바뀐다.
+            if (switchTo != null) commitLineSwitch(switchTo)
             val firstIndices = commitReroutedRoute(result)
             val notice = consumeStepFreeNotice(result.stepFreeRaw, result.stepFree, result.stepFreeNotice)
-            val summary = text.reroute(result.route, firstIndices)
+            val summary = if (switchTo != null) text.variantSwitch(result.route, firstIndices, result.lineKind ?: switchTo) else text.reroute(result.route, firstIndices)
             val spoken = if (notice != null) "$notice $summary" else summary
             statusText = spoken
             resultHaptic(ResultHapticKind.success)
             announce(spoken, highPriority = true) { if (notice != null) pendingStepFreeNotice = notice }
+            if (switchTo != null) mutate { copy(variantAdoptedSeq = variantAdoptedSeq + 1) }
         } finally {
-            if (token == rerouteToken) { rerouteInFlight = false; isRerouting = false }
+            if (token == rerouteToken) { rerouteInFlight = false; isRerouting = false; isSwitchingVariant = false }
         }
     }
 
@@ -1365,6 +1418,7 @@ class WalkGuideModel(
     /** 재조회·자동 채택 공통의 성공 커밋 — 경로·기준선·이탈 표결·finalApproach·표시 유닛을 한 지점에서 원자 교체. */
     private fun commitReroutedRoute(fetched: DetailFetchResult): List<Int> {
         clearProposal()
+        resetAlternativePreview()   // 경로 교체는 프리뷰 비교 기준(잔여·대안)도 무효화한다(iOS spec 2026-08-14 §3)
         guideRoute = fetched.route
         routeWaypointLabel = if (fetched.route.waypointStepIndex == null) null else waypoint?.label
         guideRouteDurationSeconds = fetched.durationSeconds
@@ -1401,7 +1455,7 @@ class WalkGuideModel(
         val acquiredAt = clock()
         if (token != proposalToken || !offRoute || !isTracking || mode != GuideMode.detail || this.dest != dest) return
         val waypointAtFetch = waypoint
-        val result = runCatching { fetchDetailData(origin, dest, sessionVariant, waypointAtFetch) }.getOrNull() ?: return
+        val result = runCatching { fetchDetailData(origin, dest, sessionVariant, accessible, waypointAtFetch) }.getOrNull() ?: return
         if (token != proposalToken || !offRoute || !isTracking || mode != GuideMode.detail || rerouteInFlight || this.dest != dest || this.waypoint != waypointAtFetch) return
         val proposal = RerouteProposal(originLat = origin.lat, originLng = origin.lng, acquiredAt = acquiredAt)
         val c = lastFixCoord ?: return
@@ -1418,6 +1472,242 @@ class WalkGuideModel(
     }
 
     private fun clearProposal() { proposalToken += 1 }
+
+    // ─────────────────────────── 안내 중 변경(M4b, spec 2026-09-27) ───────────────────────────
+
+    /**
+     * 경로 재획득(iOS `reacquireRoute`, `stop()`의 부분집합) — 세션(서비스·톤·스트림·워치독·토큰)은 유지하고 경로·목적지 종속 상태만 내려놓는다.
+     * 호출부가 이어서 `awaitingRoute = true` + `startFixWaitWatch`로 시작과 같은 기계를 태운다(다음 수용 fix가 `fetchGuideRoute` — 조회 왕복 동안
+     * 옛 경로의 회전·도착 신호가 나갈 창이 구조적으로 없다). 승계: 도플러(`motionState`)·유도기 버퍼·자동 조회 회차(세션당).
+     */
+    private fun reacquireRoute() {
+        routeFetchJob?.cancel(); routeFetchJob = null
+        fixWaitJob?.cancel(); fixWaitJob = null
+        routeOriginBest = null; routeOriginBestAt = null   // 옛 목적지의 최선값이 새 origin으로 새지 않게
+        rerouteToken += 1      // 진행 중 재조회·전환 응답 폐기(latest-wins)
+        routeFetchToken += 1
+        // ⚠ 토큰이 바뀌면 옛 재조회의 finally가 플래그를 풀지 않는다(토큰 일치 때만) — 여기서 풀지 않으면 다음 재조회·전환이 영영 막힌다.
+        rerouteInFlight = false
+        isRerouting = false
+        isSwitchingVariant = false
+        offRoute = false
+        clearProposal()
+        resetAlternativePreview()
+        guideState?.courseDerivation?.let { carriedCourseDerivation = it }   // 진입마다 덮어쓴다. 재획득 대기 중 다시 바꾸면 guideState가 null — 앞선 버퍼 유지
+        guideRoute = null
+        guideRouteDurationSeconds = null
+        guideState = null
+        routeWaypointLabel = null
+        lastGuidance = null
+        remainingText = null
+        bandDistanceMeters = null
+        clearLiveRows()
+        displayUnits = emptyList()
+        liveSteps = emptyList()
+        liveBaselineD = 0.0
+        pendingRecovery = null
+        pendingStepFreeNotice = null
+        lastStepFree = null
+        resetFinalApproach(null)
+        mode = GuideMode.brief
+        statusText = ""
+        beaconState = BeaconState.initial     // 목적지 종속 추세(간략 접근·톤 계층) — 도플러는 위치 종속이라 승계
+        gateState = BeaconGateState.initial
+        toneState = ToneLayerState.initial
+        syncOverview()
+    }
+
+    /** 경유지 추가·변경 진입점 노출(iOS `waypointAvailable`) — 추적 중 ∧ ko(상세 조회 경유지는 ko 기능으로 출하됐다). 삭제·변경은 경유지가 있을 때만(화면 몫). */
+    fun waypointAvailable(): Boolean = isTracking && dataLocale() == DataLocale.ko
+
+    /** 재획득 뒤 경로 대기 — 시작과 같은 기계(§2.2). */
+    private fun awaitNewRoute() {
+        awaitingRoute = true
+        startFixWaitWatch(routeFetchToken)
+    }
+
+    /**
+     * 목적지 전환(iOS `changeDestination`, spec 2026-08-12 §3.1). false = 세션이 이미 죽어 선택을 폐기(호출부는 폼도 건드리지 않는다). 같은 좌표면
+     * 라벨만 갱신하고 확인 통지(재조회 없음). 통지는 활성화의 직접 응답이라 즉시·high·억제 우회.
+     */
+    fun changeDestination(dest: BeaconDest, label: String): Boolean {
+        if (!isTracking) return false
+        if (this.dest == dest) {
+            destinationLabel = label
+            syncStartRequestWithSession()
+            announceNow(strings.get("android.guide.destChanged", label), highPriority = true, bypassSuppression = true)
+            return true
+        }
+        this.dest = dest
+        destinationLabel = label
+        waypointPassedInSession = false   // 새 목적지는 새 여정 — 지난 경유지의 "목적지 {dest}까지" 행 유지를 잇지 않는다(n4 인계 1)
+        syncStartRequestWithSession()
+        reacquireRoute()
+        announceNow(strings.get("android.guide.destChanged", label) + " " + strings.get("android.guide.destChangedFetching"), highPriority = true, bypassSuppression = true)
+        awaitNewRoute()
+        return true
+    }
+
+    /** 경유지 추가·변경(iOS `setWaypoint`, N4 §4.2). 같은 좌표 재선택은 라벨만 + "그대로"(일어나지 않는 재조회를 예고하지 않는다). */
+    fun setWaypoint(dest: BeaconDest, label: String): Boolean {
+        if (!isTracking) return false
+        val next = GuideWaypoint(dest, label)
+        if (waypoint?.dest == dest) {
+            waypoint = next
+            syncStartRequestWithSession()
+            announceNow(strings.get("android.guide.waypointKept", label), highPriority = true, bypassSuppression = true)
+            return true
+        }
+        waypoint = next
+        syncStartRequestWithSession()
+        reacquireRoute()
+        announceNow(strings.get("android.guide.waypointSet", label), highPriority = true, bypassSuppression = true)
+        awaitNewRoute()
+        return true
+    }
+
+    /** 경유지 삭제(iOS `removeWaypoint`, K2 §6.5) — 경유지만 비우고 출발→도착으로 다시 조회. 폼의 경유지는 사용자 질의라 건드리지 않는다. */
+    fun removeWaypoint(): Boolean {
+        if (!isTracking) return false
+        val removed = waypoint ?: return false
+        waypoint = null
+        syncStartRequestWithSession()
+        reacquireRoute()
+        announceNow(strings.get("android.guide.waypointRemoved", removed.label), highPriority = true, bypassSuppression = true)
+        awaitNewRoute()
+        return true
+    }
+
+    /** 전환 커밋(E42): 요청 축과 두 줄 종류를 한 원자 블록에서 맞바꾼다 — 헤더 라벨·프리뷰·채택·폴백이 같은 판정을 공유한다(iOS 동형). */
+    private fun commitLineSwitch(target: WalkLineKind) {
+        sessionVariant = target.variant
+        accessible = target.isAccessible
+        alternateLine = sessionLine
+        sessionLine = target
+        syncStartRequestWithSession()   // 전환 뒤 복구 재시작은 전환된 줄로(A13)
+    }
+
+    /**
+     * 수동 전환 — 현위치 기준으로 다른 줄 재조회(iOS `requestVariantSwitch`). 안드로이드엔 버튼이 없다(iOS도 상시 전환 버튼 폐기) — 프리뷰 채택의 낡음
+     * 폴백 전용이다. 진행 중 자동 조회는 폐기한다(두 커밋이 잇달아 나가지 않게). busy 신호는 `isSwitchingVariant`(재조회 버튼과 분리).
+     */
+    private fun requestVariantSwitch() {
+        if (!isTracking || mode != GuideMode.detail || rerouteInFlight) return
+        val target = alternateLine ?: return
+        clearProposal()
+        rerouteInFlight = true
+        isSwitchingVariant = true
+        rerouteToken += 1
+        val token = rerouteToken
+        scope.launch { performReroute(token, switchTo = target) }
+    }
+
+    /** 대안 프리뷰 열림 — 최신 세션 fix 기준으로 다른 줄을 조회한다(출발 전 받아 둔 대안은 출발점이 낡았다). */
+    fun openAlternativePreview() {
+        if (!_ui.value.alternativePreviewAvailable || !isTracking) return
+        val target = alternateLine ?: return
+        val dest = dest ?: return
+        altPreviewToken += 1
+        val token = altPreviewToken
+        altPreviewState = AltPreviewState.Fetching
+        scope.launch { fetchAlternativePreview(token, dest, target) }
+    }
+
+    /** 프리뷰 닫힘 — 진행 중 조회의 도착 응답을 폐기한다(latest-wins). */
+    fun closeAlternativePreview() = resetAlternativePreview()
+
+    private fun resetAlternativePreview() {
+        altPreviewToken += 1
+        if (altPreviewState != AltPreviewState.Idle) altPreviewState = AltPreviewState.Idle
+    }
+
+    /**
+     * origin은 모델 최신 수용 fix(15초 이내) — iOS는 새로 재지만 안드로이드 모델은 스트림 fix만 보고 재조회도 같은 origin을 쓴다(spec §2.4). 신선도
+     * 기준값(`acquiredAt`)은 좌표와 한 쌍(fetch 완료 시각을 쓰면 왕복만큼 신선하게 오판된다).
+     */
+    private suspend fun fetchAlternativePreview(token: Int, dest: BeaconDest, target: WalkLineKind) {
+        val origin = rerouteOrigin()
+        val acquiredAt = lastFixCoordAt ?: clock()
+        if (origin == null) { failAlternativePreview(token); return }
+        val waypointAtFetch = waypoint
+        val fetched = try {
+            fetchDetailData(origin, dest, target.variant, target.isAccessible, waypointAtFetch)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Throwable) {
+            failAlternativePreview(token); return
+        }
+        if (token != altPreviewToken || !isTracking || mode != GuideMode.detail || this.dest != dest || this.waypoint != waypointAtFetch) return
+        if (fetched == null) {
+            altPreviewState = AltPreviewState.NoRoute
+            announce(strings.get("android.guide.altPreviewNone"))
+            return
+        }
+        altPreviewState = AltPreviewState.Ready(RerouteProposal(originLat = origin.lat, originLng = origin.lng, acquiredAt = acquiredAt), fetched)
+        // 완료 신호 polite 1회 — 헤더는 조용히 갱신되므로 이 통지가 없으면 결과 도착을 알 길이 없다.
+        announce(altPreviewHeaderText())
+    }
+
+    private fun failAlternativePreview(token: Int) {
+        if (token != altPreviewToken) return
+        altPreviewState = AltPreviewState.Failed
+        announce(strings.get("android.guide.altPreviewFailed"))
+    }
+
+    /**
+     * 프리뷰 헤더 문장(iOS `alternativePreviewHeaderText`). 준비 = 줄 이름·총거리, 소요, 지금 경로 잔여(이탈 중엔 거짓이라 생략), 서버가 줄 이름을
+     * 주지 못한 응답이면 계단 경고 문장(착지 첫 문장에 경고가 없으면 계단 사실이 단계 원문을 훑어야만 드러난다).
+     */
+    fun altPreviewHeaderText(): String = when (val st = altPreviewState) {
+        AltPreviewState.Idle, AltPreviewState.Fetching -> strings.get("android.guide.altPreviewLoading")
+        AltPreviewState.NoRoute -> strings.get("android.guide.altPreviewNone")
+        AltPreviewState.Failed -> strings.get("android.guide.altPreviewFailed")
+        is AltPreviewState.Ready -> {
+            val fetched = st.fetched
+            val name = (fetched.lineKind ?: alternateLine)?.let { strings.get(walkLineNameKey(it)) } ?: ""
+            val summary = strings.get("android.guide.altPreviewSummary", name, formatDistance(fetched.route.totalMeters.roundToInt()))
+            val time = fetched.durationSeconds?.takeIf { it > 0 }?.let { strings.get("android.guide.altPreviewTime", max(1, it / 60).toString()) }
+            val route = guideRoute
+            val state = guideState
+            val remaining = if (!offRoute && route != null && state != null) strings.get("android.guide.altPreviewRemaining", formatDistance(max(0.0, route.totalMeters - state.d).roundToInt())) else null
+            val notice = if (fetched.lineKind == null) fetched.stepFreeNotice else null
+            joinText(summary, time, remaining, notice)
+        }
+    }
+
+    /**
+     * 프리뷰 채택(iOS `adoptAlternativePreview`, spec 2026-08-14 §4): 신선하면 본 경로를 즉시 채택("본 것 = 안내받는 것"), 낡았으면 같은 줄로 현위치
+     * 재조회에 폴백(프리뷰는 열린 채 — 실패 시 사용자가 상태를 본다). 성공은 `variantAdoptedSeq`가 알린다.
+     */
+    fun adoptAlternativePreview() {
+        val ready = altPreviewState as? AltPreviewState.Ready ?: return
+        if (rerouteInFlight || !isTracking || inFinalApproach) return   // 방어 2선 — 리셋 누락이 재발해도 도착 직전 전환은 막는다
+        val target = alternateLine ?: return
+        val c = lastFixCoord
+        val at = lastFixCoordAt
+        if (c != null && at != null && clock() - at <= freshFixSeconds && RerouteProposalGate.isFresh(ready.proposal, clock(), c.lat, c.lng)) {
+            commitLineSwitch(target)
+            val firstIndices = commitReroutedRoute(ready.fetched)
+            val notice = consumeStepFreeNotice(ready.fetched.stepFreeRaw, ready.fetched.stepFree, ready.fetched.stepFreeNotice)
+            val summary = text.variantSwitch(ready.fetched.route, firstIndices, ready.fetched.lineKind ?: target)
+            val spoken = if (notice != null) "$notice $summary" else summary
+            statusText = spoken
+            resultHaptic(ResultHapticKind.success)   // 폴백(재조회) 경로의 성공과 같은 신호 — 같은 사건을 두 경로가 다르게 알리지 않는다
+            announce(spoken, highPriority = true) { if (notice != null) pendingStepFreeNotice = notice }
+            mutate { copy(variantAdoptedSeq = variantAdoptedSeq + 1) }
+            return
+        }
+        requestVariantSwitch()
+    }
+
+    /** 대안 프리뷰 상태(iOS `AlternativePreviewState`) — "대안 없음"(`NoRoute`)과 "조회 실패"(`Failed`)를 가른다(3-state). */
+    private sealed class AltPreviewState {
+        data object Idle : AltPreviewState()
+        data object Fetching : AltPreviewState()
+        class Ready(val proposal: RerouteProposal, val fetched: DetailFetchResult) : AltPreviewState()
+        data object NoRoute : AltPreviewState()
+        data object Failed : AltPreviewState()
+    }
 
     // ─────────────────────────── 워치독 ───────────────────────────
 

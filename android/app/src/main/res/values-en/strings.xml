@@ -119,6 +119,13 @@
     <string name="android_directions_walkNotice_head2">Things to keep in mind</string>
     <string name="android_directions_walkNotice_intro">Thank you for using Gildongmu!</string>
     <string name="android_directions_walkNotice_title">Walking guidance is here.</string>
+    <string name="android_guide_adoptAlternative">Switch guidance to this route</string>
+    <string name="android_guide_altPreviewFailed">Couldn\'t load the alternative route</string>
+    <string name="android_guide_altPreviewLoading">Finding alternative route</string>
+    <string name="android_guide_altPreviewNone">No alternative route</string>
+    <string name="android_guide_altPreviewRemaining">current route remaining %1$s</string>
+    <string name="android_guide_altPreviewSummary">%1$s, %2$s total</string>
+    <string name="android_guide_altPreviewTime">about %1$s min walk</string>
     <string name="android_guide_autoReroute">Now guiding on a new route. {1, plural, one {%1$s step} other {%1$s steps}}, %2$s total. %3$s</string>
     <string name="android_guide_destChanged">New destination: %1$s.</string>
     <string name="android_guide_destChangedFetching">Finding a new route.</string>
@@ -130,7 +137,12 @@
     <string name="android_guide_routeListCurrent">%1$s. Current segment, %2$s</string>
     <string name="android_guide_routeListRow">%1$s. %2$s</string>
     <string name="android_guide_serviceStartFailed">Could not start the guidance service. Keep the app on screen and start again</string>
+    <string name="android_guide_switchedToAccessible">Switched to the route avoiding stairs. {1, plural, one {%1$s step} other {%1$s steps}}, %2$s total. %3$s</string>
+    <string name="android_guide_switchedToBroad">Switched to the main-road route. {1, plural, one {%1$s step} other {%1$s steps}}, %2$s total. %3$s</string>
+    <string name="android_guide_switchedToRecommended">Switched to the recommended route. {1, plural, one {%1$s step} other {%1$s steps}}, %2$s total. %3$s</string>
+    <string name="android_guide_switchedToShortest">Switched to the shortest route. {1, plural, one {%1$s step} other {%1$s steps}}, %2$s total. %3$s</string>
     <string name="android_guide_ttsUnavailable">Voice guidance is not available for this language. Check the guidance text on screen</string>
+    <string name="android_guide_viewAlternative">View alternative route</string>
     <string name="android_guide_waypointChange">%1$s, change waypoint</string>
     <string name="android_guide_waypointDropped">No route through the waypoint (%1$s) was found. Guiding to the destination (%2$s) without the waypoint.</string>
     <string name="android_guide_waypointKept">Waypoint %1$s unchanged</string>

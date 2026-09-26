@@ -29,6 +29,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import space.dodoplanet.gildongmu.guide.ui.GuideBottomBar
+import space.dodoplanet.gildongmu.guide.ui.GuideNav
 import space.dodoplanet.gildongmu.guide.ui.WalkGuideStartButton
 import space.dodoplanet.gildongmu.kit.BeaconDest
 import space.dodoplanet.gildongmu.kit.WalkHealthSummary
@@ -64,7 +65,7 @@ class GuideSheetA11yTest {
             MaterialTheme {
                 Column {
                     Box(Modifier.fillMaxWidth().height(200.dp).testTag("content"))
-                    GuideBottomBar(onOpenSettings = {}) { Box(Modifier.fillMaxWidth().height(56.dp).testTag("tabs")) }
+                    GuideBottomBar(GuideNav(onOpenSettings = {}, onOpenPlace = { _, _, _ -> })) { Box(Modifier.fillMaxWidth().height(56.dp).testTag("tabs")) }
                 }
             }
         }
@@ -93,6 +94,22 @@ class GuideSheetA11yTest {
         rule.onNodeWithTag("guide-stop").assertIsDisplayed().assertHeightIsAtLeast(48.dp)
         rule.onNodeWithTag("guide-minimize").assertHeightIsAtLeast(48.dp)
         assertEquals(tabsBefore, rule.onNodeWithTag("tabs").getBoundsInRoot())
+        checkAllRoots()
+    }
+
+    /** M4b: 제목 = 헤딩+버튼(메뉴 두 항목, 장소 상세 → 목적지 바꾸기), 주변 확인 트리거는 진행 상황 다음(iOS 읽기 순서). */
+    @Test
+    fun trackingTitleMenuAndSceneTriggerOrder() {
+        setBar()
+        setUi(tracking.copy(dest = dest))
+        rule.onNodeWithTag("guide-title").assertIsDisplayed().assertHeightIsAtLeast(48.dp).performClick()
+        rule.waitForIdle()
+        val detail = rule.onNodeWithTag("guide-menu-detail").getBoundsInRoot()
+        val change = rule.onNodeWithTag("guide-menu-change").getBoundsInRoot()
+        assertTrue(detail.top < change.top)
+        InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
+        rule.waitForIdle()
+        assertTrue(rule.onNodeWithTag("guide-progress").getBoundsInRoot().top < rule.onNodeWithTag("scene-trigger").getBoundsInRoot().top)
         checkAllRoots()
     }
 
@@ -159,7 +176,7 @@ class GuideSheetA11yTest {
     /** ⑥ 시작 실패 상태 → 시작 버튼 아래 실패 문장 행 + 해결 버튼. */
     @Test
     fun startFailureRowAndResolutionButton() {
-        rule.setContent { MaterialTheme { WalkGuideStartButton(dest, "길동역", line = WalkLineKind.shortest, waypoint = null, onStart = {}) } }
+        rule.setContent { MaterialTheme { WalkGuideStartButton(dest, "길동역", line = WalkLineKind.shortest, alternate = null, waypoint = null, onStart = {}) } }
         rule.enableAccessibilityChecks()
         rule.onNodeWithTag("guide-start-walk-shortest").assertIsDisplayed().assertHeightIsAtLeast(48.dp)
         setUi(WalkGuideUiState(status = GuideStatus.denied, statusText = "위치 권한이 필요합니다", failResolution = FailResolution.settings, lastStartLine = WalkLineKind.shortest))

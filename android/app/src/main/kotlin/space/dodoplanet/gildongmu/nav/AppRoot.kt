@@ -31,6 +31,8 @@ import space.dodoplanet.gildongmu.chat.PlaceChatRoute
 import space.dodoplanet.gildongmu.chat.PlaceChatScreen
 import space.dodoplanet.gildongmu.directions.DirectionsScreen
 import space.dodoplanet.gildongmu.guide.ui.GuideBottomBar
+import space.dodoplanet.gildongmu.guide.ui.GuideNav
+import space.dodoplanet.gildongmu.guide.ui.openGuidePlace
 import space.dodoplanet.gildongmu.guide.ui.openWeightSettings
 import space.dodoplanet.gildongmu.directions.openDirections
 import space.dodoplanet.gildongmu.location.LOCATION_BAR_KEY
@@ -74,7 +76,7 @@ fun AppRoot(factories: AppFactories) {
     CompositionLocalProvider(LocalResultHaptics provides hapticsOn) {
         Scaffold(
             bottomBar = {
-                GuideBottomBar(onOpenSettings = navController::openWeightSettings) {
+                GuideBottomBar(GuideNav(onOpenSettings = navController::openWeightSettings, onOpenPlace = navController::openGuidePlace)) {
                 NavigationBar(Modifier.testTag("tabs")) {
                     for (tab in tabs) {
                         val route = tab.route()

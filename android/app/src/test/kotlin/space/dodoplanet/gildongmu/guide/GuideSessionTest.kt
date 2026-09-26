@@ -8,6 +8,7 @@ import kotlinx.coroutines.test.TestScope
 import org.junit.jupiter.api.extension.RegisterExtension
 import space.dodoplanet.gildongmu.MainDispatcherExtension
 import kotlin.test.Test
+import kotlin.test.assertNull
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -84,5 +85,28 @@ class GuideSessionTest {
         assertTrue(h.model.outputSuppressed, "a가 아직 소유 중")
         GuideSession.setOutputSuppressed(false, a)
         assertFalse(h.model.outputSuppressed)
+    }
+
+    /** M4b 장소 상세 중첩(설계 리뷰 #2): 왕복 중 세션이 끝나면 재개하지 않고 두 표식을 지운다 — 남기면 다음 세션의 첫 띠바·시트 착지가 깨진다. */
+    @Test fun `장소 상세에서 돌아왔는데 세션이 끝났으면 재개하지 않고 착지 표식을 지운다`() = guideTest(dispatcher) { h ->
+        GuideSession.attachForTest(h.model, h.coordinator)
+        GuideSession.isMinimized = true
+        GuideSession.pendingSheetReturn = "scene-item-left-0"
+        GuideSession.suppressNextBandLanding = true
+        GuideSession.reopenAfterNestedScreen()
+        assertTrue(GuideSession.isMinimized)
+        assertNull(GuideSession.pendingSheetReturn)
+        assertFalse(GuideSession.suppressNextBandLanding)
+    }
+
+    @Test fun `장소 상세에서 돌아왔을 때 안내가 살아 있으면 시트를 다시 열고 착지 표식은 시트 진입이 소비한다`() = guideTest(dispatcher) { h ->
+        GuideSession.attachForTest(h.model, h.coordinator)
+        GuideSession.startWalk(h.request); settle()
+        GuideSession.isMinimized = true
+        GuideSession.pendingSheetReturn = "guide-title"
+        GuideSession.reopenAfterNestedScreen()
+        assertFalse(GuideSession.isMinimized)
+        assertEquals("guide-title", GuideSession.pendingSheetReturn)
+        GuideSession.pendingSheetReturn = null
     }
 }

@@ -99,6 +99,33 @@ internal fun guideStringId(key: String): Int? = when (key) {
     "guide.rerouteFailed" -> R.string.guide_rerouteFailed
     "guide.rerouteDone" -> R.string.guide_rerouteDone
     "android.guide.autoReroute" -> R.string.android_guide_autoReroute
+    "android.guide.destChanged" -> R.string.android_guide_destChanged
+    "android.guide.destChangedFetching" -> R.string.android_guide_destChangedFetching
+    "android.guide.waypointKept" -> R.string.android_guide_waypointKept
+    "android.guide.waypointSet" -> R.string.android_guide_waypointSet
+    "android.guide.waypointRemoved" -> R.string.android_guide_waypointRemoved
+    "android.guide.destMenuDetail" -> R.string.android_guide_destMenuDetail
+    "android.guide.destMenuChange" -> R.string.android_guide_destMenuChange
+    "android.guide.waypointChange" -> R.string.android_guide_waypointChange
+    "android.guide.waypointRemove" -> R.string.android_guide_waypointRemove
+    "directions.addVia" -> R.string.directions_addVia
+    "android.directions.searching" -> R.string.android_directions_searching
+    "android.guide.viewAlternative" -> R.string.android_guide_viewAlternative
+    "android.guide.adoptAlternative" -> R.string.android_guide_adoptAlternative
+    "android.guide.altPreviewLoading" -> R.string.android_guide_altPreviewLoading
+    "android.guide.altPreviewNone" -> R.string.android_guide_altPreviewNone
+    "android.guide.altPreviewFailed" -> R.string.android_guide_altPreviewFailed
+    "android.guide.altPreviewSummary" -> R.string.android_guide_altPreviewSummary
+    "android.guide.altPreviewTime" -> R.string.android_guide_altPreviewTime
+    "android.guide.altPreviewRemaining" -> R.string.android_guide_altPreviewRemaining
+    "android.guide.switchedToShortest" -> R.string.android_guide_switchedToShortest
+    "android.guide.switchedToAccessible" -> R.string.android_guide_switchedToAccessible
+    "android.guide.switchedToBroad" -> R.string.android_guide_switchedToBroad
+    "android.guide.switchedToRecommended" -> R.string.android_guide_switchedToRecommended
+    "directions.walkShortest" -> R.string.directions_walkShortest
+    "directions.walkAccessible" -> R.string.directions_walkAccessible
+    "directions.walkBroad" -> R.string.directions_walkBroad
+    "directions.walkRecommended" -> R.string.directions_walkRecommended
     "guide.progressUncertain" -> R.string.guide_progressUncertain
     "guide.progressOffRoute" -> R.string.guide_progressOffRoute
     "guide.progressFinalApproach" -> R.string.guide_progressFinalApproach

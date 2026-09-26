@@ -119,6 +119,13 @@
     <string name="android_directions_walkNotice_head2">유의해야 할 것</string>
     <string name="android_directions_walkNotice_intro">길동무 앱을 이용해 주셔서 감사합니다!</string>
     <string name="android_directions_walkNotice_title">도보 안내 기능이 추가되었어요.</string>
+    <string name="android_guide_adoptAlternative">이 경로 안내로 전환</string>
+    <string name="android_guide_altPreviewFailed">대안 경로 조회에 실패했습니다</string>
+    <string name="android_guide_altPreviewLoading">대안 경로 조회 중</string>
+    <string name="android_guide_altPreviewNone">대안 경로가 없습니다</string>
+    <string name="android_guide_altPreviewRemaining">지금 경로 잔여 %1$s</string>
+    <string name="android_guide_altPreviewSummary">%1$s, 총 %2$s</string>
+    <string name="android_guide_altPreviewTime">도보 약 %1$s분</string>
     <string name="android_guide_autoReroute">새 경로로 다시 안내합니다. 안내 %1$s개, 총 %2$s. %3$s</string>
     <string name="android_guide_destChanged">새 목적지 %1$s.</string>
     <string name="android_guide_destChangedFetching">경로를 조회하고 있습니다.</string>
@@ -130,7 +137,12 @@
     <string name="android_guide_routeListCurrent">%1$s. 지금 이 구간, %2$s</string>
     <string name="android_guide_routeListRow">%1$s. %2$s</string>
     <string name="android_guide_serviceStartFailed">안내 서비스를 시작하지 못했습니다. 앱을 화면에 띄운 채 다시 시작하세요</string>
+    <string name="android_guide_switchedToAccessible">계단 회피 경로로 전환했습니다. 안내 %1$s개, 총 %2$s. %3$s</string>
+    <string name="android_guide_switchedToBroad">큰길 경로로 전환했습니다. 안내 %1$s개, 총 %2$s. %3$s</string>
+    <string name="android_guide_switchedToRecommended">추천 경로로 전환했습니다. 안내 %1$s개, 총 %2$s. %3$s</string>
+    <string name="android_guide_switchedToShortest">최단 경로로 전환했습니다. 안내 %1$s개, 총 %2$s. %3$s</string>
     <string name="android_guide_ttsUnavailable">이 언어의 음성 안내를 쓸 수 없습니다. 화면의 안내 문장을 확인하세요</string>
+    <string name="android_guide_viewAlternative">대안 경로 보기</string>
     <string name="android_guide_waypointChange">%1$s, 경유지 변경</string>
     <string name="android_guide_waypointDropped">경유지(%1$s)를 포함한 경로를 찾지 못했습니다. 경유지 없이 목적지(%2$s)로 안내합니다.</string>
     <string name="android_guide_waypointKept">경유지 %1$s 그대로입니다</string>

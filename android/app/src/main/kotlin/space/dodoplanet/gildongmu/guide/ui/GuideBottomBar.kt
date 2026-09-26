@@ -22,10 +22,10 @@ import space.dodoplanet.gildongmu.guide.guideStrings
 
 /**
  * `AppRoot`의 `bottomBar` 삽입 한 자리(spec §7-2): 세션 조립(멱등) → 권한 손 → 전경 관찰자 → 띠바(최소화 시) + 탭 → 시트
- * (`ModalBottomSheet`는 자기 윈도라 bottomBar 측정에 0 기여). `onOpenSettings`는 종료 화면 [체중 입력하기](E31)의 설정 push. 화면 유지(`FLAG_KEEP_SCREEN_ON`)는 시트가 펼쳐진 동안만(§12-8).
+ * (`ModalBottomSheet`는 자기 윈도라 bottomBar 측정에 0 기여). `nav`는 시트가 앱 골격에 요청하는 이동(종료 화면 [체중 입력하기](E31)의 설정 push·장소 상세 중첩(M4b)). 화면 유지(`FLAG_KEEP_SCREEN_ON`)는 시트가 펼쳐진 동안만(§12-8).
  */
 @Composable
-fun GuideBottomBar(onOpenSettings: () -> Unit, tabs: @Composable () -> Unit) {
+fun GuideBottomBar(nav: GuideNav, tabs: @Composable () -> Unit) {
     val context = LocalContext.current
     val app = context.applicationContext
     remember { GuideSession.attach(app); Unit }
@@ -48,7 +48,7 @@ fun GuideBottomBar(onOpenSettings: () -> Unit, tabs: @Composable () -> Unit) {
         }
         tabs()
     }
-    if (showsSheet) GuideSheet(ui, strings, onOpenSettings)
+    if (showsSheet) GuideSheet(ui, strings, nav)
 }
 
 /** 알림(33+)·걸음 센서 권한 손 — `MainActivity`는 android-m1 소유라 여기 컴포지션에 둔다. */

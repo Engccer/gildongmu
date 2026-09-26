@@ -144,6 +144,6 @@ class WalkGuideWeightPromptTest {
         val nav = src.resolve("ui/WeightSettingsNav.kt").readText()
         assertTrue(nav.contains("GuideSession.reopenAfterWeightSettings()"))
         val root = Fixtures.repoRoot.resolve("android/app/src/main/kotlin/space/dodoplanet/gildongmu/nav/AppRoot.kt").readText()
-        assertTrue(root.contains("GuideBottomBar(onOpenSettings = navController::openWeightSettings)"))
+        assertTrue(root.contains("GuideBottomBar(GuideNav(onOpenSettings = navController::openWeightSettings, onOpenPlace = navController::openGuidePlace))"))
     }
 }

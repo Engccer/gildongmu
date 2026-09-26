@@ -64,7 +64,19 @@
       "focusDenied": "Otra aplicación está usando el audio, así que la guía no puede sonar ahora",
       "ttsUnavailable": "La guía por voz no está disponible en este idioma. Consulta el texto de la guía en pantalla",
       "serviceStartFailed": "No se pudo iniciar el servicio de guía. Mantén la aplicación en pantalla y vuelve a iniciar",
-      "notificationChannel": "Guía a pie"
+      "notificationChannel": "Guía a pie",
+      "viewAlternative": "Ver ruta alternativa",
+      "adoptAlternative": "Cambiar la guía a esta ruta",
+      "altPreviewLoading": "Buscando ruta alternativa",
+      "altPreviewNone": "No hay ruta alternativa",
+      "altPreviewFailed": "No se pudo cargar la ruta alternativa",
+      "altPreviewSummary": "{variant}, {distance} en total",
+      "altPreviewTime": "unos {minutes} min a pie",
+      "altPreviewRemaining": "ruta actual restante {distance}",
+      "switchedToShortest": "Se cambió a la ruta más corta. {count, plural, one {# indicación} other {# indicaciones}}, {distance} en total. {first}",
+      "switchedToAccessible": "Se cambió a la ruta sin escaleras. {count, plural, one {# indicación} other {# indicaciones}}, {distance} en total. {first}",
+      "switchedToBroad": "Se cambió a la ruta por vías principales. {count, plural, one {# indicación} other {# indicaciones}}, {distance} en total. {first}",
+      "switchedToRecommended": "Se cambió a la ruta recomendada. {count, plural, one {# indicación} other {# indicaciones}}, {distance} en total. {first}"
     },
     "settings": {
       "resultHapticsFooter": "Los resultados de Buscar y Cerca de mí también se avisan con vibración. Solo vibra con la pantalla encendida y la respuesta háptica del dispositivo activada."

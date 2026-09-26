@@ -119,6 +119,13 @@
     <string name="android_directions_walkNotice_head2">ご注意いただきたいこと</string>
     <string name="android_directions_walkNotice_intro">キルドンムをご利用いただきありがとうございます!</string>
     <string name="android_directions_walkNotice_title">徒歩案内機能が追加されました。</string>
+    <string name="android_guide_adoptAlternative">このルートの案内に切り替え</string>
+    <string name="android_guide_altPreviewFailed">代替ルートの取得に失敗しました</string>
+    <string name="android_guide_altPreviewLoading">代替ルートを検索中</string>
+    <string name="android_guide_altPreviewNone">代替ルートがありません</string>
+    <string name="android_guide_altPreviewRemaining">現在のルート残り%1$s</string>
+    <string name="android_guide_altPreviewSummary">%1$s、合計%2$s</string>
+    <string name="android_guide_altPreviewTime">徒歩約%1$s分</string>
     <string name="android_guide_autoReroute">新しいルートで案内を再開します。案内%1$s件、合計%2$s。%3$s</string>
     <string name="android_guide_destChanged">新しい目的地 %1$s。</string>
     <string name="android_guide_destChangedFetching">新しいルートを検索しています。</string>
@@ -130,7 +137,12 @@
     <string name="android_guide_routeListCurrent">%1$s. 現在の区間、%2$s</string>
     <string name="android_guide_routeListRow">%1$s. %2$s</string>
     <string name="android_guide_serviceStartFailed">案内サービスを開始できませんでした。アプリを画面に表示したまま再開してください</string>
+    <string name="android_guide_switchedToAccessible">階段を避けるルートに切り替えました。案内%1$s件、合計%2$s。%3$s</string>
+    <string name="android_guide_switchedToBroad">大通りルートに切り替えました。案内%1$s件、合計%2$s。%3$s</string>
+    <string name="android_guide_switchedToRecommended">おすすめルートに切り替えました。案内%1$s件、合計%2$s。%3$s</string>
+    <string name="android_guide_switchedToShortest">最短ルートに切り替えました。案内%1$s件、合計%2$s。%3$s</string>
     <string name="android_guide_ttsUnavailable">この言語の音声案内は利用できません。画面の案内文をご確認ください</string>
+    <string name="android_guide_viewAlternative">代替ルートを見る</string>
     <string name="android_guide_waypointChange">%1$s、経由地を変更</string>
     <string name="android_guide_waypointDropped">経由地（%1$s）を含む経路が見つかりませんでした。経由地なしで目的地（%2$s）へ案内します。</string>
     <string name="android_guide_waypointKept">経由地 %1$s はそのままです</string>

@@ -39,7 +39,7 @@ import space.dodoplanet.gildongmu.nav.tryStartActivity
  * 시트·띠바는 `hasScreen` 조건이라 실패 상태를 그리지 않는다 — 이 행이 유일한 자리다.
  */
 @Composable
-fun WalkGuideStartButton(dest: BeaconDest, label: String, line: WalkLineKind, waypoint: GuideWaypoint?, onStart: () -> Unit) {
+fun WalkGuideStartButton(dest: BeaconDest, label: String, line: WalkLineKind, alternate: WalkLineKind?, waypoint: GuideWaypoint?, onStart: () -> Unit) {
     val context = LocalContext.current
     val res = context.resources
     val strings = remember(res) { guideStrings(res) }
@@ -53,7 +53,7 @@ fun WalkGuideStartButton(dest: BeaconDest, label: String, line: WalkLineKind, wa
             // `onStart`는 시작 요청 직전에 — 화면이 "현재 위치에서 시작한다" 고지를 낸다(iOS `announceGuideStartIfManualOrigin` 자리).
             onClick = {
                 onStart()
-                GuideSession.startWalk(WalkStartRequest(dest, label, line.isAccessible, line.variant, line, waypoint))
+                GuideSession.startWalk(WalkStartRequest(dest, label, line.isAccessible, line.variant, line, alternate, waypoint))
             },
             modifier = Modifier.fillMaxWidth().tapTarget().testTag(tag).padding(vertical = 4.dp),
         ) { Text(strings.get(walkLineStartKey(line))) }
@@ -102,5 +102,7 @@ fun walkGuideStartSlot(s: DirectionsUiState, onStart: () -> Unit): (@Composable 
         ?: return null
     val (label, dest) = target
     val waypoint = s.via?.let { GuideWaypoint(BeaconDest(it.lat, it.lng), it.label) }
-    return { line -> WalkGuideStartButton(dest, label, line, waypoint, onStart) }
+    // 다른 줄(M4b 안내 중 대안 프리뷰 대상) — 조회 화면의 줄 중 이 줄이 아닌 첫 알려진 줄(iOS `walkLines.compactMap(\.lineKind).first { $0 != kind }`).
+    val kinds = s.walkLines.mapNotNull { it.lineKind }
+    return { line -> WalkGuideStartButton(dest, label, line, kinds.firstOrNull { it != line }, waypoint, onStart) }
 }

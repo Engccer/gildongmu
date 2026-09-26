@@ -6,7 +6,37 @@
     "name",
     "distance"
   ],
+  "android.guide.altPreviewRemaining": [
+    "distance"
+  ],
+  "android.guide.altPreviewSummary": [
+    "variant",
+    "distance"
+  ],
+  "android.guide.altPreviewTime": [
+    "minutes"
+  ],
   "android.guide.autoReroute": [
+    "count",
+    "distance",
+    "first"
+  ],
+  "android.guide.switchedToAccessible": [
+    "count",
+    "distance",
+    "first"
+  ],
+  "android.guide.switchedToBroad": [
+    "count",
+    "distance",
+    "first"
+  ],
+  "android.guide.switchedToRecommended": [
+    "count",
+    "distance",
+    "first"
+  ],
+  "android.guide.switchedToShortest": [
     "count",
     "distance",
     "first"

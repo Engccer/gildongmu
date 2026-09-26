@@ -217,7 +217,7 @@ class GuideTestHarness(
     ).also { controller.model = it }
 
     val dest = BeaconDest(north(315.0).lat, lng0)
-    val request = WalkStartRequest(dest = dest, label = "길동역", accessible = false, variant = null, line = WalkLineKind.broad, waypoint = null)
+    val request = WalkStartRequest(dest = dest, label = "길동역", accessible = false, variant = null, line = WalkLineKind.broad, alternate = WalkLineKind.shortest, waypoint = null)
 
     fun close() { job.cancel() }
 

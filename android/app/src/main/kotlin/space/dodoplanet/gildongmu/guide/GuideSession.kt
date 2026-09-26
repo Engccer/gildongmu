@@ -26,8 +26,12 @@ import space.dodoplanet.gildongmu.audio.TtsGuideSpeaker
 import space.dodoplanet.gildongmu.audio.handlerPostDelayed
 import space.dodoplanet.gildongmu.audio.toneAudioAttributes
 import space.dodoplanet.gildongmu.i18n.AppLocale
+import space.dodoplanet.gildongmu.nearby.SceneLookup
+import space.dodoplanet.gildongmu.kit.BeaconDest
 import space.dodoplanet.gildongmu.kit.DataLocale
 import space.dodoplanet.gildongmu.kit.GuideSessionCoordinator
+import space.dodoplanet.gildongmu.kit.NearbyCoord
+import space.dodoplanet.gildongmu.kit.NearbyService
 import space.dodoplanet.gildongmu.kit.RouteService
 import space.dodoplanet.gildongmu.storage.SharedPreferencesStore
 import java.util.Collections
@@ -62,6 +66,38 @@ object GuideSession {
     fun reopenAfterWeightSettings() {
         if (::walk.isInitialized && walk.ui.value.arrivalDest != null) isMinimized = false
     }
+
+    /**
+     * 장소 상세(M4b 중첩)에서 돌아와 시트가 다시 열릴 때의 착지 1회(제목 `GUIDE_TITLE_RETURN` 또는 주변 확인 행 키). 시트는 최소화로 컴포지션을
+     * 떠났다가 돌아오므로 진입 효과가 이 값을 소비한다(없으면 종전 진입 착지).
+     */
+    var pendingSheetReturn: String? = null
+
+    /** 중첩 화면(장소 상세)이 스택에서 빠졌다 — 안내 화면이 남아 있으면 시트를 다시 연다. 없으면(그 사이 종료·소거) 착지 표식도 버린다. */
+    fun reopenAfterNestedScreen() {
+        if (::walk.isInitialized && walk.ui.value.hasScreen) { isMinimized = false; return }
+        // 그 사이 세션이 끝났다(알림 "안내 종료"·안전망) — 재개하지 않는 갈래도 두 표식을 지운다. 남기면 다음 세션의 첫 띠바 착지가 건너뛰어지고
+        // 시트 첫 진입이 없는 행 키를 찾는다.
+        pendingSheetReturn = null
+        suppressNextBandLanding = false
+    }
+
+    /**
+     * 주변 확인 상태(M4b) — 화면 자리(`SceneSlot`) × 앵커(목적지) 단위로 세션이 든다. 시트 컴포지션은 최소화·장소 상세 왕복에 사라지지만 펼친 목록과
+     * 착지 자리는 남아야 한다(iOS는 중첩 시트라 시트가 산다). 추적 중 시트와 종료 화면은 자리가 달라 종료 화면은 백지로 시작한다(iOS `arrivalSection`의
+     * 새 섹션 동형). 앵커가 바뀌면 새로 만들고, 새 세션 시작이 버린다. 조회는 세션 스코프라 시트를 접어도 끝까지 가고, 그 사이 도착한 결과는 착지 없이
+     * 펼쳐진 채 기다린다(`SceneLookup.attached`).
+     */
+    enum class SceneSlot { tracking, end }
+    private val sceneLookups = mutableMapOf<SceneSlot, SceneLookup>()
+
+    fun sceneLookup(slot: SceneSlot, anchor: BeaconDest): SceneLookup {
+        val coord = NearbyCoord(anchor.lat, anchor.lng)
+        sceneLookups[slot]?.takeIf { it.anchor == coord }?.let { return it }
+        return SceneLookup(coord, uiScope, NearbyService(AppConfig.apiClient)).also { sceneLookups[slot] = it }
+    }
+
+    private val uiScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     /** 전경 복귀(백그라운드 경유) 띠바 착지 트리거 — 증가할 때마다 띠바가 1회 착지한다. */
     var bandLandingSeq by mutableIntStateOf(0)
@@ -122,6 +158,9 @@ object GuideSession {
         }
         walk.clearFailure()          // 새 시작이 직전 실패 행을 지운다(§7-1)
         returnedFromBand = false
+        pendingSheetReturn = null
+        suppressNextBandLanding = false
+        sceneLookups.clear()         // 지난 세션의 주변 확인 결과가 같은 목적지의 새 세션으로 새지 않게
         isMinimized = false
         walk.tones.preload()
         walk.speaker.prepare()

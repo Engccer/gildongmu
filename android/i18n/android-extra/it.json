@@ -64,7 +64,19 @@
       "focusDenied": "Un’altra app sta usando l’audio, quindi i suoni della guida non possono essere riprodotti ora",
       "ttsUnavailable": "La guida vocale non è disponibile in questa lingua. Controlla il testo della guida sullo schermo",
       "serviceStartFailed": "Impossibile avviare il servizio di guida. Tieni l’app sullo schermo e riavvia",
-      "notificationChannel": "Guida a piedi"
+      "notificationChannel": "Guida a piedi",
+      "viewAlternative": "Vedi percorso alternativo",
+      "adoptAlternative": "Passa alla guida su questo percorso",
+      "altPreviewLoading": "Ricerca percorso alternativo",
+      "altPreviewNone": "Nessun percorso alternativo",
+      "altPreviewFailed": "Impossibile caricare il percorso alternativo",
+      "altPreviewSummary": "{variant}, {distance} in totale",
+      "altPreviewTime": "circa {minutes} min a piedi",
+      "altPreviewRemaining": "percorso attuale rimanente {distance}",
+      "switchedToShortest": "Passato al percorso più breve. {count, plural, one {# indicazione} other {# indicazioni}}, {distance} in totale. {first}",
+      "switchedToAccessible": "Passato al percorso senza scale. {count, plural, one {# indicazione} other {# indicazioni}}, {distance} in totale. {first}",
+      "switchedToBroad": "Passato al percorso su strade principali. {count, plural, one {# indicazione} other {# indicazioni}}, {distance} in totale. {first}",
+      "switchedToRecommended": "Passato al percorso consigliato. {count, plural, one {# indicazione} other {# indicazioni}}, {distance} in totale. {first}"
     },
     "settings": {
       "resultHapticsFooter": "I risultati di Cerca e Nelle vicinanze vengono segnalati anche con una vibrazione. Vibra solo con lo schermo acceso e il feedback aptico del dispositivo attivo."

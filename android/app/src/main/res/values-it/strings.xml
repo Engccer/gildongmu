@@ -119,6 +119,13 @@
     <string name="android_directions_walkNotice_head2">Da tenere presente</string>
     <string name="android_directions_walkNotice_intro">Grazie per usare Gildongmu!</string>
     <string name="android_directions_walkNotice_title">La guida a piedi è arrivata.</string>
+    <string name="android_guide_adoptAlternative">Passa alla guida su questo percorso</string>
+    <string name="android_guide_altPreviewFailed">Impossibile caricare il percorso alternativo</string>
+    <string name="android_guide_altPreviewLoading">Ricerca percorso alternativo</string>
+    <string name="android_guide_altPreviewNone">Nessun percorso alternativo</string>
+    <string name="android_guide_altPreviewRemaining">percorso attuale rimanente %1$s</string>
+    <string name="android_guide_altPreviewSummary">%1$s, %2$s in totale</string>
+    <string name="android_guide_altPreviewTime">circa %1$s min a piedi</string>
     <string name="android_guide_autoReroute">Ora ti guido su un nuovo percorso. {1, plural, one {%1$s indicazione} other {%1$s indicazioni}}, %2$s in totale. %3$s</string>
     <string name="android_guide_destChanged">Nuova destinazione: %1$s.</string>
     <string name="android_guide_destChangedFetching">Ricerca di un nuovo percorso.</string>
@@ -130,7 +137,12 @@
     <string name="android_guide_routeListCurrent">%1$s. Tratto attuale, %2$s</string>
     <string name="android_guide_routeListRow">%1$s. %2$s</string>
     <string name="android_guide_serviceStartFailed">Impossibile avviare il servizio di guida. Tieni l’app sullo schermo e riavvia</string>
+    <string name="android_guide_switchedToAccessible">Passato al percorso senza scale. {1, plural, one {%1$s indicazione} other {%1$s indicazioni}}, %2$s in totale. %3$s</string>
+    <string name="android_guide_switchedToBroad">Passato al percorso su strade principali. {1, plural, one {%1$s indicazione} other {%1$s indicazioni}}, %2$s in totale. %3$s</string>
+    <string name="android_guide_switchedToRecommended">Passato al percorso consigliato. {1, plural, one {%1$s indicazione} other {%1$s indicazioni}}, %2$s in totale. %3$s</string>
+    <string name="android_guide_switchedToShortest">Passato al percorso più breve. {1, plural, one {%1$s indicazione} other {%1$s indicazioni}}, %2$s in totale. %3$s</string>
     <string name="android_guide_ttsUnavailable">La guida vocale non è disponibile in questa lingua. Controlla il testo della guida sullo schermo</string>
+    <string name="android_guide_viewAlternative">Vedi percorso alternativo</string>
     <string name="android_guide_waypointChange">%1$s, cambia punto intermedio</string>
     <string name="android_guide_waypointDropped">Non è stato trovato alcun percorso che passi per la tappa intermedia (%1$s). Ti guidiamo alla destinazione (%2$s) senza la tappa intermedia.</string>
     <string name="android_guide_waypointKept">Punto intermedio %1$s invariato</string>
