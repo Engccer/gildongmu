@@ -1,12 +1,37 @@
 package space.dodoplanet.gildongmu.kit
 
+import kotlinx.serialization.Serializable
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/** 채팅 산문 블록 분할 — Kit `ChatModelsTests.parseChatMarkdownBlocks*`(foundation.json 유예분) 미러. */
+/** 채팅 산문 블록 분할 — Kit `ChatModelsTests.parseChatMarkdownBlocks*`(foundation.json 유예분)·`ChatMarkdownLineBreakTests` 미러. */
 class ChatMarkdownTest {
+    @Serializable
+    private data class LineBreakFile(val cases: List<LineBreakCase>)
+
+    @Serializable
+    private data class LineBreakCase(val name: String, val input: String, val expect: List<Block>) {
+        @Serializable
+        data class Block(val kind: String, val text: String)
+    }
+
+    private fun kindAndText(block: ChatMarkdownBlock): List<String> = when (block) {
+        is ChatMarkdownBlock.Heading -> listOf("heading", block.text)
+        is ChatMarkdownBlock.ListItem -> listOf("listItem", block.text)
+        is ChatMarkdownBlock.Paragraph -> listOf("paragraph", block.text)
+    }
+
+    /** 줄 경계 공유 fixture(Kit·:kit 공통): CRLF는 경계 하나, CR 단독·VT·FF·NEL은 경계 아님. */
+    @Test fun lineBreaksMatchSharedFixture() {
+        val cases = Fixtures.sharedJson("chat-markdown-line-break-cases.json", LineBreakFile.serializer()).cases
+        assertEquals(11, cases.size)
+        for (c in cases) {
+            assertEquals(c.expect.map { listOf(it.kind, it.text) }, parseChatMarkdownBlocks(c.input).map(::kindAndText), c.name)
+        }
+    }
+
     @Test fun parseChatMarkdownBlocksSplitsHeadingListAndParagraph() {
         // prod 실호출 실측 형태: ### 헤딩 + "* **볼드**: 설명" 리스트 + 단락들
         val input = "### 편의점 및 마트\n* **CU 강동풍차점**: 북동쪽 10m\n  - 세부 항목\n1. 순서 목록\n\n첫 단락 첫 줄\n첫 단락 둘째 줄\n\n둘째 단락 **강조** 유지"

@@ -43,7 +43,9 @@ fun parseChatMarkdownBlocks(text: String): List<ChatMarkdownBlock> {
         paragraph.clear()
     }
 
-    for (line in text.split("\n")) {
+    // CRLF는 줄 경계 하나다(Kit·웹 CommonMark와 같다, 공유 fixture `chat-markdown-line-break-cases.json`) — `\r`이 줄 끝에 남아
+    // 헤딩·목록 정규식의 `.`·`$` 판정에 끼지 않게 먼저 LF로 접는다. CR 단독·VT·FF·NEL은 경계가 아니다.
+    for (line in text.replace("\r\n", "\n").split("\n")) {
         if (line.trimSwiftWhitespaces().isEmpty()) {
             flushParagraph()
             continue

@@ -38,7 +38,10 @@ public func parseChatMarkdownBlocks(_ text: String) -> [ChatMarkdownBlock] {
         paragraph = []
     }
 
-    for lineSub in text.split(separator: "\n", omittingEmptySubsequences: false) {
+    // CRLF는 줄 경계 하나다(CommonMark·웹·안드로이드 :kit과 같다, 위원장 판정 2026-09-27). Swift `Character`는 CRLF를
+    // 그래핌 하나로 봐서 "\n" 분리에 걸리지 않으므로 먼저 LF로 접는다. CR 단독·VT·FF·NEL은 경계가 아니다(공유 fixture).
+    let normalized = text.replacingOccurrences(of: "\r\n", with: "\n")
+    for lineSub in normalized.split(separator: "\n", omittingEmptySubsequences: false) {
         let line = String(lineSub)
         if line.trimmingCharacters(in: .whitespaces).isEmpty {
             flushParagraph()

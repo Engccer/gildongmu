@@ -10,13 +10,22 @@ package space.dodoplanet.gildongmu.kit
  *
  * 정규식 약칭 클래스(공백·숫자·단어 문자)는 쓰지 않는다 — JVM은 ASCII, 안드로이드 ICU·Swift ICU는 유니코드라 테스트와 기기가
  * 갈린다. 명시 클래스는 ICU 뜻을 옮긴 것이다: 공백은 White_Space 속성, 숫자는 `\p{Nd}`, 단어 문자는 ICU 정의(Alphabetic ≈ 문자+문자형 숫자, 결합 부호, 십진 숫자, 연결 부호, ZWNJ·ZWJ).
+ *
+ * 줄 머리·꼬리도 `MULTILINE` 대신 명시 전후방탐색이다(웹 `markdown-plain-text.ts`와 같은 식): 줄 경계는 ICU 뜻(LF·CR·VT·FF·NEL·LS·PS,
+ * CRLF는 한 단위라 그 사이는 경계가 아니다). JVM `MULTILINE`은 VT·FF를 모르고 기기 ICU는 안다 — 플래그에 맡기면 테스트와 기기가 갈린다.
  */
 object MarkdownPlainText {
     private const val WS = "[$REGEX_SPACE_MEMBERS]"
     private const val WORD = """[\p{L}\p{Nl}\p{M}\p{Nd}\p{Pc}\u200C\u200D]"""
+    /** CR을 뺀 ICU 줄 경계. */
+    private const val EOL = """[\n\u000B\f\u0085\u2028\u2029]"""
+    /** ICU 여러 줄 모드의 `^`(CR 뒤는 LF가 이어지지 않을 때만). */
+    private const val BOL = """(?:\A|(?<=$EOL)|(?<=\r)(?!\n))"""
+    /** ICU 여러 줄 모드의 `$`(CRLF 사이는 줄 꼬리가 아니다). */
+    private const val EOLA = """(?:\z|(?=\r)|(?=[\u000B\f\u0085\u2028\u2029])|(?<!\r)(?=\n))"""
 
     private val inlineCode = Regex("`([^`]+)`")
-    private val heading = Regex("""^#{1,6}$WS+""", RegexOption.MULTILINE)
+    private val heading = Regex("""$BOL#{1,6}$WS+""")
     private val bold = Regex("""\*\*([^*]+)\*\*""")
     private val boldUnderscore = Regex("__([^_]+)__")
     private val italic = Regex("""\*([^*]+)\*""")
@@ -24,10 +33,10 @@ object MarkdownPlainText {
     private val strike = Regex("~~([^~]+)~~")
     private val link = Regex("""\[([^\]]+)\]\([^)]+\)""")
     private val image = Regex("""!\[([^\]]*)\]\([^)]+\)""")
-    private val rule = Regex("""^[-*_]{3,}$WS*$""", RegexOption.MULTILINE)
-    private val quote = Regex("""^>$WS+""", RegexOption.MULTILINE)
-    private val bullet = Regex("""^$WS*[-*+]$WS+""", RegexOption.MULTILINE)
-    private val ordered = Regex("""^$WS*\p{Nd}+\.$WS+""", RegexOption.MULTILINE)
+    private val rule = Regex("""$BOL[-*_]{3,}$WS*$EOLA""")
+    private val quote = Regex("""$BOL>$WS+""")
+    private val bullet = Regex("""$BOL$WS*[-*+]$WS+""")
+    private val ordered = Regex("""$BOL$WS*\p{Nd}+\.$WS+""")
     private val excessNewlines = Regex("""\n{3,}""")
     private val codeBlock = Regex("""```(?s:.)*?```""")
     private val fenceOpen = Regex("""```$WORD*\n?""")

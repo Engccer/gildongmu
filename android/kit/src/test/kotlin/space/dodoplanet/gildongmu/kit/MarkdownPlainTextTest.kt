@@ -1,55 +1,40 @@
 package space.dodoplanet.gildongmu.kit
 
+import kotlinx.serialization.Serializable
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
-/** TTS 낭독용 마크다운 평문 변환 검증(Kit `MarkdownPlainTextTests` 미러 — dodo 이식 규칙, 웹 `markdownToPlainText` 동형). */
+/**
+ * TTS 낭독·복사용 마크다운 평문 변환 — 웹 `markdownToPlainText`·Kit `MarkdownPlainTextTests`와 같은 공유 fixture
+ * (`src/lib/__tests__/fixtures/markdown-plain-text-cases.json`)를 읽는다. 줄 머리·꼬리는 ICU 뜻(LF·CR·VT·FF·NEL·LS·PS, CRLF는 한 단위)이라
+ * JVM 기본 `MULTILINE`(VT·FF를 모른다)과 기기 ICU가 갈리는 자리를 fixture가 잠근다.
+ */
 class MarkdownPlainTextTest {
-    @Test fun `헤딩 기호 제거`() {
-        assertEquals("경복궁 안내\n본문", MarkdownPlainText.strip("## 경복궁 안내\n본문"))
+    @Serializable
+    private data class CaseFile(val cases: List<Case>)
+
+    @Serializable
+    private data class Case(val name: String, val input: String, val expect: String)
+
+    @Test fun matchesSharedFixture() {
+        val cases = Fixtures.sharedJson("markdown-plain-text-cases.json", CaseFile.serializer()).cases
+        assertTrue(cases.size >= 34)
+        for (c in cases) assertEquals(c.expect, MarkdownPlainText.strip(c.input), c.name)
     }
 
-    @Test fun `강조 취소선 언랩`() {
-        assertEquals("맑음과 바람, 비", MarkdownPlainText.strip("**맑음**과 *바람*, ~~비~~"))
-    }
-
-    @Test fun `링크는 라벨만 남기고 URL 폐기`() {
-        assertEquals("자세한 정보는 카카오맵을 확인하세요.", MarkdownPlainText.strip("자세한 정보는 [카카오맵](https://map.kakao.com/place/123)을 확인하세요."))
-    }
-
-    @Test fun `리스트 마커는 불릿으로`() {
-        assertEquals("• 첫째\n• 둘째", MarkdownPlainText.strip("- 첫째\n- 둘째"))
-    }
-
-    @Test fun `번호 목록 마커 제거`() {
-        assertEquals("첫째\n둘째", MarkdownPlainText.strip("1. 첫째\n2. 둘째"))
-    }
-
-    @Test fun `코드블록은 펜스만 벗기고 내용 유지`() {
-        assertEquals("let a = 1", MarkdownPlainText.strip("```swift\nlet a = 1\n```"))
-    }
-
-    @Test fun `인라인 코드 백틱 제거`() {
-        assertEquals("nmap:// 스킴", MarkdownPlainText.strip("`nmap://` 스킴"))
-    }
-
-    @Test fun `과잉 개행 축소와 트림`() {
-        assertEquals("첫 단락\n\n둘째 단락", MarkdownPlainText.strip("\n\n첫 단락\n\n\n\n둘째 단락\n"))
-    }
-
-    @Test fun `인용부호 수평선 제거`() {
-        assertEquals("인용문\n\n본문", MarkdownPlainText.strip("> 인용문\n---\n본문"))
-    }
-
-    /** 명시 클래스는 ICU 뜻이다(Kit 테스트 없음 — 플랫폼 차이 가드): 한글 펜스 태그도 벗기고, NBSP 헤딩·전각 숫자 목록도 걷는다. */
+    /** 명시 클래스는 ICU 뜻이다(fixture 밖 — 플랫폼 차이 가드): 줄바꿈 없는 한글 펜스 태그, 로마 숫자 태그, NBSP 헤딩, 전각 숫자 목록. */
     @Test fun `유니코드 공백 숫자 단어 문자는 ICU와 같다`() {
         assertEquals("코드", MarkdownPlainText.strip("```한국어 코드```"))
         assertEquals("코드", MarkdownPlainText.strip("```Ⅻ\n코드```"))
-        assertEquals("제목", MarkdownPlainText.strip("##\u00A0제목"))
+        assertEquals("제목", MarkdownPlainText.strip("## 제목"))
         assertEquals("항목", MarkdownPlainText.strip("１. 항목"))
     }
 
-    @Test fun `평문은 그대로`() {
-        assertEquals("그냥 평범한 문장입니다.", MarkdownPlainText.strip("그냥 평범한 문장입니다."))
+    /** LS·PS도 ICU 줄 경계다(fixture엔 없다), CR 단독 뒤도 줄 머리. */
+    @Test fun `LS PS CR 단독도 줄 경계`() {
+        assertEquals("가 • 나", MarkdownPlainText.strip("가 - 나"))
+        assertEquals("가 제목", MarkdownPlainText.strip("가 # 제목"))
+        assertEquals("가\r• 나", MarkdownPlainText.strip("가\r- 나"))
     }
 }
