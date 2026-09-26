@@ -3,6 +3,8 @@
 > 도착지를 정하지 않고 도보 안내를 쓴다. 위원장 구상(2026-09-26)을 브레인스토밍으로 다듬어 확정한 설계 정본. iOS 실기기가 1차 범위이고, 웹·안드로이드 이식은 실보행 판정 뒤 별도 마일스톤이다.
 >
 > **리뷰 게이트 판정**: 이 spec은 새 판정 계층(앞·옆·뒤 투영, 지나침 판정, 재조회 트리거)과 안전·정확성 항목(백그라운드 음성, 횡단보도 예고, 좌우 표현 예외)을 담으므로 **설계 단계 적대적 리뷰 대상**이다. 착수 세션이 구현 전에 별도 컨텍스트 리뷰를 돌리고 결과를 이 절 아래에 남긴다.
+>
+> **리뷰 결과(2026-09-26, fable 1회, BLOCKER 3·MAJOR 14·MINOR 14)**: 판정 계층·안전 항목의 전제 셋이 코드와 달라 본문을 고쳤다. 반영: B1 횡단보도 예고는 데이터 계약(좌표 없음) 때문에 1차에서 뺐다(§6.3·§15) · B2 좌우는 유도 방위 + 불확실성·나이·횡거리 여유로만(§6.1) · M1·M2 조회 원천·이정표 표를 실제 응답(둘러보기 10종)으로(§6.2·§6.4) · M3 지나침은 방위 유효 두 fix 사이에서만, 정지·회전·반전 fix는 판정 없음(§6.3) · M4 첫 조회는 출발점 확정 fix에서(§6.2) · M5 출발점 정확도 문턱(§5.1) · M6 종료 화면에 "출발점으로"(§8.3) · M7 인계 한 함수·시작 대기 창(§5.3) · M8 전경 VoiceOver면 VoiceOver 창구, 그 밖은 기기 음성 큐(§7.3) · M9 착지는 이벤트로만 바뀌는 상태 행(§8.1) · M10 도로명은 주소 문자열 파싱 + 2회 확정(§6.3) · M12 계측 스키마(§14) · MINOR(부품 이름·톤 파급·미러 등록·게이트 호출 수·종료 사유 문장·원복 유예 등) 해당 절. 소유권 밖이라 코디네이터에 넘긴 것: B3(안전망 무이동 300초가 도보 추정 도착 300초를 선점 — `BeaconModel` 가드 1줄 필요, §9). 제품 판정 이의로 기록만 한 것: M13(길찾기 자동 시작, §8.4 유지)·M14(자동차 두절 300초, §15)·M6의 5분 값.
 
 ## 1. 목표
 
@@ -41,7 +43,7 @@ GildongmuKit (순수·테스트 대상)                     앱 (I/O만)
   OutingDistanceTone.swift 10m 비프 스텝               │     ├ PedometerService 라이브 누적 (재사용)
   OutingRequery.swift     재조회 트리거(100m)           │     ├ BeaconTonePlayer (재사용, 톤 1종 추가)
   OutingLandmark.swift    이정표 분류(카테고리 → 등급)   │     ├ TtsPlayer.speakGuidance (재사용, 백그라운드 발화)
-  SessionIdle.swift       안전망 (재사용, 상수 변경)     │     └ NearbyService.around / reverseAddress (재사용)
+  SessionIdle.swift       안전망 (재사용, 상수 변경)     │     └ NearbyService.surroundings / SearchService.reverseGeocode (재사용)
   GuideMotion·GuideCourse·CourseDerivation (재사용)  ◀── GuideSession (screen case 추가)
                                                      OutingSheet · OutingOverviewAdapter (새 뷰)
 ```
@@ -54,8 +56,8 @@ GildongmuKit (순수·테스트 대상)                     앱 (I/O만)
 
 ### 5.1 시작
 1. 다른 안내 세션이 살아 있으면 거절하고 통지(`refuseIfActive` 재사용).
-2. 위치 권한·정밀 위치 확인 → `coordinator.claim` → 만보계 권한 요청과 라이브 누적 시작 → 오디오 세션 승격(`guideAudioStep`) → 시작 톤 → 백그라운드 위치 시작.
-3. **출발점 확정**: 첫 30초(`outingOriginWindowSeconds`) 안에서 정확도가 가장 좋은 usable fix를 출발점으로 잡는다. 세션 첫 fix가 가장 나쁜 fix라는 교훈(A18)을 그대로 적용하되 `routeOriginStep`은 경로 조회용이라 부르지 않고 같은 규칙의 작은 함수를 둔다. 확정 전 상태 행은 "출발점 잡는 중". 30초 안에 usable fix가 하나도 없으면 첫 usable fix가 오는 순간 확정한다.
+2. 위치 권한·정밀 위치 확인 → `coordinator.claim` → 만보계 권한 요청과 라이브 누적 시작 → 오디오 세션 승격(`guideAudioStep`) → 시작 톤 → 백그라운드 위치 시작. 권한 검사(비동기 팝업 포함)는 claim **앞**이고(`BeaconModel` 순서), 그 대기 동안의 `starting`은 `GuideSession.isActive`에 포함된다(다른 시작이 그 창을 통과하지 못하게).
+3. **출발점 확정**(Kit `outingOriginStep`, `routeOriginStep`은 경로 조회용이라 부르지 않는다): 후보는 저장 가능 fix(`isStorableFix`, 정확도 100m 이하)만. 수용 fix(`shouldAcceptFix`, 30m·10초 이하)가 오면 즉시 확정한다. 아니면 첫 30초(`outingOriginWindowSeconds`) 동안 최선 후보를 보관하고 창이 끝나면 그것으로 확정한다. 창이 끝났는데 후보가 없으면 첫 후보가 오는 순간 확정한다. 확정 전 상태 행은 "출발점 잡는 중". 세션 첫 fix가 가장 나쁜 fix라는 교훈(A18)과 같은 규칙이다.
 4. 출발점이 확정되면 역지오코딩 1건으로 라벨(도로명 3단 체인, E28 병기 규칙)을 받아 둔다. 실패하면 라벨은 "출발점"이다.
 
 ### 5.2 진행
@@ -65,33 +67,38 @@ GildongmuKit (순수·테스트 대상)                     앱 (I/O만)
 
 ### 5.3 종료 (세 경로)
 - **"나들이 종료" 버튼**: 종료 화면(§8.3)을 남긴다.
-- **안전망**: `sessionIdleStep` 두 축(5분·5분) → 종료 화면. 사유 문장은 도보 안내의 것을 재사용한다.
-- **"출발점으로" 버튼**: 종료 화면 없이 세션을 끝내고 `GuideSession.startBeacon(dest: 출발점, label: 출발점 라벨, kind: .walk)`로 인계한다. 승차 전 도보 인계(A25)와 같은 모양이며, 인계 발화점은 이 버튼 하나뿐이다. 출발점이 아직 확정되지 않았으면 버튼은 `aria-disabled` 상당(비활성 상태를 라벨로 알리고 포커스는 유지)이다.
+- **안전망**: `sessionIdleStep` 두 축(5분·5분) → 종료 화면. 사유 문장은 도보 안내의 `guide.endedIdle`(두 사유를 한 문장으로 말한다)을 재사용한다.
+- **"출발점으로" 버튼**(시트 하단, 그리고 종료 화면 §8.3): 인계는 `GuideSession.acceptOutingReturn()` 한 함수다 — 나들이 세션 종료(claim 동기 해제)·종료 화면 소거 → 인계 컨텍스트 id 저장 → 인계 플래그 아래 `self.startBeacon(dest: 출발점, label: 출발점 라벨, kind: .walk, …)` → 도보 세션의 `.startFailed`만 인계 실패로 소비(§12 프리필). 인계 플래그는 `startBeacon`의 `cancelPrewalk()`가 인계 콜백(`onSessionEnd`)을 지우지 않게 하는 것이다(A25 `launchingPrewalk` 동형). 시트는 `.outing`이 내려가고 도보 시작의 권한 검사 뒤 `.beacon`이 뜬다(같은 모델 계열 인계라 600ms 지연은 두지 않는다 — `acceptCarWalkHandoff` 동형). 출발점이 아직 확정되지 않았으면 버튼은 `aria-disabled` 상당(비활성 상태를 라벨로 알리고 포커스는 유지)이다.
 
 ## 6. 판정 계층 (Kit 순수 함수)
 
-### 6.1 진행축 투영 `outingProject(fix, course, place) -> OutingRelation`
-- 입력: 현재 좌표, 진행 방위(`DerivedCourse` 또는 nil), 장소 좌표.
-- 출력: 종방향 s(m, 진행 방향이 +), 횡방향 t(m, 왼쪽이 −), 직선거리 d, 구획 `ahead | beside | behind`, 좌우 `left | right | unknown`.
-- 구획: s > 10 → ahead, s < −10 → behind, 그 사이 → beside (`outingBesideBandM = 10`).
-- 좌우: 진행 방위가 유효(course 3-state의 `known`: 정확도 45도 이하·0.4m/s 이상·3초 이내)할 때만 `left|right`, 아니면 `unknown`. **정지 상태에서는 마지막 유효 방위를 "마지막 진행 방향"으로 쓰되 좌우는 `unknown`이다**(정지 중 몸이 돌았을 수 있다).
-- 진행 방위 자체가 한 번도 없으면(세션 초반) 구획은 전부 `beside`, 좌우 `unknown`, 방향 행은 "이동 방향 확인 중".
+### 6.1 진행축 투영 `outingProject(fix, heading, place) -> OutingRelation`
+- 입력: 현재 좌표와 정확도, 진행 방위 상태(`OutingHeading`), 장소 좌표.
+- 출력: 종방향 s(m, 진행 방향이 +), 횡방향 t(m, 오른쪽이 +), 직선거리 d, 구획 `ahead | beside | behind`, 좌우 `left | right | unknown`. 부호 규약은 `relativeDirection`(θ>0 = 오른쪽)과 같다.
+- **진행 방위의 원천은 위치 이력 유도(`deriveCourse`의 `DerivedCourse`) 하나다.** 기기 course 게이트(`courseStep`: 정확도 45도·0.4m/s·3초)는 보행 속도에서 입력이 없어 쓰지 않는다. `OutingHeading`은 셋이다: `valid(bearing, U)` = 마지막 표가 10초(`outingHeadingMaxAgeSeconds`) 이내이고 `uncertaintyDeg ≤ 45`이며 `motion == .moving` / `stale(bearing)` = 한 번은 있었지만 그 조건을 잃었다(정지·`speedUnknown`·나이 초과·U 초과 — "마지막 진행 방향") / `none` = 세션에서 한 번도 없었다.
+- 구획: `valid`일 때만 s > 10 → ahead, s < −10 → behind, 그 사이 → beside (`outingBesideBandM = 10`). `stale`·`none`이면 구획은 전부 `beside`다(판정 재료가 없다는 뜻이고 §6.3이 이 fix를 판정에서 뺀다).
+- 좌우: `valid`이고 `|t| > max(fix.accuracy, d·sin U)`일 때만 `left | right`, 아니면 `unknown`. 사슬 불확실성과 GPS 오차가 부호를 뒤집을 수 있는 거리 안에서는 좌우를 말하지 않는다(틀린 좌우는 사용자가 그쪽으로 몸을 틀게 만든다).
+- 방향 행: `none`이면 "이동 방향 확인 중", `stale`이면 "마지막 진행 방향 {8방위}".
 
-### 6.2 재조회 트리거 `outingRequeryStep(lastQueryCoord, fix) -> Bool`
-- 마지막 조회 좌표에서 직선 100m(`outingRequeryDistanceM`) 이상이면 참. 첫 usable fix는 무조건 참.
-- 조회 내용: 둘러보기 `/api/places/around`(500m, 카카오 10종, `limit=50`) + 역지오코딩(도로명). 지하철역 seed·보행 인프라 seed(횡단보도·점자블록·음향신호기)는 앱 안 데이터라 fix마다 직접 판정한다.
-- 조회 실패는 세션을 끊지 않는다. 직전 결과를 유지하고 다음 100m에 다시 시도한다. 세 번 연속 실패하면 방향 행 뒤 절반이 "주변 정보 없음"이 된다(3-state).
+### 6.2 재조회 트리거 `outingRequeryStep(lastQuery, fix) -> Bool`
+- 마지막 조회 좌표에서 직선 100m(`outingRequeryDistanceM`) 이상이면 참. **첫 조회는 출발점 확정 fix에서** 한다(세션 첫 fix는 가장 나쁜 fix다, A18). 확정 전에는 조회하지 않는다.
+- 조회 내용: 둘러보기 `NearbyService.surroundings`(`/api/places/around`, 반경 500m, 카카오 기본 10종, `limit=50`, 지하철역은 이 목록의 `subway`로 온다) + 역지오코딩(`SearchService.reverseGeocode`, 도로명 판정용). 새 라우트·새 응답 필드는 쓰지 않는다.
+- 조회 실패(429 포함)는 세션을 끊지 않는다. 직전 결과를 유지하고 다음 100m에 다시 시도한다. 세 번 연속 실패하면 방향 행 뒤 절반이 "주변 정보 없음"이 된다(3-state). 첫 결과 전은 "주변 확인 중"이다.
 
-### 6.3 지나침 판정 `outingPassByStep(prev: OutingRelation?, cur: OutingRelation, spoken: Set<ID>) -> PassBy?`
-- 조건: 직전 구획이 `ahead`였고 현재 `beside` 또는 `behind`이며 |t| ≤ 40m(`outingPassByLateralM`)이고 아직 말하지 않은 id.
-- 한 fix에 여럿이면 d가 가장 작은 하나만. 나머지는 말하지 않고 조망에만 남는다(다음 fix에 다시 후보가 되지 않도록 `spoken`에 넣는다).
-- 횡단보도만 다르다: 구획이 `ahead`이고 s ≤ 30m(`outingCrosswalkNoticeM`)일 때 **예고**로 한 번 말한다. 안전 정보는 지나친 뒤가 아니라 앞에서 들어야 한다.
-- 도로명 변경: 역지오코딩 도로명이 직전과 다르면 한 번.
+### 6.3 지나침 판정 `outingPassByStep(prev, cur, spoken) -> PassBy?`
+- 후보 조건: 이 장소의 직전 관계(`prev`, place id 키)와 현재 관계가 **둘 다 방위 `valid`에서 계산됐고**, 직전 구획이 `ahead`였고 현재 `beside` 또는 `behind`이며, |t| ≤ 40m(`outingPassByLateralM`)이고, 아직 말하지 않은 id.
+- 판정하지 않는 fix(관계만 갱신하고 후보를 내지 않는다): 방위가 `valid`가 아닌 fix, 직전 판정 fix 대비 진행 방위가 45도 넘게 바뀐 fix(모퉁이·되돌아섬 — 180° 반전이면 앞의 전부가 뒤로 넘어간다). 방위를 잃었다 되찾은 첫 fix도 직전 관계가 `valid`가 아니므로 후보가 없다.
+- 한 fix에 여럿이면 d가 가장 작은 하나만 말한다. 나머지는 말하지 않고 조망에만 남는다(`spoken`에 넣어 다음 fix에 다시 후보가 되지 않게 한다).
+- `prev`·`spoken`은 place id 키로 재조회를 넘어 보존한다. 새 목록에서 빠진 id도 지우지 않는다(세션 동안 수백 건 규모).
+- 횡단보도 예고는 **1차 범위에서 뺐다**. `/api/walk/nearby`는 횡단보도·음향신호기를 거리와 8방위로만 주고 좌표를 싣지 않아 투영이 성립하지 않는다(`crossingSignal`은 차량 신호등이지 음향신호기가 아니다). 근사로 "앞에 횡단보도"를 말하면 안전 정보의 거짓 단정이 된다. 서버 좌표 옵트인 계약 뒤의 후속으로 §15에 둔다.
+- 도로명 변경(`outingRoadNameStep`): 역지오코딩 주소 문자열에서 도로명 토큰(ko `…로`·`…길`·`…대로` 뒤 건물번호, en `…-ro`·`…-gil`·`…-daero`)을 뽑는다. 토큰이 없는 응답(지번 폴백)은 판정에 쓰지 않는다. 직전 확정 도로명과 다른 값이 **두 번 연속** 오면 확정하고 한 번 말한다(도로명·지번 사이 왕복 방지). 세션 첫 확정은 말하지 않는다(출발점 문장이 그 자리를 말한다).
 
-### 6.4 이정표 분류 `outingLandmarkTier(place) -> .landmark | .shop`
-- landmark: 지하철역(seed), 학교(`SC4`), 공공기관(`PO3`), 병원(`HP8`), 관광명소(`AT4`, 공원 포함), 횡단보도(OSM crossing), 도로명 변경.
-- shop: 그 밖의 카카오 18종 전부(편의점·카페·음식점·은행·약국·마트·주차장 등).
-- 표는 코드 상수 하나이고 실보행 판정으로 조정한다. 판정 축은 원문 카테고리 코드만(이름 부분 문자열 금지).
+### 6.4 이정표 분류 `outingLandmarkTier(category) -> .landmark | .shop`
+- 판정 축은 둘러보기 응답의 카테고리 키(카카오 category_group_code의 투영) 하나다. 이름 부분 문자열로 가르지 않는다.
+- landmark: 지하철역(`subway`), 공공기관(`public`), 병원(`hospital`), 관광명소(`attraction`), 그리고 도로명 변경.
+- shop: 그 밖의 둘러보기 키 전부(편의점·음식점·카페·은행·약국·마트).
+- 학교(`SC4`)는 둘러보기 기본 10종에 없어 후보가 오지 않는다. 공원은 카테고리 코드 검색에 잡히지 않는다(대표 명소만 AT4). 둘 다 §15 열린 판정이다.
+- 표는 코드 상수 하나이고 실보행 판정으로 조정한다.
 
 ### 6.5 10m 비프 `outingDistanceToneStep(prevMeters, curMeters) -> Int`
 - 만보계 거리가 10m 경계(`outingBeepIntervalM`)를 넘은 횟수를 돌려준다(한 콜백에 20m가 오면 2). 앱은 그 수만큼이 아니라 **1회만** 재생한다(연타 방지). 표시 행의 10m 양자화와 같은 함수를 지난다.
@@ -100,7 +107,7 @@ GildongmuKit (순수·테스트 대상)                     앱 (I/O만)
 ## 7. 낭독·소리
 
 ### 7.1 톤
-- 새 톤 `BeaconTone.stroll`: 기존 15개와 구분되는 낮고 짧은 편안한 음. `scripts/build-guide-tones.py`로 결정론 합성해 `guide-stroll.mp3`로 번들. 게인 표에 한 줄 추가. 햅틱은 `TrendHaptics` 설정을 따르되 기본은 진동 없음.
+- 새 톤 `BeaconTone.stroll`: 기존 톤과 구분되는 낮고 짧은 편안한 음. `scripts/build-guide-tones.py`로 결정론 합성해 앱 `guide-stroll.mp3`와 웹 `public/sounds/guide/stroll.mp3`(바이트 동일, `sounds-drift.test.ts`)로 둔다. 웹 재생기 등록은 웹 이식 때. 게인 표에 한 줄 추가, 햅틱 switch에 한 갈래. 햅틱은 `TrendHaptics` 설정을 따르되 기본은 진동 없음(`hapticIsOptIn` 집합에 더한다 — Kit·`:kit` 테스트 갱신). 안드로이드 `:kit` `BeaconTone` 케이스도 함께 늘린다(Swift 원본 대조 테스트).
 - 정지 톤(`tick`)은 나들이에서 내지 않는다. 멈춤이 정상이다.
 - `unreliable`(fix 8초 두절 워치독)은 그대로 낸다. 이정표 판정이 서지 않는다는 뜻이다.
 - 시작·종료 톤은 도보 안내와 같다.
@@ -108,15 +115,16 @@ GildongmuKit (순수·테스트 대상)                     앱 (I/O만)
 ### 7.2 문장 (한 문장에 한 장소, 1문장 1행동 원칙)
 정본은 문자열 자원이다. 아래는 설계 시점 문형이다.
 - 지나침: "왼쪽에 GS25 길동점" / 좌우 모름이면 "옆에 GS25 길동점".
-- 횡단보도 예고: "앞에 횡단보도 30m" + 음향신호기가 있으면 ", 음향신호기 있음". 신호 유무를 모르면 그 말을 붙이지 않는다(단정 금지).
 - 도로명 변경: "천호대로에 들어섰습니다".
 - 시작: "나들이 시작". 출발점 확정 시 "출발점 {라벨}".
 - 세 단계: 끔은 위 문장을 전부 내지 않고 비프·시작·종료만. 이정표만은 landmark 등급만. 전부는 두 등급 모두.
 
 ### 7.3 백그라운드
-- 문장은 `TtsPlayer.speakGuidance`(기기 음성)로 낸다. VoiceOver 통지는 화면이 꺼지면 안 나오지만 기기 음성은 승격된 오디오 세션 위에서 나온다(자동차 운전자 모드 실측).
+- 백그라운드(그리고 전경이지만 VoiceOver가 꺼진 경우) 문장은 `TtsPlayer.speakGuidance`(기기 음성)로 낸다. VoiceOver 통지는 화면이 꺼지면 안 나오지만 기기 음성은 승격된 오디오 세션 위에서 나온다(자동차 운전자 모드 실측).
 - 이것은 "백그라운드는 소리만, 음성은 억제"(spec 2026-08-08)의 **명시 예외**다. 그 원칙의 근거는 "다음 fix가 다시 말해 준다"인데 지나침은 한 번뿐이라 성립하지 않고, 나들이는 주변을 듣는 것이 목적이다. 끔 단계를 고르면 원칙과 같아진다.
-- 화면이 켜져 있을 때도 같은 채널(기기 음성)을 써서 두 경로가 갈리지 않게 한다. 톤 직후 문장은 `speechDeferStep`으로 미룬다.
+- **전경 ∧ VoiceOver 실행 중이면 VoiceOver 창구(`announce`)로 낸다.** 기기 음성과 VoiceOver가 동시에 말하면 두 목소리가 겹친다(시트를 VoiceOver로 탐색하는 중에 지나침 문장이 온다). 문장 조립은 한 함수이고 채널 선택만 게시 시점에 갈린다(`scenePhase`·`isVoiceOverRunning` 조회).
+- 기기 음성 경로는 선점(latest-wins)이 아니라 **대기 한 칸**이다: 말하는 중에 새 문장이 오면 대기 칸에 두고(칸에 있던 옛 문장은 버린다), 끝나면 낸다. 톤 직후 문장은 `speechDeferStep`으로 미룬다(VoiceOver 창구는 기존 지연 슬롯이 그대로 한다).
+- 종료 문장을 기기 음성으로 낼 때는 오디오 원복을 발화 길이만큼 미룬다(`endSession(holdSeconds:)`, 운전자 채널 선례).
 - 받아쓰기 중 억제는 `GuideSession.setDictationActive` 소유자 집합에 나들이를 더한다.
 
 ## 8. 화면
@@ -125,9 +133,10 @@ GildongmuKit (순수·테스트 대상)                     앱 (I/O만)
 1. 제목 행 "나들이" + 접기 버튼(`GuideTitleRow` 재사용, 메뉴 없음).
 2. **주변 낭독 행**: "주변 낭독, 이정표만". 누르면 끔·이정표만·전부 메뉴. 값은 `@AppStorage`로 저장(기본값 이정표만).
 3. **"주변 보기" 버튼**: §8.2 조망 시트.
-4. **걸은 거리 행**(착지 대상, E38 상태 문장 규칙): "걸은 거리 320m". 10m 양자화. 만보계 권한 없음이면 "걸음 측정 권한이 없습니다". 출발점 확정 전에는 "출발점 잡는 중".
-5. **방향 행**: "앞에 길동역 2번 출구 120m, 북동쪽으로 이동 중". 정지면 "…, 마지막 진행 방향 북동쪽". 앞쪽 landmark가 없으면 "앞에 이정표 없음, …". 방위 미확정이면 "이동 방향 확인 중" 한 줄.
-6. 최하단 고정(`safeAreaInset`): "출발점으로"(기본 강조), "나들이 종료".
+4. **상태 행**(착지 대상, E38 상태 문장 규칙): 이벤트로만 바뀐다 — "출발점 잡는 중" → "출발점 {라벨}". 거리처럼 10m마다 바뀌는 값을 착지 행에 두면 커서가 머무는 동안 VoiceOver가 바뀔 때마다 다시 읽는다.
+5. **걸은 거리 행**: "걸은 거리 320m". 10m 양자화. 만보계 권한 없음·값 없음이면 "걸음 측정 정보 없음".
+6. **방향 행**: "앞에 길동역 120m, 북동쪽으로 이동 중". 정지·방위 상실이면 "…, 마지막 진행 방향 북동쪽". 앞쪽 landmark가 없으면 "앞에 이정표 없음, …". 방위를 한 번도 못 얻었으면 "이동 방향 확인 중" 한 줄. 뒤 절반이 주변 상태(§6.2)면 "주변 확인 중"·"주변 정보 없음"·"이 지역 정보 없음". 거리는 10m 양자화.
+7. 최하단 고정(`safeAreaInset`): "출발점으로"(기본 강조), "나들이 종료".
 
 원칙: 버튼은 위, 실시간 갱신 정보는 아래(위원장 판정). 착지는 상태 문장 행이고 버튼은 위로 한 번 쓸면 닿는다.
 
@@ -141,7 +150,8 @@ GildongmuKit (순수·테스트 대상)                     앱 (I/O만)
 - 조망 안 착지·닫힘 뒤 후속은 기존 `pendingFollowUp` 계약.
 
 ### 8.3 종료 화면
-- `arrivalSection`의 걸음·거리·kcal·음식 비유·체중 권유 행을 재사용하고, 헤더는 "나들이 종료" + 종료 사유 문장(사용자 종료 / 위치 두절 / 무이동). 목적지 라벨·주변 확인 섹션은 없다.
+- 헤더는 "나들이 종료", 첫 행은 종료 사유 문장(사용자 종료 / 안전망 `guide.endedIdle`). 걸음·kcal·음식 비유·체중 권유 행은 도보 종료 화면과 같은 판정·같은 문자열(`WalkHealth`, `BeaconTrackingSheet.foodLine`)로 만든다(`arrivalSection`은 `BeaconModel`에 결박돼 있어 뷰째 재사용하지 않는다). 목적지 라벨·주변 확인 섹션은 없다.
+- **"출발점으로" 버튼**을 남긴다(출발점이 확정됐을 때만). 무이동 5분으로 끝난 뒤에도 귀환 수단을 잃지 않게 한다. 걸음 요약이 없어도(만보계 거부·50m 미만) 이 버튼이 있으면 화면을 남기고, 둘 다 없으면 화면 없이 닫힌다(도보 `stopLeavingSummary` 동형).
 - "닫기"가 유일한 소거 경로(`clearArrival` 상당). 백그라운드 뒤 30분 만료 규칙도 같다.
 
 ### 8.4 진입점
@@ -151,7 +161,8 @@ GildongmuKit (순수·테스트 대상)                     앱 (I/O만)
 ## 9. 기존 도보 안내 변경 (동반 변경)
 
 - `sessionIdleNoFixSeconds` 600 → **300**, `sessionIdleStationarySeconds` 1200 → **300**. Kit `SessionIdle.swift` ↔ 웹 `session-idle.ts` ↔ 안드로이드 `:kit` `SessionIdle.kt` 세 벌과 공유 fixture `session-idle-scenarios.json`을 함께 고친다(세 미러 모두 그 fixture를 읽는다).
-- 자동차는 `sessionIdleStationaryAxis`가 무이동 축을 끄고 있으므로 영향은 두절 축(10분 → 5분)뿐이다. 대중교통은 이 함수를 쓰지 않는다.
+- 자동차는 `sessionIdleStationaryAxis`가 무이동 축을 끄고 있으므로 영향은 두절 축(10분 → 5분)뿐이다. 대중교통은 이 함수를 쓰지 않는다. 승차 전 도보(prewalk)는 안전망이 돌지 않는다(`maybeEndIdleSession` 가드).
+- ⚠ 무이동 300초는 도보 도착 추정 제자리 300초와 같은 값이다. 안전망 앵커(25m)의 시계는 도착 추정 앵커(10m)보다 늘 같거나 앞서므로, 그대로 두면 목적지 앞에서 5분 선 사용자가 추정 도착 대신 안전망 종료를 듣는다. 무이동 축은 **도착 창 밖에서만** 판정한다(`BeaconModel.maybeEndIdleSession`·안드로이드 `WalkGuideModel` 가드, 두절 축은 그대로). 이 가드는 이 마일스톤 세션의 소유권 밖이라 코디네이터 판정으로 넘겼다.
 - 위원장 판정(2026-09-26)이므로 실보행 재판정 대기 없이 확정값이다.
 
 ## 10. 상수 (잠정, 실보행 전까지)
@@ -163,14 +174,15 @@ GildongmuKit (순수·테스트 대상)                     앱 (I/O만)
 | `outingOverviewRadiusM` | 50 | 조망 반경(앞·뒤 대역) |
 | `outingBesideBandM` | 10 | 옆 판정 종방향 대역 |
 | `outingPassByLateralM` | 40 | 지나침 낭독 횡거리 상한 |
-| `outingCrosswalkNoticeM` | 30 | 횡단보도 예고 거리 |
+| `outingCrosswalkNoticeM` | 30 | 횡단보도 예고 거리(1차 미구현, §6.3) |
+| `outingHeadingMaxAgeSeconds` | 10 | 유도 방위 표의 유효 나이(§6.1, 리뷰 반영으로 추가) |
 | `outingOriginWindowSeconds` | 30 | 출발점 확정 창 |
 | `sessionIdleNoFixSeconds` | 300 | 안전망 위치 두절(도보 공통) |
 | `sessionIdleStationarySeconds` | 300 | 안전망 무이동(도보 공통) |
 
 ## 11. 비용·쿼터
 
-- 1km 산책: 재조회 약 10회 × (카카오 10건 + 역지오코딩 1건) ≈ 110건, 조망 열기 1회당 카카오 10건. 카카오 로컬 일 30만(dodo 공유) 대비 무시 가능. seed 판정은 서버 호출 0.
+- 1km 산책: 재조회 약 10회 × (카카오 10건 + 역지오코딩 1건) ≈ 110건, 조망 열기 1회당 카카오 10건. 카카오 로컬 일 30만(dodo 공유) 대비 무시 가능.
 - 둘러보기 캐시(300초, 좌표 키)는 걷는 중 거의 맞지 않는다. 기대하지 않는다.
 - 카카오 초과 요금 기록이 `usage-probes.mjs`("오류")와 `INTEGRATIONS.md`("건당 10원")에서 충돌한다. 착수 세션이 콘솔로 확인해 한쪽을 고친다.
 
@@ -178,7 +190,7 @@ GildongmuKit (순수·테스트 대상)                     앱 (I/O만)
 
 - 위치 권한 거부·대략적 위치: 도보 안내와 같은 거절 문장, 세션 시작 안 함.
 - 만보계 권한 거부: 세션은 시작하되 거리 행이 사유를 말하고 비프 없음. 종료 화면의 걸음·kcal 행도 없음.
-- 주변 조회 실패: 세션 유지, 직전 결과 유지, 3회 연속 실패 시 방향 행 뒤 절반 "주변 정보 없음".
+- 주변 조회 실패(429 포함): 세션 유지, 직전 결과 유지, 3회 연속 실패 시 방향 행 뒤 절반 "주변 정보 없음".
 - 한국 밖: 둘러보기가 `outOfCoverage`를 주면 방향 행 뒤 절반 "이 지역 정보 없음", 비프·거리는 계속.
 - 출발점 라벨 역지오코딩 실패: 라벨 "출발점", 귀환 안내는 좌표로 정상 동작.
 - "출발점으로" 인계 중 도보 안내 시작이 거절되면(권한·좌표) 나들이 세션은 이미 끝난 뒤이므로 도보 안내의 실패 문장이 그대로 들리고 종료 화면은 남지 않는다. 사용자는 길찾기 탭에서 출발점 라벨을 검색할 수 있게, 인계 실패 시 도착지 필드에 출발점을 프리필한다(`DirectionsPrefill`).
@@ -186,15 +198,16 @@ GildongmuKit (순수·테스트 대상)                     앱 (I/O만)
 ## 13. 접근성 계약 (헌장 위에 이 화면 고유)
 
 - 한 줄 한 객체: 거리 행·방향 행·조망 항목 전부 단일 텍스트. 좌우·거리·방위는 쉼표로 잇는다.
-- 통지는 기기 음성 한 채널. VoiceOver 통지는 세션 시작·종료·거절·인계 고지 네 곳만(`announce` 창구).
-- 착지: 시트 열림 → 걸은 거리 행. 조망 열림 → 첫 구획 헤딩. 종료 화면 → 헤더.
+- 주변 문장(지나침·도로명·출발점)은 §7.3의 채널 선택을 지난다. 그 밖의 VoiceOver 통지는 세션 시작·종료·거절·인계 고지 네 곳과, 도보 안내와 같은 상태 통지(소리 무음·백그라운드 무음·위치 신호 약함·권한 상실)뿐이다. 상태 통지는 전경 VoiceOver 창구로만 낸다(도보 안내 동형).
+- 착지: 시트 열림 → 상태 행. 조망 열림 → 머리글(시스템 헤더 착지). 종료 화면 → 사유 문장 행.
 - 시트 순서를 바꾸면 그 자리를 지나는 포커스 점프를 함께 점검한다(PATTERNS 규칙).
 - "출발점으로"가 미확정 상태일 때는 포커스를 제거하는 `disabled`가 아니라 라벨 변화("출발점 잡는 중")로 알린다.
 
 ## 14. 테스트
 
-- **게이트(Kit 단위)**: `outingProject`(방위 유효·무효·정지, 경계값 ±10m), `outingPassByStep`(ahead→beside 전이, 횡거리 40m 경계, 중복 억제, 동시 후보 최근접 선택, 횡단보도 예고), `outingRequeryStep`(100m 경계, 첫 fix), `outingDistanceToneStep`(10m 경계·20m 점프·역행 0), `outingLandmarkTier`(코드 표), `sessionIdleStep` 상수 변경(웹·Kit fixture 동조).
-- **소스 가드**: `guidance-gate-drift.test.ts` 호출 수 갱신(`startOuting` 1곳 + 인계 `startBeacon` 1곳), 좌우 표현이 `outingProject`의 `left|right`에서만 나오는지(문자열 조립 지점 1곳), `TitleMenu` 항목 수.
+- **게이트(Kit 단위)**: `outingProject`(방위 valid·stale·none, 경계값 ±10m, U·정확도 경계에서 좌우 unknown), `outingPassByStep`(ahead→beside 전이, 횡거리 40m 경계, 중복 억제, 동시 후보 최근접 선택, 방위 상실 fix에서 0, 180° 반전·45도 초과 회전 fix에서 0), `outingRequeryStep`(100m 경계, 첫 조회), `outingOriginStep`(수용 즉시·창 끝 최선·후보 없음 대기·100m 초과 배제), `outingRoadNameStep`(토큰 추출 ko·en, 지번 무시, 2회 확정, 첫 확정 무발화), `outingDistanceToneStep`(10m 경계·20m 점프·역행 0), `outingLandmarkTier`(코드 표), `sessionIdleStep` 상수 변경(웹·Kit·`:kit` fixture 동조).
+- **소스 가드**: `guidance-gate-drift.test.ts` 호출 수 갱신(`startOuting` 진입 호출 + `GuideSession` 안 인계 `self.startBeacon` 1곳), 좌우 문구 키는 `OutingProjection`의 `left|right` 판정 결과를 받는 한 함수에서만 쓰인다, `TitleMenu` 항목 수, 새 Kit 파일의 `android/kit/mirrors/guide.json` 등재(`mirror-registry.test.ts`).
+- **계측(실험판 전용 — `guideDiagLog`는 `DEBUG || EXPERIMENTAL`)**: `outingOrigin acc= window=` · fix당 `outingFix t= lat= lng= acc= motion= heading= U=` · `passBy id= tier= s= t= side= d=` · `requery reason= n= fail=` · `roadName value= confirmed=` · `outingSpeak channel= text=` · `outingEnd reason=`. 실보행은 `CONFIGURATION=Experimental`로 한다.
 - **실기기 실보행(머지 뒤 판정 게이트)**: `docs/FIELD-TEST.md`에 대본 추가. 판정 항목은 §1 성과 지표 둘 + 상수 9종 적절성 + 세 단계 낭독 밀도 + 백그라운드 음성 가청 + "출발점으로" 인계.
 
 ## 15. 열린 판정 (실보행 뒤)
@@ -203,6 +216,10 @@ GildongmuKit (순수·테스트 대상)                     앱 (I/O만)
 - 상수 9종.
 - "전부" 단계에서 번화가 낭독 밀도가 견딜 만한가. 견디기 어려우면 같은 fix의 후보 1개 규칙 위에 최소 발화 간격을 더한다.
 - 웹·안드로이드 이식 착수 여부(`PORTS.md`).
+- 횡단보도 예고·음향신호기 병기: `/api/walk/nearby` 좌표 옵트인(횡단보도 노드 `lat·lng·crossingSignal`, 음향신호기 격자점 `lat·lng·deviceCount`) 계약을 먼저 만들고(푸시 동결 해제 뒤, 웹 배포가 앱보다 먼저), 예고는 `ahead ∧ s ≤ 30 ∧ |t| ≤ 15`에서 수치 없는 "앞에 횡단보도", 음향신호기는 횡단보도 노드와 격자점이 20m 안일 때만.
+- 학교(`SC4`)·공원을 이정표로 쓸지(둘러보기 조회 세트 밖이라 서버 `groups` 옵트인 또는 키워드 원천이 필요하다).
+- 자동차 두절 300초를 도보와 분리할지(7분급 장대터널, 리뷰 M14 제품 판정 이의).
+- 무이동 5분이 "멈춤이 정상"(§7.1)과 양립하는가(리뷰 M6 제품 판정 이의. 값은 유지하고 종료 화면 "출발점으로"로 완화했다).
 
 ## 16. 구현 순서 (착수 세션용 요지)
 
