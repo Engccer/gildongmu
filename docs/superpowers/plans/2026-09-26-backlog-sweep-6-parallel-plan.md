@@ -10,6 +10,7 @@
 - 스토어 iOS는 1.18, 1.19는 심사 취소 상태(빌드 27, 재제출은 동결 해제 뒤). 이번 웨이브의 iOS 변경은 1.19 아카이브(`2903e8e3`) 뒤 코드라 다음 릴리스에 실린다.
 - `npx tsc --noEmit`·`npm run test:run` 기준선은 첫 worktree에서 한 번 돌려 `~/.claude/parallel-sessions/gildongmu/baseline-<sha12>.log`에 남긴다(동결이라 `prepare-worktrees.sh`를 못 쓰고 손으로).
 - SessionStart doc-audit 신호 2건: PROGRESS `DEVELOPER_REJECTED`는 ASC 상태 문자열(코드 심볼 아님, 오탐), BACKLOG `OutingModel`은 E51 spec의 예정 심볼(이번 웨이브 `outing`이 만든다). 둘 다 웨이브 2 `doc-audit`이 마무리.
+- **정정(2026-09-26 19:05, a11y-gate 보고로 확인)**: 위 "playwright 브라우저가 `~/Library/Caches/ms-playwright`에 이미 있다"는 착수 시점에 거짓이었다 — 코디네이터가 계획을 쓴 뒤 디스크 정리에서 그 캐시를 지웠다(§0 디스크 항목). 세션이 chromium-headless-shell 약 95MB를 내려받아 해결했고 영향은 없다.
 - 실물 대조(코디네이터, `de22b91a`): E51 spec이 지목한 재사용 부품은 전부 있다 — Kit `SessionIdle.swift`·`GuideSessionCoordinator.swift`·`BeaconTones.swift`, 앱 `TitleMenu.swift`·`GuideTitleMenu.swift`·`GuideOverviewSheet.swift`·`BeaconModel.swift`, 웹 `session-idle.ts` + fixture `session-idle-scenarios.json`(웹·Kit·`:kit` 세 테스트가 읽는다), `scripts/build-guide-tones.py`, 소리 번들 `ios/Gildongmu/Resources/Sounds/guide-*.mp3`. A49의 즉폴 자리는 `useTransitGuide.ts`에 `void pollOnce()` 호출 12곳, 그중 `repollRef`를 세우는 곳은 2곳(`pickAboardStation`·A48 `changeBoardingAt`)이다. E47-1의 저장 응답 재사용 선례는 `verify-odsay-alternatives.mjs`(`--from-corpus`, 원본 읽기 전용·호출 0)이고 실제 corpus는 `~/gildongmu-private/probes/odsay-alternatives-2026-09-24/`에 있다. webfortd 원본은 `~/Mac-Projects/webfortd/tests/a11y/`(7파일 590줄) + `playwright.config.ts`.
 
 ## §1. 마일스톤·확정 판정·모델 배정
@@ -28,7 +29,9 @@
 **코디네이터 판정(제품 판단이 아닌 설계 사항)**:
 
 - **E51 범위**: spec §16 순서 그대로. 1차는 iOS 정식 코드 경로(실험 봉인 아님, 위원장 판정). §9 안전망 상수는 웹 `session-idle.ts` ↔ Kit `SessionIdle.swift` ↔ `:kit` `SessionIdle.kt` + 공유 fixture를 **한 커밋으로 먼저** 닫는다(세 미러의 테스트가 같은 fixture를 읽는다). 새 Kit 파일은 `android/kit/mirrors/guide.json`에 `pending`으로 등재(`mirror-registry.test.ts`). 웹·안드로이드 나들이 UI는 범위 밖(`PORTS.md`에 `[open]` 등록은 `outing`이 통합 보고 뒤 코디네이터가 한다). spec §11의 카카오 초과 요금 기록 충돌은 콘솔 확인이 되면 고치고, 안 되면 보고 파일에 남긴다(브라우저 자동화가 막히면 그 자리에서 멈추지 말 것). spec의 "리뷰 게이트 판정" 절 아래에 fable 리뷰 결과·반영 판정을 남긴다.
-- **E51 진입점 ②**(길찾기 탭에서 도착지 없이 조회 → 나들이 시작)는 `DirectionsTabView.swift`의 `needEndpoints` 거절 자리 한 곳만 만진다. `BeaconModel.swift`는 만지지 않는다(spec §4 "별도 모델"). 인계 실패 프리필(§12)은 `DirectionsPrefill` 기존 경로 재사용.
+- **E51 진입점 ②**(길찾기 탭에서 도착지 없이 조회)는 `DirectionsTabView.swift`의 `needEndpoints` 거절 자리 한 곳만 만진다. ▶ **정정(2026-09-26 19:30, 위원장 판정 — spec fable 리뷰 M13 수용)**: 자동 시작이 아니라 **거절 통지("도착지를 입력하세요") 유지 + 그 자리에 "나들이 시작" 버튼 행**이다(도착지를 깜박 잊은 조회와 구분이 안 돼 실수로 세션이 켜지는 것을 막는다). spec §8.4를 그렇게 고친다. 상단 메뉴의 "나들이 시작"은 그대로. 인계 실패 프리필(§12)은 `DirectionsPrefill` 기존 경로 재사용.
+- **E51 소유권 정정(2026-09-26 19:30, outing 반박 재현)**: `BeaconModel.swift` 금지는 **한 자리 예외로 푼다** — §9 무이동 300초가 도보 추정 도착의 제자리 300초와 같아져 `maybeEndIdleSession`(안전망, `handle(fix:)`에서 추정 도착보다 먼저 호출)이 도착 창 안에서 추정 도착을 선점한다(코디네이터가 코드 순서로 확인). 무이동 축을 도착 창 밖에서만 판정하는 가드 1줄 + 안드로이드 `WalkGuideModel.kt` 동형 1줄 + 소스 가드를 `outing`이 한 커밋으로 넣는다(`ios-small`은 `fallbackToBrief`만 만져 겹침 없음). `BeaconModel.swift:2236` "fix 두절 10분" 주석도 같은 커밋.
+- **E51 spec 전제 정정(2026-09-26 19:30, outing 보고)**: spec §6.2의 "보행 인프라 seed는 앱 안 데이터"는 거짓이다 — 횡단보도·음향신호기는 서버 `/api/walk/nearby`가 거리·8방위만 준다(좌표 없음). 판정: **서버에 좌표 옵트인 파라미터를 additive로 열고 앱이 그것을 쓴다**(같은 세션, 같은 마일스톤). 공통 계약의 "새 서버 동작 의존 금지"는 스토어에 있는 앱(1.18)을 지키는 규칙이고, 나들이 코드는 웹 배포 뒤에야 릴리스되므로(CLAUDE.md "웹 배포가 앱보다 먼저") 해당하지 않는다. 안전 정보(횡단보도 예고)를 1차에서 빼지 않는다. 범위가 넘치면 그때 BACKLOG 잔여로 보고.
 - **A49**: 즉폴 호출 자리 전수에서 즉폴 앞에 `repollRef.current = inFlightRef.current`를 세우는 것을 **한 헬퍼**(예: `requestImmediatePoll()`)로 뽑아 12곳이 같은 함수를 지나게 한다(복붙 12개 금지). 테스트는 "in-flight 폴이 있을 때 국면 전이 뒤 첫 조회가 in-flight 완료 직후에 나간다"를 여섯 진입점 중 대표 2곳 + 헬퍼 단위로.
 - **A47(웹·iOS 공통 계약)**: 전이의 **출처**로 가른다 — 사용자 입력 유래 전이(버튼 누름: `confirmBoarded`·`boardAboardCandidate`·`board`·`completeOrAdvance`·`declareArrived` 등 **누른 버튼이 사라지는** 것)만 상태 문장 행(`SheetControl.status` ↔ 웹 `landingTarget` status)에 착지, 관측 유래 전이(폴 응답으로 승격)는 지금처럼 착지 없음. 웹은 `small-6`, iOS는 `ios-small`이 각자 플랫폼에서 구현하고 `transit-landing-guard.test.ts`의 허용 집합과 CLAUDE.md "boarding 국면의 선언 버튼" 줄·`docs/PATTERNS.md` 같은 절을 **자기 플랫폼 문장만** 고친다. ⚠ 착지 테스트는 누르기 전에 그 버튼으로 커서를 옮긴다(`clickFocused`, E38 함정).
 - **N4 경유지 포기 문장(웹·iOS 공통, 위원장 확정값은 §1-1)**: 원인절을 뺀 문형으로 통일하고, 웹 `useRouteGuide.ts` 1898행의 `degradeMessage(failure) + viaDropped` 연결은 강등 사유가 `unavailable`일 때 **강등 문장을 대체**(두 "안내합니다" 제거), 그 밖의 사유(`retryable`·`noLocation`)에는 붙이지 않는다(현행 유지). iOS `BeaconModel.fallbackToBrief`는 `key == "guide.detailUnavailable"`일 때만 같은 대체, 다른 키에는 경유지 문장을 붙이지 않는다(a11y 감사 2026-09-24 "거짓 원인" 종결). es·fr·it의 경유지 낱말은 `addVia`와 같은 낱말로. ko 조사는 `{label}` 뒤 "은/는"이 아니라 조사 없는 문형을 우선한다(E45·N4 선례: 이름 뒤 조사 고정 금지).
@@ -41,7 +44,7 @@
 
 TextEdit 왕복으로 확정한 뒤 여기 ko 원문 그대로 적는다. 확정 전에는 `small-6`을 띄우지 않는다(`ios-small`은 웨이브 2라 자연히 뒤).
 
-- (확정 대기)
+- ✅ **확정(2026-09-26, TextEdit 왕복, 위원장이 시안 3을 직접 고침)** — ko 원문: `경유지({label})를 포함한 경로를 찾지 못했습니다. 경유지 없이 목적지({dest})로 안내합니다.` 괄호로 이름을 싸서 조사가 이름과 무관하게 고정된다(`경유지(…)를`·`목적지(…)로`). 웹 `directions.viaDropped`는 `{label}`·`{dest}` 두 인자를 받고 강등 사유 `unavailable`일 때 `degradedUnavailable`을 **대체**한다(붙이지 않는다). iOS `ios.guide.waypointDropped`도 같은 문형·두 인자, `guide.detailUnavailable` 갈래에서만 대체. 다른 로케일은 이 ko 문형의 뜻을 옮기되 이름은 괄호 안에(조사 문제가 없는 언어는 괄호를 빼도 된다). "방향과 거리로"는 뺀다(상시 표시 `degradedNote`가 그 사실을 이미 말한다).
 
 ## §2. 파일 소유권 지도
 
