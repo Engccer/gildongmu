@@ -68,3 +68,7 @@ docs/research/_internal/
 
 # 실기기 계측 로그(iOS guide-diag*·안드로이드 동형)는 커밋하지 않는다 — 원본은 ~/gildongmu-private/field-logs/
 guide-diag*.log*
+
+# playwright (a11y 게이트 산출물)
+/playwright-report/
+/test-results/

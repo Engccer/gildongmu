@@ -1,0 +1,15 @@
+{
+  "_comment": "화면별 serious 위반 baseline. axe-helper.ts가 신규 회귀 차단에 쓴다. 신규 rule·증가는 fail, 감소는 권고. 키는 정적 라우트 문자열 또는 상태 화면 이름, 값은 {ruleId: count}.",
+  "_update": "자동 갱신 스크립트 없음. 개선 로그를 보고 이 파일을 직접 수정한다.",
+  "routes": {
+    "/ko": {},
+    "/en": {},
+    "/ko/about": {},
+    "/ko/privacy": {},
+    "/ko/offline": {},
+    "search-results": {},
+    "place-detail": {},
+    "nearby-hub": {},
+    "directions-result": {}
+  }
+}

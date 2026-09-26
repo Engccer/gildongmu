@@ -12,6 +12,7 @@
     "lint": "eslint",
     "test": "vitest",
     "test:run": "vitest run",
+    "test:a11y": "playwright test",
     "test:ab": "vitest run --config vitest.ab.config.ts",
     "eval:ab": "vitest run --config vitest.ab.config.ts",
     "eval:ab:report": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON src/__ab__/report-cli.mts"
@@ -32,6 +33,8 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.3",
