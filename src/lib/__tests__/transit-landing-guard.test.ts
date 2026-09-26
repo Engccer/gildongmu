@@ -102,30 +102,44 @@ describe("TransitTrackingSheet 착지 대상 (E38) · boarding 수동 진행 (N3
   it("국면 전이 착지는 상태 문장이 기본이고 예외는 차량 선택 목록 하나다(E38)", () => {
     const start = SHEET.indexOf("private func phaseTransitionLanding(");
     expect(start, "전이 착지 판정 함수가 없다").toBeGreaterThan(-1);
-    const body = SHEET.slice(start, SHEET.indexOf("\n    }", start));
+    const body = SHEET.slice(start, SHEET.indexOf("\n    }\n", start));
     // 본문에 나오는 착지 대상은 둘뿐이다 — 종전처럼 전이마다 다음 행동 버튼을 고르는 자리로 돌아가면
     // 여기서 걸린다(반환형만으로는 잠기지 않아 가드가 그 자리를 대신한다).
     const targets = [...body.matchAll(/return (?:controlExists\(\.\w+\) \? )?\.(\w+)(?: : \.(\w+))?/g)]
       .flatMap((m) => [m[1], m[2]])
       .filter((t): t is string => Boolean(t));
     expect([...new Set(targets)].sort()).toEqual(["status", "waitingLabel"]);
-    for (const t of [
-      "if phase == .arrived { return .status }",
-      "if phase == .boarding, previous == .waiting { return .status }",
-      "if phase == .riding, previous == .waiting { return .status }",
-      // →waiting만 예외: 도착하는 화면이 차량 선택 목록이라 그 질문 라벨에 앉는다(위원장 판정 2026-09-12).
-      // 목록이 서지 않는 갈래엔 라벨이 없으므로 기본값으로 떨어진다(안 그러면 착지도 폴백도 없다).
-      "return controlExists(.waitingLabel) ? .waitingLabel : .status",
-    ]) {
-      expect(body, t).toContain(t);
-    }
-    // ⚠ boarding → riding은 여전히 착지가 아니다(N3 ① 구현 리뷰 M1): 그 승격은 폴이 일으키고
-    // 커서는 이미 상태 문장에 앉아 있어 착지시키면 듣던 문장을 끊는 포커스 강탈이 된다.
-    expect(body).not.toContain("previous == .waiting || previous == .boarding");
+    // →waiting만 예외: 도착하는 화면이 차량 선택 목록이라 그 질문 라벨에 앉는다(위원장 판정 2026-09-12).
+    // 목록이 서지 않는 갈래엔 라벨이 없으므로 기본값으로 떨어진다(안 그러면 착지도 폴백도 없다).
+    expect(body).toContain("return controlExists(.waitingLabel) ? .waitingLabel : .status");
     // `.status`는 상태 문장 줄에 달린다(폴백 문장도 같은 조립기를 읽는다 — 드리프트 차단).
     expect(SHEET).toContain("landingTarget(distanceText(text), .status)");
     // 폴백은 화면과 같은 낭독 라벨을 지난다(a11y 감사 L1).
     expect(SHEET).toContain("return spokenUnits(model.statusLineText(state: state, leg: leg, now: model.positionClock, speaksLocated: true))");
+  });
+
+  it("착지 여부는 전이의 출처가 가른다 — 사용자 전이는 전부, 관측 전이는 도착만(A47 iOS)", () => {
+    const start = SHEET.indexOf("private func phaseTransitionLanding(");
+    const body = SHEET.slice(start, SHEET.indexOf("\n    }\n", start));
+    // 관측 갈래(byUser 절 밖)의 착지는 도착 하나다. 관측 boarding→riding 승격을 여기에 더하면 듣던 상태
+    // 문장을 끊는 포커스 강탈이다(N3 ① 구현 리뷰 M1) — 국면 쌍 절이 되살아나면 걸린다.
+    const observed = body.slice(body.indexOf("return .status\n        }") + 1);
+    const observedReturns = [...observed.matchAll(/return \.(\w+)/g)].map((m) => m[1]);
+    expect(observedReturns).toEqual(["status"]);
+    expect(observed).toContain("if phase == .arrived, previous != .arrived { return .status }");
+    expect(body).not.toMatch(/previous == \.(waiting|boarding)/);
+    // 출처는 dispatch 입력이 정한다: 순번이 오르는 자리는 모델 dispatch 한 곳, 폴은 올리지 않는다.
+    const model = readFileSync(join(ROOT, "ios/Gildongmu/Directions/TransitGuideModel.swift"), "utf8");
+    expect(model.match(/userTransitionSeq \+= 1/g) ?? []).toHaveLength(1);
+    expect(model).toContain(
+      "if userAction, result.state.phase != state.phase || result.state.phaseGen != state.phaseGen {",
+    );
+    // 시트는 국면과 순번을 한 키로 본다 — 국면이 같은 사용자 전이(대기 → 다음 구간 대기)도 잡힌다.
+    expect(SHEET).toContain(
+      ".onChange(of: PhaseTransitionKey(phase: model.state?.phase, userSeq: model.userTransitionSeq)) { old, new in",
+    );
+    expect(SHEET).toContain("previous: old.phase, phase: new.phase, byUser: new.userSeq != old.userSeq)");
+    expect(SHEET).not.toContain(".onChange(of: model.state?.phase)");
   });
 
   it("목록 안 포커스 소실 복귀는 질문 라벨 착지와 다른 축이다 — 대상은 `waitingLabel` 고정(a11y 감사 M3)", () => {

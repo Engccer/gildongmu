@@ -24,6 +24,9 @@ struct TransitWalkHandoff: Equatable {
 @Observable @MainActor
 final class TransitGuideModel {
     private(set) var state: TransitGuideState?
+    /// 사용자 입력 유래 국면 전이의 순번(A47, 웹 `userTransitionSeq` 동형). 폴 응답은 올리지 않는다 —
+    /// 오르는 자리는 `dispatch` 한 곳이다.
+    private(set) var userTransitionSeq = 0
     private(set) var route: TransitGuideRoute?
     private(set) var destinationLabel = ""
     /// 목적지 좌표(N1) — 세션이 탭과 분리되면서 도보 핸드오프·장소 상세가 탭 폼이
@@ -1533,6 +1536,11 @@ final class TransitGuideModel {
         let userAction: Bool = if case .poll = input { false } else { true }
         if userAction { noteUserAction() }
         let result = transitGuideStep(state: state, input: input, route: route, now: nowMs())
+        // A47: 사용자 입력이 국면을 바꿨다(누른 버튼이 사라진다) — 시트가 이 순번의 변화로 착지를 가른다.
+        // 국면 쌍으로 추정하면 boarding→riding 선언과 관측 승격이 같은 쌍이라 한쪽을 반드시 틀린다.
+        if userAction, result.state.phase != state.phase || result.state.phaseGen != state.phaseGen {
+            userTransitionSeq += 1
+        }
         self.state = result.state
         if userAction { resumeIfIdle() }
         updateKeepAlive()

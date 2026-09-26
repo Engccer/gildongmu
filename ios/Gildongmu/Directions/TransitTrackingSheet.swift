@@ -213,13 +213,16 @@ struct TransitTrackingSheet: View {
             }
             // 급행 확인 프롬프트(§6)는 연 국면 세대에 묶인다 — 경로 교체(waiting→waiting)도 세대가 바뀐다(코드 리뷰 #4).
             .onChange(of: model.state?.phaseGen) { expressPromptActive = false }
-            .onChange(of: model.state?.phase) { previous, phase in
+            // 키는 국면 + 사용자 전이 순번(A47) — 순번만 바뀐 커밋(대기 → 다음 구간 대기처럼 국면이 같은 사용자
+            // 전이)도 여기로 온다. 순번이 그대로인 국면 변화가 관측 전이다.
+            .onChange(of: PhaseTransitionKey(phase: model.state?.phase, userSeq: model.userTransitionSeq)) { old, new in
                 // 국면이 바뀌면 진행 중 착지는 낡은 대상을 좇는다 — 먼저 끊는다.
                 controlFocusTask?.cancel()
                 // 급행 확인 프롬프트는 대기 국면 전용(§6) — 국면이 바뀌면 접는다.
                 expressPromptActive = false
                 // 세션 종료(state nil)도 여기로 온다(.some → nil 변화) — 조망을 닫는다.
-                let target = phaseTransitionLanding(previous: previous, phase: phase)
+                let target = phaseTransitionLanding(
+                    previous: old.phase, phase: new.phase, byUser: new.userSeq != old.userSeq)
                 // 조망이 열려 있으면 그 행·행동은 낡았다 — 닫고, 착지는 onDismiss로 미룬다(§4.3).
                 // 경로 전환이 만든 전이(→waiting)도 여기로 온다: 전환 뒤 착지는 새 세션의
                 // 전이 착지가 정본이고, 전이 착지가 없을 때만 조망이 스스로 세운 후속이 남는다
@@ -363,27 +366,40 @@ struct TransitTrackingSheet: View {
         }
     }
 
+    /// 국면 전이 관측 키(A47) — 국면과 사용자 전이 순번(`TransitGuideModel.userTransitionSeq`).
+    private struct PhaseTransitionKey: Equatable {
+        let phase: TransitPhase?
+        let userSeq: Int
+    }
+
     /// 국면 전이의 착지 대상 — **기본은 상태 문장 하나이고**(E38 위원장 판정 2026-09-12: "시트에서
-    /// 무엇을 누르든 커서는 상태 문장 행에 앉는다"), 예외는 **질문 화면으로 가는 전이 하나**뿐이다.
+    /// 무엇을 누르든 커서는 상태 문장 행에 앉는다"), 예외는 **차량 선택 목록으로 가는 사용자 전이 하나**뿐이다.
     /// 종전처럼 전이마다 다음 행동 버튼을 고르지 않는다(arrived→"다음 구간", →riding→탑승 변경은 폐기).
     ///
-    /// 참인 전이는 전부 **사용자 행동이 만든 것**이다: 하차역 도착(arrived) · 탑승 변경·다른 차량
-    /// 선택(→waiting) · 차량 선택(waiting→boarding) · 고른 열차로 직행(waiting→riding, A34 `boardAboard`).
-    /// ⚠ **boarding → riding은 빠져 있다**(N3 ① 구현 리뷰 M1): 그 승격은 폴이 일으키고 커서는 이미 상태
-    /// 문장에 앉아 있으므로, 착지시키면 듣던 문장을 끊는 포커스 강탈이 된다. 승격 사실은 통지가 말한다
-    /// (arrived→riding 자동 복귀도 같은 이유로 제외).
-    private func phaseTransitionLanding(previous: TransitPhase?, phase: TransitPhase?) -> SheetControl? {
-        if phase == .arrived { return .status }
-        if phase == .waiting, previous != nil, previous != .waiting {
-            // 차량 선택 목록으로 가는 전이라 **그 화면의 질문 라벨**에 앉는다(위원장 판정 2026-09-12 —
-            // "이미 탑승" 흐름이 같은 목록에 다른 문으로 들어가면서 라벨에 착지하므로, 두 문의 착지를
-            // 같은 자리로 맞춘다. 목록 라벨은 곧 "어느 차량을 고르는가"라는 질문이다).
-            // ⚠ 목록이 서지 않는 갈래(지방버스 근사 잠금·추적 불가·역 선택 단계)엔 그 라벨이 없다 —
-            // 그때는 기본값인 상태 문장으로(안 그러면 `vanished`로 끝나 착지도 폴백도 없다).
-            return controlExists(.waitingLabel) ? .waitingLabel : .status
+    /// **착지 여부는 전이의 출처가 가른다**(A47 위원장 판정 2026-09-26, 웹 `TransitGuidePanel` 동형): 사용자
+    /// 입력이 일으킨 전이(차량 선택·[선택한 열차에 탔어요]·고른 열차로 직행·탑승 변경과 그 취소·[다음 구간]·
+    /// 하차역 선언 — 누른 버튼이 사라진다)는 전부 착지하고, 폴 응답이 일으킨 관측 전이는 도착만 착지한다.
+    /// ⚠ **관측 boarding → riding 승격은 착지가 아니다**(N3 ① 구현 리뷰 M1): 커서는 이미 상태 문장에 앉아
+    /// 있으므로 착지시키면 듣던 문장을 끊는 포커스 강탈이 된다. 승격 사실은 통지가 말한다(arrived→riding
+    /// 자동 복귀도 같은 이유). 같은 쌍의 사용자 선언은 누른 버튼이 사라지므로 착지한다 — 그래서 쌍이 아니라 출처다.
+    /// ⚠ 웹의 "관측 전이의 포커스 소실 복구"는 iOS에 없다: VoiceOver는 커서를 쥔 요소가 사라지면 이웃 요소로
+    /// 스스로 옮겨 읽고(웹의 body 낙하에 해당하는 "커서 없음" 상태가 없다), 사라진 버튼이 커서를 쥐었는지 알
+    /// 방법도 없다(그 버튼들은 착지 바인딩이 없다). 실기기 판정은 BACKLOG §2 A47 iOS 행.
+    private func phaseTransitionLanding(previous: TransitPhase?, phase: TransitPhase?, byUser: Bool) -> SheetControl? {
+        guard let phase, phase != .done else { return nil }
+        if byUser {
+            if phase == .waiting {
+                // 차량 선택 목록으로 가는 전이라 **그 화면의 질문 라벨**에 앉는다(위원장 판정 2026-09-12 —
+                // "이미 탑승" 흐름이 같은 목록에 다른 문으로 들어가면서 라벨에 착지하므로, 두 문의 착지를
+                // 같은 자리로 맞춘다. 목록 라벨은 곧 "어느 차량을 고르는가"라는 질문이다).
+                // ⚠ 목록이 서지 않는 갈래(지방버스 근사 잠금·추적 불가·역 선택 단계)엔 그 라벨이 없다 —
+                // 그때는 기본값인 상태 문장으로(안 그러면 `vanished`로 끝나 착지도 폴백도 없다).
+                return controlExists(.waitingLabel) ? .waitingLabel : .status
+            }
+            return .status
         }
-        if phase == .boarding, previous == .waiting { return .status }
-        if phase == .riding, previous == .waiting { return .status }
+        // 관측 도착 — [다음 구간]이 아니라 도착을 말하는 문장이 착지점이다(E38 판정 문언).
+        if phase == .arrived, previous != .arrived { return .status }
         return nil
     }
 
