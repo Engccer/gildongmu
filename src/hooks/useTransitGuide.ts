@@ -247,7 +247,14 @@ export function useTransitGuide(
    * `boardingManualAvailable` 미러.
    */
   const [boardingManualAvailable, setBoardingManualAvailable] = useState(false);
-  /** 역 선택 직후 in-flight 폴이 있으면 그 폴이 끝나자마자 새 역을 즉폴한다(iOS Task 취소 동형, 코드 리뷰 M1). */
+  /**
+   * 사용자 입력이 일으킨 전이의 순번(A47) — 착지 판정의 출처 축. dispatch 입력이 `poll`이 아니고 상태가
+   * 바뀌었을 때만 올린다(관측 승격은 폴 응답이라 올리지 않는다). 패널은 이 값이 바뀐 커밋에서만
+   * 상태 문장 행에 착지한다 — 누른 버튼이 사라지는 전이라 방치하면 커서가 body로 떨어진다(헌장 §5).
+   * ⚠ 국면 쌍(이전→다음)으로 출처를 추정하지 말 것: boarding→riding은 선언(사용자)과 관측이 같은 쌍이다.
+   */
+  const [userTransitionSeq, setUserTransitionSeq] = useState(0);
+  /** 즉폴 요청이 in-flight 폴에 막혔다 — 그 폴이 끝나자마자 즉폴한다(`requestImmediatePoll`, iOS Task 취소 동형, A34 M1·A48·A49). */
   const repollRef = useRef(false);
   /** 이 dispatch의 입력이 `boardAboard`였다 — boarded(declared) 통지에 선택 차량 조각을 붙일지의 판별. */
   const aboardBoardRef = useRef(false);
@@ -884,6 +891,7 @@ export function useTransitGuide(
       if (next.phase === "boarding" && boardingObservationLost(next.signal)) {
         setBoardingManualAvailable(true);
       }
+      if (input.kind !== "poll" && next !== s) setUserTransitionSeq((n) => n + 1);
       commit(next);
       if (event) {
         // 승차 중 현재역(E35 §6 판정 2): `neverSeen` 순간 현재역이 잡혀 있으면 "찾지 못하고 있다"는 전제가
@@ -1131,7 +1139,7 @@ export function useTransitGuide(
     } finally {
       inFlightRef.current = false;
       if (repollRef.current) {
-        // 역 선택이 in-flight 폴에 막혀 즉폴을 못 냈다 — 지금 낸다(다음 예약은 그 폴이 잡는다).
+        // 즉폴 요청이 in-flight 폴에 막혔다(`requestImmediatePoll`) — 지금 낸다(다음 예약은 그 폴이 잡는다).
         repollRef.current = false;
         void pollOnce();
       } else {
@@ -1139,6 +1147,20 @@ export function useTransitGuide(
       }
     }
   }, [announce, currentLeg, dispatch, reasonText, refreshPosition, resolveTagoIfNeeded, scheduleNext, t, locale]);
+
+  /**
+   * 즉폴 요청(A49) — 국면을 바꾼 사용자 조작·세션 시작·복귀·새로고침이 지나는 **유일한** 즉폴 창구다.
+   * in-flight 폴이 있으면 `pollOnce`는 가드에서 조용히 돌아가고 그 폴의 응답은 리듀서가 `phaseGen` 불일치로
+   * 버린다. 표식(`repollRef`)이 없으면 그 폴의 `finally`가 `scheduleNext()`만 해서 **새 국면의 첫 조회가 한
+   * 주기 밀린다** — 표식을 세워 그 폴의 완료가 대신 즉폴을 내게 한다(A48 기제, iOS `restartPollLoop` 동형).
+   * ⚠ 호출부에서 `pollOnce`를 직접 부르지 않는다 — 한 자리라도 우회하면 그 전이만 한 주기 밀린다
+   * (`transit-poll-request-guard.test.ts`가 직접 호출을 `finally` 재폴·타이머 틱 두 자리로 잠근다).
+   */
+  const requestImmediatePoll = useCallback(() => {
+    clearTimer();
+    if (inFlightRef.current) repollRef.current = true;
+    void pollOnce();
+  }, [clearTimer, pollOnce]);
 
   /** 표식을 다시 판정해 바뀔 때만 쓰고, 표식이 서 있으면 마지막 관측 + 보존 창에 한 번 더 판정한다(설계 리뷰 M2). */
   const refreshBusStopMark = useCallback(
@@ -1236,9 +1258,9 @@ export function useTransitGuide(
       // 태그가 없을 때 영어 엔진이 **그 이름만 침묵**한다(a11y 감사 2026-09-12).
       const destKo = destinationLabel != null && /[가-힣]/.test(destinationLabel);
       announce(parts.filter(Boolean).join(" "), context.ko || destKo ? "ko" : undefined);
-      void pollOnce();
+      requestImmediatePoll();
     },
-    [announce, clearBusStop, commit, destinationLabel, pollOnce, stopSession, t, waitContextPiece],
+    [announce, clearBusStop, commit, destinationLabel, requestImmediatePoll, stopSession, t, waitContextPiece],
   );
 
   const start = useCallback(() => {
@@ -1278,10 +1300,9 @@ export function useTransitGuide(
     (lock: TransitLock) => {
       dispatch({ kind: "board", lock });
       // 국면이 바뀌었으니 즉시 하차 추적 1폴(다음 예약은 폴 완료가 잡는다).
-      clearTimer();
-      void pollOnce();
+      requestImmediatePoll();
     },
-    [clearTimer, dispatch, pollOnce],
+    [dispatch, requestImmediatePoll],
   );
 
   /**
@@ -1309,9 +1330,8 @@ export function useTransitGuide(
   const confirmBoarded = useCallback(() => {
     if (stateRef.current?.phase !== "boarding") return;
     dispatch({ kind: "confirmBoarded" });
-    clearTimer();
-    void pollOnce();
-  }, [clearTimer, dispatch, pollOnce]);
+    requestImmediatePoll();
+  }, [dispatch, requestImmediatePoll]);
 
   const boardApprox = useCallback(() => {
     const leg = currentLeg();
@@ -1335,10 +1355,9 @@ export function useTransitGuide(
     }
     retainedRef.current.clear();
     setWaiting(EMPTY_WAITING);
-    clearTimer();
-    void pollOnce();
+    requestImmediatePoll();
     return false;
-  }, [clearTimer, dispatch, pollOnce, stopSession]);
+  }, [clearTimer, dispatch, requestImmediatePoll, stopSession]);
 
   const advance = useCallback(() => {
     handoffNowRef.current = false;
@@ -1377,9 +1396,8 @@ export function useTransitGuide(
     // 뒤 돌아온 목록에서 원래 열차가 사라지던 경로(§5.1 늦은 선택 수용의 구멍).
     // 스냅숏만 비우고 즉폴이 재구성한다(직전 국면의 낡은 목록 표시 방지).
     setWaiting(EMPTY_WAITING);
-    clearTimer();
-    void pollOnce();
-  }, [clearTimer, dispatch, pollOnce]);
+    requestImmediatePoll();
+  }, [dispatch, requestImmediatePoll]);
 
   /**
    * 탑승 변경 진입(A16 L3). 지하철은 지금 있는 역을 먼저 묻는다.
@@ -1406,8 +1424,7 @@ export function useTransitGuide(
     (stopIndex: number) => {
       setBoardOverride(stopIndex);
       setReboardPickerActive(false);
-      // in-flight 폴이 있으면 즉폴이 막힌다 — 그 폴의 finally가 대신 낸다(A48, `pickAboardStation` 동형).
-      repollRef.current = inFlightRef.current;
+      // in-flight 폴과 겹쳐도 새 역 첫 조회가 밀리지 않는다 — `changeBoarding`의 즉폴 창구가 맡는다(A48·A49).
       changeBoarding();
     },
     [changeBoarding, setBoardOverride],
@@ -1421,9 +1438,8 @@ export function useTransitGuide(
   const cancelChangeBoarding = useCallback(() => {
     if (!stateRef.current?.previousLock) return;
     dispatch({ kind: "restoreBoarding" });
-    clearTimer();
-    void pollOnce();
-  }, [clearTimer, dispatch, pollOnce]);
+    requestImmediatePoll();
+  }, [dispatch, requestImmediatePoll]);
 
   /** "이미 탔어요"(§13.2) — 식별자 없는 근사 잠금(tagoBus 계약 동형). */
 
@@ -1486,12 +1502,10 @@ export function useTransitGuide(
       setAboardStep("pickVehicle");
       retainedRef.current.clear();
       setWaiting(EMPTY_WAITING);
-      clearTimer();
-      // in-flight 폴이 있으면 즉폴이 막힌다 — 그 폴의 finally가 대신 낸다(응답 자체는 기준 역 축이 폐기).
-      repollRef.current = inFlightRef.current;
-      void pollOnce();
+      // in-flight 폴의 응답은 기준 역 축이 폐기하고, 새 역 첫 조회는 즉폴 창구가 그 폴 완료 직후로 당긴다.
+      requestImmediatePoll();
     },
-    [clearTimer, currentLeg, declareArrived, pollOnce, setAboardStep, setBoardOverride],
+    [currentLeg, declareArrived, requestImmediatePoll, setAboardStep, setBoardOverride],
   );
 
   const pickAnotherAboardStation = useCallback(() => {
@@ -1517,19 +1531,17 @@ export function useTransitGuide(
         },
       });
       aboardBoardRef.current = false;
-      clearTimer();
-      void pollOnce();
+      requestImmediatePoll();
     },
-    [clearTimer, currentLeg, dispatch, pollOnce, setSelectedDescription],
+    [currentLeg, dispatch, requestImmediatePoll, setSelectedDescription],
   );
 
   /** 새로고침(§13.2) — 즉폴 + 결과를 직접 응답으로 통지(자동 폴 무낭독의 예외). */
   const refreshWaiting = useCallback(() => {
     if (stateRef.current?.phase !== "waiting") return;
     refreshAnnounceRef.current = true;
-    clearTimer();
-    void pollOnce();
-  }, [clearTimer, pollOnce]);
+    requestImmediatePoll();
+  }, [requestImmediatePoll]);
 
   // 탭 숨김·복귀(§3.2): 숨김은 폴링 정지(예약 취소), 복귀는 즉시 1폴 + 상태 통지.
   useEffect(() => {
@@ -1566,11 +1578,11 @@ export function useTransitGuide(
           .join(" "),
         locatedPiece?.ko ? "ko" : undefined,
       );
-      void pollOnce();
+      requestImmediatePoll();
     };
     document.addEventListener("visibilitychange", onVisibility);
     return () => document.removeEventListener("visibilitychange", onVisibility);
-  }, [announce, clearTimer, currentLeg, displayLegOf, isEn, piece, pollOnce, signalText, t]);
+  }, [announce, clearTimer, currentLeg, displayLegOf, isEn, piece, requestImmediatePoll, signalText, t]);
 
   // 언마운트: 자원 회수(통지 없음 — 언마운트 전이의 통지는 뷰 몫, §3.3).
   useEffect(() => {
@@ -1754,6 +1766,8 @@ export function useTransitGuide(
     changeBoardingAt,
     reboardPickerActive,
     boardingManualAvailable,
+    /** 사용자 입력 유래 전이 순번(A47) — 패널 착지 판정의 출처 축. */
+    userTransitionSeq,
     /** "이미 탑승" 흐름(A34 ②) — null이면 종전 대기 목록. */
     aboardStep,
     beginAboard,

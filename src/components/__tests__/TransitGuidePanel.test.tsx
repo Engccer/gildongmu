@@ -1801,3 +1801,128 @@ describe("TransitGuidePanel — 폴 예약", () => {
     expect(offenders).toEqual([]);
   });
 });
+
+/**
+ * 국면 전이 즉폴(A49)과 사용자 입력 유래 전이의 착지(A47). 즉폴은 한 창구(`requestImmediatePoll`)를 지나고,
+ * in-flight 폴이 있으면 그 폴의 완료가 대신 낸다 — 표식이 없던 종전엔 새 국면의 첫 조회가 한 주기(15~20초)
+ * 밀렸다. 대표 두 진입점을 본다(나머지는 `transit-landing-guard.test.ts`가 창구 경유를 소스로 잠근다).
+ */
+describe("TransitGuidePanel — 국면 전이 즉폴 (A49) · 사용자 전이 착지 (A47)", () => {
+  const enc = encodeURIComponent;
+
+  it("[선택한 열차에 탔어요]: in-flight 폴이 끝나자마자 하차역을 조회하고, 커서는 상태 문장에 앉는다", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      let failing = false;
+      let hold = false;
+      let release: (() => void) | null = null;
+      const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (failing) throw new Error("upstream down");
+        if (hold && url.includes("station=" + enc("천호"))) {
+          hold = false;
+          await new Promise<void>((r) => {
+            release = r;
+          });
+        }
+        return {
+          ok: true,
+          json: async () => ({ mode: "subway", status: "ok", rawCount: 1, items: [trackItem({})] }),
+        } as Response;
+      });
+      vi.stubGlobal("fetch", fetchMock);
+      render(<TransitGuidePanelHost route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
+      fireEvent.click(screen.getByRole("button", { name: "시작" }));
+      fireEvent.click(await screen.findByRole("button", { name: /selectTrain/ }));
+      await screen.findByRole("button", { name: "transitGuide.reselectVehicle" });
+      failing = true;
+      for (let i = 0; i < 3; i++) await advanceOnePoll(fetchMock);
+      const manual = await screen.findByRole("button", { name: "transitGuide.boardSelected" });
+
+      // 승차 정류소 폴 하나를 붙들어 in-flight로 둔 채 누른다.
+      failing = false;
+      hold = true;
+      await advanceOnePoll(fetchMock);
+      expect(release).not.toBeNull();
+      const alightCalls = () => fetchMock.mock.calls.filter((c) => String(c[0]).includes("station=" + enc("여의도")));
+      clickFocused(manual);
+      await screen.findByRole("button", { name: "transitGuide.changeBoarding" });
+      // A47: 누른 버튼이 사라지는 사용자 전이 — 커서가 body가 아니라 상태 문장에 있다.
+      await expectLandedOnStatus();
+      // 즉폴은 in-flight에 막혀 있다(아래 대기의 전제).
+      expect(alightCalls()).toHaveLength(0);
+      release!();
+      // riding 첫 주기(15초) 전에 나가야 한다 — waitFor 창(1초)이 그 경계다.
+      await waitFor(() => expect(alightCalls().length).toBeGreaterThan(0));
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("[다음 구간]: in-flight 폴이 끝나자마자 다음 구간 목록을 조회해 빈 목록으로 한 주기 머물지 않는다", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const transferRoute: TransitRoute = {
+        ...ROUTE,
+        legs: [
+          { ...SUBWAY_LEG, toName: "왕십리(성동구청)", stops: SUBWAY_LEG.stops!.slice(0, 2) },
+          {
+            ...SUBWAY_LEG,
+            lineName: "수도권 2호선",
+            fromName: "왕십리(성동구청)",
+            toName: "강남",
+            stops: [
+              { name: "왕십리(성동구청)", stationId: "540", lat: 37.5613, lng: 127.0374 },
+              { name: "강남", stationId: "222", lat: 37.4979, lng: 127.0276 },
+            ],
+          },
+        ],
+      };
+      let alightPolls = 0;
+      let hold = false;
+      let release: (() => void) | null = null;
+      const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        const leg1Alight = url.includes("station=" + enc("왕십리(성동구청)")) && url.includes("line=" + enc("수도권 5호선"));
+        if (leg1Alight) {
+          alightPolls += 1;
+          if (hold) {
+            hold = false;
+            await new Promise<void>((r) => {
+              release = r;
+            });
+          }
+        }
+        // 하차역: 첫 폴은 한 정거장 전, 그 뒤 소실(다른 열차만) → 도착 추정(추정 도착은 재관측 감시로 폴이 이어진다).
+        const item = leg1Alight
+          ? alightPolls === 1
+            ? trackItem({ message: "전역 출발", remainingStops: 1 })
+            : trackItem({ vehicleId: "9999", remainingStops: 5 })
+          : trackItem({});
+        return { ok: true, json: async () => ({ mode: "subway", status: "ok", rawCount: 1, items: [item] }) } as Response;
+      });
+      vi.stubGlobal("fetch", fetchMock);
+      render(<TransitGuidePanelHost route={transferRoute} triggerLabel="시작" walkAccessible={false} />);
+      fireEvent.click(screen.getByRole("button", { name: "시작" }));
+      await boardTrainAndTrack();
+      await waitFor(() => expect(alightPolls).toBe(1));
+      for (let i = 0; i < 2; i++) await advanceOnePoll(fetchMock);
+      const advance = await screen.findByRole("button", { name: "transitGuide.advance" });
+
+      // 추정 도착의 재관측 폴 하나를 붙들어 in-flight로 둔 채 누른다.
+      hold = true;
+      await advanceOnePoll(fetchMock);
+      expect(release).not.toBeNull();
+      const leg2Calls = () => fetchMock.mock.calls.filter((c) => String(c[0]).includes("line=" + enc("수도권 2호선")));
+      clickFocused(advance);
+      await expectLandedOnWaitingLabel();
+      expect(leg2Calls()).toHaveLength(0);
+      release!();
+      // 대기 주기(20초) 전에 다음 구간 조회가 나가고 목록이 채워진다.
+      await waitFor(() => expect(leg2Calls().length).toBeGreaterThan(0));
+      expect((await screen.findAllByRole("button", { name: /selectTrain/ })).length).toBeGreaterThan(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});

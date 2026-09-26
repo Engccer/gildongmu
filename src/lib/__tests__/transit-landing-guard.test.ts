@@ -169,7 +169,9 @@ describe("TransitTrackingSheet 착지 대상 (E38) · boarding 수동 진행 (N3
   });
 });
 
-describe("TransitGuidePanel 착지 대상 (E38 웹 미러)", () => {
+describe("TransitGuidePanel 착지 대상 (E38 웹 미러 · A47 출처 축)", () => {
+  const HOOK = readFileSync(join(ROOT, "src/hooks/useTransitGuide.ts"), "utf8");
+
   it("전이 착지는 상태 문장이 기본이고 →waiting만 목록 라벨이다 — 컴포넌트 테스트로는 잠기지 않는 축", () => {
     // ⚠ **이 가드가 필요한 이유**(변이 주입 실측): →waiting 전이 착지를 통째로 지워도 컴포넌트 테스트가
     // 초록이다. 목록 포커스 소실 복귀(`optionKeys` effect)가 같은 자리로 되돌리기 때문이다 — 후보 행에
@@ -178,27 +180,74 @@ describe("TransitGuidePanel 착지 대상 (E38 웹 미러)", () => {
     // 어느 쪽이 만든 것인지 구별하지 못한다. 구조를 여기서 잠근다.
     const at = PANEL.indexOf("const landsOnLabel =");
     expect(at, "→waiting 전이의 목록 라벨 착지 판정이 없다").toBeGreaterThan(-1);
-    expect(PANEL.slice(at, at + 200)).toContain(
-      'const landsOnLabel = phase === "waiting" && previous !== null && previous !== "waiting";',
-    );
+    expect(PANEL.slice(at, at + 200)).toContain('const landsOnLabel = byUser && phase === "waiting";');
     // 라벨이 없는 갈래(지방버스)에선 기본값인 상태 문장으로 떨어진다 — iOS `controlExists` 분기의 미러.
     expect(PANEL).toContain("(waitingLabelRef.current ?? statusRef.current)?.focus();");
     // 나머지 전이는 상태 문장 하나다. `lands` 술어에 대상 선택이 되살아나면 여기서 걸린다.
     const landsAt = PANEL.indexOf("const lands =");
     const lands = PANEL.slice(landsAt, PANEL.indexOf("if (landsOnLabel)", landsAt));
     expect(lands).not.toContain("Ref.current");
-    for (const t of [
-      '(phase !== null && previous === null) ||',
-      '(phase === "arrived" && previous !== "arrived") ||',
-      '(phase === "boarding" && previous === "waiting") ||',
-      '(phase === "riding" && previous === "waiting");',
-    ]) {
-      expect(lands, t).toContain(t);
-    }
+    // 웹 허용 집합(A47): 세션 시작 · 사용자 입력 유래 전이 전부 · 관측 도착. 세 갈래 밖의 착지는 없다.
+    const clauses = lands
+      .split("\n")
+      .map((l) => l.trim())
+      .filter((l) => l && !l.startsWith("//") && !l.startsWith("const lands"));
+    expect(clauses).toEqual([
+      "previous === null ||",
+      "byUser ||",
+      '(phase === "arrived" && previous !== "arrived");',
+    ]);
     // 종전 대상 ref는 사라졌다 — 되살리면 전이마다 대상이 다시 갈린다.
     for (const dead of ["advanceRef", "changeBoardingRef", "boardAlreadyRef"]) {
       expect(PANEL, dead).not.toContain(dead);
     }
+  });
+
+  it("출처는 dispatch 입력이 정한다 — 폴 응답(관측 승격)은 사용자 전이 순번을 올리지 않는다(A47)", () => {
+    // 국면 쌍으로 추정하면 boarding→riding 선언(사용자)과 관측 승격이 같은 쌍이라 한쪽을 반드시 틀린다.
+    expect(HOOK).toContain('if (input.kind !== "poll" && next !== s) setUserTransitionSeq((n) => n + 1);');
+    expect(HOOK.match(/setUserTransitionSeq\(/g) ?? []).toHaveLength(1);
+    // 패널의 판정은 그 순번의 변화 하나로 난다(effect 의존성에 함께 있어야 국면이 같은 전이도 잡힌다).
+    expect(PANEL).toContain("const byUser = guide.userTransitionSeq !== prevUserTransitionRef.current;");
+    expect(PANEL).toContain("}, [state?.phase, guide.userTransitionSeq]);");
+  });
+});
+
+describe("useTransitGuide 즉폴 창구 (A49)", () => {
+  const HOOK = readFileSync(join(ROOT, "src/hooks/useTransitGuide.ts"), "utf8");
+  const bodyOf = (name: string) => {
+    const at = HOOK.indexOf(`const ${name} = useCallback(`);
+    expect(at, `${name}가 없다`).toBeGreaterThan(-1);
+    // 본문 = 다음 최상위 선언(`const`·문서 주석) 직전까지.
+    const ends = ["\n  const ", "\n  /**", "\n  // "].map((m) => HOOK.indexOf(m, at + 1)).filter((i) => i > -1);
+    return HOOK.slice(at, Math.min(...ends));
+  };
+
+  it("pollOnce 직접 호출은 창구·finally 재폴·타이머 틱 세 자리뿐이다", () => {
+    // 한 자리라도 우회하면 in-flight 폴과 겹친 그 전이만 첫 조회가 한 주기 밀린다(A48 모양의 틈).
+    expect(HOOK.match(/void pollOnce\(\)/g) ?? []).toHaveLength(3);
+    const helper = bodyOf("requestImmediatePoll");
+    expect(helper).toContain("if (inFlightRef.current) repollRef.current = true;");
+    expect(helper).toContain("void pollOnce();");
+    expect(HOOK).toContain("const onPollTick = useEffectEvent(() => void pollOnce());");
+    // `repollRef`를 세우는 자리는 창구 하나다(복붙 금지 — 종전 `pickAboardStation`·`changeBoardingAt` 두 벌).
+    expect(HOOK.match(/repollRef\.current = /g) ?? []).toHaveLength(2); // 창구 true + finally false
+  });
+
+  it("국면을 바꾸는 여섯 진입점과 역 선택 두 자리가 창구를 지난다", () => {
+    for (const name of [
+      "board",
+      "confirmBoarded",
+      "cancelChangeBoarding",
+      "completeOrAdvance",
+      "boardAboardCandidate",
+      "changeBoarding",
+      "pickAboardStation",
+    ]) {
+      expect(bodyOf(name), name).toContain("requestImmediatePoll();");
+    }
+    // 탑승 변경 역 선택은 `changeBoarding`을 지난다(창구를 두 번 부르지 않는다).
+    expect(bodyOf("changeBoardingAt")).toContain("changeBoarding();");
   });
 });
 
