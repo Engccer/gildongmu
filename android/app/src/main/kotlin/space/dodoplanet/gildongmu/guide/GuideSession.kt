@@ -52,6 +52,17 @@ object GuideSession {
     /** 띠바 복귀 시트의 첫 착지 = 접기 버튼(1회 소비). */
     var returnedFromBand by mutableStateOf(false)
 
+    /**
+     * 다음 띠바 등장의 착지를 1회 건너뛴다 — 종료 화면 [체중 입력하기](E31)가 시트를 접고 설정을 push하는 경로에서, 띠바 착지(400ms 뒤)가
+     * 설정 화면 착지를 가로채지 않게(a11y 감사 M1). 띠바 효과가 소비한다.
+     */
+    var suppressNextBandLanding = false
+
+    /** 설정에서 돌아왔을 때 종료 화면이 남아 있으면 시트를 다시 연다 — 종료 화면이 요약을 다시 계산하고 착지한다(iOS 설정 시트 onDismiss 동형). */
+    fun reopenAfterWeightSettings() {
+        if (::walk.isInitialized && walk.ui.value.arrivalDest != null) isMinimized = false
+    }
+
     /** 전경 복귀(백그라운드 경유) 띠바 착지 트리거 — 증가할 때마다 띠바가 1회 착지한다. */
     var bandLandingSeq by mutableIntStateOf(0)
         private set

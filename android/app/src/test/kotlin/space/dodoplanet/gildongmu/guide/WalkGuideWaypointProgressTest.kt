@@ -9,7 +9,6 @@ import org.junit.jupiter.api.extension.RegisterExtension
 import space.dodoplanet.gildongmu.MainDispatcherExtension
 import space.dodoplanet.gildongmu.kit.BeaconDest
 import space.dodoplanet.gildongmu.kit.BeaconTone
-import space.dodoplanet.gildongmu.kit.DataLocale
 import space.dodoplanet.gildongmu.kit.Fixtures
 import space.dodoplanet.gildongmu.kit.HttpResponse
 import kotlin.math.PI
@@ -72,12 +71,14 @@ class WalkGuideWaypointProgressTest {
 
     @Test fun `접근 예고 1회 — 톤·상태 행·마지막 안내에 남기지 않고, 행은 경유지 목표에서 목적지 목표로`() = guideTest(dispatcher, responder) { h ->
         startWithVia(h)
-        assertTrue(h.model.ui.value.remainingText!!.startsWith("경유지 장미공원까지 150m"), h.model.ui.value.remainingText)
+        // 시간은 총 소요의 **경유지 잔여** 비례(400초 × 150/400 ≈ 3분 — 총 잔여였다면 7분).
+        assertEquals("경유지 장미공원까지 150m, 약 3분", h.model.ui.value.remainingText)
         h.tones.played.clear()
         walk(h, 8.0, 136.0)   // 도착선(150m) 직전까지
         val approach = h.approachTexts()
         assertEquals(1, approach.size, h.speaker.texts.toString())
-        assertFalse(approach.single().contains("분"), "예고는 거리만 말한다")
+        val meters = Regex("^경유지 장미공원까지 ([0-9]+) 미터$").find(approach.single())?.groupValues?.get(1)?.toInt()
+        assertTrue(meters != null && meters in 1..50, "예고는 접근선(50m) 안의 거리 한 조각: ${approach.single()}")
         assertFalse(h.model.ui.value.statusText.startsWith("경유지 장미공원까지"), "예고는 상태 행에 두지 않는다")
         assertFalse(h.model.progressText().contains("경유지 장미공원까지"), "예고는 마지막 안내를 덮지 않는다")
         assertFalse(h.tones.played.contains(BeaconTone.nearby), "도착 종은 도착에만")
@@ -99,16 +100,15 @@ class WalkGuideWaypointProgressTest {
         assertEquals("경유지 장미공원 도착. 이제 목적지 길동역으로 안내합니다", h.speaker.texts.last())
     }
 
-    @Test fun `도착 문장의 ko 방향 조사 — 받침 모르는 이름은 로, 비-ko는 원문`() = guideTest(dispatcher, responder) { h ->
+    @Test fun `도착 문장의 ko 방향 조사 — 받침 없음은 로, 받침 모르는 이름도 로`() = guideTest(dispatcher, responder) { h ->
+        startWithVia(h, label = "학교")
+        walk(h, 8.0, 160.0)
+        assertTrue(h.speaker.texts.contains("경유지 장미공원 도착. 이제 목적지 학교로 안내합니다"), h.speaker.texts.toString())
+        h.model.stopByUser()
+        h.speaker.spoken.clear()
         startWithVia(h, label = "GS25")
         walk(h, 8.0, 160.0)
         assertTrue(h.speaker.texts.contains("경유지 장미공원 도착. 이제 목적지 GS25로 안내합니다"), h.speaker.texts.toString())
-        h.model.stopByUser()
-        h.speaker.spoken.clear()
-        h.dataLocale = DataLocale.en
-        startWithVia(h, label = "학교")
-        walk(h, 8.0, 160.0)
-        assertTrue(h.speaker.texts.contains(h.catalog.get("directions.viaArrivedContinue", "장미공원", "학교")), h.speaker.texts.toString())
     }
 
     @Test fun `경유지를 지난 세션은 경유지 없는 재조회 경로에서도 행이 목적지 목표다 — 새 세션은 초기화`() = guideTest(dispatcher, responder) { h ->

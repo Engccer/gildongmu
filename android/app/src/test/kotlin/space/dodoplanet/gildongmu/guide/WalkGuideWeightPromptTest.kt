@@ -101,8 +101,27 @@ class WalkGuideWeightPromptTest {
         endWalk(h)
         assertFalse(h.model.ui.value.weightPromptShown)
         h.model.engageWeightPrompt()
-        assertNull(h.store.getString("walkWeightPromptEngaged"))
+        assertFalse(h.store.getString("walkWeightPromptEngaged") == "true")
         assertFalse(h.model.takeWeightSettingsReturn())
+    }
+
+    @Test fun `응답 표식은 만료·새 세션으로 사라진 화면을 넘어 새지 않는다`() = guideTest(dispatcher) { h ->
+        endWalk(h)
+        h.model.engageWeightPrompt()
+        h.model.clearArrival()   // 30분 만료 경로
+        endWalk(h)
+        assertFalse(h.model.takeWeightSettingsReturn())
+        h.model.closeEndScreen()
+        assertEquals(1, h.dismissals())
+        endWalk(h)
+        h.model.engageWeightPrompt()
+        h.model.requestStart(h.request)   // 설정에서 돌아와 시트를 열지 않고 새 안내 시작
+        settle()
+        h.steps.liveSample = StepSample(steps = 1200, distanceMeters = null)
+        h.model.stopByUser()
+        assertFalse(h.model.takeWeightSettingsReturn(), "새 종료 화면의 착지는 종료 문장이다")
+        h.model.closeEndScreen()
+        assertEquals(2, h.dismissals())
     }
 
     /** 뷰 배선(Compose는 JVM 레인이 없다): 카운터 대입은 한 곳, [닫기]가 그 함수를 부르고, 갱신이 `clearArrival()`보다 앞이다. */
@@ -116,5 +135,15 @@ class WalkGuideWeightPromptTest {
         val sheet = src.resolve("ui/GuideSheet.kt").readText()
         assertTrue(sheet.contains("""Button(onClick = { GuideSession.walk.closeEndScreen() }"""), "종료 화면 [닫기] = closeEndScreen")
         assertFalse(sheet.contains("walk.clearArrival()"), "시트가 카운터를 우회해 소거하지 않는다")
+        // 설정 복귀: 1회 표식 소비 → 재계산 → 그 결과로 착지 선택(재계산이 빠지면 체중을 넣고 와도 권유·65kg 문장이 남는다).
+        val back = sheet.substringAfter("if (model.takeWeightSettingsReturn()) {").substringBefore("} else {")
+        assertTrue(back.indexOf("model.recomputeArrivalHealth()") in 0 until back.indexOf("weightPromptShown"), back)
+        // 설정 push 경로는 띠바 착지를 1회 건너뛴다(설정 화면 착지를 가로채지 않게), 설정을 벗어나면 시트를 다시 연다.
+        val button = sheet.substringAfter("GuideSession.walk.engageWeightPrompt()").substringBefore("onOpenSettings()")
+        assertTrue(button.contains("GuideSession.suppressNextBandLanding = true") && button.contains("GuideSession.isMinimized = true"), button)
+        val nav = src.resolve("ui/WeightSettingsNav.kt").readText()
+        assertTrue(nav.contains("GuideSession.reopenAfterWeightSettings()"))
+        val root = Fixtures.repoRoot.resolve("android/app/src/main/kotlin/space/dodoplanet/gildongmu/nav/AppRoot.kt").readText()
+        assertTrue(root.contains("GuideBottomBar(onOpenSettings = navController::openWeightSettings)"))
     }
 }

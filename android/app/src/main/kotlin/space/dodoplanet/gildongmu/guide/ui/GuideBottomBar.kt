@@ -42,7 +42,9 @@ fun GuideBottomBar(onOpenSettings: () -> Unit, tabs: @Composable () -> Unit) {
         if (hasScreen && minimized) {
             GuideBand(ui, strings, bandFocus)
             // 최소화 직후·백그라운드를 거친 전경 복귀(알림 탭) → 띠바 착지.
-            LaunchedEffect(GuideSession.bandLandingSeq) { land(bandFocus, "띠바") }
+            LaunchedEffect(GuideSession.bandLandingSeq) {
+                if (GuideSession.suppressNextBandLanding) GuideSession.suppressNextBandLanding = false else land(bandFocus, "띠바")
+            }
         }
         tabs()
     }

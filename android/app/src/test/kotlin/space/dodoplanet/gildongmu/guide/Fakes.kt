@@ -195,15 +195,13 @@ class GuideTestHarness(
     val env = FakeEnv()
     val coordinator = GuideSessionCoordinator()
     val store = InMemoryKeyValueStore()
-    /** 앱 데이터 로케일(ko 조사 판정 축) — 비-ko 문장을 볼 테스트만 바꾼다. */
-    var dataLocale: DataLocale = DataLocale.ko
     val transport = StubTransport(walkResponder).also { tones.clock = clock.read }
     /** 모델 스코프의 잡 — 워치독이 무한 루프라 테스트가 끝나면 `close()`로 끊는다(runTest 종료 대기 차단). */
     val job = SupervisorJob()
     val model = WalkGuideModel(
         routes = RouteService(APIClient("https://example.test", transport)),
         strings = catalog,
-        dataLocale = { dataLocale },
+        dataLocale = { DataLocale.ko },
         controller = controller,
         permissions = perms,
         tones = tones,

@@ -196,6 +196,7 @@ private fun EndScreen(ui: WalkGuideUiState, strings: Strings, onOpenSettings: ()
                 Button(
                     onClick = {
                         GuideSession.walk.engageWeightPrompt()
+                        GuideSession.suppressNextBandLanding = true
                         GuideSession.isMinimized = true
                         onOpenSettings()
                     },

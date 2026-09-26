@@ -350,9 +350,8 @@ class WalkGuideModel(
         // ⑤ 상태 초기화(iOS `start` 대입 목록 그대로).
         deferredAnnouncer.advanceGeneration()
         this.dest = dest
-        arrivalHealthSample = null
-        mutate { copy(arrivalDest = null, endKind = SessionEndKind.arrived, endText = "", arrivalHealth = null, weightPromptShown = false, bandDistanceMeters = null) }
-        endedAt = null
+        clearArrival()   // 종료 화면과 그 화면에 결박된 권유 표식을 함께 지운다(E31 — 표식이 다음 종료 화면으로 새지 않게)
+        bandDistanceMeters = null
         outputSuppressed = false
         destinationLabel = label
         beaconState = BeaconState.initial
@@ -540,7 +539,6 @@ class WalkGuideModel(
     /** 설정에서 돌아온 뒤 저장 체중으로 요약을 다시 계산한다(iOS `recomputeArrivalHealth`). 입력했으면 권유가 저절로 사라진다. */
     fun recomputeArrivalHealth() {
         val sample = arrivalHealthSample ?: return
-        if (arrivalDest == null) return
         val health = WalkHealth.summary(sample.steps, sample.distanceMeters, storedWeight())
         mutate { copy(arrivalHealth = health, weightPromptShown = showsWeightPrompt(health)) }
     }
@@ -572,10 +570,15 @@ class WalkGuideModel(
         clearArrival()
     }
 
-    /** 종료 화면 소거 — "닫기"(`closeEndScreen`)·30분 만료·새 세션 시작이 부른다. 무시 횟수는 세지 않는다(닫기만 센다). */
+    /**
+     * 종료 화면 소거 — "닫기"(`closeEndScreen`)·30분 만료·새 세션 시작이 부른다. 무시 횟수는 세지 않는다(닫기만 센다). 권유 표식 둘은 그
+     * 화면에 결박된 값이라 여기서 함께 지운다 — 만료·새 세션으로 사라진 화면의 응답이 다음 종료 화면의 [닫기]를 면제하지 않게. 최소화는
+     * 이 함수를 지나지 않으므로 설정 왕복 중에는 살아 있다(spec §4).
+     */
     fun clearArrival() {
         arrivalHealthSample = null
         pendingWeightSettingsReturn = false
+        weightPromptEngaged = false
         mutate { copy(arrivalDest = null, endKind = SessionEndKind.arrived, endText = "", arrivalHealth = null, weightPromptShown = false, liveTopText = null) }
         if (!status.isFailure) statusText = ""   // 종료 문장이 상환 꼬리로 맥락 밖에서 되읽히지 않게(iOS 동형)
         endedAt = null
