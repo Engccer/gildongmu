@@ -12,7 +12,7 @@ import space.dodoplanet.gildongmu.settings.SettingsRoute
  * 정보 출처처럼 설정 위에 쌓인 화면은 설정이 아직 스택에 있으므로 무시한다.
  */
 fun NavController.openWeightSettings() {
-    navigate(SettingsRoute) { launchSingleTop = true }
+    navigate(SettingsRoute()) { launchSingleTop = true }
     addOnDestinationChangedListener(object : NavController.OnDestinationChangedListener {
         override fun onDestinationChanged(controller: NavController, destination: NavDestination, arguments: Bundle?) {
             if (runCatching { controller.getBackStackEntry<SettingsRoute>() }.isSuccess) return
