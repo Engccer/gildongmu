@@ -208,7 +208,7 @@
     "viaRemaining": "{distance} to waypoint {label}",
     "viaDestRemaining": "{distance} to destination {dest}",
     "viaArrivedContinue": "Waypoint {label} reached. Now guiding you to destination {dest}",
-    "viaDropped": "No route found through waypoint {label}; guiding without it",
+    "viaDropped": "No route through the waypoint ({label}) was found. Guiding to the destination ({dest}) without the waypoint.",
     "unsupportedWaypoint": "Waypoints are not supported for public transit routes.",
     "walkRecommended": "Recommended route",
     "walkShortest": "Shortest route",

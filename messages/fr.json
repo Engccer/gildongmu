@@ -208,7 +208,7 @@
     "viaRemaining": "{distance} jusqu'à l'étape {label}",
     "viaDestRemaining": "{distance} jusqu'à la destination {dest}",
     "viaArrivedContinue": "Étape {label} atteinte. Guidage vers la destination {dest}",
-    "viaDropped": "Aucun itinéraire par l'étape {label} ; guidage sans elle",
+    "viaDropped": "Aucun itinéraire passant par l'étape ({label}) n'a été trouvé. Guidage vers la destination ({dest}) sans l'étape.",
     "unsupportedWaypoint": "Les itinéraires en transports en commun ne prennent pas en charge les étapes.",
     "walkRecommended": "Itinéraire recommandé",
     "walkShortest": "Itinéraire le plus court",

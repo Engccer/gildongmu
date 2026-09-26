@@ -12086,37 +12086,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "경유지 %1$@ 포함한 경로를 찾지 못해 경유지 없이 안내합니다"
+            "value": "경유지(%1$@)를 포함한 경로를 찾지 못했습니다. 경유지 없이 목적지(%2$@)로 안내합니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "No route found through waypoint %1$@; guiding without it"
+            "value": "No route through the waypoint (%1$@) was found. Guiding to the destination (%2$@) without the waypoint."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No se encontró ruta por el punto intermedio %1$@; se guía sin él"
+            "value": "No se encontró una ruta por el punto intermedio (%1$@). Se guía al destino (%2$@) sin el punto intermedio."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aucun itinéraire par l'étape %1$@ ; guidage sans elle"
+            "value": "Aucun itinéraire passant par l'étape (%1$@) n'a été trouvé. Guidage vers la destination (%2$@) sans l'étape."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nessun percorso tramite la tappa intermedia %1$@; guida senza di essa"
+            "value": "Nessun percorso trovato attraverso la tappa intermedia (%1$@). Guida verso la destinazione (%2$@) senza la tappa intermedia."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "経由地 %1$@ を通る経路が見つからないため、経由地なしで案内します"
+            "value": "経由地（%1$@）を含む経路が見つかりませんでした。経由地なしで目的地（%2$@）へ案内します。"
           }
         }
       }

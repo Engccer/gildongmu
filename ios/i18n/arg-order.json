@@ -132,7 +132,8 @@
     "distance"
   ],
   "directions.viaDropped": [
-    "label"
+    "label",
+    "dest"
   ],
   "directions.viaRemaining": [
     "label",

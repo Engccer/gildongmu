@@ -150,9 +150,9 @@ describe("경유지 조회의 도보 안내(화면 통합)", () => {
       expect(guideCalls).toHaveLength(1);
       expect(new URLSearchParams(guideCalls[0].split("?")[1]).get("via")).toBe("37.497,127.027");
     });
-    // ko 목적격 조사는 호출부(훅)가 받침으로 붙인다("강남역을").
+    // 강등 문장 없이 경유지 문장 하나만(N4 문안 확정 2026-09-26) — 이름은 괄호 안이라 조사를 붙이지 않는다.
     await waitFor(() => {
-      expect(screen.getByRole("status").textContent).toContain("directions.viaDropped:강남역을");
+      expect(screen.getByRole("status").textContent).toBe("directions.viaDropped:강남역,길동");
     });
   });
 

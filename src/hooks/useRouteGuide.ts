@@ -67,7 +67,7 @@ import { claimGuideSession, releaseGuideSession } from "@/lib/guide-session-stor
 import { isOutOfCoverageBody } from "@/lib/out-of-coverage";
 import type { CarRouteBriefing, WalkRouteBriefing } from "@/lib/types";
 import { walkRouteUrl } from "@/lib/walk-route-url";
-import { directionParticle, objectParticle } from "@/lib/korean-particle";
+import { directionParticle } from "@/lib/korean-particle";
 import {
   SPEECH_DEFER_MAX_S,
   speechDeferStep,
@@ -1882,20 +1882,17 @@ export function useRouteGuide(
         lastStepFreeRef.current = null;
         // 조용한 강등 금지. ⚠ 모드 이름이 아니라 **사유와 동작**을 말한다(E16 축2 §A2) —
         // 이름을 주면 고를 수 있는 모드로 읽힌다([[degraded-guidance-gets-no-mode-name]]).
-        // 경유지 경로가 없어(`unavailable`) 간략(목적지 직선) 안내로 내려가면 경유지를 빼고 안내한다는
-        // 사실도 말한다 — 화면엔 경유지가 남아 있어 말하지 않으면 거짓이 된다(iOS `waypointDropped` 동형,
-        // 설계 리뷰 #6). ⚠ 그 문장의 원인절("경로를 찾지 못해")이 참인 사유에서만 붙인다 — 위치·네트워크·
-        // 커버리지 실패에 붙이면 거짓 원인이 된다(a11y 감사 #1). ko는 호출부가 목적격 조사를 붙인다.
+        // 경유지 경로가 없어(`unavailable`) 간략(목적지 직선) 안내로 내려가면 강등 문장을 **경유지 문장 하나로
+        // 대체**한다(N4 문안 위원장 확정 2026-09-26) — 화면엔 경유지가 남아 있어 말하지 않으면 거짓이 되고,
+        // 강등 문장("이 목적지까지의 경로를 찾지 못했습니다")을 앞에 두면 실패 대상을 목적지로 잘못 짚으며
+        // "안내합니다"가 두 번 이어진다. 원인절이 참인 사유(`unavailable`)에서만 낸다 — 위치·네트워크·커버리지
+        // 실패에 붙이면 거짓 원인이 된다(a11y 감사 #1). 이름은 괄호 안이라 조사를 붙이지 않는다.
         // 실제로 실어 보낸 경유지만 말한다(자동차 조회는 싣지 않는다, 요청 뒤 바뀐 입력은 읽지 않는다).
-        const droppedVia = fetched.via ?? null;
+        const droppedVia = fetched.failure === "unavailable" ? (fetched.via ?? null) : null;
         if (droppedVia) {
           excludedViaRef.current = droppedVia;
           setDegrade(fetched.failure, { announce: false });
-          const label =
-            locale === "ko"
-              ? droppedVia.label + (objectParticle(droppedVia.label) ?? "를")
-              : droppedVia.label;
-          announce(`${degradeMessage(fetched.failure)} ${tDirections("viaDropped", { label })}`);
+          announce(tDirections("viaDropped", { label: droppedVia.label, dest: destRef.current.name }));
         } else {
           setDegrade(fetched.failure);
         }
@@ -1949,7 +1946,6 @@ export function useRouteGuide(
   }, [
     announce,
     clearDegrade,
-    degradeMessage,
     setDegrade,
     tuning,
     clearEtaTimer,

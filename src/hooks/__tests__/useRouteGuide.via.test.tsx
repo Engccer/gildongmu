@@ -227,12 +227,12 @@ describe("웹 안내 훅의 경유지(N4 2026-09-24)", () => {
     expect(live()).not.toContain("경유지");
   });
 
-  it("조회 자체가 실패한 강등에는 '경로를 찾지 못해'를 붙이지 않는다(거짓 원인 금지, a11y 감사 #1)", async () => {
+  it("조회 자체가 실패한 강등은 사유 문장만 말한다 — 경유지 문장을 붙이지 않는다(거짓 원인 금지, a11y 감사 #1)", async () => {
     fetchStatus = 502;
     await startGuide(VIA);
     expect(mode()).toBe("brief");
-    expect(live()).not.toBe("");
-    expect(live()).not.toContain("찾지 못해");
+    expect(live()).toBe(ko.guide.degradedRetryable);
+    expect(live()).not.toContain("경유지");
   });
 
   it("경유지를 보냈는데 응답이 경유지 위치를 모르면 상세를 세우지 않는다", async () => {
@@ -241,7 +241,11 @@ describe("웹 안내 훅의 경유지(N4 2026-09-24)", () => {
     expect(walkVias()).toEqual([`${VIA.lat},${VIA.lng}`]);
     expect(mode()).toBe("brief");
     expect(target()).toBe("");
-    // 경유지를 빼고 안내한다고 말한다 — ko 목적격 조사는 받침으로 가른다("길동시장을").
-    expect(live()).toContain("경유지 길동시장을 포함한 경로를 찾지 못해 경유지 없이 안내합니다");
+    // 강등 문장을 대체하는 경유지 문장 **하나만** 말한다(N4 문안 위원장 확정 2026-09-26) — 앞에 강등 문장
+    // ("이 목적지까지의 경로를 찾지 못했습니다")을 두면 실패 대상을 목적지로 잘못 짚고 "안내합니다"가 두 번 이어진다.
+    expect(live()).toBe(
+      "경유지(길동시장)를 포함한 경로를 찾지 못했습니다. 경유지 없이 목적지(강동구청)로 안내합니다.",
+    );
+    expect(live()).not.toContain(ko.guide.degradedUnavailable);
   });
 });
