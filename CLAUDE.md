@@ -160,7 +160,7 @@
 - **프리필 진입과 `?dir=` 복원은 필드 값이 같아도 다른 진입이라 표식으로 가른다**(`openDirections`의 `prefill` ↔ iOS `DirectionsPrefill`): 자동 조회를 `initialTo` 값에 걸지 말 것. 판정은 첫 렌더에 굳혀 1회 소비, 양끝이 다 있을 때만 조회(출발지만 채운 진입은 도착지 입력 착지). → PATTERNS
 - **경로 브리핑의 역 진입점은 이름 조인이고 줄은 전부 `Text`로 남는다**(E45, Kit `transitBriefingStations` — 위치 인덱스 금지, 조인 실패는 진입점 0, `.walk`는 다음 non-walk leg의 승차역). 진입은 로터뿐이고 선언은 역별 묶음을 만든 뒤 뒤집는다, 소비자는 옵트인(`stationEntry` 기본 꺼짐), 전화 액션은 상태와 무관하게 상시이고 라벨만 갈린다. → PATTERNS
 - **딥링크(`nmap://`·`kakaomap://`)는 장소 상세의 보조 출구이고, 브리핑 진입점은 길찾기 뷰와 채팅 렌더 카드로 일원화**(장소 상세 단일 수단 브리핑 재도입 금지). `withStepFree`가 민 경유지 인덱스는 `omitNoticeStep`에서 한 칸 되돌린다. → PATTERNS
-- **경로 브리핑의 출구 번호는 한 경로에 정확히 한 줄에만 실린다**(E25, 배타 술어 `boardExitAfterWalk`·`boardExitOnBoardLine`). 소비자 셋(웹 브리핑·WebMCP 도구 출력·iOS 길찾기 행)을 함께 고치고, 하차 줄 역명은 `transitLegUsesEnglish`를 지난다(`toName` 직접 읽기 금지). → PATTERNS
+- **경로 브리핑의 출구 번호는 한 경로에 정확히 한 줄에만 실린다**(E25, 배타 술어 `boardExitAfterWalk`·`boardExitOnBoardLine`). 소비자 셋(웹 브리핑·WebMCP 도구 출력·iOS 길찾기 행)을 함께 고치고, 하차 줄 역명은 웹 `legEn` ↔ Kit `transitLegUsesEnglish`를 지난다(`toName` 직접 읽기 금지). → PATTERNS
 - **수량 문구는 ICU plural이고 iOS는 카탈로그의 ICU 블록을 Kit `formatLocalized`가 푼다**(A29; xcstrings 네이티브 `variations.plural` 금지, 수량 인자는 `Int`, 회피 표기 `(s)` 금지). 변환 스크립트는 지원 밖 ICU에 exit 1. → PATTERNS
 - **ko 문장의 플레이스홀더 순서는 iOS 위치 인자 ABI이고 `ios/i18n/arg-order.json`이 그것을 잠근다** — 기존 키 순서 변경은 exit 1, 호출부 인자와 함께 고친 뒤 `--update-arg-order`. 키 개명은 게이트 밖이라 눈으로 본다. → PATTERNS
 - **텍스트 입력의 확정 시점은 키보드 종류가 정한다**(A39 — `.decimalPad`엔 Return이 없어 `onSubmit`이 오지 않는다). 편집 종료는 포커스 이탈·닫기 핸들러(`dismiss()` 앞)·`onDisappear` 셋이고 커밋 함수는 **멱등**이어야 한다. 범위 밖 값을 조용히 기본값으로 접지 말 것(3-state). → PATTERNS

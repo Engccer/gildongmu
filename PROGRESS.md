@@ -19,7 +19,7 @@
 | 채널 | 상태 |
 |---|---|
 | 웹 | https://gildongmu.dodoplanet.space (push = 자동 배포). ⛔ **2026-09-29(화) 08:00 KST까지 프로덕션은 챌린지 제출 당일 배포본**(`ozh22jtli`, 커밋 `fde11dca`, 2026-09-24 promote)이고 push 금지(`.git/hooks/pre-push`가 차단). 발표 확인 뒤 `origin/main`을 push하면 자동 배포로 복귀한다 |
-| iOS | 스토어 최신 **1.18 `READY_FOR_SALE`**(빌드 26, 아카이브 커밋 `edc8cbdc`). **1.19 심사 취소 상태**(빌드 27, 아카이브 커밋 `2903e8e3`, 사유는 CHANGELOG 2026-09-24). 2026-09-29 08:00 KST 뒤 웹 재배포 확인 후 같은 빌드로 재제출 `node ios/scripts/asc-submit.mjs --version 1.19 --build 27 --apply --submit`). ⚠ 1.19 아카이브 뒤 iOS 커밋은 심사판에 없다 — `git log 2903e8e3..HEAD -- ios/` |
+| iOS | 스토어 최신 **1.18 `READY_FOR_SALE`**(빌드 26, 아카이브 커밋 `edc8cbdc`). **1.19 심사 취소 상태**(빌드 27, 아카이브 커밋 `2903e8e3`, 사유는 CHANGELOG 2026-09-24). 2026-09-29 08:00 KST 뒤 웹 재배포 확인 후 같은 빌드로 재제출(`node ios/scripts/asc-submit.mjs --version 1.19 --build 27 --apply --submit`). ⚠ 1.19 아카이브 뒤 iOS 커밋은 심사판에 없다 — `git log 2903e8e3..HEAD -- ios/` |
 | iOS 최소 지원 | **18.0**(2026-08-19 하향, 1.10부터 적용 — 스토어 반영 완료) |
 | npm | `gildongmu` · `gildongmu-mcp` **v0.11.0**(2026-09-23, `cli-v0.11.0` 태그 → Trusted Publishing 워크플로 성공, `npm view` 両패키지 0.11.0·SLSA provenance 확인). 미발행 변경: E50 대안 이름 포매터(다음 `cli-v*` 태그 대상, BACKLOG §3) |
 | 저장소 | GitHub **public**(2026-08-17 전환) — https://github.com/Engccer/gildongmu. 코드 MIT, 번들 데이터는 `NOTICE.md`. **모든 커밋이 즉시 공개된다** — 실주소·계측 로그·키를 넣지 않는 규칙은 `CLAUDE.md` 개발 규칙 |
