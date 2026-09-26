@@ -30,6 +30,7 @@ import space.dodoplanet.gildongmu.kit.DeferredAnnouncer
 import space.dodoplanet.gildongmu.kit.DisplayUnit
 import space.dodoplanet.gildongmu.kit.GuideEvent
 import space.dodoplanet.gildongmu.kit.GuideFix
+import space.dodoplanet.gildongmu.kit.GuideNextTargetKind
 import space.dodoplanet.gildongmu.kit.GuidePhase
 import space.dodoplanet.gildongmu.kit.GuideRoute
 import space.dodoplanet.gildongmu.kit.GuideSessionCoordinator
@@ -37,6 +38,7 @@ import space.dodoplanet.gildongmu.kit.GuideState
 import space.dodoplanet.gildongmu.kit.GuideStepGeometry
 import space.dodoplanet.gildongmu.kit.GuideTuning
 import space.dodoplanet.gildongmu.kit.KeyValueStore
+import space.dodoplanet.gildongmu.kit.KoreanParticle
 import space.dodoplanet.gildongmu.kit.LiveRowsState
 import space.dodoplanet.gildongmu.kit.LiveStepFields
 import space.dodoplanet.gildongmu.kit.LiveStepInput
@@ -57,6 +59,7 @@ import space.dodoplanet.gildongmu.kit.ToneLayerInput
 import space.dodoplanet.gildongmu.kit.ToneLayerState
 import space.dodoplanet.gildongmu.kit.TrendInput
 import space.dodoplanet.gildongmu.kit.WalkHealth
+import space.dodoplanet.gildongmu.kit.WalkHealthSummary
 import space.dodoplanet.gildongmu.kit.WalkRouteVariant
 import space.dodoplanet.gildongmu.kit.advanceProgressAnchor
 import space.dodoplanet.gildongmu.kit.beaconGateStep
@@ -71,6 +74,7 @@ import space.dodoplanet.gildongmu.kit.finalApproachArriveMeters
 import space.dodoplanet.gildongmu.kit.finalApproachIntervalSeconds
 import space.dodoplanet.gildongmu.kit.formatDistance
 import space.dodoplanet.gildongmu.kit.guideLiveRows
+import space.dodoplanet.gildongmu.kit.guideNextTarget
 import space.dodoplanet.gildongmu.kit.guideStep
 import space.dodoplanet.gildongmu.kit.haversineMeters
 import space.dodoplanet.gildongmu.kit.initialDerivationState
@@ -121,9 +125,7 @@ class WalkGuideModel(
     private val io: CoroutineDispatcher = Dispatchers.IO,
 ) {
     private val text = GuideText(strings)
-    // 경유지 접근 예고는 앱 배선 전까지 끈다 — 이벤트를 삼키기만 하면 그 fix의 추세 톤·주기 리듬이 흔들린다
-    // (BACKLOG E43 N4 경유지 진행 등가성, 배선할 때 되돌린다).
-    private val tuning = GuideTuning.walk.copy(waypointApproachM = null)
+    private val tuning = GuideTuning.walk
 
     private val _ui = MutableStateFlow(WalkGuideUiState())
     val ui: StateFlow<WalkGuideUiState> = _ui.asStateFlow()
@@ -205,6 +207,11 @@ class WalkGuideModel(
     private var sessionVariant: WalkRouteVariant? = null
     private var waypoint: GuideWaypoint? = null
     private var routeWaypointLabel: String? = null
+    /**
+     * 이 세션이 경유지를 지났는가(N4 spec 2026-09-24 §4.1, iOS 동형). 지난 뒤 재조회 경로(경유지 없음)에서도 남은 거리 행을
+     * "목적지 {dest}까지"로 둔다 — 같은 행이 이유 없이 "남은 거리"로 되돌아가지 않게. 시작·중지에서 false, 경유지 도착에서 true.
+     */
+    private var waypointPassedInSession = false
     private var sessionToken: Int? = null
     private var startJob: Job? = null
     private var startGeneration = 0
@@ -291,6 +298,7 @@ class WalkGuideModel(
         sessionVariant = request.variant
         waypoint = request.waypoint
         routeWaypointLabel = null
+        waypointPassedInSession = false
         lastStepFree = null
         pendingStepFreeNotice = null
         startGeneration += 1
@@ -342,7 +350,8 @@ class WalkGuideModel(
         // ⑤ 상태 초기화(iOS `start` 대입 목록 그대로).
         deferredAnnouncer.advanceGeneration()
         this.dest = dest
-        mutate { copy(arrivalDest = null, endKind = SessionEndKind.arrived, endText = "", arrivalHealth = null, bandDistanceMeters = null) }
+        arrivalHealthSample = null
+        mutate { copy(arrivalDest = null, endKind = SessionEndKind.arrived, endText = "", arrivalHealth = null, weightPromptShown = false, bandDistanceMeters = null) }
         endedAt = null
         outputSuppressed = false
         destinationLabel = label
@@ -469,6 +478,7 @@ class WalkGuideModel(
         rerouteInFlight = false
         waypoint = null
         routeWaypointLabel = null
+        waypointPassedInSession = false
         rerouteToken += 1
         routeFetchToken += 1
         clearProposal()
@@ -500,16 +510,73 @@ class WalkGuideModel(
 
     private fun presentEndScreen(dest: BeaconDest, kind: SessionEndKind, text: String, sample: StepSample?) {
         endedAt = clock()
-        val health = sample?.takeIf { WalkHealth.isMeaningfulWalk(it.steps, it.distanceMeters) }
-            ?.let { WalkHealth.summary(it.steps, it.distanceMeters, storedWeight()) }
-        mutate { copy(arrivalDest = dest, endKind = kind, endText = text, arrivalHealth = health) }
+        arrivalHealthSample = sample?.takeIf { WalkHealth.isMeaningfulWalk(it.steps, it.distanceMeters) }
+        val health = arrivalHealthSample?.let { WalkHealth.summary(it.steps, it.distanceMeters, storedWeight()) }
+        mutate { copy(arrivalDest = dest, endKind = kind, endText = text, arrivalHealth = health, weightPromptShown = showsWeightPrompt(health)) }
     }
 
     private fun storedWeight(): Double? = WalkHealth.normalizedWeight(store.getString(WalkHealth.weightStorageKey)?.toDoubleOrNull())
 
-    /** 종료 화면 소거 — "닫기" 버튼과 새 세션 시작만 부른다. */
+    /** 종료 화면 걸음 요약의 원표본 — 설정에서 체중을 바꾸고 돌아오면 이것으로 다시 계산한다(iOS `arrivalHealthSample`). */
+    private var arrivalHealthSample: StepSample? = null
+
+    // ── 체중 입력 권유(E31, spec 2026-09-11) — 카운터·응답 표식은 영속(키는 iOS와 같은 이름) ──
+    private var weightPromptDismissals: Int
+        get() = store.getString(WalkHealth.weightPromptDismissalsKey)?.toIntOrNull() ?: 0
+        set(v) = store.putString(WalkHealth.weightPromptDismissalsKey, v.toString())
+
+    /**
+     * 권유가 뜬 화면에서 [체중 입력하기]를 눌렀는가. ⚠ 화면 상태가 아니라 영속이어야 한다 — 시트를 최소화하면 종료 화면
+     * 컴포지션이 사라져 `remember`가 초기값으로 돌아가고, 설정에 다녀온 뒤 [닫기]가 무시로 계상된다(iOS 리뷰 검출, spec §4).
+     */
+    private var weightPromptEngaged: Boolean
+        get() = store.getString(WalkHealth.weightPromptEngagedKey) == "true"
+        set(v) = store.putString(WalkHealth.weightPromptEngagedKey, v.toString())
+
+    /** 렌더와 [닫기]가 같은 값(`ui.weightPromptShown`)을 읽도록 건강 요약을 바꾸는 자리마다 이 술어로 투영한다. */
+    private fun showsWeightPrompt(health: WalkHealthSummary?): Boolean =
+        health != null && WalkHealth.shouldShowWeightPrompt(health.usedDefaultWeight, weightPromptDismissals)
+
+    /** 설정에서 돌아온 뒤 저장 체중으로 요약을 다시 계산한다(iOS `recomputeArrivalHealth`). 입력했으면 권유가 저절로 사라진다. */
+    fun recomputeArrivalHealth() {
+        val sample = arrivalHealthSample ?: return
+        if (arrivalDest == null) return
+        val health = WalkHealth.summary(sample.steps, sample.distanceMeters, storedWeight())
+        mutate { copy(arrivalHealth = health, weightPromptShown = showsWeightPrompt(health)) }
+    }
+
+    /** [체중 입력하기] — 응답 표식을 세운다(뒤이은 [닫기]는 무시가 아니다). 설정 이동은 화면 몫. */
+    fun engageWeightPrompt() {
+        if (!_ui.value.weightPromptShown) return
+        weightPromptEngaged = true
+        pendingWeightSettingsReturn = true
+    }
+
+    /** 설정에 다녀온 뒤 종료 화면 재진입 1회 소비 — 화면이 요약을 다시 계산하고 착지를 고른다(시트는 그 사이 파괴된다). */
+    private var pendingWeightSettingsReturn = false
+
+    fun takeWeightSettingsReturn(): Boolean {
+        val take = pendingWeightSettingsReturn
+        pendingWeightSettingsReturn = false
+        return take
+    }
+
+    /**
+     * 종료 화면 [닫기] — 권유가 떠 있던 화면을 아무 행동 없이 닫은 것만 무시로 센다(카운터 갱신의 유일한 호출 자리). 표식은 여기서
+     * 소비한다. ⚠ 순서가 load-bearing이다: `clearArrival()`이 먼저 돌면 `weightPromptShown`이 false로 떨어져 카운터가 영영 오르지
+     * 않는다(소스 가드 `GuideSourceGuardTest`).
+     */
+    fun closeEndScreen() {
+        weightPromptDismissals = WalkHealth.nextWeightPromptDismissals(weightPromptDismissals, _ui.value.weightPromptShown, weightPromptEngaged)
+        weightPromptEngaged = false
+        clearArrival()
+    }
+
+    /** 종료 화면 소거 — "닫기"(`closeEndScreen`)·30분 만료·새 세션 시작이 부른다. 무시 횟수는 세지 않는다(닫기만 센다). */
     fun clearArrival() {
-        mutate { copy(arrivalDest = null, endKind = SessionEndKind.arrived, endText = "", arrivalHealth = null, liveTopText = null) }
+        arrivalHealthSample = null
+        pendingWeightSettingsReturn = false
+        mutate { copy(arrivalDest = null, endKind = SessionEndKind.arrived, endText = "", arrivalHealth = null, weightPromptShown = false, liveTopText = null) }
         if (!status.isFailure) statusText = ""   // 종료 문장이 상환 꼬리로 맥락 밖에서 되읽히지 않게(iOS 동형)
         endedAt = null
     }
@@ -701,11 +768,29 @@ class WalkGuideModel(
         lastStartRequest = request.copy(dest = dest, label = destinationLabel, waypoint = waypoint)
     }
 
+    /**
+     * 남은 거리 행 — 경유지가 있는 세션은 **다음 목표** 기준 한 줄(N4 spec 2026-09-24 §4.1, iOS `updateRemaining` 동형): 도착 전
+     * 경유지, 도착 뒤(또는 이 세션이 경유지를 지났으면) 목적지. 띠바는 총 잔여를 유지한다. 라벨은 경로에 결박된
+     * `routeWaypointLabel`이고, 없으면 종전 행으로 물러난다.
+     */
     private fun updateRemaining(route: GuideRoute, state: GuideState) {
         val remainingMeters = max(0.0, route.totalMeters - state.d).roundToInt()
         updateBandDistance(remainingMeters)
-        val distancePart = strings.get("guide.remainingDistance", formatDistance(remainingMeters))
-        val timePart = etaMinutesNow(route, state)?.let { strings.get("guide.remainingTime", it.toString()) }
+        val target = guideNextTarget(route, state)
+        val viaLabel = routeWaypointLabel
+        val distancePart: String
+        val minutes: Int?
+        if (target.kind == GuideNextTargetKind.waypoint && viaLabel != null) {
+            distancePart = strings.get("directions.viaRemaining", viaLabel, formatDistance(target.meters.roundToInt()))
+            minutes = etaMinutes(route, target.meters)
+        } else if ((target.kind == GuideNextTargetKind.destination && viaLabel != null) || waypointPassedInSession) {
+            distancePart = strings.get("directions.viaDestRemaining", destinationLabel, formatDistance(remainingMeters))
+            minutes = etaMinutesNow(route, state)
+        } else {
+            distancePart = strings.get("guide.remainingDistance", formatDistance(remainingMeters))
+            minutes = etaMinutesNow(route, state)
+        }
+        val timePart = minutes?.let { strings.get("guide.remainingTime", it.toString()) }
         remainingText = joinText(distancePart, timePart)
     }
 
@@ -717,11 +802,28 @@ class WalkGuideModel(
         bandDistanceMeters = clamped
     }
 
-    private fun etaMinutesNow(route: GuideRoute, state: GuideState): Int? {
+    /** 총 잔여까지의 시간(분) — 상시 표시와 진행 상황 조망이 같은 산식을 쓴다(사본 금지). */
+    private fun etaMinutesNow(route: GuideRoute, state: GuideState): Int? =
+        etaMinutes(route, max(0.0, route.totalMeters - state.d))
+
+    /**
+     * 목표 잔여(m)까지의 시간(분) — 총 소요의 잔여 비례(iOS `etaMinutes`의 walk 갈래). 근거 없으면 null(3-state). 목표를 이미 밟은
+     * 값(1m 미만)에 "약 1분"을 붙이지 않는다(N4 설계 리뷰 #11).
+     */
+    private fun etaMinutes(route: GuideRoute, remainingMeters: Double): Int? {
+        if (remainingMeters < 1) return null
         val dur = guideRouteDurationSeconds ?: return null
         if (dur <= 0 || route.totalMeters <= 0) return null
-        val remaining = max(0.0, route.totalMeters - state.d)
-        return max(1, (dur.toDouble() * remaining / route.totalMeters / 60).roundToInt())
+        return max(1, (dur.toDouble() * remainingMeters / route.totalMeters / 60).roundToInt())
+    }
+
+    /**
+     * ko 도착 문장의 목적지 + 방향 조사("서울역으로"·"학교로"). 받침을 모르는 이름(영문·숫자 끝)은 `로` — 조사를 빼면 문장이
+     * 깨진다(N4 spec 2026-09-24 §3, 폴백은 추측·실보행 판정 ④). 비-ko는 원문.
+     */
+    private fun destinationWithDirectionParticle(label: String): String {
+        if (dataLocale() != DataLocale.ko) return label
+        return label + (KoreanParticle.directionMarker(label) ?: "로")
     }
 
     // ─────────────────────────── 하단 2행·조망 ───────────────────────────
@@ -954,15 +1056,24 @@ class WalkGuideModel(
             GuideEvent.WaypointReached -> {
                 val reached = waypoint ?: return
                 waypoint = null
+                waypointPassedInSession = true
                 syncStartRequestWithSession()
                 clearProposal()
+                // 대안 프리뷰 초기화(iOS `resetAlternativePreview()`) 자리 — 안내 중 변경(M4b)이 채운다.
                 rerouteToken += 1
                 playTone(BeaconTone.nearby)
-                val spoken = strings.get("directions.viaArrived", reached.label)
+                // 도착 문장은 다음 목표(목적지)까지 말한다(N4 spec §3). 지나간 사실이라 억제 해제 뒤에 갚아도 참이다.
+                val spoken = strings.get("directions.viaArrivedContinue", reached.label, destinationWithDirectionParticle(destinationLabel))
                 statusText = spoken
                 if (outputSuppressed) pendingRecovery = spoken else announce(spoken)
             }
-            is GuideEvent.WaypointApproaching -> Unit // 경유지 접근 예고 배선은 BACKLOG E43 등가성 후속(N4 2026-09-24)
+            is GuideEvent.WaypointApproaching -> {
+                // 경유지 접근 예고(N4 spec §4.1): 1회, 톤 없음. 실행 안내가 아니라 `lastGuidance`는 덮지 않고, `statusText`에도
+                // 두지 않는다(남은 거리 행이 같은 정보를 실시간으로 보이고, 전경 복귀 상환이 낡은 거리를 읽게 된다). 억제 중이면
+                // 보관하지 않는다 — 거리 문장은 시간이 지나면 거짓(주기 통지와 같은 취급).
+                val label = routeWaypointLabel ?: return
+                if (!outputSuppressed) announce(strings.get("directions.viaRemaining", label, formatDistance(event.remainingMeters)))
+            }
             GuideEvent.FinalApproachEnter -> Unit // fix를 쥔 handleDetail이 가른다
             GuideEvent.OffRoute -> {
                 val isEpisodeStart = !offRoute

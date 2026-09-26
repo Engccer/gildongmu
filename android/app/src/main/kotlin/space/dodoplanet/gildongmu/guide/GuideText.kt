@@ -206,11 +206,12 @@ class GuideText(private val s: Strings) {
         }
 
     /**
-     * 종료 화면 걸음·칼로리 문장(iOS `healthSummaryLine` + `foodLine`, spec §7-5): 기본 체중으로 계산했으면 기준 체중을 밝히고, 음식 비유가
-     * 성립하면 완결 문장으로 뒤에 붙인다(공백 결합 — 마침표 뒤에 쉼표를 붙이지 않는다). 한 문단 = 한 접근성 객체.
+     * 종료 화면 걸음·칼로리 문장(iOS `healthSummaryLine` + `foodLine`, spec §7-5): 기본 체중으로 계산했고 체중 입력 권유가 **숨겨졌으면**
+     * (E31 — 무시 2회) 기준 체중을 문장 안에 밝힌다. 권유가 떠 있으면 그 고지 줄이 기준 체중을 말하므로 종전 문장이다(두 벌 키).
+     * 음식 비유가 성립하면 완결 문장으로 뒤에 붙인다(공백 결합 — 마침표 뒤에 쉼표를 붙이지 않는다). 한 문단 = 한 접근성 객체.
      */
-    fun healthLine(health: WalkHealthSummary): String {
-        val summary = if (health.usedDefaultWeight) {
+    fun healthLine(health: WalkHealthSummary, showsWeightPrompt: Boolean): String {
+        val summary = if (health.usedDefaultWeight && !showsWeightPrompt) {
             s.get("android.beacon.healthSummaryWithWeight", health.steps, WalkHealth.defaultWeightKg.toInt(), health.kcal)
         } else {
             s.get("android.beacon.healthSummary", health.steps, health.kcal)

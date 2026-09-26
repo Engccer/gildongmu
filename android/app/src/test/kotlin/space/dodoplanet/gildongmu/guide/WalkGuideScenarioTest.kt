@@ -386,7 +386,7 @@ class WalkGuideScenarioTest {
         assertFalse(h.transport.seenUrls.single().contains("via="))
     }
 
-    @Test fun `경유지 도착 — nearby 톤·viaArrived 문장, 이후 재조회는 경유지 없이`() = guideTest(dispatcher, { url ->
+    @Test fun `경유지 도착 — nearby 톤·viaArrivedContinue 문장, 이후 재조회는 경유지 없이`() = guideTest(dispatcher, { url ->
         if (url.contains("via=")) HttpResponse(200, walkBriefingJson(listOf(TestStep("직진A", listOf(north(0.0), north(150.0)), target = "장미공원"), TestStep("직진B", listOf(north(150.0), north(400.0)))), distanceMeters = 400, waypointStepIndex = 1))
         else HttpResponse(200, routeJson(listOf(Seg(400.0, "직진"))))
     }) { h ->
@@ -401,7 +401,7 @@ class WalkGuideScenarioTest {
         h.tones.played.clear()
         feed(h, fixes, base)
         assertTrue(h.tones.played.contains(BeaconTone.nearby), h.tones.played.toString())
-        assertTrue(h.speaker.texts.contains(h.catalog.get("directions.viaArrived", "장미공원")), h.speaker.texts.toString())
+        assertTrue(h.speaker.texts.contains(h.catalog.get("directions.viaArrivedContinue", "장미공원", "길동역으로")), h.speaker.texts.toString())
         assertNull(h.model.ui.value.routeWaypointRow?.takeIf { false })
     }
 }

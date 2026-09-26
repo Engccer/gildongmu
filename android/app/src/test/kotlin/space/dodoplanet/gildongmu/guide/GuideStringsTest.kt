@@ -99,6 +99,8 @@ class GuideStringsTest {
             "android.beacon.endedHeading",
             "android.beacon.healthSummary",
             "android.beacon.healthSummaryWithWeight",
+            "android.beacon.healthWeightNotice",
+            "android.beacon.healthEnterWeight",
             "android.beacon.food.cherryTomato",
             "android.beacon.food.cucumberHalf",
             "android.beacon.food.kimchi",
@@ -122,6 +124,9 @@ class GuideStringsTest {
             "android.common.openSettings",
             "android.common.geoReducedDesc",
             "directions.viaArrived",
+            "directions.viaArrivedContinue",
+            "directions.viaRemaining",
+            "directions.viaDestRemaining",
             "actions.close",
             "android.unit.spokenMeters",
     )

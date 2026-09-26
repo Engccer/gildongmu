@@ -40,6 +40,7 @@ import space.dodoplanet.gildongmu.guide.GuideSession
 import space.dodoplanet.gildongmu.guide.GuideText
 import space.dodoplanet.gildongmu.guide.SessionEndKind
 import space.dodoplanet.gildongmu.guide.WalkGuideUiState
+import space.dodoplanet.gildongmu.kit.WalkHealth
 import space.dodoplanet.gildongmu.kit.joinText
 import space.dodoplanet.gildongmu.kit.spokenDistanceUnits
 
@@ -50,10 +51,10 @@ import space.dodoplanet.gildongmu.kit.spokenDistanceUnits
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun GuideSheet(ui: WalkGuideUiState, strings: Strings) {
+fun GuideSheet(ui: WalkGuideUiState, strings: Strings, onOpenSettings: () -> Unit) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ModalBottomSheet(onDismissRequest = { GuideSession.isMinimized = true }, sheetState = sheetState, dragHandle = null) {
-        if (ui.arrivalDest != null) EndScreen(ui, strings) else TrackingContent(ui, strings)
+        if (ui.arrivalDest != null) EndScreen(ui, strings, onOpenSettings) else TrackingContent(ui, strings)
     }
 }
 
@@ -154,11 +155,17 @@ private fun OverviewPage(ui: WalkGuideUiState, strings: Strings, onClose: () -> 
     }
 }
 
-/** 종료 화면(§7-5): 헤딩·종료 문장(착지)·걸음·칼로리 문장(있을 때만)·닫기(`clearArrival`). */
+/**
+ * 종료 화면(§7-5): 헤딩·종료 문장(착지)·걸음·칼로리 문장(있을 때만)·체중 입력 권유 두 줄(E31 — 기본 체중 ∧ 무시 2회 미만)·닫기.
+ * [체중 입력하기]는 시트를 접고 설정으로 간다(시트는 자기 윈도라 그 위에 설정을 띄울 수 없다). 돌아와 이 화면에 다시 들어오면 요약을
+ * 다시 계산하고, 체중을 입력했으면 사라진 버튼 대신 요약 문장에, 아니면 그 버튼에 착지한다(iOS `landHealthSummaryFocus` 동형).
+ */
 @Composable
-private fun EndScreen(ui: WalkGuideUiState, strings: Strings) {
+private fun EndScreen(ui: WalkGuideUiState, strings: Strings, onOpenSettings: () -> Unit) {
     val text = remember(strings) { GuideText(strings) }
     val arrivedFocus = remember { FocusRequester() }
+    val healthFocus = remember { FocusRequester() }
+    val enterWeightFocus = remember { FocusRequester() }
     val headingKey = when (ui.endKind) {
         SessionEndKind.arrived -> "android.beacon.arrivedHeading"
         SessionEndKind.presumed -> "android.beacon.arrivedPresumedHeading"
@@ -169,11 +176,33 @@ private fun EndScreen(ui: WalkGuideUiState, strings: Strings) {
         SessionEndKind.presumed -> strings.get("guide.arrivedPresumed")
         SessionEndKind.stopped -> ui.endText
     }
-    LaunchedEffect(Unit) { GuideSession.returnedFromBand = false; land(arrivedFocus, "종료 문장") }   // 띠바 복귀 표식은 여기서도 소비
+    LaunchedEffect(Unit) {
+        GuideSession.returnedFromBand = false   // 띠바 복귀 표식은 여기서도 소비
+        val model = GuideSession.walk
+        if (model.takeWeightSettingsReturn()) {
+            model.recomputeArrivalHealth()
+            if (model.ui.value.weightPromptShown) land(enterWeightFocus, "체중 입력 버튼") else land(healthFocus, "걸음 요약")
+        } else {
+            land(arrivedFocus, "종료 문장")
+        }
+    }
     Column(Modifier.fillMaxWidth().padding(16.dp)) {
         HeadingLine(joinText(strings.get(headingKey), ui.destinationLabel), "guide-end-title")
         Text(sentence, Modifier.fillMaxWidth().mergedRow("guide-end", focus = arrivedFocus).padding(vertical = 8.dp))
-        ui.arrivalHealth?.let { BodyLine(text.healthLine(it), "guide-end-health") }
-        Button(onClick = { GuideSession.walk.clearArrival() }, modifier = Modifier.fillMaxWidth().tapTarget().testTag("guide-end-close")) { Text(strings.get("actions.close")) }
+        ui.arrivalHealth?.let { health ->
+            Text(text.healthLine(health, ui.weightPromptShown), Modifier.fillMaxWidth().mergedRow("guide-end-health", focus = healthFocus).padding(vertical = 8.dp))
+            if (ui.weightPromptShown) {
+                BodyLine(strings.get("android.beacon.healthWeightNotice", WalkHealth.defaultWeightKg.toInt()), "guide-end-weight-notice")
+                Button(
+                    onClick = {
+                        GuideSession.walk.engageWeightPrompt()
+                        GuideSession.isMinimized = true
+                        onOpenSettings()
+                    },
+                    modifier = Modifier.fillMaxWidth().tapTarget().landingTarget(enterWeightFocus).testTag("guide-end-enter-weight"),
+                ) { Text(strings.get("android.beacon.healthEnterWeight")) }
+            }
+        }
+        Button(onClick = { GuideSession.walk.closeEndScreen() }, modifier = Modifier.fillMaxWidth().tapTarget().testTag("guide-end-close")) { Text(strings.get("actions.close")) }
     }
 }

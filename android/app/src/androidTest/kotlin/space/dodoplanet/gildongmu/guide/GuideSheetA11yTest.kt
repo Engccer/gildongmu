@@ -64,7 +64,7 @@ class GuideSheetA11yTest {
             MaterialTheme {
                 Column {
                     Box(Modifier.fillMaxWidth().height(200.dp).testTag("content"))
-                    GuideBottomBar { Box(Modifier.fillMaxWidth().height(56.dp).testTag("tabs")) }
+                    GuideBottomBar(onOpenSettings = {}) { Box(Modifier.fillMaxWidth().height(56.dp).testTag("tabs")) }
                 }
             }
         }
@@ -106,6 +106,21 @@ class GuideSheetA11yTest {
         rule.onNodeWithTag("guide-end-close").assertHeightIsAtLeast(48.dp)
         assertEquals(0, rule.onAllNodes(androidx.compose.ui.test.hasTestTag("guide-stop")).fetchSemanticsNodes().size)
         checkAllRoots()
+    }
+
+    /** ②' 체중 입력 권유(E31): 권유가 떠 있으면 고지 한 줄 + 버튼, 숨겨졌으면 둘 다 없다. */
+    @Test
+    fun endScreenWeightPromptRows() {
+        setBar()
+        val health = WalkHealthSummary(1200, 27, usedDefaultWeight = true)
+        setUi(WalkGuideUiState(destinationLabel = "길동역", arrivalDest = dest, endKind = SessionEndKind.arrived, arrivalHealth = health, weightPromptShown = true))
+        rule.onNodeWithTag("guide-end-weight-notice").assertIsDisplayed()
+        rule.onNodeWithTag("guide-end-enter-weight").assertHeightIsAtLeast(48.dp)
+        checkAllRoots()
+        setUi(WalkGuideUiState(destinationLabel = "길동역", arrivalDest = dest, endKind = SessionEndKind.arrived, arrivalHealth = health, weightPromptShown = false))
+        rule.waitForIdle()
+        assertEquals(0, rule.onAllNodes(androidx.compose.ui.test.hasTestTag("guide-end-weight-notice")).fetchSemanticsNodes().size)
+        assertEquals(0, rule.onAllNodes(androidx.compose.ui.test.hasTestTag("guide-end-enter-weight")).fetchSemanticsNodes().size)
     }
 
     /** ③ 조망 열림 → 뒤로 키 → 조망만 닫히고 시트 유지. */

@@ -122,6 +122,8 @@ internal fun guideStringId(key: String): Int? = when (key) {
     "android.beacon.endedHeading" -> R.string.android_beacon_endedHeading
     "android.beacon.healthSummary" -> R.string.android_beacon_healthSummary
     "android.beacon.healthSummaryWithWeight" -> R.string.android_beacon_healthSummaryWithWeight
+    "android.beacon.healthWeightNotice" -> R.string.android_beacon_healthWeightNotice
+    "android.beacon.healthEnterWeight" -> R.string.android_beacon_healthEnterWeight
     "android.beacon.food.cherryTomato" -> R.string.android_beacon_food_cherryTomato
     "android.beacon.food.cucumberHalf" -> R.string.android_beacon_food_cucumberHalf
     "android.beacon.food.kimchi" -> R.string.android_beacon_food_kimchi
@@ -145,6 +147,9 @@ internal fun guideStringId(key: String): Int? = when (key) {
     "android.common.openSettings" -> R.string.android_common_openSettings
     "android.common.geoReducedDesc" -> R.string.android_common_geoReducedDesc
     "directions.viaArrived" -> R.string.directions_viaArrived
+    "directions.viaArrivedContinue" -> R.string.directions_viaArrivedContinue
+    "directions.viaRemaining" -> R.string.directions_viaRemaining
+    "directions.viaDestRemaining" -> R.string.directions_viaDestRemaining
     "android.guide.waypointDropped" -> R.string.android_guide_waypointDropped
     "android.guide.waypointSkipped" -> R.string.android_guide_waypointSkipped
     "actions.close" -> R.string.actions_close

@@ -59,6 +59,8 @@ data class WalkGuideUiState(
     val endText: String = "",
     /** 걸음·칼로리 요약(3-state: 표본 ∧ 72걸음 이상 → 값 / 그 밖 null — 행 부재). */
     val arrivalHealth: WalkHealthSummary? = null,
+    /** 종료 화면이 체중 입력 권유 두 줄을 내는가(E31 — `WalkHealth.shouldShowWeightPrompt`). 렌더와 [닫기] 계상이 같은 값을 읽는다. */
+    val weightPromptShown: Boolean = false,
     /** 조망 목록(상세 전용). */
     val routeStepDescriptions: List<String>? = null,
     /** 조망의 "지금 이 구간" 표식. 이탈·불확실·최종 접근에선 null(근거 없는 표식은 거짓 정밀). */

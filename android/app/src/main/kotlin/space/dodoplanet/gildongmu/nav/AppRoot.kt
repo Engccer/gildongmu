@@ -73,7 +73,7 @@ fun AppRoot(factories: AppFactories) {
     CompositionLocalProvider(LocalResultHaptics provides hapticsOn) {
         Scaffold(
             bottomBar = {
-                GuideBottomBar {
+                GuideBottomBar(onOpenSettings = { navController.navigate(SettingsRoute) { launchSingleTop = true } }) {
                 NavigationBar(Modifier.testTag("tabs")) {
                     for (tab in tabs) {
                         val route = tab.route()

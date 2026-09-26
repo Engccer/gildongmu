@@ -41,7 +41,7 @@ class GuideSourceGuardTest {
         val startButton = guide.resolve("ui/WalkGuideStartButton.kt").readText()
         assertTrue(startButton.contains("WalkStartRequest(dest, label, line.isAccessible, line.variant, line, waypoint)"), "줄 안내 시작의 요청 축 배선")
         val root = pkg.resolve("nav/AppRoot.kt").readText()
-        assertTrue(Regex("""bottomBar = \{\n\s*GuideBottomBar \{""").containsMatchIn(root), "하단 바 = GuideBottomBar(무조건)")
+        assertTrue(Regex("""bottomBar = \{\n\s*GuideBottomBar\(onOpenSettings = [^\n]*\) \{""").containsMatchIn(root), "하단 바 = GuideBottomBar(무조건)")
         val session = guide.resolve("GuideSession.kt").readText()
         val attach = session.substringAfter("fun attach(").substringAfter("{").trim().lineSequence().first()
         assertTrue(attach.startsWith("if (::walk.isInitialized) return"), "attach 첫 줄은 멱등 가드: $attach")

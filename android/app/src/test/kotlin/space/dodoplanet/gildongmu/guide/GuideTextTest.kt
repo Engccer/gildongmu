@@ -93,8 +93,10 @@ class GuideTextTest {
     }
 
     @Test fun `종료 화면 걸음 문장 — 기본 체중 기준 병기 + 음식 비유, 비유 없으면 요약만`() {
-        assertEquals("이번 구간에서 1200걸음 걸으셨어요. 65kg 기준으로 약 27kcal를 태우셨어요. 귤 한 개 분량이에요!", t.healthLine(WalkHealthSummary(1200, 27, usedDefaultWeight = true)))
-        assertEquals("이번 구간에서 100걸음 걸으셨어요. 약 1kcal를 태우셨어요.", t.healthLine(WalkHealthSummary(100, 1, usedDefaultWeight = false)))
+        // 권유가 숨겨졌으면(E31 무시 2회) 기준 체중이 문장 안으로, 떠 있으면 고지 줄이 말하므로 종전 문장(두 벌 키).
+        assertEquals("이번 구간에서 1200걸음 걸으셨어요. 65kg 기준으로 약 27kcal를 태우셨어요. 귤 한 개 분량이에요!", t.healthLine(WalkHealthSummary(1200, 27, usedDefaultWeight = true), showsWeightPrompt = false))
+        assertEquals("이번 구간에서 1200걸음 걸으셨어요. 약 27kcal를 태우셨어요. 귤 한 개 분량이에요!", t.healthLine(WalkHealthSummary(1200, 27, usedDefaultWeight = true), showsWeightPrompt = true))
+        assertEquals("이번 구간에서 100걸음 걸으셨어요. 약 1kcal를 태우셨어요.", t.healthLine(WalkHealthSummary(100, 1, usedDefaultWeight = false), showsWeightPrompt = false))
         assertEquals("라면 약 3그릇 분량이에요!", t.foodLine(1500))
     }
 
