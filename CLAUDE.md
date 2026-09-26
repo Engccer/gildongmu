@@ -309,6 +309,8 @@ npm run test:run   # Vitest (게이트 테스트 — 매 커밋 통과 필수)
                    # 여기서 이름을 넘겨도 "No test files found"로 **통과가 아니라 무실행**이 된다.
                    # 그 둘은 해당 디렉터리에서 `npx vitest run`으로 돌려야 실제로 돈다.
 
+npm run test:a11y  # 실브라우저 접근성 게이트(axe, 빌드+Chromium). test:run과 별개 레인: PR·릴리스 직전, 접근성 변경 뒤 → PATTERNS
+
 node scripts/usage-report.mjs   # API 과금·쿼터·키 만료 상태 (로컬 전용, 프로브 돈 5·가용성 13 — ODsay 1건만 과금)
 ```
 
@@ -319,7 +321,7 @@ node scripts/usage-report.mjs   # API 과금·쿼터·키 만료 상태 (로컬 
 - 기능·버그픽스는 같은 커밋에 테스트 동반. Vitest 전역은 node-env지만 **컴포넌트 테스트는 파일 상단 `// @vitest-environment jsdom` 프라그마 + @testing-library/react 레인이 관례**(`PlaceDetail.test.tsx`·nearby 계약 스위트가 선례). 순수 로직은 node-env fixture 단위테스트, 외부 API 통합은 **실호출이 머지 게이트**.
 - **외부 API 통합은 실호출(실데이터)을 머지 게이트로 박는다** — fixture green ≠ 실계약 검증(데이터 커버리지 현실은 정적 리뷰가 못 잡음).
 - 커밋 이메일 `engccer@gmail.com`. 주석·커밋·문서 한국어, 변수/함수명 영어.
-- a11y 변경 후 `a11y-auditor` 서브에이전트 점검.
+- a11y 변경 후 `a11y-auditor` 서브에이전트 점검 + `npm run test:a11y`.
 - **신규 국내 서비스는 대장과 작업 큐가 다른 문서다**: `docs/SPEC.md` §3 "실험 백로그"는 **조사한 서비스의 대장**(존재하는가·쓸 만한가)이고, `docs/BACKLOG.md` E는 **착수 후보 큐**(다음에 뭘 할까)다. 발굴하면 SPEC에 등록하고, 착수를 결정하면 BACKLOG로 올린다. 둘은 중복이 아니라 파이프라인이다.
 - **마일스톤을 닫을 때 문서를 분배한다**(위 §문서 체계). iOS 릴리스는 What's New를 `docs/appstore/release-notes.md`에 남기고 `node scripts/build-release-notes.mjs`로 번들 JSON을 재생성한다(드리프트 테스트). ⚠ 번들은 아카이브 시점에 굳으므로 아카이브 뒤 고쳤으면 빌드 번호를 올린다. → PATTERNS
 - **저장소는 공개 전제로 다룬다(2026-08-17 오픈소스 준비)**. **기준 절차의 정본은 `sanitize-for-release` 스킬**(공개 저장소 `Engccer/sanitize-for-release`)이며, gildongmu는 그 스킬의 **유형 C(원본 격리형)** 다. 유형별 절차·스윕 축은 스킬을 따르고 여기서는 이 저장소의 자리만 적는다.

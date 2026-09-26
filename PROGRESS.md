@@ -164,6 +164,8 @@ iOS는 스토어 1.18이, 웹은 `origin/main`이 프로덕션이다(2026-09-29 
 
 `docs/BACKLOG.md` 서두가 실측 기준선의 정본이다. 요약하면 테스트는 전량 green이고 `npm run lint` error 0, `tsc --noEmit` error 0이다. **축은 error이지 warning이 아니다** — lint warning은 기준선 밖이라 0을 요구하지 않는다. error가 0에서 벗어난 출력은 그 자체가 신규 결함이다. ⚠ 루트 `npm run test:run`은 `packages/cli`·`packages/mcp`를 돌지 않는다(`vitest.config.ts` include가 `src/**`·`scripts/**`뿐) — 그 둘은 각 디렉터리에서 `npx vitest run`으로 따로 돌린다.
 
+실브라우저 접근성 게이트 `npm run test:a11y`는 별개 레인이다(PR·릴리스 직전, 접근성 변경 뒤). 정적 5 + 상태 4 화면에서 critical 0, serious baseline 전 화면 0(2026-09-26 첫 실행, 전 등급 위반 0).
+
 ---
 
 ## 열려 있는 것

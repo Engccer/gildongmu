@@ -53,6 +53,16 @@
 
 **자동 등장 보조 섹션은 region 랜드마크 유지**(`<section aria-labelledby>`+`useId`+`<h3 id>`). 버튼 없이 조용히 fetch되어 나타나는 섹션(`AirQuality`·`StationMeta` 류)은 region이 **유일한 발견 수단**이라 "불필요한 region" 아님. ⚠ 죽은 코드 청소 시 이 `aria-labelledby`·`useId` 제거 금지. **버튼으로 펼치는 패널은 버튼이 발견 경로라 `<div>` 유지**. 판단 규칙: "사용자가 직접 펼쳤나(버튼·div) vs 조용히 나타났나(자동·region)".
 
+### 실브라우저 접근성 게이트(`npm run test:a11y`)
+
+`tests/a11y/`가 프로덕션 빌드를 Chromium으로 띄워 axe로 감사한다(D27, webfortd 이식, spec `docs/superpowers/specs/2026-09-26-a11y-browser-gate-port-design.md`). critical은 0이어야 하고, serious는 화면 키별 `{ruleId: count}` baseline(`tests/a11y/axe-serious-baseline.json`)보다 늘거나 새 규칙이 나오면 실패, 줄면 권고 로그만 낸다. 대상은 정적 5(`/ko`·`/en`·`/ko/about`·`/ko/privacy`·`/ko/offline`)와 상태 4(검색 결과·장소 상세·내 주변 허브·길찾기 결과)다.
+
+- **baseline 갱신은 파일 직접 수정**이다(자동 갱신 스크립트 없음). 감소 로그를 보고 숫자를 내리고, 새 위반은 고치는 것이 기본이다. critical은 baseline으로 넘기지 않는다: 고칠 수 없으면 그 테스트를 `test.fixme`로 표시하고 이유를 적는다.
+- **fixture 물리기**: 상태 화면은 `isolateNetwork(page, fixtures)`(`tests/a11y/network.ts`)가 외부 출처를 끊고 `/api/**`를 pathname으로 fixture에 대응시키며, 없는 경로는 502로 답한다(라우트의 실제 실패 계약이라 실패 문장 화면도 감사 대상). 새 상태 화면을 넣을 때 필요한 응답만 `tests/a11y/fixtures.ts`에 더한다. 실호출은 0이다.
+- **결정론의 세 받침**: 키 게이트는 `playwright.config.ts`가 더미 값으로 전부 켠다(`.env.local` 유무와 무관), 서버는 게이트 전용 포트 3100(개발 서버 재사용 금지), 서비스 워커는 차단(`serviceWorkers: "block"`, 워커가 가로챈 요청은 `page.route`에 안 보인다). 셋 중 하나를 빼면 baseline이 머신마다 달라진다.
+- ⚠ **`?dir=` 복원은 폼만 채운다**. 길찾기 결과를 보려면 "경로 조회"를 눌러야 한다(프리필과 다른 진입, §프리필 진입과 `?dir=` 복원).
+- ⚠ **실기기 판정을 대체하지 않는다.** axe는 표준 위반(대비·계산된 접근명·중복 id 등)만 보고, 헌장 §2 과잉 ARIA·"한 줄 = 한 접근성 객체" 분절·포커스 착지·낭독 순서는 못 본다. 그 축은 jsdom 계약 테스트·`a11y-auditor`·실기기 VoiceOver 몫이다.
+
 ---
 
 ## 내 주변·위치·포커스

@@ -1384,7 +1384,7 @@ W1 도구 9개를 "데이터 반환형이 주"(W2 spec 판정 ②) 기준으로 
 | # | 항목 | 얹힐 곳 |
 |---|---|---|
 | **D11** | 이탈 국면에서 `courseVote`가 두 번 계산되고 하나는 버려진다(웹·Kit 동형). fix당 `tangentAt` 5회 낭비. 판정은 옳다 — §3의 표결을 국면 분기 **뒤로** 미루면 사라진다 | ✅ A6 상수 확정으로 리듀서를 다시 열 때 |
-| **D27** | 실브라우저 접근성 회귀 게이트(`@axe-core/playwright`, webfortd@606d16e `tests/a11y/` 이식 — PORTS.md gildongmu `[open]` 행). jsdom 계약 테스트 62파일과 역할이 다르다(계약 vs 표준 위반). 실기기 VoiceOver·헌장 §2 과잉 ARIA 판정은 대체하지 않는다. ▶ 2026-09-26 위원장 판정: 착수 | 6차 웨이브 `a11y-gate`(계획 sweep-6 §1) |
+| **D27** | 실브라우저 접근성 회귀 게이트(`@axe-core/playwright`, webfortd@606d16e `tests/a11y/` 이식 — PORTS.md gildongmu `[open]` 행). jsdom 계약 테스트 62파일과 역할이 다르다(계약 vs 표준 위반). 실기기 VoiceOver·헌장 §2 과잉 ARIA 판정은 대체하지 않는다. ▶ 2026-09-26 위원장 판정: 착수. ✅ **2026-09-26 종결**(세션 a11y-gate, CHANGELOG 같은 날, `npm run test:a11y`). 첫 실행에서 9화면 모두 **전 등급 위반 0**(critical·serious·moderate·minor, 판정 보류 0)이라 결함 항목은 새로 세우지 않았다. axe가 못 보는 축(과잉 ARIA·분절·착지)은 그대로 사람 몫 | 6차 웨이브 `a11y-gate`(계획 sweep-6 §1) |
 
 ---
 
