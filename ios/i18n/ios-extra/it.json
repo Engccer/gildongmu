@@ -302,7 +302,7 @@
       "waypointChange": "{label}, cambia punto intermedio",
       "waypointSet": "Punto intermedio {label}, ricerca del percorso in corso",
       "waypointKept": "Punto intermedio {label} invariato",
-      "waypointDropped": "Nessun percorso tramite il punto intermedio {label}; guida senza di esso",
+      "waypointDropped": "Non è stato trovato alcun percorso che passi per la tappa intermedia ({label}). Ti guidiamo alla destinazione ({dest}) senza la tappa intermedia.",
       "waypointRemove": "Rimuovi tappa",
       "waypointRemoved": "Tappa {label} rimossa, nuova ricerca del percorso"
     },

@@ -132,7 +132,7 @@
     <string name="android_guide_serviceStartFailed">案内サービスを開始できませんでした。アプリを画面に表示したまま再開してください</string>
     <string name="android_guide_ttsUnavailable">この言語の音声案内は利用できません。画面の案内文をご確認ください</string>
     <string name="android_guide_waypointChange">%1$s、経由地を変更</string>
-    <string name="android_guide_waypointDropped">経由地 %1$s を通る経路が見つからないため、経由地なしで案内します</string>
+    <string name="android_guide_waypointDropped">経由地（%1$s）を含む経路が見つかりませんでした。経由地なしで目的地（%2$s）へ案内します。</string>
     <string name="android_guide_waypointKept">経由地 %1$s はそのままです</string>
     <string name="android_guide_waypointRemove">経由地を削除</string>
     <string name="android_guide_waypointRemoved">経由地 %1$s を削除し、経路を再検索します</string>
@@ -210,7 +210,7 @@
     <string name="android_nearby_weatherFailed">天気情報を取得できませんでした</string>
     <string name="android_nearby_weatherHeading">天気</string>
     <string name="android_nearby_whereAmIChat">現在地について質問する</string>
-    <string name="android_outing_aheadLandmark">前方に%1$s %2$s</string>
+    <string name="android_outing_aheadLandmark">前方に%1$s、%2$s</string>
     <string name="android_outing_aheadNone">前方に目印なし</string>
     <string name="android_outing_band">お散歩、%1$s</string>
     <string name="android_outing_crosswalkAhead">前方に横断歩道</string>

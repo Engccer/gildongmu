@@ -302,7 +302,7 @@
       "waypointChange": "{label}, 경유지 변경",
       "waypointSet": "경유지 {label}, 경로를 다시 조회합니다",
       "waypointKept": "경유지 {label} 그대로입니다",
-      "waypointDropped": "경유지 {label}를 포함한 경로를 찾지 못해 경유지 없이 안내합니다",
+      "waypointDropped": "경유지({label})를 포함한 경로를 찾지 못했습니다. 경유지 없이 목적지({dest})로 안내합니다.",
       "waypointRemove": "경유지 삭제",
       "waypointRemoved": "경유지 {label} 삭제, 경로를 다시 조회합니다"
     },
@@ -343,7 +343,7 @@
       "headingUnknown": "이동 방향 확인 중",
       "moving": "{dir}으로 이동 중",
       "lastHeading": "마지막 진행 방향 {dir}",
-      "aheadLandmark": "앞에 {name} {distance}",
+      "aheadLandmark": "앞에 {name}, {distance}",
       "aheadNone": "앞에 이정표 없음",
       "surroundingsLoading": "주변 확인 중",
       "surroundingsFailed": "주변 정보 없음",

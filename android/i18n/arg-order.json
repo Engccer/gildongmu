@@ -1018,7 +1018,8 @@
     "label"
   ],
   "android.guide.waypointDropped": [
-    "label"
+    "label",
+    "dest"
   ],
   "android.guide.waypointKept": [
     "label"

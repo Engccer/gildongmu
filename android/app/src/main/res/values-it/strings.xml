@@ -132,7 +132,7 @@
     <string name="android_guide_serviceStartFailed">Impossibile avviare il servizio di guida. Tieni l’app sullo schermo e riavvia</string>
     <string name="android_guide_ttsUnavailable">La guida vocale non è disponibile in questa lingua. Controlla il testo della guida sullo schermo</string>
     <string name="android_guide_waypointChange">%1$s, cambia punto intermedio</string>
-    <string name="android_guide_waypointDropped">Nessun percorso tramite il punto intermedio %1$s; guida senza di esso</string>
+    <string name="android_guide_waypointDropped">Non è stato trovato alcun percorso che passi per la tappa intermedia (%1$s). Ti guidiamo alla destinazione (%2$s) senza la tappa intermedia.</string>
     <string name="android_guide_waypointKept">Punto intermedio %1$s invariato</string>
     <string name="android_guide_waypointRemove">Rimuovi tappa</string>
     <string name="android_guide_waypointRemoved">Tappa %1$s rimossa, nuova ricerca del percorso</string>

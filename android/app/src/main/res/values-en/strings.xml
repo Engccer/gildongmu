@@ -132,7 +132,7 @@
     <string name="android_guide_serviceStartFailed">Could not start the guidance service. Keep the app on screen and start again</string>
     <string name="android_guide_ttsUnavailable">Voice guidance is not available for this language. Check the guidance text on screen</string>
     <string name="android_guide_waypointChange">%1$s, change waypoint</string>
-    <string name="android_guide_waypointDropped">No route found through waypoint %1$s; guiding without it</string>
+    <string name="android_guide_waypointDropped">No route through the waypoint (%1$s) was found. Guiding to the destination (%2$s) without the waypoint.</string>
     <string name="android_guide_waypointKept">Waypoint %1$s unchanged</string>
     <string name="android_guide_waypointRemove">Remove waypoint</string>
     <string name="android_guide_waypointRemoved">Waypoint %1$s removed, re-fetching the route</string>

@@ -132,7 +132,7 @@
     <string name="android_guide_serviceStartFailed">Impossible de démarrer le service de guidage. Gardez l’application à l’écran et redémarrez</string>
     <string name="android_guide_ttsUnavailable">Le guidage vocal n’est pas disponible dans cette langue. Consultez le texte du guidage à l’écran</string>
     <string name="android_guide_waypointChange">%1$s, changer le point de passage</string>
-    <string name="android_guide_waypointDropped">Aucun itinéraire par le point de passage %1$s ; guidage sans lui</string>
+    <string name="android_guide_waypointDropped">Aucun itinéraire passant par l\'étape (%1$s) n\'a été trouvé. Guidage vers la destination (%2$s) sans l\'étape.</string>
     <string name="android_guide_waypointKept">Point de passage %1$s inchangé</string>
     <string name="android_guide_waypointRemove">Supprimer l’étape</string>
     <string name="android_guide_waypointRemoved">Étape %1$s supprimée, nouvelle recherche d’itinéraire</string>

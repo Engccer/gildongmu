@@ -302,7 +302,7 @@
       "waypointChange": "{label}、経由地を変更",
       "waypointSet": "経由地 {label}、経路を再検索します",
       "waypointKept": "経由地 {label} はそのままです",
-      "waypointDropped": "経由地 {label} を通る経路が見つからないため、経由地なしで案内します",
+      "waypointDropped": "経由地（{label}）を含む経路が見つかりませんでした。経由地なしで目的地（{dest}）へ案内します。",
       "waypointRemove": "経由地を削除",
       "waypointRemoved": "経由地 {label} を削除し、経路を再検索します"
     },
@@ -343,7 +343,7 @@
       "headingUnknown": "進行方向を確認中",
       "moving": "{dir}へ移動中",
       "lastHeading": "最後の進行方向 {dir}",
-      "aheadLandmark": "前方に{name} {distance}",
+      "aheadLandmark": "前方に{name}、{distance}",
       "aheadNone": "前方に目印なし",
       "surroundingsLoading": "周辺を確認中",
       "surroundingsFailed": "周辺情報なし",

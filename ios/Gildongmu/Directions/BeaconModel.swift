@@ -1137,13 +1137,17 @@ final class BeaconModel {
         // 간략 안내는 기하를 몰라 목적지 직선 안내가 되고, 화면엔 경유지가 남아 거짓이
         // 된다. 사실을 말하고 비운다 — 사용자가 다시 더할 수 있다(세션 보류보다 낫다).
         // 그 문장은 `.high` — 안내 방식이 바뀐 사실은 착지 라벨로 대체될 수 없다.
+        // N4(위원장 문안 2026-09-26, 웹 `directions.viaDropped` 동형): 원인절("경로를 찾지 못했습니다")이 참인
+        // 경로 실패에서만 버리고, 강등 문장을 **대체**한다(붙이면 "안내합니다"가 두 번 이어지고 실패 대상을
+        // 목적지로 잘못 짚는다). 위치 실패(`detailNoLocation`)에 붙이면 거짓 원인이라 경유지를 그대로 둔다 —
+        // 웹이 `unavailable` 밖에서 경유지를 빼지 않는 것과 같다. 이름은 괄호 안이라 조사를 붙이지 않는다.
         var droppedWaypoint = false
-        if let dropped = waypoint {
+        if key == "guide.detailUnavailable", let dropped = waypoint {
             waypoint = nil
             routeWaypointLabel = nil
             syncStartRequestWithSession()
             droppedWaypoint = true
-            text += " " + appLocalized("ios.guide.waypointDropped", dropped.label)
+            text = appLocalized("ios.guide.waypointDropped", dropped.label, destinationLabel)
         }
         statusText = text
         announce(text, highPriority: droppedWaypoint)

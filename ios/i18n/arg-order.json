@@ -388,7 +388,8 @@
     "label"
   ],
   "ios.guide.waypointDropped": [
-    "label"
+    "label",
+    "dest"
   ],
   "ios.guide.waypointKept": [
     "label"

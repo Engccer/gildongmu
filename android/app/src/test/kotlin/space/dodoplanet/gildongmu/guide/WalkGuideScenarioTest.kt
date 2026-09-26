@@ -368,7 +368,7 @@ class WalkGuideScenarioTest {
         assertEquals(listOf("우회전B"), h.speaker.texts)
     }
 
-    @Test fun `경유지 있는 세션의 간략 폴백 — 조용히 버리지 않고 waypointDropped를 high로 붙인다, 재시작 인자도 경유지 없이`() = guideTest(dispatcher, { HttpResponse(200, routeJson(longAhead)) }) { h ->
+    @Test fun `경유지 있는 세션의 간략 폴백 — 조용히 버리지 않고 강등 문장을 waypointDropped로 대체해 high로, 재시작 인자도 경유지 없이`() = guideTest(dispatcher, { HttpResponse(200, routeJson(longAhead)) }) { h ->
         val via = GuideWaypoint(BeaconDest(north(100.0).lat, lng0), "장미공원")
         h.model.requestStart(h.request.copy(waypoint = via))
         settle()
@@ -377,7 +377,7 @@ class WalkGuideScenarioTest {
         assertTrue(h.transport.seenUrls.single().contains("via="))
         assertEquals(GuideMode.brief, h.model.ui.value.mode)
         val spoken = h.speaker.spoken.last()
-        assertTrue(spoken.first.endsWith(h.catalog.get("android.guide.waypointDropped", "장미공원")), spoken.first)
+        assertEquals(h.catalog.get("android.guide.waypointDropped", "장미공원", h.request.label), spoken.first)
         assertTrue(spoken.second)
         // 실패 뒤 재시작이 경유지를 되살리지 않는다.
         h.model.stopByUser()

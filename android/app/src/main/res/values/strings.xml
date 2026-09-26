@@ -132,7 +132,7 @@
     <string name="android_guide_serviceStartFailed">안내 서비스를 시작하지 못했습니다. 앱을 화면에 띄운 채 다시 시작하세요</string>
     <string name="android_guide_ttsUnavailable">이 언어의 음성 안내를 쓸 수 없습니다. 화면의 안내 문장을 확인하세요</string>
     <string name="android_guide_waypointChange">%1$s, 경유지 변경</string>
-    <string name="android_guide_waypointDropped">경유지 %1$s를 포함한 경로를 찾지 못해 경유지 없이 안내합니다</string>
+    <string name="android_guide_waypointDropped">경유지(%1$s)를 포함한 경로를 찾지 못했습니다. 경유지 없이 목적지(%2$s)로 안내합니다.</string>
     <string name="android_guide_waypointKept">경유지 %1$s 그대로입니다</string>
     <string name="android_guide_waypointRemove">경유지 삭제</string>
     <string name="android_guide_waypointRemoved">경유지 %1$s 삭제, 경로를 다시 조회합니다</string>
@@ -210,7 +210,7 @@
     <string name="android_nearby_weatherFailed">날씨 정보를 가져오지 못했습니다</string>
     <string name="android_nearby_weatherHeading">날씨</string>
     <string name="android_nearby_whereAmIChat">내 현재 위치에 관해 물어보기</string>
-    <string name="android_outing_aheadLandmark">앞에 %1$s %2$s</string>
+    <string name="android_outing_aheadLandmark">앞에 %1$s, %2$s</string>
     <string name="android_outing_aheadNone">앞에 이정표 없음</string>
     <string name="android_outing_band">나들이, %1$s</string>
     <string name="android_outing_crosswalkAhead">앞에 횡단보도</string>
