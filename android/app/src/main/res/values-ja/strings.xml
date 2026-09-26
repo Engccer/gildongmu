@@ -223,6 +223,7 @@
     <string name="android_outing_dir_se">南東</string>
     <string name="android_outing_dir_sw">南西</string>
     <string name="android_outing_dir_w">西</string>
+    <string name="android_outing_ended">お散歩を終了しました</string>
     <string name="android_outing_endedByUser">お散歩を終了しました。</string>
     <string name="android_outing_heading">お散歩</string>
     <string name="android_outing_headingUnknown">進行方向を確認中</string>
@@ -244,16 +245,17 @@
     <string name="android_outing_passRight">右に%1$s</string>
     <string name="android_outing_passSide">そばに%1$s</string>
     <string name="android_outing_returnToOrigin">出発地点へ</string>
-    <string name="android_outing_returning">出発地点へ案内します。</string>
     <string name="android_outing_roadEntered">%1$sに入りました</string>
     <string name="android_outing_start">お散歩を開始</string>
+    <string name="android_outing_started">お散歩を開始しました</string>
     <string name="android_outing_stop">お散歩を終了</string>
     <string name="android_outing_surroundingsFailed">周辺情報なし</string>
     <string name="android_outing_surroundingsLoading">周辺を確認中</string>
     <string name="android_outing_walked">歩いた距離 %1$s</string>
     <string name="android_outing_walkedUnavailable">歩数データなし</string>
     <string name="android_outing_zoneAhead">前方 %1$s</string>
-    <string name="android_outing_zoneBehind">通過した %1$s</string>
+    <string name="android_outing_zoneAround">周辺 %1$s</string>
+    <string name="android_outing_zoneBehind">後方 %1$s</string>
     <string name="android_outing_zoneBeside">横</string>
     <string name="android_outing_zoneEmpty">なし</string>
     <string name="android_place_askAbout">%1$sについて質問する</string>

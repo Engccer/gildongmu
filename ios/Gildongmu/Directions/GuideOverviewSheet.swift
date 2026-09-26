@@ -113,7 +113,8 @@ struct GuideOverviewSheet<Capability: GuideOverviewCapability>: View {
                     case let .text(_, text):
                         distanceText(text)
                     case let .action(id, label):
-                        Button(label) { run(id) }
+                        // 라벨에 거리가 들 수 있다(나들이 조망 항목) — 낭독은 단위를 풀어 쓴다(`m`이 분으로 읽히는 오독).
+                        Button { run(id) } label: { distanceText(label) }
                     case let .heading(_, text):
                         distanceText(text)
                             .accessibilityAddTraits(.isHeader)

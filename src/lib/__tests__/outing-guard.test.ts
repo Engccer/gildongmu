@@ -100,9 +100,25 @@ describe("나들이 문장 창구", () => {
     expect(post).toContain("speakDevice(");
   });
 
+  it("횡단보도 예고는 보호 창을 세우고 주변 문장은 그 창 뒤로 미룬다(한 fix 한 문장, spec 준수 리뷰 M-2)", () => {
+    const model = readFileSync(MODEL, "utf8");
+    const evaluate = functionBody(model, "evaluate");
+    expect(evaluate).toMatch(/sayProtected\(appLocalized\(notice\.hasAudioSignal/);
+    expect(evaluate).toMatch(/if crosswalkSpoken \|\| now < protectedUntil \{/);
+    expect(evaluate).toMatch(/sayLow\(Self\.passByLine/);
+    expect(evaluate).not.toMatch(/[^w]say\(Self\.passByLine/);
+  });
+
+  it("stop()은 보류 문장 세대를 올리고 이미 끝난 세션에선 오디오를 다시 원복하지 않는다", () => {
+    const stop = functionBody(readFileSync(MODEL, "utf8"), "stop");
+    expect(stop.indexOf("announcer.advanceGeneration()")).toBeLessThan(stop.indexOf("guard wasActive else { return }"));
+    expect(stop.indexOf("guard wasActive else { return }")).toBeLessThan(stop.indexOf("tones.endSession("));
+  });
+
   it("기기 음성은 대기 한 칸이고 말하는 중엔 선점하지 않는다", () => {
     const speak = functionBody(readFileSync(MODEL, "utf8"), "speakDevice");
     expect(speak).toMatch(/guard TtsPlayer\.shared\.isSpeaking else/);
-    expect(speak).toContain("speechPending = text");
+    expect(speak).toContain("speechPending = (text, uptimeNow)");
+    expect(speak).toContain("speechPendingTTL");
   });
 });

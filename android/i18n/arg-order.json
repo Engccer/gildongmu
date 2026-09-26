@@ -1143,6 +1143,9 @@
   "android.outing.zoneAhead": [
     "distance"
   ],
+  "android.outing.zoneAround": [
+    "distance"
+  ],
   "android.outing.zoneBehind": [
     "distance"
   ],

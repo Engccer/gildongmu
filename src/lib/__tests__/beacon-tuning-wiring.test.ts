@@ -75,9 +75,10 @@ describe("BeaconModel 세션 종료 갈림은 GuideTuning 데이터를 읽는다
     expect(idle).not.toMatch(/sessionKind\s*==\s*\.walk/);
   });
 
-  it("안전망 무이동 축은 도착 창 밖에서만 판정한다(나들이 spec §9 — 같은 300초라 창 안에선 추정 도착을 선점)", () => {
+  it("안전망 무이동 축은 도착 추정이 발동할 수 있는 동안만 끈다(나들이 spec §9 — 창 ∧ 거리 캡)", () => {
     const idle = code.slice(code.indexOf("func maybeEndIdleSession"), code.indexOf("func maybePresumeArrival"));
-    expect(idle).toMatch(/tuning\.sessionIdleStationaryAxis && !inArrivalWindow \? now - progressRef : nil/);
+    expect(idle).toMatch(/let presumedArrivalCanFire = inArrivalWindow\s*&& \(tuning\.presumedArrival\.map \{ \(lastUsableDistanceToDest \?\? \.infinity\) <= \$0\.maxDistanceMeters \} \?\? false\)/);
+    expect(idle).toMatch(/tuning\.sessionIdleStationaryAxis && !presumedArrivalCanFire \? now - progressRef : nil/);
   });
 });
 

@@ -24641,6 +24641,46 @@
         }
       }
     },
+    "ios.outing.ended": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "나들이 종료"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stroll ended"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paseo terminado"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Balade terminée"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Passeggiata terminata"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "お散歩を終了しました"
+          }
+        }
+      }
+    },
     "ios.outing.endedByUser": {
       "localizations": {
         "ko": {
@@ -25184,7 +25224,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Point de départ en cours"
+            "value": "Recherche du point de départ"
           }
         },
         "it": {
@@ -25481,46 +25521,6 @@
         }
       }
     },
-    "ios.outing.returning": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "출발점으로 안내합니다."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Guiding you back to the start."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Te guiamos de vuelta al inicio."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Guidage vers le point de départ."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Guida verso il punto di partenza."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "出発地点へ案内します。"
-          }
-        }
-      }
-    },
     "ios.outing.roadEntered": {
       "localizations": {
         "ko": {
@@ -25601,6 +25601,46 @@
         }
       }
     },
+    "ios.outing.started": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "나들이 시작"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stroll started"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paseo iniciado"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Balade commencée"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Passeggiata iniziata"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "お散歩を開始しました"
+          }
+        }
+      }
+    },
     "ios.outing.stop": {
       "localizations": {
         "ko": {
@@ -25652,7 +25692,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "No surroundings info"
+            "value": "No nearby info"
           }
         },
         "es": {
@@ -25841,6 +25881,46 @@
         }
       }
     },
+    "ios.outing.zoneAround": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "주변 %1$@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nearby, %1$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cerca, %1$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "À proximité, %1$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nei dintorni, %1$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "周辺 %1$@"
+          }
+        }
+      }
+    },
     "ios.outing.zoneBehind": {
       "localizations": {
         "ko": {
@@ -25876,7 +25956,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "通過した %1$@"
+            "value": "後方 %1$@"
           }
         }
       }

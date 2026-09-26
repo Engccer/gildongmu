@@ -329,7 +329,6 @@
       "stop": "나들이 종료",
       "endedByUser": "나들이를 종료했습니다.",
       "returnToOrigin": "출발점으로",
-      "returning": "출발점으로 안내합니다.",
       "originPending": "출발점 잡는 중",
       "originSet": "출발점을 잡았습니다",
       "originLabel": "출발점 {label}",
@@ -371,7 +370,10 @@
         "sw": "남서쪽",
         "w": "서쪽",
         "nw": "북서쪽"
-      }
+      },
+      "started": "나들이 시작",
+      "ended": "나들이 종료",
+      "zoneAround": "주변 {distance}"
     }
   },
   "guide": {

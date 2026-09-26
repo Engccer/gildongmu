@@ -8,10 +8,17 @@ import Foundation
 public let outingRequeryDistanceMeters = 100.0
 /// 연속 실패가 이 횟수에 닿으면 주변 정보가 "없음"이 된다(§6.2, 3-state의 실패 칸).
 public let outingRequeryFailureLimit = 3
+/// 실패한 조회의 재시도 간격(초). 거리만으로 재시도하면 제자리에서 첫 조회가 실패한 사용자가
+/// "주변 확인 중"에 영영 갇힌다(구현 리뷰) — 기다리는 것이 없는데 기다린다고 말하게 된다.
+public let outingRequeryRetrySeconds = 20.0
 
-/// 이 fix에서 주변을 다시 조회해야 하는가. 마지막 조회 좌표가 없으면(세션 첫 조회) 참.
-public func outingRequeryStep(lastQuery: RoutePoint?, fix: RoutePoint) -> Bool {
+/// 이 fix에서 주변을 다시 조회해야 하는가. 마지막 조회 좌표가 없으면(세션 첫 조회) 참, 100m를 벗어나면 참,
+/// 직전 조회가 실패했고 재시도 간격이 지났으면 참.
+public func outingRequeryStep(
+    lastQuery: RoutePoint?, fix: RoutePoint, lastFailureAt: Double?, now: Double
+) -> Bool {
     guard let lastQuery else { return true }
+    if let failedAt = lastFailureAt, now - failedAt >= outingRequeryRetrySeconds { return true }
     let moved = haversineMeters(lat1: lastQuery.lat, lng1: lastQuery.lng, lat2: fix.lat, lng2: fix.lng)
     guard moved.isFinite else { return false }
     return moved >= outingRequeryDistanceMeters
@@ -23,7 +30,8 @@ public enum OutingSurroundingsStatus: Sendable, Equatable {
     case loading
     /// 받은 목록이 있다(0건 포함 — 0건은 "이정표 없음"으로 말한다).
     case ready
-    /// 연속 실패가 상한에 닿았다 — 직전 목록을 더는 믿지 않는다.
+    /// 연속 실패가 상한에 닿았다 — 새 목록을 받지 못하고 있다. 받아 둔 장소는 움직이지 않으므로 지나침
+    /// 판정에는 계속 쓰지만, "앞에 이정표 없음" 같은 부재 주장은 하지 않는다(방향 행이 "주변 정보 없음").
     case failed
     /// 한국 밖(서버 `outOfCoverage`).
     case outOfCoverage

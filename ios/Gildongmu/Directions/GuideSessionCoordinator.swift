@@ -103,7 +103,7 @@ final class GuideSession {
     func acceptOutingReturn() {
         guard let target = outing.returnTarget else { return }
         outing.endForReturn()
-        outing.announceReturn()
+        // 인계 고지는 도보 안내의 시작 문장("{출발점}까지 도보 안내 시작…", E40)이 맡는다 — 따로 말하면 같은 정보가 두 번이다.
         let id = UUID()
         outingReturnID = id
         beacon.onSessionEnd = { [weak self] reason in self?.endOutingReturn(id, reason: reason, target: target) }

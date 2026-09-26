@@ -223,6 +223,7 @@
     <string name="android_outing_dir_se">남동쪽</string>
     <string name="android_outing_dir_sw">남서쪽</string>
     <string name="android_outing_dir_w">서쪽</string>
+    <string name="android_outing_ended">나들이 종료</string>
     <string name="android_outing_endedByUser">나들이를 종료했습니다.</string>
     <string name="android_outing_heading">나들이</string>
     <string name="android_outing_headingUnknown">이동 방향 확인 중</string>
@@ -244,15 +245,16 @@
     <string name="android_outing_passRight">오른쪽에 %1$s</string>
     <string name="android_outing_passSide">옆에 %1$s</string>
     <string name="android_outing_returnToOrigin">출발점으로</string>
-    <string name="android_outing_returning">출발점으로 안내합니다.</string>
     <string name="android_outing_roadEntered">%1$s에 들어섰습니다</string>
     <string name="android_outing_start">나들이 시작</string>
+    <string name="android_outing_started">나들이 시작</string>
     <string name="android_outing_stop">나들이 종료</string>
     <string name="android_outing_surroundingsFailed">주변 정보 없음</string>
     <string name="android_outing_surroundingsLoading">주변 확인 중</string>
     <string name="android_outing_walked">걸은 거리 %1$s</string>
     <string name="android_outing_walkedUnavailable">걸음 측정 정보 없음</string>
     <string name="android_outing_zoneAhead">앞 %1$s</string>
+    <string name="android_outing_zoneAround">주변 %1$s</string>
     <string name="android_outing_zoneBehind">지나온 %1$s</string>
     <string name="android_outing_zoneBeside">옆</string>
     <string name="android_outing_zoneEmpty">없음</string>

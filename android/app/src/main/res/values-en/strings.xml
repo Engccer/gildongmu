@@ -223,6 +223,7 @@
     <string name="android_outing_dir_se">southeast</string>
     <string name="android_outing_dir_sw">southwest</string>
     <string name="android_outing_dir_w">west</string>
+    <string name="android_outing_ended">Stroll ended</string>
     <string name="android_outing_endedByUser">Stroll ended.</string>
     <string name="android_outing_heading">Stroll</string>
     <string name="android_outing_headingUnknown">Checking direction</string>
@@ -244,15 +245,16 @@
     <string name="android_outing_passRight">%1$s on your right</string>
     <string name="android_outing_passSide">Passing %1$s</string>
     <string name="android_outing_returnToOrigin">Back to start</string>
-    <string name="android_outing_returning">Guiding you back to the start.</string>
     <string name="android_outing_roadEntered">Now on %1$s</string>
     <string name="android_outing_start">Start stroll</string>
+    <string name="android_outing_started">Stroll started</string>
     <string name="android_outing_stop">End stroll</string>
-    <string name="android_outing_surroundingsFailed">No surroundings info</string>
+    <string name="android_outing_surroundingsFailed">No nearby info</string>
     <string name="android_outing_surroundingsLoading">Checking surroundings</string>
     <string name="android_outing_walked">Walked %1$s</string>
     <string name="android_outing_walkedUnavailable">No step data</string>
     <string name="android_outing_zoneAhead">Ahead, %1$s</string>
+    <string name="android_outing_zoneAround">Nearby, %1$s</string>
     <string name="android_outing_zoneBehind">Behind, %1$s</string>
     <string name="android_outing_zoneBeside">Beside</string>
     <string name="android_outing_zoneEmpty">None</string>

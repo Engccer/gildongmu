@@ -133,10 +133,11 @@ class GuideSourceGuardTest {
         assertTrue(calls.all { it.contains("FLAG_IMMUTABLE") }, calls.joinToString("\n---\n"))
     }
 
-    /** 안전망 무이동 축은 도착 창 밖에서만(나들이 spec §9 — 도착 추정 제자리와 같은 300초라 창 안에선 추정 도착을 선점한다, iOS 동형). */
-    @Test fun `⑭ 안전망 무이동 축은 도착 창 밖에서만 판정한다`() {
+    /** 안전망 무이동 축은 도착 추정이 발동할 수 있는 동안(창 ∧ 거리 캡)만 끈다(나들이 spec §9, iOS 동형). */
+    @Test fun `⑭ 안전망 무이동 축은 도착 추정이 발동할 수 있는 동안만 끈다`() {
         val src = guide.resolve("WalkGuideModel.kt").readText()
         val idle = src.substring(src.indexOf("fun maybeEndIdleSession"), src.indexOf("fun maybePresumeArrival"))
-        assertTrue(idle.contains("tuning.sessionIdleStationaryAxis && !inArrivalWindow"), idle)
+        assertTrue(idle.contains("(lastUsableDistanceToDest ?: Double.POSITIVE_INFINITY) <= it.maxDistanceMeters"), idle)
+        assertTrue(idle.contains("tuning.sessionIdleStationaryAxis && !presumedArrivalCanFire"), idle)
     }
 }

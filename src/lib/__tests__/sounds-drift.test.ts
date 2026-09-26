@@ -35,6 +35,8 @@ const SOUNDS = [
 
 /** 파일은 두었지만 웹 재생기(`useBeaconSound`)에 아직 등록하지 않은 소리 — 웹 기능이 없어서다(나들이는 iOS 1차). */
 const WEB_PLAYER_PENDING = new Set<string>(["stroll"]);
+/** iOS `BeaconTone`의 전용 대기 케이스 — 안드로이드 `:kit` 미러는 나들이 이식 때 옮긴다(`BeaconTonesTest`). */
+const IOS_ONLY_PENDING_TONES = ["stroll"];
 
 /** iOS `BeaconTone` 케이스(파일이 아니라 톤 — left·right는 scheme이 파일을 고른다). */
 const TONE_CASES =
@@ -67,7 +69,10 @@ describe("실시간 길 안내 사운드 파일 동조", () => {
       "utf8",
     );
     expect(kit).toContain(`case ${TONE_CASES}`);
-    // iOS 전용 대기 케이스(나들이 비프)는 공유 목록과 다른 줄에 선언한다.
-    expect(kit).toContain("    case stroll\n");
+    // enum 본문의 **모든** case 줄 = 공유 목록 + iOS 전용 대기 케이스(나들이 비프). 첫 줄 끝에 덧붙이거나 둘째 줄에
+    // 여러 케이스를 선언해도 여기서 잡힌다.
+    const body = kit.slice(kit.indexOf("public enum BeaconTone"), kit.indexOf("public func resourceName"));
+    const all = [...body.matchAll(/^ {4}case ([A-Za-z, ]+)$/gm)].flatMap((m) => m[1].split(",").map((c) => c.trim()));
+    expect(all).toEqual([...TONE_CASES.split(", "), ...IOS_ONLY_PENDING_TONES]);
   });
 });

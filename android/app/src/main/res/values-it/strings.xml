@@ -223,6 +223,7 @@
     <string name="android_outing_dir_se">sud-est</string>
     <string name="android_outing_dir_sw">sud-ovest</string>
     <string name="android_outing_dir_w">ovest</string>
+    <string name="android_outing_ended">Passeggiata terminata</string>
     <string name="android_outing_endedByUser">Passeggiata terminata.</string>
     <string name="android_outing_heading">Passeggiata</string>
     <string name="android_outing_headingUnknown">Verifica della direzione</string>
@@ -244,15 +245,16 @@
     <string name="android_outing_passRight">%1$s a destra</string>
     <string name="android_outing_passSide">Accanto: %1$s</string>
     <string name="android_outing_returnToOrigin">Torna al punto di partenza</string>
-    <string name="android_outing_returning">Guida verso il punto di partenza.</string>
     <string name="android_outing_roadEntered">Ora su %1$s</string>
     <string name="android_outing_start">Inizia passeggiata</string>
+    <string name="android_outing_started">Passeggiata iniziata</string>
     <string name="android_outing_stop">Termina passeggiata</string>
     <string name="android_outing_surroundingsFailed">Nessuna informazione sui dintorni</string>
     <string name="android_outing_surroundingsLoading">Verifica dei dintorni</string>
     <string name="android_outing_walked">Percorsi %1$s</string>
     <string name="android_outing_walkedUnavailable">Nessun dato sui passi</string>
     <string name="android_outing_zoneAhead">Davanti, %1$s</string>
+    <string name="android_outing_zoneAround">Nei dintorni, %1$s</string>
     <string name="android_outing_zoneBehind">Dietro, %1$s</string>
     <string name="android_outing_zoneBeside">Accanto</string>
     <string name="android_outing_zoneEmpty">Nessuno</string>

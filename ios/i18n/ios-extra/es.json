@@ -329,7 +329,6 @@
       "stop": "Terminar paseo",
       "endedByUser": "Paseo terminado.",
       "returnToOrigin": "Volver al inicio",
-      "returning": "Te guiamos de vuelta al inicio.",
       "originPending": "Fijando el punto de inicio",
       "originSet": "Punto de inicio fijado",
       "originLabel": "Punto de inicio: {label}",
@@ -371,7 +370,10 @@
         "sw": "suroeste",
         "w": "oeste",
         "nw": "noroeste"
-      }
+      },
+      "started": "Paseo iniciado",
+      "ended": "Paseo terminado",
+      "zoneAround": "Cerca, {distance}"
     }
   },
   "guide": {

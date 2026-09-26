@@ -516,6 +516,9 @@
   "ios.outing.zoneAhead": [
     "distance"
   ],
+  "ios.outing.zoneAround": [
+    "distance"
+  ],
   "ios.outing.zoneBehind": [
     "distance"
   ],

@@ -22,19 +22,31 @@ final class OutingOverviewAdapter: GuideOverviewCapability, Identifiable {
     var overviewHeaderText: String { joinText(model.walkedLine, model.headingLine) }
 
     var overviewRows: [GuideOverviewRow] {
-        let radius = Int(outingOverviewRadiusMeters)
-        let near = model.relations.filter { $0.value.d <= outingOverviewRadiusMeters }
-        let zones: [(OutingZone, String, String)] = [
-            (.ahead, "zone-ahead", appLocalized("ios.outing.zoneAhead", formatDistance(radius))),
-            (.beside, "zone-beside", appLocalized("ios.outing.zoneBeside")),
-            (.behind, "zone-behind", appLocalized("ios.outing.zoneBehind", formatDistance(radius))),
-        ]
+        // 주변 정보가 준비되지 않았으면 "없음"으로 뭉개지 않고 방향 행과 같은 상태 문장 한 줄(3-state, 접근성 감사 M3).
+        switch model.surroundingsStatus {
+        case .loading: return [.text(id: "status", appLocalized("ios.outing.surroundingsLoading"))]
+        case .failed: return [.text(id: "status", appLocalized("ios.outing.surroundingsFailed"))]
+        case .outOfCoverage: return [.text(id: "status", appLocalized("ios.outing.outOfCoverage"))]
+        case .ready: break
+        }
+        let radius = formatDistance(Int(outingOverviewRadiusMeters))
+        // 스냅샷(연 순간 + 그때 건 재조회가 반영된 첫 fix)에서 그린다 — fix마다 다시 그리면 커서 아래 항목이 구획을 옮겨 다닌다.
+        let near = model.overviewRelations.filter { $0.value.d <= outingOverviewRadiusMeters }
+        // 방위를 모르면 앞·지나온을 가를 기준이 없다 — "앞에 없음"으로 단정하지 않고 "주변" 한 목록으로(접근성 감사 M2).
+        let zones: [(zone: OutingZone?, id: String, title: String)] = model.overviewHeadingValid
+            ? [
+                (.ahead, "zone-ahead", appLocalized("ios.outing.zoneAhead", radius)),
+                (.beside, "zone-beside", appLocalized("ios.outing.zoneBeside")),
+                (.behind, "zone-behind", appLocalized("ios.outing.zoneBehind", radius)),
+            ]
+            : [(nil, "zone-around", appLocalized("ios.outing.zoneAround", radius))]
         var rows: [GuideOverviewRow] = []
-        for (zone, id, title) in zones {
-            rows.append(.heading(id: id, title))
-            let items = near.filter { $0.value.zone == zone }.sorted { $0.value.d < $1.value.d }
+        for section in zones {
+            rows.append(.heading(id: section.id, section.title))
+            let items = near.filter { section.zone == nil || $0.value.zone == section.zone }
+                .sorted { $0.value.d < $1.value.d }
             if items.isEmpty {
-                rows.append(.text(id: "\(id)-empty", appLocalized("ios.outing.zoneEmpty")))
+                rows.append(.text(id: "\(section.id)-empty", appLocalized("ios.outing.zoneEmpty")))
             }
             for (placeID, rel) in items {
                 guard let p = model.place(id: placeID) else { continue }

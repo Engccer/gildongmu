@@ -64,7 +64,8 @@ public func outingRoadName(fromAddress address: String) -> String? {
     if let m = address.firstMatch(of: /([가-힣0-9]+(?:대로|로|길)) ?[0-9]/) {
         return String(m.1)
     }
-    if let m = address.firstMatch(of: /([A-Za-z0-9]+(?:-[A-Za-z0-9]+)*-(?:daero|ro|gil))(?![A-Za-z0-9-])/.ignoresCase()) {
+    // en은 "Yangjae-daero 123-gil"처럼 번호 길이 뒤에 붙는다 — 한 토큰으로 묶어야 ko(`양재대로123길`)와 같은 도로가 된다.
+    if let m = address.firstMatch(of: /([A-Za-z0-9]+(?:-[A-Za-z0-9]+)*-(?:daero|ro|gil)(?: [0-9]+(?:beon)?-gil)?)(?![A-Za-z0-9-])/.ignoresCase()) {
         return String(m.1)
     }
     return nil

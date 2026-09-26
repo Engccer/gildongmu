@@ -223,7 +223,8 @@ struct OutingRoadNameTests {
         #expect(outingRoadName(fromAddress: "서울 종로구 종로 1") == "종로")
         #expect(outingRoadName(fromAddress: "서울 강동구 길동 123-4") == nil)
         #expect(outingRoadName(fromAddress: "1095 Cheonho-daero, Gangdong-gu, Seoul") == "Cheonho-daero")
-        #expect(outingRoadName(fromAddress: "45 Yangjae-daero 123-gil, Seoul") == "Yangjae-daero")
+        #expect(outingRoadName(fromAddress: "45 Yangjae-daero 123-gil, Seoul") == "Yangjae-daero 123-gil")
+        #expect(outingRoadName(fromAddress: "7 Olympic-ro 35ga-gil, Seoul") == "Olympic-ro")
         #expect(outingRoadName(fromAddress: "Gil-dong, Gangdong-gu, Seoul") == nil)
     }
 
@@ -261,11 +262,19 @@ struct OutingRequeryTests {
     @Test("첫 조회는 참, 100m 경계")
     func distance() {
         let a = RoutePoint(lat: baseLat, lng: baseLng)
-        #expect(outingRequeryStep(lastQuery: nil, fix: a))
+        #expect(outingRequeryStep(lastQuery: nil, fix: a, lastFailureAt: nil, now: 0))
         let p99 = point(east: 0, north: 99)
         let p101 = point(east: 0, north: 101)
-        #expect(!outingRequeryStep(lastQuery: a, fix: RoutePoint(lat: p99.lat, lng: p99.lng)))
-        #expect(outingRequeryStep(lastQuery: a, fix: RoutePoint(lat: p101.lat, lng: p101.lng)))
+        #expect(!outingRequeryStep(lastQuery: a, fix: RoutePoint(lat: p99.lat, lng: p99.lng), lastFailureAt: nil, now: 0))
+        #expect(outingRequeryStep(lastQuery: a, fix: RoutePoint(lat: p101.lat, lng: p101.lng), lastFailureAt: nil, now: 0))
+    }
+
+    @Test("실패한 조회는 제자리에서도 20초 뒤 다시 조회한다")
+    func retryAfterFailure() {
+        let a = RoutePoint(lat: baseLat, lng: baseLng)
+        #expect(!outingRequeryStep(lastQuery: a, fix: a, lastFailureAt: 100, now: 119.9))
+        #expect(outingRequeryStep(lastQuery: a, fix: a, lastFailureAt: 100, now: 120))
+        #expect(!outingRequeryStep(lastQuery: a, fix: a, lastFailureAt: nil, now: 500))
     }
 
     @Test("실패는 세 번째에 failed, 그 전엔 직전 상태 유지, 성공은 계수 초기화")

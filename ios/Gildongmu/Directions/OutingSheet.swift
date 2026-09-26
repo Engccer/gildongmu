@@ -43,7 +43,7 @@ struct OutingSheet: View {
                 VStack(spacing: 0) {
                     // 미확정이면 disabled가 아니라 라벨이 상태를 말한다(포커스를 지우지 않는다, spec §13).
                     Button {
-                        guard model.origin != nil else { return }
+                        guard model.origin != nil else { return model.announceOriginPending() }
                         onReturn()
                     } label: {
                         Text(model.origin == nil
@@ -90,7 +90,10 @@ struct OutingSheet: View {
         }) { adapter in
             GuideOverviewSheet(capability: adapter) { _ in }
         }
-        .sheet(item: $detailPlace) { place in
+        // 상세를 읽는 동안 세션이 끝났으면(안전망 5분) 닫은 뒤 사유 문장으로 착지한다(종료 전이의 착지가 시트에 가렸다).
+        .sheet(item: $detailPlace, onDismiss: {
+            if model.endScreen != nil { Task { await land($endFocused) } }
+        }) { place in
             PlaceDetailSheet(place: place, showsDirectionsEntry: false)
         }
         .sheet(isPresented: $showsSettings, onDismiss: {
@@ -106,6 +109,7 @@ struct OutingSheet: View {
             Menu(appLocalized("ios.outing.narration", narrationLabel(narration))) {
                 ForEach(OutingNarration.allCases, id: \.self) { option in
                     Button(narrationLabel(option)) { narrationRaw = option.rawValue }
+                        .accessibilityAddTraits(option == narration ? .isSelected : [])
                 }
             }
             Button(appLocalized("ios.outing.overviewButton")) {
@@ -116,6 +120,12 @@ struct OutingSheet: View {
                 .accessibilityFocused($statusFocused)
             distanceText(model.walkedLine)
             distanceText(model.directionLine)
+            // 잠금 중 무음 예고 — 세션 내내 참인 지속 상태라 행으로 남긴다(도보 시트 동형, 시작 시 1회 통지와 짝).
+            if model.soundDegraded {
+                Text(appLocalized("ios.beacon.soundBackgroundUnavailable"))
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
         } header: {
             GuideTitleRow {
                 Text(appLocalized("ios.outing.heading"))
@@ -164,7 +174,7 @@ struct OutingSheet: View {
                 model.clearEnd()
             }
         } header: {
-            Text(appLocalized("ios.outing.stop"))
+            Text(appLocalized("ios.outing.ended"))
                 .accessibilityAddTraits(.isHeader)
         }
     }

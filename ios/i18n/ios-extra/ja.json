@@ -329,7 +329,6 @@
       "stop": "お散歩を終了",
       "endedByUser": "お散歩を終了しました。",
       "returnToOrigin": "出発地点へ",
-      "returning": "出発地点へ案内します。",
       "originPending": "出発地点を確認中",
       "originSet": "出発地点を確定しました",
       "originLabel": "出発地点 {label}",
@@ -358,7 +357,7 @@
       "band": "お散歩、{distance}",
       "zoneAhead": "前方 {distance}",
       "zoneBeside": "横",
-      "zoneBehind": "通過した {distance}",
+      "zoneBehind": "後方 {distance}",
       "zoneEmpty": "なし",
       "itemLeft": "左 {distance}",
       "itemRight": "右 {distance}",
@@ -371,7 +370,10 @@
         "sw": "南西",
         "w": "西",
         "nw": "北西"
-      }
+      },
+      "started": "お散歩を開始しました",
+      "ended": "お散歩を終了しました",
+      "zoneAround": "周辺 {distance}"
     }
   },
   "guide": {

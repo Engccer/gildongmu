@@ -1121,9 +1121,12 @@ class WalkGuideModel(
         val startedAt = startedAt ?: return false
         val fixRef = max(startedAt, lastFixAt ?: startedAt)
         val progressRef = max(startedAt, sessionLastProgressAt ?: startedAt)
-        // 무이동 축은 도착 창 밖에서만(나들이 spec §9) — 무이동 300초가 도착 추정 제자리 300초와 같아 창 안에서 이 축을
-        // 켜면 25m 앵커 시계가 10m 앵커보다 먼저 차서 추정 도착을 선점한다. 두절 축은 그대로.
-        val stationary = if (tuning.sessionIdleStationaryAxis && !inArrivalWindow) now - progressRef else null
+        // 무이동 축은 도착 추정이 발동할 수 있는 동안(도착 창 ∧ 마지막 확인 거리 ≤ 거리 캡)만 끈다(나들이 spec §9, iOS 동형) —
+        // 무이동 300초가 도착 추정 제자리 300초와 같아 그 동안 켜면 추정 도착을 선점하고, 창만 보면 150m 밖에서 머문 세션이
+        // 영영 안 끝난다. 두절 축은 그대로.
+        val presumedArrivalCanFire = inArrivalWindow &&
+            (tuning.presumedArrival?.let { (lastUsableDistanceToDest ?: Double.POSITIVE_INFINITY) <= it.maxDistanceMeters } ?: false)
+        val stationary = if (tuning.sessionIdleStationaryAxis && !presumedArrivalCanFire) now - progressRef else null
         val reason = sessionIdleStep(now - fixRef, stationary) ?: return false
         GuideDiag.log("sessionIdleEnd reason=${reason.rawValue}")
         val spoken = strings.get("guide.endedIdle")

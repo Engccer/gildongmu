@@ -329,7 +329,6 @@
       "stop": "End stroll",
       "endedByUser": "Stroll ended.",
       "returnToOrigin": "Back to start",
-      "returning": "Guiding you back to the start.",
       "originPending": "Setting start point",
       "originSet": "Start point set",
       "originLabel": "Start point: {label}",
@@ -347,7 +346,7 @@
       "aheadLandmark": "Ahead: {name}, {distance}",
       "aheadNone": "No landmark ahead",
       "surroundingsLoading": "Checking surroundings",
-      "surroundingsFailed": "No surroundings info",
+      "surroundingsFailed": "No nearby info",
       "outOfCoverage": "No info for this area",
       "passLeft": "{name} on your left",
       "passRight": "{name} on your right",
@@ -371,7 +370,10 @@
         "sw": "southwest",
         "w": "west",
         "nw": "northwest"
-      }
+      },
+      "started": "Stroll started",
+      "ended": "Stroll ended",
+      "zoneAround": "Nearby, {distance}"
     }
   },
   "guide": {

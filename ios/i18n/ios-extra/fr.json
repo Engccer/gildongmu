@@ -329,8 +329,7 @@
       "stop": "Terminer la balade",
       "endedByUser": "Balade terminée.",
       "returnToOrigin": "Retour au départ",
-      "returning": "Guidage vers le point de départ.",
-      "originPending": "Point de départ en cours",
+      "originPending": "Recherche du point de départ",
       "originSet": "Point de départ défini",
       "originLabel": "Point de départ : {label}",
       "originFallback": "point de départ",
@@ -371,7 +370,10 @@
         "sw": "sud-ouest",
         "w": "ouest",
         "nw": "nord-ouest"
-      }
+      },
+      "started": "Balade commencée",
+      "ended": "Balade terminée",
+      "zoneAround": "À proximité, {distance}"
     }
   },
   "guide": {

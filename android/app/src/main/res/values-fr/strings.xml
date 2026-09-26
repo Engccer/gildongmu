@@ -223,6 +223,7 @@
     <string name="android_outing_dir_se">sud-est</string>
     <string name="android_outing_dir_sw">sud-ouest</string>
     <string name="android_outing_dir_w">ouest</string>
+    <string name="android_outing_ended">Balade terminée</string>
     <string name="android_outing_endedByUser">Balade terminée.</string>
     <string name="android_outing_heading">Balade</string>
     <string name="android_outing_headingUnknown">Détection de la direction</string>
@@ -236,7 +237,7 @@
     <string name="android_outing_narrationOff">Désactivée</string>
     <string name="android_outing_originFallback">point de départ</string>
     <string name="android_outing_originLabel">Point de départ : %1$s</string>
-    <string name="android_outing_originPending">Point de départ en cours</string>
+    <string name="android_outing_originPending">Recherche du point de départ</string>
     <string name="android_outing_originSet">Point de départ défini</string>
     <string name="android_outing_outOfCoverage">Pas d\'informations pour cette zone</string>
     <string name="android_outing_overviewButton">Voir autour</string>
@@ -244,15 +245,16 @@
     <string name="android_outing_passRight">%1$s à droite</string>
     <string name="android_outing_passSide">À côté : %1$s</string>
     <string name="android_outing_returnToOrigin">Retour au départ</string>
-    <string name="android_outing_returning">Guidage vers le point de départ.</string>
     <string name="android_outing_roadEntered">Vous êtes sur %1$s</string>
     <string name="android_outing_start">Commencer la balade</string>
+    <string name="android_outing_started">Balade commencée</string>
     <string name="android_outing_stop">Terminer la balade</string>
     <string name="android_outing_surroundingsFailed">Pas d\'informations sur les alentours</string>
     <string name="android_outing_surroundingsLoading">Recherche des alentours</string>
     <string name="android_outing_walked">Parcouru %1$s</string>
     <string name="android_outing_walkedUnavailable">Pas de données de pas</string>
     <string name="android_outing_zoneAhead">Devant, %1$s</string>
+    <string name="android_outing_zoneAround">À proximité, %1$s</string>
     <string name="android_outing_zoneBehind">Derrière, %1$s</string>
     <string name="android_outing_zoneBeside">À côté</string>
     <string name="android_outing_zoneEmpty">Aucun</string>
