@@ -9,6 +9,17 @@
 
 ---
 
+## 2026-09-29
+
+### 챌린지 동결 해제 — 재배포·iOS 1.19 재준비
+
+OpenAI WebMCP Challenge 수상 발표 확인 뒤 재동결(2026-09-24)을 풀었다. `.git/hooks/pre-push`와 글로벌 지침의 동결 절을 지우고 적체 65커밋을 push해 프로덕션이 `origin/main` 자동 배포(`dcn2h3nx4`, `ad3596a0`)로 복귀했다. 앱이 새로 읽는 값 셋을 배포본 실호출로 확인: 도보 `lines=1` → `shortest`·`accessible`, 역 메타 `lang=en` → `operatorEn`, 대중교통 `alternatives[].highlight` 축 이름. 심사 취소된 1.19(빌드 27)는 재제출하지 않고 최신 코드로 빌드 28을 새로 올렸다.
+
+### App Store 1.19 심사 제출 (빌드 28)
+
+1.18 아카이브(`edc8cbdc`) 이후 iOS에 닿는 50커밋(빌드 27의 E42·stale-origin·시설 한 줄 + E50 대안 이유 이름·수단 재조회, N4 경유지 진행 표시, A23 안전망 5분·5분, en 운영기관 영문)을 담아 제출했다(08:00 KST, `WAITING_FOR_REVIEW`). 아카이브 커밋 `5c3bf9bf`, worktree 격리, Admin 키 export 배포 서명, 산출물 검사(번들 ID·1.19.0(28)·`UIBackgroundModes`·권한 문구 6로케일·CoreBluetooth 미링크) 통과. 나들이(E51)·대중교통 실시간 안내(A47 iOS)는 봉인이라 제외, 심사 노트는 승계. 노트 정본 `docs/appstore/release-notes.md` §1.19.
+
+
 ## 2026-09-27
 
 ### 안드로이드 도보 안내 wave 2: 안내 중 변경 5종 (E43 정식판 동기화 M4b, `android-m4b`)
