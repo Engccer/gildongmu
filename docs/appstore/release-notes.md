@@ -12,34 +12,42 @@
 
 ---
 
-## 1.19 (빌드 27)
+## 1.19 (빌드 28)
 
-기준은 1.18 아카이브 커밋 `edc8cbdc`(빌드 26)이며 그 이후 `ios/` 커밋 23건을 판정했다. Release 바이너리에 도달하면서 iOS 사용자에게 보이는 것만 담는다. 새로 읽는 서버 응답(도보 `lines=1` 줄 목록)은 프로덕션에서 `shortest`·`accessible` 두 줄로 응답함을 실호출로 확인했다.
+기준은 1.18 아카이브 커밋 `edc8cbdc`(빌드 26)이며 그 이후 `ios/` 커밋 50건을 판정했다(빌드 27은 2026-09-24 심사 취소로 미출시 — 그 노트를 승계하고 이후 27건을 더했다). Release 바이너리에 도달하면서 iOS 사용자에게 보이는 것만 담는다. 새로 읽는 서버 응답 세 가지는 2026-09-29 재배포 뒤 프로덕션 실호출로 확인했다: 도보 `lines=1`은 `shortest`·`accessible` 두 줄, 대중교통 `alternatives[].highlight`는 축 이름(`subwayOnly`·`fastest`), 역 메타 `lang=en`은 `operatorEn`(`Seoul Metro`).
 
 포함 판정:
 
 | 기능 | 커밋 | 노트 |
 |---|---|---|
 | **도보 경로 두 줄**(E42) — ko는 최단 경로와 계단 회피 경로(없으면 큰길 경로), 계단 회피 토글 삭제, 줄마다 안내 시작 버튼, 안내 중 다른 줄로 전환 | `c9eaa160`·`d1206ba7` | **ko만.** en은 추천·최단 두 줄 그대로이고 시작 버튼 이름만 바뀌었다. 도달면 `DirectionsTabView`·`BeaconModel`(도보 안내)은 정식판 |
+| **대중교통 대안 경로에 이유 이름 + 버스만·지하철만 경로 찾기 버튼**(E50) — 대안은 축 이름(가장 빠른·환승이 가장 적은·도보 거리가 가장 짧은·버스만·지하철만)이 붙는 것만, 전체 후보에 없는 수단은 재조회 버튼 | `a7fd1486`·`4aa83818` | ko·en 6로케일. 도달면 `DirectionsTabView` 대중교통 결과 목록은 정식판(실시간 안내 봉인과 무관). `requeryAxes`는 조건부 필드라 실호출에선 미노출(후보에 지하철만 경로가 있어 정상) |
+| **경유지 진행 표시**(N4) — 경유지 50m 앞 예고, 도착 문장에 목적지 계속 안내, 안내 시트 남은 거리 행은 다음 목표 기준, 경유지 경로 실패 시 경유지 없이 안내한다는 확정 문장 | `2dff3d64`·`fabf00a9`·`b20f5a49`·`bfec8b44`·`23258258`(`BeaconModel` 분) | ko·en 6로케일. 도달면 `BeaconModel`·`BeaconTrackingSheet`(도보 안내)는 정식판 |
+| **잊힌 도보 안내 안전망 단축**(A23 상수) — 위치 신호 두절 10분→5분, 무이동 20분→5분(도착 추정 창에서는 2분 유예) | `663f5c00`·`0120a79d`·`61b14ec9`(`SessionIdle` 분) | ko·en. 도달면 도보 안내 세션은 정식판 |
 | **측위 실패 시 옛 위치임과 시각을 밝힌다**(stale-origin) — 위치 표시줄·길찾기 현재 위치 칸이 "마지막으로 확인한 위치, 주소, N분 전", 길찾기는 그 위치로 계속하고 완료 통지에서 밝힌다 | `be203749`·`87dbab1f`·`dfca7e60`·`1dcb120c` | ko·en 6로케일. 도달면 `LocationBarView`·`DirectionsTabView`·`CurrentAddressStore`는 정식판 |
 | **교통약자 도우미처럼 세부 줄이 없는 시설 묶음은 평문 한 줄** — 펼치면 빈 행만 나오던 문제 | `2a199716` | ko·en. 도달면 `StationSections`(역 상세)는 정식판 |
+| **역 상세 운영기관 영문 표기**(E44 ⑨ 후속) — en 계열에서 `서울교통공사` → `Seoul Metro` | `96175514` | **en 등 비-ko만.** ko는 바이트 불변. 역명 영문화는 서버 변경이라 제외 |
 
 제외 근거:
 
-- **대중교통 실시간 안내 계층**(E35 `667a8632`·`ef9c1487`·`eaf8e879`, E48 `de1968b7`·`d15282af`·`80e6d540`, A46 `866babe0`·`fd03dc66`·`bef6b9c2`): 대중교통 세션 시작이 `AppConfig.experimentalGuidanceEnabled` 뒤라 정식판 도달 0. 공유 표면 `GuideOverviewSheet`는 `TransitOverviewAdapter`만, `LocationService`는 keep-alive 프로파일(대중교통 세션 전용)만 바뀌었다.
-- **체감 없는 보정**: en 대표번호 표기 "main line" → "main number"(`5e7e00ae`), 채팅 추천 질문 조회 상한 20초(`b2f177ee`).
-- **동작 변경 0**: Swift 미참조 xcstrings 동조(`ab72bf0d`), 참조 0 키 삭제(`700f65c5`), Kit 주석(`88e64dcc`·`6ef79c50`), 기기 배포 스크립트(`dcd20e82`).
+- **나들이 모드**(E51 `8662f0ce`·`48ccc8d1`·`14b94eac`·`61b14ec9`·`3b1f8afd`·`9c51e0f5`·`bfec8b44`의 나들이 분, `734cdc36`의 Kit `coords` 옵트인, `guide-stroll.mp3`·`BeaconTone.stroll`·`GuideOverviewRow.heading`·`.dismiss`·`TtsPlayer.isSpeaking`): 진입점 둘(제목 메뉴·`OutingSheet`)이 `AppConfig.experimentalOutingEnabled` 뒤라 정식판 도달 0. 공유 표면의 새 케이스는 소비자가 `OutingOverviewAdapter`뿐.
+- **대중교통 실시간 안내 계층**(E35 `667a8632`·`ef9c1487`·`eaf8e879`, E48 `de1968b7`·`d15282af`·`80e6d540`, A46 `866babe0`·`fd03dc66`·`bef6b9c2`, A47 iOS `e5980994`·`23258258`·`505448f1`의 `TransitTrackingSheet`·`TransitGuideModel` 분): 대중교통 세션 시작이 `AppConfig.experimentalGuidanceEnabled` 뒤라 정식판 도달 0. 공유 표면 `GuideOverviewSheet`는 `TransitOverviewAdapter`만, `LocationService`는 keep-alive 프로파일(대중교통 세션 전용)만 바뀌었다.
+- **체감 없는 보정**: en 대표번호 표기 "main line" → "main number"(`5e7e00ae`), 채팅 추천 질문 조회 상한 20초(`b2f177ee`), 채팅 산문의 CRLF 줄 경계(`eac908ec`·`8a794e58` Kit 분)와 평문 변환 줄 경계 미러(`2a1f60a8`·`53d513d5` Kit 분 — 소비자는 웹 B12).
+- **동작 변경 0**: Swift 미참조 xcstrings 동조(`ab72bf0d`), 참조 0 키 삭제(`700f65c5`), Kit 주석(`88e64dcc`·`6ef79c50`), 기기 배포 스크립트(`dcd20e82`), Kit 확인 테스트(`7d941486`), 제출 스크립트 `--cancel-review`(`7de5b141`), 안드로이드 미러 등록부.
 
-심사 노트는 이번 버전에서 **승계한다**(`--review-notes` 없음). 새 권한·새 데이터 유형이 없고(옛 위치는 이미 기기에 있던 좌표), §9 문장 중 거짓이 된 것도 없다.
+심사 노트는 이번 버전에서 **승계한다**(`--review-notes` 없음). 새 권한·새 데이터 유형이 없고(옛 위치는 이미 기기에 있던 좌표, 재조회는 같은 ODsay 경로), §9 문장 중 거짓이 된 것도 없다.
 
 ### ko
 
 ```
 새로운 기능
 - 길찾기 도보 결과가 최단 경로와 계단 회피 경로 두 가지로 나옵니다. 계단을 피하는 길이 없으면 큰길 경로를 대신 보여 드립니다. 계단 회피 스위치는 없어졌고, 각 경로 안에 그 경로로 안내를 시작하는 버튼이 있습니다. 안내 중에도 다른 쪽 경로로 바꿀 수 있습니다.
+- 길찾기 대중교통 결과의 대안 경로에 번호 대신 이유가 붙습니다. 가장 빠른 경로, 환승이 가장 적은 경로, 도보 거리가 가장 짧은 경로, 버스만 타는 경로, 지하철만 타는 경로처럼 이름으로 구분합니다. 버스만 또는 지하철만 타는 경로가 결과에 없으면 그 경로를 따로 찾는 버튼이 나옵니다.
+- 경유지를 넣은 도보 안내가 경유지 50m 앞에서 경유지까지 남은 거리를 알려 드리고, 경유지에 도착하면 목적지로 계속 안내한다고 말합니다. 안내 화면의 남은 거리도 경유지까지, 그 뒤에는 목적지까지로 나옵니다. 경유지를 거치는 경로를 찾지 못하면 경유지 없이 목적지로 안내한다고 알려 드립니다.
 
 개선
 - 지금 위치를 잡지 못했을 때 예전 위치를 현재 위치처럼 말하지 않습니다. 위치 표시줄과 길찾기 출발지가 "마지막으로 확인한 위치"와 몇 분 전인지를 알려 드리고, 길찾기는 그 위치로 계속 찾으면서 그 사실을 함께 알려 드립니다.
+- 도보 안내를 끝내는 것을 잊었을 때 위치 신호가 5분 동안 끊기거나 5분 동안 이동이 없으면 안내를 스스로 끝냅니다. 이전에는 10분과 20분이었습니다.
 
 오류 수정
 - 역 상세의 교통약자 시설에서 교통약자 도우미처럼 세부 항목이 없는 시설을 펼치면 빈 줄만 나오던 문제를 고쳤습니다. 이제 한 줄로 바로 읽힙니다.
@@ -48,8 +56,14 @@
 ### en
 
 ```
+New
+- Alternative transit routes are now named by why they are offered, such as Fastest route, Fewest transfers, Least walking, Bus only, or Subway only, instead of being numbered. If no bus-only or subway-only route is in the results, a button lets you search for one.
+- Walking guidance with a waypoint now tells you the remaining distance 50 m before the waypoint, and when you reach it, says that guidance continues to your destination. The distance left on the guidance screen counts to the waypoint first, then to the destination. If no route through the waypoint can be found, the app tells you it is guiding you without it.
+
 Improved
 - When your current location can't be found, the app no longer presents an old location as current. The location bar and the directions starting point say "Last known location" and how long ago it was, and directions keep searching from there while telling you so.
+- If you forget to end walking guidance, it now ends on its own after 5 minutes without a location signal or 5 minutes without movement. Previously this was 10 and 20 minutes.
+- Station operators, such as Seoul Metro, now appear in English in station details.
 
 Fixed
 - In station accessibility facilities, groups with no individual entries, such as Accessibility helper, used to open to empty rows. They now read as a single line.
