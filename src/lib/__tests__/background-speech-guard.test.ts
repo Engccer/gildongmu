@@ -185,19 +185,20 @@ describe("백그라운드 음성 안내 배선 (E53)", () => {
     const tts = read(join(ROOT, "ios/Gildongmu/Chat/TtsPlayer.swift"));
     // 끊을 때 알릴 토큰은 "합성기에 남았는가"(일시정지 포함, 코드 품질 리뷰 M1). 다른 칸의 발화를 끊는 `speakGuidance`도 알리고
     // (m1), 인계의 `stopGuidance`만 알리지 않는다.
-    expect(functionBody(tts, "stop")).toMatch(/let interrupted = guidanceInSynth \? generation : nil\s*halt\(\)\s*notifyInterrupted\(interrupted\)/);
-    expect(functionBody(tts, "speakGuidance")).toMatch(/let interrupted = guidanceInSynth \? generation : nil\s*halt\(\)[^\n]*\n\s*notifyInterrupted\(interrupted\)/);
+    expect(functionBody(tts, "stop")).toMatch(/let interrupted = guidanceInSynth \? generation : nil\s*halt\(\)\s*notifyInterrupted\(interrupted, \.undelivered\)/);
+    // 더 새 안내가 이었다 — `superseded`(끝난 세션 문장에 복귀 상환 표식을 세우지 않는다, 증분 리뷰 m1).
+    expect(functionBody(tts, "speakGuidance")).toMatch(/let interrupted = guidanceInSynth \? generation : nil\s*halt\(\)[\s\S]{0,300}notifyInterrupted\(interrupted, \.superseded\)/);
     expect(functionBody(tts, "stopGuidance")).toContain("halt()");
     expect(functionBody(tts, "stopGuidance")).not.toContain("notifyInterrupted");
     expect(tts).toContain("func isSpeakingGuidance(token: Int) -> Bool { guidanceInSynth && generation == token }");
     // 오디오 인터럽션이 시작되면 안내 발화를 끊고 알린다(접근성 감사 M2 — 일시정지로 남은 문장은 들리지 않았다).
-    expect(tts).toMatch(/AVAudioSession\.interruptionNotification[\s\S]{0,400}== \.began[\s\S]{0,200}if player\.guidanceInSynth \{ player\.stop\(\) \}/);
+    expect(tts).toMatch(/AVAudioSession\.interruptionNotification[\s\S]{0,400}== \.began[\s\S]{0,900}if !suspended, player\.guidanceInSynth \{ player\.stop\(\) \}/);
     // 일시정지로 남은 발화는 말하는 중이 아니다 — 세면 대기 칸이 선점 문장까지 막힌다(횡단 리뷰 F5, 시간 상한은 정상 긴 문장을
     // 끊어 설계 리뷰 MAJOR 3로 폐기).
     expect(tts).toContain("var isSpeakingGuidance: Bool { guidanceInSynth && !synthesizer.isPaused }");
     expect(tts).toContain("private var guidanceInSynth: Bool { synthesizer.isSpeaking && playingMessageID == nil }");
     const output = read(join(DIR, "GuideSpeechOutput.swift"));
-    expect(output).toContain("TtsPlayer.shared.observeGuidanceInterruption { [weak queue] token in queue?.speechInterrupted(token: token) }");
+    expect(output).toMatch(/TtsPlayer\.shared\.observeGuidanceInterruption \{ \[weak queue\] token, reason in\s*queue\?\.speechInterrupted\(token: token, reason: reason\)/);
   });
 
   it("도보 post: 버림은 복귀 표식을 세우고, 기기 음성은 내리고, 대기 칸의 미전달만 다시 세운다(spec §4.3)", () => {

@@ -19,7 +19,14 @@ struct DeviceSpeechQueueTests {
         private(set) var spoken: [String] = []
         private(set) var stops = 0
 
+        /// 합성기에 남은 안내를 새 발화가 끊을 때의 알림(앱 `TtsPlayer.speakGuidance` → 관찰자, 이유 `superseded`).
+        var interruptionObservers: [(Int, DeviceSpeechDrop) -> Void] = []
+
         func speak(_ text: String) -> Int {
+            if speaking || paused {
+                let cut = token
+                interruptionObservers.forEach { $0(cut, .superseded) }
+            }
             token += 1
             speaking = true
             paused = false
@@ -50,7 +57,12 @@ struct DeviceSpeechQueueTests {
         /// 드레인이 확인할 때마다 하나씩 소비해 `synth.speaking`에 대입하는 스크립트(비면 그대로 둔다).
         var speakingAfterPolls: [Bool] = []
 
-        init(synth: SharedSynth = SharedSynth()) { self.synth = synth }
+        init(synth: SharedSynth = SharedSynth()) {
+            self.synth = synth
+            synth.interruptionObservers.append { [weak self] token, reason in
+                self?.queue.speechInterrupted(token: token, reason: reason)
+            }
+        }
 
         lazy var queue = DeviceSpeechQueue(
             clock: { [weak self] in self?.now ?? 0 },
@@ -144,15 +156,18 @@ struct DeviceSpeechQueueTests {
         #expect(h.drops.map(\.1) == [.superseded])
     }
 
-    // 다른 출처(다른 모델·채팅이 끝난 뒤 다른 발화)가 말하는 중이면 선점해도 이 칸의 옛 발화에 통지하지 않는다.
+    // 다른 출처가 말하는 중이면 선점해도 이 칸의 옛 발화에 또 통지하지 않는다 — 그 옛 발화는 끊긴 순간 합성기 알림으로 한 번
+    // `superseded`를 받았다(증분 리뷰 m1). 두 번째 통지가 없어야 한다.
     @Test func preemptDoesNotNotifyForeignSpeech() async {
         let synth = SharedSynth()
         let a = Harness(synth: synth)
         let b = Harness(synth: synth)
         a.submit("a의 옛 문장")
         b.submit("b가 말하는 중", high: true)  // b가 합성기를 넘겨받아 말한다
+        #expect(a.drops.map(\.0) == ["a의 옛 문장"])
         a.submit("a의 도착", high: true)
-        #expect(a.drops.isEmpty)
+        #expect(a.drops.map(\.0) == ["a의 옛 문장"])
+        #expect(a.drops.map(\.1) == [.superseded])
     }
 
     // 즉시 발화 전에 칸의 옛 문장을 비운다 — 새 문장 뒤에 옛 문장이 나오는 순서 역전 금지(m3).
@@ -414,12 +429,12 @@ struct DeviceSpeechQueueTests {
         outing.submit("횡단보도 예고")
         let token = synth.token
         synth.stop()
-        beacon.queue.speechInterrupted(token: token)
+        beacon.queue.speechInterrupted(token: token, reason: .undelivered)
         #expect(beacon.drops.isEmpty)
-        outing.queue.speechInterrupted(token: token - 1)
+        outing.queue.speechInterrupted(token: token - 1, reason: .undelivered)
         #expect(outing.drops.isEmpty)
-        outing.queue.speechInterrupted(token: token)
-        outing.queue.speechInterrupted(token: token)
+        outing.queue.speechInterrupted(token: token, reason: .undelivered)
+        outing.queue.speechInterrupted(token: token, reason: .undelivered)
         #expect(outing.drops.map(\.0) == ["횡단보도 예고"])
         #expect(outing.drops.map(\.1) == [.undelivered])
     }
@@ -447,5 +462,31 @@ struct DeviceSpeechQueueTests {
         h.channel = .voiceOver
         #expect(h.queue.handOver().texts == ["횡단보도 예고"])
         #expect(h.synth.stops == 1)
+    }
+
+    // 드레인이 꺼낸 다음 문장이 일시정지로 남은 이 칸의 문장을 끊으면 합성기 알림으로 `superseded`(증분 리뷰 m1·NIT 4 — 이유는
+    // `submit` 경로와 같다).
+    @Test func drainReplacingPausedOwnSpeechIsSuperseded() async {
+        let h = Harness()
+        h.submit("계단 경고")
+        h.submit("다음 예고")
+        h.synth.speaking = false
+        h.synth.paused = true
+        await drain()
+        #expect(h.synth.spoken == ["계단 경고", "다음 예고"])
+        #expect(h.drops.map(\.0) == ["계단 경고"])
+        #expect(h.drops.map(\.1) == [.superseded])
+    }
+
+    // 다른 칸(다음 세션)의 발화가 끊은 이 칸의 문장은 `superseded` — 끝난 세션의 종료 문장에 복귀 상환 표식을 세우지 않는다(증분 리뷰 m1).
+    @Test func foreignSpeechSupersedesOwnSpeech() async {
+        let synth = SharedSynth()
+        let beacon = Harness(synth: synth)
+        let transit = Harness(synth: synth)
+        beacon.submit("승차역 도착")
+        transit.submit("대중교통 시작", high: true)
+        #expect(beacon.drops.map(\.0) == ["승차역 도착"])
+        #expect(beacon.drops.map(\.1) == [.superseded])
+        #expect(transit.drops.isEmpty)
     }
 }

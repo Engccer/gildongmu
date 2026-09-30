@@ -27,9 +27,15 @@ final class TtsPlayer {
         ) { note in
             let raw = note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt
             guard raw.flatMap(AVAudioSession.InterruptionType.init(rawValue:)) == .began else { return }
+            // 앱이 중단됐다 돌아올 때 늦게 오는 `.began`(wasSuspended)은 지금 말하는 안내와 무관하다 — 끊지 않는다(증분 리뷰 m2).
+            let suspended = (note.userInfo?[AVAudioSessionInterruptionWasSuspendedKey] as? Bool) ?? false
             MainActor.assumeIsolated {
                 let player = TtsPlayer.shared
-                if player.guidanceInSynth { player.stop() }
+                // 계측: "인터럽션 순간 발화가 합성기에 남아 있다"는 전제를 실기기에서 가른다(E53 §2 ⑨, 릴리스 no-op).
+                guideDiagLog(
+                    "ttsInterruption began inSynth=\(player.guidanceInSynth) paused=\(player.synthesizer.isPaused) "
+                        + "suspended=\(suspended)")
+                if !suspended, player.guidanceInSynth { player.stop() }
             }
         }
     }
@@ -82,7 +88,9 @@ final class TtsPlayer {
         // `lastSpoken`을 먼저 비우고 `superseded`로 처리하므로 여기서 짝이 없다.
         let interrupted = guidanceInSynth ? generation : nil
         halt()  // 세대 증가 포함 — 직전 재생의 늦은 콜백을 무효화한다
-        notifyInterrupted(interrupted)
+        // 더 새 안내가 그 자리를 이었다 — `superseded`(복귀 상환 표식은 세우지 않고 1회성 장부만 되살린다. 증분 리뷰 m1: 끝난
+        // 세션의 종료 문장을 다음 세션이 끊을 때 `undelivered`면 맥락 밖 상환이 선다).
+        notifyInterrupted(interrupted, .superseded)
         let token = generation
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return token }
@@ -115,9 +123,9 @@ final class TtsPlayer {
 
     /// 안내 발화를 그 칸 **밖**의 정지(받아쓰기 시작·채팅 화면 이탈·채팅 듣기 시작·오디오 인터럽션·다른 칸의 발화)가 끊었을 때
     /// 부르는 관찰자 — 인자는 끊긴 발화 토큰(E53 횡단 리뷰 F4). 끊긴 문장이 1회성 경고면 그 칸이 버림을 통지해 장부가 되살아난다.
-    @ObservationIgnored private var guidanceInterruptionObservers: [(Int) -> Void] = []
+    @ObservationIgnored private var guidanceInterruptionObservers: [(Int, DeviceSpeechDrop) -> Void] = []
 
-    func observeGuidanceInterruption(_ observer: @escaping (Int) -> Void) {
+    func observeGuidanceInterruption(_ observer: @escaping (Int, DeviceSpeechDrop) -> Void) {
         guidanceInterruptionObservers.append(observer)
     }
 
@@ -125,12 +133,12 @@ final class TtsPlayer {
     func stop() {
         let interrupted = guidanceInSynth ? generation : nil
         halt()
-        notifyInterrupted(interrupted)
+        notifyInterrupted(interrupted, .undelivered)  // 아무것도 잇지 않고 끊었다
     }
 
-    private func notifyInterrupted(_ token: Int?) {
+    private func notifyInterrupted(_ token: Int?, _ reason: DeviceSpeechDrop) {
         guard let token else { return }
-        guidanceInterruptionObservers.forEach { $0(token) }
+        guidanceInterruptionObservers.forEach { $0(token, reason) }
     }
 
     private func halt() {

@@ -703,12 +703,12 @@ final class BeaconModel {
         // 캐시 우선이라 권한을 보지 않고 반환하는 경로가 있고, 그러면 권한 회수 후에도
         // "성공"해서 시작 톤만 나고 fix는 영영 오지 않는다(무한 침묵).
         guard LocationService.shared.isLocationServiceEnabled else {
-            fail(with: .unavailable, key: "beacon.weak")
+            fail(with: .unavailable, key: "beacon.weak", highPriority: false)
             return
         }
         switch LocationService.shared.authorizationSnapshot {
         case .denied, .restricted:
-            fail(with: .denied, key: "beacon.denied", resolution: .settings)
+            fail(with: .denied, key: "beacon.denied", resolution: .settings, highPriority: false)
             return
         case .notDetermined:
             // 팝업 자체가 신호다. 허용 여부는 아래에서 다시 확인한다.
@@ -717,7 +717,7 @@ final class BeaconModel {
             switch LocationService.shared.authorizationSnapshot {
             case .authorizedWhenInUse, .authorizedAlways: break
             default:
-                fail(with: .denied, key: "beacon.denied", resolution: .settings)
+                fail(with: .denied, key: "beacon.denied", resolution: .settings, highPriority: false)
                 return
             }
         default:
@@ -728,7 +728,7 @@ final class BeaconModel {
         // 전부 잡음이 된다. 데드밴드(max(15, accuracy))도 그 규모에서는 의미를 잃는다.
         // 걸으면서 소리만 듣는 기능이라 틀린 안내가 화면으로 반증되지도 않는다.
         guard LocationService.shared.accuracySnapshot != .reducedAccuracy else {
-            fail(with: .unavailable, key: "beacon.reduced", resolution: .precise)
+            fail(with: .unavailable, key: "beacon.reduced", resolution: .precise, highPriority: false)
             return
         }
 
@@ -1272,7 +1272,7 @@ final class BeaconModel {
 
     private func fail(
         with status: Status, key: String, resolution: FailResolution = .none, trailingKey: String? = nil,
-        highPriority: Bool = false
+        highPriority: Bool
     ) {
         self.status = status
         failResolution = resolution

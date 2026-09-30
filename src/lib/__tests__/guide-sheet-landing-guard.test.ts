@@ -73,7 +73,7 @@ describe("BeaconTrackingSheet 착지 (E57)", () => {
   it("경로 조회 중이면 커밋까지, 그다음 안내 모델의 통지가 모두 끝날 때까지 기다린다 — 시트는 통지 끝 신호를 직접 듣지 않는다(설계 리뷰 M1, 대기 계층 개정 §3.3.1)", () => {
     expect(MODEL).toContain("private(set) var awaitingRoute = false");
     const request = body(BEACON, "private func requestInfoLanding(");
-    expect(request).toContain("private func requestInfoLanding(note: String) {");
+    expect(request).toContain("private func requestInfoLanding(note: String, target: SheetFocus? = nil) {");
     expect(request).toContain("Self.routeWaitLimit");
     expect(request).toContain("reason=timeout");
     expect(BEACON).toMatch(/\.onChange\(of: model\.awaitingRoute\) \{ _, awaiting in\s*guard !awaiting, pendingInfoLanding != nil else \{ return \}\s*resolvePendingInfoLanding\(\)/);
@@ -149,13 +149,14 @@ describe("BeaconTrackingSheet 착지 (E57)", () => {
 
   it("배경 경계: 진행 중 착지·대기는 끊고 이월하며, 복귀 착지는 모델의 복귀 처리 뒤에 시작한다(코드 리뷰 M1, 횡단 리뷰 F1)", () => {
     expect(BEACON).toContain("private static var isForeground: Bool { UIApplication.shared.applicationState != .background }");
-    expect(BEACON).toMatch(/guard phase == \.background else \{ return \}[\s\S]{0,200}let pendingCarry = pendingInfoLanding\.map \{ \$0\.movedAfter == nil \} \?\? false/);
+    expect(BEACON).toMatch(/guard phase == \.background else \{ return \}[\s\S]{0,300}let pendingCarry = pendingInfoLanding\.flatMap \{ \$0\.movedAfter == nil \? \(\$0\.target \?\? \.remaining\) : nil \}/);
     // 시트의 scenePhase `.active`가 아니라 모델 신호에서 — 순서가 보장되지 않아 상환 게시 전에 착지할 수 있다.
-    expect(BEACON).toMatch(/\.onChange\(of: model\.foregroundReturnSeq\) \{\s*guard let target = deferredLanding else \{ return \}[\s\S]{0,300}requestInfoLanding\(note: "deferred"\)/);
+    expect(BEACON).toMatch(/\.onChange\(of: model\.foregroundReturnSeq\) \{\s*guard let target = deferredLanding else \{ return \}[\s\S]{0,600}requestInfoLanding\(note: "deferred", target:/);
     expect(BEACON).not.toMatch(/case \.active:/);
     // 이월된 도착·걸음 요약 착지도 복귀 상환(.high)이 끝난 뒤에(접근성 감사 M3).
-    expect(BEACON).toMatch(/requestInfoLanding\(note: "deferred"\)\s*\} else \{\s*landAfterSpeech\(target, note: "deferred"\)/);
-    expect(body(BEACON, "private func landAfterSpeech(")).toContain("!model.announcementsSettled");
+    // 한 대기 계층이라 사용자 이동 판정·계측·배경 이월을 함께 얻는다(증분 리뷰 MAJOR 1 — 따로 두면 상환 중 옮긴 커서를 끌고 온다).
+    expect(BEACON).toContain('requestInfoLanding(note: "deferred", target: target.isInfoRow ? nil : target)');
+    expect(BEACON).not.toContain("landAfterSpeech");
     // 모델은 복귀 분기의 끝(조기 반환 포함)에서 신호를 올린다.
     expect(MODEL).toMatch(/case \.active:\s*\/\/[^\n]*\n\s*defer \{ foregroundReturnSeq \+= 1 \}/);
     expect(BEACON).toMatch(/\.onDisappear \{\s*focusTask\?\.cancel\(\)\s*pendingTimeoutTask\?\.cancel\(\)\s*announcementWaitTask\?\.cancel\(\)/);

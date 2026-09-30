@@ -52,9 +52,9 @@ public final class DeviceSpeechHandover {
 ///    한 통지로 낸다 — 통지 둘을 잇달아 내면 뒤의 것이 앞의 것을 자른다, 리뷰 M-2·접근성 MAJOR 1). 넘기는 것은 채널이
 ///    VoiceOver로 바뀐 문장뿐이다: 지금 말하는 문장은 **이 칸이 낸 발화일 때만**(발화 토큰 대조 — 다른 모델의 발화를
 ///    끊지 않는다, 리뷰 M-1) 끊고 넘긴다. 채널이 그대로 기기 음성이면(VoiceOver 꺼진 나들이) 끊지도 다시 내지도 않는다.
-/// 7. 칸 밖의 정지(받아쓰기 시작·채팅 화면 이탈·채팅 듣기·오디오 인터럽션·다른 칸의 발화)가 이 칸의 발화를 끊으면 그
-///    문장에 `undelivered`를 통지한다(`speechInterrupted(token:)`, 통합본 횡단 리뷰 F4). 칸 자신의 선점은 먼저 `lastSpoken`을
-///    비우고 `superseded`로, 인계는 넘긴 목록으로 처리한다.
+/// 7. 칸 밖의 정지가 이 칸의 발화를 끊으면 그 문장에 버림을 통지한다(`speechInterrupted(token:reason:)`, 통합본 횡단 리뷰 F4):
+///    받아쓰기 시작·채팅 화면 이탈·채팅 듣기·오디오 인터럽션은 `undelivered`, 더 새 안내 발화는 `superseded`. 칸 자신의 선점은
+///    먼저 `lastSpoken`을 비우고 `superseded`로, 인계는 넘긴 목록으로 처리한다.
 /// 버림 통지(`onDropped`)는 문장마다 **최대 한 번**이고 부르는 주체는 이 칸이다(인계한 문장은 `DeviceSpeechHandover`가).
 ///
 /// `isSpeaking`은 **안내** 발화만 본다 — 채팅 듣기는 안내를 막지 않는다(설계 리뷰 M3, 안내가 채팅을 끊는다. 운전자 채널과 같다).
@@ -224,12 +224,13 @@ public final class DeviceSpeechQueue {
         return DeviceSpeechHandover(handed)
     }
 
-    /// 칸 밖의 정지가 안내 발화를 끊었다(계약 7) — 그 발화가 이 칸이 낸 것이면 버림(`undelivered`)을 통지한다. 칸에서 기다리던
+    /// 칸 밖의 정지가 안내 발화를 끊었다(계약 7) — 그 발화가 이 칸이 낸 것이면 버림을 이유와 함께 통지한다: 받아쓰기·채팅·
+    /// 인터럽션은 `undelivered`, 더 새 안내 발화(다른 칸, 또는 드레인이 꺼낸 이 칸의 다음 문장)는 `superseded`. 칸에서 기다리던
     /// 문장은 꺼내는 순간의 억제 검사가 맡는다(받아쓰기는 곧 억제를 건다).
-    public func speechInterrupted(token: Int) {
+    public func speechInterrupted(token: Int, reason: DeviceSpeechDrop) {
         guard let current = lastSpoken, current.token == token else { return }
         lastSpoken = nil
-        current.item.onDropped?(.undelivered)
+        current.item.onDropped?(reason)
     }
 
     private func clearDrain() {

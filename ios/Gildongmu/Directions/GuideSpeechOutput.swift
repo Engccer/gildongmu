@@ -104,7 +104,9 @@ enum GuideSpeechOutput {
             stopSpeaking: { TtsPlayer.shared.stopGuidance() },
             postVoiceOver: { postVoiceOver($0, highPriority: $1) })
         // 칸 밖의 정지(받아쓰기 시작·채팅 화면 이탈·채팅 듣기)가 이 칸의 발화를 끊었는가(횡단 리뷰 F4, 계약 ⑨).
-        TtsPlayer.shared.observeGuidanceInterruption { [weak queue] token in queue?.speechInterrupted(token: token) }
+        TtsPlayer.shared.observeGuidanceInterruption { [weak queue] token, reason in
+            queue?.speechInterrupted(token: token, reason: reason)
+        }
         return queue
     }
 
