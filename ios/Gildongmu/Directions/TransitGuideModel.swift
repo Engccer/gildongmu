@@ -458,6 +458,14 @@ final class TransitGuideModel {
         // 폴·keep-alive가 멈추면 fix도 만료 판정도 오지 않는다 — 표식을 남기면 재개 전까지 옛 정류장을 무기한 말한다
         // (설계 리뷰 M4). 재개 뒤 첫 fix들이 다시 세운다.
         clearBusStop()
+        // 승차 중 현재역(E35)도 같다(E48 잔여 ⑥) — 보존 창 만료를 폴 시계(`positionClock`)로 판정하는데 폴이 멈추면
+        // 시계도 멈춘다. 래치만 만료시키고 결박·조회 수는 남긴다(재개가 결박당 조회 상한을 되살리지 않게).
+        if var position = ridingPosition, position.stopIndex != nil {
+            position.stopIndex = nil
+            position.lastFoundAt = nil
+            position.behind = 0
+            ridingPosition = position
+        }
         transitGuideLog("idlePause sinceAction=\(Int(sinceAction))s limit=\(Int(limitSeconds))s")
         // 정지 톤(도보 유휴 종료 동형 — 종전엔 문장만 있어 소리·진동 채널이 비어 있었다). 전경에서만:
         // 잠근 채 잊은 휴대전화가 한참 뒤 울리면 당황스럽다(BeaconModel 유휴 종료와 같은 판정).

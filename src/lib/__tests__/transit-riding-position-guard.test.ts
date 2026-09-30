@@ -75,6 +75,23 @@ describe("승차 상태 머신은 실시간 열차 위치를 모른다(E35 표�
     expect(src).toMatch(/await self\.pollOnce\(\)[\s\S]{0,400}await self\.refreshPosition\(seq: self\.seq\)/);
   });
 
+  /**
+   * 유휴 정지(`enterIdleIfDue`) 뒤에는 폴도 시계도 멈춰 보존 창 만료가 오지 않는다 — 래치를 남기면 재개 전까지 옛 역을
+   * 무기한 말한다(E48 잔여 ⑥, 버스 표식의 설계 리뷰 M4와 같은 모양). 30분 유휴라 실시계 테스트로는 밟을 수 없어
+   * 구조를 잠근다. 웹은 유휴 정지가 없다(백그라운드 폴이 없고 복귀 즉폴이 시계를 갱신한다).
+   */
+  it("iOS 모델: 유휴 정지가 버스 표식과 함께 현재역 래치를 만료시키고, 결박·조회 수는 남긴다", () => {
+    const src = read("ios/Gildongmu/Directions/TransitGuideModel.swift");
+    const start = src.indexOf("private func enterIdleIfDue() -> Bool {");
+    expect(start).toBeGreaterThan(0);
+    const fn = src.slice(start, src.indexOf("\n    }\n", start));
+    expect(fn).toContain("clearBusStop()");
+    expect(fn).toMatch(/if var position = ridingPosition, position\.stopIndex != nil \{/);
+    expect(fn).toMatch(/position\.stopIndex = nil\s+position\.lastFoundAt = nil/);
+    expect(fn).toMatch(/ridingPosition = position\n/);
+    expect(fn).not.toMatch(/ridingPosition = nil/);
+  });
+
   it("클라이언트 조회 예산은 웹·iOS 같은 값이다(구현 리뷰 M1 — 한쪽만 바뀌면 한 플랫폼만 도착 폴이 밀린다)", () => {
     const web = read("src/lib/transit-riding-position.ts").match(/POSITION_CLIENT_TIMEOUT_MS = ([\d_]+);/)?.[1];
     const kit = read("ios/GildongmuKit/Sources/GildongmuKit/TransitRidingPosition.swift")
