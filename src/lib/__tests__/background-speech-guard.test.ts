@@ -123,17 +123,21 @@ describe("백그라운드 음성 안내 배선 (E53)", () => {
 
   it("복귀 인계 목록은 상환과 한 통지로 합쳐진다 — 도보는 상환보다 먼저, 대중교통은 추적 가드 앞(spec §4.2 ⑥)", () => {
     const beacon = functionBody(read(join(DIR, "BeaconModel.swift")), "handleScenePhaseChange");
-    expect(beacon).toContain("let handed = returnedFromBackground ? deviceSpeech.handOver() : []");
+    expect(beacon).toContain("let handed = returnedFromBackground ? deviceSpeech.handOver() : .empty");
     expect(beacon.indexOf("deviceSpeech.handOver()")).toBeLessThan(beacon.indexOf("let owed ="));
-    // 인계 목록이 상환 문장에 들어가고, 인계가 섞이면 .high(구현 리뷰 M-2·M-3).
-    expect(beacon).toContain("let owed = (handed + [pendingStepFreeNotice, intro, tail]");
-    expect(beacon).toContain("announce(owed, highPriority: !handed.isEmpty, speechClass: .actionable)");
+    // 인계 목록이 상환 문장에 들어가고, 상환은 인계 유무와 무관하게 .high(구현 리뷰 M-2·M-3, E57 후속 설계 리뷰 MAJOR 1 —
+    // 앱 활성화 순간 기본 우선순위는 잠식되고, 잠식되면 시트의 복귀 착지가 상한까지 기다린다).
+    expect(beacon).toContain("let owed = (handed.texts + [pendingStepFreeNotice, intro, tail]");
+    expect(beacon).toContain("announce(owed, highPriority: true, speechClass: .actionable)");
     // 꼬리(현재 상태)는 버린 문장이 있을 때만, 인계와 같은 문장이면 뺀다 — 낭독 정정 뒤끼리 비교(검증 리뷰 N2·N8).
     expect(beacon).toContain("let tail = !repaying ||");
-    expect(beacon).toContain("handed.contains(spokenUnits(current))");
+    expect(beacon).toContain("handed.texts.contains(spokenUnits(current))");
+    // 합본이 억제로 버려지면 인계받은 문장의 장부도 되돌린다(횡단 리뷰 F6).
+    expect(beacon).toMatch(/announce\(owed, highPriority: true, speechClass: \.actionable\) \{ \[weak self\] in[\s\S]{0,160}handed\.undelivered\(\)/);
     const transit = functionBody(read(join(DIR, "TransitGuideModel.swift")), "handleScenePhaseChange");
-    expect(transit.indexOf("handed = deviceSpeech.handOver()")).toBeGreaterThanOrEqual(0);
-    expect(transit.indexOf("handed = deviceSpeech.handOver()")).toBeLessThan(transit.indexOf("guard isTracking else { return }"));
+    // 대중교통은 되돌리지 않는다(`.texts`만): 억제 버림은 `droppedWhileSuppressed`가 해제 때 합본째 다시 낸다(F6 기각).
+    expect(transit.indexOf("handed = deviceSpeech.handOver().texts")).toBeGreaterThanOrEqual(0);
+    expect(transit.indexOf("handed = deviceSpeech.handOver().texts")).toBeLessThan(transit.indexOf("guard isTracking else { return }"));
     expect(transit).toContain("let owed = handed + ");
     // 합친 뒤 비워야 defer가 같은 인계 문장을 한 번 더 게시하지 않는다(검증 리뷰 N8).
     const merged = transit.slice(transit.indexOf("let owed = handed + "));
@@ -143,8 +147,33 @@ describe("백그라운드 음성 안내 배선 (E53)", () => {
     // 합칠 자리를 지나지 않은 경로는 defer가 따로 낸다(비추적 복귀 — 백그라운드에서 끝난 세션의 완료 문장).
     expect(transit).toMatch(/defer \{\s*if !handed\.isEmpty \{\s*announce\(handed\.joined/);
     const outing = functionBody(read(join(DIR, "OutingModel.swift")), "handleScenePhaseChange");
-    expect(outing).toContain("var owed = deviceSpeech.handOver()");
-    expect(outing).toContain('say(owed.joined(separator: " "), highPriority: true, speechClass: .actionable)');
+    expect(outing).toContain("let handed = deviceSpeech.handOver()");
+    expect(outing).toContain("var owed = handed.texts");
+    expect(outing).toMatch(/say\(owed\.joined\(separator: " "\), highPriority: true, speechClass: \.actionable\) \{ \[weak self\] in\s*if let repaidEnd \{ self\?\.owedEndReason = repaidEnd \}\s*handed\.undelivered\(\)/);
+  });
+
+  it("prewalk 권한·정밀 위치 상실 종료는 도보 실패 문장에 대중교통 미시작을 붙이고, 코디네이터는 따로 내지 않는다(횡단 리뷰 F3)", () => {
+    const beacon = read(join(DIR, "BeaconModel.swift"));
+    const fail = functionBody(beacon, "stopAndFail");
+    // stop()이 prewalkTarget을 지우므로 그 앞에서 캡처한다.
+    expect(fail.indexOf("let prewalk = prewalkTarget != nil")).toBeLessThan(fail.indexOf("stopLeavingSummary("));
+    expect(fail).toContain('trailingKey: prewalk ? "transitGuide.prewalkCancelled" : nil');
+    const coordinator = read(join(DIR, "GuideSessionCoordinator.swift"));
+    const ended = coordinator.slice(coordinator.indexOf("        case .ended:"), coordinator.indexOf("    /// 낡은 연결 폐기"));
+    expect(ended).not.toContain("announceExternal");
+  });
+
+  it("칸 밖의 정지(받아쓰기·채팅)가 안내 발화를 끊으면 대기 칸에 알린다 — 칸 자신의 정지는 알리지 않는다(횡단 리뷰 F4)", () => {
+    const tts = read(join(ROOT, "ios/Gildongmu/Chat/TtsPlayer.swift"));
+    expect(functionBody(tts, "stop")).toMatch(/let interrupted = isSpeakingGuidance \? generation : nil\s*halt\(\)\s*if let interrupted \{ guidanceInterruptionObservers\.forEach/);
+    expect(functionBody(tts, "speakGuidance")).toContain("halt()");
+    expect(functionBody(tts, "speakGuidance")).not.toMatch(/\bstop\(\)/);
+    expect(functionBody(tts, "stopGuidance")).toContain("halt()");
+    // 일시정지로 남은 발화는 말하는 중이 아니다 — 세면 대기 칸이 선점 문장까지 막힌다(횡단 리뷰 F5, 시간 상한은 정상 긴 문장을
+    // 끊어 설계 리뷰 MAJOR 3로 폐기).
+    expect(tts).toContain("var isSpeakingGuidance: Bool { synthesizer.isSpeaking && !synthesizer.isPaused && playingMessageID == nil }");
+    const output = read(join(DIR, "GuideSpeechOutput.swift"));
+    expect(output).toContain("TtsPlayer.shared.observeGuidanceInterruption { [weak queue] token in queue?.speechInterrupted(token: token) }");
   });
 
   it("도보 post: 버림은 복귀 표식을 세우고, 기기 음성은 내리고, 대기 칸의 미전달만 다시 세운다(spec §4.3)", () => {

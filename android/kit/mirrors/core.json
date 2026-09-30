@@ -62,12 +62,17 @@
       "status": "ported",
       "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/DeferredAnnouncer.kt",
       "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/DeferredAnnouncerTest.kt",
-      "note": "@MainActor → 메인 스레드 전용 클래스 + 주입 scope(메인 디스패처). 예약 코루틴은 LAZY로 슬롯 대입 뒤 시작(즉시 디스패처 대비 — deferredPostSurvivesImmediateDispatcher가 잠금). speechDeferStep·SpeechDeferConstants는 GUIDE GuideSpeechGate.kt 소유. ⚠ Swift는 E53(2026-09-30 백그라운드 음성 안내)에서 announce에 필수 speechClass를, post에 speechClass·onLateDrop을 싣는다 — 안드로이드는 백그라운드 음성 이식 때 함께 옮긴다(PORTS)"
+      "note": "@MainActor → 메인 스레드 전용 클래스 + 주입 scope(메인 디스패처). 예약 코루틴은 LAZY로 슬롯 대입 뒤 시작(즉시 디스패처 대비 — deferredPostSurvivesImmediateDispatcher가 잠금). speechDeferStep·SpeechDeferConstants는 GUIDE GuideSpeechGate.kt 소유. ⚠ Swift는 E53(2026-09-30 백그라운드 음성 안내)에서 announce에 필수 speechClass를, post에 speechClass·onLateDrop을 싣는다 — 안드로이드는 백그라운드 음성 이식 때 함께 옮긴다(PORTS) · E57 후속(2026-09-30): 안내 시트 착지 대기용 공개 속성 hasPending(슬롯에 미룬 문장이 있는가)을 더했다 — 안드로이드 착지 이식 때 함께"
     },
     {
       "swift": "DeviceSpeechQueue.swift",
       "status": "pending",
-      "note": "E53 백그라운드 음성 안내의 기기 음성 대기 한 칸(spec 2026-09-30-background-speech-design.md §4.2, 나들이 speakDevice에서 올림). 안드로이드 안내 화면에 백그라운드 음성을 들일 때(PORTS) 이식한다"
+      "note": "E53 백그라운드 음성 안내의 기기 음성 대기 한 칸(spec 2026-09-30-background-speech-design.md §4.2, 나들이 speakDevice에서 올림). 안드로이드 안내 화면에 백그라운드 음성을 들일 때(PORTS) 이식한다. 2026-09-30 횡단 리뷰 후속: handOver가 DeviceSpeechHandover(문장+되돌림)를 돌려주고, 외부 정지 speechInterrupted(token:)·말하기 대기 상한 speakingWaitCapSeconds를 더했다"
+    },
+    {
+      "swift": "GuideAnnouncementLedger.swift",
+      "status": "pending",
+      "note": "E57 안내 시트 착지 대기의 게시 장부(spec 2026-09-30-guide-sheet-info-row-landing §3.3 — 게시한 VoiceOver 통지가 모두 끝났는가). 안드로이드 착지를 iOS 표로 옮길 때(PORTS, TalkBack 판정 선행) 함께 이식한다"
     },
     {
       "swift": "Directions.swift",

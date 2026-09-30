@@ -201,6 +201,10 @@ final class BeaconModel {
     /// 게이트에서 즉시 실패해 첫 세션의 상세 안내가 구조적으로 죽었다.
     /// 시트가 읽는다(E57): 조회 중엔 첫 정보 행(남은 거리)이 아직 없어 착지를 이 값이 false가 될 때까지 미룬다.
     private(set) var awaitingRoute = false
+    /// 전경 복귀 처리(`handleScenePhaseChange(.active)` — 놓친 통지 상환 게시)를 마칠 때마다 1 증가. 시트의 복귀 착지가 여기서
+    /// 시작한다(E57 spec §3.2): 루트가 모델에 복귀를 전하는 순서와 시트의 scenePhase 순서는 정해져 있지 않아, 시트가
+    /// 먼저 돌면 갚을 통지가 게시되기 전에 착지해 그 발화를 끊는다.
+    private(set) var foregroundReturnSeq = 0
     private var routeFetchTask: Task<Void, Never>?
     /// 첫 수용 fix 대기 상한 감시. 초과 시 상세를 포기하고 간략으로 정직 폴백
     /// (위치 대기 문구 — 경로 실패와 원인이 다르므로 문구를 가른다).
@@ -314,6 +318,10 @@ final class BeaconModel {
     private var isForeground: Bool {
         UIApplication.shared.applicationState != .background
     }
+    /// 이 안내가 낸 통지가 모두 끝났는가 — 톤 뒤로 미룬 문장이 없고, 게시한 VoiceOver 통지(세 모델 공용 장부)가 끝났다.
+    /// 시트의 첫 정보 행 착지가 이것을 기다린다(E57 spec §3.3 — 착지 낭독이 요약·상환을 끊지 않게, 통지가 없으면 곧장).
+    var announcementsSettled: Bool { !deferredAnnouncer.hasPending && GuideSpeechOutput.announcementsFinished }
+
     /// 백그라운드에서 억제된 발화가 있었는가. 복귀 시 **현재 상태 하나만** 낭독한다 —
     /// 누적 재생은 낡은 정보를 순서대로 읽어 혼란만 준다(spec §6.5). 백그라운드 기기 음성으로 문장을 넘기면
     /// 내린다 — 마지막 상태를 들었으니 갚을 것이 없다(E53 §4.3, `post`).
@@ -1032,8 +1040,8 @@ final class BeaconModel {
             // 발화가 버려졌으면(백그라운드·억제) 경고만 따로 남긴다 — 진행 안내와 달리
             // 다음 fix가 대신 말해 주지 않는다(리뷰 H1).
             // ⚠ .high 필수(스펙 2026-08-12 §3.1, 마일스톤 리뷰 MAJOR): 목적지 전환
-            // 경로에서는 이 요약이 검색 시트 닫힘 후 중지 버튼 착지 낭독과 겹칠 수
-            // 있다 — 기본 우선순위만 잠식되는 비대칭이 performReroute 실사고의 기제.
+            // 경로에서는 이 요약이 검색 시트 닫힘의 커서 복원 낭독과 겹칠 수 있다 —
+            // 기본 우선순위만 잠식되는 비대칭이 performReroute 실사고의 기제.
             announce(text, highPriority: true, speechClass: .actionable) { [weak self] in
                 if let notice { self?.pendingStepFreeNotice = notice }
             }
@@ -1262,10 +1270,12 @@ final class BeaconModel {
         return max(1, Int((Double(dur) * remainingMeters / route.totalMeters / 60).rounded()))
     }
 
-    private func fail(with status: Status, key: String, resolution: FailResolution = .none) {
+    private func fail(
+        with status: Status, key: String, resolution: FailResolution = .none, trailingKey: String? = nil
+    ) {
         self.status = status
         failResolution = resolution
-        statusText = appLocalized(key)
+        statusText = joinText(appLocalized(key), trailingKey.map { appLocalized($0) })
         announce(statusText, speechClass: .actionable)
     }
 
@@ -1575,6 +1585,8 @@ final class BeaconModel {
             wasBackgrounded = true
             UIApplication.shared.isIdleTimerDisabled = false
         case .active:
+            // 복귀 처리를 마쳤다는 신호는 이 분기의 **끝**(조기 반환 포함)이다 — 시트의 복귀 착지가 상환 게시 뒤에 시작한다(E57).
+            defer { foregroundReturnSeq += 1 }
             // 백그라운드 경유 플래그는 **맨 앞에서 소비**한다(설계 리뷰 MAJOR ②). 종전엔 추적 가드 뒤에서만
             // 소비해 종료 화면 상태(비추적)에서 플래그가 영영 남았고, 그러면 제어센터 `.inactive` 왕복이
             // 백그라운드 복귀로 오인된다.
@@ -1583,7 +1595,7 @@ final class BeaconModel {
             // 복귀 인계(E53 §4.2 ⑥): 이 모델이 말하던 기기 음성·대기 칸의 문장 중 채널이 VoiceOver로 바뀐 것을 받아
             // 아래 상환과 **한 통지**로 낸다(두 통지를 잇달아 내면 뒤의 것이 앞의 것을 자른다 — 구현 리뷰 M-2). 백그라운드를
             // 거치지 않은 복귀엔 넘길 것이 없다(기기 음성은 백그라운드 전용). 정식판은 늘 빈 목록이다.
-            let handed = returnedFromBackground ? deviceSpeech.handOver() : []
+            let handed = returnedFromBackground ? deviceSpeech.handOver() : .empty
             // 오래된 종료 화면 소거(A31 축 ②, spec 2026-09-02 §3): 종료 뒤 30분이 지나 **백그라운드를 거쳐**
             // 돌아왔으면 화면·띠바 요약·미뤄진 종료 통지를 함께 버린다(맥락 밖 낭독 금지 — 헌장 §6 ⑨ 동형).
             // 상환 블록보다 앞이다: `clearArrival()`이 종료 문장을 지우면 아래 상환은 남은 실패 문장만
@@ -1623,21 +1635,25 @@ final class BeaconModel {
                 // 현재 상태 꼬리는 버린 문장이 있을 때만(인계만 있으면 마지막 상태는 인계 문장이다), 인계와 같은 문장이면 뺀다.
                 // 인계 문장은 낭독 정정(`spokenUnits`)을 지난 뒤라 같은 층끼리 비교한다(검증 리뷰 N2 — "300m" ≠ "300 미터").
                 let tail = !repaying || current.isEmpty || current == intro
-                    || handed.contains(spokenUnits(current)) ? nil : current
+                    || handed.texts.contains(spokenUnits(current)) ? nil : current
                 // 순서: 인계(끊긴 옛 발화 → 칸의 새 문장) → 세션 경고 → 진입 서술 → 현재 상태.
-                let owed = (handed + [pendingStepFreeNotice, intro, tail].compactMap { $0 })
+                let owed = (handed.texts + [pendingStepFreeNotice, intro, tail].compactMap { $0 })
                     .joined(separator: " ")
                 if !owed.isEmpty {
                     // 먼저 지우고, 게시하지 못하면(억제 잔류 등) onDropped가 복원한다
-                    // — "성공 시에만 지운다"의 등가 형태(§4-6 반환값 폐지 이관).
+                    // — "성공 시에만 지운다"의 등가 형태(§4-6 반환값 폐지 이관). 인계받은 문장도 되돌린다: 인계는
+                    // 전달로 쳐서 칸이 장부를 풀었으므로, 합본째 버려지면 그 1회성 경고가 장부 없이 사라진다(횡단 리뷰 F6).
                     let notice = pendingStepFreeNotice
                     pendingStepFreeNotice = nil
                     pendingFinalApproachIntro = nil
-                    // 인계가 섞이면 `.high`: 앱 활성화 순간 VoiceOver의 화면 낭독에 잠식되면 복구 경로가 없다(구현 리뷰 M-3,
-                    // CLAUDE.md 통지 우선순위 판별선). 인계 없는 종전 상환은 종전 우선순위 그대로(정식판 불변).
-                    announce(owed, highPriority: !handed.isEmpty, speechClass: .actionable) { [weak self] in
+                    // `.high`: 앱 활성화 순간 기본 우선순위 통지는 VoiceOver의 화면 낭독에 잠식되고 복구 경로가 없다(E53 구현
+                    // 리뷰 M-3, CLAUDE.md 통지 우선순위 판별선 — 갚는 1회성 경고는 착지 라벨로 대체될 수 없다). 인계 유무와 무관하다:
+                    // 정식판(인계 없음)도 같은 잠식에 걸리고, 잠식되면 시트의 복귀 착지가 끝 신호를 상한까지 기다렸다(E57 후속,
+                    // 설계 리뷰 MAJOR 1).
+                    announce(owed, highPriority: true, speechClass: .actionable) { [weak self] in
                         self?.pendingStepFreeNotice = notice
                         self?.pendingFinalApproachIntro = intro
+                        handed.undelivered()
                     }
                 }
             }
@@ -2815,8 +2831,9 @@ final class BeaconModel {
             let text = notice.map { "\($0) \(summary)" } ?? summary
             statusText = text
             // ⚠ **`.high`가 아니면 이 발화는 도달하지 않는다.** 성공하면 위 `offRoute = false`가
-            // 재조회 버튼을 없애고, 시트가 커서를 중지 버튼으로 되돌리며 그 라벨을 낭독한다 —
-            // 기본 우선순위 통지는 그 VO 활성화 처리에 잠식된다(헌장 §6 실기기 확정).
+            // 재조회 버튼(커서를 쥔 버튼)을 없애 VoiceOver가 커서를 옮기며 그 자리를 낭독한다 —
+            // 기본 우선순위 통지는 그 VO 처리에 잠식된다(헌장 §6 실기기 확정). 시트의 첫 정보 행 착지는
+            // 이 통지가 끝난 뒤다(E57 spec §3.3).
             // 바로 아래 실패 경로만 `.high`였던 비대칭이 실사용 무발화의 원인이었다.
             resultHaptic(.success)
             announce(text, highPriority: true, speechClass: .actionable) { [weak self] in
@@ -3071,8 +3088,8 @@ final class BeaconModel {
                 route: fetched.route, firstIndices: firstIndices, to: fetched.lineKind ?? target)
             let text = notice.map { "\($0) \(summary)" } ?? summary
             statusText = text
-            // `.high`: 채택 성공으로 시트가 닫히고 포커스가 중지 버튼으로 옮겨가며
-            // 그 라벨 낭독에 기본 우선순위가 잠식된다(자동 채택 fetchProposal 동형).
+            // `.high`: 채택 성공으로 조망 시트가 닫히며 시스템이 커서를 복원해 그 라벨을 낭독하고,
+            // 기본 우선순위는 그 낭독에 잠식된다(자동 채택 fetchProposal 동형). 첫 정보 행 착지는 이 통지 뒤(E57).
             announce(text, highPriority: true, speechClass: .actionable) { [weak self] in
                 if let notice { self?.pendingStepFreeNotice = notice }
             }
@@ -3120,9 +3137,16 @@ final class BeaconModel {
 
     /// 세션 중 권한·정밀도 상실 종료. 종료 화면(요약)을 남기고 실패 상태·통지를 낸다 —
     /// 화면의 첫 문장이 실패 사유라, 시트가 인라인 상태 줄을 덮는 동안에도 사유가 들린다.
+    ///
+    /// 승차 전 도보(prewalk)면 "대중교통 안내는 시작하지 않았다"를 **같은 문장**에 붙인다(E53 spec §3.3, 횡단 리뷰 F3): 대중교통
+    /// 창구로 따로 내면 그 재생기는 세션을 시작한 적이 없어 백그라운드 채널이 버림이고, 대중교통 복귀 상환은 추적 가드 뒤라
+    /// 어디서도 전달되지 않았다. 여기선 이 모델의 재생기가 원복 다리 동안 오디오 세션을 쥐고, 버려지면 복귀 상환(추적 가드
+    /// 앞)이 `statusText` 꼬리로 갚는다.
     private func stopAndFail(with status: Status, key: String, resolution: FailResolution = .none) {
+        let prewalk = prewalkTarget != nil  // stop() 앞 캡처(A25 §4.2)
         stopLeavingSummary(playStopTone: false, text: appLocalized(key))
-        fail(with: status, key: key, resolution: resolution)
+        fail(with: status, key: key, resolution: resolution,
+             trailingKey: prewalk ? "transitGuide.prewalkCancelled" : nil)
     }
 
     // MARK: - 무-fix 감시

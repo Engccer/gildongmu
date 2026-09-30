@@ -71,8 +71,7 @@ struct BeaconTrackingSheet: View {
     @State private var pendingInfoLanding: PendingInfoLanding?
     @State private var pendingTimeoutTask: Task<Void, Never>?
     @State private var announcementWaitTask: Task<Void, Never>?
-    /// 관찰 대상이 아닌 참조 상자 — 통지 완료 기록·스크롤 proxy. `@State` 값이면 통지가 끝날 때마다 시트 전체가
-    /// 다시 그려진다(코드 리뷰 m6, 대중교통 `RenderedControls` 동형).
+    /// 관찰 대상이 아닌 참조 상자 — 스크롤 proxy(대중교통 `RenderedControls` 동형).
     @State private var landingBox = LandingBox()
     /// 자식 시트(조망·목적지/경유지 검색·장소 상세) 안에서 일어난 전이의 착지 — 그 시트가 **닫힌 뒤** 한 곳에서 부른다
     /// (설계 리뷰 M3, 대중교통 `pendingFollowUp` 동형). 모달 뒤의 행에 대입하면 조용히 되돌아간다.
@@ -134,7 +133,7 @@ struct BeaconTrackingSheet: View {
                     // 사라지므로 첫 정보 행으로 옮긴다(E57 — 경로를 다시 조회하니 조회 끝까지 기다린다).
                     if model.waypoint != nil {
                         Button(appLocalized("ios.guide.waypointRemove")) {
-                            if model.removeWaypoint() { requestInfoLanding(note: "waypointRemoved", summarySince: nil) }
+                            if model.removeWaypoint() { requestInfoLanding(note: "waypointRemoved") }
                         }
                     }
                 }
@@ -282,24 +281,25 @@ struct BeaconTrackingSheet: View {
         // 시트 열림 착지(E57). 새로 열림은 시작과 **모든 인계**(대중교통 → 도보·자동차 도착 → 도보·나들이 귀환)를
         // 포함한다 — 인계가 전부 화면을 한 번 nil로 지나 루트 `.sheet(item:)`이 새 시트를 올리기 때문이다(spec §0 ③).
         // 띠바에서 돌아온 시트도 같다(위원장 판정 Q1 2026-09-30 — 종전 접기 버튼 착지 폐기). 둘은 경로 유무로 저절로
-        // 갈린다: 새로 열림은 조회 중이라 조회와 시작 요약을 기다리고, 띠바 복귀는 경로가 있어 곧장 앉는다.
+        // 갈린다: 새로 열림은 조회 중이라 조회와 시작 요약을 기다리고, 띠바 복귀는 경로가 있어 곧장 앉는다(말하는 안내
+        // 통지가 있으면 그 끝까지).
         .task {
             if model.arrivalDest != nil {
                 landFocus(.arrived)
             } else {
-                requestInfoLanding(note: "open", summarySince: nil)
+                requestInfoLanding(note: "open")
             }
         }
         .onAppear { landingBox.proxy = proxy }
         // 같은 콘텐츠 뷰 안에서 새 세션이 서는 경로(spec §3.5 — 종료 화면 → 추적 화면을 SwiftUI가 한 트랜잭션으로
         // 합치면 `.task`가 다시 돌지 않는다). 두 경로가 모두 오면 뒤 요청이 앞을 대신한다.
         .onChange(of: model.isTracking) { _, tracking in
-            if tracking { requestInfoLanding(note: "newSession", summarySince: nil) }
+            if tracking { requestInfoLanding(note: "newSession") }
         }
         // 경로 조회가 끝난 순간 기다리던 착지를 푼다(spec §3.3) — 이 커밋이 낸 시작 요약이 끝난 뒤 그때의 첫 정보 행에.
+        // 요약은 `awaitingRoute`를 내리는 defer보다 앞에서 창구에 들어가므로 여기선 이미 모델의 슬롯이나 장부에 있다.
         .onChange(of: model.awaitingRoute) { _, awaiting in
             guard !awaiting, pendingInfoLanding != nil else { return }
-            pendingInfoLanding?.summarySince = ProcessInfo.processInfo.systemUptime
             resolvePendingInfoLanding()
         }
         // 소실 복구(spec §3.4, 설계 리뷰 B1): 커서가 앉아 있던 정보 행이 사라지면(이탈 확정·최종 접근 진입·간략 강등)
@@ -309,13 +309,7 @@ struct BeaconTrackingSheet: View {
         .onChange(of: presentInfoRows) { old, new in
             guard let focused = focusedRow, old.contains(focused), !new.contains(focused),
                   model.isTracking, model.arrivalDest == nil else { return }
-            requestInfoLanding(note: "lost=\(focused)", summarySince: ProcessInfo.processInfo.systemUptime)
-        }
-        // 통지 발화가 **끝까지** 끝났다는 신호(spec §3.3). 문자열은 보지 않는다 — 모델이 무엇을 게시했는지(요약·갚는
-        // 문장·접두가 붙은 경고)를 시트가 짐작하지 않는다(증분 리뷰 M1). 끊긴 발화(success=false)는 세지 않는다.
-        .onReceive(NotificationCenter.default.publisher(for: UIAccessibility.announcementDidFinishNotification)) { note in
-            guard (note.userInfo?[UIAccessibility.announcementWasSuccessfulUserInfoKey] as? Bool) == true else { return }
-            landingBox.lastCompletedAt = ProcessInfo.processInfo.systemUptime
+            requestInfoLanding(note: "lost=\(focused)")
         }
         // 기다리는 동안 사용자가 커서를 옮겼으면 착지하지 않는다(설계 리뷰 M4, a11y 감사 M2). VoiceOver 초점 이동
         // 신호로 본다 — 바인딩 없는 버튼 사이 이동도 잡힌다. 대기를 세운 뒤 **첫 이동 한 번**(창 안)은 시스템이 커서를
@@ -331,30 +325,30 @@ struct BeaconTrackingSheet: View {
             }
         }
         // 배경 경계(코드 리뷰 M1, 대중교통 M1 동형): 진행 중인 착지·대기는 VO 커서 없는 배경에서 실패한다 — 끊고 전경
-        // 복귀로 이월한다. 복귀 때는 모델이 놓친 통지를 갚으므로 그 발화가 끝난 뒤 앉는다(a11y 감사 H1).
+        // 복귀로 이월한다.
         .onChange(of: scenePhase) { _, phase in
-            switch phase {
-            case .background:
-                // 대기 중 사용자가 이미 커서를 옮겼으면 이월하지 않는다(증분 리뷰 m2).
-                let pendingCarry = pendingInfoLanding.map { $0.movedAfter == nil } ?? false
-                let carried: SheetFocus? = pendingCarry ? .remaining : (pendingInfoLanding == nil ? landingInFlight : nil)
-                guard let carried else { return }
-                focusTask?.cancel()
-                landingInFlight = nil
-                clearPendingInfoLanding()
-                deferredLanding = carried
-                logFocus("target=\(carried) reason=background deferred=true", note: "inFlight")
-            case .active:
-                guard let target = deferredLanding else { return }
-                deferredLanding = nil
-                // 정보 행은 복귀 시점 상태로 다시 고른다(배경 동안 이탈·강등이 났을 수 있다).
-                if target.isInfoRow {
-                    requestInfoLanding(note: "deferred", summarySince: ProcessInfo.processInfo.systemUptime)
-                } else {
-                    landFocus(target, note: "deferred")
-                }
-            default:
-                break
+            guard phase == .background else { return }
+            // 대기 중 사용자가 이미 커서를 옮겼으면 이월하지 않는다(증분 리뷰 m2).
+            let pendingCarry = pendingInfoLanding.map { $0.movedAfter == nil } ?? false
+            let carried: SheetFocus? = pendingCarry ? .remaining : (pendingInfoLanding == nil ? landingInFlight : nil)
+            guard let carried else { return }
+            focusTask?.cancel()
+            landingInFlight = nil
+            clearPendingInfoLanding()
+            deferredLanding = carried
+            logFocus("target=\(carried) reason=background deferred=true", note: "inFlight")
+        }
+        // 전경 복귀 착지는 **모델이 복귀 처리를 마친 뒤**에 시작한다(spec §3.2, 횡단 리뷰 F1) — 루트가 모델에 복귀를 전하는
+        // 순서와 시트의 scenePhase 순서는 정해져 있지 않다. 그 처리가 게시한 상환 통지가 있으면 그 끝까지, 없으면 곧장 앉는다
+        // (a11y 감사 H1: 400ms 뒤 착지가 상환 발화를 끊으면 다시 오지 않는다).
+        .onChange(of: model.foregroundReturnSeq) {
+            guard let target = deferredLanding else { return }
+            deferredLanding = nil
+            // 정보 행은 복귀 시점 상태로 다시 고른다(배경 동안 이탈·강등이 났을 수 있다).
+            if target.isInfoRow {
+                requestInfoLanding(note: "deferred")
+            } else {
+                landFocus(target, note: "deferred")
             }
         }
         // 최소화는 콘텐츠 뷰 파괴다 — `@State` 핸들은 사라져도 Task는 돈다. 끊는다(대중교통 M2 동형).
@@ -385,7 +379,7 @@ struct BeaconTrackingSheet: View {
                 guard case .place(let label, let lat, let lng, _) = endpoint else { return }
                 if model.changeDestination(dest: BeaconDest(lat: lat, lng: lng), label: label) {
                     onDestinationCommitted(endpoint)
-                    landAfterDismiss = DismissLanding(note: "destinationChanged", expectsSummary: model.awaitingRoute)
+                    landAfterDismiss = DismissLanding(note: "destinationChanged")
                 }
             }
         }
@@ -395,7 +389,7 @@ struct BeaconTrackingSheet: View {
                 guard case .place(let label, let lat, let lng, _) = endpoint else { return }
                 if model.setWaypoint(dest: BeaconDest(lat: lat, lng: lng), label: label) {
                     onWaypointCommitted(endpoint)
-                    landAfterDismiss = DismissLanding(note: "waypointChanged", expectsSummary: model.awaitingRoute)
+                    landAfterDismiss = DismissLanding(note: "waypointChanged")
                 }
             }
         }
@@ -425,17 +419,17 @@ struct BeaconTrackingSheet: View {
             let pressed = reroutePressed
             reroutePressed = false
             guard model.offRouteEndedByReroute, pressed || focusedRow == .reroute else { return }
-            requestInfoLanding(note: "rerouted", summarySince: ProcessInfo.processInfo.systemUptime)
+            requestInfoLanding(note: "rerouted")
         }
         // 프리뷰 채택 성공: 조망(과 그 위 프리뷰)을 닫고, 닫힌 뒤 첫 정보 행으로 복귀(spec
         // 2026-08-14 §4 — 포커스를 쥔 시트가 통째로 사라지는 전이, 재조회 성공 동형 · E57 설계 리뷰 M3). 조망이 이미
         // 닫힌 뒤 채택이 끝났으면(낡음 폴백) 곧장 요청한다 — 표식을 남기면 다음에 조망을 그냥 열고 닫을 때 튄다.
         .onChange(of: model.variantAdoptedSeq) {
             if showRouteList {
-                landAfterDismiss = DismissLanding(note: "variantAdopted", expectsSummary: true)
+                landAfterDismiss = DismissLanding(note: "variantAdopted")
                 showRouteList = false
             } else {
-                requestInfoLanding(note: "variantAdopted", summarySince: ProcessInfo.processInfo.systemUptime)
+                requestInfoLanding(note: "variantAdopted")
             }
         }
         // 도착 전이: 포커스를 쥔 컨트롤(중지 등)이 통째로 사라진다 — 도착 문장으로
@@ -456,7 +450,7 @@ struct BeaconTrackingSheet: View {
             // 닫히는 시트·검색 시트가 있으면 닫힌 뒤 도착 문장에(spec 준수 리뷰·증분 리뷰 m4 — 모달 뒤·닫힘 애니메이션 중
             // 대입은 조용히 사라진다).
             if closing || changeDestPresented || waypointPresented {
-                landAfterDismiss = DismissLanding(note: "arrived", expectsSummary: false, target: .arrived)
+                landAfterDismiss = DismissLanding(note: "arrived", target: .arrived)
             } else {
                 landAfterDismiss = nil
                 landFocus(.arrived)
@@ -640,16 +634,14 @@ struct BeaconTrackingSheet: View {
     private static let systemPlacementWindow: TimeInterval = 2.5
     /// 경로 조회를 기다리는 상한. 위치 대기(`noFixTimeout` 15초) + 조회 왕복. 넘기면 착지하지 않는다.
     private static let routeWaitLimit: Duration = .seconds(20)
-    /// 통지 발화를 기다리는 상한(ms). 첫 안내를 담은 긴 요약도 이 안에 끝난다. 통지가 버려져 완료 신호가 오지 않는
-    /// 경우의 안전망이다.
-    private static let summaryWaitLimitMs = 12_000
+    /// 안내 통지가 끝나기를 기다리는 상한(ms, 대기 시작부터). 첫 안내를 담은 긴 요약도 이 안에 끝난다. 통지가 이어져
+    /// 조용해지지 않는 경우의 안전망이다(끝 신호가 오지 않는 통지는 장부 만료가 따로 거른다).
+    private static let speechWaitLimitMs = 12_000
 
     /// 경로 조회·통지 발화를 기다리는 첫 정보 행 착지(spec §3.3).
     private struct PendingInfoLanding {
         let since: TimeInterval
         let note: String
-        /// 이 시각 **이후에** 끝까지 발화된 통지를 기다린다. nil이면 기다리지 않는다(경로 조회 중이면 커밋 시각이 채운다).
-        var summarySince: TimeInterval?
         /// 대기 뒤 첫 초점 이동(시스템 배치)을 봤는가.
         var systemPlacementSeen = false
         /// 사용자가 커서를 옮긴 시각(대기 시작 기준 초) — 있으면 착지하지 않는다(설계 리뷰 M4).
@@ -659,34 +651,25 @@ struct BeaconTrackingSheet: View {
     /// 자식 시트가 닫힌 뒤의 착지(설계 리뷰 M3).
     private struct DismissLanding {
         let note: String
-        let since = ProcessInfo.processInfo.systemUptime
-        /// 그 전이가 경로를 다시 조회·커밋해 요약 통지를 내는가(같은 곳을 다시 고르면 없다).
-        let expectsSummary: Bool
         /// nil이면 첫 정보 행. 도착처럼 대상이 정해진 착지만 값을 준다.
         var target: SheetFocus? = nil
     }
 
     /// 관찰 대상이 아닌 참조 상자(코드 리뷰 m6).
     @MainActor final class LandingBox {
-        /// 마지막으로 끝까지 발화된 VoiceOver 통지의 시각.
-        var lastCompletedAt: TimeInterval?
         var proxy: ScrollViewProxy?
     }
 
-    /// 첫 정보 행 착지 요청 — 시트 열림·띠바 복귀·사용자 전이·소실 복구의 공통 입구.
-    /// `summarySince`: 이 전이가 통지를 냈다면 그 시각 — 그 발화가 **끝난 뒤** 착지한다(설계 리뷰 M1: 착지 낭독이
-    /// 통지를 끊을 수 있다는 것이 이 저장소의 전제다, 도착 착지 주석). 경로 조회 중이면 조회가 끝날 때까지 먼저
-    /// 기다리고, 그 커밋의 요약을 기다린다.
-    private func requestInfoLanding(note: String, summarySince: TimeInterval?) {
+    /// 첫 정보 행 착지 요청 — 시트 열림·띠바 복귀·사용자 전이·소실 복구·전경 복귀의 공통 입구. 경로 조회 중이면 조회가
+    /// 끝날 때까지 먼저 기다리고, 그다음 **안내 모델이 낸 통지가 모두 끝난 뒤** 착지한다(설계 리뷰 M1: 착지 낭독이 통지를
+    /// 끊을 수 있다는 것이 이 저장소의 전제다, 도착 착지 주석). 그 전이가 무엇을 게시했는지는 시트가 짐작하지 않는다 —
+    /// 모델이 연다(`announcementsSettled`, spec §3.3·§3.3.1). 통지가 없으면 곧장 앉는다.
+    private func requestInfoLanding(note: String) {
         guard model.arrivalDest == nil else { return }
         focusTask?.cancel()
         clearPendingInfoLanding()
-        guard summarySince != nil || model.awaitingRoute else {
-            landFirstInfoRow(note: note)
-            return
-        }
         let since = ProcessInfo.processInfo.systemUptime
-        pendingInfoLanding = PendingInfoLanding(since: since, note: note, summarySince: summarySince)
+        pendingInfoLanding = PendingInfoLanding(since: since, note: note)
         guard model.awaitingRoute else {
             resolvePendingInfoLanding()
             return
@@ -699,19 +682,24 @@ struct BeaconTrackingSheet: View {
         }
     }
 
-    /// 기다릴 조회가 없다 — `summarySince` 이후에 **끝까지 발화된 통지 하나**를 본 뒤 그때의 첫 정보 행에 앉는다. 어떤
-    /// 문장인지는 보지 않는다(요약·놓친 통지 상환·경고 — 모델이 게시한 것을 시트가 짐작하지 않는다, 증분 리뷰 M1).
-    /// VoiceOver가 꺼져 있거나 운전자 채널(기기 음성이라 완료 신호가 없다)이면 기다리지 않는다.
+    /// 기다릴 조회가 없다 — 안내 모델의 통지가 모두 끝나면(톤 뒤로 미룬 문장 없음 ∧ 게시한 통지 끝남) 그때의 첫 정보 행에
+    /// 앉는다. 어떤 문장인지는 보지 않는다(요약·놓친 통지 상환·경고 — 증분 리뷰 M1). 앱의 다른 통지 끝은 세지 않는다(횡단
+    /// 리뷰 F2). VoiceOver가 꺼져 있거나 운전자 채널(기기 음성이라 장부에 적히지 않는다)이면 기다리지 않는다.
     private func resolvePendingInfoLanding() {
         guard let pending = pendingInfoLanding else { return }
         pendingTimeoutTask?.cancel()
         announcementWaitTask?.cancel()
         let driverChannel = model.sessionKind == .car && model.listener == .driver
-        let waitsSummary = pending.summarySince != nil && UIAccessibility.isVoiceOverRunning && !driverChannel
+        let waitsSpeech = UIAccessibility.isVoiceOverRunning && !driverChannel
         announcementWaitTask = Task { @MainActor in
             var waited = 0
-            while waitsSummary, waited < Self.summaryWaitLimitMs,
-                  !(landingBox.lastCompletedAt.map { $0 >= (pending.summarySince ?? 0) } ?? false) {
+            var speechWait = waitsSpeech ? "settled" : "none"
+            while waitsSpeech, !model.announcementsSettled {
+                if waited >= Self.speechWaitLimitMs {
+                    // 상한: 짝 실패·끝 신호 부재(남은 통지 있음)와 안내 통지가 이어짐(슬롯)을 로그가 가른다(설계 리뷰 MAJOR 2·m9).
+                    speechWait = "cap open=\(GuideSpeechOutput.openAnnouncements)"
+                    break
+                }
                 try? await Task.sleep(for: .milliseconds(100))
                 guard !Task.isCancelled else { return }
                 waited += 100
@@ -724,16 +712,16 @@ struct BeaconTrackingSheet: View {
                 logFocus("target=pending reason=userMoved movedMs=\(Int(movedAfter * 1000)) waitedMs=\(waitedMs)", note: current.note)
                 return
             }
-            landFirstInfoRow(note: current.note, waitedMs: waitedMs)
+            landFirstInfoRow(note: current.note, waitedMs: waitedMs, speechWait: speechWait)
         }
     }
 
-    private func landFirstInfoRow(note: String, waitedMs: Int = 0) {
+    private func landFirstInfoRow(note: String, waitedMs: Int, speechWait: String) {
         guard let row = firstInfoRow else {
             logFocus("target=none reason=noInfoRow", note: note)
             return
         }
-        landFocus(row, note: note, waitedMs: waitedMs)
+        landFocus(row, note: note, waitedMs: waitedMs, speechWait: speechWait)
     }
 
     private func clearPendingInfoLanding() {
@@ -743,15 +731,15 @@ struct BeaconTrackingSheet: View {
     }
 
     /// 자식 시트가 닫힌 뒤 한 곳(설계 리뷰 M3) — 그 안에서 일어난 전이의 착지. 아무 전이 없이 열고 닫았으면 표식이
-    /// 없어 시스템의 트리거 복원 그대로다. 경로를 다시 조회하는 전이는 조회 중이면 그 커밋을, 이미 끝났으면 고른
-    /// 시각 이후의 요약을 기다린다.
+    /// 없어 시스템의 트리거 복원 그대로다. 경로를 다시 조회하는 전이는 조회 중이면 그 커밋을 기다리고, 요약이 아직
+    /// 말하는 중이면 그 끝까지 기다린다(검색 시트의 억제로 버려졌으면 곧장).
     private func landAfterSubSheet() {
         guard let landing = landAfterDismiss else { return }
         landAfterDismiss = nil
         if let target = landing.target {
             landFocus(target, note: landing.note)
         } else {
-            requestInfoLanding(note: landing.note, summarySince: landing.expectsSummary ? landing.since : nil)
+            requestInfoLanding(note: landing.note)
         }
     }
 
@@ -768,7 +756,7 @@ struct BeaconTrackingSheet: View {
     /// PATTERNS "iOS 목록 포커스 이동": 승격 조건은 실승차 성공률, 설계 리뷰 M5). 가시화(`scrollTo`)는 큰 글자에서 행이
     /// 화면 밖이면 AX 트리에서 컬링되기 때문이다(a11y 감사 M3). **폴백 통지는 없다**(spec §3.2): 정보 행의 폴백 문장은
     /// 곧 그 행의 값이라 같은 순간의 통지와 겹친다. 실패는 로그로만 판정한다.
-    private func landFocus(_ target: SheetFocus, note: String = "", waitedMs: Int = 0) {
+    private func landFocus(_ target: SheetFocus, note: String = "", waitedMs: Int = 0, speechWait: String = "none") {
         focusTask?.cancel()
         landingInFlight = nil
         guard Self.isForeground else {
@@ -813,7 +801,8 @@ struct BeaconTrackingSheet: View {
             }
             logFocus(
                 "target=\(target) landed=\(focusedRow == target) actual=\(focusedRow.map { "\($0)" } ?? "nil")"
-                    + " attempts=\(attempts) waitedMs=\(waitedMs) vo=\(voFocusedLabel().map { "\"\($0)\"" } ?? "nil")",
+                    + " attempts=\(attempts) waitedMs=\(waitedMs) speechWait=\(speechWait)"
+                    + " vo=\(voFocusedLabel().map { "\"\($0)\"" } ?? "nil")",
                 note: note)
         }
     }

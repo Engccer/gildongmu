@@ -9,6 +9,33 @@ public enum DeviceSpeechDrop: String, Sendable {
     case undelivered
 }
 
+/// 전경 복귀 인계의 결과(계약 6) — VoiceOver로 넘길 문장(옛 것 → 새 것)과, 모델의 합본 통지가 끝내 나가지 못했을 때의
+/// 되돌림. 인계한 문장은 버림이 아니라 "전달됨"이라 칸은 버림을 통지하지 않는데, 그 합본 통지가 억제로 버려지면(복귀 순간
+/// 받아쓰기 시트가 열려 있음) 인계받은 1회성 경고가 장부 없이 사라진다(통합본 횡단 리뷰 F6). 모델이 합본 통지의
+/// `onDropped`에서 `undelivered()`를 부르면 각 문장의 버림 통지가 `undelivered`로 **한 번** 불린다.
+@MainActor
+public final class DeviceSpeechHandover {
+    public let texts: [String]
+    private var drops: [((DeviceSpeechDrop) -> Void)?]
+
+    init(_ items: [(text: String, onDropped: ((DeviceSpeechDrop) -> Void)?)]) {
+        texts = items.map(\.text)
+        drops = items.map(\.onDropped)
+    }
+
+    /// 넘길 문장이 없는 인계(백그라운드를 거치지 않은 복귀·정식판).
+    public static var empty: DeviceSpeechHandover { DeviceSpeechHandover([]) }
+
+    public var isEmpty: Bool { texts.isEmpty }
+
+    /// 합본 통지가 끝내 나가지 못했다 — 인계한 문장마다 버림(`undelivered`)을 통지한다. 두 번 불려도 한 번만.
+    public func undelivered() {
+        let pending = drops
+        drops = []
+        pending.forEach { $0?(.undelivered) }
+    }
+}
+
 /// 기기 음성 대기 한 칸(spec 2026-09-30 background-speech §4.2 — 나들이 spec 2026-09-26 §7.3에서 올렸다).
 /// 도보·자동차·대중교통·나들이 세 모델이 같은 타입을 하나씩 쓴다(복붙 금지).
 ///
@@ -25,9 +52,13 @@ public enum DeviceSpeechDrop: String, Sendable {
 ///    한 통지로 낸다 — 통지 둘을 잇달아 내면 뒤의 것이 앞의 것을 자른다, 리뷰 M-2·접근성 MAJOR 1). 넘기는 것은 채널이
 ///    VoiceOver로 바뀐 문장뿐이다: 지금 말하는 문장은 **이 칸이 낸 발화일 때만**(발화 토큰 대조 — 다른 모델의 발화를
 ///    끊지 않는다, 리뷰 M-1) 끊고 넘긴다. 채널이 그대로 기기 음성이면(VoiceOver 꺼진 나들이) 끊지도 다시 내지도 않는다.
-/// 버림 통지(`onDropped`)는 문장마다 **최대 한 번**이고 부르는 주체는 이 칸이다.
+/// 7. 칸 밖의 정지(받아쓰기 시작·채팅 화면 이탈·채팅 듣기 — `TtsPlayer.stop()`)가 이 칸의 발화를 끊으면 그 문장에
+///    `undelivered`를 통지한다(`speechInterrupted(token:)`, 통합본 횡단 리뷰 F4). 칸 자신의 정지(선점·인계)는 알리지 않는다.
+/// 버림 통지(`onDropped`)는 문장마다 **최대 한 번**이고 부르는 주체는 이 칸이다(인계한 문장은 `DeviceSpeechHandover`가).
 ///
 /// `isSpeaking`은 **안내** 발화만 본다 — 채팅 듣기는 안내를 막지 않는다(설계 리뷰 M3, 안내가 채팅을 끊는다. 운전자 채널과 같다).
+/// 일시정지로 남은 발화(인터럽션 뒤)는 말하는 중이 아니다(앱 `TtsPlayer.isSpeakingGuidance`, 횡단 리뷰 F5) — 그러지 않으면 칸이
+/// 선점 문장이 올 때까지 영영 막힌다.
 ///
 /// `DeferredAnnouncer`처럼 Kit에 두는 이유: 위험 부위가 순수 함수가 아니라 이 수명 계약이고, 시계·sleeper를 주입해야
 /// 테스트가 열린다(앱 타깃엔 테스트 레인이 없다).
@@ -151,19 +182,20 @@ public final class DeviceSpeechQueue {
         lastSpoken = nil
     }
 
-    /// 전경 복귀(계약 6). VoiceOver로 넘길 문장을 옛 것 → 새 것 순서로 돌려준다(게시는 호출부가 한 통지로).
-    public func handOver() -> [String] {
+    /// 전경 복귀(계약 6). VoiceOver로 넘길 문장을 옛 것 → 새 것 순서로 돌려준다(게시는 호출부가 한 통지로). 합본 통지가
+    /// 끝내 나가지 못하면 호출부가 결과의 `undelivered()`를 부른다.
+    public func handOver() -> DeviceSpeechHandover {
         // VoiceOver가 꺼진 전경(도보·대중교통은 채널이 VoiceOver 게시라 듣는 사람이 없다): 말하는 기기 음성을 끊지 않고 칸은
         // 드레인에 맡긴다(접근성 m2, 검증 리뷰 N3 — VoiceOver를 쓰지 않는 사용자는 끝까지 기기 음성으로 듣는다).
-        guard voiceOverRunning() else { return [] }
-        var handed: [String] = []
+        guard voiceOverRunning() else { return .empty }
+        var handed: [(text: String, onDropped: ((DeviceSpeechDrop) -> Void)?)] = []
         if let current = lastSpoken, isSpeakingToken(current.token),
            route(current.item.speechClass) == .voiceOver {
             // 들을 채널이 VoiceOver로 바뀌었다 — 기기 음성을 끊고 처음부터 넘긴다(반쯤 들린 문장은 정보가 아니다).
             stopSpeaking()
             lastSpoken = nil
             if current.item.bypassSuppression || !isSuppressed() {
-                handed.append(current.item.text)
+                handed.append((current.item.text, current.item.onDropped))
             } else {
                 current.item.onDropped?(.undelivered)
             }
@@ -176,7 +208,7 @@ public final class DeviceSpeechQueue {
                 clearDrain()
                 pending = nil
                 if isDeliverable(waiting) {
-                    handed.append(waiting.text)
+                    handed.append((waiting.text, waiting.onDropped))
                 } else {
                     waiting.onDropped?(.undelivered)
                 }
@@ -186,7 +218,15 @@ public final class DeviceSpeechQueue {
                 waiting.onDropped?(.undelivered)
             }
         }
-        return handed
+        return DeviceSpeechHandover(handed)
+    }
+
+    /// 칸 밖의 정지가 안내 발화를 끊었다(계약 7) — 그 발화가 이 칸이 낸 것이면 버림(`undelivered`)을 통지한다. 칸에서 기다리던
+    /// 문장은 꺼내는 순간의 억제 검사가 맡는다(받아쓰기는 곧 억제를 건다).
+    public func speechInterrupted(token: Int) {
+        guard let current = lastSpoken, current.token == token else { return }
+        lastSpoken = nil
+        current.item.onDropped?(.undelivered)
     }
 
     private func clearDrain() {

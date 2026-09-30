@@ -63,7 +63,7 @@ final class TtsPlayer {
     /// 이 발화인가"를 가른다 — 안내 기기 음성 대기 칸의 복귀 인계가 다른 모델의 발화를 끊지 않게 한다(E53 리뷰 M-1).
     @discardableResult
     func speakGuidance(_ text: String) -> Int {
-        stop()  // 세대 증가 포함 — 직전 재생의 늦은 콜백을 무효화한다
+        halt()  // 세대 증가 포함 — 직전 재생의 늦은 콜백을 무효화한다. 끊긴 안내는 대기 칸이 이미 안다(선점)
         let token = generation
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return token }
@@ -76,19 +76,36 @@ final class TtsPlayer {
 
     /// **안내** 발화가 말하는 중인가 — 안내 기기 음성 대기 칸(`DeviceSpeechQueue`, E53)과 세션 종료 원복 대기가 읽는다.
     /// 채팅 듣기(`playMessage` — `playingMessageID`가 선다)는 세지 않는다: 안내는 채팅을 기다리지 않고 끊는다(E53 설계
-    /// 리뷰 M3, 운전자 채널과 같은 우선순위).
-    var isSpeakingGuidance: Bool { synthesizer.isSpeaking && playingMessageID == nil }
+    /// 리뷰 M3, 운전자 채널과 같은 우선순위). 일시정지로 남은 발화(전화 등 오디오 인터럽션 뒤)도 세지 않는다 — `isSpeaking`은
+    /// 일시정지 중에도 참이라, 세면 대기 칸이 선점 문장이 올 때까지 막히고 세션 종료 원복도 발화 대기 상한까지 붙들린다(E53
+    /// 횡단 리뷰 F5). 다음 안내 발화가 그 일시정지 발화를 끊고 말한다.
+    var isSpeakingGuidance: Bool { synthesizer.isSpeaking && !synthesizer.isPaused && playingMessageID == nil }
 
     /// 그 발화 토큰(`speakGuidance`의 반환)의 안내가 아직 말하는 중인가. 그 뒤 다른 재생·정지가 있었으면 거짓이다.
     func isSpeakingGuidance(token: Int) -> Bool { isSpeakingGuidance && generation == token }
 
-    /// 안내 발화만 끊는다(전경 복귀 인계 — 들을 채널이 VoiceOver로 바뀌었다). 채팅 듣기는 건드리지 않는다.
+    /// 안내 발화만 끊는다(전경 복귀 인계·굳은 발화 — 대기 칸 자신의 정지). 채팅 듣기는 건드리지 않는다.
     func stopGuidance() {
         guard isSpeakingGuidance else { return }
-        stop()
+        halt()
     }
 
+    /// 안내 발화를 대기 칸 **밖**의 정지(받아쓰기 시작·채팅 화면 이탈·채팅 듣기 시작)가 끊었을 때 부르는 관찰자 — 인자는 끊긴
+    /// 발화 토큰(E53 횡단 리뷰 F4). 끊긴 문장이 1회성 경고면 그 칸이 버림을 통지해 장부가 되살아난다.
+    @ObservationIgnored private var guidanceInterruptionObservers: [(Int) -> Void] = []
+
+    func observeGuidanceInterruption(_ observer: @escaping (Int) -> Void) {
+        guidanceInterruptionObservers.append(observer)
+    }
+
+    /// 모든 재생 정지. 안내 발화를 끊었으면 관찰자에게 알린다(칸 자신의 정지는 `halt`·`stopGuidance`를 쓴다).
     func stop() {
+        let interrupted = isSpeakingGuidance ? generation : nil
+        halt()
+        if let interrupted { guidanceInterruptionObservers.forEach { $0(interrupted) } }
+    }
+
+    private func halt() {
         generation += 1
         audioPlayer?.stop()
         audioPlayer = nil

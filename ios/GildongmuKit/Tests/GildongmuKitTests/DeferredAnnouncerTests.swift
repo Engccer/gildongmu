@@ -79,6 +79,22 @@ struct DeferredAnnouncerTests {
         #expect(h.sleeps == [2.246 + SpeechDeferConstants.speechDeferGapSeconds])
     }
 
+    // E57 착지 대기(spec 2026-09-30 §3.3): 톤 뒤로 미룬 문장이 있는 동안은 `hasPending` — 게시하거나 버리면 내려간다.
+    @Test func hasPendingTracksDeferredSlot() async {
+        let h = Harness()
+        #expect(!h.announcer.hasPending)
+        h.toneScript = [2.246, 2.246]
+        h.announcer.announce("요약", speechClass: .actionable)
+        #expect(h.announcer.hasPending)
+        await drain()
+        #expect(h.posts.map(\.text) == ["요약"])
+        #expect(!h.announcer.hasPending)
+        h.toneScript = [2.246]
+        h.announcer.announce("버릴 문장", speechClass: .actionable)
+        h.announcer.advanceGeneration()
+        #expect(!h.announcer.hasPending)
+    }
+
     // §4-3: sleep은 취소되면 즉시 반환한다 — 토큰·세대 확인 없이는 취소한 문장이
     // 그 자리에서 발화된다(변이 1이 이 테스트로 잡혀야 한다).
     @Test func invalidatedPendingNeverPosts() async {

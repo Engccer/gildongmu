@@ -428,16 +428,25 @@ final class OutingModel {
             // 30분 넘은 종료 사유는 갚지 않는다(맥락 밖 낭독). 추적 중 복귀엔 장부가 없다 — 지나침·횡단보도는 자리에 묶인
             // 문장이라 나중에 말하면 거짓이다. 화면 변화 없는 통지라 `.high`.
             if returned {
-                var owed = deviceSpeech.handOver()
+                let handed = deviceSpeech.handOver()
+                var owed = handed.texts
+                var repaidEnd: (text: String, at: ContinuousClock.Instant)?
                 if let end = owedEndReason {
                     owedEndReason = nil
                     let age = end.at.duration(to: .now)
                     let seconds = Double(age.components.seconds) + Double(age.components.attoseconds) / 1e18
                     if !isTracking, !isEndScreenStale(secondsSinceEnd: seconds), !owed.contains(end.text) {
                         owed.append(end.text)
+                        repaidEnd = end
                     }
                 }
-                if !owed.isEmpty { say(owed.joined(separator: " "), highPriority: true, speechClass: .actionable) }
+                // 합본이 억제로 버려지면(복귀 순간 받아쓰기 시트) 실은 장부를 되돌린다 — 종료 사유와 인계받은 문장(횡단 리뷰 F6).
+                if !owed.isEmpty {
+                    say(owed.joined(separator: " "), highPriority: true, speechClass: .actionable) { [weak self] in
+                        if let repaidEnd { self?.owedEndReason = repaidEnd }
+                        handed.undelivered()
+                    }
+                }
             }
         default:
             break

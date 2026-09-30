@@ -399,7 +399,9 @@ final class TransitGuideModel {
         case .background: speechBackgrounded = true
         case .active where speechBackgrounded:
             speechBackgrounded = false
-            handed = deviceSpeech.handOver()
+            // 합본이 억제로 버려져도 되돌리지 않는다(`.texts`만) — 억제 버림은 `droppedWhileSuppressed`가 해제 때 합본째 다시
+            // 내므로 장부까지 되살리면 두 번 말한다(E53 spec §4.2 ⑧, 횡단 리뷰 F6 기각).
+            handed = deviceSpeech.handOver().texts
         default: break
         }
         defer {

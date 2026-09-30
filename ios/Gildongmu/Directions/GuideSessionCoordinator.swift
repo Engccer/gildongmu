@@ -193,10 +193,11 @@ final class GuideSession {
                 appLocalized("ios.beacon.stopped"), appLocalized("transitGuide.prewalkCancelled")),
                 speechClass: .actionable)
         case .ended:
-            // 종료 사유 문장(유휴·권한)은 도보 모델이 이미 냈다(콜백이 다음 턴이라 순서가 구조적). 분류는 행동 문장(E53
-            // spec §3.3, 설계 리뷰 M7): prewalk엔 안전망이 돌지 않아 이 경로는 권한·정밀 위치 상실·다른 세션뿐이고, "기다리는
-            // 대중교통 안내가 오지 않는다"는 사실은 모르면 승차역에서 차량 선택을 기다리게 된다.
-            transit.announceExternal(appLocalized("transitGuide.prewalkCancelled"), speechClass: .actionable)
+            // 문장을 내지 않는다. 이 경로는 권한·정밀 위치 상실(`BeaconModel.stopAndFail`)뿐이고(prewalk엔 안전망이 돌지 않고,
+            // 다른 시작 진입은 세션 중 거절된다), "대중교통 안내는 시작하지 않았다"는 도보 모델이 사유 문장에 붙여 **한 문장**으로
+            // 냈다(E53 spec §3.3, 횡단 리뷰 F3). 대중교통 창구로 내면 그 재생기는 세션을 시작한 적이 없어 화면이 꺼진 동안
+            // 버려지고, 대중교통 복귀 상환은 추적 가드 뒤라 어디서도 전달되지 않았다.
+            break
         }
     }
 

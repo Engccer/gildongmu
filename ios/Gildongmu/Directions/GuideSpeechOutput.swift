@@ -37,11 +37,49 @@ enum GuideSpeechOutput {
             foregroundDeviceSpeech: foregroundDeviceSpeech)
     }
 
-    /// VoiceOver 통지. 버튼 활성화의 직접 응답·화면 변화 없는 통지만 `.high`(헌장 §5).
+    /// VoiceOver 통지. 버튼 활성화의 직접 응답·화면 변화 없는 통지만 `.high`(헌장 §5). 안내 VoiceOver 게시의 **유일한
+    /// 창구**라 게시 장부를 여기서 적는다(E57 착지 대기 — 소스 가드가 다른 게시 자리를 막는다).
     static func postVoiceOver(_ text: String, highPriority: Bool) {
         var attributed = AttributedString(text)
         if highPriority { attributed.accessibilitySpeechAnnouncementPriority = .high }
+        // VoiceOver가 꺼진 채 게시한 통지는 끝 신호가 오지 않는다 — 적지 않는다.
+        if UIAccessibility.isVoiceOverRunning {
+            observeAnnouncementFinishes()
+            ledger.posted(text, at: ProcessInfo.processInfo.systemUptime)
+        }
         AccessibilityNotification.Announcement(attributed).post()
+    }
+
+    /// 안내가 게시한 VoiceOver 통지 중 끝나지 않은 것(E57 spec 2026-09-30 §3.3, Kit `GuideAnnouncementLedger`). 세 모델 공용 —
+    /// 착지는 어느 안내 통지든 말하는 중이면 끊지 않는다.
+    private static var ledger = GuideAnnouncementLedger()
+    private static var finishObserver: NSObjectProtocol?
+
+    /// 안내가 게시한 VoiceOver 통지가 모두 끝났는가(만료 포함). 모델의 `announcementsSettled`가 지연 슬롯과 함께 묻는다.
+    static var announcementsFinished: Bool { ledger.isSettled(at: ProcessInfo.processInfo.systemUptime) }
+
+    /// 끝나지 않은 안내 통지 수 — 착지가 상한까지 기다렸을 때의 계측(E57 spec §4).
+    static var openAnnouncements: Int { ledger.openCount(at: ProcessInfo.processInfo.systemUptime) }
+
+    /// 끝 신호를 장부에 잇는다 — 끝까지 말했든 끊겼든(`wasSuccessful`과 무관) 그 문장은 더 말하지 않는다. 앱 수명 한 번.
+    /// 문장 값은 `String`과 `NSAttributedString` 둘 다 받는다: 우리는 `AttributedString`(우선순위 속성)으로 게시하는데 끝 신호가
+    /// 어느 형으로 오는지 실측이 없다(설계 리뷰 MAJOR 2 — 어긋나면 모든 착지가 상한까지 기다린다). 실험판은 형과 짝 여부를 남긴다.
+    private static func observeAnnouncementFinishes() {
+        guard finishObserver == nil else { return }
+        finishObserver = NotificationCenter.default.addObserver(
+            forName: UIAccessibility.announcementDidFinishNotification, object: nil, queue: .main
+        ) { note in
+            let value = note.userInfo?[UIAccessibility.announcementStringValueUserInfoKey]
+            let text = (value as? String) ?? (value as? NSAttributedString)?.string
+            let valueType = value.map { "\(Swift.type(of: $0))" } ?? "nil"
+            MainActor.assumeIsolated {
+                let now = ProcessInfo.processInfo.systemUptime
+                let before = ledger.openCount(at: now)
+                if let text { ledger.finished(text, at: now) }
+                guard before > 0 else { return }  // 안내 통지가 없을 때의 다른 화면 통지는 남기지 않는다
+                guideDiagLog("announceFinish type=\(valueType) matched=\(ledger.openCount(at: now) < before) open=\(ledger.openCount(at: now))")
+            }
+        }
     }
 
     /// 모델마다 하나씩 두는 기기 음성 대기 칸. 클로저는 그 모델의 받아쓰기 억제·재생기 톤 종료 시각·가청 여부.
@@ -51,7 +89,7 @@ enum GuideSpeechOutput {
         toneEndsAt: @escaping () -> Double?,
         backgroundAudible: @escaping () -> Bool
     ) -> DeviceSpeechQueue {
-        DeviceSpeechQueue(
+        let queue = DeviceSpeechQueue(
             clock: { ProcessInfo.processInfo.systemUptime },
             isSpeaking: { TtsPlayer.shared.isSpeakingGuidance },
             isSpeakingToken: { TtsPlayer.shared.isSpeakingGuidance(token: $0) },
@@ -62,6 +100,9 @@ enum GuideSpeechOutput {
             speak: { TtsPlayer.shared.speakGuidance($0) },
             stopSpeaking: { TtsPlayer.shared.stopGuidance() },
             postVoiceOver: { postVoiceOver($0, highPriority: $1) })
+        // 칸 밖의 정지(받아쓰기 시작·채팅 화면 이탈·채팅 듣기)가 이 칸의 발화를 끊었는가(횡단 리뷰 F4, 계약 ⑨).
+        TtsPlayer.shared.observeGuidanceInterruption { [weak queue] token in queue?.speechInterrupted(token: token) }
+        return queue
     }
 
     /// 도보·대중교통 `stop()`의 오디오 원복 다리(spec §7). 백그라운드 ∧ 토글 켬이면 이어질 종료·도착 문장이 기기

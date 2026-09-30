@@ -304,7 +304,7 @@ struct DeviceSpeechQueueTests {
         h.submit("다음 예고")
         h.channel = .voiceOver
         let handed = h.queue.handOver()
-        #expect(handed == ["40m 전문", "다음 예고"])
+        #expect(handed.texts == ["40m 전문", "다음 예고"])
         #expect(h.synth.stops == 1)
         #expect(h.voiceOver.isEmpty)
         #expect(h.drops.isEmpty)
@@ -325,7 +325,7 @@ struct DeviceSpeechQueueTests {
         transit.submit("대중교통 시작", high: true)  // 대중교통이 합성기를 넘겨받아 말하는 중
         #expect(beacon.queue.handOver().isEmpty)
         #expect(synth.stops == 0)
-        #expect(transit.queue.handOver() == ["대중교통 시작"])
+        #expect(transit.queue.handOver().texts == ["대중교통 시작"])
         #expect(synth.stops == 1)
     }
 
@@ -381,7 +381,42 @@ struct DeviceSpeechQueueTests {
         t.submit("낡은 명령")
         t.now = DeviceSpeechQueue.pendingTTLSeconds + 1
         t.channel = .voiceOver
-        #expect(t.queue.handOver() == ["말하는 중"])
+        #expect(t.queue.handOver().texts == ["말하는 중"])
         #expect(t.drops.map(\.0) == ["낡은 명령"])
+    }
+
+    // 인계한 문장이 합본 통지째 억제로 버려지면 되돌림이 각 문장의 버림을 `undelivered`로 한 번 통지한다(횡단 리뷰 F6).
+    // 되돌리지 않으면(합본이 나갔으면) 인계는 전달이라 버림이 없다.
+    @Test func handOverRollbackReportsUndeliveredOnce() async {
+        let h = Harness()
+        h.submit("계단 경고")
+        h.submit("다음 예고")
+        h.channel = .voiceOver
+        let handed = h.queue.handOver()
+        #expect(h.drops.isEmpty)
+        handed.undelivered()
+        handed.undelivered()
+        #expect(h.drops.map(\.0) == ["계단 경고", "다음 예고"])
+        #expect(h.drops.allSatisfy { $0.1 == .undelivered })
+        #expect(DeviceSpeechHandover.empty.isEmpty)
+    }
+
+    // 칸 밖의 정지(받아쓰기·채팅 — `TtsPlayer.stop()`)가 이 칸의 발화를 끊으면 undelivered(횡단 리뷰 F4). 다른 칸의 발화
+    // 토큰·이미 끝난 옛 토큰에는 반응하지 않는다.
+    @Test func externalStopOfOwnSpeechIsUndelivered() async {
+        let synth = SharedSynth()
+        let outing = Harness(synth: synth)
+        let beacon = Harness(synth: synth)
+        outing.submit("횡단보도 예고")
+        let token = synth.token
+        synth.stop()
+        beacon.queue.speechInterrupted(token: token)
+        #expect(beacon.drops.isEmpty)
+        outing.queue.speechInterrupted(token: token - 1)
+        #expect(outing.drops.isEmpty)
+        outing.queue.speechInterrupted(token: token)
+        outing.queue.speechInterrupted(token: token)
+        #expect(outing.drops.map(\.0) == ["횡단보도 예고"])
+        #expect(outing.drops.map(\.1) == [.undelivered])
     }
 }
