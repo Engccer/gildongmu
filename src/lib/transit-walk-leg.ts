@@ -41,21 +41,22 @@ export type TransitWalkLegKey =
   | "legWalkToDestNoDistance";
 
 /**
- * 도보 줄의 키·값. 행선지는 다음 탑승의 승차역(영어 줄이면 서버 영문 `toNameEn`), 없으면 목적지
- * (`transitWalkDestinationName`), 그것도 없으면 "목적지까지". 거리는 3-state라 필드가 없으면 거리 없는
- * 문구다. 다음 구간의 승차 출구(E25)는 행선지 이름이 있을 때만 이 줄이 싣는다.
+ * 도보 줄의 키·값. 행선지는 다음 탑승의 승차역(`stationNamesEn`이면 서버 영문 `toNameEn`), 없으면 호출부가
+ * `transitWalkDestinationName`으로 고른 목적지, 그것도 없으면 "목적지까지". 거리는 3-state라 필드가 없으면
+ * 거리 없는 문구다. 다음 구간의 승차 출구(E25)는 행선지 이름이 있을 때만 이 줄이 싣는다.
+ *
+ * `stationNamesEn`은 **같은 화면의 탑승 줄이 역을 부르는 언어**다 — 도보 줄이 "Yeouido"라 하고 다음 탑승 줄이
+ * "여의도"라 하면 같은 역이 두 이름이 된다. ⚠ 웹의 영어 여부는 로케일 단위라, 행선지 영문이 없는 중간 도보는
+ * 영어 문장에 한글 역명이 선다(Kit `transitLegUsesEnglish`는 그 줄을 통째로 한국어로 둔다. 기존 차이).
  */
 export function transitWalkLegMessage(
   legs: TransitLeg[],
   index: number,
-  destination: { label: string | null | undefined; roman: string | null | undefined },
-  english: boolean,
+  { stationNamesEn, destination }: { stationNamesEn: boolean; destination: string | null },
 ): { key: TransitWalkLegKey; values: { minutes: number; name?: string; distance?: string; exit?: string } } {
   const leg = legs[index];
   const name =
-    (english ? nonBlank(leg.toNameEn) : null) ??
-    nonBlank(leg.toName) ??
-    transitWalkDestinationName(destination.label, destination.roman, english);
+    (stationNamesEn ? nonBlank(leg.toNameEn) : null) ?? nonBlank(leg.toName) ?? nonBlank(destination);
   const distance = leg.distanceMeters != null ? formatDistance(leg.distanceMeters) : null;
   const exit = name ? boardExitAfterWalk(legs, index) : null;
   const key: TransitWalkLegKey = name

@@ -1,5 +1,5 @@
 {
-  "_comment": "마지막 도보(행선지 없음) 줄이 실을 목적지 이름(A52) — 웹 transit-walk-leg.test.ts ↔ Kit TransitWalkLegTextTests ↔ 안드로이드 :kit TransitWalkLegTextTest 공유. english=구간 줄이 영어 문장인가(기존 술어가 정한다). expected=null이면 '목적지까지' 문구(legWalkToDest)로 떨어진다. 영어 줄에는 한글을 싣지 않고 병기 괄호도 붙이지 않는다(이름 뒤에 거리가 이어진다).",
+  "_comment": "마지막 도보(행선지 없음) 줄이 실을 목적지 이름(A52) — 웹 transit-walk-leg.test.ts ↔ Kit TransitWalkLegTextTests ↔ 안드로이드 :kit TransitWalkLegTextTest 공유. english=구간 줄이 영어 문장인가(기존 술어가 정한다). expected=null이면 '목적지까지' 문구(legWalkToDest)로 떨어진다. 영어 줄에는 한글을 싣지 않고 병기 괄호도 붙이지 않는다(이름 뒤에 거리가 이어진다). 공백 판정은 세 벌이 같은 ASCII 공백·탭·개행만 fixture에 싣는다(U+200B 같은 경계는 웹 trim과 Swift 문자 집합이 갈려 판정 대상 밖).",
   "cases": [
     { "id": "ko-keeps-label", "english": false, "label": "63빌딩", "roman": "63bilding", "expected": "63빌딩" },
     { "id": "ko-latin-label", "english": false, "label": "Lotte World Tower", "roman": null, "expected": "Lotte World Tower" },

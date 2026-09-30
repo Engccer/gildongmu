@@ -59,7 +59,7 @@ node scripts/usage-report.mjs   # API 비용·쿼터·키 만료
 
 ### A52. iOS(en) 대중교통 브리핑의 마지막 도보 줄이 한국어 목적지 이름을 싣는다 (🆕 2026-09-27, 아이폰 미러링 관찰) · ✅ 코드 종결(2026-09-30, 세션 small-8, CHANGELOG 같은 날), 실기기 판정 대기(§2 A52 행)
 
-**처리**: 영어 줄이면 목적지의 라틴 표기(E28 1순위 이름)만 싣고, 없으면 "to the destination"으로 떨어진다(병기 괄호 없음). 판정은 웹 `transitWalkDestinationName` ↔ Kit `TransitWalkLegText.destinationName` ↔ 안드로이드 :kit 한 벌과 공유 fixture. 소비자: iOS·안드로이드 길찾기(도착지 `labelRoman`), 웹 화면 브리핑과 WebMCP 계획 투영(같은 함수 `transitWalkLegMessage`, 웹은 로마자를 들고 있지 않아 한글 목적지면 "to the destination"), iOS 안내 조망 "다른 경로"(로마자 없음, 같은 폴백). CLI 포매터는 도보 줄을 조립하지 않아 대상이 아니다. 아래는 접수 시점 기록이다.
+**처리**: 영어 줄이면 목적지의 라틴 표기(E28 1순위 이름)만 싣고, 없으면 "to the destination"으로 떨어진다(병기 괄호 없음). 판정은 웹 `transitWalkDestinationName` ↔ Kit `TransitWalkLegText.destinationName` ↔ 안드로이드 :kit 한 벌과 공유 fixture. 소비자: iOS·안드로이드 길찾기(도착지 `labelRoman`), 웹 화면 브리핑과 WebMCP 계획 투영(같은 함수 `transitWalkLegMessage`, 웹은 로마자를 들고 있지 않아 한글 목적지면 "to the destination"), iOS 안내 조망 "다른 경로"(로마자 없음, 같은 폴백). CLI 포매터의 도보 줄은 한국어 고정 문구이고 마지막 도보를 늘 "목적지까지"로 써서 대상이 아니다. WebMCP 도보 줄의 역 이름은 같은 투영의 탑승 줄처럼 한국어로 둔다(목적지 폴백만 영어 판정). 아래는 접수 시점 기록이다.
 
 영어 세션에서 63빌딩까지 조회하면 마지막 줄이 "Walk 4 min to 63빌딩, 242m"다. 도착 필드는 "63bilding (63빌딩)"으로 병기되는데, 마지막 도보는 provider가 행선지 이름을 주지 않아 `RouteBriefing`이 `destinationName`(원명 라벨)을 그대로 넣는다. 한 줄 안에서 언어를 섞지 않는다는 E27 규칙에 어긋난다. 처방 후보: 목적지의 라틴 표기(`labelRoman`, E28)가 있으면 그것을 쓰고 없으면 "to the destination" 문구(`legWalkToDest`)로 떨어진다. 웹 브리핑·WebMCP 출력도 같은 자리를 대조한다.
 

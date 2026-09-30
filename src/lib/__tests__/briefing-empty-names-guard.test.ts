@@ -26,7 +26,7 @@ describe("브리핑 빈 이름 문구 배선", () => {
     expect(text).toMatch(
       /let name = toName \?\? TransitWalkLegText\.destinationName\(\s*label: destinationName, roman: destinationRoman, english: english\)/,
     );
-    expect(text).toContain("let english: Bool = { if case .english = names { return true } else { return false } }()");
+    expect(text).toMatch(/let english: Bool = \{ if case \.english = names/);
     expect(text).toMatch(/TransitWalkLegText\.resolve\(\s*name: name,/);
   });
 

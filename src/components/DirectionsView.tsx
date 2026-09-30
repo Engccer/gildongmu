@@ -61,7 +61,7 @@ import { CarRouteResult } from "./CarRouteBriefing";
 import { carStepItems, walkStepItems } from "@/lib/route-step-items";
 import { hasActiveGuideSession, stopActiveGuideSession } from "@/lib/guide-session-store";
 import { alightLineText, boardExitOnBoardLine } from "@/lib/transit-exit-lines";
-import { transitWalkLegMessage } from "@/lib/transit-walk-leg";
+import { transitWalkDestinationName, transitWalkLegMessage } from "@/lib/transit-walk-leg";
 import { isUnwinding, publishView, withdrawView } from "@/lib/webmcp/view-registry";
 import type {
   DirectionsBridge,
@@ -1134,8 +1134,12 @@ export function DirectionsView({
   function transitLegLine(legs: TransitLeg[], index: number, boardSeen: number, destName: string): string {
     const leg = legs[index];
     if (leg.mode === "walk") {
-      // 화면 브리핑과 같은 함수(이름 선택·키·승차 출구 E25). 영어 줄의 목적지 이름은 라틴 표기만(A52).
-      const { key, values } = transitWalkLegMessage(legs, index, { label: destName, roman: null }, prefersEnglish(locale));
+      // 화면 브리핑과 같은 함수(이름 선택·키·승차 출구 E25). 역 이름은 아래 탑승 줄과 같은 한국어로 두고
+      // (같은 역을 두 이름으로 부르지 않는다), 목적지 이름은 영어 문장이면 라틴 표기만 싣는다(A52).
+      const { key, values } = transitWalkLegMessage(legs, index, {
+        stationNamesEn: false,
+        destination: transitWalkDestinationName(destName, null, prefersEnglish(locale)),
+      });
       return tTransit(key, values);
     }
     const lineLabel =

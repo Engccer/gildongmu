@@ -9,7 +9,7 @@ import { isOutOfCoverageBody } from "@/lib/out-of-coverage";
 import { joinText } from "@/lib/format";
 import { alternativeName } from "@/lib/transit-alternative-name";
 import { alightLineText, boardExitOnBoardLine } from "@/lib/transit-exit-lines";
-import { transitWalkLegMessage } from "@/lib/transit-walk-leg";
+import { transitWalkDestinationName, transitWalkLegMessage } from "@/lib/transit-walk-leg";
 import { dataLocale, prefersEnglish } from "@/lib/data-locale";
 import { TransitBilingualName } from "./TransitBilingualName";
 
@@ -289,7 +289,10 @@ export function TransitRouteResult({
             // 행선지 → 목적지 → "목적지까지" 순의 이름 선택과 키는 WebMCP 도구 출력과 같은 함수다.
             // 영어 줄의 목적지 이름은 라틴 표기만(A52, 한 줄 안에서 언어를 섞지 않는다). 문장 틀
             // `{name}`이 문자열 자리라 괄호 병기는 없다. 이 화면은 로마자를 모르니 한글 이름이면 "목적지까지"다.
-            const { key, values } = transitWalkLegMessage(route.legs, i, { label: dest, roman: null }, isEn);
+            const { key, values } = transitWalkLegMessage(route.legs, i, {
+              stationNamesEn: isEn,
+              destination: transitWalkDestinationName(dest, null, isEn),
+            });
             return <li key={i}>{t(key, values)}</li>;
           }
           // 고유명(노선·정류장)은 <line>/<from> 태그 핸들러로 lang="ko" 주입
