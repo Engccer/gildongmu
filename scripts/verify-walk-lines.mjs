@@ -70,12 +70,15 @@ async function replay(corpusPath) {
   return out;
 }
 
-function judge(label, table) {
+/** `whole` = 조사 45구간 전체일 때만 분포를 판정문과 대조한다(스팟은 구간별 대조만). */
+function judge(label, table, whole) {
   const pairs = Object.entries(table);
   const hist = { 0: 0, 1: 0, 2: 0, 3: 0 };
   for (const [, r] of pairs) hist[r.v2.length] += 1;
   const matches = [1, 2, 3].every((n) => hist[n] === EXPECTED[n]) && hist[0] === 0;
-  check(
+  if (!whole) {
+    console.log(`${label}: 스팟 ${pairs.length}구간 — 1줄 ${hist[1]} · 2줄 ${hist[2]} · 3줄 ${hist[3]}${hist[0] ? ` · 0줄 ${hist[0]}` : ""}`);
+  } else check(
     `${label}: 판본 2 줄 수 분포가 판정문과 같다(${pairs.length}구간)`,
     matches,
     `1줄 ${hist[1]} · 2줄 ${hist[2]} · 3줄 ${hist[3]}${hist[0] ? ` · 0줄 ${hist[0]}` : ""} / 기대 1줄 ${EXPECTED[1]} · 2줄 ${EXPECTED[2]} · 3줄 ${EXPECTED[3]}`,
@@ -118,7 +121,7 @@ async function live(pairsPath, expectPath) {
       check(`${grp}|${name} 응답`, false, String(e));
     }
   }
-  judge("실호출", table);
+  judge("실호출", table, pairs.length === 45);
   if (expected) {
     const diff = Object.entries(table).filter(([p, r]) => expected[p] && expected[p].v2.join() !== r.v2.join());
     check(
@@ -131,7 +134,7 @@ async function live(pairsPath, expectPath) {
 
 const corpusPath = opt("--from-corpus");
 const pairsPath = opt("--pairs");
-if (corpusPath) judge("재생", await replay(corpusPath));
+if (corpusPath) judge("재생", await replay(corpusPath), true);
 else if (pairsPath) await live(pairsPath, opt("--expect"));
 else {
   console.error("사용법: --from-corpus <corpus.json> | --pairs <pairs.json> [--expect <corpus.json>]");
