@@ -251,7 +251,12 @@ struct DeviceSpeechQueueTests {
         let h = Harness()
         h.submit("전문")
         h.submit("보호 문장", protected: true)
-        h.toneEndsAt = { [weak h] in (h?.now ?? 0) + 2 }
+        // 항상 잔여 2초(50번째 조회부터 톤 없음 — 상한 분기를 지우는 변이가 스위트를 멈추지 않게, 그 변이는 toneWaitIsCapped가 잡는다).
+        var toneCalls = 0
+        h.toneEndsAt = { [weak h] in
+            toneCalls += 1
+            return toneCalls < 50 ? (h?.now ?? 0) + 2 : nil
+        }
         // 확인 → 톤 대기 → (말하기 재개) 확인 → 말 끝남: 이후 두 번째 톤 대기가 3초를 온전히 쓴다.
         h.speakingAfterPolls = [false, true, true, false]
         await drain()
