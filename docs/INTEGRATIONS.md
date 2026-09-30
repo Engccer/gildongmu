@@ -96,6 +96,8 @@ IP 레이트리밋 60초 10회 + fetch 단위 `revalidate 3600`(GET이라 Author
 
 **파이프라인 순서가 계약이다: 정규화(전체) → 강등(전체) → 선정(축 5개) → 축 라벨.** 순서를 바꾸면 운행 중인 유일한 경로가 목록 밖에 묻히거나 사라진 기준의 라벨이 붙는다. ⚠ **error 봉투가 2형**(객체·배열)이고 무효 키도 HTTP 200이라 `odsay-envelope.ts`를 거친다. ⚠ **ODsay는 출발 시각을 반영하지 않아** 운행시간을 조인해 강등한다. **강등 정렬 키는 `outside` 유무 하나다 — `unknown`은 정렬에 참여하지 않는다**(A21, 2026-08-25): 당시(A21) 선정 5개 절단과 결합해 강등이 곧 제외였고, TAGO가 노선째 0행인 4호선 경로가 하루 종일 사라졌다. 술어는 `odsay-select.ts`의 `isOutside` 하나(강등·축 제외 공유). ⚠ iOS `routeKey` 필수 디코딩 — **웹 배포가 앱보다 먼저**. ⚠ **급행 구간은 노선명이 다르다**(`"수도권 9호선(급행)"`) — `subwayLineCore`가 `(급행)` **한 토큰만** 벗겨 매핑표에 닿고, 안 벗기거나 넓게 벗기는 두 실패가 **같은 문장으로** 도달한다(§노선명 표기와 실시간 매핑). **실시간 안내 상태 머신(`transit-guide.ts` ↔ Kit `TransitGuide.swift`)의 "탑승"은 차량 선택이고 riding 승격은 앱이 한다**(2026-08-22 N3): `waiting → boarding → riding`에서 `boarding`은 승차 정류소를 계속 조회하며 선택 차량의 도착 관측 또는 사용자 선언으로만 riding이 된다 — 미등장을 탑승으로 추론하지 않고, 소비자의 승차 정류소 갈래 조건은 `waiting || boarding`이다.
 
+선정은 축 5개이고 이유 없는 대안은 0이다(§파이프라인 순서가 계약이다). 수단 재조회(`pathType`)는 사용자가 누른 버튼으로만 나간다(E50). 상태 머신의 "탑승"은 차량 선택이고 riding 승격은 앱이 한다(N3).
+
 spec `2026-08-07-directions-view-restructure-design.md`·`2026-08-01-odsay-service-hours-design.md`.
 
 ### 파이프라인 순서가 계약이다
@@ -725,6 +727,10 @@ spec 같은 문서 §4.2. 위원장 판정(2026-09-10)의 전제 "도보와 같�
 
 단일 횡단보도 스텝 문장 끝에 `, N차로, 도로 폭 Mm`. **있는 곳만 말하고 없는 곳은 침묵**(수식이라 3-state 대상 아님). ⚠ seed는 교차로 횡단보도 여럿이 한 점에 겹쳐 등록돼(3,425곳 값 불일치) 최근접 1건이 어느 횡단보도인지 모른다 — **3중 게이트(중점 30m·연장≈구간 길이·후보 합의) 전부 통과일 때만** 붙이고 Tmap(provider 게이트, 기하 요청의 LineString은 횡단 길이가 아니다)·병합 스텝은 침묵. 파이프라인 마지막 단계라 기하 제거를 맡는다(음향신호기 단계는 `keepGeometry=true`). 서울은 동작구뿐.
 
+### 무장애 여행 정보 (CLAUDE.md 이관)
+
+한국관광공사 KorWithService2(B551011). 편의시설 화이트리스트 라벨링(⚠ 필드 철자는 실호출 확정), 장소상세 매칭 좌표50m∩이름(코드 거리 가드 병행). **게이트·인증 모두 `DATA_GO_KR_API_KEY`로 일치**(split-brain 금지). ⚠ 활용신청 별도(API별 독립 승인)
+
 ### 장소 영업시간(E24, 웹·iOS 장소 상세)
 
 Google Places(New). **어떤 실패도 `{hours:null}`**(키 없음·한국 밖·매칭 실패·부재·429·타임아웃) — 소비자는 줄을 만들지 않는다. 호출이 둘이고 캐시 정책이 정반대다: `place_id`는 **무기한 캐시 허용**(히트 365일·미스 30일 `unstable_cache`), 영업시간은 **캐시 금지**(약관 §3.2.3(b), `no-store`). ⚠ 과금 등급은 파라미터가 아니라 **필드마스크**가 정한다. ⚠ 예산 상한은 코드가 아니라 **GCP 소비자 쿼터**(`GetPlaceRequest` 33/일·`SearchTextRequest` 160/일 = 월 무료분)가 강제하고 초과는 429→침묵. ⚠ **약관 TTS 금지(§3.2.3(a)(iv))**: VoiceOver만 읽는다 — `TtsPlayer`·`speakGuidance`·채팅 산문·CLI/MCP에 절대 싣지 않고 `place-hours-tts-drift.test.ts`가 심볼 등장 파일 allowlist로 막는다(채팅 도구·내 주변 표기·정렬 반영·단정형 "지금 영업 중"은 E24 표기 규칙으로 재도입 금지 — 위험 방향 오류 9.1%). 매칭은 B1'(이름 완전 일치 + ≤50m 또는 도로명 키) / B2(브랜드 코어 + ≤50m)이고 좌표만으로는 매칭하지 않는다(대형 시설은 좌표가 85m 이격되는데 도로명 주소는 같다). "Google Maps"는 attribution 의무 표기(번역·변형 금지). 실호출 게이트 `scripts/verify-place-hours.mjs`. spec `2026-08-30-place-hours-google-design.md`
@@ -734,6 +740,22 @@ Google Places(New). **어떤 실패도 `{hours:null}`**(키 없음·한국 밖·
 ## API 키 상세
 
 `CLAUDE.md`가 요지만 남기고 여기로 옮긴 상세 계약이다. 각 절 제목은 `CLAUDE.md`의 해당 항목 제목과 같다.
+
+### `TOUR_API_KEY` = `DATA_GO_KR_API_KEY` (CLAUDE.md 이관)
+
+**동일값** — data.go.kr 계정당 단일키. 코레일·TAGO·서울지하철역시설·소아진료·공기질·날씨·무장애여행정보 공유. 신규 추가는 활용신청만. ⚠ 신규 provider 인증은 게이트와 같은 `DATA_GO_KR_API_KEY`로(`TOUR_API_KEY`로 인증하면 게이트와 split-brain — 거짓 "없음" 음성 위험)
+
+### GOOGLE_CLOUD_TTS_API_KEY (CLAUDE.md 이관)
+
+`/api/tts`(Chirp 3 HD MP3): iOS TtsPlayer 낭독과 웹(B12)·안드로이드 채팅 [듣기]의 **폴백**. 정본은 기기 음성(iOS `AVSpeechSynthesizer`·웹 `speechSynthesis`·안드로이드 `TextToSpeech`, 2026-07-27 위원장 판정)이고 서버 경로는 현재 로케일 보이스가 기기에 없을 때만 탄다
+
+### GOOGLE_PLACES_API_KEY (CLAUDE.md 이관)
+
+Google Places API (New) — 장소 상세 영업시간 한 줄(E24, 웹·iOS 장소 상세 — 2026-09-02 정식판 승격). `gildongmu-prod` 키 `gildongmu-places`(Places API만 허용). 무료분(Details Enterprise 1,000/월·Text Search Pro 5,000/월)을 GCP 일일 쿼터로 상한 — 초과는 429라 과금이 구조적으로 0
+
+### NAVER_LOCAL_CLIENT_ID/SECRET (CLAUDE.md 이관)
+
+네이버 지역검색(ko 장소 병합 보강). 2026-07-18 발급(수동 — Claude in Chrome이 naver 도메인 차단). 일 25,000회, 결과 최대 5건. ⚠ 2027-06-30 NAVER API Hub(NCP 키) 이관 데드라인(PROGRESS)
 
 ### ODSAY_API_KEY
 
