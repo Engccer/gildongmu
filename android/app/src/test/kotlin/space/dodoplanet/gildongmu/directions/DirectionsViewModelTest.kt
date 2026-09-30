@@ -246,7 +246,7 @@ class DirectionsViewModelTest {
         assertEquals(listOf(false), loc.forces)
         assertTrue(r.query("/api/route/transit").contains("includeStops=1"))
         assertFalse(r.query("/api/route/walk").contains("accessible"))
-        assertTrue(r.query("/api/route/walk").contains("lines=1"))
+        assertTrue(r.query("/api/route/walk").contains("lines=2"))
         assertEquals("강남역", store.endpoints(RecentEndpointScope.to).single().label)
         assertNull(s.landing) // 조회 완료에 착지 없음
     }
@@ -442,7 +442,7 @@ class DirectionsViewModelTest {
         assertTrue(r.paths().none { it.startsWith("/api/route") })
     }
 
-    @Test fun `도보 두 줄 - lines=1 단독 조회, 줄은 같은 응답에서 결과와 함께 커밋되고 첫 줄이 도보 결과다`() = runTest(dispatcher) {
+    @Test fun `도보 줄 목록 - lines=2 단독 조회, 줄은 같은 응답에서 결과와 함께 커밋되고 첫 줄이 도보 결과다`() = runTest(dispatcher) {
         val r = Routes(transit = transitBody, walk = walkTwoLines, car = carBody)
         val m = vm(r)
         m.setEndpoint(gangnam, DirectionsFieldTarget.to)

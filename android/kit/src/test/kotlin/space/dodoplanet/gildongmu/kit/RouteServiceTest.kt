@@ -80,7 +80,7 @@ class RouteServiceTest {
     }
 
     /**
-     * 줄 목록(E42)은 `lines=1` 단독 옵트인 — 계단 회피·경로 축·기하·alternatives와 조합하면 서버 400이다.
+     * 줄 목록(E42·E52)은 `lines=2`(판본 2, 최대 세 줄) 단독 옵트인 — 계단 회피·경로 축·기하·alternatives와 조합하면 서버 400이다.
      * 모르는 종류의 줄은 이름을 지어 붙이지 않고 뺀다(`stepFree` 원시 문자열 규율 동형).
      */
     @Test fun walkLinesIsSoloOptInAndDropsUnknownKinds() = runTest {
@@ -91,7 +91,8 @@ class RouteServiceTest {
         val lines = svc.walkLines(37.5, 127.0, 37.6, 127.1, lang = DataLocale.ko, via = null)
         assertEquals(listOf(WalkLineKind.shortest, WalkLineKind.broad), lines.map { it.lineKind })
         val q = t.lastQuery()
-        assertTrue(q.has("lines", "1"))
+        assertTrue(q.has("lines", "2"))
+        assertFalse(q.has("lines", "1"))
         for (name in listOf("accessible", "variant", "includeGeometry", "alternatives", "lang")) assertFalse(q.hasName(name), name)
     }
 
@@ -112,6 +113,18 @@ class RouteServiceTest {
         assertTrue(WalkLineKind.accessible.variant == null && WalkLineKind.accessible.isAccessible)
         assertTrue(WalkLineKind.broad.variant == null && !WalkLineKind.broad.isAccessible)
         assertTrue(WalkLineKind.recommended.variant == null && !WalkLineKind.recommended.isAccessible)
+    }
+
+    /** 안내 중 전환 대상(E52, Swift `walkSwitchAlternatePrefersAccessible` 미러): 계단 회피 우선, 없으면 첫 다른 줄. */
+    @Test fun walkSwitchAlternatePrefersAccessible() {
+        val three = listOf(WalkLineKind.shortest, WalkLineKind.broad, WalkLineKind.accessible)
+        assertEquals(WalkLineKind.accessible, WalkLineKind.switchAlternate(WalkLineKind.shortest, three))
+        assertEquals(WalkLineKind.accessible, WalkLineKind.switchAlternate(WalkLineKind.broad, three))
+        assertEquals(WalkLineKind.shortest, WalkLineKind.switchAlternate(WalkLineKind.accessible, three))
+        assertEquals(WalkLineKind.broad, WalkLineKind.switchAlternate(WalkLineKind.shortest, listOf(WalkLineKind.shortest, WalkLineKind.broad)))
+        assertEquals(WalkLineKind.shortest, WalkLineKind.switchAlternate(WalkLineKind.broad, listOf(WalkLineKind.shortest, WalkLineKind.broad)))
+        assertEquals(WalkLineKind.shortest, WalkLineKind.switchAlternate(WalkLineKind.recommended, listOf(WalkLineKind.recommended, WalkLineKind.shortest)))
+        assertEquals(null, WalkLineKind.switchAlternate(WalkLineKind.shortest, listOf(WalkLineKind.shortest)))
     }
 
     /** 경유지(N4): `via`는 "위도,경도" 한 파라미터. null이면 키 자체를 생략. */

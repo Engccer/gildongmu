@@ -60,6 +60,7 @@ import space.dodoplanet.gildongmu.location.appDetailsSettingsIntent
 import space.dodoplanet.gildongmu.nav.tryStartActivity
 import space.dodoplanet.gildongmu.settings.SETTINGS_RETURN_KEY
 import space.dodoplanet.gildongmu.settings.SettingsAction
+import space.dodoplanet.gildongmu.kit.models.WalkLineKind
 
 /**
  * 길찾기 탭 루트(spec §2·§3-1, iOS `DirectionsTabView` 대응). 폼 위에 끝점 검색을 **덮어씌운다**(폼은 컴포즈 유지) —
@@ -132,12 +133,13 @@ const val STATION_RETURN_PREFIX = "station-row:"
 class FormUiState(
     expandedAlts: Set<String> = emptySet(),
     walkExpandedOverride: Boolean? = null,
-    secondExpanded: Boolean = false,
+    laterExpanded: Set<WalkLineKind> = emptySet(),
     seenResultsRevision: Int = 0,
 ) {
     var expandedAlts by mutableStateOf(expandedAlts)
     var walkExpandedOverride by mutableStateOf(walkExpandedOverride)
-    var secondExpanded by mutableStateOf(secondExpanded)
+    /** 도보 첫 줄 뒤 줄들의 펼침 — 줄 종류마다 따로(E52: 한 칸을 공유하면 세 줄에서 둘이 함께 열린다). */
+    var laterExpanded by mutableStateOf(laterExpanded)
     var seenResultsRevision by mutableStateOf(seenResultsRevision)
     /** 역 작업 메뉴를 든 브리핑 줄(태그 → 요청자) — 역 상세 pop 복귀 착지. */
     val stationRowFocus = mutableMapOf<String, FocusRequester>()
@@ -153,16 +155,22 @@ class FormUiState(
         expandedAlts = emptySet()
         requeryFocus.clear()
         walkExpandedOverride = null
-        secondExpanded = false
+        laterExpanded = emptySet()
         seenResultsRevision = revision
     }
 
     companion object {
         val Saver: Saver<FormUiState, Any> = listSaver(
-            save = { listOf(ArrayList(it.expandedAlts), it.walkExpandedOverride, it.secondExpanded, it.seenResultsRevision) },
+            save = {
+                listOf(ArrayList(it.expandedAlts), it.walkExpandedOverride, ArrayList(it.laterExpanded.map { k -> k.rawValue }), it.seenResultsRevision)
+            },
             restore = {
                 @Suppress("UNCHECKED_CAST")
-                FormUiState((it[0] as List<String>).toSet(), it[1] as Boolean?, it[2] as Boolean, it[3] as Int)
+                FormUiState(
+                    (it[0] as List<String>).toSet(), it[1] as Boolean?,
+                    (it[2] as List<String>).mapNotNull { raw -> WalkLineKind.entries.firstOrNull { k -> k.rawValue == raw } }.toSet(),
+                    it[3] as Int,
+                )
             },
         )
     }
@@ -361,7 +369,8 @@ private fun DirectionsForm(
                             s.walkLines,
                             walkExpandedOverride = ui.walkExpandedOverride,
                             onWalkToggle = { ui.walkExpandedOverride = !(ui.walkExpandedOverride ?: !WalkCollapse.shouldCollapse(outcome.briefing.durationSeconds)) },
-                            secondExpanded = ui.secondExpanded, onSecondToggle = { ui.secondExpanded = !ui.secondExpanded },
+                            laterExpanded = ui.laterExpanded,
+                            onLaterToggle = { kind -> ui.laterExpanded = if (kind in ui.laterExpanded) ui.laterExpanded - kind else ui.laterExpanded + kind },
                             viaLabel = s.via?.label, strings = strings,
                             guideStart = walkGuideStartSlot(s, onStart = { vm.announceGuideStartIfManualOrigin(GuideSession.isActive) }),
                         )

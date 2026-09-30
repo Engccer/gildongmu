@@ -128,7 +128,7 @@ public struct RouteService: Sendable {
         return envelope.result
     }
 
-    /// 조회 화면 도보 줄 목록(E42, `lines=1` 단독 옵트인 — 기하 없음). 모르는 종류의 줄은 뺀다.
+    /// 조회 화면 도보 줄 목록(E42·E52, `lines=2` 단독 옵트인 — 기하 없음). 모르는 종류의 줄은 뺀다.
     /// 빈 배열은 "경로 없음", 첫 줄 실패는 서버 502라 throw(부분 성공 비대칭 — spec §2.1).
     public func walkLines(
         originLat: Double, originLng: Double,
@@ -142,7 +142,8 @@ public struct RouteService: Sendable {
         ]
         if lang != .ko { query.append(URLQueryItem(name: "lang", value: lang.rawValue)) }
         if let via { query.append(URLQueryItem(name: "via", value: coordPair(via.lat, via.lng))) }
-        query.append(URLQueryItem(name: "lines", value: "1"))
+        // 판본 2(E52) = 최대 세 줄. 판본 1(최대 두 줄)은 첫 줄 뒤 줄들이 펼침 상태 하나를 공유하던 1.19 몫이다.
+        query.append(URLQueryItem(name: "lines", value: "2"))
         let envelope: WalkRouteLinesEnvelope = try await client.get("/api/route/walk", query: query)
         return envelope.lines.filter { $0.lineKind != nil }
     }

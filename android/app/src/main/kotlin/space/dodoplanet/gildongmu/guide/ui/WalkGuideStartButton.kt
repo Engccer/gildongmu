@@ -102,7 +102,7 @@ fun walkGuideStartSlot(s: DirectionsUiState, onStart: () -> Unit): (@Composable 
         ?: return null
     val (label, dest) = target
     val waypoint = s.via?.let { GuideWaypoint(BeaconDest(it.lat, it.lng), it.label) }
-    // 다른 줄(M4b 안내 중 대안 프리뷰 대상) — 조회 화면의 줄 중 이 줄이 아닌 첫 알려진 줄(iOS `walkLines.compactMap(\.lineKind).first { $0 != kind }`).
+    // 다른 줄(M4b 안내 중 대안 프리뷰 대상) — 계단 회피 우선, 없으면 첫 다른 줄(E52 :kit `switchAlternate`, iOS 같은 함수).
     val kinds = s.walkLines.mapNotNull { it.lineKind }
-    return { line -> WalkGuideStartButton(dest, label, line, kinds.firstOrNull { it != line }, waypoint, onStart) }
+    return { line -> WalkGuideStartButton(dest, label, line, WalkLineKind.switchAlternate(line, kinds), waypoint, onStart) }
 }

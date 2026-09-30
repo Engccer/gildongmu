@@ -101,7 +101,7 @@ data class DirectionsUiState(
     /** 결과·도보 줄·승격본은 **같은 순간에만** 커밋한다(중간 return에서 한쪽만 선 상태가 관찰되지 않게). */
     val results: DirectionsResults? = null,
     /**
-     * 도보 줄 목록(E42, `lines=1`). 서버 순서가 화면 순서이고 첫 줄이 기본 펼침이다. `results`의 도보 결과(= 첫 줄)와 같은
+     * 도보 줄 목록(E42·E52, `lines=2`). 서버 순서가 화면 순서이고 첫 줄이 기본 펼침이다. `results`의 도보 결과(= 첫 줄)와 같은
      * 응답에서 온 것만 노출한다(스냅샷 교체). 빈 목록 = 미조회·경로 없음·조회 실패.
      */
     val walkLines: List<WalkRouteLine> = emptyList(),

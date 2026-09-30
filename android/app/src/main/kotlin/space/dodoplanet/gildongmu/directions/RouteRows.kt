@@ -253,7 +253,7 @@ private fun StationRow(
 
 /**
  * 도보 본문: 줄 목록 펼침(E42, 대중교통 대안 동형). 라벨은 `이름, 총 …, 약 …분` 한 객체이고 사유 문장이 없다(이름이 곧 정보다).
- * 첫 줄 초기 펼침은 :kit `WalkCollapse`(표시 분과 같은 반올림), 나머지는 기본 접힘. 안내 시작 버튼은 줄 **안** 맨 위 —
+ * 첫 줄 초기 펼침은 :kit `WalkCollapse`(표시 분과 같은 반올림), 나머지는 기본 접힘(줄 종류마다 따로 — E52). 안내 시작 버튼은 줄 **안** 맨 위 —
  * 라벨이 그 줄 이름이라 버튼 목록에서 어느 경로의 안내인지 구분된다. 줄이 하나여도 같은 모양이다.
  */
 @Composable
@@ -261,8 +261,9 @@ fun WalkOutcomeRows(
     lines: List<WalkRouteLine>,
     walkExpandedOverride: Boolean?,
     onWalkToggle: () -> Unit,
-    secondExpanded: Boolean,
-    onSecondToggle: () -> Unit,
+    /** 첫 줄 뒤 줄들의 펼침 — 줄 종류마다 따로(E52). */
+    laterExpanded: Set<WalkLineKind>,
+    onLaterToggle: (WalkLineKind) -> Unit,
     viaLabel: String?,
     strings: Strings,
     /** 도보 안내 시작 버튼 슬롯(줄 종류) — 도착 좌표가 있을 때만 화면이 넘긴다. */
@@ -272,11 +273,11 @@ fun WalkOutcomeRows(
     // 모르는 종류를 먼저 거르고 인덱싱한다 — "첫 줄"이 하나여야 펼침 규칙이 맞다. 줄 정체성은 종류(`key`, iOS `id: \.kind`):
     // 새 조회에서 둘째 줄이 계단 회피 → 큰길로 바뀌면 자리 기준 상태를 이어받지 않는다.
     lines.mapNotNull { line -> line.lineKind?.let { it to line.route } }.forEachIndexed { index, (kind, route) -> key(kind) {
-        val expanded = if (index == 0) walkExpandedOverride ?: !WalkCollapse.shouldCollapse(route.durationSeconds) else secondExpanded
+        val expanded = if (index == 0) walkExpandedOverride ?: !WalkCollapse.shouldCollapse(route.durationSeconds) else kind in laterExpanded
         val label = walkLineLabel(kind, route, strings)
         DisclosureRow(
             label = label, tag = "walk-line-${kind.rawValue}", expanded = expanded,
-            onToggle = if (index == 0) onWalkToggle else onSecondToggle, strings = strings, spoken = spokenDistanceUnits(label, meters),
+            onToggle = if (index == 0) onWalkToggle else { { onLaterToggle(kind) } }, strings = strings, spoken = spokenDistanceUnits(label, meters),
         ) {
             guideStart?.invoke(kind)
             walkStepItems(route, viaLabel, strings).forEachIndexed { i, item -> TextRow(item, "walk-${kind.rawValue}-step-$i", spoken = spokenDistanceUnits(item, meters)) }

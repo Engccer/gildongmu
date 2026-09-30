@@ -44,9 +44,21 @@ describe("iOS 도보 줄 배선(E42)", () => {
     expect(header).toContain("fetched.lineKind == nil ? fetched.stepFreeNotice : nil");
   });
 
+  it("첫 줄 뒤 줄들은 펼침 상태를 줄 종류마다 따로 든다(E52 — 한 칸 공유면 세 줄에서 둘이 함께 열린다)", () => {
+    const src = read(TAB);
+    expect(src).not.toContain("walkSecondExpanded");
+    expect(src).toContain("@State private var walkLaterExpanded: Set<WalkLineKind> = []");
+    expect(src).toContain("get: { walkLaterExpanded.contains(kind) }");
+    // 착지는 그 줄만 펼친다.
+    expect(funcBody(src, "private func landBeaconStartFocus(")).toContain("walkLaterExpanded.insert(kind)");
+  });
+
   it("조회 화면 줄의 안내 시작은 줄 종류의 투영 셋을 함께 싣는다(최단 버튼이 큰길을 시작하지 않게)", () => {
     const src = read(TAB);
     expect(src).toContain("accessible: kind.accessible, variant: kind.variant,");
     expect(src).toContain("line: kind,");
+    // 전환 대상은 Kit 한 함수(E52 — 계단 회피 우선). 호출부에서 "첫 다른 줄"을 다시 고르지 않는다.
+    expect(src).toContain("alternate: WalkLineKind.switchAlternate(");
+    expect(src).not.toContain(".first { $0 != kind }");
   });
 });

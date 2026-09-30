@@ -77,7 +77,7 @@ final class DirectionsModel {
     private(set) var via: DirectionsEndpoint?
     private(set) var phase: Phase = .idle
     private(set) var results: DirectionsResults?
-    /// 도보 줄 목록(E42, `lines=1`). 서버 순서가 화면 순서이고 첫 줄이 기본 펼침이다.
+    /// 도보 줄 목록(E42·E52, `lines=2`). 서버 순서가 화면 순서이고 첫 줄이 기본 펼침이다.
     /// **`results`의 도보 결과(= 첫 줄)와 같은 응답에서 온 것만** 노출한다(스냅샷 교체 —
     /// 다른 조회 세대의 결과를 조합하지 않는다). 빈 배열 = 미조회·경로 없음·조회 실패.
     private(set) var walkLines: [WalkRouteLine] = []
@@ -735,7 +735,7 @@ final class DirectionsModel {
     ) async -> Result<[WalkRouteLine], any Error> {
         do {
             return .success(try await withQueryTimeout {
-                // 줄 목록(E42, lines=1). 첫 줄 실패는 서버가 502로 던지고(.failure), 둘째 줄
+                // 줄 목록(E42·E52, lines=2). 첫 줄 실패는 서버가 502로 던지고(.failure), 나머지 줄
                 // 실패는 서버가 그 줄만 빼서 흡수한다(spec §2.1). 빈 목록 = 경로 없음.
                 try await service.walkLines(
                     originLat: origin.lat, originLng: origin.lng, destLat: dest.lat, destLng: dest.lng,
@@ -780,8 +780,10 @@ struct DirectionsTabView: View {
     /// 도보 첫 줄 펼침 상태(spec §4.4). nil = 자동(문턱 판정), 값 = 사용자 조작 결과.
     /// 새 조회에서만 자동으로 되돌린다.
     @State private var walkExpandedOverride: Bool?
-    /// 도보 둘째 줄 펼침(E42). 대중교통 대안 동형 — 기본 접힘, 새 조회에서 원복.
-    @State private var walkSecondExpanded = false
+    /// 도보 첫 줄 뒤 줄들의 펼침(E42·E52) — **줄 종류마다 따로** 든다(대중교통 `expandedAlts` 동형).
+    /// 한 칸을 공유하면 세 줄 화면에서 둘째·셋째 줄이 함께 열리고 닫혀 VoiceOver가 건드리지 않은 줄을
+    /// "펼쳐짐"으로 읽는다(1.19의 결함 — 서버 `lines` 판본 분기의 이유). 기본 접힘, 새 조회에서 원복.
+    @State private var walkLaterExpanded: Set<WalkLineKind> = []
     /// 안내 세션은 앱 수명(N1, `GuideSession`) — 이 뷰는 소유하지 않고 빌려 쓴다.
     /// 탭 전환·`.id` 재생성·시트 닫힘이 세션을 끝내지 않는다. 시트는 루트가 띄운다.
     private let session = GuideSession.shared
@@ -1091,7 +1093,7 @@ struct DirectionsTabView: View {
                 expandedAlts = []
                 // 새 조회 = 새 경로들이라 도보 접힘도 자동 판정으로 되돌린다(spec §4.4).
                 walkExpandedOverride = nil
-                walkSecondExpanded = false
+                walkLaterExpanded = []
             }
             // 탭 전환·epoch 재생성 시 진행 조회 폐기(늦은 응답이 초기화 화면을 되채우는 경합 차단).
             // 전경 전용 계약의 구현부. ⚠ 행 수준이 아니라 **화면 수준**이어야 한다 —
@@ -1296,7 +1298,7 @@ struct DirectionsTabView: View {
         if case .walkLine(let kind) = target {
             let kinds = model.walkLines.compactMap(\.lineKind)
             if let index = kinds.firstIndex(of: kind), index > 0 {
-                walkSecondExpanded = true
+                walkLaterExpanded.insert(kind)
             } else if let first = kinds.first {
                 target = .walkLine(first)
                 walkExpandedOverride = true
@@ -1644,7 +1646,7 @@ struct DirectionsTabView: View {
             // 도보 줄 목록(E42, 대중교통 대안 동형 disclosure). 라벨은 위원장 확정 렌더("최단 경로,
             // 총 850m, 약 12분") — 한 줄 = 한 접근성 객체(쉼표 결합)이고 본문은 안내 시작 버튼 + 단계.
             // 첫 줄 기본 펼침은 종전 문턱 판정 유지(장거리 도보 상세는 페이지 끝단을 수백 행으로
-            // 채운다 — 위원장 판정 2026-08-07), 둘째 줄은 기본 접힘. 안내 시작 버튼은 줄 **안**에
+            // 채운다 — 위원장 판정 2026-08-07), 나머지 줄은 기본 접힘(줄마다 따로). 안내 시작 버튼은 줄 **안**에
             // 있다 — 라벨이 그 줄 이름이라 로터 버튼 목록에서 어느 경로의 안내인지 구분된다.
             ForEach(Array(model.walkLines.enumerated()), id: \.element.kind) { index, line in
                 if let kind = line.lineKind {
@@ -1655,7 +1657,9 @@ struct DirectionsTabView: View {
                                     ?? (walkDisplayMinutes(line.route) <= walkCollapseThresholdMinutes)
                             },
                             set: { walkExpandedOverride = $0 })
-                        : $walkSecondExpanded
+                        : Binding(
+                            get: { walkLaterExpanded.contains(kind) },
+                            set: { if $0 { walkLaterExpanded.insert(kind) } else { walkLaterExpanded.remove(kind) } })
                     ) {
                         if walkGuideStartable, let tracked = trackedDestination {
                             Button(appLocalized(WalkLineText.startKey(kind))) {
@@ -1665,7 +1669,8 @@ struct DirectionsTabView: View {
                                     dest: tracked.dest, label: tracked.label, kind: .walk,
                                     accessible: kind.accessible, variant: kind.variant,
                                     line: kind,
-                                    alternate: model.walkLines.lazy.compactMap(\.lineKind).first { $0 != kind },
+                                    alternate: WalkLineKind.switchAlternate(
+                                        for: kind, among: model.walkLines.compactMap(\.lineKind)),
                                     waypoint: sessionWaypoint
                                 ))
                             }

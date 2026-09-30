@@ -118,7 +118,7 @@ class RouteService(val client: APIClient) {
     }
 
     /**
-     * 조회 화면 도보 줄 목록(E42, `lines=1` 단독 옵트인 — 기하 없음). 모르는 종류의 줄은 뺀다.
+     * 조회 화면 도보 줄 목록(E42·E52, `lines=2` 단독 옵트인 — 기하 없음). 모르는 종류의 줄은 뺀다.
      * 빈 목록은 "경로 없음", 첫 줄 실패는 서버 502라 throw(부분 성공 비대칭 — spec 2026-09-23 §2.1).
      */
     suspend fun walkLines(
@@ -130,7 +130,8 @@ class RouteService(val client: APIClient) {
         val query = arrayListOf("origin" to coordPair(originLat, originLng), "dest" to coordPair(destLat, destLng))
         if (lang != DataLocale.ko) query.add("lang" to lang.rawValue)
         if (via != null) query.add("via" to coordPair(via.lat, via.lng))
-        query.add("lines" to "1")
+        // 판본 2(E52) = 최대 세 줄. 판본 1(최대 두 줄)은 첫 줄 뒤 줄들이 펼침 상태 하나를 공유하던 iOS 1.19 몫이다.
+        query.add("lines" to "2")
         return client.get<WalkRouteLinesEnvelope>("/api/route/walk", query).lines.filter { it.lineKind != null }
     }
 

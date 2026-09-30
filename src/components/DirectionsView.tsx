@@ -92,7 +92,7 @@ type ModeOutcome =
   | { kind: "unsupportedWaypoint" }
   | { kind: "done"; mode: "transit"; result: TransitData }
   /**
-   * 도보는 `lines=1`의 줄 목록(E42) — 서버 순서가 화면 순서, 첫 줄이 기본 펼침. 비어 있으면
+   * 도보는 `lines=2`의 줄 목록(E42·E52) — 서버 순서가 화면 순서, 첫 줄이 기본 펼침. 비어 있으면
    * `empty`로 접으므로 done은 1줄 이상이다. 줄들은 **같은 응답에서 온 것만** 그린다(스냅샷 교체).
    */
   | { kind: "done"; mode: "walk"; lines: WalkRouteLine[] }
@@ -252,11 +252,11 @@ async function fetchMode(
   // 대중교통은 경유 정류장 옵트인(B2 §7) — 실시간 안내(승차·하차 정류소 ID·좌표)의
   // 유일한 데이터원이고, 시작 시 재조회 없이 브리핑과 같은 경로를 안내한다(§2).
   if (mode === "walk") {
-    // 도보는 줄 목록을 한 조회로 받는다(`lines=1`, E42). `walkRouteUrl`의 인자(안전 인자 전부
+    // 도보는 줄 목록을 한 조회로 받는다(`lines=2` — E52 판본, 최대 세 줄). `walkRouteUrl`의 인자(안전 인자 전부
     // required)에 올리지 않고 여기서 덧붙인다 — 조회 화면만 쓰는 단독 옵트인이라 계단 회피·경로
     // 축·기하와 조합하면 서버 400이다(줄 종류가 그 축들을 이미 담는다).
     const res = await fetch(
-      `${walkRouteUrl({ origin, dest, accessible: false, includeGeometry: false, via, lang, variant: null })}&lines=1`,
+      `${walkRouteUrl({ origin, dest, accessible: false, includeGeometry: false, via, lang, variant: null })}&lines=2`,
       { signal },
     );
     if (!res.ok) return { kind: "error" };
@@ -477,18 +477,19 @@ export function DirectionsView({
    * 사용자 조작이 자동 판정을 이긴다.
    */
   const [walkExpanded, setWalkExpanded] = useState<boolean | null>(null);
-  // 둘째 줄 펼침(E42). 기본 접힘이라 null 3-state가 필요 없고, 리셋은 walkExpanded와
-  // 같은 자리(resetWalkExpansion)에서 함께 — 스냅샷 교체 시 이전 세대의 펼침이 남지 않게.
-  const [walkSecondExpanded, setWalkSecondExpanded] = useState(false);
+  // 첫 줄 뒤 줄들의 펼침(E42·E52) — **줄 종류마다 따로** 든다. 하나를 공유하면 셋째 줄이 둘째 줄과
+  // 함께 열리고 닫혀 건드리지 않은 줄이 "펼쳐짐"이 된다. 기본 접힘이라 집합에 없으면 접힘이고, 리셋은
+  // walkExpanded와 같은 자리(resetWalkExpansion)에서 함께 — 스냅샷 교체 시 이전 세대의 펼침이 남지 않게.
+  const [walkLaterExpanded, setWalkLaterExpanded] = useState<ReadonlySet<WalkLineKind>>(() => new Set());
   /**
    * 안내 세션이 살아 있는 도보 줄(대중교통 `activeGuideAlt` 동형). 안내 시작 버튼이 줄 **안**에
    * 있어 그 줄을 접으면 패널이 unmount되며 세션이 조용히 죽는다 — 활성 줄은 강제 펼침.
    */
   const [activeWalkLine, setActiveWalkLine] = useState<WalkLineKind | null>(null);
-  /** 결과 폐기·새 조회 시 도보 両줄 펼침을 함께 되돌린다(한쪽만 되돌리면 다음 세대 둘째 줄이 펼쳐진 채 나온다). */
+  /** 결과 폐기·새 조회 시 도보 줄 펼침을 전부 되돌린다(일부만 되돌리면 다음 세대 줄이 펼쳐진 채 나온다). */
   function resetWalkExpansion() {
     setWalkExpanded(null);
-    setWalkSecondExpanded(false);
+    setWalkLaterExpanded(new Set());
   }
   /** 결과 폐기 한 곳(편집·스왑·경유지 조작·새 조회 공용). */
   function discardResults() {
@@ -1837,7 +1838,7 @@ export function DirectionsView({
                 {/* 도보 줄 목록(E42, 대중교통 대안 disclosure 동형). 라벨은 한 줄 = 한 객체
                     (joinText: "최단 경로, 총 850m, 약 12분"), 본문은 안내 시작 버튼 + 단계.
                     첫 줄의 기본 펼침은 장거리 접힘 문턱(spec §4.4 — 수십 단계 목록이 아래 수단을
-                    화면 밖으로 민다), 둘째 줄은 접힘. 안내 시작은 줄에 귀속된다 — 라벨이 곧 그
+                    화면 밖으로 민다), 나머지 줄은 접힘(줄마다 따로). 안내 시작은 줄에 귀속된다 — 라벨이 곧 그
                     줄 이름이라 VO 로터 버튼 목록에서 어느 경로의 안내인지 구분된다(B9 ②).
                     세션이 살아 있는 줄은 강제 펼침(접힘 unmount가 세션을 조용히 죽인다). */}
                 {outcome.kind === "done" && outcome.mode === "walk" &&
@@ -1850,11 +1851,17 @@ export function DirectionsView({
                       active ||
                       (i === 0
                         ? (walkExpanded ?? !shouldCollapseWalk(line.route.durationSeconds))
-                        : walkSecondExpanded);
+                        : walkLaterExpanded.has(line.kind));
                     const toggle = () => {
                       if (active) return;
                       if (i === 0) setWalkExpanded(!expanded);
-                      else setWalkSecondExpanded(!expanded);
+                      else
+                        setWalkLaterExpanded((prev) => {
+                          const next = new Set(prev);
+                          if (expanded) next.delete(line.kind);
+                          else next.add(line.kind);
+                          return next;
+                        });
                     };
                     const axis = walkLineAxis(line.kind);
                     return (

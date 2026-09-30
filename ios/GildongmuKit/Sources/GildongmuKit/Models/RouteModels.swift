@@ -566,9 +566,17 @@ public enum WalkLineKind: String, Sendable, Hashable, CaseIterable {
     public var variant: WalkRouteVariant? { self == .shortest ? .shortest : nil }
     /// 안내 요청의 계단 회피 — 계단 회피 줄만 참. 큰길·추천은 기본 파이프라인이다.
     public var accessible: Bool { self == .accessible }
+
+    /// 안내 중 전환·대안 프리뷰의 대상(E52): 조회 화면의 다른 줄 중 **계단 회피가 있으면 그것**, 없으면 첫 다른 줄.
+    /// 셋째 줄(계단 회피)은 앞의 두 줄과 다른 길일 때만 서므로(역사 통과를 피하는 길) 세 줄 화면에서 "첫 다른 줄"로
+    /// 고르면 그 줄로는 영영 전환할 수 없다. 두 줄 이하에서는 종전("반대편 줄")과 같다. 줄이 이것뿐이면 nil(진입점 없음).
+    public static func switchAlternate(for kind: WalkLineKind, among kinds: [WalkLineKind]) -> WalkLineKind? {
+        let others = kinds.filter { $0 != kind }
+        return others.first(where: \.accessible) ?? others.first
+    }
 }
 
-/// `/api/route/walk?lines=1` 응답의 한 줄. 줄 경로엔 `stepFree`·`stepFreeNotice`가 없다(이름이 그 정보다).
+/// `/api/route/walk?lines=2` 응답의 한 줄. 줄 경로엔 `stepFree`·`stepFreeNotice`가 없다(이름이 그 정보다).
 public struct WalkRouteLine: Codable, Sendable, Hashable {
     /// 줄 종류(원시 문자열). ⚠ **raw enum으로 디코딩하지 않는다** — 서버가 다섯째 종류를 더하면
     /// 응답 전체의 디코딩이 실패한다(`stepFree` 규율 동형). 판독은 `lineKind`가 한다.
@@ -579,7 +587,7 @@ public struct WalkRouteLine: Codable, Sendable, Hashable {
     public var lineKind: WalkLineKind? { WalkLineKind(rawValue: kind) }
 }
 
-/// `/api/route/walk?lines=1` envelope(E42). 배열 순서가 화면 순서이고 첫 원소가 기본 펼침이다.
+/// `/api/route/walk?lines=2` envelope(E42·E52 판본). 배열 순서가 화면 순서이고 첫 원소가 기본 펼침이다.
 /// 빈 배열은 "경로 없음"(3-state — 조회 실패는 서버가 502로 던진다).
 public struct WalkRouteLinesEnvelope: Codable, Sendable {
     public let lines: [WalkRouteLine]

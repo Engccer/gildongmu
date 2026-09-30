@@ -118,7 +118,7 @@ extension StubNetworkTests {
         #expect(capturedQuery?.contains(where: { $0.name == "includeGeometry" }) == false)
     }
 
-    /// 줄 목록(E42)은 `lines=1` 단독 옵트인 — 계단 회피·경로 축·기하·alternatives와 조합하면 서버 400이다.
+    /// 줄 목록(E42·E52)은 `lines=2`(판본 2, 최대 세 줄) 단독 옵트인 — 계단 회피·경로 축·기하·alternatives와 조합하면 서버 400이다.
     /// 모르는 종류의 줄은 이름을 지어 붙이지 않고 뺀다(`stepFree` 원시 문자열 규율 동형).
     @Test func walkLinesIsSoloOptInAndDropsUnknownKinds() async throws {
         var capturedQuery: [URLQueryItem]?
@@ -132,7 +132,7 @@ extension StubNetworkTests {
         let lines = try await RouteService(client: stubbedClient()).walkLines(
             originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1, lang: .ko, via: nil)
         #expect(lines.map(\.lineKind) == [.shortest, .broad])
-        #expect(capturedQuery?.contains(where: { $0.name == "lines" && $0.value == "1" }) == true)
+        #expect(capturedQuery?.filter { $0.name == "lines" }.map(\.value) == ["2"])
         for name in ["accessible", "variant", "includeGeometry", "alternatives", "lang"] {
             #expect(capturedQuery?.contains(where: { $0.name == name }) == false)
         }
@@ -156,6 +156,19 @@ extension StubNetworkTests {
         #expect(WalkLineKind.accessible.variant == nil && WalkLineKind.accessible.accessible)
         #expect(WalkLineKind.broad.variant == nil && !WalkLineKind.broad.accessible)
         #expect(WalkLineKind.recommended.variant == nil && !WalkLineKind.recommended.accessible)
+    }
+
+    /// 안내 중 전환 대상(E52): 다른 줄 중 계단 회피 우선, 없으면 첫 다른 줄, 줄이 이것뿐이면 nil.
+    @Test func walkSwitchAlternatePrefersAccessible() {
+        let three: [WalkLineKind] = [.shortest, .broad, .accessible]
+        #expect(WalkLineKind.switchAlternate(for: .shortest, among: three) == .accessible)
+        #expect(WalkLineKind.switchAlternate(for: .broad, among: three) == .accessible)
+        #expect(WalkLineKind.switchAlternate(for: .accessible, among: three) == .shortest)
+        // 두 줄 이하는 종전("반대편 줄")과 같다.
+        #expect(WalkLineKind.switchAlternate(for: .shortest, among: [.shortest, .broad]) == .broad)
+        #expect(WalkLineKind.switchAlternate(for: .broad, among: [.shortest, .broad]) == .shortest)
+        #expect(WalkLineKind.switchAlternate(for: .recommended, among: [.recommended, .shortest]) == .shortest)
+        #expect(WalkLineKind.switchAlternate(for: .shortest, among: [.shortest]) == nil)
     }
 }
 

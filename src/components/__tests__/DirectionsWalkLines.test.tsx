@@ -137,11 +137,12 @@ afterEach(() => {
 });
 
 describe("도보 줄 요청(E42)", () => {
-  it("조회는 lines=1 단독 옵트인이다(계단 회피·경로 축·기하·옛 alternatives 없음)", async () => {
+  it("조회는 lines=2(E52 판본, 최대 세 줄) 단독 옵트인이다(계단 회피·경로 축·기하·옛 alternatives 없음)", async () => {
     const calls = stubFetch(TWO_LINES);
     await queryWalk();
     const url = calls.find((u) => u.startsWith("/api/route/walk"))!;
-    expect(url).toContain("&lines=1");
+    expect(url).toContain("&lines=2");
+    expect(url).not.toContain("lines=1");
     for (const p of ["alternatives", "includeGeometry", "accessible", "variant"]) {
       expect(url).not.toContain(p);
     }
@@ -226,6 +227,27 @@ describe("도보 줄 목록(E42 — 위원장 확정 렌더)", () => {
     stubFetch({ lines: [] });
     await queryWalk();
     expect(screen.getByText(messages.route.pedestrian.noRoute)).toBeTruthy();
+  });
+
+  it("세 줄(E52): 최단 · 큰길 · 계단 회피 순서, 첫 줄 뒤 줄은 펼침 상태를 따로 든다", async () => {
+    stubFetch({ lines: [line("shortest", 850, 12), line("broad", 880, 13), line("accessible", 990, 15)] });
+    await queryWalk();
+    const rows = screen.getAllByRole("button", { name: /^.+ 경로, 총 / });
+    expect(rows.map((r) => r.textContent)).toEqual([
+      "최단 경로, 총 850m, 약 12분", "큰길 경로, 총 880m, 약 13분", "계단 회피 경로, 총 990m, 약 15분",
+    ]);
+    const broadRow = rows[1];
+    const accessibleRow = rows[2];
+    // 셋째 줄을 펼쳐도 둘째 줄은 접힌 채다(하나를 공유하면 건드리지 않은 줄이 "펼쳐짐"이 된다).
+    fireEvent.click(accessibleRow);
+    expect(accessibleRow.getAttribute("aria-expanded")).toBe("true");
+    expect(broadRow.getAttribute("aria-expanded")).toBe("false");
+    expect(screen.getByText("상세 990 summary=false")).toBeTruthy();
+    expect(screen.queryByText(/상세 880/)).toBeNull();
+    fireEvent.click(broadRow);
+    fireEvent.click(accessibleRow);
+    expect(broadRow.getAttribute("aria-expanded")).toBe("true");
+    expect(accessibleRow.getAttribute("aria-expanded")).toBe("false");
   });
 
   it("새 조회는 둘째 줄 펼침을 리셋한다(스냅샷 교체)", async () => {

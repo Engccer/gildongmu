@@ -10,6 +10,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import space.dodoplanet.gildongmu.kit.models.WalkLineKind
 
 /**
  * 경로 브리핑 역 작업 메뉴(E45) — 라벨 이름의 언어(줄 언어), 메뉴 순서(역별 묶음·등장 순), 배선 소스 가드.
@@ -120,13 +121,21 @@ class BriefingStationsTest {
     }
 
     @Test fun `펼침 상태는 저장·복원으로 왕복한다`() {
-        val before = FormUiState(setOf("r2"), walkExpandedOverride = false, secondExpanded = true, seenResultsRevision = 3)
+        val before = FormUiState(setOf("r2"), walkExpandedOverride = false, laterExpanded = setOf(WalkLineKind.accessible), seenResultsRevision = 3)
         val saved = with(FormUiState.Saver) { androidx.compose.runtime.saveable.SaverScope { true }.save(before) }!!
         val after = FormUiState.Saver.restore(saved)!!
         assertEquals(setOf("r2"), after.expandedAlts)
         assertEquals(false, after.walkExpandedOverride)
-        assertEquals(true, after.secondExpanded)
+        assertEquals(setOf(WalkLineKind.accessible), after.laterExpanded)
         assertEquals(3, after.seenResultsRevision)
+    }
+
+    @Test fun `도보 첫 줄 뒤 줄들은 펼침을 줄 종류마다 따로 든다(E52)`() {
+        // 한 칸을 공유하면 세 줄 화면에서 둘째·셋째 줄이 함께 열리고 닫혀 건드리지 않은 줄이 "펼쳐짐"이 된다.
+        val rows = code("directions/RouteRows.kt")
+        assertTrue(rows.contains("else kind in laterExpanded"))
+        assertTrue(rows.contains("onLaterToggle(kind)"))
+        assertFalse(code("directions/DirectionsScreen.kt").contains("secondExpanded"))
     }
 
     @Test fun `전화는 단일 창구를 지나고 통지는 화면 통지 창구로 간다`() {

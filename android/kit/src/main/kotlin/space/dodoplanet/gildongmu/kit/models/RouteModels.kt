@@ -301,10 +301,20 @@ enum class WalkLineKind {
 
     companion object {
         fun fromRawValue(raw: String): WalkLineKind? = entries.firstOrNull { it.name == raw }
+
+        /**
+         * 안내 중 전환·대안 프리뷰의 대상(E52, Swift `WalkLineKind.switchAlternate` 미러): 조회 화면의 다른 줄 중 **계단 회피가
+         * 있으면 그것**, 없으면 첫 다른 줄. 세 줄 화면에서 "첫 다른 줄"로 고르면 계단 회피 줄로는 영영 전환할 수 없다.
+         * 두 줄 이하에서는 종전("반대편 줄")과 같다. 줄이 이것뿐이면 null(진입점 없음).
+         */
+        fun switchAlternate(kind: WalkLineKind, among: List<WalkLineKind>): WalkLineKind? {
+            val others = among.filter { it != kind }
+            return others.firstOrNull { it.isAccessible } ?: others.firstOrNull()
+        }
     }
 }
 
-/** `/api/route/walk?lines=1` 응답의 한 줄. 줄 경로엔 `stepFree`·`stepFreeNotice`가 없다(이름이 그 정보다). */
+/** `/api/route/walk?lines=2` 응답의 한 줄. 줄 경로엔 `stepFree`·`stepFreeNotice`가 없다(이름이 그 정보다). */
 @Serializable
 data class WalkRouteLine(
     /**
@@ -319,7 +329,7 @@ data class WalkRouteLine(
 }
 
 /**
- * `/api/route/walk?lines=1` envelope(E42). 배열 순서가 화면 순서이고 첫 원소가 기본 펼침이다.
+ * `/api/route/walk?lines=2` envelope(E42·E52 판본). 배열 순서가 화면 순서이고 첫 원소가 기본 펼침이다.
  * 빈 배열은 "경로 없음"(3-state — 조회 실패는 서버가 502로 던진다).
  */
 @Serializable
