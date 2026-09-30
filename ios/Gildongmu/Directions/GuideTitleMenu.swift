@@ -50,7 +50,7 @@ struct GuideTitleRow<Title: View, Trailing: View>: View {
     }
 }
 
-/// 안내 시트 접기 아이콘(N1 최소화). 착지 바인딩은 호출부가 `.accessibilityFocused`로 단다.
+/// 안내 시트 접기 아이콘(N1 최소화). 착지 대상이 아니다 — 띠바 복귀도 첫 정보 행에 앉는다(E57 위원장 판정 Q1).
 struct GuideMinimizeButton: View {
     let action: () -> Void
 

@@ -199,7 +199,8 @@ final class BeaconModel {
     /// 곧바로 상세 시작" 이중 발화를 막는다. 조회 자체는 첫 수용 fix가 트리거한다
     /// (피드백 라운드1 8번): start() 직후 `currentCoordinate()`는 첫 fix 전이라 캐시
     /// 게이트에서 즉시 실패해 첫 세션의 상세 안내가 구조적으로 죽었다.
-    private var awaitingRoute = false
+    /// 시트가 읽는다(E57): 조회 중엔 첫 정보 행(남은 거리)이 아직 없어 착지를 이 값이 false가 될 때까지 미룬다.
+    private(set) var awaitingRoute = false
     private var routeFetchTask: Task<Void, Never>?
     /// 첫 수용 fix 대기 상한 감시. 초과 시 상세를 포기하고 간략으로 정직 폴백
     /// (위치 대기 문구 — 경로 실패와 원인이 다르므로 문구를 가른다).
@@ -1194,24 +1195,30 @@ final class BeaconModel {
     private func updateRemaining(route: GuideRoute, state: GuideState) {
         let remainingMeters = Int(max(0, route.totalMeters - state.d).rounded())
         updateBandDistance(remainingMeters)
+        // 행의 목적지 잔여는 띠바와 같은 10m 갱신 값이다(E57 spec §3.6): 시트가 열리면 커서가 이 행에 앉는데,
+        // 1km 미만은 미터 원값이라 매 fix 문자열이 바뀌어 커서 위에서 매초 다시 읽힌다(띠바 설계 리뷰 M7과 같은 기제).
+        let shownMeters = bandDistanceMeters ?? remainingMeters
         let target = guideNextTarget(route: route, state: state)
         let distancePart: String
         let minutes: Int?
         if target.kind == .waypoint, let viaLabel = routeWaypointLabel {
+            // 경유지 거리는 띠바 값과 다른 양이라 10m 격자로 같은 효과를 낸다(E57 §3.6).
             distancePart = appLocalized(
-                "directions.viaRemaining", viaLabel, formatDistance(Int(target.meters.rounded())))
+                "directions.viaRemaining", viaLabel, formatDistance((Int(target.meters.rounded()) + 5) / 10 * 10))
             minutes = etaMinutes(route: route, remainingMeters: target.meters, toWaypoint: true)
         } else if (target.kind == .destination && routeWaypointLabel != nil) || waypointPassedInSession {
             // 경유지를 지난 세션은 재조회 경로(경유지 없음)에서도 목적지 목표다(설계 리뷰 #7).
             distancePart = appLocalized(
-                "directions.viaDestRemaining", destinationLabel, formatDistance(remainingMeters))
+                "directions.viaDestRemaining", destinationLabel, formatDistance(shownMeters))
             minutes = etaMinutesNow(route: route, state: state)
         } else {
-            distancePart = appLocalized("guide.remainingDistance", formatDistance(remainingMeters))
+            distancePart = appLocalized("guide.remainingDistance", formatDistance(shownMeters))
             minutes = etaMinutesNow(route: route, state: state)
         }
         let timePart = minutes.map { appLocalized("guide.remainingTime", String($0)) }
-        remainingText = joinText(distancePart, timePart)
+        let text = joinText(distancePart, timePart)
+        // 같은 문장이면 대입하지 않는다 — 행이 불변이라 커서 위에서 다시 읽히지 않는다.
+        if remainingText != text { remainingText = text }
     }
 
     /// 띠바 거리 양자화(10m). 같은 구간이면 라벨을 건드리지 않는다(설계 리뷰 M7).

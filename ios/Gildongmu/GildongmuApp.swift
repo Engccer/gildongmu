@@ -128,11 +128,10 @@ struct GildongmuApp: App {
                     )
                 }
             }
-            // 화면이 사라지면 최소화·복귀 플래그·띠바 포커스를 되돌린다(설계 리뷰 M1·M9).
+            // 화면이 사라지면 최소화·띠바 포커스를 되돌린다(설계 리뷰 M1·M9).
             .onChange(of: guideSession.hasScreen) { _, has in
                 guard !has else { return }
                 guideSession.isMinimized = false
-                guideSession.returnedFromBand = nil
                 bandFocusTask?.cancel()
                 bandFocusTask = nil
                 bandFocusedTab = nil
@@ -226,7 +225,6 @@ struct GildongmuApp: App {
     @ViewBuilder private func guideBand(tab: AppTab) -> some View {
         if showsGuideBand {
             GuideBandView(session: guideSession) {
-                guideSession.returnedFromBand = guideSession.screen
                 guideSession.isMinimized = false
             }
             .accessibilityFocused($bandFocusedTab, equals: tab)

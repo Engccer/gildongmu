@@ -30,9 +30,6 @@ final class GuideSession {
     /// 시트가 내려가 있고 띠바가 세션을 대표하는 상태. `hasScreen`이 false로 떨어질 때
     /// `GildongmuApp`이 명시적으로 되돌린다(설계 리뷰 M1).
     var isMinimized = false
-    /// 띠바로 돌아온 시트가 첫 착지를 최소화 버튼에 두게 하는 1회 플래그. 같은 종류의
-    /// 시트만 소비한다(설계 리뷰 m1).
-    var returnedFromBand: GuideScreenKind?
     /// 경유지 지원 조건(N4): 비콘(도보·자동차) 세션 추적 중 ∧ ko 데이터 로케일(상세 경로
     /// 조회 자체가 ko 전용이라 그 밖에선 경유지가 의미 없다). 대중교통 세션은 제외(ODsay
     /// 미지원). 장소 상세 버튼과 안내 시트 버튼이 같은 게이트를 본다.

@@ -37,16 +37,45 @@ struct BeaconTrackingSheet: View {
     /// 자동차 도착 종료 화면의 도보 인계(K2 §6.4, 위원장 판정 ④). nil이면 버튼이 없다.
     let onCarWalkHandoff: (() -> Void)?
 
-    /// 제목 행(제목 메뉴) 착지 — 시트 진입의 기본 착지이자, 포커스를 쥔 요소가 사라지는
-    /// 전이의 복귀 앵커(항상 존재한다). 종전엔 목록 2번째 행의 중지 버튼이 그 앵커였는데
-    /// 중지가 최하단 고정으로 내려가면서(위원장 판정 2026-08-23) 제목이 그 역할을 받았다 —
-    /// 제목에서 오른쪽 스와이프가 내용을 순서대로 읽고, 종료는 네 손가락 아래쪽 탭이 지름길.
-    @AccessibilityFocusState private var titleFocused: Bool
-    /// 접기 버튼(헤더 행 우측 아이콘) 착지 — 띠바에서 돌아온 시트의 첫 착지(떠난 자리가 이 버튼이다).
-    @AccessibilityFocusState private var minimizeFocused: Bool
-    /// 도착 종료 화면의 도착 문장 착지(헌장 §5 — 도착 전이가 포커스를 쥔 컨트롤을
-    /// 통째로 제거한다).
-    @AccessibilityFocusState private var arrivedFocused: Bool
+    /// 착지 대상(E57, spec 2026-09-30-guide-sheet-info-row-landing). **시트가 열리거나 이어지거나 띠바에서 돌아올 때의
+    /// 첫 착지는 첫 정보 행**(위원장 2026-09-30: "최상단 헤딩이 아닌 남은 거리 행", 띠바 복귀 Q1) — 종전 제목·접기 버튼
+    /// 착지는 폐기했다.
+    /// 옵셔널 단일 바인딩인 이유는 "커서가 지금 어느 대상에 있는가"를 읽어야 해서다(소실 복구·대기 중 이동 판정,
+    /// spec §3.1) — 부착은 헬퍼 한 자리(`focusTarget`).
+    enum SheetFocus: Hashable {
+        /// 제목 메뉴 — 시트가 뜰 때 시스템이 커서를 두는 자리이자, 첫 정보 행이 없을 때의 마지막 안전망.
+        case title
+        /// 정보 행(첫 정보 행 후보 — `firstInfoRow`의 순서가 곧 우선순위다). 자동차 "현재 도로"·아랫줄·직선거리
+        /// 주석은 후보가 아니다: 남은 거리·윗줄이 없을 때 함께 없거나 상태 문장보다 늘 뒤다(설계 리뷰 M6).
+        case remaining, liveTop, status
+        /// 종료 화면의 도착(중지) 문장 — 종료 화면의 첫 정보 행(헌장 §5: 도착 전이가 포커스를 쥔 컨트롤을 통째로 없앤다).
+        case arrived
+        /// 체중 입력 뒤 갱신된 걸음 요약 문장 — [체중 입력하기](트리거)가 사라져 표준 dismiss의 포커스 복원이
+        /// 착지할 곳을 잃는다(헌장 §5, 라벨 변화가 곧 상태 신호).
+        case healthSummary
+
+        var isInfoRow: Bool {
+            switch self {
+            case .remaining, .liveTop, .status: true
+            case .title, .arrived, .healthSummary: false
+            }
+        }
+    }
+    @AccessibilityFocusState private var focusedRow: SheetFocus?
+    /// 진행 중인 착지(latest-wins — 새 착지가 먼저 취소한다).
+    @State private var focusTask: Task<Void, Never>?
+    /// 배경에서 난 착지 요청 — 전경 복귀에 한 번 착지한다(대중교통 A35 L4 동형).
+    @State private var deferredLanding: SheetFocus?
+    /// 경로 조회·시작 요약이 끝나길 기다리는 첫 정보 행 착지(spec §3.3).
+    @State private var pendingInfoLanding: PendingInfoLanding?
+    @State private var pendingTimeoutTask: Task<Void, Never>?
+    @State private var announcementWaitTask: Task<Void, Never>?
+    /// 마지막으로 발화가 끝난 VoiceOver 통지 문자열(spec §3.3) — 시작 요약이 끝났는지 이것으로 안다.
+    @State private var lastFinishedAnnouncement: String?
+    /// 자식 시트(조망·목적지/경유지 검색) 안에서 일어난 사용자 전이의 착지 — 그 시트가 **닫힌 뒤** 한 곳에서 부른다
+    /// (설계 리뷰 M3, 대중교통 `pendingFollowUp` 동형). 모달 뒤의 행에 대입하면 조용히 되돌아간다.
+    @State private var landAfterDismiss: String?
+    @Environment(\.scenePhase) private var scenePhase
     /// 전 구간 조망 모달(위원장 판정 개정 2026-08-10): 인라인 펼침은 같은 화면의
     /// 탐색 개체를 너무 늘렸다 — 별도 시트로 스코프를 가둬 "딱 확인하고 닫기"가
     /// 성립한다. 닫으면 시스템이 트리거 버튼으로 포커스를 복원한다(표준 dismiss).
@@ -63,10 +92,6 @@ struct BeaconTrackingSheet: View {
     /// 도착 화면 "체중 입력하기" → 설정 시트(표준 중첩 시트). 루트의 `openSettings`
     /// 환경값을 쓰지 않는 이유: 이 시트가 떠 있는 동안 루트가 또 시트를 올리면 표시되지 않는다.
     @State private var showsSettings = false
-    /// 체중을 입력하고 돌아오면 "체중 입력하기" 버튼(트리거)이 사라져 표준 dismiss의
-    /// 포커스 복원이 착지할 곳을 잃는다 — 그때 갱신된 요약 문장으로 선점 이동한다
-    /// (헌장 §5 "포커스를 쥔 요소를 제거하는 전이"; 라벨 변화가 곧 상태 신호).
-    @AccessibilityFocusState private var healthSummaryFocused: Bool
     /// 체중 입력 권유를 무시한 횟수(E31, spec 2026-09-11). 상한에 닿으면 권유 두 줄이
     /// 사라지고 기준 체중이 칼로리 문장 안으로 들어간다. 판정은 Kit `WalkHealth`.
     @AppStorage(WalkHealth.weightPromptDismissalsKey) private var weightPromptDismissals = 0
@@ -104,10 +129,10 @@ struct BeaconTrackingSheet: View {
                         waypointPresented = true
                     }
                     // 경유지 삭제(N4 잔여, K2 §6.5): 미도착 경유지가 있을 때만. 누르면 자신이
-                    // 사라지므로 항상 존재하는 제목 행으로 포커스를 선점한다(재조회 버튼 선례).
+                    // 사라지므로 첫 정보 행으로 옮긴다(E57 — 경로를 다시 조회하니 조회 끝까지 기다린다).
                     if model.waypoint != nil {
                         Button(appLocalized("ios.guide.waypointRemove")) {
-                            if model.removeWaypoint() { Task { await landTitleFocus() } }
+                            if model.removeWaypoint() { requestInfoLanding(note: "waypointRemoved", afterSummary: true) }
                         }
                     }
                 }
@@ -138,8 +163,8 @@ struct BeaconTrackingSheet: View {
                 // 출구다(종전 "준비된 새 경로로 안내" 확인 라벨은 폐기 — 누르지 않을 이유가
                 // 없는 확인은 군더더기).
                 // 진행 신호는 라벨 교체가 정본(라벨이 곧 상태 신호 — 별도 통지 중복 금지).
-                // 성공하면 이 버튼 자체가 사라지므로, 누른 결과로 사라질 때는 항상
-                // 존재하는 제목 행으로 포커스를 되돌린다(헌장 §5, a11y 감사 HIGH).
+                // 성공하면 이 버튼 자체가 사라지므로, 누른 결과로 사라질 때는 첫 정보 행
+                // (새 경로의 남은 거리)으로 포커스를 옮긴다(헌장 §5, a11y 감사 HIGH · E57).
                 if model.offRoute {
                     Button(appLocalized(
                         model.isRerouting ? "guide.rerouteBusy" : "guide.rerouteButton"
@@ -162,8 +187,9 @@ struct BeaconTrackingSheet: View {
                 // 경로 기준 잔여 거리·예상 시간 상시 표시(위원장 실측 판정 2026-08-03).
                 // 매 fix 갱신되는 값이라 통지 채널에 태우지 않는다 — 스와이프로 닿는
                 // 정적 행 하나. 이탈 중엔 경로 잔여가 거짓이므로 숨긴다(3-state 정직).
+                // 시트가 열리거나 이어질 때의 첫 착지다(E57 — 위원장 "실질적 정보가 시작되는 행").
                 if model.mode == .detail, !model.offRoute, let remaining = model.remainingText {
-                    distanceText(remaining)
+                    focusTarget(distanceText(remaining), .remaining)
                 }
                 // 하단 2행(spec 2026-08-11, walk 상세 전용): 윗줄 = 현재 행동(동적
                 // 카운트다운·상태 대체·최종 접근 문형), 아랫줄 = 다음 예고. 이탈 중에도
@@ -177,7 +203,7 @@ struct BeaconTrackingSheet: View {
                        let road = model.currentRoadText {
                         distanceText(road)
                     }
-                    if let top = model.liveTopText { distanceText(top) }
+                    if let top = model.liveTopText { focusTarget(distanceText(top), .liveTop) }
                     if let next = model.liveNextText {
                         distanceText(next).foregroundStyle(.secondary)
                     }
@@ -189,11 +215,11 @@ struct BeaconTrackingSheet: View {
                     // 그 자리 숫자로 되돌아오는 전환 자체다. 리뷰 지적 기각 근거,
                     // 실사용 판정은 BACKLOG H M0 축 4).
                     if !model.statusText.isEmpty {
-                        distanceText(
+                        focusTarget(distanceText(
                             model.statusIsNextPreview
                                 ? appLocalized("guide.progressNext", model.statusText)
                                 : model.statusText
-                        ).foregroundStyle(.secondary)
+                        ).foregroundStyle(.secondary), .status)
                     }
                 }
                 // 잠금 중 무음 예고. 세션 내내 참인 지속 상태라 상태 1줄과 자리를
@@ -213,17 +239,15 @@ struct BeaconTrackingSheet: View {
                 // 통째로 사라졌으므로 여기서만 알 수 있다. 수단 라벨(B1 §3.3)이 heading.
                 // 제목이 곧 목적지 메뉴다(스펙 2026-08-12 §1 — 장소 상세·목적지 바꾸기).
                 GuideTitleRow {
-                    GuideTitleMenu(
+                    focusTarget(GuideTitleMenu(
                         heading: appLocalized(
                             model.sessionKind == .car ? "beacon.carHeading" : "beacon.walkHeading"
                         ),
                         label: model.destinationLabel,
                         onShowDetail: { showPlaceDetail = true },
-                        onChangeDestination: { changeDestPresented = true })
-                    .accessibilityFocused($titleFocused)
+                        onChangeDestination: { changeDestPresented = true }), .title)
                 } trailing: {
                     GuideMinimizeButton(action: onMinimize)
-                        .accessibilityFocused($minimizeFocused)
                 }
             }
             }
@@ -253,51 +277,96 @@ struct BeaconTrackingSheet: View {
                 }
             }
         }
-        // 띠바에서 돌아온 경우 첫 착지는 최소화 버튼(떠난 자리). 플래그는 같은 종류
-        // 시트만 1회 소비한다(설계 리뷰 m1).
+        // 시트 열림 착지(E57). 새로 열림은 시작과 **모든 인계**(대중교통 → 도보·자동차 도착 → 도보·나들이 귀환)를
+        // 포함한다 — 인계가 전부 화면을 한 번 nil로 지나 루트 `.sheet(item:)`이 새 시트를 올리기 때문이다(spec §0 ③).
+        // 띠바에서 돌아온 시트도 같다(위원장 판정 Q1 2026-09-30 — 종전 접기 버튼 착지 폐기). 둘은 경로 유무로 저절로
+        // 갈린다: 새로 열림은 조회 중이라 조회와 시작 요약을 기다리고, 띠바 복귀는 경로가 있어 곧장 앉는다.
         .task {
-            if GuideSession.shared.returnedFromBand == .beacon {
-                GuideSession.shared.returnedFromBand = nil
-                // 최소화 중 도착했으면 접기 버튼이 없다(도착 화면) — 도착 문장으로.
-                if model.arrivalDest != nil { await landArrivedFocus() } else { await landMinimizeFocus() }
+            if model.arrivalDest != nil {
+                landFocus(.arrived)
             } else {
-                await landTitleFocus()
+                requestInfoLanding(note: "open", afterSummary: false)
             }
+        }
+        // 같은 콘텐츠 뷰 안에서 새 세션이 서는 경로(spec §3.5 — 종료 화면 → 추적 화면을 SwiftUI가 한 트랜잭션으로
+        // 합치면 `.task`가 다시 돌지 않는다). 두 경로가 모두 오면 뒤 요청이 앞을 대신한다.
+        .onChange(of: model.isTracking) { _, tracking in
+            if tracking { requestInfoLanding(note: "newSession", afterSummary: false) }
+        }
+        // 경로 조회가 끝난 순간 기다리던 착지를 푼다(spec §3.3) — 이 커밋이 낸 시작 요약이 끝난 뒤 그때의 첫 정보 행에.
+        .onChange(of: model.awaitingRoute) { _, awaiting in
+            if !awaiting { resolvePendingInfoLanding() }
+        }
+        // 기다리는 동안 사용자가 커서를 옮겼으면 착지하지 않는다(설계 리뷰 M4). 시트가 뜰 때 시스템은 커서를 제목에 두고,
+        // 목적지 검색이 닫히면 트리거인 제목 메뉴로 돌려준다 — 제목에 섰던 커서가 거기서 떠나면 사용자가 움직인 것이다.
+        // 경유지 버튼처럼 바인딩 없는 트리거로 돌아온 경우는 잡히지 않는다(알려진 한계, spec §3.3).
+        .onChange(of: focusedRow) { _, new in
+            guard pendingInfoLanding != nil else { return }
+            if new == .title {
+                pendingInfoLanding?.sawTitle = true
+            } else if pendingInfoLanding?.sawTitle == true {
+                pendingInfoLanding?.userMoved = true
+            }
+        }
+        // 소실 복구(spec §3.4, 설계 리뷰 B1): 커서가 앉아 있던 정보 행이 사라지면(이탈 확정·최종 접근 진입·간략 강등)
+        // SwiftUI List는 커서를 시트 맨 위로 보내기도 한다. 판정은 바인딩의 nil 전이가 아니라 **행 집합이 바뀌는 순간의
+        // 바인딩**이다(대중교통 A47 iOS 동형 — 맨 위는 제목이라 바인딩이 nil이 아니라 `.title`로 튄다). 스와이프로 떠난
+        // 경우는 커서가 그 행에 없어 걸리지 않고, 종료 화면 전이는 도착 착지가 맡는다.
+        .onChange(of: presentInfoRows) { old, new in
+            guard let focused = focusedRow, old.contains(focused), !new.contains(focused),
+                  model.isTracking, model.arrivalDest == nil else { return }
+            requestInfoLanding(note: "lost=\(focused)", afterSummary: false)
+        }
+        // 시작 요약이 끝났는지 아는 유일한 신호(spec §3.3). 문자열로 우리 요약을 가른다.
+        .onReceive(NotificationCenter.default.publisher(for: UIAccessibility.announcementDidFinishNotification)) { note in
+            lastFinishedAnnouncement = note.userInfo?[UIAccessibility.announcementStringValueUserInfoKey] as? String
+        }
+        .onChange(of: scenePhase) { _, phase in
+            guard phase == .active, let target = deferredLanding else { return }
+            deferredLanding = nil
+            // 정보 행은 복귀 시점 상태로 다시 고른다(배경 동안 이탈·강등이 났을 수 있다).
+            if target.isInfoRow { requestInfoLanding(note: "deferred", afterSummary: false) } else { landFocus(target, note: "deferred") }
+        }
+        // 최소화는 콘텐츠 뷰 파괴다 — `@State` 핸들은 사라져도 Task는 돈다. 끊는다(대중교통 M2 동형).
+        .onDisappear {
+            focusTask?.cancel()
+            pendingTimeoutTask?.cancel()
+            announcementWaitTask?.cancel()
         }
         // 전 구간 조망 모달(판정 개정 2026-08-10). 시트 위 시트는 표준 중첩 표시.
         // 셸·프리뷰는 GuideOverviewSheet.swift로 이동(E15-1 능력 공유) — 도보 행·행동은
         // BeaconOverviewAdapter가 종전 그대로 투영한다(동작 변경 0).
-        .sheet(isPresented: $showRouteList) {
+        .sheet(isPresented: $showRouteList, onDismiss: landAfterSubSheet) {
             GuideOverviewSheet(capability: BeaconOverviewAdapter(model: model)) { _ in }
         }
         .sheet(isPresented: $showsSettings, onDismiss: {
             model.recomputeArrivalHealth()
             if model.arrivalHealth?.usedDefaultWeight == false {
-                Task { await landHealthSummaryFocus() }
+                landFocus(.healthSummary)
             }
         }) {
             SettingsView(focusWeightOnAppear: true)
         }
         // 목적지 검색(스펙 §3): 최근 목록 포함 기존 시트 재사용. 세션이 죽었으면
         // changeDestination이 false를 돌려 폼도 건드리지 않는다(§3.2 확정 가드).
-        .sheet(isPresented: $changeDestPresented) {
+        // 착지는 시트가 닫힌 뒤 첫 정보 행(E57 — 종전 제목. 새 목적지는 확인 통지가 이미 말했다).
+        .sheet(isPresented: $changeDestPresented, onDismiss: landAfterSubSheet) {
             DirectionsEndpointSearchView(target: .to) { endpoint in
                 guard case .place(let label, let lat, let lng, _) = endpoint else { return }
                 if model.changeDestination(dest: BeaconDest(lat: lat, lng: lng), label: label) {
                     onDestinationCommitted(endpoint)
                 }
-                // 검색 시트가 닫히면 제목 행 착지(§3.3 — dismiss 후 지연·검증·재시도 정본).
-                Task { await landTitleFocus() }
+                landAfterDismiss = "destinationChanged"
             }
         }
         // 경유지 검색(N4): 목적지 검색과 같은 시트·같은 억제·같은 착지 계약.
-        .sheet(isPresented: $waypointPresented) {
+        .sheet(isPresented: $waypointPresented, onDismiss: landAfterSubSheet) {
             DirectionsEndpointSearchView(target: .via) { endpoint in
                 guard case .place(let label, let lat, let lng, _) = endpoint else { return }
                 if model.setWaypoint(dest: BeaconDest(lat: lat, lng: lng), label: label) {
                     onWaypointCommitted(endpoint)
                 }
-                Task { await landTitleFocus() }
+                landAfterDismiss = "waypointChanged"
             }
         }
         // 검색 시트에 받아쓰기 마이크가 있다 — 열린 동안 톤·통지 전부 억제(스펙 §5.4,
@@ -318,20 +387,20 @@ struct BeaconTrackingSheet: View {
                     showsDirectionsEntry: false)
             }
         }
-        // 재조회 성공으로 버튼이 사라진 순간 커서를 제목 행으로(헌장 §5 이탈 방지).
+        // 재조회 성공으로 버튼이 사라진 순간 커서를 첫 정보 행(새 경로의 남은 거리)으로(헌장 §5 이탈 방지, E57).
         // 자동 채택(E10ⓑ 2026-09-02)도 같은 부류다 — 사용자가 이탈 경고를 듣고 이 버튼에
         // 커서를 둔 순간에 배경에서 발동할 수 있어 누른 여부와 무관하게 착지한다. 자연
-        // 복귀(backOnRoute)만 종전대로 무이동.
+        // 복귀(backOnRoute)만 종전대로 무이동. 착지는 재조회 요약이 끝난 뒤다.
         .onChange(of: model.offRoute) { _, isOff in
             guard !isOff, reroutePressed || model.offRouteEndedByReroute else { return }
             reroutePressed = false
-            Task { await landTitleFocus() }
+            requestInfoLanding(note: "rerouted", afterSummary: true)
         }
-        // 프리뷰 채택 성공: 조망(과 그 위 프리뷰)을 닫고 제목 행으로 복귀(spec
-        // 2026-08-14 §4 — 포커스를 쥔 시트가 통째로 사라지는 전이, 재조회 성공 동형).
+        // 프리뷰 채택 성공: 조망(과 그 위 프리뷰)을 닫고, 닫힌 뒤 첫 정보 행으로 복귀(spec
+        // 2026-08-14 §4 — 포커스를 쥔 시트가 통째로 사라지는 전이, 재조회 성공 동형 · E57 설계 리뷰 M3).
         .onChange(of: model.variantAdoptedSeq) {
+            landAfterDismiss = "variantAdopted"
             showRouteList = false
-            Task { await landTitleFocus() }
         }
         // 도착 전이: 포커스를 쥔 컨트롤(중지 등)이 통째로 사라진다 — 도착 문장으로
         // 선점한다(헌장 §5, 대중교통 arrived 전이 동형). 착지 낭독이 `.high` 도착
@@ -343,8 +412,10 @@ struct BeaconTrackingSheet: View {
             // 종전엔 도착 = 시트 닫힘이라 자식 모달도 계단식으로 함께 닫혔는데,
             // 시트가 도착 화면으로 유지되면서 그 계단이 사라졌다 — 방치하면 stop()이
             // 지운 경로 위에서 "아직 안내가 없습니다" 헤더가 도착 통지와 모순된다.
+            landAfterDismiss = nil
             showRouteList = false
-            Task { await landArrivedFocus() }
+            clearPendingInfoLanding()
+            landFocus(.arrived)
         }
         }
     }
@@ -359,19 +430,17 @@ struct BeaconTrackingSheet: View {
         Section {
             // 확정/추정/중지 분기(3-state 정직성, spec 2026-08-13 §4-5): 추정 종료를
             // 확정 도착과, 중지를 도착과 뭉개지 않는다.
-            Text(endSentence)
-                .accessibilityFocused($arrivedFocused)
+            focusTarget(Text(endSentence), .arrived)
             // 걸음·칼로리 요약(spec 2026-08-17, 문장형·음식 비유는 2026-08-18 개정). 값이
             // 없으면 행이 없다 — 부재를 설명하지 않는다. 걸음·칼로리·비유는 한 문단이라
             // 한 접근성 객체(joinText). 도착 낭독 문장에는 넣지 않는다.
             if let health = model.arrivalHealth {
                 // 완결 문장끼리라 공백으로 잇는다(joinText의 쉼표는 라벨·값 조각용 — 마침표
                 // 뒤에 쉼표가 붙는다).
-                Text([
+                focusTarget(Text([
                     healthSummaryLine(health: health, showsPrompt: showsWeightPrompt),
                     Self.foodLine(kcal: health.kcal),
-                ].compactMap { $0 }.joined(separator: " "))
-                    .accessibilityFocused($healthSummaryFocused)
+                ].compactMap { $0 }.joined(separator: " ")), .healthSummary)
                 // 체중 미입력자에게만, 그것도 무시 상한 전까지만: 기준값 고지 + 설정으로
                 // 가는 버튼(입력한 사람에겐 이 두 줄이 없다 — 이미 아는 것을 다시 말하지
                 // 않는다. 두 번 무시한 사람에게도 없다 — E31).
@@ -486,46 +555,170 @@ struct BeaconTrackingSheet: View {
         return f
     }
 
-    /// 도착 문장 착지 — 지연·검증·1회 재시도(`landTitleFocus` 동형).
-    /// 체중 입력 뒤 요약 문장 착지(지연·검증·1회 재시도 — `landArrivedFocus` 동형).
-    private func landHealthSummaryFocus() async {
-        try? await Task.sleep(for: .milliseconds(400))
-        healthSummaryFocused = true
-        try? await Task.sleep(for: .milliseconds(600))
-        guard !healthSummaryFocused else { return }
-        healthSummaryFocused = true
+    // MARK: - 착지 (E57, spec 2026-09-30-guide-sheet-info-row-landing)
+
+    /// 착지 대상이 지금 렌더되는가 — 행 렌더 조건의 사본이다(대중교통 `controlExists` 동형). 렌더 조건을 바꾸면
+    /// 여기도 바꾼다(가드 `guide-sheet-landing-guard.test.ts`가 짝을 본다).
+    private func rowExists(_ row: SheetFocus) -> Bool {
+        let tracking = model.arrivalDest == nil
+        switch row {
+        case .title: return tracking
+        case .remaining: return tracking && model.mode == .detail && !model.offRoute && model.remainingText != nil
+        case .liveTop: return tracking && model.mode == .detail && model.liveTopText != nil
+        case .status: return tracking && model.mode == .brief && !model.statusText.isEmpty
+        case .arrived: return !tracking
+        case .healthSummary: return !tracking && model.arrivalHealth != nil
+        }
     }
 
-    private func landArrivedFocus() async {
-        try? await Task.sleep(for: .milliseconds(400))
-        arrivedFocused = true
-        try? await Task.sleep(for: .milliseconds(600))
-        guard !arrivedFocused else { return }
-        arrivedFocused = true
+    /// 지금 렌더된 정보 행 — 소실 복구가 이 집합의 변화로 판정한다(spec §3.4).
+    private var presentInfoRows: Set<SheetFocus> {
+        Set([SheetFocus.remaining, .liveTop, .status].filter(rowExists))
     }
 
-    /// 열릴 때 포커스를 **중지 버튼**에 둔다. 걷는 중 필요한 유일한 행동이고, 시트
-    /// 수명 내내 존재해 헌장 §5의 "포커스를 쥔 요소가 사라지는 전이"가 생기지 않는다.
-    /// (실기기에서는 시스템이 섹션 헤딩에 착지시키는 것을 위원장이 수용 — 재조정 금지.)
-    ///
-    /// 지연·검증·1회 재시도는 이 저장소의 검증된 착지 패턴을 따른다(`ChatConversationView`·
-    /// `landFocusAfterResolve`). 시트 표시 애니메이션이 끝나며 시스템이 포커스를 옮기므로
-    /// 그보다 늦게 대입해야 이긴다.
-    private func landTitleFocus() async {
-        try? await Task.sleep(for: .milliseconds(400))
-        titleFocused = true
-        try? await Task.sleep(for: .milliseconds(600))
-        // 먹지 않았을 때만 1회 재시도(무한 재대입은 커서를 붙잡아 되레 방해가 된다).
-        guard !titleFocused else { return }
-        titleFocused = true
+    /// 첫 정보 행(spec §2.1) — 화면의 행 순서 그대로다. 추적 중엔 비지 않는다(상세면 윗줄, 간략이면 상태 문장이
+    /// 선다 — 대기가 끝나는 경로가 전부 상태 문장을 채운다). nil이면 호출부가 제목으로 떨어진다.
+    private var firstInfoRow: SheetFocus? {
+        [SheetFocus.remaining, .liveTop, .status].first(where: rowExists)
     }
 
-    private func landMinimizeFocus() async {
-        try? await Task.sleep(for: .milliseconds(400))
-        minimizeFocused = true
-        try? await Task.sleep(for: .milliseconds(600))
-        guard !minimizeFocused else { return }
-        minimizeFocused = true
+    /// 시트 위에 떠 있는 다른 시트 — 그동안은 착지하지 않는다(커서가 그 시트 안이다).
+    private var subSheetPresented: Bool {
+        showRouteList || changeDestPresented || waypointPresented || showPlaceDetail || showsSettings
+    }
+
+    /// 경로 조회·시작 요약을 기다리는 첫 정보 행 착지(spec §3.3).
+    private struct PendingInfoLanding {
+        let since: TimeInterval
+        let note: String
+        /// 기다리는 동안 커서가 제목에 섰고(시스템이 둔 자리), 그 뒤 거기서 떠났다(설계 리뷰 M4) — 그러면 착지하지 않는다.
+        var sawTitle = false
+        var userMoved = false
+    }
+
+    /// 경로 조회를 기다리는 상한. 위치 대기(`noFixTimeout` 15초) + 조회 왕복. 넘기면 착지하지 않는다.
+    private static let routeWaitLimit: Duration = .seconds(20)
+    /// 시작 요약 발화를 기다리는 상한(ms). 첫 안내를 담은 긴 요약도 이 안에 끝난다. 통지가 버려져 완료 신호가
+    /// 오지 않는 경우(억제·운전자 채널)의 안전망이다.
+    private static let summaryWaitLimitMs = 12_000
+
+    /// 첫 정보 행 착지 요청 — 시트 열림·사용자 전이·소실 복구의 공통 입구.
+    /// `afterSummary`: 이 전이가 경로를 커밋하며 `.high` 요약을 내는가. 그러면 요약이 **끝난 뒤** 착지한다
+    /// (설계 리뷰 M1 — 착지 낭독이 요약을 끊을 수 있다는 것이 이 저장소의 전제다, 도착 착지 주석). 경로 조회 중이면
+    /// 조회가 끝날 때까지 먼저 기다린다.
+    private func requestInfoLanding(note: String, afterSummary: Bool) {
+        guard model.arrivalDest == nil else { return }
+        focusTask?.cancel()
+        clearPendingInfoLanding()
+        guard afterSummary || model.awaitingRoute else {
+            landFocus(firstInfoRow ?? .title, note: note)
+            return
+        }
+        let since = ProcessInfo.processInfo.systemUptime
+        pendingInfoLanding = PendingInfoLanding(since: since, note: note)
+        guard model.awaitingRoute else {
+            resolvePendingInfoLanding()
+            return
+        }
+        pendingTimeoutTask = Task { @MainActor in
+            try? await Task.sleep(for: Self.routeWaitLimit)
+            guard !Task.isCancelled, pendingInfoLanding?.since == since, model.awaitingRoute else { return }
+            pendingInfoLanding = nil
+            logFocus("target=pending reason=timeout", note: note)
+        }
+    }
+
+    /// 경로 조회가 끝났다(또는 기다릴 조회가 없다) — 방금 커밋이 통지한 문장(`statusText`)의 발화가 끝나면 그때의
+    /// 첫 정보 행에 앉는다. 완료 신호는 `announcementDidFinishNotification`의 문자열(게시 창구가 `spokenUnits`를 지난다).
+    private func resolvePendingInfoLanding() {
+        guard let pending = pendingInfoLanding else { return }
+        pendingTimeoutTask?.cancel()
+        announcementWaitTask?.cancel()
+        let expected = spokenUnits(model.statusText)
+        announcementWaitTask = Task { @MainActor in
+            var waited = 0
+            while UIAccessibility.isVoiceOverRunning, !expected.isEmpty, lastFinishedAnnouncement != expected,
+                  waited < Self.summaryWaitLimitMs {
+                try? await Task.sleep(for: .milliseconds(100))
+                guard !Task.isCancelled else { return }
+                waited += 100
+            }
+            guard !Task.isCancelled, let current = pendingInfoLanding, current.since == pending.since else { return }
+            pendingInfoLanding = nil
+            guard model.isTracking, model.arrivalDest == nil else { return }
+            let waitedMs = Int((ProcessInfo.processInfo.systemUptime - current.since) * 1000)
+            guard !current.userMoved else {
+                logFocus("target=pending reason=userMoved waitedMs=\(waitedMs)", note: current.note)
+                return
+            }
+            landFocus(firstInfoRow ?? .title, note: current.note, waitedMs: waitedMs)
+        }
+    }
+
+    private func clearPendingInfoLanding() {
+        pendingInfoLanding = nil
+        pendingTimeoutTask?.cancel()
+        announcementWaitTask?.cancel()
+    }
+
+    /// 자식 시트가 닫힌 뒤 한 곳(설계 리뷰 M3) — 그 안에서 일어난 사용자 전이의 착지. 경로 전환 채택은 요약을 이미
+    /// 냈고(조망이 떠 있던 동안), 검색에서 고른 목적지·경유지는 재조회 중이면 그 요약을 기다린다. 같은 곳을 다시
+    /// 고른 경우(재조회 없음)는 요약이 없어 곧장 앉는다. 아무 전이 없이 열고 닫았으면 표식이 없어 시스템 복원 그대로다.
+    private func landAfterSubSheet() {
+        guard let note = landAfterDismiss else { return }
+        landAfterDismiss = nil
+        requestInfoLanding(note: note, afterSummary: note == "variantAdopted")
+    }
+
+    /// 착지 부착 헬퍼 — `focusedRow` 바인딩의 **유일한 부착 자리**(가드가 개수를 센다).
+    private func focusTarget<V: View>(_ view: V, _ target: SheetFocus) -> some View {
+        view.accessibilityFocused($focusedRow, equals: target)
+    }
+
+    /// 착지 — 지연 400ms · 대입 · 600ms 뒤 검증 · 1회 재시도(이 저장소의 2단 정본, 대중교통 시트만 3단이다 —
+    /// PATTERNS "iOS 목록 포커스 이동": 승격 조건은 실승차 성공률. 첫 정보 행은 헤더 아래 몇 번째라 컬링 원인이 없다,
+    /// 설계 리뷰 M5). **폴백 통지는 없다**(spec §3.2): 정보 행의 폴백 문장은 곧 그 행의 값이라 같은 순간의 통지와
+    /// 겹친다. 실패는 로그로만 판정한다.
+    private func landFocus(_ target: SheetFocus, note: String = "", waitedMs: Int = 0) {
+        focusTask?.cancel()
+        guard scenePhase == .active else {
+            deferredLanding = target
+            logFocus("target=\(target) reason=background deferred=true", note: note)
+            return
+        }
+        guard !subSheetPresented else {
+            logFocus("target=\(target) reason=modal", note: note)
+            return
+        }
+        deferredLanding = nil
+        focusTask = Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(400))
+            guard !Task.isCancelled else { return }
+            guard rowExists(target) else {
+                logFocus("target=\(target) reason=vanished", note: note)
+                return
+            }
+            focusedRow = target
+            try? await Task.sleep(for: .milliseconds(600))
+            guard !Task.isCancelled else { return }
+            var attempts = 1
+            // 먹지 않았을 때만 1회 재시도(무한 재대입은 커서를 붙잡아 되레 방해가 된다).
+            if focusedRow != target, rowExists(target) {
+                attempts = 2
+                focusedRow = target
+                try? await Task.sleep(for: .milliseconds(600))
+                guard !Task.isCancelled else { return }
+            }
+            logFocus(
+                "target=\(target) landed=\(focusedRow == target) actual=\(focusedRow.map { "\($0)" } ?? "nil")"
+                    + " attempts=\(attempts) waitedMs=\(waitedMs) vo=\(voFocusedLabel().map { "\"\($0)\"" } ?? "nil")",
+                note: note)
+        }
+    }
+
+    /// 착지 계측 한 줄(spec §4) — 도보·자동차 `guide-diag.log`. 릴리스 빌드는 no-op.
+    private func logFocus(_ body: String, note: String) {
+        guideDiagLog("sheetFocus sheet=beacon \(body)" + (note.isEmpty ? "" : " note=\(note)"))
     }
 
 }

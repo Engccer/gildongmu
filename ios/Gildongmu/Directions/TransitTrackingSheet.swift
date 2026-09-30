@@ -10,8 +10,8 @@ import SwiftUI
 /// 무통지 구간에도 상태가 보인다, §6.1).
 ///
 /// **착지 대상의 기본은 상태 문장 행이다**(E38 위원장 판정 2026-09-12): 시트 진입도, 국면 전이도,
-/// 역 선택 취소 복귀도 전부 `SheetControl.status`. 예외는 **자기 질문을 여는 화면**(역 선택·급행
-/// 확인·차량 선택 라벨)과 띠바 복귀·목적지 전환 상태 행뿐이다 — 그 자리는 착지 낭독이 곧 질문이라
+/// 역 선택 취소 복귀도, 띠바 복귀도(E57 위원장 판정 Q1 2026-09-30) 전부 `SheetControl.status`. 예외는 **자기 질문을
+/// 여는 화면**(역 선택·급행 확인·차량 선택 라벨)과 목적지 전환 상태 행뿐이다 — 그 자리는 착지 낭독이 곧 질문이라
 /// 상태 문장으로 옮기면 무엇을 고르는지 모른 채 목록 위에 선다.
 /// ⚠ 상태 문장과 국면 컨트롤 사이에는 **경유역 목록이 있다**(행 순서: 상태 → 경유역 → 컨트롤).
 /// 다음 행동 버튼은 목록이 접혀 있으면 두 번, 펼쳐 두었으면 정차역 수 + 2번 스와이프 아래다
@@ -66,8 +66,6 @@ struct TransitTrackingSheet: View {
         case expressPrompt
         /// 급행 거절 상시 문장(§6) — 프롬프트 질문의 답이라 헤딩과 한 묶음(버튼이 사라진 자리).
         case expressBlocked
-        /// 접기 버튼(N1, 헤더 행 우측 아이콘) — 띠바에서 돌아온 시트의 첫 착지(떠난 자리).
-        case minimize
         /// 목적지 전환 후보 상태 행(조회 중·0건·오류, 스펙 §4.4).
         case destChangeStatus
     }
@@ -166,7 +164,7 @@ struct TransitTrackingSheet: View {
                                 },
                                 onChangeDestination: { changeDestPresented = true })
                         } trailing: {
-                            landingTarget(GuideMinimizeButton(action: onMinimize), .minimize)
+                            GuideMinimizeButton(action: onMinimize)
                         }
                     }
                     surroundingsSection(proxy: proxy)
@@ -181,15 +179,9 @@ struct TransitTrackingSheet: View {
                     GuideStopButton(action: onStop)
                 }
             }
-            // 띠바에서 돌아온 경우 첫 착지는 최소화 버튼(떠난 자리, 설계 리뷰 m1).
-            .task {
-                if GuideSession.shared.returnedFromBand == .transit {
-                    GuideSession.shared.returnedFromBand = nil
-                    landControlFocus(.minimize, proxy: proxy)
-                } else {
-                    landControlFocus(.status, proxy: proxy)
-                }
-            }
+            // 시트 열림 착지 — 띠바에서 돌아온 시트도 같다(E57 위원장 판정 Q1 2026-09-30, 종전 접기 버튼 착지 폐기).
+            // List 수준 `.task`라 대상 뷰 `.task` 금지(A35 트리거 결손)의 예외다(가드가 이 한 줄을 면제한다).
+            .task { landControlFocus(.status, proxy: proxy) }
             .onChange(of: model.state?.legIndex) { viaExpanded = false }
             // 경유역 목록을 펼치는 순간 그 구간 역의 전화번호를 일괄 조회한다(E44 spec §6, 리뷰 M6).
             .onChange(of: viaExpanded) { _, expanded in
@@ -886,7 +878,7 @@ struct TransitTrackingSheet: View {
             }
             let elapsedMs = Int((ProcessInfo.processInfo.systemUptime - started) * 1000)
             let landed = focusedControl == target
-            let voLabel = transitFocusedLabel()
+            let voLabel = voFocusedLabel()
             transitGuideLog(
                 "controlFocus target=\(target) landed=\(landed)"
                     + " actual=\(focusedControl.map { "\($0)" } ?? "nil")"
@@ -929,7 +921,6 @@ struct TransitTrackingSheet: View {
     /// 그 시점 상태로 고른다(`advance`의 E34 라벨·대기 라벨의 pickVehicle·프롬프트의 두 흐름·전환 상태 3형).
     private func landingFallbackText(_ target: SheetControl) -> String {
         switch target {
-        case .minimize: return appLocalized("guide.minimize")
         case .status:
             // 화면의 그 줄은 `distanceText`가 `spokenUnits`로 낭독 라벨을 바꾼다 — 폴백은 "그 자리에서
             // 낭독됐을 라벨"이라는 계약이라 같은 변환을 지나야 한다(a11y 감사 L1: 지금은 no-op이지만
@@ -955,7 +946,6 @@ struct TransitTrackingSheet: View {
     private func controlExists(_ target: SheetControl) -> Bool {
         let phase = model.state?.phase
         switch target {
-        case .minimize: return model.state != nil
         case .status: return model.state != nil && model.currentLeg != nil
         case .waitingLabel:
             // 대기 목록은 untrackable·지방버스 분기에선 렌더되지 않는다(`phaseControls`·`waitingList` 바깥 두 분기, 코드 리뷰 M3).

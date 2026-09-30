@@ -39,9 +39,9 @@ describe("TransitTrackingSheet 착지 계약 (A35)", () => {
     // 면제는 시트 열림 착지 하나뿐이다 — List 수준 `.task`라 **대상 뷰가 아니다**(대상이 실현되지 않아도 돈다).
     // 종전엔 그 대상 이름(`title`/`minimize`)을 정규식에서 빼는 것으로 면제했는데, E38로 열림 착지가 `.status`가
     // 되면서 그 방식은 대상 뷰 착지까지 함께 눈감는다 — 자리를 표지(`returnedFromBand`)로 가른다.
-    const exemptAt = lines.findIndex((l, i) =>
-      /\.task\s*\{/.test(l) && lines.slice(i, i + 8).join(" ").includes("returnedFromBand"),
-    );
+    // E57(위원장 판정 Q1)로 띠바 복귀도 상태 문장이 되어 분기 표지(`returnedFromBand`)가 사라졌다 — 면제 자리는
+    // List 수준 한 줄 `.task { landControlFocus(.status, proxy: proxy) }`다.
+    const exemptAt = lines.findIndex((l) => l.trim() === ".task { landControlFocus(.status, proxy: proxy) }");
     expect(exemptAt, "시트 열림 착지(List 수준 .task)가 사라졌다").toBeGreaterThan(-1);
     for (let i = 0; i < lines.length; i += 1) {
       if (i === exemptAt) continue;
@@ -181,15 +181,15 @@ describe("TransitTrackingSheet 착지 대상 (E38) · boarding 수동 진행 (N3
 
   it("착지 대상 집합은 상태 문장 + 자기 질문 화면뿐이다 — 죽은 대상도 새 대상도 없다(E38)", () => {
     // 위원장 판정: 시트에서 무엇을 누르든 커서는 상태 문장 행. 남은 대상은 **그 화면 자체가 질문인 자리**
-    // (역 선택·급행 확인·차량 선택 라벨)와 띠바 복귀·목적지 전환 상태 행뿐이다. 종전 대상
-    // `advance`·`changeBoarding`·`boardAlready`·`title`을 되살리려면 그 판정부터 뒤집어야 한다.
+    // (역 선택·급행 확인·차량 선택 라벨)와 목적지 전환 상태 행뿐이다. 종전 대상
+    // `advance`·`changeBoarding`·`boardAlready`·`title`, 그리고 띠바 복귀의 `minimize`(E57 위원장 판정 Q1
+    // 2026-09-30 — 띠바 복귀도 상태 문장)를 되살리려면 그 판정부터 뒤집어야 한다.
     const allowed = [
       "status",
       "waitingLabel",
       "reboardPrompt",
       "expressPrompt",
       "expressBlocked",
-      "minimize",
       "destChangeStatus",
     ].sort();
     // ① enum에 죽은 case가 남지 않는다(소스 가드가 죽은 대상을 잠그면 다음 사람이 대상으로 읽는다).

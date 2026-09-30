@@ -1,7 +1,7 @@
 import GildongmuKit
 import SwiftUI
 
-/// 나들이 시트(E51 spec §8). 읽기 순서: 제목 행(+접기) → 주변 낭독 → 주변 보기 → **상태 행(착지)** →
+/// 나들이 시트(E51 spec §8). 읽기 순서: 제목 행(+접기) → 주변 낭독 → 주변 보기 → **상태 행(착지 — 열림·띠바 복귀)** →
 /// 걸은 거리 → 방향, 최하단 고정 "나들이 종료". 버튼은 위, 실시간 갱신 정보는 아래
 /// (위원장 판정) — 착지 행에서 위로 한 번 쓸면 버튼에 닿는다. "출발점으로"는 종료 화면에만 있다(E54).
 ///
@@ -16,7 +16,6 @@ struct OutingSheet: View {
 
     @AppStorage(OutingNarration.storageKey) private var narrationRaw = OutingNarration.default.rawValue
     @AccessibilityFocusState private var statusFocused: Bool
-    @AccessibilityFocusState private var minimizeFocused: Bool
     @AccessibilityFocusState private var endFocused: Bool
     @AccessibilityFocusState private var healthSummaryFocused: Bool
     @State private var overviewAdapter: OutingOverviewAdapter?
@@ -51,20 +50,18 @@ struct OutingSheet: View {
             }
         }
         .task {
-            if GuideSession.shared.returnedFromBand == .outing {
-                GuideSession.shared.returnedFromBand = nil
-                if model.endScreen != nil { await land($endFocused) } else { await land($minimizeFocused) }
-            } else if model.endScreen != nil {
-                await land($endFocused)
+            // 띠바에서 돌아온 시트도 새로 열림과 같은 착지다(E57 위원장 판정 Q1 — 종전 접기 버튼 착지 폐기).
+            if model.endScreen != nil {
+                await land($endFocused, "end")
             } else {
-                await land($statusFocused)
+                await land($statusFocused, "status")
             }
         }
         // 종료 전이: 포커스를 쥔 버튼이 통째로 사라진다 — 사유 문장으로 선점(헌장 §5). 조망이 열려 있으면 닫는다.
         .onChange(of: model.endScreen) { previous, end in
             guard previous == nil, end != nil else { return }
             overviewAdapter = nil
-            Task { await land($endFocused) }
+            Task { await land($endFocused, "end") }
         }
         .sheet(item: $overviewAdapter, onDismiss: {
             if let place = pendingPlace {
@@ -76,13 +73,13 @@ struct OutingSheet: View {
         }
         // 상세를 읽는 동안 세션이 끝났으면(안전망 5분) 닫은 뒤 사유 문장으로 착지한다(종료 전이의 착지가 시트에 가렸다).
         .sheet(item: $detailPlace, onDismiss: {
-            if model.endScreen != nil { Task { await land($endFocused) } }
+            if model.endScreen != nil { Task { await land($endFocused, "end") } }
         }) { place in
             PlaceDetailSheet(place: place, showsDirectionsEntry: false)
         }
         .sheet(isPresented: $showsSettings, onDismiss: {
             model.recomputeHealth()
-            if model.endScreen?.health?.usedDefaultWeight == false { Task { await land($healthSummaryFocused) } }
+            if model.endScreen?.health?.usedDefaultWeight == false { Task { await land($healthSummaryFocused, "healthSummary") } }
         }) {
             SettingsView(focusWeightOnAppear: true)
         }
@@ -114,7 +111,6 @@ struct OutingSheet: View {
                     .accessibilityAddTraits(.isHeader)
             } trailing: {
                 GuideMinimizeButton(action: onMinimize)
-                    .accessibilityFocused($minimizeFocused)
             }
         }
     }
@@ -178,12 +174,18 @@ struct OutingSheet: View {
         return appLocalized("ios.beacon.healthSummary", steps, "\(health.kcal)")
     }
 
-    /// 착지 — 지연·검증·1회 재시도(이 저장소의 정본 패턴, `BeaconTrackingSheet.landTitleFocus` 동형).
-    private func land(_ binding: AccessibilityFocusState<Bool>.Binding) async {
+    /// 착지 — 지연·검증·1회 재시도(이 저장소의 정본 패턴). 결과는 도보 시트와 같은 계측 한 줄로 남긴다(E57 spec §4 —
+    /// 종전엔 기록이 없어 실보행 로그가 착지 성패를 말하지 못했다).
+    private func land(_ binding: AccessibilityFocusState<Bool>.Binding, _ target: String) async {
         try? await Task.sleep(for: .milliseconds(400))
         binding.wrappedValue = true
         try? await Task.sleep(for: .milliseconds(600))
-        guard !binding.wrappedValue else { return }
-        binding.wrappedValue = true
+        let retried = !binding.wrappedValue
+        if retried {
+            binding.wrappedValue = true
+            try? await Task.sleep(for: .milliseconds(600))
+        }
+        guideDiagLog("sheetFocus sheet=outing target=\(target) landed=\(binding.wrappedValue) attempts=\(retried ? 2 : 1)"
+            + " vo=\(voFocusedLabel().map { "\"\($0)\"" } ?? "nil")")
     }
 }
