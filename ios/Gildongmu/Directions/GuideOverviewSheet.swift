@@ -415,7 +415,12 @@ final class TransitOverviewAdapter: GuideOverviewCapability, Identifiable {
 /// 한 버튼·한 헤딩이 각각 한 접근성 객체라 조각 하나짜리 줄이고, 여기서는 언어 태그를 두지
 /// 않는다(iOS 줄 단위 태깅은 E28-① 실기기 판정 선행 — spec §3.8 수용 위험).
 private func boardLabelText(_ leg: TransitDisplayLeg) -> String {
-    transitGuideIsEn ? (leg.board.en ?? leg.board.ko) : leg.board.ko
+    displayLabelText(leg.board)
+}
+
+/// 표시 라벨 한 개의 세션 언어 텍스트(en 표가 없으면 원문 — `boardLabelText`와 같은 규칙).
+private func displayLabelText(_ label: TransitLabel) -> String {
+    transitGuideIsEn ? (label.en ?? label.ko) : label.ko
 }
 
 struct TransitAltRoutesSheet: View {
@@ -499,8 +504,12 @@ struct TransitAltRoutesSheet: View {
     private var headerText: String {
         switch model.pendingAltRoutes?.origin {
         case let .station(idx):
-            if let leg = model.currentLeg, leg.viaStops.indices.contains(idx) {
-                return appLocalized("ios.transitGuide.altHeadingFrom", leg.viaStops[idx].name)
+            // 경유역 이름은 조인 원문(한국어)이다 — 표시 투영의 같은 index를 쓴다(E48 잔여 ⑤, `.boardStopDeclared`와 같은 경로).
+            if let leg = model.currentLeg {
+                let stops = model.displayLeg(leg, useOverride: false).stops
+                if stops.indices.contains(idx) {
+                    return appLocalized("ios.transitGuide.altHeadingFrom", displayLabelText(stops[idx]))
+                }
             }
             return appLocalized("ios.transitGuide.altHeading")
         case .boardStopDeclared:

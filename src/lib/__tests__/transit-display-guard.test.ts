@@ -24,6 +24,8 @@ const JOIN_FIELDS = [
   "destinationName",
   "direction",
   "stop\\.name",
+  // 경유역 배열을 직접 인덱싱한 이름(E48 잔여 ⑤ — 조망 "다른 경로" 헤더가 이 모양으로 사각이었다).
+  "viaStops\\[[^\\]]*\\]\\.name",
   "prewalkTarget\\.name",
 ];
 
