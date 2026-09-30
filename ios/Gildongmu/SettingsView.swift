@@ -30,6 +30,8 @@ enum ThemePreference: String, CaseIterable {
 /// 언어는 선택 즉시 적용된다 — 모든 표시 문자열이 `appLocalized`(언어별 lproj 직접
 /// 조회)를 거치고, App이 언어를 `.id`에 넣어 탭 트리를 재생성하기 때문(앱 재시작 불필요).
 /// 이 시트 자체는 App 레벨에 있어 재생성 밖이라 열린 채로 새 언어로 다시 그려진다.
+/// ⚠ 단 인라인 피커는 선택지 행을 태그 정체성으로 붙들어 본문이 다시 계산돼도 옛 언어로 남는다(A51) —
+/// 그래서 인라인 피커마다 `.id(AppLanguage.current)`를 건다(메뉴 피커인 언어 행은 커서가 있는 자리라 제외).
 /// 시트 등장 시 VoiceOver 포커스는 시스템이 이동시키므로 별도 처리 없음.
 struct SettingsView: View {
     /// 도착 화면 "체중 입력하기"로 열렸을 때 true — 체중 필드에 VO 커서를 착지시킨다
@@ -147,6 +149,7 @@ struct SettingsView: View {
                     }
                 }
                 .pickerStyle(.inline)
+                .id(AppLanguage.current)
 
                 // 언어만 메뉴 피커(dodo-planet 동형): 6개 언어를 인라인으로 펼치면
                 // 설정 목록을 압도한다 — 라벨 행에 현재 언어를 보이고 탭하면 메뉴로 선택.
@@ -164,6 +167,7 @@ struct SettingsView: View {
                     }
                 }
                 .pickerStyle(.inline)
+                .id(AppLanguage.current)
 
                 Picker(appLocalized("ios.settings.listenSpeed"), selection: $listenSpeed) {
                     ForEach(ListenSpeed.allowedSpeeds, id: \.self) { speed in
@@ -171,6 +175,7 @@ struct SettingsView: View {
                     }
                 }
                 .pickerStyle(.inline)
+                .id(AppLanguage.current)
 
                 #if DEBUG || EXPERIMENTAL
                 Picker(appLocalized("ios.settings.carListener"), selection: $carListenerRaw) {
@@ -180,6 +185,7 @@ struct SettingsView: View {
                         .tag(CarListener.driver.rawValue)
                 }
                 .pickerStyle(.inline)
+                .id(AppLanguage.current)
 
                 Picker(appLocalized("ios.settings.leftRightTone"), selection: $leftRightToneRaw) {
                     Text(appLocalized("ios.settings.leftRightTonePan"))
@@ -188,6 +194,7 @@ struct SettingsView: View {
                         .tag(LeftRightToneScheme.pitch.rawValue)
                 }
                 .pickerStyle(.inline)
+                .id(AppLanguage.current)
 
                 Section {
                     Toggle(appLocalized("ios.settings.trendHaptics"), isOn: $trendHapticsEnabled)
