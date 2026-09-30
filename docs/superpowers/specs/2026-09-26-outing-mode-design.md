@@ -108,8 +108,8 @@ GildongmuKit (순수·테스트 대상)                     앱 (I/O만)
 ## 7. 낭독·소리
 
 ### 7.1 톤
-- 새 톤 `BeaconTone.stroll`: 기존 톤과 구분되는 낮고 짧은 편안한 음. `scripts/build-guide-tones.py stroll`로 결정론 합성해 앱 `guide-stroll.mp3`와 웹 `public/sounds/guide/stroll.mp3`(바이트 동일, `sounds-drift.test.ts`)로 둔다. 웹 재생기 등록은 웹 이식 때. 게인 표에 한 줄 추가, 햅틱 switch에 한 갈래. 햅틱은 `TrendHaptics` 설정을 따르되 기본은 진동 없음(`hapticIsOptIn` 집합에 더한다). **iOS 전용 대기 케이스**로 공유 첫 case 줄 밖에 선언하고, 안드로이드 `:kit` `BeaconTone`은 나들이 이식 때 케이스·리소스를 함께 옮긴다(`BeaconTonesTest`·`sounds-drift`가 "공유 + 대기 = 전체"를 단언한다 — 케이스만 늘리면 안드로이드 재생기·리소스·햅틱 표까지 연쇄로 바뀐다).
-- 정지 톤(`tick`)은 나들이에서 내지 않는다. 멈춤이 정상이다.
+- *(개정 2026-09-30 E55: 10m 비프는 `BeaconTone.tick`이다. 안내 세션의 정지 tick을 폐지하고 그 소리를 옮겼으며 아래 `stroll` 케이스·합성 파일은 삭제됐다. 게인 0.3·진동 패턴은 tick의 것이고 배경 미디어 위 청취는 실보행 판정 항목이다. spec `2026-08-08-background-tone-coverage-design.md` §16.)* 초판: 새 톤 `BeaconTone.stroll`: 기존 톤과 구분되는 낮고 짧은 편안한 음. `scripts/build-guide-tones.py stroll`로 결정론 합성해 앱 `guide-stroll.mp3`와 웹 `public/sounds/guide/stroll.mp3`(바이트 동일, `sounds-drift.test.ts`)로 둔다. 웹 재생기 등록은 웹 이식 때. 게인 표에 한 줄 추가, 햅틱 switch에 한 갈래. 햅틱은 `TrendHaptics` 설정을 따르되 기본은 진동 없음(`hapticIsOptIn` 집합에 더한다). **iOS 전용 대기 케이스**로 공유 첫 case 줄 밖에 선언하고, 안드로이드 `:kit` `BeaconTone`은 나들이 이식 때 케이스·리소스를 함께 옮긴다(`BeaconTonesTest`·`sounds-drift`가 "공유 + 대기 = 전체"를 단언한다 — 케이스만 늘리면 안드로이드 재생기·리소스·햅틱 표까지 연쇄로 바뀐다).
+- 정지는 소리로 알리지 않는다. 멈춤이 정상이다.
 - `unreliable`(fix 8초 두절 워치독)은 그대로 낸다. 이정표 판정이 서지 않는다는 뜻이다.
 - 시작·종료 톤은 도보 안내와 같다.
 

@@ -17,6 +17,10 @@
 - `lines` 값이 줄 목록 판본이 됐다. `lines=1`(스토어 iOS 1.19)은 최대 두 줄, `lines=2`(새 웹·iOS·안드로이드)는 최대 세 줄. 세 벌 모두 줄마다 펼침 상태를 따로 들고, 안내 중 전환 대상은 계단 회피를 우선한다. 카카오 도보 호출은 조회당 3건(병렬).
 - spec `docs/superpowers/specs/2026-09-23-walk-two-lines-kakao-design.md` §0-1·§1-1·§2.1, 조사 `docs/research/RESEARCH-2026-09-30-walk-line-composition.md`, 게이트 `scripts/verify-walk-lines.mjs`.
 
+### 정지 tick 폐지, 그 소리는 나들이 10m 비프로 (E55)
+
+위원장 판정으로 도보·자동차 안내 모두에서 멈춰 있는 동안 3초마다 나던 정지 소리를 없앴다. 톤 계층에서 tick을 내던 두 자리(주기 tick·정지 중 회복 tick)를 침묵으로 바꿨다(정지 중 회복은 앵커만 잡는다). 21초 침묵 상한은 이동 중 계약으로 좁혔고 정지 중 fix 두절은 워치독이 그대로 잡는다(공유 fixture 세 벌). 나들이 전용 `stroll` 케이스·파일을 지우고 10m 비프를 `tick`으로 합쳤다. spec [`2026-08-08-background-tone-coverage-design.md`](docs/superpowers/specs/2026-08-08-background-tone-coverage-design.md) §16.
+
 ### 소형 결함 묶음: A50 · A51 · E48 잔여 ⑤⑥ · 거리 표기 경계값 (세션 `small-7`)
 
 - **A50(웹)**: 대중교통 안내를 멈췄다 곧바로 다시 시작하면 옛 세션의 늦은 조회 응답이 새 세션 목록에 섞이고 순번을 앞질러 새 세션 응답이 몇 주기 버려지던 결함. 세션 식별자를 도착 조회·지방버스 정류소 해석 캐시·현재역 조회에 결박했다. iOS는 `pollTask` 취소가 이미 막는다(대조).
