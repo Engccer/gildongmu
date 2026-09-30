@@ -94,14 +94,14 @@ describe("계층 배타성", () => {
 });
 
 describe("추세 축 내부", () => {
-  it("정지가 확정되면 데드밴드와 무관하게 tick이다", () => {
-    const out = toneLayerStep(
-      anchored(100), input({ trend: trend(99, "stopped") }), 10,
-    );
-    expect(out.tone).toBe("tick");
+  it("정지 fix는 침묵하고 추세 축을 건드리지 않는다(E55)", () => {
+    const state = anchored(100, "closer");
+    const out = toneLayerStep(state, input({ trend: trend(60, "stopped") }), 10);
+    expect(out.tone).toBeNull();
+    expect(out.state).toEqual(state); // 앵커·추세·타이머 불변
   });
 
-  it("속도를 모르면 tick을 내지 않는다(거짓 정지 금지)", () => {
+  it("speedUnknown은 정지가 아니다 — 데드밴드 미달이면 침묵", () => {
     const out = toneLayerStep(
       anchored(100), input({ trend: trend(99, "speedUnknown") }), 10,
     );
@@ -115,16 +115,65 @@ describe("추세 축 내부", () => {
     expect(out.tone).toBe("closer");
   });
 
-  it("tick은 자기 간격을 지킨다", () => {
-    let state = anchored(100);
-    let out = toneLayerStep(state, input({ trend: trend(99, "stopped") }), 10);
-    expect(out.tone).toBe("tick");
-    state = out.state;
-    out = toneLayerStep(state, input({ trend: trend(99, "stopped") }), 12);
+  // ⚠ 정지 fix가 추세 판정을 돌리면 감쇠(하한 5m)가 서 있는 동안의 흔들림을 결국 톤으로 만든다.
+  it("오래 서 있으면 거리가 흔들려도 톤이 0이다(신호 대기 2분, E55)", () => {
+    let state = anchored(100, "closer");
+    const tones: string[] = [];
+    for (let i = 1; i <= 120; i++) {
+      const jitter = i % 2 === 0 ? 8 : -8;
+      const out = toneLayerStep(
+        state,
+        input({ trend: { ...trend(100 + jitter, "stopped"), deadBandFloor: 5 } }),
+        i,
+      );
+      state = out.state;
+      if (out.tone) tones.push(`${i}:${out.tone}`);
+    }
+    expect(tones).toEqual([]);
+  });
+});
+
+describe("정지 중 신뢰 불가(E55)", () => {
+  // 워치독은 타이머 구동이라 추세 입력 없이 1단계로 들어온다(BeaconModel.tickWatchdog 동형).
+  it("정지 중 fix 두절은 워치독 입력으로 즉시 unreliable이고 간격마다 반복된다", () => {
+    let state = anchored(100, "closer");
+    state = toneLayerStep(state, input({ trend: trend(99, "stopped") }), 0).state;
+    let out = toneLayerStep(state, input({ unreliable: true }), 8);
+    expect(out.tone).toBe("unreliable");
+    out = toneLayerStep(out.state, input({ unreliable: true }), 10);
     expect(out.tone).toBeNull();
-    state = out.state;
-    out = toneLayerStep(state, input({ trend: trend(99, "stopped") }), 13.5);
-    expect(out.tone).toBe("tick");
+    out = toneLayerStep(out.state, input({ unreliable: true }), 18);
+    expect(out.tone).toBe("unreliable");
+  });
+
+  it("정지 중 정확도 불량은 정지 추세 입력을 함께 실어도 unreliable이다", () => {
+    const out = toneLayerStep(
+      anchored(100, "closer"), input({ unreliable: true, trend: trend(99, "stopped") }), 5,
+    );
+    expect(out.tone).toBe("unreliable");
+  });
+
+  // 정지 fix가 예약을 남겨 두면 서 있는 동안 속도 불명 fix 하나가 그것을 소비해 정지 전
+  // 추세를 서 있는 사람에게 들려준다(설계 리뷰 I-2). 정지 fix가 앵커만 잡고 소비한다.
+  it("정지 중 회복은 앵커만 잡고 침묵한다 — 서 있는 동안 속도 불명 fix도 승계 톤을 내지 않는다", () => {
+    let state = anchored(500, "closer");
+    state = toneLayerStep(state, input({ unreliable: true }), 0).state;
+    let out = toneLayerStep(state, input({ trend: trend(120, "stopped") }), 3);
+    expect(out.tone).toBeNull();
+    expect(out.state.needsRebase).toBe(false);
+    expect(out.state.anchorDistance).toBe(120);
+    out = toneLayerStep(out.state, input({ trend: trend(118, "speedUnknown") }), 6);
+    expect(out.tone).toBeNull(); // 데드밴드 미달 — 승계 톤 없음
+    out = toneLayerStep(out.state, input({ trend: trend(104) }), 20);
+    expect(out.tone).toBe("closer"); // 다시 걸어 새 앵커에서 데드밴드를 넘으면 난다
+  });
+
+  // 정지 조기 반환이 wasUnreliable 해제보다 앞에 오면 정지 중 재진입이 간격(10초)에 묶인다(I-4).
+  it("정지 중 회복 뒤 10초 안에 다시 끊겨도 재진입은 즉시 1회다", () => {
+    let state = anchored(100, "closer");
+    state = toneLayerStep(state, input({ unreliable: true }), 0).state;
+    state = toneLayerStep(state, input({ trend: trend(99, "stopped") }), 2).state;
+    expect(toneLayerStep(state, input({ unreliable: true }), 5).tone).toBe("unreliable");
   });
 });
 
@@ -179,12 +228,6 @@ describe("정숙 구간과 회복", () => {
     expect(out.state.anchorDistance).toBe(120);
   });
 
-  it("정지 중 회복이면 tick으로 알린다", () => {
-    let state = anchored(500, "closer");
-    state = toneLayerStep(state, input({ unreliable: true }), 0).state;
-    const out = toneLayerStep(state, input({ trend: trend(120, "stopped") }), 3);
-    expect(out.tone).toBe("tick");
-  });
 });
 
 describe("빈도 비대칭", () => {
@@ -221,7 +264,7 @@ describe("빈도 비대칭", () => {
 });
 
 describe("도착 종단", () => {
-  it("도착 후에는 tick·추세·unreliable을 전부 억제한다", () => {
+  it("도착 후에는 추세·unreliable을 전부 억제한다", () => {
     const state = anchored(30);
     expect(
       toneLayerStep(

@@ -332,7 +332,7 @@
     <string name="android_settings_themeSystem">Follow system setting</string>
     <string name="android_settings_title">Settings</string>
     <string name="android_settings_trendHaptics">Extended vibration alerts (experimental)</string>
-    <string name="android_settings_trendHapticsFooter">Also vibrates for getting closer, standing still, and unreliable guidance while walking. Search, nearby, and directions results and status changes during guidance also vibrate. Vibrates only while the screen is on.</string>
+    <string name="android_settings_trendHapticsFooter">Also vibrates for getting closer and unreliable guidance while walking. Search, nearby, and directions results and status changes during guidance also vibrate. Vibrates only while the screen is on.</string>
     <string name="android_settings_weightFooter">Enter a weight between %1$s and %2$s kg. What you enter is not stored on a server.</string>
     <string name="android_settings_weightKg">Weight for calorie estimate (kg)</string>
     <string name="android_settings_weightRejected">Weight must be between %1$s and %2$s kg. Keeping the previous value, %3$s kg.</string>

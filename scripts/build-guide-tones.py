@@ -13,9 +13,8 @@
   left-pitch  낮은 모티프(440→523Hz) 모노
   right-pitch 높은 모티프(880→1047Hz) 모노
   back        하강 글라이드 2회(1200→400Hz) — "되돌아감"                 0.9초
-  stroll      나들이 10m 비프(E51) — 낮고 부드러운 단음(330Hz, 느린 어택)   0.16초
 
-인자로 이름을 주면 그 파일만 만든다(`python3 scripts/build-guide-tones.py stroll`). 인코더 판본이
+인자로 이름을 주면 그 파일만 만든다(`python3 scripts/build-guide-tones.py back`). 인코더 판본이
 바뀌면 같은 파라미터라도 바이트가 달라질 수 있어, 새 톤을 더할 때 기존 파일을 다시 쓰지 않는다.
 
 ⚠ **햅틱 패턴(`BeaconTonePlayer.haptic(for:)`·`useBeaconSound` VIBRATE)은 아래
@@ -46,9 +45,6 @@ MOTIF_NOTE = 0.18
 MOTIF_GAP = 0.04
 GLIDE_LEN = 0.4
 GLIDE_GAP = 0.1
-# 나들이 비프 — 걷는 내내 10m마다 나므로 짧고 낮고 부드럽게(추세음 closer 660~990Hz·정지 tick과 겹치지 않는 음역).
-STROLL_HZ = 330.0
-STROLL_LEN = 0.16
 
 
 def env(i: int, n: int, attack: float = 0.008, release: float = 0.04) -> float:
@@ -60,8 +56,7 @@ def env(i: int, n: int, attack: float = 0.008, release: float = 0.04) -> float:
 
 
 def tone(
-    freq_start: float, seconds: float, freq_end: float | None = None, amp: float = 0.8,
-    attack: float = 0.008, release: float = 0.04,
+    freq_start: float, seconds: float, freq_end: float | None = None, amp: float = 0.8
 ) -> list[float]:
     n = int(SR * seconds)
     out = []
@@ -69,7 +64,7 @@ def tone(
     for i in range(n):
         f = freq_start if freq_end is None else freq_start + (freq_end - freq_start) * (i / n)
         phase += 2 * math.pi * f / SR
-        out.append(amp * env(i, n, attack, release) * math.sin(phase))
+        out.append(amp * env(i, n) * math.sin(phase))
     return out
 
 
@@ -121,7 +116,6 @@ def main() -> int:
         "left-pitch": (motif(440, 523), None),
         "right-pitch": (motif(880, 1047), None),
         "back": (glide_back(), None),
-        "stroll": (tone(STROLL_HZ, STROLL_LEN, amp=0.6, attack=0.03, release=0.09), None),
     }
     only = sys.argv[1:]
     unknown = [name for name in only if name not in specs]

@@ -10,7 +10,7 @@ import {
 /**
  * Kit `GuideMotionTests`와 **같은 케이스**를 돈다(상수·경계·전이 동조 강제).
  * 웹 고유 케이스는 맨 아래 — `GeolocationCoordinates.speed`가 무효일 때 `null`이라
- * 0으로 암묵 변환되면 거짓 정지 tick이 난다.
+ * 0으로 암묵 변환되면 거짓 정지가 된다.
  */
 const sample = (at: number, lat = 37.5, lng = 127.0, accuracy = 10): MotionSample => ({
   lat,
@@ -156,7 +156,7 @@ describe("웹 고유 계약", () => {
 
   it("speedAccuracy 필드 부재는 도플러를 버릴 근거가 아니다", () => {
     // 웹 GeolocationCoordinates에는 speedAccuracy가 아예 없다. 그것을 "정확도 나쁨"으로
-    // 뭉개면 웹에서 도플러가 절대 성립하지 않아 tick(정지)이 죽은 소리가 된다.
+    // 뭉개면 웹에서 도플러가 절대 성립하지 않아 정지 판정이 죽는다.
     const { motion } = motionStep(
       INITIAL_MOTION_STATE, sample(0), 1.5, undefined, MAX_WALK_SPEED_MPS,
     );

@@ -3,8 +3,8 @@ package space.dodoplanet.gildongmu.kit
 /**
  * 이동·정지 판정(순수 함수, 웹 `src/lib/guide-motion.ts` ↔ Kit `GuideMotion.swift` 미러).
  *
- * **왜 3-state인가**: "속도를 모름"은 "정지"도 "이동"도 아니다. 이진화하면 GPS가 속도를 못 줄 때 거짓 정지
- * tick이 나고, 시각장애 사용자는 화면으로 반증할 수 없다.
+ * **왜 3-state인가**: "속도를 모름"은 "정지"도 "이동"도 아니다. 이진화하면 GPS가 속도를 못 줄 때 거짓 정지로
+ * 추세 축이 멈춰 걷는 중에 소리가 끊기고(E55 전엔 거짓 정지 tick), 시각장애 사용자는 화면으로 반증할 수 없다.
  *
  * **왜 도플러 속도인가**: 상세 모드에는 경로 진행거리 미분(`GuideSpeedSample`)이 있으나 간략 모드에는 경로가
  * 없다. 직선거리를 미분하는 대안은 틀린다 — 그것은 "목적지 접근 속도"이지 "이동 속도"가 아니라서, 목적지를
@@ -53,8 +53,8 @@ object MotionConstants {
     const val stopEnterMps = 0.4
 
     /**
-     * 이 값 **초과**면 즉시 이동. 진입보다 높다 — 정지 오판은 계속 들리는 거짓 tick을 만들고 이동 오판은
-     * 한 번의 침묵으로 끝난다(비대칭이 의도).
+     * 이 값 **초과**면 즉시 이동. 진입보다 높다 — 정지 오판은 걷는 동안 추세 축을 멈춰 소리를 끊고(E55 전엔 거짓
+     * tick) 이동 오판은 한 번의 침묵으로 끝난다(비대칭이 의도).
      */
     const val stopExitMps = 0.6
 
@@ -96,7 +96,7 @@ data class MotionStepResult(val state: MotionJudgeState, val motion: MotionState
  *
  * ⚠ 안드로이드 `Location`은 값이 없을 때 음수가 아니라 **0.0**을 준다. `hasSpeed()`가 거짓이면 `speed`에,
  * `hasSpeedAccuracy()`가 거짓이면 `speedAccuracy`에 0.0이 아니라 null을 넘긴다 — 0.0을 넘기면 도플러가 신뢰
- * 조건을 통과해 걷는 중에도 거짓 정지 tick이 난다.
+ * 조건을 통과해 걷는 중에도 거짓 정지가 된다.
  */
 fun motionStep(
     state: MotionJudgeState,
@@ -145,7 +145,7 @@ private fun resolveSpeed(
     if (speed != null && speed >= 0 && speed.isFinite()) {
         // ⚠ 정확도는 3-state다: 좋음 / 나쁨 / **모름**. null은 플랫폼이 그 축을 제공하지 않는다는 뜻이고
         // (웹 `GeolocationCoordinates`에는 speedAccuracy가 없다), 그것을 "나쁨"으로 뭉개면 그 플랫폼에서
-        // 도플러가 절대 성립하지 않아 `tick`(정지)이 죽은 소리가 된다. 값이 있는데 무효이거나 상한을 넘는
+        // 도플러가 절대 성립하지 않아 정지 판정이 죽는다(서 있는 동안 흔들림이 톤이 된다). 값이 있는데 무효이거나 상한을 넘는
         // 경우만 도플러를 버린다.
         if (speedAccuracy == null) return speed
         if (speedAccuracy >= 0 && speedAccuracy.isFinite() && speedAccuracy <= MotionConstants.speedAccuracyCeiling) {

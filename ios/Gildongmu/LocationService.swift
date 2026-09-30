@@ -125,8 +125,9 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
     private func applyProfile(_ profile: Profile) {
         switch profile {
         case .beacon:
-            // 서 있는 동안 시스템이 업데이트를 자동 정지하면 tick이 사라져 "죽었나"와
-            // 구분되지 않는다(기본값 true). 보행 프로파일로 고정하고 거리 필터는 끈다
+            // 서 있는 동안 시스템이 업데이트를 자동 정지하면(기본값 true) fix 워치독이 8초 뒤
+            // 거짓 "신뢰 불가"를 낸다 — 정지 중 침묵이 정상인 것은 fix가 계속 올 때뿐이다(E55).
+            // 보행 프로파일로 고정하고 거리 필터는 끈다
             // (데드밴드가 이미 필터라 이중 필터링 금지).
             manager.pausesLocationUpdatesAutomatically = false
             manager.activityType = .fitness

@@ -46,7 +46,7 @@
       ]
     },
     {
-      "name": "정지 tick과 이동 추세의 교대",
+      "name": "정지 중에는 침묵하고 다시 걸으면 추세가 이어진다(E55)",
       "initial": {
         "anchorDistance": 100,
         "trend": "none"
@@ -80,7 +80,7 @@
             "motion": "stopped",
             "closerIntervalSeconds": 2
           },
-          "expect": "tick"
+          "expect": null
         },
         {
           "now": 7,
@@ -100,7 +100,7 @@
             "motion": "stopped",
             "closerIntervalSeconds": 2
           },
-          "expect": "tick"
+          "expect": null
         },
         {
           "now": 12,
@@ -111,6 +111,121 @@
             "closerIntervalSeconds": 2
           },
           "expect": "closer"
+        }
+      ]
+    },
+    {
+      "name": "정지 중 두절은 신뢰 불가로 잡히고(재진입도 즉시), 정지 중 회복은 앵커만 잡고 침묵한다(E55)",
+      "initial": {
+        "anchorDistance": 100,
+        "trend": "closer"
+      },
+      "steps": [
+        {
+          "now": 0,
+          "trend": {
+            "distance": 99,
+            "deadBand": 15,
+            "motion": "stopped",
+            "closerIntervalSeconds": 2
+          },
+          "expect": null
+        },
+        {
+          "now": 3,
+          "trend": {
+            "distance": 98,
+            "deadBand": 15,
+            "motion": "stopped",
+            "closerIntervalSeconds": 2
+          },
+          "expect": null
+        },
+        {
+          "now": 11,
+          "unreliable": true,
+          "expect": "unreliable"
+        },
+        {
+          "now": 13,
+          "unreliable": true,
+          "expect": null
+        },
+        {
+          "now": 21.5,
+          "unreliable": true,
+          "expect": "unreliable"
+        },
+        {
+          "now": 23,
+          "trend": {
+            "distance": 98,
+            "deadBand": 15,
+            "motion": "stopped",
+            "closerIntervalSeconds": 2
+          },
+          "expect": null
+        },
+        {
+          "now": 26,
+          "trend": {
+            "distance": 97,
+            "deadBand": 15,
+            "motion": "speedUnknown",
+            "closerIntervalSeconds": 2
+          },
+          "expect": null
+        },
+        {
+          "now": 27,
+          "unreliable": true,
+          "trend": {
+            "distance": 97,
+            "deadBand": 15,
+            "motion": "stopped",
+            "closerIntervalSeconds": 2
+          },
+          "expect": "unreliable"
+        },
+        {
+          "now": 30,
+          "trend": {
+            "distance": 97,
+            "deadBand": 15,
+            "motion": "stopped",
+            "closerIntervalSeconds": 2
+          },
+          "expect": null
+        },
+        {
+          "now": 40,
+          "trend": {
+            "distance": 96,
+            "deadBand": 15,
+            "motion": "moving",
+            "closerIntervalSeconds": 2
+          },
+          "expect": null
+        },
+        {
+          "now": 45,
+          "trend": {
+            "distance": 80,
+            "deadBand": 15,
+            "motion": "moving",
+            "closerIntervalSeconds": 2
+          },
+          "expect": "closer"
+        },
+        {
+          "now": 46,
+          "trend": {
+            "distance": 79,
+            "deadBand": 15,
+            "motion": "moving",
+            "closerIntervalSeconds": 2
+          },
+          "expect": null
         }
       ]
     },

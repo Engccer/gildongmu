@@ -332,7 +332,7 @@
     <string name="android_settings_themeSystem">Según el sistema</string>
     <string name="android_settings_title">Ajustes</string>
     <string name="android_settings_trendHaptics">Alertas de vibración ampliadas (experimental)</string>
-    <string name="android_settings_trendHapticsFooter">También vibra al acercarte, al detenerte y cuando la guía no es fiable mientras caminas. Los resultados de la búsqueda, de los alrededores y de las indicaciones, y los cambios de estado durante la guía, también vibran. Solo vibra con la pantalla encendida.</string>
+    <string name="android_settings_trendHapticsFooter">También vibra al acercarte y cuando la guía no es fiable mientras caminas. Los resultados de la búsqueda, de los alrededores y de las indicaciones, y los cambios de estado durante la guía, también vibran. Solo vibra con la pantalla encendida.</string>
     <string name="android_settings_weightFooter">Introduce un peso entre %1$s y %2$s kg. Los datos introducidos no se guardan en ningún servidor.</string>
     <string name="android_settings_weightKg">Peso para estimar calorías (kg)</string>
     <string name="android_settings_weightRejected">El peso debe estar entre %1$s y %2$s kg. Se mantiene el valor anterior, %3$s kg.</string>

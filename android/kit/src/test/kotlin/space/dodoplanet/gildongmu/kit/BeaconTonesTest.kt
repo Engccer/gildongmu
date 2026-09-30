@@ -7,8 +7,8 @@ import kotlin.test.assertTrue
 import kotlin.test.fail
 
 /**
- * 진행 상태 진동(E30 실험판) — Kit `TrendHapticsTests` 미러. 스위치 대상 톤은 **정확히** 가까워짐·정지·신뢰 불가
- * 셋이다. 나머지 10종은 스위치와 무관하게 진동한다("꺼짐 = 현재 동작", 위원장 2026-09-13).
+ * 진행 상태 진동(E30 실험판) — Kit `TrendHapticsTests` 미러. 스위치 대상 톤은 **정확히** 가까워짐·나들이 비프·신뢰
+ * 불가 셋이다. 나머지 10종은 스위치와 무관하게 진동한다("꺼짐 = 현재 동작", 위원장 2026-09-13).
  */
 class BeaconTonesTest {
     @Test fun `옵트인 톤은 closer·tick·unreliable 셋뿐이다`() {
@@ -29,14 +29,13 @@ class BeaconTonesTest {
         fun casesOf(enumName: String): List<String> =
             Regex("""public enum $enumName: String[^{]*\{[ \t\r\n]*case ([A-Za-z, ]+)""").find(source)?.groupValues?.get(1)
                 ?.split(",")?.map { it.trim() } ?: fail("$enumName 케이스 선언을 찾지 못했다")
-        // Swift의 iOS 전용 대기 케이스(나들이 비프 `stroll`, E51)는 안드로이드 나들이 이식 때 케이스·리소스를 함께 옮긴다.
-        // 첫 case 줄이 공유 계약이고 대기 케이스는 따로 선언된 줄이다 — 그 줄이 이 목록 밖으로 늘면 여기서 빨개진다.
-        val iosOnlyPending = listOf("stroll")
+        // enum 본문의 case 줄은 공유 계약 한 줄뿐이다(나들이 비프 `stroll`은 E55에서 `tick`으로 합쳐 iOS 전용 케이스가
+        // 없다). 한쪽에만 케이스가 늘면 여기서 빨개진다.
         val body = source.substringAfter("public enum BeaconTone").substringBefore("public func resourceName")
         // enum 본문의 **모든** case 줄(쉼표 목록 포함)을 모은다 — 둘째 줄에 여러 케이스를 한꺼번에 선언해도 빠지지 않게.
         val allCases = Regex("""^    case ([A-Za-z, ]+)$""", RegexOption.MULTILINE).findAll(body)
             .flatMap { m -> m.groupValues[1].split(",").map { it.trim() } }.toList()
-        assertEquals(BeaconTone.entries.map { it.rawValue } + iosOnlyPending, allCases)
+        assertEquals(BeaconTone.entries.map { it.rawValue }, allCases)
         assertEquals(casesOf("BeaconTone"), BeaconTone.entries.map { it.rawValue })
         assertEquals(casesOf("LeftRightToneScheme"), LeftRightToneScheme.entries.map { it.rawValue })
         // 저장 키는 선언한 enum과 짝으로 대조한다(파일 안 선언 순서에 묶이지 않고, 두 키가 서로 바뀐 것도 잡는다).

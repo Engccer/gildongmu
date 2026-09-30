@@ -332,7 +332,7 @@
     <string name="android_settings_themeSystem">Come il sistema</string>
     <string name="android_settings_title">Impostazioni</string>
     <string name="android_settings_trendHaptics">Avvisi a vibrazione estesi (sperimentale)</string>
-    <string name="android_settings_trendHapticsFooter">Vibra anche quando ti avvicini, ti fermi o quando la guida non è affidabile mentre cammini. Vibrano anche i risultati della ricerca, dei dintorni e degli itinerari, e i cambi di stato durante la guida. Vibra solo con lo schermo acceso.</string>
+    <string name="android_settings_trendHapticsFooter">Vibra anche quando ti avvicini o quando la guida non è affidabile mentre cammini. Vibrano anche i risultati della ricerca, dei dintorni e degli itinerari, e i cambi di stato durante la guida. Vibra solo con lo schermo acceso.</string>
     <string name="android_settings_weightFooter">Inserisci un peso tra %1$s e %2$s kg. I dati inseriti non vengono salvati su un server.</string>
     <string name="android_settings_weightKg">Peso per la stima delle calorie (kg)</string>
     <string name="android_settings_weightRejected">Il peso deve essere tra %1$s e %2$s kg. Mantengo il valore precedente, %3$s kg.</string>

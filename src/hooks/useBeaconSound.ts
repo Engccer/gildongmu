@@ -15,8 +15,9 @@ import { useCallback, useEffect, useRef } from "react";
  * 선언으로 무음 스위치에도 톤이 울리는 기존 계약을 지키기 위해서다(조사 2026-07-04).
  *
  * 게인 위계는 종전 합성 시절의 상대 크기를 보존한다(파일은 풀스케일 인코딩):
- * 추세음은 낮게(보행 내내 반복), tick은 더 낮게(하트비트), 이벤트음은 원음.
- * 값은 실보행 튜닝 대상.
+ * 추세음은 낮게(보행 내내 반복), 이벤트음은 원음. 값은 실보행 튜닝 대상.
+ * `tick`은 없다 — E55(2026-09-30)로 안내 세션의 정지 tick이 폐지되고 그 소리는
+ * 나들이 10m 비프가 됐는데 웹엔 나들이가 없다(파일만 두고 등록은 웹 나들이 이식 때).
  *
  * 햅틱(위원장 제안 2026-08-03): 크리티컬 신호(이탈 경고·도착·멀어짐)는 진동 병행.
  * iOS Safari는 Vibration API 미지원이라 웹에서는 지원 브라우저(Android)에서만 동작
@@ -27,7 +28,6 @@ type GuideSound =
   | "closer"
   | "farther"
   | "nearby"
-  | "tick"
   | "start"
   | "stop"
   | "ahead"
@@ -61,14 +61,13 @@ function fileOf(sound: GuideSound): GuideSoundFile {
 }
 
 /**
- * ⚠ `unreliable`은 `tick`(0.3)보다 높다. 신뢰 불가는 상태 경고라 배경 미디어 위에서
+ * ⚠ `unreliable`은 추세음(0.35)보다 높다. 신뢰 불가는 상태 경고라 배경 미디어 위에서
  * 묻히면 안 된다(iOS `BeaconTonePlayer.gains`와 동조 — 값 변경 시 양쪽 함께).
  */
 const GAIN: Record<GuideSound, number> = {
   closer: 0.35,
   farther: 0.35,
   nearby: 1,
-  tick: 0.3,
   start: 0.8,
   stop: 0.8,
   ahead: 0.8,

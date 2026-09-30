@@ -15,13 +15,16 @@ import Foundation
 /// 1. unreliable    → unreliable 톤(진입 즉시 1회 + 간격 반복)
 /// 2. priorityTone  → 그 톤(상세 ahead·warning, 간략 nearby)
 /// 3. eventOwned    → 침묵(이벤트가 톤 자리를 소유)
-/// 4. trend         → 정지 tick / closer / farther
+/// 4. trend         → closer / farther (정지 fix는 침묵한다)
 /// ```
 ///
 /// ⚠ 배타성은 **추세 앵커가 정지한다**는 뜻이다. 이탈·불확실 구간이 길면 앵커가
 /// 낡으므로 복귀 시 재기준화가 필요한데, 복귀하는 fix에서 상위 톤이 나면 그 fix는
 /// 추세 축에 닿지 못한다. `needsRebase`를 상태에 두어 **추세 축에 도달하는 첫 fix**가
 /// 소비하게 한다(그러지 않으면 재기준화 기회가 사라져 낡은 앵커로 거짓 추세가 난다).
+///
+/// **정지 tick은 없다**(E55, 위원장 판정 2026-09-30). 도보·자동차 모두 멈춰 있는 동안은
+/// 침묵이 정상이고, `tick` 소리는 나들이 10m 비프가 쓴다(소리 하나에 뜻 하나).
 ///
 /// 설계 정본: `docs/superpowers/specs/2026-08-08-background-tone-coverage-design.md` §4
 
@@ -60,8 +63,9 @@ public struct ToneLayerInput: Sendable, Equatable {
     /// 4단계: 추세 축 입력. **nil이면 추세 판정을 하지 않는다** — 이탈 중 잔여 거리는
     /// 낡은 투영이라 추세로 읽으면 거짓이고, 투영이 튄 fix도 여기서 버린다.
     public var trend: TrendInput?
-    /// 도착 종단 — tick·추세·unreliable을 전부 억제한다. 억제하지 않으면 목적지에
-    /// 서 있는 동안 정지 tick이 계속 난다. **우선 톤은 억제 대상이 아니다.**
+    /// 도착 종단 — 추세·unreliable을 전부 억제한다. 억제하지 않으면 목적지 부근을
+    /// 서성이는 동안 추세 톤이, 실내에서 GPS가 끊기면 unreliable이 계속 난다.
+    /// **우선 톤은 억제 대상이 아니다.**
     public var arrived: Bool
     /// 호출부가 요구하는 축 재기준화(이탈 복귀·handoff 축 전환).
     public var rebaseTrend: Bool
@@ -87,7 +91,6 @@ public struct ToneLayerState: Sendable, Equatable {
     public var anchorDistance: Double?
     public var trend: BeaconTrend
     public var lastTrendToneAt: Double?
-    public var lastTickAt: Double?
     public var lastUnreliableAt: Double?
     public var wasUnreliable: Bool
     /// 추세 축에 도달하는 첫 fix가 소비할 재기준화 예약.
@@ -98,7 +101,7 @@ public struct ToneLayerState: Sendable, Equatable {
     public var anchorSetAt: Double?
 
     public static let initial = ToneLayerState(
-        anchorDistance: nil, trend: .none, lastTrendToneAt: nil, lastTickAt: nil,
+        anchorDistance: nil, trend: .none, lastTrendToneAt: nil,
         lastUnreliableAt: nil, wasUnreliable: false, needsRebase: false, quietUntil: nil,
         anchorSetAt: nil
     )
@@ -111,16 +114,16 @@ public enum ToneLayerConstants {
     /// 행동 안내 후 정숙 구간(초). 사용자가 행동해야 하는 안내 직후에 배경 톤이
     /// 끼어들면 의미가 흐려진다.
     public static let quietAfterActionSeconds = 3.0
-    /// 정지 tick 간격(초).
-    public static let tickIntervalSeconds = 3.0
     /// farther 간격(초). **수단별로 가르지 않는다** — 경고 축이기 때문이다
     /// (정상 진행 통지와 경고 통지의 빈도 비대칭은 이미 확립된 정책이다).
     public static let fartherIntervalSeconds = 2.0
     public static let walkCloserIntervalSeconds = 2.0
     /// 차량 closer 간격(초). 초기값이며 실주행 판정 대상이다.
     public static let carCloserIntervalSeconds = 10.0
-    /// 허용 최대 정상 침묵(초) = 데드밴드 15m ÷ 느린 구간 0.7m/s. 위원장 판정으로
-    /// 계약값 확정(2026-08-08) — "이보다 오래 조용하면 고장"이라는 사용자 계약이다.
+    /// **이동 중** 허용 최대 정상 침묵(초) = 데드밴드 15m ÷ 느린 구간 0.7m/s. 위원장 판정으로
+    /// 계약값 확정(2026-08-08) — "움직이는 중에 이보다 오래 조용하면 고장"이라는 사용자 계약이다.
+    /// 정지 중 침묵은 정상이고 상한이 없다(E55) — 정지 중 fix 두절은 워치독이 1단계
+    /// `unreliable`로 깬다.
     /// ⚠ 최소 재확인 간격 추가는 **폐기한 하트비트가 이름만 바꿔 돌아오는 것**이라
     /// 기각됐고, 데드밴드 축소는 GPS 지터 내성을 깎아 기각됐다. 되살리지 말 것.
     public static let maxNormalSilenceSeconds = 21.0
@@ -136,7 +139,7 @@ public enum ToneLayerConstants {
 ///
 /// **왜 필요한가**: 21초 계약의 산식(데드밴드 ÷ 느린 구간 속도)은 "목적지를 향해 직선으로
 /// 이동한다"는 미명시 전제 위에 서 있었다. 목적지와 평행하게 걷거나 블록을 돌아가면
-/// 거리가 거의 변하지 않아 `hold`가 무한 지속되고, `moving`이라 정지 tick도 안 난다.
+/// 거리가 거의 변하지 않아 `hold`가 무한 지속된다.
 /// 종전 3초 하트비트가 그 상한을 묶고 있었는데 이 설계가 대체 없이 없앴다(접근성 감사 H1).
 ///
 /// **왜 감쇠인가**: 고정 간격 재확인은 "폐기한 하트비트가 이름만 바꿔 돌아오는 것"이고,
@@ -159,7 +162,7 @@ public func decayedDeadBand(
 public func isActionTone(_ tone: BeaconTone) -> Bool {
     switch tone {
     case .ahead, .crosswalk, .left, .right, .back, .warning: true
-    case .closer, .farther, .nearby, .tick, .start, .stop, .unreliable, .stroll: false
+    case .closer, .farther, .nearby, .tick, .start, .stop, .unreliable: false
     }
 }
 
@@ -210,12 +213,11 @@ public func toneLayerStep(
         next.needsRebase = false
         next.anchorDistance = t.distance
         next.anchorSetAt = now
+        // 정지 중이면 앵커만 잡고 침묵한다(E55 — 종전엔 여기서 tick). 서 있는 사람에게
+        // 정지 전의 추세를 승계해 들려주면 거짓이다.
+        if t.motion == .stopped { return (next, nil) }
         // 회복 즉시 1회: 데드밴드 미달이어도 현재 상태를 알린다. 없으면 사용자가
         // 회복 여부를 모른 채 최대 `maxNormalSilenceSeconds`를 더 기다린다.
-        if t.motion == .stopped {
-            next.lastTickAt = now
-            return (next, .tick)
-        }
         switch next.trend {
         case .closer:
             next.lastTrendToneAt = now
@@ -228,15 +230,12 @@ public func toneLayerStep(
         }
     }
 
-    // 4.5 추세 축 내부 순서 — 정지가 먼저다.
-    if t.motion == .stopped {
-        guard now - (state.lastTickAt ?? -.infinity) >= ToneLayerConstants.tickIntervalSeconds
-        else { return (next, nil) }
-        next.lastTickAt = now
-        return (next, .tick)
-    }
-    // ⚠ `speedUnknown`에서는 tick을 내지 않는다(속도를 모르는데 정지 톤은 거짓이다).
-    // 침묵이 늘지만 거짓 정지보다 낫고, 지속되면 fix 워치독이 unreliable로 잡는다.
+    // 4.5 추세 축 내부 순서 — 정지가 먼저다. 정지 fix는 침묵하고 추세 판정도 하지 않는다
+    // (E55 — 종전엔 여기서 3초 간격 tick). 서 있는 동안의 GPS 흔들림을 데드밴드 감쇠가
+    // 결국 추세 톤으로 만들기 때문이다.
+    if t.motion == .stopped { return (next, nil) }
+    // ⚠ `speedUnknown`은 정지로 다루지 않는다 — 속도를 모르는데 추세 축을 멈추면 이동 중
+    // 침묵이 무한정 는다. 이동과 같이 아래를 지난다.
 
     // 앵커가 오래 제자리면 데드밴드를 점진 축소한다(평평한 거리 축의 무한 침묵 차단).
     let band = decayedDeadBand(

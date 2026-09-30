@@ -129,11 +129,14 @@ class GuideToneLayerTest {
 
     // ── 추세 축 내부 ──
 
-    @Test fun `정지가 확정되면 데드밴드와 무관하게 tick이다`() {
-        assertEquals(BeaconTone.tick, toneLayerStep(anchored(100.0), ToneLayerInput(trend = trend(99.0, MotionState.stopped)), 10.0).tone)
+    @Test fun `정지 fix는 침묵하고 추세 축을 건드리지 않는다(E55)`() {
+        val state = anchored(100.0, BeaconTrend.closer)
+        val (next, tone) = toneLayerStep(state, ToneLayerInput(trend = trend(60.0, MotionState.stopped)), 10.0)
+        assertNull(tone)
+        assertEquals(state, next) // 앵커·추세·타이머 불변
     }
 
-    @Test fun `속도를 모르면 tick을 내지 않는다`() {
+    @Test fun `speedUnknown은 정지가 아니다 — 데드밴드 미달이면 침묵`() {
         assertNull(toneLayerStep(anchored(100.0), ToneLayerInput(trend = trend(99.0, MotionState.speedUnknown)), 10.0).tone)
     }
 
@@ -141,13 +144,40 @@ class GuideToneLayerTest {
         assertEquals(BeaconTone.closer, toneLayerStep(anchored(100.0), ToneLayerInput(trend = trend(80.0, MotionState.speedUnknown)), 10.0).tone)
     }
 
-    @Test fun `tick은 자기 간격을 지킨다`() {
-        val input = ToneLayerInput(trend = trend(99.0, MotionState.stopped))
-        var out = toneLayerStep(anchored(100.0), input, 10.0)
-        assertEquals(BeaconTone.tick, out.tone)
-        out = toneLayerStep(out.state, input, 12.0)
+    // ⚠ 정지 fix가 추세 판정을 돌리면 감쇠(하한 5m)가 서 있는 동안의 흔들림을 결국 톤으로 만든다.
+    @Test fun `오래 서 있으면 거리가 흔들려도 톤이 0이다(신호 대기 2분, E55)`() {
+        var state = anchored(100.0, BeaconTrend.closer)
+        val tones = mutableListOf<String>()
+        for (i in 1..120) {
+            val jitter = if (i % 2 == 0) 8.0 else -8.0
+            val input = ToneLayerInput(
+                trend = TrendInput(
+                    distance = 100.0 + jitter, deadBand = 15.0, deadBandFloor = 5.0, motion = MotionState.stopped,
+                    closerIntervalSeconds = ToneLayerConstants.walkCloserIntervalSeconds,
+                ),
+            )
+            val out = toneLayerStep(state, input, i.toDouble())
+            state = out.state
+            out.tone?.let { tones.add("$i:$it") }
+        }
+        assertEquals(emptyList(), tones)
+    }
+
+    // ── 정지 중 신뢰 불가(E55) ──
+
+    /** 워치독은 타이머 구동이라 추세 입력 없이 1단계로 들어온다(iOS `BeaconModel.tickWatchdog`). */
+    @Test fun `정지 중 fix 두절은 워치독 입력으로 즉시 unreliable이고 간격마다 반복된다`() {
+        val stopped = toneLayerStep(anchored(100.0, BeaconTrend.closer), ToneLayerInput(trend = trend(99.0, MotionState.stopped)), 0.0).state
+        var out = toneLayerStep(stopped, ToneLayerInput(unreliable = true), 8.0)
+        assertEquals(BeaconTone.unreliable, out.tone)
+        out = toneLayerStep(out.state, ToneLayerInput(unreliable = true), 10.0)
         assertNull(out.tone)
-        assertEquals(BeaconTone.tick, toneLayerStep(out.state, input, 13.5).tone)
+        assertEquals(BeaconTone.unreliable, toneLayerStep(out.state, ToneLayerInput(unreliable = true), 18.0).tone)
+    }
+
+    @Test fun `정지 중 정확도 불량은 정지 추세 입력을 함께 실어도 unreliable이다`() {
+        val input = ToneLayerInput(unreliable = true, trend = trend(99.0, MotionState.stopped))
+        assertEquals(BeaconTone.unreliable, toneLayerStep(anchored(100.0, BeaconTrend.closer), input, 5.0).tone)
     }
 
     // ── 빈도 — 수단별 비대칭 ──
@@ -228,14 +258,28 @@ class GuideToneLayerTest {
         assertEquals(120.0, next.anchorDistance)
     }
 
-    @Test fun `정지 중 회복이면 tick으로 알린다`() {
+    /** 정지 fix가 예약을 남겨 두면 서 있는 동안 속도 불명 fix 하나가 정지 전 추세를 들려준다(설계 리뷰 I-2). */
+    @Test fun `정지 중 회복은 앵커만 잡고 침묵한다 — 서 있는 동안 속도 불명 fix도 승계 톤을 내지 않는다`() {
         val state = toneLayerStep(anchored(500.0, BeaconTrend.closer), ToneLayerInput(unreliable = true), 0.0).state
-        assertEquals(BeaconTone.tick, toneLayerStep(state, ToneLayerInput(trend = trend(120.0, MotionState.stopped)), 3.0).tone)
+        var out = toneLayerStep(state, ToneLayerInput(trend = trend(120.0, MotionState.stopped)), 3.0)
+        assertNull(out.tone)
+        assertFalse(out.state.needsRebase)
+        assertEquals(120.0, out.state.anchorDistance)
+        out = toneLayerStep(out.state, ToneLayerInput(trend = trend(118.0, MotionState.speedUnknown)), 6.0)
+        assertNull(out.tone) // 데드밴드 미달 — 승계 톤 없음
+        assertEquals(BeaconTone.closer, toneLayerStep(out.state, ToneLayerInput(trend = trend(104.0)), 20.0).tone)
+    }
+
+    /** 정지 조기 반환이 `wasUnreliable` 해제보다 앞에 오면 정지 중 재진입이 간격(10초)에 묶인다(I-4). */
+    @Test fun `정지 중 회복 뒤 10초 안에 다시 끊겨도 재진입은 즉시 1회다`() {
+        var state = toneLayerStep(anchored(100.0, BeaconTrend.closer), ToneLayerInput(unreliable = true), 0.0).state
+        state = toneLayerStep(state, ToneLayerInput(trend = trend(99.0, MotionState.stopped)), 2.0).state
+        assertEquals(BeaconTone.unreliable, toneLayerStep(state, ToneLayerInput(unreliable = true), 5.0).tone)
     }
 
     // ── 도착 종단 ──
 
-    @Test fun `도착 후에는 tick·추세·unreliable을 전부 억제한다`() {
+    @Test fun `도착 후에는 추세·unreliable을 전부 억제한다`() {
         val state = anchored(30.0)
         assertNull(toneLayerStep(state, ToneLayerInput(trend = trend(25.0, MotionState.stopped), arrived = true), 10.0).tone)
         assertNull(toneLayerStep(state, ToneLayerInput(unreliable = true, arrived = true), 10.0).tone)

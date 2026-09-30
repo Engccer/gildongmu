@@ -332,7 +332,7 @@
     <string name="android_settings_themeSystem">Selon le système</string>
     <string name="android_settings_title">Réglages</string>
     <string name="android_settings_trendHaptics">Alertes vibrantes étendues (expérimental)</string>
-    <string name="android_settings_trendHapticsFooter">Vibre aussi quand vous vous rapprochez, vous arrêtez ou quand le guidage n\'est pas fiable pendant la marche. Les résultats de la recherche, des alentours et de l\'itinéraire, ainsi que les changements d\'état pendant le guidage, vibrent aussi. Vibre uniquement écran allumé.</string>
+    <string name="android_settings_trendHapticsFooter">Vibre aussi quand vous vous rapprochez ou quand le guidage n\'est pas fiable pendant la marche. Les résultats de la recherche, des alentours et de l\'itinéraire, ainsi que les changements d\'état pendant le guidage, vibrent aussi. Vibre uniquement écran allumé.</string>
     <string name="android_settings_weightFooter">Saisissez un poids entre %1$s et %2$s kg. Les informations saisies ne sont pas enregistrées sur un serveur.</string>
     <string name="android_settings_weightKg">Poids pour l\'estimation des calories (kg)</string>
     <string name="android_settings_weightRejected">Le poids doit être entre %1$s et %2$s kg. La valeur précédente, %3$s kg, est conservée.</string>

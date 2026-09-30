@@ -189,16 +189,17 @@ struct GuideToneLayerTests {
 
     // MARK: 추세 축 내부
 
-    @Test("정지가 확정되면 데드밴드와 무관하게 tick이다")
-    func stoppedTicks() {
-        let (_, tone) = toneLayerStep(
-            state: anchored(100), input: ToneLayerInput(trend: trend(99, motion: .stopped)),
-            now: 10
+    @Test("정지 fix는 침묵하고 추세 축을 건드리지 않는다(E55)")
+    func stoppedIsTransparent() {
+        let state = anchored(100, trend: .closer)
+        let (next, tone) = toneLayerStep(
+            state: state, input: ToneLayerInput(trend: trend(60, motion: .stopped)), now: 10
         )
-        #expect(tone == .tick)
+        #expect(tone == nil)
+        #expect(next == state)  // 앵커·추세·타이머 불변
     }
 
-    @Test("속도를 모르면 tick을 내지 않는다(거짓 정지 금지)")
+    @Test("speedUnknown은 정지가 아니다 — 데드밴드 미달이면 침묵")
     func speedUnknownNoTick() {
         let (_, tone) = toneLayerStep(
             state: anchored(100), input: ToneLayerInput(trend: trend(99, motion: .speedUnknown)),
@@ -216,23 +217,49 @@ struct GuideToneLayerTests {
         #expect(tone == .closer)
     }
 
-    @Test("tick은 자기 간격을 지킨다")
-    func tickInterval() {
-        var state = anchored(100)
-        var out = toneLayerStep(
-            state: state, input: ToneLayerInput(trend: trend(99, motion: .stopped)), now: 10
-        )
-        #expect(out.tone == .tick)
-        state = out.state
-        out = toneLayerStep(
-            state: state, input: ToneLayerInput(trend: trend(99, motion: .stopped)), now: 12
-        )
+    // ⚠ 정지 fix가 추세 판정을 돌리면 감쇠(하한 5m)가 서 있는 동안의 흔들림을 결국 톤으로 만든다.
+    @Test("오래 서 있으면 거리가 흔들려도 톤이 0이다(신호 대기 2분, E55)")
+    func longStopIsSilent() {
+        var state = anchored(100, trend: .closer)
+        var tones: [String] = []
+        for i in 1...120 {
+            let jitter: Double = i % 2 == 0 ? 8 : -8
+            let input = ToneLayerInput(trend: TrendInput(
+                distance: 100 + jitter, deadBand: 15, deadBandFloor: 5, motion: .stopped,
+                closerIntervalSeconds: ToneLayerConstants.walkCloserIntervalSeconds
+            ))
+            let out = toneLayerStep(state: state, input: input, now: Double(i))
+            state = out.state
+            if let tone = out.tone { tones.append("\(i):\(tone)") }
+        }
+        #expect(tones.isEmpty)
+    }
+
+    // MARK: 정지 중 신뢰 불가(E55)
+
+    /// 워치독은 타이머 구동이라 추세 입력 없이 1단계로 들어온다(`BeaconModel.tickWatchdog`).
+    @Test("정지 중 fix 두절은 워치독 입력으로 즉시 unreliable이고 간격마다 반복된다")
+    func watchdogWhileStopped() {
+        var state = anchored(100, trend: .closer)
+        state = toneLayerStep(
+            state: state, input: ToneLayerInput(trend: trend(99, motion: .stopped)), now: 0
+        ).state
+        var out = toneLayerStep(state: state, input: ToneLayerInput(unreliable: true), now: 8)
+        #expect(out.tone == .unreliable)
+        out = toneLayerStep(state: out.state, input: ToneLayerInput(unreliable: true), now: 10)
         #expect(out.tone == nil)
-        state = out.state
-        out = toneLayerStep(
-            state: state, input: ToneLayerInput(trend: trend(99, motion: .stopped)), now: 13.5
+        out = toneLayerStep(state: out.state, input: ToneLayerInput(unreliable: true), now: 18)
+        #expect(out.tone == .unreliable)
+    }
+
+    @Test("정지 중 정확도 불량은 정지 추세 입력을 함께 실어도 unreliable이다")
+    func weakWhileStopped() {
+        let (_, tone) = toneLayerStep(
+            state: anchored(100, trend: .closer),
+            input: ToneLayerInput(unreliable: true, trend: trend(99, motion: .stopped)),
+            now: 5
         )
-        #expect(out.tone == .tick)
+        #expect(tone == .unreliable)
     }
 
     // MARK: 빈도 — 수단별 비대칭
@@ -370,19 +397,43 @@ struct GuideToneLayerTests {
         #expect(next.anchorDistance == 120)
     }
 
-    @Test("정지 중 회복이면 tick으로 알린다")
+    /// 정지 fix가 예약을 남겨 두면 서 있는 동안 속도 불명 fix 하나가 그것을 소비해 정지 전
+    /// 추세를 서 있는 사람에게 들려준다(설계 리뷰 I-2). 정지 fix가 앵커만 잡고 소비한다.
+    @Test("정지 중 회복은 앵커만 잡고 침묵한다 — 서 있는 동안 속도 불명 fix도 승계 톤을 내지 않는다")
     func recoveryWhileStopped() {
         var state = anchored(500, trend: .closer)
         state = toneLayerStep(state: state, input: ToneLayerInput(unreliable: true), now: 0).state
-        let (_, tone) = toneLayerStep(
+        var out = toneLayerStep(
             state: state, input: ToneLayerInput(trend: trend(120, motion: .stopped)), now: 3
         )
-        #expect(tone == .tick)
+        #expect(out.tone == nil)
+        #expect(!out.state.needsRebase)
+        #expect(out.state.anchorDistance == 120)
+        out = toneLayerStep(
+            state: out.state, input: ToneLayerInput(trend: trend(118, motion: .speedUnknown)), now: 6
+        )
+        #expect(out.tone == nil)  // 데드밴드 미달 — 승계 톤 없음
+        out = toneLayerStep(state: out.state, input: ToneLayerInput(trend: trend(104)), now: 20)
+        #expect(out.tone == .closer)  // 다시 걸어 새 앵커에서 데드밴드를 넘으면 난다
+    }
+
+    /// 정지 조기 반환이 `wasUnreliable` 해제보다 앞에 오면 정지 중 재진입이 간격(10초)에 묶인다(I-4).
+    @Test("정지 중 회복 뒤 10초 안에 다시 끊겨도 재진입은 즉시 1회다")
+    func reentryWhileStoppedIsImmediate() {
+        var state = anchored(100, trend: .closer)
+        state = toneLayerStep(state: state, input: ToneLayerInput(unreliable: true), now: 0).state
+        state = toneLayerStep(
+            state: state, input: ToneLayerInput(trend: trend(99, motion: .stopped)), now: 2
+        ).state
+        #expect(
+            toneLayerStep(state: state, input: ToneLayerInput(unreliable: true), now: 5).tone
+                == .unreliable
+        )
     }
 
     // MARK: 도착 종단
 
-    @Test("도착 후에는 tick·추세·unreliable을 전부 억제한다")
+    @Test("도착 후에는 추세·unreliable을 전부 억제한다")
     func arrivedSuppresses() {
         let state = anchored(30)
         #expect(

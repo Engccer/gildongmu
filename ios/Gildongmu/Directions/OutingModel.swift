@@ -432,7 +432,7 @@ final class OutingModel {
         // 10m 경계를 넘으면 **한 번만**(spec §6.5 — 한 콜백에 20m가 와도 연타하지 않는다).
         if outingDistanceToneStep(previousMeters: max(previous, lastBeepMeters), currentMeters: distance) > 0 {
             lastBeepMeters = distance
-            playTone(.stroll)
+            playTone(.tick)
         }
     }
 

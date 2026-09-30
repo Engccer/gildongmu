@@ -29,14 +29,13 @@ const SOUNDS = [
   "right-pan",
   "left-pitch",
   "right-pitch",
-  // 나들이 10m 비프(E51, 2026-09-26). iOS가 먼저 쓰고 웹 재생기 등록은 웹 이식 때(아래 대기 목록).
-  "stroll",
 ] as const;
 
-/** 파일은 두었지만 웹 재생기(`useBeaconSound`)에 아직 등록하지 않은 소리 — 웹 기능이 없어서다(나들이는 iOS 1차). */
-const WEB_PLAYER_PENDING = new Set<string>(["stroll"]);
-/** iOS `BeaconTone`의 전용 대기 케이스 — 안드로이드 `:kit` 미러는 나들이 이식 때 옮긴다(`BeaconTonesTest`). */
-const IOS_ONLY_PENDING_TONES = ["stroll"];
+/**
+ * 파일은 두었지만 웹 재생기(`useBeaconSound`)에 등록하지 않은 소리 — 웹에 그 기능이 없어서다.
+ * `tick`은 E55(2026-09-30)부터 나들이 10m 비프이고(안내 세션의 정지 tick은 폐지) 나들이는 iOS 1차다.
+ */
+const WEB_PLAYER_PENDING = new Set<string>(["tick"]);
 
 /** iOS `BeaconTone` 케이스(파일이 아니라 톤 — left·right는 scheme이 파일을 고른다). */
 const TONE_CASES =
@@ -69,10 +68,10 @@ describe("실시간 길 안내 사운드 파일 동조", () => {
       "utf8",
     );
     expect(kit).toContain(`case ${TONE_CASES}`);
-    // enum 본문의 **모든** case 줄 = 공유 목록 + iOS 전용 대기 케이스(나들이 비프). 첫 줄 끝에 덧붙이거나 둘째 줄에
-    // 여러 케이스를 선언해도 여기서 잡힌다.
+    // enum 본문의 **모든** case 줄 = 공유 목록 한 줄. 첫 줄 끝에 덧붙이거나 둘째 줄에 여러 케이스를 선언해도
+    // 여기서 잡힌다(나들이 비프 `stroll`은 E55에서 `tick`으로 합쳐 iOS 전용 케이스가 없다).
     const body = kit.slice(kit.indexOf("public enum BeaconTone"), kit.indexOf("public func resourceName"));
     const all = [...body.matchAll(/^ {4}case ([A-Za-z, ]+)$/gm)].flatMap((m) => m[1].split(",").map((c) => c.trim()));
-    expect(all).toEqual([...TONE_CASES.split(", "), ...IOS_ONLY_PENDING_TONES]);
+    expect(all).toEqual(TONE_CASES.split(", "));
   });
 });
