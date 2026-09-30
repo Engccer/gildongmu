@@ -12,12 +12,18 @@ const ROOT = join(__dirname, "../../..");
 const SETTINGS = readFileSync(join(ROOT, "ios/Gildongmu/SettingsView.swift"), "utf8");
 
 describe("설정의 인라인 피커는 언어가 바뀌면 새로 그려진다(A51)", () => {
-  it("모든 `.pickerStyle(.inline)` 바로 다음 줄이 `.id(AppLanguage.current)`다", () => {
+  it("모든 `.pickerStyle(.inline)` 바로 다음 줄이 이름 붙은 언어 정체성이고 이름이 겹치지 않는다", () => {
     const lines = SETTINGS.split("\n");
     const inline = lines.flatMap((l, i) => (l.trim() === ".pickerStyle(.inline)" ? [i] : []));
     expect(inline.length).toBeGreaterThan(0);
-    for (const i of inline) {
-      expect(lines[i + 1]?.trim(), `SettingsView.swift:${i + 1}`).toBe(".id(AppLanguage.current)");
-    }
+    const names = inline.map((i) => {
+      const m = /^\.id\("([A-Za-z]+)-\\\(AppLanguage\.current\)"\)$/.exec(lines[i + 1]?.trim() ?? "");
+      expect(m, `SettingsView.swift:${i + 2}`).not.toBeNull();
+      return m![1];
+    });
+    // 형제 행에 같은 식별자를 주면 SwiftUI가 행 정체성을 섞을 수 있다 — 피커마다 다른 이름.
+    expect(new Set(names).size).toBe(names.length);
+    // 인라인 피커는 이 표기 하나로만 쓴다(다른 표기면 위 스캔이 놓친다).
+    expect(SETTINGS).not.toMatch(/InlinePickerStyle\(\)/);
   });
 });
