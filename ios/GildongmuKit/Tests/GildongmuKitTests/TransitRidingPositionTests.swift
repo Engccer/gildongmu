@@ -185,3 +185,35 @@ private func makeOutcome(_ o: FixtureOutcome) throws -> TransitPositionOutcome {
     #expect(TransitPositionService.outcome(from: try env(#"{"status":"unsupported"}"#)) == .unsupported)
     #expect(TransitPositionService.outcome(from: try env(#"{"status":"weird"}"#)) == .failed)
 }
+
+/// 유휴 정지(E48 잔여 ⑥): 미관측 구간에서만 래치를 만료시키고 결박·조회 수는 남긴다. 인계 뒤(추적 중)는 그대로 —
+/// 비우면 멈춰 있는 도착 쪽 표식으로 한 역 이상 뒤로 간다.
+@Test func ridingPositionOnIdlePause() throws {
+    let leg = makeLeg(
+        base: FixtureLeg(trackMode: "subway", viaStops: ["천호", "강동", "길동", "굽은다리"], minutes: 10),
+        override: nil)
+    var state = initTransitGuide(route: TransitGuideRoute(legs: [leg], walkAfterMinutes: nil), now: 0)
+    state.phase = .riding
+    state.lock = TransitLock(mode: .subway, routeId: "1005", direction: "하행", vehicleId: "5123")
+    var position = TransitRidingPosition(
+        binding: TransitPositionBinding(legIndex: 0, phaseGen: state.phaseGen, vehicleId: "5123"))
+    position.stopIndex = 2
+    position.lastFoundAt = 1_000
+    position.lookups = 4
+    position.behind = 1
+
+    state.signal = .notYetVisible
+    let expired = try #require(transitRidingPositionOnIdlePause(position, state: state))
+    #expect(expired.stopIndex == nil && expired.lastFoundAt == nil && expired.behind == 0)
+    #expect(expired.lookups == 4 && expired.binding == position.binding)
+    // 만료 뒤에는 시계가 창 안이어도 표식이 없다.
+    #expect(transitPositionShownIndex(state: state, position: expired, now: 1_001) == nil)
+
+    state.signal = .neverSeen
+    #expect(transitRidingPositionOnIdlePause(position, state: state)?.stopIndex == nil)
+
+    state.signal = .tracking
+    #expect(transitRidingPositionOnIdlePause(position, state: state) == position)
+    #expect(transitRidingPositionOnIdlePause(nil, state: state) == nil)
+    #expect(transitRidingPositionOnIdlePause(position, state: nil) == position)
+}

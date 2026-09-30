@@ -171,6 +171,21 @@ public func transitPositionShownIndex(
     return now - at <= transitPositionHoldMs ? index : nil
 }
 
+/// 유휴 정지(`transitIdlePollLimitMs`) 때의 위치 상태(E48 잔여 ⑥). 보존 창은 폴 시계로 판정하는데 유휴 정지가 폴과
+/// 시계를 함께 멈춰, 미관측 구간(창이 표식을 정하는 유일한 구간)의 표식이 재개 전까지 옛 역을 말한다 — 그 구간에서만
+/// 래치를 만료시킨다. 추적 중(인계 뒤)은 도착 쪽 표식도 함께 멈춰 있어 래치를 비우면 표식만 뒤로 간다(설계 리뷰 m1과
+/// 충돌)이라 그대로 둔다. 결박·조회 수는 남긴다(재개가 결박당 조회 상한을 되살리지 않게). 웹에는 유휴 정지가 없어
+/// 미러가 없다(백그라운드 폴이 없고 복귀 즉폴이 시계를 갱신한다).
+public func transitRidingPositionOnIdlePause(
+    _ position: TransitRidingPosition?, state: TransitGuideState?
+) -> TransitRidingPosition? {
+    guard var next = position, let state, isPreTracking(state), next.stopIndex != nil else { return position }
+    next.stopIndex = nil
+    next.lastFoundAt = nil
+    next.behind = 0
+    return next
+}
+
 /// 도착 유래 index와 겨룰 위치 항. 보존 창 안이면 그 값. **인계 뒤**(도착 피드 추적 중)에는 도착 쪽이
 /// 래치를 따라잡을 때까지 창과 무관하게 래치를 둔다(설계 리뷰 m1). 따라잡으면 큰 값이 도착 쪽이다.
 private func positionTerm(
