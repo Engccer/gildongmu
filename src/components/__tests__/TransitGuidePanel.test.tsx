@@ -1201,7 +1201,7 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
     expect(rows[0].textContent).not.toContain("천호 도착");
   });
 
-  it("멈췄다 곧바로 다시 시작해도 옛 세션의 늦은 응답은 새 세션에 커밋되지 않고, 새 세션 조회가 바로 반영된다(A50)", async () => {
+  it("멈췄다 곧바로 다시 시작해도 옛 세션의 늦은 응답은 새 세션에 커밋되지 않고, 새 세션 응답이 순번에 삼켜지지 않는다(A50)", async () => {
     // 옛 세션의 첫 폴을 붙들어 둔 채 멈추고 다시 시작한다 — 두 세션 모두 phaseGen 0에서 출발하므로
     // 세션 결박이 없으면 옛 응답(OLD)이 새 세션 목록으로 커밋되고, 그 순번이 새 세션 응답을 삼킨다.
     let session = 1;
@@ -1243,6 +1243,60 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
     expect(rows).toHaveLength(1);
     expect(rows[0].textContent).toContain("새 세션 열차");
     expect(document.body.textContent).not.toContain("옛 세션 열차");
+  });
+
+  it("멈췄다 다시 시작해도 옛 세션의 늦은 지방버스 정류소 해석은 새 세션 캐시에 쓰이지 않는다(A50)", async () => {
+    // 해석 캐시 키는 leg 번호라 세션 경계를 모른다 — 옛 해석이 새 세션에 적중하면 새 세션은 다시 묻지 않는다.
+    const TAGO_ROUTE: TransitRoute = {
+      summary: { totalMinutes: 20, fare: 1500, transfers: 0, walkMinutes: 3 },
+      routeKey: "p0",
+      legs: [
+        {
+          mode: "bus",
+          lineName: "100",
+          fromName: "시청",
+          toName: "터미널",
+          stationCount: 5,
+          minutes: 15,
+          stops: [
+            { name: "시청", lat: 35.1, lng: 129.0 },
+            { name: "터미널", lat: 35.2, lng: 129.1 },
+          ],
+        },
+      ],
+    };
+    let session = 1;
+    let releaseOld: (() => void) | null = null;
+    const calls: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        calls.push(url);
+        const mine = session;
+        if (url.includes("phase=resolve")) {
+          if (mine === 1) {
+            await new Promise<void>((r) => {
+              releaseOld = r;
+            });
+          }
+          return {
+            ok: true,
+            json: async () => ({ status: "ok", stop: { nodeId: mine === 1 ? "OLDNODE" : "NEWNODE", cityCode: "21" } }),
+          } as Response;
+        }
+        return { ok: true, json: async () => ({ mode: "tagoBus", status: "empty", rawCount: 0 }) } as Response;
+      }),
+    );
+    render(<TransitGuidePanelHost route={TAGO_ROUTE} triggerLabel="시작" walkAccessible={false} />);
+    fireEvent.click(screen.getByRole("button", { name: "시작" }));
+    await waitFor(() => expect(releaseOld).not.toBeNull());
+    fireEvent.click(screen.getByRole("button", { name: "beacon.stop" }));
+    session = 2;
+    fireEvent.click(await screen.findByRole("button", { name: "시작" }));
+    releaseOld!();
+    await waitFor(() => expect(calls.some((u) => u.includes("NEWNODE"))).toBe(true));
+    expect(calls.some((u) => u.includes("OLDNODE"))).toBe(false);
   });
 
   it("탑승 변경 역 선택이 in-flight 폴과 겹쳐도 그 폴이 끝나자마자 새 역을 조회한다(A48)", async () => {
