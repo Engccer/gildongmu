@@ -297,7 +297,7 @@ struct BeaconTrackingSheet: View {
             if tracking { requestInfoLanding(note: "newSession") }
         }
         // 경로 조회가 끝난 순간 기다리던 착지를 푼다(spec §3.3) — 이 커밋이 낸 시작 요약이 끝난 뒤 그때의 첫 정보 행에.
-        // 요약은 `awaitingRoute`를 내리는 defer보다 앞에서 창구에 들어가므로 여기선 이미 모델의 슬롯이나 장부에 있다.
+        // 모델의 전이는 한 동기 구간에서 게시까지 마치고 onChange는 그 뒤에 돈다 — 요약은 이미 모델의 슬롯이나 장부에 있다.
         .onChange(of: model.awaitingRoute) { _, awaiting in
             guard !awaiting, pendingInfoLanding != nil else { return }
             resolvePendingInfoLanding()
@@ -348,7 +348,7 @@ struct BeaconTrackingSheet: View {
             if target.isInfoRow {
                 requestInfoLanding(note: "deferred")
             } else {
-                landFocus(target, note: "deferred")
+                landAfterSpeech(target, note: "deferred")
             }
         }
         // 최소화는 콘텐츠 뷰 파괴다 — `@State` 핸들은 사라져도 Task는 돈다. 끊는다(대중교통 M2 동형).
@@ -634,8 +634,9 @@ struct BeaconTrackingSheet: View {
     private static let systemPlacementWindow: TimeInterval = 2.5
     /// 경로 조회를 기다리는 상한. 위치 대기(`noFixTimeout` 15초) + 조회 왕복. 넘기면 착지하지 않는다.
     private static let routeWaitLimit: Duration = .seconds(20)
-    /// 안내 통지가 끝나기를 기다리는 상한(ms, 대기 시작부터). 첫 안내를 담은 긴 요약도 이 안에 끝난다. 통지가 이어져
-    /// 조용해지지 않는 경우의 안전망이다(끝 신호가 오지 않는 통지는 장부 만료가 따로 거른다).
+    /// 안내 통지가 끝나기를 기다리는 상한(ms, 대기 시작부터). 첫 안내를 담은 긴 요약도 이 안에 끝난다. 통지가 이어지거나 끝 신호가
+    /// 짝지어지지 않는 경우의 안전망이다. ⚠ 장부 만료(`GuideAnnouncementLedger.expirySeconds`)보다 짧아야 짝 실패가 `cap open=1`로
+    /// 드러난다(접근성 감사 M1).
     private static let speechWaitLimitMs = 12_000
 
     /// 경로 조회·통지 발화를 기다리는 첫 정보 행 착지(spec §3.3).
@@ -689,7 +690,6 @@ struct BeaconTrackingSheet: View {
         guard let pending = pendingInfoLanding else { return }
         pendingTimeoutTask?.cancel()
         announcementWaitTask?.cancel()
-        let driverChannel = model.sessionKind == .car && model.listener == .driver
         let waitsSpeech = UIAccessibility.isVoiceOverRunning && !driverChannel
         announcementWaitTask = Task { @MainActor in
             var waited = 0
@@ -713,6 +713,26 @@ struct BeaconTrackingSheet: View {
                 return
             }
             landFirstInfoRow(note: current.note, waitedMs: waitedMs, speechWait: speechWait)
+        }
+    }
+
+    /// 운전자 채널은 기기 음성이라 장부에 적히지 않는다 — 기다리지 않는다.
+    private var driverChannel: Bool { model.sessionKind == .car && model.listener == .driver }
+
+    /// 첫 정보 행이 아닌 이월 착지(도착·걸음 요약) — 복귀 상환 통지가 끝난 뒤 앉는다(접근성 감사 M3: 상환이 `.high`라 400ms 뒤
+    /// 착지 낭독이 그 도착 문장을 끊거나 겹친다). 대상이 정해진 착지라 사용자 이동 판정·행 재선택은 없다.
+    private func landAfterSpeech(_ target: SheetFocus, note: String) {
+        focusTask?.cancel()
+        let waitsSpeech = UIAccessibility.isVoiceOverRunning && !driverChannel
+        focusTask = Task { @MainActor in
+            var waited = 0
+            while waitsSpeech, !model.announcementsSettled, waited < Self.speechWaitLimitMs {
+                try? await Task.sleep(for: .milliseconds(100))
+                guard !Task.isCancelled else { return }
+                waited += 100
+            }
+            guard !Task.isCancelled else { return }
+            landFocus(target, note: note, waitedMs: waited)
         }
     }
 

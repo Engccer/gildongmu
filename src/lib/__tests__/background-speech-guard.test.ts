@@ -48,6 +48,19 @@ function functionBody(source: string, name: string): string {
 
 const read = (path: string) => readFileSync(path, "utf8");
 
+/** `marker` 뒤 첫 `{`부터 짝이 맞는 `}`까지 — 문자 수 창과 달리 클로저 밖으로 옮긴 호출을 통과시키지 않는다(코드 품질 리뷰 m3). */
+function closureAfter(source: string, marker: string): string {
+  const at = source.indexOf(marker);
+  if (at < 0) throw new Error(`${marker}를 찾지 못했다`);
+  const open = source.indexOf("{", at + marker.length - 1);
+  let depth = 0;
+  for (let i = open; i < source.length; i++) {
+    if (source[i] === "{") depth++;
+    if (source[i] === "}" && --depth === 0) return source.slice(open, i + 1);
+  }
+  throw new Error(`${marker}의 클로저 끝을 찾지 못했다`);
+}
+
 describe("백그라운드 음성 안내 배선 (E53)", () => {
   it("안내 기기 음성 호출은 공유 출력 1곳 + 운전자 채널 1곳뿐이다", () => {
     const calls: string[] = [];
@@ -133,7 +146,7 @@ describe("백그라운드 음성 안내 배선 (E53)", () => {
     expect(beacon).toContain("let tail = !repaying ||");
     expect(beacon).toContain("handed.texts.contains(spokenUnits(current))");
     // 합본이 억제로 버려지면 인계받은 문장의 장부도 되돌린다(횡단 리뷰 F6).
-    expect(beacon).toMatch(/announce\(owed, highPriority: true, speechClass: \.actionable\) \{ \[weak self\] in[\s\S]{0,160}handed\.undelivered\(\)/);
+    expect(closureAfter(beacon, "announce(owed, highPriority: true, speechClass: .actionable) {")).toContain("handed.undelivered()");
     const transit = functionBody(read(join(DIR, "TransitGuideModel.swift")), "handleScenePhaseChange");
     // 대중교통은 되돌리지 않는다(`.texts`만): 억제 버림은 `droppedWhileSuppressed`가 해제 때 합본째 다시 낸다(F6 기각).
     expect(transit.indexOf("handed = deviceSpeech.handOver().texts")).toBeGreaterThanOrEqual(0);
@@ -158,6 +171,11 @@ describe("백그라운드 음성 안내 배선 (E53)", () => {
     // stop()이 prewalkTarget을 지우므로 그 앞에서 캡처한다.
     expect(fail.indexOf("let prewalk = prewalkTarget != nil")).toBeLessThan(fail.indexOf("stopLeavingSummary("));
     expect(fail).toContain('trailingKey: prewalk ? "transitGuide.prewalkCancelled" : nil');
+    // 버려지면 복귀 상환이 `statusText` 꼬리로 갚으므로 `statusText`도 결합 문장이어야 한다(spec 준수 리뷰 m3).
+    expect(functionBody(beacon, "fail")).toContain("statusText = joinText(appLocalized(key), trailingKey.map { appLocalized($0) })");
+    // 종료 화면이 남지 않으면(시트가 닫혀 커서가 옮겨 간다) 실패 통지는 `.high`(접근성 감사 L4).
+    expect(fail).toContain("let leftEndScreen = stopLeavingSummary(");
+    expect(fail).toContain("highPriority: !leftEndScreen");
     const coordinator = read(join(DIR, "GuideSessionCoordinator.swift"));
     const ended = coordinator.slice(coordinator.indexOf("        case .ended:"), coordinator.indexOf("    /// 낡은 연결 폐기"));
     expect(ended).not.toContain("announceExternal");
@@ -165,13 +183,19 @@ describe("백그라운드 음성 안내 배선 (E53)", () => {
 
   it("칸 밖의 정지(받아쓰기·채팅)가 안내 발화를 끊으면 대기 칸에 알린다 — 칸 자신의 정지는 알리지 않는다(횡단 리뷰 F4)", () => {
     const tts = read(join(ROOT, "ios/Gildongmu/Chat/TtsPlayer.swift"));
-    expect(functionBody(tts, "stop")).toMatch(/let interrupted = isSpeakingGuidance \? generation : nil\s*halt\(\)\s*if let interrupted \{ guidanceInterruptionObservers\.forEach/);
-    expect(functionBody(tts, "speakGuidance")).toContain("halt()");
-    expect(functionBody(tts, "speakGuidance")).not.toMatch(/\bstop\(\)/);
+    // 끊을 때 알릴 토큰은 "합성기에 남았는가"(일시정지 포함, 코드 품질 리뷰 M1). 다른 칸의 발화를 끊는 `speakGuidance`도 알리고
+    // (m1), 인계의 `stopGuidance`만 알리지 않는다.
+    expect(functionBody(tts, "stop")).toMatch(/let interrupted = guidanceInSynth \? generation : nil\s*halt\(\)\s*notifyInterrupted\(interrupted\)/);
+    expect(functionBody(tts, "speakGuidance")).toMatch(/let interrupted = guidanceInSynth \? generation : nil\s*halt\(\)[^\n]*\n\s*notifyInterrupted\(interrupted\)/);
     expect(functionBody(tts, "stopGuidance")).toContain("halt()");
+    expect(functionBody(tts, "stopGuidance")).not.toContain("notifyInterrupted");
+    expect(tts).toContain("func isSpeakingGuidance(token: Int) -> Bool { guidanceInSynth && generation == token }");
+    // 오디오 인터럽션이 시작되면 안내 발화를 끊고 알린다(접근성 감사 M2 — 일시정지로 남은 문장은 들리지 않았다).
+    expect(tts).toMatch(/AVAudioSession\.interruptionNotification[\s\S]{0,400}== \.began[\s\S]{0,200}if player\.guidanceInSynth \{ player\.stop\(\) \}/);
     // 일시정지로 남은 발화는 말하는 중이 아니다 — 세면 대기 칸이 선점 문장까지 막힌다(횡단 리뷰 F5, 시간 상한은 정상 긴 문장을
     // 끊어 설계 리뷰 MAJOR 3로 폐기).
-    expect(tts).toContain("var isSpeakingGuidance: Bool { synthesizer.isSpeaking && !synthesizer.isPaused && playingMessageID == nil }");
+    expect(tts).toContain("var isSpeakingGuidance: Bool { guidanceInSynth && !synthesizer.isPaused }");
+    expect(tts).toContain("private var guidanceInSynth: Bool { synthesizer.isSpeaking && playingMessageID == nil }");
     const output = read(join(DIR, "GuideSpeechOutput.swift"));
     expect(output).toContain("TtsPlayer.shared.observeGuidanceInterruption { [weak queue] token in queue?.speechInterrupted(token: token) }");
   });

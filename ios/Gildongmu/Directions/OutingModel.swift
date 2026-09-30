@@ -921,8 +921,10 @@ final class OutingModel {
 
     /// 종료 문장 — 전하지 못하면(백그라운드 버림·대기 칸에서 사라짐) 장부에 남겨 복귀 때 갚는다(설계 리뷰 M6).
     private func sayEnd(_ text: String, speechClass: GuideSpeechClass) {
+        // 장부 시각은 종료 시각이다 — 되돌릴 때의 시각이면 30분 만료(맥락 밖 낭독 가드)가 되돌림마다 미뤄진다(코드 품질 리뷰 n1).
+        let endedAt = ContinuousClock.now
         say(text, highPriority: true, speechClass: speechClass) { [weak self] in
-            self?.owedEndReason = (text, .now)
+            self?.owedEndReason = (text, endedAt)
         }
     }
 

@@ -10,11 +10,13 @@ import Foundation
 ///
 /// 끝 신호가 오지 않는 통지(VoiceOver가 조용히 버린 것)는 `expirySeconds` 뒤 만료한다 — 대기가 영영 끝나지 않는 경로를
 /// 만들지 않는다. 앱 타깃엔 테스트 레인이 없어 Kit에 둔다(`DeferredAnnouncer` 선례).
-public struct GuideAnnouncementLedger: Sendable, Equatable {
-    /// 게시 뒤 끝 신호를 기다리는 상한(초). 첫 안내를 담은 긴 시작 요약도 이 안에 끝난다(종전 착지 대기 상한과 같은 값).
-    public static let expirySeconds = 12.0
+public struct GuideAnnouncementLedger {
+    /// 게시 뒤 끝 신호를 기다리는 상한(초). ⚠ 착지 대기 상한(12초)보다 **길어야** 한다: 같거나 짧으면 대기 전에 게시된 통지(시작
+    /// 요약·복귀 상환)가 상한보다 먼저 만료되어, 끝 신호가 짝지어지지 않아도 착지 로그가 `settled`로 찍히고 판정이 거짓 통과한다
+    /// (접근성 감사 M1). 길면 짝 실패가 `cap open=1`로 드러난다.
+    public static let expirySeconds = 15.0
 
-    private struct Entry: Sendable, Equatable {
+    private struct Entry {
         let text: String
         let at: Double
     }

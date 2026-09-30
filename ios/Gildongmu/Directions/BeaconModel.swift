@@ -1271,12 +1271,13 @@ final class BeaconModel {
     }
 
     private func fail(
-        with status: Status, key: String, resolution: FailResolution = .none, trailingKey: String? = nil
+        with status: Status, key: String, resolution: FailResolution = .none, trailingKey: String? = nil,
+        highPriority: Bool = false
     ) {
         self.status = status
         failResolution = resolution
         statusText = joinText(appLocalized(key), trailingKey.map { appLocalized($0) })
-        announce(statusText, speechClass: .actionable)
+        announce(statusText, highPriority: highPriority, speechClass: .actionable)
     }
 
     /// 중지. 어느 경로로 불려도 idle timer가 반드시 풀리도록 먼저 해제한다
@@ -3144,9 +3145,11 @@ final class BeaconModel {
     /// 앞)이 `statusText` 꼬리로 갚는다.
     private func stopAndFail(with status: Status, key: String, resolution: FailResolution = .none) {
         let prewalk = prewalkTarget != nil  // stop() 앞 캡처(A25 §4.2)
-        stopLeavingSummary(playStopTone: false, text: appLocalized(key))
+        let leftEndScreen = stopLeavingSummary(playStopTone: false, text: appLocalized(key))
+        // 종료 화면이 남지 않으면 시트가 닫히며 VoiceOver가 아래 화면으로 커서를 옮기고 그 라벨을 읽는다 — 실패 사유는 착지
+        // 라벨로 대체될 수 없어 `.high`(CLAUDE.md 통지 우선순위 판별선, 접근성 감사 L4). 종료 화면이 남으면 착지가 사유를 읽는다.
         fail(with: status, key: key, resolution: resolution,
-             trailingKey: prewalk ? "transitGuide.prewalkCancelled" : nil)
+             trailingKey: prewalk ? "transitGuide.prewalkCancelled" : nil, highPriority: !leftEndScreen)
     }
 
     // MARK: - 무-fix 감시

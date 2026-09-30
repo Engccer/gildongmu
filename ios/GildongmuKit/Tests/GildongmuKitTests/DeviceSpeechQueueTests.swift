@@ -13,6 +13,8 @@ struct DeviceSpeechQueueTests {
     @MainActor
     final class SharedSynth {
         var speaking = false
+        /// 인터럽션 뒤 일시정지로 남은 발화 — "말하는 중"(칸을 막는가)은 아니지만 토큰의 문장은 아직 합성기에 있다.
+        var paused = false
         private(set) var token = 0
         private(set) var spoken: [String] = []
         private(set) var stops = 0
@@ -20,6 +22,7 @@ struct DeviceSpeechQueueTests {
         func speak(_ text: String) -> Int {
             token += 1
             speaking = true
+            paused = false
             spoken.append(text)
             return token
         }
@@ -27,10 +30,11 @@ struct DeviceSpeechQueueTests {
         func stop() {
             token += 1
             speaking = false
+            paused = false
             stops += 1
         }
 
-        func isSpeaking(token t: Int) -> Bool { speaking && t == token }
+        func isSpeaking(token t: Int) -> Bool { (speaking || paused) && t == token }
     }
 
     @MainActor
@@ -418,5 +422,30 @@ struct DeviceSpeechQueueTests {
         outing.queue.speechInterrupted(token: token)
         #expect(outing.drops.map(\.0) == ["횡단보도 예고"])
         #expect(outing.drops.map(\.1) == [.undelivered])
+    }
+
+    // 일시정지로 남은 이 칸의 문장은 칸을 막지 않지만(즉시 발화), 끊기는 순간 버림을 통지한다 — 말하는 중이 아니라는 이유로
+    // 건너뛰면 인터럽션에 멈춘 1회성 경고가 갚아지지 않는다(코드 품질 리뷰 M1).
+    @Test func pausedOwnSpeechIsReportedWhenReplaced() async {
+        let h = Harness()
+        h.submit("계단 경고")
+        h.synth.speaking = false
+        h.synth.paused = true
+        h.submit("다음 예고")
+        #expect(h.synth.spoken == ["계단 경고", "다음 예고"])
+        #expect(h.drops.map(\.0) == ["계단 경고"])
+        #expect(h.drops.map(\.1) == [.superseded])
+        #expect(!h.queue.hasPending)
+    }
+
+    // 복귀 인계는 일시정지로 남은 이 칸의 문장도 끊고 처음부터 넘긴다(들리지 않은 문장이다).
+    @Test func handOverTakesPausedOwnSpeech() async {
+        let h = Harness()
+        h.submit("횡단보도 예고")
+        h.synth.speaking = false
+        h.synth.paused = true
+        h.channel = .voiceOver
+        #expect(h.queue.handOver().texts == ["횡단보도 예고"])
+        #expect(h.synth.stops == 1)
     }
 }

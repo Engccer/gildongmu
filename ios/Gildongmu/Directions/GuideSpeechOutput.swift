@@ -77,7 +77,10 @@ enum GuideSpeechOutput {
                 let before = ledger.openCount(at: now)
                 if let text { ledger.finished(text, at: now) }
                 guard before > 0 else { return }  // 안내 통지가 없을 때의 다른 화면 통지는 남기지 않는다
-                guideDiagLog("announceFinish type=\(valueType) matched=\(ledger.openCount(at: now) < before) open=\(ledger.openCount(at: now))")
+                // 문장 앞부분: `matched=false`가 짝 실패인지 다른 화면 통지의 끝인지 가른다(spec 준수 리뷰 m6).
+                guideDiagLog(
+                    "announceFinish type=\(valueType) matched=\(ledger.openCount(at: now) < before) "
+                        + "open=\(ledger.openCount(at: now)) text=\((text ?? "").prefix(20))")
             }
         }
     }

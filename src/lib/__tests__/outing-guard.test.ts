@@ -130,7 +130,8 @@ describe("나들이 문장 창구", () => {
     expect(idle).toContain("sayEnd(text, speechClass: .actionable)");
     expect(model.match(/speechClass: \.deferrable/g)?.length).toBe(1);  // 전경 전용 약신호뿐
     // 종료 문장은 전하지 못하면 장부에 남아 복귀 때 갚는다 — 종료 화면 존재와 무관(설계 리뷰 M6).
-    expect(functionBody(model, "sayEnd")).toContain("owedEndReason = (text, .now)");
+    // 장부 시각은 종료 시각이다 — 되돌릴 때의 시각이면 30분 만료가 되돌림마다 미뤄진다(E53 후속 코드 품질 리뷰 n1).
+    expect(functionBody(model, "sayEnd")).toMatch(/let endedAt = ContinuousClock\.now[\s\S]*owedEndReason = \(text, endedAt\)/);
     const scene = functionBody(model, "handleScenePhaseChange");
     expect(scene).toContain("if let end = owedEndReason {");
     expect(scene).toContain("isEndScreenStale(secondsSinceEnd: seconds)");

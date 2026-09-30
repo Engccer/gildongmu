@@ -67,7 +67,7 @@
     {
       "swift": "DeviceSpeechQueue.swift",
       "status": "pending",
-      "note": "E53 백그라운드 음성 안내의 기기 음성 대기 한 칸(spec 2026-09-30-background-speech-design.md §4.2, 나들이 speakDevice에서 올림). 안드로이드 안내 화면에 백그라운드 음성을 들일 때(PORTS) 이식한다. 2026-09-30 횡단 리뷰 후속: handOver가 DeviceSpeechHandover(문장+되돌림)를 돌려주고, 외부 정지 speechInterrupted(token:)·말하기 대기 상한 speakingWaitCapSeconds를 더했다"
+      "note": "E53 백그라운드 음성 안내의 기기 음성 대기 한 칸(spec 2026-09-30-background-speech-design.md §4.2, 나들이 speakDevice에서 올림). 안드로이드 안내 화면에 백그라운드 음성을 들일 때(PORTS) 이식한다. 2026-09-30 횡단 리뷰 후속: handOver가 DeviceSpeechHandover(문장+되돌림)를 돌려주고, 외부 정지 speechInterrupted(token:)를 더했다. 일시정지로 남은 발화는 말하는 중이 아니지만(앱 TtsPlayer.isSpeakingGuidance) 토큰 판정 isSpeakingToken은 일시정지를 포함한다(시간 상한은 기각)"
     },
     {
       "swift": "GuideAnnouncementLedger.swift",

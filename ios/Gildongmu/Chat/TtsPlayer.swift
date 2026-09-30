@@ -19,7 +19,22 @@ final class TtsPlayer {
 
     private init() {
         synthesizer.delegate = playbackDelegate
+        // 오디오 인터럽션(전화 등)이 시작되면 안내 발화를 끊고 대기 칸에 알린다(E53 횡단 리뷰 F5, 접근성 감사 M2). 합성기가
+        // 일시정지로 남겨 두면 그 문장은 들리지 않았는데 "전달됨"으로 셈되고(갚지 않는다), 인터럽션 뒤 이어 재생되면 지난
+        // 모퉁이의 명령이 뒤늦게 들린다. 끊으면 칸이 `undelivered`로 장부·상환 표식을 되살린다(칸 밖의 정지와 같은 경로).
+        interruptionObserver = NotificationCenter.default.addObserver(
+            forName: AVAudioSession.interruptionNotification, object: nil, queue: .main
+        ) { note in
+            let raw = note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt
+            guard raw.flatMap(AVAudioSession.InterruptionType.init(rawValue:)) == .began else { return }
+            MainActor.assumeIsolated {
+                let player = TtsPlayer.shared
+                if player.guidanceInSynth { player.stop() }
+            }
+        }
     }
+
+    @ObservationIgnored private var interruptionObserver: NSObjectProtocol?
 
     /// 현재 재생(네트워크 로딩 포함) 중인 메시지 id. 듣기 버튼 라벨 전환에 쓴다.
     private(set) var playingMessageID: UUID?
@@ -63,7 +78,11 @@ final class TtsPlayer {
     /// 이 발화인가"를 가른다 — 안내 기기 음성 대기 칸의 복귀 인계가 다른 모델의 발화를 끊지 않게 한다(E53 리뷰 M-1).
     @discardableResult
     func speakGuidance(_ text: String) -> Int {
-        halt()  // 세대 증가 포함 — 직전 재생의 늦은 콜백을 무효화한다. 끊긴 안내는 대기 칸이 이미 안다(선점)
+        // 끊는 안내가 있으면 알린다 — 다른 칸(다른 모델)의 발화를 끊는 경우다(코드 품질 리뷰 m1). 같은 칸의 선점은 칸이
+        // `lastSpoken`을 먼저 비우고 `superseded`로 처리하므로 여기서 짝이 없다.
+        let interrupted = guidanceInSynth ? generation : nil
+        halt()  // 세대 증가 포함 — 직전 재생의 늦은 콜백을 무효화한다
+        notifyInterrupted(interrupted)
         let token = generation
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return token }
@@ -78,31 +97,40 @@ final class TtsPlayer {
     /// 채팅 듣기(`playMessage` — `playingMessageID`가 선다)는 세지 않는다: 안내는 채팅을 기다리지 않고 끊는다(E53 설계
     /// 리뷰 M3, 운전자 채널과 같은 우선순위). 일시정지로 남은 발화(전화 등 오디오 인터럽션 뒤)도 세지 않는다 — `isSpeaking`은
     /// 일시정지 중에도 참이라, 세면 대기 칸이 선점 문장이 올 때까지 막히고 세션 종료 원복도 발화 대기 상한까지 붙들린다(E53
-    /// 횡단 리뷰 F5). 다음 안내 발화가 그 일시정지 발화를 끊고 말한다.
-    var isSpeakingGuidance: Bool { synthesizer.isSpeaking && !synthesizer.isPaused && playingMessageID == nil }
+    /// 횡단 리뷰 F5). "내 문장이 아직 합성기에 있는가"는 다른 술어다(`isSpeakingGuidance(token:)` — 일시정지 포함, 코드 품질 리뷰 M1).
+    var isSpeakingGuidance: Bool { guidanceInSynth && !synthesizer.isPaused }
 
-    /// 그 발화 토큰(`speakGuidance`의 반환)의 안내가 아직 말하는 중인가. 그 뒤 다른 재생·정지가 있었으면 거짓이다.
-    func isSpeakingGuidance(token: Int) -> Bool { isSpeakingGuidance && generation == token }
+    /// 안내 발화가 합성기에 남아 있는가(말하는 중이든 일시정지든) — 끊을 때 알릴 토큰과 인계·선점의 "이 칸의 문장인가" 판정.
+    private var guidanceInSynth: Bool { synthesizer.isSpeaking && playingMessageID == nil }
 
-    /// 안내 발화만 끊는다(전경 복귀 인계·굳은 발화 — 대기 칸 자신의 정지). 채팅 듣기는 건드리지 않는다.
+    /// 그 발화 토큰(`speakGuidance`의 반환)의 안내가 아직 합성기에 있는가(말하는 중이든 일시정지든). 그 뒤 다른 재생·정지가
+    /// 있었으면 거짓이다. 일시정지를 빼면 끊긴 이 칸의 문장에 버림을 통지하지 못한다(코드 품질 리뷰 M1).
+    func isSpeakingGuidance(token: Int) -> Bool { guidanceInSynth && generation == token }
+
+    /// 안내 발화만 끊는다(전경 복귀 인계 — 대기 칸 자신의 정지라 알리지 않는다). 채팅 듣기는 건드리지 않는다.
     func stopGuidance() {
-        guard isSpeakingGuidance else { return }
+        guard guidanceInSynth else { return }
         halt()
     }
 
-    /// 안내 발화를 대기 칸 **밖**의 정지(받아쓰기 시작·채팅 화면 이탈·채팅 듣기 시작)가 끊었을 때 부르는 관찰자 — 인자는 끊긴
-    /// 발화 토큰(E53 횡단 리뷰 F4). 끊긴 문장이 1회성 경고면 그 칸이 버림을 통지해 장부가 되살아난다.
+    /// 안내 발화를 그 칸 **밖**의 정지(받아쓰기 시작·채팅 화면 이탈·채팅 듣기 시작·오디오 인터럽션·다른 칸의 발화)가 끊었을 때
+    /// 부르는 관찰자 — 인자는 끊긴 발화 토큰(E53 횡단 리뷰 F4). 끊긴 문장이 1회성 경고면 그 칸이 버림을 통지해 장부가 되살아난다.
     @ObservationIgnored private var guidanceInterruptionObservers: [(Int) -> Void] = []
 
     func observeGuidanceInterruption(_ observer: @escaping (Int) -> Void) {
         guidanceInterruptionObservers.append(observer)
     }
 
-    /// 모든 재생 정지. 안내 발화를 끊었으면 관찰자에게 알린다(칸 자신의 정지는 `halt`·`stopGuidance`를 쓴다).
+    /// 모든 재생 정지. 안내 발화를 끊었으면 관찰자에게 알린다(인계의 정지는 알리지 않는 `stopGuidance`를 쓴다).
     func stop() {
-        let interrupted = isSpeakingGuidance ? generation : nil
+        let interrupted = guidanceInSynth ? generation : nil
         halt()
-        if let interrupted { guidanceInterruptionObservers.forEach { $0(interrupted) } }
+        notifyInterrupted(interrupted)
+    }
+
+    private func notifyInterrupted(_ token: Int?) {
+        guard let token else { return }
+        guidanceInterruptionObservers.forEach { $0(token) }
     }
 
     private func halt() {

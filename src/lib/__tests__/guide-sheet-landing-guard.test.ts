@@ -83,7 +83,8 @@ describe("BeaconTrackingSheet 착지 (E57)", () => {
     expect(resolve).toContain("while waitsSpeech, !model.announcementsSettled {");
     expect(resolve).toContain("Self.speechWaitLimitMs");
     expect(resolve).toContain('speechWait = "cap open=\\(GuideSpeechOutput.openAnnouncements)"');
-    expect(resolve).toContain("model.sessionKind == .car && model.listener == .driver");
+    expect(resolve).toContain("let waitsSpeech = UIAccessibility.isVoiceOverRunning && !driverChannel");
+    expect(BEACON).toContain("private var driverChannel: Bool { model.sessionKind == .car && model.listener == .driver }");
     // 시트가 통지 끝 신호를 직접 들으면 앱의 아무 통지 끝이나 조건을 채운다(횡단 리뷰 F2). 전이별 통지 짐작 인자도 없다.
     expect(BEACON).not.toMatch(/announcementDidFinishNotification|summarySince|expectsSummary|lastCompletedAt/);
     // 판정은 모델: 톤 뒤로 미룬 문장 없음 ∧ 게시한 VoiceOver 통지가 끝남(장부).
@@ -97,8 +98,17 @@ describe("BeaconTrackingSheet 착지 (E57)", () => {
     // 끝 신호의 문장 형은 실측이 없다 — 두 형을 다 받는다(설계 리뷰 MAJOR 2: 어긋나면 모든 착지가 상한까지 기다린다).
     expect(OUTPUT).toContain("let text = (value as? String) ?? (value as? NSAttributedString)?.string");
     expect(OUTPUT).not.toContain("announcementWasSuccessfulUserInfoKey");
-    // 세 안내 모델의 VoiceOver 게시는 이 창구를 지난다(직접 게시가 생기면 장부가 모른다).
-    for (const f of ["BeaconModel.swift", "TransitGuideModel.swift", "OutingModel.swift"]) {
+    // 장부 만료는 착지 대기 상한보다 길어야 짝 실패가 `cap open=1`로 드러난다(접근성 감사 M1 — 같으면 거짓 `settled`).
+    const ledger = readFileSync(join(ROOT, "ios/GildongmuKit/Sources/GildongmuKit/GuideAnnouncementLedger.swift"), "utf8");
+    const expiry = Number(ledger.match(/public static let expirySeconds = ([\d.]+)/)?.[1]);
+    const limitMs = Number(BEACON.match(/private static let speechWaitLimitMs = ([\d_]+)/)?.[1].replace(/_/g, ""));
+    expect(expiry * 1000).toBeGreaterThan(limitMs);
+    // 안내 문장을 내는 자리(세 모델·코디네이터·안내 시트)의 VoiceOver 게시는 이 창구를 지난다(직접 게시가 생기면 장부가 모른다,
+    // spec 준수 리뷰 m3·코드 품질 리뷰 n4).
+    for (const f of [
+      "BeaconModel.swift", "TransitGuideModel.swift", "OutingModel.swift", "GuideSessionCoordinator.swift",
+      "BeaconTrackingSheet.swift", "TransitTrackingSheet.swift", "OutingSheet.swift", "GuideOverviewSheet.swift",
+    ]) {
       const src = readFileSync(join(DIR, f), "utf8");
       expect(src, f).not.toMatch(/AccessibilityNotification\.Announcement|UIAccessibility\.post\(notification: \.announcement/);
     }
@@ -143,6 +153,9 @@ describe("BeaconTrackingSheet 착지 (E57)", () => {
     // 시트의 scenePhase `.active`가 아니라 모델 신호에서 — 순서가 보장되지 않아 상환 게시 전에 착지할 수 있다.
     expect(BEACON).toMatch(/\.onChange\(of: model\.foregroundReturnSeq\) \{\s*guard let target = deferredLanding else \{ return \}[\s\S]{0,300}requestInfoLanding\(note: "deferred"\)/);
     expect(BEACON).not.toMatch(/case \.active:/);
+    // 이월된 도착·걸음 요약 착지도 복귀 상환(.high)이 끝난 뒤에(접근성 감사 M3).
+    expect(BEACON).toMatch(/requestInfoLanding\(note: "deferred"\)\s*\} else \{\s*landAfterSpeech\(target, note: "deferred"\)/);
+    expect(body(BEACON, "private func landAfterSpeech(")).toContain("!model.announcementsSettled");
     // 모델은 복귀 분기의 끝(조기 반환 포함)에서 신호를 올린다.
     expect(MODEL).toMatch(/case \.active:\s*\/\/[^\n]*\n\s*defer \{ foregroundReturnSeq \+= 1 \}/);
     expect(BEACON).toMatch(/\.onDisappear \{\s*focusTask\?\.cancel\(\)\s*pendingTimeoutTask\?\.cancel\(\)\s*announcementWaitTask\?\.cancel\(\)/);

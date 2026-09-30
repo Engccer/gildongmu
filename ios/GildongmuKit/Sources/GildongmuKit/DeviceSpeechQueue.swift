@@ -52,13 +52,14 @@ public final class DeviceSpeechHandover {
 ///    한 통지로 낸다 — 통지 둘을 잇달아 내면 뒤의 것이 앞의 것을 자른다, 리뷰 M-2·접근성 MAJOR 1). 넘기는 것은 채널이
 ///    VoiceOver로 바뀐 문장뿐이다: 지금 말하는 문장은 **이 칸이 낸 발화일 때만**(발화 토큰 대조 — 다른 모델의 발화를
 ///    끊지 않는다, 리뷰 M-1) 끊고 넘긴다. 채널이 그대로 기기 음성이면(VoiceOver 꺼진 나들이) 끊지도 다시 내지도 않는다.
-/// 7. 칸 밖의 정지(받아쓰기 시작·채팅 화면 이탈·채팅 듣기 — `TtsPlayer.stop()`)가 이 칸의 발화를 끊으면 그 문장에
-///    `undelivered`를 통지한다(`speechInterrupted(token:)`, 통합본 횡단 리뷰 F4). 칸 자신의 정지(선점·인계)는 알리지 않는다.
+/// 7. 칸 밖의 정지(받아쓰기 시작·채팅 화면 이탈·채팅 듣기·오디오 인터럽션·다른 칸의 발화)가 이 칸의 발화를 끊으면 그
+///    문장에 `undelivered`를 통지한다(`speechInterrupted(token:)`, 통합본 횡단 리뷰 F4). 칸 자신의 선점은 먼저 `lastSpoken`을
+///    비우고 `superseded`로, 인계는 넘긴 목록으로 처리한다.
 /// 버림 통지(`onDropped`)는 문장마다 **최대 한 번**이고 부르는 주체는 이 칸이다(인계한 문장은 `DeviceSpeechHandover`가).
 ///
 /// `isSpeaking`은 **안내** 발화만 본다 — 채팅 듣기는 안내를 막지 않는다(설계 리뷰 M3, 안내가 채팅을 끊는다. 운전자 채널과 같다).
 /// 일시정지로 남은 발화(인터럽션 뒤)는 말하는 중이 아니다(앱 `TtsPlayer.isSpeakingGuidance`, 횡단 리뷰 F5) — 그러지 않으면 칸이
-/// 선점 문장이 올 때까지 영영 막힌다.
+/// 선점 문장이 올 때까지 영영 막힌다. 반면 `isSpeakingToken`은 일시정지를 포함한다(그 문장이 아직 합성기에 있는가).
 ///
 /// `DeferredAnnouncer`처럼 Kit에 두는 이유: 위험 부위가 순수 함수가 아니라 이 수명 계약이고, 시계·sleeper를 주입해야
 /// 테스트가 열린다(앱 타깃엔 테스트 레인이 없다).
@@ -102,7 +103,7 @@ public final class DeviceSpeechQueue {
     private var generation = 0
 
     /// - `isSpeaking`: 어느 안내든 기기 음성이 말하는 중인가(`TtsPlayer.isSpeakingGuidance`, 채팅 듣기 제외).
-    /// - `isSpeakingToken`: 그 발화 토큰의 문장이 아직 말하는 중인가(다른 발화가 끊었으면 거짓).
+    /// - `isSpeakingToken`: 그 발화 토큰의 문장이 아직 합성기에 있는가(말하는 중이든 일시정지든, 다른 발화가 끊었으면 거짓).
     /// - `voiceOverRunning`: VoiceOver가 켜져 있는가 — 꺼져 있으면 복귀 인계가 기기 음성을 끊지 않는다(들을 채널이 없다).
     /// - `isSuppressed`: 받아쓰기 억제 중인가 — 꺼내는·넘기는 순간 참이면 버린다(녹음 중 발화 0, 헌장 §6).
     /// - `toneEndsAt`: 그 모델 재생기의 톤 종료 시각 — 꺼내기 전 톤 뒤 발화(`speechDeferStep`)를 지킨다.
@@ -154,7 +155,9 @@ public final class DeviceSpeechQueue {
         let speakingNow = isSpeaking()
         if item.preempts || !speakingNow {
             clearPending(.superseded)
-            if speakingNow, let current = lastSpoken, isSpeakingToken(current.token) {
+            // 끊길 이 칸의 문장 — 말하는 중이든 일시정지로 남았든(`isSpeakingToken`은 일시정지 포함). `speakingNow`로 거르면
+            // 일시정지된 1회성 경고가 버림 통지 없이 사라진다(코드 품질 리뷰 M1).
+            if let current = lastSpoken, isSpeakingToken(current.token) {
                 lastSpoken = nil
                 current.item.onDropped?(.superseded)
             }
