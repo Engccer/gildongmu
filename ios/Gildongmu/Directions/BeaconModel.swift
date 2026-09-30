@@ -1289,10 +1289,11 @@ final class BeaconModel {
         if playStopTone && status == .tracking { playTone(.stop) }
         // 원복은 정지 톤 **뒤에**. 먼저 원복하면 그 톤이 `.ambient`로 나가 잠금
         // 상태에서 들리지 않는다(세션 종료를 소리로 확인할 수 없게 된다).
-        // 운전자 채널은 도착 문장이 이 오디오 세션 위의 발화라 원복을 발화 길이만큼 더 미룬다(B9).
-        // 백그라운드 음성 안내(E53 §7)도 같다 — 백그라운드 ∧ 토글 켬이면 이어질 도착 문장이 기기 음성이다(그 밖 0초).
+        // 운전자 채널은 도착 문장이 이 오디오 세션 위의 발화라 그 문장이 말하기 시작할 때까지 다리를 두고(B9), 그 뒤는
+        // `speechBusy`가 발화가 끝날 때까지 기다린다(E53 §7 — 길이 어림 금지). 백그라운드 음성 안내도 같다(백그라운드 ∧
+        // 토글 켬이면 이어질 도착 문장이 기기 음성이다. 그 밖 0초 — 정식판 불변).
         tones.endSession(
-            holdSeconds: driverChannel ? 4 : GuideSpeechOutput.sessionEndHoldSeconds(),
+            holdSeconds: driverChannel ? deviceSpeechEndBridgeSeconds : GuideSpeechOutput.sessionEndHoldSeconds(),
             speechBusy: { [weak self] in GuideSpeechOutput.speechBusy(self?.deviceSpeech) })
         if status == .tracking { status = .idle }
         statusText = ""
@@ -1566,10 +1567,10 @@ final class BeaconModel {
             // 백그라운드 복귀로 오인된다.
             let returnedFromBackground = wasBackgrounded
             wasBackgrounded = false
-            // 복귀 인계(E53 §4.2 ⑤, 설계 리뷰 M5)는 상환보다 먼저: 말하는 중인 기기 음성을 끊고 그 문장과 대기 칸의
-            // 문장을 지금 채널(VoiceOver)로 다시 낸다 — 두 목소리가 겹치지 않고 복귀 순간 문장이 사라지지도 않는다. 인계한
-            // 문장은 들은 것이라 상환 표식을 바꾸지 않는다. 백그라운드를 거치지 않은 복귀엔 넘길 것이 없다.
-            if returnedFromBackground { deviceSpeech.handOver() }
+            // 복귀 인계(E53 §4.2 ⑥): 이 모델이 말하던 기기 음성·대기 칸의 문장 중 채널이 VoiceOver로 바뀐 것을 받아
+            // 아래 상환과 **한 통지**로 낸다(두 통지를 잇달아 내면 뒤의 것이 앞의 것을 자른다 — 구현 리뷰 M-2). 백그라운드를
+            // 거치지 않은 복귀엔 넘길 것이 없다(기기 음성은 백그라운드 전용). 정식판은 늘 빈 목록이다.
+            let handed = returnedFromBackground ? deviceSpeech.handOver() : []
             // 오래된 종료 화면 소거(A31 축 ②, spec 2026-09-02 §3): 종료 뒤 30분이 지나 **백그라운드를 거쳐**
             // 돌아왔으면 화면·띠바 요약·미뤄진 종료 통지를 함께 버린다(맥락 밖 낭독 금지 — 헌장 §6 ⑨ 동형).
             // 상환 블록보다 앞이다: `clearArrival()`이 종료 문장을 지우면 아래 상환은 남은 실패 문장만
@@ -1592,8 +1593,9 @@ final class BeaconModel {
             // 가드 뒤에 두면 종료 통지가 통째로 유실된다. 같은 순간 정지 톤도 없어
             // (stop 기본값이 playStopTone: false) "조용히 죽은 것"과 "정상인데 데드밴드를
             // 못 넘은 것"이 구분되지 않는다. 종료 통지는 추적 중이 아닐 때야말로 필요하다.
-            if missedAnnouncement || pendingStepFreeNotice != nil
-                || pendingFinalApproachIntro != nil {
+            let repaying = missedAnnouncement || pendingStepFreeNotice != nil
+                || pendingFinalApproachIntro != nil
+            if repaying || !handed.isEmpty {
                 missedAnnouncement = false
                 // 두 문장을 연속으로 내보내지 않는다 — 경합하면 앞의 것이 잘린다.
                 // 경고가 앞이다(세션 전체에 걸린 조건).
@@ -1605,16 +1607,20 @@ final class BeaconModel {
                 // 무명 링크 위 복귀면 비어 침묵한다(E56 설계 리뷰 M2). walk엔 이 폴백이 없다(종전 그대로).
                 let carState = sessionKind == .car ? (liveTopText ?? currentRoadText) : nil
                 let current = statusText.isEmpty ? (carState ?? "") : statusText
-                let tail = current.isEmpty || current == intro ? nil : current
-                let owed = [pendingStepFreeNotice, intro, tail]
-                    .compactMap { $0 }.joined(separator: " ")
+                // 현재 상태 꼬리는 버린 문장이 있을 때만(인계만 있으면 마지막 상태는 인계 문장이다), 인계와 같은 문장이면 뺀다.
+                let tail = !repaying || current.isEmpty || current == intro || handed.contains(current) ? nil : current
+                // 순서: 인계(끊긴 옛 발화 → 칸의 새 문장) → 세션 경고 → 진입 서술 → 현재 상태.
+                let owed = (handed + [pendingStepFreeNotice, intro, tail].compactMap { $0 })
+                    .joined(separator: " ")
                 if !owed.isEmpty {
                     // 먼저 지우고, 게시하지 못하면(억제 잔류 등) onDropped가 복원한다
                     // — "성공 시에만 지운다"의 등가 형태(§4-6 반환값 폐지 이관).
                     let notice = pendingStepFreeNotice
                     pendingStepFreeNotice = nil
                     pendingFinalApproachIntro = nil
-                    announce(owed, speechClass: .actionable) { [weak self] in
+                    // 인계가 섞이면 `.high`: 앱 활성화 순간 VoiceOver의 화면 낭독에 잠식되면 복구 경로가 없다(구현 리뷰 M-3,
+                    // CLAUDE.md 통지 우선순위 판별선). 인계 없는 종전 상환은 종전 우선순위 그대로(정식판 불변).
+                    announce(owed, highPriority: !handed.isEmpty, speechClass: .actionable) { [weak self] in
                         self?.pendingStepFreeNotice = notice
                         self?.pendingFinalApproachIntro = intro
                     }
@@ -2348,7 +2354,9 @@ final class BeaconModel {
         statusText = text
         lastGuidance = text
         liveTopText = text
-        announce(text, highPriority: true, speechClass: .deferrable)
+        // 사후 정리라 미룸(도착 3~5분 뒤, 종도 전경만). 단 승차 전 도보의 승차역 도착은 이어질 대중교통 안내의 시작이라
+        // 행동 문장이다(spec §3.2 — prewalk 도착 행, 구현 리뷰 m-3).
+        announce(text, highPriority: true, speechClass: prewalk == nil ? .deferrable : .actionable)
         return true
     }
 

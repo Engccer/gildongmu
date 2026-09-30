@@ -6,8 +6,12 @@ import Foundation
 
 /// 문장 분류(spec §3.1). 백그라운드에서 말하는가를 가른다.
 public enum GuideSpeechClass: String, Sendable, CaseIterable {
-    /// 행동을 바꾸는 문장 — 예고·임박·이탈(회차 시작)·복귀·도착·1회성 경고·시작·직접 응답.
+    /// 행동을 바꾸는 문장 — 예고·이탈(회차 시작)·복귀·도착·1회성 경고·시작·직접 응답.
     case actionable
+    /// 시간에 묶인 행동 문장(도보·자동차 임박 명령 "잠시 후 …"). 채널은 `actionable`과 같고, 기기 음성에서는 말하는 중인
+    /// 안내를 기다리지 않고 선점한다 — 전문 뒤에 줄 서면 회전 지점을 지나서 나온다(접근성 감사 MAJOR 2). 전경 VoiceOver
+    /// 우선순위는 바꾸지 않는다(기본 우선순위 통지가 이미 진행 중 발화를 끊는다).
+    case urgent
     /// 주기·상태·사후 정리 — 백그라운드에서는 효과음과 전경 복귀 상환이 맡는다.
     case deferrable
 }
@@ -45,7 +49,7 @@ public func guideSpeechChannel(
         if voiceOverRunning { return .voiceOver }
         return foregroundDeviceSpeech ? .device : .voiceOver
     }
-    return backgroundSpeechEnabled && backgroundAudible && speechClass == .actionable ? .device : .drop
+    return backgroundSpeechEnabled && backgroundAudible && speechClass != .deferrable ? .device : .drop
 }
 
 /// 토글 "백그라운드 음성 안내"(spec §6). 키·기본값·실효값의 정본.
@@ -66,7 +70,9 @@ public enum BackgroundSpeech {
 /// - `offRouteEpisodeStart`: 이탈 확정 회차의 첫 통지인가. 재통지(walk 60초·car 180초)는 주기라 거짓이면 `.deferrable`.
 public func guideEventSpeechClass(_ event: GuideEvent, offRouteEpisodeStart: Bool) -> GuideSpeechClass {
     switch event {
-    case .announceSteps, .imminent, .farNotice, .waypointReached, .waypointApproaching, .backOnRoute:
+    case .imminent:
+        return .urgent
+    case .announceSteps, .farNotice, .waypointReached, .waypointApproaching, .backOnRoute:
         return .actionable
     case .offRoute:
         return offRouteEpisodeStart ? .actionable : .deferrable

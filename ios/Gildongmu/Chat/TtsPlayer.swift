@@ -58,23 +58,29 @@ final class TtsPlayer {
     /// ⚠ `activatePlaybackSession()`을 부르지 않는다 — 안내 세션의 오디오 카테고리는
     /// `BeaconTonePlayer`가 소유한다(`.playback`, `didPromote` 원복 규칙). 여기서 `.duckOthers`로
     /// 다시 세팅하면 `GuideAudioSession` 판정 밖에서 카테고리가 바뀐다.
-    func speakGuidance(_ text: String) {
+    ///
+    /// 반환 = 발화 토큰(이 재생 세대). 다음 `stop()`·새 재생이 세대를 올리므로 `isSpeakingGuidance(token:)`으로 "지금 소리가
+    /// 이 발화인가"를 가른다 — 안내 기기 음성 대기 칸의 복귀 인계가 다른 모델의 발화를 끊지 않게 한다(E53 리뷰 M-1).
+    @discardableResult
+    func speakGuidance(_ text: String) -> Int {
         stop()  // 세대 증가 포함 — 직전 재생의 늦은 콜백을 무효화한다
+        let token = generation
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
+        guard !trimmed.isEmpty else { return token }
         let utterance = AVSpeechUtterance(string: trimmed)
         utterance.voice = AVSpeechSynthesisVoice(language: AppLanguage.speechLocaleIdentifier)
         utterance.rate = ListenSpeed.speechRate(forMultiplier: listenSpeed)
         synthesizer.speak(utterance)
+        return token
     }
-
-    /// 기기 음성이 말하는 중인가(안내·채팅 듣기 무관).
-    var isSpeaking: Bool { synthesizer.isSpeaking }
 
     /// **안내** 발화가 말하는 중인가 — 안내 기기 음성 대기 칸(`DeviceSpeechQueue`, E53)과 세션 종료 원복 대기가 읽는다.
     /// 채팅 듣기(`playMessage` — `playingMessageID`가 선다)는 세지 않는다: 안내는 채팅을 기다리지 않고 끊는다(E53 설계
     /// 리뷰 M3, 운전자 채널과 같은 우선순위).
     var isSpeakingGuidance: Bool { synthesizer.isSpeaking && playingMessageID == nil }
+
+    /// 그 발화 토큰(`speakGuidance`의 반환)의 안내가 아직 말하는 중인가. 그 뒤 다른 재생·정지가 있었으면 거짓이다.
+    func isSpeakingGuidance(token: Int) -> Bool { isSpeakingGuidance && generation == token }
 
     /// 안내 발화만 끊는다(전경 복귀 인계 — 들을 채널이 VoiceOver로 바뀌었다). 채팅 듣기는 건드리지 않는다.
     func stopGuidance() {

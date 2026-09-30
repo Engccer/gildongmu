@@ -387,14 +387,22 @@ final class TransitGuideModel {
     /// 프로세스가 재워진 동안 끊긴 요청은 `.failed`로 도착하는데, 즉폴이 옛 태스크를 취소하고
     /// `pollOnce`의 취소 가드가 그 결과를 버린다(설계 리뷰 O2).
     func handleScenePhaseChange(to phase: ScenePhase) {
-        // 복귀 인계(E53 §4.2 ⑤, 설계 리뷰 M5·m4)는 **추적 가드 앞**이다 — 세션이 백그라운드에서 끝났어도(완료 문장이 기기
-        // 음성으로 말하는 중) 그 문장을 VoiceOver로 넘긴다. 복귀 낭독(아래)보다 먼저라 순서가 옛 → 새다.
+        // 복귀 인계(E53 §4.2 ⑥, 설계 리뷰 m4)는 **추적 가드 앞**이다 — 세션이 백그라운드에서 끝났어도(완료 문장이 기기
+        // 음성으로 말하는 중) 그 문장을 VoiceOver로 넘긴다. 받은 문장은 아래 복귀 낭독과 **한 통지**(`.high`)로 합친다(구현
+        // 리뷰 M-2·M-3). 합칠 자리를 지나지 않는 경로(비추적·유휴 재개·전경 전이 없음)는 함수 끝에서 따로 낸다(`defer`).
+        // 유휴 정지 중엔 폴이 없어 기기 음성도 없으므로 그 경로의 목록은 비어 있다. 정식판은 늘 빈 목록이다.
+        var handed: [String] = []
         switch phase {
         case .background: speechBackgrounded = true
         case .active where speechBackgrounded:
             speechBackgrounded = false
-            deviceSpeech.handOver()
+            handed = deviceSpeech.handOver()
         default: break
+        }
+        defer {
+            if !handed.isEmpty {
+                announce(handed.joined(separator: " "), highPriority: true, speechClass: .actionable)
+            }
         }
         guard isTracking else { return }
         // 계측(A16 미확정 ②): 백그라운드 구간의 폴 지속은 `pollStart sinceLast`가 증거다.
@@ -412,10 +420,13 @@ final class TransitGuideModel {
             touchUserAction()
             if !resumedFromIdle {
                 // 복귀 낭독은 백그라운드에서 버린 통지가 있을 때만, 현재 상태 하나(누적 재생 금지).
-                if missedAnnouncement {
+                // 인계 문장(옛 → 새) 뒤에 현재 상태(버린 통지가 있을 때만, 인계와 같은 문장이면 뺀다)를 한 통지로.
+                let status = missedAnnouncement ? returnStatusText() : ""
+                let owed = handed + (status.isEmpty || handed.contains(status) ? [] : [status])
+                handed = []
+                if !owed.isEmpty {
                     // 화면 변화 없는 통지라 `.high`(CLAUDE.md 통지 우선순위 판별선 — 착지 라벨로 대체될 수 없다).
-                    let text = returnStatusText()
-                    if !text.isEmpty { announce(text, highPriority: true, speechClass: .actionable) }
+                    announce(owed.joined(separator: " "), highPriority: true, speechClass: .actionable)
                 }
                 restartPollLoop(immediate: true)
             }
@@ -496,7 +507,7 @@ final class TransitGuideModel {
         // 재개 문장(`resumeIfIdle`)과 달리 **자동 통지 창구**로 보낸다 — 사용자 활성화의 응답이 아니라
         // 타이머 판정이라 톤이 울리는 중이면 그 뒤에 말해야 한다(`announceNow`는 즉시 창구 전용).
         // 재개 방법을 덧붙이지 않는다(위원장 판정 2026-09-11 — BACKLOG E36).
-        // 백그라운드 정지는 `post`의 전경 게이트가 버리고, 전경 복귀가 곧 조작이라
+        // 백그라운드 정지는 `post`의 채널 술어가 버리고(미룸 문장), 전경 복귀가 곧 조작이라
         // `resumeIfIdle`의 재개 문장이 그 자리를 대신한다(뒤늦은 "멈추었습니다"를 남기지 않는다).
         // 분류는 미룸(E53 spec §3.3 — 잊힌 세션 안전망이라 백그라운드에서 말하지 않는다, 코디네이터 판정의 유도).
         announce(appLocalized("transitGuide.idlePaused"), highPriority: true, speechClass: .deferrable)

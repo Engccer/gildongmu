@@ -239,7 +239,7 @@
       "listenSpeed15x": "1,5x",
       "listenSpeed2x": "2x",
       "backgroundSpeech": "Guidage vocal en arrière-plan",
-      "backgroundSpeechFooter": "Annonce avec la voix de l'appareil les indications comme les virages, les écarts d'itinéraire et l'arrivée, ainsi que les alentours de la balade, même écran éteint ou pendant l'utilisation d'une autre app.",
+      "backgroundSpeechFooter": "Annonce avec la voix de l'appareil les indications comme les virages, les écarts d'itinéraire et l'arrivée, ainsi que la narration de la balade, même écran éteint ou pendant l'utilisation d'une autre app.",
       "aiSection": "Chat IA",
       "aiConsentToggle": "Consentement à l'envoi des données du chat IA",
       "reportProblem": "Signaler un problème",

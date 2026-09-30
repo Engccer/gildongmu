@@ -123,14 +123,16 @@ describe("나들이 문장 창구", () => {
     // 선점 금지·한 칸·유효 시간 계약은 Kit 테스트(`DeviceSpeechQueueTests`)가 잠근다.
   });
 
-  it("안전망 종료만 미룸 문장이고 복귀 때 종료 사유 하나를 갚는다(E53 spec §3.4)", () => {
+  it("안전망 종료는 백그라운드에서도 종료음 + 행동 문장이고, 전하지 못하면 복귀 때 한 번 갚는다(E53 위원장 판정, spec §3.4)", () => {
     const model = readFileSync(MODEL, "utf8");
-    expect(functionBody(model, "endIdle")).toContain("sayEnd(text, speechClass: .deferrable)");
-    expect(model.match(/speechClass: \.deferrable/g)?.length).toBe(2);  // endIdle + 전경 전용 약신호
+    const idle = functionBody(model, "endIdle");
+    expect(idle).toContain("endLeavingScreen(reason: text, playStopTone: true)");
+    expect(idle).toContain("sayEnd(text, speechClass: .actionable)");
+    expect(model.match(/speechClass: \.deferrable/g)?.length).toBe(1);  // 전경 전용 약신호뿐
     // 종료 문장은 전하지 못하면 장부에 남아 복귀 때 갚는다 — 종료 화면 존재와 무관(설계 리뷰 M6).
     expect(functionBody(model, "sayEnd")).toContain("owedEndReason = (text, .now)");
     const scene = functionBody(model, "handleScenePhaseChange");
-    expect(scene).toContain("if let owed = owedEndReason {");
+    expect(scene).toContain("if let end = owedEndReason {");
     expect(scene).toContain("isEndScreenStale(secondsSinceEnd: seconds)");
   });
 });

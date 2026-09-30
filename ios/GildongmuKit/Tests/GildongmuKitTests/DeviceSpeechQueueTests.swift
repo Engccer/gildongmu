@@ -2,61 +2,86 @@ import Testing
 
 @testable import GildongmuKit
 
-/// 기기 음성 대기 한 칸의 수명 계약(E53 spec 2026-09-30 §4.2, 나들이 spec §7.3에서 올린 것 + 설계 리뷰 M1·M2·M5·m2·m3·m10).
-/// sleeper는 시계를 전진시키고 즉시 반환한다(`DeferredAnnouncerTests` 동형). "말하는 중"은 스크립트로 준다.
+/// 기기 음성 대기 한 칸의 수명 계약(E53 spec 2026-09-30 §4.2, 나들이 spec §7.3에서 올린 것 + 설계 리뷰 M1·M2·M5·m2·m3·m10,
+/// 구현 리뷰 M-1·M-2·m-1·m-2·m-3, 접근성 감사 MAJOR 1·2·m2~m4).
+///
+/// 합성기는 하나(`SharedSynth`)이고 칸 여럿이 그것을 나눠 쓴다 — 복귀 인계가 다른 칸의 발화를 끊지 않는지(구현 리뷰 M-1)는
+/// 칸 두 개로만 드러난다. sleeper는 시계를 전진시키고 즉시 반환한다(`DeferredAnnouncerTests` 동형).
 @MainActor
 struct DeviceSpeechQueueTests {
+    /// 앱 전역 합성기 흉내. `speak`마다 새 토큰, `stop`·새 발화가 이전 토큰을 무효로 만든다(`TtsPlayer` 세대와 같다).
     @MainActor
-    final class Harness {
-        var now: Double = 0
-        /// isSpeaking이 불릴 때마다 하나씩 소비. 소진되면 마지막 값 반복. 재대입하면 처음부터.
-        var speakingScript: [Bool] = [false] { didSet { speakingIndex = 0 } }
-        private var speakingIndex = 0
-        var suppressed = false
-        var toneEndsAt: Double?
-        var channel: GuideSpeechChannel = .device
+    final class SharedSynth {
+        var speaking = false
+        private(set) var token = 0
         private(set) var spoken: [String] = []
         private(set) var stops = 0
+
+        func speak(_ text: String) -> Int {
+            token += 1
+            speaking = true
+            spoken.append(text)
+            return token
+        }
+
+        func stop() {
+            token += 1
+            speaking = false
+            stops += 1
+        }
+
+        func isSpeaking(token t: Int) -> Bool { speaking && t == token }
+    }
+
+    @MainActor
+    final class Harness {
+        let synth: SharedSynth
+        var now: Double = 0
+        var suppressed = false
+        var toneEndsAt: () -> Double? = { nil }
+        var channel: GuideSpeechChannel = .device
         private(set) var voiceOver: [(String, Bool)] = []
         private(set) var drops: [(String, DeviceSpeechDrop)] = []
+        /// 드레인이 확인할 때마다 하나씩 소비해 `synth.speaking`에 대입하는 스크립트(비면 그대로 둔다).
+        var speakingAfterPolls: [Bool] = []
 
-        func nextSpeaking() -> Bool {
-            let value = speakingScript[min(speakingIndex, speakingScript.count - 1)]
-            speakingIndex += 1
-            return value
-        }
+        init(synth: SharedSynth = SharedSynth()) { self.synth = synth }
 
         lazy var queue = DeviceSpeechQueue(
             clock: { [weak self] in self?.now ?? 0 },
-            sleeper: { [weak self] seconds in self?.now += seconds },
-            isSpeaking: { [weak self] in self?.nextSpeaking() ?? false },
+            sleeper: { @MainActor [weak self] seconds in
+                guard let self else { return }
+                self.now += seconds
+                if !self.speakingAfterPolls.isEmpty { self.synth.speaking = self.speakingAfterPolls.removeFirst() }
+            },
+            isSpeaking: { [weak self] in self?.synth.speaking ?? false },
+            isSpeakingToken: { [weak self] t in self?.synth.isSpeaking(token: t) ?? false },
             isSuppressed: { [weak self] in self?.suppressed ?? false },
-            toneEndsAt: { [weak self] in self?.toneEndsAt },
+            toneEndsAt: { [weak self] in self?.toneEndsAt() },
             route: { [weak self] _ in self?.channel ?? .drop },
-            speak: { [weak self] text in self?.spoken.append(text) },
-            stopSpeaking: { [weak self] in self?.stops += 1 },
+            speak: { [weak self] text in self?.synth.speak(text) ?? 0 },
+            stopSpeaking: { [weak self] in self?.synth.stop() },
             postVoiceOver: { [weak self] text, high in self?.voiceOver.append((text, high)) }
         )
 
-        /// 버림 통지를 이름과 함께 기록하는 제출.
         func submit(
-            _ text: String, high: Bool = false, protected: Bool = false, bypass: Bool = false
+            _ text: String, high: Bool = false, protected: Bool = false, bypass: Bool = false,
+            cls: GuideSpeechClass = .actionable
         ) {
             queue.submit(
                 text, highPriority: high, protected: protected, bypassSuppression: bypass,
-                speechClass: .actionable, onDropped: { [weak self] reason in self?.drops.append((text, reason)) })
+                speechClass: cls, onDropped: { [weak self] reason in self?.drops.append((text, reason)) })
         }
     }
 
     private func drain() async {
-        for _ in 0..<40 { await Task.yield() }
+        for _ in 0..<60 { await Task.yield() }
     }
 
     @Test func speaksImmediatelyWhenIdle() async {
         let h = Harness()
-        h.speakingScript = [false]
         h.submit("지금")
-        #expect(h.spoken == ["지금"])
+        #expect(h.synth.spoken == ["지금"])
         #expect(!h.queue.hasPending)
         #expect(h.drops.isEmpty)
     }
@@ -64,176 +89,258 @@ struct DeviceSpeechQueueTests {
     // 선점 금지(평범한 문장): 안내가 말하는 중이면 끊지 않고 칸에 두었다가 끝나면 낸다.
     @Test func waitsWhileSpeakingThenSpeaks() async {
         let h = Harness()
-        h.speakingScript = [true, true, true, false]
+        h.submit("전문")
         h.submit("다음")
-        #expect(h.spoken.isEmpty)
+        #expect(h.synth.spoken == ["전문"])
         #expect(h.queue.hasPending)
+        h.speakingAfterPolls = [true, false]
         await drain()
-        #expect(h.spoken == ["다음"])
+        #expect(h.synth.spoken == ["전문", "다음"])
         #expect(h.drops.isEmpty)
     }
 
     // 한 칸: 새 문장이 옛 대기 문장을 잇는다 — 옛 문장의 버림은 `superseded`(상환 표식을 세우지 않는다, 설계 리뷰 M1).
     @Test func replacementIsSuperseded() async {
         let h = Harness()
-        h.speakingScript = [true]
+        h.submit("전문")
         h.submit("옛")
         h.submit("새")
         #expect(h.drops.map(\.0) == ["옛"])
         #expect(h.drops.map(\.1) == [.superseded])
-        h.speakingScript = [false]
+        h.speakingAfterPolls = [false]
         await drain()
-        #expect(h.spoken == ["새"])
+        #expect(h.synth.spoken == ["전문", "새"])
     }
 
-    // `.high`는 기다리지 않고 선점한다 — 칸의 옛 문장은 superseded, 즉시 말한다(설계 리뷰 M2: 도착·재조회 요약이
-    // 칸에서 최신 명령을 막지 않는다).
+    // `.high`는 기다리지 않고 선점한다 — 칸의 옛 문장과 끊긴 이 칸의 발화는 superseded(끊긴 1회성 경고의 장부를 되살린다,
+    // 접근성 m4). 뒤이은 평범한 문장은 막히지 않는다(설계 리뷰 M2).
     @Test func highPriorityPreempts() async {
         let h = Harness()
-        h.speakingScript = [true]
-        h.submit("전문")
+        h.submit("계단 경고")
+        h.submit("칸의 전문")
         h.submit("도착", high: true)
-        #expect(h.spoken == ["도착"])
-        #expect(h.drops.map(\.1) == [.superseded])
+        #expect(h.synth.spoken == ["계단 경고", "도착"])
+        #expect(Set(h.drops.map(\.0)) == ["칸의 전문", "계단 경고"])
+        #expect(h.drops.allSatisfy { $0.1 == .superseded })
         #expect(!h.queue.hasPending)
-        // 뒤이은 평범한 문장은 칸에 들어간다(막히지 않는다).
-        h.submit("잠시 후 왼쪽")
+        h.submit("잠시 후 왼쪽 전 예고")
         #expect(h.queue.hasPending)
+    }
+
+    // 임박 명령(urgent)은 우선순위와 무관하게 선점한다 — 전문 뒤에 줄 서면 회전 지점을 지나서 나온다(접근성 MAJOR 2).
+    @Test func urgentPreempts() async {
+        let h = Harness()
+        h.submit("묶음 전문")
+        h.submit("잠시 후 우회전하세요", cls: .urgent)
+        #expect(h.synth.spoken == ["묶음 전문", "잠시 후 우회전하세요"])
+        #expect(!h.queue.hasPending)
+    }
+
+    // 다른 출처(다른 모델·채팅이 끝난 뒤 다른 발화)가 말하는 중이면 선점해도 이 칸의 옛 발화에 통지하지 않는다.
+    @Test func preemptDoesNotNotifyForeignSpeech() async {
+        let synth = SharedSynth()
+        let a = Harness(synth: synth)
+        let b = Harness(synth: synth)
+        a.submit("a의 옛 문장")
+        b.submit("b가 말하는 중", high: true)  // b가 합성기를 넘겨받아 말한다
+        a.submit("a의 도착", high: true)
+        #expect(a.drops.isEmpty)
     }
 
     // 즉시 발화 전에 칸의 옛 문장을 비운다 — 새 문장 뒤에 옛 문장이 나오는 순서 역전 금지(m3).
     @Test func immediateSpeakClearsStalePending() async {
         let h = Harness()
-        h.speakingScript = [true]
+        h.submit("전문")
         h.submit("옛")
-        h.speakingScript = [false]  // 드레인이 깨기 전에 말이 끝났다
+        h.synth.speaking = false  // 드레인이 깨기 전에 말이 끝났다
         h.submit("새")
         await drain()
-        #expect(h.spoken == ["새"])
+        #expect(h.synth.spoken == ["전문", "새"])
         #expect(h.drops.map(\.1) == [.superseded])
     }
 
     // 보호 문장(나들이 시작·횡단보도)은 평범한 문장에 밀리지 않는다 — 막힌 쪽은 undelivered.
     @Test func protectedBlocksPlain() async {
         let h = Harness()
-        h.speakingScript = [true]
+        h.submit("전문")
         h.submit("횡단보도", protected: true)
         h.submit("지나침")
         #expect(h.drops.map(\.0) == ["지나침"])
         #expect(h.drops.map(\.1) == [.undelivered])
-        h.speakingScript = [false]
+        h.speakingAfterPolls = [false]
         await drain()
-        #expect(h.spoken == ["횡단보도"])
+        #expect(h.synth.spoken == ["전문", "횡단보도"])
     }
 
     // 유효 시간(6초)을 넘긴 평범한 문장은 undelivered, 보호 문장은 기다린 시간과 무관하게 낸다.
     @Test func ttlDropsPlainButNotProtected() async {
         let h = Harness()
-        h.speakingScript = Array(repeating: true, count: 30) + [false]  // 약 9초 동안 말하는 중
+        h.submit("전문")
         h.submit("낡을 문장")
+        h.speakingAfterPolls = Array(repeating: true, count: 29) + [false]  // 약 9초 동안 말하는 중
         await drain()
-        #expect(h.spoken.isEmpty)
+        #expect(h.synth.spoken == ["전문"])
         #expect(h.drops.map(\.1) == [.undelivered])
 
         let k = Harness()
-        k.speakingScript = Array(repeating: true, count: 30) + [false]
+        k.submit("전문")
         k.submit("횡단보도", protected: true)
+        k.speakingAfterPolls = Array(repeating: true, count: 29) + [false]
         await drain()
-        #expect(k.spoken == ["횡단보도"])
+        #expect(k.synth.spoken == ["전문", "횡단보도"])
     }
 
     // 꺼내는 순간 받아쓰기 억제 중이면 버린다(녹음 중 발화 0) — 단 사용자 활성화의 직접 응답은 면제(m2).
     @Test func suppressedAtDrainDropsUnlessBypass() async {
         let h = Harness()
-        h.speakingScript = [true, false]
+        h.submit("전문")
         h.submit("억제 중 대기")
         h.suppressed = true
+        h.speakingAfterPolls = [false]
         await drain()
-        #expect(h.spoken.isEmpty)
+        #expect(h.synth.spoken == ["전문"])
         #expect(h.drops.map(\.1) == [.undelivered])
 
         let b = Harness()
-        b.speakingScript = [true, false]
+        b.submit("전문")
         b.submit("목적지 전환 확인", bypass: true)
         b.suppressed = true
+        b.speakingAfterPolls = [false]
         await drain()
-        #expect(b.spoken == ["목적지 전환 확인"])
+        #expect(b.synth.spoken == ["전문", "목적지 전환 확인"])
     }
 
     // 꺼내기 전 톤이 울리는 중이면 그 뒤까지 기다린다(톤 뒤 발화, m10).
     @Test func waitsForToneBeforeDelivering() async {
         let h = Harness()
-        h.speakingScript = [true, false]
-        h.toneEndsAt = 2.0
-        h.submit("임박")
+        h.submit("전문")
+        h.submit("임박 전 예고")
+        h.toneEndsAt = { 2.0 }
+        h.speakingAfterPolls = [false]
         await drain()
-        #expect(h.spoken == ["임박"])
+        #expect(h.synth.spoken == ["전문", "임박 전 예고"])
         #expect(h.now >= 2.0 + SpeechDeferConstants.speechDeferGapSeconds)
+    }
+
+    // 톤이 끝없이 이어져도 한 번의 대기당 3초 상한에서 낸다(구현 리뷰 m-3 — 상한 분기를 지우면 이 테스트가 끝나지 않는다).
+    @Test func toneWaitIsCapped() async {
+        let h = Harness()
+        h.submit("전문")
+        h.submit("상한 문장", protected: true)
+        h.toneEndsAt = { [weak h] in (h?.now ?? 0) + 2 }  // 항상 잔여 2초
+        h.speakingAfterPolls = [false]
+        await drain()
+        #expect(h.synth.spoken == ["전문", "상한 문장"])
+        // 톤 대기 3초 + 사이사이 확인 간격 몇 번 — 상한이 없으면 끝나지 않는다.
+        #expect(h.now < SpeechDeferConstants.speechDeferMaxSeconds + 4 * DeviceSpeechQueue.pollSeconds)
     }
 
     // 꺼내는 순간 채널을 다시 고른다: 전경 VoiceOver면 통지(우선순위 전달), 채널 소실(토글 끔·가청 상실)이면 undelivered.
     @Test func reroutesAtDrain() async {
         let h = Harness()
-        h.speakingScript = [true, false]
-        h.submit("복귀 뒤")
+        h.submit("전문")
+        h.submit("복귀 뒤", high: false)
         h.channel = .voiceOver
+        h.speakingAfterPolls = [false]
         await drain()
-        #expect(h.spoken.isEmpty)
         #expect(h.voiceOver.map(\.0) == ["복귀 뒤"])
 
         let d = Harness()
-        d.speakingScript = [true, false]
+        d.submit("전문")
         d.submit("토글 끔")
         d.channel = .drop
+        d.speakingAfterPolls = [false]
         await drain()
-        #expect(d.spoken.isEmpty)
         #expect(d.drops.map(\.1) == [.undelivered])
     }
 
     // 세션 경계: 버림 통지 없이 비운다 — stop()이 비운 상환 장부를 되살리지 않는다.
     @Test func resetDropsSilently() async {
         let h = Harness()
-        h.speakingScript = [true]
+        h.submit("전문")
         h.submit("끝난 세션")
         h.queue.reset()
-        h.speakingScript = [false]
+        h.speakingAfterPolls = [false]
         await drain()
-        #expect(h.spoken.isEmpty)
+        #expect(h.synth.spoken == ["전문"])
         #expect(h.drops.isEmpty)
         #expect(!h.queue.hasPending)
-        h.submit("새 세션")
-        #expect(h.spoken == ["새 세션"])
     }
 
-    // 전경 복귀 인계(M5): 말하는 중인 안내를 끊고 그 문장을 처음부터, 이어서 칸의 문장을 지금 채널(VoiceOver)로 낸다.
-    // 겹침도 유실도 없다. 인계한 문장은 버림이 아니다.
-    @Test func handOverRedeliversSpeakingAndPendingInOrder() async {
+    // 복귀 인계(M5 + 구현 리뷰 M-2): 말하는 중인 이 칸의 발화를 끊고, 그 문장과 칸의 문장을 옛 → 새 순서로 **돌려준다**
+    // (게시하지 않는다 — 호출부가 상환과 한 통지로 낸다).
+    @Test func handOverReturnsSpeakingAndPendingInOrder() async {
         let h = Harness()
-        h.speakingScript = [false]
-        h.submit("40m 전문")  // 즉시 말함
-        h.speakingScript = [true]
-        h.submit("잠시 후 왼쪽")  // 칸
+        h.submit("40m 전문")
+        h.submit("다음 예고")
         h.channel = .voiceOver
-        h.speakingScript = [true]  // 복귀 순간 아직 말하는 중
-        let delivered = h.queue.handOver()
-        #expect(delivered)
-        #expect(h.stops == 1)
-        #expect(h.voiceOver.map(\.0) == ["40m 전문", "잠시 후 왼쪽"])
+        let handed = h.queue.handOver()
+        #expect(handed == ["40m 전문", "다음 예고"])
+        #expect(h.synth.stops == 1)
+        #expect(h.voiceOver.isEmpty)
         #expect(h.drops.isEmpty)
         #expect(!h.queue.hasPending)
+        h.speakingAfterPolls = [false]
         await drain()
-        #expect(h.spoken == ["40m 전문"])  // 인계 뒤 옛 드레인이 다시 내지 않는다
+        #expect(h.synth.spoken == ["40m 전문"])  // 인계 뒤 옛 드레인이 다시 내지 않는다
     }
 
-    // 말이 이미 끝났으면 끊지도 다시 내지도 않는다(들은 문장을 되풀이하지 않는다).
+    // 다른 칸(다른 모델)의 발화는 끊지 않고 넘기지도 않는다 — 낡은 lastSpoken을 되살리지 않는다(구현 리뷰 M-1).
+    @Test func handOverIgnoresForeignSpeech() async {
+        let synth = SharedSynth()
+        let beacon = Harness(synth: synth)
+        let transit = Harness(synth: synth)
+        beacon.channel = .voiceOver
+        transit.channel = .voiceOver
+        beacon.submit("승차역 도착")      // 도보가 말했고
+        transit.submit("대중교통 시작", high: true)  // 대중교통이 합성기를 넘겨받아 말하는 중
+        #expect(beacon.queue.handOver().isEmpty)
+        #expect(synth.stops == 0)
+        #expect(transit.queue.handOver() == ["대중교통 시작"])
+        #expect(synth.stops == 1)
+    }
+
+    // 말이 이미 끝났으면 끊지도 넘기지도 않는다(들은 문장을 되풀이하지 않는다).
     @Test func handOverSkipsFinishedSpeech() async {
         let h = Harness()
-        h.speakingScript = [false]
         h.submit("다 들은 문장")
+        h.synth.speaking = false
         h.channel = .voiceOver
-        let delivered = h.queue.handOver()
-        #expect(!delivered)
-        #expect(h.stops == 0)
-        #expect(h.voiceOver.isEmpty)
+        #expect(h.queue.handOver().isEmpty)
+        #expect(h.synth.stops == 0)
+    }
+
+    // 채널이 그대로 기기 음성이면(VoiceOver 꺼진 나들이) 끊지도 다시 내지도 않고, 칸은 드레인에 맡긴다(접근성 m2).
+    @Test func handOverKeepsDeviceChannel() async {
+        let h = Harness()
+        h.submit("말하는 중")
+        h.submit("대기")
+        h.channel = .device
+        #expect(h.queue.handOver().isEmpty)
+        #expect(h.synth.stops == 0)
+        #expect(h.queue.hasPending)
+        h.speakingAfterPolls = [false]
+        await drain()
+        #expect(h.synth.spoken == ["말하는 중", "대기"])
+    }
+
+    // 인계도 억제·유효 시간을 지난다(접근성 m3, 구현 리뷰 m-1): 억제 중이면 끊기만 하고 undelivered, 낡은 칸 문장도 undelivered.
+    @Test func handOverRespectsSuppressionAndTTL() async {
+        let h = Harness()
+        h.submit("말하는 중")
+        h.submit("대기")
+        h.channel = .voiceOver
+        h.suppressed = true
+        #expect(h.queue.handOver().isEmpty)
+        #expect(h.synth.stops == 1)
+        #expect(h.drops.map(\.1) == [.undelivered, .undelivered])
+
+        let t = Harness()
+        t.submit("말하는 중")
+        t.submit("낡은 명령")
+        t.now = DeviceSpeechQueue.pendingTTLSeconds + 1
+        t.channel = .voiceOver
+        #expect(t.queue.handOver() == ["말하는 중"])
+        #expect(t.drops.map(\.0) == ["낡은 명령"])
     }
 }

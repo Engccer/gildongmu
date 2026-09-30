@@ -54,6 +54,7 @@ enum GuideSpeechOutput {
         DeviceSpeechQueue(
             clock: { ProcessInfo.processInfo.systemUptime },
             isSpeaking: { TtsPlayer.shared.isSpeakingGuidance },
+            isSpeakingToken: { TtsPlayer.shared.isSpeakingGuidance(token: $0) },
             isSuppressed: isSuppressed,
             toneEndsAt: toneEndsAt,
             route: { channel($0, foregroundDeviceSpeech: foregroundDeviceSpeech, backgroundAudible: backgroundAudible()) },
@@ -70,7 +71,8 @@ enum GuideSpeechOutput {
         return deviceSpeechEndBridgeSeconds
     }
 
-    /// 세션 종료 원복이 기다릴 조건 — 안내 기기 음성이 말하는 중이거나 그 모델의 대기 칸에 문장이 있다.
+    /// 세션 종료 원복이 기다릴 조건 — **어느 안내든** 기기 음성이 말하는 중이거나(세 모델 공용 합성기) 그 모델의 대기
+    /// 칸에 문장이 있다. 끝난 세션의 원복이 다음 세션의 발화 동안 기다리다 `.ownershipTransferred`로 끝나는 것은 무해하다.
     static func speechBusy(_ queue: DeviceSpeechQueue?) -> Bool {
         TtsPlayer.shared.isSpeakingGuidance || (queue?.hasPending ?? false)
     }

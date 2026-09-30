@@ -307,7 +307,7 @@
     <string name="android_settings_aiConsentToggle">Consentement à l\'envoi des données du chat IA</string>
     <string name="android_settings_aiSection">Chat IA</string>
     <string name="android_settings_backgroundSpeech">Guidage vocal en arrière-plan</string>
-    <string name="android_settings_backgroundSpeechFooter">Annonce avec la voix de l\'appareil les indications comme les virages, les écarts d\'itinéraire et l\'arrivée, ainsi que les alentours de la balade, même écran éteint ou pendant l\'utilisation d\'une autre app.</string>
+    <string name="android_settings_backgroundSpeechFooter">Annonce avec la voix de l\'appareil les indications comme les virages, les écarts d\'itinéraire et l\'arrivée, ainsi que la narration de la balade, même écran éteint ou pendant l\'utilisation d\'une autre app.</string>
     <string name="android_settings_carListener">Qui écoute le guidage en voiture (expérimental)</string>
     <string name="android_settings_carListenerDriver">Conducteur (haut-parleur, ordres brefs)</string>
     <string name="android_settings_carListenerPassenger">Passager (écouteurs, lecteur d’écran)</string>

@@ -307,7 +307,7 @@
     <string name="android_settings_aiConsentToggle">AIチャットのデータ送信に同意</string>
     <string name="android_settings_aiSection">AIチャット</string>
     <string name="android_settings_backgroundSpeech">バックグラウンド音声案内</string>
-    <string name="android_settings_backgroundSpeechFooter">画面が消えているときや他のアプリを使っているときも、曲がる地点、ルート外れ、到着などの案内とお散歩の周辺読み上げを端末の音声で伝えます。</string>
+    <string name="android_settings_backgroundSpeechFooter">画面が消えているときや他のアプリを使っているときも、曲がる地点、ルート外れ、到着などの案内とお散歩の周辺の読み上げを端末の音声で伝えます。</string>
     <string name="android_settings_carListener">車の案内を聞く人（実験）</string>
     <string name="android_settings_carListenerDriver">運転者（スピーカー、短い指示）</string>
     <string name="android_settings_carListenerPassenger">同乗者（イヤホン、画面読み上げ）</string>

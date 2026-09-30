@@ -121,17 +121,30 @@ describe("백그라운드 음성 안내 배선 (E53)", () => {
     expect(source).not.toMatch(/speechClass: GuideSpeechClass\s*=/);
   });
 
-  it("복귀 처리는 기기 음성을 VoiceOver로 인계하고, 도보·대중교통은 그것이 상환보다 먼저다(spec §4.2 ⑤)", () => {
+  it("복귀 인계 목록은 상환과 한 통지로 합쳐진다 — 도보는 상환보다 먼저, 대중교통은 추적 가드 앞(spec §4.2 ⑥)", () => {
     const beacon = functionBody(read(join(DIR, "BeaconModel.swift")), "handleScenePhaseChange");
-    expect(beacon).toContain("if returnedFromBackground { deviceSpeech.handOver() }");
+    expect(beacon).toContain("let handed = returnedFromBackground ? deviceSpeech.handOver() : []");
     expect(beacon.indexOf("deviceSpeech.handOver()")).toBeLessThan(beacon.indexOf("let owed ="));
+    // 인계 목록이 상환 문장에 들어가고, 인계가 섞이면 .high(구현 리뷰 M-2·M-3).
+    expect(beacon).toContain("let owed = (handed + [pendingStepFreeNotice, intro, tail]");
+    expect(beacon).toContain("announce(owed, highPriority: !handed.isEmpty, speechClass: .actionable)");
     const transit = functionBody(read(join(DIR, "TransitGuideModel.swift")), "handleScenePhaseChange");
-    // 추적 가드 앞 — 세션이 백그라운드에서 끝나도 말하는 중인 완료 문장을 넘긴다.
-    expect(transit.indexOf("deviceSpeech.handOver()")).toBeGreaterThanOrEqual(0);
-    expect(transit.indexOf("deviceSpeech.handOver()")).toBeLessThan(transit.indexOf("guard isTracking else { return }"));
-    expect(functionBody(read(join(DIR, "OutingModel.swift")), "handleScenePhaseChange")).toContain(
-      "deviceSpeech.handOver()",
-    );
+    expect(transit.indexOf("handed = deviceSpeech.handOver()")).toBeGreaterThanOrEqual(0);
+    expect(transit.indexOf("handed = deviceSpeech.handOver()")).toBeLessThan(transit.indexOf("guard isTracking else { return }"));
+    expect(transit).toContain("let owed = handed + ");
+    // 합칠 자리를 지나지 않은 경로는 defer가 따로 낸다(비추적 복귀 — 백그라운드에서 끝난 세션의 완료 문장).
+    expect(transit).toMatch(/defer \{\s*if !handed\.isEmpty \{\s*announce\(handed\.joined/);
+    const outing = functionBody(read(join(DIR, "OutingModel.swift")), "handleScenePhaseChange");
+    expect(outing).toContain("var owed = deviceSpeech.handOver()");
+    expect(outing).toContain('say(owed.joined(separator: " "), highPriority: true, speechClass: .actionable)');
+  });
+
+  it("도보 post: 버림은 복귀 표식을 세우고, 기기 음성은 내리고, 대기 칸의 미전달만 다시 세운다(spec §4.3)", () => {
+    const post = functionBody(read(join(DIR, "BeaconModel.swift")), "post");
+    const device = post.slice(post.indexOf("case .device:"), post.indexOf("case .drop:"));
+    expect(device).toContain("missedAnnouncement = false");
+    expect(device).toContain("if reason == .undelivered { self?.missedAnnouncement = true }");
+    expect(post.slice(post.indexOf("case .drop:"))).toContain("missedAnnouncement = true");
   });
 
   it("세 모델의 세션 종료 원복은 기기 음성이 끝날 때까지 기다린다(설계 리뷰 M4)", () => {
@@ -143,15 +156,18 @@ describe("백그라운드 음성 안내 배선 (E53)", () => {
     }
   });
 
-  it("세션 경계마다 기기 음성 대기 칸을 버림 통지 없이 비운다(spec §4.2 ⑤)", () => {
+  it("세션 경계(advanceGeneration)마다 바로 뒤에서 대기 칸을 버림 통지 없이 비운다(spec §4.2 ⑤)", () => {
     for (const name of MODELS) {
-      const source = read(join(DIR, name));
-      // 주석 줄은 세지 않는다(문서 속 언급이 짝 계수를 부풀리지 않게).
-      const code = source.split("\n").filter((line) => !line.trimStart().startsWith("//")).join("\n");
-      const generations = (code.match(/\.advanceGeneration\(\)/g) ?? []).length;
-      const resets = (code.match(/deviceSpeech\.reset\(\)/g) ?? []).length;
-      expect(generations, name).toBeGreaterThan(0);
-      expect(resets, name).toBeGreaterThanOrEqual(generations);
+      const lines = read(join(DIR, name)).split("\n");
+      const boundaries = lines
+        .map((line, i) => ({ line, i }))
+        .filter(({ line }) => !line.trimStart().startsWith("//") && line.includes(".advanceGeneration()"));
+      expect(boundaries.length, name).toBeGreaterThan(0);
+      for (const { i } of boundaries) {
+        // 짝은 같은 블록 3줄 안이다 — 개수 비교만으로는 reset을 엉뚱한 자리로 옮겨도 통과한다(구현 리뷰 m-4).
+        const window = lines.slice(i, i + 4).join("\n");
+        expect(window, `${name}:${i + 1}`).toContain("deviceSpeech.reset()");
+      }
     }
   });
 });

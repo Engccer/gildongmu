@@ -306,8 +306,8 @@ final class OutingModel {
 
     // MARK: - 종료
 
-    /// 세션 정리(세 종료 경로 공통). 종료 화면은 호출부가 정한다. `holdSeconds`는 이어질 기기 음성 길이만큼
-    /// 오디오 원복을 미루는 여유다(운전자 채널 선례 — 원복이 문장을 자른다).
+    /// 세션 정리(세 종료 경로 공통). 종료 화면은 호출부가 정한다. `holdSeconds`는 이어질 종료 문장이 말하기 시작할 때까지
+    /// 오디오 원복을 붙드는 다리다 — 그 뒤는 `endSession`의 발화 대기가 문장이 끝날 때까지 잇는다(E53 §7).
     func stop(playStopTone: Bool = false, holdSeconds: Double = 0) {
         // 보류 문장 폐기 — 종료 뒤에 끝난 세션의 지나침이 나오지 않게(도보 `stop()` 동형). 종료 문장은 이 호출 **뒤에**
         // 새로 예약되므로 소실되지 않는다(호출 순서가 계약).
@@ -348,22 +348,24 @@ final class OutingModel {
         say(text, highPriority: true, speechClass: .actionable)
     }
 
-    /// 안전망 종료(두절·무이동 5분). 정지 톤은 전경에서만(잠근 채 잊은 휴대전화가 한참 뒤 울리지 않게, 도보 동형).
+    /// 안전망 종료(두절·무이동 5분). 정지 톤은 화면이 꺼져 있어도 낸다(E53 위원장 판정 — 도보와 다르다, 아래 본문).
     private func endIdle(reason: SessionIdleReason) {
         guideDiagLog("outingEnd reason=\(reason.rawValue)")
         let text = appLocalized("guide.endedIdle")
-        endLeavingScreen(reason: text, playStopTone: isForeground)
-        // 백그라운드에서는 말하지 않는다(E53 코디네이터 판정 — 잊힌 세션 안전망은 조용히, 도보 동형). 복귀 때 종료 화면의
-        // 사유로 갚는다(`handleScenePhaseChange`).
-        sayEnd(text, speechClass: .deferrable)
+        // 나들이만 예외(E53 위원장 판정 2026-09-30): 화면이 꺼져 있어도 종료음을 내고, 백그라운드 음성 안내가 켜져 있으면
+        // 문장도 기기 음성으로 말한다(행동 문장). 나들이는 잠근 채 비프를 듣고 걷는 모드라 조용히 끝나면 비프가 끊긴 이유를
+        // 모른다. 도보·자동차·대중교통의 안전망 종료는 백그라운드에서 무음 그대로다. 문장을 전하지 못하면(토글 끔) 복귀 때
+        // 한 번 갚는다(`sayEnd` 장부 — 전한 문장은 되풀이하지 않는다).
+        endLeavingScreen(reason: text, playStopTone: true)
+        sayEnd(text, speechClass: .actionable)
     }
 
     /// 종료 화면을 남기는 종료. 걸음 요약과 귀환 버튼 중 하나라도 있으면 화면이 성립한다(spec §8.3).
     private func endLeavingScreen(reason: String, playStopTone: Bool) {
         let target = returnTarget
         let sample = liveHealthSample
-        // 종료 문장이 기기 음성으로 나가면(백그라운드·VoiceOver 꺼짐) 원복을 발화 길이만큼 미룬다. 고정 3초는
-        // `guide.endedIdle` en(약 5초)을 자른다(리뷰 M4) — 글자 수로 어림하고, 말하는 중인 문장이 있으면 더 기다린다.
+        // 종료 문장이 기기 음성으로 나가면(백그라운드·VoiceOver 꺼짐) 원복이 그 문장을 자르지 않게 다리를 두고, 문장이 끝날
+        // 때까지는 `endSession`의 발화 대기가 잇는다(E53 §7 — 글자 수 어림은 앞 문장이 길면 모자랐다).
         stop(playStopTone: playStopTone, holdSeconds: deviceSpeechEndBridgeSeconds)
         let health = sample.flatMap { s -> WalkHealthSummary? in
             guard WalkHealth.isMeaningfulWalk(steps: s.steps, distanceMeters: s.distance) else { return nil }
@@ -421,19 +423,21 @@ final class OutingModel {
                 let seconds = Double(age.components.seconds) + Double(age.components.attoseconds) / 1e18
                 if isEndScreenStale(secondsSinceEnd: seconds) { clearEnd() }
             }
-            // 복귀 상환(E53 spec §3.4): 백그라운드에서 버린 문장이 있었고 종료 화면이 남아 있으면 그 사유 하나를 말한다 —
-            // 안전망 종료는 백그라운드에서 무음이라 없으면 세션이 끝난 것을 들을 길이 없다. 추적 중 복귀는 갚지 않는다
-            // (지나침·횡단보도는 자리에 묶인 문장이라 나중에 말하면 거짓이다). 화면 변화 없는 통지라 `.high`.
+            // 복귀(E53 spec §3.4·§4.2 ⑥): 채널이 VoiceOver로 바뀐 기기 음성(인계)과 전하지 못한 종료 사유(장부 `owedEndReason`,
+            // 종료 화면 유무와 무관 — 설계 리뷰 M6)를 **한 통지**로 낸다(두 통지를 잇달아 내면 뒤의 것이 앞의 것을 자른다).
+            // 30분 넘은 종료 사유는 갚지 않는다(맥락 밖 낭독). 추적 중 복귀엔 장부가 없다 — 지나침·횡단보도는 자리에 묶인
+            // 문장이라 나중에 말하면 거짓이다. 화면 변화 없는 통지라 `.high`.
             if returned {
-                deviceSpeech.handOver()  // 말하는 중인 기기 음성을 지금 채널로 넘긴다(E53 §4.2 ⑤, 도보 동형)
-                if let owed = owedEndReason {
+                var owed = deviceSpeech.handOver()
+                if let end = owedEndReason {
                     owedEndReason = nil
-                    let age = owed.at.duration(to: .now)
+                    let age = end.at.duration(to: .now)
                     let seconds = Double(age.components.seconds) + Double(age.components.attoseconds) / 1e18
-                    if !isTracking, !isEndScreenStale(secondsSinceEnd: seconds) {
-                        say(owed.text, highPriority: true, speechClass: .actionable)
+                    if !isTracking, !isEndScreenStale(secondsSinceEnd: seconds), !owed.contains(end.text) {
+                        owed.append(end.text)
                     }
                 }
+                if !owed.isEmpty { say(owed.joined(separator: " "), highPriority: true, speechClass: .actionable) }
             }
         default:
             break

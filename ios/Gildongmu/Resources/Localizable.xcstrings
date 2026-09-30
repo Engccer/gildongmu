@@ -27692,31 +27692,31 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Speaks guidance such as turns, going off route, and arrival, plus Stroll surroundings, in the device voice even while the screen is off or you are using another app."
+            "value": "Speaks guidance such as turns, going off route, and arrival, plus Stroll narration, in the device voice even while the screen is off or you are using another app."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Anuncia con la voz del dispositivo indicaciones como giros, desvíos de la ruta y llegada, y los alrededores del paseo, incluso con la pantalla apagada o mientras usas otra app."
+            "value": "Anuncia con la voz del dispositivo indicaciones como giros, desvíos de la ruta y llegada, y la narración del paseo, incluso con la pantalla apagada o mientras usas otra app."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Annonce avec la voix de l'appareil les indications comme les virages, les écarts d'itinéraire et l'arrivée, ainsi que les alentours de la balade, même écran éteint ou pendant l'utilisation d'une autre app."
+            "value": "Annonce avec la voix de l'appareil les indications comme les virages, les écarts d'itinéraire et l'arrivée, ainsi que la narration de la balade, même écran éteint ou pendant l'utilisation d'une autre app."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pronuncia con la voce del dispositivo indicazioni come svolte, uscite dal percorso e arrivo, e i dintorni della passeggiata, anche a schermo spento o mentre usi un'altra app."
+            "value": "Pronuncia con la voce del dispositivo indicazioni come svolte, uscite dal percorso e arrivo, e la narrazione della passeggiata, anche a schermo spento o mentre usi un'altra app."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "画面が消えているときや他のアプリを使っているときも、曲がる地点、ルート外れ、到着などの案内とお散歩の周辺読み上げを端末の音声で伝えます。"
+            "value": "画面が消えているときや他のアプリを使っているときも、曲がる地点、ルート外れ、到着などの案内とお散歩の周辺の読み上げを端末の音声で伝えます。"
           }
         }
       }
