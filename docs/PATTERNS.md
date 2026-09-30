@@ -141,7 +141,7 @@
 
 ⚠ **배경 경계는 대입 시점의 실제 앱 상태로 가른다**(`UIApplication.applicationState`, 모델 `isForeground`와 같은 식). Task가 잡은 `@Environment` scenePhase는 대기 뒤 낡는다. 배경으로 내려가면 진행 중 착지·대기를 끊고 이월하고, 복귀 착지는 갚는 발화 뒤다.
 
-⚠ **커서가 앉는 행은 매 fix 바뀌면 안 된다**: 남은 거리 행은 띠바와 같은 10m 갱신 값(`bandDistanceMeters`)을, 경유지 잔여는 같은 규칙의 `shownWaypointMeters`를 쓰고 같은 문장은 다시 대입하지 않는다(띠바 설계 리뷰 M7과 같은 기제, 격자 반올림은 경계에서 오간다). 착지 바인딩은 옵셔널 enum 하나(`focusedRow: SheetFocus?`)를 헬퍼 한 자리(`focusTarget`, 가시화 키 `.id` 동반)에서 단다. 실행기는 2단 정본 + `scrollTo`다(3단은 대중교통 시트만, 승격 조건은 A35 실승차 성공률). 정보 행의 착지 실패는 폴백 통지를 내지 않는다: 폴백 문장이 곧 그 행의 값이라 같은 순간의 통지와 겹친다. 판정은 실험판 로그 `sheetFocus sheet=beacon … landed= waitedMs= reason=`(나들이는 `sheet=outing`).
+⚠ **커서가 앉는 행은 매 fix 바뀌면 안 된다**: 남은 거리 행은 띠바와 같은 10m 갱신 값(`bandDistanceMeters`)을, 경유지 잔여는 같은 규칙의 `shownWaypointMeters`를 쓰고 같은 문장은 다시 대입하지 않는다(띠바 설계 리뷰 M7과 같은 기제, 격자 반올림은 경계에서 오간다). 착지 바인딩은 옵셔널 enum 하나(`focusedRow: SheetFocus?`)를 헬퍼 한 자리(`focusTarget`, 가시화 키 `.id` 동반)에서 단다. 실행기는 2단 정본 + `scrollTo`다(3단은 대중교통 시트만, 승격 조건은 A35 실승차 성공률). 정보 행의 착지 실패는 폴백 통지를 내지 않는다: 폴백 문장이 곧 그 행의 값이라 같은 순간의 통지와 겹친다. 판정은 실험판 로그 `sheetFocus sheet=beacon … landed= waitedMs= reason=`(나들이는 `sheet=outing target= landed= attempts= vo=`, 대기·사유 필드 없음).
 
 ### 안내 시트에서 장소 상세는 중첩 시트 하나(`detailPlace`)로 열고, 산문 속 역 언급은 로터 액션이다
 
