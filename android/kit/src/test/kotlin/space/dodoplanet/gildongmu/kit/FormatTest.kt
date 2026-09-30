@@ -16,6 +16,12 @@ private val distanceCases: List<Pair<Int, String>> = listOf(
     1049 to "1.049km",
     1050 to "1.05km",
     1187 to "1.187km",
+    // 50m 경계(PORTS 2026-09-07) — 원값 규칙이라 반올림 없이 그대로 나와야 한다.
+    1150 to "1.15km",
+    1250 to "1.25km",
+    1450 to "1.45km",
+    1650 to "1.65km",
+    1950 to "1.95km",
     1999 to "1.999km",
     3640 to "3.64km",
     89700 to "89.7km",
