@@ -512,14 +512,20 @@ final class BeaconModel {
         // `liveTopText`는 시트 내용이라 화면과 수명을 같이한다 — `fail()`이 쓰는 자리가 아니다.
         liveTopText = nil
         if !status.isFailure { statusText = "" }
-        // 체중 권유 응답 표식은 그 화면의 것이다 — 닫기 밖의 소거(만료·인계·새 세션)에서 다음 화면으로 새지 않게(E31).
-        // 나들이 종료 화면과 같은 키라, 도보 종료 화면이 있을 때만 지운다(코디네이터가 대중교통·나들이 시작마다 부른다).
-        if arrivalDest != nil { UserDefaults.standard.set(false, forKey: WalkHealth.weightPromptEngagedKey) }
+        dropWeightPromptEngagement()
         arrivalDest = nil
         arrivalSessionKind = nil
         endKind = .arrived
         endText = ""
         resetArrivalHealth()
+    }
+
+    /// 체중 권유 응답 표식은 그 종료 화면의 것이다 — 닫기 밖의 소거(30분 만료·인계·새 세션 시작·teardown)에서
+    /// 다음 화면으로 새지 않게 한다(E31). 나들이 종료 화면과 같은 키라 도보 종료 화면이 있을 때만 지운다
+    /// (코디네이터가 대중교통·나들이 시작마다 `clearArrival()`을 부른다). ⚠ `arrivalDest = nil`을 쓰는 자리는
+    /// 전부 이 함수를 먼저 부른다 — 가드 `weight-prompt-wiring.test.ts`.
+    private func dropWeightPromptEngagement() {
+        if arrivalDest != nil { UserDefaults.standard.set(false, forKey: WalkHealth.weightPromptEngagedKey) }
     }
 
     /// 승차 전 도보 세션으로 표식(A25). `requestStart` **앞**에 건다 — 시작 Task의 실패 판정이
@@ -720,6 +726,7 @@ final class BeaconModel {
         // 문장(도착 통지 등)이 새 세션 안에서 발화하지 않게 한다.
         deferredAnnouncer.advanceGeneration()
         self.dest = dest
+        dropWeightPromptEngagement()
         arrivalDest = nil  // 새 세션 시작 = 이전 종료 화면 소거
         arrivalSessionKind = nil
         endKind = .arrived
@@ -1075,7 +1082,7 @@ final class BeaconModel {
         if currentRoadText != text { currentRoadText = text }
     }
 
-    /// 하단 2행 갱신(walk 상세 전용, spec 2026-08-11). 매 fix·커밋 지점에서 부른다 —
+    /// 하단 2행 갱신(walk·car 상세, spec 2026-08-11·K2 §4). 매 fix·커밋 지점에서 부른다 —
     /// 상태 국면(uncertain·offRoute 포함)도 리듀서가 행을 소유하므로 국면 가드가 없다.
     /// 렌더 규칙은 공유 fixture 러너와 동일해야 한다(GuideText.liveTop/liveNext).
     private func refreshLiveRows(state: GuideState) {
@@ -1344,6 +1351,7 @@ final class BeaconModel {
     /// presentationDetents 도입 등으로 열리는 경로가 생기면 이 줄이 방어선이다).
     func teardown() {
         stop()
+        dropWeightPromptEngagement()
         arrivalDest = nil
         arrivalSessionKind = nil
         endKind = .arrived
@@ -1571,8 +1579,7 @@ final class BeaconModel {
                 //   중복 낭독을 막으려고 statusText 쪽을 떨어뜨린다.
                 let intro = pendingFinalApproachIntro
                 // 상태 행이 비어 있으면(실행 안내 직후 — 역할 분리로 statusText에 실행
-                // 안내가 남지 않는다) 현재 안내가 곧 현재 상태다.
-                // car: 지금 할 일(하단 2행 윗줄)이 곧 현재 상태다 — 도로 이름만으로는 놓친 행동을 갚지 못하고,
+                // 안내가 남지 않는다) car는 지금 할 일(하단 2행 윗줄)이 곧 현재 상태다 — 도로 이름만으로는 놓친 행동을 갚지 못하고,
                 // 무명 링크 위 복귀면 비어 침묵한다(E56 설계 리뷰 M2). walk엔 이 폴백이 없다(종전 그대로).
                 let carState = sessionKind == .car ? (liveTopText ?? currentRoadText) : nil
                 let current = statusText.isEmpty ? (carState ?? "") : statusText

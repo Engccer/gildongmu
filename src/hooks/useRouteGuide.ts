@@ -566,7 +566,7 @@ export function useRouteGuide(
   /** 세션 시작 시각(초, 단조) — 첫 fix 대기도 워치독이 덮게 하는 기준. */
   const startedAtRef = useRef<number | null>(null);
   const routeRef = useRef<GuideRoute | null>(null);
-  /** 하단 2행 표시 유닛(walk 상세 전용, spec 2026-08-11 §4.1) — 경로 커밋 시 재구축. */
+  /** 하단 2행 표시 유닛(walk·car 상세, spec 2026-08-11 §4.1·K2 §7) — 경로 커밋 시 재구축. */
   const displayUnitsRef = useRef<DisplayUnit[]>([]);
   /**
    * 표시 입력 스텝(live.target 조각 포함) — walk 주기 통지의 직진 목표 이름이 여기서
@@ -1601,7 +1601,7 @@ export function useRouteGuide(
       // 두 번 부르면 전이가 두 번 일어난다.
       if (result.event?.kind === "finalApproachEnter") {
         setProgress(null);
-        // 스텝은 전부 소화됐다 — 낡은 유닛이 "현재 안내" 행에 남는 것을 막는다
+        // 스텝은 전부 소화됐다 — 낡은 도로 이름이 "현재 도로" 행에 남는 것을 막는다
         // (iOS beginFinalApproach 미러, 리뷰 HIGH 반영).
         setCurrentText(null);
         // 하단 2행: 윗줄 소유권이 최종 접근 층으로 넘어간다(§4.2 우선순위 2).

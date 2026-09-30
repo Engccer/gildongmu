@@ -52,4 +52,17 @@ describe("iOS car 현재 도로 행 — 배선 (E56)", () => {
       /let carState = sessionKind == \.car \? \(liveTopText \?\? currentRoadText\) : nil\n\s*let current = statusText\.isEmpty \? \(carState \?\? ""\) : statusText/,
     );
   });
+
+  it("갱신 호출 지점 셋과 소거 지점 다섯이 모두 있다", () => {
+    // 앱 타깃은 테스트 레인이 없어 이 배선이 빠지면 첫 줄이 시작 때 비거나 주행 내내 멈춘다.
+    const calls = model.match(/(?<!func )refreshCurrentRoad\(state: /g) ?? [];
+    expect(calls).toHaveLength(3); // 시작 커밋 · 재조회 채택(commitReroutedRoute) · 매 fix
+    // 매 fix 호출은 car이고 진행거리를 믿을 수 있는 국면일 때만이다.
+    expect(model).toMatch(
+      /if sessionKind == \.car, out\.state\.phase == \.following \|\| out\.state\.phase == \.bundle \{\n(?:\s*\/\/[^\n]*\n)*\s*refreshCurrentRoad\(state: out\.state\)/,
+    );
+    // 소거: walk 시작 커밋 · 간략 폴백 · stop · 목적지 변경 · 최종 접근 진입.
+    expect(model.match(/currentRoadText = nil/g) ?? []).toHaveLength(5);
+  });
 });
+

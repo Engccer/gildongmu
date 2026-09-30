@@ -1,7 +1,7 @@
 // 자동차 안내 "현재 도로" 줄(E56) 실호출 게이트 — spec docs/superpowers/specs/2026-09-30-car-current-road-line-design.md §5.
 //
 // 두 모드:
-//   수집(Tmap 호출 = 구간 수): node scripts/verify-car-road-names.mjs --collect <raw.json>
+//   수집(Tmap 호출 = 구간 수): node scripts/verify-car-road-names.mjs --collect <raw.json>   (실패 구간이 있으면 종료 코드 1)
 //     공공 장소 6구간을 Tmap 자동차 경로(POST /tmap/routes)로 직접 불러 원응답을 저장한다.
 //     Tmap 일 1,000건 무료를 도보 폴백과 나누므로 표본은 작게 두고, 판정은 저장본 재생으로 한다.
 //   재생(호출 0): node scripts/verify-car-road-names.mjs --from-corpus <raw.json>
@@ -13,12 +13,16 @@
 // 원응답은 저장소 밖(~/gildongmu-private/field-logs/car-road-names-2026-09-30/)에 둔다(약관 — 응답 보관 최소화).
 // 종료 코드: 전부 PASS면 0, 하나라도 FAIL이면 1.
 
-import { readFileSync, writeFileSync } from "node:fs";
-// ⚠ jiti는 package.json에 직접 선언돼 있지 않다(tailwind의 전이 의존성으로 설치된다). 없으면 조용히 넘어가지 않고 멈춘다.
-const { createJiti } = await import("jiti").catch(() => {
-  console.error("jiti를 찾지 못했다 — TS 모듈을 불러올 수 없어 재생 게이트를 돌릴 수 없다(npm ls jiti).");
-  process.exit(2);
-});
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+/** ⚠ jiti는 package.json에 직접 선언돼 있지 않다(tailwind의 전이 의존성으로 설치된다). 재생 모드만 필요하다.
+ *  없으면 조용히 넘어가지 않고 멈춘다. */
+async function loadJiti() {
+  const mod = await import("jiti").catch(() => {
+    console.error("jiti를 찾지 못했다 — TS 모듈을 불러올 수 없어 재생 게이트를 돌릴 수 없다(npm ls jiti).");
+    process.exit(2);
+  });
+  return mod.createJiti;
+}
 
 /** 스텝 경계에서 링크 누적 길이와 경로 진행거리의 어긋남 상한(m) — 줄이 이만큼 이르거나 늦게 바뀐다. */
 const MAX_BOUNDARY_DRIFT_M = 100;
@@ -67,7 +71,9 @@ function check(name, ok, detail = "") {
 
 function tmapKey() {
   if (process.env.TMAP_APP_KEY) return process.env.TMAP_APP_KEY;
-  const line = readFileSync(".env.local", "utf8")
+  const envPath = new URL("../.env.local", import.meta.url);
+  if (!existsSync(envPath)) return "";
+  const line = readFileSync(envPath, "utf8")
     .split("\n")
     .find((l) => l.startsWith("TMAP_APP_KEY="));
   return line ? line.slice("TMAP_APP_KEY=".length).trim().replace(/^"|"$/g, "") : "";
@@ -105,9 +111,12 @@ async function collect(outPath) {
     console.log(label, out[label].features ? `features ${out[label].features.length}` : "실패");
     writeFileSync(outPath, JSON.stringify(out)); // 부분 저장
   }
+  // 수집도 종료 코드로 판정한다 — 실패 구간이 있으면 재생 표본이 비어 게이트가 헛돈다.
+  return Object.values(out).filter((v) => !v.features).length;
 }
 
 async function replay(corpusPath) {
+  const createJiti = await loadJiti();
   const jiti = createJiti(import.meta.url, { alias: { "@": new URL("../src", import.meta.url).pathname } });
   const tc = await jiti.import(new URL("../src/lib/providers/tmap-car.ts", import.meta.url).pathname);
   const crg = await jiti.import(new URL("../src/lib/car-route-guide.ts", import.meta.url).pathname);
@@ -188,8 +197,8 @@ async function replay(corpusPath) {
 const collectOut = opt("--collect");
 const corpus = opt("--from-corpus");
 if (collectOut) {
-  await collect(collectOut);
-  process.exit(0);
+  const failed = await collect(collectOut);
+  process.exit(failed === 0 ? 0 : 1);
 }
 if (!corpus) {
   console.error("사용: --collect <raw.json> | --from-corpus <raw.json>");

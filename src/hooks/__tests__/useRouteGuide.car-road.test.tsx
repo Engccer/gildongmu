@@ -66,12 +66,14 @@ const DEST = { ...along(1000), name: "목적지" };
 
 let watchCb: ((pos: GeolocationPosition) => void) | null = null;
 
-function emitFix(m: number) {
+const LNG_M = 1 / (111320 * Math.cos((37.5 * Math.PI) / 180));
+
+function emitFix(m: number, eastM = 0) {
   act(() => {
     watchCb?.({
       coords: {
         latitude: along(m).lat,
-        longitude: along(m).lng,
+        longitude: along(m).lng + eastM * LNG_M,
         accuracy: 10,
         speed: 11,
         altitude: null,
@@ -171,6 +173,29 @@ describe("car 현재 도로 행 (E56)", () => {
     await start("car");
     expect(road()).toBe("현재 도로, 올림픽로");
     expect(road()).not.toContain("이동");
+    // 커밋 지점에서 하단 2행도 곧바로 계산된다(fix 없이) — 커밋은 상태 재구성 지점이다.
+    expect(top()).toMatch(/^\d+m 직진하세요$/);
+  });
+
+  it("이탈했다 뒤쪽으로 돌아오면 윗줄이 늘어난 거리를 말한다", async () => {
+    await start("car");
+    await driveTo([100, 200, 300]);
+    const beforeOff = Number(top().match(/^(\d+)m/)?.[1]);
+    // 경로 동쪽 200m로 벗어나 이탈 확정(유예 20초)까지 머문다.
+    for (let i = 0; i < 4; i++) {
+      tick(9000);
+      emitFix(300, 200);
+    }
+    expect(top()).toBe(ko.guide.offRoute);
+    // 이탈 전보다 **뒤**(150m)로 돌아온다 — 남은 거리가 늘었다. 감소만 허용하는 클램프는 이탈 국면이
+    // 하단 2행 상태를 비워 풀린다(guideLiveRows offRoute → state null). 그래서 이 단언은 복귀 리셋
+    // (backOnRoute 시 baseline·state 리셋)의 유무와 무관하게 성립한다 — 리셋 자체는 walk와 공유 코드다.
+    tick(9000);
+    emitFix(150);
+    tick(9000);
+    emitFix(160);
+    const back = Number(top().match(/^(\d+)m/)?.[1]);
+    expect(back).toBeGreaterThan(beforeOff);
   });
 
   it("무명 링크에서는 행이 없고, 한 안내 구간 안에서 도로가 바뀌면 따라 바뀐다", async () => {
@@ -202,7 +227,7 @@ describe("car 현재 도로 행 (E56)", () => {
     expect(screen.getByTestId("next").textContent).toBe("다음 안내, 우회전하세요");
   });
 
-  it("walk에는 현재 도로 행이 없다", async () => {
+  it("walk에는 현재 도로 행이 없다(스팬이 비어 있고, 커밋 지점 car 가드가 한 번 더 막는다)", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async () => ({
