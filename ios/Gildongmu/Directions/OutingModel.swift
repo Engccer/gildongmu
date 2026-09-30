@@ -205,8 +205,7 @@ final class OutingModel {
         sessionToken = token
         announcer.advanceGeneration()
         resetSessionState()
-        endScreen = nil
-        endedAt = nil
+        clearEnd()
         startedAt = uptimeNow
         status = .tracking
         outputSuppressed = false
@@ -370,10 +369,12 @@ final class OutingModel {
         clearEnd()
     }
 
-    /// 종료 화면 닫기 — 유일한 소거 경로.
+    /// 종료 화면 소거 — 닫기·새 세션·귀환 인계·30분 만료가 전부 여기를 지난다.
     func clearEnd() {
         endScreen = nil
         endedAt = nil
+        // 체중 권유 응답 표식은 그 화면의 것이다 — 닫기 밖의 소거(만료·인계·새 세션)에서 다음 화면으로 새지 않게(E31).
+        UserDefaults.standard.set(false, forKey: WalkHealth.weightPromptEngagedKey)
     }
 
     /// 체중을 입력하고 돌아왔을 때 같은 표본으로 요약을 다시 계산한다(도보 종료 화면 동형).
@@ -388,11 +389,6 @@ final class OutingModel {
 
     private static func storedWeight() -> Double? {
         WalkHealth.normalizedWeight(UserDefaults.standard.object(forKey: WalkHealth.weightStorageKey) as? Double)
-    }
-
-    /// 미확정 상태에서 "출발점으로"를 눌렀을 때의 직접 응답 — 화면 변화가 없으므로 통지가 유일한 증거다(`.high`).
-    func announceOriginPending() {
-        announcer.announceNow(appLocalized("ios.outing.originPending"), highPriority: true)
     }
 
     // MARK: - 앱 생명주기
@@ -705,7 +701,7 @@ final class OutingModel {
                 ? appLocalized("ios.outing.walkedUnavailable")
                 : appLocalized("ios.outing.walked", formatDistance(0))
         }
-        return appLocalized("ios.outing.walked", formatDistance(outingQuantizedMeters(walkedMeters)))
+        return appLocalized("ios.outing.walked", formatDistance(outingDisplayMeters(walkedMeters)))
     }
 
     /// 진행 방위 문구(방향 행 뒤 절반·조망 머리글).
@@ -731,11 +727,11 @@ final class OutingModel {
         }
     }
 
-    /// 띠바 요약(10m 양자화).
+    /// 띠바 요약(걸은 거리 1m 단위, E54 — 비프만 10m).
     var bandLine: String {
         if !isTracking { return appLocalized("ios.outing.ended") }
         guard let walkedMeters else { return appLocalized("ios.outing.heading") }
-        return appLocalized("ios.outing.band", formatDistance(outingQuantizedMeters(walkedMeters)))
+        return appLocalized("ios.outing.band", formatDistance(outingDisplayMeters(walkedMeters)))
     }
 
     private func compassWord(_ bearing: Double) -> String {

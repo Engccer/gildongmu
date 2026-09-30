@@ -308,6 +308,18 @@ struct OutingMiscTests {
         #expect(outingQuantizedMeters(-3) == 0)
     }
 
+    @Test("걸은 거리 표시는 1m 내림이고 비프 경계와 어긋나지 않는다(E54)")
+    func displayMeters() {
+        #expect(outingDisplayMeters(327.9) == 327)
+        #expect(outingDisplayMeters(9.99) == 9)
+        #expect(outingDisplayMeters(-3) == 0)
+        #expect(outingDisplayMeters(.infinity) == 0)
+        // 비프가 나는 값에서 표시는 그 10m 칸 이상이다.
+        for m in stride(from: 0.5, through: 60, by: 0.5) where outingDistanceToneStep(previousMeters: m - 0.5, currentMeters: m) > 0 {
+            #expect(outingDisplayMeters(m) >= outingQuantizedMeters(m))
+        }
+    }
+
     @Test("이정표 표는 카테고리 키로만")
     func tiers() {
         for k in ["subway", "public", "hospital", "attraction"] { #expect(outingLandmarkTier(category: k) == .landmark) }
@@ -317,7 +329,12 @@ struct OutingMiscTests {
         #expect(!OutingNarration.off.speaks(.landmark))
         #expect(OutingNarration.landmarks.speaks(.landmark) && !OutingNarration.landmarks.speaks(.shop))
         #expect(OutingNarration.all.speaks(.shop))
-        #expect(OutingNarration.default == .landmarks)
+        #expect(OutingNarration.default == .all)
+        // 순환: 전부 → 이정표만 → 끔 → 전부(E54 위원장 판정). 세 번 누르면 제자리.
+        #expect(OutingNarration.all.next == .landmarks)
+        #expect(OutingNarration.landmarks.next == .off)
+        #expect(OutingNarration.off.next == .all)
+        for option in OutingNarration.allCases { #expect(option.next.next.next == option) }
     }
 
     func fix(_ acc: Double, age: Double = 1) -> RouteOriginFix {

@@ -122,3 +122,35 @@ describe("나들이 문장 창구", () => {
     expect(speak).toContain("speechPendingTTL");
   });
 });
+
+describe("나들이 시트 배치(E54)", () => {
+  const SHEET = join(IOS, "Gildongmu/Directions/OutingSheet.swift");
+
+  it("\"출발점으로\"는 종료 화면에만 있고 안내 중 최하단엔 \"나들이 종료\"만 남는다", () => {
+    const sheet = readFileSync(SHEET, "utf8");
+    expect(sheet.split('"ios.outing.returnToOrigin"').length - 1).toBe(1);
+    expect(functionBody(sheet, "endSection")).toContain('"ios.outing.returnToOrigin"');
+    const inset = sheet.slice(sheet.indexOf(".safeAreaInset(edge: .bottom)"), sheet.indexOf(".task {"));
+    expect(inset).toContain('"ios.outing.stop"');
+    expect(inset).not.toContain("returnToOrigin");
+    // 시트 버튼이 사라지면 미확정 라벨 분기·통지도 함께 없다.
+    expect(readFileSync(MODEL, "utf8")).not.toContain("announceOriginPending");
+  });
+
+  it("주변 낭독은 펼침 메뉴가 아니라 누를 때마다 다음 단계로 넘어가는 버튼이다", () => {
+    const sheet = readFileSync(SHEET, "utf8");
+    expect(sheet).not.toMatch(/\bMenu\(/);
+    expect(sheet).toMatch(/Button\(appLocalized\("ios\.outing\.narration"[^\n]*\{\s*narrationRaw = narration\.next\.rawValue\s*\}/);
+  });
+});
+
+describe("나들이 종료 화면 소거(E31 응답 표식)", () => {
+  it("종료 화면 소거는 clearEnd 한 곳이고 거기서 체중 권유 응답 표식을 지운다", () => {
+    const model = readFileSync(MODEL, "utf8");
+    // 닫기·새 세션·귀환 인계·30분 만료가 전부 clearEnd를 지나야 표식이 다음 화면으로 새지 않는다.
+    expect(model.match(/endScreen = nil/g) ?? []).toHaveLength(1);
+    expect(functionBody(model, "clearEnd")).toMatch(
+      /endScreen = nil[\s\S]*UserDefaults\.standard\.set\(false, forKey: WalkHealth\.weightPromptEngagedKey\)/,
+    );
+  });
+});

@@ -2,10 +2,10 @@ import GildongmuKit
 import SwiftUI
 
 /// 나들이 시트(E51 spec §8). 읽기 순서: 제목 행(+접기) → 주변 낭독 → 주변 보기 → **상태 행(착지)** →
-/// 걸은 거리 → 방향, 최하단 고정 "출발점으로"·"나들이 종료". 버튼은 위, 실시간 갱신 정보는 아래
-/// (위원장 판정) — 착지 행에서 위로 한 번 쓸면 버튼에 닿는다.
+/// 걸은 거리 → 방향, 최하단 고정 "나들이 종료". 버튼은 위, 실시간 갱신 정보는 아래
+/// (위원장 판정) — 착지 행에서 위로 한 번 쓸면 버튼에 닿는다. "출발점으로"는 종료 화면에만 있다(E54).
 ///
-/// 착지 행은 이벤트로만 바뀌는 상태 행이다(출발점 잡는 중 → 출발점 {라벨}). 10m마다 바뀌는 걸은 거리를
+/// 착지 행은 이벤트로만 바뀌는 상태 행이다(출발점 잡는 중 → 출발점 {라벨}). 걸을 때마다 바뀌는 걸은 거리를
 /// 착지 행에 두면 커서가 머무는 동안 VoiceOver가 바뀔 때마다 다시 읽는다(spec 리뷰 M9).
 ///
 /// 문장 통지는 모델의 한 창구(`OutingModel.post`)뿐이고 이 뷰엔 live region이 없다.
@@ -40,29 +40,13 @@ struct OutingSheet: View {
         }
         .safeAreaInset(edge: .bottom) {
             if model.endScreen == nil {
-                VStack(spacing: 0) {
-                    // 미확정이면 disabled가 아니라 라벨이 상태를 말한다(포커스를 지우지 않는다, spec §13).
-                    Button {
-                        guard model.origin != nil else { return model.announceOriginPending() }
-                        onReturn()
-                    } label: {
-                        Text(model.origin == nil
-                             ? joinText(appLocalized("ios.outing.returnToOrigin"), appLocalized("ios.outing.originPending"))
-                             : appLocalized("ios.outing.returnToOrigin"))
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
-                    .padding(.horizontal)
-                    .padding(.top, 8)
-                    Button { model.stopByUser() } label: {
-                        Text(appLocalized("ios.outing.stop")).frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.large)
-                    .padding(.horizontal)
-                    .padding(.vertical, 8)
+                Button { model.stopByUser() } label: {
+                    Text(appLocalized("ios.outing.stop")).frame(maxWidth: .infinity)
                 }
+                .buttonStyle(.bordered)
+                .controlSize(.large)
+                .padding(.horizontal)
+                .padding(.vertical, 8)
                 .background(.bar, ignoresSafeAreaEdges: [])
             }
         }
@@ -106,11 +90,9 @@ struct OutingSheet: View {
 
     private var trackingSection: some View {
         Section {
-            Menu(appLocalized("ios.outing.narration", narrationLabel(narration))) {
-                ForEach(OutingNarration.allCases, id: \.self) { option in
-                    Button(narrationLabel(option)) { narrationRaw = option.rawValue }
-                        .accessibilityAddTraits(option == narration ? .isSelected : [])
-                }
+            // 누를 때마다 다음 단계로(E54). 라벨 변화가 곧 상태 신호라 별도 통지는 없다(헌장 §5).
+            Button(appLocalized("ios.outing.narration", narrationLabel(narration))) {
+                narrationRaw = narration.next.rawValue
             }
             Button(appLocalized("ios.outing.overviewButton")) {
                 model.refreshForOverview()

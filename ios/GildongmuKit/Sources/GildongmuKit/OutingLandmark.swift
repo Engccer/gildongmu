@@ -30,7 +30,16 @@ public enum OutingNarration: String, Sendable, Equatable, CaseIterable {
     case all
 
     public static let storageKey = "outingNarration"
-    public static let `default`: OutingNarration = .landmarks
+    public static let `default`: OutingNarration = .all
+
+    /// 시트 버튼을 한 번 누른 뒤의 단계(E54 순환: 전부 → 이정표만 → 끔 → 전부).
+    public var next: OutingNarration {
+        switch self {
+        case .all: .landmarks
+        case .landmarks: .off
+        case .off: .all
+        }
+    }
 
     /// 이 단계에서 그 등급의 장소를 말하는가.
     public func speaks(_ tier: OutingLandmarkTier) -> Bool {
