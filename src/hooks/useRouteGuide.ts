@@ -679,7 +679,7 @@ export function useRouteGuide(
           const now = performance.now() / 1000;
           // 낡은 예약 폐기(리뷰 MAJOR 6): throttled 탭에서 늦게 깬 명령은 버린다.
           if (now - due > DEFER_LATE_DISCARD_S) return;
-          // 게시 직전 재평가(§4-5): 예약 후 새 톤(발화 없는 tick 등)이 시작됐으면
+          // 게시 직전 재평가(§4-5): 예약 후 새 톤(발화 없는 추세음 등)이 시작됐으면
           // 더 기다리되, 예약 시각부터의 총 대기는 상한 안(무한 연기 구조 차단).
           const elapsed = now - scheduledAt;
           const more = speechDeferStep(now, toneEndsAtRef.current);
@@ -992,7 +992,7 @@ export function useRouteGuide(
    * 쓰므로 건너뛰면 폴백 기준이 낡는다.
    *
    * ⚠ `pos.coords.speed`는 무효일 때 `null`이고 웹에는 `speedAccuracy`가 없다.
-   * 그대로 넘겨 판정을 순수 함수에 맡긴다(0으로 변환하면 거짓 정지 tick).
+   * 그대로 넘겨 판정을 순수 함수에 맡긴다(0으로 변환하면 거짓 정지 — 걷는 중 추세 축이 멈춘다).
    */
   const judgeMotion = useCallback(
     (pos: GeolocationPosition, now: number): MotionState => {
@@ -1589,8 +1589,9 @@ export function useRouteGuide(
       }
 
       // 톤 계층 입력 조립(상세 4단계). ⚠ 종전의 "무이벤트 fix마다 3초 tick 하트비트"는
-      // 폐기됐다 — 같은 소리가 간략에서는 정체를 뜻해 한 소리에 두 뜻이 있었다.
-      // 그 자리를 추세 축이 대신하므로 별도 중재가 필요 없다.
+      // 폐기됐다(2026-08-08 — 같은 소리가 간략에서는 정체를 뜻해 한 소리에 두 뜻이 있었다).
+      // 그 자리를 추세 축이 대신하므로 별도 중재가 필요 없다. 지금 tick은 나들이 10m 비프
+      // 전용이고 안내 세션은 정지 fix에 소리를 내지 않는다(E55).
       const phase = result.state.phase;
       const remaining = Math.max(0, route.totalMeters - result.state.d);
       // 투영 점프 판정은 리듀서 소유다(A10 — `GuideTuning.maxSpeedMps` 주석). 튄 fix의

@@ -14,6 +14,11 @@ const sheet = readFileSync(
   "utf8",
 );
 
+const model = readFileSync(
+  new URL("../../../ios/Gildongmu/Directions/BeaconModel.swift", import.meta.url),
+  "utf8",
+);
+
 /** [닫기] 버튼의 액션 블록 본문(섹션 마지막 행이라 그 뒤가 `} header:`다). */
 const closeButtonBody = (() => {
   const start = sheet.indexOf('appLocalized("actions.close")');
@@ -54,6 +59,25 @@ describe("체중 입력 권유 무시 상한 — 뷰 배선 (E31)", () => {
     // 소비가 `clearArrival()`의 앞인지 뒤인지는 무관하다(같은 클로저, 서로를 읽지 않는다) —
     // 버튼 블록 안에 있기만 하면 된다.
     expect(closeButtonBody).toMatch(/weightPromptEngaged\s*=\s*false/);
+  });
+
+  it("clearArrival()이 도보 종료 화면이 있을 때만 응답 표식을 지운다", () => {
+    // 닫기 밖의 소거(30분 만료·인계·새 세션 시작)도 전부 `clearArrival()`을 지나므로, 여기서 지우지
+    // 않으면 [체중 입력하기]를 누른 화면의 응답이 다음 도보 종료 화면으로 새어 그 화면의 무시가 안
+    // 세진다. 조건은 load-bearing이다: 대중교통·나들이 시작이 종료 화면 유무와 무관하게 이 함수를
+    // 부르므로, 무조건 지우면 같은 키를 쓰는 나들이 종료 화면의 표식을 교차 소거한다
+    // (`OutingModel.clearEnd()`의 `endScreen != nil` 조건과 한 쌍, outing-guard.test.ts).
+    // 판정이 `arrivalDest`를 읽으므로 그 소거보다 앞이어야 한다.
+    const start = model.indexOf("func clearArrival()");
+    if (start < 0) throw new Error("clearArrival()을 찾지 못했다 — 이름이 바뀌었는가");
+    const body = model.slice(start, model.indexOf("\n    }\n", start));
+    const marker = body.search(
+      /if arrivalDest != nil \{ UserDefaults\.standard\.set\(false, forKey: WalkHealth\.weightPromptEngagedKey\) \}/,
+    );
+    const clear = body.indexOf("arrivalDest = nil");
+    expect(marker).toBeGreaterThan(-1);
+    expect(clear).toBeGreaterThan(-1);
+    expect(marker).toBeLessThan(clear);
   });
 
   it("두 벌 키가 모두 화면에 남아 있다", () => {

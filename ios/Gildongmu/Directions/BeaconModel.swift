@@ -512,6 +512,9 @@ final class BeaconModel {
         // `liveTopText`는 시트 내용이라 화면과 수명을 같이한다 — `fail()`이 쓰는 자리가 아니다.
         liveTopText = nil
         if !status.isFailure { statusText = "" }
+        // 체중 권유 응답 표식은 그 화면의 것이다 — 닫기 밖의 소거(만료·인계·새 세션)에서 다음 화면으로 새지 않게(E31).
+        // 나들이 종료 화면과 같은 키라, 도보 종료 화면이 있을 때만 지운다(코디네이터가 대중교통·나들이 시작마다 부른다).
+        if arrivalDest != nil { UserDefaults.standard.set(false, forKey: WalkHealth.weightPromptEngagedKey) }
         arrivalDest = nil
         arrivalSessionKind = nil
         endKind = .arrived
@@ -3147,7 +3150,7 @@ final class BeaconModel {
         // 억제 해제가 미뤄진 승격을 성사시킨다).
         let degraded = isTracking && !tones.isBackgroundAudible
         if soundDegraded != degraded { soundDegraded = degraded }
-        // 톤이 죽으면 hold·tick엔 통지가 없어 사용자가 침묵의 원인을 모른다.
+        // 톤이 죽으면 hold·정지엔 통지가 없어 사용자가 침묵의 원인을 모른다.
         // GPS 약신호와 **다른 문구**여야 한다. 취해야 할 행동이 다르다.
         if tones.isSilenced {
             // 진동은 무음 **진입 1회**(E30 확장 — 소리가 죽었으니 진동이 유일한 대체 채널). 문장 가드
