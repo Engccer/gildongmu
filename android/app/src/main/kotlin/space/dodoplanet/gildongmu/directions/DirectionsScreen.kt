@@ -168,7 +168,7 @@ class FormUiState(
                 @Suppress("UNCHECKED_CAST")
                 FormUiState(
                     (it[0] as List<String>).toSet(), it[1] as Boolean?,
-                    (it[2] as List<String>).mapNotNull { raw -> WalkLineKind.entries.firstOrNull { k -> k.rawValue == raw } }.toSet(),
+                    (it[2] as List<String>).mapNotNull(WalkLineKind::fromRawValue).toSet(),
                     it[3] as Int,
                 )
             },

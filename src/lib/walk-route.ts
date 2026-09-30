@@ -512,10 +512,19 @@ export async function getWalkRouteAlternatives(params: {
 }
 
 /**
- * 카카오 줄(큰길·계단 회피) 조회 하나의 예산 — 병렬이라 벽시계는 하나다. 클라이언트 15초 예산 안에서
- * 이미 와 있던 첫 줄을 잃지 않게 한다.
+ * 첫 줄 뒤 줄(ko 카카오 큰길·계단 회피, en 최단) 조회 하나의 예산 — 병렬이라 벽시계는 하나다. provider
+ * 8초 abort에 정규화·이벤트 루프 지연까지 얹은 상한으로, 클라이언트 15초 예산 안에서 이미 와 있던 첫 줄을
+ * 잃지 않게 한다.
  */
-const KAKAO_LINE_BUDGET_MS = 10_000;
+const LINE_BUDGET_MS = 10_000;
+
+function withLineBudget<T>(p: Promise<T>): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error("[walk-route] 줄 조회 예산 초과")), LINE_BUDGET_MS);
+  });
+  return Promise.race([p, timeout]).finally(() => clearTimeout(timer));
+}
 
 /**
  * 줄 목록 계약의 판본(E52): `lines=1`은 최대 두 줄, `lines=2`는 최대 세 줄.
@@ -529,7 +538,7 @@ export type WalkLinesVersion = 1 | 2;
  * 두 카카오 원응답이 같은 길인가(E52 기하 동일성, spec §1-1). 전 스텝 `pathCoords`를 이은 좌표열이
  * 원소 수와 값까지 같아야 같다 — 거리 숫자로 대신하지 않는다(같은 거리의 다른 길이 있다).
  * **증명하지 못하면 다른 길이다**: 좌표가 없는 스텝이 하나라도 있으면 false(틀리게 접으면 대안이
- * 사라지고, 틀리게 싣으면 종전의 중복 줄로 돌아갈 뿐이다). 재작성·주석 전 원응답에서만 쓴다
+ * 사라지고, 틀리게 실으면 종전의 중복 줄로 돌아갈 뿐이다). 재작성·주석 전 원응답에서만 쓴다
  * (주석 단계가 좌표를 지운다).
  */
 export function sameWalkGeometry(a: WalkRouteBriefing, b: WalkRouteBriefing): boolean {
@@ -550,15 +559,15 @@ export function sameWalkGeometry(a: WalkRouteBriefing, b: WalkRouteBriefing): bo
 /**
  * ko 줄 구성(E52 위원장 판정, 순수 함수 — 실호출 게이트가 원응답 corpus로 재생한다).
  * 최단 → 큰길(최단과 다른 길일 때만) → 계단 회피(계단 문구가 없고 실린 줄 전부와 다른 길일 때만).
- * 비교 대상은 **실린 줄**이다: 큰길 조회가 실패(`undefined`)하면 계단 회피는 최단과만 비교한다 —
- * 모르는 기하를 "같다"고 추정하지 않는다. 최단이 경로 없음이면 큰길이 첫 줄이 된다.
+ * 비교 대상은 **실린 줄**뿐이다: 큰길이 없으면(경로 없음이든 조회 실패든 — 호출부가 둘 다 null로 넘긴다)
+ * 계단 회피는 최단과만 비교한다. 모르는 기하를 "같다"고 추정하지 않는다. 최단이 없으면 큰길이 첫 줄이 된다.
  * 판본 1은 세 줄이 되면 큰길을 뺀다(`WalkLinesVersion`).
  */
 export function composeKoWalkLines(
   raw: {
     shortest: WalkRouteBriefing | null;
-    broad: WalkRouteBriefing | null | undefined;
-    accessible: WalkRouteBriefing | null | undefined;
+    broad: WalkRouteBriefing | null;
+    accessible: WalkRouteBriefing | null;
   },
   version: WalkLinesVersion,
 ): { kind: WalkLineKind; raw: WalkRouteBriefing }[] {
@@ -581,8 +590,10 @@ export function composeKoWalkLines(
  *   두 축이 없어 대신할 이름이 없다. 첫 줄이 Tmap 폴백이면 카카오 줄을 싣지 않는다(provider 혼합 금지).
  * - en: `[recommended, shortest]` — 현행 Tmap `0`+`10`(카카오 안내문이 한국어 고정, E52 범위 밖).
  *
- * 3-state: 첫 줄 조회의 throw는 전체 throw(502), 나머지 줄의 throw는 흡수해 그 줄만 뺀다. 경로 없음
- * (null)은 그 줄만 뺀다 — 전부 없으면 `[]`("경로 없음"). 싣는 줄이 0개인데 실패가 섞였으면 throw.
+ * 3-state: 최단 줄의 조회·주석 throw는 전체 throw(502), 카카오 줄의 조회·주석 throw는 흡수해 그 줄만 뺀다.
+ * 경로 없음(null)은 그 줄만 뺀다 — 전부 없으면 `[]`("경로 없음"). 싣는 줄이 0개인데 실패가 섞였으면 throw.
+ * ⚠ E52부터 줄의 부재가 정상 결과의 다수라 카카오 줄 실패의 흡수는 "대안 없음"과 같은 화면이 된다 —
+ * 의도된 예외(spec §2.1)이고 실패는 로그로만 남는다.
  * ⚠ 줄 경로에는 `stepFree`·`stepFreeNotice`·스텝 0 유사 문장이 없다 — 이름(`kind`)이 그 정보다.
  * 기하는 싣지 않는다(조회 화면 전용 — 안내 시작은 줄 종류의 단일 조회가 담당).
  */
@@ -594,14 +605,7 @@ export async function getWalkRouteLines(params: {
   version: WalkLinesVersion;
 }): Promise<WalkRouteLine[]> {
   const { origin, dest, lang, via, version } = params;
-  const budgeted = <T>(p: Promise<T>): Promise<T> => {
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const timeout = new Promise<never>((_, reject) => {
-      timer = setTimeout(() => reject(new Error("[walk-route] 줄 조회 예산 초과")), KAKAO_LINE_BUDGET_MS);
-    });
-    return Promise.race([p, timeout]).finally(() => clearTimeout(timer));
-  };
-  if (lang === "en") return getEnWalkRouteLines({ origin, dest, lang, via }, budgeted);
+  if (lang === "en") return getEnWalkRouteLines({ origin, dest, lang, via });
 
   if (!hasShortestAxis(lang)) {
     throw new Error("[walk-route] 최단 줄을 조회할 키가 없습니다");
@@ -610,7 +614,7 @@ export async function getWalkRouteLines(params: {
   // 다른 두 줄로 만든다(설계 리뷰 MAJOR 2). 기하 동일성 판정의 전제이기도 하다.
   const kakao = (routeMode: KakaoWalkRouteMode) =>
     hasKakaoKey()
-      ? budgeted(getKakaoWalkBriefing({ origin, dest, routeMode, preciseCoords: true, via, noStore: false }))
+      ? withLineBudget(getKakaoWalkBriefing({ origin, dest, routeMode, preciseCoords: true, via, noStore: false }))
       : Promise.resolve(null);
   const [first, broad, accessible] = await Promise.allSettled([
     fetchPrimaryOrFallback({
@@ -628,7 +632,7 @@ export async function getWalkRouteLines(params: {
   // provider 혼합 금지(설계 리뷰 MAJOR 2): 첫 줄이 Tmap 폴백이면 카카오 줄을 싣지 않는다.
   const kakaoLines = !(shortest && first.value?.via === "tmap");
   const settledValue = (r: PromiseSettledResult<WalkRouteBriefing | null>) =>
-    r.status === "fulfilled" ? r.value : undefined;
+    r.status === "fulfilled" ? r.value : null;
   const picked = composeKoWalkLines(
     {
       shortest,
@@ -637,29 +641,37 @@ export async function getWalkRouteLines(params: {
     },
     version,
   );
-  // 3-state: 싣는 줄이 0개인데 실패가 섞였으면 "경로 없음"이 아니라 조회 실패다(502).
-  if (picked.length === 0) {
-    const failed = [broad, accessible].find((r) => r.status === "rejected");
-    if (failed?.status === "rejected") throw failed.reason;
-  }
   const provider = (kind: WalkLineKind) => (kind === "shortest" ? (first.value?.via ?? "kakao") : "kakao");
-  return Promise.all(
-    picked.map(async (l) => ({
-      kind: l.kind,
-      route: await annotateBriefing(l.raw, provider(l.kind), lang, false),
-    })),
+  // 주석도 흡수 경계 안에 둔다: 카카오 줄의 재작성·주석 예외는 그 줄만 빼고, 최단 줄은 조회와 같이 전체 throw.
+  const annotated = await Promise.allSettled(
+    picked.map(async (l) => ({ kind: l.kind, route: await annotateBriefing(l.raw, provider(l.kind), lang, false) })),
   );
+  const lines: WalkRouteLine[] = [];
+  const failures: unknown[] = [broad, accessible].flatMap((r) => (r.status === "rejected" ? [r.reason] : []));
+  annotated.forEach((r, i) => {
+    if (r.status === "fulfilled") lines.push(r.value);
+    else if (picked[i].kind === "shortest") throw r.reason;
+    else {
+      logRouteFallback("[walk-route] 카카오 줄 주석 실패, 그 줄만 뺀다:", origin, dest, r.reason);
+      failures.push(r.reason);
+    }
+  });
+  // 3-state: 싣는 줄이 0개인데 실패가 섞였으면 "경로 없음"이 아니라 조회 실패다(502).
+  if (lines.length === 0 && failures.length > 0) throw failures[0];
+  return lines;
 }
 
 /** en 줄 목록(E42 그대로): `[recommended, shortest]`, 둘째 줄 throw는 흡수. */
-async function getEnWalkRouteLines(
-  params: { origin: Coord; dest: Coord; lang: WalkLang; via?: Coord },
-  budgeted: <T>(p: Promise<T>) => Promise<T>,
-): Promise<WalkRouteLine[]> {
+async function getEnWalkRouteLines(params: {
+  origin: Coord;
+  dest: Coord;
+  lang: WalkLang;
+  via?: Coord;
+}): Promise<WalkRouteLine[]> {
   const { origin, dest, lang, via } = params;
   const [first, second] = await Promise.allSettled([
     resolveWalkRoute({ origin, dest, lang, via, preciseCoords: true }),
-    budgeted(
+    withLineBudget(
       hasShortestAxis(lang)
         ? resolveWalkRoute({ origin, dest, lang, via, variant: "shortest", preciseCoords: true })
         : Promise.resolve(null),

@@ -1060,6 +1060,20 @@ describe("getWalkRouteLines (E42·E52 조회 화면 줄 목록)", () => {
     expect(getWalkRouteBriefing).not.toHaveBeenCalled();
   });
 
+  it("카카오 줄의 주석 단계 예외도 그 줄만 뺀다(조회 흡수와 같은 경계) — 최단 줄은 전체 throw", async () => {
+    // 안내문이 깨진 스텝은 조회·기하 비교는 지나고 재작성(주석) 단계에서만 throw한다.
+    const broken = (path: number[]): WalkRouteBriefing => ({
+      ...road("x", path),
+      steps: [{ description: undefined as unknown as string, pathCoords: road("x", path).steps[0].pathCoords }],
+    });
+    kakaoByMode({ SHORTEST: road("a", [1, 2]), BROAD_FIRST: broken([1, 3]), ACCESSIBLE: road("c", [1, 4]) });
+    expect(await kinds(2)).toEqual(["shortest", "accessible"]);
+    kakaoByMode({ SHORTEST: broken([1, 2]), BROAD_FIRST: road("b", [1, 3]), ACCESSIBLE: null });
+    await expect(kinds(2)).rejects.toThrow();
+    kakaoByMode({ SHORTEST: null, BROAD_FIRST: broken([1, 3]), ACCESSIBLE: null });
+    await expect(kinds(2)).rejects.toThrow();
+  });
+
   it("판본 1(배포된 iOS 1.19)은 최대 두 줄 — 세 줄 구간은 큰길을 빼 [최단, 계단 회피]", async () => {
     kakaoByMode({ SHORTEST: road("a", [1, 2]), BROAD_FIRST: road("b", [1, 3]), ACCESSIBLE: road("c", [1, 4]) });
     expect(await kinds(1)).toEqual(["shortest", "accessible"]);

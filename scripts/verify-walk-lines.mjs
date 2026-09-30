@@ -14,7 +14,11 @@
 // 종료 코드: 전부 PASS면 0, 하나라도 FAIL이면 1.
 
 import { readFileSync } from "node:fs";
-import { createJiti } from "jiti";
+// ⚠ jiti는 package.json에 직접 선언돼 있지 않다(tailwind의 전이 의존성으로 설치된다). 없으면 조용히 넘어가지 않고 멈춘다.
+const { createJiti } = await import("jiti").catch(() => {
+  console.error("jiti를 찾지 못했다 — TS 모듈을 불러올 수 없어 재생 게이트를 돌릴 수 없다(npm ls jiti).");
+  process.exit(2);
+});
 
 const EXPECTED = { 1: 10, 2: 27, 3: 8 };
 const args = process.argv.slice(2);
@@ -58,8 +62,15 @@ async function replay(corpusPath) {
     byPair.get(pair)[mode] = value;
   }
   const out = {};
+  // 재생 표본은 "세 모드 전부 조회 성공(경로 없음 포함)"이 전제다 — 조회 실패를 재생하면 프로덕션이 결코 내지 않는
+  // 구성(최단 실패 → Tmap 폴백·카카오 줄 제외 대신 큰길 승격)이 나온다. 그런 구간은 판정에서 빼고 FAIL로 찍는다.
+  const broken = [...byPair].filter(([, m]) =>
+    ["SHORTEST", "BROAD_FIRST", "ACCESSIBLE"].some((mode) => m[mode] === undefined),
+  );
+  check("재생 표본: 세 모드 전부 조회 성공", broken.length === 0, broken.map(([p]) => p).join(", "));
+  for (const [pair] of broken) byPair.delete(pair);
   for (const [pair, m] of byPair) {
-    const raw = { shortest: m.SHORTEST ?? null, broad: m.BROAD_FIRST, accessible: m.ACCESSIBLE };
+    const raw = { shortest: m.SHORTEST, broad: m.BROAD_FIRST, accessible: m.ACCESSIBLE };
     const v2 = compose(raw, 2);
     out[pair] = {
       v1: compose(raw, 1).map((l) => l.kind),
@@ -123,10 +134,13 @@ async function live(pairsPath, expectPath) {
   }
   judge("실호출", table, pairs.length === 45);
   if (expected) {
+    // 대조 대상이 없는 구간(키 불일치)을 조용히 건너뛰면 0건 비교가 PASS가 된다 — 그것도 FAIL로 센다.
+    const missing = Object.keys(table).filter((p) => !expected[p]);
+    check("실호출 구간이 전부 재생 표본에 있다", missing.length === 0, missing.join(", "));
     const diff = Object.entries(table).filter(([p, r]) => expected[p] && expected[p].v2.join() !== r.v2.join());
     check(
       "실호출 = 재생(구간별 줄 구성)",
-      diff.length === 0,
+      diff.length === 0 && Object.keys(table).length > 0,
       diff.map(([p, r]) => `${p}: 실호출 ${r.v2.join("·")} / 재생 ${expected[p].v2.join("·")}`).join("; "),
     );
   }

@@ -136,6 +136,10 @@ class BriefingStationsTest {
         assertTrue(rows.contains("else kind in laterExpanded"))
         assertTrue(rows.contains("onLaterToggle(kind)"))
         assertFalse(code("directions/DirectionsScreen.kt").contains("secondExpanded"))
+        // 전환 대상은 :kit 한 함수(계단 회피 우선) — 호출부에서 "첫 다른 줄"을 다시 고르지 않는다(iOS 소스 가드와 짝).
+        val start = code("guide/ui/WalkGuideStartButton.kt")
+        assertTrue(start.contains("WalkLineKind.switchAlternate(line, kinds)"))
+        assertFalse(start.contains("firstOrNull { it != line }"))
     }
 
     @Test fun `전화는 단일 창구를 지나고 통지는 화면 통지 창구로 간다`() {

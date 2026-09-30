@@ -526,7 +526,7 @@ export async function executeFunction(
         // 채팅 도구는 ko 고정이다 — 이 도구는 ko 트리거 문구로만 노출된다(E16 축3 범위 밖).
         lang: "ko",
         accessible,
-        // 앱 화면 첫 줄(E42 — ko는 최단)과 맞춘다. 계단 회피 요청은 서버 기본 파이프라인(화면 둘째 줄)이다.
+        // 앱 화면 첫 줄(E42 — ko는 최단)과 맞춘다. 계단 회피 요청은 서버 계단 회피 파이프라인(화면의 계단 회피 줄과 같은 축)이다.
         ...(accessible ? {} : { variant: "shortest" as const }),
         via,
       });
