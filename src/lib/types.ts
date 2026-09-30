@@ -630,7 +630,7 @@ export interface WalkRouteBriefing {
  */
 export type WalkLineKind = "shortest" | "accessible" | "broad" | "recommended";
 
-/** `/api/route/walk?lines=1` 응답의 한 줄. 줄 경로엔 `stepFree`·`stepFreeNotice`가 없다. */
+/** `/api/route/walk?lines=2` 응답의 한 줄. 줄 경로엔 `stepFree`·`stepFreeNotice`가 없다. */
 export interface WalkRouteLine {
   kind: WalkLineKind;
   route: WalkRouteBriefing;

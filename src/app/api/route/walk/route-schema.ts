@@ -33,10 +33,11 @@ const querySchema = z
     alternatives: z
       .union([z.literal("1"), z.null()])
       .transform((v) => v === "1"),
-    // 조회 화면 줄 목록 옵트인(E42): 누락 또는 정확히 "1"만. 응답 `{ lines }`.
+    // 조회 화면 줄 목록 옵트인(E42): 누락 또는 정확히 "1"·"2"만. 응답 `{ lines }`. 값은 줄 목록 계약의
+    // 판본이다(E52): 1 = 최대 두 줄(배포된 iOS 1.19), 2 = 최대 세 줄 — `WalkLinesVersion`.
     lines: z
-      .union([z.literal("1"), z.null()])
-      .transform((v) => v === "1"),
+      .union([z.literal("1"), z.literal("2"), z.null()])
+      .transform((v) => (v === null ? undefined : v === "2" ? (2 as const) : (1 as const))),
     // 경유지 1개(N4): 누락=없음, 형식은 origin·dest와 같다. 형식 오류는 400 —
     // 조용히 버리면 "경유 안 한 경로"를 "경유한 경로"로 낭독하게 된다.
     // variant·alternatives·accessible과 직교한다(금지 조합 없음).

@@ -109,12 +109,20 @@ describe("walk 파라미터 조합표 (M3 spec §3.1)", () => {
     });
   });
 
-  describe("lines (E42)", () => {
-    it("정확히 1만 받는다", () => {
-      const r = parseWalkQuery({ ...base, lines: "1" });
-      expect(r.ok).toBe(true);
-      if (r.ok) expect(r.data.lines).toBe(true);
-      expect(parseWalkQuery({ ...base, lines: "true" }).ok).toBe(false);
+  describe("lines (E42·E52 판본)", () => {
+    it("정확히 1·2만 받고 판본 번호로 바꾼다(1 = 최대 두 줄, 2 = 최대 세 줄), 누락은 옵트인 없음", () => {
+      const one = parseWalkQuery({ ...base, lines: "1" });
+      const two = parseWalkQuery({ ...base, lines: "2" });
+      expect(one.ok && one.data.lines).toBe(1);
+      expect(two.ok && two.data.lines).toBe(2);
+      const none = parseWalkQuery(base);
+      expect(none.ok && none.data.lines).toBeUndefined();
+      for (const v of ["true", "3", "0", "2.0"]) expect(parseWalkQuery({ ...base, lines: v }).ok).toBe(false);
+    });
+
+    it("판본 2도 단독 옵트인 — accessible=true와 조합하면 400", () => {
+      expect(parseWalkQuery({ ...base, lines: "2", accessible: "true" }).ok).toBe(false);
+      expect(parseWalkQuery({ ...base, lines: "2", variant: "shortest" }).ok).toBe(false);
     });
 
     it("단독 옵트인 — variant·alternatives·includeGeometry·accessible=true와 조합하면 400", () => {

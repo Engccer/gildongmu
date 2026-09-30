@@ -179,7 +179,15 @@ describe("GET /api/route/walk", () => {
     expect(vi.mocked(getWalkRouteBriefing).mock.calls[0][0]).toMatchObject({ searchOption: "10" });
   });
 
-  it("lines=1+accessible=true는 400(계단 회피 축은 둘째 줄 안에 있다)", async () => {
+  it("lines=2(E52 판본)도 같은 봉투, lines=3은 400(옵트인을 조용히 무시하지 않는다)", async () => {
+    const ok = await GET(new NextRequest("http://x/api/route/walk?origin=37.5,127.0&dest=37.6,127.1&lines=2"));
+    expect(ok.status).toBe(200);
+    expect((await ok.json()).lines.map((l: { kind: string }) => l.kind)).toEqual(["shortest"]);
+    const bad = await GET(new NextRequest("http://x/api/route/walk?origin=37.5,127.0&dest=37.6,127.1&lines=3"));
+    expect(bad.status).toBe(400);
+  });
+
+  it("lines=1+accessible=true는 400(계단 회피 축은 줄 목록 안에 있다)", async () => {
     const res = await GET(
       new NextRequest("http://x/api/route/walk?origin=37.5,127.0&dest=37.6,127.1&lines=1&accessible=true"),
     );

@@ -13,6 +13,7 @@ import {
   getWalkRoute,
   getWalkRouteAlternatives,
   getWalkRouteLines,
+  sameWalkGeometry,
 } from "../walk-route";
 import { rewriteWalkBriefing } from "../walk-guidance";
 import { walkStepAction } from "../walk-action";
@@ -896,12 +897,12 @@ describe("provider 혼합 금지·같은 좌표(E42 설계 리뷰 MAJOR 2)", () 
     expect(r.shortest).toBeNull();
   });
 
-  it("lines: 첫 줄이 Tmap 폴백이면 카카오 둘째 줄을 싣지 않는다", async () => {
+  it("lines: 첫 줄이 Tmap 폴백이면 카카오 줄을 싣지 않는다", async () => {
     vi.mocked(getKakaoWalkBriefing).mockImplementation(async (p) => {
       if (p.routeMode === "SHORTEST") throw new Error("kakao shortest down");
       return KAKAO_BRIEFING;
     });
-    const lines = await getWalkRouteLines({ lang: "ko", origin: ORIGIN, dest: DEST });
+    const lines = await getWalkRouteLines({ lang: "ko", origin: ORIGIN, dest: DEST, version: 2 });
     expect(lines.map((l) => l.kind)).toEqual(["shortest"]);
     expect(vi.mocked(getWalkRouteBriefing).mock.calls[0][0]).toMatchObject({ searchOption: "10" });
   });
@@ -910,7 +911,7 @@ describe("provider 혼합 금지·같은 좌표(E42 설계 리뷰 MAJOR 2)", () 
     vi.mocked(getKakaoWalkBriefing).mockImplementation(async (p) =>
       p.routeMode === "ACCESSIBLE" ? null : KAKAO_BRIEFING,
     );
-    await getWalkRouteLines({ lang: "ko", origin: ORIGIN, dest: DEST });
+    await getWalkRouteLines({ lang: "ko", origin: ORIGIN, dest: DEST, version: 2 });
     const calls = vi.mocked(getKakaoWalkBriefing).mock.calls.map((c) => c[0]);
     expect(calls.map((c) => c.routeMode).sort()).toEqual(["ACCESSIBLE", "BROAD_FIRST", "SHORTEST"]);
     for (const c of calls) expect(c.preciseCoords).toBe(true);
@@ -926,31 +927,31 @@ describe("provider 혼합 금지·같은 좌표(E42 설계 리뷰 MAJOR 2)", () 
       if (p.routeMode === "SHORTEST") return null;
       throw new Error("kakao down");
     });
-    await expect(getWalkRouteLines({ lang: "ko", origin: ORIGIN, dest: DEST })).rejects.toThrow();
+    await expect(getWalkRouteLines({ lang: "ko", origin: ORIGIN, dest: DEST, version: 2 })).rejects.toThrow();
   });
 });
 
-describe("둘째 줄 10초 예산(구현 리뷰 m2)", () => {
+describe("카카오 줄 10초 예산(구현 리뷰 m2)", () => {
   afterEach(() => vi.useRealTimers());
 
-  it("계단 회피 → 큰길이 이어져 10초를 넘기면 첫 줄만 싣는다(첫 줄을 잃지 않는다)", async () => {
+  it("큰길·계단 회피가 10초를 넘기면 첫 줄만 싣는다(첫 줄을 잃지 않는다)", async () => {
     vi.useFakeTimers();
     vi.mocked(getKakaoWalkBriefing).mockImplementation((p) =>
       p.routeMode === "SHORTEST"
         ? Promise.resolve(KAKAO_BRIEFING)
-        : new Promise(() => {}), // ACCESSIBLE이 응답하지 않는다
+        : new Promise(() => {}), // 큰길·계단 회피가 응답하지 않는다
     );
-    const pending = getWalkRouteLines({ lang: "ko", origin: ORIGIN, dest: DEST });
+    const pending = getWalkRouteLines({ lang: "ko", origin: ORIGIN, dest: DEST, version: 2 });
     await vi.advanceTimersByTimeAsync(10_000);
     expect((await pending).map((l) => l.kind)).toEqual(["shortest"]);
   });
 
-  it("첫 줄이 경로 없음인데 둘째 줄이 예산을 넘기면 경로 없음이 아니라 throw", async () => {
+  it("첫 줄이 경로 없음인데 카카오 줄이 예산을 넘기면 경로 없음이 아니라 throw", async () => {
     vi.useFakeTimers();
     vi.mocked(getKakaoWalkBriefing).mockImplementation((p) =>
       p.routeMode === "SHORTEST" ? Promise.resolve(null) : new Promise(() => {}),
     );
-    const pending = getWalkRouteLines({ lang: "ko", origin: ORIGIN, dest: DEST });
+    const pending = getWalkRouteLines({ lang: "ko", origin: ORIGIN, dest: DEST, version: 2 });
     const assertion = expect(pending).rejects.toThrow(/예산/);
     await vi.advanceTimersByTimeAsync(10_000);
     await assertion;
@@ -976,7 +977,7 @@ describe("옛 앱 alternatives=1 — 최단 출처가 카카오로 바뀐 뒤의
   });
 });
 
-describe("getWalkRouteLines (E42 조회 화면 줄 목록)", () => {
+describe("getWalkRouteLines (E42·E52 조회 화면 줄 목록)", () => {
   /** routeMode별 응답을 정하는 카카오 목. 값이 Error면 throw. */
   function kakaoByMode(map: Partial<Record<string, WalkRouteBriefing | null | Error>>) {
     vi.mocked(getKakaoWalkBriefing).mockImplementation(async (p) => {
@@ -985,86 +986,160 @@ describe("getWalkRouteLines (E42 조회 화면 줄 목록)", () => {
       return v === undefined ? KAKAO_BRIEFING : v;
     });
   }
-  const named = (d: string): WalkRouteBriefing => ({
-    distanceMeters: 500, durationSeconds: 400, steps: [{ description: d }],
+  /** 좌표열로 길을 가르는 fixture — 같은 `path`면 같은 길(기하 동일성은 좌표열 비교). */
+  const road = (d: string, path: number[]): WalkRouteBriefing => ({
+    distanceMeters: 500,
+    durationSeconds: 400,
+    steps: [{ description: d, pathCoords: path.map((k) => ({ lat: 37.5 + k / 1e4, lng: 127.1 + k / 1e4 })) }],
   });
+  const kinds = async (version: 1 | 2) =>
+    (await getWalkRouteLines({ lang: "ko", origin: ORIGIN, dest: DEST, version })).map((l) => l.kind);
 
-  it("ko: [최단, 계단 회피] — 둘 다 카카오, Tmap 미호출, 줄 경로엔 stepFree가 없다", async () => {
-    kakaoByMode({ SHORTEST: named("최단 문장"), ACCESSIBLE: named("무장애 문장") });
-    const lines = await getWalkRouteLines({ lang: "ko", origin: ORIGIN, dest: DEST });
-    expect(lines.map((l) => l.kind)).toEqual(["shortest", "accessible"]);
-    expect(lines[0].route.steps[0].description).toContain("최단 문장");
-    expect(lines[1].route.steps[0].description).toContain("무장애 문장");
+  it("세 길이 모두 다르면 [최단, 큰길, 계단 회피] — 전부 카카오, Tmap 미호출, 줄 경로엔 stepFree가 없다", async () => {
+    kakaoByMode({
+      SHORTEST: road("최단 문장", [1, 2]), BROAD_FIRST: road("큰길 문장", [1, 3]), ACCESSIBLE: road("무장애 문장", [1, 4]),
+    });
+    const lines = await getWalkRouteLines({ lang: "ko", origin: ORIGIN, dest: DEST, version: 2 });
+    expect(lines.map((l) => l.kind)).toEqual(["shortest", "broad", "accessible"]);
+    expect(lines.map((l) => l.route.steps[0].description)).toEqual([
+      expect.stringContaining("최단 문장"), expect.stringContaining("큰길 문장"), expect.stringContaining("무장애 문장"),
+    ]);
     expect(getWalkRouteBriefing).not.toHaveBeenCalled();
     for (const l of lines) {
       expect("stepFree" in l.route).toBe(false);
       expect("stepFreeNotice" in l.route).toBe(false);
+      for (const st of l.route.steps) expect("pathCoords" in st).toBe(false);
     }
   });
 
-  it("계단 회피 경로가 없으면 BROAD_FIRST를 '큰길'로 싣는다 — 사유 문장·유사 스텝 없음", async () => {
-    kakaoByMode({ ACCESSIBLE: null, BROAD_FIRST: named("큰길 문장") });
-    const lines = await getWalkRouteLines({ lang: "ko", origin: ORIGIN, dest: DEST });
+  it("최단 = 큰길이면 큰길 줄을 싣지 않는다(같은 길은 한 줄)", async () => {
+    kakaoByMode({ SHORTEST: road("a", [1, 2]), BROAD_FIRST: road("b", [1, 2]), ACCESSIBLE: road("c", [1, 4]) });
+    expect(await kinds(2)).toEqual(["shortest", "accessible"]);
+  });
+
+  it("계단 회피가 큰길과 같은 길이면 싣지 않는다 — 계단 없는 최단 옆의 거짓 암시를 없앤다(E52 관찰)", async () => {
+    kakaoByMode({ SHORTEST: road("a", [1, 2]), BROAD_FIRST: road("b", [1, 3]), ACCESSIBLE: road("c", [1, 3]) });
+    expect(await kinds(2)).toEqual(["shortest", "broad"]);
+  });
+
+  it("세 모드가 전부 같은 길이면 최단 한 줄", async () => {
+    kakaoByMode({ SHORTEST: road("a", [5]), BROAD_FIRST: road("b", [5]), ACCESSIBLE: road("c", [5]) });
+    expect(await kinds(2)).toEqual(["shortest"]);
+  });
+
+  it("거리가 같아도 좌표열이 다르면 다른 길이다(거리 숫자로 판정하지 않는다)", async () => {
+    kakaoByMode({ SHORTEST: road("a", [1, 2]), BROAD_FIRST: road("b", [1, 9]), ACCESSIBLE: null });
+    expect(await kinds(2)).toEqual(["shortest", "broad"]);
+  });
+
+  it("ACCESSIBLE 원문에 계단이 남으면 다른 길이어도 싣지 않는다(이름이 거짓이 되는 쪽 금지)", async () => {
+    kakaoByMode({
+      SHORTEST: road("a", [1, 2]), BROAD_FIRST: road("b", [1, 3]),
+      ACCESSIBLE: { ...road("c", [1, 4]), steps: [{ description: "호텔마누 앞에서 계단이용", pathCoords: [{ lat: 1, lng: 1 }] }] },
+    });
+    expect(await kinds(2)).toEqual(["shortest", "broad"]);
+  });
+
+  it("계단 회피 경로가 없으면 아무 말 없이 있는 줄만 싣는다", async () => {
+    kakaoByMode({ SHORTEST: road("a", [1, 2]), BROAD_FIRST: road("b", [1, 3]), ACCESSIBLE: null });
+    const lines = await getWalkRouteLines({ lang: "ko", origin: ORIGIN, dest: DEST, version: 2 });
     expect(lines.map((l) => l.kind)).toEqual(["shortest", "broad"]);
     expect(lines[1].route.steps).toHaveLength(1);
-    expect(lines[1].route.steps[0].description).toContain("큰길 문장");
   });
 
-  it("ACCESSIBLE 원문에 계단이 남으면 '계단 회피'라 부르지 않고 큰길로 간다(이름이 거짓이 되는 쪽 금지)", async () => {
-    kakaoByMode({ ACCESSIBLE: briefingWithStairs(), BROAD_FIRST: named("큰길 문장") });
-    const lines = await getWalkRouteLines({ lang: "ko", origin: ORIGIN, dest: DEST });
-    expect(lines[1].kind).toBe("broad");
-    expect(lines[1].route.steps[0].description).toContain("큰길 문장");
+  it("큰길 조회가 실패하면 계단 회피는 최단과만 비교한다(모르는 기하를 같다고 추정하지 않는다)", async () => {
+    kakaoByMode({ SHORTEST: road("a", [1, 2]), BROAD_FIRST: new Error("down"), ACCESSIBLE: road("c", [1, 3]) });
+    expect(await kinds(2)).toEqual(["shortest", "accessible"]);
+    kakaoByMode({ SHORTEST: road("a", [1, 2]), BROAD_FIRST: new Error("down"), ACCESSIBLE: road("c", [1, 2]) });
+    expect(await kinds(2)).toEqual(["shortest"]);
   });
 
-  it("둘째 줄 카카오 throw는 흡수한다 — Tmap으로 대신하지 않는다", async () => {
-    kakaoByMode({ ACCESSIBLE: new Error("kakao down") });
-    const lines = await getWalkRouteLines({ lang: "ko", origin: ORIGIN, dest: DEST });
-    expect(lines.map((l) => l.kind)).toEqual(["shortest"]);
+  it("계단 회피 조회 throw는 흡수한다 — Tmap으로 대신하지 않는다", async () => {
+    kakaoByMode({ SHORTEST: road("a", [1, 2]), BROAD_FIRST: road("b", [1, 3]), ACCESSIBLE: new Error("kakao down") });
+    expect(await kinds(2)).toEqual(["shortest", "broad"]);
+    expect(getWalkRouteBriefing).not.toHaveBeenCalled();
   });
 
-  it("카카오 전면 장애: 첫 줄은 Tmap 10 폴백, 둘째 줄은 없다", async () => {
+  it("판본 1(배포된 iOS 1.19)은 최대 두 줄 — 세 줄 구간은 큰길을 빼 [최단, 계단 회피]", async () => {
+    kakaoByMode({ SHORTEST: road("a", [1, 2]), BROAD_FIRST: road("b", [1, 3]), ACCESSIBLE: road("c", [1, 4]) });
+    expect(await kinds(1)).toEqual(["shortest", "accessible"]);
+    // 두 줄 이하 구간은 판본과 무관하게 같다.
+    kakaoByMode({ SHORTEST: road("a", [1, 2]), BROAD_FIRST: road("b", [1, 3]), ACCESSIBLE: road("c", [1, 3]) });
+    expect(await kinds(1)).toEqual(["shortest", "broad"]);
+  });
+
+  it("좌표 없는 fixture(증명 불가)는 다른 길로 본다 — 세 줄", async () => {
+    kakaoByMode({});
+    expect(await kinds(2)).toEqual(["shortest", "broad", "accessible"]);
+  });
+
+  it("카카오 전면 장애: 첫 줄은 Tmap 10 폴백, 카카오 줄은 없다", async () => {
     vi.mocked(getKakaoWalkBriefing).mockRejectedValue(new Error("kakao down"));
-    const lines = await getWalkRouteLines({ lang: "ko", origin: ORIGIN, dest: DEST });
-    expect(lines.map((l) => l.kind)).toEqual(["shortest"]);
+    expect(await kinds(2)).toEqual(["shortest"]);
     expect(vi.mocked(getWalkRouteBriefing).mock.calls[0][0]).toMatchObject({ searchOption: "10" });
   });
 
   it("첫 줄 throw는 전체 throw(502)", async () => {
     vi.mocked(getKakaoWalkBriefing).mockRejectedValue(new Error("kakao down"));
     vi.mocked(getWalkRouteBriefing).mockRejectedValue(new Error("tmap down"));
-    await expect(getWalkRouteLines({ lang: "ko", origin: ORIGIN, dest: DEST })).rejects.toThrow();
+    await expect(kinds(2)).rejects.toThrow();
   });
 
-  it("첫 줄 경로 없음이면 둘째 줄이 첫 원소가 된다, 둘 다 없으면 []", async () => {
-    kakaoByMode({ SHORTEST: null });
-    expect((await getWalkRouteLines({ lang: "ko", origin: ORIGIN, dest: DEST })).map((l) => l.kind))
-      .toEqual(["accessible"]);
+  it("첫 줄 경로 없음이면 큰길이 첫 원소가 되고 계단 회피는 큰길과 비교한다, 전부 없으면 []", async () => {
+    kakaoByMode({ SHORTEST: null, BROAD_FIRST: road("b", [1, 3]), ACCESSIBLE: road("c", [1, 4]) });
+    expect(await kinds(2)).toEqual(["broad", "accessible"]);
+    kakaoByMode({ SHORTEST: null, BROAD_FIRST: road("b", [1, 3]), ACCESSIBLE: road("c", [1, 3]) });
+    expect(await kinds(2)).toEqual(["broad"]);
     kakaoByMode({ SHORTEST: null, ACCESSIBLE: null, BROAD_FIRST: null });
-    expect(await getWalkRouteLines({ lang: "ko", origin: ORIGIN, dest: DEST })).toEqual([]);
+    expect(await kinds(2)).toEqual([]);
   });
 
   it("카카오 키가 없으면 첫 줄만(Tmap 10)", async () => {
     vi.mocked(hasKakaoKey).mockReturnValue(false);
-    const lines = await getWalkRouteLines({ lang: "ko", origin: ORIGIN, dest: DEST });
-    expect(lines.map((l) => l.kind)).toEqual(["shortest"]);
+    expect(await kinds(2)).toEqual(["shortest"]);
     expect(getKakaoWalkBriefing).not.toHaveBeenCalled();
   });
 
-  it("경유지는 두 줄 모두에 전달된다", async () => {
+  it("경유지는 세 모드 모두에 전달된다", async () => {
     const VIA = { lat: 37.51, lng: 127.12 };
     kakaoByMode({});
-    await getWalkRouteLines({ lang: "ko", origin: ORIGIN, dest: DEST, via: VIA });
+    await getWalkRouteLines({ lang: "ko", origin: ORIGIN, dest: DEST, via: VIA, version: 2 });
+    expect(vi.mocked(getKakaoWalkBriefing).mock.calls).toHaveLength(3);
     for (const c of vi.mocked(getKakaoWalkBriefing).mock.calls) expect(c[0].via).toEqual(VIA);
   });
 
-  it("en: [추천(Tmap 0), 최단(Tmap 10)] — 카카오 미호출", async () => {
+  it("en: [추천(Tmap 0), 최단(Tmap 10)] — 카카오 미호출, 판본과 무관", async () => {
     vi.mocked(getWalkRouteBriefing).mockResolvedValue(TMAP_EN_BRIEFING);
-    const lines = await getWalkRouteLines({ lang: "en", origin: ORIGIN, dest: DEST });
-    expect(lines.map((l) => l.kind)).toEqual(["recommended", "shortest"]);
+    for (const version of [1, 2] as const) {
+      vi.mocked(getWalkRouteBriefing).mockClear();
+      const lines = await getWalkRouteLines({ lang: "en", origin: ORIGIN, dest: DEST, version });
+      expect(lines.map((l) => l.kind)).toEqual(["recommended", "shortest"]);
+      const opts = vi.mocked(getWalkRouteBriefing).mock.calls.map((c) => c[0].searchOption ?? null).sort();
+      expect(opts).toEqual(["10", null]);
+    }
     expect(getKakaoWalkBriefing).not.toHaveBeenCalled();
-    const opts = vi.mocked(getWalkRouteBriefing).mock.calls.map((c) => c[0].searchOption ?? null).sort();
-    expect(opts).toEqual(["10", null]);
+  });
+});
+
+describe("sameWalkGeometry (E52 기하 동일성)", () => {
+  const b = (paths: ({ lat: number; lng: number }[] | undefined)[]): WalkRouteBriefing => ({
+    distanceMeters: 1, durationSeconds: 1,
+    steps: paths.map((pathCoords, i) => ({ description: `s${i}`, ...(pathCoords ? { pathCoords } : {}) })),
+  });
+  const P = (lat: number, lng: number) => ({ lat, lng });
+
+  it("스텝 경계가 달라도 이은 좌표열이 같으면 같은 길이다(조사 판정과 같은 술어)", () => {
+    expect(sameWalkGeometry(b([[P(1, 1), P(1, 2)], [P(1, 3)]]), b([[P(1, 1)], [P(1, 2), P(1, 3)]]))).toBe(true);
+  });
+
+  it("원소 하나가 다르거나 수가 다르면 다른 길이다", () => {
+    expect(sameWalkGeometry(b([[P(1, 1), P(1, 2)]]), b([[P(1, 1), P(1, 2.0000001)]]))).toBe(false);
+    expect(sameWalkGeometry(b([[P(1, 1), P(1, 2)]]), b([[P(1, 1), P(1, 2), P(1, 3)]]))).toBe(false);
+  });
+
+  it("좌표 없는 스텝이 하나라도 있으면 같다고 판정하지 않는다(증명하지 못하면 다른 길)", () => {
+    expect(sameWalkGeometry(b([[P(1, 1)], undefined]), b([[P(1, 1)], undefined]))).toBe(false);
+    expect(sameWalkGeometry(b([[P(1, 1)], []]), b([[P(1, 1)], []]))).toBe(false);
   });
 });
 
