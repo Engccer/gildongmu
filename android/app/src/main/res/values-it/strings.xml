@@ -724,6 +724,7 @@
     <string name="guide_carStart">Guida in auto verso %1$s avviata. {2, plural, one {%2$s indicazione} other {%2$s indicazioni}}, %3$s in totale. %4$s</string>
     <string name="guide_changeDestHere">Cambia destinazione in questo luogo</string>
     <string name="guide_changeWaypointHere">Cambia il punto intermedio in qui</string>
+    <string name="guide_currentRoad">Strada attuale, %1$s</string>
     <string name="guide_degradedNoLocation">Non è stato possibile determinare la tua posizione attuale. Controlla l’autorizzazione alla posizione e il segnale.</string>
     <string name="guide_degradedNoteCoverage">Sei fuori dall’area coperta, quindi la guida usa la direzione e la distanza dalla destinazione.</string>
     <string name="guide_degradedNoteHandoff">Il percorso è terminato, quindi la guida usa la direzione e la distanza dalla destinazione.</string>

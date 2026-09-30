@@ -445,12 +445,12 @@ export interface RouteGuideApi {
    */
   progress: GuideProgress | null;
   /**
-   * "현재 안내" 행 — **car 세션 전용**(walk는 liveRows가 대체, spec 2026-08-11.
-   * 자동차 세션 화면은 그 spec의 비범위라 종전 행을 유지한다). walk에선 항상 null.
+   * "현재 도로, {이름}" 행 — **car 세션 전용**(E56 spec 2026-09-30). 현재 진행거리가 속한 링크의
+   * 도로 이름이고, 모르면 null(행 없음). walk에선 항상 null.
    */
   currentText: string | null;
   /**
-   * 하단 2행(spec 2026-08-11, walk 상세 전용): 윗줄 = 현재 행동(동적 카운트다운·
+   * 하단 2행(spec 2026-08-11, walk·car 상세 — car는 K2 §7·E56): 윗줄 = 현재 행동(동적 카운트다운·
    * 상태 대체·최종 접근 문형), 아랫줄 = 다음 예고("다음 안내," 라벨 포함 완성 문자열).
    * live region 밖 정적 텍스트로만 렌더한다 — 능동 통지는 기존 음성·통지 채널이
    * 담당한다(이중 낭독 금지). 빈 값은 null(요소 제거 — 빈 텍스트 낭독 금지).
@@ -797,13 +797,16 @@ export function useRouteGuide(
   }, []);
 
   /**
-   * "현재 안내" 행 표시문. 단일 스텝은 라벨 틀로 감싸고, 묶음은 통독 서두
-   * ("다음 안내.")가 스스로를 설명하므로 원문 그대로 둔다 — "현재 안내, 다음
-   * 안내. …"처럼 라벨이 서두와 모순되는 조합을 막는다.
+   * car "현재 도로" 행(E56 spec 2026-09-30) — 현재 진행거리가 속한 링크의 도로 이름. 스텝 단위가
+   * 아니다(한 안내 구간 안에서 도로가 바뀌는 스텝이 15%, spec §2.2). 원천은 서버 `roadLinks`이고
+   * 문장을 읽지 않는다. 이름을 모르면 null — 행 자체가 없다(빈 줄·"정보 없음" 금지).
+   * 조망의 `carRoadNow`와 같은 함수(`roadNameAt`)라 두 곳이 어긋나지 않는다. iOS `refreshCurrentRoad` 미러.
    */
-  const currentDisplay = useCallback(
-    (text: string, isBundle: boolean): string =>
-      isBundle ? text : t("progressCurrent", { step: text }),
+  const currentRoadLine = useCallback(
+    (d: number): string | null => {
+      const road = roadNameAt(roadSpansRef.current, d);
+      return road === null ? null : t("currentRoad", { road });
+    },
     [t],
   );
 
@@ -1134,23 +1137,18 @@ export function useRouteGuide(
       setMode("detail");
       setOffRoute(state.phase === "offRoute");
       setProgress(progressOf(route, state));
-      if (kindFixed === "walk") {
-        // 하단 2행: 커밋은 상태 재구성 지점이다 — 램프인 기준점·클램프를 새 기준으로
-        // 리셋하고 즉시 1회 계산한다(spec §3 F7·§4.2 리셋 계약).
-        liveBaselineDRef.current = state.d;
-        liveRowsStateRef.current = null;
-        refreshLiveRows(state);
-        setCurrentText(null); // walk의 "현재 안내" 행은 liveRows가 대체(spec 2026-08-11)
-      } else {
-        // car 화면은 spec 비범위 — 종전 "현재 안내" 행 유지.
-        const indices = unitAt(route, state.stepIndex);
-        setCurrentText(currentDisplay(unitText(route, indices, t), indices.length > 1));
-      }
+      // 하단 2행(walk·car — car는 K2 §7, E56에서 배선): 커밋은 상태 재구성 지점이다 — 램프인
+      // 기준점·클램프를 새 기준으로 리셋하고 즉시 1회 계산한다(spec §3 F7·§4.2 리셋 계약).
+      liveBaselineDRef.current = state.d;
+      liveRowsStateRef.current = null;
+      refreshLiveRows(state);
+      // car만 "현재 도로" 행을 둔다(E56). walk엔 없다(spec 2026-08-11).
+      setCurrentText(kindFixed === "car" ? currentRoadLine(state.d) : null);
       // 거리 축이 직선 → 경로로 바뀐다(전환·재획득·재조회 공통). 다음 추세 fix가
       // 새 축 현재값으로 앵커를 다시 잡고 현재 상태를 1회 알린다.
       toneStateRef.current = { ...toneStateRef.current, needsRebase: true };
     },
-    [currentDisplay, kindFixed, progressOf, refreshLiveRows, t],
+    [currentRoadLine, kindFixed, progressOf, refreshLiveRows],
   );
 
   /**
@@ -1571,21 +1569,21 @@ export function useRouteGuide(
       }
       setOffRoute(result.state.phase === "offRoute");
       setProgress(progressOf(route, result.state));
-      if (kindFixed === "walk") {
-        // 하단 2행(spec 2026-08-11): 이탈 복귀·재획득은 리듀서가 d를 재구성한
-        // 지점이다 — 투영이 새 기준에 정렬됐으므로 램프인 기준점·클램프를 리셋한다.
-        if (result.event?.kind === "backOnRoute" || result.event?.kind === "reacquired") {
-          liveBaselineDRef.current = result.state.d;
-          liveRowsStateRef.current = null;
-        }
-        // 매 fix 갱신 — 상태 국면(uncertain·offRoute)도 리듀서가 행을 소유한다.
-        refreshLiveRows(result.state);
-      } else if (result.state.phase === "following" || result.state.phase === "bundle") {
-        // car 화면은 spec 비범위 — 종전 "현재 안내" 행(현재 구간 직접 유도) 유지.
-        const indices = unitAt(route, result.state.stepIndex);
-        setCurrentText(
-          currentDisplay(unitText(route, indices, t), indices.length > 1),
-        );
+      // 하단 2행(spec 2026-08-11, car는 K2 §7·E56): 이탈 복귀·재획득은 리듀서가 d를 재구성한
+      // 지점이다 — 투영이 새 기준에 정렬됐으므로 램프인 기준점·클램프를 리셋한다.
+      if (result.event?.kind === "backOnRoute" || result.event?.kind === "reacquired") {
+        liveBaselineDRef.current = result.state.d;
+        liveRowsStateRef.current = null;
+      }
+      // 매 fix 갱신 — 상태 국면(uncertain·offRoute)도 리듀서가 행을 소유한다.
+      refreshLiveRows(result.state);
+      if (
+        kindFixed === "car" &&
+        (result.state.phase === "following" || result.state.phase === "bundle")
+      ) {
+        // car "현재 도로" 행(E56) — 진행거리를 믿을 수 있는 국면에서만 옮긴다(iOS 동형).
+        // 같은 이름이면 같은 문자열이라 React가 갱신을 건너뛴다(재낭독 없음).
+        setCurrentText(currentRoadLine(result.state.d));
       }
 
       // 톤 계층 입력 조립(상세 4단계). ⚠ 종전의 "무이벤트 fix마다 3초 tick 하트비트"는
@@ -1669,7 +1667,7 @@ export function useRouteGuide(
       if (!text) return;
       announce(text);
       if (isGuidanceEvent(result.event.kind)) rememberGuidance(text);
-      // ⚠ 실행 안내 이벤트로 "현재 안내" 행을 갱신하지 않는다(실보행 라운드1 정정) —
+      // ⚠ 실행 안내 이벤트로 화면 행을 갱신하지 않는다(실보행 라운드1 정정) —
       //   이 이벤트는 경계 40m 전 선행 + 1회 래치라 "지금 구간"과 어긋난다. 행은
       //   위의 상태 유도 세팅이 소유한다.
     },
@@ -1677,7 +1675,7 @@ export function useRouteGuide(
       announce,
       clearEtaTimer,
       closerIntervalSeconds,
-      currentDisplay,
+      currentRoadLine,
       setDegrade,
       emitTone,
       eventText,
@@ -1685,7 +1683,6 @@ export function useRouteGuide(
       refreshLiveRows,
       setLiveRowsIfChanged,
       stepFinalApproach,
-      t,
       progressOf,
       rebaseForAxisChange,
       rememberGuidance,

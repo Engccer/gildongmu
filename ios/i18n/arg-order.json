@@ -221,6 +221,9 @@
     "distance",
     "first"
   ],
+  "guide.currentRoad": [
+    "road"
+  ],
   "guide.detailStart": [
     "dest",
     "count",

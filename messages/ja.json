@@ -811,6 +811,7 @@
     "farNotice": "約{distance}先に次の案内があります。{step}",
     "carOffRoute": "経路から外れたため案内を一時停止しました。経路の再検索で再開できます",
     "carRoadNow": "{road}を走行中",
+    "currentRoad": "現在の道路、{road}",
     "etaStale": "所要時間は{minutes}分前の情報です",
     "alreadyActive": "すでに案内中です。先に進行中の案内を終了してください。",
     "minimize": "案内シートを閉じる",

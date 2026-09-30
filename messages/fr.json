@@ -811,6 +811,7 @@
     "farNotice": "Prochaine instruction dans environ {distance}. {step}",
     "carOffRoute": "Hors itinéraire ; guidage en pause. Relancez la recherche d'itinéraire pour reprendre",
     "carRoadNow": "Sur {road}",
+    "currentRoad": "Route actuelle, {road}",
     "etaStale": "Durée estimée datant de {minutes} min",
     "alreadyActive": "Un guidage est déjà en cours. Terminez d'abord le guidage actuel.",
     "minimize": "Replier la feuille de guidage",

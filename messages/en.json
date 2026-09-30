@@ -811,6 +811,7 @@
     "farNotice": "Next instruction in about {distance}. {step}",
     "carOffRoute": "You are off the route; guidance is paused. Refresh the route to resume",
     "carRoadNow": "Driving on {road}",
+    "currentRoad": "Current road, {road}",
     "etaStale": "ETA is from {minutes} min ago",
     "alreadyActive": "Guidance is already running. End the current guidance first.",
     "minimize": "Collapse guidance sheet",

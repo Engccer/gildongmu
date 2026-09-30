@@ -41,6 +41,8 @@ describe("DistanceBeacon 하단 2행", () => {
   afterEach(() => {
     cleanup();
     guideApi.liveRows = { top: null, next: null };
+    guideApi.currentText = null;
+    guideApi.offRoute = false;
   });
 
   const dest = { lat: 37.5380, lng: 127.1430, name: "목적지 건물" };
@@ -67,5 +69,25 @@ describe("DistanceBeacon 하단 2행", () => {
     open();
     expect(screen.getByText("목적지까지 5m 직진하세요")).toBeTruthy();
     expect(screen.queryByText(/다음 안내/)).toBeNull();
+  });
+
+  it("현재 도로 행(car, E56)은 세 줄의 맨 앞이고 live region이 아니다", () => {
+    guideApi.currentText = "현재 도로, 올림픽대로";
+    guideApi.liveRows = { top: "200m 후 우회전하세요", next: "다음 안내, 좌회전하세요" };
+    open();
+    const road = screen.getByText("현재 도로, 올림픽대로");
+    const top = screen.getByText("200m 후 우회전하세요");
+    const next = screen.getByText("다음 안내, 좌회전하세요");
+    expect(road.getAttribute("aria-live")).toBeNull();
+    // 읽기 순서 = DOM 순서(iOS 시트와 같은 ① → ② → ③).
+    expect(road.compareDocumentPosition(top) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(top.compareDocumentPosition(next) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("이탈 중에는 현재 도로 행을 숨긴다(경로 밖에서는 어느 도로인지 모른다)", () => {
+    guideApi.currentText = "현재 도로, 올림픽대로";
+    guideApi.offRoute = true;
+    open();
+    expect(screen.queryByText("현재 도로, 올림픽대로")).toBeNull();
   });
 });

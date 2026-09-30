@@ -334,6 +334,14 @@ export function DistanceBeacon({
               )}
             </p>
           )}
+          {/* car "현재 도로, {이름}" 행(E56) — 세 줄의 맨 앞(iOS 동형). 이름을 모르면
+              null이라 행이 없다. walk에선 currentText가 항상 null이라 자동 부재.
+              이탈 중엔 경로 밖이라 숨긴다. 표시 줄일 뿐 통지하지 않는다(A40 — 창구는 화면 소유). */}
+          {tracking && guide.mode === "detail" && !guide.offRoute && guide.currentText && (
+            <p className="mt-1 text-sm">
+              {guide.currentText}
+            </p>
+          )}
           {/* 하단 2행(spec 2026-08-11): 윗줄 = 현재 행동(동적 카운트다운·상태 대체·
               최종 접근 문형), 아랫줄 = 다음 예고. live region 밖 정적 텍스트 —
               능동 통지는 기존 polite 채널이 담당한다(이중 낭독 금지). 이탈 중에도
@@ -347,13 +355,6 @@ export function DistanceBeacon({
           {tracking && guide.mode === "detail" && guide.liveRows.next && (
             <p className="mt-1 text-sm text-muted">
               {guide.liveRows.next}
-            </p>
-          )}
-          {/* car 세션의 종전 "현재 안내" 행(spec §7 비범위 — walk에선 currentText가
-              항상 null이라 이 행은 자동 부재). 이탈 중엔 낡은 투영이라 숨긴다. */}
-          {tracking && guide.mode === "detail" && !guide.offRoute && guide.currentText && (
-            <p className="mt-1 text-sm">
-              {guide.currentText}
             </p>
           )}
 

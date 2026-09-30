@@ -161,11 +161,11 @@ final class BeaconModel {
     /// 경로 기준 잔여 거리·예상 시간 상시 표시 1줄(상세 모드 전용, 웹 progress 미러 —
     /// 위원장 실측 판정 2026-08-03 묶음 A). 통지 채널에 태우지 않는다(매 fix 갱신).
     private(set) var remainingText: String?
-    /// "현재 안내" 행 — 지금 따르는 유닛 전문(하단 2행 분리, 위원장 판정 2026-08-10).
-    /// 실행 안내가 나가는 순간에만 갱신되고 주기 예고·임박·상태 통지(`statusText`)가
-    /// 덮지 않는다 — 단일 슬롯이 현재/다음을 오가며 의미가 바뀌던 혼재의 해소.
-    /// 간략·최종 접근에선 nil(경로 기반 값이 아니거나 종점 이후), 이탈 중 숨김은 뷰 몫.
-    private(set) var currentGuidanceText: String?
+    /// "현재 도로" 행(car 상세 전용, E56 spec 2026-09-30) — 지금 진행거리가 속한 링크의 도로 이름
+    /// ("현재 도로, 올림픽대로"). 이름을 모르면(무명 링크·스팬 강등) nil이고 행 자체가 없다.
+    /// 구간 전문을 싣던 "현재 안내" 행의 자리다 — 지금 할 일은 하단 2행이 말한다.
+    /// walk·간략·최종 접근에선 nil, 이탈 중 숨김은 뷰 몫.
+    private(set) var currentRoadText: String?
     /// 하단 2행 윗줄(walk 상세 전용, spec 2026-08-11): 현재 행동(동적 카운트다운·상태
     /// 대체) 또는 최종 접근 문형. 비-VO 사용자에게도 보이는 가시 상태다(2.1(a) 계열).
     private(set) var liveTopText: String?
@@ -985,10 +985,10 @@ final class BeaconModel {
             liveSteps = fetched.liveSteps
             resetLiveRowsBaseline(state: initial.state)
             if sessionKind == .walk {
-                currentGuidanceText = nil // walk의 "현재 안내" 행은 liveRows가 대체
+                currentRoadText = nil
             } else {
-                // car는 도로명 포함 전문이 정보라 "현재 안내" 행을 liveRows와 함께 둔다.
-                refreshCurrentGuidance(route: fetched.route, state: initial.state)
+                // car는 "지금 어느 도로"가 정보라 "현재 도로" 행을 liveRows 앞에 둔다(E56).
+                refreshCurrentRoad(state: initial.state)
             }
             // 시작 요약 + 첫 안내를 한 문장으로(원자 발화 — 두 통지의 경합 제거).
             let summary = sessionKind == .car
@@ -1063,25 +1063,16 @@ final class BeaconModel {
         }
     }
 
-    /// "현재 안내" 행 표시문. 단일 스텝은 라벨 틀로 감싸고, 묶음은 통독 서두
-    /// ("다음 안내.")가 스스로를 설명하므로 원문 그대로 — "현재 안내, 다음 안내. …"
-    /// 처럼 라벨이 서두와 모순되는 조합을 막는다(웹 `currentDisplay` 미러).
-    private static func currentDisplay(_ text: String, isBundle: Bool) -> String {
-        isBundle ? text : appLocalized("guide.progressCurrent", text)
-    }
-
-    /// "현재 안내" 행 갱신 — **현재 좌표가 속한 구간에서 직접 유도**한다(실보행 판정
-    /// 2026-08-10 라운드1). 종전의 발화 이벤트(announceSteps) 연동은 구조적으로
-    /// 틀렸다: 발화는 경계 40m 전 선행 + 1회 래치라, 짧은 구간에서 15초 재통독이
-    /// 선행분을 도로 덮은 뒤 **다시는 갱신되지 않았다**(마지막 구간 내내 횡단보도
-    /// 안내가 남은 실사고의 기제). 매 fix·커밋 지점에서 부른다(웹 미러 동일).
-    private func refreshCurrentGuidance(route: GuideRoute, state: GuideState) {
-        let indices = unitAt(route: route, index: state.stepIndex)
-        let text = Self.currentDisplay(
-            GuideText.unit(route: route, indices: indices), isBundle: indices.count > 1
-        )
-        // 매 fix 호출이라 동일 값 재대입을 걸러 관찰 무효화(재렌더)를 막는다.
-        if currentGuidanceText != text { currentGuidanceText = text }
+    /// "현재 도로" 행 갱신(E56) — **현재 진행거리가 속한 링크에서 직접 유도**한다. 스텝 단위가
+    /// 아니다: 한 안내 구간 안에서 도로가 바뀌는 스텝이 15%다(실호출 게이트, spec §2.2 —
+    /// "통일로를 따라 338m" 뒤 안내 지점 없이 퇴계로 931m). 원천은 서버 `roadLinks`이고 문장을
+    /// 읽지 않는다. 진행 상황 조망의 "{road} 주행 중"과 같은 함수라 두 곳이 어긋나지 않는다.
+    /// 매 fix·커밋 지점에서 부른다(웹 `useRouteGuide` 미러).
+    private func refreshCurrentRoad(state: GuideState) {
+        let text = roadNameAt(spans: roadSpans, d: state.d).map { appLocalized("guide.currentRoad", $0) }
+        // 매 fix 호출이라 동일 값 재대입을 걸러 관찰 무효화(재렌더)를 막는다 — 같은 이름이 이어지면
+        // 행이 불변이라 VoiceOver가 다시 읽지 않는다.
+        if currentRoadText != text { currentRoadText = text }
     }
 
     /// 하단 2행 갱신(walk 상세 전용, spec 2026-08-11). 매 fix·커밋 지점에서 부른다 —
@@ -1124,7 +1115,7 @@ final class BeaconModel {
         resetArrivalWindow()  // 옛 창 에피소드는 지운다 — 간략 복귀의 첫 usable fix가 새로 연다(spec 2026-09-02 §2.2)
         mode = .brief
         remainingText = nil
-        currentGuidanceText = nil
+        currentRoadText = nil
         clearLiveRows()
         // 경로가 없으면 경로 기반 계단 판정도 없다(3-state). 복구된 상세가 열화면
         // 새 판정으로 다시 통지된다 — 반복이 아니다. 갚지 못한 경고도 대상이
@@ -1306,7 +1297,7 @@ final class BeaconModel {
         lastGuidance = nil
         remainingText = nil
         bandDistanceMeters = nil
-        currentGuidanceText = nil
+        currentRoadText = nil
         clearLiveRows()
         displayUnits = []
         liveSteps = []
@@ -1442,7 +1433,7 @@ final class BeaconModel {
         lastGuidance = nil
         remainingText = nil
         bandDistanceMeters = nil
-        currentGuidanceText = nil
+        currentRoadText = nil
         clearLiveRows()
         displayUnits = []
         liveSteps = []
@@ -1581,7 +1572,10 @@ final class BeaconModel {
                 let intro = pendingFinalApproachIntro
                 // 상태 행이 비어 있으면(실행 안내 직후 — 역할 분리로 statusText에 실행
                 // 안내가 남지 않는다) 현재 안내가 곧 현재 상태다.
-                let current = statusText.isEmpty ? (currentGuidanceText ?? "") : statusText
+                // car: 지금 할 일(하단 2행 윗줄)이 곧 현재 상태다 — 도로 이름만으로는 놓친 행동을 갚지 못하고,
+                // 무명 링크 위 복귀면 비어 침묵한다(E56 설계 리뷰 M2). walk엔 이 폴백이 없다(종전 그대로).
+                let carState = sessionKind == .car ? (liveTopText ?? currentRoadText) : nil
+                let current = statusText.isEmpty ? (carState ?? "") : statusText
                 let tail = current.isEmpty || current == intro ? nil : current
                 let owed = [pendingStepFreeNotice, intro, tail]
                     .compactMap { $0 }.joined(separator: " ")
@@ -1893,8 +1887,8 @@ final class BeaconModel {
         // 매 fix 갱신 — 상태 국면(uncertain·offRoute)도 리듀서가 행을 소유한다.
         refreshLiveRows(state: out.state)
         if sessionKind == .car, out.state.phase == .following || out.state.phase == .bundle {
-            // car는 도로명 포함 전문을 "현재 안내" 행에 함께 둔다(현재 구간 직접 유도).
-            refreshCurrentGuidance(route: route, state: out.state)
+            // car "현재 도로" 행(E56) — 진행거리를 믿을 수 있는 국면에서만 옮긴다.
+            refreshCurrentRoad(state: out.state)
         }
 
         let voteCounts = out.state.courseVotes.reduce(into: (mismatch: 0, match: 0, unknown: 0)) {
@@ -2040,7 +2034,7 @@ final class BeaconModel {
         clearProposal()
         resetAlternativePreview()
         remainingText = nil  // 경로 잔여는 이 국면에서 의미가 없다(이미 종점을 지났다)
-        currentGuidanceText = nil  // 스텝은 전부 소화됐다 — 남은 것은 직선 안내뿐
+        currentRoadText = nil  // 스텝은 전부 소화됐다 — 남은 것은 직선 안내뿐
         // 하단 2행: 윗줄 소유권이 최종 접근 층으로 넘어간다(§4.2 우선순위 2).
         // 아랫줄은 비운다 — 스텝 예고는 전부 소화됐다. 윗줄은 같은 fix의 진입
         // 서술(handleFinalApproach)이 즉시 채운다.
@@ -2428,15 +2422,14 @@ final class BeaconModel {
             }
             let text = GuideText.unit(route: route, indices: indices)
             lastGuidance = text
-            // 실행 안내는 "현재 안내" 행이 전담한다(역할 분리 확정 2026-08-10).
+            // 실행 안내 문장은 화면 행에 남기지 않는다(역할 분리 확정 2026-08-10 — 지금 할 일은
+            // 하단 2행, car의 "현재 도로" 행은 도로 이름만, E56).
             // 상태 행은 **비운다** — 직전 예고("약 40m 앞 오른쪽으로…")를 남기면 이미
             // 돈 회전을 아직 남은 것처럼 읽는다. 다음 예고·임박·상태 신호가 다시 채운다.
-            // ⚠ 여기서 currentGuidanceText를 쓰지 않는다(실보행 라운드1 정정) — 이
-            //   이벤트는 경계 40m 전 선행 + 1회 래치라 "지금 구간"과 어긋난다. 행은
-            //   refreshCurrentGuidance(매 fix, 상태 유도)가 소유한다.
-            // ⚠ 전경 복귀 재생의 "현재 상태" 폴백이 이 빈 값을 currentGuidanceText로
-            //   대체한다(handleScenePhaseChange) — 여기만 고치고 그쪽을 잊으면 백그라운드
-            //   크로싱 직후 복귀에서 갚을 문장이 사라진다.
+            // ⚠ 여기서 화면 행을 쓰지 않는다(실보행 라운드1 정정) — 이 이벤트는 경계 40m 전
+            //   선행 + 1회 래치라 "지금 구간"과 어긋난다. 행은 매 fix 상태 유도가 소유한다.
+            // ⚠ 전경 복귀 재생의 "현재 상태" 폴백이 이 빈 값을 car의 하단 2행 윗줄(없으면
+            //   "현재 도로" 행)로 대체한다(handleScenePhaseChange, walk엔 폴백이 없다).
             statusText = ""
             // 실행 안내는 억제 중이면 최신 1개를 보관해 해제 시 복구한다(스펙 §4.3).
             if outputSuppressed { pendingRecovery = text } else { announce(text) }
@@ -2830,7 +2823,7 @@ final class BeaconModel {
         liveSteps = fetched.liveSteps
         resetLiveRowsBaseline(state: initial.state)
         if sessionKind == .car {
-            refreshCurrentGuidance(route: fetched.route, state: initial.state)
+            refreshCurrentRoad(state: initial.state)
         }
         lastGuidance = GuideText.unit(route: fetched.route, indices: initial.firstIndices)
         return initial.firstIndices

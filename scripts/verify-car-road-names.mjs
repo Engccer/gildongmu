@@ -22,8 +22,13 @@ const { createJiti } = await import("jiti").catch(() => {
 
 /** 스텝 경계에서 링크 누적 길이와 경로 진행거리의 어긋남 상한(m) — 줄이 이만큼 이르거나 늦게 바뀐다. */
 const MAX_BOUNDARY_DRIFT_M = 100;
-/** 거리 기준 채움률 하한 — 2026-09-30 실측 표본의 값보다 낮게 잡아 그날 길이 바뀌어도 흔들리지 않게 한다. */
+/** 거리 기준 채움률 하한 — 2026-09-30 실측 표본의 값보다 낮게 잡아 그날 길이 바뀌어도 흔들리지 않게 한다.
+ *  풀링만 보면 긴 구간(수원→인천 67km가 표본의 절반)이 한 구간의 붕괴를 가리므로 구간별 하한을 함께 둔다. */
 const MIN_NAMED_RATIO = 0.8;
+const MIN_ROUTE_NAMED_RATIO = 0.9;
+/** 도로 이름이 아닌 자리표시자·일반명사 — 이런 값이 "현재 도로, …"에 실리면 가짜 정밀이다.
+ *  서버는 "일반도로"만 null로 낮춘다(tmap-car.ts). 여기 걸리면 그 목록을 넓혀야 한다. */
+const PLACEHOLDER_NAMES = new Set(["일반도로", "고속도로", "도로", "램프", "연결로", "-", ""]);
 
 const PLACES = {
   서울역: [37.5547, 126.9707],
@@ -112,6 +117,9 @@ async function replay(corpusPath) {
   const broken = [];
   const degraded = [];
   let maxDrift = 0;
+  const lowRoutes = [];
+  const names = new Set();
+  let shortSpans = 0;
   for (const [label, raw] of Object.entries(corpus)) {
     if (!raw.features) {
       broken.push(`${label}(응답 실패)`);
@@ -139,6 +147,12 @@ async function replay(corpusPath) {
       drift = Math.max(drift, Math.abs(acc - guide.route.steps[i].endD));
     });
     maxDrift = Math.max(maxDrift, drift);
+    for (const span of guide.roadSpans) {
+      if (span.name === null) continue;
+      names.add(span.name);
+      // 스팬이 이 구간의 어긋남보다 짧으면 실제로 그 도로 위가 아닐 때 잠깐 표시될 수 있다(관측만 — 단언 보류).
+      if (span.endD - span.startD < drift) shortSpans++;
+    }
     // 줄 원천 그대로 5m 간격으로 표본을 뜬다 — 소비자가 부르는 함수(roadNameAt)가 판정 술어다.
     let routeNamed = 0;
     let samples = 0;
@@ -154,12 +168,18 @@ async function replay(corpusPath) {
     const km = guide.route.totalMeters / 1000;
     total += samples;
     named += routeNamed;
+    if (routeNamed / samples < MIN_ROUTE_NAMED_RATIO) lowRoutes.push(`${label} ${(routeNamed / samples).toFixed(3)}`);
     console.log(
       `  ${label}: ${km.toFixed(1)}km, 스팬 ${guide.roadSpans.length}, 채움률 ${(routeNamed / samples).toFixed(3)}, 줄 바뀜 ${changes}회(${(changes / km).toFixed(2)}/km), 경계 어긋남 최대 ${Math.round(drift)}m`,
     );
   }
   check("표본 전체 상세 적격(정규화·기하 조립 성공)", broken.length === 0, broken.join(", "));
   check("도로명 스팬 강등 0(링크 합 ≈ 경로 총거리)", degraded.length === 0, degraded.join(", "));
+  check(`구간별 채움률 ≥ ${MIN_ROUTE_NAMED_RATIO}`, lowRoutes.length === 0, lowRoutes.join(", "));
+  const placeholders = [...names].filter((n) => PLACEHOLDER_NAMES.has(n.trim()));
+  check("도로 이름에 자리표시자·일반명사 없음", placeholders.length === 0, placeholders.join(", "));
+  console.log(`  (관측) 이름 ${names.size}종: ${[...names].join(", ")}`);
+  console.log(`  (관측) 구간 어긋남보다 짧은 이름 스팬: ${shortSpans}개`);
   check(`스텝 경계 어긋남 ≤ ${MAX_BOUNDARY_DRIFT_M}m`, maxDrift <= MAX_BOUNDARY_DRIFT_M, `실측 최대 ${Math.round(maxDrift)}m`);
   const ratio = total > 0 ? named / total : 0;
   check(`거리 기준 채움률 ≥ ${MIN_NAMED_RATIO}`, ratio >= MIN_NAMED_RATIO, `실측 ${ratio.toFixed(3)}`);

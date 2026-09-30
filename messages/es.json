@@ -811,6 +811,7 @@
     "farNotice": "Próxima indicación en unos {distance}. {step}",
     "carOffRoute": "Fuera de la ruta; guía en pausa. Vuelve a consultar la ruta para reanudar",
     "carRoadNow": "Circulando por {road}",
+    "currentRoad": "Vía actual, {road}",
     "etaStale": "Tiempo estimado de hace {minutes} min",
     "alreadyActive": "Ya hay una guía en curso. Finaliza primero la guía actual.",
     "minimize": "Plegar la hoja de guía",

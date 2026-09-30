@@ -724,6 +724,7 @@
     <string name="guide_carStart">Car guidance to %1$s started. {2, plural, one {%2$s instruction} other {%2$s instructions}}, %3$s total. %4$s</string>
     <string name="guide_changeDestHere">Change destination to here</string>
     <string name="guide_changeWaypointHere">Change waypoint to here</string>
+    <string name="guide_currentRoad">Current road, %1$s</string>
     <string name="guide_degradedNoLocation">Your current location could not be determined. Check location permission and signal.</string>
     <string name="guide_degradedNoteCoverage">This is outside the service area, so guidance is using the direction and distance to the destination.</string>
     <string name="guide_degradedNoteHandoff">The route has ended, so guidance is using the direction and distance to the destination.</string>

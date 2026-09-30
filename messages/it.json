@@ -811,6 +811,7 @@
     "farNotice": "Prossima indicazione tra circa {distance}. {step}",
     "carOffRoute": "Fuori percorso; guida in pausa. Richiedi di nuovo il percorso per riprendere",
     "carRoadNow": "In marcia su {road}",
+    "currentRoad": "Strada attuale, {road}",
     "etaStale": "Tempo stimato di {minutes} min fa",
     "alreadyActive": "Una guida è già in corso. Termina prima la guida attuale.",
     "minimize": "Comprimi la scheda guida",

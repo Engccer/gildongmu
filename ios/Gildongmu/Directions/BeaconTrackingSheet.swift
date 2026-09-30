@@ -171,11 +171,11 @@ struct BeaconTrackingSheet: View {
                 // 낭독은 distanceText(spokenDistanceUnits) 경유, live region 없음 —
                 // 능동 통지는 모델의 단일 Announcement 채널이 담당한다(이중 낭독 금지).
                 if model.mode == .detail {
-                    // walk·car 상세(K2 §4로 car 확장). car는 도로명 포함 전문을 "현재 안내" 행으로
-                    // 함께 둔다(주행 중 "지금 어느 도로"가 정보다).
+                    // walk·car 상세(K2 §4로 car 확장). car는 "현재 도로, {이름}" 행을 맨 앞에 둔다
+                    // (E56 — 주행 중 "지금 어느 도로"가 정보다. 이름을 모르면 행이 없다).
                     if model.sessionKind == .car, !model.offRoute,
-                       let current = model.currentGuidanceText {
-                        distanceText(current)
+                       let road = model.currentRoadText {
+                        distanceText(road)
                     }
                     if let top = model.liveTopText { distanceText(top) }
                     if let next = model.liveNextText {
@@ -188,10 +188,6 @@ struct BeaconTrackingSheet: View {
                     // 않는다**(spec §2-1 상태 행 폐지 — 시각 신호는 윗줄이 상태 문장에서
                     // 그 자리 숫자로 되돌아오는 전환 자체다. 리뷰 지적 기각 근거,
                     // 실사용 판정은 BACKLOG H M0 축 4).
-                    if model.mode == .detail, !model.offRoute,
-                       let current = model.currentGuidanceText {
-                        distanceText(current)
-                    }
                     if !model.statusText.isEmpty {
                         distanceText(
                             model.statusIsNextPreview

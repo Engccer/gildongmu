@@ -724,6 +724,7 @@
     <string name="guide_carStart">%1$sまで自動車案内開始。案内%2$s件、合計%3$s。%4$s</string>
     <string name="guide_changeDestHere">ここを目的地に変更</string>
     <string name="guide_changeWaypointHere">ここを経由地に変更</string>
+    <string name="guide_currentRoad">現在の道路、%1$s</string>
     <string name="guide_degradedNoLocation">現在地を確認できませんでした。位置情報の許可と電波状況を確認してください。</string>
     <string name="guide_degradedNoteCoverage">提供地域外のため、目的地の方向と距離で案内しています。</string>
     <string name="guide_degradedNoteHandoff">経路が終わったため、目的地の方向と距離で案内しています。</string>
