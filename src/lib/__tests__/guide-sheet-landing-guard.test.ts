@@ -69,28 +69,29 @@ describe("BeaconTrackingSheet 착지 (E57)", () => {
     expect(BEACON).toContain("if model.mode == .detail {");
   });
 
-  it("경로 조회 중이면 커밋까지, 통지를 낸 전이면 그 시각 이후에 끝난 발화까지 기다린다(설계 리뷰 M1, 코드 리뷰 m3)", () => {
+  it("경로 조회 중이면 커밋까지, 통지를 낸 전이면 그 시각 이후에 끝까지 발화된 통지까지 기다린다(설계 리뷰 M1, 증분 리뷰 M1)", () => {
     expect(MODEL).toContain("private(set) var awaitingRoute = false");
     const request = body(BEACON, "private func requestInfoLanding(");
     expect(request).toContain("guard summarySince != nil || model.awaitingRoute else {");
     expect(request).toContain("Self.routeWaitLimit");
     expect(request).toContain("reason=timeout");
-    expect(BEACON).toMatch(/\.onChange\(of: model\.awaitingRoute\) \{ _, awaiting in[\s\S]{0,300}pendingInfoLanding\?\.summarySince = now\s*resolvePendingInfoLanding\(\)/);
+    expect(BEACON).toMatch(/\.onChange\(of: model\.awaitingRoute\) \{ _, awaiting in\s*guard !awaiting, pendingInfoLanding != nil else \{ return \}\s*pendingInfoLanding\?\.summarySince = ProcessInfo\.processInfo\.systemUptime\s*resolvePendingInfoLanding\(\)/);
     const resolve = body(BEACON, "private func resolvePendingInfoLanding(");
-    expect(resolve).toContain("let expected = spokenUnits(model.statusText)");
-    expect(resolve).toContain("$0.text == expected && $0.at >= (pending.summarySince ?? 0)");
+    // 모델이 무엇을 게시했는지 문자열로 짐작하지 않는다 — 전이 시각 이후 끝까지 발화된 통지 하나.
+    expect(resolve).not.toMatch(/statusText|spokenUnits/);
+    expect(resolve).toContain("landingBox.lastCompletedAt.map { $0 >= (pending.summarySince ?? 0) }");
     expect(resolve).toContain("Self.summaryWaitLimitMs");
     expect(resolve).toContain("model.sessionKind == .car && model.listener == .driver");
-    // 완료 기록은 관찰 대상이 아닌 상자에 쓴다(통지마다 시트가 다시 그려지지 않게, 코드 리뷰 m6).
-    expect(BEACON).toMatch(/announcementDidFinishNotification\)\) \{ note in[\s\S]{0,200}landingBox\.finished = \(text, ProcessInfo\.processInfo\.systemUptime\)/);
+    // 끊긴 발화는 세지 않고, 완료 기록은 관찰 대상이 아닌 상자에 쓴다(통지마다 시트가 다시 그려지지 않게, 코드 리뷰 m6).
+    expect(BEACON).toMatch(/announcementDidFinishNotification\)\) \{ note in\s*guard \(note\.userInfo\?\[UIAccessibility\.announcementWasSuccessfulUserInfoKey\] as\? Bool\) == true else \{ return \}\s*landingBox\.lastCompletedAt = ProcessInfo\.processInfo\.systemUptime/);
     expect(BEACON).toContain("@State private var landingBox = LandingBox()");
   });
 
-  it("기다리는 동안 사용자가 커서를 옮겼으면 착지하지 않는다 — VoiceOver 초점 이동 신호, 시스템 배치 창은 뺀다(M4·a11y M2)", () => {
+  it("기다리는 동안 사용자가 커서를 옮겼으면 착지하지 않는다 — VoiceOver 초점 이동 신호, 첫 이동 한 번은 시스템 배치(M4·a11y M2·증분 M3)", () => {
     expect(BEACON).toMatch(
-      /elementFocusedNotification\)\) \{ _ in\s*guard Self\.isForeground, let pending = pendingInfoLanding,\s*ProcessInfo\.processInfo\.systemUptime - pending\.since > Self\.systemFocusGrace else \{ return \}\s*pendingInfoLanding\?\.userMoved = true/,
+      /elementFocusedNotification\)\) \{ _ in\s*guard Self\.isForeground, let pending = pendingInfoLanding else \{ return \}[\s\S]{0,200}if !pending\.systemPlacementSeen, elapsed <= Self\.systemPlacementWindow \{\s*pendingInfoLanding\?\.systemPlacementSeen = true\s*\} else if pending\.movedAfter == nil \{\s*pendingInfoLanding\?\.movedAfter = elapsed/,
     );
-    expect(body(BEACON, "private func resolvePendingInfoLanding(")).toContain("reason=userMoved");
+    expect(body(BEACON, "private func resolvePendingInfoLanding(")).toContain("reason=userMoved movedMs=");
   });
 
   it("사용자 전이: 시트 안 버튼은 곧장, 자식 시트 안에서 고른 것은 닫힌 뒤, 자동 채택은 커서가 버튼 위였을 때만", () => {
@@ -109,7 +110,8 @@ describe("BeaconTrackingSheet 착지 (E57)", () => {
       expect(BEACON, sheet).toContain(`.sheet(isPresented: ${sheet}, onDismiss: landAfterSubSheet)`);
     }
     // 도착 전이는 기다리던 착지를 버리고, 자식 시트가 떠 있으면 닫힌 뒤 도착 문장에.
-    expect(BEACON).toMatch(/showRouteList = false\s*clearPendingInfoLanding\(\)\s*\/\/[^\n]*\n\s*if changeDestPresented \|\| waypointPresented \|\| showPlaceDetail \{\s*landAfterDismiss = DismissLanding\(note: "arrived", expectsSummary: false, target: \.arrived\)/);
+    // 장소 상세도 닫는다(`stop()`이 dest를 비워 빈 모달이 된다, 증분 리뷰 M2) — 닫히는 시트가 있으면 닫힌 뒤 도착 문장에.
+    expect(BEACON).toMatch(/let closing = showRouteList \|\| showPlaceDetail\s*showRouteList = false\s*showPlaceDetail = false\s*clearPendingInfoLanding\(\)[\s\S]{0,300}if closing \|\| changeDestPresented \|\| waypointPresented \{\s*landAfterDismiss = DismissLanding\(note: "arrived", expectsSummary: false, target: \.arrived\)/);
   });
 
   it("소실 복구: 행 집합이 바뀌는 순간 커서가 사라진 정보 행에 있었으면, 그 통지가 끝난 뒤 첫 정보 행으로(B1)", () => {
@@ -120,7 +122,7 @@ describe("BeaconTrackingSheet 착지 (E57)", () => {
 
   it("배경 경계: 진행 중 착지·대기는 끊고 이월하며, 대입 전경 판정은 낡지 않은 실제 값이다(코드 리뷰 M1)", () => {
     expect(BEACON).toContain("private static var isForeground: Bool { UIApplication.shared.applicationState != .background }");
-    expect(BEACON).toMatch(/case \.background:\s*let carried: SheetFocus\? = pendingInfoLanding != nil \? \.remaining : landingInFlight/);
+    expect(BEACON).toMatch(/case \.background:[\s\S]{0,200}let pendingCarry = pendingInfoLanding\.map \{ \$0\.movedAfter == nil \} \?\? false/);
     expect(BEACON).toMatch(/requestInfoLanding\(note: "deferred", summarySince: ProcessInfo\.processInfo\.systemUptime\)/);
     expect(BEACON).toMatch(/\.onDisappear \{\s*focusTask\?\.cancel\(\)\s*pendingTimeoutTask\?\.cancel\(\)\s*announcementWaitTask\?\.cancel\(\)/);
   });
@@ -130,7 +132,7 @@ describe("BeaconTrackingSheet 착지 (E57)", () => {
     expect(land).toContain("guard Self.isForeground else {");
     expect(land).toContain("guard !subSheetPresented else {");
     expect(land).toContain("try? await Task.sleep(for: .milliseconds(400))");
-    expect(land).toMatch(/landingBox\.proxy\?\.scrollTo\(Self\.focusId\(target\)\)\s*focusedRow = target/);
+    expect(land).toMatch(/guard Self\.isForeground else \{[\s\S]{0,200}landingBox\.proxy\?\.scrollTo\(Self\.focusId\(target\)\)\s*focusedRow = target/);
     expect(land).not.toMatch(/\[600, 900, 1200\]|announce|scenePhase/);
     for (const key of ["landed=", "actual=", "attempts=", "waitedMs=", "vo="]) {
       expect(land, key).toContain(key);
