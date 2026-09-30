@@ -233,12 +233,12 @@
     {
       "swift": "OutingDistanceTone.swift",
       "status": "pending",
-      "note": "E51 나들이(도착지 없는 도보 안내, spec 2026-09-26-outing-mode-design.md). 안드로이드 나들이 화면을 만들 때(PORTS 등록, 실보행 판정 뒤) 이식한다 — 10m 비프·거리 양자화"
+      "note": "E51 나들이(도착지 없는 도보 안내, spec 2026-09-26-outing-mode-design.md). 안드로이드 나들이 화면을 만들 때(PORTS 등록, 실보행 판정 뒤) 이식한다 — 10m 비프·거리 양자화, 걸은 거리 표시 1m 내림(outingDisplayMeters, E54)"
     },
     {
       "swift": "OutingLandmark.swift",
       "status": "pending",
-      "note": "E51 나들이(도착지 없는 도보 안내, spec 2026-09-26-outing-mode-design.md). 안드로이드 나들이 화면을 만들 때(PORTS 등록, 실보행 판정 뒤) 이식한다 — 이정표 표·낭독 세 단계"
+      "note": "E51 나들이(도착지 없는 도보 안내, spec 2026-09-26-outing-mode-design.md). 안드로이드 나들이 화면을 만들 때(PORTS 등록, 실보행 판정 뒤) 이식한다 — 이정표 표·낭독 세 단계(기본 전부, next 순환 전부 → 이정표만 → 끔, E54)"
     },
     {
       "swift": "OutingOrigin.swift",

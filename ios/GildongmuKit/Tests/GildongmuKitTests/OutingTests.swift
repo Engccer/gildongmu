@@ -314,9 +314,10 @@ struct OutingMiscTests {
         #expect(outingDisplayMeters(9.99) == 9)
         #expect(outingDisplayMeters(-3) == 0)
         #expect(outingDisplayMeters(.infinity) == 0)
-        // 비프가 나는 값에서 표시는 그 10m 칸 이상이다.
-        for m in stride(from: 0.5, through: 60, by: 0.5) where outingDistanceToneStep(previousMeters: m - 0.5, currentMeters: m) > 0 {
-            #expect(outingDisplayMeters(m) >= outingQuantizedMeters(m))
+        #expect(outingDisplayMeters(.nan) == 0)
+        // 비프가 나는 순간 표시 숫자는 그 비프의 10m 칸에 있다(표시가 칸을 앞지르거나 뒤처지지 않는다).
+        for m in stride(from: 0.3, through: 60, by: 0.7) where outingDistanceToneStep(previousMeters: m - 0.7, currentMeters: m) > 0 {
+            #expect(outingDisplayMeters(m) / 10 * 10 == outingQuantizedMeters(m))
         }
     }
 

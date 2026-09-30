@@ -362,7 +362,7 @@ final class OutingModel {
         endedAt = .now
     }
 
-    /// 귀환 인계 직전(`GuideSession.acceptOutingReturn`): 세션·종료 화면을 함께 치운다(종료 화면 없음, spec §5.3).
+    /// 귀환 인계 직전(`GuideSession.acceptOutingReturn`): 종료 화면을 치운다(귀환은 종료 화면에서만 시작하므로 `stop()`은 방어용, spec §5.3).
     func endForReturn() {
         if isTracking { guideDiagLog("outingEnd reason=return") }
         stop()
@@ -371,10 +371,11 @@ final class OutingModel {
 
     /// 종료 화면 소거 — 닫기·새 세션·귀환 인계·30분 만료가 전부 여기를 지난다.
     func clearEnd() {
+        // 체중 권유 응답 표식은 그 화면의 것이다 — 닫기 밖의 소거(만료·인계·새 세션)에서 다음 화면으로 새지 않게(E31).
+        // 도보 종료 화면과 같은 키라, 나들이 종료 화면이 있을 때만 지운다(코디네이터가 도보·대중교통 시작마다 부른다).
+        if endScreen != nil { UserDefaults.standard.set(false, forKey: WalkHealth.weightPromptEngagedKey) }
         endScreen = nil
         endedAt = nil
-        // 체중 권유 응답 표식은 그 화면의 것이다 — 닫기 밖의 소거(만료·인계·새 세션)에서 다음 화면으로 새지 않게(E31).
-        UserDefaults.standard.set(false, forKey: WalkHealth.weightPromptEngagedKey)
     }
 
     /// 체중을 입력하고 돌아왔을 때 같은 표본으로 요약을 다시 계산한다(도보 종료 화면 동형).

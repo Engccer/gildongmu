@@ -152,7 +152,6 @@ struct OutingSheet: View {
                 // 권유가 떠 있던 화면을 아무 행동 없이 닫은 것만 무시로 센다 — clearEnd 앞(E31 순서 계약).
                 weightPromptDismissals = WalkHealth.nextWeightPromptDismissals(
                     current: weightPromptDismissals, promptShown: showsWeightPrompt, promptEngaged: weightPromptEngaged)
-                weightPromptEngaged = false
                 model.clearEnd()
             }
         } header: {

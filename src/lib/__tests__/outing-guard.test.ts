@@ -139,7 +139,7 @@ describe("나들이 시트 배치(E54)", () => {
 
   it("주변 낭독은 펼침 메뉴가 아니라 누를 때마다 다음 단계로 넘어가는 버튼이다", () => {
     const sheet = readFileSync(SHEET, "utf8");
-    expect(sheet).not.toMatch(/\bMenu\(/);
+    expect(sheet).not.toMatch(/Menu\(appLocalized\("ios\.outing\.narration"/);
     expect(sheet).toMatch(/Button\(appLocalized\("ios\.outing\.narration"[^\n]*\{\s*narrationRaw = narration\.next\.rawValue\s*\}/);
   });
 });
@@ -149,8 +149,15 @@ describe("나들이 종료 화면 소거(E31 응답 표식)", () => {
     const model = readFileSync(MODEL, "utf8");
     // 닫기·새 세션·귀환 인계·30분 만료가 전부 clearEnd를 지나야 표식이 다음 화면으로 새지 않는다.
     expect(model.match(/endScreen = nil/g) ?? []).toHaveLength(1);
+    for (const name of ["start", "endForReturn", "handleScenePhaseChange"]) {
+      expect(functionBody(model, name)).toContain("clearEnd()");
+    }
+    expect(readFileSync(join(IOS, "Gildongmu/Directions/OutingSheet.swift"), "utf8")).toMatch(
+      /appLocalized\("actions\.close"\)[\s\S]*nextWeightPromptDismissals[\s\S]*model\.clearEnd\(\)/,
+    );
+    // 도보 종료 화면과 같은 키라 나들이 종료 화면이 있을 때만 지운다(도보·대중교통 시작도 clearEnd를 부른다).
     expect(functionBody(model, "clearEnd")).toMatch(
-      /endScreen = nil[\s\S]*UserDefaults\.standard\.set\(false, forKey: WalkHealth\.weightPromptEngagedKey\)/,
+      /if endScreen != nil \{ UserDefaults\.standard\.set\(false, forKey: WalkHealth\.weightPromptEngagedKey\) \}[\s\S]*endScreen = nil/,
     );
   });
 });
