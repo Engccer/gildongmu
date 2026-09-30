@@ -663,6 +663,9 @@
     <string name="directions_viaRemaining">%2$s fino alla tappa intermedia %1$s</string>
     <string name="directions_walkAccessible">Percorso senza scale</string>
     <string name="directions_walkBroad">Percorso su strade principali</string>
+    <string name="directions_walkLinesFailedAccessible">Impossibile caricare il percorso senza scale.</string>
+    <string name="directions_walkLinesFailedBoth">Impossibile caricare il percorso su strade principali e il percorso senza scale.</string>
+    <string name="directions_walkLinesFailedBroad">Impossibile caricare il percorso su strade principali.</string>
     <string name="directions_walkRecommended">Percorso consigliato</string>
     <string name="directions_walkShortest">Percorso più breve</string>
     <string name="eventsNearby_asOf">Alle %1$s</string>

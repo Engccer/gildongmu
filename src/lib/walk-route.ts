@@ -12,6 +12,7 @@ import { walkStepAction } from "./walk-action";
 import type {
   Coord,
   StepFreeStatus,
+  WalkLineFailure,
   WalkLineKind,
   WalkRouteBriefing,
   WalkRouteLine,
@@ -592,8 +593,9 @@ export function composeKoWalkLines(
  *
  * 3-state: 최단 줄의 조회·주석 throw는 전체 throw(502), 카카오 줄의 조회·주석 throw는 흡수해 그 줄만 뺀다.
  * 경로 없음(null)은 그 줄만 뺀다 — 전부 없으면 `[]`("경로 없음"). 싣는 줄이 0개인데 실패가 섞였으면 throw.
- * ⚠ E52부터 줄의 부재가 정상 결과의 다수라 카카오 줄 실패의 흡수는 "대안 없음"과 같은 화면이 된다 —
- * 의도된 예외(spec §2.1)이고 실패는 로그로만 남는다.
+ * 흡수한 카카오 줄 실패는 `failedLines`로 돌려준다 — E52부터 줄의 부재가 정상 결과의 다수라 실패를 "대안
+ * 없음"과 같은 화면으로 두지 않는다(위원장 판정 2026-09-30 (나), spec §2.1). 실패는 **요청이 실패한 것**
+ * (타임아웃·오류·주석 예외)뿐이다 — 같은 길·경로 없음·계단 문구로 뺀 줄은 실패가 아니다.
  * ⚠ 줄 경로에는 `stepFree`·`stepFreeNotice`·스텝 0 유사 문장이 없다 — 이름(`kind`)이 그 정보다.
  * 기하는 싣지 않는다(조회 화면 전용 — 안내 시작은 줄 종류의 단일 조회가 담당).
  */
@@ -603,9 +605,9 @@ export async function getWalkRouteLines(params: {
   lang: WalkLang;
   via?: Coord;
   version: WalkLinesVersion;
-}): Promise<WalkRouteLine[]> {
+}): Promise<{ lines: WalkRouteLine[]; failedLines: WalkLineFailure[] }> {
   const { origin, dest, lang, via, version } = params;
-  if (lang === "en") return getEnWalkRouteLines({ origin, dest, lang, via });
+  if (lang === "en") return { lines: await getEnWalkRouteLines({ origin, dest, lang, via }), failedLines: [] };
 
   if (!hasShortestAxis(lang)) {
     throw new Error("[walk-route] 최단 줄을 조회할 키가 없습니다");
@@ -647,18 +649,22 @@ export async function getWalkRouteLines(params: {
     picked.map(async (l) => ({ kind: l.kind, route: await annotateBriefing(l.raw, provider(l.kind), lang, false) })),
   );
   const lines: WalkRouteLine[] = [];
-  const failures: unknown[] = [broad, accessible].flatMap((r) => (r.status === "rejected" ? [r.reason] : []));
+  const failures: { kind: WalkLineFailure; reason: unknown }[] = [];
+  if (broad.status === "rejected") failures.push({ kind: "broad", reason: broad.reason });
+  if (accessible.status === "rejected") failures.push({ kind: "accessible", reason: accessible.reason });
   annotated.forEach((r, i) => {
+    const kind = picked[i].kind;
     if (r.status === "fulfilled") lines.push(r.value);
-    else if (picked[i].kind === "shortest") throw r.reason;
-    else {
+    else if (kind === "broad" || kind === "accessible") {
       logRouteFallback("[walk-route] 카카오 줄 주석 실패, 그 줄만 뺀다:", origin, dest, r.reason);
-      failures.push(r.reason);
-    }
+      failures.push({ kind, reason: r.reason });
+    } else throw r.reason;
   });
   // 3-state: 싣는 줄이 0개인데 실패가 섞였으면 "경로 없음"이 아니라 조회 실패다(502).
-  if (lines.length === 0 && failures.length > 0) throw failures[0];
-  return lines;
+  if (lines.length === 0 && failures.length > 0) throw failures[0].reason;
+  // 화면 순서(큰길 → 계단 회피)로 싣는다.
+  const failedLines = (["broad", "accessible"] as const).filter((k) => failures.some((f) => f.kind === k));
+  return { lines, failedLines };
 }
 
 /** en 줄 목록(E42 그대로): `[recommended, shortest]`, 둘째 줄 throw는 흡수. */

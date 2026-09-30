@@ -213,7 +213,10 @@
     "walkRecommended": "Ruta recomendada",
     "walkShortest": "Ruta más corta",
     "walkAccessible": "Ruta sin escaleras",
-    "walkBroad": "Ruta por vías principales"
+    "walkBroad": "Ruta por vías principales",
+    "walkLinesFailedBoth": "No se pudieron cargar la ruta por vías principales ni la ruta sin escaleras.",
+    "walkLinesFailedBroad": "No se pudo cargar la ruta por vías principales.",
+    "walkLinesFailedAccessible": "No se pudo cargar la ruta sin escaleras."
   },
   "detail": {
     "back": "Volver a los resultados"

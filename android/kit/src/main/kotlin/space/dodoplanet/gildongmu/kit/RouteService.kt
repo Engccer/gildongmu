@@ -7,6 +7,7 @@ import space.dodoplanet.gildongmu.kit.models.TransitRouteResult
 import space.dodoplanet.gildongmu.kit.models.WalkRouteBriefing
 import space.dodoplanet.gildongmu.kit.models.WalkRouteEnvelope
 import space.dodoplanet.gildongmu.kit.models.WalkRouteLine
+import space.dodoplanet.gildongmu.kit.models.WalkRouteLineList
 import space.dodoplanet.gildongmu.kit.models.WalkRouteLinesEnvelope
 
 /**
@@ -126,13 +127,14 @@ class RouteService(val client: APIClient) {
         destLat: Double, destLng: Double,
         lang: DataLocale,
         via: RoutePoint?,
-    ): List<WalkRouteLine> {
+    ): WalkRouteLineList {
         val query = arrayListOf("origin" to coordPair(originLat, originLng), "dest" to coordPair(destLat, destLng))
         if (lang != DataLocale.ko) query.add("lang" to lang.rawValue)
         if (via != null) query.add("via" to coordPair(via.lat, via.lng))
         // 판본 2(E52) = 최대 세 줄. 판본 1(최대 두 줄)은 첫 줄 뒤 줄들이 펼침 상태 하나를 공유하던 iOS 1.19 몫이다.
         query.add("lines" to "2")
-        return client.get<WalkRouteLinesEnvelope>("/api/route/walk", query).lines.filter { it.lineKind != null }
+        val envelope = client.get<WalkRouteLinesEnvelope>("/api/route/walk", query)
+        return WalkRouteLineList(envelope.lines.filter { it.lineKind != null }, envelope.failedLines.orEmpty())
     }
 
     /**

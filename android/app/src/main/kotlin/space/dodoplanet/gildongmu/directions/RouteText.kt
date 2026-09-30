@@ -50,6 +50,21 @@ fun walkLineNameKey(line: WalkLineKind): String = when (line) {
 }
 
 /**
+ * 조회가 실패해 빠진 줄(서버 `failedLines`, E52 위원장 판정 (나))의 문장 키 — 줄 목록 끝의 평문 한 줄(iOS
+ * `WalkLineText.failedKey` 미러). 실패가 없거나 모르는 값뿐이면 null.
+ */
+fun walkLinesFailedKey(failed: List<String>): String? {
+    val broad = "broad" in failed
+    val accessible = "accessible" in failed
+    return when {
+        broad && accessible -> "directions.walkLinesFailedBoth"
+        broad -> "directions.walkLinesFailedBroad"
+        accessible -> "directions.walkLinesFailedAccessible"
+        else -> null
+    }
+}
+
+/**
  * 도보 줄 라벨(E42, 위원장 확정 렌더 `최단 경로, 총 850m, 약 12분`) — 이름과 요약뿐이다. **사유 문장(`stepFreeNotice`)을
  * 붙이지 않는다**: 이름이 곧 그 경로의 성질이다.
  */

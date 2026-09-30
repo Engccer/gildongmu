@@ -80,6 +80,9 @@ internal fun stringId(key: String): Int? = when (key) {
     "directions.walkShortest" -> R.string.directions_walkShortest
     "directions.walkAccessible" -> R.string.directions_walkAccessible
     "directions.walkBroad" -> R.string.directions_walkBroad
+    "directions.walkLinesFailedBoth" -> R.string.directions_walkLinesFailedBoth
+    "directions.walkLinesFailedBroad" -> R.string.directions_walkLinesFailedBroad
+    "directions.walkLinesFailedAccessible" -> R.string.directions_walkLinesFailedAccessible
     "route.public" -> R.string.route_public
     "route.car" -> R.string.route_car
     "route.pedestrian.heading" -> R.string.route_pedestrian_heading

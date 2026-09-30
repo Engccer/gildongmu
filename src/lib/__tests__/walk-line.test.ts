@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import ko from "../../../messages/ko.json";
-import { walkLineAxis, walkLineNameKey, walkLineStartKey } from "../walk-line";
+import { walkLineAxis, walkLineNameKey, walkLinesFailedKey, walkLineStartKey } from "../walk-line";
 
 describe("walk-line 투영(E42)", () => {
   it("줄 이름·안내 시작 문구가 위원장 확정 렌더와 같다", () => {
@@ -24,5 +24,22 @@ describe("walk-line 투영(E42)", () => {
     expect(walkLineAxis("accessible")).toEqual({ accessible: true, variant: null });
     expect(walkLineAxis("broad")).toEqual({ accessible: false, variant: null });
     expect(walkLineAxis("recommended")).toEqual({ accessible: false, variant: null });
+  });
+});
+
+describe("walkLinesFailedKey(E52 위원장 판정 (나))", () => {
+  it("실패한 줄 조합 → 문장 키, 없거나 모르는 값뿐이면 null", () => {
+    expect(walkLinesFailedKey(["broad", "accessible"])).toBe("walkLinesFailedBoth");
+    expect(walkLinesFailedKey(["broad"])).toBe("walkLinesFailedBroad");
+    expect(walkLinesFailedKey(["accessible"])).toBe("walkLinesFailedAccessible");
+    expect(walkLinesFailedKey([])).toBeNull();
+    expect(walkLinesFailedKey(undefined)).toBeNull();
+    expect(walkLinesFailedKey(["scenic"])).toBeNull();
+  });
+
+  it("ko 문장은 위원장 문안 그대로", () => {
+    expect(ko.directions.walkLinesFailedBoth).toBe("큰길과 계단 회피 경로는 불러오지 못했습니다.");
+    expect(ko.directions.walkLinesFailedBroad).toBe("큰길 경로는 불러오지 못했습니다.");
+    expect(ko.directions.walkLinesFailedAccessible).toBe("계단 회피 경로는 불러오지 못했습니다.");
   });
 });

@@ -89,8 +89,12 @@ export async function GET(request: NextRequest) {
     if (parsed.data.lines) {
       // 조회 화면 줄 목록(E42·E52). 기하 없음 — withFinalApproach 미적용. 첫 줄 실패는 catch로 502,
       // 나머지 줄 실패만 흡수(서비스 계층). `[]`는 "경로 없음". 값이 판본(1 = 최대 두 줄, 2 = 세 줄).
+      // 흡수한 실패(`failedLines`)는 판본 2에만 additive로 싣는다 — 판본 1(1.19) 봉투는 그대로.
+      const version = parsed.data.lines;
+      const { lines, failedLines } = await getWalkRouteLines({ origin, dest, lang, via, version });
       return NextResponse.json({
-        lines: await getWalkRouteLines({ origin, dest, lang, via, version: parsed.data.lines }),
+        lines,
+        ...(version === 2 && failedLines.length > 0 ? { failedLines } : {}),
       });
     }
     if (parsed.data.alternatives) {

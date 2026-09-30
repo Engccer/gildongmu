@@ -266,6 +266,8 @@ fun WalkOutcomeRows(
     onLaterToggle: (WalkLineKind) -> Unit,
     viaLabel: String?,
     strings: Strings,
+    /** 조회가 실패해 빠진 줄(서버 `failedLines`, E52 판정 (나)) — 줄 목록 끝의 평문 한 줄. */
+    failedLines: List<String>,
     /** 도보 안내 시작 버튼 슬롯(줄 종류) — 도착 좌표가 있을 때만 화면이 넘긴다. */
     guideStart: (@Composable (line: WalkLineKind) -> Unit)? = null,
 ) {
@@ -283,6 +285,8 @@ fun WalkOutcomeRows(
             walkStepItems(route, viaLabel, strings).forEachIndexed { i, item -> TextRow(item, "walk-${kind.rawValue}-step-$i", spoken = spokenDistanceUnits(item, meters)) }
         }
     } }
+    // 조회가 실패해 빠진 줄(E52 위원장 판정 (나)) — 줄 목록의 마지막 객체 하나, 평문(통지 없음 — 조회 완료 통지는 기존 창구).
+    walkLinesFailedKey(failedLines)?.let { TextRow(strings.get(it), "walk-lines-failed") }
 }
 
 /** 자동차 본문: 요약 1행 + 안내 행(펼침 없음 — 경로 하나). */

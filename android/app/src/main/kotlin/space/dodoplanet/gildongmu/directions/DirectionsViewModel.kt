@@ -105,6 +105,8 @@ data class DirectionsUiState(
      * 응답에서 온 것만 노출한다(스냅샷 교체). 빈 목록 = 미조회·경로 없음·조회 실패.
      */
     val walkLines: List<WalkRouteLine> = emptyList(),
+    /** 조회가 실패해 빠진 줄(서버 `failedLines`, E52 판정 (나)) — `walkLines`와 같은 응답에서만 커밋한다. */
+    val walkLinesFailed: List<String> = emptyList(),
     val promotedDestination: PromotedDestination? = null,
     /** 조회 완료 세대(화면 펼침 상태 초기화 신호). */
     val resultsRevision: Int = 0,
@@ -295,7 +297,7 @@ class DirectionsViewModel(
         cancelRequeries()
         _state.update {
             it.copy(
-                results = null, walkLines = emptyList(), promotedDestination = null, resultsOriginNeedsStartNotice = false,
+                results = null, walkLines = emptyList(), walkLinesFailed = emptyList(), promotedDestination = null, resultsOriginNeedsStartNotice = false,
                 phase = DirectionsPhase.Idle, notice = next(""), preciseRetryFailed = false,
             )
         }
@@ -334,7 +336,7 @@ class DirectionsViewModel(
 
     private suspend fun performQuery(from: DirectionsEndpoint, to: DirectionsEndpoint, via: DirectionsEndpoint.Place?, addressRequest: DirectionsAddressState.Request?) {
         cancelRequeries()
-        _state.update { it.copy(results = null, walkLines = emptyList(), promotedDestination = null, resultsOriginNeedsStartNotice = false) }
+        _state.update { it.copy(results = null, walkLines = emptyList(), walkLinesFailed = emptyList(), promotedDestination = null, resultsOriginNeedsStartNotice = false) }
         var current: NearbyCoord? = null
         // 현재 위치 끝점이 옛 위치로 풀렸으면 그 좌표의 측정 시각(완료 통지 뒷문장·안내 시작 고지).
         var staleAt: Double? = null
@@ -427,7 +429,7 @@ class DirectionsViewModel(
         val outcomes = mapOf(
             DirectionsMode.transit to (transit?.let(DirectionsOutcomeClassifier::classifyTransit) ?: DirectionsModeOutcome.UnsupportedWaypoint),
             DirectionsMode.car to DirectionsOutcomeClassifier.classifyCar(car),
-            DirectionsMode.walk to DirectionsOutcomeClassifier.classifyWalk(walk.map { it.firstOrNull()?.route }),
+            DirectionsMode.walk to DirectionsOutcomeClassifier.classifyWalk(walk.map { it.lines.firstOrNull()?.route }),
         )
         // 서버 마커 이중 방어 — place 종단점이 한국 밖일 수 있다. 하나라도 감지하면 화면 전체를 전환한다.
         if (outcomes.values.any { it.isOutOfCoverage }) {
@@ -443,7 +445,8 @@ class DirectionsViewModel(
         resultsCoords = ResultsCoords(origin, dest, lang)
         _state.update {
             it.copy(
-                results = results, walkLines = walk.getOrNull().orEmpty(), promotedDestination = promoted,
+                results = results, walkLines = walk.getOrNull()?.lines.orEmpty(), walkLinesFailed = walk.getOrNull()?.failedLines.orEmpty(),
+                promotedDestination = promoted,
                 resultsOriginNeedsStartNotice = needsStartNotice,
                 phase = DirectionsPhase.Settled(results.successCount), resultsRevision = it.resultsRevision + 1,
                 recentRoutes = recent,

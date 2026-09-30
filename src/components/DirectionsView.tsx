@@ -39,7 +39,7 @@ import { alternativeName } from "@/lib/transit-alternative-name";
 import { shouldCollapseWalk } from "@/lib/walk-collapse";
 import { orderDirectionsModes, type DirectionsModeKey } from "@/lib/directions-order";
 import { walkRouteUrl } from "@/lib/walk-route-url";
-import { walkLineAxis, walkLineNameKey, walkLineStartKey } from "@/lib/walk-line";
+import { walkLineAxis, walkLineNameKey, walkLinesFailedKey, walkLineStartKey } from "@/lib/walk-line";
 import {
   clearRecentEndpoints,
   loadRecentEndpoints,
@@ -95,7 +95,7 @@ type ModeOutcome =
    * 도보는 `lines=2`의 줄 목록(E42·E52) — 서버 순서가 화면 순서, 첫 줄이 기본 펼침. 비어 있으면
    * `empty`로 접으므로 done은 1줄 이상이다. 줄들은 **같은 응답에서 온 것만** 그린다(스냅샷 교체).
    */
-  | { kind: "done"; mode: "walk"; lines: WalkRouteLine[] }
+  | { kind: "done"; mode: "walk"; lines: WalkRouteLine[]; failedLines?: readonly string[] }
   | { kind: "done"; mode: "car"; result: CarRouteBriefing };
 
 type QueryResults = {
@@ -260,11 +260,12 @@ async function fetchMode(
       { signal },
     );
     if (!res.ok) return { kind: "error" };
-    const body = (await res.json()) as { lines?: WalkRouteLine[] };
+    const body = (await res.json()) as { lines?: WalkRouteLine[]; failedLines?: string[] };
     if (isOutOfCoverageBody(body)) return { kind: "outOfCoverage" };
     // 모르는 종류의 줄은 이름을 붙일 수 없어 뺀다(서버가 종류를 더해도 화면이 거짓 이름을 달지 않는다).
     const lines = (body.lines ?? []).filter((l) => walkLineNameKey(l.kind) !== null);
-    return lines.length > 0 ? { kind: "done", mode, lines } : { kind: "empty" };
+    // 조회가 실패해 빠진 줄(E52 판정 (나))은 줄 목록 끝의 한 문장이 된다 — "같은 길이라 뺐다"와 가르기 위해.
+    return lines.length > 0 ? { kind: "done", mode, lines, failedLines: body.failedLines } : { kind: "empty" };
   }
   const res = await fetch(`/api/route/transit?${qs}&includeStops=1&lang=${lang}`, { signal });
   if (!res.ok) return { kind: "error" };
@@ -1907,6 +1908,12 @@ export function DirectionsView({
                       </div>
                     );
                   })}
+                {/* 조회가 실패해 빠진 줄(E52 위원장 판정 (나)) — 줄 목록의 마지막 객체 하나, 평문. 조회 완료 통지는
+                    기존 창구 그대로라 live region을 두지 않는다(보이는 문장을 복제하지 않는다). */}
+                {outcome.kind === "done" && outcome.mode === "walk" && (() => {
+                  const key = walkLinesFailedKey(outcome.failedLines);
+                  return key ? <p className="mt-2 text-sm">{t(key)}</p> : null;
+                })()}
                 {outcome.kind === "done" && outcome.mode === "car" && (
                   <CarRouteResult
                     briefing={outcome.result}

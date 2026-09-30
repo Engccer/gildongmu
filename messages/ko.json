@@ -213,7 +213,10 @@
     "walkRecommended": "추천 경로",
     "walkShortest": "최단 경로",
     "walkAccessible": "계단 회피 경로",
-    "walkBroad": "큰길 경로"
+    "walkBroad": "큰길 경로",
+    "walkLinesFailedBoth": "큰길과 계단 회피 경로는 불러오지 못했습니다.",
+    "walkLinesFailedBroad": "큰길 경로는 불러오지 못했습니다.",
+    "walkLinesFailedAccessible": "계단 회피 경로는 불러오지 못했습니다."
   },
   "detail": {
     "back": "검색 결과로 돌아가기"

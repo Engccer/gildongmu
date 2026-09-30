@@ -457,6 +457,17 @@ class DirectionsViewModelTest {
         assertTrue(m.state.value.walkLines.isEmpty())
     }
 
+    @Test fun `조회가 실패해 빠진 줄(E52 판정 (나))은 줄과 같은 응답에서 커밋되고 필드 변경에 비워진다`() = runTest(dispatcher) {
+        val body = linesBody("shortest").dropLast(1) + ""","failedLines":["broad","accessible"]}"""
+        val r = Routes(transit = transitBody, walk = body, car = carBody)
+        val m = vm(r)
+        m.setEndpoint(gangnam, DirectionsFieldTarget.to)
+        m.runQuery(); dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(listOf("broad", "accessible"), m.state.value.walkLinesFailed)
+        m.setEndpoint(DirectionsEndpoint.Place("천호역", 37.5385, 127.1237), DirectionsFieldTarget.to)
+        assertTrue(m.state.value.walkLinesFailed.isEmpty())
+    }
+
     @Test fun `필드 변경은 진행 조회를 취소하고 늦은 응답은 상태를 쓰지 않는다`() = runTest(dispatcher) {
         val r = allOk(delays = mapOf("/api/route/walk" to 1_000L))
         val m = vm(r)

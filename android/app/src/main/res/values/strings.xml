@@ -663,6 +663,9 @@
     <string name="directions_viaRemaining">경유지 %1$s까지 %2$s</string>
     <string name="directions_walkAccessible">계단 회피 경로</string>
     <string name="directions_walkBroad">큰길 경로</string>
+    <string name="directions_walkLinesFailedAccessible">계단 회피 경로는 불러오지 못했습니다.</string>
+    <string name="directions_walkLinesFailedBoth">큰길과 계단 회피 경로는 불러오지 못했습니다.</string>
+    <string name="directions_walkLinesFailedBroad">큰길 경로는 불러오지 못했습니다.</string>
     <string name="directions_walkRecommended">추천 경로</string>
     <string name="directions_walkShortest">최단 경로</string>
     <string name="eventsNearby_asOf">%1$s 기준</string>

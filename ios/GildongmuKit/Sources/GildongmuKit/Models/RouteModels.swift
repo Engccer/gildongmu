@@ -591,4 +591,18 @@ public struct WalkRouteLine: Codable, Sendable, Hashable {
 /// 빈 배열은 "경로 없음"(3-state — 조회 실패는 서버가 502로 던진다).
 public struct WalkRouteLinesEnvelope: Codable, Sendable {
     public let lines: [WalkRouteLine]
+    /// 조회가 실패해 빠진 줄(E52 위원장 판정 (나), 판본 2 additive — 없으면 실패 없음). 원시 문자열이다(`kind` 규율 동형).
+    public let failedLines: [String]?
+}
+
+/// 조회 화면 도보 줄 목록(`RouteService.walkLines`의 반환) — 알려진 종류의 줄과 조회가 실패해 빠진 줄.
+public struct WalkRouteLineList: Sendable, Equatable {
+    public let lines: [WalkRouteLine]
+    /// 조회가 실패해 빠진 줄 종류(원시 문자열, 화면 순서). 같은 길·경로 없음으로 빠진 줄은 여기 없다.
+    public let failedLines: [String]
+
+    public init(lines: [WalkRouteLine], failedLines: [String]) {
+        self.lines = lines
+        self.failedLines = failedLines
+    }
 }

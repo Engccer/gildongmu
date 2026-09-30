@@ -14,7 +14,7 @@ vi.mock("@/lib/rate-limit", () => ({
 vi.mock("@/lib/walk-route", () => ({
   getWalkRoute: vi.fn(),
   getWalkRouteAlternatives: vi.fn(),
-  getWalkRouteLines: vi.fn(async () => []),
+  getWalkRouteLines: vi.fn(async () => ({ lines: [], failedLines: ["broad"] })),
 }));
 
 import { GET } from "../route";
@@ -29,5 +29,12 @@ describe("lines 판본 전달(E52)", () => {
       expect((await GET(new NextRequest(url(value)))).status).toBe(200);
       expect(vi.mocked(getWalkRouteLines).mock.calls[0][0]).toMatchObject({ version });
     }
+  });
+
+  it("failedLines(E52 판정 (나))는 판본 2 응답에만 additive로 — 판본 1(1.19) 봉투는 그대로", async () => {
+    expect(await (await GET(new NextRequest(url("2")))).json()).toEqual({ lines: [], failedLines: ["broad"] });
+    expect(await (await GET(new NextRequest(url("1")))).json()).toEqual({ lines: [] });
+    vi.mocked(getWalkRouteLines).mockResolvedValueOnce({ lines: [], failedLines: [] });
+    expect(await (await GET(new NextRequest(url("2")))).json()).toEqual({ lines: [] });
   });
 });

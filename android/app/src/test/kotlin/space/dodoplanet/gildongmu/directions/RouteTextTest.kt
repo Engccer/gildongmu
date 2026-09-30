@@ -93,4 +93,12 @@ class RouteTextTest {
         assertEquals("22,600", wonText(22600, "en"))
         assertEquals("22.600", wonText(22600, "it"))
     }
+
+    @Test fun `조회가 실패해 빠진 줄 문장(E52 판정 (나)) - iOS WalkLineText failedKey 미러`() {
+        assertEquals("큰길과 계단 회피 경로는 불러오지 못했습니다.", ko.get(walkLinesFailedKey(listOf("broad", "accessible"))!!))
+        assertEquals("큰길 경로는 불러오지 못했습니다.", ko.get(walkLinesFailedKey(listOf("broad"))!!))
+        assertEquals("계단 회피 경로는 불러오지 못했습니다.", ko.get(walkLinesFailedKey(listOf("accessible"))!!))
+        assertEquals(null, walkLinesFailedKey(emptyList()))
+        assertEquals(null, walkLinesFailedKey(listOf("scenic")))
+    }
 }

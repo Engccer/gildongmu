@@ -213,7 +213,10 @@
     "walkRecommended": "Recommended route",
     "walkShortest": "Shortest route",
     "walkAccessible": "Route avoiding stairs",
-    "walkBroad": "Main-road route"
+    "walkBroad": "Main-road route",
+    "walkLinesFailedBoth": "Couldn't load the main-road route or the route avoiding stairs.",
+    "walkLinesFailedBroad": "Couldn't load the main-road route.",
+    "walkLinesFailedAccessible": "Couldn't load the route avoiding stairs."
   },
   "detail": {
     "back": "Back to results"

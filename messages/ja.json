@@ -213,7 +213,10 @@
     "walkRecommended": "おすすめルート",
     "walkShortest": "最短ルート",
     "walkAccessible": "階段を避けるルート",
-    "walkBroad": "大通りルート"
+    "walkBroad": "大通りルート",
+    "walkLinesFailedBoth": "大通りルートと階段を避けるルートは読み込めませんでした。",
+    "walkLinesFailedBroad": "大通りルートは読み込めませんでした。",
+    "walkLinesFailedAccessible": "階段を避けるルートは読み込めませんでした。"
   },
   "detail": {
     "back": "検索結果に戻る"

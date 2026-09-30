@@ -630,6 +630,12 @@ export interface WalkRouteBriefing {
  */
 export type WalkLineKind = "shortest" | "accessible" | "broad" | "recommended";
 
+/**
+ * 줄 목록에서 **조회가 실패해** 빠진 카카오 줄(E52 위원장 판정 2026-09-30 (나)). 같은 길·경로 없음·계단 문구로
+ * 빠진 줄은 실패가 아니라 여기에 없다. `lines=2` 응답에만 additive `failedLines`로 싣는다(비어 있으면 필드 부재).
+ */
+export type WalkLineFailure = "broad" | "accessible";
+
 /** `/api/route/walk?lines=2` 응답의 한 줄. 줄 경로엔 `stepFree`·`stepFreeNotice`가 없다. */
 export interface WalkRouteLine {
   kind: WalkLineKind;

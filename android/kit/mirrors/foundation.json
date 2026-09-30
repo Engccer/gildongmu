@@ -123,7 +123,7 @@
       "status": "ported",
       "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/models/RouteModels.kt",
       "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/RouteModelsTest.kt",
-      "note": "전방 호환 enum 디코딩은 `models/LenientEnums.kt`(등록부 밖 직렬화 보조). E42 `WalkLineKind`(enum — `WalkRouteVariant` import, 속성 `accessible`은 항목 이름과 겹쳐 `isAccessible`로 개명)·`WalkRouteLine`·`WalkRouteLinesEnvelope`·브리핑 `kind`/`lineKind`는 이식했고, 그 테스트는 Swift처럼 `RouteServiceTest`에 있다(`walkBriefingKindDecodesLeniently`·`walkLineKindProjectsGuideRequestAxis`, E52 안내 중 전환 대상 `WalkLineKind.switchAlternate`는 `walkSwitchAlternatePrefersAccessible`). E50 `TransitModeAxis`(enum, `rawValue`·`fromRawValue`)·`TransitRouteResult.requeryAxes`/`knownRequeryAxes`는 이식했다"
+      "note": "전방 호환 enum 디코딩은 `models/LenientEnums.kt`(등록부 밖 직렬화 보조). E42 `WalkLineKind`(enum — `WalkRouteVariant` import, 속성 `accessible`은 항목 이름과 겹쳐 `isAccessible`로 개명)·`WalkRouteLine`·`WalkRouteLinesEnvelope`·브리핑 `kind`/`lineKind`는 이식했고, 그 테스트는 Swift처럼 `RouteServiceTest`에 있다(`walkBriefingKindDecodesLeniently`·`walkLineKindProjectsGuideRequestAxis`, E52 안내 중 전환 대상 `WalkLineKind.switchAlternate`는 `walkSwitchAlternatePrefersAccessible`, E52 판정 (나) `WalkRouteLinesEnvelope.failedLines`·`WalkRouteLineList`는 `walkLinesCarriesFailedLines`). E50 `TransitModeAxis`(enum, `rawValue`·`fromRawValue`)·`TransitRouteResult.requeryAxes`/`knownRequeryAxes`는 이식했다"
     },
     {
       "swift": "Models/SearchModels.swift",

@@ -371,7 +371,7 @@ private fun DirectionsForm(
                             onWalkToggle = { ui.walkExpandedOverride = !(ui.walkExpandedOverride ?: !WalkCollapse.shouldCollapse(outcome.briefing.durationSeconds)) },
                             laterExpanded = ui.laterExpanded,
                             onLaterToggle = { kind -> ui.laterExpanded = if (kind in ui.laterExpanded) ui.laterExpanded - kind else ui.laterExpanded + kind },
-                            viaLabel = s.via?.label, strings = strings,
+                            viaLabel = s.via?.label, strings = strings, failedLines = s.walkLinesFailed,
                             guideStart = walkGuideStartSlot(s, onStart = { vm.announceGuideStartIfManualOrigin(GuideSession.isActive) }),
                         )
                         is DirectionsModeOutcome.Car -> CarOutcomeRows(outcome.briefing, s.via?.label, lang, strings)

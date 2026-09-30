@@ -129,13 +129,14 @@ public struct RouteService: Sendable {
     }
 
     /// 조회 화면 도보 줄 목록(E42·E52, `lines=2` 단독 옵트인 — 기하 없음). 모르는 종류의 줄은 뺀다.
-    /// 빈 배열은 "경로 없음", 첫 줄 실패는 서버 502라 throw(부분 성공 비대칭 — spec §2.1).
+    /// 빈 배열은 "경로 없음", 첫 줄 실패는 서버 502라 throw(부분 성공 비대칭 — spec §2.1). 나머지 줄의 조회 실패는
+    /// 서버가 흡수해 `failedLines`로 알린다(E52 판정 (나)).
     public func walkLines(
         originLat: Double, originLng: Double,
         destLat: Double, destLng: Double,
         lang: DataLocale,
         via: (lat: Double, lng: Double)?
-    ) async throws -> [WalkRouteLine] {
+    ) async throws -> WalkRouteLineList {
         var query = [
             URLQueryItem(name: "origin", value: coordPair(originLat, originLng)),
             URLQueryItem(name: "dest", value: coordPair(destLat, destLng)),
@@ -145,7 +146,8 @@ public struct RouteService: Sendable {
         // 판본 2(E52) = 최대 세 줄. 판본 1(최대 두 줄)은 첫 줄 뒤 줄들이 펼침 상태 하나를 공유하던 1.19 몫이다.
         query.append(URLQueryItem(name: "lines", value: "2"))
         let envelope: WalkRouteLinesEnvelope = try await client.get("/api/route/walk", query: query)
-        return envelope.lines.filter { $0.lineKind != nil }
+        return WalkRouteLineList(
+            lines: envelope.lines.filter { $0.lineKind != nil }, failedLines: envelope.failedLines ?? [])
     }
 
     /// 추천+최단 병렬 조회(M3, **옛 조회 화면 호환** — iOS·안드로이드 앱은 E42부터 `walkLines`를 쓴다.

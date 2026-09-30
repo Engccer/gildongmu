@@ -663,6 +663,9 @@
     <string name="directions_viaRemaining">経由地 %1$sまで%2$s</string>
     <string name="directions_walkAccessible">階段を避けるルート</string>
     <string name="directions_walkBroad">大通りルート</string>
+    <string name="directions_walkLinesFailedAccessible">階段を避けるルートは読み込めませんでした。</string>
+    <string name="directions_walkLinesFailedBoth">大通りルートと階段を避けるルートは読み込めませんでした。</string>
+    <string name="directions_walkLinesFailedBroad">大通りルートは読み込めませんでした。</string>
     <string name="directions_walkRecommended">おすすめルート</string>
     <string name="directions_walkShortest">最短ルート</string>
     <string name="eventsNearby_asOf">%1$s時点</string>

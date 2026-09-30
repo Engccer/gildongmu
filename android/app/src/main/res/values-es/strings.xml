@@ -663,6 +663,9 @@
     <string name="directions_viaRemaining">%2$s hasta el punto intermedio %1$s</string>
     <string name="directions_walkAccessible">Ruta sin escaleras</string>
     <string name="directions_walkBroad">Ruta por vías principales</string>
+    <string name="directions_walkLinesFailedAccessible">No se pudo cargar la ruta sin escaleras.</string>
+    <string name="directions_walkLinesFailedBoth">No se pudieron cargar la ruta por vías principales ni la ruta sin escaleras.</string>
+    <string name="directions_walkLinesFailedBroad">No se pudo cargar la ruta por vías principales.</string>
     <string name="directions_walkRecommended">Ruta recomendada</string>
     <string name="directions_walkShortest">Ruta más corta</string>
     <string name="eventsNearby_asOf">A las %1$s</string>

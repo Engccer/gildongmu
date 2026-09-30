@@ -333,4 +333,11 @@ data class WalkRouteLine(
  * 빈 배열은 "경로 없음"(3-state — 조회 실패는 서버가 502로 던진다).
  */
 @Serializable
-data class WalkRouteLinesEnvelope(val lines: List<WalkRouteLine>)
+data class WalkRouteLinesEnvelope(
+    val lines: List<WalkRouteLine>,
+    /** 조회가 실패해 빠진 줄(E52 위원장 판정 (나), 판본 2 additive — 없으면 실패 없음). 원시 문자열이다(`kind` 규율 동형). */
+    val failedLines: List<String>? = null,
+)
+
+/** 조회 화면 도보 줄 목록(`RouteService.walkLines`의 반환, Swift `WalkRouteLineList` 미러) — 알려진 종류의 줄과 조회가 실패해 빠진 줄. */
+data class WalkRouteLineList(val lines: List<WalkRouteLine>, val failedLines: List<String>)

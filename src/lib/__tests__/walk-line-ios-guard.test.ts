@@ -53,6 +53,12 @@ describe("iOS 도보 줄 배선(E42)", () => {
     expect(funcBody(src, "private func landBeaconStartFocus(")).toContain("walkLaterExpanded.insert(kind)");
   });
 
+  it("조회가 실패해 빠진 줄은 줄 목록 끝의 평문 한 문장(E52 판정 (나)) — 같은 응답에서만 커밋한다", () => {
+    const src = read(TAB);
+    expect(src).toContain("if let key = WalkLineText.failedKey(model.walkLinesFailed) {");
+    expect(src).toContain("walkLinesFailed = failedCandidate");
+  });
+
   it("조회 화면 줄의 안내 시작은 줄 종류의 투영 셋을 함께 싣는다(최단 버튼이 큰길을 시작하지 않게)", () => {
     const src = read(TAB);
     expect(src).toContain("accessible: kind.accessible, variant: kind.variant,");

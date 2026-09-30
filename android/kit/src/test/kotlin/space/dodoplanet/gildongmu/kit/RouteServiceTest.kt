@@ -89,7 +89,8 @@ class RouteServiceTest {
             """{"kind":"broad","route":{"distanceMeters":880,"durationSeconds":780,"steps":[]}}]}"""
         val (svc, t) = service(HttpResponse(200, body))
         val lines = svc.walkLines(37.5, 127.0, 37.6, 127.1, lang = DataLocale.ko, via = null)
-        assertEquals(listOf(WalkLineKind.shortest, WalkLineKind.broad), lines.map { it.lineKind })
+        assertEquals(listOf(WalkLineKind.shortest, WalkLineKind.broad), lines.lines.map { it.lineKind })
+        assertTrue(lines.failedLines.isEmpty()) // 필드 부재 = 실패 없음
         val q = t.lastQuery()
         assertTrue(q.has("lines", "2"))
         assertFalse(q.has("lines", "1"))
@@ -113,6 +114,15 @@ class RouteServiceTest {
         assertTrue(WalkLineKind.accessible.variant == null && WalkLineKind.accessible.isAccessible)
         assertTrue(WalkLineKind.broad.variant == null && !WalkLineKind.broad.isAccessible)
         assertTrue(WalkLineKind.recommended.variant == null && !WalkLineKind.recommended.isAccessible)
+    }
+
+    /** 조회가 실패해 빠진 줄(E52 판정 (나), Swift `walkLinesCarriesFailedLines` 미러): 판본 2 additive `failedLines`를 원시 문자열 그대로. */
+    @Test fun walkLinesCarriesFailedLines() = runTest {
+        val body = """{"lines":[{"kind":"shortest","route":{"distanceMeters":850,"durationSeconds":720,"steps":[]}}],"failedLines":["broad","accessible"]}"""
+        val (svc, _) = service(HttpResponse(200, body))
+        val list = svc.walkLines(37.5, 127.0, 37.6, 127.1, lang = DataLocale.ko, via = null)
+        assertEquals(listOf(WalkLineKind.shortest), list.lines.map { it.lineKind })
+        assertEquals(listOf("broad", "accessible"), list.failedLines)
     }
 
     /** 안내 중 전환 대상(E52, Swift `walkSwitchAlternatePrefersAccessible` 미러): 계단 회피 우선, 없으면 첫 다른 줄. */

@@ -47,3 +47,18 @@ export function walkLineAxis(kind: WalkLineKind): {
     variant: kind === "shortest" ? "shortest" : null,
   };
 }
+
+/**
+ * 조회가 실패해 빠진 줄(`failedLines`, E52 위원장 판정 (나))의 문장 키 — 줄 목록 끝의 평문 한 줄. 실패가 없거나
+ * 모르는 값뿐이면 null(문장 없음). 같은 길·경로 없음으로 빠진 줄은 서버가 싣지 않으므로 여기 오지 않는다.
+ */
+export function walkLinesFailedKey(
+  failed: readonly string[] | undefined,
+): "walkLinesFailedBoth" | "walkLinesFailedBroad" | "walkLinesFailedAccessible" | null {
+  const broad = failed?.includes("broad") ?? false;
+  const accessible = failed?.includes("accessible") ?? false;
+  if (broad && accessible) return "walkLinesFailedBoth";
+  if (broad) return "walkLinesFailedBroad";
+  if (accessible) return "walkLinesFailedAccessible";
+  return null;
+}

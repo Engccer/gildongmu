@@ -131,7 +131,8 @@ extension StubNetworkTests {
         }
         let lines = try await RouteService(client: stubbedClient()).walkLines(
             originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1, lang: .ko, via: nil)
-        #expect(lines.map(\.lineKind) == [.shortest, .broad])
+        #expect(lines.lines.map(\.lineKind) == [.shortest, .broad])
+        #expect(lines.failedLines.isEmpty) // 필드 부재 = 실패 없음
         #expect(capturedQuery?.filter { $0.name == "lines" }.map(\.value) == ["2"])
         for name in ["accessible", "variant", "includeGeometry", "alternatives", "lang"] {
             #expect(capturedQuery?.contains(where: { $0.name == name }) == false)
@@ -156,6 +157,19 @@ extension StubNetworkTests {
         #expect(WalkLineKind.accessible.variant == nil && WalkLineKind.accessible.accessible)
         #expect(WalkLineKind.broad.variant == nil && !WalkLineKind.broad.accessible)
         #expect(WalkLineKind.recommended.variant == nil && !WalkLineKind.recommended.accessible)
+    }
+
+    /// 조회가 실패해 빠진 줄(E52 판정 (나)): 판본 2 additive `failedLines`를 원시 문자열 그대로 나른다.
+    @Test func walkLinesCarriesFailedLines() async throws {
+        StubURLProtocol.handler = { _ in
+            let body = #"{"lines":[{"kind":"shortest","route":{"distanceMeters":850,"durationSeconds":720,"steps":[]}}],"#
+                + #""failedLines":["broad","accessible"]}"#
+            return (200, Data(body.utf8))
+        }
+        let list = try await RouteService(client: stubbedClient()).walkLines(
+            originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1, lang: .ko, via: nil)
+        #expect(list.lines.map(\.lineKind) == [.shortest])
+        #expect(list.failedLines == ["broad", "accessible"])
     }
 
     /// 안내 중 전환 대상(E52): 다른 줄 중 계단 회피 우선, 없으면 첫 다른 줄, 줄이 이것뿐이면 nil.

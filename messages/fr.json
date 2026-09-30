@@ -213,7 +213,10 @@
     "walkRecommended": "Itinéraire recommandé",
     "walkShortest": "Itinéraire le plus court",
     "walkAccessible": "Itinéraire sans escaliers",
-    "walkBroad": "Itinéraire par les grands axes"
+    "walkBroad": "Itinéraire par les grands axes",
+    "walkLinesFailedBoth": "Impossible de charger l'itinéraire par les grands axes et l'itinéraire sans escaliers.",
+    "walkLinesFailedBroad": "Impossible de charger l'itinéraire par les grands axes.",
+    "walkLinesFailedAccessible": "Impossible de charger l'itinéraire sans escaliers."
   },
   "detail": {
     "back": "Retour aux résultats"

@@ -663,6 +663,9 @@
     <string name="directions_viaRemaining">%2$s to waypoint %1$s</string>
     <string name="directions_walkAccessible">Route avoiding stairs</string>
     <string name="directions_walkBroad">Main-road route</string>
+    <string name="directions_walkLinesFailedAccessible">Couldn\'t load the route avoiding stairs.</string>
+    <string name="directions_walkLinesFailedBoth">Couldn\'t load the main-road route or the route avoiding stairs.</string>
+    <string name="directions_walkLinesFailedBroad">Couldn\'t load the main-road route.</string>
     <string name="directions_walkRecommended">Recommended route</string>
     <string name="directions_walkShortest">Shortest route</string>
     <string name="eventsNearby_asOf">As of %1$s</string>

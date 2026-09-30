@@ -472,6 +472,17 @@ enum WalkLineText {
         }
     }
 
+    /// 조회가 실패해 빠진 줄(서버 `failedLines`, E52 위원장 판정 (나))의 문장 키 — 줄 목록 끝의 평문 한 줄
+    /// (웹 `walkLinesFailedKey` 동형). 실패가 없거나 모르는 값뿐이면 nil.
+    static func failedKey(_ failed: [String]) -> String? {
+        switch (failed.contains("broad"), failed.contains("accessible")) {
+        case (true, true): "directions.walkLinesFailedBoth"
+        case (true, false): "directions.walkLinesFailedBroad"
+        case (false, true): "directions.walkLinesFailedAccessible"
+        case (false, false): nil
+        }
+    }
+
     static func startKey(_ line: WalkLineKind) -> String {
         switch line {
         case .shortest: "beacon.guideStartWalkShortest"

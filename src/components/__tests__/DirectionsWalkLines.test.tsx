@@ -250,6 +250,24 @@ describe("도보 줄 목록(E42 — 위원장 확정 렌더)", () => {
     expect(accessibleRow.getAttribute("aria-expanded")).toBe("false");
   });
 
+  it("조회가 실패해 빠진 줄은 줄 목록 끝의 평문 한 문장(E52 판정 (나)), 실패가 없으면 문장도 없다", async () => {
+    stubFetch({ lines: [line("shortest", 850, 12)], failedLines: ["broad", "accessible"] });
+    await queryWalk();
+    const sentence = screen.getByText("큰길과 계단 회피 경로는 불러오지 못했습니다.");
+    expect(sentence.tagName).toBe("P");
+    expect(sentence.closest("[aria-live]")).toBeNull();
+    // 줄 버튼 뒤에 온다(줄 목록의 마지막 객체).
+    expect(shortestRow().compareDocumentPosition(sentence) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    cleanup();
+    stubFetch({ lines: [line("shortest", 850, 12), line("broad", 880, 13)], failedLines: ["accessible"] });
+    await queryWalk();
+    expect(screen.getByText("계단 회피 경로는 불러오지 못했습니다.")).toBeTruthy();
+    cleanup();
+    stubFetch({ lines: [line("shortest", 850, 12)] });
+    await queryWalk();
+    expect(screen.queryByText(/불러오지 못했습니다/)).toBeNull();
+  });
+
   it("새 조회는 둘째 줄 펼침을 리셋한다(스냅샷 교체)", async () => {
     stubFetch(TWO_LINES);
     await queryWalk();

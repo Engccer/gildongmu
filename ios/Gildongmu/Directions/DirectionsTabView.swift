@@ -81,6 +81,8 @@ final class DirectionsModel {
     /// **`results`의 도보 결과(= 첫 줄)와 같은 응답에서 온 것만** 노출한다(스냅샷 교체 —
     /// 다른 조회 세대의 결과를 조합하지 않는다). 빈 배열 = 미조회·경로 없음·조회 실패.
     private(set) var walkLines: [WalkRouteLine] = []
+    /// 조회가 실패해 빠진 줄(서버 `failedLines`, E52 판정 (나)) — `walkLines`와 같은 응답에서만 커밋한다.
+    private(set) var walkLinesFailed: [String] = []
     /// 조회 완료 세대. 뷰가 포커스 이동 시점을 아는 신호(SearchModel.resultsRevision 동형).
     private(set) var resultsRevision = 0
     /// 이 세션에서 조회를 한 번이라도 마쳤는가. `results`는 필드 변경·재조회 시작에
@@ -307,6 +309,7 @@ final class DirectionsModel {
         isInFlight = false
         results = nil
         walkLines = []
+        walkLinesFailed = []
         resultsOriginNeedsStartNotice = false
         resultsStaleNotice = nil
         promotedDestination = nil
@@ -526,6 +529,7 @@ final class DirectionsModel {
         cancelRequeries()
         resultsCoords = nil
         walkLines = [] // 스냅샷 교체(spec §4) — 이전 세대 줄을 지우고 시작
+        walkLinesFailed = []
         resultsOriginNeedsStartNotice = false
         resultsStaleNotice = nil
         promotedDestination = nil
@@ -652,9 +656,10 @@ final class DirectionsModel {
         // 커버리지 밖 등 중간 return에서 노출되지 않도록 로컬에 들었다가 results와 함께 커밋).
         // 모르는 종류의 줄은 여기서 거른다 — 분류·렌더·착지가 같은 배열을 봐야 "첫 줄"이 하나다
         // (E42 접근성 감사 L1. Kit `walkLines`도 거르지만 화면 계약을 그 구현에 기대지 않는다).
-        let known = walk.map { $0.filter { $0.lineKind != nil } }
+        let known = walk.map { $0.lines.filter { $0.lineKind != nil } }
         outcomes[.walk] = DirectionsOutcomeClassifier.classify(walk: known.map { $0.first?.route })
         let linesCandidate = (try? known.get()) ?? []
+        let failedCandidate = (try? walk.get())?.failedLines ?? []
 
         // 서버 마커 이중 방어 — 위 "cur" 선분기를 통과했어도 place 종단점(검색 선택)이
         // 한국 밖일 수 있다. 한 수단이라도 감지하면 나머지 결과를 버리고 화면 전체를 전환한다.
@@ -668,6 +673,7 @@ final class DirectionsModel {
         results = built
         resultsCoords = (origin: origin, dest: dest, lang: AppLanguage.dataLocale)
         walkLines = linesCandidate
+        walkLinesFailed = failedCandidate
         resultsOriginNeedsStartNotice = usedManualOrigin || (from == .current && staleAt != nil)
         // 경로를 하나도 못 찾았으면 붙이지 않는다 — "찾지 못했습니다. … 찾았습니다."가 되어 앞뒤가
         // 모순된다(위원장 판정 2026-09-23, 단서는 출발지 칸에 남는다).
@@ -732,7 +738,7 @@ final class DirectionsModel {
     nonisolated private static func settleWalk(
         _ service: RouteService, origin: (lat: Double, lng: Double), dest: (lat: Double, lng: Double),
         lang: DataLocale, via: (lat: Double, lng: Double)?
-    ) async -> Result<[WalkRouteLine], any Error> {
+    ) async -> Result<WalkRouteLineList, any Error> {
         do {
             return .success(try await withQueryTimeout {
                 // 줄 목록(E42·E52, lines=2). 첫 줄 실패는 서버가 502로 던지고(.failure), 나머지 줄
@@ -1684,6 +1690,11 @@ struct DirectionsTabView: View {
                             walkSummaryText(line.route)))
                     }
                 }
+            }
+            // 조회가 실패해 빠진 줄(E52 위원장 판정 (나)) — 줄 목록의 마지막 객체 하나, 평문. 조회 완료 통지는
+            // 기존 창구 그대로라 따로 통지하지 않는다(보이는 문장을 복제하지 않는다).
+            if let key = WalkLineText.failedKey(model.walkLinesFailed) {
+                Text(appLocalized(key))
             }
         case .car(let briefing): CarRouteRows(briefing: briefing, waypointLabel: model.viaLabel)
         case .empty: Text(noRouteText(mode))

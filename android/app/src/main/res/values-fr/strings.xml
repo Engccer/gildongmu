@@ -663,6 +663,9 @@
     <string name="directions_viaRemaining">%2$s jusqu\'à l\'étape %1$s</string>
     <string name="directions_walkAccessible">Itinéraire sans escaliers</string>
     <string name="directions_walkBroad">Itinéraire par les grands axes</string>
+    <string name="directions_walkLinesFailedAccessible">Impossible de charger l\'itinéraire sans escaliers.</string>
+    <string name="directions_walkLinesFailedBoth">Impossible de charger l\'itinéraire par les grands axes et l\'itinéraire sans escaliers.</string>
+    <string name="directions_walkLinesFailedBroad">Impossible de charger l\'itinéraire par les grands axes.</string>
     <string name="directions_walkRecommended">Itinéraire recommandé</string>
     <string name="directions_walkShortest">Itinéraire le plus court</string>
     <string name="eventsNearby_asOf">à %1$s</string>
