@@ -194,6 +194,11 @@ describe("car 현재 도로 행 (E56)", () => {
     await driveTo([100]);
     // 멀리서는 윗줄이 직진 카운트다운이고 회전은 아랫줄 예고다(iOS 동형 — "1200m 직진하세요").
     expect(top()).toMatch(/^\d+m 직진하세요$/);
+    const before = Number(top().match(/^(\d+)m/)?.[1]);
+    await driveTo([200, 300]);
+    // 매 fix 갱신이다 — 커밋 때 한 번 계산하고 멈추면 거리가 줄지 않는다.
+    const after = Number(top().match(/^(\d+)m/)?.[1]);
+    expect(after).toBeLessThan(before);
     expect(screen.getByTestId("next").textContent).toBe("다음 안내, 우회전하세요");
   });
 
