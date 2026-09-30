@@ -323,7 +323,7 @@ iOS 지도 버튼·검색 로터 액션은 URL 빌더가 성공할 때만 만들
 
 ## 채팅
 
-### 장소·주소 카드 탭=상세 진입 (CLAUDE.md 이관)
+### 장소·주소 카드 탭=상세 진입
 
 **장소·주소 카드 탭=상세 진입**(`place-open-request` 브릿지, 상세 열림 중엔 같은 히스토리 엔트리 교체): `requestOpenPlace`를 `PlaceSearch`가 구독해 상세를 연다. 다른 카드로 갈아탈 땐 새 `pushState` 대신 `openSeq` 증가로 상세 뷰를 재마운트(뒤로가기 1회로 채팅까지 복귀). 주소 카드는 탭 시 `/api/geocode`로 좌표를 확보한 뒤 여는데, 왕복 중 오버레이가 닫히면(`aliveRef`) 도착 응답을 폐기한다(헌장 §6 ⑨ 이탈 게이트 동형).
 
@@ -392,15 +392,15 @@ iOS 지도 버튼·검색 로터 액션은 URL 빌더가 성공할 때만 만들
 
 **도구의 길찾기 조회는 화면 정본 `runQuery(request)`를 부르고 세대 결박 대기자로 기다린다**(`DirectionsView`): 종단 phase의 resolve는 **커밋 뒤 effect**(`settleAfterCommit` → `pendingOutcomeRef`)에서, `bridgeRef` 갱신 effect **뒤에** 선언되고 커밋된 `results.planId`·`phase`가 일치할 때만 푼다. 안내 세션이 살아 있으면 `sessionActive`로 거절하고 **세션을 끊지 않는다**(화면의 사용자 조회는 끊는다 — 그 차이가 의도다). 새 세대 시작이 앞 대기자를 `superseded`로 끝낸다.
 
-### 사용자 조작이 언제나 도구를 이긴다 (CLAUDE.md 이관)
+### 사용자 조작이 언제나 도구를 이긴다
 
 **사용자 조작이 언제나 도구를 이긴다**: 검색·정렬·축 닫기·새 조회는 새 세대를 발급하고 앞 세대 도구 대기자는 `superseded`. 모달(채팅·현재 위치 지정 — 허브의 것은 `markModal`로 표식)이 열려 있으면 `modalOpen`으로 거절하고 닫지 않는다.
 
-### 손잡이는 불투명 `ref` (CLAUDE.md 이관)
+### 손잡이는 불투명 `ref`
 
 **손잡이는 불투명 `ref`**(`place-refs.ts`: 문서 nonce·검색 세대·출처·순번 base36). 해석은 `runSearch` **정착 시 동결한 스냅샷**(`HomeBridge.snapshotFor`)에서 한 번이고 가변 화면 상태를 다시 읽지 않는다. nonce 불일치·세대 불일치는 `staleResult`(복구는 `search_places` 재호출 — 실패 출력에 `recovery`+`query`), 순번 밖은 `notFound`.
 
-### privacy `agent` 절은 웹 전용이다 (CLAUDE.md 이관)
+### privacy `agent` 절은 웹 전용이다
 
 privacy `agent` 절은 웹 전용이라 iOS `PrivacyInfo`·ASC 라벨 3자 일치 대상이 아니다. 단 도구 출력에 새 데이터 유형을 실으면 그 문장(6로케일)을 함께 고친다.
 
@@ -408,7 +408,7 @@ privacy `agent` 절은 웹 전용이라 iOS `PrivacyInfo`·ASC 라벨 3자 일�
 
 ## iOS 빌드 구성
 
-### 한 버튼이 두 역할을 겸하면 봉인이 그 버튼을 통째로 지우거나 통째로 남기지 못한다 (CLAUDE.md 이관)
+### 한 버튼이 두 역할을 겸하면 봉인이 그 버튼을 통째로 지우거나 통째로 남기지 못한다
 
 ⚠ **한 버튼이 두 역할을 겸하면 봉인이 그 버튼을 통째로 지우거나 통째로 남기지 못한다**(2026-08-15). 안내 시작 섹션의 버튼은 추적 중엔 "중지"(항상 유효), 비추적이면 직선거리 안내 시작(봉인 대상, `beacon.briefGuideStart`)이라, 섹션 표시 조건만 막으면 **실패 상태 경로**로 섹션이 떠서 봉인이 뚫린다. 조건은 역할별로 쓴다(`beacon.isTracking || experimentalGuidanceEnabled`).
 
@@ -444,7 +444,7 @@ privacy `agent` 절은 웹 전용이라 iOS `PrivacyInfo`·ASC 라벨 3자 일�
 
 ⚠ **번들 ID가 다르면 UserDefaults도 새로 시작한다.** 그래서 실험판 첫 실행은 언어 미선택 상태이고, 기기 시스템 언어가 영어면 `dataLocale`이 `en`이 되어 **ko 전용 게이트(현재 자동차 실시간 안내)가 막힌다** — 검증하려고 깐 기능이 안 보인다(2026-08-04 실측). `AppLanguage.current`가 `#if EXPERIMENTAL`에서 **미선택 폴백만 ko로 고정**해 막았다(사용자 선택은 여전히 1순위). AI 동의·받아쓰기 설정도 같은 이유로 실험판에서 다시 물어본다(정상).
 
-### pbxproj 객체 ID는 파일 전체에서 유일해야 한다 (CLAUDE.md 이관)
+### pbxproj 객체 ID는 파일 전체에서 유일해야 한다
 
 ⚠ **pbxproj 객체 ID는 파일 전체에서 유일해야 한다.** 기존 ID를 재사용하면 그 객체를 덮어써 프로젝트가 열리지 않는다(`B30001`을 재사용해 `Project object`를 가린 실사고). **`plutil -lint`는 이것을 못 잡는다**(plist 문법은 유효하다) — 편집 후 검증은 `xcodebuild -list`로.
 
@@ -452,19 +452,19 @@ privacy `agent` 절은 웹 전용이라 iOS `PrivacyInfo`·ASC 라벨 3자 일�
 
 ## CLI/MCP 릴리스
 
-### 마일스톤을 닫을 때 문서를 분배한다 (CLAUDE.md 이관)
+### 마일스톤을 닫을 때 문서를 분배한다
 
 **마일스톤을 닫을 때 문서를 분배한다**(`CLAUDE.md` §문서 체계): 서사 → `CHANGELOG.md`, 남은 판정 → `docs/BACKLOG.md`, 새 함정 → `CLAUDE.md`, 상태 한 줄 → `PROGRESS.md`. iOS 릴리스는 `docs/appstore/release-notes.md`에 What's New를 함께 남긴다(ASC에 입력한 문구 그대로가 정본). 노트를 적으면 `node scripts/build-release-notes.mjs`로 번들 JSON(설정>업데이트 이력 소스)을 재생성한다 — 잊으면 release-notes-bundle 드리프트 테스트가 잡는다. ⚠ **그 번들은 앱 리소스라 아카이브 시점에 바이너리로 굳는다**(2026-08-17 실측): ASC의 What's New는 API 입력이라 업로드 뒤에도 고칠 수 있지만, 같은 문장이 앱 안 업데이트 이력에서는 그 버전에 영영 남는다. **아카이브 후 노트를 고쳤으면 빌드 번호를 올려 다시 올린다**(1.8이 빌드 14를 버리고 15로 갔다 — 판정을 검증하다 "대중교통 브리핑 문장을 다듬었다"가 실제로는 Kit 이관이라 문장 무변화임을 발견한 자리). 확인은 업로드본을 직접 읽는 것뿐이다: `.xcarchive/Products/Applications/Gildongmu.app/release-notes.json`.
 
-### CHANGELOG는 `files`에 적어야 tarball에 들어간다 (CLAUDE.md 이관)
+### CHANGELOG는 `files`에 적어야 tarball에 들어간다
 
 ⚠ **CHANGELOG는 `files`에 적어야 tarball에 들어간다.** npm이 무조건 포함하는 것은 `package.json`·README·LICENSE뿐이고 CHANGELOG는 그 목록에 없다(2026-08-08 `npm pack --dry-run` 실측). npm 페이지에서 사용자가 보는 유일한 변경 이력이라 빠지면 곧 정보 부재다.
 
-### `--provenance`는 켜 둔다 (CLAUDE.md 이관)
+### `--provenance`는 켜 둔다
 
 `--provenance`는 켜 둔다(2026-08-25 cli-v0.9.0 실발행으로 両패키지에 SLSA v1 증명 확인). ⚠ private repo 시절엔 404로 위장된 422로 실패했다(dodo Round 119 실측) — repo를 다시 비공개로 돌리면 이 플래그부터 뺀다. 카탈로그(`endpoint-catalog-shared.ts`) 수정 시 cli·mcp 両미러 동일 유지(drift 테스트가 byte 해시로 강제).
 
-### 카탈로그에 항목을 더하면 `FORMATTERS`(cli `lib/formatters.ts`)에도 등록한다 (CLAUDE.md 이관)
+### 카탈로그에 항목을 더하면 `FORMATTERS`(cli `lib/formatters.ts`)에도 등록한다
 
 **카탈로그에 항목을 더하면 `FORMATTERS`(cli `lib/formatters.ts`)에도 등록한다.** 빠뜨리면 `runEndpoint`가 조용히 `JSON.stringify` 폴백으로 떨어져 **text 모드에서만** 통짜 JSON이 나온다 — 파이프로 돌린 실호출 검증은 비-TTY라 JSON 모드가 정상이므로 이것을 못 잡는다. `formatter-coverage.test.ts`가 강제하고, 폴백이 맞는 항목은 그 파일의 예외 목록에 근거와 함께 적는다.
 
