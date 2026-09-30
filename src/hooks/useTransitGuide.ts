@@ -356,6 +356,12 @@ export function useTransitGuide(
   const neverSeenPendingRef = useRef<TransitPositionBinding | null>(null);
   const routeRef = useRef<TransitGuideRoute | null>(null);
   const seqRef = useRef(0);
+  /**
+   * 세션 식별자(A50) — 시작·종료마다 오른다. 조회는 시작 시점 값을 잡고 응답 뒤 다르면 **아무것도 쓰지
+   * 않는다**. `seq`·`phaseGen`은 세션마다 0에서 다시 시작하므로 멈췄다 곧바로 다시 시작하면 옛 세션의
+   * in-flight 응답이 새 세션의 같은 세대로 통과해 목록을 오염시키고 `lastSeq`를 앞질렀다.
+   */
+  const sessionRef = useRef(0);
   /** 다음 대기 폴 결과를 직접 응답으로 통지(새로고침, §13.2) — 폴 1회 소비. */
   const refreshAnnounceRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -926,6 +932,7 @@ export function useTransitGuide(
     if (cached) return cached;
     const target = atBoardStop ? leg.boardStop : leg.alightStop;
     if (!target) return null;
+    const session = sessionRef.current;
     try {
       const res = await fetch(
         `/api/transit/track?mode=tagoBus&phase=resolve&lat=${target.lat}&lng=${target.lng}`,
@@ -935,6 +942,8 @@ export function useTransitGuide(
         status: string;
         stop?: { nodeId: string; cityCode: string };
       };
+      // 캐시 키는 leg 번호라 다른 세션의 경로에 적중한다(A50) — 끝난 세션의 해석은 쓰지 않는다.
+      if (sessionRef.current !== session) return null;
       if (body.status === "ok" && body.stop) {
         const resolved = { nodeId: body.stop.nodeId, cityCode: body.stop.cityCode };
         tagoResolvedRef.current.set(cacheKey, resolved);
@@ -972,6 +981,7 @@ export function useTransitGuide(
     const leg = currentLeg();
     if (!s || !leg) return;
     const requested = positionBindingOf(s);
+    const session = sessionRef.current;
     if (requested && positionLookupDue(s, leg, positionRef.current)) {
       let outcome: TransitPositionOutcome;
       try {
@@ -985,6 +995,8 @@ export function useTransitGuide(
         outcome = { kind: "failed" };
       }
       // 늦은 응답(조회 중 탑승 변경·다음 구간)은 순수 계층이 요청 결박으로 버린다(설계 리뷰 M1).
+      // 세션 경계는 그 결박 밖이다(A50) — 새 세션이 같은 세대·열차로 시작할 수 있다.
+      if (sessionRef.current !== session) return;
       const stateNow = stateRef.current;
       const legNow = currentLeg();
       if (!stateNow || !legNow) return;
@@ -1017,6 +1029,9 @@ export function useTransitGuide(
     // 함께 잡아야 앞 역의 늦은 응답이 새 역 목록으로 커밋되지 않는다(코드 리뷰 M1, iOS는 Task 취소가 막는다).
     const overrideAtStart = boardOverrideRef.current;
     const seq = ++seqRef.current;
+    const session = sessionRef.current;
+    /** 이 조회를 낸 세션이 아직 살아 있는가(A50) — 아니면 응답은 어느 상태에도 쓰지 않는다. */
+    const sameSession = () => sessionRef.current === session;
     // 조기 unsupported에서도 새로고침 응답을 침묵시키지 않는다(§13.2 — 무응답이
     // 곧 "고정" 체감, 접근성 감사 HIGH). 플래그는 항상 소비(누수 시 자동 폴 발화).
     // ⚠ 응답 게시는 성공 경로와 같은 국면 가드를 통과할 때만 — in-flight 중 탑승·
@@ -1025,6 +1040,7 @@ export function useTransitGuide(
     const stillSameWaiting = () =>
       stateRef.current?.phase === "waiting" && stateRef.current.phaseGen === phaseGen;
     const finishEarlyUnsupported = () => {
+      if (!sameSession()) return;
       const wasRefresh = refreshAnnounceRef.current;
       refreshAnnounceRef.current = false;
       dispatch({ kind: "poll", seq, phaseGen, poll: { kind: "unsupported" } });
@@ -1035,6 +1051,7 @@ export function useTransitGuide(
       let resolvedTago: { nodeId: string; cityCode: string } | null = null;
       if (leg.trackMode === "tagoBus") {
         resolvedTago = await resolveTagoIfNeeded();
+        if (!sameSession()) return;
         const cacheKey = `${s.legIndex}:${s.phase === "waiting" || s.phase === "boarding" ? "board" : "alight"}`;
         if (!resolvedTago && tagoResolvedRef.current.get(cacheKey) === "unsupported") {
           finishEarlyUnsupported();
@@ -1054,6 +1071,7 @@ export function useTransitGuide(
         return;
       }
       const res = await fetch(url);
+      if (!sameSession()) return;
       let poll: TrackPoll;
       let rawCount: number | null = null;
       if (!res.ok) {
@@ -1064,6 +1082,7 @@ export function useTransitGuide(
           items?: TrackItem[];
           rawCount?: number;
         };
+        if (!sameSession()) return;
         rawCount = typeof body.rawCount === "number" ? body.rawCount : null;
         poll =
           body.status === "ok"
@@ -1127,8 +1146,9 @@ export function useTransitGuide(
       // 응답은 dispatch 뒤에 게시한다 — 같은 폴의 신호 이벤트 통지(signalRecovered
       // 등)와 배칭될 때 마지막 승자가 새로고침 응답이 되게(감사 M1: 역순이면
       // 응답이 페인트 없이 사라진다).
-      if (refreshResponse) announce(refreshResponse);
+      if (refreshResponse && sameSession()) announce(refreshResponse);
     } catch {
+      if (!sameSession()) return;
       // 새로고침 응답은 실패도 침묵하지 않는다(§13.2 — 무응답이 곧 "고정" 체감).
       // 단 같은 대기 국면일 때만 게시(위 stillSameWaiting 주석 — 리뷰 WARNING).
       const wasRefresh = refreshAnnounceRef.current;
@@ -1142,7 +1162,7 @@ export function useTransitGuide(
         // 즉폴 요청이 in-flight 폴에 막혔다(`requestImmediatePoll`) — 지금 낸다(다음 예약은 그 폴이 잡는다).
         repollRef.current = false;
         void pollOnce();
-      } else {
+      } else if (sameSession()) {
         scheduleNext();
       }
     }
@@ -1193,6 +1213,7 @@ export function useTransitGuide(
   }, []);
 
   const stopSession = useCallback(() => {
+    sessionRef.current += 1;
     clearTimer();
     stateRef.current = null;
     routeRef.current = null;
@@ -1235,6 +1256,8 @@ export function useTransitGuide(
       claimGuideSession(stopSession);
       routeRef.current = route;
       setSessionRoute(route);
+      // 순번·세대는 0에서 다시 시작하므로 옛 세션의 늦은 응답은 세션 식별자가 거른다(A50).
+      sessionRef.current += 1;
       seqRef.current = 0;
       // 다음 세션의 phaseGen도 0에서 시작한다 — 옛 세션의 위치 결박이 같은 세대·열차로 되살아나지 않게.
       positionRef.current = null;

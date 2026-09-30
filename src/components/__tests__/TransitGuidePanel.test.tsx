@@ -1201,6 +1201,50 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
     expect(rows[0].textContent).not.toContain("천호 도착");
   });
 
+  it("멈췄다 곧바로 다시 시작해도 옛 세션의 늦은 응답은 새 세션에 커밋되지 않고, 새 세션 조회가 바로 반영된다(A50)", async () => {
+    // 옛 세션의 첫 폴을 붙들어 둔 채 멈추고 다시 시작한다 — 두 세션 모두 phaseGen 0에서 출발하므로
+    // 세션 결박이 없으면 옛 응답(OLD)이 새 세션 목록으로 커밋되고, 그 순번이 새 세션 응답을 삼킨다.
+    let session = 1;
+    let releaseOld: (() => void) | null = null;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        const mine = session;
+        if (mine === 1) {
+          await new Promise<void>((r) => {
+            releaseOld = r;
+          });
+        }
+        return {
+          ok: true,
+          json: async () => ({
+            mode: "subway",
+            status: "ok",
+            rawCount: 1,
+            items: [
+              trackItem(
+                mine === 1
+                  ? { vehicleId: "OLD", message: "옛 세션 열차" }
+                  : { vehicleId: "NEW", message: "새 세션 열차" },
+              ),
+            ],
+          }),
+        } as Response;
+      }),
+    );
+    render(<TransitGuidePanelHost route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
+    fireEvent.click(screen.getByRole("button", { name: "시작" }));
+    await waitFor(() => expect(releaseOld).not.toBeNull());
+    fireEvent.click(screen.getByRole("button", { name: "beacon.stop" }));
+    session = 2;
+    fireEvent.click(await screen.findByRole("button", { name: "시작" }));
+    releaseOld!();
+    const rows = await screen.findAllByRole("button", { name: /selectTrain/ });
+    expect(rows).toHaveLength(1);
+    expect(rows[0].textContent).toContain("새 세션 열차");
+    expect(document.body.textContent).not.toContain("옛 세션 열차");
+  });
+
   it("탑승 변경 역 선택이 in-flight 폴과 겹쳐도 그 폴이 끝나자마자 새 역을 조회한다(A48)", async () => {
     // 하차역(여의도) 폴을 붙들어 둔 채 탑승 변경 → 왕십리를 고른다. 즉폴은 in-flight에 막히므로
     // 옛 폴의 완료가 대신 내야 한다 — 안 그러면 새 역 첫 조회가 다음 주기(수십 초)로 밀린다.
