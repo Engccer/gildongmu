@@ -90,7 +90,7 @@ final class BeaconModel {
             // 회전)를 최신 1개만 되살린다. 밀린 것 전부 재생은 금지(최신 우선).
             if !outputSuppressed, let pending = pendingRecovery {
                 pendingRecovery = nil
-                announce(pending)
+                announce(pending, speechClass: .actionable)
             }
         }
     }
@@ -137,7 +137,7 @@ final class BeaconModel {
         }
     }
     /// 조망 모달 "대안 경로 보기" 노출 조건(spec 2026-08-14 §2): 조회 화면에 다른 줄이
-    /// 있던 세션(E42 — 두 줄 사이의 전환이라 `alternateLine`이 곧 반대편이다).
+    /// 있던 세션. 대상 `alternateLine`은 조회 화면의 다른 줄 중 계단 회피 우선이다(E52 `WalkLineKind.switchAlternate`).
     var alternativePreviewAvailable: Bool {
         sessionKind == .walk && mode == .detail && alternateLine != nil
     }
@@ -267,9 +267,19 @@ final class BeaconModel {
     @ObservationIgnored private lazy var deferredAnnouncer = DeferredAnnouncer(
         clock: { ProcessInfo.processInfo.systemUptime },
         toneEndsAt: { [weak self] in self?.tones.toneEndsAt },
-        post: { [weak self] text, high, bypass in
-            self?.post(text, highPriority: high, bypassSuppression: bypass) ?? false
+        post: { [weak self] text, high, bypass, speechClass, onLateDrop in
+            self?.post(
+                text, highPriority: high, bypassSuppression: bypass, speechClass: speechClass,
+                onLateDrop: onLateDrop) ?? false
         }
+    )
+    /// 기기 음성 대기 한 칸(E53, spec 2026-09-30 §4.2 — 세 안내 모델 공유 타입). 백그라운드 ∧ 토글 켬의 행동 문장만
+    /// 여기로 온다(정식판에선 오지 않는다). 세션 경계는 `deferredAnnouncer.advanceGeneration()`과 같은 자리에서 `reset()`.
+    @ObservationIgnored private lazy var deviceSpeech = GuideSpeechOutput.makeDeviceQueue(
+        foregroundDeviceSpeech: false,
+        isSuppressed: { [weak self] in self?.outputSuppressed ?? true },
+        toneEndsAt: { [weak self] in self?.tones.toneEndsAt },
+        backgroundAudible: { [weak self] in self?.tones.isBackgroundAudible ?? false }
     )
     private var startTask: Task<Void, Never>?
     private var watchdog: Task<Void, Never>?
@@ -286,8 +296,9 @@ final class BeaconModel {
     /// `backgroundedAt` 패턴과 같은 판정).
     private var wasBackgrounded = false
 
-    /// 앱이 전경인가. **음성 통지 게이트**(spec §3.1) — 백그라운드에서 톤은 남기고
-    /// 발화만 막는다(주기적 음성은 다른 앱 사용을 침해한다).
+    /// 앱이 전경인가. 사후 정리의 정지 톤·도착 종을 전경에서만 내는 판정이 읽는다. 음성 통지의 게이트는
+    /// E53(2026-09-30)부터 채널 술어(`GuideSpeechOutput.channel`, 같은 게시 시점 조회)다 — 백그라운드에서 톤은
+    /// 남기고 발화는 토글이 켜진 실험판의 행동 문장만 기기 음성으로 낸다(정식판은 종전대로 전부 막는다).
     ///
     /// ⚠ **플랫폼 동작에 기대지 않고 명시적으로 막는다.** 백그라운드에서
     /// announcement가 발화되지 않는 것은 실측으로 확인했으나 한 차례 실측은 API
@@ -303,7 +314,8 @@ final class BeaconModel {
         UIApplication.shared.applicationState != .background
     }
     /// 백그라운드에서 억제된 발화가 있었는가. 복귀 시 **현재 상태 하나만** 낭독한다 —
-    /// 누적 재생은 낡은 정보를 순서대로 읽어 혼란만 준다(spec §6.5).
+    /// 누적 재생은 낡은 정보를 순서대로 읽어 혼란만 준다(spec §6.5). 백그라운드 기기 음성으로 문장을 넘기면
+    /// 내린다 — 마지막 상태를 들었으니 갚을 것이 없다(E53 §4.3, `post`).
     private var missedAnnouncement = false
 
     private let noFixTimeout = 15.0
@@ -552,7 +564,7 @@ final class BeaconModel {
         statusText = text
         lastGuidance = text
         liveTopText = text
-        announce(text, highPriority: true)
+        announce(text, highPriority: true, speechClass: .actionable)
     }
 
     private func resetArrivalHealth() {
@@ -723,8 +735,9 @@ final class BeaconModel {
         bandDistanceMeters = nil
 
         // 보류 발화 폐기 + 세대 증가(spec 2026-08-14 §4-2): 이전 세션이 남긴 지연
-        // 문장(도착 통지 등)이 새 세션 안에서 발화하지 않게 한다.
+        // 문장(도착 통지 등)이 새 세션 안에서 발화하지 않게 한다. 기기 음성 대기 칸도 같은 경계(E53 §4.2 ⑤).
         deferredAnnouncer.advanceGeneration()
+        deviceSpeech.reset()
         self.dest = dest
         dropWeightPromptEngagement()
         arrivalDest = nil  // 새 세션 시작 = 이전 종료 화면 소거
@@ -774,7 +787,7 @@ final class BeaconModel {
         if soundDegraded {
             // 음성으로 1회 알리고, 지속 상태는 `soundDegraded` 행이 계속 든다. 진동은 상태 변화(E30 확장).
             resultHaptic(.attention)
-            announce(appLocalized("ios.beacon.soundBackgroundUnavailable"))
+            announce(appLocalized("ios.beacon.soundBackgroundUnavailable"), speechClass: .actionable)
         }
 
         LocationService.shared.startBeaconUpdates(
@@ -1018,7 +1031,7 @@ final class BeaconModel {
             // ⚠ .high 필수(스펙 2026-08-12 §3.1, 마일스톤 리뷰 MAJOR): 목적지 전환
             // 경로에서는 이 요약이 검색 시트 닫힘 후 중지 버튼 착지 낭독과 겹칠 수
             // 있다 — 기본 우선순위만 잠식되는 비대칭이 performReroute 실사고의 기제.
-            announce(text, highPriority: true) { [weak self] in
+            announce(text, highPriority: true, speechClass: .actionable) { [weak self] in
                 if let notice { self?.pendingStepFreeNotice = notice }
             }
         } catch {
@@ -1154,7 +1167,7 @@ final class BeaconModel {
                 : text + " " + appLocalized("ios.guide.waypointSkipped", dropped.label)
         }
         statusText = text
-        announce(text, highPriority: droppedWaypoint)
+        announce(text, highPriority: droppedWaypoint, speechClass: .actionable)
     }
 
     /// 재시작 요청을 **세션의 현재 목적지·라벨·경유지**로 다시 맞춘다. 세션 중 목적지
@@ -1240,7 +1253,7 @@ final class BeaconModel {
         self.status = status
         failResolution = resolution
         statusText = appLocalized(key)
-        announce(statusText)
+        announce(statusText, speechClass: .actionable)
     }
 
     /// 중지. 어느 경로로 불려도 idle timer가 반드시 풀리도록 먼저 해제한다
@@ -1257,7 +1270,9 @@ final class BeaconModel {
         // 경로의 명령이 약 0.8초 뒤에 발화한다. 도착 통지는 stop() **뒤에** 새로
         // 예약되므로 여기서 비워도 소실되지 않는다(호출 순서가 계약 — 게시 시점에
         // isTracking을 검사하지 않는 이유이기도 하다). teardown()은 stop() 경유.
+        // 기기 음성 대기 칸도 같은 경계에서 버림 통지 없이 비운다(E53 §4.2 ⑤ — 위에서 비운 장부를 되살리지 않게).
         deferredAnnouncer.advanceGeneration()
+        deviceSpeech.reset()
         resetFinalApproach(geometry: nil)
         if let token = sessionToken {
             sessionToken = nil
@@ -1275,7 +1290,10 @@ final class BeaconModel {
         // 원복은 정지 톤 **뒤에**. 먼저 원복하면 그 톤이 `.ambient`로 나가 잠금
         // 상태에서 들리지 않는다(세션 종료를 소리로 확인할 수 없게 된다).
         // 운전자 채널은 도착 문장이 이 오디오 세션 위의 발화라 원복을 발화 길이만큼 더 미룬다(B9).
-        tones.endSession(holdSeconds: driverChannel ? 4 : 0)
+        // 백그라운드 음성 안내(E53 §7)도 같다 — 백그라운드 ∧ 토글 켬이면 이어질 도착 문장이 기기 음성이다(그 밖 0초).
+        tones.endSession(
+            holdSeconds: driverChannel ? 4 : GuideSpeechOutput.sessionEndHoldSeconds(),
+            speechBusy: { [weak self] in GuideSpeechOutput.speechBusy(self?.deviceSpeech) })
         if status == .tracking { status = .idle }
         statusText = ""
         failResolution = .none
@@ -1372,7 +1390,7 @@ final class BeaconModel {
         let text = appLocalized("ios.beacon.stopped")
         pendingEndReason = .userStopped
         if stopLeavingSummary(playStopTone: true, text: text) {
-            announce(text, highPriority: true)
+            announce(text, highPriority: true, speechClass: .actionable)
         }
     }
 
@@ -1548,6 +1566,10 @@ final class BeaconModel {
             // 백그라운드 복귀로 오인된다.
             let returnedFromBackground = wasBackgrounded
             wasBackgrounded = false
+            // 복귀 인계(E53 §4.2 ⑤, 설계 리뷰 M5)는 상환보다 먼저: 말하는 중인 기기 음성을 끊고 그 문장과 대기 칸의
+            // 문장을 지금 채널(VoiceOver)로 다시 낸다 — 두 목소리가 겹치지 않고 복귀 순간 문장이 사라지지도 않는다. 인계한
+            // 문장은 들은 것이라 상환 표식을 바꾸지 않는다. 백그라운드를 거치지 않은 복귀엔 넘길 것이 없다.
+            if returnedFromBackground { deviceSpeech.handOver() }
             // 오래된 종료 화면 소거(A31 축 ②, spec 2026-09-02 §3): 종료 뒤 30분이 지나 **백그라운드를 거쳐**
             // 돌아왔으면 화면·띠바 요약·미뤄진 종료 통지를 함께 버린다(맥락 밖 낭독 금지 — 헌장 §6 ⑨ 동형).
             // 상환 블록보다 앞이다: `clearArrival()`이 종료 문장을 지우면 아래 상환은 남은 실패 문장만
@@ -1592,7 +1614,7 @@ final class BeaconModel {
                     let notice = pendingStepFreeNotice
                     pendingStepFreeNotice = nil
                     pendingFinalApproachIntro = nil
-                    announce(owed) { [weak self] in
+                    announce(owed, speechClass: .actionable) { [weak self] in
                         self?.pendingStepFreeNotice = notice
                         self?.pendingFinalApproachIntro = intro
                     }
@@ -1841,7 +1863,7 @@ final class BeaconModel {
             if suppressNextNotice {
                 suppressNextNotice = false  // 복귀 직후 1회만 삼킨다
             } else {
-                announce(text)
+                announce(text, speechClass: beaconNoticeSpeechClass(notice))
             }
         }
         // 도착 추정(간략 창, stationary 모양) — 통지 처리 **뒤**. 창 진입 fix에서는 진행 기준이 0이라
@@ -2065,7 +2087,7 @@ final class BeaconModel {
             mode = .brief
             let text = appLocalized("guide.handoff")
             statusText = text
-            announce(text)
+            announce(text, speechClass: .actionable)
             return
         }
         // tooClose 기하는 "없음"으로 정규화한다 — 진입 서술 분기가 `let geometry`로 읽으므로
@@ -2167,7 +2189,7 @@ final class BeaconModel {
             lastGuidance = text
             liveTopText = text  // 하단 2행 윗줄 = 기존 최종 접근 문형(§4.2 우선순위 2)
             resultHaptic(.attention)  // 국면 진입 1회(E30 확장) — 이후 틱은 진동 없음
-            announce(text) { [weak self] in self?.pendingFinalApproachIntro = text }
+            announce(text, speechClass: .actionable) { [weak self] in self?.pendingFinalApproachIntro = text }
             return
         }
 
@@ -2198,7 +2220,7 @@ final class BeaconModel {
             statusText = text
             lastGuidance = text
             liveTopText = text  // 시트 dismiss 동안의 가시 상태(statusText 동형)
-            announce(text, highPriority: true)
+            announce(text, highPriority: true, speechClass: .actionable)
             return
         }
 
@@ -2219,7 +2241,7 @@ final class BeaconModel {
         statusText = text
         lastGuidance = text
         liveTopText = text
-        announce(text)
+        announce(text, speechClass: .deferrable)
     }
 
     /// 도착 추정 자동 종료(spec 2026-08-13 §4) — 자동 종료의 유일한 추가 경로.
@@ -2271,7 +2293,7 @@ final class BeaconModel {
         statusText = text
         lastGuidance = text
         liveTopText = text
-        announce(text, highPriority: true)
+        announce(text, highPriority: true, speechClass: .deferrable)
         return true
     }
 
@@ -2326,7 +2348,7 @@ final class BeaconModel {
         statusText = text
         lastGuidance = text
         liveTopText = text
-        announce(text, highPriority: true)
+        announce(text, highPriority: true, speechClass: .deferrable)
         return true
     }
 
@@ -2413,6 +2435,8 @@ final class BeaconModel {
     }
 
     private func consume(event: GuideEvent, route: GuideRoute) {
+        // 문장 분류(E53 spec §3.2, 정본 Kit). 이탈 회차 시작 = 전이 전 플래그가 거짓(아래 `.offRoute`의 `isEpisodeStart`와 같다).
+        let speechClass = guideEventSpeechClass(event, offRouteEpisodeStart: !offRoute)
         switch event {
         case let .announceSteps(indices), let .bundleReread(indices):
             if driverChannel {
@@ -2424,7 +2448,7 @@ final class BeaconModel {
                 else { break }
                 lastGuidance = text
                 statusText = text
-                announce(text)
+                announce(text, speechClass: speechClass)
                 break
             }
             let text = GuideText.unit(route: route, indices: indices)
@@ -2439,7 +2463,7 @@ final class BeaconModel {
             //   "현재 도로" 행)로 대체한다(handleScenePhaseChange, walk엔 폴백이 없다).
             statusText = ""
             // 실행 안내는 억제 중이면 최신 1개를 보관해 해제 시 복구한다(스펙 §4.3).
-            if outputSuppressed { pendingRecovery = text } else { announce(text) }
+            if outputSuppressed { pendingRecovery = text } else { announce(text, speechClass: speechClass) }
         case let .imminent(_, action, stage):
             // 임박 큐(20m): 전문이 아니라 짧은 명령형이다. 전문은 40m에서 이미 나갔고,
             // 여기서 다시 읽으면 8초 안에 두 문장이 겹쳐 정작 행동 시점을 놓친다.
@@ -2460,7 +2484,7 @@ final class BeaconModel {
                 ? (driverChannel ? GuideText.carCommand(action) : GuideText.carImminentText(action))
                 : GuideText.imminentText(action)
             statusText = text
-            if !outputSuppressed { announce(text) }
+            if !outputSuppressed { announce(text, speechClass: speechClass) }
         case let .farNotice(indices, remainingMeters):
             // 원거리 예고(B1 §4.7) — 크로싱 시점 실측 잔여를 낭독(상수 금지, 리뷰 반영).
             // 실행 안내와 같은 취급(억제 복구 대상). 운전자 모드는 단문(행동 없으면 무발화).
@@ -2471,7 +2495,7 @@ final class BeaconModel {
                 else { break }
                 lastGuidance = text
                 statusText = text
-                announce(text)
+                announce(text, speechClass: speechClass)
                 break
             }
             let text = GuideText.farNotice(
@@ -2479,7 +2503,7 @@ final class BeaconModel {
             )
             lastGuidance = text
             statusText = text
-            if outputSuppressed { pendingRecovery = text } else { announce(text) }
+            if outputSuppressed { pendingRecovery = text } else { announce(text, speechClass: speechClass) }
         case let .periodic(stepIndex, remainingMeters, accuracy):
             // walk 직진 구간 반복 통지는 단문이다(위원장 실보행 피드백 2026-08-12) —
             // 조망은 40m 선행 전문 1회로 충분하고, 반복은 "{target}까지 … 직진하세요"만.
@@ -2504,7 +2528,7 @@ final class BeaconModel {
             // 숫자만 어긋난 채 나란히 보였다). 발화·복귀 재생은 원문 그대로.
             statusText = text
             statusIsNextPreview = true
-            announce(text)
+            announce(text, speechClass: speechClass)
         case .waypointReached:
             // 경유지 도착(N4 spec §4.3): 도착 종 + 통지, 그리고 **계속**(경로·상태 불변).
             // `waypoint`만 비워 이후 재조회가 출발→도착으로 가게 한다. 옛 경유지 기반
@@ -2525,14 +2549,14 @@ final class BeaconModel {
                 destinationWithDirectionParticle(destinationLabel))
             statusText = text
             // 지나간 사실이라 억제 해제 뒤에 갚아도 참이다(실행 안내와 같은 취급).
-            if outputSuppressed { pendingRecovery = text } else { announce(text) }
+            if outputSuppressed { pendingRecovery = text } else { announce(text, speechClass: speechClass) }
         case let .waypointApproaching(meters):
             // 경유지 접근 예고(N4 spec 2026-09-24 §4.1): 1회, 톤 없음. 실행 안내가 아니라 `lastGuidance`는
             // 덮지 않고, 억제 중이면 보관하지 않는다(거리 문장은 시간이 지나면 거짓 — 주기 통지와 같은 취급).
             // `statusText`에도 두지 않는다: 같은 정보를 남은 거리 행이 실시간으로 보이고, 전경 복귀 재생이
             // 낡은 거리를 읽게 된다(코드 리뷰 M3).
             guard let label = routeWaypointLabel else { break }
-            announce(appLocalized("directions.viaRemaining", label, formatDistance(meters)))
+            announce(appLocalized("directions.viaRemaining", label, formatDistance(meters)), speechClass: speechClass)
         case .finalApproachEnter:
             // 여기서는 처리하지 않는다. 진입은 **fix를 쥔 `handleDetail`이** 톤 조립 앞에서
             // 가른다 — 소유권 전환과 같은 fix의 첫 발화가 한 묶음이어야 하고, 이 함수는
@@ -2552,7 +2576,7 @@ final class BeaconModel {
                 sessionKind == .car ? "guide.carOffRoute" : "guide.offRoute"
             )
             statusText = text
-            announce(text)
+            announce(text, speechClass: speechClass)
             // 확정 회차당 1회 자동 조회 후 즉시 채택(E10ⓑ 자동 채택, 2026-09-02).
             if isEpisodeStart { maybeFetchProposal() }
         case .backOnRoute:
@@ -2564,10 +2588,10 @@ final class BeaconModel {
             statusText = text
             // 이탈은 warning 톤이 진동을 동반하는데 복귀는 무신호였다 — 짝을 맞춘다(E30 확장).
             resultHaptic(.success)
-            announce(text)
+            announce(text, speechClass: speechClass)
         case .uncertainEnter:
             statusText = appLocalized("guide.uncertain")
-            if !driverChannel { announce(statusText) }  // 운전자 모드: GPS 상태는 말하지 않는다(§6.2)
+            if !driverChannel { announce(statusText, speechClass: speechClass) }  // 운전자 모드: GPS 상태는 말하지 않는다(§6.2)
         case .uncertainExit, .reacquired:
             statusText = appLocalized("guide.uncertainRecovered")
             if driverChannel { break }
@@ -2577,13 +2601,13 @@ final class BeaconModel {
             // stepIndex가 공백 전 스텝이고, 따라잡기 뒤 6c가 현재 유닛을 어차피 읽는다(spec 리뷰 B2).
             if case .reacquired = event, sessionKind == .car, let gs = guideState {
                 let current = GuideText.unit(route: route, indices: unitAt(route: route, index: gs.stepIndex))
-                announce("\(statusText) \(current)")
+                announce("\(statusText) \(current)", speechClass: .actionable)
             } else {
-                announce(statusText)
+                announce(statusText, speechClass: speechClass)
             }
         case .reacquiring:
             statusText = appLocalized("guide.reacquiring")
-            if !driverChannel { announce(statusText) }
+            if !driverChannel { announce(statusText, speechClass: speechClass) }
         case .speedSuggest:
             // 전환 버튼 폐지(위원장 판정 2026-08-11)로 실행 가능한 조언이 아니다 —
             // 무시한다. 자동 전환도 하지 않는다(스펙 §2 모드 결정 원칙). 이벤트
@@ -2664,7 +2688,7 @@ final class BeaconModel {
     func announceProgress() {
         let text = progressText()
         statusText = text  // 비-VO 사용자에게도 보여야 한다(2.1(a) 계약)
-        announce(text, highPriority: true)
+        announce(text, highPriority: true, speechClass: .actionable)
     }
 
     /// 이탈 중 수동 재조회 — 자동 재조회(maybeFetchProposal)가 실패·만료·상한 도달로
@@ -2741,7 +2765,7 @@ final class BeaconModel {
                 lastStepFree = nil
                 statusText = appLocalized("guide.rerouteFailed")
                 resultHaptic(.failure)
-                announce(statusText, highPriority: true)
+                announce(statusText, highPriority: true, speechClass: .actionable)
                 return
             }
             // 재조회 출발지가 현재 위치이므로 새 경로의 d=0이 곧 현 위치다(전역 재투영 불요).
@@ -2772,7 +2796,7 @@ final class BeaconModel {
             // 기본 우선순위 통지는 그 VO 활성화 처리에 잠식된다(헌장 §6 실기기 확정).
             // 바로 아래 실패 경로만 `.high`였던 비대칭이 실사용 무발화의 원인이었다.
             resultHaptic(.success)
-            announce(text, highPriority: true) { [weak self] in
+            announce(text, highPriority: true, speechClass: .actionable) { [weak self] in
                 if let notice { self?.pendingStepFreeNotice = notice }
             }
             // 전환 성공은 채택 완료 세대를 올린다(프리뷰 낡음 폴백 경로 포함 —
@@ -2783,7 +2807,7 @@ final class BeaconModel {
             lastStepFree = nil
             statusText = appLocalized("guide.rerouteFailed")
             resultHaptic(.failure)
-            announce(statusText, highPriority: true)
+            announce(statusText, highPriority: true, speechClass: .actionable)
         }
     }
 
@@ -2898,7 +2922,7 @@ final class BeaconModel {
             let text = notice.map { "\($0) \(summary)" } ?? summary
             statusText = text
             resultHaptic(.success)
-            announce(text, highPriority: true) { [weak self] in
+            announce(text, highPriority: true, speechClass: .actionable) { [weak self] in
                 if let notice { self?.pendingStepFreeNotice = notice }
             }
         } catch {
@@ -2989,7 +3013,7 @@ final class BeaconModel {
                   self.dest == dest, self.waypoint == waypointAtFetch else { return }
             guard let fetched else {
                 alternativePreviewState = .noRoute
-                announce(appLocalized("guide.altPreviewNone"))
+                announce(appLocalized("guide.altPreviewNone"), speechClass: .actionable)
                 return
             }
             alternativePreviewState = .ready(
@@ -2997,11 +3021,11 @@ final class BeaconModel {
                 fetched: fetched)
             // 완료 신호 polite 1회(nearby 결과 통지 관례) — 헤더는 조용 갱신이라
             // 이 통지가 없으면 결과 도착을 알 길이 없다.
-            announce(alternativePreviewHeaderText())
+            announce(alternativePreviewHeaderText(), speechClass: .actionable)
         } catch {
             guard token == alternativePreviewToken else { return }
             alternativePreviewState = .failed
-            announce(appLocalized("guide.altPreviewFailed"))
+            announce(appLocalized("guide.altPreviewFailed"), speechClass: .actionable)
         }
     }
 
@@ -3026,7 +3050,7 @@ final class BeaconModel {
             statusText = text
             // `.high`: 채택 성공으로 시트가 닫히고 포커스가 중지 버튼으로 옮겨가며
             // 그 라벨 낭독에 기본 우선순위가 잠식된다(자동 채택 fetchProposal 동형).
-            announce(text, highPriority: true) { [weak self] in
+            announce(text, highPriority: true, speechClass: .actionable) { [weak self] in
                 if let notice { self?.pendingStepFreeNotice = notice }
             }
             variantAdoptedSeq += 1
@@ -3129,7 +3153,7 @@ final class BeaconModel {
         if let last = lastStaleNoticeAt, now - last < staleRenotifyInterval { return }
         lastStaleNoticeAt = now
         statusText = appLocalized("beacon.weak")
-        announce(statusText)
+        announce(statusText, speechClass: .deferrable)
     }
 
     // MARK: - 출력
@@ -3163,7 +3187,7 @@ final class BeaconModel {
             let text = appLocalized("ios.beacon.soundUnavailable")
             guard statusText != text else { return }
             statusText = text
-            announce(text)
+            announce(text, speechClass: .actionable)
         } else {
             silencedHapticFired = false
         }
@@ -3195,10 +3219,15 @@ final class BeaconModel {
     /// 대신 말해 주지 않는다 — 상환이 필요한 문장은 `onDropped`에 "갚기"를 담는다
     /// (억제·백그라운드로 게시하지 못한 **그 시점에** 불린다). 반환값이 없는 것이
     /// 강제 수단이다: 새 호출부가 "게시했는가"를 물어볼 방법 자체가 없다.
+    ///
+    /// `speechClass`(E53 spec 2026-09-30 §3)는 기본값 없는 필수 인자다 — 백그라운드에서 말하는가를 이 값이 가르므로
+    /// 새 통지 경로가 분류를 빠뜨리면 컴파일이 멈춰야 한다. 경로 이벤트는 Kit `guideEventSpeechClass`가 정본이다.
     private func announce(
-        _ message: String, highPriority: Bool = false, onDropped: (() -> Void)? = nil
+        _ message: String, highPriority: Bool = false, speechClass: GuideSpeechClass,
+        onDropped: (() -> Void)? = nil
     ) {
-        deferredAnnouncer.announce(message, highPriority: highPriority, onDropped: onDropped)
+        deferredAnnouncer.announce(
+            message, highPriority: highPriority, speechClass: speechClass, onDropped: onDropped)
     }
 
     /// 사용자 활성화의 **직접 응답** 전용 즉시 창구(목적지 전환 확인 — §4-6).
@@ -3216,14 +3245,15 @@ final class BeaconModel {
     /// `missedAnnouncement` → 게시의 같은 경로를 지난다. 반환 = 실제로 게시했는가.
     @discardableResult
     private func post(
-        _ message: String, highPriority: Bool = false, bypassSuppression: Bool = false
+        _ message: String, highPriority: Bool, bypassSuppression: Bool,
+        speechClass: GuideSpeechClass, onLateDrop: (() -> Void)?
     ) -> Bool {
         // bypassSuppression은 목적지 전환 확인 통지 전용(스펙 2026-08-12 §3.1) —
         // 검색 시트 dismiss와 억제 해제의 경합에서 사용자 활성화의 직접 응답이
         // 버려지는 창을 막는다(마이크는 select 시점에 이미 닫혀 전사 오염 없음).
         guard bypassSuppression || !outputSuppressed else { return false }
-        // 운전자 채널(K2 §6.2): VO 통지가 아니라 스피커 발화. 전경 가드를 지나지 않는다 —
-        // 잠금 중 발화가 목적 그 자체이고, 오디오 세션(.playback)은 BeaconTonePlayer가 쥐고
+        // 운전자 채널(K2 §6.2): VO 통지가 아니라 스피커 발화. 채널 술어 **앞**이다 — 토글·분류와 무관하게
+        // 잠금 중 발화가 목적 그 자체이고(E53 spec §2), 오디오 세션(.playback)은 BeaconTonePlayer가 쥐고
         // 있다. 우선순위(VO 전용)는 무의미. `driverChannel`은 stop()이 지우지 않아 도착
         // 문장도 이 채널로 나간다(B10).
         if driverChannel {
@@ -3231,15 +3261,35 @@ final class BeaconModel {
             TtsPlayer.shared.speakGuidance(spokenUnits(message))
             return true
         }
-        // 백그라운드에서는 **발화만** 막는다. `statusText`·`lastGuidance`는 호출부가
-        // 이미 갱신했으므로 복귀 시 화면이 최신이다(상태 갱신과 발화의 분리).
-        guard isForeground else {
+        // 채널 선택은 게시 시점 상태로(E53 spec §2, 판정은 Kit). 백그라운드에서 버리는 문장은 **발화만** 막는다 —
+        // `statusText`·`lastGuidance`는 호출부가 이미 갱신했으므로 복귀 시 화면이 최신이다(상태 갱신과 발화의 분리).
+        // 정식판은 토글 실효값이 거짓이라 종전 그대로다(전경이면 VoiceOver 게시, 백그라운드면 버림).
+        let channel = GuideSpeechOutput.channel(
+            speechClass, foregroundDeviceSpeech: false, backgroundAudible: tones.isBackgroundAudible)
+        // 계측(E53 실사용 판정 — 백그라운드 문장 빈도): 전경 VoiceOver 게시는 종전처럼 남기지 않고 백그라운드 판정만.
+        if !GuideSpeechOutput.isForeground {
+            guideDiagLog("bgSpeech channel=\(channel.rawValue) class=\(speechClass.rawValue) text=\(message)")
+        }
+        switch channel {
+        case .voiceOver:
+            GuideSpeechOutput.postVoiceOver(spokenUnits(message), highPriority: highPriority)
+            return true
+        case .device:
+            // 들은 문장을 복귀 때 또 말하지 않는다(E53 §4.3): 마지막 상태를 들었으니 갚을 것이 없다. 대기 칸이
+            // 나중에 버리면 상환 표식과 호출부 장부를 함께 되살린다.
+            missedAnnouncement = false
+            deviceSpeech.submit(
+                spokenUnits(message), highPriority: highPriority, protected: false,
+                bypassSuppression: bypassSuppression, speechClass: speechClass,
+                onDropped: { [weak self] reason in
+                    // 교체(더 새 문장이 이었다)는 상환 표식을 세우지 않는다 — 설계 리뷰 M1. 장부는 어느 쪽이든 되살린다.
+                    if reason == .undelivered { self?.missedAnnouncement = true }
+                    onLateDrop?()
+                })
+            return true
+        case .drop:
             missedAnnouncement = true
             return false
         }
-        var attributed = AttributedString(spokenUnits(message))
-        if highPriority { attributed.accessibilitySpeechAnnouncementPriority = .high }
-        AccessibilityNotification.Announcement(attributed).post()
-        return true
     }
 }

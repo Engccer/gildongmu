@@ -148,9 +148,19 @@ final class TransitGuideModel {
     @ObservationIgnored private lazy var deferredAnnouncer = DeferredAnnouncer(
         clock: { ProcessInfo.processInfo.systemUptime },
         toneEndsAt: { [weak self] in self?.tones.toneEndsAt },
-        post: { [weak self] text, high, bypass in
-            self?.post(text, highPriority: high, bypassSuppression: bypass) ?? false
+        post: { [weak self] text, high, bypass, speechClass, onLateDrop in
+            self?.post(
+                text, highPriority: high, bypassSuppression: bypass, speechClass: speechClass,
+                onLateDrop: onLateDrop) ?? false
         }
+    )
+    /// 기기 음성 대기 한 칸(E53, spec 2026-09-30 §4.2 — 세 안내 모델 공유 타입). 백그라운드 ∧ 토글 켬의 행동 문장만
+    /// 여기로 온다(정식판에선 오지 않는다). 세션 경계는 `deferredAnnouncer.advanceGeneration()`과 같은 자리에서 `reset()`.
+    @ObservationIgnored private lazy var deviceSpeech = GuideSpeechOutput.makeDeviceQueue(
+        foregroundDeviceSpeech: false,
+        isSuppressed: { [weak self] in self?.outputSuppressed ?? true },
+        toneEndsAt: { [weak self] in self?.tones.toneEndsAt },
+        backgroundAudible: { [weak self] in self?.tones.isBackgroundAudible ?? false }
     )
     /// 직전 폴 시작의 단조 시각(초) — `pollStart sinceLast=` 계측(A16 미확정 ②).
     private var lastPollStartAt: Double?
@@ -170,6 +180,9 @@ final class TransitGuideModel {
     private var wasBackgrounded = false
     /// 백그라운드에서 게시하지 못한 통지가 있었는가. 복귀 시 **현재 상태 하나만** 낭독한다(spec 2026-09-11 §4.2.4).
     private var missedAnnouncement = false
+    /// 백그라운드를 거쳤는가(기기 음성 복귀 인계용). `wasBackgrounded`와 달리 추적 여부와 무관하게 선다 — 세션이
+    /// 백그라운드에서 끝나도 말하는 중인 완료 문장을 넘겨야 한다.
+    private var speechBackgrounded = false
     /// 마지막 사용자 조작의 단조 시각(초) — 유휴 폴 정지 축(spec §4.2.6). 세션 시작·모든 사용자 입력·전경 복귀가 갱신.
     private var lastUserActionAt: Double = 0
     /// 유휴 폴 정지 중(잊힌 세션 안전망 — 세션은 유지, 폴·keep-alive만 멈춘다). 어떤 조작·전경 복귀든 푼다.
@@ -193,14 +206,15 @@ final class TransitGuideModel {
             // 억제 해제(a11y 감사 W2, 2026-09-02): 억제 중 게시하지 못한 **마지막** 자동 문장을 되살린다.
             // 도착·neverSeen처럼 세션에 1회뿐인 문장은 다음 폴이 대신 말해 주지 않고, 그 문장만이
             // 행동("탑승 변경을 눌러 주세요")을 담는다(memory once-only-warning-delivery-contract).
-            if !outputSuppressed, let text = droppedWhileSuppressed {
+            if !outputSuppressed, let dropped = droppedWhileSuppressed {
                 droppedWhileSuppressed = nil
-                announce(text)
+                announce(dropped.text, speechClass: dropped.speechClass)
             }
         }
     }
-    /// 억제 중 `post`가 버린 마지막 자동 문장(latest-wins) — 해제 시 1회 복구. stop()이 지운다.
-    private var droppedWhileSuppressed: String?
+    /// 억제 중 `post`가 버린 마지막 자동 문장(latest-wins) — 해제 시 1회 복구. stop()이 지운다. 분류를 함께 둔다(E53 —
+    /// 복구가 그 문장의 백그라운드 채널을 바꾸지 않게).
+    private var droppedWhileSuppressed: (text: String, speechClass: GuideSpeechClass)?
     private let routeService = RouteService(client: APIClient(baseURL: AppConfig.apiBaseURL))
 
     private static let retainSeconds: TimeInterval = 180
@@ -276,6 +290,7 @@ final class TransitGuideModel {
         lastPollStartAt = nil
         plannedIntervalMs = nil
         deferredAnnouncer.advanceGeneration()
+        deviceSpeech.reset()  // 기기 음성 대기 칸도 같은 경계(E53 §4.2 ⑤)
         wasBackgrounded = false
         missedAnnouncement = false
         idlePaused = false
@@ -296,7 +311,7 @@ final class TransitGuideModel {
             waitContextText(first, isCurrentLeg: true),
         ]
         if first.trackMode == nil { parts.append(appLocalized("transitGuide.untrackable")) }
-        announce(parts.joined(separator: " "))
+        announce(parts.joined(separator: " "), speechClass: .actionable)
         restartPollLoop(immediate: true)
     }
 
@@ -308,15 +323,19 @@ final class TransitGuideModel {
         pollTask?.cancel()
         pollTask = nil
         UIApplication.shared.isIdleTimerDisabled = false
-        // 세션 경계 — 보류 문장을 버린다(끝난 세션의 문장이 다음 세션 안에서 나오지 않게).
+        // 세션 경계 — 보류 문장을 버린다(끝난 세션의 문장이 다음 세션 안에서 나오지 않게). 기기 음성 대기 칸도(E53 §4.2 ⑤).
         deferredAnnouncer.advanceGeneration()
+        deviceSpeech.reset()
         toneState = .initial
         lastPollStartAt = nil
         plannedIntervalMs = nil
         if playStopTone, state != nil { playTone(.stop, allowedInBackground: false) }
         // 원복은 정지 톤 **뒤에**(재생 잔여만큼 미뤄진다). 다른 재생기가 그 사이 세션을 시작하면
-        // 원복 의무가 그쪽으로 넘어간다(`.ownershipTransferred`, 설계 리뷰 B2).
-        tones.endSession()
+        // 원복 의무가 그쪽으로 넘어간다(`.ownershipTransferred`, 설계 리뷰 B2). 백그라운드 ∧ 토글 켬이면 이어질
+        // 완료 문장이 기기 음성이라 그 길이만큼 더 미룬다(E53 §7, 그 밖 0초 — 정식판 불변).
+        tones.endSession(
+            holdSeconds: GuideSpeechOutput.sessionEndHoldSeconds(),
+            speechBusy: { [weak self] in GuideSpeechOutput.speechBusy(self?.deviceSpeech) })
         if keepAliveActive {
             LocationService.shared.stopKeepAliveUpdates()
             keepAliveActive = false
@@ -368,6 +387,15 @@ final class TransitGuideModel {
     /// 프로세스가 재워진 동안 끊긴 요청은 `.failed`로 도착하는데, 즉폴이 옛 태스크를 취소하고
     /// `pollOnce`의 취소 가드가 그 결과를 버린다(설계 리뷰 O2).
     func handleScenePhaseChange(to phase: ScenePhase) {
+        // 복귀 인계(E53 §4.2 ⑤, 설계 리뷰 M5·m4)는 **추적 가드 앞**이다 — 세션이 백그라운드에서 끝났어도(완료 문장이 기기
+        // 음성으로 말하는 중) 그 문장을 VoiceOver로 넘긴다. 복귀 낭독(아래)보다 먼저라 순서가 옛 → 새다.
+        switch phase {
+        case .background: speechBackgrounded = true
+        case .active where speechBackgrounded:
+            speechBackgrounded = false
+            deviceSpeech.handOver()
+        default: break
+        }
         guard isTracking else { return }
         // 계측(A16 미확정 ②): 백그라운드 구간의 폴 지속은 `pollStart sinceLast`가 증거다.
         transitGuideLog("scene phase=\(phase) tracking=\(isTracking) idle=\(idlePaused)")
@@ -387,7 +415,7 @@ final class TransitGuideModel {
                 if missedAnnouncement {
                     // 화면 변화 없는 통지라 `.high`(CLAUDE.md 통지 우선순위 판별선 — 착지 라벨로 대체될 수 없다).
                     let text = returnStatusText()
-                    if !text.isEmpty { announce(text, highPriority: true) }
+                    if !text.isEmpty { announce(text, highPriority: true, speechClass: .actionable) }
                 }
                 restartPollLoop(immediate: true)
             }
@@ -470,7 +498,8 @@ final class TransitGuideModel {
         // 재개 방법을 덧붙이지 않는다(위원장 판정 2026-09-11 — BACKLOG E36).
         // 백그라운드 정지는 `post`의 전경 게이트가 버리고, 전경 복귀가 곧 조작이라
         // `resumeIfIdle`의 재개 문장이 그 자리를 대신한다(뒤늦은 "멈추었습니다"를 남기지 않는다).
-        announce(appLocalized("transitGuide.idlePaused"), highPriority: true)
+        // 분류는 미룸(E53 spec §3.3 — 잊힌 세션 안전망이라 백그라운드에서 말하지 않는다, 코디네이터 판정의 유도).
+        announce(appLocalized("transitGuide.idlePaused"), highPriority: true, speechClass: .deferrable)
         transitGuideLog("idlePaused announced fg=\(isForeground)")
         updateKeepAlive()
         return true
@@ -661,7 +690,7 @@ final class TransitGuideModel {
             let doneText = finalLegText()
             stop()
             pendingWalkHandoff = handoff
-            if announceDone { announce(doneText) }
+            if announceDone { announce(doneText, speechClass: .actionable) }
         } else {
             waitingLive = []
             waitingDeparted = []
@@ -1097,6 +1126,7 @@ final class TransitGuideModel {
         lastPollStartAt = nil
         plannedIntervalMs = nil
         deferredAnnouncer.advanceGeneration()
+        deviceSpeech.reset()
         let previousPhase = state?.phase
         state = initTransitGuide(route: guideRoute, now: nowMs())
         // 경로 전환도 사용자 입력(후보 버튼이 사라진다, A47) — dispatch 밖이라 여기서 순번을 올린다. 국면이 그대로(대기 →
@@ -1648,7 +1678,7 @@ final class TransitGuideModel {
         case .boarded(legIndex: _, cause: .declared), .legAdvanced:
             announceNow(text, highPriority: profile.interrupt)
         default:
-            announce(text, highPriority: profile.interrupt)
+            announce(text, highPriority: profile.interrupt, speechClass: transitEventSpeechClass(event))
         }
     }
 
@@ -1677,7 +1707,9 @@ final class TransitGuideModel {
                 soundDegradedHapticFired = true
                 ResultHaptic.fire(.attention)
             }
-            deferredAnnouncer.announce(appLocalized("ios.beacon.soundBackgroundUnavailable")) { [weak self] in
+            deferredAnnouncer.announce(
+                appLocalized("ios.beacon.soundBackgroundUnavailable"), speechClass: .actionable
+            ) { [weak self] in
                 self?.soundDegradedAnnounced = false
             }
         }
@@ -1950,15 +1982,17 @@ final class TransitGuideModel {
     }
 
     /// 세션 밖 오케스트레이터(`GuideSession`)의 통지 창구 — 승차 전 도보 시작·취소·불가 문장(A25).
-    /// 같은 억제 규칙을 지난다.
-    func announceExternal(_ message: String) {
-        announce(message)
+    /// 같은 억제 규칙을 지난다. 분류는 호출부가 밝힌다(E53 spec §3.3).
+    func announceExternal(_ message: String, speechClass: GuideSpeechClass) {
+        announce(message, speechClass: speechClass)
     }
 
     /// 자동 통지 창구(spec 2026-08-14 §4-6 동형). 안내 효과음이 재생 중이면 그 소리가 끝난 뒤에
     /// 게시한다(지연·latest-wins·세대는 `DeferredAnnouncer` 소유). 하차 임박·도착만 .high(§6.1).
-    private func announce(_ message: String, highPriority: Bool = false) {
-        deferredAnnouncer.announce(message, highPriority: highPriority)
+    /// `speechClass`는 기본값 없는 필수 인자다(E53 spec §3 — 백그라운드에서 말하는가를 가른다). 이벤트는 Kit
+    /// `transitEventSpeechClass`가 정본이다.
+    private func announce(_ message: String, highPriority: Bool = false, speechClass: GuideSpeechClass) {
+        deferredAnnouncer.announce(message, highPriority: highPriority, speechClass: speechClass)
     }
 
     /// 사용자 활성화의 **직접 응답** 전용 즉시 창구(진행 상황·새로고침 응답·재조회 통지·경로 교체).
@@ -1970,21 +2004,43 @@ final class TransitGuideModel {
     /// 실제 게시. 지연은 타이밍만 바꾸고 억제 계약은 바꾸지 않는다 — 대기가 끝난 게시 시도도
     /// 같은 가드를 지난다. 반환 = 실제로 게시했는가.
     @discardableResult
-    private func post(_ message: String, highPriority: Bool, bypassSuppression: Bool) -> Bool {
+    private func post(
+        _ message: String, highPriority: Bool, bypassSuppression: Bool,
+        speechClass: GuideSpeechClass, onLateDrop: (() -> Void)?
+    ) -> Bool {
         // 검색 시트(받아쓰기 마이크)가 열린 동안은 발화 0(스펙 §5.4) — 마지막 문장은 해제 시 복구(W2).
         guard bypassSuppression || !outputSuppressed else {
-            droppedWhileSuppressed = message
+            droppedWhileSuppressed = (message, speechClass)
             return false
         }
-        // 백그라운드에서는 **발화만** 막는다(E36 §4.2.4, BeaconModel 동형 — 백그라운드 무발화는 실측이지
-        // API 계약이 아니라 명시 게이트로). 복귀 시 현재 상태 하나만 낭독한다(`missedAnnouncement`).
-        guard isForeground else {
+        // 채널 선택은 게시 시점 상태로(E53 spec §2, 판정은 Kit). 백그라운드에서 버리는 문장은 **발화만** 막는다(E36
+        // §4.2.4, BeaconModel 동형 — 백그라운드 무발화는 실측이지 API 계약이 아니라 명시 게이트로). 복귀 시 현재 상태
+        // 하나만 낭독한다(`missedAnnouncement`). 정식판은 토글 실효값이 거짓이라 종전 그대로다.
+        let channel = GuideSpeechOutput.channel(
+            speechClass, foregroundDeviceSpeech: false, backgroundAudible: tones.isBackgroundAudible)
+        // 계측(E53 실사용 판정 — 백그라운드 문장 빈도): 전경 VoiceOver 게시는 종전처럼 남기지 않고 백그라운드 판정만.
+        if !GuideSpeechOutput.isForeground {
+            transitGuideLog("bgSpeech channel=\(channel.rawValue) class=\(speechClass.rawValue) text=\(message)")
+        }
+        switch channel {
+        case .voiceOver:
+            GuideSpeechOutput.postVoiceOver(spokenUnits(message), highPriority: highPriority)
+            return true
+        case .device:
+            // 들은 문장을 복귀 때 또 말하지 않는다(E53 §4.3). 대기 칸이 나중에 버리면 상환 표식과 장부(latch)를 되살린다.
+            missedAnnouncement = false
+            deviceSpeech.submit(
+                spokenUnits(message), highPriority: highPriority, protected: false,
+                bypassSuppression: bypassSuppression, speechClass: speechClass,
+                onDropped: { [weak self] reason in
+                    // 교체(더 새 문장이 이었다)는 상환 표식을 세우지 않는다 — 설계 리뷰 M1. 장부는 어느 쪽이든 되살린다.
+                    if reason == .undelivered { self?.missedAnnouncement = true }
+                    onLateDrop?()
+                })
+            return true
+        case .drop:
             missedAnnouncement = true
             return false
         }
-        var attributed = AttributedString(spokenUnits(message))
-        if highPriority { attributed.accessibilitySpeechAnnouncementPriority = .high }
-        AccessibilityNotification.Announcement(attributed).post()
-        return true
     }
 }

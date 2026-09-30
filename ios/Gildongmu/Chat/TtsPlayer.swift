@@ -68,8 +68,19 @@ final class TtsPlayer {
         synthesizer.speak(utterance)
     }
 
-    /// 기기 음성이 말하는 중인가 — 나들이의 대기 한 칸(선점 금지)이 읽는다(spec 2026-09-26 §7.3).
+    /// 기기 음성이 말하는 중인가(안내·채팅 듣기 무관).
     var isSpeaking: Bool { synthesizer.isSpeaking }
+
+    /// **안내** 발화가 말하는 중인가 — 안내 기기 음성 대기 칸(`DeviceSpeechQueue`, E53)과 세션 종료 원복 대기가 읽는다.
+    /// 채팅 듣기(`playMessage` — `playingMessageID`가 선다)는 세지 않는다: 안내는 채팅을 기다리지 않고 끊는다(E53 설계
+    /// 리뷰 M3, 운전자 채널과 같은 우선순위).
+    var isSpeakingGuidance: Bool { synthesizer.isSpeaking && playingMessageID == nil }
+
+    /// 안내 발화만 끊는다(전경 복귀 인계 — 들을 채널이 VoiceOver로 바뀌었다). 채팅 듣기는 건드리지 않는다.
+    func stopGuidance() {
+        guard isSpeakingGuidance else { return }
+        stop()
+    }
 
     func stop() {
         generation += 1

@@ -6,8 +6,8 @@ import { join } from "node:path";
  * 대중교통 백그라운드 폴(E36, spec `docs/superpowers/specs/2026-09-11-transit-background-poll-design.md`
  * §4.2.2·§4.2.4)의 소스 가드. 앱 타깃엔 테스트 레인이 없어 계약을 정규식으로 잠근다:
  *
- * 1. **백그라운드 발화 0** — `TransitGuideModel.post`가 게시 전에 전경 게이트를 지난다. 접근성 헌장
- *    계약(백그라운드는 소리만, 음성은 복귀 시)이라 조용한 회귀의 대가가 크다.
+ * 1. **백그라운드 발화는 채널 술어만 연다** — `TransitGuideModel.post`가 게시 전에 채널 술어(E53)를 지난다. 정식판은
+ *    토글 실효값이 거짓이라 종전 계약(백그라운드는 소리만, 음성은 복귀 시) 그대로다 — 조용한 회귀의 대가가 크다.
  * 2. **백그라운드 톤 허용 집합 = 첫 관측(`trackingStarted`) 하나** — `allowedInBackground = true`
  *    대입이 파일에 정확히 한 곳. 사다리·도착·추세 톤을 여기 넣는 것은 별건 판정이다(BACKLOG E36).
  * 3. **keep-alive 국면 = boarding ∨ riding**(A46) — 앱을 살리는 위치 스트림이 켜지는 조건.
@@ -25,14 +25,17 @@ function body(fnSignature: RegExp): string {
 }
 
 describe("대중교통 백그라운드 폴 소스 가드 (E36)", () => {
-  it("post는 게시 전에 전경 게이트를 지난다(백그라운드 발화 0)", () => {
-    const post = body(/private func post\(_ message: String, highPriority: Bool, bypassSuppression: Bool\)/);
-    const gate = post.indexOf("guard isForeground else {");
-    const publish = post.indexOf("AccessibilityNotification.Announcement(");
-    expect(gate, "전경 게이트 부재").toBeGreaterThanOrEqual(0);
+  it("post는 게시 전에 채널 술어를 지나고, 버린 문장은 복귀 표식을 세운다(E53 — 정식판은 종전대로 백그라운드 발화 0)", () => {
+    const post = body(/private func post\(\n\s+_ message: String, highPriority: Bool, bypassSuppression: Bool,/);
+    const gate = post.indexOf("GuideSpeechOutput.channel(");
+    const publish = post.indexOf("GuideSpeechOutput.postVoiceOver(");
+    expect(gate, "채널 술어 부재").toBeGreaterThanOrEqual(0);
     expect(publish, "게시 자리 부재").toBeGreaterThanOrEqual(0);
-    expect(gate, "게이트가 게시보다 뒤에 있다").toBeLessThan(publish);
-    expect(post).toContain("missedAnnouncement = true");
+    expect(gate, "술어가 게시보다 뒤에 있다").toBeLessThan(publish);
+    // 버림 = 복귀 표식. 백그라운드 판정의 정본은 Kit `guideSpeechChannel`(정식판 등가성은 Kit 테스트가 전수로 잠근다).
+    const drop = post.slice(post.indexOf("case .drop:"));
+    expect(drop).toContain("missedAnnouncement = true");
+    expect(post).not.toContain("AccessibilityNotification.Announcement(");
   });
 
   it("백그라운드 톤 허용은 정확히 한 자리(trackingStarted)", () => {
@@ -54,7 +57,10 @@ describe("대중교통 백그라운드 폴 소스 가드 (E36)", () => {
   it("유휴 정지는 idlePaused 키를 자동 창구 .high로 게시한다", () => {
     const idle = body(/private func enterIdleIfDue\(\) -> Bool/);
     // 정지 사실은 화면 변화가 없어 통지가 유일한 증거다(위원장 판정 2026-09-11, BACKLOG E36).
-    expect(idle).toContain('announce(appLocalized("transitGuide.idlePaused"), highPriority: true)');
+    // 분류는 미룸(E53 — 안전망이라 백그라운드에서 말하지 않는다. 복귀가 곧 조작이라 재개 문장이 갚는다).
+    expect(idle).toContain(
+      'announce(appLocalized("transitGuide.idlePaused"), highPriority: true, speechClass: .deferrable)',
+    );
     // 타이머 판정이라 즉시 창구가 아니라 자동 창구다 — 톤이 울리는 중이면 그 뒤에 말한다.
     expect(idle).not.toContain("announceNow(");
     // 계측: 전경 여부와 함께 한 줄(백그라운드 정지는 post의 전경 게이트가 버린다).

@@ -306,6 +306,8 @@
     <string name="android_search_webSection">Web search</string>
     <string name="android_settings_aiConsentToggle">AI chat data sharing consent</string>
     <string name="android_settings_aiSection">AI Chat</string>
+    <string name="android_settings_backgroundSpeech">Background voice guidance</string>
+    <string name="android_settings_backgroundSpeechFooter">Speaks guidance such as turns, going off route, and arrival, plus Stroll surroundings, in the device voice even while the screen is off or you are using another app.</string>
     <string name="android_settings_carListener">Car guidance listener (experimental)</string>
     <string name="android_settings_carListenerDriver">Driver (speaker, short commands)</string>
     <string name="android_settings_carListenerPassenger">Passenger (earphones, screen reader)</string>

@@ -93,11 +93,12 @@ describe("나들이 진입점", () => {
 });
 
 describe("나들이 문장 창구", () => {
-  it("게시는 전경 ∧ VoiceOver면 VoiceOver, 그 밖은 기기 음성 — 한 함수가 가른다(spec §7.3)", () => {
+  it("게시는 채널 술어 한 번으로 가른다 — 나들이만 전경 VoiceOver 꺼짐에서도 기기 음성(spec §7.3, E53 §2)", () => {
     const post = functionBody(readFileSync(MODEL, "utf8"), "post");
-    expect(post).toMatch(/isForeground && UIAccessibility\.isVoiceOverRunning/);
-    expect(post).toContain("AccessibilityNotification.Announcement(");
-    expect(post).toContain("speakDevice(");
+    expect(post).toMatch(/GuideSpeechOutput\.channel\(\s*speechClass, foregroundDeviceSpeech: true,/);
+    expect(post).toContain("GuideSpeechOutput.postVoiceOver(");
+    expect(post).toContain("deviceSpeech.submit(");
+    expect(post).not.toMatch(/isVoiceOverRunning/);
   });
 
   it("횡단보도 예고는 보호 창을 세우고 주변 문장은 그 창 뒤로 미룬다(한 fix 한 문장, spec 준수 리뷰 M-2)", () => {
@@ -115,11 +116,22 @@ describe("나들이 문장 창구", () => {
     expect(stop.indexOf("guard wasActive else { return }")).toBeLessThan(stop.indexOf("tones.endSession("));
   });
 
-  it("기기 음성은 대기 한 칸이고 말하는 중엔 선점하지 않는다", () => {
-    const speak = functionBody(readFileSync(MODEL, "utf8"), "speakDevice");
-    expect(speak).toMatch(/guard TtsPlayer\.shared\.isSpeaking else/);
-    expect(speak).toContain("speechPending = (text, uptimeNow, high, keep)");
-    expect(speak).toContain("speechPendingTTL");
+  it("기기 음성은 세 모델 공유 대기 칸(Kit DeviceSpeechQueue)이고 모델 안에 자체 칸이 없다(E53 §4.2, 복붙 금지)", () => {
+    const model = readFileSync(MODEL, "utf8");
+    expect(model).toContain("GuideSpeechOutput.makeDeviceQueue(");
+    expect(model).not.toMatch(/func speakDevice\(|speechPending|speechDrain/);
+    // 선점 금지·한 칸·유효 시간 계약은 Kit 테스트(`DeviceSpeechQueueTests`)가 잠근다.
+  });
+
+  it("안전망 종료만 미룸 문장이고 복귀 때 종료 사유 하나를 갚는다(E53 spec §3.4)", () => {
+    const model = readFileSync(MODEL, "utf8");
+    expect(functionBody(model, "endIdle")).toContain("sayEnd(text, speechClass: .deferrable)");
+    expect(model.match(/speechClass: \.deferrable/g)?.length).toBe(2);  // endIdle + 전경 전용 약신호
+    // 종료 문장은 전하지 못하면 장부에 남아 복귀 때 갚는다 — 종료 화면 존재와 무관(설계 리뷰 M6).
+    expect(functionBody(model, "sayEnd")).toContain("owedEndReason = (text, .now)");
+    const scene = functionBody(model, "handleScenePhaseChange");
+    expect(scene).toContain("if let owed = owedEndReason {");
+    expect(scene).toContain("isEndScreenStale(secondsSinceEnd: seconds)");
   });
 });
 

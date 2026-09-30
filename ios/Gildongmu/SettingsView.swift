@@ -60,6 +60,9 @@ struct SettingsView: View {
     @AppStorage(DictationStyle.key) private var dictationRaw = DictationStyle.tapToggle.rawValue
     // 채팅 응답 듣기 속도 배율. 규칙·키 정본은 Kit ListenSpeed, 소비는 TtsPlayer 재생 시점.
     @AppStorage(ListenSpeed.storageKey) private var listenSpeed = 1.0
+    // 백그라운드 음성 안내(E53 실험판) — 화면이 꺼진 동안 행동 문장을 기기 음성으로. 키·기본값·실효값 정본은 Kit
+    // `BackgroundSpeech`, 소비는 `GuideSpeechOutput`(게시 시점마다 읽는다). 행은 실험 플래그 조건 안(졸업 때 조건 삭제).
+    @AppStorage(BackgroundSpeech.storageKey) private var backgroundSpeechEnabled = BackgroundSpeech.defaultEnabled
     #if DEBUG || EXPERIMENTAL
     // 왼쪽·오른쪽 안내음 구분 방식 후보 2종(실기기 선택 대기, spec 2026-08-22 §3).
     // 판정 뒤 이 피커와 Kit `LeftRightToneScheme`을 함께 지운다.
@@ -177,6 +180,15 @@ struct SettingsView: View {
                 }
                 .pickerStyle(.inline)
                 .id("listenSpeed-\(AppLanguage.current)")
+
+                if AppConfig.experimentalBackgroundSpeechEnabled {
+                    Section {
+                        Toggle(appLocalized("ios.settings.backgroundSpeech"), isOn: $backgroundSpeechEnabled)
+                    } footer: {
+                        // 이름만으로는 무엇을 말하는지(행동 문장만, 나들이 주변 낭독 포함)가 드러나지 않는다 — 범위는 새 정보다.
+                        Text(appLocalized("ios.settings.backgroundSpeechFooter"))
+                    }
+                }
 
                 #if DEBUG || EXPERIMENTAL
                 Picker(appLocalized("ios.settings.carListener"), selection: $carListenerRaw) {

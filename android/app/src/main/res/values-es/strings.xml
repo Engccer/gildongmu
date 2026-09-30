@@ -306,6 +306,8 @@
     <string name="android_search_webSection">Búsqueda web</string>
     <string name="android_settings_aiConsentToggle">Consentimiento de envío de datos del chat con IA</string>
     <string name="android_settings_aiSection">Chat con IA</string>
+    <string name="android_settings_backgroundSpeech">Guía por voz en segundo plano</string>
+    <string name="android_settings_backgroundSpeechFooter">Anuncia con la voz del dispositivo indicaciones como giros, desvíos de la ruta y llegada, y los alrededores del paseo, incluso con la pantalla apagada o mientras usas otra app.</string>
     <string name="android_settings_carListener">Quién escucha la guía en coche (experimental)</string>
     <string name="android_settings_carListenerDriver">Conductor (altavoz, órdenes breves)</string>
     <string name="android_settings_carListenerPassenger">Acompañante (auriculares, lector de pantalla)</string>

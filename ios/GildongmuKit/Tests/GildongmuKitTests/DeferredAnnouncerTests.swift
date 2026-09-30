@@ -18,6 +18,10 @@ struct DeferredAnnouncerTests {
         var now: Double = 0
         private(set) var sleeps: [Double] = []
         private(set) var posts: [(text: String, highPriority: Bool, bypass: Bool)] = []
+        /// 게시마다 실려 온 분류(E53 — `announce`의 필수 인자가 그대로 `post`에 닿는가).
+        private(set) var postedClasses: [GuideSpeechClass] = []
+        /// 게시마다 실려 온 늦은 버림 통지(nil 여부) — 기기 음성 대기 칸이 보관할 수 있게 `post`까지 온다.
+        private(set) var lateDrops: [(() -> Void)?] = []
         /// post의 반환값(게시 성공 여부). 억제·백그라운드 실패를 흉내 낸다.
         var postResult = true
         /// toneEndsAt 스크립트 — 호출마다 하나씩 소비, 소진되면 마지막 값 반복.
@@ -43,8 +47,10 @@ struct DeferredAnnouncerTests {
                 self?.now += seconds
             },
             toneEndsAt: { [weak self] in self?.nextToneEndsAt() },
-            post: { [weak self] text, high, bypass in
+            post: { [weak self] text, high, bypass, speechClass, lateDrop in
                 self?.posts.append((text, high, bypass))
+                self?.postedClasses.append(speechClass)
+                self?.lateDrops.append(lateDrop)
                 return self?.postResult ?? true
             }
         )
@@ -58,7 +64,7 @@ struct DeferredAnnouncerTests {
     @Test func immediateWhenNoTone() async {
         let h = Harness()
         h.toneScript = [nil]
-        h.announcer.announce("지금")
+        h.announcer.announce("지금", speechClass: .actionable)
         #expect(h.posts.map(\.text) == ["지금"])  // 동기 게시(Task 경유 아님)
         #expect(h.sleeps.isEmpty)
     }
@@ -66,7 +72,7 @@ struct DeferredAnnouncerTests {
     @Test func longToneDefersUntilToneEnds() async {
         let h = Harness()
         h.toneScript = [2.246, 2.246]  // 예약 시 + 재평가 시
-        h.announcer.announce("도착했습니다")
+        h.announcer.announce("도착했습니다", speechClass: .actionable)
         #expect(h.posts.isEmpty)  // 예약만 — 아직 발화 없음
         await drain()
         #expect(h.posts.map(\.text) == ["도착했습니다"])
@@ -78,7 +84,7 @@ struct DeferredAnnouncerTests {
     @Test func invalidatedPendingNeverPosts() async {
         let h = Harness()
         h.toneScript = [2.246]
-        h.announcer.announce("버릴 문장")
+        h.announcer.announce("버릴 문장", speechClass: .actionable)
         h.announcer.invalidatePending()
         await drain()
         #expect(h.posts.isEmpty)
@@ -88,7 +94,7 @@ struct DeferredAnnouncerTests {
     @Test func generationAdvanceDropsPending() async {
         let h = Harness()
         h.toneScript = [2.246]
-        h.announcer.announce("끝난 경로의 명령")
+        h.announcer.announce("끝난 경로의 명령", speechClass: .actionable)
         h.announcer.advanceGeneration()
         await drain()
         #expect(h.posts.isEmpty)
@@ -98,8 +104,8 @@ struct DeferredAnnouncerTests {
     @Test func latestWinsReplacesPending() async {
         let h = Harness()
         h.toneScript = [2.246, 2.246, 2.246]
-        h.announcer.announce("옛 문장")
-        h.announcer.announce("새 문장")
+        h.announcer.announce("옛 문장", speechClass: .actionable)
+        h.announcer.announce("새 문장", speechClass: .actionable)
         await drain()
         #expect(h.posts.map(\.text) == ["새 문장"])
     }
@@ -109,8 +115,8 @@ struct DeferredAnnouncerTests {
     @Test func immediateAnnounceDropsPendingFirst() async {
         let h = Harness()
         h.toneScript = [2.246, nil]  // 첫 통지는 지연, 둘째는 톤 없음(즉시)
-        h.announcer.announce("이전 목적지 명령")
-        h.announcer.announce("목적지가 변경되었습니다")
+        h.announcer.announce("이전 목적지 명령", speechClass: .actionable)
+        h.announcer.announce("목적지가 변경되었습니다", speechClass: .actionable)
         #expect(h.posts.map(\.text) == ["목적지가 변경되었습니다"])
         await drain()
         #expect(h.posts.map(\.text) == ["목적지가 변경되었습니다"])
@@ -122,7 +128,7 @@ struct DeferredAnnouncerTests {
     @Test func announceNowDropsPendingAndPostsImmediately() async {
         let h = Harness()
         h.toneScript = [2.246, 2.246]  // 톤이 재생 중이어도 announceNow는 미루지 않는다
-        h.announcer.announce("이전 목적지 명령")
+        h.announcer.announce("이전 목적지 명령", speechClass: .actionable)
         h.announcer.announceNow("목적지가 변경되었습니다", highPriority: true,
                                 bypassSuppression: true)
         #expect(h.posts.map(\.text) == ["목적지가 변경되었습니다"])
@@ -136,7 +142,7 @@ struct DeferredAnnouncerTests {
         let h = Harness()
         // 예약 시 ahead(0.731) → 첫 대기 0.881 뒤 재평가 시점에 새 톤이 1.9에 끝남.
         h.toneScript = [0.731, 1.9, 1.9]
-        h.announcer.announce("왼쪽으로 도세요")
+        h.announcer.announce("왼쪽으로 도세요", speechClass: .actionable)
         await drain()
         #expect(h.posts.map(\.text) == ["왼쪽으로 도세요"])
         #expect(h.sleeps.count == 2)  // 첫 대기 + 재평가 추가 대기
@@ -150,7 +156,7 @@ struct DeferredAnnouncerTests {
     @Test func totalWaitCappedAtMax() async {
         let h = Harness()
         h.toneDynamic = { [weak h] in (h?.now ?? 0) + 2 }  // 항상 잔여 2초
-        h.announcer.announce("상한 문장")
+        h.announcer.announce("상한 문장", speechClass: .actionable)
         await drain()
         #expect(h.posts.map(\.text) == ["상한 문장"])
         #expect(abs(h.now - SpeechDeferConstants.speechDeferMaxSeconds) < 1e-9)
@@ -162,12 +168,12 @@ struct DeferredAnnouncerTests {
         h.postResult = false
         var droppedImmediate = 0
         h.toneScript = [nil]
-        h.announcer.announce("즉시 실패") { droppedImmediate += 1 }
+        h.announcer.announce("즉시 실패", speechClass: .actionable) { droppedImmediate += 1 }
         #expect(droppedImmediate == 1)
 
         var droppedDeferred = 0
         h.toneScript = [2.246, 2.246]
-        h.announcer.announce("지연 실패") { droppedDeferred += 1 }
+        h.announcer.announce("지연 실패", speechClass: .actionable) { droppedDeferred += 1 }
         await drain()
         #expect(droppedDeferred == 1)
     }
@@ -179,8 +185,8 @@ struct DeferredAnnouncerTests {
         let h = Harness()
         var dropped = 0
         h.toneScript = [2.246, 2.246, 2.246]
-        h.announcer.announce("계단 경고 합본") { dropped += 1 }
-        h.announcer.announce("새 안내")
+        h.announcer.announce("계단 경고 합본", speechClass: .actionable) { dropped += 1 }
+        h.announcer.announce("새 안내", speechClass: .actionable)
         #expect(dropped == 1)  // 선점 시점에 동기 호출
         await drain()
         #expect(h.posts.map(\.text) == ["새 안내"])
@@ -193,7 +199,7 @@ struct DeferredAnnouncerTests {
         let h = Harness()
         var dropped = 0
         h.toneScript = [2.246]
-        h.announcer.announce("끝난 세션의 경고") { dropped += 1 }
+        h.announcer.announce("끝난 세션의 경고", speechClass: .actionable) { dropped += 1 }
         h.announcer.advanceGeneration()
         await drain()
         #expect(dropped == 0)
@@ -204,7 +210,7 @@ struct DeferredAnnouncerTests {
         let h = Harness()
         var dropped = 0
         h.toneScript = [2.246, 2.246]
-        h.announcer.announce("성공 문장") { dropped += 1 }
+        h.announcer.announce("성공 문장", speechClass: .actionable) { dropped += 1 }
         await drain()
         #expect(h.posts.map(\.text) == ["성공 문장"])
         #expect(dropped == 0)
@@ -215,10 +221,10 @@ struct DeferredAnnouncerTests {
     @Test func staleTaskDoesNotClearNewSlot() async {
         let h = Harness()
         h.toneScript = [2.246, 2.246, 2.246]
-        h.announcer.announce("옛 문장")
+        h.announcer.announce("옛 문장", speechClass: .actionable)
         await drain()  // 옛 슬롯이 게시를 마치고 자기 토큰으로 해제
         h.toneScript = [h.now + 2.246, h.now + 2.246]
-        h.announcer.announce("이후 문장")
+        h.announcer.announce("이후 문장", speechClass: .actionable)
         h.announcer.invalidatePending()  // 새 슬롯이 살아 있어야 취소가 성립
         await drain()
         #expect(h.posts.map(\.text) == ["옛 문장"])  // "이후 문장"은 취소로 미발화
@@ -227,7 +233,36 @@ struct DeferredAnnouncerTests {
     @Test func highPriorityForwarded() async {
         let h = Harness()
         h.toneScript = [nil]
-        h.announcer.announce("중요", highPriority: true)
+        h.announcer.announce("중요", highPriority: true, speechClass: .actionable)
         #expect(h.posts.first?.highPriority == true)
+    }
+
+    // E53(spec 2026-09-30 §4.1): 분류는 즉시·지연 두 경로 모두 `post`에 그대로 닿고, 즉시 창구는 `.actionable` 고정이다.
+    @Test func speechClassReachesPostOnBothPaths() async {
+        let h = Harness()
+        h.toneScript = [nil]
+        h.announcer.announce("즉시 주기", speechClass: .deferrable)
+        h.toneScript = [2.246, 2.246]
+        h.announcer.announce("지연 행동", speechClass: .actionable)
+        await drain()
+        h.announcer.announceNow("직접 응답")
+        #expect(h.posts.map(\.text) == ["즉시 주기", "지연 행동", "직접 응답"])
+        #expect(h.postedClasses == [.deferrable, .actionable, .actionable])
+    }
+
+    // E53 §4.1: `post`가 `true`로 받아 보관한 문장이 나중에 버려지면 `post` 쪽이 onDropped를 부른다 — 그러려면
+    // 호출부의 onDropped가 그대로 `post`에 실려 와야 한다. `true`면 여기서는 부르지 않는다(이중 호출 금지).
+    @Test func onDroppedIsForwardedToPostAndNotCalledOnSuccess() async {
+        let h = Harness()
+        var dropped = 0
+        h.toneScript = [nil]
+        h.announcer.announce("보관될 문장", speechClass: .actionable) { dropped += 1 }
+        #expect(h.lateDrops.count == 1)
+        #expect(dropped == 0)
+        h.lateDrops[0]?()  // 대기 칸이 나중에 버렸다
+        #expect(dropped == 1)
+        h.announcer.announceNow("직접 응답")
+        #expect(h.lateDrops.count == 2)
+        #expect(h.lateDrops[1] == nil)
     }
 }

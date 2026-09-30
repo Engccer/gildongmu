@@ -238,6 +238,8 @@
       "listenSpeed1x": "1x",
       "listenSpeed15x": "1.5x",
       "listenSpeed2x": "2x",
+      "backgroundSpeech": "Background voice guidance",
+      "backgroundSpeechFooter": "Speaks guidance such as turns, going off route, and arrival, plus Stroll surroundings, in the device voice even while the screen is off or you are using another app.",
       "aiSection": "AI Chat",
       "aiConsentToggle": "AI chat data sharing consent",
       "reportProblem": "Report a problem",

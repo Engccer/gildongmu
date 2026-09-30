@@ -44,6 +44,18 @@ enum AppConfig {
     static let experimentalOutingEnabled = false
     #endif
 
+    /// 백그라운드 음성 안내(E53, spec 2026-09-30-background-speech-design.md)의 봉인. 설정 토글 행과 토글 실효값
+    /// (`GuideSpeechOutput.backgroundSpeechEnabled`)이 이 값을 읽는다 — 거짓이면 실효값이 상수 거짓이라 정식판의
+    /// 안내 음성은 종전 그대로다(백그라운드는 소리만, 가드 `background-speech-guard.test.ts`). 실사용 판정을 통과하면
+    /// 이 검사를 삭제한다(플래그 졸업).
+    /// ⚠ **나들이(`experimentalOutingEnabled`)가 먼저 졸업하면 정식판 나들이는 백그라운드에서 무음이 된다**(나들이
+    /// 문장도 이 토글을 따른다, 위원장 판정 ②). 나들이 졸업은 이 플래그의 졸업을 함께 하거나 앞세운다.
+    #if EXPERIMENTAL
+    static let experimentalBackgroundSpeechEnabled = true
+    #else
+    static let experimentalBackgroundSpeechEnabled = false
+    #endif
+
     /// 탭 순서 검색 - 길찾기 - 내 주변 - 채팅 + 기본 탭 검색(K1 ①, 위원장 판정 2026-08-23).
     /// 당분간 **실험판에서만** — 정식판은 종전 채팅 - 검색 - 길찾기 - 내 주변, 기본 채팅.
     /// 판정이 끝나 정식판으로 가면 이 검사를 삭제하고 `AppTab` 케이스 순서를 실험판 것으로

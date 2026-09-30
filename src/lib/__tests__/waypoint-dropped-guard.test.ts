@@ -28,6 +28,6 @@ describe("iOS 간략 폴백의 경유지 포기 문장(N4)", () => {
     ]) {
       expect(branch, line).toContain(line);
     }
-    expect(body).toContain("announce(text, highPriority: droppedWaypoint)");
+    expect(body).toContain("announce(text, highPriority: droppedWaypoint, speechClass: .actionable)");
   });
 });

@@ -238,6 +238,8 @@
       "listenSpeed1x": "1배",
       "listenSpeed15x": "1.5배",
       "listenSpeed2x": "2배",
+      "backgroundSpeech": "백그라운드 음성 안내",
+      "backgroundSpeechFooter": "화면이 꺼지거나 다른 앱을 쓰는 동안에도 회전, 이탈, 도착 같은 안내와 나들이 주변 낭독을 기기 음성으로 말합니다.",
       "aiSection": "AI 채팅",
       "aiConsentToggle": "AI 채팅 데이터 전송 동의",
       "reportProblem": "문제 신고",

@@ -111,6 +111,11 @@
       "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/GuideSpeechGateTest.kt"
     },
     {
+      "swift": "GuideSpeechChannel.swift",
+      "status": "pending",
+      "note": "E53 백그라운드 음성 안내의 채널 술어·문장 분류·토글 실효값·원복 유예(spec 2026-09-30-background-speech-design.md §2·§3). 안드로이드 이식 판정 별도(PORTS) — 웹은 잠금 중 실행이 멈춰 대상이 아니다"
+    },
+    {
       "swift": "GuideToneLayer.swift",
       "status": "ported",
       "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/GuideToneLayer.kt",

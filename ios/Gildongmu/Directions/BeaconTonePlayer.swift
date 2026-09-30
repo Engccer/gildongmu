@@ -169,20 +169,30 @@ final class BeaconTonePlayer {
     /// "도착할 때 종소리가 안 난다"). 정지 톤(1.3초)도 같은 경로였다.
     ///
     /// 전경에서는 증상이 없다 — 그래서 이 결함은 손에 들고 시험할 때 보이지 않는다.
-    /// `holdSeconds`: 톤 뒤에 이어질 **발화**의 길이(초). 운전자 모드(K2 §6.4)는 도착 문장이 VO가
-    /// 아니라 이 세션 위의 AVSpeech로 나가므로, 톤 잔여만큼만 미루면 원복이 발화를 자른다.
-    func endSession(holdSeconds: Double = 0) {
+    /// `holdSeconds`: 톤 뒤에 이어질 **발화**까지의 다리(초). 운전자 모드(K2 §6.4)는 도착 문장이 VO가 아니라 이 세션 위의
+    /// AVSpeech로 나가므로, 톤 잔여만큼만 미루면 원복이 발화를 자른다.
+    ///
+    /// `speechBusy`(기본값 없음 — E53 설계 리뷰 M4): 기기 음성이 아직 말하거나 대기 칸에 문장이 있는가. 참인 동안은
+    /// 원복하지 않는다(0.3초 간격, 상한 `deviceSpeechEndWaitMaxSeconds`). 시계 어림(글자 수)은 앞 문장이 길면 모자라
+    /// 백그라운드 도착 문장 끝을 `.ambient` 아래에서 잘랐다. 정식판에는 안내 기기 음성이 없어 늘 거짓이다(종전과 같다).
+    func endSession(holdSeconds: Double = 0, speechBusy: @escaping () -> Bool) {
         let playbackRemaining = remainingPlaybackSeconds ?? 0
-        guard playbackRemaining > 0 || holdSeconds > 0 else {
+        guard playbackRemaining > 0 || holdSeconds > 0 || speechBusy() else {
             dispatchSessionEnd()
             return
         }
-        // 남은 재생 시간 + 여유 + 발화 유예. 톤은 전부 3초 미만이라 상한이 필요 없다.
-        let remaining = playbackRemaining + 0.15 + holdSeconds
+        // 남은 재생 시간 + 여유 + 발화 다리. 톤은 전부 3초 미만이라 상한이 필요 없다.
+        let remaining = playbackRemaining > 0 || holdSeconds > 0 ? playbackRemaining + 0.15 + holdSeconds : 0
         cancelPendingRevert()
         revertTask = Task { [weak self] in
             try? await Task.sleep(nanoseconds: UInt64(remaining * 1_000_000_000))
             guard !Task.isCancelled else { return }
+            var waited = 0.0
+            while speechBusy(), waited < deviceSpeechEndWaitMaxSeconds {
+                try? await Task.sleep(nanoseconds: 300_000_000)
+                guard !Task.isCancelled else { return }
+                waited += 0.3
+            }
             self?.revertTask = nil
             self?.dispatchSessionEnd()
         }

@@ -27641,6 +27641,86 @@
         }
       }
     },
+    "ios.settings.backgroundSpeech": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "백그라운드 음성 안내"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Background voice guidance"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guía por voz en segundo plano"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guidage vocal en arrière-plan"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guida vocale in background"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "バックグラウンド音声案内"
+          }
+        }
+      }
+    },
+    "ios.settings.backgroundSpeechFooter": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "화면이 꺼지거나 다른 앱을 쓰는 동안에도 회전, 이탈, 도착 같은 안내와 나들이 주변 낭독을 기기 음성으로 말합니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Speaks guidance such as turns, going off route, and arrival, plus Stroll surroundings, in the device voice even while the screen is off or you are using another app."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anuncia con la voz del dispositivo indicaciones como giros, desvíos de la ruta y llegada, y los alrededores del paseo, incluso con la pantalla apagada o mientras usas otra app."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Annonce avec la voix de l'appareil les indications comme les virages, les écarts d'itinéraire et l'arrivée, ainsi que les alentours de la balade, même écran éteint ou pendant l'utilisation d'une autre app."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pronuncia con la voce del dispositivo indicazioni come svolte, uscite dal percorso e arrivo, e i dintorni della passeggiata, anche a schermo spento o mentre usi un'altra app."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "画面が消えているときや他のアプリを使っているときも、曲がる地点、ルート外れ、到着などの案内とお散歩の周辺読み上げを端末の音声で伝えます。"
+          }
+        }
+      }
+    },
     "ios.settings.carListener": {
       "localizations": {
         "ko": {

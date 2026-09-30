@@ -238,6 +238,8 @@
       "listenSpeed1x": "1x",
       "listenSpeed15x": "1,5x",
       "listenSpeed2x": "2x",
+      "backgroundSpeech": "Guida vocale in background",
+      "backgroundSpeechFooter": "Pronuncia con la voce del dispositivo indicazioni come svolte, uscite dal percorso e arrivo, e i dintorni della passeggiata, anche a schermo spento o mentre usi un'altra app.",
       "aiSection": "Chat IA",
       "aiConsentToggle": "Consenso all'invio dei dati della chat IA",
       "reportProblem": "Segnala un problema",

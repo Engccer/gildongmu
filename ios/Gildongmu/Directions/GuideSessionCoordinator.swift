@@ -156,7 +156,7 @@ final class GuideSession {
         beacon.onSessionEnd = { [weak self] reason in self?.endPrewalk(context.id, reason: reason) }
         transit.announceExternal(TransitGuideTextRenderer.render(
             transitPrewalkStartLine(
-                isEn: transitGuideIsEn, station: stationLabel, minutes: target.minutes)))
+                isEn: transitGuideIsEn, station: stationLabel, minutes: target.minutes)), speechClass: .actionable)
         launchingPrewalk = true
         self.startBeacon(BeaconModel.StartRequest(
             dest: BeaconDest(lat: target.lat, lng: target.lng), label: walkLabel, kind: .walk,
@@ -186,17 +186,20 @@ final class GuideSession {
         case .startFailed:
             // 도보 안내가 불가해도 대중교통 안내는 가능하다 — 도보 문맥은 유지(아직 걷지 않았다).
             beacon.clearPrewalk()  // 동기 거부 분기는 begin() Task를 지나지 않아 표식이 남는다
-            transit.announceExternal(appLocalized("transitGuide.prewalkUnavailable"))
+            transit.announceExternal(appLocalized("transitGuide.prewalkUnavailable"), speechClass: .actionable)
             transit.startAfterPrewalk(
                 transitRoute: context.route, destinationLabel: context.destinationLabel,
                 dest: context.dest, accessible: context.accessible, prewalkCompleted: false)
         case .userStopped:
             // 요약 화면이 없어 stopByUser의 통지가 안 나간다 — 정지 문장과 함께 한 문장으로.
             transit.announceExternal(joinText(
-                appLocalized("ios.beacon.stopped"), appLocalized("transitGuide.prewalkCancelled")))
+                appLocalized("ios.beacon.stopped"), appLocalized("transitGuide.prewalkCancelled")),
+                speechClass: .actionable)
         case .ended:
-            // 종료 사유 문장(유휴·권한)은 도보 모델이 이미 냈다(콜백이 다음 턴이라 순서가 구조적).
-            transit.announceExternal(appLocalized("transitGuide.prewalkCancelled"))
+            // 종료 사유 문장(유휴·권한)은 도보 모델이 이미 냈다(콜백이 다음 턴이라 순서가 구조적). 분류는 행동 문장(E53
+            // spec §3.3, 설계 리뷰 M7): prewalk엔 안전망이 돌지 않아 이 경로는 권한·정밀 위치 상실·다른 세션뿐이고, "기다리는
+            // 대중교통 안내가 오지 않는다"는 사실은 모르면 승차역에서 차량 선택을 기다리게 된다.
+            transit.announceExternal(appLocalized("transitGuide.prewalkCancelled"), speechClass: .actionable)
         }
     }
 

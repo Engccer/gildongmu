@@ -62,7 +62,12 @@
       "status": "ported",
       "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/DeferredAnnouncer.kt",
       "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/DeferredAnnouncerTest.kt",
-      "note": "@MainActor → 메인 스레드 전용 클래스 + 주입 scope(메인 디스패처). 예약 코루틴은 LAZY로 슬롯 대입 뒤 시작(즉시 디스패처 대비 — deferredPostSurvivesImmediateDispatcher가 잠금). speechDeferStep·SpeechDeferConstants는 GUIDE GuideSpeechGate.kt 소유"
+      "note": "@MainActor → 메인 스레드 전용 클래스 + 주입 scope(메인 디스패처). 예약 코루틴은 LAZY로 슬롯 대입 뒤 시작(즉시 디스패처 대비 — deferredPostSurvivesImmediateDispatcher가 잠금). speechDeferStep·SpeechDeferConstants는 GUIDE GuideSpeechGate.kt 소유. ⚠ Swift는 E53(2026-09-30 백그라운드 음성 안내)에서 announce에 필수 speechClass를, post에 speechClass·onLateDrop을 싣는다 — 안드로이드는 백그라운드 음성 이식 때 함께 옮긴다(PORTS)"
+    },
+    {
+      "swift": "DeviceSpeechQueue.swift",
+      "status": "pending",
+      "note": "E53 백그라운드 음성 안내의 기기 음성 대기 한 칸(spec 2026-09-30-background-speech-design.md §4.2, 나들이 speakDevice에서 올림). 안드로이드 안내 화면에 백그라운드 음성을 들일 때(PORTS) 이식한다"
     },
     {
       "swift": "Directions.swift",
