@@ -900,7 +900,7 @@ struct TransitTrackingSheet: View {
                 transitGuideLog("landingFallback target=\(target) skipped=voMatchesLabel")
                 return
             }
-            // 시도 중 배경으로 내려갔으면 게시하지 않고 이월한다(배경 게시는 `missedAnnouncement`만 세운다 — a11y A2).
+            // 시도 중 배경으로 내려갔으면 게시하지 않고 이월한다(배경에서는 VoiceOver 통지가 들리지 않는다 — a11y A2).
             guard model.isForeground else {
                 deferredLanding = target
                 transitGuideLog("landingFallback target=\(target) skipped=background deferred=true")
