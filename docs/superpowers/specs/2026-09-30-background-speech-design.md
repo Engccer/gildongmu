@@ -6,6 +6,8 @@
 
 > **구현 리뷰(2026-09-30, spec 준수·코드 품질·접근성 3종, 보고 `bg-speech-reports/review-{spec,quality,a11y}-*.md`)**: 반영. 복귀 인계가 "지금 소리가 이 칸의 발화인가"를 발화 토큰으로 가른다(다른 모델의 발화를 끊고 낡은 문장을 되살리던 결함, spec M-1·품질 M-1) · 인계는 게시하지 않고 목록을 돌려주고 모델이 상환과 `.high` 한 통지로 합친다(품질 M-2·M-3·접근성 MAJOR 1) · 임박 명령은 `urgent` 분류로 기기 음성에서도 선점(접근성 MAJOR 2) · 채널이 그대로 기기 음성이면 인계가 끊지 않는다·인계도 억제·유효 시간을 지난다·선점으로 끊긴 이 칸의 발화는 `superseded` 통지(접근성 m2~m4, 품질 m-1·m-2) · 톤 대기 상한은 한 번의 대기당·드레인은 대기 동안 self를 붙들지 않는다(품질 m-3·m-7) · prewalk 도착 추정은 행동 문장(spec m-3) · 죽은 `TtsPlayer.isSpeaking` 삭제·운전자 원복 다리 통일·낡은 주석(품질 m-5·m-6) · 로케일별 나들이 낭독 이름(접근성 m1) · 가드 짝 검사·도보 `post` 표식 가드(품질 m-4). 기록만: 안드로이드 설정 문자열이 소비자 없이 생성된다(품질 m-9, 이식 때 소비) · `TransitTrackingSheet`의 배경 게시 주석(품질 m-6 한 자리)은 병행 세션 소유 파일이라 보고로 넘긴다 · CLAUDE.md 나들이 문장(spec m-6)은 코디네이터 반영.
 
+> **검증 리뷰(2026-09-30, 수정 커밋 `3c484f07`·`ad5c4148` 대상, 보고 `bg-speech-reports/review-verify-202609301958.md`, BLOCKER 0·MAJOR 0·MINOR 8)**: 선행 MAJOR 6건 해소 확인. 반영: N2 중복 제거는 낭독 정정 뒤끼리 · N3 VoiceOver 꺼진 복귀는 인계하지 않는다 · N4 유휴 재개 복귀는 재개 문장 앞에 · N5 드레인 폴백 게시 `.high` · N6 술어 망라 switch · N7 문서 불일치 · N8 테스트·가드 검출력(톤 상한 탈출, 상한 재설정, urgent 통지, 합친 뒤 비우기) · nit 주석. 기록만: N1 모델 사이의 연속 통지(§4.2 ⑧, 실승차 관찰).
+
 백로그 정본: `docs/BACKLOG.md` E53. 선행 설계: 백그라운드 톤 spec `2026-08-08-background-tone-coverage-design.md`(백그라운드는 소리만), 톤 뒤 발화 spec `2026-08-14`(`speechDeferStep`·`DeferredAnnouncer`), 나들이 spec `2026-09-26-outing-mode-design.md` §7.3(기기 음성 대기 한 칸), 대중교통 백그라운드 폴 spec `2026-09-11-transit-background-poll-design.md`.
 
 ## 1. 판정과 범위
@@ -32,7 +34,7 @@
 |---|---|---|
 | 전경 | 켜짐 | `.voiceOver` (VoiceOver 통지) |
 | 전경 | 꺼짐 | `foregroundDeviceSpeech` ? `.device` : `.voiceOver` |
-| 백그라운드 | 무관 | `backgroundSpeechEnabled ∧ backgroundAudible ∧ speechClass == .actionable` ? `.device` : `.drop` |
+| 백그라운드 | 무관 | `backgroundSpeechEnabled ∧ backgroundAudible ∧ speechClass ∈ {actionable, urgent}` ? `.device` : `.drop`(분류는 망라 switch, 새 분류는 컴파일에서 판정된다) |
 
 - `backgroundAudible`은 그 모델 재생기의 `isBackgroundAudible`(카테고리 `.playback` ∧ 활성)이다. 승격이 실패·지연된 세션에서 기기 음성은 백그라운드에서 들리지 않는데, 그것을 `.device`로 "전달"하면 1회성 경고 latch와 복귀 상환이 들리지 않은 문장에 소비된다(설계 리뷰 B1). 그때는 `.drop`이라 종전 상환 계약이 그대로 돈다.
 
@@ -40,7 +42,7 @@
 - `.inactive`(제어 센터·알림 센터)는 전경이다(종전 `isForeground`와 같은 판정, 게시 시점 조회).
 - **자동차 운전자 채널은 이 술어 위에 있다.** `BeaconModel.post`의 `driverChannel` 분기가 술어보다 먼저 기기 음성으로 낸다(K2 §6.2, 잠금 중 발화가 목적 그 자체). 토글과 무관하다: 운전자 모드는 사용자가 스피커 발화를 고른 모드이고, 토글을 끄면 운전자 안내가 잠금 중 무음이 되는 것은 판정 ②의 뜻(끄면 효과음만)과도 맞지 않는 결합이라 분리한다. 운전자 모드의 문장 빈도는 K2가 이미 정했다(주기·GPS 상태 통지 없음).
 
-**정식판 등가성**: `backgroundSpeechEnabled = false`이면 백그라운드는 분류·가청과 무관하게 `.drop`, 전경은 `.voiceOver`(도보·대중교통)라 종전 `guard isForeground else { missedAnnouncement = true; return false }` → VoiceOver 게시와 같다. Kit 테스트가 입력 전 조합(2×2×2×2×2)으로 종전 함수와 대조한다. 두 채널 모두 거리 단위 낭독 정정(`spokenUnits`)을 지난다(CLAUDE.md 거리 표기 계약). 새 진단 로그(`bgSpeech`·`outingSpeak`의 `fg=`·`class=`)는 정식판에서 빈 함수라 관측 동작이 아니다.
+**정식판 등가성**: `backgroundSpeechEnabled = false`이면 백그라운드는 분류·가청과 무관하게 `.drop`, 전경은 `.voiceOver`(도보·대중교통)라 종전 `guard isForeground else { missedAnnouncement = true; return false }` → VoiceOver 게시와 같다. Kit 테스트가 입력 전 조합(2^4 × 분류 3)으로 종전 함수와 대조한다. 두 채널 모두 거리 단위 낭독 정정(`spokenUnits`)을 지난다(CLAUDE.md 거리 표기 계약). 새 진단 로그(`bgSpeech`·`outingSpeak`의 `fg=`·`class=`)는 정식판에서 빈 함수라 관측 동작이 아니다.
 
 ## 3. 문장 분류
 
@@ -166,7 +168,7 @@
 5. 0.3초 간격으로 확인해 말이 끝나면, 톤이 울리는 중이면 그 뒤까지 기다리고(`speechDeferStep`, 상한 3초, 톤 뒤 발화 계약, m10) 꺼낸다. 꺼내는 순간 억제 중이면(사용자 활성화의 직접 응답은 면제, m2) 버리고, 보호 문장이 아닌데 6초를 넘게 기다렸으면 버리고, 그 밖은 **채널을 다시 고른다**(술어를 그 시점 상태로).
 6. **버림 통지는 문장마다 최대 한 번, 주체는 대기 칸이고 이유를 싣는다**(m1·M1): 교체·즉시 발화·선점으로 더 새 문장이 이었으면 `superseded`, 아무것도 잇지 않고 사라졌으면(유효 시간·억제·채널 소실·보호 문장에 막힘) `undelivered`.
 7. 세션 경계(`advanceGeneration`과 같은 자리)의 `reset()`은 칸을 **버림 통지 없이** 비운다(`DeferredAnnouncer.advanceGeneration`과 같은 이유: `stop()`이 장부를 먼저 비운 뒤라 복원이 끝난 세션의 경고를 되살린다).
-8. **전경 복귀는 인계(`handOver()`)다**(M5): 채널이 VoiceOver로 바뀐 문장을 **게시하지 않고 목록으로 돌려준다**(옛 것 → 새 것). 지금 말하는 문장은 **이 칸이 낸 발화일 때만**(발화 토큰: `TtsPlayer.speakGuidance`의 반환 ↔ `isSpeakingGuidance(token:)`. 칸 셋이 합성기 하나를 나눠 쓰므로 "누군가 말하는 중"으로 가르면 다른 모델의 발화를 끊고 낡은 문장을 되살린다, 구현 리뷰 M-1) 끊고 처음부터 넘긴다. 칸의 문장은 억제·유효 시간 검사를 지난 것만 넘긴다. 채널이 그대로 기기 음성이면(VoiceOver 꺼진 나들이) 끊지도 다시 내지도 않는다. 모델은 받은 목록과 복귀 상환 문장(인계와 같은 문장은 뺀다)을 **`.high` 한 통지**로 낸다: 통지 둘을 잇달아 내면 뒤의 것이 앞의 것을 자르고, 앱 활성화 순간의 기본 우선순위 통지는 VoiceOver 화면 낭독에 잠식된다(구현 리뷰 M-2·M-3). 인계한 문장은 버림이 아니다. 도보는 상환 블록에서, 대중교통은 추적 가드 앞에서 받고(백그라운드에서 끝난 세션의 완료 문장, m4) 합칠 자리를 지나지 않는 경로는 함수 끝에서 따로 내며, 나들이는 종료 사유 장부와 합친다.
+8. **전경 복귀는 인계(`handOver()`)다**(M5): 채널이 VoiceOver로 바뀐 문장을 **게시하지 않고 목록으로 돌려준다**(옛 것 → 새 것). 지금 말하는 문장은 **이 칸이 낸 발화일 때만**(발화 토큰: `TtsPlayer.speakGuidance`의 반환 ↔ `isSpeakingGuidance(token:)`. 칸 셋이 합성기 하나를 나눠 쓰므로 "누군가 말하는 중"으로 가르면 다른 모델의 발화를 끊고 낡은 문장을 되살린다, 구현 리뷰 M-1) 끊고 처음부터 넘긴다. 칸의 문장은 억제·유효 시간 검사를 지난 것만 넘긴다. 채널이 그대로 기기 음성이면(VoiceOver 꺼진 나들이) 끊지도 다시 내지도 않는다. 모델은 받은 목록과 복귀 상환 문장(인계와 같은 문장은 뺀다)을 **`.high` 한 통지**로 낸다: 통지 둘을 잇달아 내면 뒤의 것이 앞의 것을 자르고, 앱 활성화 순간의 기본 우선순위 통지는 VoiceOver 화면 낭독에 잠식된다(구현 리뷰 M-2·M-3). VoiceOver가 꺼진 전경이면(도보·대중교통은 채널이 VoiceOver 게시라 듣는 사람이 없다) 끊지 않고 넘기지도 않는다(검증 리뷰 N3). ⚠ "한 통지"는 **모델 단위**다: 복귀 때 세 모델이 차례로 불리므로 모델이 바뀐 직후(승차 전 도보 도착 → 대중교통 시작)에는 모델마다 한 통지씩 나가고 뒤의 것(더 새 세션의 문장)이 앞의 것을 자를 수 있다. 들리는 것이 더 새 상태라 받아들이고 실승차 관찰 항목으로 둔다(검증 리뷰 N1). 인계한 문장은 버림이 아니다. 도보는 상환 블록에서, 대중교통은 추적 가드 앞에서 받고(백그라운드에서 끝난 세션의 완료 문장, m4) 유휴 재개 복귀는 재개 문장 앞에 싣고, 합칠 자리를 지나지 않는 경로는 함수 끝에서 따로 내며, 나들이는 종료 사유 장부와 합친다. 인계와 상환의 중복 제거는 낭독 정정(`spokenUnits`) 뒤 문자열끼리 비교한다(검증 리뷰 N2). 드레인이 인계보다 먼저 깨어 VoiceOver로 게시하는 짧은 창은 `.high`로 낸다(N5).
 
 "다른 앱의 VoiceOver 낭독과 겹칠 때"(판정 남은 세부): 다른 앱의 VoiceOver 발화는 앱이 관찰할 수 없다. 기본은 위 규칙 그대로(우리 안내 발화가 말하는 중일 때만 대기, 평범한 문장은 선점 금지)이고, 겹침은 실사용 판정 행으로 둔다(BACKLOG §2).
 
@@ -204,7 +206,7 @@ E36 뒤로 대중교통의 백그라운드 톤은 `trackingStarted` 하나뿐이
 - 기기 음성은 안내 세션의 오디오 세션 위에서 난다: 재생기(도보·대중교통·나들이 `BeaconTonePlayer`)가 세션 동안 `.playback` + `.mixWithOthers`로 승격하고, `TtsPlayer.speakGuidance`는 카테고리를 건드리지 않는다(종전 계약: 여기서 `.duckOthers`로 다시 세팅하면 `guideAudioStep` 판정 밖에서 카테고리가 바뀐다). route 변경의 자기 메아리 판정(`guideAudioRouteChangeEvent`)과 소유권 이전(`.ownershipTransferred`)은 카테고리를 바꾸는 소비자가 늘지 않으므로 영향이 없다.
 - 승격 실패(`isBackgroundAudible` 거짓)면 백그라운드에서 톤과 함께 기기 음성도 들리지 않는다. 그래서 술어가 그 세션의 백그라운드 문장을 버림으로 판정하고(§2 가청) 종전 상환 계약이 그대로 돈다. 기존 "화면이 꺼지거나 다른 앱을 쓰는 동안에는 안내 소리가 나지 않습니다" 경고가 그 조건을 알린다(소리 = 톤과 음성).
 - **소리를 낸 직후 말할 때**: 문장은 `speechDeferStep`이 톤 끝까지 미룬다(두 채널 공통의 앞단, 종전). 기기 음성 도중 새 톤이 울리면 섞여 난다(같은 앱의 두 재생기, `.mixWithOthers`). 톤이 문장을 끊지 않는다.
-- **말한 직후 세션을 끝낼 때**: 원복을 시계가 아니라 **발화 종료에 결박한다**(설계 리뷰 M4: 글자 수 어림은 앞 문장이 길면 모자라 백그라운드 도착 문장 끝을 `.ambient` 아래에서 잘랐다). `endSession(holdSeconds:speechBusy:)`: 톤 잔여 + 0.15 + 다리(`holdSeconds`)를 기다린 뒤, `speechBusy`(안내 발화 중 ∨ 대기 칸에 문장, `GuideSpeechOutput.speechBusy`)가 참인 동안 0.3초 간격으로 더 기다린다(상한 `deviceSpeechEndWaitMaxSeconds` 20초). 다리는 종료 문장이 톤 뒤 발화 간격(0.15초)을 지나 말하기 시작할 때까지 원복을 붙드는 `deviceSpeechEndBridgeSeconds` 1초다: 나들이는 늘(전경 VoiceOver 꺼짐도 기기 음성), 도보·대중교통은 `stop()` 시점에 백그라운드 ∧ 토글 켬일 때만(그 밖 0초), 운전자 채널 4초는 그대로. `speechBusy`는 `speechBusy`가 기본값 없는 인자라 새 호출부가 빠뜨릴 수 없다. 정식판에는 안내 기기 음성이 없어 늘 거짓이라 종전과 같다(채팅 듣기는 세지 않는다). `beginSession()`은 미뤄 둔 원복을 취소하고, 다른 재생기가 그 사이 시작했으면 원복 의무는 이전된다(종전).
+- **말한 직후 세션을 끝낼 때**: 원복을 시계가 아니라 **발화 종료에 결박한다**(설계 리뷰 M4: 글자 수 어림은 앞 문장이 길면 모자라 백그라운드 도착 문장 끝을 `.ambient` 아래에서 잘랐다). `endSession(holdSeconds:speechBusy:)`: 톤 잔여 + 0.15 + 다리(`holdSeconds`)를 기다린 뒤, `speechBusy`(안내 발화 중 ∨ 대기 칸에 문장, `GuideSpeechOutput.speechBusy`)가 참인 동안 0.3초 간격으로 더 기다린다(상한 `deviceSpeechEndWaitMaxSeconds` 20초). 다리는 종료 문장이 톤 뒤 발화 간격(0.15초)을 지나 말하기 시작할 때까지 원복을 붙드는 `deviceSpeechEndBridgeSeconds` 1초다: 나들이는 늘(전경 VoiceOver 꺼짐도 기기 음성), 도보·대중교통은 `stop()` 시점에 백그라운드 ∧ 토글 켬일 때만(그 밖 0초), 운전자 채널도 같은 다리(종전 4초 어림을 대체, 발화 대기가 문장 끝까지 잇는다). `speechBusy`는 `speechBusy`가 기본값 없는 인자라 새 호출부가 빠뜨릴 수 없다. 정식판에는 안내 기기 음성이 없어 늘 거짓이라 종전과 같다(채팅 듣기는 세지 않는다). `beginSession()`은 미뤄 둔 원복을 취소하고, 다른 재생기가 그 사이 시작했으면 원복 의무는 이전된다(종전).
 
 ## 8. 그 밖의 변경
 
@@ -213,7 +215,7 @@ E36 뒤로 대중교통의 백그라운드 톤은 `trackingStarted` 하나뿐이
 
 ## 9. 검증
 
-- Kit: 채널 술어 전수(2^5)·정식판 등가성, 분류 함수 전수(모든 이벤트 케이스), `BackgroundSpeech.isEnabled`, 원복 다리 ≥ 발화 시작 간격, `DeviceSpeechQueue` 수명(즉시·대기·교체=superseded·`.high` 선점·즉시 발화 전 칸 비우기·보호 문장·TTL·억제와 우회·톤 뒤 대기·재선택·reset·인계 순서·끝난 발화 불인계), `DeferredAnnouncer`의 분류·onLateDrop 전달.
+- Kit: 채널 술어 전수(2^4 × 분류 3)·정식판 등가성, 분류 함수 전수(모든 이벤트 케이스), `BackgroundSpeech.isEnabled`, 원복 다리 ≥ 발화 시작 간격, `DeviceSpeechQueue` 수명(즉시·대기·교체=superseded·`.high` 선점·즉시 발화 전 칸 비우기·보호 문장·TTL·억제와 우회·톤 뒤 대기·재선택·reset·인계 순서·끝난 발화 불인계), `DeferredAnnouncer`의 분류·onLateDrop 전달.
 - 소스 가드(웹 레인 `background-speech-guard.test.ts`): 기기 음성 호출(`speakGuidance`)은 공유 출력 한 곳과 운전자 채널 한 곳뿐 · 토글 실효값은 한 함수 · 설정 행은 실험 플래그 조건 안 · 플래그는 `#if EXPERIMENTAL`에서만 참 · 세 모델의 `post`는 가청 인자와 함께 술어를 지난다 · `speechClass`에 기본값 없음 · 운전자 분기는 술어보다 앞 · 복귀 인계 자리 · 세 모델의 종료 원복이 발화 대기를 넘긴다 · 세션 경계마다 칸 reset. 기존 가드(`outing-guard`·`transit-background-guards`)는 새 구조로 옮긴다.
 - 빌드: 앱 Experimental·Release 두 구성.
 - 실사용(BACKLOG §2 E53 행): 잠금 중 기기 음성이 실제로 들리는가(그 뒤 톤이 계속 들리는가) · 다른 앱 VoiceOver 낭독과 겹침 · 문장 빈도(도보 실보행·자동차 실주행·대중교통 실승차·나들이 실보행) · 배터리.
