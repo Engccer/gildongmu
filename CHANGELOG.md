@@ -16,6 +16,14 @@
 - 영어 세션에서 마지막 도보 줄이 목적지 원명을 그대로 넣어 "Walk 4 min to 63빌딩, 242m"처럼 한 줄에 두 언어가 섰다. 이제 영어 줄은 목적지의 라틴 표기(E28 1순위 이름)만 싣고, 없으면 "to the destination"이다(병기 괄호 없음).
 - 판정 한 벌(웹 `transitWalkDestinationName` ↔ Kit `TransitWalkLegText.destinationName` ↔ 안드로이드 :kit)과 공유 fixture `transit-walk-destination-cases.json`. iOS·안드로이드 길찾기는 도착지 `labelRoman`을 넘기고, 웹 화면 브리핑과 WebMCP 계획 투영은 같은 도보 줄 함수 `transitWalkLegMessage`를 지난다.
 
+### 자동차 안내 시트 첫 줄 "현재 도로, {도로 이름}" (E56, `car-road`)
+
+- iOS 실험판·웹 자동차 안내 시트의 첫 줄이 구간 전문("현재 안내, 우회전 후 올림픽로를 따라 298m 이동")에서 **지금 달리는 도로 이름**("현재 도로, 올림픽로")으로 바뀌었다. 이름을 모르면 줄이 없고, 바뀔 때 따로 읽어 주지 않는다. 원천은 서버가 이미 싣는 `roadLinks`이고 현재 진행거리가 속한 링크에서 읽는다(서버 응답 불변). 한 안내 구간 안에서 도로가 바뀌는 스텝이 15%라 스텝 단위 이름은 기각했다(Tmap 6구간 실호출, 채움률 거리 기준 0.982).
+- 웹 자동차 화면은 하단 2행(지금 할 일·다음 안내)이 배선 누락으로 꺼져 있었다: 함께 켜서 iOS와 같은 세 줄이 됐다. 새 문구 키 `guide.currentRoad` 6로케일.
+- 동반: E31 iOS 역이식 도보 몫(`clearArrival()`이 도보 종료 화면이 있을 때만 체중 권유 응답 표식을 지운다), E55 뒤 낡은 주석 넷.
+- spec `docs/superpowers/specs/2026-09-30-car-current-road-line-design.md`, 게이트 `scripts/verify-car-road-names.mjs`.
+
+
 ### 도보 조회 화면 줄 구성: 최단 · 큰길 · 계단 회피, 같은 길은 한 줄 (E52, `walk-lines`)
 
 - 도보 줄 목록이 최단 경로 뒤에 큰길 경로(최단과 다른 길일 때만)와 계단 회피 경로(앞의 두 줄과 다른 길일 때만)를 싣는다. 같은 길 판정은 좌표열 비교다. 계단 없는 최단 옆에 큰길과 같은 길이 "계단 회피 경로"로 붙던 문제를 없앴다(조사 45구간: 1줄 10 · 2줄 27 · 3줄 8, 종전은 전부 2줄).
