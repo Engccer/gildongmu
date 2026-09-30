@@ -2,7 +2,7 @@
 
 > **리뷰 게이트 판정**: 적대적 설계 리뷰 대상이다. 새 판정 계층(문장 분류·채널 선택 술어)과 안전 크리티컬 전달(1회성 경고의 "복귀 때 갚기" 계약)을 바꾸기 때문이다(글로벌 codex 운영 규칙 ①·④).
 
-> **리뷰 결과(2026-09-30, fable 1회, BLOCKER 1·MAJOR 7·MINOR 10, 보고 `bg-speech-reports/review-design-202609301916.md`)**: 반영 — B1 채널 술어에 가청 여부(`backgroundAudible`, 재생기 `isBackgroundAudible`)를 넣어 승격 실패 때 들리지 않는 문장을 "전달"로 치지 않는다(§2) · M1 대기 칸의 버림을 교체(`superseded`)와 미전달(`undelivered`)로 갈라 교체는 복귀 표식을 세우지 않는다(§4.2·§4.3) · M2 `.high`는 대기하지 않고 선점하고, 새 문장을 막는 "보호"는 나들이 시작·횡단보도에만 남겼다(§4.2) · M3 대기는 안내 발화만 기다리고 채팅 듣기는 끊는다(`TtsPlayer.isSpeakingGuidance`, §4.2) · M4 원복을 글자 수 어림이 아니라 발화 종료에 결박했다(`endSession(speechBusy:)`, §7) · M5 복귀는 flush가 아니라 인계(`handOver`: 말하는 중인 안내를 끊고 그 문장과 칸의 문장을 VoiceOver로 다시 낸다, §4.2) · M6 나들이 종료 상환을 종료 화면이 아니라 종료 사유 장부에 걸었다(§3.4, 백그라운드 문장·정지음 여부는 위원장 판정 질문으로 올렸다) · M7 prewalk `.ended`는 행동 문장(안전망은 prewalk에 돌지 않는다, §3.3) · m1 버림 통지는 문장마다 최대 한 번, 주체는 대기 칸 · m2 직접 응답은 꺼낼 때 억제 검사 면제 · m3 즉시 발화 전 칸 비우기 · m4 대중교통 인계는 추적 가드 앞 · m6 분배 절(§11) · m7 `spokenUnits` 경유 명시 · m8 호출부 수치 삭제 · m10 꺼내기 전 톤 뒤 대기. 기각 — §8 주석 수정은 코디네이터 지시라 유지(범위 잡음 지적) · m9 진단 로그는 정식판에서 빈 함수(`guideDiagLog`·`transitGuideLog`가 `#else` 무동작)라 관측 동작이 아니다 · footer의 나들이 언급은 사용자 문안이라 판정 경로로 넘긴다(§6) · m5는 기록만(졸업 판정 항목).
+> **리뷰 결과(2026-09-30, fable 1회, BLOCKER 1·MAJOR 7·MINOR 10, 보고 `bg-speech-reports/review-design-202609301916.md`)**: 반영. B1 채널 술어에 가청 여부(`backgroundAudible`, 재생기 `isBackgroundAudible`)를 넣어 승격 실패 때 들리지 않는 문장을 "전달"로 치지 않는다(§2) · M1 대기 칸의 버림을 교체(`superseded`)와 미전달(`undelivered`)로 갈라 교체는 복귀 표식을 세우지 않는다(§4.2·§4.3) · M2 `.high`는 대기하지 않고 선점하고, 새 문장을 막는 "보호"는 나들이 시작·횡단보도에만 남겼다(§4.2) · M3 대기는 안내 발화만 기다리고 채팅 듣기는 끊는다(`TtsPlayer.isSpeakingGuidance`, §4.2) · M4 원복을 글자 수 어림이 아니라 발화 종료에 결박했다(`endSession(speechBusy:)`, §7) · M5 복귀는 flush가 아니라 인계(`handOver`: 말하는 중인 안내를 끊고 그 문장과 칸의 문장을 VoiceOver로 다시 낸다, §4.2) · M6 나들이 종료 상환을 종료 화면이 아니라 종료 사유 장부에 걸었다(§3.4, 백그라운드 문장·정지음 여부는 위원장 판정 질문으로 올렸다) · M7 prewalk `.ended`는 행동 문장(안전망은 prewalk에 돌지 않는다, §3.3) · m1 버림 통지는 문장마다 최대 한 번, 주체는 대기 칸 · m2 직접 응답은 꺼낼 때 억제 검사 면제 · m3 즉시 발화 전 칸 비우기 · m4 대중교통 인계는 추적 가드 앞 · m6 분배 절(§11) · m7 `spokenUnits` 경유 명시 · m8 호출부 수치 삭제 · m10 꺼내기 전 톤 뒤 대기. 기각. §8 주석 수정은 코디네이터 지시라 유지(범위 잡음 지적) · m9 진단 로그는 정식판에서 빈 함수(`guideDiagLog`·`transitGuideLog`가 `#else` 무동작)라 관측 동작이 아니다 · footer의 나들이 언급은 사용자 문안이라 판정 경로로 넘긴다(§6) · m5는 기록만(졸업 판정 항목).
 
 백로그 정본: `docs/BACKLOG.md` E53. 선행 설계: 백그라운드 톤 spec `2026-08-08-background-tone-coverage-design.md`(백그라운드는 소리만), 톤 뒤 발화 spec `2026-08-14`(`speechDeferStep`·`DeferredAnnouncer`), 나들이 spec `2026-09-26-outing-mode-design.md` §7.3(기기 음성 대기 한 칸), 대중교통 백그라운드 폴 spec `2026-09-11-transit-background-poll-design.md`.
 
@@ -76,7 +76,7 @@
 | 최종 접근 틱(15초) | `guide.finalApproachTick` | deferrable | 주기 |
 | 간략 인계 | `guide.handoff` | actionable | 안내 방식 전환 |
 | 확정 도착 · prewalk 승차역 도착·선언 | `guide.arrived`·`transitGuide.prewalkArrived` | actionable | 도착 |
-| 도착 추정 종료 `maybePresumeArrival` | `guide.arrivedPresumed` | deferrable | 사후 정리(도착 3~5분 뒤, 종도 전경에서만 — 위원장 2026-08-19. 코디네이터 판정의 유도) |
+| 도착 추정 종료 `maybePresumeArrival` | `guide.arrivedPresumed` | deferrable | 사후 정리(도착 3~5분 뒤, 종도 전경에서만, 위원장 2026-08-19. 코디네이터 판정의 유도) |
 | 안전망 종료 `maybeEndIdleSession` | `guide.endedIdle` | deferrable | 코디네이터 판정 |
 | 실패 종료 `fail(with:)` | `beacon.denied`·`beacon.reduced` 등 | actionable | 권한·정밀 위치 상실(행동 필요) |
 | 사용자 중지 `stopByUser` | `ios.beacon.stopped` | actionable | 직접 응답 |
@@ -84,7 +84,7 @@
 | 재조회 실패 | `guide.rerouteFailed` | actionable | 직접 응답(수동) |
 | 대안 프리뷰 결과 | `guide.altPreviewNone`·`altPreviewFailed`·헤더 | actionable | 직접 응답(시트) |
 | `announceProgress` | 진행 상황 | actionable | 직접 응답 |
-| 소리 무음·백그라운드 무음 경고 | `ios.beacon.soundUnavailable`·`soundBackgroundUnavailable` | actionable | 1회성 경고(백그라운드에선 세션이 승격 실패면 기기 음성도 들리지 않는다 — §7) |
+| 소리 무음·백그라운드 무음 경고 | `ios.beacon.soundUnavailable`·`soundBackgroundUnavailable` | actionable | 1회성 경고. 승격 실패면 술어가 버림을 내서 종전처럼 장부가 서고 복귀 때 갚는다(§2 가청) |
 | 억제 해제 복구 `pendingRecovery` | 예고·원거리 예고·경유지 도착의 최신 1개 | actionable | 보관 대상이 전부 actionable |
 | 전경 복귀 상환 | 장부 + 현재 상태 | actionable | 전경에서만 불린다 |
 | `announceNow` 전부(목적지·경유지 전환, 거절) | `ios.guide.*`·`guide.alreadyActive` | actionable | 직접 응답 |
@@ -95,14 +95,14 @@
 
 | 이벤트·트리거 | 문장(ko) | 분류 | 근거 |
 |---|---|---|---|
-| 세션 시작 | `transitGuide.startedAt` + 승차 문맥 | actionable | 시작(prewalk 도착 뒤 백그라운드 자동 시작 포함 — 차량 선택이 기다린다) |
+| 세션 시작 | `transitGuide.startedAt` + 승차 문맥 | actionable | 시작(prewalk 도착 뒤 백그라운드 자동 시작 포함, 차량 선택이 기다린다) |
 | `vehicleSelected` | "{desc} 선택. {stop} 도착을 기다립니다." | actionable | 직접 응답 |
 | `approaching` 잔여 ≤1 | "{stop}에 {message}." | actionable | 임박(지금 움직일 신호) |
 | `approaching` 잔여 ≥2·첫 관측 | "선택한 차량을 추적합니다. …" | deferrable | 주기(사다리) |
 | `arrivingAtBoardStop` | "{line} 곧 도착합니다." | actionable | 임박 |
 | `vehiclePassed` | "선택한 차량이 {stop}에서 이미 출발한 것으로 보입니다." | actionable | 다른 차량을 골라야 한다 |
 | `boarded`(observed·departed·declared) | "{line} 도착. 탑승하세요." / "탑승했습니다. 하차: {stop}." | actionable | 국면 전이. 오관측이면 탑승 변경이 필요하다 |
-| `trackingStarted` | "추적을 시작합니다. …" | deferrable | 백그라운드 톤이 있는 유일한 이벤트(E36) — 그 톤이 자리를 맡는다 |
+| `trackingStarted` | "추적을 시작합니다. …" | deferrable | 백그라운드 톤이 있는 유일한 이벤트(E36). 그 톤이 자리를 맡는다 |
 | `countdown` 잔여 ≤1 | 하차 임박 상태 문장 | actionable | 임박 |
 | `countdown` 잔여 ≥2 | "남은 정거장 {n}개." 등 | deferrable | 주기(사다리) |
 | `arrivingAtAlightStop` | "이번 정류장에서 내리세요." | actionable | 임박 |
@@ -113,7 +113,7 @@
 | `signalLost`·`upstreamFailed` | "차량 신호를 찾지 못하고 있습니다." 등 | deferrable | 상태(복귀 즉폴·상태 문장이 갚는다) |
 | `boardingReset`·`capSlowed` | "차량을 다시 선택합니다." · "실시간 조회가 많아 갱신 주기를 늦춥니다." | deferrable | 상태 |
 | 완료(`completeOrAdvance`) | `finalLegText` | actionable | 도착 |
-| 유휴 정지 `enterIdleIfDue` | `transitGuide.idlePaused` | deferrable | 안전망(코디네이터 판정의 유도, 복귀가 곧 조작이라 재개 문장이 갚는다 — E36 종전 계약) |
+| 유휴 정지 `enterIdleIfDue` | `transitGuide.idlePaused` | deferrable | 안전망(코디네이터 판정의 유도, 복귀가 곧 조작이라 재개 문장이 갚는다. E36 종전 계약) |
 | 소리 무음 경고 | `ios.beacon.soundBackgroundUnavailable` | actionable | 1회성(latch는 발화 성공, onDropped) |
 | 억제 해제 복구 `droppedWhileSuppressed` | 버린 마지막 문장 | 그 문장의 분류 | 분류를 함께 보관한다 |
 | `announceExternal`(prewalk) | 시작 `prewalkStart`·불가 `prewalkUnavailable`·사용자 취소 `prewalkCancelled`(+정지) | actionable | 직접 응답·전이 |
@@ -133,14 +133,14 @@
 | 출발점 확정 상태 줄 | `statusLine`(출발점 {label}) | actionable(본 기능, 1회) |
 | 사용자 종료 | `ios.outing.endedByUser` | actionable |
 | 권한·정밀 위치 상실 종료 | `beacon.denied`·`beacon.reduced` | actionable |
-| 안전망 종료 | `guide.endedIdle` | **deferrable**(코디네이터 판정 — 종전 실험판은 백그라운드에서 말했다. 바뀐다) |
+| 안전망 종료 | `guide.endedIdle` | **deferrable**(코디네이터 판정. 종전 실험판은 백그라운드에서 말했다. 바뀐다) |
 | 소리 무음 경고 | `ios.beacon.soundUnavailable`·`soundBackgroundUnavailable` | actionable |
 | 위치 신호 약함 | `beacon.weak` | 전경 VoiceOver 창구 전용(종전 그대로, 술어 밖) |
 | 거절 `refuse` | `beacon.*`·`guide.alreadyActive` | actionable(직접 응답) |
 
 **나들이 복귀 상환(신설, 최소)**: 종료 문장(안전망·권한 상실)을 전하지 못하면(백그라운드 버림, 대기 칸에서 사라짐) 종료 사유 장부 `owedEndReason`에 남기고, 복귀 때 30분(`isEndScreenStale`) 안이면 그 문장 하나를 낸다. 종료 화면이 아니라 장부에 거는 이유: 출발점 미확정 ∧ 의미 없는 걸음이면 종료 화면이 없는데 그 종료도 알려야 한다(설계 리뷰 M6). 새 세션 시작이 장부를 지운다. 추적 중 복귀에는 아무것도 갚지 않는다: 나들이의 1회성 문장(지나침·횡단보도)은 자리에 묶여 있어 나중에 갚으면 거짓이다(임박 명령과 같은 이유).
 
-**판정 질문(위원장, `judgment-*.md`)**: 나들이는 잠근 채 10m 비프를 들으며 걷는 모드라, 안전망 종료가 백그라운드에서 무음이면 비프가 끊긴 이유를 복귀 전까지 모른다(도보 A23의 근거 "잠근 채 잊은 기기가 한참 뒤 울리면 당황"이 약하다 — 설계 리뷰 M6). 시안(구현값)은 코디네이터 판정 그대로 무음 + 복귀 상환이고, 판정이 "정지음" 또는 "문장"으로 나면 마지막 커밋에서 바꾼다.
+**판정 질문(위원장, `judgment-*.md`)**: 나들이는 잠근 채 10m 비프를 들으며 걷는 모드라, 안전망 종료가 백그라운드에서 무음이면 비프가 끊긴 이유를 복귀 전까지 모른다(도보 A23의 근거 "잠근 채 잊은 기기가 한참 뒤 울리면 당황"이 약하다, 설계 리뷰 M6). 시안(구현값)은 코디네이터 판정 그대로 무음 + 복귀 상환이고, 판정이 "정지음" 또는 "문장"으로 나면 마지막 커밋에서 바꾼다.
 
 ## 4. 전달 계약
 
@@ -148,8 +148,8 @@
 
 모든 문장은 종전처럼 `DeferredAnnouncer`(톤 뒤 발화 `speechDeferStep`, 단일 슬롯 latest-wins, 세대)를 지나 모델의 `post`에서 채널이 갈린다. 새 직접 게시 경로는 만들지 않는다. 바뀌는 것은 `DeferredAnnouncer`가 분류와 `onDropped`를 `post`까지 나르는 것 하나다.
 
-- `announce(_:highPriority:speechClass:onDropped:)` — `speechClass`는 필수.
-- `announceNow(_:highPriority:bypassSuppression:)` — 분류는 `actionable` 고정(§3.1).
+- `announce(_:highPriority:speechClass:onDropped:)`: `speechClass`는 필수.
+- `announceNow(_:highPriority:bypassSuppression:)`: 분류는 `actionable` 고정(§3.1).
 - `post: (text, highPriority, bypassSuppression, speechClass, onLateDrop) -> Bool`. `false`면 종전처럼 `DeferredAnnouncer`가 그 자리에서 `onDropped`를 부른다. `true`로 받아 기기 음성 대기 칸에 넣은 문장이 나중에 버려지면 `post` 쪽이 `onLateDrop`을 **한 번** 부른다(계약: `true`를 돌려줄 때만 보관하고, 버릴 때만 부른다).
 
 ### 4.2 기기 음성 대기 칸 (Kit `DeviceSpeechQueue`, 세 모델 공유)
@@ -158,9 +158,9 @@
 
 1. **안내 발화가 없으면 즉시 말한다.** 그 순간 칸에 옛 문장이 있으면 먼저 교체로 버린다(순서 역전 금지, m3).
 2. **`.high`는 기다리지 않고 선점한다**: 칸을 비우고 말하는 중인 안내를 끊고 즉시 말한다. VoiceOver의 `.high`가 끼어드는 것과 같은 뜻이다(도착·재조회 요약이 칸에서 최신 명령을 막던 결함, M2).
-3. 그 밖은 **한 칸에 기다린다**(latest-wins). 칸의 문장이 **보호 문장**(나들이 시작·횡단보도 — `protectedText`)이면 보호 문장이 아닌 새 문장은 들이지 않는다(위치에 묶인 안전 문장이라서다. 도보·자동차·대중교통에는 보호 문장이 없다).
-4. **대기는 안내 발화만 기다린다**(`TtsPlayer.isSpeakingGuidance`). 채팅 듣기가 읽는 중이면 기다리지 않고 끊는다 — 운전자 채널과 같은 우선순위(M3, 설계 판단: 걷는 중의 안내가 채팅 답변보다 앞선다).
-5. 0.3초 간격으로 확인해 말이 끝나면, 톤이 울리는 중이면 그 뒤까지 기다리고(`speechDeferStep`, 상한 3초 — 톤 뒤 발화 계약, m10) 꺼낸다. 꺼내는 순간 억제 중이면(사용자 활성화의 직접 응답은 면제, m2) 버리고, 보호 문장이 아닌데 6초를 넘게 기다렸으면 버리고, 그 밖은 **채널을 다시 고른다**(술어를 그 시점 상태로).
+3. 그 밖은 **한 칸에 기다린다**(latest-wins). 칸의 문장이 **보호 문장**(나들이 시작·횡단보도, `protectedText`)이면 보호 문장이 아닌 새 문장은 들이지 않는다(위치에 묶인 안전 문장이라서다. 도보·자동차·대중교통에는 보호 문장이 없다).
+4. **대기는 안내 발화만 기다린다**(`TtsPlayer.isSpeakingGuidance`). 채팅 듣기가 읽는 중이면 기다리지 않고 끊는다. 운전자 채널과 같은 우선순위(M3, 설계 판단: 걷는 중의 안내가 채팅 답변보다 앞선다).
+5. 0.3초 간격으로 확인해 말이 끝나면, 톤이 울리는 중이면 그 뒤까지 기다리고(`speechDeferStep`, 상한 3초, 톤 뒤 발화 계약, m10) 꺼낸다. 꺼내는 순간 억제 중이면(사용자 활성화의 직접 응답은 면제, m2) 버리고, 보호 문장이 아닌데 6초를 넘게 기다렸으면 버리고, 그 밖은 **채널을 다시 고른다**(술어를 그 시점 상태로).
 6. **버림 통지는 문장마다 최대 한 번, 주체는 대기 칸이고 이유를 싣는다**(m1·M1): 교체·즉시 발화·선점으로 더 새 문장이 이었으면 `superseded`, 아무것도 잇지 않고 사라졌으면(유효 시간·억제·채널 소실·보호 문장에 막힘) `undelivered`.
 7. 세션 경계(`advanceGeneration`과 같은 자리)의 `reset()`은 칸을 **버림 통지 없이** 비운다(`DeferredAnnouncer.advanceGeneration`과 같은 이유: `stop()`이 장부를 먼저 비운 뒤라 복원이 끝난 세션의 경고를 되살린다).
 8. **전경 복귀는 인계(`handOver()`)다**(M5): 말하는 중인 안내를 끊고 그 문장을 처음부터, 이어서 칸의 문장을 지금 채널(대개 VoiceOver)로 다시 낸다. 두 목소리가 겹치지 않고, 복귀 순간 칸의 최신 문장이 사라지지도 않는다(종전 초안의 flush는 도보 실행 안내가 `statusText`를 비우는 탓에 그 문장을 영영 잃었다). 인계한 문장은 버림이 아니다. 도보는 상환보다 먼저, 대중교통은 추적 가드보다 앞에서(백그라운드에서 끝난 세션의 완료 문장, m4), 나들이도 같은 자리에서 부른다.
@@ -170,8 +170,8 @@
 ### 4.3 복귀 상환과 1회성 경고
 
 - **토글이 꺼져 있으면 종전 계약 그대로다.** 백그라운드 문장은 전부 `.drop`이라 `missedAnnouncement = true`와 `onDropped`(장부: 계단 경고 `pendingStepFreeNotice`·최종 접근 진입 `pendingFinalApproachIntro`·대중교통 소리 무음 latch)가 그대로 선다.
-- **켜져 있으면**: `actionable`은 기기 음성으로 나가고(장부가 서지 않는다 — latch는 발화 성공 시점), `deferrable`은 `.drop`으로 종전과 같이 `missedAnnouncement`를 세운다.
-- **이미 말한 문장을 복귀 때 또 말하지 않는다**: 기기 음성으로 넘긴 순간 `missedAnnouncement = false`로 내린다. 상환의 뜻은 "마지막 상태를 못 들었다"인데 마지막 상태 문장을 들었으면 갚을 것이 없다(그 뒤 다시 버린 문장이 생기면 다시 선다). 대기 칸에서 나중에 버려지면 `onLateDrop`이 원래의 `onDropped`(장부)를 부르고, 이유가 `undelivered`일 때만 `missedAnnouncement = true`를 세운다 — `superseded`는 더 새 문장이 마지막 상태를 전했으므로 세우지 않는다(설계 리뷰 M1: 세우면 들은 최신 문장을 복귀 때 되풀이한다). 장부는 어느 쪽이든 되살린다(계단 경고가 교체로 밀렸으면 복귀 때 갚아야 한다 — `DeferredAnnouncer.invalidatePending`과 같은 뜻).
+- **켜져 있으면**: `actionable`은 기기 음성으로 나가고(장부가 서지 않는다. latch는 발화 성공 시점), `deferrable`은 `.drop`으로 종전과 같이 `missedAnnouncement`를 세운다.
+- **이미 말한 문장을 복귀 때 또 말하지 않는다**: 기기 음성으로 넘긴 순간 `missedAnnouncement = false`로 내린다. 상환의 뜻은 "마지막 상태를 못 들었다"인데 마지막 상태 문장을 들었으면 갚을 것이 없다(그 뒤 다시 버린 문장이 생기면 다시 선다). 대기 칸에서 나중에 버려지면 `onLateDrop`이 원래의 `onDropped`(장부)를 부르고, 이유가 `undelivered`일 때만 `missedAnnouncement = true`를 세운다. `superseded`는 더 새 문장이 마지막 상태를 전했으므로 세우지 않는다(설계 리뷰 M1: 세우면 들은 최신 문장을 복귀 때 되풀이한다). 장부는 어느 쪽이든 되살린다(계단 경고가 교체로 밀렸으면 복귀 때 갚아야 한다. `DeferredAnnouncer.invalidatePending`과 같은 뜻).
 - 예: 백그라운드에서 도착 문장을 기기 음성으로 들었다 → `statusText`가 도착 문장이지만 `missedAnnouncement`가 거짓이라 복귀 때 되풀이하지 않는다. 주기 통지를 버린 뒤 도착을 들었다 → 역시 거짓(마지막을 들었다). 도착을 들은 뒤 안전망이 끝냈다 → 참, 복귀 때 종료 문장을 듣는다.
 
 ## 5. 대중교통: 백그라운드 채널 비중
@@ -198,10 +198,10 @@ E36 뒤로 대중교통의 백그라운드 톤은 `trackingStarted` 하나뿐이
 
 ## 7. 오디오 세션
 
-- 기기 음성은 안내 세션의 오디오 세션 위에서 난다: 재생기(도보·대중교통·나들이 `BeaconTonePlayer`)가 세션 동안 `.playback` + `.mixWithOthers`로 승격하고, `TtsPlayer.speakGuidance`는 카테고리를 건드리지 않는다(종전 계약 — 여기서 `.duckOthers`로 다시 세팅하면 `guideAudioStep` 판정 밖에서 카테고리가 바뀐다). route 변경의 자기 메아리 판정(`guideAudioRouteChangeEvent`)과 소유권 이전(`.ownershipTransferred`)은 카테고리를 바꾸는 소비자가 늘지 않으므로 영향이 없다.
-- 승격 실패(`isBackgroundAudible` 거짓)면 백그라운드에서 톤과 함께 기기 음성도 들리지 않는다. 기존 "화면이 꺼지거나 다른 앱을 쓰는 동안에는 안내 소리가 나지 않습니다" 경고가 그 조건을 이미 알린다(소리 = 톤과 음성).
-- **소리를 낸 직후 말할 때**: 문장은 `speechDeferStep`이 톤 끝까지 미룬다(두 채널 공통의 앞단, 종전). 기기 음성 도중 새 톤이 울리면 섞여 난다(같은 앱의 두 재생기, `.mixWithOthers`) — 톤이 문장을 끊지 않는다.
-- **말한 직후 세션을 끝낼 때**: 원복을 시계가 아니라 **발화 종료에 결박한다**(설계 리뷰 M4 — 글자 수 어림은 앞 문장이 길면 모자라 백그라운드 도착 문장 끝을 `.ambient` 아래에서 잘랐다). `endSession(holdSeconds:speechBusy:)`: 톤 잔여 + 0.15 + 다리(`holdSeconds`)를 기다린 뒤, `speechBusy`(안내 발화 중 ∨ 대기 칸에 문장, `GuideSpeechOutput.speechBusy`)가 참인 동안 0.3초 간격으로 더 기다린다(상한 `deviceSpeechEndWaitMaxSeconds` 20초). 다리는 종료 문장이 톤 뒤 발화 간격(0.15초)을 지나 말하기 시작할 때까지 원복을 붙드는 `deviceSpeechEndBridgeSeconds` 1초다: 나들이는 늘(전경 VoiceOver 꺼짐도 기기 음성), 도보·대중교통은 `stop()` 시점에 백그라운드 ∧ 토글 켬일 때만(그 밖 0초), 운전자 채널 4초는 그대로. `speechBusy`는 `speechBusy`가 기본값 없는 인자라 새 호출부가 빠뜨릴 수 없다. 정식판에는 안내 기기 음성이 없어 늘 거짓이라 종전과 같다(채팅 듣기는 세지 않는다). `beginSession()`은 미뤄 둔 원복을 취소하고, 다른 재생기가 그 사이 시작했으면 원복 의무는 이전된다(종전).
+- 기기 음성은 안내 세션의 오디오 세션 위에서 난다: 재생기(도보·대중교통·나들이 `BeaconTonePlayer`)가 세션 동안 `.playback` + `.mixWithOthers`로 승격하고, `TtsPlayer.speakGuidance`는 카테고리를 건드리지 않는다(종전 계약: 여기서 `.duckOthers`로 다시 세팅하면 `guideAudioStep` 판정 밖에서 카테고리가 바뀐다). route 변경의 자기 메아리 판정(`guideAudioRouteChangeEvent`)과 소유권 이전(`.ownershipTransferred`)은 카테고리를 바꾸는 소비자가 늘지 않으므로 영향이 없다.
+- 승격 실패(`isBackgroundAudible` 거짓)면 백그라운드에서 톤과 함께 기기 음성도 들리지 않는다. 그래서 술어가 그 세션의 백그라운드 문장을 버림으로 판정하고(§2 가청) 종전 상환 계약이 그대로 돈다. 기존 "화면이 꺼지거나 다른 앱을 쓰는 동안에는 안내 소리가 나지 않습니다" 경고가 그 조건을 알린다(소리 = 톤과 음성).
+- **소리를 낸 직후 말할 때**: 문장은 `speechDeferStep`이 톤 끝까지 미룬다(두 채널 공통의 앞단, 종전). 기기 음성 도중 새 톤이 울리면 섞여 난다(같은 앱의 두 재생기, `.mixWithOthers`). 톤이 문장을 끊지 않는다.
+- **말한 직후 세션을 끝낼 때**: 원복을 시계가 아니라 **발화 종료에 결박한다**(설계 리뷰 M4: 글자 수 어림은 앞 문장이 길면 모자라 백그라운드 도착 문장 끝을 `.ambient` 아래에서 잘랐다). `endSession(holdSeconds:speechBusy:)`: 톤 잔여 + 0.15 + 다리(`holdSeconds`)를 기다린 뒤, `speechBusy`(안내 발화 중 ∨ 대기 칸에 문장, `GuideSpeechOutput.speechBusy`)가 참인 동안 0.3초 간격으로 더 기다린다(상한 `deviceSpeechEndWaitMaxSeconds` 20초). 다리는 종료 문장이 톤 뒤 발화 간격(0.15초)을 지나 말하기 시작할 때까지 원복을 붙드는 `deviceSpeechEndBridgeSeconds` 1초다: 나들이는 늘(전경 VoiceOver 꺼짐도 기기 음성), 도보·대중교통은 `stop()` 시점에 백그라운드 ∧ 토글 켬일 때만(그 밖 0초), 운전자 채널 4초는 그대로. `speechBusy`는 `speechBusy`가 기본값 없는 인자라 새 호출부가 빠뜨릴 수 없다. 정식판에는 안내 기기 음성이 없어 늘 거짓이라 종전과 같다(채팅 듣기는 세지 않는다). `beginSession()`은 미뤄 둔 원복을 취소하고, 다른 재생기가 그 사이 시작했으면 원복 의무는 이전된다(종전).
 
 ## 8. 그 밖의 변경
 
