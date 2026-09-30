@@ -175,7 +175,7 @@ export function planDirectionsTool(): WebMcpTool {
   return {
     name: "plan_directions",
     description:
-      "Plan a trip: resolve the destination (to, or toRef from search_places), optional origin and one via point, run the search for transit, walking and driving as the user would, and return a summary per mode with a planId and route keys. Walking returns its lines as shown on screen (Korean data: shortest, then main-road only if it is a different path, then step-free only if it differs from both). Origin defaults to the user's current location, which stays in the browser. Ambiguous names return candidates. The app moves to the directions screen.",
+      "Plan a trip: resolve the destination (to, or toRef from search_places), optional origin and one via point, run the search for transit, walking and driving as the user would, and return a summary per mode with a planId and route keys. Walking returns its lines as shown on screen (Korean: shortest, then main-road and step-free only if different). Origin defaults to the user's current location, which stays in the browser. Ambiguous names return candidates. The app moves to the directions screen.",
     inputSchema: {
       type: "object",
       properties: {
