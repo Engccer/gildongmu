@@ -57,7 +57,9 @@ node scripts/usage-report.mjs   # API 비용·쿼터·키 만료
 
 있는 기능이 틀린 답을 낸다. **여기가 비면 축 3(도달)부터 다시 본다** — 2026-08-02에 "코드 마일스톤 0"이라는 결론이 그 축의 부재 때문에 틀렸다.
 
-### A52. iOS(en) 대중교통 브리핑의 마지막 도보 줄이 한국어 목적지 이름을 싣는다 (🆕 2026-09-27, 아이폰 미러링 관찰)
+### A52. iOS(en) 대중교통 브리핑의 마지막 도보 줄이 한국어 목적지 이름을 싣는다 (🆕 2026-09-27, 아이폰 미러링 관찰) · ✅ 코드 종결(2026-09-30, 세션 small-8, CHANGELOG 같은 날), 실기기 판정 대기(§2 A52 행)
+
+**처리**: 영어 줄이면 목적지의 라틴 표기(E28 1순위 이름)만 싣고, 없으면 "to the destination"으로 떨어진다(병기 괄호 없음). 판정은 웹 `transitWalkDestinationName` ↔ Kit `TransitWalkLegText.destinationName` ↔ 안드로이드 :kit 한 벌과 공유 fixture. 소비자: iOS·안드로이드 길찾기(도착지 `labelRoman`), 웹 화면 브리핑과 WebMCP 계획 투영(같은 함수 `transitWalkLegMessage`, 웹은 로마자를 들고 있지 않아 한글 목적지면 "to the destination"), iOS 안내 조망 "다른 경로"(로마자 없음, 같은 폴백). CLI 포매터는 도보 줄을 조립하지 않아 대상이 아니다. 아래는 접수 시점 기록이다.
 
 영어 세션에서 63빌딩까지 조회하면 마지막 줄이 "Walk 4 min to 63빌딩, 242m"다. 도착 필드는 "63bilding (63빌딩)"으로 병기되는데, 마지막 도보는 provider가 행선지 이름을 주지 않아 `RouteBriefing`이 `destinationName`(원명 라벨)을 그대로 넣는다. 한 줄 안에서 언어를 섞지 않는다는 E27 규칙에 어긋난다. 처방 후보: 목적지의 라틴 표기(`labelRoman`, E28)가 있으면 그것을 쓰고 없으면 "to the destination" 문구(`legWalkToDest`)로 떨어진다. 웹 브리핑·WebMCP 출력도 같은 자리를 대조한다.
 
@@ -607,6 +609,7 @@ en(및 es/fr/it/ja) 사용에서 **우리 코드 결함**으로 한국어가 노
 | **E27 잔여 수동 위치 병기** | 웹(en) 표시줄 버튼 "Set location, Gangdong-gu Office, Set your location"이 한 객체인가 — **괄호가 줄 끝이 아니라 문장 중간인 유일한 자리**라 버튼 이름 계산(R2)에만 기댄다. iOS는 E28-⑥ | 웹(en) | 2026-09-01 en-polish |
 | **E28-⑥** | 2026-09-02 en-ios 묶음의 iOS 낭독 — ①길찾기 후보 행(`DirectionsEndpointSearchView`)·출발/도착/경유지 필드(확정 이름·현재 주소)·수동 위치 표시줄이 비-ko에서 로마자·영문만 읽히고 괄호 한글이 새지 않는가(`Button { bilingualLine }` — 자식 `Text`의 `accessibilityLabel`이 Button 이름으로 전파되는가, `landFirstCandidateFocus` 착지가 그 Button에 떨어지는가. List 행 + 착지 조합은 새 자리, a11y 감사 2026-09-02) ③둘러보기 장면 "on Myeongil-ro" 도로명 로마자 낭독 품질 ④소아 진료 행의 종별 "Clinic"/"Hospital"(2종 밖은 한국어 원문 — E28-① 언어 태깅 축과 같은 면). 웹(en)은 같은 축을 jsdom이 잠갔고 Chrome AX 트리 분절만 실측 대상 | 정식판(1.15부터) | CHANGELOG 2026-09-02 |
 | **A51 실기기** | 설정에서 언어를 바꾼 직후(2026-09-30, 대본 `docs/FIELD-TEST.md` §4-6): ①테마·받아쓰기·듣기 속도(실험판은 자동차 청취자·좌우 안내음까지) 선택지가 새 언어로 들리는가 ②언어를 고른 뒤 커서가 언어 행에 남고 "언어를 바꿨습니다" 통지가 들리는가(선택지 행이 새로 그려지며 통지를 삼키면 통지를 `.high`로) ③선택된 항목에 "선택됨"이 그대로 붙는가 ④체중 입력하기로 열었을 때 체중 칸 착지가 그대로인가 | 정식판·실험판(다음 배포분) | CHANGELOG 2026-09-30 |
+| **A52 실기기** | iOS(en) 길찾기에서 63빌딩처럼 한글 이름 장소까지 대중교통을 조회해 마지막 줄을 VoiceOver로 읽는다(대본 `docs/FIELD-TEST.md` §4-6): ①검색으로 고른 장소면 "Walk 4 min to 63bilding, 242m"처럼 라틴 표기로 들리는가 ②라틴 표기가 없는 목적지(최근 목록의 옛 항목 등)면 "to the destination"으로 들리는가 ③어느 쪽이든 한글이 섞이지 않는가 | 정식판(다음 배포분) | CHANGELOG 2026-09-30 |
 | **E28-⑤** | 로마자 낭독 품질 — 영어 엔진이 `Gangdongseongsimbyeongwon`류 긴 로마자를 어떻게 읽는가(어절 미분리, spec §3.4 ①). 견딜 만하면 종결, 아니면 어절 분리 원천(사전) 재검토 | 웹·iOS(iOS는 정식판 1.14부터) | spec E28 §3.4 |
 
 ### 위치·상태 표기
