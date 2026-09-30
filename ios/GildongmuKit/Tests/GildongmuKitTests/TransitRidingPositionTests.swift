@@ -186,7 +186,7 @@ private func makeOutcome(_ o: FixtureOutcome) throws -> TransitPositionOutcome {
     #expect(TransitPositionService.outcome(from: try env(#"{"status":"weird"}"#)) == .failed)
 }
 
-/// 유휴 정지(E48 잔여 ⑥): 미관측 구간에서만 래치를 만료시키고 결박·조회 수는 남긴다. 인계 뒤(추적 중)는 그대로 —
+/// 유휴 정지(E48 잔여 ⑥): 추적 중이 아닌 riding에서만 래치를 만료시키고 결박·조회 수는 남긴다. 인계 뒤(추적 중)는 그대로 —
 /// 비우면 멈춰 있는 도착 쪽 표식으로 한 역 이상 뒤로 간다.
 @Test func ridingPositionOnIdlePause() throws {
     let leg = makeLeg(
@@ -209,8 +209,10 @@ private func makeOutcome(_ o: FixtureOutcome) throws -> TransitPositionOutcome {
     // 만료 뒤에는 시계가 창 안이어도 표식이 없다.
     #expect(transitPositionShownIndex(state: state, position: expired, now: 1_001) == nil)
 
-    state.signal = .neverSeen
-    #expect(transitRidingPositionOnIdlePause(position, state: state)?.stopIndex == nil)
+    for signal in [TransitSignal.neverSeen, .signalLost, .upstreamFailed] {
+        state.signal = signal
+        #expect(transitRidingPositionOnIdlePause(position, state: state)?.stopIndex == nil, "\(signal)")
+    }
 
     state.signal = .tracking
     #expect(transitRidingPositionOnIdlePause(position, state: state) == position)
