@@ -1,6 +1,6 @@
 # 백로그 7차 소화: 병렬 세션 계획 (2026-09-30)
 
-> **종료 상태(2026-09-30)**: 전 세션 통합 완료, `origin/main` 기준. 세션별 통합 SHA: doc-diet `edf5820c` · small-7 `f0fc627a` · walk-lines `a0d6b5b1`+`786b1791` · tone-tick `f31b84ac` · outing-1 `70a85b1d` · small-8 `790f475c` · car-road `8e52eff0` · bg-speech `e4f56bcb` · sheet-focus `6a721314`(E57, 위원장 추가 요청으로 웨이브 3에 병행 — 아래 표에는 없다). 웹은 push마다 자동 배포됐고 실기기는 코디네이터가 두 구성으로 설치했다. 남은 위원장 판정은 `docs/BACKLOG.md` §2와 `docs/FIELD-TEST.md`, 다음 행동은 BACKLOG "다음에 할 일". 웨이브 중 위원장 판정 8건(E52 실패 문장 3·계단 없는 길 무언, E55 무음 종료, E57 띠바 복귀·나들이 상태 행, E53 나들이 안전망 종료·설정 문안)은 각 항목과 spec에 적혀 있다.
+> **종료 상태(2026-09-30)**: 전 세션 통합 완료, `origin/main` 기준. 세션별 통합 SHA: doc-diet `edf5820c` · small-7 `f0fc627a` · walk-lines `a0d6b5b1`+`786b1791` · tone-tick `f31b84ac` · outing-1 `70a85b1d` · small-8 `790f475c` · car-road `8e52eff0` · bg-speech `e4f56bcb` · sheet-focus `6a721314`(E57, 위원장 추가 요청으로 웨이브 3에 병행 — 아래 표에는 없다) · doc-audit `778e9713` · guide-followup `35727e9e`(통합본 횡단 리뷰 `~/gildongmu-wt/coord-reports/review-cross-w7.md`의 MINOR 6건 후속: E57 착지 대기를 모델 소유 게시 장부로 교체, E53 잔여 넷). 웹은 push마다 자동 배포됐고 실기기는 코디네이터가 두 구성으로 설치했다. 남은 위원장 판정은 `docs/BACKLOG.md` §2와 `docs/FIELD-TEST.md`, 다음 행동은 BACKLOG "다음에 할 일". 웨이브 중 위원장 판정 8건(E52 실패 문장 3·계단 없는 길 무언, E55 무음 종료, E57 띠바 복귀·나들이 상태 행, E53 나들이 안전망 종료·설정 문안)은 각 항목과 spec에 적혀 있다.
 
 코디네이터 `gildongmu-68 [5dfd95]`. 절차 정본은 `parallel-sessions` 스킬(Claude Code 분기). 이 문서가 세션 착수 프롬프트보다 상세하고 우선한다. 위원장 판정의 정본은 `docs/BACKLOG.md`의 각 항목이다.
 

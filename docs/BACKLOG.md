@@ -57,6 +57,10 @@ node scripts/usage-report.mjs   # API 비용·쿼터·키 만료
 
 있는 기능이 틀린 답을 낸다. **여기가 비면 축 3(도달)부터 다시 본다** — 2026-08-02에 "코드 마일스톤 0"이라는 결론이 그 축의 부재 때문에 틀렸다.
 
+### A54. 승차 전 도보를 직접 끝낼 때의 결합 문장이 "거리 추적을 종료했습니다., 대중교통…"으로 마침표와 쉼표가 겹친다 (🆕 2026-09-30, guide-followup 접근성 리뷰 L5, 실험판)
+
+`.userStopped` 결합이 마침표로 끝나는 키에 쉼표를 이어 붙인다(E41 "결합용 키엔 마침표 없음" 위반). en은 쉼표 뒤가 대문자로 시작하고, `CLError.denied`가 `beacon.weak`("신호 약함") 문장에 매핑돼 원인이 거짓이다. 새 결합용 키는 사용자 문안이라 위원장 확인 경로다. 같은 자리의 인접 관찰 둘: ①prewalk `.startFailed`도 대중교통 창구(`prewalkUnavailable`)로 나가 화면이 꺼진 뒤 확정되면 전달되지 않는다(F3과 같은 부류, 시작은 보통 전경이라 실효는 좁다) ②E57 `landFocus`의 600ms 재시도가 착지 직후의 스와이프를 되끌어 올 수 있다(접근성 L3, 실기기에서 거슬리면 재시도 조건을 "커서가 아직 출발 자리일 때만"으로). 출처 `~/gildongmu-wt/guide-followup-reports/done-202609302148.md`(세션 관찰, 코디네이터 미재현).
+
 ### A53. en 브리핑의 언어 혼합 잔여 셋: 웹 끝점 로마자 미운반 · 웹 중간 도보 줄 · WebMCP 탑승 줄 (🆕 2026-09-30, small-8 A52 작업 중 관찰)
 
 ①웹 길찾기 끝점은 로마자를 들고 있지 않다(`directions-state.ts`의 place에 `labelRoman`이 없고 후보 확정 때 `nameRoman`을 버린다). 그래서 웹 en은 한글 목적지면 마지막 도보 줄이 늘 "to the destination"이고, iOS 안내 세션 조망(`TransitGuideModel.destinationLabel`)도 같다. 끝점에 `labelRoman`을 싣는 것이 처방. ②웹 도보 줄의 영어 여부가 로케일 단위라, en에서 `toName`은 있고 `toNameEn`이 없는 중간 도보 줄이 "Walk 3 min to 여의도, 98m"로 섞인다(iOS·안드로이드는 그 줄 전체가 한국어). 웹이 한국어 문장 틀을 가져오는 설계가 필요하다. ③WebMCP 계획 투영의 탑승 줄은 en에서도 한국어 노선·역명이다(화면은 `legEn`으로 영문) — "사람 문장은 화면과 같은 함수" 규칙과 어긋난다. 셋 다 A52 이전부터 있던 것이고 A52가 넓히지 않았다. 출처 `~/gildongmu-wt/small-8-reports/done-202609301731.md`(세션 관찰, 코디네이터 미재현).
