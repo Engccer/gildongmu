@@ -507,15 +507,17 @@ struct TransitAltRoutesSheet: View {
             // 경유역 이름은 조인 원문(한국어)이다 — 표시 투영의 같은 index를 쓴다(E48 잔여 ⑤, `.boardStopDeclared`와 같은 경로).
             if let leg = model.currentLeg {
                 let stops = model.displayLeg(leg, useOverride: false).stops
-                if stops.indices.contains(idx) {
-                    return appLocalized("ios.transitGuide.altHeadingFrom", displayLabelText(stops[idx]))
+                // 이름이 비면 "… 기준" 틀이 이름 없이 끊긴다 — 기준 없는 헤더로(a11y 감사 참고 3).
+                if stops.indices.contains(idx), case let name = displayLabelText(stops[idx]), !name.isEmpty {
+                    return appLocalized("ios.transitGuide.altHeadingFrom", name)
                 }
             }
             return appLocalized("ios.transitGuide.altHeading")
         case .boardStopDeclared:
-            return appLocalized(
-                "ios.transitGuide.altHeadingFrom",
-                model.currentLeg.map { boardLabelText(model.displayLeg($0, useOverride: false)) } ?? "")
+            guard let leg = model.currentLeg,
+                  case let name = boardLabelText(model.displayLeg(leg, useOverride: false)), !name.isEmpty
+            else { return appLocalized("ios.transitGuide.altHeading") }
+            return appLocalized("ios.transitGuide.altHeadingFrom", name)
         case .gps, nil:
             return appLocalized("ios.transitGuide.altHeading")
         }
