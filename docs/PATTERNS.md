@@ -323,7 +323,7 @@ iOS 지도 버튼·검색 로터 액션은 URL 빌더가 성공할 때만 만들
 
 ### 답변 복사·듣기는 평문 한 벌과 통지 창구 하나를 쓴다
 
-**답변 복사·듣기는 평문 한 벌과 통지 창구 하나를 쓴다**(B12 2026-09-24, spec `2026-09-24-web-chat-copy-listen-design.md`). 웹 [복사][듣기]의 입력은 `markdownToPlainText`(`src/lib/markdown-plain-text.ts`) 하나이고, 결과는 Kit `MarkdownPlainText.strip`과 같아야 한다(공유 fixture `markdown-plain-text-cases.json`을 웹·Kit 테스트가 함께 읽는다).
+**답변 복사·듣기는 평문 한 벌과 통지 창구 하나를 쓴다**(B12 2026-09-24, spec `2026-09-24-web-chat-copy-listen-design.md`). 웹 [복사][듣기]의 입력은 `markdownToPlainText`(`src/lib/markdown-plain-text.ts`) 하나이고, 결과는 Kit `MarkdownPlainText.strip`과 같아야 한다(공유 fixture `markdown-plain-text-cases.json`을 웹·Kit·안드로이드 `:kit`(`MarkdownPlainTextTest.kt`) 테스트가 함께 읽는다).
 
 - ⚠ **이 파일에 JS 약칭 클래스(`\s`·`\w`·`\d`)와 `m` 플래그를 쓰지 않는다(예외: 임의 문자 `[\s\S]`는 두 엔진에서 같다).** Kit는 ICU라 `\w`가 한글을 포함하고, `\s`·트림 집합이 다르고(U+FEFF·U+0085·U+200B), 여러 줄 `^`·`$`의 줄 경계가 다르다(ICU는 VT·FF·NEL도 줄 경계이고 CRLF를 한 단위로 본다). dodo 원본 그대로는 무작위 입력 6,000건 중 602건이 Kit와 갈렸다. 규칙을 바꾸면 차분 퍼즈(spec §2)로 다시 잰다.
 - "복사됨"·듣기 실패는 `ChatInterface`의 진행 통지 창구(명령형 `textContent`)로만 낸다. 대입은 같은 문장이어도 텍스트 노드를 갈아 끼워 다시 읽히고, 2초 뒤 빈칸이 아니라 그때의 진행 문장(`progressTextRef`)으로 되돌린다.
@@ -380,7 +380,7 @@ iOS 지도 버튼·검색 로터 액션은 URL 빌더가 성공할 때만 만들
 
 ### privacy `agent` 절은 웹 전용이다 (CLAUDE.md 이관)
 
-**privacy `agent` 절은 웹 전용이다**: privacy `agent` 절은 웹 전용이라 iOS `PrivacyInfo`·ASC 라벨 3자 일치 대상이 아니다. 단 도구 출력에 새 데이터 유형을 실으면 그 문장(6로케일)을 함께 고친다.
+privacy `agent` 절은 웹 전용이라 iOS `PrivacyInfo`·ASC 라벨 3자 일치 대상이 아니다. 단 도구 출력에 새 데이터 유형을 실으면 그 문장(6로케일)을 함께 고친다.
 
 ---
 

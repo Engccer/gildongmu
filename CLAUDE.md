@@ -173,15 +173,15 @@
 - **장소 앵커 불변식**: `placeContext` 있으면 주변 도구는 `anchorOf(ctx)`=장소좌표 기준, 단 **길찾기 출발지는 실제 `userLocation`**(장소로 안 덮음). 장소 앵커 시 기기위치 nearby 카드는 render 생략(산문이 정본). `placeContext` 없으면 동작 byte-identical.
 - **⚠ 장소 특징 날조 금지**: 도구가 준 필드만 — Gemini가 카페 분위기·평판을 사전지식으로 날조하면 시각장애 사용자가 검증 불가([[agentic-llm-fabricates-unstated-fields]], systemInstruction에 명시). 도구는 provider 직접 import 호출(`ToolResult{data,render?,source?}`), self-fetch 카드+출처(`SourceList`) 노출, `data`는 LLM에만(PII 누수 차단).
 - **마크다운 답변**(`react-markdown`+`remark-gfm`): 헤딩은 강조 단락으로 다운그레이드(아웃라인 오염 방지). ⚠ **loose list `remarkTightLists`로 tight 강제** — `<li><p>` 중첩이 iOS VoiceOver 이중 낭독([[markdown-loose-list-voiceover-double-read]]). 완료 통지는 효과음(`playReceive`)+포커스 이동(진행만 live region).
-- **답변 복사·듣기는 평문 한 벌과 통지 창구 하나를 쓴다**(웹 B12, `markdownToPlainText`는 Kit와 공유 fixture — 이 파일엔 JS 약칭 클래스·`m` 플래그 금지). → PATTERNS
-- **채팅 도구는 24개이고 목록 정본은 코드다**(`declarations.ts`·`router.ts`). 지명→좌표는 `resolveCoord` 한 곳, 산문 정본 도구는 카드 없음. → PATTERNS
+- **답변 복사·듣기는 평문 한 벌과 통지 창구 하나를 쓴다**(웹 B12, `markdownToPlainText`는 Kit·`:kit`와 공유 fixture — 이 파일엔 JS 약칭 클래스·`m` 플래그 금지). → PATTERNS
+- **채팅 도구는 24개이고 목록 정본은 코드다**(`declarations.ts`·`router.ts`). 지명→좌표는 `resolveCoord` 한 곳(실패는 `placeNotFound`, 현재 위치 폴백 금지), 지명·앵커 조회는 기기 위치 self-fetch 카드 금지(`placeMode`). → PATTERNS
 - **모델 교체는 `npm run eval:ab`로 판정한다 — 벤더 벤치마크로 올리지 말 것**(날조 축은 `src/__ab__/grounding.ts` 자동 판정, pass^k 게이트). systemInstruction 정본은 `system-instruction.ts` 하나. 비용은 `candidatesTokenCount`+`thoughtsTokenCount`. → PATTERNS
 - **iOS 채팅 AI 동의 게이트**(`ChatConsentView` + `ChatModel.send` 가드 이중 방어 — 새 전송 경로는 우회 여부 확인). → PATTERNS
 - **개인정보 3자 일치 불변식**: 수집·전송 항목을 바꾸면(새 데이터 유형·새 제3자) 웹 `/{locale}/privacy` 카피 + iOS `PrivacyInfo.xcprivacy` + ASC 영양 라벨(`docs/appstore/1.0-submission-draft.md` §7)을 **동시 갱신** — 불일치는 심사 거절·앱 제거 사유. iOS 받아쓰기는 온디바이스라 오디오는 세 곳 모두 미신고가 정본.
 
 ### WebMCP 도구층 (앱 루트가 브라우저 에이전트에게 상시 선언하는 도구 7개)
 
-설계 정본은 spec `docs/superpowers/specs/2026-08-29-webmcp-wave2-design.md`(W2, 공통 계약은 W1 `2026-08-27-webmcp-tool-layer-design.md` §3.0·§4·§6). 이 코드를 만지기 전에 `docs/PATTERNS.md` §WebMCP 도구층의 같은 제목 절을 읽는다.
+설계 정본은 spec `docs/superpowers/specs/2026-08-29-webmcp-wave2-design.md`(W2, 공통 계약은 W1 `2026-08-27-webmcp-tool-layer-design.md` §3.0·§4·§6), 상세는 PATTERNS §WebMCP 도구층.
 
 - **도구 목록 정본은 코드다**(`src/lib/webmcp/manifest.ts` 7개, 루트 `PlaceSearch`가 상시 등록, 미가용은 실행 시 `notConfigured`). 화면별 등록·`open_*`·`focus_item` 재도입 금지(`webmcp-removal.test.ts`), 화면 이동은 `ensure-view.ts`. → PATTERNS
 - **화면은 브릿지를 뷰 레지스트리에 게시하고 도구는 실행 시점에 읽는다**(`view-registry.ts`): 이동 뒤 대기는 뷰 이름이 아니라 정체성(`placeId`·`publishedAfter`)에 결박. → PATTERNS
@@ -192,7 +192,7 @@
 - **검색은 트랜잭션이다**(`PlaceSearch`): 정착은 커밋 뒤 effect가 판정, `busy`는 `statusRef`가 아니라 동기 갱신되는 분기 표로. → PATTERNS
 - **도구층이 능동적으로 옮기는 포커스는 0이고 한 호출에 착지는 최종 화면의 기존 착지 하나뿐이다**(중간 착지 억제 `suppressFocusRef`·`isUnwinding()`). → PATTERNS
 - **출력은 `finish(value, SHAPE)`만 지난다**(`output.ts` allowlist + `assertNoCoordinates`, 1,500자 상한은 항목 단위 생략). → PATTERNS
-- **사람 문장은 화면과 같은 함수에서 나온다**: 공유 헬퍼는 컴포넌트 모듈이 아니라 lib에 둔다. → PATTERNS
+- **사람 문장은 화면과 같은 함수에서 나온다**(`place-lines/*`·`route-step-items.ts`·`transitRouteLabel`): 공유 헬퍼는 컴포넌트 모듈이 아니라 lib에 둔다. → PATTERNS
 - **도구의 길찾기 조회는 화면 정본 `runQuery(request)`를 부르고 세대 결박 대기자로 기다린다**: 안내 세션이 살아 있으면 `sessionActive`로 거절하고 세션을 끊지 않는다. → PATTERNS
 - **privacy `agent` 절은 웹 전용이다**(3자 일치 대상 아님). 도구 출력에 새 데이터 유형을 실으면 그 문장(6로케일)을 함께 고친다. → PATTERNS
 
@@ -212,7 +212,7 @@
 | 도시철도역 메타 | subway-stations (정적 seed) / `/api/station/meta` | XLSX→JSON 연1회 갱신(`scripts/build-subway-stations.py`), 서버 전용 import |
 | 서울 지하철 실시간 | seoul-subway-arrival / `…/subway-arrival[/nearby]` | `arvlMsg2` 정본, 부분실패 보존. ⚠ `INFO-200`은 "운행 시간 밖"과 "미제공 역"이 공유하는 코드 — 역은 어떤 상태에서도 빼지 않고 4-state로 가른다. → INTEGRATIONS |
 | 지하철 열차 위치(E35) | seoul-subway-position → `transit-position.ts` / `/api/transit/position` | 노선 단위 20초 인메모리 캐시(Next 데이터 캐시 금지 — SWR이 낡은 목록을 준다), `updnLine` 미사용, INFO-200 = 0행(`중앙선` 미제공), 조회 창 끝 번호 = 행 수. → INTEGRATIONS |
-| 시내버스 | tago-bus + seoul-bus → `src/lib/bus.ts` 병합 | 지방=TAGO·서울=TOPIS `mergeBusStops`. 미커버 정본 `isUncoveredBusRegion` — **이 마커만 upstream 뒤에 온다**. ⚠ `arrmsg1` 원문은 서버가 변형하지 않는다(E39, 조립은 클라 `parseBusArrmsg`). → INTEGRATIONS |
+| 시내버스 | tago-bus + seoul-bus → `src/lib/bus.ts` 병합 | 지방=TAGO·서울=TOPIS `mergeBusStops`. 미커버 정본 `isUncoveredBusRegion` — **이 마커만 upstream 뒤에 온다**. ⚠ `arrmsg1` 원문은 서버가 변형하지 않는다(E39, 조립은 클라 `parseBusArrmsg`, 국면 인자에 기본값 없음). → INTEGRATIONS |
 | 따릉이 | seoul-bike / `/api/bike/nearby` | 전체 페이지루프+서버 Haversine, row 수<1000이 종료조건 |
 | 실시간 혼잡도 | seoul-congestion + `congestion-area.ts`(순수 판정) → `congestion.ts` / `/api/congestion/nearby` | ⚠ **중심-반경 원 금지**(최근접 구성 지점 ≤300m). 공용 파서 밖, 캐시는 **영역 코드** 단위, `area:null`은 오류가 아니다. → INTEGRATIONS |
 | 문화행사 | seoul-culture-events → `culture-events.ts` / `/api/events/nearby` | ⚠ `DATE` 파라미터 금지(부분일치), 진행 판정은 코드. 안전한 절단선이 없어 전수 20페이지를 일자 키 `unstable_cache`(6h)로, 거리·반경은 캐시 바깥. `INFO-200`은 끝 신호. → INTEGRATIONS |
@@ -229,7 +229,7 @@
 | 횡단보도 차로 수·도로 폭 | crosswalks(정적 seed 15028201) → `walk-route.ts` `annotateCrosswalkInfo` / 별도 라우트 없음 | 단일 횡단보도 스텝 끝에 `, N차로, 도로 폭 Mm` — 있는 곳만, 3중 게이트 전부 통과일 때만, Tmap·병합 스텝은 침묵. 파이프라인 마지막 단계. → INTEGRATIONS |
 | 대중교통 | odsay + odsay-select + bus-service-hours / `/api/route/transit` | **파이프라인 순서가 계약: 정규화 → 강등 → 선정 → 축 라벨.** 재조회 제안(`requeryAxes`)은 강등 뒤 전체 후보로 판정. iOS `routeKey` 필수 디코딩이라 **웹 배포가 앱보다 먼저**. → INTEGRATIONS |
 | 지하철 빠른하차 | subway-quick-exit(정적 seed) → `quick-exit.ts` / 별도 라우트 없음(`TransitLeg.quickExit`) | 거리는 열차 선형 위치, 엘베×계단 쌍 최적화, 방향은 방면 1개 확정일 때만. ⚠ 환승 leg는 ODsay `subPath.door`가 정본(A20, 긍정 정규식만 통과). → INTEGRATIONS |
-| 장소 영업시간(E24, 웹·iOS 장소 상세) | google-places → `place-hours.ts`(순수) / `/api/places/hours` | 어떤 실패도 `{hours:null}`. `place_id`만 캐시, 영업시간은 캐시 금지. ⚠ 약관 TTS 금지(`place-hours-tts-drift.test.ts`), 좌표만으로 매칭하지 않는다. → INTEGRATIONS |
+| 장소 영업시간(E24, 웹·iOS 장소 상세) | google-places → `place-hours.ts`(순수) / `/api/places/hours` | 어떤 실패도 `{hours:null}`. `place_id`만 캐시, 영업시간은 캐시 금지. ⚠ 약관 TTS 금지(`place-hours-tts-drift.test.ts`), 좌표만으로 매칭하지 않는다. attribution "Google Maps"는 번역·변형 금지. → INTEGRATIONS |
 | STT | Deepgram nova-3 / `/api/speech-to-text` | ⚠ `detect_language` 금지(ko→vi 오인식), `language` 명시. 효과음으로 시작/정지 통지 |
 | 채팅 웹검색 | perplexity-search / `search_web` 도구 | `ToolResult{data,render,source}`, 결과 카드+출처 노출 |
 
@@ -245,7 +245,7 @@
 | `JUSO_CONFM_KEY` | `hasJusoKey` | 행안부 도로명주소 검색(영문주소+우편번호), 무료·무제한 |
 | `SEOUL_OPEN_DATA_KEY` | `hasSeoulOpenDataKey` | 서울 열린데이터(따릉이·문화행사·실시간 혼잡도). 일 1,000회를 셋이 **공유**하므로 신규 소비자는 캐시 설계가 필수. ⚠ 실시간 지하철은 별도 키 |
 | `SEOUL_SUBWAY_REALTIME_KEY` | `hasSeoulSubwayRealtimeKey` | "실시간 데이터 인증키"(일반키로 호출 시 `ERROR-338`), 일 1,000회를 도착·열차 위치(E35)가 나눈다 |
-| `ODSAY_API_KEY` | `hasOdsayKey` | Flex(후불 종량제) 앱 `gildongmuflex`, Referer `gildongmu.dodoplanet.space`에 묶인다. ⚠ **호출 수가 곧 비용** — 새 호출 경로는 캐시 뒤, 실호출 게이트는 `--from-corpus` 우선·실호출은 `--out`. → INTEGRATIONS |
+| `ODSAY_API_KEY` | `hasOdsayKey` | Flex(후불 종량제) 앱 `gildongmuflex`, Referer `gildongmu.dodoplanet.space`에 묶인다. ⚠ **호출 수가 곧 비용** — 새 호출 경로는 캐시 뒤, 실호출 게이트는 `--from-corpus` 우선·실호출은 `--out`. 옛 Basic 앱 `gildongmuweb` 금지(약관). → INTEGRATIONS |
 | `DEEPGRAM_API_KEY` | `hasDeepgramKey` | STT nova-3 (dodo 공유). ⚠ prod 502면 키 유효성 먼저([[deepgram-prod-key-401]]) |
 | `GOOGLE_CLOUD_TTS_API_KEY` | — (게이트 함수 없음) | `/api/tts`(Chirp 3 HD)는 **폴백**이다. 정본은 기기 음성이고 서버 경로는 현재 로케일 보이스가 기기에 없을 때만 탄다. → INTEGRATIONS |
 | `GEMINI_API_KEY` | `hasGeminiKey` | 채팅 FC 엔진(모델은 env가 아니라 코드 상수 `GEMINI_MODEL`). `gildongmu-prod` API 제한 키, ⚠ dodo와 공유하지 않는다. 키 교체 시 3곳 동조. → INTEGRATIONS |
@@ -284,10 +284,10 @@
 - ⚠ **봉인의 판정 축은 플래그 참조 목록이 아니라 세션을 시작시키는 호출 전수다**(`guidance-gate-drift.test.ts`). → PATTERNS
 - ⚠ **한 버튼이 두 역할을 겸하면 봉인이 그 버튼을 통째로 지우거나 통째로 남기지 못한다** — 섹션 표시 조건은 역할별로 쓴다(`beacon.isTracking || experimentalGuidanceEnabled`). → PATTERNS
 - ⚠ **`INFOPLIST_KEY_*` 빌드 설정만으로는 구성별 분기가 안 된다**: 로컬라이즈 문자열은 `ios/scripts/experimental-infoplist.sh`, 비로컬라이즈 키는 `Support/Info-Experimental.plist`. → PATTERNS
-- ⚠ **두 plist 계약의 의도된 예외: Bluetooth 권한 문구와 CoreBluetooth 심볼** — Kit에 `import CoreBluetooth` 금지(`check-release-artifact.mjs`가 잡는다), BLE 실측은 Experimental로. → PATTERNS
+- ⚠ **두 plist 계약의 의도된 예외: Bluetooth 권한 문구와 CoreBluetooth 심볼** — `NSBluetoothAlwaysUsageDescription`은 실험판 plist에만, CoreBluetooth는 앱 타깃 `#if DEBUG || EXPERIMENTAL` 안(Kit에 `import CoreBluetooth` 금지, `check-release-artifact.mjs`가 잡는다). BLE 실측은 Experimental로. → PATTERNS
 - ⚠ **졸업 때 옮겨야 하는 것은 코드 게이트만이 아니다** — 백그라운드 모드도 정식 plist로 함께 승격. → PATTERNS
-- ⚠ **새 게이트는 그것을 실제로 부르는 경로로 한 번 밟아 본다**(1.7 제출을 막은 두 건이 검사 자신의 결함이었다). → PATTERNS
-- ⚠ **아이콘 표식은 시각 구분이라 그것만으로 부족하다.** 스크린 리더 사용자에겐 **표시 이름이 유일한 구분 수단**이므로 이름 접미사를 반드시 유지한다.
+- ⚠ **새 게이트는 그것을 실제로 부르는 경로로 한 번 밟아 본다**(손으로 인자를 준 수동 실행 통과는 증거가 아니다). → PATTERNS
+- ⚠ **아이콘 표식만으로는 부족하다** — 스크린 리더 사용자에겐 **표시 이름이 유일한 구분 수단**이라 이름 접미사를 반드시 유지한다.
 - ⚠ **번들 ID가 다르면 UserDefaults도 새로 시작한다**(`AppLanguage.current`가 실험판 미선택 폴백만 ko로 고정). → PATTERNS
 - ⚠ **pbxproj 객체 ID는 파일 전체에서 유일해야 한다** — `plutil -lint`는 못 잡으니 편집 후 검증은 `xcodebuild -list`로. → PATTERNS
 
@@ -296,7 +296,7 @@
 - 발행은 `cli-v*` 태그 push → `.github/workflows/cli-publish.yml`이 두 패키지를 npm Trusted Publishing(OIDC)으로 자동 발행. 토큰·환경변수 불필요.
 - 릴리스 절차: **버전 4곳 + CHANGELOG 2곳 동조 갱신** → 커밋 → `git tag cli-v<버전> && git push origin main --tags`. index.ts 버전은 하드코딩 — `version-drift.test.ts`가 강제. → PATTERNS
 - ⚠ **CHANGELOG는 `files`에 적어야 tarball에 들어간다**(확인은 `npm pack --dry-run`). → PATTERNS
-- **`--provenance`는 켜 둔다**(repo를 비공개로 돌리면 이 플래그부터 뺀다). 카탈로그(`endpoint-catalog-shared.ts`)는 cli·mcp 両미러 동일(byte 해시 drift 테스트). → PATTERNS
+- **`--provenance`는 켜 둔다**(비공개로 돌리면 먼저 뺀다). 카탈로그(`endpoint-catalog-shared.ts`)는 cli·mcp 両미러 동일. → PATTERNS
 - **카탈로그에 항목을 더하면 `FORMATTERS`(cli `lib/formatters.ts`)에도 등록한다** — 빠뜨리면 text 모드에서만 통짜 JSON이 나온다(`formatter-coverage.test.ts`). → PATTERNS
 - **`lang` 같은 선택 파라미터는 카탈로그가 정본이고 인자 선언·전달 판정이 같은 술어(`catalogSupportsLang`)를 쓴다**(E26). `runEndpoint`의 `lang`은 필수 인자, `langArgs`는 받는 명령에만, `allSettled` 묶음은 400을 즉시 종료로. 포매터 라벨은 한국어 고정. → PATTERNS
 

@@ -13,7 +13,7 @@
 
 ### CLAUDE.md 절 단위 이관 (D28)
 
-`CLAUDE.md`를 78.3KB에서 71.6KB로 줄여 예산(80KB) 여유를 8.4KB로 늘렸다. WebMCP 도구층 절·API 키 표 비고·통합 카탈로그 긴 칸·iOS 빌드 구성·CLI/MCP 릴리스·채팅 절의 항목을 규칙 한두 줄 + `→ PATTERNS`/`→ INTEGRATIONS` 요지로 줄이고, 목적지에 같은 제목 절이 없던 상세(WebMCP 셋·pbxproj·CLI 셋·API 키 넷·무장애 여행 정보)는 원문 그대로 새 절로 옮겼다. 사라진 식별자 63개는 전부 목적지 문서에 있다.
+`CLAUDE.md`를 78.3KB에서 71.9KB로 줄여 예산(80KB) 여유를 8.1KB로 늘렸다. WebMCP 도구층 절·API 키 표 비고·통합 카탈로그 긴 칸·iOS 빌드 구성·CLI/MCP 릴리스·채팅 절의 항목을 규칙 한두 줄 + `→ PATTERNS`/`→ INTEGRATIONS` 요지로 줄이고, 목적지에 같은 제목 절이 없던 상세(WebMCP 셋·pbxproj·CLI 셋·API 키 넷·무장애 여행 정보)는 원문 그대로 새 절로 옮겼다. 사라진 식별자 55개는 전부 목적지 문서에 있다.
 
 ## 2026-09-29
 
