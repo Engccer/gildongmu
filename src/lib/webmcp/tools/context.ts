@@ -74,6 +74,8 @@ export interface ToolPlan {
       durationSeconds: number;
       steps: string[];
     }[];
+    /** 조회가 실패해 빠진 줄의 화면 문장(E52 위원장 판정 (나), 줄 목록 끝 문장과 같은 번역). 실패가 없으면 부재. */
+    failedNote?: string;
     startable: boolean;
   } | null;
   car: {

@@ -12298,19 +12298,19 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No se pudieron cargar la ruta por vías principales ni la ruta sin escaleras."
+            "value": "No se pudieron cargar ni la ruta por vías principales ni la ruta sin escaleras."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Impossible de charger l'itinéraire par les grands axes et l'itinéraire sans escaliers."
+            "value": "Impossible de charger ni l'itinéraire par les grands axes ni l'itinéraire sans escaliers."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Impossibile caricare il percorso su strade principali e il percorso senza scale."
+            "value": "Impossibile caricare né il percorso su strade principali né il percorso senza scale."
           }
         },
         "ja": {

@@ -214,7 +214,7 @@
     "walkShortest": "Percorso più breve",
     "walkAccessible": "Percorso senza scale",
     "walkBroad": "Percorso su strade principali",
-    "walkLinesFailedBoth": "Impossibile caricare il percorso su strade principali e il percorso senza scale.",
+    "walkLinesFailedBoth": "Impossibile caricare né il percorso su strade principali né il percorso senza scale.",
     "walkLinesFailedBroad": "Impossibile caricare il percorso su strade principali.",
     "walkLinesFailedAccessible": "Impossibile caricare il percorso senza scale."
   },

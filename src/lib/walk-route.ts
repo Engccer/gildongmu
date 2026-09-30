@@ -650,8 +650,15 @@ export async function getWalkRouteLines(params: {
   );
   const lines: WalkRouteLine[] = [];
   const failures: { kind: WalkLineFailure; reason: unknown }[] = [];
-  if (broad.status === "rejected") failures.push({ kind: "broad", reason: broad.reason });
-  if (accessible.status === "rejected") failures.push({ kind: "accessible", reason: accessible.reason });
+  if (!kakaoLines && hasKakaoKey()) {
+    // 최단의 카카오 요청이 실패해 Tmap으로 넘어간 응답은 카카오 줄을 **실을 수 없다**(provider 혼합 금지) — 그 줄의
+    // 요청이 우연히 성공했어도 사용자에게는 "불러오지 못한" 줄이다. 무언으로 두면 "같은 길이라 뺐다"로 읽힌다.
+    // 카카오 키가 없어 Tmap이 첫 줄인 것은 축이 없는 것이지 실패가 아니다(아래 else도 null만 받아 비어 있다).
+    failures.push({ kind: "broad", reason: null }, { kind: "accessible", reason: null });
+  } else {
+    if (broad.status === "rejected") failures.push({ kind: "broad", reason: broad.reason });
+    if (accessible.status === "rejected") failures.push({ kind: "accessible", reason: accessible.reason });
+  }
   annotated.forEach((r, i) => {
     const kind = picked[i].kind;
     if (r.status === "fulfilled") lines.push(r.value);

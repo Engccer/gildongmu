@@ -131,6 +131,7 @@ function stubFetch(opts: {
   places?: Place[];
   addresses?: JusoAddress[];
   walk?: WalkRouteBriefing | null;
+  walkFailedLines?: string[];
   deferTransit?: Deferred;
 } = {}) {
   const places = opts.places ?? [gangnam];
@@ -150,7 +151,10 @@ function stubFetch(opts: {
       }
       if (url.startsWith("/api/route/walk")) {
         const route = opts.walk === undefined ? walkFixture() : opts.walk;
-        return json({ lines: route ? [{ kind: "shortest", route }] : [] });
+        return json({
+          lines: route ? [{ kind: "shortest", route }] : [],
+          ...(opts.walkFailedLines ? { failedLines: opts.walkFailedLines } : {}),
+        });
       }
       if (url.startsWith("/api/route/car")) return json(carFixture());
       throw new Error(`unexpected fetch: ${url}`);
@@ -268,6 +272,15 @@ describe("plan_directions", () => {
     expect((screen.getByLabelText("to") as HTMLInputElement).value).toBe("강남역");
     // 좌표는 출력 어디에도 없다.
     expect(JSON.stringify(out)).not.toMatch(/\d{2,3}\.\d{4,}/);
+  });
+
+  it("조회가 실패해 빠진 도보 줄은 화면과 같은 문장을 failedNote로 싣는다(E52 판정 (나))", async () => {
+    stubFetch({ places: [gangnam], walkFailedLines: ["broad", "accessible"] });
+    const ctx = installModelContext();
+    renderView();
+    await ready(ctx);
+    const out = await ctx.call("plan_directions", { to: "강남역" });
+    expect(out.walk).toMatchObject({ outcome: "done", failedNote: "walkLinesFailedBoth" });
   });
 
   it("후보가 하나면 자동 채택하고, 쿨다운 안 재호출은 cooldown이다", async () => {

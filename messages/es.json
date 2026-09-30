@@ -214,7 +214,7 @@
     "walkShortest": "Ruta más corta",
     "walkAccessible": "Ruta sin escaleras",
     "walkBroad": "Ruta por vías principales",
-    "walkLinesFailedBoth": "No se pudieron cargar la ruta por vías principales ni la ruta sin escaleras.",
+    "walkLinesFailedBoth": "No se pudieron cargar ni la ruta por vías principales ni la ruta sin escaleras.",
     "walkLinesFailedBroad": "No se pudo cargar la ruta por vías principales.",
     "walkLinesFailedAccessible": "No se pudo cargar la ruta sin escaleras."
   },

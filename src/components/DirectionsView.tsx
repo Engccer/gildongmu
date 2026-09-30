@@ -1242,6 +1242,8 @@ export function DirectionsView({
                     }]
                   : [];
               }),
+              // 줄 목록 끝의 실패 문장(E52 판정 (나))도 같은 번역으로 — 도구가 "같은 길이라 한 줄"과 가를 수 있게.
+              ...((key) => (key ? { failedNote: t(key) } : {}))(walkLinesFailedKey(walkOutcome.failedLines)),
               startable: walkGuideStartable,
             }
           : { outcome: kindOf(walkOutcome), lines: [], startable: false };

@@ -902,9 +902,11 @@ describe("provider 혼합 금지·같은 좌표(E42 설계 리뷰 MAJOR 2)", () 
       if (p.routeMode === "SHORTEST") throw new Error("kakao shortest down");
       return KAKAO_BRIEFING;
     });
-    const { lines } = await getWalkRouteLines({ lang: "ko", origin: ORIGIN, dest: DEST, version: 2 });
+    const { lines, failedLines } = await getWalkRouteLines({ lang: "ko", origin: ORIGIN, dest: DEST, version: 2 });
     expect(lines.map((l) => l.kind)).toEqual(["shortest"]);
     expect(vi.mocked(getWalkRouteBriefing).mock.calls[0][0]).toMatchObject({ searchOption: "10" });
+    // 카카오 줄 요청은 성공했어도 실을 수 없다 — "불러오지 못한" 줄로 알린다("같은 길"과 뭉개지 않게).
+    expect(failedLines).toEqual(["broad", "accessible"]);
   });
 
   it("lines: 세 모드 모두 원좌표로 부른다(두 줄 거리 비교의 전제)", async () => {
@@ -1097,6 +1099,16 @@ describe("getWalkRouteLines (E42·E52 조회 화면 줄 목록)", () => {
     // 카카오 키가 없는 것은 축이 없는 것이지 실패가 아니다.
     vi.mocked(hasKakaoKey).mockReturnValue(false);
     expect(await failed()).toEqual([]);
+  });
+
+  it("failedLines는 화면 순서(큰길 → 계단 회피) — 조회 실패와 주석 실패가 섞여도", async () => {
+    const broken: WalkRouteBriefing = {
+      ...road("x", [1, 3]),
+      steps: [{ description: undefined as unknown as string, pathCoords: road("x", [1, 3]).steps[0].pathCoords }],
+    };
+    kakaoByMode({ SHORTEST: road("a", [1, 2]), BROAD_FIRST: broken, ACCESSIBLE: new Error("down") });
+    expect((await getWalkRouteLines({ lang: "ko", origin: ORIGIN, dest: DEST, version: 2 })).failedLines)
+      .toEqual(["broad", "accessible"]);
   });
 
   it("주석 단계에서 빠진 카카오 줄도 failedLines에 싣는다", async () => {

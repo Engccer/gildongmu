@@ -664,7 +664,7 @@
     <string name="directions_walkAccessible">Percorso senza scale</string>
     <string name="directions_walkBroad">Percorso su strade principali</string>
     <string name="directions_walkLinesFailedAccessible">Impossibile caricare il percorso senza scale.</string>
-    <string name="directions_walkLinesFailedBoth">Impossibile caricare il percorso su strade principali e il percorso senza scale.</string>
+    <string name="directions_walkLinesFailedBoth">Impossibile caricare né il percorso su strade principali né il percorso senza scale.</string>
     <string name="directions_walkLinesFailedBroad">Impossibile caricare il percorso su strade principali.</string>
     <string name="directions_walkRecommended">Percorso consigliato</string>
     <string name="directions_walkShortest">Percorso più breve</string>

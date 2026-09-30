@@ -57,6 +57,16 @@ describe("iOS 도보 줄 배선(E42)", () => {
     const src = read(TAB);
     expect(src).toContain("if let key = WalkLineText.failedKey(model.walkLinesFailed) {");
     expect(src).toContain("walkLinesFailed = failedCandidate");
+    // 줄 목록 뒤(ForEach 다음), 자동차 갈래 앞 — 줄 목록의 마지막 객체.
+    const at = src.indexOf("WalkLineText.failedKey(");
+    expect(at).toBeGreaterThan(src.indexOf("ForEach(Array(model.walkLines.enumerated())"));
+    expect(at).toBeLessThan(src.indexOf("case .car(let briefing)"));
+    // 표는 웹 `walkLinesFailedKey`·안드로이드 `walkLinesFailedKey`와 같다.
+    const text = read("ios/Gildongmu/Directions/GuideText.swift");
+    expect(text).toContain('case (true, true): "directions.walkLinesFailedBoth"');
+    expect(text).toContain('case (true, false): "directions.walkLinesFailedBroad"');
+    expect(text).toContain('case (false, true): "directions.walkLinesFailedAccessible"');
+    expect(text).toContain("case (false, false): nil");
   });
 
   it("조회 화면 줄의 안내 시작은 줄 종류의 투영 셋을 함께 싣는다(최단 버튼이 큰길을 시작하지 않게)", () => {

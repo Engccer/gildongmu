@@ -47,6 +47,7 @@ export const SHAPE = withFailure({
   walk: {
     outcome: true,
     lines: [{ kind: true, label: true, distanceMeters: true, durationSeconds: true, stepCount: true }],
+    failedNote: true,
   },
   car: { outcome: true, distanceMeters: true, durationSeconds: true, guideCount: true },
 });
@@ -353,6 +354,8 @@ export function summarizePlan(plan: ToolPlan): Record<string, unknown> {
           durationSeconds: l.durationSeconds,
           stepCount: l.steps.length,
         })),
+        // 조회가 실패해 빠진 줄의 화면 문장(E52 판정 (나)) — 없으면 키 부재.
+        ...(plan.walk.failedNote ? { failedNote: plan.walk.failedNote } : {}),
       }
     : undefined;
   const car = plan.car
