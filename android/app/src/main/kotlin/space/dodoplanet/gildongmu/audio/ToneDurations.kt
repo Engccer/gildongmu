@@ -47,7 +47,7 @@ fun toneResource(tone: BeaconTone, scheme: LeftRightToneScheme): Int = when (ton
     BeaconTone.unreliable -> R.raw.guide_unreliable
 }
 
-/** 게인 표(iOS `gains`·웹 `useBeaconSound` GAIN 미러): 추세음 낮게(보행 내내 반복)·이벤트음 원음. `unreliable`은 `tick`보다 높다. */
+/** 게인 표(iOS `gains`·웹 `useBeaconSound` GAIN 미러): 추세음 낮게(보행 내내 반복)·이벤트음 원음. `unreliable`은 추세음(0.35)보다 높다. `tick`(E55부터 나들이 10m 비프)은 안드로이드에 나들이가 없어 재생되지 않는다. */
 fun toneGain(tone: BeaconTone): Float = when (tone) {
     BeaconTone.closer, BeaconTone.farther -> 0.35f
     BeaconTone.nearby, BeaconTone.warning -> 1f

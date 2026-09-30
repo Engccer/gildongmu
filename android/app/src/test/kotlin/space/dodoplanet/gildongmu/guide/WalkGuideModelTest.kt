@@ -433,7 +433,8 @@ class WalkGuideModelTest {
         assertTrue(second in 260..270 && second != first, second.toString())
     }
 
-    @Test fun `속도 없는 fix(hasSpeed 거짓) — 걷는 중이면 정지 tick이 나지 않는다(0_0으로 접으면 거짓 정지)`() = guideTest(dispatcher, { HttpResponse(200, "{\"result\":null}") }) { h ->
+    // E55 뒤로 거짓 정지의 비용은 소리가 아니라 침묵(추세 축 정지)이라 "tick 0개"로는 못 잡는다 — 추세음이 나는지를 본다.
+    @Test fun `속도 없는 fix(hasSpeed 거짓) — 걷는 중이면 거짓 정지로 추세음이 끊기지 않는다(0_0으로 접으면 거짓 정지)`() = guideTest(dispatcher, { HttpResponse(200, "{\"result\":null}") }) { h ->
         h.model.requestStart(h.request)
         settle()
         h.model.handleFix(h.fix(0.0, speed = null))
@@ -444,7 +445,7 @@ class WalkGuideModelTest {
             h.model.handleFix(h.fix(2.6 * i, speed = null, accuracy = 8.0))
             advanceTimeBy(2_000); runCurrent()
         }
-        assertEquals(0, h.tones.played.count { it == BeaconTone.tick }, h.tones.played.toString())
+        assertTrue(BeaconTone.closer in h.tones.played, h.tones.played.toString())
     }
 
     @Test fun `무음 진입 — 문장·failure 진동은 1회 래치, 톤마다 재발화하지 않는다, 풀리면 다시 무장`() = guideTest(dispatcher) { h ->

@@ -3,7 +3,7 @@ package space.dodoplanet.gildongmu.guide
 /**
  * 안내 전용 위치 스트림 fix(spec 2026-09-16-android-m4 §4-2, iOS `LocationService.BeaconFixPayload` 대응).
  * 판정 함수(:kit)의 무효 표지 계약 그대로: 정확도·방위는 `-1.0`(`> 0`·`>= 0` 가드가 거른다), 속도 둘은 `null`
- * (`motionStep`의 3-state — 0.0을 넘기면 도플러가 신뢰 조건을 통과해 걷는 중 거짓 정지 tick이 난다).
+ * (`motionStep`의 3-state — 0.0을 넘기면 도플러가 신뢰 조건을 통과해 걷는 중 거짓 정지로 추세음이 끊긴다).
  * 나이의 기준은 `elapsedRealtimeNanos`(벽시계 조정 무관, 단조 시계 `SystemClock.elapsedRealtime()`과 같은 축).
  */
 data class GuideFixPayload(

@@ -14,7 +14,7 @@
   right-pitch 높은 모티프(880→1047Hz) 모노
   back        하강 글라이드 2회(1200→400Hz) — "되돌아감"                 0.9초
 
-인자로 이름을 주면 그 파일만 만든다(`python3 scripts/build-guide-tones.py back`). 인코더 판본이
+인자로 이름을 주면 그 파일만 만든다(`python3 scripts/build-guide-tones.py <새 톤 이름>`). 인코더 판본이
 바뀌면 같은 파라미터라도 바이트가 달라질 수 있어, 새 톤을 더할 때 기존 파일을 다시 쓰지 않는다.
 
 ⚠ **햅틱 패턴(`BeaconTonePlayer.haptic(for:)`·`useBeaconSound` VIBRATE)은 아래

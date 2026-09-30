@@ -227,7 +227,6 @@ describe("정숙 구간과 회복", () => {
     expect(out.tone).toBeNull();
     expect(out.state.anchorDistance).toBe(120);
   });
-
 });
 
 describe("빈도 비대칭", () => {

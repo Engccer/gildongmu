@@ -332,7 +332,7 @@
     <string name="android_settings_themeSystem">システム設定に従う</string>
     <string name="android_settings_title">設定</string>
     <string name="android_settings_trendHaptics">振動通知の拡張(実験)</string>
-    <string name="android_settings_trendHapticsFooter">歩行中の接近、案内の信頼性低下を振動でも知らせます。検索、周辺、経路案内の結果と案内中の状態変化も振動で知らせます。画面が点いている間だけ振動します。</string>
+    <string name="android_settings_trendHapticsFooter">歩行中の接近と案内の信頼性低下を振動でも知らせます。検索、周辺、経路案内の結果と案内中の状態変化も振動で知らせます。画面が点いている間だけ振動します。</string>
     <string name="android_settings_weightFooter">体重は%1$s~%2$skgの範囲で入力してください。入力した情報はサーバーに保存されません。</string>
     <string name="android_settings_weightKg">カロリー推定用の体重(kg)</string>
     <string name="android_settings_weightRejected">体重は%1$s~%2$skgの範囲で入力してください。前の値%3$skgを保持します。</string>

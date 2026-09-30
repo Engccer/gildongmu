@@ -453,6 +453,60 @@
           "expect": "closer"
         }
       ]
+    },
+    {
+      "name": "정지 중 두절 뒤 첫 회복 fix가 속도 불명이면 승계 톤이 한 번 난다(E55 전과 같음, 기각 대안 ②의 대가)",
+      "initial": {
+        "anchorDistance": 100,
+        "trend": "closer"
+      },
+      "steps": [
+        {
+          "now": 0,
+          "trend": {
+            "distance": 99,
+            "deadBand": 15,
+            "motion": "stopped",
+            "closerIntervalSeconds": 2
+          },
+          "expect": null
+        },
+        {
+          "now": 9,
+          "unreliable": true,
+          "expect": "unreliable"
+        },
+        {
+          "now": 15,
+          "trend": {
+            "distance": 99,
+            "deadBand": 15,
+            "motion": "speedUnknown",
+            "closerIntervalSeconds": 2
+          },
+          "expect": "closer"
+        },
+        {
+          "now": 16,
+          "trend": {
+            "distance": 99,
+            "deadBand": 15,
+            "motion": "stopped",
+            "closerIntervalSeconds": 2
+          },
+          "expect": null
+        },
+        {
+          "now": 20,
+          "trend": {
+            "distance": 98,
+            "deadBand": 15,
+            "motion": "speedUnknown",
+            "closerIntervalSeconds": 2
+          },
+          "expect": null
+        }
+      ]
     }
   ]
 }
