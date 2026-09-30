@@ -6,9 +6,10 @@ import type { TransitRoute, TransitRouteResult } from "@/lib/types";
 import { awaitGeolocation } from "@/lib/geolocation";
 import { isInKorea } from "@/lib/coverage";
 import { isOutOfCoverageBody } from "@/lib/out-of-coverage";
-import { formatDistance, joinText } from "@/lib/format";
+import { joinText } from "@/lib/format";
 import { alternativeName } from "@/lib/transit-alternative-name";
-import { alightLineText, boardExitAfterWalk, boardExitOnBoardLine } from "@/lib/transit-exit-lines";
+import { alightLineText, boardExitOnBoardLine } from "@/lib/transit-exit-lines";
+import { transitWalkLegMessage } from "@/lib/transit-walk-leg";
 import { dataLocale, prefersEnglish } from "@/lib/data-locale";
 import { TransitBilingualName } from "./TransitBilingualName";
 
@@ -285,38 +286,11 @@ export function TransitRouteResult({
       <ol className="mt-2 list-decimal pl-6 text-sm leading-relaxed">
         {route.legs.map((leg, i) => {
           if (leg.mode === "walk") {
-            // 마지막 도보는 provider가 이름을 모른다(뒤에 탑승 구간이 없다).
-            // 소비자가 목적지 이름을 알면 그것을, 모르면 "목적지까지"라는 구간
-            // 의미를 쓴다(이름 부재와 구간 의미 부재는 다른 층이다).
-            // en은 서버 영문 행선지(뒤 탑승 승차역의 영문). 문장 틀 `{name}`이 문자열 자리라 괄호 병기는 없다.
-            const name = (isEn && leg.toNameEn) || leg.toName || dest;
-            // 거리는 3-state: 필드가 없으면 "0m"가 아니라 거리 없는 문구로 떨어진다
-            const distance =
-              leg.distanceMeters != null ? formatDistance(leg.distanceMeters) : null;
-            // 다음 구간의 승차 출구(E25)는 이 줄이 싣는다 — 걷는 동안 듣고 바로 그 행동을 하기
-            // 때문이다. 마지막 도보(다음 구간 없음)에는 실릴 값이 없어 종전 문구 그대로다.
-            const boardExit = name ? boardExitAfterWalk(route.legs, i) : null;
-            const key = name
-              ? boardExit
-                ? distance
-                  ? "legWalkToExit"
-                  : "legWalkToExitNoDistance"
-                : distance
-                  ? "legWalkTo"
-                  : "legWalkToNoDistance"
-              : distance
-                ? "legWalkToDest"
-                : "legWalkToDestNoDistance";
-            return (
-              <li key={i}>
-                {t(key, {
-                  minutes: leg.minutes,
-                  ...(name ? { name } : {}),
-                  ...(distance ? { distance } : {}),
-                  ...(boardExit ? { exit: boardExit } : {}),
-                })}
-              </li>
-            );
+            // 행선지 → 목적지 → "목적지까지" 순의 이름 선택과 키는 WebMCP 도구 출력과 같은 함수다.
+            // 영어 줄의 목적지 이름은 라틴 표기만(A52, 한 줄 안에서 언어를 섞지 않는다). 문장 틀
+            // `{name}`이 문자열 자리라 괄호 병기는 없다. 이 화면은 로마자를 모르니 한글 이름이면 "목적지까지"다.
+            const { key, values } = transitWalkLegMessage(route.legs, i, { label: dest, roman: null }, isEn);
+            return <li key={i}>{t(key, values)}</li>;
           }
           // 고유명(노선·정류장)은 <line>/<from> 태그 핸들러로 lang="ko" 주입
           const messageKey = boardSeen++ === 0 ? "legBoard" : "legTransfer";

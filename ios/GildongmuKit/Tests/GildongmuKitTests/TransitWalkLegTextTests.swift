@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import GildongmuKit
 
@@ -84,5 +85,45 @@ struct TransitWalkLegTextTests {
                 == "route.transit.legWalkTo")
         #expect(TransitWalkLegText.resolve(name: "개화", distance: "131m", minutes: 2, boardExit: "").key
                 == "route.transit.legWalkTo")
+    }
+}
+
+// MARK: 마지막 도보의 목적지 이름(A52) — 웹·안드로이드와 같은 fixture
+
+private struct WalkDestinationCase: Decodable {
+    let id: String
+    let english: Bool
+    let label: String?
+    let roman: String?
+    let expected: String?
+}
+
+private struct WalkDestinationCaseFile: Decodable {
+    let cases: [WalkDestinationCase]
+}
+
+private func loadWalkDestinationCases() throws -> [WalkDestinationCase] {
+    var url = URL(fileURLWithPath: #filePath)
+    for _ in 0..<5 { url.deleteLastPathComponent() }  // GildongmuKitTests→Tests→GildongmuKit→ios→repo
+    url.appendPathComponent("src/lib/__tests__/fixtures/transit-walk-destination-cases.json")
+    return try JSONDecoder().decode(WalkDestinationCaseFile.self, from: Data(contentsOf: url)).cases
+}
+
+@Suite("마지막 도보 목적지 이름 — 공유 fixture")
+struct TransitWalkDestinationNameTests {
+    @Test func fixtureMatches() throws {
+        let cases = try loadWalkDestinationCases()
+        #expect(cases.count >= 10)
+        for c in cases {
+            #expect(TransitWalkLegText.destinationName(label: c.label, roman: c.roman, english: c.english)
+                    == c.expected, "\(c.id)")
+        }
+    }
+
+    @Test("en 세션 재현: 한글 목적지는 '목적지까지' 문구로 떨어진다")
+    func englishHangulFallsBackToDestinationPhrase() {
+        let name = TransitWalkLegText.destinationName(label: "63빌딩", roman: nil, english: true)
+        #expect(TransitWalkLegText.resolve(name: name, distance: "242m", minutes: 4).key
+                == "route.transit.legWalkToDest")
     }
 }

@@ -1,7 +1,9 @@
 package space.dodoplanet.gildongmu.kit
 
+import kotlinx.serialization.Serializable
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 /**
  * 도보 구간 문구 키·인자 순서(D8, Kit `TransitWalkLegTextTests` 미러). 잠그는 것은 "어떤 조합이 어떤 키가
@@ -77,5 +79,21 @@ class TransitWalkLegTextTest {
     @Test fun normalNameIsPreserved() {
         val name = "  천호(풍납토성) 역  "
         assertEquals(listOf(name, "3"), TransitWalkLegText.resolve(name = name, distance = null, minutes = 3).args)
+    }
+
+    // ── 마지막 도보의 목적지 이름(A52) — 웹·Kit과 같은 fixture ──
+
+    @Serializable
+    private data class DestinationCaseFile(val cases: List<Case>) {
+        @Serializable
+        data class Case(val id: String, val english: Boolean, val label: String? = null, val roman: String? = null, val expected: String? = null)
+    }
+
+    @Test fun destinationNameMatchesSharedFixture() {
+        val cases = Fixtures.sharedJson("transit-walk-destination-cases.json", DestinationCaseFile.serializer()).cases
+        assertTrue(cases.size >= 10)
+        for (c in cases) {
+            assertEquals(c.expected, TransitWalkLegText.destinationName(c.label, c.roman, c.english), c.id)
+        }
     }
 }

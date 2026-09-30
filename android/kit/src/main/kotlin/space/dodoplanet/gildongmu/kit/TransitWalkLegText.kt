@@ -17,6 +17,19 @@ object TransitWalkLegText {
     data class Resolved(val key: String, val args: List<String>)
 
     /**
+     * 마지막 도보(행선지 없음) 줄이 실을 목적지 이름(A52, Kit `destinationName` 미러). 영어 줄이면 **라틴 표기만**
+     * 싣는다 — E28 `bilingualName`의 1순위 이름이 한글이면 null이라 "목적지까지" 문구로 떨어진다. 병기 괄호는 없다.
+     * `english`는 호출부가 기존 영어 자격 판정(`transitLegUsesEnglish`)으로 정한 값. 규칙표는 공유 fixture
+     * `transit-walk-destination-cases.json`.
+     */
+    fun destinationName(label: String?, roman: String?, english: Boolean): String? {
+        val name = transitBriefingName(label) ?: return null
+        if (!english) return name
+        val primary = bilingualName("en", name, en = null, roman = roman).primary
+        return if (hasHangul(primary)) null else transitBriefingName(primary)
+    }
+
+    /**
      * `boardExit`은 **다음 구간의 승차 출구**(E25)다 — 걷는 동안 듣고 바로 그 행동을 하므로 이 줄이 싣는다.
      * 행선지 이름이 없는 마지막 도보에는 붙일 자리가 없어 종전 문구로 떨어진다.
      * ko 순서는 "{name} {exit}번 출구까지 도보 {minutes}분, {distance}" → (name, exit, minutes, distance).

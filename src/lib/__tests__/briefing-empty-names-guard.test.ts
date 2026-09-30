@@ -22,8 +22,11 @@ describe("브리핑 빈 이름 문구 배선", () => {
     expect(text).not.toMatch(/leg\.(fromName|toName)\.map/);
   });
 
-  it("도보 목적지 폴백도 공백을 이름으로 쓰지 않는다", () => {
-    expect(text).toContain("let name = toName ?? transitBriefingName(destinationName)");
+  it("도보 목적지 폴백은 Kit 판정(공백·영어 줄의 라틴 표기, A52)을 지난다", () => {
+    expect(text).toMatch(
+      /let name = toName \?\? TransitWalkLegText\.destinationName\(\s*label: destinationName, roman: destinationRoman, english: english\)/,
+    );
+    expect(text).toContain("let english: Bool = { if case .english = names { return true } else { return false } }()");
     expect(text).toMatch(/TransitWalkLegText\.resolve\(\s*name: name,/);
   });
 

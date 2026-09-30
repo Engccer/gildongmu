@@ -48,6 +48,10 @@ struct TransitRouteRows: View {
     /// 마지막 도보 구간이 가리킬 목적지 이름(spec §4.3). 모르면 nil이고,
     /// 그때도 "목적지까지"라는 구간 의미는 알기 때문에 문구가 사라지지 않는다.
     var destinationName: String?
+    /// 그 목적지의 라틴 표기(E28 `labelRoman`). 영어 줄은 이것만 싣고 없으면 "목적지까지"로 떨어진다(A52 —
+    /// 한 줄 안에서 언어를 섞지 않는다). **기본값이 없다**: 빠뜨리면 영어 줄이 조용히 "목적지까지"가 되므로
+    /// 소비자마다 아는 값(모르면 nil)을 적는다.
+    let destinationRoman: String?
     /// 지하철역 로터 진입점(E45) — 대상 역을 받아 상세를 여는 소비자의 동작. **기본은 꺼짐**이다.
     ///
     /// 켜는 것은 push 스택이 있는 소비자(길찾기 탭)뿐이다. 안내 조망의 "다른 경로" 후보 목록도 같은
@@ -70,7 +74,8 @@ struct TransitRouteRows: View {
             // en 계열은 서버 영문(`*En`, E27)으로 — 시각은 `Gangnam (강남)` 병기, 낭독은 영문만(한 줄 한 객체).
             // 영문이 모자란 구간은 통째로 한국어(줄 단위 원자성).
             stationRow(leg.mode == "walk" ? .walk(legIndex: index) : .transit(legIndex: index)) {
-                transitLegRow(route.legs, at: index, destinationName: destinationName)
+                transitLegRow(
+                    route.legs, at: index, destinationName: destinationName, destinationRoman: destinationRoman)
             }
             // 하차 줄(빠른하차 E5 + 하차 출구 E25)은 별도 문장이라 같은 Text에 합치지 않는다 —
             // 합치면 한 줄이 길어지고, 나누면 스와이프 한 번에 "무슨 열차"와 "어디로 내려 나가나"가
@@ -275,29 +280,39 @@ func transitSummaryText(_ summary: TransitRouteSummary) -> String {
 
 /// 구간 행 — 시각 문자열과 낭독 문자열이 갈릴 수 있어(병기) `distanceText` 대신 직접 라벨을 단다.
 @MainActor
-func transitLegRow(_ legs: [TransitRouteLeg], at index: Int, destinationName: String?) -> some View {
-    let line = transitLegLine(legs, at: index, destinationName: destinationName)
+func transitLegRow(
+    _ legs: [TransitRouteLeg], at index: Int, destinationName: String?, destinationRoman: String?
+) -> some View {
+    let line = transitLegLine(legs, at: index, destinationName: destinationName, destinationRoman: destinationRoman)
     return Text(line.visual).accessibilityLabel(Text(spokenUnits(line.spoken)))
 }
 
 /// 구간 문장 (시각, 낭독). ko·영문 부재는 둘이 같다. en은 노선·승차·하차(도보는 행선지)가 **다** 영문일 때만
 /// 영어 문장이고 역명은 괄호 병기(시각 전용) — 하나라도 없으면 한국어 문장(`transitLegText`).
-func transitLegLine(_ legs: [TransitRouteLeg], at index: Int, destinationName: String? = nil) -> (visual: String, spoken: String) {
+func transitLegLine(
+    _ legs: [TransitRouteLeg], at index: Int, destinationName: String?, destinationRoman: String?
+) -> (visual: String, spoken: String) {
     let leg = legs[index]
     // 승차 출구(E25)는 두 줄 중 **하나만** 싣는다(Kit 술어 둘이 배타) — 도보 줄이면 행선지 문구
     // 안으로, 앞 도보가 없으면 이 탑승 줄 끝으로.
     let boardExit = leg.mode == "walk" ? boardExitAfterWalk(legs, at: index) : boardExitOnBoardLine(legs, at: index)
-    let ko = transitLegText(leg, destinationName: destinationName, boardExit: boardExit)
+    let ko = transitLegText(
+        leg, destinationName: destinationName, destinationRoman: destinationRoman, boardExit: boardExit)
     // 영어 자격은 Kit 술어 하나다 — 하차 줄(`TransitRouteRows`)이 같은 술어로 역명을 고른다.
     guard transitLegUsesEnglish(leg, lang: AppLanguage.dataLocaleValue) else { return (ko, ko) }
     if leg.mode == "walk" {
         let en = transitLegText(
-            leg, destinationName: destinationName, names: .english(bilingual: false), boardExit: boardExit)
+            leg, destinationName: destinationName, destinationRoman: destinationRoman,
+            names: .english(bilingual: false), boardExit: boardExit)
         return (en, en)
     }
     return (
-        transitLegText(leg, destinationName: destinationName, names: .english(bilingual: true), boardExit: boardExit),
-        transitLegText(leg, destinationName: destinationName, names: .english(bilingual: false), boardExit: boardExit)
+        transitLegText(
+            leg, destinationName: destinationName, destinationRoman: destinationRoman,
+            names: .english(bilingual: true), boardExit: boardExit),
+        transitLegText(
+            leg, destinationName: destinationName, destinationRoman: destinationRoman,
+            names: .english(bilingual: false), boardExit: boardExit)
     )
 }
 
@@ -309,7 +324,7 @@ enum TransitLegNames {
 
 /// 구간 한 줄 = 한 접근성 객체. 도보 구간은 행선지·거리 유무로 문구가 갈린다(spec §4.3).
 func transitLegText(
-    _ leg: TransitRouteLeg, destinationName: String? = nil, names: TransitLegNames = .korean,
+    _ leg: TransitRouteLeg, destinationName: String?, destinationRoman: String?, names: TransitLegNames = .korean,
     /// 이 줄이 실을 승차 출구(E25) — 호출부가 배타 술어로 고른 값이고, 도보면 행선지 문구 안으로,
     /// 탑승이면 줄 끝으로 간다. 실을 것이 없으면 nil이고 문구는 종전 그대로다.
     boardExit: String? = nil
@@ -335,8 +350,10 @@ func transitLegText(
     if leg.mode == "walk" {
         // 마지막 도보에는 행선지가 없다(provider가 목적지 이름을 모른다). 소비자가
         // 목적지 이름을 알면 그것을 쓰고, 몰라도 "목적지까지"라는 구간 의미는 남긴다
-        // (이름 부재와 구간 의미 부재는 다른 층이다).
-        let name = toName ?? transitBriefingName(destinationName)
+        // (이름 부재와 구간 의미 부재는 다른 층이다). 영어 줄이면 라틴 표기만 싣는다(A52, Kit 판정).
+        let english: Bool = { if case .english = names { return true } else { return false } }()
+        let name = toName ?? TransitWalkLegText.destinationName(
+            label: destinationName, roman: destinationRoman, english: english)
         // 거리는 3-state: 필드가 없으면 "0m"가 아니라 거리 없는 문구로 떨어진다.
         // 조립은 formatDistance 정본을 지난다(소수 km 직접 조립 금지).
         // 키·인자 순서 판정은 Kit `TransitWalkLegText`(테스트가 잠근다, D8). 아래

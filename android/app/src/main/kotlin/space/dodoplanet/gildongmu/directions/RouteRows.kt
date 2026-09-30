@@ -151,6 +151,7 @@ fun TransitOutcomeRows(
     expandedAlts: Set<String>,
     onToggle: (routeKey: String) -> Unit,
     destinationName: String?,
+    destinationRoman: String?,
     lang: String,
     dataLocale: DataLocale,
     strings: Strings,
@@ -168,7 +169,7 @@ fun TransitOutcomeRows(
         DisclosureRow(label = label, tag = "transit-$key", expanded = expanded, onToggle = { onToggle(key) }, strings = strings, modifier = landing) {
             val legs = entry.route.legs
             for (index in legs.indices) {
-                val line = transitLegLine(legs, index, destinationName, lang, dataLocale, strings)
+                val line = transitLegLine(legs, index, destinationName, destinationRoman, lang, dataLocale, strings)
                 val legRow = if (legs[index].mode == "walk") TransitBriefingRow.Walk(index) else TransitBriefingRow.Transit(index)
                 StationRow(line.visual, "transit-$key-leg-$index", spokenDistanceUnits(line.spoken, meters), legs, legRow, dataLocale, stationEntry, strings)
                 // 하차 줄은 별개 객체 — "무슨 열차"와 "어디로 내려 나가나"가 스와이프 한 번에 갈린다. 없으면 행 자체가 없다.

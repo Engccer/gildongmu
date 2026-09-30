@@ -60,7 +60,8 @@ import { WalkRouteResult } from "./WalkRouteBriefing";
 import { CarRouteResult } from "./CarRouteBriefing";
 import { carStepItems, walkStepItems } from "@/lib/route-step-items";
 import { hasActiveGuideSession, stopActiveGuideSession } from "@/lib/guide-session-store";
-import { alightLineText, boardExitAfterWalk, boardExitOnBoardLine } from "@/lib/transit-exit-lines";
+import { alightLineText, boardExitOnBoardLine } from "@/lib/transit-exit-lines";
+import { transitWalkLegMessage } from "@/lib/transit-walk-leg";
 import { isUnwinding, publishView, withdrawView } from "@/lib/webmcp/view-registry";
 import type {
   DirectionsBridge,
@@ -1133,27 +1134,9 @@ export function DirectionsView({
   function transitLegLine(legs: TransitLeg[], index: number, boardSeen: number, destName: string): string {
     const leg = legs[index];
     if (leg.mode === "walk") {
-      const name = leg.toName ?? destName;
-      const distance = leg.distanceMeters != null ? formatDistance(leg.distanceMeters) : null;
-      // 승차 출구(E25)는 화면 브리핑과 같은 규칙으로 이 줄이 싣는다.
-      const boardExit = name ? boardExitAfterWalk(legs, index) : null;
-      const key = name
-        ? boardExit
-          ? distance
-            ? "legWalkToExit"
-            : "legWalkToExitNoDistance"
-          : distance
-            ? "legWalkTo"
-            : "legWalkToNoDistance"
-        : distance
-          ? "legWalkToDest"
-          : "legWalkToDestNoDistance";
-      return tTransit(key, {
-        minutes: leg.minutes,
-        ...(name ? { name } : {}),
-        ...(distance ? { distance } : {}),
-        ...(boardExit ? { exit: boardExit } : {}),
-      });
+      // 화면 브리핑과 같은 함수(이름 선택·키·승차 출구 E25). 영어 줄의 목적지 이름은 라틴 표기만(A52).
+      const { key, values } = transitWalkLegMessage(legs, index, { label: destName, roman: null }, prefersEnglish(locale));
+      return tTransit(key, values);
     }
     const lineLabel =
       leg.mode === "bus" && leg.lineName ? tTransit("busNo", { route: leg.lineName }) : (leg.lineName ?? "");

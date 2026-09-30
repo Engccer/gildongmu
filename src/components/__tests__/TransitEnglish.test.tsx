@@ -187,6 +187,15 @@ describe("TransitRouteResult — en 로케일 구간 문장", () => {
     expect(container.querySelectorAll("li")[0].textContent).toBe("Walk 3 min to Gildong, 98m");
   });
 
+  it("마지막 도보(행선지 없음)는 한글 목적지 이름을 싣지 않는다(A52)", () => {
+    const last: TransitRoute = { ...route, legs: [...legs, { mode: "walk", minutes: 4, distanceMeters: 242 }] };
+    const hangul = wrap("en", <TransitRouteResult route={last} t={t} locale="en" dest="63빌딩" />);
+    expect([...hangul.container.querySelectorAll("li")].at(-1)?.textContent).toBe("Walk 4 min to the destination, 242m");
+    cleanup();
+    const latin = wrap("en", <TransitRouteResult route={last} t={t} locale="en" dest="Lotte World Tower" />);
+    expect([...latin.container.querySelectorAll("li")].at(-1)?.textContent).toBe("Walk 4 min to Lotte World Tower, 242m");
+  });
+
   it("도착 문단은 하차역 영문 + 괄호 병기", () => {
     const { container } = renderRoute();
     const arrive = container.querySelector("p.mt-1.text-sm:last-of-type");

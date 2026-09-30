@@ -29,6 +29,8 @@ fun transitLegLine(
     legs: List<TransitRouteLeg>,
     index: Int,
     destinationName: String?,
+    /** 목적지의 라틴 표기(E28 `labelRoman`) — 영어 줄의 마지막 도보만 쓴다(A52). 기본값 없음: 모르면 null을 적는다. */
+    destinationRoman: String?,
     lang: String,
     dataLocale: DataLocale,
     strings: Strings,
@@ -36,16 +38,16 @@ fun transitLegLine(
     val leg = legs[index]
     val boardExit = if (leg.mode == "walk") boardExitAfterWalk(legs, index) else boardExitOnBoardLine(legs, index)
     if (!transitLegUsesEnglish(leg, dataLocale)) {
-        val ko = transitLegText(leg, destinationName, LegNames.Korean, boardExit, lang, strings)
+        val ko = transitLegText(leg, destinationName, destinationRoman, LegNames.Korean, boardExit, lang, strings)
         return LegLine(ko, ko)
     }
     if (leg.mode == "walk") {
-        val en = transitLegText(leg, destinationName, LegNames.English(bilingual = false), boardExit, lang, strings)
+        val en = transitLegText(leg, destinationName, destinationRoman, LegNames.English(bilingual = false), boardExit, lang, strings)
         return LegLine(en, en)
     }
     return LegLine(
-        visual = transitLegText(leg, destinationName, LegNames.English(bilingual = true), boardExit, lang, strings),
-        spoken = transitLegText(leg, destinationName, LegNames.English(bilingual = false), boardExit, lang, strings),
+        visual = transitLegText(leg, destinationName, destinationRoman, LegNames.English(bilingual = true), boardExit, lang, strings),
+        spoken = transitLegText(leg, destinationName, destinationRoman, LegNames.English(bilingual = false), boardExit, lang, strings),
     )
 }
 
@@ -62,6 +64,7 @@ sealed class LegNames {
 fun transitLegText(
     leg: TransitRouteLeg,
     destinationName: String?,
+    destinationRoman: String?,
     names: LegNames,
     boardExit: String?,
     lang: String,
@@ -84,8 +87,9 @@ fun transitLegText(
     val fromName = pick(leg.fromName, leg.fromNameEn)
     val toName = pick(leg.toName, leg.toNameEn)
     if (leg.mode == "walk") {
-        // 마지막 도보에는 행선지가 없다(provider가 목적지 이름을 모른다). 공백뿐인 목적지 이름도 폴백으로 쓰지 않는다.
-        val name = toName ?: transitBriefingName(destinationName)
+        // 마지막 도보에는 행선지가 없다(provider가 목적지 이름을 모른다). 공백뿐인 목적지 이름도 폴백으로 쓰지 않고,
+        // 영어 줄이면 라틴 표기만 싣는다(A52, :kit 판정 — 한 줄 안에서 언어를 섞지 않는다).
+        val name = toName ?: TransitWalkLegText.destinationName(destinationName, destinationRoman, english = names is LegNames.English)
         val resolved = TransitWalkLegText.resolve(
             name = name, distance = leg.distanceMeters?.let(::formatDistance), minutes = leg.minutes, boardExit = boardExit,
         )

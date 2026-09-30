@@ -783,6 +783,10 @@ class DirectionsViewModel(
     val destinationName: String?
         get() = _state.value.promotedDestination?.label ?: (_state.value.to as? DirectionsEndpoint.Place)?.label
 
+    /** 위 목적지 이름의 라틴 표기(E28) — 영어 줄의 마지막 도보가 싣는다(A52). 승격본은 ko 데이터 로케일에서만 서서 null. */
+    val destinationRoman: String?
+        get() = if (_state.value.promotedDestination != null) null else (_state.value.to as? DirectionsEndpoint.Place)?.labelRoman
+
     // ── 최근 경로 ─────────────────────────────────────────────────────────────
 
     fun recentRouteLabel(route: RecentRoute, lang: String): String {

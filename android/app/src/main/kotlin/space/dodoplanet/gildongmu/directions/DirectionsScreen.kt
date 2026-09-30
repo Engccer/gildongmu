@@ -357,7 +357,7 @@ private fun DirectionsForm(
                         is DirectionsModeOutcome.Transit -> TransitOutcomeRows(
                             outcome.result, ui.expandedAlts,
                             onToggle = { key -> ui.expandedAlts = if (key in ui.expandedAlts) ui.expandedAlts - key else ui.expandedAlts + key },
-                            destinationName = vm.destinationName, lang = lang, dataLocale = dataLocale, strings = strings,
+                            destinationName = vm.destinationName, destinationRoman = vm.destinationRoman, lang = lang, dataLocale = dataLocale, strings = strings,
                             stationEntry = stationEntry,
                             requery = TransitRequeryRowsState(
                                 axes = outcome.result.knownRequeryAxes, states = s.transitRequery, found = s.requeriedRoutes,

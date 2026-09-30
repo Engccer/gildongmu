@@ -1439,6 +1439,14 @@ struct DirectionsTabView: View {
         return label
     }
 
+    /// 위 목적지 이름의 라틴 표기(E28 `labelRoman`) — en 브리핑의 마지막 도보 줄이 싣는다(A52).
+    /// 승격본(A11)은 ko 데이터 로케일에서만 서므로 영어 줄을 만들 일이 없어 nil이다.
+    private var destinationPlaceRoman: String? {
+        guard model.promotedDestination == nil,
+              case .place(_, _, _, let roman) = model.endpoint(for: .to) else { return nil }
+        return roman
+    }
+
     /// 필드 한 줄 = 한 객체: "출발지, 현재 위치"처럼 라벨+값 단일 텍스트(쉼표 결합).
     /// 미확정 필드는 검색 유도 라벨이 곧 버튼 이름.
     /// `accessible`은 병기 변종이다(E28): false=시각 `Roman (한글)`, true=낭독(괄호 없이). 한글 원문만이면 둘이 같다.
@@ -1633,6 +1641,7 @@ struct DirectionsTabView: View {
                     TransitRouteRows(
                         route: entry.route, includeSummary: false,
                         destinationName: destinationPlaceName,
+                        destinationRoman: destinationPlaceRoman,
                         stationEntry: { stop, lineName in
                             stationPath.append(StationDestination(
                                 place: transitStopPlace(stop), lineName: lineName))

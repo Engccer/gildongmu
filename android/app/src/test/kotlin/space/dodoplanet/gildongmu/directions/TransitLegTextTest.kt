@@ -31,8 +31,10 @@ class TransitLegTextTest {
         stationCount = stations, minutes = minutes, exit = exit, quickExit = quickExit,
     )
 
-    private fun lines(legs: List<TransitRouteLeg>, dest: String? = null, lang: String = "ko", data: DataLocale = DataLocale.ko, s: Strings = ko) =
-        legs.indices.map { transitLegLine(legs, it, dest, lang, data, s) }
+    private fun lines(
+        legs: List<TransitRouteLeg>, dest: String? = null, lang: String = "ko", data: DataLocale = DataLocale.ko, s: Strings = ko,
+        roman: String? = null,
+    ) = legs.indices.map { transitLegLine(legs, it, dest, roman, lang, data, s) }
 
     @Test fun `fixture 추천 경로 5구간 ko 문장`() {
         val got = lines(fixture.legs).map { it.spoken }
@@ -56,12 +58,21 @@ class TransitLegTextTest {
         assertEquals("목적지까지 도보 1분", lines(listOf(subway(), walk(minutes = 1, distance = null))).last().spoken)
     }
 
+    @Test fun `en 마지막 도보는 한글 목적지를 싣지 않고 라틴 표기가 있으면 그것을 쓴다(A52)`() {
+        val en = CatalogStrings("en")
+        val legs = listOf(subway(lineEn = "Line 5", fromEn = "Jamsil", toEn = "Gangnam"), walk(minutes = 4, distance = 242))
+        assertEquals("Walk 4 min to the destination, 242m", lines(legs, dest = "63빌딩", lang = "en", data = DataLocale.en, s = en).last().spoken)
+        assertEquals("Walk 4 min to 63bilding, 242m", lines(legs, dest = "63빌딩", lang = "en", data = DataLocale.en, s = en, roman = "63bilding").last().spoken)
+        // ko는 원명 그대로(로마자가 있어도).
+        assertEquals("63빌딩까지 도보 4분, 242m", lines(legs, dest = "63빌딩", roman = "63bilding").last().spoken)
+    }
+
     @Test fun `공백뿐인 이름은 정보 부재다 - 승하차 조각·노선·목적지 폴백에 쓰지 않는다(iOS 2026-09-19)`() {
         val blankFrom = lines(listOf(subway(from = " \t", to = "강남"))).single().spoken
         assertEquals("수도권 2호선, 강남에서 하차, 6 정거장, 11분 소요", blankFrom)
         val blankLine = transitLegText(
             TransitRouteLeg(mode = "bus", lineName = " ", fromName = "정류소", toName = "환승정류소", stationCount = 5, minutes = 10),
-            null, LegNames.Korean, null, "ko", ko,
+            null, null, LegNames.Korean, null, "ko", ko,
         )
         assertFalse(blankLine.contains("번 버스"), blankLine)
         assertEquals("목적지까지 도보 1분, 72m", lines(listOf(subway(), walk(toName = "\n", minutes = 1, distance = 72)), dest = "  ").last().spoken)
@@ -90,7 +101,7 @@ class TransitLegTextTest {
     @Test fun `en 자격이 있으면 역명만 병기하고 노선은 영문 그대로, 하차 줄은 앱 언어(ja)`() {
         val ja = CatalogStrings("ja")
         val leg = subway(lineEn = "Seoul Metro Line 2", fromEn = "Jamsil", toEn = "Gangnam", exit = TransitLegExit(alight = "5"))
-        val line = transitLegLine(listOf(leg), 0, null, "ja", DataLocale.en, ja)
+        val line = transitLegLine(listOf(leg), 0, null, null, "ja", DataLocale.en, ja)
         assertTrue(line.visual.startsWith("Seoul Metro Line 2, "), line.visual)
         assertFalse(line.visual.contains("(수도권"), line.visual) // 노선은 병기하지 않는다
         assertTrue(line.visual.contains("Jamsil (잠실)") && line.visual.contains("Gangnam (강남)"), line.visual)
@@ -101,7 +112,7 @@ class TransitLegTextTest {
 
     @Test fun `영문 조각 하나가 없으면 그 구간 줄 전체가 한국어`() {
         val leg = subway(lineEn = "Seoul Metro Line 2", fromEn = "Jamsil", toEn = null)
-        val line = transitLegLine(listOf(leg), 0, null, "en", DataLocale.en, CatalogStrings("en"))
+        val line = transitLegLine(listOf(leg), 0, null, null, "en", DataLocale.en, CatalogStrings("en"))
         assertEquals(line.visual, line.spoken)
         assertTrue(line.visual.startsWith("수도권 2호선"), line.visual)
         assertEquals("강남", transitAlightStationNameOf(leg))
