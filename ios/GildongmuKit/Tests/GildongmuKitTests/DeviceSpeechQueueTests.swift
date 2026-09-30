@@ -38,6 +38,7 @@ struct DeviceSpeechQueueTests {
         let synth: SharedSynth
         var now: Double = 0
         var suppressed = false
+        var voiceOverRunning = true
         var toneEndsAt: () -> Double? = { nil }
         var channel: GuideSpeechChannel = .device
         private(set) var voiceOver: [(String, Bool)] = []
@@ -56,6 +57,7 @@ struct DeviceSpeechQueueTests {
             },
             isSpeaking: { [weak self] in self?.synth.speaking ?? false },
             isSpeakingToken: { [weak self] t in self?.synth.isSpeaking(token: t) ?? false },
+            voiceOverRunning: { [weak self] in self?.voiceOverRunning ?? true },
             isSuppressed: { [weak self] in self?.suppressed ?? false },
             toneEndsAt: { [weak self] in self?.toneEndsAt() },
             route: { [weak self] _ in self?.channel ?? .drop },
@@ -134,6 +136,8 @@ struct DeviceSpeechQueueTests {
         h.submit("잠시 후 우회전하세요", cls: .urgent)
         #expect(h.synth.spoken == ["묶음 전문", "잠시 후 우회전하세요"])
         #expect(!h.queue.hasPending)
+        #expect(h.drops.map(\.0) == ["묶음 전문"])  // 끊긴 이 칸의 발화는 장부를 되살린다
+        #expect(h.drops.map(\.1) == [.superseded])
     }
 
     // 다른 출처(다른 모델·채팅이 끝난 뒤 다른 발화)가 말하는 중이면 선점해도 이 칸의 옛 발화에 통지하지 않는다.
@@ -227,12 +231,32 @@ struct DeviceSpeechQueueTests {
         let h = Harness()
         h.submit("전문")
         h.submit("상한 문장", protected: true)
-        h.toneEndsAt = { [weak h] in (h?.now ?? 0) + 2 }  // 항상 잔여 2초
+        // 항상 잔여 2초 — 단 50번째 조회부터는 톤이 없다. 상한 분기가 없으면 스위트가 멈추는 대신 이 늦은 탈출로 끝나
+        // 아래 시간 단언이 실패한다(검증 리뷰 N8).
+        var toneCalls = 0
+        h.toneEndsAt = { [weak h] in
+            toneCalls += 1
+            return toneCalls < 50 ? (h?.now ?? 0) + 2 : nil
+        }
         h.speakingAfterPolls = [false]
         await drain()
         #expect(h.synth.spoken == ["전문", "상한 문장"])
         // 톤 대기 3초 + 사이사이 확인 간격 몇 번 — 상한이 없으면 끝나지 않는다.
         #expect(h.now < SpeechDeferConstants.speechDeferMaxSeconds + 4 * DeviceSpeechQueue.pollSeconds)
+    }
+
+    // 톤 대기 상한은 한 번의 대기당이다 — 톤 대기 도중 다시 말하기 시작했다가 끝나면 3초를 새로 잰다(구현 리뷰 m-3,
+    // 검증 리뷰 N8: 재설정을 지우면 첫 대기의 시작 시각으로 판정해 약 3.6초에 일찍 낸다).
+    @Test func toneWaitCapRestartsAfterSpeechResumes() async {
+        let h = Harness()
+        h.submit("전문")
+        h.submit("보호 문장", protected: true)
+        h.toneEndsAt = { [weak h] in (h?.now ?? 0) + 2 }
+        // 확인 → 톤 대기 → (말하기 재개) 확인 → 말 끝남: 이후 두 번째 톤 대기가 3초를 온전히 쓴다.
+        h.speakingAfterPolls = [false, true, true, false]
+        await drain()
+        #expect(h.synth.spoken == ["전문", "보호 문장"])
+        #expect(h.now > 5)
     }
 
     // 꺼내는 순간 채널을 다시 고른다: 전경 VoiceOver면 통지(우선순위 전달), 채널 소실(토글 끔·가청 상실)이면 undelivered.
@@ -322,6 +346,18 @@ struct DeviceSpeechQueueTests {
         h.speakingAfterPolls = [false]
         await drain()
         #expect(h.synth.spoken == ["말하는 중", "대기"])
+    }
+
+    // VoiceOver가 꺼진 전경(도보·대중교통은 채널이 VoiceOver 게시라 듣는 사람이 없다)이면 끊지도 넘기지도 않는다(검증 리뷰 N3).
+    @Test func handOverKeepsSpeechWhenVoiceOverOff() async {
+        let h = Harness()
+        h.submit("말하는 중")
+        h.submit("대기")
+        h.channel = .voiceOver
+        h.voiceOverRunning = false
+        #expect(h.queue.handOver().isEmpty)
+        #expect(h.synth.stops == 0)
+        #expect(h.queue.hasPending)
     }
 
     // 인계도 억제·유효 시간을 지난다(접근성 m3, 구현 리뷰 m-1): 억제 중이면 끊기만 하고 undelivered, 낡은 칸 문장도 undelivered.

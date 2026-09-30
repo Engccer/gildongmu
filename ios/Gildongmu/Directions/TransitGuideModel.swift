@@ -183,6 +183,8 @@ final class TransitGuideModel {
     /// 백그라운드를 거쳤는가(기기 음성 복귀 인계용). `wasBackgrounded`와 달리 추적 여부와 무관하게 선다 — 세션이
     /// 백그라운드에서 끝나도 말하는 중인 완료 문장을 넘겨야 한다.
     private var speechBackgrounded = false
+    /// 유휴 재개 복귀에서 재개 문장 앞에 실을 인계 문장(`handleScenePhaseChange` → `resumeIfIdle` 한 턴 수명).
+    private var resumePrefix: [String] = []
     /// 마지막 사용자 조작의 단조 시각(초) — 유휴 폴 정지 축(spec §4.2.6). 세션 시작·모든 사용자 입력·전경 복귀가 갱신.
     private var lastUserActionAt: Double = 0
     /// 유휴 폴 정지 중(잊힌 세션 안전망 — 세션은 유지, 폴·keep-alive만 멈춘다). 어떤 조작·전경 복귀든 푼다.
@@ -390,7 +392,8 @@ final class TransitGuideModel {
         // 복귀 인계(E53 §4.2 ⑥, 설계 리뷰 m4)는 **추적 가드 앞**이다 — 세션이 백그라운드에서 끝났어도(완료 문장이 기기
         // 음성으로 말하는 중) 그 문장을 VoiceOver로 넘긴다. 받은 문장은 아래 복귀 낭독과 **한 통지**(`.high`)로 합친다(구현
         // 리뷰 M-2·M-3). 합칠 자리를 지나지 않는 경로(비추적·유휴 재개·전경 전이 없음)는 함수 끝에서 따로 낸다(`defer`).
-        // 유휴 정지 중엔 폴이 없어 기기 음성도 없으므로 그 경로의 목록은 비어 있다. 정식판은 늘 빈 목록이다.
+        // 유휴 재개 복귀는 재개 문장 앞에 싣는다(`resumePrefix` — 유휴 정지 직전 폴의 문장이 아직 말하는 중일 수 있다, 검증
+        // 리뷰 N4). 정식판은 늘 빈 목록이다.
         var handed: [String] = []
         switch phase {
         case .background: speechBackgrounded = true
@@ -416,13 +419,19 @@ final class TransitGuideModel {
             guard wasBackgrounded else { return }
             wasBackgrounded = false
             let resumedFromIdle = idlePaused
+            if resumedFromIdle {
+                resumePrefix = handed
+                handed = []
+            }
             // 화면을 켠 것은 조작이다 — 유휴 정지 중이었으면 여기서 "안내를 재개합니다. {상태}"와 즉폴.
             touchUserAction()
+            resumePrefix = []
             if !resumedFromIdle {
                 // 복귀 낭독은 백그라운드에서 버린 통지가 있을 때만, 현재 상태 하나(누적 재생 금지).
                 // 인계 문장(옛 → 새) 뒤에 현재 상태(버린 통지가 있을 때만, 인계와 같은 문장이면 뺀다)를 한 통지로.
                 let status = missedAnnouncement ? returnStatusText() : ""
-                let owed = handed + (status.isEmpty || handed.contains(status) ? [] : [status])
+                // 인계 문장은 낭독 정정(`spokenUnits`)을 지난 뒤라 같은 층끼리 비교한다(검증 리뷰 N2).
+                let owed = handed + (status.isEmpty || handed.contains(spokenUnits(status)) ? [] : [status])
                 handed = []
                 if !owed.isEmpty {
                     // 화면 변화 없는 통지라 `.high`(CLAUDE.md 통지 우선순위 판별선 — 착지 라벨로 대체될 수 없다).
@@ -477,7 +486,9 @@ final class TransitGuideModel {
         idlePaused = false
         transitGuideLog("idleResume")
         // "안내를 재개합니다."는 폴이 실제로 멈췄던 이 자리에서만 참이다(백그라운드 복귀에서는 뗐다).
-        var parts = [appLocalized("transitGuide.resumed")]
+        // 복귀 인계 문장(옛 것)이 있으면 앞에 싣는다 — 재개 문장과 한 통지(검증 리뷰 N4). 복귀 밖의 재개엔 비어 있다.
+        var parts = resumePrefix + [appLocalized("transitGuide.resumed")]
+        resumePrefix = []
         let status = returnStatusText()
         if !status.isEmpty { parts.append(status) }
         announceNow(parts.joined(separator: " "), highPriority: true)

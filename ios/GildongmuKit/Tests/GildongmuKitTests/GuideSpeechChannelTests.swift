@@ -14,7 +14,7 @@ struct GuideSpeechChannelTests {
         foreground && voiceOver ? .voiceOver : .device
     }
 
-    /// 술어 입력 전 조합(전경·VoiceOver·분류·토글·가청 = 2×2×2×2×2).
+    /// 술어 입력 전 조합(전경·VoiceOver·토글·가청 2^4 × 분류 3).
     private struct Inputs {
         let foreground: Bool, voiceOver: Bool, cls: GuideSpeechClass, enabled: Bool, audible: Bool
     }
@@ -27,6 +27,9 @@ struct GuideSpeechChannelTests {
             } }
         } } }
     }
+
+    /// 백그라운드에서 말하는 분류 — 구현식(`!= .deferrable`)을 되풀이하지 않는 명시 집합(검증 리뷰 N6).
+    private static let spokenInBackground: Set<GuideSpeechClass> = [.actionable, .urgent]
 
     private func channel(_ i: Inputs, outing: Bool) -> GuideSpeechChannel {
         guideSpeechChannel(
@@ -46,7 +49,7 @@ struct GuideSpeechChannelTests {
     // 조합은 종전 그대로다 — 들리지 않는 문장을 "전달"로 치면 1회성 경고 latch와 복귀 상환이 거기서 소비된다.
     @Test func enabledChangesOnlyAudibleBackgroundActionable() {
         for i in allInputs where i.enabled {
-            let expected: GuideSpeechChannel = !i.foreground && i.audible && i.cls != .deferrable
+            let expected: GuideSpeechChannel = !i.foreground && i.audible && Self.spokenInBackground.contains(i.cls)
                 ? .device : legacyBeaconChannel(foreground: i.foreground)
             #expect(channel(i, outing: false) == expected, "\(i)")
         }
@@ -58,7 +61,7 @@ struct GuideSpeechChannelTests {
         for i in allInputs {
             let expected: GuideSpeechChannel = i.foreground
                 ? legacyOutingChannel(foreground: true, voiceOver: i.voiceOver)
-                : (i.enabled && i.audible && i.cls != .deferrable ? .device : .drop)
+                : (i.enabled && i.audible && Self.spokenInBackground.contains(i.cls) ? .device : .drop)
             #expect(channel(i, outing: true) == expected, "\(i)")
         }
     }

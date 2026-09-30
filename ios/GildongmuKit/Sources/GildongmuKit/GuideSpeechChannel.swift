@@ -49,7 +49,12 @@ public func guideSpeechChannel(
         if voiceOverRunning { return .voiceOver }
         return foregroundDeviceSpeech ? .device : .voiceOver
     }
-    return backgroundSpeechEnabled && backgroundAudible && speechClass != .deferrable ? .device : .drop
+    guard backgroundSpeechEnabled, backgroundAudible else { return .drop }
+    // 망라 switch — 새 분류가 생기면 백그라운드에서 말할지가 컴파일 단계에서 판정되게 한다(부정 비교는 fail-open, 검증 리뷰 N6).
+    switch speechClass {
+    case .actionable, .urgent: return .device
+    case .deferrable: return .drop
+    }
 }
 
 /// 토글 "백그라운드 음성 안내"(spec §6). 키·기본값·실효값의 정본.

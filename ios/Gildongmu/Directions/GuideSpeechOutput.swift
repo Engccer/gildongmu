@@ -55,6 +55,7 @@ enum GuideSpeechOutput {
             clock: { ProcessInfo.processInfo.systemUptime },
             isSpeaking: { TtsPlayer.shared.isSpeakingGuidance },
             isSpeakingToken: { TtsPlayer.shared.isSpeakingGuidance(token: $0) },
+            voiceOverRunning: { UIAccessibility.isVoiceOverRunning },
             isSuppressed: isSuppressed,
             toneEndsAt: toneEndsAt,
             route: { channel($0, foregroundDeviceSpeech: foregroundDeviceSpeech, backgroundAudible: backgroundAudible()) },

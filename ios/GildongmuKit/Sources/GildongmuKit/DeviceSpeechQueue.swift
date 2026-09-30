@@ -55,6 +55,7 @@ public final class DeviceSpeechQueue {
     private let sleeper: (Double) async -> Void
     private let isSpeaking: () -> Bool
     private let isSpeakingToken: (Int) -> Bool
+    private let voiceOverRunning: () -> Bool
     private let isSuppressed: () -> Bool
     private let toneEndsAt: () -> Double?
     private let route: (GuideSpeechClass) -> GuideSpeechChannel
@@ -71,6 +72,7 @@ public final class DeviceSpeechQueue {
 
     /// - `isSpeaking`: 어느 안내든 기기 음성이 말하는 중인가(`TtsPlayer.isSpeakingGuidance`, 채팅 듣기 제외).
     /// - `isSpeakingToken`: 그 발화 토큰의 문장이 아직 말하는 중인가(다른 발화가 끊었으면 거짓).
+    /// - `voiceOverRunning`: VoiceOver가 켜져 있는가 — 꺼져 있으면 복귀 인계가 기기 음성을 끊지 않는다(들을 채널이 없다).
     /// - `isSuppressed`: 받아쓰기 억제 중인가 — 꺼내는·넘기는 순간 참이면 버린다(녹음 중 발화 0, 헌장 §6).
     /// - `toneEndsAt`: 그 모델 재생기의 톤 종료 시각 — 꺼내기 전 톤 뒤 발화(`speechDeferStep`)를 지킨다.
     /// - `route`: 지금 채널(채널 술어를 그 시점 상태로 다시 부른다).
@@ -83,6 +85,7 @@ public final class DeviceSpeechQueue {
         },
         isSpeaking: @escaping () -> Bool,
         isSpeakingToken: @escaping (Int) -> Bool,
+        voiceOverRunning: @escaping () -> Bool,
         isSuppressed: @escaping () -> Bool,
         toneEndsAt: @escaping () -> Double?,
         route: @escaping (GuideSpeechClass) -> GuideSpeechChannel,
@@ -94,6 +97,7 @@ public final class DeviceSpeechQueue {
         self.sleeper = sleeper
         self.isSpeaking = isSpeaking
         self.isSpeakingToken = isSpeakingToken
+        self.voiceOverRunning = voiceOverRunning
         self.isSuppressed = isSuppressed
         self.toneEndsAt = toneEndsAt
         self.route = route
@@ -149,6 +153,9 @@ public final class DeviceSpeechQueue {
 
     /// 전경 복귀(계약 6). VoiceOver로 넘길 문장을 옛 것 → 새 것 순서로 돌려준다(게시는 호출부가 한 통지로).
     public func handOver() -> [String] {
+        // VoiceOver가 꺼진 전경(도보·대중교통은 채널이 VoiceOver 게시라 듣는 사람이 없다): 말하는 기기 음성을 끊지 않고 칸은
+        // 드레인에 맡긴다(접근성 m2, 검증 리뷰 N3 — VoiceOver를 쓰지 않는 사용자는 끝까지 기기 음성으로 듣는다).
+        guard voiceOverRunning() else { return [] }
         var handed: [String] = []
         if let current = lastSpoken, isSpeakingToken(current.token),
            route(current.item.speechClass) == .voiceOver {
@@ -209,7 +216,7 @@ public final class DeviceSpeechQueue {
     private func startDrainIfNeeded() {
         guard drain == nil else { return }
         let gen = generation
-        let sleeper = self.sleeper  // 대기 동안 self를 붙들지 않는다(약한 참조의 뜻을 지킨다)
+        let sleeper = self.sleeper  // 폴 대기 동안 self를 붙들지 않는다(톤 대기는 최대 3초 동안 붙든다 — 모델은 앱 수명)
         drain = Task { [weak self] in
             var toneWaitStart: Double?
             while true {
@@ -248,7 +255,8 @@ public final class DeviceSpeechQueue {
         switch route(item.speechClass) {
         case .device: say(item)
         // 전경 ∧ VoiceOver로 바뀌었다(복귀 인계보다 드레인이 먼저 깬 짧은 창, 또는 나들이 전경에서 VoiceOver를 켠 경우).
-        case .voiceOver: postVoiceOver(item.text, item.highPriority)
+        // 인계와 같은 이유로 `.high` — 앱 활성화 순간의 기본 우선순위 통지는 화면 낭독에 잠식된다(검증 리뷰 N5).
+        case .voiceOver: postVoiceOver(item.text, true)
         case .drop: item.onDropped?(.undelivered)
         }
     }

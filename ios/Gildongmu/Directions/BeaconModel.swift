@@ -1608,7 +1608,9 @@ final class BeaconModel {
                 let carState = sessionKind == .car ? (liveTopText ?? currentRoadText) : nil
                 let current = statusText.isEmpty ? (carState ?? "") : statusText
                 // 현재 상태 꼬리는 버린 문장이 있을 때만(인계만 있으면 마지막 상태는 인계 문장이다), 인계와 같은 문장이면 뺀다.
-                let tail = !repaying || current.isEmpty || current == intro || handed.contains(current) ? nil : current
+                // 인계 문장은 낭독 정정(`spokenUnits`)을 지난 뒤라 같은 층끼리 비교한다(검증 리뷰 N2 — "300m" ≠ "300 미터").
+                let tail = !repaying || current.isEmpty || current == intro
+                    || handed.contains(spokenUnits(current)) ? nil : current
                 // 순서: 인계(끊긴 옛 발화 → 칸의 새 문장) → 세션 경고 → 진입 서술 → 현재 상태.
                 let owed = (handed + [pendingStepFreeNotice, intro, tail].compactMap { $0 })
                     .joined(separator: " ")

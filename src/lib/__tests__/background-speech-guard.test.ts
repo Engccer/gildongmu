@@ -128,10 +128,18 @@ describe("백그라운드 음성 안내 배선 (E53)", () => {
     // 인계 목록이 상환 문장에 들어가고, 인계가 섞이면 .high(구현 리뷰 M-2·M-3).
     expect(beacon).toContain("let owed = (handed + [pendingStepFreeNotice, intro, tail]");
     expect(beacon).toContain("announce(owed, highPriority: !handed.isEmpty, speechClass: .actionable)");
+    // 꼬리(현재 상태)는 버린 문장이 있을 때만, 인계와 같은 문장이면 뺀다 — 낭독 정정 뒤끼리 비교(검증 리뷰 N2·N8).
+    expect(beacon).toContain("let tail = !repaying ||");
+    expect(beacon).toContain("handed.contains(spokenUnits(current))");
     const transit = functionBody(read(join(DIR, "TransitGuideModel.swift")), "handleScenePhaseChange");
     expect(transit.indexOf("handed = deviceSpeech.handOver()")).toBeGreaterThanOrEqual(0);
     expect(transit.indexOf("handed = deviceSpeech.handOver()")).toBeLessThan(transit.indexOf("guard isTracking else { return }"));
     expect(transit).toContain("let owed = handed + ");
+    // 합친 뒤 비워야 defer가 같은 인계 문장을 한 번 더 게시하지 않는다(검증 리뷰 N8).
+    const merged = transit.slice(transit.indexOf("let owed = handed + "));
+    expect(merged.slice(0, merged.indexOf("announce("))).toContain("handed = []");
+    // 유휴 재개 복귀는 재개 문장 앞에 싣는다(검증 리뷰 N4).
+    expect(transit).toMatch(/if resumedFromIdle \{\s*resumePrefix = handed\s*handed = \[\]/);
     // 합칠 자리를 지나지 않은 경로는 defer가 따로 낸다(비추적 복귀 — 백그라운드에서 끝난 세션의 완료 문장).
     expect(transit).toMatch(/defer \{\s*if !handed\.isEmpty \{\s*announce\(handed\.joined/);
     const outing = functionBody(read(join(DIR, "OutingModel.swift")), "handleScenePhaseChange");
