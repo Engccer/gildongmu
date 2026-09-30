@@ -503,6 +503,8 @@ final class BeaconModel {
     /// **10m 이상 변했을 때만 갱신**한다 — 커서가 띠바에 있으면 VoiceOver가 라벨 변경을
     /// 매번 낭독하므로 매 fix 갱신은 발화 과밀이다(설계 리뷰 M7). 시작·목적지 변경·종료에서 nil.
     private(set) var bandDistanceMeters: Int?
+    /// 남은 거리 행의 경유지 잔여(E57) — 띠바와 같은 규칙으로 10m 이상 변했을 때만 바꾼다. 경유지 목표가 아니면 nil.
+    private var shownWaypointMeters: Int?
 
     init(pedometer: PedometerQuerying = PedometerService()) {
         self.pedometer = pedometer
@@ -1202,16 +1204,20 @@ final class BeaconModel {
         let distancePart: String
         let minutes: Int?
         if target.kind == .waypoint, let viaLabel = routeWaypointLabel {
-            // 경유지 거리는 띠바 값과 다른 양이라 10m 격자로 같은 효과를 낸다(E57 §3.6).
+            // 경유지 거리는 띠바 값과 다른 양이라 같은 규칙(10m 이상 변했을 때만)을 따로 적용한다(E57 §3.6).
+            let meters = max(0, Int(target.meters.rounded()))
+            if shownWaypointMeters.map({ abs($0 - meters) >= 10 }) ?? true { shownWaypointMeters = meters }
             distancePart = appLocalized(
-                "directions.viaRemaining", viaLabel, formatDistance((Int(target.meters.rounded()) + 5) / 10 * 10))
+                "directions.viaRemaining", viaLabel, formatDistance(shownWaypointMeters ?? meters))
             minutes = etaMinutes(route: route, remainingMeters: target.meters, toWaypoint: true)
         } else if (target.kind == .destination && routeWaypointLabel != nil) || waypointPassedInSession {
+            shownWaypointMeters = nil
             // 경유지를 지난 세션은 재조회 경로(경유지 없음)에서도 목적지 목표다(설계 리뷰 #7).
             distancePart = appLocalized(
                 "directions.viaDestRemaining", destinationLabel, formatDistance(shownMeters))
             minutes = etaMinutesNow(route: route, state: state)
         } else {
+            shownWaypointMeters = nil
             distancePart = appLocalized("guide.remainingDistance", formatDistance(shownMeters))
             minutes = etaMinutesNow(route: route, state: state)
         }

@@ -24,28 +24,30 @@ function body(src: string, signature: string): string {
 }
 
 describe("BeaconTrackingSheet 착지 (E57)", () => {
-  it("착지 바인딩은 옵셔널 하나이고 focusTarget 헬퍼 한 자리에만 붙는다", () => {
+  it("착지 바인딩은 옵셔널 하나이고 focusTarget 헬퍼 한 자리에만 붙는다(가시화 키 동반)", () => {
     expect(BEACON).toContain("@AccessibilityFocusState private var focusedRow: SheetFocus?");
     expect(BEACON).not.toMatch(/@AccessibilityFocusState private var \w+: Bool/);
     expect(BEACON.match(/\.accessibilityFocused\(/g) ?? []).toHaveLength(1);
-    expect(body(BEACON, "private func focusTarget<")).toContain(
-      "view.accessibilityFocused($focusedRow, equals: target)",
-    );
+    const helper = body(BEACON, "private func focusTarget<");
+    expect(helper).toContain(".accessibilityFocused($focusedRow, equals: target)");
+    expect(helper).toContain(".id(Self.focusId(target))");
   });
 
   it("시트 열림·띠바 복귀는 첫 정보 행을 요청한다 — 제목·접기 버튼 착지가 되살아나지 않는다(종료 화면은 도착 문장)", () => {
     const start = BEACON.indexOf(".task {");
     const task = BEACON.slice(start, BEACON.indexOf("\n        }\n", start));
     expect(task).toContain("landFocus(.arrived)");
-    expect(task).toContain('requestInfoLanding(note: "open", afterSummary: false)');
+    expect(task).toContain('requestInfoLanding(note: "open", summarySince: nil)');
     expect(task).not.toMatch(/\.title\b|\.minimize\b|returnedFromBand/);
-    expect(BEACON).not.toMatch(/landTitleFocus|titleFocused|case minimize/);
+    expect(BEACON).not.toMatch(/landTitleFocus|titleFocused|case minimize|case title/);
     // 띠바 복귀 분기 표지는 세 시트 어디에도 없다(E57 위원장 판정 Q1).
     for (const src of [BEACON, OUTING, TRANSIT]) expect(src).not.toContain("returnedFromBand");
     // 같은 콘텐츠 뷰 안에서 새 세션이 서는 경로(spec §3.5).
     expect(BEACON).toMatch(
-      /\.onChange\(of: model\.isTracking\) \{ _, tracking in\s*if tracking \{ requestInfoLanding\(note: "newSession", afterSummary: false\) \}/,
+      /\.onChange\(of: model\.isTracking\) \{ _, tracking in\s*if tracking \{ requestInfoLanding\(note: "newSession", summarySince: nil\) \}/,
     );
+    // 첫 정보 행이 없으면 제목으로 올리지 않고 착지하지 않는다(a11y 감사 LOW).
+    expect(body(BEACON, "private func landFirstInfoRow(")).toContain("reason=noInfoRow");
   });
 
   it("첫 정보 행의 순서는 남은 거리 → 윗줄 → 상태 문장이고, 존재 판정이 렌더 조건과 짝이다", () => {
@@ -67,63 +69,80 @@ describe("BeaconTrackingSheet 착지 (E57)", () => {
     expect(BEACON).toContain("if model.mode == .detail {");
   });
 
-  it("경로 조회 중이면 끝날 때까지, 커밋 요약이 있으면 그 발화가 끝날 때까지 기다린다(설계 리뷰 M1)", () => {
+  it("경로 조회 중이면 커밋까지, 통지를 낸 전이면 그 시각 이후에 끝난 발화까지 기다린다(설계 리뷰 M1, 코드 리뷰 m3)", () => {
     expect(MODEL).toContain("private(set) var awaitingRoute = false");
     const request = body(BEACON, "private func requestInfoLanding(");
-    expect(request).toContain("guard afterSummary || model.awaitingRoute else {");
+    expect(request).toContain("guard summarySince != nil || model.awaitingRoute else {");
     expect(request).toContain("Self.routeWaitLimit");
     expect(request).toContain("reason=timeout");
-    expect(BEACON).toMatch(/\.onChange\(of: model\.awaitingRoute\) \{ _, awaiting in\s*if !awaiting \{ resolvePendingInfoLanding\(\) \}/);
+    expect(BEACON).toMatch(/\.onChange\(of: model\.awaitingRoute\) \{ _, awaiting in[\s\S]{0,300}pendingInfoLanding\?\.summarySince = now\s*resolvePendingInfoLanding\(\)/);
     const resolve = body(BEACON, "private func resolvePendingInfoLanding(");
     expect(resolve).toContain("let expected = spokenUnits(model.statusText)");
-    expect(resolve).toContain("lastFinishedAnnouncement != expected");
+    expect(resolve).toContain("$0.text == expected && $0.at >= (pending.summarySince ?? 0)");
     expect(resolve).toContain("Self.summaryWaitLimitMs");
-    expect(BEACON).toContain("UIAccessibility.announcementDidFinishNotification");
+    expect(resolve).toContain("model.sessionKind == .car && model.listener == .driver");
+    // 완료 기록은 관찰 대상이 아닌 상자에 쓴다(통지마다 시트가 다시 그려지지 않게, 코드 리뷰 m6).
+    expect(BEACON).toMatch(/announcementDidFinishNotification\)\) \{ note in[\s\S]{0,200}landingBox\.finished = \(text, ProcessInfo\.processInfo\.systemUptime\)/);
+    expect(BEACON).toContain("@State private var landingBox = LandingBox()");
   });
 
-  it("기다리는 동안 사용자가 커서를 옮겼으면 착지하지 않는다(설계 리뷰 M4)", () => {
+  it("기다리는 동안 사용자가 커서를 옮겼으면 착지하지 않는다 — VoiceOver 초점 이동 신호, 시스템 배치 창은 뺀다(M4·a11y M2)", () => {
     expect(BEACON).toMatch(
-      /\.onChange\(of: focusedRow\) \{ _, new in\s*guard pendingInfoLanding != nil else \{ return \}\s*if new == \.title \{\s*pendingInfoLanding\?\.sawTitle = true\s*\} else if pendingInfoLanding\?\.sawTitle == true \{\s*pendingInfoLanding\?\.userMoved = true/,
+      /elementFocusedNotification\)\) \{ _ in\s*guard Self\.isForeground, let pending = pendingInfoLanding,\s*ProcessInfo\.processInfo\.systemUptime - pending\.since > Self\.systemFocusGrace else \{ return \}\s*pendingInfoLanding\?\.userMoved = true/,
     );
     expect(body(BEACON, "private func resolvePendingInfoLanding(")).toContain("reason=userMoved");
   });
 
-  it("사용자 전이: 시트 안 버튼은 곧장, 자식 시트 안에서 고른 것은 그 시트가 닫힌 뒤 착지한다(설계 리뷰 M3)", () => {
-    expect(BEACON).toContain('requestInfoLanding(note: "waypointRemoved", afterSummary: true)');
-    expect(BEACON).toContain('requestInfoLanding(note: "rerouted", afterSummary: true)');
-    for (const note of ["destinationChanged", "waypointChanged", "variantAdopted"]) {
-      expect(BEACON, note).toContain(`landAfterDismiss = "${note}"`);
+  it("사용자 전이: 시트 안 버튼은 곧장, 자식 시트 안에서 고른 것은 닫힌 뒤, 자동 채택은 커서가 버튼 위였을 때만", () => {
+    expect(BEACON).toContain('requestInfoLanding(note: "waypointRemoved", summarySince: nil)');
+    expect(BEACON).toMatch(/guard model\.offRouteEndedByReroute, pressed \|\| focusedRow == \.reroute else \{ return \}\s*requestInfoLanding\(note: "rerouted"/);
+    // 재조회 버튼 표식은 이탈이 풀리면 결과와 무관하게 지운다(코드 리뷰 m9).
+    expect(BEACON).toMatch(/let pressed = reroutePressed\s*reroutePressed = false/);
+    for (const note of ["destinationChanged", "waypointChanged"]) {
+      expect(BEACON, note).toContain(`landAfterDismiss = DismissLanding(note: "${note}", expectsSummary: model.awaitingRoute)`);
     }
-    for (const sheet of ["$showRouteList", "$changeDestPresented", "$waypointPresented"]) {
+    // 조망이 열려 있을 때만 닫힌 뒤 착지, 이미 닫혔으면 곧장(표식이 남지 않게 — 코드 리뷰 m2).
+    expect(BEACON).toMatch(
+      /if showRouteList \{\s*landAfterDismiss = DismissLanding\(note: "variantAdopted", expectsSummary: true\)\s*showRouteList = false\s*\} else \{\s*requestInfoLanding\(note: "variantAdopted"/,
+    );
+    for (const sheet of ["$showRouteList", "$changeDestPresented", "$waypointPresented", "$showPlaceDetail"]) {
       expect(BEACON, sheet).toContain(`.sheet(isPresented: ${sheet}, onDismiss: landAfterSubSheet)`);
     }
-    // 도착 전이는 기다리던 착지·닫힌 뒤 착지를 먼저 버린다(종료 화면에서 끌어내리지 않게).
-    expect(BEACON).toMatch(/landAfterDismiss = nil\s*showRouteList = false\s*clearPendingInfoLanding\(\)\s*landFocus\(\.arrived\)/);
+    // 도착 전이는 기다리던 착지를 버리고, 자식 시트가 떠 있으면 닫힌 뒤 도착 문장에.
+    expect(BEACON).toMatch(/showRouteList = false\s*clearPendingInfoLanding\(\)\s*\/\/[^\n]*\n\s*if changeDestPresented \|\| waypointPresented \|\| showPlaceDetail \{\s*landAfterDismiss = DismissLanding\(note: "arrived", expectsSummary: false, target: \.arrived\)/);
   });
 
-  it("소실 복구: 행 집합이 바뀌는 순간 커서가 사라진 정보 행에 있었으면 첫 정보 행으로(설계 리뷰 B1, A47 동형)", () => {
+  it("소실 복구: 행 집합이 바뀌는 순간 커서가 사라진 정보 행에 있었으면, 그 통지가 끝난 뒤 첫 정보 행으로(B1)", () => {
     expect(BEACON).toMatch(
-      /\.onChange\(of: presentInfoRows\) \{ old, new in\s*guard let focused = focusedRow, old\.contains\(focused\), !new\.contains\(focused\),\s*model\.isTracking, model\.arrivalDest == nil else \{ return \}\s*requestInfoLanding\(note: "lost=\\\(focused\)", afterSummary: false\)/,
+      /\.onChange\(of: presentInfoRows\) \{ old, new in\s*guard let focused = focusedRow, old\.contains\(focused\), !new\.contains\(focused\),\s*model\.isTracking, model\.arrivalDest == nil else \{ return \}\s*requestInfoLanding\(note: "lost=\\\(focused\)", summarySince: ProcessInfo\.processInfo\.systemUptime\)/,
     );
   });
 
-  it("착지 실행기는 2단 정본이고(3단 복제 금지) 배경·모달에선 시도하지 않으며 폴백 통지가 없다", () => {
+  it("배경 경계: 진행 중 착지·대기는 끊고 이월하며, 대입 전경 판정은 낡지 않은 실제 값이다(코드 리뷰 M1)", () => {
+    expect(BEACON).toContain("private static var isForeground: Bool { UIApplication.shared.applicationState != .background }");
+    expect(BEACON).toMatch(/case \.background:\s*let carried: SheetFocus\? = pendingInfoLanding != nil \? \.remaining : landingInFlight/);
+    expect(BEACON).toMatch(/requestInfoLanding\(note: "deferred", summarySince: ProcessInfo\.processInfo\.systemUptime\)/);
+    expect(BEACON).toMatch(/\.onDisappear \{\s*focusTask\?\.cancel\(\)\s*pendingTimeoutTask\?\.cancel\(\)\s*announcementWaitTask\?\.cancel\(\)/);
+  });
+
+  it("착지 실행기는 2단 정본이고(3단 복제 금지) 가시화 뒤 대입하며 폴백 통지가 없다", () => {
     const land = body(BEACON, "private func landFocus(");
-    expect(land).toContain("guard scenePhase == .active else {");
+    expect(land).toContain("guard Self.isForeground else {");
     expect(land).toContain("guard !subSheetPresented else {");
     expect(land).toContain("try? await Task.sleep(for: .milliseconds(400))");
-    expect(land).not.toMatch(/scrollTo|\[600, 900, 1200\]|announce/);
+    expect(land).toMatch(/landingBox\.proxy\?\.scrollTo\(Self\.focusId\(target\)\)\s*focusedRow = target/);
+    expect(land).not.toMatch(/\[600, 900, 1200\]|announce|scenePhase/);
     for (const key of ["landed=", "actual=", "attempts=", "waitedMs=", "vo="]) {
       expect(land, key).toContain(key);
     }
     expect(BEACON).toContain('guideDiagLog("sheetFocus sheet=beacon ');
   });
 
-  it("남은 거리 행은 띠바와 같은 10m 갱신 값이고 같은 문장은 다시 대입하지 않는다(설계 리뷰 M2)", () => {
+  it("남은 거리 행은 10m 이상 변했을 때만 바뀌고 같은 문장은 다시 대입하지 않는다(설계 리뷰 M2·코드 리뷰 m5)", () => {
     const remaining = body(MODEL, "private func updateRemaining(");
     expect(remaining).toContain("let shownMeters = bandDistanceMeters ?? remainingMeters");
     expect(remaining).toContain('appLocalized("guide.remainingDistance", formatDistance(shownMeters))');
-    expect(remaining).toContain("formatDistance((Int(target.meters.rounded()) + 5) / 10 * 10)");
+    expect(remaining).toContain("if shownWaypointMeters.map({ abs($0 - meters) >= 10 }) ?? true { shownWaypointMeters = meters }");
     expect(remaining).toContain("if remainingText != text { remainingText = text }");
   });
 });
