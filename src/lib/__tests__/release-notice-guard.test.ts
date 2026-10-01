@@ -23,11 +23,17 @@ function swiftFiles(dir: string): string[] {
   return out;
 }
 const read = (path: string) => readFileSync(path, "utf8");
+/** 주석 줄(`//`·`///`)을 뺀 코드 줄만 — 계약 설명 주석에 적힌 식별자·금지 문구는 판정 대상이 아니다. */
+const codeOnly = (source: string) =>
+  source
+    .split("\n")
+    .filter((line) => !line.trimStart().startsWith("//"))
+    .join("\n");
 
 describe("2.0 공지 배선", () => {
   it("도보 공지 V1 식별자가 iOS 소스에 남아 있지 않다", () => {
     const offenders = swiftFiles(join(ROOT, "ios")).filter((f) =>
-      /WalkGuideNotice|walkGuideNoticeV1|walkNoticePresented/.test(read(f)),
+      /WalkGuideNotice|walkGuideNoticeV1|walkNoticePresented/.test(codeOnly(read(f))),
     );
     expect(offenders).toEqual([]);
   });
@@ -48,8 +54,8 @@ describe("2.0 공지 배선", () => {
   });
 
   it("공지 시트는 탈출 제스처를 막지 않는다", () => {
-    expect(read(join(APP, "ReleaseNoticeSheet.swift"))).not.toContain("interactiveDismissDisabled");
-    expect(read(join(APP, "GildongmuApp.swift"))).not.toContain("interactiveDismissDisabled");
+    expect(codeOnly(read(join(APP, "ReleaseNoticeSheet.swift")))).not.toContain("interactiveDismissDisabled");
+    expect(codeOnly(read(join(APP, "GildongmuApp.swift")))).not.toContain("interactiveDismissDisabled");
   });
 
   it("공지 문자열 키 10개가 6로케일에 같다", () => {
