@@ -17,6 +17,12 @@
 - **A54**(iOS): 승차 전 도보를 직접 끝낼 때 "거리 추적을 종료했습니다, 대중교통 안내는 시작하지 않았습니다." 한 문장(결합용 키 `ios.beacon.stoppedJoin`·꼬리 키 `prewalkCancelledTail`, E41). 세션 중 `CLError.denied`는 "신호 약함" 대신 권한 거부 사유로 끝난다.
 - **A53 ①**(iOS 갈래): 대중교통 안내 세션이 목적지 라틴 표기를 들고 조망 "다른 경로"의 영어 마지막 도보 줄에 쓴다(목적지 전환 포함). **A50 후속**(웹): 세션 경계에서 옛 조회를 `AbortController`로 끊어 다시 시작한 세션의 첫 조회가 바로 나간다. **D29**: `jiti` 2.7.0 직접 선언. 계획 `docs/superpowers/plans/2026-10-02-backlog-sweep-8-parallel-plan.md`.
 
+### 웹 영어 대중교통 브리핑의 언어 혼합 잔여 셋 (A53 웹·WebMCP, `en-briefing`)
+
+- 길찾기 끝점이 목적지의 라틴 표기(`labelRoman`)를 들고 다닌다: 장소·주소 후보 확정, 최근 장소와 경로, `?dir=`(`라벨:로마자@좌표`, 기존 URL 호환, ko 세션 URL에도 실린다), 장소 상세 "여기까지 길찾기", WebMCP 끝점 해석. 영어 세션에서 한글 이름 목적지의 마지막 도보 줄이 "to the destination" 대신 "Walk 3 min to 63bilding, 200m"가 된다.
+- 도보 줄의 영어 자격을 앱(Kit `transitLegUsesEnglish`)과 같은 줄 단위로 맞췄다(`src/lib/transit-leg-english.ts`, fixture `transit-leg-english-cases.json`). 영문 역명이 없는 줄은 앱과 같은 "Walk 3 min to 여의도, 98m"이고 웹은 그 한국어 역명에만 `lang="ko"`를 단다(위원장 판정, 같은 화면 탑승 줄과 같은 방식). 백로그 ② 전제("앱은 그 줄 전체가 한국어")는 코드와 달라 정정했다.
+- WebMCP `plan_directions`의 탑승 줄이 화면과 같은 이름 선택을 지나 영어 세션에서 노선·승차역이 영문이다(도보 줄도 화면과 같은 인자). 서버 응답은 그대로다. 계획 `docs/superpowers/plans/2026-10-02-backlog-sweep-8-parallel-plan.md`.
+
 ### 설정 화면을 주제 묶음 다섯으로 (E59, iOS·안드로이드)
 
 헤딩은 일반 · 음성 · 길 안내 · AI 채팅 · 앱 정보 다섯에만 있고 설정 하나는 언제나 한 줄이다(위원장 판정 2026-10-02). iOS는 인라인 피커 다섯을 "이름, 현재 값" 메뉴 피커로 바꾸고, 설명 문장은 헤더 없는 이어지는 섹션의 footer로 그 설정 바로 뒤에 둔다. A51 우회 `.id`는 메뉴 피커에도 필요해 남겼다(시뮬레이터 실측). 안드로이드는 묶음이 바뀌는 자리에 헤딩 한 줄을 더하고 길 안내 묶음 순서(체중 → 실험판 결과 진동)를 iOS와 맞췄다. 가드 `settings-topic-sections.test.ts`, 실기기 판정은 BACKLOG §2 E59 행.
