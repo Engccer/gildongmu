@@ -8,7 +8,6 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import space.dodoplanet.gildongmu.guide.ui.GuideSheetLanding
 import space.dodoplanet.gildongmu.guide.ui.SheetRow
-import space.dodoplanet.gildongmu.guide.ui.a11yEventLabel
 import space.dodoplanet.gildongmu.guide.ui.sheetRowExists
 import space.dodoplanet.gildongmu.kit.BeaconDest
 import kotlin.test.Test
@@ -46,7 +45,7 @@ class GuideSheetLandingTest {
         val h = H(this)
         h.awaiting = true
         h.settled = false
-        h.landing.request("open")
+        h.landing.request("open", expectsSystemPlacement = true)
         advanceTimeBy(5_000); runCurrent()
         assertEquals(emptyList(), h.focused)
         h.awaiting = false                    // 조회 커밋 — 같은 구간에서 요약이 TTS로 나갔다
@@ -62,11 +61,11 @@ class GuideSheetLandingTest {
     @Test fun `첫 정보 행 순서 — 남은 거리가 없으면 윗줄, 둘 다 없으면 상태 문장, 아무것도 없으면 착지하지 않는다`() = runTest {
         val h = H(this)
         h.rows = setOf(SheetRow.liveTop, SheetRow.status)
-        h.landing.request("a"); advanceUntilIdle()
+        h.landing.request("a", expectsSystemPlacement = true); advanceUntilIdle()
         h.rows = setOf(SheetRow.status, SheetRow.reroute)
-        h.landing.request("b"); advanceUntilIdle()
+        h.landing.request("b", expectsSystemPlacement = true); advanceUntilIdle()
         h.rows = setOf(SheetRow.reroute)
-        h.landing.request("c"); advanceUntilIdle()
+        h.landing.request("c", expectsSystemPlacement = true); advanceUntilIdle()
         assertEquals(listOf(SheetRow.liveTop, SheetRow.status), h.focused)
         assertTrue(h.last.contains("reason=noInfoRow"), h.last)
     }
@@ -74,7 +73,7 @@ class GuideSheetLandingTest {
     @Test fun `경로 조회 20초 초과면 착지하지 않는다`() = runTest {
         val h = H(this)
         h.awaiting = true
-        h.landing.request("open")
+        h.landing.request("open", expectsSystemPlacement = true)
         advanceTimeBy(21_000); runCurrent()
         h.awaiting = false
         advanceUntilIdle()
@@ -85,7 +84,7 @@ class GuideSheetLandingTest {
     @Test fun `안내 발화가 끝나지 않아도 12초 상한에 앉는다`() = runTest {
         val h = H(this)
         h.settled = false
-        h.landing.request("open")
+        h.landing.request("open", expectsSystemPlacement = true)
         advanceUntilIdle()
         assertEquals(listOf(SheetRow.remaining), h.focused)
         assertTrue(h.last.contains("speechWait=cap"), h.last)
@@ -94,7 +93,7 @@ class GuideSheetLandingTest {
     @Test fun `기다리는 동안 사용자가 커서를 옮기면 착지하지 않는다 — 창 안 첫 이동은 시스템 배치`() = runTest {
         val h = H(this)
         h.settled = false
-        h.landing.request("open")
+        h.landing.request("open", expectsSystemPlacement = true)
         advanceTimeBy(500); runCurrent()
         h.landing.onA11yFocus(null)          // 시트 표시 — 시스템 배치
         h.settled = true
@@ -102,7 +101,7 @@ class GuideSheetLandingTest {
         assertEquals(listOf(SheetRow.remaining), h.focused, "시스템 배치 한 번은 세지 않는다")
 
         h.settled = false
-        h.landing.request("again")
+        h.landing.request("again", expectsSystemPlacement = true)
         advanceTimeBy(500); runCurrent()
         h.landing.onA11yFocus(null)
         advanceTimeBy(800); runCurrent()
@@ -114,7 +113,7 @@ class GuideSheetLandingTest {
 
         // 창(2.5초) 밖의 첫 이동은 사용자 이동이다.
         h.settled = false
-        h.landing.request("late")
+        h.landing.request("late", expectsSystemPlacement = true)
         advanceTimeBy(3_000); runCurrent()
         h.landing.onA11yFocus(SheetRow.liveTop)
         h.settled = true
@@ -123,13 +122,12 @@ class GuideSheetLandingTest {
         assertTrue(h.last.contains("reason=userMoved"), h.last)
     }
 
-    @Test fun `배경에선 이월하고 전경 복귀 신호에서 다시 요청한다`() = runTest {
+    @Test fun `배경에선 대입하지 않고 이월해 전경 복귀 신호에서 다시 요청한다 — 이월은 한 번`() = runTest {
         val h = H(this)
         h.settled = false
-        h.landing.request("open")
+        h.landing.request("open", expectsSystemPlacement = true)
         advanceTimeBy(1_000); runCurrent()
-        h.foreground = false
-        h.landing.onBackground()
+        h.foreground = false                 // 잠갔다 — 대기는 계속되고 대입 시점에 이월한다
         h.settled = true
         advanceUntilIdle()
         assertEquals(emptyList(), h.focused)
@@ -143,37 +141,52 @@ class GuideSheetLandingTest {
         advanceUntilIdle()
         assertEquals(listOf(SheetRow.remaining), h.focused)
         assertTrue(h.last.contains("note=deferred"), h.last)
-        // 이월은 한 번 — 두 번째 복귀 신호는 아무것도 하지 않는다.
         h.landing.onForegroundReturn()
         advanceUntilIdle()
         assertEquals(1, h.focused.size)
     }
 
-    @Test fun `대입 400ms 사이의 배경 전환도 이월한다, 대기 중 커서를 옮겼으면 이월하지 않는다`() = runTest {
+    @Test fun `대입 400ms 사이 잠기면 대입 직전 재확인이 이월한다, 대기 중 커서를 옮겼으면 이월하지 않는다`() = runTest {
         val h = H(this)
-        h.landing.request("open")
+        h.landing.request("open", expectsSystemPlacement = true)
         advanceTimeBy(200); runCurrent()     // 대입 단계(400ms 지연) 안
-        h.landing.onBackground()
+        h.foreground = false
         advanceUntilIdle()
         assertEquals(emptyList(), h.focused)
         assertTrue(h.last.contains("phase=inFlight"), h.last)
+        h.foreground = true
         h.landing.onForegroundReturn(); advanceUntilIdle()
         assertEquals(listOf(SheetRow.remaining), h.focused)
 
         h.settled = false
-        h.landing.request("moved")
+        h.landing.request("moved", expectsSystemPlacement = true)
         advanceTimeBy(100); runCurrent()
         h.landing.onA11yFocus(null); h.landing.onA11yFocus(null)
-        h.landing.onBackground()
-        h.landing.onForegroundReturn()
+        h.foreground = false
         h.settled = true
+        advanceUntilIdle()
+        assertTrue(h.last.contains("reason=userMoved"), h.last)
+        h.foreground = true
+        h.landing.onForegroundReturn()
         advanceUntilIdle()
         assertEquals(1, h.focused.size)
     }
 
+    @Test fun `시스템 배치를 기대하지 않는 요청(시트 안 버튼 전이·소실 복구)은 첫 이동부터 사용자 이동이다`() = runTest {
+        val h = H(this)
+        h.settled = false
+        h.landing.request("waypointRemoved", expectsSystemPlacement = false)
+        advanceTimeBy(300); runCurrent()
+        h.landing.onA11yFocus(null)
+        h.settled = true
+        advanceUntilIdle()
+        assertEquals(emptyList(), h.focused)
+        assertTrue(h.last.contains("reason=userMoved"), h.last)
+    }
+
     @Test fun `소실 복구 — 커서가 앉은 정보 행이 사라지면 그 시점의 첫 정보 행으로, 스와이프로 떠났으면 그대로`() = runTest {
         val h = H(this)
-        h.landing.request("open"); advanceUntilIdle()
+        h.landing.request("open", expectsSystemPlacement = true); advanceUntilIdle()
         assertEquals(SheetRow.remaining, h.landing.cursorRow)
         h.rows = setOf(SheetRow.liveTop)          // 이탈 확정 — 남은 거리 행 숨김
         h.settled = false                         // 같은 커밋의 이탈 경고
@@ -195,14 +208,14 @@ class GuideSheetLandingTest {
     @Test fun `새 요청이 앞 요청을 대신하고, 추적이 끝났으면 앉지 않는다`() = runTest {
         val h = H(this)
         h.awaiting = true
-        h.landing.request("first")
-        h.landing.request("second")
+        h.landing.request("first", expectsSystemPlacement = true)
+        h.landing.request("second", expectsSystemPlacement = true)
         h.awaiting = false
         advanceUntilIdle()
         assertEquals(1, h.focused.size)
         assertTrue(h.last.contains("note=second"), h.last)
         h.settled = false
-        h.landing.request("end")
+        h.landing.request("end", expectsSystemPlacement = true)
         h.tracking = false
         h.settled = true
         advanceUntilIdle()
@@ -212,7 +225,7 @@ class GuideSheetLandingTest {
     @Test fun `대입이 실패하면 600ms 뒤 한 번 더`() = runTest {
         val h = H(this)
         h.focusOk = false
-        h.landing.request("open")
+        h.landing.request("open", expectsSystemPlacement = true)
         advanceTimeBy(450); runCurrent()
         h.focusOk = true
         advanceUntilIdle()
@@ -235,10 +248,13 @@ class GuideSheetLandingTest {
         assertFalse(sheetRowExists(detail.copy(arrivalDest = BeaconDest(37.0, 127.0)), SheetRow.remaining))
     }
 
-    @Test fun `접근성 이벤트 이름 — 설명이 있으면 그것, 없으면 텍스트 조각`() {
-        assertEquals("남은 거리 1.2킬로미터", a11yEventLabel("남은 거리 1.2킬로미터", listOf("남은 거리 1.2km")))
-        assertEquals("경로 다시 찾기", a11yEventLabel(null, listOf("경로 다시 찾기")))
-        assertEquals("a b", a11yEventLabel("", listOf("a", "b")))
+    @Test fun `초점 노드 표식 → 행 — 고정 tag로 가르고 모르는 노드는 null`() {
+        assertEquals(SheetRow.remaining, SheetRow.forTag("guide-remaining"))
+        assertEquals(SheetRow.liveTop, SheetRow.forTag("guide-live-top"))
+        assertEquals(SheetRow.status, SheetRow.forTag("guide-status"))
+        assertEquals(SheetRow.reroute, SheetRow.forTag("guide-reroute"))
+        assertEquals(null, SheetRow.forTag("guide-title"))
+        assertEquals(null, SheetRow.forTag(null))
     }
 }
 
@@ -249,17 +265,17 @@ class GuideSheetLandingGuardTest {
     private val tracking = sheet.substringAfter("private fun TrackingContent(").substringBefore("\n}\n")
 
     @Test fun `열림·띠바 복귀는 첫 정보 행 입구로, 접기 버튼·띠바 표식 착지는 없다`() {
-        assertTrue(tracking.contains("landing.request(\"open\")"), "진입 착지")
+        assertTrue(tracking.contains("landing.request(\"open\", expectsSystemPlacement = true)"), "진입 착지")
+        assertTrue(pkg.resolve("guide/ui/GuideBand.kt").readText().contains("GuideSession.pendingSheetReturn = null"), "띠바 복귀는 장소 상세 복귀 표식을 지운다")
         assertFalse(sheet.contains("returnedFromBand"))
         assertFalse(pkg.resolve("guide/GuideSession.kt").readText().contains("returnedFromBand"))
         assertFalse(tracking.contains("minimizeFocus"), "접기 버튼은 착지 대상이 아니다")
     }
 
     @Test fun `사용자 전이는 첫 정보 행으로 — 재조회·대안 채택·경유지 삭제·검색 확정`() {
-        assertTrue(tracking.contains("landing.request(\"rerouted\")"))
-        assertTrue(tracking.contains("landing.cursorRow == SheetRow.reroute"), "자동 채택은 커서가 버튼 위였을 때만")
-        assertTrue(tracking.contains("toTracking(\"variantAdopted\")") && tracking.contains("landing.request(\"variantAdopted\")"))
-        assertTrue(tracking.contains("if (GuideSession.walk.removeWaypoint()) landing.request(\"waypointRemoved\")"))
+        assertTrue(tracking.contains("if ((pressed || landing.cursorRow == SheetRow.reroute) && page == GuidePage.Tracking) landing.request(\"rerouted\", expectsSystemPlacement = false)"), "누름 ∨ 커서가 버튼 위")
+        assertTrue(tracking.contains("toTracking(\"variantAdopted\")") && tracking.contains("landing.request(\"variantAdopted\", expectsSystemPlacement = false)"))
+        assertTrue(tracking.contains("if (GuideSession.walk.removeWaypoint()) landing.request(\"waypointRemoved\", expectsSystemPlacement = false)"))
         assertTrue(sheet.contains("onDone(commitGuideEndpoint(endpoint, field))"), "검색 확정의 착지 표식")
     }
 
@@ -269,8 +285,11 @@ class GuideSheetLandingGuardTest {
         }
         assertTrue(tracking.contains("if (sheetRowExists(ui, SheetRow.reroute))"))
         assertTrue(tracking.contains("landing.onRowsChanged(old, presentRows)"), "소실 복구")
-        assertTrue(tracking.contains("landing.onBackground()") && tracking.contains("landing.onForegroundReturn()"), "배경 이월")
-        assertTrue(tracking.contains("ObserveA11yFocus {"), "커서 이동 관찰")
+        assertTrue(tracking.contains("landing.onForegroundReturn()"), "배경 이월의 복귀")
+        assertTrue(tracking.contains("ObserveA11yFocus { tag -> landing.onA11yFocus(SheetRow.forTag(tag)"), "커서 행은 초점 노드의 표식으로")
+        assertTrue(tracking.contains("testTagsAsResourceId = true"), "표식을 리소스 id로 낸다")
+        val observer = pkg.resolve("guide/ui/A11yFocusObserver.kt").readText()
+        assertTrue(observer.contains("findFocus(kind)?.viewIdResourceName") && observer.contains("TYPE_VIEW_FOCUSED"), "이벤트 이름이 아니라 초점 노드, 입력 초점 포함")
         assertTrue(tracking.contains("announcementsSettled = { GuideSession.walk.announcementsSettled() }"))
         assertTrue(pkg.resolve("guide/GuideSession.kt").readText().contains("if (isMinimized) bandLandingSeq += 1 else sheetReturnSeq += 1"), "복귀 신호는 모델 처리 뒤")
     }

@@ -1869,7 +1869,8 @@ class WalkGuideModel(
         if (zero && !mediaVolumeNoticed) {
             mediaVolumeNoticed = true
             resultHaptic(ResultHapticKind.attention)
-            announce(strings.get("android.guide.mediaVolumeZero"), speechClass = GuideSpeechClass.actionable)   // 1회성 경고
+            // 1회성 경고 — 내지 못하면(볼륨 0인 백그라운드는 들리지 않아 버림) 래치를 되돌려 다음 재생(전경)에서 다시 판정한다(리뷰 MINOR-5).
+            announce(strings.get("android.guide.mediaVolumeZero"), speechClass = GuideSpeechClass.actionable) { mediaVolumeNoticed = false }
         } else if (!zero) {
             mediaVolumeNoticed = false
         }

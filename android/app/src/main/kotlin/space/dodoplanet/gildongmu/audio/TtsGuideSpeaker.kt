@@ -58,6 +58,9 @@ class TtsGuideSpeaker(
     override val isSpeaking: Boolean get() = speakingId != null || pending != null
 
     override fun stop() {
+        // 초기화 전 보류 문장도 버린다(알리지 않는 정지 — 인계가 그 문장을 넘겼는데 준비 뒤 다시 말하면 두 번 들린다, 리뷰 m2).
+        pending = null
+        pendingToken = null
         if (speakingId == null) return
         speakingId = null
         tts.stop()
@@ -132,9 +135,9 @@ class TtsGuideSpeaker(
         if (!focus.acquire()) { GuideDiag.log("speech skipped focus"); return null }
         val cut = speakingId
         val ok = tts.speakFlush(text, id.toString())
-        speakingId = null
-        cut?.let { onInterrupted?.invoke(it, DeviceSpeechDrop.superseded) }
+        // 엔진이 거절하면 `QUEUE_FLUSH`가 적용되지 않아 직전 발화가 계속된다 — 끊겼다고 알리지 않는다(리뷰 m5).
         if (!ok) { GuideDiag.log("speech failed id=$id"); focus.releaseAfter(0.15); return null }
+        cut?.let { onInterrupted?.invoke(it, DeviceSpeechDrop.superseded) }
         speakingId = id
         GuideDiag.log { "speak id=$id high=$highPriority len=${text.length}" }
         return id

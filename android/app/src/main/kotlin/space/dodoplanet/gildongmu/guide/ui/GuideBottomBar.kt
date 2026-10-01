@@ -9,6 +9,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.focus.FocusRequester
@@ -60,8 +61,10 @@ fun GuideBottomBar(nav: GuideNav, tabs: @Composable () -> Unit) {
 fun guideSheetShowing(): Boolean {
     val app = LocalContext.current.applicationContext
     remember { GuideSession.attach(app); Unit }
-    val ui by GuideSession.walk.ui.collectAsState()
-    return ui.hasScreen && !GuideSession.isMinimized
+    val ui = GuideSession.walk.ui.collectAsState()
+    // 결과가 바뀔 때만 읽는 자리를 재구성한다 — 안내 상태는 fix마다 바뀌어, 그대로 읽으면 탭 콘텐츠 블록이 매초 다시 돈다(리뷰 m4).
+    val showing by remember { derivedStateOf { ui.value.hasScreen && !GuideSession.isMinimized } }
+    return showing
 }
 
 /** 알림(33+)·걸음 센서 권한 손 — `MainActivity`는 android-m1 소유라 여기 컴포지션에 둔다. */

@@ -200,7 +200,9 @@ object GuideSession {
         inForeground = foreground
         environment?.foreground = foreground
         walk.setForeground(foreground)
-        if (foreground && wasBackground && walk.ui.value.hasScreen) if (isMinimized) bandLandingSeq += 1 else sheetReturnSeq += 1
+        if (foreground && wasBackground && walk.ui.value.hasScreen) {
+            if (isMinimized) bandLandingSeq += 1 else sheetReturnSeq += 1
+        }
     }
 
     /** 테스트 전용 — 페이크 포트로 조립한다(`attach`와 같은 멱등 규칙은 없다: 테스트가 매번 새로 끼운다). */

@@ -37,7 +37,11 @@ fun GuideBand(ui: WalkGuideUiState, strings: Strings, focus: FocusRequester) {
         Modifier
             .fillMaxWidth()
             .landingTarget(focus)
-            .clickable(role = Role.Button) { GuideSession.isMinimized = false }
+            .clickable(role = Role.Button) {
+                // 띠바 복귀는 새로 열림과 같은 착지다 — 장소 상세를 연 채(중첩 표식이 남은 채) 눌러도 그 복귀 자리가 아니라 첫 정보 행이다(E57 Q1).
+                GuideSession.pendingSheetReturn = null
+                GuideSession.isMinimized = false
+            }
             .testTag("guide-band")
             .defaultMinSize(minHeight = 48.dp)
             .padding(12.dp)

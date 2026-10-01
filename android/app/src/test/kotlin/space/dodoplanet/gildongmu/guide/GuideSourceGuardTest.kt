@@ -80,7 +80,12 @@ class GuideSourceGuardTest {
         // 분류 인자는 기본값이 없다(새 통지 경로가 분류를 빠뜨리면 컴파일이 멈춘다).
         assertTrue(model.contains("private fun announce(message: String, highPriority: Boolean = false, speechClass: GuideSpeechClass, onDropped"))
         // 세션 경계마다 대기 칸을 비운다(지연 슬롯 세대와 같은 자리).
-        assertEquals(Regex("""deferredAnnouncer\.advanceGeneration\(\)""").findAll(model).count(), Regex("""deviceSpeech\.reset\(\)""").findAll(model).count())
+        val lines = model.lines()
+        val boundaries = lines.indices.filter { lines[it].trim().startsWith("deferredAnnouncer.advanceGeneration()") }
+        assertTrue(boundaries.isNotEmpty())
+        assertTrue(boundaries.all { lines[it + 1].trim() == "deviceSpeech.reset()" }, "세션 경계마다 바로 다음 줄에 칸 reset")
+        // 안드로이드의 voiceOver 채널(전경 직접 TTS)은 늘 들린다 — 거짓이면 복귀 인계가 꺼져 순서가 뒤집힌다.
+        assertTrue(queue.contains("voiceOverRunning = { true }"), queue)
     }
 
     @Test fun `debugSetUi 호출부는 androidTest뿐`() {

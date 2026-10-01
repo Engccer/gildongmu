@@ -69,7 +69,10 @@ class DeviceSpeechQueue(
     private val isSpeaking: () -> Boolean,
     /** 그 발화 토큰의 문장이 아직 합성기에 있는가. */
     private val isSpeakingToken: (Int) -> Boolean,
-    /** VoiceOver가 켜져 있는가 — 꺼져 있으면 복귀 인계가 기기 음성을 끊지 않는다. 안드로이드는 안내 채널이 TTS 하나라 늘 거짓을 넘긴다. */
+    /**
+     * VoiceOver가 켜져 있는가 — 꺼져 있으면 복귀 인계가 기기 음성을 끊지 않는다. 안드로이드 앱은 **늘 참**을 넘긴다: 술어의 `voiceOver` 채널이 전경 직접
+     * TTS라 늘 들리고, 거짓이면 인계가 통째로 꺼져 새 전경 문장 뒤에 옛 백그라운드 문장이 이어 나온다.
+     */
     private val voiceOverRunning: () -> Boolean,
     private val isSuppressed: () -> Boolean,
     private val toneEndsAt: () -> Double?,
@@ -126,13 +129,12 @@ class DeviceSpeechQueue(
         val speakingNow = isSpeaking()
         if (item.preempts || !speakingNow) {
             clearPending(DeviceSpeechDrop.superseded)
-            // 끊길 이 칸의 문장 — 말하는 중이든 일시정지로 남았든(`isSpeakingToken`은 일시정지 포함).
-            val current = lastSpoken
-            if (current != null && isSpeakingToken(current.token)) {
-                lastSpoken = null
-                current.item.onDropped?.invoke(DeviceSpeechDrop.superseded)
-            }
-            say(item)
+            // 끊길 이 칸의 문장 — 말하는 중이든 일시정지로 남았든(`isSpeakingToken`은 일시정지 포함). 새 발화가 성공한 뒤에 통지한다(안드로이드 적응:
+            // 발화가 실패하면 옛 문장은 계속 말하므로 끊겼다고 알리면 1회성 장부가 되살아나 두 번 들린다, 리뷰 m5). 발화 전에 떼어 두어 합성기의 끊김
+            // 알림(`speechInterrupted`)과 두 번 통지하지 않는다.
+            val current = lastSpoken?.takeIf { isSpeakingToken(it.token) }
+            if (current != null) lastSpoken = null
+            if (say(item)) current?.item?.onDropped?.invoke(DeviceSpeechDrop.superseded) else if (current != null) lastSpoken = current
             return
         }
         val waiting = pending
@@ -206,13 +208,15 @@ class DeviceSpeechQueue(
         dropped.onDropped?.invoke(reason)
     }
 
-    private fun say(item: Item) {
+    /** 말한다 — 말하지 못했으면 그 문장은 `undelivered`이고 false. */
+    private fun say(item: Item): Boolean {
         val token = speak(item.text)
         if (token == null) {
             item.onDropped?.invoke(DeviceSpeechDrop.undelivered)
-            return
+            return false
         }
         lastSpoken = Spoken(item, token)
+        return true
     }
 
     /** 꺼내는 순간의 검사(계약 4) — 억제(우회 제외)·유효 시간(보호 제외). */
@@ -263,7 +267,7 @@ class DeviceSpeechQueue(
             return
         }
         when (route(item.speechClass)) {
-            GuideSpeechChannel.device -> say(item)
+            GuideSpeechChannel.device -> { say(item) }
             // 전경으로 바뀌었다(복귀 인계보다 드레인이 먼저 깬 창) — 인계와 같은 이유로 고우선.
             GuideSpeechChannel.voiceOver -> if (!postVoiceOver(item.text, true)) item.onDropped?.invoke(DeviceSpeechDrop.undelivered)
             GuideSpeechChannel.drop -> item.onDropped?.invoke(DeviceSpeechDrop.undelivered)

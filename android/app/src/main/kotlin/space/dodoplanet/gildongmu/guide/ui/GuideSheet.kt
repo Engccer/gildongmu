@@ -36,7 +36,6 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,8 +46,11 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.testTagsAsResourceId
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import space.dodoplanet.gildongmu.AppConfig
 import space.dodoplanet.gildongmu.a11y.BodyLine
 import space.dodoplanet.gildongmu.a11y.HeadingLine
@@ -162,12 +164,14 @@ private fun TrackingContent(ui: WalkGuideUiState, strings: Strings, nav: GuideNa
             isForeground = { GuideSession.inForeground },
             isTracking = { GuideSession.walk.ui.value.let { it.isTracking && it.arrivalDest == null } },
             rowExists = { row -> page == GuidePage.Tracking && sheetRowExists(GuideSession.walk.ui.value, row) },
-            focus = { row -> runCatching { rowFocus.getValue(row).requestFocus() }.isSuccess },
+            // 성패는 `requestFocus(FocusDirection.Enter)`의 Boolean(`ChatLanding` 관용구) — 초점을 못 받으면 600ms 뒤 한 번 더.
+            focus = { row -> runCatching { rowFocus.getValue(row).requestFocus(FocusDirection.Enter) }.getOrDefault(false) },
         )
     }
     DisposableEffect(Unit) { onDispose { landing.dispose() } }
     // 사용자 전이 뒤 시트 안 페이지가 닫히면 그 결과의 첫 정보 행으로(조망 채택·검색에서 고름 — iOS 자식 시트 onDismiss 동형). 고르지 않고 닫으면 제목.
-    val toTracking: (String?) -> Unit = { note -> page = GuidePage.Tracking; if (note != null) landing.request(note) else landTitleSeq += 1 }
+    // 페이지가 닫히면 시스템이 커서를 새 페이지에 둔다 — 그 첫 이동 한 번은 사용자 이동으로 세지 않는다.
+    val toTracking: (String?) -> Unit = { note -> page = GuidePage.Tracking; if (note != null) landing.request(note, expectsSystemPlacement = true) else landTitleSeq += 1 }
 
     BackHandler(enabled = page != GuidePage.Tracking) {
         when (page) {
@@ -178,15 +182,9 @@ private fun TrackingContent(ui: WalkGuideUiState, strings: Strings, nav: GuideNa
         }
     }
 
-    // 스크린 리더 커서가 어느 행에 앉았는가 — 대기 중 사용자 이동·소실 복구·자동 채택 판정(시트 윈도의 접근성 초점 이벤트, 이름으로 행을 가린다).
-    val rowLabels = buildMap {
-        ui.remainingText?.let { put(SheetRow.remaining, spokenDistanceUnits(it, meters)) }
-        ui.liveTopText?.let { put(SheetRow.liveTop, spokenDistanceUnits(it, meters)) }
-        put(SheetRow.status, spokenDistanceUnits(statusLine(ui, strings), meters))
-        put(SheetRow.reroute, strings.get(if (ui.isRerouting) "guide.rerouteBusy" else "guide.rerouteButton"))
-    }
-    val labelsNow by rememberUpdatedState(rowLabels)
-    ObserveA11yFocus { label -> landing.onA11yFocus(labelsNow.entries.firstOrNull { it.value == label }?.key) }
+    // 스크린 리더 커서가 어느 행에 앉았는가 — 대기 중 사용자 이동·소실 복구·자동 채택 판정(시트 윈도의 초점 노드를 고정 표식으로 가린다. 표식은
+    // 아래 `testTagsAsResourceId`가 리소스 id로 낸다).
+    ObserveA11yFocus { tag -> landing.onA11yFocus(SheetRow.forTag(tag)?.takeIf { sheetRowExists(GuideSession.walk.ui.value, it) }) }
 
     // 진입 착지: 장소 상세(M4b 중첩)에서 돌아왔으면 그 자리(제목·주변 확인 행), 아니면 첫 정보 행(새로 열림·띠바 복귀 — E57 위원장 판정 Q1). 새로 열림은
     // 경로 조회 중이라 조회와 시작 요약을 기다리고, 띠바 복귀는 경로가 있어 곧장 앉는다(말하는 안내 문장이 있으면 그 끝까지).
@@ -197,11 +195,12 @@ private fun TrackingContent(ui: WalkGuideUiState, strings: Strings, nav: GuideNa
             // 돌아온 자리의 행이 없으면(앵커가 바뀌어 장면이 새로 시작됐다) 제목으로 물러난다 — 없는 키에 착지하면 커서가 어디에도 가지 않는다.
             land(sceneFocus[back] ?: titleFocus, "장소 상세 복귀")
         } else {
-            landing.request("open")
+            landing.request("open", expectsSystemPlacement = true)
         }
     }
-    // 재조회 성공·자동 채택으로 버튼이 사라지면 첫 정보 행(새 경로의 남은 거리, E57) — **전이**(true→false)에만. 자동 채택은 사용자가 누르지 않은 전이라
-    // 커서가 그 버튼 위였을 때만 옮긴다(다른 행을 읽던 사람을 끌어가지 않는다). 자연 복귀는 무이동.
+    // 이탈이 끝나 재조회 버튼이 사라지면 첫 정보 행(새 경로의 남은 거리, E57) — **전이**(true→false)에만. 버튼을 눌렀거나 커서가 그 버튼 위였을 때만
+    // 옮긴다(포커스를 쥔 컨트롤 소멸, 헌장 §5): 끝난 원인(재조회 성공·자동 채택·걸어서 복귀)과 무관하다 — 안드로이드는 사라진 노드 대신 커서를 둘 곳을
+    // 시스템이 정하지 않는다. 다른 행을 읽던 사람은 끌어가지 않는다.
     var wasOffRoute by remember { mutableStateOf(ui.offRoute) }
     LaunchedEffect(ui.offRoute) {
         val ended = wasOffRoute && !ui.offRoute
@@ -209,7 +208,7 @@ private fun TrackingContent(ui: WalkGuideUiState, strings: Strings, nav: GuideNa
         if (!ended) return@LaunchedEffect
         val pressed = reroutePressed
         reroutePressed = false
-        if (ui.offRouteEndedByReroute && (pressed || landing.cursorRow == SheetRow.reroute) && page == GuidePage.Tracking) landing.request("rerouted")
+        if ((pressed || landing.cursorRow == SheetRow.reroute) && page == GuidePage.Tracking) landing.request("rerouted", expectsSystemPlacement = false)
     }
     // 대안 채택 성공(iOS `variantAdoptedSeq`): 조망·프리뷰가 통째로 사라지는 전이 — 닫고 첫 정보 행으로. 조망이 이미 닫힌 뒤 채택이 끝났으면(낡음 폴백) 곧장
     // 요청한다. 컴포지션 진입 값은 착지하지 않는다(전이에만).
@@ -223,7 +222,7 @@ private fun TrackingContent(ui: WalkGuideUiState, strings: Strings, nav: GuideNa
         seenAdopted = ui.variantAdoptedSeq
         wasAltOpen = ui.altPreviewOpen
         when {
-            adopted -> if (page == GuidePage.Overview || page == GuidePage.AltPreview) toTracking("variantAdopted") else if (page == GuidePage.Tracking) landing.request("variantAdopted")
+            adopted -> if (page == GuidePage.Overview || page == GuidePage.AltPreview) toTracking("variantAdopted") else if (page == GuidePage.Tracking) landing.request("variantAdopted", expectsSystemPlacement = false)
             dropped -> if (ui.routeStepDescriptions != null) { overviewReturnsFromPreview = true; page = GuidePage.Overview } else toTracking(null)
         }
     }
@@ -235,8 +234,8 @@ private fun TrackingContent(ui: WalkGuideUiState, strings: Strings, nav: GuideNa
         lastRows = presentRows
         if (page == GuidePage.Tracking) landing.onRowsChanged(old, presentRows)
     }
-    // 배경 경계: 진행 중인 착지·대기는 끊고 이월, 전경 복귀는 모델이 복귀 상환을 낸 뒤의 신호에서 다시 요청한다(그 발화가 끝난 뒤 앉는다).
-    LaunchedEffect(GuideSession.inForeground) { if (!GuideSession.inForeground) landing.onBackground() }
+    // 배경 경계: 착지가 대입 시점의 앱 상태로 이월하고(배경에선 프레임 시계가 멈춰 효과가 전환을 보지 못한다), 전경 복귀는 모델이 복귀 상환을 낸 뒤의
+    // 신호에서 다시 요청한다(그 발화가 끝난 뒤 앉는다).
     var seenReturn by remember { mutableIntStateOf(GuideSession.sheetReturnSeq) }
     LaunchedEffect(GuideSession.sheetReturnSeq) {
         if (GuideSession.sheetReturnSeq == seenReturn) return@LaunchedEffect
@@ -261,7 +260,8 @@ private fun TrackingContent(ui: WalkGuideUiState, strings: Strings, nav: GuideNa
         }
         GuidePage.Tracking -> Unit
     }
-    Column(Modifier.fillMaxSize()) {
+    // 행 표식을 리소스 id로 낸다 — 초점 관찰이 커서가 앉은 행을 이것으로 가린다(`ObserveA11yFocus`).
+    Column(Modifier.fillMaxSize().semantics { testTagsAsResourceId = true }) {
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.weight(1f)) {
@@ -293,7 +293,7 @@ private fun TrackingContent(ui: WalkGuideUiState, strings: Strings, nav: GuideNa
                 if (waypoint != null) {
                     // 누르면 자신이 사라진다 — 새 경로의 첫 정보 행으로(E57, 재조회와 삭제 통지가 끝난 뒤).
                     Button(
-                        onClick = { if (GuideSession.walk.removeWaypoint()) landing.request("waypointRemoved") },
+                        onClick = { if (GuideSession.walk.removeWaypoint()) landing.request("waypointRemoved", expectsSystemPlacement = false) },
                         modifier = Modifier.fillMaxWidth().tapTarget().testTag("guide-waypoint-remove"),
                     ) { Text(strings.get("android.guide.waypointRemove")) }
                 }
@@ -312,17 +312,17 @@ private fun TrackingContent(ui: WalkGuideUiState, strings: Strings, nav: GuideNa
             if (sheetRowExists(ui, SheetRow.reroute)) {
                 Button(
                     onClick = { reroutePressed = true; GuideSession.walk.requestReroute() },
-                    modifier = Modifier.fillMaxWidth().tapTarget().testTag("guide-reroute"),
-                ) { Text(rowLabels.getValue(SheetRow.reroute)) }
+                    modifier = Modifier.fillMaxWidth().tapTarget().testTag(SheetRow.reroute.tag),
+                ) { Text(strings.get(if (ui.isRerouting) "guide.rerouteBusy" else "guide.rerouteButton")) }
             }
             if (ui.mode == GuideMode.brief) BodyLine(strings.get("beacon.straightLineNote"), "guide-brief-note")
             // 정보 행 셋(첫 정보 행 후보, 이 순서가 곧 착지 우선순위) — 렌더 조건은 `sheetRowExists` 한 곳.
-            if (sheetRowExists(ui, SheetRow.remaining)) InfoRow(ui.remainingText.orEmpty(), "guide-remaining", rowLabels.getValue(SheetRow.remaining), rowFocus.getValue(SheetRow.remaining))
-            if (sheetRowExists(ui, SheetRow.liveTop)) InfoRow(ui.liveTopText.orEmpty(), "guide-live-top", rowLabels.getValue(SheetRow.liveTop), rowFocus.getValue(SheetRow.liveTop))
+            if (sheetRowExists(ui, SheetRow.remaining)) InfoRow(ui.remainingText.orEmpty(), SheetRow.remaining, meters, rowFocus)
+            if (sheetRowExists(ui, SheetRow.liveTop)) InfoRow(ui.liveTopText.orEmpty(), SheetRow.liveTop, meters, rowFocus)
             if (ui.mode == GuideMode.detail) {
                 ui.liveNextText?.takeIf { it.isNotEmpty() }?.let { BodyLine(it, "guide-live-next", spokenDistanceUnits(it, meters)) }
             }
-            if (sheetRowExists(ui, SheetRow.status)) InfoRow(statusLine(ui, strings), "guide-status", rowLabels.getValue(SheetRow.status), rowFocus.getValue(SheetRow.status))
+            if (sheetRowExists(ui, SheetRow.status)) InfoRow(statusLine(ui, strings), SheetRow.status, meters, rowFocus)
             if (ui.soundDegraded) BodyLine(strings.get("android.guide.mediaVolumeZero"), "guide-sound-volume")
             if (ui.focusDenied) BodyLine(strings.get("android.guide.focusDenied"), "guide-sound-focus")
             if (ui.ttsUnavailable) BodyLine(strings.get("android.guide.ttsUnavailable"), "guide-sound-tts")
@@ -339,10 +339,10 @@ private fun TrackingContent(ui: WalkGuideUiState, strings: Strings, nav: GuideNa
 private fun statusLine(ui: WalkGuideUiState, strings: Strings): String =
     if (ui.statusIsNextPreview) strings.get("guide.progressNext", ui.statusText) else ui.statusText
 
-/** 착지 대상 정보 행(`BodyLine`과 같은 모양 + 착지 requester). */
+/** 착지 대상 정보 행(`BodyLine`과 같은 모양 + 착지 requester, 표식은 행의 고정 tag). */
 @Composable
-private fun InfoRow(text: String, tag: String, spoken: String, focus: FocusRequester) {
-    Text(text, Modifier.fillMaxWidth().mergedRow(tag, spoken, focus = focus).padding(vertical = 8.dp))
+private fun InfoRow(text: String, row: SheetRow, meters: String, focus: Map<SheetRow, FocusRequester>) {
+    Text(text, Modifier.fillMaxWidth().mergedRow(row.tag, spokenDistanceUnits(text, meters), focus = focus.getValue(row)).padding(vertical = 8.dp))
 }
 
 /**
@@ -533,6 +533,10 @@ private fun EndScreen(ui: WalkGuideUiState, strings: Strings, nav: GuideNav) {
         } else if (back != null && back != GUIDE_TITLE_RETURN) {
             land(sceneFocus[back] ?: arrivedFocus, "장소 상세 복귀")
         } else {
+            // 안내 TTS(도착 문장·배경에서 끝났으면 복귀 상환)가 끝난 뒤 앉는다(최대 12초) — 안드로이드는 TalkBack 착지 낭독과 앱 TTS가 다른 소리라
+            // 겹치면 둘 다 알아듣기 어렵다(E57 §3.2 이월 도착 착지의 안드로이드판). 배경에선 컴포지션이 멈춰 이 효과가 전경 복귀 뒤에 돈다.
+            val start = SystemClock.elapsedRealtime()
+            while (!model.announcementsSettled() && SystemClock.elapsedRealtime() - start < GuideSheetLanding.SPEECH_WAIT_MS) delay(GuideSheetLanding.POLL_MS)
             land(arrivedFocus, "종료 문장")
         }
     }

@@ -426,6 +426,18 @@ class DeviceSpeechQueueTest {
         assertEquals(1, h.drops.size, "실패한 문장이 다음 선점에서 또 통지되지 않는다")
     }
 
+    @Test fun preemptFailureLeavesOwnSpeechUnreported() {
+        val h = Harness()
+        h.submit("계단 경고")
+        h.synth.fails = true
+        h.submit("도착", high = true)
+        // 새 발화가 실패했다 — 옛 문장은 계속 말하므로 끊겼다고 알리지 않는다(되살린 장부가 두 번 들리게 한다).
+        assertEquals(listOf("도착" to DeviceSpeechDrop.undelivered), h.drops)
+        h.synth.fails = false
+        h.submit("다음", high = true)
+        assertEquals(listOf("도착" to DeviceSpeechDrop.undelivered, "계단 경고" to DeviceSpeechDrop.superseded), h.drops)
+    }
+
     @Test fun directPostFailureAtDrainIsUndelivered() {
         val h = Harness()
         h.submit("전문"); h.submit("복귀 뒤")
