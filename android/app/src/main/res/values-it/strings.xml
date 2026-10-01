@@ -112,6 +112,15 @@
     <string name="android_common_unavailableHere_noBusData">I dati delle fermate degli autobus non sono disponibili in questa zona</string>
     <string name="android_common_unavailableHere_seoulOnly">Disponibile solo a Seul</string>
     <string name="android_directions_searching">Ricerca in corso</string>
+    <string name="android_directions_walkNotice_body1">Ora, quando cerchi un percorso nella scheda Indicazioni, la sezione a piedi mostra il pulsante \"Avvia guida a piedi\". Toccalo per avviare la guida in tempo reale. Durante la guida, lo schermo mostra la distanza rimanente fino alla destinazione, la distanza che resta del tratto corrente e la prossima indicazione. La guida continua a funzionare in background anche con lo schermo bloccato.</string>
+    <string name="android_directions_walkNotice_body2">La guida si basa sui dati cartografici di API esterne e sul GPS, quindi può differire dalla situazione reale.</string>
+    <string name="android_directions_walkNotice_body3">Presta particolare attenzione agli attraversamenti pedonali. Usa la guida di questa app solo come informazione complementare e provala prima su percorsi che già conosci.</string>
+    <string name="android_directions_walkNotice_body4">La guida in tempo reale per i mezzi pubblici e l\'auto è in preparazione.</string>
+    <string name="android_directions_walkNotice_confirm">OK</string>
+    <string name="android_directions_walkNotice_head1">Novità</string>
+    <string name="android_directions_walkNotice_head2">Da tenere presente</string>
+    <string name="android_directions_walkNotice_intro">Grazie per usare Gildongmu!</string>
+    <string name="android_directions_walkNotice_title">La guida a piedi è arrivata.</string>
     <string name="android_guide_adoptAlternative">Passa alla guida su questo percorso</string>
     <string name="android_guide_altPreviewFailed">Impossibile caricare il percorso alternativo</string>
     <string name="android_guide_altPreviewLoading">Ricerca percorso alternativo</string>

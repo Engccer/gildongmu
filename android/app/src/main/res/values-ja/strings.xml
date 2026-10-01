@@ -112,6 +112,15 @@
     <string name="android_common_unavailableHere_noBusData">この地域はバス停の情報が提供されていません</string>
     <string name="android_common_unavailableHere_seoulOnly">ソウル地域でのみご利用いただけます</string>
     <string name="android_directions_searching">照会中</string>
+    <string name="android_directions_walkNotice_body1">経路タブでルートを検索すると、徒歩セクションに「徒歩案内を開始」ボタンが表示されるようになりました。ボタンを押すとリアルタイム案内が始まります。案内中は、目的地までの残り距離、現在区間の残り距離、次の案内などを画面ですぐに確認できます。案内中は画面をロックしてもバックグラウンドで動作します。</string>
+    <string name="android_directions_walkNotice_body2">案内はAPIが提供する地図データとGPSに基づいています。そのため、実際の状況とは異なる場合があります。</string>
+    <string name="android_directions_walkNotice_body3">横断歩道などでは特にご注意ください。このアプリの案内は補助情報としてのみ使用し、慣れた道で先にお試しください。</string>
+    <string name="android_directions_walkNotice_body4">公共交通機関と自動車のリアルタイム案内は準備中です。</string>
+    <string name="android_directions_walkNotice_confirm">OK</string>
+    <string name="android_directions_walkNotice_head1">変わったこと</string>
+    <string name="android_directions_walkNotice_head2">ご注意いただきたいこと</string>
+    <string name="android_directions_walkNotice_intro">キルドンムをご利用いただきありがとうございます!</string>
+    <string name="android_directions_walkNotice_title">徒歩案内機能が追加されました。</string>
     <string name="android_guide_adoptAlternative">このルートの案内に切り替え</string>
     <string name="android_guide_altPreviewFailed">代替ルートの取得に失敗しました</string>
     <string name="android_guide_altPreviewLoading">代替ルートを検索中</string>

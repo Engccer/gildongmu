@@ -112,6 +112,15 @@
     <string name="android_common_unavailableHere_noBusData">Les données d\'arrêts de bus ne sont pas fournies dans cette zone</string>
     <string name="android_common_unavailableHere_seoulOnly">Disponible uniquement à Séoul</string>
     <string name="android_directions_searching">Recherche en cours</string>
+    <string name="android_directions_walkNotice_body1">Désormais, lorsque vous recherchez un itinéraire dans l\'onglet Itinéraire, la section à pied affiche le bouton \"Démarrer le guidage à pied\". Appuyez dessus pour lancer le guidage en temps réel. Pendant le guidage, l\'écran affiche la distance restante jusqu\'à votre destination, la distance restante du tronçon en cours et la prochaine instruction. Le guidage continue de fonctionner en arrière-plan même lorsque l\'écran est verrouillé.</string>
+    <string name="android_directions_walkNotice_body2">Le guidage repose sur les données cartographiques d\'API externes et sur le GPS ; il peut donc différer de la situation réelle.</string>
+    <string name="android_directions_walkNotice_body3">Soyez particulièrement vigilant aux passages piétons. Utilisez le guidage de cette application uniquement comme information complémentaire et essayez-le d\'abord sur des trajets que vous connaissez déjà.</string>
+    <string name="android_directions_walkNotice_body4">Le guidage en temps réel pour les transports en commun et la voiture est en préparation.</string>
+    <string name="android_directions_walkNotice_confirm">OK</string>
+    <string name="android_directions_walkNotice_head1">Nouveautés</string>
+    <string name="android_directions_walkNotice_head2">À garder à l\'esprit</string>
+    <string name="android_directions_walkNotice_intro">Merci d\'utiliser Gildongmu !</string>
+    <string name="android_directions_walkNotice_title">Le guidage à pied est arrivé.</string>
     <string name="android_guide_adoptAlternative">Basculer le guidage sur cet itinéraire</string>
     <string name="android_guide_altPreviewFailed">Échec du chargement de l’itinéraire alternatif</string>
     <string name="android_guide_altPreviewLoading">Recherche d’itinéraire alternatif</string>
