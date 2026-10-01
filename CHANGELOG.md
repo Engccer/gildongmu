@@ -9,6 +9,14 @@
 
 ---
 
+## 2026-10-02
+
+### 소형 결함 묶음 small-9: E60 · A54 · A53 ① iOS · A50 후속 · D29
+
+- **E60**(iOS): 검색 탭 결과 행 로터에서 "여기까지 길찾기"가 주소 복사 바로 다음에 온다(`.accessibilityActions` 선언 역순 노출, 소스 가드). 실기기 판정 BACKLOG §2 E60 행.
+- **A54**(iOS): 승차 전 도보를 직접 끝낼 때 "거리 추적을 종료했습니다, 대중교통 안내는 시작하지 않았습니다." 한 문장(결합용 키 `ios.beacon.stoppedJoin`·꼬리 키 `prewalkCancelledTail`, E41). 세션 중 `CLError.denied`는 "신호 약함" 대신 권한 거부 사유로 끝난다.
+- **A53 ①**(iOS 갈래): 대중교통 안내 세션이 목적지 라틴 표기를 들고 조망 "다른 경로"의 영어 마지막 도보 줄에 쓴다(목적지 전환 포함). **A50 후속**(웹): 세션 경계에서 옛 조회를 `AbortController`로 끊어 다시 시작한 세션의 첫 조회가 바로 나간다. **D29**: `jiti` 2.7.0 직접 선언. 계획 `docs/superpowers/plans/2026-10-02-backlog-sweep-8-parallel-plan.md`.
+
 ## 2026-10-01
 
 ### App Store 2.0 심사 제출 (빌드 30)
