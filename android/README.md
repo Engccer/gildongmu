@@ -35,7 +35,7 @@ android/
 
 - `:kit`은 **안드로이드 의존이 0**이다. `import android.`·`import androidx.`가 한 줄이라도 들어오면 `KitPurityTest`가 빨개지고, `kit/build.gradle.kts`에 안드로이드 플러그인·의존성을 더해도 같은 테스트가 잡는다. 저장·네트워크·시계처럼 플랫폼이 필요한 것은 인터페이스(`HttpTransport`·`KeyValueStore`)로 두고 `:app`이 구현한다(D5 경계).
 - 길찾기 주소 요청은 `DirectionsAddressState`가 측위 전부터 소유한다. 초기 진입·재선택·경로 조회 모두 같은 요청을 주소 커밋까지 전달하고, 필드 변경은 작업과 요청을 함께 취소한다. 언어 변경은 주소 상태를 초기화하며 이전 요청의 종료는 최신 로딩을 건드리지 않는다. 회귀 검증은 Kit `DirectionsAddressStateTest`와 앱 `DirectionsAddressTest`다.
-- 빌드 구성은 셋(iOS Debug/Release/Experimental 미러): `debug` · `release` · `experimental`. 실험판은 applicationId `space.dodoplanet.gildongmu.dev`, 표시 이름 "길동무 실험"(`app/src/experimental/res/values/strings.xml` — 스크린 리더 사용자의 유일한 구분 수단이라 반드시 유지), 아이콘 배경색 구분. 코드 게이트는 `AppConfig`의 `BuildConfig.EXPERIMENTAL` 플래그(현재 탭 순서·결과 진동 설정 행)이고, 검증되면 플래그 선언째 지운다. 자동차·대중교통 안내(M5)가 들어오면 iOS와 같은 이름 `experimentalGuidanceEnabled`로 같은 자리에 둔다. 매니페스트 항목도 게이트의 일부다 — 실험 기능 전용 권한·서비스는 `src/experimental/AndroidManifest.xml`에 두고, 졸업 때 코드 게이트와 함께 `src/main`으로 승격한다.
+- 빌드 구성은 셋(iOS Debug/Release/Experimental 미러): `debug` · `release` · `experimental`. 실험판은 applicationId `space.dodoplanet.gildongmu.dev`, 표시 이름 "길동무 실험"(`app/src/experimental/res/values/strings.xml` — 스크린 리더 사용자의 유일한 구분 수단이라 반드시 유지), 아이콘 배경색 구분. 코드 게이트는 `AppConfig`의 `BuildConfig.EXPERIMENTAL` 플래그(현재 탭 순서·결과 진동 설정 행)이고, 검증되면 플래그 선언째 지운다. 자동차·대중교통 안내(M5)를 실험판으로 들이면 같은 자리에 플래그 하나를 두고 졸업 때 지운다(iOS는 2.0에서 같은 플래그를 졸업시켰다). 매니페스트 항목도 게이트의 일부다 — 실험 기능 전용 권한·서비스는 `src/experimental/AndroidManifest.xml`에 두고, 졸업 때 코드 게이트와 함께 `src/main`으로 승격한다.
 
 ## 2. 환경
 
