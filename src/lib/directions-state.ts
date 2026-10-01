@@ -24,8 +24,11 @@ export type DirEndpoint =
       labelRoman?: string;
     };
 
-/** 장소 끝점. 라틴 표기는 비어 있지 않을 때만 싣는다(A53 — 끝점을 만드는 자리는 전부 이 함수를 지난다). */
-export function placeEndpoint(label: string, coord: Coord, roman?: string | null): DirEndpoint {
+/**
+ * 장소 끝점. 라틴 표기는 비어 있지 않을 때만 싣는다(A53 — 끝점을 만드는 자리는 전부 이 함수를 지난다).
+ * `roman`은 기본값 없는 필수 인자다: 모르면 `null`을 적는다(생략이 컴파일을 통과하면 새 진입점이 로마자를 조용히 버린다).
+ */
+export function placeEndpoint(label: string, coord: Coord, roman: string | null | undefined): DirEndpoint {
   return { kind: "place", label, coord, ...(roman?.trim() ? { labelRoman: roman } : {}) };
 }
 

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render } from "@testing-library/react";
-import { NextIntlClientProvider } from "next-intl";
+import { NextIntlClientProvider, useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 import en from "../../../messages/en.json";
 import ja from "../../../messages/ja.json";
@@ -212,6 +212,21 @@ describe("TransitRouteResult — en 로케일 구간 문장", () => {
     const { container } = wrap("en", <TransitRouteResult route={mid} t={t} locale="en" dest="Yeoksam" destRoman={null} />);
     const li = container.querySelectorAll("li")[0];
     expect(li.textContent).toBe("Walk 3 min to 강남역, 98m");
+    expect([...li.querySelectorAll("[lang]")].map((e) => [e.getAttribute("lang"), e.textContent])).toEqual([["ko", "강남역"]]);
+  });
+
+  it("ja 로케일·출구 문구에서도 lang=ko는 이름 하나에만(이름이 문두라도 문장이 잘리지 않는다)", () => {
+    function JaRoute({ r }: { r: TransitRoute }) {
+      const tJa = useTranslations("route.transit");
+      return <TransitRouteResult route={r} t={tJa} locale="ja" dest="Yeoksam" destRoman={null} />;
+    }
+    const mid: TransitRoute = {
+      ...route,
+      legs: [{ mode: "walk", minutes: 3, toName: "강남역", distanceMeters: 98 }, { ...legs[2], exit: { board: "3" } }],
+    };
+    const { container } = wrap("ja", <JaRoute r={mid} />);
+    const li = container.querySelectorAll("li")[0];
+    expect(li.textContent).toBe("강남역3番出口まで徒歩3分、98m");
     expect([...li.querySelectorAll("[lang]")].map((e) => [e.getAttribute("lang"), e.textContent])).toEqual([["ko", "강남역"]]);
   });
 

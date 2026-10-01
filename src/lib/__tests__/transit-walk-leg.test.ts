@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import fixture from "./fixtures/transit-walk-destination-cases.json";
@@ -107,5 +107,19 @@ describe("도보·탑승 줄 소비자 배선(A52·A53)", () => {
       /transitWalkLegMessage\(route\.legs, i, \{\s*english: isEn,\s*destinationLabel: dest,\s*destinationRoman: destRoman,\s*\}\)/,
     );
     expect(src).toMatch(/const names = transitBoardLegNames\(leg, isEn\);/);
+  });
+});
+
+// 화면은 이름 자리를 표식으로 찾아 그 이름에만 lang="ko"를 단다(`TransitRouteBriefing` `NAME_SLOT`) — 번역문이 `{name}`을
+// 두 번 쓰거나 빠뜨리면 문장 꼬리가 조용히 잘린다. 이름을 싣는 네 키는 모든 로케일에서 `{name}`이 정확히 한 번이다.
+describe("도보 줄 이름 자리(A53 ②)", () => {
+  const dir = join(__dirname, "../../../messages");
+  const locales = readdirSync(dir).filter((f) => f.endsWith(".json"));
+  it("6로케일", () => expect(locales).toHaveLength(6));
+  it.each(locales)("%s", (file) => {
+    const transit = JSON.parse(readFileSync(join(dir, file), "utf8")).route.transit as Record<string, string>;
+    for (const key of ["legWalkTo", "legWalkToNoDistance", "legWalkToExit", "legWalkToExitNoDistance"]) {
+      expect(transit[key].split("{name}").length - 1, `${file} ${key}`).toBe(1);
+    }
   });
 });

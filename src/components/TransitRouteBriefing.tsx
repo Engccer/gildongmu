@@ -249,8 +249,9 @@ export function TransitRouteBriefing({
   );
 }
 
-/** 도보 줄 문장에서 한국어 역명 자리를 찾는 표식(사용 영역 문자 — 번역문에 나오지 않는다). */
-const NAME_SLOT = "\uE000";
+/** 도보 줄 문장에서 한국어 역명 자리를 찾는 표식(`LocationBar`의 `ADDRESS_SLOT` 선례). 6로케일 문장에 `{name}`이
+    정확히 한 번인 것은 `transit-walk-leg.test.ts`가 잠근다. */
+const NAME_SLOT = "\u0000";
 
 /** 경로 1개의 요약 + 구간 리스트. 고유명(노선·정류장)은 한국어면 lang="ko", en 계열 로케일에서
     서버 영문(`*En`, E27)이 **노선·정류장 둘 다** 있는 구간만 영문(역명은 `Gangnam (강남)` 병기 —
@@ -305,7 +306,7 @@ export function TransitRouteResult({
             if (!isEn || english || !values.name) return <li key={i}>{t(key, values)}</li>;
             // 영문 행선지가 없는 줄: 문장 틀은 UI 언어, 역명은 한국어 원문(앱과 같은 문장). 아래 탑승 줄과 같이
             // 그 이름에만 lang="ko"를 달아 한국어 음성으로 읽힌다(A53 ②).
-            const [before, after] = t(key, { ...values, name: NAME_SLOT }).split(NAME_SLOT);
+            const [before, after = ""] = t(key, { ...values, name: NAME_SLOT }).split(NAME_SLOT);
             return (
               <li key={i}>
                 {before}

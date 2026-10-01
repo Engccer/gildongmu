@@ -7,8 +7,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import en from "../../../messages/en.json";
-import type { Place, TransitRouteResult } from "@/lib/types";
+import type { JusoAddress, Place, TransitRouteResult } from "@/lib/types";
 import { __resetGuideSessionStoreForTest } from "@/lib/guide-session-store";
+import { parseDir } from "@/lib/directions-state";
 import type { WebMcpTool } from "@/lib/webmcp/types";
 import { __resetViewRegistryForTest, bridgeOf } from "@/lib/webmcp/view-registry";
 import { __resetToolBudgetForTest } from "@/lib/webmcp/tool-budget";
@@ -38,6 +39,18 @@ const tower: Place = {
   lat: 37.5198,
   lng: 126.9403,
 };
+
+const juso: JusoAddress = {
+  roadAddr: "서울특별시 강동구 성내로 12 (성내동)",
+  roadAddrPart1: "서울특별시 강동구 성내로 12",
+  jibunAddr: "서울특별시 강동구 성내동 540",
+  engAddr: "12 Seongnae-ro, Gangdong-gu, Seoul",
+  zipNo: "05397",
+  bdNm: "",
+};
+/** 후보 검색 응답(테스트마다 바꾼다). */
+let places: Place[] = [tower];
+let addresses: JusoAddress[] = [];
 
 /** `englishNames` = 서버가 영문 조각을 다 실었는가(영어 줄) — 아니면 이름이 한국어인 줄이다. */
 let englishNames = true;
@@ -85,13 +98,16 @@ beforeEach(() => {
   __resetToolLockForTest();
   __resetToolBudgetForTest();
   englishNames = true;
+  places = [tower];
+  addresses = [];
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
       if (url.startsWith("/api/places/entrance")) return json({ entrance: null });
-      if (url.startsWith("/api/places")) return json({ places: [tower], provider: "kakao-local", query: "q" });
-      if (url.startsWith("/api/address/search")) return json({ addresses: [] });
+      if (url.startsWith("/api/places")) return json({ places, provider: "kakao-local", query: "q" });
+      if (url.startsWith("/api/address/search")) return json({ addresses });
+      if (url.startsWith("/api/geocode?")) return json({ matches: [{ lat: 37.53, lng: 127.13 }] });
       if (url.startsWith("/api/route/transit")) return json({ result: transitFixture() });
       if (url.startsWith("/api/geocode/reverse")) return json({});
       throw new Error(`unexpected fetch: ${url}`);
@@ -107,7 +123,7 @@ afterEach(() => {
   Reflect.deleteProperty(document, "modelContext");
 });
 
-async function planLines(): Promise<{ tool: string[]; screen: string[] }> {
+async function planLines(to = "63빌딩"): Promise<{ tool: string[]; screen: string[] }> {
   const view = render(
     <NextIntlClientProvider locale="en" messages={en}>
       <DirectionsView canShowWalk={false} canShowTransit canBriefCarRoute={false} onBack={() => {}} />
@@ -117,7 +133,7 @@ async function planLines(): Promise<{ tool: string[]; screen: string[] }> {
   const tool = buildAppTools({ hasWalk: false, hasTransit: true, hasCar: false, canShowSubway: true, canShowBarrierFree: true }).find(
     (t: WebMcpTool) => t.name === "plan_directions",
   )!;
-  const out = JSON.parse(await tool.execute({ to: "63빌딩" }, {})) as {
+  const out = JSON.parse(await tool.execute({ to }, {})) as {
     ok: boolean;
     transit: { recommended: { legLines: string[] } };
   };
@@ -153,6 +169,14 @@ describe("plan_directions — en 계획 투영(A53)", () => {
     ]);
     expect(screen).toEqual(tool);
   });
+
+  it("주소 후보로 고른 목적지는 juso 영문 주소를 싣는다", async () => {
+    places = [];
+    addresses = [juso];
+    const { tool, screen } = await planLines("성내로 12");
+    expect(tool.at(-1)).toBe("Walk 3 min to 12 Seongnae-ro, Gangdong-gu, Seoul, 200m");
+    expect(screen).toEqual(tool);
+  });
 });
 
 /** 화면 경로(도구 없이): 끝점을 만드는 자리마다 라틴 표기가 끝까지 운반되는가(A53 ①). */
@@ -164,6 +188,11 @@ describe("화면 끝점의 라틴 표기 운반(A53 ①)", () => {
       </NextIntlClientProvider>,
     );
   }
+  /** 화면이 쓴 `?dir=`을 같은 파서로 되읽은 도착지 라틴 표기. */
+  const urlToRoman = () => {
+    const to = parseDir(new URLSearchParams(window.location.search).get("dir"))?.to;
+    return to?.kind === "place" ? to.labelRoman : undefined;
+  };
   const lastLine = (c: HTMLElement) => [...c.querySelectorAll("ol")[0].querySelectorAll(":scope > li")].at(-1)?.textContent;
 
   it("장소 후보 확정 → 최근 기록·?dir=·브리핑 마지막 도보 줄", async () => {
@@ -171,7 +200,7 @@ describe("화면 끝점의 라틴 표기 운반(A53 ①)", () => {
     fireEvent.change(screen.getByLabelText("To"), { target: { value: "63빌딩" } });
     fireEvent.click(screen.getByRole("button", { name: "Search destination" }));
     fireEvent.click(await screen.findByRole("button", { name: /^63bilding/ }));
-    await waitFor(() => expect(decodeURIComponent(window.location.search)).toContain(":63bilding@"));
+    await waitFor(() => expect(urlToRoman()).toBe("63bilding"));
     expect(JSON.parse(window.localStorage.getItem("gildongmu:recent-endpoints-to:v1") ?? "[]")[0]).toMatchObject({
       label: "63빌딩",
       labelRoman: "63bilding",
@@ -182,6 +211,28 @@ describe("화면 끝점의 라틴 표기 운반(A53 ①)", () => {
     expect(JSON.parse(window.localStorage.getItem("gildongmu:recent-routes:v1") ?? "[]")[0].to).toMatchObject({
       labelRoman: "63bilding",
     });
+  });
+
+  it("주소 후보 확정 → juso 영문 주소가 끝점 라틴 표기로", async () => {
+    places = [];
+    addresses = [juso];
+    const view = renderView();
+    fireEvent.change(screen.getByLabelText("To"), { target: { value: "성내로 12" } });
+    fireEvent.click(screen.getByRole("button", { name: "Search destination" }));
+    fireEvent.click(await screen.findByRole("button", { name: /^12 Seongnae-ro/ }));
+    await waitFor(() => expect(urlToRoman()).toBe("12 Seongnae-ro, Gangdong-gu, Seoul"));
+    fireEvent.click(screen.getByRole("button", { name: "Get routes" }));
+    await waitFor(() => expect(lastLine(view.container)).toBe("Walk 3 min to 12 Seongnae-ro, Gangdong-gu, Seoul, 200m"));
+  });
+
+  it("최근 장소 버튼 → 저장된 라틴 표기를 끝점에 싣는다", async () => {
+    window.localStorage.setItem(
+      "gildongmu:recent-endpoints-to:v1",
+      JSON.stringify([{ label: "63빌딩", lat: 37.5198, lng: 126.9403, pinned: false, labelRoman: "63bilding" }]),
+    );
+    renderView();
+    fireEvent.click(await screen.findByRole("button", { name: "63빌딩" }));
+    await waitFor(() => expect(urlToRoman()).toBe("63bilding"));
   });
 
   it("최근 경로 활성화 → 저장된 라틴 표기로 조회한다", async () => {

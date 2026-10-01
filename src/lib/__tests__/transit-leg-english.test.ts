@@ -1,8 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { transitBoardLegNames, transitLegUsesEnglish } from "../transit-leg-english";
 import type { TransitLeg } from "../types";
+import fixture from "./fixtures/transit-leg-english-cases.json";
 
-// Kit `TransitExitLinesTests`의 `transitLegUsesEnglish` 판정과 같은 표(웹 미러).
+// 판정표는 공유 fixture(Kit `transitLegUsesEnglish`·안드로이드 :kit과 같은 표).
+describe("transitLegUsesEnglish — 공유 fixture", () => {
+  it("fixture가 비지 않았다", () => {
+    expect(fixture.cases.length).toBeGreaterThanOrEqual(15);
+  });
+  it.each(fixture.cases)("$id", (c) => {
+    expect(transitLegUsesEnglish({ minutes: 1, ...c.leg } as TransitLeg, c.english)).toBe(c.expected);
+  });
+});
+
 const subway = (over: Partial<TransitLeg> = {}): TransitLeg => ({
   mode: "subway",
   lineName: "수도권 9호선",
@@ -14,37 +24,6 @@ const subway = (over: Partial<TransitLeg> = {}): TransitLeg => ({
   stationCount: 15,
   minutes: 30,
   ...over,
-});
-
-describe("transitLegUsesEnglish", () => {
-  it("ko 세션은 영문이 다 있어도 한국어", () => {
-    expect(transitLegUsesEnglish(subway(), false)).toBe(false);
-  });
-  it("en 세션은 노선·승차·하차 영문이 다 있을 때만 영어", () => {
-    expect(transitLegUsesEnglish(subway(), true)).toBe(true);
-    for (const over of [{ lineNameEn: undefined }, { fromNameEn: undefined }, { toNameEn: undefined }]) {
-      expect(transitLegUsesEnglish(subway(over), true)).toBe(false);
-    }
-  });
-  it("빈 영문은 결측이다(공백·탭·개행)", () => {
-    for (const blank of ["", " ", "\t\n"]) {
-      for (const over of [{ lineNameEn: blank }, { fromNameEn: blank }, { toNameEn: blank }]) {
-        expect(transitLegUsesEnglish(subway(over), true)).toBe(false);
-      }
-    }
-  });
-  it("한국어 쪽에 없는 조각은 영문을 요구하지 않는다", () => {
-    expect(transitLegUsesEnglish(subway({ toName: undefined, toNameEn: undefined }), true)).toBe(true);
-    expect(transitLegUsesEnglish(subway({ fromName: " ", fromNameEn: undefined }), true)).toBe(true);
-  });
-  it("도보: 행선지가 없으면(마지막 도보) 영어, 있으면 영문 행선지가 있어야 영어", () => {
-    expect(transitLegUsesEnglish({ mode: "walk", minutes: 2 }, true)).toBe(true);
-    expect(transitLegUsesEnglish({ mode: "walk", minutes: 2, toName: " " }, true)).toBe(true);
-    expect(transitLegUsesEnglish({ mode: "walk", minutes: 2, toName: "개화" }, true)).toBe(false);
-    expect(transitLegUsesEnglish({ mode: "walk", minutes: 2, toName: "개화", toNameEn: " " }, true)).toBe(false);
-    expect(transitLegUsesEnglish({ mode: "walk", minutes: 2, toName: "개화", toNameEn: "Gaehwa" }, true)).toBe(true);
-    expect(transitLegUsesEnglish({ mode: "walk", minutes: 2 }, false)).toBe(false);
-  });
 });
 
 describe("transitBoardLegNames — 탑승 줄 이름(화면·WebMCP 공용)", () => {

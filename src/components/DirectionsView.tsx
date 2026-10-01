@@ -1564,9 +1564,7 @@ export function DirectionsView({
             onResolve={(ep) => {
               if (stopActiveGuideSession()) announce(tBeacon("stopped"));
               if (ep.kind === "place") {
-                setRecentVia(
-                  recordRecentEndpoint("via", { label: ep.label, lat: ep.coord.lat, lng: ep.coord.lng }),
-                );
+                setRecentVia(recordRecentEndpoint("via", recentOf(ep)));
               }
               setViaField(endpointToField(ep, currentLabel));
               discardResults();
