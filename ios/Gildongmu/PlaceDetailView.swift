@@ -222,11 +222,11 @@ struct PlaceDetailView<DomainSection: View>: View {
             if showsDirectionsEntry {
                 Button(appLocalized("directions.toHere")) {
                     DirectionsPrefillStore.shared.pending = DirectionsPrefill(
-                        role: .to, endpoint: .place(label: place.name, lat: place.lat, lng: place.lng))
+                        role: .to, endpoint: .place(label: place.name, lat: place.lat, lng: place.lng, labelRoman: place.nameRoman))
                 }
                 Button(appLocalized("directions.fromHere")) {
                     DirectionsPrefillStore.shared.pending = DirectionsPrefill(
-                        role: .from, endpoint: .place(label: place.name, lat: place.lat, lng: place.lng))
+                        role: .from, endpoint: .place(label: place.name, lat: place.lat, lng: place.lng, labelRoman: place.nameRoman))
                 }
             }
             // 안내 중에만(N1 spec §2.5): 진행 중인 세션의 목적지를 이 장소로 바꾼다. 비콘은 같은 세션의 경로 재획득,
@@ -236,10 +236,11 @@ struct PlaceDetailView<DomainSection: View>: View {
                     let dest = BeaconDest(lat: place.lat, lng: place.lng)
                     if guideSession.beacon.isTracking {
                         if guideSession.beacon.changeDestination(dest: dest, label: place.name) {
-                            GuideFormSyncStore.shared.post(.place(label: place.name, lat: place.lat, lng: place.lng))
+                            GuideFormSyncStore.shared.post(.place(label: place.name, lat: place.lat, lng: place.lng, labelRoman: place.nameRoman))
                         }
                     } else {
-                        guideSession.transit.prepareDestinationChange(dest: dest, label: place.name)
+                        guideSession.transit.prepareDestinationChange(
+                            dest: dest, label: place.name, labelRoman: place.nameRoman)
                         guideSession.beacon.announceNow(
                             appLocalized("guide.transitDestChangePrepared"),
                             highPriority: true, bypassSuppression: true)
@@ -254,7 +255,7 @@ struct PlaceDetailView<DomainSection: View>: View {
                             dest: BeaconDest(lat: place.lat, lng: place.lng), label: place.name
                         ) {
                             GuideFormSyncStore.shared.postWaypoint(
-                                .place(label: place.name, lat: place.lat, lng: place.lng))
+                                .place(label: place.name, lat: place.lat, lng: place.lng, labelRoman: place.nameRoman))
                         }
                     }
                 }

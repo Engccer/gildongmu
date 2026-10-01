@@ -43,6 +43,7 @@ final class GuideSession {
         let id: UUID
         let route: TransitRoute
         let destinationLabel: String
+        let destinationRoman: String?
         let dest: BeaconDest
         let accessible: Bool
     }
@@ -124,7 +125,9 @@ final class GuideSession {
             role: .to, endpoint: .place(label: target.label, lat: target.lat, lng: target.lng))
     }
 
-    func startTransit(route: TransitRoute, destinationLabel: String, dest: BeaconDest, accessible: Bool) {
+    func startTransit(
+        route: TransitRoute, destinationLabel: String, destinationRoman: String?, dest: BeaconDest, accessible: Bool
+    ) {
         guard !refuseIfActive() else { return }
         cancelPrewalk()
         beacon.clearArrival()
@@ -132,11 +135,14 @@ final class GuideSession {
         // 승차 전 도보(A25): 첫 탑승 leg 앞 도보가 있으면 도보 실시간 안내를 먼저 돌리고, 도착하면
         // 같은 요청으로 대중교통 세션을 잇는다. 판정은 순수 함수(웹 미러) — nil이면 종전 경로.
         guard let target = buildTransitGuideRoute(route).flatMap(transitPrewalkTarget) else {
-            transit.start(transitRoute: route, destinationLabel: destinationLabel, dest: dest, accessible: accessible)
+            transit.start(
+                transitRoute: route, destinationLabel: destinationLabel, destinationRoman: destinationRoman,
+                dest: dest, accessible: accessible)
             return
         }
         let context = PrewalkContext(
-            id: UUID(), route: route, destinationLabel: destinationLabel, dest: dest, accessible: accessible)
+            id: UUID(), route: route, destinationLabel: destinationLabel, destinationRoman: destinationRoman,
+            dest: dest, accessible: accessible)
         prewalk = context
         // 표시 라벨은 ko·en 쌍(E27 잔여 ①).
         //
@@ -178,6 +184,7 @@ final class GuideSession {
                 guard !Task.isCancelled, let self else { return }
                 self.transit.startAfterPrewalk(
                     transitRoute: context.route, destinationLabel: context.destinationLabel,
+                    destinationRoman: context.destinationRoman,
                     dest: context.dest, accessible: context.accessible, prewalkCompleted: true)
             }
         case .startFailed:
@@ -186,6 +193,7 @@ final class GuideSession {
             transit.announceExternal(appLocalized("transitGuide.prewalkUnavailable"), speechClass: .actionable)
             transit.startAfterPrewalk(
                 transitRoute: context.route, destinationLabel: context.destinationLabel,
+                destinationRoman: context.destinationRoman,
                 dest: context.dest, accessible: context.accessible, prewalkCompleted: false)
         case .userStopped:
             // 요약 화면이 없어 stopByUser의 통지가 안 나간다 — 정지 문장과 함께 한 문장으로.

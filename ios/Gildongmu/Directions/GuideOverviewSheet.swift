@@ -528,9 +528,9 @@ struct TransitAltRoutesSheet: View {
         let key = entry.route.routeKey
         DisclosureGroup {
             // 라벨이 이미 요약이라 본문은 구간만(인접 중복 금지).
-            // 안내 세션은 목적지 라틴 표기를 들고 있지 않다 — 영어 줄의 마지막 도보는 "목적지까지"다(A52).
+            // 영어 줄의 마지막 도보는 세션이 든 라틴 표기, 없으면 "목적지까지"(A52·A53 ①).
             TransitRouteRows(route: entry.route, includeSummary: false,
-                             destinationName: model.destinationLabel, destinationRoman: nil)
+                             destinationName: model.destinationLabel, destinationRoman: model.destinationRoman)
             if invalidRouteKeys.contains(key) {
                 Text(appLocalized("ios.transitGuide.altInvalid")).foregroundStyle(.secondary)
                     .accessibilityFocused($focusedInvalid, equals: key)

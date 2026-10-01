@@ -29,6 +29,9 @@ final class TransitGuideModel {
     private(set) var userTransitionSeq = 0
     private(set) var route: TransitGuideRoute?
     private(set) var destinationLabel = ""
+    /// 그 목적지의 라틴 표기(E28 `labelRoman`, A53 ①). 조망 "다른 경로"의 영어 마지막 도보 줄이 쓴다 —
+    /// 판정은 `transitWalkDestinationName`(없거나 라틴이 아니면 "목적지까지"). `destinationLabel`과 함께만 바뀐다.
+    private(set) var destinationRoman: String?
     /// 목적지 좌표(N1) — 세션이 탭과 분리되면서 도보 핸드오프·장소 상세가 탭 폼이
     /// 아니라 여기서 읽는다. `stop()`이 비우지 않는다(핸드오프 제안이 세션 뒤에 읽는다).
     private(set) var dest: BeaconDest?
@@ -48,6 +51,7 @@ final class TransitGuideModel {
     struct PendingDestChange {
         let dest: BeaconDest
         let label: String
+        let labelRoman: String?
         var phase: Phase
         var fetchedAt: Date?
         enum Phase: Equatable { case loading, loaded(TransitRouteResult), empty, failed }
@@ -228,7 +232,10 @@ final class TransitGuideModel {
 
     /// 시작. 거부 판정(N1 §2.4)이 route 변환보다 먼저다(설계 리뷰 m2 — 변환 실패가
     /// 먼저 조용히 반환하면 요구된 거부 통지조차 없다).
-    func start(transitRoute: TransitRoute, destinationLabel: String, dest: BeaconDest, accessible: Bool) {
+    func start(
+        transitRoute: TransitRoute, destinationLabel: String, destinationRoman: String?, dest: BeaconDest,
+        accessible: Bool
+    ) {
         guard !GuideSession.shared.isActive,
               let token = GuideSession.shared.coordinator.claim(stop: { [weak self] in self?.stop() })
         else {
@@ -243,7 +250,7 @@ final class TransitGuideModel {
             return
         }
         beginSession(guideRoute: guideRoute, token: token, destinationLabel: destinationLabel,
-                     dest: dest, accessible: accessible)
+                     destinationRoman: destinationRoman, dest: dest, accessible: accessible)
     }
 
     /// 승차 전 도보 뒤의 시작(A25 spec 2026-08-30 §4.1) — `start`와 같은 게이트, 같은 세션 초기화.
@@ -251,7 +258,7 @@ final class TransitGuideModel {
     /// "도보 5분 이동 후"를 다시 말하면 지난 일을 미래형으로 말하는 거짓). 시작 실패로 넘어온
     /// 경우는 false — 사용자는 아직 걷지 않았다. ⚠ 기본값 없음(안전 인자).
     func startAfterPrewalk(
-        transitRoute: TransitRoute, destinationLabel: String, dest: BeaconDest,
+        transitRoute: TransitRoute, destinationLabel: String, destinationRoman: String?, dest: BeaconDest,
         accessible: Bool, prewalkCompleted: Bool
     ) {
         guard !GuideSession.shared.isActive,
@@ -266,18 +273,20 @@ final class TransitGuideModel {
             return
         }
         beginSession(guideRoute: prewalkCompleted ? withoutPrewalk(built) : built, token: token,
-                     destinationLabel: destinationLabel, dest: dest, accessible: accessible)
+                     destinationLabel: destinationLabel, destinationRoman: destinationRoman,
+                     dest: dest, accessible: accessible)
     }
 
     /// 게이트를 지난 뒤의 세션 초기화 공통부(`start`·`startAfterPrewalk`).
     private func beginSession(
-        guideRoute: TransitGuideRoute, token: Int, destinationLabel: String,
+        guideRoute: TransitGuideRoute, token: Int, destinationLabel: String, destinationRoman: String?,
         dest: BeaconDest, accessible: Bool
     ) {
         pendingWalkHandoff = nil
         sessionToken = token
         self.route = guideRoute
         self.destinationLabel = destinationLabel
+        self.destinationRoman = destinationRoman
         self.dest = dest
         self.accessible = accessible
         seq = 0
@@ -932,11 +941,12 @@ final class TransitGuideModel {
 
     /// 1단(목적지 선택): 아직 아무것도 확정하지 않는다 — 사이드 채널로 현재 위치 →
     /// 새 목적지 대중교통 경로를 조회해 후보 목록만 준비한다(폼·세션 불변).
-    func prepareDestinationChange(dest: BeaconDest, label: String) {
+    func prepareDestinationChange(dest: BeaconDest, label: String, labelRoman: String?) {
         guard isTracking else { return }
         destChangeToken += 1
         let token = destChangeToken
-        pendingDestChange = PendingDestChange(dest: dest, label: label, phase: .loading, fetchedAt: nil)
+        pendingDestChange = PendingDestChange(
+            dest: dest, label: label, labelRoman: labelRoman, phase: .loading, fetchedAt: nil)
         Task { await fetchDestChangeCandidates(token: token) }
     }
 
@@ -1071,7 +1081,8 @@ final class TransitGuideModel {
             return .refetching
         }
         guard let dest else { return .sessionEnded }
-        guard changeRoute(transitRoute: route, destinationLabel: destinationLabel, dest: dest,
+        guard changeRoute(transitRoute: route, destinationLabel: destinationLabel,
+                          destinationRoman: destinationRoman, dest: dest,
                           announcement: .routeSwitched) else { return .invalidCandidate }
         altRoutesToken += 1
         pendingAltRoutes = nil
@@ -1097,7 +1108,8 @@ final class TransitGuideModel {
             Task { await fetchDestChangeCandidates(token: token) }
             return false
         }
-        guard changeRoute(transitRoute: route, destinationLabel: pending.label, dest: pending.dest,
+        guard changeRoute(transitRoute: route, destinationLabel: pending.label,
+                          destinationRoman: pending.labelRoman, dest: pending.dest,
                           announcement: .destinationChanged) else { return false }
         pendingDestChange = nil
         return true
@@ -1118,7 +1130,7 @@ final class TransitGuideModel {
     enum RouteChangeAnnouncement { case destinationChanged, routeSwitched }
 
     private func changeRoute(
-        transitRoute: TransitRoute, destinationLabel: String, dest: BeaconDest,
+        transitRoute: TransitRoute, destinationLabel: String, destinationRoman: String?, dest: BeaconDest,
         announcement: RouteChangeAnnouncement
     ) -> Bool {
         guard let guideRoute = buildTransitGuideRoute(transitRoute) else { return false }
@@ -1133,6 +1145,7 @@ final class TransitGuideModel {
         pendingDestChange = nil
         self.route = guideRoute
         self.destinationLabel = destinationLabel
+        self.destinationRoman = destinationRoman
         self.dest = dest
         seq = 0
         retained = [:]

@@ -436,7 +436,7 @@ struct PlaceRow: View {
             // 길찾기 탭 도착지 프리필 진입(Task I4).
             Button(appLocalized("directions.toHere")) {
                 DirectionsPrefillStore.shared.pending = DirectionsPrefill(
-                    role: .to, endpoint: .place(label: place.name, lat: place.lat, lng: place.lng))
+                    role: .to, endpoint: .place(label: place.name, lat: place.lat, lng: place.lng, labelRoman: place.nameRoman))
             }
             if !place.roadAddress.isEmpty {
                 Button(appLocalized("ios.place.copyAddress")) { copyAddressToPasteboard(place.roadAddress) }

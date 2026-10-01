@@ -1565,6 +1565,8 @@ struct DirectionsTabView: View {
                             lastGuideStart = .transitAlt(entry.route.routeKey)
                             session.startTransit(
                                 route: entry.route, destinationLabel: tracked.label,
+                                // 브리핑과 같은 라틴 표기(승격본이면 nil, A53 ①) — 조망 "다른 경로"의 영어 도보 줄.
+                                destinationRoman: destinationPlaceRoman,
                                 // 승차 전 도보의 계단 회피 출처였던 토글이 E42로 사라졌다(spec §8 미결 1).
                                 dest: tracked.dest, accessible: false
                             )
