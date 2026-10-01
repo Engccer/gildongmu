@@ -88,8 +88,13 @@ final class OutingModel {
     private var lastJunctionNoticeAt: Double?
     /// 마지막 탐침 시도 좌표 — 직선 `outingProbeDistanceMeters`마다 1건(`outingProbeStep`, 실패도 같은 간격).
     private var lastProbe: RoutePoint?
-    /// 탐침 연속 실패 수. 키 없음(404)은 곧장 상한으로 둔다(그 세션은 다시 묻지 않는다).
+    /// 탐침 연속 실패 수. 키 없음(404)·한국 밖은 곧장 상한으로 둔다(그 세션은 다시 묻지 않는다).
     private var probeFailures = 0
+    /// 탐침을 끈 사유(로그 `probe=off(none|fail)` — 키 없음·옛 서버·한국 밖과 연속 실패를 가른다).
+    private var probeOffReason: String?
+    /// 마지막으로 주변 문장(지나침·도로명·출발점)을 실제로 게시한 시각 — 교차로 예고가 그 직후 3초 안에 끼어들어 말하던
+    /// 문장을 끊지 않게(`outingJunctionAfterAmbientSeconds`, 접근성 감사 M1).
+    private var lastAmbientAt: Double?
     /// 예고 로그의 세션 순번(좌표 유도 id 대신 — id에 좌표가 들어 있어 탐침 좌표가 로그(디스크)에 남는다, 설계 리뷰 M6).
     private var nodeLogSeq: [String: Int] = [:]
     private(set) var surroundingsStatus: OutingSurroundingsStatus = .loading
@@ -115,7 +120,7 @@ final class OutingModel {
     private var silencedNoticed = false
     /// 시작 문장이 나갔는가 — 그 뒤의 무음 전이(인터럽션·route 변경 뒤 재승격 실패)는 따로 알린다.
     private var startAnnounced = false
-    /// 안전 문장(시작·횡단보도)이 나간 뒤 이 시각까지는 주변 문장을 미룬다 — 두 대기 칸(톤 뒤 지연·기기 음성)이
+    /// 안전 문장(시작·횡단보도)과 교차로 예고가 나간 뒤 이 시각까지는 주변 문장을 미룬다 — 두 대기 칸(톤 뒤 지연·기기 음성)이
     /// 모두 새 문장이 옛 문장을 버리는 방식이라, 같은 fix의 지나침이 횡단보도 예고를 지울 수 있다(spec 준수 리뷰 M-2).
     private var protectedUntil: Double = 0
     private var deferredLow: String?
@@ -295,6 +300,8 @@ final class OutingModel {
         lastJunctionNoticeAt = nil
         lastProbe = nil
         probeFailures = 0
+        probeOffReason = nil
+        lastAmbientAt = nil
         nodeLogSeq = [:]
         surroundingsStatus = .loading
         surroundingsFailures = 0
@@ -346,6 +353,11 @@ final class OutingModel {
         watchdog = nil
         queryTask?.cancel()
         queryTask = nil
+        // 탐침 결과(카카오)는 세션 메모리에만 — 세션이 끝나면 다음 시작을 기다리지 않고 버린다(spec §6.6, spec 리뷰 MAJOR-1).
+        // 횡단보도·교차점 후보는 탐침 점과 섞여 있어 함께 비운다(종료 화면은 이 둘을 쓰지 않는다).
+        crosswalks = [:]
+        junctions = [:]
+        lastProbe = nil
         guard wasActive else { return }
         LocationService.shared.stopBeaconUpdates()
         pedometer.stopLiveUpdates()
@@ -657,26 +669,28 @@ final class OutingModel {
             crosswalks = outingMergeCrosswalks(crosswalks, adding: osm.features.compactMap { f in
                 guard f.crossing, let lat = f.lat, let lng = f.lng else { return nil }
                 return RoutePoint(lat: lat, lng: lng)
-            })
+            }, fromProbe: false)
         }
-        crosswalks = outingMergeCrosswalks(crosswalks, adding: walk?.seoulCrosswalks.value ?? [])
-        junctions = outingMergeJunctions(junctions, adding: walk?.osmJunctions.value ?? [])
-        junctions = outingMergeJunctions(junctions, adding: walk?.seoulJunctions.value ?? [])
+        crosswalks = outingMergeCrosswalks(crosswalks, adding: walk?.seoulCrosswalks.value ?? [], fromProbe: false)
+        junctions = outingMergeJunctions(junctions, adding: walk?.osmJunctions.value ?? [], fromProbe: false)
+        junctions = outingMergeJunctions(junctions, adding: walk?.seoulJunctions.value ?? [], fromProbe: false)
         let probeLabel: String
         switch probe {
-        case .none: probeLabel = probeFailures >= outingProbeFailureLimit ? "off" : "skip"
-        case .failure(APIError.badStatus(code: 404, message: _)):
-            // 서버에 카카오 키가 없다(또는 옛 서버) — 탐침 원천 미제공. 이 세션은 다시 묻지 않는다.
+        case .none: probeLabel = probeOffReason.map { "off(\($0))" } ?? "skip"
+        case .failure(APIError.badStatus(code: 404, message: _)), .failure(APIError.outOfCoverage):
+            // 서버에 카카오 키가 없다(또는 옛 서버)·한국 밖 — 탐침 원천 미제공. 이 세션은 다시 묻지 않는다.
             probeLabel = "none"
             probeFailures = outingProbeFailureLimit
+            probeOffReason = "none"
         case .failure:
             probeLabel = "fail"
             probeFailures += 1
+            if probeFailures >= outingProbeFailureLimit { probeOffReason = "fail" }
         case .success(let p):
             probeLabel = "ok"
             probeFailures = 0
-            crosswalks = outingMergeCrosswalks(crosswalks, adding: p.crosswalks)
-            junctions = outingMergeJunctions(junctions, adding: p.turns)
+            crosswalks = outingMergeCrosswalks(crosswalks, adding: p.crosswalks, fromProbe: true)
+            junctions = outingMergeJunctions(junctions, adding: p.turns, fromProbe: true)
             // 개수만 남긴다 — 탐침 좌표를 로그(디스크)에 쓰지 않는다(카카오 약관, spec §6.6).
             guideDiagLog("probe cw=\(p.crosswalks.count) turns=\(p.turns.count)")
         }
@@ -746,14 +760,13 @@ final class OutingModel {
             let candidates = outingJunctionRelations(
                 Array(junctions.values), fixLat: fix.lat, fixLng: fix.lng, accuracy: fix.accuracy, heading: heading)
             if let notice = outingJunctionNoticeStep(
-                junctions: candidates, spoken: spokenJunctions, lastNoticeAt: lastJunctionNoticeAt, now: now) {
+                junctions: candidates, spoken: spokenJunctions, lastNoticeAt: lastJunctionNoticeAt,
+                lastAmbientAt: lastAmbientAt, now: now) {
                 spokenJunctions.insert(notice.id)
                 lastJunctionNoticeAt = now
-                let rel = candidates.first { $0.junction.id == notice.id }?.relation
-                guideDiagLog(
-                    "junction n=\(logSeq(notice.id)) shape=\(Self.junctionLog(notice.shape)) "
-                        + "s=\(Int(rel?.s ?? 0)) t=\(Int(rel?.t ?? 0))")
-                sayProtected(Self.junctionLine(notice.shape))
+                // 상대 거리(s·t)도 쓰지 않는다 — 같은 로그의 fix 좌표·방위와 합치면 탐침 꺾임 지점 좌표가 복원된다(spec §6.6).
+                guideDiagLog("junction n=\(logSeq(notice.id)) shape=\(Self.junctionLog(notice.shape))")
+                sayGuarded(Self.junctionLine(notice.shape))
                 if case .valid = heading { aheadText = aheadLandmarkText(next) }
                 return
             }
@@ -953,6 +966,7 @@ final class OutingModel {
         refreshPedometerAvailability()
         if now >= protectedUntil, let low = deferredLow {
             deferredLow = nil
+            lastAmbientAt = now
             say(low, speechClass: .actionable)
         }
         // 국면 무관 안전망(spec §5.3·§9). 나들이엔 도착 창이 없으므로 두 축 모두 산다.
@@ -1045,6 +1059,13 @@ final class OutingModel {
         }
     }
 
+    /// 길 구조 문장(교차로 예고) — 보호 창만 세운다(주변 문장을 3초 미룸). 기기 음성 칸의 보호(유효 시간 면제)는 받지
+    /// 않는다: 20m 앞에서 말하는 위치 문장이라 6초 넘게 늦으면 이미 지난 골목을 말한다(접근성 감사 MINOR-1).
+    private func sayGuarded(_ text: String) {
+        protectedUntil = uptimeNow + protectSeconds
+        say(text, speechClass: .actionable)
+    }
+
     /// 안전 문장(시작·횡단보도) — 나간 뒤 보호 창 동안 주변 문장을 미룬다.
     private func sayProtected(_ text: String) {
         protectedUntil = uptimeNow + protectSeconds
@@ -1059,6 +1080,7 @@ final class OutingModel {
             return
         }
         deferredLow = nil  // 미뤄 둔 옛 문장보다 지금 문장이 이긴다 — 다음 틱에 옛 문장이 뒤늦게 나오지 않게(구현 검증 N8)
+        lastAmbientAt = uptimeNow
         say(text, speechClass: .actionable)
     }
 

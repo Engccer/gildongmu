@@ -457,7 +457,7 @@ struct OutingCrosswalkTests {
         -> (crosswalk: OutingCrosswalk, relation: OutingRelation)
     {
         let p = point(east: east, north: north)
-        return (OutingCrosswalk(id: id, lat: p.lat, lng: p.lng), project(east: east, north: north, heading: heading))
+        return (OutingCrosswalk(id: id, lat: p.lat, lng: p.lng, fromProbe: false), project(east: east, north: north, heading: heading))
     }
 
     @Test("앞 30m 안·횡거리 15m 안이면 예고, 밖이면 없음")

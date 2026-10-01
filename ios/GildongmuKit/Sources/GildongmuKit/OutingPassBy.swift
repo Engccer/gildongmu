@@ -123,16 +123,19 @@ public let outingCrosswalkLateralMeters = 15.0
 /// 횡단보도 노드와 음향신호기 격자 대표점의 짝짓기 거리(m) — 격자 11m + GPS 여유.
 public let outingAudioSignalPairMeters = 20.0
 
-/// 횡단보도 하나 — OSM 노드 id·좌표.
+/// 횡단보도 하나 — 좌표 유도 id(`outingMergeCrosswalks`)·좌표·탐침 단독 여부.
 public struct OutingCrosswalk: Sendable, Equatable {
     public let id: String
     public let lat: Double
     public let lng: Double
+    /// 카카오 탐침만 아는 점(연석점)인가 — 정적 원천(OSM·서울망, 차도 중심 근처)과 짝 침묵을 가른다(§6.6).
+    public let fromProbe: Bool
 
-    public init(id: String, lat: Double, lng: Double) {
+    public init(id: String, lat: Double, lng: Double, fromProbe: Bool) {
         self.id = id
         self.lat = lat
         self.lng = lng
+        self.fromProbe = fromProbe
     }
 }
 
@@ -170,8 +173,12 @@ public let outingJunctionNoticeMeters = 20.0
 /// 그보다 먼 큰 교차로는 횡단보도 예고가 맡는다.
 public let outingJunctionLateralMeters = 12.0
 /// ⚠ 잠정값(spec §10, §11.2 재생). 교차로 예고 사이 최소 간격(초) — 골목 밀집 구간의 연속 발화 상한.
-/// 횡단보도 예고도 이 시계를 돌린다(같은 자리 두 문장 억제, 설계 리뷰 m2).
+/// 횡단보도 예고도 이 시계를 돌린다(같은 자리에서 두 문장이 붙지 않게 미룬다, 설계 리뷰 m2).
 public let outingJunctionMinGapSeconds = 8.0
+/// ⚠ 잠정값(spec §10). 주변 문장(지나침·도로명)을 낸 뒤 이 시간 안에는 교차로 예고를 미룬다(초). 기본 우선순위 VoiceOver
+/// 통지와 톤 뒤 지연 슬롯은 새 문장이 말하던·기다리던 문장을 끊거나 지운다 — 미뤄도 후보는 다음 fix에 아직 앞 20m 안이면
+/// 다시 나온다(접근성 감사 M1). 횡단보도 예고(안전 문장)는 이 간격을 받지 않는다.
+public let outingJunctionAfterAmbientSeconds = 3.0
 /// 앞·뒤 갈래와 옆 갈래를 가르는 각(도). 진행 방향에서 이보다 덜 벌어지면 앞(또는 뒤)이다.
 public let outingBranchSideDegrees = 45.0
 /// 앞 갈래 둘을 Y자 갈림길로 보는 최소 벌어짐(도). 큰길과 평행한 측면도로처럼 거의 같은 방향인 둘은 갈림길이 아니다.
@@ -242,15 +249,17 @@ public func outingJunctionShape(
 
 /// 이 fix에서 예고할 교차로(가장 가까운 하나). 조건: 방위 valid에서 앞 구획 ∧ s ≤ 20 ∧ |t| ≤ 12, 아직 예고하지
 /// 않은 id, 모양이 있음(곧은 길의 이음점이 아님), 직전 예고(`lastNoticeAt` — 교차로·횡단보도)에서
-/// `outingJunctionMinGapSeconds` 지남. 간격 안이면 아무것도 침묵시키지 않는다 — 후보는 창이 끝날 때 아직 앞 20m 안이면
-/// 그때 말해진다.
+/// `outingJunctionMinGapSeconds`, 직전 주변 문장 게시(`lastAmbientAt`)에서 `outingJunctionAfterAmbientSeconds` 지남.
+/// 간격 안이면 아무것도 침묵시키지 않는다 — 후보는 창이 끝날 때 아직 앞 20m 안이면 그때 말해진다.
 public func outingJunctionNoticeStep(
     junctions: [(junction: OutingJunction, relation: OutingRelation, branches: [OutingRelation])],
     spoken: Set<String>,
     lastNoticeAt: Double?,
+    lastAmbientAt: Double?,
     now: Double
 ) -> OutingJunctionNotice? {
     if let lastNoticeAt, now - lastNoticeAt < outingJunctionMinGapSeconds { return nil }
+    if let lastAmbientAt, now - lastAmbientAt < outingJunctionAfterAmbientSeconds { return nil }
     let eligible = junctions.compactMap { c -> (OutingJunctionNotice, Double)? in
         guard !spoken.contains(c.junction.id), c.relation.validBearing != nil, c.relation.zone == .ahead,
               c.relation.s <= outingJunctionNoticeMeters, abs(c.relation.t) <= outingJunctionLateralMeters,
@@ -264,17 +273,19 @@ public func outingJunctionNoticeStep(
 }
 
 /// 한 fix의 교차로 후보 관계. 투영은 `outingProject` 하나다 — 교차점은 사용자 fix 기준(그 fix의 정확도),
-/// 갈래 점은 교차점 기준(지도 점이라 정확도 0, 같은 방위).
+/// 갈래 점은 교차점 기준(지도 점이라 정확도 0, 같은 방위). 예고 창(앞 구획 ∧ s ≤ 20 ∧ |t| ≤ 12) 밖의 교차점은 갈래를
+/// 투영하지 않고 뺀다 — 세션 누적 교차점이 수천이라 fix(1Hz)마다 갈래까지 전부 투영하지 않는다.
 public func outingJunctionRelations(
     _ junctions: [OutingJunction], fixLat: Double, fixLng: Double, accuracy: Double, heading: OutingHeading
 ) -> [(junction: OutingJunction, relation: OutingRelation, branches: [OutingRelation])] {
-    junctions.map { j in
-        (junction: j,
-         relation: outingProject(
-            fixLat: fixLat, fixLng: fixLng, accuracy: accuracy, heading: heading, placeLat: j.lat, placeLng: j.lng),
-         branches: j.branches.map {
+    junctions.compactMap { j in
+        let rel = outingProject(
+            fixLat: fixLat, fixLng: fixLng, accuracy: accuracy, heading: heading, placeLat: j.lat, placeLng: j.lng)
+        guard rel.zone == .ahead, rel.s <= outingJunctionNoticeMeters, abs(rel.t) <= outingJunctionLateralMeters
+        else { return nil }
+        return (junction: j, relation: rel, branches: j.branches.map {
             outingProject(fixLat: j.lat, fixLng: j.lng, accuracy: 0, heading: heading, placeLat: $0.lat, placeLng: $0.lng)
-         })
+        })
     }
 }
 
@@ -282,14 +293,16 @@ public func outingJunctionRelations(
 /// 따로 남는 짝(설계 리뷰 M4)을 한 번만 말하게 한다.
 public let outingCrosswalkSilenceMeters = 35.0
 
-/// 예고한 횡단보도와 함께 `spoken`에 넣을 id(그 점에서 35m 안 ∧ 이 fix의 |t| ≤ 15 — 같은 진행선 위). 모퉁이의 직교
-/// 횡단보도는 |t|가 커서 남는다. `outingCrosswalkNoticeStep`의 판정은 그대로다(판정 ②, 원천만 바꾼다).
+/// 예고한 횡단보도와 함께 `spoken`에 넣을 id: **원천 종류가 다른**(탐침 연석점 ↔ 정적 중심점) 점 중 그 점에서 35m 안 ∧
+/// 이 fix의 |t| ≤ 15(같은 진행선 위). 정적끼리·탐침끼리는 이미 15m 병합이 같은 횡단보도를 접으므로, 같은 종류의 35m 안
+/// 점은 진행선 위의 **다른** 횡단보도다(연속 골목 입구 — 침묵시키면 안전 문장이 조용히 빠진다, 코드 리뷰 M1). 모퉁이의
+/// 직교 횡단보도는 |t|가 커서 남는다. `outingCrosswalkNoticeStep`의 판정은 그대로다(판정 ②, 원천만 바꾼다).
 public func outingCrosswalkSilenced(
     after noticeId: String, crosswalks: [(crosswalk: OutingCrosswalk, relation: OutingRelation)]
 ) -> [String] {
     guard let spoken = crosswalks.first(where: { $0.crosswalk.id == noticeId })?.crosswalk else { return [] }
     return crosswalks.compactMap { c in
-        guard c.crosswalk.id != noticeId, c.relation.validBearing != nil,
+        guard c.crosswalk.id != noticeId, c.crosswalk.fromProbe != spoken.fromProbe, c.relation.validBearing != nil,
               abs(c.relation.t) <= outingCrosswalkLateralMeters,
               haversineMeters(lat1: spoken.lat, lng1: spoken.lng, lat2: c.crosswalk.lat, lng2: c.crosswalk.lng)
                 <= outingCrosswalkSilenceMeters

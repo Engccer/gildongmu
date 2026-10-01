@@ -24812,7 +24812,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Intersection ahead"
+            "value": "Crossroads ahead"
           }
         },
         "es": {
@@ -24892,25 +24892,25 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Road on your left"
+            "value": "Path on your left"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Calle a la izquierda"
+            "value": "Camino a la izquierda"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Rue à gauche"
+            "value": "Chemin à gauche"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Strada a sinistra"
+            "value": "Passaggio a sinistra"
           }
         },
         "ja": {
@@ -24972,25 +24972,25 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Road on your right"
+            "value": "Path on your right"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Calle a la derecha"
+            "value": "Camino a la derecha"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Rue à droite"
+            "value": "Chemin à droite"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Strada a destra"
+            "value": "Passaggio a destra"
           }
         },
         "ja": {
@@ -25024,7 +25024,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Intersection en T devant"
+            "value": "Carrefour en T devant"
           }
         },
         "it": {

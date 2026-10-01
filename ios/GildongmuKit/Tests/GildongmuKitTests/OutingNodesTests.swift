@@ -30,17 +30,18 @@ private func junction(
     north: Double, east: Double, _ branches: [(Double, OutingBranchKind)], id: String = "jn:test"
 ) -> OutingJunction {
     let j = at(north: north, east: east)
-    return OutingJunction(id: id, lat: j.lat, lng: j.lng, branches: branches.map { branch(from: j, bearing: $0.0, kind: $0.1) })
+    return OutingJunction(
+        id: id, lat: j.lat, lng: j.lng, branches: branches.map { branch(from: j, bearing: $0.0, kind: $0.1) }, fromProbe: false)
 }
 
 private func notice(
     _ junctions: [OutingJunction], heading: OutingHeading = .valid(bearing: 0, uncertaintyDeg: 10), accuracy: Double = 5,
-    spoken: Set<String> = [], lastNoticeAt: Double? = nil, now: Double = 100
+    spoken: Set<String> = [], lastNoticeAt: Double? = nil, lastAmbientAt: Double? = nil, now: Double = 100
 ) -> OutingJunctionNotice? {
     outingJunctionNoticeStep(
         junctions: outingJunctionRelations(
             junctions, fixLat: originLat, fixLng: originLng, accuracy: accuracy, heading: heading),
-        spoken: spoken, lastNoticeAt: lastNoticeAt, now: now)
+        spoken: spoken, lastNoticeAt: lastNoticeAt, lastAmbientAt: lastAmbientAt, now: now)
 }
 
 private func shapeLabel(_ shape: OutingJunctionShape?) -> String? {
@@ -84,6 +85,16 @@ struct OutingJunctionNoticeTests {
         }
     }
 
+    @Test("옆 갈래의 좌우가 미확정이면 모양 전체를 갈림길로 접는다(틀린 좌우를 말하지 않는다)")
+    func unsureSideFoldsToBranching() {
+        let j = OutingRelation(s: 15, t: 0, d: 15, zone: .ahead, side: .unknown, validBearing: 0)
+        let forward = OutingRelation(s: 25, t: 0, d: 25, zone: .ahead, side: .unknown, validBearing: 0)
+        let left = OutingRelation(s: 0, t: -25, d: 25, zone: .beside, side: .left, validBearing: 0)
+        let unsure = OutingRelation(s: 0, t: 25, d: 25, zone: .beside, side: .unknown, validBearing: 0)
+        #expect(outingJunctionShape(junction: j, branches: [(.alley, forward), (.alley, left)]) == .side(.left, alley: true))
+        #expect(outingJunctionShape(junction: j, branches: [(.alley, forward), (.alley, left), (.alley, unsure)]) == .branching)
+    }
+
     @Test("방위가 valid가 아니면 예고하지 않는다")
     func staleHeading() {
         let j = junction(north: 15, east: 0, [(180, .alley), (0, .alley), (270, .alley)])
@@ -103,6 +114,21 @@ struct OutingJunctionNoticeTests {
         let j = junction(north: 15, east: 0, [(180, .alley), (0, .alley), (270, .alley)])
         #expect(notice([j], lastNoticeAt: 100 - outingJunctionMinGapSeconds + 1, now: 100) == nil)
         #expect(notice([j], lastNoticeAt: 100 - outingJunctionMinGapSeconds, now: 100)?.id == "jn:test")
+    }
+
+    @Test("주변 문장을 낸 뒤 3초 안이면 미루고(침묵시키지 않는다), 지나면 말한다")
+    func afterAmbient() {
+        let j = junction(north: 15, east: 0, [(180, .alley), (0, .alley), (270, .alley)])
+        #expect(notice([j], lastAmbientAt: 100 - outingJunctionAfterAmbientSeconds + 0.5, now: 100) == nil)
+        #expect(notice([j], lastAmbientAt: 100 - outingJunctionAfterAmbientSeconds, now: 100)?.id == "jn:test")
+    }
+
+    @Test("탐침 꺾임 지점(갈래 하나, 종류 모름)은 그쪽 길 문장")
+    func probeTurn() {
+        let p = at(north: 15, east: 0)
+        let turn = OutingJunction(
+            id: "jn:probe", lat: p.lat, lng: p.lng, branches: [branch(from: p, bearing: 90, kind: .unknown)], fromProbe: true)
+        #expect(notice([turn])?.shape == .side(.right, alley: false))
     }
 
     @Test("한 fix에 여럿이면 가장 가까운 하나")
@@ -126,27 +152,51 @@ struct OutingNodeMergeTests {
         let a = at(north: 0, east: 0)
         let b = at(north: 9, east: 0)
         let c = at(north: 0, east: 20)
-        var merged = outingMergeCrosswalks([:], adding: [RoutePoint(lat: a.lat, lng: a.lng)])
+        var merged = outingMergeCrosswalks([:], adding: [RoutePoint(lat: a.lat, lng: a.lng)], fromProbe: false)
         let firstId = outingNodeId("cw", lat: a.lat, lng: a.lng)
         #expect(Array(merged.keys) == [firstId])
         // 다른 원천의 9m 떨어진 같은 횡단보도·재조회로 다시 온 같은 점은 흡수된다.
-        merged = outingMergeCrosswalks(merged, adding: [RoutePoint(lat: b.lat, lng: b.lng), RoutePoint(lat: a.lat, lng: a.lng)])
+        merged = outingMergeCrosswalks(
+            merged, adding: [RoutePoint(lat: b.lat, lng: b.lng), RoutePoint(lat: a.lat, lng: a.lng)], fromProbe: true)
         #expect(merged.count == 1)
-        merged = outingMergeCrosswalks(merged, adding: [RoutePoint(lat: c.lat, lng: c.lng)])
+        merged = outingMergeCrosswalks(merged, adding: [RoutePoint(lat: c.lat, lng: c.lng)], fromProbe: false)
         #expect(merged.count == 2)
         #expect(merged[firstId] != nil)
+    }
+
+    @Test("탐침이 먼저 둔 점에 정적 점이 오면 id는 그대로 두고 좌표·원천을 정적으로 옮긴다")
+    func staticReanchorsProbeHost() {
+        let probe = at(north: 0, east: 0)
+        let stat = at(north: 0, east: 10)
+        var cws = outingMergeCrosswalks([:], adding: [RoutePoint(lat: probe.lat, lng: probe.lng)], fromProbe: true)
+        let id = cws.keys.first!
+        cws = outingMergeCrosswalks(cws, adding: [RoutePoint(lat: stat.lat, lng: stat.lng)], fromProbe: false)
+        #expect(cws[id] == OutingCrosswalk(id: id, lat: stat.lat, lng: stat.lng, fromProbe: false))
+
+        let turn = OutingJunction(
+            id: "", lat: probe.lat, lng: probe.lng, branches: [branch(from: probe, bearing: 90, kind: .unknown)], fromProbe: true)
+        var jns = outingMergeJunctions([:], adding: [turn], fromProbe: true)
+        let jid = jns.keys.first!
+        jns = outingMergeJunctions(jns, adding: [junction(north: 0, east: 10, [(0, .alley), (180, .alley)])], fromProbe: false)
+        let host = jns[jid]!
+        #expect(host.fromProbe == false)
+        #expect(abs(host.lng - stat.lng) < 1e-9)
+        // 탐침 갈래는 기준점과 함께 옮겨져 방향(동쪽)을 지킨다.
+        let b = bearingDegrees(fromLat: host.lat, fromLng: host.lng, toLat: host.branches[0].lat, toLng: host.branches[0].lng)
+        #expect(abs(b - 90) < 1)
+        #expect(host.branches.count == 3)
     }
 
     @Test("근접 교차점은 갈래만 더하고, 같은 방향 갈래는 버리고, 새 갈래는 기존 교차점 좌표로 옮겨 붙인다")
     func junctions() {
         let osm = junction(north: 0, east: 0, [(0, .alley), (180, .alley), (270, .alley)])
-        var merged = outingMergeJunctions([:], adding: [osm])
+        var merged = outingMergeJunctions([:], adding: [osm], fromProbe: false)
         #expect(merged.count == 1)
         let host = merged.values.first!
         #expect(host.id == outingNodeId("jn", lat: osm.lat, lng: osm.lng))
         // 8m 동쪽의 서울망 교차점: 북(중복)·동(새 갈래).
         let seoul = junction(north: 0, east: 8, [(10, .path), (90, .path)])
-        merged = outingMergeJunctions(merged, adding: [seoul])
+        merged = outingMergeJunctions(merged, adding: [seoul], fromProbe: false)
         #expect(merged.count == 1)
         let joined = merged[host.id]!
         #expect(joined.branches.count == 4)
@@ -155,7 +205,8 @@ struct OutingNodeMergeTests {
         let b = bearingDegrees(fromLat: joined.lat, fromLng: joined.lng, toLat: added.lat, toLng: added.lng)
         #expect(abs(b - 90) < 1)
         // 멀리 떨어진 교차점은 따로.
-        merged = outingMergeJunctions(merged, adding: [junction(north: 40, east: 0, [(0, .alley), (180, .alley), (90, .alley)])])
+        merged = outingMergeJunctions(
+            merged, adding: [junction(north: 40, east: 0, [(0, .alley), (180, .alley), (90, .alley)])], fromProbe: false)
         #expect(merged.count == 2)
     }
 
@@ -177,17 +228,32 @@ struct OutingNodeMergeTests {
 }
 
 struct OutingCrosswalkSilenceTests {
-    @Test("예고한 횡단보도와 같은 진행선의 35m 안 짝은 함께 침묵, 옆(|t| > 15) 횡단보도는 남는다")
+    @Test("예고한 횡단보도와 원천이 다른 같은 진행선의 35m 안 짝은 함께 침묵, 옆(|t| > 15)·같은 원천의 다음 횡단보도는 남는다")
     func silence() {
         let heading = OutingHeading.valid(bearing: 0, uncertaintyDeg: 10)
-        func cw(_ id: String, _ n: Double, _ e: Double) -> (crosswalk: OutingCrosswalk, relation: OutingRelation) {
+        func cw(_ id: String, _ n: Double, _ e: Double, probe: Bool) -> (crosswalk: OutingCrosswalk, relation: OutingRelation) {
             let p = at(north: n, east: e)
-            return (OutingCrosswalk(id: id, lat: p.lat, lng: p.lng),
+            return (OutingCrosswalk(id: id, lat: p.lat, lng: p.lng, fromProbe: probe),
                     outingProject(fixLat: originLat, fixLng: originLng, accuracy: 5, heading: heading, placeLat: p.lat, placeLng: p.lng))
         }
-        let list = [cw("curb", 25, 0), cw("center", 45, 2), cw("corner", 30, 25), cw("far", 70, 0)]
+        // 탐침 연석점(25m)과 정적 중심점(45m)은 같은 넓은 도로 횡단보도다. 정적 "next"(55m)는 진행선 위 30m 뒤의 다른
+        // 횡단보도라(연속 골목 입구) 정적 중심점을 예고해도 남아야 한다(코드 리뷰 M1).
+        let list = [cw("curb", 25, 0, probe: true), cw("center", 45, 2, probe: false), cw("corner", 30, 25, probe: false),
+                    cw("far", 70, 0, probe: false), cw("next", 75, 0, probe: false)]
         #expect(outingCrosswalkSilenced(after: "curb", crosswalks: list) == ["center"])
+        #expect(outingCrosswalkSilenced(after: "center", crosswalks: list) == ["curb"])
         #expect(outingCrosswalkSilenced(after: "missing", crosswalks: list).isEmpty)
+    }
+
+    @Test("정적 원천끼리 진행선 위 30m 간격의 두 횡단보도는 서로 침묵시키지 않는다")
+    func consecutiveCrosswalksSurvive() {
+        let heading = OutingHeading.valid(bearing: 0, uncertaintyDeg: 10)
+        let pts = [("a", 28.0), ("b", 58.0)].map { id, n -> (crosswalk: OutingCrosswalk, relation: OutingRelation) in
+            let p = at(north: n, east: 0)
+            return (OutingCrosswalk(id: id, lat: p.lat, lng: p.lng, fromProbe: false),
+                    outingProject(fixLat: originLat, fixLng: originLng, accuracy: 5, heading: heading, placeLat: p.lat, placeLng: p.lng))
+        }
+        #expect(outingCrosswalkSilenced(after: "a", crosswalks: pts).isEmpty)
     }
 }
 
@@ -201,8 +267,6 @@ struct OutingNodesDecodingTests {
         "seoulNetwork":{"status":"unsupported","reason":"outsideSeoul"}}}
         """
         let env = try JSONDecoder().decode(OutingWalkNodesEnvelope.self, from: Data(json.utf8))
-        let osm = env.walk.osmJunctions.map { _ in "x" }
-        #expect(osm != nil)
         let old = """
         {"walk":{"audioSignals":{"status":"error"},"osm":{"status":"error"}}}
         """

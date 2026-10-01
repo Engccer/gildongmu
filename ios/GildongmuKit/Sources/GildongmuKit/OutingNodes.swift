@@ -20,6 +20,8 @@ public let outingBranchMergeDegrees = 30.0
 public let outingProbeDistanceMeters = 100.0
 /// 연속 실패가 이만큼이면 그 세션의 탐침을 끈다(정적 원천은 그대로).
 public let outingProbeFailureLimit = 3
+/// 탐침 한 건의 시간 상한(초) — 서버의 카카오 상한 8초 + 여유. 넘으면 실패로 센다.
+public let outingProbeTimeoutSeconds: TimeInterval = 10
 
 /// 교차점 갈래의 길 종류. 문장은 골목(`alley`)과 그 밖(길) 둘로만 가른다.
 public enum OutingBranchKind: String, Sendable, Equatable {
@@ -27,7 +29,7 @@ public enum OutingBranchKind: String, Sendable, Equatable {
     case alley
     /// 큰길(OSM tertiary 이상).
     case road
-    /// 보행로(footway·path·steps, 서울망 보행 전용 링크).
+    /// 보행로(footway·pedestrian·path, 서울망 보행 전용 링크).
     case path
     /// 종류 모름(탐침 꺾임 지점, 미지 값).
     case unknown
@@ -46,18 +48,21 @@ public struct OutingBranch: Sendable, Equatable {
     }
 }
 
-/// 교차점 하나 — 좌표 유도 id·좌표·갈래.
+/// 교차점 하나 — 좌표 유도 id·좌표·갈래·탐침 단독 여부.
 public struct OutingJunction: Sendable, Equatable {
     public let id: String
     public let lat: Double
     public let lng: Double
     public let branches: [OutingBranch]
+    /// 카카오 탐침 꺾임 지점만 아는 자리인가(정적 원천이 오면 그 좌표로 기준점을 옮기고 거짓이 된다).
+    public let fromProbe: Bool
 
-    public init(id: String, lat: Double, lng: Double, branches: [OutingBranch]) {
+    public init(id: String, lat: Double, lng: Double, branches: [OutingBranch], fromProbe: Bool) {
         self.id = id
         self.lat = lat
         self.lng = lng
         self.branches = branches
+        self.fromProbe = fromProbe
     }
 }
 
@@ -66,18 +71,34 @@ public func outingNodeId(_ prefix: String, lat: Double, lng: Double) -> String {
     "\(prefix):" + String(format: "%.5f,%.5f", lat, lng)
 }
 
-/// 횡단보도 점들을 기존 후보에 합친다(순서대로 — 같은 응답 안의 가까운 두 점도 하나가 된다).
+/// 15m 안의 가장 가까운 기존 점(배열 복사 없이 훑는다 — 세션 누적이 수백~수천).
+private func nearestWithin<T>(_ map: [String: T], lat: Double, lng: Double, at: (T) -> (Double, Double)) -> T? {
+    var best: T?
+    var bestD = outingNodeMergeMeters
+    for v in map.values {
+        let (a, b) = at(v)
+        let d = haversineMeters(lat1: a, lng1: b, lat2: lat, lng2: lng)
+        if d <= bestD { best = v; bestD = d }
+    }
+    return best
+}
+
+/// 횡단보도 점들을 기존 후보에 합친다(순서대로 — 같은 응답 안의 가까운 두 점도 하나가 된다). `fromProbe`는 기본값 없는
+/// 필수 인자다(짝 침묵이 원천 종류로 갈린다). 정적 점이 탐침 단독 점에 흡수되면 그 점의 좌표를 정적 좌표로 옮긴다(id는
+/// 유지 — latch가 산다): 정적 원천이 있는 자리는 커밋 경계와 무관하게 정적 좌표가 기준이다.
 public func outingMergeCrosswalks(
-    _ existing: [String: OutingCrosswalk], adding points: [RoutePoint]
+    _ existing: [String: OutingCrosswalk], adding points: [RoutePoint], fromProbe: Bool
 ) -> [String: OutingCrosswalk] {
     var out = existing
     for p in points where p.lat.isFinite && p.lng.isFinite {
-        let near = out.values.contains {
-            haversineMeters(lat1: $0.lat, lng1: $0.lng, lat2: p.lat, lng2: p.lng) <= outingNodeMergeMeters
+        if let host = nearestWithin(out, lat: p.lat, lng: p.lng, at: { ($0.lat, $0.lng) }) {
+            if host.fromProbe && !fromProbe {
+                out[host.id] = OutingCrosswalk(id: host.id, lat: p.lat, lng: p.lng, fromProbe: false)
+            }
+            continue
         }
-        if near { continue }
         let id = outingNodeId("cw", lat: p.lat, lng: p.lng)
-        out[id] = OutingCrosswalk(id: id, lat: p.lat, lng: p.lng)
+        out[id] = OutingCrosswalk(id: id, lat: p.lat, lng: p.lng, fromProbe: fromProbe)
     }
     return out
 }
@@ -86,22 +107,28 @@ private func angleGap(_ a: Double, _ b: Double) -> Double {
     abs((a - b + 540).truncatingRemainder(dividingBy: 360) - 180)
 }
 
-/// 교차점들을 기존 후보에 합친다(`id`는 무시하고 다시 유도한다). 근접 교차점이 있으면 갈래만 더한다 — 이미 있는
-/// 갈래와 방위가 `outingBranchMergeDegrees` 안이면 버리고, 새 갈래는 기존 교차점 좌표로 평행 이동해 붙인다(갈래의
-/// 방향을 보존한다 — 판정은 교차점과 갈래 점의 차로 방향을 읽는다).
+/// 교차점들을 기존 후보에 합친다(`id`·`fromProbe`는 무시하고 인자로 다시 정한다). 근접 교차점이 있으면 갈래만 더한다 —
+/// 이미 있는 갈래와 방위가 `outingBranchMergeDegrees` 안이면 버리고, 새 갈래는 기존 교차점 좌표로 평행 이동해 붙인다(갈래의
+/// 방향을 보존한다 — 판정은 교차점과 갈래 점의 차로 방향을 읽는다). 정적 교차점이 탐침 단독 교차점에 흡수되면 기준점을 정적
+/// 좌표로 옮긴다(기존 갈래도 함께 평행 이동, id 유지): 탐침 꺾임 지점은 보도 위 점이라 그대로 두면 길 건너 판정의 기준이
+/// 흐려진다(spec 리뷰 MINOR-5).
 public func outingMergeJunctions(
-    _ existing: [String: OutingJunction], adding incoming: [OutingJunction]
+    _ existing: [String: OutingJunction], adding incoming: [OutingJunction], fromProbe: Bool
 ) -> [String: OutingJunction] {
     var out = existing
     for j in incoming where j.lat.isFinite && j.lng.isFinite {
-        let host = out.values
-            .map { ($0, haversineMeters(lat1: $0.lat, lng1: $0.lng, lat2: j.lat, lng2: j.lng)) }
-            .filter { $0.1 <= outingNodeMergeMeters }
-            .min { $0.1 < $1.1 }?.0
-        guard let host else {
+        guard var host = nearestWithin(out, lat: j.lat, lng: j.lng, at: { ($0.lat, $0.lng) }) else {
             let id = outingNodeId("jn", lat: j.lat, lng: j.lng)
-            out[id] = OutingJunction(id: id, lat: j.lat, lng: j.lng, branches: j.branches)
+            out[id] = OutingJunction(id: id, lat: j.lat, lng: j.lng, branches: j.branches, fromProbe: fromProbe)
             continue
+        }
+        if host.fromProbe && !fromProbe {
+            let dLat = j.lat - host.lat
+            let dLng = j.lng - host.lng
+            host = OutingJunction(
+                id: host.id, lat: j.lat, lng: j.lng,
+                branches: host.branches.map { OutingBranch(lat: $0.lat + dLat, lng: $0.lng + dLng, kind: $0.kind) },
+                fromProbe: false)
         }
         var branches = host.branches
         for b in j.branches {
@@ -113,7 +140,7 @@ public func outingMergeJunctions(
             if dup { continue }
             branches.append(OutingBranch(lat: host.lat + (b.lat - j.lat), lng: host.lng + (b.lng - j.lng), kind: b.kind))
         }
-        out[host.id] = OutingJunction(id: host.id, lat: host.lat, lng: host.lng, branches: branches)
+        out[host.id] = OutingJunction(id: host.id, lat: host.lat, lng: host.lng, branches: branches, fromProbe: host.fromProbe)
     }
     return out
 }
@@ -150,7 +177,8 @@ struct OutingJunctionDTO: Decodable, Sendable {
     var junction: OutingJunction {
         OutingJunction(
             id: "", lat: lat, lng: lng,
-            branches: branches.map { OutingBranch(lat: $0.lat, lng: $0.lng, kind: OutingBranchKind(rawValue: $0.kind) ?? .unknown) })
+            branches: branches.map { OutingBranch(lat: $0.lat, lng: $0.lng, kind: OutingBranchKind(rawValue: $0.kind) ?? .unknown) },
+            fromProbe: false)
     }
 }
 
@@ -235,7 +263,7 @@ struct OutingProbeEnvelope: Decodable, Sendable {
     }
 }
 
-private func map<T: Decodable & Sendable, U: Sendable>(_ s: WalkSourceStatus<T>?, _ f: (T) -> U) -> OutingNodeSource<U> {
+private func nodeSource<T: Decodable & Sendable, U: Sendable>(_ s: WalkSourceStatus<T>?, _ f: (T) -> U) -> OutingNodeSource<U> {
     switch s {
     case .ok(let v): .ok(f(v))
     case .unsupported: .unsupported
@@ -257,24 +285,26 @@ extension WalkInfraService {
         let body = envelope.walk
         return OutingWalkNodes(
             infra: body.infra,
-            osmJunctions: map(body.osmJunctions) { $0.junctions.map(\.junction) },
-            seoulCrosswalks: map(body.seoulNetwork) { $0.crosswalks.map { RoutePoint(lat: $0.lat, lng: $0.lng) } },
-            seoulJunctions: map(body.seoulNetwork) { $0.junctions.map(\.junction) })
+            osmJunctions: nodeSource(body.osmJunctions) { $0.junctions.map(\.junction) },
+            seoulCrosswalks: nodeSource(body.seoulNetwork) { $0.crosswalks.map { RoutePoint(lat: $0.lat, lng: $0.lng) } },
+            seoulJunctions: nodeSource(body.seoulNetwork) { $0.junctions.map(\.junction) })
     }
 
     /// 카카오 도보 탐침 1건(진행 방위로 180m 앞까지). 키 없음(404)·실패는 throw, 한국 밖은 `APIError.outOfCoverage`.
     /// ⚠ 결과를 저장하지 않는다 — 호출부가 세션 메모리에서만 쓴다(카카오 약관).
+    /// 시간 상한은 `outingProbeTimeoutSeconds` — 탐침은 재조회 커밋과 함께 기다리므로 늦으면 장소·횡단보도 반영이 함께 늦는다.
     public func outingProbe(lat: Double, lng: Double, bearing: Double) async throws -> OutingProbe {
         let envelope: OutingProbeEnvelope = try await client.get(
             "/api/walk/probe",
-            query: coordQuery(lat: lat, lng: lng) + [URLQueryItem(name: "bearing", value: String(format: "%.0f", bearing))])
+            query: coordQuery(lat: lat, lng: lng) + [URLQueryItem(name: "bearing", value: String(format: "%.0f", bearing))],
+            timeout: outingProbeTimeoutSeconds)
         let body = envelope.probe
         return OutingProbe(
             crosswalks: (body?.crosswalks ?? []).map { RoutePoint(lat: $0.lat, lng: $0.lng) },
             turns: (body?.turns ?? []).map {
                 OutingJunction(
                     id: "", lat: $0.lat, lng: $0.lng,
-                    branches: [OutingBranch(lat: $0.branch.lat, lng: $0.branch.lng, kind: .unknown)])
+                    branches: [OutingBranch(lat: $0.branch.lat, lng: $0.branch.lng, kind: .unknown)], fromProbe: true)
             })
     }
 }

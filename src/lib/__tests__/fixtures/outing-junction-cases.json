@@ -1,5 +1,5 @@
 {
-  "description": "나들이 교차로 예고(spec 2026-09-26 §6.6) 판정 표. 좌표는 원점(origin)에서 북·동 미터 오프셋이고 갈래는 교차점에서 bearing으로 25m 간 점이다. 진행 방위는 valid(headingDeg, uncertaintyDeg)이고 fix는 원점(accuracy). 갈래의 좌우는 교차점 기준 투영(정확도 0)이라 사용자 정확도는 교차점 쪽(구획·길 건너)에만 든다. expect: 문장 모양(leftAlley·rightAlley·leftPath·rightPath·cross·tee·branching) 또는 null(예고 없음). Kit OutingNodesTests가 읽는다(안드로이드 :kit 이식 때 같은 표).",
+  "description": "나들이 교차로 예고(spec 2026-09-26 §6.6) 판정 표. 좌표는 원점(origin)에서 북·동 미터 오프셋이고 갈래는 교차점에서 bearing으로 25m 간 점이다. 진행 방위는 valid(headingDeg, uncertaintyDeg)이고 fix는 원점(accuracy). 갈래의 좌우는 교차점 기준 투영(정확도 0)이라 사용자 정확도는 교차점 쪽(구획·길 건너)에만 든다. expect: 문장 모양(leftAlley·rightAlley·leftPath·rightPath·cross·tee·branching) 또는 null(예고 없음). Kit OutingNodesTests가 읽는다(안드로이드 :kit 이식 때 같은 표). 갈래를 교차점 기준(정확도 0)으로 투영하므로 방위가 valid(U ≤ 45)인 한 옆 구획 갈래의 좌우는 사실상 늘 선다(여유 25·sin U < 25·sin|φ|) — 좌우 미확정 갈래 분기는 Kit 테스트가 관계를 직접 만들어 확인한다.",
   "origin": {
     "lat": 37.5,
     "lng": 127.0
@@ -466,6 +466,56 @@
         }
       ],
       "expect": "leftAlley"
+    },
+    {
+      "name": "오른쪽 골목",
+      "headingDeg": 0,
+      "uncertaintyDeg": 10,
+      "accuracy": 5,
+      "junction": {
+        "north": 15,
+        "east": 0
+      },
+      "branches": [
+        {
+          "bearing": 180,
+          "kind": "alley"
+        },
+        {
+          "bearing": 0,
+          "kind": "alley"
+        },
+        {
+          "bearing": 90,
+          "kind": "alley"
+        }
+      ],
+      "expect": "rightAlley"
+    },
+    {
+      "name": "왼쪽 보행로는 길",
+      "headingDeg": 0,
+      "uncertaintyDeg": 10,
+      "accuracy": 5,
+      "junction": {
+        "north": 15,
+        "east": 0
+      },
+      "branches": [
+        {
+          "bearing": 180,
+          "kind": "alley"
+        },
+        {
+          "bearing": 0,
+          "kind": "alley"
+        },
+        {
+          "bearing": 270,
+          "kind": "path"
+        }
+      ],
+      "expect": "leftPath"
     }
   ]
 }
