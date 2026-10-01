@@ -57,11 +57,11 @@ node scripts/usage-report.mjs   # API 비용·쿼터·키 만료
 
 있는 기능이 틀린 답을 낸다. **여기가 비면 축 3(도달)부터 다시 본다** — 2026-08-02에 "코드 마일스톤 0"이라는 결론이 그 축의 부재 때문에 틀렸다.
 
-### A54. 승차 전 도보를 직접 끝낼 때의 결합 문장이 "거리 추적을 종료했습니다., 대중교통…"으로 마침표와 쉼표가 겹친다 (🆕 2026-09-30, guide-followup 접근성 리뷰 L5, 실험판)
+### A54. 승차 전 도보를 직접 끝낼 때의 결합 문장이 "거리 추적을 종료했습니다., 대중교통…"으로 마침표와 쉼표가 겹친다 (🆕 2026-09-30, guide-followup 접근성 리뷰 L5, 실험판) — ▶ 착수 2026-10-02 8차(세션 small-9, 계획 `docs/superpowers/plans/2026-10-02-backlog-sweep-8-parallel-plan.md`)
 
 `.userStopped` 결합이 마침표로 끝나는 키에 쉼표를 이어 붙인다(E41 "결합용 키엔 마침표 없음" 위반). en은 쉼표 뒤가 대문자로 시작하고, `CLError.denied`가 `beacon.weak`("신호 약함") 문장에 매핑돼 원인이 거짓이다. 새 결합용 키는 사용자 문안이라 위원장 확인 경로다. 같은 자리의 인접 관찰 둘: ①prewalk `.startFailed`도 대중교통 창구(`prewalkUnavailable`)로 나가 화면이 꺼진 뒤 확정되면 전달되지 않는다(F3과 같은 부류, 시작은 보통 전경이라 실효는 좁다) ②E57 `landFocus`의 600ms 재시도가 착지 직후의 스와이프를 되끌어 올 수 있다(접근성 L3, 실기기에서 거슬리면 재시도 조건을 "커서가 아직 출발 자리일 때만"으로). 출처 `~/gildongmu-wt/guide-followup-reports/done-202609302148.md`(세션 관찰, 코디네이터 미재현).
 
-### A53. en 브리핑의 언어 혼합 잔여 셋: 웹 끝점 로마자 미운반 · 웹 중간 도보 줄 · WebMCP 탑승 줄 (🆕 2026-09-30, small-8 A52 작업 중 관찰)
+### A53. en 브리핑의 언어 혼합 잔여 셋: 웹 끝점 로마자 미운반 · 웹 중간 도보 줄 · WebMCP 탑승 줄 (🆕 2026-09-30, small-8 A52 작업 중 관찰) — ▶ 착수 2026-10-02 8차(웹·WebMCP en-briefing, iOS `destinationLabel` 갈래 small-9, 계획 `docs/superpowers/plans/2026-10-02-backlog-sweep-8-parallel-plan.md`)
 
 ①웹 길찾기 끝점은 로마자를 들고 있지 않다(`directions-state.ts`의 place에 `labelRoman`이 없고 후보 확정 때 `nameRoman`을 버린다). 그래서 웹 en은 한글 목적지면 마지막 도보 줄이 늘 "to the destination"이고, iOS 안내 세션 조망(`TransitGuideModel.destinationLabel`)도 같다. 끝점에 `labelRoman`을 싣는 것이 처방. ②웹 도보 줄의 영어 여부가 로케일 단위라, en에서 `toName`은 있고 `toNameEn`이 없는 중간 도보 줄이 "Walk 3 min to 여의도, 98m"로 섞인다(iOS·안드로이드는 그 줄 전체가 한국어). 웹이 한국어 문장 틀을 가져오는 설계가 필요하다. ③WebMCP 계획 투영의 탑승 줄은 en에서도 한국어 노선·역명이다(화면은 `legEn`으로 영문) — "사람 문장은 화면과 같은 함수" 규칙과 어긋난다. 셋 다 A52 이전부터 있던 것이고 A52가 넓히지 않았다. 출처 `~/gildongmu-wt/small-8-reports/done-202609301731.md`(세션 관찰, 코디네이터 미재현).
 
@@ -79,7 +79,7 @@ node scripts/usage-report.mjs   # API 비용·쿼터·키 만료
 
 ### A50. 웹 대중교통 안내를 멈췄다 곧바로 다시 시작하면 옛 세션의 늦은 조회 응답이 새 세션 순번을 앞질러 새 세션이 멈춘 듯 보인다 (🆕 2026-09-26, small-6 code-quality 리뷰 관찰) · ✅ 코드 종결(2026-09-30, 세션 small-7, CHANGELOG 같은 날)
 
-**처리**: 옛 세션의 늦은 조회 응답을 세션 식별자로 거른다(재현 테스트 동반). 판정 행은 없다. 남은 것은 후속 하나다. **후속 후보**(2026-09-30 small-7, 범위 밖): 재시작 직후 새 세션의 첫 조회는 옛 세션 in-flight 조회가 끝나야 나간다 — 세션 경계에서 `AbortController`로 끊는 안. 그때 TAGO 재현 테스트가 여전히 캐시 경로를 밟는지 다시 본다.
+**처리**: 옛 세션의 늦은 조회 응답을 세션 식별자로 거른다(재현 테스트 동반). 판정 행은 없다. 남은 것은 후속 하나다. **후속 후보**(2026-09-30 small-7, 범위 밖): 재시작 직후 새 세션의 첫 조회는 옛 세션 in-flight 조회가 끝나야 나간다 — 세션 경계에서 `AbortController`로 끊는 안. 그때 TAGO 재현 테스트가 여전히 캐시 경로를 밟는지 다시 본다. ▶ 착수 2026-10-02 8차(세션 small-9).
 
 ### A49. 웹 대중교통 안내의 국면 전이 즉폴도 진행 중 폴에 삼켜진다: `board`·`confirmBoarded`·`cancelChangeBoarding`·`completeOrAdvance`·`boardAboardCandidate`·`changeBoarding` (🆕 2026-09-24, small-5 관찰 · doc-audit-w5 코드 대조) · ✅ 코드 종결(2026-09-26, 세션 small-6, CHANGELOG 같은 날), 웹 실승차 판정 대기
 
@@ -722,7 +722,7 @@ E51은 위원장 판정으로 iOS에만 먼저 냈다(2026-09-27부터 실험판
 
 **실호출로 확인한 것과 문서로만 아는 것을 섞지 않는다.** "데이터 실재" 축은 **문서가 아니라 실호출로 판정한다** — 실시간 혼잡도는 이 축의 오판으로 보류돼 있다가 실호출 한 번에 사유가 사라지고 그날 출시됐다.
 
-### E60. 장소 탭 검색 결과 행의 로터 액션 순서: "여기까지 길찾기"를 주소 복사 바로 아래로 (🆕 2026-10-02 위원장 요청, 판정 완료) — 착수 대기
+### E60. 장소 탭 검색 결과 행의 로터 액션 순서: "여기까지 길찾기"를 주소 복사 바로 아래로 (🆕 2026-10-02 위원장 요청, 판정 완료) — ▶ 착수 2026-10-02 8차(세션 small-9, 계획 `docs/superpowers/plans/2026-10-02-backlog-sweep-8-parallel-plan.md`)
 
 **요청(위원장 원문)**: "현재 장소 탭 검색 결과 목록에서 로터 목록을 보면 주소 복사, 카카오맵 길 찾기, 네이버맵 길 찾기, 여기까지 길 찾기 순으로 나오는데, 여기까지 길 찾기를 주소 복사 아래로 올리자."
 
@@ -730,7 +730,7 @@ E51은 위원장 판정으로 iOS에만 먼저 냈다(2026-09-27부터 실험판
 
 **착수 시 함께 볼 것**: ①역순 노출은 `.accessibilityActions` 빌더에만 해당하고 `swipeActions` 파생 로터는 선언 순서 그대로다 — 다른 API로 옮기지 말고 빌더 안에서 순서만 바꾼다 ②빌더 위 주석("다음 두 딥링크와 짝지어 … 그룹 안에 둔다")을 새 순서에 맞게 고친다 ③검증은 실기기 VoiceOver 로터(시뮬레이터·코드 리뷰로는 순서가 안 보인다), 정식판 경로라 두 구성 모두 설치 ④정식판 사용자가 듣는 순서가 바뀌므로 What's New 한 줄.
 
-### E59. 설정 화면 헤딩을 부품 종류가 아니라 주제 묶음으로 (🆕 2026-10-02 위원장 요청, 판정 완료) — 착수 대기
+### E59. 설정 화면 헤딩을 부품 종류가 아니라 주제 묶음으로 (🆕 2026-10-02 위원장 요청, 판정 완료) — ▶ 착수 2026-10-02 8차(세션 e59-settings, 계획 `docs/superpowers/plans/2026-10-02-backlog-sweep-8-parallel-plan.md`)
 
 **관찰(위원장)**: 어떤 설정은 헤딩 아래 버튼으로, 어떤 설정은 토글로 되어 있어 일관성이 없다.
 
@@ -748,7 +748,7 @@ E51은 위원장 판정으로 iOS에만 먼저 냈다(2026-09-27부터 실험판
 
 **착수 시 함께 볼 것**: ①iOS 인라인 피커 → `.menu` 전환으로 A51 우회 `.id("<피커>-\(AppLanguage.current)")` 4곳이 필요 없어지는지 실기기 언어 전환으로 확인하고 지운다(필요하면 남긴다) ②한 섹션에 설명 문장이 둘(백그라운드 음성·체중)이라 섹션 footer 하나로는 각 설정 바로 뒤에 둘 수 없다 — 행 단위 설명 배치를 정하되 "한 줄 = 한 접근성 객체"를 지킨다 ③체중 착지(`focusWeightOnAppear`, `weightRowID`)가 새 배치에서도 그 행에 닿는지 ④안드로이드는 헤딩 다섯과 순서만 더한다(행 구조는 이미 맞다) ⑤헤딩 문자열 6로케일 + iOS·안드로이드 리소스, 접근성 테스트(`SettingsScreenA11yTest`) 갱신.
 
-### E58. 나들이 감지 원천 확장: 횡단보도·교차로 전수 + 상점 그물 촘촘히 (🆕 2026-10-02 위원장 실보행 피드백, 판정 완료) — 조사 선행, 착수 대기
+### E58. 나들이 감지 원천 확장: 횡단보도·교차로 전수 + 상점 그물 촘촘히 (🆕 2026-10-02 위원장 실보행 피드백, 판정 완료) — ▶ 착수 2026-10-02 8차(조사 outing-research · ②⑤⑥ outing-shops · ①③ outing-nodes는 조사 뒤, 계획 `docs/superpowers/plans/2026-10-02-backlog-sweep-8-parallel-plan.md`)
 
 **요청(위원장 원문)**: "나들이모드에서 횡단보도나 교차로 같은 지형지물은 모두 감지가 되어야 할 것 같아. 상점이나 카페 같은 곳도 감지되면 좋겠고."
 
@@ -938,7 +938,7 @@ ODsay가 건당 과금(Flex, 2026-09-23 전환)이라 **개발·검증 호출이
 - **정식판 동기화·실기기 판정**: [개발 기준](../android/README.md#배포-전-개발검증-기준)에 따라 한소네 7에서 정식 기능 구성(`debug`)을 우선 검증하고 iOS 정식판과의 차이를 해소한다. 첫 실사용 확인은 CHANGELOG 2026-09-20에 기록했다. 아래는 기존 검증 대본의 항목 수이며 이번 확인을 개별 항목 통과로 일괄 처리하지 않는다: M1 9·M2 16·M2b 6·M2c 4·M3 13·M6 16·설정 6·M4 실보행 25(각 세션 `~/gildongmu-wt/<이름>-reports/report.md`). 한소네의 키보드 초점 이동 확인과 일반 폰 TalkBack 터치 모드의 `landingTarget` 검증은 별개이며 후자는 남아 있다. 등가성 후보였던 설정 청취 속도(`listenSpeed`) 행은 ✅ 2026-09-27 `android-chat`이 테마·AI 채팅 동의 행과 함께 넣었다(iOS 순서).
 - **M5 자동차·대중교통 안내**: 정식판 등가성 작업보다 후순위이며, M4 [3] 계층의 실기기 스모크 뒤 착수한다(도보 안내 중 변경 M4b는 정식판 동기화로 먼저 도달 — 아래 항목).
 - ✅ **M4b 도보 안내 중 변경 — 코드 도달(2026-09-27, 세션 android-m4b, CHANGELOG 같은 날, spec `superpowers/specs/2026-09-27-android-walk-session-edits-design.md`)**: 제목 메뉴(장소 상세·목적지 바꾸기)·경유지 추가/변경/삭제·두 줄 대안 프리뷰/채택·장소 상세 중첩·주변 확인, 길찾기 폼 무통지 동기화. ⏳ 한소네 7 판정 ⓐ~ⓖ: ⓐ제목 "헤딩+버튼" 낭독과 메뉴 첫 항목 착지(어색하면 iOS 폴백 — 제목 텍스트 헤딩 + 첫 행 메뉴 버튼, 누르면 메뉴가 뜬다는 단서가 없으면 `onClickLabel` "메뉴 열기" 6로케일) ⓑ검색 페이지 확정·뒤로 뒤 제목 착지, 검색 중 안내 소리 억제와 닫은 뒤 보류 안내 복구 ⓒ경유지 삭제 뒤 제목 착지·"그대로" 통지 ⓓ프리뷰 헤더 착지·결과 통지·전환 뒤 제목 착지, 걷는 중 프리뷰가 비워지면 조망으로 후퇴 ⓔ장소 상세 왕복(뒤로·탭 전환) 뒤 시트 재개와 착지(제목·주변 확인 행) ⓕ주변 확인 조회 중 상태·결과 헤딩/메시지 착지·닫기 뒤 트리거 착지, 시트를 접었다 편 뒤 펼친 목록 유지 ⓖ목적지 변경 뒤 길찾기 탭이 새 도착지로 조용히 바뀌어 있는가. 후속 둘(범위 밖): ①장소 상세의 "여기로 목적지 변경"·"여기를 경유지로" 버튼(iOS `PlaceDetailView` N1 §2.5)은 `place/**` 몫으로 남았다 ②안내 시트가 열린 동안 밑 탭 화면의 상태 줄이 앱 통지(`AppNotices`)를 집는다(시트 윈도와 탭이 둘 다 RESUMED — M4 이래 구조, `AppRoot`가 시트 표시 중 `LocalModalOpen`을 공급하면 닫힌다. 설계 리뷰 #1).
-- **iOS 7차 소화 이식 후보(2026-09-30, 판정 선행)**: ①E57 착지 — 안드로이드 안내 시트는 띠바 복귀를 `GuideSession.returnedFromBand`로 접기 버튼에 착지시킨다. iOS와 같이 첫 정보 행(도보 남은 거리)으로 옮기고, 새로 열림·인계 착지도 spec `superpowers/specs/2026-09-30-guide-sheet-info-row-landing-design.md` §2.1 표를 옮길 후보다(TalkBack·한소네 판정 필요) ②E53 백그라운드 음성 안내 — 채널 술어·문장 분류(`GuideSpeechChannel`)·기기 음성 공유 대기 칸(`DeviceSpeechQueue`)·`DeferredAnnouncer` 분류 인자(spec `superpowers/specs/2026-09-30-background-speech-design.md`). 안드로이드 안내 화면에 백그라운드 음성을 들일지 판정 뒤 이식한다. 설정 문자열 `android_settings_backgroundSpeech(Footer)`는 이미 생성돼 있다(소비자 없음) ③E52 기기 접근성 레인(`DirectionsScreenA11yTest`)의 세 줄·실패 문장 케이스.
+- **iOS 7차 소화 이식 후보(2026-09-30, 판정 선행)** — ▶ 2026-10-02 위원장 판정: ①②를 M4b 후속 둘과 함께 8차 세션 `android-2`로 착수(계획 `docs/superpowers/plans/2026-10-02-backlog-sweep-8-parallel-plan.md`). ①E57 착지 — 안드로이드 안내 시트는 띠바 복귀를 `GuideSession.returnedFromBand`로 접기 버튼에 착지시킨다. iOS와 같이 첫 정보 행(도보 남은 거리)으로 옮기고, 새로 열림·인계 착지도 spec `superpowers/specs/2026-09-30-guide-sheet-info-row-landing-design.md` §2.1 표를 옮길 후보다(TalkBack·한소네 판정 필요) ②E53 백그라운드 음성 안내 — 채널 술어·문장 분류(`GuideSpeechChannel`)·기기 음성 공유 대기 칸(`DeviceSpeechQueue`)·`DeferredAnnouncer` 분류 인자(spec `superpowers/specs/2026-09-30-background-speech-design.md`). 안드로이드 안내 화면에 백그라운드 음성을 들일지 판정 뒤 이식한다. 설정 문자열 `android_settings_backgroundSpeech(Footer)`는 이미 생성돼 있다(소비자 없음) ③E52 기기 접근성 레인(`DirectionsScreenA11yTest`)의 세 줄·실패 문장 케이스.
 - **출시 전 게이트**: 웹 `privacy.dictation` 문구가 "iOS 앱"으로 한정 — 안드로이드 온디바이스 받아쓰기 문구 6로케일(4자 일치: 웹·PrivacyInfo·ASC·Play 데이터 안전성). 안드로이드 출시 노트 정본이 생기면 설정 "업데이트 이력" 화면(판정 43). 스토어 등재(O3)·Play 데이터 안전성(`play-policy-insights` 스킬 감사). Play Console 전경 서비스(location) 선언: 기능 설명·동영상 데모 필요(2026-09-23 도보 정식판 이동으로 발생, 감사 🟢 Compliant·Suggestion 1건).
 - **iOS 잔여**: 실기기 판정은 §2의 E43 iOS 행에 있다(코드 ①~⑤ CHANGELOG 2026-09-19, ⑥ GPS 권한 요청 유지는 판정 종결 `76dc03e4`). 웹의 대응 후보는 별도 확인한다.
 - **3자 동조**: ✅ **옛 위치 표기 코드 도달(2026-09-23, 세션 stale-origin, CHANGELOG 같은 날)** — 측위 실패 시 옛 주소를 "현재 위치"로 말하던 것을 "마지막으로 확인한 위치, 주소, N분 전"으로, 길찾기는 옛 위치로 계속(spec `docs/superpowers/specs/2026-09-23-stale-origin-disclosure-design.md`). ⏳ 실기기 판정은 §2 stale-origin 행. 후속 후보 넷: ①웹·안드로이드 안내 스트림 fix가 공유 위치 스토어로 오지 않아, 실내 출발 뒤 안내로 회복해도 복귀한 표시줄은 출발 전 좌표를 옛 위치로 말한다(iOS만 스트림이 스토어를 갱신 — spec §5, 신선 상태에서도 웹은 출발 전 좌표를 "현재 위치"로 말하는 기존 한계) ②✅ 안드로이드 길찾기 안내 시작 고지(2026-09-27, 세션 android-e50 — 화면 통지 창구라 안내 시트 등장·안내 TTS에 묻히는지는 한소네 7 판정, 묻히면 세션 발화 창구로 옮기는 것은 `WalkStartRequest`·안내 모델 몫) ③옛 위치가 아닌 상태에서 권한을 거두면 iOS 길찾기 칸은 여전히 "현재 위치(직전 주소 부근)"다(웹은 주소 없는 "현재 위치", 기존 동작 — 칸의 주소 갈래를 권한 있을 때만 허용하는 안, 최종 확인 리뷰 F-5) ④iOS xcstrings 생성물 최신성 게이트가 없다(안드로이드 `android-strings-drift`만 byte 비교 — 이번 ja 정정 누락을 안드로이드 쪽이 잡았다). 남은 후보: 언어 변경 뒤 이미 로드된 payload는 옛 dataLocale(안드로이드 ㉖).
@@ -1587,7 +1587,7 @@ W1 도구 9개를 "데이터 반환형이 주"(W2 spec 판정 ②) 기준으로 
 | # | 항목 | 얹힐 곳 |
 |---|---|---|
 | **D11** | 이탈 국면에서 `courseVote`가 두 번 계산되고 하나는 버려진다(웹·Kit 동형). fix당 `tangentAt` 5회 낭비. 판정은 옳다 — §3의 표결을 국면 분기 **뒤로** 미루면 사라진다 | ✅ A6 상수 확정으로 리듀서를 다시 열 때 |
-| **D29** | `scripts/verify-walk-lines.mjs`가 `jiti`를 tailwind 전이 의존성으로 쓴다(직접 선언이 없어 의존성 트리가 바뀌면 게이트가 멈춘다, 2026-09-30 walk-lines 관찰) | 다음에 `package.json` 의존성을 고칠 때 `devDependencies`에 직접 선언 |
+| **D29** | `scripts/verify-walk-lines.mjs`가 `jiti`를 tailwind 전이 의존성으로 쓴다(직접 선언이 없어 의존성 트리가 바뀌면 게이트가 멈춘다, 2026-09-30 walk-lines 관찰) | 다음에 `package.json` 의존성을 고칠 때 `devDependencies`에 직접 선언. ▶ 착수 2026-10-02 8차(세션 small-9, 단독 정리) |
 
 ---
 
@@ -1757,6 +1757,8 @@ W1 도구 9개를 "데이터 반환형이 주"(W2 spec 판정 ②) 기준으로 
 ---
 
 ## 다음에 할 일
+
+**2026-10-02 기준**: 8차 소화(계획 `docs/superpowers/plans/2026-10-02-backlog-sweep-8-parallel-plan.md`)가 돌고 있다. 웨이브 1 `e59-settings`(E59)·`small-9`(E60·A54·A53 iOS·A50 후속·D29)·`en-briefing`(A53 웹)·`outing-shops`(E58 ②⑤⑥)·`outing-research`(E58 조사), 웨이브 2 `android-2`(E43 M4b 후속 둘·E57·E53 이식)·`outing-nodes`(E58 ①③). 위원장 판정 2026-10-02: 안드로이드 두 묶음 모두 포함. 끝나면 이 절을 8차 결과로 다시 쓴다.
 
 **2026-09-30 기준 다음 행동(순서)**: 7차 소화(계획 `docs/superpowers/plans/2026-09-30-backlog-sweep-7-parallel-plan.md`)로 E52 도보 줄 구성·E53 백그라운드 음성 안내(실험판)·E54 나들이 셋·E55 정지 tick 폐지·E56 자동차 첫 줄·E57 안내 시트 첫 정보 행 착지·A50·A51·A52·E48 ⑤⑥·E31 iOS 역이식·D28이 코드 종결됐다. 전부 `origin/main`에 있고 웹은 배포됐다. iOS는 1.19(심사 대기) 뒤 코드라 스토어에는 없다(실기기 두 구성 설치분으로 판정).
 
