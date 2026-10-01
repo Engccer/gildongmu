@@ -68,6 +68,13 @@
 | `outing-nodes` | 새 원천 seed·빌드 스크립트(`scripts/build-*.mjs`) · `src/lib/providers/osm-walk-nodes.ts`·`walk-infra.ts`·`/api/walk/nearby` 옵트인 · `NOTICE.md` 표 · Kit `OutingPassBy.swift`(`outingCrosswalkNoticeStep` 원천 주입·교차로 판정 신설)·`OutingLandmark.swift`·`OutingProjection.swift`와 테스트 · `OutingModel.swift`의 노드 조회 자리 · `OutingSheet.swift`(필요 시) · spec `2026-09-26-outing-mode-design.md` 새 절 · `docs/INTEGRATIONS.md` §보행 인프라 |
 | `android-2` | `android/app/src/main/kotlin/space/dodoplanet/gildongmu/place/**`(`PlaceDetailScreen.kt`·`PlaceDetailViewModel.kt`·`PlaceRoutes.kt`) · `nav/AppRoot.kt`(`LocalModalOpen` 공급) · `guide/**`(`GuideSession.kt`·`WalkGuideModel.kt`·`ui/GuideSheet.kt`·`ui/GuideBand.kt`) · `audio/TtsGuideSpeaker.kt`와 새 대기 칸 파일 · `settings/SettingsScreen.kt`의 백그라운드 음성 **행 하나**(헤딩 구조는 `e59-settings` 산출을 따른다) · `:kit`의 `GuideSpeechChannel` 미러와 `android/kit/mirrors/guide.json` · 안드로이드 테스트 · `android/README.md` 해당 절 |
 
+### 정정 (2026-10-02 04:49, 관측 `5a577d1b`, `e59-settings` 착수 보고로 확인)
+
+- 설정 화면 문자열 키(`ios.settings.*`)는 `messages/*.json`이 아니라 **`ios/i18n/ios-extra/*.json`**(중첩 `ios.settings`)에 있다. 코디네이터가 `ko.json`을 열어 재현했다. `e59-settings`는 그 파일의 자기 키만 만지고, `messages/*.json`은 건드리지 않는다. 위 웨이브 1 표의 `messages/*.json`의 `ios.settings.*` 서술은 틀렸다.
+- A51 소스 가드 `src/lib/__tests__/settings-language-relabel.test.ts`는 `.menu` 전환과 한 몸이라 `e59-settings` 소유에 더한다.
+- (05:00, `e59-settings` 보고, 코디네이터 재현) **base `5a577d1b`에서 안드로이드 `:app` 컴파일이 깨져 있다**: `7de51d26`(iOS 2.0)이 `ios/i18n/ios-extra/*.json`에서 `ios.directions.walkNotice.*` 9키를 지워 안드로이드 strings 재생성에서도 빠졌는데 `guide/ui/WalkGuideNoticeSheet.kt`가 아직 참조한다. 수정은 `e59-settings`가 별도 선행 커밋으로 한다(9키를 안드로이드 전용 원천으로 이관 + strings 재생성, 공지 시트 유지). `android-2`는 그 통합본 위에서 시작한다. 안드로이드 strings 드리프트 게이트가 "iOS 키 삭제 → 안드로이드 참조 잔존"을 못 잡은 것은 `doc-audit`·`android-2` 인계 사항.
+- (04:58, `en-briefing` 보고, 코디네이터 재현) **A53 ②의 전제가 틀렸다**: iOS·안드로이드도 웹과 같이 "Walk 3 min to 여의도, 98m"(문장 틀은 앱 언어, 역 이름만 한국어)이다(`RouteBriefing.transitLegText(.korean)`이 `appLocalized`로 조립). ▶ 위원장 판정(2026-10-02): 문장은 앱과 같게 두고 웹 도보 줄의 한국어 역 이름에만 `lang="ko"`를 단다(탑승 줄과 같은 방식). `en-briefing`의 소유권 밖 자진 신고 셋(`PlaceSearch.tsx` 프리필 두 줄·`recent-searches.ts` `labelRoman` 선택 필드·새 lib 파일 1개)은 승인.
+
 ### 공용 생성물·공유 문서 규약
 
 - `messages/*.json`(6로케일)은 **자기 키만** 더하고 고친다. `Localizable.xcstrings`·`ios/i18n/arg-order.json`·안드로이드 strings는 생성물이라 rebase 뒤 재생성하고 손으로 병합하지 않는다.
