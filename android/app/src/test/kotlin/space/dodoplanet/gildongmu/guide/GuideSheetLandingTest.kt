@@ -289,7 +289,8 @@ class GuideSheetLandingGuardTest {
         assertTrue(tracking.contains("ObserveA11yFocus { tag -> landing.onA11yFocus(SheetRow.forTag(tag)"), "커서 행은 초점 노드의 표식으로")
         assertTrue(tracking.contains("testTagsAsResourceId = true"), "표식을 리소스 id로 낸다")
         val observer = pkg.resolve("guide/ui/A11yFocusObserver.kt").readText()
-        assertTrue(observer.contains("findFocus(kind)?.viewIdResourceName") && observer.contains("TYPE_VIEW_FOCUSED"), "이벤트 이름이 아니라 초점 노드, 입력 초점 포함")
+        assertTrue(observer.contains("findFocus(AccessibilityNodeInfo.FOCUS_ACCESSIBILITY)?.viewIdResourceName"), "이벤트 이름이 아니라 초점 노드")
+        assertTrue(!observer.contains("TYPE_VIEW_FOCUSED,") && !observer.contains("-> AccessibilityNodeInfo.FOCUS_INPUT"), "입력 초점 갈래는 낡은 노드를 돌려준다(Compose 1.12)")
         assertTrue(tracking.contains("announcementsSettled = { GuideSession.walk.announcementsSettled() }"))
         assertTrue(pkg.resolve("guide/GuideSession.kt").readText().contains("if (isMinimized) bandLandingSeq += 1 else sheetReturnSeq += 1"), "복귀 신호는 모델 처리 뒤")
     }

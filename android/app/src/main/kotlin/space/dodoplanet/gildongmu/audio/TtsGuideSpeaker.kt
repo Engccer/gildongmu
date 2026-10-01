@@ -135,8 +135,9 @@ class TtsGuideSpeaker(
         if (!focus.acquire()) { GuideDiag.log("speech skipped focus"); return null }
         val cut = speakingId
         val ok = tts.speakFlush(text, id.toString())
-        // 엔진이 거절하면 `QUEUE_FLUSH`가 적용되지 않아 직전 발화가 계속된다 — 끊겼다고 알리지 않는다(리뷰 m5).
-        if (!ok) { GuideDiag.log("speech failed id=$id"); focus.releaseAfter(0.15); return null }
+        // 엔진이 거절하면 직전 발화가 계속되는지 알 수 없다 — 끊겼다고 알리지 않되(되살린 장부가 두 번 들리게 하지 않는다, 리뷰 m5), 말하는 중 표식은
+        // 내린다(엔진 연결이 끊긴 경우 완료 콜백이 영영 오지 않아 착지·대기 칸이 막힌다, 증분 리뷰 MINOR-3).
+        if (!ok) { speakingId = null; GuideDiag.log("speech failed id=$id"); focus.releaseAfter(0.15); return null }
         cut?.let { onInterrupted?.invoke(it, DeviceSpeechDrop.superseded) }
         speakingId = id
         GuideDiag.log { "speak id=$id high=$highPriority len=${text.length}" }

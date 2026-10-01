@@ -63,6 +63,7 @@ import space.dodoplanet.gildongmu.directions.EndpointPicker
 import space.dodoplanet.gildongmu.directions.EndpointSearchContent
 import space.dodoplanet.gildongmu.directions.Strings
 import space.dodoplanet.gildongmu.directions.resourceStrings
+import space.dodoplanet.gildongmu.guide.GuideDiag
 import space.dodoplanet.gildongmu.guide.GuideFormSync
 import space.dodoplanet.gildongmu.guide.GuideMode
 import space.dodoplanet.gildongmu.guide.GuideSession
@@ -523,6 +524,9 @@ private fun EndScreen(ui: WalkGuideUiState, strings: Strings, nav: GuideNav) {
         SessionEndKind.presumed -> strings.get("guide.arrivedPresumed")
         SessionEndKind.stopped -> ui.endText
     }
+    // 도착 문장 착지 대기 중 사용자가 커서를 옮겼는가(종료 화면이 뜬 직후 첫 이동 한 번은 시스템 배치).
+    var cursorMoves by remember { mutableIntStateOf(0) }
+    ObserveA11yFocus { cursorMoves += 1 }
     LaunchedEffect(Unit) {
         val model = GuideSession.walk
         val back = GuideSession.pendingSheetReturn
@@ -535,8 +539,11 @@ private fun EndScreen(ui: WalkGuideUiState, strings: Strings, nav: GuideNav) {
         } else {
             // 안내 TTS(도착 문장·배경에서 끝났으면 복귀 상환)가 끝난 뒤 앉는다(최대 12초) — 안드로이드는 TalkBack 착지 낭독과 앱 TTS가 다른 소리라
             // 겹치면 둘 다 알아듣기 어렵다(E57 §3.2 이월 도착 착지의 안드로이드판). 배경에선 컴포지션이 멈춰 이 효과가 전경 복귀 뒤에 돈다.
+            // 기다리는 동안 커서를 옮겼거나 잠겼으면 앉지 않는다(첫 정보 행 착지와 같은 계약).
             val start = SystemClock.elapsedRealtime()
             while (!model.announcementsSettled() && SystemClock.elapsedRealtime() - start < GuideSheetLanding.SPEECH_WAIT_MS) delay(GuideSheetLanding.POLL_MS)
+            if (cursorMoves > 1) { GuideDiag.log("sheetFocus sheet=beacon target=arrived reason=userMoved"); return@LaunchedEffect }
+            if (!GuideSession.inForeground) { GuideDiag.log("sheetFocus sheet=beacon target=arrived reason=background"); return@LaunchedEffect }
             land(arrivedFocus, "종료 문장")
         }
     }

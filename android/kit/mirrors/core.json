@@ -69,7 +69,7 @@
       "status": "ported",
       "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/DeviceSpeechQueue.kt",
       "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/DeviceSpeechQueueTest.kt",
-      "note": "E53 기기 음성 대기 한 칸(2026-10-02 android-2). @MainActor → 메인 스레드 전용 + 주입 scope, 드레인 코루틴은 LAZY. 안드로이드 적응 둘: speak가 Int?(null = 포커스 거절·엔진 실패 → 그 문장 undelivered), postVoiceOver가 Boolean(false → undelivered) — iOS 합성기는 실패하지 않는다. 앱은 voiceOverRunning을 늘 참으로 넘긴다(술어의 voiceOver 채널 = 전경 직접 TTS라 늘 들린다)"
+      "note": "E53 기기 음성 대기 한 칸(2026-10-02 android-2). @MainActor → 메인 스레드 전용 + 주입 scope, 드레인 코루틴은 LAZY. 안드로이드 적응 둘: speak가 Int?(null = 포커스 거절·엔진 실패 → 그 문장 undelivered), postVoiceOver가 Boolean(false → undelivered) — iOS 합성기는 실패하지 않는다. 셋째: 선점이 끊는 이 칸의 옛 문장은 새 발화가 성공한 뒤에만 superseded로 통지한다(실패면 옛 문장이 계속 말하므로 lastSpoken을 되돌린다). 앱은 voiceOverRunning을 늘 참으로 넘긴다(술어의 voiceOver 채널 = 전경 직접 TTS라 늘 들린다)"
     },
     {
       "swift": "GuideAnnouncementLedger.swift",

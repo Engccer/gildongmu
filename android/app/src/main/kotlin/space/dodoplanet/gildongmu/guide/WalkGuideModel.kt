@@ -1869,8 +1869,11 @@ class WalkGuideModel(
         if (zero && !mediaVolumeNoticed) {
             mediaVolumeNoticed = true
             resultHaptic(ResultHapticKind.attention)
-            // 1회성 경고 — 내지 못하면(볼륨 0인 백그라운드는 들리지 않아 버림) 래치를 되돌려 다음 재생(전경)에서 다시 판정한다(리뷰 MINOR-5).
-            announce(strings.get("android.guide.mediaVolumeZero"), speechClass = GuideSpeechClass.actionable) { mediaVolumeNoticed = false }
+            // 1회성 경고 — 상태 행에 실어(소리 무음 경고와 같은 꼴) 볼륨 0인 백그라운드에서 버려져도 전경 복귀 상환이 갚는다. 래치는 되돌리지 않는다
+            // (되돌리면 버려질 때마다 다음 톤에서 진동이 되풀이된다).
+            val spoken = strings.get("android.guide.mediaVolumeZero")
+            statusText = spoken
+            announce(spoken, speechClass = GuideSpeechClass.actionable)
         } else if (!zero) {
             mediaVolumeNoticed = false
         }
