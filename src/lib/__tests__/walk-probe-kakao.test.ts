@@ -20,9 +20,9 @@ describe("getWalkProbe", () => {
       distanceMeters: 180,
       durationSeconds: 150,
       steps: [
-        { description: "카페까지 횡단보도 이용", distanceMeters: 20, pathCoords: pts([[37.5, 127.0], [37.5002, 127.0]]) },
-        { description: "약국에서 왼쪽길로 80m 이동(천호대로193길)", distanceMeters: 80, pathCoords: pts([[37.5002, 127.0], [37.5002, 126.999]]) },
-        { description: "공원까지 64m 이동(명일로)", distanceMeters: 64, pathCoords: pts([[37.5002, 126.999], [37.5008, 126.999]]) },
+        { description: "○○카페까지 횡단보도 이용", distanceMeters: 20, pathCoords: pts([[37.5, 127.0], [37.5002, 127.0]]) },
+        { description: "△△약국에서 왼쪽길로 80m 이동(□□로12길)", distanceMeters: 80, pathCoords: pts([[37.5002, 127.0], [37.5002, 126.999]]) },
+        { description: "공원까지 64m 이동(□□로)", distanceMeters: 64, pathCoords: pts([[37.5002, 126.999], [37.5008, 126.999]]) },
       ],
     });
     const probe = await getWalkProbe(37.5, 127.0, 0);

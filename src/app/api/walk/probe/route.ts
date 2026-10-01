@@ -41,13 +41,17 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "도보 경로를 조회할 수 없습니다." }, { status: 404, headers: NO_STORE });
   }
   if (!checkWalkRateLimit(clientIpFromHeaders(request.headers), Date.now())) {
-    return NextResponse.json({ error: "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요." }, { status: 429 });
+    return NextResponse.json(
+      { error: "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요." },
+      { status: 429, headers: NO_STORE },
+    );
   }
   try {
     const probe = await getWalkProbe(lat, lng, bearing);
     return NextResponse.json({ probe }, { headers: NO_STORE });
   } catch (e) {
-    console.error("[walk-probe] 조회 실패:", e instanceof Error ? e.message : e);
+    // upstream 오류 본문에 좌표가 섞일 수 있어 소수 셋째 자리 이상 숫자를 가린다(결과 비저장 계약 — 로그도 저장이다).
+    console.error("[walk-probe] 조회 실패:", String(e instanceof Error ? e.message : e).replace(/\d+\.\d{3,}/g, "…"));
     return NextResponse.json({ error: "도보 경로 조회에 실패했습니다." }, { status: 502, headers: NO_STORE });
   }
 }

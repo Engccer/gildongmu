@@ -137,12 +137,6 @@ async function loadOsm(lat: number, lng: number, coords: boolean): Promise<Sourc
   };
 }
 
-/**
- * 좌표 → 보행 인프라 상태 계약. 두 소스를 병렬 실행하고 서로 독립적으로 강등한다
- * (한 소스 실패가 다른 소스를 죽이지 않는다). loadAudioSignals·loadOsm은 동기·비동기
- * throw를 구분하지 않고 그대로 던지며, allSettled가 유일한 포착 지점이다. 동기
- * throw(findAudioSignalsNear 모킹 실패 등)도 rejected로 정상 포착된다.
- */
 async function loadOsmJunctions(lat: number, lng: number): Promise<SourceStatus<{ junctions: WalkJunction[] }>> {
   const junctions = await findOsmJunctionsNear(lat, lng, USER_RADIUS_METERS, NODES_JUNCTION_CAP);
   // seed 범위(서울 bbox — 경기 일부 포함이라 "서울 밖"이 아니다) 밖은 "교차로 없음"이 아니라 미제공이다.
@@ -174,6 +168,12 @@ async function loadNodeSources(
   return { osmJunctions: settled(junctions, "OSM 교차점"), seoulNetwork: settled(seoul, "서울 도보 네트워크") };
 }
 
+/**
+ * 좌표 → 보행 인프라 상태 계약. 두 소스를 병렬 실행하고 서로 독립적으로 강등한다
+ * (한 소스 실패가 다른 소스를 죽이지 않는다). loadAudioSignals·loadOsm은 동기·비동기
+ * throw를 구분하지 않고 그대로 던지며, allSettled가 유일한 포착 지점이다. 동기
+ * throw(findAudioSignalsNear 모킹 실패 등)도 rejected로 정상 포착된다.
+ */
 export async function getWalkInfrastructure(
   lat: number,
   lng: number,

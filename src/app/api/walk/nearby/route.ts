@@ -11,7 +11,7 @@ import { checkWalkInfraRateLimit, clientIpFromHeaders } from "@/lib/rate-limit";
  * 둘 다 미지정이면 종전 응답과 같다(채팅·CLI·내 주변 보행 섹션·스토어 앱).
  *
  * 서비스 계층 getWalkInfrastructure만 호출한다(provider 직접 호출 금지, spec §1).
- * 두 소스 모두 error일 때만 503으로 판정하고, 한 소스만 실패해도 200으로 부분
+ * 실린 원천이 모두 error일 때만 503으로 판정하고(옵트인이 아니면 두 소스), 한 소스만 실패해도 200으로 부분
  * 결과를 보존한다(3-state 불변식 - "정보 없음"·"조회 실패"를 뭉개지 않는다).
  * getWalkInfrastructure는 allSettled로 내부 실패를 전부 SourceStatus로 강등하므로
  * throw하지 않는다.
