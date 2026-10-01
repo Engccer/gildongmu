@@ -2019,9 +2019,10 @@ final class TransitGuideModel {
     }
 
     /// 세션 밖 오케스트레이터(`GuideSession`)의 통지 창구 — 승차 전 도보 시작·취소·불가 문장(A25).
-    /// 같은 억제 규칙을 지난다. 분류는 호출부가 밝힌다(E53 spec §3.3).
-    func announceExternal(_ message: String, speechClass: GuideSpeechClass) {
-        announce(message, speechClass: speechClass)
+    /// 같은 억제 규칙을 지난다. 분류는 호출부가 밝힌다(E53 spec §3.3). 우선순위도 기본값 없이 호출부가 밝힌다(A54):
+    /// 시트가 닫혀 커서가 옮겨 가는 순간의 문장은 착지 라벨로 대체될 수 없어 `.high`다(CLAUDE.md 통지 우선순위 판별선).
+    func announceExternal(_ message: String, highPriority: Bool, speechClass: GuideSpeechClass) {
+        announce(message, highPriority: highPriority, speechClass: speechClass)
     }
 
     /// 자동 통지 창구(spec 2026-08-14 §4-6 동형). 안내 효과음이 재생 중이면 그 소리가 끝난 뒤에
