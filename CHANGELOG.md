@@ -11,6 +11,11 @@
 
 ## 2026-10-02
 
+### small-9 후속 묶음 small-10: A54 두 문장 · 정지 통지 `.high` · A53 en 통지(iOS)
+
+- **A54**: 승차 전 도보를 직접 끝내거나 위치 권한을 잃을 때 "거리 추적을 종료했습니다. 대중교통 안내는 시작하지 않았습니다."처럼 **두 문장**이다(위원장 판정, 문장 틀 키 `ios.beacon.prewalkCancelledWith`, 쉼표 꼬리 키 삭제). 사용자 정지 문장은 도보 모델이 `.high`로 정지음 뒤에 낸다(세션 전 대중교통 창구는 정지음과 겹치고 화면이 꺼지면 버렸다, 접근성 감사).
+- **A53 iOS 잔여**: en 세션의 대중교통 시작·목적지 변경 통지가 한글 목적지 라벨 대신 라틴 표기를 싣고, 없으면 이름 없는 문구("Destination changed." 새 키)다. 판정은 조망 도보 줄과 같은 `TransitWalkLegText.destinationName`. 실기기 판정 BACKLOG §2 A54·A53 en 통지 행. 계획 `docs/superpowers/plans/2026-10-02-backlog-sweep-8-parallel-plan.md`.
+
 ### 소형 결함 묶음 small-9: E60 · A54 · A53 ① iOS · A50 후속 · D29
 
 - **E60**(iOS): 검색 탭 결과 행 로터에서 "여기까지 길찾기"가 주소 복사 바로 다음에 온다(`.accessibilityActions` 선언 역순 노출, 소스 가드). 실기기 판정 BACKLOG §2 E60 행.
