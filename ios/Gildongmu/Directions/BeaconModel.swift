@@ -120,8 +120,7 @@ final class BeaconModel {
         guard mode == .detail else { return nil }
         return guideRoute?.steps.map(\.description)
     }
-    /// 조망 목록의 경유지 구획 행(N4): `stepIndex` 앞에 "경유지 {label} 도착". 스텝 번호는
-    /// 원본 인덱스라 행을 끼워도 밀리지 않는다.
+    /// 조망 목록의 경유지 구획 행(N4): `stepIndex` 앞에 "경유지 {label} 도착".
     var routeWaypointRow: (stepIndex: Int, text: String)? {
         guard mode == .detail, let w = guideRoute?.waypointStepIndex, let label = routeWaypointLabel
         else { return nil }

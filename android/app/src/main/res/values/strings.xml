@@ -134,8 +134,7 @@
     <string name="android_guide_focusDenied">다른 앱이 소리를 쓰고 있어 안내 소리를 내지 못하고 있습니다</string>
     <string name="android_guide_mediaVolumeZero">미디어 볼륨이 꺼져 있어 안내 소리가 나지 않습니다</string>
     <string name="android_guide_notificationChannel">도보 안내</string>
-    <string name="android_guide_routeListCurrent">%1$s. 지금 이 구간, %2$s</string>
-    <string name="android_guide_routeListRow">%1$s. %2$s</string>
+    <string name="android_guide_routeListCurrent">지금 이 구간, %1$s</string>
     <string name="android_guide_serviceStartFailed">안내 서비스를 시작하지 못했습니다. 앱을 화면에 띄운 채 다시 시작하세요</string>
     <string name="android_guide_switchedToAccessible">계단 회피 경로로 전환했습니다. 안내 %1$s개, 총 %2$s. %3$s</string>
     <string name="android_guide_switchedToBroad">큰길 경로로 전환했습니다. 안내 %1$s개, 총 %2$s. %3$s</string>

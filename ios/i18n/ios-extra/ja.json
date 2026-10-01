@@ -295,8 +295,7 @@
       "spokenMeters": "メートル"
     },
     "guide": {
-      "routeListCurrent": "{n}. 現在の区間、{step}",
-      "routeListRow": "{n}. {step}",
+      "routeListCurrent": "現在の区間、{step}",
       "destMenuDetail": "場所の詳細を見る",
       "destMenuChange": "目的地を変更",
       "destChanged": "新しい目的地 {name}。",

@@ -295,8 +295,7 @@
       "spokenMeters": "meters"
     },
     "guide": {
-      "routeListCurrent": "{n}. Current segment, {step}",
-      "routeListRow": "{n}. {step}",
+      "routeListCurrent": "Current segment, {step}",
       "destMenuDetail": "View place details",
       "destMenuChange": "Change destination",
       "destChanged": "New destination: {name}.",

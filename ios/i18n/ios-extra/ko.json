@@ -295,8 +295,7 @@
       "spokenMeters": "미터"
     },
     "guide": {
-      "routeListCurrent": "{n}. 지금 이 구간, {step}",
-      "routeListRow": "{n}. {step}",
+      "routeListCurrent": "지금 이 구간, {step}",
       "destMenuDetail": "장소 상세 보기",
       "destMenuChange": "목적지 바꾸기",
       "destChanged": "새 목적지 {name}.",

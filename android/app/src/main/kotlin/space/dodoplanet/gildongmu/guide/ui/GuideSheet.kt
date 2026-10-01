@@ -328,8 +328,7 @@ private fun OverviewPage(ui: WalkGuideUiState, strings: Strings, returnsFromPrev
         val waypointRow = ui.routeWaypointRow
         steps.forEachIndexed { i, desc ->
             if (waypointRow != null && waypointRow.first == i) BodyLine(waypointRow.second, "guide-overview-waypoint")
-            val line = if (ui.currentStepIndex == i) strings.get("android.guide.routeListCurrent", (i + 1).toString(), desc)
-            else strings.get("android.guide.routeListRow", (i + 1).toString(), desc)
+            val line = if (ui.currentStepIndex == i) strings.get("android.guide.routeListCurrent", desc) else desc
             BodyLine(line, "guide-overview-step-$i", spokenDistanceUnits(line, meters))
         }
         if (ui.alternativePreviewAvailable) {
@@ -368,8 +367,7 @@ private fun AltPreviewPage(ui: WalkGuideUiState, strings: Strings, onClose: () -
         }
         // "지금 이 구간" 표식 없음 — 대안 경로 위에 현재 위치가 없다.
         ui.altPreviewSteps?.forEachIndexed { i, desc ->
-            val line = strings.get("android.guide.routeListRow", (i + 1).toString(), desc)
-            BodyLine(line, "guide-alt-step-$i", spokenDistanceUnits(line, meters))
+            BodyLine(desc, "guide-alt-step-$i", spokenDistanceUnits(desc, meters))
         }
         Button(onClick = onClose, modifier = Modifier.fillMaxWidth().tapTarget().testTag("guide-alt-close")) { Text(strings.get("actions.close")) }
     }

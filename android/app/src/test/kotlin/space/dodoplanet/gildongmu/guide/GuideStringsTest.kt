@@ -114,7 +114,6 @@ class GuideStringsTest {
             "android.beacon.food.ramyeon",
             "android.beacon.food.ramyeonMany",
             "android.guide.routeListCurrent",
-            "android.guide.routeListRow",
             "android.guide.mediaVolumeZero",
             "android.guide.focusDenied",
             "android.guide.ttsUnavailable",

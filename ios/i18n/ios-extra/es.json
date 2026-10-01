@@ -295,8 +295,7 @@
       "spokenMeters": "metros"
     },
     "guide": {
-      "routeListCurrent": "{n}. Tramo actual, {step}",
-      "routeListRow": "{n}. {step}",
+      "routeListCurrent": "Tramo actual, {step}",
       "destMenuDetail": "Ver detalles del lugar",
       "destMenuChange": "Cambiar destino",
       "destChanged": "Nuevo destino: {name}.",

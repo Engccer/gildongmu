@@ -164,7 +164,6 @@ internal fun guideStringId(key: String): Int? = when (key) {
     "android.beacon.food.ramyeon" -> R.string.android_beacon_food_ramyeon
     "android.beacon.food.ramyeonMany" -> R.string.android_beacon_food_ramyeonMany
     "android.guide.routeListCurrent" -> R.string.android_guide_routeListCurrent
-    "android.guide.routeListRow" -> R.string.android_guide_routeListRow
     "android.guide.mediaVolumeZero" -> R.string.android_guide_mediaVolumeZero
     "android.guide.focusDenied" -> R.string.android_guide_focusDenied
     "android.guide.ttsUnavailable" -> R.string.android_guide_ttsUnavailable

@@ -21046,77 +21046,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@. 지금 이 구간, %2$@"
+            "value": "지금 이 구간, %1$@"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@. Current segment, %2$@"
+            "value": "Current segment, %1$@"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@. Tramo actual, %2$@"
+            "value": "Tramo actual, %1$@"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@. Segment actuel, %2$@"
+            "value": "Segment actuel, %1$@"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@. Tratto attuale, %2$@"
+            "value": "Tratto attuale, %1$@"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@. 現在の区間、%2$@"
-          }
-        }
-      }
-    },
-    "ios.guide.routeListRow": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$@. %2$@"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$@. %2$@"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$@. %2$@"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$@. %2$@"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$@. %2$@"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$@. %2$@"
+            "value": "現在の区間、%1$@"
           }
         }
       }

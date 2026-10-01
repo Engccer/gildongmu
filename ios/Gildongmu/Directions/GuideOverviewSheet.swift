@@ -191,13 +191,14 @@ final class BeaconOverviewAdapter: GuideOverviewCapability {
         guard let steps = model.routeStepDescriptions else { return [] }
         var rows: [GuideOverviewRow] = []
         for (i, desc) in steps.enumerated() {
-            // 경유지 구획 행(N4): 번호 없는 평문, 스텝 번호는 원본 인덱스 유지.
+            // 경유지 구획 행(N4).
             if let row = model.routeWaypointRow, row.stepIndex == i {
                 rows.append(.text(id: "waypoint-\(i)", row.text))
             }
+            // 단계 번호는 붙이지 않는다(길찾기 탭 브리핑과 같은 모양).
             let text = i == model.currentStepIndex
-                ? appLocalized("ios.guide.routeListCurrent", String(i + 1), desc)
-                : appLocalized("ios.guide.routeListRow", String(i + 1), desc)
+                ? appLocalized("ios.guide.routeListCurrent", desc)
+                : desc
             rows.append(.text(id: "step-\(i)", text))
         }
         return rows
@@ -245,8 +246,8 @@ struct WalkAlternativePreviewSheet: View {
                 }
                 if let steps = model.alternativePreviewSteps {
                     // "지금 이 구간" 표식 없음 — 대안 경로 위에 현재 위치가 없다.
-                    ForEach(Array(steps.enumerated()), id: \.offset) { i, desc in
-                        distanceText(appLocalized("ios.guide.routeListRow", String(i + 1), desc))
+                    ForEach(Array(steps.enumerated()), id: \.offset) { _, desc in
+                        distanceText(desc)
                     }
                 }
                 Button(appLocalized("actions.close")) { dismiss() }
