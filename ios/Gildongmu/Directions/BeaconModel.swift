@@ -1412,7 +1412,8 @@ final class BeaconModel {
     /// 아니라 최소화다). 정지 톤을 내고, 도보 세션이고 요약이 성립하면 종료 화면을 남긴다
     /// (아래 `stopLeavingSummary`). 종료 화면이 남는 전이는 포커스를 쥔 컨트롤(중지 버튼)을
     /// 통째로 없애므로 착지 문장을 `.high`로도 통지한다(도착 경로 동형 — 착지가 실패해도
-    /// 화면의 존재를 알 수 있다). 요약이 없어 그냥 닫히는 경로는 정지 톤이 신호다.
+    /// 화면의 존재를 알 수 있다). 요약이 없어 그냥 닫히는 경로는 정지 톤이 신호다(승차 전 도보만 정지 톤 뒤에
+    /// "대중교통 안내는 시작하지 않았다"까지 두 문장을 낸다, A54).
     func stopByUser() {
         let text = appLocalized("ios.beacon.stopped")
         let prewalk = prewalkTarget != nil  // stop() 앞 캡처(A25 §4.2)

@@ -31,6 +31,8 @@ describe("승차 전 도보 종료 결합 문장(A54)", () => {
     // stop()이 prewalkTarget을 지우므로 그 앞에서 캡처한다.
     expect(body.indexOf("let prewalk = prewalkTarget != nil")).toBeGreaterThan(-1);
     expect(body.indexOf("let prewalk = prewalkTarget != nil")).toBeLessThan(body.indexOf("stopLeavingSummary("));
+    // "정지음 뒤"는 정지음이 있어야 성립한다(재리뷰 NIT-2 변이 생존).
+    expect(body).toContain("stopLeavingSummary(playStopTone: true, text: text)");
     expect(body).toMatch(
       /\} else if prewalk \{[\s\S]*announce\(\s*appLocalized\("ios\.beacon\.prewalkCancelledWith", appLocalized\("ios\.beacon\.stoppedJoin"\)\),\s*highPriority: true, speechClass: \.actionable\)/,
     );
