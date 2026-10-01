@@ -19,9 +19,9 @@ describe("OSM 교차점 seed 조회", () => {
     expect(await findOsmJunctionsNear(37.518, 126.99, 100, 150)).toEqual([]);
   });
 
-  it("seed 메타가 ODbL·범위·추출본 시점을 든다", () => {
+  it("seed 메타가 ODbL·범위·데이터 시점을 든다", () => {
     expect(seed.meta.license).toBe("ODbL 1.0");
     expect(seed.meta.region.latMin).toBeLessThan(37.5);
-    expect(seed.meta.extractLastModified).toBeTruthy();
+    expect(seed.meta.extractLastModified ?? seed.meta.extractFileTime).toBeTruthy();
   });
 });

@@ -11,6 +11,7 @@ describe("wayKind (변형 B)", () => {
     expect(wayKind({ highway: "service" })).toBe(KIND.alley);
     expect(wayKind({ highway: "footway" })).toBe(KIND.path);
     expect(wayKind({ highway: "footway", tunnel: "building_passage" })).toBe(KIND.path);
+    expect(wayKind({ highway: "residential", tunnel: "yes", layer: "-1" })).toBe(KIND.alley);
     expect(wayKind({ highway: "footway", bridge: "yes", layer: "1" })).toBe(KIND.path);
     for (const tags of [
       { highway: "footway", footway: "crossing" },
@@ -23,6 +24,7 @@ describe("wayKind (변형 B)", () => {
       { highway: "pedestrian", area: "yes" },
       { highway: "footway", indoor: "yes" },
       { highway: "footway", tunnel: "yes" },
+      { highway: "path", level: "-2" },
       { highway: "footway", layer: "-1" },
       { highway: "footway", level: "-1;0" },
       { highway: "residential", foot: "no" },

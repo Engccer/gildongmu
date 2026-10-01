@@ -24892,7 +24892,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Path on your left"
+            "value": "Way on your left"
           }
         },
         "es": {
@@ -24904,13 +24904,13 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Chemin à gauche"
+            "value": "Voie à gauche"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Passaggio a sinistra"
+            "value": "Via a sinistra"
           }
         },
         "ja": {
@@ -24972,7 +24972,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Path on your right"
+            "value": "Way on your right"
           }
         },
         "es": {
@@ -24984,13 +24984,13 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Chemin à droite"
+            "value": "Voie à droite"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Passaggio a destra"
+            "value": "Via a destra"
           }
         },
         "ja": {

@@ -69,18 +69,20 @@ export const KIND = { alley: 0, road: 1, path: 2 };
  *   "옆에 길"을 만들고, 보도 선은 차도 중심선과 같은 길을 한 번 더 세어 모퉁이마다 거짓 갈래를 만든다.
  * - `service`는 주차 통로·드라이브스루·진입로를 뺀다(골목이 아닌 곳에서 "골목" 문장이 난다, 연구 §7 ③).
  * - 자전거도로·농로(`track`)·건물 통로(`corridor`)·면(`area=yes`)은 뺀다.
- * - ⚠ 지상이 아닌 길(`indoor=yes`·`tunnel=yes|culvert`·음수 `layer`·음수 `level`)과 보행 금지(`foot=no`)는 뺀다: 지상
- *   보도를 걷는 사용자 바로 아래 지하상가·지하보도 통로의 교차점이 앞 20m에 들면 거짓 갈림길이 난다(구현 리뷰 m5).
- *   `tunnel=building_passage`(건물 1층을 지나는 통로)는 지상이라 남긴다.
+ * - ⚠ 지상이 아닌 **보행로**(`indoor=yes`·`tunnel=yes|culvert`·음수 `layer`·음수 `level`)와 보행 금지(`foot=no`)는 뺀다:
+ *   지상 보도를 걷는 사용자 바로 아래 지하상가·지하보도 통로의 교차점이 앞 20m에 들면 거짓 갈림길이 난다(구현 리뷰 m5).
+ *   차도의 굴다리는 보행자도 지나는 길이라 남긴다(빼면 짧은 굴다리 진입부가 막다른 꼬리로 접혀 사거리가 삼거리가 된다).
+ *   `tunnel=building_passage`(건물 1층을 지나는 통로)는 지상이라 남긴다. 육교(`bridge=yes`)도 남긴다 — 육교 보행로는
+ *   지상 길과 계단·경사로 끝점에서만 노드를 공유해 그 자리(실제로 오르내리는 갈림길)에만 교차점을 만든다.
  */
 export function wayKind(tags) {
   const hw = tags?.highway;
   if (!hw || tags.area === "yes") return null;
-  const below = (v) => v !== undefined && Number.parseFloat(String(v).split(";")[0]) < 0;
-  if (tags.indoor === "yes" || ["yes", "culvert"].includes(tags.tunnel) || below(tags.layer) || below(tags.level)) {
-    return null;
-  }
   if (tags.foot === "no") return null;
+  const below = (v) => v !== undefined && Number.parseFloat(String(v).split(";")[0]) < 0;
+  const underground =
+    tags.indoor === "yes" || ["yes", "culvert"].includes(tags.tunnel) || below(tags.layer) || below(tags.level);
+  if (underground && FOOT.has(hw)) return null;
   if (MAJOR.has(hw)) return KIND.road;
   if (MINOR.has(hw)) {
     if (hw === "service" && ["parking_aisle", "drive-through", "driveway", "emergency_access"].includes(tags.service)) {
@@ -295,10 +297,12 @@ async function main() {
   const i = process.argv.indexOf("--osm");
   let path = i > 0 ? process.argv[i + 1] : null;
   let lastModified = null;
+  let fileTime = null;
   if (path) {
-    // 무호출 재생성도 어느 주 추출본인지 남긴다(ODbL 파생 DB의 데이터 시점, 구현 리뷰 n8).
+    // 무호출 재생성도 시점을 남긴다(ODbL 파생 DB의 데이터 시점, 구현 리뷰 n8). 로컬 파일 시각은 추출본 시각이 아니라 받은 시각이라
+    // 네트워크 경로의 `extractLastModified`(BBBike 서버 시각)와 필드를 가른다.
     const { statSync } = await import("node:fs");
-    lastModified = statSync(path).mtime.toUTCString();
+    fileTime = statSync(path).mtime.toUTCString();
   } else {
     path = join(tmpdir(), "gildongmu-seoul.osm.gz");
     console.log("① BBBike 서울 추출본 받는 중(약 113MB)...");
@@ -320,6 +324,7 @@ async function main() {
       attribution: "https://www.openstreetmap.org/copyright",
       extract: EXTRACT_URL,
       extractLastModified: lastModified,
+      extractFileTime: fileTime,
       region: REGION,
       branch: { reachMeters: BRANCH_REACH_METERS, stubMeters: STUB_METERS, encoding: "kind*36+round(bearing/10)", kinds: KIND },
       fetchedAt: new Date().toISOString(),

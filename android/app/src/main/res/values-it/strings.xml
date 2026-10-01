@@ -247,9 +247,9 @@
     <string name="android_outing_junctionAhead">Bivio davanti</string>
     <string name="android_outing_junctionCross">Incrocio davanti</string>
     <string name="android_outing_junctionLeftAlley">Vicolo a sinistra</string>
-    <string name="android_outing_junctionLeftPath">Passaggio a sinistra</string>
+    <string name="android_outing_junctionLeftPath">Via a sinistra</string>
     <string name="android_outing_junctionRightAlley">Vicolo a destra</string>
-    <string name="android_outing_junctionRightPath">Passaggio a destra</string>
+    <string name="android_outing_junctionRightPath">Via a destra</string>
     <string name="android_outing_junctionTee">Incrocio a T davanti</string>
     <string name="android_outing_lastHeading">Ultima direzione: %1$s</string>
     <string name="android_outing_moving">Verso %1$s</string>

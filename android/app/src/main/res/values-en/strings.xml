@@ -247,9 +247,9 @@
     <string name="android_outing_junctionAhead">Junction ahead</string>
     <string name="android_outing_junctionCross">Crossroads ahead</string>
     <string name="android_outing_junctionLeftAlley">Alley on your left</string>
-    <string name="android_outing_junctionLeftPath">Path on your left</string>
+    <string name="android_outing_junctionLeftPath">Way on your left</string>
     <string name="android_outing_junctionRightAlley">Alley on your right</string>
-    <string name="android_outing_junctionRightPath">Path on your right</string>
+    <string name="android_outing_junctionRightPath">Way on your right</string>
     <string name="android_outing_junctionTee">T-junction ahead</string>
     <string name="android_outing_lastHeading">Last heading %1$s</string>
     <string name="android_outing_moving">Heading %1$s</string>

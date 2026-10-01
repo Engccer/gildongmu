@@ -354,9 +354,12 @@ final class OutingModel {
         queryTask?.cancel()
         queryTask = nil
         // 탐침 결과(카카오)는 세션 메모리에만 — 세션이 끝나면 다음 시작을 기다리지 않고 버린다(spec §6.6, spec 리뷰 MAJOR-1).
-        // 횡단보도·교차점 후보는 탐침 점과 섞여 있어 함께 비운다(종료 화면은 이 둘을 쓰지 않는다).
+        // 횡단보도·교차점 후보와 그 id 집합(좌표 유도 id라 탐침 좌표가 들어 있다)을 함께 비운다(종료 화면·귀환 인계는 쓰지 않는다).
         crosswalks = [:]
         junctions = [:]
+        spokenCrosswalks = []
+        spokenJunctions = []
+        nodeLogSeq = [:]
         lastProbe = nil
         guard wasActive else { return }
         LocationService.shared.stopBeaconUpdates()

@@ -247,9 +247,9 @@
     <string name="android_outing_junctionAhead">Embranchement devant</string>
     <string name="android_outing_junctionCross">Carrefour devant</string>
     <string name="android_outing_junctionLeftAlley">Ruelle à gauche</string>
-    <string name="android_outing_junctionLeftPath">Chemin à gauche</string>
+    <string name="android_outing_junctionLeftPath">Voie à gauche</string>
     <string name="android_outing_junctionRightAlley">Ruelle à droite</string>
-    <string name="android_outing_junctionRightPath">Chemin à droite</string>
+    <string name="android_outing_junctionRightPath">Voie à droite</string>
     <string name="android_outing_junctionTee">Carrefour en T devant</string>
     <string name="android_outing_lastHeading">Dernière direction : %1$s</string>
     <string name="android_outing_moving">Direction %1$s</string>
