@@ -269,6 +269,8 @@
     "beacon": {
       "soundUnavailable": "La guidance sonore ne peut pas être jouée.",
       "stopped": "Suivi de distance arrêté.",
+      "stoppedJoin": "Suivi de distance arrêté",
+      "prewalkCancelledTail": "le guidage des transports n'a pas été lancé.",
       "arrivedHeading": "Arrivée",
       "arrivedPresumedHeading": "Arrivée estimée",
       "endedHeading": "Guidage terminé",

@@ -3106,7 +3106,8 @@ final class BeaconModel {
         guard isTracking else { return }
         switch code {
         case .denied:
-            stopAndFail(with: .unavailable, key: "beacon.weak")
+            // 세션 중 권한 철회는 권한 콜백과 같은 사유·같은 해결 경로다("신호 약함"이 아니다).
+            stopAndFail(with: .denied, key: "beacon.denied", resolution: .settings)
         case .locationUnknown:
             // Apple이 무시를 권하는 일시 오류. 진짜 끊김은 워치독이 잡는다.
             break
@@ -3148,7 +3149,7 @@ final class BeaconModel {
         // 종료 화면이 남지 않으면 시트가 닫히며 VoiceOver가 아래 화면으로 커서를 옮기고 그 라벨을 읽는다 — 실패 사유는 착지
         // 라벨로 대체될 수 없어 `.high`(CLAUDE.md 통지 우선순위 판별선, 접근성 감사 L4). 종료 화면이 남으면 착지가 사유를 읽는다.
         fail(with: status, key: key, resolution: resolution,
-             trailingKey: prewalk ? "transitGuide.prewalkCancelled" : nil, highPriority: !leftEndScreen)
+             trailingKey: prewalk ? "ios.beacon.prewalkCancelledTail" : nil, highPriority: !leftEndScreen)
     }
 
     // MARK: - 무-fix 감시

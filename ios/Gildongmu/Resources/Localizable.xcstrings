@@ -18801,6 +18801,46 @@
         }
       }
     },
+    "ios.beacon.prewalkCancelledTail": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "대중교통 안내는 시작하지 않았습니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "transit guidance was not started."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "la guía de transporte público no se inició."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "le guidage des transports n'a pas été lancé."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "la guida dei trasporti non è stata avviata."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "公共交通案内は開始していません。"
+          }
+        }
+      }
+    },
     "ios.beacon.soundBackgroundUnavailable": {
       "localizations": {
         "ko": {
@@ -18917,6 +18957,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "距離の追跡を停止しました。"
+          }
+        }
+      }
+    },
+    "ios.beacon.stoppedJoin": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "거리 추적을 종료했습니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Distance tracking stopped"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seguimiento de distancia detenido"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suivi de distance arrêté"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tracciamento della distanza interrotto"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "距離の追跡を停止しました"
           }
         }
       }

@@ -61,9 +61,11 @@
     <string name="android_beacon_healthSummary">In questo tratto hai fatto {1, plural, one {%1$s passo} other {%1$s passi}} e bruciato circa %2$s kcal.</string>
     <string name="android_beacon_healthSummaryWithWeight">In questo tratto hai fatto {1, plural, one {%1$s passo} other {%1$s passi}} e bruciato circa %3$s kcal, calcolate per %2$s kg.</string>
     <string name="android_beacon_healthWeightNotice">Il valore delle calorie usa la media adulta di %1$s kg. Inserisci il tuo peso nelle Impostazioni per una stima più precisa. Il dato non lascia mai il tuo dispositivo.</string>
+    <string name="android_beacon_prewalkCancelledTail">la guida dei trasporti non è stata avviata.</string>
     <string name="android_beacon_soundBackgroundUnavailable">I suoni della guida non verranno riprodotti a schermo spento o mentre usi un\'altra app.</string>
     <string name="android_beacon_soundUnavailable">La guida sonora non può essere riprodotta.</string>
     <string name="android_beacon_stopped">Tracciamento della distanza interrotto.</string>
+    <string name="android_beacon_stoppedJoin">Tracciamento della distanza interrotto</string>
     <string name="android_chat_addressesHeading">{1, plural, one {%1$s indirizzo} other {%1$s indirizzi}}</string>
     <string name="android_chat_clear">Cancella il testo</string>
     <string name="android_chat_consentAgree">Accetta e inizia</string>

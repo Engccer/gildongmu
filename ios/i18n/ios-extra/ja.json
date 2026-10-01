@@ -269,6 +269,8 @@
     "beacon": {
       "soundUnavailable": "音による案内を再生できません。",
       "stopped": "距離の追跡を停止しました。",
+      "stoppedJoin": "距離の追跡を停止しました",
+      "prewalkCancelledTail": "公共交通案内は開始していません。",
       "arrivedHeading": "到着",
       "arrivedPresumedHeading": "到着推定",
       "endedHeading": "案内終了",

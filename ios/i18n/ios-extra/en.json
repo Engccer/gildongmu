@@ -269,6 +269,8 @@
     "beacon": {
       "soundUnavailable": "Sound guidance cannot play.",
       "stopped": "Distance tracking stopped.",
+      "stoppedJoin": "Distance tracking stopped",
+      "prewalkCancelledTail": "transit guidance was not started.",
       "arrivedHeading": "Arrived",
       "arrivedPresumedHeading": "Presumed arrival",
       "endedHeading": "Guidance ended",

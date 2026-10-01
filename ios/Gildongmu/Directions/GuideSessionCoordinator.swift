@@ -189,8 +189,9 @@ final class GuideSession {
                 dest: context.dest, accessible: context.accessible, prewalkCompleted: false)
         case .userStopped:
             // 요약 화면이 없어 stopByUser의 통지가 안 나간다 — 정지 문장과 함께 한 문장으로.
+            // 쉼표 결합이라 앞 조각은 마침표 없는 결합용 키, 뒤 조각은 소문자로 시작하는 꼬리 키(E41).
             transit.announceExternal(joinText(
-                appLocalized("ios.beacon.stopped"), appLocalized("transitGuide.prewalkCancelled")),
+                appLocalized("ios.beacon.stoppedJoin"), appLocalized("ios.beacon.prewalkCancelledTail")),
                 speechClass: .actionable)
         case .ended:
             // 문장을 내지 않는다. 이 경로는 권한·정밀 위치 상실(`BeaconModel.stopAndFail`)뿐이고(prewalk엔 안전망이 돌지 않고,
