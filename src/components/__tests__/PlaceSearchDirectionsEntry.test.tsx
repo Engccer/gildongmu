@@ -25,7 +25,11 @@ vi.mock("../DirectionsView", () => ({
   DirectionsView: ({ initialTo, onBack }: { initialTo?: DirEndpoint | null; onBack: () => void }) => (
     <div>
       <p data-testid="initial-to">
-        {!initialTo ? "none" : initialTo.kind === "current" ? "current" : `${initialTo.kind}:${initialTo.label}`}
+        {!initialTo
+          ? "none"
+          : initialTo.kind === "current"
+            ? "current"
+            : `${initialTo.kind}:${initialTo.label}${initialTo.labelRoman ? `|${initialTo.labelRoman}` : ""}`}
       </p>
       <button type="button" onClick={onBack}>
         directions-back
@@ -46,7 +50,16 @@ vi.mock("../PlaceDetail", () => ({
   ),
 }));
 
-const p1: Place = { id: "p1", name: "강남역", category: "지하철역", address: "a", roadAddress: "r", lat: 37.49, lng: 127.02 };
+const p1: Place = {
+  id: "p1",
+  name: "강남역",
+  nameRoman: "Gangnam Station",
+  category: "지하철역",
+  address: "a",
+  roadAddress: "r",
+  lat: 37.49,
+  lng: 127.02,
+};
 
 function stubFetch() {
   vi.stubGlobal(
@@ -77,14 +90,14 @@ afterEach(() => {
 });
 
 describe("길찾기 진입·복귀 사용자 동작(W2 §8.4 회귀 고정)", () => {
-  it("① 상세 '여기까지 길찾기' → 길찾기 뷰가 그 장소를 좌표 도착지로 받는다", async () => {
+  it("① 상세 '여기까지 길찾기' → 길찾기 뷰가 그 장소를 좌표 도착지로 받는다(라틴 표기 포함, A53)", async () => {
     stubFetch();
     render(<PlaceSearch isMockMode={false} canShowTransit />);
     await searchAsUser();
     fireEvent.click(screen.getByRole("button", { name: /강남역/ }));
     await waitFor(() => expect(screen.getByRole("button", { name: "toHere" })).toBeTruthy());
     fireEvent.click(screen.getByRole("button", { name: "toHere" }));
-    await waitFor(() => expect(screen.getByTestId("initial-to").textContent).toBe("place:강남역"));
+    await waitFor(() => expect(screen.getByTestId("initial-to").textContent).toBe("place:강남역|Gangnam Station"));
   });
 
   it("② 길찾기 뒤로가기 → 검색 결과 헤딩으로 포커스 복귀", async () => {

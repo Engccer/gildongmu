@@ -4,7 +4,7 @@
  * 실제 en 문구 카탈로그로 렌더해 도구 출력과 화면 줄을 나란히 대조한다(①끝점 라틴 표기 운반, ③탑승 줄 영문).
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import en from "../../../messages/en.json";
 import type { Place, TransitRouteResult } from "@/lib/types";
@@ -102,6 +102,8 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  window.localStorage.clear();
+  window.history.replaceState(null, "", "/");
   Reflect.deleteProperty(document, "modelContext");
 });
 
@@ -150,5 +152,45 @@ describe("plan_directions — en 계획 투영(A53)", () => {
       "Walk 3 min to 63bilding, 200m",
     ]);
     expect(screen).toEqual(tool);
+  });
+});
+
+/** 화면 경로(도구 없이): 끝점을 만드는 자리마다 라틴 표기가 끝까지 운반되는가(A53 ①). */
+describe("화면 끝점의 라틴 표기 운반(A53 ①)", () => {
+  function renderView() {
+    return render(
+      <NextIntlClientProvider locale="en" messages={en}>
+        <DirectionsView canShowWalk={false} canShowTransit canBriefCarRoute={false} onBack={() => {}} />
+      </NextIntlClientProvider>,
+    );
+  }
+  const lastLine = (c: HTMLElement) => [...c.querySelectorAll("ol")[0].querySelectorAll(":scope > li")].at(-1)?.textContent;
+
+  it("장소 후보 확정 → 최근 기록·?dir=·브리핑 마지막 도보 줄", async () => {
+    const view = renderView();
+    fireEvent.change(screen.getByLabelText("To"), { target: { value: "63빌딩" } });
+    fireEvent.click(screen.getByRole("button", { name: "Search destination" }));
+    fireEvent.click(await screen.findByRole("button", { name: /^63bilding/ }));
+    await waitFor(() => expect(decodeURIComponent(window.location.search)).toContain(":63bilding@"));
+    expect(JSON.parse(window.localStorage.getItem("gildongmu:recent-endpoints-to:v1") ?? "[]")[0]).toMatchObject({
+      label: "63빌딩",
+      labelRoman: "63bilding",
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Get routes" }));
+    await waitFor(() => expect(lastLine(view.container)).toBe("Walk 3 min to 63bilding, 200m"));
+    // 조회가 기록한 최근 경로에도 실린다.
+    expect(JSON.parse(window.localStorage.getItem("gildongmu:recent-routes:v1") ?? "[]")[0].to).toMatchObject({
+      labelRoman: "63bilding",
+    });
+  });
+
+  it("최근 경로 활성화 → 저장된 라틴 표기로 조회한다", async () => {
+    window.localStorage.setItem(
+      "gildongmu:recent-routes:v1",
+      JSON.stringify([{ from: null, to: { label: "63빌딩", lat: 37.5198, lng: 126.9403, labelRoman: "63bilding" } }]),
+    );
+    const view = renderView();
+    fireEvent.click(await screen.findByRole("button", { name: /^Route from .* to 63빌딩$/ }));
+    await waitFor(() => expect(lastLine(view.container)).toBe("Walk 3 min to 63bilding, 200m"));
   });
 });
