@@ -26206,37 +26206,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "길찾기 탭에서 경로를 조회하면 대중교통 경로마다 안내 시작 버튼이 나와요. 탈 버스나 열차를 고르면 도착할 때까지 남은 정거장 수를 알려 드리고, 내릴 곳이 가까워지면 미리 말씀드려요. 승차 전과 하차 뒤의 걷는 구간도 이어서 안내해요."
+            "value": "집을 나서 정류장까지 걷고, 버스나 지하철을 타고, 내려서 목적지까지 다시 걷는 길 전체를 한 번의 안내로 끊김 없이 이어 드려요. 길찾기 탭에서 대중교통 경로를 고르고 안내 시작 버튼을 누르면 돼요. 탈 차량이 오면 알려 드리고, 타고 가는 동안 남은 정거장 수를 세어 드리고, 내릴 곳이 가까워지면 미리 말씀드려요."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "After you look up a route in the Directions tab, each transit route has a button to start guidance. Pick the bus or train you will take, and the app tells you how many stops remain and lets you know ahead of time when your stop is near. The walking parts before boarding and after getting off are guided too."
+            "value": "One guidance session now covers your whole trip without a break: walking from your door to the stop, riding the bus or subway, and walking from where you get off to your destination. Pick a transit route in the Directions tab and press the start button. The app tells you when your vehicle arrives, counts down the remaining stops while you ride, and lets you know ahead of time when your stop is near."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Al consultar una ruta en la pestaña Cómo llegar, cada ruta de transporte público tiene un botón para iniciar la guía. Elige el autobús o el tren que vas a tomar y la app te dirá cuántas paradas quedan y te avisará con antelación cuando se acerque tu parada. Los tramos a pie antes de subir y después de bajar también se guían."
+            "value": "Una sola guía cubre ahora todo tu trayecto sin interrupciones: caminar desde tu puerta hasta la parada, ir en autobús o metro y caminar desde donde bajas hasta tu destino. Elige una ruta de transporte público en la pestaña Cómo llegar y pulsa el botón de inicio. La app te avisa cuando llega tu vehículo, cuenta las paradas que faltan mientras viajas y te avisa con antelación cuando se acerca tu parada."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Après avoir recherché un itinéraire dans l’onglet Itinéraire, chaque trajet en transports en commun a un bouton pour démarrer le guidage. Choisissez le bus ou le train que vous prenez : l’app vous indique le nombre d’arrêts restants et vous prévient à l’avance quand votre arrêt approche. Les parties à pied avant de monter et après être descendu sont aussi guidées."
+            "value": "Un seul guidage couvre désormais tout votre trajet sans interruption : la marche de chez vous jusqu’à l’arrêt, le trajet en bus ou en métro, puis la marche de la descente jusqu’à votre destination. Choisissez un itinéraire en transports en commun dans l’onglet Itinéraire et appuyez sur le bouton de démarrage. L’app vous prévient à l’arrivée de votre véhicule, compte les arrêts restants pendant le trajet et vous avertit à l’avance quand votre arrêt approche."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Dopo aver cercato un percorso nella scheda Indicazioni, ogni percorso con i mezzi pubblici ha un pulsante per avviare la guida. Scegli l'autobus o il treno che prenderai: l'app ti dice quante fermate mancano e ti avvisa in anticipo quando la tua fermata si avvicina. Anche i tratti a piedi prima di salire e dopo essere sceso sono guidati."
+            "value": "Una sola guida copre ora tutto il tuo viaggio senza interruzioni: la camminata da casa alla fermata, il tratto in autobus o metropolitana e la camminata da dove scendi fino a destinazione. Scegli un percorso con i mezzi pubblici nella scheda Indicazioni e premi il pulsante di avvio. L'app ti avvisa quando arriva il tuo mezzo, conta le fermate rimanenti mentre viaggi e ti avverte in anticipo quando la tua fermata si avvicina."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "経路検索タブで経路を調べると、公共交通機関の経路ごとに案内開始ボタンが表示されます。乗るバスや電車を選ぶと、到着まで残りの停留所数をお知らせし、降りる場所が近づくと事前にお伝えします。乗車前と降車後の徒歩区間も続けて案内します。"
+            "value": "家を出て停留所まで歩き、バスや地下鉄に乗り、降りて目的地まで再び歩く道のり全体を、一度の案内で途切れなくつなぎます。経路検索タブで公共交通機関の経路を選び、案内開始ボタンを押すだけです。乗る車両が来たらお知らせし、乗っている間は残りの停留所数を数え、降りる場所が近づくと事前にお伝えします。"
           }
         }
       }
@@ -26246,37 +26246,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "자동차 경로에는 \"자동차 안내 시작\" 버튼이 나와요. 동승자일 때는 화면 낭독으로, 운전자일 때는 설정에서 \"자동차 안내 듣는 사람\"을 운전자로 바꾸면 스피커 음성으로 짧은 명령만 들어요. 자동차 안내는 한국어에서만 돼요."
+            "value": "자동차로 이동할 때는 자동차 경로에서 안내를 시작하세요. 교차로 앞에서 미리 알려 드리고, 지금 달리는 도로 이름도 바로 확인할 수 있어요. 자동차 안내는 한국어에서만 돼요."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Car routes have a \"Start car guidance\" button. It reads on screen for a passenger, or, if you set \"Car guidance listener\" to Driver in Settings, it speaks short commands through the speaker. Driving guidance is available in Korean only."
+            "value": "When you travel by car, start guidance from the car route. It warns you before each intersection and shows the name of the road you are on. Driving guidance is available in Korean only."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Las rutas en coche tienen el botón \"Iniciar guía en coche\". Para un acompañante se lee en pantalla; si en Ajustes cambias \"Quién escucha la guía en coche\" a Conductor, se oyen órdenes breves por el altavoz. La guía en coche solo está disponible en coreano."
+            "value": "Cuando viajes en coche, inicia la guía desde la ruta en coche. Te avisa antes de cada cruce y muestra el nombre de la calle por la que vas. La guía en coche solo está disponible en coreano."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Les itinéraires en voiture ont un bouton « Démarrer le guidage en voiture ». Pour un passager, il est lu à l’écran ; si vous réglez « Qui écoute le guidage en voiture » sur Conducteur dans les Réglages, des ordres brefs sont dits par le haut-parleur. Le guidage en voiture n’est disponible qu’en coréen."
+            "value": "En voiture, démarrez le guidage depuis l’itinéraire voiture. Il vous prévient avant chaque intersection et affiche le nom de la route sur laquelle vous êtes. Le guidage en voiture n’est disponible qu’en coréen."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "I percorsi in auto hanno il pulsante \"Avvia guida in auto\". Per un passeggero viene letto sullo schermo; se nelle Impostazioni imposti \"Chi ascolta la guida in auto\" su Conducente, senti comandi brevi dall'altoparlante. La guida in auto è disponibile solo in coreano."
+            "value": "Quando viaggi in auto, avvia la guida dal percorso in auto. Ti avvisa prima di ogni incrocio e mostra il nome della strada su cui ti trovi. La guida in auto è disponibile solo in coreano."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "自動車の経路には「自動車案内を開始」ボタンが表示されます。同乗者のときは画面読み上げで、運転者のときは設定の「車の案内を聞く人」を運転者に変えるとスピーカー音声で短い指示だけを聞けます。自動車の案内は韓国語のみ対応です。"
+            "value": "自動車で移動するときは、自動車の経路から案内を始めてください。交差点の手前で事前にお知らせし、今走っている道路の名前もすぐに確認できます。自動車の案内は韓国語のみ対応です。"
           }
         }
       }
@@ -26286,37 +26286,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "설정에 \"백그라운드 음성 안내\"가 생겼어요. 켜 두면 화면이 꺼지거나 다른 앱을 쓰는 동안에도 회전, 이탈, 도착 같은 안내를 기기 음성으로 말해요. 처음에는 켜져 있어요."
+            "value": "설정의 \"백그라운드 음성 안내\"를 켜 두면 화면을 잠그고 주머니에 넣은 채로도 회전, 이탈, 도착 같은 안내를 음성으로 들을 수 있어요. 처음에는 켜져 있어요."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Settings has a new \"Background voice guidance\" switch. When it is on, turns, off-route alerts, and arrivals are spoken with the device voice even while the screen is off or another app is in front. It is on by default."
+            "value": "Turn on \"Background voice guidance\" in Settings to hear turns, off-route alerts, and arrivals spoken aloud even with the screen locked and the phone in your pocket. It is on by default."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "En Ajustes hay un nuevo interruptor \"Guía por voz en segundo plano\". Si está activado, los giros, los avisos de desvío y las llegadas se dicen con la voz del dispositivo incluso con la pantalla apagada o con otra app delante. Está activado de forma predeterminada."
+            "value": "Activa \"Guía por voz en segundo plano\" en Ajustes para oír giros, avisos de desvío y llegadas en voz alta incluso con la pantalla bloqueada y el teléfono en el bolsillo. Está activado de forma predeterminada."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Les Réglages ont un nouvel interrupteur « Guidage vocal en arrière-plan ». Quand il est activé, les virages, les alertes de sortie d’itinéraire et les arrivées sont dits avec la voix de l’appareil même si l’écran est éteint ou qu’une autre app est au premier plan. Il est activé par défaut."
+            "value": "Activez « Guidage vocal en arrière-plan » dans les Réglages pour entendre les virages, les alertes de sortie d’itinéraire et les arrivées à voix haute même avec l’écran verrouillé et le téléphone dans la poche. Il est activé par défaut."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nelle Impostazioni c'è un nuovo interruttore \"Guida vocale in background\". Se è attivo, svolte, avvisi di uscita dal percorso e arrivi vengono detti con la voce del dispositivo anche a schermo spento o con un'altra app in primo piano. È attivo per impostazione predefinita."
+            "value": "Attiva \"Guida vocale in background\" nelle Impostazioni per sentire svolte, avvisi di uscita dal percorso e arrivi a voce alta anche con lo schermo bloccato e il telefono in tasca. È attivo per impostazione predefinita."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "設定に「バックグラウンド音声案内」が追加されました。オンにしておくと、画面が消えているときや他のアプリを使っているときも、曲がる、経路から外れた、到着したなどの案内を端末の音声で読み上げます。最初はオンになっています。"
+            "value": "設定の「バックグラウンド音声案内」をオンにしておくと、画面をロックしてポケットに入れたままでも、曲がる、経路から外れた、到着したなどの案内を音声で聞けます。最初はオンになっています。"
           }
         }
       }
@@ -26446,37 +26446,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "바뀐 것"
+            "value": "무엇이 달라졌나요"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "What changed"
+            "value": "What is new"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Qué ha cambiado"
+            "value": "Qué hay de nuevo"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ce qui change"
+            "value": "Quoi de neuf"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cosa è cambiato"
+            "value": "Cosa c'è di nuovo"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "変わったこと"
+            "value": "何が変わったの？"
           }
         }
       }
@@ -26526,37 +26526,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "길동무 앱을 이용해 주셔서 감사합니다!"
+            "value": "이제 대중교통을 이용하거나 자동차로 이동할 때도 실시간 안내를 받아 보세요."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Thank you for using Gildongmu!"
+            "value": "Now get real-time guidance when you ride transit or travel by car, too."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "¡Gracias por usar Gildongmu!"
+            "value": "Ahora recibe guía en tiempo real también cuando usas el transporte público o viajas en coche."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Merci d’utiliser Gildongmu !"
+            "value": "Profitez maintenant du guidage en temps réel aussi dans les transports en commun et en voiture."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Grazie per usare Gildongmu!"
+            "value": "Ora ricevi la guida in tempo reale anche quando usi i mezzi pubblici o viaggi in auto."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "キルトンムをご利用いただきありがとうございます！"
+            "value": "公共交通機関を利用するときも、自動車で移動するときも、リアルタイム案内を受けられるようになりました。"
           }
         }
       }
@@ -26566,37 +26566,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "길동무 2.0: 대중교통과 자동차 안내가 추가되었어요."
+            "value": "길동무 2.0이 나왔어요."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Gildongmu 2.0: transit and driving guidance are here."
+            "value": "Gildongmu 2.0 is here."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Gildongmu 2.0: llegan la guía en transporte público y en coche."
+            "value": "Ha llegado Gildongmu 2.0."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Gildongmu 2.0 : le guidage en transports en commun et en voiture est arrivé."
+            "value": "Gildongmu 2.0 est arrivé."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Gildongmu 2.0: arrivano la guida con i mezzi pubblici e in auto."
+            "value": "È arrivato Gildongmu 2.0."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "キルトンム 2.0：公共交通機関と自動車の案内が追加されました。"
+            "value": "キルトンム 2.0 が登場しました。"
           }
         }
       }
@@ -27686,37 +27686,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "자동차 안내 듣는 사람"
+            "value": "자동차 안내 듣는 사람 (실험)"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Car guidance listener"
+            "value": "Car guidance listener (experimental)"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Quién escucha la guía en coche"
+            "value": "Quién escucha la guía en coche (experimental)"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Qui écoute le guidage en voiture"
+            "value": "Qui écoute le guidage en voiture (expérimental)"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Chi ascolta la guida in auto"
+            "value": "Chi ascolta la guida in auto (sperimentale)"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "車の案内を聞く人"
+            "value": "車の案内を聞く人（実験）"
           }
         }
       }

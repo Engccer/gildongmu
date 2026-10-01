@@ -10,12 +10,12 @@
       "searching": "Recherche en cours"
     },
     "releaseNotice": {
-      "title": "Gildongmu 2.0 : le guidage en transports en commun et en voiture est arrivé.",
-      "intro": "Merci d’utiliser Gildongmu !",
-      "head1": "Ce qui change",
-      "body1": "Après avoir recherché un itinéraire dans l’onglet Itinéraire, chaque trajet en transports en commun a un bouton pour démarrer le guidage. Choisissez le bus ou le train que vous prenez : l’app vous indique le nombre d’arrêts restants et vous prévient à l’avance quand votre arrêt approche. Les parties à pied avant de monter et après être descendu sont aussi guidées.",
-      "body2": "Les itinéraires en voiture ont un bouton « Démarrer le guidage en voiture ». Pour un passager, il est lu à l’écran ; si vous réglez « Qui écoute le guidage en voiture » sur Conducteur dans les Réglages, des ordres brefs sont dits par le haut-parleur. Le guidage en voiture n’est disponible qu’en coréen.",
-      "body3": "Les Réglages ont un nouvel interrupteur « Guidage vocal en arrière-plan ». Quand il est activé, les virages, les alertes de sortie d’itinéraire et les arrivées sont dits avec la voix de l’appareil même si l’écran est éteint ou qu’une autre app est au premier plan. Il est activé par défaut.",
+      "title": "Gildongmu 2.0 est arrivé.",
+      "intro": "Profitez maintenant du guidage en temps réel aussi dans les transports en commun et en voiture.",
+      "head1": "Quoi de neuf",
+      "body1": "Un seul guidage couvre désormais tout votre trajet sans interruption : la marche de chez vous jusqu’à l’arrêt, le trajet en bus ou en métro, puis la marche de la descente jusqu’à votre destination. Choisissez un itinéraire en transports en commun dans l’onglet Itinéraire et appuyez sur le bouton de démarrage. L’app vous prévient à l’arrivée de votre véhicule, compte les arrêts restants pendant le trajet et vous avertit à l’avance quand votre arrêt approche.",
+      "body2": "En voiture, démarrez le guidage depuis l’itinéraire voiture. Il vous prévient avant chaque intersection et affiche le nom de la route sur laquelle vous êtes. Le guidage en voiture n’est disponible qu’en coréen.",
+      "body3": "Activez « Guidage vocal en arrière-plan » dans les Réglages pour entendre les virages, les alertes de sortie d’itinéraire et les arrivées à voix haute même avec l’écran verrouillé et le téléphone dans la poche. Il est activé par défaut.",
       "head2": "À garder à l’esprit",
       "body4": "Le guidage repose sur les données cartographiques, le GPS et les informations de transport en temps réel ; il peut donc différer de la situation réelle. Les informations d’arrivée des bus et des trains peuvent être en retard ou erronées : écoutez aussi les annonces à bord.",
       "body5": "Soyez particulièrement prudent aux passages piétons. Utilisez le guidage de cette app uniquement comme information d’appoint et essayez-le d’abord sur un trajet que vous connaissez bien.",
@@ -251,7 +251,7 @@
       "weightFooter": "Saisissez un poids entre {min} et {max} kg. Les informations saisies ne sont pas enregistrées sur un serveur.",
       "weightRejected": "Le poids doit être entre {min} et {max} kg. La valeur précédente, {kg} kg, est conservée.",
       "weightRejectedNone": "Le poids doit être entre {min} et {max} kg. Rien n’a été enregistré.",
-      "carListener": "Qui écoute le guidage en voiture",
+      "carListener": "Qui écoute le guidage en voiture (expérimental)",
       "carListenerPassenger": "Passager (écouteurs, lecteur d’écran)",
       "carListenerDriver": "Conducteur (haut-parleur, ordres brefs)"
     },
