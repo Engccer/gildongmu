@@ -13,8 +13,8 @@
 
 ### 나들이 교차로·횡단보도 원천 확장 outing-nodes: E58 ①③ (iOS 실험판 + 서버)
 
-- 나들이가 골목 갈림길 앞 20m쯤 "왼쪽에 골목"·"앞에 사거리" 같은 한 문장을 낸다(새 Kit 판정 `outingJunctionNoticeStep`, 갈래 좌우는 교차점 기준 `outingProject`, 길 건너 갈래 제외, 최소 간격 8초, 문장 일곱과 길 건너 제외는 위원장 판정). 횡단보도 예고는 판정 그대로 원천만 셋(OSM · 서울시 도보 네트워크 쌍 중점 · 카카오 도보 탐침)으로 늘었고 같은 진행선의 짝은 함께 침묵한다.
-- 서버: 정적 seed 둘(`osm-walk-junctions.json` BBBike 서울 추출본 141,000점, `seoul-walk-network.json` 시트 CSV 횡단보도 16,032·교차점 117,553, 파일 분리·`NOTICE.md`)을 `/api/walk/nearby?coords=1&nodes=1` 옵트인으로, 탐침은 새 라우트 `/api/walk/probe`(카카오만·no-store, 앱이 100m마다 1건, 결과 세션 메모리에만). 미지정 응답 불변.
+- 나들이가 골목 갈림길 앞 20m쯤 "왼쪽에 골목"·"앞에 사거리" 같은 한 문장을 낸다(새 Kit 판정 `outingJunctionNoticeStep`, 갈래 좌우는 교차점 기준 `outingProject`, 길 건너 갈래 제외, 최소 간격 8초, 문장 일곱과 길 건너 제외는 위원장 판정). 횡단보도 예고는 판정 그대로 원천만 셋(OSM · 서울시 도보 네트워크 쌍 중점 · 카카오 도보 탐침)으로 늘었고 넓은 길에서 탐침 연석점과 정적 중심점 짝은 한 번만 말한다.
+- 서버: 정적 seed 둘(`osm-walk-junctions.json` BBBike 서울 추출본 138,466점, `seoul-walk-network.json` 시트 CSV 횡단보도 16,032·교차점 117,553, 파일 분리·`NOTICE.md`)을 `/api/walk/nearby?coords=1&nodes=1` 옵트인으로, 탐침은 새 라우트 `/api/walk/probe`(카카오만·no-store, 앱이 100m마다 1건, 결과 세션 메모리에만). 미지정 응답 불변.
 - 재생(무호출): 10-01에 놓친 횡단보도를 09-29 오후·10-01 두 세션이 예고(종전 0), 교차로 예고 1km당 7~10회. 실보행 판정 BACKLOG §2 E58 교차로·횡단보도 행. spec `2026-09-26-outing-mode-design.md` §6.6·§11.2.
 
 ### 안드로이드 후속·이식 묶음 android-2: M4b 후속 둘 · E57 첫 정보 행 착지 · E53 백그라운드 음성 안내
