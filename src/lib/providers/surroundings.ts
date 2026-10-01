@@ -49,7 +49,7 @@ export const DEFAULT_CATEGORY_GROUPS = [
 ];
 
 /**
- * 카카오 category_group_code 전 18종. M1(부근 재구성)이 쓴다.
+ * 카카오 category_group_code 전 18종. M1(부근 재구성)과 나들이(`groups=all`, E58 ②)가 쓴다.
  * 둘러보기가 10종만 받는 것은 "갈 곳 고르기"라는 목적 때문이고, M1은
  * "여기가 맞나"라 학교·유치원·주차장·문화시설이 오히려 핵심 단서다.
  */
