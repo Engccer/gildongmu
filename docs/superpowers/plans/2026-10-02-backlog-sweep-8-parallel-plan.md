@@ -1,5 +1,7 @@
 # 백로그 8차 소화: 병렬 세션 계획 (2026-10-02)
 
+> **종료 상태(2026-10-02 07:05)**: 전 세션 통합 완료, `origin/main` 기준. 세션별 통합 SHA: small-9 `a66775d1` · e59-settings `81388f58` · en-briefing `7eb748f2` · outing-shops `1a766157` · outing-research `16ccdbba` · small-10 `b163bd5a` · android-2 `c759eee9` · outing-nodes `5889a172` · 코디네이터 문서 `49199df7`(CLAUDE.md 반영 14건·BACKLOG 판정·E58 후속 큐). 웹은 push마다 자동 배포됐고 실기기는 코디네이터가 두 구성으로 설치한다(이 줄 뒤). 위원장 판정 9건(안드로이드 두 묶음 포함 · A53 ② lang=ko 표시 · A54 두 문장 · 학교 이정표 · 목적지 변경 문안 · 카카오 탐침 채택 · 전자지도 신청은 §8 · 단지 안 갈림길은 탐침 꺾임 · 갈림길 문장 일곱·길 건너 골목 무언)은 BACKLOG 각 항목과 spec에 있다. 남은 위원장 판정은 `docs/BACKLOG.md` §2(E59·E60·A53·A54·E58 ②·E58 ①③·E43 ⑤)와 `docs/FIELD-TEST.md`, 다음 행동은 BACKLOG "다음에 할 일"(doc-audit가 8차 결과로 다시 쓴다).
+
 코디네이터 `gildongmu-a7 [4465c2]`. 절차 정본은 `parallel-sessions` 스킬(Claude Code 분기). 이 문서가 세션 착수 프롬프트보다 상세하고 우선한다. 위원장 판정의 정본은 `docs/BACKLOG.md`의 각 항목이다.
 
 ## 0. 전제 (관측 시점: `57e9a5ea`, 2026-10-02)
