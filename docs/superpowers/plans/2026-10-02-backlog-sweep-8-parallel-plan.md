@@ -20,6 +20,7 @@
 | `outing-research` | 1 | E58 조사 | opus·high | 보행 도로망 노드 원천 조사(코드 변경 0) |
 | `outing-nodes` | 2 | E58 ①③ | opus·high | 교차로 전수·횡단보도 원천 교체(조사 뒤 코디네이터가 원천 확정) |
 | `android-2` | 2 | E43 M4b 후속 둘 · E57 이식 · E53 이식 | opus·high | 안드로이드 후속·이식 묶음 |
+| `small-10` | 2 | A54 두 문장(위원장 판정 05:12) · A54 정지 통지 `.high` · A53 iOS 잔여(en 시작·목적지 변경 통지) | opus·medium | small-9 통합(`a66775d1`) 뒤 후속 묶음(iOS). 소유: `GuideSessionCoordinator.swift`·`TransitGuideModel.swift`의 통지 자리·`BeaconModel.announceExternal` 우선순위 인자·`ios/i18n/ios-extra/*.json` 해당 키·생성물 |
 | `doc-audit` | 끝 | 문서 만료 점검 | opus·medium | 전 웨이브 통합 뒤 새 창 |
 
 서브에이전트 모델은 디스패치마다 명시한다: 리뷰어·감사는 `model: opus`, 적대적 설계 리뷰와 데이터 무결성 최종 검토만 `model: fable`(동시 하나, `name` 부여).
