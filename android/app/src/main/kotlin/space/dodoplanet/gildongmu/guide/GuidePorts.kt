@@ -60,6 +60,9 @@ interface GuideSpeaker {
 
     /** 현재 앱 언어를 이 기기 TTS가 지원하지 않는다(시트 행 + 진동 1회). */
     val isUnavailable: Boolean
+
+    /** 안내 문장이 말하는 중인가(보류 포함) — 끝은 발화 완료 콜백(E57 착지 대기). */
+    val isSpeaking: Boolean
 }
 
 enum class ResultHapticKind { success, attention, failure }

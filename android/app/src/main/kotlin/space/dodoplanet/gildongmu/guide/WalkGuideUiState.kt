@@ -86,6 +86,8 @@ data class WalkGuideUiState(
     val altPreviewSteps: List<String>? = null,
     /** 낡음 폴백 재조회 진행 중 — 전환 버튼 라벨에 "조회 중" 병기. */
     val isSwitchingVariant: Boolean = false,
+    /** 경로 조회를 기다리는 중(시작·재획득) — 안내 시트 착지 대기(E57 §3.3). */
+    val awaitingRoute: Boolean = false,
     /** 전환 채택 성공 세대 — 증가가 이벤트(시트가 조망·프리뷰를 닫고 제목에 착지). */
     val variantAdoptedSeq: Int = 0,
 ) {

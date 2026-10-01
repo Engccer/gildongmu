@@ -11,6 +11,7 @@ import kotlin.coroutines.suspendCoroutine
 import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
@@ -98,6 +99,22 @@ class DeferredAnnouncerTest {
         drain()
         assertEquals(listOf("도착했습니다"), h.texts)
         assertEquals(listOf(2.246 + SpeechDeferConstants.speechDeferGapSeconds), h.sleeps)
+    }
+
+    /** E57 착지 대기(spec 2026-09-30 §3.3): 톤 뒤로 미룬 문장이 있는 동안은 `hasPending` — 게시하거나 버리면 내려간다. */
+    @Test fun hasPendingTracksDeferredSlot() = runTest {
+        val h = Harness(this)
+        assertFalse(h.announcer.hasPending)
+        h.toneScript = listOf(2.246, 2.246)
+        h.announcer.announce("요약")
+        assertTrue(h.announcer.hasPending)
+        drain()
+        assertEquals(listOf("요약"), h.texts)
+        assertFalse(h.announcer.hasPending)
+        h.toneScript = listOf(2.246)
+        h.announcer.announce("버릴 문장")
+        h.announcer.advanceGeneration()
+        assertFalse(h.announcer.hasPending)
     }
 
     /** §4-3: 토큰·세대 확인 없이는 취소한 문장이 그 자리에서 발화된다. */

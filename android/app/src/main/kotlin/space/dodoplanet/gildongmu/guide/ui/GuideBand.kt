@@ -26,7 +26,7 @@ import space.dodoplanet.gildongmu.kit.spokenDistanceUnits
 
 /**
  * 띠바(spec §7-2, iOS `GuideBand` 미러): 시트를 내린 세션을 대표하는 버튼 하나 = 객체 하나. 시각 두 줄(요약·"안내 시트 펼치기"),
- * 낭독은 한 문장. 활성화 → 시트 복귀(첫 착지 = 접기 버튼). 착지 부착은 `landingTarget`을 `clickable` 앞에.
+ * 낭독은 한 문장. 활성화 → 시트 복귀(첫 착지 = 첫 정보 행, 새로 열릴 때와 같다 — E57 위원장 판정 Q1). 착지 부착은 `landingTarget`을 `clickable` 앞에.
  */
 @Composable
 fun GuideBand(ui: WalkGuideUiState, strings: Strings, focus: FocusRequester) {
@@ -37,7 +37,7 @@ fun GuideBand(ui: WalkGuideUiState, strings: Strings, focus: FocusRequester) {
         Modifier
             .fillMaxWidth()
             .landingTarget(focus)
-            .clickable(role = Role.Button) { GuideSession.returnedFromBand = true; GuideSession.isMinimized = false }
+            .clickable(role = Role.Button) { GuideSession.isMinimized = false }
             .testTag("guide-band")
             .defaultMinSize(minHeight = 48.dp)
             .padding(12.dp)

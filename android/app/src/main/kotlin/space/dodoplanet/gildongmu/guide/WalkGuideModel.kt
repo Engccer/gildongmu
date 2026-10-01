@@ -249,7 +249,10 @@ class WalkGuideModel(
     private var watchdogJob: Job? = null
 
     // ── 경로 조회·재조회 ──
-    private var awaitingRoute = false
+    /** 경로 조회를 기다리는 중 — 안내 시트의 첫 정보 행 착지가 이것이 내려갈 때까지 기다린다(E57 spec §3.3, 화면 상태로 연다). */
+    private var awaitingRoute: Boolean
+        get() = _ui.value.awaitingRoute
+        set(v) = mutate { copy(awaitingRoute = v) }
     private var routeFetchToken = 0
     private var routeFetchJob: Job? = null
     private var fixWaitJob: Job? = null
@@ -379,6 +382,7 @@ class WalkGuideModel(
         this.dest = dest
         clearArrival()   // 종료 화면과 그 화면에 결박된 권유 표식을 함께 지운다(E31 — 표식이 다음 종료 화면으로 새지 않게)
         bandDistanceMeters = null
+        shownWaypointMeters = null
         outputSuppressed = false
         destinationLabel = label
         beaconState = BeaconState.initial
@@ -493,6 +497,7 @@ class WalkGuideModel(
         lastGuidance = null
         remainingText = null
         bandDistanceMeters = null
+        shownWaypointMeters = null
         clearLiveRows()
         displayUnits = emptyList()
         liveSteps = emptyList()
@@ -828,23 +833,34 @@ class WalkGuideModel(
     private fun updateRemaining(route: GuideRoute, state: GuideState) {
         val remainingMeters = max(0.0, route.totalMeters - state.d).roundToInt()
         updateBandDistance(remainingMeters)
+        // 행의 목적지 잔여는 띠바와 같은 10m 갱신 값이다(E57 spec §3.6): 시트가 열리면 커서가 이 행에 앉는데, 1km 미만은 미터 원값이라
+        // 매 fix 문자열이 바뀌어 커서 위에서 다시 읽힌다(띠바와 같은 기제). 같은 문장이면 상태가 바뀌지 않는다(StateFlow 동일 값).
+        val shownMeters = bandDistanceMeters ?: remainingMeters
         val target = guideNextTarget(route, state)
         val viaLabel = routeWaypointLabel
         val distancePart: String
         val minutes: Int?
         if (target.kind == GuideNextTargetKind.waypoint && viaLabel != null) {
-            distancePart = strings.get("directions.viaRemaining", viaLabel, formatDistance(target.meters.roundToInt()))
+            // 경유지 거리는 띠바 값과 다른 양이라 같은 규칙(10m 이상 변했을 때만)을 따로 적용한다.
+            val meters = max(0, target.meters.roundToInt())
+            if (shownWaypointMeters?.let { abs(it - meters) >= 10 } != false) shownWaypointMeters = meters
+            distancePart = strings.get("directions.viaRemaining", viaLabel, formatDistance(shownWaypointMeters ?: meters))
             minutes = etaMinutes(route, target.meters)
         } else if ((target.kind == GuideNextTargetKind.destination && viaLabel != null) || waypointPassedInSession) {
-            distancePart = strings.get("directions.viaDestRemaining", destinationLabel, formatDistance(remainingMeters))
+            shownWaypointMeters = null
+            distancePart = strings.get("directions.viaDestRemaining", destinationLabel, formatDistance(shownMeters))
             minutes = etaMinutesNow(route, state)
         } else {
-            distancePart = strings.get("guide.remainingDistance", formatDistance(remainingMeters))
+            shownWaypointMeters = null
+            distancePart = strings.get("guide.remainingDistance", formatDistance(shownMeters))
             minutes = etaMinutesNow(route, state)
         }
         val timePart = minutes?.let { strings.get("guide.remainingTime", it.toString()) }
         remainingText = joinText(distancePart, timePart)
     }
+
+    /** 남은 거리 행의 경유지 거리(10m 이상 변했을 때만 갱신, E57 §3.6). */
+    private var shownWaypointMeters: Int? = null
 
     /** 띠바 거리 양자화(10m). 같은 구간이면 라벨을 건드리지 않는다. */
     private fun updateBandDistance(meters: Int) {
@@ -1508,6 +1524,7 @@ class WalkGuideModel(
         lastGuidance = null
         remainingText = null
         bandDistanceMeters = null
+        shownWaypointMeters = null
         clearLiveRows()
         displayUnits = emptyList()
         liveSteps = emptyList()
@@ -1819,6 +1836,13 @@ class WalkGuideModel(
     /** 사용자 활성화의 직접 응답 전용 즉시 창구. */
     fun announceNow(message: String, highPriority: Boolean = false, bypassSuppression: Boolean = false) =
         deferredAnnouncer.announceNow(message, highPriority, bypassSuppression)
+
+    /**
+     * 안내가 낸 문장이 모두 끝났는가(E57 spec §3.3) — 톤 뒤로 미룬 문장이 없고 안내 TTS가 말하고 있지 않다. 안내 시트의 첫 정보 행 착지가 이것을
+     * 기다린다(착지 낭독이 시작 요약·복귀 상환과 겹치지 않게). 안드로이드는 안내 문장이 TTS 한 채널이라 끝을 발화 완료 콜백으로 직접 안다 — iOS의 게시
+     * 장부(`GuideAnnouncementLedger`)가 필요 없다. 앱의 다른 통지(탭 상태 줄)는 세지 않는다.
+     */
+    fun announcementsSettled(): Boolean = !deferredAnnouncer.hasPending && !speaker.isSpeaking
 
     private fun isSpeechAllowed(): Boolean = env.isForeground() || !env.isInteractive()
 

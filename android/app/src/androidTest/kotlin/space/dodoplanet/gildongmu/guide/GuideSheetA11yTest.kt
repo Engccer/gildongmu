@@ -51,7 +51,6 @@ class GuideSheetA11yTest {
     fun attach() {
         GuideSession.attach(rule.activity.applicationContext)
         GuideSession.isMinimized = false
-        GuideSession.returnedFromBand = false
     }
 
     @After

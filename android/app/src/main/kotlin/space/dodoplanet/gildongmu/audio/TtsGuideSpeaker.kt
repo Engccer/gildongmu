@@ -40,9 +40,14 @@ class TtsGuideSpeaker(
     private var preparing = false
     private var pending: Pair<String, Boolean>? = null
     private var seq = 0
+    /** 지금 엔진에 남아 있는 최신 발화의 id — 그 id의 완료(onDone·onStop·onError)가 지운다. */
+    private var speakingId: Int? = null
 
     override var isUnavailable = false
         private set
+
+    /** 안내 문장이 말하는 중이거나 초기화를 기다리며 보류돼 있다(E57 착지 대기 — 끝은 발화 완료 콜백이 알린다). */
+    override val isSpeaking: Boolean get() = speakingId != null || pending != null
 
     override fun prepare() {
         if (ready || preparing || isUnavailable) return
@@ -64,7 +69,12 @@ class TtsGuideSpeaker(
             }
             val rate = ListenSpeed.normalizeSpeed(store.getString(ListenSpeed.storageKey)?.toDoubleOrNull())
             if (rate != 1.0) tts.setRate(rate.toFloat())
-            tts.setProgressListener { id -> if (id == seq.toString()) focus.releaseAfter(0.15) }
+            tts.setProgressListener { id ->
+                if (id == seq.toString()) {
+                    speakingId = null
+                    focus.releaseAfter(0.15)
+                }
+            }
             val held = pending
             pending = null
             if (held != null) speak(held.first, held.second)
@@ -82,7 +92,8 @@ class TtsGuideSpeaker(
         if (!focus.acquire()) { GuideDiag.log("speech skipped focus"); return false }
         seq++
         val ok = tts.speakFlush(text, seq.toString())
-        if (!ok) { GuideDiag.log("speech failed id=$seq"); focus.releaseAfter(0.15); return false }
+        if (!ok) { speakingId = null; GuideDiag.log("speech failed id=$seq"); focus.releaseAfter(0.15); return false }
+        speakingId = seq
         GuideDiag.log { "speak id=$seq high=$highPriority len=${text.length}" }
         return true
     }

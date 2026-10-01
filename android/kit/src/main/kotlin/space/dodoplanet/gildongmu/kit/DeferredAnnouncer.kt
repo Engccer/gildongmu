@@ -47,6 +47,9 @@ class DeferredAnnouncer(
      */
     private var slot: Slot? = null
 
+    /** 톤 뒤로 미룬 문장이 슬롯에 있는가 — 안내 시트의 첫 정보 행 착지가 이것이 비고 안내 발화가 끝날 때까지 기다린다(E57 spec §3.3). */
+    val hasPending: Boolean get() = slot != null
+
     /**
      * 세션 경계(시작·stop·teardown) — 세대를 올리고 보류 문장을 **onDropped 없이** 버린다(§4-2). 취소하지 않으면 일반 정지
      * 뒤 끝난 경로의 명령이 뒤늦게 발화하고, 그사이 새 세션을 시작했으면 이전 목적지의 명령이 새 세션 안에서 나온다.

@@ -94,6 +94,8 @@ class FakeSpeaker : GuideSpeaker {
     var allow = true
     var prepares = 0
     override var isUnavailable = false
+    /** 테스트가 직접 세운다(발화 완료 콜백 대역). */
+    override var isSpeaking = false
     override fun prepare() { prepares++ }
     override fun speak(text: String, highPriority: Boolean): Boolean {
         if (!allow) return false

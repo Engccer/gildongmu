@@ -53,9 +53,6 @@ object GuideSession {
     /** 시트가 내려가 띠바가 세션을 대표한다. */
     var isMinimized by mutableStateOf(false)
 
-    /** 띠바 복귀 시트의 첫 착지 = 접기 버튼(1회 소비). */
-    var returnedFromBand by mutableStateOf(false)
-
     /**
      * 다음 띠바 등장의 착지를 1회 건너뛴다 — 종료 화면 [체중 입력하기](E31)가 시트를 접고 설정을 push하는 경로에서, 띠바 착지(400ms 뒤)가
      * 설정 화면 착지를 가로채지 않게(a11y 감사 M1). 띠바 효과가 소비한다.
@@ -103,6 +100,13 @@ object GuideSession {
     var bandLandingSeq by mutableIntStateOf(0)
         private set
 
+    /**
+     * 전경 복귀(백그라운드 경유) 시트 착지 트리거(E57 §3.2) — 시트가 펼쳐진 채 돌아왔을 때 **모델이 복귀 처리(상환 발화)를 마친 뒤** 1 증가한다. 시트가 배경에서
+     * 이월한 첫 정보 행 착지를 이 신호에서 다시 요청한다(그 발화가 끝난 뒤 앉는다).
+     */
+    var sheetReturnSeq by mutableIntStateOf(0)
+        private set
+
     /** `attach`가 지나갔는가 — 서비스 콜백이 `walk`를 만지기 전에 본다. */
     val isAttached: Boolean get() = ::walk.isInitialized
 
@@ -113,13 +117,15 @@ object GuideSession {
     lateinit var permissions: GuidePermissionsImpl
         private set
     private var environment: AndroidGuideEnvironment? = null
-    private var foreground = false
+    /** 앱 Activity가 STARTED인가(관찰 가능 — 안내 시트 착지가 배경 전환을 본다). */
+    var inForeground by mutableStateOf(false)
+        private set
 
     /** 1회 조립(멱등). Activity 재생성마다 다시 불리므로 첫 줄이 가드다. */
     fun attach(app: Context) {
         if (::walk.isInitialized) return
         val context = app.applicationContext
-        val env = AndroidGuideEnvironment(context).also { it.foreground = foreground }
+        val env = AndroidGuideEnvironment(context).also { it.foreground = inForeground }
         environment = env
         permissions = GuidePermissionsImpl(context)
         val main = Handler(Looper.getMainLooper())
@@ -157,7 +163,6 @@ object GuideSession {
             return
         }
         walk.clearFailure()          // 새 시작이 직전 실패 행을 지운다(§7-1)
-        returnedFromBand = false
         pendingSheetReturn = null
         suppressNextBandLanding = false
         sceneLookups.clear()         // 지난 세션의 주변 확인 결과가 같은 목적지의 새 세션으로 새지 않게
@@ -191,11 +196,11 @@ object GuideSession {
     /** `GuideBottomBar`의 수명 관찰자가 ON_START/ON_STOP을 넘긴다. */
     fun setForeground(foreground: Boolean) {
         if (!::walk.isInitialized) return
-        val wasBackground = !this.foreground
-        this.foreground = foreground
+        val wasBackground = !inForeground
+        inForeground = foreground
         environment?.foreground = foreground
         walk.setForeground(foreground)
-        if (foreground && wasBackground && walk.ui.value.hasScreen && isMinimized) bandLandingSeq += 1
+        if (foreground && wasBackground && walk.ui.value.hasScreen) if (isMinimized) bandLandingSeq += 1 else sheetReturnSeq += 1
     }
 
     /** 테스트 전용 — 페이크 포트로 조립한다(`attach`와 같은 멱등 규칙은 없다: 테스트가 매번 새로 끼운다). */
