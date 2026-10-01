@@ -10,15 +10,16 @@
       "searching": "Searching"
     },
     "releaseNotice": {
-      "title": "Gildongmu 2.0 is here.",
+      "title": "Gildongmu has been updated to 2.0!",
       "intro": "Now get real-time guidance when you ride transit or travel by car, too.",
       "head1": "What is new",
-      "body1": "One guidance session now covers your whole trip without a break: walking from your door to the stop, riding the bus or subway, and walking from where you get off to your destination. Pick a transit route in the Directions tab and press the start button. The app tells you when your vehicle arrives, counts down the remaining stops while you ride, and lets you know ahead of time when your stop is near.",
-      "body2": "When you travel by car, start guidance from the car route. It warns you before each intersection and shows the name of the road you are on. Driving guidance is available in Korean only.",
-      "body3": "Turn on \"Background voice guidance\" in Settings to hear turns, off-route alerts, and arrivals spoken aloud even with the screen locked and the phone in your pocket. It is on by default.",
+      "body1": "Get guidance without a break for your whole trip: walking from home to the stop, riding the bus or subway, and walking from where you get off to your destination.",
+      "body2": "Pick a transit route in the Directions tab and press the start button. While you wait for a train or bus, the app tells you which vehicles are coming. While you ride, it shows the remaining stops, and you can even call the subway station.",
+      "body3": "When you travel by car, press start on the car route. The app tells you which road the car is on and how far it is to your destination. Driving guidance is available in Korean only.",
+      "body4": "Turn on \"Background voice guidance\" in Settings to hear turns, off-route alerts, and arrivals spoken aloud even with the screen locked and the phone in your pocket. It is on by default.",
       "head2": "Please keep in mind",
-      "body4": "Guidance is based on map data, GPS, and real-time transit information, so it may differ from what is actually happening. Bus and train arrival information can be late or wrong, so listen to onboard announcements as well.",
-      "body5": "Take extra care at crosswalks. Use this app's guidance as supporting information only, and try it first on a route you know well.",
+      "body5": "Guidance is based on map data, GPS, and real-time transit information, so it may differ from what is actually happening. Bus and train arrival information can be late or wrong, so listen to onboard announcements as well.",
+      "body6": "Take extra care at crosswalks. Use this app's guidance as supporting information only, and try it first on a route you know well.",
       "confirm": "OK"
     },
     "common": {

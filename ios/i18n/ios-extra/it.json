@@ -10,15 +10,16 @@
       "searching": "Ricerca in corso"
     },
     "releaseNotice": {
-      "title": "È arrivato Gildongmu 2.0.",
+      "title": "Gildongmu è stato aggiornato alla versione 2.0!",
       "intro": "Ora ricevi la guida in tempo reale anche quando usi i mezzi pubblici o viaggi in auto.",
       "head1": "Cosa c'è di nuovo",
-      "body1": "Una sola guida copre ora tutto il tuo viaggio senza interruzioni: la camminata da casa alla fermata, il tratto in autobus o metropolitana e la camminata da dove scendi fino a destinazione. Scegli un percorso con i mezzi pubblici nella scheda Indicazioni e premi il pulsante di avvio. L'app ti avvisa quando arriva il tuo mezzo, conta le fermate rimanenti mentre viaggi e ti avverte in anticipo quando la tua fermata si avvicina.",
-      "body2": "Quando viaggi in auto, avvia la guida dal percorso in auto. Ti avvisa prima di ogni incrocio e mostra il nome della strada su cui ti trovi. La guida in auto è disponibile solo in coreano.",
-      "body3": "Attiva \"Guida vocale in background\" nelle Impostazioni per sentire svolte, avvisi di uscita dal percorso e arrivi a voce alta anche con lo schermo bloccato e il telefono in tasca. È attivo per impostazione predefinita.",
+      "body1": "Ricevi la guida senza interruzioni per tutto il viaggio: la camminata da casa alla fermata, il tratto in autobus o metropolitana e la camminata da dove scendi fino a destinazione.",
+      "body2": "Scegli un percorso con i mezzi pubblici nella scheda Indicazioni e premi il pulsante di avvio. Mentre aspetti la metropolitana o l'autobus, l'app ti dice quali mezzi stanno arrivando. Durante il viaggio mostra le fermate rimanenti e puoi persino chiamare la stazione della metropolitana.",
+      "body3": "Quando viaggi in auto, premi avvia sul percorso in auto. L'app ti dice su quale strada si trova l'auto e quanto manca alla destinazione. La guida in auto è disponibile solo in coreano.",
+      "body4": "Attiva \"Guida vocale in background\" nelle Impostazioni per sentire svolte, avvisi di uscita dal percorso e arrivi a voce alta anche con lo schermo bloccato e il telefono in tasca. È attivo per impostazione predefinita.",
       "head2": "Da tenere presente",
-      "body4": "La guida si basa su dati cartografici, GPS e informazioni sui trasporti in tempo reale, quindi può differire dalla situazione reale. Le informazioni sugli arrivi di autobus e treni possono essere in ritardo o sbagliate: ascolta anche gli annunci a bordo.",
-      "body5": "Fai particolare attenzione agli attraversamenti pedonali. Usa la guida di questa app solo come informazione di supporto e provala prima su un tragitto che conosci bene.",
+      "body5": "La guida si basa su dati cartografici, GPS e informazioni sui trasporti in tempo reale, quindi può differire dalla situazione reale. Le informazioni sugli arrivi di autobus e treni possono essere in ritardo o sbagliate: ascolta anche gli annunci a bordo.",
+      "body6": "Fai particolare attenzione agli attraversamenti pedonali. Usa la guida di questa app solo come informazione di supporto e provala prima su un tragitto che conosci bene.",
       "confirm": "OK"
     },
     "common": {

@@ -10,15 +10,16 @@
       "searching": "Buscando"
     },
     "releaseNotice": {
-      "title": "Ha llegado Gildongmu 2.0.",
+      "title": "¡Gildongmu se ha actualizado a la versión 2.0!",
       "intro": "Ahora recibe guía en tiempo real también cuando usas el transporte público o viajas en coche.",
       "head1": "Qué hay de nuevo",
-      "body1": "Una sola guía cubre ahora todo tu trayecto sin interrupciones: caminar desde tu puerta hasta la parada, ir en autobús o metro y caminar desde donde bajas hasta tu destino. Elige una ruta de transporte público en la pestaña Cómo llegar y pulsa el botón de inicio. La app te avisa cuando llega tu vehículo, cuenta las paradas que faltan mientras viajas y te avisa con antelación cuando se acerca tu parada.",
-      "body2": "Cuando viajes en coche, inicia la guía desde la ruta en coche. Te avisa antes de cada cruce y muestra el nombre de la calle por la que vas. La guía en coche solo está disponible en coreano.",
-      "body3": "Activa \"Guía por voz en segundo plano\" en Ajustes para oír giros, avisos de desvío y llegadas en voz alta incluso con la pantalla bloqueada y el teléfono en el bolsillo. Está activado de forma predeterminada.",
+      "body1": "Recibe guía sin interrupciones durante todo el trayecto: caminar de casa a la parada, ir en autobús o metro y caminar desde donde bajas hasta tu destino.",
+      "body2": "Elige una ruta de transporte público en la pestaña Cómo llegar y pulsa el botón de inicio. Mientras esperas el metro o el autobús, la app te dice qué vehículos vienen. Durante el viaje muestra las paradas que faltan, e incluso puedes llamar a la estación de metro.",
+      "body3": "Cuando viajes en coche, pulsa iniciar en la ruta en coche. La app te dice por qué calle va el coche y cuánto falta hasta el destino. La guía en coche solo está disponible en coreano.",
+      "body4": "Activa \"Guía por voz en segundo plano\" en Ajustes para oír giros, avisos de desvío y llegadas en voz alta incluso con la pantalla bloqueada y el teléfono en el bolsillo. Está activado de forma predeterminada.",
       "head2": "Ten en cuenta",
-      "body4": "La guía se basa en datos de mapas, GPS e información de transporte en tiempo real, por lo que puede diferir de la situación real. La información de llegada de autobuses y trenes puede retrasarse o ser incorrecta; escucha también los avisos a bordo.",
-      "body5": "Ten especial cuidado en los pasos de peatones. Usa la guía de esta app solo como información de apoyo y pruébala primero en un trayecto que conozcas bien.",
+      "body5": "La guía se basa en datos de mapas, GPS e información de transporte en tiempo real, por lo que puede diferir de la situación real. La información de llegada de autobuses y trenes puede retrasarse o ser incorrecta; escucha también los avisos a bordo.",
+      "body6": "Ten especial cuidado en los pasos de peatones. Usa la guía de esta app solo como información de apoyo y pruébala primero en un trayecto que conozcas bien.",
       "confirm": "Aceptar"
     },
     "common": {

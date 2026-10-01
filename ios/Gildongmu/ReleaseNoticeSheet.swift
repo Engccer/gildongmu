@@ -36,11 +36,12 @@ struct ReleaseNoticeSheet: View {
                 Text(appLocalized("ios.releaseNotice.body1"))
                 Text(appLocalized("ios.releaseNotice.body2"))
                 Text(appLocalized("ios.releaseNotice.body3"))
+                Text(appLocalized("ios.releaseNotice.body4"))
                 Text(appLocalized("ios.releaseNotice.head2"))
                     .font(.headline)
                     .accessibilityAddTraits(.isHeader)
-                Text(appLocalized("ios.releaseNotice.body4"))
                 Text(appLocalized("ios.releaseNotice.body5"))
+                Text(appLocalized("ios.releaseNotice.body6"))
                 Button {
                     onConfirm()
                 } label: {

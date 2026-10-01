@@ -58,8 +58,8 @@ describe("2.0 공지 배선", () => {
     expect(codeOnly(read(join(APP, "GildongmuApp.swift")))).not.toContain("interactiveDismissDisabled");
   });
 
-  it("공지 문자열 키 10개가 6로케일에 같다", () => {
-    const KEYS = ["title", "intro", "head1", "body1", "body2", "body3", "head2", "body4", "body5", "confirm"];
+  it("공지 문자열 키 11개가 6로케일에 같다", () => {
+    const KEYS = ["title", "intro", "head1", "body1", "body2", "body3", "body4", "head2", "body5", "body6", "confirm"];
     for (const locale of ["ko", "en", "ja", "es", "fr", "it"]) {
       const extra = JSON.parse(read(join(ROOT, `ios/i18n/ios-extra/${locale}.json`)));
       expect(Object.keys(extra.ios.releaseNotice), locale).toEqual(KEYS);
