@@ -16,6 +16,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.runtime.DisposableEffect
@@ -52,6 +53,7 @@ import space.dodoplanet.gildongmu.a11y.HapticKind
 import space.dodoplanet.gildongmu.a11y.LocalModalOpen
 import space.dodoplanet.gildongmu.a11y.Notice
 import space.dodoplanet.gildongmu.a11y.StatusLine
+import space.dodoplanet.gildongmu.a11y.headingText
 import space.dodoplanet.gildongmu.a11y.landingTarget
 import space.dodoplanet.gildongmu.a11y.mergedRow
 import space.dodoplanet.gildongmu.a11y.tapTarget
@@ -69,6 +71,7 @@ import space.dodoplanet.gildongmu.nav.tryStartActivity
  * 테마·듣기 속도도 같은 선택 다이얼로그다(테마는 `MainActivity`가 즉시 반영, 새 값은 복귀 착지한 행의 라벨이 말한다).
  * AI 채팅 동의는 스위치 행 — 끄면 채팅 화면이 다음 전송 전에 동의 본문으로 돌아간다(`ChatConsentStore.revoke`, iOS 5.1.2(i) 철회 경로).
  * `focusRow`는 첫 진입 착지 대상(`settingsEntryTarget`).
+ * 묶음 다섯(일반·음성·길 안내·AI 채팅·앱 정보)은 묶음이 바뀌는 자리의 헤딩 한 줄로 드러난다(E59, iOS 섹션 머리말 미러).
  */
 @Composable
 fun SettingsScreen(
@@ -150,8 +153,10 @@ fun SettingsScreen(
         AppScreenScaffold(stringResource(R.string.android_settings_title), onBack = onBack, titleFocus = titleFocus) { padding ->
             Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).semantics { testTagsAsResourceId = true }) {
                 StatusLine(notice, Modifier.padding(vertical = 8.dp)) // 상단 바 바로 아래(§3-1 — 자리를 외워 쓰는 탐색)
-                for (row in rows) {
+                for ((i, row) in rows.withIndex()) {
                     val focus = rowFocus.getOrPut(row) { FocusRequester() }
+                    // 묶음이 바뀌는 자리에만 헤딩(E59) — 헤딩 점프로 묶음 다섯을 차례로 건너뛴다.
+                    if (i == 0 || rows[i - 1].group != row.group) GroupHeading(row.group)
                     when (row) {
                         SettingsRow.Theme -> ValueRow(joinText(stringResource(R.string.android_settings_theme), themeValue), "settings-theme", focus) { dialog = row }
                         SettingsRow.ListenSpeed -> ValueRow(joinText(stringResource(R.string.android_settings_listenSpeed), stringResource(listenSpeedLabelId(listenSpeed))), "settings-listenspeed", focus) { dialog = row }
@@ -231,6 +236,19 @@ fun SettingsScreen(
             else -> Unit
         }
     }
+}
+
+/** 묶음 헤딩(iOS 섹션 머리말 미러). 포커스 정지점이 아니다 — 헤딩 점프가 발견 경로이고 스와이프 한 번은 설정 하나다. */
+@Composable
+private fun GroupHeading(group: SettingsGroup) {
+    val (tag, label) = when (group) {
+        SettingsGroup.General -> "settings-heading-general" to R.string.android_settings_sectionGeneral
+        SettingsGroup.Voice -> "settings-heading-voice" to R.string.android_settings_sectionVoice
+        SettingsGroup.Guidance -> "settings-heading-guidance" to R.string.android_settings_sectionGuidance
+        SettingsGroup.AiChat -> "settings-heading-aichat" to R.string.android_settings_aiSection
+        SettingsGroup.About -> "settings-heading-about" to R.string.android_settings_sectionAbout
+    }
+    Text(stringResource(label), Modifier.fillMaxWidth().testTag(tag).headingText().padding(top = 16.dp, bottom = 4.dp), style = MaterialTheme.typography.titleMedium)
 }
 
 /** 값 있는 행 = 라벨과 값을 한 문장으로("언어, 한국어") — 한 줄 = 한 객체. */

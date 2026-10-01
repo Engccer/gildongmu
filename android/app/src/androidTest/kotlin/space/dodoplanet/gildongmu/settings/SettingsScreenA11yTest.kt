@@ -2,6 +2,9 @@ package space.dodoplanet.gildongmu.settings
 
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotSelected
@@ -14,8 +17,10 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.tryPerformAccessibilityChecks
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -23,7 +28,7 @@ import org.junit.runner.RunWith
 import space.dodoplanet.gildongmu.a11y.AppNotices
 import space.dodoplanet.gildongmu.kit.InMemoryKeyValueStore
 
-/** spec §14-5 ATF: 행 각 한 객체·라벨·다이얼로그 진입 착지(현재 행 / 저장값 null이면 첫 행)·라디오 집합 맥락·모달 뒤 앱 통지 보류·정보 출처. 저장소는 메모리(기기 설정을 건드리지 않는다). */
+/** spec §14-5 ATF: 행 각 한 객체·라벨·묶음 헤딩 다섯(E59)·다이얼로그 진입 착지(현재 행 / 저장값 null이면 첫 행)·라디오 집합 맥락·모달 뒤 앱 통지 보류·정보 출처. 저장소는 메모리(기기 설정을 건드리지 않는다). */
 @RunWith(AndroidJUnit4::class)
 class SettingsScreenA11yTest {
     @get:Rule
@@ -50,6 +55,30 @@ class SettingsScreenA11yTest {
         rule.onNodeWithTag("settings-listenspeed").assertTextEquals("듣기 속도, 1배")
         rule.onNodeWithTag("title").assertIsFocused() // push 진입 착지 = 제목
         rule.onRoot().tryPerformAccessibilityChecks()
+    }
+
+    @Test
+    fun groupHeadingsAreHeadingsInJudgedOrder() {
+        show()
+        rule.waitForIdle()
+        // E59: 헤딩은 묶음 다섯에만, 설정 행은 헤딩이 아니다(헤딩 점프로 묶음을 차례로 건너뛴다).
+        val headings = listOf(
+            "settings-heading-general" to "일반",
+            "settings-heading-voice" to "음성",
+            "settings-heading-guidance" to "길 안내",
+            "settings-heading-aichat" to "AI 채팅",
+            "settings-heading-about" to "앱 정보",
+        )
+        val tops = headings.map { (tag, text) ->
+            rule.onNodeWithTag(tag).assertTextEquals(text).assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
+            rule.onNodeWithTag(tag).fetchSemanticsNode().positionInRoot.y
+        }
+        assertEquals(tops.sorted(), tops)
+        rule.onNodeWithTag("settings-theme").assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.Heading))
+        // 묶음 안: 일반 헤딩 → 테마 → 언어 → 음성 헤딩.
+        val theme = rule.onNodeWithTag("settings-theme").fetchSemanticsNode().positionInRoot.y
+        val language = rule.onNodeWithTag("settings-language").fetchSemanticsNode().positionInRoot.y
+        assertTrue(tops[0] < theme && theme < language && language < tops[1])
     }
 
     @Test
