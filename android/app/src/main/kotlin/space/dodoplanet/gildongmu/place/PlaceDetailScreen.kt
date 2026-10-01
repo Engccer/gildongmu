@@ -47,6 +47,7 @@ import space.dodoplanet.gildongmu.a11y.mergedRow
 import space.dodoplanet.gildongmu.a11y.tapTarget
 import space.dodoplanet.gildongmu.directions.DirectionsPrefill
 import space.dodoplanet.gildongmu.directions.DirectionsPrefillRole
+import space.dodoplanet.gildongmu.guide.ui.GuideHereButtons
 import space.dodoplanet.gildongmu.i18n.AppLocale
 import space.dodoplanet.gildongmu.i18n.appLocalized
 import space.dodoplanet.gildongmu.kit.models.Place
@@ -66,7 +67,7 @@ class PlaceNav(val onBack: () -> Unit, val onOpenNearby: (NearbyKind, PlaceAncho
  * 장소 상세(spec §3-2, iOS `PlaceDetailView` 대응). 정보 정본은 텍스트 리스트(지도 없음). 실주행은 딥링크 위임. 읽기 순서 = 표 순서.
  * **레이아웃은 둘이다**(E44 spec §3, 순서 정본 `placeDetailBlocks`): `stationLayoutKind`가 역이면 역 정보(전화 맨 위) → 도착·시간표·시설
  * (종류별 접기) → 무장애 → 길찾기 → 이 장소 주변(지하철 없음), 그 밖이면 개편 전 순서 그대로.
- * 안내 중 목적지 변경(M4)은 아래 주석 자리에 그 마일스톤이 넣는다. `showsChatEntry = false`(채팅에서 연 상세)면 "물어보기" 버튼을 숨긴다(순환 방지).
+ * 안내 중에는 길찾기 블록에 목적지·경유지 변경 버튼이 선다(`GuideHereButtons`). `showsChatEntry = false`(채팅에서 연 상세)면 "물어보기" 버튼을 숨긴다(순환 방지).
  */
 @Composable
 fun PlaceDetailScreen(
@@ -194,7 +195,8 @@ fun PlaceDetailScreen(
                             Modifier.tapTarget().testTag(tag),
                         ) { Text(stringResource(label)) }
                     }
-                    // [M4] 안내 중 목적지 변경
+                    // 안내 중에만 "여기로 목적지 변경"·"여기를 경유지로"(M4b 후속, iOS N1 §2.5). 길찾기 진입을 숨긴 상세(안내 목적지 자신·경유역)엔 없다.
+                    if (showsDirectionsEntry) GuideHereButtons(place)
                     // 외부 지도(빌더 null = 권역 밖 → 숨김)
                     naverRoutePlan(dest, AppConfig.APP_IDENTIFIER)?.let { plan ->
                         Button(onClick = { context.openWithFallback(plan) { vm.onOpenFailed() } }, Modifier.tapTarget().testTag("naver")) { Text(stringResource(R.string.android_route_naver)) }
