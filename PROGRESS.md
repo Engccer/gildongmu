@@ -19,7 +19,7 @@
 | 채널 | 상태 |
 |---|---|
 | 웹 | https://gildongmu.dodoplanet.space (push = 자동 배포). 2026-09-29 챌린지 동결 해제로 `origin/main` 자동 배포에 복귀(`dcn2h3nx4`, 커밋 `ad3596a0`) |
-| iOS | 스토어 최신 **1.19 `READY_FOR_SALE`**(빌드 28, 아카이브 커밋 `5c3bf9bf`). **2.0 심사 취소**(빌드 29, 아카이브 커밋 `d9e76b2d`, 2026-10-01 19:15 KST 제출 → 19:40 취소: 공지 문안이 최종본이 아니었다 — 최종 문안 반영 뒤 같은 버전에 **빌드 30**으로 재제출 예정, 기준선은 1.19 아카이브 `5c3bf9bf` 그대로). 미릴리스 iOS 변경: `git log d9e76b2d..HEAD -- ios/` |
+| iOS | 스토어 최신 **1.19 `READY_FOR_SALE`**(빌드 28, 아카이브 커밋 `5c3bf9bf`). **2.0 `WAITING_FOR_REVIEW`**(빌드 30, 아카이브 커밋 `ef5f2330`, 2026-10-01 19:52 KST 재제출 — 빌드 29는 공지 문안 미확정으로 19:40 심사 취소·미출시. 자동차·대중교통 안내·백그라운드 음성 안내 졸업, 심사 노트 갱신). 미릴리스 iOS 변경: `git log ef5f2330..HEAD -- ios/` |
 | iOS 최소 지원 | **18.0**(2026-08-19 하향, 1.10부터 적용 — 스토어 반영 완료) |
 | npm | `gildongmu` · `gildongmu-mcp` **v0.11.0**(2026-09-23, `cli-v0.11.0` 태그 → Trusted Publishing 워크플로 성공, `npm view` 両패키지 0.11.0·SLSA provenance 확인). 미발행 변경: E50 대안 이름 포매터(다음 `cli-v*` 태그 대상, BACKLOG §3) |
 | 저장소 | GitHub **public**(2026-08-17 전환) — https://github.com/Engccer/gildongmu. 코드 MIT, 번들 데이터는 `NOTICE.md`. **모든 커밋이 즉시 공개된다** — 실주소·계측 로그·키를 넣지 않는 규칙은 `CLAUDE.md` 개발 규칙 |
