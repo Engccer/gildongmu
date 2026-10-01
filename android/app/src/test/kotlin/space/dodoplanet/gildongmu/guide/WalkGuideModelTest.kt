@@ -274,24 +274,41 @@ class WalkGuideModelTest {
         assertEquals(1, h.controller.stops)
     }
 
-    @Test fun `음성 게이트 — 다른 앱 전경(화면 켜짐)이면 발화 보류, 화면 꺼짐이면 발화, 복귀 시 상환`() = guideTest(dispatcher) { h ->
+    @Test fun `음성 채널(E53) — 백그라운드(잠금·다른 앱)는 행동 문장만 말하고 주기·상태는 버려 복귀 때 갚는다`() = guideTest(dispatcher, { HttpResponse(200, "{\"result\":null}") }) { h ->
+        h.model.requestStart(h.request)
+        settle()
+        h.walkTo(0.0)      // 경로 없음 → 간략(직선거리) 폴백
+        settle()
+        h.env.foreground = false
+        h.model.setForeground(false)
+        h.speaker.spoken.clear()
+        h.model.announceNow("행동 문장")             // 직접 응답 = 행동 문장 → 기본 켬이면 기기 음성
+        assertEquals(listOf("행동 문장"), h.speaker.texts)
+        // 상태 문장(신호 약함)은 백그라운드에서 말하지 않는다 — 효과음이 맡고 화면 상태만 갱신된다.
+        h.clock.now += 16.0; advanceTimeBy(16_000); runCurrent()
+        val weak = h.catalog.get("beacon.weak")
+        assertFalse(h.speaker.texts.contains(weak), h.speaker.texts.toString())
+        assertEquals(weak, h.model.ui.value.statusText)
+        // 복귀 상환: 마지막(버린) 상태 문장 하나.
+        h.env.foreground = true
+        h.speaker.spoken.clear()
+        h.model.setForeground(true)
+        advanceTimeBy(5_000); runCurrent()
+        assertEquals(listOf(weak), h.speaker.texts)
+    }
+
+    @Test fun `음성 채널(E53) — 토글을 끄면 백그라운드는 효과음만이고 복귀 때 최신 상태를 갚는다, 말한 문장은 되풀이하지 않는다`() = guideTest(dispatcher) { h ->
         h.model.requestStart(h.request)
         settle()
         h.walkTo(0.0)
         settle()  // 상세 시작 — statusText = 시작 문장
+        h.store.putString("backgroundSpeechEnabled", "false")
         h.env.foreground = false
-        h.env.interactive = true
         h.model.setForeground(false)
         h.speaker.spoken.clear()
         h.model.announceNow("보류될 문장")
         assertEquals(emptyList(), h.speaker.spoken)
-        h.env.interactive = false
-        h.model.announceNow("화면 꺼짐 발화")
-        assertEquals(listOf("화면 꺼짐 발화"), h.speaker.texts)
-        // 복귀 상환: 보류된 시점의 문장이 아니라 **최신 statusText**가 꼬리로 나간다.
         h.env.foreground = true
-        h.env.interactive = true
-        h.speaker.spoken.clear()
         h.model.setForeground(true)
         assertEquals(listOf(spokenDistanceUnits(h.model.ui.value.statusText, "미터")), h.speaker.texts)
         // 갚았으니 두 번째 복귀는 조용하다.
@@ -299,6 +316,56 @@ class WalkGuideModelTest {
         h.model.setForeground(false)
         h.model.setForeground(true)
         assertEquals(emptyList(), h.speaker.spoken)
+        // 켬 + 백그라운드에서 행동 문장을 들었으면 복귀 때 되풀이하지 않는다(§4.3).
+        h.store.putString("backgroundSpeechEnabled", "true")
+        h.env.foreground = false
+        h.model.setForeground(false)
+        h.model.announceNow("들은 문장")
+        h.env.foreground = true
+        h.model.setForeground(true)
+        assertEquals(listOf("들은 문장"), h.speaker.texts)
+    }
+
+    @Test fun `음성 채널(E53) — 미디어 볼륨 0이면 백그라운드 행동 문장도 들리지 않으므로 버리고 복귀 때 갚는다(가청 축)`() = guideTest(dispatcher) { h ->
+        h.model.requestStart(h.request)
+        settle()
+        h.walkTo(0.0)
+        settle()
+        h.env.foreground = false
+        h.model.setForeground(false)
+        h.tones.isMediaVolumeZero = true
+        h.speaker.spoken.clear()
+        h.model.announceNow("들리지 않을 문장")
+        assertEquals(emptyList(), h.speaker.spoken)
+        h.tones.isMediaVolumeZero = false
+        h.env.foreground = true
+        h.model.setForeground(true)
+        assertEquals(1, h.speaker.spoken.size)
+    }
+
+    @Test fun `음성 채널(E53) — 백그라운드에서 말하는 중이면 평범한 행동 문장은 한 칸 기다리고, 높은 우선순위는 선점한다`() = guideTest(dispatcher) { h ->
+        h.model.requestStart(h.request)
+        settle()
+        h.walkTo(0.0)
+        settle()
+        h.env.foreground = false
+        h.model.setForeground(false)
+        h.speaker.spoken.clear()
+        h.speaker.isSpeaking = true                    // 앞 안내가 말하는 중
+        h.model.announceNow("기다릴 문장")              // 직접 응답이지만 우선순위 기본 → 칸
+        assertEquals(emptyList(), h.speaker.spoken)
+        assertFalse(h.model.announcementsSettled(), "칸에 문장이 있으면 착지가 기다린다(E57)")
+        h.speaker.isSpeaking = false
+        advanceTimeBy(1_000); runCurrent()
+        assertEquals(listOf("기다릴 문장"), h.speaker.texts)
+        h.speaker.isSpeaking = true
+        h.model.announceNow("선점 문장", highPriority = true)
+        assertEquals(listOf("기다릴 문장", "선점 문장"), h.speaker.texts)
+        // 전경은 종전 QUEUE_FLUSH — 말하는 중이어도 기다리지 않는다.
+        h.env.foreground = true
+        h.model.setForeground(true)
+        h.model.announceNow("전경 문장")
+        assertEquals("전경 문장", h.speaker.texts.last())
     }
 
     @Test fun `억제 중 실행 안내는 최신 1개만 보관, 해제 시 복구 발화·진동 없음`() = guideTest(dispatcher) { h ->

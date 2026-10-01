@@ -61,13 +61,26 @@ class GuideSourceGuardTest {
         assertTrue(files.all { it.parentFile.name == "audio" })
     }
 
-    @Test fun `④ speaker_speak 호출부는 WalkGuideModel_post 한 곳`() {
+    @Test fun `④ speaker_speak 호출부는 post의 전경 직접 발화와 대기 칸 배선뿐 — 모든 문장이 post의 채널 술어를 지난다(E53)`() {
         val callers = allSources.filter { it.name != "TtsGuideSpeaker.kt" && Regex("""speaker\.speak\(""").containsMatchIn(it.readText()) }.map { it.name }
         assertEquals(listOf("WalkGuideModel.kt"), callers)
         val model = guide.resolve("WalkGuideModel.kt").readText()
-        assertEquals(1, Regex("""speaker\.speak\(""").findAll(model).count())
+        val queue = model.substringAfter("private val deviceSpeech = DeviceSpeechQueue(").substringBefore("\n    )")
+        assertEquals(2, Regex("""speaker\.speak\(""").findAll(queue).count(), "대기 칸의 발화·전경 게시 둘")
         val postBody = model.substringAfter("private fun post(").substringBefore("\n    }\n")
-        assertTrue(postBody.contains("speaker.speak("))
+        assertEquals(1, Regex("""speaker\.speak\(""").findAll(postBody).count(), "전경 직접 발화 한 자리")
+        assertEquals(3, Regex("""speaker\.speak\(""").findAll(model).count(), "post와 대기 칸 밖의 직접 발화 금지")
+        assertTrue(postBody.contains("val channel = speechChannel(speechClass)") && postBody.contains("deviceSpeech.submit("), postBody)
+        // 전경 복귀는 인계를 상환과 한 문장으로(iOS 동형) — 합본이 버려지면 인계 문장의 장부도 되살린다.
+        val ret = model.substringAfter("fun setForeground(foreground: Boolean) {").substringBefore("\n    }\n")
+        assertTrue(ret.contains("deviceSpeech.handOver()") && ret.contains("handed.undelivered()"), ret)
+        // 채널 술어는 기본값 없는 인자로 부르고, 토글 실효값은 Kit 한 함수, 가청은 미디어 볼륨 축.
+        val channel = model.substringAfter("private fun speechChannel(").substringBefore("\n    )")
+        assertTrue(channel.contains("BackgroundSpeech.isEnabled(store.getString(BackgroundSpeech.storageKey)") && channel.contains("backgroundAudible = !tones.isMediaVolumeZero"), channel)
+        // 분류 인자는 기본값이 없다(새 통지 경로가 분류를 빠뜨리면 컴파일이 멈춘다).
+        assertTrue(model.contains("private fun announce(message: String, highPriority: Boolean = false, speechClass: GuideSpeechClass, onDropped"))
+        // 세션 경계마다 대기 칸을 비운다(지연 슬롯 세대와 같은 자리).
+        assertEquals(Regex("""deferredAnnouncer\.advanceGeneration\(\)""").findAll(model).count(), Regex("""deviceSpeech\.reset\(\)""").findAll(model).count())
     }
 
     @Test fun `debugSetUi 호출부는 androidTest뿐`() {

@@ -112,8 +112,10 @@
     },
     {
       "swift": "GuideSpeechChannel.swift",
-      "status": "pending",
-      "note": "E53 백그라운드 음성 안내의 채널 술어·문장 분류·토글 실효값·원복 유예(spec 2026-09-30-background-speech-design.md §2·§3). 안드로이드 이식 판정 별도(PORTS) — 웹은 잠금 중 실행이 멈춰 대상이 아니다"
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/GuideSpeechChannel.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/GuideSpeechChannelTest.kt",
+      "note": "E53 채널 술어·분류 셋(도보·간략·대중교통)·토글 실효값·원복 상수 전체 미러(2026-10-02 android-2). 안드로이드 채널 매핑: voiceOver = 전경 직접 TTS(안내 문장 채널이 TTS 하나), device = 백그라운드(잠금·다른 앱) 대기 칸, drop. 원복 상수 둘은 iOS 카테고리 원복 전용이라 안드로이드가 쓰지 않는다"
     },
     {
       "swift": "GuideToneLayer.swift",

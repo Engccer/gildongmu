@@ -90,7 +90,8 @@
       "switchedToRecommended": "Switched to the recommended route. {count, plural, one {# step} other {# steps}}, {distance} total. {first}"
     },
     "settings": {
-      "resultHapticsFooter": "Search and Nearby results are also signaled with vibration. Vibrates only while the screen is on and the device's haptic feedback setting is enabled."
+      "resultHapticsFooter": "Search and Nearby results are also signaled with vibration. Vibrates only while the screen is on and the device's haptic feedback setting is enabled.",
+      "backgroundSpeechFooter": "Speaks guidance such as turns, going off route, and arrival in the device voice even while the screen is off or you are using another app."
     }
   },
   "search": {

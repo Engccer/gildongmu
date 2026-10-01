@@ -90,7 +90,8 @@
       "switchedToRecommended": "Passato al percorso consigliato. {count, plural, one {# indicazione} other {# indicazioni}}, {distance} in totale. {first}"
     },
     "settings": {
-      "resultHapticsFooter": "I risultati di Cerca e Nelle vicinanze vengono segnalati anche con una vibrazione. Vibra solo con lo schermo acceso e il feedback aptico del dispositivo attivo."
+      "resultHapticsFooter": "I risultati di Cerca e Nelle vicinanze vengono segnalati anche con una vibrazione. Vibra solo con lo schermo acceso e il feedback aptico del dispositivo attivo.",
+      "backgroundSpeechFooter": "Pronuncia con la voce del dispositivo indicazioni come svolte, uscite dal percorso e arrivo, anche a schermo spento o mentre usi un'altra app."
     }
   },
   "search": {

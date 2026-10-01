@@ -181,12 +181,12 @@ class WalkGuideScenarioTest {
         assertEquals("길동역 도착", bandSummaryText(ui, h.catalog))
     }
 
-    @Test fun `⑨ 다른 앱 전경 중 도착 → 세션이 끝난 뒤 복귀해도 도착 문장을 갚는다(추적 가드 앞)`() = guideTest(dispatcher, { HttpResponse(200, routeJson(finalSteps, finalApproachJson)) }) { h ->
+    @Test fun `⑨ 백그라운드 음성 끔 — 백그라운드 중 도착 → 세션이 끝난 뒤 복귀해도 도착 문장을 갚는다(추적 가드 앞)`() = guideTest(dispatcher, { HttpResponse(200, routeJson(finalSteps, finalApproachJson)) }) { h ->
         // 10초·15m 간격(40초 공백은 재획득 국면을 연다). 기하가 있으면 진입선은 종점(잔여 ≤ max(하한, 정확도))이라 300m까지 간다.
         val fixes = (0..20).map { Fix(it * 10.0, it * 15.0, 0.0, 8.0) }
         val base = startDetail(h, fixes)
+        h.store.putString("backgroundSpeechEnabled", "false")
         h.env.foreground = false
-        h.env.interactive = true
         h.model.setForeground(false)
         h.speaker.spoken.clear()
         feed(h, fixes, base)
@@ -201,6 +201,24 @@ class WalkGuideScenarioTest {
 
     private val offRouteSteps = listOf(Seg(500.0, "직진", target = "길동역"))
     private val offRouteFixes = listOf(Fix(0.0, 0.0, 0.0, 10.0), Fix(5.0, 100.0, 80.0, 10.0), Fix(13.0, 100.0, 80.0, 10.0), Fix(21.0, 100.0, 80.0, 10.0), Fix(29.0, 100.0, 80.0, 10.0))
+
+    @Test fun `⑨' 백그라운드 음성 켬(기본) — 백그라운드 중 도착 문장은 그 자리에서 말하고 복귀 때 되풀이하지 않는다, 진입 서술도 말한다`() = guideTest(dispatcher, { HttpResponse(200, routeJson(finalSteps, finalApproachJson)) }) { h ->
+        val fixes = (0..20).map { Fix(it * 10.0, it * 15.0, 0.0, 8.0) }
+        val base = startDetail(h, fixes)
+        h.env.foreground = false
+        h.model.setForeground(false)
+        h.speaker.spoken.clear()
+        feed(h, fixes, base)
+        h.model.handleFix(h.fixAt(Fix(205.0, 308.0, 0.0, 8.0), base)); runCurrent()
+        advanceTimeBy(5_000); runCurrent()
+        assertEquals(h.catalog.get("guide.arrived"), h.speaker.texts.last())
+        assertEquals(GuideStatus.idle, h.model.ui.value.status)
+        val before = h.speaker.spoken.size
+        h.env.foreground = true
+        h.model.setForeground(true)
+        advanceTimeBy(5_000); runCurrent()
+        assertEquals(before, h.speaker.spoken.size, "들은 도착 문장을 되풀이하지 않는다: ${h.speaker.texts}")
+    }
 
     @Test fun `④ 이탈 확정 → 문장·warning 톤 → 자동 조회 1회 → 채택 문장(high)·success 진동·offRoute 해제`() = guideTest(dispatcher, { HttpResponse(200, routeJson(offRouteSteps)) }) { h ->
         val base = startDetail(h, offRouteFixes)
@@ -355,12 +373,13 @@ class WalkGuideScenarioTest {
         assertEquals(GuideStatus.tracking, h.model.ui.value.status)
     }
 
-    @Test fun `⑨' 타 앱 전경 중 실행 안내(상태 행 비움) → 복귀 상환은 마지막 안내를 꼬리로 읽는다`() = guideTest(dispatcher, { HttpResponse(200, routeJson(longAhead)) }) { h ->
+    @Test fun `⑨ 실행 안내(백그라운드 음성 끔) — 상태 행 비움 → 복귀 상환은 마지막 안내를 꼬리로 읽는다`() = guideTest(dispatcher, { HttpResponse(200, routeJson(longAhead)) }) { h ->
         val base = startDetail(h, longAheadFixes)
+        h.store.putString("backgroundSpeechEnabled", "false")
         h.env.foreground = false
         h.model.setForeground(false)
         h.speaker.spoken.clear()
-        feed(h, longAheadFixes, base)   // "우회전B" 실행 안내가 타 앱 전경에 걸린다(statusText는 비어 있다)
+        feed(h, longAheadFixes, base)   // "우회전B" 실행 안내가 백그라운드에 걸린다(statusText는 비어 있다)
         assertEquals(emptyList(), h.speaker.spoken)
         assertEquals("", h.model.ui.value.statusText)
         h.env.foreground = true
@@ -368,6 +387,18 @@ class WalkGuideScenarioTest {
         assertEquals(listOf("우회전B"), h.speaker.texts)
     }
 
+    @Test fun `⑨ 실행 안내(백그라운드 음성 켬) — 그 자리에서 말하고 복귀 때 되풀이하지 않는다`() = guideTest(dispatcher, { HttpResponse(200, routeJson(longAhead)) }) { h ->
+        val base = startDetail(h, longAheadFixes)
+        h.env.foreground = false
+        h.model.setForeground(false)
+        h.speaker.spoken.clear()
+        feed(h, longAheadFixes, base)
+        assertEquals(listOf("우회전B"), h.speaker.texts)
+        h.env.foreground = true
+        h.model.setForeground(true)
+        advanceTimeBy(5_000); runCurrent()
+        assertEquals(listOf("우회전B"), h.speaker.texts)
+    }
     @Test fun `경유지 있는 세션의 간략 폴백 — 조용히 버리지 않고 강등 문장을 waypointDropped로 대체해 high로, 재시작 인자도 경유지 없이`() = guideTest(dispatcher, { HttpResponse(200, routeJson(longAhead)) }) { h ->
         val via = GuideWaypoint(BeaconDest(north(100.0).lat, lng0), "장미공원")
         h.model.requestStart(h.request.copy(waypoint = via))

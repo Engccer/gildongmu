@@ -1,6 +1,7 @@
 package space.dodoplanet.gildongmu.guide
 
 import space.dodoplanet.gildongmu.kit.BeaconTone
+import space.dodoplanet.gildongmu.kit.DeviceSpeechDrop
 import space.dodoplanet.gildongmu.location.LocationPermission
 
 // [3] 실행 계층 포트(spec 2026-09-16-android-m4 §2·§3). `WalkGuideModel`은 이 인터페이스만 보고, 실구현은 플랫폼 API
@@ -55,14 +56,23 @@ interface GuideSpeaker {
     /** TTS 초기화(멱등). 초기화 전 문장은 최신 1개만 보류한다. */
     fun prepare()
 
-    /** 게시 시도. 포커스를 못 잡거나 엔진이 없으면 false(호출부가 `onDropped`·상환을 판정한다). */
-    fun speak(text: String, highPriority: Boolean): Boolean
+    /** 게시 시도 → 발화 토큰. 포커스를 못 잡거나 엔진이 없으면 null(호출부가 `onDropped`·상환을 판정한다). */
+    fun speak(text: String, highPriority: Boolean): Int?
 
     /** 현재 앱 언어를 이 기기 TTS가 지원하지 않는다(시트 행 + 진동 1회). */
     val isUnavailable: Boolean
 
     /** 안내 문장이 말하는 중인가(보류 포함) — 끝은 발화 완료 콜백(E57 착지 대기). */
     val isSpeaking: Boolean
+
+    /** 말하는 안내를 끊는다(알리지 않는 정지 — 전경 복귀 인계만 부르고, 끊은 문장은 인계 목록이 처리한다). */
+    fun stop()
+
+    /** 그 토큰의 문장이 아직 엔진에 있는가(말하는 중·보류). E53 대기 칸이 "지금 이 칸의 문장"을 가른다. */
+    fun isSpeakingToken(token: Int): Boolean
+
+    /** 끝나지 않은 발화가 다른 발화에 끊기거나(superseded) 보류 문장이 버려졌다(undelivered) — 대기 칸이 그 문장의 버림을 통지한다. */
+    var onInterrupted: ((token: Int, reason: DeviceSpeechDrop) -> Unit)?
 }
 
 enum class ResultHapticKind { success, attention, failure }
@@ -83,11 +93,8 @@ interface StepCounter {
     val liveSample: StepSample?
 }
 
-/** 전경·화면 상태(§5-3 음성 게이트 입력). 게시 시점 실조회. */
+/** 전경 상태(음성 채널 입력, E53 — 잠금·다른 앱은 같은 백그라운드다). 게시 시점 실조회. */
 interface GuideEnvironment {
     /** 앱 Activity가 STARTED인가. */
     fun isForeground(): Boolean
-
-    /** 화면이 켜져 있는가(`PowerManager.isInteractive`). */
-    fun isInteractive(): Boolean
 }

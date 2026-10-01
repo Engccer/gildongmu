@@ -125,7 +125,7 @@ object GuideSession {
     fun attach(app: Context) {
         if (::walk.isInitialized) return
         val context = app.applicationContext
-        val env = AndroidGuideEnvironment(context).also { it.foreground = inForeground }
+        val env = AndroidGuideEnvironment().also { it.foreground = inForeground }
         environment = env
         permissions = GuidePermissionsImpl(context)
         val main = Handler(Looper.getMainLooper())

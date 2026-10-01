@@ -28,7 +28,16 @@ import space.dodoplanet.gildongmu.kit.BearingUnavailable
 import space.dodoplanet.gildongmu.kit.CourseDerivationState
 import space.dodoplanet.gildongmu.kit.CourseState
 import space.dodoplanet.gildongmu.kit.DataLocale
+import space.dodoplanet.gildongmu.kit.BackgroundSpeech
 import space.dodoplanet.gildongmu.kit.DeferredAnnouncer
+import space.dodoplanet.gildongmu.kit.DeviceSpeechDrop
+import space.dodoplanet.gildongmu.kit.DeviceSpeechHandover
+import space.dodoplanet.gildongmu.kit.DeviceSpeechQueue
+import space.dodoplanet.gildongmu.kit.GuideSpeechChannel
+import space.dodoplanet.gildongmu.kit.GuideSpeechClass
+import space.dodoplanet.gildongmu.kit.beaconNoticeSpeechClass
+import space.dodoplanet.gildongmu.kit.guideEventSpeechClass
+import space.dodoplanet.gildongmu.kit.guideSpeechChannel
 import space.dodoplanet.gildongmu.kit.DisplayUnit
 import space.dodoplanet.gildongmu.kit.GuideEvent
 import space.dodoplanet.gildongmu.kit.GuideFix
@@ -199,7 +208,7 @@ class WalkGuideModel(
             if (was && !value) {
                 val recovery = pendingRecovery ?: return
                 pendingRecovery = null
-                announce(recovery)
+                announce(recovery, speechClass = GuideSpeechClass.actionable)   // 보관 대상(예고·경유지 도착)은 전부 행동 문장
             }
         }
 
@@ -314,6 +323,30 @@ class WalkGuideModel(
         scope = scope, clock = clock, toneEndsAt = { tones.toneEndsAt }, post = ::post,
     )
 
+    /**
+     * 기기 음성 대기 칸(E53 spec §4.2, :kit `DeviceSpeechQueue`) — 백그라운드(잠금·다른 앱)의 행동 문장만 지난다. 말하는 중인 안내가 있으면 끊지 않고 한
+     * 칸에 기다리고(`.high`·임박 명령만 선점), 꺼내는 순간 채널을 다시 고른다. 전경 문장은 종전대로 칸 밖의 직접 발화다(`QUEUE_FLUSH` — 새 문장이 말하는
+     * 중인 안내를 끊는다). 안드로이드 매핑:
+     * - 술어의 `voiceOver` 채널 = 전경 직접 발화(안내 문장 채널이 TTS 하나라 접근성 통지가 없다). 그 채널은 늘 들린다 — 그래서 `voiceOverRunning`은
+     *   참이고, 전경 복귀 인계(`handOver`)가 iOS처럼 말하던 이 칸의 문장을 끊고 칸의 문장과 함께 넘겨 상환과 한 문장으로 낸다(새 전경 문장 뒤에 옛
+     *   백그라운드 문장이 이어 나오는 순서 역전도 막는다).
+     * - 채팅 듣기는 기다리지 않는다: 대기는 안내 TTS만 보고(`speaker.isSpeaking`), 채팅 재생기는 안내가 오디오 포커스를 잡는 순간 스스로 멈춘다(CAN_DUCK 손실).
+     * - TalkBack 발화는 앱이 관찰할 수 없다 — 다른 앱 TalkBack 낭독과의 겹침은 실기기 판정 행.
+     */
+    private val deviceSpeech = DeviceSpeechQueue(
+        scope = scope,
+        clock = clock,
+        isSpeaking = { speaker.isSpeaking },
+        isSpeakingToken = { speaker.isSpeakingToken(it) },
+        voiceOverRunning = { true },
+        isSuppressed = { outputSuppressed },
+        toneEndsAt = { tones.toneEndsAt },
+        route = ::speechChannel,
+        speak = { speaker.speak(it, highPriority = false) },
+        stopSpeaking = { speaker.stop() },
+        postVoiceOver = { text, high -> speaker.speak(text, high) != null },
+    ).also { queue -> speaker.onInterrupted = { token, reason -> queue.speechInterrupted(token, reason) } }
+
     // ─────────────────────────── 시작 (§3-2) ───────────────────────────
 
     /** 유일한 시작 요청 창구(`GuideSession.startWalk`가 부른다). `starting` 재진입 가드. */
@@ -379,6 +412,7 @@ class WalkGuideModel(
         sessionToken = token
         // ⑤ 상태 초기화(iOS `start` 대입 목록 그대로).
         deferredAnnouncer.advanceGeneration()
+        deviceSpeech.reset()
         this.dest = dest
         clearArrival()   // 종료 화면과 그 화면에 결박된 권유 표식을 함께 지운다(E31 — 표식이 다음 종료 화면으로 새지 않게)
         bandDistanceMeters = null
@@ -441,7 +475,7 @@ class WalkGuideModel(
         pendingFailLanding = true
         mutate { copy(failSeq = failSeq + 1) }
         resultHaptic(ResultHapticKind.failure)
-        announce(statusText)
+        announce(statusText, speechClass = GuideSpeechClass.actionable)
     }
 
     private var pendingFailLanding = false
@@ -459,6 +493,7 @@ class WalkGuideModel(
     fun stop(playStopTone: Boolean = false) {
         pendingStepFreeNotice = null                              // ①
         deferredAnnouncer.advanceGeneration()                     // ②
+        deviceSpeech.reset()
         resetFinalApproach(null)                                  // ③
         sessionToken?.let { coordinator.release(it) }             // ④
         sessionToken = null
@@ -524,7 +559,7 @@ class WalkGuideModel(
     /** 사용자 중지(시트·알림 "안내 종료"). 정지 톤 + 의미 있는 보행이면 `.stopped` 종료 화면(동기 판정). */
     fun stopByUser() {
         val text = strings.get("android.beacon.stopped")
-        if (stopLeavingSummary(playStopTone = true, text = text)) announce(text, highPriority = true)
+        if (stopLeavingSummary(playStopTone = true, text = text)) announce(text, highPriority = true, speechClass = GuideSpeechClass.actionable)
     }
 
     /**
@@ -642,6 +677,9 @@ class WalkGuideModel(
         if (!foreground) { wasBackgrounded = true; return }
         val returnedFromBackground = wasBackgrounded
         wasBackgrounded = false
+        // 복귀 인계(E53 §4.2 ⑥): 백그라운드에서 말하던 이 칸의 문장·칸에 기다리던 문장을 받아 아래 상환과 **한 문장**으로 낸다(두 문장을 잇달아
+        // 내면 뒤의 것이 앞의 것을 끊는다). 백그라운드를 거치지 않은 복귀엔 넘길 것이 없다.
+        val handed = if (returnedFromBackground) deviceSpeech.handOver() else DeviceSpeechHandover.empty
         if (returnedFromBackground && !isTracking && arrivalDest != null) {
             val since = endedAt?.let { clock() - it }
             if (since != null && isEndScreenStale(since)) {
@@ -651,20 +689,25 @@ class WalkGuideModel(
                 clearArrival()
             }
         }
-        if (missedAnnouncement || pendingStepFreeNotice != null || pendingFinalApproachIntro != null) {
+        val repaying = missedAnnouncement || pendingStepFreeNotice != null || pendingFinalApproachIntro != null
+        if (repaying || !handed.isEmpty) {
             missedAnnouncement = false
             val intro = pendingFinalApproachIntro
             // 상태 행이 비어 있으면(실행 안내 직후 — 역할 분리로 statusText에 실행 안내가 남지 않는다) 마지막 안내가 곧 현재 상태다(iOS 동형).
             val current = statusText.ifEmpty { lastGuidance.orEmpty() }
-            val tail = if (current.isEmpty() || current == intro) null else current
-            val owed = listOfNotNull(pendingStepFreeNotice, intro, tail).joinToString(" ")
+            // 현재 상태 꼬리는 버린 문장이 있을 때만(인계만 있으면 마지막 상태는 인계 문장이다), 인계와 같은 문장이면 뺀다(낭독 정정 뒤끼리 비교).
+            val tail = if (!repaying || current.isEmpty() || current == intro || spokenDistanceUnits(current, strings.get("android.unit.spokenMeters")) in handed.texts) null else current
+            // 순서: 인계(끊긴 옛 발화 → 칸의 새 문장) → 세션 경고 → 진입 서술 → 현재 상태.
+            val owed = (handed.texts + listOfNotNull(pendingStepFreeNotice, intro, tail)).joinToString(" ")
             if (owed.isNotEmpty()) {
                 val notice = pendingStepFreeNotice
                 pendingStepFreeNotice = null
                 pendingFinalApproachIntro = null
-                announce(owed) {
+                // 먼저 지우고, 내지 못하면(억제 잔류 등) 되돌린다 — 인계받은 문장도(인계는 전달로 쳐서 칸이 장부를 풀었다, 횡단 리뷰 F6).
+                announce(owed, highPriority = true, speechClass = GuideSpeechClass.actionable) {
                     pendingStepFreeNotice = notice
                     pendingFinalApproachIntro = intro
+                    handed.undelivered()
                 }
             }
         }
@@ -781,7 +824,7 @@ class WalkGuideModel(
             val spoken = if (notice != null) "$notice $summary" else summary
             lastGuidance = text.unit(result.route, initial.firstIndices)
             statusText = spoken
-            announce(spoken, highPriority = true) { if (notice != null) pendingStepFreeNotice = notice }
+            announce(spoken, highPriority = true, speechClass = GuideSpeechClass.actionable) { if (notice != null) pendingStepFreeNotice = notice }
         } finally {
             if (token == routeFetchToken) { awaitingRoute = false; routeFetchJob = null }
         }
@@ -812,7 +855,7 @@ class WalkGuideModel(
         }
         syncOverview()
         statusText = spoken
-        announce(spoken, highPriority = droppedWaypoint)
+        announce(spoken, highPriority = droppedWaypoint, speechClass = GuideSpeechClass.actionable)   // 안내 방식이 바뀐 사실
     }
 
     private fun syncStartRequestWithSession() {
@@ -1032,7 +1075,7 @@ class WalkGuideModel(
             val spoken = noticeText(notice)
             statusText = spoken
             if (notice !is BeaconNotice.Weak) lastGuidance = spoken
-            announce(spoken)
+            announce(spoken, speechClass = beaconNoticeSpeechClass(notice))
         }
         maybePresumeArrival(now)
     }
@@ -1107,21 +1150,23 @@ class WalkGuideModel(
     }
 
     private fun consume(event: GuideEvent, route: GuideRoute) {
+        // 분류(E53 spec §3.2)는 Kit이 정본 — 이탈은 회차 첫 통지만 행동 문장(재통지는 주기). 국면을 바꾸기 전에 읽는다.
+        val cls = guideEventSpeechClass(event, offRouteEpisodeStart = !offRoute)
         when (event) {
-            is GuideEvent.AnnounceSteps -> announceUnit(route, event.indices)
-            is GuideEvent.BundleReread -> announceUnit(route, event.indices)
+            is GuideEvent.AnnounceSteps -> announceUnit(route, event.indices, cls)
+            is GuideEvent.BundleReread -> announceUnit(route, event.indices, cls)
             is GuideEvent.Imminent -> {
                 if (event.stage > 0) return
                 val spoken = text.imminentText(event.action)
                 statusText = spoken
-                if (!outputSuppressed) announce(spoken)
+                if (!outputSuppressed) announce(spoken, speechClass = cls)
             }
             is GuideEvent.FarNotice -> Unit // walk 프로파일은 내지 않는다(farNoticeM = null)
             is GuideEvent.Periodic -> {
                 val spoken = text.periodicWalk(route, event.stepIndex, event.remainingMeters, event.accuracy, destinationLabel, liveSteps.getOrNull(event.stepIndex)?.target)
                 lastGuidance = spoken
                 mutate { copy(statusText = spoken, statusIsNextPreview = true) }
-                announce(spoken)
+                announce(spoken, speechClass = cls)
             }
             GuideEvent.WaypointReached -> {
                 val reached = waypoint ?: return
@@ -1135,14 +1180,14 @@ class WalkGuideModel(
                 // 도착 문장은 다음 목표(목적지)까지 말한다(N4 spec §3). 지나간 사실이라 억제 해제 뒤에 갚아도 참이다.
                 val spoken = strings.get("directions.viaArrivedContinue", reached.label, destinationWithDirectionParticle(destinationLabel))
                 statusText = spoken
-                if (outputSuppressed) pendingRecovery = spoken else announce(spoken)
+                if (outputSuppressed) pendingRecovery = spoken else announce(spoken, speechClass = cls)
             }
             is GuideEvent.WaypointApproaching -> {
                 // 경유지 접근 예고(N4 spec §4.1): 1회, 톤 없음. 실행 안내가 아니라 `lastGuidance`는 덮지 않고, `statusText`에도
                 // 두지 않는다(남은 거리 행이 같은 정보를 실시간으로 보이고, 전경 복귀 상환이 낡은 거리를 읽게 된다). 억제 중이면
                 // 보관하지 않는다 — 거리 문장은 시간이 지나면 거짓(주기 통지와 같은 취급).
                 val label = routeWaypointLabel ?: return
-                if (!outputSuppressed) announce(strings.get("directions.viaRemaining", label, formatDistance(event.remainingMeters)))
+                if (!outputSuppressed) announce(strings.get("directions.viaRemaining", label, formatDistance(event.remainingMeters)), speechClass = cls)
             }
             GuideEvent.FinalApproachEnter -> Unit // fix를 쥔 handleDetail이 가른다
             GuideEvent.OffRoute -> {
@@ -1150,7 +1195,7 @@ class WalkGuideModel(
                 offRoute = true
                 val spoken = strings.get("guide.offRoute")
                 statusText = spoken
-                announce(spoken)
+                announce(spoken, speechClass = cls)
                 if (isEpisodeStart) maybeFetchProposal()
             }
             GuideEvent.BackOnRoute -> {
@@ -1160,21 +1205,21 @@ class WalkGuideModel(
                 val spoken = strings.get("guide.backOnRoute")
                 statusText = spoken
                 resultHaptic(ResultHapticKind.success)
-                announce(spoken)
+                announce(spoken, speechClass = cls)
             }
-            GuideEvent.UncertainEnter -> { statusText = strings.get("guide.uncertain"); announce(statusText) }
-            GuideEvent.UncertainExit, GuideEvent.Reacquired -> { statusText = strings.get("guide.uncertainRecovered"); announce(statusText) }
-            GuideEvent.Reacquiring -> { statusText = strings.get("guide.reacquiring"); announce(statusText) }
+            GuideEvent.UncertainEnter -> { statusText = strings.get("guide.uncertain"); announce(statusText, speechClass = cls) }
+            GuideEvent.UncertainExit, GuideEvent.Reacquired -> { statusText = strings.get("guide.uncertainRecovered"); announce(statusText, speechClass = cls) }
+            GuideEvent.Reacquiring -> { statusText = strings.get("guide.reacquiring"); announce(statusText, speechClass = cls) }
             GuideEvent.SpeedSuggest -> Unit
         }
     }
 
     /** 실행 안내 — 상태 행은 비운다(직전 예고를 남기면 이미 돈 회전을 남은 것처럼 읽는다). 억제 중이면 최신 1개 보관. */
-    private fun announceUnit(route: GuideRoute, indices: List<Int>) {
+    private fun announceUnit(route: GuideRoute, indices: List<Int>, speechClass: GuideSpeechClass) {
         val spoken = text.unit(route, indices)
         lastGuidance = spoken
         statusText = ""
-        if (outputSuppressed) pendingRecovery = spoken else announce(spoken)
+        if (outputSuppressed) pendingRecovery = spoken else announce(spoken, speechClass = speechClass)
     }
 
     // ─────────────────────────── 최종 접근·도착 ───────────────────────────
@@ -1212,7 +1257,7 @@ class WalkGuideModel(
             syncOverview()
             val spoken = strings.get("guide.handoff")
             statusText = spoken
-            announce(spoken)
+            announce(spoken, speechClass = GuideSpeechClass.actionable)
             return
         }
         finalApproachGeometry = usable
@@ -1264,7 +1309,7 @@ class WalkGuideModel(
             lastGuidance = spoken
             liveTopText = spoken
             resultHaptic(ResultHapticKind.attention)
-            announce(spoken) { pendingFinalApproachIntro = spoken }
+            announce(spoken, speechClass = GuideSpeechClass.actionable) { pendingFinalApproachIntro = spoken }
             return
         }
         if (arrived) {
@@ -1276,7 +1321,7 @@ class WalkGuideModel(
             statusText = spoken
             lastGuidance = spoken
             liveTopText = spoken
-            announce(spoken, highPriority = true)
+            announce(spoken, highPriority = true, speechClass = GuideSpeechClass.actionable)
             return
         }
         if (maybePresumeArrival(now)) return
@@ -1287,7 +1332,7 @@ class WalkGuideModel(
         statusText = spoken
         lastGuidance = spoken
         liveTopText = spoken
-        announce(spoken)
+        announce(spoken, speechClass = GuideSpeechClass.deferrable)
     }
 
     /** 실시간 상대 방향. 게이트를 통과하지 못하면 null — 소비자는 방향 어절을 통째로 뺀다. `speed` null은 -1.0(Unknown). */
@@ -1323,7 +1368,7 @@ class WalkGuideModel(
         statusText = spoken
         lastGuidance = spoken
         liveTopText = spoken
-        announce(spoken, highPriority = true)
+        announce(spoken, highPriority = true, speechClass = GuideSpeechClass.deferrable)   // 안전망 종료는 백그라운드에서 말하지 않는다(E53 코디네이터 판정 — 복귀 상환이 갚는다)
         return true
     }
 
@@ -1345,7 +1390,7 @@ class WalkGuideModel(
         statusText = spoken
         lastGuidance = spoken
         liveTopText = spoken
-        announce(spoken, highPriority = true)
+        announce(spoken, highPriority = true, speechClass = GuideSpeechClass.deferrable)   // 사후 정리(도착 3~5분 뒤)
         return true
     }
 
@@ -1381,7 +1426,7 @@ class WalkGuideModel(
     fun announceProgress() {
         val spoken = progressText()
         statusText = spoken
-        announce(spoken, highPriority = true)
+        announce(spoken, highPriority = true, speechClass = GuideSpeechClass.actionable)
     }
 
     /** 이탈 중 수동 재조회 — 자동 재조회가 채택하지 못했을 때의 예비 출구. 진행 중 자동 조회는 폐기(토큰 증가). */
@@ -1426,7 +1471,7 @@ class WalkGuideModel(
             val spoken = if (notice != null) "$notice $summary" else summary
             statusText = spoken
             resultHaptic(ResultHapticKind.success)
-            announce(spoken, highPriority = true) { if (notice != null) pendingStepFreeNotice = notice }
+            announce(spoken, highPriority = true, speechClass = GuideSpeechClass.actionable) { if (notice != null) pendingStepFreeNotice = notice }
             if (switchTo != null) mutate { copy(variantAdoptedSeq = variantAdoptedSeq + 1) }
         } finally {
             if (token == rerouteToken) { rerouteInFlight = false; isRerouting = false; isSwitchingVariant = false }
@@ -1437,7 +1482,7 @@ class WalkGuideModel(
         lastStepFree = null
         statusText = strings.get("guide.rerouteFailed")
         resultHaptic(ResultHapticKind.failure)
-        announce(statusText, highPriority = true)
+        announce(statusText, highPriority = true, speechClass = GuideSpeechClass.actionable)
     }
 
     /** 재조회·자동 채택 공통의 성공 커밋 — 경로·기준선·이탈 표결·finalApproach·표시 유닛을 한 지점에서 원자 교체. */
@@ -1493,7 +1538,7 @@ class WalkGuideModel(
         val spoken = if (notice != null) "$notice $summary" else summary
         statusText = spoken
         resultHaptic(ResultHapticKind.success)
-        announce(spoken, highPriority = true) { if (notice != null) pendingStepFreeNotice = notice }
+        announce(spoken, highPriority = true, speechClass = GuideSpeechClass.actionable) { if (notice != null) pendingStepFreeNotice = notice }
     }
 
     private fun clearProposal() { proposalToken += 1 }
@@ -1675,18 +1720,18 @@ class WalkGuideModel(
         if (token != altPreviewToken || !isTracking || mode != GuideMode.detail || this.dest != dest || this.waypoint != waypointAtFetch) return
         if (fetched == null) {
             altPreviewState = AltPreviewState.NoRoute
-            announce(strings.get("android.guide.altPreviewNone"))
+            announce(strings.get("android.guide.altPreviewNone"), speechClass = GuideSpeechClass.actionable)
             return
         }
         altPreviewState = AltPreviewState.Ready(RerouteProposal(originLat = origin.lat, originLng = origin.lng, acquiredAt = acquiredAt), fetched)
         // 완료 신호 polite 1회 — 헤더는 조용히 갱신되므로 이 통지가 없으면 결과 도착을 알 길이 없다.
-        announce(altPreviewHeaderText())
+        announce(altPreviewHeaderText(), speechClass = GuideSpeechClass.actionable)
     }
 
     private fun failAlternativePreview(token: Int) {
         if (token != altPreviewToken) return
         altPreviewState = AltPreviewState.Failed
-        announce(strings.get("android.guide.altPreviewFailed"))
+        announce(strings.get("android.guide.altPreviewFailed"), speechClass = GuideSpeechClass.actionable)
     }
 
     /**
@@ -1728,7 +1773,7 @@ class WalkGuideModel(
             val spoken = if (notice != null) "$notice $summary" else summary
             statusText = spoken
             resultHaptic(ResultHapticKind.success)   // 폴백(재조회) 경로의 성공과 같은 신호 — 같은 사건을 두 경로가 다르게 알리지 않는다
-            announce(spoken, highPriority = true) { if (notice != null) pendingStepFreeNotice = notice }
+            announce(spoken, highPriority = true, speechClass = GuideSpeechClass.actionable) { if (notice != null) pendingStepFreeNotice = notice }
             mutate { copy(variantAdoptedSeq = variantAdoptedSeq + 1) }
             return
         }
@@ -1776,7 +1821,7 @@ class WalkGuideModel(
         lastStaleNoticeAt?.let { if (now - it < staleRenotifySeconds) return }
         lastStaleNoticeAt = now
         statusText = strings.get("beacon.weak")
-        announce(statusText)
+        announce(statusText, speechClass = GuideSpeechClass.deferrable)
     }
 
     // ─────────────────────────── 출력 (§5) ───────────────────────────
@@ -1801,7 +1846,7 @@ class WalkGuideModel(
                 resultHaptic(ResultHapticKind.failure)
                 val spoken = strings.get("android.beacon.soundUnavailable")
                 statusText = spoken
-                announce(spoken)
+                announce(spoken, speechClass = GuideSpeechClass.actionable)   // 1회성 경고
             }
         } else {
             silencedNoticed = false
@@ -1824,14 +1869,15 @@ class WalkGuideModel(
         if (zero && !mediaVolumeNoticed) {
             mediaVolumeNoticed = true
             resultHaptic(ResultHapticKind.attention)
-            announce(strings.get("android.guide.mediaVolumeZero"))
+            announce(strings.get("android.guide.mediaVolumeZero"), speechClass = GuideSpeechClass.actionable)   // 1회성 경고
         } else if (!zero) {
             mediaVolumeNoticed = false
         }
     }
 
-    private fun announce(message: String, highPriority: Boolean = false, onDropped: (() -> Unit)? = null) =
-        deferredAnnouncer.announce(message, highPriority, onDropped)
+    /** 자동 통지 창구. `speechClass`(E53 spec §3.2)는 기본값이 없다 — 새 통지 경로가 분류를 빠뜨리면 컴파일이 멈춘다. */
+    private fun announce(message: String, highPriority: Boolean = false, speechClass: GuideSpeechClass, onDropped: (() -> Unit)? = null) =
+        deferredAnnouncer.announce(message, highPriority, speechClass, onDropped)
 
     /** 사용자 활성화의 직접 응답 전용 즉시 창구. */
     fun announceNow(message: String, highPriority: Boolean = false, bypassSuppression: Boolean = false) =
@@ -1842,28 +1888,57 @@ class WalkGuideModel(
      * 기다린다(착지 낭독이 시작 요약·복귀 상환과 겹치지 않게). 안드로이드는 안내 문장이 TTS 한 채널이라 끝을 발화 완료 콜백으로 직접 안다 — iOS의 게시
      * 장부(`GuideAnnouncementLedger`)가 필요 없다. 앱의 다른 통지(탭 상태 줄)는 세지 않는다.
      */
-    fun announcementsSettled(): Boolean = !deferredAnnouncer.hasPending && !speaker.isSpeaking
+    fun announcementsSettled(): Boolean = !deferredAnnouncer.hasPending && !deviceSpeech.hasPending && !speaker.isSpeaking
 
-    private fun isSpeechAllowed(): Boolean = env.isForeground() || !env.isInteractive()
+    /**
+     * 채널 선택(E53 spec §2, 판정은 :kit `guideSpeechChannel`) — 게시 시점 상태로. 안드로이드 매핑: `voiceOver` = 전경 직접 발화(안내 문장 채널은 TTS
+     * 하나라 접근성 통지가 없다 — 그래서 `voiceOverRunning`·`foregroundDeviceSpeech`가 거짓이면 전경은 늘 이 갈래), `device` = 백그라운드(잠금·다른 앱)
+     * 행동 문장, `drop` = 백그라운드의 주기·상태 문장과 토글 끔(효과음만). 가청은 미디어 볼륨 0이 아닌가(M4의 `isBackgroundAudible` 대체 축).
+     */
+    private fun speechChannel(speechClass: GuideSpeechClass): GuideSpeechChannel = guideSpeechChannel(
+        foreground = env.isForeground(),
+        voiceOverRunning = false,
+        speechClass = speechClass,
+        backgroundSpeechEnabled = BackgroundSpeech.isEnabled(store.getString(BackgroundSpeech.storageKey)?.toBooleanStrictOrNull()),
+        backgroundAudible = !tones.isMediaVolumeZero,
+        foregroundDeviceSpeech = false,
+    )
 
-    /** 실제 게시 — 억제 가드 → 음성 게이트 → `missedAnnouncement` → 게시. 발화 포트 호출은 이 모델에서 여기 한 곳(소스 가드 ④). */
-    private fun post(message: String, highPriority: Boolean, bypassSuppression: Boolean): Boolean {
+    /**
+     * 실제 게시 — 억제 가드 → 채널 선택 → 발화. 발화 포트 호출은 여기(전경 직접 발화)와 대기 칸 배선 둘뿐이다(소스 가드 ④). 백그라운드에서 버리는
+     * 문장은 **발화만** 막는다(`statusText`·`lastGuidance`는 호출부가 이미 갱신 — 복귀 시 화면이 최신이다). 대기 칸이 나중에 문장을 버리면 장부를
+     * 되살린다(교체 `superseded`는 상환 표식을 세우지 않는다 — 마지막 상태는 더 새 문장이 전했다).
+     */
+    private fun post(message: String, highPriority: Boolean, bypassSuppression: Boolean, speechClass: GuideSpeechClass, onLateDrop: (() -> Unit)?): Boolean {
         if (!bypassSuppression && outputSuppressed) return false
-        if (!isSpeechAllowed()) { missedAnnouncement = true; return false }
+        val channel = speechChannel(speechClass)
+        if (!env.isForeground()) GuideDiag.log { "bgSpeech channel=${channel.rawValue} class=${speechClass.rawValue} text=$message" }
+        if (channel == GuideSpeechChannel.drop) { missedAnnouncement = true; return false }
         var spoken = spokenDistanceUnits(message, strings.get("android.unit.spokenMeters"))
         val owesFocusDenied = pendingFocusDenied && !tones.focusDenied
         if (owesFocusDenied) {
             pendingFocusDenied = false
             spoken = strings.get("android.guide.focusDenied") + " " + spoken
         }
-        val ok = speaker.speak(spoken, highPriority)
-        syncTtsUnavailable()
-        if (!ok) {
-            // 장부 복원 — "지우고, 못 내면 되돌린다"(다른 장부와 같은 계약).
-            if (owesFocusDenied) pendingFocusDenied = true
-            missedAnnouncement = true
-            return false
+        if (channel == GuideSpeechChannel.voiceOver) {
+            val ok = speaker.speak(spoken, highPriority) != null
+            syncTtsUnavailable()
+            if (!ok) {
+                // 장부 복원 — "지우고, 못 내면 되돌린다"(다른 장부와 같은 계약).
+                if (owesFocusDenied) pendingFocusDenied = true
+                missedAnnouncement = true
+            }
+            return ok
         }
+        // 들은 문장을 복귀 때 또 말하지 않는다(E53 §4.3) — 백그라운드에서 말했으면 마지막 상태를 들었다.
+        missedAnnouncement = false
+        deviceSpeech.submit(spoken, highPriority, protected = false, bypassSuppression = bypassSuppression, speechClass = speechClass) { reason ->
+            if (owesFocusDenied) pendingFocusDenied = true
+            if (reason == DeviceSpeechDrop.undelivered) missedAnnouncement = true
+            syncTtsUnavailable()
+            onLateDrop?.invoke()
+        }
+        syncTtsUnavailable()
         return true
     }
 

@@ -1,6 +1,7 @@
 package space.dodoplanet.gildongmu.audio
 
 import android.media.AudioManager
+import space.dodoplanet.gildongmu.kit.DeviceSpeechDrop
 import space.dodoplanet.gildongmu.kit.InMemoryKeyValueStore
 import space.dodoplanet.gildongmu.kit.ListenSpeed
 import kotlin.test.Test
@@ -22,6 +23,8 @@ class FakeTts : TtsPort {
     override fun setRate(rate: Float) { rates += rate }
     override fun speakFlush(text: String, utteranceId: String): Boolean { spoken += text to utteranceId; return speakOk }
     override fun setProgressListener(onDone: (String) -> Unit) { this.onDone = onDone }
+    var stops = 0
+    override fun stop() { stops++ }
 }
 
 /** spec §5-3 — 보류 1문장·언어 미지원·포커스 거절·최신 id만 반납·배율 표. */
@@ -33,22 +36,33 @@ class TtsGuideSpeakerTest {
     private val store = InMemoryKeyValueStore()
     private val speaker = TtsGuideSpeaker(tts, focus, store, { "ko" })
 
-    @Test fun `초기화 전 두 문장 → 준비 뒤 최신 1개만`() {
-        assertTrue(speaker.speak("a", false))
-        assertTrue(speaker.speak("b", true))
+    @Test fun `초기화 전 두 문장 → 준비 뒤 최신 1개만(밀린 보류 문장은 superseded로 알린다)`() {
+        val cut = mutableListOf<Pair<Int, DeviceSpeechDrop>>()
+        speaker.onInterrupted = { t, r -> cut += t to r }
+        assertEquals(1, speaker.speak("a", false))
+        assertEquals(2, speaker.speak("b", true))
+        assertEquals(listOf(1 to DeviceSpeechDrop.superseded), cut)
+        assertTrue(speaker.isSpeaking && speaker.isSpeakingToken(2) && !speaker.isSpeakingToken(1))
         assertEquals(emptyList(), tts.spoken)
         tts.onReady!!(true)
-        assertEquals(listOf("b" to "1"), tts.spoken)
+        assertEquals(listOf("b" to "2"), tts.spoken)
+        assertTrue(speaker.isSpeakingToken(2))
+        tts.onDone!!("2")
+        assertFalse(speaker.isSpeaking)
         assertEquals(listOf("ko"), tts.languages)
         assertFalse(speaker.isUnavailable)
     }
 
     @Test fun `초기화 실패 → isUnavailable, 보류 버림, 이후 speak false`() {
+        val cut = mutableListOf<Pair<Int, DeviceSpeechDrop>>()
+        speaker.onInterrupted = { t, r -> cut += t to r }
         speaker.speak("a", false)
         tts.onReady!!(false)
         assertTrue(speaker.isUnavailable)
         assertEquals(emptyList(), tts.spoken)
-        assertFalse(speaker.speak("c", false))
+        assertEquals(listOf(1 to DeviceSpeechDrop.undelivered), cut, "보류 문장은 전달되지 않았다")
+        assertFalse(speaker.isSpeaking)
+        assertNull(speaker.speak("c", false))
     }
 
     @Test fun `언어 미지원 → isUnavailable·speak false`() {
@@ -56,21 +70,25 @@ class TtsGuideSpeakerTest {
         speaker.prepare()
         tts.onReady!!(true)
         assertTrue(speaker.isUnavailable)
-        assertFalse(speaker.speak("a", false))
+        assertNull(speaker.speak("a", false))
         assertEquals(emptyList(), tts.spoken)
     }
 
     @Test fun `포커스 거절 → speakFlush 0·false`() {
         speaker.prepare(); tts.onReady!!(true)
         port.nextResult = AudioManager.AUDIOFOCUS_REQUEST_FAILED
-        assertFalse(speaker.speak("a", false))
+        assertNull(speaker.speak("a", false))
         assertEquals(emptyList(), tts.spoken)
     }
 
-    @Test fun `반납은 최신 utterance의 onDone에서만 — 옛 id는 무시`() {
+    @Test fun `반납은 최신 utterance의 onDone에서만 — 옛 id는 무시, 끝나지 않은 발화를 끊으면 그 토큰을 superseded로 알린다`() {
         speaker.prepare(); tts.onReady!!(true)
+        val cut = mutableListOf<Pair<Int, DeviceSpeechDrop>>()
+        speaker.onInterrupted = { t, r -> cut += t to r }
         speaker.speak("a", false)   // id 1
         speaker.speak("b", false)   // id 2 (flush)
+        assertEquals(listOf(1 to DeviceSpeechDrop.superseded), cut)
+        assertTrue(speaker.isSpeakingToken(2) && !speaker.isSpeakingToken(1))
         tts.onDone!!("1")
         sched.runDue(1.0)
         assertEquals(0, port.abandons)
@@ -85,7 +103,8 @@ class TtsGuideSpeakerTest {
     @Test fun `엔진 실패 → false + 반납 예약`() {
         speaker.prepare(); tts.onReady!!(true)
         tts.speakOk = false
-        assertFalse(speaker.speak("a", false))
+        assertNull(speaker.speak("a", false))
+        assertFalse(speaker.isSpeaking)
         sched.runDue(0.2)
         assertEquals(1, port.abandons)
     }
@@ -120,7 +139,7 @@ class TtsGuideSpeakerTest {
         var dropped = 0
         val t1 = FakeTts()
         val s1 = TtsGuideSpeaker(t1, focus, store, { "ko" }, onPendingDropped = { dropped++ })
-        assertTrue(s1.speak("a", false))
+        assertEquals(1, s1.speak("a", false))
         t1.onReady!!(false)
         assertEquals(1, dropped)
         val t2 = FakeTts().also { it.languageOk = false }

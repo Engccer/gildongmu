@@ -86,6 +86,7 @@ fun SettingsScreen(
     val language by store.language.collectAsState()
     val dictation by store.dictationStyle.collectAsState()
     val haptics by store.resultHapticsEnabled.collectAsState()
+    val backgroundSpeech by store.backgroundSpeechEnabled.collectAsState()
     val theme by store.themePreference.collectAsState()
     val listenSpeed by store.listenSpeed.collectAsState()
     val consent = remember { ChatServices.get(context).consent }
@@ -169,6 +170,11 @@ fun SettingsScreen(
                         }
                         SettingsRow.Language -> ValueRow(joinText(stringResource(R.string.android_settings_language), languageValue), "settings-language", focus) { dialog = row }
                         SettingsRow.Dictation -> ValueRow(joinText(stringResource(R.string.android_settings_dictationStyle), dictationValue), "settings-dictation", focus) { dialog = row }
+                        // 백그라운드 음성 안내(E53) — 설명은 체중처럼 행 뒤 한 줄(헤딩 묶음 안, 한 줄 = 한 객체).
+                        SettingsRow.BackgroundSpeech -> {
+                            SwitchRow(stringResource(R.string.android_settings_backgroundSpeech), backgroundSpeech, "settings-backgroundspeech", focus) { store.setBackgroundSpeech(it) }
+                            Text(stringResource(R.string.android_settings_backgroundSpeechFooter), Modifier.fillMaxWidth().mergedRow("settings-backgroundspeech-footer").padding(vertical = 8.dp))
+                        }
                         SettingsRow.ResultHaptics -> {
                             SwitchRow(stringResource(R.string.android_settings_trendHaptics), haptics, "settings-haptics", focus) { store.setResultHaptics(it) }
                             Text(stringResource(R.string.android_settings_resultHapticsFooter), Modifier.fillMaxWidth().mergedRow("settings-haptics-footer").padding(vertical = 8.dp))

@@ -17,6 +17,17 @@ class SettingsStoreTest {
         assertEquals("ko", localeOverride("ko")); assertEquals("ja", localeOverride("ja"))
     }
 
+    @Test fun `백그라운드 음성 안내 — 기본 켬, 끔 왕복, 미지 값은 기본(iOS 키 backgroundSpeechEnabled)`() {
+        val mem = InMemoryKeyValueStore()
+        val s = SettingsStore(mem).also { it.load() }
+        assertTrue(s.backgroundSpeechEnabled.value)
+        s.setBackgroundSpeech(false)
+        assertEquals("false", mem.getString("backgroundSpeechEnabled"))
+        assertFalse(SettingsStore(mem).also { it.load() }.backgroundSpeechEnabled.value)
+        mem.putString("backgroundSpeechEnabled", "weird")
+        assertTrue(SettingsStore(mem).also { it.load() }.backgroundSpeechEnabled.value)
+    }
+
     @Test fun `언어·받아쓰기·진동 왕복과 기본값, 미지 값은 기본`() {
         val mem = InMemoryKeyValueStore()
         val s = SettingsStore(mem).also { it.load() }

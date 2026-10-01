@@ -6,9 +6,9 @@ import kotlin.test.assertNull
 
 /** spec §14-1 — 행 목록(논리 항목)은 순수 함수(iOS `SettingsView` 순서), 진입 착지 대상도 순수. */
 class SettingsRowsTest {
-    @Test fun `정식판 9행 iOS 순서, 실험판은 체중 뒤에 결과 진동이 들어 10행`() {
+    @Test fun `정식판 10행 iOS 순서(백그라운드 음성 안내는 길 안내 맨 앞), 실험판은 체중 뒤에 결과 진동이 들어 11행`() {
         val release = listOf(
-            SettingsRow.Theme, SettingsRow.Language, SettingsRow.Dictation, SettingsRow.ListenSpeed, SettingsRow.Weight,
+            SettingsRow.Theme, SettingsRow.Language, SettingsRow.Dictation, SettingsRow.ListenSpeed, SettingsRow.BackgroundSpeech, SettingsRow.Weight,
             SettingsRow.AiConsent, SettingsRow.PrivacyPolicy, SettingsRow.ReportProblem, SettingsRow.DataSources,
         )
         assertEquals(release, settingsRows(false))
@@ -24,7 +24,7 @@ class SettingsRowsTest {
         val judged = mapOf(
             SettingsRow.Theme to SettingsGroup.General, SettingsRow.Language to SettingsGroup.General,
             SettingsRow.Dictation to SettingsGroup.Voice, SettingsRow.ListenSpeed to SettingsGroup.Voice,
-            SettingsRow.Weight to SettingsGroup.Guidance, SettingsRow.ResultHaptics to SettingsGroup.Guidance,
+            SettingsRow.BackgroundSpeech to SettingsGroup.Guidance, SettingsRow.Weight to SettingsGroup.Guidance, SettingsRow.ResultHaptics to SettingsGroup.Guidance,
             SettingsRow.AiConsent to SettingsGroup.AiChat, SettingsRow.PrivacyPolicy to SettingsGroup.AiChat, SettingsRow.ReportProblem to SettingsGroup.AiChat,
             SettingsRow.DataSources to SettingsGroup.About,
         )

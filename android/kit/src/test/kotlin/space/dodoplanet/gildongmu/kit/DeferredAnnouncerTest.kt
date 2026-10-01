@@ -30,6 +30,8 @@ class DeferredAnnouncerTest {
         var now = 0.0
         val sleeps = mutableListOf<Double>()
         val posts = mutableListOf<Post>()
+        val postedClasses = mutableListOf<GuideSpeechClass>()
+        val lateDrops = mutableListOf<(() -> Unit)?>()
 
         /** post의 반환값(게시 성공 여부). 억제·백그라운드 실패를 흉내 낸다. */
         var postResult = true
@@ -71,8 +73,10 @@ class DeferredAnnouncerTest {
                 if (holdSleeper) suspendCoroutine { sleepWaiter = it }
             },
             toneEndsAt = { nextToneEndsAt() },
-            post = { text, high, bypass ->
+            post = { text, high, bypass, speechClass, lateDrop ->
                 posts.add(Post(text, high, bypass))
+                postedClasses.add(speechClass)
+                lateDrops.add(lateDrop)
                 postResult
             },
         )
@@ -86,7 +90,7 @@ class DeferredAnnouncerTest {
     @Test fun immediateWhenNoTone() = runTest {
         val h = Harness(this)
         h.toneScript = listOf(null)
-        h.announcer.announce("지금")
+        h.announcer.announce("지금", speechClass = GuideSpeechClass.actionable)
         assertEquals(listOf("지금"), h.texts) // 동기 게시(코루틴 경유 아님)
         assertTrue(h.sleeps.isEmpty())
     }
@@ -94,7 +98,7 @@ class DeferredAnnouncerTest {
     @Test fun longToneDefersUntilToneEnds() = runTest {
         val h = Harness(this)
         h.toneScript = listOf(2.246, 2.246) // 예약 시 + 재평가 시
-        h.announcer.announce("도착했습니다")
+        h.announcer.announce("도착했습니다", speechClass = GuideSpeechClass.actionable)
         assertTrue(h.posts.isEmpty()) // 예약만 — 아직 발화 없음
         drain()
         assertEquals(listOf("도착했습니다"), h.texts)
@@ -106,13 +110,13 @@ class DeferredAnnouncerTest {
         val h = Harness(this)
         assertFalse(h.announcer.hasPending)
         h.toneScript = listOf(2.246, 2.246)
-        h.announcer.announce("요약")
+        h.announcer.announce("요약", speechClass = GuideSpeechClass.actionable)
         assertTrue(h.announcer.hasPending)
         drain()
         assertEquals(listOf("요약"), h.texts)
         assertFalse(h.announcer.hasPending)
         h.toneScript = listOf(2.246)
-        h.announcer.announce("버릴 문장")
+        h.announcer.announce("버릴 문장", speechClass = GuideSpeechClass.actionable)
         h.announcer.advanceGeneration()
         assertFalse(h.announcer.hasPending)
     }
@@ -121,7 +125,7 @@ class DeferredAnnouncerTest {
     @Test fun invalidatedPendingNeverPosts() = runTest {
         val h = Harness(this)
         h.toneScript = listOf(2.246)
-        h.announcer.announce("버릴 문장")
+        h.announcer.announce("버릴 문장", speechClass = GuideSpeechClass.actionable)
         h.announcer.invalidatePending()
         drain()
         assertTrue(h.posts.isEmpty())
@@ -133,7 +137,7 @@ class DeferredAnnouncerTest {
         h.holdSleeper = true
         h.toneScript = listOf(2.246, null) // 재평가에 닿으면 즉시 게시하도록 둘째는 톤 없음
         var dropped = 0
-        h.announcer.announce("버릴 문장") { dropped += 1 }
+        h.announcer.announce("버릴 문장", speechClass = GuideSpeechClass.actionable) { dropped += 1 }
         testScheduler.runCurrent()
         assertEquals(1, h.sleeps.size) // 본문이 sleeper 안에서 멈췄다
         h.announcer.invalidatePending()
@@ -149,7 +153,7 @@ class DeferredAnnouncerTest {
         h.holdSleeper = true
         h.toneScript = listOf(2.246, null)
         var dropped = 0
-        h.announcer.announce("끝난 경로의 명령") { dropped += 1 }
+        h.announcer.announce("끝난 경로의 명령", speechClass = GuideSpeechClass.actionable) { dropped += 1 }
         testScheduler.runCurrent()
         assertEquals(1, h.sleeps.size)
         h.announcer.advanceGeneration()
@@ -163,7 +167,7 @@ class DeferredAnnouncerTest {
     @Test fun generationAdvanceDropsPending() = runTest {
         val h = Harness(this)
         h.toneScript = listOf(2.246)
-        h.announcer.announce("끝난 경로의 명령")
+        h.announcer.announce("끝난 경로의 명령", speechClass = GuideSpeechClass.actionable)
         h.announcer.advanceGeneration()
         drain()
         assertTrue(h.posts.isEmpty())
@@ -173,8 +177,8 @@ class DeferredAnnouncerTest {
     @Test fun latestWinsReplacesPending() = runTest {
         val h = Harness(this)
         h.toneScript = listOf(2.246, 2.246, 2.246)
-        h.announcer.announce("옛 문장")
-        h.announcer.announce("새 문장")
+        h.announcer.announce("옛 문장", speechClass = GuideSpeechClass.actionable)
+        h.announcer.announce("새 문장", speechClass = GuideSpeechClass.actionable)
         drain()
         assertEquals(listOf("새 문장"), h.texts)
     }
@@ -183,8 +187,8 @@ class DeferredAnnouncerTest {
     @Test fun immediateAnnounceDropsPendingFirst() = runTest {
         val h = Harness(this)
         h.toneScript = listOf(2.246, null) // 첫 통지는 지연, 둘째는 톤 없음(즉시)
-        h.announcer.announce("이전 목적지 명령")
-        h.announcer.announce("목적지가 변경되었습니다")
+        h.announcer.announce("이전 목적지 명령", speechClass = GuideSpeechClass.actionable)
+        h.announcer.announce("목적지가 변경되었습니다", speechClass = GuideSpeechClass.actionable)
         assertEquals(listOf("목적지가 변경되었습니다"), h.texts)
         drain()
         assertEquals(listOf("목적지가 변경되었습니다"), h.texts)
@@ -194,7 +198,7 @@ class DeferredAnnouncerTest {
     @Test fun announceNowDropsPendingAndPostsImmediately() = runTest {
         val h = Harness(this)
         h.toneScript = listOf(2.246, 2.246) // 톤이 재생 중이어도 announceNow는 미루지 않는다
-        h.announcer.announce("이전 목적지 명령")
+        h.announcer.announce("이전 목적지 명령", speechClass = GuideSpeechClass.actionable)
         h.announcer.announceNow("목적지가 변경되었습니다", highPriority = true, bypassSuppression = true)
         assertEquals(listOf("목적지가 변경되었습니다"), h.texts)
         assertEquals(true, h.posts.first().bypass)
@@ -207,7 +211,7 @@ class DeferredAnnouncerTest {
         val h = Harness(this)
         // 예약 시 ahead(0.731) → 첫 대기 0.881 뒤 재평가 시점에 새 톤이 1.9에 끝남.
         h.toneScript = listOf(0.731, 1.9, 1.9)
-        h.announcer.announce("왼쪽으로 도세요")
+        h.announcer.announce("왼쪽으로 도세요", speechClass = GuideSpeechClass.actionable)
         drain()
         assertEquals(listOf("왼쪽으로 도세요"), h.texts)
         assertEquals(2, h.sleeps.size) // 첫 대기 + 재평가 추가 대기
@@ -220,7 +224,7 @@ class DeferredAnnouncerTest {
     @Test fun totalWaitCappedAtMax() = runTest {
         val h = Harness(this)
         h.toneDynamic = { h.now + 2 } // 항상 잔여 2초
-        h.announcer.announce("상한 문장")
+        h.announcer.announce("상한 문장", speechClass = GuideSpeechClass.actionable)
         drain()
         assertEquals(listOf("상한 문장"), h.texts)
         assertTrue(abs(h.now - SpeechDeferConstants.speechDeferMaxSeconds) < 1e-9)
@@ -232,12 +236,12 @@ class DeferredAnnouncerTest {
         h.postResult = false
         var droppedImmediate = 0
         h.toneScript = listOf(null)
-        h.announcer.announce("즉시 실패") { droppedImmediate += 1 }
+        h.announcer.announce("즉시 실패", speechClass = GuideSpeechClass.actionable) { droppedImmediate += 1 }
         assertEquals(1, droppedImmediate)
 
         var droppedDeferred = 0
         h.toneScript = listOf(2.246, 2.246)
-        h.announcer.announce("지연 실패") { droppedDeferred += 1 }
+        h.announcer.announce("지연 실패", speechClass = GuideSpeechClass.actionable) { droppedDeferred += 1 }
         drain()
         assertEquals(1, droppedDeferred)
     }
@@ -250,8 +254,8 @@ class DeferredAnnouncerTest {
         val h = Harness(this)
         var dropped = 0
         h.toneScript = listOf(2.246, 2.246, 2.246)
-        h.announcer.announce("계단 경고 합본") { dropped += 1 }
-        h.announcer.announce("새 안내")
+        h.announcer.announce("계단 경고 합본", speechClass = GuideSpeechClass.actionable) { dropped += 1 }
+        h.announcer.announce("새 안내", speechClass = GuideSpeechClass.actionable)
         assertEquals(1, dropped) // 선점 시점에 동기 호출
         drain()
         assertEquals(listOf("새 안내"), h.texts)
@@ -263,7 +267,7 @@ class DeferredAnnouncerTest {
         val h = Harness(this)
         var dropped = 0
         h.toneScript = listOf(2.246)
-        h.announcer.announce("끝난 세션의 경고") { dropped += 1 }
+        h.announcer.announce("끝난 세션의 경고", speechClass = GuideSpeechClass.actionable) { dropped += 1 }
         h.announcer.advanceGeneration()
         drain()
         assertEquals(0, dropped)
@@ -274,7 +278,7 @@ class DeferredAnnouncerTest {
         val h = Harness(this)
         var dropped = 0
         h.toneScript = listOf(2.246, 2.246)
-        h.announcer.announce("성공 문장") { dropped += 1 }
+        h.announcer.announce("성공 문장", speechClass = GuideSpeechClass.actionable) { dropped += 1 }
         drain()
         assertEquals(listOf("성공 문장"), h.texts)
         assertEquals(0, dropped)
@@ -287,10 +291,10 @@ class DeferredAnnouncerTest {
     @Test fun staleTaskDoesNotClearNewSlot() = runTest {
         val h = Harness(this)
         h.toneScript = listOf(2.246, 2.246, 2.246)
-        h.announcer.announce("옛 문장")
+        h.announcer.announce("옛 문장", speechClass = GuideSpeechClass.actionable)
         drain() // 옛 슬롯이 게시를 마치고 자기 토큰으로 해제
         h.toneScript = listOf(h.now + 2.246, h.now + 2.246)
-        h.announcer.announce("이후 문장")
+        h.announcer.announce("이후 문장", speechClass = GuideSpeechClass.actionable)
         h.announcer.invalidatePending() // 새 슬롯이 살아 있어야 취소가 성립
         drain()
         assertEquals(listOf("옛 문장"), h.texts) // "이후 문장"은 취소로 미발화
@@ -304,14 +308,42 @@ class DeferredAnnouncerTest {
     @Test fun deferredPostSurvivesImmediateDispatcher() = runTest {
         val h = Harness(CoroutineScope(UnconfinedTestDispatcher(testScheduler)))
         h.toneScript = listOf(2.246, 2.246)
-        h.announcer.announce("도착했습니다")
+        h.announcer.announce("도착했습니다", speechClass = GuideSpeechClass.actionable)
         assertEquals(listOf("도착했습니다"), h.texts)
     }
 
     @Test fun highPriorityForwarded() = runTest {
         val h = Harness(this)
         h.toneScript = listOf(null)
-        h.announcer.announce("중요", highPriority = true)
+        h.announcer.announce("중요", highPriority = true, speechClass = GuideSpeechClass.actionable)
         assertEquals(true, h.posts.first().highPriority)
+    }
+
+    /** E53 §4.1: 분류가 두 경로(즉시·지연)와 즉시 창구(`actionable` 고정) 모두에서 `post`에 닿는다. */
+    @Test fun speechClassReachesPostOnBothPaths() = runTest {
+        val h = Harness(this)
+        h.toneScript = listOf(null)
+        h.announcer.announce("즉시 주기", speechClass = GuideSpeechClass.deferrable)
+        h.toneScript = listOf(2.246, 2.246)
+        h.announcer.announce("지연 행동", speechClass = GuideSpeechClass.actionable)
+        drain()
+        h.announcer.announceNow("직접 응답")
+        assertEquals(listOf("즉시 주기", "지연 행동", "직접 응답"), h.texts)
+        assertEquals(listOf(GuideSpeechClass.deferrable, GuideSpeechClass.actionable, GuideSpeechClass.actionable), h.postedClasses)
+    }
+
+    /** E53 §4.1: `post`가 `true`로 받아 보관한 문장이 나중에 버려지면 `post` 쪽이 onDropped를 부른다 — `true`면 여기서는 부르지 않는다. */
+    @Test fun onDroppedIsForwardedToPostAndNotCalledOnSuccess() = runTest {
+        val h = Harness(this)
+        var dropped = 0
+        h.toneScript = listOf(null)
+        h.announcer.announce("보관될 문장", speechClass = GuideSpeechClass.actionable) { dropped += 1 }
+        assertEquals(1, h.lateDrops.size)
+        assertEquals(0, dropped)
+        h.lateDrops[0]?.invoke()
+        assertEquals(1, dropped)
+        h.announcer.announceNow("직접 응답")
+        assertEquals(2, h.lateDrops.size)
+        assertEquals(null, h.lateDrops[1])
     }
 }

@@ -90,7 +90,8 @@
       "switchedToRecommended": "Se cambió a la ruta recomendada. {count, plural, one {# indicación} other {# indicaciones}}, {distance} en total. {first}"
     },
     "settings": {
-      "resultHapticsFooter": "Los resultados de Buscar y Cerca de mí también se avisan con vibración. Solo vibra con la pantalla encendida y la respuesta háptica del dispositivo activada."
+      "resultHapticsFooter": "Los resultados de Buscar y Cerca de mí también se avisan con vibración. Solo vibra con la pantalla encendida y la respuesta háptica del dispositivo activada.",
+      "backgroundSpeechFooter": "Anuncia con la voz del dispositivo indicaciones como giros, desvíos de la ruta y llegada, incluso con la pantalla apagada o mientras usas otra app."
     }
   },
   "search": {

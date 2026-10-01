@@ -4,6 +4,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import space.dodoplanet.gildongmu.i18n.AppLocale
+import space.dodoplanet.gildongmu.kit.BackgroundSpeech
 import space.dodoplanet.gildongmu.kit.KeyValueStore
 import space.dodoplanet.gildongmu.kit.ListenSpeed
 import space.dodoplanet.gildongmu.kit.TrendHaptics
@@ -36,6 +37,10 @@ class SettingsStore(private val store: KeyValueStore, /** 언어 저장 직후(`
     private val _resultHaptics = MutableStateFlow(false)
     val resultHapticsEnabled: StateFlow<Boolean> = _resultHaptics.asStateFlow()
 
+    private val _backgroundSpeech = MutableStateFlow(BackgroundSpeech.defaultEnabled)
+    /** 백그라운드 음성 안내(E53, :kit `BackgroundSpeech` 키·기본값 켬). 도보 안내 모델은 게시 시점마다 같은 키를 직접 읽는다. */
+    val backgroundSpeechEnabled: StateFlow<Boolean> = _backgroundSpeech.asStateFlow()
+
     private val _theme = MutableStateFlow(THEME_SYSTEM)
     /** `THEME_SYSTEM`·`THEME_LIGHT`·`THEME_DARK`. `MainActivity`가 `resolveDarkTheme`로 즉시 반영한다. */
     val themePreference: StateFlow<String> = _theme.asStateFlow()
@@ -53,6 +58,7 @@ class SettingsStore(private val store: KeyValueStore, /** 언어 저장 직후(`
         _language.value = localeOverride(store.getString(KEY_LANGUAGE))
         _dictationStyle.value = store.getString(KEY_DICTATION)?.takeIf { it == DICTATION_TAP || it == DICTATION_HOLD } ?: DICTATION_TAP
         _resultHaptics.value = store.getString(TrendHaptics.storageKey) == "true"
+        _backgroundSpeech.value = BackgroundSpeech.isEnabled(store.getString(BackgroundSpeech.storageKey)?.toBooleanStrictOrNull())
         _theme.value = store.getString(KEY_THEME)?.takeIf { it in THEMES } ?: THEME_SYSTEM
         _listenSpeed.value = ListenSpeed.normalizeSpeed(store.getString(ListenSpeed.storageKey)?.toDoubleOrNull())
         _weightText.value = store.getString(WalkHealth.weightStorageKey).orEmpty()
@@ -86,6 +92,11 @@ class SettingsStore(private val store: KeyValueStore, /** 언어 저장 직후(`
     fun setResultHaptics(enabled: Boolean) {
         _resultHaptics.value = enabled
         store.putString(TrendHaptics.storageKey, enabled.toString())
+    }
+
+    fun setBackgroundSpeech(enabled: Boolean) {
+        _backgroundSpeech.value = enabled
+        store.putString(BackgroundSpeech.storageKey, enabled.toString())
     }
 
     fun setTheme(raw: String) {

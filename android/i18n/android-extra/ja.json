@@ -90,7 +90,8 @@
       "switchedToRecommended": "おすすめルートに切り替えました。案内{count}件、合計{distance}。{first}"
     },
     "settings": {
-      "resultHapticsFooter": "検索と周辺の結果を振動でもお知らせします。画面が点灯していて、端末の触覚フィードバック設定がオンのときだけ振動します。"
+      "resultHapticsFooter": "検索と周辺の結果を振動でもお知らせします。画面が点灯していて、端末の触覚フィードバック設定がオンのときだけ振動します。",
+      "backgroundSpeechFooter": "画面が消えているときや他のアプリを使っているときも、曲がる地点、ルート外れ、到着などの案内を端末の音声で伝えます。"
     }
   },
   "search": {

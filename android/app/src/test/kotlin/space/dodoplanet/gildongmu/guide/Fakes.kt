@@ -97,11 +97,18 @@ class FakeSpeaker : GuideSpeaker {
     /** 테스트가 직접 세운다(발화 완료 콜백 대역). */
     override var isSpeaking = false
     override fun prepare() { prepares++ }
-    override fun speak(text: String, highPriority: Boolean): Boolean {
-        if (!allow) return false
+    var token = 0
+        private set
+    override fun speak(text: String, highPriority: Boolean): Int? {
+        if (!allow) return null
         spoken += text to highPriority
-        return true
+        token += 1
+        return token
     }
+    override fun isSpeakingToken(token: Int) = isSpeaking && token == this.token
+    var stops = 0
+    override fun stop() { stops++; isSpeaking = false }
+    override var onInterrupted: ((Int, space.dodoplanet.gildongmu.kit.DeviceSpeechDrop) -> Unit)? = null
     val texts: List<String> get() = spoken.map { it.first }
 }
 
@@ -118,9 +125,8 @@ class FakeSteps : StepCounter {
     override fun stop() { stops++ }
 }
 
-class FakeEnv(var foreground: Boolean = true, var interactive: Boolean = true) : GuideEnvironment {
+class FakeEnv(var foreground: Boolean = true) : GuideEnvironment {
     override fun isForeground() = foreground
-    override fun isInteractive() = interactive
 }
 
 class FakeClock(var now: Double = 0.0) {
