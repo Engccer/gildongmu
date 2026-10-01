@@ -68,6 +68,16 @@ describe("E43 iOS 화면 배선", () => {
     expect(source).toContain('appLocalized("directions.toHere")');
   });
 
+  it("검색 결과 행 로터: 선언은 질문·전화·네이버·카카오·여기까지·주소 복사 순이다(역순 노출, E60)", () => {
+    const source = read("ios/Gildongmu/SearchView.swift");
+    const start = source.indexOf(".accessibilityActions {");
+    expect(start).toBeGreaterThanOrEqual(0);
+    const keys = ["ios.place.askAbout", "ios.place.call", "ios.route.naver", "ios.route.kakao", "directions.toHere", "ios.place.copyAddress"];
+    const positions = keys.map((key) => source.indexOf(`appLocalized("${key}"`, start));
+    expect(positions.every((p) => p > start)).toBe(true);
+    expect([...positions].sort((a, b) => a - b)).toEqual(positions);
+  });
+
   it("정확도 관찰 미러는 초기화와 권한 콜백에서 갱신되고 표시줄이 읽는다", () => {
     const service = read("ios/Gildongmu/LocationService.swift");
     expect(service).toMatch(/private\(set\) var observedAccuracy: CLAccuracyAuthorization/);

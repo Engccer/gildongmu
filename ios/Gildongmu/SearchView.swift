@@ -415,7 +415,7 @@ struct PlaceRow: View {
         }
         .accessibilityElement(children: .combine)
         // ⚠ 선언은 역순: VoiceOver 쓸기 메뉴가 빌더 선언의 역순으로 노출된다(실기기 관측).
-        // 사용자 경험 순서: 주소 복사하기 → 카카오맵 → 네이버 지도 → 길찾기 → 전화 걸기 → 물어보기.
+        // 사용자 경험 순서: 주소 복사하기 → 여기까지 길찾기 → 카카오맵 → 네이버 지도 → 전화 걸기 → 물어보기.
         // 보유한 데이터만 낸다(빈 도로명·빈 전화 = 죽은 액션).
         .accessibilityActions {
             if let onAskAbout {
@@ -425,17 +425,18 @@ struct PlaceRow: View {
                let telURL = URL(string: "tel:\(phone.replacingOccurrences(of: "-", with: ""))") {
                 Button(appLocalized("ios.place.call")) { openURL(telURL) }
             }
-            // 길찾기 탭 도착지 프리필 진입(Task I4). 다음 두 딥링크(외부 앱 위임)와
-            // 짝지어 "이 장소로 가는 법" 그룹 안에 둔다.
-            Button(appLocalized("directions.toHere")) {
-                DirectionsPrefillStore.shared.pending = DirectionsPrefill(
-                    role: .to, endpoint: .place(label: place.name, lat: place.lat, lng: place.lng))
-            }
+            // "이 장소로 가는 법" 그룹: 외부 앱 위임 딥링크 둘 뒤에 자체 길찾기를 선언해
+            // 로터에서는 자체 길찾기가 주소 복사 바로 다음, 딥링크 둘보다 앞에 온다(E60).
             if let url = buildNaverRouteDeeplink(mode: .walk, dest: dest, appname: AppConfig.appIdentifier) {
                 Button(appLocalized("ios.route.naver")) { openURL(url) }
             }
             if let url = buildKakaoRouteDeeplink(mode: .walk, dest: dest) {
                 Button(appLocalized("ios.route.kakao")) { openURL(url) }
+            }
+            // 길찾기 탭 도착지 프리필 진입(Task I4).
+            Button(appLocalized("directions.toHere")) {
+                DirectionsPrefillStore.shared.pending = DirectionsPrefill(
+                    role: .to, endpoint: .place(label: place.name, lat: place.lat, lng: place.lng))
             }
             if !place.roadAddress.isEmpty {
                 Button(appLocalized("ios.place.copyAddress")) { copyAddressToPasteboard(place.roadAddress) }
