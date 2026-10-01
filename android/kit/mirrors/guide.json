@@ -248,6 +248,11 @@
       "note": "E51 나들이(도착지 없는 도보 안내, spec 2026-09-26-outing-mode-design.md). 안드로이드 나들이 화면을 만들 때(PORTS 등록, 실보행 판정 뒤) 이식한다 — 이정표 표·낭독 세 단계(기본 전부, next 순환 전부 → 이정표만 → 끔, E54)"
     },
     {
+      "swift": "OutingNodes.swift",
+      "status": "pending",
+      "note": "E58 ①③ 나들이 교차로·횡단보도 원천 합성(spec 2026-09-26-outing-mode-design.md §6.6). 안드로이드 나들이 화면을 만들 때(PORTS 등록, 실보행 판정 뒤) 이식한다 — 좌표 근접 병합·좌표 유도 id·탐침 간격, WalkInfraService.outingNodes·outingProbe 확장(I/O) 포함"
+    },
+    {
       "swift": "OutingOrigin.swift",
       "status": "pending",
       "note": "E51 나들이(도착지 없는 도보 안내, spec 2026-09-26-outing-mode-design.md). 안드로이드 나들이 화면을 만들 때(PORTS 등록, 실보행 판정 뒤) 이식한다 — 출발점 확정"
@@ -255,7 +260,7 @@
     {
       "swift": "OutingPassBy.swift",
       "status": "pending",
-      "note": "E51 나들이(도착지 없는 도보 안내, spec 2026-09-26-outing-mode-design.md). 안드로이드 나들이 화면을 만들 때(PORTS 등록, 실보행 판정 뒤) 이식한다 — 지나침·도로명·횡단보도 예고"
+      "note": "E51 나들이(도착지 없는 도보 안내, spec 2026-09-26-outing-mode-design.md). 안드로이드 나들이 화면을 만들 때(PORTS 등록, 실보행 판정 뒤) 이식한다 — 지나침·도로명·횡단보도 예고·교차로 예고(E58 ①)"
     },
     {
       "swift": "OutingProjection.swift",

@@ -64,6 +64,27 @@ describe("나들이 좌우 표현은 OutingSide에서만 나온다(spec §6.1)",
     expect(model).toMatch(/static func overviewItemLine\(name: String, side: OutingSide, meters: Int\)/);
   });
 
+  it("교차로 좌우 문구 키(E58 ①)는 junctionLine 안에만 있고 그 함수는 OutingSide를 switch한다", () => {
+    const JUNCTION_SIDE_KEYS = [
+      "ios.outing.junctionLeftAlley",
+      "ios.outing.junctionRightAlley",
+      "ios.outing.junctionLeftPath",
+      "ios.outing.junctionRightPath",
+    ];
+    const users = swiftFiles(IOS).filter((f) =>
+      JUNCTION_SIDE_KEYS.some((k) => readFileSync(f, "utf8").includes(`"${k}"`)),
+    );
+    expect(users.map((f) => f.split("/").pop())).toEqual(["OutingModel.swift"]);
+    const model = readFileSync(MODEL, "utf8");
+    const body = functionBody(model, "junctionLine");
+    for (const key of JUNCTION_SIDE_KEYS) {
+      expect(model.split(`"${key}"`).length - 1).toBe(1);
+      expect(body).toContain(`"${key}"`);
+    }
+    expect(body).toMatch(/switch side/);
+    expect(body).toMatch(/case \.unknown:/);
+  });
+
   it("진행 방위는 위치 이력 유도만 쓴다(기기 course 게이트 courseStep 금지)", () => {
     const model = readFileSync(MODEL, "utf8");
     expect(model).toContain("deriveCourse(");

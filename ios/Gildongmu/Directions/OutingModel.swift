@@ -77,9 +77,21 @@ final class OutingModel {
     /// 마지막 fix에서의 진행축 관계(장소 id 키). 지나침 판정의 `previous`이자 조망의 원천.
     private(set) var relations: [String: OutingRelation] = [:]
     private var spokenPlaces: Set<String> = []
+    /// 횡단보도 후보(OSM·서울 도보 네트워크·탐침을 좌표 근접으로 합친 것, id는 좌표 유도 — `outingMergeCrosswalks`).
     private var crosswalks: [String: OutingCrosswalk] = [:]
     private var audioSignals: [RoutePoint] = []
     private var spokenCrosswalks: Set<String> = []
+    /// 교차점 후보(OSM 도로망·서울 도보 네트워크·탐침 꺾임 지점, `outingMergeJunctions`). 세션 메모리에만 — 탐침 결과를
+    /// 디스크에 남기지 않는다(카카오 약관, spec §6.6).
+    private var junctions: [String: OutingJunction] = [:]
+    private var spokenJunctions: Set<String> = []
+    private var lastJunctionNoticeAt: Double?
+    /// 마지막 탐침 시도 좌표 — 직선 `outingProbeDistanceMeters`마다 1건(`outingProbeStep`, 실패도 같은 간격).
+    private var lastProbe: RoutePoint?
+    /// 탐침 연속 실패 수. 키 없음(404)은 곧장 상한으로 둔다(그 세션은 다시 묻지 않는다).
+    private var probeFailures = 0
+    /// 예고 로그의 세션 순번(좌표 유도 id 대신 — id에 좌표가 들어 있어 탐침 좌표가 로그(디스크)에 남는다, 설계 리뷰 M6).
+    private var nodeLogSeq: [String: Int] = [:]
     private(set) var surroundingsStatus: OutingSurroundingsStatus = .loading
     private var surroundingsFailures = 0
     private var lastQuery: RoutePoint?
@@ -278,6 +290,12 @@ final class OutingModel {
         crosswalks = [:]
         audioSignals = []
         spokenCrosswalks = []
+        junctions = [:]
+        spokenJunctions = []
+        lastJunctionNoticeAt = nil
+        lastProbe = nil
+        probeFailures = 0
+        nodeLogSeq = [:]
         surroundingsStatus = .loading
         surroundingsFailures = 0
         lastQuery = nil
@@ -588,22 +606,31 @@ final class OutingModel {
     private func requery(at point: RoutePoint, reason: String) {
         lastQuery = point
         let lang = AppLanguage.dataLocale
+        // 탐침은 재조회(50m)마다가 아니라 직선 100m마다 1건이고 방위가 valid일 때만(spec §6.6). 간격은 시도 기준이다.
+        let probeBearing = outingProbeStep(lastProbe: lastProbe, failures: probeFailures, at: point, heading: heading)
+        if probeBearing != nil { lastProbe = point }
         queryTask = Task { [weak self, nearby, walkInfra, search] in
             async let aroundResult: Result<[SurroundingPlace], Error> = {
                 do { return .success(try await nearby.outingSurroundings(lat: point.lat, lng: point.lng)) }
                 catch { return .failure(error) }
             }()
-            async let walkResult = try? await walkInfra.nearbyWithCoordinates(lat: point.lat, lng: point.lng)
+            async let walkResult = try? await walkInfra.outingNodes(lat: point.lat, lng: point.lng)
             async let addressResult = try? await search.reverseGeocode(lat: point.lat, lng: point.lng, lang: lang)
-            let (around, walk, address) = await (aroundResult, walkResult, addressResult)
+            async let probeResult: Result<OutingProbe, Error>? = {
+                guard let probeBearing else { return nil }
+                do { return .success(try await walkInfra.outingProbe(lat: point.lat, lng: point.lng, bearing: probeBearing)) }
+                catch { return .failure(error) }
+            }()
+            let (around, walk, address, probe) = await (aroundResult, walkResult, addressResult, probeResult)
             guard let self, !Task.isCancelled, self.isTracking else { return }
             self.queryTask = nil
-            self.commit(around: around, walk: walk, address: address, lang: lang, reason: reason, at: point)
+            self.commit(
+                around: around, walk: walk, probe: probe, address: address, lang: lang, reason: reason, at: point)
         }
     }
 
     private func commit(
-        around: Result<[SurroundingPlace], Error>, walk: WalkInfrastructure?,
+        around: Result<[SurroundingPlace], Error>, walk: OutingWalkNodes?, probe: Result<OutingProbe, Error>?,
         address: ReverseGeocodeResponse?, lang: String, reason: String, at point: RoutePoint
     ) {
         let outcome: OutingQueryOutcome
@@ -624,12 +651,36 @@ final class OutingModel {
             overviewAwaitingCommit = false
             snapshotOverview(projectingFrom: lastFix)
         }
-        if case .ok(let osm) = walk?.osm {
-            for f in osm.features where f.crossing {
-                if let lat = f.lat, let lng = f.lng { crosswalks[f.osmId] = OutingCrosswalk(id: f.osmId, lat: lat, lng: lng) }
-            }
+        // 원천 합성(spec §6.6): 횡단보도 OSM → 서울망 → 탐침, 교차점 OSM → 서울망 → 탐침 꺾임. 같은 자리는 먼저 온
+        // 점의 id로 흡수된다(latch 하나). 탐침 결과는 이 세션 메모리에만 남는다.
+        if case .ok(let osm) = walk?.infra.osm {
+            crosswalks = outingMergeCrosswalks(crosswalks, adding: osm.features.compactMap { f in
+                guard f.crossing, let lat = f.lat, let lng = f.lng else { return nil }
+                return RoutePoint(lat: lat, lng: lng)
+            })
         }
-        if case .ok(let signals) = walk?.audioSignals {
+        crosswalks = outingMergeCrosswalks(crosswalks, adding: walk?.seoulCrosswalks.value ?? [])
+        junctions = outingMergeJunctions(junctions, adding: walk?.osmJunctions.value ?? [])
+        junctions = outingMergeJunctions(junctions, adding: walk?.seoulJunctions.value ?? [])
+        let probeLabel: String
+        switch probe {
+        case .none: probeLabel = probeFailures >= outingProbeFailureLimit ? "off" : "skip"
+        case .failure(APIError.badStatus(code: 404, message: _)):
+            // 서버에 카카오 키가 없다(또는 옛 서버) — 탐침 원천 미제공. 이 세션은 다시 묻지 않는다.
+            probeLabel = "none"
+            probeFailures = outingProbeFailureLimit
+        case .failure:
+            probeLabel = "fail"
+            probeFailures += 1
+        case .success(let p):
+            probeLabel = "ok"
+            probeFailures = 0
+            crosswalks = outingMergeCrosswalks(crosswalks, adding: p.crosswalks)
+            junctions = outingMergeJunctions(junctions, adding: p.turns)
+            // 개수만 남긴다 — 탐침 좌표를 로그(디스크)에 쓰지 않는다(카카오 약관, spec §6.6).
+            guideDiagLog("probe cw=\(p.crosswalks.count) turns=\(p.turns.count)")
+        }
+        if case .ok(let signals) = walk?.infra.audioSignals {
             let points = signals.sites.compactMap { s in s.lat.flatMap { lat in s.lng.map { RoutePoint(lat: lat, lng: $0) } } }
             for p in points where !audioSignals.contains(p) { audioSignals.append(p) }
         }
@@ -645,7 +696,9 @@ final class OutingModel {
             "roadName value=\(address == nil ? "fail" : (observed ?? "-")) confirmed=\(road.confirmed ?? "-") pending=\(road.pending ?? "-")")
         guideDiagLog(
             "requery reason=\(reason) got=\(received) n=\(places.count) fail=\(surroundingsFailures) "
-                + "crosswalks=\(crosswalks.count) road=\(road.confirmed ?? "-")")
+                + "crosswalks=\(crosswalks.count) junctions=\(junctions.count) probe=\(probeLabel) "
+                + "osmJn=\(walk?.osmJunctions.logLabel ?? "fail") seoul=\(walk?.seoulJunctions.logLabel ?? "fail") "
+                + "road=\(road.confirmed ?? "-")")
         if let name = roadStep.announce, narration.speaks(.landmark) {
             sayLow(appLocalized("ios.outing.roadEntered", name))
         }
@@ -674,7 +727,11 @@ final class OutingModel {
             }
             if let notice = outingCrosswalkNoticeStep(crosswalks: pairs, audioSignals: audioSignals, spoken: spokenCrosswalks) {
                 spokenCrosswalks.insert(notice.id)
-                guideDiagLog("crosswalk id=\(notice.id) audio=\(notice.hasAudioSignal)")
+                // 같은 진행선의 근접 짝(넓은 도로의 연석점·중심점)은 함께 침묵(설계 리뷰 M4). 횡단보도 예고도 교차로 간격
+                // 시계를 돌린다 — 같은 자리에서 "앞에 횡단보도" 바로 뒤 "앞에 사거리"가 이어지지 않게(m2).
+                spokenCrosswalks.formUnion(outingCrosswalkSilenced(after: notice.id, crosswalks: pairs))
+                lastJunctionNoticeAt = now
+                guideDiagLog("crosswalk n=\(logSeq(notice.id)) audio=\(notice.hasAudioSignal)")
                 sayProtected(appLocalized(notice.hasAudioSignal ? "ios.outing.crosswalkAheadAudio" : "ios.outing.crosswalkAhead"))
                 crosswalkSpoken = true
             }
@@ -682,6 +739,24 @@ final class OutingModel {
         if crosswalkSpoken || now < protectedUntil {
             if case .valid = heading { aheadText = aheadLandmarkText(next) }
             return
+        }
+        // 교차로 예고(spec §6.6) — 횡단보도 다음, 지나침 앞. 같은 보호 창을 세우고 그 fix는 지나침을 판정하지 않는다
+        // (옛 관계를 들고 있어야 창 뒤의 판정 fix가 "앞 → 옆" 전이를 잃지 않는다).
+        if level.speaks(.landmark) {
+            let candidates = outingJunctionRelations(
+                Array(junctions.values), fixLat: fix.lat, fixLng: fix.lng, accuracy: fix.accuracy, heading: heading)
+            if let notice = outingJunctionNoticeStep(
+                junctions: candidates, spoken: spokenJunctions, lastNoticeAt: lastJunctionNoticeAt, now: now) {
+                spokenJunctions.insert(notice.id)
+                lastJunctionNoticeAt = now
+                let rel = candidates.first { $0.junction.id == notice.id }?.relation
+                guideDiagLog(
+                    "junction n=\(logSeq(notice.id)) shape=\(Self.junctionLog(notice.shape)) "
+                        + "s=\(Int(rel?.s ?? 0)) t=\(Int(rel?.t ?? 0))")
+                sayProtected(Self.junctionLine(notice.shape))
+                if case .valid = heading { aheadText = aheadLandmarkText(next) }
+                return
+            }
         }
         if level != .off {
             let candidates = next.compactMap { id, cur -> OutingPassByCandidate? in
@@ -700,6 +775,14 @@ final class OutingModel {
         }
         relations = next
         if case .valid = heading { aheadText = aheadLandmarkText(next) }
+    }
+
+    /// 예고 로그의 세션 순번(처음 말한 순서). 좌표 유도 id를 로그에 쓰지 않는다(탐침 좌표 비저장, spec §6.6).
+    private func logSeq(_ id: String) -> Int {
+        if let n = nodeLogSeq[id] { return n }
+        let n = nodeLogSeq.count + 1
+        nodeLogSeq[id] = n
+        return n
     }
 
     /// 방향 행 앞 절반의 이정표 — 앞 구획의 가장 가까운 landmark(10m 양자화).
@@ -723,6 +806,30 @@ final class OutingModel {
         case .left: appLocalized("ios.outing.passLeft", name)
         case .right: appLocalized("ios.outing.passRight", name)
         case .unknown: appLocalized("ios.outing.passSide", name)
+        }
+    }
+
+    /// 교차로 예고 문장(spec §6.6). 좌우는 `OutingSide`에서만 — `.unknown`은 갈림길 문장으로 접는다.
+    static func junctionLine(_ shape: OutingJunctionShape) -> String {
+        switch shape {
+        case .side(let side, let alley):
+            switch side {
+            case .left: appLocalized(alley ? "ios.outing.junctionLeftAlley" : "ios.outing.junctionLeftPath")
+            case .right: appLocalized(alley ? "ios.outing.junctionRightAlley" : "ios.outing.junctionRightPath")
+            case .unknown: appLocalized("ios.outing.junctionAhead")
+            }
+        case .cross: appLocalized("ios.outing.junctionCross")
+        case .tee: appLocalized("ios.outing.junctionTee")
+        case .branching: appLocalized("ios.outing.junctionAhead")
+        }
+    }
+
+    private static func junctionLog(_ shape: OutingJunctionShape) -> String {
+        switch shape {
+        case .side(let side, let alley): "\(side.rawValue)\(alley ? "Alley" : "Path")"
+        case .cross: "cross"
+        case .tee: "tee"
+        case .branching: "branching"
         }
     }
 

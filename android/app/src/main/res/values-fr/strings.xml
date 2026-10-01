@@ -244,6 +244,13 @@
     <string name="android_outing_headingUnknown">Détection de la direction</string>
     <string name="android_outing_itemLeft">gauche, %1$s</string>
     <string name="android_outing_itemRight">droite, %1$s</string>
+    <string name="android_outing_junctionAhead">Embranchement devant</string>
+    <string name="android_outing_junctionCross">Carrefour devant</string>
+    <string name="android_outing_junctionLeftAlley">Ruelle à gauche</string>
+    <string name="android_outing_junctionLeftPath">Rue à gauche</string>
+    <string name="android_outing_junctionRightAlley">Ruelle à droite</string>
+    <string name="android_outing_junctionRightPath">Rue à droite</string>
+    <string name="android_outing_junctionTee">Intersection en T devant</string>
     <string name="android_outing_lastHeading">Dernière direction : %1$s</string>
     <string name="android_outing_moving">Direction %1$s</string>
     <string name="android_outing_narration">Narration, %1$s</string>

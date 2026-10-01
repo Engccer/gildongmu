@@ -1,0 +1,471 @@
+{
+  "description": "나들이 교차로 예고(spec 2026-09-26 §6.6) 판정 표. 좌표는 원점(origin)에서 북·동 미터 오프셋이고 갈래는 교차점에서 bearing으로 25m 간 점이다. 진행 방위는 valid(headingDeg, uncertaintyDeg)이고 fix는 원점(accuracy). 갈래의 좌우는 교차점 기준 투영(정확도 0)이라 사용자 정확도는 교차점 쪽(구획·길 건너)에만 든다. expect: 문장 모양(leftAlley·rightAlley·leftPath·rightPath·cross·tee·branching) 또는 null(예고 없음). Kit OutingNodesTests가 읽는다(안드로이드 :kit 이식 때 같은 표).",
+  "origin": {
+    "lat": 37.5,
+    "lng": 127.0
+  },
+  "cases": [
+    {
+      "name": "곧은 골목의 왼쪽 골목",
+      "headingDeg": 0,
+      "uncertaintyDeg": 10,
+      "accuracy": 5,
+      "junction": {
+        "north": 15,
+        "east": 0
+      },
+      "branches": [
+        {
+          "bearing": 180,
+          "kind": "alley"
+        },
+        {
+          "bearing": 0,
+          "kind": "alley"
+        },
+        {
+          "bearing": 270,
+          "kind": "alley"
+        }
+      ],
+      "expect": "leftAlley"
+    },
+    {
+      "name": "오른쪽 보행로",
+      "headingDeg": 90,
+      "uncertaintyDeg": 10,
+      "accuracy": 5,
+      "junction": {
+        "north": 0,
+        "east": 15
+      },
+      "branches": [
+        {
+          "bearing": 270,
+          "kind": "alley"
+        },
+        {
+          "bearing": 90,
+          "kind": "alley"
+        },
+        {
+          "bearing": 180,
+          "kind": "path"
+        }
+      ],
+      "expect": "rightPath"
+    },
+    {
+      "name": "오른쪽 큰길은 길",
+      "headingDeg": 0,
+      "uncertaintyDeg": 10,
+      "accuracy": 5,
+      "junction": {
+        "north": 15,
+        "east": 0
+      },
+      "branches": [
+        {
+          "bearing": 180,
+          "kind": "alley"
+        },
+        {
+          "bearing": 0,
+          "kind": "alley"
+        },
+        {
+          "bearing": 90,
+          "kind": "road"
+        }
+      ],
+      "expect": "rightPath"
+    },
+    {
+      "name": "사거리",
+      "headingDeg": 0,
+      "uncertaintyDeg": 10,
+      "accuracy": 5,
+      "junction": {
+        "north": 15,
+        "east": 0
+      },
+      "branches": [
+        {
+          "bearing": 180,
+          "kind": "alley"
+        },
+        {
+          "bearing": 0,
+          "kind": "alley"
+        },
+        {
+          "bearing": 270,
+          "kind": "alley"
+        },
+        {
+          "bearing": 90,
+          "kind": "path"
+        }
+      ],
+      "expect": "cross"
+    },
+    {
+      "name": "삼거리(앞이 끊김)",
+      "headingDeg": 0,
+      "uncertaintyDeg": 10,
+      "accuracy": 5,
+      "junction": {
+        "north": 15,
+        "east": 0
+      },
+      "branches": [
+        {
+          "bearing": 180,
+          "kind": "alley"
+        },
+        {
+          "bearing": 270,
+          "kind": "alley"
+        },
+        {
+          "bearing": 90,
+          "kind": "alley"
+        }
+      ],
+      "expect": "tee"
+    },
+    {
+      "name": "Y자로 앞에서 갈라짐",
+      "headingDeg": 0,
+      "uncertaintyDeg": 10,
+      "accuracy": 5,
+      "junction": {
+        "north": 15,
+        "east": 0
+      },
+      "branches": [
+        {
+          "bearing": 180,
+          "kind": "alley"
+        },
+        {
+          "bearing": 340,
+          "kind": "alley"
+        },
+        {
+          "bearing": 20,
+          "kind": "alley"
+        }
+      ],
+      "expect": "branching"
+    },
+    {
+      "name": "곧은 길의 이음점(옆 갈래 없음)",
+      "headingDeg": 0,
+      "uncertaintyDeg": 10,
+      "accuracy": 5,
+      "junction": {
+        "north": 15,
+        "east": 0
+      },
+      "branches": [
+        {
+          "bearing": 180,
+          "kind": "alley"
+        },
+        {
+          "bearing": 0,
+          "kind": "alley"
+        },
+        {
+          "bearing": 160,
+          "kind": "path"
+        }
+      ],
+      "expect": null
+    },
+    {
+      "name": "GPS 정확도가 나빠도 갈래 방향은 교차점 기준이라 좌우가 선다",
+      "headingDeg": 0,
+      "uncertaintyDeg": 45,
+      "accuracy": 30,
+      "junction": {
+        "north": 15,
+        "east": 0
+      },
+      "branches": [
+        {
+          "bearing": 180,
+          "kind": "alley"
+        },
+        {
+          "bearing": 0,
+          "kind": "alley"
+        },
+        {
+          "bearing": 270,
+          "kind": "alley"
+        }
+      ],
+      "expect": "leftAlley"
+    },
+    {
+      "name": "길 건너(차도 중심선 너머) 골목은 말하지 않는다: 오른쪽 8m 중심선 교차점에서 오른쪽으로 난 골목",
+      "headingDeg": 0,
+      "uncertaintyDeg": 10,
+      "accuracy": 5,
+      "junction": {
+        "north": 15,
+        "east": 8
+      },
+      "branches": [
+        {
+          "bearing": 180,
+          "kind": "road"
+        },
+        {
+          "bearing": 0,
+          "kind": "road"
+        },
+        {
+          "bearing": 90,
+          "kind": "alley"
+        }
+      ],
+      "expect": null
+    },
+    {
+      "name": "보도 쪽(중심선 반대편)으로 비스듬히 난 골목은 그쪽",
+      "headingDeg": 0,
+      "uncertaintyDeg": 30,
+      "accuracy": 5,
+      "junction": {
+        "north": 15,
+        "east": 9
+      },
+      "branches": [
+        {
+          "bearing": 180,
+          "kind": "alley"
+        },
+        {
+          "bearing": 0,
+          "kind": "alley"
+        },
+        {
+          "bearing": 310,
+          "kind": "alley"
+        }
+      ],
+      "expect": "leftAlley"
+    },
+    {
+      "name": "20m 너머는 아직 예고하지 않는다",
+      "headingDeg": 0,
+      "uncertaintyDeg": 10,
+      "accuracy": 5,
+      "junction": {
+        "north": 24,
+        "east": 0
+      },
+      "branches": [
+        {
+          "bearing": 180,
+          "kind": "alley"
+        },
+        {
+          "bearing": 0,
+          "kind": "alley"
+        },
+        {
+          "bearing": 270,
+          "kind": "alley"
+        }
+      ],
+      "expect": null
+    },
+    {
+      "name": "옆 구획(10m 안)은 이미 늦었다",
+      "headingDeg": 0,
+      "uncertaintyDeg": 10,
+      "accuracy": 5,
+      "junction": {
+        "north": 8,
+        "east": 0
+      },
+      "branches": [
+        {
+          "bearing": 180,
+          "kind": "alley"
+        },
+        {
+          "bearing": 0,
+          "kind": "alley"
+        },
+        {
+          "bearing": 270,
+          "kind": "alley"
+        }
+      ],
+      "expect": null
+    },
+    {
+      "name": "횡거리 12m 넘는 교차점은 예고하지 않는다",
+      "headingDeg": 0,
+      "uncertaintyDeg": 10,
+      "accuracy": 5,
+      "junction": {
+        "north": 15,
+        "east": -14
+      },
+      "branches": [
+        {
+          "bearing": 180,
+          "kind": "road"
+        },
+        {
+          "bearing": 0,
+          "kind": "road"
+        },
+        {
+          "bearing": 270,
+          "kind": "alley"
+        }
+      ],
+      "expect": null
+    },
+    {
+      "name": "보도 위 사용자: 같은 편(왼쪽)으로 난 골목은 말한다",
+      "headingDeg": 0,
+      "uncertaintyDeg": 10,
+      "accuracy": 5,
+      "junction": {
+        "north": 15,
+        "east": 8
+      },
+      "branches": [
+        {
+          "bearing": 180,
+          "kind": "road"
+        },
+        {
+          "bearing": 0,
+          "kind": "road"
+        },
+        {
+          "bearing": 270,
+          "kind": "alley"
+        }
+      ],
+      "expect": "leftAlley"
+    },
+    {
+      "name": "보도 위 사거리는 같은 편 갈래만 남아 한쪽 문장",
+      "headingDeg": 0,
+      "uncertaintyDeg": 10,
+      "accuracy": 5,
+      "junction": {
+        "north": 15,
+        "east": 8
+      },
+      "branches": [
+        {
+          "bearing": 180,
+          "kind": "road"
+        },
+        {
+          "bearing": 0,
+          "kind": "road"
+        },
+        {
+          "bearing": 270,
+          "kind": "alley"
+        },
+        {
+          "bearing": 90,
+          "kind": "alley"
+        }
+      ],
+      "expect": "leftAlley"
+    },
+    {
+      "name": "좁은 골목 한가운데(중심선 6m 안)는 양쪽 다 같은 편",
+      "headingDeg": 0,
+      "uncertaintyDeg": 10,
+      "accuracy": 5,
+      "junction": {
+        "north": 15,
+        "east": 3
+      },
+      "branches": [
+        {
+          "bearing": 180,
+          "kind": "alley"
+        },
+        {
+          "bearing": 0,
+          "kind": "alley"
+        },
+        {
+          "bearing": 270,
+          "kind": "alley"
+        },
+        {
+          "bearing": 90,
+          "kind": "alley"
+        }
+      ],
+      "expect": "cross"
+    },
+    {
+      "name": "거의 같은 방향인 앞 갈래 둘(측면도로)은 갈림길이 아니다",
+      "headingDeg": 0,
+      "uncertaintyDeg": 10,
+      "accuracy": 5,
+      "junction": {
+        "north": 15,
+        "east": 0
+      },
+      "branches": [
+        {
+          "bearing": 180,
+          "kind": "road"
+        },
+        {
+          "bearing": 0,
+          "kind": "road"
+        },
+        {
+          "bearing": 10,
+          "kind": "alley"
+        }
+      ],
+      "expect": null
+    },
+    {
+      "name": "남쪽으로 걸을 때 동쪽 갈래는 왼쪽",
+      "headingDeg": 180,
+      "uncertaintyDeg": 10,
+      "accuracy": 5,
+      "junction": {
+        "north": -15,
+        "east": 0
+      },
+      "branches": [
+        {
+          "bearing": 0,
+          "kind": "alley"
+        },
+        {
+          "bearing": 180,
+          "kind": "alley"
+        },
+        {
+          "bearing": 90,
+          "kind": "alley"
+        }
+      ],
+      "expect": "leftAlley"
+    }
+  ]
+}

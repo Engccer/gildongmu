@@ -244,6 +244,13 @@
     <string name="android_outing_headingUnknown">Verifica della direzione</string>
     <string name="android_outing_itemLeft">sinistra, %1$s</string>
     <string name="android_outing_itemRight">destra, %1$s</string>
+    <string name="android_outing_junctionAhead">Bivio davanti</string>
+    <string name="android_outing_junctionCross">Incrocio davanti</string>
+    <string name="android_outing_junctionLeftAlley">Vicolo a sinistra</string>
+    <string name="android_outing_junctionLeftPath">Strada a sinistra</string>
+    <string name="android_outing_junctionRightAlley">Vicolo a destra</string>
+    <string name="android_outing_junctionRightPath">Strada a destra</string>
+    <string name="android_outing_junctionTee">Incrocio a T davanti</string>
     <string name="android_outing_lastHeading">Ultima direzione: %1$s</string>
     <string name="android_outing_moving">Verso %1$s</string>
     <string name="android_outing_narration">Narrazione, %1$s</string>

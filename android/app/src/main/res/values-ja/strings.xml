@@ -244,6 +244,13 @@
     <string name="android_outing_headingUnknown">進行方向を確認中</string>
     <string name="android_outing_itemLeft">左 %1$s</string>
     <string name="android_outing_itemRight">右 %1$s</string>
+    <string name="android_outing_junctionAhead">前方に分かれ道</string>
+    <string name="android_outing_junctionCross">前方に十字路</string>
+    <string name="android_outing_junctionLeftAlley">左に路地</string>
+    <string name="android_outing_junctionLeftPath">左に道</string>
+    <string name="android_outing_junctionRightAlley">右に路地</string>
+    <string name="android_outing_junctionRightPath">右に道</string>
+    <string name="android_outing_junctionTee">前方に丁字路</string>
     <string name="android_outing_lastHeading">最後の進行方向 %1$s</string>
     <string name="android_outing_moving">%1$sへ移動中</string>
     <string name="android_outing_narration">周辺の読み上げ、%1$s</string>

@@ -244,6 +244,13 @@
     <string name="android_outing_headingUnknown">이동 방향 확인 중</string>
     <string name="android_outing_itemLeft">왼쪽 %1$s</string>
     <string name="android_outing_itemRight">오른쪽 %1$s</string>
+    <string name="android_outing_junctionAhead">앞에 갈림길</string>
+    <string name="android_outing_junctionCross">앞에 사거리</string>
+    <string name="android_outing_junctionLeftAlley">왼쪽에 골목</string>
+    <string name="android_outing_junctionLeftPath">왼쪽에 길</string>
+    <string name="android_outing_junctionRightAlley">오른쪽에 골목</string>
+    <string name="android_outing_junctionRightPath">오른쪽에 길</string>
+    <string name="android_outing_junctionTee">앞에 삼거리</string>
     <string name="android_outing_lastHeading">마지막 진행 방향 %1$s</string>
     <string name="android_outing_moving">%1$s으로 이동 중</string>
     <string name="android_outing_narration">주변 낭독, %1$s</string>
