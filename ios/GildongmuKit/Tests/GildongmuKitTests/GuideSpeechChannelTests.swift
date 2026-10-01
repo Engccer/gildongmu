@@ -37,8 +37,8 @@ struct GuideSpeechChannelTests {
             backgroundSpeechEnabled: i.enabled, backgroundAudible: i.audible, foregroundDeviceSpeech: outing)
     }
 
-    // spec §1 정식판 불변: 토글 실효값이 거짓이면(정식판은 상수 거짓) 도보·자동차·대중교통의 결과가 종전과
-    // 입력 전 조합에서 같다.
+    // spec §1: 토글을 끄면(2.0 전 정식판의 상수 거짓과 같은 값) 도보·자동차·대중교통의 결과가 종전과 입력 전
+    // 조합에서 같다.
     @Test func releaseEquivalenceForBeaconAndTransit() {
         for i in allInputs where !i.enabled {
             #expect(channel(i, outing: false) == legacyBeaconChannel(foreground: i.foreground), "\(i)")
@@ -68,13 +68,9 @@ struct GuideSpeechChannelTests {
 
     @Test func toggleEffectiveValue() {
         #expect(BackgroundSpeech.defaultEnabled == true)
-        #expect(BackgroundSpeech.isEnabled(stored: nil, available: true) == true)   // 기본값 켬
-        #expect(BackgroundSpeech.isEnabled(stored: false, available: true) == false)
-        #expect(BackgroundSpeech.isEnabled(stored: true, available: true) == true)
-        // 정식판: 저장값과 무관하게 거짓(실험판에서 켠 값이 같은 기기 정식판으로 새지 않는다 — 번들 ID도 다르다).
-        for stored in [nil, true, false] as [Bool?] {
-            #expect(BackgroundSpeech.isEnabled(stored: stored, available: false) == false)
-        }
+        #expect(BackgroundSpeech.isEnabled(stored: nil) == true)   // 기본값 켬
+        #expect(BackgroundSpeech.isEnabled(stored: false) == false)
+        #expect(BackgroundSpeech.isEnabled(stored: true) == true)
     }
 
     // spec §3.2: 경로 이벤트 전수. 예고·임박·경유지·복귀는 행동, 이탈은 회차 시작만, 주기·상태는 미룸.

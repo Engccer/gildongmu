@@ -7,18 +7,19 @@
       "nearby": "Cerca"
     },
     "directions": {
-      "searching": "Buscando",
-      "walkNotice": {
-        "title": "Llega la guía a pie.",
-        "intro": "¡Gracias por usar Gildongmu!",
-        "head1": "Novedades",
-        "body1": "Ahora, al consultar una ruta en la pestaña Cómo llegar, la sección a pie muestra el botón \"Iniciar guía a pie\". Púlsalo para comenzar la guía en tiempo real. Durante la guía, la pantalla muestra la distancia restante hasta tu destino, la distancia que queda del tramo actual y la siguiente indicación. La guía sigue funcionando en segundo plano aunque la pantalla esté bloqueada.",
-        "head2": "A tener en cuenta",
-        "body2": "La guía se basa en datos de mapas de APIs externas y en el GPS, por lo que puede diferir de la situación real.",
-        "body3": "Ten especial cuidado en los pasos de peatones. Usa la guía de esta app solo como información complementaria y pruébala primero en caminos que ya conozcas.",
-        "body4": "La guía en tiempo real de transporte público y coche está en preparación.",
-        "confirm": "Aceptar"
-      }
+      "searching": "Buscando"
+    },
+    "releaseNotice": {
+      "title": "Gildongmu 2.0: llegan la guía en transporte público y en coche.",
+      "intro": "¡Gracias por usar Gildongmu!",
+      "head1": "Qué ha cambiado",
+      "body1": "Al consultar una ruta en la pestaña Cómo llegar, cada ruta de transporte público tiene un botón para iniciar la guía. Elige el autobús o el tren que vas a tomar y la app te dirá cuántas paradas quedan y te avisará con antelación cuando se acerque tu parada. Los tramos a pie antes de subir y después de bajar también se guían.",
+      "body2": "Las rutas en coche tienen el botón \"Iniciar guía en coche\". Para un acompañante se lee en pantalla; si en Ajustes cambias \"Quién escucha la guía en coche\" a Conductor, se oyen órdenes breves por el altavoz. La guía en coche solo está disponible en coreano.",
+      "body3": "En Ajustes hay un nuevo interruptor \"Guía por voz en segundo plano\". Si está activado, los giros, los avisos de desvío y las llegadas se dicen con la voz del dispositivo incluso con la pantalla apagada o con otra app delante. Está activado de forma predeterminada.",
+      "head2": "Ten en cuenta",
+      "body4": "La guía se basa en datos de mapas, GPS e información de transporte en tiempo real, por lo que puede diferir de la situación real. La información de llegada de autobuses y trenes puede retrasarse o ser incorrecta; escucha también los avisos a bordo.",
+      "body5": "Ten especial cuidado en los pasos de peatones. Usa la guía de esta app solo como información de apoyo y pruébala primero en un trayecto que conozcas bien.",
+      "confirm": "Aceptar"
     },
     "common": {
       "ok": "Aceptar",
@@ -250,7 +251,7 @@
       "weightFooter": "Introduce un peso entre {min} y {max} kg. Los datos introducidos no se guardan en ningún servidor.",
       "weightRejected": "El peso debe estar entre {min} y {max} kg. Se mantiene el valor anterior, {kg} kg.",
       "weightRejectedNone": "El peso debe estar entre {min} y {max} kg. No se guardó nada.",
-      "carListener": "Quién escucha la guía en coche (experimental)",
+      "carListener": "Quién escucha la guía en coche",
       "carListenerPassenger": "Acompañante (auriculares, lector de pantalla)",
       "carListenerDriver": "Conductor (altavoz, órdenes breves)"
     },

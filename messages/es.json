@@ -727,7 +727,6 @@
     "reduced": "No se puede seguir la distancia porque la ubicación precisa está desactivada",
     "walkHeading": "Guía a pie",
     "carHeading": "Guía en coche",
-    "briefGuideStart": "Iniciar guía en línea recta",
     "stopped": "Guía en tiempo real detenida",
     "guideStartWalk": "Iniciar guía a pie",
     "guideStartWalkShortest": "Iniciar guía por la ruta más corta",

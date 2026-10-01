@@ -727,7 +727,6 @@
     "reduced": "정확한 위치가 꺼져 있어 거리를 추적할 수 없습니다",
     "walkHeading": "도보 안내",
     "carHeading": "자동차 안내",
-    "briefGuideStart": "직선거리 안내 시작",
     "stopped": "실시간 안내를 종료했습니다",
     "guideStartWalk": "도보 안내 시작",
     "guideStartWalkShortest": "최단 경로로 안내 시작",

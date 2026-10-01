@@ -63,10 +63,9 @@ public enum BackgroundSpeech {
     /// 기본값 켬(위원장 판정 2026-09-30).
     public static let defaultEnabled = true
 
-    /// 실효값 = 이 구성에서 쓸 수 있는가 ∧ 저장값(없으면 기본값). `available`은 실험 구성 플래그
-    /// (`AppConfig.experimentalBackgroundSpeechEnabled`) — 정식판에서는 거짓이라 저장값과 무관하게 거짓이다.
-    public static func isEnabled(stored: Bool?, available: Bool) -> Bool {
-        available && (stored ?? defaultEnabled)
+    /// 실효값 = 저장값(없으면 기본값). 2.0(2026-10-01)부터 정식판에도 토글이 있다.
+    public static func isEnabled(stored: Bool?) -> Bool {
+        stored ?? defaultEnabled
     }
 }
 

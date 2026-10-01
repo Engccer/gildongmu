@@ -13,11 +13,9 @@ import UIKit
 @MainActor
 enum GuideSpeechOutput {
     /// 토글 "백그라운드 음성 안내"의 실효값. 게시 시점마다 읽는다(세션 중에 바꾸면 다음 문장부터).
-    /// 정식판은 봉인 플래그가 거짓이라 저장값과 무관하게 거짓이다.
     static var backgroundSpeechEnabled: Bool {
         BackgroundSpeech.isEnabled(
-            stored: UserDefaults.standard.object(forKey: BackgroundSpeech.storageKey) as? Bool,
-            available: AppConfig.experimentalBackgroundSpeechEnabled)
+            stored: UserDefaults.standard.object(forKey: BackgroundSpeech.storageKey) as? Bool)
     }
 
     /// 게시 시점 전경 판정 — `.inactive`(제어 센터·알림 센터)는 화면을 보고 있는 중이라 전경이다(종전 `isForeground`).

@@ -727,7 +727,6 @@
     "reduced": "Can’t track distance because Precise Location is off",
     "walkHeading": "Walking guidance",
     "carHeading": "Car guidance",
-    "briefGuideStart": "Start straight-line guidance",
     "stopped": "Live guidance stopped",
     "guideStartWalk": "Start walking guidance",
     "guideStartWalkShortest": "Start shortest route guidance",

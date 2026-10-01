@@ -410,7 +410,7 @@ privacy `agent` 절은 웹 전용이라 iOS `PrivacyInfo`·ASC 라벨 3자 일�
 
 ### 한 버튼이 두 역할을 겸하면 봉인이 그 버튼을 통째로 지우거나 통째로 남기지 못한다
 
-⚠ **한 버튼이 두 역할을 겸하면 봉인이 그 버튼을 통째로 지우거나 통째로 남기지 못한다**(2026-08-15). 안내 시작 섹션의 버튼은 추적 중엔 "중지"(항상 유효), 비추적이면 직선거리 안내 시작(봉인 대상, `beacon.briefGuideStart`)이라, 섹션 표시 조건만 막으면 **실패 상태 경로**로 섹션이 떠서 봉인이 뚫린다. 조건은 역할별로 쓴다(`beacon.isTracking || experimentalGuidanceEnabled`).
+⚠ **한 버튼이 두 역할을 겸하면 봉인이 그 버튼을 통째로 지우거나 통째로 남기지 못한다**(2026-08-15). 안내 시작 섹션의 버튼은 추적 중엔 "중지"(항상 유효), 비추적이면 직선거리 안내 시작(봉인 대상)이라, 섹션 표시 조건만 막으면 **실패 상태 경로**로 섹션이 떠서 봉인이 뚫렸다. 조건은 역할별로 쓴다(`beacon.isTracking || 플래그`). 2026-10-01 2.0 졸업 때 그 비추적 얼굴(간략 단독 시작, `beacon.briefGuideStart`)을 지워 버튼은 추적 중 "안내 종료" 하나가 됐다 — 간략 안내는 모드가 아니라 내부 강등이라(E16 축2) 단독 진입점을 되살리지 않는다(`guidance-gate-drift.test.ts`가 식별자 0건을 센다).
 
 ### 실기기 배포
 
@@ -418,7 +418,7 @@ privacy `agent` 절은 웹 전용이라 iOS `PrivacyInfo`·ASC 라벨 3자 일�
 
 ### 코드 게이트
 
-**코드 게이트**: `AppConfig.experimentalGuidanceEnabled`가 `#if EXPERIMENTAL`로 갈린다(자동차·대중교통·간략 단독 진입 봉인. 도보는 2026-08-15 졸업해 플래그를 보지 않는다). 같은 자리의 `experimentalTabOrderEnabled`(2026-08-23 K1)는 탭 순서·기본 탭(실험판 검색 - 길찾기 - 내 주변 - 채팅 / 정식판 채팅 첫 탭)을 `AppTab.order`로 가른다 — 판정 뒤 졸업 또는 삭제. `experimentalOutingEnabled`(2026-09-27 E51 나들이)는 진입점 둘(제목 메뉴·길찾기 탭 거절 자리 버튼)을 가르고 실보행 판정 뒤 졸업한다(BACKLOG G5). 실험 기능을 새로 넣을 때도 같은 자리에 플래그를 두고, **기능이 검증되면 `#if`를 지운다(플래그 졸업)** — 안 지우면 플래그가 쌓인다. 항상 참인 상수(`walkGuidanceEnabled = true`)를 남기는 것이 바로 그 쌓임이라, 졸업은 검사 **삭제**로 한다.
+**코드 게이트**: `AppConfig.experimentalOutingEnabled`(2026-09-27 E51 나들이)가 `#if EXPERIMENTAL`로 갈려 진입점 둘(제목 메뉴·길찾기 탭 거절 자리 버튼)을 막고 실보행 판정 뒤 졸업한다(BACKLOG G5). 같은 자리의 `experimentalTabOrderEnabled`(2026-08-23 K1)는 탭 순서·기본 탭(실험판 검색 - 길찾기 - 내 주변 - 채팅 / 정식판 채팅 첫 탭)을 `AppTab.order`로 가른다 — 판정 뒤 졸업 또는 삭제. 졸업한 플래그: 도보(2026-08-15), 자동차·대중교통 `experimentalGuidanceEnabled`와 백그라운드 음성 `experimentalBackgroundSpeechEnabled`(2026-10-01 2.0, spec `2026-10-01-release-2.0-graduation-design.md`) — 선언째 지웠고 가드가 식별자 0건을 센다. 실험 기능을 새로 넣을 때도 같은 방식이다: `#if EXPERIMENTAL`로 갈리는 상수 하나, 그 상수를 보는 자리는 진입점(세션 시작 호출)이며, 졸업은 검사 삭제다.
 
 ### 봉인의 판정 축은 플래그 참조 목록이 아니라 세션을 시작시키는 호출 전수다
 

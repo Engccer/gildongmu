@@ -11,6 +11,12 @@
 
 ## 2026-10-01
 
+### iOS 2.0 — 자동차·대중교통 실시간 안내와 백그라운드 음성 안내 정식판 졸업
+
+- `AppConfig.experimentalGuidanceEnabled`·`experimentalBackgroundSpeechEnabled`를 선언째 삭제했다. 자동차·대중교통 시작 버튼, 설정 "자동차 안내 듣는 사람" 피커, "백그라운드 음성 안내" 토글이 정식판에 실린다. 간략 단독 시작 버튼(`beacon.briefGuideStart`)은 폐지(E16 축2 — 선두 섹션 버튼은 추적 중 "안내 종료" 하나). 나들이·햅틱 확장·탭 순서·좌우 안내음 피커는 실험판 그대로.
+- 도보 공지 V1(`WalkGuideNoticeSheet`, 길찾기 탭 진입)을 2.0 공지 `ReleaseNoticeSheet`(`releaseNoticeV2`, 앱을 열면 바로, 6로케일)로 교체. 가드 `guidance-gate-drift.test.ts`(진입점 7곳·식별자 0건)·`background-speech-guard.test.ts`·`transit-display-guard.test.ts` 갱신, 버전 2.0.0(빌드 29).
+- 남은 실주행·실승차 판정(BACKLOG §2)은 출시 뒤 실사용 관찰, 운전자 모드만 제출 전 실주행(위원장 판정). spec `docs/superpowers/specs/2026-10-01-release-2.0-graduation-design.md`, 노트 `docs/appstore/release-notes.md` 2.0 절.
+
 ### 도보 단계 번호 삭제 (iOS·안드로이드)
 
 길찾기 탭 도보 브리핑과 안내 시트 진행 상황 목록(대안 경로 미리 보기 포함)의 단계 행에서 `1.`·`2.` 번호를 뗐다. 자동차·대중교통 행과 같은 모양이다. 진행 상황 머리의 "안내 N개 중 M번째 구간"과 웹(`<ol>`)·CLI는 그대로다.

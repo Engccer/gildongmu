@@ -44,6 +44,9 @@ struct GildongmuApp: App {
     /// 설정 시트 표시 상태를 App이 소유한다 — 아래 `.id` 재생성(언어 전환) 밖이라
     /// 설정 중 언어를 바꿔도 시트가 닫히지 않는다(SR 맥락 유지).
     @State private var showsSettings = false
+    /// 2.0 공지(spec 2026-10-01-release-2.0-graduation-design.md §1). 저장은 확인 버튼만 — 시스템 닫기
+    /// (드래그·VoiceOver 탈출)는 저장하지 않아 다음 실행에 다시 뜬다.
+    @State private var releaseNoticePresented = false
     @AppStorage("themePreference") private var themeRaw = ThemePreference.system.rawValue
     /// 언어 선택 값. 그 자체가 `.id`에 들어가 전환 즉시 탭 트리를 재생성한다.
     /// 재생성이 필요한 이유: 표시 문자열은 `appLocalized`가 매번 조회하지만
@@ -156,6 +159,15 @@ struct GildongmuApp: App {
             .environment(\.openSettings, { showsSettings = true })
             // `.id` 바깥이라 언어 전환의 트리 재생성에도 열린 채로 유지된다.
             .sheet(isPresented: $showsSettings) { SettingsView() }
+            // 2.0 공지 — 앱을 열면 바로, 어느 탭이든(위원장 판정 2026-10-01). 콜드 런치에는 어느 시트도
+            // 떠 있지 않아 경합이 없다. ⚠ `interactiveDismissDisabled`를 붙이지 않는다(도보 공지 V1과 같은
+            // 계약, spec 2026-08-15 §5.1) — 탈출 제스처는 이 앱 1급 사용자가 모달에서 빠져나오는 표준 수단이다.
+            .sheet(isPresented: $releaseNoticePresented) {
+                ReleaseNoticeSheet {
+                    UserDefaults.standard.set(true, forKey: ReleaseNotice.key)
+                    releaseNoticePresented = false
+                }
+            }
             // 콜드 런치에서 인텐트 perform()이 첫 body보다 먼저 끝난 경우를 소비.
             // 이후(웜 진입)는 onChange가 받는다. pending을 즉시 비우므로
             // epoch 재생성으로 .task가 다시 돌아도 멱등.
@@ -167,6 +179,10 @@ struct GildongmuApp: App {
                 installChatFocusObserverOnce()
                 #endif
                 consumeLaunchAction()
+                // 2.0 공지(미확인이면). 앱 수명 1회 판정 — `.id` 재생성 밖이라 언어 전환·세션 리셋에 다시 돌지 않는다.
+                if !ReleaseNotice.confirmed {
+                    releaseNoticePresented = true
+                }
                 // 수동 위치 자동 해제 통지 채널. 사용자가 요청하지 않은 상태 변경이라
                 // polite로 낸다. ⚠ 이 통지가 없으면 해제가 조용한 실패가 된다 —
                 // VoiceOver는 포커스 밖 텍스트 변경을 읽지 않으므로 "표시줄이 말한다"는

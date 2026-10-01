@@ -290,9 +290,9 @@
 
 - **`Experimental`이 한꺼번에 정하는 것**: `EXPERIMENTAL` 컴파일 조건 · 번들 ID `space.dodoplanet.gildongmu.dev` · 표시 이름 `…실험` · 아이콘 `AppIconExperimental`. 번들 ID가 달라 **공식판과 한 기기에 공존**한다(설정·동의는 앱별로 분리). ⚠ 위치 권한 문구는 이 목록에 없다(정식 문구 한 벌).
 - **실기기 배포**: 실험판 `CONFIGURATION=Experimental ./ios/deploy-device.sh`, 공식 번들 `CONFIGURATION=Release`(미지정 `Debug`는 기기 확인용이 아니다). → PATTERNS
-- **코드 게이트**: `AppConfig.experimentalGuidanceEnabled`·`experimentalTabOrderEnabled`가 `#if EXPERIMENTAL`로 갈리고, 검증되면 `#if`를 **삭제**한다(항상 참 상수 금지). → PATTERNS
+- **코드 게이트**: `AppConfig.experimentalOutingEnabled`·`experimentalTabOrderEnabled`가 `#if EXPERIMENTAL`로 갈리고, 검증되면 `#if`를 **삭제**한다(항상 참 상수 금지). 자동차·대중교통(`experimentalGuidanceEnabled`)·백그라운드 음성(`experimentalBackgroundSpeechEnabled`)은 2026-10-01 2.0에서 졸업해 플래그가 없다 — 되살리지 말 것(가드가 식별자 0건을 센다). → PATTERNS
 - ⚠ **봉인의 판정 축은 플래그 참조 목록이 아니라 세션을 시작시키는 호출 전수다**(`guidance-gate-drift.test.ts`). → PATTERNS
-- ⚠ **한 버튼이 두 역할을 겸하면 봉인이 그 버튼을 통째로 지우거나 통째로 남기지 못한다** — 섹션 표시 조건은 역할별로 쓴다(`beacon.isTracking || experimentalGuidanceEnabled`). → PATTERNS
+- ⚠ **한 버튼이 두 역할을 겸하면 봉인이 그 버튼을 통째로 지우거나 통째로 남기지 못한다** — 섹션 표시 조건은 역할별로 쓴다. 2.0에서 간략 단독 시작 얼굴을 지워 그 버튼은 추적 중 "안내 종료" 하나다(E16 축2 — 간략 단독 진입점 재도입 금지). → PATTERNS
 - ⚠ **`INFOPLIST_KEY_*` 빌드 설정만으로는 구성별 분기가 안 된다**: 로컬라이즈 문자열은 `ios/scripts/experimental-infoplist.sh`, 비로컬라이즈 키는 `Support/Info-Experimental.plist`. → PATTERNS
 - ⚠ **두 plist 계약의 의도된 예외: Bluetooth 권한 문구와 CoreBluetooth 심볼** — `NSBluetoothAlwaysUsageDescription`은 실험판 plist에만, CoreBluetooth는 앱 타깃 `#if DEBUG || EXPERIMENTAL` 안(Kit에 `import CoreBluetooth` 금지, `check-release-artifact.mjs`가 잡는다). BLE 실측은 Experimental로. → PATTERNS
 - ⚠ **졸업 때 옮겨야 하는 것은 코드 게이트만이 아니다** — 백그라운드 모드도 정식 plist로 함께 승격. → PATTERNS

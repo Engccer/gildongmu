@@ -60,14 +60,14 @@ struct SettingsView: View {
     @AppStorage(DictationStyle.key) private var dictationRaw = DictationStyle.tapToggle.rawValue
     // 채팅 응답 듣기 속도 배율. 규칙·키 정본은 Kit ListenSpeed, 소비는 TtsPlayer 재생 시점.
     @AppStorage(ListenSpeed.storageKey) private var listenSpeed = 1.0
-    // 백그라운드 음성 안내(E53 실험판) — 화면이 꺼진 동안 행동 문장을 기기 음성으로. 키·기본값·실효값 정본은 Kit
-    // `BackgroundSpeech`, 소비는 `GuideSpeechOutput`(게시 시점마다 읽는다). 행은 실험 플래그 조건 안(졸업 때 조건 삭제).
+    // 백그라운드 음성 안내(E53) — 화면이 꺼진 동안 행동 문장을 기기 음성으로. 키·기본값·실효값 정본은 Kit
+    // `BackgroundSpeech`, 소비는 `GuideSpeechOutput`(게시 시점마다 읽는다).
     @AppStorage(BackgroundSpeech.storageKey) private var backgroundSpeechEnabled = BackgroundSpeech.defaultEnabled
+    // 자동차 안내 청취자(K2 §6.1) — 동승자(화면 낭독) / 운전자(스피커, 짧은 명령). 2.0부터 정식판.
+    @AppStorage(CarListener.storageKey) private var carListenerRaw = CarListener.default.rawValue
     #if DEBUG || EXPERIMENTAL
     // 왼쪽·오른쪽 안내음 구분 방식 후보 2종(실기기 선택 대기, spec 2026-08-22 §3).
     // 판정 뒤 이 피커와 Kit `LeftRightToneScheme`을 함께 지운다.
-    // 자동차 안내 청취자(K2 §6.1) — 자동차 안내가 봉인 안이라 실험 구성에서만 보인다(졸업 때 #if 삭제).
-    @AppStorage(CarListener.storageKey) private var carListenerRaw = CarListener.default.rawValue
     @AppStorage(LeftRightToneScheme.storageKey) private var leftRightToneRaw =
         LeftRightToneScheme.default.rawValue
     // 진행 상태 진동(E30 실험판) — 켜면 가까워짐·정지·신뢰 불가 3종에 진동을 더한다. 꺼짐 = 종전 동작.
@@ -181,16 +181,13 @@ struct SettingsView: View {
                 .pickerStyle(.inline)
                 .id("listenSpeed-\(AppLanguage.current)")
 
-                if AppConfig.experimentalBackgroundSpeechEnabled {
-                    Section {
-                        Toggle(appLocalized("ios.settings.backgroundSpeech"), isOn: $backgroundSpeechEnabled)
-                    } footer: {
-                        // 이름만으로는 무엇을 말하는지(행동 문장만, 나들이 주변 낭독 포함)가 드러나지 않는다 — 범위는 새 정보다.
-                        Text(appLocalized("ios.settings.backgroundSpeechFooter"))
-                    }
+                Section {
+                    Toggle(appLocalized("ios.settings.backgroundSpeech"), isOn: $backgroundSpeechEnabled)
+                } footer: {
+                    // 이름만으로는 무엇을 말하는지(행동 문장만, 나들이 주변 낭독 포함)가 드러나지 않는다 — 범위는 새 정보다.
+                    Text(appLocalized("ios.settings.backgroundSpeechFooter"))
                 }
 
-                #if DEBUG || EXPERIMENTAL
                 Picker(appLocalized("ios.settings.carListener"), selection: $carListenerRaw) {
                     Text(appLocalized("ios.settings.carListenerPassenger"))
                         .tag(CarListener.passenger.rawValue)
@@ -200,6 +197,7 @@ struct SettingsView: View {
                 .pickerStyle(.inline)
                 .id("carListener-\(AppLanguage.current)")
 
+                #if DEBUG || EXPERIMENTAL
                 Picker(appLocalized("ios.settings.leftRightTone"), selection: $leftRightToneRaw) {
                     Text(appLocalized("ios.settings.leftRightTonePan"))
                         .tag(LeftRightToneScheme.pan.rawValue)

@@ -151,29 +151,23 @@ describe("대중교통 안내 시작 게이트 (조건으로 본다, 개수로 �
     expect(src).toContain("const guideStartable = buildTransitGuideRoute(route) !== null;");
   });
 
-  it("iOS 두 자리에 로케일 조건이 없고 실험 플래그가 있다", () => {
+  it("iOS 대중교통 게이트에 로케일 조건이 없다(실험 플래그는 2.0에서 졸업)", () => {
     const src = read("ios/Gildongmu/Directions/DirectionsTabView.swift");
-    const startable = src.slice(
-      src.indexOf("private var transitGuideStartable"),
-      src.indexOf("/// 대안 경로 시작 게이트"),
-    );
-    expect(startable).toContain("AppConfig.experimentalGuidanceEnabled");
-    expect(startable).not.toContain('AppLanguage.dataLocale == "ko"');
-
     const alt = src.slice(
       src.indexOf("private func altTransitGuideStartable"),
-      src.indexOf("/// 간략 폴백 게이트"),
+      src.indexOf("/// 안내 시작의 직접 응답"),
     );
-    expect(alt).toContain("AppConfig.experimentalGuidanceEnabled");
+    expect(alt).toContain("buildTransitGuideRoute(route) != nil");
     expect(alt).not.toContain('AppLanguage.dataLocale == "ko"');
+    expect(alt).not.toContain("experimental");
   });
 
   it("다른 축의 게이트는 **여전히 있다**(같이 지워지지 않았음을 증명)", () => {
-    // 반대 방향 단언 — 자동차·도보는 이 마일스톤의 대상이 아니다(계단 회피 토글은 E42가 지웠다).
+    // 반대 방향 단언 — 자동차 ko 게이트는 이 마일스톤의 대상이 아니다(자동차 문장은 서버 ko 재작성).
     const ios = read("ios/Gildongmu/Directions/DirectionsTabView.swift");
     const car = ios.slice(
       ios.indexOf("private var carGuideStartable"),
-      ios.indexOf("private var transitGuideStartable"),
+      ios.indexOf("private func altTransitGuideStartable"),
     );
     expect(car).toContain('AppLanguage.dataLocale == "ko"');
   });

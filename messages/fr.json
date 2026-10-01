@@ -727,7 +727,6 @@
     "reduced": "Impossible de suivre la distance car la position précise est désactivée",
     "walkHeading": "Guidage à pied",
     "carHeading": "Guidage en voiture",
-    "briefGuideStart": "Démarrer le guidage à vol d'oiseau",
     "stopped": "Guidage en temps réel arrêté",
     "guideStartWalk": "Démarrer le guidage à pied",
     "guideStartWalkShortest": "Démarrer le guidage sur l'itinéraire le plus court",

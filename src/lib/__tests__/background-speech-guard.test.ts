@@ -7,11 +7,11 @@ import { join, relative } from "node:path";
  * 판정(채널 술어·분류·대기 칸)은 Kit 테스트가 잠그고, 여기는 컴파일러가 못 잡는 배선과 **정식판 불변**을 잠근다:
  *
  * 1. 안내의 기기 음성(`speakGuidance`)은 공유 출력 한 곳과 자동차 운전자 채널 한 곳에서만 부른다 — 다른 자리가
- *    부르면 토글·분류를 우회해 정식판에서도 백그라운드 음성이 나간다.
- * 2. 토글 실효값은 한 함수(`GuideSpeechOutput.backgroundSpeechEnabled`)이고 봉인 플래그를 `available`로 넘긴다.
- *    플래그는 `#if EXPERIMENTAL`에서만 참이다 — 정식판은 실효값이 상수 거짓이라 채널 술어가 종전 분기와 같다(Kit
- *    `GuideSpeechChannelTests.releaseEquivalenceForBeaconAndTransit`).
- * 3. 설정 행은 봉인 플래그 조건 안에만 있다.
+ *    부르면 토글·분류를 우회해 토글을 꺼도 백그라운드 음성이 나간다.
+ * 2. 토글 실효값은 한 함수(`GuideSpeechOutput.backgroundSpeechEnabled`)이고 저장값을 Kit `BackgroundSpeech.isEnabled`로
+ *    푼다. 봉인 플래그(`experimentalBackgroundSpeechEnabled`)는 2.0(2026-10-01)에서 졸업했다 — 식별자가 남지 않아야
+ *    한다. 토글 끔은 종전 분기와 같다(Kit `GuideSpeechChannelTests.releaseEquivalenceForBeaconAndTransit`).
+ * 3. 설정 행은 한 자리이고 실험 조건(`#if`) 밖에 있다.
  * 4. 세 안내 모델의 `post`는 채널 술어를 지나고, 분류 인자(`speechClass`)에는 기본값이 없다.
  * 5. 자동차 운전자 분기는 채널 술어보다 앞이다(운전자 모드 기기 음성은 토글과 무관 — spec §2).
  */
@@ -82,36 +82,30 @@ describe("백그라운드 음성 안내 배선 (E53)", () => {
     expect(channel).toBeGreaterThan(speak);
   });
 
-  it("봉인 플래그는 #if EXPERIMENTAL에서만 참이다", () => {
-    const config = read(join(APP, "AppConfig.swift"));
-    expect(config).toMatch(
-      /#if EXPERIMENTAL\n\s+static let experimentalBackgroundSpeechEnabled = true\n\s+#else\n\s+static let experimentalBackgroundSpeechEnabled = false\n\s+#endif/,
-    );
+  it("봉인 플래그 experimentalBackgroundSpeechEnabled는 2.0에서 졸업해 남아 있지 않다", () => {
+    const offenders = swiftFiles(join(ROOT, "ios")).filter((f) => read(f).includes("experimentalBackgroundSpeechEnabled"));
+    expect(offenders).toEqual([]);
   });
 
-  it("토글 실효값은 한 함수이고 봉인 플래그를 available로 넘긴다", () => {
+  it("토글 실효값은 한 함수이고 저장값만 넘긴다", () => {
     const users = swiftFiles(APP).filter((f) => read(f).includes("BackgroundSpeech.isEnabled("));
     expect(users.map((f) => relative(ROOT, f))).toEqual(["ios/Gildongmu/Directions/GuideSpeechOutput.swift"]);
     const output = read(join(DIR, "GuideSpeechOutput.swift"));
-    expect(output).toMatch(/BackgroundSpeech\.isEnabled\([\s\S]*?available: AppConfig\.experimentalBackgroundSpeechEnabled\)/);
+    expect(output).toMatch(/BackgroundSpeech\.isEnabled\(\s*stored: UserDefaults\.standard\.object\(forKey: BackgroundSpeech\.storageKey\) as\? Bool\)/);
     // 채널 술어에는 그 실효값이 들어간다(저장값을 직접 읽는 우회 금지).
     expect(output).toContain("backgroundSpeechEnabled: backgroundSpeechEnabled,");
-    // 원복 유예도 같은 실효값으로 가른다(정식판 0초).
+    // 원복 유예도 같은 실효값으로 가른다(토글 끔은 0초).
     expect(functionBody(output, "sessionEndHoldSeconds")).toContain("backgroundSpeechEnabled");
   });
 
-  it("설정 행은 봉인 플래그 조건 안에만 있다", () => {
+  it("설정 행은 한 자리이고 실험 조건(#if) 밖에 있다", () => {
     const settings = read(join(APP, "SettingsView.swift"));
     const row = settings.indexOf('appLocalized("ios.settings.backgroundSpeech")');
     expect(row).toBeGreaterThanOrEqual(0);
     expect(settings.split('"ios.settings.backgroundSpeech"').length - 1).toBe(1);
-    const gate = settings.lastIndexOf("if AppConfig.experimentalBackgroundSpeechEnabled {", row);
-    expect(gate).toBeGreaterThanOrEqual(0);
-    // 조건과 행 사이에 블록이 닫히지 않는다(조건 밖으로 새지 않았다).
-    const between = settings.slice(gate, row);
-    const opens = (between.match(/\{/g) ?? []).length;
-    const closes = (between.match(/\}/g) ?? []).length;
-    expect(opens).toBeGreaterThan(closes);
+    // 행 앞의 마지막 `#if`가 닫혀 있어야 한다(실험 구성 안으로 들어가지 않았다).
+    const before = settings.slice(0, row);
+    expect(before.lastIndexOf("#endif")).toBeGreaterThan(before.lastIndexOf("#if "));
   });
 
   it.each(MODELS)("%s의 post는 채널 술어를 지나고 VoiceOver 게시는 공유 출력으로만 한다", (name) => {

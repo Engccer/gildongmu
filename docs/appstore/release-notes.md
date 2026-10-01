@@ -12,6 +12,72 @@
 
 ---
 
+## 2.0 (빌드 29)
+
+기준은 1.19 아카이브 커밋 `5c3bf9bf`(빌드 28, 2026-09-29 제출)이며 그 이후 `ios/` 커밋 30건 + 이번 졸업 커밋을 판정했다. 1.19가 심사 중이면 이 노트는 그 뒤 변경만 담고, 1.19가 출시되지 않으면 1.19 절을 이 절 앞에 합친다(스킬 0단계). Release 바이너리에 도달하면서 iOS 사용자에게 보이는 것만 담는다. 2.0인 이유: 실험판에만 있던 대중교통·자동차 실시간 안내가 정식판에 처음 실린다(spec `docs/superpowers/specs/2026-10-01-release-2.0-graduation-design.md`).
+
+포함 판정:
+
+| 기능 | 커밋 | 노트 |
+|---|---|---|
+| **대중교통 실시간 안내**(G3 졸업) — 대중교통 경로마다 안내 시작 버튼, 탈 차량 선택·탑승 대기·승차 중 남은 정거장·하차 안내·승차 전 도보와 하차 뒤 도보 인계, 진행 상황 조망, 화면이 꺼져도 도착 정보 확인 | 졸업 커밋(`experimentalGuidanceEnabled` 삭제) + 1.19 이후 대중교통 계층 `82e52761`·`880d7984`·`23c00a1a`·`6b43e692`·`82174c2e` | ko·en 6로케일(en 게이트는 2026-09-01 해제). 정식판 사용자에게는 이 버전이 처음이다 |
+| **자동차 실시간 안내**(G3 졸업) — 자동차 경로에 안내 시작 버튼, 교차로 앞 예고·임박 명령, 현재 도로 이름 줄(E56), 이탈 재조회, 도착 뒤 도보 인계, 설정 "자동차 안내 듣는 사람"(동승자·운전자) | 졸업 커밋 + `f2a0c6f6`·`8ddb6a69` | **ko만**(`carGuideStartable`의 `dataLocale == "ko"` 게이트). en 노트 제외 |
+| **백그라운드 음성 안내 설정**(E53 졸업) — 화면이 꺼지거나 다른 앱을 쓰는 동안 회전·이탈·도착 안내를 기기 음성으로, 기본 켬 | 졸업 커밋 + `50b48aef`·`3c484f07`·`98911ace`·`f47693ba`·`fadceee5`·`35727e9e` | ko·en 6로케일. 도달면 `SettingsView` 행 + `GuideSpeechOutput` |
+| **2.0 공지** — 앱을 열면 한 번 뜨는 공지, 확인을 누르면 다시 뜨지 않음 | 졸업 커밋(`ReleaseNoticeSheet`) | ko·en 6로케일. 노트에는 적지 않는다(앱을 열면 보인다) |
+| **안내 화면 첫 초점**(E57) — 안내 화면이 열리거나 잠금 해제로 돌아오면 VoiceOver 초점이 남은 거리 행에 앉는다 | `9ba1ff7e`·`bafd547f`·`a82c9203`·`f47693ba` | ko·en. 도달면 `BeaconTrackingSheet`(도보)는 정식판 |
+| **정지 소리 폐지**(E55) — 멈춰 섰을 때 나던 짧은 소리를 없앴다 | `d0c3cfd3`·`f31b84ac` | ko·en. 도달면 도보 안내 재생기 |
+| **도보 경로 줄 세 가지**(E52) — 최단·큰길·계단 회피, 같은 길이면 접고, 조회가 실패한 줄은 끝에 한 문장 | `a1948052`·`036bab87`·`786b1791` | **ko만**(카카오 세 모드). en은 추천·최단 그대로 |
+| **브리핑 단계 번호 삭제** — 도보 브리핑·안내 화면 진행 목록의 `1.`·`2.` 번호를 뗐다 | `b1aba0e7`·`704a49ef` | ko·en |
+| 설정에서 언어를 바꾸면 열린 설정의 선택지도 새 언어로(A51) | `f248a26d`·`fa17efb2` | ko·en. 오류 수정 |
+| en 대중교통 브리핑 마지막 도보 줄의 목적지가 한국어로 나오던 문제(A52) | `206481db` | **en 등 비-ko만**. 오류 수정 |
+
+제외 근거:
+
+- **나들이 모드**(E54 `215daad9`·`70a85b1d`, E55의 나들이 10m 비프 분): `AppConfig.experimentalOutingEnabled` 뒤라 정식판 도달 0.
+- **체감 없는 보정**: 체중 권유 응답 표식 소거 경로(E31 iOS `1f48fa58`·`8ddb6a69`의 그 분), 거리 표기 경계값 표(`f2ba74df`), 주석·문서(`4db678b2`·`6a721314`), Kit 테스트(`e4f56bcb`).
+- **햅틱 확장 스위치·탭 순서·좌우 안내음 피커**: `#if DEBUG || EXPERIMENTAL`·`experimentalTabOrderEnabled` 뒤 그대로.
+
+심사 노트는 이번 버전에서 **갱신한다**(`--review-notes`): 백그라운드 위치·오디오 절이 도보만 말하고 있어 자동차·대중교통(화면이 꺼진 동안 도착 정보 확인, 버스 승차 중 기기 위치로 지나는 정류장 표시)으로 넓힌다. 새 권한·새 데이터 유형·새 제3자는 없다(위치·오디오 백그라운드 모드는 1.7부터, 대중교통·자동차 데이터 제공자는 브리핑에서 이미 쓴다). 넘기기 전 ASC 실값을 읽어 §9와 대조한다.
+
+### ko
+
+```
+길동무 2.0입니다. 실험판에서 다듬어 온 대중교통 안내와 자동차 안내가 정식으로 들어왔습니다.
+
+새로운 기능
+- 대중교통 실시간 안내. 길찾기 대중교통 결과의 경로마다 안내 시작 버튼이 있습니다. 탈 버스나 열차를 고르면 도착할 때까지 남은 정거장 수를 알려 드리고, 내릴 곳이 가까워지면 미리 말씀드립니다. 승차역까지 걷는 구간과 내린 뒤 목적지까지 걷는 구간도 이어서 안내합니다. 화면이 꺼져 있어도 도착 정보를 계속 확인합니다.
+- 자동차 실시간 안내. 자동차 경로에 안내 시작 버튼이 있습니다. 교차로 앞에서 미리 알려 드리고, 지금 달리는 도로 이름을 안내 화면 첫 줄에 보여 드립니다. 설정의 "자동차 안내 듣는 사람"을 운전자로 바꾸면 스피커로 짧은 명령만 들을 수 있습니다. 한국어에서만 됩니다.
+- 백그라운드 음성 안내 설정. 켜 두면 화면이 꺼지거나 다른 앱을 쓰는 동안에도 회전, 이탈, 도착 같은 안내를 기기 음성으로 말합니다. 처음에는 켜져 있습니다.
+- 도보 경로가 최단, 큰길, 계단 회피 세 가지까지 나옵니다. 같은 길이면 하나로 접고, 찾지 못한 경로는 목록 끝에 한 문장으로 알려 드립니다.
+
+개선
+- 안내 화면이 열리거나 잠금을 풀고 돌아오면 VoiceOver 초점이 남은 거리 행에 바로 앉습니다.
+- 멈춰 섰을 때 나던 짧은 소리를 없앴습니다.
+- 도보 경로 설명과 안내 화면 진행 목록에서 단계 번호를 뗐습니다.
+
+오류 수정
+- 설정에서 언어를 바꾸면 열려 있던 설정 화면의 선택지도 바로 새 언어로 바뀝니다.
+```
+
+### en
+
+```
+Gildongmu 2.0. Transit guidance, refined in the experimental build, is now in the App Store version.
+
+New
+- Real-time transit guidance. Every transit route in Directions has a button to start guidance. Pick the bus or train you will take, and the app tells you how many stops remain and lets you know ahead of time when your stop is near. The walk to the boarding stop and the walk from where you get off to your destination are guided too. Arrival information keeps updating while the screen is off.
+- Background voice guidance setting. When it is on, turns, off-route alerts, and arrivals are spoken with the device voice even while the screen is off or another app is in front. It is on by default.
+
+Improvements
+- When a guidance screen opens or you return after unlocking, the VoiceOver cursor lands on the remaining distance row.
+- The short sound that played when you stopped moving is gone.
+- Step numbers were removed from walking route descriptions and the progress list on the guidance screen.
+
+Fixes
+- Changing the language in Settings now updates the choices on the open Settings screen right away.
+- In English, the last walking line of a transit briefing no longer shows the destination name in Korean.
+```
+
 ## 1.19 (빌드 28)
 
 기준은 1.18 아카이브 커밋 `edc8cbdc`(빌드 26)이며 그 이후 `ios/` 커밋 50건을 판정했다(빌드 27은 2026-09-24 심사 취소로 미출시 — 그 노트를 승계하고 이후 27건을 더했다). Release 바이너리에 도달하면서 iOS 사용자에게 보이는 것만 담는다. 새로 읽는 서버 응답 세 가지는 2026-09-29 재배포 뒤 프로덕션 실호출로 확인했다: 도보 `lines=1`은 `shortest`·`accessible` 두 줄, 대중교통 `alternatives[].highlight`는 축 이름(`subwayOnly`·`fastest`), 역 메타 `lang=en`은 `operatorEn`(`Seoul Metro`).

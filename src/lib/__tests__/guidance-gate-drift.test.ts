@@ -6,9 +6,10 @@ import { join } from "node:path";
  * 도보 안내 정식 출시 게이트의 소스 드리프트 가드
  * (spec `docs/superpowers/specs/2026-08-15-walk-guidance-ship-design.md` §7.1).
  *
- * 도보는 정식판으로 졸업했고 자동차·대중교통·간략 단독 진입은 봉인이 남았다. 그 경계는
- * 코드 여러 곳에 흩어져 있어 한 곳만 어긋나도 **검증이 끝나지 않은 안내가 정식판에서
- * 시작된다** — 오류를 내지 않고 조용히 뚫린다.
+ * 도보(2026-08-15)·자동차·대중교통(2026-10-01, 2.0 — spec `2026-10-01-release-2.0-graduation-design.md`
+ * §2)은 정식판으로 졸업했고 나들이(E51)만 봉인이 남았다. 졸업한 수단이 다시 플래그를 보게 되면
+ * 정식판에서 그 안내가 조용히 사라지고, 나들이 진입점이 플래그 밖으로 나가면 검증이 끝나지 않은
+ * 안내가 정식판에서 시작된다 — 둘 다 오류를 내지 않는다.
  *
  * ⚠ 판정 축은 **플래그 참조 목록이 아니라 세션을 시작시키는 호출 전수**다(spec §3.2).
  * 플래그가 몇 군데 있는지만 세면 "진입점인데 플래그를 안 보는 자리"를 놓친다. 그래서
@@ -26,7 +27,8 @@ const EXPERIMENTAL_SH = join(ROOT, "ios/scripts/experimental-infoplist.sh");
 const INFOPLIST_XCSTRINGS = join(ROOT, "ios/Gildongmu/Resources/InfoPlist.xcstrings");
 const IOS_DIR = join(ROOT, "ios");
 
-const FLAG = "AppConfig.experimentalGuidanceEnabled";
+/** 2.0에서 삭제된 수단 봉인 플래그 — 식별자가 iOS 어디에도 남지 않아야 한다(항상 참 상수 금지). */
+const RETIRED_FLAG = "experimentalGuidanceEnabled";
 /** 나들이(E51) 봉인 — 2026-09-27 위원장 재판정으로 1차는 실험판 전용. */
 const OUTING_FLAG = "AppConfig.experimentalOutingEnabled";
 
@@ -210,33 +212,34 @@ function locationPurposeStrings(): Record<string, string> {
 
 const directions = () => readFileSync(DIRECTIONS, "utf8");
 
-describe("1. 자동차·대중교통·간략 단독 진입의 봉인이 유지된다", () => {
-  // 도보만 졸업했다(spec §2 "실험판에 남는 것"). 이 넷 중 하나라도 플래그를 놓으면
-  // 실주행·실승차 판정이 끝나지 않은 안내가 정식판에서 시작된다.
-  const SEALED = [
-    "carGuideStartable",
-    "transitGuideStartable",
-    "altTransitGuideStartable",
-    "briefFallbackVisible",
-  ];
-
-  it.each(SEALED)("%s 본문이 봉인 플래그를 검사한다", (name) => {
-    expect(declarationBody(directions(), name)).toContain(FLAG);
+describe("1. 자동차·대중교통은 2.0에서 플래그를 졸업했다", () => {
+  // 졸업한 게이트가 다시 플래그를 보면 정식판에서 그 안내가 조용히 사라진다. 플래그 선언 자체를
+  // 지웠으므로 식별자가 iOS 어디에도 없어야 한다(주석도 — 삭제된 심볼이 문서에서 계속 지시하면
+  // 뜻이 반대로 읽힌다).
+  it("experimentalGuidanceEnabled 식별자가 iOS 소스에 남아 있지 않다", () => {
+    const offenders = swiftFiles(IOS_DIR).filter((file) =>
+      readFileSync(file, "utf8").includes(RETIRED_FLAG),
+    );
+    expect(offenders).toEqual([]);
   });
-
+  it.each(["carGuideStartable", "altTransitGuideStartable"])("%s 본문에 실험 플래그가 없다", (name) => {
+    expect(declarationBody(directions(), name)).not.toContain("experimental");
+  });
   it("자동차 시작 버튼이 carGuideStartable 게이트 안에 있다", () => {
     expect(windowBefore(directions(), '"beacon.guideStartCar"', 5)).toContain(
       "carGuideStartable",
     );
   });
-
-  it("간략 단독 시작 버튼이 봉인 조건 안에 있다", () => {
-    // 이 버튼은 두 얼굴이라(추적 중=중지 / 비추적=간략 단독 시작) 게이트가
-    // `beacon.isTracking || 플래그`다 — 플래그만 검사하면 조건 자체가 바뀐 것을
-    // 놓친다(spec §3.3).
-    expect(windowBefore(directions(), '"beacon.briefGuideStart"', 6)).toContain(
-      `beacon.isTracking || ${FLAG}`,
+  it("간략 단독 시작 버튼은 되살아나지 않는다(E16 축2 — 간략은 모드가 아니라 내부 강등)", () => {
+    // 2.0에서 그 버튼과 라벨 키를 지웠다. 선두 섹션의 버튼은 추적 중 "안내 종료" 한 얼굴뿐이다.
+    const offenders = swiftFiles(IOS_DIR).filter((file) =>
+      /briefGuideStart|briefFallbackVisible/.test(readFileSync(file, "utf8")),
     );
+    expect(offenders).toEqual([]);
+    for (const locale of ["ko", "en", "ja", "es", "fr", "it"]) {
+      const messages = JSON.parse(readFileSync(join(ROOT, `messages/${locale}.json`), "utf8"));
+      expect(messages.beacon.briefGuideStart, locale).toBeUndefined();
+    }
   });
 });
 
@@ -266,12 +269,12 @@ describe("2. 도보 경로는 플래그를 졸업했다", () => {
         line.includes("beacon.toggle(") || line.includes("session.startBeacon(") ? i : -1,
       )
       .filter((i) => i >= 0);
-    // 간략 폴백(toggle)·자동차·도보 줄(E42 — 줄 목록 `ForEach` 안 한 호출이 모든 줄을 맡는다).
-    expect(starts.length).toBe(3);
+    // 자동차·도보 줄(E42 — 줄 목록 `ForEach` 안 한 호출이 모든 줄을 맡는다). 간략 폴백(toggle)은 2.0에서 삭제됐다.
+    expect(starts.length).toBe(2);
     const announced = starts.filter((i) =>
       lines.slice(Math.max(0, i - 3), i).some((l) => l.includes("announceGuideStartIfManualOrigin()")),
     );
-    expect(announced.length).toBe(3);
+    expect(announced.length).toBe(2);
     // 핸드오프 진입점은 GuideSession 안에 둘이다 — 대중교통→도보(`acceptWalkHandoff`. 사용자
     // 활성화가 맞다 — 2026-09-11 E34부터 마지막 leg의 "남은 도보 안내 시작" 한 버튼이 leg 종료와
     // 함께 부른다. 대중교통 세션이 봉인 안이라 도달 불가이고 그 세션은 이미 실좌표 위에 있었으므로
@@ -310,6 +313,8 @@ describe("3. 안내 세션 진입점이 늘지 않았다", () => {
    * (진입점이 준 것이 아니라 호출 형태가 합쳐졌다 — 도보 줄은 여전히 정식판 도달).
    * 2026-09-26 E51이 **8곳**으로 늘렸다: 나들이 귀환 인계 `GuideSession.acceptOutingReturn`(나들이 세션 안이라
    * 실험판 봉인 뒤 — 2026-09-27 위원장 재판정). 나들이 세션 자체의 시작은 도보 세션이 아니라 아래 별도 검사가 센다.
+   * 2026-10-01 2.0이 **7곳**으로 줄였다: 간략 단독 시작 버튼(`beacon.toggle(`)을 지웠다(E16 축2). 자동차·대중교통
+   * 진입점은 그대로이고 플래그만 졸업했다 — 이제 7곳 중 봉인 뒤는 나들이 귀환 인계 하나다.
    *
    * ⚠ 판정 축은 "`toggle`을 부르는가"가 아니라 **세션을 시작시키는가**다. A13이
    * 정밀 위치 복구 경로를 `beacon.restart()`로 바꿨을 때 `toggle`만 세는 검사는
@@ -327,12 +332,12 @@ describe("3. 안내 세션 진입점이 늘지 않았다", () => {
    */
   const ENTRY_CALL = /(?:beacon\.(?:toggle|restart)|(?:session|self)\.startBeacon)\(/g;
 
-  it("안내 세션 진입점 호출이 정확히 8곳이다", () => {
+  it("안내 세션 진입점 호출이 정확히 7곳이다", () => {
     const sites = swiftFiles(IOS_DIR).flatMap((file) => {
       const hits = readFileSync(file, "utf8").match(ENTRY_CALL) ?? [];
       return hits.map(() => file);
     });
-    expect(sites).toHaveLength(8);
+    expect(sites).toHaveLength(7);
   });
 
   /**

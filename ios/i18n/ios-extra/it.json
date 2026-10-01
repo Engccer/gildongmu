@@ -7,18 +7,19 @@
       "nearby": "Nei dintorni"
     },
     "directions": {
-      "searching": "Ricerca in corso",
-      "walkNotice": {
-        "title": "La guida a piedi è arrivata.",
-        "intro": "Grazie per usare Gildongmu!",
-        "head1": "Novità",
-        "body1": "Ora, quando cerchi un percorso nella scheda Indicazioni, la sezione a piedi mostra il pulsante \"Avvia guida a piedi\". Toccalo per avviare la guida in tempo reale. Durante la guida, lo schermo mostra la distanza rimanente fino alla destinazione, la distanza che resta del tratto corrente e la prossima indicazione. La guida continua a funzionare in background anche con lo schermo bloccato.",
-        "head2": "Da tenere presente",
-        "body2": "La guida si basa sui dati cartografici di API esterne e sul GPS, quindi può differire dalla situazione reale.",
-        "body3": "Presta particolare attenzione agli attraversamenti pedonali. Usa la guida di questa app solo come informazione complementare e provala prima su percorsi che già conosci.",
-        "body4": "La guida in tempo reale per i mezzi pubblici e l'auto è in preparazione.",
-        "confirm": "OK"
-      }
+      "searching": "Ricerca in corso"
+    },
+    "releaseNotice": {
+      "title": "Gildongmu 2.0: arrivano la guida con i mezzi pubblici e in auto.",
+      "intro": "Grazie per usare Gildongmu!",
+      "head1": "Cosa è cambiato",
+      "body1": "Dopo aver cercato un percorso nella scheda Indicazioni, ogni percorso con i mezzi pubblici ha un pulsante per avviare la guida. Scegli l'autobus o il treno che prenderai: l'app ti dice quante fermate mancano e ti avvisa in anticipo quando la tua fermata si avvicina. Anche i tratti a piedi prima di salire e dopo essere sceso sono guidati.",
+      "body2": "I percorsi in auto hanno il pulsante \"Avvia guida in auto\". Per un passeggero viene letto sullo schermo; se nelle Impostazioni imposti \"Chi ascolta la guida in auto\" su Conducente, senti comandi brevi dall'altoparlante. La guida in auto è disponibile solo in coreano.",
+      "body3": "Nelle Impostazioni c'è un nuovo interruttore \"Guida vocale in background\". Se è attivo, svolte, avvisi di uscita dal percorso e arrivi vengono detti con la voce del dispositivo anche a schermo spento o con un'altra app in primo piano. È attivo per impostazione predefinita.",
+      "head2": "Da tenere presente",
+      "body4": "La guida si basa su dati cartografici, GPS e informazioni sui trasporti in tempo reale, quindi può differire dalla situazione reale. Le informazioni sugli arrivi di autobus e treni possono essere in ritardo o sbagliate: ascolta anche gli annunci a bordo.",
+      "body5": "Fai particolare attenzione agli attraversamenti pedonali. Usa la guida di questa app solo come informazione di supporto e provala prima su un tragitto che conosci bene.",
+      "confirm": "OK"
     },
     "common": {
       "ok": "OK",
@@ -250,7 +251,7 @@
       "weightFooter": "Inserisci un peso tra {min} e {max} kg. I dati inseriti non vengono salvati su un server.",
       "weightRejected": "Il peso deve essere tra {min} e {max} kg. Mantengo il valore precedente, {kg} kg.",
       "weightRejectedNone": "Il peso deve essere tra {min} e {max} kg. Non è stato salvato nulla.",
-      "carListener": "Chi ascolta la guida in auto (sperimentale)",
+      "carListener": "Chi ascolta la guida in auto",
       "carListenerPassenger": "Passeggero (auricolari, screen reader)",
       "carListenerDriver": "Conducente (altoparlante, comandi brevi)"
     },

@@ -795,9 +795,6 @@ struct DirectionsTabView: View {
     private let session = GuideSession.shared
     private var beacon: BeaconModel { session.beacon }
     private var transitGuide: TransitGuideModel { session.transit }
-    /// 도보 안내 1회성 공지(spec 2026-08-15 §5). 저장은 확인 버튼만 — 시스템 닫기
-    /// (드래그·VoiceOver 탈출)는 저장하지 않아 다음 탭 진입에 다시 뜬다.
-    @State private var walkNoticePresented = false
     /// 필드 라벨의 수동 위치 분기(LocationBarView 동형 관찰 패턴).
     @State private var manualLocationStore = ManualLocationStore.shared
     /// 옛 위치 전이 관찰(칸이 표시줄과 같은 판정을 따라가게, stale-origin 구현 리뷰 M-2).
@@ -812,18 +809,18 @@ struct DirectionsTabView: View {
     @State private var focusAfterResolve: DirectionsFieldTarget?
     /// 추적 시트가 닫힌 뒤 돌아갈 자리. 시트 dismiss가 VO 커서를 화면 최상단으로
     /// 떨어뜨리는 것은 이 저장소에서 실기기로 확인된 사실이다.
-    /// 안내 시작 버튼 3종(간략 폴백·도보·자동차)의 포커스 정체성. ⚠ Bool 바인딩을
+    /// 안내 시작 버튼(도보 줄·자동차·대중교통 대안)의 포커스 정체성. ⚠ Bool 바인딩을
     /// 여러 행에 붙이는 함정 회피 — 항목 정체성 옵셔널 바인딩이 정본(repo 규칙).
     /// ⚠ 대안은 `routeKey`로 식별한다(표시 번호·배열 인덱스 둘 다 포커스 키 금지).
     /// ⚠ 도보는 줄 종류로 식별한다(E42 — 배열 인덱스는 새 조회에서 다른 줄을 가리킬 수 있다).
-    enum GuideStartButton: Hashable { case fallback, walkLine(WalkLineKind), car, transitAlt(String) }
+    enum GuideStartButton: Hashable { case walkLine(WalkLineKind), car, transitAlt(String) }
     @AccessibilityFocusState private var guideStartFocused: GuideStartButton?
     /// 수단 재조회 결과의 포커스 정체성(E50 §4.3). 찾은 경로는 `routeKey`, 문장은 축으로 식별한다.
     enum RequeryFocus: Hashable { case route(String), notFound(TransitModeAxis) }
     @AccessibilityFocusState private var requeryFocused: RequeryFocus?
     @State private var requeryLandingTask: Task<Void, Never>?
-    /// 시트가 닫힐 때 되돌아갈 시작 버튼(방금 떠나온 자리).
-    @State private var lastGuideStart: GuideStartButton = .fallback
+    /// 시트가 닫힐 때 되돌아갈 시작 버튼(방금 떠나온 자리). 이 탭에서 시작한 적이 없으면 nil(대입 없음).
+    @State private var lastGuideStart: GuideStartButton?
     /// 대중교통 브리핑에서 연 역 상세의 push 스택(E45). 로터 커스텀 액션은 값 기반 `NavigationLink`로
     /// 열 수 없어 프로그래매틱 push가 필요하다. 비어 있으면 화면은 종전과 같다.
     @State private var stationPath: [StationDestination] = []
@@ -939,36 +936,20 @@ struct DirectionsTabView: View {
                             .accessibilityAddTraits(.isHeader)
                     }
                 }
-                // 간략 폴백 + 실패 상태 + 추적 이중 방어 섹션(B1 §3.1 재편).
-                // 수단별 시작 버튼이 각 수단 섹션으로 내려갔으므로, 이 선두 섹션은
-                // ①시작 가능한 수단 안내가 0개일 때의 간략 폴백 ②권한 거부·정밀
-                // 꺼짐 같은 시작 실패 상태와 해결 버튼 ③추적 중 중지 이중 방어(시트가
-                // 어떤 이유로 뜨지 않아도 중지 수단이 화면에 남는다, 리뷰 C-1)만 맡는다.
+                // 실패 상태 + 추적 이중 방어 섹션(B1 §3.1 재편). 수단별 시작 버튼이 각 수단
+                // 섹션으로 내려갔으므로, 이 선두 섹션은 ①권한 거부·정밀 꺼짐 같은 시작 실패
+                // 상태와 해결 버튼 ②추적 중 중지 이중 방어(시트가 어떤 이유로 뜨지 않아도
+                // 중지 수단이 화면에 남는다, 리뷰 C-1)만 맡는다. 종전의 간략 단독 시작 버튼
+                // (실험판 전용)은 2.0에서 지웠다 — 간략 안내는 모드가 아니라 세션이 경로를
+                // 잃었을 때의 내부 강등뿐이다(E16 축2, spec 2026-08-15 §3.3).
                 // 도착지가 "현재 위치"면 무의미하므로 숨긴다(기존 계약).
                 if beacon.isTracking
                     || (model.hasQueriedOnce && trackedDestination != nil
-                        && (briefFallbackVisible || !beacon.statusText.isEmpty)),
+                        && !beacon.statusText.isEmpty),
                    let tracked = trackedDestination {
                     Section {
-                        // 이 버튼은 두 얼굴이다: 추적 중엔 중지 이중 방어(항상 유효),
-                        // 비추적이면 간략 단독 시작(실험판 전용 — 정식판의 간략 상태는
-                        // 세션이 경로를 잃었을 때의 내부 강등뿐이다, spec 2026-08-15
-                        // §3.3). 정식판 실패 상태 경로로 섹션이 떠도 이 버튼이 남으면
-                        // 봉인이 뚫리므로, 둘 다 아니면 버튼을 두지 않는다(섹션은 실패
-                        // 상태 표시와 해결 버튼으로 계속 유효하다).
-                        if beacon.isTracking || AppConfig.experimentalGuidanceEnabled {
-                            Button(beacon.isTracking
-                                ? appLocalized("beacon.stop")
-                                : appLocalized("beacon.briefGuideStart")
-                            ) {
-                                lastGuideStart = .fallback
-                                announceGuideStartIfManualOrigin()
-                                beacon.toggle(
-                                    dest: tracked.dest, label: tracked.label, kind: .walk,
-                                    accessible: false, waypoint: sessionWaypoint
-                                )
-                            }
-                            .accessibilityFocused($guideStartFocused, equals: .fallback)
+                        if beacon.isTracking {
+                            Button(appLocalized("beacon.stop")) { beacon.stopByUser() }
                         }
                         // 가시 상태 1줄. VoiceOver를 끈 사용자에게도 변화가 보여야 한다
                         // (라벨만 바뀌고 화면이 그대로면 심사에서 무반응으로 보인다).
@@ -1071,16 +1052,6 @@ struct DirectionsTabView: View {
             }
             // 안내 시트(비콘·대중교통)는 여기 없다 — 세션이 앱 수명이라 루트
             // `GildongmuApp`이 `.sheet(item:)` 하나로 띄운다(N1 spec §2.2).
-            // 도보 안내 정식 출시 1회성 공지(spec §5). 다른 두 시트와 달리 세션 상태에
-            // 묶이지 않는다 — 첫 진입에는 어느 시트도 떠 있지 않아 경합이 없다.
-            // ⚠ `interactiveDismissDisabled`를 붙이지 않는다(§5.1) — 저장이 확인
-            // 버튼에만 걸려 있어, 읽지 않고 닫은 사용자에게는 다음 진입에 다시 뜬다.
-            .sheet(isPresented: $walkNoticePresented) {
-                WalkGuideNoticeSheet {
-                    UserDefaults.standard.set(true, forKey: WalkGuideNotice.key)
-                    walkNoticePresented = false
-                }
-            }
             // 안내 화면이 사라지면(중지·잔여 화면 닫기) 시작 버튼으로 돌려보낸다(방금
             // 떠나온 자리). 최소화(띠바)는 화면이 남아 있으므로 대상이 아니다 — 그때는
             // 루트가 띠바에 착지시킨다. 이 탭이 보이지 않으면 대입은 no-op이다.
@@ -1137,13 +1108,6 @@ struct DirectionsTabView: View {
             }
             // 이미 허용된 세션이면 진입 시 조용히 현재 위치 주소를 병기(권한 팝업 없음).
             .task {
-                // 도보 안내 공지(spec §5.2 — 미확인). 조회를 기다리지 않고 탭 진입 즉시
-                // 판정한다. 종전의 ko 조건은 도보 안내가 ko 전용이던 시절의 것이라
-                // E16 축3과 함께 사라졌다 — 이제 전 로케일에서 시작할 수 있으므로
-                // 공지도 전 로케일에서 필요하다.
-                if !WalkGuideNotice.confirmed {
-                    walkNoticePresented = true
-                }
                 consumeGuideFormSync()
                 // "여기까지 길찾기" 진입은 도착지 채움 + 즉시 조회가 한 동작(1회 소비 —
                 // 탭 재진입엔 돌지 않는다). 폼 동기화 재조회가 먼저 돌았으면 가드가 흡수.
@@ -1283,8 +1247,8 @@ struct DirectionsTabView: View {
     /// 끝난 뒤 비콘을 열어야 한다 — 같은 계층의 두 시트는 동시 presentation이 안 되므로
     /// 전환 지연이 필수(landFocusAfterResolve와 같은 근거의 시간차). 도보 경로 실패는
     /// BeaconModel의 fallbackToBrief가 흡수한다(추가 게이트 불필요 — 이 핸드오프는
-    /// 대중교통 세션 안에서만 호출되고 그 세션이 `experimentalGuidanceEnabled ∧ ko`
-    /// 게이트 안에서만 존재한다, spec 2026-08-15 §3.2 964행).
+    /// 대중교통 세션 안에서만 호출되고 그 세션은 대중교통 시작 게이트
+    /// `altTransitGuideStartable` 안에서만 생긴다, spec 2026-08-15 §3.2).
     /// ⚠ 지연 발화는 실제 부수효과(GPS 추적 시작)라 no-op 대입류와 달리 취소가
     /// 필수다 — 지연 창에 화면을 떠나면 보이지 않는 곳에서 좀비 세션이 시작된다
     /// (독립 리뷰 MAJOR). onDisappear가 이 Task를 취소한다.
@@ -1300,7 +1264,7 @@ struct DirectionsTabView: View {
         // 대입 전에 소유 줄을 강제 펼친다(a11y 감사 HIGH 2026-08-12). 그 줄이 새 조회에서
         // 사라졌으면(둘째 줄 실패 흡수·스냅샷 교체) 항상 존재하는 첫 줄 버튼으로 폴백한다.
         // transitAlt는 종전 동작 유지(M3 비범위 — 대안 행 접힘은 기존 계약).
-        var target = lastGuideStart
+        guard var target = lastGuideStart else { return }
         if case .walkLine(let kind) = target {
             let kinds = model.walkLines.compactMap(\.lineKind)
             if let index = kinds.firstIndex(of: kind), index > 0 {
@@ -1330,47 +1294,19 @@ struct DirectionsTabView: View {
     }
 
     private var carGuideStartable: Bool {
-        guard AppConfig.experimentalGuidanceEnabled,
-              AppLanguage.dataLocale == "ko", let results = model.results,
+        guard AppLanguage.dataLocale == "ko", let results = model.results,
               case let .car(briefing) = results.outcomes[.car],
               briefing.provider == "tmap"
         else { return false }
         return true
     }
 
-    /// 대중교통 게이트(B2 §3.1): 경로 성공 ∧ ko ∧ 탑승 leg ≥ 1(도보 전용 제외).
-    /// 추적 불가 leg는 게이트 축이 아니라 세션 안의 정직 상태다. 성립하면 시작에
-    /// 넘길 recommended를 그대로 돌려준다(재조회 없음 — 브리핑과 같은 경로, §2).
-    private var transitGuideStartable: TransitRoute? {
-        // E27 잔여 ①(2026-09-01): en 게이트 해제 — 서버가 영문 조각을 싣고 표시 계층이 줄 단위로
-        // 고른다. ⚠ 실험 플래그 가드는 **그대로다**(대중교통 안내 전체가 아직 봉인 안이다).
-        guard AppConfig.experimentalGuidanceEnabled,
-              let results = model.results,
-              case let .transit(result) = results.outcomes[.transit],
-              buildTransitGuideRoute(result.recommended) != nil
-        else { return nil }
-        return result.recommended
-    }
-
-    /// 대안 경로 시작 게이트(M5 선행분, recommended 전용 해제): 추천과 같은 축
-    /// (플래그 ∧ 탑승 leg ≥ 1)을 경로 단위로 판정한다.
+    /// 대중교통 시작 게이트(B2 §3.1): 탑승 leg ≥ 1(도보 전용 제외)을 경로 단위로 판정한다 —
+    /// 추천·대안 모두 이 게이트를 지난다. 추적 불가 leg는 게이트 축이 아니라 세션 안의 정직
+    /// 상태다. en은 2026-09-01 해제(E27 잔여 ① — 서버가 영문 조각을 싣고 표시 계층이 줄 단위로
+    /// 고른다), 실험 봉인은 2026-10-01 2.0에서 졸업했다.
     private func altTransitGuideStartable(_ route: TransitRoute) -> Bool {
-        // E27 잔여 ①: en 게이트 해제(추천과 같은 축). 실험 플래그는 유지.
-        AppConfig.experimentalGuidanceEnabled && buildTransitGuideRoute(route) != nil
-    }
-
-    /// 간략 폴백 게이트: 시작 가능한 수단 안내 0개 ∧ 조회 settled(§3.1 — "모든 수단
-    /// 실패"가 아니라 "시작 가능 0개". en 로케일·카카오 폴백만 성공한 조합에서
-    /// 막다른 화면을 만들지 않는다).
-    ///
-    /// ⚠ 봉인 플래그 가드가 **여기에도** 필요하다. 아래 판정은 "수단 게이트 0개"라,
-    /// 플래그로 세 게이트를 끄면 이 값이 오히려 항상 true가 되어 간략 안내 버튼만
-    /// 남는다(봉인의 정반대). 폴백은 "수단이 안 되니 간략이라도"이지 "안내 자체가
-    /// 없음"이 아니다.
-    private var briefFallbackVisible: Bool {
-        guard AppConfig.experimentalGuidanceEnabled else { return false }
-        guard case .settled = model.phase else { return false }
-        return !walkGuideStartable && !carGuideStartable && transitGuideStartable == nil
+        buildTransitGuideRoute(route) != nil
     }
 
     /// 안내 시작의 직접 응답: 이 결과가 수동 위치에서 계산됐다면(`resultsUsedManualOrigin`,

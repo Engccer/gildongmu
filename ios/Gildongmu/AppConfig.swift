@@ -15,25 +15,13 @@ enum AppConfig {
     /// nmap 딥링크 필수 appname(웹 NEXT_PUBLIC_APP_IDENTIFIER와 동일값)
     static let appIdentifier = "space.dodoplanet.gildongmu"
 
-    /// 아직 정식 출시하지 않은 안내 수단(자동차·대중교통·간략 단독 진입점)의 봉인.
-    /// 도보 상세 안내는 정식 출시(2026-08-15, spec 2026-08-15-walk-guidance-ship-design.md)로
-    /// 졸업해 이 플래그를 보지 않는다 — 이탈 판정 방위 축도 켠 채로 나간다(위원장 판정:
-    /// 실험판과 정식판의 안내 동작을 같게 유지해 앞으로의 실보행 판정이 정식판에 그대로
-    /// 적용되게 한다. 축을 끄면 갈림길 오진 원증상(A6)이 남는데 그쪽이 헛경고보다 위험하다).
-    ///
-    /// **값을 손으로 고치지 않는다. 빌드 구성이 정한다**(2026-08-04 전환). 봉인의 판정
-    /// 축은 플래그 참조 목록이 아니라 **세션을 시작시키는 호출 전수**다(spec §3.2 표) —
-    /// 신규 진입점을 만들면 그 표와 `guidance-gate-drift.test.ts`를 함께 갱신하는 것이
-    /// 계약이다. 남은 셋을 하나로 묶는 이유: 셋의 운명이 같다(실주행·실승차 판정 대기).
-    /// 자동차가 먼저 졸업하는 상황이 실제로 오면 그때 쪼갠다.
-    ///
-    /// ⚠ 수단이 실주행·실승차 판정을 통과해 정식 출시할 때는 여기서 그 수단의 검사를
-    /// 삭제한다(플래그 졸업). 플래그가 쌓이지 않게 하는 것이 이 방식의 유일한 관리 포인트다.
-    #if EXPERIMENTAL
-    static let experimentalGuidanceEnabled = true
-    #else
-    static let experimentalGuidanceEnabled = false
-    #endif
+    /// 실험 기능의 봉인은 **값을 손으로 고치지 않는다. 빌드 구성이 정한다**(2026-08-04 전환).
+    /// 봉인의 판정 축은 플래그 참조 목록이 아니라 **세션을 시작시키는 호출 전수**다(spec
+    /// 2026-08-15 §3.2 표) — 신규 진입점을 만들면 그 표와 `guidance-gate-drift.test.ts`를 함께
+    /// 갱신하는 것이 계약이다. 판정을 통과해 정식 출시할 때는 그 플래그의 검사를 **삭제**한다
+    /// (플래그 졸업 — 항상 참인 상수를 남기지 않는다). 도보 안내는 2026-08-15, 자동차·대중교통
+    /// 안내와 백그라운드 음성 안내는 2026-10-01(2.0, spec 2026-10-01-release-2.0-graduation-design.md)에
+    /// 졸업했다.
 
     /// 나들이 모드(E51)의 봉인. 1차는 실험판에서만 — 다듬을 것이 많다(위원장 재판정 2026-09-27).
     /// 나들이 진입점 둘이 이 값을 읽는다(`guidance-gate-drift.test.ts`가 잠근다). 실보행 판정을 통과하면
@@ -42,18 +30,6 @@ enum AppConfig {
     static let experimentalOutingEnabled = true
     #else
     static let experimentalOutingEnabled = false
-    #endif
-
-    /// 백그라운드 음성 안내(E53, spec 2026-09-30-background-speech-design.md)의 봉인. 설정 토글 행과 토글 실효값
-    /// (`GuideSpeechOutput.backgroundSpeechEnabled`)이 이 값을 읽는다 — 거짓이면 실효값이 상수 거짓이라 정식판의
-    /// 안내 음성은 종전 그대로다(백그라운드는 소리만, 가드 `background-speech-guard.test.ts`). 실사용 판정을 통과하면
-    /// 이 검사를 삭제한다(플래그 졸업).
-    /// ⚠ **나들이(`experimentalOutingEnabled`)가 먼저 졸업하면 정식판 나들이는 백그라운드에서 무음이 된다**(나들이
-    /// 문장도 이 토글을 따른다, 위원장 판정 ②). 나들이 졸업은 이 플래그의 졸업을 함께 하거나 앞세운다.
-    #if EXPERIMENTAL
-    static let experimentalBackgroundSpeechEnabled = true
-    #else
-    static let experimentalBackgroundSpeechEnabled = false
     #endif
 
     /// 탭 순서 검색 - 길찾기 - 내 주변 - 채팅 + 기본 탭 검색(K1 ①, 위원장 판정 2026-08-23).
