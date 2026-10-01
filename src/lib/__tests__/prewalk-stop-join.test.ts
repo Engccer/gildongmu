@@ -24,25 +24,32 @@ describe("승차 전 도보 종료 결합 문장(A54)", () => {
     expect(frame).toBe(locale === "ja" ? `{reason}。${cancelled}` : `{reason}. ${cancelled}`);
   });
 
-  it("사용자 정지는 마침표 없는 정지 키를 문장 틀에 넣어 두 문장으로 낸다", () => {
-    const source = read("ios/Gildongmu/Directions/GuideSessionCoordinator.swift");
-    const stopped = source.slice(source.indexOf("        case .userStopped:"), source.indexOf("        case .ended:"));
-    expect(stopped).toContain('appLocalized("ios.beacon.prewalkCancelledWith", appLocalized("ios.beacon.stoppedJoin"))');
-    expect(stopped).not.toContain('"ios.beacon.stopped"');
-    expect(stopped).not.toContain("joinText(");
+  it("사용자 정지는 도보 모델이 마침표 없는 정지 키를 문장 틀에 넣어 .high 두 문장으로 낸다(정지음 뒤, 화면 꺼짐에도 전달)", () => {
+    const beacon = read("ios/Gildongmu/Directions/BeaconModel.swift");
+    const start = beacon.indexOf("    func stopByUser() {");
+    const body = beacon.slice(start, beacon.indexOf("\n    }\n", start));
+    // stop()이 prewalkTarget을 지우므로 그 앞에서 캡처한다.
+    expect(body.indexOf("let prewalk = prewalkTarget != nil")).toBeGreaterThan(-1);
+    expect(body.indexOf("let prewalk = prewalkTarget != nil")).toBeLessThan(body.indexOf("stopLeavingSummary("));
+    expect(body).toMatch(
+      /\} else if prewalk \{[\s\S]*announce\(\s*appLocalized\("ios\.beacon\.prewalkCancelledWith", appLocalized\("ios\.beacon\.stoppedJoin"\)\),\s*highPriority: true, speechClass: \.actionable\)/,
+    );
   });
 
-  it("사용자 정지 통지는 .high다 — 시트가 닫혀 커서가 옮겨 간 자리의 착지 낭독에 묻히지 않게(접근성 감사 Medium)", () => {
+  it("코디네이터는 사용자 정지·실패 종료에 문장을 내지 않는다 — 세션 전 대중교통 창구는 정지음과 겹치고 백그라운드에서 버린다", () => {
     const source = read("ios/Gildongmu/Directions/GuideSessionCoordinator.swift");
-    const stopped = source.slice(source.indexOf("        case .userStopped:"), source.indexOf("        case .ended:"));
-    expect(stopped).toMatch(/announceExternal\([\s\S]*highPriority: true, speechClass: \.actionable\)/);
-    // 우선순위는 기본값 없는 필수 인자 — 생략이 컴파일을 통과하면 새 호출부가 조용히 기본 우선순위가 된다.
-    const model = read("ios/Gildongmu/Directions/TransitGuideModel.swift");
-    expect(model).toContain("func announceExternal(_ message: String, highPriority: Bool, speechClass: GuideSpeechClass)");
-    // 다른 호출부는 종전 우선순위를 명시로 넘긴다.
-    const calls = source.match(/announceExternal\([\s\S]*?speechClass: \.\w+\)/g) ?? [];
-    expect(calls.length).toBe(3);
-    expect(calls.filter((c) => c.includes("highPriority: false")).length).toBe(2);
+    const tail = source.slice(source.indexOf("        case .userStopped, .ended:"), source.indexOf("    /// 낡은 연결 폐기"));
+    expect(tail.length).toBeGreaterThan(0);
+    expect(tail).not.toContain("announceExternal");
+    expect(source).not.toContain("prewalkCancelledWith");
+  });
+
+  it.each(LOCALES)("%s: 문장 틀에 들어가는 사유 키는 마침표로 끝나지 않는다(겹치면 '..')", (locale) => {
+    const beacon: Record<string, string> = JSON.parse(read(`messages/${locale}.json`)).beacon;
+    for (const reason of [beaconKeys(locale).stoppedJoin, beacon.denied, beacon.reduced]) {
+      expect(reason, locale).toBeTruthy();
+      expect(reason, locale).not.toMatch(/[.。]$/);
+    }
   });
 
   it("렌더: 사용자 정지(ko·en)와 권한 상실(ko) 최종 문장", () => {

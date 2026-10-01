@@ -159,8 +159,7 @@ final class GuideSession {
         beacon.onSessionEnd = { [weak self] reason in self?.endPrewalk(context.id, reason: reason) }
         transit.announceExternal(TransitGuideTextRenderer.render(
             transitPrewalkStartLine(
-                isEn: transitGuideIsEn, station: stationLabel, minutes: target.minutes)),
-            highPriority: false, speechClass: .actionable)
+                isEn: transitGuideIsEn, station: stationLabel, minutes: target.minutes)), speechClass: .actionable)
         launchingPrewalk = true
         self.startBeacon(BeaconModel.StartRequest(
             dest: BeaconDest(lat: target.lat, lng: target.lng), label: walkLabel, kind: .walk,
@@ -191,26 +190,17 @@ final class GuideSession {
         case .startFailed:
             // 도보 안내가 불가해도 대중교통 안내는 가능하다 — 도보 문맥은 유지(아직 걷지 않았다).
             beacon.clearPrewalk()  // 동기 거부 분기는 begin() Task를 지나지 않아 표식이 남는다
-            transit.announceExternal(
-                appLocalized("transitGuide.prewalkUnavailable"), highPriority: false, speechClass: .actionable)
+            transit.announceExternal(appLocalized("transitGuide.prewalkUnavailable"), speechClass: .actionable)
             transit.startAfterPrewalk(
                 transitRoute: context.route, destinationLabel: context.destinationLabel,
                 destinationRoman: context.destinationRoman,
                 dest: context.dest, accessible: context.accessible, prewalkCompleted: false)
-        case .userStopped:
-            // 요약 화면이 없어 stopByUser의 통지가 안 나간다 — 정지 문장과 함께 한 통지로.
-            // 완결 문장 둘이라 쉼표가 아니라 마침표 두 문장이다(A54 위원장 판정). 사유는 마침표 없는 정지 키, 마침표와
-            // 뒷문장은 권한 상실 꼬리와 같은 문장 틀 키가 든다(로케일별 문장 부호, ja는 "。").
-            // `.high`: 정지 버튼을 누르면 시트가 닫혀 VoiceOver 커서가 아래 화면으로 옮겨 가고 그 라벨을 읽는다 — 이 문장은
-            // 착지 라벨로 대체될 수 없어 기본 우선순위면 착지 낭독에 묻힌다(접근성 감사 Medium, `stopAndFail`과 같은 판별).
-            transit.announceExternal(
-                appLocalized("ios.beacon.prewalkCancelledWith", appLocalized("ios.beacon.stoppedJoin")),
-                highPriority: true, speechClass: .actionable)
-        case .ended:
-            // 문장을 내지 않는다. 이 경로는 권한·정밀 위치 상실(`BeaconModel.stopAndFail`)뿐이고(prewalk엔 안전망이 돌지 않고,
-            // 다른 시작 진입은 세션 중 거절된다), "대중교통 안내는 시작하지 않았다"는 도보 모델이 사유 문장에 붙여 **한 문장**으로
-            // 냈다(E53 spec §3.3, 횡단 리뷰 F3). 대중교통 창구로 내면 그 재생기는 세션을 시작한 적이 없어 화면이 꺼진 동안
-            // 버려지고, 대중교통 복귀 상환은 추적 가드 뒤라 어디서도 전달되지 않았다.
+        case .userStopped, .ended:
+            // 문장을 내지 않는다. "대중교통 안내는 시작하지 않았다"는 도보 모델이 정지·실패 사유 뒤에 붙여 **한 통지**로 냈다
+            // (사용자 정지 `BeaconModel.stopByUser`, 권한·정밀 위치 상실 `stopAndFail` — `.ended`는 그 경로뿐이다. prewalk엔
+            // 안전망이 돌지 않고 다른 시작 진입은 세션 중 거절된다). 대중교통 창구로 내면 그 재생기는 세션을 시작한 적이 없어
+            // 도보 정지음을 기다리지 않고 겹치며(A54 접근성 감사), 화면이 꺼진 동안엔 버려지고 대중교통 복귀 상환은 추적 가드
+            // 뒤라 어디서도 전달되지 않았다(E53 spec §3.3, 횡단 리뷰 F3).
             break
         }
     }

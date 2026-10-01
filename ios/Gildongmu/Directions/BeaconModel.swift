@@ -1415,9 +1415,18 @@ final class BeaconModel {
     /// 화면의 존재를 알 수 있다). 요약이 없어 그냥 닫히는 경로는 정지 톤이 신호다.
     func stopByUser() {
         let text = appLocalized("ios.beacon.stopped")
+        let prewalk = prewalkTarget != nil  // stop() 앞 캡처(A25 §4.2)
         pendingEndReason = .userStopped
         if stopLeavingSummary(playStopTone: true, text: text) {
             announce(text, highPriority: true, speechClass: .actionable)
+        } else if prewalk {
+            // 승차 전 도보는 종료 화면이 없다 — 정지 사유 뒤에 "대중교통 안내는 시작하지 않았다"를 마침표 두 문장으로(A54 위원장
+            // 판정, 권한 상실 `stopAndFail`과 같은 문장 틀). 이 모델의 창구라 정지음 뒤에 나가고 원복 다리 동안 오디오 세션을 쥔다
+            // (대중교통 창구는 세션 전이라 정지음과 겹치고 화면이 꺼지면 버린다 — A54 접근성 감사). `.high`: 시트가 닫혀 커서가
+            // 아래 화면으로 옮겨 가 그 라벨을 읽는다. 이 문장은 착지 라벨로 대체될 수 없다(통지 우선순위 판별선).
+            announce(
+                appLocalized("ios.beacon.prewalkCancelledWith", appLocalized("ios.beacon.stoppedJoin")),
+                highPriority: true, speechClass: .actionable)
         }
     }
 
@@ -3142,7 +3151,8 @@ final class BeaconModel {
     /// 세션 중 권한·정밀도 상실 종료. 종료 화면(요약)을 남기고 실패 상태·통지를 낸다 —
     /// 화면의 첫 문장이 실패 사유라, 시트가 인라인 상태 줄을 덮는 동안에도 사유가 들린다.
     ///
-    /// 승차 전 도보(prewalk)면 "대중교통 안내는 시작하지 않았다"를 **같은 문장**에 붙인다(E53 spec §3.3, 횡단 리뷰 F3): 대중교통
+    /// 승차 전 도보(prewalk)면 "대중교통 안내는 시작하지 않았다"를 **같은 통지**에 두 문장으로 붙인다(E53 spec §3.3, 횡단 리뷰 F3,
+    /// A54 위원장 판정): 대중교통
     /// 창구로 따로 내면 그 재생기는 세션을 시작한 적이 없어 백그라운드 채널이 버림이고, 대중교통 복귀 상환은 추적 가드 뒤라
     /// 어디서도 전달되지 않았다. 여기선 이 모델의 재생기가 원복 다리 동안 오디오 세션을 쥐고, 버려지면 복귀 상환(추적 가드
     /// 앞)이 `statusText` 꼬리로 갚는다.

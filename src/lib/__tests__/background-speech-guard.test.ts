@@ -172,7 +172,8 @@ describe("백그라운드 음성 안내 배선 (E53)", () => {
     expect(fail).toContain("let leftEndScreen = stopLeavingSummary(");
     expect(fail).toContain("highPriority: !leftEndScreen");
     const coordinator = read(join(DIR, "GuideSessionCoordinator.swift"));
-    const ended = coordinator.slice(coordinator.indexOf("        case .ended:"), coordinator.indexOf("    /// 낡은 연결 폐기"));
+    const ended = coordinator.slice(coordinator.indexOf("        case .userStopped, .ended:"), coordinator.indexOf("    /// 낡은 연결 폐기"));
+    expect(ended).toContain("case .userStopped, .ended:");
     expect(ended).not.toContain("announceExternal");
   });
 
