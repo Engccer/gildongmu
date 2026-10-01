@@ -109,3 +109,45 @@ describe("parseDir", () => {
     });
   });
 });
+
+// A53 ①: 끝점의 라틴 표기(E28 `labelRoman`)도 왕복한다 — 새로고침·공유 URL에서 en 마지막 도보 줄이 이름을 잃지 않게.
+describe("labelRoman 왕복(A53)", () => {
+  const roman = (label: string, labelRoman: string, lat: number, lng: number): DirEndpoint => ({
+    kind: "place",
+    label,
+    labelRoman,
+    coord: { lat, lng },
+  });
+
+  it("라틴 표기가 있으면 '라벨:로마자@lat,lng'로 싣고 그대로 되돌린다", () => {
+    const to = roman("63빌딩", "63bilding", 37.5198, 126.9403);
+    const s = serializeDir(CUR, to);
+    expect(s).toBe(`cur/${encodeURIComponent("63빌딩")}:63bilding@37.5198,126.9403`);
+    expect(parseDir(s)).toEqual({ from: CUR, to, via: null });
+  });
+
+  it("구분자 문자가 든 라틴 표기도 안전하다(encodeURIComponent가 ':'·'@'를 인코딩)", () => {
+    const via = roman("가게", "Shop: A@B / C", 37.1, 127.1);
+    const s = serializeDir(CUR, place("집", 37.2, 127.2), via);
+    expect(parseDir(s)?.via).toEqual(via);
+  });
+
+  it("라틴 표기가 없거나 비면 종전 토큰 그대로다(기존 URL 호환)", () => {
+    expect(serializeDir(CUR, place("경복궁", 37.5796, 126.977))).toBe(
+      `cur/${encodeURIComponent("경복궁")}@37.5796,126.977`,
+    );
+    expect(serializeDir(CUR, roman("경복궁", "  ", 37.5796, 126.977))).toBe(
+      `cur/${encodeURIComponent("경복궁")}@37.5796,126.977`,
+    );
+    expect(parseDir(`cur/${encodeURIComponent("경복궁")}@37.5796,126.977`)?.to).toEqual(
+      place("경복궁", 37.5796, 126.977),
+    );
+  });
+
+  it("깨진 인코딩·빈 라벨은 토큰 전체를 거르고(불량 입력은 null), 빈 로마자 토막은 로마자 없음이다", () => {
+    expect(parseDir(`cur/${encodeURIComponent("집")}:%E0%A4%A@37,127`)).toBeNull();
+    expect(parseDir(`cur/:63bilding@37,127`)).toBeNull();
+    // 빈 로마자 토막은 로마자 없음이다(라벨은 살아 있다).
+    expect(parseDir(`cur/${encodeURIComponent("집")}:@37,127`)?.to).toEqual(place("집", 37, 127));
+  });
+});

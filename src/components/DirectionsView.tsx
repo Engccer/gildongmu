@@ -17,7 +17,7 @@ import type {
   WalkRouteLine,
 } from "@/lib/types";
 import { resolveAddressCoord } from "@/lib/resolve-address-coord";
-import { parseDir, serializeDir, type DirEndpoint } from "@/lib/directions-state";
+import { parseDir, placeEndpoint, serializeDir, type DirEndpoint } from "@/lib/directions-state";
 import {
   DIRECTIONS_ORIGIN_MAX_AGE_SECONDS,
   getGeolocationSnapshot,
@@ -61,7 +61,8 @@ import { CarRouteResult } from "./CarRouteBriefing";
 import { carStepItems, walkStepItems } from "@/lib/route-step-items";
 import { hasActiveGuideSession, stopActiveGuideSession } from "@/lib/guide-session-store";
 import { alightLineText, boardExitOnBoardLine } from "@/lib/transit-exit-lines";
-import { transitWalkDestinationName, transitWalkLegMessage } from "@/lib/transit-walk-leg";
+import { transitBoardLegNames } from "@/lib/transit-leg-english";
+import { transitWalkLegMessage } from "@/lib/transit-walk-leg";
 import { isUnwinding, publishView, withdrawView } from "@/lib/webmcp/view-registry";
 import type {
   DirectionsBridge,
@@ -102,6 +103,8 @@ type ModeOutcome =
 type QueryResults = {
   /** 조회 시점의 도착 표시명(대중교통 "도착" 문장용), 필드 편집과 무관한 스냅샷 */
   destLabel: string;
+  /** 위 표시명의 라틴 표기(끝점 `labelRoman`, A53) — en 브리핑의 마지막 도보 줄이 싣는다. 승격본·현재 위치는 null. */
+  destRoman: string | null;
   /** 조회 시점의 도착 좌표 스냅샷 — 실시간 안내 진입점의 목적지(렌더 중 ref 접근 금지). */
   destCoord: Coord;
   /**
@@ -168,6 +171,21 @@ function endpointToField(ep: DirEndpoint, currentLabel: string): FieldState {
     text: ep.kind === "current" ? currentLabel : ep.label,
     resolved: ep,
   };
+}
+
+/** 장소 끝점 → 최근 기록 항목. 라틴 표기(A53)는 있을 때만 싣는다(기록 ↔ 끝점 왕복에서 잃지 않게). */
+function recentOf(ep: Extract<DirEndpoint, { kind: "place" }>): RecentEndpoint {
+  return {
+    label: ep.label,
+    lat: ep.coord.lat,
+    lng: ep.coord.lng,
+    ...(ep.labelRoman ? { labelRoman: ep.labelRoman } : {}),
+  };
+}
+
+/** 최근 기록 항목 → 장소 끝점(`recentOf`의 역). */
+function placeOf(e: RecentEndpoint): DirEndpoint {
+  return placeEndpoint(e.label, { lat: e.lat, lng: e.lng }, e.labelRoman);
 }
 
 /**
@@ -589,28 +607,13 @@ export function DirectionsView({
     ] as const) {
       if (ep?.kind !== "place") continue;
       const place = ep;
-      queueMicrotask(() =>
-        setRecentFor(field)(
-          recordRecentEndpoint(field, {
-            label: place.label,
-            lat: place.coord.lat,
-            lng: place.coord.lng,
-          }),
-        ),
-      );
+      queueMicrotask(() => setRecentFor(field)(recordRecentEndpoint(field, recentOf(place))));
     }
   }, [initialFrom, initialTo]);
 
   /** endpoint 확정 공용 기록 지점(현재 위치 제외 — kind:"place"만). 필드별 분리 기록. */
   function recordResolved(field: RecentEndpointField, ep: DirEndpoint) {
-    if (ep.kind === "place")
-      setRecentFor(field)(
-        recordRecentEndpoint(field, {
-          label: ep.label,
-          lat: ep.coord.lat,
-          lng: ep.coord.lng,
-        }),
-      );
+    if (ep.kind === "place") setRecentFor(field)(recordRecentEndpoint(field, recentOf(ep)));
   }
 
   const titleRef = useRef<HTMLHeadingElement>(null);
@@ -847,6 +850,7 @@ export function DirectionsView({
       const origin = from.kind === "current" ? (cur as Coord) : from.coord;
       let dest = to.kind === "current" ? (cur as Coord) : to.coord;
       let destLabel = to.kind === "current" ? currentLabel : to.label;
+      let destRoman = to.kind === "place" ? (to.labelRoman ?? null) : null;
       // A11 출입구 승격 — 이름 있는 장소 목적지에만, ko 데이터 로케일에서만
       // (도보 경로 자체가 ko 전용이고 카카오 출입구 이름은 한국어 고유명사다).
       // 승격본은 여기서 확정되어 전 수단 조회·안내 세션·계단 회피 재조회가 **같은
@@ -861,6 +865,7 @@ export function DirectionsView({
         if (entrance) {
           dest = { lat: entrance.lat, lng: entrance.lng };
           destLabel = entrance.name;
+          destRoman = null; // 승격본은 한국어 이름뿐이다(카카오 출입구 POI)
         }
       }
 
@@ -901,6 +906,7 @@ export function DirectionsView({
       const planId = `p${myGen}`;
       setResults({
         destLabel,
+        destRoman,
         destCoord: dest,
         originCoord: origin,
         dataLang: dataLocale(locale),
@@ -921,11 +927,9 @@ export function DirectionsView({
       // 여기 도달하지 않아 자연 배제된다. current는 null 투영(실좌표를 굳히지 않는다).
       setRecentRoutes(
         recordRecentRoute({
-          from: from.kind === "current" ? null : { label: from.label, lat: from.coord.lat, lng: from.coord.lng },
-          to: to.kind === "current" ? null : { label: to.label, lat: to.coord.lat, lng: to.coord.lng },
-          ...(viaEp?.kind === "place"
-            ? { via: { label: viaEp.label, lat: viaEp.coord.lat, lng: viaEp.coord.lng } }
-            : {}),
+          from: from.kind === "current" ? null : recentOf(from),
+          to: to.kind === "current" ? null : recentOf(to),
+          ...(viaEp?.kind === "place" ? { via: recentOf(viaEp) } : {}),
         }),
       );
       // 첫 성공 수단 heading으로 1회 포커스. 성공 0건이면 이동 없음(통지만).
@@ -1131,22 +1135,31 @@ export function DirectionsView({
    * 렌더마다 다시 만들지만 `planId`가 세대를 대표하므로 객체 정체성은 계약이 아니다.
    */
   const kindOf = (o: ModeOutcome): ModeOutcomeKind => (o.kind === "outOfCoverage" ? "error" : o.kind);
-  function transitLegLine(legs: TransitLeg[], index: number, boardSeen: number, destName: string): string {
+  function transitLegLine(
+    legs: TransitLeg[],
+    index: number,
+    boardSeen: number,
+    dest: { label: string; roman: string | null },
+  ): string {
     const leg = legs[index];
+    const english = prefersEnglish(locale);
     if (leg.mode === "walk") {
-      // 화면 브리핑과 같은 함수(이름 선택·키·승차 출구 E25). 역 이름은 아래 탑승 줄과 같은 한국어로 두고
-      // (같은 역을 두 이름으로 부르지 않는다), 목적지 이름은 영어 문장이면 라틴 표기만 싣는다(A52).
+      // 화면 브리핑과 같은 함수·같은 인자(줄 단위 영어 자격·이름 선택·키·승차 출구 E25·목적지 라틴 표기 A52/A53).
       const { key, values } = transitWalkLegMessage(legs, index, {
-        stationNamesEn: false,
-        destination: transitWalkDestinationName(destName, null, prefersEnglish(locale)),
+        english,
+        destinationLabel: dest.label,
+        destinationRoman: dest.roman,
       });
       return tTransit(key, values);
     }
+    // 노선·승차역도 화면 탑승 줄과 같은 함수로 고른다(A53 ③) — 영어 줄이면 영문, 아니면 셋 다 한국어.
+    // 평문이라 승차역 괄호 병기는 없다(화면 낭독과 같은 1순위 이름만).
+    const names = transitBoardLegNames(leg, english);
     const lineLabel =
-      leg.mode === "bus" && leg.lineName ? tTransit("busNo", { route: leg.lineName }) : (leg.lineName ?? "");
+      leg.mode === "bus" && names.line ? tTransit("busNo", { route: names.line }) : (names.line ?? "");
     const line = tTransit.markup(boardSeen === 0 ? "legBoard" : "legTransfer", {
       line: () => lineLabel,
-      from: () => leg.fromName ?? "",
+      from: () => names.from ?? "",
       count: leg.stationCount ?? 0,
     });
     // 앞 도보 줄이 없을 때만 이 줄이 승차 출구를 싣는다(두 줄에 겹치지 않는다).
@@ -1172,7 +1185,7 @@ export function DirectionsView({
       const ref = routeRefs.refOf(route.routeKey) ?? "0";
       let boardSeen = 0;
       const legLines = route.legs.map((leg, i) => {
-        const line = transitLegLine(route.legs, i, boardSeen, results.destLabel);
+        const line = transitLegLine(route.legs, i, boardSeen, { label: results.destLabel, roman: results.destRoman });
         if (leg.mode !== "walk") boardSeen += 1;
         return line;
       });
@@ -1350,9 +1363,7 @@ export function DirectionsView({
   }
 
   function routeEndpoint(side: RecentEndpoint | null): DirEndpoint {
-    return side
-      ? { kind: "place", label: side.label, coord: { lat: side.lat, lng: side.lng } }
-      : { kind: "current" };
+    return side ? placeOf(side) : { kind: "current" };
   }
   function routeItemLabel(r: RecentRoute): string {
     const side = (s: RecentEndpoint | null) => (s ? s.label : t("currentLocation"));
@@ -1788,6 +1799,7 @@ export function DirectionsView({
                                 t={tTransit}
                                 locale={locale}
                                 dest={results.destLabel}
+                                destRoman={results.destRoman}
                                 includeSummary={false}
                               />
                             </>
@@ -2122,11 +2134,8 @@ function EndpointField({
         announce(t("coordError"));
         return;
       }
-      resolveAndClose({
-        kind: "place",
-        label: target,
-        coord: { lat: r.lat, lng: r.lng },
-      });
+      // 라틴 표기는 juso 공식 영문 주소(E28, iOS `geocode` 동형) — 확정 시점에 손에 있는 값이다.
+      resolveAndClose(placeEndpoint(target, { lat: r.lat, lng: r.lng }, addr.engAddr));
     } finally {
       geocodeRef.current = false;
     }
@@ -2186,7 +2195,8 @@ function EndpointField({
           <ul ref={candidateListRef} className="mt-1">
             {/* 장소 후보: 비-ko는 이름이 로마자(E28)이고 한글은 버튼 이름의 마지막 노드(R1). 주소는
                 한국어 원문이라 접근 텍스트에 한글이 남으면 줄 전체 lang=ko(R4, NightClinics 선례).
-                확정 라벨(`label`)은 종전대로 원명이다 — 병기는 후보 목록의 표시 층에만 있다. */}
+                확정 라벨(`label`)은 종전대로 원명이다 — 병기는 후보 목록의 표시 층에만 있고, 라틴 표기는 끝점의
+                `labelRoman`으로 함께 확정된다(A53, en 브리핑 마지막 도보 줄). */}
             {candidates.places.map((p, i) => {
               const name = bilingual(p.name, { roman: p.nameRoman });
               const text = joinText(name.primary, p.roadAddress || p.address);
@@ -2196,11 +2206,7 @@ function EndpointField({
                     type="button"
                     ref={i === 0 ? firstCandidateRef : undefined}
                     onClick={() =>
-                      resolveAndClose({
-                        kind: "place",
-                        label: p.name,
-                        coord: { lat: p.lat, lng: p.lng },
-                      })
+                      resolveAndClose(placeEndpoint(p.name, { lat: p.lat, lng: p.lng }, p.nameRoman))
                     }
                     className="min-h-11 w-full text-left text-sm underline"
                     lang={langFor(text)}
@@ -2249,13 +2255,7 @@ function EndpointField({
               <li key={`${e.lat},${e.lng}`} className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() =>
-                    resolveAndClose({
-                      kind: "place",
-                      label: e.label,
-                      coord: { lat: e.lat, lng: e.lng },
-                    })
-                  }
+                  onClick={() => resolveAndClose(placeOf(e))}
                   className="min-h-11 flex-1 text-left text-sm underline"
                 >
                   {/* 고정 항목은 라벨 접미사 하나로 시각·낭독 동시 전달(한 줄 = 한 객체) */}

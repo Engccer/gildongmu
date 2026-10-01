@@ -18,7 +18,7 @@ function Harness({ leg }: { leg: Record<string, unknown> }) {
     },
     legs: [leg],
   };
-  return <TransitRouteResult route={route as never} t={t} locale="ko" dest="목적지" />;
+  return <TransitRouteResult route={route as never} t={t} locale="ko" dest="목적지" destRoman={null} />;
 }
 
 function renderLeg(leg: Record<string, unknown>) {

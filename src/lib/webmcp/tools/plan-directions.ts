@@ -1,4 +1,4 @@
-import type { DirEndpoint } from "@/lib/directions-state";
+import { placeEndpoint, type DirEndpoint } from "@/lib/directions-state";
 import { resolveAddressCoord } from "@/lib/resolve-address-coord";
 import type { JusoAddress, PlaceSearchResult } from "@/lib/types";
 import { checkBudget, consumeBudget } from "../tool-budget";
@@ -23,6 +23,8 @@ interface Candidate {
   kind: "place" | "address";
   coord?: { lat: number; lng: number };
   roadAddr?: string;
+  /** 라틴 표기(장소 `nameRoman`·주소 `engAddr`) — 끝점 `labelRoman`으로 운반한다(A53, 화면 후보 확정과 같은 값). */
+  roman?: string;
   expiresAt: number;
 }
 
@@ -105,6 +107,7 @@ export function planDirectionsTool(): WebMcpTool {
         address: p.roadAddress || p.address,
         kind: "place" as const,
         coord: { lat: p.lat, lng: p.lng },
+        roman: p.nameRoman,
         expiresAt: now + CANDIDATE_TTL_MS,
       })),
       ...addresses.map((a) => ({
@@ -114,6 +117,7 @@ export function planDirectionsTool(): WebMcpTool {
         address: a.roadAddr,
         kind: "address" as const,
         roadAddr: a.roadAddrPart1 || a.roadAddr,
+        roman: a.engAddr,
         expiresAt: now + CANDIDATE_TTL_MS,
       })),
     ].map((c, i) => ({ ...c, candidateId: `${field}-${now.toString(36)}-${i + 1}` }));
@@ -128,7 +132,7 @@ export function planDirectionsTool(): WebMcpTool {
     signal: AbortSignal | undefined,
   ): Promise<{ ok: true; endpoint: DirEndpoint } | { ok: false; failure: ToolFailure }> {
     if (c.kind === "place" && c.coord) {
-      return { ok: true, endpoint: { kind: "place", label: c.label, coord: c.coord } };
+      return { ok: true, endpoint: placeEndpoint(c.label, c.coord, c.roman) };
     }
     const r = await resolveAddressCoord(c.roadAddr ?? c.label, signal);
     if (r.kind !== "resolved") {
@@ -136,7 +140,7 @@ export function planDirectionsTool(): WebMcpTool {
     }
     return {
       ok: true,
-      endpoint: { kind: "place", label: c.roadAddr ?? c.label, coord: { lat: r.lat, lng: r.lng } },
+      endpoint: placeEndpoint(c.roadAddr ?? c.label, { lat: r.lat, lng: r.lng }, c.roman),
     };
   }
 
@@ -310,14 +314,17 @@ async function resolveToRef(
   }
   if (r.kind === "notFound") return { ok: false, failure: failure("notFound", { field: "to" }) };
   if (r.kind === "place") {
-    return { ok: true, endpoint: { kind: "place", label: r.place.name, coord: { lat: r.place.lat, lng: r.place.lng } } };
+    return {
+      ok: true,
+      endpoint: placeEndpoint(r.place.name, { lat: r.place.lat, lng: r.place.lng }, r.place.nameRoman),
+    };
   }
   const label = r.address.roadAddrPart1 || r.address.roadAddr;
   const g = await resolveAddressCoord(label, signal);
   // `resolveAddressCoord`는 abort도 failed로 접는다 — 끊긴 op를 retryable geocodeFailed로 위장하지 않는다.
   if (signal.aborted) return { ok: false, failure: failure("aborted", { detail: "signal" }) };
   if (g.kind !== "resolved") return { ok: false, failure: failure("geocodeFailed", { field: "to" }) };
-  return { ok: true, endpoint: { kind: "place", label, coord: { lat: g.lat, lng: g.lng } } };
+  return { ok: true, endpoint: placeEndpoint(label, { lat: g.lat, lng: g.lng }, r.address.engAddr) };
 }
 
 /** 화면 상태 → 요약 출력(spec §3.4, 순수). 수단 키 부재 = 그 수단을 제공하지 않는 화면. */

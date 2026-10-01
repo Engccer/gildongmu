@@ -160,7 +160,7 @@ describe("TransitRouteResult — en 로케일 구간 문장", () => {
   ) as unknown as Parameters<typeof TransitRouteResult>[0]["t"];
 
   function renderRoute() {
-    return wrap("en", <TransitRouteResult route={route} t={t} locale="en" dest="Yeoksam" />);
+    return wrap("en", <TransitRouteResult route={route} t={t} locale="en" dest="Yeoksam" destRoman={null} />);
   }
 
   it("노선·승차역이 둘 다 영문인 지하철 구간은 영어 문장 + 승차역 괄호 병기(aria-hidden·lang=ko)", () => {
@@ -189,11 +189,35 @@ describe("TransitRouteResult — en 로케일 구간 문장", () => {
 
   it("마지막 도보(행선지 없음)는 한글 목적지 이름을 싣지 않는다(A52)", () => {
     const last: TransitRoute = { ...route, legs: [...legs, { mode: "walk", minutes: 4, distanceMeters: 242 }] };
-    const hangul = wrap("en", <TransitRouteResult route={last} t={t} locale="en" dest="63빌딩" />);
+    const hangul = wrap("en", <TransitRouteResult route={last} t={t} locale="en" dest="63빌딩" destRoman={null} />);
     expect([...hangul.container.querySelectorAll("li")].at(-1)?.textContent).toBe("Walk 4 min to the destination, 242m");
     cleanup();
-    const latin = wrap("en", <TransitRouteResult route={last} t={t} locale="en" dest="Lotte World Tower" />);
+    const latin = wrap("en", <TransitRouteResult route={last} t={t} locale="en" dest="Lotte World Tower" destRoman={null} />);
     expect([...latin.container.querySelectorAll("li")].at(-1)?.textContent).toBe("Walk 4 min to Lotte World Tower, 242m");
+  });
+
+  it("끝점 라틴 표기가 있으면 마지막 도보 줄이 그 이름을 싣는다(A53 ①, 병기 괄호 없음)", () => {
+    const last: TransitRoute = { ...route, legs: [...legs, { mode: "walk", minutes: 4, distanceMeters: 242 }] };
+    const { container } = wrap("en", <TransitRouteResult route={last} t={t} locale="en" dest="63빌딩" destRoman="63bilding" />);
+    const li = [...container.querySelectorAll("li")].at(-1)!;
+    expect(li.textContent).toBe("Walk 4 min to 63bilding, 242m");
+    expect(li.querySelector("[lang]")).toBeNull();
+  });
+
+  it("영문 행선지가 없는 중간 도보는 앱과 같은 문장이고 한국어 역명에만 lang=ko(A53 ②, 탑승 줄과 같은 방식)", () => {
+    const mid: TransitRoute = {
+      ...route,
+      legs: [{ mode: "walk", minutes: 3, toName: "강남역", distanceMeters: 98 }, legs[2]],
+    };
+    const { container } = wrap("en", <TransitRouteResult route={mid} t={t} locale="en" dest="Yeoksam" destRoman={null} />);
+    const li = container.querySelectorAll("li")[0];
+    expect(li.textContent).toBe("Walk 3 min to 강남역, 98m");
+    expect([...li.querySelectorAll("[lang]")].map((e) => [e.getAttribute("lang"), e.textContent])).toEqual([["ko", "강남역"]]);
+  });
+
+  it("영문 행선지가 있는 도보 줄은 태그 없는 한 텍스트다", () => {
+    const { container } = renderRoute();
+    expect(container.querySelectorAll("li")[0].querySelector("[lang]")).toBeNull();
   });
 
   it("도착 문단은 하차역 영문 + 괄호 병기", () => {

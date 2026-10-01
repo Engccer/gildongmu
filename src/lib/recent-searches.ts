@@ -11,7 +11,8 @@
  */
 
 export type RecentQuery = { text: string; pinned: boolean };
-export type RecentEndpoint = { label: string; lat: number; lng: number; pinned?: boolean };
+/** `labelRoman`은 확정 시점의 라틴 표기(E28, A53 — Kit `RecentEndpoint.labelRoman` 동형). 부재는 키 없음(기존 저장본 호환). */
+export type RecentEndpoint = { label: string; lat: number; lng: number; pinned?: boolean; labelRoman?: string };
 
 /** 길찾기 필드 스코프 — 출발지·도착지 기록은 분리 저장한다(위원장 지시 2026-07-26). */
 /** "via"는 경유지 전용 목록(N4) — 도착지 목록과 섞이면 경유지가 목적지 최근 목록에 오른다. */
@@ -195,7 +196,8 @@ const isEndpoint = (v: unknown): v is RecentEndpoint =>
   typeof (v as RecentEndpoint).lng === "number" &&
   Number.isFinite((v as RecentEndpoint).lat) &&
   Number.isFinite((v as RecentEndpoint).lng) &&
-  isPinnedFlag((v as RecentEndpoint).pinned);
+  isPinnedFlag((v as RecentEndpoint).pinned) &&
+  ((v as RecentEndpoint).labelRoman === undefined || typeof (v as RecentEndpoint).labelRoman === "string");
 
 /** 좌표 소수 4자리(≈11m) 일치 = 같은 장소. 라벨 변형은 최신 라벨로 교체된다. */
 function sameEndpoint(a: RecentEndpoint, b: RecentEndpoint): boolean {

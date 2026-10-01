@@ -9,7 +9,8 @@ import { isOutOfCoverageBody } from "@/lib/out-of-coverage";
 import { joinText } from "@/lib/format";
 import { alternativeName } from "@/lib/transit-alternative-name";
 import { alightLineText, boardExitOnBoardLine } from "@/lib/transit-exit-lines";
-import { transitWalkDestinationName, transitWalkLegMessage } from "@/lib/transit-walk-leg";
+import { transitBoardLegNames } from "@/lib/transit-leg-english";
+import { transitWalkLegMessage } from "@/lib/transit-walk-leg";
 import { dataLocale, prefersEnglish } from "@/lib/data-locale";
 import { TransitBilingualName } from "./TransitBilingualName";
 
@@ -235,6 +236,7 @@ export function TransitRouteBriefing({
                     t={t}
                     locale={locale}
                     dest={dest.name}
+                    destRoman={null}
                     includeSummary={false}
                   />
                 )}
@@ -247,9 +249,14 @@ export function TransitRouteBriefing({
   );
 }
 
+/** 도보 줄 문장에서 한국어 역명 자리를 찾는 표식(사용 영역 문자 — 번역문에 나오지 않는다). */
+const NAME_SLOT = "\uE000";
+
 /** 경로 1개의 요약 + 구간 리스트. 고유명(노선·정류장)은 한국어면 lang="ko", en 계열 로케일에서
     서버 영문(`*En`, E27)이 **노선·정류장 둘 다** 있는 구간만 영문(역명은 `Gangnam (강남)` 병기 —
     괄호 한글은 시각 전용). 한 구간 문장 안에서 언어를 섞지 않는다(줄 단위 원자성).
+    `destRoman`은 목적지 라벨의 라틴 표기(끝점 `labelRoman`, A53) — 영어 줄의 마지막 도보만 쓴다. 기본값 없음:
+    모르면 null을 적는다(채팅 카드는 로마자를 모른다).
     includeSummary=false는 대안 펼침 전용 — 펼침 버튼 라벨이 이미 요약이라
     본문에서 재낭독하지 않는다(인접 중복 금지). */
 export function TransitRouteResult({
@@ -257,12 +264,14 @@ export function TransitRouteResult({
   t,
   locale,
   dest,
+  destRoman,
   includeSummary = true,
 }: {
   route: TransitRoute;
   t: ReturnType<typeof useTranslations<"route.transit">>;
   locale: string;
   dest: string;
+  destRoman: string | null;
   includeSummary?: boolean;
 }) {
   let boardSeen = 0;
@@ -286,27 +295,37 @@ export function TransitRouteResult({
       <ol className="mt-2 list-decimal pl-6 text-sm leading-relaxed">
         {route.legs.map((leg, i) => {
           if (leg.mode === "walk") {
-            // 행선지 → 목적지 → "목적지까지" 순의 이름 선택과 키는 WebMCP 도구 출력과 같은 함수다.
-            // 영어 줄의 목적지 이름은 라틴 표기만(A52, 한 줄 안에서 언어를 섞지 않는다). 문장 틀
-            // `{name}`이 문자열 자리라 괄호 병기는 없다. 이 화면은 로마자를 모르니 한글 이름이면 "목적지까지"다.
-            const { key, values } = transitWalkLegMessage(route.legs, i, {
-              stationNamesEn: isEn,
-              destination: transitWalkDestinationName(dest, null, isEn),
+            // 영어 자격·이름 선택·키는 WebMCP 도구 출력과 같은 함수다(줄 단위 영어 자격, A52 목적지 라틴 표기).
+            // 문장 틀 `{name}`이 문자열 자리라 괄호 병기는 없다.
+            const { key, values, english } = transitWalkLegMessage(route.legs, i, {
+              english: isEn,
+              destinationLabel: dest,
+              destinationRoman: destRoman,
             });
-            return <li key={i}>{t(key, values)}</li>;
+            if (!isEn || english || !values.name) return <li key={i}>{t(key, values)}</li>;
+            // 영문 행선지가 없는 줄: 문장 틀은 UI 언어, 역명은 한국어 원문(앱과 같은 문장). 아래 탑승 줄과 같이
+            // 그 이름에만 lang="ko"를 달아 한국어 음성으로 읽힌다(A53 ②).
+            const [before, after] = t(key, { ...values, name: NAME_SLOT }).split(NAME_SLOT);
+            return (
+              <li key={i}>
+                {before}
+                <span lang="ko">{values.name}</span>
+                {after}
+              </li>
+            );
           }
           // 고유명(노선·정류장)은 <line>/<from> 태그 핸들러로 lang="ko" 주입
           const messageKey = boardSeen++ === 0 ? "legBoard" : "legTransfer";
-          // 구간 문장의 영문은 노선·승차·하차 정류장이 **다** 있을 때만(줄 단위 원자성, iOS `transitLegLine`과
-          // 같은 조건) — 하나만 영문이면 한 문장(또는 아래 빠른하차 줄) 안에 두 언어가 선다.
-          const legEn =
-            isEn && Boolean(leg.lineNameEn) && Boolean(leg.fromNameEn) && (leg.toName == null || Boolean(leg.toNameEn));
+          // 구간 문장의 영문은 노선·승차·하차 정류장이 **다** 있을 때만(줄 단위 원자성, Kit `transitLegUsesEnglish`와
+          // 같은 술어, WebMCP 투영과 같은 함수) — 하나만 영문이면 한 문장(또는 아래 빠른하차 줄) 안에 두 언어가 선다.
+          const names = transitBoardLegNames(leg, isEn);
+          const legEn = names.english;
           // 하차 줄은 빠른하차 뒤에 출구가 결론으로 붙는다. 빠른하차가 없던 역은 종전에 줄 자체가
           // 없었으므로 하차역 이름으로 줄이 새로 선다(E25).
           const alightLine = alightLineText(
             t,
             tGuide,
-            (legEn && leg.toNameEn) || leg.toName || "",
+            names.to ?? "",
             leg.quickExit,
             leg.exit?.alight,
           );
@@ -320,18 +339,18 @@ export function TransitRouteResult({
                 // lang="ko"를 씌우지 않는다 — en "bus 370"의 "bus"까지 한국어
                 // 음성으로 낭독된다. 감싸도 되는 건 ODsay 원문뿐이다.
                 line: (chunks) =>
-                  leg.mode === "bus" && leg.lineName ? (
-                    t("busNo", { route: legEn ? leg.lineNameEn! : leg.lineName })
+                  leg.mode === "bus" && names.line ? (
+                    t("busNo", { route: names.line })
                   ) : legEn ? (
-                    leg.lineNameEn
+                    names.line
                   ) : (
-                    <span lang="ko">{leg.lineName ?? chunks}</span>
+                    <span lang="ko">{names.line ?? chunks}</span>
                   ),
                 from: (chunks) =>
                   legEn ? (
-                    <TransitBilingualName en={leg.fromNameEn!} ko={leg.fromName} />
+                    names.from ? <TransitBilingualName en={names.from} ko={leg.fromName} /> : chunks
                   ) : (
-                    <span lang="ko">{leg.fromName ?? chunks}</span>
+                    <span lang="ko">{names.from ?? chunks}</span>
                   ),
                 count: leg.stationCount ?? 0,
               })}

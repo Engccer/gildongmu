@@ -18,7 +18,7 @@ import type { LivePart } from "@/lib/search-sections";
 import { jusoAddressToPlace } from "@/lib/address-to-place";
 import { resolveAddressCoord } from "@/lib/resolve-address-coord";
 import { requestOpenPlace, subscribeOpenPlace } from "@/lib/place-open-request";
-import { parseDir, type DirEndpoint } from "@/lib/directions-state";
+import { parseDir, placeEndpoint, type DirEndpoint } from "@/lib/directions-state";
 import { dataLocale } from "@/lib/data-locale";
 import { joinText, normalizeVoiceQuery } from "@/lib/format";
 import { requestLocation } from "@/lib/geolocation";
@@ -1201,11 +1201,8 @@ export function PlaceSearch({
             ? () =>
                 openDirections({
                   role: "to",
-                  endpoint: {
-                    kind: "place",
-                    label: selected.name,
-                    coord: { lat: selected.lat, lng: selected.lng },
-                  },
+                  // 라틴 표기(A53)도 함께 — en 브리핑의 마지막 도보 줄이 목적지 이름을 싣는다.
+                  endpoint: placeEndpoint(selected.name, { lat: selected.lat, lng: selected.lng }, selected.nameRoman),
                 })
             : undefined
         }
@@ -1214,11 +1211,7 @@ export function PlaceSearch({
             ? () =>
                 openDirections({
                   role: "from",
-                  endpoint: {
-                    kind: "place",
-                    label: selected.name,
-                    coord: { lat: selected.lat, lng: selected.lng },
-                  },
+                  endpoint: placeEndpoint(selected.name, { lat: selected.lat, lng: selected.lng }, selected.nameRoman),
                 })
             : undefined
         }

@@ -45,7 +45,7 @@ function Harness({ legs, dest }: { legs: TransitLeg[]; dest: string }) {
     legs,
     routeKey: "p0",
   };
-  return <TransitRouteResult route={route} t={t} locale="ko" dest={dest} />;
+  return <TransitRouteResult route={route} t={t} locale="ko" dest={dest} destRoman={null} />;
 }
 
 function renderRoute(legs: TransitLeg[], dest = "서울역광장") {

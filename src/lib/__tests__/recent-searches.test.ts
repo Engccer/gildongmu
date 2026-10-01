@@ -346,3 +346,25 @@ describe("recent routes 경유지(N4)", () => {
     expect(loadRecentEndpoints("to", s)).toEqual([]);
   });
 });
+
+describe("recent endpoints 라틴 표기(A53)", () => {
+  it("labelRoman을 저장·고정·경로 양끝에서 보존하고, 없는 기존 저장본도 읽는다", () => {
+    const s = memStorage({
+      "gildongmu:recent-endpoints-to:v1": JSON.stringify([{ label: "옛집", lat: 37.1, lng: 127.1 }]),
+    });
+    const tower: RecentEndpoint = { label: "63빌딩", lat: 37.5198, lng: 126.9403, labelRoman: "63bilding" };
+    recordRecentEndpoint("to", tower, s);
+    expect(loadRecentEndpoints("to", s).map((e) => e.labelRoman)).toEqual(["63bilding", undefined]);
+    setRecentEndpointPinned("to", tower, true, s);
+    expect(loadRecentEndpoints("to", s)[0]).toEqual({ ...tower, pinned: true });
+    recordRecentRoute({ from: null, to: tower }, s);
+    expect(loadRecentRoutes(s)[0].to?.labelRoman).toBe("63bilding");
+  });
+
+  it("문자열이 아닌 labelRoman은 불량 항목으로 거른다", () => {
+    const s = memStorage({
+      "gildongmu:recent-endpoints-to:v1": JSON.stringify([{ label: "x", lat: 1, lng: 2, labelRoman: 3 }]),
+    });
+    expect(loadRecentEndpoints("to", s)).toEqual([]);
+  });
+});
