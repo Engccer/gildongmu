@@ -134,6 +134,23 @@ const RETAIN_MS = 180_000;
 /** 같은 문장 재발화를 위한 빈 값 경유 지연(useRouteGuide 동일값). */
 const REANNOUNCE_DELAY_MS = 120;
 
+/** 세션 경계 신호에 조회 예산을 더한 신호(먼저 오는 쪽). `AbortSignal.any`는 Safari 17.4+라 직접 엮는다. */
+function withBudget(signal: AbortSignal, ms: number): AbortSignal {
+  const combined = new AbortController();
+  if (signal.aborted) {
+    combined.abort();
+    return combined.signal;
+  }
+  const abort = () => combined.abort();
+  const timer = setTimeout(abort, ms);
+  signal.addEventListener("abort", abort, { once: true });
+  combined.signal.addEventListener("abort", () => {
+    clearTimeout(timer);
+    signal.removeEventListener("abort", abort);
+  });
+  return combined.signal;
+}
+
 /**
  * 폴링 대상 URL. **`lang`은 기본값 없는 필수 인자다**(E27 잔여 ①) — 생략이 컴파일을 통과하면
  * 실시간 줄만 조용히 한국어로 떨어지고, 서버는 400도 내지 않는다(파라미터 부재 = ko가 정상 계약).
@@ -366,6 +383,12 @@ export function useTransitGuide(
   const refreshAnnounceRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inFlightRef = useRef(false);
+  /**
+   * in-flight 폴의 요청 취소(A50 후속). 세션 경계(`stopSession`·`beginSession`)가 끊는다 — 끊지 않으면
+   * 곧바로 다시 시작한 새 세션의 첫 조회가 옛 세션 조회가 끝날 때까지 `inFlightRef`에 막힌다
+   * (막힌 즉폴은 `repollRef`로 옛 폴의 `finally`가 내므로, 끊는 즉시 새 세션 조회가 나간다).
+   */
+  const pollAbortRef = useRef<AbortController | null>(null);
   const retainedRef = useRef<Map<string, RetainedItem>>(new Map());
   // 지방버스 정류소 해석 캐시(§5.2). ⚠ 키는 (legIndex, 대상 정류소) 복합 —
   // legIndex만 쓰면 waiting에서 해석한 **승차** 정류소가 riding 캐시로 적중해
@@ -919,7 +942,7 @@ export function useTransitGuide(
   }, []);
 
   /** 지방버스 하차 정류소 해석(세션당 1회). 실패는 "unsupported" 캐시(재시도 없음). */
-  const resolveTagoIfNeeded = useCallback(async (): Promise<
+  const resolveTagoIfNeeded = useCallback(async (signal: AbortSignal): Promise<
     { nodeId: string; cityCode: string } | null
   > => {
     const s = stateRef.current;
@@ -936,6 +959,7 @@ export function useTransitGuide(
     try {
       const res = await fetch(
         `/api/transit/track?mode=tagoBus&phase=resolve&lat=${target.lat}&lng=${target.lng}`,
+        { signal },
       );
       if (!res.ok) return null; // 일시 실패 — 캐시하지 않고 다음 폴에서 재시도
       const body = (await res.json()) as {
@@ -976,7 +1000,7 @@ export function useTransitGuide(
    * 판정한다(그 폴로 추적이 시작됐으면 묻지 않는다). 별도 타이머가 없어 폴 주기·전경 전용·즉폴 금지를
    * 그대로 상속한다. 던지지 않는다 — 위치 실패가 도착 폴을 흔들지 않게.
    */
-  const refreshPosition = useCallback(async (): Promise<void> => {
+  const refreshPosition = useCallback(async (signal: AbortSignal): Promise<void> => {
     const s = stateRef.current;
     const leg = currentLeg();
     if (!s || !leg) return;
@@ -988,7 +1012,7 @@ export function useTransitGuide(
         // 도착 폴 안에 직렬로 끼므로 예산을 건다(구현 리뷰 M1) — 초과는 catch → failed(세지 않는다).
         const res = await fetch(
           `/api/transit/position?line=${encodeURIComponent(leg.lineName)}&train=${encodeURIComponent(requested.vehicleId)}`,
-          { signal: AbortSignal.timeout(POSITION_CLIENT_TIMEOUT_MS) },
+          { signal: withBudget(signal, POSITION_CLIENT_TIMEOUT_MS) },
         );
         outcome = res.ok ? positionOutcomeFromBody(await res.json()) : positionOutcomeFromHttpStatus(res.status);
       } catch {
@@ -1024,6 +1048,8 @@ export function useTransitGuide(
     if (pollIntervalMs(s) <= 0) return;
 
     inFlightRef.current = true;
+    const controller = new AbortController();
+    pollAbortRef.current = controller;
     const phaseGen = s.phaseGen;
     // 조회 기준 역(A16 L3·A34 역 선택)도 세대 축이다 — 역 선택은 국면·phaseGen을 바꾸지 않으므로 이 값을
     // 함께 잡아야 앞 역의 늦은 응답이 새 역 목록으로 커밋되지 않는다(코드 리뷰 M1, iOS는 Task 취소가 막는다).
@@ -1050,7 +1076,7 @@ export function useTransitGuide(
       let refreshResponse: string | null = null;
       let resolvedTago: { nodeId: string; cityCode: string } | null = null;
       if (leg.trackMode === "tagoBus") {
-        resolvedTago = await resolveTagoIfNeeded();
+        resolvedTago = await resolveTagoIfNeeded(controller.signal);
         if (!sameSession()) return;
         const cacheKey = `${s.legIndex}:${s.phase === "waiting" || s.phase === "boarding" ? "board" : "alight"}`;
         if (!resolvedTago && tagoResolvedRef.current.get(cacheKey) === "unsupported") {
@@ -1070,7 +1096,7 @@ export function useTransitGuide(
         finishEarlyUnsupported();
         return;
       }
-      const res = await fetch(url);
+      const res = await fetch(url, { signal: controller.signal });
       if (!sameSession()) return;
       let poll: TrackPoll;
       let rawCount: number | null = null;
@@ -1142,7 +1168,7 @@ export function useTransitGuide(
       }
       refreshAnnounceRef.current = false;
       dispatch({ kind: "poll", seq, phaseGen, poll });
-      await refreshPosition();
+      await refreshPosition(controller.signal);
       // 응답은 dispatch 뒤에 게시한다 — 같은 폴의 신호 이벤트 통지(signalRecovered
       // 등)와 배칭될 때 마지막 승자가 새로고침 응답이 되게(감사 M1: 역순이면
       // 응답이 페인트 없이 사라진다).
@@ -1155,9 +1181,10 @@ export function useTransitGuide(
       refreshAnnounceRef.current = false;
       dispatch({ kind: "poll", seq, phaseGen, poll: { kind: "failed" } });
       if (wasRefresh && stillSameWaiting()) announce(reasonText("unavailable"));
-      await refreshPosition();
+      await refreshPosition(controller.signal);
     } finally {
       inFlightRef.current = false;
+      if (pollAbortRef.current === controller) pollAbortRef.current = null;
       if (repollRef.current) {
         // 즉폴 요청이 in-flight 폴에 막혔다(`requestImmediatePoll`) — 지금 낸다(다음 예약은 그 폴이 잡는다).
         repollRef.current = false;
@@ -1214,6 +1241,7 @@ export function useTransitGuide(
 
   const stopSession = useCallback(() => {
     sessionRef.current += 1;
+    pollAbortRef.current?.abort();
     clearTimer();
     stateRef.current = null;
     routeRef.current = null;
@@ -1258,6 +1286,7 @@ export function useTransitGuide(
       setSessionRoute(route);
       // 순번·세대는 0에서 다시 시작하므로 옛 세션의 늦은 응답은 세션 식별자가 거른다(A50).
       sessionRef.current += 1;
+      pollAbortRef.current?.abort();
       seqRef.current = 0;
       // 다음 세션의 phaseGen도 0에서 시작한다 — 옛 세션의 위치 결박이 같은 세대·열차로 되살아나지 않게.
       positionRef.current = null;

@@ -1245,6 +1245,45 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
     expect(document.body.textContent).not.toContain("옛 세션 열차");
   });
 
+  it("멈췄다 곧바로 다시 시작하면 옛 세션 조회를 끊고 새 세션의 첫 조회가 바로 나간다(A50 후속)", async () => {
+    // 옛 세션의 첫 폴은 스스로 끝나지 않는다(끊어야만 끝난다). 세션 경계에서 끊지 않으면 새 세션의 즉폴은
+    // in-flight 가드에 막힌 채 옛 조회의 완료를 영영 기다린다.
+    let session = 1;
+    const aborted: number[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+        const mine = session;
+        if (mine === 1) {
+          await new Promise<never>((_, reject) => {
+            init?.signal?.addEventListener("abort", () => {
+              aborted.push(mine);
+              reject(new DOMException("aborted", "AbortError"));
+            });
+          });
+        }
+        return {
+          ok: true,
+          json: async () => ({
+            mode: "subway",
+            status: "ok",
+            rawCount: 1,
+            items: [trackItem({ vehicleId: "NEW", message: "새 세션 열차" })],
+          }),
+        } as Response;
+      }),
+    );
+    render(<TransitGuidePanelHost route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
+    fireEvent.click(screen.getByRole("button", { name: "시작" }));
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByRole("button", { name: "beacon.stop" }));
+    session = 2;
+    fireEvent.click(await screen.findByRole("button", { name: "시작" }));
+    const rows = await screen.findAllByRole("button", { name: /selectTrain/ });
+    expect(rows[0].textContent).toContain("새 세션 열차");
+    expect(aborted).toEqual([1]);
+  });
+
   it("멈췄다 다시 시작해도 옛 세션의 늦은 지방버스 정류소 해석은 새 세션 캐시에 쓰이지 않는다(A50)", async () => {
     // 해석 캐시 키는 leg 번호라 세션 경계를 모른다 — 옛 해석이 새 세션에 적중하면 새 세션은 다시 묻지 않는다.
     const TAGO_ROUTE: TransitRoute = {

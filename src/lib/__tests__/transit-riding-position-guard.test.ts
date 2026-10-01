@@ -48,7 +48,7 @@ describe("승차 상태 머신은 실시간 열차 위치를 모른다(E35 표�
     expect(fn).toMatch(/if \(verdict === "fire"\) announceEvent\(\{ kind: "neverSeen" \}\);/);
     // 도착 폴의 성공·실패 두 경로가 모두 위치 조회(= 처분)를 지난다.
     const poll = src.slice(src.indexOf("const pollOnce = useCallback"));
-    expect(poll.match(/await refreshPosition\(\);/g)?.length).toBe(2);
+    expect(poll.match(/await refreshPosition\(controller\.signal\);/g)?.length).toBe(2);
   });
 
   it("조망 머리 문장은 현재역을 말하지 않는다(위원장 판정 2026-09-23 — 안내 행·정차역 행 두 곳만)", () => {
