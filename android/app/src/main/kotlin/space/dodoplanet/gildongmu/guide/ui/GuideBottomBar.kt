@@ -51,6 +51,19 @@ fun GuideBottomBar(nav: GuideNav, tabs: @Composable () -> Unit) {
     if (showsSheet) GuideSheet(ui, strings, nav)
 }
 
+/**
+ * 안내 시트가 지금 펼쳐져 있는가(M4b 후속 ②) — `AppRoot`가 탭 화면에 `LocalModalOpen`으로 공급한다. 시트(자기 윈도)와 밑 탭 화면이 둘 다 RESUMED라
+ * 그대로 두면 탭의 `StatusLine`이 앱 통지(`AppNotices`)를 집어 시트 뒤에서 읽힌다(설계 리뷰 #1). 큐는 덮이지 않으므로 시트를 접는 순간 밑 화면이
+ * 집는다. 세션 조립은 멱등이라 `GuideBottomBar`보다 먼저 컴포즈돼도 안전하다.
+ */
+@Composable
+fun guideSheetShowing(): Boolean {
+    val app = LocalContext.current.applicationContext
+    remember { GuideSession.attach(app); Unit }
+    val ui by GuideSession.walk.ui.collectAsState()
+    return ui.hasScreen && !GuideSession.isMinimized
+}
+
 /** 알림(33+)·걸음 센서 권한 손 — `MainActivity`는 android-m1 소유라 여기 컴포지션에 둔다. */
 @Composable
 private fun GuidePermissionsLauncher() {

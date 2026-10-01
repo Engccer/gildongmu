@@ -149,7 +149,8 @@ fun SettingsScreen(
     val dictationValue = if (dictation == SettingsStore.DICTATION_HOLD) holdLabel else tapLabel
     val themeValue = themeOptions.first { it.first == theme }.second
 
-    CompositionLocalProvider(LocalModalOpen provides (dialog != null)) {
+    // 바깥 값과 OR — 안내 시트가 떠 있는 동안 `AppRoot`가 참을 공급한다(M4b 후속 ②).
+    CompositionLocalProvider(LocalModalOpen provides (dialog != null || LocalModalOpen.current)) {
         AppScreenScaffold(stringResource(R.string.android_settings_title), onBack = onBack, titleFocus = titleFocus) { padding ->
             Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).semantics { testTagsAsResourceId = true }) {
                 StatusLine(notice, Modifier.padding(vertical = 8.dp)) // 상단 바 바로 아래(§3-1 — 자리를 외워 쓰는 탐색)

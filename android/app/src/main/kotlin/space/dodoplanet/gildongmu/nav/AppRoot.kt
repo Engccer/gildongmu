@@ -32,6 +32,8 @@ import space.dodoplanet.gildongmu.chat.PlaceChatScreen
 import space.dodoplanet.gildongmu.directions.DirectionsScreen
 import space.dodoplanet.gildongmu.guide.ui.GuideBottomBar
 import space.dodoplanet.gildongmu.guide.ui.GuideNav
+import space.dodoplanet.gildongmu.guide.ui.guideSheetShowing
+import space.dodoplanet.gildongmu.a11y.LocalModalOpen
 import space.dodoplanet.gildongmu.guide.ui.openGuidePlace
 import space.dodoplanet.gildongmu.guide.ui.openWeightSettings
 import space.dodoplanet.gildongmu.directions.openDirections
@@ -100,6 +102,9 @@ fun AppRoot(factories: AppFactories) {
                 }
             },
         ) { padding ->
+            // 안내 시트가 펼쳐진 동안 탭 화면은 앱 통지를 집지 않는다 — 통지는 시트를 접은 뒤 밑 화면이 읽는다(M4b 후속 ②). 탭 화면 안의
+            // 공급(다이얼로그·공지 시트)은 이 값과 OR한다(가드 `GuideSheetModalGuardTest`).
+            CompositionLocalProvider(LocalModalOpen provides guideSheetShowing()) {
             NavHost(
                 navController = navController,
                 startDestination = AppTab.initial(experimental).route(),
@@ -181,6 +186,7 @@ fun AppRoot(factories: AppFactories) {
                     val route = entry.toRoute<BusRouteStopsRoute>()
                     BusRouteStopsScreen(route, factories.busRouteStops(route)) { navController.popBackStack() }
                 }
+            }
             }
         }
     }
