@@ -131,6 +131,7 @@
     <string name="android_guide_autoReroute">새 경로로 다시 안내합니다. 안내 %1$s개, 총 %2$s. %3$s</string>
     <string name="android_guide_destChanged">새 목적지 %1$s.</string>
     <string name="android_guide_destChangedFetching">경로를 조회하고 있습니다.</string>
+    <string name="android_guide_destChangedNoName">목적지를 바꿨습니다.</string>
     <string name="android_guide_destMenuChange">목적지 바꾸기</string>
     <string name="android_guide_destMenuDetail">장소 상세 보기</string>
     <string name="android_guide_focusDenied">다른 앱이 소리를 쓰고 있어 안내 소리를 내지 못하고 있습니다</string>

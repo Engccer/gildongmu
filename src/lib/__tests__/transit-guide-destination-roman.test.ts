@@ -46,3 +46,37 @@ describe("대중교통 안내 목적지 라틴 표기 운반(A53 ①)", () => {
     expect(sheet).not.toContain("destinationRoman: nil");
   });
 });
+
+// A53 iOS 잔여: 시작 통지·목적지 변경 통지도 조망 도보 줄과 같은 판정으로 목적지 이름을 고른다 — en(데이터 언어)이면 라틴
+// 표기, 없으면 이름 없는 문구. 한글 라벨이 영어 문장에 섞이지 않는다(E27 한 줄 한 언어).
+describe("대중교통 안내 통지의 목적지 이름(A53 iOS 잔여)", () => {
+  const model = read(`${DIR}/TransitGuideModel.swift`);
+
+  it("통지용 이름은 Kit 판정 하나를 지난다", () => {
+    expect(model).toMatch(
+      /TransitWalkLegText\.destinationName\(\s*label: destinationLabel, roman: destinationRoman, english: transitGuideIsEn\)/,
+    );
+  });
+
+  it("시작 통지: 이름이 있으면 startedAt, 없으면 이름 없는 started", () => {
+    expect(model).not.toContain('appLocalized("transitGuide.startedAt", destinationLabel');
+    expect(model).toMatch(
+      /spokenDestinationName\.map \{ appLocalized\("transitGuide\.startedAt", \$0, guideRoute\.legs\.count\) \}\s*\?\? appLocalized\("transitGuide\.started", guideRoute\.legs\.count\)/,
+    );
+  });
+
+  it("목적지 변경 통지: 이름이 있으면 destChanged, 없으면 이름 없는 문구", () => {
+    expect(model).not.toContain('appLocalized("ios.guide.destChanged", destinationLabel)');
+    expect(model).toMatch(
+      /case \.destinationChanged:\s*spokenDestinationName\.map \{ appLocalized\("ios\.guide\.destChanged", \$0\) \}\s*\?\? appLocalized\("ios\.guide\.destChangedNoName"\)/,
+    );
+  });
+
+  it("이름 없는 목적지 변경 문구는 6로케일에 있고 자리표시자가 없다", () => {
+    for (const locale of ["ko", "en", "es", "fr", "it", "ja"]) {
+      const value: string = JSON.parse(read(`ios/i18n/ios-extra/${locale}.json`)).ios.guide.destChangedNoName;
+      expect(value, locale).toBeTruthy();
+      expect(value, locale).not.toContain("{");
+    }
+  });
+});

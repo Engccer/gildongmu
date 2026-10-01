@@ -32,6 +32,12 @@ final class TransitGuideModel {
     /// 그 목적지의 라틴 표기(E28 `labelRoman`, A53 ①). 조망 "다른 경로"의 영어 마지막 도보 줄이 쓴다 —
     /// 판정은 `transitWalkDestinationName`(없거나 라틴이 아니면 "목적지까지"). `destinationLabel`과 함께만 바뀐다.
     private(set) var destinationRoman: String?
+    /// 통지(시작·목적지 변경)에 실을 목적지 이름(A53 iOS 잔여). 조망 도보 줄과 **같은 판정**이다 — 데이터 언어가 en이면
+    /// 라틴 표기만, 없으면 nil(이름 없는 문구로 떨어진다). 한글 라벨이 영어 문장에 섞이지 않게(E27 한 줄 한 언어).
+    private var spokenDestinationName: String? {
+        TransitWalkLegText.destinationName(
+            label: destinationLabel, roman: destinationRoman, english: transitGuideIsEn)
+    }
     /// 목적지 좌표(N1) — 세션이 탭과 분리되면서 도보 핸드오프·장소 상세가 탭 폼이
     /// 아니라 여기서 읽는다. `stop()`이 비우지 않는다(핸드오프 제안이 세션 뒤에 읽는다).
     private(set) var dest: BeaconDest?
@@ -318,7 +324,8 @@ final class TransitGuideModel {
         let first = guideRoute.legs[0]
         // E40: 시작 통지가 목적지를 말한다 — 시트 진입 착지는 상태 문장이라(E38) 목적지를 만날 채널이 없다.
         var parts = [
-            appLocalized("transitGuide.startedAt", destinationLabel, guideRoute.legs.count),
+            spokenDestinationName.map { appLocalized("transitGuide.startedAt", $0, guideRoute.legs.count) }
+                ?? appLocalized("transitGuide.started", guideRoute.legs.count),
             waitContextText(first, isCurrentLeg: true),
         ]
         if first.trackMode == nil { parts.append(appLocalized("transitGuide.untrackable")) }
@@ -1172,7 +1179,9 @@ final class TransitGuideModel {
         let first = guideRoute.legs[0]
         // 목적지가 같은 경로 전환에 "목적지가 바뀌었다"를 말하면 거짓이다 — 종류별 첫 문장.
         let lead = switch announcement {
-        case .destinationChanged: appLocalized("ios.guide.destChanged", destinationLabel)
+        case .destinationChanged:
+            spokenDestinationName.map { appLocalized("ios.guide.destChanged", $0) }
+                ?? appLocalized("ios.guide.destChangedNoName")
         case .routeSwitched: appLocalized("ios.transitGuide.routeSwitched")
         }
         var parts = [

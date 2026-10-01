@@ -131,6 +131,7 @@
     <string name="android_guide_autoReroute">Guidage repris sur un nouvel itinéraire. {1, plural, one {%1$s instruction} other {%1$s instructions}}, %2$s au total. %3$s</string>
     <string name="android_guide_destChanged">Nouvelle destination : %1$s.</string>
     <string name="android_guide_destChangedFetching">Recherche d\'un nouvel itinéraire.</string>
+    <string name="android_guide_destChangedNoName">Destination modifiée.</string>
     <string name="android_guide_destMenuChange">Changer de destination</string>
     <string name="android_guide_destMenuDetail">Voir les détails du lieu</string>
     <string name="android_guide_focusDenied">Une autre application utilise l’audio : les sons du guidage ne peuvent pas être joués pour le moment</string>

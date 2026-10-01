@@ -307,6 +307,7 @@
       "destMenuDetail": "장소 상세 보기",
       "destMenuChange": "목적지 바꾸기",
       "destChanged": "새 목적지 {name}.",
+      "destChangedNoName": "목적지를 바꿨습니다.",
       "destChangedFetching": "경로를 조회하고 있습니다.",
       "waypointChange": "{label}, 경유지 변경",
       "waypointSet": "경유지 {label}, 경로를 다시 조회합니다",

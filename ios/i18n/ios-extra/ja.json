@@ -307,6 +307,7 @@
       "destMenuDetail": "場所の詳細を見る",
       "destMenuChange": "目的地を変更",
       "destChanged": "新しい目的地 {name}。",
+      "destChangedNoName": "目的地を変更しました。",
       "destChangedFetching": "新しいルートを検索しています。",
       "waypointChange": "{label}、経由地を変更",
       "waypointSet": "経由地 {label}、経路を再検索します",

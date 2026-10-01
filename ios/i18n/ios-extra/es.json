@@ -307,6 +307,7 @@
       "destMenuDetail": "Ver detalles del lugar",
       "destMenuChange": "Cambiar destino",
       "destChanged": "Nuevo destino: {name}.",
+      "destChangedNoName": "Destino cambiado.",
       "destChangedFetching": "Buscando una nueva ruta.",
       "waypointChange": "{label}, cambiar punto de paso",
       "waypointSet": "Punto de paso {label}, consultando la ruta de nuevo",

@@ -307,6 +307,7 @@
       "destMenuDetail": "Vedi dettagli del luogo",
       "destMenuChange": "Cambia destinazione",
       "destChanged": "Nuova destinazione: {name}.",
+      "destChangedNoName": "Destinazione cambiata.",
       "destChangedFetching": "Ricerca di un nuovo percorso.",
       "waypointChange": "{label}, cambia punto intermedio",
       "waypointSet": "Punto intermedio {label}, ricerca del percorso in corso",
