@@ -275,7 +275,7 @@ E25(위원장 요청 2026-09-07, 구현 2026-09-13). 판정 정본은 웹 `src/l
 
 ### "내 주변" 장소 목록 5종(소아 진료·둘러보기·아이 놀 곳·무장애·문화행사)은 "더 보기" 단계 공개
 
-**"내 주변" 장소 목록 5종(소아 진료·둘러보기·아이 놀 곳·무장애·문화행사)은 "더 보기" 단계 공개**: 클라 10건 초기 표시 + 회당 +10, 라벨은 수치 없는 `actions.showMore`. 소아 진료만 `limit` 없이 provider `SERVER_CAP=50` 상시이고, 나머지 4종 라우트는 **기본 응답 상한 유지 + 옵트인 `limit`(1~50, 범위 밖 400) + 절단 전 `total`** — limit 미지정 소비자(CLI/MCP)의 출력 팽창을 막고 "더 보기"를 구현한 웹·iOS만 `limit=50`을 명시 요청한다(웹 `NEARBY_LIMIT_MAX` ↔ Kit `fetchLimit` 미러). 포커스 계약: 누르면 첫 새 항목으로 이동하고 **별도 live region·통지 금지**(웹은 `useLayoutEffect` 페인트 전 재포커스, iOS는 `scrollTo` 선행 가시화+`AccessibilityFocusState`). **정본은 `NightClinicsNearby.tsx`·`ClinicNearbyView.swift`.** 교통 목록·보행 인프라·랜드마크는 절단 너머가 행동을 바꾸지 않아 의도적 비적용.
+**"내 주변" 장소 목록 5종(소아 진료·둘러보기·아이 놀 곳·무장애·문화행사)은 "더 보기" 단계 공개**: 클라 10건 초기 표시 + 회당 +10, 라벨은 수치 없는 `actions.showMore`. 소아 진료만 `limit` 없이 provider `SERVER_CAP=50` 상시이고, 나머지 4종 라우트는 **기본 응답 상한 유지 + 옵트인 `limit`(1~50, 범위 밖 400) + 절단 전 `total`**(둘러보기만 예외 하나: 나들이 전용 `groups=all`과 함께일 때 `limit` 1~100, 18종·상한 100 — E58 ②, 미지정 응답은 그대로) — limit 미지정 소비자(CLI/MCP)의 출력 팽창을 막고 "더 보기"를 구현한 웹·iOS만 `limit=50`을 명시 요청한다(웹 `NEARBY_LIMIT_MAX` ↔ Kit `fetchLimit` 미러). 포커스 계약: 누르면 첫 새 항목으로 이동하고 **별도 live region·통지 금지**(웹은 `useLayoutEffect` 페인트 전 재포커스, iOS는 `scrollTo` 선행 가시화+`AccessibilityFocusState`). **정본은 `NightClinicsNearby.tsx`·`ClinicNearbyView.swift`.** 교통 목록·보행 인프라·랜드마크는 절단 너머가 행동을 바꾸지 않아 의도적 비적용.
 
 ### 결과 진동은 `ResultHaptic.fire(.success|.attention|.failure)` 한 창구다
 

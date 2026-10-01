@@ -41,9 +41,9 @@ GildongmuKit (순수·테스트 대상)                     앱 (I/O만)
   OutingProjection.swift  진행축 투영·앞/옆/뒤 분류   ◀── OutingModel (세 번째 안내 모델)
   OutingPassBy.swift      지나침 판정·중복 억제         │     ├ LocationService.startBeaconUpdates (재사용)
   OutingDistanceTone.swift 10m 비프 스텝               │     ├ PedometerService 라이브 누적 (재사용)
-  OutingRequery.swift     재조회 트리거(100m)           │     ├ BeaconTonePlayer (재사용, 톤 1종 추가)
+  OutingRequery.swift     재조회 트리거(50m)            │     ├ BeaconTonePlayer (재사용, 톤 1종 추가)
   OutingLandmark.swift    이정표 분류(카테고리 → 등급)   │     ├ TtsPlayer.speakGuidance (재사용, 백그라운드 발화)
-  SessionIdle.swift       안전망 (재사용, 상수 변경)     │     └ NearbyService.surroundings / SearchService.reverseGeocode (재사용)
+  SessionIdle.swift       안전망 (재사용, 상수 변경)     │     └ NearbyService.outingSurroundings / SearchService.reverseGeocode
   GuideMotion·GuideCourse·CourseDerivation (재사용)  ◀── GuideSession (screen case 추가)
                                                      OutingSheet · OutingOverviewAdapter (새 뷰)
 ```
@@ -63,7 +63,7 @@ GildongmuKit (순수·테스트 대상)                     앱 (I/O만)
 ### 5.2 진행
 - 위치가 올 때마다: `isUsableFix` → `motionStep`(이동·정지 3-state) → `advanceProgressAnchor`(25m) → `deriveCourse`(진행 방위) → §6 투영·지나침 판정 → §7 낭독.
 - 만보계 콜백마다: 거리 값 갱신 → `outingDistanceToneStep`(10m 경계 통과 시 비프).
-- 재조회(§6.2)는 GPS 직선 이동 100m마다.
+- 재조회(§6.2)는 GPS 직선 이동 50m마다(E58 ②, 종전 100m).
 
 ### 5.3 종료 (세 경로)
 - **"나들이 종료" 버튼**: 종료 화면(§8.3)을 남긴다.
@@ -81,9 +81,9 @@ GildongmuKit (순수·테스트 대상)                     앱 (I/O만)
 - 방향 행: `none`이면 "이동 방향 확인 중", `stale`이면 "마지막 진행 방향 {8방위}".
 
 ### 6.2 재조회 트리거 `outingRequeryStep(lastQuery, fix) -> Bool`
-- 마지막 조회 좌표에서 직선 100m(`outingRequeryDistanceM`) 이상이면 참. **첫 조회는 출발점 확정 fix에서** 한다(세션 첫 fix는 가장 나쁜 fix다, A18). 확정 전에는 조회하지 않는다.
-- 조회 내용: 둘러보기 `NearbyService.surroundings`(`/api/places/around`, 반경 500m, 카카오 기본 10종, `limit=50`, 지하철역은 이 목록의 `subway`로 온다) + 역지오코딩(`SearchService.reverseGeocode`, 도로명 판정용) + 보행 인프라 `WalkInfraService.nearbyWithCoordinates`(`/api/walk/nearby?coords=1`, 반경 300m — 횡단보도 노드 좌표 최대 60곳, 음향신호기 격자 대표점 좌표 최대 40곳). `coords=1`은 이 마일스톤이 연 additive 옵트인이라 미지정 소비자(채팅·CLI·내 주변)의 응답은 그대로다. 나들이는 웹 배포 뒤 릴리스되므로 스토어 앱 보호 규칙에 걸리지 않는다.
-- 조회 실패(429 포함)는 세션을 끊지 않는다. 직전 결과를 유지하고 다음 100m 또는 20초(`outingRequeryRetrySeconds`) 뒤 먼저 오는 쪽에 다시 시도한다(제자리에서 첫 조회가 실패하면 기다리는 것이 없는데 "확인 중"이라 말하게 된다). 세 번 연속 실패하면 방향 행 앞 절반(장소 자리)이 "주변 정보 없음"이 된다(3-state). 첫 결과 전은 "주변 확인 중"이다.
+- 마지막 조회 좌표에서 직선 50m(`outingRequeryDistanceM`, E58 ②로 100m에서 내림) 이상이면 참. **첫 조회는 출발점 확정 fix에서** 한다(세션 첫 fix는 가장 나쁜 fix다, A18). 확정 전에는 조회하지 않는다.
+- 조회 내용: 나들이 전용 둘러보기 `NearbyService.outingSurroundings`(`/api/places/around?groups=all&limit=100`, 반경 500m, 카카오 분류 18종 전부, 가까운 순 100곳, 지하철역은 이 목록의 `subway`로 온다. E58 ②, 측정은 §11.1) + 역지오코딩(`SearchService.reverseGeocode`, 도로명 판정용) + 보행 인프라 `WalkInfraService.nearbyWithCoordinates`(`/api/walk/nearby?coords=1`, 반경 300m — 횡단보도 노드 좌표 최대 60곳, 음향신호기 격자 대표점 좌표 최대 40곳). `coords=1`·`groups=all`은 additive 옵트인이라 미지정 소비자(채팅·CLI·내 주변)의 응답은 그대로다(`groups`의 값은 `all` 하나, 미지 값과 `groups` 없는 `limit` 50 초과는 400). 나들이는 웹 배포 뒤 릴리스되므로 스토어 앱 보호 규칙에 걸리지 않는다.
+- 조회 실패(429 포함)는 세션을 끊지 않는다. 직전 결과를 유지하고 다음 50m 또는 20초(`outingRequeryRetrySeconds`) 뒤 먼저 오는 쪽에 다시 시도한다(제자리에서 첫 조회가 실패하면 기다리는 것이 없는데 "확인 중"이라 말하게 된다). 세 번 연속 실패하면 방향 행 앞 절반(장소 자리)이 "주변 정보 없음"이 된다(3-state). 첫 결과 전은 "주변 확인 중"이다.
 
 ### 6.3 지나침 판정 `outingPassByStep(prev, cur, spoken) -> PassBy?`
 - 후보 조건: 이 장소의 직전 관계(`prev`, place id 키)와 현재 관계가 **둘 다 방위 `valid`에서 계산됐고**, 직전 구획이 `ahead`였고 현재 `beside` 또는 `behind`이며, |t| ≤ 40m(`outingPassByLateralM`)이고, 아직 말하지 않은 id.
@@ -92,13 +92,13 @@ GildongmuKit (순수·테스트 대상)                     앱 (I/O만)
 - `prev`·`spoken`은 place id 키로 재조회를 넘어 보존한다. 새 목록에서 빠진 id도 지우지 않는다(세션 동안 수백 건 규모).
 - 횡단보도 예고(`outingCrosswalkNoticeStep`): 방위 `valid`에서 구획이 `ahead`이고 s ≤ 30m(`outingCrosswalkNoticeM`), |t| ≤ 15m일 때 **예고**로 한 번 말한다(옆 골목 횡단보도를 "앞에"로 말하지 않는다). 안전 정보는 지나친 뒤가 아니라 앞에서 들어야 한다. 한 fix에 여럿이면 s가 가장 작은 하나. 문장에 거리 수치를 넣지 않는다(GPS 종방향 오차에서 "30m"는 정직하지 않다).
 - 음향신호기 병기: 예고하는 횡단보도 노드와 음향신호기 격자 대표점이 20m(`outingAudioSignalPairM`, 격자 11m + 여유) 안일 때만 ", 음향신호기 있음"을 붙인다. 짝이 없으면 아무것도 붙이지 않는다("없다"가 아니라 "확인되지 않았다"). `crossingSignal`(OSM 차량 신호등)은 음향신호기로 읽지 않는다.
-- 도로명 변경(`outingRoadNameStep`): 역지오코딩 주소 문자열에서 도로명 토큰(ko `…로`·`…길`·`…대로` 뒤 건물번호, en `…-ro`·`…-gil`·`…-daero`)을 뽑는다. 토큰이 없는 응답(지번 폴백)은 판정에 쓰지 않는다. 직전 확정 도로명과 다른 값이 **두 번 연속** 오면 확정하고 한 번 말한다(도로명·지번 사이 왕복 방지). 세션 첫 확정은 말하지 않는다(출발점 문장이 그 자리를 말한다).
+- 도로명 변경(`outingRoadNameStep`): 역지오코딩 주소 문자열에서 도로명 토큰(ko `…로`·`…길`·`…대로` 뒤 건물번호, en `…-ro`·`…-gil`·`…-daero`)을 뽑는다. 직전 확정 도로명과 다른 값이 **두 번 연속** 오거나, 그 값을 처음 본 조회 좌표에서 **100m(`outingRoadConfirmMeters`, 재조회 간격의 두 배) 이상 걷는 동안 토큰이 없는 응답(지번 폴백)만** 왔으면 확정하고 한 번 말한다(E58 ⑤). 재조회 하나가 지번이면 아직 확정하지 않는다(모퉁이에서 한 번 튄 교차 도로명을 다음 재조회가 반박할 기회). 역지오코딩 실패는 응답이 없는 것이라 판정에 넣지 않는다(로그 `roadName value=fail`). 지번 응답은 반대 증거가 아니라 증거 없음이다: 큰길을 따라 걸어도 역지오코딩이 지번으로만 떨어지는 구간이 있어(천중로: 첫 관측 뒤 지번이 09-29 둘째 세션 2회·10-01 3회 연속, 두 세션 모두 확정 0이었다) "같은 값 두 번"만으로는 확정이 서지 않았다. 확정 도로명이 다시 오면 보류를 버리고(모퉁이에서 한 번 튄 교차 도로명), 다른 도로명이 오면 그 값과 그 좌표로 보류를 바꾼다. 세션 첫 확정은 말하지 않는다(출발점 문장이 그 자리를 말한다).
 
 ### 6.4 이정표 분류 `outingLandmarkTier(category) -> .landmark | .shop`
 - 판정 축은 둘러보기 응답의 카테고리 키(카카오 category_group_code의 투영) 하나다. 이름 부분 문자열로 가르지 않는다.
-- landmark: 지하철역(`subway`), 공공기관(`public`), 병원(`hospital`), 관광명소(`attraction`), 그리고 횡단보도 예고와 도로명 변경.
-- shop: 그 밖의 둘러보기 키 전부(편의점·음식점·카페·은행·약국·마트).
-- 학교(`SC4`)는 둘러보기 기본 10종에 없어 후보가 오지 않는다. 공원은 카테고리 코드 검색에 잡히지 않는다(대표 명소만 AT4). 둘 다 §15 열린 판정이다.
+- landmark: 지하철역(`subway`), 공공기관(`public`), 병원(`hospital`), 관광명소(`attraction`), 학교(`school`, E58 ②로 18종을 받으면서 E51 후속 ③을 흡수), 그리고 횡단보도 예고와 도로명 변경.
+- shop: 그 밖의 키 전부(편의점·음식점·카페·은행·약국·마트·어린이집/유치원·학원·주차장·주유소·문화시설·부동산·숙박)와 미지 키.
+- 공원은 카카오 분류에 없다. 대표 명소만 관광명소(`AT4`)로 온다(세 실보행 재생에서 공원 0건, 관광명소는 저수지·식물원·공방 4곳이 걸은 길에서 190m 넘게 떨어져 있었다).
 - 표는 코드 상수 하나이고 실보행 판정으로 조정한다.
 
 ### 6.5 10m 비프 `outingDistanceToneStep(prevMeters, curMeters) -> Int`
@@ -177,7 +177,9 @@ GildongmuKit (순수·테스트 대상)                     앱 (I/O만)
 | 이름 | 값 | 뜻 |
 |---|---|---|
 | `outingBeepIntervalM` | 10 | 비프 간격(만보계 거리) |
-| `outingRequeryDistanceM` | 100 | 주변 재조회 이동 거리 |
+| `outingRequeryDistanceM` | 50 | 주변 재조회 이동 거리(E58 ②로 100에서 내림, §11.1) |
+| `outingSurroundingsLimit` | 100 | 한 번 조회의 장소 상한(서버 `OUTING_CAP`과 같은 값, E58 ②) |
+| `outingRoadConfirmMeters` | 100 | 새 도로명을 본 자리에서 지번 응답만 오는 동안 이만큼 이상 걸으면 확정(§6.3, E58 ⑤, 재조회 간격의 두 배) |
 | `outingOverviewRadiusM` | 50 | 조망 반경(앞·뒤 대역) |
 | `outingBesideBandM` | 10 | 옆 판정 종방향 대역 |
 | `outingPassByLateralM` | 40 | 지나침 낭독 횡거리 상한 |
@@ -191,9 +193,27 @@ GildongmuKit (순수·테스트 대상)                     앱 (I/O만)
 
 ## 11. 비용·쿼터
 
-- 1km 산책: 재조회 약 10회 × (카카오 10건 + 역지오코딩 1건) ≈ 110건, 조망 열기 1회당 카카오 10건. 카카오 로컬 일 30만(dodo 공유) 대비 무시 가능.
+- 1km 산책(E58 ② 뒤): 재조회 10~20회 × (카카오 18건 + 역지오코딩 1건). 재생 실측으로 카카오 약 180건/km(주거지 세 세션, 걸은 길이 굽어 재조회가 약 95m마다)·약 370건/km(직선 합성 경로), 조망 열기 1회당 카카오 18건. 카카오 로컬 일 30만(dodo 공유) 대비 하루 수 km 걸어도 1% 안팎이다.
 - 둘러보기 캐시(300초, 좌표 키)는 걷는 중 거의 맞지 않는다. 기대하지 않는다.
 - 카카오 초과 요금 기록이 `usage-probes.mjs`("오류")와 `INTEGRATIONS.md`("건당 10원")에서 충돌한다. 착수 세션이 콘솔로 확인해 한쪽을 고친다.
+
+### 11.1 상점 그물 재생 측정 (E58 ②, 2026-10-02)
+
+지표는 **"걷는 길가 40m 안 후보 수"** 다: 받아 둔 장소 중, 받은 뒤 걸은 길(fix 사이 선분)에서 40m 안으로 다가가고 그 최근접 지점까지 받은 자리에서 15m 이상 더 걸은 곳(지나친 뒤에야 받은 곳은 세지 않는다). 재생은 무호출이다. 로그의 fix·방위 상태로 재조회 지점을 다시 세우고(종전 100m 규칙으로 세운 지점이 실제 로그의 조회 횟수·좌표와 같다), 그 지점의 카카오 분류 18종 응답(반경 500m, 거리순 최대 45건)을 한 번 받아 둔 코퍼스에서 설정별 응답을 잘라 만든다(같은 거리순이라 작은 반경·적은 건수는 큰 응답의 앞부분이다). "낭독"은 Kit 지나침 판정(`outingProject`·`outingPassByStep`)을 로그의 방위 상태 그대로 돌린 수다(낭독 단계 전부). 09-29 둘째·10-01 세션은 실제 `passBy` 수(1·8)와 같고, 09-29 첫 세션은 4 대 1로 다르다(그날 빌드의 낭독 기본값이 "이정표만"이었고 단계가 로그에 없다. 차이 3건이 모두 가게).
+
+| 세션 | 걸은 길 | 18종 전부의 길가 후보 | 현행(10종·100m·상한 50) | 18종·100m·상한 50 | **채택(18종·50m·상한 100)** |
+|---|---|---|---|---|---|
+| 09-29 첫 세션 | 0.5km | 14 | 7 · 낭독 4 · 카카오 30 | 12 · 6 · 54 | **14 · 6 · 90** |
+| 09-29 둘째 세션 | 0.84km | 15 | 2 · 1 · 40 | 15 · 2 · 72 | **15 · 2 · 144** |
+| 10-01 세션 | 1.04km | 36 | 12 · 8 · 60 | 36 · 22 · 108 | **36 · 22 · 216** |
+| 합성 천호대로(천호역 → 강동역, 직선) | 0.84km | 68 | 34 · 24 · 90 | 42 · 31 · 162 | **58 · 43 · 306** |
+| 합성 강남대로(강남역 → 신논현, 직선) | 0.77km | 177 | 70 · 42 · 80 | 83 · 50 · 144 | **142 · 73 · 288** |
+
+- 주거지 세 세션은 18종만으로 길가 후보를 거의 다 받는다. 증분은 대부분 학원(23곳)·부동산(17곳)이다. 학교는 후보로 오지만(가장 가까운 학교가 걸은 길에서 49·54m) 40m 안에는 없었고 공원은 0건이다.
+- 상점 밀집 거리에서는 카카오가 분류마다 가까운 15곳만 주므로 음식점·병원 15곳이 조회점 50~130m 안에서 끝나고, 상한 50이면 전체가 조회점 70~150m 안에서 끝난다. 그래서 재조회 간격과 상한이 병목이다(반경 150~500은 확보율을 바꾸지 않고 호출 수만 바꾼다). 페이지 넘김(분류당 2쪽)은 같은 호출 예산에서 간격을 줄이는 것보다 덜 오른다(75m·2쪽·상한 100은 0.84이지만 서버에 쪽 반복이 들고, 50m·1쪽은 0.82).
+- 도로명 거리 확정(§6.3)도 같은 50m 재조회 지점으로 재생했다(조회 좌표의 `/api/geocode/reverse` 응답): 09-29 둘째·10-01 세션은 천중로를 확정하고(종전 규칙도 50m 간격이면 두 번 연속이 서서 확정), 09-29 첫 세션은 큰길에서 골목으로 들어선 뒤 지번 두 번에 골목 이름을 확정한다(종전 규칙은 0). 10-01 끝의 천호대로 한 번 튐은 다음 응답이 다른 길이라 말하지 않는다. 확정 거리를 재조회 간격과 같은 50m로 두면 그 튐도 지번 하나로 굳어 말해진다(그래서 두 배).
+- 반경은 500m를 유지한다. 방향 행의 "앞쪽 이정표"는 받아 둔 장소 전부에서 고르므로 반경을 줄이면 수백 m 앞의 역·병원이 빠진다.
+- 원본(코퍼스·재생 스크립트)은 위치가 담겨 저장소 밖 `~/gildongmu-private/field-logs/outing-shops-replay-2026-10-02/`에 있다(로그 색인 같은 행). 카카오 실호출 4,908회(무료 쿼터, 1회 수집).
 
 ## 12. 오류 처리
 
@@ -214,9 +234,9 @@ GildongmuKit (순수·테스트 대상)                     앱 (I/O만)
 
 ## 14. 테스트
 
-- **게이트(Kit 단위)**: `outingProject`(방위 valid·stale·none, 경계값 ±10m, U·정확도 경계에서 좌우 unknown), `outingPassByStep`(ahead→beside 전이, 횡거리 40m 경계, 중복 억제, 동시 후보 최근접 선택, 방위 상실 fix에서 0, 180° 반전·45도 초과 회전 fix에서 0), `outingRequeryStep`(100m 경계, 첫 조회), `outingOriginStep`(수용 즉시·창 끝 최선·후보 없음 대기·100m 초과 배제), `outingRoadNameStep`(토큰 추출 ko·en, 지번 무시, 2회 확정, 첫 확정 무발화), `outingCrosswalkNoticeStep`(앞 30m·횡 15m 경계, 방위 무효 0, 최근접, 음향신호기 20m 짝), `outingDistanceToneStep`(10m 경계·20m 점프·역행 0), `outingLandmarkTier`(코드 표), `sessionIdleStep` 상수 변경(웹·Kit·`:kit` fixture 동조).
+- **게이트(Kit 단위)**: `outingProject`(방위 valid·stale·none, 경계값 ±10m, U·정확도 경계에서 좌우 unknown), `outingPassByStep`(ahead→beside 전이, 횡거리 40m 경계, 중복 억제, 동시 후보 최근접 선택, 방위 상실 fix에서 0, 180° 반전·45도 초과 회전 fix에서 0), `outingRequeryStep`(50m 경계, 첫 조회), `outingOriginStep`(수용 즉시·창 끝 최선·후보 없음 대기·100m 초과 배제), `outingRoadNameStep`(토큰 추출 ko·en, 2회 확정, 지번만 오는 100m 확정·100m 안 불변·재조회 하나로는 미확정, 보류 교체, 첫 확정 무발화, 실보행 재생), `NearbyService.outingSurroundings`(`groups=all`·`limit=100`), `outingCrosswalkNoticeStep`(앞 30m·횡 15m 경계, 방위 무효 0, 최근접, 음향신호기 20m 짝), `outingDistanceToneStep`(10m 경계·20m 점프·역행 0), `outingLandmarkTier`(코드 표), `sessionIdleStep` 상수 변경(웹·Kit·`:kit` fixture 동조).
 - **소스 가드**: `guidance-gate-drift.test.ts` 호출 수 갱신(`startOuting` 진입 호출 + `GuideSession` 안 인계 `self.startBeacon` 1곳), 좌우 문구 키는 `OutingProjection`의 `left|right` 판정 결과를 받는 한 함수에서만 쓰인다, `TitleMenu` 항목 수, 새 Kit 파일의 `android/kit/mirrors/guide.json` 등재(`mirror-registry.test.ts`).
-- **계측(실험판 전용 — `guideDiagLog`는 `DEBUG || EXPERIMENTAL`)**: `outingOrigin acc= window=` · fix당 `outingFix t= lat= lng= acc= motion= heading= U=` · `passBy id= tier= s= t= side= d=` · `requery reason= n= fail=` · `roadName value= confirmed= pending=` · `crosswalk id= audio=` · `outingSpeak channel= text=` · `outingEnd reason=`(user·noFix·stationary·return). 실보행은 `CONFIGURATION=Experimental`로 한다.
+- **계측(실험판 전용 — `guideDiagLog`는 `DEBUG || EXPERIMENTAL`)**: `outingOrigin acc= window=` · fix당 `outingFix t= lat= lng= acc= motion= heading= walked= bg= narr=`(E58 ⑥: 만보계 누적 거리 m 또는 `-`, 백그라운드 1·전경 0, 그 fix의 낭독 단계) · `passBy id= tier= s= t= side= d=` · `requery reason= got= n= fail=`(`got`은 이번 응답 장소 수, `n`은 누적) · `roadName value= confirmed= pending=` · `crosswalk id= audio=` · `outingSpeak channel= text=` · `outingEnd reason=`(user·noFix·stationary·return). 실보행은 `CONFIGURATION=Experimental`로 한다.
 - **실기기 실보행(머지 뒤 판정 게이트)**: `docs/FIELD-TEST.md`에 대본 추가. 판정 항목은 §1 성과 지표 둘 + 상수 9종 적절성 + 세 단계 낭독 밀도 + 백그라운드 음성 가청 + "출발점으로" 인계.
 
 ## 15. 열린 판정 (실보행 뒤)
@@ -226,8 +246,10 @@ GildongmuKit (순수·테스트 대상)                     앱 (I/O만)
 - "전부" 단계에서 번화가 낭독 밀도가 견딜 만한가. 견디기 어려우면 같은 fix의 후보 1개 규칙 위에 최소 발화 간격을 더한다.
 - 웹·안드로이드 이식 착수 여부(`PORTS.md`).
 - 횡단보도 예고의 적절성: OSM crossing 노드 위치(차도 중앙인지 보도 끝인지)와 30m 예고 시점, 음향신호기 짝 20m.
-- 학교(`SC4`)·공원을 이정표로 쓸지(둘러보기 조회 세트 밖이라 서버 `groups` 옵트인 또는 키워드 원천이 필요하다).
-- 감지 원천 확장(2026-10-02 위원장 판정, BACKLOG E58): 교차로는 골목 갈림길까지 전부(보행 도로망 원천 조사 선행), 상점은 카카오 18종 + 길가 중심 그물. 두 실보행에서 횡단보도 예고 0건은 OSM 노드 공백이었고 도로명 변경은 지번 폴백에 막혔다.
+- 학교(`SC4`)를 이정표로 올린 것(E58 ②)이 "이정표만" 단계에서 맞는가. 공원은 카카오 분류에 없어 관광명소로 오는 대표 명소뿐이다(키워드 원천이 필요하면 별도 판정).
+- 18종 증분의 낭독 밀도: 주거지 증분은 대부분 학원·부동산이고, 상점 밀집 거리 재생에서는 800m에 지나침 43~73건(약 10~20m마다)이다. 견디기 어려우면 분류별 등급·최소 발화 간격을 함께 본다(§11.1).
+- 재조회 50m·상한 100·도로명 확정 100m(E58 ②⑤, §10).
+- 감지 원천 확장(2026-10-02 위원장 판정, BACKLOG E58): 교차로는 골목 갈림길까지 전부(보행 도로망 원천 조사 선행), 상점은 카카오 18종 + 길가 중심 그물(2026-10-02 반영, §11.1). 두 실보행에서 횡단보도 예고 0건은 OSM 노드 공백이었고 도로명 변경의 지번 폴백 공백은 거리 확정으로 메웠다(§6.3).
 - 자동차 두절 300초를 도보와 분리할지(7분급 장대터널, 리뷰 M14 제품 판정 이의).
 - 무이동 5분이 "멈춤이 정상"(§7.1)과 양립하는가(리뷰 M6 제품 판정 이의. 값은 유지하고 종료 화면 "출발점으로"로 완화했다).
 - 정식 졸업 조건: 실보행 판정(§14) 통과 뒤 `experimentalOutingEnabled`의 `#if`를 삭제한다(항상 참인 상수를 남기지 않는다). 동반 변경(§9 안전망 5분·5분, 서버 `coords=1`)은 봉인 대상이 아니라 이미 정식이다.
