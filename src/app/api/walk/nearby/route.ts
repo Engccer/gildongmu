@@ -5,9 +5,10 @@ import { getWalkInfrastructure } from "@/lib/walk-infra";
 import { checkWalkInfraRateLimit, clientIpFromHeaders } from "@/lib/rate-limit";
 
 /**
- * GET /api/walk/nearby?lat&lng[&coords=1] - 내 주변 보행 인프라(음향신호기+OSM 횡단보도·점자블록).
+ * GET /api/walk/nearby?lat&lng[&coords=1][&nodes=1] - 내 주변 보행 인프라(음향신호기+OSM 횡단보도·점자블록).
  * `coords=1`은 나들이 옵트인(spec 2026-09-26 §6.3): 음향신호기 지점에 좌표를 싣고 횡단보도·지점 상한을
- * 넓힌다. 미지정이면 종전 응답과 같다(채팅·CLI·내 주변 보행 섹션).
+ * 넓힌다. `nodes=1`은 나들이 교차로·횡단보도 원천 옵트인(§6.6): `osmJunctions`·`seoulNetwork`를 더한다.
+ * 둘 다 미지정이면 종전 응답과 같다(채팅·CLI·내 주변 보행 섹션·스토어 앱).
  *
  * 서비스 계층 getWalkInfrastructure만 호출한다(provider 직접 호출 금지, spec §1).
  * 두 소스 모두 error일 때만 503으로 판정하고, 한 소스만 실패해도 200으로 부분
@@ -23,6 +24,7 @@ const querySchema = z.object({
   lat: latParam(),
   lng: lngParam(),
   coords: z.enum(["1"]).optional(),
+  nodes: z.enum(["1"]).optional(),
 });
 
 export async function GET(request: NextRequest) {
@@ -30,6 +32,7 @@ export async function GET(request: NextRequest) {
     lat: request.nextUrl.searchParams.get("lat") ?? "",
     lng: request.nextUrl.searchParams.get("lng") ?? "",
     coords: request.nextUrl.searchParams.get("coords") ?? undefined,
+    nodes: request.nextUrl.searchParams.get("nodes") ?? undefined,
   });
   if (!parsed.success) {
     return NextResponse.json(
@@ -47,8 +50,11 @@ export async function GET(request: NextRequest) {
 
   const walk = await getWalkInfrastructure(parsed.data.lat, parsed.data.lng, {
     coords: parsed.data.coords === "1",
+    nodes: parsed.data.nodes === "1",
   });
-  if (walk.audioSignals.status === "error" && walk.osm.status === "error") {
+  // 실린 원천이 모두 error일 때만 503(노드 옵트인의 두 원천이 살아 있으면 부분 결과다).
+  const sources = [walk.audioSignals, walk.osm, walk.osmJunctions, walk.seoulNetwork].filter((x) => x !== undefined);
+  if (sources.every((x) => x.status === "error")) {
     return NextResponse.json(
       { error: "보행 인프라 정보 조회에 실패했습니다." },
       { status: 503 },

@@ -8,15 +8,21 @@ vi.mock("../providers/audio-signals");
 vi.mock("../providers/osm-walk-nodes", () => ({
   findWalkFeaturesNear: vi.fn(),
 }));
+vi.mock("../providers/osm-walk-junctions", () => ({ findOsmJunctionsNear: vi.fn() }));
+vi.mock("../providers/seoul-walk-network", () => ({ findSeoulWalkNetworkNear: vi.fn() }));
 
 import { getWalkInfrastructure } from "../walk-infra";
 import { findAudioSignalsNear } from "../providers/audio-signals";
 import type { NearbyAudioSignals } from "../providers/audio-signals";
 import { findWalkFeaturesNear } from "../providers/osm-walk-nodes";
 import type { RawWalkFeature } from "../providers/osm-walk-nodes";
+import { findOsmJunctionsNear } from "../providers/osm-walk-junctions";
+import { findSeoulWalkNetworkNear } from "../providers/seoul-walk-network";
 
 const mockAudioSignals = vi.mocked(findAudioSignalsNear);
 const mockWalkNodes = vi.mocked(findWalkFeaturesNear);
+const mockJunctions = vi.mocked(findOsmJunctionsNear);
+const mockSeoul = vi.mocked(findSeoulWalkNetworkNear);
 
 const SAMPLE_AUDIO: NearbyAudioSignals = {
   deviceCount: 3,
@@ -41,6 +47,8 @@ describe("getWalkInfrastructure", () => {
     mockAudioSignals.mockReset();
     mockWalkNodes.mockReset();
     mockWalkNodes.mockReturnValue([]);
+    mockJunctions.mockReset();
+    mockSeoul.mockReset();
   });
 
   it("両소스 정상 → 両 ok, totalCount는 원본 수·listedCount는 crossing/비-crossing tactile projection 10씩 cap 후 합집합", async () => {
@@ -155,11 +163,42 @@ describe("getWalkInfrastructure", () => {
     expect(plain.osm.status === "ok" && plain.osm.data.features.length).toBe(10);
     expect(mockAudioSignals).toHaveBeenLastCalledWith(37.5, 127.0);
 
-    const withCoords = await getWalkInfrastructure(37.5, 127.0, { coords: true });
+    const withCoords = await getWalkInfrastructure(37.5, 127.0, { coords: true, nodes: false });
     if (withCoords.osm.status !== "ok") throw new Error("osm ok 기대");
     expect(withCoords.osm.data.features.length).toBe(15);
     expect(withCoords.osm.data.truncated).toBe(false);
     expect(withCoords.osm.data.features[0]).toMatchObject({ lat: 37.5, lng: 127.0 });
     expect(mockAudioSignals).toHaveBeenLastCalledWith(37.5, 127.0, 300, { withCoords: true, maxSites: 40 });
+  });
+
+  it("노드 옵트인이 아니면 교차점·서울망 키가 없고 두 원천을 부르지 않는다(종전 응답 불변 — 채팅·CLI·스토어 앱)", async () => {
+    mockAudioSignals.mockReturnValue(SAMPLE_AUDIO);
+    for (const options of [undefined, { coords: true, nodes: false }, { coords: false, nodes: false }]) {
+      const result = await getWalkInfrastructure(37.5, 127.0, options);
+      expect(Object.keys(result).sort()).toEqual(["audioSignals", "osm"]);
+    }
+    expect(mockJunctions).not.toHaveBeenCalled();
+    expect(mockSeoul).not.toHaveBeenCalled();
+  });
+
+  it("노드 옵트인: 원천별 3-state — 범위 밖은 unsupported, throw는 그 원천만 error", async () => {
+    mockAudioSignals.mockReturnValue(SAMPLE_AUDIO);
+    const junction = { lat: 37.5, lng: 127.0, branches: [{ lat: 37.5002, lng: 127.0, kind: "alley" as const }] };
+    mockJunctions.mockResolvedValue([junction]);
+    mockSeoul.mockResolvedValue({ crosswalks: [{ lat: 37.5001, lng: 127.0 }], junctions: [] });
+    const ok = await getWalkInfrastructure(37.5, 127.0, { coords: true, nodes: true });
+    expect(ok.osmJunctions).toEqual({ status: "ok", data: { junctions: [junction] } });
+    expect(ok.seoulNetwork).toEqual({ status: "ok", data: { crosswalks: [{ lat: 37.5001, lng: 127.0 }], junctions: [] } });
+    expect(mockJunctions).toHaveBeenCalledWith(37.5, 127.0, 300, 150);
+    expect(mockSeoul).toHaveBeenCalledWith(37.5, 127.0, 300, { crosswalks: 60, junctions: 150 });
+
+    mockJunctions.mockResolvedValue(null);
+    mockSeoul.mockRejectedValue(new Error("seed 깨짐"));
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const partial = await getWalkInfrastructure(37.5, 127.0, { coords: true, nodes: true });
+    expect(partial.osmJunctions).toEqual({ status: "unsupported", reason: "outsideSeed" });
+    expect(partial.seoulNetwork).toEqual({ status: "error" });
+    expect(partial.osm.status).toBe("ok");
+    expect(partial.audioSignals.status).toBe("ok");
   });
 });

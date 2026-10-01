@@ -97,9 +97,34 @@ describe("GET /api/walk/nearby", () => {
 
   it("coords 미지정은 종전 호출(coords false), coords=1은 옵트인(나들이)", async () => {
     await GET(makeRequest("?lat=37.5&lng=127.0"));
-    expect(mockGetWalk).toHaveBeenLastCalledWith(37.5, 127.0, { coords: false });
+    expect(mockGetWalk).toHaveBeenLastCalledWith(37.5, 127.0, { coords: false, nodes: false });
     await GET(makeRequest("?lat=37.5&lng=127.0&coords=1"));
-    expect(mockGetWalk).toHaveBeenLastCalledWith(37.5, 127.0, { coords: true });
+    expect(mockGetWalk).toHaveBeenLastCalledWith(37.5, 127.0, { coords: true, nodes: false });
+    await GET(makeRequest("?lat=37.5&lng=127.0&coords=1&nodes=1"));
+    expect(mockGetWalk).toHaveBeenLastCalledWith(37.5, 127.0, { coords: true, nodes: true });
+  });
+
+  it("노드 옵트인: 종전 두 원천이 error여도 교차점 원천이 살아 있으면 503이 아니라 200(부분 결과)", async () => {
+    mockGetWalk.mockResolvedValueOnce({
+      audioSignals: { status: "error" },
+      osm: { status: "error" },
+      osmJunctions: { status: "ok", data: { junctions: [] } },
+      seoulNetwork: { status: "error" },
+    });
+    expect((await GET(makeRequest("?lat=37.5&lng=127.0&coords=1&nodes=1"))).status).toBe(200);
+    mockGetWalk.mockResolvedValueOnce({
+      audioSignals: { status: "error" },
+      osm: { status: "error" },
+      osmJunctions: { status: "error" },
+      seoulNetwork: { status: "error" },
+    });
+    expect((await GET(makeRequest("?lat=37.5&lng=127.0&coords=1&nodes=1"))).status).toBe(503);
+  });
+
+  it("nodes가 1 말고 다른 값이면 400(나들이 노드 옵트인, E58)", async () => {
+    const res = await GET(makeRequest("?lat=37.5&lng=127.0&coords=1&nodes=yes"));
+    expect(res.status).toBe(400);
+    expect(mockGetWalk).not.toHaveBeenCalled();
   });
 
   it("coords가 1 말고 다른 값이면 400(조용히 기본값으로 접지 않는다)", async () => {

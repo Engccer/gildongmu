@@ -2,6 +2,10 @@ import { findAudioSignalsNear } from "./providers/audio-signals";
 import type { NearbyAudioSignals } from "./providers/audio-signals";
 import { findWalkFeaturesNear } from "./providers/osm-walk-nodes";
 import type { RawWalkFeature } from "./providers/osm-walk-nodes";
+import { findOsmJunctionsNear } from "./providers/osm-walk-junctions";
+import { findSeoulWalkNetworkNear } from "./providers/seoul-walk-network";
+import type { SeoulWalkNetworkNear } from "./providers/seoul-walk-network";
+import type { WalkJunction } from "./walk-junction";
 import type { CompassDirection } from "./geo/bearing";
 import { bearingDegrees, bearingToCompass8 } from "./geo/bearing";
 import { haversineMeters } from "./geo";
@@ -15,7 +19,7 @@ import { haversineMeters } from "./geo";
 
 export type SourceStatus<T> =
   | { status: "ok"; data: T }
-  | { status: "unsupported"; reason: "outsideSeoul" | "outsideKorea" }
+  | { status: "unsupported"; reason: "outsideSeoul" | "outsideKorea" | "outsideSeed" }
   | { status: "error" };
 
 export type WalkFeature = RawWalkFeature & { distanceMeters: number; bearing: CompassDirection };
@@ -37,6 +41,10 @@ export interface OsmWalkData {
 export interface WalkInfrastructure {
   audioSignals: SourceStatus<NearbyAudioSignals>;
   osm: SourceStatus<OsmWalkData>;
+  /** 나들이 노드 옵트인(`nodes=1`)에만. OSM 도로망 교차점 — 서울 bbox 밖은 unsupported. */
+  osmJunctions?: SourceStatus<{ junctions: WalkJunction[] }>;
+  /** 나들이 노드 옵트인(`nodes=1`)에만. 서울 도보 네트워크 횡단보도·교차점 — 서울 밖은 unsupported. */
+  seoulNetwork?: SourceStatus<SeoulWalkNetworkNear>;
 }
 
 // 사용자 실좌표 기준 300m 필터(spec §2-D).
@@ -53,9 +61,19 @@ const GROUP_CAP = 10;
 const COORDS_CROSSING_CAP = 60;
 const COORDS_AUDIO_SITE_CAP = 40;
 
+/**
+ * 나들이 노드 옵트인(`nodes=1`, E58 ①③ spec 2026-09-26 §6.6)의 원천별 상한. 반경은 300m 그대로다 — 조회점에서
+ * 재조회 간격(50m)만큼 걸어도 앞 20m 교차점은 반경 안이다. 서울 골목 격자에서 300m 안 교차점은 원천마다
+ * 수십~백여 곳이라 상한은 잘림 방지 여유다.
+ */
+const NODES_JUNCTION_CAP = 150;
+const NODES_CROSSWALK_CAP = 60;
+
 export interface WalkInfraOptions {
   /** 나들이용 좌표 옵트인. 미지정·false는 종전 계약과 바이트 동일. */
   coords: boolean;
+  /** 나들이 교차점·서울망 횡단보도 옵트인. false면 두 필드를 싣지 않는다(종전 계약과 바이트 동일). */
+  nodes: boolean;
 }
 
 /**
@@ -125,15 +143,48 @@ async function loadOsm(lat: number, lng: number, coords: boolean): Promise<Sourc
  * throw를 구분하지 않고 그대로 던지며, allSettled가 유일한 포착 지점이다. 동기
  * throw(findAudioSignalsNear 모킹 실패 등)도 rejected로 정상 포착된다.
  */
+async function loadOsmJunctions(lat: number, lng: number): Promise<SourceStatus<{ junctions: WalkJunction[] }>> {
+  const junctions = await findOsmJunctionsNear(lat, lng, USER_RADIUS_METERS, NODES_JUNCTION_CAP);
+  // seed 범위(서울 bbox — 경기 일부 포함이라 "서울 밖"이 아니다) 밖은 "교차로 없음"이 아니라 미제공이다.
+  if (junctions === null) return { status: "unsupported", reason: "outsideSeed" };
+  return { status: "ok", data: { junctions } };
+}
+
+async function loadSeoulNetwork(lat: number, lng: number): Promise<SourceStatus<SeoulWalkNetworkNear>> {
+  const data = await findSeoulWalkNetworkNear(lat, lng, USER_RADIUS_METERS, {
+    crosswalks: NODES_CROSSWALK_CAP,
+    junctions: NODES_JUNCTION_CAP,
+  });
+  if (data === null) return { status: "unsupported", reason: "outsideSeoul" };
+  return { status: "ok", data };
+}
+
+function settled<T>(result: PromiseSettledResult<SourceStatus<T>>, label: string): SourceStatus<T> {
+  if (result.status === "fulfilled") return result.value;
+  console.error(`[walk-infra] ${label} 조회 실패:`, result.reason);
+  return { status: "error" };
+}
+
+/** 노드 옵트인의 두 원천(서로 독립 강등 — 한쪽 seed 실패가 다른 쪽을 죽이지 않는다). */
+async function loadNodeSources(
+  lat: number,
+  lng: number,
+): Promise<Pick<WalkInfrastructure, "osmJunctions" | "seoulNetwork">> {
+  const [junctions, seoul] = await Promise.allSettled([loadOsmJunctions(lat, lng), loadSeoulNetwork(lat, lng)]);
+  return { osmJunctions: settled(junctions, "OSM 교차점"), seoulNetwork: settled(seoul, "서울 도보 네트워크") };
+}
+
 export async function getWalkInfrastructure(
   lat: number,
   lng: number,
   options?: WalkInfraOptions,
 ): Promise<WalkInfrastructure> {
   const coords = options?.coords ?? false;
-  const [audioSignalsResult, osmResult] = await Promise.allSettled([
-    loadAudioSignals(lat, lng, coords),
-    loadOsm(lat, lng, coords),
+  const nodes = options?.nodes ?? false;
+  const [[audioSignalsResult, osmResult], nodeSources] = await Promise.all([
+    Promise.allSettled([loadAudioSignals(lat, lng, coords), loadOsm(lat, lng, coords)]),
+    // 옵트인이 아니면 키 자체를 싣지 않는다(종전 응답과 바이트 동일 — 채팅·CLI·내 주변·스토어 앱).
+    nodes ? loadNodeSources(lat, lng) : Promise.resolve({}),
   ]);
 
   if (audioSignalsResult.status === "rejected") {
@@ -146,5 +197,6 @@ export async function getWalkInfrastructure(
   return {
     audioSignals: audioSignalsResult.status === "fulfilled" ? audioSignalsResult.value : { status: "error" },
     osm: osmResult.status === "fulfilled" ? osmResult.value : { status: "error" },
+    ...nodeSources,
   };
 }
