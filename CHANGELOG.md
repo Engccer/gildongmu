@@ -11,6 +11,10 @@
 
 ## 2026-10-01
 
+### App Store 2.0 심사 제출 (빌드 29)
+
+기준 1.19 아카이브 `5c3bf9bf`(2026-10-01 `READY_FOR_SALE` 확인) 이후 iOS 커밋 30건 + 졸업 커밋 4건. 아카이브 커밋 `d9e76b2d`, 2026-10-01 19:15 KST 제출(`WAITING_FOR_REVIEW`). 산출물 검사 통과(번들 ID·2.0.0/29·백그라운드 모드·6로케일 권한 문구·CoreBluetooth 미링크). 심사 노트는 ASC 실값과 대조한 뒤 백그라운드 절을 세 수단으로 갱신해 넘겼다. 제출 전 Apple 개발자 프로그램 계약 갱신 동의가 필요했다(API 403, 동의 뒤 약 10분 만에 복구). 노트 정본 `docs/appstore/release-notes.md` 2.0 절.
+
 ### iOS 2.0 — 자동차·대중교통 실시간 안내와 백그라운드 음성 안내 정식판 졸업
 
 - `AppConfig.experimentalGuidanceEnabled`·`experimentalBackgroundSpeechEnabled`를 선언째 삭제했다. 자동차·대중교통 시작 버튼, 설정 "백그라운드 음성 안내" 토글이 정식판에 실린다(자동차 운전자 모드 피커는 실험판에 남긴다 — 정식판은 동승자 고정). 간략 단독 시작 버튼(`beacon.briefGuideStart`)은 폐지(E16 축2 — 선두 섹션 버튼은 추적 중 "안내 종료" 하나). 나들이·햅틱 확장·탭 순서·좌우 안내음 피커는 실험판 그대로.
