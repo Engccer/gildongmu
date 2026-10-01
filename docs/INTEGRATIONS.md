@@ -472,6 +472,7 @@ spec `2026-09-30-background-speech-design.md`(적대적 설계 리뷰 1회, 머�
 - **승차 전 도보(prewalk) 종료 문장은 도보 창구로 한 통지, 두 문장**이다: 사용자 정지(`stopByUser`)와 권한·정밀 위치·위치 서비스 상실(`stopAndFail`) 둘 다 사유 뒤에 "대중교통 안내는 시작하지 않았습니다."를 문장 틀 키 `ios.beacon.prewalkCancelledWith`(`{reason}. …`, ja `{reason}。…`)로 잇는다(A54 위원장 판정: 완결 문장 둘은 쉼표가 아니라 마침표). 사유 키(`stoppedJoin`·`beacon.denied`·`beacon.reduced`)는 상태 줄 겸용이라 마침표가 없다. 코디네이터는 `.userStopped`·`.ended`에 문장을 내지 않는다: 대중교통 창구로 따로 내면 그 재생기는 세션을 시작한 적이 없어 도보 정지음을 기다리지 않고 겹치며, 화면이 꺼진 동안 버려지고, 대중교통 복귀 상환은 추적 가드 뒤라 어디서도 갚지 않는다. 사용자 정지는 시트가 닫혀 커서가 옮겨 가므로 `.high`.
 - **원복은 발화 종료에 결박한다**: `endSession(holdSeconds:speechBusy:)`가 톤 잔여 + 다리(`deviceSpeechEndBridgeSeconds` 1초, 톤 뒤 발화 간격을 넘긴다) 뒤에도 안내 발화 중 ∨ 대기 칸이 찬 동안 원복하지 않는다(상한 20초). 글자 수 어림은 앞 문장이 길면 모자랐다(리뷰 M4).
 - 계측: 도보·대중교통 `bgSpeech channel= class= text=`(백그라운드 판정만), 나들이 `outingSpeak channel= fg= class= text=`(종전 `channel=voiceover`·`device` 값 유지).
+- **안드로이드(2026-10-02 android-2)**: 같은 술어·분류·대기 칸을 `:kit`이 미러하고 도보 한 모델이 쓴다. 안내 문장이 TTS 한 채널이라 `voiceOver` = 전경 직접 TTS, 잠금·다른 앱 = 같은 백그라운드, 가청 = 미디어 볼륨 0 아님, 대기 칸 `voiceOverRunning` 늘 참. 매핑 정본은 `android/README.md` §3 "안내 음성 채널".
 
 ### 오디오 재생기는 셋(도보·대중교통·나들이)이고 미뤄진 원복은 최신 소유자에게 이전된다
 

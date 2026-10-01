@@ -11,6 +11,12 @@
 
 ## 2026-10-02
 
+### 안드로이드 후속·이식 묶음 android-2: M4b 후속 둘 · E57 첫 정보 행 착지 · E53 백그라운드 음성 안내
+
+- **M4b 후속**: 장소 상세 길찾기 블록에 안내 중에만 "여기로 목적지 변경"·"여기를 경유지로 추가/변경"(iOS N1 §2.5, 입구는 시트 검색과 같은 모델 함수). 안내 시트가 펼쳐진 동안 밑 탭 상태 줄이 앱 통지를 집지 않는다(`AppRoot`가 `LocalModalOpen` 공급, 안쪽 공급은 바깥 값과 OR).
+- **E57**: 시트가 열리거나 띠바에서 돌아오거나 사용자 전이가 끝나면 첫 정보 행(남은 거리 → 윗줄 → 상태 문장)에 앉는다. 경로 조회와 안내 TTS가 끝난 뒤, 대기 중 커서를 옮기면 앉지 않고, 커서가 앉은 행이 사라지면 복구한다(`GuideSheetLanding`, 커서 행은 초점 노드의 testTag로 가린다). spec `docs/superpowers/specs/2026-09-30-guide-sheet-info-row-landing-design.md`.
+- **E53**: 설정 "백그라운드 음성 안내"(기본 켬, 길 안내 묶음 맨 앞). 잠금·다른 앱을 같은 백그라운드로 보고 행동 문장만 말하며 끄면 효과음만(위원장 판정, 종전 "화면 꺼짐이면 전부 말함" 대체). `:kit` `GuideSpeechChannel`·`DeviceSpeechQueue` 이식, 전경 복귀는 인계를 상환과 한 문장으로. spec `docs/superpowers/specs/2026-09-30-background-speech-design.md`, 계획 `docs/superpowers/plans/2026-10-02-backlog-sweep-8-parallel-plan.md`.
+
 ### small-9 후속 묶음 small-10: A54 두 문장 · 정지 통지 `.high` · A53 en 통지(iOS)
 
 - **A54**: 승차 전 도보를 직접 끝내거나 위치 권한을 잃을 때 "거리 추적을 종료했습니다. 대중교통 안내는 시작하지 않았습니다."처럼 **두 문장**이다(위원장 판정, 문장 틀 키 `ios.beacon.prewalkCancelledWith`, 쉼표 꼬리 키 삭제). 사용자 정지 문장은 도보 모델이 `.high`로 정지음 뒤에 낸다(세션 전 대중교통 창구는 정지음과 겹치고 화면이 꺼지면 버렸다, 접근성 감사).
