@@ -272,12 +272,12 @@
     <string name="android_place_nearbyHeading">À proximité de ce lieu</string>
     <string name="android_place_roadAddressLine">Adresse (rue), %1$s</string>
     <string name="android_releaseNotice_body1">Profitez d’un guidage sans interruption sur tout votre trajet : la marche de chez vous jusqu’à l’arrêt, le trajet en bus ou en métro, puis la marche de la descente jusqu’à votre destination.</string>
-    <string name="android_releaseNotice_body2">Choisissez un itinéraire en transports en commun dans l’onglet Itinéraire et appuyez sur le bouton de démarrage. Pendant l’attente du métro ou du bus, l’app vous dit quels véhicules arrivent. Pendant le trajet, elle affiche les arrêts restants, et vous pouvez même appeler la station de métro.</string>
+    <string name="android_releaseNotice_body2">Choisissez un itinéraire en transports en commun dans l’onglet Itinéraire et appuyez sur le bouton de démarrage. Pendant l’attente du métro ou du bus, l’app vous dit quels véhicules arrivent. Pendant le trajet, elle affiche les arrêts restants, et vous pouvez même appeler la station de métro où vous arrivez.</string>
     <string name="android_releaseNotice_body3">En voiture, appuyez sur démarrer dans l’itinéraire voiture. L’app vous dit sur quelle route la voiture se trouve et la distance restante jusqu’à la destination. Le guidage en voiture n’est disponible qu’en coréen.</string>
-    <string name="android_releaseNotice_body4">Activez « Guidage vocal en arrière-plan » dans les Réglages pour entendre les virages, les alertes de sortie d’itinéraire et les arrivées à voix haute même avec l’écran verrouillé et le téléphone dans la poche. Il est activé par défaut.</string>
-    <string name="android_releaseNotice_body5">Le guidage repose sur les données cartographiques, le GPS et les informations de transport en temps réel ; il peut donc différer de la situation réelle. Les informations d’arrivée des bus et des trains peuvent être en retard ou erronées : écoutez aussi les annonces à bord.</string>
-    <string name="android_releaseNotice_body6">Soyez particulièrement prudent aux passages piétons. Utilisez le guidage de cette app uniquement comme information d’appoint et essayez-le d’abord sur un trajet que vous connaissez bien.</string>
-    <string name="android_releaseNotice_confirm">OK</string>
+    <string name="android_releaseNotice_body4">Vous pouvez désormais entendre le guidage vocal même avec l’écran verrouillé. Activez « Guidage vocal en arrière-plan » dans les Réglages et l’app vous dit quelle direction prendre aux points clés du trajet. Il est activé par défaut.</string>
+    <string name="android_releaseNotice_body5">Le guidage repose sur les données cartographiques, le GPS et les informations de transport en temps réel ; il peut donc différer de la situation réelle. Dans le métro en particulier, votre position actuelle peut être imprécise. Écoutez aussi les annonces à bord.</string>
+    <string name="android_releaseNotice_body6">Utilisez le guidage de cette app uniquement comme information d’appoint et essayez-le d’abord sur un trajet que vous connaissez bien.</string>
+    <string name="android_releaseNotice_confirm">Fermer</string>
     <string name="android_releaseNotice_head1">Quoi de neuf</string>
     <string name="android_releaseNotice_head2">À garder à l’esprit</string>
     <string name="android_releaseNotice_intro">Profitez maintenant du guidage en temps réel aussi dans les transports en commun et en voiture.</string>

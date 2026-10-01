@@ -26246,37 +26246,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "길찾기 탭에서 대중교통 경로를 고르고 안내 시작 버튼을 눌러 보세요. 지하철이나 버스를 기다릴 때 어떤 차량이 오고 있는지 알려드려요. 타고 가는 동안에는 남은 정거장을 보여드리고, 지하철역에 전화를 걸 수도 있어요."
+            "value": "길찾기 탭에서 대중교통 경로를 고르고 안내 시작 버튼을 눌러 보세요. 지하철이나 버스를 기다릴 때 어떤 차량이 오고 있는지 알려드려요. 타고 가는 동안에는 남은 정거장을 표시하고, 도착하는 지하철역에 전화를 걸 수도 있어요."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pick a transit route in the Directions tab and press the start button. While you wait for a train or bus, the app tells you which vehicles are coming. While you ride, it shows the remaining stops, and you can even call the subway station."
+            "value": "Pick a transit route in the Directions tab and press the start button. While you wait for a train or bus, the app tells you which vehicles are coming. While you ride, it shows the remaining stops, and you can even call the subway station you are arriving at."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Elige una ruta de transporte público en la pestaña Cómo llegar y pulsa el botón de inicio. Mientras esperas el metro o el autobús, la app te dice qué vehículos vienen. Durante el viaje muestra las paradas que faltan, e incluso puedes llamar a la estación de metro."
+            "value": "Elige una ruta de transporte público en la pestaña Cómo llegar y pulsa el botón de inicio. Mientras esperas el metro o el autobús, la app te dice qué vehículos vienen. Durante el viaje muestra las paradas que faltan, e incluso puedes llamar a la estación de metro a la que llegas."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Choisissez un itinéraire en transports en commun dans l’onglet Itinéraire et appuyez sur le bouton de démarrage. Pendant l’attente du métro ou du bus, l’app vous dit quels véhicules arrivent. Pendant le trajet, elle affiche les arrêts restants, et vous pouvez même appeler la station de métro."
+            "value": "Choisissez un itinéraire en transports en commun dans l’onglet Itinéraire et appuyez sur le bouton de démarrage. Pendant l’attente du métro ou du bus, l’app vous dit quels véhicules arrivent. Pendant le trajet, elle affiche les arrêts restants, et vous pouvez même appeler la station de métro où vous arrivez."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Scegli un percorso con i mezzi pubblici nella scheda Indicazioni e premi il pulsante di avvio. Mentre aspetti la metropolitana o l'autobus, l'app ti dice quali mezzi stanno arrivando. Durante il viaggio mostra le fermate rimanenti e puoi persino chiamare la stazione della metropolitana."
+            "value": "Scegli un percorso con i mezzi pubblici nella scheda Indicazioni e premi il pulsante di avvio. Mentre aspetti la metropolitana o l'autobus, l'app ti dice quali mezzi stanno arrivando. Durante il viaggio mostra le fermate rimanenti e puoi persino chiamare la stazione della metropolitana a cui stai arrivando."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "経路検索タブで公共交通機関の経路を選び、案内開始ボタンを押してみてください。地下鉄やバスを待つ間はどの車両が来ているかをお知らせします。乗っている間は残りの停留所を表示し、地下鉄の駅に電話をかけることもできます。"
+            "value": "経路検索タブで公共交通機関の経路を選び、案内開始ボタンを押してみてください。地下鉄やバスを待つ間はどの車両が来ているかをお知らせします。乗っている間は残りの停留所を表示し、到着する地下鉄の駅に電話をかけることもできます。"
           }
         }
       }
@@ -26326,37 +26326,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "설정의 \"백그라운드 음성 안내\"를 켜 두면 화면을 잠그고 주머니에 넣은 채로도 회전, 이탈, 도착 같은 안내를 음성으로 들을 수 있어요. 처음에는 켜져 있어요."
+            "value": "이제 화면을 잠근 상태에서도 음성 안내를 들으실 수 있어요. 설정의 \"백그라운드 음성 안내\"를 켜 두면 주요 구간에서 어느 방향으로 갈지 음성으로 들을 수 있어요. 기본은 켜져 있어요."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Turn on \"Background voice guidance\" in Settings to hear turns, off-route alerts, and arrivals spoken aloud even with the screen locked and the phone in your pocket. It is on by default."
+            "value": "You can now hear voice guidance even with the screen locked. Turn on \"Background voice guidance\" in Settings and the app tells you which way to go at the key points of your route. It is on by default."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Activa \"Guía por voz en segundo plano\" en Ajustes para oír giros, avisos de desvío y llegadas en voz alta incluso con la pantalla bloqueada y el teléfono en el bolsillo. Está activado de forma predeterminada."
+            "value": "Ahora puedes oír la guía por voz incluso con la pantalla bloqueada. Activa \"Guía por voz en segundo plano\" en Ajustes y la app te dirá hacia dónde ir en los puntos clave del trayecto. Está activado de forma predeterminada."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Activez « Guidage vocal en arrière-plan » dans les Réglages pour entendre les virages, les alertes de sortie d’itinéraire et les arrivées à voix haute même avec l’écran verrouillé et le téléphone dans la poche. Il est activé par défaut."
+            "value": "Vous pouvez désormais entendre le guidage vocal même avec l’écran verrouillé. Activez « Guidage vocal en arrière-plan » dans les Réglages et l’app vous dit quelle direction prendre aux points clés du trajet. Il est activé par défaut."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Attiva \"Guida vocale in background\" nelle Impostazioni per sentire svolte, avvisi di uscita dal percorso e arrivi a voce alta anche con lo schermo bloccato e il telefono in tasca. È attivo per impostazione predefinita."
+            "value": "Ora puoi sentire la guida vocale anche con lo schermo bloccato. Attiva \"Guida vocale in background\" nelle Impostazioni e l'app ti dice in quale direzione andare nei punti chiave del percorso. È attiva per impostazione predefinita."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "設定の「バックグラウンド音声案内」をオンにしておくと、画面をロックしてポケットに入れたままでも、曲がる、経路から外れた、到着したなどの案内を音声で聞けます。最初はオンになっています。"
+            "value": "画面をロックしたままでも音声案内を聞けるようになりました。設定の「バックグラウンド音声案内」をオンにしておくと、経路の主要な地点でどの方向へ進むかを音声で聞けます。最初はオンになっています。"
           }
         }
       }
@@ -26366,37 +26366,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "안내는 지도 데이터와 GPS, 실시간 교통 정보를 바탕으로 이루어져요. 따라서 실제 상황과는 차이가 있을 수 있어요. 버스와 열차의 도착 정보는 늦거나 틀릴 수 있으니 차내 방송도 함께 들어 주세요."
+            "value": "안내는 지도 데이터와 GPS, 실시간 교통 정보를 바탕으로 이루어져요. 따라서 실제 상황과는 차이가 있을 수 있어요. 특히 지하철은 현재 위치를 부정확하게 파악할 수 있어요. 차내 방송도 함께 들어 주세요."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Guidance is based on map data, GPS, and real-time transit information, so it may differ from what is actually happening. Bus and train arrival information can be late or wrong, so listen to onboard announcements as well."
+            "value": "Guidance is based on map data, GPS, and real-time transit information, so it may differ from what is actually happening. On the subway in particular, your current position may be inaccurate. Listen to onboard announcements as well."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "La guía se basa en datos de mapas, GPS e información de transporte en tiempo real, por lo que puede diferir de la situación real. La información de llegada de autobuses y trenes puede retrasarse o ser incorrecta; escucha también los avisos a bordo."
+            "value": "La guía se basa en datos de mapas, GPS e información de transporte en tiempo real, por lo que puede diferir de la situación real. En el metro, en particular, tu posición actual puede ser imprecisa. Escucha también los avisos a bordo."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Le guidage repose sur les données cartographiques, le GPS et les informations de transport en temps réel ; il peut donc différer de la situation réelle. Les informations d’arrivée des bus et des trains peuvent être en retard ou erronées : écoutez aussi les annonces à bord."
+            "value": "Le guidage repose sur les données cartographiques, le GPS et les informations de transport en temps réel ; il peut donc différer de la situation réelle. Dans le métro en particulier, votre position actuelle peut être imprécise. Écoutez aussi les annonces à bord."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "La guida si basa su dati cartografici, GPS e informazioni sui trasporti in tempo reale, quindi può differire dalla situazione reale. Le informazioni sugli arrivi di autobus e treni possono essere in ritardo o sbagliate: ascolta anche gli annunci a bordo."
+            "value": "La guida si basa su dati cartografici, GPS e informazioni sui trasporti in tempo reale, quindi può differire dalla situazione reale. In metropolitana, in particolare, la tua posizione attuale può essere imprecisa. Ascolta anche gli annunci a bordo."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "案内は地図データとGPS、リアルタイムの交通情報をもとに行われます。そのため実際の状況と異なる場合があります。バスや電車の到着情報は遅れたり間違ったりすることがあるので、車内放送も合わせてお聞きください。"
+            "value": "案内は地図データとGPS、リアルタイムの交通情報をもとに行われます。そのため実際の状況と異なる場合があります。特に地下鉄では現在位置が正確でないことがあります。車内放送も合わせてお聞きください。"
           }
         }
       }
@@ -26406,37 +26406,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "횡단보도 등에서는 특별히 유의해 주세요. 이 앱의 안내를 보조 정보로만 사용하시고, 익숙한 길에서 먼저 테스트해 주세요."
+            "value": "이 앱의 안내를 보조 정보로만 사용하시고, 익숙한 길에서 먼저 테스트해 주세요."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Take extra care at crosswalks. Use this app's guidance as supporting information only, and try it first on a route you know well."
+            "value": "Use this app's guidance as supporting information only, and try it first on a route you know well."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ten especial cuidado en los pasos de peatones. Usa la guía de esta app solo como información de apoyo y pruébala primero en un trayecto que conozcas bien."
+            "value": "Usa la guía de esta app solo como información de apoyo y pruébala primero en un trayecto que conozcas bien."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Soyez particulièrement prudent aux passages piétons. Utilisez le guidage de cette app uniquement comme information d’appoint et essayez-le d’abord sur un trajet que vous connaissez bien."
+            "value": "Utilisez le guidage de cette app uniquement comme information d’appoint et essayez-le d’abord sur un trajet que vous connaissez bien."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Fai particolare attenzione agli attraversamenti pedonali. Usa la guida di questa app solo come informazione di supporto e provala prima su un tragitto che conosci bene."
+            "value": "Usa la guida di questa app solo come informazione di supporto e provala prima su un tragitto che conosci bene."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "横断歩道などでは特にご注意ください。このアプリの案内は補助情報としてのみ使い、慣れた道で先に試してください。"
+            "value": "このアプリの案内は補助情報としてのみ使い、慣れた道で先に試してください。"
           }
         }
       }
@@ -26446,37 +26446,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "확인"
+            "value": "닫기"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "OK"
+            "value": "Close"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aceptar"
+            "value": "Cerrar"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "OK"
+            "value": "Fermer"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "OK"
+            "value": "Chiudi"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "確認"
+            "value": "閉じる"
           }
         }
       }

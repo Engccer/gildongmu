@@ -272,12 +272,12 @@
     <string name="android_place_nearbyHeading">この場所の周辺</string>
     <string name="android_place_roadAddressLine">道路名住所、%1$s</string>
     <string name="android_releaseNotice_body1">家を出て停留所まで歩き、バスや地下鉄に乗り、降りて目的地まで再び歩く道のりの間ずっと、途切れなく案内を受けられます。</string>
-    <string name="android_releaseNotice_body2">経路検索タブで公共交通機関の経路を選び、案内開始ボタンを押してみてください。地下鉄やバスを待つ間はどの車両が来ているかをお知らせします。乗っている間は残りの停留所を表示し、地下鉄の駅に電話をかけることもできます。</string>
+    <string name="android_releaseNotice_body2">経路検索タブで公共交通機関の経路を選び、案内開始ボタンを押してみてください。地下鉄やバスを待つ間はどの車両が来ているかをお知らせします。乗っている間は残りの停留所を表示し、到着する地下鉄の駅に電話をかけることもできます。</string>
     <string name="android_releaseNotice_body3">自動車で移動するときは、自動車の経路で案内を押してみてください。車がどの道を走っているか、目的地まであとどれくらいかをお知らせします。自動車の案内は韓国語のみ対応です。</string>
-    <string name="android_releaseNotice_body4">設定の「バックグラウンド音声案内」をオンにしておくと、画面をロックしてポケットに入れたままでも、曲がる、経路から外れた、到着したなどの案内を音声で聞けます。最初はオンになっています。</string>
-    <string name="android_releaseNotice_body5">案内は地図データとGPS、リアルタイムの交通情報をもとに行われます。そのため実際の状況と異なる場合があります。バスや電車の到着情報は遅れたり間違ったりすることがあるので、車内放送も合わせてお聞きください。</string>
-    <string name="android_releaseNotice_body6">横断歩道などでは特にご注意ください。このアプリの案内は補助情報としてのみ使い、慣れた道で先に試してください。</string>
-    <string name="android_releaseNotice_confirm">確認</string>
+    <string name="android_releaseNotice_body4">画面をロックしたままでも音声案内を聞けるようになりました。設定の「バックグラウンド音声案内」をオンにしておくと、経路の主要な地点でどの方向へ進むかを音声で聞けます。最初はオンになっています。</string>
+    <string name="android_releaseNotice_body5">案内は地図データとGPS、リアルタイムの交通情報をもとに行われます。そのため実際の状況と異なる場合があります。特に地下鉄では現在位置が正確でないことがあります。車内放送も合わせてお聞きください。</string>
+    <string name="android_releaseNotice_body6">このアプリの案内は補助情報としてのみ使い、慣れた道で先に試してください。</string>
+    <string name="android_releaseNotice_confirm">閉じる</string>
     <string name="android_releaseNotice_head1">何が変わったの？</string>
     <string name="android_releaseNotice_head2">ご注意いただきたいこと</string>
     <string name="android_releaseNotice_intro">公共交通機関を利用するときも、自動車で移動するときも、リアルタイム案内を受けられるようになりました。</string>

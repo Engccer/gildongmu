@@ -14,13 +14,13 @@
       "intro": "Now get real-time guidance when you ride transit or travel by car, too.",
       "head1": "What is new",
       "body1": "Get guidance without a break for your whole trip: walking from home to the stop, riding the bus or subway, and walking from where you get off to your destination.",
-      "body2": "Pick a transit route in the Directions tab and press the start button. While you wait for a train or bus, the app tells you which vehicles are coming. While you ride, it shows the remaining stops, and you can even call the subway station.",
+      "body2": "Pick a transit route in the Directions tab and press the start button. While you wait for a train or bus, the app tells you which vehicles are coming. While you ride, it shows the remaining stops, and you can even call the subway station you are arriving at.",
       "body3": "When you travel by car, press start on the car route. The app tells you which road the car is on and how far it is to your destination. Driving guidance is available in Korean only.",
-      "body4": "Turn on \"Background voice guidance\" in Settings to hear turns, off-route alerts, and arrivals spoken aloud even with the screen locked and the phone in your pocket. It is on by default.",
+      "body4": "You can now hear voice guidance even with the screen locked. Turn on \"Background voice guidance\" in Settings and the app tells you which way to go at the key points of your route. It is on by default.",
       "head2": "Please keep in mind",
-      "body5": "Guidance is based on map data, GPS, and real-time transit information, so it may differ from what is actually happening. Bus and train arrival information can be late or wrong, so listen to onboard announcements as well.",
-      "body6": "Take extra care at crosswalks. Use this app's guidance as supporting information only, and try it first on a route you know well.",
-      "confirm": "OK"
+      "body5": "Guidance is based on map data, GPS, and real-time transit information, so it may differ from what is actually happening. On the subway in particular, your current position may be inaccurate. Listen to onboard announcements as well.",
+      "body6": "Use this app's guidance as supporting information only, and try it first on a route you know well.",
+      "confirm": "Close"
     },
     "common": {
       "ok": "OK",

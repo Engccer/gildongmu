@@ -272,12 +272,12 @@
     <string name="android_place_nearbyHeading">Cerca de este lugar</string>
     <string name="android_place_roadAddressLine">Dirección (calle), %1$s</string>
     <string name="android_releaseNotice_body1">Recibe guía sin interrupciones durante todo el trayecto: caminar de casa a la parada, ir en autobús o metro y caminar desde donde bajas hasta tu destino.</string>
-    <string name="android_releaseNotice_body2">Elige una ruta de transporte público en la pestaña Cómo llegar y pulsa el botón de inicio. Mientras esperas el metro o el autobús, la app te dice qué vehículos vienen. Durante el viaje muestra las paradas que faltan, e incluso puedes llamar a la estación de metro.</string>
+    <string name="android_releaseNotice_body2">Elige una ruta de transporte público en la pestaña Cómo llegar y pulsa el botón de inicio. Mientras esperas el metro o el autobús, la app te dice qué vehículos vienen. Durante el viaje muestra las paradas que faltan, e incluso puedes llamar a la estación de metro a la que llegas.</string>
     <string name="android_releaseNotice_body3">Cuando viajes en coche, pulsa iniciar en la ruta en coche. La app te dice por qué calle va el coche y cuánto falta hasta el destino. La guía en coche solo está disponible en coreano.</string>
-    <string name="android_releaseNotice_body4">Activa \"Guía por voz en segundo plano\" en Ajustes para oír giros, avisos de desvío y llegadas en voz alta incluso con la pantalla bloqueada y el teléfono en el bolsillo. Está activado de forma predeterminada.</string>
-    <string name="android_releaseNotice_body5">La guía se basa en datos de mapas, GPS e información de transporte en tiempo real, por lo que puede diferir de la situación real. La información de llegada de autobuses y trenes puede retrasarse o ser incorrecta; escucha también los avisos a bordo.</string>
-    <string name="android_releaseNotice_body6">Ten especial cuidado en los pasos de peatones. Usa la guía de esta app solo como información de apoyo y pruébala primero en un trayecto que conozcas bien.</string>
-    <string name="android_releaseNotice_confirm">Aceptar</string>
+    <string name="android_releaseNotice_body4">Ahora puedes oír la guía por voz incluso con la pantalla bloqueada. Activa \"Guía por voz en segundo plano\" en Ajustes y la app te dirá hacia dónde ir en los puntos clave del trayecto. Está activado de forma predeterminada.</string>
+    <string name="android_releaseNotice_body5">La guía se basa en datos de mapas, GPS e información de transporte en tiempo real, por lo que puede diferir de la situación real. En el metro, en particular, tu posición actual puede ser imprecisa. Escucha también los avisos a bordo.</string>
+    <string name="android_releaseNotice_body6">Usa la guía de esta app solo como información de apoyo y pruébala primero en un trayecto que conozcas bien.</string>
+    <string name="android_releaseNotice_confirm">Cerrar</string>
     <string name="android_releaseNotice_head1">Qué hay de nuevo</string>
     <string name="android_releaseNotice_head2">Ten en cuenta</string>
     <string name="android_releaseNotice_intro">Ahora recibe guía en tiempo real también cuando usas el transporte público o viajas en coche.</string>

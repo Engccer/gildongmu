@@ -272,12 +272,12 @@
     <string name="android_place_nearbyHeading">Vicino a questo luogo</string>
     <string name="android_place_roadAddressLine">Indirizzo stradale, %1$s</string>
     <string name="android_releaseNotice_body1">Ricevi la guida senza interruzioni per tutto il viaggio: la camminata da casa alla fermata, il tratto in autobus o metropolitana e la camminata da dove scendi fino a destinazione.</string>
-    <string name="android_releaseNotice_body2">Scegli un percorso con i mezzi pubblici nella scheda Indicazioni e premi il pulsante di avvio. Mentre aspetti la metropolitana o l\'autobus, l\'app ti dice quali mezzi stanno arrivando. Durante il viaggio mostra le fermate rimanenti e puoi persino chiamare la stazione della metropolitana.</string>
+    <string name="android_releaseNotice_body2">Scegli un percorso con i mezzi pubblici nella scheda Indicazioni e premi il pulsante di avvio. Mentre aspetti la metropolitana o l\'autobus, l\'app ti dice quali mezzi stanno arrivando. Durante il viaggio mostra le fermate rimanenti e puoi persino chiamare la stazione della metropolitana a cui stai arrivando.</string>
     <string name="android_releaseNotice_body3">Quando viaggi in auto, premi avvia sul percorso in auto. L\'app ti dice su quale strada si trova l\'auto e quanto manca alla destinazione. La guida in auto è disponibile solo in coreano.</string>
-    <string name="android_releaseNotice_body4">Attiva \"Guida vocale in background\" nelle Impostazioni per sentire svolte, avvisi di uscita dal percorso e arrivi a voce alta anche con lo schermo bloccato e il telefono in tasca. È attivo per impostazione predefinita.</string>
-    <string name="android_releaseNotice_body5">La guida si basa su dati cartografici, GPS e informazioni sui trasporti in tempo reale, quindi può differire dalla situazione reale. Le informazioni sugli arrivi di autobus e treni possono essere in ritardo o sbagliate: ascolta anche gli annunci a bordo.</string>
-    <string name="android_releaseNotice_body6">Fai particolare attenzione agli attraversamenti pedonali. Usa la guida di questa app solo come informazione di supporto e provala prima su un tragitto che conosci bene.</string>
-    <string name="android_releaseNotice_confirm">OK</string>
+    <string name="android_releaseNotice_body4">Ora puoi sentire la guida vocale anche con lo schermo bloccato. Attiva \"Guida vocale in background\" nelle Impostazioni e l\'app ti dice in quale direzione andare nei punti chiave del percorso. È attiva per impostazione predefinita.</string>
+    <string name="android_releaseNotice_body5">La guida si basa su dati cartografici, GPS e informazioni sui trasporti in tempo reale, quindi può differire dalla situazione reale. In metropolitana, in particolare, la tua posizione attuale può essere imprecisa. Ascolta anche gli annunci a bordo.</string>
+    <string name="android_releaseNotice_body6">Usa la guida di questa app solo come informazione di supporto e provala prima su un tragitto che conosci bene.</string>
+    <string name="android_releaseNotice_confirm">Chiudi</string>
     <string name="android_releaseNotice_head1">Cosa c\'è di nuovo</string>
     <string name="android_releaseNotice_head2">Da tenere presente</string>
     <string name="android_releaseNotice_intro">Ora ricevi la guida in tempo reale anche quando usi i mezzi pubblici o viaggi in auto.</string>
