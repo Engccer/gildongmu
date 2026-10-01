@@ -72,9 +72,9 @@ fun walkLineLabel(line: WalkLineKind, route: WalkRouteBriefing, strings: Strings
     joinText(strings.get(walkLineNameKey(line)), walkSummaryText(route, strings))
 
 /**
- * 도보 스텝 행 문장들(구획 행 포함). 번호는 **원본 인덱스 + 1**(웹 `<ol>`·CLI·iOS와 같은 값 — 생략으로 밀지 않는다).
+ * 도보 스텝 행 문장들(구획 행 포함). 단계 번호는 붙이지 않는다(자동차·대중교통 행과 같은 모양, iOS `WalkRouteRows` 동형).
  * 서버가 스텝 0에 삽입한 `stepFreeNotice`는 생략한다(iOS `omitNoticeStep` — E42 줄 경로엔 싣지 않지만 삽입 계약은 남아 있다).
- * `viaLabel`이 있으면 `waypoint.stepIndex` 자리 **앞**에 "경유지 {label} 도착" 구획 행(번호 없음).
+ * `viaLabel`이 있으면 `waypoint.stepIndex` 자리 **앞**에 "경유지 {label} 도착" 구획 행.
  */
 fun walkStepItems(briefing: WalkRouteBriefing, viaLabel: String?, strings: Strings): List<String> {
     val items = ArrayList<String>()
@@ -83,7 +83,7 @@ fun walkStepItems(briefing: WalkRouteBriefing, viaLabel: String?, strings: Strin
         if (waypoint != null && index == waypoint.stepIndex && viaLabel != null) items += strings.get("directions.viaArrived", viaLabel)
         if (step.description.isEmpty()) return@forEachIndexed
         if (index == 0 && step.description == briefing.stepFreeNotice) return@forEachIndexed
-        items += "${index + 1}. ${step.description}"
+        items += step.description
     }
     return items
 }

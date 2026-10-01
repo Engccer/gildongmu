@@ -61,16 +61,16 @@ class RouteTextTest {
         assertEquals("총 13.841km, 약 61분, 택시 요금 약 22,600원, 통행료 1,200원", carSummaryText(car.copy(tollFare = 1200), "ko", ko))
     }
 
-    @Test fun `도보 스텝 번호는 원본 인덱스이고 notice 스텝 0은 생략, 경유지 구획은 그 자리 앞`() {
+    @Test fun `도보 스텝은 번호 없이 문장만이고 notice 스텝 0은 생략, 경유지 구획은 그 자리 앞`() {
         val notice = "계단 회피 경로를 찾지 못해 일반 경로를 안내합니다"
         val b = WalkRouteBriefing(
             distanceMeters = 500, durationSeconds = 400,
             steps = listOf(WalkRouteStep(notice), WalkRouteStep("가"), WalkRouteStep("나"), WalkRouteStep(""), WalkRouteStep("다")),
             stepFreeNotice = notice, waypoint = RouteWaypoint(stepIndex = 2, coord = RoutePoint(37.5, 127.1)),
         )
-        assertEquals(listOf("2. 가", "경유지 편의점 도착", "3. 나", "5. 다"), walkStepItems(b, "편의점", ko))
-        assertEquals(listOf("2. 가", "3. 나", "5. 다"), walkStepItems(b, null, ko)) // 라벨이 없으면 구획 행 없음
-        assertEquals(listOf("1. 천호대로를 따라 119m 이동", "2. 강동역 방면으로 우회전", "3. 58m 이동 후 좌회전", "4. 목적지에 도착"), walkStepItems(walk, null, ko))
+        assertEquals(listOf("가", "경유지 편의점 도착", "나", "다"), walkStepItems(b, "편의점", ko))
+        assertEquals(listOf("가", "나", "다"), walkStepItems(b, null, ko)) // 라벨이 없으면 구획 행 없음
+        assertEquals(listOf("천호대로를 따라 119m 이동", "강동역 방면으로 우회전", "58m 이동 후 좌회전", "목적지에 도착"), walkStepItems(walk, null, ko))
     }
 
     @Test fun `자동차 안내 행 - guidance 폴백 name, 거리 0 생략, 경유지 구획`() {

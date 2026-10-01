@@ -442,10 +442,10 @@ struct WalkRouteRows: View {
     var includeSummary = true
     /// 라벨이 stepFreeNotice를 병기하는 소비자(M3 2행 disclosure)는 서버가 비기하
     /// 응답 스텝 0번에 삽입한 같은 문장을 본문에서 생략한다 — 라벨·본문 이중 낭독
-    /// 방지(a11y 감사 2026-08-12). 번호는 원본 인덱스 유지(웹·CLI와 같은 값 계약).
+    /// 방지(a11y 감사 2026-08-12).
     var omitNoticeStep = false
     /// 경유지 라벨(N4). `briefing.waypoint.stepIndex` 앞에 "경유지 {label} 도착" 구획 행을
-    /// 그린다(웹 `StepList`·CLI와 같은 구획 문장, 번호 없는 평문 — 스텝 번호는 원본 인덱스).
+    /// 그린다(웹 `StepList`·CLI와 같은 구획 문장).
     /// 서버는 라벨을 모르므로 호출부(폼 상태)가 준다. nil이면 행을 그리지 않는다.
     var waypointLabel: String? = nil
 
@@ -460,11 +460,9 @@ struct WalkRouteRows: View {
             if !step.description.isEmpty,
                !(omitNoticeStep && index == 0
                    && step.description == briefing.stepFreeNotice) {
-                // 단계 번호는 웹(<ol>)·CLI("1. ")에 이미 있고 iOS만 없었다. 서로 닮은
-                // 문장이 십수 개 이어져 커서를 놓치면 복귀 지점을 찾을 단서가 없다.
-                // 번호는 표시 순서가 아니라 **원본 인덱스**라 세 소비자가 같은 값을 쓴다.
+                // 단계 번호를 붙이지 않는다 — 자동차·대중교통 행과 같은 모양이다.
                 // 서버 안내문 속 "244m 이동"도 같은 오독 대상이라 낭독만 풀어 쓴다
-                distanceText("\(index + 1). \(step.description)")
+                distanceText(step.description)
             }
         }
     }
