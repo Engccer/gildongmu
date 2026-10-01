@@ -26,17 +26,18 @@ enum ThemePreference: String, CaseIterable {
     }
 }
 
-/// 앱 설정 시트: 테마 + 언어(스펙 2026-07-19 iOS 다국어 §4).
+/// 앱 설정 시트(언어는 스펙 2026-07-19 iOS 다국어 §4, 묶음 구성은 E59).
 /// 언어는 선택 즉시 적용된다 — 모든 표시 문자열이 `appLocalized`(언어별 lproj 직접
 /// 조회)를 거치고, App이 언어를 `.id`에 넣어 탭 트리를 재생성하기 때문(앱 재시작 불필요).
 /// 이 시트 자체는 App 레벨에 있어 재생성 밖이라 열린 채로 새 언어로 다시 그려진다.
-/// ⚠ 단 인라인 피커는 선택지 행을 태그 정체성으로 붙들어 본문이 다시 계산돼도 옛 언어로 남는다(A51) —
-/// 그래서 인라인 피커마다 `.id("<피커>-\(AppLanguage.current)")`를 건다. 이름은 형제 행끼리 식별자가 겹치지 않게
-/// 붙인다(메뉴 피커인 언어 행은 커서가 있는 자리라 제외).
+/// ⚠ 단 피커는 선택지를 태그 정체성으로 붙들어 본문이 다시 계산돼도 현재 값이 옛 언어로 남는다(A51 —
+/// 메뉴 피커도 같다: E59 시뮬레이터 실측 "Tema, Claro" → "테마, Claro"). 그래서 피커마다
+/// `.id("<피커>-\(AppLanguage.current)")`를 건다. 이름은 형제 행끼리 식별자가 겹치지 않게 붙인다
+/// (언어 피커는 커서가 있는 자리라 제외 — 재생성이 커서를 옮긴다).
 /// 시트 등장 시 VoiceOver 포커스는 시스템이 이동시키므로 별도 처리 없음.
 struct SettingsView: View {
     /// 도착 화면 "체중 입력하기"로 열렸을 때 true — 체중 필드에 VO 커서를 착지시킨다
-    /// (앞에 피커 행이 열 개쯤 있어 스와이프로 찾아가게 두면 버튼의 약속이 반쯤 거짓이다).
+    /// (앞에 일반·음성 묶음과 백그라운드 음성 안내가 있어 스와이프로 찾아가게 두면 버튼의 약속이 반쯤 거짓이다).
     /// 착지 순서는 목록 포커스 정본(가시화 → 지연 → 대입) 그대로. 일반 진입은 시스템 기본.
     var focusWeightOnAppear = false
     @AccessibilityFocusState private var weightFieldFocused: Bool
@@ -148,73 +149,53 @@ struct SettingsView: View {
         NavigationStack {
             ScrollViewReader { proxy in
             List {
-                Picker(appLocalized("ios.settings.theme"), selection: $themeRaw) {
-                    ForEach(ThemePreference.allCases, id: \.rawValue) { theme in
-                        Text(theme.label).tag(theme.rawValue)
+                // 헤딩은 주제 묶음 다섯에만 있고(E59 위원장 판정 2026-10-02), 설정 하나는 언제나 한 줄이다 — 고르기는
+                // "이름, 현재 값" 메뉴 피커, 켜고 끄기는 토글. 설명 문장이 붙는 설정은 헤더 없는 섹션으로 이어 그 설정 바로
+                // 뒤에 footer를 둔다(헤더 없는 섹션은 헤딩을 만들지 않는다 — 헤딩 로터에는 묶음 다섯만 남는다).
+                Section(appLocalized("ios.settings.sectionGeneral")) {
+                    Picker(appLocalized("ios.settings.theme"), selection: $themeRaw) {
+                        ForEach(ThemePreference.allCases, id: \.rawValue) { theme in
+                            Text(theme.label).tag(theme.rawValue)
+                        }
                     }
-                }
-                .pickerStyle(.inline)
-                .id("theme-\(AppLanguage.current)")
+                    .pickerStyle(.menu)
+                    .id("theme-\(AppLanguage.current)")
 
-                // 언어만 메뉴 피커(dodo-planet 동형): 6개 언어를 인라인으로 펼치면
-                // 설정 목록을 압도한다 — 라벨 행에 현재 언어를 보이고 탭하면 메뉴로 선택.
-                // VoiceOver엔 "언어, 현재값" 단일 객체(한 줄=한 객체).
-                Picker(appLocalized("ios.settings.language"), selection: languageSelection) {
-                    ForEach(Self.languages, id: \.code) { language in
-                        Text(language.name).tag(language.code)
+                    Picker(appLocalized("ios.settings.language"), selection: languageSelection) {
+                        ForEach(Self.languages, id: \.code) { language in
+                            Text(language.name).tag(language.code)
+                        }
                     }
+                    .pickerStyle(.menu)
                 }
-                .pickerStyle(.menu)
 
-                Picker(appLocalized("ios.settings.dictationStyle"), selection: $dictationRaw) {
-                    ForEach(DictationStyle.allCases, id: \.rawValue) { style in
-                        Text(style.label).tag(style.rawValue)
+                Section(appLocalized("ios.settings.sectionVoice")) {
+                    Picker(appLocalized("ios.settings.dictationStyle"), selection: $dictationRaw) {
+                        ForEach(DictationStyle.allCases, id: \.rawValue) { style in
+                            Text(style.label).tag(style.rawValue)
+                        }
                     }
-                }
-                .pickerStyle(.inline)
-                .id("dictation-\(AppLanguage.current)")
+                    .pickerStyle(.menu)
+                    .id("dictation-\(AppLanguage.current)")
 
-                Picker(appLocalized("ios.settings.listenSpeed"), selection: $listenSpeed) {
-                    ForEach(ListenSpeed.allowedSpeeds, id: \.self) { speed in
-                        Text(Self.listenSpeedLabel(speed)).tag(speed)
+                    Picker(appLocalized("ios.settings.listenSpeed"), selection: $listenSpeed) {
+                        ForEach(ListenSpeed.allowedSpeeds, id: \.self) { speed in
+                            Text(Self.listenSpeedLabel(speed)).tag(speed)
+                        }
                     }
+                    .pickerStyle(.menu)
+                    .id("listenSpeed-\(AppLanguage.current)")
                 }
-                .pickerStyle(.inline)
-                .id("listenSpeed-\(AppLanguage.current)")
 
+                // 백그라운드 음성 안내는 이름에 "음성"이 있어도 쓰이는 자리 기준으로 길 안내 묶음이다(E59 판정).
                 Section {
                     Toggle(appLocalized("ios.settings.backgroundSpeech"), isOn: $backgroundSpeechEnabled)
+                } header: {
+                    Text(appLocalized("ios.settings.sectionGuidance"))
                 } footer: {
                     // 이름만으로는 무엇을 말하는지(행동 문장만, 나들이 주변 낭독 포함)가 드러나지 않는다 — 범위는 새 정보다.
                     Text(appLocalized("ios.settings.backgroundSpeechFooter"))
                 }
-
-                #if DEBUG || EXPERIMENTAL
-                Picker(appLocalized("ios.settings.carListener"), selection: $carListenerRaw) {
-                    Text(appLocalized("ios.settings.carListenerPassenger"))
-                        .tag(CarListener.passenger.rawValue)
-                    Text(appLocalized("ios.settings.carListenerDriver"))
-                        .tag(CarListener.driver.rawValue)
-                }
-                .pickerStyle(.inline)
-                .id("carListener-\(AppLanguage.current)")
-
-                Picker(appLocalized("ios.settings.leftRightTone"), selection: $leftRightToneRaw) {
-                    Text(appLocalized("ios.settings.leftRightTonePan"))
-                        .tag(LeftRightToneScheme.pan.rawValue)
-                    Text(appLocalized("ios.settings.leftRightTonePitch"))
-                        .tag(LeftRightToneScheme.pitch.rawValue)
-                }
-                .pickerStyle(.inline)
-                .id("leftRightTone-\(AppLanguage.current)")
-
-                Section {
-                    Toggle(appLocalized("ios.settings.trendHaptics"), isOn: $trendHapticsEnabled)
-                } footer: {
-                    // 무엇이 더해지는지 + 조건(화면 켜짐) — 조건은 새 정보라 남긴다(헌장: 원인·조건·한계는 유지).
-                    Text(appLocalized("ios.settings.trendHapticsFooter"))
-                }
-                #endif
 
                 Section {
                     TextField(appLocalized("ios.settings.weightKg"), text: $weightText)
@@ -231,6 +212,33 @@ struct SettingsView: View {
                     Text(appLocalized("ios.settings.weightFooter", Self.weightMin, Self.weightMax))
                 }
 
+                #if DEBUG || EXPERIMENTAL
+                Section {
+                    Picker(appLocalized("ios.settings.carListener"), selection: $carListenerRaw) {
+                        Text(appLocalized("ios.settings.carListenerPassenger"))
+                            .tag(CarListener.passenger.rawValue)
+                        Text(appLocalized("ios.settings.carListenerDriver"))
+                            .tag(CarListener.driver.rawValue)
+                    }
+                    .pickerStyle(.menu)
+                    .id("carListener-\(AppLanguage.current)")
+
+                    Picker(appLocalized("ios.settings.leftRightTone"), selection: $leftRightToneRaw) {
+                        Text(appLocalized("ios.settings.leftRightTonePan"))
+                            .tag(LeftRightToneScheme.pan.rawValue)
+                        Text(appLocalized("ios.settings.leftRightTonePitch"))
+                            .tag(LeftRightToneScheme.pitch.rawValue)
+                    }
+                    .pickerStyle(.menu)
+                    .id("leftRightTone-\(AppLanguage.current)")
+
+                    Toggle(appLocalized("ios.settings.trendHaptics"), isOn: $trendHapticsEnabled)
+                } footer: {
+                    // 무엇이 더해지는지 + 조건(화면 켜짐) — 조건은 새 정보라 남긴다(헌장: 원인·조건·한계는 유지).
+                    Text(appLocalized("ios.settings.trendHapticsFooter"))
+                }
+                #endif
+
                 Section(appLocalized("ios.settings.aiSection")) {
                     // 해제하면 채팅이 다시 동의 화면으로 — 5.1.2(i)의 동의 재검토·철회 요건.
                     Toggle(appLocalized("ios.settings.aiConsentToggle"),
@@ -242,7 +250,7 @@ struct SettingsView: View {
                          destination: URL(string: "mailto:engccer@gmail.com")!)
                 }
 
-                Section {
+                Section(appLocalized("ios.settings.sectionAbout")) {
                     NavigationLink(appLocalized("dataSources.title")) {
                         DataSourcesView()
                     }

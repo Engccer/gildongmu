@@ -222,6 +222,10 @@
     },
     "settings": {
       "title": "Settings",
+      "sectionGeneral": "General",
+      "sectionVoice": "Voice",
+      "sectionGuidance": "Guidance",
+      "sectionAbout": "About",
       "theme": "Theme",
       "themeSystem": "Follow system setting",
       "themeLight": "Light",

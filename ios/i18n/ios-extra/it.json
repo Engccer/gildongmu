@@ -222,6 +222,10 @@
     },
     "settings": {
       "title": "Impostazioni",
+      "sectionGeneral": "Generali",
+      "sectionVoice": "Voce",
+      "sectionGuidance": "Guida",
+      "sectionAbout": "Informazioni",
       "theme": "Tema",
       "themeSystem": "Come il sistema",
       "themeLight": "Chiaro",

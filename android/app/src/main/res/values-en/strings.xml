@@ -340,6 +340,10 @@
     <string name="android_settings_releaseNotesVersion">Version %1$s</string>
     <string name="android_settings_reportProblem">Report a problem</string>
     <string name="android_settings_resultHapticsFooter">Search and Nearby results are also signaled with vibration. Vibrates only while the screen is on and the device\'s haptic feedback setting is enabled.</string>
+    <string name="android_settings_sectionAbout">About</string>
+    <string name="android_settings_sectionGeneral">General</string>
+    <string name="android_settings_sectionGuidance">Guidance</string>
+    <string name="android_settings_sectionVoice">Voice</string>
     <string name="android_settings_theme">Theme</string>
     <string name="android_settings_themeDark">Dark</string>
     <string name="android_settings_themeLight">Light</string>

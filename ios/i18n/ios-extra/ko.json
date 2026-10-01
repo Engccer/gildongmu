@@ -222,6 +222,10 @@
     },
     "settings": {
       "title": "설정",
+      "sectionGeneral": "일반",
+      "sectionVoice": "음성",
+      "sectionGuidance": "길 안내",
+      "sectionAbout": "앱 정보",
       "theme": "테마",
       "themeSystem": "시스템 설정 따름",
       "themeLight": "라이트",

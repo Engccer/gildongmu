@@ -222,6 +222,10 @@
     },
     "settings": {
       "title": "設定",
+      "sectionGeneral": "一般",
+      "sectionVoice": "音声",
+      "sectionGuidance": "道案内",
+      "sectionAbout": "アプリ情報",
       "theme": "テーマ",
       "themeSystem": "システム設定に従う",
       "themeLight": "ライト",
