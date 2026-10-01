@@ -54,8 +54,15 @@ describe("설정 화면은 주제 묶음 다섯이고 설정 하나는 한 줄�
     const titled = BODY.match(/Section\(appLocalized\(/g)?.length ?? 0;
     const headerBlocks = BODY.match(/\} header: \{/g)?.length ?? 0;
     expect(titled + headerBlocks).toBe(GROUPS.length);
+    // 다른 헤딩 표기는 쓰지 않는다(위 셈이 놓친다).
+    expect(BODY).not.toMatch(/Section\("|Section\(header:|\.isHeader|accessibilityHeading/);
     // 인라인 피커는 자기 라벨을 머리말처럼 그려 헤딩을 하나 더 만든다 — 설정 하나 = 한 줄이 깨진다.
     expect(SETTINGS).not.toContain(".pickerStyle(.inline)");
+  });
+
+  it("설정 컨트롤은 모두 묶음표에 있다(새 설정은 판정된 묶음에 넣고 이 표에 더한다)", () => {
+    const controls = BODY.match(/\b(Picker|Toggle|TextField|Link|NavigationLink)\(/g) ?? [];
+    expect(controls.length).toBe(GROUPS.flatMap(([, items]) => items).length);
   });
 
   it("설명 문장은 그 설정 바로 뒤의 footer다", () => {

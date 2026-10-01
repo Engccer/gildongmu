@@ -5,6 +5,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotSelected
@@ -12,6 +13,7 @@ import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.accessibility.enableAccessibilityChecks
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodes
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
@@ -74,6 +76,7 @@ class SettingsScreenA11yTest {
             rule.onNodeWithTag(tag).fetchSemanticsNode().positionInRoot.y
         }
         assertEquals(tops.sorted(), tops)
+        rule.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading)).assertCountEquals(1 + headings.size) // 화면 제목 + 묶음 다섯
         rule.onNodeWithTag("settings-theme").assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.Heading))
         // 묶음 안: 일반 헤딩 → 테마 → 언어 → 음성 헤딩.
         val theme = rule.onNodeWithTag("settings-theme").fetchSemanticsNode().positionInRoot.y

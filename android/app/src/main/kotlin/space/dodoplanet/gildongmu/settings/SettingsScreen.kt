@@ -155,7 +155,7 @@ fun SettingsScreen(
                 StatusLine(notice, Modifier.padding(vertical = 8.dp)) // 상단 바 바로 아래(§3-1 — 자리를 외워 쓰는 탐색)
                 for ((i, row) in rows.withIndex()) {
                     val focus = rowFocus.getOrPut(row) { FocusRequester() }
-                    // 묶음이 바뀌는 자리에만 헤딩(E59) — 헤딩 점프로 묶음 다섯을 차례로 건너뛴다.
+                    // 묶음이 바뀌는 자리에만 헤딩(E59) — 헤딩 이동으로 묶음 다섯을 차례로 건너뛴다.
                     if (i == 0 || rows[i - 1].group != row.group) GroupHeading(row.group)
                     when (row) {
                         SettingsRow.Theme -> ValueRow(joinText(stringResource(R.string.android_settings_theme), themeValue), "settings-theme", focus) { dialog = row }
@@ -238,7 +238,7 @@ fun SettingsScreen(
     }
 }
 
-/** 묶음 헤딩(iOS 섹션 머리말 미러). 포커스 정지점이 아니다 — 헤딩 점프가 발견 경로이고 스와이프 한 번은 설정 하나다. */
+/** 묶음 헤딩(iOS 섹션 머리말 미러). 키보드 포커스를 받는 헤딩 — 한소네는 포커스로 이동하므로 비포커스 `Text`면 묶음 경계가 들리지 않는다(장소 상세·채팅 헤딩과 같은 관용구). */
 @Composable
 private fun GroupHeading(group: SettingsGroup) {
     val (tag, label) = when (group) {
@@ -248,7 +248,7 @@ private fun GroupHeading(group: SettingsGroup) {
         SettingsGroup.AiChat -> "settings-heading-aichat" to R.string.android_settings_aiSection
         SettingsGroup.About -> "settings-heading-about" to R.string.android_settings_sectionAbout
     }
-    Text(stringResource(label), Modifier.fillMaxWidth().testTag(tag).headingText().padding(top = 16.dp, bottom = 4.dp), style = MaterialTheme.typography.titleMedium)
+    Text(stringResource(label), Modifier.fillMaxWidth().mergedRow(tag).headingText().padding(top = 16.dp, bottom = 4.dp), style = MaterialTheme.typography.titleMedium)
 }
 
 /** 값 있는 행 = 라벨과 값을 한 문장으로("언어, 한국어") — 한 줄 = 한 객체. */

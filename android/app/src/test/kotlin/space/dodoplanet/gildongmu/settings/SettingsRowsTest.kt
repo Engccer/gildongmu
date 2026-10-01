@@ -20,9 +20,15 @@ class SettingsRowsTest {
             val runs = settingsRows(experimental).map { it.group }.fold(listOf<SettingsGroup>()) { acc, g -> if (acc.lastOrNull() == g) acc else acc + g }
             assertEquals(SettingsGroup.entries.toList(), runs) // 묶음이 쪼개지면 같은 헤딩이 두 번 나온다
         }
-        assertEquals(SettingsGroup.Guidance, SettingsRow.Weight.group)
-        assertEquals(SettingsGroup.Guidance, SettingsRow.ResultHaptics.group)
-        assertEquals(SettingsGroup.AiChat, SettingsRow.ReportProblem.group)
+        // 행 → 묶음 전수(위원장 판정 묶음표). 이웃 묶음으로 옮겨도 이어짐 검사는 통과하므로 행마다 고정한다.
+        val judged = mapOf(
+            SettingsRow.Theme to SettingsGroup.General, SettingsRow.Language to SettingsGroup.General,
+            SettingsRow.Dictation to SettingsGroup.Voice, SettingsRow.ListenSpeed to SettingsGroup.Voice,
+            SettingsRow.Weight to SettingsGroup.Guidance, SettingsRow.ResultHaptics to SettingsGroup.Guidance,
+            SettingsRow.AiConsent to SettingsGroup.AiChat, SettingsRow.PrivacyPolicy to SettingsGroup.AiChat, SettingsRow.ReportProblem to SettingsGroup.AiChat,
+            SettingsRow.DataSources to SettingsGroup.About,
+        )
+        assertEquals(judged, SettingsRow.entries.associateWith { it.group })
     }
 
     @Test fun `진입 착지 — 정보 출처 복귀가 먼저, focusRow는 첫 진입 한 번만, 그 밖은 제목(null)`() {
