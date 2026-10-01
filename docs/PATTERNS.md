@@ -315,6 +315,8 @@ iOS 지도 버튼·검색 로터 액션은 URL 빌더가 성공할 때만 만들
 
 **iOS 인라인 피커는 언어가 바뀌어도 선택지 행을 다시 그리지 않는다**(A51, 2026-09-30): 설정 시트는 앱 루트 `.id` 재생성 밖이라 열린 채 언어가 바뀌고, 본문은 `@AppStorage(AppLanguage.selectionKey)` 관찰로 다시 계산돼 제목·피커 라벨은 새 언어가 되지만 `.pickerStyle(.inline)`의 선택지 행은 태그 정체성이 같아 옛 문자열로 남는다(미러링 관찰: Español → 한국어 전환 뒤 "Claro"·"1,5x"). 인라인 피커마다 `.id("<피커>-\(AppLanguage.current)")`로 언어를 정체성에 넣는다. 이름은 형제 행끼리 겹치지 않게 붙이고, 커서가 있는 언어 메뉴 피커에는 걸지 않는다(재생성이 커서를 옮긴다). 가드 `settings-language-relabel.test.ts`. ⚠ 동작 판정은 실기기(§2 A51) — 가드는 배선만 본다.
 
+**메뉴 피커도 같다**(E59, 2026-10-02 시뮬레이터 실측): 인라인 피커를 메뉴 피커로 바꾼 뒤에도 `.id`가 없으면 행의 현재 값이 옛 언어로 남는다(Español → 한국어 전환 뒤 "테마, Claro"). 남는 것은 `ForEach`로 만든 선택지이고, 선택지 `Text`를 직접 나열한 피커(자동차 청취자)는 `.id` 없이도 바뀌었다. 표기를 가리지 않고 언어 피커 밖의 모든 피커에 건다(가드가 메뉴 스타일 줄 기준으로 센다). 실측 방법: 탭 입력이 닿지 않으면 시트를 자동으로 열고 몇 초 뒤 `AppLanguage.select`를 부르는 임시 패치(커밋 금지)로 열린 시트의 언어를 바꾸고 `snapshot-ui`로 행 라벨을 읽는다.
+
 ### 데이터 언어 분리
 
 **데이터 언어 분리**(`src/lib/data-locale.ts`): 외부 API는 ko/en만 제공 → 비한국어(en/es/fr/it/ja)는 영문 데이터 공유. **외부 fetch·영문 분기에 `useLocale()` 원시값 직접 금지, `dataLocale`/`prefersEnglish` 경유**(예외: STT Deepgram은 es/fr/it/ja 직접 인식). i18n 키 일관성은 `i18n-messages.test.ts`가 머지 게이트. 언어 선택 UI는 disclosure 메뉴(국기 이모지 금지, 각 언어 자국어 텍스트+`lang` 속성). ⚠ **iOS에서 문장 안 수치는 기기 로케일이 아니라 앱 선택 언어로 포맷한다**(`NumberFormatter.locale = Locale(identifier: AppLanguage.current)`, 매 호출 생성 — 2026-08-17 걸음 수 천 단위 구분자 실사고): `appLocalized` 문장은 앱 언어를 따르는데 숫자만 기기 로케일이면 한 문장 안에서 언어가 갈린다. ⚠ 웹 "내 주변" 0건 문장(`messages/*.json`)과 iOS `ios-extra`의 `ios.nearby.*Empty`는 자동 동기 대상이 아니다. 한쪽을 고치면 다른 쪽도 함께 고친다(2026-09-02 한정어 탈락 실사고).
