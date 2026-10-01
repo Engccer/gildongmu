@@ -18801,42 +18801,42 @@
         }
       }
     },
-    "ios.beacon.prewalkCancelledTail": {
+    "ios.beacon.prewalkCancelledWith": {
       "localizations": {
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "대중교통 안내는 시작하지 않았습니다."
+            "value": "%1$@. 대중교통 안내는 시작하지 않았습니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "transit guidance was not started."
+            "value": "%1$@. Transit guidance was not started."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "la guía de transporte público no se inició."
+            "value": "%1$@. La guía de transporte público no se inició."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "le guidage des transports n'a pas été lancé."
+            "value": "%1$@. Le guidage des transports n'a pas été lancé."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "la guida dei trasporti non è stata avviata."
+            "value": "%1$@. La guida dei trasporti non è stata avviata."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "公共交通案内は開始していません。"
+            "value": "%1$@。公共交通案内は開始していません。"
           }
         }
       }

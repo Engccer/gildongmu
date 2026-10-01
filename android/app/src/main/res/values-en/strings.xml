@@ -61,7 +61,7 @@
     <string name="android_beacon_healthSummary">You walked {1, plural, one {%1$s step} other {%1$s steps}} on this leg and burned about %2$s kcal.</string>
     <string name="android_beacon_healthSummaryWithWeight">You walked {1, plural, one {%1$s step} other {%1$s steps}} on this leg and burned about %3$s kcal, based on %2$s kg.</string>
     <string name="android_beacon_healthWeightNotice">The calorie figure above uses the adult average of %1$s kg. Enter your weight in Settings for a more accurate estimate. It never leaves your device.</string>
-    <string name="android_beacon_prewalkCancelledTail">transit guidance was not started.</string>
+    <string name="android_beacon_prewalkCancelledWith">%1$s. Transit guidance was not started.</string>
     <string name="android_beacon_soundBackgroundUnavailable">Guide sounds will not play while the screen is off or another app is in use.</string>
     <string name="android_beacon_soundUnavailable">Sound guidance cannot play.</string>
     <string name="android_beacon_stopped">Distance tracking stopped.</string>

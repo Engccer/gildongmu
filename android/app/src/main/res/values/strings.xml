@@ -61,7 +61,7 @@
     <string name="android_beacon_healthSummary">이번 구간에서 %1$s걸음 걸으셨어요. 약 %2$skcal를 태우셨어요.</string>
     <string name="android_beacon_healthSummaryWithWeight">이번 구간에서 %1$s걸음 걸으셨어요. %2$skg 기준으로 약 %3$skcal를 태우셨어요.</string>
     <string name="android_beacon_healthWeightNotice">위 칼로리 수치는 성인 평균인 %1$skg 기준이에요. 설정에서 체중을 입력하면 더 정확한 정보를 받으실 수 있어요. 입력한 정보는 서버에 저장되지 않아요.</string>
-    <string name="android_beacon_prewalkCancelledTail">대중교통 안내는 시작하지 않았습니다.</string>
+    <string name="android_beacon_prewalkCancelledWith">%1$s. 대중교통 안내는 시작하지 않았습니다.</string>
     <string name="android_beacon_soundBackgroundUnavailable">화면이 꺼지거나 다른 앱을 쓰는 동안에는 안내 소리가 나지 않습니다.</string>
     <string name="android_beacon_soundUnavailable">소리 안내를 재생할 수 없습니다.</string>
     <string name="android_beacon_stopped">거리 추적을 종료했습니다.</string>

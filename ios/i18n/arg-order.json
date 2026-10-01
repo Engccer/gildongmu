@@ -364,6 +364,9 @@
   "ios.beacon.healthWeightNotice": [
     "kg"
   ],
+  "ios.beacon.prewalkCancelledWith": [
+    "reason"
+  ],
   "ios.chat.addressesHeading": [
     "count"
   ],

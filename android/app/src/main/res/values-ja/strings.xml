@@ -61,7 +61,7 @@
     <string name="android_beacon_healthSummary">この区間で%1$s歩歩き、約%2$skcalを消費しました。</string>
     <string name="android_beacon_healthSummaryWithWeight">この区間で%1$s歩歩き、%2$skgを基準に約%3$skcalを消費しました。</string>
     <string name="android_beacon_healthWeightNotice">上のカロリーは成人平均の%1$skgを基準にしています。設定で体重を入力すると、より正確な値になります。入力した情報は端末の外に送られません。</string>
-    <string name="android_beacon_prewalkCancelledTail">公共交通案内は開始していません。</string>
+    <string name="android_beacon_prewalkCancelledWith">%1$s。公共交通案内は開始していません。</string>
     <string name="android_beacon_soundBackgroundUnavailable">画面が消えている間や他のアプリの使用中は案内音が鳴りません。</string>
     <string name="android_beacon_soundUnavailable">音による案内を再生できません。</string>
     <string name="android_beacon_stopped">距離の追跡を停止しました。</string>

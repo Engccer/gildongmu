@@ -1024,6 +1024,9 @@
   "android.beacon.healthWeightNotice": [
     "kg"
   ],
+  "android.beacon.prewalkCancelledWith": [
+    "reason"
+  ],
   "android.chat.addressesHeading": [
     "count"
   ],

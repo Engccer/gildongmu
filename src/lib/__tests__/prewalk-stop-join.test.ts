@@ -18,18 +18,27 @@ describe("승차 전 도보 종료 결합 문장(A54)", () => {
     expect(keys.stoppedJoin).not.toMatch(/[.。]$/);
   });
 
-  it.each(LOCALES)("%s: 꼬리 키는 대중교통 미시작 문장이고 라틴 문자 로케일은 소문자로 시작한다", (locale) => {
+  it.each(LOCALES)("%s: 문장 틀 키는 사유 뒤에 마침표를 찍고 대중교통 미시작 문장을 잇는 두 문장이다(위원장 판정)", (locale) => {
     const cancelled: string = JSON.parse(read(`messages/${locale}.json`)).transitGuide.prewalkCancelled;
-    const tail = beaconKeys(locale).prewalkCancelledTail;
-    expect(tail.toLowerCase()).toBe(cancelled.toLowerCase());
-    if (locale !== "ko" && locale !== "ja") expect(tail[0]).toBe(tail[0].toLowerCase());
+    const frame = beaconKeys(locale).prewalkCancelledWith;
+    expect(frame).toBe(locale === "ja" ? `{reason}。${cancelled}` : `{reason}. ${cancelled}`);
   });
 
-  it("사용자 정지 결합은 결합용 키와 꼬리 키를 쓴다", () => {
+  it("사용자 정지는 마침표 없는 정지 키를 문장 틀에 넣어 두 문장으로 낸다", () => {
     const source = read("ios/Gildongmu/Directions/GuideSessionCoordinator.swift");
     const stopped = source.slice(source.indexOf("        case .userStopped:"), source.indexOf("        case .ended:"));
-    expect(stopped).toContain('appLocalized("ios.beacon.stoppedJoin"), appLocalized("ios.beacon.prewalkCancelledTail")');
+    expect(stopped).toContain('appLocalized("ios.beacon.prewalkCancelledWith", appLocalized("ios.beacon.stoppedJoin"))');
     expect(stopped).not.toContain('"ios.beacon.stopped"');
+    expect(stopped).not.toContain("joinText(");
+  });
+
+  it("렌더: 사용자 정지(ko·en)와 권한 상실(ko) 최종 문장", () => {
+    const render = (locale: string, reason: string) =>
+      beaconKeys(locale).prewalkCancelledWith.replace("{reason}", reason);
+    expect(render("ko", beaconKeys("ko").stoppedJoin)).toBe("거리 추적을 종료했습니다. 대중교통 안내는 시작하지 않았습니다.");
+    expect(render("en", beaconKeys("en").stoppedJoin)).toBe("Distance tracking stopped. Transit guidance was not started.");
+    const denied: string = JSON.parse(read("messages/ko.json")).beacon.denied;
+    expect(render("ko", denied)).toBe("위치 권한이 필요합니다. 대중교통 안내는 시작하지 않았습니다.");
   });
 
   it("세션 중 CLError.denied는 권한 거부 사유로 끝낸다(신호 약함 아님)", () => {

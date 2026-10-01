@@ -274,7 +274,7 @@
       "soundUnavailable": "No se puede reproducir la guía sonora.",
       "stopped": "Seguimiento de distancia detenido.",
       "stoppedJoin": "Seguimiento de distancia detenido",
-      "prewalkCancelledTail": "la guía de transporte público no se inició.",
+      "prewalkCancelledWith": "{reason}. La guía de transporte público no se inició.",
       "arrivedHeading": "Llegada",
       "arrivedPresumedHeading": "Llegada estimada",
       "endedHeading": "Guía finalizada",

@@ -274,7 +274,7 @@
       "soundUnavailable": "소리 안내를 재생할 수 없습니다.",
       "stopped": "거리 추적을 종료했습니다.",
       "stoppedJoin": "거리 추적을 종료했습니다",
-      "prewalkCancelledTail": "대중교통 안내는 시작하지 않았습니다.",
+      "prewalkCancelledWith": "{reason}. 대중교통 안내는 시작하지 않았습니다.",
       "arrivedHeading": "도착",
       "arrivedPresumedHeading": "도착 추정",
       "endedHeading": "안내 종료",

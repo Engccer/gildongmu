@@ -1270,12 +1270,15 @@ final class BeaconModel {
     }
 
     private func fail(
-        with status: Status, key: String, resolution: FailResolution = .none, trailingKey: String? = nil,
+        with status: Status, key: String, resolution: FailResolution = .none, prewalkCancelled: Bool = false,
         highPriority: Bool
     ) {
         self.status = status
         failResolution = resolution
-        statusText = joinText(appLocalized(key), trailingKey.map { appLocalized($0) })
+        // 승차 전 도보면 사유 뒤에 "대중교통 안내는 시작하지 않았다"를 **두 문장**으로 잇는다(A54 위원장 판정: 완결 문장 둘은
+        // 쉼표 결합이 아니라 마침표). 사유 키는 상태 줄 겸용이라 마침표가 없어 문장 틀 키가 로케일별 마침표를 든다.
+        statusText = prewalkCancelled
+            ? appLocalized("ios.beacon.prewalkCancelledWith", appLocalized(key)) : appLocalized(key)
         announce(statusText, highPriority: highPriority, speechClass: .actionable)
     }
 
@@ -3149,7 +3152,7 @@ final class BeaconModel {
         // 종료 화면이 남지 않으면 시트가 닫히며 VoiceOver가 아래 화면으로 커서를 옮기고 그 라벨을 읽는다 — 실패 사유는 착지
         // 라벨로 대체될 수 없어 `.high`(CLAUDE.md 통지 우선순위 판별선, 접근성 감사 L4). 종료 화면이 남으면 착지가 사유를 읽는다.
         fail(with: status, key: key, resolution: resolution,
-             trailingKey: prewalk ? "ios.beacon.prewalkCancelledTail" : nil, highPriority: !leftEndScreen)
+             prewalkCancelled: prewalk, highPriority: !leftEndScreen)
     }
 
     // MARK: - 무-fix 감시

@@ -164,9 +164,10 @@ describe("백그라운드 음성 안내 배선 (E53)", () => {
     const fail = functionBody(beacon, "stopAndFail");
     // stop()이 prewalkTarget을 지우므로 그 앞에서 캡처한다.
     expect(fail.indexOf("let prewalk = prewalkTarget != nil")).toBeLessThan(fail.indexOf("stopLeavingSummary("));
-    expect(fail).toContain('trailingKey: prewalk ? "ios.beacon.prewalkCancelledTail" : nil');
+    expect(fail).toContain("prewalkCancelled: prewalk,");
     // 버려지면 복귀 상환이 `statusText` 꼬리로 갚으므로 `statusText`도 결합 문장이어야 한다(spec 준수 리뷰 m3).
-    expect(functionBody(beacon, "fail")).toContain("statusText = joinText(appLocalized(key), trailingKey.map { appLocalized($0) })");
+    expect(functionBody(beacon, "fail")).toMatch(
+      /statusText = prewalkCancelled\s*\? appLocalized\("ios\.beacon\.prewalkCancelledWith", appLocalized\(key\)\) : appLocalized\(key\)/);
     // 종료 화면이 남지 않으면(시트가 닫혀 커서가 옮겨 간다) 실패 통지는 `.high`(접근성 감사 L4).
     expect(fail).toContain("let leftEndScreen = stopLeavingSummary(");
     expect(fail).toContain("highPriority: !leftEndScreen");
