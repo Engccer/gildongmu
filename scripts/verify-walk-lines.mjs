@@ -14,7 +14,7 @@
 // 종료 코드: 전부 PASS면 0, 하나라도 FAIL이면 1.
 
 import { readFileSync } from "node:fs";
-// ⚠ jiti는 package.json에 직접 선언돼 있지 않다(tailwind의 전이 의존성으로 설치된다). 없으면 조용히 넘어가지 않고 멈춘다.
+// jiti는 devDependencies에 직접 선언돼 있다(D29). 설치가 빠졌으면 조용히 넘어가지 않고 멈춘다.
 const { createJiti } = await import("jiti").catch(() => {
   console.error("jiti를 찾지 못했다 — TS 모듈을 불러올 수 없어 재생 게이트를 돌릴 수 없다(npm ls jiti).");
   process.exit(2);
