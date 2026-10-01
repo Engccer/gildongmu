@@ -230,28 +230,109 @@ struct OutingRoadNameTests {
 
     @Test("첫 확정은 말하지 않고, 변경은 두 번 연속에서 확정해 한 번 말한다")
     func confirmTwice() {
+        let here = RoutePoint(lat: baseLat, lng: baseLng)
         var s = OutingRoadState()
-        var out = outingRoadNameStep(s, observed: "천호대로")
+        var out = outingRoadNameStep(s, observed: "천호대로", at: here)
         #expect(out.announce == nil && out.state.confirmed == "천호대로")
         s = out.state
-        out = outingRoadNameStep(s, observed: "양재대로")
+        out = outingRoadNameStep(s, observed: "양재대로", at: here)
         #expect(out.announce == nil && out.state.confirmed == "천호대로")
         s = out.state
-        out = outingRoadNameStep(s, observed: "양재대로")
-        #expect(out.announce == "양재대로" && out.state.confirmed == "양재대로")
+        out = outingRoadNameStep(s, observed: "양재대로", at: here)
+        #expect(out.announce == "양재대로" && out.state == OutingRoadState(confirmed: "양재대로"))
         s = out.state
-        out = outingRoadNameStep(s, observed: "양재대로")
+        out = outingRoadNameStep(s, observed: "양재대로", at: here)
         #expect(out.announce == nil)
     }
 
-    @Test("한 번 튄 값이 돌아오면 말하지 않는다, 토큰 없는 응답은 상태 불변")
+    @Test("한 번 튄 값이 돌아오면 말하지 않는다, 100m 안의 토큰 없는 응답은 상태 불변")
     func flap() {
+        let here = RoutePoint(lat: baseLat, lng: baseLng)
+        let near = point(east: 0, north: -99.9)
         var s = OutingRoadState(confirmed: "천호대로")
-        s = outingRoadNameStep(s, observed: "양재대로").state
-        let back = outingRoadNameStep(s, observed: "천호대로")
+        s = outingRoadNameStep(s, observed: "양재대로", at: here).state
+        let back = outingRoadNameStep(s, observed: "천호대로", at: here)
         #expect(back.announce == nil && back.state == OutingRoadState(confirmed: "천호대로"))
-        let none = outingRoadNameStep(s, observed: nil)
+        let none = outingRoadNameStep(s, observed: nil, at: RoutePoint(lat: near.lat, lng: near.lng))
         #expect(none.state == s && none.announce == nil)
+        // 보류가 없으면 지번 응답은 얼마를 걸어도 아무것도 바꾸지 않는다.
+        let far = point(east: 0, north: -500)
+        let idle = outingRoadNameStep(OutingRoadState(confirmed: "천호대로"), observed: nil, at: RoutePoint(lat: far.lat, lng: far.lng))
+        #expect(idle.state == OutingRoadState(confirmed: "천호대로") && idle.announce == nil)
+    }
+
+    @Test("새 도로명을 본 자리에서 100m 이상 걷는 동안 지번만 오면 확정한다(지번은 반대 증거가 아니다)")
+    func confirmByDistanceOverJibun() {
+        let here = RoutePoint(lat: baseLat, lng: baseLng)
+        var s = outingRoadNameStep(OutingRoadState(confirmed: "명일로24길"), observed: "천중로", at: here).state
+        #expect(s.pending == "천중로" && s.pendingAt == here)
+        let p99 = point(east: 0, north: -99)
+        var out = outingRoadNameStep(s, observed: nil, at: RoutePoint(lat: p99.lat, lng: p99.lng))
+        #expect(out.announce == nil && out.state == s)
+        s = out.state
+        let p101 = point(east: 0, north: -101)
+        out = outingRoadNameStep(s, observed: nil, at: RoutePoint(lat: p101.lat, lng: p101.lng))
+        #expect(out.announce == "천중로" && out.state == OutingRoadState(confirmed: "천중로"))
+        // 확정 뒤 지번은 다시 아무것도 말하지 않는다.
+        let p200 = point(east: 0, north: -200)
+        let after = outingRoadNameStep(out.state, observed: nil, at: RoutePoint(lat: p200.lat, lng: p200.lng))
+        #expect(after.announce == nil && after.state == out.state)
+    }
+
+    @Test("보류 중 다른 도로명이 오면 그 값과 그 자리로 보류를 바꾼다")
+    func pendingReplacedResetsAnchor() {
+        let here = RoutePoint(lat: baseLat, lng: baseLng)
+        let p80 = point(east: 0, north: 80)
+        let at80 = RoutePoint(lat: p80.lat, lng: p80.lng)
+        var s = outingRoadNameStep(OutingRoadState(confirmed: "천호대로"), observed: "양재대로", at: here).state
+        s = outingRoadNameStep(s, observed: "천중로", at: at80).state
+        #expect(s == OutingRoadState(confirmed: "천호대로", pending: "천중로", pendingAt: at80))
+        // 처음 보류한 자리에서는 120m지만 새 보류 자리에서는 40m — 확정하지 않는다.
+        let p120 = point(east: 0, north: 120)
+        let out = outingRoadNameStep(s, observed: nil, at: RoutePoint(lat: p120.lat, lng: p120.lng))
+        #expect(out.announce == nil && out.state == s)
+    }
+
+    @Test("실보행 재생: 새 도로명 뒤 지번 셋 — 종전 확정 0, 이제 100m 뒤 지번에서 확정")
+    func replayJibunRun() {
+        // guide-diag-2026-10-02.log.gz 나들이 세션의 실제 재조회 지점(종전 100m 간격)과 그 좌표의 `/api/geocode/reverse`
+        // 응답을 첫 지점 기준 상대 오프셋(m)으로 옮겼다(익명화 — 거리만 쓴다). 새 도로를 따라 걷는 동안 지번만 왔다.
+        let seq: [(east: Double, north: Double, value: String?)] = [
+            (0, 0, "명일로24길"),
+            (-6, -101, "명일로24길"),
+            (-65, -184, "천중로"),
+            (-60, -285, nil),
+            (-68, -386, nil),
+            (-90, -484, nil),
+        ]
+        var s = OutingRoadState()
+        var spoken: [String] = []
+        for step in seq {
+            let p = point(east: step.east, north: step.north)
+            let out = outingRoadNameStep(s, observed: step.value, at: RoutePoint(lat: p.lat, lng: p.lng))
+            s = out.state
+            if let a = out.announce { spoken.append(a) }
+        }
+        #expect(spoken == ["천중로"])
+        #expect(s == OutingRoadState(confirmed: "천중로"))
+    }
+
+    @Test("재조회 50m 하나가 지번이면 아직 확정하지 않는다 — 모퉁이에서 한 번 튄 교차 도로명이 다음 지번 하나로 굳지 않게")
+    func cornerFlapNeedsTwoRequeries() {
+        let here = RoutePoint(lat: baseLat, lng: baseLng)
+        var s = outingRoadNameStep(OutingRoadState(confirmed: "천호대로"), observed: "성내로6길", at: here).state
+        let p50 = point(east: 0, north: 50)
+        var out = outingRoadNameStep(s, observed: nil, at: RoutePoint(lat: p50.lat, lng: p50.lng))
+        #expect(out.announce == nil && out.state == s)
+        // 그다음 재조회가 원래 도로를 주면 보류를 버린다.
+        let p100 = point(east: 0, north: 100)
+        out = outingRoadNameStep(s, observed: "천호대로", at: RoutePoint(lat: p100.lat, lng: p100.lng))
+        #expect(out.announce == nil && out.state == OutingRoadState(confirmed: "천호대로"))
+        // 지번이 한 번 더 오면(두 번째 재조회, 100m 넘어) 그때 확정한다.
+        s = outingRoadNameStep(OutingRoadState(confirmed: "천호대로"), observed: "성내로6길", at: here).state
+        let p101 = point(east: 0, north: 101)
+        out = outingRoadNameStep(s, observed: nil, at: RoutePoint(lat: p101.lat, lng: p101.lng))
+        #expect(out.announce == "성내로6길")
     }
 }
 
@@ -259,14 +340,14 @@ struct OutingRoadNameTests {
 
 @Suite("나들이 재조회")
 struct OutingRequeryTests {
-    @Test("첫 조회는 참, 100m 경계")
+    @Test("첫 조회는 참, 50m 경계")
     func distance() {
         let a = RoutePoint(lat: baseLat, lng: baseLng)
         #expect(outingRequeryStep(lastQuery: nil, fix: a, lastFailureAt: nil, now: 0))
-        let p99 = point(east: 0, north: 99)
-        let p101 = point(east: 0, north: 101)
-        #expect(!outingRequeryStep(lastQuery: a, fix: RoutePoint(lat: p99.lat, lng: p99.lng), lastFailureAt: nil, now: 0))
-        #expect(outingRequeryStep(lastQuery: a, fix: RoutePoint(lat: p101.lat, lng: p101.lng), lastFailureAt: nil, now: 0))
+        let p49 = point(east: 0, north: 49)
+        let p51 = point(east: 0, north: 51)
+        #expect(!outingRequeryStep(lastQuery: a, fix: RoutePoint(lat: p49.lat, lng: p49.lng), lastFailureAt: nil, now: 0))
+        #expect(outingRequeryStep(lastQuery: a, fix: RoutePoint(lat: p51.lat, lng: p51.lng), lastFailureAt: nil, now: 0))
     }
 
     @Test("실패한 조회는 제자리에서도 20초 뒤 다시 조회한다")
@@ -323,8 +404,10 @@ struct OutingMiscTests {
 
     @Test("이정표 표는 카테고리 키로만")
     func tiers() {
-        for k in ["subway", "public", "hospital", "attraction"] { #expect(outingLandmarkTier(category: k) == .landmark) }
-        for k in ["convenience", "restaurant", "cafe", "bank", "pharmacy", "mart", "unknown"] {
+        for k in ["subway", "public", "hospital", "attraction", "school"] { #expect(outingLandmarkTier(category: k) == .landmark) }
+        // 18종 중 나머지(E58 ②로 새로 오는 일곱 포함)와 미지 키는 가게.
+        for k in ["convenience", "restaurant", "cafe", "bank", "pharmacy", "mart",
+                  "kindergarten", "academy", "parking", "gasStation", "culture", "realEstate", "lodging", "unknown"] {
             #expect(outingLandmarkTier(category: k) == .shop)
         }
         #expect(!OutingNarration.off.speaks(.landmark))
@@ -417,5 +500,35 @@ struct OutingCrosswalkTests {
         #expect(f.lat == 37.5 && f.lng == 127.1)
         let site = try JSONDecoder().decode(AudioSignalSite.self, from: Data(#"{"distanceMeters":3,"bearing":"e","deviceCount":2}"#.utf8))
         #expect(site.lat == nil)
+    }
+}
+
+// MARK: - 나들이 주변 조회(E58 ②)
+
+// StubURLProtocol.handler 공유 상태를 쓰므로 StubNetworkTests 직렬 스위트에 편입.
+extension StubNetworkTests {
+    @Test func outingSurroundingsRequestsAllGroupsAndOutingLimit() async throws {
+        var capturedPath: String?
+        var capturedQuery: [URLQueryItem]?
+        StubURLProtocol.handler = { request in
+            capturedPath = request.url?.path
+            capturedQuery = URLComponents(url: request.url!, resolvingAgainstBaseURL: false)?.queryItems
+            return (200, Data(#"{"places":[]}"#.utf8))
+        }
+        _ = try await NearbyService(client: stubbedClient()).outingSurroundings(lat: 37.5, lng: 127.0)
+        #expect(capturedPath == "/api/places/around")
+        #expect(capturedQuery?.contains(where: { $0.name == "groups" && $0.value == "all" }) == true)
+        #expect(capturedQuery?.contains(where: { $0.name == "limit" && $0.value == "100" }) == true)
+    }
+
+    /// 대조: 내 주변 둘러보기는 groups를 보내지 않는다(10종 기본 응답 그대로).
+    @Test func surroundingsDoesNotRequestGroups() async throws {
+        var capturedQuery: [URLQueryItem]?
+        StubURLProtocol.handler = { request in
+            capturedQuery = URLComponents(url: request.url!, resolvingAgainstBaseURL: false)?.queryItems
+            return (200, Data(#"{"places":[]}"#.utf8))
+        }
+        _ = try await NearbyService(client: stubbedClient()).surroundings(lat: 37.5, lng: 127.0)
+        #expect(capturedQuery?.contains(where: { $0.name == "groups" }) == false)
     }
 }

@@ -521,10 +521,14 @@ final class OutingModel {
         derivation = derived.state
         if let obs = derived.obs { headingState = outingHeadingRecord(headingState, course: obs, at: now) }
         heading = outingHeading(headingState, motion: motion, now: now)
+        // 열 뜻은 로그 색인(`docs/superpowers/specs/logs/README.md`): `walked=` 만보계 누적 거리(m, 값 없음은 `-`),
+        // `bg=` 백그라운드(1)·전경(0), `narr=` 그 fix의 낭독 단계. 걸은 거리·잠금 여부·단계를 로그만으로 가르기 위해서다(E58 ⑥).
         guideDiagLog(
             "outingFix t=\(String(format: "%.1f", now)) lat=\(String(format: "%.6f", fix.lat)) "
                 + "lng=\(String(format: "%.6f", fix.lng)) acc=\(String(format: "%.1f", fix.accuracy)) "
-                + "motion=\(motion) heading=\(headingLog)")
+                + "motion=\(motion) heading=\(headingLog) "
+                + "walked=\(walkedMeters.map { String(format: "%.1f", $0) } ?? "-") bg=\(isForeground ? 0 : 1) "
+                + "narr=\(narration.rawValue)")
 
         // 첫 조회는 출발점 확정 fix에서(spec §6.2 — 세션 첫 fix는 가장 나쁜 fix다).
         let here = RoutePoint(lat: fix.lat, lng: fix.lng)
@@ -586,7 +590,7 @@ final class OutingModel {
         let lang = AppLanguage.dataLocale
         queryTask = Task { [weak self, nearby, walkInfra, search] in
             async let aroundResult: Result<[SurroundingPlace], Error> = {
-                do { return .success(try await nearby.surroundings(lat: point.lat, lng: point.lng)) }
+                do { return .success(try await nearby.outingSurroundings(lat: point.lat, lng: point.lng)) }
                 catch { return .failure(error) }
             }()
             async let walkResult = try? await walkInfra.nearbyWithCoordinates(lat: point.lat, lng: point.lng)
@@ -594,18 +598,20 @@ final class OutingModel {
             let (around, walk, address) = await (aroundResult, walkResult, addressResult)
             guard let self, !Task.isCancelled, self.isTracking else { return }
             self.queryTask = nil
-            self.commit(around: around, walk: walk, address: address, lang: lang, reason: reason)
+            self.commit(around: around, walk: walk, address: address, lang: lang, reason: reason, at: point)
         }
     }
 
     private func commit(
         around: Result<[SurroundingPlace], Error>, walk: WalkInfrastructure?,
-        address: ReverseGeocodeResponse?, lang: String, reason: String
+        address: ReverseGeocodeResponse?, lang: String, reason: String, at point: RoutePoint
     ) {
         let outcome: OutingQueryOutcome
+        var received = 0
         switch around {
         case .success(let list):
             for p in list { places[p.id] = p }
+            received = list.count
             outcome = .success
         case .failure(let error):
             if case APIError.outOfCoverage = error { outcome = .outOfCoverage } else { outcome = .failure }
@@ -627,14 +633,18 @@ final class OutingModel {
             let points = signals.sites.compactMap { s in s.lat.flatMap { lat in s.lng.map { RoutePoint(lat: lat, lng: $0) } } }
             for p in points where !audioSignals.contains(p) { audioSignals.append(p) }
         }
+        // 역지오코딩 실패(`address == nil`)는 지번 응답과 다르다 — 지번은 "도로명 없음"이라는 응답이고 실패는 응답이 없다.
+        // 실패를 지번처럼 넘기면 보류 중인 도로명이 거리만으로 확정돼 말해진다(구현 리뷰 M1). 실패는 판정을 건너뛴다.
         let observed = (lang == "ko" ? address?.address : (address?.english ?? address?.address))
             .flatMap(outingRoadName(fromAddress:))
-        let roadStep = outingRoadNameStep(road, observed: observed)
+        let roadStep = address == nil
+            ? (state: road, announce: nil)
+            : outingRoadNameStep(road, observed: observed, at: point)
         road = roadStep.state
         guideDiagLog(
-            "roadName value=\(observed ?? "-") confirmed=\(road.confirmed ?? "-") pending=\(road.pending ?? "-")")
+            "roadName value=\(address == nil ? "fail" : (observed ?? "-")) confirmed=\(road.confirmed ?? "-") pending=\(road.pending ?? "-")")
         guideDiagLog(
-            "requery reason=\(reason) n=\(places.count) fail=\(surroundingsFailures) "
+            "requery reason=\(reason) got=\(received) n=\(places.count) fail=\(surroundingsFailures) "
                 + "crosswalks=\(crosswalks.count) road=\(road.confirmed ?? "-")")
         if let name = roadStep.announce, narration.speaks(.landmark) {
             sayLow(appLocalized("ios.outing.roadEntered", name))

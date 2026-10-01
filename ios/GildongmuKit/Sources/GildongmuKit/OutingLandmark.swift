@@ -4,7 +4,8 @@ import Foundation
 // 주변 낭독 세 단계 중 "이정표만"이 무엇을 말하는가를 정하는 표. 판정 축은 둘러보기 응답의
 // 카테고리 **키**(`/api/places/around`의 `category`, 카카오 category_group_code의 투영) 하나다 —
 // 이름 부분 문자열로 가르지 않는다. 표는 코드 상수 하나이고 실보행 판정으로 조정한다(§15).
-// 둘러보기 10종에 학교(SC4)는 없다: 응답에 없는 카테고리는 표에 올리지 않는다.
+// 나들이는 카카오 분류 18종을 받는다(E58 ②, `NearbyService.outingSurroundings`). 공원은 카카오 분류에 없어
+// 대표 명소만 관광명소(`attraction`)로 온다.
 
 public enum OutingLandmarkTier: String, Sendable, Equatable {
     /// 길을 잡는 기준점 — "이정표만" 단계에서도 말한다.
@@ -13,8 +14,8 @@ public enum OutingLandmarkTier: String, Sendable, Equatable {
     case shop
 }
 
-/// 이정표 등급 카테고리 키(둘러보기 10종 중). 나머지 키와 미지 키는 전부 가게다.
-public let outingLandmarkCategories: Set<String> = ["subway", "public", "hospital", "attraction"]
+/// 이정표 등급 카테고리 키(카카오 18종 중). 나머지 키와 미지 키는 전부 가게다.
+public let outingLandmarkCategories: Set<String> = ["subway", "public", "hospital", "attraction", "school"]
 
 public func outingLandmarkTier(category: String) -> OutingLandmarkTier {
     outingLandmarkCategories.contains(category) ? .landmark : .shop

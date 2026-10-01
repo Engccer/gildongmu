@@ -71,31 +71,47 @@ public func outingRoadName(fromAddress address: String) -> String? {
     return nil
 }
 
+/// ⚠ 잠정값(spec §10). 새 도로명을 한 번 본 자리에서 이만큼 이상 걷는 동안 토큰 없는 응답(지번 폴백)만 왔으면 그 도로명을
+/// 확정한다. 큰길을 따라 걸어도 역지오코딩이 지번으로만 떨어지는 구간이 있어(2026-09-29·10-01 천중로) "같은 값 두 번"만으로는
+/// 확정이 영영 서지 않는다 — 지번은 반대 증거가 아니라 증거 없음이다. 재조회 간격(`outingRequeryDistanceMeters` 50m)의
+/// 두 배라 지번 응답 하나로는 확정하지 않는다(모퉁이에서 한 번 튄 교차 도로명을 다음 재조회가 반박할 기회를 남긴다).
+/// 조회 실패는 이 판정에 들어오지 않는다(호출부가 응답이 있을 때만 부른다).
+public let outingRoadConfirmMeters = 100.0
+
 public struct OutingRoadState: Sendable, Equatable {
     /// 확정된 현재 도로명.
     public var confirmed: String?
-    /// 확정과 다른 값을 한 번 본 것(두 번째에 확정한다).
+    /// 확정과 다른 값을 한 번 본 것(같은 값을 한 번 더 보거나, 지번 응답만 오는 동안 `outingRoadConfirmMeters`를 걸으면 확정한다).
     public var pending: String?
+    /// `pending`을 처음 본 조회 좌표.
+    public var pendingAt: RoutePoint?
 
-    public init(confirmed: String? = nil, pending: String? = nil) {
+    public init(confirmed: String? = nil, pending: String? = nil, pendingAt: RoutePoint? = nil) {
         self.confirmed = confirmed
         self.pending = pending
+        self.pendingAt = pendingAt
     }
 }
 
-/// 역지오코딩 결과 하나를 반영한다. `announce`는 말할 도로명(확정이 바뀐 순간 한 번).
-/// 세션 첫 확정은 말하지 않고(출발점 문장이 그 자리다), 이후 변경은 같은 값이 두 번 연속 와야
-/// 확정한다(도로명·지번 사이 왕복 방지). 토큰이 없는 응답은 상태를 바꾸지 않는다.
+/// 역지오코딩 결과 하나를 반영한다(`at` = 그 조회 좌표). `announce`는 말할 도로명(확정이 바뀐 순간 한 번).
+/// 세션 첫 확정은 말하지 않고(출발점 문장이 그 자리다), 이후 변경은 같은 값이 두 번 연속 오거나 그 값을 본 자리에서
+/// `outingRoadConfirmMeters` 이상 걷는 동안 토큰 없는 응답만 왔을 때 확정한다. 확정 도로명이 다시 오면 보류를 버린다
+/// (모퉁이에서 한 번 튄 교차 도로명을 말하지 않는다). 토큰 없는 응답은 그 거리 판정 말고는 상태를 바꾸지 않는다.
 public func outingRoadNameStep(
-    _ state: OutingRoadState, observed: String?
+    _ state: OutingRoadState, observed: String?, at: RoutePoint
 ) -> (state: OutingRoadState, announce: String?) {
-    guard let observed else { return (state, nil) }
-    guard let confirmed = state.confirmed else {
-        return (OutingRoadState(confirmed: observed, pending: nil), nil)
+    guard let observed else {
+        guard let pending = state.pending, let from = state.pendingAt,
+              haversineMeters(lat1: from.lat, lng1: from.lng, lat2: at.lat, lng2: at.lng) >= outingRoadConfirmMeters
+        else { return (state, nil) }
+        return (OutingRoadState(confirmed: pending), pending)
     }
-    if observed == confirmed { return (OutingRoadState(confirmed: confirmed, pending: nil), nil) }
-    if state.pending == observed { return (OutingRoadState(confirmed: observed, pending: nil), observed) }
-    return (OutingRoadState(confirmed: confirmed, pending: observed), nil)
+    guard let confirmed = state.confirmed else {
+        return (OutingRoadState(confirmed: observed), nil)
+    }
+    if observed == confirmed { return (OutingRoadState(confirmed: confirmed), nil) }
+    if state.pending == observed { return (OutingRoadState(confirmed: observed), observed) }
+    return (OutingRoadState(confirmed: confirmed, pending: observed, pendingAt: at), nil)
 }
 
 // MARK: - 횡단보도 예고

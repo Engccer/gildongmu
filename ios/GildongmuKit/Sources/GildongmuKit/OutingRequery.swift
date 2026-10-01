@@ -1,18 +1,20 @@
 import Foundation
 
 // ── 나들이 주변 재조회 트리거(spec 2026-09-26 §6.2) ──
-// 둘러보기 500m 반경을 걷는 동안 새로 받는 시점. 마지막 조회 좌표에서 직선 100m를 벗어나면
+// 둘러보기 500m 반경을 걷는 동안 새로 받는 시점. 마지막 조회 좌표에서 직선 50m를 벗어나면
 // 다시 조회한다. 조회 실패 계수(3회 연속이면 "주변 정보 없음")도 여기서 판정한다.
 
-/// ⚠ 잠정값(spec §10). 주변 재조회 이동 거리(m).
-public let outingRequeryDistanceMeters = 100.0
+/// ⚠ 잠정값(spec §10). 주변 재조회 이동 거리(m). 카카오는 분류마다 가까운 15곳만 주는데 상점 밀집 거리에서는
+/// 그 15곳(음식점·병원)이 조회점 50~130m 안에 다 들어서, 100m 간격이면 그 사이 길가 가게를 지나친 뒤에야 받는다
+/// (E58 재생 측정, 18종 기준 간격 100m·상한 50 → 50m·100: 천호대로·강남대로 합성 경로 길가 40m 후보 확보율 0.51 → 0.82).
+public let outingRequeryDistanceMeters = 50.0
 /// 연속 실패가 이 횟수에 닿으면 주변 정보가 "없음"이 된다(§6.2, 3-state의 실패 칸).
 public let outingRequeryFailureLimit = 3
 /// 실패한 조회의 재시도 간격(초). 거리만으로 재시도하면 제자리에서 첫 조회가 실패한 사용자가
 /// "주변 확인 중"에 영영 갇힌다(구현 리뷰) — 기다리는 것이 없는데 기다린다고 말하게 된다.
 public let outingRequeryRetrySeconds = 20.0
 
-/// 이 fix에서 주변을 다시 조회해야 하는가. 마지막 조회 좌표가 없으면(세션 첫 조회) 참, 100m를 벗어나면 참,
+/// 이 fix에서 주변을 다시 조회해야 하는가. 마지막 조회 좌표가 없으면(세션 첫 조회) 참, 50m를 벗어나면 참,
 /// 직전 조회가 실패했고 재시도 간격이 지났으면 참.
 public func outingRequeryStep(
     lastQuery: RoutePoint?, fix: RoutePoint, lastFailureAt: Double?, now: Double
@@ -53,4 +55,26 @@ public func outingSurroundingsStep(
 
 public enum OutingQueryOutcome: Sendable, Equatable {
     case success, failure, outOfCoverage
+}
+
+// MARK: - 나들이 주변 조회
+
+/// 나들이 한 번 조회의 장소 상한. ⚠ 서버 미러: `OUTING_CAP`(100) — 넘기면 400이다. 조정은 서버 값과 함께.
+public let outingSurroundingsLimit = 100
+
+extension NearbyService {
+    /// 나들이 전용 둘러보기(E58 ②): 카카오 분류 18종 전부(`groups=all`), 가까운 순 100곳.
+    /// 내 주변 둘러보기(`surroundings`)는 "갈 곳 고르기"라 10종·50곳 그대로다 — 이 옵트인은 그 응답을 바꾸지 않는다.
+    /// ⚠ 서버 `groups=all`이 배포된 뒤에만 동작한다(옛 서버는 `limit=100`에 400) — 웹 배포가 앱 설치보다 먼저다.
+    /// `NearbyService.swift`가 아니라 여기 두는 이유: 안드로이드 `:kit`에 이식 완료로 등재된 그 파일과 달리 나들이 파일은
+    /// 이식 대기(`pending`)라, 나들이 이식 때 함께 옮겨진다.
+    public func outingSurroundings(lat: Double, lng: Double) async throws -> [SurroundingPlace] {
+        let response: AroundNearbyResponse = try await client.get(
+            "/api/places/around",
+            query: coordQuery(lat: lat, lng: lng) + [
+                URLQueryItem(name: "groups", value: "all"),
+                URLQueryItem(name: "limit", value: String(outingSurroundingsLimit)),
+            ])
+        return response.places
+    }
 }

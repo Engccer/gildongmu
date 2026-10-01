@@ -1,7 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("../../env", () => ({ env: { KAKAO_REST_API_KEY: "test-key" } }));
+
 import {
   ALL_CATEGORY_GROUPS,
   DEFAULT_CATEGORY_GROUPS,
+  OUTING_CAP,
+  findSurroundingsNear,
   normalizeSurroundingDoc,
 } from "../surroundings";
 
@@ -51,5 +56,50 @@ describe("normalizeSurroundingDoc", () => {
       127.1495,
     );
     expect(p?.roadAddress).toBeNull();
+  });
+});
+
+describe("findSurroundingsNear 호출 범위(E58 ②)", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  /** 카테고리마다 15건(거리 1m 간격, 코드별로 겹치지 않는 id)을 돌려주는 카카오 stub. */
+  function stubKakao() {
+    const codes: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: URL | string) => {
+        const url = new URL(String(input));
+        const code = url.searchParams.get("category_group_code") ?? "";
+        codes.push(code);
+        const base = codes.length * 100;
+        const documents = Array.from({ length: 15 }, (_, i) => ({
+          id: `${code}-${i}`,
+          place_name: `${code} ${i}`,
+          category_name: "x",
+          category_group_code: code,
+          x: "127.1",
+          y: "37.5",
+          distance: String(base + i),
+        }));
+        return new Response(JSON.stringify({ documents }), { status: 200 });
+      }),
+    );
+    return codes;
+  }
+
+  it("opts 없이는 기본 10종만 조회하고 상한 50 — 둘러보기 회귀 0", async () => {
+    const codes = stubKakao();
+    const out = await findSurroundingsNear(37.5, 127.1);
+    expect([...codes].sort()).toEqual([...DEFAULT_CATEGORY_GROUPS].sort());
+    expect(out).toHaveLength(50);
+  });
+
+  it("나들이 옵트인(18종·OUTING_CAP)은 18종 전부를 조회하고 가까운 순 100곳", async () => {
+    const codes = stubKakao();
+    const out = await findSurroundingsNear(37.5, 127.1, { groups: ALL_CATEGORY_GROUPS, cap: OUTING_CAP });
+    expect([...codes].sort()).toEqual([...ALL_CATEGORY_GROUPS].sort());
+    expect(OUTING_CAP).toBe(100);
+    expect(out).toHaveLength(100);
+    expect(out.every((p, i) => i === 0 || out[i - 1].distanceMeters <= p.distanceMeters)).toBe(true);
   });
 });

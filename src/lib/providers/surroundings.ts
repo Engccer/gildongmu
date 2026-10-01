@@ -55,6 +55,14 @@ export const DEFAULT_CATEGORY_GROUPS = [
  */
 export const ALL_CATEGORY_GROUPS = Object.keys(CATEGORY_GROUPS);
 
+/**
+ * 나들이(E58 ②, `/api/places/around?groups=all`)의 서버 상한. 18종 × 거리순 15건을 가까운 순으로 자른다.
+ * 둘러보기 기본 상한(SERVER_CAP 50)과 따로 두는 이유는 나들이가 "걷는 길가"를 촘촘히 받아야 해서다 —
+ * 상점 밀집 거리에서 50곳은 조회점 70~150m 안에서 끝난다(재생 측정, spec 2026-09-26 §11).
+ * ⚠ iOS 미러: GildongmuKit `outingSurroundingsLimit`(100) — 값 변경 시 동조.
+ */
+export const OUTING_CAP = 100;
+
 export interface KakaoCatDoc {
   id: string;
   place_name: string;
@@ -162,7 +170,7 @@ async function fetchKakaoCategory(
 /**
  * 좌표 → 내 주변 시설(카테고리 병렬 병합, 기본 10종). 키 없으면 [].
  * 부분 실패 불변식(kids-places 동형): 일부 실패 보존, 전부 실패만 throw→502.
- * `opts`는 M1 부근 재구성용 확장 — 미지정 호출부(둘러보기)는 동작 불변.
+ * `opts`는 M1 부근 재구성·나들이(`groups=all`, E58 ②)용 확장 — 미지정 호출부(둘러보기)는 동작 불변.
  */
 export async function findSurroundingsNear(
   lat: number,
