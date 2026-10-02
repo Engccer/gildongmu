@@ -238,6 +238,10 @@
   "eventsNearby.target": [
     "text"
   ],
+  "guide.announceAhead": [
+    "distance",
+    "step"
+  ],
   "guide.approx": [
     "distance"
   ],

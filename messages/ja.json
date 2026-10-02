@@ -808,6 +808,7 @@
     "rerouteBusy": "経路を再取得、取得中",
     "carStart": "{dest}まで自動車案内開始。案内{count}件、合計{distance}。{first}",
     "farNotice": "約{distance}先に次の案内があります。{step}",
+    "announceAhead": "約{distance}先、{step}",
     "carOffRoute": "経路から外れたため案内を一時停止しました。経路の再検索で再開できます",
     "carRoadNow": "{road}を走行中",
     "currentRoad": "現在の道路、{road}",

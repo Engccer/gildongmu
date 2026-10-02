@@ -8,8 +8,12 @@ package space.dodoplanet.gildongmu.kit
  * 시각 위에서만 성립한다. 판정 계층 상세 계약은 `docs/INTEGRATIONS.md` §실시간 길 안내·§이탈 판정 방위 축.
  */
 
-/** 다음 안내 전문을 낭독하는 잔여 거리 — 결정 지점 앞에서 들려야 한다(낭독 선행 원칙). */
-const val announceAheadMeters = 40.0
+/**
+ * 다음 안내 전문을 낭독하는 잔여 거리 — 결정 지점 앞에서 들려야 한다(낭독 선행 원칙). 원시 d 기준 30m = 실위치 약
+ * 20m(`projectionLagMeters`). 위원장 실보행 판정 2026-10-03 — 웹 `ANNOUNCE_AHEAD_M` 미러, 전문 뒤 주기 통지는
+ * `quietAfterAnnounce`가 끈다.
+ */
+const val announceAheadMeters = 30.0
 
 /**
  * 표시 계층의 투영 지연 추정(m) — 웹 `PROJECTION_LAG_M` 미러. 실보행 2회 실측(~15m)으로 15에서 시작했으나
@@ -20,10 +24,10 @@ const val announceAheadMeters = 40.0
 const val projectionLagMeters = 10.0
 
 /**
- * 결정 지점 **임박** 큐의 잔여 거리(m). 40m 전문 낭독이 *무엇을* 할지 알린다면 이 큐는 *지금이다*를 알린다
+ * 결정 지점 **임박** 큐의 잔여 거리(m). 30m 전문 낭독이 *무엇을* 할지 알린다면 이 큐는 *지금이다*를 알린다
  * (위원장 실보행 피드백 2026-08-09).
  *
- * ⚠ **40m 낭독을 대체하지 않는다.** 짧은 명령형 전용이라 전문을 옮기면 들으면서 이미 모퉁이를 지난다.
+ * ⚠ **30m 낭독을 대체하지 않는다.** 짧은 명령형 전용이라 전문을 옮기면 들으면서 이미 모퉁이를 지난다.
  *
  * 유도식 10 + projectionLagMeters(2026-08-11 재정의): "실위치 여유 10m + 관측 지연 보정"이라는 구조를 상수
  * 관계로 박아, lag 재판정이 임박 시점을 자동으로 함께 움직인다. 초기값 10m가 지연에 잡아먹혀 회전을 지난 뒤
@@ -40,10 +44,18 @@ val imminentRepeatMeters: List<Double> = listOf(5.0 + projectionLagMeters, 0.0 +
 
 /**
  * 표시 좌표계 유효 진행거리(spec 2026-08-11 §3) — 웹 `displayEffectiveD` 미러. 표시 계층(GuideLiveRows)의 구간
- * 선택·국면·잔여가 전부 이 좌표를 쓴다. **음성·톤·햅틱 계층은 원시 d 유지.** 램프인: 기준점(세션·재조회 시작
+ * 선택·국면·잔여가 전부 이 좌표를 쓴다. **음성·톤·햅틱의 판정(임계 비교)은 원시 d 유지** — 낭독하는 숫자만
+ * `spokenRemainingMeters`로 이 좌표에 맞춘다(2026-10-03). 램프인: 기준점(세션·재조회 시작
  * 시점의 d) 직후에는 걸은 거리만큼만 차오른다(출발·재조회 직후 과소 표시 방지).
  */
 fun displayEffectiveD(d: Double, baselineD: Double): Double = d + minOf(projectionLagMeters, maxOf(0.0, d - baselineD))
+
+/**
+ * 원시 d 기준 잔여를 낭독할 실위치 잔여로 옮긴다(위원장 판정 2026-10-03, 웹 `spokenRemainingMeters` 미러). 표시
+ * 좌표계와 같은 램프인 lag을 빼므로 하단 2행 숫자와 낭독 숫자가 한 기준이다. 판정은 원시 d 그대로.
+ */
+fun spokenRemainingMeters(rawRemaining: Double, d: Double, baselineD: Double): Double =
+    rawRemaining - (displayEffectiveD(d, baselineD) - d)
 
 const val advanceMarginBaseMeters = 15.0
 
@@ -112,6 +124,12 @@ data class GuideTuning(
      * 지난 유닛 래치 전진, 묶음 안 끝난 스텝 제외. 웹 `silentCatchUp` 미러. **세 항이 한 묶음이다.**
      */
     val silentCatchUp: Boolean,
+    /**
+     * 다음 유닛 전문을 낭독한 뒤 그 경계까지 주기 통지를 내지 않는가(위원장 실보행 판정 2026-10-03, 웹
+     * `quietAfterAnnounce` 미러). walk true — 전문 뒤 "…까지 직진하세요"가 다시 나오면 안내가 뒤로 튄다. car false —
+     * 주기 통지가 "{거리} 앞 {명령}"이라 다음 행동을 이미 담는다.
+     */
+    val quietAfterAnnounce: Boolean,
     /** 속도 표본 정확도 상한(m). walk 20, car 50(=uncertain 게이트). */
     val speedSampleMaxAccM: Double,
     /** 원거리 예고 경계(m). null=미사용(walk) */
@@ -175,7 +193,7 @@ data class GuideTuning(
             // 결정 지점 행동은 수단 불문 **서버 투영**(`step.action`)만 본다(E16 축3). 클라이언트 문자열 폴백을
             // 두면 구조화의 "의도된 행동 없음"과 미투영을 구별하지 못하고, car는 갈래·시설 문장이 회전이 된다.
             imminentNeedsAnnounce = true,
-            silentCatchUp = false, speedSampleMaxAccM = speedSampleMaxAccuracyMeters,
+            silentCatchUp = false, quietAfterAnnounce = true, speedSampleMaxAccM = speedSampleMaxAccuracyMeters,
             farNoticeM = null,
             windowAheadMinM = windowAheadMinMeters, windowAheadSpeedS = 0.0,
             offRouteBaseM = offRouteBaseMeters, offRouteHoldS = offRouteHoldSeconds,
@@ -198,7 +216,7 @@ data class GuideTuning(
             imminentUnknownSpeedM = carImminentUnknownSpeedMeters,
             imminentRepeatM = emptyList(),
             imminentNeedsAnnounce = false,
-            silentCatchUp = true, speedSampleMaxAccM = uncertainAccuracyMeters,
+            silentCatchUp = true, quietAfterAnnounce = false, speedSampleMaxAccM = uncertainAccuracyMeters,
             farNoticeM = 1500.0,
             windowAheadMinM = 150.0, windowAheadSpeedS = 5.0,
             offRouteBaseM = 50.0, offRouteHoldS = 10.0,
@@ -1035,7 +1053,7 @@ fun guideStep(state: GuideState, fix: GuideFix, route: GuideRoute, now: Double, 
     }
 
     // 6c) 선행 낭독: 낭독 완료 유닛의 끝까지 잔여 ≤ 임박선이면 다음 유닛 전문. 임박선은 max(거리 하한, v×시간 계수) —
-    //     walk는 시간 계수 0이라 40m 고정 동일.
+    //     walk는 시간 계수 0이라 30m 고정 동일.
     if (next.announcedUpTo < route.steps.size - 1) {
         val announcedEnd = route.steps[next.announcedUpTo].endD
         val announceAhead = maxOf(tuning.announceAheadM, vPrev * tuning.announceAheadSpeedS)
@@ -1054,7 +1072,7 @@ fun guideStep(state: GuideState, fix: GuideFix, route: GuideRoute, now: Double, 
             // ⚠ **톤은 임박 층이 있는 프로파일에서만 뗀다.** walk·car 모두 임박 층이 있어 `ahead`가 6a로 옮겨 갔으므로
             //   여기서 또 울리면 소리가 "곧 뭔가 있다"와 "지금이다" 둘 다를 뜻하게 되어 신호가 흐려진다. 임박 층이 없는
             //   프로파일이 생기면 여기가 그 자리의 유일한 소리라 `ahead`를 든다.
-            //   ⚠ walk에서 3초 정숙 구간이 40m 시점에 사라지는 것은 **아는 대가**다(실보행 판정 대상, `docs/BACKLOG.md`).
+            //   ⚠ walk에서 3초 정숙 구간이 30m 시점에 사라지는 것은 **아는 대가**다(실보행 판정 대상, `docs/BACKLOG.md`).
             val tone: GuideTone? = if (tuning.imminentAheadM == null) GuideTone.ahead else null
             return emit(next, GuideEvent.AnnounceSteps(indices), tone)
         }
@@ -1094,7 +1112,11 @@ fun guideStep(state: GuideState, fix: GuideFix, route: GuideRoute, now: Double, 
     val sinceAnnounce = now - next.lastAnnouncedAt
     if (cur.isLong) {
         val remainingStep = cur.endD - d
-        if (sinceAnnounce >= periodicIntervalSeconds(remainingStep)) {
+        val curUnit = unitAt(route, cur.index)
+        val nextAnnounced = next.announcedUpTo > curUnit[curUnit.size - 1]
+        if (!(tuning.quietAfterAnnounce && nextAnnounced) &&
+            sinceAnnounce >= periodicIntervalSeconds(remainingStep)
+        ) {
             return emit(
                 next.copy(lastAnnouncedAt = now),
                 GuideEvent.Periodic(cur.index, remainingStep.roundedAwayFromZero().toInt(), fix.accuracy),

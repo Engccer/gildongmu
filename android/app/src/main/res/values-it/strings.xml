@@ -712,6 +712,7 @@
     <string name="eventsNearby_target">Per %1$s</string>
     <string name="guide_addWaypointHere">Aggiungi qui come tappa</string>
     <string name="guide_alreadyActive">Una guida è già in corso. Termina prima la guida attuale.</string>
+    <string name="guide_announceAhead">Tra circa %1$s. %2$s</string>
     <string name="guide_approx">circa %1$s</string>
     <string name="guide_arrived">Sei arrivato a destinazione</string>
     <string name="guide_arrivedPresumed">Sembra che tu sia arrivato vicino alla destinazione, quindi la guida è terminata</string>

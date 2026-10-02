@@ -36,16 +36,21 @@ import { imminentTone, walkStepAction, type GuideAction, type ImminentTone } fro
 
 export { buildGuideRoute, LONG_STEP_MIN_M, type GuideRoute } from "./route-geometry";
 
-/** 다음 안내 전문을 낭독하는 잔여 거리 — 결정 지점 앞에서 들려야 한다(리뷰 #4 선행 원칙). */
-export const ANNOUNCE_AHEAD_M = 40;
 /**
- * 결정 지점 **임박** 큐의 잔여 거리(m). 40m 전문 낭독이 *무엇을* 할지 알린다면
+ * 다음 안내 전문을 낭독하는 잔여 거리 — 결정 지점 앞에서 들려야 한다(리뷰 #4 선행 원칙).
+ * 원시 d 기준 30m = 실위치 약 20m(`PROJECTION_LAG_M`). 위원장 실보행 판정 2026-10-03:
+ * 40m 전문 뒤에 그 경계를 향한 직진 주기 통지가 끼면 회전 안내가 튀는 것처럼 들린다 —
+ * 30m로 당기고 전문 뒤 주기 통지는 `quietAfterAnnounce`가 끈다.
+ */
+export const ANNOUNCE_AHEAD_M = 30;
+/**
+ * 결정 지점 **임박** 큐의 잔여 거리(m). 30m 전문 낭독이 *무엇을* 할지 알린다면
  * 이 큐는 *지금이다*를 알린다 — 위원장 실보행 피드백 2026-08-09: "모퉁이를 돌기 전,
  * 횡단보도를 건너기 전 10m에서 사운드·진동·짧은 문장으로 알려 달라".
  *
- * ⚠ **40m 낭독을 대체하지 않는다.** 짧은 명령형 전용이라 전문을 옮기면 들으면서
+ * ⚠ **30m 낭독을 대체하지 않는다.** 짧은 명령형 전용이라 전문을 옮기면 들으면서
  * 이미 모퉁이를 지난다. 두 층은 역할이 다르다(정보 vs 타이밍). 옮긴 것은
- * **`ahead` 톤 하나**다 — 종전에는 40m 전문에 붙어 있어서 소리가 "곧 뭔가 있다"만
+ * **`ahead` 톤 하나**다 — 종전에는 30m 전문에 붙어 있어서 소리가 "곧 뭔가 있다"만
  * 말하고 "지금이다"는 못 말했다.
  *
  * 유도식 10 + PROJECTION_LAG_M(2026-08-11 재정의, spec §3): "실위치 여유 10m +
@@ -77,12 +82,21 @@ export const IMMINENT_REPEAT_M: readonly number[] = [5 + PROJECTION_LAG_M, 0 + P
 
 /**
  * 표시 좌표계 유효 진행거리(spec 2026-08-11 §3). 표시 계층(guide-live-rows)의
- * 구간 선택·국면·잔여가 전부 이 좌표를 쓴다. **음성·톤·햅틱 계층은 원시 d 유지.**
+ * 구간 선택·국면·잔여가 전부 이 좌표를 쓴다. **음성·톤·햅틱의 판정(임계 비교)은 원시 d 유지** —
+ * 낭독하는 숫자만 `spokenRemainingMeters`로 이 좌표에 맞춘다(2026-10-03).
  * 램프인: 지연은 이동 중 쌓이는 오차라 기준점(세션·재조회 시작 시점의 d) 직후에는
  * 걸은 거리만큼만 차오른다(F7 — 출발·재조회 직후 과소 표시 방지).
  */
 export function displayEffectiveD(d: number, baselineD: number): number {
   return d + Math.min(PROJECTION_LAG_M, Math.max(0, d - baselineD));
+}
+
+/**
+ * 원시 d 기준 잔여를 낭독할 실위치 잔여로 옮긴다(위원장 판정 2026-10-03 — 낭독 숫자는 실제 거리).
+ * 표시 좌표계와 같은 램프인 lag을 빼므로 하단 2행 숫자와 낭독 숫자가 한 기준이다. 판정은 원시 d 그대로.
+ */
+export function spokenRemainingMeters(rawRemaining: number, d: number, baselineD: number): number {
+  return rawRemaining - (displayEffectiveD(d, baselineD) - d);
 }
 export const ADVANCE_MARGIN_BASE_M = 15;
 /**
@@ -183,6 +197,13 @@ export interface GuideTuning {
    */
   silentCatchUp: boolean;
   /**
+   * 다음 유닛 전문을 낭독한 뒤 그 경계까지 주기 통지를 내지 않는가(위원장 실보행 판정 2026-10-03).
+   * walk true — 전문("…앞에서 오른쪽으로 돌아…") 뒤에 "…까지 직진하세요"가 다시 나오면 안내가 뒤로
+   * 튄다. 그 구간은 전문과 임박 큐가 맡는다. car false — `carPeriodic`은 "{거리} 앞 {명령}"이라
+   * 다음 행동을 이미 담는다.
+   */
+  quietAfterAnnounce: boolean;
+  /**
    * 속도 표본 정확도 상한(m). walk 20(`SPEED_SAMPLE_MAX_ACC_M` — 계단 노이즈), car 50
    * (= uncertain 게이트. 차량은 임박 임계가 `v×T`라 표본이 끊기면 바닥 15m로 떨어져
    * 20m/s에서 0.75초가 된다 — 정확도 21~50m 구간에서 시간 축이 죽는 것이 더 위험하다).
@@ -268,6 +289,7 @@ export const WALK_TUNING: GuideTuning = {
   actionSource: "step",
   imminentNeedsAnnounce: true,
   silentCatchUp: false,
+  quietAfterAnnounce: true,
   speedSampleMaxAccM: SPEED_SAMPLE_MAX_ACC_M,
   farNoticeM: null,
   windowAheadMinM: WINDOW_AHEAD_MIN_M,
@@ -312,6 +334,7 @@ export const CAR_TUNING: GuideTuning = {
   actionSource: "step",
   imminentNeedsAnnounce: false,
   silentCatchUp: true,
+  quietAfterAnnounce: false,
   speedSampleMaxAccM: UNCERTAIN_ACCURACY_M,
   farNoticeM: 1500,
   windowAheadMinM: 150,
@@ -1365,7 +1388,7 @@ export function guideStep(
   }
 
   // 6c) 선행 낭독: 낭독 완료 유닛의 끝까지 잔여 ≤ 임박선이면 다음 유닛 전문(리뷰 #4).
-  //     임박선은 max(거리 하한, v×시간 계수) — walk는 시간 계수 0이라 40m 고정 동일.
+  //     임박선은 max(거리 하한, v×시간 계수) — walk는 시간 계수 0이라 30m 고정 동일.
   if (next.announcedUpTo < route.steps.length - 1) {
     const announcedEnd = route.steps[next.announcedUpTo].endD;
     const announceAhead = Math.max(
@@ -1394,7 +1417,7 @@ export function guideStep(
       //   되어 신호가 흐려진다(실보행 피드백 2026-08-09). car도 2026-08-23 K2로 임박
       //   층이 생겨 같은 규칙이다 — 임박 층이 없는 프로파일이 생기면 여기가 **그 자리의
       //   유일한 소리**라 `ahead`를 들고, `QUIET_AFTER_ACTION_S` 정숙 창도 여기서 연다.
-      //   ⚠ walk에서 그 정숙 구간이 40m 시점에 사라지는 것은 **아는 대가**다. 이 fix의
+      //   ⚠ walk에서 그 정숙 구간이 30m 시점에 사라지는 것은 **아는 대가**다. 이 fix의
       //   추세음은 `eventOwned`가 막지만 다음 fix부터는 막지 않으므로, 낭독 첫 3초
       //   보호가 없어진다. 실보행 판정 대상이다(`docs/BACKLOG.md`).
       const tone = tuning.imminentAheadM === null ? "ahead" : null;
@@ -1455,7 +1478,12 @@ export function guideStep(
   const sinceAnnounce = now - next.lastAnnouncedAt;
   if (cur.isLong) {
     const remainingStep = cur.endD - d;
-    if (sinceAnnounce >= periodicIntervalS(remainingStep)) {
+    const curUnit = unitAt(route, cur.index);
+    const nextAnnounced = next.announcedUpTo > curUnit[curUnit.length - 1];
+    if (
+      !(tuning.quietAfterAnnounce && nextAnnounced) &&
+      sinceAnnounce >= periodicIntervalS(remainingStep)
+    ) {
       next = { ...next, lastAnnouncedAt: now };
       return emit(next, {
           kind: "periodic",

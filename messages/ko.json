@@ -808,6 +808,7 @@
     "rerouteBusy": "경로 다시 조회, 조회 중",
     "carStart": "{dest}까지 자동차 안내 시작. 안내 {count}개, 총 {distance}. {first}",
     "farNotice": "약 {distance} 앞에 다음 안내가 있습니다. {step}",
+    "announceAhead": "약 {distance} 앞, {step}",
     "carOffRoute": "경로에서 벗어나 안내를 일시 중지했습니다. 경로 다시 조회로 재개할 수 있습니다",
     "carRoadNow": "{road} 주행 중",
     "currentRoad": "현재 도로, {road}",

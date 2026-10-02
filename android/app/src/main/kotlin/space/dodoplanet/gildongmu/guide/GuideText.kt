@@ -101,6 +101,13 @@ class GuideText(private val s: Strings) {
         return s.get("guide.bundle", descs.joinToString(". "))
     }
 
+    /** walk 선행 전문에 결정 지점까지의 실위치 거리를 단다(위원장 판정 2026-10-03, iOS 동형). 1m 미만이면 원문만. */
+    fun announceAhead(unit: String, meters: Double): String {
+        val rounded = meters.roundToInt()
+        if (rounded < 1) return unit
+        return s.get("guide.announceAhead", formatDistance(rounded), unit)
+    }
+
     /** 시작 원자 발화(요약과 첫 안내를 한 문장으로). `destination`에 기본값을 두지 않는다(E40). */
     fun start(route: GuideRoute, firstIndices: List<Int>, destination: String): String =
         s.get("guide.detailStart", destination, route.steps.size, formatDistance(route.totalMeters.roundToInt()), unit(route, firstIndices))

@@ -712,6 +712,7 @@
     <string name="eventsNearby_target">For %1$s</string>
     <string name="guide_addWaypointHere">Add here as a waypoint</string>
     <string name="guide_alreadyActive">Guidance is already running. End the current guidance first.</string>
+    <string name="guide_announceAhead">In about %1$s. %2$s</string>
     <string name="guide_approx">about %1$s</string>
     <string name="guide_arrived">You have arrived at the destination</string>
     <string name="guide_arrivedPresumed">You appear to have arrived near the destination, so guidance has ended</string>

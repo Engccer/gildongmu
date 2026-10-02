@@ -105,6 +105,7 @@ import space.dodoplanet.gildongmu.kit.sessionIdleStationaryElapsed
 import space.dodoplanet.gildongmu.kit.sessionIdleStep
 import space.dodoplanet.gildongmu.kit.sessionProgressEpsilonMeters
 import space.dodoplanet.gildongmu.kit.spokenDistanceUnits
+import space.dodoplanet.gildongmu.kit.spokenRemainingMeters
 import space.dodoplanet.gildongmu.kit.toneLayerStep
 import space.dodoplanet.gildongmu.kit.walkTurnApproachMeters
 import space.dodoplanet.gildongmu.location.LocationPermission
@@ -1153,7 +1154,17 @@ class WalkGuideModel(
         // 분류(E53 spec §3.2)는 Kit이 정본 — 이탈은 회차 첫 통지만 행동 문장(재통지는 주기). 국면을 바꾸기 전에 읽는다.
         val cls = guideEventSpeechClass(event, offRouteEpisodeStart = !offRoute)
         when (event) {
-            is GuideEvent.AnnounceSteps -> announceUnit(route, event.indices, cls)
+            is GuideEvent.AnnounceSteps -> {
+                // 결정 지점까지의 실위치 거리를 앞에 단다(위원장 판정 2026-10-03 — 직진 주기 통지 다음에 "…에서 돌아"가
+                // 거리 없이 나오면 안내가 튄다, iOS 동형). 재통독은 거리 없이 원문만.
+                val state = guideState
+                val first = event.indices.firstOrNull()?.let { route.steps.getOrNull(it) }
+                val unit = text.unit(route, event.indices)
+                val spoken = if (state != null && first != null) {
+                    text.announceAhead(unit, spokenRemainingMeters(first.startD - state.d, state.d, liveBaselineD))
+                } else unit
+                announceUnitText(unit, spoken, cls)
+            }
             is GuideEvent.BundleReread -> announceUnit(route, event.indices, cls)
             is GuideEvent.Imminent -> {
                 if (event.stage > 0) return
@@ -1163,7 +1174,11 @@ class WalkGuideModel(
             }
             is GuideEvent.FarNotice -> Unit // walk 프로파일은 내지 않는다(farNoticeM = null)
             is GuideEvent.Periodic -> {
-                val spoken = text.periodicWalk(route, event.stepIndex, event.remainingMeters, event.accuracy, destinationLabel, liveSteps.getOrNull(event.stepIndex)?.target)
+                // 낭독 숫자는 실위치 잔여다(위원장 판정 2026-10-03 — 하단 2행과 같은 기준, iOS 동형).
+                val meters = guideState?.let {
+                    max(0, spokenRemainingMeters(event.remainingMeters.toDouble(), it.d, liveBaselineD).roundToInt())
+                } ?: event.remainingMeters
+                val spoken = text.periodicWalk(route, event.stepIndex, meters, event.accuracy, destinationLabel, liveSteps.getOrNull(event.stepIndex)?.target)
                 lastGuidance = spoken
                 mutate { copy(statusText = spoken, statusIsNextPreview = true) }
                 announce(spoken, speechClass = cls)
@@ -1216,10 +1231,18 @@ class WalkGuideModel(
 
     /** 실행 안내 — 상태 행은 비운다(직전 예고를 남기면 이미 돈 회전을 남은 것처럼 읽는다). 억제 중이면 최신 1개 보관. */
     private fun announceUnit(route: GuideRoute, indices: List<Int>, speechClass: GuideSpeechClass) {
-        val spoken = text.unit(route, indices)
-        lastGuidance = spoken
+        val unit = text.unit(route, indices)
+        announceUnitText(unit, unit, speechClass)
+    }
+
+    /**
+     * `unit`은 되읽기용 원문(`lastGuidance`·억제 복구), `spoken`은 지금 말하는 문장이다. 거리 머리말(`announceAhead`)은
+     * 그 순간에만 참이라 되읽기에 싣지 않는다 — 복귀·신호 불량 뒤에 "약 20m 앞"을 갚으면 지난 거리를 말한다.
+     */
+    private fun announceUnitText(unit: String, spoken: String, speechClass: GuideSpeechClass) {
+        lastGuidance = unit
         statusText = ""
-        if (outputSuppressed) pendingRecovery = spoken else announce(spoken, speechClass = speechClass)
+        if (outputSuppressed) pendingRecovery = unit else announce(spoken, speechClass = speechClass)
     }
 
     // ─────────────────────────── 최종 접근·도착 ───────────────────────────

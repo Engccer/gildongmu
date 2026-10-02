@@ -808,6 +808,7 @@
     "rerouteBusy": "Recalculer l'itinéraire, en cours",
     "carStart": "Guidage en voiture vers {dest} démarré. {count, plural, one {# instruction} other {# instructions}}, {distance} au total. {first}",
     "farNotice": "Prochaine instruction dans environ {distance}. {step}",
+    "announceAhead": "Dans environ {distance}. {step}",
     "carOffRoute": "Hors itinéraire ; guidage en pause. Relancez la recherche d'itinéraire pour reprendre",
     "carRoadNow": "Sur {road}",
     "currentRoad": "Route actuelle, {road}",

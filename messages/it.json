@@ -808,6 +808,7 @@
     "rerouteBusy": "Ricalcolo percorso, in corso",
     "carStart": "Guida in auto verso {dest} avviata. {count, plural, one {# indicazione} other {# indicazioni}}, {distance} in totale. {first}",
     "farNotice": "Prossima indicazione tra circa {distance}. {step}",
+    "announceAhead": "Tra circa {distance}. {step}",
     "carOffRoute": "Fuori percorso; guida in pausa. Richiedi di nuovo il percorso per riprendere",
     "carRoadNow": "In marcia su {road}",
     "currentRoad": "Strada attuale, {road}",

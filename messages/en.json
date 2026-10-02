@@ -808,6 +808,7 @@
     "rerouteBusy": "Re-query route, in progress",
     "carStart": "Car guidance to {dest} started. {count, plural, one {# instruction} other {# instructions}}, {distance} total. {first}",
     "farNotice": "Next instruction in about {distance}. {step}",
+    "announceAhead": "In about {distance}. {step}",
     "carOffRoute": "You are off the route; guidance is paused. Refresh the route to resume",
     "carRoadNow": "Driving on {road}",
     "currentRoad": "Current road, {road}",

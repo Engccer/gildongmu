@@ -33,6 +33,7 @@ import {
   CAR_TUNING,
   guideStep,
   initialGuideState,
+  spokenRemainingMeters,
   unitAt,
   turnApproachMeters,
   WALK_TUNING,
@@ -270,7 +271,7 @@ export function nextLine(
  * walk 주기 통지 단문(위원장 실보행 피드백 2026-08-12, iOS `GuideText.periodicWalk`
  * 미러). 직진 구간 반복은 "{target}까지 {distance} 직진하세요"만 — 다음 스텝 전문을
  * 실은 종전 틀(`nextLine`)은 한 문장에 행동 세 개(현재 이동·회전·다음 이동)가 실려
- * 과잉이었고, 조망은 40m 선행 전문 1회가 담당한다. target은 서버 live 조각(재파싱
+ * 과잉이었고, 조망은 30m 선행 전문 1회가 담당한다. target은 서버 live 조각(재파싱
  * 금지, 부재는 이름 생략). 마지막 스텝은 목적지 틀 유지(값이 명사라 종전에도
  * 단문이었다). car는 `carPeriodicLine`(다음 행동 명령 단문, K2 §6.3).
  */
@@ -1047,13 +1048,22 @@ export function useRouteGuide(
 
   /** 이벤트 → 통지문. 사용자에게 말할 것이 없는 이벤트는 빈 문자열. */
   const eventText = useCallback(
-    (event: GuideEvent, route: GuideRoute): string => {
+    (event: GuideEvent, route: GuideRoute, d: number): string => {
       switch (event.kind) {
-        case "announceSteps":
+        case "announceSteps": {
+          const step = unitText(route, event.indices, t);
+          if (kindFixed !== "walk") return step;
+          // walk 전문은 결정 지점까지의 실위치 거리를 앞에 단다(위원장 판정 2026-10-03 — 직진 주기
+          // 통지 다음에 "…에서 돌아"가 거리 없이 나오면 안내가 튄다). 1m 미만이면 거리를 빼고 원문만.
+          const ahead = Math.round(
+            spokenRemainingMeters(route.steps[event.indices[0]].startD - d, d, liveBaselineDRef.current),
+          );
+          return ahead >= 1 ? t("announceAhead", { distance: formatDistance(ahead), step }) : step;
+        }
         case "bundleReread":
           return unitText(route, event.indices, t);
         case "imminent":
-          // 임박 큐(20m, §6a): 전문이 아니라 짧은 명령형이다. 전문은 40m에서 이미
+          // 임박 큐(20m, §6a): 전문이 아니라 짧은 명령형이다. 전문은 30m에서 이미
           // 나갔고, 여기서 다시 읽으면 8초 안에 두 문장이 겹쳐 정작 행동 시점을 놓친다.
           // car는 수단별 문구(K2 §6.3) — "잠시 후 우회전하세요". 웹엔 운전자 모드가 없다.
           // 반복 단계(15·10m, 2026-08-26)는 소리·진동만 — 문장을 셋 다 내면 4초 안에 겹친다.
@@ -1069,7 +1079,15 @@ export function useRouteGuide(
             step: unitText(route, event.indices, t),
           });
         case "periodic": {
-          const distance = confidenceDistance(event.remainingMeters, event.accuracy, t);
+          // walk 낭독 숫자는 실위치 잔여다(위원장 판정 2026-10-03 — 하단 2행과 같은 기준).
+          const meters =
+            kindFixed === "walk"
+              ? Math.max(
+                  0,
+                  Math.round(spokenRemainingMeters(event.remainingMeters, d, liveBaselineDRef.current)),
+                )
+              : event.remainingMeters;
+          const distance = confidenceDistance(meters, event.accuracy, t);
           // 둘 다 단문 — walk는 직진 목표, car는 다음 행동 명령(K2 §6.3).
           return kindFixed === "walk"
             ? walkPeriodicLine(
@@ -1663,12 +1681,17 @@ export function useRouteGuide(
       );
 
       if (!result.event) return;
-      const text = eventText(result.event, route);
+      const text = eventText(result.event, route, result.state.d);
       if (!text) return;
       announce(text);
-      if (isGuidanceEvent(result.event.kind)) rememberGuidance(text);
+      // 되읽기에는 거리 머리말 없는 원문을 둔다 — "약 20m 앞"은 그 순간에만 참이다(2026-10-03).
+      if (isGuidanceEvent(result.event.kind)) {
+        rememberGuidance(
+          result.event.kind === "announceSteps" ? unitText(route, result.event.indices, t) : text,
+        );
+      }
       // ⚠ 실행 안내 이벤트로 화면 행을 갱신하지 않는다(실보행 라운드1 정정) —
-      //   이 이벤트는 경계 40m 전 선행 + 1회 래치라 "지금 구간"과 어긋난다. 행은
+      //   이 이벤트는 경계 30m 전 선행 + 1회 래치라 "지금 구간"과 어긋난다. 행은
       //   위의 상태 유도 세팅이 소유한다.
     },
     [
@@ -1686,6 +1709,7 @@ export function useRouteGuide(
       progressOf,
       rebaseForAxisChange,
       rememberGuidance,
+      t,
       tuning,
     ],
   );

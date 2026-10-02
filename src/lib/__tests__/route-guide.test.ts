@@ -19,6 +19,7 @@ import {
   IMMINENT_REPEAT_M,
   initialGuideState,
   PROJECTION_LAG_M,
+  spokenRemainingMeters,
   stepActionFor,
   unitAt,
   WALK_TUNING,
@@ -824,5 +825,16 @@ describe("경유지 접근 예고 프로파일(N4 2026-09-24 §2.1)", () => {
     expect(WALK_TUNING.waypointApproachM).toBe(WAYPOINT_APPROACH_M);
     expect(CAR_TUNING.waypointApproachM).toBeNull();
     expect(CAR_DRIVER_TUNING.waypointApproachM).toBeNull();
+  });
+});
+
+describe("spokenRemainingMeters — 낭독 숫자는 실위치 잔여(위원장 판정 2026-10-03)", () => {
+  it("램프가 찬 뒤에는 원시 잔여에서 lag만큼 뺀다 — 하단 2행과 같은 기준", () => {
+    expect(spokenRemainingMeters(30, 200, 0)).toBe(30 - PROJECTION_LAG_M);
+    expect(30 - (displayEffectiveD(200, 0) - 200)).toBe(spokenRemainingMeters(30, 200, 0));
+  });
+  it("기준점 직후에는 걸은 거리만큼만 뺀다(램프인)", () => {
+    expect(spokenRemainingMeters(30, 104, 100)).toBe(26);
+    expect(spokenRemainingMeters(30, 100, 100)).toBe(30);
   });
 });

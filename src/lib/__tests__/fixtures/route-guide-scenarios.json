@@ -86,15 +86,21 @@
      "along": 176,
      "lateral": 0,
      "acc": 10
+    },
+    {
+     "t": 96,
+     "along": 192,
+     "lateral": 0,
+     "acc": 10
     }
    ],
    "expect": [
     {
-     "afterFix": 9,
+     "afterFix": 10,
      "eventNot": "announceSteps"
     },
     {
-     "afterFix": 10,
+     "afterFix": 11,
      "event": "announceSteps",
      "indices": [
       1
@@ -102,8 +108,145 @@
      "toneNull": true
     },
     {
-     "afterFix": 11,
+     "afterFix": 12,
      "eventNot": "announceSteps"
+    }
+   ]
+  },
+  {
+   "name": "전문 뒤 그 경계까지는 주기 통지가 없다 — 천천히 걸어 주기 간격이 차도 침묵(walk quietAfterAnnounce, 위원장 실보행 판정 2026-10-03)",
+   "steps": [
+    {
+     "len": 200,
+     "desc": "직진A"
+    },
+    {
+     "len": 100,
+     "desc": "우회전B",
+     "action": "right"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 8,
+     "along": 16,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 16,
+     "along": 32,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 24,
+     "along": 48,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 32,
+     "along": 64,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 40,
+     "along": 80,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 48,
+     "along": 96,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 56,
+     "along": 112,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 64,
+     "along": 128,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 72,
+     "along": 144,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 80,
+     "along": 160,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 88,
+     "along": 176,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 92,
+     "along": 176.5,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 96,
+     "along": 177,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 100,
+     "along": 177.5,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 104,
+     "along": 178,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 108,
+     "along": 178.5,
+     "lateral": 0,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFix": 11,
+     "event": "announceSteps",
+     "indices": [
+      1
+     ]
+    },
+    {
+     "afterFixAny": [
+      12,
+      13,
+      14,
+      15,
+      16
+     ],
+     "eventNot": "periodic"
     }
    ]
   },
@@ -160,7 +303,7 @@
     },
     {
      "t": 32,
-     "along": 64,
+     "along": 72,
      "lateral": 0,
      "acc": 10
     },
@@ -724,7 +867,7 @@
    ]
   },
   {
-   "name": "경계: 선행 낭독 임박선 40m(±1m — 부동소수 등호 회피)",
+   "name": "경계: 선행 낭독 임박선 30m(±1m — 부동소수 등호 회피)",
    "steps": [
     {
      "len": 200,
@@ -757,19 +900,19 @@
     },
     {
      "t": 14,
-     "along": 120,
+     "along": 130,
      "lateral": 0,
      "acc": 10
     },
     {
      "t": 19,
-     "along": 159,
+     "along": 169,
      "lateral": 0,
      "acc": 10
     },
     {
      "t": 24,
-     "along": 160.5,
+     "along": 170.5,
      "lateral": 0,
      "acc": 10
     }
@@ -1577,7 +1720,7 @@
    ]
   },
   {
-   "name": "결정 지점 20m 앞 임박 큐 — 40m 전문은 무톤, 20m 큐가 행동별 톤(오른쪽)을 든다",
+   "name": "결정 지점 20m 앞 임박 큐 — 30m 전문은 무톤, 20m 큐가 행동별 톤(오른쪽)을 든다",
    "steps": [
     {
      "len": 200,
@@ -1678,15 +1821,15 @@
    "expect": [
     {
      "afterFix": 10,
+     "eventNot": "announceSteps"
+    },
+    {
+     "afterFix": 11,
      "event": "announceSteps",
      "indices": [
       1
      ],
      "toneNull": true
-    },
-    {
-     "afterFix": 11,
-     "eventNot": "imminent"
     },
     {
      "afterFix": 12,
@@ -1804,15 +1947,15 @@
    "expect": [
     {
      "afterFix": 10,
+     "eventNot": "announceSteps"
+    },
+    {
+     "afterFix": 11,
      "event": "announceSteps",
      "indices": [
       1
      ],
      "toneNull": true
-    },
-    {
-     "afterFix": 11,
-     "eventNot": "imminent"
     },
     {
      "afterFix": 12,
@@ -2227,7 +2370,7 @@
    ]
   },
   {
-   "name": "마지막 유닛이 짧으면 최종 접근이 큐를 선점한다 (알려진 한계 — 되돌린 이유는 6a 주석)",
+   "name": "마지막 유닛이 짧으면 최종 접근 진입이 마지막 전문 뒤로 밀리고 임박 큐가 산다 (전문 30m, 2026-10-03)",
    "steps": [
     {
      "len": 200,
@@ -2317,13 +2460,27 @@
      "along": 176,
      "lateral": 0,
      "acc": 10
+    },
+    {
+     "t": 104,
+     "along": 184,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 112,
+     "along": 192,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 120,
+     "along": 200,
+     "lateral": 0,
+     "acc": 10
     }
    ],
    "expect": [
-    {
-     "afterFix": 11,
-     "event": "finalApproachEnter"
-    },
     {
      "afterFixAny": [
       0,
@@ -2337,13 +2494,28 @@
       8,
       9,
       10,
-      11,
-      12
+      11
      ],
-     "eventNot": "imminent"
+     "eventNot": "finalApproachEnter"
+    },
+    {
+     "afterFix": 12,
+     "event": "announceSteps",
+     "indices": [
+      1
+     ]
+    },
+    {
+     "afterFix": 13,
+     "event": "imminent",
+     "stage": 0
+    },
+    {
+     "afterFix": 15,
+     "event": "finalApproachEnter"
     }
    ],
-   "comment": "⚠ 이것은 '옳은 동작'이 아니라 **의도적으로 수용한 한계**를 잠근 케이스다. 임박 20m(2026-08-12 lag 하향 연동) 기준: 큐 자격선(경계-20m)이 진입선보다 앞이면 큐가 살아남고, 이 기하(마지막 유닛 15m, 무기하 진입선 50m → 진입 165 < 큐 180)처럼 진입선이 앞일 때만 선점된다. '결정 지점이 남았으면 최종 접근을 미룬다'를 구현하면 imminent가 나지만 A6 헛경고율이 2배가 됐다(a6-probe 상한 초과) — 교환을 다시 하려면 두 테스트를 함께 볼 것."
+   "comment": "전문 임박선이 30m라(2026-10-03 위원장 판정) 마지막 유닛 15m의 전문이 경계 30m 앞(170)에서야 나가고, 최종 접근 진입(`announcedUpTo` 조건)이 그 뒤로 밀려 임박 큐가 먼저 난다. 종전 40m에서는 진입선(무기하 50m → 165)이 큐 자격선(180)보다 앞이라 큐가 선점됐다(의도적 수용 한계). '결정 지점이 남았으면 최종 접근을 미룬다'를 일반 규칙으로 구현하면 A6 헛경고율이 2배가 됐다(a6-probe 상한 초과) — 여기서 밀리는 것은 무기하 세션의 마지막 유닛이 20m보다 짧을 때뿐이다. 교환을 다시 하려면 두 테스트를 함께 볼 것."
   },
   {
    "name": "이미 지난 경계에는 명령형 큐를 내지 않는다(정확도 악화 후 창이 경계를 넘겨 착지)",
@@ -3193,13 +3365,13 @@
     },
     {
      "t": 50,
-     "along": 62,
+     "along": 72,
      "lateral": 0,
      "acc": 10
     },
     {
      "t": 60,
-     "along": 66,
+     "along": 76,
      "lateral": 0,
      "acc": 10
     }
@@ -3513,25 +3685,25 @@
     },
     {
      "t": 60,
-     "along": 56,
+     "along": 66,
      "lateral": 0,
      "acc": 10
     },
     {
      "t": 61,
-     "along": 58,
+     "along": 68,
      "lateral": 0,
      "acc": 10
     },
     {
      "t": 62,
-     "along": 60,
+     "along": 70,
      "lateral": 0,
      "acc": 10
     },
     {
      "t": 63,
-     "along": 62,
+     "along": 72,
      "lateral": 0,
      "acc": 10
     }
@@ -3617,7 +3789,7 @@
     },
     {
      "t": 45,
-     "along": 60,
+     "along": 70,
      "lateral": 0,
      "acc": 10
     },
@@ -3801,7 +3973,7 @@
     },
     {
      "t": 45,
-     "along": 60,
+     "along": 70,
      "lateral": 0,
      "acc": 10
     },
@@ -3889,7 +4061,7 @@
     },
     {
      "t": 45,
-     "along": 60,
+     "along": 70,
      "lateral": 0,
      "acc": 10
     },

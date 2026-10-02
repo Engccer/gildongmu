@@ -2504,20 +2504,32 @@ final class BeaconModel {
                 break
             }
             let text = GuideText.unit(route: route, indices: indices)
+            // walk 전문은 결정 지점까지의 실위치 거리를 앞에 단다(위원장 판정 2026-10-03 — 직진 주기
+            // 통지 다음에 "…에서 돌아"가 거리 없이 나오면 안내가 튄다). 재통독은 거리 없이 원문만.
+            // ⚠ 거리 머리말은 그 순간에만 참이라 되읽기(`lastGuidance`·억제 복구)에는 원문을 둔다 —
+            //   복귀·신호 불량 뒤에 "약 20m 앞"을 갚으면 지난 거리를 말한다.
+            var spoken = text
+            if case .announceSteps = event, sessionKind == .walk, let gs = guideState,
+               let first = indices.first, route.steps.indices.contains(first) {
+                spoken = GuideText.announceAhead(
+                    unit: text,
+                    meters: spokenRemainingMeters(route.steps[first].startD - gs.d, d: gs.d, baselineD: liveBaselineD)
+                )
+            }
             lastGuidance = text
             // 실행 안내 문장은 화면 행에 남기지 않는다(역할 분리 확정 2026-08-10 — 지금 할 일은
             // 하단 2행, car의 "현재 도로" 행은 도로 이름만, E56).
-            // 상태 행은 **비운다** — 직전 예고("약 40m 앞 오른쪽으로…")를 남기면 이미
+            // 상태 행은 **비운다** — 직전 예고("약 30m 앞 오른쪽으로…")를 남기면 이미
             // 돈 회전을 아직 남은 것처럼 읽는다. 다음 예고·임박·상태 신호가 다시 채운다.
-            // ⚠ 여기서 화면 행을 쓰지 않는다(실보행 라운드1 정정) — 이 이벤트는 경계 40m 전
+            // ⚠ 여기서 화면 행을 쓰지 않는다(실보행 라운드1 정정) — 이 이벤트는 경계 30m 전
             //   선행 + 1회 래치라 "지금 구간"과 어긋난다. 행은 매 fix 상태 유도가 소유한다.
             // ⚠ 전경 복귀 재생의 "현재 상태" 폴백이 이 빈 값을 car의 하단 2행 윗줄(없으면
             //   "현재 도로" 행)로 대체한다(handleScenePhaseChange, walk엔 폴백이 없다).
             statusText = ""
             // 실행 안내는 억제 중이면 최신 1개를 보관해 해제 시 복구한다(스펙 §4.3).
-            if outputSuppressed { pendingRecovery = text } else { announce(text, speechClass: speechClass) }
+            if outputSuppressed { pendingRecovery = text } else { announce(spoken, speechClass: speechClass) }
         case let .imminent(_, action, stage):
-            // 임박 큐(20m): 전문이 아니라 짧은 명령형이다. 전문은 40m에서 이미 나갔고,
+            // 임박 큐(20m): 전문이 아니라 짧은 명령형이다. 전문은 30m에서 이미 나갔고,
             // 여기서 다시 읽으면 8초 안에 두 문장이 겹쳐 정작 행동 시점을 놓친다.
             //
             // 반복 단계(15·10m, 위원장 피드백 2026-08-26)는 소리·햅틱만이다 — 톤은 `out.tone`이
@@ -2558,13 +2570,19 @@ final class BeaconModel {
             if outputSuppressed { pendingRecovery = text } else { announce(text, speechClass: speechClass) }
         case let .periodic(stepIndex, remainingMeters, accuracy):
             // walk 직진 구간 반복 통지는 단문이다(위원장 실보행 피드백 2026-08-12) —
-            // 조망은 40m 선행 전문 1회로 충분하고, 반복은 "{target}까지 … 직진하세요"만.
+            // 조망은 30m 선행 전문 1회로 충분하고, 반복은 "{target}까지 … 직진하세요"만.
             // car도 단문이다(K2 §6.3 — "{거리} 앞 우회전"). 운전자 모드는 주기 통지를 내지 않는다
             // (낮은 빈도 — 전문·예고·임박·이탈·도착만, §6.2).
             if driverChannel { break }
+            // walk 낭독 숫자는 실위치 잔여다(위원장 판정 2026-10-03 — 하단 2행과 같은 기준).
+            let spokenMeters = guideState.map {
+                max(0, Int(spokenRemainingMeters(
+                    Double(remainingMeters), d: $0.d, baselineD: liveBaselineD
+                ).rounded()))
+            } ?? remainingMeters
             let text = sessionKind == .walk
                 ? GuideText.periodicWalk(
-                    route: route, stepIndex: stepIndex, remainingMeters: remainingMeters,
+                    route: route, stepIndex: stepIndex, remainingMeters: spokenMeters,
                     accuracy: accuracy, destinationLabel: destinationLabel,
                     target: liveSteps.indices.contains(stepIndex)
                         ? liveSteps[stepIndex].target : nil

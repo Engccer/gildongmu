@@ -194,6 +194,14 @@ enum GuideText {
         )
     }
 
+    /// walk 선행 전문에 결정 지점까지의 실위치 거리를 단다(위원장 판정 2026-10-03, 웹 `announceAhead` 미러).
+    /// 1m 미만이면 거리를 빼고 원문만 — "0m 앞"은 이미 지점이라 거짓 예고다.
+    static func announceAhead(unit: String, meters: Double) -> String {
+        let rounded = Int(meters.rounded())
+        guard rounded >= 1 else { return unit }
+        return appLocalized("guide.announceAhead", formatDistance(rounded), unit)
+    }
+
     /// 원거리 예고(B1 §4.7): 크로싱 시점의 **실측 잔여**(리듀서가 기하에서 계산) +
     /// 원문을 독립 문장으로 결합(문법 결합 금지 — 거리 기준 혼동 차단).
     static func farNotice(route: GuideRoute, indices: [Int], remainingMeters: Int) -> String {
@@ -228,7 +236,7 @@ enum GuideText {
     /// walk 주기 통지 단문(위원장 실보행 피드백 2026-08-12, 웹 eventText periodic 미러).
     /// 직진 구간 반복은 "{target}까지 {distance} 직진하세요"만 — 다음 스텝 전문을 실은
     /// 종전 틀은 한 문장에 행동 세 개(현재 이동·회전·다음 이동)가 실려 과잉이었고,
-    /// 조망은 40m 선행 전문 1회가 담당한다. target은 서버 live 조각(재파싱 금지, 부재는
+    /// 조망은 30m 선행 전문 1회가 담당한다. target은 서버 live 조각(재파싱 금지, 부재는
     /// 이름 생략). 마지막 스텝은 목적지 틀 유지(값이 명사라 종전에도 단문이었다).
     static func periodicWalk(
         route: GuideRoute, stepIndex: Int, remainingMeters: Int,

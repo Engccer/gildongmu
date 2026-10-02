@@ -80,18 +80,16 @@ class WalkGuideScenarioTest {
     private val longAhead = listOf(Seg(200.0, "직진A", target = "장미공원"), Seg(100.0, "우회전B", action = "right"))
     private val longAheadFixes = (0..11).map { Fix(it * 8.0, it * 16.0, 0.0, 10.0) }
 
-    @Test fun `③ 선행 낭독 — 40m 앞에서 다음 스텝 전문 1회, 상태 행은 비운다, 행동 톤 없음`() = guideTest(dispatcher, { HttpResponse(200, routeJson(longAhead)) }) { h ->
+    @Test fun `③ 선행 낭독 — 30m 앞에서 실위치 거리를 단 다음 스텝 전문 1회, 상태 행은 비운다, 행동 톤 없음`() = guideTest(dispatcher, { HttpResponse(200, routeJson(longAhead)) }) { h ->
         val base = startDetail(h, longAheadFixes)
         h.speaker.spoken.clear()
         h.tones.played.clear()
-        feed(h, longAheadFixes, base, until = 10)   // fix 9까지: 잔여 > 40m
-        assertFalse(h.speaker.texts.contains("우회전B"))
-        feed(h, longAheadFixes, base, from = 10, until = 11)  // fix 10(along 160, 잔여 40m)
-        assertEquals(1, h.speaker.texts.count { it == "우회전B" })
+        feed(h, longAheadFixes, base, until = 11)   // fix 10까지: 원시 잔여 ≥ 40m
+        assertFalse(h.speaker.texts.any { it.endsWith("우회전B") })
+        feed(h, longAheadFixes, base, from = 11)  // fix 11(along 176, 원시 잔여 24m − lag 10m = 실위치 14m)
+        assertEquals(listOf("약 14 미터 앞, 우회전B"), h.speaker.texts.filter { it.endsWith("우회전B") })
         assertEquals("", h.model.ui.value.statusText)
         assertTrue(h.tones.played.none { it == BeaconTone.right || it == BeaconTone.ahead })
-        feed(h, longAheadFixes, base, from = 11)
-        assertEquals(1, h.speaker.texts.count { it == "우회전B" })
         assertEquals(0, h.model.ui.value.currentStepIndex)
     }
 
@@ -393,11 +391,11 @@ class WalkGuideScenarioTest {
         h.model.setForeground(false)
         h.speaker.spoken.clear()
         feed(h, longAheadFixes, base)
-        assertEquals(listOf("우회전B"), h.speaker.texts)
+        assertEquals(listOf("약 14 미터 앞, 우회전B"), h.speaker.texts)
         h.env.foreground = true
         h.model.setForeground(true)
         advanceTimeBy(5_000); runCurrent()
-        assertEquals(listOf("우회전B"), h.speaker.texts)
+        assertEquals(listOf("약 14 미터 앞, 우회전B"), h.speaker.texts)
     }
     @Test fun `경유지 있는 세션의 간략 폴백 — 조용히 버리지 않고 강등 문장을 waypointDropped로 대체해 high로, 재시작 인자도 경유지 없이`() = guideTest(dispatcher, { HttpResponse(200, routeJson(longAhead)) }) { h ->
         val via = GuideWaypoint(BeaconDest(north(100.0).lat, lng0), "장미공원")

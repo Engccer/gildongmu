@@ -712,6 +712,7 @@
     <string name="eventsNearby_target">대상 %1$s</string>
     <string name="guide_addWaypointHere">여기를 경유지로 추가</string>
     <string name="guide_alreadyActive">이미 안내 중입니다. 먼저 진행 중인 안내를 종료하세요.</string>
+    <string name="guide_announceAhead">약 %1$s 앞, %2$s</string>
     <string name="guide_approx">약 %1$s</string>
     <string name="guide_arrived">목적지에 도착했습니다</string>
     <string name="guide_arrivedPresumed">목적지 부근에 도착한 것으로 판단해 안내를 종료했습니다</string>

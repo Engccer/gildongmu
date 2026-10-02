@@ -46,6 +46,7 @@ internal fun guideStringId(key: String): Int? = when (key) {
     "beacon.guideStartWalkRecommended" -> R.string.beacon_guideStartWalkRecommended
     "guide.detailStart" -> R.string.guide_detailStart
     "guide.bundle" -> R.string.guide_bundle
+    "guide.announceAhead" -> R.string.guide_announceAhead
     "guide.handoff" -> R.string.guide_handoff
     "guide.finalApproachRouteEnd" -> R.string.guide_finalApproachRouteEnd
     "guide.finalApproachToDest" -> R.string.guide_finalApproachToDest
