@@ -45,6 +45,13 @@
       "note": "디코딩 모델 CarRouteGuide는 FOUNDATION models/RouteModels.kt에 있고 이 파일은 buildCarGuide·roadNameAt·CarRoadSpan·CarGuideData만 든다"
     },
     {
+      "swift": "ClockDirection.swift",
+      "status": "ported",
+      "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/ClockDirection.kt",
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/ClockDirectionTest.kt",
+      "note": "E62·E63 공유 시계 방향 체계. 반올림은 floor(x+0.5) — Kotlin round(짝수 반올림) 금지"
+    },
+    {
       "swift": "CourseDerivation.swift",
       "status": "ported",
       "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/CourseDerivation.kt",

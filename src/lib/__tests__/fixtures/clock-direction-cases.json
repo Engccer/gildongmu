@@ -1,0 +1,125 @@
+{
+  "description": "시계 방향 체계 공유 fixture(E62·E63 경계 인터페이스). 상대 방위 = 기준 방향에서 시계 방향으로 잰 각(0 이상 360 미만), 시 = 상대 방위를 30°로 반올림(반올림은 0.5 올림, floor(x/30+0.5)), 0은 12시. 웹 clock-direction.ts · Kit ClockDirection.swift · :kit ClockDirection.kt가 함께 읽는다.",
+  "cases": [
+    {
+      "reference": 0,
+      "target": 0,
+      "relative": 0,
+      "hour": 12
+    },
+    {
+      "reference": 0,
+      "target": 14.99,
+      "relative": 14.99,
+      "hour": 12
+    },
+    {
+      "reference": 0,
+      "target": 15,
+      "relative": 15,
+      "hour": 1
+    },
+    {
+      "reference": 0,
+      "target": 44.99,
+      "relative": 44.99,
+      "hour": 1
+    },
+    {
+      "reference": 0,
+      "target": 45,
+      "relative": 45,
+      "hour": 2
+    },
+    {
+      "reference": 0,
+      "target": 90,
+      "relative": 90,
+      "hour": 3
+    },
+    {
+      "reference": 0,
+      "target": 180,
+      "relative": 180,
+      "hour": 6
+    },
+    {
+      "reference": 0,
+      "target": 270,
+      "relative": 270,
+      "hour": 9
+    },
+    {
+      "reference": 0,
+      "target": 344.99,
+      "relative": 344.99,
+      "hour": 11
+    },
+    {
+      "reference": 0,
+      "target": 345,
+      "relative": 345,
+      "hour": 12
+    },
+    {
+      "reference": 350,
+      "target": 10,
+      "relative": 20,
+      "hour": 1
+    },
+    {
+      "reference": 10,
+      "target": 350,
+      "relative": 340,
+      "hour": 11
+    },
+    {
+      "reference": 90,
+      "target": 0,
+      "relative": 270,
+      "hour": 9
+    },
+    {
+      "reference": 270,
+      "target": 90,
+      "relative": 180,
+      "hour": 6
+    },
+    {
+      "reference": 359.5,
+      "target": 0.4,
+      "relative": 0.9,
+      "hour": 12
+    },
+    {
+      "reference": 22,
+      "target": 112,
+      "relative": 90,
+      "hour": 3
+    },
+    {
+      "reference": 22,
+      "target": 292,
+      "relative": 270,
+      "hour": 9
+    },
+    {
+      "reference": 200,
+      "target": 20,
+      "relative": 180,
+      "hour": 6
+    },
+    {
+      "reference": 0,
+      "target": 165,
+      "relative": 165,
+      "hour": 6
+    },
+    {
+      "reference": 0,
+      "target": 195,
+      "relative": 195,
+      "hour": 7
+    }
+  ]
+}
