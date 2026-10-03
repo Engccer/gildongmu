@@ -8886,37 +8886,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "서울 열린데이터광장"
+            "value": "서울특별시 공공데이터(서울 열린데이터광장)"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Seoul Open Data Plaza"
+            "value": "Seoul public data (Seoul Open Data Plaza)"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Portal de datos abiertos de Seúl"
+            "value": "Datos públicos de Seúl (Portal de datos abiertos de Seúl)"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Portail données ouvertes de Séoul"
+            "value": "Données publiques de la ville de Séoul (Portail données ouvertes de Séoul)"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Portale dati aperti di Seoul"
+            "value": "Dati pubblici di Seul (Portale dati aperti di Seoul)"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "ソウルオープンデータ広場"
+            "value": "ソウル特別市公共データ(ソウルオープンデータ広場)"
           }
         }
       }

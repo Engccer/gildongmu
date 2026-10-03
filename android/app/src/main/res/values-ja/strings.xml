@@ -606,7 +606,7 @@
     <string name="chat_source_osm">OpenStreetMap貢献者</string>
     <string name="chat_source_perplexity">Perplexity</string>
     <string name="chat_source_seoulmetro">ソウル交通公社</string>
-    <string name="chat_source_seoulopen">ソウルオープンデータ広場</string>
+    <string name="chat_source_seoulopen">ソウル特別市公共データ(ソウルオープンデータ広場)</string>
     <string name="chat_source_tago">国土交通部TAGOバス</string>
     <string name="chat_source_tmap">Tmap</string>
     <string name="chat_source_tourapi">韓国観光公社TourAPI</string>

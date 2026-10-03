@@ -53,3 +53,10 @@ describe("dedupeSources", () => {
     expect(out).toEqual([{ label: "source.kakao" }, { label: "source.airkorea" }]);
   });
 });
+
+describe("서울 열린데이터 출처 표기(열린데이터광장 이용약관 제10조③, E58 후속 ③)", () => {
+  it("ko 라벨이 \"서울특별시 공공데이터\"를 사용한 결과임을 밝힌다 — iOS·안드로이드 정보 출처 화면이 이 키를 쓴다", async () => {
+    const ko = (await import("../../../../messages/ko.json")).default as { chat: { source: Record<string, string> } };
+    expect(ko.chat.source.seoulopen).toContain("서울특별시 공공데이터");
+  });
+});

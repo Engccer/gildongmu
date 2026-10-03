@@ -606,7 +606,7 @@
     <string name="chat_source_osm">OpenStreetMap contributors</string>
     <string name="chat_source_perplexity">Perplexity</string>
     <string name="chat_source_seoulmetro">Seoul Metro</string>
-    <string name="chat_source_seoulopen">Seoul Open Data Plaza</string>
+    <string name="chat_source_seoulopen">Seoul public data (Seoul Open Data Plaza)</string>
     <string name="chat_source_tago">MOLIT TAGO Bus</string>
     <string name="chat_source_tmap">Tmap</string>
     <string name="chat_source_tourapi">Korea Tourism Organization TourAPI</string>
