@@ -209,3 +209,49 @@ struct TransitExitLinesTests {
         #expect(transitAlightStationName(last, lang: .en) == "")
     }
 }
+
+/// 구간 줄의 영어 자격 판정표 — 웹 `transit-leg-english.test.ts`·안드로이드 `:kit` `TransitExitLinesTest`와 같은
+/// 공유 fixture(`src/lib/__tests__/fixtures/transit-leg-english-cases.json`)를 읽는다. leg에 없는 필드는 부재다.
+private struct LegEnglishCase: Decodable {
+    struct Leg: Decodable {
+        let mode: String
+        let lineName: String?
+        let lineNameEn: String?
+        let fromName: String?
+        let fromNameEn: String?
+        let toName: String?
+        let toNameEn: String?
+    }
+    let id: String
+    let english: Bool
+    let expected: Bool
+    let leg: Leg
+}
+
+private struct LegEnglishCaseFile: Decodable {
+    let cases: [LegEnglishCase]
+}
+
+private func loadLegEnglishCases() throws -> [LegEnglishCase] {
+    var url = URL(fileURLWithPath: #filePath)
+    for _ in 0..<5 { url.deleteLastPathComponent() }  // GildongmuKitTests→Tests→GildongmuKit→ios→repo
+    url.appendPathComponent("src/lib/__tests__/fixtures/transit-leg-english-cases.json")
+    return try JSONDecoder().decode(LegEnglishCaseFile.self, from: Data(contentsOf: url)).cases
+}
+
+@Suite("transitLegUsesEnglish — 공유 fixture")
+struct TransitLegEnglishFixtureTests {
+    @Test func fixtureIsNotEmpty() throws {
+        #expect(try loadLegEnglishCases().count >= 15)
+    }
+
+    @Test func matchesSharedFixture() throws {
+        for c in try loadLegEnglishCases() {
+            let leg = TransitRouteLeg(
+                mode: c.leg.mode, lineName: c.leg.lineName, fromName: c.leg.fromName, toName: c.leg.toName,
+                stationCount: nil, minutes: 1, serviceStatus: nil, firstServiceTime: nil, lastServiceTime: nil,
+                lineNameEn: c.leg.lineNameEn, fromNameEn: c.leg.fromNameEn, toNameEn: c.leg.toNameEn)
+            #expect(transitLegUsesEnglish(leg, lang: c.english ? .en : .ko) == c.expected, "\(c.id)")
+        }
+    }
+}

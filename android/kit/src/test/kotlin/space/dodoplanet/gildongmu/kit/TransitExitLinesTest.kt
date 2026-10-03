@@ -1,5 +1,6 @@
 package space.dodoplanet.gildongmu.kit
 
+import kotlinx.serialization.Serializable
 import space.dodoplanet.gildongmu.kit.models.QuickExit
 import space.dodoplanet.gildongmu.kit.models.QuickExitDoor
 import space.dodoplanet.gildongmu.kit.models.TransitLegExit
@@ -186,6 +187,39 @@ class TransitExitLinesTest {
     @Test fun `도보 행선지의 빈 영문도 한국어로 돌린다`() {
         for (blank in listOf("", " \t\n", "\u3000")) {
             assertFalse(transitLegUsesEnglish(TransitRouteLeg(mode = "walk", toName = "개화", minutes = 2, toNameEn = blank), DataLocale.en))
+        }
+    }
+
+    // 구간 줄의 영어 자격 판정표 — 웹 `transit-leg-english.test.ts`·Kit `TransitLegEnglishFixtureTests`와 같은 공유 fixture.
+
+    @Serializable
+    private data class LegEnglishFile(val cases: List<LegEnglishCase>)
+
+    @Serializable
+    private data class LegEnglishCase(val id: String, val english: Boolean, val expected: Boolean, val leg: FixtureLeg)
+
+    /** leg에 없는 필드는 부재(null)다. */
+    @Serializable
+    private data class FixtureLeg(
+        val mode: String,
+        val lineName: String? = null,
+        val lineNameEn: String? = null,
+        val fromName: String? = null,
+        val fromNameEn: String? = null,
+        val toName: String? = null,
+        val toNameEn: String? = null,
+    )
+
+    @Test fun `영어 자격은 공유 판정표와 같다`() {
+        val cases = Fixtures.sharedJson("transit-leg-english-cases.json", LegEnglishFile.serializer()).cases
+        assertTrue(cases.size >= 15)
+        for (c in cases) {
+            val leg = TransitRouteLeg(
+                mode = c.leg.mode, lineName = c.leg.lineName, lineNameEn = c.leg.lineNameEn,
+                fromName = c.leg.fromName, fromNameEn = c.leg.fromNameEn, toName = c.leg.toName, toNameEn = c.leg.toNameEn,
+                minutes = 1,
+            )
+            assertEquals(c.expected, transitLegUsesEnglish(leg, if (c.english) DataLocale.en else DataLocale.ko), c.id)
         }
     }
 }

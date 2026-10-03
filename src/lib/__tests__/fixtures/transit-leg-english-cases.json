@@ -1,5 +1,5 @@
 {
-  "_comment": "대중교통 구간 줄의 영어 자격(E27 줄 단위 원자성, A53) — 웹 transit-leg-english.test.ts가 읽는다. Kit `transitLegUsesEnglish`(TransitExitLines.swift)·안드로이드 :kit 미러와 같은 표이고, 두 미러의 테스트가 이 파일을 읽게 하는 것은 후속(BACKLOG A53 후속). english=데이터 언어가 영어인가, expected=그 줄의 이름이 영문인가. leg 필드가 없으면 부재다. 공백 판정은 세 벌이 같은 ASCII 공백·탭·개행만 싣는다(U+200B 같은 경계는 웹 trim과 Swift 문자 집합이 갈려 판정 대상 밖).",
+  "_comment": "대중교통 구간 줄의 영어 자격(E27 줄 단위 원자성, A53) — 웹 transit-leg-english.test.ts·Kit TransitExitLinesTests(TransitLegEnglishFixtureTests)·안드로이드 :kit TransitExitLinesTest가 함께 읽는다(`transitLegUsesEnglish` 세 벌). english=데이터 언어가 영어인가, expected=그 줄의 이름이 영문인가. leg 필드가 없으면 부재다. 공백 판정은 세 벌이 같은 ASCII 공백·탭·개행만 싣는다(U+200B 같은 경계는 웹 trim과 Swift 문자 집합이 갈려 판정 대상 밖).",
   "cases": [
     { "id": "ko-session-all-en", "english": false, "expected": false, "leg": { "mode": "subway", "lineName": "수도권 9호선", "lineNameEn": "Line 9", "fromName": "개화", "fromNameEn": "Gaehwa", "toName": "중앙보훈병원", "toNameEn": "VHS Medical Center" } },
     { "id": "en-all-en", "english": true, "expected": true, "leg": { "mode": "subway", "lineName": "수도권 9호선", "lineNameEn": "Line 9", "fromName": "개화", "fromNameEn": "Gaehwa", "toName": "중앙보훈병원", "toNameEn": "VHS Medical Center" } },
