@@ -40083,6 +40083,666 @@
      "rerouteReason": "parallel"
     }
    ]
+  },
+  {
+   "name": "E63 ㉑ 자동차: 돌아가기 중 공백 16초 뒤 옛 경로 곁에 후보가 없으면 재획득에 머물지 않고 돌아가기 국면으로 돌아와 멀어짐 판정을 잇는다(rerouteNeeded away)",
+   "tuning": "car",
+   "steps": [
+    {
+     "len": 3000,
+     "desc": "직진"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 40,
+     "lateral": 0,
+     "acc": 8
+    },
+    {
+     "t": 1,
+     "along": 52,
+     "lateral": 0,
+     "acc": 8
+    },
+    {
+     "t": 2,
+     "along": 64,
+     "lateral": 0,
+     "acc": 8
+    },
+    {
+     "t": 3,
+     "along": 76,
+     "lateral": 0,
+     "acc": 8
+    },
+    {
+     "t": 4,
+     "along": 88,
+     "lateral": 0,
+     "acc": 8
+    },
+    {
+     "t": 5,
+     "along": 100,
+     "lateral": 0,
+     "acc": 8
+    },
+    {
+     "t": 6,
+     "along": 112,
+     "lateral": 0,
+     "acc": 8
+    },
+    {
+     "t": 7,
+     "along": 124,
+     "lateral": 0,
+     "acc": 8
+    },
+    {
+     "t": 8,
+     "along": 136,
+     "lateral": 0,
+     "acc": 8
+    },
+    {
+     "t": 9,
+     "along": 148,
+     "lateral": 0,
+     "acc": 8
+    },
+    {
+     "t": 10,
+     "along": 160,
+     "lateral": 0,
+     "acc": 8
+    },
+    {
+     "t": 11,
+     "along": 168.57,
+     "lateral": 8.57,
+     "acc": 8
+    },
+    {
+     "t": 12,
+     "along": 177.14,
+     "lateral": 17.14,
+     "acc": 8
+    },
+    {
+     "t": 13,
+     "along": 185.71,
+     "lateral": 25.71,
+     "acc": 8
+    },
+    {
+     "t": 14,
+     "along": 194.29,
+     "lateral": 34.29,
+     "acc": 8
+    },
+    {
+     "t": 15,
+     "along": 202.86,
+     "lateral": 42.86,
+     "acc": 8
+    },
+    {
+     "t": 16,
+     "along": 211.43,
+     "lateral": 51.43,
+     "acc": 8
+    },
+    {
+     "t": 17,
+     "along": 220,
+     "lateral": 60,
+     "acc": 8
+    },
+    {
+     "t": 18,
+     "along": 232,
+     "lateral": 60,
+     "acc": 8
+    },
+    {
+     "t": 19,
+     "along": 244,
+     "lateral": 60,
+     "acc": 8
+    },
+    {
+     "t": 20,
+     "along": 256,
+     "lateral": 60,
+     "acc": 8
+    },
+    {
+     "t": 21,
+     "along": 268,
+     "lateral": 60,
+     "acc": 8
+    },
+    {
+     "t": 22,
+     "along": 280,
+     "lateral": 60,
+     "acc": 8
+    },
+    {
+     "t": 23,
+     "along": 292,
+     "lateral": 60,
+     "acc": 8
+    },
+    {
+     "t": 24,
+     "along": 304,
+     "lateral": 60,
+     "acc": 8
+    },
+    {
+     "t": 25,
+     "along": 316,
+     "lateral": 60,
+     "acc": 8
+    },
+    {
+     "t": 26,
+     "along": 328,
+     "lateral": 60,
+     "acc": 8
+    },
+    {
+     "t": 27,
+     "along": 328,
+     "lateral": 72,
+     "acc": 8
+    },
+    {
+     "t": 43,
+     "along": 328,
+     "lateral": 84,
+     "acc": 8
+    },
+    {
+     "t": 44,
+     "along": 328,
+     "lateral": 96,
+     "acc": 8
+    },
+    {
+     "t": 45,
+     "along": 328,
+     "lateral": 108,
+     "acc": 8
+    },
+    {
+     "t": 46,
+     "along": 328,
+     "lateral": 120,
+     "acc": 8
+    },
+    {
+     "t": 47,
+     "along": 328,
+     "lateral": 132,
+     "acc": 8
+    },
+    {
+     "t": 48,
+     "along": 328,
+     "lateral": 144,
+     "acc": 8
+    },
+    {
+     "t": 49,
+     "along": 328,
+     "lateral": 156,
+     "acc": 8
+    },
+    {
+     "t": 50,
+     "along": 328,
+     "lateral": 168,
+     "acc": 8
+    },
+    {
+     "t": 51,
+     "along": 328,
+     "lateral": 180,
+     "acc": 8
+    },
+    {
+     "t": 52,
+     "along": 328,
+     "lateral": 192,
+     "acc": 8
+    },
+    {
+     "t": 53,
+     "along": 328,
+     "lateral": 204,
+     "acc": 8
+    },
+    {
+     "t": 54,
+     "along": 328,
+     "lateral": 216,
+     "acc": 8
+    }
+   ],
+   "expect": [
+    {
+     "afterFix": 26,
+     "event": "offRoute",
+     "notice": "confirm",
+     "reason": "distance"
+    },
+    {
+     "afterFix": 28,
+     "event": "reacquiring"
+    },
+    {
+     "afterFixAny": [
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      36
+     ],
+     "eventNot": "backOnRoute"
+    },
+    {
+     "afterFix": 37,
+     "event": "rerouteNeeded",
+     "rerouteReason": "away"
+    }
+   ]
+  },
+  {
+   "name": "E63 ㉒ 확정 순간 진행 방위가 5초보다 오래됐으면(경로를 걷다 옆으로 튄 뒤 서 있음) 벗어난 쪽만 말한다(sideOnly, 위원장 판정 J3)",
+   "steps": [
+    {
+     "len": 1000,
+     "desc": "직진"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 20.0,
+     "lateral": 0,
+     "acc": 8
+    },
+    {
+     "t": 1,
+     "along": 21.2,
+     "lateral": 0,
+     "acc": 8
+    },
+    {
+     "t": 2,
+     "along": 22.4,
+     "lateral": 0,
+     "acc": 8
+    },
+    {
+     "t": 3,
+     "along": 23.6,
+     "lateral": 0,
+     "acc": 8
+    },
+    {
+     "t": 4,
+     "along": 24.8,
+     "lateral": 0,
+     "acc": 8
+    },
+    {
+     "t": 5,
+     "along": 26.0,
+     "lateral": 0,
+     "acc": 8
+    },
+    {
+     "t": 6,
+     "along": 27.2,
+     "lateral": 0,
+     "acc": 8
+    },
+    {
+     "t": 7,
+     "along": 28.4,
+     "lateral": 0,
+     "acc": 8
+    },
+    {
+     "t": 8,
+     "along": 29.6,
+     "lateral": 0,
+     "acc": 8
+    },
+    {
+     "t": 9,
+     "along": 30.799999999999997,
+     "lateral": 0,
+     "acc": 8
+    },
+    {
+     "t": 10,
+     "along": 32.0,
+     "lateral": 0,
+     "acc": 8
+    },
+    {
+     "t": 11,
+     "along": 33.2,
+     "lateral": 0,
+     "acc": 8
+    },
+    {
+     "t": 12,
+     "along": 34.4,
+     "lateral": 0,
+     "acc": 8
+    },
+    {
+     "t": 13,
+     "along": 35.6,
+     "lateral": 0,
+     "acc": 8
+    },
+    {
+     "t": 14,
+     "along": 36.8,
+     "lateral": 0,
+     "acc": 8
+    },
+    {
+     "t": 15,
+     "along": 38.0,
+     "lateral": 0,
+     "acc": 8
+    },
+    {
+     "t": 16,
+     "along": 39.2,
+     "lateral": 0,
+     "acc": 8
+    },
+    {
+     "t": 17,
+     "along": 40.4,
+     "lateral": 0,
+     "acc": 8
+    },
+    {
+     "t": 18,
+     "along": 41.599999999999994,
+     "lateral": 0,
+     "acc": 8
+    },
+    {
+     "t": 19,
+     "along": 42.8,
+     "lateral": 0,
+     "acc": 8
+    },
+    {
+     "t": 20,
+     "along": 42.8,
+     "lateral": 35,
+     "acc": 8,
+     "stopped": true
+    },
+    {
+     "t": 21,
+     "along": 42.8,
+     "lateral": 35,
+     "acc": 8,
+     "stopped": true
+    },
+    {
+     "t": 22,
+     "along": 42.8,
+     "lateral": 35,
+     "acc": 8,
+     "stopped": true
+    },
+    {
+     "t": 23,
+     "along": 42.8,
+     "lateral": 35,
+     "acc": 8,
+     "stopped": true
+    },
+    {
+     "t": 24,
+     "along": 42.8,
+     "lateral": 35,
+     "acc": 8,
+     "stopped": true
+    },
+    {
+     "t": 25,
+     "along": 42.8,
+     "lateral": 35,
+     "acc": 8,
+     "stopped": true
+    },
+    {
+     "t": 26,
+     "along": 42.8,
+     "lateral": 35,
+     "acc": 8,
+     "stopped": true
+    },
+    {
+     "t": 27,
+     "along": 42.8,
+     "lateral": 35,
+     "acc": 8,
+     "stopped": true
+    },
+    {
+     "t": 28,
+     "along": 42.8,
+     "lateral": 35,
+     "acc": 8,
+     "stopped": true
+    },
+    {
+     "t": 29,
+     "along": 42.8,
+     "lateral": 35,
+     "acc": 8,
+     "stopped": true
+    },
+    {
+     "t": 30,
+     "along": 42.8,
+     "lateral": 35,
+     "acc": 8,
+     "stopped": true
+    },
+    {
+     "t": 31,
+     "along": 42.8,
+     "lateral": 35,
+     "acc": 8,
+     "stopped": true
+    },
+    {
+     "t": 32,
+     "along": 42.8,
+     "lateral": 35,
+     "acc": 8,
+     "stopped": true
+    },
+    {
+     "t": 33,
+     "along": 42.8,
+     "lateral": 35,
+     "acc": 8,
+     "stopped": true
+    },
+    {
+     "t": 34,
+     "along": 42.8,
+     "lateral": 35,
+     "acc": 8,
+     "stopped": true
+    },
+    {
+     "t": 35,
+     "along": 42.8,
+     "lateral": 35,
+     "acc": 8,
+     "stopped": true
+    },
+    {
+     "t": 36,
+     "along": 42.8,
+     "lateral": 35,
+     "acc": 8,
+     "stopped": true
+    },
+    {
+     "t": 37,
+     "along": 42.8,
+     "lateral": 35,
+     "acc": 8,
+     "stopped": true
+    },
+    {
+     "t": 38,
+     "along": 42.8,
+     "lateral": 35,
+     "acc": 8,
+     "stopped": true
+    },
+    {
+     "t": 39,
+     "along": 42.8,
+     "lateral": 35,
+     "acc": 8,
+     "stopped": true
+    },
+    {
+     "t": 40,
+     "along": 42.8,
+     "lateral": 35,
+     "acc": 8,
+     "stopped": true
+    },
+    {
+     "t": 41,
+     "along": 42.8,
+     "lateral": 35,
+     "acc": 8,
+     "stopped": true
+    },
+    {
+     "t": 42,
+     "along": 42.8,
+     "lateral": 35,
+     "acc": 8,
+     "stopped": true
+    },
+    {
+     "t": 43,
+     "along": 42.8,
+     "lateral": 35,
+     "acc": 8,
+     "stopped": true
+    },
+    {
+     "t": 44,
+     "along": 42.8,
+     "lateral": 35,
+     "acc": 8,
+     "stopped": true
+    },
+    {
+     "t": 45,
+     "along": 42.8,
+     "lateral": 35,
+     "acc": 8,
+     "stopped": true
+    },
+    {
+     "t": 46,
+     "along": 42.8,
+     "lateral": 35,
+     "acc": 8,
+     "stopped": true
+    },
+    {
+     "t": 47,
+     "along": 42.8,
+     "lateral": 35,
+     "acc": 8,
+     "stopped": true
+    },
+    {
+     "t": 48,
+     "along": 42.8,
+     "lateral": 35,
+     "acc": 8,
+     "stopped": true
+    },
+    {
+     "t": 49,
+     "along": 42.8,
+     "lateral": 35,
+     "acc": 8,
+     "stopped": true
+    }
+   ],
+   "expect": [
+    {
+     "afterFixAny": [
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39
+     ],
+     "eventNot": "offRoute"
+    },
+    {
+     "afterFix": 40,
+     "event": "offRoute",
+     "notice": "confirm",
+     "reason": "distance",
+     "guidance": "sideOnly",
+     "side": "right",
+     "firstSpoken": true,
+     "tone": "warning"
+    }
+   ]
   }
  ]
 }

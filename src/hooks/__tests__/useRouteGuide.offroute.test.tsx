@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import ko from "../../../messages/ko.json";
+import scenarios from "../../lib/__tests__/fixtures/route-guide-scenarios.json";
 
 vi.mock("../useBeaconSound", () => ({
   useBeaconSound: () => ({ play: vi.fn(() => 0), preload: vi.fn() }),
@@ -153,6 +154,29 @@ describe("돌아가기 국면(E63)", () => {
     expect(live()).toBe(
       "새 경로로 다시 안내합니다. 9시 방향으로 도세요. 그 후 김종하 정신과의원까지 35m 이동. 안내 2개, 총 335m.",
     );
+  });
+
+  it("이탈 문장을 들은 회차는 경로로 돌아와 서면 \"경로로 복귀했습니다\"를 말한다", async () => {
+    await startOnRoute();
+    strayRightAndConfirm();
+    walk(270, 30);
+    for (let i = 0; i < 12; i++) fixAt(pos.a, 0);
+    expect(live()).toBe("경로로 복귀했습니다");
+  });
+
+  it("보류(이미 경로 쪽으로 걷는 중) 회차는 벗어났다는 말도, 돌아온 뒤 복귀 문장도 없다", async () => {
+    await startOnRoute();
+    // 공유 fixture ⑪-가의 궤적(시작 21 fix는 startOnRoute와 같다): 옆으로 튄 뒤 경로 쪽으로 걸어 돌아와 선다.
+    const hold = (scenarios as { scenarios: { name: string; fixes: { along: number; lateral: number }[] }[] }).scenarios.find(
+      (x) => x.name.startsWith("E63 ⑪-가"),
+    )!;
+    const said: string[] = [];
+    for (const f of hold.fixes.slice(21)) {
+      fixAt(f.along, f.lateral);
+      said.push(live());
+    }
+    expect(said.some((x) => x.includes("벗어났습니다"))).toBe(false);
+    expect(said.some((x) => x.includes("복귀했습니다"))).toBe(false);
   });
 
   it("자동 조회가 진행 중이면 리듀서가 또 요청해도 조회를 더 열지 않는다", async () => {

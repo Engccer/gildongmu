@@ -750,7 +750,7 @@
     <string name="guide_carLiveAction_right">svolta a destra</string>
     <string name="guide_carOffRoute">Fuori percorso; guida in pausa. Richiedi di nuovo il percorso per riprendere</string>
     <string name="guide_carOffRouteBehind">Il percorso è dietro di te</string>
-    <string name="guide_carOffRouteClock">Il percorso è a %1$s</string>
+    <string name="guide_carOffRouteClock">Il percorso è in direzione %1$s</string>
     <string name="guide_carPeriodic">%2$s tra %1$s</string>
     <string name="guide_carPeriodicAt">%3$s a %2$s tra %1$s</string>
     <string name="guide_carRoadNow">In marcia su %1$s</string>
@@ -816,7 +816,7 @@
     <string name="guide_offRoute">Sembra che tu sia fuori percorso</string>
     <string name="guide_offRouteLeft">Sei uscito dal percorso sulla sinistra</string>
     <string name="guide_offRouteOpposite">Stai andando nella direzione opposta al percorso</string>
-    <string name="guide_offRouteReturnClock">Torna verso %1$s</string>
+    <string name="guide_offRouteReturnClock">Torna in direzione %1$s</string>
     <string name="guide_offRouteRight">Sei uscito dal percorso sulla destra</string>
     <string name="guide_offRouteTurnBack">Girati</string>
     <string name="guide_offRouteWith">%1$s. %2$s</string>

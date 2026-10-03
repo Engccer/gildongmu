@@ -1303,6 +1303,15 @@ export function guideStep(
       if (inWindow.length === 1) entryD = inWindow[0].d;
     }
     if (entryD === null) {
+      // 이탈 유래 재획득인데 옛 경로 곁에 후보가 없다(자동차 — 도보는 위에서 이미 돌아갔다): 돌아가기 국면으로 되돌린다.
+      // 재획득에 머물면 재통지·`rerouteNeeded`가 멎어, 확정 즉시 조회가 없어진 E63 뒤로는 새 경로가 영영 오지 않는다.
+      if (state.reacquiringFromOffRoute) {
+        return {
+          state: { ...state, phase: "offRoute", lastFixAt: now, reacquiringFromOffRoute: false },
+          event: null,
+          tone: null,
+        };
+      }
       return { state: { ...state, lastFixAt: now }, event: null, tone: null };
     }
     // ⚠ 재획득 성공도 복귀다. 방위 축이 잠겨 있으면 위치만으로 풀지 않는다.

@@ -13612,7 +13612,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Now guiding on a new route. %1$@. {2, plural, one {%2$@ step} other {%2$@ steps}}, %3$@ total."
+            "value": "Now guiding on a new route. %1$@. {2, plural, one {%2$@ instruction} other {%2$@ instructions}}, %3$@ total."
           }
         },
         "es": {
@@ -15024,13 +15024,13 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "L'itinéraire est à %1$@"
+            "value": "L'itinéraire est en direction de %1$@"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Il percorso è a %1$@"
+            "value": "Il percorso è in direzione %1$@"
           }
         },
         "ja": {
@@ -17664,13 +17664,13 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Revenez vers %1$@"
+            "value": "Revenez en direction de %1$@"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Torna verso %1$@"
+            "value": "Torna in direzione %1$@"
           }
         },
         "ja": {

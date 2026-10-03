@@ -1060,7 +1060,17 @@ fun guideStep(state: GuideState, fix: GuideFix, route: GuideRoute, now: Double, 
             val inWindow = globalCandidates(route.polyline, fix.point, maxPerp).filter { it.d >= prevD && it.d <= maxAheadD }
             if (inWindow.size == 1) entryD = inWindow[0].d
         }
-        if (entryD == null) return GuideOutput(base.copy(lastFixAt = now), null, null)
+        if (entryD == null) {
+            // 이탈 유래 재획득인데 옛 경로 곁에 후보가 없다(자동차 — 도보는 위에서 이미 돌아갔다): 돌아가기 국면으로 되돌린다.
+            // 재획득에 머물면 재통지·`rerouteNeeded`가 멎어, 확정 즉시 조회가 없어진 E63 뒤로는 새 경로가 영영 오지 않는다.
+            if (base.reacquiringFromOffRoute) {
+                return GuideOutput(
+                    base.copy(phase = GuidePhase.offRoute, lastFixAt = now, reacquiringFromOffRoute = false),
+                    null, null,
+                )
+            }
+            return GuideOutput(base.copy(lastFixAt = now), null, null)
+        }
         // ⚠ 재획득 성공도 복귀다. 방위 축이 잠겨 있으면 위치만으로 풀지 않는다. 이 경로가 §5의 offRoute 분기보다
         //   **먼저** 실행되므로, 여기를 빼면 fix 공백 10초만으로 복귀 계약이 통째로 우회된다.
         // ⚠ 이 판정은 **구조상 항상 hold다.** 재획득 진입에서 창이 비워졌으므로 표가 하나뿐이고 courseAxisMinVotes(8)에

@@ -716,7 +716,7 @@
     <string name="guide_approx">about %1$s</string>
     <string name="guide_arrived">You have arrived at the destination</string>
     <string name="guide_arrivedPresumed">You appear to have arrived near the destination, so guidance has ended</string>
-    <string name="guide_autoReroute">Now guiding on a new route. %1$s. {2, plural, one {%2$s step} other {%2$s steps}}, %3$s total.</string>
+    <string name="guide_autoReroute">Now guiding on a new route. %1$s. {2, plural, one {%2$s instruction} other {%2$s instructions}}, %3$s total.</string>
     <string name="guide_backOnRoute">Back on the route</string>
     <string name="guide_band_arrived">Arrived at %1$s</string>
     <string name="guide_band_ended">Guidance to %1$s ended</string>

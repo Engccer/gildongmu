@@ -1210,13 +1210,15 @@ class WalkGuideModel(
             }
             GuideEvent.FinalApproachEnter -> Unit // fix를 쥔 handleDetail이 가른다
             is GuideEvent.OffRoute -> {
-                // 보류(이미 경로 쪽으로 걷는 중, E63)는 말하지도 조회하지도 않는다. 방향 문장·자동 재조회 이식은 웨이브 3.
-                if (event.guidance == OffRouteGuidance.hold) return
+                // 웨이브 2 최소 수정(E63 spec §3.10): 회차 시작(확정)이면 보류여도 종전처럼 즉시 조회한다. 보류(이미 경로 쪽으로
+                // 걷는 중)는 말하지만 않는다. 방향 문장·`RerouteNeeded` 자동 재조회 이식은 웨이브 3.
                 val isEpisodeStart = event.notice == OffRouteNotice.confirm
                 offRoute = true
-                val spoken = strings.get("guide.offRoute")
-                statusText = spoken
-                announce(spoken, speechClass = cls)
+                if (event.guidance != OffRouteGuidance.hold) {
+                    val spoken = strings.get("guide.offRoute")
+                    statusText = spoken
+                    announce(spoken, speechClass = cls)
+                }
                 if (isEpisodeStart) maybeFetchProposal()
             }
             is GuideEvent.BackOnRoute -> {

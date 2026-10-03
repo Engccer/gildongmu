@@ -206,7 +206,7 @@ describe("수량 문구 복수형(A29)", () => {
     "guide.switchedToRecommended": "Switched to the recommended route. 1 step, x total. x",
     "guide.switchedToAccessible": "Switched to the route avoiding stairs. 1 step, x total. x",
     "guide.switchedToBroad": "Switched to the main-road route. 1 step, x total. x",
-    "guide.autoReroute": "Now guiding on a new route. x. 1 step, x total.",
+    "guide.autoReroute": "Now guiding on a new route. x. 1 instruction, x total.",
     "ios.beacon.healthSummary": "You walked 1 step on this leg and burned about x kcal.",
     "ios.beacon.healthSummaryWithWeight": "You walked 1 step on this leg and burned about x kcal, based on x kg.",
     "ios.beacon.food.ramyeonMany": "That's about 1 bowl of ramyeon!",

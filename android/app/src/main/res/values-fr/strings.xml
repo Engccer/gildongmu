@@ -750,7 +750,7 @@
     <string name="guide_carLiveAction_right">tournez à droite</string>
     <string name="guide_carOffRoute">Hors itinéraire ; guidage en pause. Relancez la recherche d\'itinéraire pour reprendre</string>
     <string name="guide_carOffRouteBehind">L\'itinéraire est derrière vous</string>
-    <string name="guide_carOffRouteClock">L\'itinéraire est à %1$s</string>
+    <string name="guide_carOffRouteClock">L\'itinéraire est en direction de %1$s</string>
     <string name="guide_carPeriodic">%2$s dans %1$s</string>
     <string name="guide_carPeriodicAt">%3$s à %2$s dans %1$s</string>
     <string name="guide_carRoadNow">Sur %1$s</string>
@@ -816,7 +816,7 @@
     <string name="guide_offRoute">Vous semblez avoir quitté l\'itinéraire</string>
     <string name="guide_offRouteLeft">Vous avez quitté l\'itinéraire par la gauche</string>
     <string name="guide_offRouteOpposite">Vous allez dans le sens opposé à l\'itinéraire</string>
-    <string name="guide_offRouteReturnClock">Revenez vers %1$s</string>
+    <string name="guide_offRouteReturnClock">Revenez en direction de %1$s</string>
     <string name="guide_offRouteRight">Vous avez quitté l\'itinéraire par la droite</string>
     <string name="guide_offRouteTurnBack">Faites demi-tour</string>
     <string name="guide_offRouteWith">%1$s. %2$s</string>

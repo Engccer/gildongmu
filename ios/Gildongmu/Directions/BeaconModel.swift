@@ -396,10 +396,14 @@ final class BeaconModel {
     /// 재무장했다. 새 요청이 토큰을 올려 진행 중 조회를 버리면 느린 망에서 채택 없이 예산만 쓴다, E63 spec §3.5). 폐기(복귀·
     /// 경로 교체·수동 재조회)로 토큰이 올라가면 늦게 끝나는 옛 조회가 다음 회차를 막지 않는다.
     private var proposalInFlightToken: Int?
-    /// 이 이탈 회차에 이탈 문장을 실제로 게시했는가(E63 §3.4). 확정에서 지우고, 게시가 버려지면(`onDropped`) 되돌린다.
-    /// 거짓이면 복귀 때 "경로로 복귀했습니다"를 말하지 않는다 — 벗어났다는 말을 듣지 않은 사용자에게 복귀만 들리지 않게.
-    private var offRouteNoticePosted = false
-    /// 돌아가기 국면의 상태 행 문장(마지막 이탈 문장, 보류면 벗어난 쪽만). 재획득 문구를 되돌릴 때 읽는다(D12).
+    /// 이 이탈 회차에 게시해 아직 버려지지 않은 이탈 문장들(E63 §3.4). 비었으면 복귀 때 "경로로 복귀했습니다"를 말하지 않는다
+    /// — 벗어났다는 말을 듣지 않은 사용자에게 복귀만 들리지 않게. ⚠ 단일 Bool이 아니라 게시 번호 집합이다: 확정 문장을 들은 뒤
+    /// 백그라운드 재통지(`.deferrable`)가 버려지거나 앞 문장의 늦은 `onDropped`가 와도 들은 문장의 기록이 지워지지 않는다.
+    private var offRouteNoticeLive: Set<Int> = []
+    private var offRouteNoticeSeq = 0
+    private var offRouteNoticePosted: Bool { !offRouteNoticeLive.isEmpty }
+    /// 돌아가기 국면의 상태 행 문장: 벗어난 쪽만(위원장 판정 2026-10-04 — 시계 방향·"뒤로 도세요"는 그 순간에만 참이라 음성으로만).
+    /// 재획득 문구를 되돌릴 때 읽는다(D12).
     private var offRouteLine: String?
     /// 이 이탈 회차의 자동 재조회 요청 수와 확정 시각·좌표(로그 `rerouteTrigger n= sinceConfirm= moved=`, E63 spec §6).
     private var rerouteTriggerCount = 0
@@ -1435,7 +1439,7 @@ final class BeaconModel {
         // 세션 종료 = 진행 중 자동 재조회·회차 카운터 전부 무효(E10ⓑ — 상한은 세션당이다).
         clearProposal()
         proposalFetchCount = 0
-        offRouteNoticePosted = false
+        offRouteNoticeLive = []
         offRouteLine = nil
         rerouteTriggerCount = 0
         offRouteConfirmedAt = nil
@@ -2027,12 +2031,10 @@ final class BeaconModel {
         )
         guideState = out.state
         // 돌아가기 국면의 상태 행 문장(E63) — 아래 하단 2행 갱신보다 먼저(같은 fix의 윗줄이 이 문장이어야 한다). 운전자 채널은
-        // 현행 상태 전문, 보류는 말하지 않으므로 벗어난 쪽만(시계 11~1을 "돌아가세요"로 쓰지 않는다).
-        if case let .offRoute(_, _, guidance, side, returnRelDeg, _) = out.event {
-            offRouteLine = driverChannel
-                ? appLocalized("guide.carOffRoute")
-                : GuideText.offRoute(guidance: guidance, side: side, returnRelDeg: returnRelDeg, kind: sessionKind)
-                    ?? GuideText.offRouteSide(side)
+        // 현행 상태 전문, 그 밖은 벗어난 쪽만(위원장 판정 2026-10-04): 시계 방향은 사용자가 몸을 돌리면 곧 거짓이 되는데 이 행은
+        // 시트 착지·전경 복귀 재생이 나중에 다시 읽는다.
+        if case let .offRoute(_, _, _, side, _, _) = out.event {
+            offRouteLine = driverChannel ? appLocalized("guide.carOffRoute") : GuideText.offRouteSide(side)
         }
         // 지난 임박 문장은 상태 행에 남기지 않는다(전경 복귀 재생이 지난 회전을 다시 읽는다, a11y 감사 M1).
         if let pending = imminentStatus, out.state.stepIndex >= pending.target {
@@ -2770,29 +2772,30 @@ final class BeaconModel {
             // 확정(`confirm`)은 돌아가기 국면의 시작이다 — 재조회가 아니다(E63). 재조회는 리듀서 `rerouteNeeded`가 연다.
             // 자동 조회·표시 상태의 회차 시작은 `notice == confirm`, 문장 분류·톤의 "처음 말함"은 `firstSpoken`(§4.1).
             if notice == .confirm {
-                offRouteNoticePosted = false
+                offRouteNoticeLive = []
                 rerouteTriggerCount = 0
                 offRouteConfirmedAt = now
                 offRouteConfirmCoord = lastFixCoord
             }
             offRoute = true
+            let perp = signedPerp.map { abs($0) }
             if driverChannel {
-                // 운전자 모드(E63 §3.8): 방향 문장(마)을 말하지 않고 현행 상태 전문을 말하며 확정 즉시 조회·채택한다.
+                // 운전자 모드(E63 §3.8): 방향 문장(마)을 말하지 않고 현행 상태 전문을 말하며 확정 즉시 조회·채택한다. 리듀서의
+                // 보류(`hold`)는 이 채널에 없다 — 확정은 늘 처음 말함(`.actionable`)이고, 보류 뒤 첫 발화는 이미 말했으니 건너뛴다.
+                if notice == .renotify, firstSpoken, offRouteNoticePosted { break }
                 let text = appLocalized("guide.carOffRoute")
                 statusText = text
-                offRouteNoticePosted = true
-                announce(text, speechClass: speechClass) { [weak self] in self?.offRouteNoticePosted = false }
-                logOffRouteNotice(notice, reason, guidance, side, returnRelDeg, firstSpoken, spoken: true)
+                postOffRouteNotice(text, speechClass: notice == .confirm ? .actionable : speechClass)
+                logOffRouteNotice(notice, reason, guidance, side, returnRelDeg, firstSpoken, perp: perp, spoken: true)
                 if notice == .confirm { maybeFetchProposal(source: "driver") }
                 break
             }
             let text = GuideText.offRoute(guidance: guidance, side: side, returnRelDeg: returnRelDeg, kind: sessionKind)
-            // 보류는 말하지 않는다 — 상태 행은 `handleDetail`이 먼저 정한 문장(벗어난 쪽만, §3.3).
+            // 보류는 말하지 않는다 — 상태 행은 `handleDetail`이 먼저 정한 문장(벗어난 쪽만).
             statusText = offRouteLine ?? ""
-            logOffRouteNotice(notice, reason, guidance, side, returnRelDeg, firstSpoken, spoken: text != nil)
+            logOffRouteNotice(notice, reason, guidance, side, returnRelDeg, firstSpoken, perp: perp, spoken: text != nil)
             guard let text else { break }
-            offRouteNoticePosted = true
-            announce(text, speechClass: speechClass) { [weak self] in self?.offRouteNoticePosted = false }
+            postOffRouteNotice(text, speechClass: speechClass)
         case let .backOnRoute(spoken):
             offRouteEndedByReroute = false
             offRoute = false
@@ -2800,8 +2803,9 @@ final class BeaconModel {
             // 이탈 복귀 = 자동 재조회 근거 소멸(진행 중 조회의 채택 차단).
             clearProposal()
             // 리듀서가 이 회차에 이탈 문장을 냈고 ∧ 실제로 게시했을 때만 말한다(E63 §3.4). 아니면 이벤트만 — 상태 행은 현행 안내.
-            let say = spoken && offRouteNoticePosted
-            offRouteNoticePosted = false
+            // 운전자 채널은 리듀서의 보류와 무관하게 늘 말하므로 게시 기록만 본다.
+            let say = (spoken || driverChannel) && offRouteNoticePosted
+            offRouteNoticeLive = []
             guideDiagLog(
                 "backOnRoute via=\(prev.offRouteReason?.rawValue ?? "-")"
                     + " perp=\(signedPerp.map { String(format: "%.1f", $0) } ?? "-")"
@@ -3007,6 +3011,7 @@ final class BeaconModel {
             guard token == rerouteToken, isTracking, mode == .detail, self.dest == dest,
                   self.waypoint == waypointAtFetch else { return }
             guard let fetched else {
+                if case .keepVariant = intent { guideDiagLog("rerouteAdopt source=button result=none headClock=-") }
                 // 경로가 없으면 경로 기반 계단 판정도 없다(3-state) — 폴백과 동형.
                 lastStepFree = nil
                 statusText = appLocalized("guide.rerouteFailed")
@@ -3018,6 +3023,7 @@ final class BeaconModel {
             // 전환 커밋: 경로 교체와 같은 원자 블록에서만 세션 축·줄 종류가 바뀐다(세션 수명 불변식).
             if case .switchTo(let target) = intent { commitLineSwitch(to: target) }
             let firstIndices = commitReroutedRoute(fetched)
+            if case .keepVariant = intent { guideDiagLog("rerouteAdopt source=button result=adopted headClock=-") }
             // 재조회는 출발지가 달라 계단 회피 판정이 바뀔 수 있다 — 열화로 전이하면
             // 그 조회의 발화에 결합해 1회 통지한다(spec §2.3).
             let notice = consumeStepFreeNotice(
@@ -3051,6 +3057,7 @@ final class BeaconModel {
             if case .switchTo = intent { variantAdoptedSeq += 1 }
         } catch {
             guard token == rerouteToken, isTracking else { return }
+            if case .keepVariant = intent { guideDiagLog("rerouteAdopt source=button result=failed headClock=-") }
             lastStepFree = nil
             statusText = appLocalized("guide.rerouteFailed")
             resultHaptic(.failure)
@@ -3210,10 +3217,18 @@ final class BeaconModel {
         return "\(minPerp)/\(s.offRouteAwayRun?.count ?? 0)/\(hold)/\(anchor)"
     }
 
+    /// 이탈 문장 게시(E63 §3.4): 게시 번호를 살아 있는 집합에 넣고, 버려지면 그 번호만 뺀다(회차가 바뀌었으면 집합이 이미 비었다).
+    private func postOffRouteNotice(_ text: String, speechClass: GuideSpeechClass) {
+        offRouteNoticeSeq += 1
+        let id = offRouteNoticeSeq
+        offRouteNoticeLive.insert(id)
+        announce(text, speechClass: speechClass) { [weak self] in self?.offRouteNoticeLive.remove(id) }
+    }
+
     /// 이탈 통지 계측 한 줄(E63 spec §6). `spoken`은 말할 문장을 냈는가(보류·운전자 채널 구분 — 게시 실패는 `bgSpeech` 줄).
     private func logOffRouteNotice(
         _ notice: OffRouteNotice, _ reason: OffRouteReason, _ guidance: OffRouteGuidance, _ side: OffRouteSide?,
-        _ returnRelDeg: Double?, _ firstSpoken: Bool, spoken: Bool
+        _ returnRelDeg: Double?, _ firstSpoken: Bool, perp: Double?, spoken: Bool
     ) {
         let heading = guideState?.lastHeading
         let headAge: String = if let heading { String(format: "%.1f", uptimeNow - heading.at) } else { "-" }
@@ -3224,7 +3239,7 @@ final class BeaconModel {
                 + " clock=\(returnRelDeg.map { String(clockHour($0)) } ?? "-")"
                 + " heading=\(heading.map { String(format: "%.0f±%.0f", $0.bearing, $0.uncertaintyDeg) } ?? "-")"
                 + " headAge=\(headAge)"
-                + " perp=\(guideState?.offRouteMinPerp.map { String(format: "%.1f", $0) } ?? "-")"
+                + " perp=\(perp.map { String(format: "%.1f", $0) } ?? "-")"
                 + " d=\(guideState?.offRouteConfirmD.map { String(format: "%.1f", $0) } ?? "-")"
                 + " spoken=\(spoken ? 1 : 0)")
     }

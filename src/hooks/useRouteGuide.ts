@@ -739,12 +739,13 @@ export function useRouteGuide(
    * 무시한다(토큰을 올려 진행 중 조회를 버리면 느린 망에서 채택 없이 예산만 쓴다). 세대는 복귀·수동 재조회가 올려 늦은
    * 응답의 채택을 막는다. 예산은 세션 5회(`mayFetchReroute`).
    */
-  const autoRerouteInFlightRef = useRef(false);
+  /** 진행 중 자동 조회의 세대(없으면 null). 세대가 바뀌면(복귀·수동 재조회·종료) 늦게 끝나는 옛 조회가 다음 회차를 막지 않는다(iOS `proposalInFlightToken` 미러). */
+  const autoRerouteInFlightGenRef = useRef<number | null>(null);
   const autoRerouteGenRef = useRef(0);
   const autoRerouteCountRef = useRef(0);
   /** 이 이탈 회차에 이탈 문장을 실제로 통지 창구에 올렸는가(E63 §3.4 — 아니면 "복귀했습니다"도 말하지 않는다). 확정에서 지운다. */
   const offRouteSpokenRef = useRef(false);
-  /** 돌아가기 국면의 상태 행 문장(마지막 이탈 문장, 보류면 벗어난 쪽만). */
+  /** 돌아가기 국면의 상태 행 문장: 벗어난 쪽만(위원장 판정 2026-10-04 — 시계 방향은 몸을 돌리면 곧 거짓이라 음성으로만). */
   const offRouteLineRef = useRef<string | null>(null);
   /** 리듀서 이벤트 소비(`stepDetail`)가 뒤에 정의된 `autoReroute`를 부르는 창구 — 매 렌더 뒤 effect가 갱신한다. */
   const autoRerouteRef = useRef<() => void>(() => {});
@@ -1750,13 +1751,10 @@ export function useRouteGuide(
       }
       setOffRoute(result.state.phase === "offRoute");
       setProgress(progressOf(route, result.state));
-      // 돌아가기 국면의 상태 행 문장(E63) — 아래 하단 2행 갱신보다 먼저(같은 fix의 윗줄이 이 문장이어야 한다). 보류는 말하지
-      // 않으므로 벗어난 쪽만 둔다(시계 11~1을 "돌아가세요"로 쓰지 않는다).
+      // 돌아가기 국면의 상태 행 문장(E63) — 아래 하단 2행 갱신보다 먼저(같은 fix의 윗줄이 이 문장이어야 한다). 벗어난 쪽만
+      // 둔다(위원장 판정 2026-10-04): 시계 방향·"뒤로 도세요"는 그 순간의 진행 방위 기준이라 나중에 읽으면 거짓이 된다.
       if (result.event?.kind === "offRoute") {
-        offRouteLineRef.current =
-          result.event.guidance === "hold"
-            ? offRouteSideText(result.event.side, t)
-            : offRouteText(result.event, kindFixed === "car", t);
+        offRouteLineRef.current = offRouteSideText(result.event.side, t);
       }
       // 하단 2행(spec 2026-08-11, car는 K2 §7·E56): 이탈 복귀·재획득은 리듀서가 d를 재구성한
       // 지점이다 — 투영이 새 기준에 정렬됐으므로 램프인 기준점·클램프를 리셋한다.
@@ -2378,22 +2376,31 @@ export function useRouteGuide(
    */
   const autoReroute = useCallback(() => {
     if (!trackingRef.current || modeRef.current !== "detail" || inFinalApproachRef.current) return;
-    if (rerouteInFlightRef.current || autoRerouteInFlightRef.current) return;
+    if (rerouteInFlightRef.current) return;
+    if (autoRerouteInFlightGenRef.current !== null && autoRerouteInFlightGenRef.current === autoRerouteGenRef.current) return;
     if (!mayFetchReroute(autoRerouteCountRef.current)) return;
     const origin = lastFixRef.current;
     if (origin === null) return;
     autoRerouteCountRef.current += 1;
-    autoRerouteInFlightRef.current = true;
     const gen = genRef.current;
     autoRerouteGenRef.current += 1;
     const autoGen = autoRerouteGenRef.current;
+    autoRerouteInFlightGenRef.current = autoGen;
     const proposal = { originLat: origin.lat, originLng: origin.lng, acquiredAt: performance.now() / 1000 };
     void (async () => {
       try {
         const fetched = await fetchGuideRoute(true);
         if (gen !== genRef.current || autoGen !== autoRerouteGenRef.current) return;
         if (!trackingRef.current || !mountedRef.current || rerouteInFlightRef.current) return;
-        if (guideRef.current?.phase !== "offRoute") return;
+        // 돌아가기 국면이 이어지는가 — 조회 중 정확도가 잠깐 나빠져(uncertain·reacquiring) 국면이 보존된 상태도 포함한다(iOS
+        // `offRoute` 플래그와 같은 판정. 복귀는 세대 증가가 이미 걸렀다).
+        const g = guideRef.current;
+        if (
+          !g ||
+          !(g.phase === "offRoute" || (g.phase === "uncertain" && g.resumePhase === "offRoute") || g.reacquiringFromOffRoute)
+        ) {
+          return;
+        }
         if (!fetched.ok || sameVia(fetched.via, excludedViaRef.current)) return;
         const now = performance.now() / 1000;
         const cur = lastFixRef.current;
@@ -2417,7 +2424,7 @@ export function useRouteGuide(
         });
         announce(notice ? `${notice} ${summary}` : summary);
       } finally {
-        autoRerouteInFlightRef.current = false;
+        if (autoRerouteInFlightGenRef.current === autoGen) autoRerouteInFlightGenRef.current = null;
       }
     })();
   }, [announce, commitRerouted, fetchGuideRoute, kindFixed, t, tuning]);

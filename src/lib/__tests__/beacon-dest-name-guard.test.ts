@@ -25,7 +25,7 @@ describe("도보 목적지 이름은 통지 언어로 판정한다(A55)", () => 
   });
 
   it("시작 문장은 라벨이 아니라 spokenDestinationName을 받는다", () => {
-    expect(beacon).not.toMatch(/GuideText\.(start|carStart)\([^)]*destination: destinationLabel\)/s);
+    expect(beacon).not.toMatch(/GuideText\.(start|carStart)\([^)]*destination: destinationLabel\)/);
   });
 
   it("라틴 표기 운반 인자에 기본값이 없다", () => {

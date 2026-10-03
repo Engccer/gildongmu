@@ -769,9 +769,9 @@
     "offRouteLeft": "Vous avez quitté l'itinéraire par la gauche",
     "offRouteOpposite": "Vous allez dans le sens opposé à l'itinéraire",
     "offRouteWith": "{side}. {action}",
-    "offRouteReturnClock": "Revenez vers {direction}",
+    "offRouteReturnClock": "Revenez en direction de {direction}",
     "offRouteTurnBack": "Faites demi-tour",
-    "carOffRouteClock": "L'itinéraire est à {direction}",
+    "carOffRouteClock": "L'itinéraire est en direction de {direction}",
     "carOffRouteBehind": "L'itinéraire est derrière vous",
     "imminent": {
       "left": "Tournez à gauche dans un instant",

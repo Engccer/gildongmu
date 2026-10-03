@@ -810,7 +810,7 @@
     "rerouteButton": "Re-query route",
     "rerouteFailed": "Route query failed. Keeping the current route",
     "rerouteDone": "Route recalculated from your current location. {first}. {count, plural, one {# instruction} other {# instructions}}, {distance} total.",
-    "autoReroute": "Now guiding on a new route. {first}. {count, plural, one {# step} other {# steps}}, {distance} total.",
+    "autoReroute": "Now guiding on a new route. {first}. {count, plural, one {# instruction} other {# instructions}}, {distance} total.",
     "rerouteHeadClock": "Turn to {direction}. Then {first}",
     "rerouteHeadBack": "Turn around. Then {first}",
     "rerouteHeadStraight": "Straight ahead, {first}",
