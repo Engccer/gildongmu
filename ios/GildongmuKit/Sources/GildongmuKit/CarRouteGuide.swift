@@ -52,7 +52,10 @@ public func buildCarGuide(briefing: CarRouteBriefing) -> CarGuideData? {
         // 결정 행동(K2 §2.3) — 임박 큐·하단 2행이 문장 대신 읽는다.
         guides.map {
             GuideStepGeometry(
-                description: $0.guidance, pathCoords: $0.pathCoords!, action: $0.action?.guideAction)
+                description: $0.guidance, pathCoords: $0.pathCoords!, action: $0.action?.guideAction,
+                // 지점·방면(E61) — 짧은 안내가 읽는다. 둘 다 없으면 nil.
+                carLandmark: ($0.at == nil && $0.toward == nil)
+                    ? nil : CarLandmark(at: $0.at, toward: $0.toward))
         },
         waypointStepIndex: briefing.waypoint?.stepIndex
     ) else { return nil }
@@ -83,4 +86,18 @@ public func roadNameAt(spans: [CarRoadSpan], d: Double) -> String? {
     // 종점 등호 경계: 마지막 스팬의 끝은 마지막 스팬 소속으로 본다.
     if let last = spans.last, d == last.endD { return last.name }
     return nil
+}
+
+/// 짧은 안내에 실을 지점·방면(E61). 비-ko 화면(`english`)에선 한글 이름을 뺀다 — 영어 문장 틀에
+/// 한글 이름을 넣지 않는다(E28·A52와 같은 규칙). 빈 문자열도 뺀다. 남는 것이 없으면 nil(종전 문장).
+/// 웹 `carSpokenLandmark` 미러, 공유 fixture `car-landmark-cases.json`.
+public func carSpokenLandmark(_ landmark: CarLandmark?, english: Bool) -> CarLandmark? {
+    func keep(_ name: String?) -> String? {
+        guard let name, !name.isEmpty, !(english && hasHangul(name)) else { return nil }
+        return name
+    }
+    let at = keep(landmark?.at)
+    let toward = keep(landmark?.toward)
+    guard at != nil || toward != nil else { return nil }
+    return CarLandmark(at: at, toward: toward)
 }

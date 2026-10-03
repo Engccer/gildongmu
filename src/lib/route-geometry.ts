@@ -34,6 +34,17 @@ export interface StepSpan {
    * 표시 계층이 문장 대신 이것을 쓴다. 도보 스텝엔 없다(문장 분류 `walkStepAction`).
    */
   action?: GuideAction;
+  /**
+   * 자동차 결정 지점의 지점·방면(E61, 서버 `at`·`toward`). 짧은 안내(임박·주기)가 문장 대신
+   * 읽는다. 자동차 전용이고 둘 다 없으면 키 자체가 없다. Kit `GuideStepSpan.carLandmark` 미러.
+   */
+  carLandmark?: CarLandmark;
+}
+
+/** 자동차 결정 지점의 지점(`at`)·방면(`toward`) — 적어도 하나는 있다(E61). */
+export interface CarLandmark {
+  at?: string;
+  toward?: string;
 }
 
 export interface GuideRoute {
@@ -66,7 +77,7 @@ const finite = (c: Coord) => Number.isFinite(c.lat) && Number.isFinite(c.lng);
  * (경유지에서 출발). Kit `buildGuideRoute(_:waypointStepIndex:)` 미러.
  */
 export function buildGuideRoute(
-  steps: { description: string; pathCoords?: Coord[]; action?: GuideAction }[],
+  steps: { description: string; pathCoords?: Coord[]; action?: GuideAction; carLandmark?: CarLandmark }[],
   opts?: { waypointStepIndex?: number },
 ): GuideRoute | null {
   if (steps.length === 0) return null;
@@ -111,6 +122,7 @@ export function buildGuideRoute(
       endD: d,
       isLong: d - startD >= LONG_STEP_MIN_M,
       ...(steps[i].action === undefined ? {} : { action: steps[i].action }),
+      ...(steps[i].carLandmark === undefined ? {} : { carLandmark: steps[i].carLandmark }),
     });
   }
   if (points.length < 2 || d <= 0) return null;

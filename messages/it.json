@@ -806,7 +806,7 @@
     "rough": "all'incirca {distance}",
     "noGuidanceYet": "Nessuna indicazione ancora",
     "rerouteBusy": "Ricalcolo percorso, in corso",
-    "carStart": "Guida in auto verso {dest} avviata. {count, plural, one {# indicazione} other {# indicazioni}}, {distance} in totale. {first}",
+    "carStart": "Guida in auto verso {dest} avviata. {first}. {count, plural, one {# indicazione} other {# indicazioni}}, {distance} in totale.",
     "farNotice": "Prossima indicazione tra circa {distance}. {step}",
     "announceAhead": "Tra circa {distance}. {step}",
     "carOffRoute": "Fuori percorso; guida in pausa. Richiedi di nuovo il percorso per riprendere",
@@ -839,6 +839,9 @@
       "keepLeft": "Tra poco tieni la sinistra",
       "keepRight": "Tra poco tieni la destra"
     },
+    "carImminentAtToward": "Tra poco, a {at}, {action} verso {toward}",
+    "carImminentAt": "Tra poco, a {at}, {action}",
+    "carImminentToward": "Tra poco, {action} verso {toward}",
     "carCommand": {
       "left": "Svolta a sinistra",
       "right": "Svolta a destra",
@@ -854,6 +857,7 @@
       "keepRight": "tieni la destra"
     },
     "carPeriodic": "{command} tra {distance}",
+    "carPeriodicAt": "{command} a {at} tra {distance}",
     "degradedNoLocation": "Non è stato possibile determinare la tua posizione attuale. Controlla l’autorizzazione alla posizione e il segnale.",
     "degradedRetryable": "Non è stato possibile caricare il percorso. Per ora vengono annunciate solo la direzione e la distanza dalla destinazione.",
     "degradedUnavailable": "Nessun percorso verso questa destinazione è stato trovato. La guida usa la direzione e la distanza dalla destinazione.",

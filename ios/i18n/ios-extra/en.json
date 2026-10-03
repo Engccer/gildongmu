@@ -407,7 +407,8 @@
     "altPreviewFailed": "Couldn't load the alternative route",
     "altPreviewSummary": "{variant}, {distance} total",
     "altPreviewTime": "about {minutes} min walk",
-    "altPreviewRemaining": "current route remaining {distance}"
+    "altPreviewRemaining": "current route remaining {distance}",
+    "carDriverNotice": "{command} in {distance}"
   },
   "dataSources": {
     "walkHealth": "Steps come from the iPhone pedometer; calories are an estimate from distance and weight"

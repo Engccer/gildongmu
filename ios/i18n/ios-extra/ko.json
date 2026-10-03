@@ -407,7 +407,8 @@
     "altPreviewFailed": "대안 경로 조회에 실패했습니다",
     "altPreviewSummary": "{variant}, 총 {distance}",
     "altPreviewTime": "도보 약 {minutes}분",
-    "altPreviewRemaining": "지금 경로 잔여 {distance}"
+    "altPreviewRemaining": "지금 경로 잔여 {distance}",
+    "carDriverNotice": "{distance} 앞 {command}"
   },
   "dataSources": {
     "walkHealth": "걸음 수는 iPhone 만보계 실측, 칼로리는 걸은 거리와 체중으로 계산한 추정치입니다"

@@ -3,6 +3,7 @@ package space.dodoplanet.gildongmu.kit
 import space.dodoplanet.gildongmu.kit.models.CarRoadLink
 import space.dodoplanet.gildongmu.kit.models.CarRouteBriefing
 import space.dodoplanet.gildongmu.kit.models.CarRouteGuide
+import kotlinx.serialization.Serializable
 import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -88,5 +89,33 @@ class CarRouteGuideTest {
         assertNull(b.provider)
         assertNull(b.guides[0].pathCoords)
         assertNull(b.guides[0].roadLinks)
+    }
+
+    // ── E61 지점·방면 ──
+
+    @Test fun `지점·방면을 스텝 carLandmark로 옮기고 없는 스텝은 null`() {
+        val guides = defaultGuides.toMutableList()
+        guides[1] = guides[1].copy(action = CarAction.right, at = "광진교남단", toward = "천호 사거리")
+        val out = assertNotNull(buildCarGuide(briefing(guides)))
+        assertEquals(CarLandmark("광진교남단", "천호 사거리"), out.route.steps[1].carLandmark)
+        assertNull(out.route.steps[0].carLandmark)
+    }
+
+    @Serializable
+    private data class LandmarkFixture(val cases: List<Case>) {
+        @Serializable
+        data class Case(val name: String, val landmark: Pair? = null, val english: Boolean, val expect: Pair? = null)
+
+        @Serializable
+        data class Pair(val at: String? = null, val toward: String? = null)
+    }
+
+    @Test fun `carSpokenLandmark 공유 fixture 동조`() {
+        val cases = Fixtures.sharedJson("car-landmark-cases.json", LandmarkFixture.serializer()).cases
+        assertTrue(cases.isNotEmpty())
+        for (c in cases) {
+            val got = carSpokenLandmark(c.landmark?.let { CarLandmark(it.at, it.toward) }, c.english)
+            assertEquals(c.expect?.let { CarLandmark(it.at, it.toward) }, got, c.name)
+        }
     }
 }

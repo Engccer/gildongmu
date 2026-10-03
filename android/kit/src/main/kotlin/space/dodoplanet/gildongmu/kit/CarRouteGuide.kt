@@ -43,7 +43,13 @@ fun buildCarGuide(briefing: CarRouteBriefing): CarGuideData? {
 
     val route = buildGuideRoute(
         // 결정 행동(K2 §2.3) — 임박 큐·하단 2행이 문장 대신 읽는다.
-        guides.map { GuideStepGeometry(it.guidance, it.pathCoords, it.action?.guideAction) },
+        guides.map {
+            GuideStepGeometry(
+                it.guidance, it.pathCoords, it.action?.guideAction,
+                // 지점·방면(E61) — 짧은 안내가 읽는다. 둘 다 없으면 null.
+                carLandmark = if (it.at == null && it.toward == null) null else CarLandmark(it.at, it.toward),
+            )
+        },
         waypointStepIndex = briefing.waypoint?.stepIndex,
     ) ?: return null
 
@@ -70,4 +76,18 @@ fun roadNameAt(spans: List<CarRoadSpan>, d: Double): String? {
     val last = spans.lastOrNull()
     if (last != null && d == last.endD) return last.name
     return null
+}
+
+/**
+ * 짧은 안내에 실을 지점·방면(E61). 비-ko 화면(`english`)에선 한글 이름을 뺀다 — 영어 문장 틀에
+ * 한글 이름을 넣지 않는다(E28·A52와 같은 규칙). 빈 문자열도 뺀다. 남는 것이 없으면 null(종전 문장).
+ * Kit `carSpokenLandmark` 미러, 공유 fixture `car-landmark-cases.json`.
+ */
+fun carSpokenLandmark(landmark: CarLandmark?, english: Boolean): CarLandmark? {
+    fun keep(name: String?): String? =
+        if (name == null || name.isEmpty() || (english && hasHangul(name))) null else name
+    val at = keep(landmark?.at)
+    val toward = keep(landmark?.toward)
+    if (at == null && toward == null) return null
+    return CarLandmark(at, toward)
 }

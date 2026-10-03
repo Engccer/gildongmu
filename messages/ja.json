@@ -806,7 +806,7 @@
     "rough": "{distance}ほど",
     "noGuidanceYet": "まだ案内はありません",
     "rerouteBusy": "経路を再取得、取得中",
-    "carStart": "{dest}まで自動車案内開始。案内{count}件、合計{distance}。{first}",
+    "carStart": "{dest}まで自動車案内開始。{first}。案内{count}件、合計{distance}。",
     "farNotice": "約{distance}先に次の案内があります。{step}",
     "announceAhead": "約{distance}先、{step}",
     "carOffRoute": "経路から外れたため案内を一時停止しました。経路の再検索で再開できます",
@@ -839,6 +839,9 @@
       "keepLeft": "まもなく左方向です",
       "keepRight": "まもなく右方向です"
     },
+    "carImminentAtToward": "まもなく{at}で{toward}方面へ{action}",
+    "carImminentAt": "まもなく{at}で{action}",
+    "carImminentToward": "まもなく{toward}方面へ{action}",
     "carCommand": {
       "left": "左折",
       "right": "右折",
@@ -854,6 +857,7 @@
       "keepRight": "右方向へ進んでください"
     },
     "carPeriodic": "{distance}先、{command}",
+    "carPeriodicAt": "{distance}先、{at}で{command}",
     "degradedNoLocation": "現在地を確認できませんでした。位置情報の許可と電波状況を確認してください。",
     "degradedRetryable": "経路を読み込めませんでした。今は目的地の方向と距離だけをお知らせします。",
     "degradedUnavailable": "この目的地までの経路が見つかりませんでした。目的地の方向と距離で案内します。",

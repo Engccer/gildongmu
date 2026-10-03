@@ -806,7 +806,7 @@
     "rough": "alrededor de {distance}",
     "noGuidanceYet": "Aún no hay indicaciones",
     "rerouteBusy": "Reconsultar ruta, en curso",
-    "carStart": "Guía en coche hasta {dest} iniciada. {count, plural, one {# indicación} other {# indicaciones}}, {distance} en total. {first}",
+    "carStart": "Guía en coche hasta {dest} iniciada. {first}. {count, plural, one {# indicación} other {# indicaciones}}, {distance} en total.",
     "farNotice": "Próxima indicación en unos {distance}. {step}",
     "announceAhead": "En unos {distance}. {step}",
     "carOffRoute": "Fuera de la ruta; guía en pausa. Vuelve a consultar la ruta para reanudar",
@@ -839,6 +839,9 @@
       "keepLeft": "Manténgase a la izquierda en breve",
       "keepRight": "Manténgase a la derecha en breve"
     },
+    "carImminentAtToward": "En breve, en {at}, {action} hacia {toward}",
+    "carImminentAt": "En breve, en {at}, {action}",
+    "carImminentToward": "En breve, {action} hacia {toward}",
     "carCommand": {
       "left": "Gire a la izquierda",
       "right": "Gire a la derecha",
@@ -854,6 +857,7 @@
       "keepRight": "manténgase a la derecha"
     },
     "carPeriodic": "{command} en {distance}",
+    "carPeriodicAt": "{command} en {at} dentro de {distance}",
     "degradedNoLocation": "No se pudo determinar tu ubicación actual. Comprueba el permiso de ubicación y la señal.",
     "degradedRetryable": "No se pudo cargar la ruta. Por ahora solo se anuncian la dirección y la distancia al destino.",
     "degradedUnavailable": "No se encontró ninguna ruta hasta este destino. La guía usa la dirección y la distancia al destino.",

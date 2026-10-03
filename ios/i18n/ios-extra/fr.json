@@ -407,7 +407,8 @@
     "altPreviewFailed": "Échec du chargement de l’itinéraire alternatif",
     "altPreviewSummary": "{variant}, {distance} au total",
     "altPreviewTime": "environ {minutes} min à pied",
-    "altPreviewRemaining": "itinéraire actuel restant {distance}"
+    "altPreviewRemaining": "itinéraire actuel restant {distance}",
+    "carDriverNotice": "{command} dans {distance}"
   },
   "dataSources": {
     "walkHealth": "Les pas viennent du podomètre de l'iPhone ; les calories sont une estimation d'après la distance et le poids"

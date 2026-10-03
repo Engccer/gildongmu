@@ -163,7 +163,7 @@ describe("수량 문구 복수형(A29)", () => {
     "directions.readySummary": "Route guidance is ready for 1 mode.",
     "guide.detailStart": "Walking guidance to x started. 1 instruction, x total. x",
     "guide.rerouteDone": "Route recalculated from your current location. 1 instruction, x total. x",
-    "guide.carStart": "Car guidance to x started. 1 instruction, x total. x",
+    "guide.carStart": "Car guidance to x started. x. 1 instruction, x total.",
     "guide.band.transitRiding": "On x, 1 stop left",
     "walkInfra.audioSummary": "1 device within 300m",
     "walkInfra.audioSite": "x, x (1 device)",

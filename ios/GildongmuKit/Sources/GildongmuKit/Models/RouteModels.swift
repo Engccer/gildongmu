@@ -38,10 +38,15 @@ public struct CarRouteGuide: Codable, Sendable, Hashable {
     /// ⚠ **미지 값은 nil로 떨어뜨린다** — 서버가 코드를 더했을 때 구버전 앱이 디코딩 실패로
     /// 상세 전체를 잃지 않게(`init(from:)`가 문자열을 읽어 케이스 없으면 nil).
     public let action: CarAction?
+    /// 결정 지점 이름(E61, 서버 `at` — 기하 옵트인 전용, 이름 없는 "교차로"류는 서버가 뺀다).
+    public let at: String?
+    /// 결정 지점의 방면(E61, 서버 `toward` — 기하 옵트인 전용).
+    public let toward: String?
 
     public init(
         name: String, guidance: String, distanceMeters: Int, durationSeconds: Int,
-        pathCoords: [RoutePoint]? = nil, roadLinks: [CarRoadLink]? = nil, action: CarAction? = nil
+        pathCoords: [RoutePoint]? = nil, roadLinks: [CarRoadLink]? = nil, action: CarAction? = nil,
+        at: String? = nil, toward: String? = nil
     ) {
         self.name = name
         self.guidance = guidance
@@ -50,10 +55,12 @@ public struct CarRouteGuide: Codable, Sendable, Hashable {
         self.pathCoords = pathCoords
         self.roadLinks = roadLinks
         self.action = action
+        self.at = at
+        self.toward = toward
     }
 
     private enum CodingKeys: String, CodingKey {
-        case name, guidance, distanceMeters, durationSeconds, pathCoords, roadLinks, action
+        case name, guidance, distanceMeters, durationSeconds, pathCoords, roadLinks, action, at, toward
     }
 
     public init(from decoder: Decoder) throws {
@@ -65,6 +72,8 @@ public struct CarRouteGuide: Codable, Sendable, Hashable {
         pathCoords = try c.decodeIfPresent([RoutePoint].self, forKey: .pathCoords)
         roadLinks = try c.decodeIfPresent([CarRoadLink].self, forKey: .roadLinks)
         action = (try c.decodeIfPresent(String.self, forKey: .action)).flatMap(CarAction.init(rawValue:))
+        at = try c.decodeIfPresent(String.self, forKey: .at)
+        toward = try c.decodeIfPresent(String.self, forKey: .toward)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -76,6 +85,8 @@ public struct CarRouteGuide: Codable, Sendable, Hashable {
         try c.encodeIfPresent(pathCoords, forKey: .pathCoords)
         try c.encodeIfPresent(roadLinks, forKey: .roadLinks)
         try c.encodeIfPresent(action, forKey: .action)
+        try c.encodeIfPresent(at, forKey: .at)
+        try c.encodeIfPresent(toward, forKey: .toward)
     }
 }
 

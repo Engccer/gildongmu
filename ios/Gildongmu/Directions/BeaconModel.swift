@@ -2528,7 +2528,7 @@ final class BeaconModel {
             statusText = ""
             // 실행 안내는 억제 중이면 최신 1개를 보관해 해제 시 복구한다(스펙 §4.3).
             if outputSuppressed { pendingRecovery = text } else { announce(spoken, speechClass: speechClass) }
-        case let .imminent(_, action, stage):
+        case let .imminent(indices, action, stage):
             // 임박 큐(20m): 전문이 아니라 짧은 명령형이다. 전문은 30m에서 이미 나갔고,
             // 여기서 다시 읽으면 8초 안에 두 문장이 겹쳐 정작 행동 시점을 놓친다.
             //
@@ -2545,7 +2545,11 @@ final class BeaconModel {
             // 수단·청취자별 문구(K2 §6.3): walk "잠시 후 왼쪽으로 도세요" / car 동승자 "잠시 후
             // 우회전하세요" / car 운전자 명령 단어 "우회전".
             let text = sessionKind == .car
-                ? (driverChannel ? GuideText.carCommand(action) : GuideText.carImminentText(action))
+                ? (driverChannel
+                    ? GuideText.carCommand(action)
+                    // 지점·방면(E61)은 행동이 있는 그 결정 지점 스텝의 것.
+                    : GuideText.carImminentText(
+                        action, landmark: indices.first.flatMap { route.steps.indices.contains($0) ? route.steps[$0].carLandmark : nil }))
                 : GuideText.imminentText(action)
             statusText = text
             if !outputSuppressed { announce(text, speechClass: speechClass) }

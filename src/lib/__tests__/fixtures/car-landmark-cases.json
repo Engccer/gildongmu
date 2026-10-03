@@ -1,0 +1,13 @@
+{
+  "comment": "carSpokenLandmark 웹·Kit·:kit 동조 fixture (E61, spec 2026-10-03-car-short-guidance-design.md §2). english = 비-ko 화면 — 한글 이름은 영어 문장 틀에 넣지 않는다(E28·A52). landmark null = 스텝에 지점·방면 없음. expect null = 종전 문장.",
+  "cases": [
+    { "name": "ko, 지점+방면", "landmark": { "at": "광진교남단", "toward": "천호 사거리" }, "english": false, "expect": { "at": "광진교남단", "toward": "천호 사거리" } },
+    { "name": "ko, 지점만", "landmark": { "at": "천호대교북단" }, "english": false, "expect": { "at": "천호대교북단" } },
+    { "name": "ko, 방면만", "landmark": { "toward": "구리타워" }, "english": false, "expect": { "toward": "구리타워" } },
+    { "name": "지점·방면 없음은 null", "landmark": null, "english": false, "expect": null },
+    { "name": "빈 문자열은 없는 것으로", "landmark": { "at": "", "toward": "" }, "english": false, "expect": null },
+    { "name": "en, 한글 이름은 둘 다 뺀다", "landmark": { "at": "광진교남단", "toward": "천호 사거리" }, "english": true, "expect": null },
+    { "name": "en, 라틴 이름은 남기고 한글만 뺀다", "landmark": { "at": "COEX", "toward": "잠실" }, "english": true, "expect": { "at": "COEX" } },
+    { "name": "en, 한글이 섞인 이름은 뺀다", "landmark": { "at": "E-마트", "toward": "IC" }, "english": true, "expect": { "toward": "IC" } }
+  ]
+}

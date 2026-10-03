@@ -806,7 +806,7 @@
     "rough": "à peu près {distance}",
     "noGuidanceYet": "Pas encore d'instruction",
     "rerouteBusy": "Recalculer l'itinéraire, en cours",
-    "carStart": "Guidage en voiture vers {dest} démarré. {count, plural, one {# instruction} other {# instructions}}, {distance} au total. {first}",
+    "carStart": "Guidage en voiture vers {dest} démarré. {first}. {count, plural, one {# instruction} other {# instructions}}, {distance} au total.",
     "farNotice": "Prochaine instruction dans environ {distance}. {step}",
     "announceAhead": "Dans environ {distance}. {step}",
     "carOffRoute": "Hors itinéraire ; guidage en pause. Relancez la recherche d'itinéraire pour reprendre",
@@ -839,6 +839,9 @@
       "keepLeft": "Restez à gauche bientôt",
       "keepRight": "Restez à droite bientôt"
     },
+    "carImminentAtToward": "Bientôt, à {at}, {action} vers {toward}",
+    "carImminentAt": "Bientôt, à {at}, {action}",
+    "carImminentToward": "Bientôt, {action} vers {toward}",
     "carCommand": {
       "left": "Tournez à gauche",
       "right": "Tournez à droite",
@@ -854,6 +857,7 @@
       "keepRight": "restez à droite"
     },
     "carPeriodic": "{command} dans {distance}",
+    "carPeriodicAt": "{command} à {at} dans {distance}",
     "degradedNoLocation": "Votre position actuelle n’a pas pu être déterminée. Vérifiez l’autorisation de localisation et le signal.",
     "degradedRetryable": "L’itinéraire n’a pas pu être chargé. Pour l’instant, seules la direction et la distance jusqu’à la destination sont annoncées.",
     "degradedUnavailable": "Aucun itinéraire vers cette destination n’a été trouvé. Le guidage utilise la direction et la distance jusqu’à la destination.",

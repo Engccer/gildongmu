@@ -14361,6 +14361,46 @@
         }
       }
     },
+    "guide.carDriverNotice": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ 앞 %2$@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%2$@ in %1$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%2$@ en %1$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%2$@ dans %1$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%2$@ tra %1$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@先、%2$@"
+          }
+        }
+      }
+    },
     "guide.carImminent.back": {
       "localizations": {
         "ko": {
@@ -14557,6 +14597,126 @@
           "stringUnit": {
             "state": "translated",
             "value": "まもなく右折です"
+          }
+        }
+      }
+    },
+    "guide.carImminentAt": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "잠시 후 %1$@에서 %2$@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shortly, at %1$@, %2$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En breve, en %1$@, %2$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bientôt, à %1$@, %2$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tra poco, a %1$@, %2$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "まもなく%1$@で%2$@"
+          }
+        }
+      }
+    },
+    "guide.carImminentAtToward": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "잠시 후 %1$@에서 %2$@ 방면으로 %3$@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shortly, at %1$@, %3$@ toward %2$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En breve, en %1$@, %3$@ hacia %2$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bientôt, à %1$@, %3$@ vers %2$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tra poco, a %1$@, %3$@ verso %2$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "まもなく%1$@で%2$@方面へ%3$@"
+          }
+        }
+      }
+    },
+    "guide.carImminentToward": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "잠시 후 %1$@ 방면으로 %2$@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shortly, %2$@ toward %1$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En breve, %2$@ hacia %1$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bientôt, %2$@ vers %1$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tra poco, %2$@ verso %1$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "まもなく%1$@方面へ%2$@"
           }
         }
       }
@@ -14806,7 +14966,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ 앞 %2$@"
+            "value": "%1$@ 직진하다가 %2$@"
           }
         },
         "en": {
@@ -14837,6 +14997,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "%1$@先、%2$@"
+          }
+        }
+      }
+    },
+    "guide.carPeriodicAt": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ 직진하다가 %2$@에서 %3$@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%3$@ at %2$@ in %1$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%3$@ en %2$@ dentro de %1$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%3$@ à %2$@ dans %1$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%3$@ a %2$@ tra %1$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@先、%2$@で%3$@"
           }
         }
       }
@@ -14886,37 +15086,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@까지 자동차 안내 시작. 안내 %2$@개, 총 %3$@. %4$@"
+            "value": "%1$@까지 자동차 안내 시작. %2$@. 안내 %3$@개, 총 %4$@."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Car guidance to %1$@ started. {2, plural, one {%2$@ instruction} other {%2$@ instructions}}, %3$@ total. %4$@"
+            "value": "Car guidance to %1$@ started. %2$@. {3, plural, one {%3$@ instruction} other {%3$@ instructions}}, %4$@ total."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Guía en coche hasta %1$@ iniciada. {2, plural, one {%2$@ indicación} other {%2$@ indicaciones}}, %3$@ en total. %4$@"
+            "value": "Guía en coche hasta %1$@ iniciada. %2$@. {3, plural, one {%3$@ indicación} other {%3$@ indicaciones}}, %4$@ en total."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Guidage en voiture vers %1$@ démarré. {2, plural, one {%2$@ instruction} other {%2$@ instructions}}, %3$@ au total. %4$@"
+            "value": "Guidage en voiture vers %1$@ démarré. %2$@. {3, plural, one {%3$@ instruction} other {%3$@ instructions}}, %4$@ au total."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Guida in auto verso %1$@ avviata. {2, plural, one {%2$@ indicazione} other {%2$@ indicazioni}}, %3$@ in totale. %4$@"
+            "value": "Guida in auto verso %1$@ avviata. %2$@. {3, plural, one {%3$@ indicazione} other {%3$@ indicazioni}}, %4$@ in totale."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@まで自動車案内開始。案内%2$@件、合計%3$@。%4$@"
+            "value": "%1$@まで自動車案内開始。%2$@。案内%3$@件、合計%4$@。"
           }
         }
       }

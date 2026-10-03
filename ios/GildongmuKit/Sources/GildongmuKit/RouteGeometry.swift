@@ -37,14 +37,32 @@ public struct GuideStepSpan: Sendable, Equatable {
     public let isLong: Bool
     /// 서버 투영 결정 행동(자동차 `turnType` → `CarAction`, K2 spec §2.3). 도보 스텝엔 없다.
     public let action: WalkAction?
+    /// 자동차 결정 지점의 지점·방면(E61, 서버 `at`·`toward`). 짧은 안내(임박·주기)가 읽는다.
+    /// 자동차 전용이고 둘 다 없으면 nil. 웹 `StepSpan.carLandmark` 미러.
+    public let carLandmark: CarLandmark?
 
-    public init(index: Int, description: String, startD: Double, endD: Double, isLong: Bool, action: WalkAction? = nil) {
+    public init(
+        index: Int, description: String, startD: Double, endD: Double, isLong: Bool,
+        action: WalkAction? = nil, carLandmark: CarLandmark? = nil
+    ) {
         self.index = index
         self.description = description
         self.startD = startD
         self.endD = endD
         self.isLong = isLong
         self.action = action
+        self.carLandmark = carLandmark
+    }
+}
+
+/// 자동차 결정 지점의 지점(`at`)·방면(`toward`) — 적어도 하나는 있다(E61). 웹 `CarLandmark` 미러.
+public struct CarLandmark: Sendable, Equatable, Hashable {
+    public let at: String?
+    public let toward: String?
+
+    public init(at: String?, toward: String?) {
+        self.at = at
+        self.toward = toward
     }
 }
 
@@ -70,11 +88,17 @@ public struct GuideStepGeometry: Sendable {
     public let pathCoords: [RoutePoint]?
     /// 서버 투영 결정 행동(자동차 전용, K2 §2.3). 도보는 nil.
     public let action: WalkAction?
+    /// 자동차 지점·방면(E61). 도보는 nil.
+    public let carLandmark: CarLandmark?
 
-    public init(description: String, pathCoords: [RoutePoint]?, action: WalkAction? = nil) {
+    public init(
+        description: String, pathCoords: [RoutePoint]?, action: WalkAction? = nil,
+        carLandmark: CarLandmark? = nil
+    ) {
         self.description = description
         self.pathCoords = pathCoords
         self.action = action
+        self.carLandmark = carLandmark
     }
 }
 
@@ -121,7 +145,8 @@ public func buildGuideRoute(
             startD: startD,
             endD: d,
             isLong: d - startD >= longStepMinMeters,
-            action: step.action
+            action: step.action,
+            carLandmark: step.carLandmark
         ))
     }
     guard points.count >= 2, d > 0 else { return nil }

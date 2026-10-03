@@ -281,8 +281,26 @@
   "guide.bundle": [
     "steps"
   ],
+  "guide.carImminentAt": [
+    "at",
+    "action"
+  ],
+  "guide.carImminentAtToward": [
+    "at",
+    "toward",
+    "action"
+  ],
+  "guide.carImminentToward": [
+    "toward",
+    "action"
+  ],
   "guide.carPeriodic": [
     "distance",
+    "command"
+  ],
+  "guide.carPeriodicAt": [
+    "distance",
+    "at",
     "command"
   ],
   "guide.carRoadNow": [
@@ -290,9 +308,9 @@
   ],
   "guide.carStart": [
     "dest",
+    "first",
     "count",
-    "distance",
-    "first"
+    "distance"
   ],
   "guide.currentRoad": [
     "road"

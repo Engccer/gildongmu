@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { buildCarGuide, roadNameAt } from "../car-route-guide";
+import { buildCarGuide, carSpokenLandmark, roadNameAt } from "../car-route-guide";
+import type { CarLandmark } from "../route-geometry";
 import type { CarRouteBriefing } from "../types";
+import landmarkFixture from "./fixtures/car-landmark-cases.json";
 
 // 좌표 규약: 위도 1도 ≈ 111,320m — 남→북 직선(route-guide fixture 동형).
 const M = 1 / 111320;
@@ -83,6 +85,18 @@ describe("buildCarGuide (fail-closed, B1 §5)", () => {
     expect(buildCarGuide(ok)).not.toBeNull();
   });
 
+  it("지점·방면(E61)을 스텝의 carLandmark로 옮기고, 없는 스텝엔 키를 두지 않는다", () => {
+    const b = briefing();
+    b.guides[1].at = "광진교남단";
+    b.guides[1].toward = "천호 사거리";
+    const out = buildCarGuide(b)!;
+    expect(out.route.steps[1].carLandmark).toEqual({ at: "광진교남단", toward: "천호 사거리" });
+    expect("carLandmark" in out.route.steps[0]).toBe(false);
+    const towardOnly = briefing();
+    towardOnly.guides[1].toward = "구리타워";
+    expect(buildCarGuide(towardOnly)!.route.steps[1].carLandmark).toEqual({ toward: "구리타워" });
+  });
+
   it("roadLinks 자체가 없으면 도로명 강등(경로 안내 유지)", () => {
     const b = briefing();
     delete b.guides[0].roadLinks;
@@ -108,4 +122,12 @@ describe("roadNameAt", () => {
     expect(roadNameAt(spans, 501)).toBeNull();
     expect(roadNameAt([], 100)).toBeNull();
   });
+});
+
+describe("carSpokenLandmark (공유 fixture)", () => {
+  for (const c of landmarkFixture.cases) {
+    it(c.name, () => {
+      expect(carSpokenLandmark((c.landmark ?? undefined) as CarLandmark | undefined, c.english)).toEqual(c.expect);
+    });
+  }
 });

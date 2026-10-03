@@ -739,6 +739,9 @@
     <string name="guide_carImminent_keepRight">Manténgase a la derecha en breve</string>
     <string name="guide_carImminent_left">Gire a la izquierda en breve</string>
     <string name="guide_carImminent_right">Gire a la derecha en breve</string>
+    <string name="guide_carImminentAt">En breve, en %1$s, %2$s</string>
+    <string name="guide_carImminentAtToward">En breve, en %1$s, %3$s hacia %2$s</string>
+    <string name="guide_carImminentToward">En breve, %2$s hacia %1$s</string>
     <string name="guide_carLiveAction_back">cambie de sentido</string>
     <string name="guide_carLiveAction_keepLeft">manténgase a la izquierda</string>
     <string name="guide_carLiveAction_keepRight">manténgase a la derecha</string>
@@ -746,8 +749,9 @@
     <string name="guide_carLiveAction_right">gire a la derecha</string>
     <string name="guide_carOffRoute">Fuera de la ruta; guía en pausa. Vuelve a consultar la ruta para reanudar</string>
     <string name="guide_carPeriodic">%2$s en %1$s</string>
+    <string name="guide_carPeriodicAt">%3$s en %2$s dentro de %1$s</string>
     <string name="guide_carRoadNow">Circulando por %1$s</string>
-    <string name="guide_carStart">Guía en coche hasta %1$s iniciada. {2, plural, one {%2$s indicación} other {%2$s indicaciones}}, %3$s en total. %4$s</string>
+    <string name="guide_carStart">Guía en coche hasta %1$s iniciada. %2$s. {3, plural, one {%3$s indicación} other {%3$s indicaciones}}, %4$s en total.</string>
     <string name="guide_changeDestHere">Cambiar destino a aquí</string>
     <string name="guide_changeWaypointHere">Cambiar el punto de paso a aquí</string>
     <string name="guide_currentRoad">Vía actual, %1$s</string>

@@ -43,7 +43,8 @@ import {
   type GuideState,
   type GuideTuning,
 } from "@/lib/route-guide";
-import { buildCarGuide, roadNameAt, type CarRoadSpan } from "@/lib/car-route-guide";
+import type { CarLandmark } from "@/lib/route-geometry";
+import { buildCarGuide, carSpokenLandmark, roadNameAt, type CarRoadSpan } from "@/lib/car-route-guide";
 import {
   buildDisplayUnits,
   guideLiveRows,
@@ -52,8 +53,8 @@ import {
   type LiveRowsOutput,
   type LiveRowsState,
 } from "@/lib/guide-live-rows";
-import { walkStepAction, type WalkAction } from "@/lib/walk-action";
-import { dataLocale } from "@/lib/data-locale";
+import { walkStepAction, type GuideAction, type WalkAction } from "@/lib/walk-action";
+import { dataLocale, prefersEnglish } from "@/lib/data-locale";
 import { formatDistance, joinText } from "@/lib/format";
 import { haversineMeters } from "@/lib/geo";
 import {
@@ -276,9 +277,10 @@ export function nextLine(
  * 단문이었다). car는 `carPeriodicLine`(다음 행동 명령 단문, K2 §6.3).
  */
 /**
- * car 주기 통지 단문(K2 §6.3, iOS `GuideText.periodicCar` 미러): 다음 스텝에 서버 투영
- * 행동이 있으면 "{distance} 앞 {command}"(명령 단어 — "약 1.2km 앞 우회전"), 없으면(터널·
- * 톨게이트·직진 갈래) 종전 전문 틀 `nextLine`, 마지막 스텝은 목적지 틀.
+ * car 주기 통지 단문(K2 §6.3·E61, iOS `GuideText.periodicCar` 미러): 다음 스텝에 서버 투영
+ * 행동이 있으면 "{distance} 직진하다가 [{지점}에서 ]{command}"(명령 단어, 방면은 싣지 않는다),
+ * 없으면(터널·톨게이트·직진 갈래) 종전 전문 틀 `nextLine`, 마지막 스텝은 목적지 틀.
+ * `english`(기본값 없음): 비-ko 화면이면 한글 지점명을 뺀다(`carSpokenLandmark`).
  */
 export function carPeriodicLine(
   route: GuideRoute,
@@ -286,11 +288,34 @@ export function carPeriodicLine(
   destName: string,
   distance: string,
   t: GuideT,
+  english: boolean,
 ): string {
   const next = route.steps[stepIndex + 1];
   if (!next) return t("nextDestination", { dest: destName, distance });
-  if (next.action) return t("carPeriodic", { distance, command: t(`carCommand.${next.action}`) });
+  if (next.action) {
+    const command = t(`carCommand.${next.action}`);
+    const at = carSpokenLandmark(next.carLandmark, english)?.at;
+    return at ? t("carPeriodicAt", { distance, at, command }) : t("carPeriodic", { distance, command });
+  }
   return nextLine(route, stepIndex, destName, distance, t);
+}
+
+/**
+ * car 임박 문장(K2 §6.3·E61, iOS `GuideText.carImminentText` 미러): "잠시 후 [{지점}에서 ]
+ * [{방면} 방면으로 ]{행동구}". 없는 조각은 빼고 둘 다 없으면 종전 "잠시 후 우회전하세요".
+ */
+export function carImminentLine(
+  action: GuideAction,
+  landmark: CarLandmark | undefined,
+  t: GuideT,
+  english: boolean,
+): string {
+  const lm = carSpokenLandmark(landmark, english);
+  if (!lm) return t(`carImminent.${action}`);
+  const phrase = t(`carLiveAction.${action}`);
+  if (lm.at && lm.toward) return t("carImminentAtToward", { at: lm.at, toward: lm.toward, action: phrase });
+  if (lm.at) return t("carImminentAt", { at: lm.at, action: phrase });
+  return t("carImminentToward", { toward: lm.toward!, action: phrase });
 }
 
 export function walkPeriodicLine(
@@ -1069,7 +1094,7 @@ export function useRouteGuide(
           // 반복 단계(15·10m, 2026-08-26)는 소리·진동만 — 문장을 셋 다 내면 4초 안에 겹친다.
           if (event.stage > 0) return "";
           return kindFixed === "car"
-            ? t(`carImminent.${event.action}`)
+            ? carImminentLine(event.action, route.steps[event.indices[0]]?.carLandmark, t, prefersEnglish(locale))
             : t(`imminent.${event.action}`);
         case "farNotice":
           // 원거리 예고(§4.7): 크로싱 시점의 **실측 잔여**(리듀서가 기하에서 계산해
@@ -1098,7 +1123,7 @@ export function useRouteGuide(
                 liveStepsRef.current[event.stepIndex]?.live?.target,
                 t,
               )
-            : carPeriodicLine(route, event.stepIndex, destRef.current.name, distance, t);
+            : carPeriodicLine(route, event.stepIndex, destRef.current.name, distance, t, prefersEnglish(locale));
         }
         case "finalApproachEnter":
           // 이 이벤트의 문장은 `stepFinalApproach`가 소유한다 — 진입 서술은 fix 기준

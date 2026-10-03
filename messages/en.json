@@ -806,7 +806,7 @@
     "rough": "around {distance}",
     "noGuidanceYet": "No instruction yet",
     "rerouteBusy": "Re-query route, in progress",
-    "carStart": "Car guidance to {dest} started. {count, plural, one {# instruction} other {# instructions}}, {distance} total. {first}",
+    "carStart": "Car guidance to {dest} started. {first}. {count, plural, one {# instruction} other {# instructions}}, {distance} total.",
     "farNotice": "Next instruction in about {distance}. {step}",
     "announceAhead": "In about {distance}. {step}",
     "carOffRoute": "You are off the route; guidance is paused. Refresh the route to resume",
@@ -839,6 +839,9 @@
       "keepLeft": "Keep left shortly",
       "keepRight": "Keep right shortly"
     },
+    "carImminentAtToward": "Shortly, at {at}, {action} toward {toward}",
+    "carImminentAt": "Shortly, at {at}, {action}",
+    "carImminentToward": "Shortly, {action} toward {toward}",
     "carCommand": {
       "left": "Turn left",
       "right": "Turn right",
@@ -854,6 +857,7 @@
       "keepRight": "keep right"
     },
     "carPeriodic": "{command} in {distance}",
+    "carPeriodicAt": "{command} at {at} in {distance}",
     "degradedNoLocation": "Your current location could not be determined. Check location permission and signal.",
     "degradedRetryable": "The route could not be loaded. For now, only the direction and distance to the destination are announced.",
     "degradedUnavailable": "No route to this destination was found. Guidance uses the direction and distance to the destination.",

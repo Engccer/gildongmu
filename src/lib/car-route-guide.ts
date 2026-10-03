@@ -10,8 +10,9 @@
  * 도로명 기능만 강등(빈 배열)하고 경로 안내는 유지한다 — 어긋난 스팬으로 "지금
  * 어느 도로"를 말하는 것이 가짜 정밀이고, 경로 추종 자체는 폴리라인만으로 성립한다.
  */
+import { hasHangul } from "./format";
 import { haversineMeters } from "./geo";
-import { buildGuideRoute, type GuideRoute } from "./route-geometry";
+import { buildGuideRoute, type CarLandmark, type GuideRoute } from "./route-geometry";
 import type { CarRouteBriefing } from "./types";
 
 /** 도로명 스팬 — 진행거리 [startD, endD) 구간의 도로명(무명 링크는 null). */
@@ -60,6 +61,15 @@ export function buildCarGuide(briefing: CarRouteBriefing): CarGuideData | null {
       pathCoords: g.pathCoords!,
       // 결정 행동(K2 spec §2.3) — 임박 큐·하단 2행이 문장 대신 읽는다.
       ...(g.action === undefined ? {} : { action: g.action }),
+      // 지점·방면(E61) — 짧은 안내가 읽는다. 둘 다 없으면 키 없음.
+      ...(g.at === undefined && g.toward === undefined
+        ? {}
+        : {
+            carLandmark: {
+              ...(g.at === undefined ? {} : { at: g.at }),
+              ...(g.toward === undefined ? {} : { toward: g.toward }),
+            },
+          }),
     })),
   );
   if (!route) return null;
@@ -94,4 +104,17 @@ export function roadNameAt(spans: CarRoadSpan[], d: number): string | null {
   const last = spans[spans.length - 1];
   if (last && d === last.endD) return last.name;
   return null;
+}
+
+/**
+ * 짧은 안내에 실을 지점·방면(E61). 비-ko 화면(`english`)에선 한글 이름을 뺀다 — 영어 문장 틀에
+ * 한글 이름을 넣지 않는다(E28·A52 `transitWalkDestinationName`과 같은 규칙). 빈 문자열도 뺀다.
+ * 남는 것이 없으면 null(종전 문장). Kit `carSpokenLandmark` 미러, 공유 fixture `car-landmark-cases.json`.
+ */
+export function carSpokenLandmark(landmark: CarLandmark | undefined, english: boolean): CarLandmark | null {
+  const keep = (name: string | undefined) => (name && !(english && hasHangul(name)) ? name : undefined);
+  const at = keep(landmark?.at);
+  const toward = keep(landmark?.toward);
+  if (!at && !toward) return null;
+  return { ...(at ? { at } : {}), ...(toward ? { toward } : {}) };
 }

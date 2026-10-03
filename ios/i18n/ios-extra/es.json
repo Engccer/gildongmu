@@ -407,7 +407,8 @@
     "altPreviewFailed": "No se pudo cargar la ruta alternativa",
     "altPreviewSummary": "{variant}, {distance} en total",
     "altPreviewTime": "unos {minutes} min a pie",
-    "altPreviewRemaining": "ruta actual restante {distance}"
+    "altPreviewRemaining": "ruta actual restante {distance}",
+    "carDriverNotice": "{command} en {distance}"
   },
   "dataSources": {
     "walkHealth": "Los pasos vienen del podómetro del iPhone; las calorías son una estimación según distancia y peso"

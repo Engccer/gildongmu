@@ -38,7 +38,12 @@ data class GuideStepSpan(
     val isLong: Boolean,
     /** 서버 투영 결정 행동(서버 `attachStepActions` — 자동차 `turnType`·도보 `walkStepAction` 둘 다, E16 축 3). 서버가 안 주면 null. */
     val action: WalkAction? = null,
+    /** 자동차 결정 지점의 지점·방면(E61, 서버 `at`·`toward`). 자동차 전용이고 둘 다 없으면 null. */
+    val carLandmark: CarLandmark? = null,
 )
+
+/** 자동차 결정 지점의 지점(`at`)·방면(`toward`) — 적어도 하나는 있다(E61). Kit `CarLandmark` 미러. */
+data class CarLandmark(val at: String?, val toward: String?)
 
 data class GuideRoute(
     val polyline: GuidePolyline,
@@ -61,6 +66,8 @@ data class GuideStepGeometry(
     val pathCoords: List<RoutePoint>?,
     /** 서버 투영 결정 행동(자동차·도보 둘 다 서버가 준다, E16 축 3). 없으면 null. */
     val action: WalkAction? = null,
+    /** 자동차 지점·방면(E61). 도보는 null. */
+    val carLandmark: CarLandmark? = null,
 )
 
 /**
@@ -104,6 +111,7 @@ fun buildGuideRoute(steps: List<GuideStepGeometry>, waypointStepIndex: Int? = nu
                 endD = d,
                 isLong = d - startD >= longStepMinMeters,
                 action = step.action,
+                carLandmark = step.carLandmark,
             ),
         )
     }

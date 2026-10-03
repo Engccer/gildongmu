@@ -407,7 +407,8 @@
     "altPreviewFailed": "代替ルートの取得に失敗しました",
     "altPreviewSummary": "{variant}、合計{distance}",
     "altPreviewTime": "徒歩約{minutes}分",
-    "altPreviewRemaining": "現在のルート残り{distance}"
+    "altPreviewRemaining": "現在のルート残り{distance}",
+    "carDriverNotice": "{distance}先、{command}"
   },
   "dataSources": {
     "walkHealth": "歩数はiPhoneの歩数計の実測、カロリーは歩いた距離と体重から計算した推定値です"

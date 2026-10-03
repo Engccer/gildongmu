@@ -32,6 +32,10 @@ data class CarRouteGuide(
     val roadLinks: List<CarRoadLink>? = null,
     @Serializable(with = LenientCarActionSerializer::class)
     val action: CarAction? = null,
+    /** 결정 지점 이름(E61, 서버 `at` — 기하 옵트인 전용, 이름 없는 "교차로"류는 서버가 뺀다). */
+    val at: String? = null,
+    /** 결정 지점의 방면(E61, 서버 `toward` — 기하 옵트인 전용). */
+    val toward: String? = null,
 )
 
 /** 경유지 투영(N4). `via`를 보낸 요청에만 실린다. `stepIndex`는 경유지에서 시작하는 첫 안내 단계. */

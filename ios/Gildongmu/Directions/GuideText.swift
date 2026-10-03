@@ -146,13 +146,14 @@ enum GuideText {
     }
 
     /// 자동차 시작 원자 발화(B1 — 시작 통지가 수단·모드를 말한다. E40으로 목적지도).
+    /// 할 일(첫 안내)이 먼저, 규모 요약은 뒤(문안 확정본 라 — 인자 순서는 ko 문장 순서, arg-order ABI).
     static func carStart(route: GuideRoute, firstIndices: [Int], destination: String) -> String {
         appLocalized(
             "guide.carStart",
             destination,
+            unit(route: route, indices: firstIndices),
             route.steps.count,
-            formatDistance(Int(route.totalMeters.rounded())),
-            unit(route: route, indices: firstIndices)
+            formatDistance(Int(route.totalMeters.rounded()))
         )
     }
 
@@ -327,7 +328,23 @@ enum GuideText {
         }
     }
 
-    /// 자동차 동승자 임박 문구(K2 §6.3) — "잠시 후 우회전하세요".
+    /// 자동차 동승자 임박 문장(K2 §6.3·E61, 웹 `carImminentLine` 미러): "잠시 후 [{지점}에서 ]
+    /// [{방면} 방면으로 ]{행동구}". 없는 조각은 빼고 둘 다 없으면 종전 "잠시 후 우회전하세요".
+    /// 비-ko 화면은 한글 이름을 뺀다(`carSpokenLandmark`).
+    static func carImminentText(_ action: WalkAction, landmark: CarLandmark?) -> String {
+        guard let lm = carSpokenLandmark(landmark, english: AppLanguage.dataLocale == "en") else {
+            return carImminentText(action)
+        }
+        let phrase = liveActionPhrase(action, kind: .car)
+        switch (lm.at, lm.toward) {
+        case let (at?, toward?): return appLocalized("guide.carImminentAtToward", at, toward, phrase)
+        case let (at?, nil): return appLocalized("guide.carImminentAt", at, phrase)
+        case let (nil, toward?): return appLocalized("guide.carImminentToward", toward, phrase)
+        case (nil, nil): return carImminentText(action)
+        }
+    }
+
+    /// 자동차 동승자 임박 문구(K2 §6.3) — "잠시 후 우회전하세요". 지점·방면이 없을 때와 표시 행.
     static func carImminentText(_ action: WalkAction) -> String {
         switch action {
         case .left: appLocalized("guide.carImminent.left")
@@ -353,8 +370,9 @@ enum GuideText {
         }
     }
 
-    /// car 주기 통지 단문(K2 §6.3, 웹 `carPeriodicLine` 미러): 다음 스텝에 투영 행동이 있으면
-    /// "{distance} 앞 {command}", 없으면(터널·톨게이트·직진 갈래) 종전 전문 틀, 마지막은 목적지 틀.
+    /// car 주기 통지 단문(K2 §6.3·E61, 웹 `carPeriodicLine` 미러): 다음 스텝에 투영 행동이 있으면
+    /// "{distance} 직진하다가 [{지점}에서 ]{command}"(방면은 싣지 않는다), 없으면(터널·톨게이트·
+    /// 직진 갈래) 종전 전문 틀, 마지막은 목적지 틀.
     static func periodicCar(
         route: GuideRoute, stepIndex: Int, remainingMeters: Int,
         accuracy: Double, destinationLabel: String
@@ -363,13 +381,17 @@ enum GuideText {
         guard route.steps.indices.contains(stepIndex + 1) else {
             return appLocalized("guide.nextDestination", destinationLabel, distance)
         }
-        if let action = route.steps[stepIndex + 1].action {
+        let next = route.steps[stepIndex + 1]
+        if let action = next.action {
+            if let at = carSpokenLandmark(next.carLandmark, english: AppLanguage.dataLocale == "en")?.at {
+                return appLocalized("guide.carPeriodicAt", distance, at, carCommand(action))
+            }
             return appLocalized("guide.carPeriodic", distance, carCommand(action))
         }
         return appLocalized("guide.next", distance, route.steps[stepIndex + 1].description)
     }
 
-    /// 운전자 모드 예고 단문(K2 §6.2 M5): 전문 대신 "{distance} 앞 {command}". **아직 앞에 있는**
+    /// 운전자 모드 예고 단문(K2 §6.2 M5, E61에도 종전 유지): 전문 대신 "{distance} 앞 {command}". **아직 앞에 있는**
     /// 첫 결정 지점(스텝 시작 ≥ 현재 d)만 본다 — 따라잡기 뒤 유닛의 첫 스텝이 지금 서 있는 스텝이면
     /// 그 시작의 행동은 이미 지났다(품질 리뷰 M2, "0m 앞 우회전" 차단). 없으면 nil(무발화).
     static func driverNotice(route: GuideRoute, indices: [Int], fromD d: Double) -> String? {
@@ -377,7 +399,7 @@ enum GuideText {
             route.steps.indices.contains($0) && route.steps[$0].startD >= d && route.steps[$0].action != nil
         }), let action = route.steps[target].action else { return nil }
         let remaining = Int(max(0, route.steps[target].startD - d).rounded())
-        return appLocalized("guide.carPeriodic", formatDistance(remaining), carCommand(action))
+        return appLocalized("guide.carDriverNotice", formatDistance(remaining), carCommand(action))
     }
 
     /// 하단 2행 윗줄 렌더. 매핑 규칙은 공유 fixture 러너(GuideLiveRowsTests·웹

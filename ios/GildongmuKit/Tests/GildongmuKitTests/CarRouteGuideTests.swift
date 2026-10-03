@@ -116,3 +116,58 @@ struct CarRouteGuideTests {
         #expect(b.guides[0].roadLinks == nil)
     }
 }
+
+// ── E61 지점·방면 ──
+
+@Test("지점·방면을 스텝 carLandmark로 옮기고 없는 스텝은 nil")
+func carLandmarkPropagatesToSteps() throws {
+    var guides = makeBriefing().guides
+    let g = guides[1]
+    guides[1] = CarRouteGuide(
+        name: "", guidance: g.guidance, distanceMeters: 0, durationSeconds: 0,
+        pathCoords: g.pathCoords, roadLinks: g.roadLinks, action: .right,
+        at: "광진교남단", toward: "천호 사거리")
+    let out = try #require(buildCarGuide(briefing: makeBriefing(guides: guides)))
+    #expect(out.route.steps[1].carLandmark == CarLandmark(at: "광진교남단", toward: "천호 사거리"))
+    #expect(out.route.steps[0].carLandmark == nil)
+}
+
+@Test("서버 at·toward 디코딩 — 없으면 nil")
+func carGuideDecodesLandmark() throws {
+    let json = #"""
+    {"distanceMeters":1,"durationSeconds":1,"taxiFare":0,"tollFare":0,"guides":[
+      {"name":"","guidance":"a","distanceMeters":0,"durationSeconds":0,"action":"right","at":"광진교남단","toward":"천호 사거리"},
+      {"name":"","guidance":"b","distanceMeters":0,"durationSeconds":0}]}
+    """#
+    let b = try JSONDecoder().decode(CarRouteBriefing.self, from: Data(json.utf8))
+    #expect(b.guides[0].at == "광진교남단")
+    #expect(b.guides[0].toward == "천호 사거리")
+    #expect(b.guides[1].at == nil && b.guides[1].toward == nil)
+}
+
+private struct LandmarkFixture: Decodable {
+    let cases: [Case]
+    struct Case: Decodable {
+        let name: String
+        let landmark: Pair?
+        let english: Bool
+        let expect: Pair?
+    }
+    struct Pair: Decodable {
+        let at: String?
+        let toward: String?
+    }
+}
+
+@Test("carSpokenLandmark 공유 fixture 동조")
+func carSpokenLandmarkMatchesSharedFixture() throws {
+    var url = URL(fileURLWithPath: #filePath)
+    for _ in 0..<5 { url.deleteLastPathComponent() } // GildongmuKitTests→Tests→GildongmuKit→ios→repo
+    url.appendPathComponent("src/lib/__tests__/fixtures/car-landmark-cases.json")
+    let fixture = try JSONDecoder().decode(LandmarkFixture.self, from: Data(contentsOf: url))
+    for c in fixture.cases {
+        let got = carSpokenLandmark(c.landmark.map { CarLandmark(at: $0.at, toward: $0.toward) }, english: c.english)
+        let want = c.expect.map { CarLandmark(at: $0.at, toward: $0.toward) }
+        #expect(got == want, "\(c.name)")
+    }
+}

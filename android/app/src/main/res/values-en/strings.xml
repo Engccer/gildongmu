@@ -739,6 +739,9 @@
     <string name="guide_carImminent_keepRight">Keep right shortly</string>
     <string name="guide_carImminent_left">Turn left shortly</string>
     <string name="guide_carImminent_right">Turn right shortly</string>
+    <string name="guide_carImminentAt">Shortly, at %1$s, %2$s</string>
+    <string name="guide_carImminentAtToward">Shortly, at %1$s, %3$s toward %2$s</string>
+    <string name="guide_carImminentToward">Shortly, %2$s toward %1$s</string>
     <string name="guide_carLiveAction_back">make a U-turn</string>
     <string name="guide_carLiveAction_keepLeft">keep left</string>
     <string name="guide_carLiveAction_keepRight">keep right</string>
@@ -746,8 +749,9 @@
     <string name="guide_carLiveAction_right">turn right</string>
     <string name="guide_carOffRoute">You are off the route; guidance is paused. Refresh the route to resume</string>
     <string name="guide_carPeriodic">%2$s in %1$s</string>
+    <string name="guide_carPeriodicAt">%3$s at %2$s in %1$s</string>
     <string name="guide_carRoadNow">Driving on %1$s</string>
-    <string name="guide_carStart">Car guidance to %1$s started. {2, plural, one {%2$s instruction} other {%2$s instructions}}, %3$s total. %4$s</string>
+    <string name="guide_carStart">Car guidance to %1$s started. %2$s. {3, plural, one {%3$s instruction} other {%3$s instructions}}, %4$s total.</string>
     <string name="guide_changeDestHere">Change destination to here</string>
     <string name="guide_changeWaypointHere">Change waypoint to here</string>
     <string name="guide_currentRoad">Current road, %1$s</string>

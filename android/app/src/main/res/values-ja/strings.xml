@@ -739,6 +739,9 @@
     <string name="guide_carImminent_keepRight">まもなく右方向です</string>
     <string name="guide_carImminent_left">まもなく左折です</string>
     <string name="guide_carImminent_right">まもなく右折です</string>
+    <string name="guide_carImminentAt">まもなく%1$sで%2$s</string>
+    <string name="guide_carImminentAtToward">まもなく%1$sで%2$s方面へ%3$s</string>
+    <string name="guide_carImminentToward">まもなく%1$s方面へ%2$s</string>
     <string name="guide_carLiveAction_back">Uターンしてください</string>
     <string name="guide_carLiveAction_keepLeft">左方向へ進んでください</string>
     <string name="guide_carLiveAction_keepRight">右方向へ進んでください</string>
@@ -746,8 +749,9 @@
     <string name="guide_carLiveAction_right">右折してください</string>
     <string name="guide_carOffRoute">経路から外れたため案内を一時停止しました。経路の再検索で再開できます</string>
     <string name="guide_carPeriodic">%1$s先、%2$s</string>
+    <string name="guide_carPeriodicAt">%1$s先、%2$sで%3$s</string>
     <string name="guide_carRoadNow">%1$sを走行中</string>
-    <string name="guide_carStart">%1$sまで自動車案内開始。案内%2$s件、合計%3$s。%4$s</string>
+    <string name="guide_carStart">%1$sまで自動車案内開始。%2$s。案内%3$s件、合計%4$s。</string>
     <string name="guide_changeDestHere">ここを目的地に変更</string>
     <string name="guide_changeWaypointHere">ここを経由地に変更</string>
     <string name="guide_currentRoad">現在の道路、%1$s</string>
