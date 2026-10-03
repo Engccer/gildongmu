@@ -12,6 +12,73 @@
 
 ---
 
+## 2.1 (빌드 31)
+
+기준은 2.0 아카이브 커밋 `ef5f2330`(빌드 30, 2026-10-01 제출, 2026-10-02 `READY_FOR_SALE` 확인)이며 그 이후 `ios/` 커밋 37건(8차·9차 소화)을 판정했다. Release 바이너리에 도달하면서 iOS 사용자가 알아차리는 것만 담는다. 2.1인 이유: 도보 횡단·이탈 안내와 자동차 짧은 안내의 동작이 여럿 바뀐다. 이 버전부터 앱이 서버 도보 판본 2(`wording=2`)와 자동차 기하 응답의 `at`·`toward`를 읽는다(2026-10-04 프로덕션 실호출로 두 값 확인: 카카오 도보 1건·Tmap 자동차 1건).
+
+포함 판정:
+
+| 기능 | 커밋 | 노트 |
+|---|---|---|
+| **횡단보도 안내 재설계**(E62) — 건널 방향을 시계 방향으로, 횡단 중·정지 중 침묵, 횡단 중 남은 거리 행, 임박 문장의 방향 | `755a99af`·`3b4b4193`·`5336556c`·`aebedad4`·`7084208a`·`d4c4982a`·`fdb0510c` | 침묵·남은 거리 행은 ko·en, **시계 방향 횡단 문장은 ko만**(en은 Tmap 단독 경로라 판본 2를 타지 않는다, 2026-10-04 프로덕션 en 실호출 1건으로 `crossingClock` 부재 확인). 건너는 길 이름(`crossingRoad=1`)은 `experimentalCrossingRoadEnabled` 뒤라 제외 |
+| **이탈 방향 안내**(E63) — 벗어난 쪽과 돌아갈 시계 방향, 계속 멀어지거나 나란히 걸을 때만 자동 재조회, 새 경로 첫 안내의 방향 | `29b4965f`·`fcf2f257`·`e984a424`·`8ca588ac`·`6438fa6a`(A57·A58은 같은 기능의 보정) | ko·en. 자동차 갈래는 ko만(자동차 안내 ko 게이트) |
+| **자동차 짧은 안내에 지점과 방면**(E61) | `9f421d9d`·`83b2df34` | **ko만**. 운전자 모드는 실험판 |
+| **도보 예고 머리말·예고 뒤 침묵**(b8108d82, E62 문안) · **시작 문장은 첫 안내 먼저**(E61·E62) | `b8108d82`·`52e9b96b`·`9f421d9d`·`5336556c` | 머리말·침묵은 ko·en, 시작 문장은 ko·en(자동차는 ko) |
+| 자동차 GPS 끊김 자동 종료 15분(E51 후속 ④) | `427eb136` | ko만 |
+| 설정 화면 주제 묶음 다섯(E59) | `0dfa68be` | ko·en |
+| 검색 결과 로터 "여기까지 길찾기" 순서(E60) | `b8d1fdae` | ko·en |
+| 승차 전 도보를 직접 끝낼 때 두 문장·권한 철회 사유(A54) | `74e17f4a`·`7de69431`·`bb000941`·`52cc758f`·`4d08e94e` | ko·en. 오류 수정 |
+| en 안내 통지의 목적지가 한글로 나오던 것(A53 iOS·A55) | `50793f40`·`8dce71a3`·`1a1b97bc` | **en 등 비-ko만**. 오류 수정 |
+
+제외 근거:
+
+- **나들이**(E58 ①②③④⑤⑥ `1b8f7d10`·`a797e7b2`·`96681a8b`·`5889a172`·`342f4c8d`·`19468ebb`의 `OutingOverviewAdapter`): `experimentalOutingEnabled` 뒤라 정식판 도달 0. **건너는 길 이름**: `experimentalCrossingRoadEnabled` 뒤(산출물 게이트로 확인).
+- **출처 라벨 "서울특별시 공공데이터"**(`c26d28ca`): 설정 정보 출처·채팅 출처 문구의 표기 보강이라 기능이 늘지 않는다.
+- **동작 변경 0**: `fd269431`(호출 0 삭제)·`9a37ab8c`(Kit 테스트)·`f001dfff`(문서)·`52e9b96b`의 주석 분.
+
+심사 노트는 **갱신한다**(`--review-notes`): 2.0이 붙인 `(new in 2.0: …)` 꼬리를 뗀다(승계되는 순간 거짓). 새 권한·새 데이터 유형·새 제3자는 없다. ASC 실값(2.0)을 읽어 §9와 같음을 확인했다(2026-10-04).
+
+### ko
+
+```
+길동무 2.1입니다. 실제로 걷고 운전하며 받은 의견으로 도보와 자동차 안내를 다듬었습니다.
+
+새로운 기능
+- 도보 안내가 횡단보도를 건널 방향을 시계 방향으로 알려 드립니다. "9시 방향으로 도세요. 그 후 횡단보도를 건너세요"처럼 말하고, 횡단보도를 건너는 동안과 신호를 기다리며 멈춰 있는 동안에는 조용히 기다립니다. 건너는 중에는 안내 화면에 횡단보도 끝까지 남은 거리를 보여 드립니다.
+- 길을 벗어나면 곧바로 새 경로로 바꾸지 않고, 어느 쪽으로 벗어났는지와 몇 시 방향으로 돌아가면 되는지 먼저 알려 드립니다. 계속 멀어지거나 나란한 길을 한동안 걸으면 그때 새 경로로 안내하고, 새 경로의 첫 안내에서 어느 쪽으로 돌아야 하는지도 말씀드립니다.
+- 자동차 안내가 "잠시 후 회현 사거리에서 남산3호터널 방면으로 우회전하세요"처럼 어디서, 어느 방면으로 도는지 알려 드립니다.
+
+개선
+- 도보 안내의 예고가 "앞으로 약 30m 가다가"처럼 남은 거리로 시작하고, 예고한 뒤에는 그 지점에 닿을 때까지 같은 말을 되풀이하지 않습니다.
+- 도보와 자동차 안내를 시작할 때 첫 안내를 먼저 말하고, 안내 개수와 전체 거리는 그 뒤에 말합니다.
+- 자동차 안내는 긴 터널이나 지하도로에서 위치 신호가 끊겨도 15분까지 기다린 뒤에 끝납니다.
+- 설정 화면을 일반, 음성, 길 안내, AI 채팅, 앱 정보 다섯 묶음으로 정리했습니다. 설정 하나가 한 줄로 읽힙니다.
+- 검색 결과에서 VoiceOver 로터를 돌리면 여기까지 길찾기가 주소 복사 바로 다음에 나옵니다.
+
+오류 수정
+- 대중교통 승차역까지 걷는 안내를 직접 끝내면 "거리 추적을 종료했습니다. 대중교통 안내는 시작하지 않았습니다."처럼 두 문장으로 알려 드리고, 위치 권한이 꺼져서 끝났을 때는 그 이유를 말씀드립니다.
+```
+
+### en
+
+```
+Gildongmu 2.1. Walking guidance has been refined based on feedback from real walks.
+
+New
+- Walking guidance now stays quiet while you cross a crosswalk and while you stand waiting for the signal. While you cross, the guidance screen shows the distance left to the end of the crosswalk.
+- When you stray from the route, the app no longer switches to a new route right away. It first tells you which side you went off and which clock direction leads back. If you keep going farther or walk along a parallel street for a while, it switches to a new route and tells you which way to turn first.
+
+Improvements
+- Walking announcements now start with the distance left, such as "In about 30m," and are not repeated until you reach that point.
+- When walking guidance starts, the first instruction is spoken first, followed by the number of instructions and the total distance.
+- Settings is organized into five groups: General, Voice, Guidance, AI Chat, and About. Each setting reads as a single line.
+- In search results, the VoiceOver rotor now lists Directions to here right after Copy address.
+
+Fixes
+- Ending the walk to a transit boarding stop yourself is now announced in two clear sentences, and if guidance ended because location permission was turned off, the app tells you why.
+- Destination names in guidance announcements now use the English spelling instead of Korean.
+```
+
 ## 2.0 (빌드 30)
 
 기준은 1.19 아카이브 커밋 `5c3bf9bf`(빌드 28, 2026-09-29 제출, 2026-10-01 `READY_FOR_SALE` 확인)이며 그 이후 `ios/` 커밋 30건 + 이번 졸업 커밋을 판정했다. 빌드 29는 2026-10-01 19:15 제출 뒤 공지 문안이 최종본이 아니어서 19:40 심사 취소(미출시) — 최종 문안을 넣은 빌드 30으로 같은 버전을 재제출한다. Release 바이너리에 도달하면서 iOS 사용자에게 보이는 것만 담는다. 2.0인 이유: 실험판에만 있던 대중교통·자동차 실시간 안내가 정식판에 처음 실린다(spec `docs/superpowers/specs/2026-10-01-release-2.0-graduation-design.md`).
