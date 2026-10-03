@@ -130,7 +130,7 @@ data class GuideTuning(
     /**
      * 다음 유닛 전문을 낭독한 뒤 그 경계까지 주기 통지를 내지 않는가(위원장 실보행 판정 2026-10-03, 웹
      * `quietAfterAnnounce` 미러). walk true — 전문 뒤 "…까지 직진하세요"가 다시 나오면 안내가 뒤로 튄다. car false —
-     * 주기 통지가 "{거리} 앞 {명령}"이라 다음 행동을 이미 담는다.
+     * 주기 통지가 "{거리} 직진하다가 {명령}"이라 다음 행동을 이미 담는다.
      */
     val quietAfterAnnounce: Boolean,
     /**

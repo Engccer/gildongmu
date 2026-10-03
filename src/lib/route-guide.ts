@@ -209,7 +209,7 @@ export interface GuideTuning {
   /**
    * 다음 유닛 전문을 낭독한 뒤 그 경계까지 주기 통지를 내지 않는가(위원장 실보행 판정 2026-10-03).
    * walk true — 전문("…앞에서 오른쪽으로 돌아…") 뒤에 "…까지 직진하세요"가 다시 나오면 안내가 뒤로
-   * 튄다. 그 구간은 전문과 임박 큐가 맡는다. car false — `carPeriodic`은 "{거리} 앞 {명령}"이라
+   * 튄다. 그 구간은 전문과 임박 큐가 맡는다. car false — `carPeriodic`은 "{거리} 직진하다가 {명령}"이라
    * 다음 행동을 이미 담는다.
    */
   quietAfterAnnounce: boolean;

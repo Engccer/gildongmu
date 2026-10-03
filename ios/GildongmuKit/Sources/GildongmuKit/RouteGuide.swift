@@ -110,7 +110,7 @@ public struct GuideTuning: Sendable, Equatable {
     public var silentCatchUp: Bool
     /// 다음 유닛 전문을 낭독한 뒤 그 경계까지 주기 통지를 내지 않는가(위원장 실보행 판정 2026-10-03,
     /// 웹 `quietAfterAnnounce` 미러). walk true — 전문 뒤 "…까지 직진하세요"가 다시 나오면 안내가 뒤로
-    /// 튄다. car false — 주기 통지가 "{거리} 앞 {명령}"이라 다음 행동을 이미 담는다.
+    /// 튄다. car false — 주기 통지가 "{거리} 직진하다가 {명령}"이라 다음 행동을 이미 담는다.
     public var quietAfterAnnounce: Bool
     /// 다음 유닛 전문을 미루는가(E62 spec `2026-10-03-crosswalk-guidance-design.md` §4 R4·R5·R6, 웹
     /// `deferAnnounce` 미러). walk true: 행동 없는 다음 구간은 실위치가 들어선 뒤, 전문이 나간 유닛 안에 실위치가 아직

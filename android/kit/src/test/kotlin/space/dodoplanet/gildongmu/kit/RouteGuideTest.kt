@@ -78,7 +78,7 @@ class RouteGuideTest {
                 s.desc,
                 listOf(RoutePoint(lat0 + acc * meterLat, lng0), RoutePoint(lat0 + (acc + s.len) * meterLat, lng0)),
                 s.action?.let { WalkAction.fromRawValue(it) ?: fail("미지 action $it") },
-                s.crossing,
+                crossing = s.crossing,
             )
             acc += s.len
             g
