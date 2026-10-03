@@ -1,0 +1,3 @@
+#!/bin/sh
+# 공개 저장소 규율 ① 재유입 가드를 커밋마다 돌린다(문서만 고친 커밋 포함, 약 1초).
+exec npx vitest run src/lib/__tests__/public-repo-privacy-guard.test.ts --reporter=dot

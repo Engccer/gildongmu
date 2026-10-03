@@ -15,7 +15,8 @@
     "test:a11y": "playwright test",
     "test:ab": "vitest run --config vitest.ab.config.ts",
     "eval:ab": "vitest run --config vitest.ab.config.ts",
-    "eval:ab:report": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON src/__ab__/report-cli.mts"
+    "eval:ab:report": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON src/__ab__/report-cli.mts",
+    "prepare": "git config core.hooksPath .githooks || true"
   },
   "dependencies": {
     "@google/genai": "^2.15.0",
