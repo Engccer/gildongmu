@@ -440,6 +440,19 @@ spec `2026-10-03-crosswalk-guidance-design.md` §4(리듀서 세 벌 + 공유 fi
 - **R4** 행동 없는 다음 구간(유닛이 그 스텝 하나 ∨ 그 스텝 ≥ 30m)은 30m 전 전문 없이 들어선 뒤 1회, 그 접근 구간엔 주기 통지 없음. **R5** 전문이 나간 유닛에 아직 나가지 않은 횡단이 있으면 다음 전문은 그 뒤. **R6** 그렇게 들어선 뒤 나간 전문은 `announceSteps.late`(소비자는 머리말을 붙이지 않는다 — 산술로 가르면 램프인 구간에서 샌다)이고, 첫 스텝에 행동이 있고 원시 d가 그 경계를 아직 넘지 않았으면 행동 톤을 함께 내고 그 경계의 임박 래치를 소비한다(분해된 둘째 횡단의 신호음). 튜닝 `deferAnnounce`·`silentWhenStopped`(walk true·car false).
 - 임박 횡단 문장은 서버 `crossingClock`으로 "잠시 후 진행 방향 그대로 / 9시 방향으로 돌아 / 뒤로 돌아 횡단보도를 건너세요"(문장 정본 `guide.imminent.crosswalk*`, 시계 낱말 `guide.clockDirection`). 횡단 중 남은 거리 행은 `guideLiveRows.crossingRemaining`(10m 단위·하한 10, 음성 없음) — "횡단보도 끝까지 약 30m".
 
+### 이탈은 돌아가기 국면의 시작이다 (E63)
+
+spec `2026-10-03-offroute-return-design.md`(리듀서 세 벌 + 공유 fixture `route-guide-scenarios.json`의 `E63 …` 시나리오, 재생 기록 §11).
+
+- **확정은 재조회가 아니다**: `offRoute{notice, reason, guidance, side, returnRelDeg, firstSpoken}`은 벗어난 쪽(수직거리 부호, `projectSigned` 오른쪽 +)과 돌아갈 시계 방향(진행 방위 기준, 목표점 = 확정 지점 창 최근접 + 10m)을 싣고, 새 경로는 리듀서 `rerouteNeeded{away|parallel}`에서만 조회한다(최솟값 + `rerouteAwayM` 또는 기준점에서 직선 `rerouteParallelM`, K fix ∧ 2초). ⚠ 오케스트레이터의 `case .offRoute`에 조회를 되돌리지 말 것 — 운전자 채널만 확정 즉시 조회다(iOS 소스 가드 `beacon-offroute-guard.test.ts`).
+- **돌아가기 국면의 투영은 확정 지점 창**(`dConf − 60 … + 200`, 끝에 붙으면 경로 전체)이고 구속 창이 아니다. 복귀만은 전역 후보 15m·8초(도보 `returnPerpM`), 유지 시각 초기화는 접근 제외 **전** 불일치 표다(진입 투영 기준 또는 15m 유일 후보 기준 — 블록 양쪽 경로에선 30m 진입 투영이 모호해 앞의 표만으로는 헛복귀한다).
+- **보류(`hold`, 시계 11~1)는 리듀서가 톤을 내지 않고 소비자가 말하지 않는다**: 그 회차의 `backOnRoute{spoken: false}`엔 복귀 문장도 없다. 소비자는 리듀서 `spoken` ∧ 실제 게시 기록 둘 다 볼 때만 "경로로 복귀했습니다"를 말한다(iOS `.high` — 복귀가 재조회 버튼을 지워 커서가 움직인다. 운전자 채널은 게시 기록만) — iOS 게시 기록은 게시 번호 집합(버려진 번호만 뺀다. 단일 Bool이면 백그라운드에서 버려진 재통지가 들은 확정 문장의 기록을 지운다).
+- **상태 행은 벗어난 쪽만**(위원장 판정 2026-10-04): 시계 방향·"뒤로 도세요"는 그 순간의 진행 방위 기준이라 음성으로만. 상태 행은 시트 착지·전경 복귀 재생이 나중에 다시 읽는다.
+- **이탈 유래 재획득은 재획득에 머물지 않는다**: 도보는 곧바로, 자동차는 옛 경로 곁 후보가 없으면(모호하면 종전 재획득) 돌아가기 국면으로 되돌린다(재획득 국면엔 재통지도 `rerouteNeeded`도 없어 확정 즉시 조회가 없어진 뒤로는 새 경로가 영영 오지 않는다). 시간 누적 필드(`returnCandidateSince`·`offRouteAwayRun`·`perpHistory`)는 공백 진입에서 비우고 기준점(`offRouteAnchor`)은 위치라 잇는다.
+- **새 경로 첫 문장의 방향 머리말**(`rerouteHeadClock`, 진행 방위 기준 새 경로 첫 15m): 12시 "진행 방향 그대로", 6시 "뒤로 도세요. 그 후", 그 밖 "N시 방향으로 도세요. 그 후". 머리말이 있으면 첫 스텝은 `parts.body`(경로 기준 방향 조각을 두 번 말하지 않는다). 기준은 교체 **전** 세션의 진행 방위라 머리말 계산이 경로 교체보다 먼저다. 자동차·버튼 재조회는 머리말 없음.
+- **자동 조회 진행 중 판정은 세대 비교다**(iOS `proposalInFlightToken`·웹 `autoRerouteInFlightGenRef`): 복귀·수동 재조회·종료가 세대를 올리면 늦게 끝나는 옛 조회가 다음 회차를 막지 않는다. 채택은 국면이 보존된 uncertain·reacquiring에서도 한다.
+- 안드로이드 앱은 웨이브 3 이식 전까지 종전 동작(확정이면 보류여도 즉시 조회, `RerouteNeeded` 미소비)이다(spec §3.10).
+
 ### 자동차 임박 큐는 문장이 아니라 서버 `turnType` 투영(`action`)으로 행동을 고르고, 없으면 침묵이다
 
 **자동차 임박 큐는 문장이 아니라 서버 `turnType` 투영(`action`)으로 행동을 고르고, 없으면 침묵이다**(2026-08-23 K2, spec `2026-08-23-car-guidance-completion-design.md`): 자동차 문장의 "오른쪽 방향"(117)은 회전이 아니라 갈래라 도보 분류기(`walkStepAction`)로 되돌아가면 거짓 회전 명령이 된다 — `GuideTuning.actionSource`가 car·walk 둘 다 `step`이고(walk는 2026-08-23 E16 축3로 전환) 웹은 `stepActionFor`만 지난다(Kit은 그 축 자체를 지워 `step.action`을 직접 읽는다, 2026-09-02) — 문장 분류로 폴백하지 말 것. 코드 표 정본은 Tmap 공식 표(`car-action.ts` ↔ `CarAction.swift`, fixture `car-action-cases.json`): 16~19는 "N시 방향 좌/우회전"(회전), 130 토끼굴, 131~142 시계 방위, **182·183은 "도착안내 방향"이라 null**. 임계는 `max(바닥 15m, v×6초)`(운전자 9초)이고 **속도 표본이 2개 미만이면 60m** — 바닥만 남기면 터널 복귀 직후가 침묵한다. ⚠ **공백 뒤 따라잡기는 `silentCatchUp` 세 항이 한 묶음이다**(점프 fix 무발화·표본 제외 / uncertain 복귀 공백 >10초 재획득 / 지난 유닛 래치 전진): 2026-08-22 실주행에서 터널 5분 뒤 구속 창이 fix마다 150m씩 기어가며 **지난 교차로 3개의 "우회전"을 1초 간격으로** 읽었고, 그 기어가는 fix의 표본(150m/s)이 창을 부풀려 재획득도 안 걸렸다 — 한 항만 되돌리면 나머지가 무력화된다. 도보는 종전 동작(동결). 운전자 모드(`CarListener.driver`)는 리듀서가 아니라 `BeaconModel`이 이벤트를 거르고 `TtsPlayer.speakGuidance`(세션 카테고리 비소유)로 발화하며, `driverChannel`·`arrivalSessionKind`는 **`stop()` 앞에서 기록/유지**한다(stop()이 `sessionKind`를 walk로 되돌려 도착 문장이 VO 채널로 새고 인계 버튼이 안 보인다). 자동차 도착은 `carArrivalStep`(40m·도플러 정지·정확도≤30)뿐이고 15m 무조건 분기가 없다(옆 차로 통과 종료). 상세는 `docs/INTEGRATIONS.md` §자동차 임박·따라잡기.
