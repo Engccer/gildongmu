@@ -7,6 +7,7 @@
  * 폐기·타이머 정지 계약이 주입 시각 위에서만 성립한다(리뷰 #19).
  */
 import {
+  COURSE_AXIS_TANGENT_HALF_M,
   COURSE_AXIS_WINDOW_S,
   courseAxisVerdict,
   courseVote,
@@ -29,10 +30,16 @@ import {
 } from "./final-approach";
 import {
   globalCandidates,
-  projectOnPolyline,
+  pointAtD,
+  projectSigned,
+  tangentAt,
   type GuideRoute,
+  type Projection,
   type StepSpan,
 } from "./route-geometry";
+import { clockHour, relativeBearing } from "./clock-direction";
+import { haversineMeters } from "./geo";
+import { bearingDegrees } from "./geo/bearing";
 import { imminentTone, walkStepAction, type GuideAction, type ImminentTone } from "./walk-action";
 
 export { buildGuideRoute, LONG_STEP_MIN_M, type GuideRoute } from "./route-geometry";
@@ -261,6 +268,47 @@ export interface GuideTuning {
   offRouteRenotifyS: number;
   /** 이탈 재통지의 warning 톤 여부(첫 확정은 항상 warning) */
   offRouteRenotifyWarns: boolean;
+  /**
+   * 돌아가기 국면의 자동 재조회 요청(E63 spec §3.5, 값은 로그 재생 — 전부 잠정, 실보행·실주행 판정). 자격 fix =
+   * 기준 투영 수직이 최솟값 + `rerouteAwayM` 이상(멀어짐) 또는 나란히 걷기 기준점에서 직선 `rerouteParallelM` 이상
+   * (위원장 판정 J4). 자격 fix가 `rerouteAwayFixes`개 연속 ∧ `rerouteAwayMinS`초 이상이면 `rerouteNeeded`.
+   */
+  rerouteAwayM: number;
+  rerouteAwayFixes: number;
+  rerouteAwayMinS: number;
+  rerouteParallelM: number;
+  /** 나란히 걷기 기준점을 다시 놓는 다가감(기준점 수직 대비 감소, m). */
+  rerouteParallelClosingM: number;
+  /**
+   * 자동 재조회 채택 시점 신선도의 이동 상한(m, `reroute-proposal-gate.ts`·Kit `RerouteProposalGate`). 도보 30, 자동차 150 —
+   * 20m/s에서 왕복 1.5초면 30m를 넘어 그 회차가 끝난다(E63 spec §3.9).
+   */
+  rerouteMaxDriftM: number;
+  /** 결합 확정(§3.2 ①)의 구속 창 수직 하한. null = 결합 확정 끔(자동차). */
+  jointConfirmPerpM: number | null;
+  jointConfirmMismatches: number;
+  /** 접근 표 제외(§3.2 ②)의 방위 허용(°). null = 끔(자동차 — 방위 축이 없다). */
+  approachVoteMaxDeg: number | null;
+  approachVoteClosingM: number;
+  /**
+   * 복귀 반경 하한(§3.6, 실제 반경 `max(이 값, 보고 정확도)`)과 유지 시간. null = 현행 반경(`entryProjection`, 자동차).
+   * ⚠ 나란히 걷기 기준점의 하한도 이 복귀 반경이다(null이면 현행 반경 `max(offRouteBaseM, 2×정확도)`) — 경로로 돌아왔는데 복귀가 아직 안 난 사람이 경로를
+   * 따라 걸어 재조회되지 않게(재생: 하한 없이 정상 추종 창 88% 발동).
+   */
+  returnPerpM: number | null;
+  returnHoldS: number;
+  /** 돌아갈 목표점 = 기준 투영점에서 경로를 따라 이만큼 앞(§3.3). */
+  returnTargetAheadM: number;
+  /** 확정 지점 창(§3.3): 확정 진행거리 기준 뒤·앞. 최근접이 창 끝에 붙으면 경로 전역. */
+  returnWindowBackM: number;
+  returnWindowAheadM: number;
+  /** 벗어난 쪽을 말할 수직 하한(m). 그 아래면 `side` null. */
+  sideMinPerpM: number;
+  /** 반대 방향 판정의 접선 차 하한(°). */
+  oppositeMinDeg: number;
+  /** 진행 방위(유도 관측)의 신선도(초)·시계를 말할 불확도 상한(°). */
+  headingMaxAgeS: number;
+  headingMaxUncertaintyDeg: number;
   handoffDistM: number;
   handoffRearmM: number;
   /**
@@ -347,6 +395,25 @@ export const WALK_TUNING: GuideTuning = {
   offRouteTrend: false,
   offRouteRenotifyS: OFF_ROUTE_RENOTIFY_S,
   offRouteRenotifyWarns: true,
+  rerouteAwayM: 25,
+  rerouteAwayFixes: 3,
+  rerouteAwayMinS: 2,
+  rerouteParallelM: 50,
+  rerouteParallelClosingM: 10,
+  rerouteMaxDriftM: 30,
+  jointConfirmPerpM: 20,
+  jointConfirmMismatches: 5,
+  approachVoteMaxDeg: 45,
+  approachVoteClosingM: 2,
+  returnPerpM: 15,
+  returnHoldS: 8,
+  returnTargetAheadM: 10,
+  returnWindowBackM: 60,
+  returnWindowAheadM: 200,
+  sideMinPerpM: 3,
+  oppositeMinDeg: 135,
+  headingMaxAgeS: 5,
+  headingMaxUncertaintyDeg: 30,
   handoffDistM: HANDOFF_DIST_M,
   handoffRearmM: HANDOFF_REARM_M,
   waypointApproachM: WAYPOINT_APPROACH_M,
@@ -395,6 +462,27 @@ export const CAR_TUNING: GuideTuning = {
   offRouteTrend: true,
   offRouteRenotifyS: 180,
   offRouteRenotifyWarns: false,
+  // ⚠ 100m는 표본 9회(한 주행 6회), 나란히 주행 200m는 재생 표본 0 — 실주행 판정(E63 spec §8).
+  rerouteAwayM: 100,
+  rerouteAwayFixes: 3,
+  rerouteAwayMinS: 2,
+  rerouteParallelM: 200,
+  // 다가감 25m: 합류 램프(5~10°)를 나란히로 읽지 않게(J4 설계 리뷰 — 재생은 25·50을 가르지 못한다).
+  rerouteParallelClosingM: 25,
+  rerouteMaxDriftM: 150,
+  jointConfirmPerpM: null,
+  jointConfirmMismatches: 5,
+  approachVoteMaxDeg: null,
+  approachVoteClosingM: 2,
+  returnPerpM: null,
+  returnHoldS: 0,
+  returnTargetAheadM: 10,
+  returnWindowBackM: 60,
+  returnWindowAheadM: 200,
+  sideMinPerpM: 3,
+  oppositeMinDeg: 135,
+  headingMaxAgeS: 5,
+  headingMaxUncertaintyDeg: 30,
   handoffDistM: 150,
   handoffRearmM: 200,
   waypointApproachM: null,
@@ -567,6 +655,35 @@ export interface GuideState {
    * 1Hz로 오는 실측)에서 공백이 늘 ~1초라 절대 걸리지 않는다(spec 리뷰 M3). null=uncertain 아님.
    */
   uncertainSince: number | null;
+  /** 이탈 확정 순간의 진행거리 — 확정 지점 창(E63 spec §3.3)의 기준. 돌아가기 국면 밖이면 null. */
+  offRouteConfirmD: number | null;
+  /** 확정 뒤 관측한 기준 투영 수직 최솟값. `rerouteNeeded`를 낸 fix에서 그 값으로 다시 놓는다(재무장). */
+  offRouteMinPerp: number | null;
+  /** 재조회 자격 fix(멀어짐·나란히 걷기) 연속 수와 시작 시각. 공백(uncertain·reacquiring)에서 비운다. */
+  offRouteAwayRun: { count: number; since: number } | null;
+  /** 나란히 걷기 기준점(위치·기준 투영 수직, 위원장 판정 J4). 위치라 공백(uncertain·reacquiring)에서도 잇는다. */
+  offRouteAnchor: { lat: number; lng: number; perp: number } | null;
+  offRouteReason: OffRouteReason | null;
+  /** 이 회차에 말할 이탈 문장을 냈는가(보류 `hold` 확정은 거짓으로 남는다). */
+  offRouteSpoken: boolean;
+  /** 복귀 후보(반경 15m 유일)가 이어진 시작 시각(§3.6 유지 시간). 공백에서 비운다. */
+  returnCandidateSince: number | null;
+  /** 최근 15초 기준 투영 수직거리(접근 표 제외·재통지의 다가감 판정). 확정 fix와 경로 교체에서 새로 시작한다. */
+  perpHistory: readonly { at: number; perp: number }[];
+  /** ⚠ 궤적의 사실이라 경로 교체·재구성에서 잇는다(유도기 버퍼와 같은 원칙). */
+  lastHeading: HeadingObservation | null;
+}
+
+export type OffRouteNotice = "confirm" | "renotify";
+export type OffRouteReason = "distance" | "course" | "joint";
+export type OffRouteGuidance = "turn" | "opposite" | "sideOnly" | "hold";
+export type OffRouteSide = "left" | "right";
+export type RerouteReason = "away" | "parallel";
+/** 유도기의 최근 진행 방위 관측(프로파일 게이트와 무관 — 이탈 문장·새 경로 머리말의 기준 방향, E63 spec §3.3). */
+export interface HeadingObservation {
+  bearing: number;
+  uncertaintyDeg: number;
+  at: number;
 }
 
 export type GuideEvent =
@@ -589,8 +706,24 @@ export type GuideEvent =
   /** 경유지 접근 예고(N4 2026-09-24). 경유지 도착선까지 경로 잔여(반올림 m). 톤 없음. */
   | { kind: "waypointApproaching"; remainingMeters: number }
   | { kind: "finalApproachEnter" }
-  | { kind: "offRoute" }
-  | { kind: "backOnRoute" }
+  /**
+   * 이탈 확정(`confirm`)·재통지(`renotify`) — 돌아가기 국면(E63 spec §3·§4.1). 재조회는 이 이벤트가 아니라 `rerouteNeeded`가
+   * 연다. `guidance`가 문장 틀을 고르고(`hold` = 이미 경로 쪽으로 걷는 중이라 말하지 않는다), `returnRelDeg`는 진행 방위 기준
+   * 목표점의 상대 방위(turn·hold만). 소비자는 첫 발화의 분류·톤을 `notice`가 아니라 `firstSpoken`으로 가른다.
+   */
+  | {
+      kind: "offRoute";
+      notice: OffRouteNotice;
+      reason: OffRouteReason;
+      guidance: OffRouteGuidance;
+      side: OffRouteSide | null;
+      returnRelDeg: number | null;
+      firstSpoken: boolean;
+    }
+  /** `spoken` = 이 회차에 말할 이탈 문장을 냈는가. 거짓이면 소비자는 "복귀했습니다"를 말하지 않는다. */
+  | { kind: "backOnRoute"; spoken: boolean }
+  /** 돌아가기 국면에서 계속 멀어지거나(`away`) 나란히 계속 걸었다(`parallel`) — 오케스트레이터가 자동 조회·채택한다. */
+  | { kind: "rerouteNeeded"; reason: RerouteReason }
   | { kind: "uncertainEnter" }
   | { kind: "uncertainExit" }
   | { kind: "reacquiring" }
@@ -631,6 +764,10 @@ export interface GuideOutput {
    * 투영에 도달하지 못한 조기 반환 경로에서는 `undefined`(판정 없음).
    */
   projectionJumped?: boolean;
+  /** 기준 투영의 부호 있는 수직거리(오른쪽 +, 진단 `sperp`). following·bundle은 구속 창, 돌아가기 국면은 확정 지점 창. */
+  signedPerpMeters?: number;
+  /** 이 fix의 불일치 표가 접근 판정(§3.2 ②)으로 빠졌다(진단 `appr=1`). */
+  approachExcluded?: boolean;
 }
 
 /**
@@ -687,6 +824,7 @@ export function guideStateAt(
     waypointReached?: boolean;
     waypointPending?: boolean;
     waypointApproached?: boolean;
+    lastHeading?: HeadingObservation | null;
   },
 ): GuideState {
   const step = stepAt(route, d);
@@ -729,6 +867,15 @@ export function guideStateAt(
     waypointPending: opts?.waypointPending ?? false,
     waypointApproached: opts?.waypointApproached ?? false,
     uncertainSince: null,
+    offRouteConfirmD: null,
+    offRouteMinPerp: null,
+    offRouteAwayRun: null,
+    offRouteAnchor: null,
+    offRouteReason: null,
+    offRouteSpoken: false,
+    returnCandidateSince: null,
+    perpHistory: [],
+    lastHeading: opts?.lastHeading ?? null,
   };
 }
 
@@ -755,6 +902,7 @@ function restateAt(
     waypointReached: prev.waypointReached,
     waypointPending: prev.waypointPending,
     waypointApproached: prev.waypointApproached,
+    lastHeading: prev.lastHeading,
   });
 }
 
@@ -762,13 +910,18 @@ function restateAt(
 export function initialGuideState(
   route: GuideRoute,
   now: number,
-  opts?: { hasFinalApproachGeometry?: boolean; courseDerivation?: CourseDerivationState },
+  opts?: {
+    hasFinalApproachGeometry?: boolean;
+    courseDerivation?: CourseDerivationState;
+    lastHeading?: HeadingObservation | null;
+  },
 ): { state: GuideState; firstIndices: number[] } {
   return {
     state: guideStateAt(route, 0, now, {
       hasFinalApproachGeometry: opts?.hasFinalApproachGeometry,
-      // 재조회(같은 세션의 새 경로)는 직전 버퍼를 넘긴다 — guideStateAt ⚠ 참조.
+      // 재조회(같은 세션의 새 경로)는 직전 버퍼·방위 관측을 넘긴다 — guideStateAt ⚠ 참조.
       courseDerivation: opts?.courseDerivation,
+      lastHeading: opts?.lastHeading,
     }),
     firstIndices: unitAt(route, 0),
   };
@@ -853,6 +1006,138 @@ function periodicIntervalS(remaining: number): number {
   return 15;
 }
 
+const angDiff = (a: number, b: number) => Math.abs(((a - b + 540) % 360) - 180);
+
+/** 이탈·재조회 판정에 쓸 신선한 진행 방위(E63 spec §3.3). 나이 상한만 본다 — 불확도는 문장 고르기가 따로 본다. */
+function freshHeading(state: Pick<GuideState, "lastHeading">, now: number, tuning: GuideTuning) {
+  const h = state.lastHeading;
+  return h !== null && now - h.at <= tuning.headingMaxAgeS ? h : null;
+}
+
+/**
+ * 돌아가기 국면의 기준 투영(확정 지점 창, E63 spec §3.3): 확정 진행거리 뒤 `returnWindowBackM`·앞 `returnWindowAheadM`의
+ * 최근접. 그 최근접이 창 어느 끝에 붙으면 경로 전역의 최근접이다.
+ * ⚠ 구속 창을 쓰지 않는다 — 이탈 중 `d`는 단조라 떠난 지점보다 뒤로 걸으면 투영이 `d − 20`에 고정되어, 수직거리가
+ * 경로가 아니라 그 고정점까지의 거리가 된다.
+ */
+function confirmWindowProjection(
+  route: GuideRoute,
+  p: { lat: number; lng: number },
+  dConf: number,
+  tuning: GuideTuning,
+  fallback: Projection & { signed: number },
+): Projection & { signed: number } {
+  const poly = route.polyline;
+  const total = poly.cum[poly.cum.length - 1];
+  const from = dConf - tuning.returnWindowBackM;
+  const to = dConf + tuning.returnWindowAheadM;
+  const w = projectSigned(poly, p, from, to);
+  if (w && w.d > Math.max(0, from) + 0.5 && w.d < Math.min(total, to) - 0.5) return w;
+  // 폴리라인에 세그먼트가 있으면 전역 투영은 늘 값이 있다. 없으면(조립 검증이 막는 퇴화) 구속 창 투영으로 물린다.
+  return projectSigned(poly, p, 0, total) ?? fallback;
+}
+
+/** 기록에서 `minAge`초 이상 지난 값 중 가장 최근(단 `maxAge`초 안). 없으면 null(판정하지 않는다). */
+function perpAgo(history: readonly { at: number; perp: number }[], now: number, minAge: number, maxAge: number) {
+  for (let i = history.length - 1; i >= 0; i--) {
+    const age = now - history[i].at;
+    if (age < minAge) continue;
+    return age <= maxAge ? history[i].perp : null;
+  }
+  return null;
+}
+
+const PERP_HISTORY_S = 15;
+/**
+ * 공백(uncertain·reacquiring)에서 비우는 돌아가기 국면의 **시간 누적** 필드(E63 spec §3.9). 나란히 걷기 기준점은 위치라
+ * 비우지 않는다 — 공백 뒤 첫 fix가 기준점에서 50m면 실제로 50m를 옮긴 것이고, 단일 fix 발동은 연속 계수가 막는다(J4 설계 리뷰).
+ */
+const CLEARED_RETURN_TIMERS = {
+  returnCandidateSince: null,
+  offRouteAwayRun: null,
+} as const;
+function pushPerp(history: readonly { at: number; perp: number }[], now: number, perp: number) {
+  return [...history.filter((h) => h.at !== now && now - h.at <= PERP_HISTORY_S), { at: now, perp }];
+}
+
+/**
+ * 접근 표 제외(E63 spec §3.2 ②): 그 fix가 경로 쪽으로 다가가는 중이면 불일치 표를 넣지 않는다 — 경로로 돌아오는 걸음이
+ * 불일치 표를 채워 "벗어났습니다"가 나던 구멍(2026-10-03 14:03:21). 다가감 = 진행 방위가 수직의 발 방향 ±허용 안 ∧
+ * 4초 이상 전 값 중 가장 최근(10초 안)보다 수직이 줄었다. 일치·unknown 표는 그대로 둔다(복귀 판정이 늦어지지 않게).
+ */
+function approachingVote(
+  route: GuideRoute,
+  fix: GuideFix,
+  ref: { d: number; perpMeters: number },
+  obs: DerivedCourse | null,
+  history: readonly { at: number; perp: number }[],
+  now: number,
+  tuning: GuideTuning,
+): boolean {
+  if (tuning.approachVoteMaxDeg === null || obs === null) return false;
+  const foot = pointAtD(route.polyline, ref.d);
+  if (foot === null) return false;
+  const toFoot = bearingDegrees(fix.lat, fix.lng, foot.lat, foot.lng);
+  if (angDiff(obs.bearing, toFoot) > tuning.approachVoteMaxDeg) return false;
+  const past = perpAgo(history, now, 4, 10);
+  return past !== null && ref.perpMeters <= past - tuning.approachVoteClosingM;
+}
+
+/** 벗어난 쪽·돌아갈 쪽(E63 spec §3.3). 리듀서가 확정·재통지 fix에서 계산해 이벤트에 싣는다. */
+function offRouteDirection(
+  route: GuideRoute,
+  fix: GuideFix,
+  ref: { d: number; perpMeters: number; signed: number },
+  state: Pick<GuideState, "lastHeading">,
+  now: number,
+  tuning: GuideTuning,
+): { guidance: OffRouteGuidance; side: OffRouteSide | null; returnRelDeg: number | null } {
+  const side: OffRouteSide | null =
+    Math.abs(ref.signed) < tuning.sideMinPerpM ? null : ref.signed > 0 ? "right" : "left";
+  const h = freshHeading(state, now, tuning);
+  // 방위가 없거나 흔들리면 쪽만 말한다(위원장 판정 J3) — "뒤로 도세요"도 같은 불확도 상한을 지난다.
+  if (h === null || h.uncertaintyDeg > tuning.headingMaxUncertaintyDeg) {
+    return { guidance: "sideOnly", side, returnRelDeg: null };
+  }
+  const poly = route.polyline;
+  const total = poly.cum[poly.cum.length - 1];
+  const target = pointAtD(poly, Math.min(total, ref.d + tuning.returnTargetAheadM));
+  if (target === null) return { guidance: "sideOnly", side, returnRelDeg: null };
+  const rel = relativeBearing(h.bearing, bearingDegrees(fix.lat, fix.lng, target.lat, target.lng));
+  const clock = clockHour(rel);
+  const tangent = tangentAt(poly, ref.d, COURSE_AXIS_TANGENT_HALF_M);
+  if (tangent !== null && angDiff(h.bearing, tangent) >= tuning.oppositeMinDeg && clock >= 5 && clock <= 7) {
+    return { guidance: "opposite", side, returnRelDeg: null };
+  }
+  if (side === null) return { guidance: "sideOnly", side, returnRelDeg: null };
+  // 이미 경로 쪽으로 걷고 있다 — 말하지 않는다(시계 11~1을 "12시 방향으로 돌아가세요"로 쓰지 않는다).
+  if (clock === 11 || clock === 12 || clock === 1) return { guidance: "hold", side, returnRelDeg: rel };
+  return { guidance: "turn", side, returnRelDeg: rel };
+}
+
+/** 새 경로 첫 문장 방향 머리말의 기준 구간(m, E63 spec §3.7). */
+export const REROUTE_HEAD_SPAN_M = 15;
+
+/**
+ * 자동 재조회로 받은 새 경로의 첫 방향을 진행 방위 기준 시(1~12)로(E63 spec §3.7). `state`는 **교체 전** 세션 상태다
+ * (방위 관측은 궤적의 사실). 방위가 없거나 낡거나 흔들리면 null — 소비자는 머리말 없이 말한다.
+ */
+export function rerouteHeadClock(
+  state: Pick<GuideState, "lastHeading">,
+  route: GuideRoute,
+  now: number,
+  tuning: GuideTuning,
+): number | null {
+  const h = freshHeading(state, now, tuning);
+  if (h === null || h.uncertaintyDeg > tuning.headingMaxUncertaintyDeg) return null;
+  const poly = route.polyline;
+  const total = poly.cum[poly.cum.length - 1];
+  const a = pointAtD(poly, 0);
+  const b = pointAtD(poly, Math.min(REROUTE_HEAD_SPAN_M, total));
+  if (a === null || b === null || (a.lat === b.lat && a.lng === b.lng)) return null;
+  return clockHour(relativeBearing(h.bearing, bearingDegrees(a.lat, a.lng, b.lat, b.lng)));
+}
+
 /**
  * 방위 관측은 인자가 아니라 **리듀서가 fix 이력에서 직접 유도한다**(spec §2.9 재설계).
  * 플랫폼이 관측을 만들어 넘길 수 없는 구조가 1선 방어다 — 두 플랫폼의 유도가
@@ -888,7 +1173,13 @@ export function guideStep(
   // 유도기 갱신은 국면과 무관하게 매 fix 1회 — 버퍼는 궤적의 사실이다(spec §2.9).
   // finalApproach·uncertain 조기 반환보다 앞이라 어느 국면에서도 버퍼가 이어진다.
   const dv = deriveCourse(state.courseDerivation, fix, now);
-  state = { ...state, courseDerivation: dv.state };
+  // 이탈 문장·새 경로 머리말의 기준 방향은 프로파일 게이트 **앞**의 관측이다(E63 spec §3.3 — 자동차도 같은 유도기).
+  state = {
+    ...state,
+    courseDerivation: dv.state,
+    lastHeading:
+      dv.obs !== null ? { bearing: dv.obs.bearing, uncertaintyDeg: dv.obs.uncertaintyDeg, at: now } : state.lastHeading,
+  };
   // 프로파일 게이트는 여기 한 곳뿐이다 — 조건을 하위 분기마다 흩으면 하나를
   // 빠뜨리고, 그 하나가 조용히 축을 살린다(기존 계약 유지).
   const derived = dv.obs !== null && tuning.courseAxisEnabled ? dv.obs : null;
@@ -931,6 +1222,7 @@ export function guideStep(
           windowEdgeHits: 0,
           speedSamples: [],
           courseVotes: [],
+          ...CLEARED_RETURN_TIMERS,
           lastFixAt: now,
           reacquiringFromOffRoute: state.resumePhase === "offRoute",
           reacquirePrevD: state.d,
@@ -965,6 +1257,9 @@ export function guideStep(
         // ⚠ 창은 비우고 latch(offRouteAxes)는 스프레드로 보존한다. 투영을 못 믿는
         //   기간의 표는 근거가 아니지만, 이탈 사실이 정확도 악화로 소실되면 안 된다.
         courseVotes: [],
+        // 돌아가기 국면의 시간 누적 필드는 비운다 — 공백이 8초 유지·2초 연속에 산입되면 관측 없이 성립한다(E63 §3.9).
+        // 최솟값·사유·말함 여부·확정 진행거리는 스프레드로 보존한다.
+        ...CLEARED_RETURN_TIMERS,
       },
       event: { kind: "uncertainEnter" },
       tone: null,
@@ -973,6 +1268,16 @@ export function guideStep(
 
   // 2) reacquiring: 전역 재탐색(모호하면 유지 — 다음 fix에서 재시도).
   if (state.phase === "reacquiring") {
+    // 이탈 유래 재획득(복귀 반경 프로파일, E63 spec §3.9): 할 일은 위치 재확보(복귀) 하나뿐이고 그것은 돌아가기 국면의
+    // 15m·유지 판정이 맡는다. 곧바로 돌아가기 국면으로 되돌린다(최솟값·사유·말함 여부 보존) — 재획득에 머물면 재통지와
+    // 재조회 요청이 멎는다(실데이터 2/33). 이탈과 무관한 재획득은 아래 현행 그대로다(넓게 적용하면 경로 위 재획득 회귀).
+    if (state.reacquiringFromOffRoute && tuning.returnPerpM !== null) {
+      return {
+        state: { ...state, phase: "offRoute", lastFixAt: now, reacquiringFromOffRoute: false },
+        event: null,
+        tone: null,
+      };
+    }
     const entry = entryProjection(route, fix, tuning);
     let entryD: number | null = entry.status === "ok" ? entry.d : null;
     // 재획득 전방 연속성 타이브레이크(§4.3, 재획득 경로 한정): 직전 진행거리 기준
@@ -1037,7 +1342,9 @@ export function guideStep(
     // 내야 UI의 이탈 상태(재조회 버튼)가 함께 닫힌다(독립 리뷰 HIGH).
     return {
       state: s,
-      event: { kind: state.reacquiringFromOffRoute ? "backOnRoute" : "reacquired" },
+      event: state.reacquiringFromOffRoute
+        ? { kind: "backOnRoute", spoken: state.offRouteSpoken }
+        : { kind: "reacquired" },
       tone: null,
     };
   }
@@ -1051,6 +1358,7 @@ export function guideStep(
         speedSamples: [],
         // 위치를 잃은 동안의 표는 근거가 아니다(latch는 스프레드로 보존).
         courseVotes: [],
+        ...CLEARED_RETURN_TIMERS,
         lastFixAt: now,
         reacquiringFromOffRoute: state.phase === "offRoute",
         // 타이브레이크 기준 보관 — 표본은 지금 리셋되므로 진입 시점에 계산해 둔다.
@@ -1073,7 +1381,7 @@ export function guideStep(
     3 * fix.accuracy,
     vPrev * tuning.windowAheadSpeedS,
   );
-  const proj = projectOnPolyline(route.polyline, fix, state.d - WINDOW_BACK_M, state.d + ahead);
+  const proj = projectSigned(route.polyline, fix, state.d - WINDOW_BACK_M, state.d + ahead);
   if (!proj) return { state: { ...state, lastFixAt: now }, event: null, tone: null };
   const d = Math.max(state.d, proj.d);
   // 투영 점프: 직전 수용 fix 대비 물리 불가능한 전진(tuning.maxSpeedMps 주석 — A10).
@@ -1084,12 +1392,10 @@ export function guideStep(
   const jumped =
     state.lastFixAt !== null &&
     d - state.d > tuning.maxSpeedMps * Math.max(0, now - state.lastFixAt) * 1.5;
-  // 방위 축 표결(spec §2.1). 추종 중 기준은 구속 창 투영 결과다. 관측 없으면 표 없음.
-  const vote = derived === null ? null : courseVote(derived, route.polyline, d);
-  const courseVotes =
-    vote === null ? pruneVotes(state.courseVotes) : recordVote(state.courseVotes, now, vote);
-  // 진단 계측: 이 fix가 실제로 넣은 표. 이탈 분기에서 entry 기준으로 덮인다.
-  let loggedVote = vote ?? undefined;
+  // 진단 계측: 이 fix가 실제로 창에 넣은 표와 기준 투영의 부호 있는 수직거리. 국면 분기가 덮는다.
+  let loggedVote: CourseVote | undefined;
+  let loggedSigned = proj.signed;
+  let approachExcluded = false;
   const emit = (s: GuideState, event: GuideEvent | null, tone: GuideTone | null): GuideOutput => ({
     state: s,
     event,
@@ -1098,6 +1404,8 @@ export function guideStep(
     courseVote: loggedVote,
     derivedCourse: derived,
     projectionJumped: jumped,
+    signedPerpMeters: loggedSigned,
+    approachExcluded,
   });
   // 창 경계 적중은 "경로 위인데 창이 못 따라간" 신호일 때만 센다. 수직거리가 크면
   // 그것은 이탈 증거이지 창 기아가 아니다(두 판정이 경합하면 이탈이 영영 확정되지 않는다).
@@ -1152,15 +1460,18 @@ export function guideStep(
     windowEdgeHits,
     speedSamples: samples,
     speedGuardActive,
-    courseVotes,
   };
   // 재무장: 수동 복귀 세션은 잔여가 재무장선 밖으로 나가야 자동 인계 허용(리뷰 #11).
   if (!next.autoHandoffArmed && remainingTotal > tuning.handoffRearmM) {
     next = { ...next, autoHandoffArmed: true };
   }
 
-  // 5) 이탈 판정(스펙 §5.6).
+  // 5) 이탈 판정(스펙 §5.6) — 돌아가기 국면(E63 spec §3).
+  //    방위 표는 국면 분기 뒤 한 자리에서만 계산한다(D11 — 이탈 국면에서 구속 창 기준 표를 계산해 버리던 낭비 제거).
   if (state.phase === "offRoute") {
+    // 기준 투영은 확정 지점 창이다(§3.3). 쪽·목표점·멀어짐·접근·재통지의 다가감이 전부 이것으로 잰다.
+    const ref = confirmWindowProjection(route, fix, state.offRouteConfirmD ?? state.d, tuning, proj);
+    loggedSigned = ref.signed;
     // 이탈 중 복귀 감지는 구속 창이 아니라 전역 후보로 한다. 이탈 동안 창이 뒤에
     // 머물러, 사용자가 경로 앞쪽으로 복귀해도 창 안 투영으로는 영영 못 잡는다.
     const entry = entryProjection(route, fix, tuning);
@@ -1169,46 +1480,172 @@ export function guideStep(
     //   후보가 모호하면 방위가 맞아도 복귀를 확정하지 않는다(판정 근거 없음).
     // ⚠ 이탈 중에는 창을 비우지 않는다 — 비우면 복귀 판정 표본이 영영 최소치에
     //   못 미친다(국면 초기화는 uncertain·reacquiring·finalApproach에만).
-    const offVote =
+    let offVote: CourseVote | null =
       derived === null
         ? null
         : entry.status === "ok"
           ? courseVote(derived, route.polyline, entry.d)
-          : ("unknown" as CourseVote); // 관측은 있는데 기준점이 모호 — 판정 불가 표.
+          : "unknown"; // 관측은 있는데 기준점이 모호 — 판정 불가 표.
+    // 복귀 유지 시각의 초기화는 접근 제외 **전** 표로 한다 — 제외 뒤 표로 하면 경로를 직각으로 가로질러 계속 가는 사람이
+    // 다가가는 절반(15m)만으로 8초를 채워 "복귀했습니다"를 듣는다(fixture ⑭-4). 경로 위 정지는 관측이 없어 그대로 통과한다.
+    const crossingObserved = offVote === "mismatch";
+    if (offVote === "mismatch" && approachingVote(route, fix, ref, derived, state.perpHistory, now, tuning)) {
+      offVote = null;
+      approachExcluded = true;
+    }
     const offVotes =
-      offVote === null
-        ? pruneVotes(state.courseVotes)
-        : recordVote(state.courseVotes, now, offVote);
-    next = { ...next, courseVotes: offVotes };
-    loggedVote = offVote ?? undefined; // 진단: 이 국면에서 창에 들어간 표는 entry 기준이다.
-    if (entry.status === "ok") {
-      // 축별 해제. 평가 불가(`unknown`)는 해제가 아니다.
-      const courseCleared =
-        !state.offRouteAxes.course || courseAxisVerdict(offVotes) === "on";
-      if (courseCleared) {
-        // restateAt이 guideStateAt을 거치므로 창과 latch가 함께 초기화된다(§2.8).
-        const back: GuideState = {
-          ...restateAt(route, entry.d, now, state),
+      offVote === null ? pruneVotes(state.courseVotes) : recordVote(state.courseVotes, now, offVote);
+    const perpHistory = pushPerp(state.perpHistory, now, ref.perpMeters);
+    next = { ...next, courseVotes: offVotes, perpHistory };
+    loggedVote = offVote ?? undefined;
+    // 축별 해제. 평가 불가(`unknown`)는 해제가 아니다.
+    const courseCleared = !state.offRouteAxes.course || courseAxisVerdict(offVotes) === "on";
+    const back = (backD: number): GuideOutput =>
+      // restateAt이 guideStateAt을 거치므로 창·latch·돌아가기 상태가 함께 초기화된다(§2.8).
+      emit(
+        {
+          ...restateAt(route, backD, now, state),
           speedSamples: samples,
           speedGuardActive,
           speedWarned: state.speedWarned,
           lastFixAt: now,
-        };
-        return emit(back, { kind: "backOnRoute" }, null);
+        },
+        // 이 회차에 이탈 문장을 내지 않았으면(보류) "복귀했습니다"도 말하지 않는다(§3.4).
+        { kind: "backOnRoute", spoken: state.offRouteSpoken },
+        null,
+      );
+    // (1) 복귀(§3.6). 복귀 > 재조회 요청 > 재통지(한 fix에 이벤트 하나).
+    if (tuning.returnPerpM !== null) {
+      // 도보: 반경 max(15m, 정확도) 안 유일 후보가 유지 시간 이어짐. 30m 반경이면 길 건너편에서 "복귀했습니다"가 났다
+      // (거리 래치 복귀 6회 중 5회가 28~30m). 유지 중 불일치 표가 들어오면 처음부터(경로를 가로질러 계속 가는 사람).
+      const cands = globalCandidates(route.polyline, fix, Math.max(tuning.returnPerpM, fix.accuracy));
+      if (cands.length === 1) {
+        const since = crossingObserved ? now : (state.returnCandidateSince ?? now);
+        next = { ...next, returnCandidateSince: since };
+        if (now - since >= tuning.returnHoldS && courseCleared) return back(cands[0].d);
+      } else {
+        next = { ...next, returnCandidateSince: null };
       }
+    } else if (entry.status === "ok" && courseCleared) {
+      return back(entry.d);
     }
-    const canRenotify =
-      !speedGuardActive &&
-      (state.lastOffRouteNoticeAt === null ||
-        now - state.lastOffRouteNoticeAt >= tuning.offRouteRenotifyS);
-    if (canRenotify) {
-      next = { ...next, lastOffRouteNoticeAt: now };
-      // 재통지 톤은 프로파일 몫(차량은 이탈=정보라 무톤, 첫 확정만 경고 — §4.3).
-      return emit(next, { kind: "offRoute" }, tuning.offRouteRenotifyWarns ? "warning" : null);
+    // (2) 자동 재조회 요청(§3.5 + 위원장 판정 J4). 멀어짐과 나란히 걷기를 한 연속 계수로 센다.
+    const minPerp = Math.min(state.offRouteMinPerp ?? ref.perpMeters, ref.perpMeters);
+    // 하한 = 복귀 반경(§3.6과 같은 술어): 도보 max(15m, 정확도), 자동차 현행 max(50m, 2×정확도).
+    const floor =
+      tuning.returnPerpM !== null
+        ? Math.max(tuning.returnPerpM, fix.accuracy)
+        : Math.max(tuning.offRouteBaseM, 2 * fix.accuracy);
+    let anchor = state.offRouteAnchor;
+    // 기준점 재설정: 복귀 반경 안(경로로 돌아왔는데 복귀가 아직 안 났다) 또는 다가감. ⚠ 재설정은 그 fix의 자격 판정보다
+    // 먼저이고, 재설정한 fix는 나란히 자격이 서지 않는다(직선 0 — 멀어짐 자격은 설 수 있다).
+    if (
+      anchor === null ||
+      ref.perpMeters < floor ||
+      ref.perpMeters <= anchor.perp - tuning.rerouteParallelClosingM
+    ) {
+      anchor = { lat: fix.lat, lng: fix.lng, perp: ref.perpMeters };
+    }
+    const away = ref.perpMeters >= minPerp + tuning.rerouteAwayM;
+    const parallel = haversineMeters(anchor.lat, anchor.lng, fix.lat, fix.lng) >= tuning.rerouteParallelM;
+    const run =
+      away || parallel
+        ? state.offRouteAwayRun === null
+          ? { count: 1, since: now }
+          : { count: state.offRouteAwayRun.count + 1, since: state.offRouteAwayRun.since }
+        : null;
+    if (run !== null && run.count >= tuning.rerouteAwayFixes && now - run.since >= tuning.rerouteAwayMinS) {
+      // 재무장: 최솟값·기준점을 이 fix로 다시 놓는다 — 조회가 실패·신선도 미달로 끝나도 더 가면 또 요청한다(예산 5회가 상한).
+      next = {
+        ...next,
+        offRouteMinPerp: ref.perpMeters,
+        offRouteAnchor: { lat: fix.lat, lng: fix.lng, perp: ref.perpMeters },
+        offRouteAwayRun: null,
+      };
+      return emit(next, { kind: "rerouteNeeded", reason: away ? "away" : "parallel" }, null);
+    }
+    next = { ...next, offRouteMinPerp: minPerp, offRouteAnchor: anchor, offRouteAwayRun: run };
+    // (3) 재통지·보류 뒤 첫 발화(§3.4): 움직이는 중 ∧ 다가가는 중 아님 ∧ 다시 고른 문장이 보류가 아님.
+    //     말하지 않았으면(보류 확정) 간격 없이, 말했으면 프로파일 간격.
+    const intervalOk =
+      !state.offRouteSpoken ||
+      state.lastOffRouteNoticeAt === null ||
+      now - state.lastOffRouteNoticeAt >= tuning.offRouteRenotifyS;
+    const past = perpAgo(perpHistory, now, 10, 15);
+    const approaching = past !== null && ref.perpMeters <= past - 5;
+    if (!speedGuardActive && intervalOk && freshHeading(next, now, tuning) !== null && !approaching) {
+      const dir = offRouteDirection(route, fix, ref, next, now, tuning);
+      if (dir.guidance !== "hold") {
+        const firstSpoken = !state.offRouteSpoken;
+        next = { ...next, lastOffRouteNoticeAt: now, offRouteSpoken: true };
+        // 재통지 톤은 프로파일 몫(차량은 이탈=정보라 무톤, §4.3). 보류 뒤 첫 발화는 확정과 같다(§3.4).
+        return emit(
+          next,
+          { kind: "offRoute", notice: "renotify", reason: state.offRouteReason ?? "distance", ...dir, firstSpoken },
+          firstSpoken || tuning.offRouteRenotifyWarns ? "warning" : null,
+        );
+      }
     }
     return emit(next, null, null);
   }
+  // 방위 축 표결(spec §2.1). 추종 중 기준은 구속 창 투영 결과다. 관측 없으면 표 없음.
+  let vote = derived === null ? null : courseVote(derived, route.polyline, d);
+  if (vote === "mismatch" && approachingVote(route, fix, proj, derived, state.perpHistory, now, tuning)) {
+    vote = null;
+    approachExcluded = true;
+  }
+  const courseVotes =
+    vote === null ? pruneVotes(state.courseVotes) : recordVote(state.courseVotes, now, vote);
+  loggedVote = vote ?? undefined;
+  next = { ...next, courseVotes, perpHistory: pushPerp(state.perpHistory, now, proj.perpMeters) };
   const courseVerdict = courseAxisVerdict(courseVotes);
+
+  /**
+   * 이탈 확정(E63 spec §3.2): 돌아가기 국면의 시작이다(재조회가 아니다). 앞질러 감(⑤)은 거리·결합 조건에서 확정 대신
+   * 상태 재구성 — 전역 후보 하나가 구속 창 끝 너머 앞이면 사용자는 경로 위 앞쪽에 있다("돌아가세요" 직후 "복귀했습니다" 모순).
+   */
+  const overtaken = (): GuideOutput | null => {
+    const e = entryProjection(route, fix, tuning);
+    if (e.status !== "ok" || e.d <= state.d + ahead) return null;
+    return emit(
+      { ...restateAt(route, e.d, now, state), speedSamples: samples, speedGuardActive, speedWarned: state.speedWarned, lastFixAt: now },
+      null,
+      null,
+    );
+  };
+  const confirm = (reason: OffRouteReason, axes: GuideState["offRouteAxes"]): GuideOutput => {
+    const ref = confirmWindowProjection(route, fix, d, tuning, proj);
+    loggedSigned = ref.signed;
+    const dir = offRouteDirection(route, fix, ref, next, now, tuning);
+    const hold = dir.guidance === "hold";
+    next = {
+      ...next,
+      phase: "offRoute",
+      resumePhase: stepAt(route, d).isLong ? "following" : "bundle",
+      // 보류 확정은 재통지 간격 시계를 시작하지 않는다(§3.4 — 돌아서 멀어지면 60초를 기다리지 않고 말한다).
+      lastOffRouteNoticeAt: hold ? null : now,
+      // 두 확정 경로가 서로 다른 잔여를 남기지 않게 같은 상태를 남긴다.
+      offRouteSince: null,
+      offRoutePeakPerp: null,
+      offRouteAxes: axes,
+      offRouteConfirmD: d,
+      offRouteMinPerp: ref.perpMeters,
+      offRouteAwayRun: null,
+      offRouteAnchor: { lat: fix.lat, lng: fix.lng, perp: ref.perpMeters },
+      offRouteReason: reason,
+      offRouteSpoken: !hold,
+      returnCandidateSince: null,
+      // 투영이 확정 지점 창으로 바뀌는 자리라 이어 쓰면 거짓 "다가감"이 난다.
+      perpHistory: [{ at: now, perp: ref.perpMeters }],
+    };
+    // 경고 톤의 소유자는 리듀서 한 자리 — 보류는 무톤(§3.3).
+    return emit(
+      next,
+      { kind: "offRoute", notice: "confirm", reason, ...dir, firstSpoken: !hold },
+      hold ? null : "warning",
+    );
+  };
+
   // 기어가는 fix의 perp는 이탈 증거가 아니다(같은 M1 — 넣으면 홀드 10초 뒤 경로 위에서 거짓 경고).
   const isOff = proj.perpMeters > offThreshold && !crawling;
   if (isOff) {
@@ -1222,15 +1659,7 @@ export function guideStep(
     }
     next = { ...next, offRouteSince: since, offRoutePeakPerp: peak };
     if (now - since >= tuning.offRouteHoldS) {
-      next = {
-        ...next,
-        phase: "offRoute",
-        resumePhase: stepAt(route, d).isLong ? "following" : "bundle",
-        lastOffRouteNoticeAt: now,
-        offRoutePeakPerp: null,
-        offRouteAxes: { ...next.offRouteAxes, distance: true },
-      };
-      return emit(next, { kind: "offRoute" }, "warning");
+      return overtaken() ?? confirm("distance", { ...next.offRouteAxes, distance: true });
     }
   } else if (state.offRouteSince !== null) {
     next = { ...next, offRouteSince: null, offRoutePeakPerp: null };
@@ -1238,18 +1667,15 @@ export function guideStep(
   // 방위 축은 거리 축과 독립이다. 수직거리가 임계 안이어도 확정한다 — 자기근접으로
   // 수직거리가 무너지는 갈림에서 이 축이 유일한 증거다(spec §1.2).
   if (courseVerdict === "off") {
-    next = {
-      ...next,
-      phase: "offRoute",
-      resumePhase: stepAt(route, d).isLong ? "following" : "bundle",
-      lastOffRouteNoticeAt: now,
-      // 거리 축 확정과 같은 상태를 남긴다 — 두 확정 경로가 서로 다른 잔여를 남기면
-      // 다음 사람이 어느 쪽을 믿어야 할지 알 수 없다(무해하더라도 읽는 비용이다).
-      offRouteSince: null,
-      offRoutePeakPerp: null,
-      offRouteAxes: { ...next.offRouteAxes, course: true },
-    };
-    return emit(next, { kind: "offRoute" }, "warning");
+    return confirm("course", { ...next.offRouteAxes, course: true });
+  }
+  // 결합 확정(E63 spec §3.2 ①): 거리 축(30m·20초)도 방위 축(8표·16초)도 못 채우고 멈춘 이탈(2026-10-03 14:02:41~57,
+  // 큰길 쪽으로 26m 걷고 정지 — 무통지). 래치는 거리 축이다(방위 래치면 직각으로 돌아와 경로 위에 서도 25초 넘게 이탈로 남는다).
+  if (tuning.jointConfirmPerpM !== null && proj.perpMeters >= tuning.jointConfirmPerpM && !crawling) {
+    const mismatches = courseVotes.filter((v) => v.vote === "mismatch").length;
+    if (mismatches >= tuning.jointConfirmMismatches && !courseVotes.some((v) => v.vote === "match")) {
+      return overtaken() ?? confirm("joint", { ...next.offRouteAxes, distance: true });
+    }
   }
 
   // 6) 국면·낭독.

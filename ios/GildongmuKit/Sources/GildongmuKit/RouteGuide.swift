@@ -149,6 +149,42 @@ public struct GuideTuning: Sendable, Equatable {
     public var offRouteRenotifyS: Double
     /// 이탈 재통지의 warning 톤 여부(첫 확정은 항상 warning)
     public var offRouteRenotifyWarns: Bool
+    /// 돌아가기 국면의 자동 재조회 요청(E63 spec §3.5, 값은 로그 재생 — 전부 잠정, 실보행·실주행 판정). 자격 fix =
+    /// 기준 투영 수직이 최솟값 + `rerouteAwayM` 이상(멀어짐) 또는 나란히 걷기 기준점에서 직선 `rerouteParallelM` 이상
+    /// (위원장 판정 J4). 자격 fix가 `rerouteAwayFixes`개 연속 ∧ `rerouteAwayMinS`초 이상이면 `rerouteNeeded`.
+    /// 웹 `GuideTuning` 같은 이름 필드 미러.
+    public var rerouteAwayM: Double
+    public var rerouteAwayFixes: Int
+    public var rerouteAwayMinS: Double
+    public var rerouteParallelM: Double
+    /// 나란히 걷기 기준점을 다시 놓는 다가감(기준점 수직 대비 감소, m).
+    public var rerouteParallelClosingM: Double
+    /// 자동 재조회 채택 시점 신선도의 이동 상한(m, `RerouteProposalGate.isFresh`). 도보 30, 자동차 150 — 20m/s에서
+    /// 왕복 1.5초면 30m를 넘어 그 회차가 끝난다(E63 spec §3.9). 웹 `rerouteMaxDriftM` 미러.
+    public var rerouteMaxDriftM: Double
+    /// 결합 확정(§3.2 ①)의 구속 창 수직 하한. nil = 결합 확정 끔(자동차).
+    public var jointConfirmPerpM: Double?
+    public var jointConfirmMismatches: Int
+    /// 접근 표 제외(§3.2 ②)의 방위 허용(°). nil = 끔(자동차 — 방위 축이 없다).
+    public var approachVoteMaxDeg: Double?
+    public var approachVoteClosingM: Double
+    /// 복귀 반경 하한(§3.6, 실제 반경 `max(이 값, 보고 정확도)`)과 유지 시간. nil = 현행 반경(`entryProjection`, 자동차).
+    /// ⚠ 나란히 걷기 기준점의 하한도 이 값이다(nil이면 `offRouteBaseM`) — 경로로 돌아왔는데 복귀가 아직 안 난 사람이
+    /// 경로를 따라 걸어 재조회되지 않게(재생: 하한 없이 정상 추종 창 88% 발동).
+    public var returnPerpM: Double?
+    public var returnHoldS: Double
+    /// 돌아갈 목표점 = 기준 투영점에서 경로를 따라 이만큼 앞(§3.3).
+    public var returnTargetAheadM: Double
+    /// 확정 지점 창(§3.3): 확정 진행거리 기준 뒤·앞. 최근접이 창 끝에 붙으면 경로 전역.
+    public var returnWindowBackM: Double
+    public var returnWindowAheadM: Double
+    /// 벗어난 쪽을 말할 수직 하한(m). 그 아래면 `side` nil.
+    public var sideMinPerpM: Double
+    /// 반대 방향 판정의 접선 차 하한(°).
+    public var oppositeMinDeg: Double
+    /// 진행 방위(유도 관측)의 신선도(초)·시계를 말할 불확도 상한(°).
+    public var headingMaxAgeS: Double
+    public var headingMaxUncertaintyDeg: Double
     public var handoffDistM: Double
     public var handoffRearmM: Double
     /// 경유지 접근 예고 임계(m). nil = 예고 없음(car — 속도에 맞춘 리듬은 판정 밖, N4 2026-09-24 §2.1).
@@ -208,6 +244,14 @@ public struct GuideTuning: Sendable, Equatable {
         offRouteBaseM: offRouteBaseMeters, offRouteHoldS: offRouteHoldSeconds,
         offRouteTrend: false,
         offRouteRenotifyS: offRouteRenotifySeconds, offRouteRenotifyWarns: true,
+        rerouteAwayM: 25, rerouteAwayFixes: 3, rerouteAwayMinS: 2,
+        rerouteParallelM: 50, rerouteParallelClosingM: 10, rerouteMaxDriftM: 30,
+        jointConfirmPerpM: 20, jointConfirmMismatches: 5,
+        approachVoteMaxDeg: 45, approachVoteClosingM: 2,
+        returnPerpM: 15, returnHoldS: 8, returnTargetAheadM: 10,
+        returnWindowBackM: 60, returnWindowAheadM: 200,
+        sideMinPerpM: 3, oppositeMinDeg: 135,
+        headingMaxAgeS: 5, headingMaxUncertaintyDeg: 30,
         handoffDistM: handoffDistMeters, handoffRearmM: handoffRearmMeters,
         waypointApproachM: waypointApproachMeters,
         reacquireTieBreak: false, speedSuggest: true,
@@ -234,6 +278,15 @@ public struct GuideTuning: Sendable, Equatable {
         offRouteBaseM: 50, offRouteHoldS: 10,
         offRouteTrend: true,
         offRouteRenotifyS: 180, offRouteRenotifyWarns: false,
+        // ⚠ 100m는 표본 9회(한 주행 6회), 나란히 주행 200m는 재생 표본 0 — 실주행 판정(E63 spec §8).
+        rerouteAwayM: 100, rerouteAwayFixes: 3, rerouteAwayMinS: 2,
+        rerouteParallelM: 200, rerouteParallelClosingM: 25, rerouteMaxDriftM: 150,
+        jointConfirmPerpM: nil, jointConfirmMismatches: 5,
+        approachVoteMaxDeg: nil, approachVoteClosingM: 2,
+        returnPerpM: nil, returnHoldS: 0, returnTargetAheadM: 10,
+        returnWindowBackM: 60, returnWindowAheadM: 200,
+        sideMinPerpM: 3, oppositeMinDeg: 135,
+        headingMaxAgeS: 5, headingMaxUncertaintyDeg: 30,
         handoffDistM: 150, handoffRearmM: 200,
         waypointApproachM: nil,
         reacquireTieBreak: true, speedSuggest: false,
@@ -414,6 +467,79 @@ public struct GuideState: Sendable, Equatable {
     /// uncertain 진입 시점의 **마지막 신뢰 fix 시각**(silentCatchUp ②, 웹 `uncertainSince` 미러).
     /// 불량 fix마다 갱신되는 `lastFixAt`으로 복귀 공백을 재면 촘촘한 불량 fix에서 절대 걸리지 않는다.
     public var uncertainSince: Double?
+    /// 이탈 확정 순간의 진행거리 — 확정 지점 창(E63 spec §3.3)의 기준. 돌아가기 국면 밖이면 nil.
+    public var offRouteConfirmD: Double?
+    /// 확정 뒤 관측한 기준 투영 수직 최솟값. `rerouteNeeded`를 낸 fix에서 그 값으로 다시 놓는다(재무장).
+    public var offRouteMinPerp: Double?
+    /// 재조회 자격 fix(멀어짐·나란히 걷기) 연속 수와 시작 시각. 공백(uncertain·reacquiring)에서 비운다.
+    public var offRouteAwayRun: OffRouteAwayRun?
+    /// 나란히 걷기 기준점(위치·기준 투영 수직, 위원장 판정 J4). 위치라 공백(uncertain·reacquiring)에서도 잇는다.
+    public var offRouteAnchor: OffRouteAnchor?
+    public var offRouteReason: OffRouteReason?
+    /// 이 회차에 말할 이탈 문장을 냈는가(보류 `hold` 확정은 거짓으로 남는다).
+    public var offRouteSpoken: Bool
+    /// 복귀 후보(반경 15m 유일)가 이어진 시작 시각(§3.6 유지 시간). 공백에서 비운다.
+    public var returnCandidateSince: Double?
+    /// 최근 15초 기준 투영 수직거리(접근 표 제외·재통지의 다가감 판정). 확정 fix와 경로 교체에서 새로 시작한다.
+    public var perpHistory: [GuidePerpSample]
+    /// ⚠ 궤적의 사실이라 경로 교체·재구성에서 잇는다(유도기 버퍼와 같은 원칙).
+    public var lastHeading: HeadingObservation?
+
+    /// 공백(uncertain·reacquiring)에서 비우는 돌아가기 국면의 **시간 누적** 필드(E63 spec §3.9, 웹 `CLEARED_RETURN_TIMERS`).
+    /// 공백이 8초 유지·2초 연속에 산입되면 관측 없이 성립한다. 최솟값·사유·말함 여부·확정 진행거리·나란히 걷기 기준점(위치)은 남긴다.
+    mutating func clearReturnTimers() {
+        returnCandidateSince = nil
+        offRouteAwayRun = nil
+    }
+}
+
+public struct OffRouteAwayRun: Sendable, Equatable {
+    public let count: Int
+    public let since: Double
+}
+
+public struct OffRouteAnchor: Sendable, Equatable {
+    public let lat: Double
+    public let lng: Double
+    public let perp: Double
+}
+
+public struct GuidePerpSample: Sendable, Equatable {
+    public let at: Double
+    public let perp: Double
+}
+
+public enum OffRouteNotice: String, Sendable, Equatable {
+    case confirm, renotify
+}
+
+public enum OffRouteReason: String, Sendable, Equatable {
+    case distance, course, joint
+}
+
+public enum OffRouteGuidance: String, Sendable, Equatable {
+    case turn, opposite, sideOnly, hold
+}
+
+public enum OffRouteSide: String, Sendable, Equatable {
+    case left, right
+}
+
+public enum RerouteReason: String, Sendable, Equatable {
+    case away, parallel
+}
+
+/// 유도기의 최근 진행 방위 관측(프로파일 게이트와 무관 — 이탈 문장·새 경로 머리말의 기준 방향, E63 spec §3.3).
+public struct HeadingObservation: Sendable, Equatable {
+    public let bearing: Double
+    public let uncertaintyDeg: Double
+    public let at: Double
+
+    public init(bearing: Double, uncertaintyDeg: Double, at: Double) {
+        self.bearing = bearing
+        self.uncertaintyDeg = uncertaintyDeg
+        self.at = at
+    }
 }
 
 public struct OffRouteAxes: Sendable, Equatable {
@@ -442,8 +568,18 @@ public enum GuideEvent: Sendable, Equatable {
     /// 경유지 접근 예고(N4 2026-09-24). 경유지 도착선까지 경로 잔여(반올림 m). 톤 없음.
     case waypointApproaching(remainingMeters: Int)
     case finalApproachEnter
-    case offRoute
-    case backOnRoute
+    /// 이탈 확정(`confirm`)·재통지(`renotify`) — 돌아가기 국면(E63 spec §3·§4.1). 재조회는 이 이벤트가 아니라
+    /// `rerouteNeeded`가 연다. `guidance`가 문장 틀을 고르고(`hold` = 이미 경로 쪽으로 걷는 중이라 말하지 않는다),
+    /// `returnRelDeg`는 진행 방위 기준 목표점의 상대 방위(turn·hold만). 소비자는 첫 발화의 분류·톤을 `notice`가 아니라
+    /// `firstSpoken`으로 가른다.
+    case offRoute(
+        notice: OffRouteNotice, reason: OffRouteReason, guidance: OffRouteGuidance,
+        side: OffRouteSide?, returnRelDeg: Double?, firstSpoken: Bool
+    )
+    /// `spoken` = 이 회차에 말할 이탈 문장을 냈는가. 거짓이면 소비자는 "복귀했습니다"를 말하지 않는다.
+    case backOnRoute(spoken: Bool)
+    /// 돌아가기 국면에서 계속 멀어지거나(`away`) 나란히 계속 걸었다(`parallel`) — 오케스트레이터가 자동 조회·채택한다.
+    case rerouteNeeded(reason: RerouteReason)
     case uncertainEnter
     case uncertainExit
     case reacquiring
@@ -478,11 +614,16 @@ public struct GuideOutput: Sendable, Equatable {
     /// 판정 자체는 리듀서가 소유하고 최종 접근 진입(6b)을 한 fix 미룬다(A10).
     /// 투영에 도달하지 못한 조기 반환 경로에서는 `nil`(판정 없음). 웹 미러.
     public let projectionJumped: Bool?
+    /// 기준 투영의 부호 있는 수직거리(오른쪽 +, 진단 `sperp`). following·bundle은 구속 창, 돌아가기 국면은 확정 지점 창.
+    public let signedPerpMeters: Double?
+    /// 이 fix의 불일치 표가 접근 판정(§3.2 ②)으로 빠졌다(진단 `appr=1`).
+    public let approachExcluded: Bool?
 
     public init(
         state: GuideState, event: GuideEvent?, tone: GuideTone?,
         perpMeters: Double? = nil, courseVote: CourseVote? = nil,
-        derivedCourse: DerivedCourse? = nil, projectionJumped: Bool? = nil
+        derivedCourse: DerivedCourse? = nil, projectionJumped: Bool? = nil,
+        signedPerpMeters: Double? = nil, approachExcluded: Bool? = nil
     ) {
         self.state = state
         self.event = event
@@ -491,6 +632,8 @@ public struct GuideOutput: Sendable, Equatable {
         self.courseVote = courseVote
         self.derivedCourse = derivedCourse
         self.projectionJumped = projectionJumped
+        self.signedPerpMeters = signedPerpMeters
+        self.approachExcluded = approachExcluded
     }
 }
 
@@ -523,7 +666,8 @@ public func guideStateAt(
     hasFinalApproachGeometry: Bool = false,
     courseDerivation: CourseDerivationState = initialDerivationState,
     waypointReached: Bool = false, waypointPending: Bool = false,
-    waypointApproached: Bool = false
+    waypointApproached: Bool = false,
+    lastHeading: HeadingObservation? = nil
 ) -> GuideState {
     let step = stepAt(route: route, d: d)
     let unit = unitAt(route: route, index: step.index)
@@ -562,21 +706,32 @@ public func guideStateAt(
         waypointReached: waypointReached,
         waypointPending: waypointPending,
         waypointApproached: waypointApproached,
-        uncertainSince: nil
+        uncertainSince: nil,
+        offRouteConfirmD: nil,
+        offRouteMinPerp: nil,
+        offRouteAwayRun: nil,
+        offRouteAnchor: nil,
+        offRouteReason: nil,
+        offRouteSpoken: false,
+        returnCandidateSince: nil,
+        perpHistory: [],
+        lastHeading: lastHeading
     )
 }
 
 /// 시작 상태 + 원자 시작 발화(스펙 §5.3)에 넣을 첫 유닛. 문장 조립은 오케스트레이터 몫.
 public func initialGuideState(
     route: GuideRoute, now: Double, hasFinalApproachGeometry: Bool = false,
-    courseDerivation: CourseDerivationState = initialDerivationState
+    courseDerivation: CourseDerivationState = initialDerivationState,
+    lastHeading: HeadingObservation? = nil
 ) -> (state: GuideState, firstIndices: [Int]) {
     (
         guideStateAt(
             route: route, d: 0, now: now,
             hasFinalApproachGeometry: hasFinalApproachGeometry,
-            // 재조회(같은 세션의 새 경로)는 직전 버퍼를 넘긴다 — guideStateAt ⚠ 참조.
-            courseDerivation: courseDerivation
+            // 재조회(같은 세션의 새 경로)는 직전 버퍼·방위 관측을 넘긴다 — guideStateAt ⚠ 참조.
+            courseDerivation: courseDerivation,
+            lastHeading: lastHeading
         ),
         unitAt(route: route, index: 0)
     )
@@ -599,7 +754,8 @@ func restateAt(
         courseDerivation: prev.courseDerivation,
         waypointReached: prev.waypointReached,
         waypointPending: prev.waypointPending,
-        waypointApproached: prev.waypointApproached
+        waypointApproached: prev.waypointApproached,
+        lastHeading: prev.lastHeading
     )
 }
 
@@ -636,6 +792,114 @@ private func periodicIntervalSeconds(remaining: Double) -> Double {
     return 15
 }
 
+private func angDiff(_ a: Double, _ b: Double) -> Double {
+    abs((a - b + 540).truncatingRemainder(dividingBy: 360) - 180)
+}
+
+/// 이탈·재조회 판정에 쓸 신선한 진행 방위(E63 spec §3.3). 나이 상한만 본다 — 불확도는 문장 고르기가 따로 본다.
+private func freshHeading(_ state: GuideState, now: Double, tuning: GuideTuning) -> HeadingObservation? {
+    guard let h = state.lastHeading, now - h.at <= tuning.headingMaxAgeS else { return nil }
+    return h
+}
+
+/// 돌아가기 국면의 기준 투영(확정 지점 창, E63 spec §3.3): 확정 진행거리 뒤 `returnWindowBackM`·앞 `returnWindowAheadM`의
+/// 최근접. 그 최근접이 창 어느 끝에 붙으면 경로 전역의 최근접이다(웹 `confirmWindowProjection` 미러).
+/// ⚠ 구속 창을 쓰지 않는다 — 이탈 중 `d`는 단조라 떠난 지점보다 뒤로 걸으면 투영이 `d − 20`에 고정되어, 수직거리가
+/// 경로가 아니라 그 고정점까지의 거리가 된다.
+private func confirmWindowProjection(
+    route: GuideRoute, p: RoutePoint, dConf: Double, tuning: GuideTuning, fallback: GuideSignedProjection
+) -> GuideSignedProjection {
+    let poly = route.polyline
+    let total = poly.cum[poly.cum.count - 1]
+    let from = dConf - tuning.returnWindowBackM
+    let to = dConf + tuning.returnWindowAheadM
+    if let w = projectSigned(poly, p: p, fromD: from, toD: to),
+       w.d > max(0, from) + 0.5, w.d < min(total, to) - 0.5 {
+        return w
+    }
+    // 폴리라인에 세그먼트가 있으면 전역 투영은 늘 값이 있다. 없으면(조립 검증이 막는 퇴화) 구속 창 투영으로 물린다.
+    return projectSigned(poly, p: p, fromD: 0, toD: total) ?? fallback
+}
+
+/// 기록에서 `minAge`초 이상 지난 값 중 가장 최근(단 `maxAge`초 안). 없으면 nil(판정하지 않는다).
+private func perpAgo(_ history: [GuidePerpSample], now: Double, minAge: Double, maxAge: Double) -> Double? {
+    for h in history.reversed() {
+        let age = now - h.at
+        if age < minAge { continue }
+        return age <= maxAge ? h.perp : nil
+    }
+    return nil
+}
+
+private let perpHistorySeconds = 15.0
+
+private func pushPerp(_ history: [GuidePerpSample], now: Double, perp: Double) -> [GuidePerpSample] {
+    history.filter { $0.at != now && now - $0.at <= perpHistorySeconds } + [GuidePerpSample(at: now, perp: perp)]
+}
+
+/// 접근 표 제외(E63 spec §3.2 ②): 그 fix가 경로 쪽으로 다가가는 중이면 불일치 표를 넣지 않는다 — 경로로 돌아오는 걸음이
+/// 불일치 표를 채워 "벗어났습니다"가 나던 구멍(2026-10-03 14:03:21). 다가감 = 진행 방위가 수직의 발 방향 ±허용 안 ∧
+/// 4초 이상 전 값 중 가장 최근(10초 안)보다 수직이 줄었다. 일치·unknown 표는 그대로 둔다(복귀 판정이 늦어지지 않게).
+private func approachingVote(
+    route: GuideRoute, fix: GuideFix, ref: GuideSignedProjection, obs: DerivedCourse?,
+    history: [GuidePerpSample], now: Double, tuning: GuideTuning
+) -> Bool {
+    guard let maxDeg = tuning.approachVoteMaxDeg, let obs else { return false }
+    guard let foot = pointAtD(route.polyline, d: ref.d) else { return false }
+    let toFoot = bearingDegrees(fromLat: fix.lat, fromLng: fix.lng, toLat: foot.lat, toLng: foot.lng)
+    if angDiff(obs.bearing, toFoot) > maxDeg { return false }
+    guard let past = perpAgo(history, now: now, minAge: 4, maxAge: 10) else { return false }
+    return ref.perpMeters <= past - tuning.approachVoteClosingM
+}
+
+/// 벗어난 쪽·돌아갈 쪽(E63 spec §3.3). 리듀서가 확정·재통지 fix에서 계산해 이벤트에 싣는다.
+private func offRouteDirection(
+    route: GuideRoute, fix: GuideFix, ref: GuideSignedProjection, state: GuideState,
+    now: Double, tuning: GuideTuning
+) -> (guidance: OffRouteGuidance, side: OffRouteSide?, returnRelDeg: Double?) {
+    let side: OffRouteSide? = abs(ref.signed) < tuning.sideMinPerpM ? nil : ref.signed > 0 ? .right : .left
+    // 방위가 없거나 흔들리면 쪽만 말한다(위원장 판정 J3) — "뒤로 도세요"도 같은 불확도 상한을 지난다.
+    guard let h = freshHeading(state, now: now, tuning: tuning) else { return (.sideOnly, side, nil) }
+    if h.uncertaintyDeg > tuning.headingMaxUncertaintyDeg { return (.sideOnly, side, nil) }
+    let poly = route.polyline
+    let total = poly.cum[poly.cum.count - 1]
+    guard let target = pointAtD(poly, d: min(total, ref.d + tuning.returnTargetAheadM)) else {
+        return (.sideOnly, side, nil)
+    }
+    let rel = relativeBearing(
+        reference: h.bearing,
+        target: bearingDegrees(fromLat: fix.lat, fromLng: fix.lng, toLat: target.lat, toLng: target.lng)
+    )
+    let clock = clockHour(rel)
+    if let tangent = tangentAt(poly, d: ref.d, halfMeters: courseAxisTangentHalfMeters),
+       angDiff(h.bearing, tangent) >= tuning.oppositeMinDeg, clock >= 5, clock <= 7 {
+        return (.opposite, side, nil)
+    }
+    if side == nil { return (.sideOnly, side, nil) }
+    // 이미 경로 쪽으로 걷고 있다 — 말하지 않는다(시계 11~1을 "12시 방향으로 돌아가세요"로 쓰지 않는다).
+    if clock == 11 || clock == 12 || clock == 1 { return (.hold, side, rel) }
+    return (.turn, side, rel)
+}
+
+/// 새 경로 첫 문장 방향 머리말의 기준 구간(m, E63 spec §3.7). 웹 `REROUTE_HEAD_SPAN_M` 미러.
+public let rerouteHeadSpanMeters = 15.0
+
+/// 자동 재조회로 받은 새 경로의 첫 방향을 진행 방위 기준 시(1~12)로(E63 spec §3.7, 웹 `rerouteHeadClock` 미러).
+/// `state`는 **교체 전** 세션 상태다(방위 관측은 궤적의 사실). 방위가 없거나 낡거나 흔들리면 nil — 소비자는 머리말 없이 말한다.
+public func rerouteHeadClock(state: GuideState, route: GuideRoute, now: Double, tuning: GuideTuning) -> Int? {
+    guard let h = freshHeading(state, now: now, tuning: tuning) else { return nil }
+    if h.uncertaintyDeg > tuning.headingMaxUncertaintyDeg { return nil }
+    let poly = route.polyline
+    let total = poly.cum[poly.cum.count - 1]
+    guard let a = pointAtD(poly, d: 0), let b = pointAtD(poly, d: min(rerouteHeadSpanMeters, total)),
+          !(a.lat == b.lat && a.lng == b.lng)
+    else { return nil }
+    return clockHour(relativeBearing(
+        reference: h.bearing,
+        target: bearingDegrees(fromLat: a.lat, fromLng: a.lng, toLat: b.lat, toLng: b.lng)
+    ))
+}
+
 /// 방위 관측은 인자가 아니라 **리듀서가 fix 이력에서 직접 유도한다**(spec §2.9 재설계).
 /// 플랫폼이 관측을 만들어 넘길 수 없는 구조가 1선 방어다 — 두 플랫폼의 유도가
 /// 갈리는 drift(사슬 U·전진 게이트가 플랫폼별로 달라짐)를 시그니처가 차단한다.
@@ -661,6 +925,10 @@ public func guideStep(
     }
     let dv = deriveCourse(state.courseDerivation, lat: fix.lat, lng: fix.lng, at: now)
     state.courseDerivation = dv.state
+    // 이탈 문장·새 경로 머리말의 기준 방향은 프로파일 게이트 **앞**의 관측이다(E63 spec §3.3 — 자동차도 같은 유도기).
+    if let obs = dv.obs {
+        state.lastHeading = HeadingObservation(bearing: obs.bearing, uncertaintyDeg: obs.uncertaintyDeg, at: now)
+    }
     // 프로파일 게이트는 여기 한 곳뿐이다 — 조건을 하위 분기마다 흩으면 하나를
     // 빠뜨리고, 그 하나가 조용히 축을 살린다(기존 계약 유지).
     let derived: DerivedCourse? = tuning.courseAxisEnabled ? dv.obs : nil
@@ -700,6 +968,7 @@ public func guideStep(
             s.windowEdgeHits = 0
             s.speedSamples = []
             s.courseVotes = []
+            s.clearReturnTimers()
             s.lastFixAt = now
             s.reacquiringFromOffRoute = state.resumePhase == .offRoute
             s.reacquirePrevD = state.d
@@ -726,11 +995,24 @@ public func guideStep(
         // ⚠ 창은 비우고 latch(offRouteAxes)는 보존한다. 투영을 못 믿는 기간의 표는
         //   근거가 아니지만, 이탈 사실이 정확도 악화로 소실되면 안 된다.
         s.courseVotes = []
+        // 돌아가기 국면의 시간 누적 필드는 비운다 — 공백이 8초 유지·2초 연속에 산입되면 관측 없이 성립한다(E63 §3.9).
+        // 최솟값·사유·말함 여부·확정 진행거리는 남긴다.
+        s.clearReturnTimers()
         return GuideOutput(state: s, event: .uncertainEnter, tone: nil)
     }
 
     // 2) reacquiring: 전역 재탐색(모호하면 유지 — 다음 fix에서 재시도).
     if state.phase == .reacquiring {
+        // 이탈 유래 재획득(복귀 반경 프로파일, E63 spec §3.9): 할 일은 위치 재확보(복귀) 하나뿐이고 그것은 돌아가기 국면의
+        // 15m·유지 판정이 맡는다. 곧바로 돌아가기 국면으로 되돌린다(최솟값·사유·말함 여부 보존) — 재획득에 머물면 재통지와
+        // 재조회 요청이 멎는다(실데이터 2/33). 이탈과 무관한 재획득은 아래 현행 그대로다(넓게 적용하면 경로 위 재획득 회귀).
+        if state.reacquiringFromOffRoute, tuning.returnPerpM != nil {
+            var s = state
+            s.phase = .offRoute
+            s.lastFixAt = now
+            s.reacquiringFromOffRoute = false
+            return GuideOutput(state: s, event: nil, tone: nil)
+        }
         var entryD: Double?
         if case let .ok(d) = entryProjection(route: route, fix: fix, tuning: tuning) {
             entryD = d
@@ -785,7 +1067,7 @@ public func guideStep(
         // 내야 UI의 이탈 상태(재조회 버튼)가 함께 닫힌다(리뷰 HIGH).
         return GuideOutput(
             state: s,
-            event: state.reacquiringFromOffRoute ? .backOnRoute : .reacquired,
+            event: state.reacquiringFromOffRoute ? .backOnRoute(spoken: state.offRouteSpoken) : .reacquired,
             tone: nil
         )
     }
@@ -797,6 +1079,7 @@ public func guideStep(
         s.speedSamples = []
         // 위치를 잃은 동안의 표는 근거가 아니다(latch는 보존).
         s.courseVotes = []
+        s.clearReturnTimers()
         s.lastFixAt = now
         s.reacquiringFromOffRoute = state.phase == .offRoute
         // 타이브레이크 기준 보관 — 표본은 지금 리셋되므로 진입 시점에 계산해 둔다.
@@ -811,7 +1094,7 @@ public func guideStep(
     //    (walk는 속도 계수 0이라 현행 동일).
     let vPrev = estimateSpeedMps(state.speedSamples)
     let ahead = max(tuning.windowAheadMinM, 3 * fix.accuracy, vPrev * tuning.windowAheadSpeedS)
-    guard let proj = projectOnPolyline(
+    guard let proj = projectSigned(
         route.polyline, p: fix.point, fromD: state.d - windowBackMeters, toD: state.d + ahead
     ) else {
         var s = state
@@ -827,19 +1110,17 @@ public func guideStep(
     let jumped = state.lastFixAt.map {
         d - state.d > tuning.maxSpeedMps * max(0, now - $0) * 1.5
     } ?? false
-    // 방위 축 표결(spec §2.1). 추종 중 기준은 구속 창 투영 결과다. 관측 없으면 표 없음.
-    let vote: CourseVote? = derived == nil ? nil : courseVote(derived, poly: route.polyline, d: d)
-    // 진단 계측: 이 fix가 실제로 넣은 표. 이탈 분기에서 entry 기준으로 덮인다.
-    var loggedVote = vote
+    // 진단 계측: 이 fix가 실제로 창에 넣은 표와 기준 투영의 부호 있는 수직거리. 국면 분기가 덮는다.
+    var loggedVote: CourseVote?
+    var loggedSigned = proj.signed
+    var approachExcluded = false
     func emit(_ s: GuideState, _ event: GuideEvent?, _ tone: GuideTone?) -> GuideOutput {
         GuideOutput(
             state: s, event: event, tone: tone,
             perpMeters: proj.perpMeters, courseVote: loggedVote, derivedCourse: derived,
-            projectionJumped: jumped
+            projectionJumped: jumped, signedPerpMeters: loggedSigned, approachExcluded: approachExcluded
         )
     }
-    let courseVotes = vote.map { recordVote(state.courseVotes, at: now, vote: $0) }
-        ?? pruneVotes(state.courseVotes)
     // 창 경계 적중은 "경로 위인데 창이 못 따라간" 신호일 때만 센다. 수직거리가 크면
     // 그것은 이탈 증거이지 창 기아가 아니다.
     let offThreshold = max(tuning.offRouteBaseM, 2 * fix.accuracy)
@@ -890,14 +1171,19 @@ public func guideStep(
     next.windowEdgeHits = windowEdgeHits
     next.speedSamples = samples
     next.speedGuardActive = speedGuardActive
-    next.courseVotes = courseVotes
     // 재무장: 수동 복귀 세션은 잔여가 재무장선 밖으로 나가야 자동 인계 허용.
     if !next.autoHandoffArmed && remainingTotal > tuning.handoffRearmM {
         next.autoHandoffArmed = true
     }
 
-    // 5) 이탈 판정(스펙 §5.6).
+    // 5) 이탈 판정(스펙 §5.6) — 돌아가기 국면(E63 spec §3).
+    //    방위 표는 국면 분기 뒤 한 자리에서만 계산한다(D11 — 이탈 국면에서 구속 창 기준 표를 계산해 버리던 낭비 제거).
     if state.phase == .offRoute {
+        // 기준 투영은 확정 지점 창이다(§3.3). 쪽·목표점·멀어짐·접근·재통지의 다가감이 전부 이것으로 잰다.
+        let ref = confirmWindowProjection(
+            route: route, p: fix.point, dConf: state.offRouteConfirmD ?? state.d, tuning: tuning, fallback: proj
+        )
+        loggedSigned = ref.signed
         // 이탈 중 복귀 감지는 구속 창이 아니라 전역 후보로 한다. 이탈 동안 창이 뒤에
         // 머물러, 사용자가 경로 앞쪽으로 복귀해도 창 안 투영으로는 영영 못 잡는다.
         // ⚠ 이탈 중 표결 기준은 `state.d`가 아니라 `entryProjection`이 고른 지점이다.
@@ -914,34 +1200,169 @@ public func guideStep(
                 offVote = courseVote(derived, poly: route.polyline, d: entryD)
             }
         }
+        // 복귀 유지 시각의 초기화는 접근 제외 **전** 표로 한다 — 제외 뒤 표로 하면 경로를 직각으로 가로질러 계속 가는
+        // 사람이 다가가는 절반(15m)만으로 8초를 채워 "복귀했습니다"를 듣는다(fixture ⑭-4). 경로 위 정지는 관측이 없어
+        // 그대로 통과한다.
+        let crossingObserved = offVote == .mismatch
+        if offVote == .mismatch,
+           approachingVote(
+               route: route, fix: fix, ref: ref, obs: derived, history: state.perpHistory, now: now, tuning: tuning
+           ) {
+            offVote = nil
+            approachExcluded = true
+        }
         let offVotes = offVote.map { recordVote(state.courseVotes, at: now, vote: $0) }
             ?? pruneVotes(state.courseVotes)
+        let perpHistory = pushPerp(state.perpHistory, now: now, perp: ref.perpMeters)
         next.courseVotes = offVotes
-        loggedVote = offVote // 진단: 이 국면에서 창에 들어간 표는 entry 기준이다.
-        if case let .ok(entryD) = entry {
-            // 축별 해제. 평가 불가(`unknown`)는 해제가 아니다.
-            let courseCleared =
-                !state.offRouteAxes.course || courseAxisVerdict(offVotes) == .on
-            if courseCleared {
-                // restateAt이 guideStateAt을 거치므로 창과 latch가 함께 초기화된다(§2.8).
-                var back = restateAt(route: route, d: entryD, now: now, prev: state)
-                back.speedSamples = samples
-                back.speedGuardActive = speedGuardActive
-                back.speedWarned = state.speedWarned
-                back.lastFixAt = now
-                return emit(back, .backOnRoute, nil)
-            }
+        next.perpHistory = perpHistory
+        loggedVote = offVote
+        // 축별 해제. 평가 불가(`unknown`)는 해제가 아니다.
+        let courseCleared = !state.offRouteAxes.course || courseAxisVerdict(offVotes) == .on
+        func back(_ backD: Double) -> GuideOutput {
+            // restateAt이 guideStateAt을 거치므로 창·latch·돌아가기 상태가 함께 초기화된다(§2.8).
+            var b = restateAt(route: route, d: backD, now: now, prev: state)
+            b.speedSamples = samples
+            b.speedGuardActive = speedGuardActive
+            b.speedWarned = state.speedWarned
+            b.lastFixAt = now
+            // 이 회차에 이탈 문장을 내지 않았으면(보류) "복귀했습니다"도 말하지 않는다(§3.4).
+            return emit(b, .backOnRoute(spoken: state.offRouteSpoken), nil)
         }
-        let canRenotify = !speedGuardActive &&
-            (state.lastOffRouteNoticeAt.map { now - $0 >= tuning.offRouteRenotifyS } ?? true)
-        if canRenotify {
-            next.lastOffRouteNoticeAt = now
-            // 재통지 톤은 프로파일 몫(차량은 이탈=정보라 무톤, 첫 확정만 경고 — §4.3).
-            return emit(next, .offRoute, tuning.offRouteRenotifyWarns ? .warning : nil)
+        // (1) 복귀(§3.6). 복귀 > 재조회 요청 > 재통지(한 fix에 이벤트 하나).
+        if let returnPerpM = tuning.returnPerpM {
+            // 도보: 반경 max(15m, 정확도) 안 유일 후보가 유지 시간 이어짐. 30m 반경이면 길 건너편에서 "복귀했습니다"가
+            // 났다(거리 래치 복귀 6회 중 5회가 28~30m). 유지 중 불일치 표가 들어오면 처음부터(경로를 가로질러 계속 가는 사람).
+            let cands = globalCandidates(route.polyline, p: fix.point, maxPerp: max(returnPerpM, fix.accuracy))
+            if cands.count == 1 {
+                let since = crossingObserved ? now : (state.returnCandidateSince ?? now)
+                next.returnCandidateSince = since
+                if now - since >= tuning.returnHoldS && courseCleared { return back(cands[0].d) }
+            } else {
+                next.returnCandidateSince = nil
+            }
+        } else if case let .ok(entryD) = entry, courseCleared {
+            return back(entryD)
+        }
+        // (2) 자동 재조회 요청(§3.5 + 위원장 판정 J4). 멀어짐과 나란히 걷기를 한 연속 계수로 센다.
+        let minPerp = min(state.offRouteMinPerp ?? ref.perpMeters, ref.perpMeters)
+        // 하한 = 복귀 반경(§3.6과 같은 술어): 도보 max(15m, 정확도), 자동차 현행 max(50m, 2×정확도).
+        let floor = tuning.returnPerpM.map { max($0, fix.accuracy) } ?? max(tuning.offRouteBaseM, 2 * fix.accuracy)
+        // 기준점 재설정: 복귀 반경 안(경로로 돌아왔는데 복귀가 아직 안 났다) 또는 다가감. ⚠ 재설정은 그 fix의 자격 판정보다
+        // 먼저이고, 재설정한 fix는 나란히 자격이 서지 않는다(직선 0 — 멀어짐 자격은 설 수 있다).
+        var anchor = OffRouteAnchor(lat: fix.lat, lng: fix.lng, perp: ref.perpMeters)
+        if let a = state.offRouteAnchor,
+           !(ref.perpMeters < floor),
+           !(ref.perpMeters <= a.perp - tuning.rerouteParallelClosingM) {
+            anchor = a
+        }
+        let away = ref.perpMeters >= minPerp + tuning.rerouteAwayM
+        let parallel = haversineMeters(lat1: anchor.lat, lng1: anchor.lng, lat2: fix.lat, lng2: fix.lng)
+            >= tuning.rerouteParallelM
+        var run: OffRouteAwayRun?
+        if away || parallel {
+            run = state.offRouteAwayRun.map { OffRouteAwayRun(count: $0.count + 1, since: $0.since) }
+                ?? OffRouteAwayRun(count: 1, since: now)
+        }
+        if let run, run.count >= tuning.rerouteAwayFixes, now - run.since >= tuning.rerouteAwayMinS {
+            // 재무장: 최솟값·기준점을 이 fix로 다시 놓는다 — 조회가 실패·신선도 미달로 끝나도 더 가면 또 요청한다
+            // (예산 5회가 상한).
+            next.offRouteMinPerp = ref.perpMeters
+            next.offRouteAnchor = OffRouteAnchor(lat: fix.lat, lng: fix.lng, perp: ref.perpMeters)
+            next.offRouteAwayRun = nil
+            return emit(next, .rerouteNeeded(reason: away ? .away : .parallel), nil)
+        }
+        next.offRouteMinPerp = minPerp
+        next.offRouteAnchor = anchor
+        next.offRouteAwayRun = run
+        // (3) 재통지·보류 뒤 첫 발화(§3.4): 움직이는 중 ∧ 다가가는 중 아님 ∧ 다시 고른 문장이 보류가 아님.
+        //     말하지 않았으면(보류 확정) 간격 없이, 말했으면 프로파일 간격.
+        let intervalOk = !state.offRouteSpoken
+            || (state.lastOffRouteNoticeAt.map { now - $0 >= tuning.offRouteRenotifyS } ?? true)
+        let approaching = perpAgo(perpHistory, now: now, minAge: 10, maxAge: 15)
+            .map { ref.perpMeters <= $0 - 5 } ?? false
+        if !speedGuardActive, intervalOk, freshHeading(next, now: now, tuning: tuning) != nil, !approaching {
+            let dir = offRouteDirection(route: route, fix: fix, ref: ref, state: next, now: now, tuning: tuning)
+            if dir.guidance != .hold {
+                let firstSpoken = !state.offRouteSpoken
+                next.lastOffRouteNoticeAt = now
+                next.offRouteSpoken = true
+                // 재통지 톤은 프로파일 몫(차량은 이탈=정보라 무톤, §4.3). 보류 뒤 첫 발화는 확정과 같다(§3.4).
+                return emit(
+                    next,
+                    .offRoute(
+                        notice: .renotify, reason: state.offRouteReason ?? .distance, guidance: dir.guidance,
+                        side: dir.side, returnRelDeg: dir.returnRelDeg, firstSpoken: firstSpoken
+                    ),
+                    firstSpoken || tuning.offRouteRenotifyWarns ? .warning : nil
+                )
+            }
         }
         return emit(next, nil, nil)
     }
+    // 방위 축 표결(spec §2.1). 추종 중 기준은 구속 창 투영 결과다. 관측 없으면 표 없음.
+    var vote: CourseVote? = derived == nil ? nil : courseVote(derived, poly: route.polyline, d: d)
+    if vote == .mismatch,
+       approachingVote(
+           route: route, fix: fix, ref: proj, obs: derived, history: state.perpHistory, now: now, tuning: tuning
+       ) {
+        vote = nil
+        approachExcluded = true
+    }
+    let courseVotes = vote.map { recordVote(state.courseVotes, at: now, vote: $0) }
+        ?? pruneVotes(state.courseVotes)
+    loggedVote = vote
+    next.courseVotes = courseVotes
+    next.perpHistory = pushPerp(state.perpHistory, now: now, perp: proj.perpMeters)
     let courseVerdict = courseAxisVerdict(courseVotes)
+
+    /// 이탈 확정(E63 spec §3.2): 돌아가기 국면의 시작이다(재조회가 아니다). 앞질러 감(⑤)은 거리·결합 조건에서 확정
+    /// 대신 상태 재구성 — 전역 후보 하나가 구속 창 끝 너머 앞이면 사용자는 경로 위 앞쪽에 있다("돌아가세요" 직후
+    /// "복귀했습니다" 모순).
+    func overtaken() -> GuideOutput? {
+        guard case let .ok(entryD) = entryProjection(route: route, fix: fix, tuning: tuning),
+              entryD > state.d + ahead
+        else { return nil }
+        var s = restateAt(route: route, d: entryD, now: now, prev: state)
+        s.speedSamples = samples
+        s.speedGuardActive = speedGuardActive
+        s.speedWarned = state.speedWarned
+        s.lastFixAt = now
+        return emit(s, nil, nil)
+    }
+    func confirm(_ reason: OffRouteReason, _ axes: OffRouteAxes) -> GuideOutput {
+        let ref = confirmWindowProjection(route: route, p: fix.point, dConf: d, tuning: tuning, fallback: proj)
+        loggedSigned = ref.signed
+        let dir = offRouteDirection(route: route, fix: fix, ref: ref, state: next, now: now, tuning: tuning)
+        let hold = dir.guidance == .hold
+        next.phase = .offRoute
+        next.resumePhase = stepAt(route: route, d: d).isLong ? .following : .bundle
+        // 보류 확정은 재통지 간격 시계를 시작하지 않는다(§3.4 — 돌아서 멀어지면 60초를 기다리지 않고 말한다).
+        next.lastOffRouteNoticeAt = hold ? nil : now
+        // 두 확정 경로가 서로 다른 잔여를 남기지 않게 같은 상태를 남긴다.
+        next.offRouteSince = nil
+        next.offRoutePeakPerp = nil
+        next.offRouteAxes = axes
+        next.offRouteConfirmD = d
+        next.offRouteMinPerp = ref.perpMeters
+        next.offRouteAwayRun = nil
+        next.offRouteAnchor = OffRouteAnchor(lat: fix.lat, lng: fix.lng, perp: ref.perpMeters)
+        next.offRouteReason = reason
+        next.offRouteSpoken = !hold
+        next.returnCandidateSince = nil
+        // 투영이 확정 지점 창으로 바뀌는 자리라 이어 쓰면 거짓 "다가감"이 난다.
+        next.perpHistory = [GuidePerpSample(at: now, perp: ref.perpMeters)]
+        // 경고 톤의 소유자는 리듀서 한 자리 — 보류는 무톤(§3.3).
+        return emit(
+            next,
+            .offRoute(
+                notice: .confirm, reason: reason, guidance: dir.guidance,
+                side: dir.side, returnRelDeg: dir.returnRelDeg, firstSpoken: !hold
+            ),
+            hold ? nil : .warning
+        )
+    }
+
     let isOff = proj.perpMeters > offThreshold && !crawling  // 기어가는 fix의 perp는 이탈 증거가 아니다(M1)
     if isOff {
         var since = state.offRouteSince ?? now
@@ -954,12 +1375,10 @@ public func guideStep(
         next.offRouteSince = since
         next.offRoutePeakPerp = peak
         if now - since >= tuning.offRouteHoldS {
-            next.phase = .offRoute
-            next.resumePhase = stepAt(route: route, d: d).isLong ? .following : .bundle
-            next.lastOffRouteNoticeAt = now
-            next.offRoutePeakPerp = nil
-            next.offRouteAxes.distance = true
-            return emit(next, .offRoute, .warning)
+            if let o = overtaken() { return o }
+            var axes = next.offRouteAxes
+            axes.distance = true
+            return confirm(.distance, axes)
         }
     } else if state.offRouteSince != nil {
         next.offRouteSince = nil
@@ -968,15 +1387,21 @@ public func guideStep(
     // 방위 축은 거리 축과 독립이다. 수직거리가 임계 안이어도 확정한다 — 자기근접으로
     // 수직거리가 무너지는 갈림에서 이 축이 유일한 증거다(spec §1.2).
     if courseVerdict == .off {
-        next.phase = .offRoute
-        next.resumePhase = stepAt(route: route, d: d).isLong ? .following : .bundle
-        next.lastOffRouteNoticeAt = now
-        // 거리 축 확정과 같은 상태를 남긴다 — 두 확정 경로가 서로 다른 잔여를 남기면
-        // 다음 사람이 어느 쪽을 믿어야 할지 알 수 없다(무해하더라도 읽는 비용이다).
-        next.offRouteSince = nil
-        next.offRoutePeakPerp = nil
-        next.offRouteAxes.course = true
-        return emit(next, .offRoute, .warning)
+        var axes = next.offRouteAxes
+        axes.course = true
+        return confirm(.course, axes)
+    }
+    // 결합 확정(E63 spec §3.2 ①): 거리 축(30m·20초)도 방위 축(8표·16초)도 못 채우고 멈춘 이탈(2026-10-03 14:02:41~57,
+    // 큰길 쪽으로 26m 걷고 정지 — 무통지). 래치는 거리 축이다(방위 래치면 직각으로 돌아와 경로 위에 서도 25초 넘게
+    // 이탈로 남는다).
+    if let jointPerp = tuning.jointConfirmPerpM, proj.perpMeters >= jointPerp, !crawling {
+        let mismatches = courseVotes.filter { $0.vote == .mismatch }.count
+        if mismatches >= tuning.jointConfirmMismatches, !courseVotes.contains(where: { $0.vote == .match }) {
+            if let o = overtaken() { return o }
+            var axes = next.offRouteAxes
+            axes.distance = true
+            return confirm(.joint, axes)
+        }
     }
 
     // 6) 국면·낭독.

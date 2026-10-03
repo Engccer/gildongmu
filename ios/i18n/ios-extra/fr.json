@@ -399,7 +399,6 @@
     "switchedToRecommended": "Itinéraire recommandé activé. {count, plural, one {# instruction} other {# instructions}}, {distance} au total. {first}",
     "switchedToAccessible": "Itinéraire sans escaliers activé. {count, plural, one {# instruction} other {# instructions}}, {distance} au total. {first}",
     "switchedToBroad": "Itinéraire par les grands axes activé. {count, plural, one {# instruction} other {# instructions}}, {distance} au total. {first}",
-    "autoReroute": "Guidage repris sur un nouvel itinéraire. {count, plural, one {# instruction} other {# instructions}}, {distance} au total. {first}",
     "viewAlternative": "Voir l’itinéraire alternatif",
     "adoptAlternative": "Basculer le guidage sur cet itinéraire",
     "altPreviewLoading": "Recherche d’itinéraire alternatif",

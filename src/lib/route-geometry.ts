@@ -188,6 +188,41 @@ export function projectOnPolyline(
   return best;
 }
 
+/**
+ * `projectOnPolyline`과 같은 창 투영에 **부호 있는 수직거리**를 더한다(E63 spec §3.3). 부호는 그 세그먼트의 진행 방향
+ * 기준 오른쪽 +, 왼쪽 −(세그먼트 벡터와 세그먼트→대상점 벡터의 외적). 이탈 쪽(`side`)과 로그 `sperp`의 재료다.
+ */
+export function projectSigned(
+  poly: Polyline,
+  p: Coord,
+  fromD: number,
+  toD: number,
+): (Projection & { signed: number }) | null {
+  let best: (Projection & { signed: number }) | null = null;
+  for (let i = 0; i < poly.points.length - 1; i++) {
+    const d0 = poly.cum[i];
+    const d1 = poly.cum[i + 1];
+    if (d1 < fromD || d0 > toD || d1 === d0) continue;
+    const a = toLocal(p, poly.points[i]);
+    const b = toLocal(p, poly.points[i + 1]);
+    const abx = b.x - a.x;
+    const aby = b.y - a.y;
+    const len2 = abx * abx + aby * aby;
+    let t = len2 === 0 ? 0 : (-a.x * abx - a.y * aby) / len2;
+    t = Math.max(0, Math.min(1, t));
+    const px = a.x + abx * t;
+    const py = a.y + aby * t;
+    const perp = Math.hypot(px, py);
+    const dd = Math.max(fromD, Math.min(toD, d0 + (d1 - d0) * t));
+    if (!best || perp < best.perpMeters) {
+      // 대상점 p가 로컬 원점이라 a→p = −a. 외적 ab × (−a)가 음수면 진행 방향 오른쪽이다.
+      const cross = -abx * a.y + aby * a.x;
+      best = { d: dd, perpMeters: perp, signed: cross < 0 ? perp : -perp };
+    }
+  }
+  return best;
+}
+
 /** 세그먼트 i 단독 투영(t는 [0,1]만 클램프 — 창 없음). */
 function projectOnSegment(poly: Polyline, i: number, p: Coord): Projection {
   const a = toLocal(p, poly.points[i]);
@@ -226,7 +261,7 @@ export function tangentAt(poly: Polyline, d: number, halfMeters: number): number
 }
 
 /** 진행거리 `d` 지점의 좌표. 범위 밖은 끝점으로 물린다. */
-function pointAtD(poly: Polyline, d: number): Coord | null {
+export function pointAtD(poly: Polyline, d: number): Coord | null {
   const { points, cum } = poly;
   if (points.length === 0) return null;
   if (points.length === 1) return points[0];

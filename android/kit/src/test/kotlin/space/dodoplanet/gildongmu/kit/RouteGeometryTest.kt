@@ -4,6 +4,7 @@ import kotlinx.serialization.Serializable
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
+import kotlin.math.hypot
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -74,12 +75,24 @@ class RouteGeometryTest {
         assertEquals(0, globalCandidates(s.polyline, pt(80.0, 30.0), 10.0).size)
     }
 
+    /** 부호 있는 수직거리(E63): 진행 방향 기준 오른쪽 +, 왼쪽 −. 거리·진행거리는 `projectOnPolyline`과 같다. */
+    @Test fun `부호 있는 투영은 진행 방향 오른쪽이 양수다`() {
+        val s = straight()
+        val right = checkNotNull(projectSigned(s.polyline, pt(80.0, 3.0), 0.0, 100.0))
+        val left = checkNotNull(projectSigned(s.polyline, pt(80.0, -3.0), 0.0, 100.0))
+        assertTrue(abs(right.signed - 3) < 0.5 && abs(left.signed + 3) < 0.5, "$right $left")
+        val plain = checkNotNull(projectOnPolyline(s.polyline, pt(80.0, 3.0), 0.0, 100.0))
+        assertEquals(plain.d, right.d)
+        assertEquals(plain.perpMeters, right.perpMeters)
+    }
+
     @Serializable
     private data class ScenarioFile(val scenarios: List<Scenario>) {
         @Serializable
         data class Scenario(val name: String, val steps: List<Step>)
+        /** `points`(E63 꺾인 경로): (along, lateral) 점열. 있으면 `len` 대신 쓴다. */
         @Serializable
-        data class Step(val len: Double, val desc: String, val action: String? = null)
+        data class Step(val len: Double? = null, val points: List<List<Double>>? = null, val desc: String, val action: String? = null)
     }
 
     /** 공유 fixture의 스텝 기하(남→북 직선 배치)가 전부 조립되고 총거리가 len 합과 같다. */
@@ -88,14 +101,24 @@ class RouteGeometryTest {
         assertTrue(scenarios.isNotEmpty())
         for (s in scenarios) {
             var along = 0.0
+            var length = 0.0
             val steps = s.steps.map { step ->
-                val start = along
-                along += step.len
-                GuideStepGeometry(step.desc, listOf(pt(start), pt(along)), step.action?.let(WalkAction::fromRawValue))
+                val pts = step.points
+                val coords = if (pts != null) {
+                    for (i in 1 until pts.size) length += hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1])
+                    pts.map { (a, l) -> pt(a, l) }
+                } else {
+                    val len = checkNotNull(step.len) { s.name }
+                    val start = along
+                    along += len
+                    length += len
+                    listOf(pt(start), pt(along))
+                }
+                GuideStepGeometry(step.desc, coords, step.action?.let(WalkAction::fromRawValue))
             }
             val route = checkNotNull(buildGuideRoute(steps)) { s.name }
             // fixture 좌표 규약은 명목 111,320m/도이고 하버사인(R=6,371km)은 111,195m/도라 0.11% 차이가 정상이다.
-            assertTrue(abs(route.totalMeters - along) < along * 0.002 + 0.5, "${s.name} 총거리 ${route.totalMeters} vs $along")
+            assertTrue(abs(route.totalMeters - length) < length * 0.002 + 0.5, "${s.name} 총거리 ${route.totalMeters} vs $length")
             assertEquals(s.steps.size, route.steps.size, s.name)
         }
     }

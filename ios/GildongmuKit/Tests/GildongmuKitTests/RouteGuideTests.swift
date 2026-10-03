@@ -25,7 +25,9 @@ private struct Scenario: Decodable {
     let expect: [Expectation]
 
     struct Step: Decodable {
-        let len: Double
+        let len: Double?
+        /// 꺾인 경로(E63): 스텝 기하를 (along, lateral) 점열로 준다. 있으면 `len` 대신 쓰고, 다음 스텝은 마지막 점에서 잇는다.
+        let points: [[Double]]?
         let desc: String
         /// 서버 투영 행동(자동차 시나리오, K2 §2.3).
         let action: String?
@@ -34,6 +36,7 @@ private struct Scenario: Decodable {
 
         init(len: Double, desc: String, action: String? = nil, crossing: Bool? = nil) {
             self.len = len
+            self.points = nil
             self.desc = desc
             self.action = action
             self.crossing = crossing
@@ -68,6 +71,52 @@ private struct Scenario: Decodable {
         let nextTarget: NextTarget?
         /// `announceSteps`의 `late`(E62 R6).
         let late: Bool?
+        /// `offRoute` 이벤트 필드(E63 spec §4.1). `returnClock`은 `clockHour(returnRelDeg)`.
+        let notice: String?
+        let reason: String?
+        let guidance: String?
+        /// `side`는 null도 기대값이다(쪽을 말하지 않음) — 키가 있었는지를 따로 든다.
+        let sideSpecified: Bool
+        let side: String?
+        let firstSpoken: Bool?
+        let returnClock: Int?
+        /// `backOnRoute`의 `spoken`.
+        let spoken: Bool?
+        /// `rerouteNeeded`의 `reason`.
+        let rerouteReason: String?
+        /// 그 fix 뒤 진행거리 하한(앞질러 감 재구성, E63 §3.2 ⑤).
+        let minD: Double?
+
+        private enum CodingKeys: String, CodingKey {
+            case afterFix, afterFixAny, event, eventNot, eventNull, eventOneOf, indices, tone, toneNull, stage
+            case nextTarget, late, notice, reason, guidance, side, firstSpoken, returnClock, spoken, rerouteReason, minD
+        }
+
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            afterFix = try c.decodeIfPresent(Int.self, forKey: .afterFix)
+            afterFixAny = try c.decodeIfPresent([Int].self, forKey: .afterFixAny)
+            event = try c.decodeIfPresent(String.self, forKey: .event)
+            eventNot = try c.decodeIfPresent(String.self, forKey: .eventNot)
+            eventNull = try c.decodeIfPresent(Bool.self, forKey: .eventNull)
+            eventOneOf = try c.decodeIfPresent([String].self, forKey: .eventOneOf)
+            indices = try c.decodeIfPresent([Int].self, forKey: .indices)
+            tone = try c.decodeIfPresent(String.self, forKey: .tone)
+            toneNull = try c.decodeIfPresent(Bool.self, forKey: .toneNull)
+            stage = try c.decodeIfPresent(Int.self, forKey: .stage)
+            nextTarget = try c.decodeIfPresent(NextTarget.self, forKey: .nextTarget)
+            late = try c.decodeIfPresent(Bool.self, forKey: .late)
+            notice = try c.decodeIfPresent(String.self, forKey: .notice)
+            reason = try c.decodeIfPresent(String.self, forKey: .reason)
+            guidance = try c.decodeIfPresent(String.self, forKey: .guidance)
+            sideSpecified = c.contains(.side)
+            side = try c.decodeIfPresent(String.self, forKey: .side)
+            firstSpoken = try c.decodeIfPresent(Bool.self, forKey: .firstSpoken)
+            returnClock = try c.decodeIfPresent(Int.self, forKey: .returnClock)
+            spoken = try c.decodeIfPresent(Bool.self, forKey: .spoken)
+            rerouteReason = try c.decodeIfPresent(String.self, forKey: .rerouteReason)
+            minD = try c.decodeIfPresent(Double.self, forKey: .minD)
+        }
     }
 
     struct NextTarget: Decodable {
@@ -87,19 +136,26 @@ private func loadScenarios() throws -> [Scenario] {
 private func routeFrom(_ steps: [Scenario.Step], waypointStepIndex: Int? = nil) -> GuideRoute {
     var acc = 0.0
     let inputs = steps.map { s in
+        let pathCoords = s.points.map { pts in
+            pts.map { pointCoord(along: $0[0], lateral: $0[1]) }
+        } ?? [
+            RoutePoint(lat: lat0 + acc * meterLat, lng: lng0),
+            RoutePoint(lat: lat0 + (acc + s.len!) * meterLat, lng: lng0),
+        ]
         let g = GuideStepGeometry(
             description: s.desc,
-            pathCoords: [
-                RoutePoint(lat: lat0 + acc * meterLat, lng: lng0),
-                RoutePoint(lat: lat0 + (acc + s.len) * meterLat, lng: lng0),
-            ],
+            pathCoords: pathCoords,
             action: s.action.flatMap(WalkAction.init(rawValue:)),
             crossing: s.crossing == true
         )
-        acc += s.len
+        if s.points == nil { acc += s.len! }
         return g
     }
     return buildGuideRoute(inputs, waypointStepIndex: waypointStepIndex)!
+}
+
+private func pointCoord(along: Double, lateral: Double) -> RoutePoint {
+    RoutePoint(lat: lat0 + along * meterLat, lng: lng0 + (lateral * meterLat) / cos(lat0 * .pi / 180))
 }
 
 private func fixCoord(along: Double, lateral: Double, acc: Double, stopped: Bool = false) -> GuideFix {
@@ -124,6 +180,7 @@ private func kindName(_ event: GuideEvent?) -> String? {
     case .finalApproachEnter: "finalApproachEnter"
     case .offRoute: "offRoute"
     case .backOnRoute: "backOnRoute"
+    case .rerouteNeeded: "rerouteNeeded"
     case .uncertainEnter: "uncertainEnter"
     case .uncertainExit: "uncertainExit"
     case .reacquiring: "reacquiring"
@@ -148,6 +205,34 @@ private func toneName(_ tone: GuideTone?) -> String? { tone?.rawValue }
 private func stageOf(_ event: GuideEvent?) -> Int? {
     if case let .imminent(_, _, stage) = event { return stage }
     return nil
+}
+
+private func isOffRoute(_ event: GuideEvent?) -> Bool {
+    if case .offRoute = event { return true }
+    return false
+}
+
+private func isBackOnRoute(_ event: GuideEvent?) -> Bool {
+    if case .backOnRoute = event { return true }
+    return false
+}
+
+/// `offRoute` 이벤트의 연관값(웹 하니스의 `offRouteEv` 대응).
+private struct OffRouteFields {
+    let notice: OffRouteNotice
+    let reason: OffRouteReason
+    let guidance: OffRouteGuidance
+    let side: OffRouteSide?
+    let returnRelDeg: Double?
+    let firstSpoken: Bool
+}
+
+private func offRouteFields(_ event: GuideEvent?) -> OffRouteFields? {
+    guard case let .offRoute(notice, reason, guidance, side, returnRelDeg, firstSpoken) = event else { return nil }
+    return OffRouteFields(
+        notice: notice, reason: reason, guidance: guidance, side: side,
+        returnRelDeg: returnRelDeg, firstSpoken: firstSpoken
+    )
 }
 
 @Test func sharedScenarioTable() throws {
@@ -211,6 +296,43 @@ private func stageOf(_ event: GuideEvent?) -> Int? {
             }
             if ex.toneNull == true {
                 for r in rs { #expect(r.tone == nil, "\(sc.name): toneNull") }
+            }
+            let offRouteEv = rs.lazy.compactMap { offRouteFields($0.event) }.first
+            if let notice = ex.notice {
+                #expect(offRouteEv?.notice.rawValue == notice, "\(sc.name): notice \(notice)")
+            }
+            if let reason = ex.reason {
+                #expect(offRouteEv?.reason.rawValue == reason, "\(sc.name): reason \(reason)")
+            }
+            if let guidance = ex.guidance {
+                #expect(offRouteEv?.guidance.rawValue == guidance, "\(sc.name): guidance \(guidance)")
+            }
+            if ex.sideSpecified {
+                // 이벤트가 없으면 "none"(웹 하니스 동형) — null 기대와 갈린다.
+                let got: String? = offRouteEv.map { $0.side?.rawValue } ?? "none"
+                #expect(got == ex.side, "\(sc.name): side \(String(describing: ex.side))")
+            }
+            if let firstSpoken = ex.firstSpoken {
+                #expect(offRouteEv?.firstSpoken == firstSpoken, "\(sc.name): firstSpoken \(firstSpoken)")
+            }
+            if let returnClock = ex.returnClock {
+                let got = offRouteEv?.returnRelDeg.map(clockHour)
+                #expect(got == returnClock, "\(sc.name): returnClock \(returnClock) got \(String(describing: got))")
+            }
+            if let spoken = ex.spoken {
+                let back = rs.lazy.compactMap { r -> Bool? in
+                    if case let .backOnRoute(sp) = r.event { return sp } else { return nil }
+                }.first
+                #expect(back == spoken, "\(sc.name): spoken \(spoken)")
+            }
+            if let rerouteReason = ex.rerouteReason {
+                let rr = rs.lazy.compactMap { r -> RerouteReason? in
+                    if case let .rerouteNeeded(reason) = r.event { return reason } else { return nil }
+                }.first
+                #expect(rr?.rawValue == rerouteReason, "\(sc.name): rerouteReason \(rerouteReason)")
+            }
+            if let minD = ex.minD {
+                for r in rs { #expect(r.state.d >= minD, "\(sc.name): minD \(minD) got \(r.state.d)") }
             }
             if let target = ex.nextTarget {
                 for r in rs {
@@ -414,24 +536,27 @@ private func enterReacquiring(_ route: GuideRoute, dPrev: Double) -> GuideState 
         )
         state = confirm!.state
     }
-    #expect(confirm?.event == .offRoute)
+    #expect(isOffRoute(confirm?.event))
     #expect(confirm?.tone == .warning) // 첫 확정은 항상 경고 톤
 
     var renotifyAt: Double?
     var renotifyTone: GuideTone? = .warning
     var t = 24.0
+    var k = 0
+    // 돌아가기 국면의 재통지는 움직이는 중에만 난다(E63 §3.4 — 멈추면 침묵). 나란한 재조회(200m)에 닿지 않게 15m를 오간다.
     while t <= 210 {
         let out = guideStep(
-            state: state, fix: fixCoord(along: 200, lateral: 60, acc: 10),
+            state: state, fix: fixCoord(along: k % 2 == 0 ? 200 : 215, lateral: 60, acc: 10),
             route: route, now: t, tuning: .car
         )
         state = out.state
-        if out.event == .offRoute {
+        if isOffRoute(out.event) {
             renotifyAt = t
             renotifyTone = out.tone
             break
         }
         t += 9
+        k += 1
     }
     #expect(renotifyAt != nil)
     #expect((renotifyAt ?? 0) >= 195) // 확정 15 + 180
@@ -658,7 +783,7 @@ struct CourseAxisReducerTests {
         walk(&state, fromAlong: 60, bearingDeg: 0, seconds: 33, startAt: 0)
         var hit: (Double, Double)?
         walk(&state, fromAlong: 100, bearingDeg: 180, seconds: 55, startAt: 34) { e, t in
-            if e == .offRoute {
+            if isOffRoute(e) {
                 hit = (t, 100 - (t - 34) * 1.2)
                 return true
             }
@@ -693,7 +818,7 @@ struct CourseAxisReducerTests {
                 route: axisRoute, now: r.confirmedAt + Double(i), tuning: .walk
             )
             state = out.state
-            #expect(out.event != .backOnRoute)
+            #expect(!isBackOnRoute(out.event))
         }
         #expect(state.phase == .offRoute)
         #expect(state.offRouteAxes.course)
@@ -708,7 +833,7 @@ struct CourseAxisReducerTests {
         var state = r.state
         var recovered = false
         walk(&state, fromAlong: r.alongNow, bearingDeg: 0, seconds: 60, startAt: r.confirmedAt + 1) { e, _ in
-            if e == .backOnRoute {
+            if isBackOnRoute(e) {
                 recovered = true
                 return true
             }
@@ -800,7 +925,7 @@ struct CourseAxisReducerTests {
             state: nearEnd, fix: fixCoord(along: 393, lateral: 0, acc: 8),
             route: axisRoute, now: 18, tuning: .walk
         )
-        #expect(out.event == .offRoute)
+        #expect(isOffRoute(out.event))
         #expect(out.state.phase == .offRoute)
         #expect(out.state.offRouteAxes.course)
 
@@ -1010,4 +1135,23 @@ func sessionEndTuning() {
     prev.waypointPending = true
     let re = restateAt(route: route, d: 150, now: 10, prev: prev)
     #expect(re.waypointReached && re.waypointPending)
+}
+
+// MARK: - 새 경로 머리말(E63 spec §3.7)
+
+/// 웹 `rerouteHeadClock` 미러: 진행 방위 기준 새 경로 첫 15m의 시. 방위가 낡으면(6초 전) nil.
+@Test func rerouteHeadClockUsesFreshHeading() {
+    let east = 1 / (111_320 * cos(lat0 * .pi / 180))
+    let route = buildGuideRoute([
+        GuideStepGeometry(description: "동", pathCoords: [
+            RoutePoint(lat: lat0, lng: lng0),
+            RoutePoint(lat: lat0, lng: lng0 + 100 * east),
+        ]),
+    ])!
+    var state = initialGuideState(route: route, now: 0).state
+    state.lastHeading = HeadingObservation(bearing: 0, uncertaintyDeg: 10, at: 100)
+    #expect(rerouteHeadClock(state: state, route: route, now: 100, tuning: .walk) == 3)
+    #expect(rerouteHeadClock(state: state, route: route, now: 106, tuning: .walk) == nil)
+    state.lastHeading = HeadingObservation(bearing: 0, uncertaintyDeg: 40, at: 100)
+    #expect(rerouteHeadClock(state: state, route: route, now: 100, tuning: .walk) == nil)
 }

@@ -115,7 +115,8 @@ class GuideText(private val s: Strings) {
 
     /** 재조회 성공 원자 발화 — "출발지가 현재 위치로 바뀌었다"를 전할 채널은 이 문장뿐이다. */
     fun reroute(route: GuideRoute, firstIndices: List<Int>): String =
-        s.get("guide.rerouteDone", route.steps.size, formatDistance(route.totalMeters.roundToInt()), unit(route, firstIndices))
+        // 인자 순서는 ko 플레이스홀더 순서 — 할 일 먼저, 요약은 뒤(E63 문안 라).
+        s.get("guide.rerouteDone", unit(route, firstIndices), route.steps.size, formatDistance(route.totalMeters.roundToInt()))
 
     /**
      * 수동 전환 성공(M4b, iOS `GuideText.variantSwitch`) — 재조회와 같은 구조(새 경로 규모 + 첫 안내)에 첫 문장만 전환한 줄을 밝힌다("다시 찾았습니다"는

@@ -76,16 +76,16 @@ object BackgroundSpeech {
 
 /**
  * 도보·자동차 경로 이벤트의 문장 분류(spec §3.2). 이벤트 기본 문장의 분류이고, 호출부가 문장을 더 붙이면 호출부가 밝힌다.
- * - `offRouteEpisodeStart`: 이탈 확정 회차의 첫 통지인가. 재통지(walk 60초·car 180초)는 주기라 거짓이면 `deferrable`.
+ * 이탈은 회차의 첫 발화(`firstSpoken` — 보류 뒤 첫 발화 포함, E63)만 행동 문장이고 재통지는 주기라 `deferrable`이다.
  */
-fun guideEventSpeechClass(event: GuideEvent, offRouteEpisodeStart: Boolean): GuideSpeechClass = when (event) {
+fun guideEventSpeechClass(event: GuideEvent): GuideSpeechClass = when (event) {
     is GuideEvent.Imminent -> GuideSpeechClass.urgent
-    is GuideEvent.AnnounceSteps, is GuideEvent.FarNotice, GuideEvent.WaypointReached, is GuideEvent.WaypointApproaching, GuideEvent.BackOnRoute ->
+    is GuideEvent.AnnounceSteps, is GuideEvent.FarNotice, GuideEvent.WaypointReached, is GuideEvent.WaypointApproaching, is GuideEvent.BackOnRoute ->
         GuideSpeechClass.actionable
-    GuideEvent.OffRoute -> if (offRouteEpisodeStart) GuideSpeechClass.actionable else GuideSpeechClass.deferrable
+    is GuideEvent.OffRoute -> if (event.firstSpoken) GuideSpeechClass.actionable else GuideSpeechClass.deferrable
     // `FinalApproachEnter`·`SpeedSuggest`는 문장을 내지 않는다(진입 서술은 fix를 쥔 자리가 낸다) — 분류만 닫는다.
     is GuideEvent.BundleReread, is GuideEvent.Periodic, GuideEvent.UncertainEnter, GuideEvent.UncertainExit, GuideEvent.Reacquiring,
-    GuideEvent.Reacquired, GuideEvent.SpeedSuggest, GuideEvent.FinalApproachEnter -> GuideSpeechClass.deferrable
+    GuideEvent.Reacquired, GuideEvent.SpeedSuggest, GuideEvent.FinalApproachEnter, is GuideEvent.RerouteNeeded -> GuideSpeechClass.deferrable
 }
 
 /** 간략 안내(직선거리) 비콘 통지의 분류(spec §3.2). `Nearby`만 도착 신호다. */

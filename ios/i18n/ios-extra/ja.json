@@ -399,7 +399,6 @@
     "switchedToRecommended": "おすすめルートに切り替えました。案内{count}件、合計{distance}。{first}",
     "switchedToAccessible": "階段を避けるルートに切り替えました。案内{count}件、合計{distance}。{first}",
     "switchedToBroad": "大通りルートに切り替えました。案内{count}件、合計{distance}。{first}",
-    "autoReroute": "新しいルートで案内を再開します。案内{count}件、合計{distance}。{first}",
     "viewAlternative": "代替ルートを見る",
     "adoptAlternative": "このルートの案内に切り替え",
     "altPreviewLoading": "代替ルートを検索中",

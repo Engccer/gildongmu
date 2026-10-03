@@ -177,12 +177,13 @@ enum GuideText {
     /// 길찾기 입력값이라 세션이 갱신하지 않으므로, "출발지가 현재 위치로 바뀌었다"를
     /// 전할 채널은 이 문장뿐이다. 시작 발화와 같은 구조로 새 경로의 규모까지 준다.
     /// 수단별로 가르지 않는다 — 수단은 세션 시작 통지가 이미 말했다.
+    /// 할 일 먼저, 요약은 뒤(문안 확정본 라 — 인자 순서는 ko 문장 순서, arg-order ABI).
     static func reroute(route: GuideRoute, firstIndices: [Int]) -> String {
         appLocalized(
             "guide.rerouteDone",
+            unit(route: route, indices: firstIndices),
             route.steps.count,
-            formatDistance(Int(route.totalMeters.rounded())),
-            unit(route: route, indices: firstIndices)
+            formatDistance(Int(route.totalMeters.rounded()))
         )
     }
 
@@ -197,17 +198,72 @@ enum GuideText {
         )
     }
 
-    /// 이탈 시 자동 재조회 채택 통지(E10ⓑ 자동 채택, 2026-09-02 — 종전 "준비됨" 제안
-    /// 통지의 자리). 형제(rerouteDone·switchedTo*)와 같은 "규모(개수·총
-    /// 거리) → 첫 안내" 구조 — {first}가 거리 포함 서술문이라 뒤에 총 거리를 붙이면
-    /// 두 거리가 인접해 판독이 흐려진다(a11y 감사 LOW, periodic 실사용 결함 계열).
-    static func autoReroute(route: GuideRoute, firstIndices: [Int]) -> String {
+    /// 자동 재조회 채택 통지(E63 문안 라 — "새 경로로 다시 안내합니다. 2시 방향으로 도세요. 그 후 {첫 유닛}. 안내 {count}개,
+    /// 총 {distance}."). `headClock`은 교체 **전** 진행 방위 기준 새 경로 첫 방향(Kit `rerouteHeadClock`), nil이면 머리말이
+    /// 없다(자동차·방위 모름). ⚠ 인자 순서는 ko 문장 순서(arg-order ABI). 웹 `autoRerouteText` 미러.
+    static func autoReroute(
+        route: GuideRoute, firstIndices: [Int], liveSteps: [LiveStepInput], headClock: Int?
+    ) -> String {
         appLocalized(
             "guide.autoReroute",
+            headedUnit(route: route, indices: firstIndices, liveSteps: liveSteps, headClock: headClock),
             route.steps.count,
-            formatDistance(Int(route.totalMeters.rounded())),
-            unit(route: route, indices: firstIndices)
+            formatDistance(Int(route.totalMeters.rounded()))
         )
+    }
+
+    /// 새 경로 첫 유닛에 진행 방위 기준 방향 머리말을 단다(E63 spec §3.7). 12 = "진행 방향 그대로"(위원장 판정 J1),
+    /// 6 = "뒤로 도세요. 그 후", 그 밖 = "N시 방향으로 도세요. 그 후". 머리말이 있으면 첫 스텝의 경로 기준 방향 조각은
+    /// 뺀다(`body` — 방향을 두 번 말하지 않는다, 문안 확정본 "방향 구절이 겹치는 자리"). 묶음이면 머리말은 첫 문장에.
+    static func headedUnit(route: GuideRoute, indices: [Int], liveSteps: [LiveStepInput], headClock: Int?) -> String {
+        guard let clock = headClock else { return unit(route: route, indices: indices) }
+        let descs = indices.enumerated().compactMap { pos, i -> String? in
+            guard route.steps.indices.contains(i) else { return nil }
+            if pos == 0, liveSteps.indices.contains(i), let body = liveSteps[i].body { return body }
+            return route.steps[i].description
+        }
+        guard let first = descs.first else { return "" }
+        let headed: String = switch clock {
+        case 12: appLocalized("guide.rerouteHeadStraight", first)
+        case 6: appLocalized("guide.rerouteHeadBack", first)
+        default: appLocalized("guide.rerouteHeadClock", clockDirection(clock), first)
+        }
+        guard descs.count > 1 else { return headed }
+        return appLocalized("guide.bundle", ([headed] + descs.dropFirst()).joined(separator: ". "))
+    }
+
+    /// 이탈 문장(E63 문안 다·마 + 위원장 판정 J2·J3). 벗어난 쪽(낱말) + 돌아갈 쪽(시계). 보류(`hold`)는 nil — 이미 경로 쪽으로
+    /// 걷는 사람에게 말하지 않는다. 자동차(동승자)는 "경로는 N시 방향입니다"·"경로는 뒤쪽입니다". 웹 `offRouteText` 미러.
+    static func offRoute(
+        guidance: OffRouteGuidance, side: OffRouteSide?, returnRelDeg: Double?, kind: BeaconModel.GuideSessionKind
+    ) -> String? {
+        let car = kind == .car
+        switch guidance {
+        case .hold:
+            return nil
+        case .sideOnly:
+            return offRouteSide(side)
+        case .opposite:
+            return appLocalized(
+                "guide.offRouteWith", appLocalized("guide.offRouteOpposite"),
+                appLocalized(car ? "guide.carOffRouteBehind" : "guide.offRouteTurnBack"))
+        case .turn:
+            guard let side, let rel = returnRelDeg else { return offRouteSide(side) }
+            let clock = clockHour(rel)
+            let action = clock == 6
+                ? appLocalized(car ? "guide.carOffRouteBehind" : "guide.offRouteTurnBack")
+                : appLocalized(car ? "guide.carOffRouteClock" : "guide.offRouteReturnClock", clockDirection(clock))
+            return appLocalized("guide.offRouteWith", offRouteSide(side), action)
+        }
+    }
+
+    /// 벗어난 쪽만(J3·보류 중 상태 행). 쪽을 모르면(수직 3m 미만) 종전 문장.
+    static func offRouteSide(_ side: OffRouteSide?) -> String {
+        switch side {
+        case .right: appLocalized("guide.offRouteRight")
+        case .left: appLocalized("guide.offRouteLeft")
+        case nil: appLocalized("guide.offRoute")
+        }
     }
 
     /// walk 선행 전문에 결정 지점까지의 실위치 거리를 단다(위원장 판정 2026-10-03, 웹 `announceAhead` 미러).

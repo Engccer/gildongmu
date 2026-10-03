@@ -399,7 +399,6 @@
     "switchedToRecommended": "추천 경로로 전환했습니다. 안내 {count}개, 총 {distance}. {first}",
     "switchedToAccessible": "계단 회피 경로로 전환했습니다. 안내 {count}개, 총 {distance}. {first}",
     "switchedToBroad": "큰길 경로로 전환했습니다. 안내 {count}개, 총 {distance}. {first}",
-    "autoReroute": "새 경로로 다시 안내합니다. 안내 {count}개, 총 {distance}. {first}",
     "viewAlternative": "대안 경로 보기",
     "adoptAlternative": "이 경로 안내로 전환",
     "altPreviewLoading": "대안 경로 조회 중",

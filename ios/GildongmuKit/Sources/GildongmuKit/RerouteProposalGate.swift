@@ -20,8 +20,7 @@ public struct RerouteProposal: Sendable {
 /// `isFresh`는 **채택 시점 1회 안전망**이다(2026-09-02 자동 채택 개정 — 종전 수락제의
 /// 만료 능동 전이는 폐기됐고, `isFreshInTime`은 프로덕션 호출부 없이 테스트 전용 공개 API로 남았다).
 public enum RerouteProposalGate {
-    /// 신선도 한계(잠정값 — 실보행 판정 대상, spec §6).
-    public static let maxDriftMeters: Double = 30
+    /// 신선도 시간 한계(잠정값 — 실보행 판정 대상, spec §6). 이동 상한은 수단별 `GuideTuning.rerouteMaxDriftM`이다.
     public static let maxAgeSeconds: TimeInterval = 120
     /// 세션당 자동 조회 상한(잠정값). GPS 진동으로 확정 회차가 반복 생성될 때
     /// 쿼터·통지 폭주를 막는 마지막 방어선(spec §6 리뷰 #8).
@@ -36,10 +35,11 @@ public enum RerouteProposalGate {
         nowUptime - proposal.acquiredAt <= maxAgeSeconds
     }
 
-    /// 취득 위치에서 30m 초과 이동 또는 120초 경과면 만료.
+    /// 취득 위치에서 `maxDriftMeters` 초과 이동 또는 120초 경과면 만료. 이동 상한은 호출부가 수단의
+    /// `GuideTuning.rerouteMaxDriftM`으로 넘긴다(기본값 없음 — 도보 상한이 자동차에 조용히 적용되지 않게).
     public static func isFresh(
         _ proposal: RerouteProposal, nowUptime: TimeInterval,
-        currentLat: Double, currentLng: Double
+        currentLat: Double, currentLng: Double, maxDriftMeters: Double
     ) -> Bool {
         guard isFreshInTime(proposal, nowUptime: nowUptime) else { return false }
         let drift = haversineMeters(

@@ -245,6 +245,11 @@
   "guide.approx": [
     "distance"
   ],
+  "guide.autoReroute": [
+    "first",
+    "count",
+    "distance"
+  ],
   "guide.band.arrived": [
     "dest"
   ],
@@ -293,6 +298,9 @@
   "guide.carImminentToward": [
     "toward",
     "action"
+  ],
+  "guide.carOffRouteClock": [
+    "direction"
   ],
   "guide.carPeriodic": [
     "distance",
@@ -392,6 +400,13 @@
   "guide.nextStraightNoName": [
     "n"
   ],
+  "guide.offRouteReturnClock": [
+    "direction"
+  ],
+  "guide.offRouteWith": [
+    "side",
+    "action"
+  ],
   "guide.periodicStraight": [
     "target",
     "distance"
@@ -425,8 +440,18 @@
     "minutes"
   ],
   "guide.rerouteDone": [
+    "first",
     "count",
-    "distance",
+    "distance"
+  ],
+  "guide.rerouteHeadBack": [
+    "first"
+  ],
+  "guide.rerouteHeadClock": [
+    "direction",
+    "first"
+  ],
+  "guide.rerouteHeadStraight": [
     "first"
   ],
   "guide.rough": [

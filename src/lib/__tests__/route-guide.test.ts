@@ -3,6 +3,7 @@ import scenarios from "./fixtures/route-guide-scenarios.json";
 import courseAxisScenarios from "./fixtures/course-axis-scenarios.json";
 import type { CourseVoteSample } from "../guide-course-axis";
 import type { GuideAction } from "../walk-action";
+import { clockHour } from "../clock-direction";
 import { PRESUMED_ARRIVAL_CAR, PRESUMED_ARRIVAL_WALK } from "../final-approach";
 import {
   buildGuideRoute,
@@ -34,18 +35,26 @@ const M = 1 / 111320;
 const LAT0 = 37.5;
 const LNG0 = 127.1;
 
-function routeFrom(
-  steps: { len: number; desc: string; action?: string; crossing?: boolean }[],
-  waypointStepIndex?: number,
-) {
+type FixtureStep = {
+  len?: number;
+  /** 꺾인 경로(E63): 스텝 기하를 (along, lateral) 점열로 준다. 있으면 `len` 대신 쓰고, 다음 스텝은 마지막 점에서 잇는다. */
+  points?: [number, number][];
+  desc: string;
+  action?: string;
+  crossing?: boolean;
+};
+
+function routeFrom(steps: FixtureStep[], waypointStepIndex?: number) {
   let acc = 0;
   const route = buildGuideRoute(
     steps.map((s) => {
-      const pathCoords = [
-        { lat: LAT0 + acc * M, lng: LNG0 },
-        { lat: LAT0 + (acc + s.len) * M, lng: LNG0 },
-      ];
-      acc += s.len;
+      const pathCoords = s.points
+        ? s.points.map(([along, lateral]) => fixCoord(along, lateral))
+        : [
+            { lat: LAT0 + acc * M, lng: LNG0 },
+            { lat: LAT0 + (acc + s.len!) * M, lng: LNG0 },
+          ];
+      if (!s.points) acc += s.len!;
       return {
         description: s.desc,
         pathCoords,
@@ -85,6 +94,19 @@ interface Expectation {
   nextTarget?: { kind: string; meters: number };
   /** `announceSteps` 이벤트의 `late`(E62 R6 — 실위치가 이미 첫 스텝에 들어선 늦은 전문). */
   late?: boolean;
+  /** `offRoute` 이벤트 필드(E63 spec §4.1). `returnClock`은 `clockHour(returnRelDeg)`. */
+  notice?: string;
+  reason?: string;
+  guidance?: string;
+  side?: string | null;
+  firstSpoken?: boolean;
+  returnClock?: number;
+  /** `backOnRoute`의 `spoken`. */
+  spoken?: boolean;
+  /** `rerouteNeeded`의 `reason`. */
+  rerouteReason?: string;
+  /** 그 fix 뒤 진행거리 하한(앞질러 감 재구성, E63 §3.2 ⑤). */
+  minD?: number;
 }
 
 describe("route-guide 공유 시나리오(경계표)", () => {
@@ -96,7 +118,7 @@ describe("route-guide 공유 시나리오(경계표)", () => {
       geometry?: boolean;
       /** 경유지 스텝 index(N4). 미지정=경유지 없음. */
       waypointStepIndex?: number;
-      steps: { len: number; desc: string; action?: string; crossing?: boolean }[];
+      steps: FixtureStep[];
       /** `stopped`: 그 fix의 정지 판정(E62 R2). 미지정 = 움직이는 중. */
       fixes: { t: number; along: number; lateral: number; acc: number; stopped?: boolean }[];
       expect: Expectation[];
@@ -151,6 +173,29 @@ describe("route-guide 공유 시나리오(경계표)", () => {
             `stage ${ex.stage}`,
           ).toBe(true);
         }
+        const offRouteEv = rs.map((r) => r.event).find((e) => e?.kind === "offRoute");
+        if (ex.notice !== undefined) expect(offRouteEv && offRouteEv.kind === "offRoute" && offRouteEv.notice).toBe(ex.notice);
+        if (ex.reason !== undefined) expect(offRouteEv && offRouteEv.kind === "offRoute" && offRouteEv.reason).toBe(ex.reason);
+        if (ex.guidance !== undefined) {
+          expect(offRouteEv && offRouteEv.kind === "offRoute" && offRouteEv.guidance).toBe(ex.guidance);
+        }
+        if (ex.side !== undefined) expect(offRouteEv && offRouteEv.kind === "offRoute" ? offRouteEv.side : "none").toBe(ex.side);
+        if (ex.firstSpoken !== undefined) {
+          expect(offRouteEv && offRouteEv.kind === "offRoute" && offRouteEv.firstSpoken).toBe(ex.firstSpoken);
+        }
+        if (ex.returnClock !== undefined) {
+          const rel = offRouteEv && offRouteEv.kind === "offRoute" ? offRouteEv.returnRelDeg : null;
+          expect(rel === null ? null : clockHour(rel)).toBe(ex.returnClock);
+        }
+        if (ex.spoken !== undefined) {
+          const back = rs.map((r) => r.event).find((e) => e?.kind === "backOnRoute");
+          expect(back && back.kind === "backOnRoute" && back.spoken).toBe(ex.spoken);
+        }
+        if (ex.rerouteReason !== undefined) {
+          const rr = rs.map((r) => r.event).find((e) => e?.kind === "rerouteNeeded");
+          expect(rr && rr.kind === "rerouteNeeded" && rr.reason).toBe(ex.rerouteReason);
+        }
+        if (ex.minD !== undefined) rs.forEach((r) => expect(r.state.d).toBeGreaterThanOrEqual(ex.minD!));
         if (ex.nextTarget) {
           rs.forEach((r) => {
             const got = guideNextTarget(route, r.state);
@@ -295,8 +340,9 @@ describe("car 이탈 재통지(스펙 §4.3 — 180초·무톤)", () => {
 
     let renotifyAt: number | null = null;
     let renotifyTone: GuideTone | null = "warning";
-    for (let t = 24; t <= 210; t += 9) {
-      const out = guideStep(state, off(200), route, t, CAR_TUNING);
+    // 돌아가기 국면의 재통지는 움직이는 중에만 난다(E63 §3.4 — 멈추면 침묵). 나란한 재조회(200m)에 닿지 않게 15m를 오간다.
+    for (let t = 24, k = 0; t <= 210; t += 9, k += 1) {
+      const out = guideStep(state, off(k % 2 === 0 ? 200 : 215), route, t, CAR_TUNING);
       state = out.state;
       if (out.event?.kind === "offRoute") {
         renotifyAt = t;
@@ -555,7 +601,7 @@ describe("방위 축 통합 (유도 관측 — 궤적 주도)", () => {
     throw new Error("역주행 55초 안에 방위 축이 확정해야 한다");
   }
 
-  it("경로에서 동쪽으로 걸어 나가면 거리 축보다 먼저 방위 축이 확정한다", () => {
+  it("경로에서 동쪽으로 걸어 나가면 거리 축(30m·20초)보다 먼저 방위 표가 확정한다 — 결합 확정 또는 방위 축(E63)", () => {
     let { state } = initialGuideState(route, 0);
     // d=50 안착 후 동쪽(90도)으로 보행. 수직거리 30m 도달(25초)+20초 hold보다
     // 방위 창 확정(관측 시작 후 약 16~20초)이 앞선다.
@@ -564,9 +610,8 @@ describe("방위 축 통합 (유도 관측 — 궤적 주도)", () => {
     const off = east.events.find((e) => e.kind === "offRoute");
     expect(off).toBeTruthy();
     expect(east.state.phase).toBe("offRoute");
-    expect(east.state.offRouteAxes.course).toBe(true);
-    // 확정 시점의 수직거리는 임계(30m) 미만 — 거리 축은 잠기지 않았다.
-    expect(east.state.offRouteAxes.distance).toBe(false);
+    // 결합 확정(수직 20m·불일치 5표)이 방위 축(8표·16초)보다 먼저 선다. 거리 축 단독 확정은 아니다.
+    expect(east.state.offRouteReason).toBe("joint");
   });
 
   it("경로 위 역주행은 방위 축이 확정한다 — 수직거리 축이 영영 못 보는 이탈", () => {

@@ -37,6 +37,8 @@ import space.dodoplanet.gildongmu.kit.GuideSpeechChannel
 import space.dodoplanet.gildongmu.kit.GuideSpeechClass
 import space.dodoplanet.gildongmu.kit.beaconNoticeSpeechClass
 import space.dodoplanet.gildongmu.kit.guideEventSpeechClass
+import space.dodoplanet.gildongmu.kit.OffRouteGuidance
+import space.dodoplanet.gildongmu.kit.OffRouteNotice
 import space.dodoplanet.gildongmu.kit.guideSpeechChannel
 import space.dodoplanet.gildongmu.kit.DisplayUnit
 import space.dodoplanet.gildongmu.kit.GuideEvent
@@ -1102,7 +1104,7 @@ class WalkGuideModel(
         val out = guideStep(state, GuideFix(fix.lat, fix.lng, fix.accuracy, stopped = motion == MotionState.stopped), route, now, tuning)
         guideState = out.state
         when (out.event) {
-            GuideEvent.BackOnRoute, GuideEvent.Reacquired -> { liveBaselineD = out.state.d; liveRowsState = null }
+            is GuideEvent.BackOnRoute, GuideEvent.Reacquired -> { liveBaselineD = out.state.d; liveRowsState = null }
             else -> Unit
         }
         refreshLiveRows(out.state)
@@ -1152,8 +1154,8 @@ class WalkGuideModel(
     }
 
     private fun consume(event: GuideEvent, route: GuideRoute) {
-        // 분류(E53 spec §3.2)는 Kit이 정본 — 이탈은 회차 첫 통지만 행동 문장(재통지는 주기). 국면을 바꾸기 전에 읽는다.
-        val cls = guideEventSpeechClass(event, offRouteEpisodeStart = !offRoute)
+        // 분류(E53 spec §3.2)는 Kit이 정본 — 이탈은 회차 첫 발화(`firstSpoken`)만 행동 문장(재통지는 주기).
+        val cls = guideEventSpeechClass(event)
         when (event) {
             is GuideEvent.AnnounceSteps -> {
                 // 결정 지점까지의 실위치 거리를 앞에 단다(위원장 판정 2026-10-03 — 직진 주기 통지 다음에 "…에서 돌아"가
@@ -1207,23 +1209,28 @@ class WalkGuideModel(
                 if (!outputSuppressed) announce(strings.get("directions.viaRemaining", label, formatDistance(event.remainingMeters)), speechClass = cls)
             }
             GuideEvent.FinalApproachEnter -> Unit // fix를 쥔 handleDetail이 가른다
-            GuideEvent.OffRoute -> {
-                val isEpisodeStart = !offRoute
+            is GuideEvent.OffRoute -> {
+                // 보류(이미 경로 쪽으로 걷는 중, E63)는 말하지도 조회하지도 않는다. 방향 문장·자동 재조회 이식은 웨이브 3.
+                if (event.guidance == OffRouteGuidance.hold) return
+                val isEpisodeStart = event.notice == OffRouteNotice.confirm
                 offRoute = true
                 val spoken = strings.get("guide.offRoute")
                 statusText = spoken
                 announce(spoken, speechClass = cls)
                 if (isEpisodeStart) maybeFetchProposal()
             }
-            GuideEvent.BackOnRoute -> {
+            is GuideEvent.BackOnRoute -> {
                 offRouteEndedByReroute = false
                 offRoute = false
                 clearProposal()
+                // 이 회차에 이탈 문장을 내지 않았으면(보류) "복귀했습니다"도 말하지 않는다(Kit 이벤트 계약, E63 §3.4).
+                if (!event.spoken) return
                 val spoken = strings.get("guide.backOnRoute")
                 statusText = spoken
                 resultHaptic(ResultHapticKind.success)
                 announce(spoken, speechClass = cls)
             }
+            is GuideEvent.RerouteNeeded -> Unit // 자동 재조회는 웨이브 3
             GuideEvent.UncertainEnter -> { statusText = strings.get("guide.uncertain"); announce(statusText, speechClass = cls) }
             GuideEvent.UncertainExit, GuideEvent.Reacquired -> { statusText = strings.get("guide.uncertainRecovered"); announce(statusText, speechClass = cls) }
             GuideEvent.Reacquiring -> { statusText = strings.get("guide.reacquiring"); announce(statusText, speechClass = cls) }
@@ -1556,7 +1563,7 @@ class WalkGuideModel(
         val c = lastFixCoord ?: return
         val at = lastFixCoordAt ?: return
         if (clock() - at > freshFixSeconds) return
-        if (!RerouteProposalGate.isFresh(proposal, clock(), c.lat, c.lng)) return
+        if (!RerouteProposalGate.isFresh(proposal, clock(), c.lat, c.lng, tuning.rerouteMaxDriftM)) return
         val firstIndices = commitReroutedRoute(result)
         val notice = consumeStepFreeNotice(result.stepFreeRaw, result.stepFree, result.stepFreeNotice)
         val summary = text.autoReroute(result.route, firstIndices)
@@ -1790,7 +1797,7 @@ class WalkGuideModel(
         val target = alternateLine ?: return
         val c = lastFixCoord
         val at = lastFixCoordAt
-        if (c != null && at != null && clock() - at <= freshFixSeconds && RerouteProposalGate.isFresh(ready.proposal, clock(), c.lat, c.lng)) {
+        if (c != null && at != null && clock() - at <= freshFixSeconds && RerouteProposalGate.isFresh(ready.proposal, clock(), c.lat, c.lng, tuning.rerouteMaxDriftM)) {
             commitLineSwitch(target)
             val firstIndices = commitReroutedRoute(ready.fetched)
             val notice = consumeStepFreeNotice(ready.fetched.stepFreeRaw, ready.fetched.stepFree, ready.fetched.stepFreeNotice)

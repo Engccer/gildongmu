@@ -37,12 +37,16 @@ import {
   unitAt,
   turnApproachMeters,
   WALK_TUNING,
+  rerouteHeadClock,
   type GuideEvent,
   type GuideFix,
   type GuideRoute,
   type GuideState,
   type GuideTuning,
+  type OffRouteGuidance,
+  type OffRouteSide,
 } from "@/lib/route-guide";
+import { clockHour } from "@/lib/clock-direction";
 import type { CarLandmark } from "@/lib/route-geometry";
 import { buildCarGuide, carSpokenLandmark, roadNameAt, type CarRoadSpan } from "@/lib/car-route-guide";
 import {
@@ -69,6 +73,7 @@ import { claimGuideSession, releaseGuideSession } from "@/lib/guide-session-stor
 import { isOutOfCoverageBody } from "@/lib/out-of-coverage";
 import type { CarRouteBriefing, WalkRouteBriefing } from "@/lib/types";
 import { walkRouteUrl } from "@/lib/walk-route-url";
+import { isRerouteProposalFresh, mayFetchReroute } from "@/lib/reroute-proposal-gate";
 import { directionParticle } from "@/lib/korean-particle";
 import {
   SPEECH_DEFER_MAX_S,
@@ -269,6 +274,59 @@ export function walkImminentLine(action: string, crossingClock: number | undefin
   if (crossingClock === 12) return t("imminent.crosswalkAhead");
   if (crossingClock === 6) return t("imminent.crosswalkBack");
   return t("imminent.crosswalkClock", { direction: t("clockDirection", { hour: crossingClock }) });
+}
+
+/** 벗어난 쪽만(J3·보류 중 상태 행). 쪽을 모르면(수직 3m 미만) 종전 문장. iOS `GuideText.offRouteSide` 미러. */
+export function offRouteSideText(side: OffRouteSide | null, t: GuideT): string {
+  return side === "right" ? t("offRouteRight") : side === "left" ? t("offRouteLeft") : t("offRoute");
+}
+
+/**
+ * 이탈 문장(E63 문안 다·마 + 위원장 판정 J2·J3): 벗어난 쪽(낱말) + 돌아갈 쪽(시계). 보류(`hold`)는 빈 문자열(무발화 — 이미
+ * 경로 쪽으로 걷는 사람에게 말하지 않는다). 자동차는 "경로는 N시 방향입니다"·"경로는 뒤쪽입니다". iOS `GuideText.offRoute` 미러.
+ */
+export function offRouteText(
+  ev: { guidance: OffRouteGuidance; side: OffRouteSide | null; returnRelDeg: number | null },
+  car: boolean,
+  t: GuideT,
+): string {
+  if (ev.guidance === "hold") return "";
+  if (ev.guidance === "sideOnly") return offRouteSideText(ev.side, t);
+  const behind = car ? t("carOffRouteBehind") : t("offRouteTurnBack");
+  if (ev.guidance === "opposite") return t("offRouteWith", { side: t("offRouteOpposite"), action: behind });
+  if (ev.side === null || ev.returnRelDeg === null) return offRouteSideText(ev.side, t);
+  const clock = clockHour(ev.returnRelDeg);
+  const direction = t("clockDirection", { hour: clock });
+  const action = clock === 6 ? behind : car ? t("carOffRouteClock", { direction }) : t("offRouteReturnClock", { direction });
+  return t("offRouteWith", { side: offRouteSideText(ev.side, t), action });
+}
+
+/**
+ * 새 경로 첫 유닛에 진행 방위 기준 방향 머리말을 단다(E63 spec §3.7). 12 = "진행 방향 그대로"(위원장 판정 J1), 6 = "뒤로
+ * 도세요. 그 후", 그 밖 = "N시 방향으로 도세요. 그 후". 머리말이 있으면 첫 스텝의 경로 기준 방향 조각은 뺀다(`body`, 방향을
+ * 두 번 말하지 않는다). `headClock` null이면 머리말 없음. iOS `GuideText.headedUnit` 미러.
+ */
+export function headedUnitText(
+  route: GuideRoute,
+  indices: number[],
+  liveSteps: readonly { body?: string }[],
+  headClock: number | null,
+  t: GuideT,
+): string {
+  if (headClock === null) return unitText(route, indices, t);
+  const descs = indices
+    .map((i, pos) => (pos === 0 ? (liveSteps[i]?.body ?? route.steps[i]?.description) : route.steps[i]?.description))
+    .filter((d): d is string => Boolean(d));
+  const first = descs[0];
+  if (first === undefined) return "";
+  const headed =
+    headClock === 12
+      ? t("rerouteHeadStraight", { first })
+      : headClock === 6
+        ? t("rerouteHeadBack", { first })
+        : t("rerouteHeadClock", { direction: t("clockDirection", { hour: headClock }), first });
+  if (descs.length <= 1) return headed;
+  return t("bundle", { steps: [headed, ...descs.slice(1)].join(". ") });
 }
 
 /**
@@ -676,6 +734,20 @@ export function useRouteGuide(
    */
   const genRef = useRef(0);
   const rerouteInFlightRef = useRef(false);
+  /**
+   * 자동 재조회(E63 — 리듀서 `rerouteNeeded`가 트리거, 웹도 iOS처럼 조회·채택한다). 진행 중이면 리듀서가 또 요청해도
+   * 무시한다(토큰을 올려 진행 중 조회를 버리면 느린 망에서 채택 없이 예산만 쓴다). 세대는 복귀·수동 재조회가 올려 늦은
+   * 응답의 채택을 막는다. 예산은 세션 5회(`mayFetchReroute`).
+   */
+  const autoRerouteInFlightRef = useRef(false);
+  const autoRerouteGenRef = useRef(0);
+  const autoRerouteCountRef = useRef(0);
+  /** 이 이탈 회차에 이탈 문장을 실제로 통지 창구에 올렸는가(E63 §3.4 — 아니면 "복귀했습니다"도 말하지 않는다). 확정에서 지운다. */
+  const offRouteSpokenRef = useRef(false);
+  /** 돌아가기 국면의 상태 행 문장(마지막 이탈 문장, 보류면 벗어난 쪽만). */
+  const offRouteLineRef = useRef<string | null>(null);
+  /** 리듀서 이벤트 소비(`stepDetail`)가 뒤에 정의된 `autoReroute`를 부르는 창구 — 매 렌더 뒤 effect가 갱신한다. */
+  const autoRerouteRef = useRef<() => void>(() => {});
   const prevKindRef = useRef<AnnounceKind | null>(null);
   const liveRef = useRef("");
   /**
@@ -898,7 +970,7 @@ export function useRouteGuide(
         top === null
           ? null
           : top.kind === "offRoute"
-            ? t("offRoute")
+            ? (offRouteLineRef.current ?? t("offRoute"))
             : top.kind === "uncertain"
               ? t("uncertain")
               : top.kind === "reacquiring"
@@ -1191,10 +1263,15 @@ export function useRouteGuide(
           // 거리·방향을 쓰는데 이 함수는 fix를 받지 않는다. 빈 문자열은 무발화다.
           return "";
         case "offRoute":
-          // 차량 이탈 문구는 상태 전문(§4.3) — 첫 통지를 놓쳐도 반복만으로 완결.
-          return kindFixed === "car" ? t("carOffRoute") : t("offRoute");
+          // 벗어난 쪽 + 돌아갈 쪽(E63 문안 다·마). 보류(`hold`)는 빈 문자열 — 무발화.
+          return offRouteText(event, kindFixed === "car", t);
         case "backOnRoute":
-          return t("backOnRoute");
+          // 벗어났다는 말을 듣지 않은 사용자에게 "복귀했습니다"만 들리지 않게(E63 §3.4): 리듀서가 이 회차에 이탈 문장을 냈고
+          // ∧ 이 훅이 그 문장을 실제로 통지 창구에 올렸을 때만.
+          return event.spoken && offRouteSpokenRef.current ? t("backOnRoute") : "";
+        case "rerouteNeeded":
+          // 자동 재조회 트리거(E63) — 문장은 채택 통지가 맡는다.
+          return "";
         case "uncertainEnter":
           return t("uncertain");
         case "uncertainExit":
@@ -1673,6 +1750,14 @@ export function useRouteGuide(
       }
       setOffRoute(result.state.phase === "offRoute");
       setProgress(progressOf(route, result.state));
+      // 돌아가기 국면의 상태 행 문장(E63) — 아래 하단 2행 갱신보다 먼저(같은 fix의 윗줄이 이 문장이어야 한다). 보류는 말하지
+      // 않으므로 벗어난 쪽만 둔다(시계 11~1을 "돌아가세요"로 쓰지 않는다).
+      if (result.event?.kind === "offRoute") {
+        offRouteLineRef.current =
+          result.event.guidance === "hold"
+            ? offRouteSideText(result.event.side, t)
+            : offRouteText(result.event, kindFixed === "car", t);
+      }
       // 하단 2행(spec 2026-08-11, car는 K2 §7·E56): 이탈 복귀·재획득은 리듀서가 d를 재구성한
       // 지점이다 — 투영이 새 기준에 정렬됐으므로 램프인 기준점·클램프를 리셋한다.
       if (result.event?.kind === "backOnRoute" || result.event?.kind === "reacquired") {
@@ -1767,9 +1852,17 @@ export function useRouteGuide(
       );
 
       if (!result.event) return;
+      if (result.event.kind === "offRoute") {
+        if (result.event.notice === "confirm") offRouteSpokenRef.current = false;
+      } else if (result.event.kind === "backOnRoute") {
+        autoRerouteGenRef.current += 1; // 복귀 = 자동 재조회 근거 소멸(진행 중 조회의 채택 차단)
+      } else if (result.event.kind === "rerouteNeeded") {
+        autoRerouteRef.current();
+      }
       const text = eventText(result.event, route, result.state.d);
       if (!text) return;
       announce(text);
+      if (result.event.kind === "offRoute") offRouteSpokenRef.current = true;
       // 되읽기에는 거리 머리말 없는 원문을 둔다 — "약 20m 앞"은 그 순간에만 참이다(2026-10-03).
       if (isGuidanceEvent(result.event.kind)) {
         rememberGuidance(
@@ -1910,6 +2003,10 @@ export function useRouteGuide(
     lastFixAtRef.current = null;
     lastGuidanceRef.current = null;
     awaitingRouteRef.current = false;
+    autoRerouteCountRef.current = 0;
+    autoRerouteGenRef.current += 1;
+    offRouteSpokenRef.current = false;
+    offRouteLineRef.current = null;
     displayUnitsRef.current = [];
     liveStepsRef.current = [];
     liveRowsStateRef.current = null;
@@ -2177,11 +2274,62 @@ export function useRouteGuide(
     );
   }, [announce, etaSecondsFor, kindFixed, t, tBeacon]);
 
+  /**
+   * 재조회·자동 재조회 공통의 성공 커밋(iOS `commitReroutedRoute` 미러 — 별도 채택 전이 신설 금지). 첫 유닛 인덱스와
+   * 계단 회피 통지를 돌려준다. 발화 문구는 호출부 몫이다.
+   */
+  const commitRerouted = useCallback(
+    (fetched: Extract<Awaited<ReturnType<typeof fetchGuideRoute>>, { ok: true }>) => {
+      const { route } = fetched;
+      // 상세가 섰다 — 강등 문구를 지운다(설계 리뷰 #6: 복구 전이 정의).
+      clearDegrade();
+      routeDurationRef.current = fetched.durationSeconds;
+      routeViaRef.current = fetched.via;
+      roadSpansRef.current = fetched.roadSpans;
+      // 새 경로 = 새 표시 유닛(commitDetail의 rows 리셋·재계산보다 앞).
+      displayUnitsRef.current =
+        fetched.liveSteps.length > 0 ? buildDisplayUnits(fetched.liveSteps, tuning.actionSource) : [];
+      liveStepsRef.current = fetched.liveSteps;
+      if (kindFixed === "car") {
+        // 수동 재조회도 ETA 호출 캡에 포함(§4.6). 새 경로 기준으로 원자 교체.
+        etaCallCountRef.current = Math.min(
+          CAR_ETA_CALL_CAP,
+          etaCallCountRef.current + 1,
+        );
+        etaRef.current =
+          fetched.durationSeconds !== null
+            ? { seconds: fetched.durationSeconds, updatedAt: performance.now() / 1000 }
+            : null;
+      }
+      // 새 경로는 현재 위치에서 출발하므로 진행거리 0에서 다시 시작한다.
+      const now = performance.now() / 1000;
+      // 새 경로는 새 종점·새 오프셋이다 — 래치·타이머·서술 래치를 전부 초기화한다.
+      resetFinalApproach(fetched.finalApproach);
+      const init = initialGuideState(route, now, {
+        hasFinalApproachGeometry: fetched.finalApproach !== null,
+        // 재조회는 같은 세션의 새 경로다 — 유도기 버퍼를 잇는다(spec §2.9.
+        // 비우면 갈림 직후 재조회에서 축이 ~10m 냉시동돼, "이탈 → 재조회 →
+        // 다시 잘못된 길" 시나리오에서 이 축의 이점이 사라진다).
+        courseDerivation: guideRef.current?.courseDerivation,
+        // 진행 방위 관측도 궤적의 사실이다 — 새 경로의 돌아가기·재통지 판정이 냉시동하지 않게(E63 spec §4.2).
+        lastHeading: guideRef.current?.lastHeading,
+      });
+      commitDetail(route, init.state);
+      const first = unitText(route, init.firstIndices, t);
+      rememberGuidance(first);
+      const notice = consumeStepFreeNotice(fetched.stepFree, fetched.stepFreeNotice);
+      return { route, firstIndices: init.firstIndices, notice };
+    },
+    [clearDegrade, tuning, commitDetail, consumeStepFreeNotice, kindFixed, rememberGuidance, resetFinalApproach, t],
+  );
+
   const requestReroute = useCallback(() => {
     if (!trackingRef.current || rerouteInFlightRef.current) return;
     rerouteInFlightRef.current = true;
     setRerouting(true);
     genRef.current += 1;
+    // 진행 중 자동 재조회는 폐기한다 — 수동 조회가 이긴다(두 응답이 잇달아 커밋되면 첫 안내가 두 번 나간다, iOS 동형).
+    autoRerouteGenRef.current += 1;
     const gen = genRef.current;
     void (async () => {
       try {
@@ -2204,50 +2352,15 @@ export function useRouteGuide(
           announce(t("rerouteFailed"));
           return;
         }
-        const { route } = fetched;
-        // 상세가 섰다 — 강등 문구를 지운다(설계 리뷰 #6: 복구 전이 정의).
-        clearDegrade();
-        routeDurationRef.current = fetched.durationSeconds;
-        routeViaRef.current = fetched.via;
-        roadSpansRef.current = fetched.roadSpans;
-        // 새 경로 = 새 표시 유닛(commitDetail의 rows 리셋·재계산보다 앞).
-        displayUnitsRef.current =
-          fetched.liveSteps.length > 0 ? buildDisplayUnits(fetched.liveSteps, tuning.actionSource) : [];
-        liveStepsRef.current = fetched.liveSteps;
-        if (kindFixed === "car") {
-          // 수동 재조회도 ETA 호출 캡에 포함(§4.6). 새 경로 기준으로 원자 교체.
-          etaCallCountRef.current = Math.min(
-            CAR_ETA_CALL_CAP,
-            etaCallCountRef.current + 1,
-          );
-          etaRef.current =
-            fetched.durationSeconds !== null
-              ? { seconds: fetched.durationSeconds, updatedAt: performance.now() / 1000 }
-              : null;
-        }
-        // 새 경로는 현재 위치에서 출발하므로 진행거리 0에서 다시 시작한다.
-        const now = performance.now() / 1000;
-        // 새 경로는 새 종점·새 오프셋이다 — 래치·타이머·서술 래치를 전부 초기화한다.
-        resetFinalApproach(fetched.finalApproach);
-        const init = initialGuideState(route, now, {
-          hasFinalApproachGeometry: fetched.finalApproach !== null,
-          // 재조회는 같은 세션의 새 경로다 — 유도기 버퍼를 잇는다(spec §2.9.
-          // 비우면 갈림 직후 재조회에서 축이 ~10m 냉시동돼, "이탈 → 재조회 →
-          // 다시 잘못된 길" 시나리오에서 이 축의 이점이 사라진다).
-          courseDerivation: guideRef.current?.courseDerivation,
-        });
-        commitDetail(route, init.state);
-        const first = unitText(route, init.firstIndices, t);
-        rememberGuidance(first);
-        const notice = consumeStepFreeNotice(fetched.stepFree, fetched.stepFreeNotice);
+        const { route, firstIndices, notice } = commitRerouted(fetched);
         // 첫 안내만 내보내면 그것이 **새 경로**인지 원래 경로의 다음 스텝인지 낭독으로
         // 구분되지 않는다(실사용 발견: 화면 출발지 필드는 길찾기 입력값이라 갱신되지
         // 않으므로, "출발지가 현재 위치로 바뀌었다"를 전할 채널이 이 문장뿐이다).
-        // 시작 통지(`detailStart`)와 같은 구조로 규모까지 함께 준다.
+        // 시작 통지(`detailStart`)와 같은 구조 — 할 일 먼저, 규모는 뒤(E63 문안 라). 버튼 재조회는 방향 머리말이 없다.
         const summary = t("rerouteDone", {
+          first: unitText(route, firstIndices, t),
           count: route.steps.length,
           distance: formatDistance(route.totalMeters),
-          first,
         });
         announce(notice ? `${notice} ${summary}` : summary);
       } finally {
@@ -2255,19 +2368,59 @@ export function useRouteGuide(
         if (mountedRef.current) setRerouting(false);
       }
     })();
-  }, [
-    announce,
-    clearDegrade,
-    setDegrade,
-    tuning,
-    commitDetail,
-    consumeStepFreeNotice,
-    fetchGuideRoute,
-    kindFixed,
-    rememberGuidance,
-    resetFinalApproach,
-    t,
-  ]);
+  }, [announce, commitRerouted, setDegrade, fetchGuideRoute, t]);
+
+  /**
+   * 자동 재조회(E63 spec §3.5·§3.9): 리듀서가 돌아가기 국면에서 `rerouteNeeded`(계속 멀어짐·나란히 계속 걸음)를 낼 때만
+   * 조회·채택한다 — 이탈 확정 즉시가 아니다. 조회 실패·경로 없음·신선도 미달은 통지 없이 돌아가기 국면을 잇고, 리듀서가
+   * 문턱을 다시 채우면 또 요청한다(세션 5회 상한). 채택 시점 신선도는 iOS `RerouteProposalGate` 미러(마지막 fix 15초 안 ∧
+   * 요청 지점에서 수단별 이동 상한·120초 안).
+   */
+  const autoReroute = useCallback(() => {
+    if (!trackingRef.current || modeRef.current !== "detail" || inFinalApproachRef.current) return;
+    if (rerouteInFlightRef.current || autoRerouteInFlightRef.current) return;
+    if (!mayFetchReroute(autoRerouteCountRef.current)) return;
+    const origin = lastFixRef.current;
+    if (origin === null) return;
+    autoRerouteCountRef.current += 1;
+    autoRerouteInFlightRef.current = true;
+    const gen = genRef.current;
+    autoRerouteGenRef.current += 1;
+    const autoGen = autoRerouteGenRef.current;
+    const proposal = { originLat: origin.lat, originLng: origin.lng, acquiredAt: performance.now() / 1000 };
+    void (async () => {
+      try {
+        const fetched = await fetchGuideRoute(true);
+        if (gen !== genRef.current || autoGen !== autoRerouteGenRef.current) return;
+        if (!trackingRef.current || !mountedRef.current || rerouteInFlightRef.current) return;
+        if (guideRef.current?.phase !== "offRoute") return;
+        if (!fetched.ok || sameVia(fetched.via, excludedViaRef.current)) return;
+        const now = performance.now() / 1000;
+        const cur = lastFixRef.current;
+        const at = lastFixAtRef.current;
+        if (
+          cur === null ||
+          at === null ||
+          now - at > 15 ||
+          !isRerouteProposalFresh(proposal, now, cur, tuning.rerouteMaxDriftM)
+        ) {
+          return;
+        }
+        // 머리말의 기준은 교체 **전** 세션의 진행 방위다(궤적의 사실). 자동차는 머리말 없음(문안 라 다섯째 줄).
+        const headClock =
+          kindFixed === "walk" && guideRef.current ? rerouteHeadClock(guideRef.current, fetched.route, now, tuning) : null;
+        const { route, firstIndices, notice } = commitRerouted(fetched);
+        const summary = t("autoReroute", {
+          first: headedUnitText(route, firstIndices, liveStepsRef.current, headClock, t),
+          count: route.steps.length,
+          distance: formatDistance(route.totalMeters),
+        });
+        announce(notice ? `${notice} ${summary}` : summary);
+      } finally {
+        autoRerouteInFlightRef.current = false;
+      }
+    })();
+  }, [announce, commitRerouted, fetchGuideRoute, kindFixed, t, tuning]);
 
   // 전경 전용(스펙 §9): 탭이 숨으면 중지하고 경로를 폐기한다. 복귀 후 자동 재개 없음
   // — 숨김 탭에서 멎은 watch·타이머가 좀비 상태를 만드는 것을 상태로 흡수한다.
@@ -2285,6 +2438,7 @@ export function useRouteGuide(
     handleFixRef.current = handleFix;
     handleErrorRef.current = handleError;
     stopRef.current = stop;
+    autoRerouteRef.current = autoReroute;
   });
 
   useEffect(() => {

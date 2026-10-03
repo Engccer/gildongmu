@@ -186,7 +186,8 @@ describe("car 현재 도로 행 (E56)", () => {
       tick(9000);
       emitFix(300, 200);
     }
-    expect(top()).toBe(ko.guide.offRoute);
+    // 돌아가기 국면의 윗줄은 이탈 문장(E63) — 멈춰 있어 진행 방위가 없으니 벗어난 쪽만.
+    expect(top()).toBe(ko.guide.offRouteRight);
     // 이탈 전보다 **뒤**(150m)로 돌아온다 — 남은 거리가 늘었다. 감소만 허용하는 클램프는 이탈 국면이
     // 하단 2행 상태를 비워 풀린다(guideLiveRows offRoute → state null). 그래서 이 단언은 복귀 리셋
     // (backOnRoute 시 baseline·state 리셋)의 유무와 무관하게 성립한다 — 리셋 자체는 walk와 공유 코드다.

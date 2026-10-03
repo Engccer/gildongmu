@@ -716,6 +716,7 @@
     <string name="guide_approx">environ %1$s</string>
     <string name="guide_arrived">Vous êtes arrivé à destination</string>
     <string name="guide_arrivedPresumed">Vous semblez être arrivé près de la destination, le guidage est donc terminé</string>
+    <string name="guide_autoReroute">Guidage repris sur un nouvel itinéraire. %1$s. {2, plural, one {%2$s instruction} other {%2$s instructions}}, %3$s au total.</string>
     <string name="guide_backOnRoute">De retour sur l\'itinéraire</string>
     <string name="guide_band_arrived">Arrivé à %1$s</string>
     <string name="guide_band_ended">Guidage vers %1$s terminé</string>
@@ -748,6 +749,8 @@
     <string name="guide_carLiveAction_left">tournez à gauche</string>
     <string name="guide_carLiveAction_right">tournez à droite</string>
     <string name="guide_carOffRoute">Hors itinéraire ; guidage en pause. Relancez la recherche d\'itinéraire pour reprendre</string>
+    <string name="guide_carOffRouteBehind">L\'itinéraire est derrière vous</string>
+    <string name="guide_carOffRouteClock">L\'itinéraire est à %1$s</string>
     <string name="guide_carPeriodic">%2$s dans %1$s</string>
     <string name="guide_carPeriodicAt">%3$s à %2$s dans %1$s</string>
     <string name="guide_carRoadNow">Sur %1$s</string>
@@ -811,6 +814,12 @@
     <string name="guide_nextStraightNoName">Continuez tout droit sur %1$sm</string>
     <string name="guide_noGuidanceYet">Pas encore d\'instruction</string>
     <string name="guide_offRoute">Vous semblez avoir quitté l\'itinéraire</string>
+    <string name="guide_offRouteLeft">Vous avez quitté l\'itinéraire par la gauche</string>
+    <string name="guide_offRouteOpposite">Vous allez dans le sens opposé à l\'itinéraire</string>
+    <string name="guide_offRouteReturnClock">Revenez vers %1$s</string>
+    <string name="guide_offRouteRight">Vous avez quitté l\'itinéraire par la droite</string>
+    <string name="guide_offRouteTurnBack">Faites demi-tour</string>
+    <string name="guide_offRouteWith">%1$s. %2$s</string>
     <string name="guide_periodicStraight">Continuez tout droit sur %2$s vers %1$s</string>
     <string name="guide_periodicStraightNoName">Continuez tout droit sur %1$s</string>
     <string name="guide_progressButton">Progression</string>
@@ -825,8 +834,11 @@
     <string name="guide_remainingTime">environ %1$s min</string>
     <string name="guide_rerouteBusy">Recalculer l\'itinéraire, en cours</string>
     <string name="guide_rerouteButton">Relancer la recherche d\'itinéraire</string>
-    <string name="guide_rerouteDone">Itinéraire recalculé depuis votre position actuelle. {1, plural, one {%1$s instruction} other {%1$s instructions}}, %2$s au total. %3$s</string>
+    <string name="guide_rerouteDone">Itinéraire recalculé depuis votre position actuelle. %1$s. {2, plural, one {%2$s instruction} other {%2$s instructions}}, %3$s au total.</string>
     <string name="guide_rerouteFailed">Échec de la recherche d\'itinéraire. L\'itinéraire actuel est conservé</string>
+    <string name="guide_rerouteHeadBack">Faites demi-tour. Ensuite, %1$s</string>
+    <string name="guide_rerouteHeadClock">Tournez vers %1$s. Ensuite, %2$s</string>
+    <string name="guide_rerouteHeadStraight">Tout droit, %1$s</string>
     <string name="guide_rough">à peu près %1$s</string>
     <string name="guide_transitDestChangePrepared">Recherche d\'itinéraires en transports. Choisissez un itinéraire sur l\'écran de guidage.</string>
     <string name="guide_uncertain">La confiance dans la position est faible</string>

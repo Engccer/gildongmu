@@ -13606,37 +13606,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "새 경로로 다시 안내합니다. 안내 %1$@개, 총 %2$@. %3$@"
+            "value": "새 경로로 다시 안내합니다. %1$@. 안내 %2$@개, 총 %3$@."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Now guiding on a new route. {1, plural, one {%1$@ step} other {%1$@ steps}}, %2$@ total. %3$@"
+            "value": "Now guiding on a new route. %1$@. {2, plural, one {%2$@ step} other {%2$@ steps}}, %3$@ total."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ahora te guío por una nueva ruta. {1, plural, one {%1$@ indicación} other {%1$@ indicaciones}}, %2$@ en total. %3$@"
+            "value": "Ahora te guío por una nueva ruta. %1$@. {2, plural, one {%2$@ indicación} other {%2$@ indicaciones}}, %3$@ en total."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Guidage repris sur un nouvel itinéraire. {1, plural, one {%1$@ instruction} other {%1$@ instructions}}, %2$@ au total. %3$@"
+            "value": "Guidage repris sur un nouvel itinéraire. %1$@. {2, plural, one {%2$@ instruction} other {%2$@ instructions}}, %3$@ au total."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ora ti guido su un nuovo percorso. {1, plural, one {%1$@ indicazione} other {%1$@ indicazioni}}, %2$@ in totale. %3$@"
+            "value": "Ora ti guido su un nuovo percorso. %1$@. {2, plural, one {%2$@ indicazione} other {%2$@ indicazioni}}, %3$@ in totale."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "新しいルートで案内を再開します。案内%1$@件、合計%2$@。%3$@"
+            "value": "新しいルートで案内を再開します。%1$@。案内%2$@件、合計%3$@。"
           }
         }
       }
@@ -14957,6 +14957,86 @@
           "stringUnit": {
             "state": "translated",
             "value": "経路から外れたため案内を一時停止しました。経路の再検索で再開できます"
+          }
+        }
+      }
+    },
+    "guide.carOffRouteBehind": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "경로는 뒤쪽입니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The route is behind you"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La ruta está detrás"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L'itinéraire est derrière vous"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il percorso è dietro di te"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "経路は後方です"
+          }
+        }
+      }
+    },
+    "guide.carOffRouteClock": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "경로는 %1$@입니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The route is at %1$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La ruta está en %1$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L'itinéraire est à %1$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il percorso è a %1$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "経路は%1$@です"
           }
         }
       }
@@ -17481,6 +17561,246 @@
         }
       }
     },
+    "guide.offRouteLeft": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "경로에서 왼쪽으로 벗어났습니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You've strayed to the left of the route"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Te has salido de la ruta por la izquierda"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vous avez quitté l'itinéraire par la gauche"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sei uscito dal percorso sulla sinistra"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "経路から左に外れました"
+          }
+        }
+      }
+    },
+    "guide.offRouteOpposite": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "경로와 반대 방향입니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You're heading the opposite way from the route"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vas en sentido contrario a la ruta"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vous allez dans le sens opposé à l'itinéraire"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stai andando nella direzione opposta al percorso"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "経路と反対方向です"
+          }
+        }
+      }
+    },
+    "guide.offRouteReturnClock": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@으로 돌아가세요"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Head back toward %1$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vuelve hacia %1$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revenez vers %1$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Torna verso %1$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@に戻ってください"
+          }
+        }
+      }
+    },
+    "guide.offRouteRight": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "경로에서 오른쪽으로 벗어났습니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You've strayed to the right of the route"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Te has salido de la ruta por la derecha"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vous avez quitté l'itinéraire par la droite"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sei uscito dal percorso sulla destra"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "経路から右に外れました"
+          }
+        }
+      }
+    },
+    "guide.offRouteTurnBack": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "뒤로 도세요"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Turn around"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Da la vuelta"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Faites demi-tour"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Girati"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "後ろを向いてください"
+          }
+        }
+      }
+    },
+    "guide.offRouteWith": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@. %2$@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@. %2$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@. %2$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@. %2$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@. %2$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@。%2$@"
+          }
+        }
+      }
+    },
     "guide.periodicStraight": {
       "localizations": {
         "ko": {
@@ -18046,37 +18366,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "현재 위치에서 경로를 다시 찾았습니다. 안내 %1$@개, 총 %2$@. %3$@"
+            "value": "현재 위치에서 경로를 다시 찾았습니다. %1$@. 안내 %2$@개, 총 %3$@."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Route recalculated from your current location. {1, plural, one {%1$@ instruction} other {%1$@ instructions}}, %2$@ total. %3$@"
+            "value": "Route recalculated from your current location. %1$@. {2, plural, one {%2$@ instruction} other {%2$@ instructions}}, %3$@ total."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ruta recalculada desde tu ubicación actual. {1, plural, one {%1$@ indicación} other {%1$@ indicaciones}}, %2$@ en total. %3$@"
+            "value": "Ruta recalculada desde tu ubicación actual. %1$@. {2, plural, one {%2$@ indicación} other {%2$@ indicaciones}}, %3$@ en total."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Itinéraire recalculé depuis votre position actuelle. {1, plural, one {%1$@ instruction} other {%1$@ instructions}}, %2$@ au total. %3$@"
+            "value": "Itinéraire recalculé depuis votre position actuelle. %1$@. {2, plural, one {%2$@ instruction} other {%2$@ instructions}}, %3$@ au total."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Percorso ricalcolato dalla tua posizione attuale. {1, plural, one {%1$@ indicazione} other {%1$@ indicazioni}}, %2$@ in totale. %3$@"
+            "value": "Percorso ricalcolato dalla tua posizione attuale. %1$@. {2, plural, one {%2$@ indicazione} other {%2$@ indicazioni}}, %3$@ in totale."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "現在地から経路を再検索しました。案内%1$@件、合計%2$@。%3$@"
+            "value": "現在地から経路を再検索しました。%1$@。案内%2$@件、合計%3$@。"
           }
         }
       }
@@ -18117,6 +18437,126 @@
           "stringUnit": {
             "state": "translated",
             "value": "経路の検索に失敗しました。現在の経路を維持します"
+          }
+        }
+      }
+    },
+    "guide.rerouteHeadBack": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "뒤로 도세요. 그 후 %1$@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Turn around. Then %1$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Da la vuelta. Después, %1$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Faites demi-tour. Ensuite, %1$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Girati. Poi %1$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "後ろを向いてください。その後、%1$@"
+          }
+        }
+      }
+    },
+    "guide.rerouteHeadClock": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@으로 도세요. 그 후 %2$@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Turn to %1$@. Then %2$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gira hacia %1$@. Después, %2$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tournez vers %1$@. Ensuite, %2$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Girati a %1$@. Poi %2$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@を向いてください。その後、%2$@"
+          }
+        }
+      }
+    },
+    "guide.rerouteHeadStraight": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "진행 방향 그대로 %1$@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Straight ahead, %1$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De frente, %1$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tout droit, %1$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dritto, %1$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "そのまま%1$@"
           }
         }
       }

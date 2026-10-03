@@ -73,28 +73,40 @@ struct GuideSpeechChannelTests {
         #expect(BackgroundSpeech.isEnabled(stored: true) == true)
     }
 
-    // spec §3.2: 경로 이벤트 전수. 예고·임박·경유지·복귀는 행동, 이탈은 회차 시작만, 주기·상태는 미룸.
+    // spec §3.2: 경로 이벤트 전수. 예고·임박·경유지·복귀는 행동, 이탈은 회차의 첫 발화만(E63 `firstSpoken`), 주기·상태는 미룸.
     @Test func guideEventClassification() {
         let actionable: [GuideEvent] = [
             .announceSteps([0], late: false),
             .farNotice(indices: [2], remainingMeters: 300), .waypointReached,
-            .waypointApproaching(remainingMeters: 40), .backOnRoute,
+            .waypointApproaching(remainingMeters: 40), .backOnRoute(spoken: true), .backOnRoute(spoken: false),
         ]
         for event in actionable {
-            #expect(guideEventSpeechClass(event, offRouteEpisodeStart: false) == .actionable, "\(event)")
+            #expect(guideEventSpeechClass(event) == .actionable, "\(event)")
         }
         let deferrable: [GuideEvent] = [
             .bundleReread([0]), .periodic(stepIndex: 0, remainingMeters: 120, accuracy: 5),
             .uncertainEnter, .uncertainExit, .reacquiring, .reacquired, .speedSuggest, .finalApproachEnter,
+            .rerouteNeeded(reason: .away), .rerouteNeeded(reason: .parallel),
         ]
         for event in deferrable {
-            #expect(guideEventSpeechClass(event, offRouteEpisodeStart: true) == .deferrable, "\(event)")
+            #expect(guideEventSpeechClass(event) == .deferrable, "\(event)")
         }
         // 임박 명령은 시간에 묶인 행동 문장 — 기기 음성에서 선점한다(접근성 감사 MAJOR 2).
-        #expect(guideEventSpeechClass(.imminent(indices: [1], action: .left, stage: 0), offRouteEpisodeStart: false) == .urgent)
-        #expect(guideEventSpeechClass(.imminent(indices: [1], action: .left, stage: 2), offRouteEpisodeStart: true) == .urgent)
-        #expect(guideEventSpeechClass(.offRoute, offRouteEpisodeStart: true) == .actionable)
-        #expect(guideEventSpeechClass(.offRoute, offRouteEpisodeStart: false) == .deferrable)
+        #expect(guideEventSpeechClass(.imminent(indices: [1], action: .left, stage: 0)) == .urgent)
+        #expect(guideEventSpeechClass(.imminent(indices: [1], action: .left, stage: 2)) == .urgent)
+        // 이탈: 확정이든 보류 뒤 첫 재통지든 그 회차의 첫 발화면 행동, 이미 말한 회차의 재통지는 미룸.
+        #expect(guideEventSpeechClass(.offRoute(
+            notice: .confirm, reason: .distance, guidance: .turn, side: .right, returnRelDeg: 300, firstSpoken: true
+        )) == .actionable)
+        #expect(guideEventSpeechClass(.offRoute(
+            notice: .renotify, reason: .joint, guidance: .turn, side: .left, returnRelDeg: 180, firstSpoken: true
+        )) == .actionable)
+        #expect(guideEventSpeechClass(.offRoute(
+            notice: .renotify, reason: .distance, guidance: .sideOnly, side: .right, returnRelDeg: nil, firstSpoken: false
+        )) == .deferrable)
+        #expect(guideEventSpeechClass(.offRoute(
+            notice: .confirm, reason: .course, guidance: .hold, side: .left, returnRelDeg: 0, firstSpoken: false
+        )) == .deferrable)
     }
 
     @Test func beaconNoticeClassification() {

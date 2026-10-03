@@ -62,18 +62,25 @@ class GuideSpeechChannelTest {
     @Test fun guideEventClassification() {
         val actionable = listOf(
             GuideEvent.AnnounceSteps(listOf(0), late = false), GuideEvent.FarNotice(listOf(2), 300), GuideEvent.WaypointReached,
-            GuideEvent.WaypointApproaching(40), GuideEvent.BackOnRoute,
+            GuideEvent.WaypointApproaching(40), GuideEvent.BackOnRoute(spoken = true), GuideEvent.BackOnRoute(spoken = false),
         )
-        for (e in actionable) assertEquals(GuideSpeechClass.actionable, guideEventSpeechClass(e, offRouteEpisodeStart = false), "$e")
+        for (e in actionable) assertEquals(GuideSpeechClass.actionable, guideEventSpeechClass(e), "$e")
         val deferrable = listOf(
             GuideEvent.BundleReread(listOf(0)), GuideEvent.Periodic(0, 120, 5.0), GuideEvent.UncertainEnter, GuideEvent.UncertainExit,
             GuideEvent.Reacquiring, GuideEvent.Reacquired, GuideEvent.SpeedSuggest, GuideEvent.FinalApproachEnter,
+            GuideEvent.RerouteNeeded(RerouteReason.away), GuideEvent.RerouteNeeded(RerouteReason.parallel),
         )
-        for (e in deferrable) assertEquals(GuideSpeechClass.deferrable, guideEventSpeechClass(e, offRouteEpisodeStart = true), "$e")
-        assertEquals(GuideSpeechClass.urgent, guideEventSpeechClass(GuideEvent.Imminent(listOf(1), WalkAction.left, 0), offRouteEpisodeStart = false))
-        assertEquals(GuideSpeechClass.urgent, guideEventSpeechClass(GuideEvent.Imminent(listOf(1), WalkAction.left, 2), offRouteEpisodeStart = true))
-        assertEquals(GuideSpeechClass.actionable, guideEventSpeechClass(GuideEvent.OffRoute, offRouteEpisodeStart = true))
-        assertEquals(GuideSpeechClass.deferrable, guideEventSpeechClass(GuideEvent.OffRoute, offRouteEpisodeStart = false))
+        for (e in deferrable) assertEquals(GuideSpeechClass.deferrable, guideEventSpeechClass(e), "$e")
+        assertEquals(GuideSpeechClass.urgent, guideEventSpeechClass(GuideEvent.Imminent(listOf(1), WalkAction.left, 0)))
+        assertEquals(GuideSpeechClass.urgent, guideEventSpeechClass(GuideEvent.Imminent(listOf(1), WalkAction.left, 2)))
+        // 이탈은 회차의 첫 발화만 행동 문장이다 — 확정이든 보류 뒤 재통지든 `firstSpoken`이 가른다(E63).
+        fun offRoute(notice: OffRouteNotice, firstSpoken: Boolean) = GuideEvent.OffRoute(
+            notice, OffRouteReason.distance, OffRouteGuidance.turn, OffRouteSide.right, 300.0, firstSpoken,
+        )
+        assertEquals(GuideSpeechClass.actionable, guideEventSpeechClass(offRoute(OffRouteNotice.confirm, firstSpoken = true)))
+        assertEquals(GuideSpeechClass.actionable, guideEventSpeechClass(offRoute(OffRouteNotice.renotify, firstSpoken = true)))
+        assertEquals(GuideSpeechClass.deferrable, guideEventSpeechClass(offRoute(OffRouteNotice.renotify, firstSpoken = false)))
+        assertEquals(GuideSpeechClass.deferrable, guideEventSpeechClass(offRoute(OffRouteNotice.confirm, firstSpoken = false)))
     }
 
     @Test fun beaconNoticeClassification() {

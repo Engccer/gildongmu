@@ -716,6 +716,7 @@
     <string name="guide_approx">circa %1$s</string>
     <string name="guide_arrived">Sei arrivato a destinazione</string>
     <string name="guide_arrivedPresumed">Sembra che tu sia arrivato vicino alla destinazione, quindi la guida è terminata</string>
+    <string name="guide_autoReroute">Ora ti guido su un nuovo percorso. %1$s. {2, plural, one {%2$s indicazione} other {%2$s indicazioni}}, %3$s in totale.</string>
     <string name="guide_backOnRoute">Di nuovo sul percorso</string>
     <string name="guide_band_arrived">Arrivato a %1$s</string>
     <string name="guide_band_ended">Guida verso %1$s terminata</string>
@@ -748,6 +749,8 @@
     <string name="guide_carLiveAction_left">svolta a sinistra</string>
     <string name="guide_carLiveAction_right">svolta a destra</string>
     <string name="guide_carOffRoute">Fuori percorso; guida in pausa. Richiedi di nuovo il percorso per riprendere</string>
+    <string name="guide_carOffRouteBehind">Il percorso è dietro di te</string>
+    <string name="guide_carOffRouteClock">Il percorso è a %1$s</string>
     <string name="guide_carPeriodic">%2$s tra %1$s</string>
     <string name="guide_carPeriodicAt">%3$s a %2$s tra %1$s</string>
     <string name="guide_carRoadNow">In marcia su %1$s</string>
@@ -811,6 +814,12 @@
     <string name="guide_nextStraightNoName">Prosegui dritto per %1$sm</string>
     <string name="guide_noGuidanceYet">Nessuna indicazione ancora</string>
     <string name="guide_offRoute">Sembra che tu sia fuori percorso</string>
+    <string name="guide_offRouteLeft">Sei uscito dal percorso sulla sinistra</string>
+    <string name="guide_offRouteOpposite">Stai andando nella direzione opposta al percorso</string>
+    <string name="guide_offRouteReturnClock">Torna verso %1$s</string>
+    <string name="guide_offRouteRight">Sei uscito dal percorso sulla destra</string>
+    <string name="guide_offRouteTurnBack">Girati</string>
+    <string name="guide_offRouteWith">%1$s. %2$s</string>
     <string name="guide_periodicStraight">Prosegui dritto per %2$s verso %1$s</string>
     <string name="guide_periodicStraightNoName">Prosegui dritto per %1$s</string>
     <string name="guide_progressButton">Avanzamento</string>
@@ -825,8 +834,11 @@
     <string name="guide_remainingTime">circa %1$s min</string>
     <string name="guide_rerouteBusy">Ricalcolo percorso, in corso</string>
     <string name="guide_rerouteButton">Cerca di nuovo il percorso</string>
-    <string name="guide_rerouteDone">Percorso ricalcolato dalla tua posizione attuale. {1, plural, one {%1$s indicazione} other {%1$s indicazioni}}, %2$s in totale. %3$s</string>
+    <string name="guide_rerouteDone">Percorso ricalcolato dalla tua posizione attuale. %1$s. {2, plural, one {%2$s indicazione} other {%2$s indicazioni}}, %3$s in totale.</string>
     <string name="guide_rerouteFailed">Ricerca del percorso non riuscita. Il percorso attuale resta attivo</string>
+    <string name="guide_rerouteHeadBack">Girati. Poi %1$s</string>
+    <string name="guide_rerouteHeadClock">Girati a %1$s. Poi %2$s</string>
+    <string name="guide_rerouteHeadStraight">Dritto, %1$s</string>
     <string name="guide_rough">all\'incirca %1$s</string>
     <string name="guide_transitDestChangePrepared">Ricerca di percorsi con i mezzi. Scegli un percorso nella schermata di guida.</string>
     <string name="guide_uncertain">L\'affidabilità della posizione è bassa</string>

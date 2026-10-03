@@ -372,10 +372,11 @@ final class BeaconModel {
 
     // MARK: - 이탈 시 자동 재조회 (E10ⓑ 자동 채택, 2026-09-02)
 
-    /// 이탈 확정 회차당 1회 자동 조회해 **즉시 채택**한다(위원장 판정 2026-09-02 — 종전
-    /// 수락제의 "준비된 새 경로로 안내" 확인 버튼은 누르지 않을 이유가 없는 군더더기였다).
-    /// 남긴 안전망은 채택 시점의 신선도 검사 하나다(`RerouteProposalGate`: 취득점 30m·120초
-    /// + 최근 fix 15초) — 낡은 출발점의 경로를 채택하면 도로 중앙 안내(§5.6 실사고 계열)가
+    /// 자동 재조회는 이탈 확정이 아니라 리듀서 `rerouteNeeded`(돌아가기 국면에서 계속 멀어지거나 나란히 계속 걸음)에서
+    /// 조회해 **즉시 채택**한다(E63 위원장 판정 2026-10-03 — 먼저 돌아가게, 계속 벗어나면 자동). 운전자 채널만 확정 즉시
+    /// 조회하고 `rerouteNeeded`는 그 조회가 실패·신선도 미달로 끝난 뒤의 재시도로만 쓴다(E63 spec §3.8).
+    /// 남긴 안전망은 채택 시점의 신선도 검사 하나다(`RerouteProposalGate`: 취득점 수단별 이동 상한(`rerouteMaxDriftMeters`
+    /// 도보 30m·자동차 150m)·120초 + 최근 fix 15초) — 낡은 출발점의 경로를 채택하면 도로 중앙 안내(§5.6 실사고 계열)가
     /// 되므로 미달이면 조용히 버리고 수동 "경로 다시 조회" 버튼이 예비로 남는다.
     /// latest-wins 토큰 — 폐기·목적지 변경·세션 종료·수동 재조회 시 증가. 토큰이 일치하고
     /// 이탈이 지속 중일 때만 응답을 채택한다(복귀 후 늦게 도착한 응답이 경로를 갈아치우는
@@ -384,6 +385,19 @@ final class BeaconModel {
     /// 세션당 자동 조회 횟수(상한 5, RerouteProposalGate — GPS 진동으로 확정 회차가
     /// 반복 생성될 때 쿼터·통지 폭주의 마지막 방어선).
     private var proposalFetchCount = 0
+    /// 진행 중인 자동 조회의 토큰 — 그 조회가 아직 유효하면(`== proposalToken`) `rerouteNeeded`를 무시한다(리듀서는 이미
+    /// 재무장했다. 새 요청이 토큰을 올려 진행 중 조회를 버리면 느린 망에서 채택 없이 예산만 쓴다, E63 spec §3.5). 폐기(복귀·
+    /// 경로 교체·수동 재조회)로 토큰이 올라가면 늦게 끝나는 옛 조회가 다음 회차를 막지 않는다.
+    private var proposalInFlightToken: Int?
+    /// 이 이탈 회차에 이탈 문장을 실제로 게시했는가(E63 §3.4). 확정에서 지우고, 게시가 버려지면(`onDropped`) 되돌린다.
+    /// 거짓이면 복귀 때 "경로로 복귀했습니다"를 말하지 않는다 — 벗어났다는 말을 듣지 않은 사용자에게 복귀만 들리지 않게.
+    private var offRouteNoticePosted = false
+    /// 돌아가기 국면의 상태 행 문장(마지막 이탈 문장, 보류면 벗어난 쪽만). 재획득 문구를 되돌릴 때 읽는다(D12).
+    private var offRouteLine: String?
+    /// 이 이탈 회차의 자동 재조회 요청 수와 확정 시각·좌표(로그 `rerouteTrigger n= sinceConfirm= moved=`, E63 spec §6).
+    private var rerouteTriggerCount = 0
+    private var offRouteConfirmedAt: Double?
+    private var offRouteConfirmCoord: (lat: Double, lng: Double)?
     /// 직전 계단 회피 판정(열화 전이 통지 기준 — spec 2026-08-08 §2.3).
     /// 원시 문자열이다: 알려진 셋 밖의 값도 중복 통지를 막는 식별자로 쓴다.
     private var lastStepFree: String?
@@ -1145,7 +1159,8 @@ final class BeaconModel {
         )
         liveRowsState = out.state
         let kind = sessionKind
-        let top = out.top.map { GuideText.liveTop($0, kind: kind) }
+        // 돌아가기 국면의 윗줄은 마지막 이탈 문장(벗어난 쪽·돌아갈 쪽, E63) — 없으면 종전 문장.
+        let top = out.top.map { $0 == .offRoute ? (offRouteLine ?? GuideText.liveTop($0, kind: kind)) : GuideText.liveTop($0, kind: kind) }
         let next = out.next.map { GuideText.liveNext($0, kind: kind) }
         // 매 fix 호출이라 동일 값 재대입을 걸러 관찰 무효화(재렌더)를 막는다.
         if liveTopText != top { liveTopText = top }
@@ -1408,6 +1423,11 @@ final class BeaconModel {
         // 세션 종료 = 진행 중 자동 재조회·회차 카운터 전부 무효(E10ⓑ — 상한은 세션당이다).
         clearProposal()
         proposalFetchCount = 0
+        offRouteNoticePosted = false
+        offRouteLine = nil
+        rerouteTriggerCount = 0
+        offRouteConfirmedAt = nil
+        offRouteConfirmCoord = nil
         resetAlternativePreview()
         prewalkTarget = nil
         // 종료 콜백은 정리가 **끝난 뒤** 다음 턴에 — 이 stop()을 부른 자리가 뒤에 내는 종료
@@ -1989,6 +2009,14 @@ final class BeaconModel {
             tuning: tuning
         )
         guideState = out.state
+        // 돌아가기 국면의 상태 행 문장(E63) — 아래 하단 2행 갱신보다 먼저(같은 fix의 윗줄이 이 문장이어야 한다). 운전자 채널은
+        // 현행 상태 전문, 보류는 말하지 않으므로 벗어난 쪽만(시계 11~1을 "돌아가세요"로 쓰지 않는다).
+        if case let .offRoute(_, _, guidance, side, returnRelDeg, _) = out.event {
+            offRouteLine = driverChannel
+                ? appLocalized("guide.carOffRoute")
+                : GuideText.offRoute(guidance: guidance, side: side, returnRelDeg: returnRelDeg, kind: sessionKind)
+                    ?? GuideText.offRouteSide(side)
+        }
         // 지난 임박 문장은 상태 행에 남기지 않는다(전경 복귀 재생이 지난 회전을 다시 읽는다, a11y 감사 M1).
         if let pending = imminentStatus, out.state.stepIndex >= pending.target {
             if statusText == pending.text { statusText = "" }
@@ -2048,6 +2076,11 @@ final class BeaconModel {
                 // 정하는 핵심 질문이다.
                 + " votes=m:\(voteCounts.mismatch)/k:\(voteCounts.match)/u:\(voteCounts.unknown)"
                 + " verdict=\(courseAxisVerdict(out.state.courseVotes).rawValue)"
+                // 돌아가기 국면 계측(E63 spec §6): 부호 있는 수직(오른쪽 +, following은 구속 창·돌아가기는 확정 지점 창),
+                // 돌아가기 상태(최솟값/연속 수/복귀 후보 초), 접근 표 제외.
+                + " sperp=\(out.signedPerpMeters.map { String(format: "%.1f", $0) } ?? "-")"
+                + " ret=\(out.state.phase == .offRoute ? returnDiag(out.state, lat: fix.lat, lng: fix.lng, now: now) : "-")"
+                + (out.approachExcluded == true ? " appr=1" : "")
         )
 
         // 최종 접근 진입은 **톤 조립 앞에서** 갈라진다. 이 fix의 소유권이 통째로
@@ -2100,7 +2133,7 @@ final class BeaconModel {
             syncStatusTextWithPhase(out.state.phase)
             return
         }
-        consume(event: event, route: route)
+        consume(event: event, route: route, prev: state, signedPerp: out.signedPerpMeters, now: now)
     }
 
     /// 이벤트 없이 **국면만** 바뀐 fix의 상태 텍스트를 되돌린다(백로그 D12).
@@ -2116,7 +2149,7 @@ final class BeaconModel {
     /// ⚠ 되돌리는 것은 **재획득 문구일 때뿐**이다. 다른 문구는 그 자리의 최신 사실이다.
     private func syncStatusTextWithPhase(_ phase: GuidePhase) {
         guard phase == .offRoute, statusText == appLocalized("guide.reacquiring") else { return }
-        statusText = appLocalized(sessionKind == .car ? "guide.carOffRoute" : "guide.offRoute")
+        statusText = offRouteLine ?? appLocalized(sessionKind == .car ? "guide.carOffRoute" : "guide.offRoute")
     }
 
     // MARK: - 최종 접근 (spec 2026-08-08 §3.3·§3.4·§4)
@@ -2528,9 +2561,11 @@ final class BeaconModel {
         return relativeDirection(relative)
     }
 
-    private func consume(event: GuideEvent, route: GuideRoute) {
-        // 문장 분류(E53 spec §3.2, 정본 Kit). 이탈 회차 시작 = 전이 전 플래그가 거짓(아래 `.offRoute`의 `isEpisodeStart`와 같다).
-        let speechClass = guideEventSpeechClass(event, offRouteEpisodeStart: !offRoute)
+    /// `prev`·`signedPerp`·`now`는 이탈 계측 로그(E63 spec §6) 재료다 — 판정에 쓰지 않는다.
+    private func consume(event: GuideEvent, route: GuideRoute, prev: GuideState, signedPerp: Double?, now: Double) {
+        // 문장 분류(E53 spec §3.2, 정본 Kit). 이탈은 "이 회차에 처음 말하는 문장"(`firstSpoken`)이 `.actionable`이다(E63 §3.4 —
+        // 보류 뒤 첫 발화를 재통지로 분류하면 백그라운드에서 버려진다).
+        let speechClass = guideEventSpeechClass(event)
         switch event {
         case let .announceSteps(indices, _), let .bundleReread(indices):
             if driverChannel {
@@ -2714,32 +2749,73 @@ final class BeaconModel {
             // fix를 받지 않아 그 발화를 낼 수 없다. 반쪽 처리를 여기 두면 진입 직후
             // 침묵(정확히 이번에 고치려는 증상)이 되므로 비워 둔다.
             break
-        case .offRoute:
-            // ⚠ 이 이벤트는 확정 1회가 아니다 — 이탈 지속 중 재통지 주기(60초)마다
-            // 재발화된다(offRouteRenotifySeconds). 회차 시작 판정은 offRoute 플래그
-            // 전이(false→true)로 가른다. 재통지에서 자동 조회를 재트리거하면 진행 중
-            // 조회가 파기되고 세션 예산(5회)이 한 국면 안에서 소진된다(품질 리뷰
-            // BLOCKER 2026-08-12).
-            let isEpisodeStart = !offRoute
+        case let .offRoute(notice, reason, guidance, side, returnRelDeg, firstSpoken):
+            // 확정(`confirm`)은 돌아가기 국면의 시작이다 — 재조회가 아니다(E63). 재조회는 리듀서 `rerouteNeeded`가 연다.
+            // 자동 조회·표시 상태의 회차 시작은 `notice == confirm`, 문장 분류·톤의 "처음 말함"은 `firstSpoken`(§4.1).
+            if notice == .confirm {
+                offRouteNoticePosted = false
+                rerouteTriggerCount = 0
+                offRouteConfirmedAt = now
+                offRouteConfirmCoord = lastFixCoord
+            }
             offRoute = true
-            // 차량 이탈 문구는 상태 전문(B1 §4.3 — 첫 통지를 놓쳐도 반복만으로 완결).
-            let text = appLocalized(
-                sessionKind == .car ? "guide.carOffRoute" : "guide.offRoute"
-            )
-            statusText = text
-            announce(text, speechClass: speechClass)
-            // 확정 회차당 1회 자동 조회 후 즉시 채택(E10ⓑ 자동 채택, 2026-09-02).
-            if isEpisodeStart { maybeFetchProposal() }
-        case .backOnRoute:
+            if driverChannel {
+                // 운전자 모드(E63 §3.8): 방향 문장(마)을 말하지 않고 현행 상태 전문을 말하며 확정 즉시 조회·채택한다.
+                let text = appLocalized("guide.carOffRoute")
+                statusText = text
+                offRouteNoticePosted = true
+                announce(text, speechClass: speechClass) { [weak self] in self?.offRouteNoticePosted = false }
+                logOffRouteNotice(notice, reason, guidance, side, returnRelDeg, firstSpoken, spoken: true)
+                if notice == .confirm { maybeFetchProposal(source: "driver") }
+                break
+            }
+            let text = GuideText.offRoute(guidance: guidance, side: side, returnRelDeg: returnRelDeg, kind: sessionKind)
+            // 보류는 말하지 않는다 — 상태 행은 `handleDetail`이 먼저 정한 문장(벗어난 쪽만, §3.3).
+            statusText = offRouteLine ?? ""
+            logOffRouteNotice(notice, reason, guidance, side, returnRelDeg, firstSpoken, spoken: text != nil)
+            guard let text else { break }
+            offRouteNoticePosted = true
+            announce(text, speechClass: speechClass) { [weak self] in self?.offRouteNoticePosted = false }
+        case let .backOnRoute(spoken):
             offRouteEndedByReroute = false
             offRoute = false
+            offRouteLine = nil
             // 이탈 복귀 = 자동 재조회 근거 소멸(진행 중 조회의 채택 차단).
             clearProposal()
+            // 리듀서가 이 회차에 이탈 문장을 냈고 ∧ 실제로 게시했을 때만 말한다(E63 §3.4). 아니면 이벤트만 — 상태 행은 현행 안내.
+            let say = spoken && offRouteNoticePosted
+            offRouteNoticePosted = false
+            guideDiagLog(
+                "backOnRoute via=\(prev.offRouteReason?.rawValue ?? "-")"
+                    + " perp=\(signedPerp.map { String(format: "%.1f", $0) } ?? "-")"
+                    + " hold=\(prev.returnCandidateSince.map { String(format: "%.1f", now - $0) } ?? "-")"
+                    + " spoken=\(say ? 1 : 0)")
+            guard say else {
+                statusText = lastGuidance ?? ""
+                break
+            }
             let text = appLocalized("guide.backOnRoute")
             statusText = text
             // 이탈은 warning 톤이 진동을 동반하는데 복귀는 무신호였다 — 짝을 맞춘다(E30 확장).
             resultHaptic(.success)
             announce(text, speechClass: speechClass)
+        case let .rerouteNeeded(reason):
+            // 돌아가기 국면에서 계속 멀어지거나 나란히 계속 걸었다(E63 §3.5·판정 J4) — 자동 조회·채택. 운전자 채널은 확정 즉시
+            // 조회가 실패·신선도 미달로 끝난 뒤의 재시도로만 쓴다(§3.8 — 이미 조회 중이면 아래 가드가 무시한다).
+            rerouteTriggerCount += 1
+            let ignored = maybeFetchProposal(source: driverChannel ? "driver" : "auto")
+            let moved: String = if let a = offRouteConfirmCoord, let b = lastFixCoord {
+                String(format: "%.0f", haversineMeters(lat1: a.lat, lng1: a.lng, lat2: b.lat, lng2: b.lng))
+            } else { "-" }
+            // 리듀서는 요청 fix에서 최솟값을 그 fix 값으로 다시 놓는다 — `min`은 직전 최솟값, `perp`는 이 fix 값(확정 지점 창).
+            guideDiagLog(
+                "rerouteTrigger reason=\(reason.rawValue) n=\(rerouteTriggerCount)"
+                    + " min=\(prev.offRouteMinPerp.map { String(format: "%.1f", $0) } ?? "-")"
+                    + " perp=\(signedPerp.map { String(format: "%.1f", abs($0)) } ?? "-")"
+                    + " sinceConfirm=\(offRouteConfirmedAt.map { String(format: "%.0f", now - $0) } ?? "-")"
+                    + " moved=\(moved)"
+                    + " anchor=\(prev.offRouteAnchor.flatMap { a in lastFixCoord.map { String(format: "%.0f", haversineMeters(lat1: a.lat, lng1: a.lng, lat2: $0.lat, lng2: $0.lng)) } } ?? "-")"
+                    + " ignored=\(ignored ?? "-")")
         case .uncertainEnter:
             statusText = appLocalized("guide.uncertain")
             if !driverChannel { announce(statusText, speechClass: speechClass) }  // 운전자 모드: GPS 상태는 말하지 않는다(§6.2)
@@ -2997,11 +3073,14 @@ final class BeaconModel {
         let initial = initialGuideState(
             route: fetched.route, now: uptimeNow,
             hasFinalApproachGeometry: fetched.finalApproach != nil,
-            courseDerivation: guideState?.courseDerivation ?? initialDerivationState
+            courseDerivation: guideState?.courseDerivation ?? initialDerivationState,
+            // 진행 방위 관측도 궤적의 사실이다 — 새 경로의 돌아가기·재통지 판정이 냉시동하지 않게(E63 spec §4.2).
+            lastHeading: guideState?.lastHeading
         )
         guideState = initial.state
         offRouteEndedByReroute = true
         offRoute = false
+        offRouteLine = nil
         updateRemaining(route: fetched.route, state: initial.state)
         // 새 경로 = 새 표시 유닛 + 램프인·클램프 리셋(spec 2026-08-11 F7, car 확장 K2 §4).
         displayUnits = buildDisplayUnits(fetched.liveSteps)
@@ -3016,22 +3095,28 @@ final class BeaconModel {
 
     // MARK: - 이탈 시 자동 재조회·채택 (E10ⓑ 자동 채택, spec §6 + 2026-09-02 개정)
 
-    /// 이탈 확정 회차의 자동 조회 트리거(`case .offRoute` 소비 지점에서 1회).
-    /// 활성 조건: 상세 세션 ∧ 최종 접근 전 ∧ 세션 상한 미달(spec §6 리뷰 #14 —
-    /// 이탈 표결이 최종 접근보다 앞이라는 기존 불변식 순서에 자동 재조회도 그대로 걸린다).
-    private func maybeFetchProposal() {
+    /// 자동 조회 트리거(E63): 리듀서 `rerouteNeeded` 소비 지점, 운전자 채널은 확정(`offRoute` confirm)에서도.
+    /// 활성 조건: 상세 세션 ∧ 최종 접근 전 ∧ 진행 중 자동·수동 조회 없음 ∧ 세션 상한 미달(spec §6 리뷰 #14 —
+    /// 이탈 표결이 최종 접근보다 앞이라는 기존 불변식 순서에 자동 재조회도 그대로 걸린다). 반환 = 무시한 사유(로그), nil이면 조회를 열었다.
+    @discardableResult
+    private func maybeFetchProposal(source: String) -> String? {
         // car도 자동 재조회한다(K2 §5) — fetchDetailData가 수단별 provider·via를 고른다.
         // 수동 재조회·전환이 도는 중이면 자동 조회를 열지 않는다(그 조회가 새 경로를 만든다).
-        guard isTracking, mode == .detail, !inFinalApproach, !rerouteInFlight,
-              RerouteProposalGate.mayFetch(episodeFetchCount: proposalFetchCount)
-        else { return }
+        guard isTracking, mode == .detail, !inFinalApproach, !rerouteInFlight else { return "state" }
+        guard proposalInFlightToken != proposalToken else { return "inflight" }
+        guard RerouteProposalGate.mayFetch(episodeFetchCount: proposalFetchCount) else { return "budget" }
         proposalToken += 1
         proposalFetchCount += 1
         let token = proposalToken
-        Task { [weak self] in await self?.fetchProposal(token: token) }
+        proposalInFlightToken = token
+        Task { [weak self] in
+            await self?.fetchProposal(token: token, source: source)
+            if self?.proposalInFlightToken == token { self?.proposalInFlightToken = nil }
+        }
+        return nil
     }
 
-    private func fetchProposal(token: Int) async {
+    private func fetchProposal(token: Int, source: String) async {
         guard let dest else { return }
         do {
             // 출발점은 확정 시점의 최신 세션 fix(연속 수신 중이라 currentCoordinate가
@@ -3052,8 +3137,11 @@ final class BeaconModel {
             // 재조회·전환과의 이중 커밋은 양방향으로 막는다 — 리뷰 MAJOR 2026-09-02).
             guard token == proposalToken, offRoute, isTracking, mode == .detail, !rerouteInFlight,
                   self.dest == dest, self.waypoint == waypointAtFetch else { return }
-            // 경로 없음도 그 회차 종결(통지 없음 — spec §6 명시적 트레이드오프).
-            guard let fetched else { return }
+            // 경로 없음은 통지 없이 돌아가기 국면을 잇는다 — 리듀서가 문턱을 다시 채우면 또 요청한다(E63 §3.5 재무장).
+            guard let fetched else {
+                guideDiagLog("rerouteAdopt source=\(source) result=none headClock=-")
+                return
+            }
             // 채택 시점 신선도 — 자동 채택의 유일한 안전망. 현재 좌표를 단정할 수 없거나
             // (fix 15초 공백) 취득점에서 30m·120초를 넘겼으면 채택하지 않는다(그 회차
             // 종결, 수동 버튼이 예비). 서버 hang 동안 걸어 낡아진 출발점의 경로를
@@ -3062,17 +3150,27 @@ final class BeaconModel {
                 originLat: origin.lat, originLng: origin.lng, acquiredAt: acquiredAt)
             guard let c = lastFixCoord, let at = lastFixCoordAt, uptimeNow - at <= 15,
                   RerouteProposalGate.isFresh(
-                      proposal, nowUptime: uptimeNow, currentLat: c.lat, currentLng: c.lng)
-            else { return }
+                      proposal, nowUptime: uptimeNow, currentLat: c.lat, currentLng: c.lng,
+                      maxDriftMeters: tuning.rerouteMaxDriftM)
+            else {
+                guideDiagLog("rerouteAdopt source=\(source) result=stale headClock=-")
+                return
+            }
+            // 새 경로 첫 문장의 방향 머리말(E63 §3.7): 교체 **전** 세션의 진행 방위 기준 새 경로 첫 15m의 시. 자동차는 없음.
+            let headClock: Int? = sessionKind == .walk
+                ? guideState.flatMap { rerouteHeadClock(state: $0, route: fetched.route, now: uptimeNow, tuning: tuning) }
+                : nil
+            guideDiagLog("rerouteAdopt source=\(source) result=adopted headClock=\(headClock.map(String.init) ?? "-")")
             // 채택은 performReroute의 성공 커밋 경로 그대로(spec §6 리뷰 #4 — 별도 전이
             // 신설 금지). 통지는 `.high`: 커밋이 `offRoute = false`로 재조회 버튼을 지워
             // 커서가 옮겨갈 수 있고, 기본 우선순위는 그 착지 낭독에 잠식된다(수동 재조회
-            // 성공 통지와 같은 근거).
+            // 성공 통지와 같은 근거). 시트의 첫 정보 행 착지는 이 통지 뒤다(E57).
             let firstIndices = commitReroutedRoute(fetched)
             let notice = consumeStepFreeNotice(
                 fetched.stepFreeRaw, fetched.stepFree, fetched.stepFreeNotice
             )
-            let summary = GuideText.autoReroute(route: fetched.route, firstIndices: firstIndices)
+            let summary = GuideText.autoReroute(
+                route: fetched.route, firstIndices: firstIndices, liveSteps: liveSteps, headClock: headClock)
             let text = notice.map { "\($0) \(summary)" } ?? summary
             statusText = text
             resultHaptic(.success)
@@ -3080,8 +3178,38 @@ final class BeaconModel {
                 if let notice { self?.pendingStepFreeNotice = notice }
             }
         } catch {
-            // 조회 실패는 그 회차 종결(재시도 없음 — 쿼터 방어, spec §6).
+            // 조회 실패는 통지 없이 돌아가기 국면을 잇는다 — 더 멀어지면 리듀서가 또 요청한다(세션 예산 5회가 상한, E63 §3.5).
+            guideDiagLog("rerouteAdopt source=\(source) result=failed headClock=-")
         }
+    }
+
+    /// `ret=` 열(E63 spec §6): 최솟값/자격 fix 연속 수/복귀 후보 유지 초/나란히 걷기 기준점까지 직선 m(0이면 그 fix에서 다시 놓였다).
+    private func returnDiag(_ s: GuideState, lat: Double, lng: Double, now: Double) -> String {
+        let minPerp = s.offRouteMinPerp.map { String(format: "%.1f", $0) } ?? "-"
+        let hold = s.returnCandidateSince.map { String(format: "%.0f", now - $0) } ?? "-"
+        let anchor = s.offRouteAnchor.map {
+            String(format: "%.0f", haversineMeters(lat1: $0.lat, lng1: $0.lng, lat2: lat, lng2: lng))
+        } ?? "-"
+        return "\(minPerp)/\(s.offRouteAwayRun?.count ?? 0)/\(hold)/\(anchor)"
+    }
+
+    /// 이탈 통지 계측 한 줄(E63 spec §6). `spoken`은 말할 문장을 냈는가(보류·운전자 채널 구분 — 게시 실패는 `bgSpeech` 줄).
+    private func logOffRouteNotice(
+        _ notice: OffRouteNotice, _ reason: OffRouteReason, _ guidance: OffRouteGuidance, _ side: OffRouteSide?,
+        _ returnRelDeg: Double?, _ firstSpoken: Bool, spoken: Bool
+    ) {
+        let heading = guideState?.lastHeading
+        let headAge: String = if let heading { String(format: "%.1f", uptimeNow - heading.at) } else { "-" }
+        guideDiagLog(
+            "offRouteNotice notice=\(notice.rawValue) first=\(firstSpoken ? 1 : 0) reason=\(reason.rawValue)"
+                + " guidance=\(guidance.rawValue) side=\(side?.rawValue ?? "-")"
+                + " rel=\(returnRelDeg.map { String(format: "%.0f", $0) } ?? "-")"
+                + " clock=\(returnRelDeg.map { String(clockHour($0)) } ?? "-")"
+                + " heading=\(heading.map { String(format: "%.0f±%.0f", $0.bearing, $0.uncertaintyDeg) } ?? "-")"
+                + " headAge=\(headAge)"
+                + " perp=\(guideState?.offRouteMinPerp.map { String(format: "%.1f", $0) } ?? "-")"
+                + " d=\(guideState?.offRouteConfirmD.map { String(format: "%.1f", $0) } ?? "-")"
+                + " spoken=\(spoken ? 1 : 0)")
     }
 
     /// 진행 중 자동 조회 폐기(이탈 복귀·경로 교체·세션 종료·목적지 변경·수동 재조회) —
@@ -3191,7 +3319,8 @@ final class BeaconModel {
               !rerouteInFlight, let target = alternateLine else { return }
         if let c = lastFixCoord, let at = lastFixCoordAt, uptimeNow - at <= 15,
            RerouteProposalGate.isFresh(
-               proposal, nowUptime: uptimeNow, currentLat: c.lat, currentLng: c.lng) {
+               proposal, nowUptime: uptimeNow, currentLat: c.lat, currentLng: c.lng,
+               maxDriftMeters: tuning.rerouteMaxDriftM) {
             // 전환 커밋: 경로 교체와 같은 원자 블록에서만 세션 축·줄 종류가 바뀐다
             // (performReroute 동형 — commitReroutedRoute가 프리뷰도 함께 리셋).
             commitLineSwitch(to: target)

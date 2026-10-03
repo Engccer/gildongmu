@@ -71,18 +71,20 @@ public enum BackgroundSpeech {
 
 /// 도보·자동차 경로 이벤트의 문장 분류(spec §3.2). 이벤트 기본 문장의 분류이고, 호출부가 문장을 더 붙이면
 /// (자동차 재획득의 현재 구간 전문) 호출부가 밝힌다.
-/// - `offRouteEpisodeStart`: 이탈 확정 회차의 첫 통지인가. 재통지(walk 60초·car 180초)는 주기라 거짓이면 `.deferrable`.
-public func guideEventSpeechClass(_ event: GuideEvent, offRouteEpisodeStart: Bool) -> GuideSpeechClass {
+/// 이탈은 회차의 첫 발화(`firstSpoken` — 확정, 또는 보류 확정 뒤 첫 재통지)만 행동 문장이고, 재통지(walk 60초·car 180초)는
+/// 주기라 `.deferrable`(E63 spec §4.1 — 회차 시작 여부를 이벤트가 나른다).
+public func guideEventSpeechClass(_ event: GuideEvent) -> GuideSpeechClass {
     switch event {
     case .imminent:
         return .urgent
     case .announceSteps, .farNotice, .waypointReached, .waypointApproaching, .backOnRoute:
         return .actionable
-    case .offRoute:
-        return offRouteEpisodeStart ? .actionable : .deferrable
+    case let .offRoute(_, _, _, _, _, firstSpoken):
+        return firstSpoken ? .actionable : .deferrable
     case .bundleReread, .periodic, .uncertainEnter, .uncertainExit, .reacquiring, .reacquired, .speedSuggest,
-         .finalApproachEnter:
-        // `finalApproachEnter`·`speedSuggest`는 문장을 내지 않는다(진입 서술은 fix를 쥔 자리가 낸다) — 분류만 닫는다.
+         .finalApproachEnter, .rerouteNeeded:
+        // `finalApproachEnter`·`speedSuggest`·`rerouteNeeded`는 문장을 내지 않는다(진입 서술은 fix를 쥔 자리가, 새 경로
+        // 문장은 재조회를 채택한 자리가 낸다) — 분류만 닫는다.
         return .deferrable
     }
 }

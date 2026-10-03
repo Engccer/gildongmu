@@ -399,7 +399,6 @@
     "switchedToRecommended": "Se cambió a la ruta recomendada. {count, plural, one {# indicación} other {# indicaciones}}, {distance} en total. {first}",
     "switchedToAccessible": "Se cambió a la ruta sin escaleras. {count, plural, one {# indicación} other {# indicaciones}}, {distance} en total. {first}",
     "switchedToBroad": "Se cambió a la ruta por vías principales. {count, plural, one {# indicación} other {# indicaciones}}, {distance} en total. {first}",
-    "autoReroute": "Ahora te guío por una nueva ruta. {count, plural, one {# indicación} other {# indicaciones}}, {distance} en total. {first}",
     "viewAlternative": "Ver ruta alternativa",
     "adoptAlternative": "Cambiar la guía a esta ruta",
     "altPreviewLoading": "Buscando ruta alternativa",

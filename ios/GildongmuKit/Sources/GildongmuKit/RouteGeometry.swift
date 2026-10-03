@@ -202,6 +202,43 @@ public func projectOnPolyline(
     return best
 }
 
+/// 부호 있는 수직거리를 더한 투영(E63 spec §3.3). 부호는 그 세그먼트 진행 방향 기준 오른쪽 +, 왼쪽 −.
+public struct GuideSignedProjection: Sendable, Equatable {
+    public let d: Double
+    public let perpMeters: Double
+    public let signed: Double
+}
+
+/// `projectOnPolyline`과 같은 창 투영에 **부호 있는 수직거리**를 더한다(E63 spec §3.3, 웹 `projectSigned` 미러).
+/// 부호는 세그먼트 벡터와 세그먼트→대상점 벡터의 외적. 이탈 쪽(`side`)과 로그 `sperp`의 재료다.
+public func projectSigned(
+    _ poly: GuidePolyline, p: RoutePoint, fromD: Double, toD: Double
+) -> GuideSignedProjection? {
+    var best: GuideSignedProjection?
+    for i in 0..<(poly.points.count - 1) {
+        let d0 = poly.cum[i]
+        let d1 = poly.cum[i + 1]
+        if d1 < fromD || d0 > toD || d1 == d0 { continue }
+        let a = toLocal(ref: p, p: poly.points[i])
+        let b = toLocal(ref: p, p: poly.points[i + 1])
+        let abx = b.x - a.x
+        let aby = b.y - a.y
+        let len2 = abx * abx + aby * aby
+        var t = len2 == 0 ? 0 : (-a.x * abx - a.y * aby) / len2
+        t = max(0, min(1, t))
+        let px = a.x + abx * t
+        let py = a.y + aby * t
+        let perp = (px * px + py * py).squareRoot()
+        let dd = max(fromD, min(toD, d0 + (d1 - d0) * t))
+        if best == nil || perp < best!.perpMeters {
+            // 대상점 p가 로컬 원점이라 a→p = −a. 외적 ab × (−a)가 음수면 진행 방향 오른쪽이다.
+            let cross = -abx * a.y + aby * a.x
+            best = GuideSignedProjection(d: dd, perpMeters: perp, signed: cross < 0 ? perp : -perp)
+        }
+    }
+    return best
+}
+
 /// 세그먼트 i 단독 투영(t는 [0,1]만 클램프 — 창 없음).
 private func projectOnSegment(_ poly: GuidePolyline, i: Int, p: RoutePoint) -> GuideProjection {
     let a = toLocal(ref: p, p: poly.points[i])
@@ -261,7 +298,7 @@ public func tangentAt(_ poly: GuidePolyline, d: Double, halfMeters: Double) -> D
 }
 
 /// 진행거리 `d` 지점의 좌표. 범위 밖은 끝점으로 물린다.
-private func pointAtD(_ poly: GuidePolyline, d: Double) -> RoutePoint? {
+public func pointAtD(_ poly: GuidePolyline, d: Double) -> RoutePoint? {
     guard !poly.points.isEmpty else { return nil }
     if poly.points.count == 1 { return poly.points[0] }
     let dd = max(0, min(d, poly.cum[poly.cum.count - 1]))

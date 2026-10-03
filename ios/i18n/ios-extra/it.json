@@ -399,7 +399,6 @@
     "switchedToRecommended": "Passato al percorso consigliato. {count, plural, one {# indicazione} other {# indicazioni}}, {distance} in totale. {first}",
     "switchedToAccessible": "Passato al percorso senza scale. {count, plural, one {# indicazione} other {# indicazioni}}, {distance} in totale. {first}",
     "switchedToBroad": "Passato al percorso su strade principali. {count, plural, one {# indicazione} other {# indicazioni}}, {distance} in totale. {first}",
-    "autoReroute": "Ora ti guido su un nuovo percorso. {count, plural, one {# indicazione} other {# indicazioni}}, {distance} in totale. {first}",
     "viewAlternative": "Vedi percorso alternativo",
     "adoptAlternative": "Passa alla guida su questo percorso",
     "altPreviewLoading": "Ricerca percorso alternativo",

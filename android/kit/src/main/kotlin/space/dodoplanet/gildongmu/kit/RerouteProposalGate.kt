@@ -20,8 +20,7 @@ data class RerouteProposal(
  * 개정 — 종전 수락제의 만료 능동 전이는 폐기됐고, `isFreshInTime`은 프로덕션 호출부 없이 테스트 전용 공개 API로 남았다).
  */
 object RerouteProposalGate {
-    /** 신선도 한계(잠정값 — 실보행 판정 대상, spec §6). */
-    const val maxDriftMeters: Double = 30.0
+    /** 신선도 시간 한계(잠정값 — 실보행 판정 대상, spec §6). 이동 상한은 수단별 튜닝 `GuideTuning.rerouteMaxDriftM`(E63). */
     const val maxAgeSeconds: Double = 120.0
 
     /**
@@ -37,8 +36,14 @@ object RerouteProposalGate {
     fun isFreshInTime(proposal: RerouteProposal, nowUptime: Double): Boolean =
         nowUptime - proposal.acquiredAt <= maxAgeSeconds
 
-    /** 취득 위치에서 30m 초과 이동 또는 120초 경과면 만료. */
-    fun isFresh(proposal: RerouteProposal, nowUptime: Double, currentLat: Double, currentLng: Double): Boolean {
+    /** 취득 위치에서 `maxDriftMeters` 초과 이동 또는 120초 경과면 만료. 이동 상한은 세션 튜닝 값을 넘긴다(기본값 없음). */
+    fun isFresh(
+        proposal: RerouteProposal,
+        nowUptime: Double,
+        currentLat: Double,
+        currentLng: Double,
+        maxDriftMeters: Double,
+    ): Boolean {
         if (!isFreshInTime(proposal, nowUptime)) return false
         val drift = haversineMeters(proposal.originLat, proposal.originLng, currentLat, currentLng)
         return drift <= maxDriftMeters

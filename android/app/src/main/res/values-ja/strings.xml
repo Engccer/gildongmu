@@ -716,6 +716,7 @@
     <string name="guide_approx">約%1$s</string>
     <string name="guide_arrived">目的地に到着しました</string>
     <string name="guide_arrivedPresumed">目的地付近に到着したと判断し、案内を終了しました</string>
+    <string name="guide_autoReroute">新しいルートで案内を再開します。%1$s。案内%2$s件、合計%3$s。</string>
     <string name="guide_backOnRoute">経路に復帰しました</string>
     <string name="guide_band_arrived">%1$sに到着</string>
     <string name="guide_band_ended">%1$sへの案内終了</string>
@@ -748,6 +749,8 @@
     <string name="guide_carLiveAction_left">左折してください</string>
     <string name="guide_carLiveAction_right">右折してください</string>
     <string name="guide_carOffRoute">経路から外れたため案内を一時停止しました。経路の再検索で再開できます</string>
+    <string name="guide_carOffRouteBehind">経路は後方です</string>
+    <string name="guide_carOffRouteClock">経路は%1$sです</string>
     <string name="guide_carPeriodic">%1$s先、%2$s</string>
     <string name="guide_carPeriodicAt">%1$s先、%2$sで%3$s</string>
     <string name="guide_carRoadNow">%1$sを走行中</string>
@@ -811,6 +814,12 @@
     <string name="guide_nextStraightNoName">%1$sm直進</string>
     <string name="guide_noGuidanceYet">まだ案内はありません</string>
     <string name="guide_offRoute">経路から外れたようです</string>
+    <string name="guide_offRouteLeft">経路から左に外れました</string>
+    <string name="guide_offRouteOpposite">経路と反対方向です</string>
+    <string name="guide_offRouteReturnClock">%1$sに戻ってください</string>
+    <string name="guide_offRouteRight">経路から右に外れました</string>
+    <string name="guide_offRouteTurnBack">後ろを向いてください</string>
+    <string name="guide_offRouteWith">%1$s。%2$s</string>
     <string name="guide_periodicStraight">%1$sまで%2$s直進してください</string>
     <string name="guide_periodicStraightNoName">%1$s直進してください</string>
     <string name="guide_progressButton">進行状況</string>
@@ -825,8 +834,11 @@
     <string name="guide_remainingTime">約%1$s分</string>
     <string name="guide_rerouteBusy">経路を再取得、取得中</string>
     <string name="guide_rerouteButton">経路を再検索</string>
-    <string name="guide_rerouteDone">現在地から経路を再検索しました。案内%1$s件、合計%2$s。%3$s</string>
+    <string name="guide_rerouteDone">現在地から経路を再検索しました。%1$s。案内%2$s件、合計%3$s。</string>
     <string name="guide_rerouteFailed">経路の検索に失敗しました。現在の経路を維持します</string>
+    <string name="guide_rerouteHeadBack">後ろを向いてください。その後、%1$s</string>
+    <string name="guide_rerouteHeadClock">%1$sを向いてください。その後、%2$s</string>
+    <string name="guide_rerouteHeadStraight">そのまま%1$s</string>
     <string name="guide_rough">%1$sほど</string>
     <string name="guide_transitDestChangePrepared">交通機関の経路を検索しています。案内画面で経路を選択してください。</string>
     <string name="guide_uncertain">位置の確度が低いです</string>

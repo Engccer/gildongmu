@@ -1,6 +1,10 @@
 package space.dodoplanet.gildongmu.kit
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
@@ -39,8 +43,15 @@ class RouteGuideTest {
             val expect: List<Expectation>,
         )
 
+        /** `points`(E63 꺾인 경로): 스텝 기하를 (along, lateral) 점열로 준다. 있으면 `len` 대신 쓴다. */
         @Serializable
-        data class Step(val len: Double, val desc: String, val action: String? = null, val crossing: Boolean? = null)
+        data class Step(
+            val len: Double? = null,
+            val points: List<List<Double>>? = null,
+            val desc: String,
+            val action: String? = null,
+            val crossing: Boolean? = null,
+        )
 
         @Serializable
         data class Fix(val t: Double, val along: Double, val lateral: Double, val acc: Double, val stopped: Boolean? = null)
@@ -63,31 +74,59 @@ class RouteGuideTest {
             val nextTarget: NextTarget? = null,
             /** `announceSteps`의 `late`(E62 R6). */
             val late: Boolean? = null,
+            /** `offRoute` 이벤트 필드(E63 spec §4.1). `returnClock`은 `clockHour(returnRelDeg)`. */
+            val notice: String? = null,
+            val reason: String? = null,
+            val guidance: String? = null,
+            /** null도 기대값이다 — 키 유무는 원문 JSON으로 가른다(`sideExpectations`). */
+            val side: String? = null,
+            val firstSpoken: Boolean? = null,
+            val returnClock: Int? = null,
+            /** `backOnRoute`의 `spoken`. */
+            val spoken: Boolean? = null,
+            /** `rerouteNeeded`의 `reason`. */
+            val rerouteReason: String? = null,
+            /** 그 fix 뒤 진행거리 하한(앞질러 감 재구성, E63 §3.2 ⑤). */
+            val minD: Double? = null,
         )
 
         @Serializable
         data class NextTarget(val kind: String, val meters: Double)
     }
 
-    private data class Seg(val len: Double, val desc: String, val action: String? = null, val crossing: Boolean = false)
+    /** `points`(E63): 꺾인 경로의 (along, lateral) 점열. 있으면 `len` 대신 쓰고, 다음 직선 스텝의 누적 길이는 늘리지 않는다(웹 동형). */
+    private data class Seg(
+        val len: Double,
+        val desc: String,
+        val action: String? = null,
+        val crossing: Boolean = false,
+        val points: List<List<Double>>? = null,
+    )
 
     private fun routeFrom(steps: List<Seg>, waypointStepIndex: Int? = null): GuideRoute {
         var acc = 0.0
         val inputs = steps.map { s ->
+            val pts = s.points
             val g = GuideStepGeometry(
                 s.desc,
-                listOf(RoutePoint(lat0 + acc * meterLat, lng0), RoutePoint(lat0 + (acc + s.len) * meterLat, lng0)),
+                pts?.map { (along, lateral) -> pointAt(along, lateral) }
+                    ?: listOf(RoutePoint(lat0 + acc * meterLat, lng0), RoutePoint(lat0 + (acc + s.len) * meterLat, lng0)),
                 s.action?.let { WalkAction.fromRawValue(it) ?: fail("미지 action $it") },
                 crossing = s.crossing,
             )
-            acc += s.len
+            if (pts == null) acc += s.len
             g
         }
         return checkNotNull(buildGuideRoute(inputs, waypointStepIndex))
     }
 
-    private fun fixCoord(along: Double, lateral: Double, acc: Double, stopped: Boolean = false) =
-        GuideFix(lat0 + along * meterLat, lng0 + (lateral * meterLat) / cos(lat0 * PI / 180), acc, stopped)
+    private fun pointAt(along: Double, lateral: Double) =
+        RoutePoint(lat0 + along * meterLat, lng0 + (lateral * meterLat) / cos(lat0 * PI / 180))
+
+    private fun fixCoord(along: Double, lateral: Double, acc: Double, stopped: Boolean = false): GuideFix {
+        val p = pointAt(along, lateral)
+        return GuideFix(p.lat, p.lng, acc, stopped)
+    }
 
     /** 이벤트 종류를 fixture 문자열로 환원(웹 event.kind 대응). */
     private fun kindName(event: GuideEvent?): String? = when (event) {
@@ -99,8 +138,9 @@ class RouteGuideTest {
         GuideEvent.WaypointReached -> "waypointReached"
         is GuideEvent.WaypointApproaching -> "waypointApproaching"
         GuideEvent.FinalApproachEnter -> "finalApproachEnter"
-        GuideEvent.OffRoute -> "offRoute"
-        GuideEvent.BackOnRoute -> "backOnRoute"
+        is GuideEvent.OffRoute -> "offRoute"
+        is GuideEvent.BackOnRoute -> "backOnRoute"
+        is GuideEvent.RerouteNeeded -> "rerouteNeeded"
         GuideEvent.UncertainEnter -> "uncertainEnter"
         GuideEvent.UncertainExit -> "uncertainExit"
         GuideEvent.Reacquiring -> "reacquiring"
@@ -120,8 +160,19 @@ class RouteGuideTest {
     @Test fun `공유 시나리오 표`() {
         val scenarios = Fixtures.sharedJson("route-guide-scenarios.json", ScenarioFile.serializer()).scenarios
         assertTrue(scenarios.size >= 40) // 공회전 방지
-        for (sc in scenarios) {
-            val route = routeFrom(sc.steps.map { Seg(it.len, it.desc, it.action, it.crossing == true) }, sc.waypointStepIndex)
+        // `side`는 null도 기대값이라 키 유무를 원문에서 읽는다(웹 `ex.side !== undefined` 대응).
+        val sideExpectations = KitJson.parseToJsonElement(Fixtures.shared("route-guide-scenarios.json")).jsonObject
+            .getValue("scenarios").jsonArray.map { sc ->
+                sc.jsonObject.getValue("expect").jsonArray.map { it.jsonObject["side"] }
+            }
+        for ((si, sc) in scenarios.withIndex()) {
+            val route = routeFrom(
+                sc.steps.map {
+                    val len = it.len ?: if (it.points != null) 0.0 else fail("${sc.name}: len·points 둘 다 없음")
+                    Seg(len, it.desc, it.action, it.crossing == true, it.points)
+                },
+                sc.waypointStepIndex,
+            )
             val tuning = when (sc.tuning) {
                 null -> GuideTuning.walk
                 "car" -> GuideTuning.car
@@ -134,7 +185,7 @@ class RouteGuideTest {
                 state = out.state
                 out
             }
-            for (ex in sc.expect) {
+            for ((ei, ex) in sc.expect.withIndex()) {
                 val idxs = ex.afterFix?.let { listOf(it) } ?: ex.afterFixAny ?: emptyList()
                 val rs = idxs.map { results[it] }
                 ex.event?.let { e -> assertTrue(rs.any { kindName(it.event) == e }, "${sc.name}: event $e") }
@@ -146,6 +197,26 @@ class RouteGuideTest {
                 ex.tone?.let { t -> assertTrue(rs.any { it.tone?.rawValue == t }, "${sc.name}: tone $t") }
                 ex.stage?.let { st -> assertTrue(rs.any { (it.event as? GuideEvent.Imminent)?.stage == st }, "${sc.name}: stage $st") }
                 if (ex.toneNull == true) for (r in rs) assertNull(r.tone, "${sc.name}: toneNull")
+                val off = rs.firstNotNullOfOrNull { it.event as? GuideEvent.OffRoute }
+                ex.notice?.let { assertEquals(it, off?.notice?.rawValue, "${sc.name}: notice") }
+                ex.reason?.let { assertEquals(it, off?.reason?.rawValue, "${sc.name}: reason") }
+                ex.guidance?.let { assertEquals(it, off?.guidance?.rawValue, "${sc.name}: guidance") }
+                sideExpectations[si][ei]?.let { want ->
+                    // 이탈 이벤트가 없으면 "none"(웹 동형) — null 기대는 이벤트가 있고 쪽이 없을 때만 맞는다.
+                    val got = if (off == null) "none" else off.side?.rawValue
+                    assertEquals(if (want is JsonNull) null else (want as JsonPrimitive).content, got, "${sc.name}: side")
+                }
+                ex.firstSpoken?.let { assertEquals(it, off?.firstSpoken, "${sc.name}: firstSpoken") }
+                ex.returnClock?.let { assertEquals(it, off?.returnRelDeg?.let(::clockHour), "${sc.name}: returnClock") }
+                ex.spoken?.let { want ->
+                    val back = rs.firstNotNullOfOrNull { it.event as? GuideEvent.BackOnRoute }
+                    assertEquals(want, back?.spoken, "${sc.name}: spoken")
+                }
+                ex.rerouteReason?.let { want ->
+                    val rr = rs.firstNotNullOfOrNull { it.event as? GuideEvent.RerouteNeeded }
+                    assertEquals(want, rr?.reason?.rawValue, "${sc.name}: rerouteReason")
+                }
+                ex.minD?.let { min -> for (r in rs) assertTrue(r.state.d >= min, "${sc.name}: minD $min > ${r.state.d}") }
                 ex.nextTarget?.let { want ->
                     for (r in rs) {
                         val got = guideNextTarget(route, r.state)
@@ -275,25 +346,38 @@ class RouteGuideTest {
             confirm = guideStep(state, fixCoord(along, 60.0, 10.0), route, t, GuideTuning.car)
             state = confirm.state
         }
-        assertEquals(GuideEvent.OffRoute, confirm?.event)
-        assertEquals(GuideTone.warning, confirm?.tone) // 첫 확정은 항상 경고 톤
+        assertTrue(confirm?.event is GuideEvent.OffRoute)
+        assertEquals(GuideTone.warning, confirm.tone) // 첫 확정은 항상 경고 톤
 
         var renotifyAt: Double? = null
         var renotifyTone: GuideTone? = GuideTone.warning
+        // 돌아가기 국면의 재통지는 움직이는 중에만 난다(E63 §3.4 — 멈추면 침묵). 나란한 재조회(200m)에 닿지 않게 15m를 오간다.
         var t = 24.0
+        var k = 0
         while (t <= 210) {
-            val out = guideStep(state, fixCoord(200.0, 60.0, 10.0), route, t, GuideTuning.car)
+            val out = guideStep(state, fixCoord(if (k % 2 == 0) 200.0 else 215.0, 60.0, 10.0), route, t, GuideTuning.car)
             state = out.state
-            if (out.event == GuideEvent.OffRoute) {
+            if (out.event is GuideEvent.OffRoute) {
                 renotifyAt = t
                 renotifyTone = out.tone
                 break
             }
             t += 9
+            k += 1
         }
         assertNotNull(renotifyAt)
         assertTrue(renotifyAt >= 195) // 확정 15 + 180
         assertNull(renotifyTone) // 재통지는 무톤(§4.3)
+    }
+
+    /** 새 경로 첫 방향 머리말(E63 spec §3.7). 기준은 교체 전 상태의 진행 방위, 낡으면(5초 초과) null. */
+    @Test fun `재조회 머리말 시계 — 북으로 걷다 동쪽으로 시작하는 새 경로는 3시, 방위가 6초 전이면 null`() {
+        val east = checkNotNull(
+            buildGuideRoute(listOf(GuideStepGeometry("동", listOf(RoutePoint(lat0, lng0), RoutePoint(lat0, lng0 + eastOffset(100.0)))))),
+        )
+        val state = guideStateAt(east, 0.0, 0.0, lastHeading = HeadingObservation(bearing = 0.0, uncertaintyDeg = 10.0, at = 100.0))
+        assertEquals(3, rerouteHeadClock(state, east, 100.0, GuideTuning.walk))
+        assertNull(rerouteHeadClock(state, east, 106.0, GuideTuning.walk))
     }
 
     @Test fun `유닛 계약`() {
@@ -401,7 +485,7 @@ class RouteGuideTest {
         var state = walk(initialGuideState(axisRoute, 0.0).state, 60.0, 0.0, 33, 0.0)
         var hit: Pair<Double, Double>? = null
         state = walk(state, 100.0, 180.0, 55, 34.0) { e, t ->
-            if (e == GuideEvent.OffRoute) {
+            if (e is GuideEvent.OffRoute) {
                 hit = t to 100 - (t - 34) * 1.2
                 true
             } else {
@@ -426,7 +510,7 @@ class RouteGuideTest {
         for (i in 1..40) {
             val out = guideStep(state, fixCoord(r.alongNow, 0.0, 8.0), axisRoute, r.confirmedAt + i, GuideTuning.walk)
             state = out.state
-            assertNotEquals(GuideEvent.BackOnRoute, out.event)
+            assertFalse(out.event is GuideEvent.BackOnRoute)
         }
         assertEquals(GuidePhase.offRoute, state.phase)
         assertTrue(state.offRouteAxes.course)
@@ -436,7 +520,7 @@ class RouteGuideTest {
         val r = confirmedByReversal() ?: fail("확정 실패")
         var recovered = false
         val state = walk(r.state, r.alongNow, 0.0, 60, r.confirmedAt + 1) { e, _ ->
-            if (e == GuideEvent.BackOnRoute) recovered = true
+            if (e is GuideEvent.BackOnRoute) recovered = true
             recovered
         }
         assertTrue(recovered)
@@ -498,7 +582,7 @@ class RouteGuideTest {
             .copy(announcedUpTo = axisRoute.steps.size - 1, courseVotes = mismatchWindow)
         // 관측 없는 fix(버퍼 비어 있음) — 창은 이미 확정 다수이고 잔여 7m ≤ 진입선 10m.
         val out = guideStep(nearEnd, fixCoord(393.0, 0.0, 8.0), axisRoute, 18.0, GuideTuning.walk)
-        assertEquals(GuideEvent.OffRoute, out.event)
+        assertTrue(out.event is GuideEvent.OffRoute)
         assertEquals(GuidePhase.offRoute, out.state.phase)
         assertTrue(out.state.offRouteAxes.course)
 

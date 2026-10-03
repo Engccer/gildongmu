@@ -716,6 +716,7 @@
     <string name="guide_approx">약 %1$s</string>
     <string name="guide_arrived">목적지에 도착했습니다</string>
     <string name="guide_arrivedPresumed">목적지 부근에 도착한 것으로 판단해 안내를 종료했습니다</string>
+    <string name="guide_autoReroute">새 경로로 다시 안내합니다. %1$s. 안내 %2$s개, 총 %3$s.</string>
     <string name="guide_backOnRoute">경로로 복귀했습니다</string>
     <string name="guide_band_arrived">%1$s 도착</string>
     <string name="guide_band_ended">%1$s 안내 종료</string>
@@ -748,6 +749,8 @@
     <string name="guide_carLiveAction_left">좌회전하세요</string>
     <string name="guide_carLiveAction_right">우회전하세요</string>
     <string name="guide_carOffRoute">경로에서 벗어나 안내를 일시 중지했습니다. 경로 다시 조회로 재개할 수 있습니다</string>
+    <string name="guide_carOffRouteBehind">경로는 뒤쪽입니다</string>
+    <string name="guide_carOffRouteClock">경로는 %1$s입니다</string>
     <string name="guide_carPeriodic">%1$s 직진하다가 %2$s</string>
     <string name="guide_carPeriodicAt">%1$s 직진하다가 %2$s에서 %3$s</string>
     <string name="guide_carRoadNow">%1$s 주행 중</string>
@@ -811,6 +814,12 @@
     <string name="guide_nextStraightNoName">%1$sm 직진</string>
     <string name="guide_noGuidanceYet">아직 안내가 없습니다</string>
     <string name="guide_offRoute">경로에서 벗어난 것 같습니다</string>
+    <string name="guide_offRouteLeft">경로에서 왼쪽으로 벗어났습니다</string>
+    <string name="guide_offRouteOpposite">경로와 반대 방향입니다</string>
+    <string name="guide_offRouteReturnClock">%1$s으로 돌아가세요</string>
+    <string name="guide_offRouteRight">경로에서 오른쪽으로 벗어났습니다</string>
+    <string name="guide_offRouteTurnBack">뒤로 도세요</string>
+    <string name="guide_offRouteWith">%1$s. %2$s</string>
     <string name="guide_periodicStraight">%1$s까지 %2$s 직진하세요</string>
     <string name="guide_periodicStraightNoName">%1$s 직진하세요</string>
     <string name="guide_progressButton">진행 상황</string>
@@ -825,8 +834,11 @@
     <string name="guide_remainingTime">약 %1$s분</string>
     <string name="guide_rerouteBusy">경로 다시 조회, 조회 중</string>
     <string name="guide_rerouteButton">경로 다시 조회</string>
-    <string name="guide_rerouteDone">현재 위치에서 경로를 다시 찾았습니다. 안내 %1$s개, 총 %2$s. %3$s</string>
+    <string name="guide_rerouteDone">현재 위치에서 경로를 다시 찾았습니다. %1$s. 안내 %2$s개, 총 %3$s.</string>
     <string name="guide_rerouteFailed">경로 조회에 실패했습니다. 기존 경로를 유지합니다</string>
+    <string name="guide_rerouteHeadBack">뒤로 도세요. 그 후 %1$s</string>
+    <string name="guide_rerouteHeadClock">%1$s으로 도세요. 그 후 %2$s</string>
+    <string name="guide_rerouteHeadStraight">진행 방향 그대로 %1$s</string>
     <string name="guide_rough">%1$s쯤</string>
     <string name="guide_transitDestChangePrepared">대중교통 경로를 찾고 있습니다. 안내 화면에서 경로를 선택하세요.</string>
     <string name="guide_uncertain">위치 확신이 낮습니다</string>

@@ -716,6 +716,7 @@
     <string name="guide_approx">about %1$s</string>
     <string name="guide_arrived">You have arrived at the destination</string>
     <string name="guide_arrivedPresumed">You appear to have arrived near the destination, so guidance has ended</string>
+    <string name="guide_autoReroute">Now guiding on a new route. %1$s. {2, plural, one {%2$s step} other {%2$s steps}}, %3$s total.</string>
     <string name="guide_backOnRoute">Back on the route</string>
     <string name="guide_band_arrived">Arrived at %1$s</string>
     <string name="guide_band_ended">Guidance to %1$s ended</string>
@@ -748,6 +749,8 @@
     <string name="guide_carLiveAction_left">turn left</string>
     <string name="guide_carLiveAction_right">turn right</string>
     <string name="guide_carOffRoute">You are off the route; guidance is paused. Refresh the route to resume</string>
+    <string name="guide_carOffRouteBehind">The route is behind you</string>
+    <string name="guide_carOffRouteClock">The route is at %1$s</string>
     <string name="guide_carPeriodic">%2$s in %1$s</string>
     <string name="guide_carPeriodicAt">%3$s at %2$s in %1$s</string>
     <string name="guide_carRoadNow">Driving on %1$s</string>
@@ -811,6 +814,12 @@
     <string name="guide_nextStraightNoName">Go straight %1$sm</string>
     <string name="guide_noGuidanceYet">No instruction yet</string>
     <string name="guide_offRoute">You may be off the route</string>
+    <string name="guide_offRouteLeft">You\'ve strayed to the left of the route</string>
+    <string name="guide_offRouteOpposite">You\'re heading the opposite way from the route</string>
+    <string name="guide_offRouteReturnClock">Head back toward %1$s</string>
+    <string name="guide_offRouteRight">You\'ve strayed to the right of the route</string>
+    <string name="guide_offRouteTurnBack">Turn around</string>
+    <string name="guide_offRouteWith">%1$s. %2$s</string>
     <string name="guide_periodicStraight">Go straight %2$s toward %1$s</string>
     <string name="guide_periodicStraightNoName">Go straight %1$s</string>
     <string name="guide_progressButton">Progress</string>
@@ -825,8 +834,11 @@
     <string name="guide_remainingTime">about %1$s min</string>
     <string name="guide_rerouteBusy">Re-query route, in progress</string>
     <string name="guide_rerouteButton">Re-query route</string>
-    <string name="guide_rerouteDone">Route recalculated from your current location. {1, plural, one {%1$s instruction} other {%1$s instructions}}, %2$s total. %3$s</string>
+    <string name="guide_rerouteDone">Route recalculated from your current location. %1$s. {2, plural, one {%2$s instruction} other {%2$s instructions}}, %3$s total.</string>
     <string name="guide_rerouteFailed">Route query failed. Keeping the current route</string>
+    <string name="guide_rerouteHeadBack">Turn around. Then %1$s</string>
+    <string name="guide_rerouteHeadClock">Turn to %1$s. Then %2$s</string>
+    <string name="guide_rerouteHeadStraight">Straight ahead, %1$s</string>
     <string name="guide_rough">around %1$s</string>
     <string name="guide_transitDestChangePrepared">Finding transit routes. Choose a route on the guidance screen.</string>
     <string name="guide_uncertain">Location confidence is low</string>

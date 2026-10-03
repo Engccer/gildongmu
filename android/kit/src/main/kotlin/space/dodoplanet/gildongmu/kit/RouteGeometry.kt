@@ -158,6 +158,39 @@ fun projectOnPolyline(poly: GuidePolyline, p: RoutePoint, fromD: Double, toD: Do
     return best
 }
 
+/** `projectSigned` 결과(웹 `Projection & { signed }` 대응). `signed`는 진행 방향 기준 오른쪽 +, 왼쪽 −. */
+data class GuideSignedProjection(val d: Double, val perpMeters: Double, val signed: Double)
+
+/**
+ * `projectOnPolyline`과 같은 창 투영에 **부호 있는 수직거리**를 더한다(E63 spec §3.3, 웹 `projectSigned` 미러). 부호는 그
+ * 세그먼트의 진행 방향 기준 오른쪽 +, 왼쪽 −(세그먼트 벡터와 세그먼트→대상점 벡터의 외적). 이탈 쪽(`side`)과 로그 `sperp`의 재료다.
+ */
+fun projectSigned(poly: GuidePolyline, p: RoutePoint, fromD: Double, toD: Double): GuideSignedProjection? {
+    var best: GuideSignedProjection? = null
+    for (i in 0 until poly.points.size - 1) {
+        val d0 = poly.cum[i]
+        val d1 = poly.cum[i + 1]
+        if (d1 < fromD || d0 > toD || d1 == d0) continue
+        val (ax, ay) = toLocal(p, poly.points[i])
+        val (bx, by) = toLocal(p, poly.points[i + 1])
+        val abx = bx - ax
+        val aby = by - ay
+        val len2 = abx * abx + aby * aby
+        var t = if (len2 == 0.0) 0.0 else (-ax * abx - ay * aby) / len2
+        t = maxOf(0.0, minOf(1.0, t))
+        val px = ax + abx * t
+        val py = ay + aby * t
+        val perp = sqrt(px * px + py * py)
+        val dd = maxOf(fromD, minOf(toD, d0 + (d1 - d0) * t))
+        if (best == null || perp < best.perpMeters) {
+            // 대상점 p가 로컬 원점이라 a→p = −a. 외적 ab × (−a)가 음수면 진행 방향 오른쪽이다.
+            val cross = -abx * ay + aby * ax
+            best = GuideSignedProjection(dd, perp, if (cross < 0) perp else -perp)
+        }
+    }
+    return best
+}
+
 /** 세그먼트 i 단독 투영(t는 [0,1]만 클램프 — 창 없음). */
 private fun projectOnSegment(poly: GuidePolyline, i: Int, p: RoutePoint): GuideProjection {
     val (ax, ay) = toLocal(p, poly.points[i])
@@ -217,7 +250,7 @@ fun tangentAt(poly: GuidePolyline, d: Double, halfMeters: Double): Double? {
 }
 
 /** 진행거리 `d` 지점의 좌표. 범위 밖은 끝점으로 물린다. */
-private fun pointAtD(poly: GuidePolyline, d: Double): RoutePoint? {
+fun pointAtD(poly: GuidePolyline, d: Double): RoutePoint? {
     if (poly.points.isEmpty()) return null
     if (poly.points.size == 1) return poly.points[0]
     val dd = maxOf(0.0, minOf(d, poly.cum[poly.cum.size - 1]))
