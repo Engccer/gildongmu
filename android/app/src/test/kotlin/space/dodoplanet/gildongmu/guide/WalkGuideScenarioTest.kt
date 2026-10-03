@@ -37,13 +37,13 @@ class WalkGuideScenarioTest {
     @RegisterExtension
     val main = MainDispatcherExtension(dispatcher)
 
-    private data class Seg(val len: Double, val desc: String, val action: String? = null, val target: String? = null, val crossing: Boolean? = null, val crossingClock: Int? = null)
+    private data class Seg(val len: Double, val desc: String, val action: String? = null, val target: String? = null, val crossing: Boolean? = null, val crossingClock: Int? = null, val body: String? = null)
     private data class Fix(val t: Double, val along: Double, val lateral: Double, val acc: Double)
 
     private fun routeJson(steps: List<Seg>, finalApproach: String? = null): String {
         var acc = 0.0
         val testSteps = steps.map { s ->
-            val step = TestStep(s.desc, listOf(north(acc), north(acc + s.len)), target = s.target, action = s.action, crossing = s.crossing, crossingClock = s.crossingClock)
+            val step = TestStep(s.desc, listOf(north(acc), north(acc + s.len)), target = s.target, action = s.action, crossing = s.crossing, crossingClock = s.crossingClock, body = s.body)
             acc += s.len
             step
         }
@@ -128,6 +128,44 @@ class WalkGuideScenarioTest {
         assertEquals(1, ui.currentStepIndex)
         assertTrue(ui.statusText != imminent, "지난 임박 문장을 상태 행에 남기지 않는다")
         assertTrue(ui.remainingText!!.startsWith("횡단보도 끝까지 약 "), ui.remainingText)
+    }
+
+    /** 회전 스텝에 방향 구절을 뗀 문장(`parts.body`, E62 판본 2)이 있는 경로와, 그 스텝에 들어서는 fix. */
+    private val bodySteps = listOf(
+        Seg(200.0, "직진A", target = "장미공원"),
+        Seg(100.0, "오른쪽으로 도세요. 그 후 길동로를 따라 100m 이동", action = "right", body = "길동로를 따라 100m 이동"),
+    )
+    private val enterFixes = imminentFixes + listOf(Fix(104.0, 196.0, 0.0, 5.0), Fix(108.0, 201.0, 0.0, 5.0), Fix(112.0, 206.0, 0.0, 5.0), Fix(116.0, 211.0, 0.0, 5.0))
+
+    @Test fun `③‴ 들어선 스텝은 회전 문장을 뗀다 — 진행 상황 현재 안내, 억제 복구(E62)`() = guideTest(dispatcher, { HttpResponse(200, routeJson(bodySteps)) }) { h ->
+        val base = startDetail(h, enterFixes)
+        feed(h, enterFixes, base, until = 11)
+        h.model.outputSuppressed = true          // 받아쓰기 중 30m 전문이 보관된다
+        feed(h, enterFixes, base, from = 11)
+        assertEquals(1, h.model.ui.value.currentStepIndex)
+        assertTrue(h.model.progressText().contains("현재 안내, 길동로를 따라 100m 이동"), h.model.progressText())
+        assertFalse(h.model.progressText().contains("오른쪽으로 도세요"), h.model.progressText())
+        h.speaker.spoken.clear()
+        h.model.outputSuppressed = false         // 이미 돈 뒤라 회전을 다시 지시하지 않는다
+        advanceTimeBy(5_000); runCurrent()
+        assertEquals(listOf("길동로를 따라 100 미터 이동"), h.speaker.texts)
+    }
+
+    @Test fun `④‴ 이탈 문장을 듣지 못한 회차(억제 중 확정)는 복귀해도 복귀 문장이 없다(E63)`() = guideTest(dispatcher, { HttpResponse(200, routeJson(offRouteSteps)) }) { h ->
+        val base = startDetail(h, offRouteFixes)
+        h.model.outputSuppressed = true
+        feed(h, offRouteFixes, base)
+        settle()
+        assertTrue(h.model.ui.value.offRoute)
+        h.model.outputSuppressed = false
+        h.speaker.spoken.clear(); h.haptics.fired.clear()
+        val back = (0..5).map { Fix(37.0 + it * 4.0, 110.0 + it * 4.0, 0.0, 5.0) }
+        feed(h, offRouteFixes + back, base, from = offRouteFixes.size)
+        settle()
+        assertFalse(h.model.ui.value.offRoute)
+        assertFalse(h.speaker.texts.contains(h.catalog.get("guide.backOnRoute")), h.speaker.texts.toString())
+        assertTrue(h.haptics.fired.isEmpty())
+        assertEquals("직진", h.model.ui.value.statusText)   // 상태 행은 현행 안내
     }
 
     @Test fun `⑯ 조회 중 fix 5개 → 경로 호출 1회`() = guideTest(dispatcher) { h ->

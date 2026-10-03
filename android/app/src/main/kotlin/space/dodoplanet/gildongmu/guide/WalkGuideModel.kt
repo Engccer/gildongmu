@@ -114,6 +114,7 @@ import space.dodoplanet.gildongmu.kit.spokenRemainingMeters
 import space.dodoplanet.gildongmu.kit.toneLayerStep
 import space.dodoplanet.gildongmu.kit.walkTurnApproachMeters
 import space.dodoplanet.gildongmu.location.LocationPermission
+import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.roundToInt
@@ -335,7 +336,11 @@ class WalkGuideModel(
     private var altPreviewToken = 0
 
     // ── 발화 장부 ──
+    /** 마지막 실행 안내 원문. 바꾸면 "들어선 뒤" 대체 문장(`lastGuidanceEntered`)은 버린다 — 둘은 같은 안내의 두 모양이다. */
     private var lastGuidance: String? = null
+        set(v) { field = v; lastGuidanceEntered = null }
+    /** 마지막 실행 안내가 유닛 전문일 때 그 첫 스텝 시작과 회전 문장을 뗀 문장(E62). `currentGuidance`가 들어섰으면 이것을 쓴다. */
+    private var lastGuidanceEntered: RecoveryEntered? = null
     private var pendingRecovery: String? = null
     /** 억제 복구 대상이 유닛 전문일 때, 그 유닛 첫 스텝 시작과 "들어선 뒤" 문장(E62). 복구 시점에 들어섰으면 이것을 읽는다. */
     private var pendingRecoveryEntered: RecoveryEntered? = null
@@ -748,8 +753,9 @@ class WalkGuideModel(
         if (repaying || !handed.isEmpty) {
             missedAnnouncement = false
             val intro = pendingFinalApproachIntro
-            // 상태 행이 비어 있으면(실행 안내 직후 — 역할 분리로 statusText에 실행 안내가 남지 않는다) 마지막 안내가 곧 현재 상태다(iOS 동형).
-            val current = statusText.ifEmpty { lastGuidance.orEmpty() }
+            // 상태 행이 비어 있으면(실행 안내 직후 — 역할 분리로 statusText에 실행 안내가 남지 않는다) 마지막 안내가 곧 현재 상태다(안드로이드
+            // 고유 대체 — iOS 도보엔 없다). 이미 그 스텝에 들어섰으면 회전 문장을 뗀 문장으로(E62 — 화면을 켜며 지난 회전을 다시 지시하지 않는다).
+            val current = statusText.ifEmpty { currentGuidance().orEmpty() }
             // 현재 상태 꼬리는 버린 문장이 있을 때만(인계만 있으면 마지막 상태는 인계 문장이다), 인계와 같은 문장이면 뺀다(낭독 정정 뒤끼리 비교).
             val tail = if (!repaying || current.isEmpty() || current == intro || spokenDistanceUnits(current, strings.get("android.unit.spokenMeters")) in handed.texts) null else current
             // 순서: 인계(끊긴 옛 발화 → 칸의 새 문장) → 세션 경고 → 진입 서술 → 현재 상태.
@@ -811,7 +817,7 @@ class WalkGuideModel(
     }
 
     private fun startRouteFetch(origin: RouteOriginFix, reason: String, dest: BeaconDest, token: Int) {
-        GuideDiag.log { "routeOrigin lat=${"%.6f".format(origin.lat)} lng=${"%.6f".format(origin.lng)} acc=${"%.1f".format(origin.accuracy)} age=${"%.1f".format(origin.ageSeconds)} reason=$reason" }
+        GuideDiag.log { "routeOrigin lat=${fmt("%.6f", origin.lat)} lng=${fmt("%.6f", origin.lng)} acc=${fmt("%.1f", origin.accuracy)} age=${fmt("%.1f", origin.ageSeconds)} reason=$reason" }
         routeOriginBest = null
         routeOriginBestAt = null
         routeFetchJob = scope.launch { fetchGuideRoute(RoutePoint(origin.lat, origin.lng), dest, token) }
@@ -1073,7 +1079,7 @@ class WalkGuideModel(
                     is RouteOriginDecision.Wait -> {
                         if (decision.best != routeOriginBest) routeOriginBestAt = now
                         routeOriginBest = decision.best
-                        GuideDiag.log { "routeOriginWait acc=${"%.1f".format(fix.accuracy)} age=${"%.1f".format(age)} best=${decision.best?.let { "%.1f".format(it.accuracy) } ?: "-"}" }
+                        GuideDiag.log { "routeOriginWait acc=${fmt("%.1f", fix.accuracy)} age=${fmt("%.1f", age)} best=${decision.best?.let { fmt("%.1f", it.accuracy) } ?: "-"}" }
                     }
                 }
             }
@@ -1086,7 +1092,7 @@ class WalkGuideModel(
         // ── 간략 ──
         val usable = isUsableFix(fix.accuracy, age)
         GuideDiag.log {
-            "brief t=${"%.1f".format(now)} lat=${"%.6f".format(fix.lat)} lng=${"%.6f".format(fix.lng)} acc=${"%.1f".format(fix.accuracy)} motion=$motion age=${"%.1f".format(age)} usable=$usable dist=${"%.1f".format(haversineMeters(fix.lat, fix.lng, dest.lat, dest.lng))} nearby=${beaconState.nearby}"
+            "brief t=${fmt("%.1f", now)} lat=${fmt("%.6f", fix.lat)} lng=${fmt("%.6f", fix.lng)} acc=${fmt("%.1f", fix.accuracy)} motion=$motion age=${fmt("%.1f", age)} usable=$usable dist=${fmt("%.1f", haversineMeters(fix.lat, fix.lng, dest.lat, dest.lng))} nearby=${beaconState.nearby}"
         }
         if (!usable) { routeTone(ToneLayerInput(unreliable = true, arrived = arrivedNow), now); return }
         lastFixAt = now
@@ -1104,7 +1110,7 @@ class WalkGuideModel(
             resetArrivalWindow()
             arrivalWindowEnteredAt = now
             lastUsableDistanceToDest = straightDistance
-            GuideDiag.log { "arrivalWindowEnter mode=brief dist=${"%.1f".format(straightDistance)} acc=${"%.1f".format(fix.accuracy)}" }
+            GuideDiag.log { "arrivalWindowEnter mode=brief dist=${fmt("%.1f", straightDistance)} acc=${fmt("%.1f", fix.accuracy)}" }
         } else if (window.exited) {
             GuideDiag.log { "arrivalWindowExit reason=${if (stepped.state.nearby) "accuracy" else "released"}" }
             resetArrivalWindow()
@@ -1181,16 +1187,16 @@ class WalkGuideModel(
         syncOverview()
         GuideDiag.log {
             val votes = out.state.courseVotes
-            "fix t=${"%.1f".format(now)} lat=${"%.6f".format(fix.lat)} lng=${"%.6f".format(fix.lng)} acc=${"%.1f".format(fix.accuracy)} " +
-                "course=${"%.1f".format(fix.course)} courseAcc=${"%.1f".format(fix.courseAccuracy)} speed=${fix.speed?.let { "%.2f".format(it) } ?: "-"} speedAcc=${fix.speedAccuracy?.let { "%.2f".format(it) } ?: "-"} " +
-                "motion=$motion age=${"%.1f".format(age)} phase=${out.state.phase} d=${"%.1f".format(out.state.d)} event=${out.event ?: "-"} " +
-                "perp=${out.perpMeters?.let { "%.1f".format(it) } ?: "-"} edgeHits=${out.state.windowEdgeHits} " +
-                "derived=${out.derivedCourse?.let { "%.1f±%.1f".format(it.bearing, it.uncertaintyDeg) } ?: "-"} vote=${out.courseVote?.rawValue ?: "-"} " +
+            "fix t=${fmt("%.1f", now)} lat=${fmt("%.6f", fix.lat)} lng=${fmt("%.6f", fix.lng)} acc=${fmt("%.1f", fix.accuracy)} " +
+                "course=${fmt("%.1f", fix.course)} courseAcc=${fmt("%.1f", fix.courseAccuracy)} speed=${fix.speed?.let { fmt("%.2f", it) } ?: "-"} speedAcc=${fix.speedAccuracy?.let { fmt("%.2f", it) } ?: "-"} " +
+                "motion=$motion age=${fmt("%.1f", age)} phase=${out.state.phase} d=${fmt("%.1f", out.state.d)} event=${out.event ?: "-"} " +
+                "perp=${out.perpMeters?.let { fmt("%.1f", it) } ?: "-"} edgeHits=${out.state.windowEdgeHits} " +
+                "derived=${out.derivedCourse?.let { fmt("%.1f±%.1f", it.bearing, it.uncertaintyDeg) } ?: "-"} vote=${out.courseVote?.rawValue ?: "-"} " +
                 "axes=d:${out.state.offRouteAxes.distance}/c:${out.state.offRouteAxes.course} " +
                 "votes=m:${votes.count { it.vote.rawValue == "mismatch" }}/k:${votes.count { it.vote.rawValue == "match" }}/u:${votes.count { it.vote.rawValue == "unknown" }} " +
                 "verdict=${courseAxisVerdict(votes).rawValue} " +
                 // 돌아가기 국면 계측(E63 spec §6): 부호 있는 수직(오른쪽 +), 돌아가기 상태(최솟값/연속 수/복귀 후보 초/기준점 m), 접근 표 제외.
-                "sperp=${out.signedPerpMeters?.let { "%.1f".format(it) } ?: "-"} " +
+                "sperp=${out.signedPerpMeters?.let { fmt("%.1f", it) } ?: "-"} " +
                 "ret=${if (out.state.phase == GuidePhase.offRoute) returnDiag(out.state, fix.lat, fix.lng, now) else "-"}" +
                 (if (out.approachExcluded == true) " appr=1" else "")
         }
@@ -1316,15 +1322,15 @@ class WalkGuideModel(
                 val say = event.spoken && offRouteNoticePosted
                 offRouteNoticeLive.clear()
                 GuideDiag.log {
-                    "backOnRoute via=${prev.offRouteReason?.rawValue ?: "-"} perp=${signedPerp?.let { "%.1f".format(it) } ?: "-"} " +
-                        "hold=${prev.returnCandidateSince?.let { "%.1f".format(now - it) } ?: "-"} spoken=${if (say) 1 else 0}"
+                    "backOnRoute via=${prev.offRouteReason?.rawValue ?: "-"} perp=${signedPerp?.let { fmt("%.1f", it) } ?: "-"} " +
+                        "hold=${prev.returnCandidateSince?.let { fmt("%.1f", now - it) } ?: "-"} spoken=${if (say) 1 else 0}"
                 }
-                if (!say) { statusText = lastGuidance.orEmpty(); return }
+                if (!say) { statusText = currentGuidance().orEmpty(); return }
                 val spoken = strings.get("guide.backOnRoute")
                 statusText = spoken
                 resultHaptic(ResultHapticKind.success)
-                // ⚠ high: 복귀(`offRoute = false`)가 "경로 다시 조회" 버튼을 지워 커서가 움직이고, 착지 라벨(남은 거리)은 "돌아왔다"를
-                // 대신하지 못한다(iOS `.high`와 같은 판별선 — 안드로이드는 TTS 한 채널이라 새 문장이 말하는 중인 문장을 끊는다).
+                // high: iOS `.high`(복귀가 "경로 다시 조회" 버튼을 지워 커서가 움직인다)와 같은 판별선. 안드로이드 전경 발화는 늘 말하는 중인
+                // 문장을 끊어 차이가 없고, 실효는 백그라운드 대기 칸에서 앞 문장을 선점하는 것이다(README §3 안내 음성 채널).
                 announce(spoken, highPriority = true, speechClass = cls)
             }
             is GuideEvent.RerouteNeeded -> {
@@ -1333,11 +1339,11 @@ class WalkGuideModel(
                 val ignored = maybeFetchProposal("auto")
                 GuideDiag.log {
                     val here = lastFixCoord
-                    val moved = offRouteConfirmCoord?.let { a -> here?.let { "%.0f".format(haversineMeters(a.lat, a.lng, it.lat, it.lng)) } } ?: "-"
-                    val anchor = prev.offRouteAnchor?.let { a -> here?.let { "%.0f".format(haversineMeters(a.lat, a.lng, it.lat, it.lng)) } } ?: "-"
+                    val moved = offRouteConfirmCoord?.let { a -> here?.let { fmt("%.0f", haversineMeters(a.lat, a.lng, it.lat, it.lng)) } } ?: "-"
+                    val anchor = prev.offRouteAnchor?.let { a -> here?.let { fmt("%.0f", haversineMeters(a.lat, a.lng, it.lat, it.lng)) } } ?: "-"
                     // 리듀서는 요청 fix에서 최솟값을 그 fix 값으로 다시 놓는다 — `min`은 직전 최솟값, `perp`는 이 fix 값.
-                    "rerouteTrigger reason=${event.reason.rawValue} n=$rerouteTriggerCount min=${prev.offRouteMinPerp?.let { "%.1f".format(it) } ?: "-"} " +
-                        "perp=${signedPerp?.let { "%.1f".format(abs(it)) } ?: "-"} sinceConfirm=${offRouteConfirmedAt?.let { "%.0f".format(now - it) } ?: "-"} " +
+                    "rerouteTrigger reason=${event.reason.rawValue} n=$rerouteTriggerCount min=${prev.offRouteMinPerp?.let { fmt("%.1f", it) } ?: "-"} " +
+                        "perp=${signedPerp?.let { fmt("%.1f", abs(it)) } ?: "-"} sinceConfirm=${offRouteConfirmedAt?.let { fmt("%.0f", now - it) } ?: "-"} " +
                         "moved=$moved anchor=$anchor ignored=${ignored ?: "-"}"
                 }
             }
@@ -1356,8 +1362,19 @@ class WalkGuideModel(
      */
     private fun announceUnitText(unit: String, spoken: String, speechClass: GuideSpeechClass, entered: RecoveryEntered?) {
         lastGuidance = unit
+        lastGuidanceEntered = entered
         statusText = ""
         if (outputSuppressed) { pendingRecovery = unit; pendingRecoveryEntered = entered } else announce(spoken, speechClass = speechClass)
+    }
+
+    /** 진단 로그 수치 — 기기 로케일과 무관하게 점 소수(fr·es·it 쉼표 소수면 iOS 로그와 대조가 어긋난다). */
+    private fun fmt(pattern: String, vararg args: Any?): String = String.format(Locale.ROOT, pattern, *args)
+
+    /** 지금 상태로 다시 읽을 마지막 안내 — 실위치(원시 d + lag)가 그 유닛 첫 스텝에 들어섰으면 회전 문장을 뗀 문장(억제 복구와 같은 판정). */
+    private fun currentGuidance(): String? {
+        val entered = lastGuidanceEntered
+        val gs = guideState
+        return if (entered != null && gs != null && gs.d + projectionLagMeters >= entered.startD) entered.text else lastGuidance
     }
 
     /** 이탈 문장 게시(E63 §3.4): 게시 번호를 살아 있는 집합에 넣고, 버려지면 그 번호만 뺀다(회차가 바뀌었으면 집합이 이미 비었다). */
@@ -1372,17 +1389,17 @@ class WalkGuideModel(
     private fun logOffRouteNotice(event: GuideEvent.OffRoute, perp: Double?, spoken: Boolean) = GuideDiag.log {
         val heading = guideState?.lastHeading
         "offRouteNotice notice=${event.notice.rawValue} first=${if (event.firstSpoken) 1 else 0} reason=${event.reason.rawValue} " +
-            "guidance=${event.guidance.rawValue} side=${event.side?.rawValue ?: "-"} rel=${event.returnRelDeg?.let { "%.0f".format(it) } ?: "-"} " +
+            "guidance=${event.guidance.rawValue} side=${event.side?.rawValue ?: "-"} rel=${event.returnRelDeg?.let { fmt("%.0f", it) } ?: "-"} " +
             "clock=${event.returnRelDeg?.let { clockHour(it).toString() } ?: "-"} " +
-            "heading=${heading?.let { "%.0f±%.0f".format(it.bearing, it.uncertaintyDeg) } ?: "-"} headAge=${heading?.let { "%.1f".format(clock() - it.at) } ?: "-"} " +
-            "perp=${perp?.let { "%.1f".format(it) } ?: "-"} d=${guideState?.offRouteConfirmD?.let { "%.1f".format(it) } ?: "-"} spoken=${if (spoken) 1 else 0}"
+            "heading=${heading?.let { fmt("%.0f±%.0f", it.bearing, it.uncertaintyDeg) } ?: "-"} headAge=${heading?.let { fmt("%.1f", clock() - it.at) } ?: "-"} " +
+            "perp=${perp?.let { fmt("%.1f", it) } ?: "-"} d=${guideState?.offRouteConfirmD?.let { fmt("%.1f", it) } ?: "-"} spoken=${if (spoken) 1 else 0}"
     }
 
     /** `ret=` 열(E63 spec §6): 최솟값/자격 fix 연속 수/복귀 후보 유지 초/나란히 걷기 기준점까지 직선 m(0이면 그 fix에서 다시 놓였다). */
     private fun returnDiag(st: GuideState, lat: Double, lng: Double, now: Double): String {
-        val minPerp = st.offRouteMinPerp?.let { "%.1f".format(it) } ?: "-"
-        val hold = st.returnCandidateSince?.let { "%.0f".format(now - it) } ?: "-"
-        val anchor = st.offRouteAnchor?.let { "%.0f".format(haversineMeters(it.lat, it.lng, lat, lng)) } ?: "-"
+        val minPerp = st.offRouteMinPerp?.let { fmt("%.1f", it) } ?: "-"
+        val hold = st.returnCandidateSince?.let { fmt("%.0f", now - it) } ?: "-"
+        val anchor = st.offRouteAnchor?.let { fmt("%.0f", haversineMeters(it.lat, it.lng, lat, lng)) } ?: "-"
         return "$minPerp/${st.offRouteAwayRun?.count ?: 0}/$hold/$anchor"
     }
 
@@ -1434,7 +1451,7 @@ class WalkGuideModel(
         val d = dest
         if (c != null && d != null) lastUsableDistanceToDest = haversineMeters(c.lat, c.lng, d.lat, d.lng)
         syncOverview()
-        GuideDiag.log { "finalEnter offset=${"%.1f".format(usable.offsetMeters)}" }
+        GuideDiag.log { "finalEnter offset=${fmt("%.1f", usable.offsetMeters)}" }
     }
 
     private fun handleFinalApproach(fix: GuideFixPayload, motion: MotionState, age: Double, now: Double) {
@@ -1452,7 +1469,7 @@ class WalkGuideModel(
         progressAnchor = anchorStep.anchor
         if (anchorStep.progressed) lastProgressAt = now
         val arrived = distance <= finalApproachArriveMeters
-        GuideDiag.log { "final t=${"%.1f".format(now)} dist=${"%.1f".format(distance)} acc=${"%.1f".format(fix.accuracy)} arrived=$arrived introSpoken=$finalApproachIntroSpoken" }
+        GuideDiag.log { "final t=${fmt("%.1f", now)} dist=${fmt("%.1f", distance)} acc=${fmt("%.1f", fix.accuracy)} arrived=$arrived introSpoken=$finalApproachIntroSpoken" }
         routeTone(
             ToneLayerInput(
                 trend = TrendInput(
@@ -1545,7 +1562,7 @@ class WalkGuideModel(
         val fixRef = max(enteredAt, lastFixAt ?: enteredAt)
         val progressRef = max(enteredAt, lastProgressAt ?: enteredAt)
         val reason = presumedArrivalStep(true, now - fixRef, now - progressRef, lastUsableDistanceToDest, thresholds) ?: return false
-        GuideDiag.log { "presumedArrival reason=${reason.rawValue} dist=${lastUsableDistanceToDest?.let { "%.1f".format(it) } ?: "-"} window=${if (inFinalApproach) "final" else "brief"}" }
+        GuideDiag.log { "presumedArrival reason=${reason.rawValue} dist=${lastUsableDistanceToDest?.let { fmt("%.1f", it) } ?: "-"} window=${if (inFinalApproach) "final" else "brief"}" }
         val spoken = strings.get("guide.arrivedPresumed")
         val sample = steps.liveSample
         if (env.isForeground()) playTone(BeaconTone.nearby)
@@ -1701,7 +1718,11 @@ class WalkGuideModel(
 
     private suspend fun fetchProposal(token: Int, source: String) {
         val dest = dest ?: return
-        val origin = rerouteOrigin() ?: return
+        val origin = rerouteOrigin() ?: run {
+            // 출발점(15초 안의 fix)이 없으면 조회하지 않는다 — 트리거 줄 뒤에 채택 줄이 비지 않게 남긴다(iOS `result=failed` 동형).
+            GuideDiag.log("rerouteAdopt source=$source result=failed headClock=-")
+            return
+        }
         val acquiredAt = clock()
         if (token != proposalToken || !offRoute || !isTracking || mode != GuideMode.detail || this.dest != dest) return
         val waypointAtFetch = waypoint
@@ -1997,7 +2018,7 @@ class WalkGuideModel(
     private fun tickWatchdog() {
         val now = clock()
         val reference = lastFixAt ?: startedAt ?: now
-        GuideDiag.log { "watchdog dt=${"%.1f".format(now - reference)}" }
+        GuideDiag.log { "watchdog dt=${fmt("%.1f", now - reference)}" }
         if (now - reference >= noFixToneSeconds) routeTone(ToneLayerInput(unreliable = true, arrived = arrivedNow), now)
         if (maybePresumeArrival(now)) return
         if (maybeEndIdleSession(now)) return
