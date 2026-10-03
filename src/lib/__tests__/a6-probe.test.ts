@@ -79,7 +79,7 @@ const SPEED = 1.2;
 
 interface Sample {
   t: number;
-  fix: { lat: number; lng: number; accuracy: number };
+  fix: { lat: number; lng: number; accuracy: number; stopped: boolean };
 }
 
 interface Noise {
@@ -121,6 +121,7 @@ function makeTrajectory(
       fix: {
         ...toLL({ x: p.x + bx + gauss(r, n.jitter), y: p.y + by + gauss(r, n.jitter) }),
         accuracy: n.accuracy,
+        stopped: false,
       },
     });
   };

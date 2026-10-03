@@ -109,6 +109,13 @@ public struct GuideTuning: Sendable, Equatable {
     /// 웹 `quietAfterAnnounce` 미러). walk true — 전문 뒤 "…까지 직진하세요"가 다시 나오면 안내가 뒤로
     /// 튄다. car false — 주기 통지가 "{거리} 앞 {명령}"이라 다음 행동을 이미 담는다.
     public var quietAfterAnnounce: Bool
+    /// 다음 유닛 전문을 미루는가(E62 spec `2026-10-03-crosswalk-guidance-design.md` §4 R4·R5·R6, 웹
+    /// `deferAnnounce` 미러). walk true: 행동 없는 다음 구간은 실위치가 들어선 뒤, 전문이 나간 유닛 안에 실위치가 아직
+    /// 나가지 않은 횡단이 있으면 그 횡단을 나간 뒤 — 그렇게 늦게 나간 전문은 `late`이고 첫 스텝에 행동이 있으면 그
+    /// 행동 톤을 함께 낸다. 미루는 동안은 주기 통지·되읽기도 없다. car false.
+    public var deferAnnounce: Bool
+    /// 정지 중 주기 통지·되읽기를 내지 않는가(E62 판정 3, 웹 `silentWhenStopped` 미러). walk true · car false.
+    public var silentWhenStopped: Bool
     /// 속도 표본 정확도 상한(m). walk 20, car 50(=uncertain 게이트).
     public var speedSampleMaxAccM: Double
     /// 원거리 예고 경계(m). nil=미사용(walk)
@@ -173,7 +180,9 @@ public struct GuideTuning: Sendable, Equatable {
         // 행동 없음"(육교·계단·엘리베이터)과 미투영을 구별하지 못하고, en 문장에서는 한국어
         // 부분 문자열 분류가 성립하지 않으며, car는 갈래·시설 문장이 회전이 된다(설계 리뷰 B1).
         imminentNeedsAnnounce: true,
-        silentCatchUp: false, quietAfterAnnounce: true, speedSampleMaxAccM: speedSampleMaxAccuracyMeters,
+        silentCatchUp: false, quietAfterAnnounce: true,
+        deferAnnounce: true, silentWhenStopped: true,
+        speedSampleMaxAccM: speedSampleMaxAccuracyMeters,
         farNoticeM: nil,
         windowAheadMinM: windowAheadMinMeters, windowAheadSpeedS: 0,
         offRouteBaseM: offRouteBaseMeters, offRouteHoldS: offRouteHoldSeconds,
@@ -197,7 +206,9 @@ public struct GuideTuning: Sendable, Equatable {
         imminentUnknownSpeedM: carImminentUnknownSpeedMeters,
         imminentRepeatM: [],
         imminentNeedsAnnounce: false,
-        silentCatchUp: true, quietAfterAnnounce: false, speedSampleMaxAccM: uncertainAccuracyMeters,
+        silentCatchUp: true, quietAfterAnnounce: false,
+        deferAnnounce: false, silentWhenStopped: false,
+        speedSampleMaxAccM: uncertainAccuracyMeters,
         farNoticeM: 1500,
         windowAheadMinM: 150, windowAheadSpeedS: 5,
         offRouteBaseM: 50, offRouteHoldS: 10,
@@ -289,11 +300,15 @@ public struct GuideFix: Sendable, Equatable {
     public let lat: Double
     public let lng: Double
     public let accuracy: Double
+    /// 이 fix에서 서 있는가(오케스트레이터의 `motionStep`이 `.stopped`일 때만 참 — `.speedUnknown`은 정지가
+    /// 아니다, E55 3-state). E62 "멈추면 침묵"의 입력. 기본값 없음(웹 `GuideFix.stopped` 미러).
+    public let stopped: Bool
 
-    public init(lat: Double, lng: Double, accuracy: Double) {
+    public init(lat: Double, lng: Double, accuracy: Double, stopped: Bool) {
         self.lat = lat
         self.lng = lng
         self.accuracy = accuracy
+        self.stopped = stopped
     }
 
     var point: RoutePoint { RoutePoint(lat: lat, lng: lng) }
@@ -392,7 +407,9 @@ public struct OffRouteAxes: Sendable, Equatable {
 }
 
 public enum GuideEvent: Sendable, Equatable {
-    case announceSteps([Int])
+    /// 유닛 전문. `late`는 실위치가 이미 첫 스텝에 들어선 뒤 나간 전문이다(E62 R4·R5) — 소비자는 거리 머리말을
+    /// 붙이지 않는다(웹 `late` 미러).
+    case announceSteps([Int], late: Bool)
     /// 결정 지점 임박(20m) 앞. `action`은 낭독 문구를 고르는 키이고 `indices`는 **그 행동을
     /// 담은 스텝 하나**다(유닛이 아니다 — 결정 지점은 유닛 안에도 있다).
     /// `stage`는 0부터의 단계 index(walk 20·15·10m) — 소비자는 소리·햅틱은 매 단계, 문장은 0만.
@@ -1118,13 +1135,31 @@ public func guideStep(
         }
     }
 
+    // 실위치(E62 spec §4 머리, 웹 `realD` 미러): R1·R3·R4·R5가 전부 이 하나를 쓴다 — 원시 `cur`와 섞으면 짧은
+    // 횡단의 첫 10m가 어느 규칙에도 잡히지 않는다(설계 리뷰 B1).
+    let realD = d + projectionLagMeters
+    // 이번 fix에 전문을 미뤘는가(R4·R5). 미루는 동안은 주기 통지·되읽기도 내지 않는다.
+    var announceDeferred = false
+
     // 6c) 선행 낭독: 낭독 완료 유닛의 끝까지 잔여 ≤ 임박선이면 다음 유닛 전문.
     //     임박선은 max(거리 하한, v×시간 계수) — walk는 시간 계수 0이라 30m 고정 동일.
     if next.announcedUpTo < route.steps.count - 1 {
         let announcedEnd = route.steps[next.announcedUpTo].endD
         let announceAhead = max(tuning.announceAheadM, vPrev * tuning.announceAheadSpeedS)
-        if announcedEnd - d <= announceAhead {
-            let unit = unitAt(route: route, index: next.announcedUpTo + 1)
+        let nextUnit = unitAt(route: route, index: next.announcedUpTo + 1)
+        let nextFirst = route.steps[nextUnit[0]]
+        if tuning.deferAnnounce && announcedEnd - d <= announceAhead {
+            // R5: 전문이 나간 유닛 안에 실위치가 아직 나가지 않은 횡단이 있으면 그 횡단을 나간 뒤로(ⓐ).
+            let crossingAhead = unitAt(route: route, index: next.announcedUpTo).contains {
+                route.steps[$0].crossing && route.steps[$0].endD > realD
+            }
+            // R4: 행동 없는 다음 구간은 들어선 뒤. 묶음 앞쪽 30m 안에 행동 스텝이 있는 묶음은 제외(설계 리뷰 M1).
+            let actionless = nextFirst.action == nil
+                && (nextUnit.count == 1 || nextFirst.endD - nextFirst.startD >= announceAheadMeters)
+            announceDeferred = crossingAhead || (actionless && nextFirst.startD > realD)
+        }
+        if !announceDeferred && announcedEnd - d <= announceAhead {
+            let unit = nextUnit
             // car(silentCatchUp): 묶음 안에서 이미 끝난 스텝은 빼고 읽는다(설계 리뷰 B6). 남는 것이 없으면 마지막 스텝 하나.
             let remaining = tuning.silentCatchUp
                 ? unit.filter { $0 > next.announcedUpTo && route.steps[$0].endD >= d }
@@ -1142,8 +1177,16 @@ public func guideStep(
             //   ⚠ walk에서 그 정숙 구간이 30m 시점에 사라지는 것은 **아는 대가**다. 이 fix의
             //   추세음은 `eventOwned`가 막지만 다음 fix부터는 막지 않으므로, 낭독 첫 3초
             //   보호가 없어진다. 실보행 판정 대상이다(`docs/BACKLOG.md`).
+            // R6(E62): 실위치가 이미 첫 스텝에 들어선 전문은 늦은 전문(머리말 없음). 첫 스텝에 행동이 있으면 그 행동 톤을
+            //     내고 그 경계의 임박 래치를 소비한다(톤 1회).
+            let late = tuning.deferAnnounce && nextFirst.startD <= realD
+            if late, let action = nextFirst.action {
+                next.imminentUpTo = max(next.imminentUpTo, unit[0])
+                next.imminentStage = 0
+                return emit(next, .announceSteps(indices, late: late), imminentTone(action))
+            }
             let tone: GuideTone? = tuning.imminentAheadM == nil ? .ahead : nil
-            return emit(next, .announceSteps(indices), tone)
+            return emit(next, .announceSteps(indices, late: late), tone)
         }
     }
 
@@ -1183,11 +1226,18 @@ public func guideStep(
     }
 
     // 6c) 주기: following=구간 잔여, bundle=묶음 재통독. 기준은 lastAnnouncedAt.
+    //     E62: 횡단 중(원시 `cur` 또는 실위치 스텝이 횡단 — R1) · 정지 중(R2) · 전문을 미루는 중(R4·R5)에는 둘 다
+    //     내지 않는다. 정지 중엔 `lastAnnouncedAt`도 건드리지 않아 다시 움직이면 주기가 이어진다.
     let sinceAnnounce = now - next.lastAnnouncedAt
-    if cur.isLong {
+    let realCur = stepAt(route: route, d: realD)
+    let periodicSilent = cur.crossing || realCur.crossing
+        || (tuning.silentWhenStopped && fix.stopped) || announceDeferred
+    let curUnit = unitAt(route: route, index: cur.index)
+    let nextAnnounced = next.announcedUpTo > curUnit[curUnit.count - 1]
+    if periodicSilent {
+        // 아래 6d(속도 제안)로 간다.
+    } else if cur.isLong {
         let remainingStep = cur.endD - d
-        let curUnit = unitAt(route: route, index: cur.index)
-        let nextAnnounced = next.announcedUpTo > curUnit[curUnit.count - 1]
         if !(tuning.quietAfterAnnounce && nextAnnounced),
            sinceAnnounce >= periodicIntervalSeconds(remaining: remainingStep) {
             next.lastAnnouncedAt = now
@@ -1201,10 +1251,14 @@ public func guideStep(
                 nil
             )
         }
-    } else if sinceAnnounce >= bundleRereadSeconds {
-        let indices = unitAt(route: route, index: cur.index)
-        next.lastAnnouncedAt = now
-        return emit(next, .bundleReread(indices), nil)
+    } else if sinceAnnounce >= bundleRereadSeconds, !(tuning.quietAfterAnnounce && nextAnnounced) {
+        // R3(E62): 다음 유닛 전문이 나갔으면 되읽지 않는다(ⓒ). 되읽기는 실위치 스텝부터(첫 index가 곧 들어선 스텝).
+        //     car(`quietAfterAnnounce` false)는 종전대로 유닛 전체.
+        let indices = tuning.quietAfterAnnounce ? curUnit.filter { $0 >= realCur.index } : curUnit
+        if !indices.isEmpty {
+            next.lastAnnouncedAt = now
+            return emit(next, .bundleReread(indices), nil)
+        }
     }
 
     // 6d) 속도 제안(최하위, 세션당 1회).

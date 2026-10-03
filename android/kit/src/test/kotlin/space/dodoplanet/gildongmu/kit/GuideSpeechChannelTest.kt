@@ -61,7 +61,7 @@ class GuideSpeechChannelTest {
 
     @Test fun guideEventClassification() {
         val actionable = listOf(
-            GuideEvent.AnnounceSteps(listOf(0)), GuideEvent.FarNotice(listOf(2), 300), GuideEvent.WaypointReached,
+            GuideEvent.AnnounceSteps(listOf(0), late = false), GuideEvent.FarNotice(listOf(2), 300), GuideEvent.WaypointReached,
             GuideEvent.WaypointApproaching(40), GuideEvent.BackOnRoute,
         )
         for (e in actionable) assertEquals(GuideSpeechClass.actionable, guideEventSpeechClass(e, offRouteEpisodeStart = false), "$e")

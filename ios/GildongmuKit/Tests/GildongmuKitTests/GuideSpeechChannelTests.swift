@@ -76,7 +76,7 @@ struct GuideSpeechChannelTests {
     // spec §3.2: 경로 이벤트 전수. 예고·임박·경유지·복귀는 행동, 이탈은 회차 시작만, 주기·상태는 미룸.
     @Test func guideEventClassification() {
         let actionable: [GuideEvent] = [
-            .announceSteps([0]),
+            .announceSteps([0], late: false),
             .farNotice(indices: [2], remainingMeters: 300), .waypointReached,
             .waypointApproaching(remainingMeters: 40), .backOnRoute,
         ]

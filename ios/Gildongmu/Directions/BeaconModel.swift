@@ -899,9 +899,11 @@ final class BeaconModel {
             briefing.steps.map {
                 // ⚠ `action`을 빠뜨리면 walk 프로파일(서버 투영만 본다)에서 임박 큐가
                 // 전면 침묵한다 — 웹 테스트·타입 검사·Kit fixture가 전부 통과시키는 자리다
-                // (fixture는 action을 직접 싣는다). E16 축3 §4.2.1.
+                // (fixture는 action을 직접 싣는다). E16 축3 §4.2.1. `crossing`도 같다 — 빠뜨리면 횡단 중 침묵(E62 R1)과
+                // 횡단 끝 전 다음 전문 유예(R5)가 오류 없이 꺼진다.
                 GuideStepGeometry(
-                    description: $0.description, pathCoords: $0.pathCoords, action: $0.action)
+                    description: $0.description, pathCoords: $0.pathCoords, action: $0.action,
+                    crossing: $0.crossing ?? false)
             },
             waypointStepIndex: briefing.waypoint?.stepIndex
         ) else { return nil }
@@ -1948,7 +1950,8 @@ final class BeaconModel {
         // 실사용 로그 courseAcc 중위 83°, §3.0.1).
         let out = guideStep(
             state: state,
-            fix: GuideFix(lat: fix.lat, lng: fix.lng, accuracy: fix.accuracy),
+            // 멈추면 침묵(E62 판정 3) — `.speedUnknown`은 정지가 아니다(E55 3-state).
+            fix: GuideFix(lat: fix.lat, lng: fix.lng, accuracy: fix.accuracy, stopped: motion == .stopped),
             route: route,
             now: now,
             tuning: tuning
@@ -2492,7 +2495,7 @@ final class BeaconModel {
         // 문장 분류(E53 spec §3.2, 정본 Kit). 이탈 회차 시작 = 전이 전 플래그가 거짓(아래 `.offRoute`의 `isEpisodeStart`와 같다).
         let speechClass = guideEventSpeechClass(event, offRouteEpisodeStart: !offRoute)
         switch event {
-        case let .announceSteps(indices), let .bundleReread(indices):
+        case let .announceSteps(indices, _), let .bundleReread(indices):
             if driverChannel {
                 // 운전자 모드(K2 §6.2): 재통독은 내지 않고, 전문 대신 "{거리} 앞 {명령}" 단문.
                 // 행동 없는 유닛(터널·직진 갈래)은 무발화 — 명령이 없는데 문장만 길다.

@@ -35,7 +35,7 @@ const LAT0 = 37.5;
 const LNG0 = 127.1;
 
 function routeFrom(
-  steps: { len: number; desc: string; action?: string }[],
+  steps: { len: number; desc: string; action?: string; crossing?: boolean }[],
   waypointStepIndex?: number,
 ) {
   let acc = 0;
@@ -50,6 +50,7 @@ function routeFrom(
         description: s.desc,
         pathCoords,
         ...(s.action ? { action: s.action as GuideAction } : {}),
+        ...(s.crossing ? { crossing: true } : {}),
       };
     }),
     { waypointStepIndex },
@@ -82,6 +83,8 @@ interface Expectation {
   stage?: number;
   /** 그 fix 뒤 `guideNextTarget`(N4 2026-09-24). 거리는 ±1m(좌표 왕복 오차). */
   nextTarget?: { kind: string; meters: number };
+  /** `announceSteps` 이벤트의 `late`(E62 R6 — 실위치가 이미 첫 스텝에 들어선 늦은 전문). */
+  late?: boolean;
 }
 
 describe("route-guide 공유 시나리오(경계표)", () => {
@@ -93,8 +96,9 @@ describe("route-guide 공유 시나리오(경계표)", () => {
       geometry?: boolean;
       /** 경유지 스텝 index(N4). 미지정=경유지 없음. */
       waypointStepIndex?: number;
-      steps: { len: number; desc: string; action?: string }[];
-      fixes: { t: number; along: number; lateral: number; acc: number }[];
+      steps: { len: number; desc: string; action?: string; crossing?: boolean }[];
+      /** `stopped`: 그 fix의 정지 판정(E62 R2). 미지정 = 움직이는 중. */
+      fixes: { t: number; along: number; lateral: number; acc: number; stopped?: boolean }[];
       expect: Expectation[];
     }[];
   }).scenarios) {
@@ -109,7 +113,7 @@ describe("route-guide 공유 시나리오(경계표)", () => {
       for (const f of sc.fixes) {
         const out = guideStep(
           state,
-          { ...fixCoord(f.along, f.lateral), accuracy: f.acc },
+          { ...fixCoord(f.along, f.lateral), accuracy: f.acc, stopped: f.stopped === true },
           route,
           f.t,
           tuning);
@@ -132,6 +136,12 @@ describe("route-guide 공유 시나리오(경계표)", () => {
         if (ex.indices) {
           const found = rs.find((r) => r.event && "indices" in r.event);
           expect(found && (found.event as { indices: number[] }).indices).toEqual(ex.indices);
+        }
+        if (ex.late !== undefined) {
+          expect(
+            rs.some((r) => r.event?.kind === "announceSteps" && r.event.late === ex.late),
+            `late ${ex.late}`,
+          ).toBe(true);
         }
         if (ex.tone) expect(rs.some((r) => r.tone === ex.tone)).toBe(true);
         if (ex.toneNull) rs.forEach((r) => expect(r.tone).toBeNull());
@@ -170,14 +180,14 @@ describe("entryProjection (전환·재조회 초기 투영, 스펙 §6)", () => 
   ])!;
 
   it("자기근접 구간은 ambiguous — 임의 확정 금지", () => {
-    expect(entryProjection(uRoute, { ...fixCoord(150, 10), accuracy: 10 }).status).toBe("ambiguous");
+    expect(entryProjection(uRoute, { ...fixCoord(150, 10), accuracy: 10, stopped: false }).status).toBe("ambiguous");
   });
 
   it("단일 후보는 ok + 진행거리", () => {
     const single = buildGuideRoute([
       { description: "직진", pathCoords: [fixCoord(0, 0), fixCoord(300, 0)] },
     ])!;
-    const r = entryProjection(single, { ...fixCoord(150, 5), accuracy: 10 });
+    const r = entryProjection(single, { ...fixCoord(150, 5), accuracy: 10, stopped: false });
     expect(r.status).toBe("ok");
     if (r.status === "ok") expect(r.d).toBeCloseTo(150, 0);
   });
@@ -186,7 +196,7 @@ describe("entryProjection (전환·재조회 초기 투영, 스펙 §6)", () => 
     const single = buildGuideRoute([
       { description: "직진", pathCoords: [fixCoord(0, 0), fixCoord(300, 0)] },
     ])!;
-    expect(entryProjection(single, { ...fixCoord(150, 200), accuracy: 10 }).status).toBe("none");
+    expect(entryProjection(single, { ...fixCoord(150, 200), accuracy: 10, stopped: false }).status).toBe("none");
   });
 });
 
@@ -202,7 +212,7 @@ describe("car 재획득 타이브레이크(스펙 §4.3 — 재획득 경로 한
     const state = { ...guideStateAt(uRoute, dPrev, 0), lastFixAt: 0 };
     const out = guideStep(
       state,
-      { ...fixCoord(dPrev, 0), accuracy: 10 },
+      { ...fixCoord(dPrev, 0), accuracy: 10, stopped: false },
       uRoute,
       11, // 공백 11초 > 10 → 재획득 진입
       CAR_TUNING);
@@ -212,7 +222,7 @@ describe("car 재획득 타이브레이크(스펙 §4.3 — 재획득 경로 한
 
   it("전방 창 안 후보가 1개면 채택(reacquired)", () => {
     const st = enterReacquiring(100); // prevD=100, v=0 → 창 [100, 200]
-    const out = guideStep(st, { ...fixCoord(150, 10), accuracy: 10 }, uRoute, 12, CAR_TUNING);
+    const out = guideStep(st, { ...fixCoord(150, 10), accuracy: 10, stopped: false }, uRoute, 12, CAR_TUNING);
     // 후보: 북 d≈150(창 안) vs 남 d≈490(창 밖) → 단일 채택
     expect(out.event?.kind).toBe("reacquired");
     expect(out.state.d).toBeCloseTo(150, 0);
@@ -220,7 +230,7 @@ describe("car 재획득 타이브레이크(스펙 §4.3 — 재획득 경로 한
 
   it("창 안 후보 0개면 거부 유지(침묵)", () => {
     const st = enterReacquiring(100);
-    const out = guideStep(st, { ...fixCoord(250, 20), accuracy: 10 }, uRoute, 12, CAR_TUNING);
+    const out = guideStep(st, { ...fixCoord(250, 20), accuracy: 10, stopped: false }, uRoute, 12, CAR_TUNING);
     // 후보: 북 d≈250·남 d≈390 — 둘 다 창 [100,200] 밖 → 확정 거부
     expect(out.event).toBeNull();
     expect(out.state.phase).toBe("reacquiring");
@@ -228,7 +238,7 @@ describe("car 재획득 타이브레이크(스펙 §4.3 — 재획득 경로 한
 
   it("창 안 후보 복수면 거부 유지(평행도로 이탈 은폐 차단)", () => {
     const st = { ...enterReacquiring(100), reacquireV: 20 }; // 창 상한 100+20×12×1.5+100=560
-    const out = guideStep(st, { ...fixCoord(250, 20), accuracy: 10 }, uRoute, 12, CAR_TUNING);
+    const out = guideStep(st, { ...fixCoord(250, 20), accuracy: 10, stopped: false }, uRoute, 12, CAR_TUNING);
     // 북 d≈250·남 d≈390 둘 다 창 안 → 복수 거부
     expect(out.event).toBeNull();
     expect(out.state.phase).toBe("reacquiring");
@@ -245,13 +255,13 @@ describe("car 재획득 타이브레이크(스펙 §4.3 — 재획득 경로 한
     const state: GuideState = { ...guideStateAt(longRoute, 100, 0), lastFixAt: 0 };
     const entered = guideStep(
       state,
-      { ...fixCoord(100, 0), accuracy: 10 },
+      { ...fixCoord(100, 0), accuracy: 10, stopped: false },
       longRoute,
       11,
       CAR_TUNING);
     expect(entered.event?.kind).toBe("reacquiring");
     const st: GuideState = { ...entered.state, reacquireV: 20 };
-    const out = guideStep(st, { ...fixCoord(500, 10), accuracy: 10 }, longRoute, 12, CAR_TUNING);
+    const out = guideStep(st, { ...fixCoord(500, 10), accuracy: 10, stopped: false }, longRoute, 12, CAR_TUNING);
     expect(out.event?.kind).toBe("reacquired");
     expect(out.state.d).toBeCloseTo(500, -1); // 위도-미터 근사 ±1m
   });
@@ -259,7 +269,7 @@ describe("car 재획득 타이브레이크(스펙 §4.3 — 재획득 경로 한
   it("전방 여유 버퍼(+100m)가 채택을 가른다 — 버퍼 회귀 잠금(독립 리뷰)", () => {
     const st = enterReacquiring(100); // v=0 → 창 [100, 200]
     // d≈180은 버퍼 100일 때만 창 안(50이면 상한 150 밖). 남 후보 d≈460은 창 밖.
-    const out = guideStep(st, { ...fixCoord(180, 10), accuracy: 10 }, uRoute, 12, CAR_TUNING);
+    const out = guideStep(st, { ...fixCoord(180, 10), accuracy: 10, stopped: false }, uRoute, 12, CAR_TUNING);
     expect(out.event?.kind).toBe("reacquired");
     expect(out.state.d).toBeCloseTo(180, 0);
   });
@@ -269,7 +279,7 @@ describe("car 이탈 재통지(스펙 §4.3 — 180초·무톤)", () => {
   it("확정 후 180초 전에는 침묵, 이후 재통지는 무톤·상태 전문", () => {
     const route = routeFrom([{ len: 600, desc: "직진" }]);
     let state: GuideState = { ...guideStateAt(route, 0, 0), lastFixAt: 0 };
-    const off = (along: number) => ({ ...fixCoord(along, 60), accuracy: 10 });
+    const off = (along: number) => ({ ...fixCoord(along, 60), accuracy: 10, stopped: false });
     const confirmSeq: [number, number][] = [
       [5, 40],
       [10, 80],
@@ -312,7 +322,7 @@ describe("속도 가드 표본 소멸 시 해제(정확도 배제의 2차 회귀
     ];
     let out: ReturnType<typeof guideStep> | null = null;
     for (const [t, along] of fast) {
-      out = guideStep(state, { ...fixCoord(along, 0), accuracy: 10 }, route, t, WALK_TUNING);
+      out = guideStep(state, { ...fixCoord(along, 0), accuracy: 10, stopped: false }, route, t, WALK_TUNING);
       state = out.state;
     }
     expect(out!.event?.kind).toBe("speedSuggest");
@@ -321,10 +331,10 @@ describe("속도 가드 표본 소멸 시 해제(정확도 배제의 2차 회귀
     // 옛 표본을 배수해 t=25에 표본 전무 → 가드 해제. 미해제면 이탈 재통지가
     // 무기한 억제된다(독립 리뷰 MAJOR).
     for (const t of [15, 20]) {
-      state = guideStep(state, { ...fixCoord(90, 0), accuracy: 30 }, route, t, WALK_TUNING).state;
+      state = guideStep(state, { ...fixCoord(90, 0), accuracy: 30, stopped: false }, route, t, WALK_TUNING).state;
       expect(state.speedGuardActive).toBe(true); // 잔여 표본이 남은 동안은 동결 유지
     }
-    state = guideStep(state, { ...fixCoord(90, 0), accuracy: 30 }, route, 25, WALK_TUNING).state;
+    state = guideStep(state, { ...fixCoord(90, 0), accuracy: 30, stopped: false }, route, 25, WALK_TUNING).state;
     expect(state.speedSamples).toHaveLength(0);
     expect(state.speedGuardActive).toBe(false);
   });
@@ -375,7 +385,7 @@ describe("최종 접근 진입 조건", () => {
     const state = { ...atEnd(route, 112), announcedUpTo: 0 };
     const out = guideStep(
       state,
-      { ...fixCoord(115, 0), accuracy: 8 },
+      { ...fixCoord(115, 0), accuracy: 8, stopped: false },
       route,
       10,
       WALK_TUNING);
@@ -388,7 +398,7 @@ describe("최종 접근 진입 조건", () => {
     const state: GuideState = { ...atEnd(route), phase: "offRoute" };
     const out = guideStep(
       state,
-      { ...fixCoord(97, 60), accuracy: 8 },
+      { ...fixCoord(97, 60), accuracy: 8, stopped: false },
       route,
       10,
       WALK_TUNING);
@@ -400,7 +410,7 @@ describe("최종 접근 진입 조건", () => {
     const state: GuideState = { ...atEnd(route), autoHandoffArmed: false };
     const out = guideStep(
       state,
-      { ...fixCoord(97, 0), accuracy: 8 },
+      { ...fixCoord(97, 0), accuracy: 8, stopped: false },
       route,
       10,
       WALK_TUNING);
@@ -415,7 +425,7 @@ describe("최종 접근 진입 조건", () => {
     const route = straight();
     const entered = guideStep(
       atEnd(route),
-      { ...fixCoord(97, 0), accuracy: 8 },
+      { ...fixCoord(97, 0), accuracy: 8, stopped: false },
       route,
       10,
       WALK_TUNING);
@@ -424,7 +434,7 @@ describe("최종 접근 진입 조건", () => {
 
     const bad = guideStep(
       entered.state,
-      { ...fixCoord(97, 0), accuracy: 200 },
+      { ...fixCoord(97, 0), accuracy: 200, stopped: false },
       route,
       20,
       WALK_TUNING);
@@ -442,7 +452,7 @@ describe("최종 접근 진입 조건", () => {
     };
     state = guideStep(
       state,
-      { ...fixCoord(200, 0), accuracy: 10 },
+      { ...fixCoord(200, 0), accuracy: 10, stopped: false },
       route,
       10,
       WALK_TUNING).state;
@@ -483,6 +493,7 @@ describe("방위 축 통합 (유도 관측 — 궤적 주도)", () => {
     lat: 37.5 + along / 111320,
     lng: 127.1 + lateral / 111320 / Math.cos((37.5 * Math.PI) / 180),
     accuracy: 8,
+    stopped: false,
   });
 
   /** start 지점에서 bearingDeg 방향으로 1.2m/s·1Hz 보행 fix 시퀀스(관측은 유도기가 만든다). */
@@ -668,7 +679,7 @@ describe("방위 축 통합 (유도 관측 — 궤적 주도)", () => {
     // uncertain 진입(정확도 악화)
     const toUncertain = guideStep(
       primed(),
-      { ...at(85), accuracy: 80 },
+      { ...at(85), accuracy: 80, stopped: false },
       route,
       21,
       WALK_TUNING,
@@ -688,7 +699,7 @@ describe("방위 축 통합 (유도 관측 — 궤적 주도)", () => {
     const { state, confirmedAt, alongNow } = confirmedByReversal();
     let s = state;
     for (let i = 1; i <= 5; i++) {
-      s = guideStep(s, { ...at(alongNow), accuracy: 80 }, route, confirmedAt + i, WALK_TUNING).state;
+      s = guideStep(s, { ...at(alongNow), accuracy: 80, stopped: false }, route, confirmedAt + i, WALK_TUNING).state;
     }
     expect(s.phase).toBe("uncertain");
     expect(s.resumePhase).toBe("offRoute");
@@ -736,7 +747,7 @@ describe("방위 축 리듀서 trace (Kit 동조 가드)", () => {
       for (const f of interpolate(sc.fixes as ReducerFix[])) {
         state = guideStep(
           state,
-          { ...fixCoord(f.along, f.lateral), accuracy: f.acc },
+          { ...fixCoord(f.along, f.lateral), accuracy: f.acc, stopped: false },
           route,
           f.t,
           WALK_TUNING,

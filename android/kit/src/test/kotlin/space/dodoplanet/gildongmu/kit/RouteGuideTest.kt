@@ -40,10 +40,10 @@ class RouteGuideTest {
         )
 
         @Serializable
-        data class Step(val len: Double, val desc: String, val action: String? = null)
+        data class Step(val len: Double, val desc: String, val action: String? = null, val crossing: Boolean? = null)
 
         @Serializable
-        data class Fix(val t: Double, val along: Double, val lateral: Double, val acc: Double)
+        data class Fix(val t: Double, val along: Double, val lateral: Double, val acc: Double, val stopped: Boolean? = null)
 
         @Serializable
         data class Expectation(
@@ -61,13 +61,15 @@ class RouteGuideTest {
             val stage: Int? = null,
             /** 그 fix 뒤 `guideNextTarget`(N4 2026-09-24). 거리는 ±1m(좌표 왕복 오차). */
             val nextTarget: NextTarget? = null,
+            /** `announceSteps`의 `late`(E62 R6). */
+            val late: Boolean? = null,
         )
 
         @Serializable
         data class NextTarget(val kind: String, val meters: Double)
     }
 
-    private data class Seg(val len: Double, val desc: String, val action: String? = null)
+    private data class Seg(val len: Double, val desc: String, val action: String? = null, val crossing: Boolean = false)
 
     private fun routeFrom(steps: List<Seg>, waypointStepIndex: Int? = null): GuideRoute {
         var acc = 0.0
@@ -76,6 +78,7 @@ class RouteGuideTest {
                 s.desc,
                 listOf(RoutePoint(lat0 + acc * meterLat, lng0), RoutePoint(lat0 + (acc + s.len) * meterLat, lng0)),
                 s.action?.let { WalkAction.fromRawValue(it) ?: fail("미지 action $it") },
+                s.crossing,
             )
             acc += s.len
             g
@@ -83,8 +86,8 @@ class RouteGuideTest {
         return checkNotNull(buildGuideRoute(inputs, waypointStepIndex))
     }
 
-    private fun fixCoord(along: Double, lateral: Double, acc: Double) =
-        GuideFix(lat0 + along * meterLat, lng0 + (lateral * meterLat) / cos(lat0 * PI / 180), acc)
+    private fun fixCoord(along: Double, lateral: Double, acc: Double, stopped: Boolean = false) =
+        GuideFix(lat0 + along * meterLat, lng0 + (lateral * meterLat) / cos(lat0 * PI / 180), acc, stopped)
 
     /** 이벤트 종류를 fixture 문자열로 환원(웹 event.kind 대응). */
     private fun kindName(event: GuideEvent?): String? = when (event) {
@@ -118,7 +121,7 @@ class RouteGuideTest {
         val scenarios = Fixtures.sharedJson("route-guide-scenarios.json", ScenarioFile.serializer()).scenarios
         assertTrue(scenarios.size >= 40) // 공회전 방지
         for (sc in scenarios) {
-            val route = routeFrom(sc.steps.map { Seg(it.len, it.desc, it.action) }, sc.waypointStepIndex)
+            val route = routeFrom(sc.steps.map { Seg(it.len, it.desc, it.action, it.crossing == true) }, sc.waypointStepIndex)
             val tuning = when (sc.tuning) {
                 null -> GuideTuning.walk
                 "car" -> GuideTuning.car
@@ -127,7 +130,7 @@ class RouteGuideTest {
             }
             var state = initialGuideState(route, 0.0, hasFinalApproachGeometry = sc.geometry == true).state
             val results = sc.fixes.map { f ->
-                val out = guideStep(state, fixCoord(f.along, f.lateral, f.acc), route, f.t, tuning)
+                val out = guideStep(state, fixCoord(f.along, f.lateral, f.acc, f.stopped == true), route, f.t, tuning)
                 state = out.state
                 out
             }
@@ -139,6 +142,7 @@ class RouteGuideTest {
                 if (ex.eventNull == true) for (r in rs) assertNull(r.event, "${sc.name}: eventNull")
                 ex.eventOneOf?.let { oneOf -> assertTrue(rs.any { kindName(it.event) in oneOf }, "${sc.name}: eventOneOf $oneOf") }
                 ex.indices?.let { want -> assertEquals(want, rs.firstNotNullOfOrNull { indicesOf(it.event) }, "${sc.name}: indices $want") }
+                ex.late?.let { l -> assertTrue(rs.any { (it.event as? GuideEvent.AnnounceSteps)?.late == l }, "${sc.name}: late $l") }
                 ex.tone?.let { t -> assertTrue(rs.any { it.tone?.rawValue == t }, "${sc.name}: tone $t") }
                 ex.stage?.let { st -> assertTrue(rs.any { (it.event as? GuideEvent.Imminent)?.stage == st }, "${sc.name}: stage $st") }
                 if (ex.toneNull == true) for (r in rs) assertNull(r.tone, "${sc.name}: toneNull")

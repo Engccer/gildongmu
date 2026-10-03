@@ -29,11 +29,14 @@ private struct Scenario: Decodable {
         let desc: String
         /// 서버 투영 행동(자동차 시나리오, K2 §2.3).
         let action: String?
+        /// 구간 전체가 횡단(E62 R1·R5). 미지정 = 아님.
+        let crossing: Bool?
 
-        init(len: Double, desc: String, action: String? = nil) {
+        init(len: Double, desc: String, action: String? = nil, crossing: Bool? = nil) {
             self.len = len
             self.desc = desc
             self.action = action
+            self.crossing = crossing
         }
     }
 
@@ -42,6 +45,8 @@ private struct Scenario: Decodable {
         let along: Double
         let lateral: Double
         let acc: Double
+        /// 그 fix의 정지 판정(E62 R2). 미지정 = 움직이는 중.
+        let stopped: Bool?
     }
 
     struct Expectation: Decodable {
@@ -61,6 +66,8 @@ private struct Scenario: Decodable {
         let stage: Int?
         /// 그 fix 뒤 `guideNextTarget`(N4 2026-09-24). 거리는 ±1m(좌표 왕복 오차).
         let nextTarget: NextTarget?
+        /// `announceSteps`의 `late`(E62 R6).
+        let late: Bool?
     }
 
     struct NextTarget: Decodable {
@@ -86,7 +93,8 @@ private func routeFrom(_ steps: [Scenario.Step], waypointStepIndex: Int? = nil) 
                 RoutePoint(lat: lat0 + acc * meterLat, lng: lng0),
                 RoutePoint(lat: lat0 + (acc + s.len) * meterLat, lng: lng0),
             ],
-            action: s.action.flatMap(WalkAction.init(rawValue:))
+            action: s.action.flatMap(WalkAction.init(rawValue:)),
+            crossing: s.crossing == true
         )
         acc += s.len
         return g
@@ -94,11 +102,12 @@ private func routeFrom(_ steps: [Scenario.Step], waypointStepIndex: Int? = nil) 
     return buildGuideRoute(inputs, waypointStepIndex: waypointStepIndex)!
 }
 
-private func fixCoord(along: Double, lateral: Double, acc: Double) -> GuideFix {
+private func fixCoord(along: Double, lateral: Double, acc: Double, stopped: Bool = false) -> GuideFix {
     GuideFix(
         lat: lat0 + along * meterLat,
         lng: lng0 + (lateral * meterLat) / cos(lat0 * .pi / 180),
-        accuracy: acc
+        accuracy: acc,
+        stopped: stopped
     )
 }
 
@@ -126,7 +135,7 @@ private func kindName(_ event: GuideEvent?) -> String? {
 
 private func indicesOf(_ event: GuideEvent?) -> [Int]? {
     switch event {
-    case let .announceSteps(i): i
+    case let .announceSteps(i, _): i
     case let .imminent(i, _, _): i
     case let .farNotice(i, _): i
     case let .bundleReread(i): i
@@ -153,7 +162,7 @@ private func stageOf(_ event: GuideEvent?) -> Int? {
         for f in sc.fixes {
             let out = guideStep(
                 state: state,
-                fix: fixCoord(along: f.along, lateral: f.lateral, acc: f.acc),
+                fix: fixCoord(along: f.along, lateral: f.lateral, acc: f.acc, stopped: f.stopped == true),
                 route: route,
                 now: f.t,
                 tuning: tuning
@@ -187,6 +196,12 @@ private func stageOf(_ event: GuideEvent?) -> Int? {
             if let indices = ex.indices {
                 let found = rs.compactMap { indicesOf($0.event) }.first
                 #expect(found == indices, "\(sc.name): indices \(indices)")
+            }
+            if let late = ex.late {
+                #expect(
+                    rs.contains { if case let .announceSteps(_, l) = $0.event { return l == late } else { return false } },
+                    "\(sc.name): late \(late)"
+                )
             }
             if let tone = ex.tone {
                 #expect(rs.contains { toneName($0.tone) == tone }, "\(sc.name): tone \(tone)")

@@ -777,7 +777,7 @@ class WalkGuideModel(
         ).getOrThrow() ?: return null
         if (via != null && briefing.waypoint == null) return null
         val route = buildGuideRoute(
-            briefing.steps.map { GuideStepGeometry(it.description, it.pathCoords, it.action) },
+            briefing.steps.map { GuideStepGeometry(it.description, it.pathCoords, it.action, crossing = it.crossing == true) },
             briefing.waypoint?.stepIndex,
         ) ?: return null
         return DetailFetchResult(
@@ -1098,7 +1098,8 @@ class WalkGuideModel(
         lastFixCoordAt = now
         noteSessionProgress(fix.lat, fix.lng, now)
 
-        val out = guideStep(state, GuideFix(fix.lat, fix.lng, fix.accuracy), route, now, tuning)
+        // 멈추면 침묵(E62 판정 3) — `speedUnknown`은 정지가 아니다(E55 3-state).
+        val out = guideStep(state, GuideFix(fix.lat, fix.lng, fix.accuracy, stopped = motion == MotionState.stopped), route, now, tuning)
         guideState = out.state
         when (out.event) {
             GuideEvent.BackOnRoute, GuideEvent.Reacquired -> { liveBaselineD = out.state.d; liveRowsState = null }

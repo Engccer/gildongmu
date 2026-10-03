@@ -40,10 +40,13 @@ public struct GuideStepSpan: Sendable, Equatable {
     /// 자동차 결정 지점의 지점·방면(E61, 서버 `at`·`toward`). 짧은 안내(임박·주기)가 읽는다.
     /// 자동차 전용이고 둘 다 없으면 nil. 웹 `StepSpan.carLandmark` 미러.
     public let carLandmark: CarLandmark?
+    /// 이 스텝 구간 전체가 횡단이다(서버 A26 `crossing`). 리듀서의 횡단 중 침묵(E62 R1)·횡단 끝 전 다음 전문
+    /// 유예(R5)가 쓴다. 웹 `StepSpan.crossing` 미러.
+    public let crossing: Bool
 
     public init(
         index: Int, description: String, startD: Double, endD: Double, isLong: Bool,
-        action: WalkAction? = nil, carLandmark: CarLandmark? = nil
+        action: WalkAction? = nil, carLandmark: CarLandmark? = nil, crossing: Bool = false
     ) {
         self.index = index
         self.description = description
@@ -52,6 +55,7 @@ public struct GuideStepSpan: Sendable, Equatable {
         self.isLong = isLong
         self.action = action
         self.carLandmark = carLandmark
+        self.crossing = crossing
     }
 }
 
@@ -86,19 +90,22 @@ public struct GuideProjection: Sendable, Equatable {
 public struct GuideStepGeometry: Sendable {
     public let description: String
     public let pathCoords: [RoutePoint]?
-    /// 서버 투영 결정 행동(자동차 전용, K2 §2.3). 도보는 nil.
+    /// 서버 투영 결정 행동(K2 §2.3·E16 축3).
     public let action: WalkAction?
     /// 자동차 지점·방면(E61). 도보는 nil.
     public let carLandmark: CarLandmark?
+    /// 이 스텝 구간 전체가 횡단이다(서버 A26 `crossing`, E62 리듀서 입력).
+    public let crossing: Bool
 
     public init(
         description: String, pathCoords: [RoutePoint]?, action: WalkAction? = nil,
-        carLandmark: CarLandmark? = nil
+        carLandmark: CarLandmark? = nil, crossing: Bool = false
     ) {
         self.description = description
         self.pathCoords = pathCoords
         self.action = action
         self.carLandmark = carLandmark
+        self.crossing = crossing
     }
 }
 
@@ -146,7 +153,8 @@ public func buildGuideRoute(
             endD: d,
             isLong: d - startD >= longStepMinMeters,
             action: step.action,
-            carLandmark: step.carLandmark
+            carLandmark: step.carLandmark,
+            crossing: step.crossing
         ))
     }
     guard points.count >= 2, d > 0 else { return nil }

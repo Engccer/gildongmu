@@ -35,6 +35,11 @@ export interface StepSpan {
    */
   action?: GuideAction;
   /**
+   * 이 스텝 구간 전체가 횡단이다(서버 A26 `WalkRouteStep.crossing`). 리듀서가 횡단 중 침묵(E62 R1)·횡단 끝 전 다음
+   * 전문 유예(R5)에 쓴다. 부재 = 횡단 아님.
+   */
+  crossing?: boolean;
+  /**
    * 자동차 결정 지점의 지점·방면(E61, 서버 `at`·`toward`). 짧은 안내(임박·주기)가 문장 대신
    * 읽는다. 자동차 전용이고 둘 다 없으면 키 자체가 없다. Kit `GuideStepSpan.carLandmark` 미러.
    */
@@ -77,7 +82,13 @@ const finite = (c: Coord) => Number.isFinite(c.lat) && Number.isFinite(c.lng);
  * (경유지에서 출발). Kit `buildGuideRoute(_:waypointStepIndex:)` 미러.
  */
 export function buildGuideRoute(
-  steps: { description: string; pathCoords?: Coord[]; action?: GuideAction; carLandmark?: CarLandmark }[],
+  steps: {
+    description: string;
+    pathCoords?: Coord[];
+    action?: GuideAction;
+    carLandmark?: CarLandmark;
+    crossing?: boolean;
+  }[],
   opts?: { waypointStepIndex?: number },
 ): GuideRoute | null {
   if (steps.length === 0) return null;
@@ -123,6 +134,7 @@ export function buildGuideRoute(
       isLong: d - startD >= LONG_STEP_MIN_M,
       ...(steps[i].action === undefined ? {} : { action: steps[i].action }),
       ...(steps[i].carLandmark === undefined ? {} : { carLandmark: steps[i].carLandmark }),
+      ...(steps[i].crossing ? { crossing: true } : {}),
     });
   }
   if (points.length < 2 || d <= 0) return null;

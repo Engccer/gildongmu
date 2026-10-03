@@ -205,6 +205,19 @@ export interface GuideTuning {
    */
   quietAfterAnnounce: boolean;
   /**
+   * 다음 유닛 전문을 미루는가(E62 spec `2026-10-03-crosswalk-guidance-design.md` §4 R4·R5·R6). walk true:
+   * ①행동 없는 다음 구간(유닛이 그 스텝 하나이거나 그 스텝이 전문 임계 이상)은 30m 전이 아니라 실위치가 들어선
+   * 뒤 ②전문이 나간 유닛 안에 실위치가 아직 나가지 않은 횡단이 있으면 그 횡단을 나간 뒤 ③그렇게 늦게 나간
+   * 전문은 `late`(머리말 없음)이고 첫 스텝에 행동이 있으면 그 행동 톤을 함께 낸다. 미루는 동안은 주기 통지·
+   * 되읽기도 없다. car false.
+   */
+  deferAnnounce: boolean;
+  /**
+   * 정지 중 주기 통지·되읽기를 내지 않는가(E62 판정 3 "멈추면 침묵, 움직이면 재개"). walk true · car false.
+   * 정지는 오케스트레이터의 `motionStep`이 `stopped`일 때뿐이다(`speedUnknown`은 정지가 아니다).
+   */
+  silentWhenStopped: boolean;
+  /**
    * 속도 표본 정확도 상한(m). walk 20(`SPEED_SAMPLE_MAX_ACC_M` — 계단 노이즈), car 50
    * (= uncertain 게이트. 차량은 임박 임계가 `v×T`라 표본이 끊기면 바닥 15m로 떨어져
    * 20m/s에서 0.75초가 된다 — 정확도 21~50m 구간에서 시간 축이 죽는 것이 더 위험하다).
@@ -296,6 +309,8 @@ export const WALK_TUNING: GuideTuning = {
   imminentNeedsAnnounce: true,
   silentCatchUp: false,
   quietAfterAnnounce: true,
+  deferAnnounce: true,
+  silentWhenStopped: true,
   speedSampleMaxAccM: SPEED_SAMPLE_MAX_ACC_M,
   farNoticeM: null,
   windowAheadMinM: WINDOW_AHEAD_MIN_M,
@@ -342,6 +357,8 @@ export const CAR_TUNING: GuideTuning = {
   imminentNeedsAnnounce: false,
   silentCatchUp: true,
   quietAfterAnnounce: false,
+  deferAnnounce: false,
+  silentWhenStopped: false,
   speedSampleMaxAccM: UNCERTAIN_ACCURACY_M,
   farNoticeM: 1500,
   windowAheadMinM: 150,
@@ -412,6 +429,11 @@ export interface GuideFix {
   lat: number;
   lng: number;
   accuracy: number;
+  /**
+   * 이 fix에서 사용자가 서 있는가(오케스트레이터의 `motionStep` 결과가 `stopped`일 때만 참 — `speedUnknown`은
+   * 정지가 아니다, E55와 같은 3-state). 기본값 없음 — 빠뜨리면 "멈추면 침묵"(E62 판정 3)이 조용히 죽는다.
+   */
+  stopped: boolean;
 }
 
 export interface GuideState {
@@ -521,7 +543,11 @@ export interface GuideState {
 }
 
 export type GuideEvent =
-  | { kind: "announceSteps"; indices: number[] }
+  /**
+   * 유닛 전문. `late`는 실위치가 이미 첫 스텝에 들어선 뒤 나간 전문이다(E62 R4·R5 — 행동 없는 구간 진입·횡단 끝).
+   * 소비자는 `late`면 거리 머리말("앞으로 약 … 가다가")을 붙이지 않는다(산술로 가르면 램프인 구간에서 새어 나간다).
+   */
+  | { kind: "announceSteps"; indices: number[]; late: boolean }
   /**
    * 결정 지점 임박(walk 20·15·10m 세 단계) 앞. `action`은 낭독 문구를 고르는 키이고 `indices`는
    * **그 행동을 담은 스텝 하나**다(유닛이 아니다 — 결정 지점은 유닛 안에도 있다). `stage`는
@@ -1395,6 +1421,13 @@ export function guideStep(
     }
   }
 
+  // 실위치(E62 spec §4 머리): 원시 d는 실위치보다 약 `PROJECTION_LAG_M` 뒤다. R1·R3·R4·R5가 전부 이 하나를
+  // 쓴다 — 원시 `cur`와 섞으면 짧은 횡단의 첫 10m가 어느 규칙에도 잡히지 않아 차도 위에서 "N시 방향으로 도세요"가
+  // 되읽힌다(설계 리뷰 B1).
+  const realD = d + PROJECTION_LAG_M;
+  // 이번 fix에 전문을 미뤘는가(R4·R5). 미루는 동안은 주기 통지·되읽기도 내지 않는다.
+  let announceDeferred = false;
+
   // 6c) 선행 낭독: 낭독 완료 유닛의 끝까지 잔여 ≤ 임박선이면 다음 유닛 전문(리뷰 #4).
   //     임박선은 max(거리 하한, v×시간 계수) — walk는 시간 계수 0이라 30m 고정 동일.
   if (next.announcedUpTo < route.steps.length - 1) {
@@ -1403,8 +1436,24 @@ export function guideStep(
       tuning.announceAheadM,
       vPrev * tuning.announceAheadSpeedS,
     );
-    if (announcedEnd - d <= announceAhead) {
-      const unit = unitAt(route, next.announcedUpTo + 1);
+    const nextUnit = unitAt(route, next.announcedUpTo + 1);
+    const nextFirst = route.steps[nextUnit[0]];
+    const nextFirstAction = stepActionFor(nextFirst, tuning.actionSource);
+    if (tuning.deferAnnounce && announcedEnd - d <= announceAhead) {
+      // R5: 전문이 나간 유닛 안에 실위치가 아직 나가지 않은 횡단이 있으면 그 횡단을 나간 뒤로 미룬다 — 짧은 횡단
+      //     앞에서 다음 전문과 임박 큐가 1~2초 차로 겹치던 ⓐ(2026-10-03 3/3)와 "첫째를 건넌 뒤" 문장.
+      const crossingAhead = unitAt(route, next.announcedUpTo).some(
+        (i) => route.steps[i].crossing === true && route.steps[i].endD > realD,
+      );
+      // R4: 행동 없는 다음 구간은 들어선 뒤. 묶음 앞쪽 30m 안에 행동 스텝이 있는 묶음은 제외 — 묶음 전체를 미루면
+      //     묶음 안 회전이 30m 전문과 stage 0 문장을 잃는다(설계 리뷰 M1).
+      const actionless =
+        nextFirstAction === null &&
+        (nextUnit.length === 1 || nextFirst.endD - nextFirst.startD >= ANNOUNCE_AHEAD_M);
+      announceDeferred = crossingAhead || (actionless && nextFirst.startD > realD);
+    }
+    if (!announceDeferred && announcedEnd - d <= announceAhead) {
+      const unit = nextUnit;
       // car(silentCatchUp): 묶음 안에서 이미 끝난 스텝은 빼고 읽는다 — "지난 회전 전문"을
       // 묶음 단위로 되읽는 구멍(설계 리뷰 B6). 남는 것이 없으면 마지막 스텝 하나.
       // `i > announcedUpTo`: 임박 명령이 전문을 대신해 래치를 스텝 단위로 올린 뒤(6a) 그 스텝이
@@ -1428,8 +1477,15 @@ export function guideStep(
       //   ⚠ walk에서 그 정숙 구간이 30m 시점에 사라지는 것은 **아는 대가**다. 이 fix의
       //   추세음은 `eventOwned`가 막지만 다음 fix부터는 막지 않으므로, 낭독 첫 3초
       //   보호가 없어진다. 실보행 판정 대상이다(`docs/BACKLOG.md`).
+      // R6(E62): 실위치가 이미 첫 스텝에 들어선 전문은 늦은 전문이다 — 머리말 없음. 첫 스텝에 행동이 있으면(분해된
+      //     둘째 횡단) 임박 단계는 이미 지났으므로 이 전문이 그 행동 톤을 내고 그 경계의 임박 래치를 소비한다(톤 1회).
+      const late = tuning.deferAnnounce && nextFirst.startD <= realD;
+      if (late && nextFirstAction) {
+        next = { ...next, imminentUpTo: Math.max(next.imminentUpTo, unit[0]), imminentStage: 0 };
+        return emit(next, { kind: "announceSteps", indices, late }, imminentTone(nextFirstAction));
+      }
       const tone = tuning.imminentAheadM === null ? "ahead" : null;
-      return emit(next, { kind: "announceSteps", indices }, tone);
+      return emit(next, { kind: "announceSteps", indices, late }, tone);
     }
   }
 
@@ -1483,11 +1539,21 @@ export function guideStep(
   }
 
   // 6c) 주기: following=구간 잔여, bundle=묶음 재통독(리뷰 #5). 기준은 lastAnnouncedAt.
+  //     E62: 횡단 중(원시 `cur` 또는 실위치 스텝이 횡단 — R1) · 정지 중(R2) · 전문을 미루는 중(R4·R5)에는 둘 다 내지
+  //     않는다. 정지 중엔 `lastAnnouncedAt`도 건드리지 않아 다시 움직이면 주기가 이어진다.
   const sinceAnnounce = now - next.lastAnnouncedAt;
-  if (cur.isLong) {
+  const realCur = stepAt(route, realD);
+  const periodicSilent =
+    cur.crossing === true ||
+    realCur.crossing === true ||
+    (tuning.silentWhenStopped && fix.stopped) ||
+    announceDeferred;
+  const curUnit = unitAt(route, cur.index);
+  const nextAnnounced = next.announcedUpTo > curUnit[curUnit.length - 1];
+  if (periodicSilent) {
+    // 아래 6d(속도 제안)로 간다.
+  } else if (cur.isLong) {
     const remainingStep = cur.endD - d;
-    const curUnit = unitAt(route, cur.index);
-    const nextAnnounced = next.announcedUpTo > curUnit[curUnit.length - 1];
     if (
       !(tuning.quietAfterAnnounce && nextAnnounced) &&
       sinceAnnounce >= periodicIntervalS(remainingStep)
@@ -1500,10 +1566,15 @@ export function guideStep(
           accuracy: fix.accuracy,
         }, null);
     }
-  } else if (sinceAnnounce >= BUNDLE_REREAD_S) {
-    const indices = unitAt(route, cur.index);
-    next = { ...next, lastAnnouncedAt: now };
-    return emit(next, { kind: "bundleReread", indices }, null);
+  } else if (sinceAnnounce >= BUNDLE_REREAD_S && !(tuning.quietAfterAnnounce && nextAnnounced)) {
+    // R3(E62): 다음 유닛 전문이 나갔으면 되읽지 않는다(2026-10-03 ⓒ — 우회전 0.7m 앞에서 지난 좌회전 되읽기).
+    //     되읽기는 실위치 스텝부터다(지난 스텝을 다시 읽지 않는다 — 첫 index가 곧 들어선 스텝이라 소비자가 그 스텝의
+    //     회전 문장을 뗀다). 남는 것이 없으면 되읽지 않는다. car(`quietAfterAnnounce` false)는 종전대로 유닛 전체.
+    const indices = tuning.quietAfterAnnounce ? curUnit.filter((i) => i >= realCur.index) : curUnit;
+    if (indices.length > 0) {
+      next = { ...next, lastAnnouncedAt: now };
+      return emit(next, { kind: "bundleReread", indices }, null);
+    }
   }
 
   // 6d) 속도 제안(최하위, 세션당 1회 — 리뷰 #16 플래그 분리).

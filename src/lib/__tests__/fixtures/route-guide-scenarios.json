@@ -3329,7 +3329,8 @@
     },
     {
      "len": 100,
-     "desc": "직진B"
+     "desc": "우회전B",
+     "action": "right"
     }
    ],
    "fixes": [
@@ -3395,7 +3396,8 @@
      "afterFix": 6,
      "event": "waypointApproaching"
     }
-   ]
+   ],
+   "comment": "B는 행동 스텝이다 — 행동 없는 다음 구간은 들어선 뒤 전문이라(E62 R4) 30m 전 전문과 예고의 경합을 보려면 행동이 있어야 한다."
   },
   {
    "name": "자동차 프로파일은 경유지 접근 예고를 내지 않는다(waypointApproachM null), 도착은 종전대로(N4 2026-09-24)",
@@ -3649,7 +3651,8 @@
     },
     {
      "len": 100,
-     "desc": "직진B"
+     "desc": "우회전B",
+     "action": "right"
     }
    ],
    "fixes": [
@@ -3735,7 +3738,8 @@
      "afterFix": 8,
      "event": "waypointApproaching"
     }
-   ]
+   ],
+   "comment": "B는 행동 스텝이다 — 행동 없는 다음 구간은 들어선 뒤 전문이라(E62 R4) 30m 전 전문과 예고의 경합을 보려면 행동이 있어야 한다."
   },
   {
    "name": "접근 예고와 임박 큐가 같은 fix에 서면 임박 먼저, 예고는 다음 fix(N4 2026-09-24 설계 리뷰 #8)",
@@ -3937,7 +3941,8 @@
     },
     {
      "len": 100,
-     "desc": "직진B"
+     "desc": "우회전B",
+     "action": "right"
     }
    ],
    "fixes": [
@@ -4012,7 +4017,8 @@
      "afterFix": 6,
      "event": "waypointReached"
     }
-   ]
+   ],
+   "comment": "B는 행동 스텝이다 — 행동 없는 다음 구간은 들어선 뒤 전문이라(E62 R4) 30m 전 전문과 예고의 경합을 보려면 행동이 있어야 한다."
   },
   {
    "name": "도착선까지 1m 미만이면 \"0m\" 예고를 내지 않고 도착에 맡긴다(N4 2026-09-24 설계 리뷰 #11)",
@@ -4025,7 +4031,8 @@
     },
     {
      "len": 100,
-     "desc": "직진B"
+     "desc": "우회전B",
+     "action": "right"
     }
    ],
    "fixes": [
@@ -4096,7 +4103,8 @@
      "afterFix": 7,
      "event": "waypointReached"
     }
-   ]
+   ],
+   "comment": "B는 행동 스텝이다 — 행동 없는 다음 구간은 들어선 뒤 전문이라(E62 R4) 30m 전 전문과 예고의 경합을 보려면 행동이 있어야 한다."
   },
   {
    "name": "투영 점프 fix는 접근선 안이어도 예고하지 않고 다음 정상 fix에서 낸다(N4 2026-09-24, W1과 같은 신뢰 조건)",
@@ -7336,6 +7344,4388 @@
     {
      "afterFix": 18,
      "eventNot": "imminent"
+    }
+   ]
+  },
+  {
+   "name": "E62 R4: 행동 없는 다음 구간은 30m 전 전문 없이 실위치가 들어선 뒤 늦은 전문 1회, 그 접근 구간은 주기 통지도 없다",
+   "steps": [
+    {
+     "len": 200,
+     "desc": "직진A"
+    },
+    {
+     "len": 300,
+     "desc": "직진B"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 2.0,
+     "along": 3.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 4.0,
+     "along": 6.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 6.0,
+     "along": 9.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 8.0,
+     "along": 12.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 10.0,
+     "along": 15.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 12.0,
+     "along": 18.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 14.0,
+     "along": 21.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 16.0,
+     "along": 24.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 18.0,
+     "along": 27.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 20.0,
+     "along": 30.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 22.0,
+     "along": 33.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 24.0,
+     "along": 36.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 26.0,
+     "along": 39.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 28.0,
+     "along": 42.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 30.0,
+     "along": 45.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 32.0,
+     "along": 48.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 34.0,
+     "along": 51.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 36.0,
+     "along": 54.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 38.0,
+     "along": 57.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 40.0,
+     "along": 60.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 42.0,
+     "along": 63.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 44.0,
+     "along": 66.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 46.0,
+     "along": 69.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 48.0,
+     "along": 72.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 50.0,
+     "along": 75.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 52.0,
+     "along": 78.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 54.0,
+     "along": 81.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 56.0,
+     "along": 84.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 58.0,
+     "along": 87.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 60.0,
+     "along": 90.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 62.0,
+     "along": 93.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 64.0,
+     "along": 96.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 66.0,
+     "along": 99.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 68.0,
+     "along": 102.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 70.0,
+     "along": 105.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 72.0,
+     "along": 108.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 74.0,
+     "along": 111.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 76.0,
+     "along": 114.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 78.0,
+     "along": 117.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 80.0,
+     "along": 120.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 82.0,
+     "along": 123.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 84.0,
+     "along": 126.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 86.0,
+     "along": 129.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 88.0,
+     "along": 132.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 90.0,
+     "along": 135.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 92.0,
+     "along": 138.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 94.0,
+     "along": 141.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 96.0,
+     "along": 144.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 98.0,
+     "along": 147.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 100.0,
+     "along": 150.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 102.0,
+     "along": 153.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 104.0,
+     "along": 156.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 106.0,
+     "along": 159.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 108.0,
+     "along": 162.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 110.0,
+     "along": 165.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 112.0,
+     "along": 168.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 114.0,
+     "along": 171.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 116.0,
+     "along": 174.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 118.0,
+     "along": 177.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 120.0,
+     "along": 180.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 122.0,
+     "along": 183.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 124.0,
+     "along": 186.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 126.0,
+     "along": 189.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 128.0,
+     "along": 192.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 130.0,
+     "along": 195.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 132.0,
+     "along": 198.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 134.0,
+     "along": 201.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 136.0,
+     "along": 204.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 138.0,
+     "along": 207.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 140.0,
+     "along": 210.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 142.0,
+     "along": 213.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 144.0,
+     "along": 216.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 146.0,
+     "along": 219.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 148.0,
+     "along": 222.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 150.0,
+     "along": 225.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 152.0,
+     "along": 228.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 154.0,
+     "along": 231.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 156.0,
+     "along": 234.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 158.0,
+     "along": 237.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 160.0,
+     "along": 240.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 162.0,
+     "along": 243.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 164.0,
+     "along": 246.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 166.0,
+     "along": 249.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 168.0,
+     "along": 252.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 170.0,
+     "along": 255.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 172.0,
+     "along": 258.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 174.0,
+     "along": 260,
+     "lateral": 0,
+     "acc": 5
+    }
+   ],
+   "expect": [
+    {
+     "afterFixAny": [
+      57,
+      58,
+      59,
+      60,
+      61,
+      62,
+      63
+     ],
+     "eventNull": true,
+     "comment": "전문을 미루는 접근 구간 — 주기 간격이 차도 침묵"
+    },
+    {
+     "afterFix": 64,
+     "event": "announceSteps",
+     "indices": [
+      1
+     ],
+     "late": true,
+     "toneNull": true
+    }
+   ]
+  },
+  {
+   "name": "E62 R4 예외: 다음 유닛이 짧은 행동 없는 스텝 + 회전 묶음이면 종전대로 30m 전 전문, 회전 임박 stage 0 문장이 산다(설계 리뷰 M1)",
+   "steps": [
+    {
+     "len": 200,
+     "desc": "직진A"
+    },
+    {
+     "len": 15,
+     "desc": "직진B"
+    },
+    {
+     "len": 30,
+     "desc": "좌회전C",
+     "action": "left"
+    },
+    {
+     "len": 200,
+     "desc": "직진D"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 2.0,
+     "along": 3.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 4.0,
+     "along": 6.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 6.0,
+     "along": 9.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 8.0,
+     "along": 12.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 10.0,
+     "along": 15.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 12.0,
+     "along": 18.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 14.0,
+     "along": 21.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 16.0,
+     "along": 24.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 18.0,
+     "along": 27.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 20.0,
+     "along": 30.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 22.0,
+     "along": 33.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 24.0,
+     "along": 36.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 26.0,
+     "along": 39.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 28.0,
+     "along": 42.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 30.0,
+     "along": 45.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 32.0,
+     "along": 48.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 34.0,
+     "along": 51.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 36.0,
+     "along": 54.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 38.0,
+     "along": 57.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 40.0,
+     "along": 60.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 42.0,
+     "along": 63.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 44.0,
+     "along": 66.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 46.0,
+     "along": 69.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 48.0,
+     "along": 72.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 50.0,
+     "along": 75.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 52.0,
+     "along": 78.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 54.0,
+     "along": 81.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 56.0,
+     "along": 84.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 58.0,
+     "along": 87.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 60.0,
+     "along": 90.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 62.0,
+     "along": 93.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 64.0,
+     "along": 96.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 66.0,
+     "along": 99.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 68.0,
+     "along": 102.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 70.0,
+     "along": 105.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 72.0,
+     "along": 108.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 74.0,
+     "along": 111.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 76.0,
+     "along": 114.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 78.0,
+     "along": 117.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 80.0,
+     "along": 120.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 82.0,
+     "along": 123.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 84.0,
+     "along": 126.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 86.0,
+     "along": 129.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 88.0,
+     "along": 132.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 90.0,
+     "along": 135.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 92.0,
+     "along": 138.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 94.0,
+     "along": 141.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 96.0,
+     "along": 144.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 98.0,
+     "along": 147.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 100.0,
+     "along": 150.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 102.0,
+     "along": 153.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 104.0,
+     "along": 156.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 106.0,
+     "along": 159.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 108.0,
+     "along": 162.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 110.0,
+     "along": 165.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 112.0,
+     "along": 168.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 114.0,
+     "along": 171.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 116.0,
+     "along": 174.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 118.0,
+     "along": 177.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 120.0,
+     "along": 180.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 122.0,
+     "along": 183.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 124.0,
+     "along": 186.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 126.0,
+     "along": 189.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 128.0,
+     "along": 192.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 130.0,
+     "along": 195.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 132.0,
+     "along": 198.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 134.0,
+     "along": 201.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 136.0,
+     "along": 204.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 138.0,
+     "along": 207.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 140.0,
+     "along": 210.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 142.0,
+     "along": 213.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 144.0,
+     "along": 216.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 146.0,
+     "along": 219.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 148.0,
+     "along": 222.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 150.0,
+     "along": 225.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 152.0,
+     "along": 228.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 154.0,
+     "along": 231.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 156.0,
+     "along": 234.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 158.0,
+     "along": 237.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 160.0,
+     "along": 240,
+     "lateral": 0,
+     "acc": 5
+    }
+   ],
+   "expect": [
+    {
+     "afterFix": 57,
+     "event": "announceSteps",
+     "indices": [
+      1,
+      2
+     ],
+     "late": false
+    },
+    {
+     "afterFix": 65,
+     "event": "imminent",
+     "stage": 0
+    }
+   ]
+  },
+  {
+   "name": "E62 R5(ⓐ): 짧은 횡단 앞에서 다음 전문을 내지 않고 실위치가 횡단을 나간 뒤 늦은 전문 + 그 행동 톤 1회",
+   "steps": [
+    {
+     "len": 200,
+     "desc": "직진A"
+    },
+    {
+     "len": 8,
+     "desc": "횡단X",
+     "action": "crosswalk",
+     "crossing": true
+    },
+    {
+     "len": 165,
+     "desc": "우회전B",
+     "action": "right"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 2.0,
+     "along": 3.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 4.0,
+     "along": 6.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 6.0,
+     "along": 9.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 8.0,
+     "along": 12.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 10.0,
+     "along": 15.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 12.0,
+     "along": 18.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 14.0,
+     "along": 21.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 16.0,
+     "along": 24.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 18.0,
+     "along": 27.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 20.0,
+     "along": 30.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 22.0,
+     "along": 33.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 24.0,
+     "along": 36.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 26.0,
+     "along": 39.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 28.0,
+     "along": 42.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 30.0,
+     "along": 45.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 32.0,
+     "along": 48.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 34.0,
+     "along": 51.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 36.0,
+     "along": 54.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 38.0,
+     "along": 57.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 40.0,
+     "along": 60.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 42.0,
+     "along": 63.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 44.0,
+     "along": 66.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 46.0,
+     "along": 69.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 48.0,
+     "along": 72.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 50.0,
+     "along": 75.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 52.0,
+     "along": 78.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 54.0,
+     "along": 81.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 56.0,
+     "along": 84.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 58.0,
+     "along": 87.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 60.0,
+     "along": 90.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 62.0,
+     "along": 93.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 64.0,
+     "along": 96.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 66.0,
+     "along": 99.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 68.0,
+     "along": 102.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 70.0,
+     "along": 105.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 72.0,
+     "along": 108.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 74.0,
+     "along": 111.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 76.0,
+     "along": 114.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 78.0,
+     "along": 117.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 80.0,
+     "along": 120.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 82.0,
+     "along": 123.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 84.0,
+     "along": 126.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 86.0,
+     "along": 129.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 88.0,
+     "along": 132.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 90.0,
+     "along": 135.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 92.0,
+     "along": 138.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 94.0,
+     "along": 141.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 96.0,
+     "along": 144.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 98.0,
+     "along": 147.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 100.0,
+     "along": 150.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 102.0,
+     "along": 153.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 104.0,
+     "along": 156.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 106.0,
+     "along": 159.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 108.0,
+     "along": 162.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 110.0,
+     "along": 165.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 112.0,
+     "along": 168.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 114.0,
+     "along": 171.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 116.0,
+     "along": 174.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 118.0,
+     "along": 177.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 120.0,
+     "along": 180.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 122.0,
+     "along": 183.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 124.0,
+     "along": 186.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 126.0,
+     "along": 189.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 128.0,
+     "along": 192.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 130.0,
+     "along": 195.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 132.0,
+     "along": 198.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 134.0,
+     "along": 201.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 136.0,
+     "along": 204.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 138.0,
+     "along": 207.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 140.0,
+     "along": 210.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 142.0,
+     "along": 213.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 144.0,
+     "along": 216.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 146.0,
+     "along": 219.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 148.0,
+     "along": 222.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 150.0,
+     "along": 225.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 152.0,
+     "along": 228.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 154.0,
+     "along": 230,
+     "lateral": 0,
+     "acc": 5
+    }
+   ],
+   "expect": [
+    {
+     "afterFix": 57,
+     "event": "announceSteps",
+     "indices": [
+      1
+     ]
+    },
+    {
+     "afterFix": 61,
+     "eventNull": true,
+     "comment": "종전엔 여기서 다음 구간 전문(횡단 시작 17m 앞, 임박 큐 사이) — ⓐ"
+    },
+    {
+     "afterFix": 66,
+     "event": "announceSteps",
+     "indices": [
+      2
+     ],
+     "late": true,
+     "tone": "right"
+    },
+    {
+     "afterFixAny": [
+      67,
+      68,
+      69
+     ],
+     "toneNull": true,
+     "eventNot": "imminent"
+    }
+   ]
+  },
+  {
+   "name": "E62 R1: 긴 횡단(40m 이상) 중에는 주기 통지가 없고, 다음 전문은 실위치가 횡단을 나간 뒤 늦은 전문",
+   "steps": [
+    {
+     "len": 200,
+     "desc": "직진A"
+    },
+    {
+     "len": 50,
+     "desc": "횡단X",
+     "action": "crosswalk",
+     "crossing": true
+    },
+    {
+     "len": 200,
+     "desc": "우회전B",
+     "action": "right"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 2.0,
+     "along": 3.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 4.0,
+     "along": 6.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 6.0,
+     "along": 9.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 8.0,
+     "along": 12.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 10.0,
+     "along": 15.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 12.0,
+     "along": 18.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 14.0,
+     "along": 21.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 16.0,
+     "along": 24.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 18.0,
+     "along": 27.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 20.0,
+     "along": 30.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 22.0,
+     "along": 33.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 24.0,
+     "along": 36.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 26.0,
+     "along": 39.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 28.0,
+     "along": 42.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 30.0,
+     "along": 45.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 32.0,
+     "along": 48.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 34.0,
+     "along": 51.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 36.0,
+     "along": 54.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 38.0,
+     "along": 57.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 40.0,
+     "along": 60.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 42.0,
+     "along": 63.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 44.0,
+     "along": 66.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 46.0,
+     "along": 69.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 48.0,
+     "along": 72.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 50.0,
+     "along": 75.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 52.0,
+     "along": 78.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 54.0,
+     "along": 81.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 56.0,
+     "along": 84.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 58.0,
+     "along": 87.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 60.0,
+     "along": 90.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 62.0,
+     "along": 93.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 64.0,
+     "along": 96.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 66.0,
+     "along": 99.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 68.0,
+     "along": 102.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 70.0,
+     "along": 105.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 72.0,
+     "along": 108.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 74.0,
+     "along": 111.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 76.0,
+     "along": 114.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 78.0,
+     "along": 117.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 80.0,
+     "along": 120.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 82.0,
+     "along": 123.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 84.0,
+     "along": 126.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 86.0,
+     "along": 129.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 88.0,
+     "along": 132.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 90.0,
+     "along": 135.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 92.0,
+     "along": 138.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 94.0,
+     "along": 141.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 96.0,
+     "along": 144.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 98.0,
+     "along": 147.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 100.0,
+     "along": 150.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 102.0,
+     "along": 153.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 104.0,
+     "along": 156.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 106.0,
+     "along": 159.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 108.0,
+     "along": 162.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 110.0,
+     "along": 165.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 112.0,
+     "along": 168.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 114.0,
+     "along": 171.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 116.0,
+     "along": 174.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 118.0,
+     "along": 177.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 120.0,
+     "along": 180.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 122.0,
+     "along": 183.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 124.0,
+     "along": 186.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 126.0,
+     "along": 189.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 128.0,
+     "along": 192.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 130.0,
+     "along": 195.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 132.0,
+     "along": 198.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 134.0,
+     "along": 200,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 136.0,
+     "along": 201.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 138.0,
+     "along": 202.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 140.0,
+     "along": 203.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 142.0,
+     "along": 204.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 144.0,
+     "along": 205.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 146.0,
+     "along": 206.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 148.0,
+     "along": 207.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 150.0,
+     "along": 208.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 152.0,
+     "along": 209.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 154.0,
+     "along": 210.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 156.0,
+     "along": 211.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 158.0,
+     "along": 212.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 160.0,
+     "along": 213.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 162.0,
+     "along": 214.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 164.0,
+     "along": 215.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 166.0,
+     "along": 216.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 168.0,
+     "along": 217.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 170.0,
+     "along": 218.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 172.0,
+     "along": 219.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 174.0,
+     "along": 220.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 176.0,
+     "along": 221.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 178.0,
+     "along": 222.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 180.0,
+     "along": 223.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 182.0,
+     "along": 224.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 184.0,
+     "along": 225.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 186.0,
+     "along": 226.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 188.0,
+     "along": 227.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 190.0,
+     "along": 228.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 192.0,
+     "along": 229.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 194.0,
+     "along": 230.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 196.0,
+     "along": 231.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 198.0,
+     "along": 232.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 200.0,
+     "along": 233.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 202.0,
+     "along": 234.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 204.0,
+     "along": 235.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 206.0,
+     "along": 236.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 208.0,
+     "along": 237.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 210.0,
+     "along": 238.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 212.0,
+     "along": 239.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 214.0,
+     "along": 240.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 216.0,
+     "along": 241.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 218.0,
+     "along": 242.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 220.0,
+     "along": 243.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 222.0,
+     "along": 244.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 224.0,
+     "along": 245,
+     "lateral": 0,
+     "acc": 5
+    }
+   ],
+   "expect": [
+    {
+     "afterFixAny": [
+      65,
+      66,
+      67,
+      68,
+      69,
+      70,
+      71,
+      72,
+      73,
+      74,
+      75,
+      76,
+      77,
+      78,
+      79,
+      80,
+      81,
+      82,
+      83,
+      84,
+      85,
+      86,
+      87,
+      88,
+      89,
+      90,
+      91,
+      92,
+      93,
+      94,
+      95,
+      96,
+      97,
+      98,
+      99,
+      100,
+      101,
+      102,
+      103,
+      104,
+      105,
+      106
+     ],
+     "eventNull": true
+    },
+    {
+     "afterFix": 107,
+     "event": "announceSteps",
+     "indices": [
+      2
+     ],
+     "late": true,
+     "tone": "right"
+    }
+   ]
+  },
+  {
+   "name": "E62 R2: 멈추면 주기 통지가 없고 다시 움직이면 재개한다(정지 중 lastAnnouncedAt 불변)",
+   "steps": [
+    {
+     "len": 300,
+     "desc": "직진A"
+    },
+    {
+     "len": 100,
+     "desc": "우회전B",
+     "action": "right"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 2.0,
+     "along": 3.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 4.0,
+     "along": 6.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 6.0,
+     "along": 9.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 8.0,
+     "along": 12.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 10.0,
+     "along": 15.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 12.0,
+     "along": 18.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 14.0,
+     "along": 20,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 16.0,
+     "along": 20,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 18.0,
+     "along": 20,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 20.0,
+     "along": 20,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 22.0,
+     "along": 20,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 24.0,
+     "along": 20,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 26.0,
+     "along": 20,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 28.0,
+     "along": 20,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 30.0,
+     "along": 20,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 32.0,
+     "along": 20,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 34.0,
+     "along": 20,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 36.0,
+     "along": 20,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 38.0,
+     "along": 20,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 40.0,
+     "along": 20,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 42.0,
+     "along": 20,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 44.0,
+     "along": 20,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 46.0,
+     "along": 20,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 48.0,
+     "along": 20,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 50.0,
+     "along": 20,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 52.0,
+     "along": 20,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 54.0,
+     "along": 20,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 56.0,
+     "along": 20,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 58.0,
+     "along": 20,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 60.0,
+     "along": 20,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 62.0,
+     "along": 20,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 64.0,
+     "along": 20,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 66.0,
+     "along": 20,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 68.0,
+     "along": 20,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 70.0,
+     "along": 20,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 72.0,
+     "along": 20,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 74.0,
+     "along": 20,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 76.0,
+     "along": 20,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 78.0,
+     "along": 20,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 80.0,
+     "along": 20,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 82.0,
+     "along": 20,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 84.0,
+     "along": 20,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 86.0,
+     "along": 20,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 88.0,
+     "along": 20,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 90.0,
+     "along": 20,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 92.0,
+     "along": 20,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 94.0,
+     "along": 20,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 96.0,
+     "along": 20,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 98.0,
+     "along": 20,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 100.0,
+     "along": 20,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 102.0,
+     "along": 20,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 104.0,
+     "along": 20,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 106.0,
+     "along": 23.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 108.0,
+     "along": 26.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 110.0,
+     "along": 29.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 112.0,
+     "along": 30,
+     "lateral": 0,
+     "acc": 5
+    }
+   ],
+   "expect": [
+    {
+     "afterFixAny": [
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39,
+      40,
+      41,
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48,
+      49,
+      50,
+      51,
+      52
+     ],
+     "eventNull": true
+    },
+    {
+     "afterFix": 53,
+     "event": "periodic"
+    }
+   ]
+  },
+  {
+   "name": "E62 R3(ⓒ): 짧은 회전 스텝 안에서 다음 유닛 전문이 나갔으면 되읽지 않는다",
+   "steps": [
+    {
+     "len": 107,
+     "desc": "직진A"
+    },
+    {
+     "len": 37.9,
+     "desc": "좌회전C",
+     "action": "left"
+    },
+    {
+     "len": 81,
+     "desc": "우회전D",
+     "action": "right"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 2.0,
+     "along": 3.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 4.0,
+     "along": 6.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 6.0,
+     "along": 9.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 8.0,
+     "along": 12.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 10.0,
+     "along": 15.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 12.0,
+     "along": 18.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 14.0,
+     "along": 21.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 16.0,
+     "along": 24.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 18.0,
+     "along": 27.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 20.0,
+     "along": 30.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 22.0,
+     "along": 33.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 24.0,
+     "along": 36.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 26.0,
+     "along": 39.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 28.0,
+     "along": 42.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 30.0,
+     "along": 45.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 32.0,
+     "along": 48.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 34.0,
+     "along": 51.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 36.0,
+     "along": 54.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 38.0,
+     "along": 57.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 40.0,
+     "along": 60.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 42.0,
+     "along": 63.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 44.0,
+     "along": 66.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 46.0,
+     "along": 69.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 48.0,
+     "along": 72.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 50.0,
+     "along": 75.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 52.0,
+     "along": 78.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 54.0,
+     "along": 81.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 56.0,
+     "along": 84.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 58.0,
+     "along": 87.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 60.0,
+     "along": 90.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 62.0,
+     "along": 93.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 64.0,
+     "along": 96.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 66.0,
+     "along": 99.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 68.0,
+     "along": 102.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 70.0,
+     "along": 105.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 72.0,
+     "along": 108.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 74.0,
+     "along": 111.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 76.0,
+     "along": 114.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 78.0,
+     "along": 117.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 80.0,
+     "along": 120.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 82.0,
+     "along": 123.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 84.0,
+     "along": 126.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 86.0,
+     "along": 129.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 88.0,
+     "along": 130,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 90.0,
+     "along": 130.8,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 92.0,
+     "along": 131.6,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 94.0,
+     "along": 132.4,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 96.0,
+     "along": 133.2,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 98.0,
+     "along": 134.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 100.0,
+     "along": 134.8,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 102.0,
+     "along": 135.6,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 104.0,
+     "along": 136.4,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 106.0,
+     "along": 137.2,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 108.0,
+     "along": 138.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 110.0,
+     "along": 138.8,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 112.0,
+     "along": 139.6,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 114.0,
+     "along": 140,
+     "lateral": 0,
+     "acc": 5
+    }
+   ],
+   "expect": [
+    {
+     "afterFix": 39,
+     "event": "announceSteps",
+     "indices": [
+      2
+     ]
+    },
+    {
+     "afterFixAny": [
+      46,
+      47,
+      48,
+      49,
+      50,
+      51,
+      52,
+      53,
+      54,
+      55,
+      56,
+      57
+     ],
+     "eventNot": "bundleReread",
+     "comment": "종전엔 지난 좌회전 스텝 되읽기(2026-10-03 14:27:08)"
+    }
+   ]
+  },
+  {
+   "name": "E62 R3: 묶음 되읽기는 실위치 스텝부터다(지난 스텝을 다시 읽지 않는다)",
+   "steps": [
+    {
+     "len": 107,
+     "desc": "직진A"
+    },
+    {
+     "len": 20,
+     "desc": "좌회전C",
+     "action": "left"
+    },
+    {
+     "len": 30,
+     "desc": "직진E"
+    },
+    {
+     "len": 30,
+     "desc": "직진G"
+    },
+    {
+     "len": 200,
+     "desc": "우회전F",
+     "action": "right"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 2.0,
+     "along": 3.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 4.0,
+     "along": 6.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 6.0,
+     "along": 9.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 8.0,
+     "along": 12.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 10.0,
+     "along": 15.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 12.0,
+     "along": 18.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 14.0,
+     "along": 21.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 16.0,
+     "along": 24.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 18.0,
+     "along": 27.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 20.0,
+     "along": 30.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 22.0,
+     "along": 33.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 24.0,
+     "along": 36.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 26.0,
+     "along": 39.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 28.0,
+     "along": 42.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 30.0,
+     "along": 45.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 32.0,
+     "along": 48.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 34.0,
+     "along": 51.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 36.0,
+     "along": 54.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 38.0,
+     "along": 57.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 40.0,
+     "along": 60.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 42.0,
+     "along": 63.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 44.0,
+     "along": 66.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 46.0,
+     "along": 69.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 48.0,
+     "along": 72.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 50.0,
+     "along": 75.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 52.0,
+     "along": 78.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 54.0,
+     "along": 81.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 56.0,
+     "along": 84.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 58.0,
+     "along": 87.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 60.0,
+     "along": 90.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 62.0,
+     "along": 93.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 64.0,
+     "along": 96.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 66.0,
+     "along": 99.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 68.0,
+     "along": 102.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 70.0,
+     "along": 105.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 72.0,
+     "along": 108.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 74.0,
+     "along": 111.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 76.0,
+     "along": 114.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 78.0,
+     "along": 117.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 80.0,
+     "along": 120.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 82.0,
+     "along": 123.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 84.0,
+     "along": 126.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 86.0,
+     "along": 129.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 88.0,
+     "along": 130,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 90.0,
+     "along": 130.6,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 92.0,
+     "along": 131.2,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 94.0,
+     "along": 131.8,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 96.0,
+     "along": 132.4,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 98.0,
+     "along": 133.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 100.0,
+     "along": 133.6,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 102.0,
+     "along": 134.2,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 104.0,
+     "along": 134.8,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 106.0,
+     "along": 135.4,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 108.0,
+     "along": 136.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 110.0,
+     "along": 136.6,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 112.0,
+     "along": 137.2,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 114.0,
+     "along": 137.8,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 116.0,
+     "along": 138.4,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 118.0,
+     "along": 139.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 120.0,
+     "along": 139.6,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 122.0,
+     "along": 140.2,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 124.0,
+     "along": 140.8,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 126.0,
+     "along": 141,
+     "lateral": 0,
+     "acc": 5
+    }
+   ],
+   "expect": [
+    {
+     "afterFix": 37,
+     "event": "bundleReread",
+     "indices": [
+      1,
+      2,
+      3
+     ]
+    },
+    {
+     "afterFix": 45,
+     "event": "bundleReread",
+     "indices": [
+      2,
+      3
+     ]
+    }
+   ]
+  },
+  {
+   "name": "E62 B1: 짧은 접근 스텝 + 방향을 트는 짧은 횡단 앞에서 신호 대기 뒤 첫걸음 — 횡단 위에서 되읽기 없음(실위치 술어)",
+   "steps": [
+    {
+     "len": 200,
+     "desc": "직진A"
+    },
+    {
+     "len": 20,
+     "desc": "직진P"
+    },
+    {
+     "len": 10,
+     "desc": "횡단X",
+     "action": "crosswalk",
+     "crossing": true
+    },
+    {
+     "len": 200,
+     "desc": "우회전B",
+     "action": "right"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 2.0,
+     "along": 3.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 4.0,
+     "along": 6.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 6.0,
+     "along": 9.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 8.0,
+     "along": 12.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 10.0,
+     "along": 15.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 12.0,
+     "along": 18.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 14.0,
+     "along": 21.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 16.0,
+     "along": 24.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 18.0,
+     "along": 27.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 20.0,
+     "along": 30.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 22.0,
+     "along": 33.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 24.0,
+     "along": 36.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 26.0,
+     "along": 39.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 28.0,
+     "along": 42.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 30.0,
+     "along": 45.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 32.0,
+     "along": 48.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 34.0,
+     "along": 51.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 36.0,
+     "along": 54.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 38.0,
+     "along": 57.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 40.0,
+     "along": 60.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 42.0,
+     "along": 63.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 44.0,
+     "along": 66.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 46.0,
+     "along": 69.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 48.0,
+     "along": 72.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 50.0,
+     "along": 75.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 52.0,
+     "along": 78.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 54.0,
+     "along": 81.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 56.0,
+     "along": 84.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 58.0,
+     "along": 87.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 60.0,
+     "along": 90.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 62.0,
+     "along": 93.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 64.0,
+     "along": 96.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 66.0,
+     "along": 99.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 68.0,
+     "along": 102.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 70.0,
+     "along": 105.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 72.0,
+     "along": 108.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 74.0,
+     "along": 111.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 76.0,
+     "along": 114.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 78.0,
+     "along": 117.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 80.0,
+     "along": 120.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 82.0,
+     "along": 123.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 84.0,
+     "along": 126.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 86.0,
+     "along": 129.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 88.0,
+     "along": 132.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 90.0,
+     "along": 135.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 92.0,
+     "along": 138.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 94.0,
+     "along": 141.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 96.0,
+     "along": 144.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 98.0,
+     "along": 147.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 100.0,
+     "along": 150.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 102.0,
+     "along": 153.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 104.0,
+     "along": 156.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 106.0,
+     "along": 159.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 108.0,
+     "along": 162.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 110.0,
+     "along": 165.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 112.0,
+     "along": 168.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 114.0,
+     "along": 171.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 116.0,
+     "along": 174.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 118.0,
+     "along": 177.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 120.0,
+     "along": 180.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 122.0,
+     "along": 183.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 124.0,
+     "along": 186.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 126.0,
+     "along": 189.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 128.0,
+     "along": 192.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 130.0,
+     "along": 195.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 132.0,
+     "along": 198.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 134.0,
+     "along": 201.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 136.0,
+     "along": 204.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 138.0,
+     "along": 207.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 140.0,
+     "along": 210,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 142.0,
+     "along": 210,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 144.0,
+     "along": 210,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 146.0,
+     "along": 210,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 148.0,
+     "along": 210,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 150.0,
+     "along": 210,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 152.0,
+     "along": 210,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 154.0,
+     "along": 210,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 156.0,
+     "along": 210,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 158.0,
+     "along": 210,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 160.0,
+     "along": 210,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 162.0,
+     "along": 210,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 164.0,
+     "along": 210,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 166.0,
+     "along": 210,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 168.0,
+     "along": 210,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 170.0,
+     "along": 210,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 172.0,
+     "along": 210,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 174.0,
+     "along": 210,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 176.0,
+     "along": 210,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 178.0,
+     "along": 210,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 180.0,
+     "along": 210,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 182.0,
+     "along": 210,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 184.0,
+     "along": 210,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 186.0,
+     "along": 210,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 188.0,
+     "along": 210,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 190.0,
+     "along": 210,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 192.0,
+     "along": 210,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 194.0,
+     "along": 210,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 196.0,
+     "along": 210,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 198.0,
+     "along": 210,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 200.0,
+     "along": 210,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 202.0,
+     "along": 213.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 204.0,
+     "along": 214,
+     "lateral": 0,
+     "acc": 5
+    }
+   ],
+   "expect": [
+    {
+     "afterFix": 57,
+     "event": "announceSteps",
+     "indices": [
+      1,
+      2
+     ]
+    },
+    {
+     "afterFixAny": [
+      71,
+      72,
+      73,
+      74,
+      75,
+      76,
+      77,
+      78,
+      79,
+      80,
+      81,
+      82,
+      83,
+      84,
+      85,
+      86,
+      87,
+      88,
+      89,
+      90,
+      91,
+      92,
+      93,
+      94,
+      95,
+      96,
+      97,
+      98,
+      99,
+      100,
+      101,
+      102
+     ],
+     "eventNull": true,
+     "comment": "원시 진행거리로는 직진P지만 실위치는 횡단 위 — R1이 실위치를 봐야 막힌다(설계 리뷰 B1)"
     }
    ]
   }

@@ -1742,16 +1742,18 @@ export function useRouteGuide(
   const handleFix = useCallback(
     (pos: GeolocationPosition) => {
       if (!mountedRef.current || !trackingRef.current) return;
+      const now = performance.now() / 1000;
+      // 모든 fix에서 갱신한다(거리 미분 폴백이 직전 표본을 쓴다).
+      const motion = judgeMotion(pos, now);
       const fix: GuideFix = {
         lat: pos.coords.latitude,
         lng: pos.coords.longitude,
         accuracy: pos.coords.accuracy,
+        // 멈추면 침묵(E62 판정 3) — `speedUnknown`은 정지가 아니다(E55 3-state).
+        stopped: motion === "stopped",
       };
       lastFixRef.current = fix;
-      lastFixAtRef.current = performance.now() / 1000;
-      const now = lastFixAtRef.current;
-      // 모든 fix에서 갱신한다(거리 미분 폴백이 직전 표본을 쓴다).
-      const motion = judgeMotion(pos, now);
+      lastFixAtRef.current = now;
       // 최종 접근은 모드보다 앞이다 — 이 국면의 발화 소유자는 이 층 하나뿐이라
       // 경로 리듀서도 비콘 리듀서도 이 fix를 보지 않는다(§3.0 소유권 계약).
       if (inFinalApproachRef.current) {

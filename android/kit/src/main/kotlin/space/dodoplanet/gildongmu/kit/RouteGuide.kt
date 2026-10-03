@@ -130,6 +130,14 @@ data class GuideTuning(
      * 주기 통지가 "{거리} 앞 {명령}"이라 다음 행동을 이미 담는다.
      */
     val quietAfterAnnounce: Boolean,
+    /**
+     * 다음 유닛 전문을 미루는가(E62 spec `2026-10-03-crosswalk-guidance-design.md` §4 R4·R5·R6, Kit `deferAnnounce` 미러).
+     * walk true: 행동 없는 다음 구간은 실위치가 들어선 뒤, 전문이 나간 유닛 안에 실위치가 아직 나가지 않은 횡단이 있으면
+     * 그 횡단을 나간 뒤 — 그렇게 늦게 나간 전문은 `late`이고 첫 스텝에 행동이 있으면 그 행동 톤을 함께 낸다. car false.
+     */
+    val deferAnnounce: Boolean,
+    /** 정지 중 주기 통지·되읽기를 내지 않는가(E62 판정 3, Kit `silentWhenStopped` 미러). walk true · car false. */
+    val silentWhenStopped: Boolean,
     /** 속도 표본 정확도 상한(m). walk 20, car 50(=uncertain 게이트). */
     val speedSampleMaxAccM: Double,
     /** 원거리 예고 경계(m). null=미사용(walk) */
@@ -195,7 +203,9 @@ data class GuideTuning(
             // 결정 지점 행동은 수단 불문 **서버 투영**(`step.action`)만 본다(E16 축3). 클라이언트 문자열 폴백을
             // 두면 구조화의 "의도된 행동 없음"과 미투영을 구별하지 못하고, car는 갈래·시설 문장이 회전이 된다.
             imminentNeedsAnnounce = true,
-            silentCatchUp = false, quietAfterAnnounce = true, speedSampleMaxAccM = speedSampleMaxAccuracyMeters,
+            silentCatchUp = false, quietAfterAnnounce = true,
+            deferAnnounce = true, silentWhenStopped = true,
+            speedSampleMaxAccM = speedSampleMaxAccuracyMeters,
             farNoticeM = null,
             windowAheadMinM = windowAheadMinMeters, windowAheadSpeedS = 0.0,
             offRouteBaseM = offRouteBaseMeters, offRouteHoldS = offRouteHoldSeconds,
@@ -219,7 +229,9 @@ data class GuideTuning(
             imminentUnknownSpeedM = carImminentUnknownSpeedMeters,
             imminentRepeatM = emptyList(),
             imminentNeedsAnnounce = false,
-            silentCatchUp = true, quietAfterAnnounce = false, speedSampleMaxAccM = uncertainAccuracyMeters,
+            silentCatchUp = true, quietAfterAnnounce = false,
+            deferAnnounce = false, silentWhenStopped = false,
+            speedSampleMaxAccM = uncertainAccuracyMeters,
             farNoticeM = 1500.0,
             windowAheadMinM = 150.0, windowAheadSpeedS = 5.0,
             offRouteBaseM = 50.0, offRouteHoldS = 10.0,
@@ -317,7 +329,11 @@ enum class GuidePhase {
     val rawValue: String get() = name
 }
 
-data class GuideFix(val lat: Double, val lng: Double, val accuracy: Double) {
+/**
+ * `stopped`: 이 fix에서 서 있는가(오케스트레이터의 `motionStep`이 `stopped`일 때만 참 — `speedUnknown`은 정지가 아니다,
+ * E55 3-state). E62 "멈추면 침묵"의 입력. 기본값 없음(Kit `GuideFix.stopped` 미러).
+ */
+data class GuideFix(val lat: Double, val lng: Double, val accuracy: Double, val stopped: Boolean) {
     internal val point: RoutePoint get() = RoutePoint(lat, lng)
 }
 
@@ -418,7 +434,8 @@ data class GuideState(
 data class OffRouteAxes(val distance: Boolean = false, val course: Boolean = false)
 
 sealed class GuideEvent {
-    data class AnnounceSteps(val indices: List<Int>) : GuideEvent()
+    /** 유닛 전문. `late`는 실위치가 이미 첫 스텝에 들어선 뒤 나간 전문이다(E62 R4·R5) — 소비자는 거리 머리말을 붙이지 않는다. */
+    data class AnnounceSteps(val indices: List<Int>, val late: Boolean) : GuideEvent()
 
     /**
      * 결정 지점 임박(20m) 앞. `action`은 낭독 문구를 고르는 키이고 `indices`는 **그 행동을 담은 스텝 하나**다
@@ -1056,13 +1073,28 @@ fun guideStep(state: GuideState, fix: GuideFix, route: GuideRoute, now: Double, 
         }
     }
 
+    // 실위치(E62 spec §4 머리, Kit `realD` 미러): R1·R3·R4·R5가 전부 이 하나를 쓴다(설계 리뷰 B1).
+    val realD = d + projectionLagMeters
+    // 이번 fix에 전문을 미뤘는가(R4·R5). 미루는 동안은 주기 통지·되읽기도 내지 않는다.
+    var announceDeferred = false
+
     // 6c) 선행 낭독: 낭독 완료 유닛의 끝까지 잔여 ≤ 임박선이면 다음 유닛 전문. 임박선은 max(거리 하한, v×시간 계수) —
     //     walk는 시간 계수 0이라 30m 고정 동일.
     if (next.announcedUpTo < route.steps.size - 1) {
         val announcedEnd = route.steps[next.announcedUpTo].endD
         val announceAhead = maxOf(tuning.announceAheadM, vPrev * tuning.announceAheadSpeedS)
-        if (announcedEnd - d <= announceAhead) {
-            val unit = unitAt(route, next.announcedUpTo + 1)
+        val nextUnit = unitAt(route, next.announcedUpTo + 1)
+        val nextFirst = route.steps[nextUnit[0]]
+        if (tuning.deferAnnounce && announcedEnd - d <= announceAhead) {
+            // R5: 전문이 나간 유닛 안에 실위치가 아직 나가지 않은 횡단이 있으면 그 횡단을 나간 뒤로(ⓐ).
+            val crossingAhead = unitAt(route, next.announcedUpTo).any { route.steps[it].crossing && route.steps[it].endD > realD }
+            // R4: 행동 없는 다음 구간은 들어선 뒤. 묶음 앞쪽 30m 안에 행동 스텝이 있는 묶음은 제외(설계 리뷰 M1).
+            val actionless = nextFirst.action == null &&
+                (nextUnit.size == 1 || nextFirst.endD - nextFirst.startD >= announceAheadMeters)
+            announceDeferred = crossingAhead || (actionless && nextFirst.startD > realD)
+        }
+        if (!announceDeferred && announcedEnd - d <= announceAhead) {
+            val unit = nextUnit
             val announcedBefore = next.announcedUpTo
             // car(silentCatchUp): 묶음 안에서 이미 끝난 스텝은 빼고 읽는다(설계 리뷰 B6). 남는 것이 없으면 마지막 스텝 하나.
             val remaining = if (tuning.silentCatchUp) unit.filter { it > announcedBefore && route.steps[it].endD >= d } else unit
@@ -1077,8 +1109,16 @@ fun guideStep(state: GuideState, fix: GuideFix, route: GuideRoute, now: Double, 
             //   여기서 또 울리면 소리가 "곧 뭔가 있다"와 "지금이다" 둘 다를 뜻하게 되어 신호가 흐려진다. 임박 층이 없는
             //   프로파일이 생기면 여기가 그 자리의 유일한 소리라 `ahead`를 든다.
             //   ⚠ walk에서 3초 정숙 구간이 30m 시점에 사라지는 것은 **아는 대가**다(실보행 판정 대상, `docs/BACKLOG.md`).
+            // R6(E62): 실위치가 이미 첫 스텝에 들어선 전문은 늦은 전문(머리말 없음). 첫 스텝에 행동이 있으면 그 행동 톤을
+            //     내고 그 경계의 임박 래치를 소비한다(톤 1회).
+            val late = tuning.deferAnnounce && nextFirst.startD <= realD
+            val firstAction = nextFirst.action
+            if (late && firstAction != null) {
+                next = next.copy(imminentUpTo = maxOf(next.imminentUpTo, unit[0]), imminentStage = 0)
+                return emit(next, GuideEvent.AnnounceSteps(indices, late), imminentTone(firstAction))
+            }
             val tone: GuideTone? = if (tuning.imminentAheadM == null) GuideTone.ahead else null
-            return emit(next, GuideEvent.AnnounceSteps(indices), tone)
+            return emit(next, GuideEvent.AnnounceSteps(indices, late), tone)
         }
     }
 
@@ -1113,11 +1153,17 @@ fun guideStep(state: GuideState, fix: GuideFix, route: GuideRoute, now: Double, 
     }
 
     // 6c) 주기: following=구간 잔여, bundle=묶음 재통독. 기준은 lastAnnouncedAt.
+    //     E62: 횡단 중(원시 `cur` 또는 실위치 스텝이 횡단 — R1) · 정지 중(R2) · 전문을 미루는 중(R4·R5)에는 둘 다 내지 않는다.
+    //     정지 중엔 `lastAnnouncedAt`도 건드리지 않아 다시 움직이면 주기가 이어진다.
     val sinceAnnounce = now - next.lastAnnouncedAt
-    if (cur.isLong) {
+    val realCur = stepAt(route, realD)
+    val periodicSilent = cur.crossing || realCur.crossing || (tuning.silentWhenStopped && fix.stopped) || announceDeferred
+    val curUnit = unitAt(route, cur.index)
+    val nextAnnounced = next.announcedUpTo > curUnit[curUnit.size - 1]
+    if (periodicSilent) {
+        // 아래 6d(속도 제안)로 간다.
+    } else if (cur.isLong) {
         val remainingStep = cur.endD - d
-        val curUnit = unitAt(route, cur.index)
-        val nextAnnounced = next.announcedUpTo > curUnit[curUnit.size - 1]
         if (!(tuning.quietAfterAnnounce && nextAnnounced) &&
             sinceAnnounce >= periodicIntervalSeconds(remainingStep)
         ) {
@@ -1127,8 +1173,13 @@ fun guideStep(state: GuideState, fix: GuideFix, route: GuideRoute, now: Double, 
                 null,
             )
         }
-    } else if (sinceAnnounce >= bundleRereadSeconds) {
-        return emit(next.copy(lastAnnouncedAt = now), GuideEvent.BundleReread(unitAt(route, cur.index)), null)
+    } else if (sinceAnnounce >= bundleRereadSeconds && !(tuning.quietAfterAnnounce && nextAnnounced)) {
+        // R3(E62): 다음 유닛 전문이 나갔으면 되읽지 않는다(ⓒ). 되읽기는 실위치 스텝부터(첫 index가 곧 들어선 스텝).
+        //     car(`quietAfterAnnounce` false)는 종전대로 유닛 전체.
+        val indices = if (tuning.quietAfterAnnounce) curUnit.filter { it >= realCur.index } else curUnit
+        if (indices.isNotEmpty()) {
+            return emit(next.copy(lastAnnouncedAt = now), GuideEvent.BundleReread(indices), null)
+        }
     }
 
     // 6d) 속도 제안(최하위, 세션당 1회).

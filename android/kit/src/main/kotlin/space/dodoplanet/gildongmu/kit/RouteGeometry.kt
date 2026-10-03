@@ -40,6 +40,8 @@ data class GuideStepSpan(
     val action: WalkAction? = null,
     /** 자동차 결정 지점의 지점·방면(E61, 서버 `at`·`toward`). 자동차 전용이고 둘 다 없으면 null. */
     val carLandmark: CarLandmark? = null,
+    /** 이 스텝 구간 전체가 횡단이다(서버 A26 `crossing`). 리듀서의 횡단 중 침묵(E62 R1)·횡단 끝 전 다음 전문 유예(R5). */
+    val crossing: Boolean = false,
 )
 
 /** 자동차 결정 지점의 지점(`at`)·방면(`toward`) — 적어도 하나는 있다(E61). Kit `CarLandmark` 미러. */
@@ -68,6 +70,8 @@ data class GuideStepGeometry(
     val action: WalkAction? = null,
     /** 자동차 지점·방면(E61). 도보는 null. */
     val carLandmark: CarLandmark? = null,
+    /** 이 스텝 구간 전체가 횡단이다(서버 A26 `crossing`, E62 리듀서 입력). */
+    val crossing: Boolean = false,
 )
 
 /**
@@ -112,6 +116,7 @@ fun buildGuideRoute(steps: List<GuideStepGeometry>, waypointStepIndex: Int? = nu
                 isLong = d - startD >= longStepMinMeters,
                 action = step.action,
                 carLandmark = step.carLandmark,
+                crossing = step.crossing,
             ),
         )
     }
