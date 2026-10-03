@@ -2262,7 +2262,8 @@ function EndpointField({
           <ul className="mt-1">
             {visibleRecent.map((e, i) => {
               // 저장된 라틴 표기로 이름을 고르고(A53, iOS 최근 목록 동형) 원명은 시각 괄호(KoTail)로만 —
-              // 버튼 안이라 이름 뒤에 둬도 계산된 이름이 갈리지 않는다(R2). 원명이 남는 이름만 lang="ko".
+              // 버튼 안이라 이름 뒤에 둬도 계산된 이름이 갈리지 않는다(R2). 접근 텍스트에 한글이 남는 줄만
+              // 버튼째 lang="ko"(위 장소 후보와 같은 R4).
               const name = endpointName(locale, e.label, e.labelRoman);
               return (
               <li key={`${e.lat},${e.lng}`} className="flex items-center gap-2">
@@ -2270,8 +2271,9 @@ function EndpointField({
                   type="button"
                   onClick={() => resolveAndClose(placeOf(e))}
                   className="min-h-11 flex-1 text-left text-sm underline"
+                  lang={langFor(name.primary)}
                 >
-                  <span lang={langFor(name.primary)}>{name.primary}</span>
+                  {name.primary}
                   <KoTail secondary={name.secondary} />
                   {/* 고정 항목은 라벨 접미사 하나로 시각·낭독 동시 전달(한 줄 = 한 객체) */}
                   {e.pinned && `, ${tRecent("pinned")}`}
