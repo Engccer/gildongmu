@@ -5,6 +5,7 @@ import { NextIntlClientProvider, useTranslations } from "next-intl";
 import type { TransitLeg, TransitRoute } from "@/lib/types";
 import { TransitRouteBriefing, TransitRouteResult } from "../TransitRouteBriefing";
 import messages from "../../../messages/ko.json";
+import en from "../../../messages/en.json";
 
 /**
  * 대중교통 브리핑 표시 계층 계약(spec §4.1·§4.3·§3.4).
@@ -136,6 +137,45 @@ describe("탑승 구간 문장", () => {
       (e) => e.textContent,
     );
     expect(marked).toEqual(["길동", "수도권 5호선"]);
+  });
+
+  it("라틴 문자뿐인 원천 이름은 lang 경계 밖이다(A53 후속 ⓒ — \"DMC\"를 한국어 음성으로 끊어 읽지 않게)", () => {
+    renderRoute([{ ...BOARD, lineName: "공항철도", fromName: "DMC" }]);
+    const marked = [...screen.getAllByRole("listitem")[0].querySelectorAll("[lang]")].map(
+      (e) => e.textContent,
+    );
+    expect(marked).toEqual(["공항철도"]);
+  });
+});
+
+describe("en 도보 줄의 한국어 행선지(A53 ②·후속 ⓒ)", () => {
+  function EnHarness({ legs }: { legs: TransitLeg[] }) {
+    const t = useTranslations("route.transit");
+    const route: TransitRoute = {
+      summary: { totalMinutes: 45, fare: 1750, transfers: 0, walkMinutes: 3 },
+      legs,
+      routeKey: "p0",
+    };
+    return <TransitRouteResult route={route} t={t} locale="en" dest="목적지" destRoman={null} />;
+  }
+  const renderEn = (legs: TransitLeg[]) =>
+    render(
+      <NextIntlClientProvider locale="en" messages={en}>
+        <EnHarness legs={legs} />
+      </NextIntlClientProvider>,
+    );
+
+  it("한글 행선지에만 lang=ko를 단다", () => {
+    renderEn([{ mode: "walk", minutes: 3, distanceMeters: 98, toName: "여의도" }, BOARD]);
+    const marked = [...screen.getAllByRole("listitem")[0].querySelectorAll("[lang]")].map((e) => e.textContent);
+    expect(marked).toEqual(["여의도"]);
+  });
+
+  it("라틴 문자뿐인 행선지는 감싸지 않는다", () => {
+    renderEn([{ mode: "walk", minutes: 3, distanceMeters: 98, toName: "DMC" }, { ...BOARD, fromName: "DMC" }]);
+    const first = screen.getAllByRole("listitem")[0];
+    expect(first.querySelectorAll("[lang]")).toHaveLength(0);
+    expect(first.textContent).toContain("DMC");
   });
 });
 

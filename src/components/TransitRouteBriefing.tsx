@@ -1,12 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import type { TransitRoute, TransitRouteResult } from "@/lib/types";
 import { awaitGeolocation } from "@/lib/geolocation";
 import { isInKorea } from "@/lib/coverage";
 import { isOutOfCoverageBody } from "@/lib/out-of-coverage";
-import { joinText } from "@/lib/format";
+import { hasHangul, joinText } from "@/lib/format";
 import { alternativeName } from "@/lib/transit-alternative-name";
 import { alightLineText, boardExitOnBoardLine } from "@/lib/transit-exit-lines";
 import { transitBoardLegNames } from "@/lib/transit-leg-english";
@@ -253,6 +253,14 @@ export function TransitRouteBriefing({
     정확히 한 번인 것은 `transit-walk-leg.test.ts`가 잠근다. */
 const NAME_SLOT = "\u0000";
 
+/**
+ * 한국어 원천 이름의 낭독 언어 — 한글이 있는 이름만 `lang="ko"`로 감싼다(A53 후속 ⓒ). "DMC"처럼 라틴 문자뿐인
+ * 원천 이름을 한국어 음성으로 읽히면 글자를 한국어 발음으로 끊어 읽는다. 탑승 줄·도보 줄이 이 한 함수를 지난다.
+ */
+function koName(name: string): ReactNode {
+  return hasHangul(name) ? <span lang="ko">{name}</span> : name;
+}
+
 /** 경로 1개의 요약 + 구간 리스트. 고유명(노선·정류장)은 한국어면 lang="ko", en 계열 로케일에서
     서버 영문(`*En`, E27)이 **노선·정류장 둘 다** 있는 구간만 영문(역명은 `Gangnam (강남)` 병기 —
     괄호 한글은 시각 전용). 한 구간 문장 안에서 언어를 섞지 않는다(줄 단위 원자성).
@@ -303,7 +311,7 @@ export function TransitRouteResult({
               destinationLabel: dest,
               destinationRoman: destRoman,
             });
-            if (!isEn || english || !values.name) return <li key={i}>{t(key, values)}</li>;
+            if (!isEn || english || !values.name || !hasHangul(values.name)) return <li key={i}>{t(key, values)}</li>;
             // 영문 행선지가 없는 줄: 문장 틀은 UI 언어, 역명은 한국어 원문(앱과 같은 문장). 아래 탑승 줄과 같이
             // 그 이름에만 lang="ko"를 달아 한국어 음성으로 읽힌다(A53 ②).
             const [before, after = ""] = t(key, { ...values, name: NAME_SLOT }).split(NAME_SLOT);
@@ -344,14 +352,18 @@ export function TransitRouteResult({
                     t("busNo", { route: names.line })
                   ) : legEn ? (
                     names.line
+                  ) : names.line ? (
+                    koName(names.line)
                   ) : (
-                    <span lang="ko">{names.line ?? chunks}</span>
+                    <span lang="ko">{chunks}</span>
                   ),
                 from: (chunks) =>
                   legEn ? (
                     names.from ? <TransitBilingualName en={names.from} ko={leg.fromName} /> : chunks
+                  ) : names.from ? (
+                    koName(names.from)
                   ) : (
-                    <span lang="ko">{names.from ?? chunks}</span>
+                    <span lang="ko">{chunks}</span>
                   ),
                 count: leg.stationCount ?? 0,
               })}
