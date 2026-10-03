@@ -446,6 +446,7 @@ spec `2026-10-03-crosswalk-guidance-design.md` §4(리듀서 세 벌 + 공유 fi
 spec `2026-10-03-offroute-return-design.md`(리듀서 세 벌 + 공유 fixture `route-guide-scenarios.json`의 `E63 …` 시나리오, 재생 기록 §11).
 
 - **확정은 재조회가 아니다**: `offRoute{notice, reason, guidance, side, returnRelDeg, firstSpoken}`은 벗어난 쪽(수직거리 부호, `projectSigned` 오른쪽 +)과 돌아갈 시계 방향(진행 방위 기준, 목표점 = 확정 지점 창 최근접 + 10m)을 싣고, 새 경로는 리듀서 `rerouteNeeded{away|parallel}`에서만 조회한다(최솟값 + `rerouteAwayM` 또는 기준점에서 직선 `rerouteParallelM`, K fix ∧ 2초). ⚠ 오케스트레이터의 `case .offRoute`에 조회를 되돌리지 말 것 — 운전자 채널만 확정 즉시 조회다(iOS 소스 가드 `beacon-offroute-guard.test.ts`).
+- **확정은 세 축의 OR이다**: 수직거리 축 · 방위 축 · 결합 확정(구속 창 수직거리 ≥ 20m ∧ 방위 창 안 불일치 5표 ∧ 일치 0 ∧ 투영 점프 아님, 사유 `joint`, walk만 `jointConfirmPerpM` 20·`jointConfirmMismatches` 5, car는 `null`). 상수는 잠정(A6).
 - **돌아가기 국면의 투영은 확정 지점 창**(`dConf − 60 … + 200`, 끝에 붙으면 경로 전체)이고 구속 창이 아니다. 복귀만은 전역 후보 15m·8초(도보 `returnPerpM`), 유지 시각 초기화는 접근 제외 **전** 불일치 표다(진입 투영 기준 또는 15m 유일 후보 기준 — 블록 양쪽 경로에선 30m 진입 투영이 모호해 앞의 표만으로는 헛복귀한다).
 - **보류(`hold`, 시계 11~1)는 리듀서가 톤을 내지 않고 소비자가 말하지 않는다**: 그 회차의 `backOnRoute{spoken: false}`엔 복귀 문장도 없다. 소비자는 리듀서 `spoken` ∧ 실제 게시 기록 둘 다 볼 때만 "경로로 복귀했습니다"를 말한다(iOS `.high` — 복귀가 재조회 버튼을 지워 커서가 움직인다. 운전자 채널은 게시 기록만) — iOS 게시 기록은 게시 번호 집합(버려진 번호만 뺀다. 단일 Bool이면 백그라운드에서 버려진 재통지가 들은 확정 문장의 기록을 지운다).
 - **상태 행은 벗어난 쪽만**(위원장 판정 2026-10-04): 시계 방향·"뒤로 도세요"는 그 순간의 진행 방위 기준이라 음성으로만. 상태 행은 시트 착지·전경 복귀 재생이 나중에 다시 읽는다.
@@ -501,7 +502,7 @@ K2-a(2026-08-31, spec `2026-08-31-car-session-end-design.md`)가 같은 `GuideTu
 
 ### 백그라운드 음성 안내는 채널 술어 하나가 가르고 기기 음성 대기 칸은 세 모델이 공유한다
 
-spec `2026-09-30-background-speech-design.md`(적대적 설계 리뷰 1회, 머리 "리뷰 결과" 절). 설정 "백그라운드 음성 안내"(`BackgroundSpeech`, 기본 켬, 2026-10-01 2.0부터 정식판에도 있고 봉인 플래그는 없다)가 도보·자동차·대중교통·나들이를 함께 다스린다.
+spec `2026-09-30-background-speech-design.md`(적대적 설계 리뷰 1회, 머리 "리뷰 결과" 절). 설정 "백그라운드 음성 안내"(`BackgroundSpeech`, 기본 켬, 2026-10-01 2.0부터 정식판에도 있고 봉인 플래그는 없다)가 도보·자동차·대중교통·나들이를 함께 다스린다. `speakGuidance` 직접 호출은 칸 배선과 자동차 운전자 채널뿐이다(가드 `background-speech-guard.test.ts`).
 
 - **채널은 Kit `guideSpeechChannel` 하나가 정한다**(앱 배선은 `GuideSpeechOutput`): 전경 ∧ VoiceOver → VoiceOver 통지, 전경 ∧ VoiceOver 꺼짐 → 나들이만 기기 음성(나머지는 VoiceOver 게시), 백그라운드 → 토글 ∧ **가청**(재생기 `isBackgroundAudible`) ∧ 행동 문장이면 기기 음성, 그 밖은 버림. ⚠ 가청을 빼면 승격 실패 세션에서 들리지 않는 문장을 "전달"로 쳐서 1회성 경고 latch와 복귀 상환이 거기서 소비된다(설계 리뷰 B1). 자동차 운전자 채널은 술어 **앞**이다(토글 무관).
 - **분류는 호출부가 밝힌다**(`actionable`·`urgent`·`deferrable`): 세 모델의 `announce`/`say`와 `DeferredAnnouncer.announce`의 `speechClass`는 기본값 없는 필수 인자이고, 경로·비콘·대중교통 이벤트는 Kit `guideEventSpeechClass`·`beaconNoticeSpeechClass`·`transitEventSpeechClass`가 정본이다. 임박 명령은 `urgent`(기기 음성에서 선점), 이탈은 회차 시작만 행동 문장(재통지는 주기), 사다리는 잔여 ≤1만, `trackingStarted`는 백그라운드 톤이 자리를 맡아 미룸.
