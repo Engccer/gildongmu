@@ -51,6 +51,13 @@ final class BeaconModel {
     /// 평가되므로, 비우면 같은 빈 화면이 닫히는 길에 재현된다. 추적 중이 아닐 때 이
     /// 값을 읽는 곳은 없다.
     private(set) var destinationLabel = ""
+    /// 목적지 라틴 표기(E28 서버 로마자 등, A55). `destinationLabel`과 **함께만** 바뀐다. 승격본·이름 없는 진입은 nil.
+    private(set) var destinationRoman: String?
+    /// 통지(시작·목적지 전환)에 실을 목적지 이름(A55). 대중교통 `TransitGuideModel.spokenDestinationName`과 **같은 판정**이다 —
+    /// 데이터 언어가 en이면 라틴 표기만, 없으면 nil. 한글 라벨이 영어 문장에 섞이지 않게(E27 한 줄 한 언어).
+    private var spokenDestinationName: String? {
+        TransitWalkLegText.destinationName(label: destinationLabel, roman: destinationRoman, english: transitGuideIsEn)
+    }
     /// 화면에 보이는 상태 1줄. 웹에는 눈에 보이는 live region이 있는데 그게 없으면
     /// VoiceOver를 끈 사람에게 아무 변화도 안 보인다(2.1(a) 반려 전력과 동형).
     /// ⚠ **항상 발화 원문이다** — 전경 복귀 재생(handleScenePhaseChange)이 이 값을
@@ -634,6 +641,8 @@ final class BeaconModel {
     struct StartRequest {
         let dest: BeaconDest
         let label: String
+        /// 목적지 라틴 표기(A55). ⚠ 기본값 없음 — 빠뜨리면 en 세션의 시작 문장이 조용히 한글 원명을 싣는다. 없으면 nil.
+        let labelRoman: String?
         let kind: GuideSessionKind
         let accessible: Bool
         let variant: WalkRouteVariant?
@@ -658,14 +667,14 @@ final class BeaconModel {
     /// 줄이 없는 진입(간략 폴백 한 곳)만 쓴다 — 경로 축·줄 종류는 여기서 정하지 않는다(E42 설계 리뷰:
     /// 기본값을 둔 인자는 A13의 재발 자리라 인자 자체를 두지 않는다).
     func toggle(
-        dest: BeaconDest, label: String, kind: GuideSessionKind, accessible: Bool,
+        dest: BeaconDest, label: String, labelRoman: String?, kind: GuideSessionKind, accessible: Bool,
         waypoint: Waypoint?
     ) {
         if isTracking {
             stopByUser()
         } else {
             requestStart(StartRequest(
-                dest: dest, label: label, kind: kind, accessible: accessible,
+                dest: dest, label: label, labelRoman: labelRoman, kind: kind, accessible: accessible,
                 variant: nil, line: nil, alternate: nil, waypoint: waypoint))
         }
     }
@@ -713,7 +722,7 @@ final class BeaconModel {
         startGeneration += 1
         let generation = startGeneration
         startTask = Task { [weak self] in
-            await self?.start(dest: request.dest, label: request.label, kind: request.kind)
+            await self?.start(dest: request.dest, label: request.label, labelRoman: request.labelRoman, kind: request.kind)
             guard let self, self.startGeneration == generation else { return }
             self.starting = false
             // 시작 실패 한 판정(권한 거부·정밀 위치·서비스 꺼짐·claim 거부·취소 전부): 세션이
@@ -726,7 +735,7 @@ final class BeaconModel {
         }
     }
 
-    private func start(dest: BeaconDest, label: String, kind: GuideSessionKind = .walk) async {
+    private func start(dest: BeaconDest, label: String, labelRoman: String?, kind: GuideSessionKind = .walk) async {
         guard !isTracking else { return }
         // 채널은 권한 가드보다 **앞**에서 정한다 — 가드 실패 통지(`fail`)가 이전 세션 채널로 나가지
         // 않게(품질 리뷰 m10).
@@ -809,6 +818,7 @@ final class BeaconModel {
         // 고착된다 — 세션 경계가 무조건 해제한다(TransitGuideModel.stop() 동형).
         outputSuppressed = false
         destinationLabel = label
+        destinationRoman = labelRoman
         sessionKind = kind
         // 로그 수단 표식(K2 §6.6): 2026-08-22 실주행 로그에 표식이 없어 속도로만 도보·자동차를 갈랐다.
         guideDiagLog("session kind=\(kind) listener=\(listener.rawValue)")
@@ -1063,13 +1073,15 @@ final class BeaconModel {
                 refreshCurrentRoad(state: initial.state)
             }
             // 시작 요약 + 첫 안내를 한 문장으로(원자 발화 — 두 통지의 경합 제거).
+            // 목적지 이름은 통지 언어로(A55 — en이면 라틴 표기). 라틴 표기가 없으면 원명 그대로(종전 문장 — 이름 없는 시작 문장은 없다).
+            let spokenDest = spokenDestinationName ?? destinationLabel
             let summary = sessionKind == .car
                 ? GuideText.carStart(
                     route: fetched.route, firstIndices: initial.firstIndices,
-                    destination: destinationLabel)
+                    destination: spokenDest)
                 : GuideText.start(
                     route: fetched.route, firstIndices: initial.firstIndices,
-                    destination: destinationLabel)
+                    destination: spokenDest)
             // 계단 회피 열화 문장이 있으면 그 앞에 붙인다 — 세션 전체에 걸린 조건이라
             // 걷기 전에 들어야 한다(spec §2.3). 별도 통지로 내보내면 경합한다.
             let notice = consumeStepFreeNotice(
@@ -1235,7 +1247,7 @@ final class BeaconModel {
     private func syncStartRequestWithSession() {
         guard let request = lastStartRequest, let dest else { return }
         lastStartRequest = StartRequest(
-            dest: dest, label: destinationLabel, kind: request.kind,
+            dest: dest, label: destinationLabel, labelRoman: destinationRoman, kind: request.kind,
             accessible: accessible, variant: sessionVariant,
             line: sessionLine, alternate: alternateLine, waypoint: waypoint)
     }
@@ -1619,25 +1631,30 @@ final class BeaconModel {
     /// 옛 경로의 회전·도착 신호가 나갈 창을 `awaitingRoute` 보류가 구조적으로 막는다).
     /// 반환 false = 세션이 이미 죽어 선택을 폐기(§3.2 — 호출부는 폼도 건드리지 않는다).
     @discardableResult
-    func changeDestination(dest newDest: BeaconDest, label: String) -> Bool {
+    func changeDestination(dest newDest: BeaconDest, label: String, labelRoman: String?) -> Bool {
         guard isTracking else { return false }
+        // 확인 통지의 이름은 통지 언어로(A55 — 대중교통 목적지 변경과 같은 판정). en이고 라틴 표기가 없으면 이름 없는 문구.
+        let changed = { [self] in
+            spokenDestinationName.map { appLocalized("ios.guide.destChanged", $0) }
+                ?? appLocalized("ios.guide.destChangedNoName")
+        }
         if dest == newDest {
             // 같은 좌표 재선택(§3.2): 재조회 없이 확인 통지만. 라벨은 최신본으로.
             destinationLabel = label
+            destinationRoman = labelRoman
             syncStartRequestWithSession()
-            announceNow(appLocalized("ios.guide.destChanged", label),
-                        highPriority: true, bypassSuppression: true)
+            announceNow(changed(), highPriority: true, bypassSuppression: true)
             return true
         }
         dest = newDest
         destinationLabel = label
+        destinationRoman = labelRoman
         // 새 목적지는 새 여정이다 — 지난 경유지의 "목적지 {dest}까지" 행 유지를 잇지 않는다(코드 리뷰 L4).
         waypointPassedInSession = false
         syncStartRequestWithSession()
         reacquireRoute()
         // 즉시 확인 통지(§3.1: 조회 완료에 결박하지 않는 활성화 응답, 억제 우회).
-        let ack = appLocalized("ios.guide.destChanged", label) + " "
-            + appLocalized("ios.guide.destChangedFetching")
+        let ack = changed() + " " + appLocalized("ios.guide.destChangedFetching")
         announceNow(ack, highPriority: true, bypassSuppression: true)
         awaitingRoute = true
         startFixWaitWatch(token: routeFetchToken)

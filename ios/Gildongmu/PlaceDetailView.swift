@@ -235,7 +235,7 @@ struct PlaceDetailView<DomainSection: View>: View {
                 Button(appLocalized("guide.changeDestHere")) {
                     let dest = BeaconDest(lat: place.lat, lng: place.lng)
                     if guideSession.beacon.isTracking {
-                        if guideSession.beacon.changeDestination(dest: dest, label: place.name) {
+                        if guideSession.beacon.changeDestination(dest: dest, label: place.name, labelRoman: place.nameRoman) {
                             GuideFormSyncStore.shared.post(.place(label: place.name, lat: place.lat, lng: place.lng, labelRoman: place.nameRoman))
                         }
                     } else {

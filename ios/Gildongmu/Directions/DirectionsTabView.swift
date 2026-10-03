@@ -1010,7 +1010,7 @@ struct DirectionsTabView: View {
                                     lastGuideStart = .car
                                     announceGuideStartIfManualOrigin()
                                     session.startBeacon(BeaconModel.StartRequest(
-                                        dest: tracked.dest, label: tracked.label, kind: .car,
+                                        dest: tracked.dest, label: tracked.label, labelRoman: destinationPlaceRoman, kind: .car,
                                         accessible: false, variant: nil, line: nil, alternate: nil,
                                         waypoint: sessionWaypoint
                                     ))
@@ -1619,7 +1619,7 @@ struct DirectionsTabView: View {
                                 lastGuideStart = .walkLine(kind)
                                 announceGuideStartIfManualOrigin()
                                 session.startBeacon(BeaconModel.StartRequest(
-                                    dest: tracked.dest, label: tracked.label, kind: .walk,
+                                    dest: tracked.dest, label: tracked.label, labelRoman: destinationPlaceRoman, kind: .walk,
                                     accessible: kind.accessible, variant: kind.variant,
                                     line: kind,
                                     alternate: WalkLineKind.switchAlternate(

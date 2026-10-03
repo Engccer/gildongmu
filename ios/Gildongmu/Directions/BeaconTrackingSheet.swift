@@ -374,8 +374,8 @@ struct BeaconTrackingSheet: View {
         // 착지는 시트가 닫힌 뒤 첫 정보 행(E57 — 종전 제목. 새 목적지는 확인 통지가 이미 말했다).
         .sheet(isPresented: $changeDestPresented, onDismiss: landAfterSubSheet) {
             DirectionsEndpointSearchView(target: .to) { endpoint in
-                guard case .place(let label, let lat, let lng, _) = endpoint else { return }
-                if model.changeDestination(dest: BeaconDest(lat: lat, lng: lng), label: label) {
+                guard case .place(let label, let lat, let lng, let labelRoman) = endpoint else { return }
+                if model.changeDestination(dest: BeaconDest(lat: lat, lng: lng), label: label, labelRoman: labelRoman) {
                     onDestinationCommitted(endpoint)
                     landAfterDismiss = DismissLanding(note: "destinationChanged")
                 }

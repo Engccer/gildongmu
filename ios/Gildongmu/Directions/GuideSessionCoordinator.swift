@@ -107,9 +107,9 @@ final class GuideSession {
         beacon.onSessionEnd = { [weak self] reason in self?.endOutingReturn(id, reason: reason, target: target) }
         launchingOutingReturn = true
         self.startBeacon(BeaconModel.StartRequest(
-            dest: BeaconDest(lat: target.lat, lng: target.lng), label: target.label, kind: .walk,
+            dest: BeaconDest(lat: target.lat, lng: target.lng), label: target.label, labelRoman: nil, kind: .walk,
             accessible: false, variant: nil, line: nil, alternate: nil,
-            waypoint: nil))  // 귀환 경로에 경유지는 없다
+            waypoint: nil))  // 귀환 경로에 경유지는 없다. 출발점 라벨은 라틴 표기가 없다(그 이름 그대로)
         launchingOutingReturn = false
         // 동기 거부(requestStart 게이트)면 시작 Task가 없어 실패 콜백도 없다 — 여기서 잇는다.
         if !beacon.starting, !beacon.isTracking { endOutingReturn(id, reason: .startFailed, target: target) }
@@ -162,7 +162,8 @@ final class GuideSession {
                 isEn: transitGuideIsEn, station: stationLabel, minutes: target.minutes)), speechClass: .actionable)
         launchingPrewalk = true
         self.startBeacon(BeaconModel.StartRequest(
-            dest: BeaconDest(lat: target.lat, lng: target.lng), label: walkLabel, kind: .walk,
+            // 역 라벨은 이미 통지 언어로 골랐다(`walkLabel`) — 라틴 표기를 따로 싣지 않는다.
+            dest: BeaconDest(lat: target.lat, lng: target.lng), label: walkLabel, labelRoman: nil, kind: .walk,
             accessible: accessible, variant: nil, line: nil, alternate: nil,
             waypoint: nil))  // 승차역까지의 도보에 경유지는 없다
         launchingPrewalk = false
@@ -227,6 +228,7 @@ final class GuideSession {
     func acceptWalkHandoff() {
         guard let dest = transit.dest else { return }
         let label = transit.destinationLabel
+        let roman = transit.destinationRoman
         let accessible = transit.accessible
         transit.stop()
         transit.clearWalkHandoff()
@@ -235,7 +237,7 @@ final class GuideSession {
             try? await Task.sleep(for: .milliseconds(600))
             guard !Task.isCancelled, let self else { return }
             self.startBeacon(BeaconModel.StartRequest(
-                dest: dest, label: label, kind: .walk, accessible: accessible,
+                dest: dest, label: label, labelRoman: roman, kind: .walk, accessible: accessible,
                 variant: nil, line: nil, alternate: nil,
                 waypoint: nil))  // 대중교통 세션엔 경유지가 없다(ODsay 미지원)
         }
@@ -246,9 +248,10 @@ final class GuideSession {
     func acceptCarWalkHandoff() {
         guard let dest = beacon.arrivalDest else { return }
         let label = beacon.destinationLabel
+        let roman = beacon.destinationRoman
         beacon.clearArrival()
         self.startBeacon(BeaconModel.StartRequest(
-            dest: dest, label: label, kind: .walk, accessible: false,
+            dest: dest, label: label, labelRoman: roman, kind: .walk, accessible: false,
             variant: nil, line: nil, alternate: nil, waypoint: nil))
     }
 
