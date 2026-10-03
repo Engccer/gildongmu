@@ -81,7 +81,7 @@ spec `2026-09-23-walk-two-lines-kakao-design.md`. 카카오 `route_mode` 허용�
 - ⚠ **안전 관련 인자에 기본값을 두지 말 것**(`RouteService.walk`·`walkRouteUrl`·`DistanceBeacon` prop·`BeaconModel.toggle` 전부 required). 백로그 A4가 정확히 그 기제에서 나왔고, 기본값을 없애자 컴파일러·타입 검사가 누락 7곳을 즉시 잡았다.
 
 ### 캐시·쿼터
-IP 레이트리밋 60초 10회 + fetch 단위 `revalidate 3600`(GET이라 Authorization 헤더 무관 캐시 유효·200만 캐시라 장애 미고착. Tmap POST revalidate는 실효). ⚠ **실시간 안내(기하 포함) 요청은 `noStore`로 캐시를 우회한다**(`kakao-walk.ts`) — 세션 전용 실시간 데이터를 revalidate에 태우면 "세션 한정 메모리 보유, 저장 아님" 약관 판단과 모순(spec 2026-08-03 §7.2). 되돌리지 말 것. ⚠ **카카오 앱 유료 전환 미신청 유지** — 초과=오류=폴백이라 비용 상한이 구조적으로 0원이다(신청은 하드 스톱).
+IP 레이트리밋 60초 10회 + fetch 단위 `revalidate 300`(카카오, GET이라 Authorization 헤더 무관 캐시 유효·200만 캐시라 장애 미고착. Tmap은 `revalidate 3600`을 적지만 POST라 실효). ⚠ **카카오 응답 보관은 300초가 상한이다**(2026-10-03 위원장 판정, BACKLOG §9 "카카오 응답 캐시 약관 질의": 주소 `kakao-address`·도보 `kakao-walk`를 장소 검색과 같은 300초로. 데브톡 운영자 답변 "실시간 호출이 아닌 형태로는 이용할 수 없습니다"가 종전 판정 뒤에 나왔으나 공식 공지가 아니라 캐시 제거까지는 가지 않았다). 가드 `kakao-cache-ttl.test.ts`가 카카오 엔드포인트를 부르는 provider의 `revalidate` 리터럴 전수를 본다. ⚠ **실시간 안내(기하 포함) 요청은 `noStore`로 캐시를 우회한다**(`kakao-walk.ts`) — 세션 전용 실시간 데이터를 revalidate에 태우면 "세션 한정 메모리 보유, 저장 아님" 약관 판단과 모순(spec 2026-08-03 §7.2). 되돌리지 말 것. ⚠ **카카오 앱 유료 전환 미신청 유지** — 초과=오류=폴백이라 비용 상한이 구조적으로 0원이다(신청은 하드 스톱).
 
 길찾기 뷰(`DirectionsView`)는 `?dir=` 동기화에서 현재 위치를 `cur` 토큰으로만 쓰고 좌표를 직렬화하지 않는다(2026-08-22 N4부터 `via` 토큰이 함께 실린다 — `serializeDir(from, to, via)`). **경유지(`via`)는 응답 `waypoint{stepIndex,coord}` 하나로만 드러나고 스텝 문장은 불변이며, provider가 경유지 표지를 못 찾으면 throw한다**(카카오 도보는 파라미터 이름이 틀려도 200 정상 응답이라 URL 단언 `route-waypoint.test.ts`가 유일한 가드). 계약 전문은 이 문서 아래 §경유지(`via`)는 응답 `waypoint{stepIndex,coord}` 하나로만… 절과 spec `2026-08-22-waypoint-server-web-cli-design.md`.
 

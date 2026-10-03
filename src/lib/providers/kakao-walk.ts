@@ -29,7 +29,8 @@ import type { Coord, RouteWaypoint, WalkRouteBriefing, WalkRouteStep } from "../
  * 갈린다). ⚠ `waypoints`·`passlist`류 이름은 **무시되고 200 정상 응답**이 오므로
  * 이름 오타는 테스트의 URL 문자열 단언과 legs 수 가드(`expectWaypoint`)만이 잡는다. en 미지원(안내문이 한국어 고정) — V1 ko 전용은 Tmap과 동일 스코프.
  *
- * 캐시: revalidate 3600(보행 경로는 준정적). 좌표는 4자리 반올림으로 캐시 키
+ * 캐시: revalidate 300(카카오 응답 보관은 장소 검색과 같은 5분 — 2026-10-03 위원장 판정,
+ * BACKLOG §9 "카카오 응답 캐시 약관 질의"). 좌표는 4자리 반올림으로 캐시 키
  * 안정화(`roundCoord`, route_mode가 URL에 포함되어 모드별 캐시가 자연 분리).
  *
  * ⚠ **accessible 요청만은 반올림하지 않는다**(dodo 역이식 2026-08-23, codex 적대적
@@ -203,7 +204,7 @@ export async function getKakaoWalkBriefing(params: {
     headers: { Authorization: `KakaoAK ${env.KAKAO_REST_API_KEY ?? ""}` },
     signal: AbortSignal.timeout(8_000),
     // route_mode가 URL에 포함되어 모드별 캐시가 자연 분리된다(spec §캐시).
-    ...(noStore ? { cache: "no-store" as const } : { next: { revalidate: 3600 } }),
+    ...(noStore ? { cache: "no-store" as const } : { next: { revalidate: 300 } }),
   });
   if (!res.ok) {
     const body = await res.text().catch(() => "");

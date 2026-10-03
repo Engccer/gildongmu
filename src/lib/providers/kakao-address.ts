@@ -10,6 +10,9 @@ import type { AddressMatch, Coord } from "../types";
  * - 주소 검색: https://dapi.kakao.com/v2/local/search/address.json
  * - 좌표→주소: https://dapi.kakao.com/v2/local/geo/coord2address.json
  *   (x=경도, y=위도 — 카카오는 x/y 순서이므로 이 파일 밖으로 새지 않게 한다)
+ *
+ * 캐시: revalidate 300(카카오 응답 보관은 장소 검색과 같은 5분 — 2026-10-03 위원장 판정,
+ * BACKLOG §9 "카카오 응답 캐시 약관 질의". 가드 `kakao-cache-ttl.test.ts`).
  */
 
 const ADDRESS_ENDPOINT = "https://dapi.kakao.com/v2/local/search/address.json";
@@ -62,7 +65,7 @@ export async function searchAddress(
 
   const res = await fetch(url, {
     headers: { Authorization: `KakaoAK ${env.KAKAO_REST_API_KEY}` },
-    next: { revalidate: 3600 },
+    next: { revalidate: 300 },
   });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
@@ -86,7 +89,7 @@ export async function coordToAddress(coord: Coord): Promise<{
 
   const res = await fetch(url, {
     headers: { Authorization: `KakaoAK ${env.KAKAO_REST_API_KEY}` },
-    next: { revalidate: 3600 },
+    next: { revalidate: 300 },
   });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
@@ -137,7 +140,7 @@ export async function coordToRegion(coord: Coord): Promise<string | null> {
 
   const res = await fetch(url, {
     headers: { Authorization: `KakaoAK ${env.KAKAO_REST_API_KEY}` },
-    next: { revalidate: 3600 },
+    next: { revalidate: 300 },
   });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
@@ -170,7 +173,7 @@ export async function coordToRegionNames(coord: Coord): Promise<RegionNames | nu
 
   const res = await fetch(url, {
     headers: { Authorization: `KakaoAK ${env.KAKAO_REST_API_KEY}` },
-    next: { revalidate: 3600 },
+    next: { revalidate: 300 },
   });
   if (!res.ok) return null;
   const data = (await res.json()) as { documents: KakaoRegionDocument[] };
