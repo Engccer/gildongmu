@@ -19,8 +19,8 @@
 | `e61-car` | 1 | E61 · 문안 바·사 · 문안 라의 자동차 시작 문장 · E51 ④(자동차 두절 15분) | opus·high | 자동차 짧은 안내에 지점과 방면, 자동차 세션 안전망 두절 축을 15분으로 |
 | `e62-crossing` | 1 | E62 · 문안 가·나 · 문안 라의 도보 시작 문장 · "회전은 끊어 말한다" · "되읽기는 회전 문장을 뗀다" · "행동 없는 다음 구간은 예고하지 않는다" | opus·high | 횡단보도 안내 재설계와 도보 예고 문장 틀(서버·웹·iOS·`:kit`) |
 | `e63-research` | 1 | E63 조사·설계 | opus·high | 과거 로그 재생으로 문턱과 구멍 ①②를 재고 spec을 확정(repo 코드 수정 0) |
-| `e63-offroute` | 2 | E63 구현 · 문안 다·마 · 문안 라의 재조회 문장 셋 | opus·high | 이탈 방향 안내와 "먼저 돌아가게, 계속 벗어나면 자동"(도보·자동차, 웹·iOS·`:kit`). `e62-crossing` 통합과 `e63-research` spec 뒤 |
-| `small-11` | 2 | A55 · E58 후속 ②③④ · A53 후속 후보 셋 · 카카오 캐시 300초 | opus·medium | 소형 묶음(iOS·웹·서버). `e62-crossing` 통합 뒤 |
+| `e63-offroute` | 2 | E63 구현 · 문안 다·마 · 문안 라의 재조회 문장 셋 · A55 | opus·high | 이탈 방향 안내와 "먼저 돌아가게, 계속 벗어나면 자동"(도보·자동차, 웹·iOS·`:kit`). `e62-crossing` 통합과 `e63-research` spec 뒤 |
+| `small-11` | 1.5 | E58 후속 ②③④ · A53 후속 후보 셋 · 카카오 캐시 300초 | opus·medium | 소형 묶음(iOS·웹·서버). `e61-car` 통합 뒤 바로 착수(§6 둘째 정정) |
 | `android-3` | 3 | E62·E63의 안드로이드 앱 층 이식 · E43 이식 후보 ③ | opus·high | iOS 통합본을 보고 `WalkGuideModel`·`GuideText`·안내 시트로 옮긴다. `e63-offroute` 통합 뒤 |
 | `doc-audit` | 끝 | 문서 만료 점검 | opus·medium | 전 웨이브 통합 뒤 새 창 |
 
@@ -32,6 +32,9 @@
 2. **카카오 응답 캐시는 두되 보관 시간만 줄인다**(BACKLOG §9 "카카오 응답 캐시 약관 질의" 행, E58 후속 ⑥). 주소·도보 경로의 3600초를 장소 검색과 같은 300초로 내린다.
 
 3. **둘로 나눌 수 없는 "횡단보도 2개" 병합 안내는 한 문장으로 하고 길이 라벨은 "전체 길이"다**(`e62-crossing` 판정 요청 `judgment-202610031814.md`, 실측 15곳 중 8곳이 중앙분리대 일직선형이라 분해 불가). "…횡단보도 2개를 연속으로 건너세요. 전체 길이 12m". 나뉘는 횡단과 단일 횡단은 문안 확정본대로 "횡단보도 길이".
+
+4. **E63 추가 판정 4건**(`e63-research` 판정 요청, 문장은 BACKLOG E63 "위원장 추가 판정 4건"): 새 경로가 걷던 방향 그대로면 "진행 방향 그대로" · 경로가 등 뒤면 "뒤로 도세요" · 방향 불확실이면 벗어난 쪽만 · **나란한 길을 계속 걸으면 50m쯤 뒤 자동 재조회**(조사 세션 기본안과 반대).
+5. **공개 히스토리 정리는 웨이브가 전부 끝난 뒤 한다**(BACKLOG A56, 대상은 저장소 밖. 강제 push라 실행 직전 위원장에게 다시 확인받는다). 그 전까지 force push 금지.
 
 E61·E62·E63의 판정과 문안은 2026-10-03 접수 세션에서 끝났다(BACKLOG 각 본문, 문안 확정본).
 
@@ -125,3 +128,4 @@ git push origin feat/<이름>:main && git -C ~/Mac-Projects/gildongmu pull --ff-
 ## 6. 정정 (코디네이터가 재현해 확인한 것)
 
 - **2026-10-03 18:05, 관측 `3092dff0`, 출처 `e61-car` 착수 보고(코디네이터 재현 확인)**: 안내 스텝 구조체는 `RouteModels.swift`가 아니라 **`route-geometry.ts` ↔ `RouteGeometry.swift` ↔ `:kit` `RouteGeometry.kt`의 `GuideStepSpan`·`GuideStepGeometry`**다(§2 웨이브 1 경계의 "스텝 구조체에 두 세션이 각자 선택 필드" 줄은 이 세 파일에도 그대로 적용한다. `e61-car`는 자동차 전용 선택 필드, `e62-crossing`은 도보 횡단·조각 필드, 뒤에 통합하는 쪽이 rebase에서 양쪽 보존). 세션 안전망 `sessionIdleStep`의 호출부는 `BeaconModel.swift`·`OutingModel.swift`·안드로이드 `WalkGuideModel.kt` 셋이다: 두절 값을 인자로 받게 바꾸면 `OutingModel.swift` 한 줄과 `WalkGuideModel.kt` 한 줄이 따라 바뀐다(둘 다 도보 값 300초를 명시할 뿐 동작 불변). `e61-car`가 그 두 줄을 고친다(웨이브 1에 `OutingModel.swift`를 만지는 다른 세션은 없다).
+- **2026-10-03 20:10, 관측 `d7e00593`**: `e61-car`(`44b0661c`)와 `e63-research`(`d7e00593`)가 통합됐고 `e62-crossing`은 구현 중이다. `small-11`의 항목 중 `e62-crossing`과 겹치는 것은 A55 하나뿐이라(도보 시작 문장 `GuideText.start`·`guide.detailStart`를 `e62-crossing`이 고치는 중) **A55를 `e63-offroute`로 옮기고 `small-11`은 지금 띄운다.** `e62-crossing` 브랜치의 변경 파일 목록(관측 `97a19b0f` 뒤)에 `kakao-*.ts`·`OutingModel.swift`·`WalkInfraService.swift`·`NOTICE.md`·WebMCP 도구·`TransitRouteBriefing.tsx`가 없음을 확인했다. §2 웨이브 2 표의 `small-11` 줄에서 A55 자리(`BeaconModel.changeDestination`·`ios.guide.destChanged*`)는 `e63-offroute` 소유로 읽는다.
