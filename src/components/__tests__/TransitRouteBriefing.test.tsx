@@ -152,7 +152,7 @@ describe("en 도보 줄의 한국어 행선지(A53 ②·후속 ⓒ)", () => {
   function EnHarness({ legs }: { legs: TransitLeg[] }) {
     const t = useTranslations("route.transit");
     const route: TransitRoute = {
-      summary: { totalMinutes: 45, fare: 1750, transfers: 0, walkMinutes: 3 },
+      summary: { totalMinutes: 45, fare: 1750, transfers: 0, walkMinutes: 3, arriveName: "DMC" },
       legs,
       routeKey: "p0",
     };
@@ -176,6 +176,9 @@ describe("en 도보 줄의 한국어 행선지(A53 ②·후속 ⓒ)", () => {
     const first = screen.getAllByRole("listitem")[0];
     expect(first.querySelectorAll("[lang]")).toHaveLength(0);
     expect(first.textContent).toContain("DMC");
+    // 도착 줄(하차역 이름)도 같은 판정이다.
+    const arrive = screen.getByText(/DMC/, { selector: "p" });
+    expect(arrive.querySelectorAll("[lang]")).toHaveLength(0);
   });
 });
 

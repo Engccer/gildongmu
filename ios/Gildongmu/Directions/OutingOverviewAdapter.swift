@@ -21,7 +21,18 @@ final class OutingOverviewAdapter: GuideOverviewCapability, Identifiable {
     /// 머리글 — 시스템 헤더 착지가 낭독한다(별도 통지 없음).
     var overviewHeaderText: String { joinText(model.walkedLine, model.headingLine) }
 
+    /// 마지막으로 그린 행. 세션이 끝나면(모델이 장소를 비운다, E58 후속 ④) 조망이 닫히기 전 한 프레임에 구획이
+    /// "없음"으로 다시 그려져 커서가 옮겨 가지 않게 이 행을 그대로 낸다.
+    @ObservationIgnored private var lastRows: [GuideOverviewRow] = []
+
     var overviewRows: [GuideOverviewRow] {
+        guard model.isTracking else { return lastRows }
+        let rows = currentRows
+        lastRows = rows
+        return rows
+    }
+
+    private var currentRows: [GuideOverviewRow] {
         // 주변 정보가 준비되지 않았으면 "없음"으로 뭉개지 않고 방향 행과 같은 상태 문장 한 줄(3-state, 접근성 감사 M3).
         switch model.surroundingsStatus {
         case .loading: return [.text(id: "status", appLocalized("ios.outing.surroundingsLoading"))]

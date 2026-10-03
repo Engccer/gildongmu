@@ -148,7 +148,7 @@ val lines = Fixtures.kit("chat-stream.ndjson").lines()                          
 ```
 
 - 저장소 루트는 `:kit build.gradle.kts`가 넘기는 `gildongmu.kitDir`에서 위로 올라가 `package.json` + `ios/GildongmuKit/Package.swift`가 있는 곳. 못 찾거나 파일이 없거나 비면 **실패한다**(조용히 통과하지 않는다).
-- ⚠ 두 fixture 디렉터리는 모듈 밖이라 `:kit` `tasks.test`가 `inputs.dir`로 선언해 둔다(`kit/build.gradle.kts`). 선언이 없으면 fixture만 바뀐 실행이 `:kit:test UP-TO-DATE`로 건너뛰어 판정표를 고쳐도 게이트가 초록으로 남는다. `:app` 테스트(같은 로더·`Fixtures.repoRoot` 소스 가드)는 아직 선언이 없다: fixture·스캔 대상만 바꾼 뒤 `:app` 게이트를 볼 때는 `--rerun-tasks`로 돌린다.
+- ⚠ `:kit` 테스트는 모듈 밖 파일(두 fixture 디렉터리, Swift·TS 소스 드리프트 가드, `messages`)을 읽어 Gradle이 그 변경을 모르므로 `kit/build.gradle.kts`가 `outputs.upToDateWhen { false }`로 늘 다시 돌린다(없으면 판정표만 고친 실행이 `:kit:test UP-TO-DATE`로 건너뛰어 게이트가 초록으로 남는다). `:app` 테스트(같은 로더·`Fixtures.repoRoot` 소스 가드)는 아직 그 설정이 없다: 모듈 밖 파일만 바꾼 뒤 `:app` 게이트를 볼 때는 `--rerun-tasks`로 돌린다.
 - fixture 모양은 테스트 파일 안의 `@Serializable private data class`로 그때그때 선언한다(Swift 테스트의 `private struct … Decodable`과 같은 자리).
 - 두 fixture 디렉터리는 **읽기만** 한다. 틀렸다고 판단되면 고치지 말고 코디네이터에 보고한다(웹·iOS 테스트도 같이 바뀌어야 한다).
 - 네트워크 계층 테스트는 `stubbedClient { url -> HttpResponse(status, body) }` / `StubTransport`(경로 판정은 `pathOf(url)`·`queryOf(url)`), 저장소는 `InMemoryKeyValueStore` — 로더와 함께 `kit/src/testFixtures`에 있어 `:app` 테스트(`testFixtures(project(":kit"))`)도 같은 것을 쓴다(`Fixtures.repoRoot`로 소스 가드의 스캔 루트를 잡는다).

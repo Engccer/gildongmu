@@ -255,7 +255,8 @@ const NAME_SLOT = "\u0000";
 
 /**
  * 한국어 원천 이름의 낭독 언어 — 한글이 있는 이름만 `lang="ko"`로 감싼다(A53 후속 ⓒ). "DMC"처럼 라틴 문자뿐인
- * 원천 이름을 한국어 음성으로 읽히면 글자를 한국어 발음으로 끊어 읽는다. 탑승 줄·도보 줄이 이 한 함수를 지난다.
+ * 원천 이름을 한국어 음성으로 읽히면 글자를 한국어 발음으로 끊어 읽는다. 탑승 줄·도착 줄이 이 함수를, 도보 줄은
+ * 문장 틀을 쪼개기 전에 같은 `hasHangul` 판정을 지난다.
  */
 function koName(name: string): ReactNode {
   return hasHangul(name) ? <span lang="ko">{name}</span> : name;
@@ -403,7 +404,7 @@ export function TransitRouteResult({
               isEn && route.summary.arriveNameEn ? (
                 <TransitBilingualName en={route.summary.arriveNameEn} ko={route.summary.arriveName} />
               ) : (
-                <span lang="ko">{route.summary.arriveName ?? dest}</span>
+                koName(route.summary.arriveName ?? dest)
               ),
           })}
         </p>

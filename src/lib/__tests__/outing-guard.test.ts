@@ -220,4 +220,8 @@ describe("나들이 장소 목록은 종료 즉시 비운다(E58 후속 ④, 카
       /onChange\(of: model\.endScreen\)[\s\S]{0,200}overviewAdapter = nil/,
     );
   });
+  it("조망은 세션이 끝나면 마지막 행을 그대로 낸다(닫히기 전 한 프레임에 \"없음\"으로 다시 그려지지 않게)", () => {
+    const adapter = readFileSync(join(IOS, "Gildongmu/Directions/OutingOverviewAdapter.swift"), "utf8");
+    expect(adapter).toMatch(/var overviewRows: \[GuideOverviewRow\] \{\s*guard model\.isTracking else \{ return lastRows \}/);
+  });
 });
