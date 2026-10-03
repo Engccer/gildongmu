@@ -187,11 +187,21 @@ final class BeaconModel {
     private var liveRowsState: LiveRowsState?
     /// 횡단 중 남은 거리 행 문장(E62 — "횡단보도 끝까지 약 30m", 말 없이 화면에만). nil이면 남은 거리 행은 종전 문장.
     private var liveCrossingText: String?
+    /// 상태 행에 올린 임박 문장과 그 대상 스텝(E62 a11y 감사 M1). 그 스텝에 들어서면 상태 행에서 지운다.
+    private var imminentStatus: (target: Int, text: String)?
     /// 표시 좌표계 램프인 기준점(원시 d) — 상태 재구성 지점마다 그 시점 d로 교체.
     private var liveBaselineD: Double = 0
 
     /// 세션이 쥐는 경로. 메모리에만 두고 세션 종료와 함께 폐기한다(스펙 §7.3 약관 경계).
-    private var guideRoute: GuideRoute?
+    private var guideRoute: GuideRoute? {
+        // 경로가 바뀌면 옛 경로 기준의 횡단 남은 거리 행과 "들어선 뒤" 복구 문장을 버린다(E62 구현 리뷰) — 커밋 자리는
+        // 남은 거리 행을 하단 2행 재설정보다 먼저 갱신해, 비우지 않으면 새 경로 첫 fix 동안 옛 "횡단보도 끝까지"가 남는다.
+        didSet {
+            liveCrossingText = nil
+            pendingRecoveryEntered = nil
+            imminentStatus = nil
+        }
+    }
     /// 상세 경로의 총 소요시간(초, provider 원값) — walk 잔여 시간 비례 추정의 분모.
     private var guideRouteDurationSeconds: Int?
     /// car 도로명 스팬(§4.7 — 현재 진행거리가 속한 링크만 답한다).
@@ -1978,6 +1988,11 @@ final class BeaconModel {
             tuning: tuning
         )
         guideState = out.state
+        // 지난 임박 문장은 상태 행에 남기지 않는다(전경 복귀 재생이 지난 회전을 다시 읽는다, a11y 감사 M1).
+        if let pending = imminentStatus, out.state.stepIndex >= pending.target {
+            if statusText == pending.text { statusText = "" }
+            imminentStatus = nil
+        }
         // 하단 2행(spec 2026-08-11, car 확장 K2 §4): 이탈 복귀·재획득은 리듀서가 d를 재구성한
         // 지점이다 — 투영이 새 기준에 정렬됐으므로 램프인 기준점·클램프를 리셋한다.
         switch out.event {
@@ -2546,7 +2561,7 @@ final class BeaconModel {
             if case let .announceSteps(_, late) = event, !late, sessionKind == .walk, let gs = guideState,
                let first = indices.first, route.steps.indices.contains(first) {
                 spoken = GuideText.announceAhead(
-                    unit: text,
+                    route: route, indices: indices,
                     meters: spokenRemainingMeters(route.steps[first].startD - gs.d, d: gs.d, baselineD: liveBaselineD)
                 )
             }
@@ -2600,6 +2615,9 @@ final class BeaconModel {
                         action, landmark: indices.first.flatMap { route.steps.indices.contains($0) ? route.steps[$0].carLandmark : nil }))
                 : GuideText.imminentText(action, crossingClock: clock)
             statusText = text
+            // 이 문장은 그 지점 앞에서만 참이다 — 그 스텝에 들어서면 상태 행에서 지운다(아래 `handleDetail`). 안 지우면
+            // 횡단 중 침묵(E62) 동안 남아 전경 복귀 재생이 지난 회전을 "잠시 후 …"로 다시 읽는다(a11y 감사 M1).
+            imminentStatus = indices.first.map { (target: $0, text: text) }
             if !outputSuppressed { announce(text, speechClass: speechClass) }
         case let .farNotice(indices, remainingMeters):
             // 원거리 예고(B1 §4.7) — 크로싱 시점 실측 잔여를 낭독(상수 금지, 리뷰 반영).
@@ -2789,7 +2807,8 @@ final class BeaconModel {
                 route: route, state: state,
                 destinationLabel: destinationLabel, lastGuidance: lastGuidance,
                 straightLineMeters: straight,
-                etaMinutes: etaMinutesNow(route: route, state: state)
+                etaMinutes: etaMinutesNow(route: route, state: state),
+                currentBody: liveSteps.indices.contains(state.stepIndex) ? liveSteps[state.stepIndex].body : nil
             )
             if sessionKind == .car, state.phase == .following || state.phase == .bundle {
                 // car(§4.7): 현재 링크 도로명 + 진행 + ETA 오래됨 병기(3-state).

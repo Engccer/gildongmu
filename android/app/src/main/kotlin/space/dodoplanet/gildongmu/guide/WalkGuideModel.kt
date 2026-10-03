@@ -1161,7 +1161,8 @@ class WalkGuideModel(
                 val state = guideState
                 val first = event.indices.firstOrNull()?.let { route.steps.getOrNull(it) }
                 val unit = text.unit(route, event.indices)
-                val spoken = if (state != null && first != null) {
+                // 늦은 전문(E62 R4·R5 — 실위치가 이미 첫 스텝에 들어섰다)엔 머리말이 없다(램프인 구간 누출 차단).
+                val spoken = if (!event.late && state != null && first != null) {
                     text.announceAhead(unit, spokenRemainingMeters(first.startD - state.d, state.d, liveBaselineD))
                 } else unit
                 announceUnitText(unit, spoken, cls)

@@ -868,7 +868,7 @@
     "degradedNoteUnavailable": "No se encontró ninguna ruta, así que la guía usa la dirección y la distancia al destino.",
     "degradedNoteCoverage": "Estás fuera del área de servicio, así que la guía usa la dirección y la distancia al destino.",
     "degradedNoteHandoff": "La ruta ha terminado, así que la guía usa la dirección y la distancia al destino.",
-    "clockDirection": "la dirección de las {hour}",
+    "clockDirection": "la posición {hour} del reloj",
     "crossingRemaining": "Unos {distance} hasta el final del paso de peatones",
     "crossingRemainingUnderpass": "Unos {distance} hasta el final del paso subterráneo"
   },

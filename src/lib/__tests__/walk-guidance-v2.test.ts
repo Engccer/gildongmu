@@ -254,3 +254,57 @@ describe("판본 2 조각 필드 게이트·조립 관계", () => {
     }
   });
 });
+
+describe("판본 2 리뷰 반영(구현 리뷰·spec 준수 리뷰)", () => {
+  it("길 이름은 12m 이상 횡단에만 — 모퉁이를 돌아 옆길을 건너는 짧은 횡단에 큰길 이름을 붙이지 않는다", () => {
+    const r = rewriteWalkBriefingV2(route([WALK_NORTH, { desc: "길동사거리까지 횡단보도 이용", m: 8, legs: [[270, 8]] }]), ROAD);
+    expect(r.steps[1].description).toBe("9시 방향으로 도세요. 그 후 길동사거리를 향해 횡단보도를 건너세요. 횡단보도 길이 8m");
+  });
+
+  it("분해 둘째 조각의 기준은 앞 조각을 다 건넌 뒤의 진행 방향(마지막 선분)이다", () => {
+    // 첫 조각: 0° 20m → 20° 20m(한 덩어리, 마지막 선분 20°). 둘째: 110°(첫 선분 대비 110° = 4시, 마지막 대비 90° = 3시)
+    const r = rewriteWalkBriefingV2(
+      route([
+        { desc: "교차로까지 100m 이동", m: 100, legs: [[270, 100]] },
+        { desc: "교차로에서 2개의 횡단보도 이용", m: 60, legs: [[0, 20], [20, 20], [110, 20]] },
+      ]),
+      LIVE,
+    );
+    expect(r.steps[2].description).toBe("3시 방향으로 도세요. 그 후 다음 횡단보도를 건너세요. 횡단보도 길이 20m");
+  });
+
+  it("파생 문장: 병합 지하보도 · 거의 일직선인 연속 횡단은 나누지 않고 \"전체 길이\" 한 문장", () => {
+    // 덩어리 사이 꺾임이 30° 미만이면 한 횡단으로 이어진다 — 둘째를 "진행 방향 그대로" 건너는 분해는 꺾임이 정확히
+    // 30°일 때만 성립해(분해 하한 = 직진 상한) 실경로에서는 사실상 오지 않는다(spec §3.1).
+    const straight = rewriteWalkBriefingV2(
+      route([WALK_NORTH, { desc: "교차로에서 2개의 횡단보도 이용", m: 47, legs: [[0, 32], [270, 3], [0, 15]] }]),
+      LIVE,
+    );
+    expect(straight.steps[1].description).toBe("교차로에서 진행 방향 그대로 횡단보도 2개를 연속으로 건너세요. 전체 길이 47m");
+    const under = rewriteWalkBriefingV2(route([WALK_NORTH, { desc: "2개의 지하보도 이용", m: 60, legs: [[0, 60]] }]), LIVE);
+    expect(under.steps[1].description).toBe("지하보도 2개로 건너세요. 전체 길이 60m");
+  });
+
+  it("조립 관계: 분해 첫 조각(리드)·병합 유지도 parts로 다시 만들 수 있다", () => {
+    const r = rewriteWalkBriefingV2(
+      route([
+        { desc: "강동성심병원교차로까지 100m 이동(천호대로)", m: 100, legs: [[112, 100]] },
+        { desc: "강동성심병원교차로에서 2개의 횡단보도 이용", m: 77, legs: [[22, 46.7], [74, 6.3], [44, 3.7], [114, 20.8]] },
+        { desc: "50m 이동", m: 50, legs: [[114, 50]] },
+        { desc: "신명초교입구교차로에서 봄봄약국까지 2개의 횡단보도 이용", m: 30, legs: [[24, 30.1]] },
+      ]),
+      ROAD,
+    );
+    const lead = r.steps[1];
+    expect(lead.description).toBe(`강동성심병원교차로에서 횡단보도 2개를 연속으로 건넙니다. 먼저 ${lead.parts!.turn}. 그 후 ${lead.parts!.body}`);
+    const merged = r.steps[4];
+    expect(merged.description).toBe(`${merged.parts!.turn}. 그 후 ${merged.parts!.body}`);
+    expect(merged.parts!.body).toBe("봄봄약국을 향해 횡단보도 2개를 연속으로 건너세요. 전체 길이 30m");
+  });
+
+  it("문형을 못 알아본 폴백 문장은 행동을 확정하지 않는다(분류기에 맡긴다)", () => {
+    const r = rewriteWalkBriefingV2(route([{ desc: "계단이용", m: 10, legs: [[0, 10]] }]), LIVE);
+    expect(r.steps[0].actionResolved).toBeUndefined();
+  });
+});
+

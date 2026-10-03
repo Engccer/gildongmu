@@ -754,7 +754,7 @@
     <string name="guide_carStart">Guidage en voiture vers %1$s démarré. %2$s. {3, plural, one {%3$s instruction} other {%3$s instructions}}, %4$s au total.</string>
     <string name="guide_changeDestHere">Changer la destination pour ici</string>
     <string name="guide_changeWaypointHere">Changer le point de passage pour ici</string>
-    <string name="guide_clockDirection">la direction %1$s h</string>
+    <string name="guide_clockDirection">%1$s h</string>
     <string name="guide_crossingRemaining">Environ %1$s jusqu\'au bout du passage piéton</string>
     <string name="guide_crossingRemainingUnderpass">Environ %1$s jusqu\'au bout du passage souterrain</string>
     <string name="guide_currentRoad">Route actuelle, %1$s</string>

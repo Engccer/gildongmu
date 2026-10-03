@@ -61,3 +61,34 @@ describe("건너는 길 이름은 iOS 실험판만 켠다", () => {
     expect(senders.map((f) => f.slice(ROOT.length + 1))).toEqual([]);
   });
 });
+
+/**
+ * E62 앱 층 배선(spec 준수 리뷰 MINOR 3). 리듀서 입력 `stopped`·스텝 기하 `crossing`, 늦은 전문 `late`, 조각 `body`·
+ * `crossingClock`은 빠뜨려도 컴파일이 통과하고 그 규칙만 조용히 꺼진다(기하의 `crossing`은 기본값 false) — 소비자
+ * 셋(웹 훅·iOS BeaconModel·안드로이드 WalkGuideModel)의 배선 자리를 문자열로 잠근다.
+ */
+describe("E62 앱 층 배선", () => {
+  const read = (rel: string) => readFileSync(join(ROOT, rel), "utf8");
+  it("웹 훅", () => {
+    const src = read("src/hooks/useRouteGuide.ts");
+    expect(src).toContain('stopped: motion === "stopped"');
+    expect(src).toContain("if (event.late) return step;");
+    expect(src).toContain("rereadUnitText(route, event.indices, liveStepsRef.current, t)");
+    expect(src).toContain("walkImminentLine(event.action, liveStepsRef.current[event.indices[0]]?.crossingClock, t)");
+  });
+  it("iOS BeaconModel", () => {
+    const src = read("ios/Gildongmu/Directions/BeaconModel.swift");
+    expect(src).toContain("stopped: motion == .stopped");
+    expect(src).toContain("crossing: $0.crossing ?? false)");
+    expect(src).toContain("body: $0.parts?.body, crossingClock: $0.crossingClock");
+    expect(src).toMatch(/case let \.announceSteps\(_, late\) = event, !late/);
+    expect(src).toContain("GuideText.imminentText(action, crossingClock: clock)");
+  });
+  it("안드로이드 WalkGuideModel(판본 1이어도 리듀서 입력은 넘긴다)", () => {
+    const src = read("android/app/src/main/kotlin/space/dodoplanet/gildongmu/guide/WalkGuideModel.kt");
+    expect(src).toContain("stopped = motion == MotionState.stopped");
+    expect(src).toContain("crossing = it.crossing == true");
+    expect(src).toContain("!event.late");
+  });
+});
+

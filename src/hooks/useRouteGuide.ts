@@ -411,9 +411,11 @@ export function progressOverviewLine(
   segment: string,
   etaMinutes: number | null,
   t: GuideT,
+  /** 현재 스텝의 방향 구절을 뗀 문장(E62 `parts.body`) — 이미 들어선 스텝이라 돈 회전을 다시 지시하지 않는다. */
+  currentBody?: string,
 ): string {
   const frame = progressFrameLine(route, stepIndex, total, etaMinutes, t);
-  const cur = route.steps[stepIndex]?.description;
+  const cur = currentBody ?? route.steps[stepIndex]?.description;
   const next = route.steps[stepIndex + 1]?.description;
   const parts = [
     frame,
@@ -1133,7 +1135,14 @@ export function useRouteGuide(
           const ahead = Math.round(
             spokenRemainingMeters(route.steps[event.indices[0]].startD - d, d, liveBaselineDRef.current),
           );
-          return ahead >= 1 ? t("announceAhead", { distance: formatDistance(ahead), step }) : step;
+          if (ahead < 1) return step;
+          // 묶음이면 머리말은 첫 문장에 붙고 "다음 안내." 서두는 그 앞이다 — 서두 뒤에 두면
+          // "앞으로 약 25m 가다가 다음 안내."가 된다(E62 a11y 감사 M3). iOS `GuideText.announceAhead` 미러.
+          const descs = event.indices
+            .map((i) => route.steps[i]?.description)
+            .filter((x): x is string => Boolean(x));
+          const headed = t("announceAhead", { distance: formatDistance(ahead), step: descs[0] ?? "" });
+          return descs.length > 1 ? t("bundle", { steps: [headed, ...descs.slice(1)].join(". ") }) : headed;
         }
         case "bundleReread":
           return kindFixed === "walk"
@@ -2160,6 +2169,7 @@ export function useRouteGuide(
           formatDistance(Math.max(0, (cur?.endD ?? state.d) - state.d)),
           etaMinutes,
           t,
+          liveStepsRef.current[state.stepIndex]?.body,
         ),
       ),
     );

@@ -475,13 +475,16 @@ public struct GuideOutput: Sendable, Equatable {
 }
 
 /// 스텝 index가 속한 유닛(긴 스텝=자기 하나, 짧은 스텝=연속 묶음 전체)의 index 목록.
+/// ⚠ 횡단 스텝은 길이와 무관하게 언제나 자기 하나다(E62 a11y 감사 H1, 웹 `unitAt` 미러) — 짧은 횡단이 앞뒤 짧은
+/// 스텝과 묶이면 다음 행동의 임박 문장이 횡단 도중 차도 위에서 나간다.
 public func unitAt(route: GuideRoute, index: Int) -> [Int] {
     guard index >= 0, index < route.steps.count else { return [] }
-    if route.steps[index].isLong { return [index] }
+    if route.steps[index].isLong || route.steps[index].crossing { return [index] }
+    let bundles = { (i: Int) in !route.steps[i].isLong && !route.steps[i].crossing }
     var a = index
     var b = index
-    while a > 0 && !route.steps[a - 1].isLong { a -= 1 }
-    while b < route.steps.count - 1 && !route.steps[b + 1].isLong { b += 1 }
+    while a > 0 && bundles(a - 1) { a -= 1 }
+    while b < route.steps.count - 1 && bundles(b + 1) { b += 1 }
     return route.steps[a...b].map(\.index)
 }
 
@@ -1150,8 +1153,10 @@ public func guideStep(
         let nextFirst = route.steps[nextUnit[0]]
         if tuning.deferAnnounce && announcedEnd - d <= announceAhead {
             // R5: 전문이 나간 유닛 안에 실위치가 아직 나가지 않은 횡단이 있으면 그 횡단을 나간 뒤로(ⓐ).
+            //     ⚠ "나갔다"는 실위치가 끝을 지났고 원시 진행거리로도 횡단에 들어섰을 때다 — 연석 대기 중엔 투영 지연이
+            //     없어 10m 이하 횡단이 건너기 전에 "나간" 것으로 판정됐다(구현 리뷰 BLOCKER).
             let crossingAhead = unitAt(route: route, index: next.announcedUpTo).contains {
-                route.steps[$0].crossing && route.steps[$0].endD > realD
+                route.steps[$0].crossing && !(route.steps[$0].endD <= realD && route.steps[$0].startD <= d)
             }
             // R4: 행동 없는 다음 구간은 들어선 뒤. 묶음 앞쪽 30m 안에 행동 스텝이 있는 묶음은 제외(설계 리뷰 M1).
             let actionless = nextFirst.action == nil
@@ -1180,7 +1185,8 @@ public func guideStep(
             // R6(E62): 실위치가 이미 첫 스텝에 들어선 전문은 늦은 전문(머리말 없음). 첫 스텝에 행동이 있으면 그 행동 톤을
             //     내고 그 경계의 임박 래치를 소비한다(톤 1회).
             let late = tuning.deferAnnounce && nextFirst.startD <= realD
-            if late, let action = nextFirst.action {
+            // 톤은 원시 진행거리가 아직 그 경계를 넘지 않았을 때만(지난 경계엔 소리 없음, 구현 리뷰 MAJOR).
+            if late, let action = nextFirst.action, d <= nextFirst.startD {
                 next.imminentUpTo = max(next.imminentUpTo, unit[0])
                 next.imminentStage = 0
                 return emit(next, .announceSteps(indices, late: late), imminentTone(action))

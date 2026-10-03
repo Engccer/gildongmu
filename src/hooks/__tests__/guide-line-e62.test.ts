@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createTranslator } from "next-intl";
 import ko from "../../../messages/ko.json";
 import type { GuideRoute } from "@/lib/route-guide";
-import { nextLine, rereadUnitText, walkImminentLine } from "../useRouteGuide";
+import { nextLine, progressOverviewLine, rereadUnitText, walkImminentLine } from "../useRouteGuide";
 
 /**
  * E62 낭독 조립(spec `2026-10-03-crosswalk-guidance-design.md` §5). 기대 문장은 문안 확정본 그대로다.
@@ -59,3 +59,22 @@ describe("시작 문장은 할 일 먼저, 요약은 뒤(문안 라)", () => {
     );
   });
 });
+
+describe("진행 상황의 현재 안내는 들어선 스텝이라 회전 문장을 뗀다(a11y 감사 M2)", () => {
+  it("body가 있으면 그것, 없으면 원문", () => {
+    const r = route(["왼쪽으로 도세요. 그 후 성내로를 따라 편의점까지 37m 이동", "82m 이동"]);
+    const withBody = progressOverviewLine(r, 0, "목적지", "119m", "약 30m", null, t, "성내로를 따라 편의점까지 37m 이동");
+    expect(withBody).toContain("현재 안내, 성내로를 따라 편의점까지 37m 이동");
+    expect(withBody).not.toContain("왼쪽으로 도세요");
+    expect(progressOverviewLine(r, 0, "목적지", "119m", "약 30m", null, t)).toContain("현재 안내, 왼쪽으로 도세요. 그 후");
+  });
+});
+
+describe("묶음 전문의 머리말은 첫 문장에 붙는다(a11y 감사 M3)", () => {
+  it("다음 안내. 앞으로 약 N m 가다가 …", () => {
+    expect(t("bundle", { steps: [t("announceAhead", { distance: "25m", step: "왼쪽으로 도세요. 그 후 20m 이동" }), "오른쪽으로 도세요. 그 후 30m 이동"].join(". ") })).toBe(
+      "다음 안내. 앞으로 약 25m 가다가 왼쪽으로 도세요. 그 후 20m 이동. 오른쪽으로 도세요. 그 후 30m 이동",
+    );
+  });
+});
+

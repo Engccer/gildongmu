@@ -712,7 +712,7 @@
     <string name="eventsNearby_target">対象 %1$s</string>
     <string name="guide_addWaypointHere">ここを経由地に追加</string>
     <string name="guide_alreadyActive">すでに案内中です。先に進行中の案内を終了してください。</string>
-    <string name="guide_announceAhead">約%1$s先、%2$s</string>
+    <string name="guide_announceAhead">約%1$s進んでから、%2$s</string>
     <string name="guide_approx">約%1$s</string>
     <string name="guide_arrived">目的地に到着しました</string>
     <string name="guide_arrivedPresumed">目的地付近に到着したと判断し、案内を終了しました</string>

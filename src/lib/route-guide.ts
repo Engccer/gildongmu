@@ -606,15 +606,21 @@ export interface GuideOutput {
   projectionJumped?: boolean;
 }
 
-/** 스텝 index가 속한 유닛(긴 스텝=자기 하나, 짧은 스텝=연속 묶음 전체)의 index 목록. */
+/**
+ * 스텝 index가 속한 유닛(긴 스텝=자기 하나, 짧은 스텝=연속 묶음 전체)의 index 목록.
+ * ⚠ **횡단 스텝은 길이와 무관하게 언제나 자기 하나다**(E62 a11y 감사 H1). 짧은 횡단이 앞뒤 짧은 스텝과 묶이면 그
+ * 행동들의 전문이 횡단 앞에서 한꺼번에 나가고, 다음 행동의 임박 문장("잠시 후 3시 방향으로 돌아…")이 횡단 도중
+ * 차도 위에서 나간다. 독립 유닛이면 다음 유닛 전문은 횡단을 나간 뒤(R5·R6)로 간다.
+ */
 export function unitAt(route: GuideRoute, index: number): number[] {
   const s = route.steps[index];
   if (!s) return [];
-  if (s.isLong) return [index];
+  if (s.isLong || s.crossing) return [index];
+  const bundles = (i: number) => !route.steps[i].isLong && !route.steps[i].crossing;
   let a = index;
   let b = index;
-  while (a > 0 && !route.steps[a - 1].isLong) a--;
-  while (b < route.steps.length - 1 && !route.steps[b + 1].isLong) b++;
+  while (a > 0 && bundles(a - 1)) a--;
+  while (b < route.steps.length - 1 && bundles(b + 1)) b++;
   return route.steps.slice(a, b + 1).map((x) => x.index);
 }
 
@@ -1442,8 +1448,11 @@ export function guideStep(
     if (tuning.deferAnnounce && announcedEnd - d <= announceAhead) {
       // R5: 전문이 나간 유닛 안에 실위치가 아직 나가지 않은 횡단이 있으면 그 횡단을 나간 뒤로 미룬다 — 짧은 횡단
       //     앞에서 다음 전문과 임박 큐가 1~2초 차로 겹치던 ⓐ(2026-10-03 3/3)와 "첫째를 건넌 뒤" 문장.
+      //     ⚠ "나갔다"는 실위치가 끝을 지났고 **원시 진행거리로도 횡단에 들어섰을 때**다. 실위치 보정(+lag)은 걷는
+      //     중의 투영 지연이라 연석에서 신호를 기다리는 동안엔 없다 — 10m 이하 횡단은 대기 중에 이미 "나간" 것으로
+      //     판정돼 건너기 전에 다음 전문과 행동 톤이 나갔다(구현 리뷰 BLOCKER·재생 2026-10-03 94[3]).
       const crossingAhead = unitAt(route, next.announcedUpTo).some(
-        (i) => route.steps[i].crossing === true && route.steps[i].endD > realD,
+        (i) => route.steps[i].crossing === true && !(route.steps[i].endD <= realD && route.steps[i].startD <= d),
       );
       // R4: 행동 없는 다음 구간은 들어선 뒤. 묶음 앞쪽 30m 안에 행동 스텝이 있는 묶음은 제외 — 묶음 전체를 미루면
       //     묶음 안 회전이 30m 전문과 stage 0 문장을 잃는다(설계 리뷰 M1).
@@ -1480,7 +1489,9 @@ export function guideStep(
       // R6(E62): 실위치가 이미 첫 스텝에 들어선 전문은 늦은 전문이다 — 머리말 없음. 첫 스텝에 행동이 있으면(분해된
       //     둘째 횡단) 임박 단계는 이미 지났으므로 이 전문이 그 행동 톤을 내고 그 경계의 임박 래치를 소비한다(톤 1회).
       const late = tuning.deferAnnounce && nextFirst.startD <= realD;
-      if (late && nextFirstAction) {
+      // 톤은 원시 진행거리가 아직 그 경계를 넘지 않았을 때만 — 측위 회복으로 d가 경계 너머에 착지했으면 이미 지난
+      // 지점이다(임박 큐의 "지난 경계엔 발화 금지"와 같은 하한, 구현 리뷰 MAJOR). 문장은 종전처럼 나간다.
+      if (late && nextFirstAction && d <= nextFirst.startD) {
         next = { ...next, imminentUpTo: Math.max(next.imminentUpTo, unit[0]), imminentStage: 0 };
         return emit(next, { kind: "announceSteps", indices, late }, imminentTone(nextFirstAction));
       }

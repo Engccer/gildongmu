@@ -13476,7 +13476,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "約%1$@先、%2$@"
+            "value": "約%1$@進んでから、%2$@"
           }
         }
       }
@@ -15218,13 +15218,13 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "la dirección de las %1$@"
+            "value": "la posición %1$@ del reloj"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "la direction %1$@ h"
+            "value": "%1$@ h"
           }
         },
         "it": {

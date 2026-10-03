@@ -5,6 +5,7 @@ import { objectParticle } from "./korean-particle";
 import type { Coord, WalkRouteBriefing, WalkRouteStep } from "./types";
 import type { GuideAction } from "./walk-action";
 import {
+  ROAD_CROSS_MIN_LENGTH_M,
   crossesWalkedRoad,
   crossingClockOf,
   firstSegmentBearing,
@@ -359,7 +360,8 @@ function crossSingleV2(
   }
   const roadParticle = ctx.prevRoad ? objectParticle(ctx.prevRoad) : null;
   const road =
-    opts.crossingRoad && ctx.prevRoad && roadParticle && crossesWalkedRoad(ref, cross)
+    opts.crossingRoad && ctx.prevRoad && roadParticle && meters >= ROAD_CROSS_MIN_LENGTH_M &&
+    crossesWalkedRoad(ref, cross)
       ? `${ctx.prevRoad}${roadParticle} 건너세요`
       : undefined;
   return {
@@ -419,7 +421,8 @@ function crossSplitV2(
   return pieces.map((piece, k) => {
     const tail = lengthTail("횡단보도", piece.length);
     const object = k === 0 ? "횡단보도를 건너세요" : "다음 횡단보도를 건너세요";
-    const pieceRef = k === 0 ? ref : pieces[k - 1].bearing;
+    // 둘째부터의 기준은 앞 조각을 다 건넌 뒤의 진행 방향(마지막 선분)이다.
+    const pieceRef = k === 0 ? ref : pieces[k - 1].exitBearing;
     let core: Pick<V2Step, "text" | "parts">;
     let clock: number | undefined;
     if (pieceRef === null) {
@@ -436,7 +439,8 @@ function crossSplitV2(
         const roadParticle = ctx.prevRoad ? objectParticle(ctx.prevRoad) : null;
         const road =
           k === 0 && opts.crossingRoad && ctx.prevRoad && roadParticle &&
-          piece.length >= longest && crossesWalkedRoad(pieceRef, piece.bearing)
+          piece.length >= longest && piece.length >= ROAD_CROSS_MIN_LENGTH_M &&
+          crossesWalkedRoad(pieceRef, piece.bearing)
             ? `${ctx.prevRoad}${roadParticle} 건너세요`
             : undefined;
         core = turned(clockTurn(clock), `${road ?? object}${tail}`);
@@ -523,13 +527,10 @@ export function rewriteWalkBriefingV2(
       emit(crossSingleV2(from, to, kind, meters, step.pathCoords, ctx, opts));
       return;
     }
-    // 그 밖의 문형은 판본 1 규칙 그대로(교량·역사 내 이동·미매칭 원문). 문형을 알아본 것만 행동 없음으로 확정한다.
+    // 그 밖의 문형은 판본 1 규칙 그대로(교량·역사 내 이동·미매칭 원문). 행동은 종전처럼 문장 분류기에 맡긴다 —
+    // 거리만 끼워 넣는 폴백 문장 속 회전·지하보도 표지를 "행동 없음"으로 확정하면 그 행동이 빠진다(구현 리뷰).
     const v1 = rewriteWalkGuidanceWithLive(step.description, meters);
-    emit({
-      text: v1.text,
-      resolved: v1.text !== step.description,
-      live: v1.live,
-    });
+    emit({ text: v1.text, resolved: false, live: v1.live });
   });
   return {
     ...briefing,

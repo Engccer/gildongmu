@@ -868,7 +868,7 @@
     "degradedNoteUnavailable": "Aucun itinéraire n’a été trouvé ; le guidage utilise la direction et la distance jusqu’à la destination.",
     "degradedNoteCoverage": "Vous êtes hors de la zone couverte ; le guidage utilise la direction et la distance jusqu’à la destination.",
     "degradedNoteHandoff": "L’itinéraire est terminé ; le guidage utilise la direction et la distance jusqu’à la destination.",
-    "clockDirection": "la direction {hour} h",
+    "clockDirection": "{hour} h",
     "crossingRemaining": "Environ {distance} jusqu'au bout du passage piéton",
     "crossingRemainingUnderpass": "Environ {distance} jusqu'au bout du passage souterrain"
   },

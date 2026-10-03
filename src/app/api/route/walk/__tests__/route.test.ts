@@ -98,6 +98,18 @@ describe("GET /api/route/walk", () => {
     ]);
   });
 
+  it("문장 판본(E62): wording 미지정은 판본 1(스토어 앱 계약), wording=2만 새 문장", async () => {
+    const raw = { distanceMeters: 50, durationSeconds: 40, steps: [{ description: "교차로까지 왼쪽길로 50m 이동(천호대로)" }] };
+    vi.mocked(getWalkRouteBriefing).mockResolvedValueOnce(raw);
+    const v1 = await (await GET(makeRequest("37.5,127.0", "37.6,127.1"))).json();
+    expect(v1.result.steps).toEqual([{ description: "왼쪽으로 돌아 교차로까지 천호대로를 따라 50m 이동" }]);
+    vi.mocked(getWalkRouteBriefing).mockResolvedValueOnce(raw);
+    const v2 = await (
+      await GET(new NextRequest("http://x/api/route/walk?origin=37.5,127.0&dest=37.6,127.1&wording=2"))
+    ).json();
+    expect(v2.result.steps).toEqual([{ description: "왼쪽으로 도세요. 그 후 천호대로를 따라 교차로까지 50m 이동" }]);
+  });
+
   it("provider throw → 502", async () => {
     vi.mocked(getWalkRouteBriefing).mockRejectedValueOnce(new Error("fail"));
     const res = await GET(makeRequest("37.5,127.0", "37.6,127.1"));

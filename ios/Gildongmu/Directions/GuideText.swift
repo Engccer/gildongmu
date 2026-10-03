@@ -212,10 +212,16 @@ enum GuideText {
 
     /// walk 선행 전문에 결정 지점까지의 실위치 거리를 단다(위원장 판정 2026-10-03, 웹 `announceAhead` 미러).
     /// 1m 미만이면 거리를 빼고 원문만 — "0m 앞"은 이미 지점이라 거짓 예고다.
-    static func announceAhead(unit: String, meters: Double) -> String {
+    /// 묶음이면 머리말은 첫 문장에 붙고 "다음 안내." 서두는 그 앞이다("다음 안내. 앞으로 약 25m 가다가 …. …") —
+    /// 서두 뒤에 머리말을 두면 "앞으로 약 25m 가다가 다음 안내."가 된다(E62 a11y 감사 M3).
+    static func announceAhead(route: GuideRoute, indices: [Int], meters: Double) -> String {
         let rounded = Int(meters.rounded())
-        guard rounded >= 1 else { return unit }
-        return appLocalized("guide.announceAhead", formatDistance(rounded), unit)
+        guard rounded >= 1 else { return unit(route: route, indices: indices) }
+        let descs = indices.compactMap { route.steps.indices.contains($0) ? route.steps[$0].description : nil }
+        guard let first = descs.first else { return "" }
+        let headed = appLocalized("guide.announceAhead", formatDistance(rounded), first)
+        guard descs.count > 1 else { return headed }
+        return appLocalized("guide.bundle", ([headed] + descs.dropFirst()).joined(separator: ". "))
     }
 
     /// 원거리 예고(B1 §4.7): 크로싱 시점의 **실측 잔여**(리듀서가 기하에서 계산) +
@@ -478,16 +484,18 @@ enum GuideText {
     /// straightLineMeters는 이탈 상태 전용(마지막 fix→목적지 직선거리 — 경로 잔여는
     /// 이탈 중엔 거짓이므로 직선만 정직하다). 웹 `progressOverviewLine` 미러 —
     /// uncertain 계열엔 서수를 붙이지 않는다(위치 확신이 낮을 때의 서수는 거짓 정밀).
+    /// `currentBody`: 현재 스텝의 방향 구절을 뗀 문장(E62 `parts.body`) — 이미 들어선 스텝이라 돈 회전을 다시 지시하지
+    /// 않는다(a11y 감사 M2). nil이면 문장 전체. 웹 `progressOverviewLine` 미러.
     static func progress(
         route: GuideRoute, state: GuideState, destinationLabel: String,
-        lastGuidance: String?, straightLineMeters: Double?, etaMinutes: Int?
+        lastGuidance: String?, straightLineMeters: Double?, etaMinutes: Int?, currentBody: String?
     ) -> String {
         switch state.phase {
         case .following:
             let cur = route.steps[state.stepIndex]
             let frame = progressFrame(route: route, state: state, etaMinutes: etaMinutes)
             // 현재 스텝 전문 재확인 — 실행 안내를 소음으로 놓쳤을 때의 복구 수단.
-            let current = appLocalized("guide.progressCurrent", cur.description)
+            let current = appLocalized("guide.progressCurrent", currentBody ?? cur.description)
             guard route.steps.indices.contains(state.stepIndex + 1) else {
                 let segment = formatDistance(Int(max(0, cur.endD - state.d).rounded()))
                 return "\(frame). \(current). "
