@@ -115,7 +115,17 @@ class RouteService(val client: APIClient) {
         if (includeGeometry) query.add("includeGeometry" to "1")
         if (variant != null) query.add("variant" to variant.rawValue)
         if (via != null) query.add("via" to coordPair(via.lat, via.lng))
+        appendWording(query)
         return client.get<WalkRouteEnvelope>("/api/route/walk", query).result
+    }
+
+    /**
+     * 안내 문장 판본 2(E62 문안 확정본, spec `2026-10-03-crosswalk-guidance-design.md` §1)를 늘 싣는다 — 미지정(판본 1)은 스토어
+     * iOS 2.0·1.19의 계약이다. Kit `appendWording`의 `crossingRoad`(건너는 길 이름)는 iOS 실험판 전용이라 옮기지 않는다
+     * (계획 §1 코디네이터 판정 3, 가드 `e62-crossing-road-gate.test.ts`).
+     */
+    private fun appendWording(query: MutableList<Pair<String, String>>) {
+        query.add("wording" to "2")
     }
 
     /**
@@ -133,6 +143,7 @@ class RouteService(val client: APIClient) {
         if (via != null) query.add("via" to coordPair(via.lat, via.lng))
         // 판본 2(E52) = 최대 세 줄. 판본 1(최대 두 줄)은 첫 줄 뒤 줄들이 펼침 상태 하나를 공유하던 iOS 1.19 몫이다.
         query.add("lines" to "2")
+        appendWording(query)
         val envelope = client.get<WalkRouteLinesEnvelope>("/api/route/walk", query)
         return WalkRouteLineList(envelope.lines.filter { it.lineKind != null }, envelope.failedLines.orEmpty())
     }

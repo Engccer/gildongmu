@@ -31,6 +31,14 @@ class RouteServiceTest {
         assertTrue(t.lastQuery().has("accessible", "true"))
     }
 
+    /** 안내 조회도 판본 2(E62)를 늘 싣는다 — 되읽기 `parts.body`·횡단 `crossingClock`은 판본 2 응답에만 온다. */
+    @Test fun walkAlwaysRequestsWordingTwoWithoutCrossingRoad() = runTest {
+        val (svc, t) = service(nullResult)
+        svc.walk(37.5, 127.0, 37.6, 127.1, accessible = false, lang = DataLocale.ko, includeGeometry = true, via = null)
+        assertTrue(t.lastQuery().has("wording", "2"))
+        assertFalse(t.lastQuery().hasName("crossingRoad"))
+    }
+
     /** E16 축3: ko는 파라미터를 생략해 기존 요청과 byte-identical이고, 비-ko만 `lang`을 싣는다. */
     @Test fun walkSendsLangOnlyForNonKorean() = runTest {
         val (svc, t) = service(nullResult)
@@ -48,7 +56,8 @@ class RouteServiceTest {
         assertFalse(q.hasName("accessible"))
         assertFalse(q.hasName("includeGeometry"))
         assertFalse(q.hasName("variant"))
-        assertEquals(listOf("origin" to "37.5,127.0", "dest" to "37.6,127.1"), q)
+        // 판본 2(`wording=2`, E62)는 늘 실린다 — 옵트인 셋만 빠진 기본 요청.
+        assertEquals(listOf("origin" to "37.5,127.0", "dest" to "37.6,127.1", "wording" to "2"), q)
     }
 
     /** 실시간 상세 안내용 기하 옵트인(웹 `?includeGeometry=1` 계약). 서버가 "1"만 허용한다. */
@@ -94,6 +103,9 @@ class RouteServiceTest {
         val q = t.lastQuery()
         assertTrue(q.has("lines", "2"))
         assertFalse(q.has("lines", "1"))
+        // 판본 2 문장(E62)을 늘 싣고, 건너는 길 이름(`crossingRoad`)은 보내지 않는다(iOS 실험판 전용).
+        assertTrue(q.has("wording", "2"))
+        assertFalse(q.hasName("crossingRoad"))
         for (name in listOf("accessible", "variant", "includeGeometry", "alternatives", "lang")) assertFalse(q.hasName(name), name)
     }
 
