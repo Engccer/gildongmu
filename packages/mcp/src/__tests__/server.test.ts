@@ -60,11 +60,11 @@ describe("route_walk 소비자 쪽 기본값(E42 — 앱 화면 첫 줄)", () =>
   const walk = ENDPOINT_CATALOG.find((e) => e.name === "route-walk")!;
 
   it("ko는 최단, 계단 회피 요청·en·명시 variant는 건드리지 않는다", () => {
-    expect(walk.implicitQuery?.({ origin: "a", dest: "b" })).toEqual({ variant: "shortest" });
-    expect(walk.implicitQuery?.({ accessible: "false" })).toEqual({ variant: "shortest" });
-    expect(walk.implicitQuery?.({ accessible: "true" })).toEqual({});
-    expect(walk.implicitQuery?.({ lang: "en" })).toEqual({});
-    expect(walk.implicitQuery?.({ variant: "shortest", lang: "en" })).toEqual({});
+    expect(walk.implicitQuery?.({ origin: "a", dest: "b" })).toEqual({ variant: "shortest", wording: "2" });
+    expect(walk.implicitQuery?.({ accessible: "false" })).toEqual({ variant: "shortest", wording: "2" });
+    expect(walk.implicitQuery?.({ accessible: "true" })).toEqual({ wording: "2" });
+    expect(walk.implicitQuery?.({ lang: "en" })).toEqual({ wording: "2" });
+    expect(walk.implicitQuery?.({ variant: "shortest", lang: "en" })).toEqual({ wording: "2" });
   });
 
   it("다른 도구엔 기본값이 없다(서버 기본 그대로)", () => {

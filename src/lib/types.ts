@@ -589,6 +589,20 @@ export interface WalkRouteStep {
    * (`attachStepActions`). `live`·`action`과 같은 게이트로 `includeGeometry=1` 응답에만 실린다.
    */
   crossing?: true;
+  /**
+   * 방향 구절과 나머지 문장(E62 판본 2, spec `2026-10-03-crosswalk-guidance-design.md` §3.4). 방향 구절을 가진
+   * 스텝에만 있다. `turn`은 방향 구절(마침표 없음 — "왼쪽으로 도세요"·"9시 방향으로 도세요"·"진행 방향 그대로"),
+   * `body`는 그것을 뺀 나머지이고 주석 꼬리까지 포함한다. 되읽기·억제 복구는 들어선 스텝을 `body`로 읽고(이미 돈
+   * 회전을 다시 지시하지 않는다), 재조회 첫 문장은 `turn` 대신 사용자 진행 방위 기준 방향을 단다(E63).
+   * `wording=2` ∧ `includeGeometry=1` 응답에만 실린다.
+   */
+  parts?: { turn: string; body: string };
+  /** 횡단보도 스텝의 건너는 방향 시(1~12, 12 = 진행 방향 그대로, 6 = 뒤). 방향 모름·지하보도는 부재. `parts`와 같은 게이트. */
+  crossingClock?: number;
+  /** 판본 2 재작성이 문형을 알아보고 행동을 구조로 정했다(행동 없음 포함) — **내부 전달**, `attachStepActions`가 제거한다. */
+  actionResolved?: true;
+  /** 분해된 병합 횡단 조각이라 신호기·차로 수 주석을 붙이지 않는다 — **내부 전달**, `attachStepActions`가 제거한다. */
+  noCrossingNote?: true;
   /** Tmap 회전 유형 코드. en 문장 조립용 **내부 전달** — `attachStepActions`가 응답 전 제거한다. */
   turnType?: number;
   /** 첫 LineString의 도로명(ko). en 로마자 조회 키 — 응답 전 제거된다. */

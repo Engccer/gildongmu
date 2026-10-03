@@ -2,7 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { hasWalkRouteKeyFor } from "@/lib/env";
 import { isInKorea } from "@/lib/coverage";
 import { checkWalkRateLimit, clientIpFromHeaders } from "@/lib/rate-limit";
-import { getWalkRoute, getWalkRouteAlternatives, getWalkRouteLines } from "@/lib/walk-route";
+import {
+  getWalkRoute,
+  getWalkRouteAlternatives,
+  getWalkRouteLines,
+  type WalkTextVersion,
+} from "@/lib/walk-route";
 import { parseWalkQuery } from "./route-schema";
 import { buildGuideRoute } from "@/lib/route-geometry";
 import { computeFinalApproach } from "@/lib/final-approach";
@@ -57,12 +62,16 @@ export async function GET(request: NextRequest) {
     lines: request.nextUrl.searchParams.get("lines"),
     via: request.nextUrl.searchParams.get("via"),
     lang: request.nextUrl.searchParams.get("lang"),
+    wording: request.nextUrl.searchParams.get("wording"),
+    crossingRoad: request.nextUrl.searchParams.get("crossingRoad"),
   });
   if (!parsed.ok) {
     return NextResponse.json({ error: parsed.error }, { status: 400 });
   }
 
   const { origin, dest, via, lang } = parsed.data;
+  const text: WalkTextVersion =
+    parsed.data.wording === 2 ? { wording: 2, crossingRoad: parsed.data.crossingRoad } : { wording: 1 };
   if (
     !isInKorea(origin.lat, origin.lng) ||
     !isInKorea(dest.lat, dest.lng) ||
@@ -91,7 +100,7 @@ export async function GET(request: NextRequest) {
       // 나머지 줄 실패만 흡수(서비스 계층). `[]`는 "경로 없음". 값이 판본(1 = 최대 두 줄, 2 = 세 줄).
       // 흡수한 실패(`failedLines`)는 판본 2에만 additive로 싣는다 — 판본 1(1.19) 봉투는 그대로.
       const version = parsed.data.lines;
-      const { lines, failedLines } = await getWalkRouteLines({ origin, dest, lang, via, version });
+      const { lines, failedLines } = await getWalkRouteLines({ origin, dest, lang, via, version, text });
       return NextResponse.json({
         lines,
         ...(version === 2 && failedLines.length > 0 ? { failedLines } : {}),
@@ -117,6 +126,7 @@ export async function GET(request: NextRequest) {
       includeGeometry: parsed.data.includeGeometry,
       variant: parsed.data.variant,
       via,
+      text,
     });
     return NextResponse.json({
       result: withFinalApproach(result, dest, parsed.data.includeGeometry),

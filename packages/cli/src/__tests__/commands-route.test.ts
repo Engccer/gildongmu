@@ -119,9 +119,10 @@ describe("route 명령", () => {
     });
 
     await runRoute(verb, { origin: "37.53,127.12", dest: "37.49,127.02", lang: "en", output: "text" });
+    // walk는 안내 문장 판본 2(E62)를 늘 싣는다(카탈로그 implicitQuery).
     expect(apiRequest).toHaveBeenCalledWith(
       path,
-      { query: { origin: "37.53,127.12", dest: "37.49,127.02", lang: "en" } },
+      { query: { origin: "37.53,127.12", dest: "37.49,127.02", lang: "en", ...(verb === "walk" ? { wording: "2" } : {}) } },
     );
   });
 
@@ -131,7 +132,7 @@ describe("route 명령", () => {
     await runRoute("walk", { origin: "37.53,127.12", dest: "37.49,127.02", output: "text" });
     expect(apiRequest).toHaveBeenCalledWith(
       "/api/route/walk",
-      { query: { origin: "37.53,127.12", dest: "37.49,127.02", variant: "shortest" } },
+      { query: { origin: "37.53,127.12", dest: "37.49,127.02", variant: "shortest", wording: "2" } },
     );
   });
 
@@ -147,7 +148,7 @@ describe("route 명령", () => {
     await runRoute("walk", { origin: "37.53,127.12", dest: "37.49,127.02", ...flags, output: "text" });
     expect(apiRequest).toHaveBeenCalledWith(
       "/api/route/walk",
-      { query: { origin: "37.53,127.12", dest: "37.49,127.02", ...expected } },
+      { query: { origin: "37.53,127.12", dest: "37.49,127.02", ...expected, wording: "2" } },
     );
   });
 
@@ -175,14 +176,14 @@ describe("route 명령", () => {
     await runRoute("walk", { origin: "37.53,127.12", dest: "37.49,127.02", accessible: "true", output: "text" });
     expect(apiRequest).toHaveBeenCalledWith(
       "/api/route/walk",
-      { query: { origin: "37.53,127.12", dest: "37.49,127.02", accessible: "true" } },
+      { query: { origin: "37.53,127.12", dest: "37.49,127.02", accessible: "true", wording: "2" } },
     );
 
     apiRequest.mockClear();
     await runRoute("walk", { origin: "37.53,127.12", dest: "37.49,127.02", output: "text" });
     expect(apiRequest).toHaveBeenCalledWith(
       "/api/route/walk",
-      { query: { origin: "37.53,127.12", dest: "37.49,127.02", variant: "shortest" } },
+      { query: { origin: "37.53,127.12", dest: "37.49,127.02", variant: "shortest", wording: "2" } },
     );
   });
 
@@ -198,7 +199,7 @@ describe("route 명령", () => {
     ).rejects.toThrow("EXIT_2");
     expect(apiRequest).toHaveBeenCalledWith(
       "/api/route/walk",
-      { query: { origin: "37.53,127.12", dest: "37.49,127.02", accessible: "yes", variant: "shortest" } },
+      { query: { origin: "37.53,127.12", dest: "37.49,127.02", accessible: "yes", variant: "shortest", wording: "2" } },
     );
   });
 

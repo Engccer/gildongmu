@@ -47,6 +47,14 @@ const querySchema = z
     lang: z
       .union([z.literal("ko"), z.literal("en"), z.null()])
       .transform((v) => v ?? "ko"),
+    // 안내 문장 판본(E62): 누락 = 1(종전 — 스토어 iOS 2.0·1.19·안드로이드), 정확히 "2"만 옵트인.
+    wording: z
+      .union([z.literal("2"), z.null()])
+      .transform((v) => (v === "2" ? (2 as const) : (1 as const))),
+    // 건너는 길 이름(E62, iOS 실험판만): 누락 또는 정확히 "1". 판본 2에서만 뜻이 있다.
+    crossingRoad: z
+      .union([z.literal("1"), z.null()])
+      .transform((v) => v === "1"),
   })
   .superRefine((data, ctx) => {
     if (data.variant && data.alternatives) {
@@ -60,6 +68,13 @@ const querySchema = z
         code: "custom",
         message: "alternatives 조회는 includeGeometry를 지원하지 않습니다.",
       });
+    }
+    // 판본 2 선택지를 판본 1에 붙이면 조용히 무시되므로 400. `alternatives`는 옛 조회 화면 전용이라 판본 1 고정.
+    if (data.crossingRoad && data.wording !== 2) {
+      ctx.addIssue({ code: "custom", message: "crossingRoad는 wording=2와 함께만 지정할 수 있습니다." });
+    }
+    if (data.alternatives && data.wording === 2) {
+      ctx.addIssue({ code: "custom", message: "alternatives 조회는 wording=2를 지원하지 않습니다." });
     }
     // 줄 목록(E42)은 조회 화면 전용 단독 옵트인이다 — 줄 종류가 탐색 축(최단·계단 회피)을 이미
     // 담으므로 variant·accessible과 겹치면 어느 축인지 모호하고, 기하는 안내 시작의 단일 조회가 싣는다.
@@ -87,6 +102,8 @@ export function parseWalkQuery(raw: {
   lines: string | null;
   via: string | null;
   lang: string | null;
+  wording: string | null;
+  crossingRoad: string | null;
 }): ParseWalkQueryResult {
   const parsed = querySchema.safeParse(raw);
   if (!parsed.success) {

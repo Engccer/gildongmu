@@ -11,6 +11,8 @@ const base = {
   lines: null,
   via: null,
   lang: null,
+  wording: null,
+  crossingRoad: null,
 };
 
 describe("walk 파라미터 조합표 (M3 spec §3.1)", () => {
@@ -135,6 +137,30 @@ describe("walk 파라미터 조합표 (M3 spec §3.1)", () => {
     it("via·lang·accessible=false와는 조합된다", () => {
       expect(parseWalkQuery({ ...base, lines: "1", via: "37.505,127.105", lang: "en" }).ok).toBe(true);
       expect(parseWalkQuery({ ...base, lines: "1", accessible: "false" }).ok).toBe(true);
+    });
+  });
+
+  describe("wording·crossingRoad(E62 판본 2)", () => {
+    it("누락은 판본 1, 정확히 \"2\"만 판본 2 — 그 밖은 400", () => {
+      const none = parseWalkQuery(base);
+      expect(none.ok && none.data.wording).toBe(1);
+      const v2 = parseWalkQuery({ ...base, wording: "2" });
+      expect(v2.ok && v2.data.wording).toBe(2);
+      expect(parseWalkQuery({ ...base, wording: "1" }).ok).toBe(false);
+      expect(parseWalkQuery({ ...base, wording: "3" }).ok).toBe(false);
+    });
+
+    it("crossingRoad는 판본 2에서만 — 판본 1에 붙이면 조용히 무시하지 않고 400", () => {
+      const ok = parseWalkQuery({ ...base, wording: "2", crossingRoad: "1", includeGeometry: "1" });
+      expect(ok.ok && ok.data.crossingRoad).toBe(true);
+      expect(parseWalkQuery({ ...base, crossingRoad: "1" }).ok).toBe(false);
+      expect(parseWalkQuery({ ...base, wording: "2", crossingRoad: "true" }).ok).toBe(false);
+    });
+
+    it("옛 조회 화면용 alternatives는 판본 2와 조합하지 않는다(400), 줄 목록·기하 조회와는 조합된다", () => {
+      expect(parseWalkQuery({ ...base, wording: "2", alternatives: "1" }).ok).toBe(false);
+      expect(parseWalkQuery({ ...base, wording: "2", lines: "2" }).ok).toBe(true);
+      expect(parseWalkQuery({ ...base, wording: "2", includeGeometry: "1", variant: "shortest" }).ok).toBe(true);
     });
   });
 });

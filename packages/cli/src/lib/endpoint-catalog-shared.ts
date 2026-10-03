@@ -118,8 +118,11 @@ export const ENDPOINT_CATALOG: EndpointSpec[] = [
              { key: "via", type: "string", required: false, description: "경유 좌표 '위도,경도' 1개(도보·자동차 — 응답 waypoint.stepIndex가 경유지 도착 뒤 첫 단계)" }],
     envelope: "result", locationParam: false, mcp: true,
     // 앱 화면 첫 줄(E42)과 맞춘다: ko는 최단. 계단 회피 요청과 en(첫 줄이 Tmap 추천)은 서버 기본 그대로.
-    implicitQuery: (q): Record<string, string> =>
-      q.variant === undefined && q.accessible !== "true" && q.lang !== "en" ? { variant: "shortest" } : {} },
+    // 안내 문장은 판본 2(E62 문안 확정본) — 미지정(판본 1)은 스토어 앱의 계약이라 CLI·MCP는 새 문장을 받는다.
+    implicitQuery: (q): Record<string, string> => ({
+      ...(q.variant === undefined && q.accessible !== "true" && q.lang !== "en" ? { variant: "shortest" } : {}),
+      wording: "2",
+    }) },
   { name: "weather", description: "이 지역 날씨(기상청 실황+예보)", path: "/api/weather/nearby", method: "GET",
     params: LATLNG, envelope: "weather", locationParam: true, mcp: true },
   { name: "air-quality", description: "이 지역 공기질(에어코리아)", path: "/api/air-quality/nearby", method: "GET",

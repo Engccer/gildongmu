@@ -45,7 +45,7 @@ describe("getWalkRoute lang=en", () => {
         },
       ],
     });
-    const r = await getWalkRoute({ origin, dest, lang: "en" });
+    const r = await getWalkRoute({ text: { wording: 1 },  origin, dest, lang: "en" });
     expect(kakao).not.toHaveBeenCalled();
     expect(tmap).toHaveBeenCalledWith(expect.objectContaining({ guard: true }));
     expect(r?.steps[0].description).toBe("Turn right, then walk 294m along Jinhwangdo-ro");
@@ -66,7 +66,7 @@ describe("getWalkRoute lang=en", () => {
         },
       ],
     });
-    const r = await getWalkRoute({ origin, dest, lang: "en" });
+    const r = await getWalkRoute({ text: { wording: 1 },  origin, dest, lang: "en" });
     expect(r?.steps[0].description).toBe(
       "Cross the crosswalk, then walk 14m, audible pedestrian signal",
     );
@@ -78,7 +78,7 @@ describe("getWalkRoute lang=en", () => {
       durationSeconds: 30,
       steps: [{ description: "직진 후 14m 이동", turnType: 11, distanceMeters: 14 }],
     });
-    const r = await getWalkRoute({ origin, dest, lang: "en", accessible: true });
+    const r = await getWalkRoute({ text: { wording: 1 },  origin, dest, lang: "en", accessible: true });
     expect(r?.stepFreeNotice).toMatch(/^Step-free routing is unavailable/);
     expect(r?.steps[0].description).toMatch(/^Step-free routing is unavailable/);
   });
@@ -91,7 +91,7 @@ describe("getWalkRoute lang=ko", () => {
       durationSeconds: 250,
       steps: [{ description: "성내로에서 100m 이동" }],
     });
-    await getWalkRoute({ origin, dest, lang: "ko" });
+    await getWalkRoute({ text: { wording: 1 },  origin, dest, lang: "ko" });
     expect(kakao).toHaveBeenCalled();
     expect(tmap).not.toHaveBeenCalled();
   });
@@ -103,7 +103,7 @@ describe("getWalkRoute lang=ko", () => {
       durationSeconds: 30,
       steps: [{ description: "직진 후 14m 이동", turnType: 11, distanceMeters: 14 }],
     });
-    await getWalkRoute({ origin, dest, lang: "ko", includeGeometry: true });
+    await getWalkRoute({ text: { wording: 1 },  origin, dest, lang: "ko", includeGeometry: true });
     expect(tmap).toHaveBeenCalledWith(
       expect.objectContaining({ includeLineGeometry: true, noStore: true, guard: false }),
     );

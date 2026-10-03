@@ -5,7 +5,7 @@ import { matchCrosswalk } from "./providers/crosswalks";
 import { formatDistance } from "./format";
 import { hasKakaoKey, hasTmapKey } from "./env";
 import { logRouteFallback } from "./route-fallback-log";
-import { rewriteWalkBriefing } from "./walk-guidance";
+import { rewriteWalkBriefing, rewriteWalkBriefingV2 } from "./walk-guidance";
 import { buildEnBriefing, roadNameKeysOf } from "./walk-guidance-en";
 import { roadNamesEn } from "./providers/juso-road-name";
 import { walkStepAction } from "./walk-action";
@@ -16,6 +16,7 @@ import type {
   WalkLineKind,
   WalkRouteBriefing,
   WalkRouteLine,
+  WalkRouteStep,
 } from "./types";
 
 /**
@@ -51,6 +52,30 @@ const MATCH_RADIUS_METERS = 40;
  * 거짓 안전 정보다. Tmap 폴백 문장은 재작성을 거치지 않으므로 원문형도 남긴다.
  */
 const MERGED_CROSSWALK = /\d+개의|횡단보도 \d+개/;
+
+/**
+ * 단일 횡단보도 스텝인가(주석 대상). 판본 2가 문형을 알아본 스텝(`actionResolved`)은 **구조로만** 본다 — 이동
+ * 문장의 지명 속 "횡단보도"("천호역 횡단보도에서 …를 따라 100m 이동")에 신호기 주석이 붙지 않는다. 분해된 병합
+ * 조각(`noCrossingNote`)은 제외한다(같은 교차로의 신호기 하나가 40m 안의 모든 조각에 붙는 거짓 안전 정보, E62 §3.3).
+ * 그 밖은 종전 판정(구조화 행동 → 행동, 없으면 문자열) + 병합 게이트.
+ */
+function isSingleCrosswalkStep(step: WalkRouteStep): boolean {
+  if (step.noCrossingNote) return false;
+  if (step.actionResolved) return step.action === "crosswalk" && !MERGED_CROSSWALK.test(step.description);
+  return (
+    (step.action !== undefined ? step.action === "crosswalk" : step.description.includes("횡단보도")) &&
+    !MERGED_CROSSWALK.test(step.description)
+  );
+}
+
+/** 주석 꼬리를 문장과 `parts.body`에 함께 붙인다(E62 §3.4 — 되읽기·재조회 문장이 같은 안전 정보를 잃지 않게). */
+function withTail(step: WalkRouteStep, tail: string): WalkRouteStep {
+  return {
+    ...step,
+    description: `${step.description}, ${tail}`,
+    ...(step.parts ? { parts: { ...step.parts, body: `${step.parts.body}, ${tail}` } } : {}),
+  };
+}
 
 /**
  * 최단 경로(variant=shortest)×계단 회피의 곱 전용 경고(M3 spec §3.2).
@@ -108,15 +133,11 @@ export function annotateAudioSignals(
     // action이 없어 종전 경로 그대로다(병합 표현 게이트 포함).
     // ⚠ **병합 게이트는 두 경로 공통이다**(리뷰 검출): 구조화 분기에서 빼면 여러 횡단보도를
     // 묶은 스텝에 seed 1개 매칭으로 주석이 붙어 "침묵보다 나쁜 거짓 안전 정보"가 된다.
-    const isCrosswalk =
-      (rest.action !== undefined
-        ? rest.action === "crosswalk"
-        : rest.description.includes("횡단보도")) && !MERGED_CROSSWALK.test(rest.description);
     const annotated =
       candidates.length > 0 &&
-      isCrosswalk &&
+      isSingleCrosswalkStep(rest) &&
       candidates.some((c) => hasAudioSignalNear(c.lat, c.lng, MATCH_RADIUS_METERS))
-        ? { ...rest, description: `${rest.description}, ${ANNOTATION[lang]}` }
+        ? withTail(rest, ANNOTATION[lang])
         : rest;
     // 기하 보존(실시간 길 안내 옵트인): 좌표를 pathCoords 한 형태로 통일해
     // 소비자가 카카오·Tmap 두 모양을 다루지 않게 한다. 기본 경로는 종전대로 전량 제거.
@@ -152,17 +173,11 @@ export function annotateCrosswalkInfo(
   const steps = briefing.steps.map((step) => {
     const { coord, pathCoords, ...rest } = step;
     const candidates = pathCoords ?? (coord ? [coord] : []);
-    const info =
-      provider === "kakao" &&
-      rest.description.includes("횡단보도") &&
-      !MERGED_CROSSWALK.test(rest.description)
-        ? matchCrosswalk(candidates)
-        : null;
+    // 판정 술어는 신호기 주석과 같다(`isSingleCrosswalkStep`). 판본 1 카카오 스텝은 이 단계에서 아직 `action`이
+    // 없어 종전 문자열 판정 그대로다(행동 투영은 다음 단계).
+    const info = provider === "kakao" && isSingleCrosswalkStep(rest) ? matchCrosswalk(candidates) : null;
     const annotated = info
-      ? {
-          ...rest,
-          description: `${rest.description}, ${info.lanes}차로, 도로 폭 ${formatDistance(Math.round(info.lengthM))}`,
-        }
+      ? withTail(rest, `${info.lanes}차로, 도로 폭 ${formatDistance(Math.round(info.lengthM))}`)
       : rest;
     return keepGeometry && candidates.length > 0
       ? { ...annotated, pathCoords: candidates }
@@ -189,10 +204,10 @@ export function attachStepActions(
 ): WalkRouteBriefing {
   const steps = briefing.steps.map((step) => {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { turnType, roadNameKo: _roadNameKo, ...rest } = step;
+    const { turnType, roadNameKo: _roadNameKo, actionResolved, noCrossingNote: _noCrossingNote, ...rest } = step;
     if (!includeGeometry) {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { action: _action, crossing: _crossing, ...plain } = rest;
+      const { action: _action, crossing: _crossing, parts: _parts, crossingClock: _clock, ...plain } = rest;
       return plain;
     }
     // ⚠ **`turnType`을 가진 스텝(=Tmap 유래)은 문장 폴백을 타지 않는다.** 그 스텝은 이미 표로
@@ -200,9 +215,12 @@ export function attachStepActions(
     // 육교·계단·엘리베이터)이다. 폴백을 태우면 ko+Tmap의 직진 스텝 교차로명에 "횡단보도"가
     // 섞였을 때 직진 지점에서 crosswalk 톤이 난다(리뷰 검출, `pedestrian-guard`가 문서화한
     // precedence 함정의 반대 방향). 문장 분류는 카카오 스텝(turnType 부재)에만 남는다.
+    // 판본 2가 문형을 알아본 스텝(`actionResolved`)도 분류기를 타지 않는다 — 행동 없음이 의도된 결론이다(E62 §3.6).
     const action =
       rest.action ??
-      (turnType === undefined ? (walkStepAction(rest.description) ?? undefined) : undefined);
+      (turnType === undefined && !actionResolved
+        ? (walkStepAction(rest.description) ?? undefined)
+        : undefined);
     // 횡단 구간 플래그(A26): Tmap 스텝은 `turnType` 표의 행동이 곧 구조화 판정이라 여기서
     // 표시한다(카카오 스텝은 재작성 단계가 이미 표시했고 문장 분류로는 만들지 않는다 —
     // 지명 "횡단보도"가 crosswalk로 분류되는 그 함정이 이 플래그가 존재하는 이유다).
@@ -325,11 +343,19 @@ async function annotateBriefing(
   provider: "kakao" | "tmap",
   lang: WalkLang,
   includeGeometry: boolean,
+  text: WalkTextVersion,
 ): Promise<WalkRouteBriefing> {
+  // 판본 2(E62)는 ko 재작성만 바꾼다. en(Tmap 단독)은 판본과 무관하게 종전 경로다.
   const base =
     lang === "en"
       ? buildEnBriefing(b, await roadNamesEn(roadNameKeysOf(b)))
-      : rewriteWalkBriefing(b, includeGeometry);
+      : text.wording === 2
+        ? rewriteWalkBriefingV2(b, {
+            includeLive: includeGeometry,
+            geometry: provider === "kakao",
+            crossingRoad: text.crossingRoad,
+          })
+        : rewriteWalkBriefing(b, includeGeometry);
   return attachStepActions(
     annotateCrosswalkInfo(annotateAudioSignals(base, true, lang), includeGeometry, provider),
     includeGeometry,
@@ -363,7 +389,15 @@ interface WalkRouteParams {
   variant?: "shortest";
   /** 경유지 1개(N4). 응답 `waypoint`가 그 도착 지점을 가리킨다. */
   via?: Coord;
+  /** 안내 문장 판본(E62). **기본값 없는 필수** — 빠뜨린 호출부가 조용히 옛 문장을 내지 않게. */
+  text: WalkTextVersion;
 }
+
+/**
+ * 안내 문장 판본과 그 선택지(E62 spec §1·§3.5). 판본 1 = 종전(스토어 iOS 2.0·1.19·안드로이드), 판본 2 = 문안 확정본.
+ * 건너는 길 이름은 판본 2에서만 뜻이 있고 iOS 실험판만 켠다.
+ */
+export type WalkTextVersion = { wording: 1 } | { wording: 2; crossingRoad: boolean };
 
 /** 경로 + 그것을 준 provider + 그 경로의 줄 종류(E42). 종류를 확정할 수 없으면 `kind` 부재. */
 interface ResolvedWalkRoute {
@@ -382,10 +416,10 @@ async function resolveWalkRoute(
   params: WalkRouteParams & { preciseCoords: boolean },
 ): Promise<ResolvedWalkRoute | null> {
   const {
-    origin, dest, lang, accessible = false, includeGeometry = false, variant, via, preciseCoords,
+    origin, dest, lang, accessible = false, includeGeometry = false, variant, via, preciseCoords, text,
   } = params;
   const annotate = (b: WalkRouteBriefing, provider: "kakao" | "tmap") =>
-    annotateBriefing(b, provider, lang, includeGeometry);
+    annotateBriefing(b, provider, lang, includeGeometry, text);
   const fetchMode = (routeMode: KakaoWalkRouteMode) =>
     fetchPrimaryOrFallback({
       origin, dest, routeMode, preciseCoords, noStore: includeGeometry, waypoint: via, lang, includeGeometry,
@@ -481,6 +515,9 @@ export async function getWalkRoute(params: WalkRouteParams): Promise<WalkRouteBr
  * 키 상태면 최단 조회 자체를 생략하고 `shortest` 키를 싣지 않는다.
  * 기하는 싣지 않는다(조회 화면 불필요 — 안내 시작 시 variant 단일 조회가 담당).
  */
+/** `alternatives=1`은 옛 조회 화면(iOS 1.x·안드로이드) 전용이라 판본 1에 고정한다(E62). */
+const LEGACY_TEXT: WalkTextVersion = { wording: 1 };
+
 export async function getWalkRouteAlternatives(params: {
   origin: Coord;
   dest: Coord;
@@ -490,15 +527,15 @@ export async function getWalkRouteAlternatives(params: {
 }): Promise<{ result: WalkRouteBriefing | null; shortest?: WalkRouteBriefing | null }> {
   const { origin, dest, lang, accessible = false, via } = params;
   if (!hasShortestAxis(lang)) {
-    return { result: await getWalkRoute({ origin, dest, lang, accessible, via }) };
+    return { result: await getWalkRoute({ origin, dest, lang, accessible, via, text: LEGACY_TEXT }) };
   }
   // ⚠ en에서 추천·최단이 각각 `roadNamesEn`을 돈다(도로명 캐시 미스가 겹칠 수 있다).
   // 합치지 않는 이유: 두 조회가 **병렬**이라 벽시계는 한 벌과 같고(1.5초 상한도 각자),
   // 도로명은 30일 캐시라 두 번째 호출부터는 미스 자체가 없다. 합치려면 두 브리핑을 먼저
   // 받아야 해서 병렬성이 깨진다 — 지연을 줄이려다 늘리는 교환이다.
   const [primary, shortest] = await Promise.allSettled([
-    resolveWalkRoute({ origin, dest, lang, accessible, via, preciseCoords: false }),
-    resolveWalkRoute({ origin, dest, lang, accessible, via, variant: "shortest", preciseCoords: false }),
+    resolveWalkRoute({ origin, dest, lang, accessible, via, preciseCoords: false, text: LEGACY_TEXT }),
+    resolveWalkRoute({ origin, dest, lang, accessible, via, variant: "shortest", preciseCoords: false, text: LEGACY_TEXT }),
   ]);
   if (primary.status === "rejected") throw primary.reason;
   // provider 혼합 금지(E42 설계 리뷰 MAJOR 2): 두 줄의 provider가 다르면 거리를 나란히 놓을 수 없다 —
@@ -605,9 +642,11 @@ export async function getWalkRouteLines(params: {
   lang: WalkLang;
   via?: Coord;
   version: WalkLinesVersion;
+  /** 안내 문장 판본(E62). 줄 목록은 기하를 싣지 않아 판본 2의 조각 필드는 없고 문장만 바뀐다. */
+  text: WalkTextVersion;
 }): Promise<{ lines: WalkRouteLine[]; failedLines: WalkLineFailure[] }> {
-  const { origin, dest, lang, via, version } = params;
-  if (lang === "en") return { lines: await getEnWalkRouteLines({ origin, dest, lang, via }), failedLines: [] };
+  const { origin, dest, lang, via, version, text } = params;
+  if (lang === "en") return { lines: await getEnWalkRouteLines({ origin, dest, lang, via, text }), failedLines: [] };
 
   if (!hasShortestAxis(lang)) {
     throw new Error("[walk-route] 최단 줄을 조회할 키가 없습니다");
@@ -646,7 +685,7 @@ export async function getWalkRouteLines(params: {
   const provider = (kind: WalkLineKind) => (kind === "shortest" ? (first.value?.via ?? "kakao") : "kakao");
   // 주석도 흡수 경계 안에 둔다: 카카오 줄의 재작성·주석 예외는 그 줄만 빼고, 최단 줄은 조회와 같이 전체 throw.
   const annotated = await Promise.allSettled(
-    picked.map(async (l) => ({ kind: l.kind, route: await annotateBriefing(l.raw, provider(l.kind), lang, false) })),
+    picked.map(async (l) => ({ kind: l.kind, route: await annotateBriefing(l.raw, provider(l.kind), lang, false, text) })),
   );
   const lines: WalkRouteLine[] = [];
   const failures: { kind: WalkLineFailure; reason: unknown }[] = [];
@@ -680,13 +719,14 @@ async function getEnWalkRouteLines(params: {
   dest: Coord;
   lang: WalkLang;
   via?: Coord;
+  text: WalkTextVersion;
 }): Promise<WalkRouteLine[]> {
-  const { origin, dest, lang, via } = params;
+  const { origin, dest, lang, via, text } = params;
   const [first, second] = await Promise.allSettled([
-    resolveWalkRoute({ origin, dest, lang, via, preciseCoords: true }),
+    resolveWalkRoute({ origin, dest, lang, via, preciseCoords: true, text }),
     withLineBudget(
       hasShortestAxis(lang)
-        ? resolveWalkRoute({ origin, dest, lang, via, variant: "shortest", preciseCoords: true })
+        ? resolveWalkRoute({ origin, dest, lang, via, variant: "shortest", preciseCoords: true, text })
         : Promise.resolve(null),
     ),
   ]);
