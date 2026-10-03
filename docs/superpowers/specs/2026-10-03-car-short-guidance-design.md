@@ -41,7 +41,7 @@
 ## 4. 자동차 안전망 두절 15분
 
 - `GuideTuning`에 `sessionIdleNoFixSeconds`(웹 `sessionIdleNoFixS`)를 더한다: walk 300 · car 900 · carDriver 900. `sessionIdleStep`은 두절 임계를 **기본값 없는 인자**로 받고 전역 상수 `sessionIdleNoFixSeconds`/`SESSION_IDLE_NO_FIX_S`는 지운다(수단 갈림은 데이터로만, `sessionKind` switch 금지).
-- 승차 전 도보(prewalk)는 `BeaconModel` 도보 튜닝이라 300. 나들이(`OutingModel`)와 안드로이드 `WalkGuideModel`(도보뿐)은 `GuideTuning.walk`의 값을 명시해 넘긴다(종전 300 그대로).
+- 승차 전 도보(prewalk)는 안전망 자체가 걸리지 않는다(`maybeEndIdleSession`의 `prewalkTarget == nil` 가드, 종전 그대로). 나들이(`OutingModel`)는 `GuideTuning.walk`의 값을, 안드로이드 `WalkGuideModel`(도보뿐)은 자기 튜닝 값을 넘긴다(둘 다 종전 300 그대로).
 - 무이동 축·도착 추정 유예(120초)는 그대로. 자동차 도착 추정 두절(120초)은 도착 창 안에서만 돌아 터널과 무관하다.
 - 공유 fixture `session-idle-scenarios.json` 입력에 `noFixSeconds`를 더하고 car 900 사례를 넣는다.
 
