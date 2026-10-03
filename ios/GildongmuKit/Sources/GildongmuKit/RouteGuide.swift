@@ -32,8 +32,15 @@ public let announceAheadMeters = 30.0
 public let projectionLagMeters = 10.0
 public let imminentAheadMeters = 10.0 + projectionLagMeters // = 20 (유도식 — lag 재판정 연동)
 /// 횡단을 "나갔다"고 보려면 원시 진행거리가 횡단 시작점에서 이만큼 들어가야 한다(m, E62 — 웹 `CROSSING_START_JITTER_M`
-/// 미러). 연석 대기 중 원시 진행거리는 흔들림으로 시작점을 넘어 최대 4.9m 안에서 멈췄다(2026-10-03 로그).
+/// 미러). 연석 대기 중 원시 진행거리는 흔들림으로 시작점을 넘어 최대 4.9m 안에서 멈췄다(2026-10-03 로그). 대가: 16m 미만
+/// 횡단은 (16 - 길이) m 늦게 나간다.
 public let crossingStartJitterMeters = 6.0
+
+/// 횡단을 나갔는가(E62 R5, 웹 `crossingExited` 미러): 실위치가 끝을 지났고 원시 진행거리가 시작점 + 여유에 닿았다.
+/// ⚠ 문턱은 경로 전체 길이를 넘지 않는다 — 목적지 직전 짧은 횡단 뒤 마지막 전문이 영영 막혔다(확인 리뷰 2 MAJOR).
+func crossingExited(route: GuideRoute, step: GuideStepSpan, d: Double, realD: Double) -> Bool {
+    step.endD <= realD && min(step.startD + crossingStartJitterMeters, route.totalMeters) <= d
+}
 /// 임박 큐의 **반복 단계**(m, 투영 좌표) — 웹 `IMMINENT_REPEAT_M` 미러. 위원장 실사용 피드백
 /// 2026-08-26: "10m 전만이 아니라 5m 전과 0m 지점에서도 같은 소리를 — 세 번". 같은 유도식
 /// (실위치 여유 + lag)이라 0m 단계도 투영 좌표에서는 경계 10m 앞이다. 강한 내림차순이고
@@ -1158,8 +1165,7 @@ public func guideStep(
             //     ⚠ "나갔다"는 실위치가 끝을 지났고 원시 진행거리가 시작점에서 `crossingStartJitterMeters` 이상 들어갔을 때다
             //     (연석 대기 중의 흔들림 폭).
             let crossingAhead = unitAt(route: route, index: next.announcedUpTo).contains {
-                route.steps[$0].crossing
-                    && !(route.steps[$0].endD <= realD && route.steps[$0].startD + crossingStartJitterMeters <= d)
+                route.steps[$0].crossing && !crossingExited(route: route, step: route.steps[$0], d: d, realD: realD)
             }
             // R4: 행동 없는 다음 구간은 들어선 뒤. 묶음 앞쪽 30m 안에 행동 스텝이 있는 묶음은 제외(설계 리뷰 M1).
             let actionless = nextFirst.action == nil
@@ -1188,8 +1194,9 @@ public func guideStep(
             // R6(E62): 실위치가 이미 첫 스텝에 들어선 전문은 늦은 전문(머리말 없음). 첫 스텝에 행동이 있으면 그 행동 톤을
             //     내고 그 경계의 임박 래치를 소비한다(톤 1회).
             let late = tuning.deferAnnounce && nextFirst.startD <= realD
-            // 톤은 원시 진행거리가 아직 그 경계를 넘지 않았을 때만(지난 경계엔 소리 없음, 구현 리뷰 MAJOR).
-            if late, let action = nextFirst.action, d <= nextFirst.startD {
+            // 톤은 원시 진행거리가 그 경계를 나감 여유 이상 넘지 않았을 때만(지난 경계엔 소리 없음, 구현 리뷰 MAJOR). 여유만큼
+            // 넓히는 것은 6m 미만 횡단 뒤 행동이 경계를 넘어서야 풀리기 때문이다(확인 리뷰 2 MINOR).
+            if late, let action = nextFirst.action, d <= nextFirst.startD + crossingStartJitterMeters {
                 next.imminentUpTo = max(next.imminentUpTo, unit[0])
                 next.imminentStage = 0
                 return emit(next, .announceSteps(indices, late: late), imminentTone(action))

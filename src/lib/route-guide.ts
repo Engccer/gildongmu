@@ -73,12 +73,18 @@ export const IMMINENT_AHEAD_M = 10 + PROJECTION_LAG_M; // = 20 (유도식 — la
 /**
  * 횡단을 "나갔다"고 보려면 원시 진행거리가 횡단 시작점에서 이만큼 들어가야 한다(m, E62). 실위치 보정(+lag)은 걷는
  * 중의 투영 지연이라 연석에서 신호를 기다리는 동안엔 없는데, 그 대기 중 원시 진행거리는 측위 흔들림으로 시작점을
- * 넘어 최대 4.9m 안에서 멈췄다(2026-10-03 로그 94[3] 10.8m·95[2a] 9.3m). 이 여유가 없으면 10m 이하 횡단은 건너기
- * 전에 "나간" 것이 되어 다음 전문과 행동 톤이 연석에서 나갔다(구현 리뷰 BLOCKER·확인 리뷰). 대가: 걸어서 건널 때
- * 10m 미만 횡단은 몇 m 늦게 나간다(실보행 판정 축). 속도 비례 보정은 기각 — 10초 창 속도가 멈춘 뒤에도 걷던 속도를
- * 끌고 와 따라붙는 동안 같은 오판을 냈다.
+ * 넘어 최대 4.9m 안에서 멈췄다(2026-10-03 로그 94[3] 10.8m·95[2a] 9.3m). 이 여유가 없으면 길이 15m 이하 횡단은
+ * 건너기 전에 "나간" 것이 되어 다음 전문과 행동 톤이 연석에서 나갔다(구현 리뷰 BLOCKER·확인 리뷰). 대가: 걸어서 건널
+ * 때 16m 미만 횡단은 (16 - 길이) m 늦게 나간다(실보행 판정 축). 속도 비례 보정은 기각 — 10초 창 속도가 멈춘 뒤에도
+ * 걷던 속도를 끌고 와 따라붙는 동안 같은 오판을 냈다. ⚠ 문턱은 경로 전체 길이를 넘지 않는다(`crossingExited`) —
+ * 목적지 직전 짧은 횡단 뒤엔 원시 진행거리가 시작점 + 6m에 닿지 못해 마지막 전문이 영영 막혔다(확인 리뷰 2 MAJOR).
  */
 export const CROSSING_START_JITTER_M = 6;
+
+/** 횡단을 나갔는가(E62 R5): 실위치가 끝을 지났고 원시 진행거리가 시작점 + 여유(경로 끝을 넘지 않게)에 닿았다. */
+function crossingExited(route: GuideRoute, step: StepSpan, d: number, realD: number): boolean {
+  return step.endD <= realD && Math.min(step.startD + CROSSING_START_JITTER_M, route.totalMeters) <= d;
+}
 /**
  * 임박 큐의 **반복 단계**(m, 투영 좌표). 위원장 실사용 피드백 2026-08-26: "10m 전만이
  * 아니라 5m 전과 0m 지점에서도 같은 소리를 — 세 번". 첫 단계는 `IMMINENT_AHEAD_M`이고
@@ -1460,9 +1466,7 @@ export function guideStep(
       //     ⚠ "나갔다"는 실위치가 끝을 지났고 원시 진행거리가 시작점에서 `CROSSING_START_JITTER_M` 이상 들어갔을 때다
       //     (연석 대기 중의 흔들림 폭 — 위 상수 주석).
       const crossingAhead = unitAt(route, next.announcedUpTo).some(
-        (i) =>
-          route.steps[i].crossing === true &&
-          !(route.steps[i].endD <= realD && route.steps[i].startD + CROSSING_START_JITTER_M <= d),
+        (i) => route.steps[i].crossing === true && !crossingExited(route, route.steps[i], d, realD),
       );
       // R4: 행동 없는 다음 구간은 들어선 뒤. 묶음 앞쪽 30m 안에 행동 스텝이 있는 묶음은 제외 — 묶음 전체를 미루면
       //     묶음 안 회전이 30m 전문과 stage 0 문장을 잃는다(설계 리뷰 M1).
@@ -1499,9 +1503,10 @@ export function guideStep(
       // R6(E62): 실위치가 이미 첫 스텝에 들어선 전문은 늦은 전문이다 — 머리말 없음. 첫 스텝에 행동이 있으면(분해된
       //     둘째 횡단) 임박 단계는 이미 지났으므로 이 전문이 그 행동 톤을 내고 그 경계의 임박 래치를 소비한다(톤 1회).
       const late = tuning.deferAnnounce && nextFirst.startD <= realD;
-      // 톤은 원시 진행거리가 아직 그 경계를 넘지 않았을 때만 — 측위 회복으로 d가 경계 너머에 착지했으면 이미 지난
-      // 지점이다(임박 큐의 "지난 경계엔 발화 금지"와 같은 하한, 구현 리뷰 MAJOR). 문장은 종전처럼 나간다.
-      if (late && nextFirstAction && d <= nextFirst.startD) {
+      // 톤은 원시 진행거리가 그 경계를 횡단 나감 여유 이상 넘지 않았을 때만 — 측위 회복으로 d가 경계 너머에 착지했으면
+      // 이미 지난 지점이다(임박 큐의 "지난 경계엔 발화 금지"와 같은 하한, 구현 리뷰 MAJOR). 여유만큼 넓히는 것은 6m
+      // 미만 횡단 뒤 행동이 나감 문턱 때문에 경계를 넘어서야 풀리기 때문이다(그 회전에 소리가 0이던 확인 리뷰 2 MINOR).
+      if (late && nextFirstAction && d <= nextFirst.startD + CROSSING_START_JITTER_M) {
         next = { ...next, imminentUpTo: Math.max(next.imminentUpTo, unit[0]), imminentStage: 0 };
         return emit(next, { kind: "announceSteps", indices, late }, imminentTone(nextFirstAction));
       }

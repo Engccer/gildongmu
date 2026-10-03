@@ -86,7 +86,13 @@ describe("E62 앱 층 배선", () => {
     // 지난 임박 상태 문장 비움(a11y M1) · 경로 교체 시 옛 경로 표시·복구 비움 · 진행 상황 현재 안내의 body(a11y M2)
     expect(src).toContain("if let pending = imminentStatus, out.state.stepIndex >= pending.target {");
     expect(src).toMatch(/private var guideRoute: GuideRoute\? \{[\s\S]*?didSet \{[\s\S]*?liveCrossingText = nil[\s\S]*?pendingRecovery = nil[\s\S]*?pendingRecoveryEntered = nil[\s\S]*?imminentStatus = nil/);
-    expect(src).toContain("currentBody: liveSteps.indices.contains(state.stepIndex) ? liveSteps[state.stepIndex].body : nil");
+    expect(src).toContain("currentBody: liveSteps.indices.contains(state.stepIndex) ? liveSteps[state.stepIndex].body : nil,\n                walk: sessionKind == .walk");
+  });
+  it("iOS GuideText 묶음 국면 진행 상황(walk는 지금 스텝부터, 웹 미러)", () => {
+    const src = read("ios/Gildongmu/Directions/GuideText.swift");
+    expect(src).toContain("guard walk else {");
+    expect(src).toContain(".filter { $0 >= state.stepIndex }");
+    expect(src).toContain("$0 == state.stepIndex ? (currentBody ?? route.steps[$0].description)");
   });
   it("안드로이드 WalkGuideModel(판본 1이어도 리듀서 입력은 넘긴다)", () => {
     const src = read("android/app/src/main/kotlin/space/dodoplanet/gildongmu/guide/WalkGuideModel.kt");

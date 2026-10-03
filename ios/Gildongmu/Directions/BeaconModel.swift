@@ -2809,7 +2809,8 @@ final class BeaconModel {
                 destinationLabel: destinationLabel, lastGuidance: lastGuidance,
                 straightLineMeters: straight,
                 etaMinutes: etaMinutesNow(route: route, state: state),
-                currentBody: liveSteps.indices.contains(state.stepIndex) ? liveSteps[state.stepIndex].body : nil
+                currentBody: liveSteps.indices.contains(state.stepIndex) ? liveSteps[state.stepIndex].body : nil,
+                walk: sessionKind == .walk
             )
             if sessionKind == .car, state.phase == .following || state.phase == .bundle {
                 // car(§4.7): 현재 링크 도로명 + 진행 + ETA 오래됨 병기(3-state).

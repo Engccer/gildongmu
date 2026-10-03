@@ -488,7 +488,7 @@ enum GuideText {
     /// 않는다(a11y 감사 M2). nil이면 문장 전체. 웹 `progressOverviewLine` 미러.
     static func progress(
         route: GuideRoute, state: GuideState, destinationLabel: String,
-        lastGuidance: String?, straightLineMeters: Double?, etaMinutes: Int?, currentBody: String?
+        lastGuidance: String?, straightLineMeters: Double?, etaMinutes: Int?, currentBody: String?, walk: Bool
     ) -> String {
         switch state.phase {
         case .following:
@@ -506,15 +506,15 @@ enum GuideText {
         case .bundle:
             // 묶음 국면은 통독 자체가 "다음 안내." 서두를 가지므로 다음 파트가 따로 없다.
             let frame = progressFrame(route: route, state: state, etaMinutes: etaMinutes)
-            // 되읽기와 같은 규칙 — 지금 스텝부터, 지금 스텝은 회전 문장을 뗀다(E62 확인 리뷰, 웹 미러). `currentBody`가
-            // 없으면(판본 1 응답·자동차) 종전대로 유닛 전체.
-            guard let body = currentBody else {
+            // walk는 되읽기와 같은 규칙 — 지금 스텝부터, 지금 스텝은 회전 문장을 뗀다(`currentBody`, 없으면 원문 — 직진
+            // 스텝엔 body가 없다). car는 종전대로 유닛 전체(E62 확인 리뷰, 웹 `useRouteGuide` 미러).
+            guard walk else {
                 return "\(frame). " + unit(route: route, indices: unitAt(route: route, index: state.stepIndex))
             }
-            let rest = unitAt(route: route, index: state.stepIndex)
-                .filter { $0 > state.stepIndex }
-                .map { route.steps[$0].description }
-            let text = rest.isEmpty ? body : appLocalized("guide.bundle", ([body] + rest).joined(separator: ". "))
+            let descs = unitAt(route: route, index: state.stepIndex)
+                .filter { $0 >= state.stepIndex }
+                .map { $0 == state.stepIndex ? (currentBody ?? route.steps[$0].description) : route.steps[$0].description }
+            let text = descs.count > 1 ? appLocalized("guide.bundle", descs.joined(separator: ". ")) : (descs.first ?? "")
             return "\(frame). " + text
         case .uncertain, .reacquiring:
             return appLocalized(

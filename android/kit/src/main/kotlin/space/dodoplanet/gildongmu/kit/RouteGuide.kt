@@ -26,6 +26,10 @@ const val projectionLagMeters = 10.0
 /** 횡단을 "나갔다"고 보려면 원시 진행거리가 횡단 시작점에서 이만큼 들어가야 한다(m, E62 — Kit `crossingStartJitterMeters` 미러). */
 const val crossingStartJitterMeters = 6.0
 
+/** 횡단을 나갔는가(E62 R5, Kit `crossingExited` 미러). ⚠ 문턱은 경로 전체 길이를 넘지 않는다(목적지 직전 교착). */
+internal fun crossingExited(route: GuideRoute, step: GuideStepSpan, d: Double, realD: Double): Boolean =
+    step.endD <= realD && minOf(step.startD + crossingStartJitterMeters, route.totalMeters) <= d
+
 /**
  * 결정 지점 **임박** 큐의 잔여 거리(m). 30m 전문 낭독이 *무엇을* 할지 알린다면 이 큐는 *지금이다*를 알린다
  * (위원장 실보행 피드백 2026-08-09).
@@ -1093,7 +1097,7 @@ fun guideStep(state: GuideState, fix: GuideFix, route: GuideRoute, now: Double, 
             // R5: 전문이 나간 유닛 안에 실위치가 아직 나가지 않은 횡단이 있으면 그 횡단을 나간 뒤로(ⓐ).
             // ⚠ "나갔다"는 실위치가 끝을 지났고 원시 진행거리가 시작점에서 `crossingStartJitterMeters` 이상 들어갔을 때다.
             val crossingAhead = unitAt(route, next.announcedUpTo).any {
-                route.steps[it].crossing && !(route.steps[it].endD <= realD && route.steps[it].startD + crossingStartJitterMeters <= d)
+                route.steps[it].crossing && !crossingExited(route, route.steps[it], d, realD)
             }
             // R4: 행동 없는 다음 구간은 들어선 뒤. 묶음 앞쪽 30m 안에 행동 스텝이 있는 묶음은 제외(설계 리뷰 M1).
             val actionless = nextFirst.action == null &&
@@ -1120,8 +1124,9 @@ fun guideStep(state: GuideState, fix: GuideFix, route: GuideRoute, now: Double, 
             //     내고 그 경계의 임박 래치를 소비한다(톤 1회).
             val late = tuning.deferAnnounce && nextFirst.startD <= realD
             val firstAction = nextFirst.action
-            // 톤은 원시 진행거리가 아직 그 경계를 넘지 않았을 때만(지난 경계엔 소리 없음, 구현 리뷰 MAJOR).
-            if (late && firstAction != null && d <= nextFirst.startD) {
+            // 톤은 원시 진행거리가 그 경계를 나감 여유 이상 넘지 않았을 때만(지난 경계엔 소리 없음, 구현 리뷰 MAJOR). 여유만큼
+            // 넓히는 것은 6m 미만 횡단 뒤 행동이 경계를 넘어서야 풀리기 때문이다(확인 리뷰 2 MINOR).
+            if (late && firstAction != null && d <= nextFirst.startD + crossingStartJitterMeters) {
                 next = next.copy(imminentUpTo = maxOf(next.imminentUpTo, unit[0]), imminentStage = 0)
                 return emit(next, GuideEvent.AnnounceSteps(indices, late), imminentTone(firstAction))
             }
