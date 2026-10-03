@@ -155,7 +155,7 @@
       "status": "ported",
       "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/RouteService.kt",
       "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/RouteServiceTest.kt",
-      "note": "via: (lat:, lng:)? 튜플 → RoutePoint?(응답 RouteWaypoint.coord와 같은 타입), walkAlternatives 튜플 반환 → RouteService.WalkAlternatives. Kit RouteServiceQueryTests의 StationService·NearbyService lang 케이스는 StationServiceTest·NearbyServiceTest에 있다. E42 `walkLines`(`lines=2` 판본 단독 옵트인 — E52, 모르는 줄 종류는 뺀다)는 이식했다. `walkAlternatives`는 Swift처럼 옛 조회 화면 호환으로 남아 있고 앱은 쓰지 않는다. E50 `transitModeRequery`(`pathType`·`includeStops=1`, 인자 기본값 없음)는 이식했고 테스트는 Swift처럼 모델 케이스와 함께 `RouteServiceTest`·`RouteModelsTest`에 있다"
+      "note": "via: (lat:, lng:)? 튜플 → RoutePoint?(응답 RouteWaypoint.coord와 같은 타입), walkAlternatives 튜플 반환 → RouteService.WalkAlternatives. Kit RouteServiceQueryTests의 StationService·NearbyService lang 케이스는 StationServiceTest·NearbyServiceTest에 있다. E42 `walkLines`(`lines=2` 판본 단독 옵트인 — E52, 모르는 줄 종류는 뺀다)는 이식했다. `walkAlternatives`는 Swift처럼 옛 조회 화면 호환으로 남아 있고 앱은 쓰지 않는다. E50 `transitModeRequery`(`pathType`·`includeStops=1`, 인자 기본값 없음)는 이식했고 테스트는 Swift처럼 모델 케이스와 함께 `RouteServiceTest`·`RouteModelsTest`에 있다. E62 `appendWording`은 `wording=2`만 옮겼다 — `crossingRoad` 인자(건너는 길 이름)는 iOS 실험판 전용이라 이식하지 않는다(가드 `e62-crossing-road-gate.test.ts`)"
     },
     {
       "swift": "StationMatch.swift",

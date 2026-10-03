@@ -3,6 +3,7 @@ package space.dodoplanet.gildongmu.directions
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.accessibility.enableAccessibilityChecks
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -20,6 +21,8 @@ import org.junit.runner.RunWith
 import space.dodoplanet.gildongmu.kit.APIClient
 import space.dodoplanet.gildongmu.location.StaleFix
 import space.dodoplanet.gildongmu.DeviceFixtures
+import space.dodoplanet.gildongmu.R
+import space.dodoplanet.gildongmu.i18n.appLocalized
 import space.dodoplanet.gildongmu.kit.HttpResponse
 import space.dodoplanet.gildongmu.kit.InMemoryKeyValueStore
 import space.dodoplanet.gildongmu.kit.NearbyCoord
@@ -41,9 +44,36 @@ class DirectionsScreenA11yTest {
     private val places = """{"places":[{"id":"k1","name":"강남역","category":"교통,수송 > 지하철","address":"서울 강남구","roadAddress":"서울 강남구 강남대로","lat":37.4979,"lng":127.0276}],"provider":"kakao-local","query":"강남"}"""
     private val emptyAddr = """{"addresses":[],"query":"q"}"""
     /** E42 줄 목록 봉투 — Kit 옛 봉투 fixture의 경로를 줄마다 싣는다(fixture 디렉터리는 읽기 전용). */
-    private fun walkLines(vararg kinds: String): String {
+    private fun walkLines(vararg kinds: String, failed: List<String> = emptyList()): String {
         val route = DeviceFixtures.kit("route-walk.json").substringAfter("\"result\":").trimEnd().removeSuffix("}")
-        return """{"lines":[""" + kinds.joinToString(",") { """{"kind":"$it","route":$route}""" } + "]}"
+        val failedJson = if (failed.isEmpty()) "" else ""","failedLines":[""" + failed.joinToString(",") { "\"$it\"" } + "]"
+        return """{"lines":[""" + kinds.joinToString(",") { """{"kind":"$it","route":$route}""" } + "]" + failedJson + "}"
+    }
+
+    /** 도착지가 정해진 폼에서 조회까지 — 도보 응답만 갈아 끼운다(E52 줄 구성 케이스 공용). */
+    private fun submitWithWalk(walkBody: String): DirectionsViewModel {
+        val transport = StubTransport { url ->
+            when (pathOf(url)) {
+                "/api/places/entrance" -> HttpResponse(200, "{}")
+                "/api/route/transit" -> HttpResponse(200, DeviceFixtures.kit("route-transit.json"))
+                "/api/route/walk" -> HttpResponse(200, walkBody)
+                "/api/route/car" -> HttpResponse(200, DeviceFixtures.kit("route-car.json"))
+                else -> HttpResponse(404, "")
+            }
+        }
+        val client = APIClient("https://example.test", transport)
+        val res = rule.activity.applicationContext.resources
+        val vm = DirectionsViewModel(
+            RouteService(client), SearchService(client), RecentSearchStore(InMemoryKeyValueStore()), SeoulLocator,
+            { "ko" }, resourceStrings(res), SavedStateHandle(), prefill = MutableStateFlow(null), takePrefill = { false },
+        )
+        vm.setEndpoint(space.dodoplanet.gildongmu.kit.DirectionsEndpoint.Place("강남역", 37.4979, 127.0276), DirectionsFieldTarget.to)
+        rule.setContent { MaterialTheme { DirectionsScreen(vm) } }
+        rule.enableAccessibilityChecks()
+        rule.onNodeWithTag("submit").performClick()
+        rule.waitUntil(10_000) { vm.state.value.resultsRevision == 1 }
+        rule.waitForIdle()
+        return vm
     }
 
     private object SeoulLocator : EndpointLocator {
@@ -108,31 +138,44 @@ class DirectionsScreenA11yTest {
      */
     @Test
     fun walkTwoLinesFirstExpandedSecondCollapsedNoToggle() {
-        val transport = StubTransport { url ->
-            when (pathOf(url)) {
-                "/api/places/entrance" -> HttpResponse(200, "{}")
-                "/api/route/transit" -> HttpResponse(200, DeviceFixtures.kit("route-transit.json"))
-                "/api/route/walk" -> HttpResponse(200, walkLines("shortest", "broad"))
-                "/api/route/car" -> HttpResponse(200, DeviceFixtures.kit("route-car.json"))
-                else -> HttpResponse(404, "")
-            }
-        }
-        val client = APIClient("https://example.test", transport)
-        val res = rule.activity.applicationContext.resources
-        val vm = DirectionsViewModel(
-            RouteService(client), SearchService(client), RecentSearchStore(InMemoryKeyValueStore()), SeoulLocator,
-            { "ko" }, resourceStrings(res), SavedStateHandle(), prefill = MutableStateFlow(null), takePrefill = { false },
-        )
-        vm.setEndpoint(space.dodoplanet.gildongmu.kit.DirectionsEndpoint.Place("강남역", 37.4979, 127.0276), DirectionsFieldTarget.to)
-        rule.setContent { MaterialTheme { DirectionsScreen(vm) } }
-        rule.enableAccessibilityChecks()
-        rule.onNodeWithTag("submit").performClick()
-        rule.waitUntil(10_000) { vm.state.value.resultsRevision == 1 }
-        rule.waitForIdle()
+        submitWithWalk(walkLines("shortest", "broad"))
         rule.onNodeWithTag("guide-start-walk-shortest").performScrollTo().assertIsDisplayed()
         rule.onNodeWithTag("walk-line-broad").performScrollTo().assertIsDisplayed()
         rule.onNodeWithTag("walk-broad-step-0").assertDoesNotExist()
         rule.onNodeWithTag("stepfree").assertDoesNotExist()
+        rule.onRoot().tryPerformAccessibilityChecks()
+    }
+
+    /**
+     * E52 세 줄(최단·큰길·계단 회피, iOS 정식판 등가 — E43 이식 후보 ③): 첫 줄만 펼쳐지고, 뒤 두 줄은 종류마다 따로 펼친다(한 칸을
+     * 공유하면 큰길을 열 때 계단 회피 줄도 함께 열린다). 각 줄 머리는 단일 노드이고 ATF를 통과한다.
+     */
+    @Test
+    fun walkThreeLinesLaterLinesExpandIndependently() {
+        submitWithWalk(walkLines("shortest", "broad", "accessible"))
+        rule.onNodeWithTag("guide-start-walk-shortest").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithTag("walk-line-broad").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithTag("walk-line-accessible").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithTag("walk-broad-step-0").assertDoesNotExist()
+        rule.onNodeWithTag("walk-accessible-step-0").assertDoesNotExist()
+        rule.onRoot().tryPerformAccessibilityChecks()
+        rule.onNodeWithTag("walk-line-broad").performScrollTo().performClick()
+        rule.waitForIdle()
+        rule.onNodeWithTag("walk-broad-step-0").assertExists()
+        rule.onNodeWithTag("walk-accessible-step-0").assertDoesNotExist()
+        rule.onRoot().tryPerformAccessibilityChecks()
+    }
+
+    /**
+     * E52 판정 (나): 조회가 실패해 빠진 줄은 줄 목록 끝의 평문 한 줄로 알린다(통지 없음). 첫 줄만 남은 응답에서 그 줄이 단일 노드로
+     * 보이고 문장은 두 줄 실패 키다.
+     */
+    @Test
+    fun walkFailedLinesSentenceIsSinglePlainRow() {
+        submitWithWalk(walkLines("shortest", failed = listOf("broad", "accessible")))
+        val expected = appLocalized(rule.activity.applicationContext.resources, R.string.directions_walkLinesFailedBoth)
+        rule.onNodeWithTag("walk-lines-failed").performScrollTo().assertIsDisplayed().assertTextEquals(expected)
+        rule.onNodeWithTag("walk-line-broad").assertDoesNotExist()
         rule.onRoot().tryPerformAccessibilityChecks()
     }
 }
