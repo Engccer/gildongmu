@@ -31,6 +31,8 @@
 1. **자동차 안내의 GPS 끊김 자동 종료는 15분으로 한다**(E51 후속 ④). 도보는 5분 그대로다. 긴 터널·지하도로는 정상 주행으로도 5분을 넘고, 정체면 더 짧은 터널에서도 넘어 터널 안에서 안내가 끝났다.
 2. **카카오 응답 캐시는 두되 보관 시간만 줄인다**(BACKLOG §9 "카카오 응답 캐시 약관 질의" 행, E58 후속 ⑥). 주소·도보 경로의 3600초를 장소 검색과 같은 300초로 내린다.
 
+3. **둘로 나눌 수 없는 "횡단보도 2개" 병합 안내는 한 문장으로 하고 길이 라벨은 "전체 길이"다**(`e62-crossing` 판정 요청 `judgment-202610031814.md`, 실측 15곳 중 8곳이 중앙분리대 일직선형이라 분해 불가). "…횡단보도 2개를 연속으로 건너세요. 전체 길이 12m". 나뉘는 횡단과 단일 횡단은 문안 확정본대로 "횡단보도 길이".
+
 E61·E62·E63의 판정과 문안은 2026-10-03 접수 세션에서 끝났다(BACKLOG 각 본문, 문안 확정본).
 
 ### 코디네이터 판정 (제품 판단이 아닌 설계 사항)
@@ -119,3 +121,7 @@ git push origin feat/<이름>:main && git -C ~/Mac-Projects/gildongmu pull --ff-
 ## 5. 착수 프롬프트와 보고 경로
 
 착수 프롬프트 사본은 `~/.claude/parallel-sessions/gildongmu/<이름>.prompt.txt`, 보고 디렉터리는 `~/gildongmu-wt/<이름>-reports/`(단계별 새 파일 `start`·`integrating`·`done`·`blocked`·`judgment` + `-<YYYYmmddHHMM>.md`, 리뷰 보고 `review-*`, 기준 SHA `base.sha`). 보고는 파일과 `SendMessage` 둘 다, 코디네이터 주소는 `gildongmu-b7 [8eaa71]`. 위원장 판정이 새로 필요하면 세션이 `judgment-*.md`에 쉬운 한국어로 질문·선택지·각 선택지에서 위원장이 듣게 될 문장을 적어 통보하고, 코디네이터 세션이 위원장에게 묻는다.
+
+## 6. 정정 (코디네이터가 재현해 확인한 것)
+
+- **2026-10-03 18:05, 관측 `3092dff0`, 출처 `e61-car` 착수 보고(코디네이터 재현 확인)**: 안내 스텝 구조체는 `RouteModels.swift`가 아니라 **`route-geometry.ts` ↔ `RouteGeometry.swift` ↔ `:kit` `RouteGeometry.kt`의 `GuideStepSpan`·`GuideStepGeometry`**다(§2 웨이브 1 경계의 "스텝 구조체에 두 세션이 각자 선택 필드" 줄은 이 세 파일에도 그대로 적용한다. `e61-car`는 자동차 전용 선택 필드, `e62-crossing`은 도보 횡단·조각 필드, 뒤에 통합하는 쪽이 rebase에서 양쪽 보존). 세션 안전망 `sessionIdleStep`의 호출부는 `BeaconModel.swift`·`OutingModel.swift`·안드로이드 `WalkGuideModel.kt` 셋이다: 두절 값을 인자로 받게 바꾸면 `OutingModel.swift` 한 줄과 `WalkGuideModel.kt` 한 줄이 따라 바뀐다(둘 다 도보 값 300초를 명시할 뿐 동작 불변). `e61-car`가 그 두 줄을 고친다(웨이브 1에 `OutingModel.swift`를 만지는 다른 세션은 없다).
