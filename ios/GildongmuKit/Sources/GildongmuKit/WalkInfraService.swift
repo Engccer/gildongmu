@@ -14,11 +14,4 @@ public struct WalkInfraService: Sendable {
             "/api/walk/nearby", query: coordQuery(lat: lat, lng: lng))
         return envelope.walk
     }
-
-    /// 나들이 옵트인(`coords=1`, spec 2026-09-26 §6.3): 음향신호기 지점 좌표를 싣고 횡단보도·지점 상한을 넓힌다.
-    public func nearbyWithCoordinates(lat: Double, lng: Double) async throws -> WalkInfrastructure {
-        let envelope: WalkInfraEnvelope = try await client.get(
-            "/api/walk/nearby", query: coordQuery(lat: lat, lng: lng) + [URLQueryItem(name: "coords", value: "1")])
-        return envelope.walk
-    }
 }
