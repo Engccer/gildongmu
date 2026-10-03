@@ -8943,20 +8943,20 @@
      "comment": "종전엔 여기서 다음 구간 전문(횡단 시작 17m 앞, 임박 큐 사이) — ⓐ"
     },
     {
-     "afterFix": 67,
+     "afterFix": 69,
      "event": "announceSteps",
      "indices": [
       2
      ],
      "late": true,
      "tone": "right",
-     "comment": "원시 진행거리가 횡단에 들어서고 실위치가 끝을 지난 첫 fix"
+     "comment": "실위치가 끝을 지났고 원시 진행거리가 시작점에서 6m 들어간 첫 fix"
     },
     {
      "afterFixAny": [
-      68,
-      69,
-      70
+      70,
+      71,
+      72
      ],
      "toneNull": true,
      "eventNot": "imminent"
@@ -9658,6 +9658,48 @@
     {
      "t": 224.0,
      "along": 245,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 226.0,
+     "along": 246.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 228.0,
+     "along": 247.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 230.0,
+     "along": 248.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 232.0,
+     "along": 249.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 234.0,
+     "along": 250.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 236.0,
+     "along": 251.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 238.0,
+     "along": 252,
      "lateral": 0,
      "acc": 5
     }
@@ -11687,21 +11729,13 @@
    ],
    "expect": [
     {
-     "afterFix": 64,
+     "afterFix": 57,
      "event": "announceSteps",
      "indices": [
-      1
-     ],
-     "late": true,
-     "comment": "횡단은 독립 유닛 — 짧은 직진 P는 행동 없는 단일 유닛이라 들어선 뒤 1회(R4)"
-    },
-    {
-     "afterFix": 65,
-     "event": "announceSteps",
-     "indices": [
+      1,
       2
      ],
-     "late": false
+     "comment": "횡단은 묶음을 끝내되 앞의 짧은 스텝과는 묶인다 — 한 문장"
     },
     {
      "afterFixAny": [
@@ -11744,7 +11778,7 @@
    ]
   },
   {
-   "name": "E62 R5 연석 대기: 8m 횡단 앞에서 정지 판정 없이 서 있어도(측위 흔들림) 다음 전문·행동 톤은 건너기 전에 나가지 않는다(구현 리뷰 BLOCKER)",
+   "name": "E62 R5 연석 대기: 8m 횡단 시작점을 흔들림으로 몇 m 넘어 서 있어도(정지 판정 없이) 다음 전문·행동 톤은 건너기 전에 나가지 않는다(구현 리뷰 BLOCKER·확인 리뷰)",
    "steps": [
     {
      "len": 200,
@@ -11770,710 +11804,734 @@
      "acc": 5
     },
     {
-     "t": 2.0,
-     "along": 3.0,
+     "t": 2,
+     "along": 2.8,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 4.0,
-     "along": 6.0,
+     "t": 4,
+     "along": 5.6,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 6.0,
-     "along": 9.0,
+     "t": 6,
+     "along": 8.4,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 8.0,
-     "along": 12.0,
+     "t": 8,
+     "along": 11.2,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 10.0,
-     "along": 15.0,
+     "t": 10,
+     "along": 14.0,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 12.0,
-     "along": 18.0,
+     "t": 12,
+     "along": 16.8,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 14.0,
-     "along": 21.0,
+     "t": 14,
+     "along": 19.6,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 16.0,
-     "along": 24.0,
+     "t": 16,
+     "along": 22.4,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 18.0,
-     "along": 27.0,
+     "t": 18,
+     "along": 25.2,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 20.0,
-     "along": 30.0,
+     "t": 20,
+     "along": 28.0,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 22.0,
-     "along": 33.0,
+     "t": 22,
+     "along": 30.8,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 24.0,
-     "along": 36.0,
+     "t": 24,
+     "along": 33.6,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 26.0,
-     "along": 39.0,
+     "t": 26,
+     "along": 36.4,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 28.0,
+     "t": 28,
+     "along": 39.2,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 30,
      "along": 42.0,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 30.0,
-     "along": 45.0,
+     "t": 32,
+     "along": 44.8,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 32.0,
-     "along": 48.0,
+     "t": 34,
+     "along": 47.6,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 34.0,
-     "along": 51.0,
+     "t": 36,
+     "along": 50.4,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 36.0,
-     "along": 54.0,
+     "t": 38,
+     "along": 53.2,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 38.0,
-     "along": 57.0,
+     "t": 40,
+     "along": 56.0,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 40.0,
-     "along": 60.0,
+     "t": 42,
+     "along": 58.8,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 42.0,
-     "along": 63.0,
+     "t": 44,
+     "along": 61.6,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 44.0,
-     "along": 66.0,
+     "t": 46,
+     "along": 64.4,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 46.0,
-     "along": 69.0,
+     "t": 48,
+     "along": 67.2,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 48.0,
-     "along": 72.0,
+     "t": 50,
+     "along": 70.0,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 50.0,
-     "along": 75.0,
+     "t": 52,
+     "along": 72.8,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 52.0,
-     "along": 78.0,
+     "t": 54,
+     "along": 75.6,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 54.0,
-     "along": 81.0,
+     "t": 56,
+     "along": 78.4,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 56.0,
+     "t": 58,
+     "along": 81.2,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 60,
      "along": 84.0,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 58.0,
-     "along": 87.0,
+     "t": 62,
+     "along": 86.8,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 60.0,
-     "along": 90.0,
+     "t": 64,
+     "along": 89.6,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 62.0,
-     "along": 93.0,
+     "t": 66,
+     "along": 92.4,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 64.0,
-     "along": 96.0,
+     "t": 68,
+     "along": 95.2,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 66.0,
-     "along": 99.0,
+     "t": 70,
+     "along": 98.0,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 68.0,
-     "along": 102.0,
+     "t": 72,
+     "along": 100.8,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 70.0,
-     "along": 105.0,
+     "t": 74,
+     "along": 103.6,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 72.0,
-     "along": 108.0,
+     "t": 76,
+     "along": 106.4,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 74.0,
-     "along": 111.0,
+     "t": 78,
+     "along": 109.2,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 76.0,
-     "along": 114.0,
+     "t": 80,
+     "along": 112.0,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 78.0,
-     "along": 117.0,
+     "t": 82,
+     "along": 114.8,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 80.0,
-     "along": 120.0,
+     "t": 84,
+     "along": 117.6,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 82.0,
-     "along": 123.0,
+     "t": 86,
+     "along": 120.4,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 84.0,
+     "t": 88,
+     "along": 123.2,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 90,
      "along": 126.0,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 86.0,
-     "along": 129.0,
+     "t": 92,
+     "along": 128.8,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 88.0,
-     "along": 132.0,
+     "t": 94,
+     "along": 131.6,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 90.0,
-     "along": 135.0,
+     "t": 96,
+     "along": 134.4,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 92.0,
-     "along": 138.0,
+     "t": 98,
+     "along": 137.2,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 94.0,
-     "along": 141.0,
+     "t": 100,
+     "along": 140.0,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 96.0,
-     "along": 144.0,
+     "t": 102,
+     "along": 142.8,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 98.0,
-     "along": 147.0,
+     "t": 104,
+     "along": 145.6,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 100.0,
-     "along": 150.0,
+     "t": 106,
+     "along": 148.4,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 102.0,
-     "along": 153.0,
+     "t": 108,
+     "along": 151.2,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 104.0,
-     "along": 156.0,
+     "t": 110,
+     "along": 154.0,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 106.0,
-     "along": 159.0,
+     "t": 112,
+     "along": 156.8,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 108.0,
-     "along": 162.0,
+     "t": 114,
+     "along": 159.6,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 110.0,
-     "along": 165.0,
+     "t": 116,
+     "along": 162.4,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 112.0,
+     "t": 118,
+     "along": 165.2,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 120,
      "along": 168.0,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 114.0,
-     "along": 171.0,
+     "t": 122,
+     "along": 170.8,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 116.0,
-     "along": 174.0,
+     "t": 124,
+     "along": 173.6,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 118.0,
-     "along": 177.0,
+     "t": 126,
+     "along": 176.4,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 120.0,
-     "along": 180.0,
+     "t": 128,
+     "along": 179.2,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 122.0,
-     "along": 183.0,
+     "t": 130,
+     "along": 182.0,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 124.0,
-     "along": 186.0,
+     "t": 132,
+     "along": 184.8,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 126.0,
-     "along": 189.0,
+     "t": 134,
+     "along": 187.6,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 128.0,
-     "along": 192.0,
+     "t": 136,
+     "along": 190,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 130.0,
-     "along": 195.0,
+     "t": 138,
+     "along": 193.0,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 132.0,
-     "along": 198.0,
+     "t": 140,
+     "along": 195.4,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 134.0,
-     "along": 199,
+     "t": 142,
+     "along": 197.2,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 136.0,
-     "along": 198.6,
+     "t": 144,
+     "along": 198.5,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 138.0,
+     "t": 146,
      "along": 199.4,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 140.0,
-     "along": 198.6,
+     "t": 148,
+     "along": 200.0,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 142.0,
-     "along": 199.4,
+     "t": 150,
+     "along": 200.5,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 144.0,
-     "along": 198.6,
+     "t": 152,
+     "along": 201.8,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 146.0,
-     "along": 199.4,
+     "t": 154,
+     "along": 201.2,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 148.0,
-     "along": 198.6,
+     "t": 156,
+     "along": 202.9,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 150.0,
-     "along": 199.4,
+     "t": 158,
+     "along": 203.4,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 152.0,
-     "along": 198.6,
+     "t": 160,
+     "along": 202.1,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 154.0,
-     "along": 199.4,
+     "t": 162,
+     "along": 204.9,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 156.0,
-     "along": 198.6,
+     "t": 164,
+     "along": 204.2,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 158.0,
-     "along": 199.4,
+     "t": 166,
+     "along": 203.0,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 160.0,
-     "along": 198.6,
+     "t": 168,
+     "along": 204.9,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 162.0,
-     "along": 199.4,
+     "t": 170,
+     "along": 200.5,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 164.0,
-     "along": 198.6,
+     "t": 172,
+     "along": 201.8,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 166.0,
-     "along": 199.4,
+     "t": 174,
+     "along": 201.2,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 168.0,
-     "along": 198.6,
+     "t": 176,
+     "along": 202.9,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 170.0,
-     "along": 199.4,
+     "t": 178,
+     "along": 203.4,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 172.0,
-     "along": 198.6,
+     "t": 180,
+     "along": 202.1,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 174.0,
-     "along": 199.4,
+     "t": 182,
+     "along": 204.9,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 176.0,
-     "along": 198.6,
+     "t": 184,
+     "along": 204.2,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 178.0,
-     "along": 199.4,
+     "t": 186,
+     "along": 203.0,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 180.0,
-     "along": 198.6,
+     "t": 188,
+     "along": 204.9,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 182.0,
-     "along": 199.4,
+     "t": 190,
+     "along": 200.5,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 184.0,
-     "along": 198.6,
+     "t": 192,
+     "along": 201.8,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 186.0,
-     "along": 199.4,
+     "t": 194,
+     "along": 201.2,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 188.0,
-     "along": 198.6,
+     "t": 196,
+     "along": 202.9,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 190.0,
-     "along": 199.4,
+     "t": 198,
+     "along": 203.4,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 192.0,
-     "along": 198.6,
+     "t": 200,
+     "along": 202.1,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 194.0,
-     "along": 199.4,
+     "t": 202,
+     "along": 204.9,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 196.0,
-     "along": 198.6,
+     "t": 204,
+     "along": 204.2,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 198.0,
-     "along": 199.4,
+     "t": 206,
+     "along": 203.0,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 200.0,
-     "along": 198.6,
+     "t": 208,
+     "along": 204.9,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 202.0,
-     "along": 199.4,
+     "t": 210,
+     "along": 200.5,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 204.0,
-     "along": 198.6,
+     "t": 212,
+     "along": 201.8,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 206.0,
-     "along": 199.4,
+     "t": 214,
+     "along": 201.2,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 208.0,
-     "along": 198.6,
+     "t": 216,
+     "along": 202.9,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 210.0,
-     "along": 199.4,
+     "t": 218,
+     "along": 203.4,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 212.0,
-     "along": 198.6,
+     "t": 220,
+     "along": 202.1,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 214.0,
-     "along": 199.4,
+     "t": 222,
+     "along": 204.9,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 216.0,
-     "along": 198.6,
+     "t": 224,
+     "along": 204.2,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 218.0,
-     "along": 199.4,
+     "t": 226,
+     "along": 203.0,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 220.0,
-     "along": 198.6,
+     "t": 228,
+     "along": 204.9,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 222.0,
-     "along": 199.4,
+     "t": 230,
+     "along": 207.5,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 224.0,
-     "along": 198.6,
+     "t": 232,
+     "along": 210.1,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 226.0,
-     "along": 202.0,
+     "t": 234,
+     "along": 212.7,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 228.0,
-     "along": 205.0,
+     "t": 236,
+     "along": 215.3,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 230.0,
-     "along": 208.0,
+     "t": 238,
+     "along": 217.9,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 232.0,
-     "along": 211.0,
+     "t": 240,
+     "along": 220.5,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 234.0,
-     "along": 214.0,
+     "t": 242,
+     "along": 223.1,
      "lateral": 0,
      "acc": 5
     },
     {
-     "t": 236.0,
-     "along": 215,
+     "t": 244,
+     "along": 225,
      "lateral": 0,
      "acc": 5
     }
@@ -12481,7 +12539,6 @@
    "expect": [
     {
      "afterFixAny": [
-      68,
       69,
       70,
       71,
@@ -12525,19 +12582,26 @@
       109,
       110,
       111,
-      112
+      112,
+      113,
+      114
      ],
      "eventNot": "announceSteps",
-     "toneNull": true
+     "toneNull": true,
+     "comment": "연석에 선 뒤 원시 진행거리가 따라붙고(193→200, 임박 단계는 그 앞에 끝났다) 흔들림으로 200.5~204.9에 머무는 동안"
     },
     {
-     "afterFix": 113,
-     "event": "announceSteps",
-     "indices": [
-      2
+     "afterFixAny": [
+      115,
+      116,
+      117,
+      118,
+      119,
+      120,
+      121,
+      122
      ],
-     "late": true,
-     "tone": "right"
+     "event": "announceSteps"
     }
    ]
   },

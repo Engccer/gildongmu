@@ -198,6 +198,7 @@ final class BeaconModel {
         // 남은 거리 행을 하단 2행 재설정보다 먼저 갱신해, 비우지 않으면 새 경로 첫 fix 동안 옛 "횡단보도 끝까지"가 남는다.
         didSet {
             liveCrossingText = nil
+            pendingRecovery = nil
             pendingRecoveryEntered = nil
             imminentStatus = nil
         }

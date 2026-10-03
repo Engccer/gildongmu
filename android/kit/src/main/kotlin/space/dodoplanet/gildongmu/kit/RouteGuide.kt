@@ -23,6 +23,9 @@ const val announceAheadMeters = 30.0
  */
 const val projectionLagMeters = 10.0
 
+/** 횡단을 "나갔다"고 보려면 원시 진행거리가 횡단 시작점에서 이만큼 들어가야 한다(m, E62 — Kit `crossingStartJitterMeters` 미러). */
+const val crossingStartJitterMeters = 6.0
+
 /**
  * 결정 지점 **임박** 큐의 잔여 거리(m). 30m 전문 낭독이 *무엇을* 할지 알린다면 이 큐는 *지금이다*를 알린다
  * (위원장 실보행 피드백 2026-08-09).
@@ -511,15 +514,14 @@ data class GuideOutput(
 )
 
 /** 스텝 index가 속한 유닛(긴 스텝=자기 하나, 짧은 스텝=연속 묶음 전체)의 index 목록. */
-/** ⚠ 횡단 스텝은 길이와 무관하게 언제나 자기 하나다(E62 a11y 감사 H1, Kit `unitAt` 미러). */
+/** ⚠ 횡단 스텝은 묶음을 끝낸다(E62 a11y 감사 H1, Kit `unitAt` 미러) — 앞의 짧은 스텝과는 묶인다. */
 fun unitAt(route: GuideRoute, index: Int): List<Int> {
     if (index < 0 || index >= route.steps.size) return emptyList()
-    if (route.steps[index].isLong || route.steps[index].crossing) return listOf(index)
-    val bundles = { i: Int -> !route.steps[i].isLong && !route.steps[i].crossing }
+    if (route.steps[index].isLong) return listOf(index)
     var a = index
     var b = index
-    while (a > 0 && bundles(a - 1)) a -= 1
-    while (b < route.steps.size - 1 && bundles(b + 1)) b += 1
+    while (a > 0 && !route.steps[a - 1].isLong && !route.steps[a - 1].crossing) a -= 1
+    while (b < route.steps.size - 1 && !route.steps[b].crossing && !route.steps[b + 1].isLong) b += 1
     return route.steps.subList(a, b + 1).map { it.index }
 }
 
@@ -1089,9 +1091,9 @@ fun guideStep(state: GuideState, fix: GuideFix, route: GuideRoute, now: Double, 
         val nextFirst = route.steps[nextUnit[0]]
         if (tuning.deferAnnounce && announcedEnd - d <= announceAhead) {
             // R5: 전문이 나간 유닛 안에 실위치가 아직 나가지 않은 횡단이 있으면 그 횡단을 나간 뒤로(ⓐ).
-            // ⚠ "나갔다"는 실위치가 끝을 지났고 원시 진행거리로도 횡단에 들어섰을 때다(연석 대기 — 구현 리뷰 BLOCKER).
+            // ⚠ "나갔다"는 실위치가 끝을 지났고 원시 진행거리가 시작점에서 `crossingStartJitterMeters` 이상 들어갔을 때다.
             val crossingAhead = unitAt(route, next.announcedUpTo).any {
-                route.steps[it].crossing && !(route.steps[it].endD <= realD && route.steps[it].startD <= d)
+                route.steps[it].crossing && !(route.steps[it].endD <= realD && route.steps[it].startD + crossingStartJitterMeters <= d)
             }
             // R4: 행동 없는 다음 구간은 들어선 뒤. 묶음 앞쪽 30m 안에 행동 스텝이 있는 묶음은 제외(설계 리뷰 M1).
             val actionless = nextFirst.action == null &&

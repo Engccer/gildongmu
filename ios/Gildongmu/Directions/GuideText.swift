@@ -506,8 +506,16 @@ enum GuideText {
         case .bundle:
             // 묶음 국면은 통독 자체가 "다음 안내." 서두를 가지므로 다음 파트가 따로 없다.
             let frame = progressFrame(route: route, state: state, etaMinutes: etaMinutes)
-            return "\(frame). "
-                + unit(route: route, indices: unitAt(route: route, index: state.stepIndex))
+            // 되읽기와 같은 규칙 — 지금 스텝부터, 지금 스텝은 회전 문장을 뗀다(E62 확인 리뷰, 웹 미러). `currentBody`가
+            // 없으면(판본 1 응답·자동차) 종전대로 유닛 전체.
+            guard let body = currentBody else {
+                return "\(frame). " + unit(route: route, indices: unitAt(route: route, index: state.stepIndex))
+            }
+            let rest = unitAt(route: route, index: state.stepIndex)
+                .filter { $0 > state.stepIndex }
+                .map { route.steps[$0].description }
+            let text = rest.isEmpty ? body : appLocalized("guide.bundle", ([body] + rest).joined(separator: ". "))
+            return "\(frame). " + text
         case .uncertain, .reacquiring:
             return appLocalized(
                 "guide.progressUncertain",

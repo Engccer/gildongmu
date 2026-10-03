@@ -31,6 +31,9 @@ public let announceAheadMeters = 30.0
 /// effectiveD 유도는 route-guide.ts ↔ 이 파일 한 쌍에만 존재한다).
 public let projectionLagMeters = 10.0
 public let imminentAheadMeters = 10.0 + projectionLagMeters // = 20 (유도식 — lag 재판정 연동)
+/// 횡단을 "나갔다"고 보려면 원시 진행거리가 횡단 시작점에서 이만큼 들어가야 한다(m, E62 — 웹 `CROSSING_START_JITTER_M`
+/// 미러). 연석 대기 중 원시 진행거리는 흔들림으로 시작점을 넘어 최대 4.9m 안에서 멈췄다(2026-10-03 로그).
+public let crossingStartJitterMeters = 6.0
 /// 임박 큐의 **반복 단계**(m, 투영 좌표) — 웹 `IMMINENT_REPEAT_M` 미러. 위원장 실사용 피드백
 /// 2026-08-26: "10m 전만이 아니라 5m 전과 0m 지점에서도 같은 소리를 — 세 번". 같은 유도식
 /// (실위치 여유 + lag)이라 0m 단계도 투영 좌표에서는 경계 10m 앞이다. 강한 내림차순이고
@@ -475,16 +478,15 @@ public struct GuideOutput: Sendable, Equatable {
 }
 
 /// 스텝 index가 속한 유닛(긴 스텝=자기 하나, 짧은 스텝=연속 묶음 전체)의 index 목록.
-/// ⚠ 횡단 스텝은 길이와 무관하게 언제나 자기 하나다(E62 a11y 감사 H1, 웹 `unitAt` 미러) — 짧은 횡단이 앞뒤 짧은
-/// 스텝과 묶이면 다음 행동의 임박 문장이 횡단 도중 차도 위에서 나간다.
+/// ⚠ 횡단 스텝은 묶음을 끝낸다(E62 a11y 감사 H1, 웹 `unitAt` 미러) — 횡단 뒤 스텝은 같은 유닛에 들지 않는다(그 임박
+/// 문장이 횡단 도중에 나간다). 앞의 짧은 스텝과는 묶인다(떼면 두 전문이 1초 차로 겹친다, 구현 확인 리뷰).
 public func unitAt(route: GuideRoute, index: Int) -> [Int] {
     guard index >= 0, index < route.steps.count else { return [] }
-    if route.steps[index].isLong || route.steps[index].crossing { return [index] }
-    let bundles = { (i: Int) in !route.steps[i].isLong && !route.steps[i].crossing }
+    if route.steps[index].isLong { return [index] }
     var a = index
     var b = index
-    while a > 0 && bundles(a - 1) { a -= 1 }
-    while b < route.steps.count - 1 && bundles(b + 1) { b += 1 }
+    while a > 0 && !route.steps[a - 1].isLong && !route.steps[a - 1].crossing { a -= 1 }
+    while b < route.steps.count - 1 && !route.steps[b].crossing && !route.steps[b + 1].isLong { b += 1 }
     return route.steps[a...b].map(\.index)
 }
 
@@ -1153,10 +1155,11 @@ public func guideStep(
         let nextFirst = route.steps[nextUnit[0]]
         if tuning.deferAnnounce && announcedEnd - d <= announceAhead {
             // R5: 전문이 나간 유닛 안에 실위치가 아직 나가지 않은 횡단이 있으면 그 횡단을 나간 뒤로(ⓐ).
-            //     ⚠ "나갔다"는 실위치가 끝을 지났고 원시 진행거리로도 횡단에 들어섰을 때다 — 연석 대기 중엔 투영 지연이
-            //     없어 10m 이하 횡단이 건너기 전에 "나간" 것으로 판정됐다(구현 리뷰 BLOCKER).
+            //     ⚠ "나갔다"는 실위치가 끝을 지났고 원시 진행거리가 시작점에서 `crossingStartJitterMeters` 이상 들어갔을 때다
+            //     (연석 대기 중의 흔들림 폭).
             let crossingAhead = unitAt(route: route, index: next.announcedUpTo).contains {
-                route.steps[$0].crossing && !(route.steps[$0].endD <= realD && route.steps[$0].startD <= d)
+                route.steps[$0].crossing
+                    && !(route.steps[$0].endD <= realD && route.steps[$0].startD + crossingStartJitterMeters <= d)
             }
             // R4: 행동 없는 다음 구간은 들어선 뒤. 묶음 앞쪽 30m 안에 행동 스텝이 있는 묶음은 제외(설계 리뷰 M1).
             let actionless = nextFirst.action == nil

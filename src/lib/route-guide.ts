@@ -71,6 +71,15 @@ export const ANNOUNCE_AHEAD_M = 30;
 export const PROJECTION_LAG_M = 10;
 export const IMMINENT_AHEAD_M = 10 + PROJECTION_LAG_M; // = 20 (유도식 — lag 재판정 연동)
 /**
+ * 횡단을 "나갔다"고 보려면 원시 진행거리가 횡단 시작점에서 이만큼 들어가야 한다(m, E62). 실위치 보정(+lag)은 걷는
+ * 중의 투영 지연이라 연석에서 신호를 기다리는 동안엔 없는데, 그 대기 중 원시 진행거리는 측위 흔들림으로 시작점을
+ * 넘어 최대 4.9m 안에서 멈췄다(2026-10-03 로그 94[3] 10.8m·95[2a] 9.3m). 이 여유가 없으면 10m 이하 횡단은 건너기
+ * 전에 "나간" 것이 되어 다음 전문과 행동 톤이 연석에서 나갔다(구현 리뷰 BLOCKER·확인 리뷰). 대가: 걸어서 건널 때
+ * 10m 미만 횡단은 몇 m 늦게 나간다(실보행 판정 축). 속도 비례 보정은 기각 — 10초 창 속도가 멈춘 뒤에도 걷던 속도를
+ * 끌고 와 따라붙는 동안 같은 오판을 냈다.
+ */
+export const CROSSING_START_JITTER_M = 6;
+/**
  * 임박 큐의 **반복 단계**(m, 투영 좌표). 위원장 실사용 피드백 2026-08-26: "10m 전만이
  * 아니라 5m 전과 0m 지점에서도 같은 소리를 — 세 번". 첫 단계는 `IMMINENT_AHEAD_M`이고
  * 이 배열이 그 뒤를 잇는다. 같은 유도식(실위치 여유 + lag)을 쓰므로 0m 단계도 투영
@@ -608,19 +617,19 @@ export interface GuideOutput {
 
 /**
  * 스텝 index가 속한 유닛(긴 스텝=자기 하나, 짧은 스텝=연속 묶음 전체)의 index 목록.
- * ⚠ **횡단 스텝은 길이와 무관하게 언제나 자기 하나다**(E62 a11y 감사 H1). 짧은 횡단이 앞뒤 짧은 스텝과 묶이면 그
- * 행동들의 전문이 횡단 앞에서 한꺼번에 나가고, 다음 행동의 임박 문장("잠시 후 3시 방향으로 돌아…")이 횡단 도중
- * 차도 위에서 나간다. 독립 유닛이면 다음 유닛 전문은 횡단을 나간 뒤(R5·R6)로 간다.
+ * ⚠ **횡단 스텝은 묶음을 끝낸다**(E62 a11y 감사 H1) — 횡단 뒤의 스텝은 같은 유닛에 들지 않는다. 짧은 횡단 뒤 행동이
+ * 같은 유닛이면 그 임박 문장("잠시 후 3시 방향으로 돌아…")이 횡단 도중 차도 위에서 나간다. 끝나면 다음 유닛 전문은
+ * 횡단을 나간 뒤(R5·R6)로 간다. 횡단 **앞**의 짧은 스텝과는 묶인다 — 떼면 행동 없는 짧은 스텝이 들어선 뒤 1회(R4)
+ * 나가고 곧바로 횡단 전문이 이어져 두 문장이 1초 차로 겹친다(구현 확인 리뷰 MAJOR, 코퍼스 횡단 6%).
  */
 export function unitAt(route: GuideRoute, index: number): number[] {
   const s = route.steps[index];
   if (!s) return [];
-  if (s.isLong || s.crossing) return [index];
-  const bundles = (i: number) => !route.steps[i].isLong && !route.steps[i].crossing;
+  if (s.isLong) return [index];
   let a = index;
   let b = index;
-  while (a > 0 && bundles(a - 1)) a--;
-  while (b < route.steps.length - 1 && bundles(b + 1)) b++;
+  while (a > 0 && !route.steps[a - 1].isLong && !route.steps[a - 1].crossing) a--;
+  while (b < route.steps.length - 1 && !route.steps[b].crossing && !route.steps[b + 1].isLong) b++;
   return route.steps.slice(a, b + 1).map((x) => x.index);
 }
 
@@ -1448,11 +1457,12 @@ export function guideStep(
     if (tuning.deferAnnounce && announcedEnd - d <= announceAhead) {
       // R5: 전문이 나간 유닛 안에 실위치가 아직 나가지 않은 횡단이 있으면 그 횡단을 나간 뒤로 미룬다 — 짧은 횡단
       //     앞에서 다음 전문과 임박 큐가 1~2초 차로 겹치던 ⓐ(2026-10-03 3/3)와 "첫째를 건넌 뒤" 문장.
-      //     ⚠ "나갔다"는 실위치가 끝을 지났고 **원시 진행거리로도 횡단에 들어섰을 때**다. 실위치 보정(+lag)은 걷는
-      //     중의 투영 지연이라 연석에서 신호를 기다리는 동안엔 없다 — 10m 이하 횡단은 대기 중에 이미 "나간" 것으로
-      //     판정돼 건너기 전에 다음 전문과 행동 톤이 나갔다(구현 리뷰 BLOCKER·재생 2026-10-03 94[3]).
+      //     ⚠ "나갔다"는 실위치가 끝을 지났고 원시 진행거리가 시작점에서 `CROSSING_START_JITTER_M` 이상 들어갔을 때다
+      //     (연석 대기 중의 흔들림 폭 — 위 상수 주석).
       const crossingAhead = unitAt(route, next.announcedUpTo).some(
-        (i) => route.steps[i].crossing === true && !(route.steps[i].endD <= realD && route.steps[i].startD <= d),
+        (i) =>
+          route.steps[i].crossing === true &&
+          !(route.steps[i].endD <= realD && route.steps[i].startD + CROSSING_START_JITTER_M <= d),
       );
       // R4: 행동 없는 다음 구간은 들어선 뒤. 묶음 앞쪽 30m 안에 행동 스텝이 있는 묶음은 제외 — 묶음 전체를 미루면
       //     묶음 안 회전이 30m 전문과 stage 0 문장을 잃는다(설계 리뷰 M1).

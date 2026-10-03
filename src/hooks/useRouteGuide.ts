@@ -2147,15 +2147,17 @@ export function useRouteGuide(
       etaSeconds !== null ? Math.max(1, Math.round(etaSeconds / 60)) : null;
     if (state.phase === "bundle") {
       // 묶음 국면은 통독 자체가 "다음 안내." 서두를 가지므로 다음 파트가 따로 없다.
-      announce(
-        wrapCar(
-          `${progressFrameLine(route, state.stepIndex, total, etaMinutes, t)}. ${unitText(
-            route,
-            unitAt(route, state.stepIndex),
-            t,
-          )}`,
-        ),
-      );
+      // walk는 되읽기와 같은 규칙 — 지금 스텝부터, 지금 스텝은 회전 문장을 뗀다(E62 확인 리뷰). car는 종전대로 유닛 전체.
+      const unitText_ =
+        kindFixed === "walk"
+          ? rereadUnitText(
+              route,
+              unitAt(route, state.stepIndex).filter((i) => i >= state.stepIndex),
+              liveStepsRef.current,
+              t,
+            )
+          : unitText(route, unitAt(route, state.stepIndex), t);
+      announce(wrapCar(`${progressFrameLine(route, state.stepIndex, total, etaMinutes, t)}. ${unitText_}`));
       return;
     }
     const cur = route.steps[state.stepIndex];
