@@ -67,6 +67,7 @@ function Harness() {
     <div>
       <button onClick={g.start}>start</button>
       <p data-testid="live">{g.liveText}</p>
+      <p data-testid="off">{String(g.offRoute)}</p>
     </div>
   );
 }
@@ -171,10 +172,15 @@ describe("돌아가기 국면(E63)", () => {
       (x) => x.name.startsWith("E63 ⑪-가"),
     )!;
     const said: string[] = [];
+    const off: string[] = [];
     for (const f of hold.fixes.slice(21)) {
       fixAt(f.along, f.lateral);
       said.push(live());
+      off.push(screen.getByTestId("off").textContent ?? "");
     }
+    // 확정과 복귀가 실제로 일어났다(궤적이 fixture와 어긋나 아무 일도 없어 통과하는 공허 통과를 막는다).
+    expect(off).toContain("true");
+    expect(off.at(-1)).toBe("false");
     expect(said.some((x) => x.includes("벗어났습니다"))).toBe(false);
     expect(said.some((x) => x.includes("복귀했습니다"))).toBe(false);
   });

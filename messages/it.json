@@ -769,9 +769,9 @@
     "offRouteLeft": "Sei uscito dal percorso sulla sinistra",
     "offRouteOpposite": "Stai andando nella direzione opposta al percorso",
     "offRouteWith": "{side}. {action}",
-    "offRouteReturnClock": "Torna in direzione {direction}",
+    "offRouteReturnClock": "Torna in direzione delle {direction}",
     "offRouteTurnBack": "Girati",
-    "carOffRouteClock": "Il percorso è in direzione {direction}",
+    "carOffRouteClock": "Il percorso è a {direction}",
     "carOffRouteBehind": "Il percorso è dietro di te",
     "imminent": {
       "left": "Gira a sinistra tra poco",

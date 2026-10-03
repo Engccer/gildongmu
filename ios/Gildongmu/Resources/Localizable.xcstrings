@@ -15030,7 +15030,7 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Il percorso è in direzione %1$@"
+            "value": "Il percorso è a %1$@"
           }
         },
         "ja": {
@@ -17670,7 +17670,7 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Torna in direzione %1$@"
+            "value": "Torna in direzione delle %1$@"
           }
         },
         "ja": {

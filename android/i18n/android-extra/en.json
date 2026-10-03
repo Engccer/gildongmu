@@ -70,7 +70,7 @@
       "downloadReady": "Speech recognition is ready. Tap Start dictation again."
     },
     "guide": {
-      "autoReroute": "Now guiding on a new route. {count, plural, one {# step} other {# steps}}, {distance} total. {first}",
+      "autoReroute": "Now guiding on a new route. {count, plural, one {# instruction} other {# instructions}}, {distance} total. {first}",
       "mediaVolumeZero": "Media volume is off, so guide sounds will not play",
       "focusDenied": "Another app is using audio, so guide sounds cannot play right now",
       "ttsUnavailable": "Voice guidance is not available for this language. Check the guidance text on screen",

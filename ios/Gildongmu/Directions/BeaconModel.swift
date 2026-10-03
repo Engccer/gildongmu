@@ -2782,7 +2782,10 @@ final class BeaconModel {
             if driverChannel {
                 // 운전자 모드(E63 §3.8): 방향 문장(마)을 말하지 않고 현행 상태 전문을 말하며 확정 즉시 조회·채택한다. 리듀서의
                 // 보류(`hold`)는 이 채널에 없다 — 확정은 늘 처음 말함(`.actionable`)이고, 보류 뒤 첫 발화는 이미 말했으니 건너뛴다.
-                if notice == .renotify, firstSpoken, offRouteNoticePosted { break }
+                if notice == .renotify, firstSpoken, offRouteNoticePosted {
+                    logOffRouteNotice(notice, reason, guidance, side, returnRelDeg, firstSpoken, perp: perp, spoken: false)
+                    break
+                }
                 let text = appLocalized("guide.carOffRoute")
                 statusText = text
                 postOffRouteNotice(text, speechClass: notice == .confirm ? .actionable : speechClass)
@@ -2819,7 +2822,10 @@ final class BeaconModel {
             statusText = text
             // 이탈은 warning 톤이 진동을 동반하는데 복귀는 무신호였다 — 짝을 맞춘다(E30 확장).
             resultHaptic(.success)
-            announce(text, speechClass: speechClass)
+            // ⚠ `.high`: 복귀(`offRoute = false`)가 "경로 다시 조회" 버튼을 지워 커서를 쥔 VoiceOver가 그 자리를 낭독하고, 기본
+            // 우선순위 통지는 그 처리에 잠식된다(`performReroute` 성공 통지와 같은 기제). 돌아가기 국면 동안 버튼이 수십 초 남아
+            // 커서가 그 위에 있을 일이 잦고, 착지 라벨(남은 거리)은 "돌아왔다"를 대신하지 못한다.
+            announce(text, highPriority: true, speechClass: speechClass)
         case let .rerouteNeeded(reason):
             // 돌아가기 국면에서 계속 멀어지거나 나란히 계속 걸었다(E63 §3.5·판정 J4) — 자동 조회·채택. 운전자 채널은 확정 즉시
             // 조회가 실패·신선도 미달로 끝난 뒤의 재시도로만 쓴다(§3.8 — 이미 조회 중이면 아래 가드가 무시한다).

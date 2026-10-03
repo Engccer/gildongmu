@@ -1304,8 +1304,9 @@ export function guideStep(
     }
     if (entryD === null) {
       // 이탈 유래 재획득인데 옛 경로 곁에 후보가 없다(자동차 — 도보는 위에서 이미 돌아갔다): 돌아가기 국면으로 되돌린다.
+      // 후보가 모호하면(겹친 경로) 종전대로 재획득에 남아 매 fix 타이브레이크를 다시 해 본다.
       // 재획득에 머물면 재통지·`rerouteNeeded`가 멎어, 확정 즉시 조회가 없어진 E63 뒤로는 새 경로가 영영 오지 않는다.
-      if (state.reacquiringFromOffRoute) {
+      if (state.reacquiringFromOffRoute && entry.status === "none") {
         return {
           state: { ...state, phase: "offRoute", lastFixAt: now, reacquiringFromOffRoute: false },
           event: null,
@@ -1529,7 +1530,11 @@ export function guideStep(
       // (거리 래치 복귀 6회 중 5회가 28~30m). 유지 중 불일치 표가 들어오면 처음부터(경로를 가로질러 계속 가는 사람).
       const cands = globalCandidates(route.polyline, fix, Math.max(tuning.returnPerpM, fix.accuracy));
       if (cands.length === 1) {
-        const since = crossingObserved ? now : (state.returnCandidateSince ?? now);
+        // 유일성을 15m에서 보듯 가로지름도 그 후보 기준으로 본다 — 30m 진입 투영이 모호한 자리(블록 양쪽에 경로)에선 위 표가
+        // `unknown`이라 가로질러 계속 가는 사람이 띠 안에서 8초를 채운다.
+        const crossing =
+          crossingObserved || (derived !== null && courseVote(derived, route.polyline, cands[0].d) === "mismatch");
+        const since = crossing ? now : (state.returnCandidateSince ?? now);
         next = { ...next, returnCandidateSince: since };
         if (now - since >= tuning.returnHoldS && courseCleared) return back(cands[0].d);
       } else {
