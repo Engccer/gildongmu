@@ -621,6 +621,7 @@ a11y 감사가 연 두 항목: 착지 낭독과 전이 통지의 중복(E41), �
 
 ## 2026-09-04
 
+- **채팅 모델 `gemini-3.8-flash` 기각, 3.6-flash 유지(C5 재평가 트리거 ②)**: 25케이스×3반복×2모델 $1.76, safety pass^3 3/5 → 0/5·regression 18/22·capability 신규 0·비용 +15.9%. 실패 넷의 기제는 하나(도구 호출 +35%, 초과분이 금지 도구)라 재평가 트리거 ④(`search_web` 절제 보강 후 재시도)를 더했다. 41 pass^3 첫 측정 3.6 2/3. 리포트 `docs/evals/2026-09-04-model-ab-3.8-flash.md`.
 - **OpenAI WebMCP Challenge 제출 완료(W1 G4, 16:33 KST, 마감 27분 전)**: Devpost https://devpost.com/software/gildongmu · 영상 https://youtu.be/8L_Xq-6V660 (2분 6초). 영상은 얼굴 2장면(핸드폰) + ChatGPT 앱 내장 브라우저 화면 녹화(computer use로 프롬프트 3개 실행, `screencapture -v` 영역 녹화) + OpenAI TTS 내레이션 + Pillow 자막 오버레이를 ffmpeg로 합성. Devpost 등록·폼 입력은 Windows Chrome을 claude-in-chrome으로 자동화(가입·reCAPTCHA·규정 동의는 위원장). 실측: 프롬프트가 "this page"면 에이전트가 외부 Chrome 페이지에서 도구를 실행해 내장 탭이 안 움직이고, "the page open in your browser tab"이어야 내장 탭에서 실행된다(`docs/WEBMCP.md` 예시 프롬프트 교정).
 ### WebMCP 챌린지 제출 준비 (G4)
 - **영문 개요 `docs/WEBMCP.md` 신설**: 심사 규정이 요구하는 설명문 4항목(WebMCP 적합성·UX 개선·사람과 에이전트가 함께 할 수 있게 된 것·구현 방식)과 "사전 존재 프로젝트의 신규 작업 구분"(webmcp 커밋 31건, 08-27~08-30 + spec·plan·research 링크)을 한 파일에 모아 Devpost 설명문의 붙여넣기 원본을 겸한다. README에는 한국어 짧은 절 + 링크만 둔다. 도구 7개 상시 등록은 프로덕션 `/ko`·`/en` 양쪽에서 실측 확인.
