@@ -37,4 +37,11 @@ tasks.test {
     useJUnitPlatform()
     // fixture 로더가 저장소 루트를 찾는 기준점(Fixtures.kt). 모듈 디렉터리에서 위로 올라간다.
     systemProperty("gildongmu.kitDir", projectDir.absolutePath)
+    // 공유 fixture·Kit 계약 fixture는 모듈 밖이라 선언하지 않으면 그 파일만 바뀐 실행이 UP-TO-DATE로 건너뛴다
+    // (판정표를 고쳐도 :kit 게이트가 초록으로 남는다).
+    val repoRoot = rootProject.projectDir.parentFile
+    inputs.dir(repoRoot.resolve("src/lib/__tests__/fixtures"))
+        .withPropertyName("sharedFixtures").withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.dir(repoRoot.resolve("ios/GildongmuKit/Tests/GildongmuKitTests/Fixtures"))
+        .withPropertyName("kitFixtures").withPathSensitivity(PathSensitivity.RELATIVE)
 }
