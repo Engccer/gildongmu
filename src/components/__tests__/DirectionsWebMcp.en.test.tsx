@@ -123,7 +123,7 @@ afterEach(() => {
   Reflect.deleteProperty(document, "modelContext");
 });
 
-async function planLines(to = "63빌딩"): Promise<{ tool: string[]; screen: string[] }> {
+async function planLines(to = "63빌딩"): Promise<{ tool: string[]; screen: string[]; resolvedTo: string }> {
   const view = render(
     <NextIntlClientProvider locale="en" messages={en}>
       <DirectionsView canShowWalk={false} canShowTransit canBriefCarRoute={false} onBack={() => {}} />
@@ -136,6 +136,7 @@ async function planLines(to = "63빌딩"): Promise<{ tool: string[]; screen: str
   const out = JSON.parse(await tool.execute({ to }, {})) as {
     ok: boolean;
     transit: { recommended: { legLines: string[] } };
+    resolved: { to: string };
   };
   expect(out.ok).toBe(true);
   // 같은 조회의 화면 브리핑(추천은 펼친 채 시작). 하차 줄(<p>)·시각 전용 괄호 병기는 도구 줄에 없어 뺀다.
@@ -145,18 +146,20 @@ async function planLines(to = "63빌딩"): Promise<{ tool: string[]; screen: str
       .map((n) => n.textContent)
       .join(""),
   );
-  return { tool: out.transit.recommended.legLines, screen };
+  return { tool: out.transit.recommended.legLines, screen, resolvedTo: out.resolved.to };
 }
 
 describe("plan_directions — en 계획 투영(A53)", () => {
   it("영문이 다 있으면 탑승 줄은 화면처럼 영문이고, 마지막 도보는 끝점 라틴 표기를 싣는다(③·①)", async () => {
-    const { tool, screen } = await planLines();
+    const { tool, screen, resolvedTo } = await planLines();
     expect(tool).toEqual([
       "Walk 4 min to Gangdong, 300m",
       "Board Line 5 at Gangdong, 12 stops",
       "Walk 3 min to 63bilding, 200m",
     ]);
     expect(screen).toEqual(tool);
+    // 같은 출력 안에서 끝점과 마지막 도보 줄이 같은 장소를 같은 이름으로 부른다(A53 후속 ⓑ).
+    expect(resolvedTo).toBe("63bilding");
   });
 
   it("영문이 없으면 도보·탑승 줄 모두 이름이 한국어이고(문장 틀은 영어, 앱과 같은 문장) 화면과 같다", async () => {
@@ -231,7 +234,10 @@ describe("화면 끝점의 라틴 표기 운반(A53 ①)", () => {
       JSON.stringify([{ label: "63빌딩", lat: 37.5198, lng: 126.9403, pinned: false, labelRoman: "63bilding" }]),
     );
     renderView();
-    fireEvent.click(await screen.findByRole("button", { name: "63빌딩" }));
+    // 버튼 이름은 저장된 라틴 표기(원명은 시각 괄호 — 접근 가능한 이름에서 빠진다, A53 후속 ⓑ).
+    const button = await screen.findByRole("button", { name: "63bilding" });
+    expect(button.textContent).toBe("63bilding (63빌딩)");
+    fireEvent.click(button);
     await waitFor(() => expect(urlToRoman()).toBe("63bilding"));
   });
 
@@ -241,7 +247,7 @@ describe("화면 끝점의 라틴 표기 운반(A53 ①)", () => {
       JSON.stringify([{ from: null, to: { label: "63빌딩", lat: 37.5198, lng: 126.9403, labelRoman: "63bilding" } }]),
     );
     const view = renderView();
-    fireEvent.click(await screen.findByRole("button", { name: /^Route from .* to 63빌딩$/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /^Route from .* to 63bilding$/ }));
     await waitFor(() => expect(lastLine(view.container)).toBe("Walk 3 min to 63bilding, 200m"));
   });
 });

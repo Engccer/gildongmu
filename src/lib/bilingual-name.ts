@@ -66,6 +66,15 @@ export function bilingualName(locale: string, ko: string, source: BilingualSourc
   return { primary: candidate, secondary: ko };
 }
 
+/**
+ * 확정된 장소 끝점(원명 `label` + 확정 시점 라틴 표기 `labelRoman`, A53)의 이름. 웹 최근 장소·최근 경로 버튼과
+ * WebMCP `resolved`가 이 함수를 함께 지난다(iOS `bilingual(label, roman:)` 동형) — 화면과 도구가 같은 장소를
+ * 다른 이름으로 부르지 않게.
+ */
+export function endpointName(locale: string, label: string, labelRoman: string | null | undefined): BilingualName {
+  return bilingualName(locale, label, { roman: labelRoman });
+}
+
 /** 시각 문자열 `Primary (한글)` — 비-React 소비자(테스트·문자열 조립)용. 웹 렌더는 `<KoTail>`. */
 export function bilingualDisplay(b: BilingualName): string {
   return b.secondary === null ? b.primary : `${b.primary} (${b.secondary})`;

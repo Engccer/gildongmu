@@ -27,7 +27,7 @@ import { staleAgeMessage, staleFixOf, type StaleAgeMessage } from "@/lib/stale-o
 import { useClockWhile } from "@/hooks/useClockWhile";
 import { useCurrentAddress } from "@/hooks/useCurrentAddress";
 import { useGeolocation } from "@/hooks/useGeolocation";
-import { bilingualName } from "@/lib/bilingual-name";
+import { bilingualName, endpointName } from "@/lib/bilingual-name";
 import { useManualLocation, useManualLocationLabel } from "@/hooks/useManualLocation";
 import type { RouteGuideVia } from "@/hooks/useRouteGuide";
 import { isInKorea } from "@/lib/coverage";
@@ -149,6 +149,10 @@ type QueryResults = {
    */
   fromLabel: string | null;
   toLabel: string | null;
+  /** 위 두 라벨과 경유지 라벨의 라틴 표기(끝점 `labelRoman`, A53) — 도구 `resolved`가 화면 최근 버튼과 같은 이름 선택을 지난다. */
+  fromRoman: string | null;
+  toRoman: string | null;
+  viaRoman: string | null;
 };
 
 /** 필드 원자 상태: 라벨 텍스트를 편집하면 resolved(좌표 포함)가 즉시 무효화된다. */
@@ -919,6 +923,9 @@ export function DirectionsView({
         planId,
         fromLabel: from.kind === "current" ? null : from.label,
         toLabel: to.kind === "current" ? null : to.label,
+        fromRoman: from.kind === "current" ? null : (from.labelRoman ?? null),
+        toRoman: to.kind === "current" ? null : (to.labelRoman ?? null),
+        viaRoman: viaEp?.kind === "place" ? (viaEp.labelRoman ?? null) : null,
       });
       announce(""); // 중지 통지 해제 — settled 합산 통지가 이 커밋에서 발화된다
       setPhase({ kind: "settled" });
@@ -1267,10 +1274,12 @@ export function DirectionsView({
     return {
       planId: results.planId,
       destination: results.destLabel,
+      // 끝점 이름은 화면 최근 장소·경로 버튼과 같은 이름 선택(`bilingualName` 1순위, A53 후속) — 같은 출력 안의
+      // 마지막 도보 줄(라틴 표기)과 같은 장소를 같은 이름으로 부른다.
       resolved: {
-        from: results.fromLabel ?? currentLabel,
-        to: results.toLabel ?? currentLabel,
-        via: results.viaLabel,
+        from: results.fromLabel === null ? currentLabel : endpointName(results.dataLang, results.fromLabel, results.fromRoman).primary,
+        to: results.toLabel === null ? currentLabel : endpointName(results.dataLang, results.toLabel, results.toRoman).primary,
+        via: results.viaLabel === null ? null : endpointName(results.dataLang, results.viaLabel, results.viaRoman).primary,
       },
       routeRefs,
       transit: transitOutcome === undefined ? null : { outcome: kindOf(transitOutcome), routes },
@@ -1366,11 +1375,13 @@ export function DirectionsView({
     return side ? placeOf(side) : { kind: "current" };
   }
   function routeItemLabel(r: RecentRoute): string {
-    const side = (s: RecentEndpoint | null) => (s ? s.label : t("currentLocation"));
+    // 저장된 라틴 표기(A53)로 1순위 이름을 고른다(WebMCP `resolved`와 같은 `endpointName`). 문장 안이라 병기 괄호는 싣지 않는다.
+    const name = (s: RecentEndpoint) => endpointName(locale, s.label, s.labelRoman).primary;
+    const side = (s: RecentEndpoint | null) => (s ? name(s) : t("currentLocation"));
     // ko 목적격 조사는 라벨 받침에 따라 갈려 문자열 자원에 박을 수 없다("강동역을"/
     // "경복궁을"·"학교를"). 호출부가 붙이고, 한글이 아닌 이름은 조사 없이 물러난다.
     const viaLabel =
-      r.via && locale === "ko" ? r.via.label + (objectParticle(r.via.label) ?? "") : r.via?.label;
+      r.via && locale === "ko" ? r.via.label + (objectParticle(r.via.label) ?? "") : r.via && name(r.via);
     return r.via
       ? tRecentRoutes("itemVia", { from: side(r.from), to: side(r.to), via: viaLabel ?? "" })
       : tRecentRoutes("item", { from: side(r.from), to: side(r.to) });
@@ -2034,7 +2045,7 @@ function EndpointField({
   function togglePinRecent(e: RecentEndpoint) {
     const pinned = !e.pinned;
     onTogglePinRecent(e, pinned);
-    announce(tRecent(pinned ? "pinnedItem" : "unpinnedItem", { name: e.label }));
+    announce(tRecent(pinned ? "pinnedItem" : "unpinnedItem", { name: endpointName(locale, e.label, e.labelRoman).primary }));
   }
 
   function clearRecent() {
@@ -2249,21 +2260,27 @@ function EndpointField({
             {tRecent("titleFor", { field: label })}
           </h3>
           <ul className="mt-1">
-            {visibleRecent.map((e, i) => (
+            {visibleRecent.map((e, i) => {
+              // 저장된 라틴 표기로 이름을 고르고(A53, iOS 최근 목록 동형) 원명은 시각 괄호(KoTail)로만 —
+              // 버튼 안이라 이름 뒤에 둬도 계산된 이름이 갈리지 않는다(R2). 원명이 남는 이름만 lang="ko".
+              const name = endpointName(locale, e.label, e.labelRoman);
+              return (
               <li key={`${e.lat},${e.lng}`} className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => resolveAndClose(placeOf(e))}
                   className="min-h-11 flex-1 text-left text-sm underline"
                 >
+                  <span lang={langFor(name.primary)}>{name.primary}</span>
+                  <KoTail secondary={name.secondary} />
                   {/* 고정 항목은 라벨 접미사 하나로 시각·낭독 동시 전달(한 줄 = 한 객체) */}
-                  {e.pinned ? joinText(e.label, tRecent("pinned")) : e.label}
+                  {e.pinned && `, ${tRecent("pinned")}`}
                 </button>
                 {/* 고정이 삭제보다 앞(위원장 지시 2026-08-12) */}
                 <button
                   type="button"
                   aria-label={tRecent(e.pinned ? "unpinItem" : "pinItem", {
-                    name: e.label,
+                    name: name.primary,
                   })}
                   onClick={() => togglePinRecent(e)}
                   className="min-h-11 rounded-md border border-border px-3 text-sm"
@@ -2275,14 +2292,15 @@ function EndpointField({
                   ref={(el) => {
                     recentDeleteRefs.current[i] = el;
                   }}
-                  aria-label={tRecent("deleteItem", { name: e.label })}
+                  aria-label={tRecent("deleteItem", { name: name.primary })}
                   onClick={() => deleteRecent(e, i)}
                   className="min-h-11 rounded-md border border-border px-3 text-sm"
                 >
                   {tRecent("delete")}
                 </button>
               </li>
-            ))}
+              );
+            })}
           </ul>
           <button
             type="button"
