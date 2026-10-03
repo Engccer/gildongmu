@@ -12,9 +12,9 @@
 
 ---
 
-## 2.1 (빌드 31)
+## 2.1 (빌드 32)
 
-기준은 2.0 아카이브 커밋 `ef5f2330`(빌드 30, 2026-10-01 제출, 2026-10-02 `READY_FOR_SALE` 확인)이며 그 이후 `ios/` 커밋 37건(8차·9차 소화)을 판정했다. Release 바이너리에 도달하면서 iOS 사용자가 알아차리는 것만 담는다. 2.1인 이유: 도보 횡단·이탈 안내와 자동차 짧은 안내의 동작이 여럿 바뀐다. 이 버전부터 앱이 서버 도보 판본 2(`wording=2`)와 자동차 기하 응답의 `at`·`toward`를 읽는다(2026-10-04 프로덕션 실호출로 두 값 확인: 카카오 도보 1건·Tmap 자동차 1건).
+기준은 2.0 아카이브 커밋 `ef5f2330`(빌드 30, 2026-10-01 제출, 2026-10-02 `READY_FOR_SALE` 확인)이며 그 이후 `ios/` 커밋 37건(8차·9차 소화)을 판정했다. Release 바이너리에 도달하면서 iOS 사용자가 알아차리는 것만 담는다. 빌드 31은 2026-10-04 업로드·초안 연결까지 했다가 위원장 문안 확정(첫 총평 문장 삭제)과 A59(설정 "백그라운드 음성 안내" 설명에서 정식판에 없는 나들이 구절 제거, 노트 대상 아님)를 싣기 위해 제출 없이 빌드 32로 교체했다. 2.1인 이유: 도보 횡단·이탈 안내와 자동차 짧은 안내의 동작이 여럿 바뀐다. 이 버전부터 앱이 서버 도보 판본 2(`wording=2`)와 자동차 기하 응답의 `at`·`toward`를 읽는다(2026-10-04 프로덕션 실호출로 두 값 확인: 카카오 도보 1건·Tmap 자동차 1건).
 
 포함 판정:
 
@@ -41,8 +41,6 @@
 ### ko
 
 ```
-길동무 2.1입니다. 실제로 걷고 운전하며 받은 의견으로 도보와 자동차 안내를 다듬었습니다.
-
 새로운 기능
 - 도보 안내가 횡단보도를 건널 방향을 시계 방향으로 알려 드립니다. "9시 방향으로 도세요. 그 후 횡단보도를 건너세요"처럼 말하고, 횡단보도를 건너는 동안과 신호를 기다리며 멈춰 있는 동안에는 조용히 기다립니다. 건너는 중에는 안내 화면에 횡단보도 끝까지 남은 거리를 보여 드립니다.
 - 길을 벗어나면 곧바로 새 경로로 바꾸지 않고, 어느 쪽으로 벗어났는지와 몇 시 방향으로 돌아가면 되는지 먼저 알려 드립니다. 계속 멀어지거나 나란한 길을 한동안 걸으면 그때 새 경로로 안내하고, 새 경로의 첫 안내에서 어느 쪽으로 돌아야 하는지도 말씀드립니다.
@@ -62,8 +60,6 @@
 ### en
 
 ```
-Gildongmu 2.1. Walking guidance has been refined based on feedback from real walks.
-
 New
 - Walking guidance now stays quiet while you cross a crosswalk and while you stand waiting for the signal. While you cross, the guidance screen shows the distance left to the end of the crosswalk.
 - When you stray from the route, the app no longer switches to a new route right away. It first tells you which side you went off and which clock direction leads back. If you keep going farther or walk along a parallel street for a while, it switches to a new route and tells you which way to turn first.
