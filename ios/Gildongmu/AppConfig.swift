@@ -24,8 +24,9 @@ enum AppConfig {
     /// 졸업했다.
 
     /// 나들이 모드(E51)의 봉인. 1차는 실험판에서만 — 다듬을 것이 많다(위원장 재판정 2026-09-27).
-    /// 나들이 진입점 둘이 이 값을 읽는다(`guidance-gate-drift.test.ts`가 잠근다). 실보행 판정을 통과하면
-    /// 이 검사를 삭제한다(플래그 졸업).
+    /// 나들이 진입점 둘이 이 값을 읽는다(`guidance-gate-drift.test.ts`가 잠근다). 진입점 밖 소비자 하나: 설정
+    /// "백그라운드 음성 안내" 설명 문장 선택(A59, `settings-topic-sections.test.ts`) — 졸업 때 Outing 키로 고정한다.
+    /// 실보행 판정을 통과하면 이 검사를 삭제한다(플래그 졸업).
     #if EXPERIMENTAL
     static let experimentalOutingEnabled = true
     #else

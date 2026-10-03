@@ -71,9 +71,7 @@ describe("설정 화면은 주제 묶음 다섯이고 설정 하나는 한 줄�
       ["ios.settings.weightKg", "ios.settings.weightFooter"],
       ["ios.settings.trendHaptics", "ios.settings.trendHapticsFooter"],
     ]) {
-      // footer 키는 판(정식·실험)에 따라 삼항으로 고를 수 있어 `appLocalized("` 바로 뒤가 아닐 수 있다 — 따옴표 키로 찾는다.
-      expect(BODY.split(`"${footer}"`).length - 1, footer).toBe(1);
-      const between = BODY.slice(at(setting), BODY.indexOf(`"${footer}"`));
+      const between = BODY.slice(at(setting), at(footer));
       expect(between, footer).toContain("} footer: {");
       // 사이에 다른 설정 행이 끼지 않는다.
       expect(between, footer).not.toMatch(/(Picker|Toggle|TextField|Link|NavigationLink)\(/);
@@ -88,7 +86,7 @@ describe("백그라운드 음성 안내 설명은 그 판에 있는 기능만 �
 
   it("나들이를 말하는 문장은 나들이 봉인 플래그가 켜진 판(실험판)에서만 고른다", () => {
     expect(BODY).toMatch(
-      /AppConfig\.experimentalOutingEnabled\s*\?\s*"ios\.settings\.backgroundSpeechFooterOuting"\s*:\s*"ios\.settings\.backgroundSpeechFooter"/,
+      /AppConfig\.experimentalOutingEnabled\s*\?\s*appLocalized\("ios\.settings\.backgroundSpeechFooterOuting"\)\s*:\s*appLocalized\("ios\.settings\.backgroundSpeechFooter"\)/,
     );
   });
 
@@ -97,6 +95,7 @@ describe("백그라운드 음성 안내 설명은 그 판에 있는 기능만 �
       const ios = extra("ios/i18n/ios-extra", locale).ios.settings;
       const android = extra("android/i18n/android-extra", locale).android.settings;
       expect(ios.backgroundSpeechFooter, locale).toBe(android.backgroundSpeechFooter);
+      expect(ios.backgroundSpeechFooterOuting, locale).toEqual(expect.any(String));
       expect(ios.backgroundSpeechFooterOuting, locale).not.toBe(ios.backgroundSpeechFooter);
     }
     expect(extra("ios/i18n/ios-extra", "ko").ios.settings.backgroundSpeechFooter).not.toContain("나들이");
