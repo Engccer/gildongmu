@@ -405,6 +405,9 @@ final class BeaconModel {
     /// 돌아가기 국면의 상태 행 문장: 벗어난 쪽만(위원장 판정 2026-10-04 — 시계 방향·"뒤로 도세요"는 그 순간에만 참이라 음성으로만).
     /// 재획득 문구를 되돌릴 때 읽는다(D12).
     private var offRouteLine: String?
+    /// 자동 재조회 채택 때 상태 행에 둔 문장과 그 순간 말한 문장의 짝(A57). 둘이 달라(머리말 유무) 전경 복귀 상환의 중복
+    /// 비교가 어긋나므로, 상태 행이 아직 그 문장이면 인계 문장과의 비교에 음성 쪽도 함께 넣는다. 상태 행이 바뀌면 쓰이지 않는다.
+    private var rerouteStatusVoice: (statusLine: String, spoken: String)?
     /// 이 이탈 회차의 자동 재조회 요청 수와 확정 시각·좌표(로그 `rerouteTrigger n= sinceConfirm= moved=`, E63 spec §6).
     private var rerouteTriggerCount = 0
     private var offRouteConfirmedAt: Double?
@@ -1722,8 +1725,11 @@ final class BeaconModel {
                 let current = statusText.isEmpty ? (carState ?? "") : statusText
                 // 현재 상태 꼬리는 버린 문장이 있을 때만(인계만 있으면 마지막 상태는 인계 문장이다), 인계와 같은 문장이면 뺀다.
                 // 인계 문장은 낭독 정정(`spokenUnits`)을 지난 뒤라 같은 층끼리 비교한다(검증 리뷰 N2 — "300m" ≠ "300 미터").
+                // 상태 행이 채택 문장이면 인계된 음성 쪽(머리말 있음)과도 비교한다(A57 — 두 모양이 연달아 들리지 않게).
+                let currentVoice = rerouteStatusVoice.flatMap { $0.statusLine == current ? $0.spoken : nil }
                 let tail = !repaying || current.isEmpty || current == intro
-                    || handed.texts.contains(spokenUnits(current)) ? nil : current
+                    || handed.texts.contains(spokenUnits(current))
+                    || currentVoice.map { handed.texts.contains(spokenUnits($0)) } == true ? nil : current
                 // 순서: 인계(끊긴 옛 발화 → 칸의 새 문장) → 세션 경고 → 진입 서술 → 현재 상태.
                 let owed = (handed.texts + [pendingStepFreeNotice, intro, tail].compactMap { $0 })
                     .joined(separator: " ")
@@ -3200,11 +3206,11 @@ final class BeaconModel {
                 fetched.stepFreeRaw, fetched.stepFree, fetched.stepFreeNotice
             )
             let summary = GuideText.autoReroute(
-                route: fetched.route, firstIndices: firstIndices, liveSteps: liveSteps, headClock: headClock,
-                english: AppLanguage.dataLocaleValue == .en)
+                route: fetched.route, firstIndices: firstIndices, liveSteps: liveSteps, headClock: headClock)
             let text = notice.map { "\($0) \(summary.spoken)" } ?? summary.spoken
             // 상태 행은 머리말을 뺀 문장(A57) — 음성만 그 순간의 방향을 말한다.
             statusText = notice.map { "\($0) \(summary.statusLine)" } ?? summary.statusLine
+            rerouteStatusVoice = (statusLine: statusText, spoken: text)
             resultHaptic(.success)
             announce(text, highPriority: true, speechClass: .actionable) { [weak self] in
                 if let notice { self?.pendingStepFreeNotice = notice }

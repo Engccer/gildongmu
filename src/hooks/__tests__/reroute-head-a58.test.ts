@@ -11,7 +11,7 @@ import { headedUnitText } from "../useRouteGuide";
  * 문안 확정본 "방향 구절이 겹치는 자리": 방향은 하나만). iOS `GuideText.headedUnit`·안드로이드 `GuideTextTest` 같은 케이스.
  */
 
-type GuideT = Parameters<typeof headedUnitText>[5];
+type GuideT = Parameters<typeof headedUnitText>[4];
 const tKo = createTranslator({ locale: "ko", messages: ko, namespace: "guide" }) as unknown as GuideT;
 const tEn = createTranslator({ locale: "en", messages: en, namespace: "guide" }) as unknown as GuideT;
 
@@ -23,20 +23,20 @@ function route(steps: { description: string; action?: WalkAction }[]): GuideRout
   };
 }
 
-describe("en 첫 스텝이 자기 회전을 말하면 머리말 없음(A58)", () => {
+describe("en: 첫 스텝이 자기 회전을 말하면 머리말 없음(A58)", () => {
   it("회전 스텝: 머리말을 붙이지 않는다", () => {
     const r = route([{ description: "Turn left, then walk 30m", action: "left" }]);
-    expect(headedUnitText(r, [0], [{}], 2, true, tEn)).toBe("Turn left, then walk 30m");
+    expect(headedUnitText(r, [0], [{}], 2, tEn)).toBe("Turn left, then walk 30m");
   });
 
-  it("방향을 박은 횡단 스텝: 머리말을 붙이지 않는다", () => {
-    const r = route([{ description: "Cross the crosswalk at 10 o'clock, then walk 14m", action: "crosswalk" }]);
-    expect(headedUnitText(r, [0], [{}], 2, true, tEn)).toBe("Cross the crosswalk at 10 o'clock, then walk 14m");
+  it("횡단 스텝: 머리말을 지킨다(방향 없는 \"Cross the crosswalk\"에서 방향이 사라지지 않게)", () => {
+    const r = route([{ description: "Cross the crosswalk, then walk 14m", action: "crosswalk" }]);
+    expect(headedUnitText(r, [0], [{}], 2, tEn)).toBe("Turn to 2 o'clock. Then Cross the crosswalk, then walk 14m");
   });
 
   it("직진 스텝: 머리말을 붙인다", () => {
     const r = route([{ description: "Walk 30m along Cheonho-daero" }]);
-    expect(headedUnitText(r, [0], [{}], 2, true, tEn)).toBe("Turn to 2 o'clock. Then Walk 30m along Cheonho-daero");
+    expect(headedUnitText(r, [0], [{}], 2, tEn)).toBe("Turn to 2 o'clock. Then Walk 30m along Cheonho-daero");
   });
 
   it("묶음도 첫 스텝으로 가른다", () => {
@@ -44,32 +44,32 @@ describe("en 첫 스텝이 자기 회전을 말하면 머리말 없음(A58)", ()
       { description: "Turn right, then walk 5m", action: "right" },
       { description: "Turn left, then walk 40m", action: "left" },
     ]);
-    expect(headedUnitText(r, [0, 1], [{}, {}], 2, true, tEn)).toBe(
+    expect(headedUnitText(r, [0, 1], [{}, {}], 2, tEn)).toBe(
       "Next instructions. Turn right, then walk 5m. Turn left, then walk 40m",
     );
   });
 });
 
-describe("ko는 종전 그대로", () => {
+describe("ko", () => {
   it("조각 없는 횡단(판본 2 첫 스텝은 방향 구절이 없다): 머리말을 붙인다", () => {
     const r = route([{ description: "횡단보도를 건너세요. 횡단보도 길이 21m", action: "crosswalk" }]);
-    expect(headedUnitText(r, [0], [{}], 2, false, tKo)).toBe("2시 방향으로 도세요. 그 후 횡단보도를 건너세요. 횡단보도 길이 21m");
+    expect(headedUnitText(r, [0], [{}], 2, tKo)).toBe("2시 방향으로 도세요. 그 후 횡단보도를 건너세요. 횡단보도 길이 21m");
   });
 
   it("조각 있는 회전: 머리말 + body", () => {
     const r = route([{ description: "왼쪽으로 도세요. 그 후 천호대로를 따라 39m 이동", action: "left" }]);
-    expect(headedUnitText(r, [0], [{ body: "천호대로를 따라 39m 이동" }], 9, false, tKo)).toBe(
+    expect(headedUnitText(r, [0], [{ body: "천호대로를 따라 39m 이동" }], 9, tKo)).toBe(
       "9시 방향으로 도세요. 그 후 천호대로를 따라 39m 이동",
     );
   });
 
-  it("조각 없는 회전(판본 2 원문 유지 폴백): 머리말 없이 원문", () => {
+  it("조각 없는 회전(판본 2 원문 유지 폴백): 머리말 없이 원문(A58로 바뀐 동작)", () => {
     const r = route([{ description: "왼쪽으로 돌아 39m 이동", action: "left" }]);
-    expect(headedUnitText(r, [0], [{}], 9, false, tKo)).toBe("왼쪽으로 돌아 39m 이동");
+    expect(headedUnitText(r, [0], [{}], 9, tKo)).toBe("왼쪽으로 돌아 39m 이동");
   });
 
   it("머리말 시가 없으면 원문", () => {
     const r = route([{ description: "천호대로를 따라 39m 이동" }]);
-    expect(headedUnitText(r, [0], [{}], null, false, tKo)).toBe("천호대로를 따라 39m 이동");
+    expect(headedUnitText(r, [0], [{}], null, tKo)).toBe("천호대로를 따라 39m 이동");
   });
 });

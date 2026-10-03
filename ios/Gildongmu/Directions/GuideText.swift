@@ -200,18 +200,17 @@ enum GuideText {
 
     /// 자동 재조회 채택 문장(E63 문안 라 — "새 경로로 다시 안내합니다. 2시 방향으로 도세요. 그 후 {첫 유닛}. 안내 {count}개,
     /// 총 {distance}."). `headClock`은 교체 **전** 진행 방위 기준 새 경로 첫 방향(Kit `rerouteHeadClock`), nil이면 머리말이
-    /// 없다(자동차·방위 모름). 조각 없는 첫 스텝 문장이 스스로 방향을 말해도 머리말이 없다(A58, `english` = 안내 데이터 언어가
-    /// ko가 아닌가). `spoken`은 그 순간의 음성, `statusLine`은 상태 행에 남길 문장이다: 머리말을 뺀 꼴(A57 — 시계 방향은
+    /// 없다(자동차·방위 모름). 조각 없는 첫 스텝 문장이 스스로 회전을 말해도 머리말이 없다(A58). `spoken`은 그 순간의 음성, `statusLine`은 상태 행에 남길 문장이다: 머리말을 뺀 꼴(A57 — 시계 방향은
     /// 사용자가 몸을 돌리면 곧 거짓이 되는데 상태 행은 시트 착지·전경 복귀 재생이 나중에 다시 읽는다. 이탈 상태 행 "벗어난
     /// 쪽만"과 같은 판정). 머리말이 있으면 첫 스텝은 이미 방향 구절을 뗀 `body`라 상태 행은 되읽기 유닛(`rereadUnit`)이다.
     /// ⚠ 인자 순서는 ko 문장 순서(arg-order ABI). 웹 `headedUnitText` 미러.
     static func autoReroute(
-        route: GuideRoute, firstIndices: [Int], liveSteps: [LiveStepInput], headClock: Int?, english: Bool
+        route: GuideRoute, firstIndices: [Int], liveSteps: [LiveStepInput], headClock: Int?
     ) -> (spoken: String, statusLine: String) {
         let clock = headClock.flatMap { clock -> Int? in
             guard let lead = firstIndices.first, route.steps.indices.contains(lead) else { return nil }
             let hasBody = liveSteps.indices.contains(lead) && liveSteps[lead].body != nil
-            return stepTextSaysDirection(action: route.steps[lead].action, hasBody: hasBody, english: english) ? nil : clock
+            return stepTextSaysDirection(action: route.steps[lead].action, hasBody: hasBody) ? nil : clock
         }
         func line(_ first: String) -> String {
             appLocalized(

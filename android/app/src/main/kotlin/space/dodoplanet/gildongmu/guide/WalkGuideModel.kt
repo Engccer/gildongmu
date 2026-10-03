@@ -336,6 +336,8 @@ class WalkGuideModel(
     private var altPreviewToken = 0
 
     // ── 발화 장부 ──
+    /** 자동 재조회 채택 때 상태 행에 둔 문장과 그 순간 말한 문장의 짝(A57, iOS `rerouteStatusVoice`). 화면 복귀 상환의 중복 비교에 쓴다. */
+    private var rerouteStatusVoice: Pair<String, String>? = null
     /** 마지막 실행 안내 원문. 바꾸면 "들어선 뒤" 대체 문장(`lastGuidanceEntered`)은 버린다 — 둘은 같은 안내의 두 모양이다. */
     private var lastGuidance: String? = null
         set(v) { field = v; lastGuidanceEntered = null }
@@ -757,7 +759,12 @@ class WalkGuideModel(
             // 고유 대체 — iOS 도보엔 없다). 이미 그 스텝에 들어섰으면 회전 문장을 뗀 문장으로(E62 — 화면을 켜며 지난 회전을 다시 지시하지 않는다).
             val current = statusText.ifEmpty { currentGuidance().orEmpty() }
             // 현재 상태 꼬리는 버린 문장이 있을 때만(인계만 있으면 마지막 상태는 인계 문장이다), 인계와 같은 문장이면 뺀다(낭독 정정 뒤끼리 비교).
-            val tail = if (!repaying || current.isEmpty() || current == intro || spokenDistanceUnits(current, strings.get("android.unit.spokenMeters")) in handed.texts) null else current
+            // 상태 행이 채택 문장이면 인계된 음성 쪽(머리말 있음)과도 비교한다(A57 — 두 모양이 연달아 들리지 않게).
+            val spokenMeters = strings.get("android.unit.spokenMeters")
+            val currentVoice = rerouteStatusVoice?.takeIf { it.first == current }?.second
+            val tail = if (!repaying || current.isEmpty() || current == intro || spokenDistanceUnits(current, spokenMeters) in handed.texts ||
+                (currentVoice != null && spokenDistanceUnits(currentVoice, spokenMeters) in handed.texts)
+            ) null else current
             // 순서: 인계(끊긴 옛 발화 → 칸의 새 문장) → 세션 경고 → 진입 서술 → 현재 상태.
             val owed = (handed.texts + listOfNotNull(pendingStepFreeNotice, intro, tail)).joinToString(" ")
             if (owed.isNotEmpty()) {
@@ -1746,10 +1753,11 @@ class WalkGuideModel(
         GuideDiag.log("rerouteAdopt source=$source result=adopted headClock=${headClock ?: "-"}")
         val firstIndices = commitReroutedRoute(result)
         val notice = consumeStepFreeNotice(result.stepFreeRaw, result.stepFree, result.stepFreeNotice)
-        val lines = text.autoReroute(result.route, firstIndices, liveSteps, headClock, english = dataLocale() != DataLocale.ko)
+        val lines = text.autoReroute(result.route, firstIndices, liveSteps, headClock)
         val spoken = if (notice != null) "$notice ${lines.spoken}" else lines.spoken
         // 상태 행은 머리말을 뺀 문장(A57) — 음성만 그 순간의 방향을 말한다.
         statusText = if (notice != null) "$notice ${lines.statusLine}" else lines.statusLine
+        rerouteStatusVoice = statusText to spoken
         resultHaptic(ResultHapticKind.success)
         announce(spoken, highPriority = true, speechClass = GuideSpeechClass.actionable) { if (notice != null) pendingStepFreeNotice = notice }
     }

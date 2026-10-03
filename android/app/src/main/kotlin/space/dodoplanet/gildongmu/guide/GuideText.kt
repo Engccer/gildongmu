@@ -164,14 +164,14 @@ class GuideText(private val s: Strings) {
     /**
      * 자동 재조회 채택 문장(E63 문안 라 — "새 경로로 다시 안내합니다. 2시 방향으로 도세요. 그 후 {첫 유닛}. 안내 {count}개, 총 {distance}.",
      * iOS `autoReroute`). `headClock`은 교체 **전** 진행 방위 기준 새 경로 첫 방향(:kit `rerouteHeadClock`), null이면 머리말이 없다. 조각 없는
-     * 첫 스텝 문장이 스스로 방향을 말해도 머리말이 없다(A58, `english` = 안내 데이터 언어가 ko가 아닌가). `statusLine`은 머리말을 뺀 꼴(A57 —
+     * 첫 스텝 문장이 스스로 회전을 말해도 머리말이 없다(A58). `statusLine`은 머리말을 뺀 꼴(A57 —
      * 시계 방향은 몸을 돌리면 곧 거짓이 되는데 상태 행은 착지·화면 복귀 상환이 나중에 다시 읽는다): 머리말이 있으면 첫 스텝은 이미 `body`라
      * 되읽기 유닛(`rereadUnit`)이다. 인자 순서는 ko 문장 순서(arg-order).
      */
-    fun autoReroute(route: GuideRoute, firstIndices: List<Int>, liveSteps: List<LiveStepInput>, headClock: Int?, english: Boolean): RerouteLines {
+    fun autoReroute(route: GuideRoute, firstIndices: List<Int>, liveSteps: List<LiveStepInput>, headClock: Int?): RerouteLines {
         val lead = firstIndices.firstOrNull()?.let { route.steps.getOrNull(it) }
         val clock = headClock?.takeIf {
-            lead != null && !stepTextSaysDirection(lead.action, liveSteps.getOrNull(lead.index)?.body != null, english)
+            lead != null && !stepTextSaysDirection(lead.action, liveSteps.getOrNull(lead.index)?.body != null)
         }
         fun line(first: String) = s.get("guide.autoReroute", first, route.steps.size, formatDistance(route.totalMeters.roundToInt()))
         val spoken = line(headedUnit(route, firstIndices, liveSteps, clock))

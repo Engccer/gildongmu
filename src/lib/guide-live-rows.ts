@@ -46,22 +46,14 @@ export interface LiveStepInput {
 /**
  * 조각(`body`) 없는 스텝 문장이 스스로 방향을 말하는가(A58). 자동 재조회 채택 문장의 방향 머리말은 이것이 참이면 붙이지
  * 않는다 — 머리말과 스텝의 회전이 겹치면 방향을 두 번 말한다(문안 확정본 "방향 구절이 겹치는 자리": 방향은 하나만).
- * 조각이 있으면 거짓이다(머리말 뒤엔 방향 구절을 뗀 `body`가 온다). 회전 스텝은 늘 방향을 말한다. 횡단은 언어가 가른다:
- * ko 판본 2는 횡단 방향을 말하면 반드시 조각을 싣고, en(Tmap 행동절 표)은 "Cross the crosswalk at 2 o'clock"처럼 조각 없이
- * 방향을 박을 수 있는데 그 여부가 응답에 구조로 남지 않는다. Kit `stepTextSaysDirection`·`:kit` 미러.
+ * 조각이 있으면 거짓이다(머리말 뒤엔 방향 구절을 뗀 `body`가 온다). 참은 회전 행동뿐이다: 회전 문장은 ko·en 모두 방향을
+ * 말한다. 횡단은 거짓으로 둔다 — en 행동절 표는 "Cross the crosswalk"(방향 없음)와 "… at 10 o'clock"을 같은 `crosswalk`로
+ * 내고 그 차이가 응답에 구조로 남지 않아, 참으로 두면 방향 없는 횡단에서 방향이 통째로 사라진다. Kit·`:kit` 미러(공유 판정표
+ * `step-text-says-direction-cases.json`).
  */
-export function stepTextSaysDirection(action: WalkAction | undefined, hasBody: boolean, english: boolean): boolean {
+export function stepTextSaysDirection(action: WalkAction | undefined, hasBody: boolean): boolean {
   if (hasBody) return false;
-  switch (action) {
-    case "left":
-    case "right":
-    case "back":
-      return true;
-    case "crosswalk":
-      return english;
-    default:
-      return false;
-  }
+  return action === "left" || action === "right" || action === "back";
 }
 
 

@@ -148,24 +148,24 @@ class GuideTextTest {
 
     @Test fun `자동 재조회 채택 — 할 일 먼저, 머리말이 있으면 첫 스텝은 body(E63 문안 라·J1)`() {
         val first = listOf(0)
-        assertEquals("새 경로로 다시 안내합니다. 2시 방향으로 도세요. 그 후 천호대로를 따라 119m 이동B. 안내 3개, 총 331m.", t.autoReroute(route, first, bodied, 2, english = false).spoken)
-        assertEquals("새 경로로 다시 안내합니다. 진행 방향 그대로 천호대로를 따라 119m 이동B. 안내 3개, 총 331m.", t.autoReroute(route, first, bodied, 12, english = false).spoken)
-        assertEquals("새 경로로 다시 안내합니다. 뒤로 도세요. 그 후 천호대로를 따라 119m 이동B. 안내 3개, 총 331m.", t.autoReroute(route, first, bodied, 6, english = false).spoken)
-        assertEquals("새 경로로 다시 안내합니다. 천호대로를 따라 119m 이동. 안내 3개, 총 331m.", t.autoReroute(route, first, bodied, null, english = false).spoken)
+        assertEquals("새 경로로 다시 안내합니다. 2시 방향으로 도세요. 그 후 천호대로를 따라 119m 이동B. 안내 3개, 총 331m.", t.autoReroute(route, first, bodied, 2).spoken)
+        assertEquals("새 경로로 다시 안내합니다. 진행 방향 그대로 천호대로를 따라 119m 이동B. 안내 3개, 총 331m.", t.autoReroute(route, first, bodied, 12).spoken)
+        assertEquals("새 경로로 다시 안내합니다. 뒤로 도세요. 그 후 천호대로를 따라 119m 이동B. 안내 3개, 총 331m.", t.autoReroute(route, first, bodied, 6).spoken)
+        assertEquals("새 경로로 다시 안내합니다. 천호대로를 따라 119m 이동. 안내 3개, 총 331m.", t.autoReroute(route, first, bodied, null).spoken)
     }
 
     @Test fun `자동 재조회 채택 — 상태 행은 머리말을 뺀 문장(A57)`() {
         val first = listOf(0)
         // 머리말이 있으면 첫 스텝은 이미 body — 상태 행은 되읽기 유닛과 같다.
         for (clock in listOf(2, 12, 6)) {
-            assertEquals("새 경로로 다시 안내합니다. 천호대로를 따라 119m 이동B. 안내 3개, 총 331m.", t.autoReroute(route, first, bodied, clock, english = false).statusLine)
+            assertEquals("새 경로로 다시 안내합니다. 천호대로를 따라 119m 이동B. 안내 3개, 총 331m.", t.autoReroute(route, first, bodied, clock).statusLine)
         }
         assertEquals(
             "새 경로로 다시 안내합니다. 다음 안내. 천호대로를 따라 119m 이동B. 횡단보도를 건너세요. 안내 3개, 총 331m.",
-            t.autoReroute(route, listOf(0, 1), bodied, 2, english = false).statusLine,
+            t.autoReroute(route, listOf(0, 1), bodied, 2).statusLine,
         )
         // 머리말이 없으면 음성과 같다.
-        val plain = t.autoReroute(route, first, bodied, null, english = false)
+        val plain = t.autoReroute(route, first, bodied, null)
         assertEquals(plain.spoken, plain.statusLine)
     }
 
@@ -178,21 +178,23 @@ class GuideTextTest {
             ),
         )!!
         val noBody = liveStepsFrom(turnFirst, listOf(LiveStepFields(null, null, false), LiveStepFields(null, null, false)))
-        val turned = en.autoReroute(turnFirst, listOf(0), noBody, 2, english = true)
+        val turned = en.autoReroute(turnFirst, listOf(0), noBody, 2)
         assertEquals("Now guiding on a new route. Turn left, then walk 119m. 2 instructions, 331m total.", turned.spoken)
         assertEquals(turned.spoken, turned.statusLine)
         // 조각 없는 직진 첫 스텝에는 머리말을 붙인다.
         assertEquals(
             "Now guiding on a new route. Turn to 2 o'clock. Then Walk 212m. 2 instructions, 331m total.",
-            en.autoReroute(turnFirst, listOf(1), noBody, 2, english = true).spoken,
+            en.autoReroute(turnFirst, listOf(1), noBody, 2).spoken,
         )
-        // en 횡단(조각 없이 방향을 박을 수 있다)은 머리말 없음, ko 조각 없는 횡단(판본 2는 방향 구절이 없다)은 머리말.
+        // 횡단은 머리말을 지킨다 — en 행동절에 방향 없는 "Cross the crosswalk"가 있어 빼면 방향이 사라진다(ko 첫 스텝 횡단도 같다).
         val crossFirst = buildGuideRoute(
-            listOf(GuideStepGeometry("횡단보도를 건너세요", listOf(north(0.0), north(12.0)), WalkAction.crosswalk)),
+            listOf(GuideStepGeometry("Cross the crosswalk, then walk 12m", listOf(north(0.0), north(12.0)), WalkAction.crosswalk)),
         )!!
         val crossLive = liveStepsFrom(crossFirst, listOf(LiveStepFields(null, null, true)))
-        assertEquals("새 경로로 다시 안내합니다. 2시 방향으로 도세요. 그 후 횡단보도를 건너세요. 안내 1개, 총 12m.", t.autoReroute(crossFirst, listOf(0), crossLive, 2, english = false).spoken)
-        assertEquals("새 경로로 다시 안내합니다. 횡단보도를 건너세요. 안내 1개, 총 12m.", t.autoReroute(crossFirst, listOf(0), crossLive, 2, english = true).spoken)
+        assertEquals(
+            "Now guiding on a new route. Turn to 2 o'clock. Then Cross the crosswalk, then walk 12m. 1 instruction, 12m total.",
+            en.autoReroute(crossFirst, listOf(0), crossLive, 2).spoken,
+        )
     }
 
     @Test fun `진행 상황 현재 안내는 body(E62 a11y M2)`() {

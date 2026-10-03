@@ -305,23 +305,18 @@ export function offRouteText(
 /**
  * 새 경로 첫 유닛에 진행 방위 기준 방향 머리말을 단다(E63 spec §3.7). 12 = "진행 방향 그대로"(위원장 판정 J1), 6 = "뒤로
  * 도세요. 그 후", 그 밖 = "N시 방향으로 도세요. 그 후". 머리말이 있으면 첫 스텝의 경로 기준 방향 조각은 뺀다(`body`, 방향을
- * 두 번 말하지 않는다). `headClock` null이면 머리말 없음. 조각 없는 첫 스텝 문장이 스스로 방향을 말하면(`english`는 안내
- * 데이터 언어가 ko가 아닌가) 머리말을 붙이지 않는다(A58 — 방향은 하나만). iOS `GuideText.headedUnit` 미러.
+ * 두 번 말하지 않는다). `headClock` null이면 머리말 없음. 조각 없는 첫 스텝 문장이 스스로 회전을 말하면 머리말을 붙이지
+ * 않는다(A58 — 방향은 하나만). iOS `GuideText.autoReroute`·안드로이드 `GuideText.autoReroute` 미러.
  */
 export function headedUnitText(
   route: GuideRoute,
   indices: number[],
   liveSteps: readonly { body?: string }[],
   headClock: number | null,
-  english: boolean,
   t: GuideT,
 ): string {
-  const lead = indices[0];
-  if (
-    headClock === null ||
-    lead === undefined ||
-    stepTextSaysDirection(route.steps[lead]?.action, liveSteps[lead]?.body !== undefined, english)
-  ) {
+  const lead = indices[0] === undefined ? undefined : route.steps[indices[0]];
+  if (headClock === null || lead === undefined || stepTextSaysDirection(lead.action, liveSteps[lead.index]?.body !== undefined)) {
     return unitText(route, indices, t);
   }
   const descs = indices
@@ -2428,7 +2423,7 @@ export function useRouteGuide(
           kindFixed === "walk" && guideRef.current ? rerouteHeadClock(guideRef.current, fetched.route, now, tuning) : null;
         const { route, firstIndices, notice } = commitRerouted(fetched);
         const summary = t("autoReroute", {
-          first: headedUnitText(route, firstIndices, liveStepsRef.current, headClock, prefersEnglish(locale), t),
+          first: headedUnitText(route, firstIndices, liveStepsRef.current, headClock, t),
           count: route.steps.length,
           distance: formatDistance(route.totalMeters),
         });
@@ -2437,7 +2432,7 @@ export function useRouteGuide(
         if (autoRerouteInFlightGenRef.current === autoGen) autoRerouteInFlightGenRef.current = null;
       }
     })();
-  }, [announce, commitRerouted, fetchGuideRoute, kindFixed, locale, t, tuning]);
+  }, [announce, commitRerouted, fetchGuideRoute, kindFixed, t, tuning]);
 
   // 전경 전용(스펙 §9): 탭이 숨으면 중지하고 경로를 폐기한다. 복귀 후 자동 재개 없음
   // — 숨김 탭에서 멎은 watch·타이머가 좀비 상태를 만드는 것을 상태로 흡수한다.

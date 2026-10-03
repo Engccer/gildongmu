@@ -262,7 +262,6 @@ struct CrossingStepTests {
 private struct StepDirectionCase: Decodable {
     let id: String
     let action: String?
-    let english: Bool
     let hasBody: Bool
     let expected: Bool
 }
@@ -282,10 +281,10 @@ struct StepTextSaysDirectionFixtureTests {
 
     @Test func matchesSharedFixture() throws {
         let cases = try load()
-        #expect(cases.count >= 30)
+        #expect(cases.count >= 16)
         for c in cases {
             let action = try c.action.map { raw in try #require(WalkAction(rawValue: raw), "\(c.id)") }
-            #expect(stepTextSaysDirection(action: action, hasBody: c.hasBody, english: c.english) == c.expected, "\(c.id)")
+            #expect(stepTextSaysDirection(action: action, hasBody: c.hasBody) == c.expected, "\(c.id)")
         }
     }
 }

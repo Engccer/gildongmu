@@ -209,7 +209,6 @@ class GuideLiveRowsTest {
     private data class StepDirectionCase(
         val id: String,
         val action: String? = null,
-        val english: Boolean,
         val hasBody: Boolean,
         val expected: Boolean,
     )
@@ -217,10 +216,10 @@ class GuideLiveRowsTest {
     /** 조각 없는 스텝 문장이 스스로 방향을 말하는가(A58) — 웹·Kit과 같은 공유 판정표. */
     @Test fun `스텝 문장의 자기 방향 판정은 공유 판정표와 같다`() {
         val cases = Fixtures.sharedJson("step-text-says-direction-cases.json", StepDirectionFile.serializer()).cases
-        assertTrue(cases.size >= 30)
+        assertTrue(cases.size >= 16)
         for (c in cases) {
             val action = c.action?.let { WalkAction.valueOf(it) }
-            assertEquals(c.expected, stepTextSaysDirection(action, c.hasBody, c.english), c.id)
+            assertEquals(c.expected, stepTextSaysDirection(action, c.hasBody), c.id)
         }
     }
 }

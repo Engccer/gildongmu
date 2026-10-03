@@ -9,11 +9,11 @@ import type { WalkAction } from "../walk-action";
  */
 describe("stepTextSaysDirection — 공유 판정표", () => {
   it("판정표가 비어 있지 않다", () => {
-    expect(fixture.cases.length).toBeGreaterThanOrEqual(30);
+    expect(fixture.cases.length).toBeGreaterThanOrEqual(16);
   });
 
   it.each(fixture.cases)("$id", (c) => {
     const action = (c as { action?: WalkAction }).action;
-    expect(stepTextSaysDirection(action, c.hasBody, c.english)).toBe(c.expected);
+    expect(stepTextSaysDirection(action, c.hasBody)).toBe(c.expected);
   });
 });
