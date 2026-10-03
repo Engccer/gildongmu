@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { rewriteCarGuidance, rewriteCarBriefing } from "../car-guidance";
+import { carLandmark, rewriteCarGuidance, rewriteCarBriefing } from "../car-guidance";
 import type { CarRouteBriefing } from "../types";
 import corpus from "./fixtures/tmap-car-corpus.json";
+import drive1003 from "./fixtures/car-landmark-2026-10-03.json";
 
 /**
  * 자동차 안내문 재작성 계약. fixture는 전부 Tmap 실호출 원문이다(전국 12경로
@@ -203,7 +204,7 @@ describe("rewriteCarBriefing", () => {
       ],
       terminalCoord: { lat: 37.5512, lng: 126.9882 },
     };
-    const out = rewriteCarBriefing(briefing);
+    const out = rewriteCarBriefing(briefing, { landmarks: false });
     expect(out.guides[0].guidance).toBe(
       "천호대교남단에서 왼쪽 길로 들어선 뒤 올림픽대로를 따라 412m 이동",
     );
@@ -213,5 +214,73 @@ describe("rewriteCarBriefing", () => {
     expect(out.distanceMeters).toBe(18651);
     // 원본 불변(순수 함수)
     expect(briefing.guides[0].guidance).toContain("왼쪽 방향 후");
+  });
+});
+
+describe("carLandmark (E61 지점·방면)", () => {
+  describe("2026-10-03 실주행 구간(재작성 전 원문)", () => {
+    for (const c of drive1003.cases) {
+      it(c.description, () => {
+        const want = "at" in c || "toward" in c ? { ...("at" in c ? { at: c.at } : {}), ...("toward" in c ? { toward: c.toward } : {}) } : null;
+        expect(carLandmark(c.description)).toEqual(want);
+      });
+    }
+  });
+
+  it("이름 없는 지점(교차로·분기점·고가차도)은 지점 없음 — 방면은 남는다", () => {
+    expect(carLandmark("교차로에서 우회전 후 천호대로를 따라 2410m 이동")).toBeNull();
+    expect(carLandmark("분기점에서 판교 방면으로 오른쪽 방향 후 경부고속도로를 따라 900m 이동")).toEqual({ toward: "판교" });
+    expect(carLandmark("고가차도에서 고덕강일 방면으로 고가도로옆 후 일반도로를 따라 148m 이동")).toEqual({ toward: "고덕강일" });
+  });
+
+  it("방면이 지점과 같으면 방면을 뺀다", () => {
+    expect(carLandmark("일산IC에서 일산IC 방면으로 오른쪽 고속도로 입구 후 수도권제1순환 고속도로를 따라 886m 이동")).toEqual({ at: "일산IC" });
+  });
+
+  it("문형 밖(출발·도착·카카오 조각형)은 null", () => {
+    expect(carLandmark("일반도로를 따라 64m 이동")).toBeNull();
+    expect(carLandmark("도착")).toBeNull();
+    expect(carLandmark("염천교에서 서대문역 방면으로 좌회전")).toBeNull();
+  });
+
+  it("코퍼스 전수: 지점 값에 이름 없는 낱말이 오지 않고, 방면은 지점과 다르다", () => {
+    for (const r of corpus) {
+      const l = carLandmark(r.description);
+      if (!l) continue;
+      expect(["교차로", "분기점", "고가차도"]).not.toContain(l.at);
+      if (l.at && l.toward) expect(l.toward).not.toBe(l.at);
+    }
+  });
+});
+
+describe("rewriteCarBriefing landmarks 옵트인", () => {
+  const base: CarRouteBriefing = {
+    distanceMeters: 1000,
+    durationSeconds: 100,
+    taxiFare: 0,
+    tollFare: 0,
+    guides: [
+      { name: "", guidance: "광진교남단에서 천호 사거리 방면으로 우회전 후 올림픽로를 따라 293m 이동", distanceMeters: 0, durationSeconds: 0 },
+      { name: "", guidance: "교차로에서 좌회전 후 일반도로를 따라 64m 이동", distanceMeters: 0, durationSeconds: 0 },
+    ],
+  };
+
+  it("false면 at·toward 키 자체가 없다(미지정 응답 byte 불변)", () => {
+    const out = rewriteCarBriefing(base, { landmarks: false });
+    expect(JSON.stringify(out)).toBe(JSON.stringify(base));
+  });
+
+  it("true면 싣고, 문장은 그대로·없는 지점은 키 없음", () => {
+    const out = rewriteCarBriefing(base, { landmarks: true });
+    expect(out.guides[0]).toMatchObject({ at: "광진교남단", toward: "천호 사거리", guidance: base.guides[0].guidance });
+    expect("at" in out.guides[1] || "toward" in out.guides[1]).toBe(false);
+  });
+
+  it("재작성 대상 문장도 원문에서 가른다(갈래 어휘가 바뀌어도 지점·방면은 같다)", () => {
+    const out = rewriteCarBriefing(
+      { ...base, guides: [{ name: "", guidance: "토평IC에서 구리타워 방면으로 오른쪽 방향 후 일반도로를 따라 339m 이동", distanceMeters: 0, durationSeconds: 0 }] },
+      { landmarks: true },
+    );
+    expect(out.guides[0]).toMatchObject({ at: "토평IC", toward: "구리타워", guidance: "토평IC에서 구리타워 방면으로 오른쪽 길로 들어선 뒤 일반도로를 따라 339m 이동" });
   });
 });

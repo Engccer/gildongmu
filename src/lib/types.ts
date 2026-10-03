@@ -172,6 +172,13 @@ export interface CarRouteGuide {
    * spec `2026-08-23-car-guidance-completion-design.md` §2.
    */
   action?: CarAction;
+  /**
+   * 결정 지점 이름(E61, `carLandmark` — Tmap 문장의 "{지점}에서"). 기하 옵트인 전용, 없거나
+   * 이름 없는 "교차로"류면 키 자체가 없다. 짧은 안내(임박·주기)가 문장 대신 읽는다.
+   */
+  at?: string;
+  /** 결정 지점의 방면(E61, "{방면} 방면으로"). 기하 옵트인 전용, 없으면 키 자체가 없다. */
+  toward?: string;
 }
 
 /**

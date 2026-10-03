@@ -97,13 +97,40 @@ export function rewriteCarGuidance(description: string): string {
     .join(" ");
 }
 
-/** 브리핑 전체 재작성. guidance 외 필드(기하·수치)는 그대로 보존한다. */
-export function rewriteCarBriefing(briefing: CarRouteBriefing): CarRouteBriefing {
+/**
+ * 이름 없이 단독으로 오는 지점 낱말 — 지점 없음으로 본다(E61, 문안 확정본 바 넷째 줄 "이름 없이
+ * '교차로'뿐"). 코퍼스 212문장·2026-10-03 실주행에서 단독으로 관측된 셋이다.
+ */
+const NAMELESS_AT = new Set(["교차로", "분기점", "고가차도"]);
+
+/**
+ * 결정 지점의 지점·방면(E61, A26 원재료 패턴). 재작성 **전** Tmap 원문을 같은 문형으로 가른다.
+ * 문형이 맞지 않으면(출발·도착·카카오 조각형) null. 방면이 지점과 같으면("일산IC에서 일산IC
+ * 방면으로") 같은 이름을 두 번 말하지 않게 방면을 뺀다.
+ */
+export function carLandmark(description: string): { at?: string; toward?: string } | null {
+  const m = FRAME.exec(description);
+  if (!m) return null;
+  const at = m[1] && !NAMELESS_AT.has(m[1]) ? m[1] : undefined;
+  const toward = m[2] && m[2] !== m[1] ? m[2] : undefined;
+  if (!at && !toward) return null;
+  return { ...(at ? { at } : {}), ...(toward ? { toward } : {}) };
+}
+
+/**
+ * 브리핑 전체 재작성. guidance 외 필드(기하·수치)는 그대로 보존한다.
+ * `landmarks`(기본값 없음): 기하 옵트인 응답에만 `at`·`toward`를 싣는다 — 미지정 응답 byte 불변.
+ */
+export function rewriteCarBriefing(
+  briefing: CarRouteBriefing,
+  opts: { landmarks: boolean },
+): CarRouteBriefing {
   return {
     ...briefing,
     guides: briefing.guides.map((g) => ({
       ...g,
       guidance: rewriteCarGuidance(g.guidance),
+      ...(opts.landmarks ? carLandmark(g.guidance) : null),
     })),
   };
 }

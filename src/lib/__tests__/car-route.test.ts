@@ -39,6 +39,18 @@ describe("getCarRoute", () => {
     expect(getCarRouteBriefing).not.toHaveBeenCalled();
   });
 
+  it("지점·방면(E61)은 기하 옵트인에만 싣는다 — 미지정은 키 없음", async () => {
+    const lm: CarRouteBriefing = {
+      ...TMAP_BRIEFING,
+      guides: [{ name: "", guidance: "광진교남단에서 천호 사거리 방면으로 우회전 후 올림픽로를 따라 293m 이동", distanceMeters: 0, durationSeconds: 0 }],
+    };
+    vi.mocked(getTmapCarBriefing).mockResolvedValue(lm);
+    const plain = await getCarRoute(COORDS);
+    expect("at" in plain.guides[0]).toBe(false);
+    const geo = await getCarRoute({ ...COORDS, includeGeometry: true });
+    expect(geo.guides[0]).toMatchObject({ at: "광진교남단", toward: "천호 사거리" });
+  });
+
   it("Tmap throw + 카카오 키 있음 → 카카오 폴백 + 폴백 경고 로그", async () => {
     vi.mocked(getTmapCarBriefing).mockRejectedValue(new Error("HTTP 500"));
     await expect(getCarRoute(COORDS)).resolves.toEqual({ ...KAKAO_BRIEFING, provider: "kakao" });
