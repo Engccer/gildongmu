@@ -599,6 +599,10 @@ class RouteGuideTest {
         assertTrue(GuideTuning.walk.sessionIdleStationaryAxis)
         assertFalse(GuideTuning.car.sessionIdleStationaryAxis)
         assertFalse(GuideTuning.carDriver.sessionIdleStationaryAxis)
+        // 두절 축은 수단별 데이터(2026-10-03 위원장 판정: 자동차만 15분).
+        assertEquals(300.0, GuideTuning.walk.sessionIdleNoFixSeconds)
+        assertEquals(900.0, GuideTuning.car.sessionIdleNoFixSeconds)
+        assertEquals(900.0, GuideTuning.carDriver.sessionIdleNoFixSeconds)
     }
 
     /** 재획득·복귀 재구성(`restateAt`)은 도착 래치를 승계한다 — 지우면 같은 경유지를 다시 알린다. */

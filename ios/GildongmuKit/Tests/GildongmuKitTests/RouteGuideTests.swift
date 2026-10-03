@@ -966,6 +966,10 @@ func sessionEndTuning() {
     #expect(GuideTuning.walk.sessionIdleStationaryAxis)
     #expect(!GuideTuning.car.sessionIdleStationaryAxis)
     #expect(!GuideTuning.carDriver.sessionIdleStationaryAxis)
+    // 두절 축은 수단별 데이터(2026-10-03 위원장 판정: 자동차만 15분).
+    #expect(GuideTuning.walk.sessionIdleNoFixSeconds == 300)
+    #expect(GuideTuning.car.sessionIdleNoFixSeconds == 900)
+    #expect(GuideTuning.carDriver.sessionIdleNoFixSeconds == 900)
 }
 
 

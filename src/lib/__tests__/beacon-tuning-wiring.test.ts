@@ -61,6 +61,7 @@ describe("BeaconModel 세션 종료 갈림은 GuideTuning 데이터를 읽는다
     "tuning.presumedArrival",
     "tuning.entersFinalApproachWithoutGeometry",
     "tuning.sessionIdleStationaryAxis",
+    "tuning.sessionIdleNoFixSeconds",
   ])("%s 참조", (needle) => {
     expect(src.includes(needle)).toBe(true);
   });

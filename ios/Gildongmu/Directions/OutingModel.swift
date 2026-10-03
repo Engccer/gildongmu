@@ -974,7 +974,10 @@ final class OutingModel {
         }
         // 국면 무관 안전망(spec §5.3·§9). 나들이엔 도착 창이 없으므로 두 축 모두 산다.
         let progressRef = max(startedAt, sessionLastProgressAt ?? startedAt)
-        if let reason = sessionIdleStep(secondsSinceUsableFix: now - fixRef, secondsSinceProgress: now - progressRef) {
+        if let reason = sessionIdleStep(
+            secondsSinceUsableFix: now - fixRef, secondsSinceProgress: now - progressRef,
+            noFixSeconds: GuideTuning.walk.sessionIdleNoFixSeconds
+        ) {
             endIdle(reason: reason)
             return
         }

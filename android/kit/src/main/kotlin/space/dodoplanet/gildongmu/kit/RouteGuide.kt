@@ -170,9 +170,11 @@ data class GuideTuning(
     val entersFinalApproachWithoutGeometry: Boolean,
     /**
      * 국면 무관 세션 안전망(`SessionIdle.kt`)의 무이동 축을 켜는가. 자동차는 false — 정체·휴게소 정차와 구분할 수
-     * 없다. 두절 축(300초)은 두 수단 공통(spec 2026-08-31 §4). ⚠ 소비자가 수단 switch로 다시 쓰지 말 것.
+     * 없다(spec 2026-08-31 §4). ⚠ 소비자가 수단 switch로 다시 쓰지 말 것.
      */
     val sessionIdleStationaryAxis: Boolean,
+    /** 국면 무관 세션 안전망의 두절 임계(초). walk 300 · car 900(2026-10-03 위원장 판정). Kit 미러. */
+    val sessionIdleNoFixSeconds: Double,
     /**
      * 수단별 물리 속도 상한(m/s) — 투영 점프 판정의 기준(웹 `maxSpeedMps` 미러). 직전 fix 대비 진행거리 증가가
      * `maxSpeedMps × dt × 1.5`를 넘으면 투영이 튄 것이다.
@@ -206,6 +208,7 @@ data class GuideTuning(
             presumedArrival = PresumedArrivalThresholds.walk,
             entersFinalApproachWithoutGeometry = false,
             sessionIdleStationaryAxis = true,
+            sessionIdleNoFixSeconds = sessionIdleNoFixWalkSeconds,
             maxSpeedMps = MotionConstants.maxWalkSpeedMps,
         )
 
@@ -230,6 +233,7 @@ data class GuideTuning(
             presumedArrival = PresumedArrivalThresholds.car,
             entersFinalApproachWithoutGeometry = true,
             sessionIdleStationaryAxis = false,
+            sessionIdleNoFixSeconds = sessionIdleNoFixCarSeconds,
             maxSpeedMps = MotionConstants.maxCarSpeedMps,
         )
 

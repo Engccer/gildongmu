@@ -1384,7 +1384,7 @@ class WalkGuideModel(
         val presumedArrivalCanFire = inArrivalWindow &&
             (tuning.presumedArrival?.let { (lastUsableDistanceToDest ?: Double.POSITIVE_INFINITY) <= it.maxDistanceMeters } ?: false)
         val stationary = if (tuning.sessionIdleStationaryAxis) sessionIdleStationaryElapsed(now - progressRef, presumedArrivalCanFire) else null
-        val reason = sessionIdleStep(now - fixRef, stationary) ?: return false
+        val reason = sessionIdleStep(now - fixRef, stationary, tuning.sessionIdleNoFixSeconds) ?: return false
         GuideDiag.log("sessionIdleEnd reason=${reason.rawValue}")
         val spoken = strings.get("guide.endedIdle")
         stopLeavingSummary(playStopTone = env.isForeground(), text = spoken)

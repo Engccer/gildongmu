@@ -21,6 +21,7 @@ import {
   type DerivedCourse,
 } from "./course-derivation";
 import { MAX_CAR_SPEED_MPS, MAX_WALK_SPEED_MPS } from "./guide-motion";
+import { SESSION_IDLE_NO_FIX_CAR_S, SESSION_IDLE_NO_FIX_WALK_S } from "./session-idle";
 import {
   PRESUMED_ARRIVAL_CAR,
   PRESUMED_ARRIVAL_WALK,
@@ -257,9 +258,14 @@ export interface GuideTuning {
   entersFinalApproachWithoutGeometry: boolean;
   /**
    * 국면 무관 세션 안전망(`session-idle.ts`)의 무이동 축을 켜는가. 자동차는 false —
-   * 정체·휴게소 정차와 구분할 수 없다. 두절 축(300초)은 両수단 공통(spec 2026-08-31 §4).
+   * 정체·휴게소 정차와 구분할 수 없다(spec 2026-08-31 §4).
    */
   sessionIdleStationaryAxis: boolean;
+  /**
+   * 국면 무관 세션 안전망의 두절 임계(초). walk 300 · car 900(2026-10-03 위원장 판정 — 터널 안에서
+   * 안내가 끝나지 않게). 승차 전 도보·나들이는 walk 값을 탄다.
+   */
+  sessionIdleNoFixS: number;
   /**
    * 수단별 물리 속도 상한(m/s) — 투영 점프 판정의 기준. 직전 fix 대비 진행거리
    * 증가가 `maxSpeedMps × dt × 1.5`를 넘으면 투영이 튄 것이다(여유 계수 1.5 —
@@ -308,6 +314,7 @@ export const WALK_TUNING: GuideTuning = {
   presumedArrival: PRESUMED_ARRIVAL_WALK,
   entersFinalApproachWithoutGeometry: false,
   sessionIdleStationaryAxis: true,
+  sessionIdleNoFixS: SESSION_IDLE_NO_FIX_WALK_S,
   maxSpeedMps: MAX_WALK_SPEED_MPS,
 };
 
@@ -354,6 +361,7 @@ export const CAR_TUNING: GuideTuning = {
   presumedArrival: PRESUMED_ARRIVAL_CAR,
   entersFinalApproachWithoutGeometry: true,
   sessionIdleStationaryAxis: false,
+  sessionIdleNoFixS: SESSION_IDLE_NO_FIX_CAR_S,
   maxSpeedMps: MAX_CAR_SPEED_MPS,
 };
 

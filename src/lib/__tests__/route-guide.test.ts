@@ -780,6 +780,10 @@ describe("세션 종료 튜닝 (spec 2026-08-31)", () => {
     expect(WALK_TUNING.sessionIdleStationaryAxis).toBe(true);
     expect(CAR_TUNING.sessionIdleStationaryAxis).toBe(false);
     expect(CAR_DRIVER_TUNING.sessionIdleStationaryAxis).toBe(false);
+    // 두절 축은 수단별 데이터(2026-10-03 위원장 판정: 자동차만 15분).
+    expect(WALK_TUNING.sessionIdleNoFixS).toBe(300);
+    expect(CAR_TUNING.sessionIdleNoFixS).toBe(900);
+    expect(CAR_DRIVER_TUNING.sessionIdleNoFixS).toBe(900);
   });
 });
 

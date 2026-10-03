@@ -24,6 +24,7 @@ private struct Scenario: Decodable {
     struct Input: Decodable {
         let secondsSinceUsableFix: Double
         let secondsSinceProgress: Double?
+        let noFixSeconds: Double
     }
 }
 
@@ -56,7 +57,8 @@ func sessionIdleMatchesSharedFixture() throws {
     for s in try loadScenarios() {
         let got = sessionIdleStep(
             secondsSinceUsableFix: s.input.secondsSinceUsableFix,
-            secondsSinceProgress: s.input.secondsSinceProgress
+            secondsSinceProgress: s.input.secondsSinceProgress,
+            noFixSeconds: s.input.noFixSeconds
         )
         #expect(got?.rawValue == s.expect, "\(s.name)")
     }
@@ -64,15 +66,15 @@ func sessionIdleMatchesSharedFixture() throws {
 
 @Test("무효 입력은 nil")
 func sessionIdleRejectsInvalid() {
-    #expect(sessionIdleStep(secondsSinceUsableFix: -1, secondsSinceProgress: 0) == nil)
-    #expect(sessionIdleStep(secondsSinceUsableFix: .nan, secondsSinceProgress: 0) == nil)
-    #expect(sessionIdleStep(secondsSinceUsableFix: 0, secondsSinceProgress: .infinity) == nil)
+    #expect(sessionIdleStep(secondsSinceUsableFix: -1, secondsSinceProgress: 0, noFixSeconds: 300) == nil)
+    #expect(sessionIdleStep(secondsSinceUsableFix: .nan, secondsSinceProgress: 0, noFixSeconds: 300) == nil)
+    #expect(sessionIdleStep(secondsSinceUsableFix: 0, secondsSinceProgress: .infinity, noFixSeconds: 300) == nil)
 }
 
 @Test("국면 무관 안전망은 도착 추정보다 조이지 않는다 (両프로파일 — 두절은 더 길고 무이동은 같거나 길다)")
 func sessionIdleIsLooserThanPresumedArrival() {
-    for p in [PresumedArrivalThresholds.walk, .car] {
-        #expect(sessionIdleNoFixSeconds > p.noFixSeconds)
+    for (noFix, p) in [(sessionIdleNoFixWalkSeconds, PresumedArrivalThresholds.walk), (sessionIdleNoFixCarSeconds, .car)] {
+        #expect(noFix > p.noFixSeconds)
         #expect(sessionIdleStationarySeconds >= p.stationarySeconds)
     }
     #expect(sessionProgressEpsilonMeters > progressEpsilonMeters)
@@ -80,7 +82,8 @@ func sessionIdleIsLooserThanPresumedArrival() {
 
 @Test("무이동 축이 없으면(nil) 두절 축만 산다")
 func sessionIdleWithoutStationaryAxis() {
-    #expect(sessionIdleStep(secondsSinceUsableFix: sessionIdleNoFixSeconds, secondsSinceProgress: nil) == .noFix)
-    #expect(sessionIdleStep(secondsSinceUsableFix: 1, secondsSinceProgress: nil) == nil)
-    #expect(sessionIdleStep(secondsSinceUsableFix: .nan, secondsSinceProgress: nil) == nil)
+    let noFix = sessionIdleNoFixCarSeconds
+    #expect(sessionIdleStep(secondsSinceUsableFix: noFix, secondsSinceProgress: nil, noFixSeconds: noFix) == .noFix)
+    #expect(sessionIdleStep(secondsSinceUsableFix: 1, secondsSinceProgress: nil, noFixSeconds: noFix) == nil)
+    #expect(sessionIdleStep(secondsSinceUsableFix: .nan, secondsSinceProgress: nil, noFixSeconds: noFix) == nil)
 }

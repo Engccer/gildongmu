@@ -1,16 +1,17 @@
 {
-  "comment": "sessionIdleStep 웹·Kit·:kit 동조 fixture (국면 무관 세션 안전망, 2026-08-26; 상수 두절 300s·무이동 300s는 2026-09-26 위원장 판정, 나들이 spec §9). 무효 입력(NaN 등)은 각 플랫폼 단위 테스트가 커버. secondsSinceProgress null = 무이동 축 없음(car, spec 2026-08-31 §4).",
+  "comment": "sessionIdleStep 웹·Kit·:kit 동조 fixture (국면 무관 세션 안전망, 2026-08-26; 무이동 300s·도보 두절 300s는 2026-09-26 위원장 판정, 나들이 spec §9; 자동차 두절 900s는 2026-10-03 위원장 판정, spec 2026-10-03-car-short-guidance-design.md §4). noFixSeconds = 수단별 GuideTuning 값(walk 300·car 900). 무효 입력(NaN 등)은 각 플랫폼 단위 테스트가 커버. secondsSinceProgress null = 무이동 축 없음(car, spec 2026-08-31 §4).",
   "scenarios": [
-    { "name": "둘 다 임계 미만은 none", "input": { "secondsSinceUsableFix": 299.9, "secondsSinceProgress": 299.9 }, "expect": null },
-    { "name": "noFix 300s 발동", "input": { "secondsSinceUsableFix": 300, "secondsSinceProgress": 0 }, "expect": "noFix" },
-    { "name": "stationary 300s 발동(fix는 계속 온다)", "input": { "secondsSinceUsableFix": 1, "secondsSinceProgress": 300 }, "expect": "stationary" },
-    { "name": "둘 다 성립하면 noFix가 앞선다", "input": { "secondsSinceUsableFix": 9999, "secondsSinceProgress": 9999 }, "expect": "noFix" },
-    { "name": "세션 시작 직후(0·0)는 none", "input": { "secondsSinceUsableFix": 0, "secondsSinceProgress": 0 }, "expect": null },
-    { "name": "도착 추정 두절 상수(180)로는 발동하지 않는다 — 두절 축은 더 길다", "input": { "secondsSinceUsableFix": 180, "secondsSinceProgress": 299.9 }, "expect": null },
-    { "name": "옛 상수 구간(두절 600 미만·무이동 1200 미만)이라도 5분을 넘으면 발동한다", "input": { "secondsSinceUsableFix": 1, "secondsSinceProgress": 900 }, "expect": "stationary" },
-    { "name": "car(무이동 축 없음): noFix 300s 발동", "input": { "secondsSinceUsableFix": 300, "secondsSinceProgress": null }, "expect": "noFix" },
-    { "name": "car(무이동 축 없음): 무이동 축이 null이면 fix가 살아 있는 한 none — 정체·휴게소 정차와 구분 불가", "input": { "secondsSinceUsableFix": 1, "secondsSinceProgress": null }, "expect": null },
-    { "name": "car(무이동 축 없음): noFix 임계 직전은 none", "input": { "secondsSinceUsableFix": 299.9, "secondsSinceProgress": null }, "expect": null }
+    { "name": "둘 다 임계 미만은 none", "input": { "secondsSinceUsableFix": 299.9, "secondsSinceProgress": 299.9, "noFixSeconds": 300 }, "expect": null },
+    { "name": "noFix 300s 발동", "input": { "secondsSinceUsableFix": 300, "secondsSinceProgress": 0, "noFixSeconds": 300 }, "expect": "noFix" },
+    { "name": "stationary 300s 발동(fix는 계속 온다)", "input": { "secondsSinceUsableFix": 1, "secondsSinceProgress": 300, "noFixSeconds": 300 }, "expect": "stationary" },
+    { "name": "둘 다 성립하면 noFix가 앞선다", "input": { "secondsSinceUsableFix": 9999, "secondsSinceProgress": 9999, "noFixSeconds": 300 }, "expect": "noFix" },
+    { "name": "세션 시작 직후(0·0)는 none", "input": { "secondsSinceUsableFix": 0, "secondsSinceProgress": 0, "noFixSeconds": 300 }, "expect": null },
+    { "name": "도착 추정 두절 상수(180)로는 발동하지 않는다 — 두절 축은 더 길다", "input": { "secondsSinceUsableFix": 180, "secondsSinceProgress": 299.9, "noFixSeconds": 300 }, "expect": null },
+    { "name": "옛 상수 구간(두절 600 미만·무이동 1200 미만)이라도 5분을 넘으면 발동한다", "input": { "secondsSinceUsableFix": 1, "secondsSinceProgress": 900, "noFixSeconds": 300 }, "expect": "stationary" },
+    { "name": "car(무이동 축 없음): noFix 900s 발동", "input": { "secondsSinceUsableFix": 900, "secondsSinceProgress": null, "noFixSeconds": 900 }, "expect": "noFix" },
+    { "name": "car(무이동 축 없음): 무이동 축이 null이면 fix가 살아 있는 한 none — 정체·휴게소 정차와 구분 불가", "input": { "secondsSinceUsableFix": 1, "secondsSinceProgress": null, "noFixSeconds": 900 }, "expect": null },
+    { "name": "car(무이동 축 없음): noFix 임계 직전은 none", "input": { "secondsSinceUsableFix": 899.9, "secondsSinceProgress": null, "noFixSeconds": 900 }, "expect": null },
+    { "name": "car: 도보 두절 임계(300s)로는 끝나지 않는다 — 긴 터널(2026-10-03 위원장 판정)", "input": { "secondsSinceUsableFix": 600, "secondsSinceProgress": null, "noFixSeconds": 900 }, "expect": null }
   ],
   "graceScenarios": [
     { "name": "도착 추정이 발동할 수 없으면 경과 그대로", "input": { "secondsSinceProgress": 300, "presumedArrivalCanFire": false }, "expect": 300 },

@@ -8,8 +8,12 @@ package space.dodoplanet.gildongmu.kit
 // 무이동 축은 도착 추정과 같은 5분이다(2026-09-26 위원장 판정, 나들이 spec §9). 같은 워치독 틱에서는 도착 추정이
 // 먼저 판정되므로 동점이면 도착이 이긴다.
 
-/** usable fix 두절이 이만큼 지속되면 세션을 끝낸다(2026-09-26 위원장 판정 5분). */
-const val sessionIdleNoFixSeconds = 300.0
+/**
+ * usable fix 두절이 이만큼 지속되면 세션을 끝낸다 — 수단별 값이고 `GuideTuning.sessionIdleNoFixSeconds`가 고른다.
+ * 도보 5분(2026-09-26 위원장 판정), 자동차 15분(2026-10-03 위원장 판정 — 터널 안에서 안내가 끝나지 않게).
+ */
+const val sessionIdleNoFixWalkSeconds = 300.0
+const val sessionIdleNoFixCarSeconds = 900.0
 
 /** usable fix는 오는데 앵커 기준 이동이 이만큼 없으면 끝낸다(2026-09-26 위원장 판정 5분). */
 const val sessionIdleStationarySeconds = 300.0
@@ -36,12 +40,13 @@ private fun finiteNonNegative(x: Double): Boolean = x.isFinite() && x >= 0
 /**
  * 판정 순서(noFix → stationary)가 계약이다 — 둘 다 성립하면 원인이 더 앞선 noFix.
  * `secondsSinceProgress` **null = 무이동 축 없음**(자동차 — 정체·휴게소 정차와 구분할 수 없어 켜지 않는다,
- * spec 2026-08-31 §4). 축 선택은 `GuideTuning.sessionIdleStationaryAxis`.
+ * spec 2026-08-31 §4). 축 선택은 `GuideTuning.sessionIdleStationaryAxis`. `noFixSeconds`는 수단별
+ * `GuideTuning.sessionIdleNoFixSeconds` — 기본값 없음(생략이 조용한 결함이 된다).
  */
-fun sessionIdleStep(secondsSinceUsableFix: Double, secondsSinceProgress: Double?): SessionIdleReason? {
+fun sessionIdleStep(secondsSinceUsableFix: Double, secondsSinceProgress: Double?, noFixSeconds: Double): SessionIdleReason? {
     if (!finiteNonNegative(secondsSinceUsableFix)) return null
     if (secondsSinceProgress != null && !finiteNonNegative(secondsSinceProgress)) return null
-    if (secondsSinceUsableFix >= sessionIdleNoFixSeconds) return SessionIdleReason.noFix
+    if (secondsSinceUsableFix >= noFixSeconds) return SessionIdleReason.noFix
     if (secondsSinceProgress != null && secondsSinceProgress >= sessionIdleStationarySeconds) {
         return SessionIdleReason.stationary
     }
