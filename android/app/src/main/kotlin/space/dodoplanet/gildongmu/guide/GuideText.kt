@@ -21,6 +21,7 @@ import space.dodoplanet.gildongmu.kit.joinText
 import space.dodoplanet.gildongmu.kit.models.FinalApproachPayload
 import space.dodoplanet.gildongmu.kit.models.WalkLineKind
 import space.dodoplanet.gildongmu.kit.relativeDirection
+import space.dodoplanet.gildongmu.kit.stepTextSaysDirection
 import space.dodoplanet.gildongmu.kit.unitAt
 import kotlin.math.max
 import kotlin.math.roundToInt
@@ -157,19 +158,32 @@ class GuideText(private val s: Strings) {
         return s.get(key, route.steps.size, formatDistance(route.totalMeters.roundToInt()), unit(route, firstIndices))
     }
 
+    /** 자동 재조회 채택 문장 두 벌(A57) — 그 순간의 음성과 상태 행에 남길 문장. */
+    data class RerouteLines(val spoken: String, val statusLine: String)
+
     /**
-     * 자동 재조회 채택 통지(E63 문안 라 — "새 경로로 다시 안내합니다. 2시 방향으로 도세요. 그 후 {첫 유닛}. 안내 {count}개, 총 {distance}.",
-     * iOS `autoReroute`). `headClock`은 교체 **전** 진행 방위 기준 새 경로 첫 방향(:kit `rerouteHeadClock`), null이면 머리말이 없다.
-     * 인자 순서는 ko 문장 순서(arg-order).
+     * 자동 재조회 채택 문장(E63 문안 라 — "새 경로로 다시 안내합니다. 2시 방향으로 도세요. 그 후 {첫 유닛}. 안내 {count}개, 총 {distance}.",
+     * iOS `autoReroute`). `headClock`은 교체 **전** 진행 방위 기준 새 경로 첫 방향(:kit `rerouteHeadClock`), null이면 머리말이 없다. 조각 없는
+     * 첫 스텝 문장이 스스로 방향을 말해도 머리말이 없다(A58, `english` = 안내 데이터 언어가 ko가 아닌가). `statusLine`은 머리말을 뺀 꼴(A57 —
+     * 시계 방향은 몸을 돌리면 곧 거짓이 되는데 상태 행은 착지·화면 복귀 상환이 나중에 다시 읽는다): 머리말이 있으면 첫 스텝은 이미 `body`라
+     * 되읽기 유닛(`rereadUnit`)이다. 인자 순서는 ko 문장 순서(arg-order).
      */
-    fun autoReroute(route: GuideRoute, firstIndices: List<Int>, liveSteps: List<LiveStepInput>, headClock: Int?): String =
-        s.get("guide.autoReroute", headedUnit(route, firstIndices, liveSteps, headClock), route.steps.size, formatDistance(route.totalMeters.roundToInt()))
+    fun autoReroute(route: GuideRoute, firstIndices: List<Int>, liveSteps: List<LiveStepInput>, headClock: Int?, english: Boolean): RerouteLines {
+        val lead = firstIndices.firstOrNull()?.let { route.steps.getOrNull(it) }
+        val clock = headClock?.takeIf {
+            lead != null && !stepTextSaysDirection(lead.action, liveSteps.getOrNull(lead.index)?.body != null, english)
+        }
+        fun line(first: String) = s.get("guide.autoReroute", first, route.steps.size, formatDistance(route.totalMeters.roundToInt()))
+        val spoken = line(headedUnit(route, firstIndices, liveSteps, clock))
+        return RerouteLines(spoken, if (clock == null) spoken else line(rereadUnit(route, firstIndices, liveSteps)))
+    }
 
     /**
      * 새 경로 첫 유닛에 진행 방위 기준 방향 머리말을 단다(E63 spec §3.7, iOS `headedUnit`). 12 = "진행 방향 그대로"(J1), 6 = "뒤로 도세요.
      * 그 후", 그 밖 = "N시 방향으로 도세요. 그 후". 머리말이 있으면 첫 스텝의 경로 기준 방향 조각은 뺀다(`body` — 방향을 두 번 말하지 않는다).
+     * 머리말을 붙일지(A58)는 호출부 `autoReroute`가 이미 가른 값이다.
      */
-    fun headedUnit(route: GuideRoute, indices: List<Int>, liveSteps: List<LiveStepInput>, headClock: Int?): String {
+    private fun headedUnit(route: GuideRoute, indices: List<Int>, liveSteps: List<LiveStepInput>, headClock: Int?): String {
         val clock = headClock ?: return unit(route, indices)
         val descs = indices.mapIndexedNotNull { pos, i ->
             val step = route.steps.getOrNull(i) ?: return@mapIndexedNotNull null

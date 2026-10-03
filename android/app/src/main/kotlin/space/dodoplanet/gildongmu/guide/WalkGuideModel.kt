@@ -1746,9 +1746,10 @@ class WalkGuideModel(
         GuideDiag.log("rerouteAdopt source=$source result=adopted headClock=${headClock ?: "-"}")
         val firstIndices = commitReroutedRoute(result)
         val notice = consumeStepFreeNotice(result.stepFreeRaw, result.stepFree, result.stepFreeNotice)
-        val summary = text.autoReroute(result.route, firstIndices, liveSteps, headClock)
-        val spoken = if (notice != null) "$notice $summary" else summary
-        statusText = spoken
+        val lines = text.autoReroute(result.route, firstIndices, liveSteps, headClock, english = dataLocale() != DataLocale.ko)
+        val spoken = if (notice != null) "$notice ${lines.spoken}" else lines.spoken
+        // 상태 행은 머리말을 뺀 문장(A57) — 음성만 그 순간의 방향을 말한다.
+        statusText = if (notice != null) "$notice ${lines.statusLine}" else lines.statusLine
         resultHaptic(ResultHapticKind.success)
         announce(spoken, highPriority = true, speechClass = GuideSpeechClass.actionable) { if (notice != null) pendingStepFreeNotice = notice }
     }

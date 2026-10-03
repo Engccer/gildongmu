@@ -3200,9 +3200,11 @@ final class BeaconModel {
                 fetched.stepFreeRaw, fetched.stepFree, fetched.stepFreeNotice
             )
             let summary = GuideText.autoReroute(
-                route: fetched.route, firstIndices: firstIndices, liveSteps: liveSteps, headClock: headClock)
-            let text = notice.map { "\($0) \(summary)" } ?? summary
-            statusText = text
+                route: fetched.route, firstIndices: firstIndices, liveSteps: liveSteps, headClock: headClock,
+                english: AppLanguage.dataLocaleValue == .en)
+            let text = notice.map { "\($0) \(summary.spoken)" } ?? summary.spoken
+            // 상태 행은 머리말을 뺀 문장(A57) — 음성만 그 순간의 방향을 말한다.
+            statusText = notice.map { "\($0) \(summary.statusLine)" } ?? summary.statusLine
             resultHaptic(.success)
             announce(text, highPriority: true, speechClass: .actionable) { [weak self] in
                 if let notice { self?.pendingStepFreeNotice = notice }

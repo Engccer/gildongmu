@@ -201,4 +201,26 @@ class GuideLiveRowsTest {
         assertEquals("횡단보도를 건너세요. 횡단보도 길이 8m", out[1].body)
         assertEquals(12, out[1].crossingClock)
     }
+
+    @Serializable
+    private data class StepDirectionFile(val cases: List<StepDirectionCase>)
+
+    @Serializable
+    private data class StepDirectionCase(
+        val id: String,
+        val action: String? = null,
+        val english: Boolean,
+        val hasBody: Boolean,
+        val expected: Boolean,
+    )
+
+    /** 조각 없는 스텝 문장이 스스로 방향을 말하는가(A58) — 웹·Kit과 같은 공유 판정표. */
+    @Test fun `스텝 문장의 자기 방향 판정은 공유 판정표와 같다`() {
+        val cases = Fixtures.sharedJson("step-text-says-direction-cases.json", StepDirectionFile.serializer()).cases
+        assertTrue(cases.size >= 30)
+        for (c in cases) {
+            val action = c.action?.let { WalkAction.valueOf(it) }
+            assertEquals(c.expected, stepTextSaysDirection(action, c.hasBody, c.english), c.id)
+        }
+    }
 }

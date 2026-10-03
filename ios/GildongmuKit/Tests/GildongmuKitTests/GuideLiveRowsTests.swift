@@ -256,3 +256,36 @@ struct CrossingStepTests {
         #expect(out[1].crossingClock == 12)
     }
 }
+
+/// 조각 없는 스텝 문장이 스스로 방향을 말하는가(A58) — 웹 `guide-live-rows-head.test.ts`·안드로이드 `:kit`
+/// `GuideLiveRowsTest`와 같은 공유 판정표(`src/lib/__tests__/fixtures/step-text-says-direction-cases.json`)를 읽는다.
+private struct StepDirectionCase: Decodable {
+    let id: String
+    let action: String?
+    let english: Bool
+    let hasBody: Bool
+    let expected: Bool
+}
+
+private struct StepDirectionCaseFile: Decodable {
+    let cases: [StepDirectionCase]
+}
+
+@Suite("stepTextSaysDirection — 공유 판정표")
+struct StepTextSaysDirectionFixtureTests {
+    private func load() throws -> [StepDirectionCase] {
+        var url = URL(fileURLWithPath: #filePath)
+        for _ in 0..<5 { url.deleteLastPathComponent() }  // GildongmuKitTests→Tests→GildongmuKit→ios→repo
+        url.appendPathComponent("src/lib/__tests__/fixtures/step-text-says-direction-cases.json")
+        return try JSONDecoder().decode(StepDirectionCaseFile.self, from: Data(contentsOf: url)).cases
+    }
+
+    @Test func matchesSharedFixture() throws {
+        let cases = try load()
+        #expect(cases.count >= 30)
+        for c in cases {
+            let action = try c.action.map { raw in try #require(WalkAction(rawValue: raw), "\(c.id)") }
+            #expect(stepTextSaysDirection(action: action, hasBody: c.hasBody, english: c.english) == c.expected, "\(c.id)")
+        }
+    }
+}

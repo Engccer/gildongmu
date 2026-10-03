@@ -40,6 +40,21 @@ data class LiveStepInput(
     val crossingClock: Int? = null,
 )
 
+/**
+ * 조각(`body`) 없는 스텝 문장이 스스로 방향을 말하는가(A58, Kit `stepTextSaysDirection` 미러). 자동 재조회 채택 문장의 방향 머리말은
+ * 이것이 참이면 붙이지 않는다(문안 확정본 "방향 구절이 겹치는 자리": 방향은 하나만). 조각이 있으면 거짓, 회전 스텝은 참, 횡단은
+ * 언어가 가른다(ko 판본 2는 횡단 방향을 말하면 반드시 조각을 싣고, en은 조각 없이 방향을 박을 수 있다). 공유 판정표
+ * `step-text-says-direction-cases.json`.
+ */
+fun stepTextSaysDirection(action: WalkAction?, hasBody: Boolean, english: Boolean): Boolean {
+    if (hasBody) return false
+    return when (action) {
+        WalkAction.left, WalkAction.right, WalkAction.back -> true
+        WalkAction.crosswalk -> english
+        WalkAction.underpass, WalkAction.keepLeft, WalkAction.keepRight, null -> false
+    }
+}
+
 /** 행동 경계 기준으로 병합한 표시 유닛(spec §4.1) — "직진 구간 + (있다면) 끝 행동". */
 data class DisplayUnit(
     val stepIndices: List<Int>,
