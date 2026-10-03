@@ -327,6 +327,7 @@
     <string name="android_settings_aiSection">AI 채팅</string>
     <string name="android_settings_backgroundSpeech">백그라운드 음성 안내</string>
     <string name="android_settings_backgroundSpeechFooter">화면이 꺼지거나 다른 앱을 쓰는 동안에도 회전, 이탈, 도착 같은 안내를 기기 음성으로 말합니다.</string>
+    <string name="android_settings_backgroundSpeechFooterOuting">화면이 꺼지거나 다른 앱을 쓰는 동안에도 회전, 이탈, 도착 같은 안내와 나들이 주변 낭독을 기기 음성으로 말합니다.</string>
     <string name="android_settings_carListener">자동차 안내 듣는 사람 (실험)</string>
     <string name="android_settings_carListenerDriver">운전자 (스피커, 짧은 명령)</string>
     <string name="android_settings_carListenerPassenger">동승자 (이어폰, 화면 낭독)</string>

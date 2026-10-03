@@ -327,6 +327,7 @@
     <string name="android_settings_aiSection">Chat IA</string>
     <string name="android_settings_backgroundSpeech">Guida vocale in background</string>
     <string name="android_settings_backgroundSpeechFooter">Pronuncia con la voce del dispositivo indicazioni come svolte, uscite dal percorso e arrivo, anche a schermo spento o mentre usi un\'altra app.</string>
+    <string name="android_settings_backgroundSpeechFooterOuting">Pronuncia con la voce del dispositivo indicazioni come svolte, uscite dal percorso e arrivo, e la narrazione della passeggiata, anche a schermo spento o mentre usi un\'altra app.</string>
     <string name="android_settings_carListener">Chi ascolta la guida in auto (sperimentale)</string>
     <string name="android_settings_carListenerDriver">Conducente (altoparlante, comandi brevi)</string>
     <string name="android_settings_carListenerPassenger">Passeggero (auricolari, screen reader)</string>

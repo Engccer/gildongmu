@@ -193,8 +193,10 @@ struct SettingsView: View {
                 } header: {
                     Text(appLocalized("ios.settings.sectionGuidance"))
                 } footer: {
-                    // 이름만으로는 무엇을 말하는지(행동 문장만, 나들이 주변 낭독 포함)가 드러나지 않는다 — 범위는 새 정보다.
-                    Text(appLocalized("ios.settings.backgroundSpeechFooter"))
+                    // 이름만으로는 무엇을 말하는지(행동 문장만)가 드러나지 않는다 — 범위는 새 정보다. 나들이 주변 낭독은
+                    // 나들이가 있는 판(실험판)에서만 말한다(A59 — 정식판에 없는 기능을 약속하지 않는다).
+                    Text(appLocalized(AppConfig.experimentalOutingEnabled
+                        ? "ios.settings.backgroundSpeechFooterOuting" : "ios.settings.backgroundSpeechFooter"))
                 }
 
                 Section {
