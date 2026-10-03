@@ -141,6 +141,9 @@ data class TestStep(
     val anchor: String? = null,
     val action: String? = null,
     val crossing: Boolean? = null,
+    /** 판본 2 조각(E62 `parts.body`·`crossingClock`). */
+    val body: String? = null,
+    val crossingClock: Int? = null,
 )
 
 fun walkBriefingJson(
@@ -163,6 +166,8 @@ fun walkBriefingJson(
             }
             if (s.action != null) append(",\"action\":\"${s.action}\"")
             if (s.crossing != null) append(",\"crossing\":${s.crossing}")
+            if (s.body != null) append(",\"parts\":{\"turn\":\"\",\"body\":\"${s.body}\"}")
+            if (s.crossingClock != null) append(",\"crossingClock\":${s.crossingClock}")
             append("}")
         }
     }

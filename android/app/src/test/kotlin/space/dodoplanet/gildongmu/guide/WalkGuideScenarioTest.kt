@@ -37,13 +37,13 @@ class WalkGuideScenarioTest {
     @RegisterExtension
     val main = MainDispatcherExtension(dispatcher)
 
-    private data class Seg(val len: Double, val desc: String, val action: String? = null, val target: String? = null)
+    private data class Seg(val len: Double, val desc: String, val action: String? = null, val target: String? = null, val crossing: Boolean? = null, val crossingClock: Int? = null)
     private data class Fix(val t: Double, val along: Double, val lateral: Double, val acc: Double)
 
     private fun routeJson(steps: List<Seg>, finalApproach: String? = null): String {
         var acc = 0.0
         val testSteps = steps.map { s ->
-            val step = TestStep(s.desc, listOf(north(acc), north(acc + s.len)), target = s.target, action = s.action)
+            val step = TestStep(s.desc, listOf(north(acc), north(acc + s.len)), target = s.target, action = s.action, crossing = s.crossing, crossingClock = s.crossingClock)
             acc += s.len
             step
         }
@@ -108,6 +108,26 @@ class WalkGuideScenarioTest {
         assertEquals(imminent, h.model.ui.value.statusText)
         // 진행 상황은 임박 명령이 아니라 전문을 되읽는다(lastGuidance 불변).
         assertTrue(h.model.progressText().contains("현재 안내, "), h.model.progressText())
+    }
+
+    private val crossingSteps = listOf(
+        Seg(200.0, "직진A", target = "횡단보도"),
+        Seg(30.0, "9시 방향 횡단보도를 건너세요", action = "crosswalk", crossing = true, crossingClock = 9),
+        Seg(100.0, "직진C"),
+    )
+
+    @Test fun `③'' 횡단 임박은 건너는 방향(crossingClock), 들어서면 상태 행의 임박 문장은 지우고 남은 거리 행은 횡단 끝까지(E62)`() = guideTest(dispatcher, { HttpResponse(200, routeJson(crossingSteps)) }) { h ->
+        val fixes = imminentFixes + listOf(Fix(104.0, 196.0, 0.0, 5.0), Fix(108.0, 201.0, 0.0, 5.0), Fix(112.0, 206.0, 0.0, 5.0))
+        val base = startDetail(h, fixes)
+        h.speaker.spoken.clear()
+        feed(h, fixes, base, until = imminentFixes.size)
+        val imminent = h.catalog.get("guide.imminent.crosswalkClock", h.catalog.get("guide.clockDirection", "9"))
+        assertEquals(1, h.speaker.texts.count { it == imminent }, h.speaker.texts.toString())
+        feed(h, fixes, base, from = imminentFixes.size)
+        val ui = h.model.ui.value
+        assertEquals(1, ui.currentStepIndex)
+        assertTrue(ui.statusText != imminent, "지난 임박 문장을 상태 행에 남기지 않는다")
+        assertTrue(ui.remainingText!!.startsWith("횡단보도 끝까지 약 "), ui.remainingText)
     }
 
     @Test fun `⑯ 조회 중 fix 5개 → 경로 호출 1회`() = guideTest(dispatcher) { h ->
@@ -218,23 +238,50 @@ class WalkGuideScenarioTest {
         assertEquals(before, h.speaker.spoken.size, "들은 도착 문장을 되풀이하지 않는다: ${h.speaker.texts}")
     }
 
-    @Test fun `④ 이탈 확정 → 문장·warning 톤 → 자동 조회 1회 → 채택 문장(high)·success 진동·offRoute 해제`() = guideTest(dispatcher, { HttpResponse(200, routeJson(offRouteSteps)) }) { h ->
+    /** 확정 뒤 계속 멀어지는 fix(최솟값 + 25m를 3 fix ∧ 2초, E63 `RerouteNeeded` away). */
+    private val awayFixes = listOf(Fix(37.0, 100.0, 110.0, 10.0), Fix(45.0, 100.0, 120.0, 10.0), Fix(53.0, 100.0, 130.0, 10.0), Fix(61.0, 100.0, 140.0, 10.0))
+
+    @Test fun `④ 이탈 확정 → 방향 문장·warning 톤, 조회 없음 → 계속 멀어지면 자동 조회 1회 → 채택 문장(high)·success 진동·offRoute 해제`() = guideTest(dispatcher, { HttpResponse(200, routeJson(offRouteSteps)) }) { h ->
         val base = startDetail(h, offRouteFixes)
         h.speaker.spoken.clear(); h.tones.played.clear(); h.haptics.fired.clear()
         feed(h, offRouteFixes, base)
-        assertTrue(h.speaker.texts.contains(h.catalog.get("guide.offRoute")))
+        settle()
+        // 확정은 돌아가기 국면의 시작이다 — 벗어난 쪽 문장, 재조회는 없다(E63).
+        assertTrue(h.speaker.texts.any { it.startsWith(h.catalog.get("guide.offRouteRight")) }, h.speaker.texts.toString())
+        assertFalse(h.speaker.texts.contains(h.catalog.get("guide.offRoute")))
         assertTrue(h.tones.played.contains(BeaconTone.warning))
+        assertEquals(1, h.transport.seenUrls.size, "확정만으로는 조회하지 않는다")
+        // 상태 행·윗줄은 벗어난 쪽만(위원장 판정 2026-10-04).
+        assertEquals(h.catalog.get("guide.offRouteRight"), h.model.ui.value.statusText)
+        assertEquals(h.catalog.get("guide.offRouteRight"), h.model.ui.value.liveTopText)
+        h.speaker.spoken.clear(); h.haptics.fired.clear()
+        feed(h, offRouteFixes + awayFixes, base, from = offRouteFixes.size)
         settle()
         assertEquals(2, h.transport.seenUrls.size, "시작 조회 + 자동 재조회")
         val ui = h.model.ui.value
         assertFalse(ui.offRoute)
         assertTrue(ui.offRouteEndedByReroute)
         val adopted = h.speaker.spoken.last()
-        assertTrue(adopted.first.startsWith("새 경로로 다시 안내합니다. 안내 1개, 총 "), adopted.first)
-        assertTrue(adopted.first.endsWith(". 직진"), adopted.first)
+        // 할 일 먼저, 요약은 뒤(E63 문안 라). 머리말은 교체 전 진행 방위(동쪽으로 멀어짐) 기준 새 경로 첫 방향(북 = 9시).
+        assertEquals("새 경로로 다시 안내합니다. 9시 방향으로 도세요. 그 후 직진. 안내 1개, 총 499 미터.", adopted.first)
         assertTrue(adopted.second)
         assertEquals(listOf(ResultHapticKind.success), h.haptics.fired)
         assertEquals(GuideMode.detail, ui.mode)
+    }
+
+    @Test fun `④'' 확정 뒤 경로로 돌아오면 복귀 문장(high)·success 진동, 재조회 없음`() = guideTest(dispatcher, { HttpResponse(200, routeJson(offRouteSteps)) }) { h ->
+        val base = startDetail(h, offRouteFixes)
+        feed(h, offRouteFixes, base)
+        settle()
+        assertTrue(h.model.ui.value.offRoute)
+        h.speaker.spoken.clear(); h.haptics.fired.clear()
+        val back = (0..5).map { Fix(37.0 + it * 4.0, 110.0 + it * 4.0, 0.0, 5.0) }
+        feed(h, offRouteFixes + back, base, from = offRouteFixes.size)
+        settle()
+        assertFalse(h.model.ui.value.offRoute)
+        assertEquals(h.catalog.get("guide.backOnRoute") to true, h.speaker.spoken.first { it.first == h.catalog.get("guide.backOnRoute") })
+        assertEquals(listOf(ResultHapticKind.success), h.haptics.fired)
+        assertEquals(1, h.transport.seenUrls.size)
     }
 
     @Test fun `④' 이탈 중 수동 재조회 — 진행 중이면 재진입 거부, 실패 응답이면 rerouteFailed·failure 진동`() = guideTest(dispatcher, { url ->
@@ -242,7 +289,7 @@ class WalkGuideScenarioTest {
     }) { h ->
         val base = startDetail(h, offRouteFixes)
         feed(h, offRouteFixes, base)
-        settle()  // 자동 조회는 502 → 회차 종결(통지 없음), 이탈 유지
+        settle()  // 확정은 조회하지 않는다(E63) — 이탈 유지
         assertTrue(h.model.ui.value.offRoute)
         h.speaker.spoken.clear(); h.haptics.fired.clear()
         h.model.requestReroute()
@@ -252,7 +299,7 @@ class WalkGuideScenarioTest {
         assertFalse(h.model.ui.value.isRerouting)
         assertEquals(h.catalog.get("guide.rerouteFailed") to true, h.speaker.spoken.single())
         assertEquals(listOf(ResultHapticKind.failure), h.haptics.fired)
-        assertEquals(3, h.transport.seenUrls.size)
+        assertEquals(2, h.transport.seenUrls.size)
         assertTrue(h.model.ui.value.offRoute)
     }
 

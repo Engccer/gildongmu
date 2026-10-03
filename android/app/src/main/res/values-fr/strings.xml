@@ -128,7 +128,6 @@
     <string name="android_guide_altPreviewRemaining">itinéraire actuel restant %1$s</string>
     <string name="android_guide_altPreviewSummary">%1$s, %2$s au total</string>
     <string name="android_guide_altPreviewTime">environ %1$s min à pied</string>
-    <string name="android_guide_autoReroute">Guidage repris sur un nouvel itinéraire. {1, plural, one {%1$s instruction} other {%1$s instructions}}, %2$s au total. %3$s</string>
     <string name="android_guide_destChanged">Nouvelle destination : %1$s.</string>
     <string name="android_guide_destChangedFetching">Recherche d\'un nouvel itinéraire.</string>
     <string name="android_guide_destChangedNoName">Destination modifiée.</string>

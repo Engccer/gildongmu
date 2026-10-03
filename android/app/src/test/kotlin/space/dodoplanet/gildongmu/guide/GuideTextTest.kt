@@ -1,19 +1,25 @@
 package space.dodoplanet.gildongmu.guide
 
 import space.dodoplanet.gildongmu.directions.CatalogStrings
+import space.dodoplanet.gildongmu.kit.CrossingRemaining
 import space.dodoplanet.gildongmu.kit.GuidePhase
 import space.dodoplanet.gildongmu.kit.GuideStepGeometry
 import space.dodoplanet.gildongmu.kit.LiveNextRow
+import space.dodoplanet.gildongmu.kit.LiveStepFields
 import space.dodoplanet.gildongmu.kit.LiveTopRow
+import space.dodoplanet.gildongmu.kit.OffRouteGuidance
+import space.dodoplanet.gildongmu.kit.OffRouteSide
 import space.dodoplanet.gildongmu.kit.RelativeDirection
 import space.dodoplanet.gildongmu.kit.RoutePoint
 import space.dodoplanet.gildongmu.kit.WalkAction
 import space.dodoplanet.gildongmu.kit.WalkHealthSummary
 import space.dodoplanet.gildongmu.kit.buildGuideRoute
 import space.dodoplanet.gildongmu.kit.initialGuideState
+import space.dodoplanet.gildongmu.kit.liveStepsFrom
 import space.dodoplanet.gildongmu.kit.models.FinalApproachPayload
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 /** iOS `GuideText.swift` walk 함수의 실문장(ko 카탈로그). 어순은 로케일 문구가 소유한다 — 여기는 조립 규칙만. */
 class GuideTextTest {
@@ -61,12 +67,12 @@ class GuideTextTest {
 
     @Test fun `진행 상황 — following 서수·현재·다음, offRoute 직선, finalApproach 직선, uncertain 마지막 안내`() {
         val s = initialGuideState(route, 0.0).state
-        assertEquals("안내 3개 중 1번째 구간. 남은 거리 331m, 약 5분. 현재 안내, 천호대로를 따라 119m 이동. 다음 안내, 횡단보도를 건너세요", t.progress(route, s, "길동역", null, null, 5))
-        assertEquals("경로 이탈 상태. 목적지까지 직선거리 120m", t.progress(route, s.copy(phase = GuidePhase.offRoute), "길동역", null, 120.0, null))
-        assertEquals("경로에서 벗어난 것 같습니다", t.progress(route, s.copy(phase = GuidePhase.offRoute), "길동역", null, null, null))
-        assertEquals("목적지까지 직선거리 40m", t.progress(route, s.copy(phase = GuidePhase.finalApproach), "길동역", null, 40.0, null))
-        assertEquals("위치 확신이 낮습니다. 마지막 안내, 천호대로를 따라 119m 이동", t.progress(route, s.copy(phase = GuidePhase.uncertain), "길동역", "천호대로를 따라 119m 이동", null, null))
-        assertEquals("위치 확신이 낮습니다. 마지막 안내, 아직 안내가 없습니다", t.progress(route, s.copy(phase = GuidePhase.reacquiring), "길동역", null, null, null))
+        assertEquals("안내 3개 중 1번째 구간. 남은 거리 331m, 약 5분. 현재 안내, 천호대로를 따라 119m 이동. 다음 안내, 횡단보도를 건너세요", t.progress(route, s, "길동역", null, null, 5, null))
+        assertEquals("경로 이탈 상태. 목적지까지 직선거리 120m", t.progress(route, s.copy(phase = GuidePhase.offRoute), "길동역", null, 120.0, null, null))
+        assertEquals("경로에서 벗어난 것 같습니다", t.progress(route, s.copy(phase = GuidePhase.offRoute), "길동역", null, null, null, null))
+        assertEquals("목적지까지 직선거리 40m", t.progress(route, s.copy(phase = GuidePhase.finalApproach), "길동역", null, 40.0, null, null))
+        assertEquals("위치 확신이 낮습니다. 마지막 안내, 천호대로를 따라 119m 이동", t.progress(route, s.copy(phase = GuidePhase.uncertain), "길동역", "천호대로를 따라 119m 이동", null, null, null))
+        assertEquals("위치 확신이 낮습니다. 마지막 안내, 아직 안내가 없습니다", t.progress(route, s.copy(phase = GuidePhase.reacquiring), "길동역", null, null, null, null))
     }
 
     @Test fun `하단 2행 렌더 — GuideLiveRowsTest 규칙과 같은 문장`() {
@@ -102,4 +108,54 @@ class GuideTextTest {
 
     @Suppress("unused")
     private val p0: RoutePoint = north(0.0)
+    /** 첫 스텝에 방향 구절을 뗀 문장(`parts.body`)이 있는 표시 입력(E62). */
+    private val bodied = liveStepsFrom(route, listOf(LiveStepFields(null, null, false, body = "천호대로를 따라 119m 이동B"), LiveStepFields(null, null, true, crossingClock = 9), LiveStepFields(null, null, false)))
+
+    @Test fun `되읽기는 들어선 첫 스텝의 회전 문장을 뗀다 — 뒤 스텝은 원문, body 없으면 원문(E62)`() {
+        assertEquals("천호대로를 따라 119m 이동B", t.rereadUnit(route, listOf(0), bodied))
+        assertEquals("다음 안내. 천호대로를 따라 119m 이동B. 횡단보도를 건너세요", t.rereadUnit(route, listOf(0, 1), bodied))
+        assertEquals("횡단보도를 건너세요", t.rereadUnit(route, listOf(1), bodied))
+    }
+
+    @Test fun `전문 거리 머리말 — 묶음이면 다음 안내 서두 뒤 첫 문장에, 1m 미만은 원문(E62 a11y M3)`() {
+        assertEquals("앞으로 약 25m 가다가 횡단보도를 건너세요", t.announceAhead(route, listOf(1), 25.0))
+        assertEquals("다음 안내. 앞으로 약 25m 가다가 횡단보도를 건너세요. 길동로를 따라 200m 이동", t.announceAhead(route, listOf(1, 2), 25.0))
+        assertEquals("횡단보도를 건너세요", t.announceAhead(route, listOf(1), 0.4))
+    }
+
+    @Test fun `임박 횡단 방향 — 12시·6시 낱말, 그 밖은 시계, 방향 모름·비횡단은 종전(E62)`() {
+        assertEquals("잠시 후 진행 방향 그대로 횡단보도를 건너세요", t.imminentText(WalkAction.crosswalk, 12))
+        assertEquals("잠시 후 뒤로 돌아 횡단보도를 건너세요", t.imminentText(WalkAction.crosswalk, 6))
+        assertEquals("잠시 후 9시 방향으로 돌아 횡단보도를 건너세요", t.imminentText(WalkAction.crosswalk, 9))
+        assertEquals("잠시 후 횡단보도를 건너세요", t.imminentText(WalkAction.crosswalk, null))
+        assertEquals("잠시 후 왼쪽으로 도세요", t.imminentText(WalkAction.left, 9))
+    }
+
+    @Test fun `횡단 중 남은 거리 행 — 횡단보도와 지하보도(E62 판정 4)`() {
+        assertEquals("횡단보도 끝까지 약 30m", t.crossingRemaining(CrossingRemaining(30, WalkAction.crosswalk)))
+        assertEquals("지하보도 끝까지 약 10m", t.crossingRemaining(CrossingRemaining(10, WalkAction.underpass)))
+    }
+
+    @Test fun `이탈 문장 — 벗어난 쪽 + 돌아갈 시계, 6시는 뒤로, 보류는 무발화(E63)`() {
+        assertEquals("경로에서 오른쪽으로 벗어났습니다. 8시 방향으로 돌아가세요", t.offRoute(OffRouteGuidance.turn, OffRouteSide.right, 240.0))
+        assertEquals("경로에서 오른쪽으로 벗어났습니다. 뒤로 도세요", t.offRoute(OffRouteGuidance.turn, OffRouteSide.right, 180.0))
+        assertEquals("경로와 반대 방향입니다. 뒤로 도세요", t.offRoute(OffRouteGuidance.opposite, OffRouteSide.left, null))
+        assertEquals("경로에서 왼쪽으로 벗어났습니다", t.offRoute(OffRouteGuidance.sideOnly, OffRouteSide.left, null))
+        assertEquals("경로에서 벗어난 것 같습니다", t.offRoute(OffRouteGuidance.turn, null, 90.0))
+        assertNull(t.offRoute(OffRouteGuidance.hold, OffRouteSide.right, 300.0))
+        assertEquals("경로에서 벗어난 것 같습니다", t.offRouteSide(null))
+    }
+
+    @Test fun `자동 재조회 채택 — 할 일 먼저, 머리말이 있으면 첫 스텝은 body(E63 문안 라·J1)`() {
+        val first = listOf(0)
+        assertEquals("새 경로로 다시 안내합니다. 2시 방향으로 도세요. 그 후 천호대로를 따라 119m 이동B. 안내 3개, 총 331m.", t.autoReroute(route, first, bodied, 2))
+        assertEquals("새 경로로 다시 안내합니다. 진행 방향 그대로 천호대로를 따라 119m 이동B. 안내 3개, 총 331m.", t.autoReroute(route, first, bodied, 12))
+        assertEquals("새 경로로 다시 안내합니다. 뒤로 도세요. 그 후 천호대로를 따라 119m 이동B. 안내 3개, 총 331m.", t.autoReroute(route, first, bodied, 6))
+        assertEquals("새 경로로 다시 안내합니다. 천호대로를 따라 119m 이동. 안내 3개, 총 331m.", t.autoReroute(route, first, bodied, null))
+    }
+
+    @Test fun `진행 상황 현재 안내는 body(E62 a11y M2)`() {
+        val s = initialGuideState(route, 0.0).state
+        assertEquals("안내 3개 중 1번째 구간. 남은 거리 331m. 현재 안내, 천호대로를 따라 119m 이동B. 다음 안내, 횡단보도를 건너세요", t.progress(route, s, "길동역", null, null, null, "천호대로를 따라 119m 이동B"))
+    }
 }

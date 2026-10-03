@@ -128,7 +128,6 @@
     <string name="android_guide_altPreviewRemaining">ruta actual restante %1$s</string>
     <string name="android_guide_altPreviewSummary">%1$s, %2$s en total</string>
     <string name="android_guide_altPreviewTime">unos %1$s min a pie</string>
-    <string name="android_guide_autoReroute">Ahora te guío por una nueva ruta. {1, plural, one {%1$s indicación} other {%1$s indicaciones}}, %2$s en total. %3$s</string>
     <string name="android_guide_destChanged">Nuevo destino: %1$s.</string>
     <string name="android_guide_destChangedFetching">Buscando una nueva ruta.</string>
     <string name="android_guide_destChangedNoName">Destino cambiado.</string>

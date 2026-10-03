@@ -116,7 +116,10 @@ class WalkGuideWaypointProgressTest {
         walk(h, 8.0, 200.0)
         assertTrue(h.model.ui.value.remainingText!!.startsWith("목적지 길동역까지 "))
         h.transport.seenUrls.clear()
-        walk(h, 200.0, 232.0, lateral = 80.0)   // 이탈 확정 → 자동 재조회(경유지 없이) 채택
+        walk(h, 200.0, 232.0, lateral = 80.0)   // 이탈 확정 = 돌아가기 국면(E63, 조회 없음)
+        settle()
+        assertTrue(h.transport.seenUrls.isEmpty(), h.transport.seenUrls.toString())
+        for (lateral in listOf(110.0, 120.0, 130.0, 140.0)) walk(h, 232.0, 232.0, lateral = lateral)   // 계속 멀어짐 → 자동 재조회(경유지 없이) 채택
         settle()
         assertTrue(h.model.ui.value.offRouteEndedByReroute, h.speaker.texts.toString())
         assertFalse(h.transport.seenUrls.any { it.contains("via=") })

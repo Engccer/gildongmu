@@ -128,7 +128,6 @@
     <string name="android_guide_altPreviewRemaining">current route remaining %1$s</string>
     <string name="android_guide_altPreviewSummary">%1$s, %2$s total</string>
     <string name="android_guide_altPreviewTime">about %1$s min walk</string>
-    <string name="android_guide_autoReroute">Now guiding on a new route. {1, plural, one {%1$s instruction} other {%1$s instructions}}, %2$s total. %3$s</string>
     <string name="android_guide_destChanged">New destination: %1$s.</string>
     <string name="android_guide_destChangedFetching">Finding a new route.</string>
     <string name="android_guide_destChangedNoName">Destination changed.</string>

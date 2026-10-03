@@ -16,11 +16,6 @@
   "android.guide.altPreviewTime": [
     "minutes"
   ],
-  "android.guide.autoReroute": [
-    "count",
-    "distance",
-    "first"
-  ],
   "android.guide.switchedToAccessible": [
     "count",
     "distance",

@@ -128,7 +128,6 @@
     <string name="android_guide_altPreviewRemaining">지금 경로 잔여 %1$s</string>
     <string name="android_guide_altPreviewSummary">%1$s, 총 %2$s</string>
     <string name="android_guide_altPreviewTime">도보 약 %1$s분</string>
-    <string name="android_guide_autoReroute">새 경로로 다시 안내합니다. 안내 %1$s개, 총 %2$s. %3$s</string>
     <string name="android_guide_destChanged">새 목적지 %1$s.</string>
     <string name="android_guide_destChangedFetching">경로를 조회하고 있습니다.</string>
     <string name="android_guide_destChangedNoName">목적지를 바꿨습니다.</string>

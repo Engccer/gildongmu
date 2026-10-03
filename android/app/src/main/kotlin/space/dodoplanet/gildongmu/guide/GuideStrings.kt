@@ -99,7 +99,22 @@ internal fun guideStringId(key: String): Int? = when (key) {
     "guide.rerouteBusy" -> R.string.guide_rerouteBusy
     "guide.rerouteFailed" -> R.string.guide_rerouteFailed
     "guide.rerouteDone" -> R.string.guide_rerouteDone
-    "android.guide.autoReroute" -> R.string.android_guide_autoReroute
+    "guide.autoReroute" -> R.string.guide_autoReroute
+    "guide.rerouteHeadStraight" -> R.string.guide_rerouteHeadStraight
+    "guide.rerouteHeadBack" -> R.string.guide_rerouteHeadBack
+    "guide.rerouteHeadClock" -> R.string.guide_rerouteHeadClock
+    "guide.offRouteRight" -> R.string.guide_offRouteRight
+    "guide.offRouteLeft" -> R.string.guide_offRouteLeft
+    "guide.offRouteOpposite" -> R.string.guide_offRouteOpposite
+    "guide.offRouteWith" -> R.string.guide_offRouteWith
+    "guide.offRouteReturnClock" -> R.string.guide_offRouteReturnClock
+    "guide.offRouteTurnBack" -> R.string.guide_offRouteTurnBack
+    "guide.clockDirection" -> R.string.guide_clockDirection
+    "guide.imminent.crosswalkAhead" -> R.string.guide_imminent_crosswalkAhead
+    "guide.imminent.crosswalkBack" -> R.string.guide_imminent_crosswalkBack
+    "guide.imminent.crosswalkClock" -> R.string.guide_imminent_crosswalkClock
+    "guide.crossingRemaining" -> R.string.guide_crossingRemaining
+    "guide.crossingRemainingUnderpass" -> R.string.guide_crossingRemainingUnderpass
     "android.guide.destChanged" -> R.string.android_guide_destChanged
     "android.guide.destChangedFetching" -> R.string.android_guide_destChangedFetching
     "android.guide.waypointKept" -> R.string.android_guide_waypointKept

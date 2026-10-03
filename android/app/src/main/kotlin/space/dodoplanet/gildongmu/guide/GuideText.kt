@@ -1,15 +1,20 @@
 package space.dodoplanet.gildongmu.guide
 
 import space.dodoplanet.gildongmu.directions.Strings
+import space.dodoplanet.gildongmu.kit.CrossingRemaining
 import space.dodoplanet.gildongmu.kit.GuidePhase
 import space.dodoplanet.gildongmu.kit.GuideRoute
 import space.dodoplanet.gildongmu.kit.GuideState
 import space.dodoplanet.gildongmu.kit.LiveNextRow
+import space.dodoplanet.gildongmu.kit.LiveStepInput
 import space.dodoplanet.gildongmu.kit.LiveTopRow
+import space.dodoplanet.gildongmu.kit.OffRouteGuidance
+import space.dodoplanet.gildongmu.kit.OffRouteSide
 import space.dodoplanet.gildongmu.kit.RelativeDirection
 import space.dodoplanet.gildongmu.kit.WalkAction
 import space.dodoplanet.gildongmu.kit.WalkHealth
 import space.dodoplanet.gildongmu.kit.WalkHealthSummary
+import space.dodoplanet.gildongmu.kit.clockHour
 import space.dodoplanet.gildongmu.kit.finalApproachArriveMeters
 import space.dodoplanet.gildongmu.kit.formatDistance
 import space.dodoplanet.gildongmu.kit.joinText
@@ -101,11 +106,31 @@ class GuideText(private val s: Strings) {
         return s.get("guide.bundle", descs.joinToString(". "))
     }
 
-    /** walk 선행 전문에 결정 지점까지의 실위치 거리를 단다(위원장 판정 2026-10-03, iOS 동형). 1m 미만이면 원문만. */
-    fun announceAhead(unit: String, meters: Double): String {
+    /**
+     * 구간 안에서 다시 읽는 유닛 문장(E62 — 되읽기·억제 복구, iOS `rereadUnit`). 첫 index는 이미 들어선 스텝이라 방향 구절을 뗀
+     * 문장(`body`)이 있으면 그것을 읽는다 — 이미 돈 회전을 다시 지시하지 않는다(문안 확정본). 뒤 스텝들은 아직 앞이라 원문.
+     */
+    fun rereadUnit(route: GuideRoute, indices: List<Int>, liveSteps: List<LiveStepInput>): String {
+        val descs = indices.mapIndexedNotNull { pos, i ->
+            val step = route.steps.getOrNull(i) ?: return@mapIndexedNotNull null
+            if (pos == 0) liveSteps.getOrNull(i)?.body ?: step.description else step.description
+        }
+        if (descs.size <= 1) return descs.firstOrNull() ?: ""
+        return s.get("guide.bundle", descs.joinToString(". "))
+    }
+
+    /**
+     * walk 선행 전문에 결정 지점까지의 실위치 거리를 단다(위원장 판정 2026-10-03, iOS 동형). 1m 미만이면 원문만. 묶음이면 머리말은
+     * 첫 문장에 붙고 "다음 안내." 서두는 그 앞이다 — 서두 뒤에 머리말을 두면 "앞으로 약 25m 가다가 다음 안내."가 된다(E62 a11y M3).
+     */
+    fun announceAhead(route: GuideRoute, indices: List<Int>, meters: Double): String {
         val rounded = meters.roundToInt()
-        if (rounded < 1) return unit
-        return s.get("guide.announceAhead", formatDistance(rounded), unit)
+        if (rounded < 1) return unit(route, indices)
+        val descs = indices.mapNotNull { route.steps.getOrNull(it)?.description }
+        val first = descs.firstOrNull() ?: return ""
+        val headed = s.get("guide.announceAhead", formatDistance(rounded), first)
+        if (descs.size <= 1) return headed
+        return s.get("guide.bundle", (listOf(headed) + descs.drop(1)).joinToString(". "))
     }
 
     /** 시작 원자 발화(요약과 첫 안내를 한 문장으로). `destination`에 기본값을 두지 않는다(E40). */
@@ -132,9 +157,58 @@ class GuideText(private val s: Strings) {
         return s.get(key, route.steps.size, formatDistance(route.totalMeters.roundToInt()), unit(route, firstIndices))
     }
 
-    /** 이탈 시 자동 재조회 채택 통지(E10ⓑ). 형제와 같은 "규모 → 첫 안내" 구조. */
-    fun autoReroute(route: GuideRoute, firstIndices: List<Int>): String =
-        s.get("android.guide.autoReroute", route.steps.size, formatDistance(route.totalMeters.roundToInt()), unit(route, firstIndices))
+    /**
+     * 자동 재조회 채택 통지(E63 문안 라 — "새 경로로 다시 안내합니다. 2시 방향으로 도세요. 그 후 {첫 유닛}. 안내 {count}개, 총 {distance}.",
+     * iOS `autoReroute`). `headClock`은 교체 **전** 진행 방위 기준 새 경로 첫 방향(:kit `rerouteHeadClock`), null이면 머리말이 없다.
+     * 인자 순서는 ko 문장 순서(arg-order).
+     */
+    fun autoReroute(route: GuideRoute, firstIndices: List<Int>, liveSteps: List<LiveStepInput>, headClock: Int?): String =
+        s.get("guide.autoReroute", headedUnit(route, firstIndices, liveSteps, headClock), route.steps.size, formatDistance(route.totalMeters.roundToInt()))
+
+    /**
+     * 새 경로 첫 유닛에 진행 방위 기준 방향 머리말을 단다(E63 spec §3.7, iOS `headedUnit`). 12 = "진행 방향 그대로"(J1), 6 = "뒤로 도세요.
+     * 그 후", 그 밖 = "N시 방향으로 도세요. 그 후". 머리말이 있으면 첫 스텝의 경로 기준 방향 조각은 뺀다(`body` — 방향을 두 번 말하지 않는다).
+     */
+    fun headedUnit(route: GuideRoute, indices: List<Int>, liveSteps: List<LiveStepInput>, headClock: Int?): String {
+        val clock = headClock ?: return unit(route, indices)
+        val descs = indices.mapIndexedNotNull { pos, i ->
+            val step = route.steps.getOrNull(i) ?: return@mapIndexedNotNull null
+            if (pos == 0) liveSteps.getOrNull(i)?.body ?: step.description else step.description
+        }
+        val first = descs.firstOrNull() ?: return ""
+        val headed = when (clock) {
+            12 -> s.get("guide.rerouteHeadStraight", first)
+            6 -> s.get("guide.rerouteHeadBack", first)
+            else -> s.get("guide.rerouteHeadClock", clockDirection(clock), first)
+        }
+        if (descs.size <= 1) return headed
+        return s.get("guide.bundle", (listOf(headed) + descs.drop(1)).joinToString(". "))
+    }
+
+    /**
+     * 이탈 문장(E63 문안 다·마 + 위원장 판정 J2·J3, iOS `offRoute`의 walk 갈래 — 안드로이드에 자동차 안내는 없다). 벗어난 쪽(낱말) + 돌아갈
+     * 쪽(시계). 보류(`hold`)는 null — 이미 경로 쪽으로 걷는 사람에게 말하지 않는다. 6시는 "뒤로 도세요".
+     */
+    fun offRoute(guidance: OffRouteGuidance, side: OffRouteSide?, returnRelDeg: Double?): String? = when (guidance) {
+        OffRouteGuidance.hold -> null
+        OffRouteGuidance.sideOnly -> offRouteSide(side)
+        OffRouteGuidance.opposite -> s.get("guide.offRouteWith", s.get("guide.offRouteOpposite"), s.get("guide.offRouteTurnBack"))
+        OffRouteGuidance.turn -> if (side == null || returnRelDeg == null) offRouteSide(side) else {
+            val clock = clockHour(returnRelDeg)
+            val action = if (clock == 6) s.get("guide.offRouteTurnBack") else s.get("guide.offRouteReturnClock", clockDirection(clock))
+            s.get("guide.offRouteWith", offRouteSide(side), action)
+        }
+    }
+
+    /** 벗어난 쪽만(J3·상태 행 — 위원장 판정 2026-10-04). 쪽을 모르면(수직 3m 미만) 종전 문장. */
+    fun offRouteSide(side: OffRouteSide?): String = when (side) {
+        OffRouteSide.right -> s.get("guide.offRouteRight")
+        OffRouteSide.left -> s.get("guide.offRouteLeft")
+        null -> s.get("guide.offRoute")
+    }
+
+    /** "N시 방향"(E62·E63 공유 키). */
+    fun clockDirection(hour: Int): String = s.get("guide.clockDirection", hour.toString())
 
     /**
      * walk 주기 통지 단문(웹 eventText periodic 미러). 횡단 스텝은 정본 문장을 재낭독한다 — 판정은 **서버 투영 행동**만
@@ -167,6 +241,25 @@ class GuideText(private val s: Strings) {
         WalkAction.keepLeft -> s.get("guide.liveAction.left")
         WalkAction.keepRight -> s.get("guide.liveAction.right")
     }
+
+    /**
+     * 도보 임박 명령에 횡단 방향을 싣는다(E62 문안 나, iOS `imminentText(_:crossingClock:)`). 12 = 진행 방향 그대로, 6 = 뒤로, 그 밖은
+     * 시계 방향, null(방향 모름)은 종전 문장.
+     */
+    fun imminentText(action: WalkAction, crossingClock: Int?): String {
+        if (action != WalkAction.crosswalk || crossingClock == null) return imminentText(action)
+        return when (crossingClock) {
+            12 -> s.get("guide.imminent.crosswalkAhead")
+            6 -> s.get("guide.imminent.crosswalkBack")
+            else -> s.get("guide.imminent.crosswalkClock", clockDirection(crossingClock))
+        }
+    }
+
+    /** 횡단 중 남은 거리 행(E62 판정 4 — 말 없이 화면에만, 10m 단위). */
+    fun crossingRemaining(remaining: CrossingRemaining): String = s.get(
+        if (remaining.action == WalkAction.underpass) "guide.crossingRemainingUnderpass" else "guide.crossingRemaining",
+        formatDistance(remaining.meters),
+    )
 
     /** 도보 임박 명령(20m). */
     fun imminentText(action: WalkAction): String = when (action) {
@@ -205,14 +298,15 @@ class GuideText(private val s: Strings) {
 
     /**
      * 진행 상황 버튼 응답 — 상태별로 거짓 정밀을 만들지 않는다. `straightLineMeters`는 이탈·최종 접근 전용(마지막 fix→목적지
-     * 직선거리). uncertain 계열엔 서수를 붙이지 않는다.
+     * 직선거리). uncertain 계열엔 서수를 붙이지 않는다. `currentBody`: 현재 스텝의 방향 구절을 뗀 문장(E62 `parts.body`) — 이미
+     * 들어선 스텝이라 돈 회전을 다시 지시하지 않는다. null이면 문장 전체(iOS 동형).
      */
-    fun progress(route: GuideRoute, state: GuideState, destinationLabel: String, lastGuidance: String?, straightLineMeters: Double?, etaMinutes: Int?): String =
+    fun progress(route: GuideRoute, state: GuideState, destinationLabel: String, lastGuidance: String?, straightLineMeters: Double?, etaMinutes: Int?, currentBody: String?): String =
         when (state.phase) {
             GuidePhase.following -> {
                 val cur = route.steps[state.stepIndex]
                 val frame = progressFrame(route, state, etaMinutes)
-                val current = s.get("guide.progressCurrent", cur.description)
+                val current = s.get("guide.progressCurrent", currentBody ?: cur.description)
                 val next = route.steps.getOrNull(state.stepIndex + 1)
                 if (next == null) {
                     val segment = formatDistance(max(0.0, cur.endD - state.d).roundToInt())
@@ -221,7 +315,13 @@ class GuideText(private val s: Strings) {
                     "$frame. $current. " + s.get("guide.progressNext", next.description)
                 }
             }
-            GuidePhase.bundle -> "${progressFrame(route, state, etaMinutes)}. " + unit(route, unitAt(route, state.stepIndex))
+            GuidePhase.bundle -> {
+                // 되읽기와 같은 규칙 — 지금 스텝부터, 지금 스텝은 회전 문장을 뗀다(`currentBody`, 없으면 원문, iOS walk 갈래 동형).
+                val descs = unitAt(route, state.stepIndex).filter { it >= state.stepIndex }
+                    .map { if (it == state.stepIndex) currentBody ?: route.steps[it].description else route.steps[it].description }
+                val body = if (descs.size > 1) s.get("guide.bundle", descs.joinToString(". ")) else descs.firstOrNull() ?: ""
+                "${progressFrame(route, state, etaMinutes)}. $body"
+            }
             GuidePhase.uncertain, GuidePhase.reacquiring -> s.get("guide.progressUncertain", lastGuidance ?: s.get("guide.noGuidanceYet"))
             GuidePhase.offRoute -> if (straightLineMeters == null) s.get("guide.offRoute")
             else s.get("guide.progressOffRoute", formatDistance(straightLineMeters.roundToInt()))

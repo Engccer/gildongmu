@@ -37,7 +37,6 @@ import space.dodoplanet.gildongmu.kit.GuideSpeechChannel
 import space.dodoplanet.gildongmu.kit.GuideSpeechClass
 import space.dodoplanet.gildongmu.kit.beaconNoticeSpeechClass
 import space.dodoplanet.gildongmu.kit.guideEventSpeechClass
-import space.dodoplanet.gildongmu.kit.OffRouteGuidance
 import space.dodoplanet.gildongmu.kit.OffRouteNotice
 import space.dodoplanet.gildongmu.kit.guideSpeechChannel
 import space.dodoplanet.gildongmu.kit.DisplayUnit
@@ -53,6 +52,7 @@ import space.dodoplanet.gildongmu.kit.GuideTuning
 import space.dodoplanet.gildongmu.kit.KeyValueStore
 import space.dodoplanet.gildongmu.kit.KoreanParticle
 import space.dodoplanet.gildongmu.kit.LiveRowsState
+import space.dodoplanet.gildongmu.kit.LiveTopRow
 import space.dodoplanet.gildongmu.kit.LiveStepFields
 import space.dodoplanet.gildongmu.kit.LiveStepInput
 import space.dodoplanet.gildongmu.kit.MotionConstants
@@ -81,6 +81,7 @@ import space.dodoplanet.gildongmu.kit.bearingDegrees
 import space.dodoplanet.gildongmu.kit.briefArrivalWindowStep
 import space.dodoplanet.gildongmu.kit.buildDisplayUnits
 import space.dodoplanet.gildongmu.kit.buildGuideRoute
+import space.dodoplanet.gildongmu.kit.clockHour
 import space.dodoplanet.gildongmu.kit.courseAxisVerdict
 import space.dodoplanet.gildongmu.kit.courseStep
 import space.dodoplanet.gildongmu.kit.finalApproachArriveMeters
@@ -100,8 +101,10 @@ import space.dodoplanet.gildongmu.kit.models.FinalApproachPayload
 import space.dodoplanet.gildongmu.kit.models.WalkLineKind
 import space.dodoplanet.gildongmu.kit.motionStep
 import space.dodoplanet.gildongmu.kit.presumedArrivalStep
+import space.dodoplanet.gildongmu.kit.projectionLagMeters
 import space.dodoplanet.gildongmu.kit.rebaseBeaconState
 import space.dodoplanet.gildongmu.kit.relativeDirection
+import space.dodoplanet.gildongmu.kit.rerouteHeadClock
 import space.dodoplanet.gildongmu.kit.routeOriginStep
 import space.dodoplanet.gildongmu.kit.sessionIdleStationaryElapsed
 import space.dodoplanet.gildongmu.kit.sessionIdleStep
@@ -211,7 +214,14 @@ class WalkGuideModel(
             if (was && !value) {
                 val recovery = pendingRecovery ?: return
                 pendingRecovery = null
-                announce(recovery, speechClass = GuideSpeechClass.actionable)   // 보관 대상(예고·경유지 도착)은 전부 행동 문장
+                // 복구 시점에 실위치가 그 유닛 첫 스텝에 이미 들어섰으면 방향 구절을 뗀 문장으로(E62 — 이미 돈 회전을 다시 지시하지
+                // 않는다, iOS 동형). 판정은 리듀서와 같은 실위치(원시 d + lag).
+                val entered = pendingRecoveryEntered?.let { alt ->
+                    val gs = guideState
+                    if (gs != null && gs.d + projectionLagMeters >= alt.startD) alt.text else null
+                }
+                pendingRecoveryEntered = null
+                announce(entered ?: recovery, speechClass = GuideSpeechClass.actionable)   // 보관 대상(예고·경유지 도착)은 전부 행동 문장
             }
         }
 
@@ -244,7 +254,23 @@ class WalkGuideModel(
     private var gateState = BeaconGateState.initial
     private var toneState = ToneLayerState.initial
     private var motionState = MotionJudgeState.initial
+    /**
+     * 세션이 쥐는 경로. 경로가 바뀌면 옛 경로 기준의 횡단 남은 거리 행·"들어선 뒤" 복구 문장·지난 임박 상태 문장을 버린다(E62, iOS
+     * `guideRoute didSet` 동형) — 커밋 자리는 남은 거리 행을 하단 2행 재설정보다 먼저 갱신해, 비우지 않으면 새 경로 첫 fix 동안
+     * 옛 "횡단보도 끝까지"가 남는다.
+     */
     private var guideRoute: GuideRoute? = null
+        set(v) {
+            field = v
+            liveCrossingText = null
+            pendingRecovery = null
+            pendingRecoveryEntered = null
+            imminentStatus = null
+        }
+    /** 횡단 중 남은 거리 행 문장(E62 판정 4 — "횡단보도 끝까지 약 30m", 말 없이 화면에만). null이면 남은 거리 행은 종전 문장. */
+    private var liveCrossingText: String? = null
+    /** 상태 행에 올린 임박 문장과 그 대상 스텝(E62 a11y M1). 그 스텝에 들어서면 상태 행에서 지운다. */
+    private var imminentStatus: Pair<Int, String>? = null
     private var guideRouteDurationSeconds: Int? = null
     private var guideState: GuideState? = null
     private var displayUnits: List<DisplayUnit> = emptyList()
@@ -274,6 +300,24 @@ class WalkGuideModel(
     private var rerouteInFlight = false
     private var proposalToken = 0
     private var proposalFetchCount = 0
+    /**
+     * 진행 중인 자동 조회의 토큰 — 그 조회가 아직 유효하면(`== proposalToken`) `RerouteNeeded`를 무시한다(리듀서는 이미 재무장했다. 새 요청이
+     * 토큰을 올려 진행 중 조회를 버리면 느린 망에서 채택 없이 예산만 쓴다, E63 spec §3.5). 폐기로 토큰이 올라가면 옛 조회가 다음 회차를 막지 않는다.
+     */
+    private var proposalInFlightToken: Int? = null
+    /**
+     * 이 이탈 회차에 게시해 아직 버려지지 않은 이탈 문장들(E63 §3.4). 비었으면 복귀 때 "경로로 복귀했습니다"를 말하지 않는다. ⚠ 단일 Boolean이
+     * 아니라 게시 번호 집합이다 — 들은 확정 문장 뒤 백그라운드 재통지가 버려져도 들은 문장의 기록이 지워지지 않는다(iOS 동형).
+     */
+    private val offRouteNoticeLive = mutableSetOf<Int>()
+    private var offRouteNoticeSeq = 0
+    private val offRouteNoticePosted: Boolean get() = offRouteNoticeLive.isNotEmpty()
+    /** 돌아가기 국면의 상태 행 문장: 벗어난 쪽만(위원장 판정 2026-10-04 — 시계 방향은 그 순간에만 참이라 음성으로만). */
+    private var offRouteLine: String? = null
+    /** 이 이탈 회차의 자동 재조회 요청 수와 확정 시각·좌표(진단 로그 `rerouteTrigger`, E63 spec §6). */
+    private var rerouteTriggerCount = 0
+    private var offRouteConfirmedAt: Double? = null
+    private var offRouteConfirmCoord: RoutePoint? = null
     private var lastStepFree: String? = null
     /** 경로 재획득(목적지·경유지 변경)이 승계하는 방위 유도기 버퍼 — 위치 종속이라 버리지 않는다. 다음 `fetchGuideRoute` 성공이 1회 소비(iOS 동형). */
     private var carriedCourseDerivation: CourseDerivationState? = null
@@ -293,6 +337,8 @@ class WalkGuideModel(
     // ── 발화 장부 ──
     private var lastGuidance: String? = null
     private var pendingRecovery: String? = null
+    /** 억제 복구 대상이 유닛 전문일 때, 그 유닛 첫 스텝 시작과 "들어선 뒤" 문장(E62). 복구 시점에 들어섰으면 이것을 읽는다. */
+    private var pendingRecoveryEntered: RecoveryEntered? = null
     private var missedAnnouncement = false
     private var pendingStepFreeNotice: String? = null
     private var pendingFinalApproachIntro: String? = null
@@ -555,6 +601,12 @@ class WalkGuideModel(
         clearProposal()
         resetAlternativePreview()
         proposalFetchCount = 0
+        proposalInFlightToken = null
+        offRouteNoticeLive.clear()
+        offRouteLine = null
+        rerouteTriggerCount = 0
+        offRouteConfirmedAt = null
+        offRouteConfirmCoord = null
         offRouteEndedByReroute = false
         syncOverview()
     }
@@ -718,6 +770,9 @@ class WalkGuideModel(
 
     // ─────────────────────────── 경로 조회 (§6-2) ───────────────────────────
 
+    /** 억제 복구 대체 문장(E62): 그 유닛 첫 스텝 시작 진행거리와 들어선 뒤 읽을 문장. */
+    private class RecoveryEntered(val startD: Double, val text: String)
+
     /** 상세 조회 시간 초과 — 호출부 셋(시작·재조회·자동 재조회)은 예외를 이미 실패로 접고, 프리뷰는 `Failed`로 간다. */
     private class DetailFetchTimeout : Exception("detail fetch timeout")
 
@@ -784,7 +839,7 @@ class WalkGuideModel(
         ) ?: return null
         return DetailFetchResult(
             route, briefing.durationSeconds, briefing.stepFree, briefing.stepFreeStatus, briefing.stepFreeNotice, briefing.finalApproach,
-            liveStepsFrom(route, briefing.steps.map { LiveStepFields(it.live?.target, it.live?.anchor, it.crossing ?: false) }),
+            liveStepsFrom(route, briefing.steps.map { LiveStepFields(it.live?.target, it.live?.anchor, it.crossing ?: false, body = it.parts?.body, crossingClock = it.crossingClock) }),
             briefing.lineKind,
         )
     }
@@ -902,7 +957,8 @@ class WalkGuideModel(
             minutes = etaMinutesNow(route, state)
         }
         val timePart = minutes?.let { strings.get("guide.remainingTime", it.toString()) }
-        remainingText = joinText(distancePart, timePart)
+        // 횡단 중엔 남은 거리 행이 횡단보도 끝까지의 거리다(E62 판정 4). 10m 단위라 행 문자열도 그때만 바뀐다.
+        remainingText = liveCrossingText ?: joinText(distancePart, timePart)
     }
 
     /** 남은 거리 행의 경유지 거리(10m 이상 변했을 때만 갱신, E57 §3.6). */
@@ -945,8 +1001,11 @@ class WalkGuideModel(
     private fun refreshLiveRows(state: GuideState) {
         val out = guideLiveRows(liveRowsState, displayUnits, state.d, liveBaselineD, state.phase, walkTurnApproachMeters)
         liveRowsState = out.state
-        liveTopText = out.top?.let(text::liveTop)
+        // 돌아가기 국면의 윗줄은 벗어난 쪽(E63, 상태 행과 같은 문장) — 없으면 종전 문장.
+        liveTopText = out.top?.let { if (it == LiveTopRow.OffRoute) offRouteLine ?: text.liveTop(it) else text.liveTop(it) }
         liveNextText = out.next?.let(text::liveNext)
+        // 횡단 중 남은 거리 행(E62 판정 4) — `updateRemaining`이 남은 거리 행에 쓴다(같은 fix에서 뒤에 불린다).
+        liveCrossingText = out.crossingRemaining?.let(text::crossingRemaining)
     }
 
     private fun resetLiveRowsBaseline(state: GuideState) {
@@ -958,6 +1017,7 @@ class WalkGuideModel(
     private fun clearLiveRows() {
         liveTopText = null
         liveNextText = null
+        liveCrossingText = null
         liveRowsState = null
     }
 
@@ -1103,6 +1163,16 @@ class WalkGuideModel(
         // 멈추면 침묵(E62 판정 3) — `speedUnknown`은 정지가 아니다(E55 3-state).
         val out = guideStep(state, GuideFix(fix.lat, fix.lng, fix.accuracy, stopped = motion == MotionState.stopped), route, now, tuning)
         guideState = out.state
+        // 돌아가기 국면의 상태 행 문장(E63) — 아래 하단 2행 갱신보다 먼저(같은 fix의 윗줄이 이 문장이어야 한다). 벗어난 쪽만(위원장 판정
+        // 2026-10-04): 시계 방향은 몸을 돌리면 곧 거짓이 되는데 이 행은 시트 착지·전경 복귀 상환이 나중에 다시 읽는다.
+        (out.event as? GuideEvent.OffRoute)?.let { offRouteLine = text.offRouteSide(it.side) }
+        // 지난 임박 문장은 상태 행에 남기지 않는다(전경 복귀 상환이 지난 회전을 다시 읽는다, E62 a11y M1).
+        imminentStatus?.let { (target, pendingText) ->
+            if (out.state.stepIndex >= target) {
+                if (statusText == pendingText) statusText = ""
+                imminentStatus = null
+            }
+        }
         when (out.event) {
             is GuideEvent.BackOnRoute, GuideEvent.Reacquired -> { liveBaselineD = out.state.d; liveRowsState = null }
             else -> Unit
@@ -1118,7 +1188,11 @@ class WalkGuideModel(
                 "derived=${out.derivedCourse?.let { "%.1f±%.1f".format(it.bearing, it.uncertaintyDeg) } ?: "-"} vote=${out.courseVote?.rawValue ?: "-"} " +
                 "axes=d:${out.state.offRouteAxes.distance}/c:${out.state.offRouteAxes.course} " +
                 "votes=m:${votes.count { it.vote.rawValue == "mismatch" }}/k:${votes.count { it.vote.rawValue == "match" }}/u:${votes.count { it.vote.rawValue == "unknown" }} " +
-                "verdict=${courseAxisVerdict(votes).rawValue}"
+                "verdict=${courseAxisVerdict(votes).rawValue} " +
+                // 돌아가기 국면 계측(E63 spec §6): 부호 있는 수직(오른쪽 +), 돌아가기 상태(최솟값/연속 수/복귀 후보 초/기준점 m), 접근 표 제외.
+                "sperp=${out.signedPerpMeters?.let { "%.1f".format(it) } ?: "-"} " +
+                "ret=${if (out.state.phase == GuidePhase.offRoute) returnDiag(out.state, fix.lat, fix.lng, now) else "-"}" +
+                (if (out.approachExcluded == true) " appr=1" else "")
         }
         val remaining = max(0.0, route.totalMeters - out.state.d)
         val jumped = out.projectionJumped == true
@@ -1144,16 +1218,17 @@ class WalkGuideModel(
         )
         val event = out.event
         if (event == null) { syncStatusTextWithPhase(out.state.phase); return }
-        consume(event, route)
+        consume(event, route, prev = state, signedPerp = out.signedPerpMeters, now = now)
     }
 
     /** 이벤트 없이 국면만 바뀐 fix의 상태 텍스트를 되돌린다(재획득 문구일 때뿐, 통지 없음). */
     private fun syncStatusTextWithPhase(phase: GuidePhase) {
         if (phase != GuidePhase.offRoute || statusText != strings.get("guide.reacquiring")) return
-        statusText = strings.get("guide.offRoute")
+        statusText = offRouteLine ?: strings.get("guide.offRoute")
     }
 
-    private fun consume(event: GuideEvent, route: GuideRoute) {
+    /** `prev`·`signedPerp`·`now`는 이탈 계측 로그(E63 spec §6) 재료다 — 판정에 쓰지 않는다. */
+    private fun consume(event: GuideEvent, route: GuideRoute, prev: GuideState, signedPerp: Double?, now: Double) {
         // 분류(E53 spec §3.2)는 Kit이 정본 — 이탈은 회차 첫 발화(`firstSpoken`)만 행동 문장(재통지는 주기).
         val cls = guideEventSpeechClass(event)
         when (event) {
@@ -1165,15 +1240,22 @@ class WalkGuideModel(
                 val unit = text.unit(route, event.indices)
                 // 늦은 전문(E62 R4·R5 — 실위치가 이미 첫 스텝에 들어섰다)엔 머리말이 없다(램프인 구간 누출 차단).
                 val spoken = if (!event.late && state != null && first != null) {
-                    text.announceAhead(unit, spokenRemainingMeters(first.startD - state.d, state.d, liveBaselineD))
+                    text.announceAhead(route, event.indices, spokenRemainingMeters(first.startD - state.d, state.d, liveBaselineD))
                 } else unit
-                announceUnitText(unit, spoken, cls)
+                // 억제 복구 시점에 이미 들어섰으면 회전 문장을 뗀 문장으로 갚는다(E62).
+                val entered = first?.let { RecoveryEntered(it.startD, text.rereadUnit(route, event.indices, liveSteps)) }
+                announceUnitText(unit, spoken, cls, entered)
             }
-            is GuideEvent.BundleReread -> announceUnit(route, event.indices, cls)
+            // 되읽기는 구간 안에서 다시 읽는 자리다 — 들어선 첫 스텝의 회전 문장을 뗀다(E62 문안 확정본).
+            is GuideEvent.BundleReread -> text.rereadUnit(route, event.indices, liveSteps).let { announceUnitText(it, it, cls, entered = null) }
             is GuideEvent.Imminent -> {
                 if (event.stage > 0) return
-                val spoken = text.imminentText(event.action)
+                // 횡단 임박은 건너는 방향을 싣는다(E62 — 서버 `crossingClock`, 없으면 종전 문장).
+                val clock = event.indices.firstOrNull()?.let { liveSteps.getOrNull(it)?.crossingClock }
+                val spoken = text.imminentText(event.action, clock)
                 statusText = spoken
+                // 이 문장은 그 지점 앞에서만 참이다 — 그 스텝에 들어서면 상태 행에서 지운다(`handleDetail`, E62 a11y M1).
+                imminentStatus = event.indices.firstOrNull()?.let { it to spoken }
                 if (!outputSuppressed) announce(spoken, speechClass = cls)
             }
             is GuideEvent.FarNotice -> Unit // walk 프로파일은 내지 않는다(farNoticeM = null)
@@ -1199,7 +1281,7 @@ class WalkGuideModel(
                 // 도착 문장은 다음 목표(목적지)까지 말한다(N4 spec §3). 지나간 사실이라 억제 해제 뒤에 갚아도 참이다.
                 val spoken = strings.get("directions.viaArrivedContinue", reached.label, destinationWithDirectionParticle(destinationLabel))
                 statusText = spoken
-                if (outputSuppressed) pendingRecovery = spoken else announce(spoken, speechClass = cls)
+                if (outputSuppressed) { pendingRecovery = spoken; pendingRecoveryEntered = null } else announce(spoken, speechClass = cls)
             }
             is GuideEvent.WaypointApproaching -> {
                 // 경유지 접근 예고(N4 spec §4.1): 1회, 톤 없음. 실행 안내가 아니라 `lastGuidance`는 덮지 않고, `statusText`에도
@@ -1210,29 +1292,55 @@ class WalkGuideModel(
             }
             GuideEvent.FinalApproachEnter -> Unit // fix를 쥔 handleDetail이 가른다
             is GuideEvent.OffRoute -> {
-                // 웨이브 2 최소 수정(E63 spec §3.10): 회차 시작(확정)이면 보류여도 종전처럼 즉시 조회한다. 보류(이미 경로 쪽으로
-                // 걷는 중)는 말하지만 않는다. 방향 문장·`RerouteNeeded` 자동 재조회 이식은 웨이브 3.
-                val isEpisodeStart = event.notice == OffRouteNotice.confirm
-                offRoute = true
-                if (event.guidance != OffRouteGuidance.hold) {
-                    val spoken = strings.get("guide.offRoute")
-                    statusText = spoken
-                    announce(spoken, speechClass = cls)
+                // 확정(`confirm`)은 돌아가기 국면의 시작이다 — 재조회가 아니다(E63). 재조회는 리듀서 `RerouteNeeded`가 연다(iOS walk 갈래 동형).
+                // 표시 상태의 회차 시작은 `notice == confirm`, 문장 분류의 "처음 말함"은 `firstSpoken`(§4.1).
+                if (event.notice == OffRouteNotice.confirm) {
+                    offRouteNoticeLive.clear()
+                    rerouteTriggerCount = 0
+                    offRouteConfirmedAt = now
+                    offRouteConfirmCoord = lastFixCoord
                 }
-                if (isEpisodeStart) maybeFetchProposal()
+                offRoute = true
+                val spoken = text.offRoute(event.guidance, event.side, event.returnRelDeg)
+                // 보류는 말하지 않는다 — 상태 행은 `handleDetail`이 먼저 정한 문장(벗어난 쪽만).
+                statusText = offRouteLine.orEmpty()
+                logOffRouteNotice(event, signedPerp?.let(::abs), spoken = spoken != null)
+                if (spoken != null) postOffRouteNotice(spoken, cls)
             }
             is GuideEvent.BackOnRoute -> {
                 offRouteEndedByReroute = false
                 offRoute = false
+                offRouteLine = null
                 clearProposal()
-                // 이 회차에 이탈 문장을 내지 않았으면(보류) "복귀했습니다"도 말하지 않는다(Kit 이벤트 계약, E63 §3.4).
-                if (!event.spoken) return
+                // 리듀서가 이 회차에 이탈 문장을 냈고 ∧ 실제로 게시했을 때만 말한다(E63 §3.4). 아니면 이벤트만 — 상태 행은 현행 안내.
+                val say = event.spoken && offRouteNoticePosted
+                offRouteNoticeLive.clear()
+                GuideDiag.log {
+                    "backOnRoute via=${prev.offRouteReason?.rawValue ?: "-"} perp=${signedPerp?.let { "%.1f".format(it) } ?: "-"} " +
+                        "hold=${prev.returnCandidateSince?.let { "%.1f".format(now - it) } ?: "-"} spoken=${if (say) 1 else 0}"
+                }
+                if (!say) { statusText = lastGuidance.orEmpty(); return }
                 val spoken = strings.get("guide.backOnRoute")
                 statusText = spoken
                 resultHaptic(ResultHapticKind.success)
-                announce(spoken, speechClass = cls)
+                // ⚠ high: 복귀(`offRoute = false`)가 "경로 다시 조회" 버튼을 지워 커서가 움직이고, 착지 라벨(남은 거리)은 "돌아왔다"를
+                // 대신하지 못한다(iOS `.high`와 같은 판별선 — 안드로이드는 TTS 한 채널이라 새 문장이 말하는 중인 문장을 끊는다).
+                announce(spoken, highPriority = true, speechClass = cls)
             }
-            is GuideEvent.RerouteNeeded -> Unit // 자동 재조회는 웨이브 3
+            is GuideEvent.RerouteNeeded -> {
+                // 돌아가기 국면에서 계속 멀어지거나 나란히 계속 걸었다(E63 §3.5·판정 J4) — 자동 조회·채택.
+                rerouteTriggerCount += 1
+                val ignored = maybeFetchProposal("auto")
+                GuideDiag.log {
+                    val here = lastFixCoord
+                    val moved = offRouteConfirmCoord?.let { a -> here?.let { "%.0f".format(haversineMeters(a.lat, a.lng, it.lat, it.lng)) } } ?: "-"
+                    val anchor = prev.offRouteAnchor?.let { a -> here?.let { "%.0f".format(haversineMeters(a.lat, a.lng, it.lat, it.lng)) } } ?: "-"
+                    // 리듀서는 요청 fix에서 최솟값을 그 fix 값으로 다시 놓는다 — `min`은 직전 최솟값, `perp`는 이 fix 값.
+                    "rerouteTrigger reason=${event.reason.rawValue} n=$rerouteTriggerCount min=${prev.offRouteMinPerp?.let { "%.1f".format(it) } ?: "-"} " +
+                        "perp=${signedPerp?.let { "%.1f".format(abs(it)) } ?: "-"} sinceConfirm=${offRouteConfirmedAt?.let { "%.0f".format(now - it) } ?: "-"} " +
+                        "moved=$moved anchor=$anchor ignored=${ignored ?: "-"}"
+                }
+            }
             GuideEvent.UncertainEnter -> { statusText = strings.get("guide.uncertain"); announce(statusText, speechClass = cls) }
             GuideEvent.UncertainExit, GuideEvent.Reacquired -> { statusText = strings.get("guide.uncertainRecovered"); announce(statusText, speechClass = cls) }
             GuideEvent.Reacquiring -> { statusText = strings.get("guide.reacquiring"); announce(statusText, speechClass = cls) }
@@ -1240,20 +1348,42 @@ class WalkGuideModel(
         }
     }
 
-    /** 실행 안내 — 상태 행은 비운다(직전 예고를 남기면 이미 돈 회전을 남은 것처럼 읽는다). 억제 중이면 최신 1개 보관. */
-    private fun announceUnit(route: GuideRoute, indices: List<Int>, speechClass: GuideSpeechClass) {
-        val unit = text.unit(route, indices)
-        announceUnitText(unit, unit, speechClass)
-    }
-
     /**
+     * 실행 안내 — 상태 행은 비운다(직전 예고를 남기면 이미 돈 회전을 남은 것처럼 읽는다). 억제 중이면 최신 1개 보관.
      * `unit`은 되읽기용 원문(`lastGuidance`·억제 복구), `spoken`은 지금 말하는 문장이다. 거리 머리말(`announceAhead`)은
-     * 그 순간에만 참이라 되읽기에 싣지 않는다 — 복귀·신호 불량 뒤에 "약 20m 앞"을 갚으면 지난 거리를 말한다.
+     * 그 순간에만 참이라 되읽기에 싣지 않는다 — 복귀·신호 불량 뒤에 "약 20m 앞"을 갚으면 지난 거리를 말한다. `entered`는 복구 시점에
+     * 이미 그 유닛에 들어섰을 때 대신 읽을 문장(E62, 전문만 — 되읽기는 이미 들어선 문장이라 null).
      */
-    private fun announceUnitText(unit: String, spoken: String, speechClass: GuideSpeechClass) {
+    private fun announceUnitText(unit: String, spoken: String, speechClass: GuideSpeechClass, entered: RecoveryEntered?) {
         lastGuidance = unit
         statusText = ""
-        if (outputSuppressed) pendingRecovery = unit else announce(spoken, speechClass = speechClass)
+        if (outputSuppressed) { pendingRecovery = unit; pendingRecoveryEntered = entered } else announce(spoken, speechClass = speechClass)
+    }
+
+    /** 이탈 문장 게시(E63 §3.4): 게시 번호를 살아 있는 집합에 넣고, 버려지면 그 번호만 뺀다(회차가 바뀌었으면 집합이 이미 비었다). */
+    private fun postOffRouteNotice(message: String, speechClass: GuideSpeechClass) {
+        offRouteNoticeSeq += 1
+        val id = offRouteNoticeSeq
+        offRouteNoticeLive += id
+        announce(message, speechClass = speechClass) { offRouteNoticeLive -= id }
+    }
+
+    /** 이탈 통지 계측 한 줄(E63 spec §6). `spoken`은 말할 문장을 냈는가(보류 구분 — 게시 실패는 `bgSpeech` 줄). */
+    private fun logOffRouteNotice(event: GuideEvent.OffRoute, perp: Double?, spoken: Boolean) = GuideDiag.log {
+        val heading = guideState?.lastHeading
+        "offRouteNotice notice=${event.notice.rawValue} first=${if (event.firstSpoken) 1 else 0} reason=${event.reason.rawValue} " +
+            "guidance=${event.guidance.rawValue} side=${event.side?.rawValue ?: "-"} rel=${event.returnRelDeg?.let { "%.0f".format(it) } ?: "-"} " +
+            "clock=${event.returnRelDeg?.let { clockHour(it).toString() } ?: "-"} " +
+            "heading=${heading?.let { "%.0f±%.0f".format(it.bearing, it.uncertaintyDeg) } ?: "-"} headAge=${heading?.let { "%.1f".format(clock() - it.at) } ?: "-"} " +
+            "perp=${perp?.let { "%.1f".format(it) } ?: "-"} d=${guideState?.offRouteConfirmD?.let { "%.1f".format(it) } ?: "-"} spoken=${if (spoken) 1 else 0}"
+    }
+
+    /** `ret=` 열(E63 spec §6): 최솟값/자격 fix 연속 수/복귀 후보 유지 초/나란히 걷기 기준점까지 직선 m(0이면 그 fix에서 다시 놓였다). */
+    private fun returnDiag(st: GuideState, lat: Double, lng: Double, now: Double): String {
+        val minPerp = st.offRouteMinPerp?.let { "%.1f".format(it) } ?: "-"
+        val hold = st.returnCandidateSince?.let { "%.0f".format(now - it) } ?: "-"
+        val anchor = st.offRouteAnchor?.let { "%.0f".format(haversineMeters(it.lat, it.lng, lat, lng)) } ?: "-"
+        return "$minPerp/${st.offRouteAwayRun?.count ?: 0}/$hold/$anchor"
     }
 
     // ─────────────────────────── 최종 접근·도착 ───────────────────────────
@@ -1450,7 +1580,7 @@ class WalkGuideModel(
         val state = guideState
         if (mode == GuideMode.detail && route != null && state != null) {
             val straight = if (state.phase == GuidePhase.offRoute || state.phase == GuidePhase.finalApproach) freshStraightLineMeters() else null
-            return text.progress(route, state, destinationLabel, lastGuidance, straight, etaMinutesNow(route, state))
+            return text.progress(route, state, destinationLabel, lastGuidance, straight, etaMinutesNow(route, state), liveSteps.getOrNull(state.stepIndex)?.body)
         }
         freshStraightLineMeters()?.let { return strings.get("beacon.first", formatDistance(it.roundToInt())) }
         return lastGuidance ?: strings.get("guide.noGuidanceYet")
@@ -1496,10 +1626,15 @@ class WalkGuideModel(
             }
             if (token != rerouteToken || !isTracking || mode != GuideMode.detail || this.dest != dest || this.waypoint != waypointAtFetch) return
             val result = fetched.getOrNull()
-            if (result == null) { rerouteFailed(); return }
+            if (result == null) {
+                if (switchTo == null) GuideDiag.log("rerouteAdopt source=button result=${if (fetched.isFailure) "failed" else "none"} headClock=-")
+                rerouteFailed()
+                return
+            }
             // 전환 커밋: 경로 교체와 같은 원자 블록에서만 세션 축·줄 종류가 바뀐다.
             if (switchTo != null) commitLineSwitch(switchTo)
             val firstIndices = commitReroutedRoute(result)
+            if (switchTo == null) GuideDiag.log("rerouteAdopt source=button result=adopted headClock=-")
             val notice = consumeStepFreeNotice(result.stepFreeRaw, result.stepFree, result.stepFreeNotice)
             val summary = if (switchTo != null) text.variantSwitch(result.route, firstIndices, result.lineKind ?: switchTo) else text.reroute(result.route, firstIndices)
             val spoken = if (notice != null) "$notice $summary" else summary
@@ -1530,10 +1665,13 @@ class WalkGuideModel(
         val initial = initialGuideState(
             fetched.route, clock(), hasFinalApproachGeometry = fetched.finalApproach != null,
             courseDerivation = guideState?.courseDerivation ?: initialDerivationState,
+            // 진행 방위 관측도 궤적의 사실이다 — 새 경로의 돌아가기·재통지 판정이 냉시동하지 않게(E63 spec §4.2).
+            lastHeading = guideState?.lastHeading,
         )
         guideState = initial.state
         offRouteEndedByReroute = true
         offRoute = false
+        offRouteLine = null
         updateRemaining(fetched.route, initial.state)
         displayUnits = buildDisplayUnits(fetched.liveSteps)
         liveSteps = fetched.liveSteps
@@ -1543,32 +1681,51 @@ class WalkGuideModel(
         return initial.firstIndices
     }
 
-    /** 이탈 확정 회차의 자동 조회 트리거(E10ⓑ) — 상세 ∧ 최종 접근 전 ∧ 세션 상한 미달. */
-    private fun maybeFetchProposal() {
-        if (!isTracking || mode != GuideMode.detail || inFinalApproach || rerouteInFlight) return
-        if (!RerouteProposalGate.mayFetch(proposalFetchCount)) return
+    /**
+     * 자동 조회 트리거(E63): 리듀서 `RerouteNeeded` 소비 지점(이탈 확정은 조회가 아니다). 활성 조건: 상세 ∧ 최종 접근 전 ∧ 진행 중 자동·수동
+     * 조회 없음 ∧ 세션 상한 미달. 반환 = 무시한 사유(로그), null이면 조회를 열었다(iOS `maybeFetchProposal(source:)` 동형).
+     */
+    private fun maybeFetchProposal(source: String): String? {
+        if (!isTracking || mode != GuideMode.detail || inFinalApproach || rerouteInFlight) return "state"
+        if (proposalInFlightToken == proposalToken) return "inflight"
+        if (!RerouteProposalGate.mayFetch(proposalFetchCount)) return "budget"
         proposalToken += 1
         proposalFetchCount += 1
         val token = proposalToken
-        scope.launch { fetchProposal(token) }
+        proposalInFlightToken = token
+        scope.launch {
+            try { fetchProposal(token, source) } finally { if (proposalInFlightToken == token) proposalInFlightToken = null }
+        }
+        return null
     }
 
-    private suspend fun fetchProposal(token: Int) {
+    private suspend fun fetchProposal(token: Int, source: String) {
         val dest = dest ?: return
         val origin = rerouteOrigin() ?: return
         val acquiredAt = clock()
         if (token != proposalToken || !offRoute || !isTracking || mode != GuideMode.detail || this.dest != dest) return
         val waypointAtFetch = waypoint
-        val result = runCatching { fetchDetailData(origin, dest, sessionVariant, accessible, waypointAtFetch) }.getOrNull() ?: return
+        val fetched = runCatching { fetchDetailData(origin, dest, sessionVariant, accessible, waypointAtFetch) }
         if (token != proposalToken || !offRoute || !isTracking || mode != GuideMode.detail || rerouteInFlight || this.dest != dest || this.waypoint != waypointAtFetch) return
+        // 조회 실패·경로 없음은 통지 없이 돌아가기 국면을 잇는다 — 리듀서가 문턱을 다시 채우면 또 요청한다(E63 §3.5 재무장, 세션 예산 5회가 상한).
+        val result = fetched.getOrNull()
+        if (result == null) {
+            GuideDiag.log("rerouteAdopt source=$source result=${if (fetched.isFailure) "failed" else "none"} headClock=-")
+            return
+        }
         val proposal = RerouteProposal(originLat = origin.lat, originLng = origin.lng, acquiredAt = acquiredAt)
-        val c = lastFixCoord ?: return
-        val at = lastFixCoordAt ?: return
-        if (clock() - at > freshFixSeconds) return
-        if (!RerouteProposalGate.isFresh(proposal, clock(), c.lat, c.lng, tuning.rerouteMaxDriftM)) return
+        val c = lastFixCoord
+        val at = lastFixCoordAt
+        if (c == null || at == null || clock() - at > freshFixSeconds || !RerouteProposalGate.isFresh(proposal, clock(), c.lat, c.lng, tuning.rerouteMaxDriftM)) {
+            GuideDiag.log("rerouteAdopt source=$source result=stale headClock=-")
+            return
+        }
+        // 새 경로 첫 문장의 방향 머리말(E63 §3.7): 교체 **전** 세션의 진행 방위 기준 새 경로 첫 15m의 시.
+        val headClock = guideState?.let { rerouteHeadClock(it, result.route, clock(), tuning) }
+        GuideDiag.log("rerouteAdopt source=$source result=adopted headClock=${headClock ?: "-"}")
         val firstIndices = commitReroutedRoute(result)
         val notice = consumeStepFreeNotice(result.stepFreeRaw, result.stepFree, result.stepFreeNotice)
-        val summary = text.autoReroute(result.route, firstIndices)
+        val summary = text.autoReroute(result.route, firstIndices, liveSteps, headClock)
         val spoken = if (notice != null) "$notice $summary" else summary
         statusText = spoken
         resultHaptic(ResultHapticKind.success)

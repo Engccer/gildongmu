@@ -70,7 +70,6 @@
       "downloadReady": "Il riconoscimento vocale è pronto. Tocca di nuovo Avvia dettatura."
     },
     "guide": {
-      "autoReroute": "Ora ti guido su un nuovo percorso. {count, plural, one {# indicazione} other {# indicazioni}}, {distance} in totale. {first}",
       "mediaVolumeZero": "Il volume multimediale è disattivato, quindi i suoni della guida non verranno riprodotti",
       "focusDenied": "Un’altra app sta usando l’audio, quindi i suoni della guida non possono essere riprodotti ora",
       "ttsUnavailable": "La guida vocale non è disponibile in questa lingua. Controlla il testo della guida sullo schermo",
