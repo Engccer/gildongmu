@@ -36,10 +36,20 @@ public let imminentAheadMeters = 10.0 + projectionLagMeters // = 20 (유도식 �
 /// 횡단은 (16 - 길이) m 늦게 나간다.
 public let crossingStartJitterMeters = 6.0
 
-/// 횡단을 나갔는가(E62 R5, 웹 `crossingExited` 미러): 실위치가 끝을 지났고 원시 진행거리가 시작점 + 여유에 닿았다.
-/// ⚠ 문턱은 경로 전체 길이를 넘지 않는다 — 목적지 직전 짧은 횡단 뒤 마지막 전문이 영영 막혔다(확인 리뷰 2 MAJOR).
+/// 나감 문턱이 경로 끝에서 이만큼 안쪽을 넘지 않는다(m, 웹 `CROSSING_END_SLACK_M` 미러).
+public let crossingEndSlackMeters = 2.0
+/// 횡단이 붙잡았던 늦은 전문의 행동 톤 하한 여유(m, 웹 `LATE_TONE_SLACK_M` 미러).
+public let lateToneSlackMeters = 2.0
+
+/// 횡단 나감 문턱(웹 `crossingExitThreshold` 미러): 시작점 + 흔들림 여유, 경로 끝 조금 안쪽을 넘지 않는다.
+/// ⚠ 상한이 없으면 목적지 직전 짧은 횡단 뒤 마지막 전문이 영영 막혔다(확인 리뷰 2·3).
+func crossingExitThreshold(route: GuideRoute, step: GuideStepSpan) -> Double {
+    min(step.startD + crossingStartJitterMeters, max(step.startD, route.totalMeters - crossingEndSlackMeters))
+}
+
+/// 횡단을 나갔는가(E62 R5, 웹 `crossingExited` 미러): 실위치가 끝을 지났고 원시 진행거리가 나감 문턱에 닿았다.
 func crossingExited(route: GuideRoute, step: GuideStepSpan, d: Double, realD: Double) -> Bool {
-    step.endD <= realD && min(step.startD + crossingStartJitterMeters, route.totalMeters) <= d
+    step.endD <= realD && crossingExitThreshold(route: route, step: step) <= d
 }
 /// 임박 큐의 **반복 단계**(m, 투영 좌표) — 웹 `IMMINENT_REPEAT_M` 미러. 위원장 실사용 피드백
 /// 2026-08-26: "10m 전만이 아니라 5m 전과 0m 지점에서도 같은 소리를 — 세 번". 같은 유도식
@@ -1194,9 +1204,15 @@ public func guideStep(
             // R6(E62): 실위치가 이미 첫 스텝에 들어선 전문은 늦은 전문(머리말 없음). 첫 스텝에 행동이 있으면 그 행동 톤을
             //     내고 그 경계의 임박 래치를 소비한다(톤 1회).
             let late = tuning.deferAnnounce && nextFirst.startD <= realD
-            // 톤은 원시 진행거리가 그 경계를 나감 여유 이상 넘지 않았을 때만(지난 경계엔 소리 없음, 구현 리뷰 MAJOR). 여유만큼
-            // 넓히는 것은 6m 미만 횡단 뒤 행동이 경계를 넘어서야 풀리기 때문이다(확인 리뷰 2 MINOR).
-            if late, let action = nextFirst.action, d <= nextFirst.startD + crossingStartJitterMeters {
+            // 톤은 원시 진행거리가 그 경계를 넘지 않았을 때만(지난 경계엔 소리 없음, 구현 리뷰 MAJOR). 바로 앞 스텝이 이
+            // 전문을 붙잡은 횡단이면 하한은 그 나감 문턱 + `lateToneSlackMeters`(6m 미만 횡단 뒤 회전, 확인 리뷰 2·3).
+            let holder = unit[0] > 0 ? route.steps[unit[0] - 1] : nil
+            let toneFloor = holder.map {
+                $0.crossing
+                    ? max(nextFirst.startD, crossingExitThreshold(route: route, step: $0) + lateToneSlackMeters)
+                    : nextFirst.startD
+            } ?? nextFirst.startD
+            if late, let action = nextFirst.action, d <= toneFloor {
                 next.imminentUpTo = max(next.imminentUpTo, unit[0])
                 next.imminentStage = 0
                 return emit(next, .announceSteps(indices, late: late), imminentTone(action))

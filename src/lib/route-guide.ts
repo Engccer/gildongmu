@@ -76,14 +76,26 @@ export const IMMINENT_AHEAD_M = 10 + PROJECTION_LAG_M; // = 20 (유도식 — la
  * 넘어 최대 4.9m 안에서 멈췄다(2026-10-03 로그 94[3] 10.8m·95[2a] 9.3m). 이 여유가 없으면 길이 15m 이하 횡단은
  * 건너기 전에 "나간" 것이 되어 다음 전문과 행동 톤이 연석에서 나갔다(구현 리뷰 BLOCKER·확인 리뷰). 대가: 걸어서 건널
  * 때 16m 미만 횡단은 (16 - 길이) m 늦게 나간다(실보행 판정 축). 속도 비례 보정은 기각 — 10초 창 속도가 멈춘 뒤에도
- * 걷던 속도를 끌고 와 따라붙는 동안 같은 오판을 냈다. ⚠ 문턱은 경로 전체 길이를 넘지 않는다(`crossingExited`) —
- * 목적지 직전 짧은 횡단 뒤엔 원시 진행거리가 시작점 + 6m에 닿지 못해 마지막 전문이 영영 막혔다(확인 리뷰 2 MAJOR).
+ * 걷던 속도를 끌고 와 따라붙는 동안 같은 오판을 냈다. ⚠ 문턱은 경로 끝 `CROSSING_END_SLACK_M` 앞을 넘지 않는다
+ * (`crossingExitThreshold`) — 목적지 직전 짧은 횡단 뒤엔 원시 진행거리가 시작점 + 6m에 닿지 못해 마지막 전문이 영영
+ * 막혔다(확인 리뷰 2 MAJOR). 끝 바로 앞에 멈춰 서도 풀리도록 끝에서 조금 안쪽이다(확인 리뷰 3).
  */
 export const CROSSING_START_JITTER_M = 6;
+export const CROSSING_END_SLACK_M = 2;
+/**
+ * 횡단이 붙잡았던 늦은 전문의 행동 톤 하한 여유(m). 6m 미만 횡단 뒤 행동은 나감 문턱이 경계를 넘어서야 풀리므로
+ * 하한을 "경계와 그 문턱 중 큰 것 + 이 여유"로 둔다(확인 리뷰 2·3). 그보다 멀리 착지한 fix는 측위 공백 뒤라 지난 지점이다.
+ */
+export const LATE_TONE_SLACK_M = 2;
 
-/** 횡단을 나갔는가(E62 R5): 실위치가 끝을 지났고 원시 진행거리가 시작점 + 여유(경로 끝을 넘지 않게)에 닿았다. */
+/** 횡단 나감 문턱(원시 진행거리): 시작점 + 흔들림 여유, 경로 끝 조금 안쪽을 넘지 않는다(시작점보다 앞이 되지도 않는다). */
+function crossingExitThreshold(route: GuideRoute, step: StepSpan): number {
+  return Math.min(step.startD + CROSSING_START_JITTER_M, Math.max(step.startD, route.totalMeters - CROSSING_END_SLACK_M));
+}
+
+/** 횡단을 나갔는가(E62 R5): 실위치가 끝을 지났고 원시 진행거리가 나감 문턱에 닿았다. */
 function crossingExited(route: GuideRoute, step: StepSpan, d: number, realD: number): boolean {
-  return step.endD <= realD && Math.min(step.startD + CROSSING_START_JITTER_M, route.totalMeters) <= d;
+  return step.endD <= realD && crossingExitThreshold(route, step) <= d;
 }
 /**
  * 임박 큐의 **반복 단계**(m, 투영 좌표). 위원장 실사용 피드백 2026-08-26: "10m 전만이
@@ -1503,10 +1515,15 @@ export function guideStep(
       // R6(E62): 실위치가 이미 첫 스텝에 들어선 전문은 늦은 전문이다 — 머리말 없음. 첫 스텝에 행동이 있으면(분해된
       //     둘째 횡단) 임박 단계는 이미 지났으므로 이 전문이 그 행동 톤을 내고 그 경계의 임박 래치를 소비한다(톤 1회).
       const late = tuning.deferAnnounce && nextFirst.startD <= realD;
-      // 톤은 원시 진행거리가 그 경계를 횡단 나감 여유 이상 넘지 않았을 때만 — 측위 회복으로 d가 경계 너머에 착지했으면
-      // 이미 지난 지점이다(임박 큐의 "지난 경계엔 발화 금지"와 같은 하한, 구현 리뷰 MAJOR). 여유만큼 넓히는 것은 6m
-      // 미만 횡단 뒤 행동이 나감 문턱 때문에 경계를 넘어서야 풀리기 때문이다(그 회전에 소리가 0이던 확인 리뷰 2 MINOR).
-      if (late && nextFirstAction && d <= nextFirst.startD + CROSSING_START_JITTER_M) {
+      // 톤은 원시 진행거리가 그 경계를 넘지 않았을 때만 — 측위 회복으로 d가 경계 너머에 착지했으면 이미 지난 지점이다
+      // (임박 큐의 "지난 경계엔 발화 금지"와 같은 하한, 구현 리뷰 MAJOR). 바로 앞 스텝이 이 전문을 붙잡은 횡단이면
+      // 하한은 그 나감 문턱(6m 미만 횡단은 경계 너머) + `LATE_TONE_SLACK_M`이다(그 회전 소리가 0이던 확인 리뷰 2·3).
+      const holder = route.steps[unit[0] - 1];
+      const toneFloor =
+        holder?.crossing === true
+          ? Math.max(nextFirst.startD, crossingExitThreshold(route, holder) + LATE_TONE_SLACK_M)
+          : nextFirst.startD;
+      if (late && nextFirstAction && d <= toneFloor) {
         next = { ...next, imminentUpTo: Math.max(next.imminentUpTo, unit[0]), imminentStage: 0 };
         return emit(next, { kind: "announceSteps", indices, late }, imminentTone(nextFirstAction));
       }

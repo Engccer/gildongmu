@@ -13655,7 +13655,7 @@
    ]
   },
   {
-   "name": "E62 R5 경로 끝: 목적지 직전 4m 횡단 뒤 1m 스텝 — 나감 문턱이 경로 길이를 넘지 않아 마지막 전문과 최종 접근이 나온다(확인 리뷰 2 MAJOR 교착)",
+   "name": "E62 R5 경로 끝: 목적지 직전 4m 횡단 뒤 1m 스텝 — 나감 문턱이 경로 끝 2m 안쪽을 넘지 않아 횡단 끝에서 마지막 전문, 이어 최종 접근(확인 리뷰 2 MAJOR 교착)",
    "steps": [
     {
      "len": 200,
@@ -14164,14 +14164,13 @@
     {
      "afterFixAny": [
       66,
-      67,
-      68
+      67
      ],
      "eventNot": "announceSteps",
-     "comment": "횡단 위·직전 — 다음 전문 없음"
+     "comment": "횡단 직전·위 — 다음 전문 없음"
     },
     {
-     "afterFix": 69,
+     "afterFix": 68,
      "event": "announceSteps",
      "indices": [
       2
@@ -14180,6 +14179,7 @@
     },
     {
      "afterFixAny": [
+      69,
       70,
       71
      ],
@@ -14712,6 +14712,937 @@
      ],
      "late": true,
      "tone": "right"
+    }
+   ]
+  },
+  {
+   "name": "E62 R6 하한(측위 공백): 8m 횡단 뒤 6초 공백으로 우회전 경계 3m 너머에 착지하면 늦은 전문에 회전 톤이 없다(지난 지점, 확인 리뷰 3)",
+   "steps": [
+    {
+     "len": 200,
+     "desc": "직진A"
+    },
+    {
+     "len": 8,
+     "desc": "횡단X",
+     "action": "crosswalk",
+     "crossing": true
+    },
+    {
+     "len": 100,
+     "desc": "우회전B",
+     "action": "right"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0.0,
+     "along": 0.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 2.0,
+     "along": 3.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 4.0,
+     "along": 6.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 6.0,
+     "along": 9.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 8.0,
+     "along": 12.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 10.0,
+     "along": 15.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 12.0,
+     "along": 18.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 14.0,
+     "along": 21.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 16.0,
+     "along": 24.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 18.0,
+     "along": 27.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 20.0,
+     "along": 30.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 22.0,
+     "along": 33.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 24.0,
+     "along": 36.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 26.0,
+     "along": 39.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 28.0,
+     "along": 42.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 30.0,
+     "along": 45.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 32.0,
+     "along": 48.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 34.0,
+     "along": 51.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 36.0,
+     "along": 54.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 38.0,
+     "along": 57.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 40.0,
+     "along": 60.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 42.0,
+     "along": 63.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 44.0,
+     "along": 66.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 46.0,
+     "along": 69.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 48.0,
+     "along": 72.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 50.0,
+     "along": 75.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 52.0,
+     "along": 78.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 54.0,
+     "along": 81.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 56.0,
+     "along": 84.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 58.0,
+     "along": 87.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 60.0,
+     "along": 90.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 62.0,
+     "along": 93.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 64.0,
+     "along": 96.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 66.0,
+     "along": 99.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 68.0,
+     "along": 102.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 70.0,
+     "along": 105.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 72.0,
+     "along": 108.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 74.0,
+     "along": 111.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 76.0,
+     "along": 114.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 78.0,
+     "along": 117.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 80.0,
+     "along": 120.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 82.0,
+     "along": 123.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 84.0,
+     "along": 126.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 86.0,
+     "along": 129.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 88.0,
+     "along": 132.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 90.0,
+     "along": 135.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 92.0,
+     "along": 138.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 94.0,
+     "along": 141.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 96.0,
+     "along": 144.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 98.0,
+     "along": 147.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 100.0,
+     "along": 150.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 102.0,
+     "along": 153.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 104.0,
+     "along": 156.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 106.0,
+     "along": 159.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 108.0,
+     "along": 162.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 110.0,
+     "along": 165.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 112.0,
+     "along": 168.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 114.0,
+     "along": 171.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 116.0,
+     "along": 174.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 118.0,
+     "along": 177.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 120.0,
+     "along": 180.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 122.0,
+     "along": 183.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 124.0,
+     "along": 186.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 126.0,
+     "along": 189.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 128.0,
+     "along": 192.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 130.0,
+     "along": 195.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 132.0,
+     "along": 198.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 138.0,
+     "along": 211,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 140.0,
+     "along": 214,
+     "lateral": 0,
+     "acc": 5
+    }
+   ],
+   "expect": [
+    {
+     "afterFix": 67,
+     "event": "announceSteps",
+     "indices": [
+      2
+     ],
+     "late": true,
+     "toneNull": true
+    }
+   ]
+  },
+  {
+   "name": "E62 R5 경로 끝(끝 앞에 멈춤): 목적지 직전 4m 횡단 뒤 끝 0.4m 앞에 멈춰도 마지막 전문과 최종 접근이 나온다(확인 리뷰 3)",
+   "steps": [
+    {
+     "len": 200,
+     "desc": "직진A"
+    },
+    {
+     "len": 4,
+     "desc": "횡단X",
+     "action": "crosswalk",
+     "crossing": true
+    },
+    {
+     "len": 1,
+     "desc": "끝C"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0.0,
+     "along": 0.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 2.0,
+     "along": 3.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 4.0,
+     "along": 6.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 6.0,
+     "along": 9.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 8.0,
+     "along": 12.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 10.0,
+     "along": 15.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 12.0,
+     "along": 18.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 14.0,
+     "along": 21.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 16.0,
+     "along": 24.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 18.0,
+     "along": 27.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 20.0,
+     "along": 30.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 22.0,
+     "along": 33.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 24.0,
+     "along": 36.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 26.0,
+     "along": 39.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 28.0,
+     "along": 42.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 30.0,
+     "along": 45.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 32.0,
+     "along": 48.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 34.0,
+     "along": 51.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 36.0,
+     "along": 54.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 38.0,
+     "along": 57.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 40.0,
+     "along": 60.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 42.0,
+     "along": 63.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 44.0,
+     "along": 66.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 46.0,
+     "along": 69.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 48.0,
+     "along": 72.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 50.0,
+     "along": 75.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 52.0,
+     "along": 78.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 54.0,
+     "along": 81.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 56.0,
+     "along": 84.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 58.0,
+     "along": 87.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 60.0,
+     "along": 90.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 62.0,
+     "along": 93.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 64.0,
+     "along": 96.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 66.0,
+     "along": 99.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 68.0,
+     "along": 102.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 70.0,
+     "along": 105.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 72.0,
+     "along": 108.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 74.0,
+     "along": 111.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 76.0,
+     "along": 114.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 78.0,
+     "along": 117.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 80.0,
+     "along": 120.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 82.0,
+     "along": 123.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 84.0,
+     "along": 126.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 86.0,
+     "along": 129.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 88.0,
+     "along": 132.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 90.0,
+     "along": 135.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 92.0,
+     "along": 138.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 94.0,
+     "along": 141.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 96.0,
+     "along": 144.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 98.0,
+     "along": 147.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 100.0,
+     "along": 150.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 102.0,
+     "along": 153.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 104.0,
+     "along": 156.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 106.0,
+     "along": 159.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 108.0,
+     "along": 162.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 110.0,
+     "along": 165.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 112.0,
+     "along": 168.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 114.0,
+     "along": 171.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 116.0,
+     "along": 174.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 118.0,
+     "along": 177.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 120.0,
+     "along": 180.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 122.0,
+     "along": 183.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 124.0,
+     "along": 186.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 126.0,
+     "along": 189.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 128.0,
+     "along": 192.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 130.0,
+     "along": 195.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 132.0,
+     "along": 198.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 134.0,
+     "along": 201.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 136.0,
+     "along": 204.0,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 138.0,
+     "along": 204.6,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 140.0,
+     "along": 204.6,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 142.0,
+     "along": 204.6,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 144.0,
+     "along": 204.6,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    },
+    {
+     "t": 146.0,
+     "along": 204.6,
+     "lateral": 0,
+     "acc": 5,
+     "stopped": true
+    }
+   ],
+   "expect": [
+    {
+     "afterFix": 68,
+     "event": "announceSteps",
+     "indices": [
+      2
+     ],
+     "late": true
+    },
+    {
+     "afterFix": 69,
+     "event": "finalApproachEnter"
     }
    ]
   }

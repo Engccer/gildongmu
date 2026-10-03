@@ -26,9 +26,19 @@ const val projectionLagMeters = 10.0
 /** 횡단을 "나갔다"고 보려면 원시 진행거리가 횡단 시작점에서 이만큼 들어가야 한다(m, E62 — Kit `crossingStartJitterMeters` 미러). */
 const val crossingStartJitterMeters = 6.0
 
-/** 횡단을 나갔는가(E62 R5, Kit `crossingExited` 미러). ⚠ 문턱은 경로 전체 길이를 넘지 않는다(목적지 직전 교착). */
+/** 나감 문턱이 경로 끝에서 이만큼 안쪽을 넘지 않는다(m, Kit `crossingEndSlackMeters` 미러). */
+const val crossingEndSlackMeters = 2.0
+
+/** 횡단이 붙잡았던 늦은 전문의 행동 톤 하한 여유(m, Kit `lateToneSlackMeters` 미러). */
+const val lateToneSlackMeters = 2.0
+
+/** 횡단 나감 문턱(Kit `crossingExitThreshold` 미러). ⚠ 경로 끝 상한이 없으면 목적지 직전 교착(확인 리뷰 2·3). */
+internal fun crossingExitThreshold(route: GuideRoute, step: GuideStepSpan): Double =
+    minOf(step.startD + crossingStartJitterMeters, maxOf(step.startD, route.totalMeters - crossingEndSlackMeters))
+
+/** 횡단을 나갔는가(E62 R5, Kit `crossingExited` 미러). */
 internal fun crossingExited(route: GuideRoute, step: GuideStepSpan, d: Double, realD: Double): Boolean =
-    step.endD <= realD && minOf(step.startD + crossingStartJitterMeters, route.totalMeters) <= d
+    step.endD <= realD && crossingExitThreshold(route, step) <= d
 
 /**
  * 결정 지점 **임박** 큐의 잔여 거리(m). 30m 전문 낭독이 *무엇을* 할지 알린다면 이 큐는 *지금이다*를 알린다
@@ -1124,9 +1134,13 @@ fun guideStep(state: GuideState, fix: GuideFix, route: GuideRoute, now: Double, 
             //     내고 그 경계의 임박 래치를 소비한다(톤 1회).
             val late = tuning.deferAnnounce && nextFirst.startD <= realD
             val firstAction = nextFirst.action
-            // 톤은 원시 진행거리가 그 경계를 나감 여유 이상 넘지 않았을 때만(지난 경계엔 소리 없음, 구현 리뷰 MAJOR). 여유만큼
-            // 넓히는 것은 6m 미만 횡단 뒤 행동이 경계를 넘어서야 풀리기 때문이다(확인 리뷰 2 MINOR).
-            if (late && firstAction != null && d <= nextFirst.startD + crossingStartJitterMeters) {
+            // 톤은 원시 진행거리가 그 경계를 넘지 않았을 때만(지난 경계엔 소리 없음, 구현 리뷰 MAJOR). 바로 앞 스텝이 이
+            // 전문을 붙잡은 횡단이면 하한은 그 나감 문턱 + `lateToneSlackMeters`(6m 미만 횡단 뒤 회전, 확인 리뷰 2·3).
+            val holder = route.steps.getOrNull(unit[0] - 1)
+            val toneFloor =
+                if (holder?.crossing == true) maxOf(nextFirst.startD, crossingExitThreshold(route, holder) + lateToneSlackMeters)
+                else nextFirst.startD
+            if (late && firstAction != null && d <= toneFloor) {
                 next = next.copy(imminentUpTo = maxOf(next.imminentUpTo, unit[0]), imminentStage = 0)
                 return emit(next, GuideEvent.AnnounceSteps(indices, late), imminentTone(firstAction))
             }
