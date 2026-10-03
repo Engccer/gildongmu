@@ -110,7 +110,8 @@ class GuideText(private val s: Strings) {
 
     /** 시작 원자 발화(요약과 첫 안내를 한 문장으로). `destination`에 기본값을 두지 않는다(E40). */
     fun start(route: GuideRoute, firstIndices: List<Int>, destination: String): String =
-        s.get("guide.detailStart", destination, route.steps.size, formatDistance(route.totalMeters.roundToInt()), unit(route, firstIndices))
+        // 인자 순서는 ko 플레이스홀더 순서(`android/i18n/arg-order.json`) — 할 일 먼저, 요약은 뒤(E62 문안 라).
+        s.get("guide.detailStart", destination, unit(route, firstIndices), route.steps.size, formatDistance(route.totalMeters.roundToInt()))
 
     /** 재조회 성공 원자 발화 — "출발지가 현재 위치로 바뀌었다"를 전할 채널은 이 문장뿐이다. */
     fun reroute(route: GuideRoute, firstIndices: List<Int>): String =

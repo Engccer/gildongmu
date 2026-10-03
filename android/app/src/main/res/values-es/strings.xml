@@ -754,6 +754,9 @@
     <string name="guide_carStart">Guía en coche hasta %1$s iniciada. %2$s. {3, plural, one {%3$s indicación} other {%3$s indicaciones}}, %4$s en total.</string>
     <string name="guide_changeDestHere">Cambiar destino a aquí</string>
     <string name="guide_changeWaypointHere">Cambiar el punto de paso a aquí</string>
+    <string name="guide_clockDirection">la dirección de las %1$s</string>
+    <string name="guide_crossingRemaining">Unos %1$s hasta el final del paso de peatones</string>
+    <string name="guide_crossingRemainingUnderpass">Unos %1$s hasta el final del paso subterráneo</string>
     <string name="guide_currentRoad">Vía actual, %1$s</string>
     <string name="guide_degradedNoLocation">No se pudo determinar tu ubicación actual. Comprueba el permiso de ubicación y la señal.</string>
     <string name="guide_degradedNoteCoverage">Estás fuera del área de servicio, así que la guía usa la dirección y la distancia al destino.</string>
@@ -763,7 +766,7 @@
     <string name="guide_degradedRetryable">No se pudo cargar la ruta. Por ahora solo se anuncian la dirección y la distancia al destino.</string>
     <string name="guide_degradedUnavailable">No se encontró ninguna ruta hasta este destino. La guía usa la dirección y la distancia al destino.</string>
     <string name="guide_detailNoLocation">No se pudo obtener tu ubicación. Cuando se obtenga, se guiará por distancia en línea recta.</string>
-    <string name="guide_detailStart">Guía a pie hasta %1$s iniciada. {2, plural, one {%2$s indicación} other {%2$s indicaciones}}, %3$s en total. %4$s</string>
+    <string name="guide_detailStart">Guía a pie hasta %1$s iniciada. %2$s. {3, plural, one {%3$s indicación} other {%3$s indicaciones}}, %4$s en total.</string>
     <string name="guide_detailUnavailable">No hay detalles de la ruta. Se guiará por distancia en línea recta hasta %1$s.</string>
     <string name="guide_dirAhead">al frente</string>
     <string name="guide_dirAheadTo">de frente</string>
@@ -786,6 +789,9 @@
     <string name="guide_handoff">Cambiando a guía en línea recta hasta el destino</string>
     <string name="guide_imminent_back">Dé la vuelta en breve</string>
     <string name="guide_imminent_crosswalk">Cruce el paso de peatones en breve</string>
+    <string name="guide_imminent_crosswalkAhead">Cruce el paso de peatones de frente en breve</string>
+    <string name="guide_imminent_crosswalkBack">En breve, dé la vuelta y cruce el paso de peatones</string>
+    <string name="guide_imminent_crosswalkClock">En breve, gire hacia %1$s y cruce el paso de peatones</string>
     <string name="guide_imminent_left">Gire a la izquierda en breve</string>
     <string name="guide_imminent_right">Gire a la derecha en breve</string>
     <string name="guide_imminent_underpass">Use el paso subterráneo en breve</string>

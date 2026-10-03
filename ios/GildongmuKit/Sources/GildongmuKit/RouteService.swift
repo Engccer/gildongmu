@@ -113,6 +113,7 @@ public struct RouteService: Sendable {
         lang: DataLocale,
         includeGeometry: Bool = false,
         variant: WalkRouteVariant? = nil,
+        crossingRoad: Bool,
         via: (lat: Double, lng: Double)?
     ) async throws -> WalkRouteBriefing? {
         var query = [
@@ -124,8 +125,16 @@ public struct RouteService: Sendable {
         if includeGeometry { query.append(URLQueryItem(name: "includeGeometry", value: "1")) }
         if let variant { query.append(URLQueryItem(name: "variant", value: variant.rawValue)) }
         if let via { query.append(URLQueryItem(name: "via", value: coordPair(via.lat, via.lng))) }
+        appendWording(&query, crossingRoad: crossingRoad)
         let envelope: WalkRouteEnvelope = try await client.get("/api/route/walk", query: query)
         return envelope.result
+    }
+
+    /// 안내 문장 판본 2(E62 문안 확정본, spec `2026-10-03-crosswalk-guidance-design.md` §1)를 늘 싣는다 — 미지정(판본 1)은
+    /// 스토어 2.0·1.19의 계약이다. `crossingRoad`(건너는 길 이름)는 iOS 실험판만 켠다(§3.5, 앱 `AppConfig`가 정한다).
+    private func appendWording(_ query: inout [URLQueryItem], crossingRoad: Bool) {
+        query.append(URLQueryItem(name: "wording", value: "2"))
+        if crossingRoad { query.append(URLQueryItem(name: "crossingRoad", value: "1")) }
     }
 
     /// 조회 화면 도보 줄 목록(E42·E52, `lines=2` 단독 옵트인 — 기하 없음). 모르는 종류의 줄은 뺀다.
@@ -135,6 +144,7 @@ public struct RouteService: Sendable {
         originLat: Double, originLng: Double,
         destLat: Double, destLng: Double,
         lang: DataLocale,
+        crossingRoad: Bool,
         via: (lat: Double, lng: Double)?
     ) async throws -> WalkRouteLineList {
         var query = [
@@ -145,6 +155,7 @@ public struct RouteService: Sendable {
         if let via { query.append(URLQueryItem(name: "via", value: coordPair(via.lat, via.lng))) }
         // 판본 2(E52) = 최대 세 줄. 판본 1(최대 두 줄)은 첫 줄 뒤 줄들이 펼침 상태 하나를 공유하던 1.19 몫이다.
         query.append(URLQueryItem(name: "lines", value: "2"))
+        appendWording(&query, crossingRoad: crossingRoad)
         let envelope: WalkRouteLinesEnvelope = try await client.get("/api/route/walk", query: query)
         return WalkRouteLineList(
             lines: envelope.lines.filter { $0.lineKind != nil }, failedLines: envelope.failedLines ?? [])

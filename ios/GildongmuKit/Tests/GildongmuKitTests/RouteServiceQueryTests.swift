@@ -14,7 +14,7 @@ extension StubNetworkTests {
             return (200, Data(#"{"result":null}"#.utf8))
         }
         _ = try await RouteService(client: stubbedClient()).walk(
-            originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1, accessible: true, lang: .ko, via: nil)
+            originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1, accessible: true, lang: .ko, crossingRoad: false, via: nil)
         #expect(capturedQuery?.contains(where: { $0.name == "accessible" && $0.value == "true" }) == true)
     }
 
@@ -28,12 +28,12 @@ extension StubNetworkTests {
         }
         _ = try await RouteService(client: stubbedClient()).walk(
             originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1,
-            accessible: false, lang: .en, via: nil)
+            accessible: false, lang: .en, crossingRoad: false, via: nil)
         #expect(capturedQuery?.contains(where: { $0.name == "lang" && $0.value == "en" }) == true)
 
         _ = try await RouteService(client: stubbedClient()).walk(
             originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1,
-            accessible: false, lang: .ko, via: nil)
+            accessible: false, lang: .ko, crossingRoad: false, via: nil)
         #expect(capturedQuery?.contains(where: { $0.name == "lang" }) == false)
     }
 
@@ -45,7 +45,7 @@ extension StubNetworkTests {
             return (200, Data(#"{"result":null}"#.utf8))
         }
         _ = try await RouteService(client: stubbedClient()).walk(
-            originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1, accessible: false, lang: .ko, via: nil)
+            originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1, accessible: false, lang: .ko, crossingRoad: false, via: nil)
         #expect(capturedQuery?.contains(where: { $0.name == "accessible" }) == false)
     }
 
@@ -59,7 +59,7 @@ extension StubNetworkTests {
         }
         _ = try await RouteService(client: stubbedClient()).walk(
             originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1,
-            accessible: false, lang: .ko, includeGeometry: true, via: nil)
+            accessible: false, lang: .ko, includeGeometry: true, crossingRoad: false, via: nil)
         #expect(capturedQuery?.contains(where: { $0.name == "includeGeometry" && $0.value == "1" }) == true)
     }
 
@@ -71,7 +71,7 @@ extension StubNetworkTests {
             return (200, Data(#"{"result":null}"#.utf8))
         }
         _ = try await RouteService(client: stubbedClient()).walk(
-            originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1, accessible: false, lang: .ko, via: nil)
+            originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1, accessible: false, lang: .ko, crossingRoad: false, via: nil)
         #expect(capturedQuery?.contains(where: { $0.name == "includeGeometry" }) == false)
     }
 
@@ -85,7 +85,7 @@ extension StubNetworkTests {
         }
         _ = try await RouteService(client: stubbedClient()).walk(
             originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1,
-            accessible: true, lang: .ko, includeGeometry: true, variant: .shortest, via: nil)
+            accessible: true, lang: .ko, includeGeometry: true, variant: .shortest, crossingRoad: false, via: nil)
         #expect(capturedQuery?.contains(where: { $0.name == "variant" && $0.value == "shortest" }) == true)
         #expect(capturedQuery?.contains(where: { $0.name == "accessible" && $0.value == "true" }) == true)
         #expect(capturedQuery?.contains(where: { $0.name == "includeGeometry" && $0.value == "1" }) == true)
@@ -99,7 +99,7 @@ extension StubNetworkTests {
             return (200, Data(#"{"result":null}"#.utf8))
         }
         _ = try await RouteService(client: stubbedClient()).walk(
-            originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1, accessible: false, lang: .ko, via: nil)
+            originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1, accessible: false, lang: .ko, crossingRoad: false, via: nil)
         #expect(capturedQuery?.contains(where: { $0.name == "variant" }) == false)
     }
 
@@ -130,10 +130,13 @@ extension StubNetworkTests {
             return (200, Data(body.utf8))
         }
         let lines = try await RouteService(client: stubbedClient()).walkLines(
-            originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1, lang: .ko, via: nil)
+            originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1, lang: .ko, crossingRoad: false, via: nil)
         #expect(lines.lines.map(\.lineKind) == [.shortest, .broad])
         #expect(lines.failedLines.isEmpty) // 필드 부재 = 실패 없음
         #expect(capturedQuery?.filter { $0.name == "lines" }.map(\.value) == ["2"])
+        // 판본 2 문장(E62)을 늘 싣고, 길 이름은 실험판만(인자 false면 파라미터 부재).
+        #expect(capturedQuery?.filter { $0.name == "wording" }.map(\.value) == ["2"])
+        #expect(capturedQuery?.contains(where: { $0.name == "crossingRoad" }) == false)
         for name in ["accessible", "variant", "includeGeometry", "alternatives", "lang"] {
             #expect(capturedQuery?.contains(where: { $0.name == name }) == false)
         }
@@ -167,7 +170,7 @@ extension StubNetworkTests {
             return (200, Data(body.utf8))
         }
         let list = try await RouteService(client: stubbedClient()).walkLines(
-            originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1, lang: .ko, via: nil)
+            originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1, lang: .ko, crossingRoad: false, via: nil)
         #expect(list.lines.map(\.lineKind) == [.shortest])
         #expect(list.failedLines == ["broad", "accessible"])
     }
@@ -197,7 +200,7 @@ extension StubNetworkTests {
         }
         _ = try await RouteService(client: stubbedClient()).walk(
             originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1, accessible: false, lang: .ko,
-            via: (lat: 37.55, lng: 127.05))
+            crossingRoad: false, via: (lat: 37.55, lng: 127.05))
         #expect(capturedQuery?.contains(where: { $0.name == "via" && $0.value == "37.55,127.05" }) == true)
     }
 
@@ -263,5 +266,25 @@ extension StubNetworkTests {
         #expect(capturedQuery?.contains(where: { $0.name == "lang" && $0.value == "en" }) == true)
         _ = try await NearbyService(client: stubbedClient()).subwayArrivals(lat: 37.5, lng: 127.0, lang: "en")
         #expect(capturedQuery?.contains(where: { $0.name == "lang" && $0.value == "en" }) == true)
+    }
+
+    /// E62: 안내 조회는 판본 2를 늘 싣고, 건너는 길 이름은 인자가 참일 때만(앱이 실험판 구성에서만 켠다).
+    @Test func walkSendsWordingTwoAndCrossingRoadOnlyWhenAsked() async throws {
+        var capturedQuery: [URLQueryItem]?
+        StubURLProtocol.handler = { request in
+            capturedQuery = URLComponents(url: request.url!, resolvingAgainstBaseURL: false)?.queryItems
+            return (200, Data(#"{"result":null}"#.utf8))
+        }
+        _ = try await RouteService(client: stubbedClient()).walk(
+            originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1,
+            accessible: false, lang: .ko, includeGeometry: true, crossingRoad: true, via: nil)
+        #expect(capturedQuery?.filter { $0.name == "wording" }.map(\.value) == ["2"])
+        #expect(capturedQuery?.filter { $0.name == "crossingRoad" }.map(\.value) == ["1"])
+
+        _ = try await RouteService(client: stubbedClient()).walk(
+            originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1,
+            accessible: false, lang: .ko, includeGeometry: true, crossingRoad: false, via: nil)
+        #expect(capturedQuery?.filter { $0.name == "wording" }.map(\.value) == ["2"])
+        #expect(capturedQuery?.contains(where: { $0.name == "crossingRoad" }) == false)
     }
 }

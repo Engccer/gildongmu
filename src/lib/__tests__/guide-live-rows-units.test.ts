@@ -96,6 +96,6 @@ describe("guideLiveRows — 클램프·리셋(F4)", () => {
 
   it("이탈은 両행 처리 — top=offRoute, next=null, state 리셋", () => {
     const o = guideLiveRows({ unitIndex: 0, clamped: 60 }, units, 30, 0, "offRoute", TURN_APPROACH_M);
-    expect(o).toEqual({ state: null, top: { kind: "offRoute" }, next: null });
+    expect(o).toEqual({ state: null, top: { kind: "offRoute" }, next: null, crossingRemaining: null });
   });
 });

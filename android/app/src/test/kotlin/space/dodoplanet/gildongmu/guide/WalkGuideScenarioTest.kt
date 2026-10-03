@@ -87,7 +87,7 @@ class WalkGuideScenarioTest {
         feed(h, longAheadFixes, base, until = 11)   // fix 10까지: 원시 잔여 ≥ 40m
         assertFalse(h.speaker.texts.any { it.endsWith("우회전B") })
         feed(h, longAheadFixes, base, from = 11)  // fix 11(along 176, 원시 잔여 24m − lag 10m = 실위치 14m)
-        assertEquals(listOf("약 14 미터 앞, 우회전B"), h.speaker.texts.filter { it.endsWith("우회전B") })
+        assertEquals(listOf("앞으로 약 14 미터 가다가 우회전B"), h.speaker.texts.filter { it.endsWith("우회전B") })
         assertEquals("", h.model.ui.value.statusText)
         assertTrue(h.tones.played.none { it == BeaconTone.right || it == BeaconTone.ahead })
         assertEquals(0, h.model.ui.value.currentStepIndex)
@@ -391,11 +391,11 @@ class WalkGuideScenarioTest {
         h.model.setForeground(false)
         h.speaker.spoken.clear()
         feed(h, longAheadFixes, base)
-        assertEquals(listOf("약 14 미터 앞, 우회전B"), h.speaker.texts)
+        assertEquals(listOf("앞으로 약 14 미터 가다가 우회전B"), h.speaker.texts)
         h.env.foreground = true
         h.model.setForeground(true)
         advanceTimeBy(5_000); runCurrent()
-        assertEquals(listOf("약 14 미터 앞, 우회전B"), h.speaker.texts)
+        assertEquals(listOf("앞으로 약 14 미터 가다가 우회전B"), h.speaker.texts)
     }
     @Test fun `경유지 있는 세션의 간략 폴백 — 조용히 버리지 않고 강등 문장을 waypointDropped로 대체해 high로, 재시작 인자도 경유지 없이`() = guideTest(dispatcher, { HttpResponse(200, routeJson(longAhead)) }) { h ->
         val via = GuideWaypoint(BeaconDest(north(100.0).lat, lng0), "장미공원")

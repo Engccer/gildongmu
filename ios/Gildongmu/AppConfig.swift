@@ -42,6 +42,16 @@ enum AppConfig {
     static let experimentalTabOrderEnabled = false
     #endif
 
+    /// 건너는 길 이름(E62 — "9시 방향으로 도세요. 그 후 천호대로를 건너세요")의 봉인. "직각 안팎으로 꺾으면 걷던 길을
+    /// 건넌다"는 추론이라 실험판 실보행이 게이트다(위원장 판정 2026-10-03 E62 ②). 서버 옵트인 `crossingRoad=1`을 이 값이
+    /// 켜고, 그 참조는 도보 경로 조회 두 자리(`BeaconModel` 안내·`DirectionsTabView` 줄 목록)뿐이다
+    /// (`e62-crossing-road-gate.test.ts`가 잠근다). 실보행 판정을 통과하면 이 검사를 삭제한다(플래그 졸업).
+    #if EXPERIMENTAL
+    static let experimentalCrossingRoadEnabled = true
+    #else
+    static let experimentalCrossingRoadEnabled = false
+    #endif
+
     /// 웹 개인정보 처리방침 URL(현재 앱 언어 로케일). 동의 화면·설정이 공유한다.
     static var privacyPolicyURL: URL {
         apiBaseURL.appending(path: "\(AppLanguage.current)/privacy")

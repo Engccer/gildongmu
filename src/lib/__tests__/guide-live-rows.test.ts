@@ -8,6 +8,7 @@ import {
   liveStepsFrom,
   TURN_APPROACH_M,
   type LiveNextRow,
+  type LiveRowsOutput,
   type LiveRowsState,
   type LiveStepInput,
   type LiveTopRow,
@@ -62,6 +63,13 @@ function renderTop(kind: Kind, top: LiveTopRow | null): string {
         ? fmt(g.liveStraight, { target: top.target, n: top.meters })
         : fmt(g.liveStraightNoName, { n: top.meters });
   }
+}
+
+/** 횡단 중 남은 거리 행(E62). 없으면 빈 문자열. 거리는 정수 m(1km 미만) — `formatDistance`와 같다. */
+function renderCrossing(remaining: LiveRowsOutput["crossingRemaining"]): string {
+  if (remaining === null) return "";
+  const tpl = remaining.action === "underpass" ? g.crossingRemainingUnderpass : g.crossingRemaining;
+  return fmt(tpl, { distance: `${remaining.meters}m` });
 }
 
 function renderNext(kind: Kind, next: LiveNextRow | null): string {
@@ -134,9 +142,18 @@ describe("isCrossingStep — 횡단 유닛은 서버 플래그로 판정한다(A
         { index: 1, description: "b", startD: 10, endD: 20, isLong: true, action: "crosswalk" },
       ],
     } as unknown as Parameters<typeof liveStepsFrom>[0];
-    const out = liveStepsFrom(route, [{}, { crossing: true }]);
+    const out = liveStepsFrom(route, [
+      {},
+      { crossing: true, parts: { turn: "진행 방향 그대로", body: "횡단보도를 건너세요. 횡단보도 길이 8m" }, crossingClock: 12 },
+    ]);
     expect("crossing" in out[0]).toBe(false);
-    expect(out[1]).toMatchObject({ action: "crosswalk", crossing: true });
+    expect("body" in out[0]).toBe(false);
+    expect(out[1]).toMatchObject({
+      action: "crosswalk",
+      crossing: true,
+      body: "횡단보도를 건너세요. 횡단보도 길이 8m",
+      crossingClock: 12,
+    });
   });
 });
 
@@ -156,10 +173,13 @@ describe("guide-live-rows 공유 시나리오(기대 문자열)", () => {
           anchor?: string;
           action?: string;
           crossing?: boolean;
+          /** 방향 구절을 뺀 문장(E62 서버 `parts.body`). */
+          body?: string;
         }[];
         baselineD: number;
         inputs: ScenarioInput[];
-        expect: { afterInput: number; top: string; next: string }[];
+        /** `crossing`: 횡단 중 남은 거리 행(E62). 미지정이면 대조하지 않는다. */
+        expect: { afterInput: number; top: string; next: string; crossing?: string }[];
       }[];
     }
   ).scenarios) {
@@ -175,6 +195,7 @@ describe("guide-live-rows 공유 시나리오(기대 문자열)", () => {
           ...(live ? { live } : {}),
           ...(s.action ? { action: s.action as LiveStepInput["action"] } : {}),
           ...(s.crossing ? { crossing: true } : {}),
+          ...(s.body ? { body: s.body } : {}),
         };
         acc += s.len;
         return input;
@@ -182,7 +203,7 @@ describe("guide-live-rows 공유 시나리오(기대 문자열)", () => {
       const units = buildDisplayUnits(steps, sc.kind === "car" ? "step" : "text");
       let state: LiveRowsState | null = null;
       let baselineD = sc.baselineD;
-      const results: { top: string; next: string }[] = [];
+      const results: { top: string; next: string; crossing: string }[] = [];
       for (const input of sc.inputs) {
         if (input.reset) {
           state = null;
@@ -193,11 +214,18 @@ describe("guide-live-rows 공유 시나리오(기대 문자열)", () => {
           sc.turnApproachM ?? TURN_APPROACH_M,
         );
         state = out.state;
-        results.push({ top: renderTop(sc.kind ?? "walk", out.top), next: renderNext(sc.kind ?? "walk", out.next) });
+        results.push({
+          top: renderTop(sc.kind ?? "walk", out.top),
+          next: renderNext(sc.kind ?? "walk", out.next),
+          crossing: renderCrossing(out.crossingRemaining),
+        });
       }
       for (const ex of sc.expect) {
         expect(results[ex.afterInput].top, `#${ex.afterInput} top`).toBe(ex.top);
         expect(results[ex.afterInput].next, `#${ex.afterInput} next`).toBe(ex.next);
+        if (ex.crossing !== undefined) {
+          expect(results[ex.afterInput].crossing, `#${ex.afterInput} crossing`).toBe(ex.crossing);
+        }
       }
     });
   }

@@ -204,7 +204,7 @@ class WalkGuideModelTest {
         assertTrue(url.contains("includeGeometry=1"))
         assertFalse(url.contains("accessible="))
         assertEquals(GuideMode.detail, h.model.ui.value.mode)
-        val expected = h.catalog.get("guide.detailStart", "길동역", 1, "300m", "천호대로를 따라 300m 이동")
+        val expected = h.catalog.get("guide.detailStart", "길동역", "천호대로를 따라 300m 이동", 1, "300m")
         assertEquals(expected, h.model.ui.value.statusText)
         // 발화는 낭독 정정(`spokenDistanceUnits`)을 지난 문장, 화면 문장은 원문.
         assertEquals(spokenDistanceUnits(expected, "미터") to true, h.speaker.spoken.last())

@@ -13446,7 +13446,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "약 %1$@ 앞, %2$@"
+            "value": "앞으로 약 %1$@ 가다가 %2$@"
           }
         },
         "en": {
@@ -15201,6 +15201,126 @@
         }
       }
     },
+    "guide.clockDirection": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@시 방향"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ o'clock"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "la dirección de las %1$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "la direction %1$@ h"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ore %1$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@時の方向"
+          }
+        }
+      }
+    },
+    "guide.crossingRemaining": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "횡단보도 끝까지 약 %1$@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "About %1$@ to the end of the crosswalk"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unos %1$@ hasta el final del paso de peatones"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Environ %1$@ jusqu'au bout du passage piéton"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Circa %1$@ alla fine delle strisce pedonali"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "横断歩道の終わりまで約%1$@"
+          }
+        }
+      }
+    },
+    "guide.crossingRemainingUnderpass": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "지하보도 끝까지 약 %1$@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "About %1$@ to the end of the underpass"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unos %1$@ hasta el final del paso subterráneo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Environ %1$@ jusqu'au bout du passage souterrain"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Circa %1$@ alla fine del sottopassaggio"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "地下道の終わりまで約%1$@"
+          }
+        }
+      }
+    },
     "guide.currentRoad": {
       "localizations": {
         "ko": {
@@ -15566,37 +15686,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@까지 도보 안내 시작. 안내 %2$@개, 총 %3$@. %4$@"
+            "value": "%1$@까지 도보 안내 시작. %2$@. 안내 %3$@개, 총 %4$@."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Walking guidance to %1$@ started. {2, plural, one {%2$@ instruction} other {%2$@ instructions}}, %3$@ total. %4$@"
+            "value": "Walking guidance to %1$@ started. %2$@. {3, plural, one {%3$@ instruction} other {%3$@ instructions}}, %4$@ total."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Guía a pie hasta %1$@ iniciada. {2, plural, one {%2$@ indicación} other {%2$@ indicaciones}}, %3$@ en total. %4$@"
+            "value": "Guía a pie hasta %1$@ iniciada. %2$@. {3, plural, one {%3$@ indicación} other {%3$@ indicaciones}}, %4$@ en total."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Guidage à pied vers %1$@ démarré. {2, plural, one {%2$@ instruction} other {%2$@ instructions}}, %3$@ au total. %4$@"
+            "value": "Guidage à pied vers %1$@ démarré. %2$@. {3, plural, one {%3$@ instruction} other {%3$@ instructions}}, %4$@ au total."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Guida a piedi verso %1$@ avviata. {2, plural, one {%2$@ indicazione} other {%2$@ indicazioni}}, %3$@ in totale. %4$@"
+            "value": "Guida a piedi verso %1$@ avviata. %2$@. {3, plural, one {%3$@ indicazione} other {%3$@ indicazioni}}, %4$@ in totale."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@まで徒歩案内開始。案内%2$@件、合計%3$@。%4$@"
+            "value": "%1$@まで徒歩案内開始。%2$@。案内%3$@件、合計%4$@。"
           }
         }
       }
@@ -16477,6 +16597,126 @@
           "stringUnit": {
             "state": "translated",
             "value": "まもなく横断歩道を渡ってください"
+          }
+        }
+      }
+    },
+    "guide.imminent.crosswalkAhead": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "잠시 후 진행 방향 그대로 횡단보도를 건너세요"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cross the crosswalk straight ahead shortly"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cruce el paso de peatones de frente en breve"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traversez le passage piéton tout droit dans un instant"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Attraversa le strisce pedonali dritto tra poco"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "まもなくそのまま横断歩道を渡ってください"
+          }
+        }
+      }
+    },
+    "guide.imminent.crosswalkBack": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "잠시 후 뒤로 돌아 횡단보도를 건너세요"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shortly, turn around and cross the crosswalk"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En breve, dé la vuelta y cruce el paso de peatones"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dans un instant, faites demi-tour et traversez le passage piéton"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tra poco, girati e attraversa le strisce pedonali"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "まもなく後ろを向いて横断歩道を渡ってください"
+          }
+        }
+      }
+    },
+    "guide.imminent.crosswalkClock": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "잠시 후 %1$@으로 돌아 횡단보도를 건너세요"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shortly, turn to %1$@ and cross the crosswalk"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En breve, gire hacia %1$@ y cruce el paso de peatones"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dans un instant, tournez vers %1$@ et traversez le passage piéton"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tra poco, girati a %1$@ e attraversa le strisce pedonali"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "まもなく%1$@を向いて横断歩道を渡ってください"
           }
         }
       }

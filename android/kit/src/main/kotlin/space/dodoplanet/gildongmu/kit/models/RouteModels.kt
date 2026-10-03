@@ -218,7 +218,15 @@ data class WalkRouteStep(
     @Serializable(with = LenientWalkActionSerializer::class)
     val action: WalkAction? = null,
     val crossing: Boolean? = null,
+    /** 방향 구절과 나머지 문장(E62 판본 2, Kit `WalkStepParts` 미러). 되읽기·억제 복구·횡단 윗줄은 `body`를 쓴다. */
+    val parts: WalkStepParts? = null,
+    /** 횡단보도 건너는 방향 시(E62, 1~12 — 12 = 진행 방향 그대로, 6 = 뒤). 임박 문장이 쓴다. */
+    val crossingClock: Int? = null,
 )
+
+/** 방향 구절(`turn`, 마침표 없음)과 그것을 뺀 나머지(`body`, 주석 꼬리 포함). E62 spec §3.4. */
+@Serializable
+data class WalkStepParts(val turn: String, val body: String)
 
 /** 서버 재작성 정규식이 분해한 이름 조각. 추출 실패는 필드 부재 — 클라이언트가 한국어 문장을 재파싱해 채우지 않는다. */
 @Serializable

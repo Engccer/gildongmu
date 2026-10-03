@@ -754,6 +754,9 @@
     <string name="guide_carStart">%1$sまで自動車案内開始。%2$s。案内%3$s件、合計%4$s。</string>
     <string name="guide_changeDestHere">ここを目的地に変更</string>
     <string name="guide_changeWaypointHere">ここを経由地に変更</string>
+    <string name="guide_clockDirection">%1$s時の方向</string>
+    <string name="guide_crossingRemaining">横断歩道の終わりまで約%1$s</string>
+    <string name="guide_crossingRemainingUnderpass">地下道の終わりまで約%1$s</string>
     <string name="guide_currentRoad">現在の道路、%1$s</string>
     <string name="guide_degradedNoLocation">現在地を確認できませんでした。位置情報の許可と電波状況を確認してください。</string>
     <string name="guide_degradedNoteCoverage">提供地域外のため、目的地の方向と距離で案内しています。</string>
@@ -763,7 +766,7 @@
     <string name="guide_degradedRetryable">経路を読み込めませんでした。今は目的地の方向と距離だけをお知らせします。</string>
     <string name="guide_degradedUnavailable">この目的地までの経路が見つかりませんでした。目的地の方向と距離で案内します。</string>
     <string name="guide_detailNoLocation">現在地を確認できませんでした。現在地が分かり次第、直線距離で案内します。</string>
-    <string name="guide_detailStart">%1$sまで徒歩案内開始。案内%2$s件、合計%3$s。%4$s</string>
+    <string name="guide_detailStart">%1$sまで徒歩案内開始。%2$s。案内%3$s件、合計%4$s。</string>
     <string name="guide_detailUnavailable">経路の詳細を取得できませんでした。%1$sまで直線距離で案内します。</string>
     <string name="guide_dirAhead">正面</string>
     <string name="guide_dirAheadTo">正面</string>
@@ -786,6 +789,9 @@
     <string name="guide_handoff">目的地までの直線案内に切り替えます</string>
     <string name="guide_imminent_back">まもなく引き返してください</string>
     <string name="guide_imminent_crosswalk">まもなく横断歩道を渡ってください</string>
+    <string name="guide_imminent_crosswalkAhead">まもなくそのまま横断歩道を渡ってください</string>
+    <string name="guide_imminent_crosswalkBack">まもなく後ろを向いて横断歩道を渡ってください</string>
+    <string name="guide_imminent_crosswalkClock">まもなく%1$sを向いて横断歩道を渡ってください</string>
     <string name="guide_imminent_left">まもなく左に曲がってください</string>
     <string name="guide_imminent_right">まもなく右に曲がってください</string>
     <string name="guide_imminent_underpass">まもなく地下道を渡ってください</string>

@@ -247,14 +247,23 @@
     "count",
     "distance"
   ],
+  "guide.clockDirection": [
+    "hour"
+  ],
+  "guide.crossingRemaining": [
+    "distance"
+  ],
+  "guide.crossingRemainingUnderpass": [
+    "distance"
+  ],
   "guide.currentRoad": [
     "road"
   ],
   "guide.detailStart": [
     "dest",
+    "first",
     "count",
-    "distance",
-    "first"
+    "distance"
   ],
   "guide.detailUnavailable": [
     "dest"
@@ -284,6 +293,9 @@
   "guide.finalApproachToDestNoDir": [
     "dest",
     "distance"
+  ],
+  "guide.imminent.crosswalkClock": [
+    "direction"
   ],
   "guide.liveStraight": [
     "target",

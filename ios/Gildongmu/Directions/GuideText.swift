@@ -132,16 +132,31 @@ enum GuideText {
         return appLocalized("guide.bundle", descs.joined(separator: ". "))
     }
 
+    /// 구간 안에서 다시 읽는 유닛 문장(E62 — 되읽기·억제 복구). 첫 index는 이미 들어선 스텝이라 그 스텝에 방향 구절을
+    /// 뗀 문장(`body`)이 있으면 그것을 읽는다 — "왼쪽으로 도세요"를 이미 돈 뒤에 다시 지시하지 않는다(문안 확정본).
+    /// 뒤 스텝들은 아직 앞이라 원문. 웹 `rereadUnitText` 미러.
+    static func rereadUnit(route: GuideRoute, indices: [Int], liveSteps: [LiveStepInput]) -> String {
+        let descs = indices.enumerated().compactMap { pos, i -> String? in
+            guard route.steps.indices.contains(i) else { return nil }
+            if pos == 0, liveSteps.indices.contains(i), let body = liveSteps[i].body { return body }
+            return route.steps[i].description
+        }
+        guard descs.count > 1 else { return descs.first ?? "" }
+        return appLocalized("guide.bundle", descs.joined(separator: ". "))
+    }
+
     /// 시작 원자 발화(스펙 §5.3 — 요약과 첫 안내를 한 문장으로, 발화 경합 제거).
     /// ⚠ `destination`에 기본값을 두지 않는다(E40) — 목적지를 말하는 것이 이 문장의 판정이고,
     /// 생략이 컴파일을 통과하면 "안내 시작"만 남아 어디로 가는 안내인지 사라진다.
+    /// 할 일 먼저, 요약은 뒤(문안 확정본 라 2026-10-03 — "목적지까지 도보 안내 시작. 천호대로를 따라 39m 이동. 안내 14개,
+    /// 총 1.4km."). ⚠ 인자 순서는 ko 문장의 플레이스홀더 순서다(`ios/i18n/arg-order.json`).
     static func start(route: GuideRoute, firstIndices: [Int], destination: String) -> String {
         appLocalized(
             "guide.detailStart",
             destination,
+            unit(route: route, indices: firstIndices),
             route.steps.count,
-            formatDistance(Int(route.totalMeters.rounded())),
-            unit(route: route, indices: firstIndices)
+            formatDistance(Int(route.totalMeters.rounded()))
         )
     }
 
@@ -313,6 +328,30 @@ enum GuideText {
     /// "잠시 후 {행동구}"(표시 잔여 0) — 임박 큐 문구 재사용(spec §4.2 행 7). 수단별.
     static func liveTurnSoon(_ action: WalkAction, kind: BeaconModel.GuideSessionKind) -> String {
         kind == .car ? carImminentText(action) : imminentText(action)
+    }
+
+    /// "N시 방향"(E62·E63 공유 키 `guide.clockDirection`).
+    static func clockDirection(_ hour: Int) -> String {
+        appLocalized("guide.clockDirection", String(hour))
+    }
+
+    /// 도보 임박 명령에 횡단 방향을 싣는다(E62 문안 나 "바로 앞" — 임박 문장만 "돌아 …" 한 문장 예외). 12 = 진행 방향
+    /// 그대로, 6 = 뒤로, 그 밖은 시계 방향, nil(방향 모름·판본 1 응답)은 종전 문장. 웹 `walkImminentLine` 미러.
+    static func imminentText(_ action: WalkAction, crossingClock: Int?) -> String {
+        guard action == .crosswalk, let clock = crossingClock else { return imminentText(action) }
+        switch clock {
+        case 12: return appLocalized("guide.imminent.crosswalkAhead")
+        case 6: return appLocalized("guide.imminent.crosswalkBack")
+        default: return appLocalized("guide.imminent.crosswalkClock", clockDirection(clock))
+        }
+    }
+
+    /// 횡단 중 남은 거리 행(E62 판정 4 — 말 없이 화면에만, 10m 단위).
+    static func crossingRemaining(_ remaining: CrossingRemaining) -> String {
+        appLocalized(
+            remaining.action == .underpass ? "guide.crossingRemainingUnderpass" : "guide.crossingRemaining",
+            formatDistance(remaining.meters)
+        )
     }
 
     /// 도보 임박 명령(20m). 키는 리터럴(check-xcstrings-keys 린터 계약).

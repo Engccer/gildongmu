@@ -32,6 +32,8 @@ private struct LiveScenario: Decodable {
         let action: String?
         /// 서버 횡단 구간 플래그(A26) — 웹 러너와 같은 fixture 필드.
         let crossing: Bool?
+        /// 방향 구절을 뺀 문장(E62 `parts.body`).
+        let body: String?
     }
 
     struct Input: Decodable {
@@ -45,6 +47,8 @@ private struct LiveScenario: Decodable {
         let afterInput: Int
         let top: String
         let next: String
+        /// 횡단 중 남은 거리 행(E62). nil이면 대조하지 않는다.
+        let crossing: String?
     }
 }
 
@@ -67,6 +71,8 @@ private struct KoMessages: Decodable {
         let nextStraight: String
         let nextStraightNoName: String
         let progressNext: String
+        let crossingRemaining: String
+        let crossingRemainingUnderpass: String
     }
 }
 
@@ -133,6 +139,13 @@ private func renderNext(_ next: LiveNextRow?, _ g: KoMessages.Guide, car: Bool) 
     return fmt(g.progressNext, ["step": step])
 }
 
+/// 횡단 중 남은 거리 행(E62). 없으면 빈 문자열. 거리는 정수 m(1km 미만 — `formatDistance`와 같다).
+private func renderCrossing(_ remaining: CrossingRemaining?, _ g: KoMessages.Guide) -> String {
+    guard let remaining else { return "" }
+    let tpl = remaining.action == .underpass ? g.crossingRemainingUnderpass : g.crossingRemaining
+    return fmt(tpl, ["distance": "\(remaining.meters)m"])
+}
+
 @Test func liveRowsSharedScenarioTable() throws {
     let file = try JSONDecoder().decode(
         LiveScenarioFile.self,
@@ -148,7 +161,8 @@ private func renderNext(_ next: LiveNextRow?, _ g: KoMessages.Guide, car: Bool) 
                 description: s.desc, startD: acc, endD: acc + s.len,
                 target: s.target, anchor: s.anchor,
                 action: s.action.flatMap(WalkAction.init(rawValue:)),
-                crossing: s.crossing ?? false
+                crossing: s.crossing ?? false,
+                body: s.body
             )
             acc += s.len
             return input
@@ -157,7 +171,7 @@ private func renderNext(_ next: LiveNextRow?, _ g: KoMessages.Guide, car: Bool) 
         let units = buildDisplayUnits(steps)
         var state: LiveRowsState?
         var baselineD = sc.baselineD
-        var results: [(top: String, next: String)] = []
+        var results: [(top: String, next: String, crossing: String)] = []
         for input in sc.inputs {
             if input.reset == true {
                 state = nil
@@ -169,11 +183,18 @@ private func renderNext(_ next: LiveNextRow?, _ g: KoMessages.Guide, car: Bool) 
                 turnApproachM: sc.turnApproachM ?? walkTurnApproachMeters
             )
             state = out.state
-            results.append((renderTop(out.top, ko.guide, car: car), renderNext(out.next, ko.guide, car: car)))
+            results.append((
+                renderTop(out.top, ko.guide, car: car),
+                renderNext(out.next, ko.guide, car: car),
+                renderCrossing(out.crossingRemaining, ko.guide)
+            ))
         }
         for ex in sc.expect {
             #expect(results[ex.afterInput].top == ex.top, "\(sc.name) #\(ex.afterInput) top")
             #expect(results[ex.afterInput].next == ex.next, "\(sc.name) #\(ex.afterInput) next")
+            if let crossing = ex.crossing {
+                #expect(results[ex.afterInput].crossing == crossing, "\(sc.name) #\(ex.afterInput) crossing")
+            }
         }
     }
 }
@@ -225,11 +246,13 @@ struct CrossingStepTests {
                 action: .crosswalk),
         ]))
         let out = liveStepsFrom(route: route, steps: [
-            (target: nil, anchor: nil, crossing: false),
-            (target: nil, anchor: nil, crossing: true),
+            (target: nil, anchor: nil, crossing: false, body: nil, crossingClock: nil),
+            (target: nil, anchor: nil, crossing: true, body: "횡단보도를 건너세요. 횡단보도 길이 8m", crossingClock: 12),
         ])
         #expect(out[0].crossing == false)
         #expect(out[1].crossing == true)
         #expect(out[1].action == .crosswalk)
+        #expect(out[1].body == "횡단보도를 건너세요. 횡단보도 길이 8m")
+        #expect(out[1].crossingClock == 12)
     }
 }

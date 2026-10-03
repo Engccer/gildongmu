@@ -437,10 +437,16 @@ public struct WalkRouteStep: Codable, Sendable, Hashable {
     /// en 안내에서 횡단 유닛을 한 번도 세우지 못했다. `action`과 같은 게이트(`includeGeometry=1`)로만
     /// 오고, 선택 디코딩(구버전 서버 응답 호환).
     public let crossing: Bool?
+    /// 방향 구절과 나머지 문장(E62 판본 2 — 웹 `WalkRouteStep.parts` 미러). 되읽기·억제 복구·횡단 윗줄은 `body`를
+    /// 쓴다(들어선 스텝의 회전을 다시 지시하지 않는다). `wording=2` ∧ `includeGeometry=1` 응답에만 온다. 선택 디코딩.
+    public let parts: WalkStepParts?
+    /// 횡단보도 건너는 방향 시(E62, 1~12 — 12 = 진행 방향 그대로, 6 = 뒤). 임박 문장이 쓴다. 선택 디코딩.
+    public let crossingClock: Int?
 
     public init(
         description: String, distanceMeters: Int? = nil, pathCoords: [RoutePoint]? = nil,
-        live: WalkLiveFragments? = nil, action: WalkAction? = nil, crossing: Bool? = nil
+        live: WalkLiveFragments? = nil, action: WalkAction? = nil, crossing: Bool? = nil,
+        parts: WalkStepParts? = nil, crossingClock: Int? = nil
     ) {
         self.description = description
         self.distanceMeters = distanceMeters
@@ -448,10 +454,12 @@ public struct WalkRouteStep: Codable, Sendable, Hashable {
         self.live = live
         self.action = action
         self.crossing = crossing
+        self.parts = parts
+        self.crossingClock = crossingClock
     }
 
     private enum CodingKeys: String, CodingKey {
-        case description, distanceMeters, pathCoords, live, action, crossing
+        case description, distanceMeters, pathCoords, live, action, crossing, parts, crossingClock
     }
 
     /// `WalkAction`이 `Codable`이 아니라 파생 구현을 쓸 수 없다(자동차 스텝과 같은 형태).
@@ -466,6 +474,8 @@ public struct WalkRouteStep: Codable, Sendable, Hashable {
         action = (try c.decodeIfPresent(String.self, forKey: .action))
             .flatMap(WalkAction.init(rawValue:))
         crossing = try c.decodeIfPresent(Bool.self, forKey: .crossing)
+        parts = try c.decodeIfPresent(WalkStepParts.self, forKey: .parts)
+        crossingClock = try c.decodeIfPresent(Int.self, forKey: .crossingClock)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -476,6 +486,19 @@ public struct WalkRouteStep: Codable, Sendable, Hashable {
         try c.encodeIfPresent(live, forKey: .live)
         try c.encodeIfPresent(action?.rawValue, forKey: .action)
         try c.encodeIfPresent(crossing, forKey: .crossing)
+        try c.encodeIfPresent(parts, forKey: .parts)
+        try c.encodeIfPresent(crossingClock, forKey: .crossingClock)
+    }
+}
+
+/// 방향 구절(`turn`, 마침표 없음)과 그것을 뺀 나머지(`body`, 주석 꼬리 포함). E62 spec §3.4.
+public struct WalkStepParts: Codable, Sendable, Hashable {
+    public let turn: String
+    public let body: String
+
+    public init(turn: String, body: String) {
+        self.turn = turn
+        self.body = body
     }
 }
 

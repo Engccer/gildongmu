@@ -325,13 +325,15 @@ export function DistanceBeacon({
               이탈 중엔 경로 잔여가 거짓이므로 숨긴다(3-state 정직). */}
           {tracking && guide.mode === "detail" && !guide.offRoute && guide.progress && (
             <p className="mt-2 text-sm">
-              {joinText(
-                remainingDistanceText(guide.progress),
-                guide.progress.etaSeconds !== null &&
-                  tGuide("remainingTime", {
-                    minutes: Math.max(1, Math.round(guide.progress.etaSeconds / 60)),
-                  }),
-              )}
+              {/* 횡단 중엔 횡단보도 끝까지의 거리(E62 판정 4 — 말 없이 화면에만). */}
+              {guide.liveRows.crossing ??
+                joinText(
+                  remainingDistanceText(guide.progress),
+                  guide.progress.etaSeconds !== null &&
+                    tGuide("remainingTime", {
+                      minutes: Math.max(1, Math.round(guide.progress.etaSeconds / 60)),
+                    }),
+                )}
             </p>
           )}
           {/* car "현재 도로, {이름}" 행(E56) — 세 줄의 맨 앞(iOS 동형). 이름을 모르면

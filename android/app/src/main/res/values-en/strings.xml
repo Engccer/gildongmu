@@ -754,6 +754,9 @@
     <string name="guide_carStart">Car guidance to %1$s started. %2$s. {3, plural, one {%3$s instruction} other {%3$s instructions}}, %4$s total.</string>
     <string name="guide_changeDestHere">Change destination to here</string>
     <string name="guide_changeWaypointHere">Change waypoint to here</string>
+    <string name="guide_clockDirection">%1$s o\'clock</string>
+    <string name="guide_crossingRemaining">About %1$s to the end of the crosswalk</string>
+    <string name="guide_crossingRemainingUnderpass">About %1$s to the end of the underpass</string>
     <string name="guide_currentRoad">Current road, %1$s</string>
     <string name="guide_degradedNoLocation">Your current location could not be determined. Check location permission and signal.</string>
     <string name="guide_degradedNoteCoverage">This is outside the service area, so guidance is using the direction and distance to the destination.</string>
@@ -763,7 +766,7 @@
     <string name="guide_degradedRetryable">The route could not be loaded. For now, only the direction and distance to the destination are announced.</string>
     <string name="guide_degradedUnavailable">No route to this destination was found. Guidance uses the direction and distance to the destination.</string>
     <string name="guide_detailNoLocation">Location unavailable. Guidance will use straight-line distance once your position is found.</string>
-    <string name="guide_detailStart">Walking guidance to %1$s started. {2, plural, one {%2$s instruction} other {%2$s instructions}}, %3$s total. %4$s</string>
+    <string name="guide_detailStart">Walking guidance to %1$s started. %2$s. {3, plural, one {%3$s instruction} other {%3$s instructions}}, %4$s total.</string>
     <string name="guide_detailUnavailable">Route details unavailable. Guiding by straight-line distance to %1$s.</string>
     <string name="guide_dirAhead">ahead</string>
     <string name="guide_dirAheadTo">straight ahead</string>
@@ -786,6 +789,9 @@
     <string name="guide_handoff">Switching to straight-line guidance to your destination</string>
     <string name="guide_imminent_back">Turn around shortly</string>
     <string name="guide_imminent_crosswalk">Cross the crosswalk shortly</string>
+    <string name="guide_imminent_crosswalkAhead">Cross the crosswalk straight ahead shortly</string>
+    <string name="guide_imminent_crosswalkBack">Shortly, turn around and cross the crosswalk</string>
+    <string name="guide_imminent_crosswalkClock">Shortly, turn to %1$s and cross the crosswalk</string>
     <string name="guide_imminent_left">Turn left shortly</string>
     <string name="guide_imminent_right">Turn right shortly</string>
     <string name="guide_imminent_underpass">Use the underpass shortly</string>

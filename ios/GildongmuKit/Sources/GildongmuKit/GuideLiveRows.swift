@@ -30,11 +30,16 @@ public struct LiveStepInput: Sendable, Equatable {
     public let action: WalkAction?
     /// 서버 횡단 구간 플래그(A26, `WalkRouteStep.crossing`). false는 "횡단 구간 아님".
     public let crossing: Bool
+    /// 방향 구절을 뺀 문장(E62 서버 `parts.body`). 횡단 윗줄·되읽기·억제 복구가 쓴다 — 들어선 스텝의 회전 문장을
+    /// 다시 지시하지 않는다. nil(판본 1 응답·방향 구절 없는 스텝)은 문장 전체. 웹 `LiveStepInput.body` 미러.
+    public let body: String?
+    /// 횡단보도 건너는 방향 시(E62 서버 `crossingClock`, 12 = 진행 방향 그대로). 임박 문장이 쓴다. nil = 모름.
+    public let crossingClock: Int?
 
     public init(
         description: String, startD: Double, endD: Double,
         target: String? = nil, anchor: String? = nil, action: WalkAction? = nil,
-        crossing: Bool = false
+        crossing: Bool = false, body: String? = nil, crossingClock: Int? = nil
     ) {
         self.description = description
         self.startD = startD
@@ -43,6 +48,8 @@ public struct LiveStepInput: Sendable, Equatable {
         self.anchor = anchor
         self.action = action
         self.crossing = crossing
+        self.body = body
+        self.crossingClock = crossingClock
     }
 }
 
@@ -104,7 +111,7 @@ public func buildDisplayUnits(_ steps: [LiveStepInput]) -> [DisplayUnit] {
             startD: first.startD,
             endD: last.endD,
             crossing: g.crossing,
-            crossingText: g.crossing ? first.description : nil,
+            crossingText: g.crossing ? (first.body ?? first.description) : nil,
             crossingAction: g.crossing ? g.action : nil,
             // 끝 행동 = 다음 유닛 첫 스텝이 알리는 행동(횡단 유닛 진입 포함). 최종 유닛 nil.
             endAction: nextFirst.flatMap { actionOf($0) },
@@ -117,7 +124,8 @@ public func buildDisplayUnits(_ steps: [LiveStepInput]) -> [DisplayUnit] {
 /// 리듀서 스팬(StepSpan)과 응답 스텝(live 조각·횡단 플래그)을 index로 짝지어 표시 입력을 만든다.
 /// `steps`는 응답 스텝 순서 그대로(빈 배열 = 조각 없음, 자동차).
 public func liveStepsFrom(
-    route: GuideRoute, steps: [(target: String?, anchor: String?, crossing: Bool)]
+    route: GuideRoute,
+    steps: [(target: String?, anchor: String?, crossing: Bool, body: String?, crossingClock: Int?)]
 ) -> [LiveStepInput] {
     route.steps.map { span in
         let fields = span.index < steps.count ? steps[span.index] : nil
@@ -125,7 +133,9 @@ public func liveStepsFrom(
             description: span.description, startD: span.startD, endD: span.endD,
             target: fields?.target, anchor: fields?.anchor,
             action: span.action,  // 자동차 서버 투영(K2 §4) — 웹 liveStepsFrom 미러
-            crossing: fields?.crossing ?? false
+            crossing: fields?.crossing ?? false,
+            body: fields?.body,
+            crossingClock: fields?.crossingClock
         )
     }
 }
@@ -155,10 +165,23 @@ public enum LiveNextRow: Sendable, Equatable {
     case turn(action: WalkAction) // 연속 회전
 }
 
+/// 횡단 중 남은 거리 행(E62 판정 4 — 말 없이 화면에만). 웹 `crossingRemaining` 미러.
+public struct CrossingRemaining: Sendable, Equatable {
+    /// 횡단 유닛 끝까지 표시 잔여를 10m로 반올림한 값(하한 10, "다 건넜습니다" 단정 없음).
+    public let meters: Int
+    /// crosswalk | underpass — 렌더 키를 고른다.
+    public let action: WalkAction
+}
+
+/// 횡단 남은 거리 표시 단위(m) — 시작·끝 정렬 오차 3~8m라 10m가 한계다(E62 판독). 웹 `CROSSING_REMAINING_STEP_M`.
+public let crossingRemainingStepMeters = 10
+
 public struct LiveRowsOutput: Sendable, Equatable {
     public let state: LiveRowsState?
     public let top: LiveTopRow?
     public let next: LiveNextRow?
+    /// 윗줄이 횡단일 때만 — 소비자는 남은 거리 행을 "횡단보도 끝까지 약 N m"로 바꾼다.
+    public let crossingRemaining: CrossingRemaining?
 }
 
 /// 다음 유닛 예고(종류별 — 직진 가정 금지, F11).
@@ -185,11 +208,11 @@ public func guideLiveRows(
     /// 회전 접근 전환 표시 잔여(m). walk `walkTurnApproachMeters`, car는 임박 임계 − lag. 기본값 없음.
     turnApproachM: Double
 ) -> LiveRowsOutput {
-    if units.isEmpty { return LiveRowsOutput(state: nil, top: nil, next: nil) }
+    if units.isEmpty { return LiveRowsOutput(state: nil, top: nil, next: nil, crossingRemaining: nil) }
     // 이탈: 両행을 비운다(F2 — 낡은 예고는 따라가게 된다). 문장은 렌더 계층의 기존 키.
-    if phase == .offRoute { return LiveRowsOutput(state: nil, top: .offRoute, next: nil) }
+    if phase == .offRoute { return LiveRowsOutput(state: nil, top: .offRoute, next: nil, crossingRemaining: nil) }
     // 최종 접근·도착(우선순위 1·2)은 이 계층 밖 — 오케스트레이터가 행을 소유한다.
-    if phase == .finalApproach { return LiveRowsOutput(state: nil, top: nil, next: nil) }
+    if phase == .finalApproach { return LiveRowsOutput(state: nil, top: nil, next: nil, crossingRemaining: nil) }
 
     let effD = displayEffectiveD(d: d, baselineD: baselineD)
     let unitIndex = units.firstIndex { effD < $0.endD } ?? units.count - 1
@@ -211,8 +234,8 @@ public func guideLiveRows(
             : .action(action: unit.endAction!, anchor: unit.endAnchor) // 직진 중 → 끝 행동 예고
 
     // 상태 대체(우선순위 4·5): 윗줄만 바꾸고 아랫줄·클램프는 유지(해소 시 그 자리 복귀).
-    if phase == .reacquiring { return LiveRowsOutput(state: state, top: .reacquiring, next: next) }
-    if phase == .uncertain { return LiveRowsOutput(state: state, top: .uncertain, next: next) }
+    if phase == .reacquiring { return LiveRowsOutput(state: state, top: .reacquiring, next: next, crossingRemaining: nil) }
+    if phase == .uncertain { return LiveRowsOutput(state: state, top: .uncertain, next: next, crossingRemaining: nil) }
 
     let top: LiveTopRow
     if unit.crossing {
@@ -224,5 +247,14 @@ public func guideLiveRows(
     } else {
         top = .straight(meters: clamped, target: unit.target)
     }
-    return LiveRowsOutput(state: state, top: top, next: next)
+    let crossingRemaining = unit.crossing
+        ? CrossingRemaining(
+            meters: max(
+                crossingRemainingStepMeters,
+                Int((Double(clamped) / Double(crossingRemainingStepMeters)).rounded()) * crossingRemainingStepMeters
+            ),
+            action: unit.crossingAction ?? .crosswalk
+        )
+        : nil
+    return LiveRowsOutput(state: state, top: top, next: next, crossingRemaining: crossingRemaining)
 }

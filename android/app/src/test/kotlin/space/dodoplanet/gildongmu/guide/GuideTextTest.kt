@@ -29,7 +29,7 @@ class GuideTextTest {
 
     @Test fun `시작 원자 발화 — 목적지·개수·총 거리·첫 안내`() {
         val initial = initialGuideState(route, 0.0)
-        assertEquals("길동역까지 도보 안내 시작. 안내 3개, 총 331m. 천호대로를 따라 119m 이동", t.start(route, initial.firstIndices, "길동역"))
+        assertEquals("길동역까지 도보 안내 시작. 천호대로를 따라 119m 이동. 안내 3개, 총 331m.", t.start(route, initial.firstIndices, "길동역"))
     }
 
     @Test fun `주기 통지 — 횡단 스텝은 원문, target 유무, 마지막 스텝은 목적지 틀`() {

@@ -161,7 +161,7 @@ describe("수량 문구 복수형(A29)", () => {
     "manualLocation.staleAgeMinutes": "1 minute ago",
     "manualLocation.staleAgeHours": "1 hour ago",
     "directions.readySummary": "Route guidance is ready for 1 mode.",
-    "guide.detailStart": "Walking guidance to x started. 1 instruction, x total. x",
+    "guide.detailStart": "Walking guidance to x started. x. 1 instruction, x total.",
     "guide.rerouteDone": "Route recalculated from your current location. 1 instruction, x total. x",
     "guide.carStart": "Car guidance to x started. x. 1 instruction, x total.",
     "guide.band.transitRiding": "On x, 1 stop left",

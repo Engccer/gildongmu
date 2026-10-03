@@ -396,6 +396,128 @@
           "next": "다음 안내, 100m 직진"
         }
       ]
+    },
+    {
+      "name": "E62 횡단 중 남은 거리 행(10m 단위, 하한 10)과 회전 문장을 뗀 윗줄 — 분해된 연속 횡단·지하보도",
+      "steps": [
+        {
+          "len": 100,
+          "desc": "천호대로를 따라 강동성심병원교차로까지 100m 이동"
+        },
+        {
+          "len": 47,
+          "action": "crosswalk",
+          "crossing": true,
+          "desc": "강동성심병원교차로에서 횡단보도 2개를 연속으로 건넙니다. 먼저 9시 방향으로 도세요. 그 후 천호대로를 건너세요. 횡단보도 길이 47m",
+          "body": "천호대로를 건너세요. 횡단보도 길이 47m"
+        },
+        {
+          "len": 21,
+          "action": "crosswalk",
+          "crossing": true,
+          "desc": "3시 방향으로 도세요. 그 후 다음 횡단보도를 건너세요. 횡단보도 길이 21m",
+          "body": "다음 횡단보도를 건너세요. 횡단보도 길이 21m"
+        },
+        {
+          "len": 60,
+          "desc": "60m 이동"
+        },
+        {
+          "len": 30,
+          "action": "underpass",
+          "crossing": true,
+          "desc": "지하보도로 건너세요. 지하보도 길이 30m"
+        },
+        {
+          "len": 50,
+          "desc": "50m 이동"
+        }
+      ],
+      "baselineD": 0,
+      "inputs": [
+        {
+          "d": 50,
+          "phase": "following"
+        },
+        {
+          "d": 95,
+          "phase": "following"
+        },
+        {
+          "d": 120,
+          "phase": "following"
+        },
+        {
+          "d": 134,
+          "phase": "following"
+        },
+        {
+          "d": 140,
+          "phase": "bundle"
+        },
+        {
+          "d": 170,
+          "phase": "following"
+        },
+        {
+          "d": 225,
+          "phase": "following"
+        },
+        {
+          "d": 230,
+          "phase": "uncertain"
+        }
+      ],
+      "expect": [
+        {
+          "afterInput": 0,
+          "top": "40m 직진하세요",
+          "next": "다음 안내, 횡단보도를 건너세요",
+          "crossing": ""
+        },
+        {
+          "afterInput": 1,
+          "top": "천호대로를 건너세요. 횡단보도 길이 47m",
+          "next": "다음 안내, 횡단보도를 건너세요",
+          "crossing": "횡단보도 끝까지 약 40m"
+        },
+        {
+          "afterInput": 2,
+          "top": "천호대로를 건너세요. 횡단보도 길이 47m",
+          "next": "다음 안내, 횡단보도를 건너세요",
+          "crossing": "횡단보도 끝까지 약 20m"
+        },
+        {
+          "afterInput": 3,
+          "top": "천호대로를 건너세요. 횡단보도 길이 47m",
+          "next": "다음 안내, 횡단보도를 건너세요",
+          "crossing": "횡단보도 끝까지 약 10m"
+        },
+        {
+          "afterInput": 4,
+          "top": "다음 횡단보도를 건너세요. 횡단보도 길이 21m",
+          "next": "다음 안내, 60m 직진",
+          "crossing": "횡단보도 끝까지 약 20m"
+        },
+        {
+          "afterInput": 5,
+          "top": "48m 직진하세요",
+          "next": "다음 안내, 지하보도로 건너세요",
+          "crossing": ""
+        },
+        {
+          "afterInput": 6,
+          "top": "지하보도로 건너세요. 지하보도 길이 30m",
+          "next": "다음 안내, 50m 직진",
+          "crossing": "지하보도 끝까지 약 20m"
+        },
+        {
+          "afterInput": 7,
+          "top": "위치 확신이 낮습니다",
+          "next": "다음 안내, 50m 직진",
+          "crossing": ""
+        }
+      ]
     }
   ]
 }

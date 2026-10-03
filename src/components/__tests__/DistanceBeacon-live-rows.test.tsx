@@ -17,7 +17,7 @@ const guideApi: RouteGuideApi = {
   offRoute: false,
   progress: null,
   currentText: null,
-  liveRows: { top: null, next: null },
+  liveRows: { top: null, next: null, crossing: null },
   degradeText: null,
   rerouting: false,
   start: () => {},
@@ -40,7 +40,7 @@ import { DistanceBeaconHost } from "./live-region-host";
 describe("DistanceBeacon 하단 2행", () => {
   afterEach(() => {
     cleanup();
-    guideApi.liveRows = { top: null, next: null };
+    guideApi.liveRows = { top: null, next: null, crossing: null };
     guideApi.currentText = null;
     guideApi.offRoute = false;
   });
@@ -56,6 +56,7 @@ describe("DistanceBeacon 하단 2행", () => {
     guideApi.liveRows = {
       top: "빵집까지 52m 직진하세요",
       next: "다음 안내, 횡단보도를 건너세요",
+      crossing: null,
     };
     open();
     const top = screen.getByText("빵집까지 52m 직진하세요");
@@ -65,7 +66,7 @@ describe("DistanceBeacon 하단 2행", () => {
   });
 
   it("빈 값은 요소 제거 — 아랫줄만 비어도 그 행은 없다", () => {
-    guideApi.liveRows = { top: "목적지까지 5m 직진하세요", next: null };
+    guideApi.liveRows = { top: "목적지까지 5m 직진하세요", next: null, crossing: null };
     open();
     expect(screen.getByText("목적지까지 5m 직진하세요")).toBeTruthy();
     expect(screen.queryByText(/다음 안내/)).toBeNull();
@@ -73,7 +74,7 @@ describe("DistanceBeacon 하단 2행", () => {
 
   it("현재 도로 행(car, E56)은 세 줄의 맨 앞이고 live region이 아니다", () => {
     guideApi.currentText = "현재 도로, 올림픽대로";
-    guideApi.liveRows = { top: "200m 후 우회전하세요", next: "다음 안내, 좌회전하세요" };
+    guideApi.liveRows = { top: "200m 후 우회전하세요", next: "다음 안내, 좌회전하세요", crossing: null };
     open();
     const road = screen.getByText("현재 도로, 올림픽대로");
     const top = screen.getByText("200m 후 우회전하세요");

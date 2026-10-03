@@ -712,7 +712,7 @@
     <string name="eventsNearby_target">대상 %1$s</string>
     <string name="guide_addWaypointHere">여기를 경유지로 추가</string>
     <string name="guide_alreadyActive">이미 안내 중입니다. 먼저 진행 중인 안내를 종료하세요.</string>
-    <string name="guide_announceAhead">약 %1$s 앞, %2$s</string>
+    <string name="guide_announceAhead">앞으로 약 %1$s 가다가 %2$s</string>
     <string name="guide_approx">약 %1$s</string>
     <string name="guide_arrived">목적지에 도착했습니다</string>
     <string name="guide_arrivedPresumed">목적지 부근에 도착한 것으로 판단해 안내를 종료했습니다</string>
@@ -754,6 +754,9 @@
     <string name="guide_carStart">%1$s까지 자동차 안내 시작. %2$s. 안내 %3$s개, 총 %4$s.</string>
     <string name="guide_changeDestHere">여기로 목적지 변경</string>
     <string name="guide_changeWaypointHere">여기로 경유지 변경</string>
+    <string name="guide_clockDirection">%1$s시 방향</string>
+    <string name="guide_crossingRemaining">횡단보도 끝까지 약 %1$s</string>
+    <string name="guide_crossingRemainingUnderpass">지하보도 끝까지 약 %1$s</string>
     <string name="guide_currentRoad">현재 도로, %1$s</string>
     <string name="guide_degradedNoLocation">현재 위치를 확인하지 못했습니다. 위치 권한과 신호를 확인해 주세요.</string>
     <string name="guide_degradedNoteCoverage">제공 지역 밖이라 목적지 방향과 거리로 안내 중입니다.</string>
@@ -763,7 +766,7 @@
     <string name="guide_degradedRetryable">경로를 불러오지 못했습니다. 지금은 목적지 방향과 거리만 안내합니다.</string>
     <string name="guide_degradedUnavailable">이 목적지까지의 경로를 찾지 못했습니다. 목적지 방향과 거리로 안내합니다.</string>
     <string name="guide_detailNoLocation">현재 위치를 확인하지 못했습니다. 위치가 잡히면 직선거리로 안내합니다.</string>
-    <string name="guide_detailStart">%1$s까지 도보 안내 시작. 안내 %2$s개, 총 %3$s. %4$s</string>
+    <string name="guide_detailStart">%1$s까지 도보 안내 시작. %2$s. 안내 %3$s개, 총 %4$s.</string>
     <string name="guide_detailUnavailable">경로 정보를 가져오지 못했습니다. %1$s까지 직선거리로 안내합니다.</string>
     <string name="guide_dirAhead">정면</string>
     <string name="guide_dirAheadTo">정면으로</string>
@@ -786,6 +789,9 @@
     <string name="guide_handoff">목적지까지 직선 안내로 전환합니다</string>
     <string name="guide_imminent_back">잠시 후 뒤로 도세요</string>
     <string name="guide_imminent_crosswalk">잠시 후 횡단보도를 건너세요</string>
+    <string name="guide_imminent_crosswalkAhead">잠시 후 진행 방향 그대로 횡단보도를 건너세요</string>
+    <string name="guide_imminent_crosswalkBack">잠시 후 뒤로 돌아 횡단보도를 건너세요</string>
+    <string name="guide_imminent_crosswalkClock">잠시 후 %1$s으로 돌아 횡단보도를 건너세요</string>
     <string name="guide_imminent_left">잠시 후 왼쪽으로 도세요</string>
     <string name="guide_imminent_right">잠시 후 오른쪽으로 도세요</string>
     <string name="guide_imminent_underpass">잠시 후 지하보도로 건너세요</string>

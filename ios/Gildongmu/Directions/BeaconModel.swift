@@ -90,7 +90,14 @@ final class BeaconModel {
             // 회전)를 최신 1개만 되살린다. 밀린 것 전부 재생은 금지(최신 우선).
             if !outputSuppressed, let pending = pendingRecovery {
                 pendingRecovery = nil
-                announce(pending, speechClass: .actionable)
+                // 복구 시점에 실위치가 그 유닛 첫 스텝에 이미 들어섰으면 방향 구절을 뗀 문장으로(E62 — 이미 돈 회전을
+                // 다시 지시하지 않는다). 판정은 리듀서와 같은 실위치(원시 d + lag).
+                let entered = pendingRecoveryEntered.flatMap { alt -> String? in
+                    guard let gs = guideState, gs.d + projectionLagMeters >= alt.startD else { return nil }
+                    return alt.text
+                }
+                pendingRecoveryEntered = nil
+                announce(entered ?? pending, speechClass: .actionable)
             }
         }
     }
@@ -178,6 +185,8 @@ final class BeaconModel {
     private var liveSteps: [LiveStepInput] = []
     /// 하단 2행 리듀서 소상태. 재조회·이탈 복귀·모드 전환에서 nil 리셋.
     private var liveRowsState: LiveRowsState?
+    /// 횡단 중 남은 거리 행 문장(E62 — "횡단보도 끝까지 약 30m", 말 없이 화면에만). nil이면 남은 거리 행은 종전 문장.
+    private var liveCrossingText: String?
     /// 표시 좌표계 램프인 기준점(원시 d) — 상태 재구성 지점마다 그 시점 d로 교체.
     private var liveBaselineD: Double = 0
 
@@ -217,6 +226,8 @@ final class BeaconModel {
     private var routeOriginBestAt: Double?
     /// 억제 중 소비된 실행 안내의 최신 1개(해제 시 복구 발화).
     private var pendingRecovery: String?
+    /// 억제 복구 대상이 유닛 전문일 때, 그 유닛 첫 스텝 시작과 "들어선 뒤" 문장(E62). 복구 시점에 들어섰으면 이것을 읽는다.
+    private var pendingRecoveryEntered: (startD: Double, text: String)?
     /// 재조회 latest-wins 세대 토큰 + in-flight 가드(repo 관례).
     private var rerouteToken = 0
     private var rerouteInFlight = false
@@ -891,7 +902,10 @@ final class BeaconModel {
             // 타입이 `DataLocale`이라 오타가 들어갈 자리가 없다(2026-09-02).
             lang: AppLanguage.dataLocaleValue,
             includeGeometry: true,
-            variant: variant, via: via
+            variant: variant,
+            // 건너는 길 이름은 실험판만(E62 §3.5 — 추론이라 실보행이 게이트).
+            crossingRoad: AppConfig.experimentalCrossingRoadEnabled,
+            via: via
         )
         guard let briefing else { return nil }
         if via != nil, briefing.waypoint == nil { return nil }
@@ -913,7 +927,8 @@ final class BeaconModel {
             briefing.finalApproach,
             // 스팬과 응답 스텝(live 조각·횡단 플래그)을 index로 짝지어 표시 입력을 만든다(spec §5, A26).
             liveStepsFrom(route: route, steps: briefing.steps.map {
-                (target: $0.live?.target, anchor: $0.live?.anchor, crossing: $0.crossing ?? false)
+                (target: $0.live?.target, anchor: $0.live?.anchor, crossing: $0.crossing ?? false,
+                 body: $0.parts?.body, crossingClock: $0.crossingClock)
             }),
             briefing.lineKind
         )
@@ -1124,6 +1139,8 @@ final class BeaconModel {
         // 매 fix 호출이라 동일 값 재대입을 걸러 관찰 무효화(재렌더)를 막는다.
         if liveTopText != top { liveTopText = top }
         if liveNextText != next { liveNextText = next }
+        // 횡단 중 남은 거리 행(E62 판정 4) — `updateRemaining`이 남은 거리 행에 쓴다(같은 fix에서 뒤에 불린다).
+        liveCrossingText = out.crossingRemaining.map(GuideText.crossingRemaining)
     }
 
     /// 하단 2행 기준 재설정(상태 재구성 지점 — 커밋·이탈 복귀·재획득). 램프인
@@ -1138,6 +1155,7 @@ final class BeaconModel {
         liveTopText = nil
         liveNextText = nil
         liveRowsState = nil
+        liveCrossingText = nil
     }
 
     /// 상세 불가 시 간략 폴백(조용한 강등 금지 — 통지가 모드를 말한다, 스펙 §4.1).
@@ -1231,7 +1249,8 @@ final class BeaconModel {
             minutes = etaMinutesNow(route: route, state: state)
         }
         let timePart = minutes.map { appLocalized("guide.remainingTime", String($0)) }
-        let text = joinText(distancePart, timePart)
+        // 횡단 중엔 남은 거리 행이 횡단보도 끝까지의 거리다(E62 판정 4). 10m 단위라 행 문자열도 그때만 바뀐다.
+        let text = liveCrossingText ?? joinText(distancePart, timePart)
         // 같은 문장이면 대입하지 않는다 — 행이 불변이라 커서 위에서 다시 읽히지 않는다.
         if remainingText != text { remainingText = text }
     }
@@ -1364,6 +1383,7 @@ final class BeaconModel {
         etaTask?.cancel()
         etaTask = nil
         pendingRecovery = nil
+        pendingRecoveryEntered = nil
         lastFixCoord = nil
         lastFixCoordAt = nil
         isRerouting = false
@@ -1507,6 +1527,7 @@ final class BeaconModel {
         etaTask?.cancel(); etaTask = nil
         etaSeconds = nil; etaUpdatedAt = nil; etaCallCount = 0
         pendingRecovery = nil
+        pendingRecoveryEntered = nil
         pendingStepFreeNotice = nil
         lastStepFree = nil
         resetFinalApproach(geometry: nil)
@@ -2508,13 +2529,21 @@ final class BeaconModel {
                 announce(text, speechClass: speechClass)
                 break
             }
-            let text = GuideText.unit(route: route, indices: indices)
+            // 되읽기는 구간 안에서 다시 읽는 자리다 — 들어선 첫 스텝의 회전 문장을 뗀다(E62 문안 확정본).
+            let text: String
+            if case .bundleReread = event {
+                text = GuideText.rereadUnit(route: route, indices: indices, liveSteps: liveSteps)
+            } else {
+                text = GuideText.unit(route: route, indices: indices)
+            }
             // walk 전문은 결정 지점까지의 실위치 거리를 앞에 단다(위원장 판정 2026-10-03 — 직진 주기
             // 통지 다음에 "…에서 돌아"가 거리 없이 나오면 안내가 튄다). 재통독은 거리 없이 원문만.
             // ⚠ 거리 머리말은 그 순간에만 참이라 되읽기(`lastGuidance`·억제 복구)에는 원문을 둔다 —
             //   복귀·신호 불량 뒤에 "약 20m 앞"을 갚으면 지난 거리를 말한다.
             var spoken = text
-            if case .announceSteps = event, sessionKind == .walk, let gs = guideState,
+            // ⚠ 늦은 전문(`late` — 실위치가 이미 첫 스텝에 들어섰다, E62 R4·R5)엔 머리말을 붙이지 않는다(구조 판정 —
+            //   램프인 구간 산술로 가르면 "앞으로 약 5m 가다가"가 샌다).
+            if case let .announceSteps(_, late) = event, !late, sessionKind == .walk, let gs = guideState,
                let first = indices.first, route.steps.indices.contains(first) {
                 spoken = GuideText.announceAhead(
                     unit: text,
@@ -2532,7 +2561,19 @@ final class BeaconModel {
             //   "현재 도로" 행)로 대체한다(handleScenePhaseChange, walk엔 폴백이 없다).
             statusText = ""
             // 실행 안내는 억제 중이면 최신 1개를 보관해 해제 시 복구한다(스펙 §4.3).
-            if outputSuppressed { pendingRecovery = text } else { announce(spoken, speechClass: speechClass) }
+            if outputSuppressed {
+                pendingRecovery = text
+                if case .announceSteps = event, let first = indices.first, route.steps.indices.contains(first) {
+                    pendingRecoveryEntered = (
+                        route.steps[first].startD,
+                        GuideText.rereadUnit(route: route, indices: indices, liveSteps: liveSteps)
+                    )
+                } else {
+                    pendingRecoveryEntered = nil
+                }
+            } else {
+                announce(spoken, speechClass: speechClass)
+            }
         case let .imminent(indices, action, stage):
             // 임박 큐(20m): 전문이 아니라 짧은 명령형이다. 전문은 30m에서 이미 나갔고,
             // 여기서 다시 읽으면 8초 안에 두 문장이 겹쳐 정작 행동 시점을 놓친다.
@@ -2549,13 +2590,15 @@ final class BeaconModel {
             //   구간에서만 참이라 나중에 갚으면 이미 지난 모퉁이를 돌라고 말한다.
             // 수단·청취자별 문구(K2 §6.3): walk "잠시 후 왼쪽으로 도세요" / car 동승자 "잠시 후
             // 우회전하세요" / car 운전자 명령 단어 "우회전".
+            // walk 횡단 임박은 건너는 방향을 싣는다(E62 — 서버 `crossingClock`, 없으면 종전 문장).
+            let clock = indices.first.flatMap { liveSteps.indices.contains($0) ? liveSteps[$0].crossingClock : nil }
             let text = sessionKind == .car
                 ? (driverChannel
                     ? GuideText.carCommand(action)
                     // 지점·방면(E61)은 행동이 있는 그 결정 지점 스텝의 것.
                     : GuideText.carImminentText(
                         action, landmark: indices.first.flatMap { route.steps.indices.contains($0) ? route.steps[$0].carLandmark : nil }))
-                : GuideText.imminentText(action)
+                : GuideText.imminentText(action, crossingClock: clock)
             statusText = text
             if !outputSuppressed { announce(text, speechClass: speechClass) }
         case let .farNotice(indices, remainingMeters):
@@ -2576,7 +2619,12 @@ final class BeaconModel {
             )
             lastGuidance = text
             statusText = text
-            if outputSuppressed { pendingRecovery = text } else { announce(text, speechClass: speechClass) }
+            if outputSuppressed {
+                pendingRecovery = text
+                pendingRecoveryEntered = nil
+            } else {
+                announce(text, speechClass: speechClass)
+            }
         case let .periodic(stepIndex, remainingMeters, accuracy):
             // walk 직진 구간 반복 통지는 단문이다(위원장 실보행 피드백 2026-08-12) —
             // 조망은 30m 선행 전문 1회로 충분하고, 반복은 "{target}까지 … 직진하세요"만.
@@ -2628,7 +2676,12 @@ final class BeaconModel {
                 destinationWithDirectionParticle(destinationLabel))
             statusText = text
             // 지나간 사실이라 억제 해제 뒤에 갚아도 참이다(실행 안내와 같은 취급).
-            if outputSuppressed { pendingRecovery = text } else { announce(text, speechClass: speechClass) }
+            if outputSuppressed {
+                pendingRecovery = text
+                pendingRecoveryEntered = nil
+            } else {
+                announce(text, speechClass: speechClass)
+            }
         case let .waypointApproaching(meters):
             // 경유지 접근 예고(N4 spec 2026-09-24 §4.1): 1회, 톤 없음. 실행 안내가 아니라 `lastGuidance`는
             // 덮지 않고, 억제 중이면 보관하지 않는다(거리 문장은 시간이 지나면 거짓 — 주기 통지와 같은 취급).

@@ -738,7 +738,7 @@
     "transitHeading": "Guidage transports"
   },
   "guide": {
-    "detailStart": "Guidage à pied vers {dest} démarré. {count, plural, one {# instruction} other {# instructions}}, {distance} au total. {first}",
+    "detailStart": "Guidage à pied vers {dest} démarré. {first}. {count, plural, one {# instruction} other {# instructions}}, {distance} au total.",
     "next": "Dans {distance}, {step}",
     "nextDestination": "{distance} jusqu'à {dest}",
     "periodicStraight": "Continuez tout droit sur {distance} vers {target}",
@@ -770,7 +770,10 @@
       "right": "Tournez à droite dans un instant",
       "back": "Faites demi-tour dans un instant",
       "crosswalk": "Traversez le passage piéton dans un instant",
-      "underpass": "Empruntez le passage souterrain dans un instant"
+      "underpass": "Empruntez le passage souterrain dans un instant",
+      "crosswalkAhead": "Traversez le passage piéton tout droit dans un instant",
+      "crosswalkBack": "Dans un instant, faites demi-tour et traversez le passage piéton",
+      "crosswalkClock": "Dans un instant, tournez vers {direction} et traversez le passage piéton"
     },
     "liveStraight": "Continuez tout droit sur {n}m vers {target}",
     "liveStraightNoName": "Continuez tout droit sur {n}m",
@@ -864,7 +867,10 @@
     "degradedNoteRetryable": "L’itinéraire n’a pas pu être chargé ; le guidage utilise la direction et la distance jusqu’à la destination.",
     "degradedNoteUnavailable": "Aucun itinéraire n’a été trouvé ; le guidage utilise la direction et la distance jusqu’à la destination.",
     "degradedNoteCoverage": "Vous êtes hors de la zone couverte ; le guidage utilise la direction et la distance jusqu’à la destination.",
-    "degradedNoteHandoff": "L’itinéraire est terminé ; le guidage utilise la direction et la distance jusqu’à la destination."
+    "degradedNoteHandoff": "L’itinéraire est terminé ; le guidage utilise la direction et la distance jusqu’à la destination.",
+    "clockDirection": "la direction {hour} h",
+    "crossingRemaining": "Environ {distance} jusqu'au bout du passage piéton",
+    "crossingRemainingUnderpass": "Environ {distance} jusqu'au bout du passage souterrain"
   },
   "offline": {
     "heading": "Vous êtes hors ligne",

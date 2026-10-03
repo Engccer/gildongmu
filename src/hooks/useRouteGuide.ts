@@ -243,6 +243,35 @@ function unitText(route: GuideRoute, indices: number[], t: GuideT): string {
 }
 
 /**
+ * 구간 안에서 다시 읽는 유닛 문장(E62 — 되읽기). 첫 index는 이미 들어선 스텝이라 방향 구절을 뗀 문장(`body`)이 있으면
+ * 그것을 읽는다 — "왼쪽으로 도세요"를 이미 돈 뒤에 다시 지시하지 않는다(문안 확정본). 뒤 스텝들은 아직 앞이라 원문.
+ * iOS `GuideText.rereadUnit` 미러.
+ */
+export function rereadUnitText(
+  route: GuideRoute,
+  indices: number[],
+  liveSteps: readonly { body?: string }[],
+  t: GuideT,
+): string {
+  const descs = indices
+    .map((i, pos) => (pos === 0 ? (liveSteps[i]?.body ?? route.steps[i]?.description) : route.steps[i]?.description))
+    .filter((d): d is string => Boolean(d));
+  if (descs.length <= 1) return descs[0] ?? "";
+  return t("bundle", { steps: descs.join(". ") });
+}
+
+/**
+ * 도보 임박 명령에 횡단 방향을 싣는다(E62 문안 나 "바로 앞" — 임박 문장만 "돌아 …" 한 문장 예외). 12 = 진행 방향
+ * 그대로, 6 = 뒤로, 그 밖은 시계 방향, 부재(방향 모름)는 종전 문장. iOS `GuideText.imminentText(_:crossingClock:)` 미러.
+ */
+export function walkImminentLine(action: string, crossingClock: number | undefined, t: GuideT): string {
+  if (action !== "crosswalk" || crossingClock === undefined) return t(`imminent.${action}`);
+  if (crossingClock === 12) return t("imminent.crosswalkAhead");
+  if (crossingClock === 6) return t("imminent.crosswalkBack");
+  return t("imminent.crosswalkClock", { direction: t("clockDirection", { hour: crossingClock }) });
+}
+
+/**
  * 다음 안내 통지문 — 그 자리에 들어오는 값의 **타입에 맞는 틀**을 고른다
  * (위원장 실사용 피드백 2026-08-07).
  *
@@ -425,6 +454,16 @@ function isGuidanceEvent(kind: GuideEvent["kind"]): boolean {
 }
 
 /**
+ * 하단 2행 문자열 + 횡단 중 남은 거리 행(E62). `crossing`이 있으면 남은 거리 행이 그 문장을 보인다
+ * ("횡단보도 끝까지 약 30m" — 말 없이 화면에만, 10m 단위라 그때만 바뀐다).
+ */
+export interface LiveRowsText {
+  top: string | null;
+  next: string | null;
+  crossing: string | null;
+}
+
+/**
  * 남은 거리 행의 목표(N4 spec 2026-09-24 §2.5). `route`=경유지 없는 세션(종전 "남은 거리" 행),
  * 경유지 세션은 도착 전 `waypoint`, 도착 뒤 `destination`. 라벨은 경로에 결박된 경유지 이름·목적지 이름.
  */
@@ -481,7 +520,7 @@ export interface RouteGuideApi {
    * live region 밖 정적 텍스트로만 렌더한다 — 능동 통지는 기존 음성·통지 채널이
    * 담당한다(이중 낭독 금지). 빈 값은 null(요소 제거 — 빈 텍스트 낭독 금지).
    */
-  liveRows: { top: string | null; next: string | null };
+  liveRows: LiveRowsText;
   /**
    * 강등 상태의 **상시 표시 문장**(E16 축2 §A2). null이면 강등 아님.
    * ⚠ 세션 도중 화면에 들어온 SR 사용자에게는 이 줄이 유일한 신호다 — 시작 통지 1회만으로는
@@ -549,9 +588,10 @@ export function useRouteGuide(
   const [offRoute, setOffRoute] = useState(false);
   const [progress, setProgress] = useState<GuideProgress | null>(null);
   const [currentText, setCurrentText] = useState<string | null>(null);
-  const [liveRows, setLiveRows] = useState<{ top: string | null; next: string | null }>({
+  const [liveRows, setLiveRows] = useState<LiveRowsText>({
     top: null,
     next: null,
+    crossing: null,
   });
   const [rerouting, setRerouting] = useState(false);
 
@@ -850,7 +890,7 @@ export function useRouteGuide(
    * 규칙 변경은 반드시 러너와 함께 간다.
    */
   const renderLiveRows = useCallback(
-    (out: LiveRowsOutput): { top: string | null; next: string | null } => {
+    (out: LiveRowsOutput): LiveRowsText => {
       const top = out.top;
       const topText =
         top === null
@@ -885,15 +925,23 @@ export function useRouteGuide(
                 ? t("nextStraight", { target: nx.target, n: nx.meters })
                 : t("nextStraightNoName", { n: nx.meters })
               : actionPhrase(nx.action); // crossing·turn
-      return { top: topText, next: step ? t("progressNext", { step }) : null };
+      // 횡단 중 남은 거리 행(E62 판정 4 — 말 없이 화면에만). 남은 거리 행이 이 문장으로 바뀐다.
+      const crossing = out.crossingRemaining
+        ? t(out.crossingRemaining.action === "underpass" ? "crossingRemainingUnderpass" : "crossingRemaining", {
+            distance: formatDistance(out.crossingRemaining.meters),
+          })
+        : null;
+      return { top: topText, next: step ? t("progressNext", { step }) : null, crossing };
     },
     [actionPhrase, kindFixed, t],
   );
 
   /** 값이 같으면 이전 객체를 돌려 재렌더를 막는다(매 fix 호출 — 객체 identity 베일아웃). */
   const setLiveRowsIfChanged = useCallback(
-    (rows: { top: string | null; next: string | null }) => {
-      setLiveRows((prev) => (prev.top === rows.top && prev.next === rows.next ? prev : rows));
+    (rows: LiveRowsText) => {
+      setLiveRows((prev) =>
+        prev.top === rows.top && prev.next === rows.next && prev.crossing === rows.crossing ? prev : rows,
+      );
     },
     [],
   );
@@ -1078,6 +1126,8 @@ export function useRouteGuide(
         case "announceSteps": {
           const step = unitText(route, event.indices, t);
           if (kindFixed !== "walk") return step;
+          // 늦은 전문(E62 R4·R5 — 실위치가 이미 첫 스텝에 들어섰다)엔 머리말이 없다(구조 판정, 램프인 산술 누출 차단).
+          if (event.late) return step;
           // walk 전문은 결정 지점까지의 실위치 거리를 앞에 단다(위원장 판정 2026-10-03 — 직진 주기
           // 통지 다음에 "…에서 돌아"가 거리 없이 나오면 안내가 튄다). 1m 미만이면 거리를 빼고 원문만.
           const ahead = Math.round(
@@ -1086,7 +1136,9 @@ export function useRouteGuide(
           return ahead >= 1 ? t("announceAhead", { distance: formatDistance(ahead), step }) : step;
         }
         case "bundleReread":
-          return unitText(route, event.indices, t);
+          return kindFixed === "walk"
+            ? rereadUnitText(route, event.indices, liveStepsRef.current, t)
+            : unitText(route, event.indices, t);
         case "imminent":
           // 임박 큐(20m, §6a): 전문이 아니라 짧은 명령형이다. 전문은 30m에서 이미
           // 나갔고, 여기서 다시 읽으면 8초 안에 두 문장이 겹쳐 정작 행동 시점을 놓친다.
@@ -1095,7 +1147,7 @@ export function useRouteGuide(
           if (event.stage > 0) return "";
           return kindFixed === "car"
             ? carImminentLine(event.action, route.steps[event.indices[0]]?.carLandmark, t, prefersEnglish(locale))
-            : t(`imminent.${event.action}`);
+            : walkImminentLine(event.action, liveStepsRef.current[event.indices[0]]?.crossingClock, t);
         case "farNotice":
           // 원거리 예고(§4.7): 크로싱 시점의 **실측 잔여**(리듀서가 기하에서 계산해
           // 실어 줌 — 상수 낭독 금지, 독립 리뷰 반영) + 원문을 독립 문장으로 결합.
@@ -1511,7 +1563,7 @@ export function useRouteGuide(
         const text = `${t("finalApproachRouteEnd")} ${approach}`;
         rememberGuidance(text);
         // 하단 2행 윗줄 = 기존 최종 접근 문형(§4.2 우선순위 2 — 이 층이 행을 소유).
-        setLiveRowsIfChanged({ top: text, next: null });
+        setLiveRowsIfChanged({ top: text, next: null, crossing: null });
         announce(text);
         return;
       }
@@ -1541,7 +1593,7 @@ export function useRouteGuide(
       lastFinalTickAtRef.current = now;
       const text = approachTick(distance, fix.accuracy, null);
       rememberGuidance(text);
-      setLiveRowsIfChanged({ top: text, next: null });
+      setLiveRowsIfChanged({ top: text, next: null, crossing: null });
       announce(text);
     },
     [
@@ -1650,7 +1702,7 @@ export function useRouteGuide(
         // 하단 2행: 윗줄 소유권이 최종 접근 층으로 넘어간다(§4.2 우선순위 2).
         // 아랫줄은 비운다 — 스텝 예고는 전부 소화됐다.
         liveRowsStateRef.current = null;
-        setLiveRowsIfChanged({ top: null, next: null });
+        setLiveRowsIfChanged({ top: null, next: null, crossing: null });
         clearEtaTimer(); // 최종 접근 중 ETA 재조회는 무의미(자원 위생)
         rebaseForAxisChange(); // 경로 거리 → 직선거리
         // ⚠ 오프셋이 하한 미만이면(`tooClose`) 종점 도달이 곧 목적지 도착이라
@@ -1860,7 +1912,7 @@ export function useRouteGuide(
       setOffRoute(false);
       setProgress(null);
       setCurrentText(null);
-      setLiveRows({ top: null, next: null });
+      setLiveRows({ top: null, next: null, crossing: null });
       setRerouting(false);
       clearDegrade();
       announce("");

@@ -754,6 +754,9 @@
     <string name="guide_carStart">Guidage en voiture vers %1$s démarré. %2$s. {3, plural, one {%3$s instruction} other {%3$s instructions}}, %4$s au total.</string>
     <string name="guide_changeDestHere">Changer la destination pour ici</string>
     <string name="guide_changeWaypointHere">Changer le point de passage pour ici</string>
+    <string name="guide_clockDirection">la direction %1$s h</string>
+    <string name="guide_crossingRemaining">Environ %1$s jusqu\'au bout du passage piéton</string>
+    <string name="guide_crossingRemainingUnderpass">Environ %1$s jusqu\'au bout du passage souterrain</string>
     <string name="guide_currentRoad">Route actuelle, %1$s</string>
     <string name="guide_degradedNoLocation">Votre position actuelle n’a pas pu être déterminée. Vérifiez l’autorisation de localisation et le signal.</string>
     <string name="guide_degradedNoteCoverage">Vous êtes hors de la zone couverte ; le guidage utilise la direction et la distance jusqu’à la destination.</string>
@@ -763,7 +766,7 @@
     <string name="guide_degradedRetryable">L’itinéraire n’a pas pu être chargé. Pour l’instant, seules la direction et la distance jusqu’à la destination sont annoncées.</string>
     <string name="guide_degradedUnavailable">Aucun itinéraire vers cette destination n’a été trouvé. Le guidage utilise la direction et la distance jusqu’à la destination.</string>
     <string name="guide_detailNoLocation">Position introuvable. Le guidage se fera à vol d\'oiseau dès que votre position sera trouvée.</string>
-    <string name="guide_detailStart">Guidage à pied vers %1$s démarré. {2, plural, one {%2$s instruction} other {%2$s instructions}}, %3$s au total. %4$s</string>
+    <string name="guide_detailStart">Guidage à pied vers %1$s démarré. %2$s. {3, plural, one {%3$s instruction} other {%3$s instructions}}, %4$s au total.</string>
     <string name="guide_detailUnavailable">Détails de l\'itinéraire indisponibles. Guidage à vol d\'oiseau vers %1$s.</string>
     <string name="guide_dirAhead">devant</string>
     <string name="guide_dirAheadTo">tout droit</string>
@@ -786,6 +789,9 @@
     <string name="guide_handoff">Passage au guidage à vol d\'oiseau jusqu\'à la destination</string>
     <string name="guide_imminent_back">Faites demi-tour dans un instant</string>
     <string name="guide_imminent_crosswalk">Traversez le passage piéton dans un instant</string>
+    <string name="guide_imminent_crosswalkAhead">Traversez le passage piéton tout droit dans un instant</string>
+    <string name="guide_imminent_crosswalkBack">Dans un instant, faites demi-tour et traversez le passage piéton</string>
+    <string name="guide_imminent_crosswalkClock">Dans un instant, tournez vers %1$s et traversez le passage piéton</string>
     <string name="guide_imminent_left">Tournez à gauche dans un instant</string>
     <string name="guide_imminent_right">Tournez à droite dans un instant</string>
     <string name="guide_imminent_underpass">Empruntez le passage souterrain dans un instant</string>

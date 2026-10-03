@@ -37,13 +37,16 @@ class GuideLiveRowsTest {
             val anchor: String? = null,
             val action: String? = null,
             val crossing: Boolean? = null,
+            /** 방향 구절을 뺀 문장(E62 `parts.body`). */
+            val body: String? = null,
         )
 
         @Serializable
         data class Input(val d: Double, val phase: String, val reset: Boolean? = null, val baselineD: Double? = null)
 
         @Serializable
-        data class Expectation(val afterInput: Int, val top: String, val next: String)
+        /** `crossing`: 횡단 중 남은 거리 행(E62). null이면 대조하지 않는다. */
+        data class Expectation(val afterInput: Int, val top: String, val next: String, val crossing: String? = null)
     }
 
     /** ko.json에서 러너가 쓰는 키만 디코딩한다(전체 스키마 종속 금지 — `KitJson`이 모르는 키를 무시한다). */
@@ -65,6 +68,8 @@ class GuideLiveRowsTest {
             val nextStraight: String,
             val nextStraightNoName: String,
             val progressNext: String,
+            val crossingRemaining: String,
+            val crossingRemainingUnderpass: String,
         )
     }
 
@@ -106,6 +111,13 @@ class GuideLiveRowsTest {
         return fmt(g.progressNext, mapOf("step" to step))
     }
 
+    /** 횡단 중 남은 거리 행(E62). 없으면 빈 문자열. 거리는 정수 m(1km 미만 — `formatDistance`와 같다). */
+    private fun renderCrossing(remaining: CrossingRemaining?, g: KoMessages.Guide): String {
+        if (remaining == null) return ""
+        val tpl = if (remaining.action == WalkAction.underpass) g.crossingRemainingUnderpass else g.crossingRemaining
+        return fmt(tpl, mapOf("distance" to "${remaining.meters}m"))
+    }
+
     @Test fun `공유 시나리오 표`() {
         val file = Fixtures.sharedJson("guide-live-rows-scenarios.json", LiveScenarioFile.serializer())
         val ko = KitJson.decodeFromString(KoMessages.serializer(), Fixtures.repoRoot.resolve("messages/ko.json").readText())
@@ -117,6 +129,7 @@ class GuideLiveRowsTest {
                     description = s.desc, startD = acc, endD = acc + s.len, target = s.target, anchor = s.anchor,
                     action = s.action?.let { WalkAction.fromRawValue(it) ?: fail("미지 action $it") },
                     crossing = s.crossing ?: false,
+                    body = s.body,
                 )
                 acc += s.len
                 input
@@ -132,11 +145,12 @@ class GuideLiveRowsTest {
                 }
                 val out = guideLiveRows(state, units, input.d, baselineD, phaseFrom(input.phase), sc.turnApproachM ?: walkTurnApproachMeters)
                 state = out.state
-                renderTop(out.top, ko.guide, car) to renderNext(out.next, ko.guide, car)
+                Triple(renderTop(out.top, ko.guide, car), renderNext(out.next, ko.guide, car), renderCrossing(out.crossingRemaining, ko.guide))
             }
             for (ex in sc.expect) {
                 assertEquals(ex.top, results[ex.afterInput].first, "${sc.name} #${ex.afterInput} top")
                 assertEquals(ex.next, results[ex.afterInput].second, "${sc.name} #${ex.afterInput} next")
+                ex.crossing?.let { assertEquals(it, results[ex.afterInput].third, "${sc.name} #${ex.afterInput} crossing") }
             }
         }
     }
@@ -177,9 +191,14 @@ class GuideLiveRowsTest {
                 ),
             ),
         )
-        val out = liveStepsFrom(route, listOf(LiveStepFields(null, null, false), LiveStepFields(null, null, true)))
+        val out = liveStepsFrom(
+            route,
+            listOf(LiveStepFields(null, null, false), LiveStepFields(null, null, true, "횡단보도를 건너세요. 횡단보도 길이 8m", 12)),
+        )
         assertFalse(out[0].crossing)
         assertTrue(out[1].crossing)
         assertEquals(WalkAction.crosswalk, out[1].action)
+        assertEquals("횡단보도를 건너세요. 횡단보도 길이 8m", out[1].body)
+        assertEquals(12, out[1].crossingClock)
     }
 }

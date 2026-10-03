@@ -738,7 +738,7 @@
     "transitHeading": "Guía de transporte"
   },
   "guide": {
-    "detailStart": "Guía a pie hasta {dest} iniciada. {count, plural, one {# indicación} other {# indicaciones}}, {distance} en total. {first}",
+    "detailStart": "Guía a pie hasta {dest} iniciada. {first}. {count, plural, one {# indicación} other {# indicaciones}}, {distance} en total.",
     "next": "En {distance}, {step}",
     "nextDestination": "{distance} hasta {dest}",
     "periodicStraight": "Siga recto {distance} hacia {target}",
@@ -770,7 +770,10 @@
       "right": "Gire a la derecha en breve",
       "back": "Dé la vuelta en breve",
       "crosswalk": "Cruce el paso de peatones en breve",
-      "underpass": "Use el paso subterráneo en breve"
+      "underpass": "Use el paso subterráneo en breve",
+      "crosswalkAhead": "Cruce el paso de peatones de frente en breve",
+      "crosswalkBack": "En breve, dé la vuelta y cruce el paso de peatones",
+      "crosswalkClock": "En breve, gire hacia {direction} y cruce el paso de peatones"
     },
     "liveStraight": "Siga recto {n}m hacia {target}",
     "liveStraightNoName": "Siga recto {n}m",
@@ -864,7 +867,10 @@
     "degradedNoteRetryable": "No se pudo cargar la ruta, así que la guía usa la dirección y la distancia al destino.",
     "degradedNoteUnavailable": "No se encontró ninguna ruta, así que la guía usa la dirección y la distancia al destino.",
     "degradedNoteCoverage": "Estás fuera del área de servicio, así que la guía usa la dirección y la distancia al destino.",
-    "degradedNoteHandoff": "La ruta ha terminado, así que la guía usa la dirección y la distancia al destino."
+    "degradedNoteHandoff": "La ruta ha terminado, así que la guía usa la dirección y la distancia al destino.",
+    "clockDirection": "la dirección de las {hour}",
+    "crossingRemaining": "Unos {distance} hasta el final del paso de peatones",
+    "crossingRemainingUnderpass": "Unos {distance} hasta el final del paso subterráneo"
   },
   "offline": {
     "heading": "Estás sin conexión",

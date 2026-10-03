@@ -34,6 +34,13 @@ export interface LiveStepInput {
   action?: WalkAction;
   /** 서버 횡단 구간 플래그(A26, `WalkRouteStep.crossing`). 부재는 "횡단 구간 아님". */
   crossing?: boolean;
+  /**
+   * 방향 구절을 뺀 문장(E62 서버 `parts.body`). 횡단 윗줄은 이것을 보인다 — 건너는 중엔 이미 몸을 돌린 뒤라
+   * "9시 방향으로 도세요"를 남기지 않는다. 부재(판본 1 응답·방향 구절 없는 스텝)는 문장 전체.
+   */
+  body?: string;
+  /** 횡단보도 건너는 방향 시(E62 서버 `crossingClock`, 12 = 진행 방향 그대로). 임박 문장이 쓴다. 부재 = 모름. */
+  crossingClock?: number;
 }
 
 
@@ -97,7 +104,7 @@ export function buildDisplayUnits(
       startD: first.startD,
       endD: last.endD,
       crossing: g.crossing,
-      crossingText: g.crossing ? first.description : null,
+      crossingText: g.crossing ? (first.body ?? first.description) : null,
       crossingAction: g.crossing ? g.action : null,
       // 끝 행동 = 다음 유닛 첫 스텝이 알리는 행동(횡단 유닛 진입 포함). 최종 유닛 null.
       endAction: nextFirst ? actionOf(nextFirst) : null,
@@ -110,7 +117,12 @@ export function buildDisplayUnits(
 /** 리듀서 스팬(StepSpan)과 응답 스텝(live)을 index로 짝지어 표시 입력을 만든다. */
 export function liveStepsFrom(
   route: GuideRoute,
-  steps: { live?: { target?: string; anchor?: string }; crossing?: boolean }[],
+  steps: {
+    live?: { target?: string; anchor?: string };
+    crossing?: boolean;
+    parts?: { turn: string; body: string };
+    crossingClock?: number;
+  }[],
 ): LiveStepInput[] {
   return route.steps.map((s) => ({
     description: s.description,
@@ -119,6 +131,8 @@ export function liveStepsFrom(
     ...(steps[s.index]?.live ? { live: steps[s.index].live } : {}),
     ...(s.action === undefined ? {} : { action: s.action }),
     ...(steps[s.index]?.crossing ? { crossing: true } : {}),
+    ...(steps[s.index]?.parts ? { body: steps[s.index].parts!.body } : {}),
+    ...(steps[s.index]?.crossingClock !== undefined ? { crossingClock: steps[s.index].crossingClock } : {}),
   }));
 }
 
@@ -149,7 +163,16 @@ export interface LiveRowsOutput {
   state: LiveRowsState | null;
   top: LiveTopRow | null;
   next: LiveNextRow | null;
+  /**
+   * 횡단 중 남은 거리 행(E62 판정 4 — 말 없이 화면에만): 횡단 유닛 끝까지 표시 잔여를 10m로 반올림한 값(하한 10,
+   * "다 건넜습니다" 단정 없음). 윗줄이 횡단일 때만 있고, 소비자는 남은 거리 행을 "횡단보도 끝까지 약 N m"로 바꾼다.
+   * 값이 10m 단위로만 바뀌어 행 문자열도 그때만 바뀐다.
+   */
+  crossingRemaining: { meters: number; action: WalkAction } | null;
 }
+
+/** 횡단 남은 거리 표시 단위(m) — 시작·끝 정렬 오차 3~8m라 10m가 한계다(E62 판독). */
+export const CROSSING_REMAINING_STEP_M = 10;
 
 /** 다음 유닛 예고(종류별 — 직진 가정 금지, F11). */
 function previewOf(unit: DisplayUnit): LiveNextRow {
@@ -181,11 +204,13 @@ export function guideLiveRows(
   phase: GuidePhase,
   turnApproachM: number,
 ): LiveRowsOutput {
-  if (units.length === 0) return { state: null, top: null, next: null };
+  if (units.length === 0) return { state: null, top: null, next: null, crossingRemaining: null };
   // 이탈: 両행을 비운다(F2 — 낡은 예고는 따라가게 된다). 문장은 렌더 계층의 기존 키.
-  if (phase === "offRoute") return { state: null, top: { kind: "offRoute" }, next: null };
+  if (phase === "offRoute") {
+    return { state: null, top: { kind: "offRoute" }, next: null, crossingRemaining: null };
+  }
   // 최종 접근·도착(우선순위 1·2)은 이 계층 밖 — 오케스트레이터가 행을 소유한다.
-  if (phase === "finalApproach") return { state: null, top: null, next: null };
+  if (phase === "finalApproach") return { state: null, top: null, next: null, crossingRemaining: null };
 
   const effD = displayEffectiveD(d, baselineD);
   const found = units.findIndex((u) => effD < u.endD);
@@ -208,8 +233,8 @@ export function guideLiveRows(
       : { kind: "action", action: unit.endAction!, anchor: unit.endAnchor }; // 직진 중 → 끝 행동 예고
 
   // 상태 대체(우선순위 4·5): 윗줄만 바꾸고 아랫줄·클램프는 유지(해소 시 그 자리 복귀).
-  if (phase === "reacquiring") return { state, top: { kind: "reacquiring" }, next };
-  if (phase === "uncertain") return { state, top: { kind: "uncertain" }, next };
+  if (phase === "reacquiring") return { state, top: { kind: "reacquiring" }, next, crossingRemaining: null };
+  if (phase === "uncertain") return { state, top: { kind: "uncertain" }, next, crossingRemaining: null };
 
   const top: LiveTopRow = unit.crossing
     ? { kind: "crossing", text: unit.crossingText ?? "" }
@@ -218,5 +243,14 @@ export function guideLiveRows(
         ? { kind: "turnSoon", action: unit.endAction! }
         : { kind: "turnIn", meters: clamped, action: unit.endAction! }
       : { kind: "straight", meters: clamped, target: unit.target };
-  return { state, top, next };
+  const crossingRemaining = unit.crossing
+    ? {
+        meters: Math.max(
+          CROSSING_REMAINING_STEP_M,
+          Math.round(clamped / CROSSING_REMAINING_STEP_M) * CROSSING_REMAINING_STEP_M,
+        ),
+        action: unit.crossingAction ?? "crosswalk",
+      }
+    : null;
+  return { state, top, next, crossingRemaining };
 }

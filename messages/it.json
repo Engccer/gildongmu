@@ -738,7 +738,7 @@
     "transitHeading": "Guida mezzi pubblici"
   },
   "guide": {
-    "detailStart": "Guida a piedi verso {dest} avviata. {count, plural, one {# indicazione} other {# indicazioni}}, {distance} in totale. {first}",
+    "detailStart": "Guida a piedi verso {dest} avviata. {first}. {count, plural, one {# indicazione} other {# indicazioni}}, {distance} in totale.",
     "next": "Tra {distance}, {step}",
     "nextDestination": "{distance} fino a {dest}",
     "periodicStraight": "Prosegui dritto per {distance} verso {target}",
@@ -770,7 +770,10 @@
       "right": "Gira a destra tra poco",
       "back": "Torna indietro tra poco",
       "crosswalk": "Attraversa le strisce pedonali tra poco",
-      "underpass": "Prendi il sottopassaggio tra poco"
+      "underpass": "Prendi il sottopassaggio tra poco",
+      "crosswalkAhead": "Attraversa le strisce pedonali dritto tra poco",
+      "crosswalkBack": "Tra poco, girati e attraversa le strisce pedonali",
+      "crosswalkClock": "Tra poco, girati a {direction} e attraversa le strisce pedonali"
     },
     "liveStraight": "Prosegui dritto per {n}m verso {target}",
     "liveStraightNoName": "Prosegui dritto per {n}m",
@@ -864,7 +867,10 @@
     "degradedNoteRetryable": "Non è stato possibile caricare il percorso, quindi la guida usa la direzione e la distanza dalla destinazione.",
     "degradedNoteUnavailable": "Nessun percorso trovato, quindi la guida usa la direzione e la distanza dalla destinazione.",
     "degradedNoteCoverage": "Sei fuori dall’area coperta, quindi la guida usa la direzione e la distanza dalla destinazione.",
-    "degradedNoteHandoff": "Il percorso è terminato, quindi la guida usa la direzione e la distanza dalla destinazione."
+    "degradedNoteHandoff": "Il percorso è terminato, quindi la guida usa la direzione e la distanza dalla destinazione.",
+    "clockDirection": "ore {hour}",
+    "crossingRemaining": "Circa {distance} alla fine delle strisce pedonali",
+    "crossingRemainingUnderpass": "Circa {distance} alla fine del sottopassaggio"
   },
   "offline": {
     "heading": "Sei offline",

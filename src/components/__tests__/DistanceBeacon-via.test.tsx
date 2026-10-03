@@ -14,7 +14,7 @@ const guideApi: RouteGuideApi = {
   offRoute: false,
   progress: null,
   currentText: null,
-  liveRows: { top: null, next: null },
+  liveRows: { top: null, next: null, crossing: null },
   degradeText: null,
   rerouting: false,
   start: () => {},
@@ -82,5 +82,18 @@ describe("DistanceBeacon 남은 거리 행의 다음 목표", () => {
   it("경유지 없는 세션은 종전 문구", () => {
     open({ remainingMeters: 1200, etaSeconds: null, target: { kind: "route" } }, false);
     expect(screen.getByText("guide.remainingDistance:1.2km")).toBeTruthy();
+  });
+
+  it("횡단 중엔 남은 거리 행이 횡단보도 끝까지의 거리를 보인다(E62 판정 4 — 한 줄 한 텍스트, 시간 없음)", () => {
+    guideApi.liveRows = { top: null, next: null, crossing: "횡단보도 끝까지 약 30m" };
+    try {
+      open({ remainingMeters: 1200, etaSeconds: 600, target: { kind: "route" } }, false);
+      const row = screen.getByText("횡단보도 끝까지 약 30m");
+      expect(row.tagName).toBe("P");
+      expect(row.getAttribute("aria-live")).toBeNull();
+      expect(screen.queryByText(/guide.remainingDistance/)).toBeNull();
+    } finally {
+      guideApi.liveRows = { top: null, next: null, crossing: null };
+    }
   });
 });

@@ -34,6 +34,10 @@ data class LiveStepInput(
     val action: WalkAction? = null,
     /** 서버 횡단 구간 플래그(A26, `WalkRouteStep.crossing`). false는 "횡단 구간 아님". */
     val crossing: Boolean = false,
+    /** 방향 구절을 뺀 문장(E62 서버 `parts.body`, Kit `LiveStepInput.body` 미러). null은 문장 전체. */
+    val body: String? = null,
+    /** 횡단보도 건너는 방향 시(E62 서버 `crossingClock`, 12 = 진행 방향 그대로). null = 모름. */
+    val crossingClock: Int? = null,
 )
 
 /** 행동 경계 기준으로 병합한 표시 유닛(spec §4.1) — "직진 구간 + (있다면) 끝 행동". */
@@ -88,7 +92,7 @@ fun buildDisplayUnits(steps: List<LiveStepInput>): List<DisplayUnit> {
             startD = first.startD,
             endD = last.endD,
             crossing = g.crossing,
-            crossingText = if (g.crossing) first.description else null,
+            crossingText = if (g.crossing) (first.body ?: first.description) else null,
             crossingAction = if (g.crossing) g.action else null,
             // 끝 행동 = 다음 유닛 첫 스텝이 알리는 행동(횡단 유닛 진입 포함). 최종 유닛 null.
             endAction = nextFirst?.action,
@@ -98,8 +102,14 @@ fun buildDisplayUnits(steps: List<LiveStepInput>): List<DisplayUnit> {
     }
 }
 
-/** 응답 스텝 하나의 표시 조각(Swift 튜플 `(target, anchor, crossing)` 대응). */
-data class LiveStepFields(val target: String?, val anchor: String?, val crossing: Boolean)
+/** 응답 스텝 하나의 표시 조각(Swift 튜플 `(target, anchor, crossing, body, crossingClock)` 대응). */
+data class LiveStepFields(
+    val target: String?,
+    val anchor: String?,
+    val crossing: Boolean,
+    val body: String? = null,
+    val crossingClock: Int? = null,
+)
 
 /**
  * 리듀서 스팬(StepSpan)과 응답 스텝(live 조각·횡단 플래그)을 index로 짝지어 표시 입력을 만든다.
@@ -115,6 +125,8 @@ fun liveStepsFrom(route: GuideRoute, steps: List<LiveStepFields>): List<LiveStep
         anchor = fields?.anchor,
         action = span.action, // 자동차 서버 투영(K2 §4) — 웹 liveStepsFrom 미러
         crossing = fields?.crossing ?: false,
+        body = fields?.body,
+        crossingClock = fields?.crossingClock,
     )
 }
 
@@ -152,7 +164,24 @@ sealed class LiveNextRow {
     data class Turn(val action: WalkAction) : LiveNextRow()
 }
 
-data class LiveRowsOutput(val state: LiveRowsState?, val top: LiveTopRow?, val next: LiveNextRow?)
+/** 횡단 중 남은 거리 행(E62 판정 4 — 말 없이 화면에만). Kit `CrossingRemaining` 미러. */
+data class CrossingRemaining(
+    /** 횡단 유닛 끝까지 표시 잔여를 10m로 반올림한 값(하한 10, "다 건넜습니다" 단정 없음). */
+    val meters: Int,
+    /** crosswalk | underpass — 렌더 키를 고른다. */
+    val action: WalkAction,
+)
+
+/** 횡단 남은 거리 표시 단위(m) — Kit `crossingRemainingStepMeters` 미러. */
+const val crossingRemainingStepMeters = 10
+
+/** `crossingRemaining`: 윗줄이 횡단일 때만 — 소비자는 남은 거리 행을 "횡단보도 끝까지 약 N m"로 바꾼다. */
+data class LiveRowsOutput(
+    val state: LiveRowsState?,
+    val top: LiveTopRow?,
+    val next: LiveNextRow?,
+    val crossingRemaining: CrossingRemaining? = null,
+)
 
 /** 다음 유닛 예고(종류별 — 직진 가정 금지, F11). */
 private fun previewOf(unit: DisplayUnit): LiveNextRow {
@@ -215,5 +244,16 @@ fun guideLiveRows(
             if (clamped <= 0) LiveTopRow.TurnSoon(endAction) else LiveTopRow.TurnIn(clamped, endAction)
         else -> LiveTopRow.Straight(clamped, unit.target)
     }
-    return LiveRowsOutput(state, top, next)
+    val crossingRemaining = if (unit.crossing) {
+        CrossingRemaining(
+            meters = maxOf(
+                crossingRemainingStepMeters,
+                (clamped.toDouble() / crossingRemainingStepMeters).roundedAwayFromZero().toInt() * crossingRemainingStepMeters,
+            ),
+            action = unit.crossingAction ?: WalkAction.crosswalk,
+        )
+    } else {
+        null
+    }
+    return LiveRowsOutput(state, top, next, crossingRemaining)
 }

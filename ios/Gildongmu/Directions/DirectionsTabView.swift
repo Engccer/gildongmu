@@ -745,7 +745,7 @@ final class DirectionsModel {
                 // 실패는 서버가 그 줄만 빼서 흡수한다(spec §2.1). 빈 목록 = 경로 없음.
                 try await service.walkLines(
                     originLat: origin.lat, originLng: origin.lng, destLat: dest.lat, destLng: dest.lng,
-                    lang: lang, via: via)
+                    lang: lang, crossingRoad: AppConfig.experimentalCrossingRoadEnabled, via: via)
             })
         } catch { return .failure(error) }
     }

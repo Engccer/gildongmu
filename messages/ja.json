@@ -738,7 +738,7 @@
     "transitHeading": "公共交通案内"
   },
   "guide": {
-    "detailStart": "{dest}まで徒歩案内開始。案内{count}件、合計{distance}。{first}",
+    "detailStart": "{dest}まで徒歩案内開始。{first}。案内{count}件、合計{distance}。",
     "next": "{distance}先、{step}",
     "nextDestination": "{dest}まで{distance}",
     "periodicStraight": "{target}まで{distance}直進してください",
@@ -770,7 +770,10 @@
       "right": "まもなく右に曲がってください",
       "back": "まもなく引き返してください",
       "crosswalk": "まもなく横断歩道を渡ってください",
-      "underpass": "まもなく地下道を渡ってください"
+      "underpass": "まもなく地下道を渡ってください",
+      "crosswalkAhead": "まもなくそのまま横断歩道を渡ってください",
+      "crosswalkBack": "まもなく後ろを向いて横断歩道を渡ってください",
+      "crosswalkClock": "まもなく{direction}を向いて横断歩道を渡ってください"
     },
     "liveStraight": "{target}まで{n}m直進してください",
     "liveStraightNoName": "{n}m直進してください",
@@ -864,7 +867,10 @@
     "degradedNoteRetryable": "経路を読み込めなかったため、目的地の方向と距離で案内しています。",
     "degradedNoteUnavailable": "経路が見つからないため、目的地の方向と距離で案内しています。",
     "degradedNoteCoverage": "提供地域外のため、目的地の方向と距離で案内しています。",
-    "degradedNoteHandoff": "経路が終わったため、目的地の方向と距離で案内しています。"
+    "degradedNoteHandoff": "経路が終わったため、目的地の方向と距離で案内しています。",
+    "clockDirection": "{hour}時の方向",
+    "crossingRemaining": "横断歩道の終わりまで約{distance}",
+    "crossingRemainingUnderpass": "地下道の終わりまで約{distance}"
   },
   "offline": {
     "heading": "オフラインです",
