@@ -839,9 +839,9 @@
       "keepLeft": "まもなく左方向です",
       "keepRight": "まもなく右方向です"
     },
-    "carImminentAtToward": "まもなく{at}で{toward}方面へ{action}",
+    "carImminentAtToward": "まもなく{at}で{toward}方面、{action}",
     "carImminentAt": "まもなく{at}で{action}",
-    "carImminentToward": "まもなく{toward}方面へ{action}",
+    "carImminentToward": "まもなく{toward}方面、{action}",
     "carCommand": {
       "left": "左折",
       "right": "右折",

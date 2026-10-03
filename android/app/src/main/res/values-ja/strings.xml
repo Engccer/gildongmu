@@ -740,8 +740,8 @@
     <string name="guide_carImminent_left">まもなく左折です</string>
     <string name="guide_carImminent_right">まもなく右折です</string>
     <string name="guide_carImminentAt">まもなく%1$sで%2$s</string>
-    <string name="guide_carImminentAtToward">まもなく%1$sで%2$s方面へ%3$s</string>
-    <string name="guide_carImminentToward">まもなく%1$s方面へ%2$s</string>
+    <string name="guide_carImminentAtToward">まもなく%1$sで%2$s方面、%3$s</string>
+    <string name="guide_carImminentToward">まもなく%1$s方面、%2$s</string>
     <string name="guide_carLiveAction_back">Uターンしてください</string>
     <string name="guide_carLiveAction_keepLeft">左方向へ進んでください</string>
     <string name="guide_carLiveAction_keepRight">右方向へ進んでください</string>

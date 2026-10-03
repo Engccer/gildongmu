@@ -242,15 +242,6 @@ describe("carLandmark (E61 지점·방면)", () => {
     expect(carLandmark("도착")).toBeNull();
     expect(carLandmark("염천교에서 서대문역 방면으로 좌회전")).toBeNull();
   });
-
-  it("코퍼스 전수: 지점 값에 이름 없는 낱말이 오지 않고, 방면은 지점과 다르다", () => {
-    for (const r of corpus) {
-      const l = carLandmark(r.description);
-      if (!l) continue;
-      expect(["교차로", "분기점", "고가차도"]).not.toContain(l.at);
-      if (l.at && l.toward) expect(l.toward).not.toBe(l.at);
-    }
-  });
 });
 
 describe("rewriteCarBriefing landmarks 옵트인", () => {

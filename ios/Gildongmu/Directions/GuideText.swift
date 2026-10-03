@@ -332,7 +332,7 @@ enum GuideText {
     /// [{방면} 방면으로 ]{행동구}". 없는 조각은 빼고 둘 다 없으면 종전 "잠시 후 우회전하세요".
     /// 비-ko 화면은 한글 이름을 뺀다(`carSpokenLandmark`).
     static func carImminentText(_ action: WalkAction, landmark: CarLandmark?) -> String {
-        guard let lm = carSpokenLandmark(landmark, english: AppLanguage.dataLocale == "en") else {
+        guard let lm = carSpokenLandmark(landmark, english: AppLanguage.dataLocaleValue == .en) else {
             return carImminentText(action)
         }
         let phrase = liveActionPhrase(action, kind: .car)
@@ -383,7 +383,7 @@ enum GuideText {
         }
         let next = route.steps[stepIndex + 1]
         if let action = next.action {
-            if let at = carSpokenLandmark(next.carLandmark, english: AppLanguage.dataLocale == "en")?.at {
+            if let at = carSpokenLandmark(next.carLandmark, english: AppLanguage.dataLocaleValue == .en)?.at {
                 return appLocalized("guide.carPeriodicAt", distance, at, carCommand(action))
             }
             return appLocalized("guide.carPeriodic", distance, carCommand(action))

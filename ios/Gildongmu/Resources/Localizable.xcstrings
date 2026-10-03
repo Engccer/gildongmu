@@ -14676,7 +14676,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "まもなく%1$@で%2$@方面へ%3$@"
+            "value": "まもなく%1$@で%2$@方面、%3$@"
           }
         }
       }
@@ -14716,7 +14716,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "まもなく%1$@方面へ%2$@"
+            "value": "まもなく%1$@方面、%2$@"
           }
         }
       }
