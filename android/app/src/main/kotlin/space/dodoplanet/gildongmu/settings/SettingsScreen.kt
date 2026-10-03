@@ -56,6 +56,7 @@ import space.dodoplanet.gildongmu.a11y.StatusLine
 import space.dodoplanet.gildongmu.a11y.headingText
 import space.dodoplanet.gildongmu.a11y.landingTarget
 import space.dodoplanet.gildongmu.a11y.mergedRow
+import space.dodoplanet.gildongmu.a11y.requesterFor
 import space.dodoplanet.gildongmu.a11y.tapTarget
 import space.dodoplanet.gildongmu.chat.ChatServices
 import space.dodoplanet.gildongmu.kit.ListenSpeed
@@ -156,7 +157,7 @@ fun SettingsScreen(
             Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).semantics { testTagsAsResourceId = true }) {
                 StatusLine(notice, Modifier.padding(vertical = 8.dp)) // 상단 바 바로 아래(§3-1 — 자리를 외워 쓰는 탐색)
                 for ((i, row) in rows.withIndex()) {
-                    val focus = rowFocus.getOrPut(row) { FocusRequester() }
+                    val focus = rowFocus.requesterFor(row)
                     // 묶음이 바뀌는 자리에만 헤딩(E59) — 헤딩 이동으로 묶음 다섯을 차례로 건너뛴다.
                     if (i == 0 || rows[i - 1].group != row.group) GroupHeading(row.group)
                     when (row) {

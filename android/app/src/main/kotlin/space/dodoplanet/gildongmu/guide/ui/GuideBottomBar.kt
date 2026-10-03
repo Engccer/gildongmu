@@ -29,7 +29,7 @@ import space.dodoplanet.gildongmu.guide.guideStrings
 fun GuideBottomBar(nav: GuideNav, tabs: @Composable () -> Unit) {
     val context = LocalContext.current
     val app = context.applicationContext
-    remember { GuideSession.attach(app); Unit }
+    GuideSession.attach(app) // 멱등(첫 줄 가드) — 재구성마다 불러도 조립은 한 번이고, 아래가 바로 읽으므로 컴포지션 안에서 동기로.
     val strings = remember(context.resources) { guideStrings(context.resources) }
     GuidePermissionsLauncher()
     ForegroundObserver()
@@ -60,7 +60,7 @@ fun GuideBottomBar(nav: GuideNav, tabs: @Composable () -> Unit) {
 @Composable
 fun guideSheetShowing(): Boolean {
     val app = LocalContext.current.applicationContext
-    remember { GuideSession.attach(app); Unit }
+    GuideSession.attach(app) // 멱등 — `GuideBottomBar`와 같은 이유로 동기 호출.
     val ui = GuideSession.walk.ui.collectAsState()
     // 결과가 바뀔 때만 읽는 자리를 재구성한다 — 안내 상태는 fix마다 바뀌어, 그대로 읽으면 탭 콘텐츠 블록이 매초 다시 돈다(리뷰 m4).
     val showing by remember { derivedStateOf { ui.value.hasScreen && !GuideSession.isMinimized } }

@@ -44,6 +44,7 @@ import space.dodoplanet.gildongmu.a11y.BodyLine
 import space.dodoplanet.gildongmu.a11y.HeadingLine
 import space.dodoplanet.gildongmu.a11y.headingText
 import space.dodoplanet.gildongmu.a11y.mergedRow
+import space.dodoplanet.gildongmu.a11y.requesterFor
 import space.dodoplanet.gildongmu.a11y.tapTarget
 import space.dodoplanet.gildongmu.directions.DirectionsPrefill
 import space.dodoplanet.gildongmu.directions.DirectionsPrefillRole
@@ -214,7 +215,7 @@ fun PlaceDetailScreen(
                     for (kind in nearbyAnchorKinds(layoutKind)) {
                         Button(
                             onClick = { nav.onOpenNearby(kind, anchor) },
-                            Modifier.fillMaxWidth().tapTarget().testTag("anchor-${kind.name}").landingTarget(anchorFocus.getOrPut(kind) { FocusRequester() }),
+                            Modifier.fillMaxWidth().tapTarget().testTag("anchor-${kind.name}").landingTarget(anchorFocus.requesterFor(kind)),
                         ) { Text(stringResource(kindTitle(kind))) }
                     }
                 }

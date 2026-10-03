@@ -25,6 +25,7 @@ import space.dodoplanet.gildongmu.a11y.landingTarget
 import space.dodoplanet.gildongmu.a11y.AppScreenScaffold
 import space.dodoplanet.gildongmu.a11y.Notice
 import space.dodoplanet.gildongmu.a11y.StatusLine
+import space.dodoplanet.gildongmu.a11y.requesterFor
 import space.dodoplanet.gildongmu.a11y.tapTarget
 import space.dodoplanet.gildongmu.location.CurrentAddressStore
 import space.dodoplanet.gildongmu.location.LOCATION_BAR_KEY
@@ -70,7 +71,7 @@ fun NearbyHubScreen(
                         .padding(vertical = 4.dp)
                         .tapTarget() // 패딩 뒤에 — 앞에 두면 48dp에 패딩이 포함돼 표면이 40dp가 된다
                         .testTag(hubKey(kind))
-                        .landingTarget(requesters.getOrPut(kind) { FocusRequester() }),
+                        .landingTarget(requesters.requesterFor(kind)),
                 ) { Text(stringResource(kindTitle(kind))) }
             }
         }

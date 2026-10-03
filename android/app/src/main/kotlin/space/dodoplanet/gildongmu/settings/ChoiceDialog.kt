@@ -25,6 +25,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import space.dodoplanet.gildongmu.a11y.landingTarget
+import space.dodoplanet.gildongmu.a11y.requesterFor
 import space.dodoplanet.gildongmu.a11y.tapTarget
 
 /**
@@ -56,7 +57,7 @@ fun ChoiceDialog(title: String, options: List<Pair<String, String>>, selected: S
                             .fillMaxWidth()
                             .tapTarget()
                             .testTag("choice-$key")
-                            .landingTarget(requesters.getOrPut(key) { FocusRequester() }) // selectable 앞(착지 순서 가드)
+                            .landingTarget(requesters.requesterFor(key)) // selectable 앞(착지 순서 가드)
                             .onFocusChanged { if (it.isFocused) focusedKey = key }
                             .selectable(selected = key == selected, role = Role.RadioButton) { onSelect(key) }
                             .padding(vertical = 8.dp),

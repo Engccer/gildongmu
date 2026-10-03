@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import space.dodoplanet.gildongmu.a11y.AppScreenScaffold
 import space.dodoplanet.gildongmu.a11y.landingTarget
 import space.dodoplanet.gildongmu.a11y.StatusLine
+import space.dodoplanet.gildongmu.a11y.requesterFor
 import space.dodoplanet.gildongmu.a11y.tapTarget
 import space.dodoplanet.gildongmu.i18n.AppLocale
 import space.dodoplanet.gildongmu.kit.bilingualName
@@ -150,7 +151,7 @@ fun EndpointSearchContent(picker: EndpointPicker, p: EndpointSearchState, onBack
                             },
                         ),
                         onClick = { picker.selectRecentEndpoint(e) },
-                        modifier = Modifier.landingTarget(recentFocus.getOrPut(e.id) { FocusRequester() }),
+                        modifier = Modifier.landingTarget(recentFocus.requesterFor(e.id)),
                     )
                 }
                 Button(

@@ -42,6 +42,7 @@ import space.dodoplanet.gildongmu.a11y.LocalModalOpen
 import space.dodoplanet.gildongmu.a11y.landingTarget
 import space.dodoplanet.gildongmu.a11y.StatusLine
 import space.dodoplanet.gildongmu.a11y.headingText
+import space.dodoplanet.gildongmu.a11y.requesterFor
 import space.dodoplanet.gildongmu.a11y.tapTarget
 import space.dodoplanet.gildongmu.i18n.AppLocale
 import space.dodoplanet.gildongmu.kit.models.TransitLegStop
@@ -318,7 +319,7 @@ private fun DirectionsForm(
                         ),
                         // 결과 도착 시 이 섹션이 통째로 사라지므로 조회 버튼을 먼저 선점한다(헌장 §5).
                         onClick = { ui.submitFocus.requestFocus(); vm.activateRecentRoute(route) },
-                        modifier = Modifier.landingTarget(ui.recentFocus.getOrPut(route.id) { FocusRequester() }),
+                        modifier = Modifier.landingTarget(ui.recentFocus.requesterFor(route.id)),
                     )
                 }
                 Button(onClick = { ui.recentFocus.clear(); vm.clearRecentRoutes() }, modifier = Modifier.tapTarget().testTag("recent-route-clear")) {

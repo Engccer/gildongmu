@@ -14,3 +14,9 @@ import androidx.compose.ui.focus.focusRequester
  * 켠다. `mergedRow`의 `focusable()`은 `Focusability.Always`라 이 관용구가 필요 없다.
  */
 fun Modifier.landingTarget(requester: FocusRequester): Modifier = focusRequester(requester).focusProperties { canFocus = true }
+
+/**
+ * 키별 착지 요청자(목록 행) — 없으면 만든다. 요청자의 수명은 맵의 수명이라 맵을 `remember`(또는 기억된 화면 상태 홀더) 안에 두면 컴포지션
+ * 안에서 불러도 재구성마다 새 요청자가 생기지 않는다. lint `RememberInComposition`은 인라인 `getOrPut` 람다 안의 생성만 보고 이 수명을 모른다.
+ */
+fun <K> MutableMap<K, FocusRequester>.requesterFor(key: K): FocusRequester = getOrPut(key) { FocusRequester() }
