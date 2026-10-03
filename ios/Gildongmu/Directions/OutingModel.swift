@@ -361,6 +361,13 @@ final class OutingModel {
         spokenJunctions = []
         nodeLogSeq = [:]
         lastProbe = nil
+        // 둘러보기 장소(카카오)와 거기서 유도한 관계·이름 문장도 같은 축(E58 후속 ④): 종료 화면은 사유·걸음 요약·출발점만
+        // 읽고 조망은 종료 전이에서 닫히므로(`OutingSheet` onChange) 종료 즉시 비운다.
+        places = [:]
+        relations = [:]
+        spokenPlaces = []
+        overviewRelations = [:]
+        aheadText = nil
         guard wasActive else { return }
         LocationService.shared.stopBeaconUpdates()
         pedometer.stopLiveUpdates()

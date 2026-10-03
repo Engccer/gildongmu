@@ -197,3 +197,27 @@ describe("나들이 종료 화면 소거(E31 응답 표식)", () => {
     );
   });
 });
+
+describe("나들이 장소 목록은 종료 즉시 비운다(E58 후속 ④, 카카오 저장 금지 축)", () => {
+  it("stop()이 wasActive 가드 앞에서 장소와 그 유도물을 비운다", () => {
+    const model = readFileSync(MODEL, "utf8");
+    const body = functionBody(model, "stop");
+    const guardAt = body.indexOf("guard wasActive else { return }");
+    expect(guardAt).toBeGreaterThan(0);
+    // 가드 뒤에 두면 이미 끝난 세션(종료 화면 → 귀환)의 재호출에서 건너뛴다 — 가드 앞이어야 모든 종료 경로가 지난다.
+    for (const line of ["places = [:]", "relations = [:]", "spokenPlaces = []", "overviewRelations = [:]", "aheadText = nil"]) {
+      const at = body.indexOf(line);
+      expect(at, line).toBeGreaterThan(0);
+      expect(at, line).toBeLessThan(guardAt);
+    }
+  });
+
+  it("종료 화면은 장소를 들고 있지 않고, 조망은 종료 전이에서 닫힌다(비움의 전제)", () => {
+    const model = readFileSync(MODEL, "utf8");
+    const endScreen = model.slice(model.indexOf("struct EndScreen"), model.indexOf("struct ReturnTarget"));
+    expect(endScreen).not.toMatch(/SurroundingPlace|places/);
+    expect(readFileSync(join(IOS, "Gildongmu/Directions/OutingSheet.swift"), "utf8")).toMatch(
+      /onChange\(of: model\.endScreen\)[\s\S]{0,200}overviewAdapter = nil/,
+    );
+  });
+});
