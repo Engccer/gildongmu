@@ -11,7 +11,7 @@
 //  ⑦e 양성 대조: 회전 조각과 횡단 조각을 각각 1건 이상 관측했다(0건 통과 방지)
 //  ⑦f 같은 좌표의 판본 1 응답엔 조각이 없고 문장은 같다(미지정 응답 불변 — 첫 경로 1건)
 //
-// 사용법: BASE_URL=http://localhost:3013 node scripts/verify-en-walk-parts.mjs (Tmap 9건)
+// 사용법: BASE_URL=http://localhost:3013 node scripts/verify-en-walk-parts.mjs (1회 실행에 Tmap 9건, 429 재시도는 Tmap을 부르지 않는다)
 // 종료 코드: 전부 PASS면 0, 하나라도 FAIL이면 1.
 
 const BASE = process.env.BASE_URL ?? "http://localhost:3000";
