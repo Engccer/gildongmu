@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { carLandmark, rewriteCarGuidance, rewriteCarBriefing } from "../car-guidance";
+import { formatDistance } from "../format";
 import type { CarRouteBriefing } from "../types";
 import corpus from "./fixtures/tmap-car-corpus.json";
 import drive1003 from "./fixtures/car-landmark-2026-10-03.json";
@@ -32,7 +33,7 @@ describe("rewriteCarGuidance", () => {
     it("왼쪽 방향, 방면 없음", () => {
       expect(
         rewriteCarGuidance("천호대교남단에서 왼쪽 방향 후 올림픽대로를 따라 10668m 이동"),
-      ).toBe("천호대교남단에서 왼쪽 길로 들어선 뒤 올림픽대로를 따라 10668m 이동");
+      ).toBe("천호대교남단에서 왼쪽 길로 들어선 뒤 올림픽대로를 따라 10.668km 이동");
     });
   });
 
@@ -41,10 +42,10 @@ describe("rewriteCarGuidance", () => {
       // "남산1호터널에서 터널을 지나"는 원문의 중복이 재작성으로 도드라지는 자리다.
       expect(
         rewriteCarGuidance("남산1호터널에서 터널 후 삼일대로를 따라 2928m 이동"),
-      ).toBe("남산1호터널을 지나 삼일대로를 따라 2928m 이동");
+      ).toBe("남산1호터널을 지나 삼일대로를 따라 2.928km 이동");
       expect(
         rewriteCarGuidance("옥천졸음쉼터에서 졸음쉼터 후 경부 고속도로를 따라 46769m 이동"),
-      ).toBe("옥천졸음쉼터를 지나 경부 고속도로를 따라 46769m 이동");
+      ).toBe("옥천졸음쉼터를 지나 경부 고속도로를 따라 46.769km 이동");
       expect(
         rewriteCarGuidance("양재천 지하차도에서 지하차도 후 일반도로를 따라 812m 이동"),
       ).toBe("양재천 지하차도를 지나 일반도로를 따라 812m 이동");
@@ -89,14 +90,14 @@ describe("rewriteCarGuidance", () => {
           "북로JC에서 청라 방면으로 오른쪽 고속도로 입구 후 인천국제공항 고속도로를 따라 37182m 이동",
         ),
       ).toBe(
-        "북로JC에서 청라 방면으로 오른쪽 고속도로 입구로 들어선 뒤 인천국제공항 고속도로를 따라 37182m 이동",
+        "북로JC에서 청라 방면으로 오른쪽 고속도로 입구로 들어선 뒤 인천국제공항 고속도로를 따라 37.182km 이동",
       );
       expect(
         rewriteCarGuidance(
           "북대구IC에서 북대구 방면으로 오른쪽 고속도로 출구 후 경부 고속도로를 따라 1103m 이동",
         ),
       ).toBe(
-        "북대구IC에서 북대구 방면으로 오른쪽 고속도로 출구로 나온 뒤 경부 고속도로를 따라 1103m 이동",
+        "북대구IC에서 북대구 방면으로 오른쪽 고속도로 출구로 나온 뒤 경부 고속도로를 따라 1.103km 이동",
       );
       expect(
         rewriteCarGuidance("대전IC에서 전방 고속도로 입구 후 경부 고속도로를 따라 614m 이동"),
@@ -127,15 +128,21 @@ describe("rewriteCarGuidance", () => {
   });
 
   describe("건드리지 않는 문장(fail-safe)", () => {
-    it("회전 계열(좌회전·우회전·U턴·N시 방향 회전)은 원문 그대로", () => {
-      for (const raw of [
-        "교차로에서 우회전 후 천호대로를 따라 2410m 이동",
-        "교차로에서 좌회전 후 성내로6길을 따라 47m 이동",
-        "교차로에서 U턴 후 상무대로를 따라 2227m 이동",
-        "한남역에서 마포대교 방면으로 2시 방향 우회전 후 서빙고로를 따라 276m 이동",
-        "강동역 사거리에서 하남 방면으로 8시 방향 좌회전 후 천호대로를 따라 3290m 이동",
+    it("회전 계열(좌회전·우회전·U턴·N시 방향 회전)은 행동 어절이 원문 그대로(거리만 km 표기)", () => {
+      for (const [raw, out] of [
+        ["교차로에서 우회전 후 천호대로를 따라 2410m 이동", "교차로에서 우회전 후 천호대로를 따라 2.41km 이동"],
+        ["교차로에서 좌회전 후 성내로6길을 따라 47m 이동", "교차로에서 좌회전 후 성내로6길을 따라 47m 이동"],
+        ["교차로에서 U턴 후 상무대로를 따라 2227m 이동", "교차로에서 U턴 후 상무대로를 따라 2.227km 이동"],
+        [
+          "한남역에서 마포대교 방면으로 2시 방향 우회전 후 서빙고로를 따라 276m 이동",
+          "한남역에서 마포대교 방면으로 2시 방향 우회전 후 서빙고로를 따라 276m 이동",
+        ],
+        [
+          "강동역 사거리에서 하남 방면으로 8시 방향 좌회전 후 천호대로를 따라 3290m 이동",
+          "강동역 사거리에서 하남 방면으로 8시 방향 좌회전 후 천호대로를 따라 3.29km 이동",
+        ],
       ]) {
-        expect(rewriteCarGuidance(raw)).toBe(raw);
+        expect(rewriteCarGuidance(raw)).toBe(out);
       }
     });
 
@@ -155,8 +162,27 @@ describe("rewriteCarGuidance", () => {
     const rows = corpus as Array<{ turnType: number | null; description: string }>;
     const rewritten = rows.map((r) => ({ ...r, out: rewriteCarGuidance(r.description) }));
 
-    it("재작성 수는 정확히 112 — 어긋나면 규칙이나 fixture가 바뀐 것", () => {
-      expect(rewritten.filter((r) => r.out !== r.description)).toHaveLength(112);
+    // 거리 꼬리를 뗀 문장 — 행동 재작성과 거리 표기(A60)를 따로 센다.
+    const noDistance = (t: string) => t.replace(/\d+(?:\.\d+)?k?m 이동$/, "");
+
+    it("행동 재작성 수는 정확히 112 — 어긋나면 규칙이나 fixture가 바뀐 것", () => {
+      expect(rewritten.filter((r) => noDistance(r.out) !== noDistance(r.description))).toHaveLength(112);
+    });
+
+    it("거리 꼬리: 1km 미만은 원문 그대로, 1km 이상은 formatDistance 원값 km(위원장 판정 2026-10-05 A60)", () => {
+      let km = 0;
+      for (const r of rewritten) {
+        const raw = /(\d+)m 이동$/.exec(r.description);
+        if (!raw) continue;
+        const meters = Number(raw[1]);
+        const said = /(\d+(?:\.\d+)?k?m) 이동$/.exec(r.out)?.[1];
+        expect(said).toBe(formatDistance(meters));
+        if (meters >= 1000) {
+          km++;
+          expect(said).toBe(`${meters / 1000}km`);
+        }
+      }
+      expect(km).toBeGreaterThan(0);
     });
 
     it("재작성 후 「후」는 회전 계열 뒤에만 남는다", () => {
@@ -167,11 +193,11 @@ describe("rewriteCarGuidance", () => {
     });
 
     it("어느 문장도 도로명·거리 꼬리를 잃지 않는다", () => {
-      const TAIL = /(?:을|를) 따라 \d+(?:\.\d+)?k?m 이동$/;
+      const TAIL = /(?:을|를) 따라 (\d+)m 이동$/;
       for (const r of rewritten) {
-        const tail = TAIL.exec(r.description)?.[0];
+        const tail = TAIL.exec(r.description);
         if (!tail) continue; // 도착 등 꼬리 없는 문장
-        expect(r.out.endsWith(tail)).toBe(true);
+        expect(r.out.endsWith(tail[0].replace(`${tail[1]}m`, formatDistance(Number(tail[1]))))).toBe(true);
       }
     });
 
@@ -273,5 +299,19 @@ describe("rewriteCarBriefing landmarks 옵트인", () => {
       { landmarks: true },
     );
     expect(out.guides[0]).toMatchObject({ at: "토평IC", toward: "구리타워", guidance: "토평IC에서 구리타워 방면으로 오른쪽 길로 들어선 뒤 일반도로를 따라 339m 이동" });
+  });
+});
+
+describe("자동차 거리 꼬리 (A60 위원장 판정 2026-10-05)", () => {
+  it("위원장 예문: 「천호대로를 따라 2197m 이동」 → 「천호대로를 따라 2.197km 이동」, 1km 미만은 m 그대로", () => {
+    expect(rewriteCarGuidance("교차로에서 우회전 후 천호대로를 따라 2197m 이동")).toBe(
+      "교차로에서 우회전 후 천호대로를 따라 2.197km 이동",
+    );
+    expect(rewriteCarGuidance("교차로에서 우회전 후 천호대로를 따라 999m 이동")).toBe(
+      "교차로에서 우회전 후 천호대로를 따라 999m 이동",
+    );
+    expect(rewriteCarGuidance("교차로에서 우회전 후 천호대로를 따라 1000m 이동")).toBe(
+      "교차로에서 우회전 후 천호대로를 따라 1km 이동",
+    );
   });
 });

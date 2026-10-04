@@ -1,4 +1,5 @@
 // 조사 판정은 공용 모듈이 정본이다(walk-guidance 동형) — 사본 금지.
+import { formatDistance } from "./format";
 import { objectParticle } from "./korean-particle";
 import type { CarRouteBriefing } from "./types";
 
@@ -17,12 +18,14 @@ import type { CarRouteBriefing } from "./types";
  * 아니라 자동차전용도로에서 갈래를 고르는 지시다. 회전 어휘로 바꾸면 문장은
  * 자연스러워지고 의미가 틀린다(어색함보다 나쁜 안전 결함).
  *
- * ⚠ **미매칭 문장은 원문 그대로 통과시킨다(fail-safe, walk-guidance 동형).**
- * Tmap이 새 어휘를 내면 그 문장만 종전대로 낭독되고 나머지는 정상이다. 회전
- * 계열·출발(200)·도착(201)·카카오 폴백 문형(꼬리 없음)도 같은 경로로 보존된다.
+ * ⚠ **미매칭 문장은 행동 어절을 원문 그대로 통과시킨다(fail-safe, walk-guidance 동형).**
+ * Tmap이 새 어휘를 내면 그 문장의 행동 어절만 종전대로 낭독되고 나머지는 정상이다. 회전
+ * 계열·출발(200)·도착(201)·카카오 폴백 문형(꼬리 없음)도 같은 경로로 보존된다(거리 꼬리 표기는
+ * 문형과 무관하게 `formatDistance`를 탄다).
  *
- * 재작성은 `{행동} 후` 어절만 동사구로 바꾸고 도로명·거리 꼬리는 원문 그대로
- * 둔다 — 거리 표기는 Tmap 원문 표기(정수 m)를 유지한다(표기 축은 별도 판정).
+ * 재작성은 `{행동} 후` 어절만 동사구로 바꾸고 도로명은 원문 그대로 둔다. 거리 꼬리는
+ * 앱의 다른 거리 표기와 같은 `formatDistance`로 바꾼다(위원장 판정 2026-10-05 A60:
+ * "2197m 이동" → "2.197km 이동", 1km 미만은 m 그대로).
  */
 
 /** 「후」와 자연스럽게 결합하는 동작성 명사 — 손대지 않는다. */
@@ -54,7 +57,7 @@ const CLOCK = /^(\d+시 방향)$/;
 
 /**
  * Tmap 표준 문형. [1] 지점(…에서의 앞부분) [2] 방면 [3] 행동 [4] 꼬리(도로+거리).
- * 꼬리를 통째로 보존하는 것이 계약이다 — 도로명 조사·거리 표기를 건드리지 않는다.
+ * 행동 재작성은 꼬리를 통째로 보존한다 — 도로명 조사를 건드리지 않고, 거리 표기는 뒤 단계(`TAIL_METERS`)가 바꾼다.
  */
 // ⚠ 이름 있는 캡처 그룹은 tsconfig target(ES2017)에서 컴파일 오류다 — 인덱스 그룹만 쓴다.
 const FRAME = new RegExp(
@@ -75,8 +78,21 @@ function mapAction(action: string): string | null {
   return null;
 }
 
-/** 안내문 한 줄 재작성. 규칙에 걸리지 않으면 원문 그대로 돌려준다. */
+/**
+ * 꼬리 "{도로}를 따라 {N}m 이동"의 거리. Tmap 원문은 정수 m다. 문형(FRAME) 밖 문장(출발 직후의 "일반도로를 따라
+ * 64m 이동" 등)도 같은 꼬리라 함께 바꾼다. 카카오 폴백 문장은 꼬리가 없어 그대로다.
+ */
+const TAIL_METERS = /((?:을|를) 따라 )(\d+)m 이동$/;
+
+/** 안내문 한 줄 재작성. 행동 규칙에 걸리지 않으면 행동 어절은 원문 그대로이고, 거리 꼬리만 바꾼다. */
 export function rewriteCarGuidance(description: string): string {
+  return rewriteAction(description).replace(
+    TAIL_METERS,
+    (_, lead: string, meters: string) => `${lead}${formatDistance(Number(meters))} 이동`,
+  );
+}
+
+function rewriteAction(description: string): string {
   const m = FRAME.exec(description);
   if (!m) return description;
   const [, at, toward, action, tail] = m;
