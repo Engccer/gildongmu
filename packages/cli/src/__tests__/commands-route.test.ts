@@ -224,7 +224,7 @@ describe("route 명령", () => {
     ).rejects.toThrow("EXIT_2");
     expect(apiRequest).not.toHaveBeenCalled();
     const stderrOut = stderrSpy.mock.calls.map((c: unknown[]) => c[0]).join("");
-    expect(stderrOut).toContain("--variant은 route walk에서만");
+    expect(stderrOut).toContain("--variant 옵션은 route walk에서만");
   });
 
   it("car·transit에 --accessible을 주면 조용히 무시하지 않고 exit 2로 거절한다", async () => {

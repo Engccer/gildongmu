@@ -63,7 +63,7 @@ function makeRoute(verb: "car" | "transit" | "walk") {
       const walkOnly = args as { accessible?: unknown; variant?: unknown };
       if (verb !== "walk") {
         const given = WALK_ONLY_FLAGS.find((flag) => walkOnly[flag] !== undefined);
-        if (given) fail(`--${given}은 route walk에서만 지원합니다(${verb} 미지원).`, ExitCode.Usage);
+        if (given) fail(`--${given} 옵션은 route walk에서만 지원합니다(${verb} 미지원).`, ExitCode.Usage);
       }
       const { accessible, variant } = walkOnly;
       let origin: string, dest: string, via: string | undefined;
