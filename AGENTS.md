@@ -261,7 +261,7 @@
 |---|---|---|
 | `KAKAO_REST_API_KEY` | `hasKakaoKey` | 로컬검색+지오코딩+도보 경로(ko 기본)·나들이 도보 탐침+카카오모빌리티 자동차 폴백 (dodo 앱 공유, 1개로 전부) |
 | `TOUR_API_KEY` = `DATA_GO_KR_API_KEY` | `hasDataGoKrKey` · `hasTourApiKey`(en 장소 TourAPI 병합 분기만) | **동일값**(data.go.kr 계정당 단일키, 신규 추가는 활용신청만). ⚠ 신규 provider 인증은 게이트와 같은 `DATA_GO_KR_API_KEY`로(split-brain 금지). → INTEGRATIONS |
-| `NCP_MAPS_CLIENT_ID/SECRET` | `hasNcpMapsKeys` | en 영문주소 보강 폴백 + en 자동차경로 + 역지오코딩 도로명 2단 폴백(ko). 헤더 `x-ncp-apigw-api-key-id`/`-key` |
+| `NCP_MAPS_CLIENT_ID/SECRET` | `hasNcpMapsKeys` | en 영문주소 보강 폴백 + en 자동차경로 + 역지오코딩 도로명 2단 폴백. 헤더 `x-ncp-apigw-api-key-id`/`-key` |
 | `JUSO_CONFM_KEY` | `hasJusoKey` | 행안부 도로명주소 검색(영문주소+우편번호)·부근 재구성 건물 축·역지오코딩 en·비-ko 도보 도로명 로마자, 무료·무제한 |
 | `SEOUL_OPEN_DATA_KEY` | `hasSeoulOpenDataKey` | 서울 열린데이터(따릉이·문화행사·실시간 혼잡도). 일 1,000회를 셋이 **공유**하므로 신규 소비자는 캐시 설계가 필수. ⚠ 실시간 지하철은 별도 키 |
 | `SEOUL_SUBWAY_REALTIME_KEY` | `hasSeoulSubwayRealtimeKey` | "실시간 데이터 인증키"(일반키로 호출 시 `ERROR-338`), 일 1,000회를 도착·열차 위치(E35)가 나눈다 |
