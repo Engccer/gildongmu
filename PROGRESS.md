@@ -26,8 +26,8 @@
 
 - iOS 심사 상태 조회: `node ios/scripts/asc-submit.mjs --check`
 - 미릴리스 iOS 변경량: `git rev-list --count <직전 릴리스 커밋>..HEAD -- ios/` (숫자를 문서에 박지 않는다 — 사흘에 세 번 낡은 이력이 있다)
-- **안내 세션은 앱 수명이다**(N1, 2026-08-22): `GuideSession`이 세 모델(도보·대중교통·나들이)을 소유하고 루트 시트·탭 바 **바로 위** 띠바(iOS 26 탭 바 액세서리 / 18~25 콘텐츠 inset, K1 2026-08-23)가 표시 층이다. 시트를 내리면 최소화(접기 버튼은 **제목 행 우측 아이콘**, 안내 종료는 **목록 밖 최하단 고정 버튼**)이고 중지는 버튼뿐, 안내 중 새 시작은 거부되며, 어느 탭에서든 받아쓰기 중엔 안내 톤·통지가 억제된다. 탭 순서 검색 - 길찾기 - 내 주변 - 채팅(기본 검색)은 **실험판 한정**(`experimentalTabOrderEnabled`, 판정 대기). 실기기 판정은 `docs/BACKLOG.md` N1·K1.
-- **안내 세션 봉인은 나들이뿐**(`AppConfig.experimentalOutingEnabled`의 `#if EXPERIMENTAL`). 기능 단위로는 건너는 길 이름(E62 ⑥, `experimentalCrossingRoadEnabled`, 2026-10-04 위원장 판정으로 다음 릴리스에서 졸업 예정)과 탭 순서(`experimentalTabOrderEnabled`)도 실험판 한정이다. 자동차·대중교통(`experimentalGuidanceEnabled`)·백그라운드 음성 안내(`experimentalBackgroundSpeechEnabled`)는 2026-10-01 2.0에서 졸업했다(spec `docs/superpowers/specs/2026-10-01-release-2.0-graduation-design.md`). 해제 선행 조건은 코드가 아니라 판정이며 `docs/BACKLOG.md` G5와 판정 표가 정본이다. 간략 단독 진입점은 2.0에서 폐지했다(E16 축2). ⚠ 봉인의 판정 축은 플래그 참조가 아니라 세션 진입점 전수이고 `guidance-gate-drift.test.ts`가 그 수를 센다.
+- **안내 세션은 앱 수명이다**(N1, 2026-08-22): `GuideSession`이 세 모델(도보·대중교통·나들이)을 소유하고 루트 시트·탭 바 **바로 위** 띠바(iOS 26 탭 바 액세서리 / 18~25 콘텐츠 inset, K1 2026-08-23)가 표시 층이다. 시트를 내리면 최소화(접기 버튼은 **제목 행 우측 아이콘**, 안내 종료는 **목록 밖 최하단 고정 버튼**)이고 중지는 버튼뿐, 안내 중 새 시작은 거부되며, 어느 탭에서든 받아쓰기 중엔 안내 톤·통지가 억제된다. 탭 순서는 실험판만 설정에서 바꾼다(E66, 2026-10-05 K1 고정 순서 실험 대체, `experimentalTabOrderEnabled`). 정식판은 채팅 첫 탭 고정. 실기기 판정은 `docs/BACKLOG.md` N1·K1.
+- **안내 세션 봉인은 나들이뿐**(`AppConfig.experimentalOutingEnabled`의 `#if EXPERIMENTAL`). 기능 단위로는 건너는 길 이름(E62 ⑥, `experimentalCrossingRoadEnabled`, 2026-10-04 위원장 판정으로 다음 릴리스에서 졸업 예정)과 탭 순서 설정(E66 2026-10-05, `experimentalTabOrderEnabled`)도 실험판 한정이다. 자동차·대중교통(`experimentalGuidanceEnabled`)·백그라운드 음성 안내(`experimentalBackgroundSpeechEnabled`)는 2026-10-01 2.0에서 졸업했다(spec `docs/superpowers/specs/2026-10-01-release-2.0-graduation-design.md`). 해제 선행 조건은 코드가 아니라 판정이며 `docs/BACKLOG.md` G5와 판정 표가 정본이다. 간략 단독 진입점은 2.0에서 폐지했다(E16 축2). ⚠ 봉인의 판정 축은 플래그 참조가 아니라 세션 진입점 전수이고 `guidance-gate-drift.test.ts`가 그 수를 센다.
 - 도보 안내의 도착 추정 자동 종료(잊힌 세션 정리)는 구현·출시 완료(1.10), **실보행 판정 대기**(`docs/BACKLOG.md` E13). 2026-09-02 A31로 간략(직선) 안내 세션까지 같은 축이 닫는다(근처 래치 ∧ 정확도 ≤30m) — 실보행 판정 대기(FIELD-TEST §3 A31).
 
 ---
@@ -50,7 +50,7 @@ iOS는 스토어 2.0이, 웹은 `origin/main`이 프로덕션이다. 구현 방�
 | 길찾기 최근 경로 | 출발·도착 쌍 기록, 결과 없는 화면에 노출·활성화 시 즉시 조회(웹·iOS) |
 | 장소 상세 길찾기 진입 | "여기까지"·"여기부터" 두 방향(웹·iOS, 2026-09-11 E32). 양끝이 다 차는 진입은 채움 + 즉시 조회 한 동작이고(웹은 B10으로 동조), 출발지만 채우는 진입은 도착지 입력에 착지 (⏳ iOS 착지 실기기 판정) |
 | 목적지 출입구 승격 | 넓은 부지 목적지를 출입구 POI로 옮겨 도착 판정을 성립시킨다(웹·iOS, ko 전용) (⏳ 실보행 판정) |
-| 최근 목록 고정(pin) | 4목록 항목별 고정/해제, 고정 상단 유지·cap 면제(웹·iOS, 실기기 VO 합격 2026-08-12) |
+| 최근 목록 고정(pin) | 4목록 항목별 고정/해제, 고정 상단 유지·cap 면제(웹·iOS, 실기기 VO 합격 2026-08-12). iOS 고정 행 순서 바꾸기 로터 액션(E67, 2026-10-05, 미릴리스, ⏳ 실기기 판정) |
 | 현재 위치 정위 | where-am-i, 결정론 산문 |
 | 장소 영업시간(E24) | Google Places(New) 한 줄, **웹·iOS 정식판**(2026-09-02 승격, iOS는 1.14부터). 어떤 실패도 침묵(`{hours:null}`), VoiceOver만 읽는다(약관 TTS 금지) |
 | 현위치 수동 지정 | 장소 검색으로 직접 지정, 이동 시 자동 해제. 실시간 안내는 실좌표만 |
