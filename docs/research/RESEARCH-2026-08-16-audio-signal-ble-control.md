@@ -246,7 +246,7 @@ UUID 검색으로 확정했다. 규격서가 정의한 것은 새 무선 규약�
 
 ## 12. 실측 결과 2차 (2026-08-20~21, 보강 계측기 — 이름 무관 서비스 발견까지 0건)
 
-보강 계측기(`c51e031`, 허브 최상단 한 버튼 자동 진단: 최강 무명 기기 연결 → 서비스 발견, peripheral id·실시간 좌표 기록)로 회수한 `audio-signal-diag.log`(프로브 5회, 발견 표본 3,323줄, 원본 `~/gildongmu-private/field-logs/audio-signal-diag-2026-08-21.log.gz`) 판독. 시각은 KST.
+보강 계측기(`7897cad`, 허브 최상단 한 버튼 자동 진단: 최강 무명 기기 연결 → 서비스 발견, peripheral id·실시간 좌표 기록)로 회수한 `audio-signal-diag.log`(프로브 5회, 발견 표본 3,323줄, 원본 `~/gildongmu-private/field-logs/audio-signal-diag-2026-08-21.log.gz`) 판독. 시각은 KST.
 
 | 세션 | 위치(실시간 좌표) | 표본 | 연결 확인 | UART(`0003cdd0`) | 결과 |
 |---|---|---|---|---|---|

@@ -68,7 +68,7 @@
 응답 `{ lines: WalkRouteLine[] }`, `WalkRouteLine = { kind, route: WalkRouteBriefing }`. 배열 순서가 화면 순서이고 **첫 원소가 기본 펼침**이다.
 
 - **판본(E52)**: 값은 줄 수가 아니라 **판본 번호**다. `lines=1` → E42 봉투 판본(최대 둘), `lines=2` → E52 판본(최대 셋). 그 밖의 값은 400. 봉투의 뜻이 다시 바뀌면 새 값을 쓴다.
-  - 근거: 배포된 iOS 1.19(`5c3bf9bf`, `lines=1`)는 첫 줄 뒤의 모든 줄이 펼침 상태 하나(`walkSecondExpanded`)를 공유한다(`DirectionsTabView` 줄 목록의 `index == 0 ? … : $walkSecondExpanded`). 세 줄을 받으면 둘째·셋째 줄이 함께 열리고 닫혀 VoiceOver가 건드리지 않은 줄을 "펼쳐짐"으로 읽는다. 한 줄 응답은 종전에도 있던 모양(둘째 줄 실패 흡수)이라 안전하다. iOS 1.18(`edc8cbdc`)은 `alternatives=1`이라 무관하다.
+  - 근거: 배포된 iOS 1.19(`5104808d`, `lines=1`)는 첫 줄 뒤의 모든 줄이 펼침 상태 하나(`walkSecondExpanded`)를 공유한다(`DirectionsTabView` 줄 목록의 `index == 0 ? … : $walkSecondExpanded`). 세 줄을 받으면 둘째·셋째 줄이 함께 열리고 닫혀 VoiceOver가 건드리지 않은 줄을 "펼쳐짐"으로 읽는다. 한 줄 응답은 종전에도 있던 모양(둘째 줄 실패 흡수)이라 안전하다. iOS 1.18(`48a9714b`)은 `alternatives=1`이라 무관하다.
   - `lines=1`에서 세 줄이 되는 구간은 **큰길 줄을 뺀다** → `[shortest, accessible]`. 그 구간(계단 회피가 독자 경로인 곳)에서 1.19가 종전에 받던 모양과 같고, 나머지 구간에서는 1.19 사용자도 E52 수정(같은 길 접기·거짓 이름 제거)을 받는다.
   - 새 웹·iOS·안드로이드는 `lines=2`를 보내고 **줄마다 펼침 상태를 따로 든다**(줄 종류가 키).
 - **ko**: `[shortest, broad?, accessible?]`(§0-1, §1-1). 세 조회(최단·큰길·계단 회피)를 **병렬로** 돌리고 원응답의 기하로 줄을 고른 뒤 실린 줄만 재작성·주석한다.

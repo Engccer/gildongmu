@@ -1,6 +1,6 @@
 # 안드로이드 도보 안내 wave 2 — 안내 중 변경 5종 (M4b)
 
-- 날짜: 2026-09-27 · 세션 `android-m4b` · base `104e1ea3`
+- 날짜: 2026-09-27 · 세션 `android-m4b` · base `ebcd3508`
 - 근거: 위원장 판정 2026-09-27(M4b를 이번 동기화에 넣는다), 병렬 계획 `docs/superpowers/plans/2026-09-27-android-release-sync-parallel-plan.md` §1 판정 2
 - iOS 정본: `BeaconModel.swift`(`reacquireRoute`·`changeDestination`·`setWaypoint`·`removeWaypoint`·`requestVariantSwitch`·`performReroute(.switchTo)`·`commitLineSwitch`·`alternativePreviewState`·`open/close/adoptAlternativePreview`·`resetAlternativePreview`), `BeaconTrackingSheet.swift`, `GuideTitleMenu.swift`, `GuideOverviewSheet.swift`(`BeaconOverviewAdapter`·`WalkAlternativePreviewSheet`), `SurroundingsSceneSection.swift`, `GuideSessionCoordinator.swift`(`GuideFormSyncStore`·`waypointAvailable`), `DirectionsTabView.swift`(`consumeGuideFormSync`·`runQuery(silently:)`)
 - 상위 spec: `2026-08-12-guide-destination-menu-design.md`(목적지 메뉴·장소 상세·폼 동기화), `2026-08-14`(대안 프리뷰), `2026-09-23-walk-two-lines-kakao-design.md` §4(두 줄 전환), `2026-09-24-waypoint-progress-design.md`(N4), `2026-09-11-transit-station-to-place-and-landing-design.md` §1.2(안내 시트 위 장소 상세는 표준 중첩)

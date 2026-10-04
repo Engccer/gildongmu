@@ -1,8 +1,8 @@
 # 병렬 계획: 안드로이드 정식판 동기화 (2026-09-27)
 
-코디네이터 세션 `gildongmu-d9`. 기준 SHA `96175514`(main, 2026-09-27).
+코디네이터 세션 `gildongmu-d9`. 기준 SHA `1d95484c`(main, 2026-09-27).
 
-**종료 상태(2026-09-27 07:4x KST)**: 웨이브 1·2 전부 로컬 `main` ff 통합(`d26f1cfe` n4 → `9ee6360a` e50 → `4e175ed3` chat → `db891307` m4b), origin push 없음(동결 해제 뒤 push). 웨이브 3 `android-doc-audit` 통합 `ed7756e5`(문서 11개 정정, CLAUDE.md 여유 1.7KB — 다음 웨이브 전 다이어트 권고). 남은 worktree 0·`feat/*` 0. 남은 사용자 판정은 BACKLOG E43(한소네 7 실기기 목록·듣기 속도 뜻·체중 착지 대상). **push 동결 중**(2026-09-29 08:00 KST까지, CLAUDE.md "gildongmu push 동결") — 통합은 로컬 `main` fast-forward이고 `origin` push는 없다. 위원장 지시: "안드로이드 앱을 iOS 정식판 최신 빌드에 맞게 동기화. 배포된 1.18은 무시하고 최신 개발 상태로. 병렬 세션으로 구현하고 판정은 코디네이터 세션에서."
+**종료 상태(2026-09-27 07:4x KST)**: 웨이브 1·2 전부 로컬 `main` ff 통합(`8fc9f721` n4 → `71977c53` e50 → `be31a3f8` chat → `54edf15b` m4b), origin push 없음(동결 해제 뒤 push). 웨이브 3 `android-doc-audit` 통합 `51e5f603`(문서 11개 정정, CLAUDE.md 여유 1.7KB — 다음 웨이브 전 다이어트 권고). 남은 worktree 0·`feat/*` 0. 남은 사용자 판정은 BACKLOG E43(한소네 7 실기기 목록·듣기 속도 뜻·체중 착지 대상). **push 동결 중**(2026-09-29 08:00 KST까지, CLAUDE.md "gildongmu push 동결") — 통합은 로컬 `main` fast-forward이고 `origin` push는 없다. 위원장 지시: "안드로이드 앱을 iOS 정식판 최신 빌드에 맞게 동기화. 배포된 1.18은 무시하고 최신 개발 상태로. 병렬 세션으로 구현하고 판정은 코디네이터 세션에서."
 
 ## §1. 마일스톤과 확정 판정
 
@@ -31,7 +31,7 @@
 
 전부 `--model opus`. `android-m4b`만 `--effort high`(Compose 화면 구조를 새로 고른다), 나머지는 `medium`(iOS 정본과 spec이 확정돼 기계적 이식). 세션 안 서브에이전트는 `model: opus`, 적대적 설계 리뷰·보안/데이터 무결성 최종 검토만 `model: fable`(이번 웨이브에 해당 사안 없음 — m4b가 시트 구조 갈림길을 만나면 1회).
 
-## §2. 파일 소유권 지도 (기준 `96175514`)
+## §2. 파일 소유권 지도 (기준 `1d95484c`)
 
 역방향 술어("그 세션의 진입점이 그 파일을 호출·수정하는가")로 쟀다. 경로는 `android/app/src/main/kotlin/space/dodoplanet/gildongmu/` = `A/`, `android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/` = `K/`.
 
@@ -42,7 +42,7 @@
 | `android-chat` | `A/chat/**` · `A/settings/**` · `A/MainActivity.kt`(테마 적용) · `A/audio/ChatTtsPlayer.kt`(**새 파일**) · `app/src/test/.../{chat,settings}/**` · `:kit` `MarkdownPlainTextTest.kt`·`ChatMarkdownTest.kt`(신설 가능) · `K/ChatMarkdown.kt`(필요 시) · **iOS** `ios/GildongmuKit/Sources/GildongmuKit/ChatMarkdown.swift` · `ios/GildongmuKit/Tests/GildongmuKitTests/ChatMarkdownLineBreakTests.swift` · `src/lib/__tests__/fixtures/chat-markdown-line-break-cases.json` | `A/audio/TtsGuideSpeaker.kt`·`GuideAudioFocus.kt`(재사용 가능하면 재사용, 수정이 필요하면 자진 신고), `K/ListenSpeed.kt`, `ios/Gildongmu/Chat/TtsPlayer.swift` |
 | `android-m4b` (웨이브 2) | `A/guide/**` · `A/directions/DirectionsViewModel.kt`·`DirectionsScreen.kt`(폼 동기화 자리만) · `A/place/PlaceRoutes.kt`·`PlaceDetailScreen.kt`(길찾기 진입 숨김 플래그) · `A/nearby/SceneSection.kt`(임베드 인자 추가 수준) · 관련 테스트 | `A/directions/EndpointPicker.kt`·`EndpointSearchContent.kt`(재사용) |
 
-#### 정정 (2026-09-27 06:3x KST, 코디네이터 판정 — 기준 `6471e316`)
+#### 정정 (2026-09-27 06:3x KST, 코디네이터 판정 — 기준 `04d4efb8`)
 
 - `A/guide/ui/WalkGuideStartButton.kt`는 이번 웨이브에서 **`android-e50` 소유**로 옮긴다(안내 시작 고지의 트리거가 그 버튼의 `onClick`이라 "호출하는가" 술어로 e50 것이 맞다. n4의 범위(N4·E31)는 이 파일을 부르지 않는다). e50은 `WalkGuideStartButton`·`walkGuideStartSlot`에 기본값 없는 `onStart: () -> Unit` 인자를 더해 `startWalk` 직전에 부른다(안 A). `WalkStartRequest`는 여전히 손대지 않는다. n4는 이 파일을 읽기만 한다.
 
@@ -52,7 +52,7 @@
 
 - 정정(2026-09-27 06:44, e50 보고): 착수 프롬프트의 전제 "`ios.directions.walkNotice.*`가 안드로이드 strings에 없다"는 **틀렸다**. ios-extra 도입으로 `android.directions.walkNotice.*` 9키가 전 로케일에 이미 있었다(코디네이터 grep이 키 이름을 잘못 변환). i18n 편집 0. 저장소에 `zh` 로케일은 없다.
 
-- 정정(2026-09-27 06:52, m4b 착수 보고 — 기준 `104e1ea3`): ①`PlaceDetailRoute.showsDirectionsEntry`가 E45로 이미 있어 `place/**` 수정 0 ②`SceneSection.kt`에는 자동 펼침판만 있어 버튼형(iOS `SurroundingsSceneSection`)을 같은 파일에 신설하고 묶음 렌더를 공유로 뽑는다("임베드 인자 추가"보다 큰 변경, m4b 소유로 인정) ③장소 상세 중첩이 내비 push라 `nav/AppRoot.kt` `GuideBottomBar` 호출 한 줄 변경 허가(자진 신고) ④대안 프리뷰·줄 전환 문장 11키는 ios-extra 비접두 키라 android-extra 6로케일에 `android.guide.*`로 추가 ⑤길찾기 VM에 무통지 조회(iOS `runQuery(silently:)`) 진입점 추가.
+- 정정(2026-09-27 06:52, m4b 착수 보고 — 기준 `ebcd3508`): ①`PlaceDetailRoute.showsDirectionsEntry`가 E45로 이미 있어 `place/**` 수정 0 ②`SceneSection.kt`에는 자동 펼침판만 있어 버튼형(iOS `SurroundingsSceneSection`)을 같은 파일에 신설하고 묶음 렌더를 공유로 뽑는다("임베드 인자 추가"보다 큰 변경, m4b 소유로 인정) ③장소 상세 중첩이 내비 push라 `nav/AppRoot.kt` `GuideBottomBar` 호출 한 줄 변경 허가(자진 신고) ④대안 프리뷰·줄 전환 문장 11키는 ios-extra 비접두 키라 android-extra 6로케일에 `android.guide.*`로 추가 ⑤길찾기 VM에 무통지 조회(iOS `runQuery(silently:)`) 진입점 추가.
 
 **겹침 → 직렬**: `A/guide/**`는 n4(웨이브 1) → m4b(웨이브 2). `A/directions/**`는 e50(웨이브 1) → m4b(웨이브 2). 웨이브 1 세 세션은 소유 파일이 겹치지 않는다.
 
@@ -76,7 +76,7 @@ git -C ~/Mac-Projects/gildongmu worktree add ~/gildongmu-wt/<name> -b feat/<name
 - `--force` 금지. **`origin` push 금지**(`.git/hooks/pre-push`가 막고, 막혀도 시도하지 않는다). 계획 커밋도 push하지 않는다.
 - worktree에 `node_modules`·`.env.local`·공식 Android 스킬(`.claude/skills/`)은 코디네이터가 미리 넣었다. **`npm install` 금지.** SDK·JDK 설치 금지.
 - **무거운 게이트는 `android/README.md` §7 절차 그대로**: `until mkdir ~/gildongmu-wt/gate.lock 2>/dev/null; do sleep 30; done` → 게이트 → (성공·실패 무관) `rmdir ~/gildongmu-wt/gate.lock; (cd android && ./gradlew --stop)`. vitest는 `VITEST_MAX_THREADS=2 npm run test:run`. iOS Kit 테스트(`cd ios/GildongmuKit && swift test`)도 같은 락 안에서.
-- **기준선 기록**: `~/.claude/parallel-sessions/gildongmu/baseline-96175514xxxx.log`(base `96175514`, `:kit:test`·`:app:testDebugUnitTest`·`assembleDebug`·`npm run test:run`). 게이트가 실패하면 먼저 이 기록과 대조한다. 기록에 없는 실패는 자기 변경 탓으로 본다. 기준선을 다시 재려고 `git stash`·`checkout`을 하지 않는다. rebase 뒤 처음 보는 실패는 자기 것으로 단정하지 말고 보고한다.
+- **기준선 기록**: `~/.claude/parallel-sessions/gildongmu/baseline-96175514xxxx.log`(base `1d95484c`, `:kit:test`·`:app:testDebugUnitTest`·`assembleDebug`·`npm run test:run`). 게이트가 실패하면 먼저 이 기록과 대조한다. 기록에 없는 실패는 자기 변경 탓으로 본다. 기준선을 다시 재려고 `git stash`·`checkout`을 하지 않는다. rebase 뒤 처음 보는 실패는 자기 것으로 단정하지 말고 보고한다.
 - **리뷰는 별도 컨텍스트**(서브에이전트 `model: opus`, 요구사항 + `git diff main...HEAD`만 전달, 세션 히스토리 전달 금지). 리뷰 전에 전부 커밋(미커밋 0). 리뷰가 도는 동안 rebase·커밋 금지. 리뷰 결과는 파일(`~/gildongmu-wt/<name>-reports/review-<주제>-<YYYYmmddHHMM>.md`)로 받아 전문을 읽은 뒤 닫는다. 접근성 감사는 워크스페이스 `.claude/agents/a11y-auditor.md`가 worktree에 실리지 않으므로 그 파일을 Read해 지시를 준 `model: opus` 범용 에이전트로 대신한다.
 - rebase 뒤 공유 문서 소실 대조: `base=$(git rev-parse main)` 뒤 `comm -23 <(git show "${base}:CHANGELOG.md" | sort) <(sort CHANGELOG.md)`(BACKLOG·PROGRESS·README도). 출력은 전부 자기가 지운 줄이어야 한다. **`${base}`처럼 중괄호로 감싼다.**
 - 보고: `~/gildongmu-wt/<name>-reports/<단계>-<YYYYmmddHHMM>.md`(worktree 밖, 단계마다 **새 파일**: `start`·`review`·`integrated`·`blocked`). 코디네이터 `gildongmu-d9 [884058]`에 `SendMessage`로 파일 이름을 통보한다. 메시지는 유실될 수 있으므로 **파일이 정본**이다.
@@ -104,10 +104,10 @@ git -C ~/Mac-Projects/gildongmu worktree add ~/gildongmu-wt/<name> -b feat/<name
 
 | 세션 | 통합 SHA | 시각 | 자진 신고 | 남은 판정 |
 |---|---|---|---|---|
-| `android-n4` | `d26f1cfe` | 2026-09-27 06:39 | `nav/AppRoot.kt` 1줄(허가) · 새 파일 `guide/ui/WeightSettingsNav.kt` | 한소네 7: 예고 50m·도착 조사·행 전환·권유 2회 닫기·설정 왕복 착지 / iOS 역이식 후보(E31 응답 표식 수명) / m4b 인계 4항은 `integrated-202609270639.md` |
-| `android-e50` | `9ee6360a` | 2026-09-27 06:44 | `WalkGuideStartButton.kt` 소유 이전 반영(정정 절) · 실패 통지 `.high` 등가는 StatusLine+진동 · 안내 종료 섹션 제목은 세션 목적지 | 한소네 7: 안내 시작 고지가 시트 등장·TTS에 묻히는가(묻히면 발화 창구를 `WalkGuideModel`로 — m4b 이후) · 재조회 실패 뒤 커서·실패 문장 중복 · 공지 시트 중 조회 완료 통지 |
-| `android-chat` | `4e175ed3` | 2026-09-27 06:50 | `nav/AppRoot.kt` 호출부 치환 · `guide/ui/WeightSettingsNav.kt` 치환(focusRow 기본값) · `GuideSourceGuardTest` ③ 허용 목록 1줄 · Settings ATF 단언 2줄 · CLAUDE.md 수정 → AGENTS.md는 코디네이터가 재생성 | 배속 뜻 불일치(채팅 = 시스템 속도×배율, 도보 안내 `TtsGuideSpeaker` = 절대 배율) → BACKLOG E43 판정 행 · TalkBack 공존 실기기 3항 · m4b 인계: focusRow=Weight 착지는 텍스트 필드라 키보드가 뜸(한 프레임 뒤 `requestFocus` 1회, 착지 대상 실기기 판정) · 기존 `GuideAudioFocus` LOSS 뒤 핸들 덮임 관찰 |
-| `android-m4b` | `db891307` | 2026-09-27 07:31 | `nav/AppRoot.kt` 호출 1줄+import 2줄(허가) · `SceneSection.kt` 버튼형 신설(사전 인정) · CLAUDE.md 1줄 → AGENTS.md 코디네이터 재생성 | 한소네 7: BACKLOG E43 M4b ⓐ~ⓖ + E31 착지(필드 vs 푸터) · iOS 대비 의도된 차이 7건은 `integrated-202609270731.md` · 후속 후보 2건(장소 상세 "여기로 목적지 변경"·시트 중 밑 탭 StatusLine 통지) |
+| `android-n4` | `8fc9f721` | 2026-09-27 06:39 | `nav/AppRoot.kt` 1줄(허가) · 새 파일 `guide/ui/WeightSettingsNav.kt` | 한소네 7: 예고 50m·도착 조사·행 전환·권유 2회 닫기·설정 왕복 착지 / iOS 역이식 후보(E31 응답 표식 수명) / m4b 인계 4항은 `integrated-202609270639.md` |
+| `android-e50` | `71977c53` | 2026-09-27 06:44 | `WalkGuideStartButton.kt` 소유 이전 반영(정정 절) · 실패 통지 `.high` 등가는 StatusLine+진동 · 안내 종료 섹션 제목은 세션 목적지 | 한소네 7: 안내 시작 고지가 시트 등장·TTS에 묻히는가(묻히면 발화 창구를 `WalkGuideModel`로 — m4b 이후) · 재조회 실패 뒤 커서·실패 문장 중복 · 공지 시트 중 조회 완료 통지 |
+| `android-chat` | `be31a3f8` | 2026-09-27 06:50 | `nav/AppRoot.kt` 호출부 치환 · `guide/ui/WeightSettingsNav.kt` 치환(focusRow 기본값) · `GuideSourceGuardTest` ③ 허용 목록 1줄 · Settings ATF 단언 2줄 · CLAUDE.md 수정 → AGENTS.md는 코디네이터가 재생성 | 배속 뜻 불일치(채팅 = 시스템 속도×배율, 도보 안내 `TtsGuideSpeaker` = 절대 배율) → BACKLOG E43 판정 행 · TalkBack 공존 실기기 3항 · m4b 인계: focusRow=Weight 착지는 텍스트 필드라 키보드가 뜸(한 프레임 뒤 `requestFocus` 1회, 착지 대상 실기기 판정) · 기존 `GuideAudioFocus` LOSS 뒤 핸들 덮임 관찰 |
+| `android-m4b` | `54edf15b` | 2026-09-27 07:31 | `nav/AppRoot.kt` 호출 1줄+import 2줄(허가) · `SceneSection.kt` 버튼형 신설(사전 인정) · CLAUDE.md 1줄 → AGENTS.md 코디네이터 재생성 | 한소네 7: BACKLOG E43 M4b ⓐ~ⓖ + E31 착지(필드 vs 푸터) · iOS 대비 의도된 차이 7건은 `integrated-202609270731.md` · 후속 후보 2건(장소 상세 "여기로 목적지 변경"·시트 중 밑 탭 StatusLine 통지) |
 
 
 ## §6. 코디네이터 메모

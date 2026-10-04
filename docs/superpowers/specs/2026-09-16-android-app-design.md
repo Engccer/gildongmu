@@ -1,6 +1,6 @@
 # 안드로이드 앱 설계 — M1 검색 화면 (2026-09-16)
 
-> 범위는 **M1(검색 화면)** 이다(판정 문서 §5 "spec은 M1 범위로 좁혀서"). 입력: 판정 `2026-09-15-android-app-decisions.md` §1(재논의 없음), 계획 `../plans/2026-09-16-android-app-parallel-plan.md` §5-1 4·5항, M0 산출물(`android/README.md`, main `41f377b5`). iOS `SearchView.swift`·`SearchModel.swift`와 웹 `PlaceSearch.tsx`·`search-sections.ts`가 동작 정본이다.
+> 범위는 **M1(검색 화면)** 이다(판정 문서 §5 "spec은 M1 범위로 좁혀서"). 입력: 판정 `2026-09-15-android-app-decisions.md` §1(재논의 없음), 계획 `../plans/2026-09-16-android-app-parallel-plan.md` §5-1 4·5항, M0 산출물(`android/README.md`, main `e2a15c86`). iOS `SearchView.swift`·`SearchModel.swift`와 웹 `PlaceSearch.tsx`·`search-sections.ts`가 동작 정본이다.
 >
 > 적대적 설계 리뷰 판정: (§10에 기록)
 

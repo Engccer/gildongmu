@@ -1,14 +1,14 @@
 # 2026-09-12 실승차 피드백 3건 병렬 착수 계획 (코디네이터 `gildongmu-1f [f257b5]`)
 
-> **전 웨이브 종료(2026-09-12 09:40 KST)**: 웨이브 2 status-prose `7bb1ea31`(E39·E40·E41, E41=ⓐ 통지 축소, 문안 TextEdit 3판) → AGENTS.md `8d086906` → 실기기 배포 08:59 두 구성(`8d086906`) → 웨이브 3 doc-audit-w3 `9af869f9`(문서 11개, 앵커 오탐 정정: A34·A36 링크는 멀쩡, `①`은 GitHub 슬러거가 지운다) → 코디네이터 잔여 정리(BACKLOG 배포 서술·테스트 주석 2·죽은 단언 1). 남은 위원장 몫: §2 실승차 판정(N3 ②·E38·E39·E40·E41, 대본 FIELD-TEST §5-2·§5-3). 미처리 보류: E37 착수 조건·A38/A32 "37건" 단위(도메인 판정), webfortd/AGENTS.md 발산(다른 repo).
+> **전 웨이브 종료(2026-09-12 09:40 KST)**: 웨이브 2 status-prose `534435e1`(E39·E40·E41, E41=ⓐ 통지 축소, 문안 TextEdit 3판) → AGENTS.md `e5405664` → 실기기 배포 08:59 두 구성(`e5405664`) → 웨이브 3 doc-audit-w3 `810de731`(문서 11개, 앵커 오탐 정정: A34·A36 링크는 멀쩡, `①`은 GitHub 슬러거가 지운다) → 코디네이터 잔여 정리(BACKLOG 배포 서술·테스트 주석 2·죽은 단언 1). 남은 위원장 몫: §2 실승차 판정(N3 ②·E38·E39·E40·E41, 대본 FIELD-TEST §5-2·§5-3). 미처리 보류: E37 착수 조건·A38/A32 "37건" 단위(도메인 판정), webfortd/AGENTS.md 발산(다른 repo).
 
-> **웨이브 1 종료 상태(2026-09-12 06:20 KST)**: sheet-landing `d6abbfe9`(E38, 커밋 2) → transit-signal `65c3eb9b`(A41, 커밋 8) 로컬 main ff 통합, 두 worktree·창 제거. 실기기 배포는 웨이브 2 뒤 한 번(두 구성). 위원장 판정 신규: E40(시작 통지 목적지, 3수단)·E41(착지·통지 중복) — 웨이브 2 `status-prose`가 E39와 함께. §6 정정 절 참조.
+> **웨이브 1 종료 상태(2026-09-12 06:20 KST)**: sheet-landing `48db6d1f`(E38, 커밋 2) → transit-signal `3cc1498e`(A41, 커밋 8) 로컬 main ff 통합, 두 worktree·창 제거. 실기기 배포는 웨이브 2 뒤 한 번(두 구성). 위원장 판정 신규: E40(시작 통지 목적지, 3수단)·E41(착지·통지 중복) — 웨이브 2 `status-prose`가 E39와 함께. §6 정정 절 참조.
 
-> 접수 세션 = 이 코디네이터. 판정은 여기서, 코드는 작업 세션에서. push는 2026-09-22 09:00 KST까지 동결이라 통합은 **로컬 `main` fast-forward**(§3). 관측 시점 `b7cd34ba`(BACKLOG A41·E38·E39 등록 커밋).
+> 접수 세션 = 이 코디네이터. 판정은 여기서, 코드는 작업 세션에서. push는 2026-09-22 09:00 KST까지 동결이라 통합은 **로컬 `main` fast-forward**(§3). 관측 시점 `24897b6c`(BACKLOG A41·E38·E39 등록 커밋).
 
 ## 0. 전제 (코디네이터 판독, 로그 `~/gildongmu-private/field-logs/transit-guide-diag-2026-09-12.log` 757행~ + URLCache entry 1136~1139)
 
-- 2026-09-11 저녁 실승차(1411 신교동→갈월동 · 241 갈월동→한국폴리텍대)는 **웨이브 1 빌드 1.15.0(23) `9e808111`**에서 났다(착지 대상 `confirmBoarded`·백그라운드 폴 정지가 지문). 지금 아이폰에는 2026-09-12 03:09 HEAD 1.16.0(24)이 두 구성 다 설치돼 있다 — 재배포 불필요, 다음 실승차는 최신 판.
+- 2026-09-11 저녁 실승차(1411 신교동→갈월동 · 241 갈월동→한국폴리텍대)는 **웨이브 1 빌드 1.15.0(23) `e2f204a5`**에서 났다(착지 대상 `confirmBoarded`·백그라운드 폴 정지가 지문). 지금 아이폰에는 2026-09-12 03:09 HEAD 1.16.0(24)이 두 구성 다 설치돼 있다 — 재배포 불필요, 다음 실승차는 최신 판.
 - **A41 기제(확정)**: 서울버스 도착 API의 "곧 도착"(`remainingStops == 0`, `staOrd − sectOrd == 0`)은 *직전 정류소 출발*이지 *이 정류소 정차*가 아니다. 앱은 승차(`arrivedAtBoardStop`)·하차(`arrivedByMode`) 둘 다 잔여 0을 정차로 읽어 자동 승격·"하차 지점 도착"이 직전 구간 주행 시간(간선 2~3분, 마을버스 16초)만큼 이르다. 원 설계 spec `2026-08-04-transit-guidance-design.md` 국면표는 "곧 도착은 임박 신호이지 도착 확정이 아니다"라고 적었고, `2026-08-22-transit-boarding-phase-design.md` §1이 잔여 0으로 접으며 무너졌다. ⚠ 정차 신호 후보(같은 API `isArrive1`·`stationNm1` / 목록 소실=출발 / 버스위치 API)는 **아직 실호출로 확정된 것이 없다** — 미검증 표시.
 - **E38 위원장 판정(2026-09-12)**: 시트에서 무엇을 누르든 커서는 상태 문장 행(`SheetControl.status`)에 앉는다. 예외 없음(하차 도착도 [다음 구간]이 아니라 상태 문장). 웹 `TransitGuidePanel`도 같은 규칙.
 - **E39**: 상태 문장 문장형. A41이 같은 문장("곧 도착" 어휘)을 만지므로 **A41 통합 뒤 웨이브 2**.
@@ -35,7 +35,7 @@
 | `status-prose`(웨이브 2, 단독) | `TransitGuideModel.swift`·`BeaconModel.swift` 계열 시작 통지, `src/hooks/useTransitGuide.ts`, `src/lib/transit-guide-text.ts`·`transit-text-args.ts`·fixture `transit-guide-text-cases.json`, Kit `TransitGuideText.swift`, `messages/*.json`(전 키), xcstrings·arg-order 재생성, spec `2026-09-12-transit-status-prose-design.md`(신설), FIELD-TEST §5-2·§5-3, PATTERNS 상태 문장 절, CLAUDE.md 한 줄 | Kit 리듀서 `TransitGuide.swift`(A41 판정 계층)·E37 범위(내 주변 지하철 도착 줄) |
 | 공용 생성물 | `CHANGELOG.md`·`docs/BACKLOG.md`(자기 항목만)·`PROGRESS.md`(상태 한 줄)·`ios/Gildongmu/Resources/Localizable.xcstrings`(생성물: rebase 뒤 `messages-to-xcstrings.mjs`로 재생성, 손편집 금지)·`ios/i18n/arg-order.json`(새 키만 `--update-arg-order`) | |
 
-겹침 0으로 판단했다(관측 `b7cd34ba`). 세션이 "내 소유 목록이 틀렸다"고 보고하면 코디네이터가 재현해 이 절에 정정 절을 단다.
+겹침 0으로 판단했다(관측 `24897b6c`). 세션이 "내 소유 목록이 틀렸다"고 보고하면 코디네이터가 재현해 이 절에 정정 절을 단다.
 
 ## 3. git 격리 절차 (각 세션 공통 — origin 금지, 로컬 main ff 통합)
 
@@ -67,7 +67,7 @@ git -C ~/Mac-Projects/gildongmu merge --ff-only feat/<name>   # 통합. 거부(�
 ## 4. 웨이브
 
 - **웨이브 1(동시 2)**: `transit-signal`(fable) · `sheet-landing`(opus). 게이트 락으로 빌드 겹침 차단.
-- **웨이브 2**: `status-prose`(opus) — ✅ transit-signal 통합(65c3eb9b) 뒤 착수. 범위 E39+E41+E40. 인계: 이벤트 `arrivingAtBoardStop`·`arrivingAtAlightStop`(키 같은 이름), `boarded(cause: .departed)` 문장은 `boardedLine` 그대로(E39가 cause 분기 판단), boarding 잔여 ≤1 폴 15초 축소는 실승차 뒤.
+- **웨이브 2**: `status-prose`(opus) — ✅ transit-signal 통합(3cc1498e) 뒤 착수. 범위 E39+E41+E40. 인계: 이벤트 `arrivingAtBoardStop`·`arrivingAtAlightStop`(키 같은 이름), `boarded(cause: .departed)` 문장은 `boardedLine` 그대로(E39가 cause 분기 판단), boarding 잔여 ≤1 폴 15초 축소는 실승차 뒤.
 - **웨이브 3**: doc-audit 새 창 → 코디네이터 실기기 배포(두 구성) → §2 실승차 판정은 위원장.
 
 최종 순서는 위원장 결정으로 남긴다(기본값은 위).
@@ -76,8 +76,8 @@ git -C ~/Mac-Projects/gildongmu merge --ff-only feat/<name>   # 통합. 거부(�
 
 원문은 `launch-session.sh`가 넘긴다(사본 `~/.claude/parallel-sessions/gildongmu/<name>.prompt.txt`, 본 문서에 복제하지 않음). 머리말 고정 + §0 전제 + §1 자기 행 + §2 자기 행 + §3.
 
-## 6. 정정 절 (코디네이터, 2026-09-12 06:20 KST, 관측 `65c3eb9b`)
+## 6. 정정 절 (코디네이터, 2026-09-12 06:20 KST, 관측 `3cc1498e`)
 
-- **§2 소유권 누락 3건(세션 자진 신고, 코디네이터 확인)**: ①`src/hooks/useTransitGuide.ts`는 `TransitGuideModel.swift`의 웹 짝(이벤트→통지 배선)인데 표에 없었다 — transit-signal이 새 case 2개를 더했고 sheet-landing은 미접촉(diff 대조). ②`src/components/__tests__/TransitGuidePanel.test.tsx`의 서울버스 분기 헬퍼가 옛 "잔여 0=승격" 계약이라 transit-signal이 고쳤다 — sheet-landing 소유 파일이지만 sheet-landing 통합(d6abbfe9)보다 뒤에 rebase돼 충돌 없이 얹혔다. ③계획 문서의 A41·E38 앵커는 BACKLOG 헤딩에 종결 접미가 붙으며 두 세션이 각각 고쳤다. 다음 계획부터 "Model의 웹 짝 훅"과 "상대 소유 테스트의 계약 헬퍼"를 소유 표에 명시한다.
+- **§2 소유권 누락 3건(세션 자진 신고, 코디네이터 확인)**: ①`src/hooks/useTransitGuide.ts`는 `TransitGuideModel.swift`의 웹 짝(이벤트→통지 배선)인데 표에 없었다 — transit-signal이 새 case 2개를 더했고 sheet-landing은 미접촉(diff 대조). ②`src/components/__tests__/TransitGuidePanel.test.tsx`의 서울버스 분기 헬퍼가 옛 "잔여 0=승격" 계약이라 transit-signal이 고쳤다 — sheet-landing 소유 파일이지만 sheet-landing 통합(48db6d1f)보다 뒤에 rebase돼 충돌 없이 얹혔다. ③계획 문서의 A41·E38 앵커는 BACKLOG 헤딩에 종결 접미가 붙으며 두 세션이 각각 고쳤다. 다음 계획부터 "Model의 웹 짝 훅"과 "상대 소유 테스트의 계약 헬퍼"를 소유 표에 명시한다.
 - **§0·판정 문언 정정**: E38 판정 문언의 "다음 행동 버튼은 한 번 스와이프 아래"는 사실이 아니다 — 상태 문장과 컨트롤 사이에 경유역 목록이 있어 두 번, 펼쳐 두면 정차역 수+2번(sheet-landing 실측, 문서·주석 4곳 정정). 실승차 대본이 그 비용을 묻는다.
 - **§0 A41 후보 정정**: "같은 API의 `isArrive1`·`stationNm1`로 정차를 잡는다"는 실호출로 기각됐다(2,430행 전부 0, 현재 정류소명은 잔여의 다른 표기). 채택은 "곧 도착 뒤 목록 소실 = 서고 떠났다"(승차 승격 `departed`), 하차는 추정 도착. 버스위치 API는 하차 **확정**이 필요해질 때의 유일한 후보로 남았다(spec `2026-09-12-seoul-bus-stop-arrival-signal-design.md` §0·§5).

@@ -2,11 +2,11 @@
 
 > 코디네이터 세션이 `docs/superpowers/specs/2026-09-15-android-app-decisions.md`(판정 13건)와 `docs/research/RESEARCH-2026-09-15-android-release.md`(조사)를 입력으로 작성. 작업 세션은 자기 절만 읽어도 착수할 수 있게 자족적으로 쓴다.
 > ⛔ **push 동결 중**(2026-09-22 09:00 KST까지, OpenAI WebMCP Challenge 심사). **통합은 로컬 `main` fast-forward**이고 `origin` push는 `.git/hooks/pre-push`가 막는다. 훅을 지우지 않는다. 안드로이드 작업은 서버를 건드리지 않으므로 동결과 충돌하지 않는다.
-> 종료 상태(2026-09-17 04:xx): 웨이브 0~3 종료, 세션 8개 전부 창 닫음·worktree 제거(브랜치 `feat/android-*`는 main에 ff됨). 최종 main `0c3462bc`+CLAUDE.md 안드로이드 절. 남은 것: 실기기 판정 전량(E43)·M5·스토어(위원장 액션 3건은 BACKLOG §8). 통합 기록 §5-4, 보류 판정 §5-5, 토큰 감사 §5-6. 다음 세션은 `doc-audit`부터.
+> 종료 상태(2026-09-17 04:xx): 웨이브 0~3 종료, 세션 8개 전부 창 닫음·worktree 제거(브랜치 `feat/android-*`는 main에 ff됨). 최종 main `8b2674f0`+CLAUDE.md 안드로이드 절. 남은 것: 실기기 판정 전량(E43)·M5·스토어(위원장 액션 3건은 BACKLOG §8). 통합 기록 §5-4, 보류 판정 §5-5, 토큰 감사 §5-6. 다음 세션은 `doc-audit`부터.
 
 ## §1. 마일스톤과 확정 판정
 
-기준 SHA: `fdc19534`(로컬 `main`, 작업 트리 clean, 2026-09-16 15:40 KST).
+기준 SHA: `f76fd0d0`(로컬 `main`, 작업 트리 clean, 2026-09-16 15:40 KST).
 
 ### 이 세션(2026-09-16)에서 위원장이 확정한 것
 
@@ -55,7 +55,7 @@
 
 ### Kit 원본 파일 배정
 
-`ios/GildongmuKit/Sources/GildongmuKit/` 기준. 판정 문서 D5의 [2] 계층 전부. 그룹 경계는 코디네이터가 타입 참조를 스크립트로 전수 대조해 그었다(2026-09-16, 기준 `fdc19534`). 주석·`Range`·`CodingKeys` 같은 거짓 참조는 뺐다.
+`ios/GildongmuKit/Sources/GildongmuKit/` 기준. 판정 문서 D5의 [2] 계층 전부. 그룹 경계는 코디네이터가 타입 참조를 스크립트로 전수 대조해 그었다(2026-09-16, 기준 `f76fd0d0`). 주석·`Range`·`CodingKeys` 같은 거짓 참조는 뺐다.
 
 **FOUNDATION (M0, `android-m1`)**: 다른 두 그룹이 의존하는 타입과 M1 검색이 쓰는 것.
 
@@ -72,7 +72,7 @@
 
 **제외(이식하지 않음, 미러 등록부에 사유와 함께 등재)**: `AudioSignalProtocol`(E20 음향신호기 BLE 실험, 2026-09-01 연동 기종 없음으로 종결) · `Resources/Localizable.xcstrings`(Kit 카탈로그: 안드로이드는 `android/i18n` 변환 스크립트가 `messages/*.json`에서 직접 만든다). · `GuideAudioSession`(2026-09-16 18:40 정정 — GUIDE 세션 반박을 코디네이터가 승인: 파일 전체가 iOS AVAudioSession 모델의 리듀서라 D10에 따라 미이식. 억제·인터럽션·route 변경·didPromote 원복·잘림 방지 대기의 **목표**는 M4 입력 목록에 계약으로 남기고 안드로이드는 AudioFocus로 재설계한다. 같은 정신으로 `ListenSpeed`는 `normalizeSpeed`만 이식하고 iOS rate 표는 뺐다).
 
-#### 정정 (2026-09-16 17:25 KST, 코디네이터 재현 — 기준 `41f377b5`)
+#### 정정 (2026-09-16 17:25 KST, 코디네이터 재현 — 기준 `e2a15c86`)
 
 **§2 그룹 경계의 대조가 타입 선언만 보고 함수 참조를 빠뜨렸다.** `android-kit-core`가 스크립트 전수 대조로 반박했고 코디네이터가 독립 재현했다(`grep`으로 호출부 확인).
 
@@ -84,7 +84,7 @@
 
 **함께 내린 판정(Q2)**: `ChatService`(POST NDJSON 스트림)·`ChatSuggestionsService`(POST)는 FOUNDATION `HttpTransport`(GET 전용)에 맞지 않아, **순수 부분만 `:kit`**(줄 디코딩·파싱·요청 본문·상수)에 두고 POST·스트리밍 전송은 M6이 `:app`에서 맡는다(D5 경계, M0 `APIClient` 선례와 같은 갈래). 스트림 인터페이스 모양은 M6 맥락 없이 지금 정하지 않는다.
 
-#### 웨이브 3 소유권 추가 (2026-09-16 21:3x, 기준 `a585bbc0`)
+#### 웨이브 3 소유권 추가 (2026-09-16 21:3x, 기준 `9fa6e3c1`)
 
 | 세션 | 모델 | 소유(쓰기) | additive 예외(보고 필수) |
 |---|---|---|---|
@@ -144,7 +144,7 @@ git -C ~/Mac-Projects/gildongmu worktree add ~/gildongmu-wt/<name> -b feat/<name
 
 프롬프트 원문은 `~/.claude/parallel-sessions/gildongmu/android-m1.prompt.txt`. 요지:
 
-1. **worktree** `~/gildongmu-wt/android-m1`(브랜치 `feat/android-m1`, base `fdc19534`). 이 계획 §2·§3을 지킨다.
+1. **worktree** `~/gildongmu-wt/android-m1`(브랜치 `feat/android-m1`, base `f76fd0d0`). 이 계획 §2·§3을 지킨다.
 2. **읽을 것**: 판정 문서(§1 판정 13건을 다시 논의하지 않는다, §4 실측값 재조사 금지, §5 착수 지침) · 조사 문서 §1·§2·§4·§7 · `~/.claude/ACCESSIBILITY.md` · `ios/GildongmuKit/Package.swift`와 Kit 테스트의 fixture 로딩 방식(`#filePath`에서 5단계 위) · `ios/scripts/messages-to-xcstrings.mjs` 머리 주석(플레이스홀더 순서·ICU 복수 처리) · `src/lib/__tests__/format-drift.test.ts`(드리프트 가드 선례).
 3. **M0 산출물**(체크포인트 커밋 하나로 묶지 말고 논리 단위로 여러 커밋, 마지막에 `main` ff):
    - 환경: `brew install --cask temurin@21 android-commandlinetools`, `sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"`, 라이선스 동의. JDK 25는 건드리지 않는다. 프로젝트는 Gradle toolchain으로 21을 고정(기계 경로를 `gradle.properties`에 박지 않는다). 에뮬레이터·Android Studio 설치 금지(디스크·메모리).
@@ -170,22 +170,22 @@ M0 체크포인트 뒤 코디네이터가 확정한다. 요지: `~/gildongmu-wt/
 
 | 세션 | 통합 SHA | 시각 | 비고 |
 |---|---|---|---|
-| `android-m1` M0 | `41f377b5` | 2026-09-16 16:3x | 환경·뼈대·FOUNDATION 28파일·등록부·README. 리뷰 BLOCKER 1(API 33 전용 호출)·MAJOR 반영 |
-| `android-kit-guide` 선행 | `41cd341c` | 17:4x | Beacon·GuideSpeechGate·transitValidExitNo + 판정 9파일(11/32) |
-| `android-kit-guide` 완료 | `73bea1c0` | 20:1x | 31 ported + 1 excluded, :kit 테스트 764, 리뷰 4건 반영. CORE 유예 2건 흡수. 리뷰 뒤 커밋 2개(09f56020·73bea1c0)는 코디네이터가 별도 재리뷰 디스패치(`~/gildongmu-wt/android-m1-reports/guide-post-review.md`). M4·M5 입력(D10 [3] 잔여·GuideAudioSession 목표 계약 5항·시나리오 18개·ListenSpeed Android 배율 실측)은 `~/gildongmu-wt/android-kit-guide-reports/report.md`가 정본이라 **wave 3 착수 전에 spec으로 옮긴다**. 참고: `RouteGuide`의 `maxOf`/`minOf`는 NaN에서 Swift와 다르다(웹과 같다) — :app fix 경계에서 유한값 가드 판단 재료 |
-| (재리뷰) GUIDE 사후 커밋 | — | 21:2x | 코디네이터 디스패치 읽기 전용 리뷰(`77aa36e2..73bea1c0`): **BLOCKER 0**. 09f56020의 진단이 한 칸 어긋남 — Apple ICU `\s`는 `\p{White_Space}`라 새 클래스가 U+000B·U+0085 두 문자 좁다(MINOR). Foundation `CharacterSet.whitespaces`는 U+200B 포함(MINOR). **diff 밖 MAJOR**: 다른 그룹 12파일이 Swift `.whitespaces`를 Kotlin `trim()`으로 옮겨 같은 갈림. 후속은 세션 `android-kit-fix`(opus, base `eb7bf0f8`)가 맡는다 — README §3 `\p{…}` 규칙과 `RegexPortabilityTest`만 소유 예외 |
-| `android-m1` M2 조각 1 `location/` | `7a4a9379` | 20:0x | GMS 무의존 `LocationStore`(FUSED_PROVIDER + GPS 폴백), M2 spec `c411c8c7`·계획 포함. M3가 이 시그니처를 직접 소비 |
-| `android-kit-fix` 완료 | `157989f3` | 20:2x | 공백 상수 = `\\p{White_Space}`, 12파일+α trim 재판정(Swift 집합 미러, Kotlin 기본 trim·isBlank 금지 소스 가드), U+200B, README §3 `\\p{…}` 규칙, API 33 `URLDecoder` 제거, `ChatService.splitStreamLines`(CRLF·LF·CR). 리뷰 BLOCKER 0. ⚠ 18:36~20:00 정지는 fable 사용 한도(세션 셋 동시) |
-| `android-m1` 설정·배선·스토어 준비 | `f215b164` → `b5263ce5` | 09-17 03:xx~ | 설정 화면(§14)·openChat 배선·억제 훅·체중 키·README §1·KDoc·PlaceholderScreen 삭제·결과 진동 게이트(㉗) · `docs/playstore/{listing,data-safety,internal-track}.md` + `android/scripts/play-upload.mjs` 골격. 데이터 안전성 판정: 서비스 제공자≠공유 / 값은 ASC 라벨과 일치(Vercel 요청 로그 사실 명시) / **전경 서비스 선언은 실험판 소스셋 매뉴페스트로 이동**(정식 APK 검사 스크립트) |
-| `android-m4` M4 완료 | `6a20cdc5` | 09-17 03:0x | 도보 실시간 안내: 세션 싱글턴·전경 서비스(location)+지속 알림(안내 종료 액션)·안내 위치 스트림·SoundPool+AudioFocus(usage MEDIA, 톤 SONIFICATION·TTS SPEECH)·TTS(speechDeferStep, 배율 1.0=호출 없음)·진동 3종·시트·띠바·종료 화면·계측 로그·실험판 게이트. 리뷰 4회 반영. 매니페스트 additive(서비스·FOREGROUND_SERVICE(_LOCATION)·POST_NOTIFICATIONS·VIBRATE·WAKE_LOCK·ACTIVITY_RECOGNITION), `AppSourceGuardTest` 허용 1줄(소유권 예외). **실보행 대본 25항·회수 명령은 `~/gildongmu-wt/android-m4-reports/report.md`**. 세션 종료·창 닫음(실기기 판정은 별도 세션) |
-| `android-m6` M6 완료 | `87fc6f31` → `45c8c4ab` | 09-17 00:xx | 채팅 탭·장소 채팅·동의 게이트·NDJSON 전송기·질문 헤딩/산문 블록/장소 언급/카드·출처·공유·칩·입력 바(IME 인셋)·온디바이스 받아쓰기(`speech/DictationSession.kt`, API 33 게이트)·`openChat(place?)`. 리뷰 전부 반영. **위원장 판정: 실패 시 실패 답변 블록 착지(헌장 §6 편차 채택, 참조 문서 갱신은 실기기 뒤)**. 실기기 16항목 report §⑤ |
-| `android-m1` M2c 완료 | `cdcdf23b` → `ba43fb0b` | 09-17 0x:xx | 현재 위치 수동 지정(`EffectiveLocation` 단일 진입점·StatusLine 병합·EndpointPicker 추출·표시줄 버튼)·설정 §14 설계 확정. BLOCKER 4 해소(StatusLine seq 충돌 → 발화 단위 세대). ⚠ M6 chat/ 파일 additive 편집(자진 신고, M6 spec §4-1 자리). 실기기 §13-6 23~26 |
-| `android-m1` 프리필 배선 + M2b 완료 | `448c4d79` → `fc246219` | 22:0x | 프리필 버튼 2개(`PlaceNav.onOpenDirections`) · M2b(내 주변 6 kind·주변 상황 자동 펼침·장소 상세 도메인 섹션·역 자동 섹션 5종·무장애·현재 위치 표시줄) · `a11y/Landing.kt` `landingTarget`(터치 모드 버튼 착지 결함 처방, 24곳 전수 + 소스 가드) · KDoc 정정. 리뷰 전부 반영. 실기기 항목 +6(§12-5 17~22) + landingTarget TalkBack 터치 실측. 세션은 M2c로 |
-| `android-m3` M3 완료 | `30a26bbb` | 21:2x | 길찾기 브리핑(`directions/` 11파일, 끝점 검색·현재 위치·3수단·프리필 1회 소비 스토어 + `openDirections`), app 테스트 124. 리뷰 31건 반영·기각 0. 실기기 판정 13항목은 `~/gildongmu-wt/android-m3-reports/report.md`. 세션 종료·창 닫음. 프리필 버튼 배선은 android-m1(`PlaceDetailScreen.kt` [M3] 자리, `PlaceNav.onOpenDirections`) |
-| `android-m1` M2 완료 | `0e8c1204` | 21:0x | 장소 상세·검색 보강·내 주변 허브(둘러보기·지하철·버스·따릉이)·ios-extra 268키·`AppScreenScaffold`(화면 Scaffold 직접 호출 소스 가드). 리뷰 BLOCKER 1(착지 FocusRequester가 focusable 뒤에 붙어 무효 — `mergedRow(tag, spoken, focus)` 봉인) 반영. 실기기 판정 16항목은 report ⑤. 남은 것: M3 프리필 배선(M3 뒤)·M2b·실기기. 세션은 M2b로 이어감 |
-| `android-m1` 앱 골격 | `eb7bf0f8` | 20:5x | 하단 탭 4개(iOS `AppTab.order` 미러·실험판 순서 게이트)·단일 NavHost(Nav2 채택, Nav3 기각 근거는 M2 spec §10)·자리표시 3화면. **웨이브 2 소유권**: 화면 패키지 하나씩(`search/`·`place/`·`nearby/`·`directions/`·`chat/`), `nav/`·`a11y/`·`i18n/`·`net/`·`storage/`·매니페스트·gradle·android-extra는 `android-m1`, 다른 세션은 등록 한 줄·android-extra 키 additive만(정본 `android/README.md` §1). M3 세션 `android-m3`(fable) 이 SHA에서 착수 |
-| `android-m1` M1 | `65ef75f4` | 19:4x | 검색 화면 구현·정규식 가드·JsonSupport 계약·ATF 검사 레인. 리뷰 2건 반영, 기각 1(`failed` 필드 제거 — 3-state 유지). 실기기 판정 9항목은 spec §8 대기(기기 미연결). 실험판 APK `android/app/build/outputs/apk/experimental/app-experimental.apk`. 세션은 M2 spec으로 이어감 |
-| `android-kit-core` 완료 | `b312ff01` | 19:0x | 29/29, :kit 테스트 573, 리뷰 4건 반영. 인계: QuickExitGuideRouteTests 2건 → GUIDE. 미이식 2(urlErrorCancelled 플랫폼 대응 없음·수동 위치 소스 가드는 안드로이드 안내 모델이 달 것), 미검증 1(Deeplink 쿼리 `=`·`+` 인코딩이 Foundation과 같은지 — Xcode 라이선스 미동의라 이 머신에서 Swift 실행 불가, iOS 세션에서 확인). :app 계약은 `core.json` note가 정본 |
+| `android-m1` M0 | `e2a15c86` | 2026-09-16 16:3x | 환경·뼈대·FOUNDATION 28파일·등록부·README. 리뷰 BLOCKER 1(API 33 전용 호출)·MAJOR 반영 |
+| `android-kit-guide` 선행 | `a8ad4a55` | 17:4x | Beacon·GuideSpeechGate·transitValidExitNo + 판정 9파일(11/32) |
+| `android-kit-guide` 완료 | `74a69bf5` | 20:1x | 31 ported + 1 excluded, :kit 테스트 764, 리뷰 4건 반영. CORE 유예 2건 흡수. 리뷰 뒤 커밋 2개(39ea4bbd·74a69bf5)는 코디네이터가 별도 재리뷰 디스패치(`~/gildongmu-wt/android-m1-reports/guide-post-review.md`). M4·M5 입력(D10 [3] 잔여·GuideAudioSession 목표 계약 5항·시나리오 18개·ListenSpeed Android 배율 실측)은 `~/gildongmu-wt/android-kit-guide-reports/report.md`가 정본이라 **wave 3 착수 전에 spec으로 옮긴다**. 참고: `RouteGuide`의 `maxOf`/`minOf`는 NaN에서 Swift와 다르다(웹과 같다) — :app fix 경계에서 유한값 가드 판단 재료 |
+| (재리뷰) GUIDE 사후 커밋 | — | 21:2x | 코디네이터 디스패치 읽기 전용 리뷰(`f4ecf194..74a69bf5`): **BLOCKER 0**. 39ea4bbd의 진단이 한 칸 어긋남 — Apple ICU `\s`는 `\p{White_Space}`라 새 클래스가 U+000B·U+0085 두 문자 좁다(MINOR). Foundation `CharacterSet.whitespaces`는 U+200B 포함(MINOR). **diff 밖 MAJOR**: 다른 그룹 12파일이 Swift `.whitespaces`를 Kotlin `trim()`으로 옮겨 같은 갈림. 후속은 세션 `android-kit-fix`(opus, base `60c43ab5`)가 맡는다 — README §3 `\p{…}` 규칙과 `RegexPortabilityTest`만 소유 예외 |
+| `android-m1` M2 조각 1 `location/` | `b3dd97e7` | 20:0x | GMS 무의존 `LocationStore`(FUSED_PROVIDER + GPS 폴백), M2 spec `578129f3`·계획 포함. M3가 이 시그니처를 직접 소비 |
+| `android-kit-fix` 완료 | `ae280f99` | 20:2x | 공백 상수 = `\\p{White_Space}`, 12파일+α trim 재판정(Swift 집합 미러, Kotlin 기본 trim·isBlank 금지 소스 가드), U+200B, README §3 `\\p{…}` 규칙, API 33 `URLDecoder` 제거, `ChatService.splitStreamLines`(CRLF·LF·CR). 리뷰 BLOCKER 0. ⚠ 18:36~20:00 정지는 fable 사용 한도(세션 셋 동시) |
+| `android-m1` 설정·배선·스토어 준비 | `d7a4ae97` → `47e4d534` | 09-17 03:xx~ | 설정 화면(§14)·openChat 배선·억제 훅·체중 키·README §1·KDoc·PlaceholderScreen 삭제·결과 진동 게이트(㉗) · `docs/playstore/{listing,data-safety,internal-track}.md` + `android/scripts/play-upload.mjs` 골격. 데이터 안전성 판정: 서비스 제공자≠공유 / 값은 ASC 라벨과 일치(Vercel 요청 로그 사실 명시) / **전경 서비스 선언은 실험판 소스셋 매뉴페스트로 이동**(정식 APK 검사 스크립트) |
+| `android-m4` M4 완료 | `01a5b41f` | 09-17 03:0x | 도보 실시간 안내: 세션 싱글턴·전경 서비스(location)+지속 알림(안내 종료 액션)·안내 위치 스트림·SoundPool+AudioFocus(usage MEDIA, 톤 SONIFICATION·TTS SPEECH)·TTS(speechDeferStep, 배율 1.0=호출 없음)·진동 3종·시트·띠바·종료 화면·계측 로그·실험판 게이트. 리뷰 4회 반영. 매니페스트 additive(서비스·FOREGROUND_SERVICE(_LOCATION)·POST_NOTIFICATIONS·VIBRATE·WAKE_LOCK·ACTIVITY_RECOGNITION), `AppSourceGuardTest` 허용 1줄(소유권 예외). **실보행 대본 25항·회수 명령은 `~/gildongmu-wt/android-m4-reports/report.md`**. 세션 종료·창 닫음(실기기 판정은 별도 세션) |
+| `android-m6` M6 완료 | `c4aa0c4a` → `6c7b32a5` | 09-17 00:xx | 채팅 탭·장소 채팅·동의 게이트·NDJSON 전송기·질문 헤딩/산문 블록/장소 언급/카드·출처·공유·칩·입력 바(IME 인셋)·온디바이스 받아쓰기(`speech/DictationSession.kt`, API 33 게이트)·`openChat(place?)`. 리뷰 전부 반영. **위원장 판정: 실패 시 실패 답변 블록 착지(헌장 §6 편차 채택, 참조 문서 갱신은 실기기 뒤)**. 실기기 16항목 report §⑤ |
+| `android-m1` M2c 완료 | `91c989ab` → `18b98ca3` | 09-17 0x:xx | 현재 위치 수동 지정(`EffectiveLocation` 단일 진입점·StatusLine 병합·EndpointPicker 추출·표시줄 버튼)·설정 §14 설계 확정. BLOCKER 4 해소(StatusLine seq 충돌 → 발화 단위 세대). ⚠ M6 chat/ 파일 additive 편집(자진 신고, M6 spec §4-1 자리). 실기기 §13-6 23~26 |
+| `android-m1` 프리필 배선 + M2b 완료 | `df0ac767` → `d21dcc0b` | 22:0x | 프리필 버튼 2개(`PlaceNav.onOpenDirections`) · M2b(내 주변 6 kind·주변 상황 자동 펼침·장소 상세 도메인 섹션·역 자동 섹션 5종·무장애·현재 위치 표시줄) · `a11y/Landing.kt` `landingTarget`(터치 모드 버튼 착지 결함 처방, 24곳 전수 + 소스 가드) · KDoc 정정. 리뷰 전부 반영. 실기기 항목 +6(§12-5 17~22) + landingTarget TalkBack 터치 실측. 세션은 M2c로 |
+| `android-m3` M3 완료 | `ef8b78bd` | 21:2x | 길찾기 브리핑(`directions/` 11파일, 끝점 검색·현재 위치·3수단·프리필 1회 소비 스토어 + `openDirections`), app 테스트 124. 리뷰 31건 반영·기각 0. 실기기 판정 13항목은 `~/gildongmu-wt/android-m3-reports/report.md`. 세션 종료·창 닫음. 프리필 버튼 배선은 android-m1(`PlaceDetailScreen.kt` [M3] 자리, `PlaceNav.onOpenDirections`) |
+| `android-m1` M2 완료 | `234c1565` | 21:0x | 장소 상세·검색 보강·내 주변 허브(둘러보기·지하철·버스·따릉이)·ios-extra 268키·`AppScreenScaffold`(화면 Scaffold 직접 호출 소스 가드). 리뷰 BLOCKER 1(착지 FocusRequester가 focusable 뒤에 붙어 무효 — `mergedRow(tag, spoken, focus)` 봉인) 반영. 실기기 판정 16항목은 report ⑤. 남은 것: M3 프리필 배선(M3 뒤)·M2b·실기기. 세션은 M2b로 이어감 |
+| `android-m1` 앱 골격 | `60c43ab5` | 20:5x | 하단 탭 4개(iOS `AppTab.order` 미러·실험판 순서 게이트)·단일 NavHost(Nav2 채택, Nav3 기각 근거는 M2 spec §10)·자리표시 3화면. **웨이브 2 소유권**: 화면 패키지 하나씩(`search/`·`place/`·`nearby/`·`directions/`·`chat/`), `nav/`·`a11y/`·`i18n/`·`net/`·`storage/`·매니페스트·gradle·android-extra는 `android-m1`, 다른 세션은 등록 한 줄·android-extra 키 additive만(정본 `android/README.md` §1). M3 세션 `android-m3`(fable) 이 SHA에서 착수 |
+| `android-m1` M1 | `ed74e9a4` | 19:4x | 검색 화면 구현·정규식 가드·JsonSupport 계약·ATF 검사 레인. 리뷰 2건 반영, 기각 1(`failed` 필드 제거 — 3-state 유지). 실기기 판정 9항목은 spec §8 대기(기기 미연결). 실험판 APK `android/app/build/outputs/apk/experimental/app-experimental.apk`. 세션은 M2 spec으로 이어감 |
+| `android-kit-core` 완료 | `1ef129b5` | 19:0x | 29/29, :kit 테스트 573, 리뷰 4건 반영. 인계: QuickExitGuideRouteTests 2건 → GUIDE. 미이식 2(urlErrorCancelled 플랫폼 대응 없음·수동 위치 소스 가드는 안드로이드 안내 모델이 달 것), 미검증 1(Deeplink 쿼리 `=`·`+` 인코딩이 Foundation과 같은지 — Xcode 라이선스 미동의라 이 머신에서 Swift 실행 불가, iOS 세션에서 확인). :app 계약은 `core.json` note가 정본 |
 
 ## §5-5. 웨이브 종료 때 분배할 판정 (코디네이터 보관, 아직 BACKLOG 미등재)
 
@@ -215,7 +215,7 @@ M0 체크포인트 뒤 코디네이터가 확정한다. 요지: `~/gildongmu-wt/
 
 ## §5-6. 토큰 감사 (2026-09-17, 전사 `~/.claude/projects` usage 합산, 09-16 14:00~09-17 05:00)
 
-⚠ **정정(09-17 05:xx)**: 첫 판(`0c3462bc`)은 전사 줄 수를 그대로 합쳐 **약 2.5배 과대 집계**였다. Claude Code 전사는 API 요청 하나를 내용 블록마다 한 줄씩(1~8줄) 기록하고 줄마다 같은 usage를 싣는다. 아래는 `(message.id, requestId)`로 요청당 한 번만 세고, 출력 토큰은 스트리밍 스냅샷이라 그 요청의 최댓값을 취한 수치다. 순위와 결론은 그대로다.
+⚠ **정정(09-17 05:xx)**: 첫 판(`8b2674f0`)은 전사 줄 수를 그대로 합쳐 **약 2.5배 과대 집계**였다. Claude Code 전사는 API 요청 하나를 내용 블록마다 한 줄씩(1~8줄) 기록하고 줄마다 같은 usage를 싣는다. 아래는 `(message.id, requestId)`로 요청당 한 번만 세고, 출력 토큰은 스트리밍 스냅샷이라 그 요청의 최댓값을 취한 수치다. 순위와 결론은 그대로다.
 
 | 세션 | 모델 | API 요청 | 캐시 읽기 | 요청당 문맥 중앙값 |
 |---|---|---|---|---|

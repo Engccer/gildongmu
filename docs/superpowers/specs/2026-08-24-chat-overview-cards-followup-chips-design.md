@@ -7,7 +7,7 @@
 ## 1. 문제 (코드로 확정)
 
 - K3(2026-08-23)의 `get_nearby_overview`는 **`render`도 `places` 투영도 없는 산문 전용 도구**이고, A/B 케이스 34 "이 근처에 뭐가 있어?"가 이 도구로 가도록 설계됐다. 종전 같은 질문은 `get_surroundings`(`surroundings-nearby` 카드 + `places`)로 갔다.
-- iOS의 장소 카드·"장소 N곳" 구획 헤딩·산문 블록 버튼/인라인 링크(`chatPlaceMentions`)는 **전부 같은 답변의 렌더 카드 장소에서 파생**된다. 투영이 없으니 셋이 동시에 사라졌다. 버튼·헤딩 코드(`8dd612c`·`0cf7b57`·`77c59c3`)는 그대로 살아 있다. "출처" 헤딩은 지금도 난다(URL 없는 출처가 평문인 것은 종전과 같다).
+- iOS의 장소 카드·"장소 N곳" 구획 헤딩·산문 블록 버튼/인라인 링크(`chatPlaceMentions`)는 **전부 같은 답변의 렌더 카드 장소에서 파생**된다. 투영이 없으니 셋이 동시에 사라졌다. 버튼·헤딩 코드(`4af8ef4`·`b5b261c`·`106f110`)는 그대로 살아 있다. "출처" 헤딩은 지금도 난다(URL 없는 출처가 평문인 것은 종전과 같다).
 - 한눈에 보기의 "가장 가까운 곳"은 불릿 종류와 무관하게 **2곳 고정**(`OVERVIEW_NEAREST_CAP`)이라, 식당 45곳 이상과 아이 놀 곳 3곳이 같은 수로 불린다(위원장 관찰: 정보 비례성 부족). 개수 쪽("N곳 이상")은 이미 비례한다.
 - follow-up 칩은 길동무 이력에 없고 dodo-planet에만 있다(웹 `FollowUpChips`·`useFollowUpSuggestions`·`/api/chat/suggestions`, iOS `FollowUpChips.swift`). dodo는 question 칩 + action 칩(여행 전환)인데 길동무는 question만 이식한다.
 

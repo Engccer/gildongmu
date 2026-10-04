@@ -64,7 +64,7 @@ public static func weightCommit(text: String) -> WeightCommitOutcome
 - 소스 가드(`settings-weight-commit.test.ts`, Swift 소스를 읽는 웹 테스트 — 뷰 계층엔 테스트 레인이 없다): `onChange(of: weightText)` 커밋이 없다 / 편집 종료 세 자리가 `commitWeight()`를 부른다 / 거절이 `weightKg`를 쓰지 않는다 / 통지가 `.high`다 / 푸터가 범위 인자를 넘긴다.
 - 변이 주입 1회: `.reject`에서 `weightKg = 0`을 쓰도록 되돌리면 소스 가드가 빨간불인지 실측.
 
-## 5. 구현 리뷰 판정 (2026-09-11, HEAD `170ed2b5` → 반영)
+## 5. 구현 리뷰 판정 (2026-09-11, HEAD `d3018f90` → 반영)
 
 - **채택(a11y M2 · spec-compliance M5 · code L5, 셋이 같은 자리를 짚었다)**: `.onAppear` 시딩과 `.onDisappear` 커밋을 **행이 아니라 화면 수명**(List 루트)에 건다. `List`는 행을 지연 실현·해제하므로 행에 달면 **VoiceOver 스와이프로 목록을 훑는 것만으로** 커밋이 돌아, 타자 도중에 거절 통지 + 필드 되돌림이 나고 이어친 글자가 엉뚱한 값에 붙는다(`5` 친 뒤 스크롤 → 되돌림 → `0` → `650`). ⓐ("타자 중간값엔 판정하지 않는다")가 막으려던 상황을 다른 문으로 들이는 것이었다. 이 화면은 그 사실을 스스로 증언한다 — 착지 코드가 `scrollTo(weightRowID)`로 행을 끌어와야 한다.
 - **채택(spec m7)**: 소스 가드에 커밋 호출부 계수와 "행에 생명주기 훅 없음"을 더했다.

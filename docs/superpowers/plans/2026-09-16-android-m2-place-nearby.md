@@ -4,7 +4,7 @@
 
 **Goal:** 검색 결과 → 장소 상세(주소·영업시간·전화·외부 지도·이 장소 주변)와 내 주변 탭(둘러보기·지하철·버스·따릉이)이 한소네 7 점자·TalkBack으로 읽히고, 그것을 받치는 위치 계층·화면 스택·`NearbyLoadCore` 소비 관용구를 세운다.
 
-**Architecture:** `:kit`의 `NearbyLoadCore`·`RevealWindow`·`NearbyService`·`PlaceHoursService`·`LocationFixPolicy`·문장 조립 함수를 `:app`이 조립한다. `location/LocationStore`(플랫폼 `LocationManager` 추상 `LocationSource` + 권한 게이트)가 좌표 어댑터를 주고, `nearby/NearbyScreenViewModel<P>`가 코어를 쥐며 화면은 phase만 그린다. 화면 이동은 골격 `nav/AppRoot`(Nav2, `eb7bf0f8`)에 등록 한 줄. 문자열은 ios-extra `ios.` 접두 키를 `android.*`로 개명해 들인다.
+**Architecture:** `:kit`의 `NearbyLoadCore`·`RevealWindow`·`NearbyService`·`PlaceHoursService`·`LocationFixPolicy`·문장 조립 함수를 `:app`이 조립한다. `location/LocationStore`(플랫폼 `LocationManager` 추상 `LocationSource` + 권한 게이트)가 좌표 어댑터를 주고, `nearby/NearbyScreenViewModel<P>`가 코어를 쥐며 화면은 phase만 그린다. 화면 이동은 골격 `nav/AppRoot`(Nav2, `60c43ab5`)에 등록 한 줄. 문자열은 ios-extra `ios.` 접두 키를 `android.*`로 개명해 들인다.
 
 **Tech Stack:** Kotlin 2.4.20 · Compose BOM 2026.09.00(Material3 `TopAppBar`·`NavigationBar`) · navigation-compose 2.10.1 · lifecycle 2.11.0 · kotlinx-coroutines-test · `:kit` testFixtures · Node(생성 스크립트) · vitest · 공식 `android` CLI(실기기).
 

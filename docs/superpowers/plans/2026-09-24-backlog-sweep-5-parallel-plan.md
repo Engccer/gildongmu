@@ -1,14 +1,14 @@
 # 백로그 5차 소화 — 병렬 세션 계획 (2026-09-24)
 
-> **종료 상태(2026-09-24 03:45 KST)**: 세션 6개 전부 main 통합·창 종료 — 웨이브 1 small-5 `617ab82e`·b12 `4fcbe743`·n4-via `e4721eaa`·e50 `40bf19ad`(ODsay 실호출 18/40) / 웨이브 2 n4-web-wire `3ad1041e`·doc-audit-w5 `bf2cc1f6`. 코디네이터 커밋은 AGENTS.md 재생성 4회 + 이 문서. 웹은 push마다 자동 배포. 실기기: iPhone 정식·실험 두 구성 `3ad1041e` 설치(기기 잠금으로 자동 실행만 실패), 한소네 배포 없음(안드로이드 변경은 이름·strings·`:kit` 미러만). 위원장 문안 확정 2건(b12 시안 그대로, e50 "걷는 거리"→"도보 거리"). 남은 판정·후속은 `docs/BACKLOG.md` §2(E50 ①~⑤·N4 경유지 진행·B12·A48 웹)·§1 A49·N4 "경유지 포기 문장 후속"(문안 왕복)·E43 등가성(E50 재조회 버튼·N4 안드로이드 배선·B12 fixture). npm CLI/MCP는 E50 포매터 미발행(§3). ⚠ 런처에 worktree 경로를 넘겨 창 기록이 `~/.claude/parallel-sessions/<세션이름>/`에 흩어졌다 — 스킬 스크립트를 git common-dir 기준으로 고쳤다(parallel-sessions 스킬 커밋 참조).
+> **종료 상태(2026-09-24 03:45 KST)**: 세션 6개 전부 main 통합·창 종료 — 웨이브 1 small-5 `ca4b3837`·b12 `2464aef1`·n4-via `79e86117`·e50 `262763c5`(ODsay 실호출 18/40) / 웨이브 2 n4-web-wire `7fc1cee2`·doc-audit-w5 `a6d1a693`. 코디네이터 커밋은 AGENTS.md 재생성 4회 + 이 문서. 웹은 push마다 자동 배포. 실기기: iPhone 정식·실험 두 구성 `7fc1cee2` 설치(기기 잠금으로 자동 실행만 실패), 한소네 배포 없음(안드로이드 변경은 이름·strings·`:kit` 미러만). 위원장 문안 확정 2건(b12 시안 그대로, e50 "걷는 거리"→"도보 거리"). 남은 판정·후속은 `docs/BACKLOG.md` §2(E50 ①~⑤·N4 경유지 진행·B12·A48 웹)·§1 A49·N4 "경유지 포기 문장 후속"(문안 왕복)·E43 등가성(E50 재조회 버튼·N4 안드로이드 배선·B12 fixture). npm CLI/MCP는 E50 포매터 미발행(§3). ⚠ 런처에 worktree 경로를 넘겨 창 기록이 `~/.claude/parallel-sessions/<세션이름>/`에 흩어졌다 — 스킬 스크립트를 git common-dir 기준으로 고쳤다(parallel-sessions 스킬 커밋 참조).
 
 코디네이터 세션 `gildongmu-9c [504187]`. 기준 SHA는 이 문서를 담은 커밋(착수 프롬프트에 박는다). 절차 정본은 `parallel-sessions` 스킬(Claude 분기). 위원장 판정(2026-09-24): 웨이브 구성 그대로 진행, E50 ODsay 실호출 예산 **최대 40건**.
 
-## §0. 전제(코디네이터 관측, 2026-09-24 02:30 KST, `9ec4d95d`)
+## §0. 전제(코디네이터 관측, 2026-09-24 02:30 KST, `ddcae2d6`)
 
-- 메인 체크아웃 clean, origin/main과 일치. 스토어 iOS 1.19 `WAITING_FOR_REVIEW`(빌드 27, 아카이브 `2903e8e3`) — 이번 웨이브의 iOS 변경은 심사판에 없고 다음 릴리스에 실린다.
+- 메인 체크아웃 clean, origin/main과 일치. 스토어 iOS 1.19 `WAITING_FOR_REVIEW`(빌드 27, 아카이브 `5bfbbacc`) — 이번 웨이브의 iOS 변경은 심사판에 없고 다음 릴리스에 실린다.
 - 2026-09-19~21 세션이 남긴 worktree 7개(`ios-b11-direction`·`ios-briefing-empty-names`·`ios-endpoint-state`·`ios-location-ui`·`ios-backlog-integration`·`ios-briefing-corpus`·`android-address-sync`)와 브랜치 17개는 전부 main에 동등 커밋이 있어(`git cherry` 전량 `-`) 제거했다. 남은 worktree 0, 브랜치 `main`뿐.
-- **`npx tsc --noEmit`는 `9ec4d95d`에서 오류 0이다.** BACKLOG §7 "검증 기준선 복구"의 "tsc 오류 8건" 서술은 낡았다(2026-09-23 `a4c86c37`에서 복구됨) — 이 커밋에서 BACKLOG를 고친다. `TransitGuidePanel.test.tsx` 간헐 실패는 그대로 열려 있다(small-5).
+- **`npx tsc --noEmit`는 `ddcae2d6`에서 오류 0이다.** BACKLOG §7 "검증 기준선 복구"의 "tsc 오류 8건" 서술은 낡았다(2026-09-23 `dff64a76`에서 복구됨) — 이 커밋에서 BACKLOG를 고친다. `TransitGuidePanel.test.tsx` 간헐 실패는 그대로 열려 있다(small-5).
 - 머신: 메모리 free 72%, 스왑 466MB 사용, 부팅된 시뮬레이터 0, 다른 claude 세션 0.
 - 기준선 게이트 기록은 `prepare-worktrees.sh --baseline`이 `~/.claude/parallel-sessions/gildongmu/baseline-<sha>.log`에 남긴다.
 - doc-audit 신호(BACKLOG B12의 `src/lib/utils.ts`·`speechSynthesis`·`useTtsPlayback`)는 dodo-planet 경로·심볼을 가리킨 것이라 결함이 아니다 — 이 커밋에서 `dodo-planet/` 접두를 붙여 오탐을 없앤다.
@@ -53,7 +53,7 @@
 
 **겹침과 직렬**: `DirectionsView.tsx`(e50 ↔ N4 웹 배선) → 배선을 웨이브 2로 분리. `android/kit/mirrors/core.json`은 e50·n4-via가 **자기 행만** 고치고 rebase 뒤 `mirror-registry.test.ts`로 확인. `messages/*.json`은 자기 키만. `ios/i18n/arg-order.json`·xcstrings·안드로이드 `strings.xml`은 **rebase 뒤 재생성**(손 병합 금지). `CHANGELOG.md`·`docs/BACKLOG.md`·`PROGRESS.md`·`docs/FIELD-TEST.md`는 자기 항목만, rebase 뒤 `comm -23`·`comm -13` 대조.
 
-**소유권 측정 근거**: `rg -l`로 호출부를 뽑은 뒤 각 파일을 열어 주석·타입 import를 걸렀다(2026-09-24 `9ec4d95d`). e50의 `DirectionsView.tsx` 소유는 transit 블록(`transitEntries`·`transitRouteLabel`·1600행대 렌더)이 실제 호출부이기 때문이고, n4의 그 파일 접점은 `walkGuideStartable` 한 줄뿐이라 웨이브 2로 뺐다.
+**소유권 측정 근거**: `rg -l`로 호출부를 뽑은 뒤 각 파일을 열어 주석·타입 import를 걸렀다(2026-09-24 `ddcae2d6`). e50의 `DirectionsView.tsx` 소유는 transit 블록(`transitEntries`·`transitRouteLabel`·1600행대 렌더)이 실제 호출부이기 때문이고, n4의 그 파일 접점은 `walkGuideStartable` 한 줄뿐이라 웨이브 2로 뺐다.
 
 ## §3. git 격리 — 저장소 정책: main 직접 push
 

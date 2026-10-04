@@ -6,7 +6,7 @@
 
 ## 1. 목적과 받는 쪽 현황
 
-목적: 렌더된 화면의 표준 접근성 위반(대비·계산된 접근명·중복 id 등)을 결정론적으로 잡는 레인. 받는 쪽 현황(실측, `f8220b24`): `playwright`·`@axe-core` 의존성 0, 같은 일을 하는 게이트 0(`package.json` 의존성·scripts 실측, `src`·`scripts`에 axe·playwright 사용 0). jsdom 계약 테스트는 우리가 정한 계약을, `a11y-auditor`는 비결정적 LLM 감사를 한다. 기능어 검색으로도 부재가 확정돼 이식이다.
+목적: 렌더된 화면의 표준 접근성 위반(대비·계산된 접근명·중복 id 등)을 결정론적으로 잡는 레인. 받는 쪽 현황(실측, `676c377f`): `playwright`·`@axe-core` 의존성 0, 같은 일을 하는 게이트 0(`package.json` 의존성·scripts 실측, `src`·`scripts`에 axe·playwright 사용 0). jsdom 계약 테스트는 우리가 정한 계약을, `a11y-auditor`는 비결정적 LLM 감사를 한다. 기능어 검색으로도 부재가 확정돼 이식이다.
 
 ## 2. 전수 대조 판정표
 

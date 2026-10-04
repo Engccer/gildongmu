@@ -1,6 +1,6 @@
 # 지하철 도착 줄 전면 문장형 + 영문 줄 현재역 결측 판정 (E37 · A38)
 
-> 2026-09-13, 세션 `arrival-prose`(계획 `docs/superpowers/plans/2026-09-13-arrival-prose-live-region-parallel-plan.md` M1). 기준 `main` 3ffe1fc7.
+> 2026-09-13, 세션 `arrival-prose`(계획 `docs/superpowers/plans/2026-09-13-arrival-prose-live-region-parallel-plan.md` M1). 기준 `main` 65808215.
 > 설계 적대적 리뷰 **대상** — 새 판정 계층(문장 파싱 → 우리 문장, 폴백 불변식)을 세우고 시각장애 사용자의 정확성에 크리티컬하다. 판정은 §8에 한 줄.
 > ⚠ **낭독 문장의 정본은 문자열 자원**(`messages/*.json` ↔ xcstrings)이다. §4의 표는 원문 모양 → 우리 문장의 **대응 규칙**이고 문안은 위원장 TextEdit 왕복으로 확정한다(렌더본 `~/gildongmu-wt/reports/arrival-prose-copy.md`).
 

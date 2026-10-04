@@ -2,7 +2,7 @@
 
 > 2026-09-11, transit-2 세션. 판정 정본은 `docs/BACKLOG.md` §1 A36·§5 E36(위원장 판정 2026-09-10)과 워크스페이스 `PORTS.md` gildongmu 행 "오디오 세션 소유권의 세 구멍"(dodo-planet@684cd8a0 관찰, 절차는 `cross-port` 스킬 §B·§C). 실험판 봉인(`#if EXPERIMENTAL`) 안이며 서버 변경 없음. 상태 머신 정본은 B2 spec `2026-08-04-transit-guidance-design.md` §13, 오디오 세션 정본은 `2026-08-08-background-tone-coverage-design.md` §3.2, 직전 상태 머신 개정은 `2026-09-11-transit-reboard-and-handoff-design.md`(A37·A34·E34).
 >
-> **설계 리뷰 판정**: 필수(오디오 세션 = 프로세스 전역 자원, 백그라운드 실행 = 안전·정확성 축, A16 L2 탈출구가 걸린 판정 계층 변경). 1회 적대적 리뷰(opus, `~/gildongmu-wt/reports/transit-2-review-design.md`, 초안 `e420ef34`)를 받아 §9대로 반영했다. 이 문서는 반영 뒤 판이다.
+> **설계 리뷰 판정**: 필수(오디오 세션 = 프로세스 전역 자원, 백그라운드 실행 = 안전·정확성 축, A16 L2 탈출구가 걸린 판정 계층 변경). 1회 적대적 리뷰(opus, `~/gildongmu-wt/reports/transit-2-review-design.md`, 초안 `febaa7a9`)를 받아 §9대로 반영했다. 이 문서는 반영 뒤 판이다.
 
 ## 1. 문제 (판정 원문 요지)
 
@@ -104,7 +104,7 @@
 
 ### 4.3 PORTS "오디오 세션 소유권의 세 구멍" 판정표 (cross-port §C 결함 계열형)
 
-출처 정본: dodo-planet@684cd8a0 `ios/DodoPlanet/Core/Audio/AudioSessionOwnership.swift`·`AudioSessionOwner.swift`. 받는 쪽 현황은 gildongmu `9e808111` 실측 + 설계 리뷰(`e420ef34`) 검증.
+출처 정본: dodo-planet@684cd8a0 `ios/DodoPlanet/Core/Audio/AudioSessionOwnership.swift`·`AudioSessionOwner.swift`. 받는 쪽 현황은 gildongmu `e2f204a5` 실측 + 설계 리뷰(`febaa7a9`) 검증.
 
 | # | dodo 관찰 | gildongmu 현황(실측) | 판정 |
 |---|---|---|---|
@@ -163,7 +163,7 @@ PORTS 행 처리: `[done 2026-09-11]` + 이 spec 경로 + 판정 요지 한 줄(
 
 Kit `TransitGuide.swift`(+`TransitGuideTests.swift`)·`GuideAudioSession.swift`(+`GuideAudioSessionTests.swift`)·신설 `TransitIdle.swift`(`transitIdlePollLimitMs`, +테스트) / iOS `TransitGuideModel.swift`·`BeaconTonePlayer.swift`·(ⓐ) `LocationService.swift`(소유 밖 — 자진 신고) / 웹 `src/lib/transit-guide.ts`·`src/hooks/useTransitGuide.ts`(타입 참조만) / fixture `transit-guide-scenarios.json` + `transit-guide.test.ts` + 소스 가드 테스트 / `PORTS.md` 해당 행 / 문서 분배(CHANGELOG·BACKLOG·FIELD-TEST·CLAUDE.md·INTEGRATIONS·PROGRESS).
 
-## 9. 설계 리뷰 판정 (2026-09-11, opus 서브에이전트, 초안 `e420ef34`)
+## 9. 설계 리뷰 판정 (2026-09-11, opus 서브에이전트, 초안 `febaa7a9`)
 
 **판정: §3 진단 7건 전부 참, 설계 결정 셋(B1·B2·B3)이 틀린 사실 위 → 전부 반영 후 착수.** 보고 정본 `~/gildongmu-wt/reports/transit-2-review-design.md`.
 
@@ -182,7 +182,7 @@ Kit `TransitGuide.swift`(+`TransitGuideTests.swift`)·`GuideAudioSession.swift`(
 | m1~m10 | 전부 채택(국면 가드·`ridingPolls` 하네스 키·이름 지시·비관측 시나리오 연장·7종 16,807·테스트 개명·m7 근거 정정·게이트 자리 `playTone`·소스 가드 2·복귀 낭독 조건) |
 | O1~O4 | 반영(§4.5·§4.2.4·§4.3 문단) |
 
-## 10. 구현 리뷰 판정 (2026-09-11, HEAD `e8121bd4` → 반영 `e2598848`)
+## 10. 구현 리뷰 판정 (2026-09-11, HEAD `059e9c65` → 반영 `719d3490`)
 
 세 리뷰(별도 컨텍스트, diff `main...HEAD`만)의 보고는 `~/gildongmu-wt/reports/transit-2-review-{spec,code,a11y}.md`(커밋 밖).
 

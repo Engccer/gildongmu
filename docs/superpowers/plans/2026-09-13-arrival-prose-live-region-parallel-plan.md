@@ -5,7 +5,7 @@
 
 ## §1. 마일스톤과 확정 판정
 
-기준 SHA: `7fc1e832`(로컬 `main`, 작업 트리 clean).
+기준 SHA: `08c3b84a`(로컬 `main`, 작업 트리 clean).
 
 ### M1. `arrival-prose` — E37 지하철 도착 줄 전면 문장형 + A38 영문 현재역
 
@@ -28,7 +28,7 @@
 | `전전역 출발` | `2정거장 전 미사에서 출발.` |
 | `서울 도착` / `서울 출발` | `서울 도착.` / `서울 출발.` |
 
-#### 정정 (2026-09-13 11:38 KST, 코디네이터 재현 — 기준 `eb06f467`)
+#### 정정 (2026-09-13 11:38 KST, 코디네이터 재현 — 기준 `f9a35017`)
 
 **착수 프롬프트에 실었던 전제 한 줄이 틀렸다.** `arrival-prose`가 코퍼스로 반박했고 코디네이터가 독립으로 재현했다.
 
@@ -113,10 +113,10 @@ git worktree remove ~/gildongmu-wt/<name>   # 코디네이터 허가 뒤
 
 | 세션 | 통합 | 실기기 | 남은 것 |
 |---|---|---|---|
-| `live-region` (A40) | 로컬 main `47b838e2` | 해당 없음(웹 단독) | 웹 배포(2026-09-22 동결 해제 뒤) · 실사용 확인 1건(BACKLOG A40 ⏳) |
-| `arrival-prose` (E37·A38) | 로컬 main `5e3143bf` | 2026-09-13 13:02 KST 두 구성 배포(`Release`·`Experimental`, iPhone 13 Pro) | 위원장 실기기 판정(BACKLOG §2 · FIELD-TEST 새 행) |
+| `live-region` (A40) | 로컬 main `b4f3ee71` | 해당 없음(웹 단독) | 웹 배포(2026-09-22 동결 해제 뒤) · 실사용 확인 1건(BACKLOG A40 ⏳) |
+| `arrival-prose` (E37·A38) | 로컬 main `76de90b0` | 2026-09-13 13:02 KST 두 구성 배포(`Release`·`Experimental`, iPhone 13 Pro) | 위원장 실기기 판정(BACKLOG §2 · FIELD-TEST 새 행) |
 
-- 로컬 main 최종 `5e3143bf`. **origin push 0**(심사 동결, `pre-push` 훅 미변경).
-- 코디네이터 몫 완료: `sync_agent_docs.py` 2회(`eb06f467`·`3df39e29`), 착수 전제 정정 절(§1 M1 아래), 소유 밖 자진 신고 2건 승인(`DistanceBeacon.tsx` · `SubwayNearbyView.swift`), 창·worktree 정리.
+- 로컬 main 최종 `76de90b0`. **origin push 0**(심사 동결, `pre-push` 훅 미변경).
+- 코디네이터 몫 완료: `sync_agent_docs.py` 2회(`f9a35017`·`cf9534b5`), 착수 전제 정정 절(§1 M1 아래), 소유 밖 자진 신고 2건 승인(`DistanceBeacon.tsx` · `SubwayNearbyView.swift`), 창·worktree 정리.
 - **신규 백로그 2건**: A42(채팅 산문만 원문을 읊는다 — 서버라 동결 대기) · B11(iOS ko 줄에 방향 없음, E37 이전부터).
 - ⚠ **`arrival-prose` 배포분에는 자동 가드가 없는 자리가 있다**(`subwayArrivalLine` 앱 배선) — 위원장 실기기 확인이 그 자리의 유일한 가드다.

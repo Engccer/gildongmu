@@ -1,10 +1,10 @@
 # 2026-08-27 WebMCP 웨이브 — 병렬 세션 계획
 
-> **G3 구현까지 종결·통합 2026-08-27**(`fd7b44c` 구현 → `907cf67` 리뷰 3건 반영 → `881a07c` 분배, `feat/webmcp`·worktree 삭제). 남은 것은 게이트 4(실기기 6항, `docs/FIELD-TEST.md` §8)·게이트 5(G4 제출물) — 정본은 `docs/BACKLOG.md` W1. 아래는 웨이브 시점 기록이다.
-> **웨이브 종료 2026-08-27.** G0·G1·G2 전부 종결, 접수 세션 마감. 웨이브 종료 시점 `origin/main` = `e414709`(G3 통합 후 `60f9040`).
+> **G3 구현까지 종결·통합 2026-08-27**(`a1dd152` 구현 → `7757489` 리뷰 3건 반영 → `f047343` 분배, `feat/webmcp`·worktree 삭제). 남은 것은 게이트 4(실기기 6항, `docs/FIELD-TEST.md` §8)·게이트 5(G4 제출물) — 정본은 `docs/BACKLOG.md` W1. 아래는 웨이브 시점 기록이다.
+> **웨이브 종료 2026-08-27.** G0·G1·G2 전부 종결, 접수 세션 마감. 웨이브 종료 시점 `origin/main` = `c7047cd`(G3 통합 후 `89bea99`).
 > · G1 `tmap-key-swap` DONE (dodo `ab1e15a5`·`ba9f5ff8`, Vercel 프로덕션 교체 07:52 KST + 실호출 확인)
-> · G2 `spec-webmcp` DONE (`e0b4258`→판정 반영 `4240abb`, worktree·브랜치 정리 완료)
-> · 코디네이터 분배 `e414709` (BACKLOG W1 · PROGRESS · FIELD-TEST §8)
+> · G2 `spec-webmcp` DONE (`fc0ffd9`→판정 반영 `1bacd65`, worktree·브랜치 정리 완료)
+> · 코디네이터 분배 `c7047cd` (BACKLOG W1 · PROGRESS · FIELD-TEST §8)
 > · ~~남은 것은 G3 구현뿐.~~ G3 종결(위 머리).
 > · 후속: 이 웨이브가 문서를 여러 주체에 분배했으므로 **G3 통합 후 `doc-audit`를 돌린다.**
 
@@ -18,8 +18,8 @@
 |---|---|---|---|
 | G0 | 인앱 브라우저 × VoiceOver × 포커스 추종 실측 | 위원장 | ✅ 2026-08-27 통과(프로브 `4a3ee44`) |
 | G1 | Tmap 키 분리 | 코디네이터 → dodo 세션 | ✅ 2026-08-27 07:52 교체·실호출 확인 |
-| **G2** | **spec + 설계 리뷰** | **`gildongmu-bc`** | ✅ `e0b4258`·`4240abb` |
-| G3 | 구현 | Codex↔Claude 교대(`feat/webmcp`) | ✅ `fd7b44c`·`907cf67`, main 통합 |
+| **G2** | **spec + 설계 리뷰** | **`gildongmu-bc`** | ✅ `fc0ffd9`·`1bacd65` |
+| G3 | 구현 | Codex↔Claude 교대(`feat/webmcp`) | ✅ `a1dd152`·`7757489`, main 통합 |
 | G4 | 영문 설명문 + 3분 영상 + Devpost 제출 | 위원장 | 미착수 |
 
 **확정 판정(코디네이터가 정함, 재논의 불필요)**
@@ -53,7 +53,7 @@
 
 **받는 쪽**: ①`git pull --ff-only` ②`git log --oneline -5`로 상대가 어디까지 했는지 확인 ③작업 시작. 상대의 미완 변경이 워킹트리에 남아 있으면 **자기 것으로 커밋하지 말고 상황을 보고**한다.
 
-⚠ **`feat/webmcp`의 base가 낡았다**: `7d65693`은 `cd13576` 기반이고 그 뒤 main이 `e414709`까지 갔다(spec·계획·CLAUDE.md·FIELD-TEST). **다음 세션이 첫 순서로 `git fetch && git rebase origin/main && npm install`을 한다.**
+⚠ **`feat/webmcp`의 base가 낡았다**: `7d65693`은 `5adeb6f` 기반이고 그 뒤 main이 `c7047cd`까지 갔다(spec·계획·CLAUDE.md·FIELD-TEST). **다음 세션이 첫 순서로 `git fetch && git rebase origin/main && npm install`을 한다.**
 
 ## §3 git 격리 절차
 

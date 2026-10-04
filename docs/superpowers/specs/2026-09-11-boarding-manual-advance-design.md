@@ -115,7 +115,7 @@
 
 Kit `TransitGuide.swift`(+`TransitGuideTests.swift`) / iOS `TransitGuideModel.swift`·`TransitTrackingSheet.swift` / 웹 `src/lib/transit-guide.ts`·`src/hooks/useTransitGuide.ts`·`src/components/TransitGuidePanel.tsx` / `messages/*.json` `transitGuide.*` / 테스트 `transit-guide.test.ts`·`TransitGuidePanel.test.tsx`·`transit-landing-guard.test.ts` / 생성물 `Localizable.xcstrings`·`arg-order.json`.
 
-## 9. 구현 리뷰 판정 (2026-09-11, HEAD `170ed2b5` → 반영)
+## 9. 구현 리뷰 판정 (2026-09-11, HEAD `d3018f90` → 반영)
 
 spec-compliance(opus) MAJOR 0·MEDIUM 7·MINOR 7 / code-quality(opus) HIGH 1·MEDIUM 3·LOW 5 / a11y(opus) HIGH 0·MEDIUM 3·LOW 7.
 

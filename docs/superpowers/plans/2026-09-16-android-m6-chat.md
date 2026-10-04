@@ -12,7 +12,7 @@
 
 **구현 방식 판정:** inline. 근거: ① 머신 규약상 Gradle 데몬은 세션당 하나(16GB)라 병렬 서브에이전트가 각자 빌드할 수 없다 ② 화면 파일(`ChatScreen.kt`·`ChatMessages.kt`)이 조각 ①②③에서 반복 편집된다. 리뷰는 조각마다 별도 컨텍스트(opus).
 
-## 개정(2026-09-16 밤 — spec 2차 리뷰·main `fc246219` 반영, 아래 Task 본문보다 우선)
+## 개정(2026-09-16 밤 — spec 2차 리뷰·main `d21dcc0b` 반영, 아래 Task 본문보다 우선)
 
 - 착지 부착은 main `a11y/Landing.kt` `landingTarget`과 `mergedRow(focus)`뿐(main 소스 가드). `chat/ChatLanding.kt`는 `land()`만 남기고 자체 `landingTarget`을 지운다. 텍스트 필드 착지도 `landingTarget`.
 - `SoundPoolChatSounds`는 `chat/ChatFactories.kt` 안(private). `ChatSounds.kt`는 인터페이스만.

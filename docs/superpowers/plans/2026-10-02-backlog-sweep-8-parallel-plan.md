@@ -1,13 +1,13 @@
 # 백로그 8차 소화: 병렬 세션 계획 (2026-10-02)
 
-> **종료 상태(2026-10-02 07:05)**: 전 세션 통합 완료, `origin/main` 기준. 세션별 통합 SHA: small-9 `a66775d1` · e59-settings `81388f58` · en-briefing `7eb748f2` · outing-shops `1a766157` · outing-research `16ccdbba` · small-10 `b163bd5a` · android-2 `c759eee9` · outing-nodes `5889a172` · 코디네이터 문서 `49199df7`(CLAUDE.md 반영 14건·BACKLOG 판정·E58 후속 큐). 웹은 push마다 자동 배포됐고 실기기는 코디네이터가 두 구성으로 설치한다(이 줄 뒤). 위원장 판정 9건(안드로이드 두 묶음 포함 · A53 ② lang=ko 표시 · A54 두 문장 · 학교 이정표 · 목적지 변경 문안 · 카카오 탐침 채택 · 전자지도 신청은 §8 · 단지 안 갈림길은 탐침 꺾임 · 갈림길 문장 일곱·길 건너 골목 무언)은 BACKLOG 각 항목과 spec에 있다. 남은 위원장 판정은 `docs/BACKLOG.md` §2(E59·E60·A53·A54·E58 ②·E58 ①③·E43 ⑤)와 `docs/FIELD-TEST.md`, 다음 행동은 BACKLOG "다음에 할 일"(doc-audit가 8차 결과로 다시 쓴다).
+> **종료 상태(2026-10-02 07:05)**: 전 세션 통합 완료, `origin/main` 기준. 세션별 통합 SHA: small-9 `da5ea6a7` · e59-settings `2ec95dc5` · en-briefing `ed0639cf` · outing-shops `3b9a4117` · outing-research `8b913624` · small-10 `d5353314` · android-2 `5e609d09` · outing-nodes `bef8f4d4` · 코디네이터 문서 `d82b798f`(CLAUDE.md 반영 14건·BACKLOG 판정·E58 후속 큐). 웹은 push마다 자동 배포됐고 실기기는 코디네이터가 두 구성으로 설치한다(이 줄 뒤). 위원장 판정 9건(안드로이드 두 묶음 포함 · A53 ② lang=ko 표시 · A54 두 문장 · 학교 이정표 · 목적지 변경 문안 · 카카오 탐침 채택 · 전자지도 신청은 §8 · 단지 안 갈림길은 탐침 꺾임 · 갈림길 문장 일곱·길 건너 골목 무언)은 BACKLOG 각 항목과 spec에 있다. 남은 위원장 판정은 `docs/BACKLOG.md` §2(E59·E60·A53·A54·E58 ②·E58 ①③·E43 ⑤)와 `docs/FIELD-TEST.md`, 다음 행동은 BACKLOG "다음에 할 일"(doc-audit가 8차 결과로 다시 쓴다).
 
 코디네이터 `gildongmu-a7 [4465c2]`. 절차 정본은 `parallel-sessions` 스킬(Claude Code 분기). 이 문서가 세션 착수 프롬프트보다 상세하고 우선한다. 위원장 판정의 정본은 `docs/BACKLOG.md`의 각 항목이다.
 
-## 0. 전제 (관측 시점: `57e9a5ea`, 2026-10-02)
+## 0. 전제 (관측 시점: `f4db7748`, 2026-10-02)
 
 - **push 동결 없음.** 통합은 `origin/main`으로 ff push이고 push는 곧 웹 프로덕션 자동 배포다(Vercel, 스킵 규칙 없음).
-- **iOS 1.19가 스토어에 있고(`5c3bf9bf`, 빌드 28) 2.0이 심사 대기 중이다(`ef5f2330`, 빌드 30, 2026-10-01 재제출).** 서버 응답 모양을 바꾸는 push는 이 두 빌드와 안드로이드 배포본을 깨뜨리면 안 된다. 심사자는 2.0을 프로덕션 서버에 붙여 본다. 이번 회차의 iOS 변경은 2.0 다음 릴리스 대상이다.
+- **iOS 1.19가 스토어에 있고(`5104808d`, 빌드 28) 2.0이 심사 대기 중이다(`5d57aad0`, 빌드 30, 2026-10-01 재제출).** 서버 응답 모양을 바꾸는 push는 이 두 빌드와 안드로이드 배포본을 깨뜨리면 안 된다. 심사자는 2.0을 프로덕션 서버에 붙여 본다. 이번 회차의 iOS 변경은 2.0 다음 릴리스 대상이다.
 - **디스크 여유 약 8.7GB**, 스왑 0, 시뮬레이터 1대 부팅 중. 웨이브당 빌드 세션은 3개까지. 세션은 DerivedData·산출물을 자기 폴더에만 쓰고, 여유가 3GB 밑으로 내려가면 빌드를 멈추고 보고한다.
 - 테스트 기준선은 `~/.claude/parallel-sessions/gildongmu/baseline-<base 12자리>.log`(`npm run test:run`). 웨이브 1 base는 이 문서를 담은 커밋이고 각 세션 보고 디렉터리의 `base.sha`가 그 값을 든다.
 
@@ -22,7 +22,7 @@
 | `outing-research` | 1 | E58 조사 | opus·high | 보행 도로망 노드 원천 조사(코드 변경 0) |
 | `outing-nodes` | 2 | E58 ①③ | opus·high | 교차로 전수·횡단보도 원천 교체(조사 뒤 코디네이터가 원천 확정) |
 | `android-2` | 2 | E43 M4b 후속 둘 · E57 이식 · E53 이식 | opus·high | 안드로이드 후속·이식 묶음 |
-| `small-10` | 2 | A54 두 문장(위원장 판정 05:12) · A54 정지 통지 `.high` · A53 iOS 잔여(en 시작·목적지 변경 통지) | opus·medium | small-9 통합(`a66775d1`) 뒤 후속 묶음(iOS). 소유: `GuideSessionCoordinator.swift`·`TransitGuideModel.swift`의 통지 자리·`BeaconModel.announceExternal` 우선순위 인자·`ios/i18n/ios-extra/*.json` 해당 키·생성물 |
+| `small-10` | 2 | A54 두 문장(위원장 판정 05:12) · A54 정지 통지 `.high` · A53 iOS 잔여(en 시작·목적지 변경 통지) | opus·medium | small-9 통합(`da5ea6a7`) 뒤 후속 묶음(iOS). 소유: `GuideSessionCoordinator.swift`·`TransitGuideModel.swift`의 통지 자리·`BeaconModel.announceExternal` 우선순위 인자·`ios/i18n/ios-extra/*.json` 해당 키·생성물 |
 | `doc-audit` | 끝 | 문서 만료 점검 | opus·medium | 전 웨이브 통합 뒤 새 창 |
 
 서브에이전트 모델은 디스패치마다 명시한다: 리뷰어·감사는 `model: opus`, 적대적 설계 리뷰와 데이터 무결성 최종 검토만 `model: fable`(동시 하나, `name` 부여).
@@ -45,7 +45,7 @@
 
 ## 2. 파일 소유권 지도
 
-술어는 "이름이 나오는가"가 아니라 "그 세션이 그 파일을 고쳐야 하는가"다. 아래는 코디네이터가 호출부를 열어 확인한 목록이고(관측 `57e9a5ea`), 세션이 틀린 자리를 발견하면 보고한다(코디네이터가 재현해 정정 절을 단다).
+술어는 "이름이 나오는가"가 아니라 "그 세션이 그 파일을 고쳐야 하는가"다. 아래는 코디네이터가 호출부를 열어 확인한 목록이고(관측 `f4db7748`), 세션이 틀린 자리를 발견하면 보고한다(코디네이터가 재현해 정정 절을 단다).
 
 ### 웨이브 1
 
@@ -71,11 +71,11 @@
 | `outing-nodes` | 새 원천 seed·빌드 스크립트(`scripts/build-*.mjs`) · `src/lib/providers/osm-walk-nodes.ts`·`walk-infra.ts`·`/api/walk/nearby` 옵트인 · `NOTICE.md` 표 · Kit `OutingPassBy.swift`(`outingCrosswalkNoticeStep` 원천 주입·교차로 판정 신설)·`OutingLandmark.swift`·`OutingProjection.swift`와 테스트 · `OutingModel.swift`의 노드 조회 자리 · `OutingSheet.swift`(필요 시) · spec `2026-09-26-outing-mode-design.md` 새 절 · `docs/INTEGRATIONS.md` §보행 인프라 |
 | `android-2` | `android/app/src/main/kotlin/space/dodoplanet/gildongmu/place/**`(`PlaceDetailScreen.kt`·`PlaceDetailViewModel.kt`·`PlaceRoutes.kt`) · `nav/AppRoot.kt`(`LocalModalOpen` 공급) · `guide/**`(`GuideSession.kt`·`WalkGuideModel.kt`·`ui/GuideSheet.kt`·`ui/GuideBand.kt`) · `audio/TtsGuideSpeaker.kt`와 새 대기 칸 파일 · `settings/SettingsScreen.kt`의 백그라운드 음성 **행 하나**(헤딩 구조는 `e59-settings` 산출을 따른다) · `:kit`의 `GuideSpeechChannel` 미러와 `android/kit/mirrors/guide.json` · 안드로이드 테스트 · `android/README.md` 해당 절 |
 
-### 정정 (2026-10-02 04:49, 관측 `5a577d1b`, `e59-settings` 착수 보고로 확인)
+### 정정 (2026-10-02 04:49, 관측 `9fdc7608`, `e59-settings` 착수 보고로 확인)
 
 - 설정 화면 문자열 키(`ios.settings.*`)는 `messages/*.json`이 아니라 **`ios/i18n/ios-extra/*.json`**(중첩 `ios.settings`)에 있다. 코디네이터가 `ko.json`을 열어 재현했다. `e59-settings`는 그 파일의 자기 키만 만지고, `messages/*.json`은 건드리지 않는다. 위 웨이브 1 표의 `messages/*.json`의 `ios.settings.*` 서술은 틀렸다.
 - A51 소스 가드 `src/lib/__tests__/settings-language-relabel.test.ts`는 `.menu` 전환과 한 몸이라 `e59-settings` 소유에 더한다.
-- (05:00, `e59-settings` 보고, 코디네이터 재현) **base `5a577d1b`에서 안드로이드 `:app` 컴파일이 깨져 있다**: `7de51d26`(iOS 2.0)이 `ios/i18n/ios-extra/*.json`에서 `ios.directions.walkNotice.*` 9키를 지워 안드로이드 strings 재생성에서도 빠졌는데 `guide/ui/WalkGuideNoticeSheet.kt`가 아직 참조한다. 수정은 `e59-settings`가 별도 선행 커밋으로 한다(9키를 안드로이드 전용 원천으로 이관 + strings 재생성, 공지 시트 유지). `android-2`는 그 통합본 위에서 시작한다. 안드로이드 strings 드리프트 게이트가 "iOS 키 삭제 → 안드로이드 참조 잔존"을 못 잡은 것은 `doc-audit`·`android-2` 인계 사항.
+- (05:00, `e59-settings` 보고, 코디네이터 재현) **base `9fdc7608`에서 안드로이드 `:app` 컴파일이 깨져 있다**: `ce0bd43d`(iOS 2.0)이 `ios/i18n/ios-extra/*.json`에서 `ios.directions.walkNotice.*` 9키를 지워 안드로이드 strings 재생성에서도 빠졌는데 `guide/ui/WalkGuideNoticeSheet.kt`가 아직 참조한다. 수정은 `e59-settings`가 별도 선행 커밋으로 한다(9키를 안드로이드 전용 원천으로 이관 + strings 재생성, 공지 시트 유지). `android-2`는 그 통합본 위에서 시작한다. 안드로이드 strings 드리프트 게이트가 "iOS 키 삭제 → 안드로이드 참조 잔존"을 못 잡은 것은 `doc-audit`·`android-2` 인계 사항.
 - (04:58, `en-briefing` 보고, 코디네이터 재현) **A53 ②의 전제가 틀렸다**: iOS·안드로이드도 웹과 같이 "Walk 3 min to 여의도, 98m"(문장 틀은 앱 언어, 역 이름만 한국어)이다(`RouteBriefing.transitLegText(.korean)`이 `appLocalized`로 조립). ▶ 위원장 판정(2026-10-02): 문장은 앱과 같게 두고 웹 도보 줄의 한국어 역 이름에만 `lang="ko"`를 단다(탑승 줄과 같은 방식). `en-briefing`의 소유권 밖 자진 신고 셋(`PlaceSearch.tsx` 프리필 두 줄·`recent-searches.ts` `labelRoman` 선택 필드·새 lib 파일 1개)은 승인.
 
 ### 공용 생성물·공유 문서 규약

@@ -8,7 +8,7 @@
 
 **Tech Stack:** TypeScript(Vitest) · Swift(GildongmuKit SwiftPM, 앱 SwiftUI) · Kotlin(`:kit` 순수 JVM, `:app` Compose) · i18n 원천 `messages/*.json`·`ios/i18n/ios-extra` → 생성물(xcstrings·안드로이드 strings·arg-order).
 
-**Spec:** `docs/superpowers/specs/2026-10-03-offroute-return-design.md`(J1~J4 개정 `f351785d`) · 문안 `docs/superpowers/specs/2026-10-03-guidance-wording-confirmed.md` 다·라·마 · 백로그 `docs/BACKLOG.md` E63·A55.
+**Spec:** `docs/superpowers/specs/2026-10-03-offroute-return-design.md`(J1~J4 개정 `7b867897`) · 문안 `docs/superpowers/specs/2026-10-03-guidance-wording-confirmed.md` 다·라·마 · 백로그 `docs/BACKLOG.md` E63·A55.
 
 설계 리뷰 판정: 설계는 spec이 리뷰를 받았다(조사 세션 2회 + J4 갈래 1회). 이 계획은 그 계약의 구현 순서다.
 

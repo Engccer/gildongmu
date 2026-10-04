@@ -17,7 +17,7 @@
 
 ### App Store 2.1 심사 제출 (빌드 32)
 
-기준 2.0 아카이브 `ef5f2330` 이후 iOS 커밋 37건(8차·9차) + A59. **빌드 32(아카이브 커밋 `5763c8ad`)를 04:08 KST 제출**(`WAITING_FOR_REVIEW`). 빌드 31(`771a976a`)은 업로드·초안 연결까지 했다가 위원장 문안 확정(첫 총평 문장 삭제)과 A59를 싣기 위해 제출 없이 교체했다. 산출물 검사 통과(2.1.0/32), 프로덕션 실호출로 도보 `wording=2`·자동차 `at`·`toward` 도달 확인(카카오 도보 2건·Tmap 1건, en 도보에는 `crossingClock`이 없어 en 노트에서 시계 방향 횡단을 뺐다). 심사 노트는 ASC 실값과 대조한 뒤 2.0의 `(new in 2.0: …)` 꼬리만 뗐다. 노트 정본 `docs/appstore/release-notes.md` 2.1 절.
+기준 2.0 아카이브 `5d57aad0` 이후 iOS 커밋 37건(8차·9차) + A59. **빌드 32(아카이브 커밋 `49c47afb`)를 04:08 KST 제출**(`WAITING_FOR_REVIEW`). 빌드 31(`ed64df46`)은 업로드·초안 연결까지 했다가 위원장 문안 확정(첫 총평 문장 삭제)과 A59를 싣기 위해 제출 없이 교체했다. 산출물 검사 통과(2.1.0/32), 프로덕션 실호출로 도보 `wording=2`·자동차 `at`·`toward` 도달 확인(카카오 도보 2건·Tmap 1건, en 도보에는 `crossingClock`이 없어 en 노트에서 시계 방향 횡단을 뺐다). 심사 노트는 ASC 실값과 대조한 뒤 2.0의 `(new in 2.0: …)` 꼬리만 뗐다. 노트 정본 `docs/appstore/release-notes.md` 2.1 절.
 
 ### 정식판 백그라운드 음성 안내 설명에서 나들이 구절 제거 (A59, iOS)
 
@@ -26,7 +26,7 @@
 ### 아이폰 미러링 실기기 점검 device-check (문서)
 
 - BACKLOG §2 전수를 미러링으로 닫을 수 있는지 가렸다. 남은 행은 전부 실보행·실승차·실주행이거나 VoiceOver 낭독·초점·로터가 판정 대상이라 닫은 행은 없다.
-- 화면으로 답이 나오는 하위 항목 11곳(A51 · E59 · A52 · E44 ⑨ · N4 ④ · 건강 요약 · E28-③ · E62 · E42·E52 · A44·A45 · N1 ③)에 "미러링 관측 2026-10-04" 기록을 붙였다(공식판·실험판 설치분 `0357c4f7`). 정보 출처의 "서울특별시 공공데이터(서울 열린데이터광장)" 표기도 기기에서 확인했다.
+- 화면으로 답이 나오는 하위 항목 11곳(A51 · E59 · A52 · E44 ⑨ · N4 ④ · 건강 요약 · E28-③ · E62 · E42·E52 · A44·A45 · N1 ③)에 "미러링 관측 2026-10-04" 기록을 붙였다(공식판·실험판 설치분 `c03dbfcd`). 정보 출처의 "서울특별시 공공데이터(서울 열린데이터광장)" 표기도 기기에서 확인했다.
 
 ### 재조회 채택 문장 후속·안드로이드 lint small-12: A57 · A58 · D31 (iOS + 안드로이드 + 웹)
 
@@ -70,7 +70,7 @@
 
 ### App Store 2.0 출시 확인 · 문서 만료 점검(8차 소화 뒤)
 
-- iOS 2.0(빌드 30, 아카이브 `ef5f2330`)이 `READY_FOR_SALE`이다(`asc-submit.mjs --check` 실측). 자동차·대중교통 안내와 백그라운드 음성 안내가 스토어 정식판에 도달했다. PROGRESS·FIELD-TEST·BACKLOG §2 빌드 열·README의 1.19/심사 대기·실험판 표기를 2.0 기준으로 고쳤다.
+- iOS 2.0(빌드 30, 아카이브 `5d57aad0`)이 `READY_FOR_SALE`이다(`asc-submit.mjs --check` 실측). 자동차·대중교통 안내와 백그라운드 음성 안내가 스토어 정식판에 도달했다. PROGRESS·FIELD-TEST·BACKLOG §2 빌드 열·README의 1.19/심사 대기·실험판 표기를 2.0 기준으로 고쳤다.
 - BACKLOG "다음에 할 일"을 8차 결과로 다시 쓰고 깨진 앵커 셋(E58·E59·E60)을 정리했다. 종결 문단에 묻혀 있던 후속(E58 후속 큐·A53 후속·E43 이식 ③)을 열린 목록에 올리고, 도보 세션 목적지 전환 통지 원명 관찰을 A55로 등재했다. A50·D29·D30은 종결 표로 옮겼다.
 - 2.0 졸업이 닿지 않았던 계약 문서 자리(INTEGRATIONS 백그라운드 음성 계열·나들이, PATTERNS 봉인 계수 7곳·피커·딥링크, android/README)를 고치고, `CLAUDE.md` 긴 항목 다섯을 같은 제목 절로 줄였다(78.5KB → 77.0KB).
 
@@ -109,7 +109,7 @@
 
 ### 안드로이드 기준선 복구: 도보 공지 문자열
 
-iOS 2.0(`7de51d26`)이 ios-extra에서 `ios.directions.walkNotice.*` 9키를 지우며 안드로이드 strings에서도 빠져 `:app` 컴파일이 깨져 있었다. 안드로이드는 도보 공지 시트를 아직 쓰므로 9키를 원문 그대로 `android/i18n/android-extra/*.json`으로 옮겼다.
+iOS 2.0(`ce0bd43d`)이 ios-extra에서 `ios.directions.walkNotice.*` 9키를 지우며 안드로이드 strings에서도 빠져 `:app` 컴파일이 깨져 있었다. 안드로이드는 도보 공지 시트를 아직 쓰므로 9키를 원문 그대로 `android/i18n/android-extra/*.json`으로 옮겼다.
 
 ### 나들이 상점 그물 18종·재조회 50m, 도로명 지번 폴백 확정, 로그 열 보강 (E58 ②⑤⑥, 실험판)
 
@@ -121,7 +121,7 @@ iOS 2.0(`7de51d26`)이 ios-extra에서 `ios.directions.walkNotice.*` 9키를 지
 
 ### App Store 2.0 심사 제출 (빌드 30)
 
-기준 1.19 아카이브 `5c3bf9bf`(2026-10-01 `READY_FOR_SALE` 확인) 이후 iOS 커밋 30건 + 졸업·공지 커밋 5건. 빌드 29(아카이브 `d9e76b2d`)는 19:15 제출 뒤 공지 문안이 최종본이 아니어서 19:40 심사 취소(미출시). 최종 문안을 넣은 **빌드 30(아카이브 커밋 `ef5f2330`)을 19:52 KST 재제출**(`WAITING_FOR_REVIEW`). 산출물 검사 통과(번들 ID·2.0.0/29·백그라운드 모드·6로케일 권한 문구·CoreBluetooth 미링크). 심사 노트는 ASC 실값과 대조한 뒤 백그라운드 절을 세 수단으로 갱신해 넘겼다. 제출 전 Apple 개발자 프로그램 계약 갱신 동의가 필요했다(API 403, 동의 뒤 약 10분 만에 복구). 노트 정본 `docs/appstore/release-notes.md` 2.0 절.
+기준 1.19 아카이브 `5104808d`(2026-10-01 `READY_FOR_SALE` 확인) 이후 iOS 커밋 30건 + 졸업·공지 커밋 5건. 빌드 29(아카이브 `1181264f`)는 19:15 제출 뒤 공지 문안이 최종본이 아니어서 19:40 심사 취소(미출시). 최종 문안을 넣은 **빌드 30(아카이브 커밋 `5d57aad0`)을 19:52 KST 재제출**(`WAITING_FOR_REVIEW`). 산출물 검사 통과(번들 ID·2.0.0/29·백그라운드 모드·6로케일 권한 문구·CoreBluetooth 미링크). 심사 노트는 ASC 실값과 대조한 뒤 백그라운드 절을 세 수단으로 갱신해 넘겼다. 제출 전 Apple 개발자 프로그램 계약 갱신 동의가 필요했다(API 403, 동의 뒤 약 10분 만에 복구). 노트 정본 `docs/appstore/release-notes.md` 2.0 절.
 
 ### iOS 2.0 — 자동차·대중교통 실시간 안내와 백그라운드 음성 안내 정식판 졸업
 
@@ -195,11 +195,11 @@ iOS 2.0(`7de51d26`)이 ios-extra에서 `ios.directions.walkNotice.*` 9키를 지
 
 ### 챌린지 동결 해제 — 재배포·iOS 1.19 재준비
 
-OpenAI WebMCP Challenge 수상 발표 확인 뒤 재동결(2026-09-24)을 풀었다. `.git/hooks/pre-push`와 글로벌 지침의 동결 절을 지우고 적체 65커밋을 push해 프로덕션이 `origin/main` 자동 배포(`dcn2h3nx4`, `ad3596a0`)로 복귀했다. 앱이 새로 읽는 값 셋을 배포본 실호출로 확인: 도보 `lines=1` → `shortest`·`accessible`, 역 메타 `lang=en` → `operatorEn`, 대중교통 `alternatives[].highlight` 축 이름. 심사 취소된 1.19(빌드 27)는 재제출하지 않고 최신 코드로 빌드 28을 새로 올렸다.
+OpenAI WebMCP Challenge 수상 발표 확인 뒤 재동결(2026-09-24)을 풀었다. `.git/hooks/pre-push`와 글로벌 지침의 동결 절을 지우고 적체 65커밋을 push해 프로덕션이 `origin/main` 자동 배포(`dcn2h3nx4`, `69ab6d98`)로 복귀했다. 앱이 새로 읽는 값 셋을 배포본 실호출로 확인: 도보 `lines=1` → `shortest`·`accessible`, 역 메타 `lang=en` → `operatorEn`, 대중교통 `alternatives[].highlight` 축 이름. 심사 취소된 1.19(빌드 27)는 재제출하지 않고 최신 코드로 빌드 28을 새로 올렸다.
 
 ### App Store 1.19 심사 제출 (빌드 28)
 
-1.18 아카이브(`edc8cbdc`) 이후 iOS에 닿는 50커밋(빌드 27의 E42·stale-origin·시설 한 줄 + E50 대안 이유 이름·수단 재조회, N4 경유지 진행 표시, A23 안전망 5분·5분, en 운영기관 영문)을 담아 제출했다(08:00 KST, `WAITING_FOR_REVIEW`). 아카이브 커밋 `5c3bf9bf`, worktree 격리, Admin 키 export 배포 서명, 산출물 검사(번들 ID·1.19.0(28)·`UIBackgroundModes`·권한 문구 6로케일·CoreBluetooth 미링크) 통과. 나들이(E51)·대중교통 실시간 안내(A47 iOS)는 봉인이라 제외, 심사 노트는 승계. 노트 정본 `docs/appstore/release-notes.md` §1.19.
+1.18 아카이브(`48a9714b`) 이후 iOS에 닿는 50커밋(빌드 27의 E42·stale-origin·시설 한 줄 + E50 대안 이유 이름·수단 재조회, N4 경유지 진행 표시, A23 안전망 5분·5분, en 운영기관 영문)을 담아 제출했다(08:00 KST, `WAITING_FOR_REVIEW`). 아카이브 커밋 `5104808d`, worktree 격리, Admin 키 export 배포 서명, 산출물 검사(번들 ID·1.19.0(28)·`UIBackgroundModes`·권한 문구 6로케일·CoreBluetooth 미링크) 통과. 나들이(E51)·대중교통 실시간 안내(A47 iOS)는 봉인이라 제외, 심사 노트는 승계. 노트 정본 `docs/appstore/release-notes.md` §1.19.
 
 
 ## 2026-09-27
@@ -277,7 +277,7 @@ OpenAI WebMCP Challenge 수상 발표 확인 뒤 재동결(2026-09-24)을 풀었
 
 ### 챌린지 발표 연기에 따른 재동결 — 프로덕션을 제출 당일 배포본으로
 
-Devpost 메일(2026-09-24 00:32 KST)이 수상 발표를 2026-09-29(화) 08:00 KST로 미루며 그때까지 편집하지 말라고 했다. 규정상 심사 기간(09-22 09:00 KST)이 끝난 뒤 09-23 14:07에 동결을 풀고 494건을 push한 상태였다. 위원장 판정(1안): Vercel 프로덕션을 제출 당일 배포본(`ozh22jtli`, `fde11dca`)으로 promote(Hobby는 rollback이 직전 배포까지라 `vercel promote`), 실호출로 도보·대중교통·검색·홈 확인, `.git/hooks/pre-push`를 새 시한으로 재설치, iOS 1.19 심사 취소(`asc-submit.mjs --cancel-review` 신설 — 되돌린 서버엔 `lines=1`이 없어 심사 중 도보가 실패한다). 저장소는 되돌리지 않는다(force push 금지). 발표 확인 뒤 push·재배포·1.19 재제출.
+Devpost 메일(2026-09-24 00:32 KST)이 수상 발표를 2026-09-29(화) 08:00 KST로 미루며 그때까지 편집하지 말라고 했다. 규정상 심사 기간(09-22 09:00 KST)이 끝난 뒤 09-23 14:07에 동결을 풀고 494건을 push한 상태였다. 위원장 판정(1안): Vercel 프로덕션을 제출 당일 배포본(`ozh22jtli`, `d2e0328f`)으로 promote(Hobby는 rollback이 직전 배포까지라 `vercel promote`), 실호출로 도보·대중교통·검색·홈 확인, `.git/hooks/pre-push`를 새 시한으로 재설치, iOS 1.19 심사 취소(`asc-submit.mjs --cancel-review` 신설 — 되돌린 서버엔 `lines=1`이 없어 심사 중 도보가 실패한다). 저장소는 되돌리지 않는다(force push 금지). 발표 확인 뒤 push·재배포·1.19 재제출.
 
 ### 대중교통 대안 경로를 이유 있는 것만 싣고 수단 축을 더했다 (E50)
 
@@ -305,7 +305,7 @@ Devpost 메일(2026-09-24 00:32 KST)이 수상 발표를 2026-09-29(화) 08:00 K
 
 ### App Store 1.19 심사 제출 (빌드 27)
 
-1.18 아카이브 `edc8cbdc` 이후 `ios/` 커밋 23건을 판정해 도보 경로 두 줄(ko)·옛 위치 표기·빈 시설 묶음 한 줄을 실었다(대중교통 실시간 안내 9건은 봉인이라 제외). 아카이브 커밋 `2903e8e3`, 2026-09-23 19:53 KST 제출, 산출물 검사 1회 통과, 심사 노트 승계. [릴리스 노트](docs/appstore/release-notes.md)
+1.18 아카이브 `48a9714b` 이후 `ios/` 커밋 23건을 판정해 도보 경로 두 줄(ko)·옛 위치 표기·빈 시설 묶음 한 줄을 실었다(대중교통 실시간 안내 9건은 봉인이라 제외). 아카이브 커밋 `5bfbbacc`, 2026-09-23 19:53 KST 제출, 산출물 검사 1회 통과, 심사 노트 승계. [릴리스 노트](docs/appstore/release-notes.md)
 
 ### 계단 회피 토글 문구 키 삭제
 
@@ -369,7 +369,7 @@ seed 변환기가 `환승역구분`을 접미 일치로 읽고 모르는 어휘�
 
 ### 안드로이드 도보 실시간 안내 정식 기능 이동
 
-도보 진입점·세션·띠바의 실험 게이트와 `AppConfig.experimentalGuidanceEnabled`(소비자 0)를 삭제하고, 전경 서비스(`location`)·`FOREGROUND_SERVICE(_LOCATION)`·`WAKE_LOCK`·`ACTIVITY_RECOGNITION`을 정식 매니페스트로 승격했다(실험판 매니페스트 삭제, 탭 순서·결과 진동 설정 행·진단 로그의 실험 게이트는 유지). 산출물 검사(`check-release-manifest.mjs`)가 정식·실험 APK 모두를 잠근다. 정식판 첫 Play 제출에 전경 서비스 선언이 필요해졌다(`docs/playstore/data-safety.md` §4 #14). 남은 것은 한소네 7 `debug` 검증([BACKLOG E43](docs/BACKLOG.md#e43-안드로이드-앱---코드-도달2026-09-17-f215b164-웨이브-03-완료--실기기-판정m5스토어)).
+도보 진입점·세션·띠바의 실험 게이트와 `AppConfig.experimentalGuidanceEnabled`(소비자 0)를 삭제하고, 전경 서비스(`location`)·`FOREGROUND_SERVICE(_LOCATION)`·`WAKE_LOCK`·`ACTIVITY_RECOGNITION`을 정식 매니페스트로 승격했다(실험판 매니페스트 삭제, 탭 순서·결과 진동 설정 행·진단 로그의 실험 게이트는 유지). 산출물 검사(`check-release-manifest.mjs`)가 정식·실험 APK 모두를 잠근다. 정식판 첫 Play 제출에 전경 서비스 선언이 필요해졌다(`docs/playstore/data-safety.md` §4 #14). 남은 것은 한소네 7 `debug` 검증([BACKLOG E43](docs/BACKLOG.md#e43-안드로이드-앱---코드-도달2026-09-17-d7a4ae97-웨이브-03-완료--실기기-판정m5스토어)).
 
 ### A46 승차 대기 배경 관측·수동 진행 버튼 이름
 
@@ -403,7 +403,7 @@ seed 변환기가 `환승역구분`을 접미 일치로 읽고 모르는 어휘�
 
 ### App Store 1.18 심사 제출 (빌드 26)
 
-기준 아카이브 `ff41fdce`(1.17) 이후 `ios/` 커밋 27건을 판정해 6묶음을 실었다 — 역 장소 상세 개편(E44), 길찾기 브리핑의 역 상세·전화 로터(E45), 도보 목적지 상세 닫기 버튼, 위치 표시줄·내 주변의 사유 구분(E43), 한국어 도착 줄 상행·하행(B11, ko만), 최근 기록 영문 표기 유지(E28, 비-ko만). 대중교통 안내 시트의 경유역 로터는 봉인 안이라 제외. 아카이브 커밋 `edc8cbdc`, 제출 2026-09-19 08:26 KST, 산출물 검사 1회 통과, 심사 노트 승계. 동결 중이라 새 서버 의존이 없음을 따로 확인했다. 노트 정본은 `docs/appstore/release-notes.md` §1.18.
+기준 아카이브 `50d6fd63`(1.17) 이후 `ios/` 커밋 27건을 판정해 6묶음을 실었다 — 역 장소 상세 개편(E44), 길찾기 브리핑의 역 상세·전화 로터(E45), 도보 목적지 상세 닫기 버튼, 위치 표시줄·내 주변의 사유 구분(E43), 한국어 도착 줄 상행·하행(B11, ko만), 최근 기록 영문 표기 유지(E28, 비-ko만). 대중교통 안내 시트의 경유역 로터는 봉인 안이라 제외. 아카이브 커밋 `48a9714b`, 제출 2026-09-19 08:26 KST, 산출물 검사 1회 통과, 심사 노트 승계. 동결 중이라 새 서버 의존이 없음을 따로 확인했다. 노트 정본은 `docs/appstore/release-notes.md` §1.18.
 
 아래 변경은 `test/ios-backlog-20260919`에서 검증한 뒤 같은 날 로컬 main에 반영했다. 미출시 상태다.
 
@@ -494,9 +494,9 @@ iOS 4탭(채팅·검색·길찾기·내 주변, 실험판 순서 게이트 `expe
 
 ### App Store 1.17 심사 제출 (빌드 25)
 
-기준 아카이브 `b6a7e5c2`(1.16) 이후 `ios/` 커밋 20건을 판정해 5묶음을 실었다 — 브리핑 지하철 출구 번호(E25), 지하철 도착 줄 문장형(E37)과 영문 현재역 결측 교정(A38), 한눈에 보기 어순, 도보 안내 시작 통지의 목적지(E40의 도보 분). 아카이브 커밋 `ff41fdce`, 제출 2026-09-13 13:46 KST, 산출물 검사 1회 통과, 심사 노트 승계. 노트 정본은 `docs/appstore/release-notes.md` §1.17.
+기준 아카이브 `02e95ac7`(1.16) 이후 `ios/` 커밋 20건을 판정해 5묶음을 실었다 — 브리핑 지하철 출구 번호(E25), 지하철 도착 줄 문장형(E37)과 영문 현재역 결측 교정(A38), 한눈에 보기 어순, 도보 안내 시작 통지의 목적지(E40의 도보 분). 아카이브 커밋 `50d6fd63`, 제출 2026-09-13 13:46 KST, 산출물 검사 1회 통과, 심사 노트 승계. 노트 정본은 `docs/appstore/release-notes.md` §1.17.
 
-제외 12건은 전부 봉인 안이다 — 대중교통 실시간 안내 8건(`AppConfig.experimentalGuidanceEnabled`)과 결과 진동 4건(스위치가 `#if DEBUG || EXPERIMENTAL` 안이라 Release에서 기본값 `false`로 고정, 30파일이 컴파일되지만 사용자가 겪는 변화는 0). E40은 한 커밋(`8df70f76`) 안에서 도보(Release)와 대중교통(봉인)으로 갈려 도달면 단위로 잘랐다. ⚠ 아카이브가 또 개발 서명으로 굳어(1.16과 동일) `-exportArchive`에 Admin 키를 붙였다.
+제외 12건은 전부 봉인 안이다 — 대중교통 실시간 안내 8건(`AppConfig.experimentalGuidanceEnabled`)과 결과 진동 4건(스위치가 `#if DEBUG || EXPERIMENTAL` 안이라 Release에서 기본값 `false`로 고정, 30파일이 컴파일되지만 사용자가 겪는 변화는 0). E40은 한 커밋(`6fb7cccc`) 안에서 도보(Release)와 대중교통(봉인)으로 갈려 도달면 단위로 잘랐다. ⚠ 아카이브가 또 개발 서명으로 굳어(1.16과 동일) `-exportArchive`에 Admin 키를 붙였다.
 
 
 ### 한눈에 보기 문장의 어순 — 거리·방위를 이름 앞으로 (웹+iOS+CLI)
@@ -599,9 +599,9 @@ a11y 감사가 연 두 항목: 착지 낭독과 전이 통지의 중복(E41), �
 
 ### App Store 1.16 심사 제출 (빌드 24)
 
-기준 아카이브 `ff6e1897`(1.15/빌드 23) 이후 `ios/` 커밋 21건을 판정해 5건을 노트에 담았다(E32 "여기부터 길찾기", E31 체중 권유 상한 2회 + 칼로리 기준 체중, A39 설정 체중 범위 밖 처리, A32 지하철 도착 줄 현재역 중복 제거(ko만), 검색 탭 마이크 행 순서). 대중교통 실시간 안내 13건은 `experimentalGuidanceEnabled` 봉인이라 전량 제외, 오디오 세션 소유권 2건은 Release에 닿지만 재현 축이 대중교통 조합이라 제외.
+기준 아카이브 `c090869a`(1.15/빌드 23) 이후 `ios/` 커밋 21건을 판정해 5건을 노트에 담았다(E32 "여기부터 길찾기", E31 체중 권유 상한 2회 + 칼로리 기준 체중, A39 설정 체중 범위 밖 처리, A32 지하철 도착 줄 현재역 중복 제거(ko만), 검색 탭 마이크 행 순서). 대중교통 실시간 안내 13건은 `experimentalGuidanceEnabled` 봉인이라 전량 제외, 오디오 세션 소유권 2건은 Release에 닿지만 재현 축이 대중교통 조합이라 제외.
 
-아카이브 커밋 `b6a7e5c2`(worktree 격리), 업로드 14:07 KST, 제출 14:11 KST, `WAITING_FOR_REVIEW` 확인. 산출물 검사 통과(`space.dodoplanet.gildongmu 1.16.0/24`), 심사 노트 승계(새 권한·데이터 유형 없음). 노트 정본 [`docs/appstore/release-notes.md`](docs/appstore/release-notes.md) §1.16.
+아카이브 커밋 `02e95ac7`(worktree 격리), 업로드 14:07 KST, 제출 14:11 KST, `WAITING_FOR_REVIEW` 확인. 산출물 검사 통과(`space.dodoplanet.gildongmu 1.16.0/24`), 심사 노트 승계(새 권한·데이터 유형 없음). 노트 정본 [`docs/appstore/release-notes.md`](docs/appstore/release-notes.md) §1.16.
 
 ⚠ Xcode 계정이 비어 `-exportArchive` 업로드가 실패했다(아카이브가 Personal Team 개발 인증서로 서명). App Manager 키는 클라우드 서명 권한이 없어 Admin 키(`ASC_STATS_KEY_ID`)를 `-authenticationKey*`로 줘서 통과시켰다.
 
@@ -634,7 +634,7 @@ a11y 감사가 연 두 항목: 착지 낭독과 전이 통지의 중복(E41), �
 
 ## 2026-09-03
 ### App Store 1.15 심사 제출 (빌드 23)
-기준 아카이브 커밋 `11fe5f9`(1.14/빌드 22) 이후 `ios/` 커밋 15건을 판정해 4묶음을 담았다(주소 복사 통지 낭독·"여기까지 길찾기" 즉시 조회·0건 문구 한정어는 전 로케일, 비-ko 병기 잔여는 en만). 급행 게이트·확인 프롬프트·출구 번호 낭독·승차 추세 톤 6건은 `experimentalGuidanceEnabled` 봉인 안이라 제외했다(`RouteBriefing` 무변화로 브리핑 유출 경로 없음). 아카이브 커밋 `ff6e1897`, 제출 2026-09-03 04:39 KST, 산출물 검사 1회 통과, 심사 노트 승계. 노트 정본 `docs/appstore/release-notes.md` §1.15.
+기준 아카이브 커밋 `d11f218`(1.14/빌드 22) 이후 `ios/` 커밋 15건을 판정해 4묶음을 담았다(주소 복사 통지 낭독·"여기까지 길찾기" 즉시 조회·0건 문구 한정어는 전 로케일, 비-ko 병기 잔여는 en만). 급행 게이트·확인 프롬프트·출구 번호 낭독·승차 추세 톤 6건은 `experimentalGuidanceEnabled` 봉인 안이라 제외했다(`RouteBriefing` 무변화로 브리핑 유출 경로 없음). 아카이브 커밋 `c090869a`, 제출 2026-09-03 04:39 KST, 산출물 검사 1회 통과, 심사 노트 승계. 노트 정본 `docs/appstore/release-notes.md` §1.15.
 
 - **주소 복사 통지 `.high`(iOS, 위원장 실사용 2026-09-02)**: 장소 상세·주소 검색 결과·채팅 카드의 "도로명/지번/영문 주소 복사"(버튼·VoiceOver 커스텀 액션) 뒤 "주소 복사됨"이 기본 우선순위라 낭독되지 않았다. 활성화 직접 응답 통지는 VoiceOver 활성화 처리에 잠식되므로(헌장 §5) `copyAddressToPasteboard` 한 곳에서 `.high`로. 화면 변화가 없는 동작이라 이 문장이 복사 성공의 유일한 증거다. ✅ 위원장 실기기 확인 2026-09-03(세 버튼·커스텀 액션에서 "주소 복사됨" 낭독).
 - **"여기까지 길찾기" = 도착지 채움 + 즉시 조회(iOS, 위원장 실사용 2026-09-02)**: 장소 상세·검색 결과 행의 진입이 길찾기 탭을 열고 도착지만 채우던 것을, 같은 진입에서 현재 위치 → 그 장소 조회까지 실행한다(`DirectionsModel.runPrefillQueryIfPending`, 뷰 `.task` 1회 소비 — 탭을 떠났다 돌아와도 재조회하지 않는다). 완료 통지·첫 성공 수단 heading 착지·안내 세션 불간섭은 기존 조회 계약 그대로. ✅ 위원장 실기기 확인 2026-09-03. 웹은 미반영(`docs/BACKLOG.md` B10 — `initialTo`가 URL 복원과 prop을 공유해 먼저 갈라야 한다).
@@ -660,7 +660,7 @@ a11y 감사가 연 두 항목: 착지 낭독과 전이 통지의 중복(E41), �
 
 ### App Store 1.14 심사 제출 (빌드 22)
 
-- 기준 아카이브는 1.13의 `df229f0`(빌드 21)이고 그 뒤 `ios/` 커밋 37건을 판정해 6항목을 담았다(ko 5줄 425자 / en 10줄 1,503자). 아카이브 커밋 `11fe5f9`, 제출 2026-09-02 06:52 KST → `WAITING_FOR_REVIEW`.
+- 기준 아카이브는 1.13의 `1213d97`(빌드 21)이고 그 뒤 `ios/` 커밋 37건을 판정해 6항목을 담았다(ko 5줄 425자 / en 10줄 1,503자). 아카이브 커밋 `d11f218`, 제출 2026-09-02 06:52 KST → `WAITING_FOR_REVIEW`.
 - 담긴 것: 장소 영업시간 정식판 승격(E24) · 이탈 시 자동 재조회 즉시 채택(E10ⓑ) · 간략 세션 도착 종료와 30분 지난 종료 화면 소거(A31) · 구분 기호 낭독(A30·A29) · 비-ko 영문화 묶음(E27 브리핑·역 정보 / E28 병기 / A28 분류 / A26 앱 조립 / A29 복수형, en 노트 전용).
 - 빠진 것: A25 승차 전 도보·K2-a 자동차 세션 종료·E27 실시간 안내 en 게이트는 `experimentalGuidanceEnabled` 봉인 안이라 정식판 미도달. 웹·서버 분은 이미 배포됨.
 - 산출물 검사 통과(`space.dodoplanet.gildongmu` 1.14.0/22, 백그라운드 모드·6로케일 권한 문구·CoreBluetooth 미링크). 심사 노트는 **승계**(새 권한·새 데이터 유형 없음 — Google Places는 장소 이름·좌표·도로명 주소만 보내고 사용자 현재 위치는 보내지 않아 `PrivacyInfo.xcprivacy`·ASC 영양 라벨 무변화). 노트 정본 `docs/appstore/release-notes.md` §1.14.
@@ -711,7 +711,7 @@ a11y 감사가 연 두 항목: 착지 낭독과 전이 통지의 중복(E41), �
 
 ### App Store 1.13 심사 제출 (빌드 21)
 
-1.12 아카이브(`37b99db`) 이후 `ios/` 4커밋 중 3건(임박 큐 3단계·잊힌 세션 안전망 A23·환승역 빠른하차 문 A20)을 담아 제출했다(05:41 KST, `WAITING_FOR_REVIEW`). 아카이브 커밋 `df229f0`, worktree 격리 빌드, 산출물 검사 통과, 심사 노트 승계. 마지막 제출 PATCH가 ASC 500으로 한 번 죽어 재실행했다(1.5와 같은 결함, 상태 `READY_FOR_REVIEW`가 "초안 완성·미제출"이라는 뜻). 이번 제출은 새 스킬 `ios-release-submit`(`~/Mac-Projects/ios-release-submit`)을 서브에이전트가 처음 밟은 실사용이었고, 준비 단계 피드백 11건을 스킬 1.1.0에 반영했다. 노트 정본은 `docs/appstore/release-notes.md` §1.13.
+1.12 아카이브(`a12f504`) 이후 `ios/` 4커밋 중 3건(임박 큐 3단계·잊힌 세션 안전망 A23·환승역 빠른하차 문 A20)을 담아 제출했다(05:41 KST, `WAITING_FOR_REVIEW`). 아카이브 커밋 `1213d97`, worktree 격리 빌드, 산출물 검사 통과, 심사 노트 승계. 마지막 제출 PATCH가 ASC 500으로 한 번 죽어 재실행했다(1.5와 같은 결함, 상태 `READY_FOR_REVIEW`가 "초안 완성·미제출"이라는 뜻). 이번 제출은 새 스킬 `ios-release-submit`(`~/Mac-Projects/ios-release-submit`)을 서브에이전트가 처음 밟은 실사용이었고, 준비 단계 피드백 11건을 스킬 1.1.0에 반영했다. 노트 정본은 `docs/appstore/release-notes.md` §1.13.
 
 ### W1 게이트 2 — WebMCP 도구층 spec + 설계 리뷰
 
@@ -766,7 +766,7 @@ a11y 감사가 연 두 항목: 착지 낭독과 전이 통지의 중복(E41), �
 
 ### App Store 1.12 빌드 20 제출
 
-1.11 아카이브(`f312a39`) 이후 `ios/` 39커밋을 재판정해 What's New를 다시 썼다(정본 `docs/appstore/release-notes.md` §1.12). 빌드 19(`c56752c`)는 1.11 심사 중 409로 제출하지 못한 채 17커밋이 더 들어와 폐기하고, `37b99db`를 worktree 격리로 아카이브·업로드했다(산출물 검사 통과). en 노트는 E16 축3으로 열린 도보 상세 경로·실시간 도보 안내를 "새로운 기능"으로 묶었고, 심사 노트의 "Walking guidance is available in Korean only"를 전 언어 제공으로 고쳤다(`--review-notes`, ASC 실값 대조 차이 0). `asc-submit --apply`가 프로모션 텍스트 승계까지 처리해 별도 복사 단계가 필요 없었다. 1.12 `WAITING_FOR_REVIEW`(02:30 KST). BACKLOG G5 종결.
+1.11 아카이브(`26ee800`) 이후 `ios/` 39커밋을 재판정해 What's New를 다시 썼다(정본 `docs/appstore/release-notes.md` §1.12). 빌드 19(`210b389`)는 1.11 심사 중 409로 제출하지 못한 채 17커밋이 더 들어와 폐기하고, `a12f504`를 worktree 격리로 아카이브·업로드했다(산출물 검사 통과). en 노트는 E16 축3으로 열린 도보 상세 경로·실시간 도보 안내를 "새로운 기능"으로 묶었고, 심사 노트의 "Walking guidance is available in Korean only"를 전 언어 제공으로 고쳤다(`--review-notes`, ASC 실값 대조 차이 0). `asc-submit --apply`가 프로모션 텍스트 승계까지 처리해 별도 복사 단계가 필요 없었다. 1.12 `WAITING_FOR_REVIEW`(02:30 KST). BACKLOG G5 종결.
 
 ### K4 — 채팅 한눈에 보기 장소 카드 복원 + 계단식 캡 + follow-up 칩 (웹·iOS)
 
@@ -858,11 +858,11 @@ iOS M4 화면을 웹 `NearbyHub`에 옮겼다(spec `docs/superpowers/specs/2026-
 
 ### App Store 1.12 빌드 19 업로드 (제출 대기)
 
-1.11 아카이브(`f312a39`) 이후 iOS에 닿는 22커밋(K1 띠바·접기 아이콘 행·안내 종료 하단 고정, 받아쓰기 억제, 한눈에 보기 문장형, K3 채팅 도구)을 담아 아카이브·업로드했다(아카이브 커밋 `c56752c`, 12:37 KST, 산출물 검사 통과). ASC는 1.11이 `IN_REVIEW`인 동안 새 버전 생성을 **409로 거부**해 초안도 만들 수 없다 — 위원장 판정으로 1.11을 철회하지 않고 승인 뒤 제출한다. 노트 정본은 `docs/appstore/release-notes.md` §1.12. K2 자동차·E15-1 대중교통·탭 순서는 실험판 봉인이라 제외.
+1.11 아카이브(`26ee800`) 이후 iOS에 닿는 22커밋(K1 띠바·접기 아이콘 행·안내 종료 하단 고정, 받아쓰기 억제, 한눈에 보기 문장형, K3 채팅 도구)을 담아 아카이브·업로드했다(아카이브 커밋 `210b389`, 12:37 KST, 산출물 검사 통과). ASC는 1.11이 `IN_REVIEW`인 동안 새 버전 생성을 **409로 거부**해 초안도 만들 수 없다 — 위원장 판정으로 1.11을 철회하지 않고 승인 뒤 제출한다. 노트 정본은 `docs/appstore/release-notes.md` §1.12. K2 자동차·E15-1 대중교통·탭 순서는 실험판 봉인이라 제외.
 
 ### App Store 1.11 심사 제출 (빌드 18)
 
-1.10 아카이브(`0013c52`) 이후 iOS에 닿는 24커밋(M4·N1·N2·N4-iOS, BLE 정식 바이너리 제거)을 담아 제출했다(07:11 KST, `WAITING_FOR_REVIEW`). 아카이브 커밋 `f312a39`, `git worktree` 격리 빌드, 산출물 `Info.plist`·`otool -L`로 번들 ID·1.11.0(18)·`UIBackgroundModes`·**CoreBluetooth 미링크**(ITMS-90683 해소 실증)를 확인했다. N3 boarding과 N2 좌우 피커는 정식판 게이트 밖이라 노트에서 제외했고, 심사 노트는 새 권한·데이터가 없어 승계했다. 노트 정본은 `docs/appstore/release-notes.md` §1.11. 준비는 Opus 서브에이전트, push·제출은 컨트롤러.
+1.10 아카이브(`7e70ddd`) 이후 iOS에 닿는 24커밋(M4·N1·N2·N4-iOS, BLE 정식 바이너리 제거)을 담아 제출했다(07:11 KST, `WAITING_FOR_REVIEW`). 아카이브 커밋 `26ee800`, `git worktree` 격리 빌드, 산출물 `Info.plist`·`otool -L`로 번들 ID·1.11.0(18)·`UIBackgroundModes`·**CoreBluetooth 미링크**(ITMS-90683 해소 실증)를 확인했다. N3 boarding과 N2 좌우 피커는 정식판 게이트 밖이라 노트에서 제외했고, 심사 노트는 새 권한·데이터가 없어 승계했다. 노트 정본은 `docs/appstore/release-notes.md` §1.11. 준비는 Opus 서브에이전트, push·제출은 컨트롤러.
 
 ### N1 안내 세션 앱 승격 + 안내 시트 최소화 + 탭 바 위 띠바 (iOS)
 
@@ -898,7 +898,7 @@ iOS M4 화면을 웹 `NearbyHub`에 옮겼다(spec `docs/superpowers/specs/2026-
 
 ### App Store 1.10 심사 제출 (빌드 17)
 
-1.9 아카이브(`01447d4`) 이후 iOS 바이너리에 닿는 3커밋을 담아 제출했다(07:31 KST, `WAITING_FOR_REVIEW`). 아카이브 커밋 `0013c52`, `git worktree` 격리 빌드. 산출물 `Info.plist`로 번들 ID·1.10.0(17)·**`MinimumOSVersion 18.0`**·`UIBackgroundModes`(location·audio)·실험 전용 BLE 키 부재를 확인했다. 최소 지원 하향은 설치 가능 기기가 늘어나는 변경이라 ko·en 두 노트 모두에 적었고(도보 안내 2건은 ko 게이트라 ko만), 심사 노트는 `Microphone` 절에 OS별 엔진 2종과 서버 폴백 부재를 명시하고 `Motion & Fitness`의 `(new in this version)` 꼬리를 뗐다. 노트 정본 [`docs/appstore/release-notes.md`](docs/appstore/release-notes.md) §1.10.
+1.9 아카이브(`5ae67ba`) 이후 iOS 바이너리에 닿는 3커밋을 담아 제출했다(07:31 KST, `WAITING_FOR_REVIEW`). 아카이브 커밋 `7e70ddd`, `git worktree` 격리 빌드. 산출물 `Info.plist`로 번들 ID·1.10.0(17)·**`MinimumOSVersion 18.0`**·`UIBackgroundModes`(location·audio)·실험 전용 BLE 키 부재를 확인했다. 최소 지원 하향은 설치 가능 기기가 늘어나는 변경이라 ko·en 두 노트 모두에 적었고(도보 안내 2건은 ko 게이트라 ko만), 심사 노트는 `Microphone` 절에 OS별 엔진 2종과 서버 폴백 부재를 명시하고 `Motion & Fitness`의 `(new in this version)` 꼬리를 뗐다. 노트 정본 [`docs/appstore/release-notes.md`](docs/appstore/release-notes.md) §1.10.
 
 ⚠ **`1.0-submission-draft.md` §9(심사 노트 "정본")가 ASC 실값보다 낡아 있었다** — 1.8이 더한 `Motion & Fitness` 절이 문서에 없어, 그 값을 `--review-notes`로 넘겼다면 그 절이 지워졌을 것이다. 넘기기 전에 ASC 실값을 읽어 대조하는 규칙을 §9에 등재했다.
 
@@ -918,7 +918,7 @@ iOS M4 화면을 웹 `NearbyHub`에 옮겼다(spec `docs/superpowers/specs/2026-
 
 ### iOS 1.9 심사 제출 (빌드 16)
 
-1.8은 같은 날 `READY_FOR_SALE`. 1.8 아카이브 `1cad836` 이후 iOS 가시 변경은 아래 피드백 커밋 하나라 ko 노트 2줄·en 관용 문구. worktree 격리 아카이브 → 업로드 → `asc-submit --apply --submit`(산출물 검사 통과) → 19:55 KST `WAITING_FOR_REVIEW`. 노트 정본 [`docs/appstore/release-notes.md`](docs/appstore/release-notes.md).
+1.8은 같은 날 `READY_FOR_SALE`. 1.8 아카이브 `cb550de` 이후 iOS 가시 변경은 아래 피드백 커밋 하나라 ko 노트 2줄·en 관용 문구. worktree 격리 아카이브 → 업로드 → `asc-submit --apply --submit`(산출물 검사 통과) → 19:55 KST `WAITING_FOR_REVIEW`. 노트 정본 [`docs/appstore/release-notes.md`](docs/appstore/release-notes.md).
 
 ### 도보 안내 실사용 피드백 3건 (위원장 카카오톡 메모 → 접수·처리)
 
@@ -928,7 +928,7 @@ iOS M4 화면을 웹 `NearbyHub`에 옮겼다(spec `docs/superpowers/specs/2026-
 
 ### iOS 1.8 심사 제출 (빌드 15)
 
-20:10 KST `WAITING_FOR_REVIEW`. 1.7 아카이브 커밋(`45f1412`) 이후 107커밋 전수 판정 — 채팅 답변의 장소 상세 진입·말풍선 구획 헤딩·"내 주변" 전락 통지(D24)는 ko·en, 검색 리뷰순 정렬·걸음/칼로리 요약·안내 출발 좌표 정확도는 ko 게이트라 ko만. 대중교통 승차 추적 계열은 `experimentalGuidanceEnabled` 안이라 정식판에 진입점이 없어 전부 제외했다. **동작 및 피트니스 권한이 들어간 첫 버전**이지만 걸음(`CMPedometer`)·체중(`@AppStorage`) 모두 기기를 떠나지 않아 영양 라벨·`PrivacyInfo.xcprivacy`는 불변이고, 개인정보 처리방침에 `privacy.activity` 문단을 6로케일에 추가했으며 심사 노트에 `Motion & Fitness` 절을 넣었다(2,134자). 빌드 14는 버리고 15로 재업로드 — 노트 정정 뒤 `release-notes.json`이 앱 번들 리소스라 바이너리에 굳는다는 것을 업로드본 `.app`을 열어 확인했다. 노트·판정 정본은 [`docs/appstore/release-notes.md`](docs/appstore/release-notes.md).
+20:10 KST `WAITING_FOR_REVIEW`. 1.7 아카이브 커밋(`2aa0f71`) 이후 107커밋 전수 판정 — 채팅 답변의 장소 상세 진입·말풍선 구획 헤딩·"내 주변" 전락 통지(D24)는 ko·en, 검색 리뷰순 정렬·걸음/칼로리 요약·안내 출발 좌표 정확도는 ko 게이트라 ko만. 대중교통 승차 추적 계열은 `experimentalGuidanceEnabled` 안이라 정식판에 진입점이 없어 전부 제외했다. **동작 및 피트니스 권한이 들어간 첫 버전**이지만 걸음(`CMPedometer`)·체중(`@AppStorage`) 모두 기기를 떠나지 않아 영양 라벨·`PrivacyInfo.xcprivacy`는 불변이고, 개인정보 처리방침에 `privacy.activity` 문단을 6로케일에 추가했으며 심사 노트에 `Motion & Fitness` 절을 넣었다(2,134자). 빌드 14는 버리고 15로 재업로드 — 노트 정정 뒤 `release-notes.json`이 앱 번들 리소스라 바이너리에 굳는다는 것을 업로드본 `.app`을 열어 확인했다. 노트·판정 정본은 [`docs/appstore/release-notes.md`](docs/appstore/release-notes.md).
 
 ### 네이버 리뷰순 정렬 (웹·iOS 검색 토글 + 채팅 인자)
 

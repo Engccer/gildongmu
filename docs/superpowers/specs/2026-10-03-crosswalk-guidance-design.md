@@ -17,7 +17,7 @@
 
 ## 1. 하위 호환 판정 (코디네이터 판정 2)
 
-**판정: 새 문장은 옵트인 판본 `wording=2`로만 낸다. 미지정 응답은 byte-identical.** 근거는 스토어 빌드의 코드다(2.0 `ef5f2330`과 1.19 `5c3bf9bf`는 안내 코드가 같다 — `RouteGuide`·`GuideLiveRows`·`RouteGeometry` 바이트 동일).
+**판정: 새 문장은 옵트인 판본 `wording=2`로만 낸다. 미지정 응답은 byte-identical.** 근거는 스토어 빌드의 코드다(2.0 `5d57aad0`과 1.19 `5104808d`는 안내 코드가 같다 — `RouteGuide`·`GuideLiveRows`·`RouteGeometry` 바이트 동일).
 
 - ⓐ 문장 부분 문자열 판정: 두 빌드의 클라이언트는 `description`을 분류하지 않는다(Kit 분류기는 2026-09-02 삭제, `action`·`crossing`·`live`만 읽는다). 서버 분류기 `walkStepAction`은 새 문장("도세요")에서 회전을 놓친다 — 이건 서버 안이라 이 마일스톤이 함께 고친다(§3.6).
 - ⓑ 낭독 악화: **해당한다.** 두 빌드는 40m 이상 스텝의 주기 통지에서 횡단 스텝 문장을 15초마다 되읽는다(`GuideText.periodicWalk` 횡단 분기). 새 문장이 가면 차도 한가운데서 "9시 방향으로 도세요. 그 후 천호대로를 건너세요"를 듣는다. 40m 미만 회전 스텝의 15초 되읽기(`bundleReread`)도 이미 돈 회전을 명령형으로 다시 지시한다. 병합 횡단 분해는 스텝 수를 바꾸지만 기하·`crossing`·`action`·`waypoint.stepIndex`를 함께 맞추면 깨지지 않는다(그래도 옛 리듀서는 분해된 둘째 횡단을 30m 전 전문으로 횡단 중에 읽는다).

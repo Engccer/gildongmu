@@ -191,7 +191,7 @@ Kit `TransitGuide.swift`(+`TransitGuideTests.swift`) / iOS `TransitGuideModel.sw
 | m1~m6 | 전부 채택(스냅숏·버퍼 소거, `approxNote` 판별자, 프롬프트 리셋 축, 신선도 줄 제거, 선택 차량 문장, untrackable 라벨 키 2개 명시). |
 | 관찰 `changeBoarding` 가드 | 채택 — 확정 도착에서 no-op(§4.1). G4 주석 정정. |
 
-## 10. 구현 리뷰 판정 (2026-09-11, HEAD `961170fd` → 반영 `0a8bc54d`)
+## 10. 구현 리뷰 판정 (2026-09-11, HEAD `5f4a2ad3` → 반영 `fc129cd1`)
 
 세 리뷰(별도 컨텍스트, diff `main...HEAD`만)의 보고는 `~/gildongmu-wt/reports/transit-1-review-{spec,code,a11y}.md`(커밋 밖).
 

@@ -1,6 +1,6 @@
 # TAGO 시간표 (역·노선) 커버리지 공백 3-state (A19)
 
-> 상태: 설계 확정 · 2026-08-23 · 기준 커밋 `17cd113` · 백로그 `docs/BACKLOG.md` A19
+> 상태: 설계 확정 · 2026-08-23 · 기준 커밋 `d56f065` · 백로그 `docs/BACKLOG.md` A19
 > 계약 정본: dodo `docs/superpowers/specs/2026-08-23-tago-timetable-coverage-design.md` §3(적대적 설계 리뷰 통과본). 이 문서는 그 계약을 gildongmu에 **그대로** 이식하며, 관측·근거·판정표는 재서술하지 않고 gildongmu 고유 차이만 적는다.
 > 설계 리뷰 판정: **생략.** 새 판정 계층(방향 4분류·노선 결합·allowlist 게이트)은 dodo에서 적대적 리뷰 16건을 거친 계약을 축 하나 바꾸지 않고 쓰고, gildongmu 신규분은 소비자 배선·문구(국소·가역)다.
 

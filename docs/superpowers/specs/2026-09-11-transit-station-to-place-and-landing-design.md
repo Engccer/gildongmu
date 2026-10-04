@@ -1,6 +1,6 @@
 # 대중교통 안내 시트: 컨트롤 착지 실패 수정·지하철역 → 장소 상세 설계 (A35 · E33)
 
-> 2026-09-11, transit-3 세션(웨이브 3, transit-2 통합 `e213e55d` 위). 판정 정본은 `docs/BACKLOG.md` §1 A35·§5 E33. 실험판 봉인 안이며 서버 변경 없음. 착지 정본 시퀀스는 `docs/PATTERNS.md` "iOS 목록 포커스 이동", 시트 수명·표시 계약은 N1 spec `2026-08-22-guide-session-minimize-design.md`, 안내 시트의 장소 상세 진입 선례는 `2026-08-12-guide-destination-menu-design.md` §2.
+> 2026-09-11, transit-3 세션(웨이브 3, transit-2 통합 `5c2b1544` 위). 판정 정본은 `docs/BACKLOG.md` §1 A35·§5 E33. 실험판 봉인 안이며 서버 변경 없음. 착지 정본 시퀀스는 `docs/PATTERNS.md` "iOS 목록 포커스 이동", 시트 수명·표시 계약은 N1 spec `2026-08-22-guide-session-minimize-design.md`, 안내 시트의 장소 상세 진입 선례는 `2026-08-12-guide-destination-menu-design.md` §2.
 >
 > **설계 리뷰 판정**: 필수(A35는 안전·정확성 축 — SR 사용자가 국면 전이 뒤 커서를 잃는 결함의 재수정이고, E33은 표현 계층 선택). 1회 적대적 리뷰(§9) 뒤 구현. 리뷰 지시문에 "진단 자체가 틀렸다면 그렇게 말하라"를 넣었다 — 이 문서 §1.1이 그 진단이다.
 
@@ -104,7 +104,7 @@
 
 **불변**: 옵셔널 단일 바인딩 · 경합 바인딩 해제 순서 · `controlFocusTask` latest-wins · `phaseTransitionLanding` 분기 · `controlExists` 조건 · 조망 `pendingFollowUp` 계약.
 
-> ### ⚠ 정정 (2026-09-12 08:20 KST, base `9bcae9f6` — BACKLOG [E38](../../BACKLOG.md) 위원장 판정, 세션 sheet-landing)
+> ### ⚠ 정정 (2026-09-12 08:20 KST, base `aa32a423` — BACKLOG [E38](../../BACKLOG.md) 위원장 판정, 세션 sheet-landing)
 >
 > **위 대상 표와 "불변" 줄의 `phaseTransitionLanding` 분기는 더 이상 유효하지 않다.** 이 절의 **기제**(실현 관측 → 반복 가시화 → 대입 → 늦은 검증 → 체증 재시도 → 전 대상 폴백)는 그대로이고, 바뀐 것은 **대상**이다.
 >
@@ -208,7 +208,7 @@ Kit `PlaceProjection.swift`(+`PlaceProjectionTests.swift`, 소유 밖 자진 신
 
 **소유 밖 관찰(보고만, 고치지 않는다)**: `SurroundingsSceneSection`의 장소 행은 `NavigationLink`인데 두 안내 시트(`TransitTrackingSheet`·`BeaconTrackingSheet`)는 시트 안에 NavigationStack이 없다 — 그 자리에서 링크가 동작하지 않을 가능성이 있다(BACKLOG §2 "M1 잔여 — 시트 임베드" 미판정 면과 겹친다). 이 spec이 NavigationStack을 넣지 않는 선택과 무관하게 별건이다.
 
-## 9. 설계 리뷰 판정 (2026-09-11, opus 서브에이전트, spec 초안 `3cf0f31a`)
+## 9. 설계 리뷰 판정 (2026-09-11, opus 서브에이전트, spec 초안 `988f9e33`)
 
 **판정: §1.2 정정(N1 M3는 반대 방향)은 참, §1.1 진단은 ②③ 참·①은 가설로 강등, MAJOR 8건 전부 채택(L5는 부분).** 보고 정본 `~/gildongmu-wt/reports/transit-3-review-design.md`. ⚠ 절차 위반 하나를 리뷰가 잡았다 — 리뷰 대상 SHA에는 spec만 있었고 구현이 미커밋으로 자라는 중이었다(memory `freeze-artifact-before-review-dispatch`). 구현 리뷰는 전부 커밋한 SHA로 디스패치한다.
 
@@ -237,7 +237,7 @@ Kit `PlaceProjection.swift`(+`PlaceProjectionTests.swift`, 소유 밖 자진 신
 | W2 오버레이 대안 | 채택 — §2에 검토·기각 기록. |
 | 미니멀리즘(라벨 이중 정의) | 채택 — `advanceLabel`·`waitingLabelText`·`reboardPromptKey` 한 곳, 뷰·폴백·픽커 호출부가 공유. |
 
-## 10. 구현 리뷰 판정 (2026-09-11, HEAD `82ffae56` → 반영 다음 커밋)
+## 10. 구현 리뷰 판정 (2026-09-11, HEAD `81ab9615` → 반영 다음 커밋)
 
 세 리뷰(별도 컨텍스트, `git diff main...HEAD`만)의 보고는 `~/gildongmu-wt/reports/transit-3-review-{spec,code,a11y}.md`(커밋 밖).
 
