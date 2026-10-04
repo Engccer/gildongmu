@@ -144,3 +144,44 @@ private func overviewBulletText(_ bullet: OverviewBullet, lang: String, radius: 
         }
     }()
 }
+
+// MARK: - 한눈에 보기 문장 속 상세 진입(E65)
+
+/// 「한눈에 보기」 한 줄이 부른 장소 중 상세 화면을 열 수 있는 것 하나. 뷰가 장소마다 「○○ 상세 보기」
+/// 로터 액션을 단다(채팅 산문·브리핑 동형 — 장소가 여럿인 문장은 장소마다 액션).
+public struct OverviewDetailTarget: Hashable, Sendable, Identifiable {
+    /// 그 문장이 부른 이름(`bilingualName`의 `primary`) — 액션 라벨이 문장과 같은 이름을 말한다.
+    public let name: String
+    public let place: Place
+    /// 역 상세의 노선 힌트(E44 전화 조회는 같은 역·같은 노선 후보만 본다). 역만 있다.
+    public let lineHint: String?
+    /// 문화 행사 원본 — 상세 화면의 행사 섹션 재료. 행사만 있다.
+    public let event: CultureEvent?
+    /// 역 대상인가 — 라벨 키가 다르다(`transitGuide.openStation`).
+    public var isStation: Bool { place.id.hasPrefix("transit-stop:") }
+    public var id: String { place.id }
+}
+
+/// 한 불릿의 상세 진입 대상을 **문장 등장 순**으로(E65 spec §2). 문장을 파싱하지 않고 불릿 구조에서 뽑는다 —
+/// `buildOverviewLines`와 같은 순서(역 → 버스, `nearest` 배열 순)다. 상세 화면이 없는 종류(버스 정류소)와
+/// 옵트인 재료(`places=1`)가 없는 항목은 빠진다(죽은 액션을 달지 않는다).
+public func overviewDetailTargets(_ bullet: OverviewBullet, lang: String) -> [OverviewDetailTarget] {
+    switch bullet {
+    case .transit(let station, _):
+        guard let station, let lat = station.lat, let lng = station.lng else { return [] }
+        let stop = TransitLegStop(name: station.name, lat: lat, lng: lng, nameEn: station.nameEn)
+        let name = bilingualName(lang: lang, ko: station.name, en: station.nameEn, roman: nil).primary
+        return [OverviewDetailTarget(name: name, place: transitStopPlace(stop), lineHint: station.line, event: nil)]
+    case .place(_, .ok(_, _, let nearest)):
+        return nearest.compactMap { item in
+            let name = bilingualName(lang: lang, ko: item.name, en: nil, roman: item.nameRoman).primary
+            if let event = item.event {
+                return OverviewDetailTarget(name: name, place: cultureEventToPlace(event), lineHint: nil, event: event)
+            }
+            guard let place = item.place else { return nil }
+            return OverviewDetailTarget(name: name, place: place, lineHint: nil, event: nil)
+        }
+    case .place:
+        return []
+    }
+}

@@ -46,4 +46,26 @@ extension StubNetworkTests {
         _ = try await NearbyService(client: stubbedClient()).clinics(lat: 37.5, lng: 127.0)
         #expect(capturedQuery?.contains(where: { $0.name == "limit" }) == false)
     }
+
+    /// E65: 둘러보기의 로터 「상세 보기」 재료(`places=1`)와 역 제목 로터 재료(`coords=1`)는 옵트인이다.
+    @Test func nearbyOverviewRequestsDetailPlaces() async throws {
+        var capturedQuery: [URLQueryItem]?
+        StubURLProtocol.handler = { request in
+            capturedQuery = URLComponents(url: request.url!, resolvingAgainstBaseURL: false)?.queryItems
+            return (200, Data(#"{"data":null}"#.utf8))
+        }
+        _ = try await NearbyService(client: stubbedClient()).nearbyOverview(lat: 37.5, lng: 127.0)
+        #expect(capturedQuery?.contains(where: { $0.name == "places" && $0.value == "1" }) == true)
+    }
+
+    @Test func subwayArrivalsRequestsStationCoords() async throws {
+        var capturedQuery: [URLQueryItem]?
+        StubURLProtocol.handler = { request in
+            capturedQuery = URLComponents(url: request.url!, resolvingAgainstBaseURL: false)?.queryItems
+            return (200, Data(#"{"stations":[]}"#.utf8))
+        }
+        _ = try await NearbyService(client: stubbedClient()).subwayArrivals(lat: 37.5, lng: 127.0, lang: "ko")
+        #expect(capturedQuery?.contains(where: { $0.name == "coords" && $0.value == "1" }) == true)
+        #expect(capturedQuery?.contains(where: { $0.name == "lang" }) == false)
+    }
 }

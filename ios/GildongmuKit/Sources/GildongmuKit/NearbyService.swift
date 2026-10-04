@@ -12,8 +12,9 @@ public struct NearbyService: Sendable {
     public init(client: APIClient) { self.client = client }
 
     /// `lang`(E27) — en이면 노선·도착 영문 필드를 additive로 받는다(비-ko만 파라미터, 기본값 없음).
+    /// `coords=1`(E65)은 역 좌표 옵트인 — 역 제목 로터의 재료라 이 앱은 늘 보낸다.
     public func subwayArrivals(lat: Double, lng: Double, lang: String) async throws -> SubwayNearbyResult {
-        var query = coordQuery(lat: lat, lng: lng)
+        var query = coordQuery(lat: lat, lng: lng) + [URLQueryItem(name: "coords", value: "1")]
         if lang != "ko" { query.append(URLQueryItem(name: "lang", value: lang)) }
         let response: SubwayNearbyResponse = try await client.get(
             "/api/station/subway-arrival/nearby", query: query)
@@ -61,9 +62,11 @@ public struct NearbyService: Sendable {
     }
 
     /// M4 한눈에 보기 — 공통 반경 1km 6종 집계. nil = data:null(전 키 부재, 구성 결함).
+    /// `places=1`(E65)은 문장 속 장소의 상세 진입 재료 옵트인(로터 「상세 보기」).
     public func nearbyOverview(lat: Double, lng: Double) async throws -> NearbyOverview? {
         let response: NearbyOverviewResponse = try await client.get(
-            "/api/nearby/overview", query: coordQuery(lat: lat, lng: lng))
+            "/api/nearby/overview",
+            query: coordQuery(lat: lat, lng: lng) + [URLQueryItem(name: "places", value: "1")])
         return response.data
     }
 

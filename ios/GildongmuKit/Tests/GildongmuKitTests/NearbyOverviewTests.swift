@@ -155,3 +155,64 @@ private func decode(_ json: String) throws -> NearbyOverviewResponse {
     #expect(lines[1].secondary == "길동어린이공원")
     #expect(lines[1].display.hasSuffix(" (길동어린이공원)"))
 }
+
+// MARK: - E65 문장 속 상세 진입 대상(옵트인 `places=1`)
+
+private let detailFixture = """
+{"data":{"place":null,"radiusMeters":1000,"bullets":[
+ {"kind":"transit","state":"ok","station":{"name":"길동","nameEn":"Gildong","line":"5호선","bearing":"ne","distanceMeters":262,"lat":37.5378,"lng":127.1401},
+  "busStops":{"state":"ok","count":1,"nearest":[{"name":"길동사거리","distanceMeters":80,"bearing":"e"}]}},
+ {"kind":"food","state":"ok","count":3,"countCapped":false,"nearest":[
+   {"name":"가람식당","nameRoman":"Garam Sikdang","distanceMeters":40,"bearing":"s","place":{"id":"k1","name":"가람식당","category":"음식점 > 한식","address":"","roadAddress":"서울 강동구 천중로 1","lat":37.5,"lng":127.1,"phone":"02-000-0000"}},
+   {"name":"김밥천국","distanceMeters":60,"bearing":"e"}]},
+ {"kind":"events","state":"ok","count":1,"countCapped":false,"nearest":[
+   {"name":"가을 음악회","distanceMeters":300,"bearing":"w","event":{"id":"seoul-1","title":"가을 음악회","category":"콘서트","place":"구민회관","district":"강동구","dateText":"2026-10-01~2026-10-31","timeText":"19:30","isFree":true,"target":"누구나","lat":37.53,"lng":127.13,"distanceMeters":300}}]},
+ {"kind":"kids","state":"none"}
+]}}
+"""
+
+@Test func overviewDetailTargetsFollowSentenceOrderAndSkipWhatHasNoDetail() throws {
+    let data = try #require(try decode(detailFixture).data)
+    let transit = overviewDetailTargets(data.bullets[0], lang: "ko")
+    // 역만 대상이다 — 정류소는 상세 화면이 없다(죽은 액션 금지).
+    #expect(transit.map(\.name) == ["길동"])
+    #expect(transit[0].isStation)
+    #expect(transit[0].lineHint == "5호선")
+    #expect(transit[0].place.lat == 37.5378 && transit[0].place.category == "지하철역")
+    // 옵트인 재료가 없는 항목(김밥천국)은 빠진다. 있는 항목은 문장 순서대로.
+    let food = overviewDetailTargets(data.bullets[1], lang: "ko")
+    #expect(food.map(\.place.id) == ["k1"])
+    #expect(food[0].place.phone == "02-000-0000")
+    #expect(!food[0].isStation && food[0].event == nil)
+    // 행사는 원본을 함께 싣는다(상세의 행사 섹션 재료).
+    let events = overviewDetailTargets(data.bullets[2], lang: "ko")
+    #expect(events.map(\.place.id) == ["seoul-1"])
+    #expect(events[0].event?.dateText == "2026-10-01~2026-10-31")
+    #expect(overviewDetailTargets(data.bullets[3], lang: "ko").isEmpty)
+}
+
+@Test func overviewDetailTargetNamesMatchTheSentence() throws {
+    let data = try #require(try decode(detailFixture).data)
+    let lines = buildOverviewLines(data, lang: "en")
+    for (bullet, line) in zip(data.bullets, lines) {
+        for target in overviewDetailTargets(bullet, lang: "en") {
+            #expect(line.text.contains(target.name), "\(target.name) not in \(line.text)")
+        }
+    }
+    #expect(overviewDetailTargets(data.bullets[1], lang: "en").map(\.name) == ["Garam Sikdang"])
+    #expect(overviewDetailTargets(data.bullets[0], lang: "en").map(\.name) == ["Gildong"])
+}
+
+@Test func overviewWithoutDetailFieldsHasNoTargets() throws {
+    // 옵트인 이전 응답(스토어 웹 배포 전)은 대상 0 — 액션 없이 종전 화면 그대로.
+    let data = try #require(try decode(fixture).data)
+    #expect(data.bullets.allSatisfy { overviewDetailTargets($0, lang: "ko").isEmpty })
+}
+
+@Test func nearbySubwayStationDecodesOptionalCoords() throws {
+    let json = #"{"stations":[{"stationName":"잠실","lines":["2호선","8호선"],"distanceMeters":120,"arrivalStatus":"unknown","arrivals":[],"lat":37.5133,"lng":127.1001},{"stationName":"잠실나루","lines":["2호선"],"distanceMeters":900,"arrivalStatus":"unknown","arrivals":[]}]}"#
+    let r = try JSONDecoder().decode(SubwayNearbyResponse.self, from: Data(json.utf8))
+    #expect(r.stations[0].lat == 37.5133 && r.stations[0].lng == 127.1001)
+    #expect(r.stations[1].lat == nil)
+}
+

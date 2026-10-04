@@ -21,11 +21,11 @@
 
 하위 호환(계획 §1 코디네이터 판정 2): 스토어 2.1·2.0·1.19와 안드로이드는 `places=1`을 보내지 않으므로 받는 응답이 바뀌지 않는다. 웹 `AroundNearby`·CLI·채팅도 보내지 않는다. WebMCP는 이 라우트를 소비하지 않는다(`src/lib/webmcp` 전수 검색 0건).
 
-### 1.2 `/api/station/subway-arrival/nearby` 역 좌표 (기본 additive)
+### 1.2 `/api/station/subway-arrival/nearby?coords=1` 역 좌표 (옵트인)
 
-`stations[]`에 `lat`·`lng`(seed 역 좌표)를 싣는다. 역 목록의 「상세 보기」·「여기까지 길찾기」·전화가 좌표를 요구하는데 이 응답에는 좌표가 없었다.
+`coords=1`일 때만 `stations[]`에 `lat`·`lng`(seed 역 좌표)를 싣는다. 역 목록의 「상세 보기」·「여기까지 길찾기」·전화가 좌표를 요구하는데 이 응답에는 좌표가 없었다. 미지정 응답은 종전과 byte-identical이다.
 
-기본으로 싣는 이유: 숫자 두 개(역 최대 5곳)라 팽창이 없고, 같은 화면 계열의 버스 정류소 응답(`BusStop.lat`·`lng`)이 이미 좌표를 싣는다. 하위 호환: iOS Kit은 `Codable` 합성이라 모르는 키를 무시하고(2.1·2.0·1.19 공통), 안드로이드 `KitJson`은 `ignoreUnknownKeys`다. 한국어 필드와 문장은 한 글자도 바뀌지 않는다. 채팅 도구는 이 응답을 쓰지 않는다.
+옵트인으로 낸 이유는 §1.1과 같은 축이다: 채팅 `get_subway_arrivals` 도구가 역 객체를 펼쳐 Gemini 입력(`data`)에 넣으므로(`src/lib/chat/router.ts`), 기본으로 실으면 좌표가 모델 입력으로 샌다. 채팅 경로는 provider를 옵션 없이 불러 종전 모양 그대로다. 하위 호환: 스토어 2.1·2.0·1.19와 안드로이드는 `coords=1`을 보내지 않는다. WebMCP는 이 라우트를 소비하지 않는다.
 
 ## 2. 종류별 판정표
 
@@ -61,8 +61,8 @@
 
 ## 5. 검증
 
-- 웹: `nearby-overview.test.ts`(옵트인 필드, 미지정 불변), 라우트 테스트(`places=1` 전달, 미지 값 400), `subway-nearby.test.ts`(좌표 투영).
+- 웹: `nearby-overview.test.ts`(옵트인 필드, 미지정 불변), 라우트 테스트 둘(`places=1`·`coords=1` 전달, 미지 값 400), `subway-nearby.test.ts`(좌표는 옵트인일 때만).
 - Kit: 옵트인 필드 디코딩, `overviewDetailTargets` 순서·이름·빠짐.
 - `:kit`: 새 필드가 실린 응답 디코딩이 깨지지 않는다.
-- 실호출: push 뒤 프로덕션 `/api/nearby/overview` 미지정·`places=1`, `/api/station/subway-arrival/nearby` 좌표.
+- 실호출: push 뒤 프로덕션 `/api/nearby/overview`·`/api/station/subway-arrival/nearby`의 미지정·옵트인 쌍.
 - 실기기(§2 판정 행): 로터 액션이 등장 순으로 들리는가, 헤딩 trait 유지, 앵커 모드.

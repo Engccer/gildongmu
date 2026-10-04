@@ -5,6 +5,7 @@ import space.dodoplanet.gildongmu.kit.models.OverviewBullet
 import space.dodoplanet.gildongmu.kit.models.OverviewBusStops
 import space.dodoplanet.gildongmu.kit.models.OverviewPlaceKind
 import space.dodoplanet.gildongmu.kit.models.OverviewPlaceState
+import space.dodoplanet.gildongmu.kit.models.SubwayNearbyResponse
 import space.dodoplanet.gildongmu.kit.models.SurroundingsSceneItem
 import kotlinx.serialization.SerializationException
 import kotlin.test.Test
@@ -78,4 +79,22 @@ class NearbyOverviewTest {
         val item = KitJson.decodeFromString(SurroundingsSceneItem.serializer(), """{"name":"가람식당","distanceMeters":47,"road":"성내로","category":"restaurant","id":"kakao-2","lat":37.54,"lng":127.15,"categoryRaw":"음식점 > 한식","roadAddress":null}""")
         assertEquals("kakao-2", item.id); assertNull(item.roadAddress); assertNull(item.phone)
     }
+
+    /** E65: iOS가 옵트인(`places=1`·`coords=1`)으로 받는 상세 재료가 실려도 디코딩이 깨지지 않는다(안드로이드 앱 층 이식 전). */
+    @Test fun optInDetailFieldsAreToleratedUntilPorted() {
+        val json = """
+{"data":{"place":null,"radiusMeters":1000,"bullets":[
+ {"kind":"transit","state":"ok","station":{"name":"길동","line":"5호선","bearing":"ne","distanceMeters":262,"lat":37.5378,"lng":127.1401},"busStops":null},
+ {"kind":"food","state":"ok","count":1,"countCapped":false,"nearest":[{"name":"가람식당","distanceMeters":40,"bearing":"s","place":{"id":"k1","name":"가람식당","category":"음식점","address":"","roadAddress":"","lat":37.5,"lng":127.1}}]}
+]}}"""
+        val data = assertNotNull(decode(json).data)
+        assertEquals("길동", assertIs<OverviewBullet.Transit>(data.bullets[0]).station?.name)
+        val food = assertIs<OverviewPlaceState.Ok>(assertIs<OverviewBullet.Place>(data.bullets[1]).state)
+        assertEquals(listOf("가람식당"), food.nearest.map { it.name })
+        val subway = KitJson.decodeFromString(
+            SubwayNearbyResponse.serializer(),
+            """{"stations":[{"stationName":"잠실","lines":["2호선"],"distanceMeters":120,"arrivalStatus":"unknown","arrivals":[],"lat":37.5133,"lng":127.1001}]}""")
+        assertEquals("잠실", subway.stations.single().stationName)
+    }
 }
+

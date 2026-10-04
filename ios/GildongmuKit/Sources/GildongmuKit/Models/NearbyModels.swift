@@ -48,6 +48,9 @@ public struct NearbySubwayStation: Codable, Sendable, Hashable {
     /// `lines`의 영문(`lang=en`에만, 하나라도 미지면 배열 전체 nil — 한 줄 안 언어 혼합 금지)
     public let linesEn: [String]?
     public let distanceMeters: Int
+    /// seed 역 좌표(옵트인 `coords=1`, E65) — 역 제목 로터(상세·길찾기·전화)의 재료. 없으면 그 액션도 없다.
+    public var lat: Double? = nil
+    public var lng: Double? = nil
     /// 넷을 뭉개지 않는다 — "ok"(arrivals 정본, 0건=정상적 열차 없음) /
     /// "unavailable"(조회 실패) / "closed"(운행 시간 밖 확정, firstTime 동반) /
     /// "unknown"(실시간 미제공 역이거나 판정 불가).
@@ -342,6 +345,10 @@ public struct OverviewPlace: Codable, Sendable, Hashable {
     public let distanceMeters: Int
     /// 8방위 소문자(SurroundingPlace 동형)
     public let bearing: String
+    /// 상세 진입 재료(옵트인 `places=1`, E65) — 식당·카페·아이 놀 곳·무장애. 채팅 카드와 같은 투영.
+    public var place: Place? = nil
+    /// 상세 진입 재료(옵트인 `places=1`, E65) — 문화 행사 원본.
+    public var event: CultureEvent? = nil
 }
 
 public struct OverviewStation: Codable, Sendable, Hashable {
@@ -351,6 +358,9 @@ public struct OverviewStation: Codable, Sendable, Hashable {
     public let line: String?
     public let bearing: String
     public let distanceMeters: Int
+    /// seed 역 좌표(옵트인 `places=1`, E65) — 역 상세 진입 재료.
+    public var lat: Double? = nil
+    public var lng: Double? = nil
 }
 
 public enum OverviewBusStops: Sendable, Hashable {

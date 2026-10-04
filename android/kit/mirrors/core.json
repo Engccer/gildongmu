@@ -87,7 +87,8 @@
       "swift": "LocationNarrative.swift",
       "status": "ported",
       "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/LocationNarrative.kt",
-      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/LocationNarrativeTest.kt"
+      "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/LocationNarrativeTest.kt",
+      "note": "`overviewDetailTargets`·`OverviewDetailTarget`(E65 로터 상세 진입 대상)은 미이식 — 안드로이드 앱 층 이식(iOS 실기기 판정 뒤) 때 함께 옮긴다."
     },
     {
       "swift": "ManualLocation.swift",

@@ -116,7 +116,7 @@
       "status": "ported",
       "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/models/NearbyModels.kt",
       "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/NearbyModelsTest.kt",
-      "note": "`NearbyOverview` 커스텀 디코딩. sealed 케이스는 PascalCase(`.empty` → `Empty`)"
+      "note": "`NearbyOverview` 커스텀 디코딩. sealed 케이스는 PascalCase(`.empty` → `Empty`). 옵트인 상세 재료(E65: `OverviewPlace.place`·`event`, `OverviewStation.lat`·`lng`, `NearbySubwayStation.lat`·`lng`)는 미이식 — `ignoreUnknownKeys`로 무시된다(`NearbyOverviewTest.optInDetailFieldsAreToleratedUntilPorted`)."
     },
     {
       "swift": "Models/RouteModels.swift",
