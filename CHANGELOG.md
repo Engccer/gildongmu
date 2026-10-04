@@ -13,7 +13,7 @@
 
 ### 공개 저장소 규율 ① 정리 (A56, 문서·테스트 자료)
 
-문서·테스트·검증 스크립트·fixture의 위치 표기를 일반형으로 바꾸고, 좌표가 필요한 fixture는 위경도를 함께 옮겼다. 실호출 게이트 `verify-surroundings-scene.mjs`는 공개 지점으로 다시 맞췄다(프로덕션 라우트 6/6). 재유입 가드 `public-repo-privacy-guard.test.ts`와 커밋마다 그것을 돌리는 `.githooks/pre-commit`을 더했다(목록은 저장소 밖). 히스토리 재작성은 위원장 확인 대기(BACKLOG A56).
+문서·테스트·검증 스크립트·fixture의 위치 표기를 일반형으로 바꾸고, 좌표가 필요한 fixture는 위경도를 함께 옮겼다. 실호출 게이트 `verify-surroundings-scene.mjs`는 공개 지점으로 다시 맞췄다(프로덕션 라우트 6/6). 재유입 가드 `public-repo-privacy-guard.test.ts`와 커밋마다 그것을 돌리는 `.githooks/pre-commit`을 더했다(목록은 저장소 밖). 과거 기록도 같은 날 다시 써서 올렸다(위원장 확인, 잔존 0·최신 내용 동일·커밋과 태그 보존, 문서 속 커밋 번호 일괄 갱신). 2026-07-22 이후 커밋 번호가 전부 바뀌었으므로 다른 클론은 재클론한다(BACKLOG A56·§8).
 
 ### App Store 2.1 심사 제출 (빌드 32)
 

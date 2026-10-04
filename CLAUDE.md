@@ -340,7 +340,7 @@ node scripts/usage-report.mjs   # API 과금·쿼터·키 만료 상태 (로컬 
 - **신규 국내 서비스는 대장과 작업 큐가 다른 문서다**: `docs/SPEC.md` §3 "실험 백로그"는 **조사한 서비스의 대장**(존재하는가·쓸 만한가)이고, `docs/BACKLOG.md` E는 **착수 후보 큐**(다음에 뭘 할까)다. 발굴하면 SPEC에 등록하고, 착수를 결정하면 BACKLOG로 올린다. 둘은 중복이 아니라 파이프라인이다.
 - **마일스톤을 닫을 때 문서를 분배한다**(위 §문서 체계). iOS 릴리스는 What's New를 `docs/appstore/release-notes.md`에 남기고 `node scripts/build-release-notes.mjs`로 번들 JSON을 재생성한다(드리프트 테스트). ⚠ 번들은 아카이브 시점에 굳으므로 아카이브 뒤 고쳤으면 빌드 번호를 올린다. → PATTERNS
 - **저장소는 공개 전제로 다룬다(2026-08-17 오픈소스 준비)**. **기준 절차의 정본은 `sanitize-for-release` 스킬**(공개 저장소 `Engccer/sanitize-for-release`)이며, gildongmu는 그 스킬의 **유형 C(원본 격리형)** 다. 유형별 절차·스윕 축은 스킬을 따르고 여기서는 이 저장소의 자리만 적는다.
-  - ①**실기기 계측 로그(`guide-diag*.log*`)는 커밋하지 않는다**(`.gitignore`, 원본 `~/gildongmu-private/field-logs/`, 색인만 `docs/superpowers/specs/logs/README.md`; 게이트 테스트엔 익명화 fixture만). **자택·지인 주택은 어디서도 실주소·동 호수로 적지 않는다** — "자택"·"주택 A/B", 대응표 `~/gildongmu-private/places.md`. → PATTERNS
+  - ①**실기기 계측 로그(`guide-diag*.log*`)는 커밋하지 않는다**(`.gitignore`, 원본 `~/gildongmu-private/field-logs/`, 색인만 `docs/superpowers/specs/logs/README.md`; 게이트 테스트엔 익명화 fixture만, 좌표는 위경도를 함께 비공개 상수로). **자택·지인 주택은 어디서도 실주소·동 호수로 적지 않는다** — 자택 근처 상호·골목·정류소와 자택 출발·도착 구간의 이름·거리도 같다. 재유입 가드 `public-repo-privacy-guard.test.ts`(목록은 저장소 밖, 커밋마다 `.githooks/pre-commit`). → PATTERNS
   - ②**정적 seed를 추가·교체하면 `NOTICE.md` 표에 파일·원출처·이용 조건·재생성 스크립트를 함께 적는다** — 코드는 MIT지만 데이터는 원출처 조건이고, 표에 없으면 MIT로 오인된다. OSM 파생 파일과 공공데이터 파일은 한 파일로 합치지 않는다.
   - ③fork가 바꿔야 할 식별자(도메인·번들 ID·패키지명·연락처)를 새로 박으면 `docs/FORKING.md` 표에 그 자리를 더한다.
 - gildongmu는 리뷰 게이트 통과 후 묻지 말고 commit+push(자동배포 포함, [[gildongmu-auto-commit-push]]). `git add -A` 금지, 의도 파일만([[commit-stage-explicit-files]]).
