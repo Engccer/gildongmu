@@ -116,3 +116,14 @@ describe("buildReport", () => {
     expect(out).toContain("2026-08-25");
   });
 });
+
+describe("실행기 모델 목록(PORTS 「모델 전환 안전 게이트」 확인 2026-10-05)", () => {
+  it("기본 후보를 두지 않는다 — MODELS를 빠뜨린 실행이 기각된 모델(3.7·3.8)에 다시 돈을 쓰지 않게", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const src = readFileSync(join(__dirname, "../model-ab.spec.ts"), "utf8");
+    expect(src).toMatch(/if \(!process\.env\.MODELS\) throw/);
+    expect(src).not.toMatch(/process\.env\.MODELS \?\?/);
+    expect(src).not.toMatch(/gemini-3\.[78]-flash/);
+  });
+});

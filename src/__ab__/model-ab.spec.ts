@@ -5,7 +5,7 @@
  * 모델만 바꿔 돌린다. 프로덕션 코드에 계측 훅을 심지 않고, `ai` 클라이언트를 감싼 프록시가
  * 라운드별 지연·토큰·도구 호출을 기록한다.
  *
- * 실행: `MODELS=gemini-3.6-flash,gemini-3.7-flash REPS=3 npm run eval:ab` (`ONLY=09` 부분 실행)
+ * 실행: `MODELS=<현행>,<후보> REPS=3 npm run eval:ab` (`ONLY=09` 부분 실행, 첫 항목이 regression 기준)
  * 결과: `.ab-out/<타임스탬프>.json`(원시, 스킬 `llm-model-eval` 결과 파일 계약) + `.md` 리포트.
  * 판정에 쓴 파일은 `docs/evals/`로 옮겨 커밋한다.
  *
@@ -31,9 +31,10 @@ import { checkLangInvariantArgs, scoreGrounding, type ToolOutput } from "./groun
 import { buildReport, type Checks, type ResultFile, type RunResult } from "./report";
 import { CASES, GILDONG, type Case } from "./cases";
 
-// 기본 비교는 "현재 프로덕션 모델 vs 후보". 현재 모델은 상수를 참조해 교체 시
-// 하네스가 낡은 이름을 들고 있지 않게 한다(후보는 그때그때 MODELS로 넘긴다).
-const MODELS = (process.env.MODELS ?? `${GEMINI_MODEL},gemini-3.7-flash`).split(",");
+// 비교는 "현재 프로덕션 모델 vs 후보"이고 후보는 실행마다 MODELS로 넘긴다. 기본 후보를 두지 않는다 — 기각된
+// 모델 이름(3.7·3.8)이 기본값에 남으면 MODELS를 빠뜨린 실행이 이미 판정한 비교에 다시 돈을 쓴다.
+if (!process.env.MODELS) throw new Error(`MODELS=${GEMINI_MODEL},<후보> 를 지정한다(첫 항목 = 현행).`);
+const MODELS = process.env.MODELS.split(",");
 const REPS = Number(process.env.REPS ?? "3");
 
 interface RoundStat {
