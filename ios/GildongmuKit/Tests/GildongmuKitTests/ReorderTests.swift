@@ -63,4 +63,13 @@ import Foundation
         let order = ["search", "nearby", "chat", "directions"]
         #expect(Reorder.restoredOrder(json: Reorder.encodedOrder(order), defaultOrder: defaults) == order)
     }
+
+    @Test func defaultOrderIsStoredAsUnset() {
+        let defaults = ["chat", "search", "directions", "nearby"]
+        #expect(Reorder.storedValue(defaults, defaultOrder: defaults) == "")
+        let order = ["search", "chat", "directions", "nearby"]
+        #expect(Reorder.restoredOrder(json: Reorder.storedValue(order, defaultOrder: defaults), defaultOrder: defaults) == order)
+        // 미지정이면 뒤에 늘어난 탭도 기본 자리에 선다.
+        #expect(Reorder.restoredOrder(json: "", defaultOrder: defaults + ["new"]) == defaults + ["new"])
+    }
 }

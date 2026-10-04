@@ -1256,6 +1256,9 @@
   "android.place.roadAddressLine": [
     "value"
   ],
+  "android.reorder.moved": [
+    "position"
+  ],
   "android.settings.releaseNotesVersion": [
     "version"
   ],

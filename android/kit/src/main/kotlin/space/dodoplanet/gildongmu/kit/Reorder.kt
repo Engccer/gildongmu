@@ -6,13 +6,9 @@ import kotlinx.serialization.builtins.serializer
 
 /**
  * 순서 바꾸기 판정 — Kit `Reorder.swift` 미러(E67 고정 항목 순서·E66 탭 순서, spec 2026-10-05-reorder-rotor-actions-design.md §1·§3.1).
- * 안드로이드 화면 이식(TalkBack 동작 메뉴)은 iOS 실기기 판정 뒤다. 엔트리 이름은 Swift raw 값 그대로다.
+ * 안드로이드 화면 이식(TalkBack 동작 메뉴)은 iOS 실기기 판정 뒤다. 엔트리 이름은 Swift 케이스 이름 그대로다.
  */
-enum class ReorderMove {
-    toTop, up, down;
-
-    val rawValue: String get() = name
-}
+enum class ReorderMove { toTop, up, down }
 
 object Reorder {
     /** 그 자리에서 할 수 있는 이동, 위에서 아래 순(맨 위로, 위로, 아래로). 항목이 2개 미만이면 없다. */
@@ -63,4 +59,8 @@ object Reorder {
     /** 저장 문자열로 쓰기(`restoredOrder(json)`의 짝). */
     fun encodedOrder(order: List<String>): String =
         KitJson.encodeToString(ListSerializer(String.serializer()), order)
+
+    /** 저장할 값: 기본 순서와 같으면 빈 문자열(미지정), 다르면 JSON 배열(Swift `storedValue`). */
+    fun storedValue(order: List<String>, defaultOrder: List<String>): String =
+        if (order == defaultOrder) "" else encodedOrder(order)
 }

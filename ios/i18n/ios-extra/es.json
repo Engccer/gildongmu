@@ -401,7 +401,7 @@
       "toTop": "Mover al principio",
       "up": "Subir",
       "down": "Bajar",
-      "moved": "Movido a la posición {position}"
+      "moved": "Ahora en la posición {position}"
     }
   },
   "guide": {

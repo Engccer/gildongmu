@@ -63,4 +63,12 @@ class ReorderTest {
         val order = listOf("search", "nearby", "chat", "directions")
         assertEquals(order, Reorder.restoredOrder(json = Reorder.encodedOrder(order), defaults))
     }
+
+    @Test fun `기본 순서는 미지정으로 저장한다`() {
+        val defaults = listOf("chat", "search", "directions", "nearby")
+        assertEquals("", Reorder.storedValue(defaults, defaults))
+        val order = listOf("search", "chat", "directions", "nearby")
+        assertEquals(order, Reorder.restoredOrder(json = Reorder.storedValue(order, defaults), defaults))
+        assertEquals(defaults + "new", Reorder.restoredOrder(json = "", defaults + "new"))
+    }
 }

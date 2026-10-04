@@ -26,7 +26,7 @@
 
 - iOS 심사 상태 조회: `node ios/scripts/asc-submit.mjs --check`
 - 미릴리스 iOS 변경량: `git rev-list --count <직전 릴리스 커밋>..HEAD -- ios/` (숫자를 문서에 박지 않는다 — 사흘에 세 번 낡은 이력이 있다)
-- **안내 세션은 앱 수명이다**(N1, 2026-08-22): `GuideSession`이 세 모델(도보·대중교통·나들이)을 소유하고 루트 시트·탭 바 **바로 위** 띠바(iOS 26 탭 바 액세서리 / 18~25 콘텐츠 inset, K1 2026-08-23)가 표시 층이다. 시트를 내리면 최소화(접기 버튼은 **제목 행 우측 아이콘**, 안내 종료는 **목록 밖 최하단 고정 버튼**)이고 중지는 버튼뿐, 안내 중 새 시작은 거부되며, 어느 탭에서든 받아쓰기 중엔 안내 톤·통지가 억제된다. 탭 순서는 실험판만 설정에서 바꾼다(E66, 2026-10-05 K1 고정 순서 실험 대체, `experimentalTabOrderEnabled`). 정식판은 채팅 첫 탭 고정. 실기기 판정은 `docs/BACKLOG.md` N1·K1.
+- **안내 세션은 앱 수명이다**(N1, 2026-08-22): `GuideSession`이 세 모델(도보·대중교통·나들이)을 소유하고 루트 시트·탭 바 **바로 위** 띠바(iOS 26 탭 바 액세서리 / 18~25 콘텐츠 inset, K1 2026-08-23)가 표시 층이다. 시트를 내리면 최소화(접기 버튼은 **제목 행 우측 아이콘**, 안내 종료는 **목록 밖 최하단 고정 버튼**)이고 중지는 버튼뿐, 안내 중 새 시작은 거부되며, 어느 탭에서든 받아쓰기 중엔 안내 톤·통지가 억제된다. 탭 순서는 실험판만 설정에서 바꾼다(E66, 2026-10-05 K1 고정 순서 실험 대체, `experimentalTabOrderEnabled`). 정식판은 채팅 첫 탭 고정. 실기기 판정은 `docs/BACKLOG.md` N1·K1(탭 순서는 E66).
 - **안내 세션 봉인은 나들이뿐**(`AppConfig.experimentalOutingEnabled`의 `#if EXPERIMENTAL`). 기능 단위로는 건너는 길 이름(E62 ⑥, `experimentalCrossingRoadEnabled`, 2026-10-04 위원장 판정으로 다음 릴리스에서 졸업 예정)과 탭 순서 설정(E66 2026-10-05, `experimentalTabOrderEnabled`)도 실험판 한정이다. 자동차·대중교통(`experimentalGuidanceEnabled`)·백그라운드 음성 안내(`experimentalBackgroundSpeechEnabled`)는 2026-10-01 2.0에서 졸업했다(spec `docs/superpowers/specs/2026-10-01-release-2.0-graduation-design.md`). 해제 선행 조건은 코드가 아니라 판정이며 `docs/BACKLOG.md` G5와 판정 표가 정본이다. 간략 단독 진입점은 2.0에서 폐지했다(E16 축2). ⚠ 봉인의 판정 축은 플래그 참조가 아니라 세션 진입점 전수이고 `guidance-gate-drift.test.ts`가 그 수를 센다.
 - 도보 안내의 도착 추정 자동 종료(잊힌 세션 정리)는 구현·출시 완료(1.10), **실보행 판정 대기**(`docs/BACKLOG.md` E13). 2026-09-02 A31로 간략(직선) 안내 세션까지 같은 축이 닫는다(근처 래치 ∧ 정확도 ≤30m) — 실보행 판정 대기(FIELD-TEST §3 A31).
 

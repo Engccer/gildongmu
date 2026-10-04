@@ -143,6 +143,7 @@ struct SearchView: View {
             // ChatConversationView 동형 teardown: 없으면 오디오 세션·인식 Task가 고아로 남는다.
             .onDisappear {
                 rowFocusTask?.cancel()
+                reorderFocusTask?.cancel()
                 Task { await speech.cancel() }
             }
             .alert(speechAlertMessage ?? "", isPresented: speechAlertBinding) {
@@ -184,6 +185,7 @@ struct SearchView: View {
     private func landFirstRowFocus(_ proxy: ScrollViewProxy) {
         guard let first = firstRow else { return }
         rowFocusTask?.cancel()
+        reorderFocusTask?.cancel()
         rowFocusTask = Task { @MainActor in
             proxy.scrollTo(first.scroll, anchor: .top)
             try? await Task.sleep(for: .milliseconds(400))

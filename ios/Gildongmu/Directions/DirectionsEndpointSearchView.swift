@@ -370,6 +370,7 @@ struct DirectionsEndpointSearchView: View {
     }
 
     private func select(_ endpoint: DirectionsEndpoint) {
+        reorderFocusTask?.cancel()
         onSelect(endpoint)
         dismiss()
     }

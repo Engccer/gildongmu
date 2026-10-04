@@ -401,7 +401,7 @@
       "toTop": "Sposta in cima",
       "up": "Sposta su",
       "down": "Sposta giù",
-      "moved": "Spostato in posizione {position}"
+      "moved": "Ora in posizione {position}"
     }
   },
   "guide": {

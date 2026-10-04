@@ -71,7 +71,7 @@ struct GildongmuApp: App {
     /// (탭 내용 초기화는 부작용이 아니라 의도 — 검색 결과·주변 데이터는 로케일
     /// 의존이라 새 언어로 다시 받아야 한다.)
     @AppStorage(AppLanguage.selectionKey) private var languageRaw = ""
-    /// 탭 순서(E66, 실험판만 쓰인다). 설정 "탭 순서" 화면이 떠날 때 한 번 쓴다.
+    /// 탭 순서(E66, 실험판만 쓰인다). 설정 "탭 순서" 화면이 떠날 때와 백그라운드 전환 때 쓴다.
     @AppStorage(AppTab.orderKey) private var tabOrderRaw = ""
     /// 탭 순서가 실제로 바뀌면 증가해 `.id`로 탭 트리를 재생성한다 — `ForEach` 순서 변경만으로 `TabView`가 탭 바를
     /// 다시 배치한다는 보장이 없어 언어 전환과 같은 재생성으로 결정론을 택했다(spec §3.2).

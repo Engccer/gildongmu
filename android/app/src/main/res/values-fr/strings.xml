@@ -300,6 +300,10 @@
     <string name="android_releaseNotice_head2">À garder à l’esprit</string>
     <string name="android_releaseNotice_intro">Profitez maintenant du guidage en temps réel aussi dans les transports en commun et en voiture.</string>
     <string name="android_releaseNotice_title">Gildongmu est passé en version 2.0 !</string>
+    <string name="android_reorder_down">Déplacer vers le bas</string>
+    <string name="android_reorder_moved">Maintenant en position %1$s</string>
+    <string name="android_reorder_toTop">Déplacer en haut</string>
+    <string name="android_reorder_up">Déplacer vers le haut</string>
     <string name="android_route_alight">descente à %1$s</string>
     <string name="android_route_board">montée à %1$s</string>
     <string name="android_route_durationMinutes">environ %1$s min</string>
@@ -352,6 +356,9 @@
     <string name="android_settings_sectionGeneral">Général</string>
     <string name="android_settings_sectionGuidance">Guidage</string>
     <string name="android_settings_sectionVoice">Voix</string>
+    <string name="android_settings_tabOrder">Ordre des onglets</string>
+    <string name="android_settings_tabOrderReset">Rétablir l’ordre par défaut</string>
+    <string name="android_settings_tabOrderResetDone">Ordre par défaut rétabli</string>
     <string name="android_settings_theme">Thème</string>
     <string name="android_settings_themeDark">Sombre</string>
     <string name="android_settings_themeLight">Clair</string>

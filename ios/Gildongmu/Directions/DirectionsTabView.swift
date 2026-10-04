@@ -1183,6 +1183,7 @@ struct DirectionsTabView: View {
     /// 사라지므로 포커스를 먼저 조회 버튼으로 선점한다(헌장 §5 — 제거될 요소에 커서를
     /// 남기지 않는다). setEndpoint 경유라 endpoint 최근 목록 기록도 기존 규칙대로 따라온다.
     private func activateRecentRoute(_ route: RecentRoute) {
+        reorderFocusTask?.cancel()
         submitFocused = true
         model.setEndpoint(directionsEndpoint(route.from), for: .from)
         model.setEndpoint(directionsEndpoint(route.to), for: .to)

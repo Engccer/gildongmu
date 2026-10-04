@@ -398,10 +398,10 @@
       "zoneAround": "À proximité, {distance}"
     },
     "reorder": {
-      "toTop": "Placer en haut",
-      "up": "Monter",
-      "down": "Descendre",
-      "moved": "Déplacé en position {position}"
+      "toTop": "Déplacer en haut",
+      "up": "Déplacer vers le haut",
+      "down": "Déplacer vers le bas",
+      "moved": "Maintenant en position {position}"
     }
   },
   "guide": {

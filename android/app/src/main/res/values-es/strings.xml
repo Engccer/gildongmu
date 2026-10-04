@@ -300,6 +300,10 @@
     <string name="android_releaseNotice_head2">Ten en cuenta</string>
     <string name="android_releaseNotice_intro">Ahora recibe guía en tiempo real también cuando usas el transporte público o viajas en coche.</string>
     <string name="android_releaseNotice_title">¡Gildongmu se ha actualizado a la versión 2.0!</string>
+    <string name="android_reorder_down">Bajar</string>
+    <string name="android_reorder_moved">Ahora en la posición %1$s</string>
+    <string name="android_reorder_toTop">Mover al principio</string>
+    <string name="android_reorder_up">Subir</string>
     <string name="android_route_alight">bajar en %1$s</string>
     <string name="android_route_board">subir en %1$s</string>
     <string name="android_route_durationMinutes">unos %1$s min</string>
@@ -352,6 +356,9 @@
     <string name="android_settings_sectionGeneral">General</string>
     <string name="android_settings_sectionGuidance">Guía</string>
     <string name="android_settings_sectionVoice">Voz</string>
+    <string name="android_settings_tabOrder">Orden de las pestañas</string>
+    <string name="android_settings_tabOrderReset">Restablecer el orden predeterminado</string>
+    <string name="android_settings_tabOrderResetDone">Orden predeterminado restablecido</string>
     <string name="android_settings_theme">Tema</string>
     <string name="android_settings_themeDark">Oscuro</string>
     <string name="android_settings_themeLight">Claro</string>

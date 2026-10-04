@@ -27984,7 +27984,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Descendre"
+            "value": "Déplacer vers le bas"
           }
         },
         "it": {
@@ -28018,19 +28018,19 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Movido a la posición %1$@"
+            "value": "Ahora en la posición %1$@"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Déplacé en position %1$@"
+            "value": "Maintenant en position %1$@"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Spostato in posizione %1$@"
+            "value": "Ora in posizione %1$@"
           }
         },
         "ja": {
@@ -28064,7 +28064,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Placer en haut"
+            "value": "Déplacer en haut"
           }
         },
         "it": {
@@ -28104,7 +28104,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Monter"
+            "value": "Déplacer vers le haut"
           }
         },
         "it": {

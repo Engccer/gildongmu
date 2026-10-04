@@ -2,7 +2,7 @@ import Foundation
 
 /// 순서 바꾸기 로터 액션(spec docs/superpowers/specs/2026-10-05-reorder-rotor-actions-design.md §1).
 /// 고정한 최근 항목(E67)과 탭 순서(E66)가 같은 조작법이라 판정을 여기 한 곳에 둔다.
-public enum ReorderMove: String, CaseIterable, Sendable {
+public enum ReorderMove: Sendable {
     case toTop, up, down
 }
 
@@ -51,5 +51,11 @@ public enum Reorder {
     /// 저장 문자열로 쓰기(`restoredOrder(json:)`의 짝).
     public static func encodedOrder(_ order: [String]) -> String {
         (try? JSONEncoder().encode(order)).flatMap { String(data: $0, encoding: .utf8) } ?? ""
+    }
+
+    /// 저장할 값: 기본 순서와 같으면 빈 문자열(미지정, spec §3.1 — 기본 순서를 명시 저장하면 뒤에 늘어난 탭이
+    /// 기본 자리가 아니라 끝에 붙는다), 다르면 JSON 배열.
+    public static func storedValue(_ order: [String], defaultOrder: [String]) -> String {
+        order == defaultOrder ? "" : encodedOrder(order)
     }
 }
