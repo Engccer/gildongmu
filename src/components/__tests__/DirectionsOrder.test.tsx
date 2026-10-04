@@ -6,8 +6,9 @@ import type { Place } from "@/lib/types";
 import messages from "../../../messages/ko.json";
 
 /**
- * E11 섹션 동적 순서 계약(spec 2026-08-12 §2·§3.2):
- * 성공 앞·비성공 뒤, 도보 30분 이하 최상단, settled 후 순서 불변.
+ * 섹션 동적 순서 계약(E11 spec 2026-08-12 §2·§3.2 + E64):
+ * 성공 앞·비성공 뒤, 도보·대중교통 둘 다 성공이면 빠른 쪽 최상단(대중교통이 없으면 도보 30분 이하 최상단),
+ * settled 후 순서 불변. 포커스는 맨 위 섹션 heading.
  */
 
 vi.mock("@/lib/geolocation", () => ({
@@ -46,17 +47,18 @@ const walkLines = (distanceMeters: number, minutes: number) => ({
 });
 const WALK_SHORT = walkLines(900, 20);
 const WALK_LONG = walkLines(2500, 35);
-const TRANSIT_OK = {
+const transitOk = (totalMinutes: number) => ({
   result: {
     recommended: {
-      summary: { totalMinutes: 30, fare: 1550, transfers: 0, walkMinutes: 6 },
+      summary: { totalMinutes, fare: 1550, transfers: 0, walkMinutes: 6 },
       legs: [{ mode: "walk", minutes: 6 }],
       routeKey: "p0",
     },
     alternatives: [],
     totalCandidates: 1,
   },
-};
+});
+const TRANSIT_OK = transitOk(30);
 
 /** walk는 호출 차수별 응답 배열(재조회의 응답 전환용) */
 function stubFetch(opts: { walks: Array<object | "error">; transit: object | "error" }) {
@@ -143,8 +145,8 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("길찾기 섹션 동적 순서(E11 spec §2)", () => {
-  it("도보 30분 이하 성공이면 도보가 최상단이고 포커스도 도보 heading이다", async () => {
+describe("길찾기 섹션 동적 순서(E11 spec §2 + E64)", () => {
+  it("도보가 대중교통보다 빠르면 도보가 최상단이고 포커스도 도보 heading이다", async () => {
     stubFetch({ walks: [WALK_SHORT], transit: TRANSIT_OK });
     await queryRoutes();
     expect(modeHeadings()).toEqual(["도보", "대중교통"]);
@@ -153,7 +155,7 @@ describe("길찾기 섹션 동적 순서(E11 spec §2)", () => {
     });
   });
 
-  it("장거리 도보는 제자리, 실패한 대중교통은 최하단(첫 성공 포커스는 도보)", async () => {
+  it("대중교통 실패 시 장거리 도보는 제자리, 실패한 대중교통은 최하단(첫 성공 포커스는 도보)", async () => {
     stubFetch({ walks: [WALK_LONG], transit: "error" });
     await queryRoutes();
     expect(modeHeadings()).toEqual(["도보", "대중교통"]);
@@ -162,10 +164,28 @@ describe("길찾기 섹션 동적 순서(E11 spec §2)", () => {
     });
   });
 
-  it("전 수단 성공에 도보 장거리면 현행 순서 유지", async () => {
+  it("대중교통이 도보보다 빠르면 기본 순서(대중교통 최상단, 포커스도 대중교통)", async () => {
     stubFetch({ walks: [WALK_LONG], transit: TRANSIT_OK });
     await queryRoutes();
     expect(modeHeadings()).toEqual(["대중교통", "도보"]);
+    await waitFor(() => {
+      expect(document.activeElement?.textContent).toBe("대중교통");
+    });
+  });
+
+  it("30분 이하 도보라도 대중교통이 더 빠르면 대중교통이 최상단이다", async () => {
+    stubFetch({ walks: [WALK_SHORT], transit: transitOk(15) });
+    await queryRoutes();
+    expect(modeHeadings()).toEqual(["대중교통", "도보"]);
+  });
+
+  it("30분 넘는 도보라도 대중교통보다 빠르면 도보가 최상단이다", async () => {
+    stubFetch({ walks: [WALK_LONG], transit: transitOk(50) });
+    await queryRoutes();
+    expect(modeHeadings()).toEqual(["도보", "대중교통"]);
+    await waitFor(() => {
+      expect(document.activeElement?.textContent).toBe("도보");
+    });
   });
 
 });

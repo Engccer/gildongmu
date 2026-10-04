@@ -54,21 +54,31 @@ object WalkCollapse {
 }
 
 /**
- * E11 섹션 표시 순서(웹 src/lib/directions-order.ts 미러 — 공유 fixture directions-order-scenarios.json이 동조 강제).
- * 1. 성공 수단 앞, 비성공(경로 없음·조회 실패) 뒤 — 각 군 안은 입력 순서 유지.
- * 2. 도보 성공이고 30분 이하(도보 상세 접기와 같은 경계)면 성공군 맨 앞.
+ * 섹션 표시 순서(E11 + E64, 웹 src/lib/directions-order.ts 미러 — 공유 fixture directions-order-scenarios.json이 동조 강제).
+ * 1. 성공 수단 앞, 비성공(경로 없음·조회 실패·미지원) 뒤 — 각 군 안은 입력 순서 유지.
+ * 2. 도보와 대중교통이 둘 다 성공이면 시간을 비교해 빠른 쪽만 성공군 맨 앞(같으면 도보). 자동차는 비교 밖.
+ * 3. 대중교통 성공이 없으면 도보 성공이고 30분 이하(도보 상세 접기와 같은 경계)일 때 도보가 성공군 맨 앞.
+ * 비교는 화면 표시 분 값으로 한다(도보는 초 반올림, 대중교통은 대표 경로 `totalMinutes`).
+ * ⚠ `transitMinutes`는 기본값 없는 인자다 — 생략이 컴파일되면 호출부 누락이 조용히 종전 규칙으로 돌아간다.
  */
 object DirectionsOrder {
     fun orderModes(
         modes: List<DirectionsMode>,
         isSuccess: (DirectionsMode) -> Boolean,
         walkDurationSeconds: Int?,
+        transitMinutes: Int?,
     ): List<DirectionsMode> {
         val successes = modes.filter(isSuccess)
         val failures = modes.filter { !isSuccess(it) }
-        val promoteWalk = walkDurationSeconds != null && DirectionsMode.walk in successes &&
-            !WalkCollapse.shouldCollapse(walkDurationSeconds)
-        val orderedSuccesses = if (promoteWalk) listOf(DirectionsMode.walk) + successes.filter { it != DirectionsMode.walk } else successes
+        val walk = if (DirectionsMode.walk in successes) walkDurationSeconds else null
+        val transit = if (DirectionsMode.transit in successes) transitMinutes else null
+        val lead = when {
+            walk != null && transit != null ->
+                if ((walk / 60.0).roundToInt() <= transit) DirectionsMode.walk else DirectionsMode.transit
+            walk != null && !WalkCollapse.shouldCollapse(walk) -> DirectionsMode.walk
+            else -> null
+        }
+        val orderedSuccesses = if (lead != null) listOf(lead) + successes.filter { it != lead } else successes
         return orderedSuccesses + failures
     }
 }
@@ -172,10 +182,13 @@ class DirectionsResults private constructor(
     private companion object {
         fun orderOf(outcomes: Map<DirectionsMode, DirectionsModeOutcome>): List<DirectionsMode> {
             val walkDuration = (outcomes[DirectionsMode.walk] as? DirectionsModeOutcome.Walk)?.briefing?.durationSeconds
+            // 섹션 첫 줄(대표 경로)의 소요 분 — 화면에 표시되는 값 그대로(E64).
+            val transitMinutes = (outcomes[DirectionsMode.transit] as? DirectionsModeOutcome.Transit)?.result?.recommended?.summary?.totalMinutes
             return DirectionsOrder.orderModes(
                 modes = DirectionsMode.displayOrder.filter { outcomes[it] != null },
                 isSuccess = { outcomes[it]?.isSuccess == true },
                 walkDurationSeconds = walkDuration,
+                transitMinutes = transitMinutes,
             )
         }
     }

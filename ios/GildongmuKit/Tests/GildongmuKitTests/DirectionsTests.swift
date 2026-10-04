@@ -14,11 +14,11 @@ private func walkFixture() -> WalkRouteBriefing {
         stepFree: nil, stepFreeNotice: nil, finalApproach: nil, waypoint: nil, kind: nil)
 }
 
-private func transitFixture() -> TransitRouteResult {
+private func transitFixture(totalMinutes: Int = 30) -> TransitRouteResult {
     TransitRouteResult(
         recommended: TransitRoute(
             summary: TransitRouteSummary(
-                totalMinutes: 30, fare: 1550, transfers: 1, walkMinutes: 8,
+                totalMinutes: totalMinutes, fare: 1550, transfers: 1, walkMinutes: 8,
                 departName: "길동", arriveName: "시청"),
             legs: [TransitRouteLeg(mode: "subway", lineName: "수도권 5호선", fromName: "길동", toName: "시청", stationCount: 10, minutes: 22,
                                    serviceStatus: nil, firstServiceTime: nil, lastServiceTime: nil)],
@@ -134,6 +134,7 @@ private struct OrderCase: Decodable {
     let modes: [String]
     let success: [String: Bool]
     let walkDurationSeconds: Int?
+    let transitMinutes: Int?
     let expect: [String]
 }
 
@@ -154,14 +155,15 @@ struct DirectionsOrderTests {
     func orderMatchesWebFixture() throws {
         let cases = try loadOrderScenarios().order
         // ⚠ 공회전 방지: 배열이 비면 루프가 0회 돌고 조용히 통과한다.
-        #expect(cases.count >= 9)
+        #expect(cases.count >= 15)
         for c in cases {
             let modes = c.modes.compactMap(DirectionsMode.init(rawValue:))
             #expect(modes.count == c.modes.count, "\(c.name): 미지의 수단")
             let got = DirectionsOrder.orderModes(
                 modes: modes,
                 isSuccess: { c.success[$0.rawValue] == true },
-                walkDurationSeconds: c.walkDurationSeconds
+                walkDurationSeconds: c.walkDurationSeconds,
+                transitMinutes: c.transitMinutes
             )
             #expect(got.map(\.rawValue) == c.expect, "\(c.name)")
         }
@@ -199,6 +201,20 @@ struct DirectionsOrderTests {
         #expect(results.orderedModes == [.walk, .transit])
         #expect(results.displayedModes == [.walk, .transit])
         #expect(results.firstSuccess == .walk)
+    }
+
+    @Test("새 조회(init)는 대중교통 대표 경로 분을 비교에 넘긴다 — 대중교통이 빠르면 맨 위(E64)")
+    func initComparesTransitMinutes() {
+        // 도보 15분(900초) 대 대중교통 30분 → 도보, 대 10분 → 대중교통.
+        let slower = DirectionsResults(outcomes: [
+            .transit: .transit(transitFixture()), .walk: .walk(walkFixture()),
+        ])
+        #expect(slower.orderedModes == [.walk, .transit])
+        let faster = DirectionsResults(outcomes: [
+            .transit: .transit(transitFixture(totalMinutes: 10)), .walk: .walk(walkFixture()),
+        ])
+        #expect(faster.orderedModes == [.transit, .walk])
+        #expect(faster.firstSuccess == .transit)
     }
 }
 

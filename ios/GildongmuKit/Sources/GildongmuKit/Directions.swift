@@ -34,27 +34,33 @@ public enum WalkCollapse {
     }
 }
 
-/// E11 섹션 표시 순서(웹 src/lib/directions-order.ts 미러 — 공유 fixture
+/// 섹션 표시 순서(E11 + E64, 웹 src/lib/directions-order.ts 미러 — 공유 fixture
 /// directions-order-scenarios.json이 동조 강제).
-/// 1. 성공 수단 앞, 비성공(경로 없음·조회 실패) 뒤 — 각 군 안은 입력 순서 유지.
-/// 2. 도보 성공이고 30분 이하(도보 상세 접기와 같은 경계)면 성공군 맨 앞.
+/// 1. 성공 수단 앞, 비성공(경로 없음·조회 실패·미지원) 뒤 — 각 군 안은 입력 순서 유지.
+/// 2. 도보와 대중교통이 둘 다 성공이면 시간을 비교해 빠른 쪽만 성공군 맨 앞(같으면 도보). 자동차는 비교 밖.
+/// 3. 대중교통 성공이 없으면 도보 성공이고 30분 이하(도보 상세 접기와 같은 경계)일 때 도보가 성공군 맨 앞.
+/// 비교는 화면 표시 분 값으로 한다(도보는 초 반올림, 대중교통은 대표 경로 `totalMinutes`).
+/// ⚠ `transitMinutes`는 기본값 없는 인자다 — 생략이 컴파일되면 호출부 누락이 조용히 종전 규칙으로 돌아간다.
 public enum DirectionsOrder {
     public static func orderModes(
         modes: [DirectionsMode],
         isSuccess: (DirectionsMode) -> Bool,
-        walkDurationSeconds: Int?
+        walkDurationSeconds: Int?,
+        transitMinutes: Int?
     ) -> [DirectionsMode] {
         let successes = modes.filter(isSuccess)
         let failures = modes.filter { !isSuccess($0) }
-        let promoteWalk: Bool
-        if let walkDurationSeconds, successes.contains(.walk) {
-            promoteWalk = !WalkCollapse.shouldCollapse(durationSeconds: walkDurationSeconds)
+        let walk = successes.contains(.walk) ? walkDurationSeconds : nil
+        let transit = successes.contains(.transit) ? transitMinutes : nil
+        let lead: DirectionsMode?
+        if let walk, let transit {
+            lead = Int((Double(walk) / 60).rounded()) <= transit ? .walk : .transit
+        } else if let walk, !WalkCollapse.shouldCollapse(durationSeconds: walk) {
+            lead = .walk
         } else {
-            promoteWalk = false
+            lead = nil
         }
-        let orderedSuccesses = promoteWalk
-            ? [.walk] + successes.filter { $0 != .walk }
-            : successes
+        let orderedSuccesses = lead.map { lead in [lead] + successes.filter { $0 != lead } } ?? successes
         return orderedSuccesses + failures
     }
 }
@@ -153,10 +159,18 @@ public struct DirectionsResults: Sendable {
         } else {
             walkDuration = nil
         }
+        // 섹션 첫 줄(대표 경로)의 소요 분 — 화면에 표시되는 값 그대로(E64).
+        let transitMinutes: Int?
+        if case .transit(let result)? = outcomes[.transit] {
+            transitMinutes = result.recommended.summary.totalMinutes
+        } else {
+            transitMinutes = nil
+        }
         self.orderedModes = DirectionsOrder.orderModes(
             modes: DirectionsMode.displayOrder.filter { outcomes[$0] != nil },
             isSuccess: { outcomes[$0]?.isSuccess == true },
-            walkDurationSeconds: walkDuration
+            walkDurationSeconds: walkDuration,
+            transitMinutes: transitMinutes
         )
     }
 

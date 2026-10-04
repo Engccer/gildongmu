@@ -41,6 +41,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 /** iOS `DirectionsModel` 계약을 JVM에서 잠근다(spec §4·§9). 전송은 스텁, 위치는 페이크, 문장은 실제 카탈로그. */
@@ -836,6 +837,21 @@ class DirectionsViewModelTest {
         assertEquals(LandingTarget.RequeriedRoute("b0"), m.state.value.landing?.target)
         assertTrue(m.state.value.landing!!.seq > before)
         assertEquals(ko.get("route.transit.alternativeBusOnly"), transitAlternativeName(found, ko)) // 이름 = 요청 축
+    }
+
+    /** E64: 대중교통이 도보보다 빠르면 맨 위, 순서는 조회 완료 때 1회뿐이라 수단 재조회가 섹션을 옮기지 않는다. */
+    @Test fun `대중교통이 빠르면 맨 위이고 재조회 뒤에도 순서가 그대로다`() = runTest(dispatcher) {
+        // 대표 경로 34분 → 10분(도보는 1806초 = 표시 30분).
+        val fastTransit = transitWithAxes.replaceFirst("\"totalMinutes\":34", "\"totalMinutes\":10")
+        assertTrue(fastTransit != transitWithAxes)
+        val m = settledVm(Routes(transit = fastTransit, walk = walkBody, car = carBody, requery = mapOf("2" to busOnlyFound, "1" to noneBody)))
+        val order = listOf(DirectionsMode.transit, DirectionsMode.car, DirectionsMode.walk)
+        assertEquals(order, m.state.value.results!!.displayedModes)
+        val results = m.state.value.results
+        m.requery(TransitModeAxis.busOnly); dispatcher.scheduler.advanceUntilIdle()
+        assertIs<TransitRequeryState.Found>(m.state.value.transitRequery[TransitModeAxis.busOnly])
+        assertSame(results, m.state.value.results)
+        assertEquals(order, m.state.value.results!!.displayedModes)
     }
 
     @Test fun `재조회 없음 - 문장으로 착지하고 통지 없음`() = runTest(dispatcher) {

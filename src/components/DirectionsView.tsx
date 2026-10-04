@@ -898,6 +898,7 @@ export function DirectionsView({
         return;
       }
       const walkOutcome = outcomes.walk;
+      const transitOutcome = outcomes.transit;
       const orderedModes = orderDirectionsModes(
         activeModes,
         Object.fromEntries(
@@ -905,6 +906,10 @@ export function DirectionsView({
         ),
         walkOutcome?.kind === "done" && walkOutcome.mode === "walk"
           ? walkOutcome.lines[0].route.durationSeconds
+          : null,
+        // 섹션 첫 줄(대표 경로)의 소요 분 — 화면에 표시되는 값 그대로(E64).
+        transitOutcome?.kind === "done" && transitOutcome.mode === "transit"
+          ? transitOutcome.result.recommended.summary.totalMinutes
           : null,
       );
       const planId = `p${myGen}`;

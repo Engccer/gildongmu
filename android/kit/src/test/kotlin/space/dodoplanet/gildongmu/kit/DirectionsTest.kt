@@ -28,9 +28,9 @@ class DirectionsTest {
         steps = listOf(WalkRouteStep(description = "천호대로를 따라 119m 이동")),
     )
 
-    private fun transitFixture() = TransitRouteResult(
+    private fun transitFixture(totalMinutes: Int = 30) = TransitRouteResult(
         recommended = TransitRoute(
-            summary = TransitRouteSummary(totalMinutes = 30, fare = 1550, transfers = 1, walkMinutes = 8, departName = "길동", arriveName = "시청"),
+            summary = TransitRouteSummary(totalMinutes = totalMinutes, fare = 1550, transfers = 1, walkMinutes = 8, departName = "길동", arriveName = "시청"),
             legs = listOf(TransitRouteLeg(mode = "subway", lineName = "수도권 5호선", fromName = "길동", toName = "시청", stationCount = 10, minutes = 22)),
             routeKey = "p0",
         ),
@@ -142,17 +142,17 @@ class DirectionsTest {
     @Serializable
     private data class OrderScenarios(val order: List<OrderCase>) {
         @Serializable
-        data class OrderCase(val name: String, val modes: List<String>, val success: Map<String, Boolean>, val walkDurationSeconds: Int? = null, val expect: List<String>)
+        data class OrderCase(val name: String, val modes: List<String>, val success: Map<String, Boolean>, val walkDurationSeconds: Int?, val transitMinutes: Int?, val expect: List<String>)
     }
 
     @Test fun orderMatchesWebFixture() {
         val cases = Fixtures.sharedJson("directions-order-scenarios.json", OrderScenarios.serializer()).order
         // ⚠ 공회전 방지: 배열이 비면 루프가 0회 돌고 조용히 통과한다.
-        assertTrue(cases.size >= 9)
+        assertTrue(cases.size >= 15)
         for (c in cases) {
             val modes = c.modes.mapNotNull(DirectionsMode::fromRawValue)
             assertEquals(c.modes.size, modes.size, "${c.name}: 미지의 수단")
-            val got = DirectionsOrder.orderModes(modes, isSuccess = { c.success[it.rawValue] == true }, walkDurationSeconds = c.walkDurationSeconds)
+            val got = DirectionsOrder.orderModes(modes, isSuccess = { c.success[it.rawValue] == true }, walkDurationSeconds = c.walkDurationSeconds, transitMinutes = c.transitMinutes)
             assertEquals(c.expect, got.map { it.rawValue }, c.name)
         }
     }
@@ -189,6 +189,16 @@ class DirectionsTest {
         assertEquals(listOf(DirectionsMode.walk, DirectionsMode.transit), results.orderedModes)
         assertEquals(listOf(DirectionsMode.walk, DirectionsMode.transit), results.displayedModes)
         assertEquals(DirectionsMode.walk, results.firstSuccess)
+    }
+
+    /** 새 조회(생성)는 대중교통 대표 경로 분을 비교에 넘긴다 — 대중교통이 빠르면 맨 위(E64). */
+    @Test fun initComparesTransitMinutes() {
+        // 도보 15분(900초) 대 대중교통 30분 → 도보, 대 10분 → 대중교통.
+        val slower = DirectionsResults(mapOf(DirectionsMode.transit to DirectionsModeOutcome.Transit(transitFixture()), DirectionsMode.walk to DirectionsModeOutcome.Walk(walkFixture())))
+        assertEquals(listOf(DirectionsMode.walk, DirectionsMode.transit), slower.orderedModes)
+        val faster = DirectionsResults(mapOf(DirectionsMode.transit to DirectionsModeOutcome.Transit(transitFixture(totalMinutes = 10)), DirectionsMode.walk to DirectionsModeOutcome.Walk(walkFixture())))
+        assertEquals(listOf(DirectionsMode.transit, DirectionsMode.walk), faster.orderedModes)
+        assertEquals(DirectionsMode.transit, faster.firstSuccess)
     }
 
     /** 경유지(N4): 대중교통은 호출하지 않고 UnsupportedWaypoint — 성공이 아니지만 섹션은 남아 사유를 말한다. */
