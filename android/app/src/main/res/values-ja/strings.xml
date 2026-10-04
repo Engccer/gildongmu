@@ -531,7 +531,7 @@
     <string name="bike_placeButton">付近のタルンイ(公共自転車)ステーション</string>
     <string name="bike_ready">付近のタルンイのステーションです。</string>
     <string name="bike_refresh">更新</string>
-    <string name="bike_source">出典: ソウルオープンデータ広場(タルンイ)。</string>
+    <string name="bike_source">出典: ソウル特別市公共データ(ソウルオープンデータ広場)のタルンイ。</string>
     <string name="bike_stationDistance">徒歩約%1$s</string>
     <string name="bus_arrival">%1$s番 %2$s、%3$sつ前のバス停、約%4$s分後に到着</string>
     <string name="bus_arrivalMessage">%1$s番 %2$s、%3$s</string>
@@ -715,7 +715,7 @@
     <string name="eventsNearby_paid">有料 %1$s</string>
     <string name="eventsNearby_ready">周辺の文化イベントです。</string>
     <string name="eventsNearby_refresh">更新</string>
-    <string name="eventsNearby_source">出典: ソウル公共データ広場の文化イベント情報。本日開催中のイベントのみ表示します。</string>
+    <string name="eventsNearby_source">出典: ソウル特別市公共データ(ソウルオープンデータ広場)の文化イベント情報。本日開催中のイベントのみ表示します。</string>
     <string name="eventsNearby_target">対象 %1$s</string>
     <string name="guide_addWaypointHere">ここを経由地に追加</string>
     <string name="guide_alreadyActive">すでに案内中です。先に進行中の案内を終了してください。</string>
@@ -1145,7 +1145,7 @@
     <string name="subwayArrival_prevDeparted">1駅前の%1$sを出発。</string>
     <string name="subwayArrival_ready">リアルタイム到着情報の準備ができました。</string>
     <string name="subwayArrival_refresh">更新</string>
-    <string name="subwayArrival_source">出典: ソウルオープンデータ広場の地下鉄リアルタイム到着情報。</string>
+    <string name="subwayArrival_source">出典: ソウル特別市公共データ(ソウルオープンデータ広場)の地下鉄リアルタイム到着情報。</string>
     <string name="subwayArrival_stopsAway">%1$s駅前の%2$s。</string>
     <string name="subwayArrival_stopsJoin">%1$s駅前</string>
     <string name="subwayNearby_arrivalUnavailable">この駅の到着情報を取得できませんでした。</string>
@@ -1162,7 +1162,7 @@
     <string name="subwayNearby_noRealtime">この駅のリアルタイム到着情報は提供されていません。</string>
     <string name="subwayNearby_ready">近くの地下鉄到着情報です。</string>
     <string name="subwayNearby_refresh">更新</string>
-    <string name="subwayNearby_source">出典: ソウルオープンデータ広場の地下鉄リアルタイム到着情報。</string>
+    <string name="subwayNearby_source">出典: ソウル特別市公共データ(ソウルオープンデータ広場)の地下鉄リアルタイム到着情報。</string>
     <string name="subwayNearby_stationDistance">約%1$s</string>
     <string name="surroundings_bucket_across">向かい</string>
     <string name="surroundings_bucket_beyond">建物の先</string>

@@ -531,7 +531,7 @@
     <string name="bike_placeButton">Bike stations nearby</string>
     <string name="bike_ready">Nearby bike stations.</string>
     <string name="bike_refresh">Refresh</string>
-    <string name="bike_source">Source: Seoul Open Data Plaza (Ttareungyi).</string>
+    <string name="bike_source">Source: Seoul public data (Seoul Open Data Plaza), Ttareungyi.</string>
     <string name="bike_stationDistance">%1$s walk</string>
     <string name="bus_arrival">Route %1$s %2$s, {3, plural, one {%3$s stop} other {%3$s stops}} away, in about %4$s min</string>
     <string name="bus_arrivalMessage">Route %1$s %2$s, %3$s</string>
@@ -715,7 +715,7 @@
     <string name="eventsNearby_paid">Paid %1$s</string>
     <string name="eventsNearby_ready">Cultural events near you.</string>
     <string name="eventsNearby_refresh">Refresh</string>
-    <string name="eventsNearby_source">Source: Seoul Open Data Plaza cultural events. Only events running today are shown.</string>
+    <string name="eventsNearby_source">Source: Seoul public data (Seoul Open Data Plaza) cultural events. Only events running today are shown.</string>
     <string name="eventsNearby_target">For %1$s</string>
     <string name="guide_addWaypointHere">Add here as a waypoint</string>
     <string name="guide_alreadyActive">Guidance is already running. End the current guidance first.</string>
@@ -1145,7 +1145,7 @@
     <string name="subwayArrival_prevDeparted">1 stop away, departed %1$s.</string>
     <string name="subwayArrival_ready">Live arrivals are ready.</string>
     <string name="subwayArrival_refresh">Refresh</string>
-    <string name="subwayArrival_source">Source: Seoul Open Data Plaza live subway arrivals.</string>
+    <string name="subwayArrival_source">Source: Seoul public data (Seoul Open Data Plaza) live subway arrivals.</string>
     <string name="subwayArrival_stopsAway">{1, plural, one {%1$s stop} other {%1$s stops}} away, at %2$s.</string>
     <string name="subwayArrival_stopsJoin">{1, plural, one {%1$s stop} other {%1$s stops}} away</string>
     <string name="subwayNearby_arrivalUnavailable">Could not load arrival info for this station.</string>
@@ -1162,7 +1162,7 @@
     <string name="subwayNearby_noRealtime">Real-time arrivals are not available for this station.</string>
     <string name="subwayNearby_ready">Subway arrivals near you.</string>
     <string name="subwayNearby_refresh">Refresh</string>
-    <string name="subwayNearby_source">Source: Seoul Open Data Plaza live subway arrivals.</string>
+    <string name="subwayNearby_source">Source: Seoul public data (Seoul Open Data Plaza) live subway arrivals.</string>
     <string name="subwayNearby_stationDistance">about %1$s</string>
     <string name="surroundings_bucket_across">Across the street</string>
     <string name="surroundings_bucket_beyond">Beyond the building</string>

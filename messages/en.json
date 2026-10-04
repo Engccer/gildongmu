@@ -303,7 +303,7 @@
     "etaMinSec": "Arriving in {minutes} min {seconds} sec.",
     "etaSec": "Arriving in {seconds} sec.",
     "nowAt": "Now at {station}.",
-    "source": "Source: Seoul Open Data Plaza live subway arrivals."
+    "source": "Source: Seoul public data (Seoul Open Data Plaza) live subway arrivals."
   },
   "subwayNearby": {
     "button": "Subway arrivals near me",
@@ -319,7 +319,7 @@
     "arrivalUnavailable": "Could not load arrival info for this station.",
     "geoDenied": "Location permission is required. Please allow location access in your browser.",
     "geoUnsupported": "This browser does not support location.",
-    "source": "Source: Seoul Open Data Plaza live subway arrivals.",
+    "source": "Source: Seoul public data (Seoul Open Data Plaza) live subway arrivals.",
     "closed": "Not running now. First train {time}.",
     "noRealtime": "Real-time arrivals are not available for this station."
   },
@@ -395,7 +395,7 @@
     "availability": "{bikes} available, {racks, plural, one {# rack} other {# racks}}",
     "geoDenied": "Location permission is required. Please allow location access in your browser.",
     "geoUnsupported": "This browser does not support location.",
-    "source": "Source: Seoul Open Data Plaza (Ttareungyi)."
+    "source": "Source: Seoul public data (Seoul Open Data Plaza), Ttareungyi."
   },
   "clinicNearby": {
     "button": "Pediatric night & holiday clinics near me",
@@ -468,7 +468,7 @@
     "detailAction": "{name} event details",
     "geoDenied": "Location permission is required. Please allow location access in your browser.",
     "geoUnsupported": "This browser doesn't support location.",
-    "source": "Source: Seoul Open Data Plaza cultural events. Only events running today are shown."
+    "source": "Source: Seoul public data (Seoul Open Data Plaza) cultural events. Only events running today are shown."
   },
   "barrierFreeNearby": {
     "button": "Barrier-free attractions near me",

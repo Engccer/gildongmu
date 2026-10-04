@@ -5606,37 +5606,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "출처: 서울 열린데이터광장 따릉이."
+            "value": "출처: 서울특별시 공공데이터(서울 열린데이터광장) 따릉이."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Source: Seoul Open Data Plaza (Ttareungyi)."
+            "value": "Source: Seoul public data (Seoul Open Data Plaza), Ttareungyi."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Fuente: Seoul Open Data Plaza (Ttareungyi)."
+            "value": "Fuente: Datos públicos de Seúl (Portal de datos abiertos de Seúl), Ttareungyi."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Source : Seoul Open Data Plaza (Ttareungyi)."
+            "value": "Source : Données publiques de la ville de Séoul (Portail données ouvertes de Séoul), Ttareungyi."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Fonte: Seoul Open Data Plaza (Ttareungyi)."
+            "value": "Fonte: Dati pubblici di Seoul (Portale dati aperti di Seoul), Ttareungyi."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "出典: ソウルオープンデータ広場(タルンイ)。"
+            "value": "出典: ソウル特別市公共データ(ソウルオープンデータ広場)のタルンイ。"
           }
         }
       }
@@ -13006,37 +13006,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "출처: 서울 열린데이터광장 문화행사 정보. 오늘 진행 중인 행사만 표시합니다."
+            "value": "출처: 서울특별시 공공데이터(서울 열린데이터광장) 문화행사 정보. 오늘 진행 중인 행사만 표시합니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Source: Seoul Open Data Plaza cultural events. Only events running today are shown."
+            "value": "Source: Seoul public data (Seoul Open Data Plaza) cultural events. Only events running today are shown."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Fuente: eventos culturales del Portal de Datos Abiertos de Seúl. Solo se muestran los eventos de hoy."
+            "value": "Fuente: eventos culturales de Datos públicos de Seúl (Portal de datos abiertos de Seúl). Solo se muestran los eventos de hoy."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Source : événements culturels du portail Open Data de Séoul. Seuls les événements en cours aujourd'hui sont affichés."
+            "value": "Source : événements culturels des Données publiques de la ville de Séoul (Portail données ouvertes de Séoul). Seuls les événements en cours aujourd'hui sont affichés."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Fonte: eventi culturali del portale Open Data di Seoul. Vengono mostrati solo gli eventi in corso oggi."
+            "value": "Fonte: eventi culturali dei Dati pubblici di Seoul (Portale dati aperti di Seoul). Vengono mostrati solo gli eventi in corso oggi."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "出典: ソウル公共データ広場の文化イベント情報。本日開催中のイベントのみ表示します。"
+            "value": "出典: ソウル特別市公共データ(ソウルオープンデータ広場)の文化イベント情報。本日開催中のイベントのみ表示します。"
           }
         }
       }
@@ -44846,37 +44846,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "출처: 서울 열린데이터광장 지하철 실시간 도착정보."
+            "value": "출처: 서울특별시 공공데이터(서울 열린데이터광장) 지하철 실시간 도착정보."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Source: Seoul Open Data Plaza live subway arrivals."
+            "value": "Source: Seoul public data (Seoul Open Data Plaza) live subway arrivals."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Fuente: llegadas de metro en tiempo real de Seoul Open Data Plaza."
+            "value": "Fuente: llegadas de metro en tiempo real de Datos públicos de Seúl (Portal de datos abiertos de Seúl)."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Source : arrivées de métro en temps réel de Seoul Open Data Plaza."
+            "value": "Source : arrivées de métro en temps réel des Données publiques de la ville de Séoul (Portail données ouvertes de Séoul)."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Fonte: Seoul Open Data Plaza, arrivi della metro in tempo reale."
+            "value": "Fonte: Dati pubblici di Seoul (Portale dati aperti di Seoul), arrivi della metro in tempo reale."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "出典: ソウルオープンデータ広場の地下鉄リアルタイム到着情報。"
+            "value": "出典: ソウル特別市公共データ(ソウルオープンデータ広場)の地下鉄リアルタイム到着情報。"
           }
         }
       }
@@ -45526,37 +45526,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "출처: 서울 열린데이터광장 지하철 실시간 도착정보."
+            "value": "출처: 서울특별시 공공데이터(서울 열린데이터광장) 지하철 실시간 도착정보."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Source: Seoul Open Data Plaza live subway arrivals."
+            "value": "Source: Seoul public data (Seoul Open Data Plaza) live subway arrivals."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Fuente: llegadas de metro en tiempo real de Seoul Open Data Plaza."
+            "value": "Fuente: llegadas de metro en tiempo real de Datos públicos de Seúl (Portal de datos abiertos de Seúl)."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Source : arrivées de métro en temps réel de Seoul Open Data Plaza."
+            "value": "Source : arrivées de métro en temps réel des Données publiques de la ville de Séoul (Portail données ouvertes de Séoul)."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Fonte: Seoul Open Data Plaza, arrivi della metro in tempo reale."
+            "value": "Fonte: Dati pubblici di Seoul (Portale dati aperti di Seoul), arrivi della metro in tempo reale."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "出典: ソウルオープンデータ広場の地下鉄リアルタイム到着情報。"
+            "value": "出典: ソウル特別市公共データ(ソウルオープンデータ広場)の地下鉄リアルタイム到着情報。"
           }
         }
       }

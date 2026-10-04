@@ -303,7 +303,7 @@
     "etaMinSec": "Arrivée dans {minutes} min {seconds} s.",
     "etaSec": "Arrivée dans {seconds} s.",
     "nowAt": "Actuellement à {station}.",
-    "source": "Source : arrivées de métro en temps réel de Seoul Open Data Plaza."
+    "source": "Source : arrivées de métro en temps réel des Données publiques de la ville de Séoul (Portail données ouvertes de Séoul)."
   },
   "subwayNearby": {
     "button": "Arrivées de métro à proximité",
@@ -319,7 +319,7 @@
     "arrivalUnavailable": "Impossible de charger les informations d'arrivée pour cette station.",
     "geoDenied": "L'autorisation de localisation est requise. Veuillez autoriser l'accès à la position dans votre navigateur.",
     "geoUnsupported": "Ce navigateur ne prend pas en charge la localisation.",
-    "source": "Source : arrivées de métro en temps réel de Seoul Open Data Plaza.",
+    "source": "Source : arrivées de métro en temps réel des Données publiques de la ville de Séoul (Portail données ouvertes de Séoul).",
     "closed": "Hors service actuellement. Premier train {time}.",
     "noRealtime": "Pas d'informations en temps réel pour cette station."
   },
@@ -395,7 +395,7 @@
     "availability": "{bikes, plural, one {# disponible} other {# disponibles}}, {racks, plural, one {# borne} other {# bornes}}",
     "geoDenied": "L'autorisation de localisation est requise. Veuillez autoriser l'accès à la position dans votre navigateur.",
     "geoUnsupported": "Ce navigateur ne prend pas en charge la localisation.",
-    "source": "Source : Seoul Open Data Plaza (Ttareungyi)."
+    "source": "Source : Données publiques de la ville de Séoul (Portail données ouvertes de Séoul), Ttareungyi."
   },
   "clinicNearby": {
     "button": "Cliniques pédiatriques de nuit et jours fériés à proximité",
@@ -468,7 +468,7 @@
     "detailAction": "Détails de l'événement {name}",
     "geoDenied": "L'autorisation de localisation est requise. Veuillez autoriser l'accès à la position dans votre navigateur.",
     "geoUnsupported": "Ce navigateur ne prend pas en charge la localisation.",
-    "source": "Source : événements culturels du portail Open Data de Séoul. Seuls les événements en cours aujourd'hui sont affichés."
+    "source": "Source : événements culturels des Données publiques de la ville de Séoul (Portail données ouvertes de Séoul). Seuls les événements en cours aujourd'hui sont affichés."
   },
   "barrierFreeNearby": {
     "button": "Attractions accessibles à proximité",

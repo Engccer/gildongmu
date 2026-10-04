@@ -303,7 +303,7 @@
     "etaMinSec": "Llega en {minutes} min {seconds} s.",
     "etaSec": "Llega en {seconds} s.",
     "nowAt": "Ahora en {station}.",
-    "source": "Fuente: llegadas de metro en tiempo real de Seoul Open Data Plaza."
+    "source": "Fuente: llegadas de metro en tiempo real de Datos públicos de Seúl (Portal de datos abiertos de Seúl)."
   },
   "subwayNearby": {
     "button": "Llegadas de metro cerca de mí",
@@ -319,7 +319,7 @@
     "arrivalUnavailable": "No se pudo cargar la información de llegadas de esta estación.",
     "geoDenied": "Se requiere permiso de ubicación. Permite el acceso a la ubicación en tu navegador.",
     "geoUnsupported": "Este navegador no admite la ubicación.",
-    "source": "Fuente: llegadas de metro en tiempo real de Seoul Open Data Plaza.",
+    "source": "Fuente: llegadas de metro en tiempo real de Datos públicos de Seúl (Portal de datos abiertos de Seúl).",
     "closed": "Fuera de servicio ahora. Primer tren {time}.",
     "noRealtime": "No hay información en tiempo real para esta estación."
   },
@@ -395,7 +395,7 @@
     "availability": "{bikes, plural, one {# disponible} other {# disponibles}}, {racks, plural, one {# anclaje} other {# anclajes}}",
     "geoDenied": "Se requiere permiso de ubicación. Permite el acceso a la ubicación en tu navegador.",
     "geoUnsupported": "Este navegador no admite la ubicación.",
-    "source": "Fuente: Seoul Open Data Plaza (Ttareungyi)."
+    "source": "Fuente: Datos públicos de Seúl (Portal de datos abiertos de Seúl), Ttareungyi."
   },
   "clinicNearby": {
     "button": "Clínicas pediátricas nocturnas y festivas cerca de mí",
@@ -468,7 +468,7 @@
     "detailAction": "Detalles del evento {name}",
     "geoDenied": "Se requiere permiso de ubicación. Permite el acceso a la ubicación en tu navegador.",
     "geoUnsupported": "Este navegador no admite la ubicación.",
-    "source": "Fuente: eventos culturales del Portal de Datos Abiertos de Seúl. Solo se muestran los eventos de hoy."
+    "source": "Fuente: eventos culturales de Datos públicos de Seúl (Portal de datos abiertos de Seúl). Solo se muestran los eventos de hoy."
   },
   "barrierFreeNearby": {
     "button": "Atracciones sin barreras cerca de mí",

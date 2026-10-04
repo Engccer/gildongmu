@@ -531,7 +531,7 @@
     <string name="bike_placeButton">Stazioni bici nelle vicinanze</string>
     <string name="bike_ready">Stazioni bici nelle vicinanze.</string>
     <string name="bike_refresh">Aggiorna</string>
-    <string name="bike_source">Fonte: Seoul Open Data Plaza (Ttareungyi).</string>
+    <string name="bike_source">Fonte: Dati pubblici di Seoul (Portale dati aperti di Seoul), Ttareungyi.</string>
     <string name="bike_stationDistance">%1$s a piedi</string>
     <string name="bus_arrival">Linea %1$s %2$s, a {3, plural, one {%3$s fermata} other {%3$s fermate}}, tra circa %4$s min</string>
     <string name="bus_arrivalMessage">Linea %1$s %2$s, %3$s</string>
@@ -715,7 +715,7 @@
     <string name="eventsNearby_paid">A pagamento %1$s</string>
     <string name="eventsNearby_ready">Eventi culturali vicino a te.</string>
     <string name="eventsNearby_refresh">Aggiorna</string>
-    <string name="eventsNearby_source">Fonte: eventi culturali del portale Open Data di Seoul. Vengono mostrati solo gli eventi in corso oggi.</string>
+    <string name="eventsNearby_source">Fonte: eventi culturali dei Dati pubblici di Seoul (Portale dati aperti di Seoul). Vengono mostrati solo gli eventi in corso oggi.</string>
     <string name="eventsNearby_target">Per %1$s</string>
     <string name="guide_addWaypointHere">Aggiungi qui come tappa</string>
     <string name="guide_alreadyActive">Una guida è già in corso. Termina prima la guida attuale.</string>
@@ -1145,7 +1145,7 @@
     <string name="subwayArrival_prevDeparted">A 1 fermata, partito da %1$s.</string>
     <string name="subwayArrival_ready">Gli arrivi in tempo reale sono pronti.</string>
     <string name="subwayArrival_refresh">Aggiorna</string>
-    <string name="subwayArrival_source">Fonte: Seoul Open Data Plaza, arrivi della metro in tempo reale.</string>
+    <string name="subwayArrival_source">Fonte: Dati pubblici di Seoul (Portale dati aperti di Seoul), arrivi della metro in tempo reale.</string>
     <string name="subwayArrival_stopsAway">{1, plural, one {A %1$s fermata} other {A %1$s fermate}}, a %2$s.</string>
     <string name="subwayArrival_stopsJoin">{1, plural, one {A %1$s fermata} other {A %1$s fermate}}</string>
     <string name="subwayNearby_arrivalUnavailable">Impossibile caricare le informazioni sugli arrivi per questa stazione.</string>
@@ -1162,7 +1162,7 @@
     <string name="subwayNearby_noRealtime">Nessuna informazione in tempo reale per questa stazione.</string>
     <string name="subwayNearby_ready">Arrivi della metro vicino a te.</string>
     <string name="subwayNearby_refresh">Aggiorna</string>
-    <string name="subwayNearby_source">Fonte: Seoul Open Data Plaza, arrivi della metro in tempo reale.</string>
+    <string name="subwayNearby_source">Fonte: Dati pubblici di Seoul (Portale dati aperti di Seoul), arrivi della metro in tempo reale.</string>
     <string name="subwayNearby_stationDistance">circa %1$s</string>
     <string name="surroundings_bucket_across">Di fronte</string>
     <string name="surroundings_bucket_beyond">Oltre l\'edificio</string>

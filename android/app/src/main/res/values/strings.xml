@@ -531,7 +531,7 @@
     <string name="bike_placeButton">근처 따릉이 대여소</string>
     <string name="bike_ready">근처 따릉이 대여소입니다.</string>
     <string name="bike_refresh">새로고침</string>
-    <string name="bike_source">출처: 서울 열린데이터광장 따릉이.</string>
+    <string name="bike_source">출처: 서울특별시 공공데이터(서울 열린데이터광장) 따릉이.</string>
     <string name="bike_stationDistance">도보 약 %1$s</string>
     <string name="bus_arrival">%1$s %2$s, %3$s번째 전 정류장, 약 %4$s분 후 도착</string>
     <string name="bus_arrivalMessage">%1$s %2$s, %3$s</string>
@@ -715,7 +715,7 @@
     <string name="eventsNearby_paid">유료 %1$s</string>
     <string name="eventsNearby_ready">내 주변 문화행사입니다.</string>
     <string name="eventsNearby_refresh">새로고침</string>
-    <string name="eventsNearby_source">출처: 서울 열린데이터광장 문화행사 정보. 오늘 진행 중인 행사만 표시합니다.</string>
+    <string name="eventsNearby_source">출처: 서울특별시 공공데이터(서울 열린데이터광장) 문화행사 정보. 오늘 진행 중인 행사만 표시합니다.</string>
     <string name="eventsNearby_target">대상 %1$s</string>
     <string name="guide_addWaypointHere">여기를 경유지로 추가</string>
     <string name="guide_alreadyActive">이미 안내 중입니다. 먼저 진행 중인 안내를 종료하세요.</string>
@@ -1145,7 +1145,7 @@
     <string name="subwayArrival_prevDeparted">1정거장 전 %1$s에서 출발.</string>
     <string name="subwayArrival_ready">실시간 도착 정보가 준비되었습니다.</string>
     <string name="subwayArrival_refresh">새로고침</string>
-    <string name="subwayArrival_source">출처: 서울 열린데이터광장 지하철 실시간 도착정보.</string>
+    <string name="subwayArrival_source">출처: 서울특별시 공공데이터(서울 열린데이터광장) 지하철 실시간 도착정보.</string>
     <string name="subwayArrival_stopsAway">%1$s정거장 전 %2$s.</string>
     <string name="subwayArrival_stopsJoin">%1$s정거장 전</string>
     <string name="subwayNearby_arrivalUnavailable">이 역의 도착 정보를 가져오지 못했습니다.</string>
@@ -1162,7 +1162,7 @@
     <string name="subwayNearby_noRealtime">실시간 도착 정보가 제공되지 않습니다.</string>
     <string name="subwayNearby_ready">내 주변 지하철 도착 정보입니다.</string>
     <string name="subwayNearby_refresh">새로고침</string>
-    <string name="subwayNearby_source">출처: 서울 열린데이터광장 지하철 실시간 도착정보.</string>
+    <string name="subwayNearby_source">출처: 서울특별시 공공데이터(서울 열린데이터광장) 지하철 실시간 도착정보.</string>
     <string name="subwayNearby_stationDistance">약 %1$s</string>
     <string name="surroundings_bucket_across">맞은편</string>
     <string name="surroundings_bucket_beyond">건물 너머</string>

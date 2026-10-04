@@ -303,7 +303,7 @@
     "etaMinSec": "Arriva tra {minutes} min {seconds} s.",
     "etaSec": "Arriva tra {seconds} s.",
     "nowAt": "Ora a {station}.",
-    "source": "Fonte: Seoul Open Data Plaza, arrivi della metro in tempo reale."
+    "source": "Fonte: Dati pubblici di Seoul (Portale dati aperti di Seoul), arrivi della metro in tempo reale."
   },
   "subwayNearby": {
     "button": "Arrivi della metro vicino a me",
@@ -319,7 +319,7 @@
     "arrivalUnavailable": "Impossibile caricare le informazioni sugli arrivi per questa stazione.",
     "geoDenied": "È necessaria l'autorizzazione alla localizzazione. Consenti l'accesso alla posizione nel browser.",
     "geoUnsupported": "Questo browser non supporta la localizzazione.",
-    "source": "Fonte: Seoul Open Data Plaza, arrivi della metro in tempo reale.",
+    "source": "Fonte: Dati pubblici di Seoul (Portale dati aperti di Seoul), arrivi della metro in tempo reale.",
     "closed": "Fuori servizio ora. Primo treno {time}.",
     "noRealtime": "Nessuna informazione in tempo reale per questa stazione."
   },
@@ -395,7 +395,7 @@
     "availability": "{bikes, plural, one {# disponibile} other {# disponibili}}, {racks, plural, one {# stallo} other {# stalli}}",
     "geoDenied": "È necessaria l'autorizzazione alla localizzazione. Consenti l'accesso alla posizione nel browser.",
     "geoUnsupported": "Questo browser non supporta la localizzazione.",
-    "source": "Fonte: Seoul Open Data Plaza (Ttareungyi)."
+    "source": "Fonte: Dati pubblici di Seoul (Portale dati aperti di Seoul), Ttareungyi."
   },
   "clinicNearby": {
     "button": "Cliniche pediatriche notturne e festive vicino a me",
@@ -468,7 +468,7 @@
     "detailAction": "Dettagli dell'evento {name}",
     "geoDenied": "È necessaria l'autorizzazione alla localizzazione. Consenti l'accesso alla posizione nel browser.",
     "geoUnsupported": "Questo browser non supporta la localizzazione.",
-    "source": "Fonte: eventi culturali del portale Open Data di Seoul. Vengono mostrati solo gli eventi in corso oggi."
+    "source": "Fonte: eventi culturali dei Dati pubblici di Seoul (Portale dati aperti di Seoul). Vengono mostrati solo gli eventi in corso oggi."
   },
   "barrierFreeNearby": {
     "button": "Attrazioni accessibili vicino a me",
