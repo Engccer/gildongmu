@@ -39,7 +39,8 @@ struct BusNearbyView: View {
 
     /// anchor 기본값 nil = 현재 위치(내 주변 허브 호출처 무변경).
     /// State(initialValue:) 인자는 순수 생성만(부수효과 금지) — [[swiftui-state-initialvalue-side-effect]]
-    init(anchor: PlaceAnchor? = nil, directionsEntryAllowed: Bool = true) {
+    /// `directionsEntryAllowed`는 기본값이 없다 — 새 호스트가 빠뜨리면 조용히 허용 쪽으로 가기 때문이다(안전 인자 기본값 금지).
+    init(anchor: PlaceAnchor? = nil, directionsEntryAllowed: Bool) {
         self.anchor = anchor
         self.directionsEntryAllowed = directionsEntryAllowed
         _model = State(initialValue: BusNearbyModel(anchor: anchor))

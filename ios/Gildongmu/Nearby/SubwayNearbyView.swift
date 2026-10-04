@@ -167,13 +167,17 @@ struct SubwayNearbyView: View {
     @State private var lander = NearbyFocusLander()
     /// 역 제목 로터 「상세 보기」가 push하는 역 상세(E65, 브리핑 E45와 같은 목적지 모양).
     @State private var stationDetail: StationDestination?
+    /// 로터로 역 상세를 연 직후 1회만 참 — 그 상세에서 돌아올 때의 `.task` 재실행 한 번을 건너뛴다(재조회·"역 N곳"
+    /// 재통지가 복귀 커서 낭독과 겹치지 않게). 탭 전환 복귀는 종전처럼 재조회한다(실시간 도착이 낡지 않게).
+    @State private var skipReloadOnReturn = false
     /// 행 로터의 「여기까지 길찾기」를 낼 수 있는가(E65). 장소 상세가 자기 `showsDirectionsEntry`를 넘긴다 —
     /// 안내 시트·길찾기 탭 스택 안의 상세는 프리필이 그 화면을 파괴하므로 숨긴다(E45 spec §7과 같은 이유).
     private let directionsEntryAllowed: Bool
 
     /// anchor 기본값 nil = 현재 위치(내 주변 허브 호출처 무변경).
     /// State(initialValue:) 인자는 순수 생성만(부수효과 금지) — [[swiftui-state-initialvalue-side-effect]]
-    init(anchor: PlaceAnchor? = nil, directionsEntryAllowed: Bool = true) {
+    /// `directionsEntryAllowed`는 기본값이 없다 — 새 호스트가 빠뜨리면 조용히 허용 쪽으로 가기 때문이다(안전 인자 기본값 금지).
+    init(anchor: PlaceAnchor? = nil, directionsEntryAllowed: Bool) {
         self.anchor = anchor
         self.directionsEntryAllowed = directionsEntryAllowed
         _model = State(initialValue: SubwayNearbyModel(anchor: anchor))
@@ -196,7 +200,7 @@ struct SubwayNearbyView: View {
                                 .accessibilityFocused($focusedStation, equals: station.stationName)
                                 .modifier(StationTitleActions(
                                     station: station, directionsEntryAllowed: directionsEntryAllowed,
-                                    onOpen: { stationDetail = $0 }))
+                                    onOpen: { skipReloadOnReturn = true; stationDetail = $0 }))
                             // 4-state를 뭉개지 않는다(웹 미러): 조회 실패 / 운행 시간 밖 /
                             // 실시간 미제공 / 정상. closed인데 첫차가 없으면 판정 근거가
                             // 반쪽이라 "운행이 끝났다"고 말하지 않고 미제공으로 물러선다.
@@ -232,10 +236,12 @@ struct SubwayNearbyView: View {
                     empty: NearbyOverlayCopy(emptyTitle, systemImage: "tram"),
                     isEmpty: { $0.stations.isEmpty }))
             }
-            // 첫 로드만. 로터로 연 역 상세에서 돌아올 때(E65) `.task`가 다시 돌아도 재조회·완료 통지를 반복하지 않는다 —
-            // 복귀 커서 낭독과 "역 N곳" 통지가 겹치고 실시간 키를 복귀마다 쓴다. 새로고침은 당겨서 새로고침이 맡는다.
+            // 로터로 연 역 상세에서 돌아온 한 번만 재조회를 건너뛴다(E65, spec §3-7). 그 밖의 재등장(탭 전환 복귀)은 종전대로.
             .task {
-                if case .loaded = model.phase { return }
+                if skipReloadOnReturn {
+                    skipReloadOnReturn = false
+                    return
+                }
                 await model.load()
             }
             .nearbyRefreshable { await model.load(force: true) }

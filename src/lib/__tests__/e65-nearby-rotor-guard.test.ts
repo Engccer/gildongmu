@@ -80,9 +80,22 @@ describe("E65 내 주변 로터 액션 배선", () => {
     expect(nearby("SubwayNearbyView.swift")).toContain("showsDirectionsEntry: directionsEntryAllowed");
   });
 
-  it("지하철 목록은 첫 로드만 — 로터로 연 상세에서 돌아와도 재조회·완료 통지를 반복하지 않는다", () => {
-    expect(nearby("SubwayNearbyView.swift")).toMatch(
-      /\.task \{\s*if case \.loaded = model\.phase \{ return \}\s*await model\.load\(\)\s*\}/,
+  it("지하철 목록: 로터로 연 상세에서 돌아온 한 번만 재조회를 건너뛰고, 탭 전환 복귀는 종전대로 재조회한다", () => {
+    const s = nearby("SubwayNearbyView.swift");
+    expect(s).toContain("onOpen: { skipReloadOnReturn = true; stationDetail = $0 }");
+    expect(s).toMatch(
+      /\.task \{\s*if skipReloadOnReturn \{\s*skipReloadOnReturn = false\s*return\s*\}\s*await model\.load\(\)\s*\}/,
     );
+    // 상태로 막는 게이트(탭 전환 복귀까지 막는다)를 되살리지 않는다.
+    expect(s).not.toMatch(/if case \.loaded = model\.phase \{ return \}/);
+  });
+
+  it("목록의 길찾기 허용 인자는 기본값이 없다 — 새 호스트가 빠뜨리면 컴파일이 막는다", () => {
+    for (const file of ["SubwayNearbyView.swift", "BusNearbyView.swift"]) {
+      expect(nearby(file)).toContain("init(anchor: PlaceAnchor? = nil, directionsEntryAllowed: Bool) {");
+    }
+    const hub = read("ios/Gildongmu/NearbyHubView.swift");
+    expect(hub).toContain("SubwayNearbyView(directionsEntryAllowed: true)");
+    expect(hub).toContain("BusNearbyView(directionsEntryAllowed: true)");
   });
 });
