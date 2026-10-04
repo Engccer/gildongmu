@@ -10,6 +10,7 @@ import {
   crossingClockOf,
   firstSegmentBearing,
   referenceBearing,
+  roadLabelHoldsToEnd,
   splitMergedCrossing,
   type CrossingPiece,
 } from "./walk-crossing";
@@ -320,7 +321,10 @@ function lengthTail(kind: string, meters: number): string {
 interface CrossContext {
   /** 직전 스텝(출력 기준) 폴리라인. */
   prevCoords?: Coord[];
-  /** 직전 스텝이 이동 문장이었으면 그 원문 괄호 도로명(재작성 전 캡처). 횡단 뒤면 부재. */
+  /**
+   * 직전 스텝이 이동 문장이었으면 그 원문 괄호 도로명(재작성 전 캡처). 횡단 뒤면 부재, 그 스텝이 안에서 꺾였으면 부재
+   * (`roadLabelHoldsToEnd`, A65).
+   */
   prevRoad?: string;
 }
 
@@ -493,7 +497,7 @@ export function rewriteWalkBriefingV2(
 
     const move = parseMove(step.description);
     if (move) {
-      prevRoad = move.road;
+      prevRoad = move.road && roadLabelHoldsToEnd(step.pathCoords) ? move.road : undefined;
       emit(moveV2(step.description, move));
       return;
     }

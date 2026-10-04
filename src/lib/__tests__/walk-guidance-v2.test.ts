@@ -1,4 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { normalizeKakaoWalkRoute, type KakaoWalkResponse } from "../providers/kakao-walk";
 import { rewriteWalkBriefingV2, type WalkWordingV2Options } from "../walk-guidance";
 import type { Coord, WalkRouteBriefing, WalkRouteStep } from "../types";
 
@@ -304,3 +307,92 @@ describe("판본 2 리뷰 반영(구현 리뷰·spec 준수 리뷰)", () => {
   });
 });
 
+describe("건너는 길 이름은 직전 스텝이 꺾이지 않을 때만(A65)", () => {
+  // 카카오 괄호 도로명은 그 이동 스텝 첫 구간의 도로다. 스텝 안에서 꺾여 다른 길로 들어서면 횡단 앞 도로와 다르다.
+  const cityhall = JSON.parse(
+    readFileSync(join(__dirname, "fixtures/a65-cityhall-crossing-road.json"), "utf8"),
+  ) as { forward: KakaoWalkResponse; reverse: KakaoWalkResponse };
+  const crossingOf = (raw: KakaoWalkResponse) =>
+    rewriteWalkBriefingV2(normalizeKakaoWalkRoute(raw)!, LIVE).steps.find((s) => s.description.endsWith("횡단보도 길이 45m"))!;
+
+  it("서울시청 앞 45m: 세종대로20길로 들어섰다 세종대로 보도로 꺾은 쪽은 이름 없이, 반대쪽은 세종대로", () => {
+    const fwd = crossingOf(cityhall.forward);
+    expect(fwd.description).toBe(
+      "3시 방향으로 도세요. 그 후 서울도시 건축전시관을 향해 횡단보도를 건너세요. 횡단보도 길이 45m",
+    );
+    expect(fwd.parts).toEqual({ turn: "3시 방향으로 도세요", body: "서울도시 건축전시관을 향해 횡단보도를 건너세요. 횡단보도 길이 45m" });
+    expect(fwd.crossingClock).toBe(3);
+    const rev = crossingOf(cityhall.reverse);
+    expect(rev.description).toBe("서울도시 건축전시관 앞에서 9시 방향으로 도세요. 그 후 세종대로를 건너세요. 횡단보도 길이 45m");
+  });
+
+  it("직전 스텝 본선과 기준 선분이 직각으로 갈리면 단일 횡단에 이름을 싣지 않는다", () => {
+    const r = rewriteWalkBriefingV2(
+      route([
+        { desc: "약국까지 오른쪽길로 213m 이동(성내로)", m: 213, legs: [[90, 200], [0, 13]] },
+        { desc: "횡단보도 이용", m: 20, legs: [[90, 20]] },
+      ]),
+      LIVE,
+    );
+    expect(r.steps[1].description).toBe("3시 방향으로 도세요. 그 후 횡단보도를 건너세요. 횡단보도 길이 20m");
+  });
+
+  it("분해된 연속 횡단 첫 조각도 같다", () => {
+    const r = rewriteWalkBriefingV2(
+      route([
+        { desc: "강동성심병원교차로까지 100m 이동(천호대로)", m: 100, legs: [[22, 60], [112, 40]] },
+        { desc: "강동성심병원교차로에서 2개의 횡단보도 이용", m: 77, legs: [[22, 46.7], [74, 6.3], [44, 3.7], [114, 20.8]] },
+      ]),
+      LIVE,
+    );
+    expect(r.steps[1].description).toBe(
+      "강동성심병원교차로에서 횡단보도 2개를 연속으로 건넙니다. 먼저 9시 방향으로 도세요. 그 후 횡단보도를 건너세요. 횡단보도 길이 47m",
+    );
+  });
+
+  it("완만하게 휘는 길(45° 이하)은 이름을 유지한다", () => {
+    const r = rewriteWalkBriefingV2(
+      route([
+        { desc: "500m 이동(소월로)", m: 500, legs: [[332, 80], [0, 100], [28, 79], [10, 44], [100, 6]] },
+        { desc: "횡단보도 이용", m: 21, legs: [[100, 21]] },
+      ]),
+      LIVE,
+    );
+    expect(r.steps[1].description).toBe("3시 방향으로 도세요. 그 후 소월로를 건너세요. 횡단보도 길이 21m");
+  });
+
+  it("꺾임 45°까지는 이름을 싣고 그 너머는 싣지 않는다", () => {
+    const at = (bend: number) =>
+      rewriteWalkBriefingV2(
+        route([
+          { desc: "100m 이동(소월로)", m: 100, legs: [[bend, 60], [0, 40]] },
+          { desc: "횡단보도 이용", m: 21, legs: [[90, 21]] },
+        ]),
+        LIVE,
+      ).steps[1].description;
+    expect(at(44)).toBe("3시 방향으로 도세요. 그 후 소월로를 건너세요. 횡단보도 길이 21m");
+    expect(at(46)).toBe("3시 방향으로 도세요. 그 후 횡단보도를 건너세요. 횡단보도 길이 21m");
+  });
+
+  it("10m 이상 선분이 없어 현으로 방향을 정한 스텝은 이름을 싣지 않는다(모르면 이름 없이)", () => {
+    const r = rewriteWalkBriefingV2(
+      route([
+        { desc: "16m 이동(노해로)", m: 16, legs: [[0, 8], [0, 8]] },
+        { desc: "횡단보도 이용", m: 21, legs: [[90, 21]] },
+      ]),
+      LIVE,
+    );
+    expect(r.steps[1].description).toBe("3시 방향으로 도세요. 그 후 횡단보도를 건너세요. 횡단보도 길이 21m");
+  });
+
+  it("10m 미만 선분의 꺾임은 보지 않는다(교차로 연결 짧은 구간)", () => {
+    const r = rewriteWalkBriefingV2(
+      route([
+        { desc: "174m 이동(강서로)", m: 174, legs: [[90, 7], [0, 13], [0, 150]] },
+        { desc: "횡단보도 이용", m: 26, legs: [[270, 26]] },
+      ]),
+      LIVE,
+    );
+    expect(r.steps[1].description).toBe("9시 방향으로 도세요. 그 후 강서로를 건너세요. 횡단보도 길이 26m");
+  });
+});

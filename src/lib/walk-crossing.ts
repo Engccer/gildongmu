@@ -32,6 +32,13 @@ export const ROAD_CROSS_MAX_DEG = 120;
  * "길 이름 모름" 틀로 떨어진다(지어내지 않는다). 실보행 판정 대상(BACKLOG §2 E62 ⑥).
  */
 export const ROAD_CROSS_MIN_LENGTH_M = 12;
+/**
+ * 길 이름을 싣는 직전 스텝의 꺾임 상한(°). 카카오 이동 문장의 괄호 도로명은 그 스텝 **첫 구간**의 도로라(A65 실측: 서울시청
+ * 앞 같은 횡단보도가 한쪽에선 "세종대로20길", 반대쪽에선 "세종대로"), 스텝 안에서 꺾여 다른 길로 들어서면 횡단 앞 도로와
+ * 다르다. 기준 선분 앞의 10m 이상 선분이 모두 기준 방위에서 이 각 안일 때만 그 이름이 끝까지 이어진다고 본다. 코퍼스
+ * 2026-09-30에서 틀린 이름 6곳의 꺾임은 76~96°, 맞는 이름의 완만한 굽음은 28° 이하였다(사이 어느 값이든 결과가 같다).
+ */
+export const ROAD_LABEL_BEND_MAX_DEG = 45;
 
 interface Segment {
   /** 시작 꼭짓점 index(입력 배열 기준). */
@@ -54,13 +61,19 @@ function segmentsOf(coords: readonly Coord[]): Segment[] {
   return out;
 }
 
-/** 기준 방향(°): 끝에서 거슬러 처음 만나는 10m 이상 선분의 방위, 없으면 전체 현(5m 이상), 그것도 없으면 null. */
+/** 기준 선분: 끝에서 거슬러 처음 만나는 10m 이상 선분. 방향(`referenceBearing`)과 길 이름(`roadLabelHoldsToEnd`)이 같은 선분을 본다. */
+function referenceSegment(segs: readonly Segment[]): Segment | undefined {
+  for (let i = segs.length - 1; i >= 0; i--) {
+    if (segs[i].length >= REFERENCE_SEGMENT_MIN_M) return segs[i];
+  }
+  return undefined;
+}
+
+/** 기준 방향(°): 기준 선분의 방위, 없으면 전체 현(5m 이상), 그것도 없으면 null. */
 export function referenceBearing(coords: readonly Coord[] | undefined): number | null {
   if (!coords || coords.length < 2) return null;
-  const segs = segmentsOf(coords);
-  for (let i = segs.length - 1; i >= 0; i--) {
-    if (segs[i].length >= REFERENCE_SEGMENT_MIN_M) return segs[i].bearing;
-  }
+  const ref = referenceSegment(segmentsOf(coords));
+  if (ref) return ref.bearing;
   const a = coords[0];
   const b = coords[coords.length - 1];
   if (haversineMeters(a.lat, a.lng, b.lat, b.lng) < REFERENCE_CHORD_MIN_M) return null;
@@ -90,6 +103,21 @@ export function crossingClockOf(reference: number, crossing: number): number {
 export function crossesWalkedRoad(reference: number, crossing: number): boolean {
   const turn = Math.abs(signedTurn(reference, crossing));
   return turn >= ROAD_CROSS_MIN_DEG && turn <= ROAD_CROSS_MAX_DEG;
+}
+
+/**
+ * 이동 스텝의 괄호 도로명이 그 스텝 끝(횡단 앞)까지 이어지는가(A65). 10m 이상 선분이 모두 기준 선분 방위에서
+ * `ROAD_LABEL_BEND_MAX_DEG` 안일 때만 참이다(기준 선분 뒤 꼬리는 정의상 10m 미만이라 자연히 빠진다). 기준 선분이 없으면
+ * (현 폴백) 거짓: 모르면 이름 없이.
+ */
+export function roadLabelHoldsToEnd(coords: readonly Coord[] | undefined): boolean {
+  if (!coords || coords.length < 2) return false;
+  const segs = segmentsOf(coords);
+  const ref = referenceSegment(segs);
+  if (!ref) return false;
+  return segs.every(
+    (s) => s.length < REFERENCE_SEGMENT_MIN_M || Math.abs(signedTurn(ref.bearing, s.bearing)) <= ROAD_LABEL_BEND_MAX_DEG,
+  );
 }
 
 /** 분해된 횡단보도 하나: 그 조각의 폴리라인과 주 덩어리(방위·길이). */
