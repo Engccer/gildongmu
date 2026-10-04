@@ -107,6 +107,9 @@ export interface NearbyArrivalInput {
   linesEn?: string[];
   /** 현재 위치로부터 거리(m) */
   distanceMeters: number;
+  /** seed 역 좌표 — `coords` 옵트인일 때만 출력에 싣는다(E65). */
+  lat: number;
+  lng: number;
   /** 역별 실시간 도착 조회의 settled 결과(null=실시간 데이터 없음) */
   result: PromiseSettledResult<SubwayStationArrivals | null>;
   /** 실시간이 null인 역의 운행 판정(미조회·판정 불가면 undefined) */
@@ -132,6 +135,8 @@ export interface NearbyArrivalInput {
  */
 export function buildNearbyArrivals(
   inputs: NearbyArrivalInput[],
+  /** 옵트인 `coords=1`(E65): 역 좌표를 싣는다. 채팅 도구는 넘기지 않는다 — 역 객체가 Gemini 입력에 그대로 펼쳐진다. */
+  coords = false,
 ): NearbySubwayStation[] {
   const stations: NearbySubwayStation[] = [];
   let attempted = 0;
@@ -143,6 +148,7 @@ export function buildNearbyArrivals(
       lines: it.lines,
       ...(it.linesEn ? { linesEn: it.linesEn } : {}),
       distanceMeters: Math.round(it.distanceMeters),
+      ...(coords ? { lat: it.lat, lng: it.lng } : {}),
     };
     if (it.result.status === "fulfilled") {
       if (it.result.value === null) {
@@ -229,6 +235,8 @@ export async function fetchNearbySubwayArrivals(
   lng: number,
   /** `en`이면 노선 영문(`linesEn`)·도착 영문 필드를 additive로 싣는다(E27). 한국어 필드 불변. */
   lang: "ko" | "en" = "ko",
+  /** 옵트인 `coords=1`(E65, 라우트만) — `buildNearbyArrivals` 참조. */
+  coords = false,
 ): Promise<NearbySubwayStation[]> {
   if (!hasSeoulSubwayRealtimeKey()) return [];
   const near = findStationsNear(lat, lng, {
@@ -266,9 +274,11 @@ export async function fetchNearbySubwayArrivals(
       lines,
       ...(linesEn ? { linesEn } : {}),
       distanceMeters: s.distanceMeters,
+      lat: s.lat,
+      lng: s.lng,
       result: settled[i],
       service: services[i],
     };
   });
-  return buildNearbyArrivals(inputs);
+  return buildNearbyArrivals(inputs, coords);
 }

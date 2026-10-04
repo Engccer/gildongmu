@@ -36,6 +36,8 @@ function ok(value: SubwayStationArrivals | null): NearbyArrivalInput {
     name: "강남역",
     lines: ["2호선"],
     distanceMeters: 120.7,
+    lat: 37.4979,
+    lng: 127.0276,
     result: { status: "fulfilled", value },
   };
 }
@@ -44,6 +46,8 @@ function rejected(name = "역삼역"): NearbyArrivalInput {
     name,
     lines: ["2호선"],
     distanceMeters: 340.2,
+    lat: 37.5006,
+    lng: 127.0364,
     result: { status: "rejected", reason: new Error("HTTP 503") },
   };
 }
@@ -152,6 +156,17 @@ describe("buildNearbyArrivals — 부분/전체 실패 투영(순수)", () => {
     expect(r[0].arrivalStatus).toBe("ok");
     expect(r[0].arrivals).toHaveLength(1);
     expect(r[0].distanceMeters).toBe(121); // 120.7 반올림
+  });
+
+  it("역 좌표는 옵트인(coords=1, E65)일 때만 싣는다 — 채팅 도구 경로는 종전 모양", () => {
+    const off = buildNearbyArrivals([ok(sample("강남")), rejected()]);
+    for (const s of off) {
+      expect(s).not.toHaveProperty("lat");
+      expect(s).not.toHaveProperty("lng");
+    }
+    const on = buildNearbyArrivals([ok(sample("강남")), rejected()], true);
+    expect(on.map((s) => [s.lat, s.lng])).toEqual([[37.4979, 127.0276], [37.5006, 127.0364]]);
+    expect(on.map(({ lat: _a, lng: _b, ...rest }) => rest)).toEqual(off);
   });
 
   it("fulfilled & null + 운행 시간 밖 확정 → closed + 첫차(역은 남는다)", () => {

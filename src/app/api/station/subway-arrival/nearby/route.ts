@@ -28,6 +28,8 @@ const querySchema = z.object({
   lng: lngParam(),
   // `lang=en`은 노선·도착 영문 필드를 additive로 싣는다(E27). 미지정·ko는 종전과 byte-identical.
   lang: langParam(),
+  // `coords=1`은 역 좌표를 싣는다(E65, 앱 로터 재료). 미지정 응답은 종전과 byte-identical.
+  coords: z.enum(["1"]).optional(),
 });
 
 export async function GET(request: NextRequest) {
@@ -35,6 +37,7 @@ export async function GET(request: NextRequest) {
     lat: request.nextUrl.searchParams.get("lat") ?? "",
     lng: request.nextUrl.searchParams.get("lng") ?? "",
     lang: request.nextUrl.searchParams.get("lang"),
+    coords: request.nextUrl.searchParams.get("coords") ?? undefined,
   });
   if (!parsed.success) {
     return NextResponse.json(
@@ -49,7 +52,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ stations: [] });
   }
   try {
-    const stations = await fetchNearbySubwayArrivals(parsed.data.lat, parsed.data.lng, parsed.data.lang);
+    const stations = await fetchNearbySubwayArrivals(
+      parsed.data.lat, parsed.data.lng, parsed.data.lang, parsed.data.coords === "1");
     // 0건이면 최근접 역을 동봉 — "1km 안에 없다"와 "이 지역엔 도시철도가 없다"를
     // 사용자가 거리로 구분한다(seed 조회라 추가 네트워크 0).
     if (stations.length === 0) {

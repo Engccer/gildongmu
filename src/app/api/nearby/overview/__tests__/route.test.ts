@@ -37,6 +37,19 @@ describe("GET /api/nearby/overview", () => {
     expect(await (await GET(req("?lat=37.5385&lng=127.143"))).json()).toEqual({ data });
   });
 
+  it("places=1(E65)만 상세 재료를 요청하고, 미지정은 종전 호출 그대로", async () => {
+    mockAssemble.mockResolvedValue({ overview: { place: null, radiusMeters: 1000, bullets: [] }, places: [] } as never);
+    await GET(req("?lat=37.5385&lng=127.143"));
+    expect(mockAssemble).toHaveBeenLastCalledWith(37.5385, 127.143, false);
+    await GET(req("?lat=37.5385&lng=127.143&places=1"));
+    expect(mockAssemble).toHaveBeenLastCalledWith(37.5385, 127.143, true);
+  });
+
+  it("places의 미지 값은 400(조용히 무시하지 않는다)", async () => {
+    expect((await GET(req("?lat=37.5385&lng=127.143&places=true"))).status).toBe(400);
+    expect(mockAssemble).not.toHaveBeenCalled();
+  });
+
   it("조립 예외는 502", async () => {
     mockAssemble.mockRejectedValue(new Error("boom"));
     expect((await GET(req("?lat=37.5385&lng=127.143"))).status).toBe(502);

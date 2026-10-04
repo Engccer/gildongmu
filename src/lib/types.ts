@@ -1021,6 +1021,9 @@ export interface NearbySubwayStation {
   linesEn?: string[];
   /** 현재 위치로부터 Haversine 거리(m, 반올림) — 가까운 순 정렬 보존 */
   distanceMeters: number;
+  /** seed 역 좌표(옵트인 `coords=1`, E65 — 앱 로터의 역 상세·길찾기·전화 재료). 미지정 응답엔 없다. */
+  lat?: number;
+  lng?: number;
   /**
    * 도착조회 상태 — 넷을 절대 뭉개지 않는다(시각장애인은 화면으로 구분할 수 없다).
    * - "ok": 실시간 성공(arrivals 정본, 0건이면 정상적 "열차 없음").

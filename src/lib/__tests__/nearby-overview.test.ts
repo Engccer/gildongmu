@@ -206,3 +206,47 @@ describe("composeOverview — 장소 투영(places)", () => {
     expect(composeOverviewRaw(base()).places).toEqual([]);
   });
 });
+
+describe("composeOverview — 옵트인 상세 재료(places=1, E65)", () => {
+  const projected = { id: "f1", name: "식당1", category: "c", address: "", roadAddress: "", lat: ORIGIN.lat, lng: ORIGIN.lng };
+  const event = {
+    id: "e1", title: "행사1", category: "전시/미술", place: "구민회관", district: "강동구",
+    dateText: "2026-10-01~2026-10-31", timeText: "", isFree: true, target: "누구나",
+    lat: ORIGIN.lat, lng: ORIGIN.lng, distanceMeters: 30,
+  };
+  const station = { name: "길동", lineName: "5호선", lat: ORIGIN.lat + 0.002, lng: ORIGIN.lng + 0.002, distanceMeters: 262 };
+  const input = () =>
+    base({
+      station,
+      bus: ok([place("길동사거리", 0, 0.001, 80)]),
+      food: ok({ places: [{ ...place("식당1", 0, 0, 5), projected }], capped: false }),
+      events: ok({ events: [{ ...place("행사1", 0, 0, 30), event }], total: 1 }),
+    });
+
+  it("미지정은 종전 모양 그대로 — 좌표·투영·행사 원본이 wire에 없다", () => {
+    const json = JSON.stringify(composeOverviewRaw(input()).overview);
+    for (const key of ['"place":{', '"event":', '"lat":', '"lng":']) expect(json).not.toContain(key);
+  });
+
+  it("옵트인이면 장소 투영·행사 원본·역 좌표를 싣고, 정류소엔 싣지 않는다", () => {
+    const { overview } = composeOverviewRaw(input(), true);
+    const [transit, food, events] = overview.bullets;
+    expect(transit).toMatchObject({ station: { name: "길동", lat: station.lat, lng: station.lng } });
+    if (transit.kind !== "transit" || transit.busStops?.state !== "ok") throw new Error("type");
+    expect(transit.busStops.nearest[0]).not.toHaveProperty("place");
+    expect(transit.busStops.nearest[0]).not.toHaveProperty("lat");
+    if (food.kind === "transit" || food.state !== "ok") throw new Error("type");
+    expect(food.nearest[0].place).toEqual(projected);
+    if (events.kind === "transit" || events.state !== "ok") throw new Error("type");
+    expect(events.nearest[0].event).toEqual(event);
+    expect(events.nearest[0]).not.toHaveProperty("place");
+  });
+
+  it("옵트인이어도 문장 재료(이름·거리·방위)와 채팅 투영은 같다", () => {
+    const off = composeOverviewRaw(input());
+    const on = composeOverviewRaw(input(), true);
+    const strip = (o: unknown) => JSON.parse(JSON.stringify(o, (k, v) => (["place", "event", "lat", "lng"].includes(k) && typeof v !== "string" ? undefined : v)));
+    expect(strip(on.overview)).toEqual(strip(off.overview));
+    expect(on.places).toEqual(off.places);
+  });
+});

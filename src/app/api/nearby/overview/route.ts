@@ -5,7 +5,7 @@ import { isInKorea } from "@/lib/coverage";
 import { assembleNearbyOverview } from "@/lib/nearby-overview";
 
 /**
- * GET /api/nearby/overview?lat=..&lng=..
+ * GET /api/nearby/overview?lat=..&lng=..[&places=1]
  * "한눈에 보기"(M4) — 현재 위치 주변 6종을 공통 반경 1km로 한 번에 집계한다.
  * 키 게이트는 불릿 단위라 조립 안에 있다(키 없는 불릿 = 부재). 대중교통 불릿은 seed라
  * 키와 무관하게 항상 있으므로 `data: null` 상태는 없다(응답은 항상 data). 조립 자체의
@@ -13,12 +13,14 @@ import { assembleNearbyOverview } from "@/lib/nearby-overview";
  */
 export const dynamic = "force-dynamic";
 
-const querySchema = z.object({ lat: latParam(), lng: lngParam() });
+// `places=1`은 「한눈에 보기」 항목에 상세 진입 재료를 싣는다(E65, 앱 로터). 미지정 응답은 종전과 byte-identical.
+const querySchema = z.object({ lat: latParam(), lng: lngParam(), places: z.enum(["1"]).optional() });
 
 export async function GET(request: NextRequest) {
   const parsed = querySchema.safeParse({
     lat: request.nextUrl.searchParams.get("lat") ?? "",
     lng: request.nextUrl.searchParams.get("lng") ?? "",
+    places: request.nextUrl.searchParams.get("places") ?? undefined,
   });
   if (!parsed.success) {
     return NextResponse.json(
@@ -31,7 +33,8 @@ export async function GET(request: NextRequest) {
   }
   try {
     // wire는 overview만 — 장소 투영(places)은 채팅 카드 전용이라 싣지 않는다(CLI·MCP 출력 팽창 금지).
-    const { overview: data } = await assembleNearbyOverview(parsed.data.lat, parsed.data.lng);
+    const { overview: data } = await assembleNearbyOverview(
+      parsed.data.lat, parsed.data.lng, parsed.data.places === "1");
     return NextResponse.json({ data });
   } catch (e) {
     console.error("[nearby/overview] 조립 실패:", e);

@@ -106,7 +106,7 @@ describe("GET /api/station/subway-arrival/nearby — lang(E27)", () => {
     // 강릉 부근(반경 1km 안 역 없음) — 최근접 역이 seed에서 나온다
     const res = await GET(makeRequest("?lat=37.7519&lng=128.8761&lang=en"));
     expect(res.status).toBe(200);
-    expect(mockFetch).toHaveBeenCalledWith(37.7519, 128.8761, "en");
+    expect(mockFetch).toHaveBeenCalledWith(37.7519, 128.8761, "en", false);
     const body = await res.json();
     expect(body.stations).toEqual([]);
     expect(body.nearest.lines.length).toBeGreaterThan(0);
@@ -116,11 +116,29 @@ describe("GET /api/station/subway-arrival/nearby — lang(E27)", () => {
   it("미지정은 provider lang 'ko'이고 nearest에 linesEn이 없다", async () => {
     mockFetch.mockResolvedValue([]);
     const res = await GET(makeRequest("?lat=37.7519&lng=128.8761"));
-    expect(mockFetch).toHaveBeenCalledWith(37.7519, 128.8761, "ko");
+    expect(mockFetch).toHaveBeenCalledWith(37.7519, 128.8761, "ko", false);
     const body = await res.json();
     expect(body.nearest.linesEn).toBeUndefined();
   });
   it("미지 lang은 400", async () => {
     expect((await GET(makeRequest("?lat=37.5&lng=127.0&lang=jp"))).status).toBe(400);
+  });
+});
+
+// E65: `coords=1`만 역 좌표를 요청한다(앱 로터 재료). 미지정은 종전 호출 그대로, 미지 값은 400.
+describe("GET /api/station/subway-arrival/nearby — coords(E65)", () => {
+  beforeEach(() => {
+    mockHasKey.mockReset();
+    mockHasKey.mockReturnValue(true);
+    mockFetch.mockReset();
+    mockFetch.mockResolvedValue([]);
+  });
+  it("coords=1은 provider에 좌표 옵트인을 넘긴다", async () => {
+    await GET(makeRequest("?lat=37.5&lng=127.0&coords=1"));
+    expect(mockFetch).toHaveBeenCalledWith(37.5, 127.0, "ko", true);
+  });
+  it("미지 값은 400", async () => {
+    expect((await GET(makeRequest("?lat=37.5&lng=127.0&coords=true"))).status).toBe(400);
+    expect(mockFetch).not.toHaveBeenCalled();
   });
 });

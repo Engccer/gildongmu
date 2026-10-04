@@ -9,7 +9,7 @@ import { findStationsNear } from "./subway-stations";
 import { stripRegionPrefix } from "./where-am-i";
 import { hasDataGoKrKey, hasKakaoKey, hasSeoulOpenDataKey } from "./env";
 import { bearingDegrees, bearingToCompass8, type CompassDirection } from "./geo/bearing";
-import type { Place } from "./types";
+import type { CultureEvent, Place } from "./types";
 import { romanAddressOf } from "./romanize";
 import { barrierFreePlaceToPlace, kidsPlaceToPlace, surroundingPlaceToPlace } from "./nearby-place";
 
@@ -53,6 +53,10 @@ export interface OverviewPlace {
   nameRoman?: string;
   distanceMeters: number;
   bearing: CompassDirection;
+  /** 상세 진입 재료(옵트인 `places=1`, E65) — 식당·카페·아이 놀 곳·무장애. 채팅 카드와 같은 투영. */
+  place?: Place;
+  /** 상세 진입 재료(옵트인 `places=1`, E65) — 문화 행사 원본(상세의 행사 섹션 재료). */
+  event?: CultureEvent;
 }
 
 export interface OverviewStation {
@@ -62,6 +66,9 @@ export interface OverviewStation {
   line?: string;
   bearing: CompassDirection;
   distanceMeters: number;
+  /** seed 역 좌표(옵트인 `places=1`, E65) — 역 상세·전화 조회 재료. */
+  lat?: number;
+  lng?: number;
 }
 
 export type OverviewBusStops =
@@ -110,6 +117,8 @@ export interface Located {
   /** 장소 상세가 있는 조각(식당·카페·아이·무장애)만. 채팅 카드 투영의 근거.
    *  (`place`가 아닌 이유: 문화행사 레코드의 `place: string`(장소명)과 충돌한다.) */
   projected?: Place;
+  /** 문화 행사 원본(행사 조각만). 옵트인 `places=1`이 `OverviewPlace.event`로 싣는다. */
+  event?: CultureEvent;
 }
 
 /** `composeOverview` 입력. null 조각 = 키 없음(게이트), "unavailable" = 국내 미제공 선판정. */
@@ -139,12 +148,15 @@ function nearestItems(items: Located[], count: number): Located[] {
     .slice(0, overviewNearestCap(count));
 }
 
-function toNearest(origin: { lat: number; lng: number }, items: Located[]): OverviewPlace[] {
+/** `detail` = 옵트인 `places=1`(E65): 상세 진입 재료를 싣는다. 미지정 응답은 종전 그대로. */
+function toNearest(origin: { lat: number; lng: number }, items: Located[], detail: boolean): OverviewPlace[] {
   return items.map((p) => ({
     name: p.name,
     ...(p.nameRoman ? { nameRoman: p.nameRoman } : {}),
     distanceMeters: Math.round(p.distanceMeters),
     bearing: bearingToCompass8(bearingDegrees(origin.lat, origin.lng, p.lat, p.lng)),
+    ...(detail && p.projected ? { place: p.projected } : {}),
+    ...(detail && p.event ? { event: p.event } : {}),
   }));
 }
 
@@ -155,16 +167,20 @@ function placeBullet(
   count: number,
   countCapped: boolean,
   places: Place[],
+  detail: boolean,
 ): OverviewBullet {
   if (settled.status === "rejected") return { kind, state: "failed" };
   if (count === 0) return { kind, state: "none" };
   const items = nearestItems(settled.value, count);
   for (const it of items) if (it.projected) places.push(it.projected);
-  return { kind, state: "ok", count, countCapped, nearest: toNearest(origin, items) };
+  return { kind, state: "ok", count, countCapped, nearest: toNearest(origin, items, detail) };
 }
 
-/** 순수: 조각 결과 → 불릿. I/O 없음(테스트 정본). */
-export function composeOverview(input: OverviewInput): ComposedOverview {
+/**
+ * 순수: 조각 결과 → 불릿. I/O 없음(테스트 정본). `detail` = 라우트 옵트인 `places=1`(E65, 앱의 로터
+ * 「상세 보기」 재료). 채팅 도구·CLI·웹은 부르지 않는다 — `overview`가 Gemini 입력과 도구 출력에 그대로 펼쳐진다.
+ */
+export function composeOverview(input: OverviewInput, detail = false): ComposedOverview {
   const origin = { lat: input.lat, lng: input.lng };
   const places: Place[] = [];
 
@@ -182,6 +198,7 @@ export function composeOverview(input: OverviewInput): ComposedOverview {
           bearingDegrees(origin.lat, origin.lng, input.station.lat, input.station.lng),
         ),
         distanceMeters: Math.round(input.station.distanceMeters),
+        ...(detail ? { lat: input.station.lat, lng: input.station.lng } : {}),
       }
     : null;
 
@@ -194,7 +211,8 @@ export function composeOverview(input: OverviewInput): ComposedOverview {
       busStops = {
         state: "ok",
         count: input.bus.value.length,
-        nearest: toNearest(origin, nearestItems(input.bus.value, input.bus.value.length)),
+        // 정류소는 상세 화면이 없어 상세 재료를 싣지 않는다(E65 spec §2).
+        nearest: toNearest(origin, nearestItems(input.bus.value, input.bus.value.length), false),
       };
   }
 
@@ -206,11 +224,11 @@ export function composeOverview(input: OverviewInput): ComposedOverview {
       slice.status === "fulfilled" ? { status: "fulfilled", value: slice.value.places } : slice;
     const n = slice.status === "fulfilled" ? slice.value.places.length : 0;
     const capped = slice.status === "fulfilled" && slice.value.capped;
-    bullets.push(placeBullet(kind, origin, settled, n, capped, places));
+    bullets.push(placeBullet(kind, origin, settled, n, capped, places, detail));
   }
   if (input.kids) {
     const n = input.kids.status === "fulfilled" ? input.kids.value.length : 0;
-    bullets.push(placeBullet("kids", origin, input.kids, n, false, places));
+    bullets.push(placeBullet("kids", origin, input.kids, n, false, places, detail));
   }
   if (input.events === "unavailable") {
     bullets.push({ kind: "events", state: "unavailable", reason: "seoulOnly" });
@@ -220,11 +238,11 @@ export function composeOverview(input: OverviewInput): ComposedOverview {
         ? { status: "fulfilled", value: input.events.value.events }
         : input.events;
     const n = input.events.status === "fulfilled" ? input.events.value.total : 0;
-    bullets.push(placeBullet("events", origin, settled, n, false, places));
+    bullets.push(placeBullet("events", origin, settled, n, false, places, detail));
   }
   if (input.barrierFree) {
     const n = input.barrierFree.status === "fulfilled" ? input.barrierFree.value.length : 0;
-    bullets.push(placeBullet("barrierFree", origin, input.barrierFree, n, false, places));
+    bullets.push(placeBullet("barrierFree", origin, input.barrierFree, n, false, places, detail));
   }
 
   // 식당·카페 교집합(카카오 category_group이 둘 다인 가게) 대비 id dedupe — 첫 등장(불릿 순서) 유지.
@@ -260,7 +278,7 @@ async function settle<T>(p: Promise<T>): Promise<PromiseSettledResult<T>> {
  * I/O: 좌표 → 조각 병렬 조회 → `composeOverview`. 키 게이트는 여기서 조각을 null로
  * 둔다(라우트는 게이트를 모른다). 역은 seed 동기 조회라 실패 경로가 없다.
  */
-export async function assembleNearbyOverview(lat: number, lng: number): Promise<ComposedOverview> {
+export async function assembleNearbyOverview(lat: number, lng: number, detail = false): Promise<ComposedOverview> {
   const kakao = hasKakaoKey();
   const dataGoKr = hasDataGoKrKey();
   const seoul = hasSeoulOpenDataKey();
@@ -283,7 +301,7 @@ export async function assembleNearbyOverview(lat: number, lng: number): Promise<
         ? Promise.resolve("unavailable" as const)
         : settle(
             findEventsNear(lat, lng, radius).then((r) => ({
-              events: r.events.map((e) => ({ ...e, name: e.title, nameRoman: e.titleRoman })),
+              events: r.events.map((e) => ({ ...e, name: e.title, nameRoman: e.titleRoman, event: e })),
               total: r.total,
             })),
           ),
@@ -321,5 +339,5 @@ export async function assembleNearbyOverview(lat: number, lng: number): Promise<
     kids,
     events,
     barrierFree,
-  });
+  }, detail);
 }
