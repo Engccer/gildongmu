@@ -49,6 +49,17 @@
 - 저장 응답은 `node scripts/verify-briefing-station-join.mjs --from-corpus <dump.json>`으로 구성·동치 판정과 실제 Kit 조인을 함께 재검증한다. `--lang` 생략은 저장 언어이고 명시 불일치·`--out` 병용은 실패다. 이 모드는 env·provider·네트워크를 사용하지 않으며 원본과 수집 시각을 보존한다. 과거 응답 재검증을 신규 실호출 증거로 표시하지 않는다.
 - **가드**: `src/lib/__tests__/briefing-station-entry-guard.test.ts`(①~⑦ 판정 + 라벨 언어). ⚠ 술어는 **구조**를 봐야 한다 — 구현 리뷰 실측에서 표면만 보던 넷(옵트인 기본값·액션 상태 분기·로터 역순·줄이 `Text`로 남는지)이 되돌림을 통과시켰다.
 
+### 내 주변 탭 로터 액션은 기존 판별선을 재사용한다
+
+**내 주변 탭 로터 액션은 기존 판별선을 재사용한다**(E65, 2026-10-05, spec `2026-10-05-nearby-rotor-actions-design.md` §2·§3): 장소 하나인 행은 `PlaceRow` 묶음, 장소가 여럿인 문장은 장소마다 「○○ 상세 보기」.
+
+- **`PlaceRow`의 로터 묶음은 수정자 `placeRowActions`(`SearchView.swift` `PlaceRowActions`) 하나다** — 「주변 상황」 행도 이것을 붙인다. 순서 가드(E60 `ios-location-ui.test.ts`)가 `SearchView.swift`를 읽으므로 수정자를 다른 파일로 옮기지 않는다. 버튼형 「주변 확인」(안내 시트)은 붙이지 않는다(`rowActionsAskAbout` nil).
+- **문장 속 대상은 문장을 파싱하지 않고 불릿 구조에서 뽑는다**(Kit `overviewDetailTargets`, `buildOverviewLines`와 같은 순서·같은 이름 함수). 뷰는 `zip(bullets, lines)`로 한 줄에 대상들을 역순 선언한다. 옵트인 재료가 없는 항목·버스 정류소는 대상이 아니다(죽은 액션 금지).
+- **역 제목 로터는 E45 창구를 그대로 지난다**: 라벨 `stationCallLabel`(브리핑과 공용), 동작 `callStationPhone`, 노선 힌트 Kit `nearbyStationLineHint`, 역 Place `transitStopPlace`, 이름 언어 `subwayStationEnglishLines`(헤딩과 같은 판정). 전화 액션은 늘 있다(위원장 판정 2026-10-05).
+- ⚠ **앵커 목록의 「여기까지 길찾기」는 장소 상세의 `showsDirectionsEntry`를 따른다** — `SubwayNearbyView`·`BusNearbyView`의 `directionsEntryAllowed`는 기본값 없는 인자다. 안내 시트·길찾기 탭 스택 안의 상세에서 연 목록이 프리필을 내면 그 화면이 파괴된다(E45 spec §7). 환경값으로 넘기지 않는다(스택 안 push로의 전달이 검증되지 않은 기제).
+- **로터로 연 상세에서 돌아온 한 번만 재조회를 건너뛴다**(`skipReloadOnReturn`, 지하철 목록): `.task`가 복귀마다 다시 돌아 "역 N곳"이 복귀 커서 낭독과 겹친다. 상태로 막으면(`if case .loaded`) 탭 전환 복귀의 실시간 재조회까지 사라진다.
+- 가드 `src/lib/__tests__/e65-nearby-rotor-guard.test.ts`.
+
 ### 자동 등장 보조 섹션은 region 랜드마크 유지
 
 **자동 등장 보조 섹션은 region 랜드마크 유지**(`<section aria-labelledby>`+`useId`+`<h3 id>`). 버튼 없이 조용히 fetch되어 나타나는 섹션(`AirQuality`·`StationMeta` 류)은 region이 **유일한 발견 수단**이라 "불필요한 region" 아님. ⚠ 죽은 코드 청소 시 이 `aria-labelledby`·`useId` 제거 금지. **버튼으로 펼치는 패널은 버튼이 발견 경로라 `<div>` 유지**. 판단 규칙: "사용자가 직접 펼쳤나(버튼·div) vs 조용히 나타났나(자동·region)".
