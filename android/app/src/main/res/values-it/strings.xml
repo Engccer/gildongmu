@@ -614,7 +614,7 @@
     <string name="chat_source_perplexity">Perplexity</string>
     <string name="chat_source_seoulmetro">Metropolitana di Seoul</string>
     <string name="chat_source_seoulopen">Dati pubblici di Seoul (Portale dati aperti di Seoul)</string>
-    <string name="chat_source_tago">TAGO Bus (MOLIT)</string>
+    <string name="chat_source_tago">TAGO (MOLIT)</string>
     <string name="chat_source_tmap">Tmap</string>
     <string name="chat_source_tourapi">TourAPI dell\'Organizzazione del Turismo Coreano</string>
     <string name="chat_sources">Fonti</string>

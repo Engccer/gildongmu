@@ -8926,37 +8926,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "국토부 TAGO 버스"
+            "value": "국토부 TAGO"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "MOLIT TAGO Bus"
+            "value": "MOLIT TAGO"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "TAGO Autobús (MOLIT)"
+            "value": "TAGO (MOLIT)"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "TAGO Bus (MOLIT)"
+            "value": "TAGO (MOLIT)"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "TAGO Bus (MOLIT)"
+            "value": "TAGO (MOLIT)"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "国土交通部TAGOバス"
+            "value": "国土交通部TAGO"
           }
         }
       }
