@@ -345,10 +345,10 @@ async function annotateBriefing(
   includeGeometry: boolean,
   text: WalkTextVersion,
 ): Promise<WalkRouteBriefing> {
-  // 판본 2(E62)는 ko 재작성만 바꾼다. en(Tmap 단독)은 판본과 무관하게 종전 경로다.
+  // 판본 2(E62)의 문장 재작성은 ko만이다. en(Tmap 단독)은 문장이 판본과 무관하고 조각 필드(`parts`, A58 잔여)만 같은 게이트를 탄다.
   const base =
     lang === "en"
-      ? buildEnBriefing(b, await roadNamesEn(roadNameKeysOf(b)))
+      ? buildEnBriefing(b, await roadNamesEn(roadNameKeysOf(b)), { parts: includeGeometry && text.wording === 2 })
       : text.wording === 2
         ? rewriteWalkBriefingV2(b, {
             includeLive: includeGeometry,

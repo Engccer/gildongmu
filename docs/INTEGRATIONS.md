@@ -39,6 +39,7 @@ spec `2026-09-23-walk-two-lines-kakao-design.md`. 카카오 `route_mode` 허용�
 - 게이트는 `hasWalkRouteKeyFor(lang)`(ko=kakao∥tmap, en=tmap 단독 — E16 축3 2026-08-23). 라우트·page가 이것을, 채팅 declaration + router 이중 방어는 ko 산문 정본이라 `hasWalkRouteKey()`를 쓴다 — **ko 경로에 `hasTmapKey` 단독 게이트 금지**(카카오 키만 있는 배포에서 도보가 죽는다).
 - 거리·시간은 provider에서 `Math.round`(iOS 엄격 Int 디코딩 방어).
 - **언어가 provider 선택을 정한다**(E16 축3, 2026-08-23): `lang="ko"`는 카카오 기본 + Tmap 폴백, `lang="en"`은 **Tmap 단독·폴백 없음**. en에서 카카오로 내려가면 "가용성 폴백"이 아니라 한국어 문장이 나오기 때문이다. en 파이프라인은 `rewriteWalkBriefing`(ko 재작성)을 타지 않고 `buildEnBriefing`(구조화 필드 → 영어 문장)을 탄다. 계단 회피는 카카오 전용 축이라 en은 항상 `unavailable`이고, 그래서 비-ko 줄 목록은 `[recommended, shortest]`라 계단 회피 줄이 없다.
+- **en 조각(`parts`)은 방향을 품은 행동절에만 싣는다**(A58 잔여 2026-10-05, ko 판본 2와 같은 게이트 `wording=2` ∧ `includeGeometry=1`): 회전(12~19, 거리가 있을 때)은 `body` = "Walk 90m along …", 방향 박은 횡단(212~217)은 `body` = "Cross the crosswalk, then walk …"이고 `turn`은 행동절 그대로다(소비자는 `turn`을 읽지 않는다). 211·시설·직진·도착은 조각이 없다. 스토어 2.1(`49c47afb`)은 `body`를 되읽기·진행 상황·횡단 윗줄·재조회 머리말 뒤에만 쓰고 `stepTextSaysDirection(action:hasBody:)`이 조각이 있으면 머리말을 단다 — 머리말(사용자 진행 방위 기준) + 방향 뺀 `body`라 방향을 한 번만 말한다. 실호출 게이트 `scripts/verify-en-walk-parts.mjs`(8경로).
 - **Tmap 응답 귀속 규칙**: 한 Point 뒤에 LineString이 둘 이상 붙을 수 있고, 문장이 말하는 거리·도로명은 **첫 구간**의 것이다(30경로 435스텝 실측 — 합으로 읽으면 48건이 어긋난다). `pathCoords`는 종전대로 전부 귀속한다. 이 가정은 `pedestrian-guard.ts`의 거리 대조가 런타임에 증명한다(en 전용 옵트인, `guard` 플래그).
 
 ### 낭독 문장 재작성 (`rewriteWalkGuidance`)

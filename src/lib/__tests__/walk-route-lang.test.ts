@@ -72,6 +72,33 @@ describe("getWalkRoute lang=en", () => {
     );
   });
 
+  it("조각(parts)은 판본 2 ∧ 기하 옵트인에만, 신호기 주석은 문장과 본문에 함께(A58 잔여)", async () => {
+    audio.mockReturnValue(true);
+    const raw = () => ({
+      distanceMeters: 30,
+      durationSeconds: 30,
+      steps: [
+        { description: "10시 방향 횡단보도 후 14m 이동", turnType: 215, distanceMeters: 14, action: "crosswalk" as const, coord: origin },
+      ],
+    });
+    tmap.mockResolvedValue(raw());
+    const v2 = await getWalkRoute({ text: { wording: 2 }, origin, dest, lang: "en", includeGeometry: true });
+    expect(v2?.steps[0].description).toBe("Cross the crosswalk at 10 o'clock, then walk 14m, audible pedestrian signal");
+    expect(v2?.steps[0].parts).toEqual({
+      turn: "Cross the crosswalk at 10 o'clock",
+      body: "Cross the crosswalk, then walk 14m, audible pedestrian signal",
+    });
+    for (const opts of [
+      { text: { wording: 1 as const }, includeGeometry: true },
+      { text: { wording: 2 as const }, includeGeometry: false },
+    ]) {
+      tmap.mockResolvedValue(raw());
+      const r = await getWalkRoute({ ...opts, origin, dest, lang: "en" });
+      expect(r?.steps[0].description).toBe(v2?.steps[0].description);
+      expect(r?.steps[0].parts).toBeUndefined();
+    }
+  });
+
   it("계단 회피 안내 문장도 영어다", async () => {
     tmap.mockResolvedValue({
       distanceMeters: 30,

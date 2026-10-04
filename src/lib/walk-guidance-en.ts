@@ -41,9 +41,9 @@ function phraseOf(step: WalkRouteStep): string | null {
  * ("…, audible pedestrian signal") — 마침표가 있으면 "…14m., audible …"이 된다. ko 재작성
  * 문장도 같은 이유로 종결 부호가 없다(같은 규칙을 두 언어가 공유한다).
  */
-function sentenceOf(step: WalkRouteStep, roadNames: Map<string, string>): string {
+function sentenceOf(step: WalkRouteStep, roadNames: Map<string, string>): { text: string; parts?: StepParts } {
   const phrase = phraseOf(step);
-  if (step.turnType === ARRIVAL_TURN_TYPE) return phrase ?? "Arrive";
+  if (step.turnType === ARRIVAL_TURN_TYPE) return { text: phrase ?? "Arrive" };
 
   const meters = step.distanceMeters;
   const distance = meters !== undefined && meters > 0 ? formatDistance(meters) : null;
@@ -51,9 +51,32 @@ function sentenceOf(step: WalkRouteStep, roadNames: Map<string, string>): string
   const road = roadKo ? (roadNames.get(roadKo) ?? null) : null;
   const along = road ? ` along ${road}` : "";
 
-  if (!distance) return phrase ?? "Continue";
-  if (!phrase) return `Walk ${distance}${along}`;
-  return `${phrase}, then walk ${distance}${along}`;
+  if (!distance) return { text: phrase ?? "Continue", parts: partsOf(step, phrase, null) };
+  if (!phrase) return { text: `Walk ${distance}${along}` };
+  return { text: `${phrase}, then walk ${distance}${along}`, parts: partsOf(step, phrase, `walk ${distance}${along}`) };
+}
+
+type StepParts = { turn: string; body: string };
+
+/** 방향을 품은 횡단 행동절(212~217 — "on your left"·"at 10 o'clock"). 211은 방향이 없다. */
+const DIRECTED_CROSSWALK = new Set([212, 213, 214, 215, 216, 217]);
+
+/**
+ * 방향 구절과 나머지(A58 잔여, ko 판본 2 `parts`와 같은 계약 — 방향 구절을 가진 스텝에만). 소비자는 `body`만 쓴다(되읽기·억제
+ * 복구·진행 상황·횡단 윗줄, 재조회 첫 문장은 사용자 진행 방위 기준 머리말 + `body`). en은 행동절 하나에 방향이 박혀 있어
+ * `turn`은 그 행동절 그대로다. 회전은 본문이 이어지는 이동("Walk 90m along …")이라 거리가 없으면 조각이 없고(본문이 빈다),
+ * 방향 박은 횡단은 방향을 뺀 "Cross the crosswalk"가 본문이다.
+ */
+function partsOf(step: WalkRouteStep, phrase: string | null, walk: string | null): StepParts | undefined {
+  if (!phrase || step.turnType === undefined) return undefined;
+  if (DIRECTED_CROSSWALK.has(step.turnType)) {
+    return { turn: phrase, body: walk ? `Cross the crosswalk, then ${walk}` : "Cross the crosswalk" };
+  }
+  const action = pedestrianStepFor(step.turnType)?.action;
+  if ((action === "left" || action === "right" || action === "back") && walk) {
+    return { turn: phrase, body: `${walk.charAt(0).toUpperCase()}${walk.slice(1)}` };
+  }
+  return undefined;
 }
 
 /** 로마자 조회가 필요한 도로명 키(중복 제거). */
@@ -63,14 +86,19 @@ export function roadNameKeysOf(briefing: WalkRouteBriefing): string[] {
   ];
 }
 
-/** 스텝 문장을 영어로 교체한다. 좌표·거리·행동 등 다른 필드는 보존. */
+/**
+ * 스텝 문장을 영어로 교체한다. 좌표·거리·행동 등 다른 필드는 보존.
+ * `parts`(기본값 없음): 조각 필드를 싣는가 — ko 판본 2와 같은 게이트(`wording=2` ∧ `includeGeometry=1`)라 미지정 응답은 불변.
+ */
 export function buildEnBriefing(
   briefing: WalkRouteBriefing,
   roadNames: Map<string, string>,
+  opts: { parts: boolean },
 ): WalkRouteBriefing {
   const steps = briefing.steps.map((step) => {
     const { live: _live, ...rest } = step;
-    return { ...rest, description: sentenceOf(step, roadNames) };
+    const { text, parts } = sentenceOf(step, roadNames);
+    return { ...rest, description: text, ...(opts.parts && parts ? { parts } : {}) };
   });
   return { ...briefing, steps };
 }

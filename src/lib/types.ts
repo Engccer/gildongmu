@@ -594,7 +594,8 @@ export interface WalkRouteStep {
    * 스텝에만 있다. `turn`은 방향 구절(마침표 없음 — "왼쪽으로 도세요"·"9시 방향으로 도세요"·"진행 방향 그대로"),
    * `body`는 그것을 뺀 나머지이고 주석 꼬리까지 포함한다. 되읽기·억제 복구는 들어선 스텝을 `body`로 읽고(이미 돈
    * 회전을 다시 지시하지 않는다), 재조회 첫 문장은 `turn` 대신 사용자 진행 방위 기준 방향을 단다(E63).
-   * `wording=2` ∧ `includeGeometry=1` 응답에만 실린다.
+   * `wording=2` ∧ `includeGeometry=1` 응답에만 실린다. en은 방향을 품은 행동절(회전·방향 박은 횡단)에만, `turn`은 그 행동절
+   * 그대로다(`walk-guidance-en.ts`, A58 잔여).
    */
   parts?: { turn: string; body: string };
   /** 횡단보도 스텝의 건너는 방향 시(1~12, 12 = 진행 방향 그대로, 6 = 뒤). 방향 모름·지하보도는 부재. `parts`와 같은 게이트. */
