@@ -353,7 +353,6 @@ async function annotateBriefing(
         ? rewriteWalkBriefingV2(b, {
             includeLive: includeGeometry,
             geometry: provider === "kakao",
-            crossingRoad: text.crossingRoad,
           })
         : rewriteWalkBriefing(b, includeGeometry);
   return attachStepActions(
@@ -394,10 +393,9 @@ interface WalkRouteParams {
 }
 
 /**
- * 안내 문장 판본과 그 선택지(E62 spec §1·§3.5). 판본 1 = 종전(스토어 iOS 2.0·1.19·안드로이드), 판본 2 = 문안 확정본.
- * 건너는 길 이름은 판본 2에서만 뜻이 있고 iOS 실험판만 켠다.
+ * 안내 문장 판본(E62 spec §1·§3.5). 판본 1 = 종전(스토어 iOS 2.0·1.19), 판본 2 = 문안 확정본(건너는 길 이름 포함).
  */
-export type WalkTextVersion = { wording: 1 } | { wording: 2; crossingRoad: boolean };
+export type WalkTextVersion = { wording: 1 } | { wording: 2 };
 
 /** 경로 + 그것을 준 provider + 그 경로의 줄 종류(E42). 종류를 확정할 수 없으면 `kind` 부재. */
 interface ResolvedWalkRoute {

@@ -34,8 +34,7 @@ function route(steps: { desc: string; m: number; legs: [number, number][] }[]): 
   return { distanceMeters: 0, durationSeconds: 0, steps: out };
 }
 
-const LIVE: WalkWordingV2Options = { includeLive: true, geometry: true, crossingRoad: false };
-const ROAD: WalkWordingV2Options = { includeLive: true, geometry: true, crossingRoad: true };
+const LIVE: WalkWordingV2Options = { includeLive: true, geometry: true };
 
 /** 북쪽(0°)으로 걷던 이동 스텝 — 횡단의 기준 방향. */
 const WALK_NORTH = { desc: "길동사거리앞교차로까지 100m 이동(천호대로)", m: 100, legs: [[0, 100]] as [number, number][] };
@@ -50,7 +49,7 @@ describe("판본 2 이동 문장(문안 가)", () => {
   it("조회 화면 줄 목록 예문: 어디서 → 길을 따라 → 어디까지 → 거리", () => {
     const r = rewriteWalkBriefingV2(
       route([{ desc: "길동사거리에서 길동사거리앞교차로까지 128m 이동(천호대로)", m: 128, legs: [[0, 128]] }]),
-      { includeLive: false, geometry: true, crossingRoad: false },
+      { includeLive: false, geometry: true },
     );
     expect(r.steps[0].description).toBe("길동사거리에서 천호대로를 따라 길동사거리앞교차로까지 128m 이동");
   });
@@ -107,19 +106,17 @@ describe("판본 2 횡단 문장(문안 나)", () => {
     expect(r.steps[1].description).toBe("길동사거리를 향해 진행 방향 그대로 횡단보도를 건너세요. 횡단보도 길이 8m");
   });
 
-  it("틀어서 건넘, 길 이름 앎(옵트인)", () => {
-    const r = rewriteWalkBriefingV2(route([WALK_NORTH, { desc: "횡단보도 이용", m: 47, legs: [[270, 47]] }]), ROAD);
+  it("틀어서 건넘, 길 이름 앎", () => {
+    const r = rewriteWalkBriefingV2(route([WALK_NORTH, { desc: "횡단보도 이용", m: 47, legs: [[270, 47]] }]), LIVE);
     expect(r.steps[1].description).toBe("9시 방향으로 도세요. 그 후 천호대로를 건너세요. 횡단보도 길이 47m");
     expect(r.steps[1].parts).toEqual({ turn: "9시 방향으로 도세요", body: "천호대로를 건너세요. 횡단보도 길이 47m" });
     expect(r.steps[1].crossingClock).toBe(9);
   });
 
-  it("틀어서 건넘, 길 이름 모름(옵트인 꺼짐이면 길 이름을 싣지 않는다)", () => {
+  it("틀어서 건넘, 길 이름 모름(직각 안팎이 아닌 비스듬한 횡단은 길 이름을 추론하지 않는다)", () => {
     const steps = [WALK_NORTH, { desc: "길동사거리까지 횡단보도 이용", m: 8, legs: [[300, 8]] as [number, number][] }];
     const expected = "10시 방향으로 도세요. 그 후 길동사거리를 향해 횡단보도를 건너세요. 횡단보도 길이 8m";
     expect(rewriteWalkBriefingV2(route(steps), LIVE).steps[1].description).toBe(expected);
-    // 옵트인이어도 직각 안팎(60~120°)이 아니면(60° 미만 비스듬) 길 이름 추론을 하지 않는다.
-    expect(rewriteWalkBriefingV2(route(steps), ROAD).steps[1].description).toBe(expected);
   });
 
   it("6시는 '뒤로 도세요'", () => {
@@ -166,7 +163,7 @@ describe("판본 2 연속 횡단", () => {
   ];
 
   it("처음 한 번(개수 예고) 뒤 하나씩 — 확정본 예문 그대로", () => {
-    const r = rewriteWalkBriefingV2(route(KANGDONG), ROAD);
+    const r = rewriteWalkBriefingV2(route(KANGDONG), LIVE);
     expect(r.steps).toHaveLength(4);
     expect(r.steps[1].description).toBe(
       "강동성심병원교차로에서 횡단보도 2개를 연속으로 건넙니다. 먼저 9시 방향으로 도세요. 그 후 천호대로를 건너세요. 횡단보도 길이 47m",
@@ -197,7 +194,7 @@ describe("판본 2 연속 횡단", () => {
         { desc: "길동사거리까지 100m 이동(천호대로)", m: 100, legs: [[66, 100]] },
         { desc: "길동사거리에서 2개의 횡단보도 이용", m: 60, legs: [[162, 9.4], [107, 50.3]] },
       ]),
-      ROAD,
+      LIVE,
     );
     expect(r.steps[1].description).toBe(
       "길동사거리에서 횡단보도 2개를 연속으로 건넙니다. 먼저 3시 방향으로 도세요. 그 후 횡단보도를 건너세요. 횡단보도 길이 9m",
@@ -224,7 +221,6 @@ describe("판본 2 조각 필드 게이트·조립 관계", () => {
     const r = rewriteWalkBriefingV2(route([WALK_NORTH, { desc: "횡단보도 이용", m: 47, legs: [[270, 47]] }]), {
       includeLive: false,
       geometry: true,
-      crossingRoad: false,
     });
     for (const s of r.steps) {
       expect(s.parts).toBeUndefined();
@@ -242,7 +238,7 @@ describe("판본 2 조각 필드 게이트·조립 관계", () => {
         { desc: "횡단보도 이용", m: 20, legs: [[0, 20]] },
         { desc: "지하보도 이용", m: 30, legs: [[90, 30]] },
       ]),
-      ROAD,
+      LIVE,
     );
     for (const s of r.steps) {
       if (!s.parts) continue;
@@ -257,7 +253,7 @@ describe("판본 2 조각 필드 게이트·조립 관계", () => {
 
 describe("판본 2 리뷰 반영(구현 리뷰·spec 준수 리뷰)", () => {
   it("길 이름은 12m 이상 횡단에만 — 모퉁이를 돌아 옆길을 건너는 짧은 횡단에 큰길 이름을 붙이지 않는다", () => {
-    const r = rewriteWalkBriefingV2(route([WALK_NORTH, { desc: "길동사거리까지 횡단보도 이용", m: 8, legs: [[270, 8]] }]), ROAD);
+    const r = rewriteWalkBriefingV2(route([WALK_NORTH, { desc: "길동사거리까지 횡단보도 이용", m: 8, legs: [[270, 8]] }]), LIVE);
     expect(r.steps[1].description).toBe("9시 방향으로 도세요. 그 후 길동사거리를 향해 횡단보도를 건너세요. 횡단보도 길이 8m");
   });
 
@@ -293,7 +289,7 @@ describe("판본 2 리뷰 반영(구현 리뷰·spec 준수 리뷰)", () => {
         { desc: "50m 이동", m: 50, legs: [[114, 50]] },
         { desc: "신명초교입구교차로에서 봄봄약국까지 2개의 횡단보도 이용", m: 30, legs: [[24, 30.1]] },
       ]),
-      ROAD,
+      LIVE,
     );
     const lead = r.steps[1];
     expect(lead.description).toBe(`강동성심병원교차로에서 횡단보도 2개를 연속으로 건넙니다. 먼저 ${lead.parts!.turn}. 그 후 ${lead.parts!.body}`);

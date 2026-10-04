@@ -110,6 +110,17 @@ describe("GET /api/route/walk", () => {
     expect(v2.result.steps).toEqual([{ description: "왼쪽으로 도세요. 그 후 천호대로를 따라 교차로까지 50m 이동" }]);
   });
 
+  it("건너는 길 이름은 판본 2의 일부다(E62 졸업): 2.1 실험판이 보내는 crossingRoad=1은 읽지 않는다", async () => {
+    const raw = { distanceMeters: 50, durationSeconds: 40, steps: [{ description: "교차로까지 왼쪽길로 50m 이동(천호대로)" }] };
+    const url = "http://x/api/route/walk?origin=37.5,127.0&dest=37.6,127.1";
+    vi.mocked(getWalkRouteBriefing).mockResolvedValueOnce(raw);
+    const plain = await (await GET(new NextRequest(`${url}&wording=2`))).json();
+    vi.mocked(getWalkRouteBriefing).mockResolvedValueOnce(raw);
+    const res = await GET(new NextRequest(`${url}&wording=2&crossingRoad=1`));
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual(plain);
+  });
+
   it("provider throw → 502", async () => {
     vi.mocked(getWalkRouteBriefing).mockRejectedValueOnce(new Error("fail"));
     const res = await GET(makeRequest("37.5,127.0", "37.6,127.1"));

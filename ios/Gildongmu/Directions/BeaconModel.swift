@@ -945,8 +945,6 @@ final class BeaconModel {
             lang: AppLanguage.dataLocaleValue,
             includeGeometry: true,
             variant: variant,
-            // 건너는 길 이름은 실험판만(E62 §3.5 — 추론이라 실보행이 게이트).
-            crossingRoad: AppConfig.experimentalCrossingRoadEnabled,
             via: via
         )
         guard let briefing else { return nil }

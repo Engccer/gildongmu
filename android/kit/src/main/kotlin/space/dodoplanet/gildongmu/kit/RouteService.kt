@@ -121,8 +121,7 @@ class RouteService(val client: APIClient) {
 
     /**
      * 안내 문장 판본 2(E62 문안 확정본, spec `2026-10-03-crosswalk-guidance-design.md` §1)를 늘 싣는다 — 미지정(판본 1)은 스토어
-     * iOS 2.0·1.19의 계약이다. Kit `appendWording`의 `crossingRoad`(건너는 길 이름)는 iOS 실험판 전용이라 옮기지 않는다
-     * (계획 §1 코디네이터 판정 3, 가드 `e62-crossing-road-gate.test.ts`).
+     * iOS 2.0·1.19의 계약이다. 건너는 길 이름(§3.5)은 판본 2의 일부라 따로 보내지 않는다(가드 `e62-crossing-road-gate.test.ts`).
      */
     private fun appendWording(query: MutableList<Pair<String, String>>) {
         query.add("wording" to "2")

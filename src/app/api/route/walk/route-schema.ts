@@ -51,10 +51,6 @@ const querySchema = z
     wording: z
       .union([z.literal("2"), z.null()])
       .transform((v) => (v === "2" ? (2 as const) : (1 as const))),
-    // 건너는 길 이름(E62, iOS 실험판만): 누락 또는 정확히 "1". 판본 2에서만 뜻이 있다.
-    crossingRoad: z
-      .union([z.literal("1"), z.null()])
-      .transform((v) => v === "1"),
   })
   .superRefine((data, ctx) => {
     if (data.variant && data.alternatives) {
@@ -69,10 +65,7 @@ const querySchema = z
         message: "alternatives 조회는 includeGeometry를 지원하지 않습니다.",
       });
     }
-    // 판본 2 선택지를 판본 1에 붙이면 조용히 무시되므로 400. `alternatives`는 옛 조회 화면 전용이라 판본 1 고정.
-    if (data.crossingRoad && data.wording !== 2) {
-      ctx.addIssue({ code: "custom", message: "crossingRoad는 wording=2와 함께만 지정할 수 있습니다." });
-    }
+    // `alternatives`는 옛 조회 화면 전용이라 판본 1 고정.
     if (data.alternatives && data.wording === 2) {
       ctx.addIssue({ code: "custom", message: "alternatives 조회는 wording=2를 지원하지 않습니다." });
     }
@@ -103,7 +96,6 @@ export function parseWalkQuery(raw: {
   via: string | null;
   lang: string | null;
   wording: string | null;
-  crossingRoad: string | null;
 }): ParseWalkQueryResult {
   const parsed = querySchema.safeParse(raw);
   if (!parsed.success) {

@@ -103,7 +103,7 @@ class RouteServiceTest {
         val q = t.lastQuery()
         assertTrue(q.has("lines", "2"))
         assertFalse(q.has("lines", "1"))
-        // 판본 2 문장(E62)을 늘 싣고, 건너는 길 이름(`crossingRoad`)은 보내지 않는다(iOS 실험판 전용).
+        // 판본 2 문장(E62)을 늘 싣는다. 건너는 길 이름은 판본 2의 일부라 옛 옵트인(`crossingRoad`)을 보내지 않는다.
         assertTrue(q.has("wording", "2"))
         assertFalse(q.hasName("crossingRoad"))
         for (name in listOf("accessible", "variant", "includeGeometry", "alternatives", "lang")) assertFalse(q.hasName(name), name)

@@ -529,8 +529,8 @@ export async function executeFunction(
         // 앱 화면 첫 줄(E42 — ko는 최단)과 맞춘다. 계단 회피 요청은 서버 계단 회피 파이프라인(화면의 계단 회피 줄과 같은 축)이다.
         ...(accessible ? {} : { variant: "shortest" as const }),
         via,
-        // 서버 내부 호출이라 스토어 빌드 호환과 무관하다 — 문안 확정본(판본 2). 길 이름은 실험판 몫이라 끈다.
-        text: { wording: 2, crossingRoad: false },
+        // 서버 내부 호출이라 스토어 빌드 호환과 무관하다 — 문안 확정본(판본 2).
+        text: { wording: 2 },
       });
       // 경로 없음(예: 도보 불가 구간)은 get_transit_route와 동형으로 route:null을
       // 그대로 data에 실어 LLM이 "경로를 찾지 못했다"로 해석하게 한다.

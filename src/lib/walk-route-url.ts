@@ -38,7 +38,6 @@ export function walkRouteUrl(params: {
   // ko는 파라미터를 붙이지 않는다 — 기존 캐시 키·기존 테스트 단언 유지(옵트인 관례).
   if (lang !== "ko") url += `&lang=${lang}`;
   // 안내 문장 판본 2(E62): 웹은 서버와 같은 배포라 늘 새 문장을 받는다. 미지정(판본 1)은 스토어 앱의 계약이다.
-  // 건너는 길 이름(`crossingRoad`)은 iOS 실험판 몫이라 웹은 보내지 않는다.
   url += "&wording=2";
   return url;
 }

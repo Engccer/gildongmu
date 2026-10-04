@@ -235,7 +235,7 @@ export function rewriteWalkBriefing(
 /** 서버 안내 문장의 판본. 1 = 종전(미지정 응답), 2 = E62 문안 확정본. 기본값 없음. */
 export type WalkWording = 1 | 2;
 
-/** 판본 2 재작성 선택지. 셋 다 기본값 없는 필수 — 응답 모양을 바꾸는 스위치다. */
+/** 판본 2 재작성 선택지. 둘 다 기본값 없는 필수 — 응답 모양을 바꾸는 스위치다. */
 export interface WalkWordingV2Options {
   /** live·crossing·parts·crossingClock를 싣는가(`includeGeometry=1`). */
   includeLive: boolean;
@@ -244,8 +244,6 @@ export interface WalkWordingV2Options {
    * LineString이라 방위가 횡단을 뜻하지 않는다(spec §3.3).
    */
   geometry: boolean;
-  /** 건너는 길 이름(옵트인 `crossingRoad=1`, iOS 실험판만). */
-  crossingRoad: boolean;
 }
 
 /** 이동 문장 분해 결과(재작성 전 원재료). */
@@ -360,7 +358,7 @@ function crossSingleV2(
   }
   const roadParticle = ctx.prevRoad ? objectParticle(ctx.prevRoad) : null;
   const road =
-    opts.crossingRoad && ctx.prevRoad && roadParticle && meters >= ROAD_CROSS_MIN_LENGTH_M &&
+    ctx.prevRoad && roadParticle && meters >= ROAD_CROSS_MIN_LENGTH_M &&
     crossesWalkedRoad(ref, cross)
       ? `${ctx.prevRoad}${roadParticle} 건너세요`
       : undefined;
@@ -414,7 +412,6 @@ function crossSplitV2(
   to: string | undefined,
   pieces: CrossingPiece[],
   ctx: CrossContext,
-  opts: WalkWordingV2Options,
 ): V2Step[] {
   const ref = referenceBearing(ctx.prevCoords);
   const longest = Math.max(...pieces.map((p) => p.length));
@@ -438,7 +435,7 @@ function crossSplitV2(
         // 길 이름은 첫 조각이 주 조각 중 가장 길 때만(길동사거리 9.4m 첫 조각은 큰길이 아니다 — 50m 조각이 큰길).
         const roadParticle = ctx.prevRoad ? objectParticle(ctx.prevRoad) : null;
         const road =
-          k === 0 && opts.crossingRoad && ctx.prevRoad && roadParticle &&
+          k === 0 && ctx.prevRoad && roadParticle &&
           piece.length >= longest && piece.length >= ROAD_CROSS_MIN_LENGTH_M &&
           crossesWalkedRoad(pieceRef, piece.bearing)
             ? `${ctx.prevRoad}${roadParticle} 건너세요`
@@ -513,7 +510,7 @@ export function rewriteWalkBriefingV2(
           // 카카오 거리를 조각 기하 길이 비례로 반올림해 나누고 마지막 조각이 나머지를 갖는다(합 보존).
           const total = pieces.reduce((sum, p) => sum + p.pathLength, 0);
           let assigned = 0;
-          crossSplitV2(from, to, pieces, ctx, opts).forEach((r, k) => {
+          crossSplitV2(from, to, pieces, ctx).forEach((r, k) => {
             const share = k === pieces.length - 1 ? meters - assigned : Math.round((meters * pieces[k].pathLength) / total);
             assigned += share;
             emit(r, { pathCoords: pieces[k].coords, distanceMeters: share, noCrossingNote: true });

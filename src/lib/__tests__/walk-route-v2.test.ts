@@ -46,7 +46,7 @@ describe("판본 2 파이프라인", () => {
       ]),
     );
     const r = await getWalkRoute({
-      origin: START, dest: north(SIG, 70), lang: "ko", includeGeometry: true, text: { wording: 2, crossingRoad: false },
+      origin: START, dest: north(SIG, 70), lang: "ko", includeGeometry: true, text: { wording: 2 },
     });
     const cross = r!.steps[1];
     expect(cross.description).toBe("진행 방향 그대로 횡단보도를 건너세요. 횡단보도 길이 20m, 음향신호기 있음");
@@ -70,7 +70,7 @@ describe("판본 2 파이프라인", () => {
       ]),
     );
     const r = await getWalkRoute({
-      origin: START, dest: b, lang: "ko", includeGeometry: true, text: { wording: 2, crossingRoad: false },
+      origin: START, dest: b, lang: "ko", includeGeometry: true, text: { wording: 2 },
     });
     expect(r!.steps).toHaveLength(3);
     for (const s of r!.steps.slice(1)) {
@@ -84,7 +84,7 @@ describe("판본 2 파이프라인", () => {
       kakao([{ description: "천호역 횡단보도에서 100m 이동(천호대로)", distanceMeters: 100, pathCoords: [START, SIG] }]),
     );
     const r = await getWalkRoute({
-      origin: START, dest: SIG, lang: "ko", includeGeometry: true, text: { wording: 2, crossingRoad: false },
+      origin: START, dest: SIG, lang: "ko", includeGeometry: true, text: { wording: 2 },
     });
     expect(r!.steps[0].description).toBe("천호역 횡단보도에서 천호대로를 따라 100m 이동");
     expect(r!.steps[0].action).toBeUndefined();
@@ -98,7 +98,7 @@ describe("판본 2 파이프라인", () => {
       ]),
     );
     const { lines } = await getWalkRouteLines({
-      origin: START, dest: north(SIG, 20), lang: "ko", version: 2, text: { wording: 2, crossingRoad: false },
+      origin: START, dest: north(SIG, 20), lang: "ko", version: 2, text: { wording: 2 },
     });
     const steps = lines[0].route.steps;
     expect(steps[0].description).toBe("천호대로를 따라 길동사거리까지 100m 이동");

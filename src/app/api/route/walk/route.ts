@@ -63,15 +63,14 @@ export async function GET(request: NextRequest) {
     via: request.nextUrl.searchParams.get("via"),
     lang: request.nextUrl.searchParams.get("lang"),
     wording: request.nextUrl.searchParams.get("wording"),
-    crossingRoad: request.nextUrl.searchParams.get("crossingRoad"),
   });
   if (!parsed.ok) {
     return NextResponse.json({ error: parsed.error }, { status: 400 });
   }
 
   const { origin, dest, via, lang } = parsed.data;
-  const text: WalkTextVersion =
-    parsed.data.wording === 2 ? { wording: 2, crossingRoad: parsed.data.crossingRoad } : { wording: 1 };
+  // 건너는 길 이름은 판본 2의 일부다(E62 졸업). 2.1 실험판이 보내는 `crossingRoad=1`은 읽지 않는다.
+  const text: WalkTextVersion = parsed.data.wording === 2 ? { wording: 2 } : { wording: 1 };
   if (
     !isInKorea(origin.lat, origin.lng) ||
     !isInKorea(dest.lat, dest.lng) ||
