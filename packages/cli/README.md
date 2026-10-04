@@ -92,7 +92,7 @@ gil completion fish > ~/.config/fish/completions/gil.fish
 | `station` | `info <역명>`, `timetable <역명>`, `arrivals <역명>` | 역 정보·시설·실시간 도착 |
 | `bus` | `route --source <tago\|seoul> --route-id <id> [--city-code <code>]` | 버스 노선 경유 정류소 |
 | `place` | `barrier-free <contentId>` | 무장애 관광지 편의시설 상세 |
-| `route` | `car <출발> <도착>`, `transit <출발> <도착>`, `walk <출발> <도착> [--accessible true]` | 경로 브리핑(자동차 턴바이턴/대중교통/도보, 도보는 계단 회피 옵션) |
+| `route` | `car <출발> <도착>`, `transit <출발> <도착>`, `walk <출발> <도착> [--accessible true] [--variant shortest]` | 경로 브리핑(자동차 턴바이턴/대중교통/도보, 도보는 계단 회피·최단 경로 옵션) |
 | `weather` | | 이 지역 날씨(위치 필수) |
 | `air` | | 이 지역 공기질(위치 필수) |
 | `whereami` | | 현재 위치 정위(위치 필수) |

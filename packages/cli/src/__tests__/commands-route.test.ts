@@ -203,6 +203,30 @@ describe("route 명령", () => {
     );
   });
 
+  // E42 ④: --variant는 카탈로그 파라미터를 그대로 싣는다. 명시하면 implicitQuery가 덮지 않는다.
+  it.each([
+    ["en에서 최단", { lang: "en", variant: "shortest" }, { lang: "en", variant: "shortest" }],
+    ["계단 회피와 함께", { accessible: "true", variant: "shortest" }, { accessible: "true", variant: "shortest" }],
+    ["미지 값도 정규화 없이(라우트가 400)", { variant: "fast" }, { variant: "fast" }],
+  ] as const)("walk --variant: %s", async (_label, flags, expected) => {
+    apiRequest.mockImplementation(async () => ({ result: { distanceMeters: 0, durationSeconds: 0, steps: [] } }));
+
+    await runRoute("walk", { origin: "37.53,127.12", dest: "37.49,127.02", ...flags, output: "text" });
+    expect(apiRequest).toHaveBeenCalledWith(
+      "/api/route/walk",
+      { query: { origin: "37.53,127.12", dest: "37.49,127.02", ...expected, wording: "2" } },
+    );
+  });
+
+  it.each(["car", "transit"] as const)("%s에 --variant를 주면 exit 2로 거절한다", async (verb) => {
+    await expect(
+      runRoute(verb, { origin: "37.53,127.12", dest: "37.49,127.02", variant: "shortest", output: "text" }),
+    ).rejects.toThrow("EXIT_2");
+    expect(apiRequest).not.toHaveBeenCalled();
+    const stderrOut = stderrSpy.mock.calls.map((c: unknown[]) => c[0]).join("");
+    expect(stderrOut).toContain("--variant은 route walk에서만");
+  });
+
   it("car·transit에 --accessible을 주면 조용히 무시하지 않고 exit 2로 거절한다", async () => {
     await expect(
       runRoute("car", { origin: "37.53,127.12", dest: "37.49,127.02", accessible: "true", output: "text" }),
