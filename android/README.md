@@ -104,7 +104,7 @@ adb exec-out timeout 10 uiautomator dump /dev/tty   # 접근성 트리(스크린
 | 거리 | 미터 `Double`/`Int`(Swift와 같은 필드 타입 그대로) | `formatDistance`만 지난다(소수 km 직접 조립 금지) |
 | `Bundle.module.url(forResource:)` | `X::class.java.getResourceAsStream("/name")` | 리소스는 `kit/src/main/resources/` |
 | `#filePath` 5단계 상위 fixture 로딩 | `Fixtures.shared("x.json")` / `Fixtures.kit("x.json")` (§4) | |
-| `func f() -> (a: A, b: B)` (튜플 반환) | `data class <함수명 PascalCase>Result(val a: A, val b: B)` | 예: `advanceProgressAnchor` → `AdvanceProgressAnchorResult`. 필드 이름은 튜플 라벨 그대로 |
+| `func f() -> (a: A, b: B)` (튜플 반환) | `data class <함수명 PascalCase>Result(val a: A, val b: B)` | 예: `deriveCourse` → `DeriveCourseResult`. 필드 이름은 튜플 라벨 그대로 |
 | `CLLocation`의 `-1` = 무효(`horizontalAccuracy`·`speed`·`course`) | `Location.hasX()`가 false면 **`-1.0`을 넘긴다** | 판정 함수의 `> 0`·`isFinite` 가드가 Swift와 같이 무효로 거른다. null 인자를 새로 만들지 않는다(시그니처가 Swift와 갈린다) |
 
 ### 화면 관용구 — 작업 메뉴 순서·push 왕복 상태

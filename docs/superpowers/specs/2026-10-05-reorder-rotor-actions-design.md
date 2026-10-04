@@ -81,6 +81,6 @@
 
 ### 3.3 탭 순서에 기대는 자리 점검
 
-`AppTab` 케이스 순서·`order` 인덱스에 기대는 소비자: `GildongmuApp`의 `ForEach(AppTab.order)`와 `initial`뿐이다. 띠바 착지(`bandFocusedTab: AppTab?`)·단축어 진입(`selectedTab = .search` 등)·`refreshCurrentTab`은 탭 값으로 가른다. `guidance-gate-drift.test.ts`는 탭을 보지 않는다. 열린 채 순서가 바뀌는 화면은 탭 순서 화면 자신뿐이고, 행 정체성이 탭 값이라 순서 변경이 행을 파괴하지 않는다(A51의 피커 함정과 무관: 피커가 없다). 언어는 이 화면이 열린 채 바뀌지 않는다(언어 피커는 설정 루트에 있다).
+`AppTab` 케이스 순서·`order` 인덱스에 기대는 소비자: `GildongmuApp`의 `ForEach(tabOrder)`(= `AppTab.order(stored:)`)와 `initial`뿐이다. 띠바 착지(`bandFocusedTab: AppTab?`)·단축어 진입(`selectedTab = .search` 등)·`refreshCurrentTab`은 탭 값으로 가른다. `guidance-gate-drift.test.ts`는 탭을 보지 않는다. 열린 채 순서가 바뀌는 화면은 탭 순서 화면 자신뿐이고, 행 정체성이 탭 값이라 순서 변경이 행을 파괴하지 않는다(A51의 피커 함정과 무관: 피커가 없다). 언어는 이 화면이 열린 채 바뀌지 않는다(언어 피커는 설정 루트에 있다).
 
 안드로이드 실험판은 K1 고정 순서(검색 맨 앞, `android/.../nav/AppTab.kt`)를 그대로 둔다(E66 안드로이드 대상 밖, 별도 판정). 그래서 두 실험판의 기본 순서가 갈린다. 문서 분배에서 낡는 자리: BACKLOG §2 K1 탭 순서 행(E66 행으로 교체), `CLAUDE.md`의 실험 플래그 줄(코디네이터 반영 요청), `docs/PATTERNS.md`의 K1 탭 순서 서술.

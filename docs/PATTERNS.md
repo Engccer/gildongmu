@@ -60,6 +60,15 @@
 - **로터로 연 상세에서 돌아온 한 번만 재조회를 건너뛴다**(`skipReloadOnReturn`, 지하철 목록): `.task`가 복귀마다 다시 돌아 "역 N곳"이 복귀 커서 낭독과 겹친다. 상태로 막으면(`if case .loaded`) 탭 전환 복귀의 실시간 재조회까지 사라진다.
 - 가드 `src/lib/__tests__/e65-nearby-rotor-guard.test.ts`.
 
+### 순서 바꾸기 로터 액션은 Kit `Reorder` 한 판정(`availableMoves`·`moved`)과 앱 `reorderActions`·`announceReorderPosition`·`keepFocusAfterMove` 한 벌을 쓴다
+
+**순서 바꾸기 로터 액션은 한 판정과 한 벌의 앱 배선을 쓴다**(E67 고정한 최근 항목·E66 탭 순서, 2026-10-05, spec `2026-10-05-reorder-rotor-actions-design.md` §1·§2).
+
+- 이동은 「맨 위로」(index ≥ 2)·「위로」·「아래로」, 할 수 있는 이동만 낸다(`Reorder.availableMoves`). `.accessibilityActions` 빌더는 선언 역순으로 노출되므로 아래로 → 위로 → 맨 위로 순으로 선언한다. `swipeActions`에 넣지 않는다.
+- **이동 기준은 화면에 보이는 고정 순서다**: 고정 토글은 화면 자리를 유지하므로 한 방문 안에서 화면과 저장의 고정 순서가 어긋날 수 있다. 핸들러는 화면 배열의 고정 부분열로 옮긴 순서를 `reorderPinned*`에 넘기고 **돌려받은 저장 배열을 화면 배열로 채택**한다.
+- 저장 불변식: 고정 블록은 사용자 지정 순(새 고정은 블록 끝), 저장 형식·키는 그대로다. 고정 블록을 시간·이름으로 다시 정렬하는 쓰기를 더하지 않는다(웹 `recent-searches.ts`·`:kit`도 정렬 없음).
+- 통지 「{position}번째로 옮겼습니다」는 `.high`다(커서가 같은 행에 남아 라벨이 다시 읽히지 않으므로 이 통지가 이동의 유일한 증거). 채택으로 행이 화면 밖으로 뛰면 600ms 뒤 가시화 → 300ms → 대입을 1회 한다(`keepFocusAfterMove`).
+
 ### 자동 등장 보조 섹션은 region 랜드마크 유지
 
 **자동 등장 보조 섹션은 region 랜드마크 유지**(`<section aria-labelledby>`+`useId`+`<h3 id>`). 버튼 없이 조용히 fetch되어 나타나는 섹션(`AirQuality`·`StationMeta` 류)은 region이 **유일한 발견 수단**이라 "불필요한 region" 아님. ⚠ 죽은 코드 청소 시 이 `aria-labelledby`·`useId` 제거 금지. **버튼으로 펼치는 패널은 버튼이 발견 경로라 `<div>` 유지**. 판단 규칙: "사용자가 직접 펼쳤나(버튼·div) vs 조용히 나타났나(자동·region)".
@@ -455,7 +464,7 @@ privacy `agent` 절은 웹 전용이라 iOS `PrivacyInfo`·ASC 라벨 3자 일�
 
 ### 번들 ID가 다르면 UserDefaults도 새로 시작한다
 
-⚠ **번들 ID가 다르면 UserDefaults도 새로 시작한다.** 그래서 실험판 첫 실행은 언어 미선택 상태이고, 기기 시스템 언어가 영어면 `dataLocale`이 `en`이 되어 **ko 전용 게이트(현재 자동차 실시간 안내)가 막힌다** — 검증하려고 깐 기능이 안 보인다(2026-08-04 실측). `AppLanguage.current`가 `#if EXPERIMENTAL`에서 **미선택 폴백만 ko로 고정**해 막았다(사용자 선택은 여전히 1순위). AI 동의·받아쓰기 설정도 같은 이유로 실험판에서 다시 물어본다(정상).
+⚠ **번들 ID가 다르면 UserDefaults도 새로 시작한다.** 그래서 실험판 첫 실행은 언어 미선택 상태이고, 기기 시스템 언어가 영어면 `dataLocale`이 `en`이 되어 **ko 전용 게이트(실측 당시 자동차 실시간 안내)가 막힌다** — 검증하려고 깐 기능이 안 보인다(2026-08-04 실측). `AppLanguage.current`가 `#if EXPERIMENTAL`에서 **미선택 폴백만 ko로 고정**해 막았다(사용자 선택은 여전히 1순위). AI 동의·받아쓰기 설정도 같은 이유로 실험판에서 다시 물어본다(정상).
 
 ### pbxproj 객체 ID는 파일 전체에서 유일해야 한다
 
