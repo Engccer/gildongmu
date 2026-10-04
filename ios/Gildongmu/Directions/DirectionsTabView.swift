@@ -299,6 +299,11 @@ final class DirectionsModel {
         recentRoutes[index] = RecentRoute(from: route.from, to: route.to, via: route.via, pinned: pinned)
     }
 
+    /// 고정 블록을 넘긴 순서로 저장하고 저장 배열을 화면 배열로 채택한다(E67, spec §2.2).
+    func reorderPinnedRoutes(_ order: [RecentRoute]) {
+        recentRoutes = recentStore.reorderPinnedRoutes(order)
+    }
+
     /// 필드가 바뀌면 이전 결과·상태 문구를 폐기하고 진행 중이던 조회를 취소한다(웹
     /// setResults(null) 동형 + 늦은 응답이 초기화 화면을 되채우고 거짓 통지·포커스
     /// 점프를 내는 경합 차단). performQuery의 기존 guard !Task.isCancelled 가드들이
@@ -775,6 +780,8 @@ struct DirectionsTabView: View {
     /// 최근 경로 목록 항목 포커스(⚠ Bool 바인딩 다중 부착 금지 — 항목 정체성 옵셔널
     /// 바인딩이 정본, endpoint 시트 `focusedRecent` 동형).
     @AccessibilityFocusState private var focusedRecentRoute: RecentRoute?
+    /// 고정 경로 이동 뒤 커서 유지 재시도(E67).
+    @State private var reorderFocusTask: Task<Void, Never>?
     /// 펼침이 **기본값과 다른** 대중교통 경로의 `routeKey`(웹 toggledRoutes 동형).
     /// 새 조회 결과는 다른 경로들이므로 resultsRevision 변화 시 초기화한다.
     /// ⚠ "펼쳐진 것"을 담는 게 아니다 — 추천은 기본 펼침, 대안은 기본 접힘이라
@@ -832,6 +839,8 @@ struct DirectionsTabView: View {
 
     var body: some View {
         NavigationStack(path: $stationPath) {
+            // 고정 경로 이동 뒤 커서 재착지의 가시화(E67 — 채택한 순서에서 행이 화면 밖으로 뛸 수 있다).
+            ScrollViewReader { proxy in
             List {
                 Section {
                     // 비-ko 현재 주소 병기(E28): 시각 `… (한글) …`, 낭독은 영문·로마자만(LocationBar 동형).
@@ -911,6 +920,7 @@ struct DirectionsTabView: View {
                     Section {
                         // 고정 항목은 라벨 접미사 "고정됨"(한 줄 = 한 객체), 고정 토글이
                         // 삭제보다 앞(위원장 지시 2026-08-12) — 로터 커스텀 액션 자동 노출.
+                        // 고정이 둘 이상이면 고정 행에 순서 바꾸기 로터 액션(E67).
                         // ⚠ id: \.self 금지 — pinned가 Hashable에 포함되어 토글이 행을
                         // 파괴(포커스 이탈)한다. Identifiable(출발·도착 쌍 키)로 제자리 유지.
                         ForEach(model.recentRoutes) { route in
@@ -921,6 +931,9 @@ struct DirectionsTabView: View {
                                     accessible: joinText(recentRouteLabel(route, accessible: true), pin))
                             }
                                 .accessibilityFocused($focusedRecentRoute, equals: route)
+                                .reorderActions(pinnedMoves(route)) { move in
+                                    moveRecentRoute(route, move, reveal: { proxy.scrollTo(route.id) })
+                                }
                                 .swipeActions {
                                     Button(appLocalized(route.pinned ? "recent.unpin" : "recent.pin")) {
                                         togglePinRecentRoute(route)
@@ -1119,6 +1132,7 @@ struct DirectionsTabView: View {
             }
             // 다른 화면의 측위 성공·실패로 옛 위치가 서거나 풀리면 칸이 따라간다(측위 없이).
             .onChange(of: locationService.staleFix?.fixedAt) { model.syncCurrentFromStore() }
+            }
         }
     }
 
@@ -1207,6 +1221,27 @@ struct DirectionsTabView: View {
         let pinned = !route.pinned
         model.setRoutePinned(route, pinned: pinned)
         focusedRecentRoute = RecentRoute(from: route.from, to: route.to, via: route.via, pinned: pinned)
+    }
+
+    /// 고정 행에서 할 수 있는 이동(E67). 기준은 화면의 고정 순서다(spec §2.2, `SearchView` 동형).
+    private func pinnedMoves(_ route: RecentRoute) -> [ReorderMove] {
+        guard route.pinned else { return [] }
+        let pins = model.recentRoutes.filter(\.pinned)
+        guard let index = pins.firstIndex(where: { $0.id == route.id }) else { return [] }
+        return Reorder.availableMoves(index: index, count: pins.count)
+    }
+
+    /// 고정 경로 이동(E67, spec §2.2·§2.3, `SearchView.moveRecent` 동형).
+    private func moveRecentRoute(_ route: RecentRoute, _ move: ReorderMove, reveal: @escaping () -> Void) {
+        let pins = model.recentRoutes.filter(\.pinned)
+        guard let index = pins.firstIndex(where: { $0.id == route.id }) else { return }
+        model.reorderPinnedRoutes(Reorder.moved(pins, from: index, move))
+        guard let position = model.recentRoutes.firstIndex(where: { $0.id == route.id }) else { return }
+        let moved = model.recentRoutes[position]
+        announceReorderPosition(position + 1)
+        reorderFocusTask?.cancel()
+        reorderFocusTask = keepFocusAfterMove(
+            reveal: reveal, isLanded: { focusedRecentRoute == moved }, assign: { focusedRecentRoute = moved })
     }
 
     /// 전체 지우기(고정 보존 — 스펙 2026-08-12 §3). **우선순위는 분기로 가른다**

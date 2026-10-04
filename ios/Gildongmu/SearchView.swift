@@ -20,6 +20,8 @@ struct SearchView: View {
     /// 목록 소멸 시 포커스 착지점 — 항상 존재하는 마이크 행(스펙 §5).
     @AccessibilityFocusState private var micRowFocused: Bool
     @State private var rowFocusTask: Task<Void, Never>?
+    /// 고정 항목 이동 뒤 커서 유지 재시도(E67).
+    @State private var reorderFocusTask: Task<Void, Never>?
 
     var body: some View {
         NavigationStack {
@@ -54,7 +56,8 @@ struct SearchView: View {
                 // 최근 검색(스펙 2026-07-26): 검색 전 초기 상태에만. 행 활성화=재검색,
                 // swipeActions(고정 토글·삭제 — 고정이 앞, 위원장 지시 2026-08-12)가
                 // VoiceOver 로터 커스텀 액션으로 자동 노출된다. 고정 항목은 라벨 접미사
-                // "고정됨" 하나로 시각·낭독 동시 전달(한 줄 = 한 객체, 스펙 §4).
+                // "고정됨" 하나로 시각·낭독 동시 전달(한 줄 = 한 객체, 스펙 §4). 고정이 둘
+                // 이상이면 고정 행에 순서 바꾸기 로터 액션(E67)이 더해진다.
                 if model.outcome == nil && !model.isSearching && !recentQueries.isEmpty {
                     Section(appLocalized("recent.title")) {
                         // ⚠ id: \.self 금지 — pinned가 Hashable에 포함되어 토글이 행을
@@ -68,6 +71,9 @@ struct SearchView: View {
                                 runSearch()
                             }
                             .accessibilityFocused($focusedRecentQuery, equals: query)
+                            .reorderActions(pinnedMoves(query)) { move in
+                                moveRecent(query, move, reveal: { proxy.scrollTo(query.id) })
+                            }
                             .swipeActions {
                                 Button(appLocalized(query.pinned ? "recent.unpin" : "recent.pin")) {
                                     togglePinRecent(query)
@@ -238,6 +244,29 @@ struct SearchView: View {
         recentQueries[index] = updated
         recentStore.setQueryPinned(query.text, pinned: updated.pinned)
         focusedRecentQuery = updated
+    }
+
+    /// 고정 행에서 할 수 있는 이동(E67). 기준은 화면의 고정 순서다(spec §2.2 — 토글 직후엔 저장 순서와 다를 수 있다).
+    private func pinnedMoves(_ query: RecentQuery) -> [ReorderMove] {
+        guard query.pinned else { return [] }
+        let pins = recentQueries.filter(\.pinned)
+        guard let index = pins.firstIndex(where: { $0.text == query.text }) else { return [] }
+        return Reorder.availableMoves(index: index, count: pins.count)
+    }
+
+    /// 고정 항목 이동(E67, spec §2.2·§2.3): 화면의 고정 순서에 이동을 적용해 저장하고, 돌려받은 저장 배열을
+    /// 화면 배열로 채택한다(고정 토글의 "자리 유지"도 여기서 정렬된다). 새 자리를 통지하고, 채택으로 행이 화면 밖에
+    /// 뛰어 커서가 떨어졌으면 가시화 뒤 그 행에 다시 앉힌다(이동은 값을 바꾸지 않아 즉시 재대입은 효과가 없다).
+    private func moveRecent(_ query: RecentQuery, _ move: ReorderMove, reveal: @escaping () -> Void) {
+        let pins = recentQueries.filter(\.pinned).map(\.text)
+        guard let index = pins.firstIndex(of: query.text) else { return }
+        recentQueries = recentStore.reorderPinnedQueries(Reorder.moved(pins, from: index, move))
+        guard let position = recentQueries.firstIndex(where: { $0.text == query.text }) else { return }
+        let moved = recentQueries[position]
+        announceReorderPosition(position + 1)
+        reorderFocusTask?.cancel()
+        reorderFocusTask = keepFocusAfterMove(
+            reveal: reveal, isLanded: { focusedRecentQuery == moved }, assign: { focusedRecentQuery = moved })
     }
 
     private func clearRecent() {

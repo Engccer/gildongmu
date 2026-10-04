@@ -393,6 +393,12 @@
       "started": "Paseo iniciado",
       "ended": "Paseo terminado",
       "zoneAround": "Cerca, {distance}"
+    },
+    "reorder": {
+      "toTop": "Mover al principio",
+      "up": "Subir",
+      "down": "Bajar",
+      "moved": "Movido a la posición {position}"
     }
   },
   "guide": {

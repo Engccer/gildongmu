@@ -393,6 +393,12 @@
       "started": "Passeggiata iniziata",
       "ended": "Passeggiata terminata",
       "zoneAround": "Nei dintorni, {distance}"
+    },
+    "reorder": {
+      "toTop": "Sposta in cima",
+      "up": "Sposta su",
+      "down": "Sposta giù",
+      "moved": "Spostato in posizione {position}"
     }
   },
   "guide": {

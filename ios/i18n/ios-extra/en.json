@@ -393,6 +393,12 @@
       "started": "Stroll started",
       "ended": "Stroll ended",
       "zoneAround": "Nearby, {distance}"
+    },
+    "reorder": {
+      "toTop": "Move to top",
+      "up": "Move up",
+      "down": "Move down",
+      "moved": "Moved to position {position}"
     }
   },
   "guide": {

@@ -106,7 +106,9 @@ extension RecentRoute: Identifiable {
 /// 파싱 실패는 빈 목록으로 조용히 복구한다(기록은 부가 기능 — 본 기능을 막지 않는다).
 /// 웹 src/lib/recent-searches.ts 미러.
 ///
-/// 고정(pin) 불변식: 저장 배열 = [고정 블록(고정 시점 순)] + [비고정 최신순, cap 20].
+/// 고정(pin) 불변식: 저장 배열 = [고정 블록(사용자 지정 순, 새 고정은 블록 끝)] + [비고정 최신순, cap 20].
+/// 고정 블록을 시간·이름으로 다시 정렬하는 쓰기는 없다 — 순서를 바꾸는 것은 `reorderPinned*`(E67 로터 이동)와
+/// 고정 시 블록 끝 삽입뿐이다(spec 2026-10-05-reorder-rotor-actions-design.md §2.1).
 /// dedupe 판정은 pinned를 보지 않는다(같은 항목의 고정본·비고정본 공존 금지).
 public struct RecentSearchStore {
     public static let cap = 20
@@ -168,6 +170,16 @@ public struct RecentSearchStore {
             forKey: Self.queriesKeyV2)
     }
 
+    /// 고정 블록을 넘긴 순서로 다시 세운다(E67 — 화면의 고정 순서에 이동을 적용한 결과를 넘긴다, spec §2.2).
+    @discardableResult
+    public func reorderPinnedQueries(_ texts: [String]) -> [RecentQuery] {
+        save(
+            Self.applyPinnedOrder(
+                texts.map { RecentQuery(text: $0) }, to: queries(),
+                isSame: { $0.text == $1.text }, isPinned: \.pinned),
+            forKey: Self.queriesKeyV2)
+    }
+
     // MARK: 장소 (출발지·도착지 스코프 분리)
 
     public func endpoints(_ scope: RecentEndpointScope) -> [RecentEndpoint] {
@@ -204,6 +216,14 @@ public struct RecentSearchStore {
                 endpoint, in: endpoints(scope), pinned: pinned,
                 isSame: Self.sameCoord, isPinned: \.pinned,
                 withPinned: { RecentEndpoint(label: $0.label, lat: $0.lat, lng: $0.lng, pinned: $1, labelRoman: $0.labelRoman) }),
+            forKey: Self.endpointsKey(scope))
+    }
+
+    /// 고정 블록을 넘긴 순서로 다시 세운다(E67, 좌표 4자리 동일 판정).
+    @discardableResult
+    public func reorderPinnedEndpoints(_ order: [RecentEndpoint], scope: RecentEndpointScope) -> [RecentEndpoint] {
+        save(
+            Self.applyPinnedOrder(order, to: endpoints(scope), isSame: Self.sameCoord, isPinned: \.pinned),
             forKey: Self.endpointsKey(scope))
     }
 
@@ -247,6 +267,12 @@ public struct RecentSearchStore {
                 isSame: Self.sameRoute, isPinned: \.pinned,
                 withPinned: { RecentRoute(from: $0.from, to: $0.to, via: $0.via, pinned: $1) }),
             forKey: Self.routesKey)
+    }
+
+    /// 고정 블록을 넘긴 순서로 다시 세운다(E67, 출발·도착·경유 동일 판정).
+    @discardableResult
+    public func reorderPinnedRoutes(_ order: [RecentRoute]) -> [RecentRoute] {
+        save(Self.applyPinnedOrder(order, to: routes(), isSame: Self.sameRoute, isPinned: \.pinned), forKey: Self.routesKey)
     }
 
     /// 동일 판정: from·to·via 셋 전부(경유지 부재끼리도 동일). 웹 `sameRoute` 미러.
@@ -302,6 +328,22 @@ public struct RecentSearchStore {
         var rest = items
         rest.remove(at: idx)
         return rest.filter(isPinned) + [withPinned(items[idx], pinned)] + rest.filter { !isPinned($0) }
+    }
+
+    /// 고정 블록 재배열(E67, spec §2.2): 넘긴 순서에 있는 고정 항목을 그 순서로 앞에 세우고(저장본 그대로 —
+    /// 넘긴 값의 라벨·pinned는 쓰지 않는다), 넘긴 목록에 없는 고정 항목은 저장 순서대로 그 뒤에 붙인다.
+    /// 넘긴 목록의 비고정·없는 항목·중복은 무시한다. 비고정 블록은 그대로다.
+    static func applyPinnedOrder<T>(
+        _ order: [T], to items: [T],
+        isSame: (T, T) -> Bool, isPinned: (T) -> Bool
+    ) -> [T] {
+        var pins = items.filter(isPinned)
+        var front: [T] = []
+        for wanted in order {
+            guard let i = pins.firstIndex(where: { isSame($0, wanted) }) else { continue }
+            front.append(pins.remove(at: i))
+        }
+        return front + pins + items.filter { !isPinned($0) }
     }
 
     private func decode<T: Decodable>(_ type: [T].Type, forKey key: String) -> [T] {

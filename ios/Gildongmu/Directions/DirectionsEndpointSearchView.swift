@@ -120,6 +120,8 @@ struct DirectionsEndpointSearchView: View {
     }
     @State private var recentEndpoints: [RecentEndpoint] = []
     @AccessibilityFocusState private var focusedRecent: RecentEndpoint?
+    /// 고정 항목 이동 뒤 커서 유지 재시도(E67).
+    @State private var reorderFocusTask: Task<Void, Never>?
     /// 목록 소멸 시 포커스 착지점 — 항상 존재하는 마이크 행(스펙 §5, SearchView 동형).
     @AccessibilityFocusState private var micRowFocused: Bool
     /// 시트 진입 시 검색 필드로 커서를 보낸다. 안 하면 커서가 시트 최상단에 머물러
@@ -197,6 +199,7 @@ struct DirectionsEndpointSearchView: View {
                     Section(appLocalized("recent.title")) {
                         // 고정 항목은 라벨 접미사 "고정됨"(한 줄 = 한 객체), 고정 토글이
                         // 삭제보다 앞(위원장 지시 2026-08-12) — 로터 커스텀 액션 자동 노출.
+                        // 고정이 둘 이상이면 고정 행에 순서 바꾸기 로터 액션(E67).
                         // ⚠ id: \.self 금지 — pinned가 Hashable에 포함되어 토글이 행을
                         // 파괴(포커스 이탈)한다. Identifiable(좌표 4자리 키)로 제자리 유지.
                         ForEach(recentEndpoints) { endpoint in
@@ -208,6 +211,9 @@ struct DirectionsEndpointSearchView: View {
                                 bilingualLine(visible: joinText(name.display, pin), accessible: joinText(name.primary, pin))
                             }
                             .accessibilityFocused($focusedRecent, equals: endpoint)
+                            .reorderActions(pinnedMoves(endpoint)) { move in
+                                moveRecent(endpoint, move, reveal: { proxy.scrollTo(endpoint.id) })
+                            }
                             .swipeActions {
                                 Button(appLocalized(endpoint.pinned ? "recent.unpin" : "recent.pin")) {
                                     togglePinRecent(endpoint)
@@ -396,6 +402,27 @@ struct DirectionsEndpointSearchView: View {
         recentEndpoints[index] = updated
         recentStore.setEndpointPinned(endpoint, scope: recentScope, pinned: updated.pinned)
         focusedRecent = updated
+    }
+
+    /// 고정 행에서 할 수 있는 이동(E67). 기준은 화면의 고정 순서다(spec §2.2, `SearchView` 동형).
+    private func pinnedMoves(_ endpoint: RecentEndpoint) -> [ReorderMove] {
+        guard endpoint.pinned else { return [] }
+        let pins = recentEndpoints.filter(\.pinned)
+        guard let index = pins.firstIndex(where: { $0.id == endpoint.id }) else { return [] }
+        return Reorder.availableMoves(index: index, count: pins.count)
+    }
+
+    /// 고정 항목 이동(E67, spec §2.2·§2.3, `SearchView.moveRecent` 동형).
+    private func moveRecent(_ endpoint: RecentEndpoint, _ move: ReorderMove, reveal: @escaping () -> Void) {
+        let pins = recentEndpoints.filter(\.pinned)
+        guard let index = pins.firstIndex(where: { $0.id == endpoint.id }) else { return }
+        recentEndpoints = recentStore.reorderPinnedEndpoints(Reorder.moved(pins, from: index, move), scope: recentScope)
+        guard let position = recentEndpoints.firstIndex(where: { $0.id == endpoint.id }) else { return }
+        let moved = recentEndpoints[position]
+        announceReorderPosition(position + 1)
+        reorderFocusTask?.cancel()
+        reorderFocusTask = keepFocusAfterMove(
+            reveal: reveal, isLanded: { focusedRecent == moved }, assign: { focusedRecent = moved })
     }
 
     private func clearRecent() {

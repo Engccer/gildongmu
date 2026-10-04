@@ -393,6 +393,12 @@
       "started": "お散歩を開始しました",
       "ended": "お散歩を終了しました",
       "zoneAround": "周辺 {distance}"
+    },
+    "reorder": {
+      "toTop": "一番上へ",
+      "up": "上へ",
+      "down": "下へ",
+      "moved": "{position}番目に移動しました"
     }
   },
   "guide": {

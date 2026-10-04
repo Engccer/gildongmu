@@ -603,6 +603,9 @@
   "ios.place.roadAddressLine": [
     "value"
   ],
+  "ios.reorder.moved": [
+    "position"
+  ],
   "ios.route.alight": [
     "name"
   ],

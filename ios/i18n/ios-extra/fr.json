@@ -393,6 +393,12 @@
       "started": "Balade commencée",
       "ended": "Balade terminée",
       "zoneAround": "À proximité, {distance}"
+    },
+    "reorder": {
+      "toTop": "Placer en haut",
+      "up": "Monter",
+      "down": "Descendre",
+      "moved": "Déplacé en position {position}"
     }
   },
   "guide": {

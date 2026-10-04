@@ -390,3 +390,96 @@ private func freshDefaults(_ name: String) -> UserDefaults {
         #expect(r.via == nil && r.pinned == false && r.to?.label == "B")
     }
 }
+
+// MARK: - 고정 블록 순서(E67, spec 2026-10-05-reorder-rotor-actions-design.md §2)
+
+@Suite struct RecentPinnedReorderTests {
+    /// [a, b, c 고정(이 순서)] + [x, y 비고정].
+    private func seededQueries(_ name: String) -> RecentSearchStore {
+        let store = RecentSearchStore(defaults: freshDefaults(name))
+        for text in ["y", "x", "c", "b", "a"] { store.recordQuery(text) }
+        for text in ["a", "b", "c"] { store.setQueryPinned(text, pinned: true) }
+        return store
+    }
+
+    @Test func reorderRebuildsPinBlockAndLeavesUnpinnedAlone() {
+        let store = seededQueries("reorder-basic")
+        #expect(store.queries().map(\.text) == ["a", "b", "c", "x", "y"])
+        let moved = store.reorderPinnedQueries(["c", "a", "b"])
+        #expect(moved.map(\.text) == ["c", "a", "b", "x", "y"])
+        #expect(moved.prefix(3).allSatisfy { $0.pinned } && !moved[3].pinned)
+        #expect(store.queries() == moved)
+    }
+
+    /// 사용자 지정 순은 그 뒤의 쓰기(재기록·새 고정·해제·삭제·모두 지우기)를 지나도 남는다(§2.1 전수표).
+    @Test func userOrderSurvivesEveryOtherWrite() {
+        let store = seededQueries("reorder-survive")
+        store.reorderPinnedQueries(["c", "a", "b"])
+        #expect(store.recordQuery("a").map(\.text) == ["c", "a", "b", "x", "y"])
+        #expect(store.recordQuery("z").map(\.text) == ["c", "a", "b", "z", "x", "y"])
+        // 새 고정은 블록 끝.
+        #expect(store.setQueryPinned("x", pinned: true).map(\.text) == ["c", "a", "b", "x", "z", "y"])
+        #expect(store.setQueryPinned("a", pinned: false).map(\.text) == ["c", "b", "x", "a", "z", "y"])
+        #expect(store.removeQuery("b").map(\.text) == ["c", "x", "a", "z", "y"])
+        #expect(store.clearQueries().map(\.text) == ["c", "x"])
+    }
+
+    /// 넘긴 목록의 비고정·없는 항목·중복은 무시하고, 빠진 고정은 저장 순서대로 뒤에 붙는다.
+    @Test func reorderIgnoresStrangersAndKeepsMissingPins() {
+        let store = seededQueries("reorder-strangers")
+        #expect(store.reorderPinnedQueries(["x", "ghost", "b", "b"]).map(\.text) == ["b", "a", "c", "x", "y"])
+        #expect(store.reorderPinnedQueries([]).map(\.text) == ["b", "a", "c", "x", "y"])
+    }
+
+    /// 화면 기준 이동(§2.2): 화면의 고정 순서가 저장과 어긋나 있어도(Y를 고정한 뒤 그보다 위에 보이던 Z를
+    /// 고정) 이동 결과는 화면 순서에 이동을 적용한 것이다.
+    @Test func moveFollowsOnScreenPinOrder() {
+        let store = RecentSearchStore(defaults: freshDefaults("reorder-screen"))
+        for text in ["y", "z"] { store.recordQuery(text) } // [z, y]
+        let screen = store.queries()
+        store.setQueryPinned("y", pinned: true)
+        store.setQueryPinned("z", pinned: true) // 저장 [y, z], 화면은 자리 유지 [z, y]
+        #expect(store.queries().map(\.text) == ["y", "z"])
+        let onScreenPins = screen.map(\.text) // 둘 다 고정된 화면: [z, y]
+        let next = Reorder.moved(onScreenPins, from: 1, .up) // y를 위로
+        #expect(store.reorderPinnedQueries(next).map(\.text) == ["y", "z"])
+        #expect(store.reorderPinnedQueries(Reorder.moved(onScreenPins, from: 0, .down)).map(\.text) == ["y", "z"])
+        #expect(store.reorderPinnedQueries(onScreenPins).map(\.text) == ["z", "y"])
+    }
+
+    @Test func reorderKeepsStoredValuesOverPassedOnes() {
+        let store = RecentSearchStore(defaults: freshDefaults("reorder-ep"))
+        let home = RecentEndpoint(label: "집", lat: 37.5, lng: 127.1)
+        let work = RecentEndpoint(label: "회사", lat: 37.6, lng: 127.0, labelRoman: "Hoesa")
+        store.recordEndpoint(home, scope: .to)
+        store.recordEndpoint(work, scope: .to)
+        store.setEndpointPinned(home, scope: .to, pinned: true)
+        store.setEndpointPinned(work, scope: .to, pinned: true) // [집, 회사]
+        // 넘긴 값의 라벨·pinned가 아니라 저장본이 남는다(좌표 4자리 동일 판정).
+        let moved = store.reorderPinnedEndpoints(
+            [RecentEndpoint(label: "다른 이름", lat: 37.60001, lng: 127.0), home], scope: .to)
+        #expect(moved == [
+            RecentEndpoint(label: "회사", lat: 37.6, lng: 127.0, pinned: true, labelRoman: "Hoesa"),
+            RecentEndpoint(label: "집", lat: 37.5, lng: 127.1, pinned: true),
+        ])
+        #expect(store.endpoints(.from) == [])
+    }
+
+    @Test func routeReorderUsesFullRouteIdentity() {
+        let store = RecentSearchStore(defaults: freshDefaults("reorder-route"))
+        let a = RecentEndpoint(label: "A", lat: 37.5, lng: 127.1)
+        let b = RecentEndpoint(label: "B", lat: 37.6, lng: 127.2)
+        let c = RecentEndpoint(label: "C", lat: 37.55, lng: 127.15)
+        let direct = RecentRoute(from: a, to: b)
+        let viaC = RecentRoute(from: a, to: b, via: c)
+        let fromHere = RecentRoute(from: nil, to: b)
+        for route in [direct, viaC, fromHere] {
+            store.recordRoute(route)
+            store.setRoutePinned(route, pinned: true)
+        }
+        let ids = { (list: [RecentRoute]) in list.map(\.id) }
+        #expect(ids(store.routes()) == ids([direct, viaC, fromHere]))
+        #expect(ids(store.reorderPinnedRoutes([fromHere, direct, viaC])) == ids([fromHere, direct, viaC]))
+        #expect(store.routes().allSatisfy { $0.pinned })
+    }
+}

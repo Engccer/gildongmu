@@ -393,6 +393,12 @@
       "started": "나들이 시작",
       "ended": "나들이 종료",
       "zoneAround": "주변 {distance}"
+    },
+    "reorder": {
+      "toTop": "맨 위로",
+      "up": "위로",
+      "down": "아래로",
+      "moved": "{position}번째로 옮겼습니다"
     }
   },
   "guide": {
