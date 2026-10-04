@@ -430,7 +430,6 @@ struct PlaceRow: View {
     /// 장소 채팅 진입(검색 결과 전용 — sheet 상태를 가진 화면만 넘긴다).
     /// 채팅 카드 내 재사용은 nil로 액션 미노출(채팅 안에서 채팅 재진입 순환 방지).
     var onAskAbout: (() -> Void)? = nil
-    @Environment(\.openURL) private var openURL
 
     /// 비-ko 병기(E28): 시각 `Roman (한글)`, 낭독은 로마자만(`accessibilityLabel`).
     private var bilingualTitle: BilingualName { bilingual(place.name, roman: place.nameRoman) }
@@ -445,12 +444,40 @@ struct PlaceRow: View {
                 .foregroundStyle(.secondary)
         }
         .accessibilityElement(children: .combine)
+        .placeRowActions(place, onAskAbout: onAskAbout)
+    }
+
+    /// falsy 조각 제거+쉼표 결합(웹 joinText 미러). 거리는 있을 때만 마지막 조각으로.
+    private var joined: String {
+        if let secondaryOverride { return secondaryOverride }
+        // 분류는 비-ko에서 서버 영문(categoryEn, A28)을 우선하고 없으면 원문(웹 PlaceCard 미러).
+        var parts = [
+            pickCategory(lang: AppLanguage.current, category: place.category, categoryEn: place.categoryEn),
+            place.roadAddress.isEmpty ? place.address : place.roadAddress,
+        ]
+        if let distance = place.distanceMeters {
+            // ko.json place.distance "약 {distance}" 정본 미러.
+            parts.append(appLocalized("place.distance", formatDistance(Int(distance.rounded()))))
+        }
+        return parts.filter { !$0.isEmpty }.joined(separator: ", ")
+    }
+}
+
+/// 장소 하나인 행의 로터 액션 묶음(`PlaceRow`에서 꺼냄, E65). 장소 하나를 가리키는 행이면 화면이 달라도 같은
+/// 묶음을 단다 — 둘러보기 「주변 상황」 행이 이것을 붙인다.
+struct PlaceRowActions: ViewModifier {
+    let place: Place
+    /// 장소 채팅 진입(sheet 상태를 가진 화면만 넘긴다). nil이면 액션 미노출(채팅 안 재진입 순환 방지).
+    let onAskAbout: (() -> Void)?
+    @Environment(\.openURL) private var openURL
+
+    func body(content: Content) -> some View {
         // ⚠ 선언은 역순: VoiceOver 쓸기 메뉴가 빌더 선언의 역순으로 노출된다(실기기 관측).
         // 사용자 경험 순서: 주소 복사하기 → 여기까지 길찾기 → 카카오맵 → 네이버 지도 → 전화 걸기 → 물어보기.
         // 보유한 데이터만 낸다(빈 도로명·빈 전화 = 죽은 액션).
-        .accessibilityActions {
+        content.accessibilityActions {
             if let onAskAbout {
-                Button(appLocalized("ios.place.askAbout", bilingualTitle.primary)) { onAskAbout() }
+                Button(appLocalized("ios.place.askAbout", bilingual(place.name, roman: place.nameRoman).primary)) { onAskAbout() }
             }
             if let phone = place.phone, !phone.isEmpty,
                let telURL = URL(string: "tel:\(phone.replacingOccurrences(of: "-", with: ""))") {
@@ -476,20 +503,11 @@ struct PlaceRow: View {
     }
 
     private var dest: RouteDestination { RouteDestination(lat: place.lat, lng: place.lng, name: place.name) }
+}
 
-    /// falsy 조각 제거+쉼표 결합(웹 joinText 미러). 거리는 있을 때만 마지막 조각으로.
-    private var joined: String {
-        if let secondaryOverride { return secondaryOverride }
-        // 분류는 비-ko에서 서버 영문(categoryEn, A28)을 우선하고 없으면 원문(웹 PlaceCard 미러).
-        var parts = [
-            pickCategory(lang: AppLanguage.current, category: place.category, categoryEn: place.categoryEn),
-            place.roadAddress.isEmpty ? place.address : place.roadAddress,
-        ]
-        if let distance = place.distanceMeters {
-            // ko.json place.distance "약 {distance}" 정본 미러.
-            parts.append(appLocalized("place.distance", formatDistance(Int(distance.rounded()))))
-        }
-        return parts.filter { !$0.isEmpty }.joined(separator: ", ")
+extension View {
+    func placeRowActions(_ place: Place, onAskAbout: (() -> Void)?) -> some View {
+        modifier(PlaceRowActions(place: place, onAskAbout: onAskAbout))
     }
 }
 

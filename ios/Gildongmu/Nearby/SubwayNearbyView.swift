@@ -152,6 +152,9 @@ struct SubwayNearbyView: View {
     /// `false`가 되어 초기 상태에서 나머지 행이 포커스를 주장한다(실기기 확정).
     @AccessibilityFocusState private var focusedStation: String?
     @State private var lander = NearbyFocusLander()
+    /// 역 제목 로터 「상세 보기」가 push하는 역 상세(E65, 브리핑 E45와 같은 목적지 모양).
+    @State private var stationDetail: StationDestination?
+    @Environment(\.directionsEntryAllowed) private var directionsEntryAllowed
 
     /// anchor 기본값 nil = 현재 위치(내 주변 허브 호출처 무변경).
     /// State(initialValue:) 인자는 순수 생성만(부수효과 금지) — [[swiftui-state-initialvalue-side-effect]]
@@ -175,6 +178,9 @@ struct SubwayNearbyView: View {
                                 .accessibilityAddTraits(.isHeader)
                                 // 첫 로드 착지 대상. 키는 ForEach 정체성과 같은 값이어야 한다.
                                 .accessibilityFocused($focusedStation, equals: station.stationName)
+                                .modifier(StationTitleActions(
+                                    station: station, directionsEntryAllowed: directionsEntryAllowed,
+                                    onOpen: { stationDetail = $0 }))
                             // 4-state를 뭉개지 않는다(웹 미러): 조회 실패 / 운행 시간 밖 /
                             // 실시간 미제공 / 정상. closed인데 첫차가 없으면 판정 근거가
                             // 반쪽이라 "운행이 끝났다"고 말하지 않고 미제공으로 물러선다.
@@ -195,6 +201,11 @@ struct SubwayNearbyView: View {
                         }
                     }
                 }
+            }
+            .navigationDestination(item: $stationDetail) { destination in
+                PlaceDetailView(
+                    place: destination.place, showsDirectionsEntry: directionsEntryAllowed,
+                    stationLineHint: destination.lineName)
             }
             .navigationTitle(nearbyTitle(appLocalized("ios.nearby.subway"), anchor: anchor))
             .nearbyStateOverlay {
@@ -239,3 +250,79 @@ struct SubwayNearbyView: View {
             .accessibilityLabel(Text(spokenUnits(joinText(line.spoken, distance))))
     }
 }
+
+extension EnvironmentValues {
+    /// 앵커 목록(장소 상세 "이 장소 주변")의 행 로터가 「여기까지 길찾기」를 낼 수 있는가(E65). 장소 상세가
+    /// `showsDirectionsEntry`를 그대로 내려준다 — 안내 시트·길찾기 탭 스택 안의 상세는 프리필이 그 화면을
+    /// 파괴하므로 숨긴다(E45 spec §7과 같은 이유). 내 주변 허브는 기본값(참).
+    @Entry var directionsEntryAllowed = true
+}
+
+/// 역 제목 로터(E65, 브리핑 E45 동형): 상세 보기 → 여기까지 길찾기 → 전화. 좌표가 없는 응답이면 셋 다 없다.
+/// **전화 저장소는 이 수정자만 관찰한다** — 라벨이 직통·대표번호로 갈려 `phoneStore.result`를 읽어야 하는데,
+/// 그 읽기가 목록 본문에 있으면 번호 도착·재확인마다 목록 전체가 다시 그려진다(`BriefingStationRow` 동형).
+private struct StationTitleActions: ViewModifier {
+    let station: NearbySubwayStation
+    let directionsEntryAllowed: Bool
+    let onOpen: (StationDestination) -> Void
+    @Environment(\.openURL) private var openURL
+    private let phoneStore = StationPhoneStore.shared
+
+    /// 환승역은 노선 표가 아는 첫 노선(없으면 첫 노선) — 전화 조회가 같은 역·같은 노선 후보만 보기 때문이다(E44).
+    /// 상세에도 같은 힌트를 넘겨 로터의 전화와 상세의 전화 줄이 같은 번호를 말한다(spec §3-1).
+    private var lineHint: String? {
+        station.lines.first { subwayLineIdentity($0) != nil } ?? station.lines.first
+    }
+
+    /// 라벨의 역명 — 헤딩과 같은 언어 축(en은 seed 영문이 있을 때만).
+    private var name: String {
+        if AppLanguage.dataLocale == "en", let en = station.nameEn, !en.isEmpty { return en }
+        return station.stationName
+    }
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if let lat = station.lat, let lng = station.lng {
+            content
+                // ⚠ 선언은 역순: VoiceOver 로터가 빌더 선언의 역순으로 노출된다(PlaceRow·채팅·E45 실측).
+                // 전화 액션은 늘 있고 라벨만 상태로 갈린다(E45 판정 ④ — 로터를 연 사이 목록 길이가 변하지 않게).
+                .accessibilityActions {
+                    Button(callLabel(lat: lat, lng: lng)) {
+                        callStationPhone(
+                            stationName: station.stationName, lat: lat, lng: lng,
+                            lineName: lineHint ?? "", openURL: openURL)
+                    }
+                    if directionsEntryAllowed {
+                        Button(appLocalized("directions.toHere")) {
+                            DirectionsPrefillStore.shared.pending = DirectionsPrefill(
+                                role: .to, endpoint: .place(
+                                    label: station.stationName, lat: lat, lng: lng, labelRoman: station.nameEn))
+                        }
+                    }
+                    Button(appLocalized("transitGuide.openStation", name)) {
+                        let stop = TransitLegStop(name: station.stationName, lat: lat, lng: lng, nameEn: station.nameEn)
+                        onOpen(StationDestination(place: transitStopPlace(stop), lineName: lineHint))
+                    }
+                }
+                // 목록이 떠 있는 동안 `recheckSeconds`마다 다시 부른다 — 저장소는 갱신되지 않은 값을 6분에 지운다.
+                // 신선하면 네트워크 없이 돌아오고, 같은 키 중복은 저장소가 막는다(브리핑 E45 동형).
+                .task(id: "\(station.stationName)|\(lineHint ?? "")") {
+                    let stop = TransitLegStop(name: station.stationName, lat: lat, lng: lng)
+                    while !Task.isCancelled {
+                        phoneStore.prefetch(stops: [stop], lineName: lineHint ?? "")
+                        try? await Task.sleep(for: .seconds(StationPhoneStore.recheckSeconds))
+                    }
+                }
+        } else {
+            content
+        }
+    }
+
+    private func callLabel(lat: Double, lng: Double) -> String {
+        switch phoneStore.result(stationName: station.stationName, lat: lat, lng: lng, lineName: lineHint ?? "") {
+        case .representative?: return appLocalized("transitGuide.callStationRepresentative", name)
+        default: return appLocalized("transitGuide.callStation", name)
+        }
+    }
+}
+

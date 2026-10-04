@@ -103,6 +103,8 @@ struct AroundNearbyView: View {
     /// 첫 로드 착지(위치 문장) + "더 보기" 첫 새 행 + 장면 더 보기가 한 바인딩을 쓴다.
     @AccessibilityFocusState private var focusedID: String?
     @State private var lander = NearbyFocusLander()
+    /// 「한눈에 보기」 문장 로터 「○○ 상세 보기」가 push하는 상세(E65).
+    @State private var detailTarget: OverviewDetailTarget?
 
     /// nil→값 전이가 곧 "로드 완료"다(실패는 nil 유지, 이동 없음). 착지는 **위치 문장 1회**뿐
     /// (spec §2.1) — 장면·목록은 같은 커밋이라 늦게 와서 포커스를 끌 수 없다.
@@ -148,7 +150,7 @@ struct AroundNearbyView: View {
                     // 3. 주변 상황 — 자동 펼침(헤딩이 발견 경로, 포커스 이동 없음).
                     SurroundingsSceneAutoSection(
                         scene: payload.scene, failed: payload.sceneFailed, commitID: payload.commitID,
-                        proxy: proxy, focusedID: $focusedID)
+                        proxy: proxy, focusedID: $focusedID, onAskAbout: { chatPlace = $0 })
 
                     // 4. 이 위치에 관해 물어보기.
                     if let overview = payload.overview {
@@ -166,6 +168,12 @@ struct AroundNearbyView: View {
                 id: topID, lander: lander, proxy: proxy,
                 current: { focusedID },
                 apply: { focusedID = $0 })
+            .navigationDestination(item: $detailTarget) { target in
+                // 행사는 목록 화면과 같은 상세(행사 섹션), 역은 노선 힌트를 함께 넘긴다(E44 전화 조회).
+                PlaceDetailView(place: target.place, stationLineHint: target.lineHint) {
+                    if let event = target.event { CultureEventSection(event: event) }
+                }
+            }
         }
         .navigationTitle(appLocalized("ios.nearby.around"))
         .nearbyStateOverlay {
@@ -188,9 +196,22 @@ struct AroundNearbyView: View {
             Text("\(appLocalized("whereAmI.overview.heading")) \(appLocalized("whereAmI.overview.radius", formatDistance(overview.radiusMeters)))")
                 .font(.headline)
                 .accessibilityAddTraits(.isHeader)
-            ForEach(Array(buildOverviewLines(overview, lang: AppLanguage.current).enumerated()), id: \.offset) { _, line in
+            let lang = AppLanguage.current
+            ForEach(Array(zip(overview.bullets, buildOverviewLines(overview, lang: lang)).enumerated()), id: \.offset) { _, pair in
+                let (bullet, line) = pair
                 // 거리 밀도가 높은 문장이라 낭독 변환 필수(m → 로케일 단어). 한글 병기는 시각 전용 꼬리(E28).
                 bilingualLine(visible: line.display, accessible: line.text)
+                    // 문장이 부른 장소마다 「○○ 상세 보기」(E65, 채팅 산문·브리핑 동형). 문장은 한 접근성 객체로 남는다.
+                    // ⚠ 선언은 역순: VoiceOver 로터가 빌더 선언의 역순으로 노출된다 — 문장 등장 순으로 들리게 뒤집는다.
+                    .accessibilityActions {
+                        ForEach(overviewDetailTargets(bullet, lang: lang).reversed()) { target in
+                            Button(target.isStation
+                                   ? appLocalized("transitGuide.openStation", target.name)
+                                   : appLocalized("ios.chat.openPlace", target.name)) {
+                                detailTarget = target
+                            }
+                        }
+                    }
             }
         } else if payload.overviewFailed {
             Text(appLocalized("whereAmI.overview.heading"))

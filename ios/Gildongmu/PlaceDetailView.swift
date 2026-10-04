@@ -291,6 +291,8 @@ struct PlaceDetailView<DomainSection: View>: View {
         } header: {
             Text(appLocalized("ios.place.nearbyHeading")).accessibilityAddTraits(.isHeader)
         }
+        // 앵커 목록의 행 로터(E65)도 이 상세와 같은 이유로 길찾기 진입을 숨긴다(안내 시트·길찾기 탭 스택).
+        .environment(\.directionsEntryAllowed, showsDirectionsEntry)
     }
 
     /// Place.id "kakao-" 접두가 있을 때만 카카오 장소 상세 체인 유효(웹 계약)

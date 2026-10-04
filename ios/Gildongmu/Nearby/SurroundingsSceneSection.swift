@@ -266,6 +266,9 @@ struct SurroundingsSceneGroupsView: View {
     var focusedID: AccessibilityFocusState<String?>.Binding
     /// 버튼형만 true — 자동 펼침은 부모의 위치 문장이 같은 내용을 이미 말한다(중복 낭독 금지).
     var showPlace = true
+    /// 장소 행 로터(E65) — 둘러보기(자동 펼침)만 `PlaceRow`와 같은 묶음을 단다. 값은 「물어보기」 진입이다.
+    /// 버튼형(안내 시트 「주변 확인」)은 nil: 위원장 판정의 자리는 둘러보기이고, 안내 중 길찾기 프리필은 시트 뒤 탭을 재생성한다.
+    var rowActionsAskAbout: ((Place) -> Void)? = nil
 
     var body: some View {
         // 위치 확인 문장 먼저, 그다음 묶음(spec 판정 3).
@@ -287,7 +290,13 @@ struct SurroundingsSceneGroupsView: View {
                 NavigationLink {
                     PlaceDetailView(place: sceneItemToPlace(item))
                 } label: {
-                    SceneText.itemRow(item)
+                    if let rowActionsAskAbout {
+                        let place = sceneItemToPlace(item)
+                        SceneText.itemRow(item)
+                            .placeRowActions(place, onAskAbout: { rowActionsAskAbout(place) })
+                    } else {
+                        SceneText.itemRow(item)
+                    }
                 }
                 .id(sceneItemRowID(bucket: group.bucket, index: index))
                 .accessibilityFocused(
@@ -321,6 +330,8 @@ struct SurroundingsSceneAutoSection: View {
     let commitID: UUID
     let proxy: ScrollViewProxy
     var focusedID: AccessibilityFocusState<String?>.Binding
+    /// 장소 행 「물어보기」(E65 행 로터) — 부모 화면의 장소 채팅 시트.
+    let onAskAbout: (Place) -> Void
     @State private var reveal = SceneRevealWindows()
 
     var body: some View {
@@ -334,7 +345,8 @@ struct SurroundingsSceneAutoSection: View {
             Text(appLocalized("surroundings.empty"))
         } else if let scene {
             SurroundingsSceneGroupsView(
-                scene: scene, reveal: reveal, proxy: proxy, focusedID: focusedID, showPlace: false)
+                scene: scene, reveal: reveal, proxy: proxy, focusedID: focusedID, showPlace: false,
+                rowActionsAskAbout: onAskAbout)
         }
     }
 }

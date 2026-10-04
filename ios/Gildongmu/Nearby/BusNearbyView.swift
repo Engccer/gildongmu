@@ -34,6 +34,7 @@ struct BusNearbyView: View {
     /// 항목 정체성 옵셔널 바인딩(Bool 다중 부착 금지 — SubwayNearbyView 주석 참고)
     @AccessibilityFocusState private var focusedStop: String?
     @State private var lander = NearbyFocusLander()
+    @Environment(\.directionsEntryAllowed) private var directionsEntryAllowed
 
     /// anchor 기본값 nil = 현재 위치(내 주변 허브 호출처 무변경).
     /// State(initialValue:) 인자는 순수 생성만(부수효과 금지) — [[swiftui-state-initialvalue-side-effect]]
@@ -61,6 +62,16 @@ struct BusNearbyView: View {
                                 .accessibilityAddTraits(.isHeader)
                                 // 첫 로드 착지 대상. 키는 ForEach 정체성(nodeId)과 같은 값.
                                 .accessibilityFocused($focusedStop, equals: stop.nodeId)
+                                // 제목 로터(E65): 정류소 상세 화면은 없어 길찾기 하나뿐이다. 헤딩 trait는 그대로.
+                                .accessibilityActions {
+                                    if directionsEntryAllowed {
+                                        Button(appLocalized("directions.toHere")) {
+                                            DirectionsPrefillStore.shared.pending = DirectionsPrefill(
+                                                role: .to, endpoint: .place(
+                                                    label: stop.name, lat: stop.lat, lng: stop.lng, labelRoman: stop.nameRoman))
+                                        }
+                                    }
+                                }
                             if stop.arrivalStatus == "unavailable" {
                                 Text(appLocalized("ios.nearby.arrivalUnavailable"))   // 조회 실패 ≠ 버스 없음
                             } else if stop.arrivals.isEmpty {
