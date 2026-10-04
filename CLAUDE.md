@@ -75,6 +75,7 @@
 - **mock으로 조용히 폴백 금지**(가짜 실데이터 금지). 키 없음→null·섹션 미노출, upstream 장애→throw→502.
 
 ### 횡단 함정 (반복 적용 — 새 통합마다 점검)
+- **앱 전용 상세 재료는 옵트인 쿼리로만 싣는다**(E65 overview `places=1`·근접 역 `coords=1`): 채팅 도구가 응답 객체를 Gemini 입력에 펼치고 CLI·MCP가 원문을 출력하므로, 새 필드는 `src/lib/chat/router.ts`의 소비 자리부터 확인한다. → INTEGRATIONS
 - **좌표 쿼리 파라미터는 `src/lib/coord-param.ts`를 쓴다**(`latParam`/`lngParam`, 선택 좌표는 `.optional().catch(undefined)`): `Number("")===0`이라 누락이 (0,0) `outOfCoverage`로 위장한다. 가드 `coord-param-usage.test.ts`, CLI에도 같은 함정. → INTEGRATIONS
 - **서비스 커버리지 마커**: 좌표 의존 라우트는 파싱 → `isInKorea`(`src/lib/coverage.ts`, 국경 폴리곤 한 벌, Kit은 바이트 동일 사본) → 키 게이트 → upstream 순서. 한국 밖이면 200 `{"outOfCoverage":true}`(upstream 미호출), 프리필터 사각형은 링에서 유도(상수 금지). → INTEGRATIONS
 - **국내 지역별 미제공은 커버리지와 다른 층이다**: 한국 안이면 200 `{"unavailableHere":"seoulOnly"}`, 판정선은 그 도메인의 조회 반경(`metersOutsideSeoul`) — 행정경계로 자르지 말고, 연속량 도메인(지하철역 거리)엔 쓰지 말고 `nearest`를 싣는다. → INTEGRATIONS
@@ -129,7 +130,7 @@
 - **오디오 재생기는 셋(도보·대중교통·나들이)이고 미뤄진 원복은 최신 소유자에게 이전된다**(`.ownershipTransferred`). route 변경 `.categoryChange`는 현재 세션 값 == 적용값 대조로 자기 메아리만 거른다(전면 필터 금지). → INTEGRATIONS
 - **결정 지점 안내는 두 층이고 거리가 다르다**: 30m `announceSteps` 전문(거리 머리말 `announceAhead`, 늦은 전문엔 없음) + `imminent` 짧은 명령형(walk 20·15·10m, car는 반복 없음). 되읽기·진행 상황은 들어선 스텝을 `parts.body`로, 행동 분류는 서버 `attachStepActions`의 `step.action`만(클라이언트 폴백 금지). → INTEGRATIONS
 - **횡단 중·정지 중엔 주기 통지·되읽기가 없고 다음 구간 전문은 횡단을 나간 뒤다**(E62): 나감 판정 `crossingExitThreshold`의 시작점 여유 조건을 지우지 말 것, `GuideFix.stopped`는 기본값 없음. → INTEGRATIONS §횡단 중·정지 중 침묵과 늦은 전문
-- **도보 판본 2(`wording=2`)의 횡단 방향은 직전 스텝의 마지막 10m 이상 선분 기준 시계 방향이다**(`walk-crossing.ts`, 시계 함수는 웹·Kit·`:kit` 한 벌). 길 이름은 iOS 실험판만(`crossingRoad=1`, 웹·안드로이드는 보내지 않는다). → INTEGRATIONS §판본 2 문장과 횡단 방향
+- **도보 판본 2(`wording=2`)의 횡단 방향은 직전 스텝의 마지막 10m 이상 선분 기준 시계 방향이다**(`walk-crossing.ts`, 시계 함수는 웹·Kit·`:kit` 한 벌). 건너는 길 이름은 판본 2의 일부다(옵트인 없음, 옛 `crossingRoad=1`은 서버가 읽지 않는다, 가드 `e62-crossing-road-gate.test.ts`). → INTEGRATIONS §판본 2 문장과 횡단 방향
 - **자동차 임박 큐는 문장이 아니라 서버 `turnType` 투영(`action`)으로 행동을 고르고, 없으면 침묵이다**(K2, 표 정본 `car-action.ts` ↔ `CarAction.swift`). 임계 `max(15m, v×6초)`·표본 부족 60m, 공백 뒤 따라잡기는 `silentCatchUp` 세 항이 한 묶음. 운전자 모드는 `BeaconModel`이 `TtsPlayer.speakGuidance`로 발화. → INTEGRATIONS
 - **자동차 짧은 안내(임박·주기)의 지점·방면은 서버 `at`·`toward`(기하 옵트인 additive)가 정본이고 클라이언트는 스텝 `carLandmark`에서만 읽는다**(E61): 안내문 재파싱 금지, 비-ko는 `carSpokenLandmark`가 한글 이름을 뺀다, 운전자 모드는 종전 단문(`guide.carDriverNotice`). → INTEGRATIONS §자동차 경로
 - **자동차 "현재 도로"는 스텝이 아니라 링크 단위다**(E56): `roadSpans` + `roadNameAt(진행거리)`만 지난다 — 한 안내 구간 안에서 도로가 바뀌는 스텝이 15%라 스텝별 도로 이름 필드·안내문 파싱 금지. 모르면 줄 없음, 통지 없음. → INTEGRATIONS §자동차 경로
@@ -153,6 +154,8 @@
 - **승차 전 도보(prewalk)는 대중교통 세션이 아니라 그 앞의 도보 세션이고, 종료 화면을 남기지 않는다**(A25: `transitPrewalkTarget` → `BeaconModel.markPrewalk` → `onSessionEnd(reason)`). `prewalkTarget`은 `stop()` 앞에서 캡처, 잊힌 세션 안전망 비적용. → INTEGRATIONS
 - **iOS 통지 우선순위의 판별선은 "포커스가 움직이고, 그 통지가 착지 라벨로 대체될 수 없을 때 `.high`"다**(`BeaconModel.performReroute` 실사고). 화면 변화 없는 활성화 응답("복사됨")도 `.high`, 실패만 `.high`이고 성공이 기본값인 비대칭은 결함 신호. → PATTERNS
 - **결과 진동은 `ResultHaptic.fire(.success|.attention|.failure)` 한 창구다**(스위치 `TrendHaptics.storageKey` 뒤). 1회성 결과·전이에만, **문장이 나가는 조건 = 진동이 나가는 조건**. 제너레이터 직접 생성은 기존 4곳뿐(`result-haptic-guard.test.ts`). → PATTERNS
+- **내 주변 탭 로터 액션은 기존 판별선을 재사용한다**(E65: 장소 하나인 행 = `placeRowActions` 수정자, 문장 속 여러 장소 = Kit `overviewDetailTargets`, 역 제목 = E45 창구 `stationCallLabel`·`callStationPhone`). 앵커 목록의 길찾기는 장소 상세의 `showsDirectionsEntry`를 기본값 없는 인자로 받는다. → PATTERNS
+- **순서 바꾸기 로터 액션은 Kit `Reorder` 한 판정(`availableMoves`·`moved`)과 앱 `reorderActions`·`announceReorderPosition`·`keepFocusAfterMove` 한 벌을 쓴다**(E67·E66): 이동 기준은 화면에 보이는 순서이고 저장 배열을 채택하며, 고정 블록을 시간·이름으로 다시 정렬하는 쓰기를 더하지 않는다. → spec `2026-10-05-reorder-rotor-actions-design.md`
 - **직선거리는 고를 수 있는 모드가 아니라 이름 없는 내부 강등이다**(E16 축2 — 웹에 단독 진입점·모드 전환 버튼 재도입 금지, 시작 가능 수단 0이면 버튼 0). 기능을 지울 땐 소비자 기준(웹·iOS 공유 i18n 키·이벤트)으로 자른다. → PATTERNS
 - **모드 이름을 지운 대가는 강등 사유가 유일한 단서가 되는 것이다**: `fetchGuideRoute`는 `{ok:false, failure}` 태그(`noLocation`·`retryable`·`unavailable`·`outOfCoverage`), 비-200 전부를 재시도 가능으로 접지 말 것, 강등 문구에 모드 이름 금지. → PATTERNS
 - **현위치 수동 지정: 유효 위치를 소비하는 화면과 표시줄을 함께 옮긴다**(장소 앵커 > 수동 위치 > GPS, 실시간 안내만 실좌표). 라벨은 `isManualLocationVerified`까지 본다(가드 `manual-location-copy.test.ts`). → PATTERNS
@@ -218,7 +221,7 @@
 | 서울 지하철역 시설 | seoul-metro-facilities (9 op)+voice-guides seed+seoul-elevator / `/api/station/metro-facilities` | 도시철도 보완, `totalCount>300` throw, 보강 실패는 `supplementFailed`로 표기(은폐 금지). → INTEGRATIONS |
 | 역 첫차·막차 (전국) | tago-subway (SubwayInfo 15098554) / `/api/station/timetable` | ⚠ `00`+`totalCount 0`은 "없음"의 증거가 아니다 — `coverage` 4값으로 가른다(A19). 00시대 심야는 배열 앞(03:00 경계). 실호출 게이트 `verify-korea-subway-timetable.mjs`. → INTEGRATIONS |
 | 도시철도역 메타 | subway-stations (정적 seed) / `/api/station/meta` | XLSX→JSON 연1회 갱신(`scripts/build-subway-stations.py`), 서버 전용 import |
-| 서울 지하철 실시간 | seoul-subway-arrival / `…/subway-arrival[/nearby]` | `arvlMsg2` 정본, 부분실패 보존. ⚠ `INFO-200`은 "운행 시간 밖"과 "미제공 역"이 공유하는 코드 — 역은 어떤 상태에서도 빼지 않고 4-state로 가른다. → INTEGRATIONS |
+| 서울 지하철 실시간 | seoul-subway-arrival / `…/subway-arrival[/nearby]` | `arvlMsg2` 정본, 부분실패 보존. ⚠ `INFO-200`은 "운행 시간 밖"과 "미제공 역"이 공유하는 코드 — 역은 어떤 상태에서도 빼지 않고 4-state로 가른다. 옵트인 `coords=1`은 역 좌표(E65). → INTEGRATIONS |
 | 지하철 열차 위치(E35) | seoul-subway-position → `transit-position.ts` / `/api/transit/position` | 노선 단위 20초 인메모리 캐시(Next 데이터 캐시 금지 — SWR이 낡은 목록을 준다), `updnLine` 미사용, INFO-200 = 0행(`중앙선` 미제공), 조회 창 끝 번호 = 행 수. → INTEGRATIONS |
 | 시내버스 | tago-bus + seoul-bus → `src/lib/bus.ts` 병합 | 지방=TAGO·서울=TOPIS `mergeBusStops`. 미커버 정본 `isUncoveredBusRegion` — **이 마커만 upstream 뒤에 온다**. ⚠ `arrmsg1` 원문은 서버가 변형하지 않는다(E39, 조립은 클라 `parseBusArrmsg`, 국면 인자에 기본값 없음). → INTEGRATIONS |
 | 따릉이 | seoul-bike / `/api/bike/nearby` | 전체 페이지루프+서버 Haversine, row 수<1000이 종료조건 |
@@ -233,8 +236,8 @@
 | 현재 위치 정위 | where-am-i / `/api/where-am-i` | 4조각 allSettled 조립, 산문은 결정론 템플릿(LLM 아님), `stripRegionPrefix` 중복제거 |
 | 부근 상황 재구성(M1) | road-address+geo/road-axis(순수)+road-axis-service → `surroundings-scene.ts` / `/api/surroundings/scene` | 좌우는 도로명 홀짝+juso 건물 축(POI로 세우지 말 것). `SurroundingsScene`은 live region 없음. → INTEGRATIONS |
 | 무장애 여행 정보 | tour-barrier-free / `/api/places/barrier-free[/detail/match]` | KorWithService2(B551011). **게이트·인증 모두 `DATA_GO_KR_API_KEY`**(split-brain 금지), 활용신청 별도. → INTEGRATIONS |
-| 자동차 경로 | **tmap-car(기본)+kakao-navi(폴백)** → `car-route.ts`(ko) / `ncp-directions`(en) / `/api/route/car` | ko 기본 Tmap(완성 문장), 낭독 문장은 `rewriteCarGuidance`(117/118은 회전이 아니라 갈래). 수치 0은 미제공. 게이트 `hasCarRouteKey`. → INTEGRATIONS 기하 옵트인에 지점·방면 `at`·`toward`(E61). |
-| 도보 경로 | **kakao-walk(기본)+tmap-pedestrian(폴백)** → `walk-route.ts` / `/api/route/walk` | `getWalkRoute`만 호출, 문장은 서버 `rewriteWalkGuidance`(소비자 재조합 금지), 옵트인 `wording=2`는 `rewriteWalkBriefingV2`(미지정 응답 불변), `action`은 `attachStepActions`. 비-ko는 Tmap 단독 en(`lang` 필수 인자), 조회 화면은 `lines=2` 줄 목록(`lines=1`은 스토어 1.19용, 줄 `kind`는 서버 판정). → INTEGRATIONS |
+| 자동차 경로 | **tmap-car(기본)+kakao-navi(폴백)** → `car-route.ts`(ko) / `ncp-directions`(en) / `/api/route/car` | ko 기본 Tmap(완성 문장), 낭독 문장은 `rewriteCarGuidance`(117/118은 회전이 아니라 갈래, 거리 꼬리는 `formatDistance` 원값 km). 수치 0은 미제공. 게이트 `hasCarRouteKey`. → INTEGRATIONS 기하 옵트인에 지점·방면 `at`·`toward`(E61). |
+| 도보 경로 | **kakao-walk(기본)+tmap-pedestrian(폴백)** → `walk-route.ts` / `/api/route/walk` | `getWalkRoute`만 호출, 문장은 서버 `rewriteWalkGuidance`(소비자 재조합 금지), 옵트인 `wording=2`는 `rewriteWalkBriefingV2`(미지정 응답 불변), `action`은 `attachStepActions`. 비-ko는 Tmap 단독 en(`lang` 필수 인자), 조회 화면은 `lines=2` 줄 목록(`lines=1`은 스토어 1.19용, 줄 `kind`는 서버 판정). 비-ko 판본 2 기하 응답도 방향 행동절에만 `parts`(A58 잔여). → INTEGRATIONS |
 | 횡단보도 차로 수·도로 폭 | crosswalks(정적 seed 15028201) → `walk-route.ts` `annotateCrosswalkInfo` / 별도 라우트 없음 | 단일 횡단보도 스텝 끝에 `, N차로, 도로 폭 Mm` — 있는 곳만, 3중 게이트 전부 통과일 때만, Tmap·병합 스텝·분해된 연속 횡단 조각은 침묵. 파이프라인 마지막 단계. → INTEGRATIONS |
 | 대중교통 | odsay + odsay-select + bus-service-hours / `/api/route/transit` | **파이프라인 순서가 계약: 정규화 → 강등 → 선정 → 축 라벨.** 재조회 제안(`requeryAxes`)은 강등 뒤 전체 후보로 판정. iOS `routeKey` 필수 디코딩이라 **웹 배포가 앱보다 먼저**. → INTEGRATIONS |
 | 지하철 빠른하차 | subway-quick-exit(정적 seed) → `quick-exit.ts` / 별도 라우트 없음(`TransitLeg.quickExit`) | 거리는 열차 선형 위치, 엘베×계단 쌍 최적화, 방향은 방면 1개 확정일 때만. ⚠ 환승 leg는 ODsay `subPath.door`가 정본(A20, 긍정 정규식만 통과). → INTEGRATIONS |
@@ -293,7 +296,7 @@
 
 - **`Experimental`이 한꺼번에 정하는 것**: `EXPERIMENTAL` 컴파일 조건 · 번들 ID `space.dodoplanet.gildongmu.dev` · 표시 이름 `…실험` · 아이콘 `AppIconExperimental`. 번들 ID가 달라 **공식판과 한 기기에 공존**한다(설정·동의는 앱별로 분리). ⚠ 위치 권한 문구는 이 목록에 없다(정식 문구 한 벌).
 - **실기기 배포**: 실험판 `CONFIGURATION=Experimental ./ios/deploy-device.sh`, 공식 번들 `CONFIGURATION=Release`(미지정 `Debug`는 기기 확인용이 아니다). → PATTERNS
-- **코드 게이트**: `AppConfig.experimentalOutingEnabled`·`experimentalTabOrderEnabled`가 `#if EXPERIMENTAL`로 갈리고, 검증되면 `#if`를 **삭제**한다(항상 참 상수 금지). 자동차·대중교통(`experimentalGuidanceEnabled`)·백그라운드 음성(`experimentalBackgroundSpeechEnabled`)은 2026-10-01 2.0에서 졸업해 플래그가 없다 — 되살리지 말 것(가드가 식별자 0건을 센다). → PATTERNS
+- **코드 게이트**: `AppConfig.experimentalOutingEnabled`·`experimentalTabOrderEnabled`(E66 탭 순서 설정 노출)가 `#if EXPERIMENTAL`로 갈리고, 검증되면 `#if`를 **삭제**한다(항상 참 상수 금지). 자동차·대중교통(`experimentalGuidanceEnabled`)·백그라운드 음성(`experimentalBackgroundSpeechEnabled`)은 2026-10-01 2.0에서, 건너는 길 이름(`experimentalCrossingRoadEnabled`)은 2026-10-05에 졸업해 플래그가 없다 — 되살리지 말 것(가드가 식별자 0건을 센다). → PATTERNS
 - ⚠ **봉인의 판정 축은 플래그 참조 목록이 아니라 세션을 시작시키는 호출 전수다**(`guidance-gate-drift.test.ts`). → PATTERNS
 - ⚠ **한 버튼이 두 역할을 겸하면 봉인이 그 버튼을 통째로 지우거나 통째로 남기지 못한다** — 섹션 표시 조건은 역할별로 쓴다. 2.0에서 간략 단독 시작 얼굴을 지워 그 버튼은 추적 중 "안내 종료" 하나다(E16 축2 — 간략 단독 진입점 재도입 금지). → PATTERNS
 - ⚠ **`INFOPLIST_KEY_*` 빌드 설정만으로는 구성별 분기가 안 된다**: 로컬라이즈 문자열은 `ios/scripts/experimental-infoplist.sh`, 비로컬라이즈 키는 `Support/Info-Experimental.plist`. → PATTERNS
