@@ -11,6 +11,10 @@
 
 ## 2026-10-05
 
+### CLI/MCP 0.12.0 발행 (`cli-v0.12.0`)
+
+도보 안내 문장 판본 2 기본(E62, 건너는 길 이름 포함)·대중교통 대안 이유 이름(E50)·`route walk --variant` 플래그(E42 ④)를 묶어 両패키지 0.12.0을 발행했다(위원장 지시). 서버발 출력 변화(이유 있는 대안만, 자동차 1km 이상 km, JSON 새 필드 `walkMeters`·`vehicle`·`requeryAxes`·`operatorEn`, 역 장소 `nameRoman` 영문 역명)도 노트에 적었다. 릴리스 노트 정본 `packages/cli/CHANGELOG.md`·`packages/mcp/CHANGELOG.md` §0.12.0, 워크플로 run 37233758891.
+
 ### 건너는 길 이름 정식판 졸업 (E62 ⑥, 서버·iOS·웹·안드로이드)
 
 "9시 방향으로 도세요. 그 후 천호대로를 건너세요"의 길 이름이 판본 2(`wording=2`) 문장의 일부가 됐다. 옵트인 `crossingRoad=1`은 없어졌고(서버는 옛 실험판이 보내는 값을 읽지 않는다) iOS 실험 플래그 `experimentalCrossingRoadEnabled`와 Kit 인자를 지웠다. 스토어 2.1은 문장을 해석하지 않아 웹 배포 시점부터 2.1 정식판·웹·안드로이드가 같은 문장을 받고, 2.0·1.19(판본 1)는 그대로다. 판정 근거는 spec `2026-10-03-crosswalk-guidance-design.md` §3.5, 가드 `e62-crossing-road-gate.test.ts`.
