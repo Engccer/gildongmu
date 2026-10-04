@@ -175,6 +175,17 @@ func callStationPhone(
     announceStationPhone(result)
 }
 
+/// 역 전화 로터 라벨의 단일 창구(E45·E65). **라벨만** 상태로 갈린다(대표번호면 그렇게 말한다) — 액션의 존재는
+/// 갈리지 않는다(E45 판정 ④). `name`은 그 줄·헤딩이 부른 이름, 조회 키는 한국어 `stationName`.
+/// ⚠ 호출 자리가 `phoneStore.result`를 읽으므로 관찰 범위를 하위 뷰로 좁혀 둔 곳에서만 부른다.
+@MainActor
+func stationCallLabel(name: String, stationName: String, lat: Double, lng: Double, lineName: String) -> String {
+    switch StationPhoneStore.shared.result(stationName: stationName, lat: lat, lng: lng, lineName: lineName) {
+    case .representative?: return appLocalized("transitGuide.callStationRepresentative", name)
+    default: return appLocalized("transitGuide.callStation", name)
+    }
+}
+
 /// 전화 액션의 결과 통지·진동 한 자리. 번호를 걸었으면 통지가 없다(전화 앱 전환이 응답이다).
 @MainActor
 private func announceStationPhone(_ result: StationPhoneResult?) {

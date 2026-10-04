@@ -9,8 +9,10 @@ const root = resolve(__dirname, "../../..");
 const read = (file: string) => readFileSync(resolve(root, file), "utf8");
 const nearby = (file: string) => read(`ios/Gildongmu/Nearby/${file}`);
 
-/** `start` 뒤에서 각 needle이 처음 나오는 위치가 주어진 순서대로 증가하는가. */
-function declaredInOrder(source: string, start: number, needles: string[]): boolean {
+/** `anchor` 뒤에서 각 needle이 처음 나오는 위치가 주어진 순서대로 증가하는가. anchor가 없으면 실패(빈 통과 금지). */
+function declaredInOrder(source: string, anchor: string, needles: string[]): boolean {
+  const start = source.indexOf(anchor);
+  if (start < 0) return false;
   const positions = needles.map((n) => source.indexOf(n, start));
   return positions.every((p) => p > start) && positions.every((p, i) => i === 0 || p > positions[i - 1]);
 }
@@ -29,9 +31,10 @@ describe("E65 내 주변 로터 액션 배선", () => {
     const s = nearby("SurroundingsSceneSection.swift");
     expect(s).toContain(".placeRowActions(place, onAskAbout: { rowActionsAskAbout(place) })");
     expect(s).toContain("rowActionsAskAbout: onAskAbout)");
-    // 버튼형 호출은 rowActionsAskAbout을 넘기지 않는다(기본값 nil).
-    const buttonCall = s.slice(s.indexOf("SurroundingsSceneGroupsView(\n                scene: scene, reveal: model.reveal"));
-    expect(buttonCall.slice(0, buttonCall.indexOf(")") + 1)).not.toContain("rowActionsAskAbout");
+    // 버튼형 호출은 rowActionsAskAbout을 넘기지 않는다(기본값 nil). 호출 전체를 공백 무관으로 잡는다.
+    const buttonCall = s.match(/SurroundingsSceneGroupsView\(\s*scene: scene, reveal: model\.reveal[^)]*\)/);
+    expect(buttonCall).not.toBeNull();
+    expect(buttonCall![0]).not.toContain("rowActionsAskAbout");
   });
 
   it("PlaceRow 묶음은 수정자 하나다 — 검색 결과 행과 주변 상황 행이 같은 선언을 지난다", () => {
@@ -43,36 +46,43 @@ describe("E65 내 주변 로터 액션 배선", () => {
 
   it("지하철역 제목: 헤딩 trait 유지 + 전화·길찾기·상세 역순 선언(들리는 순서는 상세 → 길찾기 → 전화)", () => {
     const s = nearby("SubwayNearbyView.swift");
-    const heading = s.indexOf("stationHeading(station)");
-    expect(declaredInOrder(s, heading, [".accessibilityAddTraits(.isHeader)", ".modifier(StationTitleActions("])).toBe(true);
-    const actions = s.indexOf("struct StationTitleActions");
-    expect(declaredInOrder(s, actions, [
-      "Button(callLabel(",
+    expect(declaredInOrder(s, "stationHeading(station)\n", [".accessibilityAddTraits(.isHeader)", ".modifier(StationTitleActions("])).toBe(true);
+    expect(declaredInOrder(s, "struct StationTitleActions", [
+      "Button(stationCallLabel(",
       'Button(appLocalized("directions.toHere"))',
       'Button(appLocalized("transitGuide.openStation", name))',
     ])).toBe(true);
-    // 전화는 E45 창구 하나만 지난다.
-    expect(s.slice(actions)).toContain("callStationPhone(");
+    // 전화는 E45 창구 하나(라벨 `stationCallLabel`, 동작 `callStationPhone`)만 지난다 — 브리핑도 같은 라벨 함수.
+    expect(s.slice(s.indexOf("struct StationTitleActions"))).toContain("callStationPhone(");
+    expect(read("ios/Gildongmu/RouteBriefing.swift")).toContain("stationCallLabel(");
+    // 노선 힌트는 Kit 순수 함수(테스트 레인 있음), 라벨 이름은 헤딩과 같은 언어 판정.
+    expect(s).toContain("nearbyStationLineHint(lines: station.lines)");
+    expect(s).toContain("subwayStationSpokenName(");
   });
 
   it("버스 정류소 제목: 헤딩 trait 유지 + 여기까지 길찾기 하나", () => {
     const s = nearby("BusNearbyView.swift");
-    const heading = s.indexOf("busStopHeading(stop)");
-    expect(declaredInOrder(s, heading, [
-      ".accessibilityAddTraits(.isHeader)",
-      ".accessibilityActions {",
+    expect(declaredInOrder(s, "private func stopTitle(", [
+      "busStopHeading(stop).accessibilityAddTraits(.isHeader)",
+      "if directionsEntryAllowed {",
+      "heading.accessibilityActions {",
       'Button(appLocalized("directions.toHere"))',
     ])).toBe(true);
+    expect(s).toContain("stopTitle(stop)");
   });
 
   it("앵커 목록의 길찾기 진입은 장소 상세의 showsDirectionsEntry를 따른다(안내 시트·길찾기 탭 스택 보호)", () => {
-    expect(read("ios/Gildongmu/PlaceDetailView.swift")).toContain(
-      ".environment(\\.directionsEntryAllowed, showsDirectionsEntry)",
-    );
-    for (const file of ["SubwayNearbyView.swift", "BusNearbyView.swift"]) {
-      expect(nearby(file)).toMatch(/if directionsEntryAllowed \{\s*Button\(appLocalized\("directions\.toHere"\)\)/);
-    }
+    const detail = read("ios/Gildongmu/PlaceDetailView.swift");
+    expect(detail).toContain("SubwayNearbyView(anchor: anchor, directionsEntryAllowed: showsDirectionsEntry)");
+    expect(detail).toContain("BusNearbyView(anchor: anchor, directionsEntryAllowed: showsDirectionsEntry)");
+    expect(nearby("SubwayNearbyView.swift")).toMatch(/if directionsEntryAllowed \{\s*Button\(appLocalized\("directions\.toHere"\)\)/);
     // 로터가 여는 역 상세도 같은 값을 받는다.
     expect(nearby("SubwayNearbyView.swift")).toContain("showsDirectionsEntry: directionsEntryAllowed");
+  });
+
+  it("지하철 목록은 첫 로드만 — 로터로 연 상세에서 돌아와도 재조회·완료 통지를 반복하지 않는다", () => {
+    expect(nearby("SubwayNearbyView.swift")).toMatch(
+      /\.task \{\s*if case \.loaded = model\.phase \{ return \}\s*await model\.load\(\)\s*\}/,
+    );
   });
 });

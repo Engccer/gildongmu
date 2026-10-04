@@ -217,15 +217,9 @@ private struct BriefingStationRow<Content: View>: View {
     /// **라벨만** 상태로 갈린다. 액션의 존재는 갈리지 않는다 — 번호 없음·조회 중·실패를 액션 부재로 뭉개면
     /// 3상태가 사라지고, 로터를 열어 둔 사이 목록 길이가 변한다(spec 판정 ④).
     private func callLabel(_ station: BriefingStationAction) -> String {
-        switch phoneStore.result(
-            stationName: station.stop.name, lat: station.stop.lat, lng: station.stop.lng,
-            lineName: station.lineName ?? ""
-        ) {
-        case .representative?:
-            return appLocalized("transitGuide.callStationRepresentative", station.name)
-        default:
-            return appLocalized("transitGuide.callStation", station.name)
-        }
+        stationCallLabel(
+            name: station.name, stationName: station.stop.name, lat: station.stop.lat, lng: station.stop.lng,
+            lineName: station.lineName ?? "")
     }
 
     private func call(_ station: BriefingStationAction) {

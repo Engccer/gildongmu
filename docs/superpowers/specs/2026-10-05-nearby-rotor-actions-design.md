@@ -45,7 +45,7 @@
 | 자리 | 액션(로터에서 들리는 순서) | 구현 |
 |---|---|---|
 | 「주변 상황」 장소 행 | 주소 복사 → 여기까지 길찾기 → 카카오맵 → 네이버 지도 → 전화 → 물어보기(보유한 데이터만) | `PlaceRow`의 액션 묶음을 수정자(`placeRowActions`)로 꺼내 그대로 붙인다. 버튼형 「주변 확인」(안내 시트)은 붙이지 않는다(위원장 판정의 자리는 둘러보기다) |
-| 지하철역 목록의 역 제목 | 상세 보기 → 여기까지 길찾기 → 전화 | 헤딩 trait 유지. 전화는 E45 창구(`callStationPhone`·`StationPhoneStore`) 그대로: 액션은 늘 있고 라벨만 직통·대표번호로 갈린다(E45 판정 ④). 좌표가 없는 응답이면 셋 다 없다 |
+| 지하철역 목록의 역 제목 | 상세 보기 → 여기까지 길찾기 → 전화 | 헤딩 trait 유지. 전화는 E45 창구(라벨 `stationCallLabel`, 동작 `callStationPhone`) 그대로: 액션은 늘 있고 라벨만 직통·대표번호로 갈리며, 번호가 없으면 누를 때 「역 전화번호가 없습니다.」(E45 판정 ④, 위원장 판정 2026-10-05). 좌표가 없는 응답이면 셋 다 없다 |
 | 버스 정류소 목록의 정류소 제목 | 여기까지 길찾기 | 헤딩 trait 유지 |
 
 ## 3. 세션 설계 판정 (제품 판단 아님)
@@ -54,6 +54,11 @@
 2. **문자열은 기존 키만 쓴다**: 장소·행사 상세 `ios.chat.openPlace`, 역 상세 `transitGuide.openStation`, 길찾기 `directions.toHere`, 역 전화 `transitGuide.callStation`·`callStationRepresentative`, 행 묶음은 `PlaceRow` 그대로. 새 키 0.
 3. **상세 이동은 화면이 `navigationDestination(item:)`으로 연다**(로터 액션은 `NavigationLink`를 누를 수 없다). 앵커 모드(`SubwayNearbyView(anchor:)`·`BusNearbyView(anchor:)`)는 같은 뷰라 함께 적용된다.
 4. 「여기까지 길찾기」는 `PlaceRow`와 같은 프리필(`DirectionsPrefillStore`, 역·정류소 이름 + 좌표 + 영문/로마자 이름)이다.
+5. **앵커 목록은 장소 상세의 `showsDirectionsEntry`를 따른다**: 안내 시트(`PlaceDetailSheet(showsDirectionsEntry: false)`)·길찾기 탭 스택 안의 상세에서 연 지하철·버스 앵커 목록은 「여기까지 길찾기」를 내지 않는다(프리필이 그 화면을 파괴한다, E45 spec §7). 전달은 환경값이 아니라 명시 인자 `directionsEntryAllowed`(허브 호출은 기본값 참)이고, 로터가 여는 역 상세도 같은 값을 받는다. 정류소 제목은 그 자리에서 액션이 0개다.
+6. **역 라벨의 이름 언어는 헤딩과 같은 판정이다**(`subwayStationEnglishLines`: 영어 UI ∧ 영문 역명 ∧ 노선 영문 전부). 노선 힌트는 Kit 순수 함수 `nearbyStationLineHint`.
+7. **지하철 목록은 첫 로드만 `.task`가 돈다**: 로터로 연 역 상세에서 돌아올 때 재조회·완료 통지("역 N곳")가 복귀 커서 낭독과 겹치지 않게 한다. 새로고침은 당겨서 새로고침이 맡는다(버스 목록·둘러보기의 같은 현상은 이 회차 범위 밖, 기존 동작).
+8. **옵트인 재료는 관대하게 디코딩한다**(Kit `OverviewPlace`의 `place`·`event`는 `try?`): 재료 하나가 깨져도 「한눈에 보기」 문장은 살고 그 장소의 액션만 빠진다.
+9. 역 목록은 떠 있는 동안 역마다 전화번호를 미리 조회한다(30초 재확인, 신선 5분 — 카카오 장소 검색이 역마다 5분에 한 번, 서버 캐시 300초 뒤). 브리핑 E45와 같은 저장소·같은 수명이다.
 
 ## 4. 범위 밖
 

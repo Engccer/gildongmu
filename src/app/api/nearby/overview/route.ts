@@ -32,7 +32,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ outOfCoverage: true });
   }
   try {
-    // wire는 overview만 — 장소 투영(places)은 채팅 카드 전용이라 싣지 않는다(CLI·MCP 출력 팽창 금지).
+    // wire는 overview만 — `places` 배열(채팅 카드 투영)은 옵트인과 무관하게 싣지 않는다(CLI·MCP 출력 팽창 금지).
+    // `places=1`은 불릿 항목에 상세 재료를 붙일 뿐이다.
     const { overview: data } = await assembleNearbyOverview(
       parsed.data.lat, parsed.data.lng, parsed.data.places === "1");
     return NextResponse.json({ data });

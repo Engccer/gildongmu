@@ -216,3 +216,27 @@ private let detailFixture = """
     #expect(r.stations[1].lat == nil)
 }
 
+
+@Test func brokenOptInDetailDropsOnlyThatActionNotTheSentences() throws {
+    // 옵트인 재료가 깨져도(필수 키 누락) 문장 재료는 살고, 그 장소의 상세 대상만 빠진다.
+    let json = """
+    {"data":{"place":null,"radiusMeters":1000,"bullets":[
+     {"kind":"food","state":"ok","count":2,"countCapped":false,"nearest":[
+       {"name":"가람식당","distanceMeters":40,"bearing":"s","place":{"id":"k1","name":"가람식당"}},
+       {"name":"김밥천국","distanceMeters":60,"bearing":"e","place":{"id":"k2","name":"김밥천국","category":"c","address":"","roadAddress":"","lat":37.5,"lng":127.1}}]}
+    ]}}
+    """
+    let data = try #require(try decode(json).data)
+    guard case .place(.food, .ok(_, _, let nearest)) = data.bullets[0] else { Issue.record("food"); return }
+    #expect(nearest.map(\.name) == ["가람식당", "김밥천국"])
+    #expect(overviewDetailTargets(data.bullets[0], lang: "ko").map(\.place.id) == ["k2"])
+}
+
+@Test func nearbyStationLineHintPrefersAKnownLine() {
+    // 노선 표가 모르는 노선이 앞에 와도 아는 노선을 고른다(전화 조회는 같은 노선 후보만 본다).
+    #expect(nearbyStationLineHint(lines: ["미지선", "2호선"]) == "2호선")
+    #expect(nearbyStationLineHint(lines: ["2호선", "8호선"]) == "2호선")
+    // 아는 노선이 없으면 첫 노선(조회는 "없음"으로 끝난다), 빈 목록은 nil.
+    #expect(nearbyStationLineHint(lines: ["미지선"]) == "미지선")
+    #expect(nearbyStationLineHint(lines: []) == nil)
+}

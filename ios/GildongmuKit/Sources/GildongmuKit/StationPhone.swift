@@ -56,6 +56,13 @@ public func subwayLineIdentity(_ raw: String) -> String? {
     return subwayLineIdentityTable[s]
 }
 
+/// 여러 노선이 지나는 역의 전화 조회 노선 힌트(E65 spec §3-1): 노선 표가 아는 첫 노선, 없으면 첫 노선, 빈 목록이면 nil.
+/// 전화 조회는 같은 역·같은 노선 후보만 보므로(E44) 힌트가 하나 있어야 하고, 역 상세에도 같은 값을 넘겨
+/// 로터의 전화와 상세의 전화 줄이 같은 번호를 말하게 한다.
+public func nearbyStationLineHint(lines: [String]) -> String? {
+    lines.first { subwayLineIdentity($0) != nil } ?? lines.first
+}
+
 /// 웹 `src/lib/subway-line-names.ts` `LINE_EN` 미러 — 항목 동일은 `station-phone-line-table-drift.test.ts`가 강제한다.
 /// ⚠ 줄 모양 `"키": "값",` 한 줄 하나를 지킨다(드리프트 테스트가 그 모양으로 읽는다).
 let subwayLineIdentityTable: [String: String] = [

@@ -85,12 +85,15 @@ class NearbyOverviewTest {
         val json = """
 {"data":{"place":null,"radiusMeters":1000,"bullets":[
  {"kind":"transit","state":"ok","station":{"name":"길동","line":"5호선","bearing":"ne","distanceMeters":262,"lat":37.5378,"lng":127.1401},"busStops":null},
- {"kind":"food","state":"ok","count":1,"countCapped":false,"nearest":[{"name":"가람식당","distanceMeters":40,"bearing":"s","place":{"id":"k1","name":"가람식당","category":"음식점","address":"","roadAddress":"","lat":37.5,"lng":127.1}}]}
+ {"kind":"food","state":"ok","count":1,"countCapped":false,"nearest":[{"name":"가람식당","distanceMeters":40,"bearing":"s","place":{"id":"k1","name":"가람식당","category":"음식점","address":"","roadAddress":"","lat":37.5,"lng":127.1}}]},
+ {"kind":"events","state":"ok","count":1,"countCapped":false,"nearest":[{"name":"가을 음악회","distanceMeters":300,"bearing":"w","event":{"id":"seoul-1","title":"가을 음악회","category":"콘서트","place":"구민회관","district":"강동구","dateText":"2026-10-01~2026-10-31","timeText":"19:30","isFree":true,"target":"누구나","lat":37.53,"lng":127.13,"distanceMeters":300}}]}
 ]}}"""
         val data = assertNotNull(decode(json).data)
         assertEquals("길동", assertIs<OverviewBullet.Transit>(data.bullets[0]).station?.name)
         val food = assertIs<OverviewPlaceState.Ok>(assertIs<OverviewBullet.Place>(data.bullets[1]).state)
         assertEquals(listOf("가람식당"), food.nearest.map { it.name })
+        val events = assertIs<OverviewPlaceState.Ok>(assertIs<OverviewBullet.Place>(data.bullets[2]).state)
+        assertEquals(listOf("가을 음악회"), events.nearest.map { it.name })
         val subway = KitJson.decodeFromString(
             SubwayNearbyResponse.serializer(),
             """{"stations":[{"stationName":"잠실","lines":["2호선"],"distanceMeters":120,"arrivalStatus":"unknown","arrivals":[],"lat":37.5133,"lng":127.1001}]}""")

@@ -349,6 +349,20 @@ public struct OverviewPlace: Codable, Sendable, Hashable {
     public var place: Place? = nil
     /// 상세 진입 재료(옵트인 `places=1`, E65) — 문화 행사 원본.
     public var event: CultureEvent? = nil
+
+    private enum CodingKeys: String, CodingKey { case name, nameRoman, distanceMeters, bearing, place, event }
+
+    /// 옵트인 재료(`place`·`event`)는 관대하게 받는다 — 로터 액션 하나의 재료가 깨졌다고 「한눈에 보기」 문장 전체가
+    /// 실패로 떨어지면 안 된다. 깨진 재료는 nil(= 그 장소의 액션 없음, 죽은 액션 금지와 같은 결과).
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        name = try c.decode(String.self, forKey: .name)
+        nameRoman = try c.decodeIfPresent(String.self, forKey: .nameRoman)
+        distanceMeters = try c.decode(Int.self, forKey: .distanceMeters)
+        bearing = try c.decode(String.self, forKey: .bearing)
+        place = try? c.decodeIfPresent(Place.self, forKey: .place)
+        event = try? c.decodeIfPresent(CultureEvent.self, forKey: .event)
+    }
 }
 
 public struct OverviewStation: Codable, Sendable, Hashable {

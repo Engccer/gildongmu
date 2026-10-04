@@ -280,19 +280,22 @@ struct PlaceDetailView<DomainSection: View>: View {
     /// 구성이 같다). 그 밖의 장소는 종류와 무관하게 종전 4종(이용 빈도순, 지하철 먼저)을 종전 자리에 둔다 — 역 섹션이 함께
     /// 뜨는 출구 POI에서도 근접 2개 역은 새 정보(도보권 환승 대안)이고, 장소 종류에 따라 행이 사라지거나 자리가 바뀌면
     /// 위치를 외워 쓰는 스크린 리더 탐색이 무너진다(리뷰 지적 수용 판정 2026-08-02).
+    /// 앵커 목록의 행 로터(E65)도 이 상세와 같은 이유로 길찾기 진입을 숨긴다(안내 시트·길찾기 탭 스택) — `showsDirectionsEntry`를 넘긴다.
     private func nearbySection(includesSubway: Bool) -> some View {
         Section {
             if includesSubway {
-                NavigationLink(appLocalized("ios.nearby.subway")) { SubwayNearbyView(anchor: anchor) }
+                NavigationLink(appLocalized("ios.nearby.subway")) {
+                    SubwayNearbyView(anchor: anchor, directionsEntryAllowed: showsDirectionsEntry)
+                }
             }
-            NavigationLink(appLocalized("ios.nearby.bus")) { BusNearbyView(anchor: anchor) }
+            NavigationLink(appLocalized("ios.nearby.bus")) {
+                BusNearbyView(anchor: anchor, directionsEntryAllowed: showsDirectionsEntry)
+            }
             NavigationLink(appLocalized("ios.nearby.bike")) { BikeNearbyView(anchor: anchor) }
             NavigationLink(appLocalized("ios.nearby.conditions")) { ConditionsView(anchor: anchor) }
         } header: {
             Text(appLocalized("ios.place.nearbyHeading")).accessibilityAddTraits(.isHeader)
         }
-        // 앵커 목록의 행 로터(E65)도 이 상세와 같은 이유로 길찾기 진입을 숨긴다(안내 시트·길찾기 탭 스택).
-        .environment(\.directionsEntryAllowed, showsDirectionsEntry)
     }
 
     /// Place.id "kakao-" 접두가 있을 때만 카카오 장소 상세 체인 유효(웹 계약)

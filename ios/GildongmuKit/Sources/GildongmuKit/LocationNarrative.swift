@@ -158,7 +158,7 @@ public struct OverviewDetailTarget: Hashable, Sendable, Identifiable {
     /// 문화 행사 원본 — 상세 화면의 행사 섹션 재료. 행사만 있다.
     public let event: CultureEvent?
     /// 역 대상인가 — 라벨 키가 다르다(`transitGuide.openStation`).
-    public var isStation: Bool { place.id.hasPrefix("transit-stop:") }
+    public let isStation: Bool
     public var id: String { place.id }
 }
 
@@ -171,15 +171,17 @@ public func overviewDetailTargets(_ bullet: OverviewBullet, lang: String) -> [Ov
         guard let station, let lat = station.lat, let lng = station.lng else { return [] }
         let stop = TransitLegStop(name: station.name, lat: lat, lng: lng, nameEn: station.nameEn)
         let name = bilingualName(lang: lang, ko: station.name, en: station.nameEn, roman: nil).primary
-        return [OverviewDetailTarget(name: name, place: transitStopPlace(stop), lineHint: station.line, event: nil)]
+        return [OverviewDetailTarget(
+            name: name, place: transitStopPlace(stop), lineHint: station.line, event: nil, isStation: true)]
     case .place(_, .ok(_, _, let nearest)):
         return nearest.compactMap { item in
             let name = bilingualName(lang: lang, ko: item.name, en: nil, roman: item.nameRoman).primary
             if let event = item.event {
-                return OverviewDetailTarget(name: name, place: cultureEventToPlace(event), lineHint: nil, event: event)
+                return OverviewDetailTarget(
+                    name: name, place: cultureEventToPlace(event), lineHint: nil, event: event, isStation: false)
             }
             guard let place = item.place else { return nil }
-            return OverviewDetailTarget(name: name, place: place, lineHint: nil, event: nil)
+            return OverviewDetailTarget(name: name, place: place, lineHint: nil, event: nil, isStation: false)
         }
     case .place:
         return []
