@@ -33,10 +33,10 @@ enum AppConfig {
     static let experimentalOutingEnabled = false
     #endif
 
-    /// 탭 순서 검색 - 길찾기 - 내 주변 - 채팅 + 기본 탭 검색(K1 ①, 위원장 판정 2026-08-23).
-    /// 당분간 **실험판에서만** — 정식판은 종전 채팅 - 검색 - 길찾기 - 내 주변, 기본 채팅.
-    /// 판정이 끝나 정식판으로 가면 이 검사를 삭제하고 `AppTab` 케이스 순서를 실험판 것으로
-    /// 고정한다(플래그 졸업 — 항상 참인 상수를 남기지 않는다).
+    /// 탭 순서 설정(E66, 위원장 판정 2026-10-05)의 봉인. 켜지면 설정 일반 묶음에 "탭 순서" 줄이 서고
+    /// `AppTab.order(stored:)`가 사용자가 정한 순서(저장값)를 쓴다. 꺼지면 줄이 없고 순서는 `AppTab.defaultOrder`로 고정이다.
+    /// 소비자는 그 둘뿐이다(`SettingsView` 한 줄, `AppTab.order(stored:)`). 실험판 실사용 판정을 통과하면
+    /// 이 검사를 삭제한다(플래그 졸업 — 항상 참인 상수를 남기지 않는다).
     #if EXPERIMENTAL
     static let experimentalTabOrderEnabled = true
     #else

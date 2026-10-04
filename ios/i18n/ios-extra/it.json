@@ -259,7 +259,10 @@
       "weightRejectedNone": "Il peso deve essere tra {min} e {max} kg. Non è stato salvato nulla.",
       "carListener": "Chi ascolta la guida in auto (sperimentale)",
       "carListenerPassenger": "Passeggero (auricolari, screen reader)",
-      "carListenerDriver": "Conducente (altoparlante, comandi brevi)"
+      "carListenerDriver": "Conducente (altoparlante, comandi brevi)",
+      "tabOrder": "Ordine delle schede",
+      "tabOrderReset": "Ripristina l’ordine predefinito",
+      "tabOrderResetDone": "Ordine predefinito ripristinato"
     },
     "shortcut": {
       "voiceSearch": {

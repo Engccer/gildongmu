@@ -14,7 +14,7 @@ const BODY = SETTINGS.slice(SETTINGS.indexOf("var body: some View"));
 
 /** 판정의 묶음과 그 안 항목 순서(실험판 항목은 `#if` 안이라도 소스 순서로 잠근다). */
 const GROUPS: [heading: string, items: string[]][] = [
-  ["ios.settings.sectionGeneral", ["ios.settings.theme", "ios.settings.language"]],
+  ["ios.settings.sectionGeneral", ["ios.settings.theme", "ios.settings.language", "ios.settings.tabOrder"]],
   ["ios.settings.sectionVoice", ["ios.settings.dictationStyle", "ios.settings.listenSpeed"]],
   [
     "ios.settings.sectionGuidance",

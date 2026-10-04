@@ -259,7 +259,10 @@
       "weightRejectedNone": "体重は{min}~{max}kgの範囲で入力してください。保存しませんでした。",
       "carListener": "車の案内を聞く人（実験）",
       "carListenerPassenger": "同乗者（イヤホン、画面読み上げ）",
-      "carListenerDriver": "運転者（スピーカー、短い指示）"
+      "carListenerDriver": "運転者（スピーカー、短い指示）",
+      "tabOrder": "タブの順序",
+      "tabOrderReset": "標準の順序に戻す",
+      "tabOrderResetDone": "標準の順序に戻しました"
     },
     "shortcut": {
       "voiceSearch": {

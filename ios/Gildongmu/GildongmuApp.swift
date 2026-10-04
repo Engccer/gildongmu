@@ -3,8 +3,8 @@ import GildongmuKit
 
 /// 탭 정체성. selection이 TabView 밖(App 상태)에 살므로
 /// 세션 리셋 시 `.id` 재생성만으론 기본 탭 복귀가 안 된다 — 명시 복귀 필요.
-/// 탭 바 순서·기본 탭은 `AppTab.order`·`AppTab.initial`이 정한다(실험판 검색 - 길찾기 -
-/// 내 주변 - 채팅 / 정식판 채팅 - 검색 - 길찾기 - 내 주변, `experimentalTabOrderEnabled`).
+/// 탭 바 순서·기본 탭은 `AppTab.order(stored:)`·`AppTab.initial`이 정한다(기본 채팅 - 검색 - 길찾기 - 내 주변.
+/// 실험판은 설정 "탭 순서"에서 사용자가 정한 순서, E66 `experimentalTabOrderEnabled`).
 /// `String` rawValue = 안정 식별자(스펙 10-A §8). 정수 인덱스였다면 탭 삽입 시
 /// 순서가 밀려 저장된 값이 다른 탭을 가리키는 마이그레이션 결함이 생기지만,
 /// 이름 기반 rawValue는 케이스를 어디에 끼워 넣어도 기존 값이 계속 같은 탭을 가리킨다.
@@ -14,15 +14,32 @@ enum AppTab: String {
     case directions
     case nearby
 
-    /// 탭 바 순서(K1 ①, 위원장 판정 2026-08-23 — 실험판 판정 대기라 플래그로 가른다).
-    static var order: [AppTab] {
-        AppConfig.experimentalTabOrderEnabled
-            ? [.search, .directions, .nearby, .chat]
-            : [.chat, .search, .directions, .nearby]
+    /// 기본 순서(정식판은 이 순서로 고정, 실험판은 저장값이 없을 때).
+    static let defaultOrder: [AppTab] = [.chat, .search, .directions, .nearby]
+    /// 사용자 지정 순서(E66, 실험판만): 탭 `rawValue` 배열의 JSON 문자열(spec 2026-10-05 §3.1 — 앱 루트가
+    /// `@AppStorage`로 관찰해야 탭 바가 즉시 바뀌고, `@AppStorage`는 배열을 받지 않는다).
+    static let orderKey = "tabOrder.v1"
+
+    /// 탭 바 순서. 저장값은 Kit `Reorder.restoredOrder`로 복구한다(모르는 값·빠진 탭은 기본 순서로 메운다).
+    /// 앱 루트는 `@AppStorage` 관찰값을 넘기고, 런치·리셋의 시작 탭만 `initial`이 저장소를 직접 읽는다.
+    static func order(stored: String) -> [AppTab] {
+        guard AppConfig.experimentalTabOrderEnabled else { return defaultOrder }
+        return Reorder.restoredOrder(json: stored, defaultOrder: defaultOrder.map(\.rawValue))
+            .compactMap(AppTab.init(rawValue:))
     }
 
     /// 기본 탭 = 탭 바 첫 탭. 세션 리셋·콜드 런치 복귀 지점.
-    static var initial: AppTab { order[0] }
+    static var initial: AppTab { order(stored: UserDefaults.standard.string(forKey: orderKey) ?? "")[0] }
+
+    /// 탭 이름(탭 바와 설정 "탭 순서" 화면 공용).
+    var title: String {
+        switch self {
+        case .chat: appLocalized("ios.tab.chat")
+        case .search: appLocalized("ios.tab.search")
+        case .directions: appLocalized("ios.tab.directions")
+        case .nearby: appLocalized("ios.tab.nearby")
+        }
+    }
 }
 
 @main
@@ -54,6 +71,11 @@ struct GildongmuApp: App {
     /// (탭 내용 초기화는 부작용이 아니라 의도 — 검색 결과·주변 데이터는 로케일
     /// 의존이라 새 언어로 다시 받아야 한다.)
     @AppStorage(AppLanguage.selectionKey) private var languageRaw = ""
+    /// 탭 순서(E66, 실험판만 쓰인다). 설정 "탭 순서" 화면이 떠날 때 한 번 쓴다.
+    @AppStorage(AppTab.orderKey) private var tabOrderRaw = ""
+    /// 탭 순서가 실제로 바뀌면 증가해 `.id`로 탭 트리를 재생성한다 — `ForEach` 순서 변경만으로 `TabView`가 탭 바를
+    /// 다시 배치한다는 보장이 없어 언어 전환과 같은 재생성으로 결정론을 택했다(spec §3.2).
+    @State private var tabOrderEpoch = 0
     private let launchStore = LaunchActionStore.shared
     private let directionsPrefillStore = DirectionsPrefillStore.shared
     /// 장소 상세·검색 "길찾기" 진입이 넘긴 프리필 한 끝(Task I4·E32). directionsEpoch와
@@ -73,24 +95,31 @@ struct GildongmuApp: App {
     var body: some Scene {
         WindowGroup {
             // 아이콘은 SFSymbol(장식) — 시스템이 탭 라벨을 낭독한다
-            // 탭 순서 = `AppTab.order`. 18~25 폴백 띠바는 각 탭 콘텐츠에 붙는다
+            // 탭 순서 = `AppTab.order(stored:)`. 18~25 폴백 띠바는 각 탭 콘텐츠에 붙는다
             // (`withGuideBand`) — TabView 자체에 `safeAreaInset`을 걸면 inset이 탭 바
             // 자리에 그려져 탭 바를 시각·VoiceOver 모두에서 덮었다(실기기 2026-08-22).
             TabView(selection: $selectedTab) {
-                ForEach(AppTab.order, id: \.self) { tab in
+                ForEach(tabOrder, id: \.self) { tab in
                     switch tab {
                     case .search:
-                        Tab(appLocalized("ios.tab.search"), systemImage: "magnifyingglass", value: AppTab.search) { withGuideBand(.search, SearchView().id(searchEpoch)) }
+                        Tab(tab.title, systemImage: "magnifyingglass", value: AppTab.search) { withGuideBand(.search, SearchView().id(searchEpoch)) }
                     case .directions:
-                        Tab(appLocalized("ios.tab.directions"), systemImage: "signpost.right.and.left", value: AppTab.directions) { withGuideBand(.directions, DirectionsTabView(prefill: directionsPrefill).id(directionsEpoch)) }
+                        Tab(tab.title, systemImage: "signpost.right.and.left", value: AppTab.directions) { withGuideBand(.directions, DirectionsTabView(prefill: directionsPrefill).id(directionsEpoch)) }
                     case .nearby:
-                        Tab(appLocalized("ios.tab.nearby"), systemImage: "location", value: AppTab.nearby) { withGuideBand(.nearby, NearbyHubView().id(nearbyEpoch)) }
+                        Tab(tab.title, systemImage: "location", value: AppTab.nearby) { withGuideBand(.nearby, NearbyHubView().id(nearbyEpoch)) }
                     case .chat:
-                        Tab(appLocalized("ios.tab.chat"), systemImage: "message", value: AppTab.chat) { withGuideBand(.chat, ChatTabView(model: chatModel).id(chatEpoch)) }
+                        Tab(tab.title, systemImage: "message", value: AppTab.chat) { withGuideBand(.chat, ChatTabView(model: chatModel).id(chatEpoch)) }
                     }
                 }
             }
-            .id("\(sessionEpoch)#\(languageRaw)")
+            .id("\(sessionEpoch)#\(languageRaw)#\(tabOrderEpoch)")
+            // 재생성과 프리필 소거를 한 갱신에 묶는다: 남은 "길찾기" 프리필이 재생성된 길찾기 탭에 다시 적용되면
+            // 순서만 바꿨는데 경로 조회가 돈다(Task I4 resetSession과 같은 이유). 같은 순서로의 쓰기는 무시한다.
+            .onChange(of: tabOrderRaw) { old, new in
+                guard AppTab.order(stored: old) != AppTab.order(stored: new) else { return }
+                directionsPrefill = nil
+                tabOrderEpoch += 1
+            }
             // 최소화된 안내의 띠바(N1 spec §2.3) — 탭 바 바로 위, 모든 탭 공통. iOS 26은
             // 탭 바 액세서리가 그 자리(콘텐츠 → 띠바 → 탭 바)를 시스템이 보장한다.
             // 접근성 객체 하나(버튼). live region이 아니다 — 안내 통지는 모델 창구가 낸다.
@@ -233,6 +262,8 @@ struct GildongmuApp: App {
     }
 
     private var showsGuideBand: Bool { guideSession.hasScreen && guideSession.isMinimized }
+
+    private var tabOrder: [AppTab] { AppTab.order(stored: tabOrderRaw) }
 
     /// 띠바 본체 — 26 액세서리와 18~25 폴백이 같은 뷰를 쓴다. 착지 바인딩은 항목 정체성
     /// 옵셔널(`bandFocusedTab == tab`)이라 18~25에서 탭마다 인스턴스가 있어도 최소화 시점의

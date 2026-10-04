@@ -259,7 +259,10 @@
       "weightRejectedNone": "Weight must be between {min} and {max} kg. Nothing was saved.",
       "carListener": "Car guidance listener (experimental)",
       "carListenerPassenger": "Passenger (earphones, screen reader)",
-      "carListenerDriver": "Driver (speaker, short commands)"
+      "carListenerDriver": "Driver (speaker, short commands)",
+      "tabOrder": "Tab order",
+      "tabOrderReset": "Restore default order",
+      "tabOrderResetDone": "Default order restored"
     },
     "shortcut": {
       "voiceSearch": {

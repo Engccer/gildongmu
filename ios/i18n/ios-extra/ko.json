@@ -259,7 +259,10 @@
       "weightRejectedNone": "체중은 {min}~{max}kg 사이여야 합니다. 저장하지 않았습니다.",
       "carListener": "자동차 안내 듣는 사람 (실험)",
       "carListenerPassenger": "동승자 (이어폰, 화면 낭독)",
-      "carListenerDriver": "운전자 (스피커, 짧은 명령)"
+      "carListenerDriver": "운전자 (스피커, 짧은 명령)",
+      "tabOrder": "탭 순서",
+      "tabOrderReset": "기본 순서로 되돌리기",
+      "tabOrderResetDone": "기본 순서로 되돌렸습니다"
     },
     "shortcut": {
       "voiceSearch": {
