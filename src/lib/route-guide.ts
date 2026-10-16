@@ -312,10 +312,20 @@ export interface GuideTuning {
   handoffDistM: number;
   handoffRearmM: number;
   /**
-   * 경유지 접근 예고 임계(m). null = 예고 없음. walk `WAYPOINT_APPROACH_M`, car는 null —
-   * 속도에 맞춘 자동차 리듬은 판정 밖이다(N4 spec 2026-09-24 §2.1).
+   * 경유지 접근 예고 임계의 **거리 바닥**(m). 실제 임계는 `waypointApproachThreshold`
+   * = `max(이 값, v×waypointApproachS)`(임박 큐 구조 동형). walk `WAYPOINT_APPROACH_M`(50, 시간 0 — 종전 고정),
+   * car 150 바닥 + 60초(N4 자동차 spec 2026-10-17 §3, 위원장 판정 "약 1분 전 한 번").
    */
-  waypointApproachM: number | null;
+  waypointApproachM: number;
+  /** 경유지 접근 예고의 시간 축(초). walk 0. */
+  waypointApproachS: number;
+  /** 속도 표본 2개 미만일 때의 경유지 접근 임계(m). walk 50(=바닥), car 600(≈10m/s×60초). */
+  waypointApproachUnknownSpeedM: number;
+  /**
+   * 직전 발화(`lastAnnouncedAt`) 뒤 이만큼 지나야 예고한다(초). 0 = 조건 없음(walk). car 10 — 회전 명령 다음 fix의
+   * 예고가 그 문장을 끊지 않게(소비 계층은 latest-wins·운전자 TTS halt, N4 자동차 spec 2026-10-17 §4).
+   */
+  waypointApproachQuietS: number;
   /** 재획득 전방 연속성 타이브레이크(재획득 경로 한정 — 연속 추적 모호는 거부 유지) */
   reacquireTieBreak: boolean;
   /** 보행 속도 가드(간략 제안). false면 가드 기계 전체 비활성 — 가드가 이탈
@@ -417,6 +427,9 @@ export const WALK_TUNING: GuideTuning = {
   handoffDistM: HANDOFF_DIST_M,
   handoffRearmM: HANDOFF_REARM_M,
   waypointApproachM: WAYPOINT_APPROACH_M,
+  waypointApproachS: 0,
+  waypointApproachUnknownSpeedM: WAYPOINT_APPROACH_M,
+  waypointApproachQuietS: 0,
   reacquireTieBreak: false,
   speedSuggest: true,
   courseAxisEnabled: true,
@@ -438,6 +451,16 @@ export const CAR_IMMINENT_AHEAD_S = 5 + CAR_FIX_LAG_S;
 export const CAR_DRIVER_IMMINENT_AHEAD_S = 8 + CAR_FIX_LAG_S;
 /** 속도 표본이 없을 때의 자동차 임박 임계(m) ≈ 10m/s × 6초(설계 리뷰 B4). */
 export const CAR_IMMINENT_UNKNOWN_SPEED_M = 60;
+/**
+ * 자동차 경유지 접근 예고(N4 자동차 spec 2026-10-17 §3): 임계 = max(바닥, v×60초), 표본 부족 시 600m(시내 10m/s 가정,
+ * 임박 미지 값과 같은 가정). 바닥은 정체·서행에서도 도착 직전이 아니라 한 블록쯤 앞 — 기하 없는 최종 접근 진입선(150)과
+ * 같은 값에서 시작하되 이름을 따로 둔다. ⚠ 실주행 판정 전까지 잠정(BACKLOG §2 N4 자동차 경유지).
+ */
+export const CAR_WAYPOINT_APPROACH_FLOOR_M = 150;
+export const CAR_WAYPOINT_APPROACH_S = 60;
+export const CAR_WAYPOINT_APPROACH_UNKNOWN_SPEED_M = 600;
+/** 직전 발화 뒤 정숙 시간(초) — 자동차 전문 한 문장(기본 속도 5초 안팎)에 여유. ⚠ 잠정(실주행 판정). */
+export const CAR_WAYPOINT_APPROACH_QUIET_S = 10;
 
 /** 자동차(동승자) 초기값(스펙 §4.3 표 + K2 §3.2) — 실주행 판정까지 잠정. */
 export const CAR_TUNING: GuideTuning = {
@@ -485,7 +508,10 @@ export const CAR_TUNING: GuideTuning = {
   headingMaxUncertaintyDeg: 30,
   handoffDistM: 150,
   handoffRearmM: 200,
-  waypointApproachM: null,
+  waypointApproachM: CAR_WAYPOINT_APPROACH_FLOOR_M,
+  waypointApproachS: CAR_WAYPOINT_APPROACH_S,
+  waypointApproachUnknownSpeedM: CAR_WAYPOINT_APPROACH_UNKNOWN_SPEED_M,
+  waypointApproachQuietS: CAR_WAYPOINT_APPROACH_QUIET_S,
   reacquireTieBreak: true,
   speedSuggest: false,
   // ⚠ 차량 궤적으로 측정된 적이 없다. 켜려면 먼저 재라(위 필드 주석).
@@ -992,6 +1018,18 @@ export function imminentAheadMeters(
   return Math.max(tuning.imminentAheadM, estimateSpeedMps(state.speedSamples) * tuning.imminentAheadS);
 }
 
+/**
+ * 이 상태에서의 경유지 접근 예고 임계(m) — W0·W4가 같은 식을 쓴다(N4 자동차 spec 2026-10-17 §3). 표본은 임박 큐와 같은
+ * 직전 fix까지의 창이다. walk는 50 고정(종전).
+ */
+export function waypointApproachThreshold(
+  state: Pick<GuideState, "speedSamples">,
+  tuning: GuideTuning,
+): number {
+  if (state.speedSamples.length < 2) return tuning.waypointApproachUnknownSpeedM;
+  return Math.max(tuning.waypointApproachM, estimateSpeedMps(state.speedSamples) * tuning.waypointApproachS);
+}
+
 /** 표시 좌표계의 회전 접근 전환 잔여(m) = 임박 임계 − 표시 lag(하한 0). walk는 10(`TURN_APPROACH_M`). */
 export function turnApproachMeters(
   state: Pick<GuideState, "speedSamples">,
@@ -1159,9 +1197,10 @@ export function guideStep(
   //     (N4 spec 2026-09-24 §2.4 — 원거리 예고의 "재진입 시점 유닛 소비"와 같은 원리). 시작·재조회
   //     통지 바로 뒤에 겹치지 않게 한다. 기준은 투영 전인 세대 진입 `state.d`다. 조기 반환 국면보다
   //     앞이라 첫 fix가 어느 국면이든 한 번만 본다(`lastFixAt === null`은 세대 첫 fix뿐).
+  //     ⚠ 기준은 속도와 무관한 **바닥**이다(N4 자동차 설계 리뷰 MAJOR 1) — 표본 없는 미지 임계(car 600m)로 소비하면
+  //       500m 앞 서행 출발에서 예고가 영구히 사라진다. 시작 문장 보호는 W4의 정숙 시간이 맡는다. walk는 바닥 = 임계.
   if (
     state.lastFixAt === null &&
-    tuning.waypointApproachM !== null &&
     route.waypointStepIndex !== undefined &&
     !state.waypointReached &&
     !state.waypointApproached &&
@@ -2006,16 +2045,20 @@ export function guideStep(
   //     경합에서 예고를 영구히 잃는다). 밀린 사이 도착선을 넘으면 W1이 도착을 세워 예고는 다시 서지
   //     않는다 — 도착이 예고를 대신한다. `!isOff`·`!jumped`는 W1과 같은 신뢰 조건.
   if (
-    tuning.waypointApproachM !== null &&
     route.waypointStepIndex !== undefined &&
     !next.waypointReached &&
     !next.waypointApproached &&
     !isOff &&
-    !jumped
+    !jumped &&
+    // 정숙 시간(car 10초): 같은 fix 우선순위만으로는 다음 fix 예고가 앞 문장을 끊는다(소비 계층 latest-wins·운전자
+    // TTS halt — 설계 리뷰 MAJOR 2). 0이면 비교하지 않는다 — fix 시각이 세대 생성 시각보다 앞서는 플랫폼에서 음수 차가
+    // 도보 예고를 막지 않게(바이트 동일).
+    (tuning.waypointApproachQuietS <= 0 || now - next.lastAnnouncedAt >= tuning.waypointApproachQuietS)
   ) {
     const rem = route.steps[route.waypointStepIndex].startD - d;
     // 1m 미만은 곧 도착이다 — "0m" 예고를 내지 않고 W1에 맡긴다(설계 리뷰 #11).
-    if (rem >= 1 && rem <= tuning.waypointApproachM) {
+    // 임계 표본은 6a와 같은 직전 fix까지의 창(`state`)이다(car max(150, v×60), walk 50 고정).
+    if (rem >= 1 && rem <= waypointApproachThreshold(state, tuning)) {
       next = { ...next, waypointApproached: true, lastAnnouncedAt: now };
       return emit(next, { kind: "waypointApproaching", remainingMeters: Math.round(rem) }, null);
     }

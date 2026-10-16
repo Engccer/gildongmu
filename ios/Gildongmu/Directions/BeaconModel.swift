@@ -105,6 +105,9 @@ final class BeaconModel {
                 }
                 pendingRecoveryEntered = nil
                 announce(entered ?? pending, speechClass: .actionable)
+                // 자동차: 갚은 실행 안내도 발화다 — 리듀서의 정숙 시간(경유지 접근 예고)이 다음 fix에 이 문장을 끊지 않게
+                // 직전 발화 시각으로 적는다(N4 자동차 spec 2026-10-17 §4 복구 발화). 도보는 주기 시각 불변이라 적지 않는다.
+                if sessionKind == .car { guideState?.lastAnnouncedAt = uptimeNow }
             }
         }
     }

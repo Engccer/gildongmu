@@ -1,6 +1,6 @@
 # N4 자동차 경유지 접근 예고 설계 (2026-10-17)
 
-설계 리뷰 판정: **적대적 설계 리뷰 대상**(정적 거리 임계를 속도 의존 임계로 바꾸는 판정 계층 변경, 실시간 안내 안전 축). codex `adversarial-review` 1회차 MAJOR 2건(W0 미지 임계 소비·다음 fix 예고의 앞 문장 끊기)을 §4·§5에 반영, 2회차로 재검토.
+설계 리뷰 판정: **적대적 설계 리뷰 대상**(정적 거리 임계를 속도 의존 임계로 바꾸는 판정 계층 변경, 실시간 안내 안전 축). codex `adversarial-review` 1회차 MAJOR 2건(W0 미지 임계 소비·다음 fix 예고의 앞 문장 끊기)을 §4·§5에 반영, 2회차(상한) MAJOR 1건(억제 해제 복구 문장 선점)을 §4 "복구 발화"로 반영. 3회차는 돌리지 않고 구현 리뷰(opus)·안전 최종 검토(fable)가 이 반영을 확인한다.
 
 ## 1. 판정과 범위
 
@@ -20,7 +20,7 @@
   - **W4**(6c 선행 전문·원거리 예고 뒤, 주기 앞): 수준 판정 + 래치. `!isOff && !jumped`, 잔여 `1 ≤ rem ≤ 임계`이면 `waypointApproaching{remainingMeters}` 1회, 톤 없음.
 - walk `WAYPOINT_APPROACH_M = 50`, car·carDriver `null`(예고 없음).
 - 래치는 `restateAt`(재획득·복귀)이 승계하고, 새 경로 세대(시작·재조회 채택의 `initialGuideState`)에서만 초기화된다.
-- iOS `BeaconModel.consume`의 `.waypointApproaching` 처리는 수단을 가르지 않는다: `routeWaypointLabel`이 있으면 `directions.viaRemaining`을 `guideEventSpeechClass` 분류(`.actionable`)로 `announce`. 자동차 세션의 경유지 요청·도착(`waypointReached`)·남은 거리 행("경유지 {label}까지 …")은 이미 동작한다. **따라서 iOS 앱 코드는 바꾸지 않는다** — 프로파일이 이벤트를 내기 시작하면 기존 소비 경로가 그대로 말한다.
+- iOS `BeaconModel.consume`의 `.waypointApproaching` 처리는 수단을 가르지 않는다: `routeWaypointLabel`이 있으면 `directions.viaRemaining`을 `guideEventSpeechClass` 분류(`.actionable`)로 `announce`. 자동차 세션의 경유지 요청·도착(`waypointReached`)·남은 거리 행("경유지 {label}까지 …")은 이미 동작한다. 따라서 이벤트 소비 코드는 바꾸지 않는다 — 프로파일이 이벤트를 내기 시작하면 기존 소비 경로가 그대로 말한다. iOS 변경은 §4 "복구 발화" 한 자리뿐이다.
 - 웹 `useRouteGuide`의 `waypointApproaching` 소비도 수단 무관이지만, 자동차는 경유지 조회에서 안내를 시작할 수 없으므로(`carGuideStartable`) 웹 사용자에게 닿는 변화는 없다.
 
 ## 3. 임계 산식
@@ -55,6 +55,7 @@
 - 받아쓰기 억제 중이면 예고는 버린다(거리 문장은 시간이 지나면 거짓). 갚지 않는다 — 도보와 같은 소비 코드다.
 - 우선순위: W4 위치를 옮기지 않는다. 같은 fix에 임박 큐(6a)·경유지 도착(W1/W2)·최종 접근(6b)·선행 전문(6c)·원거리 예고가 걸리면 그쪽이 이기고, 수준 판정이라 뒤 fix에 예고가 나간다. 그 사이 도착선을 넘으면 도착이 예고를 대신한다.
 - **정숙 시간(자동차, 설계 리뷰 1회차 MAJOR 2)**: 같은 fix 우선순위만으로는 음성 우선순위가 보장되지 않는다. 회전 명령이 나간 **다음 fix**(1초 뒤)에 예고가 나가면 소비 계층이 앞 문장을 끊는다 — `DeferredAnnouncer.announce`는 보류 문장을 버리고(latest-wins), 운전자 채널 `TtsPlayer.speakGuidance`는 재생 중 문장을 `halt()`한다. 그래서 W4는 `now − lastAnnouncedAt ≥ waypointApproachQuietS`일 때만 예고한다. `lastAnnouncedAt`은 전문(6c)·임박 첫 단계(6a stage 0)·원거리 예고·주기·되읽기·경유지 도착이 갱신하고, 경로 세대 시작(`guideStateAt`의 `now`, 시작·재조회·재획득)도 갱신하므로 같은 조건이 시작·재조회 문장도 보호한다. 수준 판정이라 조건이 풀리는 첫 fix에 나간다. 10초는 자동차 전문 한 문장(약 30음절, 기본 속도 5초 안팎)에 여유를 둔 잠정값이다. walk는 0이고 조건 자체를 건너뛴다(`quietS > 0`일 때만 비교 — fix 시각이 세대 생성 시각보다 앞서는 플랫폼에서 음수 차가 도보 예고를 막지 않게, 바이트 동일 유지).
+- **복구 발화(설계 리뷰 2회차 MAJOR)**: 리듀서 밖에서 나가는 실행 안내도 같은 보호가 필요하다. 받아쓰기 억제 해제 때 BeaconModel이 갚는 `pendingRecovery`는 리듀서 이벤트가 아니라 `lastAnnouncedAt`이 그대로라, 마지막 리듀서 통지로부터 10초가 지난 뒤 갚으면 다음 fix의 예고가 갚은 문장을 끊는다(보류 중이면 `invalidatePending`이 확정 폐기, `pendingRecovery`는 이미 비어 있다). 그래서 **자동차 세션은 복구 발화를 낸 시각을 `guideState.lastAnnouncedAt`에 적는다**. 리듀서 상태를 오케스트레이터가 고치는 유일한 자리이고 쓰는 값은 "발화했다"는 사실 하나다(판정은 리듀서가 그대로 한다 — 래치를 세우지 않으므로 예고는 정숙 뒤 그 순간의 거리로 다시 판정된다). 자동차 주기 통지도 그만큼 밀리는데, 방금 실행 안내를 말한 직후의 주기 통지는 중복이라 의도에 맞는다. 도보는 적지 않는다(주기 시각 불변 — 바이트 동일). 앱 타깃에 테스트 레인이 없어 소스 가드(`car-waypoint-approach-guard.test.ts`)로 잠근다.
 - 정숙 시간은 시각 근사다(발화 완료 신호를 리듀서가 모른다). 시작 요약처럼 10초를 넘는 문장은 뒷부분이 끊길 수 있고, 이것은 실주행 판정 항목이다(§7).
 - 톤 뒤 발화 계약(`speechDeferStep`): 예고는 톤이 없는 문장이라 새 경로가 없다. 직전 fix의 톤 뒤라면 기존 `announce` 창구가 미룬다(정숙 시간이 그보다 길어 보류 문장 교체는 일어나지 않는다).
 - 백그라운드 음성(E53): `guideEventSpeechClass(.waypointApproaching)`는 이미 `.actionable`이라 토글이 켜져 있으면 잠금 중에도 말한다. 분류를 바꾸지 않는다.

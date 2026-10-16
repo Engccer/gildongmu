@@ -3457,7 +3457,7 @@
    "comment": "B는 행동 스텝이다 — 행동 없는 다음 구간은 들어선 뒤 전문이라(E62 R4) 30m 전 전문과 예고의 경합을 보려면 행동이 있어야 한다."
   },
   {
-   "name": "자동차 프로파일은 경유지 접근 예고를 내지 않는다(waypointApproachM null), 도착은 종전대로(N4 2026-09-24)",
+   "name": "자동차: 바닥 150m 밖에서 시작하면 시작 뒤 정숙 10초가 지난 첫 신뢰 fix에 예고하고(표본 부족이면 미지 임계 600m), 도착은 종전대로(N4 자동차 2026-10-17)",
    "tuning": "car",
    "waypointStepIndex": 1,
    "steps": [
@@ -3510,9 +3510,16 @@
    ],
    "expect": [
     {
+     "afterFix": 0,
+     "eventNot": "waypointApproaching"
+    },
+    {
+     "afterFix": 1,
+     "event": "waypointApproaching",
+     "toneNull": true
+    },
+    {
      "afterFixAny": [
-      0,
-      1,
       2,
       3,
       4,
@@ -3524,7 +3531,2595 @@
      "afterFix": 5,
      "event": "waypointReached"
     }
-   ]
+   ],
+   "comment": "출발 잔여 300m는 바닥(150m) 밖이라 W0가 소비하지 않는다. fix 1(t=10)은 세대 시작 뒤 정숙 10초를 채웠고 표본이 하나뿐이라 임계 600m, 잔여 200m에서 1회."
+  },
+  {
+   "name": "자동차 경유지 접근 예고 — 10m/s에서 1분 창 600m 안 첫 신뢰 fix에 1회, 톤 없음, 이후 도착(N4 자동차 2026-10-17)",
+   "tuning": "car",
+   "waypointStepIndex": 1,
+   "steps": [
+    {
+     "len": 1000,
+     "desc": "직진A"
+    },
+    {
+     "len": 300,
+     "desc": "직진B"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 5,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 2,
+     "along": 25,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 4,
+     "along": 45,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 6,
+     "along": 65,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 8,
+     "along": 85,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 10,
+     "along": 105,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 12,
+     "along": 125,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 14,
+     "along": 145,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 16,
+     "along": 165,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 18,
+     "along": 185,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 20,
+     "along": 205,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 22,
+     "along": 225,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 24,
+     "along": 245,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 26,
+     "along": 265,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 28,
+     "along": 285,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 30,
+     "along": 305,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 32,
+     "along": 325,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 34,
+     "along": 345,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 36,
+     "along": 365,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 38,
+     "along": 385,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 40,
+     "along": 405,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 42,
+     "along": 425,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 44,
+     "along": 445,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 46,
+     "along": 465,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 48,
+     "along": 485,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 50,
+     "along": 505,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 52,
+     "along": 525,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 54,
+     "along": 545,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 56,
+     "along": 565,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 58,
+     "along": 585,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 60,
+     "along": 605,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 62,
+     "along": 625,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 64,
+     "along": 645,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 66,
+     "along": 665,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 68,
+     "along": 685,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 70,
+     "along": 705,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 72,
+     "along": 725,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 74,
+     "along": 745,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 76,
+     "along": 765,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 78,
+     "along": 785,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 80,
+     "along": 805,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 82,
+     "along": 825,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 84,
+     "along": 845,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 86,
+     "along": 865,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 88,
+     "along": 885,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 90,
+     "along": 905,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 92,
+     "along": 925,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 94,
+     "along": 945,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 96,
+     "along": 965,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 98,
+     "along": 985,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 100,
+     "along": 1005,
+     "lateral": 0,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFixAny": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19
+     ],
+     "eventNot": "waypointApproaching"
+    },
+    {
+     "afterFix": 20,
+     "event": "waypointApproaching",
+     "toneNull": true
+    },
+    {
+     "afterFixAny": [
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39,
+      40,
+      41,
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48,
+      49,
+      50
+     ],
+     "eventNot": "waypointApproaching"
+    },
+    {
+     "afterFix": 50,
+     "event": "waypointReached"
+    }
+   ],
+   "comment": "임계 = max(150, 10m/s×60초) = 600m. fix 19(잔여 615)는 밖, fix 20(잔여 595)에서 1회."
+  },
+  {
+   "name": "자동차 경유지 접근 예고 — 서행 2m/s면 바닥 150m에서 1회(N4 자동차 2026-10-17)",
+   "tuning": "car",
+   "waypointStepIndex": 1,
+   "steps": [
+    {
+     "len": 700,
+     "desc": "직진A"
+    },
+    {
+     "len": 300,
+     "desc": "직진B"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 3,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 5,
+     "along": 13,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 10,
+     "along": 23,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 15,
+     "along": 33,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 20,
+     "along": 43,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 25,
+     "along": 53,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 30,
+     "along": 63,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 35,
+     "along": 73,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 40,
+     "along": 83,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 45,
+     "along": 93,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 50,
+     "along": 103,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 55,
+     "along": 113,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 60,
+     "along": 123,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 65,
+     "along": 133,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 70,
+     "along": 143,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 75,
+     "along": 153,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 80,
+     "along": 163,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 85,
+     "along": 173,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 90,
+     "along": 183,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 95,
+     "along": 193,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 100,
+     "along": 203,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 105,
+     "along": 213,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 110,
+     "along": 223,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 115,
+     "along": 233,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 120,
+     "along": 243,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 125,
+     "along": 253,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 130,
+     "along": 263,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 135,
+     "along": 273,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 140,
+     "along": 283,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 145,
+     "along": 293,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 150,
+     "along": 303,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 155,
+     "along": 313,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 160,
+     "along": 323,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 165,
+     "along": 333,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 170,
+     "along": 343,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 175,
+     "along": 353,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 180,
+     "along": 363,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 185,
+     "along": 373,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 190,
+     "along": 383,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 195,
+     "along": 393,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 200,
+     "along": 403,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 205,
+     "along": 413,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 210,
+     "along": 423,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 215,
+     "along": 433,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 220,
+     "along": 443,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 225,
+     "along": 453,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 230,
+     "along": 463,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 235,
+     "along": 473,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 240,
+     "along": 483,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 245,
+     "along": 493,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 250,
+     "along": 503,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 255,
+     "along": 513,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 260,
+     "along": 523,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 265,
+     "along": 533,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 270,
+     "along": 543,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 275,
+     "along": 553,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 280,
+     "along": 563,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 285,
+     "along": 573,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 290,
+     "along": 583,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 295,
+     "along": 593,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 300,
+     "along": 603,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 305,
+     "along": 613,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 310,
+     "along": 623,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 315,
+     "along": 633,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 320,
+     "along": 643,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 325,
+     "along": 653,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 330,
+     "along": 663,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 335,
+     "along": 673,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 340,
+     "along": 683,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 345,
+     "along": 693,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 350,
+     "along": 703,
+     "lateral": 0,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFixAny": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39,
+      40,
+      41,
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48,
+      49,
+      50,
+      51,
+      52,
+      53,
+      54
+     ],
+     "eventNot": "waypointApproaching"
+    },
+    {
+     "afterFix": 55,
+     "event": "waypointApproaching",
+     "toneNull": true
+    },
+    {
+     "afterFixAny": [
+      56,
+      57,
+      58,
+      59,
+      60,
+      61,
+      62,
+      63,
+      64,
+      65,
+      66,
+      67,
+      68,
+      69,
+      70
+     ],
+     "eventNot": "waypointApproaching"
+    },
+    {
+     "afterFix": 70,
+     "event": "waypointReached"
+    }
+   ],
+   "comment": "임계 = max(150, 2m/s×60초=120) = 150m. fix 54(잔여 157)는 밖, fix 55(잔여 147)에서 1회. 사이 주기 통지(30초 간격)는 정숙 10초 안에 들지 않는다."
+  },
+  {
+   "name": "자동차: 경로 세대가 바닥 150m 안에서 시작하면 예고 없이 소비하고 도착만 나간다(N4 자동차 2026-10-17 W0)",
+   "tuning": "car",
+   "waypointStepIndex": 1,
+   "steps": [
+    {
+     "len": 100,
+     "desc": "직진A"
+    },
+    {
+     "len": 300,
+     "desc": "직진B"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 3,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 5,
+     "along": 13,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 10,
+     "along": 23,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 15,
+     "along": 33,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 20,
+     "along": 43,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 25,
+     "along": 53,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 30,
+     "along": 63,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 35,
+     "along": 73,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 40,
+     "along": 83,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 45,
+     "along": 93,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 50,
+     "along": 103,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 55,
+     "along": 113,
+     "lateral": 0,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFixAny": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+     ],
+     "eventNot": "waypointApproaching"
+    },
+    {
+     "afterFix": 10,
+     "event": "waypointReached"
+    }
+   ],
+   "comment": "출발 잔여 100m ≤ 바닥 150m. 소비하지 않으면 fix 2(t=10, 잔여 77)에서 예고가 나간다."
+  },
+  {
+   "name": "자동차: 미지 임계 600m 안(500m)에서 서행 출발해도 W0가 소비하지 않고 나중에 바닥 150m에서 예고한다(N4 자동차 설계 리뷰 MAJOR 1)",
+   "tuning": "car",
+   "waypointStepIndex": 1,
+   "steps": [
+    {
+     "len": 500,
+     "desc": "직진A"
+    },
+    {
+     "len": 300,
+     "desc": "직진B"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 3,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 5,
+     "along": 13,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 10,
+     "along": 23,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 15,
+     "along": 33,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 20,
+     "along": 43,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 25,
+     "along": 53,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 30,
+     "along": 63,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 35,
+     "along": 73,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 40,
+     "along": 83,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 45,
+     "along": 93,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 50,
+     "along": 103,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 55,
+     "along": 113,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 60,
+     "along": 123,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 65,
+     "along": 133,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 70,
+     "along": 143,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 75,
+     "along": 153,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 80,
+     "along": 163,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 85,
+     "along": 173,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 90,
+     "along": 183,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 95,
+     "along": 193,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 100,
+     "along": 203,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 105,
+     "along": 213,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 110,
+     "along": 223,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 115,
+     "along": 233,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 120,
+     "along": 243,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 125,
+     "along": 253,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 130,
+     "along": 263,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 135,
+     "along": 273,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 140,
+     "along": 283,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 145,
+     "along": 293,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 150,
+     "along": 303,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 155,
+     "along": 313,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 160,
+     "along": 323,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 165,
+     "along": 333,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 170,
+     "along": 343,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 175,
+     "along": 353,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 180,
+     "along": 363,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 185,
+     "along": 373,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 190,
+     "along": 383,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 195,
+     "along": 393,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 200,
+     "along": 403,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 205,
+     "along": 413,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 210,
+     "along": 423,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 215,
+     "along": 433,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 220,
+     "along": 443,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 225,
+     "along": 453,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 230,
+     "along": 463,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 235,
+     "along": 473,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 240,
+     "along": 483,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 245,
+     "along": 493,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 250,
+     "along": 503,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 255,
+     "along": 513,
+     "lateral": 0,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFixAny": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34
+     ],
+     "eventNot": "waypointApproaching"
+    },
+    {
+     "afterFix": 35,
+     "event": "waypointApproaching",
+     "toneNull": true
+    },
+    {
+     "afterFixAny": [
+      36,
+      37,
+      38,
+      39,
+      40,
+      41,
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48,
+      49,
+      50,
+      51
+     ],
+     "eventNot": "waypointApproaching"
+    },
+    {
+     "afterFix": 50,
+     "event": "waypointReached"
+    }
+   ],
+   "comment": "표본 없는 600m로 소비하면 2m/s에서 250초 동안 예고가 사라진다. 첫 두 fix는 정숙 10초 안이라 미지 임계가 적용되지 않고, 표본 뒤 임계 150m."
+  },
+  {
+   "name": "자동차 경유지 접근 예고 — 25m/s면 1분 창이 1,500m로 커지고, 같은 fix의 원거리 예고가 이기면 정숙 10초 뒤에 나간다(N4 자동차 2026-10-17)",
+   "tuning": "car",
+   "waypointStepIndex": 1,
+   "steps": [
+    {
+     "len": 2000,
+     "desc": "직진A"
+    },
+    {
+     "len": 300,
+     "desc": "직진B"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 5,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 2,
+     "along": 55,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 4,
+     "along": 105,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 6,
+     "along": 155,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 8,
+     "along": 205,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 10,
+     "along": 255,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 12,
+     "along": 305,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 14,
+     "along": 355,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 16,
+     "along": 405,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 18,
+     "along": 455,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 20,
+     "along": 505,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 22,
+     "along": 555,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 24,
+     "along": 605,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 26,
+     "along": 655,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 28,
+     "along": 705,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 30,
+     "along": 755,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 32,
+     "along": 805,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 34,
+     "along": 855,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 36,
+     "along": 905,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 38,
+     "along": 955,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 40,
+     "along": 1005,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 42,
+     "along": 1055,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 44,
+     "along": 1105,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 46,
+     "along": 1155,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 48,
+     "along": 1205,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 50,
+     "along": 1255,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 52,
+     "along": 1305,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 54,
+     "along": 1355,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 56,
+     "along": 1405,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 58,
+     "along": 1455,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 60,
+     "along": 1505,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 62,
+     "along": 1555,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 64,
+     "along": 1605,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 66,
+     "along": 1655,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 68,
+     "along": 1705,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 70,
+     "along": 1755,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 72,
+     "along": 1805,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 74,
+     "along": 1855,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 76,
+     "along": 1905,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 78,
+     "along": 1955,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 80,
+     "along": 2005,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 82,
+     "along": 2055,
+     "lateral": 0,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFixAny": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14
+     ],
+     "eventNot": "waypointApproaching"
+    },
+    {
+     "afterFix": 15,
+     "event": "waypointApproaching",
+     "toneNull": true
+    },
+    {
+     "afterFixAny": [
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39,
+      40,
+      41
+     ],
+     "eventNot": "waypointApproaching"
+    },
+    {
+     "afterFix": 40,
+     "event": "waypointReached"
+    },
+    {
+     "afterFix": 10,
+     "event": "farNotice"
+    }
+   ],
+   "comment": "경유지 도착선이 곧 스텝 경계라 원거리 예고(1,500m)와 접근 예고(max(150, 25×60)=1,500m)가 fix 10(t=20, 잔여 1,495)에 함께 선다. 원거리 예고가 앞 순서라 이기고, 접근 예고는 정숙 10초가 지난 fix 15(t=30, 잔여 1,244)에 나간다."
+  },
+  {
+   "name": "자동차: 임박 명령 직후 정숙 10초 동안은 경유지 접근 예고가 나가지 않는다 — 다음 fix 예고가 회전 명령을 끊지 않게(N4 자동차 설계 리뷰 MAJOR 2)",
+   "tuning": "car",
+   "waypointStepIndex": 2,
+   "steps": [
+    {
+     "len": 400,
+     "desc": "직진A"
+    },
+    {
+     "len": 600,
+     "desc": "우회전B",
+     "action": "right"
+    },
+    {
+     "len": 300,
+     "desc": "직진C"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 5,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 2,
+     "along": 25,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 4,
+     "along": 45,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 6,
+     "along": 65,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 8,
+     "along": 85,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 10,
+     "along": 105,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 12,
+     "along": 125,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 14,
+     "along": 145,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 16,
+     "along": 165,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 18,
+     "along": 185,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 20,
+     "along": 205,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 22,
+     "along": 225,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 24,
+     "along": 245,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 26,
+     "along": 265,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 28,
+     "along": 285,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 30,
+     "along": 305,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 32,
+     "along": 325,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 34,
+     "along": 345,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 36,
+     "along": 365,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 38,
+     "along": 385,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 40,
+     "along": 405,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 42,
+     "along": 425,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 44,
+     "along": 445,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 46,
+     "along": 465,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 48,
+     "along": 485,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 50,
+     "along": 505,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 52,
+     "along": 525,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 54,
+     "along": 545,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 56,
+     "along": 565,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 58,
+     "along": 585,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 60,
+     "along": 605,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 62,
+     "along": 625,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 64,
+     "along": 645,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 66,
+     "along": 665,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 68,
+     "along": 685,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 70,
+     "along": 705,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 72,
+     "along": 725,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 74,
+     "along": 745,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 76,
+     "along": 765,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 78,
+     "along": 785,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 80,
+     "along": 805,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 82,
+     "along": 825,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 84,
+     "along": 845,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 86,
+     "along": 865,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 88,
+     "along": 885,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 90,
+     "along": 905,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 92,
+     "along": 925,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 94,
+     "along": 945,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 96,
+     "along": 965,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 98,
+     "along": 985,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 100,
+     "along": 1005,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 102,
+     "along": 1025,
+     "lateral": 0,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFixAny": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21
+     ],
+     "eventNot": "waypointApproaching"
+    },
+    {
+     "afterFix": 22,
+     "event": "waypointApproaching",
+     "toneNull": true
+    },
+    {
+     "afterFixAny": [
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39,
+      40,
+      41,
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48,
+      49,
+      50,
+      51
+     ],
+     "eventNot": "waypointApproaching"
+    },
+    {
+     "afterFix": 50,
+     "event": "waypointReached"
+    },
+    {
+     "afterFix": 17,
+     "event": "imminent"
+    }
+   ],
+   "comment": "임박(fix 17, t=34) 뒤 fix 20(t=40, 잔여 594)부터 임계 600m 안이지만 정숙 10초가 차는 fix 22(t=44, 잔여 554)에 나간다."
+  },
+  {
+   "name": "운전자 프로파일도 자동차와 같은 경유지 접근 임계를 쓴다(N4 자동차 2026-10-17)",
+   "tuning": "carDriver",
+   "waypointStepIndex": 1,
+   "steps": [
+    {
+     "len": 1000,
+     "desc": "직진A"
+    },
+    {
+     "len": 300,
+     "desc": "직진B"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 5,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 2,
+     "along": 25,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 4,
+     "along": 45,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 6,
+     "along": 65,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 8,
+     "along": 85,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 10,
+     "along": 105,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 12,
+     "along": 125,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 14,
+     "along": 145,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 16,
+     "along": 165,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 18,
+     "along": 185,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 20,
+     "along": 205,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 22,
+     "along": 225,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 24,
+     "along": 245,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 26,
+     "along": 265,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 28,
+     "along": 285,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 30,
+     "along": 305,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 32,
+     "along": 325,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 34,
+     "along": 345,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 36,
+     "along": 365,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 38,
+     "along": 385,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 40,
+     "along": 405,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 42,
+     "along": 425,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 44,
+     "along": 445,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 46,
+     "along": 465,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 48,
+     "along": 485,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 50,
+     "along": 505,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 52,
+     "along": 525,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 54,
+     "along": 545,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 56,
+     "along": 565,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 58,
+     "along": 585,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 60,
+     "along": 605,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 62,
+     "along": 625,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 64,
+     "along": 645,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 66,
+     "along": 665,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 68,
+     "along": 685,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 70,
+     "along": 705,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 72,
+     "along": 725,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 74,
+     "along": 745,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 76,
+     "along": 765,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 78,
+     "along": 785,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 80,
+     "along": 805,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 82,
+     "along": 825,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 84,
+     "along": 845,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 86,
+     "along": 865,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 88,
+     "along": 885,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 90,
+     "along": 905,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 92,
+     "along": 925,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 94,
+     "along": 945,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 96,
+     "along": 965,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 98,
+     "along": 985,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 100,
+     "along": 1005,
+     "lateral": 0,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFixAny": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19
+     ],
+     "eventNot": "waypointApproaching"
+    },
+    {
+     "afterFix": 20,
+     "event": "waypointApproaching",
+     "toneNull": true
+    },
+    {
+     "afterFixAny": [
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39,
+      40,
+      41,
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48,
+      49,
+      50
+     ],
+     "eventNot": "waypointApproaching"
+    },
+    {
+     "afterFix": 50,
+     "event": "waypointReached"
+    }
+   ],
+   "comment": "CAR_DRIVER_TUNING은 임박 시간 축만 다르다. 소비 쪽은 운전자 채널(TTS)로 말한다."
   },
   {
    "name": "경유지 없는 경로의 다음 목표는 총 잔여(route — 남은 거리 행 종전 표시, N4 2026-09-24)",

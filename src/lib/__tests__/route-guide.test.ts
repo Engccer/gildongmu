@@ -9,6 +9,10 @@ import {
   buildGuideRoute,
   CAR_DRIVER_TUNING,
   CAR_TUNING,
+  CAR_WAYPOINT_APPROACH_FLOOR_M,
+  CAR_WAYPOINT_APPROACH_QUIET_S,
+  CAR_WAYPOINT_APPROACH_S,
+  CAR_WAYPOINT_APPROACH_UNKNOWN_SPEED_M,
   displayEffectiveD,
   entryProjection,
   finalApproachEntryM,
@@ -25,6 +29,7 @@ import {
   unitAt,
   WALK_TUNING,
   WAYPOINT_APPROACH_M,
+  waypointApproachThreshold,
   type GuideEvent,
   type GuideState,
   type GuideTone,
@@ -879,12 +884,35 @@ describe("GuideTuning 조합 불변식(K2 설계 리뷰 m3)", () => {
   });
 });
 
-describe("경유지 접근 예고 프로파일(N4 2026-09-24 §2.1)", () => {
-  it("walk는 옛 최종 접근 진입선과 같은 50m에서 시작하고, 자동차는 예고가 없다", () => {
+describe("경유지 접근 예고 프로파일(N4 2026-09-24 §2.1 · 자동차 2026-10-17 §3)", () => {
+  const samples = (v: number) => [
+    { at: 0, d: 0 },
+    { at: 2, d: 2 * v },
+  ];
+  it("walk는 옛 최종 접근 진입선과 같은 50m 고정이다 — 속도·표본과 무관, 정숙 조건 없음", () => {
     expect(WAYPOINT_APPROACH_M).toBe(HANDOFF_DIST_M);
     expect(WALK_TUNING.waypointApproachM).toBe(WAYPOINT_APPROACH_M);
-    expect(CAR_TUNING.waypointApproachM).toBeNull();
-    expect(CAR_DRIVER_TUNING.waypointApproachM).toBeNull();
+    expect(WALK_TUNING.waypointApproachS).toBe(0);
+    expect(WALK_TUNING.waypointApproachUnknownSpeedM).toBe(WAYPOINT_APPROACH_M);
+    expect(WALK_TUNING.waypointApproachQuietS).toBe(0);
+    for (const s of [[], samples(1.2), samples(3)]) {
+      expect(waypointApproachThreshold({ speedSamples: s }, WALK_TUNING)).toBe(WAYPOINT_APPROACH_M);
+    }
+  });
+  it("자동차는 max(150m, v×60초), 표본 부족이면 600m, 정숙 10초 — 운전자 프로파일도 같다", () => {
+    for (const t of [CAR_TUNING, CAR_DRIVER_TUNING]) {
+      expect(t.waypointApproachM).toBe(CAR_WAYPOINT_APPROACH_FLOOR_M);
+      expect(t.waypointApproachS).toBe(CAR_WAYPOINT_APPROACH_S);
+      expect(t.waypointApproachUnknownSpeedM).toBe(CAR_WAYPOINT_APPROACH_UNKNOWN_SPEED_M);
+      expect(t.waypointApproachQuietS).toBe(CAR_WAYPOINT_APPROACH_QUIET_S);
+      expect(waypointApproachThreshold({ speedSamples: [] }, t)).toBe(600);
+      expect(waypointApproachThreshold({ speedSamples: [{ at: 0, d: 0 }] }, t)).toBe(600);
+      expect(waypointApproachThreshold({ speedSamples: samples(0) }, t)).toBe(150);
+      expect(waypointApproachThreshold({ speedSamples: samples(2) }, t)).toBe(150);
+      expect(waypointApproachThreshold({ speedSamples: samples(10) }, t)).toBeCloseTo(600, 6);
+      expect(waypointApproachThreshold({ speedSamples: samples(25) }, t)).toBeCloseTo(1500, 6);
+    }
+    expect([CAR_WAYPOINT_APPROACH_FLOOR_M, CAR_WAYPOINT_APPROACH_S, CAR_WAYPOINT_APPROACH_UNKNOWN_SPEED_M, CAR_WAYPOINT_APPROACH_QUIET_S]).toEqual([150, 60, 600, 10]);
   });
 });
 
