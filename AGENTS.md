@@ -324,7 +324,7 @@
 ### CLI/MCP 릴리스 (`packages/cli`=npm `gildongmu`, `packages/mcp`=npm `gildongmu-mcp`)
 
 - 발행은 `cli-v*` 태그 push → `.github/workflows/cli-publish.yml`이 두 패키지를 npm Trusted Publishing(OIDC)으로 자동 발행. 토큰·환경변수 불필요.
-- 릴리스 절차: **버전 4곳 + CHANGELOG 2곳 동조 갱신** → 커밋 → `git tag cli-v<버전> && git push origin main --tags`. index.ts 버전은 하드코딩 — `version-drift.test.ts`가 강제. → PATTERNS
+- 릴리스 절차: **버전 4곳 + CHANGELOG 2곳 + 루트 lock 동조 갱신**(lock은 가드 밖) → 커밋 → `git tag cli-v<버전> && git push origin main --tags`. index.ts 버전은 하드코딩 — `version-drift.test.ts`가 강제. → PATTERNS
 - ⚠ **CHANGELOG는 `files`에 적어야 tarball에 들어간다**(확인은 `npm pack --dry-run`). → PATTERNS
 - **`--provenance`는 켜 둔다**(비공개로 돌리면 먼저 뺀다). 카탈로그(`endpoint-catalog-shared.ts`)는 cli·mcp 両미러 동일. → PATTERNS
 - **카탈로그에 항목을 더하면 `FORMATTERS`(cli `lib/formatters.ts`)에도 등록한다** — 빠뜨리면 text 모드에서만 통짜 JSON이 나온다(`formatter-coverage.test.ts`). → PATTERNS

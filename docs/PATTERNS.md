@@ -502,7 +502,7 @@ privacy `agent` 절은 웹 전용이라 iOS `PrivacyInfo`·ASC 라벨 3자 일�
 
 ### 릴리스 절차: 버전 4곳 + CHANGELOG 2곳 동조 갱신
 
-릴리스 절차: **버전 4곳 + CHANGELOG 2곳 동조 갱신**(두 `packages/*/package.json` + 두 `src/index.ts` 선언 — CLI는 citty `meta.version`, MCP는 `McpServer` version — + 두 `packages/*/CHANGELOG.md`에 그 버전 항목) → 커밋 → `git tag cli-v<버전> && git push origin main --tags`. ⚠ index.ts 버전은 하드코딩이라 package.json만 올리면 **발행본이 옛 버전을 보고한다**(0.6.0 tarball이 `--version`·MCP `serverInfo.version` 모두 0.5.0을 출력한 실사고 2026-07-31). `version-drift.test.ts`가 두 패키지에서 셋 다 강제한다(버전 일치·CHANGELOG 항목 존재·`files` 포함). ⚠ 루트 `package-lock.json`의 워크스페이스 버전(`packages/cli`·`packages/mcp`)은 가드 밖이다 — 버전을 올린 뒤 루트에서 `npm install`로 lock을 동조해 같은 커밋에 싣는다(0.12.0에서 빠져 별도 커밋으로 메웠다).
+릴리스 절차: **버전 4곳 + CHANGELOG 2곳 동조 갱신**(두 `packages/*/package.json` + 두 `src/index.ts` 선언 — CLI는 citty `meta.version`, MCP는 `McpServer` version — + 두 `packages/*/CHANGELOG.md`에 그 버전 항목) → 커밋 → `git tag cli-v<버전> && git push origin main --tags`. ⚠ index.ts 버전은 하드코딩이라 package.json만 올리면 **발행본이 옛 버전을 보고한다**(0.6.0 tarball이 `--version`·MCP `serverInfo.version` 모두 0.5.0을 출력한 실사고 2026-07-31). `version-drift.test.ts`가 두 패키지에서 셋 다 강제한다(버전 일치·CHANGELOG 항목 존재·`files` 포함). ⚠ 루트 `package-lock.json`의 워크스페이스 버전(`packages/cli`·`packages/mcp`)은 가드 밖이다 — 버전을 올린 뒤 루트에서 `npm install`로 lock을 동조해 같은 커밋에 싣는다(0.10.0·0.12.0 두 번 빠져 별도 커밋으로 메웠다).
 
 ### `lang` 같은 선택 파라미터는 카탈로그가 정본이고 인자 선언·전달 판정이 같은 술어를 쓴다
 
