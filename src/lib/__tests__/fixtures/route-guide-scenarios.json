@@ -6122,6 +6122,233 @@
    "comment": "CAR_DRIVER_TUNING은 임박 시간 축만 다르다. 소비 쪽은 운전자 채널(TTS)로 말한다."
   },
   {
+   "name": "자동차 경유지 접근 임계는 직전 fix까지의 표본으로 잰다 — 가속한 그 fix는 아직 옛 속도 임계(N4 자동차 2026-10-17, 구현 리뷰 MINOR-2)",
+   "tuning": "car",
+   "waypointStepIndex": 1,
+   "steps": [
+    {
+     "len": 1000,
+     "desc": "직진A"
+    },
+    {
+     "len": 300,
+     "desc": "직진B"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 5,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 2,
+     "along": 25,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 4,
+     "along": 45,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 6,
+     "along": 65,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 8,
+     "along": 85,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 10,
+     "along": 105,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 12,
+     "along": 125,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 14,
+     "along": 145,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 16,
+     "along": 165,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 18,
+     "along": 185,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 20,
+     "along": 205,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 22,
+     "along": 225,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 24,
+     "along": 245,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 26,
+     "along": 265,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 28,
+     "along": 325,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 30,
+     "along": 385,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 32,
+     "along": 445,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 34,
+     "along": 505,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 36,
+     "along": 565,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 38,
+     "along": 625,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 40,
+     "along": 685,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 42,
+     "along": 745,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 44,
+     "along": 805,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 46,
+     "along": 865,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 48,
+     "along": 925,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 50,
+     "along": 985,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 52,
+     "along": 1045,
+     "lateral": 0,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFixAny": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14
+     ],
+     "eventNot": "waypointApproaching"
+    },
+    {
+     "afterFix": 15,
+     "event": "waypointApproaching",
+     "toneNull": true
+    },
+    {
+     "afterFixAny": [
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26
+     ],
+     "eventNot": "waypointApproaching"
+    },
+    {
+     "afterFix": 26,
+     "event": "waypointReached"
+    }
+   ],
+   "comment": "fix 13까지 10m/s, fix 14에서 30m/s로 가속(잔여 675). 직전 표본(10m/s) 임계 600m라 fix 14는 밖이고, 가속 구간이 표본에 든 fix 15(잔여 615, 임계 1,800m)에서 1회. 현재 fix를 표본에 넣으면 fix 14에서 나간다."
+  },
+  {
    "name": "경유지 없는 경로의 다음 목표는 총 잔여(route — 남은 거리 행 종전 표시, N4 2026-09-24)",
    "steps": [
     {

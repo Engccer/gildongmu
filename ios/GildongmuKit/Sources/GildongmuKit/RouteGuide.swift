@@ -368,8 +368,8 @@ public func imminentAheadMeters(speedSamples: [GuideSpeedSample], tuning: GuideT
     return max(floor, estimateSpeedMps(speedSamples) * tuning.imminentAheadS)
 }
 
-/// 이 상태에서의 경유지 접근 예고 임계(m) — W0·W4가 같은 식을 쓴다(N4 자동차 spec 2026-10-17 §3, 웹
-/// `waypointApproachThreshold` 미러). 표본은 임박 큐와 같은 직전 fix까지의 창이다. walk는 50 고정(종전).
+/// 이 상태에서의 경유지 접근 예고 임계(m, N4 자동차 spec 2026-10-17 §3, 웹 `waypointApproachThreshold` 미러) —
+/// W4가 쓴다. W0는 이 함수가 아니라 바닥(`waypointApproachM`)만 본다 — 미지 임계로 소비하면 서행 출발에서 예고가 영구히 사라진다(설계 리뷰 MAJOR 1). 표본은 임박 큐와 같은 직전 fix까지의 창이다. walk는 50 고정(종전).
 /// ⚠ 이름 `waypointApproachMeters`는 walk 상수라 쓰지 않는다.
 public func waypointApproachThreshold(speedSamples: [GuideSpeedSample], tuning: GuideTuning) -> Double {
     if speedSamples.count < 2 { return tuning.waypointApproachUnknownSpeedM }
@@ -1715,8 +1715,8 @@ public func guideStep(
     //     내주면 다음 fix에 나간다(교차 판정은 그 경합에서 영구히 잃는다). 밀린 사이 도착선을 넘으면
     //     W1이 도착을 세워 다시 서지 않는다(도착이 예고를 대신한다). 신뢰 조건은 W1과 같다.
     //     정숙 시간(car 10초): 같은 fix 우선순위만으로는 다음 fix 예고가 앞 문장을 끊는다(소비 계층 latest-wins·운전자
-    //     TTS halt — 설계 리뷰 MAJOR 2). 0이면 비교하지 않는다 — fix 시각이 세대 생성 시각보다 앞서는 플랫폼에서 음수 차가
-    //     도보 예고를 막지 않게(바이트 동일).
+    //     TTS halt — 설계 리뷰 MAJOR 2). 0이면 비교 자체를 하지 않는다 — 도보는 이 조건이 없던
+    //     종전 코드와 구조적으로 같다(바이트 동일).
     if let w = route.waypointStepIndex,
        !next.waypointReached, !next.waypointApproached, !isOff, !jumped,
        tuning.waypointApproachQuietS <= 0 || now - next.lastAnnouncedAt >= tuning.waypointApproachQuietS {

@@ -397,8 +397,8 @@ fun imminentAheadMeters(speedSamples: List<GuideSpeedSample>, tuning: GuideTunin
 }
 
 /**
- * 이 상태의 경유지 접근 예고 임계(m) — W0·W4가 같은 식을 쓴다(웹 `waypointApproachThreshold` 미러, N4 자동차 spec
- * 2026-10-17 §3). 표본은 임박 큐와 같은 직전 fix까지의 창이다. walk는 50 고정(종전). 같은 이름의 상수
+ * 이 상태의 경유지 접근 예고 임계(m, 웹 `waypointApproachThreshold` 미러, N4 자동차 spec 2026-10-17 §3) —
+ * W4가 쓴다. W0는 이 함수가 아니라 바닥(`waypointApproachM`)만 본다 — 미지 임계로 소비하면 서행 출발에서 예고가 영구히 사라진다(설계 리뷰 MAJOR 1). 표본은 임박 큐와 같은 직전 fix까지의 창이다. walk는 50 고정(종전). 같은 이름의 상수
  * `waypointApproachMeters`(walk 50)와는 호출 형태로 갈린다.
  */
 fun waypointApproachThreshold(speedSamples: List<GuideSpeedSample>, tuning: GuideTuning): Double {
@@ -1632,15 +1632,15 @@ fun guideStep(state: GuideState, fix: GuideFix, route: GuideRoute, now: Double, 
     //     나간다(교차 판정은 그 경합에서 영구히 잃는다). 밀린 사이 도착선을 넘으면 W1이 도착을 세워 다시 서지 않는다
     //     (도착이 예고를 대신한다). 신뢰 조건은 W1과 같다.
     //     정숙 시간(car 10초): 같은 fix 우선순위만으로는 다음 fix 예고가 앞 문장을 끊는다(소비 계층 latest-wins·운전자
-    //     TTS halt — 설계 리뷰 MAJOR 2). 0이면 비교하지 않는다 — fix 시각이 세대 생성 시각보다 앞서는 플랫폼에서 음수
-    //     차가 도보 예고를 막지 않게(바이트 동일).
+    //     TTS halt — 설계 리뷰 MAJOR 2). 0이면 비교 자체를 하지 않는다 — 도보는 이 조건이 없던
+    //     종전 코드와 구조적으로 같다(바이트 동일).
     if (wp != null && !next.waypointReached && !next.waypointApproached && !isOff && !jumped &&
         (tuning.waypointApproachQuietS <= 0.0 || now - next.lastAnnouncedAt >= tuning.waypointApproachQuietS)
     ) {
         val rem = route.steps[wp].startD - d
         // 1m 미만은 곧 도착이다 — "0m" 예고를 내지 않고 W1에 맡긴다(설계 리뷰 #11). 임계 표본은 6a와 같은 직전 fix까지의
-        // 창(`state`)이다(car max(150, v×60), walk 50 고정).
-        if (rem >= 1 && rem <= waypointApproachThreshold(state.speedSamples, tuning)) {
+        // 창(`base`, 6a와 같은 표기)이다(car max(150, v×60), walk 50 고정).
+        if (rem >= 1 && rem <= waypointApproachThreshold(base.speedSamples, tuning)) {
             return emit(
                 next.copy(waypointApproached = true, lastAnnouncedAt = now),
                 GuideEvent.WaypointApproaching(rem.roundedAwayFromZero().toInt()),
