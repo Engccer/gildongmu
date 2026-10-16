@@ -761,4 +761,60 @@ class NearbyLoadCoreTest {
         assertEquals("P2", core.loadedPayload())
         assertEquals(listOf("loaded"), recorder.events)
     }
+
+    // A64 push 복귀 등장
+
+    /** 첫 등장은 조회한다(표식 없음). */
+    @Test fun appearWithoutPushLoads() = runTest {
+        val recorder = Recorder()
+        val core = makeCore(recorder)
+        core.appear()
+        assertEquals(1, recorder.fetchCallCount)
+        assertEquals("P1", core.loadedPayload())
+    }
+
+    /** 상세에서 돌아온 등장 한 번은 조회·통지 없이 목록을 둔다. 그다음 등장(탭 전환 복귀)은 종전처럼 조회한다. */
+    @Test fun appearAfterPushSkipsOnceThenLoads() = runTest {
+        val recorder = Recorder()
+        val core = makeCore(recorder)
+        core.appear()
+        recorder.resetLog()
+
+        core.notePushed()
+        core.appear()
+        assertEquals(1, recorder.fetchCallCount)
+        assertTrue(recorder.events.isEmpty())
+        assertEquals("P1", core.loadedPayload())
+
+        recorder.fetchStub = { _, _ -> "P2" }
+        core.appear()
+        assertEquals(2, recorder.fetchCallCount)
+        assertEquals("P2", core.loadedPayload())
+        assertEquals(listOf("loaded"), recorder.events)
+    }
+
+    /** 목록이 없을 때의 표식은 무시한다 — 돌아와서 빈 화면에 머물지 않게. */
+    @Test fun notePushedBeforeLoadedIsIgnored() = runTest {
+        val recorder = Recorder()
+        recorder.fetchStub = { _, _ -> throw StubError() }
+        val core = makeCore(recorder)
+        core.appear()
+        assertEquals("failedServer", core.phaseName())
+
+        core.notePushed()
+        recorder.fetchStub = { _, _ -> "P1" }
+        core.appear()
+        assertEquals(2, recorder.fetchCallCount)
+        assertEquals("P1", core.loadedPayload())
+    }
+
+    /** 새로고침은 표식과 무관하게 조회한다(낡은 도착 시각은 새로고침이 받는다). */
+    @Test fun forceLoadIgnoresPushMark() = runTest {
+        val recorder = Recorder()
+        val core = makeCore(recorder)
+        core.appear()
+        core.notePushed()
+        core.load(force = true)
+        assertEquals(2, recorder.fetchCallCount)
+    }
 }

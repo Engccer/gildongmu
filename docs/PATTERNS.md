@@ -57,7 +57,7 @@
 - **문장 속 대상은 문장을 파싱하지 않고 불릿 구조에서 뽑는다**(Kit `overviewDetailTargets`, `buildOverviewLines`와 같은 순서·같은 이름 함수). 뷰는 `zip(bullets, lines)`로 한 줄에 대상들을 역순 선언한다. 옵트인 재료가 없는 항목·버스 정류소는 대상이 아니다(죽은 액션 금지).
 - **역 제목 로터는 E45 창구를 그대로 지난다**: 라벨 `stationCallLabel`(브리핑과 공용), 동작 `callStationPhone`, 노선 힌트 Kit `nearbyStationLineHint`, 역 Place `transitStopPlace`, 이름 언어 `subwayStationEnglishLines`(헤딩과 같은 판정). 전화 액션은 늘 있다(위원장 판정 2026-10-05).
 - ⚠ **앵커 목록의 「여기까지 길찾기」는 장소 상세의 `showsDirectionsEntry`를 따른다** — `SubwayNearbyView`·`BusNearbyView`의 `directionsEntryAllowed`는 기본값 없는 인자다. 안내 시트·길찾기 탭 스택 안의 상세에서 연 목록이 프리필을 내면 그 화면이 파괴된다(E45 spec §7). 환경값으로 넘기지 않는다(스택 안 push로의 전달이 검증되지 않은 기제).
-- **로터로 연 상세에서 돌아온 한 번만 재조회를 건너뛴다**(`skipReloadOnReturn`, 지하철 목록): `.task`가 복귀마다 다시 돌아 "역 N곳"이 복귀 커서 낭독과 겹친다. 상태로 막으면(`if case .loaded`) 탭 전환 복귀의 실시간 재조회까지 사라진다.
+- **push한 화면(장소·역 상세, 노선 정류소)에서 돌아온 등장은 다시 조회하지 않는다**(A64 위원장 판정 2026-10-17, 지하철역·버스·둘러보기): `.task`가 복귀마다 다시 돌아 "N곳" 완료 통지가 복귀 커서 낭독과 겹친다. 판정은 Kit `NearbyLoadCore.appear()` 한 곳이고 화면은 `.task { await model.appear() }` + push한 화면의 `.onAppear { model.notePushed() }`만 한다(화면별 건너뛰기 분기 금지). 표식은 목록이 있을 때만 서고 한 번 소비된다. 상태로 막으면(`if case .loaded`) 탭 전환 복귀의 실시간 재조회까지 사라진다. 낡은 도착 시각은 새로고침이 받는다.
 - 가드 `src/lib/__tests__/e65-nearby-rotor-guard.test.ts`.
 
 ### 순서 바꾸기 로터 액션은 Kit `Reorder` 한 판정(`availableMoves`·`moved`)과 앱 `reorderActions`·`announceReorderPosition`·`keepFocusAfterMove` 한 벌을 쓴다

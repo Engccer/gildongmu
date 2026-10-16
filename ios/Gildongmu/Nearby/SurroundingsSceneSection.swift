@@ -269,6 +269,8 @@ struct SurroundingsSceneGroupsView: View {
     /// 장소 행 로터(E65) — 둘러보기(자동 펼침)만 `PlaceRow`와 같은 묶음을 단다. 값은 「물어보기」 진입이다.
     /// 버튼형(안내 시트 「주변 확인」)은 nil: 위원장 판정의 자리는 둘러보기이고, 안내 중 길찾기 프리필은 시트 뒤 탭을 재생성한다.
     var rowActionsAskAbout: ((Place) -> Void)? = nil
+    /// 장소 상세가 나타났을 때(A64) — 둘러보기가 돌아올 때 다시 조회하지 않게 코어에 알린다. 버튼형은 자기 조회가 요청형이라 nil.
+    var onPushed: (() -> Void)? = nil
 
     var body: some View {
         // 위치 확인 문장 먼저, 그다음 묶음(spec 판정 3).
@@ -289,6 +291,7 @@ struct SurroundingsSceneGroupsView: View {
                 // 한 줄 = 한 접근성 객체. 거리 낭독 정정은 distanceText가(m→로케일 단어).
                 NavigationLink {
                     PlaceDetailView(place: sceneItemToPlace(item))
+                        .onAppear { onPushed?() }
                 } label: {
                     if let rowActionsAskAbout {
                         let place = sceneItemToPlace(item)
@@ -332,6 +335,8 @@ struct SurroundingsSceneAutoSection: View {
     var focusedID: AccessibilityFocusState<String?>.Binding
     /// 장소 행 「물어보기」(E65 행 로터) — 부모 화면의 장소 채팅 시트.
     let onAskAbout: (Place) -> Void
+    /// 장소 상세가 나타났다(A64 — 부모 코어의 복귀 재조회 생략 표식).
+    let onPushed: () -> Void
     @State private var reveal = SceneRevealWindows()
 
     var body: some View {
@@ -346,7 +351,7 @@ struct SurroundingsSceneAutoSection: View {
         } else if let scene {
             SurroundingsSceneGroupsView(
                 scene: scene, reveal: reveal, proxy: proxy, focusedID: focusedID, showPlace: false,
-                rowActionsAskAbout: onAskAbout)
+                rowActionsAskAbout: onAskAbout, onPushed: onPushed)
         }
     }
 }

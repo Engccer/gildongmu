@@ -26,6 +26,10 @@ final class BusNearbyModel {
     }
 
     func load(force: Bool = false) async { await core.load(force: force) }
+    /// 화면 등장 — push했던 화면에서 돌아온 한 번은 다시 조회하지 않는다(A64, 판정은 코어).
+    func appear() async { await core.appear() }
+    /// 이 화면이 push한 화면이 나타났다(A64).
+    func notePushed() { core.notePushed() }
 }
 
 struct BusNearbyView: View {
@@ -95,6 +99,7 @@ struct BusNearbyView: View {
                                             cityCode: stop.source == "tago" ? stop.cityCode : nil,
                                             routeId: arrival.routeId,
                                             routeNo: arrival.routeNo)
+                                        .onAppear { model.notePushed() }
                                     } label: {
                                         Text(arrivalLine(arrival))
                                     }
@@ -114,7 +119,7 @@ struct BusNearbyView: View {
                     empty: NearbyOverlayCopy(appLocalized("ios.nearby.busEmpty"), systemImage: "bus"),
                     isEmpty: \.isEmpty))
             }
-            .task { await model.load() }
+            .task { await model.appear() }
             .nearbyRefreshable { await model.load(force: true) }
             .nearbyFocusOnLoad(
                 id: firstStopID, lander: lander, proxy: proxy,

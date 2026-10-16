@@ -74,6 +74,10 @@ final class AroundNearbyModel {
     }
 
     func load(force: Bool = false) async { await core.load(force: force) }
+    /// 화면 등장 — push했던 화면에서 돌아온 한 번은 다시 조회하지 않는다(A64, 판정은 코어).
+    func appear() async { await core.appear() }
+    /// 이 화면이 push한 화면이 나타났다(A64).
+    func notePushed() { core.notePushed() }
 
     /// "더 보기": 공개 수를 늘리고 첫 새 항목 id를 반환한다(VO 포커스 이동 대상).
     func revealMore() -> String? {
@@ -150,7 +154,8 @@ struct AroundNearbyView: View {
                     // 3. 주변 상황 — 자동 펼침(헤딩이 발견 경로, 포커스 이동 없음).
                     SurroundingsSceneAutoSection(
                         scene: payload.scene, failed: payload.sceneFailed, commitID: payload.commitID,
-                        proxy: proxy, focusedID: $focusedID, onAskAbout: { chatPlace = $0 })
+                        proxy: proxy, focusedID: $focusedID, onAskAbout: { chatPlace = $0 },
+                        onPushed: { model.notePushed() })
 
                     // 4. 이 위치에 관해 물어보기.
                     if let overview = payload.overview {
@@ -173,6 +178,7 @@ struct AroundNearbyView: View {
                 PlaceDetailView(place: target.place, stationLineHint: target.lineHint) {
                     if let event = target.event { CultureEventSection(event: event) }
                 }
+                .onAppear { model.notePushed() }
             }
         }
         .navigationTitle(appLocalized("ios.nearby.around"))
@@ -184,7 +190,7 @@ struct AroundNearbyView: View {
                 empty: NearbyOverlayCopy(appLocalized("ios.nearby.aroundEmpty"), systemImage: "mappin.and.ellipse"),
                 isEmpty: \.isAllAbsent))
         }
-        .task { await model.load() }
+        .task { await model.appear() }
         .nearbyRefreshable { await model.load(force: true) }
         .sheet(item: $chatPlace) { ChatView(place: $0) }
     }
@@ -234,6 +240,7 @@ struct AroundNearbyView: View {
                 // 보조 텍스트 정보량은 현행 유지(카테고리·방위·거리). ⚠ 방위는 북 기준 절대 8방위만.
                 NavigationLink {
                     PlaceDetailView(place: surroundingPlaceToPlace(place))
+                        .onAppear { model.notePushed() }
                 } label: {
                     PlaceRow(
                         place: surroundingPlaceToPlace(place),

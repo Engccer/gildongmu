@@ -30,7 +30,7 @@ describe("E65 내 주변 로터 액션 배선", () => {
   it("주변 상황: 둘러보기(자동 펼침)만 PlaceRow 묶음을 단다 — 버튼형(안내 시트)은 붙이지 않는다", () => {
     const s = nearby("SurroundingsSceneSection.swift");
     expect(s).toContain(".placeRowActions(place, onAskAbout: { rowActionsAskAbout(place) })");
-    expect(s).toContain("rowActionsAskAbout: onAskAbout)");
+    expect(s).toContain("rowActionsAskAbout: onAskAbout, onPushed: onPushed)");
     // 버튼형 호출은 rowActionsAskAbout을 넘기지 않는다(기본값 nil). 호출 전체를 공백 무관으로 잡는다.
     const buttonCall = s.match(/SurroundingsSceneGroupsView\(\s*scene: scene, reveal: model\.reveal[^)]*\)/);
     expect(buttonCall).not.toBeNull();
@@ -80,14 +80,27 @@ describe("E65 내 주변 로터 액션 배선", () => {
     expect(nearby("SubwayNearbyView.swift")).toContain("showsDirectionsEntry: directionsEntryAllowed");
   });
 
-  it("지하철 목록: 로터로 연 상세에서 돌아온 한 번만 재조회를 건너뛰고, 탭 전환 복귀는 종전대로 재조회한다", () => {
-    const s = nearby("SubwayNearbyView.swift");
-    expect(s).toContain("onOpen: { skipReloadOnReturn = true; stationDetail = $0 }");
-    expect(s).toMatch(
-      /\.task \{\s*if skipReloadOnReturn \{\s*skipReloadOnReturn = false\s*return\s*\}\s*await model\.load\(\)\s*\}/,
-    );
-    // 상태로 막는 게이트(탭 전환 복귀까지 막는다)를 되살리지 않는다.
-    expect(s).not.toMatch(/if case \.loaded = model\.phase \{ return \}/);
+  it("A64: 지하철역·버스·둘러보기는 push한 화면에서 돌아온 등장에 다시 조회하지 않는다(판정은 NearbyLoadCore 한 곳)", () => {
+    // 화면은 등장을 코어의 appear()로 넘기고, push한 화면이 나타날 때 표식만 알린다. 화면별 건너뛰기 분기를 두지 않는다.
+    const pushes: Record<string, number> = {
+      "SubwayNearbyView.swift": 1, // 역 상세
+      "BusNearbyView.swift": 1, // 노선 정류소
+      "AroundNearbyView.swift": 3, // 한눈에 보기 상세 · 주변 가게 상세 · 주변 상황 행(onPushed)
+    };
+    for (const [file, n] of Object.entries(pushes)) {
+      const s = nearby(file);
+      expect(s, file).toContain(".task { await model.appear() }");
+      expect(s, file).not.toContain(".task { await model.load() }");
+      expect(s, file).not.toContain("skipReloadOnReturn");
+      expect(s.split("model.notePushed()").length - 1, file).toBe(n);
+    }
+    // 주변 상황 행의 상세도 표식을 낸다(자동 펼침 섹션이 부모 코어로 넘긴다).
+    const scene = nearby("SurroundingsSceneSection.swift");
+    expect(scene).toContain("PlaceDetailView(place: sceneItemToPlace(item))\n                        .onAppear { onPushed?() }");
+    // 코어: 표식은 목록이 있을 때만, 등장은 표식 1회 소비 뒤 load(). 상태만으로 막지 않는다(탭 전환 복귀는 재조회).
+    const core = read("ios/GildongmuKit/Sources/GildongmuKit/NearbyLoadCore.swift");
+    expect(core).toMatch(/public func notePushed\(\) \{\s*if case \.loaded = phase \{ coveredByPush = true \}\s*\}/);
+    expect(core).toMatch(/public func appear\(\) async \{\s*if coveredByPush \{\s*coveredByPush = false\s*if case \.loaded = phase \{ return \}\s*\}\s*await load\(\)\s*\}/);
   });
 
   it("목록의 길찾기 허용 인자는 기본값이 없다 — 새 호스트가 빠뜨리면 컴파일이 막는다", () => {

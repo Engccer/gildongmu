@@ -77,6 +77,8 @@ public final class NearbyLoadCore<Payload: Sendable> {
     private let onEvent: @MainActor (NearbyLoadEvent<Payload>) -> Void
     /// 재진입 가드(구 모델 isLoadingInFlight 계승): 진행 중 재호출은 즉시 무시(#1)
     private var isLoadingInFlight = false
+    /// 이 화면이 다른 화면(장소·역 상세, 노선 정류소)을 push해 가려졌다는 표식(A64). 돌아온 등장 한 번이 소비한다.
+    private var coveredByPush = false
 
     public init(
         coordinate: NearbyCoordinateSource,
@@ -90,6 +92,22 @@ public final class NearbyLoadCore<Payload: Sendable> {
         self.fetch = fetch
         self.willCommit = willCommit
         self.onEvent = onEvent
+    }
+
+    /// 화면이 push한 화면이 나타났을 때 부른다(A64). 목록이 있을 때만 표식한다 — 없으면 돌아와서 조회해야 한다.
+    public func notePushed() {
+        if case .loaded = phase { coveredByPush = true }
+    }
+
+    /// 화면 등장(`.task`)의 진입점. push했던 화면에서 돌아온 등장이면 다시 조회하지 않는다(A64 위원장 판정:
+    /// 상세에서 돌아온 것만으로는 재조회·완료 통지를 하지 않고, 낡은 도착 시각은 새로고침이 받는다).
+    /// 그 밖의 등장(첫 진입·탭 전환 복귀)은 `load()`와 같다.
+    public func appear() async {
+        if coveredByPush {
+            coveredByPush = false
+            if case .loaded = phase { return }
+        }
+        await load()
     }
 
     public func load(force: Bool = false) async {

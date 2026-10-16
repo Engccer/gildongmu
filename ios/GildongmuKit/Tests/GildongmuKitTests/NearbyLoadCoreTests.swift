@@ -764,4 +764,60 @@ struct NearbyLoadCoreTests {
         #expect(loadedPayload(core.phase) == "P2")
         #expect(recorder.events == ["loaded"])
     }
+
+    // MARK: - A64 push 복귀 등장
+
+    /// 첫 등장은 조회한다(표식 없음).
+    @Test func appearWithoutPushLoads() async {
+        let recorder = Recorder()
+        let core = makeCore(recorder)
+        await core.appear()
+        #expect(recorder.fetchCallCount == 1)
+        #expect(loadedPayload(core.phase) == "P1")
+    }
+
+    /// 상세에서 돌아온 등장 한 번은 조회·통지 없이 목록을 둔다. 그다음 등장(탭 전환 복귀)은 종전처럼 조회한다.
+    @Test func appearAfterPushSkipsOnceThenLoads() async {
+        let recorder = Recorder()
+        let core = makeCore(recorder)
+        await core.appear()
+        recorder.resetLog()
+
+        core.notePushed()
+        await core.appear()
+        #expect(recorder.fetchCallCount == 1)
+        #expect(recorder.events.isEmpty)
+        #expect(loadedPayload(core.phase) == "P1")
+
+        recorder.fetchStub = { _, _ in "P2" }
+        await core.appear()
+        #expect(recorder.fetchCallCount == 2)
+        #expect(loadedPayload(core.phase) == "P2")
+        #expect(recorder.events == ["loaded"])
+    }
+
+    /// 목록이 없을 때의 표식은 무시한다 — 돌아와서 빈 화면에 머물지 않게.
+    @Test func notePushedBeforeLoadedIsIgnored() async {
+        let recorder = Recorder()
+        recorder.fetchStub = { _, _ in throw StubError.boom }
+        let core = makeCore(recorder)
+        await core.appear()
+        #expect(phaseName(core.phase) == "failedServer")
+
+        core.notePushed()
+        recorder.fetchStub = { _, _ in "P1" }
+        await core.appear()
+        #expect(recorder.fetchCallCount == 2)
+        #expect(loadedPayload(core.phase) == "P1")
+    }
+
+    /// 새로고침은 표식과 무관하게 조회한다(낡은 도착 시각은 새로고침이 받는다).
+    @Test func forceLoadIgnoresPushMark() async {
+        let recorder = Recorder()
+        let core = makeCore(recorder)
+        await core.appear()
+        core.notePushed()
+        await core.load(force: true)
+        #expect(recorder.fetchCallCount == 2)
+    }
 }

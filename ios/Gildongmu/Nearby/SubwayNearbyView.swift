@@ -156,6 +156,10 @@ final class SubwayNearbyModel {
     }
 
     func load(force: Bool = false) async { await core.load(force: force) }
+    /// 화면 등장 — push했던 화면에서 돌아온 한 번은 다시 조회하지 않는다(A64, 판정은 코어).
+    func appear() async { await core.appear() }
+    /// 이 화면이 push한 화면이 나타났다(A64).
+    func notePushed() { core.notePushed() }
 }
 
 struct SubwayNearbyView: View {
@@ -167,9 +171,6 @@ struct SubwayNearbyView: View {
     @State private var lander = NearbyFocusLander()
     /// 역 제목 로터 「상세 보기」가 push하는 역 상세(E65, 브리핑 E45와 같은 목적지 모양).
     @State private var stationDetail: StationDestination?
-    /// 로터로 역 상세를 연 직후 1회만 참 — 그 상세에서 돌아올 때의 `.task` 재실행 한 번을 건너뛴다(재조회·"역 N곳"
-    /// 재통지가 복귀 커서 낭독과 겹치지 않게). 탭 전환 복귀는 종전처럼 재조회한다(실시간 도착이 낡지 않게).
-    @State private var skipReloadOnReturn = false
     /// 행 로터의 「여기까지 길찾기」를 낼 수 있는가(E65). 장소 상세가 자기 `showsDirectionsEntry`를 넘긴다 —
     /// 안내 시트·길찾기 탭 스택 안의 상세는 프리필이 그 화면을 파괴하므로 숨긴다(E45 spec §7과 같은 이유).
     private let directionsEntryAllowed: Bool
@@ -200,7 +201,7 @@ struct SubwayNearbyView: View {
                                 .accessibilityFocused($focusedStation, equals: station.stationName)
                                 .modifier(StationTitleActions(
                                     station: station, directionsEntryAllowed: directionsEntryAllowed,
-                                    onOpen: { skipReloadOnReturn = true; stationDetail = $0 }))
+                                    onOpen: { stationDetail = $0 }))
                             // 4-state를 뭉개지 않는다(웹 미러): 조회 실패 / 운행 시간 밖 /
                             // 실시간 미제공 / 정상. closed인데 첫차가 없으면 판정 근거가
                             // 반쪽이라 "운행이 끝났다"고 말하지 않고 미제공으로 물러선다.
@@ -226,6 +227,7 @@ struct SubwayNearbyView: View {
                 PlaceDetailView(
                     place: destination.place, showsDirectionsEntry: directionsEntryAllowed,
                     stationLineHint: destination.lineName)
+                .onAppear { model.notePushed() }
             }
             .navigationTitle(nearbyTitle(appLocalized("ios.nearby.subway"), anchor: anchor))
             .nearbyStateOverlay {
@@ -236,14 +238,7 @@ struct SubwayNearbyView: View {
                     empty: NearbyOverlayCopy(emptyTitle, systemImage: "tram"),
                     isEmpty: { $0.stations.isEmpty }))
             }
-            // 로터로 연 역 상세에서 돌아온 한 번만 재조회를 건너뛴다(E65, spec §3-7). 그 밖의 재등장(탭 전환 복귀)은 종전대로.
-            .task {
-                if skipReloadOnReturn {
-                    skipReloadOnReturn = false
-                    return
-                }
-                await model.load()
-            }
+            .task { await model.appear() }
             .nearbyRefreshable { await model.load(force: true) }
             .nearbyFocusOnLoad(
                 id: firstStationName, lander: lander, proxy: proxy,
