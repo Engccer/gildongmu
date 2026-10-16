@@ -452,10 +452,10 @@ struct TransitTrackingSheet: View {
     /// DisclosureGroup이 정본(시뮬 무라벨 셰브런은 아티팩트 — 실기기 비문제).
     /// 단계 공개(더 보기) 비적용: 정적 텍스트라 절단 너머가 행동을 바꾸지 않는다.
     ///
-    /// **지하철 leg의 각 행은 행 전체가 그 역의 장소 상세를 여는 버튼**(E33, 채팅 산문 선례 "언급 1개 =
-    /// 블록 전체 버튼"). 라벨 뷰는 종전 단일 `Text` 그대로라 한 줄 = 한 객체가 유지되고, VO는
+    /// **지하철 leg의 각 행은 행 전체가 그 역의 장소 상세를 여는 버튼**(E33 — 행 하나 = 역 하나인 목록 행이라
+    /// 장소 목록 행의 링크 행과 같은 모양이다). 라벨 뷰는 종전 단일 `Text` 그대로라 한 줄 = 한 객체가 유지되고, VO는
     /// "{역}, 승차, 버튼"으로 읽는다. 버스 leg는 종전 `Text`(정류장 상세는 범위 밖, spec §2).
-    /// 지하철 행의 로터 "전화 걸기"(E44)는 하위 뷰 `ViaStopStationRow`가 단다 — 저장소를 시트 본문이 읽지 않게.
+    /// 지하철 행의 "전화 걸기"(E44 → E72 밀기 버튼)는 하위 뷰 `ViaStopStationRow`가 단다 — 저장소를 시트 본문이 읽지 않게.
     @ViewBuilder private var viaStopsRows: some View {
         if model.state != nil, let leg = model.currentLeg, !leg.viaStops.isEmpty {
             DisclosureGroup(isExpanded: $viaExpanded) {
@@ -494,17 +494,28 @@ struct TransitTrackingSheet: View {
             // 공백 연결, 쉼표 조립(joinText)은 이중 구두점을 만들어 폐기). 여전히
             // 한 줄 = 한 접근성 객체(단일 텍스트).
             let text = model.statusLineText(state: state, leg: leg, now: model.positionClock, speaksLocated: true)
-            // 문장 안 역명은 산문이라 채팅 산문 선례의 **로터 액션** 갈래만 쓴다(E33): 언급 N개 = 커스텀 액션
-            // "{역} 상세 보기" N개(역순 선언 = 등장 순 노출). 채팅의 "1개면 블록 전체 버튼"은 쓰지 않는다 — 이 문장은
-            // 폴마다 바뀌어 언급 수가 오가고, 뷰 종류가 Button↔Text로 갈리면 포커스가 얹힌 줄이 15초마다 파괴·재생성
-            // 된다(헌장 §5, 설계 리뷰 E2). 뷰는 언제나 같은 `Text`이고 액션 목록만 바뀐다. 시각 사용자는 경유역
-            // 목록 행으로 같은 곳에 간다(정보 정본은 목록). 지하철 leg에서만 판정한다.
+            // 문장 안 역명(E33 → E72 위원장 판정 3, 2026-10-17): 이름에만 링크(시각 탭) + 커스텀 액션
+            // "{역} 상세 보기"(VO, 역순 선언 = 등장 순 노출). 뷰는 언제나 같은 `Text`라(줄 전체 버튼 갈래 없음) 폴마다
+            // 언급 수가 오가도 포커스가 얹힌 줄이 파괴·재생성되지 않는다(헌장 §5, 설계 리뷰 E2). 지하철 leg에서만 판정한다.
             let mentions = leg.mode == "subway" ? transitStationMentions(in: text, stops: leg.viaStops) : []
             let display = model.displayLeg(leg, useOverride: false)
+            // 링크는 **역 정체성**(`viaStops` 순번)에 결박한다 — 문장이 폴마다 바뀌어도 링크 글자와 여는 역은 같은 렌더의
+            // 같은 값이라, 누른 이름의 역이 열린다. 문장엔 그 역의 한국어·영문 이름 중 하나가 들어 있으므로 둘 다 넘긴다.
+            let linkNames = mentions.flatMap { i in [leg.viaStops[i].name, leg.viaStops[i].nameEn].compactMap { $0 } }
+            let linkOwners = mentions.flatMap { i in Array(repeating: i, count: leg.viaStops[i].nameEn == nil ? 1 : 2) }
+            let viaStops = leg.viaStops
             // 착지 대상(N3 ① §4.3): 차량 선택 전이가 여기 앉는다. 줄 내용은 폴마다 바뀌지만
             // 뷰 종류·정체성은 불변이라 포커스가 재생성으로 튕기지 않는다(E33과 같은 근거).
-            landingTarget(distanceText(text), .status)
+            // guard:allow — 노선 이름(조인 필드)은 표시하지 않고 링크를 걸지 않을 자리로만 쓴다(「신림선」 안의 「신림」).
+            landingTarget(
+                Text(InlineTargets.linked(
+                    AttributedString(text), names: linkNames, avoiding: [leg.lineName, leg.lineNameEn].compactMap { $0 }))
+                    .accessibilityLabel(Text(spokenUnits(text))),
+                .status)
                 .foregroundStyle(.secondary)
+                .inlineTargetTaps { position in
+                    openStationDetail(viaStops[linkOwners[position]], lineName: leg.lineName, source: "statusLink")
+                }
                 // ⚠ 선언은 역순: VoiceOver 로터가 빌더 선언의 역순으로 노출된다(PlaceRow·채팅 실측).
                 // 액션 라벨은 문장 계층(descriptor)을 지나 영문이 없으면 라벨 전체가 ko(설계 리뷰 E1).
                 .accessibilityActions {
@@ -1027,7 +1038,7 @@ struct TransitTrackingSheet: View {
 
 }
 
-/// 지하철 경유역 행(E33 행 전체 버튼 + E44 로터 "전화 걸기"). **저장소는 이 하위 뷰만 관찰한다** — 번호 도착이
+/// 지하철 경유역 행(E33 행 전체 버튼 + E44 "전화 걸기", E72부터 밀기 버튼). **저장소는 이 하위 뷰만 관찰한다** — 번호 도착이
 /// 시트 본문 재렌더가 되지 않게(spec §6, `rendered` 참조 상자와 같은 계열). 번호가 늦게 와도 뷰 종류는 언제나
 /// 같은 `Button`이라 포커스가 튀지 않는다. **액션은 저장소 상태와 무관하게 항상 하나**이고 라벨만 갈린다
 /// (E45 판정 ⑤ — 종전 "번호가 확정된 행에만"은 3상태를 액션 부재로 뭉갰다).
@@ -1038,6 +1049,8 @@ private struct ViaStopStationRow: View {
     let onOpen: () -> Void
     @Environment(\.openURL) private var openURL
     private let phoneStore = StationPhoneStore.shared
+    /// 전화 결과 문장을 화면으로 띄울 자리(VoiceOver가 꺼져 있을 때만, E72 — 역 목록 제목과 같은 계약).
+    @State private var visibleNotice: String?
 
     var body: some View {
         Button(action: onOpen) {
@@ -1048,8 +1061,16 @@ private struct ViaStopStationRow: View {
         // 확정된 행에만 섰는데, 그러면 "번호 없음"·"찾는 중"·"조회 실패"가 전부 **액션 부재**로 뭉개져
         // 3상태가 사라진다(헌장 §1). 지하는 통신이 끊기기 쉬워 이 화면에서 특히 필요하다. 액션 목록
         // 길이가 불변이라 로터를 열어 둔 사이 목록이 변하지도 않는다.
-        .accessibilityActions {
+        // 밀기 버튼(E72 판정 1): iOS가 같은 버튼을 VoiceOver 동작 목록에 넣는다. 오른쪽 밀기이고 전화는 되돌릴 수
+        // 없어 끝까지 밀기 실행을 끈다(역 목록 제목과 같은 배치).
+        .swipeActions(edge: .leading, allowsFullSwipe: false) {
             Button(callLabel) { call() }
+        }
+        .alert(
+            visibleNotice ?? "",
+            isPresented: Binding(get: { visibleNotice != nil }, set: { if !$0 { visibleNotice = nil } })
+        ) {
+            Button(appLocalized("actions.close"), role: .cancel) {}
         }
         // 행이 떠 있는 동안 `recheckSeconds`마다 다시 부른다(펼침 일괄 조회가 1차) — 신선하면 네트워크 없이 돌아오고,
         // 낡으면 저장소 보관 한도 전에 갱신한다. 같은 키 중복은 저장소가 막는다.
@@ -1073,6 +1094,10 @@ private struct ViaStopStationRow: View {
     /// 브리핑 로터와 같은 창구를 지난다 — 번호면 걸고, 그 밖이면 3상태를 통지·진동으로 알린다.
     private func call() {
         callStationPhone(
-            stationName: stop.name, lat: stop.lat, lng: stop.lng, lineName: lineName, openURL: openURL)
+            stationName: stop.name, lat: stop.lat, lng: stop.lng, lineName: lineName, openURL: openURL,
+            onNotice: { text in
+                // VoiceOver 사용자는 같은 문장을 통지로 이미 들었다(알림창까지 내면 두 번 듣는다).
+                if !UIAccessibility.isVoiceOverRunning { visibleNotice = text }
+            })
     }
 }

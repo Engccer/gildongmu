@@ -122,6 +122,23 @@ describe("규칙 3·4: 줄 안 대상은 이름만 링크 + 같은 대상의 로
     expect(chat).not.toContain("gildongmu-place-mention");
   });
 
+  it("안내 시트 상태 문장: 링크는 역 정체성(viaStops 순번)에 결박되고 줄은 같은 착지 대상 Text다", () => {
+    const sheet = read("ios/Gildongmu/Directions/TransitTrackingSheet.swift");
+    const status = slice(sheet, "@ViewBuilder private var statusRows", "private func openStationDetail(");
+    expect(status).toContain("let linkOwners = mentions.flatMap");
+    expect(status).toContain("openStationDetail(viaStops[linkOwners[position]], lineName: leg.lineName, source: \"statusLink\")");
+    expect(status).not.toMatch(/\bButton \{|contentShape/);
+    expect(status).toContain("ForEach(Array(mentions.reversed()), id: \\.self)");
+  });
+
+  it("안내 시트 경유역 행: 행 전체 버튼(상세)은 그대로, 전화는 오른쪽 밀기·끝까지 밀기 꺼짐·VoiceOver 꺼짐이면 알림창", () => {
+    const sheet = read("ios/Gildongmu/Directions/TransitTrackingSheet.swift");
+    const row = slice(sheet, "private struct ViaStopStationRow: View", "/// **라벨만** 상태로 갈린다.");
+    expect(inOrder(row, ["Button(action: onOpen) {", ".swipeActions(edge: .leading, allowsFullSwipe: false) {", "Button(callLabel) { call() }"])).toBe(true);
+    expect(row).not.toContain(".accessibilityActions");
+    expect(sheet).toContain("if !UIAccessibility.isVoiceOverRunning { visibleNotice = text }");
+  });
+
   it("링크 도우미: 범위는 Kit 판정(테스트 레인)을 지나고, 자체 스킴만 가로채며, 색에만 맡기지 않는다", () => {
     const s = read("ios/Gildongmu/InlineTargets.swift");
     expect(s).toContain("inlineTargetSpans(in: String(text.characters), names: names, avoiding: avoiding)");

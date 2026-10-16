@@ -58,10 +58,10 @@ function rotorItemsBody(src: string): string {
   return src.slice(head, end === -1 ? undefined : end);
 }
 
-/** `.accessibilityActions {` 블록 본문(중괄호 균형으로 자른다). */
-function actionsBlock(src: string): string {
-  const head = src.indexOf(".accessibilityActions {");
-  expect(head, "accessibilityActions 블록이 없다").toBeGreaterThan(-1);
+/** 동작 블록 본문(중괄호 균형으로 자른다). 기본은 `.accessibilityActions {`, 밀기 버튼 행(E72)은 그 표식을 넘긴다. */
+function actionsBlock(src: string, marker = ".accessibilityActions {"): string {
+  const head = src.indexOf(marker);
+  expect(head, `${marker} 블록이 없다`).toBeGreaterThan(-1);
   let depth = 0;
   for (let i = src.indexOf("{", head); i < src.length; i += 1) {
     if (src[i] === "{") depth += 1;
@@ -160,7 +160,8 @@ describe("③ 전화 액션은 상태와 무관하게 항상 있다 (spec §5.1�
   });
 
   it("안내 시트 경유역 로터도 같은 계약이다 — 상태 switch로 액션을 없애지 않는다(판정 ⑤)", () => {
-    const block = codeOnly(actionsBlock(structBody(SHEET, "ViaStopStationRow")));
+    // E72부터 경유역 전화는 밀기 버튼이다(iOS가 같은 버튼을 VoiceOver 동작 목록에 넣는다).
+    const block = codeOnly(actionsBlock(structBody(SHEET, "ViaStopStationRow"), ".swipeActions(edge: .leading, allowsFullSwipe: false) {"));
     expect(block).not.toMatch(/\.result\(stationName:/);
     expect(block).not.toMatch(/case \.(direct|representative|unavailable|failed)/);
     expect(block).not.toContain("EmptyView()");
