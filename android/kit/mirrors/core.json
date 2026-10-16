@@ -105,6 +105,11 @@
       "note": "정규식 약칭 클래스 대신 명시 클래스(공백=White_Space 속성, 숫자=유니코드 Nd, 단어=ICU 정의 근사: 문자·문자형 숫자·결합 부호·십진 숫자·연결 부호·ZWNJ·ZWJ)"
     },
     {
+      "swift": "InlineTargetSpans.swift",
+      "status": "pending",
+      "note": "E72 줄 안 대상 이름 링크 범위(iOS 먼저, spec 2026-10-17-e72-visible-row-actions-design.md). 안드로이드는 iOS 실기기 판정 뒤 이식한다 — 오프셋은 Character(확장 자소 덩어리) 단위라 Kotlin은 BreakIterator로 센다"
+    },
+    {
       "swift": "NearbyLoadCore.swift",
       "status": "ported",
       "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/NearbyLoadCore.kt",

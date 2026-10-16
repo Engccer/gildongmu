@@ -67,9 +67,9 @@ struct KidsNearbyView: View {
                                 secondaryOverride: joinText(
                                     kindLabel(place.kind), inOutLabel(place.indoorOutdoor),
                                     appLocalized("place.distance", formatDistance(place.distanceMeters)),
-                                    place.roadAddress ?? place.address),
-                                onAskAbout: { chatPlace = kidsPlaceToPlace(place) })
+                                    place.roadAddress ?? place.address))
                         }
+                        .placeRowSwipeActions(kidsPlaceToPlace(place), onAskAbout: { chatPlace = kidsPlaceToPlace(place) })
                         .id(place.id)
                         .accessibilityFocused($focusedPlaceID, equals: place.id)
                     }

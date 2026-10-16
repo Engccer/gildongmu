@@ -104,9 +104,9 @@ struct ClinicNearbyView: View {
                                 secondaryOverride: joinText(
                                     clinicKindText(clinic.kind),
                                     clinicStatusText(clinic.openStatus),
-                                    appLocalized("place.distance", formatDistance(clinic.distanceMeters))),
-                                onAskAbout: { chatPlace = nightClinicToPlace(clinic) })
+                                    appLocalized("place.distance", formatDistance(clinic.distanceMeters))))
                         }
+                        .placeRowSwipeActions(nightClinicToPlace(clinic), onAskAbout: { chatPlace = nightClinicToPlace(clinic) })
                         .id(clinic.id)
                         .accessibilityFocused($focusedClinicID, equals: clinic.id)
                     }

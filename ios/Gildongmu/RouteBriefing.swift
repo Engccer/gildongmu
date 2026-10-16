@@ -73,9 +73,10 @@ struct TransitRouteRows: View {
             // VoiceOver가 숫자 뒤 m을 minutes로 오독하므로 낭독만 풀어 쓴다.
             // en 계열은 서버 영문(`*En`, E27)으로 — 시각은 `Gangnam (강남)` 병기, 낭독은 영문만(한 줄 한 객체).
             // 영문이 모자란 구간은 통째로 한국어(줄 단위 원자성).
-            stationRow(leg.mode == "walk" ? .walk(legIndex: index) : .transit(legIndex: index)) {
+            stationRow(leg.mode == "walk" ? .walk(legIndex: index) : .transit(legIndex: index)) { names in
                 transitLegRow(
-                    route.legs, at: index, destinationName: destinationName, destinationRoman: destinationRoman)
+                    route.legs, at: index, destinationName: destinationName, destinationRoman: destinationRoman,
+                    linking: names)
             }
             // 하차 줄(빠른하차 E5 + 하차 출구 E25)은 별도 문장이라 같은 Text에 합치지 않는다 —
             // 합치면 한 줄이 길어지고, 나누면 스와이프 한 번에 "무슨 열차"와 "어디로 내려 나가나"가
@@ -90,26 +91,29 @@ struct TransitRouteRows: View {
                 // 출구 문구 정본은 안내 세션과 같은 키다(Kit 카탈로그 밖이라 앱이 조회한다).
                 exitBound: { appLocalized("transitGuide.exitBound", $0) })
             {
-                stationRow(.alight(legIndex: index)) { Text(text) }
+                stationRow(.alight(legIndex: index)) { names in
+                    Text(InlineTargets.linked(AttributedString(text), names: names))
+                }
             }
         }
     }
 
-    /// 줄에 역 진입점을 얹는다(E45). 옵트인이 꺼져 있거나 대상 역이 없으면 줄은 종전 그대로다 —
-    /// 뷰 종류는 어느 경우에도 같은 `Text`이고 로터 액션만 늘어난다(spec §3.3).
+    /// 줄에 역 진입점을 얹는다(E45 → E72). 옵트인이 꺼져 있거나 대상 역이 없으면 줄은 종전 그대로다 —
+    /// 뷰 종류는 어느 경우에도 같은 `Text`이고, 진입점이 있으면 역 이름에 링크(시각 탭 경로, E72 판정 3)와
+    /// 로터 동작이 늘어난다. `content`는 링크를 걸 역 이름 목록을 받는다(진입점이 없으면 빈 목록).
     @ViewBuilder
     private func stationRow<Content: View>(
-        _ row: TransitBriefingRow, @ViewBuilder content: @escaping () -> Content
+        _ row: TransitBriefingRow, @ViewBuilder content: @escaping ([String]) -> Content
     ) -> some View {
         if let onOpen = stationEntry {
             let actions = briefingStationActions(route.legs, row: row)
             if actions.isEmpty {
-                content()
+                content([])
             } else {
-                BriefingStationRow(actions: actions, onOpen: onOpen, content: content)
+                BriefingStationRow(actions: actions, onOpen: onOpen, content: { content(actions.map(\.name)) })
             }
         } else {
-            content()
+            content([])
         }
     }
 }
@@ -155,7 +159,8 @@ func briefingStationActions(
 /// ⚠ 격리 입자는 "그 줄 하나"가 아니다. `@Observable`은 `results` **프로퍼티 단위**로 추적하므로 어느 역의
 ///   번호가 도착하든 화면 위의 이 뷰들이 함께 무효화된다. 막는 것은 브리핑 전체이지 이웃 줄이 아니다.
 ///
-/// 줄 뷰는 그대로 내보내고 로터만 얹는다 — 역 개수는 액션 수만 정하고 뷰 종류를 정하지 않는다.
+/// 줄 뷰는 그대로 내보내고 링크 탭과 로터만 얹는다 — 역 개수는 액션 수만 정하고 뷰 종류를 정하지 않는다.
+/// 링크는 상세 열기뿐이다. 전화는 라벨이 상태로 갈려(E45 판정 ④) 로터에만 둔다.
 private struct BriefingStationRow<Content: View>: View {
     let actions: [BriefingStationAction]
     let onOpen: (TransitLegStop, String?) -> Void
@@ -172,6 +177,8 @@ private struct BriefingStationRow<Content: View>: View {
 
     var body: some View {
         content()
+            // 역 이름 링크 탭(E72) — 링크 순번은 `actions` 순번이다(`stationRow`가 같은 순서로 이름을 넘긴다).
+            .inlineTargetTaps { index in onOpen(actions[index].stop, actions[index].lineName) }
             // ⚠ 선언은 **역순**이다: VoiceOver 로터가 빌더 선언의 역순으로 노출된다(PlaceRow·채팅·E33 실측).
             //   역별 묶음 안의 (상세 → 전화) 순서도 함께 뒤집혀야 "A 상세 → A 전화 → B 상세 → B 전화"로 들린다.
             .accessibilityActions {
@@ -275,10 +282,16 @@ func transitSummaryText(_ summary: TransitRouteSummary) -> String {
 /// 구간 행 — 시각 문자열과 낭독 문자열이 갈릴 수 있어(병기) `distanceText` 대신 직접 라벨을 단다.
 @MainActor
 func transitLegRow(
-    _ legs: [TransitRouteLeg], at index: Int, destinationName: String?, destinationRoman: String?
+    _ legs: [TransitRouteLeg], at index: Int, destinationName: String?, destinationRoman: String?,
+    /// 시각 줄에서 링크를 걸 역 이름(E72, 진입점이 없으면 빈 목록). 낭독 라벨은 링크와 무관하게 종전 그대로다.
+    linking names: [String]
 ) -> some View {
     let line = transitLegLine(legs, at: index, destinationName: destinationName, destinationRoman: destinationRoman)
-    return Text(line.visual).accessibilityLabel(Text(spokenUnits(line.spoken)))
+    // 노선 이름 안의 역 이름(「신림선」 안의 「신림」)엔 걸지 않는다 — 줄 맨 앞이 노선 이름이다.
+    let leg = legs[index]
+    return Text(InlineTargets.linked(
+        AttributedString(line.visual), names: names, avoiding: [leg.lineName, leg.lineNameEn].compactMap { $0 }))
+        .accessibilityLabel(Text(spokenUnits(line.spoken)))
 }
 
 /// 구간 문장 (시각, 낭독). ko·영문 부재는 둘이 같다. en은 노선·승차·하차(도보는 행선지)가 **다** 영문일 때만

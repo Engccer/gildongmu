@@ -145,9 +145,13 @@ final class StationPhoneStore {
 ///   다시 조회하지 않는 경우 그 문장이 영영 거짓이므로, **통지 전에 `resolve`를 킥오프**해 사후적으로 참이 되게 한다.
 ///
 /// 상태 판정(문구 키·진동 종류)은 Kit 순수 함수 `briefingPhoneAnnouncement`가 한다(뷰 안에 두면 테스트 레인이 없다).
+///
+/// `onNotice`는 통지 문장을 화면으로도 받을 소비자의 자리다(E72): 밀기 버튼처럼 눈으로 쓰는 진입점은 VoiceOver가
+/// 꺼져 있으면 통지가 들리지 않아 무반응 버튼이 되므로, 그 소비자가 같은 문장을 화면에 띄운다. 로터 전용 진입점은 nil.
 @MainActor
 func callStationPhone(
-    stationName: String, lat: Double, lng: Double, lineName: String, openURL: OpenURLAction
+    stationName: String, lat: Double, lng: Double, lineName: String, openURL: OpenURLAction,
+    onNotice: ((String) -> Void)? = nil
 ) {
     let store = StationPhoneStore.shared
     let result = store.result(stationName: stationName, lat: lat, lng: lng, lineName: lineName)
@@ -160,11 +164,11 @@ func callStationPhone(
         //   실패는 조회 실패와 같은 창구로 떨어뜨린다 — 사용자가 할 일("다른 수단으로 건다")이 같다.
         if let url = URL(string: "tel:\(phone.replacingOccurrences(of: "-", with: ""))") {
             openURL(url) { accepted in
-                if !accepted { announceStationPhone(.failed) }
+                if !accepted { announceStationPhone(.failed, onNotice: onNotice) }
             }
             return
         }
-        announceStationPhone(.failed)
+        announceStationPhone(.failed, onNotice: onNotice)
         return
     default:
         break
@@ -172,7 +176,7 @@ func callStationPhone(
     if result == nil {
         Task { await store.resolve(stationName: stationName, lat: lat, lng: lng, lineName: lineName) }
     }
-    announceStationPhone(result)
+    announceStationPhone(result, onNotice: onNotice)
 }
 
 /// 역 전화 로터 라벨의 단일 창구(E45·E65). **라벨만** 상태로 갈린다(대표번호면 그렇게 말한다) — 액션의 존재는
@@ -188,7 +192,7 @@ func stationCallLabel(name: String, stationName: String, lat: Double, lng: Doubl
 
 /// 전화 액션의 결과 통지·진동 한 자리. 번호를 걸었으면 통지가 없다(전화 앱 전환이 응답이다).
 @MainActor
-private func announceStationPhone(_ result: StationPhoneResult?) {
+private func announceStationPhone(_ result: StationPhoneResult?, onNotice: ((String) -> Void)?) {
     guard let notice = briefingPhoneAnnouncement(result) else { return }
     // ⚠ Kit이 돌려준 키를 그대로 `appLocalized(변수)`로 넘기지 않는다. `check-xcstrings-keys.mjs`는
     //   **문자열 리터럴만** 스캔하므로 변수 키는 카탈로그 대조에서 통째로 빠지고, 키가 없으면 VoiceOver가
@@ -209,6 +213,7 @@ private func announceStationPhone(_ result: StationPhoneResult?) {
     message.accessibilitySpeechAnnouncementPriority = .high
     AccessibilityNotification.Announcement(message).post()
     ResultHaptic.fire(appHaptic(notice.haptic))
+    onNotice?(text)
 }
 
 /// Kit 판정 어휘 → 앱 진동 창구(`ResultHaptic`은 UIKit에 기대므로 Kit에 둘 수 없다).

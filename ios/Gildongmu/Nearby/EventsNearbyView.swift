@@ -69,9 +69,9 @@ struct EventsNearbyView: View {
                                 secondaryOverride: joinText(
                                     event.category,
                                     eventFeeText(event),
-                                    appLocalized("place.distance", formatDistance(event.distanceMeters))),
-                                onAskAbout: { chatPlace = cultureEventToPlace(event) })
+                                    appLocalized("place.distance", formatDistance(event.distanceMeters))))
                         }
+                        .placeRowSwipeActions(cultureEventToPlace(event), onAskAbout: { chatPlace = cultureEventToPlace(event) })
                         .id(event.id)
                         .accessibilityFocused($focusedEventID, equals: event.id)
                     }

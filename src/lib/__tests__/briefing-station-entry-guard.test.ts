@@ -185,9 +185,9 @@ describe("③ 전화 액션은 상태와 무관하게 항상 있다 (spec §5.1�
     const fn = codeOnly(store.slice(store.indexOf("func callStationPhone("), store.indexOf("\n}\n", store.indexOf("func callStationPhone("))));
     // 열기 거부(전화 앱 없음)를 본다 — completion 없는 `openURL(url)` 단독 호출이면 거부가 침묵이 된다.
     expect(fn).toMatch(/openURL\(url\)\s*\{\s*accepted in/);
-    expect(fn).toContain("if !accepted { announceStationPhone(.failed) }");
-    // URL 조립 실패(번호에 내부 공백·부기)도 같은 창구로.
-    expect(fn).toMatch(/announceStationPhone\(\.failed\)\s*\n\s*return/);
+    expect(fn).toContain("if !accepted { announceStationPhone(.failed, onNotice: onNotice) }");
+    // URL 조립 실패(번호에 내부 공백·부기)도 같은 창구로. 화면 통지 자리(E72 `onNotice`)도 같은 창구를 지난다.
+    expect(fn).toMatch(/announceStationPhone\(\.failed, onNotice: onNotice\)\s*\n\s*return/);
   });
 });
 

@@ -393,8 +393,9 @@ struct SearchView: View {
             } else {
                 ForEach(filtered) { place in
                     NavigationLink(value: place) {
-                        PlaceRow(place: place, onAskAbout: { chatPlace = place })
+                        PlaceRow(place: place)
                     }
+                    .placeRowSwipeActions(place, onAskAbout: { chatPlace = place })
                     .accessibilityFocused($focusedRowID, equals: "place-\(place.id)")
                 }
             }
@@ -421,15 +422,13 @@ struct SearchView: View {
 }
 
 /// 장소 행. 이름·카테고리를 하나의 접근성 객체로 합친다.
-/// 화면 버튼 대신 VoiceOver 커스텀 액션(로터)으로 전화·길찾기 제공(spec §4).
+/// 동작(주소 복사·길찾기·전화·물어보기)은 행을 만드는 호출부가 행의 뿌리에 단다(`placeRowSwipeActions`, E72) —
+/// `swipeActions`는 `List` 행에 붙어야 동작하므로 링크 라벨 안쪽인 이 뷰에는 두지 않는다.
 struct PlaceRow: View {
     let place: Place
     /// 도메인 화면(내 주변)이 보조 줄을 대체할 때 주입(진료 상태·실내외·방위 등).
     /// nil이면 기본 조합(카테고리·주소·거리) — 검색 탭·채팅 카드 무변경.
     var secondaryOverride: String? = nil
-    /// 장소 채팅 진입(검색 결과 전용 — sheet 상태를 가진 화면만 넘긴다).
-    /// 채팅 카드 내 재사용은 nil로 액션 미노출(채팅 안에서 채팅 재진입 순환 방지).
-    var onAskAbout: (() -> Void)? = nil
 
     /// 비-ko 병기(E28): 시각 `Roman (한글)`, 낭독은 로마자만(`accessibilityLabel`).
     private var bilingualTitle: BilingualName { bilingual(place.name, roman: place.nameRoman) }
@@ -444,7 +443,6 @@ struct PlaceRow: View {
                 .foregroundStyle(.secondary)
         }
         .accessibilityElement(children: .combine)
-        .placeRowActions(place, onAskAbout: onAskAbout)
     }
 
     /// falsy 조각 제거+쉼표 결합(웹 joinText 미러). 거리는 있을 때만 마지막 조각으로.
@@ -463,51 +461,92 @@ struct PlaceRow: View {
     }
 }
 
-/// 장소 하나인 행의 로터 액션 묶음(`PlaceRow`에서 꺼냄, E65). 장소 하나를 가리키는 행이면 화면이 달라도 같은
-/// 묶음을 단다 — 둘러보기 「주변 상황」 행이 이것을 붙인다.
+/// 장소 하나인 행의 동작 묶음(E65 → E72 위원장 판정 1·2). 장소 하나를 가리키는 행이면 화면이 달라도 같은 묶음이다.
+/// 네 동작(주소 복사·여기까지 길찾기·전화 걸기·물어보기)이고 보유한 데이터만 낸다(빈 도로명·빈 전화 = 죽은 동작).
+/// 카카오맵·네이버 지도 딥링크는 행에 두지 않는다 — 장소 상세의 보조 출구다.
+///
+/// 그리는 방식은 호스트가 고른다. `List` 행은 밀기 버튼(iOS가 같은 버튼을 VoiceOver 동작 목록에 넣는다),
+/// `List` 밖(채팅 카드, `ScrollView`)은 로터. 한 행에 둘을 같이 두지 않는다(동작 목록에 두 번 선다).
+/// 목표로 들리는 순서는 주소 복사 → 여기까지 길찾기 → 전화 걸기 → 물어보기(E60에서 딥링크를 뺀 것)이고,
+/// 밀기 버튼이 동작 목록에 오르는 순서는 실기기 VoiceOver만 판정한다(spec 2026-10-17-e72 §2.2).
 struct PlaceRowActions: ViewModifier {
+    enum Style { case swipe, rotor }
+
     let place: Place
-    /// 장소 채팅 진입(sheet 상태를 가진 화면만 넘긴다). nil이면 액션 미노출(채팅 안 재진입 순환 방지).
+    /// 장소 채팅 진입(sheet 상태를 가진 화면만 넘긴다). nil이면 동작 미노출(채팅 안 재진입 순환 방지).
     let onAskAbout: (() -> Void)?
+    let style: Style
     @Environment(\.openURL) private var openURL
 
+    @ViewBuilder
     func body(content: Content) -> some View {
-        // ⚠ 선언은 역순: VoiceOver 쓸기 메뉴가 빌더 선언의 역순으로 노출된다(실기기 관측).
-        // 사용자 경험 순서: 주소 복사하기 → 여기까지 길찾기 → 카카오맵 → 네이버 지도 → 전화 걸기 → 물어보기.
-        // 보유한 데이터만 낸다(빈 도로명·빈 전화 = 죽은 액션).
-        content.accessibilityActions {
-            if let onAskAbout {
-                Button(appLocalized("ios.place.askAbout", bilingual(place.name, roman: place.nameRoman).primary)) { onAskAbout() }
-            }
-            if let phone = place.phone, !phone.isEmpty,
-               let telURL = URL(string: "tel:\(phone.replacingOccurrences(of: "-", with: ""))") {
-                Button(appLocalized("ios.place.call")) { openURL(telURL) }
-            }
-            // "이 장소로 가는 법" 그룹: 외부 앱 위임 딥링크 둘 뒤에 자체 길찾기를 선언해
-            // 로터에서는 자체 길찾기가 주소 복사 바로 다음, 딥링크 둘보다 앞에 온다(E60).
-            if let url = buildNaverRouteDeeplink(mode: .walk, dest: dest, appname: AppConfig.appIdentifier) {
-                Button(appLocalized("ios.route.naver")) { openURL(url) }
-            }
-            if let url = buildKakaoRouteDeeplink(mode: .walk, dest: dest) {
-                Button(appLocalized("ios.route.kakao")) { openURL(url) }
-            }
-            // 길찾기 탭 도착지 프리필 진입(Task I4).
-            Button(appLocalized("directions.toHere")) {
-                DirectionsPrefillStore.shared.pending = DirectionsPrefill(
-                    role: .to, endpoint: .place(label: place.name, lat: place.lat, lng: place.lng, labelRoman: place.nameRoman))
-            }
-            if !place.roadAddress.isEmpty {
-                Button(appLocalized("ios.place.copyAddress")) { copyAddressToPasteboard(place.roadAddress) }
+        switch style {
+        case .swipe:
+            content
+                // 왼쪽 밀기, 가장자리부터. 끝까지 밀기 실행은 첫 버튼이 주소 복사(클립보드만 바뀐다)일 때만 둔다 —
+                // 도로명이 없어 첫 버튼이 여기까지 길찾기면 끈다. 프리필은 길찾기 탭을 새로 만들어 앞서 조회한 경로를
+                // 지우고 최근 도착지에 기록하며 자동 조회(유료 호출 포함)를 내므로 되돌릴 수 없다.
+                .swipeActions(edge: .trailing, allowsFullSwipe: !place.roadAddress.isEmpty) {
+                    copyAddressButton
+                    directionsButton
+                }
+                // 오른쪽 밀기. 전화는 되돌릴 수 없어 끝까지 밀기 실행을 끈다(앱의 tel: 열기에 iOS 확인창이
+                // 뜨는지는 버전마다 달라 왔다). 버튼을 보고 눌러야 실행된다.
+                .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                    callButton
+                    askButton
+                }
+        case .rotor:
+            // ⚠ 선언은 역순: VoiceOver 쓸기 메뉴가 빌더 선언의 역순으로 노출된다(실기기 관측).
+            content.accessibilityActions {
+                askButton
+                callButton
+                directionsButton
+                copyAddressButton
             }
         }
     }
 
-    private var dest: RouteDestination { RouteDestination(lat: place.lat, lng: place.lng, name: place.name) }
+    @ViewBuilder
+    private var copyAddressButton: some View {
+        if !place.roadAddress.isEmpty {
+            Button(appLocalized("ios.place.copyAddress")) { copyAddressToPasteboard(place.roadAddress) }
+        }
+    }
+
+    /// 길찾기 탭 도착지 프리필 진입(Task I4).
+    private var directionsButton: some View {
+        Button(appLocalized("directions.toHere")) {
+            DirectionsPrefillStore.shared.pending = DirectionsPrefill(
+                role: .to, endpoint: .place(label: place.name, lat: place.lat, lng: place.lng, labelRoman: place.nameRoman))
+        }
+    }
+
+    @ViewBuilder
+    private var callButton: some View {
+        if let phone = place.phone, !phone.isEmpty,
+           let telURL = URL(string: "tel:\(phone.replacingOccurrences(of: "-", with: ""))") {
+            Button(appLocalized("ios.place.call")) { openURL(telURL) }
+        }
+    }
+
+    @ViewBuilder
+    private var askButton: some View {
+        if let onAskAbout {
+            Button(appLocalized("ios.place.askAbout", bilingual(place.name, roman: place.nameRoman).primary)) { onAskAbout() }
+        }
+    }
 }
 
 extension View {
+    /// `List` 행의 뿌리(행이 `NavigationLink`면 그 링크)에 단다.
+    func placeRowSwipeActions(_ place: Place, onAskAbout: (() -> Void)?) -> some View {
+        modifier(PlaceRowActions(place: place, onAskAbout: onAskAbout, style: .swipe))
+    }
+
+    /// `List` 밖(채팅 카드)의 장소 행에 단다.
     func placeRowActions(_ place: Place, onAskAbout: (() -> Void)?) -> some View {
-        modifier(PlaceRowActions(place: place, onAskAbout: onAskAbout))
+        modifier(PlaceRowActions(place: place, onAskAbout: onAskAbout, style: .rotor))
     }
 }
 

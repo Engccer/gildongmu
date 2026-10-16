@@ -38,7 +38,7 @@ struct BusNearbyView: View {
     /// 항목 정체성 옵셔널 바인딩(Bool 다중 부착 금지 — SubwayNearbyView 주석 참고)
     @AccessibilityFocusState private var focusedStop: String?
     @State private var lander = NearbyFocusLander()
-    /// 제목 로터의 「여기까지 길찾기」를 낼 수 있는가(E65, `SubwayNearbyView`와 같은 계약).
+    /// 제목 밀기 버튼의 「여기까지 길찾기」를 낼 수 있는가(E65, `SubwayNearbyView`와 같은 계약).
     private let directionsEntryAllowed: Bool
 
     /// anchor 기본값 nil = 현재 위치(내 주변 허브 호출처 무변경).
@@ -57,14 +57,15 @@ struct BusNearbyView: View {
         return bilingualLine(visible: joinText(name.display, rest), accessible: joinText(name.primary, rest))
     }
 
-    /// 정류소 제목(헤딩) + 제목 로터(E65). 정류소 상세 화면은 없어 「여기까지 길찾기」 하나뿐이다. 길찾기를 숨기는
-    /// 자리(안내 시트·길찾기 탭 스택)에선 액션을 붙이지 않는다(빈 액션 빌더도 두지 않는다). 값은 화면 수명 내내 같아
-    /// 두 갈래가 오가지 않는다.
+    /// 정류소 제목(헤딩) + 제목 밀기 버튼(E65 → E72). 정류소 상세 화면은 없어 「여기까지 길찾기」 하나뿐이다. 길찾기를
+    /// 숨기는 자리(안내 시트·길찾기 탭 스택)에선 버튼을 붙이지 않는다(빈 빌더도 두지 않는다). 값은 화면 수명 내내 같아
+    /// 두 갈래가 오가지 않는다. 끝까지 밀기 실행은 끈다 — 프리필은 앞서 조회한 길찾기를 지우고 자동 조회를 낸다
+    /// (`PlaceRowActions`와 같은 이유).
     @ViewBuilder
     private func stopTitle(_ stop: BusStop) -> some View {
         let heading = busStopHeading(stop).accessibilityAddTraits(.isHeader)
         if directionsEntryAllowed {
-            heading.accessibilityActions {
+            heading.swipeActions(edge: .trailing, allowsFullSwipe: false) {
                 Button(appLocalized("directions.toHere")) {
                     DirectionsPrefillStore.shared.pending = DirectionsPrefill(
                         role: .to, endpoint: .place(

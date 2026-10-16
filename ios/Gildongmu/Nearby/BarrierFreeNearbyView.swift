@@ -66,9 +66,9 @@ struct BarrierFreeNearbyView: View {
                                 place: barrierFreePlaceToPlace(place),
                                 secondaryOverride: joinText(
                                     place.address,
-                                    appLocalized("place.distance", formatDistance(place.distanceMeters))),
-                                onAskAbout: { chatPlace = barrierFreePlaceToPlace(place) })
+                                    appLocalized("place.distance", formatDistance(place.distanceMeters))))
                         }
+                        .placeRowSwipeActions(barrierFreePlaceToPlace(place), onAskAbout: { chatPlace = barrierFreePlaceToPlace(place) })
                         .id(place.id)
                         .accessibilityFocused($focusedPlaceID, equals: place.id)
                     }

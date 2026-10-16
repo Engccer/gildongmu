@@ -205,12 +205,16 @@ struct AroundNearbyView: View {
             let lang = AppLanguage.current
             ForEach(Array(zip(overview.bullets, buildOverviewLines(overview, lang: lang)).enumerated()), id: \.offset) { _, pair in
                 let (bullet, line) = pair
+                let targets = overviewDetailTargets(bullet, lang: lang)
                 // 거리 밀도가 높은 문장이라 낭독 변환 필수(m → 로케일 단어). 한글 병기는 시각 전용 꼬리(E28).
-                bilingualLine(visible: line.display, accessible: line.text)
-                    // 문장이 부른 장소마다 「○○ 상세 보기」(E65, 채팅 산문·브리핑 동형). 문장은 한 접근성 객체로 남는다.
+                // 문장이 부른 장소 이름에만 링크(E72 판정 3, 시각 탭 경로). 문장은 한 접근성 객체로 남는다.
+                Text(InlineTargets.linked(AttributedString(line.display), names: targets.map(\.name)))
+                    .accessibilityLabel(Text(spokenUnits(line.text)))
+                    .inlineTargetTaps { detailTarget = targets[$0] }
+                    // 같은 대상마다 「○○ 상세 보기」(E65, 채팅 산문·브리핑 동형).
                     // ⚠ 선언은 역순: VoiceOver 로터가 빌더 선언의 역순으로 노출된다 — 문장 등장 순으로 들리게 뒤집는다.
                     .accessibilityActions {
-                        ForEach(overviewDetailTargets(bullet, lang: lang).reversed()) { target in
+                        ForEach(targets.reversed()) { target in
                             Button(target.isStation
                                    ? appLocalized("transitGuide.openStation", target.name)
                                    : appLocalized("ios.chat.openPlace", target.name)) {
@@ -247,9 +251,9 @@ struct AroundNearbyView: View {
                         secondaryOverride: joinText(
                             categoryPiece(pickCategory(lang: AppLanguage.current, category: place.categoryRaw, categoryEn: place.categoryEn)),
                             bearingLabel(place.bearing),
-                            appLocalized("place.distance", formatDistance(place.distanceMeters))),
-                        onAskAbout: { chatPlace = surroundingPlaceToPlace(place) })
+                            appLocalized("place.distance", formatDistance(place.distanceMeters))))
                 }
+                .placeRowSwipeActions(surroundingPlaceToPlace(place), onAskAbout: { chatPlace = surroundingPlaceToPlace(place) })
                 .id(place.id)
                 .accessibilityFocused($focusedID, equals: place.id)
             }

@@ -169,9 +169,9 @@ struct SubwayNearbyView: View {
     /// `false`가 되어 초기 상태에서 나머지 행이 포커스를 주장한다(실기기 확정).
     @AccessibilityFocusState private var focusedStation: String?
     @State private var lander = NearbyFocusLander()
-    /// 역 제목 로터 「상세 보기」가 push하는 역 상세(E65, 브리핑 E45와 같은 목적지 모양).
+    /// 역 제목 밀기 버튼 「상세 보기」가 push하는 역 상세(E65 → E72, 브리핑 E45와 같은 목적지 모양).
     @State private var stationDetail: StationDestination?
-    /// 행 로터의 「여기까지 길찾기」를 낼 수 있는가(E65). 장소 상세가 자기 `showsDirectionsEntry`를 넘긴다 —
+    /// 행 밀기 버튼의 「여기까지 길찾기」를 낼 수 있는가(E65). 장소 상세가 자기 `showsDirectionsEntry`를 넘긴다 —
     /// 안내 시트·길찾기 탭 스택 안의 상세는 프리필이 그 화면을 파괴하므로 숨긴다(E45 spec §7과 같은 이유).
     private let directionsEntryAllowed: Bool
 
@@ -273,7 +273,7 @@ struct SubwayNearbyView: View {
     }
 }
 
-/// 역 제목 로터(E65, 브리핑 E45 동형): 상세 보기 → 여기까지 길찾기 → 전화. 좌표가 없는 응답이면 셋 다 없다.
+/// 역 제목 밀기 버튼(E65 → E72, 브리핑 E45 동형): 상세 보기 → 여기까지 길찾기 → 전화. 좌표가 없는 응답이면 셋 다 없다.
 /// **전화 저장소는 이 수정자만 관찰한다** — 라벨이 직통·대표번호로 갈려 저장소를 읽어야 하는데, 그 읽기가 목록
 /// 본문에 있으면 번호 도착·재확인마다 목록 전체가 다시 그려진다(`BriefingStationRow` 동형).
 /// 좌표 유무로 본문을 가르지 않는다(가르면 좌표가 생기는 순간 헤딩 행이 재생성돼 커서가 풀린다).
@@ -282,6 +282,9 @@ private struct StationTitleActions: ViewModifier {
     let directionsEntryAllowed: Bool
     let onOpen: (StationDestination) -> Void
     @Environment(\.openURL) private var openURL
+    /// 전화 밀기 버튼의 결과 문장을 화면으로 띄울 자리(VoiceOver가 꺼져 있을 때만, E72). 번호가 없거나 찾는 중이면
+    /// 통지가 VoiceOver에만 가므로, 눈으로 쓰는 사람에게는 이것이 없으면 무반응 버튼이다.
+    @State private var visibleNotice: String?
 
     private var lineHint: String? { nearbyStationLineHint(lines: station.lines) }
 
@@ -293,16 +296,16 @@ private struct StationTitleActions: ViewModifier {
     }
 
     func body(content: Content) -> some View {
-        // ⚠ 선언은 역순: VoiceOver 로터가 빌더 선언의 역순으로 노출된다(PlaceRow·채팅·E45 실측).
-        // 전화 액션은 늘 있고 라벨만 상태로 갈린다(E45 판정 ④, 위원장 판정 2026-10-05 E65 그대로).
+        // 밀기 버튼(E72 위원장 판정 1). VoiceOver 동작 목록은 iOS가 이 버튼에서 만든다 — 목표 순서는 E65 그대로
+        // 상세 보기 → 여기까지 길찾기 → 전화(실기기 판정, `PlaceRowActions`와 같은 배치 가정).
+        // 전화 동작은 늘 있고 라벨만 상태로 갈린다(E45 판정 ④, 위원장 판정 2026-10-05 E65 그대로).
         content
-            .accessibilityActions {
+            // 왼쪽 밀기, 가장자리부터. 끝까지 밀면 상세 보기(화면 이동)가 실행된다.
+            .swipeActions(edge: .trailing) {
                 if let lat = station.lat, let lng = station.lng {
-                    Button(stationCallLabel(
-                        name: name, stationName: station.stationName, lat: lat, lng: lng, lineName: lineHint ?? "")) {
-                        callStationPhone(
-                            stationName: station.stationName, lat: lat, lng: lng,
-                            lineName: lineHint ?? "", openURL: openURL)
+                    Button(appLocalized("transitGuide.openStation", name)) {
+                        let stop = TransitLegStop(name: station.stationName, lat: lat, lng: lng, nameEn: station.nameEn)
+                        onOpen(StationDestination(place: transitStopPlace(stop), lineName: lineHint))
                     }
                     if directionsEntryAllowed {
                         Button(appLocalized("directions.toHere")) {
@@ -311,11 +314,28 @@ private struct StationTitleActions: ViewModifier {
                                     label: station.stationName, lat: lat, lng: lng, labelRoman: station.nameEn))
                         }
                     }
-                    Button(appLocalized("transitGuide.openStation", name)) {
-                        let stop = TransitLegStop(name: station.stationName, lat: lat, lng: lng, nameEn: station.nameEn)
-                        onOpen(StationDestination(place: transitStopPlace(stop), lineName: lineHint))
+                }
+            }
+            // 오른쪽 밀기. 전화는 되돌릴 수 없어 끝까지 밀기 실행을 끈다(`PlaceRowActions`와 같은 이유).
+            .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                if let lat = station.lat, let lng = station.lng {
+                    Button(stationCallLabel(
+                        name: name, stationName: station.stationName, lat: lat, lng: lng, lineName: lineHint ?? "")) {
+                        callStationPhone(
+                            stationName: station.stationName, lat: lat, lng: lng,
+                            lineName: lineHint ?? "", openURL: openURL,
+                            onNotice: { text in
+                                // VoiceOver 사용자는 같은 문장을 통지로 이미 들었다(알림창까지 내면 두 번 듣는다).
+                                if !UIAccessibility.isVoiceOverRunning { visibleNotice = text }
+                            })
                     }
                 }
+            }
+            .alert(
+                visibleNotice ?? "",
+                isPresented: Binding(get: { visibleNotice != nil }, set: { if !$0 { visibleNotice = nil } })
+            ) {
+                Button(appLocalized("actions.close"), role: .cancel) {}
             }
             // 목록이 떠 있는 동안 `recheckSeconds`마다 다시 부른다 — 저장소는 갱신되지 않은 값을 6분에 지운다.
             // 신선하면 네트워크 없이 돌아오고, 같은 키 중복은 저장소가 막는다(브리핑 E45 동형). 역마다 5분에 한 번

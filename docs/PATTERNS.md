@@ -29,9 +29,9 @@
 
 **화면을 띄울지 말지를 가르는 판정은 동기로 한다**(2026-08-19, 도보 안내 종료 화면): 비동기 판정은 화면을 띄운 뒤 지워 깜빡임과 VO 착지 경합을 만든다. `BeaconModel`은 `PedometerService.startLiveUpdates`로 라이브 누적을 들고 있다가 종료 순간 `WalkHealth.isMeaningfulWalk`(50m)를 동기로 판정하고, 스와이프·VO escape는 종료 화면을 지우지 않고 시트를 **최소화**만 하며(`isMinimized`, 2026-08-22 N1), 소거는 시트 닫기 버튼의 명시 `clearArrival()`뿐이다 — sheet set 클로저 안에서 바인딩을 되돌리지 말 것. 세부는 spec `2026-08-17-walk-arrival-health-summary-design.md`.
 
-### 채팅 산문 블록은 언제나 한 접근성 객체이고, 장소 언급 수로 활성화 방식만 가른다
+### 채팅 산문 블록은 언제나 한 접근성 객체이고, 장소 언급이 있으면 이름 링크 + 로터다
 
-**채팅 산문 블록은 언제나 한 접근성 객체이고, 장소 언급 수로 활성화 방식만 가른다**(2026-08-17 위원장 판정, 실호출 표본 27블록 중 26이 1개): 1개면 **블록 전체가 버튼**(VO "…, 버튼"·더블탭=상세, 시각 사용자는 줄 아무 데나 탭, 이름만 링크색·링크 속성 없음), 2개 이상이면 이름별 인라인 링크(자체 스킴 `gildongmu-place-mention`, `openURL` 가로채기) + 로터 커스텀 액션 "○○ 상세 보기". 근거는 같은 답변의 렌더 카드뿐이라(`chatPlaceMentions`) 카드 없는 답변(장소 앵커 모드)엔 아무것도 붙지 않는다. nearby류 self-fetch 렌더 4종(소아 진료·아이 놀 곳·둘러보기·무장애)은 서버가 `places`(`src/lib/nearby-place.ts` 투영 ↔ Kit `PlaceProjection.swift`)를 함께 실어 iOS가 장소 카드로 디코딩한다 — **새 nearby 도구에 렌더를 달면 이 투영도 함께 싣는다**(안 실으면 iOS에서 그 답변만 상세 진입이 죽는다). 카드 활성화·블록 활성화 모두 상세 **시트**(닫기 버튼, "물어보기" 숨김)로 열고, 닫으면 연 원점(카드·블록)으로 포커스를 복원한다(`focusedOriginKey`). ⚠ 2개 이상 블록의 인라인 링크가 VO 객체를 쪼개는지는 실기기 판정 항목 — 쪼개면 `.accessibilityElement(children: .combine)`으로 묶는다. **말풍선 안 구획(카드 묶음·출처)은 헤딩으로 나눈다**(`sectionHeading`, 수 포함 "장소 N곳"·"출처", 빈 묶음엔 금지) — 산문 → 카드 → 출처 경계가 VO 선형 읽기에서 안 들렸다(위원장 실기기 2026-08-17). 웹 `SourceList`는 "출처 " 접두 텍스트가 같은 역할.
+**채팅 산문 블록은 언제나 한 접근성 객체이고, 장소 언급이 있으면 이름 링크 + 로터다**(E72 위원장 판정 4, 2026-10-17 — 종전 "1개=블록 버튼" 갈래는 일반 사용자에게 직관적이지 않아 버렸다): 언급 수와 무관하게 이름마다 인라인 링크(`InlineTargets`, 시각 탭) + 로터 커스텀 액션 "○○ 상세 보기"(VO). 링크·로터 규칙은 아래 「로터 동작은 화면에도 보인다」 절. 근거는 같은 답변의 렌더 카드뿐이라(`chatPlaceMentions`) 카드 없는 답변(장소 앵커 모드)엔 아무것도 붙지 않는다. nearby류 self-fetch 렌더 4종(소아 진료·아이 놀 곳·둘러보기·무장애)은 서버가 `places`(`src/lib/nearby-place.ts` 투영 ↔ Kit `PlaceProjection.swift`)를 함께 실어 iOS가 장소 카드로 디코딩한다 — **새 nearby 도구에 렌더를 달면 이 투영도 함께 싣는다**(안 실으면 iOS에서 그 답변만 상세 진입이 죽는다). 카드 활성화·블록 활성화 모두 상세 **시트**(닫기 버튼, "물어보기" 숨김)로 열고, 닫으면 연 원점(카드·블록)으로 포커스를 복원한다(`focusedOriginKey`). **말풍선 안 구획(카드 묶음·출처)은 헤딩으로 나눈다**(`sectionHeading`, 수 포함 "장소 N곳"·"출처", 빈 묶음엔 금지) — 산문 → 카드 → 출처 경계가 VO 선형 읽기에서 안 들렸다(위원장 실기기 2026-08-17). 웹 `SourceList`는 "출처 " 접두 텍스트가 같은 역할.
 
 ### 경로 브리핑의 역 진입점은 이름 조인이고 줄은 전부 `Text`로 남는다
 
@@ -39,7 +39,7 @@
 
 - ⚠ **대상 역을 `stops.first`/`stops.last`로 고르지 말 것.** 서버 `toLegStops`가 이름·좌표 무효 항목을 `flatMap`으로 떨어뜨리므로 목록의 첫·마지막이 조용히 중간역이 되고, 그때 열리는 역은 줄에서 들린 역이 아니다(provider `previousStopName`이 같은 이유로 정규화 비교를 거친 뒤에만 쓴다). **줄에서 들린 이름으로 조인하고**(`normalizeStopName` 재사용, 자체 정규화 금지) **조인 실패는 진입점 0**이다. 승차는 앞에서부터·하차는 뒤에서부터 찾는다(같은 역을 두 번 지나는 노선에서 어느 통과인지가 갈린다).
 - **`.walk` 줄의 대상은 `legs[i+1]`이 아니라 다음 non-walk leg의 승차역**이다 — 서버가 도보 줄의 행선지 이름을 그 술어로 유도하므로(`odsay.ts:413-423`), 게이트가 같은 술어를 써야 도보가 연달아 나오는 응답에서 "같은 이름인데 한 줄에만 진입점"이 생기지 않는다. 그 leg에 `toName`은 실리지 않으므로 `fromName` 하나를 보는 것이 곧 "줄에 들린 이름" 게이트다(실호출 66쌍 불일치 0).
-- **진입은 로터 커스텀 액션뿐이고 역 개수는 액션 수만 정한다.** 선언은 **역순**이되 역별 묶음을 만든 **뒤** 전체를 뒤집어야 쌍 순서까지 함께 뒤집힌다(`actions.flatMap{open, call}.reversed()` — `actions.reversed().flatMap`으로 옮기면 "A 전화 → A 상세"가 된다).
+- **진입은 역 이름 링크(시각 탭, E72)와 로터 커스텀 액션(VO)이고 역 개수는 링크·액션 수만 정한다.** 링크는 상세 열기뿐이고(전화는 라벨이 상태로 갈려 로터에만), 링크 순번은 `actions` 순번이다(`stationRow`가 같은 순서로 이름을 넘긴다). 로터 선언은 **역순**이되 역별 묶음을 만든 **뒤** 전체를 뒤집어야 쌍 순서까지 함께 뒤집힌다(`actions.flatMap{open, call}.reversed()` — `actions.reversed().flatMap`으로 옮기면 "A 전화 → A 상세"가 된다).
 - **소비자는 옵트인이고 기본은 꺼짐이다**(`TransitRouteRows.stationEntry`, 클로저 옵셔널). `GuideOverviewSheet`(안내 조망 "다른 경로")는 같은 뷰를 쓰지만 `navigationDestination`이 0건이라 켜면 **아무 일도 일어나지 않는 액션**이 선다(스크린 리더 사용자에게 무반응 액션은 진단 불가한 고장). 미리 조회가 후보마다 도는 것과 "시트 안 장소 상세는 닫기 버튼 필수"(E33) 우회도 같은 기본값이 막는다. ⚠ Bool 게이트와 push 클로저를 나눠 두면 "켜졌는데 클로저가 없다"는 조합이 생기므로 **하나로 합친다**.
 - **전화 액션은 저장소 상태와 무관하게 상시이고 라벨만 갈린다**(직통 `transitGuide.callStation` / 대표번호 `…Representative`). 액션을 상태로 거르면 "번호 없음"·"찾는 중"·"조회 실패"가 전부 **액션 부재**로 뭉개진다(헌장 §1 3-state). 안내 시트 경유역 로터도 같은 계약이다(E44 §5.5 개정, 라벨은 이름 없는 `ios.place.call` 계열 — 행 이름이 곧 역명이다).
 - **통지·진동은 한 창구를 지난다**(`callStationPhone`, `StationPhoneStore.swift`): 번호면 걸고 **통지하지 않으며**(전화 앱 전환이 응답. 단 `tel:` URL 조립 실패나 전화 앱 거부는 조회 실패와 같은 `.failed` 통지 — `announceStationPhone`), 없음·모름·실패는 `.high` 통지 + 진동. ⚠ **모름(`nil`)은 세 상태를 겹쳐 들고**(조회 전·첫 조회 중·6분 축출) 아무도 다시 조회하지 않으면 "찾고 있습니다"가 영영 거짓이라, **통지 전에 `resolve`를 킥오프**해 문장이 사후적으로 참이 되게 한다. 판정은 Kit `briefingPhoneAnnouncement`이고 호출부는 그 키를 **리터럴 `switch`로 되받는다**(`appLocalized(변수)`는 `check-xcstrings-keys.mjs` 대조를 우회한다).
@@ -53,12 +53,22 @@
 
 **내 주변 탭 로터 액션은 기존 판별선을 재사용한다**(E65, 2026-10-05, spec `2026-10-05-nearby-rotor-actions-design.md` §2·§3): 장소 하나인 행은 `PlaceRow` 묶음, 장소가 여럿인 문장은 장소마다 「○○ 상세 보기」.
 
-- **`PlaceRow`의 로터 묶음은 수정자 `placeRowActions`(`SearchView.swift` `PlaceRowActions`) 하나다** — 「주변 상황」 행도 이것을 붙인다. 순서 가드(E60 `ios-location-ui.test.ts`)가 `SearchView.swift`를 읽으므로 수정자를 다른 파일로 옮기지 않는다. 버튼형 「주변 확인」(안내 시트)은 붙이지 않는다(`rowActionsAskAbout` nil).
+- **`PlaceRow` 묶음은 `SearchView.swift` `PlaceRowActions` 하나다**(E72에서 밀기 버튼으로 전환, 아래 「로터 동작은 화면에도 보인다」 절) — 「주변 상황」 행도 이것을 단다. 순서 가드(`e72-visible-actions-guard.test.ts`)가 `SearchView.swift`를 읽으므로 수정자를 다른 파일로 옮기지 않는다. 버튼형 「주변 확인」(안내 시트)은 붙이지 않는다(`rowActionsAskAbout` nil).
 - **문장 속 대상은 문장을 파싱하지 않고 불릿 구조에서 뽑는다**(Kit `overviewDetailTargets`, `buildOverviewLines`와 같은 순서·같은 이름 함수). 뷰는 `zip(bullets, lines)`로 한 줄에 대상들을 역순 선언한다. 옵트인 재료가 없는 항목·버스 정류소는 대상이 아니다(죽은 액션 금지).
-- **역 제목 로터는 E45 창구를 그대로 지난다**: 라벨 `stationCallLabel`(브리핑과 공용), 동작 `callStationPhone`, 노선 힌트 Kit `nearbyStationLineHint`, 역 Place `transitStopPlace`, 이름 언어 `subwayStationEnglishLines`(헤딩과 같은 판정). 전화 액션은 늘 있다(위원장 판정 2026-10-05).
+- **역 제목 동작(E72부터 밀기 버튼)은 E45 창구를 그대로 지난다**: 라벨 `stationCallLabel`(브리핑과 공용), 동작 `callStationPhone`, 노선 힌트 Kit `nearbyStationLineHint`, 역 Place `transitStopPlace`, 이름 언어 `subwayStationEnglishLines`(헤딩과 같은 판정). 전화 액션은 늘 있다(위원장 판정 2026-10-05).
 - ⚠ **앵커 목록의 「여기까지 길찾기」는 장소 상세의 `showsDirectionsEntry`를 따른다** — `SubwayNearbyView`·`BusNearbyView`의 `directionsEntryAllowed`는 기본값 없는 인자다. 안내 시트·길찾기 탭 스택 안의 상세에서 연 목록이 프리필을 내면 그 화면이 파괴된다(E45 spec §7). 환경값으로 넘기지 않는다(스택 안 push로의 전달이 검증되지 않은 기제).
 - **push한 화면(장소·역 상세, 노선 정류소)에서 돌아온 등장은 다시 조회하지 않는다**(A64 위원장 판정 2026-10-17, 지하철역·버스·둘러보기): `.task`가 복귀마다 다시 돌아 "N곳" 완료 통지가 복귀 커서 낭독과 겹친다. 판정은 Kit `NearbyLoadCore.appear()` 한 곳이고 화면은 `.task { await model.appear() }` + push한 화면의 `.onAppear { model.notePushed() }`만 한다(화면별 건너뛰기 분기 금지). 표식은 목록이 있을 때만 서고 한 번 소비된다. 상태로 막으면(`if case .loaded`) 탭 전환 복귀의 실시간 재조회까지 사라진다. 낡은 도착 시각은 새로고침이 받는다.
 - 가드 `src/lib/__tests__/e65-nearby-rotor-guard.test.ts`.
+
+### 로터 동작은 화면에도 보인다 (E72)
+
+**로터 동작은 화면에도 보인다**(E72 위원장 판정 2026-10-17, spec `2026-10-17-e72-visible-row-actions-design.md`): VoiceOver 전용 지름길로 남은 동작을 일반 터치 사용자도 쓰게 한다. 자리마다 둘 중 하나다.
+
+- **장소 하나인 `List` 행은 밀기 버튼**(`placeRowSwipeActions`, 역·정류소 제목도 같은 배치). iOS가 같은 버튼을 VoiceOver 동작 목록에 넣으므로 그 행에 `accessibilityActions`를 겹쳐 두지 않는다(동작이 두 번 선다). ⚠ **밀기 수정자는 행의 뿌리(행이 `NavigationLink`면 그 링크)에 단다** — `swipeActions`는 `List` 행에 붙어야 서므로 링크 라벨 안쪽(`PlaceRow` 본문)에 두지 않는다. 그래서 `PlaceRow`는 동작을 달지 않고 호출부가 단다. **`List` 밖(채팅 카드 `ScrollView`)은 같은 묶음을 로터로**(`placeRowActions`). 판별선은 화면 종류가 아니라 "그 행이 `List` 행인가"다.
+- **배치**: 왼쪽 밀기 = 주소 복사 → 여기까지 길찾기(역 제목은 상세 보기 → 여기까지 길찾기), 오른쪽 밀기 = 전화 걸기 → 물어보기. 끝까지 밀면 첫 버튼이 실행되므로 그 자리는 되돌릴 수 있는 것만 둔다. **전화가 든 쪽은 `allowsFullSwipe: false`** — 앱의 `tel:` 열기에 iOS 확인창이 뜨는지는 버전마다 달라 왔다. 목표로 들리는 순서는 E60에서 딥링크를 뺀 주소 복사 → 여기까지 길찾기 → 전화 → 물어보기이고, 밀기 버튼이 동작 목록에 오르는 순서는 실기기만 판정한다(BACKLOG §2 E72 ①).
+- **목록 행에는 카카오맵·네이버 지도 딥링크가 없다**(판정 2). 딥링크는 장소 상세의 보조 출구다.
+- **한 줄 안에 여는 대상이 있으면 그 이름에만 링크**(`InlineTargets.linked` + `inlineTargetTaps`, 자체 스킴 `gildongmu-inline-target`, URL엔 순번만): 둘러보기 「한눈에 보기」 문장·경로 브리핑 지하철 줄·채팅 산문 블록. 줄은 `Text` 하나(한 접근성 객체)이고 낭독 라벨은 그대로이며, VO 진입은 **같은 대상 목록**에서 다는 로터다(링크 순번 = 대상 순번). 대상이 하나든 둘 이상이든 같다 — 줄 전체를 버튼으로 만들지 않는다. 줄 글자에 "버튼"을 넣지 않는다. 링크는 **긴 이름부터** 걸고 이미 걸린 범위와 겹치면 건너뛴다(「강남구청」 안의 「강남」). ⚠ `Text` 안 링크가 VO 객체를 쪼개는지는 실기기 판정이다 — 쪼개지면 `.accessibilityElement(children: .combine)`이 처방이고 실측 전엔 넣지 않는다.
+- 가드 `src/lib/__tests__/e72-visible-actions-guard.test.ts`(밀기 배치·딥링크 부재·호출 수 = 수정자 수·링크와 로터의 같은 대상).
 
 ### 순서 바꾸기 로터 액션은 Kit `Reorder` 한 판정(`availableMoves`·`moved`)과 앱 `reorderActions`·`announceReorderPosition`·`keepFocusAfterMove` 한 벌을 쓴다
 
