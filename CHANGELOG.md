@@ -9,6 +9,14 @@
 
 ---
 
+## 2026-10-17
+
+### Tmap 응답의 날 제어 문자로 en 도보 502 수정 (A62, 서버)
+Tmap이 POI 이름 둘을 날 NUL로 이어 문자열 안에 넣어(`청담역 14번출구␀CU 청담자이점`) 응답 파싱이 통째로 실패하던 것을, 보행자·자동차 provider 공용 `parseTmapJson`(`src/lib/providers/tmap-json.ts`)이 날 제어 문자를 공백으로 바꾼 뒤 파싱하게 했다. 재현 경로(강남 청담, en 판본 1·2)가 502 → 200. ko 도보의 Tmap 폴백과 자동차 ko 기본 경로도 같은 파서를 지난다.
+
+### npm 발행 워크플로 실행 환경 이관 (C6, CI)
+`cli-publish.yml`의 `actions/checkout`·`actions/setup-node`를 v4 → v7(node24), test 잡 Node 20 → 22로 올렸다. `workflow_dispatch`를 더해 태그 없이 test 잡만 돌릴 수 있고, publish 잡은 태그 push 이벤트에서만 돈다.
+
 ## 2026-10-05
 
 ### 건너는 길 이름 방향 의존 오류 수정 (A65, 서버)

@@ -8,7 +8,7 @@ on:
     paths:
       - "packages/**"
       - ".github/workflows/cli-publish.yml"
-  # 태그 없이 test 잡만 돌려 실행 환경을 확인한다(publish 잡은 태그 ref에서만 돈다).
+  # 태그 없이 test 잡만 돌려 실행 환경을 확인한다.
   workflow_dispatch:
 
 jobs:
@@ -35,7 +35,8 @@ jobs:
           npm -w gildongmu-mcp pack --dry-run
 
   publish:
-    if: startsWith(github.ref, 'refs/tags/cli-v')
+    # 수동 실행은 태그 ref를 골라도 발행하지 않는다(발행은 태그 push 이벤트만).
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/cli-v')
     needs: test
     runs-on: ubuntu-latest
     permissions:
@@ -47,8 +48,6 @@ jobs:
         with:
           node-version: "22"
           registry-url: "https://registry.npmjs.org"
-          # 발행 잡은 캐시를 복원하지 않는다(캐시 오염이 tarball로 들어가는 경로 차단).
-          package-manager-cache: false
       - run: npm install
       - run: |
           npm -w gildongmu run build

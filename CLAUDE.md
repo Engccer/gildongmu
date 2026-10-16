@@ -82,6 +82,7 @@
 - **역 seed는 타 역 좌표 혼입을 의심한다**: `scripts/build-subway-stations.py`의 `COORD_FIXES` + 가드 3축이 빌드를 중단하고, 좌표 이동은 실좌표로 확인한 것만 `ACCEPTED_COORD_SHIFTS`로 받는다. → INTEGRATIONS
 - **좌표는 WGS84 십진 통일.** 변환 함정: 에어코리아 측정소=**TM중부원점 EPSG:2097**(proj4, ⚠ 카카오/네이버의 EPSG:5181 아님, Δ300m+) / 기상청=**격자 nx,ny LCC**(`dfs_xy_conv` 이식) / 네이버 `mapx/mapy`(×10⁷ 정수)는 provider 내부만.
 - **data.go.kr envelope는 공용 파서를 쓴다**(`datagokr-envelope.ts`: `readItems`·`readResultCode`·`fetchDataGoKrJson`, 자체 추출 함수 금지, 정책은 provider). `apis.data.go.kr`은 https만(http는 hang, 가드 `datagokr-https-usage.test.ts`). → INTEGRATIONS
+- **Tmap 응답 본문은 `readTmapJson`으로 읽는다**(`tmap-json.ts`, 보행자·자동차 공용): POI 이름 구분자로 날 NUL이 문자열 안에 와서 `res.json()`이 실패한다(A62). 새 Tmap 호출 자리도 같다.
 - **서울 열린데이터(`openapi.seoul.go.kr`) 본문은 `readSeoulOpenJson`으로 읽는다**(`seoul-open-json.ts` — 무효 키가 200+XML로 온다). 실시간 지하철은 호스트·키가 달라 계약 밖. → INTEGRATIONS
 - **envelope 비표준 주의(공용 파서 스코프 밖 — `response` 래퍼가 없다)**: 서울버스(TOPIS)·서울지하철 실시간·서울 열린데이터는 봉투가 각각 다르다. **봉투가 다르면 파서도 다르다** — 공용 모듈에 넣지 말 것. → INTEGRATIONS
 - **경유지(`via`)는 응답 `waypoint{stepIndex,coord}` 하나로만 드러나고 스텝 문장은 불변이다**: 표지를 못 찾으면 throw, 대중교통은 `unsupported:"waypoint"`, iOS 안내의 `via`·`waypoint`는 기본값 없는 필수 인자. → INTEGRATIONS
