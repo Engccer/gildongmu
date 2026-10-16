@@ -53,4 +53,18 @@ public enum RerouteProposalGate {
     public static func mayFetch(episodeFetchCount: Int) -> Bool {
         episodeFetchCount < maxFetchesPerSession
     }
+
+    /// E69 ⓒ: 벗어난 채 이만큼 서 있으면 "경로 다시 조회" 버튼이 선다(초, 착수 기본값 — 실보행 판정 대상,
+    /// spec `2026-10-17-reroute-button-visibility-design.md` §1.2). 웹 `REROUTE_BUTTON_STILL_S` 미러.
+    public static let stillButtonSeconds: TimeInterval = 30
+
+    /// E69 ⓒ의 정지 연속 갱신. 새 정지 판정을 만들지 않고 `GuideFix.stopped`만 본다(E55 — `speedUnknown`은 정지가
+    /// 아니라 연속을 끊는다). `since`는 연속 시작 시각, `reached`는 이 fix에서 문턱에 닿았는가. 웹 `rerouteStillStep` 미러.
+    public static func stillStep(
+        since: TimeInterval?, stopped: Bool, now: TimeInterval
+    ) -> (since: TimeInterval?, reached: Bool) {
+        guard stopped else { return (nil, false) }
+        let start = since ?? now
+        return (start, now - start >= stillButtonSeconds)
+    }
 }

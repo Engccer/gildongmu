@@ -15,6 +15,7 @@ const guideApi: RouteGuideApi = {
   mode: "detail",
   liveText: "",
   offRoute: false,
+  showReroute: false,
   progress: null,
   currentText: null,
   liveRows: { top: null, next: null, crossing: null },

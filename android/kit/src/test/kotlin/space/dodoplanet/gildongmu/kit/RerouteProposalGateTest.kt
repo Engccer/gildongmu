@@ -44,4 +44,19 @@ class RerouteProposalGateTest {
         assertTrue(RerouteProposalGate.isFreshInTime(base, 1_119.0))
         assertFalse(RerouteProposalGate.isFreshInTime(base, 1_121.0))
     }
+
+    @Test fun `벗어난 채 정지 30초에 버튼이 선다 E69`() {
+        var s = RerouteProposalGate.stillStep(null, true, 10.0)
+        assertEquals(StillStep(10.0, false), s)
+        s = RerouteProposalGate.stillStep(s.since, true, 39.0)
+        assertFalse(s.reached)
+        s = RerouteProposalGate.stillStep(s.since, true, 40.0)
+        assertEquals(StillStep(10.0, true), s)
+    }
+
+    @Test fun `정지가 아닌 fix는 연속을 끊는다 E69`() {
+        val s = RerouteProposalGate.stillStep(10.0, false, 35.0)
+        assertEquals(StillStep(null, false), s)
+        assertEquals(StillStep(45.0, false), RerouteProposalGate.stillStep(s.since, true, 45.0))
+    }
 }

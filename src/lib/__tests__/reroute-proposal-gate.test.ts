@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   isRerouteProposalFresh,
   mayFetchReroute,
+  REROUTE_BUTTON_STILL_S,
   REROUTE_MAX_FETCHES_PER_SESSION,
   REROUTE_PROPOSAL_MAX_AGE_S,
+  rerouteStillStep,
 } from "../reroute-proposal-gate";
 import { CAR_TUNING, WALK_TUNING } from "../route-guide";
 
@@ -29,5 +31,22 @@ describe("reroute-proposal-gate", () => {
   it("세션당 5회", () => {
     expect(mayFetchReroute(REROUTE_MAX_FETCHES_PER_SESSION - 1)).toBe(true);
     expect(mayFetchReroute(REROUTE_MAX_FETCHES_PER_SESSION)).toBe(false);
+  });
+});
+
+describe("rerouteStillStep (E69 ⓒ)", () => {
+  it("정지 연속이 30초에 닿으면 선다", () => {
+    let s = rerouteStillStep(null, true, 10);
+    expect(s).toEqual({ since: 10, reached: false });
+    s = rerouteStillStep(s.since, true, 10 + REROUTE_BUTTON_STILL_S - 1);
+    expect(s.reached).toBe(false);
+    s = rerouteStillStep(s.since, true, 10 + REROUTE_BUTTON_STILL_S);
+    expect(s).toEqual({ since: 10, reached: true });
+  });
+
+  it("정지가 아닌 fix(움직임·speedUnknown)는 연속을 끊는다", () => {
+    const s = rerouteStillStep(10, false, 35);
+    expect(s).toEqual({ since: null, reached: false });
+    expect(rerouteStillStep(s.since, true, 45)).toEqual({ since: 45, reached: false });
   });
 });

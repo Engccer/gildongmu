@@ -1,5 +1,7 @@
 package space.dodoplanet.gildongmu.guide
 
+import space.dodoplanet.gildongmu.guide.ui.SheetRow
+import space.dodoplanet.gildongmu.guide.ui.sheetRowExists
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
@@ -38,7 +40,7 @@ class WalkGuideScenarioTest {
     val main = MainDispatcherExtension(dispatcher)
 
     private data class Seg(val len: Double, val desc: String, val action: String? = null, val target: String? = null, val crossing: Boolean? = null, val crossingClock: Int? = null, val body: String? = null)
-    private data class Fix(val t: Double, val along: Double, val lateral: Double, val acc: Double)
+    private data class Fix(val t: Double, val along: Double, val lateral: Double, val acc: Double, val speed: Double = 1.3)
 
     private fun routeJson(steps: List<Seg>, finalApproach: String? = null): String {
         var acc = 0.0
@@ -54,7 +56,7 @@ class WalkGuideScenarioTest {
         clock.now = base + f.t
         val lat = lat0 + f.along * meterLat
         val lng = lng0 + (f.lateral * meterLat) / cos(lat0 * PI / 180)
-        return GuideFixPayload(lat, lng, f.acc, 1.3, 0.3, -1.0, -1.0, (clock.now * 1000).toLong())
+        return GuideFixPayload(lat, lng, f.acc, f.speed, 0.3, -1.0, -1.0, (clock.now * 1000).toLong())
     }
 
     /** 시작 → 첫 fix로 조회 → 상세 커밋. 반환 = 시작 시각(fixture `t` 기준점). */
@@ -292,6 +294,8 @@ class WalkGuideScenarioTest {
         // 상태 행·윗줄은 벗어난 쪽만(위원장 판정 2026-10-04).
         assertEquals(h.catalog.get("guide.offRouteRight"), h.model.ui.value.statusText)
         assertEquals(h.catalog.get("guide.offRouteRight"), h.model.ui.value.liveTopText)
+        // 돌아가기 국면은 앱이 판정 중이다 — 버튼이 없다(E69).
+        assertFalse(sheetRowExists(h.model.ui.value, SheetRow.reroute))
         h.speaker.spoken.clear(); h.haptics.fired.clear()
         feed(h, offRouteFixes + awayFixes, base, from = offRouteFixes.size)
         settle()
@@ -305,6 +309,42 @@ class WalkGuideScenarioTest {
         assertTrue(adopted.second)
         assertEquals(listOf(ResultHapticKind.success), h.haptics.fired)
         assertEquals(GuideMode.detail, ui.mode)
+    }
+
+    @Test fun `④-E69 자동 조회가 실패하면 그 순간 버튼이 서고 한 번 말한다(high 아님·포커스 무관), 상태 행은 벗어난 쪽 그대로`() = guideTest(dispatcher, { url ->
+        if (url.contains("origin=37.5385")) HttpResponse(200, routeJson(offRouteSteps)) else HttpResponse(502, "{}")
+    }) { h ->
+        val base = startDetail(h, offRouteFixes)
+        feed(h, offRouteFixes, base)
+        settle()
+        assertFalse(h.model.ui.value.rerouteGaveUp)
+        h.speaker.spoken.clear()
+        feed(h, offRouteFixes + awayFixes, base, from = offRouteFixes.size)
+        settle()
+        assertEquals(2, h.transport.seenUrls.size, "시작 조회 + 실패한 자동 재조회")
+        val ui = h.model.ui.value
+        assertTrue(ui.offRoute)
+        assertTrue(sheetRowExists(ui, SheetRow.reroute))
+        assertEquals(listOf(h.catalog.get("guide.rerouteAutoGaveUp") to false), h.speaker.spoken.filter { it.first == h.catalog.get("guide.rerouteAutoGaveUp") })
+        assertEquals(h.catalog.get("guide.offRouteRight"), ui.statusText)
+    }
+
+    @Test fun `④-E69 벗어난 채 30초 서 있으면 버튼이 조용히 서고, 다시 걸어도 그 회차엔 남는다`() = guideTest(dispatcher, { HttpResponse(200, routeJson(offRouteSteps)) }) { h ->
+        val base = startDetail(h, offRouteFixes)
+        feed(h, offRouteFixes, base)
+        settle()
+        h.speaker.spoken.clear()
+        // 확정 자리에서 1초 간격으로 선다(speed 0 — 도플러 정지).
+        val still = (1..45).map { Fix(29.0 + it, 100.0, 80.0, 10.0, speed = 0.0) }
+        feed(h, offRouteFixes + still.take(20), base, from = offRouteFixes.size)
+        assertFalse(sheetRowExists(h.model.ui.value, SheetRow.reroute))
+        feed(h, offRouteFixes + still, base, from = offRouteFixes.size + 20)
+        assertTrue(sheetRowExists(h.model.ui.value, SheetRow.reroute))
+        assertFalse(h.speaker.texts.contains(h.catalog.get("guide.rerouteAutoGaveUp")), "정지로 선 버튼은 말하지 않는다")
+        val walkOn = listOf(Fix(75.0, 101.0, 80.0, 10.0), Fix(76.0, 102.5, 80.0, 10.0))
+        feed(h, offRouteFixes + still + walkOn, base, from = offRouteFixes.size + still.size)
+        assertTrue(h.model.ui.value.offRoute)
+        assertTrue(sheetRowExists(h.model.ui.value, SheetRow.reroute))
     }
 
     @Test fun `④'' 확정 뒤 경로로 돌아오면 복귀 문장(high)·success 진동, 재조회 없음`() = guideTest(dispatcher, { HttpResponse(200, routeJson(offRouteSteps)) }) { h ->

@@ -51,4 +51,23 @@ object RerouteProposalGate {
 
     /** 세션당 자동 조회 허용 여부(확정 회차당 1회는 호출부 계약). */
     fun mayFetch(episodeFetchCount: Int): Boolean = episodeFetchCount < maxFetchesPerSession
+
+    /**
+     * E69 ⓒ: 벗어난 채 이만큼 서 있으면 "경로 다시 조회" 버튼이 선다(초, 착수 기본값 — 실보행 판정 대상,
+     * spec `2026-10-17-reroute-button-visibility-design.md` §1.2). Kit `stillButtonSeconds` 미러.
+     */
+    const val stillButtonSeconds: Double = 30.0
+
+    /**
+     * E69 ⓒ의 정지 연속 갱신. 새 정지 판정을 만들지 않고 `GuideFix.stopped`만 본다(E55 — `speedUnknown`은 정지가 아니라
+     * 연속을 끊는다). Kit `stillStep(since:stopped:now:)` 미러.
+     */
+    fun stillStep(since: Double?, stopped: Boolean, now: Double): StillStep {
+        if (!stopped) return StillStep(since = null, reached = false)
+        val start = since ?: now
+        return StillStep(since = start, reached = now - start >= stillButtonSeconds)
+    }
 }
+
+/** [RerouteProposalGate.stillStep]의 결과 — 연속 시작 시각과 이 fix에서 문턱에 닿았는가. */
+data class StillStep(val since: Double?, val reached: Boolean)

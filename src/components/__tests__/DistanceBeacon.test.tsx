@@ -163,7 +163,7 @@ describe("DistanceBeacon 컨트롤 노출", () => {
     expect(screen.queryByText(en.guide.degradedNoteUnavailable)).toBeNull();
   });
 
-  it("재조회 버튼은 이탈 상태에서만 나온다", async () => {
+  it("재조회 버튼은 이탈 중에도 자동 판정이 손을 든 자리에서만 나온다(E69 — 여기서는 벗어난 채 30초 정지)", async () => {
     renderPanel("ko");
     openAndStart("ko");
     await waitFor(() => expect(screen.getByText(/남은 거리/)).toBeTruthy());
@@ -176,6 +176,10 @@ describe("DistanceBeacon 컨트롤 노출", () => {
     pushFix(16, 100, 80);
     pushFix(22, 100, 80);
 
+    // 돌아가기 국면의 시작 — 앱이 아직 판정 중이라 버튼이 없다.
+    expect(screen.queryByRole("button", { name: ko.guide.rerouteButton })).toBeNull();
+    // 제자리에 계속 서 있다(정지 판정이 선 뒤 30초 — 위치 미분 폴백은 5초 안 간격만 쓴다).
+    for (let t = 25; t <= 61; t += 3) pushFix(t, 100, 80);
     expect(screen.getByRole("button", { name: ko.guide.rerouteButton })).toBeTruthy();
     // 이탈 문장은 두 곳에 나온다(spec 2026-08-11 §4.2): polite 통지 + 하단 2행 윗줄
     // (윗줄이 이탈 상태 문장으로 대체되고 아랫줄은 비운다 — F2). 멈춰 있어 진행 방위가 없으니 벗어난 쪽만(E63 J3).

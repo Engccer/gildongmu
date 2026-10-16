@@ -36,17 +36,19 @@ let fetchMock: ReturnType<typeof vi.fn>;
 let pos = { a: 40, l: 0 };
 /** 자동 재조회 응답을 붙잡는 관문. null이면 즉시. */
 let rerouteGate: Promise<void> | null = null;
+/** 참이면 재조회 응답이 502(E69 ⓐ). */
+let rerouteFails = false;
 
 function walkCalls(): number {
   return fetchMock.mock.calls.filter((c) => String(c[0]).startsWith("/api/route/walk")).length;
 }
 
-function fixAt(a: number, l: number) {
+function fixAt(a: number, l: number, speed = 1.2) {
   pos = { a, l };
   act(() => {
     const c = at(a, l);
     watchCb?.({
-      coords: { latitude: c.lat, longitude: c.lng, accuracy: 8, speed: 1.2, altitude: null, altitudeAccuracy: null, heading: null },
+      coords: { latitude: c.lat, longitude: c.lng, accuracy: 8, speed, altitude: null, altitudeAccuracy: null, heading: null },
       timestamp: Date.now(),
     } as GeolocationPosition);
   });
@@ -68,10 +70,12 @@ function Harness() {
       <button onClick={g.start}>start</button>
       <p data-testid="live">{g.liveText}</p>
       <p data-testid="off">{String(g.offRoute)}</p>
+      <p data-testid="btn">{String(g.showReroute)}</p>
     </div>
   );
 }
 const live = () => screen.getByTestId("live").textContent ?? "";
+const btn = () => screen.getByTestId("btn").textContent;
 
 async function startOnRoute() {
   render(
@@ -98,6 +102,7 @@ beforeEach(() => {
   vi.useFakeTimers({ toFake: ["setInterval", "clearInterval", "setTimeout", "clearTimeout", "performance"] });
   watchCb = null;
   rerouteGate = null;
+  rerouteFails = false;
   Object.defineProperty(navigator, "geolocation", {
     configurable: true,
     value: {
@@ -113,6 +118,7 @@ beforeEach(() => {
     const first = walkCalls() <= 1;
     if (!first && rerouteGate) await rerouteGate;
     void url;
+    if (!first && rerouteFails) return { ok: false, status: 502, json: async () => ({}) };
     return {
       ok: true,
       json: async () => ({
@@ -208,5 +214,75 @@ describe("돌아가기 국면(E63)", () => {
     await act(async () => {
       await vi.advanceTimersByTimeAsync(10);
     });
+  });
+});
+
+describe("경로 다시 조회 버튼은 자동 판정이 손을 든 자리에서만(E69)", () => {
+  it("벗어나 돌아가는 동안·자동 채택으로 끝나면 버튼이 한 번도 없다", async () => {
+    await startOnRoute();
+    const seen: string[] = [];
+    walk(30, 58);
+    for (let i = 0; i < 26; i++) {
+      walk(0, 1);
+      seen.push(btn() ?? "");
+    }
+    expect(screen.getByTestId("off").textContent).toBe("true");
+    walk(0, 50);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10);
+    });
+    seen.push(btn() ?? "");
+    expect(live()).toContain("새 경로로 다시 안내합니다");
+    expect(seen.every((x) => x === "false")).toBe(true);
+  });
+
+  it("자동 조회가 실패하면 버튼이 서고 한 번 말한다 — 재무장 뒤 또 실패해도 버튼은 그대로다", async () => {
+    await startOnRoute();
+    rerouteFails = true;
+    strayRightAndConfirm();
+    expect(btn()).toBe("false");
+    walk(0, 50);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10);
+    });
+    expect(btn()).toBe("true");
+    expect(live()).toBe("새 경로를 자동으로 찾지 못했습니다.");
+    // 재무장한 리듀서가 다시 요청해 또 실패한다.
+    const calls = walkCalls();
+    walk(0, 55);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10);
+    });
+    expect(walkCalls()).toBeGreaterThan(calls);
+    expect(btn()).toBe("true");
+  });
+
+  it("벗어난 채 30초 서 있으면 버튼이 조용히 서고, 다시 걸어도 그 회차엔 남는다", async () => {
+    await startOnRoute();
+    strayRightAndConfirm();
+    const before = live();
+    // 정지 판정(도플러 0이 몇 초 이어져야 `stopped`)이 선 뒤부터 30초를 센다.
+    for (let i = 0; i < 25; i++) fixAt(pos.a, pos.l, 0);
+    expect(btn()).toBe("false");
+    for (let i = 0; i < 15; i++) fixAt(pos.a, pos.l, 0);
+    expect(btn()).toBe("true");
+    expect(live()).toBe(before);
+    walk(0, 3);
+    expect(btn()).toBe("true");
+  });
+
+  it("복귀하면 버튼이 사라지고, 다음 이탈 회차는 다시 버튼 없이 시작한다", async () => {
+    await startOnRoute();
+    strayRightAndConfirm();
+    for (let i = 0; i < 40; i++) fixAt(pos.a, pos.l, 0);
+    expect(btn()).toBe("true");
+    walk(270, 30);
+    for (let i = 0; i < 12; i++) fixAt(pos.a, 0);
+    expect(screen.getByTestId("off").textContent).toBe("false");
+    expect(btn()).toBe("false");
+    walk(0, 10);
+    strayRightAndConfirm();
+    expect(screen.getByTestId("off").textContent).toBe("true");
+    expect(btn()).toBe("false");
   });
 });

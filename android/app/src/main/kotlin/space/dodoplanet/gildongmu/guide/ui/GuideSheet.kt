@@ -134,7 +134,8 @@ fun sheetRowExists(ui: WalkGuideUiState, row: SheetRow): Boolean {
         SheetRow.remaining -> detail && !ui.offRoute && !ui.remainingText.isNullOrEmpty()
         SheetRow.liveTop -> detail && !ui.liveTopText.isNullOrEmpty()
         SheetRow.status -> ui.statusText.isNotEmpty() && (!detail || ui.liveTopText.isNullOrEmpty())
-        SheetRow.reroute -> detail && ui.offRoute
+        // 자동 판정이 손을 든 자리에서만(E69) — 돌아가는 중에는 앱이 이미 판정하고 있다.
+        SheetRow.reroute -> detail && ui.offRoute && ui.rerouteGaveUp
     }
 }
 

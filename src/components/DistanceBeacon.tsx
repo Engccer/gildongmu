@@ -152,7 +152,7 @@ export function DistanceBeacon({
     announce(guide.liveText);
   }, [guide.liveText, announce]);
 
-  // 재조회 버튼은 성공(offRoute 해제)·경로 자동 복귀 순간 언마운트된다. 포커스를 쥔
+  // 재조회 버튼은 성공(offRoute 해제)·경로 자동 복귀 순간 언마운트된다(E69 래치는 회차 안에서 내리지 않는다). 포커스를 쥔
   // 요소가 사라지면 커서가 body로 떨어져 걷는 중 맥락을 통째로 잃으므로(헌장 §5),
   // 그 버튼에 포커스가 있었다면 페인트 전에 항상 존재하는 시작/중지 토글로 선점
   // 이동한다(useRevealMore의 useLayoutEffect 재포커스 선례). 플래그는 onFocus로
@@ -161,13 +161,13 @@ export function DistanceBeacon({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const rerouteFocusedRef = useRef(false);
   useLayoutEffect(() => {
-    if (!guide.offRoute && rerouteFocusedRef.current) {
+    if (!guide.showReroute && rerouteFocusedRef.current) {
       rerouteFocusedRef.current = false;
       // startOnOpen 패널은 안쪽 토글이 없으므로(잉여 — 트리거가 시작/중지 겸임)
       // 항상 존재하는 트리거로 선점 이동한다.
       (stopToggleRef.current ?? triggerRef.current)?.focus();
     }
-  }, [guide.offRoute]);
+  }, [guide.showReroute]);
 
   // 핸드오프 마운트 포커스(§14.2) — 페인트 전 선점(레이아웃 이펙트, 재실행 없음).
   useLayoutEffect(() => {
@@ -296,7 +296,8 @@ export function DistanceBeacon({
                 >
                   {tGuide("progressButton")}
                 </button>
-                {guide.offRoute && (
+                {/* 자동 판정이 손을 든 자리에서만(E69) — 돌아가는 중에는 없다. */}
+                {guide.showReroute && (
                   <button
                     type="button"
                     onClick={guide.requestReroute}

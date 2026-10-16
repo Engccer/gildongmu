@@ -159,14 +159,13 @@ struct BeaconTrackingSheet: View {
                     SurroundingsSceneSection(
                         anchor: (lat: dest.lat, lng: dest.lng), proxy: proxy)
                 }
-                // 재조회: 이탈 확정 시에만 노출. 이탈 확정 시 자동 재조회·채택(E10ⓑ 자동
-                // 채택, 2026-09-02)이 실패·만료·상한 도달로 경로를 못 바꿨을 때의 수동 예비
-                // 출구다(종전 "준비된 새 경로로 안내" 확인 라벨은 폐기 — 누르지 않을 이유가
-                // 없는 확인은 군더더기).
+                // 재조회: 이탈 중에도 자동 판정이 손을 든 자리에서만 노출(E69 — 자동 조회 실패·경로 없음·
+                // 신선도 미달, 예산 소진, 벗어난 채 30초 정지). 돌아가는 중에는 앱이 이미 판정하고 있으므로
+                // 없다(종전 "준비된 새 경로로 안내" 확인 라벨은 폐기 — 누르지 않을 이유가 없는 확인은 군더더기).
                 // 진행 신호는 라벨 교체가 정본(라벨이 곧 상태 신호 — 별도 통지 중복 금지).
                 // 성공하면 이 버튼 자체가 사라지므로, 누른 결과로 사라질 때는 첫 정보 행
                 // (새 경로의 남은 거리)으로 포커스를 옮긴다(헌장 §5, a11y 감사 HIGH · E57).
-                if model.offRoute {
+                if model.showsRerouteButton {
                     focusTarget(Button(appLocalized(
                         model.isRerouting ? "guide.rerouteBusy" : "guide.rerouteButton"
                     )) {
@@ -602,7 +601,7 @@ struct BeaconTrackingSheet: View {
         case .remaining: return tracking && model.mode == .detail && !model.offRoute && model.remainingText != nil
         case .liveTop: return tracking && model.mode == .detail && model.liveTopText != nil
         case .status: return tracking && model.mode == .brief && !model.statusText.isEmpty
-        case .reroute: return tracking && model.offRoute
+        case .reroute: return tracking && model.showsRerouteButton
         case .arrived: return !tracking
         case .healthSummary: return !tracking && model.arrivalHealth != nil
         }

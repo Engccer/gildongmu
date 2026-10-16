@@ -18281,6 +18281,46 @@
         }
       }
     },
+    "guide.rerouteAutoGaveUp": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "새 경로를 자동으로 찾지 못했습니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't find a new route automatically."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo encontrar una ruta nueva automáticamente."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible de trouver automatiquement un nouvel itinéraire."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossibile trovare automaticamente un nuovo percorso."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新しい経路を自動で見つけられませんでした。"
+          }
+        }
+      }
+    },
     "guide.rerouteBusy": {
       "localizations": {
         "ko": {

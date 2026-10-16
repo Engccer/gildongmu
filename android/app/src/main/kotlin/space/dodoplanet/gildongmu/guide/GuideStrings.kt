@@ -98,6 +98,7 @@ internal fun guideStringId(key: String): Int? = when (key) {
     "guide.rerouteButton" -> R.string.guide_rerouteButton
     "guide.rerouteBusy" -> R.string.guide_rerouteBusy
     "guide.rerouteFailed" -> R.string.guide_rerouteFailed
+    "guide.rerouteAutoGaveUp" -> R.string.guide_rerouteAutoGaveUp
     "guide.rerouteDone" -> R.string.guide_rerouteDone
     "guide.autoReroute" -> R.string.guide_autoReroute
     "guide.rerouteHeadStraight" -> R.string.guide_rerouteHeadStraight

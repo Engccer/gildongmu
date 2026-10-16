@@ -74,7 +74,7 @@ import { claimGuideSession, releaseGuideSession } from "@/lib/guide-session-stor
 import { isOutOfCoverageBody } from "@/lib/out-of-coverage";
 import type { CarRouteBriefing, WalkRouteBriefing } from "@/lib/types";
 import { walkRouteUrl } from "@/lib/walk-route-url";
-import { isRerouteProposalFresh, mayFetchReroute } from "@/lib/reroute-proposal-gate";
+import { isRerouteProposalFresh, mayFetchReroute, rerouteStillStep } from "@/lib/reroute-proposal-gate";
 import { directionParticle } from "@/lib/korean-particle";
 import {
   SPEECH_DEFER_MAX_S,
@@ -570,6 +570,11 @@ export interface RouteGuideApi {
   liveText: string;
   offRoute: boolean;
   /**
+   * "경로 다시 조회" 버튼 노출(E69, spec `2026-10-17-reroute-button-visibility-design.md`): `offRoute` ∧ 이 회차에 자동 판정이
+   * 손을 들었다(자동 조회 실패·경로 없음·신선도 미달 / 예산 소진으로 요청 무시 / 벗어난 채 30초 정지). 돌아가는 중에는 없다.
+   */
+  showReroute: boolean;
+  /**
    * 상세 모드의 경로 기준 잔여 거리·예상 시간. live region 밖 일반 텍스트로만
    * 렌더한다 — 매 fix 갱신되므로 polite 채널에 태우면 그 자체가 통지 스팸이 된다.
    */
@@ -651,6 +656,11 @@ export function useRouteGuide(
   const degradeRef = useRef<GuideRouteFailure | "handoff" | null>(null);
   const [liveText, setLiveText] = useState("");
   const [offRoute, setOffRoute] = useState(false);
+  /** E69 래치: 이 이탈 회차에 자동 판정이 손을 들었다. 회차 시작(확정)·세션 중지에서만 내린다(버튼에 커서를 둔 사람의 맥락 보존). */
+  const [rerouteGaveUp, setRerouteGaveUp] = useState(false);
+  const rerouteGaveUpRef = useRef(false);
+  /** E69 ⓒ: 벗어난 채 정지 연속 시작 시각(`rerouteStillStep`). */
+  const offRouteStillSinceRef = useRef<number | null>(null);
   const [progress, setProgress] = useState<GuideProgress | null>(null);
   const [currentText, setCurrentText] = useState<string | null>(null);
   const [liveRows, setLiveRows] = useState<LiveRowsText>({
@@ -1741,6 +1751,20 @@ export function useRouteGuide(
     [announce, closerIntervalSeconds, emitTone, rememberGuidance, tBeacon],
   );
 
+  /**
+   * E69: 자동 판정이 손을 든 순간 버튼 래치를 세운다. 조회 실패·예산(ⓐⓑ)은 한 문장, 정지(ⓒ)는 침묵 — 래치가 이미 섰으면 둘 다
+   * 아무것도 하지 않는다(재무장으로 실패가 되풀이돼도 한 회차에 한 번). 포커스는 옮기지 않는다.
+   */
+  const raiseRerouteButton = useCallback(
+    (speak: boolean) => {
+      if (rerouteGaveUpRef.current) return;
+      rerouteGaveUpRef.current = true;
+      setRerouteGaveUp(true);
+      if (speak) announce(t("rerouteAutoGaveUp"));
+    },
+    [announce, t],
+  );
+
   const stepDetail = useCallback(
     (fix: GuideFix, route: GuideRoute, state: GuideState, motion: MotionState, now: number) => {
       // 방위 축은 위치 이력 유도라 웹에서도 켜진다(spec §4 재설계) — 관측은 리듀서
@@ -1755,6 +1779,19 @@ export function useRouteGuide(
         viaPassedRef.current = true;
       }
       setOffRoute(result.state.phase === "offRoute");
+      // E69: 이탈 회차가 새로 시작되면 버튼 래치를 내리고, 벗어난 채 정지가 30초 이어지면 조용히 세운다.
+      if (result.event?.kind === "offRoute" && result.event.notice === "confirm") {
+        rerouteGaveUpRef.current = false;
+        setRerouteGaveUp(false);
+        offRouteStillSinceRef.current = null;
+      }
+      if (result.state.phase === "offRoute") {
+        const still = rerouteStillStep(offRouteStillSinceRef.current, fix.stopped, now);
+        offRouteStillSinceRef.current = still.since;
+        if (still.reached) raiseRerouteButton(false);
+      } else {
+        offRouteStillSinceRef.current = null;
+      }
       setProgress(progressOf(route, result.state));
       // 돌아가기 국면의 상태 행 문장(E63) — 아래 하단 2행 갱신보다 먼저(같은 fix의 윗줄이 이 문장이어야 한다). 벗어난 쪽만
       // 둔다(위원장 판정 2026-10-04): 시계 방향·"뒤로 도세요"는 그 순간의 진행 방위 기준이라 나중에 읽으면 거짓이 된다.
@@ -1889,6 +1926,7 @@ export function useRouteGuide(
       setLiveRowsIfChanged,
       stepFinalApproach,
       progressOf,
+      raiseRerouteButton,
       rebaseForAxisChange,
       rememberGuidance,
       t,
@@ -2008,6 +2046,8 @@ export function useRouteGuide(
     awaitingRouteRef.current = false;
     autoRerouteCountRef.current = 0;
     autoRerouteGenRef.current += 1;
+    rerouteGaveUpRef.current = false;
+    offRouteStillSinceRef.current = null;
     offRouteSpokenRef.current = false;
     offRouteLineRef.current = null;
     displayUnitsRef.current = [];
@@ -2019,6 +2059,7 @@ export function useRouteGuide(
       setMode("brief");
       modeRef.current = "brief";
       setOffRoute(false);
+      setRerouteGaveUp(false);
       setProgress(null);
       setCurrentText(null);
       setLiveRows({ top: null, next: null, crossing: null });
@@ -2383,7 +2424,11 @@ export function useRouteGuide(
     if (!trackingRef.current || modeRef.current !== "detail" || inFinalApproachRef.current) return;
     if (rerouteInFlightRef.current) return;
     if (autoRerouteInFlightGenRef.current !== null && autoRerouteInFlightGenRef.current === autoRerouteGenRef.current) return;
-    if (!mayFetchReroute(autoRerouteCountRef.current)) return;
+    // 예산 소진으로 요청을 무시하는 순간이 "판정했는데 실행할 수 없다"는 자리다(E69 ⓑ).
+    if (!mayFetchReroute(autoRerouteCountRef.current)) {
+      raiseRerouteButton(true);
+      return;
+    }
     const origin = lastFixRef.current;
     if (origin === null) return;
     autoRerouteCountRef.current += 1;
@@ -2406,7 +2451,11 @@ export function useRouteGuide(
         ) {
           return;
         }
-        if (!fetched.ok || sameVia(fetched.via, excludedViaRef.current)) return;
+        // 실패·경로 없음(지난 경유지를 되살린 경로 포함)·신선도 미달은 자동 판정이 손을 든 자리다(E69 ⓐ).
+        if (!fetched.ok || sameVia(fetched.via, excludedViaRef.current)) {
+          raiseRerouteButton(true);
+          return;
+        }
         const now = performance.now() / 1000;
         const cur = lastFixRef.current;
         const at = lastFixAtRef.current;
@@ -2416,6 +2465,7 @@ export function useRouteGuide(
           now - at > 15 ||
           !isRerouteProposalFresh(proposal, now, cur, tuning.rerouteMaxDriftM)
         ) {
+          raiseRerouteButton(true);
           return;
         }
         // 머리말의 기준은 교체 **전** 세션의 진행 방위다(궤적의 사실). 자동차는 머리말 없음(문안 라 다섯째 줄).
@@ -2432,7 +2482,7 @@ export function useRouteGuide(
         if (autoRerouteInFlightGenRef.current === autoGen) autoRerouteInFlightGenRef.current = null;
       }
     })();
-  }, [announce, commitRerouted, fetchGuideRoute, kindFixed, t, tuning]);
+  }, [announce, commitRerouted, fetchGuideRoute, kindFixed, raiseRerouteButton, t, tuning]);
 
   // 전경 전용(스펙 §9): 탭이 숨으면 중지하고 경로를 폐기한다. 복귀 후 자동 재개 없음
   // — 숨김 탭에서 멎은 watch·타이머가 좀비 상태를 만드는 것을 상태로 흡수한다.
@@ -2532,6 +2582,7 @@ export function useRouteGuide(
     mode,
     liveText,
     offRoute,
+    showReroute: offRoute && rerouteGaveUp,
     progress,
     currentText,
     liveRows,

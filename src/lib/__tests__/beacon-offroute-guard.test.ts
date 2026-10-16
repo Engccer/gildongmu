@@ -24,7 +24,7 @@ describe("BeaconModel 돌아가기 국면 배선(E63)", () => {
   it("이탈 확정에서 자동 조회는 운전자 채널만 연다 — 그 밖의 트리거는 rerouteNeeded", () => {
     const calls = offRoute.match(/maybeFetchProposal\(/g) ?? [];
     expect(calls).toHaveLength(1);
-    expect(offRoute).toMatch(/if notice == \.confirm \{ maybeFetchProposal\(source: "driver"\) \}/);
+    expect(offRoute).toMatch(/if notice == \.confirm, maybeFetchProposal\(source: "driver"\) == "budget" \{/);
     const driver = offRoute.slice(offRoute.indexOf("if driverChannel {"), offRoute.indexOf("let text = GuideText.offRoute("));
     expect(driver).toContain('maybeFetchProposal(source: "driver")');
     expect(rerouteNeeded).toMatch(/maybeFetchProposal\(source: driverChannel \? "driver" : "auto"\)/);

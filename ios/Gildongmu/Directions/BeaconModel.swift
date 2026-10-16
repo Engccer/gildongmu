@@ -162,8 +162,16 @@ final class BeaconModel {
         return fetched.route.steps.map(\.description)
     }
 
-    /// 이탈 상태 — 시트가 "경로 다시 조회" 버튼 노출에 쓴다.
+    /// 이탈 상태(돌아가기 국면). 버튼 노출은 이것만으로 정하지 않는다 — `showsRerouteButton`.
     private(set) var offRoute = false
+    /// E69 래치: 이 이탈 회차에 자동 판정이 손을 들었다(자동 조회 실패·경로 없음·신선도 미달 / 예산 소진으로 요청 무시 /
+    /// 벗어난 채 30초 정지). 회차 시작(확정)과 세션 정리에서만 내린다 — 회차 안에서 버튼이 사라지면 그 버튼에 커서를 둔
+    /// VoiceOver 사용자가 맥락을 잃는다(헌장 §5). spec `2026-10-17-reroute-button-visibility-design.md`.
+    private(set) var rerouteGaveUp = false
+    /// E69 ⓒ: 벗어난 채 정지 연속 시작 시각(`RerouteProposalGate.stillStep`).
+    private var offRouteStillSince: Double?
+    /// "경로 다시 조회" 버튼 노출 — 돌아가는 중(다가감·멀어짐·나란히 계수 진행 중)에는 없다(E69).
+    var showsRerouteButton: Bool { offRoute && rerouteGaveUp }
     /// 직전 `offRoute` 해제가 경로 커밋(자동 채택·재조회·전환)이었는가 — 시트가 "재조회
     /// 버튼이 사라진" 전이에서 제목 행 착지 여부를 가르는 데 쓴다(헌장 §5: 포커스를 쥔
     /// 요소가 제거되는 전이는 선점 이동. 자연 복귀 `backOnRoute`는 종전대로 무이동).
@@ -384,7 +392,7 @@ final class BeaconModel {
     /// 조회하고 `rerouteNeeded`는 그 조회가 실패·신선도 미달로 끝난 뒤의 재시도로만 쓴다(E63 spec §3.8).
     /// 남긴 안전망은 채택 시점의 신선도 검사 하나다(`RerouteProposalGate`: 취득점 수단별 이동 상한(`rerouteMaxDriftMeters`
     /// 도보 30m·자동차 150m)·120초 + 최근 fix 15초) — 낡은 출발점의 경로를 채택하면 도로 중앙 안내(§5.6 실사고 계열)가
-    /// 되므로 미달이면 조용히 버리고 수동 "경로 다시 조회" 버튼이 예비로 남는다.
+    /// 되므로 미달이면 버리고 그 순간 수동 "경로 다시 조회" 버튼이 선다(E69 ⓐ).
     /// latest-wins 토큰 — 폐기·목적지 변경·세션 종료·수동 재조회 시 증가. 토큰이 일치하고
     /// 이탈이 지속 중일 때만 응답을 채택한다(복귀 후 늦게 도착한 응답이 경로를 갈아치우는
     /// 경로 차단). 조회 실패는 그 회차 종결(재시도·통지 없음 — 쿼터 방어).
@@ -1419,6 +1427,8 @@ final class BeaconModel {
         liveSteps = []
         liveBaselineD = 0
         offRoute = false
+        rerouteGaveUp = false
+        offRouteStillSince = nil
         roadSpans = []
         etaSeconds = nil
         etaUpdatedAt = nil
@@ -2152,11 +2162,36 @@ final class BeaconModel {
             ),
             now: now
         )
-        guard let event = out.event else {
+        if let event = out.event {
+            consume(event: event, route: route, prev: state, signedPerp: out.signedPerpMeters, now: now)
+        } else {
             syncStatusTextWithPhase(out.state.phase)
+        }
+        // E69 ⓒ: 이벤트 소비 뒤(확정 fix의 회차 래치 초기화가 먼저). 운전자 채널은 실패 뒤에만이라 정지 축이 없다.
+        stepRerouteStill(stopped: motion == .stopped, now: now)
+    }
+
+    /// E69 ⓒ: 벗어난 채 `GuideFix.stopped`가 30초 이어지면 버튼 래치를 조용히 세운다(새 정지 판정 금지 — 같은 술어).
+    private func stepRerouteStill(stopped: Bool, now: Double) {
+        guard offRoute, !driverChannel else {
+            offRouteStillSince = nil
             return
         }
-        consume(event: event, route: route, prev: state, signedPerp: out.signedPerpMeters, now: now)
+        let still = RerouteProposalGate.stillStep(since: offRouteStillSince, stopped: stopped, now: now)
+        offRouteStillSince = still.since
+        if still.reached { raiseRerouteButton(cause: "still", speak: false) }
+    }
+
+    /// E69: 자동 판정이 손을 든 순간 버튼 래치를 세운다. 조회 실패·예산(ⓐⓑ)은 한 문장, 정지(ⓒ)와 운전자 채널은 침묵 — 운전 중
+    /// 화면을 누르라는 권유가 되지 않게. 래치가 이미 섰으면 아무것도 하지 않는다(재무장으로 실패가 되풀이돼도 한 회차에 한 번).
+    /// 포커스는 옮기지 않고(E57 착지 계약 밖) 상태 행도 그대로다(윗줄은 리듀서가 소유하는 이탈 문장). 기본 우선순위: 이 통지와
+    /// 함께 사라지는 컨트롤이 없다.
+    private func raiseRerouteButton(cause: String, speak: Bool) {
+        guard !rerouteGaveUp else { return }
+        rerouteGaveUp = true
+        guideDiagLog("rerouteButton cause=\(cause)")
+        guard speak, !driverChannel else { return }
+        announce(appLocalized("guide.rerouteAutoGaveUp"), speechClass: .actionable)
     }
 
     /// 이벤트 없이 **국면만** 바뀐 fix의 상태 텍스트를 되돌린다(백로그 D12).
@@ -2780,6 +2815,9 @@ final class BeaconModel {
                 rerouteTriggerCount = 0
                 offRouteConfirmedAt = now
                 offRouteConfirmCoord = lastFixCoord
+                // 새 회차는 버튼 없이 시작한다 — 앱이 돌아가게 할지 새 길을 찾을지 판정하는 중이다(E69).
+                rerouteGaveUp = false
+                offRouteStillSince = nil
             }
             offRoute = true
             let perp = signedPerp.map { abs($0) }
@@ -2794,7 +2832,9 @@ final class BeaconModel {
                 statusText = text
                 postOffRouteNotice(text, speechClass: notice == .confirm ? .actionable : speechClass)
                 logOffRouteNotice(notice, reason, guidance, side, returnRelDeg, firstSpoken, perp: perp, spoken: true)
-                if notice == .confirm { maybeFetchProposal(source: "driver") }
+                if notice == .confirm, maybeFetchProposal(source: "driver") == "budget" {
+                    raiseRerouteButton(cause: "budget", speak: true)
+                }
                 break
             }
             let text = GuideText.offRoute(guidance: guidance, side: side, returnRelDeg: returnRelDeg, kind: sessionKind)
@@ -2827,14 +2867,16 @@ final class BeaconModel {
             // 이탈은 warning 톤이 진동을 동반하는데 복귀는 무신호였다 — 짝을 맞춘다(E30 확장).
             resultHaptic(.success)
             // ⚠ `.high`: 복귀(`offRoute = false`)가 "경로 다시 조회" 버튼을 지워 커서를 쥔 VoiceOver가 그 자리를 낭독하고, 기본
-            // 우선순위 통지는 그 처리에 잠식된다(`performReroute` 성공 통지와 같은 기제). 돌아가기 국면 동안 버튼이 수십 초 남아
-            // 커서가 그 위에 있을 일이 잦고, 착지 라벨(남은 거리)은 "돌아왔다"를 대신하지 못한다.
+            // 우선순위 통지는 그 처리에 잠식된다(`performReroute` 성공 통지와 같은 기제). 버튼은 자동 판정이 손을 든 회차에만
+            // 서지만(E69) 그 회차엔 복귀까지 남아 커서가 그 위에 있을 수 있고, 착지 라벨(남은 거리)은 "돌아왔다"를 대신하지 못한다.
             announce(text, highPriority: true, speechClass: speechClass)
         case let .rerouteNeeded(reason):
             // 돌아가기 국면에서 계속 멀어지거나 나란히 계속 걸었다(E63 §3.5·판정 J4) — 자동 조회·채택. 운전자 채널은 확정 즉시
             // 조회가 실패·신선도 미달로 끝난 뒤의 재시도로만 쓴다(§3.8 — 이미 조회 중이면 아래 가드가 무시한다).
             rerouteTriggerCount += 1
             let ignored = maybeFetchProposal(source: driverChannel ? "driver" : "auto")
+            // 예산 소진으로 요청을 무시하는 순간이 "판정했는데 실행할 수 없다"는 자리다(E69 ⓑ).
+            if ignored == "budget" { raiseRerouteButton(cause: "budget", speak: true) }
             let moved: String = if let a = offRouteConfirmCoord, let b = lastFixCoord {
                 String(format: "%.0f", haversineMeters(lat1: a.lat, lng1: a.lng, lat2: b.lat, lng2: b.lng))
             } else { "-" }
@@ -3171,9 +3213,10 @@ final class BeaconModel {
             // 재조회·전환과의 이중 커밋은 양방향으로 막는다 — 리뷰 MAJOR 2026-09-02).
             guard token == proposalToken, offRoute, isTracking, mode == .detail, !rerouteInFlight,
                   self.dest == dest, self.waypoint == waypointAtFetch else { return }
-            // 경로 없음은 통지 없이 돌아가기 국면을 잇는다 — 리듀서가 문턱을 다시 채우면 또 요청한다(E63 §3.5 재무장).
+            // 경로 없음은 돌아가기 국면을 잇는다 — 리듀서가 문턱을 다시 채우면 또 요청한다(E63 §3.5 재무장). 버튼은 이 순간 선다(E69 ⓐ).
             guard let fetched else {
                 guideDiagLog("rerouteAdopt source=\(source) result=none headClock=-")
+                raiseRerouteButton(cause: "none", speak: true)
                 return
             }
             // 채택 시점 신선도 — 자동 채택의 유일한 안전망. 현재 좌표를 단정할 수 없거나
@@ -3188,6 +3231,7 @@ final class BeaconModel {
                       maxDriftMeters: tuning.rerouteMaxDriftM)
             else {
                 guideDiagLog("rerouteAdopt source=\(source) result=stale headClock=-")
+                raiseRerouteButton(cause: "stale", speak: true)
                 return
             }
             // 새 경로 첫 문장의 방향 머리말(E63 §3.7): 교체 **전** 세션의 진행 방위 기준 새 경로 첫 15m의 시. 자동차는 없음.
@@ -3214,8 +3258,11 @@ final class BeaconModel {
                 if let notice { self?.pendingStepFreeNotice = notice }
             }
         } catch {
-            // 조회 실패는 통지 없이 돌아가기 국면을 잇는다 — 더 멀어지면 리듀서가 또 요청한다(세션 예산 5회가 상한, E63 §3.5).
+            // 조회 실패는 돌아가기 국면을 잇는다 — 더 멀어지면 리듀서가 또 요청한다(세션 예산 5회가 상한, E63 §3.5).
             guideDiagLog("rerouteAdopt source=\(source) result=failed headClock=-")
+            // 폐기된 조회(복귀·경로 교체·수동 재조회로 토큰이 올랐다)의 실패는 이 회차의 결말이 아니다(E69 ⓐ).
+            guard token == proposalToken, offRoute, isTracking, mode == .detail else { return }
+            raiseRerouteButton(cause: "failed", speak: true)
         }
     }
 

@@ -239,7 +239,10 @@ class GuideSheetLandingTest {
         assertTrue(sheetRowExists(detail, SheetRow.liveTop))
         assertFalse(sheetRowExists(detail, SheetRow.status))
         assertFalse(sheetRowExists(detail.copy(offRoute = true), SheetRow.remaining))
-        assertTrue(sheetRowExists(detail.copy(offRoute = true), SheetRow.reroute))
+        // 재조회 버튼은 이탈 중에도 자동 판정이 손을 든 자리에서만(E69).
+        assertFalse(sheetRowExists(detail.copy(offRoute = true), SheetRow.reroute))
+        assertTrue(sheetRowExists(detail.copy(offRoute = true, rerouteGaveUp = true), SheetRow.reroute))
+        assertFalse(sheetRowExists(detail.copy(rerouteGaveUp = true), SheetRow.reroute))
         assertTrue(sheetRowExists(detail.copy(liveTopText = null), SheetRow.status))
         val brief = WalkGuideUiState(status = GuideStatus.tracking, mode = GuideMode.brief, statusText = "목적지까지 약 300m", liveTopText = "x")
         assertTrue(sheetRowExists(brief, SheetRow.status))

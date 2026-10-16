@@ -839,6 +839,7 @@
     <string name="guide_reacquiring">현재 위치를 다시 파악하는 중입니다</string>
     <string name="guide_remainingDistance">남은 거리 %1$s</string>
     <string name="guide_remainingTime">약 %1$s분</string>
+    <string name="guide_rerouteAutoGaveUp">새 경로를 자동으로 찾지 못했습니다.</string>
     <string name="guide_rerouteBusy">경로 다시 조회, 조회 중</string>
     <string name="guide_rerouteButton">경로 다시 조회</string>
     <string name="guide_rerouteDone">현재 위치에서 경로를 다시 찾았습니다. %1$s. 안내 %2$s개, 총 %3$s.</string>

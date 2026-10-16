@@ -35,6 +35,11 @@ data class WalkGuideUiState(
     val statusIsNextPreview: Boolean = false,
     val mode: GuideMode = GuideMode.brief,
     val offRoute: Boolean = false,
+    /**
+     * E69 래치: 이 이탈 회차에 자동 판정이 손을 들었다(자동 조회 실패·경로 없음·신선도 미달 / 예산 소진으로 요청 무시 / 벗어난 채 30초 정지).
+     * "경로 다시 조회" 버튼은 `offRoute` ∧ 이 값일 때만 선다(`sheetRowExists`). spec `2026-10-17-reroute-button-visibility-design.md`.
+     */
+    val rerouteGaveUp: Boolean = false,
     /** 직전 `offRoute` 해제가 경로 커밋(자동 채택·재조회)이었는가 — 시트의 제목 착지 판정. */
     val offRouteEndedByReroute: Boolean = false,
     val isRerouting: Boolean = false,

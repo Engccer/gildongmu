@@ -43,4 +43,20 @@ import Testing
         #expect(RerouteProposalGate.isFreshInTime(base, nowUptime: 1_119))
         #expect(!RerouteProposalGate.isFreshInTime(base, nowUptime: 1_121))
     }
+
+    @Test func 벗어난_채_정지_30초에_버튼이_선다_E69() {
+        var s = RerouteProposalGate.stillStep(since: nil, stopped: true, now: 10)
+        #expect(s.since == 10 && !s.reached)
+        s = RerouteProposalGate.stillStep(since: s.since, stopped: true, now: 39)
+        #expect(!s.reached)
+        s = RerouteProposalGate.stillStep(since: s.since, stopped: true, now: 40)
+        #expect(s.since == 10 && s.reached)
+    }
+
+    @Test func 정지가_아닌_fix는_연속을_끊는다_E69() {
+        let s = RerouteProposalGate.stillStep(since: 10, stopped: false, now: 35)
+        #expect(s.since == nil && !s.reached)
+        let t = RerouteProposalGate.stillStep(since: s.since, stopped: true, now: 45)
+        #expect(t.since == 45 && !t.reached)
+    }
 }

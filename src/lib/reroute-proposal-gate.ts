@@ -34,3 +34,23 @@ export function isRerouteProposalFresh(
 export function mayFetchReroute(sessionFetchCount: number): boolean {
   return sessionFetchCount < REROUTE_MAX_FETCHES_PER_SESSION;
 }
+
+/**
+ * E69 ⓒ: 벗어난 채 이만큼 서 있으면 "경로 다시 조회" 버튼이 선다(초, 착수 기본값 — 실보행 판정 대상,
+ * spec `2026-10-17-reroute-button-visibility-design.md` §1.2).
+ */
+export const REROUTE_BUTTON_STILL_S = 30;
+
+/**
+ * E69 ⓒ의 정지 연속 갱신. 새 정지 판정을 만들지 않고 `GuideFix.stopped`만 본다(E55 — `speedUnknown`은 정지가 아니라
+ * 연속을 끊는다). `since`는 연속 시작 시각(없으면 null), `reached`는 이 fix에서 문턱에 닿았는가.
+ */
+export function rerouteStillStep(
+  since: number | null,
+  stopped: boolean,
+  now: number,
+): { since: number | null; reached: boolean } {
+  if (!stopped) return { since: null, reached: false };
+  const start = since ?? now;
+  return { since: start, reached: now - start >= REROUTE_BUTTON_STILL_S };
+}

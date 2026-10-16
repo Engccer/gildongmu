@@ -169,6 +169,12 @@ class WalkGuideModel(
     private var offRoute: Boolean
         get() = _ui.value.offRoute
         set(v) = mutate { copy(offRoute = v) }
+    /** E69 래치 — 회차 시작(확정)과 세션 정리에서만 내린다(회차 안에서 버튼이 사라지면 그 버튼에 커서를 둔 사람이 맥락을 잃는다, 헌장 §5). */
+    private var rerouteGaveUp: Boolean
+        get() = _ui.value.rerouteGaveUp
+        set(v) = mutate { copy(rerouteGaveUp = v) }
+    /** E69 ⓒ: 벗어난 채 정지 연속 시작 시각(`RerouteProposalGate.stillStep`). */
+    private var offRouteStillSince: Double? = null
     private var offRouteEndedByReroute: Boolean
         get() = _ui.value.offRouteEndedByReroute
         set(v) = mutate { copy(offRouteEndedByReroute = v) }
@@ -594,6 +600,8 @@ class WalkGuideModel(
         liveSteps = emptyList()
         liveBaselineD = 0.0
         offRoute = false
+        rerouteGaveUp = false
+        offRouteStillSince = null
         lastFixCoord = null
         lastFixCoordAt = null
         isRerouting = false
@@ -1230,8 +1238,29 @@ class WalkGuideModel(
             now,
         )
         val event = out.event
-        if (event == null) { syncStatusTextWithPhase(out.state.phase); return }
-        consume(event, route, prev = state, signedPerp = out.signedPerpMeters, now = now)
+        if (event == null) syncStatusTextWithPhase(out.state.phase)
+        else consume(event, route, prev = state, signedPerp = out.signedPerpMeters, now = now)
+        // E69 ⓒ: 이벤트 소비 뒤(확정 fix의 회차 래치 초기화가 먼저).
+        stepRerouteStill(motion == MotionState.stopped, now)
+    }
+
+    /** E69 ⓒ: 벗어난 채 `GuideFix.stopped`가 30초 이어지면 버튼 래치를 조용히 세운다(새 정지 판정 금지 — 같은 술어, iOS 동형). */
+    private fun stepRerouteStill(stopped: Boolean, now: Double) {
+        if (!offRoute) { offRouteStillSince = null; return }
+        val still = RerouteProposalGate.stillStep(offRouteStillSince, stopped, now)
+        offRouteStillSince = still.since
+        if (still.reached) raiseRerouteButton("still", speak = false)
+    }
+
+    /**
+     * E69: 자동 판정이 손을 든 순간 버튼 래치를 세운다. 조회 실패·예산(ⓐⓑ)은 한 문장, 정지(ⓒ)는 침묵. 래치가 이미 섰으면 아무것도 하지 않는다
+     * (재무장으로 실패가 되풀이돼도 한 회차에 한 번). 포커스는 옮기지 않고 상태 행도 그대로다(윗줄은 리듀서가 소유하는 이탈 문장). iOS 동형.
+     */
+    private fun raiseRerouteButton(cause: String, speak: Boolean) {
+        if (rerouteGaveUp) return
+        rerouteGaveUp = true
+        GuideDiag.log("rerouteButton cause=$cause")
+        if (speak) announce(strings.get("guide.rerouteAutoGaveUp"), speechClass = GuideSpeechClass.actionable)
     }
 
     /** 이벤트 없이 국면만 바뀐 fix의 상태 텍스트를 되돌린다(재획득 문구일 때뿐, 통지 없음). */
@@ -1312,6 +1341,9 @@ class WalkGuideModel(
                     rerouteTriggerCount = 0
                     offRouteConfirmedAt = now
                     offRouteConfirmCoord = lastFixCoord
+                    // 새 회차는 버튼 없이 시작한다 — 앱이 돌아가게 할지 새 길을 찾을지 판정하는 중이다(E69).
+                    rerouteGaveUp = false
+                    offRouteStillSince = null
                 }
                 offRoute = true
                 val spoken = text.offRoute(event.guidance, event.side, event.returnRelDeg)
@@ -1344,6 +1376,8 @@ class WalkGuideModel(
                 // 돌아가기 국면에서 계속 멀어지거나 나란히 계속 걸었다(E63 §3.5·판정 J4) — 자동 조회·채택.
                 rerouteTriggerCount += 1
                 val ignored = maybeFetchProposal("auto")
+                // 예산 소진으로 요청을 무시하는 순간이 "판정했는데 실행할 수 없다"는 자리다(E69 ⓑ).
+                if (ignored == "budget") raiseRerouteButton("budget", speak = true)
                 GuideDiag.log {
                     val here = lastFixCoord
                     val moved = offRouteConfirmCoord?.let { a -> here?.let { fmt("%.0f", haversineMeters(a.lat, a.lng, it.lat, it.lng)) } } ?: "-"
@@ -1728,6 +1762,7 @@ class WalkGuideModel(
         val origin = rerouteOrigin() ?: run {
             // 출발점(15초 안의 fix)이 없으면 조회하지 않는다 — 트리거 줄 뒤에 채택 줄이 비지 않게 남긴다(iOS `result=failed` 동형).
             GuideDiag.log("rerouteAdopt source=$source result=failed headClock=-")
+            if (token == proposalToken && offRoute && isTracking && mode == GuideMode.detail) raiseRerouteButton("failed", speak = true)
             return
         }
         val acquiredAt = clock()
@@ -1735,10 +1770,13 @@ class WalkGuideModel(
         val waypointAtFetch = waypoint
         val fetched = runCatching { fetchDetailData(origin, dest, sessionVariant, accessible, waypointAtFetch) }
         if (token != proposalToken || !offRoute || !isTracking || mode != GuideMode.detail || rerouteInFlight || this.dest != dest || this.waypoint != waypointAtFetch) return
-        // 조회 실패·경로 없음은 통지 없이 돌아가기 국면을 잇는다 — 리듀서가 문턱을 다시 채우면 또 요청한다(E63 §3.5 재무장, 세션 예산 5회가 상한).
+        // 조회 실패·경로 없음은 돌아가기 국면을 잇는다 — 리듀서가 문턱을 다시 채우면 또 요청한다(E63 §3.5 재무장, 세션 예산 5회가 상한).
+        // 버튼은 이 순간 선다(E69 ⓐ).
         val result = fetched.getOrNull()
         if (result == null) {
-            GuideDiag.log("rerouteAdopt source=$source result=${if (fetched.isFailure) "failed" else "none"} headClock=-")
+            val cause = if (fetched.isFailure) "failed" else "none"
+            GuideDiag.log("rerouteAdopt source=$source result=$cause headClock=-")
+            raiseRerouteButton(cause, speak = true)
             return
         }
         val proposal = RerouteProposal(originLat = origin.lat, originLng = origin.lng, acquiredAt = acquiredAt)
@@ -1746,6 +1784,7 @@ class WalkGuideModel(
         val at = lastFixCoordAt
         if (c == null || at == null || clock() - at > freshFixSeconds || !RerouteProposalGate.isFresh(proposal, clock(), c.lat, c.lng, tuning.rerouteMaxDriftM)) {
             GuideDiag.log("rerouteAdopt source=$source result=stale headClock=-")
+            raiseRerouteButton("stale", speak = true)
             return
         }
         // 새 경로 첫 문장의 방향 머리말(E63 §3.7): 교체 **전** 세션의 진행 방위 기준 새 경로 첫 15m의 시.

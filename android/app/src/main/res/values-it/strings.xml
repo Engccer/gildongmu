@@ -839,6 +839,7 @@
     <string name="guide_reacquiring">Ricerca della tua posizione sul percorso</string>
     <string name="guide_remainingDistance">Distanza rimanente %1$s</string>
     <string name="guide_remainingTime">circa %1$s min</string>
+    <string name="guide_rerouteAutoGaveUp">Impossibile trovare automaticamente un nuovo percorso.</string>
     <string name="guide_rerouteBusy">Ricalcolo percorso, in corso</string>
     <string name="guide_rerouteButton">Cerca di nuovo il percorso</string>
     <string name="guide_rerouteDone">Percorso ricalcolato dalla tua posizione attuale. %1$s. {2, plural, one {%2$s indicazione} other {%2$s indicazioni}}, %3$s in totale.</string>

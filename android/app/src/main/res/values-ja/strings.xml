@@ -839,6 +839,7 @@
     <string name="guide_reacquiring">経路上の位置を再取得しています</string>
     <string name="guide_remainingDistance">残り%1$s</string>
     <string name="guide_remainingTime">約%1$s分</string>
+    <string name="guide_rerouteAutoGaveUp">新しい経路を自動で見つけられませんでした。</string>
     <string name="guide_rerouteBusy">経路を再取得、取得中</string>
     <string name="guide_rerouteButton">経路を再検索</string>
     <string name="guide_rerouteDone">現在地から経路を再検索しました。%1$s。案内%2$s件、合計%3$s。</string>

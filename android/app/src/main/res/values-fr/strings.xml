@@ -839,6 +839,7 @@
     <string name="guide_reacquiring">Recherche de votre position sur l\'itinéraire</string>
     <string name="guide_remainingDistance">Distance restante %1$s</string>
     <string name="guide_remainingTime">environ %1$s min</string>
+    <string name="guide_rerouteAutoGaveUp">Impossible de trouver automatiquement un nouvel itinéraire.</string>
     <string name="guide_rerouteBusy">Recalculer l\'itinéraire, en cours</string>
     <string name="guide_rerouteButton">Relancer la recherche d\'itinéraire</string>
     <string name="guide_rerouteDone">Itinéraire recalculé depuis votre position actuelle. %1$s. {2, plural, one {%2$s instruction} other {%2$s instructions}}, %3$s au total.</string>
