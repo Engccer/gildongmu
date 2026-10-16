@@ -213,8 +213,21 @@ data class GuideTuning(
     val headingMaxUncertaintyDeg: Double,
     val handoffDistM: Double,
     val handoffRearmM: Double,
-    /** 경유지 접근 예고 임계(m). null = 예고 없음(car — 속도에 맞춘 리듬은 판정 밖, N4 2026-09-24 §2.1). */
-    val waypointApproachM: Double?,
+    /**
+     * 경유지 접근 예고 임계의 **거리 바닥**(m). 실제 임계는 `waypointApproachThreshold` = `max(이 값, v×waypointApproachS)`
+     * (임박 큐 구조 동형). walk 50(시간 0 — 종전 고정), car 150 바닥 + 60초(N4 자동차 spec 2026-10-17 §3, 위원장 판정
+     * "약 1분 전 한 번").
+     */
+    val waypointApproachM: Double,
+    /** 경유지 접근 예고의 시간 축(초). walk 0. */
+    val waypointApproachS: Double,
+    /** 속도 표본 2개 미만일 때의 경유지 접근 임계(m). walk 50(=바닥), car 600(≈10m/s×60초). */
+    val waypointApproachUnknownSpeedM: Double,
+    /**
+     * 직전 발화(`lastAnnouncedAt`) 뒤 이만큼 지나야 예고한다(초). 0 = 조건 없음(walk). car 10 — 회전 명령 다음 fix의
+     * 예고가 그 문장을 끊지 않게(소비 계층은 latest-wins·운전자 TTS halt, N4 자동차 spec 2026-10-17 §4).
+     */
+    val waypointApproachQuietS: Double,
     /** 재획득 전방 연속성 타이브레이크(재획득 경로 한정) */
     val reacquireTieBreak: Boolean,
     /** 보행 속도 가드. false면 가드 기계 전체 비활성(차량 상시 활성 → 이탈 재통지 잠식 차단). */
@@ -280,7 +293,8 @@ data class GuideTuning(
             sideMinPerpM = 3.0, oppositeMinDeg = 135.0,
             headingMaxAgeS = 5.0, headingMaxUncertaintyDeg = 30.0,
             handoffDistM = handoffDistMeters, handoffRearmM = handoffRearmMeters,
-            waypointApproachM = waypointApproachMeters,
+            waypointApproachM = waypointApproachMeters, waypointApproachS = 0.0,
+            waypointApproachUnknownSpeedM = waypointApproachMeters, waypointApproachQuietS = 0.0,
             reacquireTieBreak = false, speedSuggest = true,
             courseAxisEnabled = true,
             presumedArrival = PresumedArrivalThresholds.walk,
@@ -315,7 +329,9 @@ data class GuideTuning(
             sideMinPerpM = 3.0, oppositeMinDeg = 135.0,
             headingMaxAgeS = 5.0, headingMaxUncertaintyDeg = 30.0,
             handoffDistM = 150.0, handoffRearmM = 200.0,
-            waypointApproachM = null,
+            waypointApproachM = carWaypointApproachFloorMeters, waypointApproachS = carWaypointApproachSeconds,
+            waypointApproachUnknownSpeedM = carWaypointApproachUnknownSpeedMeters,
+            waypointApproachQuietS = carWaypointApproachQuietSeconds,
             reacquireTieBreak = true, speedSuggest = false,
             // ⚠ 차량 궤적으로 측정된 적이 없다. 켜려면 먼저 재라(위 필드 주석).
             courseAxisEnabled = false,
@@ -340,6 +356,17 @@ const val carFixLagSeconds = 1.0
 const val carImminentAheadSeconds = 5.0 + carFixLagSeconds
 const val carDriverImminentAheadSeconds = 8.0 + carFixLagSeconds
 const val carImminentUnknownSpeedMeters = 60.0
+
+/**
+ * 자동차 경유지 접근 예고 상수(웹 `CAR_WAYPOINT_APPROACH_*` 미러, N4 자동차 spec 2026-10-17 §3): 임계 = max(바닥, v×60초),
+ * 표본 부족 시 600m(시내 10m/s 가정). 바닥은 정체·서행에서도 한 블록쯤 앞. ⚠ 실주행 판정 전까지 잠정.
+ */
+const val carWaypointApproachFloorMeters = 150.0
+const val carWaypointApproachSeconds = 60.0
+const val carWaypointApproachUnknownSpeedMeters = 600.0
+
+/** 직전 발화 뒤 정숙 시간(초) — 자동차 전문 한 문장에 여유. ⚠ 잠정(실주행 판정). */
+const val carWaypointApproachQuietSeconds = 10.0
 
 /** 남은 거리 행의 목표(N4 spec 2026-09-24 §2.5, 웹 `GuideNextTargetKind` 미러). `route`=경유지 없는 세션. */
 enum class GuideNextTargetKind { route, waypoint, destination }
@@ -367,6 +394,16 @@ fun imminentAheadMeters(speedSamples: List<GuideSpeedSample>, tuning: GuideTunin
     val floor = tuning.imminentAheadM ?: return 0.0
     if (speedSamples.size < 2) return tuning.imminentUnknownSpeedM
     return maxOf(floor, estimateSpeedMps(speedSamples) * tuning.imminentAheadS)
+}
+
+/**
+ * 이 상태의 경유지 접근 예고 임계(m) — W0·W4가 같은 식을 쓴다(웹 `waypointApproachThreshold` 미러, N4 자동차 spec
+ * 2026-10-17 §3). 표본은 임박 큐와 같은 직전 fix까지의 창이다. walk는 50 고정(종전). 같은 이름의 상수
+ * `waypointApproachMeters`(walk 50)와는 호출 형태로 갈린다.
+ */
+fun waypointApproachThreshold(speedSamples: List<GuideSpeedSample>, tuning: GuideTuning): Double {
+    if (speedSamples.size < 2) return tuning.waypointApproachUnknownSpeedM
+    return maxOf(tuning.waypointApproachM, estimateSpeedMps(speedSamples) * tuning.waypointApproachS)
 }
 
 /** 표시 좌표계의 회전 접근 전환 잔여(m) = 임박 임계 − 표시 lag(하한 0). walk 10. */
@@ -957,10 +994,12 @@ fun guideStep(state: GuideState, fix: GuideFix, route: GuideRoute, now: Double, 
     // W0) 경로 세대가 이미 경유지 접근선 안에서 시작하면 예고를 무발화로 소비한다(N4 2026-09-24 §2.4 — 원거리 예고의
     //     재진입 유닛 소비와 같은 원리). 기준은 투영 전인 세대 진입 `state.d`, 조기 반환 국면보다 앞이라 세대 첫
     //     fix(`lastFixAt == null`)에서 한 번만 본다.
-    val approachM = tuning.waypointApproachM
+    //     ⚠ 기준은 속도와 무관한 **바닥**이다(N4 자동차 설계 리뷰 MAJOR 1) — 표본 없는 미지 임계(car 600m)로 소비하면
+    //       500m 앞 서행 출발에서 예고가 영구히 사라진다. 시작 문장 보호는 W4의 정숙 시간이 맡는다. walk는 바닥 = 임계.
     val wp = route.waypointStepIndex
-    val seedApproached = state.lastFixAt == null && approachM != null && wp != null &&
-        !state.waypointReached && !state.waypointApproached && route.steps[wp].startD - state.d <= approachM
+    val seedApproached = state.lastFixAt == null && wp != null &&
+        !state.waypointReached && !state.waypointApproached &&
+        route.steps[wp].startD - state.d <= tuning.waypointApproachM
     val base = state.copy(
         courseDerivation = dv.state,
         waypointApproached = state.waypointApproached || seedApproached,
@@ -1592,10 +1631,16 @@ fun guideStep(state: GuideState, fix: GuideFix, route: GuideRoute, now: Double, 
     // W4) 경유지 접근 예고(N4 2026-09-24 §2.4). 수준 판정 + 래치 — 더 급한 이벤트에 이번 fix를 내주면 다음 fix에
     //     나간다(교차 판정은 그 경합에서 영구히 잃는다). 밀린 사이 도착선을 넘으면 W1이 도착을 세워 다시 서지 않는다
     //     (도착이 예고를 대신한다). 신뢰 조건은 W1과 같다.
-    if (approachM != null && wp != null && !next.waypointReached && !next.waypointApproached && !isOff && !jumped) {
+    //     정숙 시간(car 10초): 같은 fix 우선순위만으로는 다음 fix 예고가 앞 문장을 끊는다(소비 계층 latest-wins·운전자
+    //     TTS halt — 설계 리뷰 MAJOR 2). 0이면 비교하지 않는다 — fix 시각이 세대 생성 시각보다 앞서는 플랫폼에서 음수
+    //     차가 도보 예고를 막지 않게(바이트 동일).
+    if (wp != null && !next.waypointReached && !next.waypointApproached && !isOff && !jumped &&
+        (tuning.waypointApproachQuietS <= 0.0 || now - next.lastAnnouncedAt >= tuning.waypointApproachQuietS)
+    ) {
         val rem = route.steps[wp].startD - d
-        // 1m 미만은 곧 도착이다 — "0m" 예고를 내지 않고 W1에 맡긴다(설계 리뷰 #11).
-        if (rem >= 1 && rem <= approachM) {
+        // 1m 미만은 곧 도착이다 — "0m" 예고를 내지 않고 W1에 맡긴다(설계 리뷰 #11). 임계 표본은 6a와 같은 직전 fix까지의
+        // 창(`state`)이다(car max(150, v×60), walk 50 고정).
+        if (rem >= 1 && rem <= waypointApproachThreshold(state.speedSamples, tuning)) {
             return emit(
                 next.copy(waypointApproached = true, lastAnnouncedAt = now),
                 GuideEvent.WaypointApproaching(rem.roundedAwayFromZero().toInt()),

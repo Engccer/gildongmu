@@ -345,12 +345,35 @@ private func offRouteFields(_ event: GuideEvent?) -> OffRouteFields? {
     }
 }
 
-/// 경유지 접근 예고 프로파일(N4 2026-09-24 §2.1, 웹 route-guide.test.ts 미러).
+/// 경유지 접근 예고 프로파일(N4 2026-09-24 §2.1 · 자동차 2026-10-17 §3, 웹 route-guide.test.ts 미러).
 @Test func waypointApproachProfile() {
+    func samples(_ v: Double) -> [GuideSpeedSample] {
+        [GuideSpeedSample(at: 0, d: 0), GuideSpeedSample(at: 2, d: 2 * v)]
+    }
+    // walk는 옛 최종 접근 진입선과 같은 50m 고정이다 — 속도·표본과 무관, 정숙 조건 없음.
     #expect(waypointApproachMeters == handoffDistMeters)
     #expect(GuideTuning.walk.waypointApproachM == waypointApproachMeters)
-    #expect(GuideTuning.car.waypointApproachM == nil)
-    #expect(GuideTuning.carDriver.waypointApproachM == nil)
+    #expect(GuideTuning.walk.waypointApproachS == 0)
+    #expect(GuideTuning.walk.waypointApproachUnknownSpeedM == waypointApproachMeters)
+    #expect(GuideTuning.walk.waypointApproachQuietS == 0)
+    for s in [[], samples(1.2), samples(3)] {
+        #expect(waypointApproachThreshold(speedSamples: s, tuning: .walk) == waypointApproachMeters)
+    }
+    // 자동차는 max(150m, v×60초), 표본 부족이면 600m, 정숙 10초 — 운전자 프로파일도 같다.
+    for t in [GuideTuning.car, GuideTuning.carDriver] {
+        #expect(t.waypointApproachM == carWaypointApproachFloorMeters)
+        #expect(t.waypointApproachS == carWaypointApproachSeconds)
+        #expect(t.waypointApproachUnknownSpeedM == carWaypointApproachUnknownSpeedMeters)
+        #expect(t.waypointApproachQuietS == carWaypointApproachQuietSeconds)
+        #expect(waypointApproachThreshold(speedSamples: [], tuning: t) == 600)
+        #expect(waypointApproachThreshold(speedSamples: [GuideSpeedSample(at: 0, d: 0)], tuning: t) == 600)
+        #expect(waypointApproachThreshold(speedSamples: samples(0), tuning: t) == 150)
+        #expect(waypointApproachThreshold(speedSamples: samples(2), tuning: t) == 150)
+        #expect(abs(waypointApproachThreshold(speedSamples: samples(10), tuning: t) - 600) < 1e-6)
+        #expect(abs(waypointApproachThreshold(speedSamples: samples(25), tuning: t) - 1500) < 1e-6)
+    }
+    #expect([carWaypointApproachFloorMeters, carWaypointApproachSeconds,
+             carWaypointApproachUnknownSpeedMeters, carWaypointApproachQuietSeconds] == [150, 60, 600, 10])
 }
 
 /// 속도 가드 표본 소멸 시 해제(정확도 배제의 2차 회귀 차단 — 웹 route-guide.test.ts 미러).

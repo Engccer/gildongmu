@@ -228,12 +228,38 @@ class RouteGuideTest {
         }
     }
 
-    /** 경유지 접근 예고 프로파일(N4 2026-09-24 §2.1, 웹 route-guide.test.ts 미러). */
-    @Test fun `경유지 접근 예고 프로파일`() {
+    /** 경유지 접근 예고 프로파일(N4 2026-09-24 §2.1 · 자동차 2026-10-17 §3, 웹 route-guide.test.ts 미러). */
+    private fun wpSamples(v: Double) = listOf(GuideSpeedSample(0.0, 0.0), GuideSpeedSample(2.0, 2 * v))
+
+    @Test fun `경유지 접근 예고 프로파일 - walk는 50m 고정이고 정숙 조건이 없다`() {
         assertEquals(handoffDistMeters, waypointApproachMeters)
-        assertEquals(waypointApproachMeters, GuideTuning.walk.waypointApproachM)
-        assertNull(GuideTuning.car.waypointApproachM)
-        assertNull(GuideTuning.carDriver.waypointApproachM)
+        val w = GuideTuning.walk
+        assertEquals(waypointApproachMeters, w.waypointApproachM)
+        assertEquals(0.0, w.waypointApproachS)
+        assertEquals(waypointApproachMeters, w.waypointApproachUnknownSpeedM)
+        assertEquals(0.0, w.waypointApproachQuietS)
+        for (s in listOf(emptyList(), wpSamples(1.2), wpSamples(3.0))) {
+            assertEquals(waypointApproachMeters, waypointApproachThreshold(s, w))
+        }
+    }
+
+    @Test fun `경유지 접근 예고 프로파일 - 자동차는 max(150, v x 60), 표본 부족 600, 정숙 10초이며 운전자도 같다`() {
+        for (t in listOf(GuideTuning.car, GuideTuning.carDriver)) {
+            assertEquals(carWaypointApproachFloorMeters, t.waypointApproachM)
+            assertEquals(carWaypointApproachSeconds, t.waypointApproachS)
+            assertEquals(carWaypointApproachUnknownSpeedMeters, t.waypointApproachUnknownSpeedM)
+            assertEquals(carWaypointApproachQuietSeconds, t.waypointApproachQuietS)
+            assertEquals(600.0, waypointApproachThreshold(emptyList(), t))
+            assertEquals(600.0, waypointApproachThreshold(listOf(GuideSpeedSample(0.0, 0.0)), t))
+            assertEquals(150.0, waypointApproachThreshold(wpSamples(0.0), t))
+            assertEquals(150.0, waypointApproachThreshold(wpSamples(2.0), t))
+            assertEquals(600.0, waypointApproachThreshold(wpSamples(10.0), t), 1e-6)
+            assertEquals(1500.0, waypointApproachThreshold(wpSamples(25.0), t), 1e-6)
+        }
+        assertEquals(listOf(150.0, 60.0, 600.0, 10.0), listOf(
+            carWaypointApproachFloorMeters, carWaypointApproachSeconds,
+            carWaypointApproachUnknownSpeedMeters, carWaypointApproachQuietSeconds,
+        ))
     }
 
     /**
