@@ -101,6 +101,7 @@
 - **지하철 도착 목록의 줄은 완성 문장을 읽어 쓴 우리 문장이고, 못 알아본 문장만 원문이다**(E37, `subwayArrivalProse`+`arrivalProseSegments` 웹 ↔ Kit 공유 fixture): `barvlDt`·`arvlCd`는 판정·값에 쓰지 않는다. → INTEGRATIONS
 - ⚠ **정규식을 웹·Kit에 미러할 때 문자 클래스 안의 `[`는 반드시 이스케이프한다**(`[(\[]`): ICU는 중첩 집합으로 읽어 iOS만 전량을 놓친다. 공유 fixture를 Kit에서도 돌리는 것이 유일한 검출 수단. → PATTERNS
 - **역명 매칭은 확장 정규화가 정본**(`station-match.ts` `normalizeStationName`+`lineHintMatches` 재사용, 자체 정규화 금지). → INTEGRATIONS
+- **ODsay는 승차역을 지정받지 못한다 — 역 좌표로 불러도 이웃 역 승차 경로를 1순위로 줄 수 있다**(`maasRP`도 지정 없음). 지정 역 경로는 선정 전 전체 후보에서 이름 키 + 고른 역 좌표 500m + 노선으로 찾는다. → spec `2026-10-17-e70-mode-change-journey-design.md` §3.2·§4.3
 - **음성 전사를 검색어로 쓰기 전 `normalizeVoiceQuery` 필수**(웹 `format.ts` ↔ Kit `VoiceQuery.swift`) — STT 후행 마침표에 juso가 0건이 된다. 소비 여부 판정은 별개 층 `hasSpeechContent`(Kit, `SpeechService.stop()` 한 곳). 채팅은 미적용. → INTEGRATIONS
 - **"내 주변" 거리순 정렬은 코드 책임**(Haversine, `totalCount` 신뢰 금지). ⚠ 검색 탭은 거리순이 아니라 정확도순+근접 블렌딩 — 거리 표기만 `annotateDistances`, 재정렬 금지. → INTEGRATIONS
 - **캐시**: 실시간=`no-store`(지하철 도착·대중교통 추적은 라우트 `force-dynamic`, 버스 도착은 provider 기본 `no-store`), 준정적=`revalidate`(역메타 86400·공기질 600·날씨 1800·juso 주소 3600, 카카오 응답은 300이 상한 — `kakao-cache-ttl.test.ts`).
