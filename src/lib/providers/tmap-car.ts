@@ -1,4 +1,5 @@
 import { env } from "../env";
+import { readTmapJson } from "./tmap-json";
 import { carActionFromTurnType } from "../car-action";
 import type { CarRouteBriefing, CarRouteGuide, Coord, RouteWaypoint } from "../types";
 
@@ -223,7 +224,7 @@ export async function getTmapCarBriefing(params: {
     const body = await res.text().catch(() => "");
     throw new Error(`Tmap 자동차 경로 실패: HTTP ${res.status} ${body}`);
   }
-  const data = (await res.json()) as TmapCarResponse;
+  const data = (await readTmapJson(res)) as TmapCarResponse;
   return normalizeTmapCarRoute(data, {
     includeGeometry: params.includeGeometry,
     expectWaypoint: via !== undefined,

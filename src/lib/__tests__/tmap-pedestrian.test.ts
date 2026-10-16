@@ -249,6 +249,19 @@ describe("getWalkRouteBriefing", () => {
     );
   });
 
+  it("문자열 안 날 NUL(POI 이름 구분자)이 있어도 파싱한다(A62, 2026-10-17 실호출)", async () => {
+    // Tmap은 POI 이름 둘을 날 U+0000으로 잇는다 — res.json()이면 통째로 502였다.
+    const body = JSON.stringify(sample).replaceAll(
+      "강동구청사거리에서",
+      "강동구청사거리\u0000CU 강동점에서",
+    );
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(body, { status: 200 })));
+    const briefing = await getWalkRouteBriefing(params);
+    expect(briefing?.steps.map((s) => s.description)).toContain(
+      "강동구청사거리 CU 강동점에서 좌회전 후 340m 이동",
+    );
+  });
+
   it("비200 + JSON 파싱 불가 body도 throw한다", async () => {
     vi.stubGlobal(
       "fetch",

@@ -8,15 +8,17 @@ on:
     paths:
       - "packages/**"
       - ".github/workflows/cli-publish.yml"
+  # 태그 없이 test 잡만 돌려 실행 환경을 확인한다(publish 잡은 태그 ref에서만 돈다).
+  workflow_dispatch:
 
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
-          node-version: "20"
+          node-version: "22"
       - run: npm install
       - name: Build CLI + MCP
         run: |
@@ -40,11 +42,13 @@ jobs:
       contents: read
       id-token: write   # npm Trusted Publishing OIDC
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: "22"
           registry-url: "https://registry.npmjs.org"
+          # 발행 잡은 캐시를 복원하지 않는다(캐시 오염이 tarball로 들어가는 경로 차단).
+          package-manager-cache: false
       - run: npm install
       - run: |
           npm -w gildongmu run build

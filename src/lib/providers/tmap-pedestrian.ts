@@ -1,4 +1,5 @@
 import { env } from "../env";
+import { parseTmapJson, readTmapJson } from "./tmap-json";
 import { roundCoord } from "../coord-round";
 import { pedestrianStepFor } from "../pedestrian-action";
 import { assertDistanceMatchesKorean, assertTurnTypeMatchesKorean } from "../pedestrian-guard";
@@ -269,7 +270,7 @@ export async function getWalkRouteBriefing(params: {
     const body = await res.text().catch(() => "");
     const code = (() => {
       try {
-        return (JSON.parse(body) as TmapErrorBody).error?.code;
+        return (parseTmapJson(body) as TmapErrorBody).error?.code;
       } catch {
         return undefined;
       }
@@ -277,7 +278,7 @@ export async function getWalkRouteBriefing(params: {
     if (code !== undefined && NO_ROUTE_ERROR_CODES.has(code)) return null;
     throw new Error(`Tmap 보행자 경로 실패: HTTP ${res.status} ${body}`);
   }
-  const data = (await res.json()) as TmapRouteResponse;
+  const data = (await readTmapJson(res)) as TmapRouteResponse;
   return normalizeTmapWalkRoute(data, {
     includeLineGeometry,
     expectWaypoint: via !== undefined,

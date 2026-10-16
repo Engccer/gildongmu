@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
-import { normalizeTmapCarRoute, type TmapCarResponse } from "../providers/tmap-car";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { getTmapCarBriefing, normalizeTmapCarRoute, type TmapCarResponse } from "../providers/tmap-car";
+import { parseTmapJson } from "../providers/tmap-json";
 
 /** Step 1 실호출 캡처(길동→강남) 축약 fixture. 필드명·중첩은 원문 그대로. */
 function fixture(): TmapCarResponse {
@@ -185,5 +186,24 @@ describe("normalizeTmapCarRoute includeGeometry(B1 §5)", () => {
     expect(second.action).toBe("right");
     // 종점 마커 좌표 보존(§5 전 구간 커버리지 검증 축 — 독립 리뷰 반영)
     expect(out.terminalCoord).toEqual({ lat: 37.502, lng: 127.108 });
+  });
+});
+
+describe("Tmap 응답 본문의 날 제어 문자(A62)", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("parseTmapJson은 날 제어 문자를 공백으로 바꾸고 이스케이프는 그대로 둔다", () => {
+    expect(parseTmapJson('{"a":"x\u0000y","b":"p\\u0000q"}\n')).toEqual({ a: "x y", b: "p\u0000q" });
+  });
+
+  it("getTmapCarBriefing도 문자열 안 날 NUL을 견딘다", async () => {
+    const body = JSON.stringify(fixture()).replaceAll("교차로에서", "교차로\u0000CU 명일점에서");
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(body, { status: 200 })));
+    const briefing = await getTmapCarBriefing({
+      origin: { lat: 37.538, lng: 127.1435 },
+      dest: { lat: 37.4979, lng: 127.0276 },
+    });
+    expect(JSON.stringify(briefing)).not.toContain("\\u0000");
+    expect(JSON.stringify(briefing)).toContain("CU 명일점");
   });
 });
