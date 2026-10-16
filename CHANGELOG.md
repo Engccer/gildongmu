@@ -20,6 +20,9 @@
 ### 내 주변 목록이 상세에서 돌아올 때 다시 조회하지 않는다 (A64, iOS)
 지하철역 목록에만 있던 복귀 재조회 생략을 Kit `NearbyLoadCore`(`notePushed`·`appear`, `:kit` 미러)로 올려 버스 목록·둘러보기도 같은 규칙이 됐다. 탭 전환 복귀와 새로고침은 종전대로 조회한다. BACKLOG A64.
 
+### 택시 → 대중교통 → 택시 여정 설계 확정 (E70 첫 판, 코드 없음)
+ODsay `maasRP`를 실호출로 조사해(8건) 택시·자동차 수단과 승차역 지정이 없음을 확인하고, 여정을 서버 `/api/route/journey`가 조회 셋으로 조립하는 설계를 확정했다(위원장 판정 12~17, 문안 22줄, 적대적 설계 리뷰 2회 BLOCKER 잔여 0). 조사 스크립트 `scripts/probe-odsay-maas.mjs`(`--out`·`--from-corpus`, 호출 원장 상한). spec `2026-10-17-e70-mode-change-journey-design.md`, 조사 `RESEARCH-2026-10-17-e70-maasrp-probe.md`, BACKLOG E70.
+
 ### 이탈 중 "경로 다시 조회" 버튼은 자동 판정이 손을 든 자리에서만 (E69, 웹·iOS·안드로이드)
 E63 뒤 돌아가기 국면 내내 보이던 버튼을, 이 회차의 자동 조회가 실패·경로 없음·신선도 미달로 끝났거나 예산 소진으로 요청을 무시했거나 벗어난 채 30초 서 있을 때만 세운다(회차 래치). 앞의 둘은 「새 경로를 자동으로 찾지 못했습니다.」를 한 번 말하고 정지는 침묵한다. 정지 연속은 `RerouteProposalGate.stillStep` 세 벌, N 30초는 착수 기본값(로그로 잴 수 없었다). spec `2026-10-17-reroute-button-visibility-design.md`, BACKLOG E69.
 
