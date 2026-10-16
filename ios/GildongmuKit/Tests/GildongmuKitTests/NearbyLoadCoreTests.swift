@@ -811,6 +811,22 @@ struct NearbyLoadCoreTests {
         #expect(loadedPayload(core.phase) == "P1")
     }
 
+    /// 표식 뒤 목록이 사라졌으면(가려진 사이 새로고침이 권한 거부로 끝남) 돌아온 등장은 조회한다.
+    @Test func appearAfterPushRefetchesWhenNoLongerLoaded() async {
+        let recorder = Recorder()
+        let core = makeCore(recorder)
+        await core.appear()
+        core.notePushed()
+        recorder.coordStub = { _ in throw NearbyLocationError.denied }
+        await core.load(force: true)
+        #expect(phaseName(core.phase) == "denied")
+
+        recorder.coordStub = { _ in seoulCoord }
+        await core.appear()
+        #expect(recorder.fetchCallCount == 2)
+        #expect(loadedPayload(core.phase) == "P1")
+    }
+
     /// 새로고침은 표식과 무관하게 조회한다(낡은 도착 시각은 새로고침이 받는다).
     @Test func forceLoadIgnoresPushMark() async {
         let recorder = Recorder()

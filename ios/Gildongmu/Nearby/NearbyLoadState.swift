@@ -28,6 +28,12 @@ func distanceText(_ s: String) -> some View {
     Text(s).accessibilityLabel(Text(spokenUnits(s)))
 }
 
+/// 시각 문자열에 속성(줄 안 대상 링크, E72)이 붙은 판. 낭독 라벨은 같은 규칙(`spokenUnits`)을 지난다.
+@MainActor
+func distanceText(_ shown: AttributedString, spoken: String) -> some View {
+    Text(shown).accessibilityLabel(Text(spokenUnits(spoken)))
+}
+
 /// 장소명 병기(E28) — 앱 언어를 넣은 Kit `bilingualName` 축약. 비-ko에서 en 원천 → 로마자 → 한글.
 @MainActor
 func bilingual(_ ko: String, en: String? = nil, roman: String?) -> BilingualName {
@@ -38,6 +44,12 @@ func bilingual(_ ko: String, en: String? = nil, roman: String?) -> BilingualName
 /// 접근 가능한 이름은 괄호 앞만). 단일 `Text`라 한 객체이고 거리 단위 정정도 함께 건다.
 @MainActor
 func bilingualLine(visible: String, accessible: String) -> some View {
+    Text(visible).accessibilityLabel(Text(spokenUnits(accessible)))
+}
+
+/// 시각 문장에 속성(줄 안 대상 링크, E72)이 붙은 판. 낭독은 같은 규칙.
+@MainActor
+func bilingualLine(visible: AttributedString, accessible: String) -> some View {
     Text(visible).accessibilityLabel(Text(spokenUnits(accessible)))
 }
 

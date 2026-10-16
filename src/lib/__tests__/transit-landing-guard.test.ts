@@ -114,7 +114,7 @@ describe("TransitTrackingSheet 착지 대상 (E38) · boarding 수동 진행 (N3
     expect(body).toContain("return controlExists(.waitingLabel) ? .waitingLabel : .status");
     // `.status`는 상태 문장 줄에 달린다(폴백 문장도 같은 조립기를 읽는다 — 드리프트 차단).
     // E72부터 줄은 역 이름 링크를 품은 `Text`이고 낭독 라벨은 종전 `distanceText`와 같은 `spokenUnits(text)`다.
-    expect(SHEET).toMatch(/landingTarget\(\s*Text\(InlineTargets\.linked\(\s*AttributedString\(text\)[\s\S]{0,160}?\.accessibilityLabel\(Text\(spokenUnits\(text\)\)\),\s*\.status\)/);
+    expect(SHEET).toMatch(/landingTarget\(\s*distanceText\(\s*InlineTargets\.linked\(\s*AttributedString\(text\)[\s\S]{0,160}?spoken: text\),\s*\.status\)/);
     // 폴백은 화면과 같은 낭독 라벨을 지난다(a11y 감사 L1).
     expect(SHEET).toContain("return spokenUnits(model.statusLineText(state: state, leg: leg, now: model.positionClock, speaksLocated: true))");
   });

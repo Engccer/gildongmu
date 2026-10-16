@@ -178,7 +178,7 @@ private struct BriefingStationRow<Content: View>: View {
     var body: some View {
         content()
             // 역 이름 링크 탭(E72) — 링크 순번은 `actions` 순번이다(`stationRow`가 같은 순서로 이름을 넘긴다).
-            .inlineTargetTaps { index in onOpen(actions[index].stop, actions[index].lineName) }
+            .inlineTargetTaps(count: actions.count) { index in onOpen(actions[index].stop, actions[index].lineName) }
             // ⚠ 선언은 **역순**이다: VoiceOver 로터가 빌더 선언의 역순으로 노출된다(PlaceRow·채팅·E33 실측).
             //   역별 묶음 안의 (상세 → 전화) 순서도 함께 뒤집혀야 "A 상세 → A 전화 → B 상세 → B 전화"로 들린다.
             .accessibilityActions {

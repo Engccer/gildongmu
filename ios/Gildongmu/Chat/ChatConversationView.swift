@@ -497,7 +497,7 @@ private struct MessageBubbleView: View {
         } else {
             text
                 // 인라인 링크 탭(시각 사용자): 자체 스킴 URL을 가로채 상세로.
-                .inlineTargetTaps { onOpenPlace(mentions[$0], originKey) }
+                .inlineTargetTaps(count: mentions.count) { onOpenPlace(mentions[$0], originKey) }
                 .accessibilityFocused($focusedOriginKey, equals: originKey)
                 // ⚠ 선언은 역순: VoiceOver 로터가 빌더 선언의 역순으로 노출된다(PlaceRow 실측).
                 // 산문 등장 순으로 들리도록 뒤집어 선언.

@@ -37,10 +37,13 @@ enum InlineTargets {
 }
 
 extension View {
-    /// 링크 탭을 순번으로 받아 처리한다. 자체 스킴이 아니면 시스템에 넘긴다.
-    func inlineTargetTaps(_ open: @escaping (Int) -> Void) -> some View {
+    /// 링크 탭을 순번으로 받아 처리한다. 자체 스킴이 아니면 시스템에 넘긴다. 순번이 대상 수(`count`) 밖이면 버린다 —
+    /// 화면의 글자와 처리기가 서로 다른 렌더에 속하는 순간(폴마다 바뀌는 안내 문장의 전이 중 등)에 첨자 범위 밖으로
+    /// 앱이 종료되지 않게.
+    func inlineTargetTaps(count: Int, _ open: @escaping (Int) -> Void) -> some View {
         environment(\.openURL, OpenURLAction { url in
             guard let index = InlineTargets.index(of: url) else { return .systemAction }
+            guard (0..<count).contains(index) else { return .discarded }
             open(index)
             return .handled
         })

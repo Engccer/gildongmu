@@ -808,6 +808,22 @@ class NearbyLoadCoreTest {
         assertEquals("P1", core.loadedPayload())
     }
 
+    /** 표식 뒤 목록이 사라졌으면(가려진 사이 새로고침이 권한 거부로 끝남) 돌아온 등장은 조회한다. */
+    @Test fun appearAfterPushRefetchesWhenNoLongerLoaded() = runTest {
+        val recorder = Recorder()
+        val core = makeCore(recorder)
+        core.appear()
+        core.notePushed()
+        recorder.coordStub = { throw NearbyLocationError.Denied }
+        core.load(force = true)
+        assertEquals("denied", core.phaseName())
+
+        recorder.coordStub = { seoulCoord }
+        core.appear()
+        assertEquals(2, recorder.fetchCallCount)
+        assertEquals("P1", core.loadedPayload())
+    }
+
     /** 새로고침은 표식과 무관하게 조회한다(낡은 도착 시각은 새로고침이 받는다). */
     @Test fun forceLoadIgnoresPushMark() = runTest {
         val recorder = Recorder()

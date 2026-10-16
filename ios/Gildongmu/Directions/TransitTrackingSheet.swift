@@ -508,12 +508,13 @@ struct TransitTrackingSheet: View {
             // 뷰 종류·정체성은 불변이라 포커스가 재생성으로 튕기지 않는다(E33과 같은 근거).
             // guard:allow — 노선 이름(조인 필드)은 표시하지 않고 링크를 걸지 않을 자리로만 쓴다(「신림선」 안의 「신림」).
             landingTarget(
-                Text(InlineTargets.linked(
-                    AttributedString(text), names: linkNames, avoiding: [leg.lineName, leg.lineNameEn].compactMap { $0 }))
-                    .accessibilityLabel(Text(spokenUnits(text))),
+                distanceText(
+                    InlineTargets.linked(
+                        AttributedString(text), names: linkNames, avoiding: [leg.lineName, leg.lineNameEn].compactMap { $0 }),
+                    spoken: text),
                 .status)
                 .foregroundStyle(.secondary)
-                .inlineTargetTaps { position in
+                .inlineTargetTaps(count: linkOwners.count) { position in
                     openStationDetail(viaStops[linkOwners[position]], lineName: leg.lineName, source: "statusLink")
                 }
                 // ⚠ 선언은 역순: VoiceOver 로터가 빌더 선언의 역순으로 노출된다(PlaceRow·채팅 실측).

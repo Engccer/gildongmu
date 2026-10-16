@@ -208,9 +208,13 @@ struct AroundNearbyView: View {
                 let targets = overviewDetailTargets(bullet, lang: lang)
                 // 거리 밀도가 높은 문장이라 낭독 변환 필수(m → 로케일 단어). 한글 병기는 시각 전용 꼬리(E28).
                 // 문장이 부른 장소 이름에만 링크(E72 판정 3, 시각 탭 경로). 문장은 한 접근성 객체로 남는다.
-                Text(InlineTargets.linked(AttributedString(line.display), names: targets.map(\.name)))
-                    .accessibilityLabel(Text(spokenUnits(line.text)))
-                    .inlineTargetTaps { detailTarget = targets[$0] }
+                // 노선 이름은 링크를 걸지 않을 자리다(「신림선 신림」의 노선 이름 안 「신림」).
+                bilingualLine(
+                    visible: InlineTargets.linked(
+                        AttributedString(line.display), names: targets.map(\.name),
+                        avoiding: targets.compactMap(\.lineHint)),
+                    accessible: line.text)
+                    .inlineTargetTaps(count: targets.count) { detailTarget = targets[$0] }
                     // 같은 대상마다 「○○ 상세 보기」(E65, 채팅 산문·브리핑 동형).
                     // ⚠ 선언은 역순: VoiceOver 로터가 빌더 선언의 역순으로 노출된다 — 문장 등장 순으로 들리게 뒤집는다.
                     .accessibilityActions {

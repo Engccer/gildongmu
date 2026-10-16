@@ -98,15 +98,15 @@ describe("규칙 1·2: 장소 목록 행은 밀기 버튼, 딥링크 없음", ()
 describe("규칙 3·4: 줄 안 대상은 이름만 링크 + 같은 대상의 로터", () => {
   it("한눈에 보기 문장: 링크와 로터가 같은 대상 목록에서 나온다", () => {
     const s = read("ios/Gildongmu/Nearby/AroundNearbyView.swift");
-    expect(s).toContain("Text(InlineTargets.linked(AttributedString(line.display), names: targets.map(\\.name)))");
-    expect(s).toContain(".inlineTargetTaps { detailTarget = targets[$0] }");
+    expect(s).toMatch(/bilingualLine\(\s*visible: InlineTargets\.linked\(\s*AttributedString\(line\.display\), names: targets\.map\(\\\.name\),\s*avoiding: targets\.compactMap\(\\\.lineHint\)\)/);
+    expect(s).toContain(".inlineTargetTaps(count: targets.count) { detailTarget = targets[$0] }");
     expect(s).toContain("ForEach(targets.reversed())");
   });
 
   it("브리핑 줄: 역 이름 링크는 진입점이 켜진 줄만, 링크 순번 = 동작 순번", () => {
     const s = read("ios/Gildongmu/RouteBriefing.swift");
     expect(s).toContain("BriefingStationRow(actions: actions, onOpen: onOpen, content: { content(actions.map(\\.name)) })");
-    expect(s).toContain(".inlineTargetTaps { index in onOpen(actions[index].stop, actions[index].lineName) }");
+    expect(s).toContain(".inlineTargetTaps(count: actions.count) { index in onOpen(actions[index].stop, actions[index].lineName) }");
     expect((s.match(/content\(\[\]\)/g) ?? []).length).toBe(2); // 옵트인 꺼짐·대상 없음은 링크 없음
     expect(s).toContain("Text(InlineTargets.linked(\n        AttributedString(line.visual), names: names, avoiding:");
     expect(s).toContain("Text(InlineTargets.linked(AttributedString(text), names: names))");
@@ -117,7 +117,7 @@ describe("규칙 3·4: 줄 안 대상은 이름만 링크 + 같은 대상의 로
     const block = slice(chat, "private func blockView(", "private func styledBlockText(");
     expect(block).not.toMatch(/\bButton \{|switch mentions\.count|contentShape/);
     expect(block).toContain("if mentions.isEmpty {");
-    expect(block).toContain(".inlineTargetTaps { onOpenPlace(mentions[$0], originKey) }");
+    expect(block).toContain(".inlineTargetTaps(count: mentions.count) { onOpenPlace(mentions[$0], originKey) }");
     expect(chat).toContain("InlineTargets.linked(parsed, names: mentions.map(\\.name))");
     expect(chat).not.toContain("gildongmu-place-mention");
   });
@@ -127,16 +127,18 @@ describe("규칙 3·4: 줄 안 대상은 이름만 링크 + 같은 대상의 로
     const status = slice(sheet, "@ViewBuilder private var statusRows", "private func openStationDetail(");
     expect(status).toContain("let linkOwners = mentions.flatMap");
     expect(status).toContain("openStationDetail(viaStops[linkOwners[position]], lineName: leg.lineName, source: \"statusLink\")");
+    expect(status).toContain(".inlineTargetTaps(count: linkOwners.count) { position in");
     expect(status).not.toMatch(/\bButton \{|contentShape/);
     expect(status).toContain("ForEach(Array(mentions.reversed()), id: \\.self)");
   });
 
   it("안내 시트 경유역 행: 행 전체 버튼(상세)은 그대로, 전화는 오른쪽 밀기·끝까지 밀기 꺼짐·VoiceOver 꺼짐이면 알림창", () => {
     const sheet = read("ios/Gildongmu/Directions/TransitTrackingSheet.swift");
-    const row = slice(sheet, "private struct ViaStopStationRow: View", "/// **라벨만** 상태로 갈린다.");
+    const row = slice(sheet, "private struct ViaStopStationRow: View", "\n}\n");
     expect(inOrder(row, ["Button(action: onOpen) {", ".swipeActions(edge: .leading, allowsFullSwipe: false) {", "Button(callLabel) { call() }"])).toBe(true);
     expect(row).not.toContain(".accessibilityActions");
-    expect(sheet).toContain("if !UIAccessibility.isVoiceOverRunning { visibleNotice = text }");
+    expect(row).toContain("if !UIAccessibility.isVoiceOverRunning { visibleNotice = text }");
+    expect(row).toMatch(/\.alert\(\s*visibleNotice \?\? ""/);
   });
 
   it("링크 도우미: 범위는 Kit 판정(테스트 레인)을 지나고, 자체 스킴만 가로채며, 색에만 맡기지 않는다", () => {
@@ -144,6 +146,8 @@ describe("규칙 3·4: 줄 안 대상은 이름만 링크 + 같은 대상의 로
     expect(s).toContain("inlineTargetSpans(in: String(text.characters), names: names, avoiding: avoiding)");
     expect(s).toContain(".underlineStyle = .single");
     expect(s).toContain("guard let index = InlineTargets.index(of: url) else { return .systemAction }");
+    // 대상 수 밖 순번은 버린다(글자와 처리기가 다른 렌더에 속하는 순간의 첨자 범위 밖 종료 방지).
+    expect(s).toContain("guard (0..<count).contains(index) else { return .discarded }");
     // 브리핑 줄은 노선 이름 안의 역 이름에 걸지 않는다(「신림선」 안의 「신림」).
     expect(read("ios/Gildongmu/RouteBriefing.swift")).toContain("avoiding: [leg.lineName, leg.lineNameEn].compactMap { $0 }");
   });
