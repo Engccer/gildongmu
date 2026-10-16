@@ -82,7 +82,7 @@
 - **역 seed는 타 역 좌표 혼입을 의심한다**: `scripts/build-subway-stations.py`의 `COORD_FIXES` + 가드 3축이 빌드를 중단하고, 좌표 이동은 실좌표로 확인한 것만 `ACCEPTED_COORD_SHIFTS`로 받는다. → INTEGRATIONS
 - **좌표는 WGS84 십진 통일.** 변환 함정: 에어코리아 측정소=**TM중부원점 EPSG:2097**(proj4, ⚠ 카카오/네이버의 EPSG:5181 아님, Δ300m+) / 기상청=**격자 nx,ny LCC**(`dfs_xy_conv` 이식) / 네이버 `mapx/mapy`(×10⁷ 정수)는 provider 내부만.
 - **data.go.kr envelope는 공용 파서를 쓴다**(`datagokr-envelope.ts`: `readItems`·`readResultCode`·`fetchDataGoKrJson`, 자체 추출 함수 금지, 정책은 provider). `apis.data.go.kr`은 https만(http는 hang, 가드 `datagokr-https-usage.test.ts`). → INTEGRATIONS
-- **Tmap 응답 본문은 `readTmapJson`으로 읽는다**(`tmap-json.ts`, 보행자·자동차 공용): POI 이름 구분자로 날 NUL이 문자열 안에 와서 `res.json()`이 실패한다(A62). 새 Tmap 호출 자리도 같다.
+- **Tmap 응답 본문은 `readTmapJson`으로 읽는다**(`tmap-json.ts`, 보행자·자동차 공용): POI 이름 구분자로 날 NUL이 문자열 안에 와서 `res.json()`이 실패한다(A62). 새 Tmap 호출 자리도 같다. → INTEGRATIONS §봉투·폴백
 - **서울 열린데이터(`openapi.seoul.go.kr`) 본문은 `readSeoulOpenJson`으로 읽는다**(`seoul-open-json.ts` — 무효 키가 200+XML로 온다). 실시간 지하철은 호스트·키가 달라 계약 밖. → INTEGRATIONS
 - **envelope 비표준 주의(공용 파서 스코프 밖 — `response` 래퍼가 없다)**: 서울버스(TOPIS)·서울지하철 실시간·서울 열린데이터는 봉투가 각각 다르다. **봉투가 다르면 파서도 다르다** — 공용 모듈에 넣지 말 것. → INTEGRATIONS
 - **경유지(`via`)는 응답 `waypoint{stepIndex,coord}` 하나로만 드러나고 스텝 문장은 불변이다**: 표지를 못 찾으면 throw, 대중교통은 `unsupported:"waypoint"`, iOS 안내의 `via`·`waypoint`는 기본값 없는 필수 인자. → INTEGRATIONS
@@ -95,7 +95,7 @@
 - **지하철 도착 목록의 줄은 완성 문장을 읽어 쓴 우리 문장이고, 못 알아본 문장만 원문이다**(E37, `subwayArrivalProse`+`arrivalProseSegments` 웹 ↔ Kit 공유 fixture): `barvlDt`·`arvlCd`는 판정·값에 쓰지 않는다. → INTEGRATIONS
 - ⚠ **정규식을 웹·Kit에 미러할 때 문자 클래스 안의 `[`는 반드시 이스케이프한다**(`[(\[]`): ICU는 중첩 집합으로 읽어 iOS만 전량을 놓친다. 공유 fixture를 Kit에서도 돌리는 것이 유일한 검출 수단. → PATTERNS
 - **역명 매칭은 확장 정규화가 정본**(`station-match.ts` `normalizeStationName`+`lineHintMatches` 재사용, 자체 정규화 금지). → INTEGRATIONS
-- **ODsay는 승차역을 지정받지 못한다 — 역 좌표로 불러도 이웃 역 승차 경로를 1순위로 줄 수 있다**(`maasRP`도 지정 없음). 지정 역 경로는 선정 전 전체 후보에서 이름 키 + 고른 역 좌표 500m + 노선으로 찾는다. → spec `2026-10-17-e70-mode-change-journey-design.md` §3.2·§4.3
+- **ODsay는 승차역을 지정받지 못한다 — 역 좌표로 불러도 이웃 역 승차 경로를 1순위로 줄 수 있다**(`maasRP`도 지정 없음). 지정 역 경로는 선정 전 전체 후보에서 찾아야 한다(E70 설계). → INTEGRATIONS §ODsay는 승차역을 지정받지 못한다
 - **음성 전사를 검색어로 쓰기 전 `normalizeVoiceQuery` 필수**(웹 `format.ts` ↔ Kit `VoiceQuery.swift`) — STT 후행 마침표에 juso가 0건이 된다. 소비 여부 판정은 별개 층 `hasSpeechContent`(Kit, `SpeechService.stop()` 한 곳). 채팅은 미적용. → INTEGRATIONS
 - **"내 주변" 거리순 정렬은 코드 책임**(Haversine, `totalCount` 신뢰 금지). ⚠ 검색 탭은 거리순이 아니라 정확도순+근접 블렌딩 — 거리 표기만 `annotateDistances`, 재정렬 금지. → INTEGRATIONS
 - **캐시**: 실시간=`no-store`(지하철 도착·대중교통 추적은 라우트 `force-dynamic`, 버스 도착은 provider 기본 `no-store`), 준정적=`revalidate`(역메타 86400·공기질 600·날씨 1800·juso 주소 3600, 카카오 응답은 300이 상한 — `kakao-cache-ttl.test.ts`).
@@ -141,7 +141,7 @@
 - **나들이(E51)는 세 번째 안내 세션이고 판정은 Kit 순수 함수(`Outing*.swift`)다**: 실험판 봉인(`experimentalOutingEnabled`), 시작은 `GuideSession.startOuting` 한 곳, 귀환은 `acceptOutingReturn`의 `startBeacon` 인계, 좌우는 `OutingSide`에서만. 교차로·횡단보도 원천은 `OutingNodes.swift`가 합친다. → INTEGRATIONS
 - **백그라운드 음성 안내(E53)는 Kit `guideSpeechChannel` 하나가 채널을 가르고 분류(`speechClass`)는 호출부가 기본값 없이 밝힌다**: 기기 음성은 세 모델 공유 칸 `DeviceSpeechQueue`만 지난다(가드 `background-speech-guard.test.ts`). → INTEGRATIONS §백그라운드 음성 안내는 채널 술어 하나가 가르고 기기 음성 대기 칸은 세 모델이 공유한다
 - **도착 추정의 국면 게이트는 "도착 창"이고 간략 창의 자격은 Kit 리듀서 `briefArrivalWindowStep`이다**(A31 — `nearby` 래치를 창 근거로 읽지 말 것). 창 에피소드 상태는 `resetArrivalWindow()` 한 곳이 지운다. 종료 화면 30분 만료는 백그라운드를 거친 복귀에서만. → INTEGRATIONS
-- **이탈 확정은 재조회가 아니라 돌아가기 국면의 시작이다**(E63): 확정은 수직거리·방위·결합(20m+불일치 5표) OR, 리듀서가 벗어난 쪽·돌아갈 시계를 싣고 새 경로는 `rerouteNeeded`(멀어짐·나란히)에서만, 상태 행은 쪽만. 머리말은 조각 없는 회전 첫 스텝엔 없다(A58 `stepTextSaysDirection`). 방위 축은 "이탈 판정 방위 축" 절. → INTEGRATIONS §이탈은 돌아가기 국면의 시작이다
+- **이탈 확정은 재조회가 아니라 돌아가기 국면의 시작이다**(E63): 확정은 수직거리·방위·결합(20m+불일치 5표) OR, 리듀서가 벗어난 쪽·돌아갈 시계를 싣고 새 경로는 `rerouteNeeded`(멀어짐·나란히)에서만, 상태 행은 쪽만. 머리말은 조각 없는 회전 첫 스텝엔 없다(A58 `stepTextSaysDirection`). 방위 축은 "이탈 판정 방위 축" 절. 재조회 버튼은 자동 판정이 손을 든 회차에만(E69). → INTEGRATIONS §이탈은 돌아가기 국면의 시작이다
 - **띠바는 탭 콘텐츠 안에 두지, TabView 자체에 걸지 않는다**(K1: 26.1+ `tabViewBottomAccessory`, 18~25 `withGuideBand`). 착지 바인딩 `bandFocusedTab: AppTab?`. → INTEGRATIONS
 - **`outputSuppressed`는 공유 Bool이라 받아쓰기 억제의 종료는 `이전 값 ∧ 현재 값`이다**(`GuideSession.setDictationActive(_, owner:)` 소유자 집합; 취소된 세대는 풀지 않는다). → INTEGRATIONS
 - **안내 조망은 수단별 시트가 아니라 능력 단위로 공유한다**(E15-1 `GuideOverviewSheet`+`GuideOverviewCapability`, 판정 `transitProgressOverview` ↔ `transit-progress-overview.ts`). 조망 안 착지는 닫힌 뒤 `onDismiss`. → INTEGRATIONS

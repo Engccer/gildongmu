@@ -49,9 +49,9 @@
 - 저장 응답은 `node scripts/verify-briefing-station-join.mjs --from-corpus <dump.json>`으로 구성·동치 판정과 실제 Kit 조인을 함께 재검증한다. `--lang` 생략은 저장 언어이고 명시 불일치·`--out` 병용은 실패다. 이 모드는 env·provider·네트워크를 사용하지 않으며 원본과 수집 시각을 보존한다. 과거 응답 재검증을 신규 실호출 증거로 표시하지 않는다.
 - **가드**: `src/lib/__tests__/briefing-station-entry-guard.test.ts`(①~⑦ 판정 + 라벨 언어). ⚠ 술어는 **구조**를 봐야 한다 — 구현 리뷰 실측에서 표면만 보던 넷(옵트인 기본값·액션 상태 분기·로터 역순·줄이 `Text`로 남는지)이 되돌림을 통과시켰다.
 
-### 내 주변 탭 로터 액션은 기존 판별선을 재사용한다
+### 내 주변 탭 동작은 기존 판별선을 재사용한다
 
-**내 주변 탭 로터 액션은 기존 판별선을 재사용한다**(E65, 2026-10-05, spec `2026-10-05-nearby-rotor-actions-design.md` §2·§3): 장소 하나인 행은 `PlaceRow` 묶음, 장소가 여럿인 문장은 장소마다 「○○ 상세 보기」.
+**내 주변 탭 동작은 기존 판별선을 재사용한다**(E65 2026-10-05·E72 2026-10-17, spec `2026-10-05-nearby-rotor-actions-design.md` §2·§3): 장소 하나인 행은 `PlaceRow` 묶음(E72부터 밀기 버튼), 장소가 여럿인 문장은 장소마다 이름 링크 + 「○○ 상세 보기」.
 
 - **`PlaceRow` 묶음은 `SearchView.swift` `PlaceRowActions` 하나다**(E72에서 밀기 버튼으로 전환, 아래 「로터 동작은 화면에도 보인다」 절) — 「주변 상황」 행도 이것을 단다. 순서 가드(`e72-visible-actions-guard.test.ts`)가 `SearchView.swift`를 읽으므로 수정자를 다른 파일로 옮기지 않는다. 버튼형 「주변 확인」(안내 시트)은 붙이지 않는다(`rowActionsAskAbout` nil).
 - **문장 속 대상은 문장을 파싱하지 않고 불릿 구조에서 뽑는다**(Kit `overviewDetailTargets`, `buildOverviewLines`와 같은 순서·같은 이름 함수). 뷰는 `zip(bullets, lines)`로 한 줄에 대상들을 역순 선언한다. 옵트인 재료가 없는 항목·버스 정류소는 대상이 아니다(죽은 액션 금지).
@@ -65,9 +65,9 @@
 **로터 동작은 화면에도 보인다**(E72 위원장 판정 2026-10-17, spec `2026-10-17-e72-visible-row-actions-design.md`): VoiceOver 전용 지름길로 남은 동작을 일반 터치 사용자도 쓰게 한다. 자리마다 둘 중 하나다.
 
 - **장소 하나인 `List` 행은 밀기 버튼**(`placeRowSwipeActions`, 역·정류소 제목도 같은 배치). iOS가 같은 버튼을 VoiceOver 동작 목록에 넣으므로 그 행에 `accessibilityActions`를 겹쳐 두지 않는다(동작이 두 번 선다). ⚠ **밀기 수정자는 행의 뿌리(행이 `NavigationLink`면 그 링크)에 단다** — `swipeActions`는 `List` 행에 붙어야 서므로 링크 라벨 안쪽(`PlaceRow` 본문)에 두지 않는다. 그래서 `PlaceRow`는 동작을 달지 않고 호출부가 단다. **`List` 밖(채팅 카드 `ScrollView`)은 같은 묶음을 로터로**(`placeRowActions`). 판별선은 화면 종류가 아니라 "그 행이 `List` 행인가"다.
-- **배치**: 왼쪽 밀기 = 주소 복사 → 여기까지 길찾기(역 제목은 상세 보기 → 여기까지 길찾기), 오른쪽 밀기 = 전화 걸기 → 물어보기. 끝까지 밀면 첫 버튼이 실행되므로 그 자리는 되돌릴 수 있는 것만 둔다. **전화가 든 쪽은 `allowsFullSwipe: false`** — 앱의 `tel:` 열기에 iOS 확인창이 뜨는지는 버전마다 달라 왔다. 목표로 들리는 순서는 E60에서 딥링크를 뺀 주소 복사 → 여기까지 길찾기 → 전화 → 물어보기이고, 밀기 버튼이 동작 목록에 오르는 순서는 실기기만 판정한다(BACKLOG §2 E72 ①).
+- **배치**: 왼쪽 밀기 = 주소 복사 → 여기까지 길찾기(역 제목은 상세 보기 → 여기까지 길찾기), 오른쪽 밀기 = 전화 걸기 → 물어보기. 끝까지 밀면 첫 버튼이 실행되므로 **끝까지 밀기는 첫 버튼이 되돌릴 수 있을 때만 켠다**: 주소 복사·상세 보기는 켬, 여기까지 길찾기가 첫 버튼이면(도로명이 없는 행·버스 정류소 제목) 끔(프리필이 앞선 조회를 지우고 자동 조회를 낸다), **전화가 든 쪽은 `allowsFullSwipe: false`** — 앱의 `tel:` 열기에 iOS 확인창이 뜨는지는 버전마다 달라 왔다. 목표로 들리는 순서는 E60에서 딥링크를 뺀 주소 복사 → 여기까지 길찾기 → 전화 → 물어보기이고, 밀기 버튼이 동작 목록에 오르는 순서는 실기기만 판정한다(BACKLOG §2 E72 ①).
 - **목록 행에는 카카오맵·네이버 지도 딥링크가 없다**(판정 2). 딥링크는 장소 상세의 보조 출구다.
-- **한 줄 안에 여는 대상이 있으면 그 이름에만 링크**(`InlineTargets.linked` + `inlineTargetTaps`, 자체 스킴 `gildongmu-inline-target`, URL엔 순번만): 둘러보기 「한눈에 보기」 문장·경로 브리핑 지하철 줄·채팅 산문 블록. 줄은 `Text` 하나(한 접근성 객체)이고 낭독 라벨은 그대로이며, VO 진입은 **같은 대상 목록**에서 다는 로터다(링크 순번 = 대상 순번). 대상이 하나든 둘 이상이든 같다 — 줄 전체를 버튼으로 만들지 않는다. 줄 글자에 "버튼"을 넣지 않는다. 링크는 **긴 이름부터** 걸고 이미 걸린 범위와 겹치면 건너뛴다(「강남구청」 안의 「강남」). ⚠ `Text` 안 링크가 VO 객체를 쪼개는지는 실기기 판정이다 — 쪼개지면 `.accessibilityElement(children: .combine)`이 처방이고 실측 전엔 넣지 않는다.
+- **한 줄 안에 여는 대상이 있으면 그 이름에만 링크**(`InlineTargets.linked` + `inlineTargetTaps`, 자체 스킴 `gildongmu-inline-target`, URL엔 순번만): 둘러보기 「한눈에 보기」 문장·경로 브리핑 지하철 줄·채팅 산문 블록·대중교통 안내 시트 상태 문장(역 정체성 결박은 「안내 시트에서 장소 상세는 중첩 시트 하나」 절). 줄은 `Text` 하나(한 접근성 객체)이고 낭독 라벨은 그대로이며, VO 진입은 **같은 대상 목록**에서 다는 로터다(링크 순번 = 대상 순번). 대상이 하나든 둘 이상이든 같다 — 줄 전체를 버튼으로 만들지 않는다. 줄 글자에 "버튼"을 넣지 않는다. 링크는 **긴 이름부터** 걸고 이미 걸린 범위와 겹치면 건너뛴다(「강남구청」 안의 「강남」). ⚠ `Text` 안 링크가 VO 객체를 쪼개는지는 실기기 판정이다 — 쪼개지면 `.accessibilityElement(children: .combine)`이 처방이고 실측 전엔 넣지 않는다.
 - 가드 `src/lib/__tests__/e72-visible-actions-guard.test.ts`(밀기 배치·딥링크 부재·호출 수 = 수정자 수·링크와 로터의 같은 대상).
 
 ### 순서 바꾸기 로터 액션은 Kit `Reorder` 한 판정(`availableMoves`·`moved`)과 앱 `reorderActions`·`announceReorderPosition`·`keepFocusAfterMove` 한 벌을 쓴다
@@ -446,7 +446,7 @@ privacy `agent` 절은 웹 전용이라 iOS `PrivacyInfo`·ASC 라벨 3자 일�
 
 ### 실기기 배포
 
-**실기기 배포**: 실험판은 `CONFIGURATION=Experimental ./ios/deploy-device.sh`, **공식 번들은 `CONFIGURATION=Release ./ios/deploy-device.sh`**(2026-08-24). 환경변수 미지정이면 `Debug`인데, ⚠ **Debug는 공식 번들 ID로 설치되면서 `#if DEBUG || EXPERIMENTAL` 진단 UI(내 주변 하단 음향신호기 BLE 진단 섹션·설정의 자동차 안내 청취자·좌우 안내음 피커)를 켜므로 위원장 기기에서 "정식판에 실험 섹션이 보인다"로 나타난다**(실사고 2026-08-24 — App Store 빌드에는 없다. Release 바이너리 대조로 확인). Debug는 시뮬레이터·로컬 dev 서버 전환용이지 기기 정식판 확인용이 아니다. `deploy-device.sh`는 **세 repo 공통본**이라 구성 이름·기본값을 스크립트에 박지 않는다.
+**실기기 배포**: 실험판은 `CONFIGURATION=Experimental ./ios/deploy-device.sh`, **공식 번들은 `CONFIGURATION=Release ./ios/deploy-device.sh`**(2026-08-24). 환경변수 미지정이면 `Debug`인데, ⚠ **Debug는 공식 번들 ID로 설치되면서 `#if DEBUG || EXPERIMENTAL` 진단 UI(내 주변 하단 음향신호기 BLE 진단 섹션·설정의 자동차 안내 청취자·좌우 안내음 피커)를 켜므로 위원장 기기에서 "정식판에 실험 섹션이 보인다"로 나타난다**(실사고 2026-08-24 — App Store 빌드에는 없다. Release 바이너리 대조로 확인). Debug는 시뮬레이터·로컬 dev 서버 전환용이지 기기 정식판 확인용이 아니다. `deploy-device.sh`는 **여러 repo 공통본**이라 구성 이름·기본값을 스크립트에 박지 않는다.
 
 ### 코드 게이트
 
@@ -502,7 +502,7 @@ privacy `agent` 절은 웹 전용이라 iOS `PrivacyInfo`·ASC 라벨 3자 일�
 
 ### 릴리스 절차: 버전 4곳 + CHANGELOG 2곳 동조 갱신
 
-릴리스 절차: **버전 4곳 + CHANGELOG 2곳 동조 갱신**(두 `packages/*/package.json` + 두 `src/index.ts` 선언 — CLI는 citty `meta.version`, MCP는 `McpServer` version — + 두 `packages/*/CHANGELOG.md`에 그 버전 항목) → 커밋 → `git tag cli-v<버전> && git push origin main --tags`. ⚠ index.ts 버전은 하드코딩이라 package.json만 올리면 **발행본이 옛 버전을 보고한다**(0.6.0 tarball이 `--version`·MCP `serverInfo.version` 모두 0.5.0을 출력한 실사고 2026-07-31). `version-drift.test.ts`가 두 패키지에서 셋 다 강제한다(버전 일치·CHANGELOG 항목 존재·`files` 포함).
+릴리스 절차: **버전 4곳 + CHANGELOG 2곳 동조 갱신**(두 `packages/*/package.json` + 두 `src/index.ts` 선언 — CLI는 citty `meta.version`, MCP는 `McpServer` version — + 두 `packages/*/CHANGELOG.md`에 그 버전 항목) → 커밋 → `git tag cli-v<버전> && git push origin main --tags`. ⚠ index.ts 버전은 하드코딩이라 package.json만 올리면 **발행본이 옛 버전을 보고한다**(0.6.0 tarball이 `--version`·MCP `serverInfo.version` 모두 0.5.0을 출력한 실사고 2026-07-31). `version-drift.test.ts`가 두 패키지에서 셋 다 강제한다(버전 일치·CHANGELOG 항목 존재·`files` 포함). ⚠ 루트 `package-lock.json`의 워크스페이스 버전(`packages/cli`·`packages/mcp`)은 가드 밖이다 — 버전을 올린 뒤 루트에서 `npm install`로 lock을 동조해 같은 커밋에 싣는다(0.12.0에서 빠져 별도 커밋으로 메웠다).
 
 ### `lang` 같은 선택 파라미터는 카탈로그가 정본이고 인자 선언·전달 판정이 같은 술어를 쓴다
 
