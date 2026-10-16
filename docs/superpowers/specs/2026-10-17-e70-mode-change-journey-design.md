@@ -91,7 +91,7 @@
 1. **대중교통 후보 전체**: 출발점 = A 좌표(A 지정) 또는 `from`, 도착점 = B 좌표(B 지정) 또는 `to`. `getTransitRoute`의 정규화·강등까지(선정 전 `ranked`)를 돌려주는 새 진입점 `getTransitCandidates`(같은 `fetchOdsay`·`revalidate: 3600`, `includeStops: true` — 실시간 안내가 정차역을 쓴다). 기존 `getTransitRoute`는 이 함수 + 선정·라벨로 다시 쓰고 바이트 동일을 테스트로 잠근다.
 2. **지정 역 판정**: `ranked`에서 §3.2 술어를 통과하는 첫 경로 = `designated`. 없으면 `SearchPathType=1`(지하철만, 기존 `modeAxis: "subwayOnly"` 경로) 전체 후보에서 한 번 더. 그래도 없으면 `designated = null`.
 3. **추천**: 기존 선정의 1순위(`selectTransitRoutes(ranked)[0]`) = `recommended`. `designated`와 `routeKey`가 같으면 변형 하나(판정 13).
-4. **자르기(D3)**: 각 변형의 legs에서 A 지정 시 첫 탈것 앞 도보를, B 지정 시 마지막 탈것 뒤 도보를 떼어 낸다. 합계(`totalMinutes`·`walkMinutes`)는 남은 legs로 다시 계산한다(요금은 ODsay `payment` 그대로).
+4. **자르기(D3)**: 각 변형의 legs에서 A 지정 시 첫 탈것 앞 도보를, B 지정 시 마지막 탈것 뒤 도보를 떼어 낸다. 합계는 **원래 합계에서 떼어 낸 도보의 분만 뺀다**(`totalMinutes − 뗀 도보 분`, `walkMinutes − 뗀 도보 분`) — 남은 legs로 다시 더하지 않는다. `toTransitRoute`가 거리 0인 역내 환승 도보를 legs에서 이미 빼고 그 시간은 `summary.walkMinutes`·`totalTime`에만 남겨 두므로(`odsay.ts` 정규화), 다시 더하면 환승 통로 시간이 사라진다. 요금은 ODsay `payment` 그대로. 테스트: 거리 0·시간 양수 환승 통로가 있는 경로에서 총시간·도보시간 보존.
 5. **택시 앞 구간**(A 지정 시, 변형마다): `from` → 첫 탈것 승차 지점(D4). `getCarRoute`(Tmap ko, 실패 시 카카오 폴백 — 폴백 응답은 `provider: "kakao"`라 안내 불가 표시). 두 변형의 승차 지점이 같으면 한 번만 부른다.
 6. **출구 후보**(B 지정 시, 변형마다, 마지막 탈것이 지하철·철도일 때만): §4.4.
 7. **택시 뒤 구간**: 선택 후보(기본 = 택시 시간 최단 출구, 승강장은 별도 후보)마다 후보 좌표 → `to`. §4.5 예산 안에서.
@@ -110,7 +110,7 @@
 - **수집**: `searchSubwayExitsKakao(stationName, coord)` — `"{역}역 {n}번출구"`를 n=1부터, 좌표 반경 800m, 3번 연속 미발견이면 중단, 상한 n ≤ 25(`probe-taxi-exit.py` 방법 A 그대로). 결과 중 카테고리 끝이 `지하철출구`이고 이름이 `"{역}역"`으로 시작하는 것만. 이름에서 노선(`노량진역 1호선 9번출구`)과 번호(`9`, `3-1`)를 뽑는다. 기존 `buildKakaoSearchUrl`은 `radius`를 받지 않으므로 새 URL 빌더.
 - **노선 거르기(판정 10)**: 마지막 탈것 노선과 같은 노선의 출구만(§4.3 노선 비교). 노선 표기가 없는 출구(단일 노선 역은 `"{역}역 2번출구"`로만 등록되기도 한다)는 그 역의 등록 출구가 모두 노선 표기 없음일 때만 후보로 받는다 — 섞여 있으면 표기 없는 것은 버린다.
 - **승강장(판정 11)**: `"{역}역 택시승강장"`·`"택시승강장"` 반경 500m, 이름에 "택시"가 든 POI. 하차역 좌표 300m 안에서 가장 가까운 하나만 후보.
-- **0건**: 출구도 승강장도 없으면 택시 뒤 구간 출발 = 하차역 좌표, 출구 도보 없음(응답 `egress: { kind: "none" }`). 출구 조회 실패(카카오 throw)도 같은 갈래로 가되 `egressLookupFailed: true`를 싣는다(3-state: 없음 ≠ 조회 실패).
+- **0건**: 출구도 승강장도 없으면 택시 뒤 구간 출발 = 하차 정류 좌표, 출구 도보 없음(후보 `kind: "none"`). 출구 조회 실패(카카오 throw)도 같은 후보를 쓰되 `egress.lookupFailed: true`를 싣는다(3-state: 없음 ≠ 조회 실패).
 - **캐시**: 카카오 응답 보관 상한 300초(2026-10-03 위원장 판정, `kakao-cache-ttl.test.ts`)를 그대로 따른다 — 출구가 정적이어도 더 길게 두지 않는다. 각 번호 질의는 `revalidate: 300` 숫자 리터럴(가드가 읽는 형식). 래퍼 캐시(`unstable_cache` 등)로 카카오 응답을 300초 넘게 들고 있지 않는다(그 래퍼도 같은 가드 대상에 넣는다).
 - 질의 수: 캐시 미스 때 역당 약 10~25회(무료, 카카오 로컬 일 한도 안). 지연을 줄이려 n=1..8을 병렬로 먼저 보내고 발견이 이어지면 다음 묶음.
 
@@ -118,12 +118,13 @@
 
 **문제**: 여정 조회는 Tmap을 여러 번 부르고, Tmap 일 1,000건 무료분은 정식판 자동차 안내·도보 폴백과 공유한다. 서버 조립 호출은 `/api/route/car` 핸들러의 `checkCarRateLimit`을 지나지 않으므로, 따로 세면 한 IP가 두 버킷을 합쳐 더 쓸 수 있다.
 
-1. **한 조회의 상한 8회**: 택시 앞 ≤ 2(변형별 승차 지점, 같으면 1) + 택시 뒤 ≤ 6(출구 ≤ 5 + 승강장 ≤ 1). 두 변형의 하차역이 같으면 출구 평가는 한 번이고 결과를 공유한다. 하차역이 다르면 출구 5개를 두 역에 나눈다(기본 변형 3, 다른 변형 2).
-2. **같은 버킷, 호출 수로 센다**: `/api/route/car`와 여정 라우트가 `carStore` 하나를 쓰고, 여정은 팬아웃 **전에** 이번 조회의 최대 비용(위 1의 계산값)을 한 번에 예약한다(`reserveCarCalls(ip, now, cost)` — `evaluateRateLimit`의 비용 판, 모자라면 아무것도 쓰지 않고 거절). 거절이면 429, iOS는 기존 길찾기 조회 실패 문장. 한 IP가 자동차·여정을 합쳐 60초 10회를 넘지 않는다.
-3. **인스턴스 일 상한**: 여정 라우트가 쓴 Tmap 호출을 KST 하루 단위로 세어 200회에서 503 `{ "budgetExhausted": true }`(iOS: 기존 조회 실패 문장). ⚠ in-memory라 인스턴스별이다(`rate-limit.ts` 머리 주석과 같은 한계) — 전역 정확한 상한·정식판 예약분은 외부 공유 저장소가 있어야 하고, 그것은 새 외부 통합이라 첫 판 밖이다. 첫 판의 실사용자는 실험판 사용자(위원장)뿐이라 하루 호출이 수십 회 수준이다. 실험판을 넓히기 전에 이 절을 다시 연다(BACKLOG 편승 항목).
-4. **후보 예선**: 노선 거른 출구가 5개를 넘으면 출구에서 `to`까지 직선거리 오름차순 5개. ⚠ 이 예선은 이 spec의 추정이다(9월 실측 원본 응답이 남아 있지 않아 "직선 상위 5 안에 시간 최단 출구가 드는가"를 재지 못했다). 구현 세션의 실호출 게이트(§9.2)가 실측 기록 역 10곳에서 전수 대 예선을 대조한다. 예선이 최단을 놓친 역이 있으면 예선 기준을 바꾸거나(예: 하차역 → `to` 방위 쪽 출구 우선) 상한을 올리되 위 2의 버킷 안에 들어야 하므로, 상한을 올리려면 이 절과 버킷 수치를 함께 고친다.
-5. 동점(분 단위 같음)은 하차역 정류 좌표 → 출구 직선거리가 짧은 쪽(판정 10 "역 안 걷는 거리"의 근사).
-6. **Tmap 실패·폴백**: 택시 뒤 후보 하나가 실패하면 그 후보만 뺀다(남은 후보로 선정). 전부 실패하면 `egress.options` 대신 `egress.lookupFailed`(출구 줄은 §8.2 실패 문장, 택시 뒤 구간은 하차역 좌표에서 `getCarRoute` 한 번 — 그것도 실패면 여정 502). 카카오 폴백 응답(`provider: "kakao"`)은 후보 시간 비교에는 쓰되 안내 가능 여부는 §6.4가 실제 승차 시점에 다시 판정한다.
+1. **한 조회의 상한 8회, 팬아웃 전 정확한 비용으로 예약**: 카카오 출구 수집(무료)이 끝난 뒤, Tmap을 부르기 **전에** 이번 조회가 부를 Tmap 호출 수를 정확히 계산해 한 번에 예약한다. 비용 = 서로 다른 택시 앞 목적지 수(≤ 2) + 서로 다른 택시 뒤 출발 좌표 수. 택시 뒤 출발 좌표는 하차 그룹(아래 2)마다의 출구 후보 + 승강장(좌표가 같으면 하나) + 출구 0건·카카오 실패 그룹의 하차 정류 좌표 하나다. 합이 8을 넘으면 출구 후보를 줄인다(기본 변형 그룹이 남은 칸의 올림 몫). **예약하지 않은 Tmap 호출은 없다** — 후보가 전부 실패해도 복구 호출을 더 하지 않는다(아래 6).
+2. **출구 선정의 단위는 (하차역, 하차 노선) 그룹**: 카카오 원시 출구 검색은 하차역 이름 키 단위로 한 번 하고 공유하지만, 후보 자격(판정 10 "내린 노선의 출구만")과 최종 선정은 그룹마다 한다. 노선 힌트 없는 환승역 입력에서 두 변형이 같은 역에 다른 노선으로 내리면 두 그룹이다. 좌표가 같은 Tmap 조회(같은 출구·같은 승강장)만 그룹 사이에 공유한다. 계약 테스트: 같은 역·다른 하차 노선 두 변형의 출구가 섞이지 않고 예약 비용이 위 계산과 같다.
+3. **자동차 라우트와 같은 버킷을 호출 수로**: `/api/route/car`와 여정 라우트가 `carStore` 하나를 쓰고 여정은 위 1의 비용을 `reserveCarCalls(ip, now, cost)`(`evaluateRateLimit`의 비용 판 — 모자라면 아무것도 쓰지 않고 거절)로 예약한다. 거절이면 429, iOS는 기존 길찾기 조회 실패 문장. 상한 8은 버킷 10 안에 안내 시작 직후 자동차 상세 재조회(`BeaconModel.fetchDetailData`) 몫을 남긴 값이다. 한 IP가 자동차·여정을 합쳐 60초 10회를 넘지 않는다.
+4. **인스턴스 일 상한**: 여정 라우트가 쓴 Tmap 호출을 KST 하루 단위로 세어 200회에서 503 `{ "budgetExhausted": true }`(iOS: 기존 조회 실패 문장). ⚠ in-memory라 인스턴스별이다(`rate-limit.ts` 머리 주석과 같은 한계) — 전역 정확한 상한·정식판 예약분은 외부 공유 저장소가 있어야 하고, 그것은 새 외부 통합이라 첫 판 밖이다. 첫 판의 실사용자는 실험판 사용자(위원장)뿐이라 하루 호출이 수십 회 수준이다. 실험판을 넓히기 전에 이 절을 다시 연다(BACKLOG 편승 항목).
+5. **후보 예선**: 노선 거른 출구가 그룹의 칸 수(위 1)를 넘으면 출구에서 `to`까지 직선거리 오름차순 5개. ⚠ 이 예선은 이 spec의 추정이다(9월 실측 원본 응답이 남아 있지 않아 "직선 상위 5 안에 시간 최단 출구가 드는가"를 재지 못했다). 구현 세션의 실호출 게이트(§9.2)가 실측 기록 역 10곳에서 전수 대 예선(한 그룹 5칸)을 대조한다. 예선이 최단을 놓친 역이 있으면 예선 기준을 바꾸거나(예: 하차역 → `to` 방위 쪽 출구 우선) 상한을 올리되 위 3의 버킷 안에 들어야 하므로, 상한을 올리려면 이 절과 버킷 수치를 함께 고친다.
+6. 동점(분 단위 같음)은 하차역 정류 좌표 → 출구 직선거리가 짧은 쪽(판정 10 "역 안 걷는 거리"의 근사).
+7. **Tmap 실패·폴백**: 택시 뒤 후보 하나가 실패하면 그 후보만 뺀다(남은 후보로 선정). 한 그룹의 후보가 전부 실패하면 여정 502다(추가 복구 호출 없음 — 예약 밖 호출을 만들지 않고, Tmap이 그 정도로 실패하면 택시 구간 자체가 성립하지 않는다). `egress.lookupFailed`는 **카카오 출구 조회 실패**만 뜻하고, 그때 그 그룹의 후보는 하차 정류 좌표 하나다(위 1의 비용에 이미 들어 있다). 카카오 폴백 응답(`provider: "kakao"`)은 후보 시간 비교에는 쓰되 안내 가능 여부는 §6.4가 실제 승차 시점에 다시 판정한다.
 
 ### 4.6 캐시와 비용
 
@@ -131,7 +132,7 @@
 |---|---|---|
 | ODsay 후보 | 기존 `revalidate: 3600`, 좌표 4자리 | 1회(+ 지하철만 재조회 1회, 지정 역이 없을 때만) |
 | 카카오 출구·승강장 | `revalidate: 300`(카카오 상한) | 캐시 미스 때 하차역당 약 10~25회(무료) |
-| Tmap 택시 | 없음(`no-store`, 실시간 교통) | 최대 8회(§4.5) |
+| Tmap 택시 | 없음(`no-store`, 실시간 교통) | 최대 8회, 팬아웃 전 정확한 비용 예약(§4.5) |
 | 여정 응답 | 없음 | — |
 
 ODsay는 건당 약 27원(Flex). 여정 조회는 일반 대중교통 조회보다 ODsay를 더 쓰지 않는다(최악 2회). E47 ②③ 보류 판정(월 청구 3만 원 재검토 신호)에 닿을 규모가 아니다.
@@ -202,13 +203,26 @@ interface EgressOption {
 
 | 단계 | 그 동안 도는 세션 | 끝나는 사건 |
 |---|---|---|
-| `taxiIn` | 자동차(승객) | `taxiArrived`(자동차 확정 도착, D5) ∨ `taxiDropped`(「택시에서 내렸어요」) |
-| `access` | 도보(chained) | `walkEnded(.arrived ∨ .declared)` ∨ `walkEnded(.startFailed)`(→ 바로 transit) |
-| `transit` | 대중교통 | `rideCompleted`(§6.3, 말미 도보 유무와 무관) |
-| `egress` | 도보(chained) | `walkEnded(.arrived)` ∨ `taxiBoarded`(「택시에 탔어요」) |
+| `taxiIn` | 자동차(승객, chained) | `taxiArrived`(자동차 확정 도착, D5) ∨ `taxiDropped`(「택시에서 내렸어요」) ∨ 세션 종료 사유(아래 표) |
+| `access` | 도보(chained) | 세션 종료 사유(아래 표) |
+| `transit` | 대중교통 | `rideCompleted`(§6.3, 말미 도보 유무와 무관) ∨ `transitStopped`(그 밖의 종료) |
+| `egress` | 도보(chained) | `taxiBoarded`(「택시에 탔어요」) ∨ 세션 종료 사유(아래 표) |
 | `taxiOut` | 자동차(승객) | 일반 자동차 도착·종료(여정 끝) |
 | `transitioning(to:)` | 없음(다음 세션 준비: 측위·경로 조회·600ms 인계) | 준비 성공 → 다음 단계 / 실패 → `failed(at:)` |
 | `failed(at:)` | 없음 | `retry` → `transitioning(to: at)` / 「안내 종료」 |
+
+**chained 세션의 종료 사유 전수 대응**(`BeaconModel.EndReason` 넷 전부 — 빠진 사유가 있으면 세션은 사라지고 여정만 남는다):
+
+| 사유 | taxiIn | access | egress |
+|---|---|---|---|
+| `.arrived`(확정·추정 도착, prewalk의 도착 선언 포함) | → access/transit(`taxiArrived`와 같은 전이) | → transit | → taxiOut |
+| `.userStopped`(그 시트의 「안내 종료」) | 여정 전체 종료(D11) | 여정 전체 종료 | 여정 전체 종료 |
+| `.startFailed` | `failed(at: .taxiIn)` | → transit(prewalk 선례) | `failed(at: .egress)` |
+| `.ended`(진행 중 끊김: 위치 권한 철회·정밀 위치 꺼짐 `stopAndFail`, 잊힌 세션 안전망 등) | `failed(at: .taxiIn, cause:)` | → transit(역 근처라 대중교통 세션이 이어받는다) | `failed(at: .egress, cause:)` |
+
+- `cause`는 그 모델이 이미 낸 실패 문장 키와 해결 수단(`stopAndFail`의 `key`·`FailResolution` — `.settings`·`.precise`)이다. `BeaconModel`이 마지막 실패를 `lastFailure`로 남기고 `onSessionEnd` 콜백 시점에 코디네이터가 읽는다. `.journey` 시트는 그 문장을 상태 줄로 쓰고(새 문장 없음) 해결 수단 버튼(기존 「설정 열기」류) + [다시 시도] + 단계 버튼(taxiIn이면 「택시에서 내렸어요」, egress면 「택시에 탔어요」) + [안내 종료]를 둔다. 통지는 그 모델이 이미 했으므로 다시 하지 않는다.
+- `transitStopped`(대중교통 시트의 「안내 종료」·그 밖의 `stop()`): 여정 전체 종료. `TransitGuideModel.stop()`이 `.done` 갈래가 아닌 경로로 불렸을 때 `onJourneyStopped`를 한 번 부른다.
+- taxiOut은 chained가 아니다(여정의 마지막 세션 — 일반 자동차 종료 화면을 남기고, 끝나면 여정 상태를 지운다).
 
 - 시작 단계는 plan이 정한다: A 지정이면 `taxiIn`, 아니면 `transit`. 접근 도보는 인계 시점 위치 → 승차 지점 직선 30m 이상일 때만(D6), 출구 도보는 출구·승강장 후보가 있을 때만(`kind: "none"`이면 `transit → taxiOut`).
 - B 미지정이면 `transit`의 끝은 지금의 말미 도보 인계(`acceptWalkHandoff`)를 그대로 쓰고 여정은 거기서 끝난다(여정이 아는 마지막 단계가 transit).
@@ -218,14 +232,17 @@ interface EgressOption {
 ### 6.2 시작과 봉인
 
 - 시작은 `GuideSession.startJourney(plan:)` 한 곳. `plan` = 선택된 변형 + 선택된 출구(서버 응답 투영) + 출발·도착 라벨.
-- `guidance-gate-drift.test.ts`: 세션 시작 호출 전수에 `startJourney` 진입점과 그 안·`advanceJourney` 안의 `self.startBeacon(`·`startTransit` 호출을 더하고(현재 7·4 수치 갱신), 길찾기 화면의 호출이 `AppConfig.experimentalJourneyEnabled` 조건 안에 있는지 `enclosingHeaders`로 검사한다(나들이 선례).
+- `guidance-gate-drift.test.ts`: 세션 시작 호출 전수에 `startJourney` 진입점과 여정 단계 시작 `startJourneyStage`(그 안의 `beginBeacon(`·`beginTransit(` — §6.3)를 더하고(현재 7·4 수치 갱신), `begin*`의 호출자가 공개 `start*`와 `startJourneyStage` 둘뿐임을 세며, 길찾기 화면의 `startJourney` 호출이 `AppConfig.experimentalJourneyEnabled` 조건 안에 있는지 `enclosingHeaders`로 검사한다(나들이 선례).
 
 ### 6.3 세션 이어짓기 장치
 
-**점유와 화면은 여정이 소유한다**(사이 상태 포함):
+**점유와 화면은 여정이 소유하고, 여정 자신의 다음 세션만 그 점유를 지난다**(사이 상태 포함):
 
 - `GuideSession`이 `journey: JourneyState?` + plan을 가진다. `isActive`는 `… ∨ journey != nil`, `screen`은 단계 세션이 없는 동안(`transitioning`·`failed`) 새 화면 종류 `.journey`를 돌려준다 — 그래서 사이 상태에서 다른 안내 시작은 `refuseIfActive`로 거부되고, 재시도 버튼이 놓일 시트가 늘 있다. `.journey` 시트는 상태 문장 한 줄 + (failed면) [다시 시도] + [안내 종료]뿐이고 착지는 상태 문장.
 - 기존 루트 `.sheet(item:)` 하나 규칙(N1)을 그대로 쓴다: `.journey`는 그 item의 새 경우일 뿐 시트를 더하지 않는다.
+- **외부 시작과 내부 인계를 가른다**: 지금 `startBeacon`·`startTransit`은 첫 줄이 `refuseIfActive()`라, `isActive`에 여정을 넣으면 여정이 자기 다음 세션을 시작하지 못한다. 그래서 두 함수의 본문을 거부 가드 없는 private `beginBeacon(_:)`·`beginTransit(...)`으로 옮기고, 공개 `startBeacon`·`startTransit`은 `refuseIfActive()` + 그 호출로 남긴다(외부 시작은 여정 중 거부 — 지금 동작 그대로). 여정의 단계 시작은 `startJourneyStage(_:token:)` 한 함수만 `begin*`을 부르고, 들어오자마자 ① `token == (journeyId, transitionSeq)` ② 단계 세션이 돌고 있지 않음(`!beacon.isTracking && !beacon.starting && !transit.isTracking`)을 확인한다 — 둘 중 하나라도 거짓이면 아무것도 시작하지 않는다. 점유를 잠시 푸는 방식은 쓰지 않는다(그 틈에 외부 시작이 끼어든다).
+- 기존 인계 `acceptWalkHandoff`·`acceptCarWalkHandoff`·`acceptOutingReturn`은 여정 안에서 쓰지 않는다(여정의 다음 단계가 그 자리를 맡는다). 승차 전 도보(prewalk)는 갈린다: **A 지정** 여정은 잘린 경로라 첫 탈것 앞 도보가 없어 `transitPrewalkTarget`이 서지 않고, 택시 하차 뒤 걷기는 여정 단계 access가 맡는다. **A 미지정** 여정은 첫 단계가 출발지에서 시작하는 보통 대중교통이므로 `beginTransit` 본문의 prewalk(`endPrewalk` → `transit.startAfterPrewalk`, 거부 가드를 지나지 않는 내부 인계)를 그대로 쓴다. 두 경우 모두 단일 슬롯 `onSessionEnd`를 동시에 두 소유자가 쓰지 않는다(prewalk와 chained 도보는 한 여정에서 겹치지 않는다).
+- 통합 테스트(소스 가드 + Kit 순수): 최초 시작, 단계 인계 전부, 실패 뒤 재시도가 시작에 성공하고, 여정 중 외부 시작(길찾기 탭 도보·자동차·대중교통 시작, 나들이)은 `guide.alreadyActive`로 거부된다. `guidance-gate-drift.test.ts`의 `ENTRY_CALL`은 `beginBeacon(`도 센다.
 
 **전이는 원자적으로 예약한다**:
 
@@ -375,3 +392,17 @@ interface EgressOption {
 | M2 | 여정 요청 버킷이 자동차 버킷과 따로라 Tmap 공유 쿼터를 지키지 못한다(요청당 16회 × 분당 3) | §4.5: 한 조회 상한 8회, 자동차 라우트와 같은 버킷을 **호출 수**로 팬아웃 전 예약, 인스턴스 일 상한 200. 전역 정확 상한·정식판 예약분은 외부 공유 저장소가 필요해 첫 판 밖(한계와 재개 조건을 명시) |
 | M3 | taxiOut의 카카오 폴백(HTTP 200·안내 불가)에 복구 전이가 없다 | §6.4: taxiIn·taxiOut 공통 안내 가능 술어(`carGuideStartable`과 같은 판정), 동기 거부·비동기 시작 실패까지 `failed(at:)` + 재시도 |
 | M4 | 출구 7일 캐시가 카카오 300초 상한(위원장 판정, `kakao-cache-ttl.test.ts`) 위반 | §4.4·§4.6: `revalidate: 300`, 래퍼 캐시 금지, 질의 병렬 묶음 |
+
+### 13.2 2회차 (codex adversarial-review, 대상 `0ce4d62c`) — needs-attention, BLOCKER 1 · MAJOR 4, 전부 수용
+
+설계 리뷰 회전 상한(2회)에 닿아 3회차는 돌리지 않았다. 아래 처리는 지적마다 근거 코드를 직접 열어 사실을 확인한 뒤 반영했다(검증 범위: `GuideSessionCoordinator.swift` 시작 진입점·`refuseIfActive`, `BeaconModel.swift` `EndReason`·`stopAndFail`, `TransitGuideModel.swift` `completeOrAdvance`·`finalLegWalkMinutes`, `TransitTrackingSheet.swift` `handoffNow`, `odsay.ts` `toTransitRoute` 합계, `rate-limit.ts` 버킷).
+
+| # | 지적 | 처리 |
+|---|---|---|
+| B1 | 1회차 M1 처리(여정을 `isActive`에 포함)가 여정 자신의 다음 세션 시작까지 `refuseIfActive`로 막는다 | §6.3: 공개 `start*`(거부 가드 유지)와 가드 없는 private `begin*`으로 가르고, 여정 단계 시작 `startJourneyStage`만 `(journeyId, transitionSeq)` 결박 + 단계 세션 부재를 확인해 `begin*`을 부른다. 점유를 풀지 않는다. 외부 시작 거부·내부 인계·재시도 성공 통합 테스트 |
+| M1 | 후보 전부 실패 뒤 복구 호출이 예약 밖이라 상한이 깨진다 | §4.5-1·7: 팬아웃 전 **정확한 비용**(서로 다른 좌표 수)으로 예약, 예약 밖 호출 0. 그룹 후보 전부 실패는 복구 호출 없이 502, `lookupFailed`는 카카오 실패만(하차 정류 좌표 후보가 비용에 이미 포함) |
+| M2 | 같은 하차역이면 출구 선정을 공유해 다른 노선 출구가 붙는다 | §4.5-2: 선정 단위 = (하차역, 하차 노선) 그룹. 원시 카카오 검색과 같은 좌표 Tmap 조회만 공유 |
+| M3 | 진행 중 도보 종료(`.ended` — 권한 철회·정밀 위치 꺼짐)가 전이 표에 없어 세션은 사라지고 여정만 남는다 | §6.1: chained 세션(taxiIn·access·egress)의 `EndReason` 넷 전수 대응 표, `.ended`는 원인(`lastFailure` 키·해결 수단)을 보존한 `failed`, 대중교통의 그 밖의 종료는 여정 종료 |
+| M4 | 남은 legs로 합계를 다시 더하면 legs에 없는 역내 환승 시간이 사라진다 | §4.2-4: 원래 합계에서 뗀 도보 분만 뺀다. 거리 0 환승 통로 보존 테스트 |
+
+**BLOCKER 잔여 0**(1회차 2건·2회차 1건 모두 처리).
