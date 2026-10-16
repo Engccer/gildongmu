@@ -170,6 +170,9 @@ final class BeaconModel {
     private(set) var rerouteGaveUp = false
     /// E69 ⓒ: 벗어난 채 정지 연속 시작 시각(`RerouteProposalGate.stillStep`).
     private var offRouteStillSince: Double?
+    /// E69: 이 회차에 「새 경로를 자동으로 찾지 못했습니다.」를 게시해 아직 버려지지 않았다. 버튼 래치와 따로 둔다 — 문장이 버려지면
+    /// (받아쓰기 억제·백그라운드 음성 끔·latest-wins) 다음 ⓐⓑ에서 다시 말한다(1회성 통지는 전달된 시점에 래치).
+    private var rerouteGaveUpSpoken = false
     /// "경로 다시 조회" 버튼 노출 — 돌아가는 중(다가감·멀어짐·나란히 계수 진행 중)에는 없다(E69).
     var showsRerouteButton: Bool { offRoute && rerouteGaveUp }
     /// 직전 `offRoute` 해제가 경로 커밋(자동 채택·재조회·전환)이었는가 — 시트가 "재조회
@@ -395,7 +398,7 @@ final class BeaconModel {
     /// 되므로 미달이면 버리고 그 순간 수동 "경로 다시 조회" 버튼이 선다(E69 ⓐ).
     /// latest-wins 토큰 — 폐기·목적지 변경·세션 종료·수동 재조회 시 증가. 토큰이 일치하고
     /// 이탈이 지속 중일 때만 응답을 채택한다(복귀 후 늦게 도착한 응답이 경로를 갈아치우는
-    /// 경로 차단). 조회 실패는 그 회차 종결(재시도·통지 없음 — 쿼터 방어).
+    /// 경로 차단). 조회 실패는 버튼을 세우고 한 번 말한다(E69). 더 멀어지면 리듀서가 또 요청한다(세션 예산 5회).
     private var proposalToken = 0
     /// 세션당 자동 조회 횟수(상한 5, RerouteProposalGate — GPS 진동으로 확정 회차가
     /// 반복 생성될 때 쿼터·통지 폭주의 마지막 방어선).
@@ -1428,6 +1431,7 @@ final class BeaconModel {
         liveBaselineD = 0
         offRoute = false
         rerouteGaveUp = false
+        rerouteGaveUpSpoken = false
         offRouteStillSince = nil
         roadSpans = []
         etaSeconds = nil
@@ -2168,12 +2172,14 @@ final class BeaconModel {
             syncStatusTextWithPhase(out.state.phase)
         }
         // E69 ⓒ: 이벤트 소비 뒤(확정 fix의 회차 래치 초기화가 먼저). 운전자 채널은 실패 뒤에만이라 정지 축이 없다.
-        stepRerouteStill(stopped: motion == .stopped, now: now)
+        stepRerouteStill(phase: out.state.phase, stopped: motion == .stopped, now: now)
     }
 
     /// E69 ⓒ: 벗어난 채 `GuideFix.stopped`가 30초 이어지면 버튼 래치를 조용히 세운다(새 정지 판정 금지 — 같은 술어).
-    private func stepRerouteStill(stopped: Bool, now: Double) {
-        guard offRoute, !driverChannel else {
+    /// 리듀서 국면이 돌아가기(`.offRoute`)인 fix만 센다 — uncertain·reacquiring(정확도 악화·공백) fix에서 연속을 비워 끊긴 시간이
+    /// 정지로 산입되지 않게 한다(E63 spec §3.9와 같은 이유, 웹·안드로이드 동형).
+    private func stepRerouteStill(phase: GuidePhase, stopped: Bool, now: Double) {
+        guard offRoute, phase == .offRoute, !driverChannel else {
             offRouteStillSince = nil
             return
         }
@@ -2183,15 +2189,19 @@ final class BeaconModel {
     }
 
     /// E69: 자동 판정이 손을 든 순간 버튼 래치를 세운다. 조회 실패·예산(ⓐⓑ)은 한 문장, 정지(ⓒ)와 운전자 채널은 침묵 — 운전 중
-    /// 화면을 누르라는 권유가 되지 않게. 래치가 이미 섰으면 아무것도 하지 않는다(재무장으로 실패가 되풀이돼도 한 회차에 한 번).
+    /// 화면을 누르라는 권유가 되지 않게. 문장은 회차에 한 번이고(재무장으로 실패가 되풀이돼도), 버려졌으면 다음 ⓐⓑ에서 다시 말한다.
     /// 포커스는 옮기지 않고(E57 착지 계약 밖) 상태 행도 그대로다(윗줄은 리듀서가 소유하는 이탈 문장). 기본 우선순위: 이 통지와
     /// 함께 사라지는 컨트롤이 없다.
     private func raiseRerouteButton(cause: String, speak: Bool) {
-        guard !rerouteGaveUp else { return }
-        rerouteGaveUp = true
-        guideDiagLog("rerouteButton cause=\(cause)")
-        guard speak, !driverChannel else { return }
-        announce(appLocalized("guide.rerouteAutoGaveUp"), speechClass: .actionable)
+        if !rerouteGaveUp {
+            rerouteGaveUp = true
+            guideDiagLog("rerouteButton cause=\(cause)")
+        }
+        guard speak, !driverChannel, !rerouteGaveUpSpoken else { return }
+        rerouteGaveUpSpoken = true
+        announce(appLocalized("guide.rerouteAutoGaveUp"), speechClass: .actionable) { [weak self] in
+            self?.rerouteGaveUpSpoken = false
+        }
     }
 
     /// 이벤트 없이 **국면만** 바뀐 fix의 상태 텍스트를 되돌린다(백로그 D12).
@@ -2772,7 +2782,7 @@ final class BeaconModel {
             // 경유지 도착(N4 spec §4.3): 도착 종 + 통지, 그리고 **계속**(경로·상태 불변).
             // `waypoint`만 비워 이후 재조회가 출발→도착으로 가게 한다. 옛 경유지 기반
             // 파생물(자동 재조회·프리뷰·왕복 중 재조회)은 폐기(설계 리뷰 #9) — 이탈 상태는 남아
-            // 버튼으로 다시 누를 수 있다. 재시작 요청에서도 지운다(#11).
+            // 리듀서가 다시 요청한다(버튼이 선 회차면 버튼으로도, E69). 재시작 요청에서도 지운다(#11).
             guard let reached = waypoint else { break }
             waypoint = nil
             waypointPassedInSession = true
@@ -2817,6 +2827,7 @@ final class BeaconModel {
                 offRouteConfirmCoord = lastFixCoord
                 // 새 회차는 버튼 없이 시작한다 — 앱이 돌아가게 할지 새 길을 찾을지 판정하는 중이다(E69).
                 rerouteGaveUp = false
+                rerouteGaveUpSpoken = false
                 offRouteStillSince = nil
             }
             offRoute = true

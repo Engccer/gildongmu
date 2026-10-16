@@ -175,6 +175,8 @@ class WalkGuideModel(
         set(v) = mutate { copy(rerouteGaveUp = v) }
     /** E69 ⓒ: 벗어난 채 정지 연속 시작 시각(`RerouteProposalGate.stillStep`). */
     private var offRouteStillSince: Double? = null
+    /** E69: 이 회차에 실패 문장을 게시해 아직 버려지지 않았다 — 버려지면 다음 ⓐⓑ에서 다시 말한다(1회성 통지는 전달된 시점에 래치, iOS 동형). */
+    private var rerouteGaveUpSpoken = false
     private var offRouteEndedByReroute: Boolean
         get() = _ui.value.offRouteEndedByReroute
         set(v) = mutate { copy(offRouteEndedByReroute = v) }
@@ -601,6 +603,7 @@ class WalkGuideModel(
         liveBaselineD = 0.0
         offRoute = false
         rerouteGaveUp = false
+        rerouteGaveUpSpoken = false
         offRouteStillSince = null
         lastFixCoord = null
         lastFixCoordAt = null
@@ -1241,26 +1244,32 @@ class WalkGuideModel(
         if (event == null) syncStatusTextWithPhase(out.state.phase)
         else consume(event, route, prev = state, signedPerp = out.signedPerpMeters, now = now)
         // E69 ⓒ: 이벤트 소비 뒤(확정 fix의 회차 래치 초기화가 먼저).
-        stepRerouteStill(motion == MotionState.stopped, now)
+        stepRerouteStill(out.state.phase, motion == MotionState.stopped, now)
     }
 
-    /** E69 ⓒ: 벗어난 채 `GuideFix.stopped`가 30초 이어지면 버튼 래치를 조용히 세운다(새 정지 판정 금지 — 같은 술어, iOS 동형). */
-    private fun stepRerouteStill(stopped: Boolean, now: Double) {
-        if (!offRoute) { offRouteStillSince = null; return }
+    /**
+     * E69 ⓒ: 벗어난 채 `GuideFix.stopped`가 30초 이어지면 버튼 래치를 조용히 세운다(새 정지 판정 금지 — 같은 술어, iOS 동형). 리듀서 국면이
+     * 돌아가기인 fix만 센다 — uncertain·reacquiring(정확도 악화·공백) fix에서 연속을 비워 끊긴 시간이 정지로 산입되지 않게(E63 spec §3.9).
+     */
+    private fun stepRerouteStill(phase: GuidePhase, stopped: Boolean, now: Double) {
+        if (!offRoute || phase != GuidePhase.offRoute) { offRouteStillSince = null; return }
         val still = RerouteProposalGate.stillStep(offRouteStillSince, stopped, now)
         offRouteStillSince = still.since
         if (still.reached) raiseRerouteButton("still", speak = false)
     }
 
     /**
-     * E69: 자동 판정이 손을 든 순간 버튼 래치를 세운다. 조회 실패·예산(ⓐⓑ)은 한 문장, 정지(ⓒ)는 침묵. 래치가 이미 섰으면 아무것도 하지 않는다
-     * (재무장으로 실패가 되풀이돼도 한 회차에 한 번). 포커스는 옮기지 않고 상태 행도 그대로다(윗줄은 리듀서가 소유하는 이탈 문장). iOS 동형.
+     * E69: 자동 판정이 손을 든 순간 버튼 래치를 세운다. 조회 실패·예산(ⓐⓑ)은 한 문장, 정지(ⓒ)는 침묵. 문장은 회차에 한 번이고(재무장으로
+     * 실패가 되풀이돼도), 버려졌으면 다음 ⓐⓑ에서 다시 말한다. 포커스는 옮기지 않고 상태 행도 그대로다(윗줄은 리듀서가 소유하는 이탈 문장). iOS 동형.
      */
     private fun raiseRerouteButton(cause: String, speak: Boolean) {
-        if (rerouteGaveUp) return
-        rerouteGaveUp = true
-        GuideDiag.log("rerouteButton cause=$cause")
-        if (speak) announce(strings.get("guide.rerouteAutoGaveUp"), speechClass = GuideSpeechClass.actionable)
+        if (!rerouteGaveUp) {
+            rerouteGaveUp = true
+            GuideDiag.log("rerouteButton cause=$cause")
+        }
+        if (!speak || rerouteGaveUpSpoken) return
+        rerouteGaveUpSpoken = true
+        announce(strings.get("guide.rerouteAutoGaveUp"), speechClass = GuideSpeechClass.actionable) { rerouteGaveUpSpoken = false }
     }
 
     /** 이벤트 없이 국면만 바뀐 fix의 상태 텍스트를 되돌린다(재획득 문구일 때뿐, 통지 없음). */
@@ -1343,6 +1352,7 @@ class WalkGuideModel(
                     offRouteConfirmCoord = lastFixCoord
                     // 새 회차는 버튼 없이 시작한다 — 앱이 돌아가게 할지 새 길을 찾을지 판정하는 중이다(E69).
                     rerouteGaveUp = false
+                    rerouteGaveUpSpoken = false
                     offRouteStillSince = null
                 }
                 offRoute = true

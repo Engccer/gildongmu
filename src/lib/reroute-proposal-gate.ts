@@ -9,7 +9,7 @@ import { haversineMeters } from "./geo";
 
 /** 신선도 시간 한계(초, 잠정 — 실보행 판정 대상). */
 export const REROUTE_PROPOSAL_MAX_AGE_S = 120;
-/** 세션당 자동 조회 상한(잠정). 실패가 이어진 한 회차가 다 쓰면 뒤 회차는 버튼만 갖는다. */
+/** 세션당 자동 조회 상한(잠정). 실패가 이어진 한 회차가 다 쓰면 뒤 회차는 새 경로가 필요한 순간(`rerouteNeeded`) 버튼이 선다(E69 ⓑ). */
 export const REROUTE_MAX_FETCHES_PER_SESSION = 5;
 
 export interface RerouteProposal {

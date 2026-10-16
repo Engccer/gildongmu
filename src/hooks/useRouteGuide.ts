@@ -661,6 +661,8 @@ export function useRouteGuide(
   const rerouteGaveUpRef = useRef(false);
   /** E69 ⓒ: 벗어난 채 정지 연속 시작 시각(`rerouteStillStep`). */
   const offRouteStillSinceRef = useRef<number | null>(null);
+  /** E69: 이 회차에 실패 문장을 말했다(버튼 래치와 따로 — 정지로 선 버튼 뒤의 실패도 한 번 말한다). */
+  const rerouteGaveUpSpokenRef = useRef(false);
   const [progress, setProgress] = useState<GuideProgress | null>(null);
   const [currentText, setCurrentText] = useState<string | null>(null);
   const [liveRows, setLiveRows] = useState<LiveRowsText>({
@@ -1752,15 +1754,18 @@ export function useRouteGuide(
   );
 
   /**
-   * E69: 자동 판정이 손을 든 순간 버튼 래치를 세운다. 조회 실패·예산(ⓐⓑ)은 한 문장, 정지(ⓒ)는 침묵 — 래치가 이미 섰으면 둘 다
-   * 아무것도 하지 않는다(재무장으로 실패가 되풀이돼도 한 회차에 한 번). 포커스는 옮기지 않는다.
+   * E69: 자동 판정이 손을 든 순간 버튼 래치를 세운다. 조회 실패·예산(ⓐⓑ)은 한 문장(회차에 한 번 — 재무장으로 실패가 되풀이돼도),
+   * 정지(ⓒ)는 침묵. 포커스는 옮기지 않는다.
    */
   const raiseRerouteButton = useCallback(
     (speak: boolean) => {
-      if (rerouteGaveUpRef.current) return;
-      rerouteGaveUpRef.current = true;
-      setRerouteGaveUp(true);
-      if (speak) announce(t("rerouteAutoGaveUp"));
+      if (!rerouteGaveUpRef.current) {
+        rerouteGaveUpRef.current = true;
+        setRerouteGaveUp(true);
+      }
+      if (!speak || rerouteGaveUpSpokenRef.current) return;
+      rerouteGaveUpSpokenRef.current = true;
+      announce(t("rerouteAutoGaveUp"));
     },
     [announce, t],
   );
@@ -1782,9 +1787,11 @@ export function useRouteGuide(
       // E69: 이탈 회차가 새로 시작되면 버튼 래치를 내리고, 벗어난 채 정지가 30초 이어지면 조용히 세운다.
       if (result.event?.kind === "offRoute" && result.event.notice === "confirm") {
         rerouteGaveUpRef.current = false;
+        rerouteGaveUpSpokenRef.current = false;
         setRerouteGaveUp(false);
         offRouteStillSinceRef.current = null;
       }
+      // 리듀서 국면이 돌아가기인 fix만 센다 — uncertain·reacquiring(정확도 악화·공백)에서 비워 끊긴 시간을 정지로 세지 않는다.
       if (result.state.phase === "offRoute") {
         const still = rerouteStillStep(offRouteStillSinceRef.current, fix.stopped, now);
         offRouteStillSinceRef.current = still.since;
@@ -2047,6 +2054,7 @@ export function useRouteGuide(
     autoRerouteCountRef.current = 0;
     autoRerouteGenRef.current += 1;
     rerouteGaveUpRef.current = false;
+    rerouteGaveUpSpokenRef.current = false;
     offRouteStillSinceRef.current = null;
     offRouteSpokenRef.current = false;
     offRouteLineRef.current = null;
@@ -2416,8 +2424,8 @@ export function useRouteGuide(
 
   /**
    * 자동 재조회(E63 spec §3.5·§3.9): 리듀서가 돌아가기 국면에서 `rerouteNeeded`(계속 멀어짐·나란히 계속 걸음)를 낼 때만
-   * 조회·채택한다 — 이탈 확정 즉시가 아니다. 조회 실패·경로 없음·신선도 미달은 통지 없이 돌아가기 국면을 잇고, 리듀서가
-   * 문턱을 다시 채우면 또 요청한다(세션 5회 상한). 채택 시점 신선도는 iOS `RerouteProposalGate` 미러(마지막 fix 15초 안 ∧
+   * 조회·채택한다 — 이탈 확정 즉시가 아니다. 조회 실패·경로 없음·신선도 미달·예산 소진은 버튼을 세우고 한 번 말한 뒤(E69)
+   * 돌아가기 국면을 잇고, 리듀서가 문턱을 다시 채우면 또 요청한다(세션 5회 상한). 채택 시점 신선도는 iOS `RerouteProposalGate` 미러(마지막 fix 15초 안 ∧
    * 요청 지점에서 수단별 이동 상한·120초 안).
    */
   const autoReroute = useCallback(() => {
