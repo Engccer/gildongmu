@@ -66,7 +66,7 @@
   - 단축어 "음성 검색" 세션은 진입 시 VO 커서를 마이크 행에 선점한다(`SearchView.task`의 `micRowFocused`, `speech.start()` 전 + 완료 후 1회 재확정). 정지 수단이 그 행 탭인데 커서가 최상단이면 스와이프로 찾아가야 하기 때문이다.
   - 채팅 입력 필드의 지우기 버튼(`ios.chat.clear`)은 초안이 있을 때만 나타나고, 누르면 자신이 사라지므로 포커스를 입력 필드로 선점 이동한다.
   - **화면을 띄울지 말지를 가르는 판정은 동기로 한다**(도보 종료 화면 `WalkHealth.isMeaningfulWalk`). 스와이프·VO escape는 시트 최소화만, 소거는 `clearArrival()`뿐. → PATTERNS
-  - **채팅 산문 블록은 언제나 한 접근성 객체이고, 장소 언급 수로 활성화 방식만 가른다**(1개=블록 버튼, 2개 이상=인라인 링크+로터 액션). 새 nearby 도구에 렌더를 달면 `places` 투영(`nearby-place.ts` ↔ `PlaceProjection.swift`)도 싣는다. → PATTERNS
+  - **채팅 산문 블록은 언제나 한 접근성 객체이고, 장소 언급이 있으면 이름 링크 + 로터다**(E72: 언급 수와 무관, 블록 버튼 갈래 폐기). 새 nearby 도구에 렌더를 달면 `places` 투영(`nearby-place.ts` ↔ `PlaceProjection.swift`)도 싣는다. → PATTERNS
 
 ## 아키텍처
 
@@ -126,7 +126,7 @@
 - **iOS 목록 포커스 이동은 "가시화 → 지연 → 경합 해제 → 대입 → 검증 → 1회 재시도"가 정본**(`SearchView.landFirstRowFocus`, "내 주변"은 `NearbyFocusLander`, 대중교통 시트만 3단 위 A35 `landControlFocus`). 착지 대상 부착은 `landingTarget` 한 자리(`transit-landing-guard.test.ts`). → PATTERNS
 - **그 시트의 착지 대상은 기본이 상태 문장 행이다**(E38 `SheetControl.status`, 띠바 복귀 포함). 예외 허용 집합은 `transit-landing-guard.test.ts`, 착지 테스트는 누르기 전에 그 컨트롤로 커서를 옮긴다(`clickFocused`). → PATTERNS
 - **도보·자동차 안내 시트의 첫 착지는 첫 정보 행(남은 거리 → 윗줄 → 상태 문장)이다**(E57, `requestInfoLanding` 한 입구, 제목·접기 착지 재도입 금지): 안내 모델이 게시한 통지가 끝날 때까지 모델 `announcementsSettled`로 기다리고(시트가 끝 신호를 직접 듣지 말 것), 대기 중 커서를 옮기면 착지하지 않는다. 가드 `guide-sheet-landing-guard.test.ts`. → PATTERNS
-- **안내 시트에서 장소 상세는 중첩 시트 하나(`detailPlace`)로 열고, 산문 속 역 언급은 로터 액션이다**(E33, 역 Place는 `transitStopPlace`). 폴마다 바뀌는 문장엔 "1개면 블록 버튼" 갈래를 쓰지 않는다. → PATTERNS
+- **안내 시트에서 장소 상세는 중첩 시트 하나(`detailPlace`)로 열고, 산문 속 역 언급은 이름 링크 + 로터 액션이다**(E33·E72, 역 Place는 `transitStopPlace`). 링크는 역 정체성(`viaStops` 순번)에 결박하고 줄은 언제나 같은 `Text`다. → PATTERNS
 - **화면 배치를 바꾸면 그 자리를 지나가는 포커스 점프를 함께 점검한다**(조회 완료 시 첫 성공 수단 heading으로 1회 이동). → PATTERNS
 - **실시간 안내 판정 계층은 전부 순수 함수이고 웹·Kit·안드로이드 `:kit` 미러다**(`toneLayerStep`·`motionStep`·`trendStep` 공유 fixture). 톤은 배타 계층 하나만, **정지 fix는 톤을 내지 않는다**(E55, `tick`은 나들이 10m 비프 전용), 정지 판정은 도플러 3-state. 수정 전 §실시간 길 안내를 읽는다. → INTEGRATIONS
 - **안내 경로 origin은 "신선한가"가 아니라 "정확한가"로 고른다**(A18, Kit `routeOriginStep`만 지난다 — 세션 첫 fix가 곧 가장 나쁜 fix). `isUsableFix`를 조이지 말고 재측위 의존을 되살리지 말 것. `routeOrigin` 로그 1줄 필수. → INTEGRATIONS
@@ -139,6 +139,7 @@
 - **횡단 중·정지 중엔 주기 통지·되읽기가 없고 다음 구간 전문은 횡단을 나간 뒤다**(E62): 나감 판정 `crossingExitThreshold`의 시작점 여유 조건을 지우지 말 것, `GuideFix.stopped`는 기본값 없음. → INTEGRATIONS §횡단 중·정지 중 침묵과 늦은 전문
 - **도보 판본 2(`wording=2`)의 횡단 방향은 직전 스텝의 마지막 10m 이상 선분 기준 시계 방향이다**(`walk-crossing.ts`, 시계 함수는 웹·Kit·`:kit` 한 벌). 건너는 길 이름은 판본 2의 일부이고, 카카오 괄호 도로명은 스텝 첫 구간의 도로라 직전 스텝이 안에서 꺾였으면 싣지 않는다(A65 `roadLabelHoldsToEnd`, 옵트인 없음, 옛 `crossingRoad=1`은 서버가 읽지 않는다, 가드 `e62-crossing-road-gate.test.ts`). → INTEGRATIONS §판본 2 문장과 횡단 방향
 - **자동차 임박 큐는 문장이 아니라 서버 `turnType` 투영(`action`)으로 행동을 고르고, 없으면 침묵이다**(K2, 표 정본 `car-action.ts` ↔ `CarAction.swift`). 임계 `max(15m, v×6초)`·표본 부족 60m, 공백 뒤 따라잡기는 `silentCatchUp` 세 항이 한 묶음. 운전자 모드는 `BeaconModel`이 `TtsPlayer.speakGuidance`로 발화. → INTEGRATIONS
+- **자동차 경유지 접근 예고는 임박 큐와 같은 임계 구조 + 정숙 시간이다**(N4 자동차, `waypointApproachThreshold` = `max(150m, v×60초)`·표본 부족 600m, 직전 발화 뒤 `waypointApproachQuietS` 10초): 리듀서 밖 실행 안내(억제 해제 복구·전경 복귀 갚기)는 자동차 세션에서 `guideState.lastAnnouncedAt`을 적고(가드 `car-waypoint-approach-guard.test.ts`), 세대 시작 소비(W0)는 미지 임계가 아니라 바닥으로 잰다. → INTEGRATIONS §자동차 임박·따라잡기
 - **자동차 짧은 안내(임박·주기)의 지점·방면은 서버 `at`·`toward`(기하 옵트인 additive)가 정본이고 클라이언트는 스텝 `carLandmark`에서만 읽는다**(E61): 안내문 재파싱 금지, 비-ko는 `carSpokenLandmark`가 한글 이름을 뺀다, 운전자 모드는 종전 단문(`guide.carDriverNotice`). → INTEGRATIONS §자동차 경로
 - **자동차 "현재 도로"는 스텝이 아니라 링크 단위다**(E56): `roadSpans` + `roadNameAt(진행거리)`만 지난다 — 한 안내 구간 안에서 도로가 바뀌는 스텝이 15%라 스텝별 도로 이름 필드·안내문 파싱 금지. 모르면 줄 없음, 통지 없음. → INTEGRATIONS §자동차 경로
 - **잊힌 도보 세션은 국면 무관 안전망이 끝낸다**(A23 `sessionIdleStep` ↔ `session-idle.ts`): fix 두절은 `GuideTuning.sessionIdleNoFixSeconds`(웹 `sessionIdleNoFixS`, 도보 5분·자동차 15분, 기본값 없는 인자), 무이동 5분은 도보만(도착 창 ∧ 거리 캡이면 120초 늦게). 수단 차이는 `GuideTuning` 데이터로(`sessionKind` switch 금지). → INTEGRATIONS
@@ -161,7 +162,8 @@
 - **승차 전 도보(prewalk)는 대중교통 세션이 아니라 그 앞의 도보 세션이고, 종료 화면을 남기지 않는다**(A25: `transitPrewalkTarget` → `BeaconModel.markPrewalk` → `onSessionEnd(reason)`). `prewalkTarget`은 `stop()` 앞에서 캡처, 잊힌 세션 안전망 비적용. → INTEGRATIONS
 - **iOS 통지 우선순위의 판별선은 "포커스가 움직이고, 그 통지가 착지 라벨로 대체될 수 없을 때 `.high`"다**(`BeaconModel.performReroute` 실사고). 화면 변화 없는 활성화 응답("복사됨")도 `.high`, 실패만 `.high`이고 성공이 기본값인 비대칭은 결함 신호. → PATTERNS
 - **결과 진동은 `ResultHaptic.fire(.success|.attention|.failure)` 한 창구다**(스위치 `TrendHaptics.storageKey` 뒤). 1회성 결과·전이에만, **문장이 나가는 조건 = 진동이 나가는 조건**. 제너레이터 직접 생성은 기존 4곳뿐(`result-haptic-guard.test.ts`). → PATTERNS
-- **내 주변 탭 로터 액션은 기존 판별선을 재사용한다**(E65: 장소 하나인 행 = `placeRowActions` 수정자, 문장 속 여러 장소 = Kit `overviewDetailTargets`, 역 제목 = E45 창구 `stationCallLabel`·`callStationPhone`). 앵커 목록의 길찾기 허용(`directionsEntryAllowed`, 기본값 없는 인자)은 장소 상세의 `showsDirectionsEntry`를 넘겨받는다. → PATTERNS
+- **내 주변 탭 동작은 기존 판별선을 재사용한다**(E65·E72: 장소 하나인 `List` 행 = 행 뿌리의 `placeRowSwipeActions`, 문장 속 여러 장소 = Kit `overviewDetailTargets` 링크 + 로터, 역 제목 = 밀기 버튼 + E45 창구 `stationCallLabel`·`callStationPhone`). 앵커 목록의 길찾기 허용(`directionsEntryAllowed`, 기본값 없는 인자)은 장소 상세의 `showsDirectionsEntry`를 넘겨받는다. 상세에서 돌아온 등장은 다시 조회하지 않는다(A64, `NearbyLoadCore.appear()`). → PATTERNS
+- **로터 동작은 화면에도 보인다**(E72): 장소 하나인 `List` 행은 밀기 버튼을 **행 뿌리**에(라벨 안 `PlaceRow`에 두지 않는다, 같은 행에 `accessibilityActions`를 겹치지 않는다), 끝까지 밀기는 되돌릴 수 있는 첫 버튼일 때만, 목록 행엔 딥링크가 없다. 줄 안 대상은 이름에만 밑줄 링크(`InlineTargets` + Kit `inlineTargetSpans`, 노선 이름은 `avoiding`) + 같은 대상의 로터. 줄 글자에 "버튼" 금지. → PATTERNS
 - **순서 바꾸기 로터 액션은 Kit `Reorder` 한 판정(`availableMoves`·`moved`)과 앱 `reorderActions`·`announceReorderPosition`·`keepFocusAfterMove` 한 벌을 쓴다**(E67·E66): 이동 기준은 화면에 보이는 순서이고 저장 배열을 채택하며, 고정 블록을 시간·이름으로 다시 정렬하는 쓰기를 더하지 않는다. → PATTERNS
 - **직선거리는 고를 수 있는 모드가 아니라 이름 없는 내부 강등이다**(E16 축2 — 웹에 단독 진입점·모드 전환 버튼 재도입 금지, 시작 가능 수단 0이면 버튼 0). 기능을 지울 땐 소비자 기준(웹·iOS 공유 i18n 키·이벤트)으로 자른다. → PATTERNS
 - **모드 이름을 지운 대가는 강등 사유가 유일한 단서가 되는 것이다**: `fetchGuideRoute`는 `{ok:false, failure}` 태그(`noLocation`·`retryable`·`unavailable`·`outOfCoverage`), 비-200 전부를 재시도 가능으로 접지 말 것, 강등 문구에 모드 이름 금지. → PATTERNS
@@ -174,7 +176,7 @@
 - **검색→상세 흐름**: 단일 검색창, 카테고리 칩 필터, 장소 선택 시 **History API 뷰 전환**(카카오는 ID 단건조회 없어 메모리 `Place`로 상세). `?q=` URL 동기화 + request-id ref로 stale 응답 폐기.
 - **검색창 3섹션 결정론 병렬**(장소+주소 병렬, 정확도순 플랫 리스트). ⚠ 부활 금지 3종: Gemini 자연어 라우터·명소 별도 섹션·버킷 섹션 그룹핑(버킷은 칩 필터 축으로만). → PATTERNS
 - **프리필 진입과 `?dir=` 복원은 필드 값이 같아도 다른 진입이라 표식으로 가른다**(`openDirections`의 `prefill` ↔ iOS `DirectionsPrefill`): 자동 조회를 `initialTo` 값에 걸지 말 것, 양끝이 있을 때만 조회. → PATTERNS
-- **경로 브리핑의 역 진입점은 이름 조인이고 줄은 전부 `Text`로 남는다**(E45 Kit `transitBriefingStations`: 위치 인덱스 금지, 조인 실패는 진입점 0). 진입은 로터뿐, 소비자는 옵트인(`stationEntry` 기본 꺼짐). → PATTERNS
+- **경로 브리핑의 역 진입점은 이름 조인이고 줄은 전부 `Text`로 남는다**(E45 Kit `transitBriefingStations`: 위치 인덱스 금지, 조인 실패는 진입점 0). 진입은 역 이름 링크(E72, 상세만)와 로터, 소비자는 옵트인(`stationEntry` 기본 꺼짐). → PATTERNS
 - **딥링크(`nmap://`·`kakaomap://`)는 장소 상세의 보조 출구이고, 브리핑 진입점은 길찾기 뷰와 채팅 렌더 카드로 일원화**(장소 상세 단일 수단 브리핑 재도입 금지). → PATTERNS §딥링크는 장소 상세의 보조 출구다
 - **경로 브리핑의 출구 번호는 한 경로에 정확히 한 줄에만 실린다**(E25 배타 술어 `boardExitAfterWalk`·`boardExitOnBoardLine`): 소비자 셋(웹 브리핑·WebMCP·iOS 길찾기 행)을 함께 고치고, 하차 줄 역명은 `transitBoardLegNames` ↔ `transitLegUsesEnglish`(`toName` 직접 읽기 금지). → PATTERNS
 - **수량 문구는 ICU plural이고 iOS는 카탈로그의 ICU 블록을 Kit `formatLocalized`가 푼다**(A29; xcstrings 네이티브 `variations.plural` 금지, 수량 인자는 `Int`, 회피 표기 `(s)` 금지). 변환 스크립트는 지원 밖 ICU에 exit 1. → PATTERNS

@@ -88,4 +88,9 @@ git push origin feat/<이름>:main && git -C ~/Mac-Projects/gildongmu pull --ff-
 
 ## 6. 정정 (코디네이터가 재현해 확인한 것)
 
-(없음)
+
+- **2026-10-17 05:40, 관측 `f1d2e56e`, 출처 `ios-rotor` 판정 요청**: 위원장 판정 E72 Q1 = 번호 없는 역 전화 밀기 버튼은 VoiceOver가 꺼져 있을 때만 알림창, Q2 = 실기기 판정 대기, Q3 = **안내 시트(문장 속 역 이름·경유역 목록 전화)도 이번에 이름 링크로**. §2 `ios-rotor` 소유에 `Directions/TransitTrackingSheet.swift`의 해당 자리(필요하면 `OutingSheet.swift`의 같은 자리)를 더한다. `BeaconModel.swift`·판정 계층은 계속 `car-via` 소유.
+- **2026-10-17 05:25, `f1d2e56e`**: 루트 `package-lock.json`의 cli·mcp 버전이 0.11.0으로 남아 있어(0.12.0 릴리스 `92866c52` 때 누락) worktree 설치가 미커밋 2줄을 만들었다. 코디네이터가 main에 반영했고 세션들은 rebase 직전 로컬 사본을 버린다.
+- **2026-10-17 06:05, 관측 `92db0144`: `car-via` 종료.** 통합 `92db0144`(N4 자동차 경유지 접근 예고: 임계 `max(150m, v×60초)`·표본 부족 600m·정숙 10초, 상수 잠정, 리뷰 codex 설계 2회·opus 코드·fable 안전 BLOCKER 0). 코디네이터가 보고 전문과 `ce2923ca..92db0144` 변경 파일이 소유 목록 안임을 확인하고 창을 닫고 worktree를 지웠다. 위원장 판정(같은 시각): 운전자 모드도 이 예고를 말한다(현행 유지, spec §4). 미결: ①`CLAUDE.md` 반영 한 줄(보고 `done-202610170602.md`, 웨이브 끝에 일괄 반영) ②소유 밖 후속: 안드로이드 `:app` `WalkGuideWaypointProgressTest.kt:138`의 `assertFalse(model.contains("waypointApproachM = null"))`가 필드 non-null화로 늘 참이 됐다(삭제 또는 "도보 튜닝 사본 금지"로 재작성) — 다음 소형 세션 몫.
+- **2026-10-17 06:40, 관측 `8b9c3958`: `ios-rotor` 종료.** 통합 `8b9c3958`(A64 `NearbyLoadCore.appear()`/`notePushed()` · E72 밀기 버튼·이름 링크·채팅 통일·안내 시트 Q3, 리뷰 설계·코드·a11y BLOCKER 0, 시뮬레이터 런타임이 없어 시뮬레이터 레인은 건너뜀). 소유 밖 자진 신고 `StationPhoneStore.swift`(`onNotice`)·`NearbyLoadState.swift`는 코디네이터가 변경 파일 목록으로 확인했고 판정과 정합한다. 창·worktree 정리. **실기기 설치**: 메인 체크아웃 `8b9c3958`로 실험판(Experimental)·공식판(Release) 두 구성 iPhone 13 Pro 설치·실행 확인. **세션 권고(채택)**: BACKLOG §2 E72 ①(밀기 버튼이 VoiceOver 동작 목록에 오르는가)·②(링크 품은 줄이 한 객체인가) 판정 전엔 정식판 아카이브에 싣지 않는다. 판정 후보·후속 후보(복귀 재조회가 남은 목록 넷, 웹·안드로이드 E72)는 보고 `done-*.md` §미결.
+- **`CLAUDE.md` 반영(코디네이터, 같은 시각)**: `ios-rotor` 요청 5건(채팅·안내 시트·내 주변·브리핑 줄 교체 + 「로터 동작은 화면에도 보인다」 신설)과 `car-via` 요청 1건(자동차 경유지 접근 예고 줄). 76.5KB/80KB, 예산 테스트 통과, `AGENTS.md` 재생성.
