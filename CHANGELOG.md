@@ -41,6 +41,9 @@
 ### 남은 내 주변 목록 넷도 상세에서 돌아올 때 다시 조회하지 않는다 (A66, iOS)
 아이 놀 곳·무장애 여행·소아 야간진료·문화행사 목록이 A64와 같은 `NearbyLoadCore.appear()`·`notePushed()` 규칙을 쓴다. 상세 화면을 push하는 내 주변 목록 일곱이 전부 같은 규칙이 됐다(가드 `e65-nearby-rotor-guard.test.ts`). BACKLOG A66.
 
+### 안드로이드 도보 경유지 테스트의 "튜닝 사본 금지" 단언이 실제로 잡는다 (D34, 안드로이드 테스트)
+늘 참이던 문자열 단언을 `GuideTuning` 생성자·`.copy(` 호출(줄바꿈 체인 포함)을 찾는 정규식으로 바꿨다(`WalkGuideWaypointProgressTest.kt`). BACKLOG D34.
+
 ### 내 주변 목록이 상세에서 돌아올 때 다시 조회하지 않는다 (A64, iOS)
 지하철역 목록에만 있던 복귀 재조회 생략을 Kit `NearbyLoadCore`(`notePushed`·`appear`, `:kit` 미러)로 올려 버스 목록·둘러보기도 같은 규칙이 됐다. 탭 전환 복귀와 새로고침은 종전대로 조회한다. BACKLOG A64.
 

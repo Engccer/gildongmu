@@ -27,7 +27,7 @@
 - iOS 심사 상태 조회: `node ios/scripts/asc-submit.mjs --check`
 - 미릴리스 iOS 변경량: `git rev-list --count <직전 릴리스 커밋>..HEAD -- ios/` (숫자를 문서에 박지 않는다 — 사흘에 세 번 낡은 이력이 있다)
 - **안내 세션은 앱 수명이다**(N1, 2026-08-22): `GuideSession`이 세 모델(도보·대중교통·나들이)을 소유하고 루트 시트·탭 바 **바로 위** 띠바(iOS 26 탭 바 액세서리 / 18~25 콘텐츠 inset, K1 2026-08-23)가 표시 층이다. 시트를 내리면 최소화(접기 버튼은 **제목 행 우측 아이콘**, 안내 종료는 **목록 밖 최하단 고정 버튼**)이고 중지는 버튼뿐, 안내 중 새 시작은 거부되며, 어느 탭에서든 받아쓰기 중엔 안내 톤·통지가 억제된다. 탭 순서는 실험판만 설정에서 바꾼다(E66, 2026-10-05 K1 고정 순서 실험 대체, `experimentalTabOrderEnabled`). 정식판은 채팅 첫 탭 고정. 실기기 판정은 `docs/BACKLOG.md` N1·K1(탭 순서는 E66).
-- **안내 세션 봉인은 나들이뿐**(`AppConfig.experimentalOutingEnabled`의 `#if EXPERIMENTAL`). 기능 단위로는 탭 순서 설정(E66 2026-10-05, `experimentalTabOrderEnabled`)도 실험판 한정이다. 건너는 길 이름(E62 ⑥)은 2026-10-05 정식판으로 졸업했다(서버 판본 2의 일부, 플래그 없음). 자동차·대중교통(`experimentalGuidanceEnabled`)·백그라운드 음성 안내(`experimentalBackgroundSpeechEnabled`)는 2026-10-01 2.0에서 졸업했다(spec `docs/superpowers/specs/2026-10-01-release-2.0-graduation-design.md`). 해제 선행 조건은 코드가 아니라 판정이며 `docs/BACKLOG.md` G5와 판정 표가 정본이다. 간략 단독 진입점은 2.0에서 폐지했다(E16 축2). ⚠ 봉인의 판정 축은 플래그 참조가 아니라 세션 진입점 전수이고 `guidance-gate-drift.test.ts`가 그 수를 센다.
+- **안내 세션 봉인은 나들이와 E70 여정 둘**(`AppConfig.experimentalOutingEnabled`·`experimentalJourneyEnabled`의 `#if EXPERIMENTAL`). 기능 단위로는 탭 순서 설정(E66 2026-10-05, `experimentalTabOrderEnabled`)도 실험판 한정이다. 건너는 길 이름(E62 ⑥)은 2026-10-05 정식판으로 졸업했다(서버 판본 2의 일부, 플래그 없음). 자동차·대중교통(`experimentalGuidanceEnabled`)·백그라운드 음성 안내(`experimentalBackgroundSpeechEnabled`)는 2026-10-01 2.0에서 졸업했다(spec `docs/superpowers/specs/2026-10-01-release-2.0-graduation-design.md`). 해제 선행 조건은 코드가 아니라 판정이며 `docs/BACKLOG.md` G5와 판정 표가 정본이다. 간략 단독 진입점은 2.0에서 폐지했다(E16 축2). ⚠ 봉인의 판정 축은 플래그 참조가 아니라 세션 진입점 전수이고 `guidance-gate-drift.test.ts`가 그 수를 센다.
 - 도보 안내의 도착 추정 자동 종료(잊힌 세션 정리)는 구현·출시 완료(1.10), **실보행 판정 대기**(`docs/BACKLOG.md` E13). 2026-09-02 A31로 간략(직선) 안내 세션까지 같은 축이 닫는다(근처 래치 ∧ 정확도 ≤30m) — 실보행 판정 대기(FIELD-TEST §3 A31).
 
 ---
@@ -137,12 +137,12 @@ iOS는 스토어 2.1이, 웹은 `origin/main`이 프로덕션이다. 구현 방�
 |---|---|
 | 웹 PWA | 수제 서비스워커, document network-first |
 | iOS 앱 | SwiftUI + GildongmuKit, 4탭, 설정 업데이트 이력(release notes) 화면. 설정은 주제 묶음 다섯(일반·음성·길 안내·AI 채팅·앱 정보, E59, iOS 2.1(빌드 32)부터, ⏳ 실기기 §2 E59) |
-| 안드로이드 앱 | 🚧 코드 도달(`debug`, 스토어 등재 미착수): `android/` `:app` Compose + `:kit` 순수 JVM(등록부 3벌, 대기는 E35·E48·E51(E58 포함)·E57·E72 장부, 수치는 `android/kit/mirrors/*.json`이 정본). 화면: 검색·장소 상세(안내 중 목적지·경유지 버튼)·내 주변 10섹션·길찾기 브리핑(역 작업 메뉴 E45, 수단 재조회 E50)·채팅(답변 듣기)·수동 위치·설정(테마·듣기 속도·AI 동의 철회, 묶음 헤딩 다섯 E59)·도보 실시간 안내(정식 기능: 경유지 진행 N4, 체중 입력 권유 E31, 안내 중 변경 M4b, 첫 정보 행 착지 E57, 백그라운드 음성 E53(잠금·다른 앱 = 백그라운드), 판본 2 요청·횡단 방향·횡단 남은 거리 행 E62, 이탈 방향 안내와 계속 벗어날 때만 자동 재조회 E63, 재조회 버튼은 자동 판정이 손을 든 자리에서만 E69). **개발·iOS 동기화는 정식판 기준, 실기기는 한소네 7·TalkBack 폰**(`android/README.md`). M5(자동차·대중교통 안내) 미착수. ⏳ 한소네·TalkBack 판정은 `docs/BACKLOG.md` E43·§2 관찰 E43 |
+| 안드로이드 앱 | 🚧 코드 도달(`debug`, 스토어 등재 미착수): `android/` `:app` Compose + `:kit` 순수 JVM(등록부 3벌, 대기는 E35·E48·E51(E58 포함)·E57·E70·E72 장부, 수치는 `android/kit/mirrors/*.json`이 정본). 화면: 검색·장소 상세(안내 중 목적지·경유지 버튼)·내 주변 10섹션·길찾기 브리핑(역 작업 메뉴 E45, 수단 재조회 E50)·채팅(답변 듣기)·수동 위치·설정(테마·듣기 속도·AI 동의 철회, 묶음 헤딩 다섯 E59)·도보 실시간 안내(정식 기능: 경유지 진행 N4, 체중 입력 권유 E31, 안내 중 변경 M4b, 첫 정보 행 착지 E57, 백그라운드 음성 E53(잠금·다른 앱 = 백그라운드), 판본 2 요청·횡단 방향·횡단 남은 거리 행 E62, 이탈 방향 안내와 계속 벗어날 때만 자동 재조회 E63, 재조회 버튼은 자동 판정이 손을 든 자리에서만 E69). **개발·iOS 동기화는 정식판 기준, 실기기는 한소네 7·TalkBack 폰**(`android/README.md`). M5(자동차·대중교통 안내) 미착수. ⏳ 한소네·TalkBack 판정은 `docs/BACKLOG.md` E43·§2 관찰 E43 |
 | WebMCP 도구층 | 웹 prod — 앱 루트가 도구 7개를 상시 선언(W2). ⏳ 실기기 게이트 ⑦~⑪(`docs/FIELD-TEST.md` §8) |
 | CLI · MCP | REST 카탈로그 중계 씬 클라이언트. 응답 언어 `lang`은 서버가 받는 9엔드포인트(`route walk`·`car`·`transit`·`station` 계열 4종(meta·metro-facilities·timetable·arrivals)·`nearby subway`·`search` — 정본은 카탈로그 `lang` params)에서 받는다 — CLI 텍스트 표기 자체는 한국어 고정 |
 | 다국어 | ko·en·es·fr·it·ja 6개. 비-ko의 한국어 장소명은 **서버 로마자 + `Roman (한글)` 병기**(E28, 2026-08-31 — 웹 prod·iOS 코드 도달, ⏳ 실기기 판정 6건 BACKLOG §2), 카카오 분류 경로는 **세그먼트 사전 영문**(A28, 2026-08-31 — 실호출 카드 97.0%(프로덕션, spec §11), 미등재는 한국어 원문 + `lang="ko"`). 수동 위치 라벨도 병기하고(웹 2026-09-01, iOS 2026-09-02 `manualLocationLabel` 한 함수), 지하철 시설 노선 라벨은 E27 표를 탄다(iOS 미러 2026-09-02 — 서버 `parts.lineEn` 우선, 표 미스만 조립) |
 | 커스텀 도메인 · GEO 대응 | 소개·FAQ + JSON-LD + llms.txt |
-| 서비스 커버리지 | 좌표 라우트 20종(`grep -rl isInKorea src/app/api`, 테스트 제외 — 2026-10-02 E58 `walk/probe`로 +1)·웹 클라·iOS Kit·채팅 게이트가 국경 폴리곤 `isInKorea` 한 술어(사각형은 프리필터). 링 정본 `src/lib/data/korea-boundary.json`, Kit 리소스는 바이트 동일 사본 |
+| 서비스 커버리지 | 좌표 라우트 21종(`grep -rl isInKorea src/app/api`, 테스트 제외 — 2026-10-17 E70 `route/journey`로 +1)·웹 클라·iOS Kit·채팅 게이트가 국경 폴리곤 `isInKorea` 한 술어(사각형은 프리필터). 링 정본 `src/lib/data/korea-boundary.json`, Kit 리소스는 바이트 동일 사본 |
 
 ---
 

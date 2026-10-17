@@ -1,7 +1,7 @@
 # E70 첫 판: 역에서 수단을 바꾸는 여정 (택시 → 대중교통 → 택시) 설계
 
 - 상태: **첫 판 구현 완료**(2026-10-17, iOS 실험판 — 구현 계획 `docs/superpowers/plans/2026-10-17-e70-journey-impl-plan.md`). 설계 확정은 같은 날(적대적 설계 리뷰 2회 BLOCKER 잔여 0, 빌더 점검 반영 §13.3).
-- 판정 정본: `docs/BACKLOG.md` E70(위원장 판정 1~11 + 이 spec의 판정 12~16). 조사: `docs/research/RESEARCH-2026-10-17-e70-taxi-exit-probe.md`(출구 실측), `docs/research/RESEARCH-2026-10-17-e70-maasrp-probe.md`(`maasRP`·지정 역 경로 실측).
+- 판정 정본: `docs/BACKLOG.md` E70(위원장 판정 1~11 + 이 spec의 판정 12~27). 조사: `docs/research/RESEARCH-2026-10-17-e70-taxi-exit-probe.md`(출구 실측), `docs/research/RESEARCH-2026-10-17-e70-maasrp-probe.md`(`maasRP`·지정 역 경로 실측).
 - 범위: **iOS 실험판 전용**(판정 5). 서버는 옵트인 새 라우트 하나만 더하고 기존 `/api/route/*` 응답은 바이트 동일. 웹 UI·안드로이드·en은 첫 판 밖(§10).
 - **설계 리뷰 판정: 해당.** 새 상태 머신(여정 단계 인계), 새 판정 계층(지정 역 경로·출구 선정), 새 외부 통합 계약(카카오 지하철출구 번호별 검색, Tmap 후보별 호출 예산)을 담는다. codex 적대적 설계 리뷰 결과는 §13.
 
