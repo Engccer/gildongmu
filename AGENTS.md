@@ -151,7 +151,7 @@
 - **띠바는 탭 콘텐츠 안에 두지, TabView 자체에 걸지 않는다**(K1: 26.1+ `tabViewBottomAccessory`, 18~25 `withGuideBand`). 착지 바인딩 `bandFocusedTab: AppTab?`. → INTEGRATIONS
 - **`outputSuppressed`는 공유 Bool이라 받아쓰기 억제의 종료는 `이전 값 ∧ 현재 값`이다**(`GuideSession.setDictationActive(_, owner:)` 소유자 집합; 취소된 세대는 풀지 않는다). → INTEGRATIONS
 - **안내 조망은 수단별 시트가 아니라 능력 단위로 공유한다**(E15-1 `GuideOverviewSheet`+`GuideOverviewCapability`, 판정 `transitProgressOverview` ↔ `transit-progress-overview.ts`). 조망 안 착지는 닫힌 뒤 `onDismiss`. → INTEGRATIONS
-- **안내 세션은 앱 수명이고 시트를 내리는 제스처는 최소화다**(N1 `GuideSession.shared`, 루트 `.sheet(item:)` 하나, 시작은 `startBeacon/startTransit/startOuting`만, `guidance-gate-drift.test.ts`가 호출 수를 센다). dismiss는 `isMinimized = true`, 소거는 "닫기"의 `clearArrival()`뿐. → INTEGRATIONS
+- **안내 세션은 앱 수명이고 시트를 내리는 제스처는 최소화다**(N1 `GuideSession.shared`, 루트 `.sheet(item:)` 하나, 시작은 `startBeacon/startTransit/startOuting/startJourney`만(정밀 위치 재시작은 `restartBeacon`), `guidance-gate-drift.test.ts`가 호출 수를 센다). dismiss는 `isMinimized = true`, 소거는 "닫기"의 `clearArrival()`뿐. → INTEGRATIONS
 - **승차 중 현재역(실시간 열차 위치)은 상태 머신 밖 표시 상태다**(E35, `transit-riding-position.ts` ↔ `TransitRidingPosition.swift`): 리듀서는 위치를 모른다(`transit-riding-position-guard.test.ts`), 조회는 도착 피드 미관측 riding에서만, 응답은 요청 결박으로 거른다. → INTEGRATIONS
 - **승차 국면 지하철 상태줄은 `arvlMsg2` 원문을 "{stop}까지" 틀에 넣지 않는다**(A27, `subwayRidingMessage(arrivalCode)` 웹 ↔ Kit 공유 fixture). 대기 후보·내 주변 목록은 완성 문장 그대로. → INTEGRATIONS
 - **안내 시트 상태 문장은 한 조립기(`arrivalStatusLine` ↔ Kit `transitArrivalStatusLine`)가 만들고 통지는 그 문장에 없는 것만 말한다**(E39·E41): 쉼표 결합, 결합용 키엔 마침표 없음, 수단 낱말은 `*Bus` 키로. 시작 통지는 목적지를 말한다(E40). 통지를 줄이기 전에 `phaseTransitionLanding`을 읽는다. → PATTERNS
@@ -311,7 +311,7 @@
 
 - **`Experimental`이 한꺼번에 정하는 것**: `EXPERIMENTAL` 컴파일 조건 · 번들 ID `space.dodoplanet.gildongmu.dev` · 표시 이름 `…실험` · 아이콘 `AppIconExperimental`. 번들 ID가 달라 **공식판과 한 기기에 공존**한다(설정·동의는 앱별로 분리). ⚠ 위치 권한 문구는 이 목록에 없다(정식 문구 한 벌).
 - **실기기 배포**: 실험판 `CONFIGURATION=Experimental ./ios/deploy-device.sh`, 공식 번들 `CONFIGURATION=Release`(미지정 `Debug`는 기기 확인용이 아니다). → PATTERNS
-- **코드 게이트**: `AppConfig.experimentalOutingEnabled`·`experimentalTabOrderEnabled`(E66 탭 순서 설정 노출)가 `#if EXPERIMENTAL`로 갈리고, 검증되면 `#if`를 **삭제**한다(항상 참 상수 금지). 자동차·대중교통(`experimentalGuidanceEnabled`)·백그라운드 음성(`experimentalBackgroundSpeechEnabled`)은 2026-10-01 2.0에서, 건너는 길 이름(`experimentalCrossingRoadEnabled`)은 2026-10-05에 졸업해 플래그가 없다 — 되살리지 말 것(가드가 식별자 0건을 센다). → PATTERNS
+- **코드 게이트**: `AppConfig.experimentalOutingEnabled`·`experimentalTabOrderEnabled`(E66 탭 순서 설정 노출)·`experimentalJourneyEnabled`(E70 여정)가 `#if EXPERIMENTAL`로 갈리고, 검증되면 `#if`를 **삭제**한다(항상 참 상수 금지). 자동차·대중교통(`experimentalGuidanceEnabled`)·백그라운드 음성(`experimentalBackgroundSpeechEnabled`)은 2026-10-01 2.0에서, 건너는 길 이름(`experimentalCrossingRoadEnabled`)은 2026-10-05에 졸업해 플래그가 없다 — 되살리지 말 것(가드가 식별자 0건을 센다). → PATTERNS
 - ⚠ **봉인의 판정 축은 플래그 참조 목록이 아니라 세션을 시작시키는 호출 전수다**(`guidance-gate-drift.test.ts`). → PATTERNS
 - ⚠ **한 버튼이 두 역할을 겸하면 봉인이 그 버튼을 통째로 지우거나 통째로 남기지 못한다** — 섹션 표시 조건은 역할별로 쓴다. 2.0에서 간략 단독 시작 얼굴을 지워 그 버튼은 추적 중 "안내 종료" 하나다(E16 축2 — 간략 단독 진입점 재도입 금지). → PATTERNS
 - ⚠ **`INFOPLIST_KEY_*` 빌드 설정만으로는 구성별 분기가 안 된다**: 로컬라이즈 문자열은 `ios/scripts/experimental-infoplist.sh`, 비로컬라이즈 키는 `Support/Info-Experimental.plist`. → PATTERNS
