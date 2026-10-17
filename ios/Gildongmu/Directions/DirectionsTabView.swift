@@ -271,7 +271,9 @@ final class DirectionsModel {
     /// 여기 도달하지 않는다. current는 nil 투영 — 측위된 실좌표를 굳히지 않는다.
     private func recordRecentRoute(from: DirectionsEndpoint, to: DirectionsEndpoint, via: DirectionsEndpoint?) {
         recentRoutes = recentStore.recordRoute(
-            RecentRoute(from: Self.recentSide(from), to: Self.recentSide(to), via: via.flatMap(Self.recentSide)))
+            RecentRoute(
+                from: Self.recentSide(from), to: Self.recentSide(to), via: via.flatMap(Self.recentSide),
+                boardStation: nil, alightStation: nil))
     }
 
     private static func recentSide(_ endpoint: DirectionsEndpoint) -> RecentEndpoint? {
@@ -296,7 +298,9 @@ final class DirectionsModel {
     func setRoutePinned(_ route: RecentRoute, pinned: Bool) {
         guard let index = recentRoutes.firstIndex(of: route) else { return }
         recentStore.setRoutePinned(route, pinned: pinned)
-        recentRoutes[index] = RecentRoute(from: route.from, to: route.to, via: route.via, pinned: pinned)
+        recentRoutes[index] = RecentRoute(
+            from: route.from, to: route.to, via: route.via,
+            boardStation: route.boardStation, alightStation: route.alightStation, pinned: pinned)
     }
 
     /// 고정 블록을 넘긴 순서로 저장하고 저장 배열을 화면 배열로 채택한다(E67, spec §2.2).
@@ -1221,7 +1225,9 @@ struct DirectionsTabView: View {
     private func togglePinRecentRoute(_ route: RecentRoute) {
         let pinned = !route.pinned
         model.setRoutePinned(route, pinned: pinned)
-        focusedRecentRoute = RecentRoute(from: route.from, to: route.to, via: route.via, pinned: pinned)
+        focusedRecentRoute = RecentRoute(
+            from: route.from, to: route.to, via: route.via,
+            boardStation: route.boardStation, alightStation: route.alightStation, pinned: pinned)
     }
 
     /// 고정 행에서 할 수 있는 이동(E67). 기준은 화면의 고정 순서다(spec §2.2, `SearchView` 동형).

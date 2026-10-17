@@ -138,8 +138,8 @@ private func freshDefaults(_ name: String) -> UserDefaults {
         let home = RecentEndpoint(label: "집", lat: 37.5, lng: 127.1)
         let toggled = RecentEndpoint(label: "우리집", lat: 37.50001, lng: 127.09999, pinned: true)
         #expect(home.id == toggled.id) // 좌표 4자리 축 = sameCoord와 동일
-        #expect(RecentRoute(from: nil, to: home).id == RecentRoute(from: nil, to: toggled, pinned: true).id)
-        #expect(RecentRoute(from: home, to: nil).id != RecentRoute(from: nil, to: home).id)
+        #expect(RecentRoute(from: nil, to: home, boardStation: nil, alightStation: nil).id == RecentRoute(from: nil, to: toggled, boardStation: nil, alightStation: nil, pinned: true).id)
+        #expect(RecentRoute(from: home, to: nil, boardStation: nil, alightStation: nil).id != RecentRoute(from: nil, to: home, boardStation: nil, alightStation: nil).id)
     }
 }
 
@@ -182,7 +182,7 @@ private func freshDefaults(_ name: String) -> UserDefaults {
                 #expect(actual.pinned == pinned)
             }
         }
-        let route = RecentRoute(from: from, to: to, via: via)
+        let route = RecentRoute(from: from, to: to, via: via, boardStation: nil, alightStation: nil)
         store.recordRoute(route)
         store.setRoutePinned(route, pinned: true)
         let restored = try #require(RecentSearchStore(defaults: defaults).routes().first)
@@ -193,7 +193,7 @@ private func freshDefaults(_ name: String) -> UserDefaults {
         #expect(restored.pinned)
         // 표기만 바뀌어도 같은 경로이며 고정 상태와 자리를 유지한다.
         let updatedTo = RecentEndpoint(label: to.label, lat: to.lat, lng: to.lng, labelRoman: "Destination")
-        store.recordRoute(RecentRoute(from: from, to: updatedTo, via: via))
+        store.recordRoute(RecentRoute(from: from, to: updatedTo, via: via, boardStation: nil, alightStation: nil))
         #expect(store.routes().count == 1)
         #expect(store.routes().first?.to?.labelRoman == "Destination")
         #expect(store.routes().first?.pinned == true)
@@ -297,24 +297,24 @@ private func freshDefaults(_ name: String) -> UserDefaults {
 
     @Test func prependAndDedupeByPair() {
         let store = RecentSearchStore(defaults: freshDefaults("route-dedupe"))
-        let a = RecentRoute(from: home, to: school)
-        let b = RecentRoute(from: nil, to: school)
+        let a = RecentRoute(from: home, to: school, boardStation: nil, alightStation: nil)
+        let b = RecentRoute(from: nil, to: school, boardStation: nil, alightStation: nil)
         #expect(store.recordRoute(a) == [a])
         #expect(store.recordRoute(b) == [b, a])   // 한쪽 nil ≠ place: 다른 쌍
-        let relabeled = RecentRoute(from: RecentEndpoint(label: "자택 아파트", lat: home.lat, lng: home.lng), to: school)
+        let relabeled = RecentRoute(from: RecentEndpoint(label: "자택 아파트", lat: home.lat, lng: home.lng), to: school, boardStation: nil, alightStation: nil)
         #expect(store.recordRoute(relabeled) == [relabeled, b])   // 같은 쌍은 끌어올림+라벨 갱신
     }
 
     @Test func rejectsBothCurrent() {
         let store = RecentSearchStore(defaults: freshDefaults("route-both-nil"))
-        #expect(store.recordRoute(RecentRoute(from: nil, to: nil)) == [])
+        #expect(store.recordRoute(RecentRoute(from: nil, to: nil, boardStation: nil, alightStation: nil)) == [])
         #expect(store.routes() == [])
     }
 
     @Test func capAt20() {
         let store = RecentSearchStore(defaults: freshDefaults("route-cap"))
         for i in 0..<25 {
-            store.recordRoute(RecentRoute(from: nil, to: RecentEndpoint(label: "t\(i)", lat: 37 + Double(i) * 0.01, lng: 127)))
+            store.recordRoute(RecentRoute(from: nil, to: RecentEndpoint(label: "t\(i)", lat: 37 + Double(i) * 0.01, lng: 127), boardStation: nil, alightStation: nil))
         }
         #expect(store.routes().count == 20)
     }
@@ -322,8 +322,8 @@ private func freshDefaults(_ name: String) -> UserDefaults {
     @Test func removeClearAndDecodeRecovery() {
         let defaults = freshDefaults("route-remove")
         let store = RecentSearchStore(defaults: defaults)
-        let a = RecentRoute(from: home, to: school)
-        let b = RecentRoute(from: nil, to: school)
+        let a = RecentRoute(from: home, to: school, boardStation: nil, alightStation: nil)
+        let b = RecentRoute(from: nil, to: school, boardStation: nil, alightStation: nil)
         store.recordRoute(a)
         store.recordRoute(b)
         #expect(store.removeRoute(b) == [a])
@@ -340,13 +340,13 @@ private func freshDefaults(_ name: String) -> UserDefaults {
         let raw = #"[{"from":null,"to":{"label":"학교","lat":37.529,"lng":127.138}}]"#
         defaults.set(Data(raw.utf8), forKey: "recentRoutes.v1")
         let store = RecentSearchStore(defaults: defaults)
-        #expect(store.routes() == [RecentRoute(from: nil, to: RecentEndpoint(label: "학교", lat: 37.529, lng: 127.138))])
+        #expect(store.routes() == [RecentRoute(from: nil, to: RecentEndpoint(label: "학교", lat: 37.529, lng: 127.138), boardStation: nil, alightStation: nil)])
     }
 
     @Test func pinnedRouteStaysOnTopAcrossRecordsAndClear() {
         let store = RecentSearchStore(defaults: freshDefaults("route-pin"))
-        let toSchool = RecentRoute(from: home, to: school)
-        let toWork = RecentRoute(from: nil, to: RecentEndpoint(label: "회사", lat: 37.6, lng: 127.0))
+        let toSchool = RecentRoute(from: home, to: school, boardStation: nil, alightStation: nil)
+        let toWork = RecentRoute(from: nil, to: RecentEndpoint(label: "회사", lat: 37.6, lng: 127.0), boardStation: nil, alightStation: nil)
         store.recordRoute(toSchool)
         store.recordRoute(toWork) // [회사, 학교]
         store.setRoutePinned(toSchool, pinned: true) // [학교(pin), 회사]
@@ -370,17 +370,17 @@ private func freshDefaults(_ name: String) -> UserDefaults {
         let a = RecentEndpoint(label: "A", lat: 37.5, lng: 127.1)
         let b = RecentEndpoint(label: "B", lat: 37.6, lng: 127.2)
         let c = RecentEndpoint(label: "C", lat: 37.55, lng: 127.15)
-        store.recordRoute(RecentRoute(from: a, to: b))
-        let list = store.recordRoute(RecentRoute(from: a, to: b, via: c))
+        store.recordRoute(RecentRoute(from: a, to: b, boardStation: nil, alightStation: nil))
+        let list = store.recordRoute(RecentRoute(from: a, to: b, via: c, boardStation: nil, alightStation: nil))
         #expect(list.count == 2)
         #expect(list.first?.via?.label == "C")
-        #expect(RecentRoute(from: a, to: b).id != RecentRoute(from: a, to: b, via: c).id)
-        let pinned = store.setRoutePinned(RecentRoute(from: a, to: b, via: c), pinned: true)
+        #expect(RecentRoute(from: a, to: b, boardStation: nil, alightStation: nil).id != RecentRoute(from: a, to: b, via: c, boardStation: nil, alightStation: nil).id)
+        let pinned = store.setRoutePinned(RecentRoute(from: a, to: b, via: c, boardStation: nil, alightStation: nil), pinned: true)
         #expect(pinned.first?.via?.label == "C" && pinned.first?.pinned == true)
         // 같은 경로 재기록은 경유지를 보존한 채 제자리(고정 블록)에 남는다.
-        let again = store.recordRoute(RecentRoute(from: a, to: b, via: c))
+        let again = store.recordRoute(RecentRoute(from: a, to: b, via: c, boardStation: nil, alightStation: nil))
         #expect(again.count == 2 && again.first?.via?.label == "C" && again.first?.pinned == true)
-        let removed = store.removeRoute(RecentRoute(from: a, to: b, via: c))
+        let removed = store.removeRoute(RecentRoute(from: a, to: b, via: c, boardStation: nil, alightStation: nil))
         #expect(removed.count == 1 && removed.first?.via == nil)
     }
 
@@ -470,9 +470,9 @@ private func freshDefaults(_ name: String) -> UserDefaults {
         let a = RecentEndpoint(label: "A", lat: 37.5, lng: 127.1)
         let b = RecentEndpoint(label: "B", lat: 37.6, lng: 127.2)
         let c = RecentEndpoint(label: "C", lat: 37.55, lng: 127.15)
-        let direct = RecentRoute(from: a, to: b)
-        let viaC = RecentRoute(from: a, to: b, via: c)
-        let fromHere = RecentRoute(from: nil, to: b)
+        let direct = RecentRoute(from: a, to: b, boardStation: nil, alightStation: nil)
+        let viaC = RecentRoute(from: a, to: b, via: c, boardStation: nil, alightStation: nil)
+        let fromHere = RecentRoute(from: nil, to: b, boardStation: nil, alightStation: nil)
         for route in [direct, viaC, fromHere] {
             store.recordRoute(route)
             store.setRoutePinned(route, pinned: true)

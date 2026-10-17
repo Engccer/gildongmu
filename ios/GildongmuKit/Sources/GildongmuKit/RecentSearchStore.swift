@@ -42,6 +42,22 @@ public struct RecentEndpoint: Codable, Equatable, Hashable, Sendable {
     }
 }
 
+/// 최근 경로에 딸린 갈아탈 역(E70). 역 칸 전용 값이라 `RecentEndpoint`(끝점·저장 포맷 공유 타입)를 넓히지 않는다.
+/// 동일 판정은 좌표 4자리 — `line`은 노선 힌트일 뿐 정체성이 아니다.
+public struct RecentStation: Codable, Equatable, Hashable, Sendable {
+    public let label: String
+    public let lat: Double
+    public let lng: Double
+    public let line: String?
+
+    public init(label: String, lat: Double, lng: Double, line: String?) {
+        self.label = label
+        self.lat = lat
+        self.lng = lng
+        self.line = line
+    }
+}
+
 /// 최근 조회 경로(출발·도착 쌍, 스펙 2026-08-10). nil = "현재 위치" —
 /// 활성화 시점에 재측위하므로 좌표를 굳히지 않는다. 웹 RecentRoute 미러.
 public struct RecentRoute: Codable, Equatable, Hashable, Sendable {
@@ -50,21 +66,32 @@ public struct RecentRoute: Codable, Equatable, Hashable, Sendable {
     /// 경유지(N4). 웹 `RecentRoute.via` 미러 — 동일 판정·정체성에 포함된다(C를 경유하는
     /// 경로와 안 하는 경로는 다른 경로다). 경유지는 장소뿐이라 nil = 경유지 없음.
     public let via: RecentEndpoint?
+    /// 택시로 갈아탈 역(E70). 둘 다 nil이면 일반 세 수단 조회 경로다. 동일 판정·정체성에 포함된다.
+    /// ⚠ 생성 인자에 기본값을 두지 않는다 — 고정 토글·재기록이 이 둘을 빠뜨리면 역 지정이 조용히 사라진다.
+    public let boardStation: RecentStation?
+    public let alightStation: RecentStation?
     public let pinned: Bool
 
-    public init(from: RecentEndpoint?, to: RecentEndpoint?, via: RecentEndpoint? = nil, pinned: Bool = false) {
+    public init(
+        from: RecentEndpoint?, to: RecentEndpoint?, via: RecentEndpoint? = nil,
+        boardStation: RecentStation?, alightStation: RecentStation?, pinned: Bool = false
+    ) {
         self.from = from
         self.to = to
         self.via = via
+        self.boardStation = boardStation
+        self.alightStation = alightStation
         self.pinned = pinned
     }
 
-    /// pinned·via 부재(기존 데이터)는 false·nil — 저장 키를 올리지 않는 관용 디코딩.
+    /// pinned·via·역 필드 부재(기존 데이터)는 false·nil — 저장 키를 올리지 않는 관용 디코딩.
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         from = try c.decodeIfPresent(RecentEndpoint.self, forKey: .from)
         to = try c.decodeIfPresent(RecentEndpoint.self, forKey: .to)
         via = try c.decodeIfPresent(RecentEndpoint.self, forKey: .via)
+        boardStation = try c.decodeIfPresent(RecentStation.self, forKey: .boardStation)
+        alightStation = try c.decodeIfPresent(RecentStation.self, forKey: .alightStation)
         pinned = try c.decodeIfPresent(Bool.self, forKey: .pinned) ?? false
     }
 }
@@ -93,10 +120,17 @@ extension RecentEndpoint: Identifiable {
     }
 }
 
-extension RecentRoute: Identifiable {
-    /// 출발·도착·경유 키 — sameRoute와 같은 축(nil = 현재 위치, 경유 nil = 없음).
+extension RecentStation: Identifiable {
+    /// 좌표 4자리 키 — 라벨·노선 힌트에 불변.
     public var id: String {
-        "\(from?.id ?? "cur")>\(to?.id ?? "cur")>\(via?.id ?? "-")"
+        String(format: "%.4f,%.4f", lat, lng)
+    }
+}
+
+extension RecentRoute: Identifiable {
+    /// 출발·도착·경유·갈아탈 역 키 — sameRoute와 같은 축(nil = 현재 위치, 경유·역 nil = 없음).
+    public var id: String {
+        "\(from?.id ?? "cur")>\(to?.id ?? "cur")>\(via?.id ?? "-")>\(boardStation?.id ?? "-")>\(alightStation?.id ?? "-")"
     }
 }
 
@@ -244,7 +278,11 @@ public struct RecentSearchStore {
             Self.appendKeepingPins(
                 route, to: routes(),
                 isSame: Self.sameRoute, isPinned: \.pinned,
-                withPinned: { RecentRoute(from: $0.from, to: $0.to, via: $0.via, pinned: $1) }),
+                withPinned: {
+                    RecentRoute(
+                        from: $0.from, to: $0.to, via: $0.via,
+                        boardStation: $0.boardStation, alightStation: $0.alightStation, pinned: $1)
+                }),
             forKey: Self.routesKey)
     }
 
@@ -265,19 +303,25 @@ public struct RecentSearchStore {
             Self.setPinnedIn(
                 route, in: routes(), pinned: pinned,
                 isSame: Self.sameRoute, isPinned: \.pinned,
-                withPinned: { RecentRoute(from: $0.from, to: $0.to, via: $0.via, pinned: $1) }),
+                withPinned: {
+                    RecentRoute(
+                        from: $0.from, to: $0.to, via: $0.via,
+                        boardStation: $0.boardStation, alightStation: $0.alightStation, pinned: $1)
+                }),
             forKey: Self.routesKey)
     }
 
-    /// 고정 블록을 넘긴 순서로 다시 세운다(E67, 출발·도착·경유 동일 판정).
+    /// 고정 블록을 넘긴 순서로 다시 세운다(E67, 출발·도착·경유·갈아탈 역 동일 판정).
     @discardableResult
     public func reorderPinnedRoutes(_ order: [RecentRoute]) -> [RecentRoute] {
         save(Self.applyPinnedOrder(order, to: routes(), isSame: Self.sameRoute, isPinned: \.pinned), forKey: Self.routesKey)
     }
 
-    /// 동일 판정: from·to·via 셋 전부(경유지 부재끼리도 동일). 웹 `sameRoute` 미러.
+    /// 동일 판정: from·to·via 셋 전부(경유지 부재끼리도 동일) + 갈아탈 역 둘(E70, 좌표 4자리·부재끼리 동일).
+    /// 웹 `sameRoute` 미러 + 역 필드(웹 UI 없음 — 첫 판 iOS 전용).
     static func sameRoute(_ a: RecentRoute, _ b: RecentRoute) -> Bool {
         sameSide(a.from, b.from) && sameSide(a.to, b.to) && sameSide(a.via, b.via)
+            && a.boardStation?.id == b.boardStation?.id && a.alightStation?.id == b.alightStation?.id
     }
 
     /// 한쪽 판정: 현재 위치(nil)끼리 동일, place끼리는 좌표 4자리 일치.

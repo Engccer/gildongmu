@@ -61,6 +61,38 @@ public struct RouteService: Sendable {
         return envelope.result
     }
 
+    /// 택시 + 대중교통 + 택시 여정 조회(E70, ko 전용 — `lang`을 보내지 않는다). 지정 역은 최대 둘(둘 다 nil이면
+    /// 서버가 400이므로 호출자가 가른다). 노선 힌트가 없는 쪽은 `*Line` 파라미터를 생략한다.
+    /// `.outOfCoverage` = 서비스 지역 밖, `variants` 빈 결과 = 경로 없음, throw = 조회 실패(3-state).
+    /// ⚠ 인자 전부 기본값 없음(빠뜨린 호출은 컴파일이 잡는다).
+    public func journey(
+        originLat: Double, originLng: Double,
+        destLat: Double, destLng: Double,
+        board: JourneyStationQuery?,
+        alight: JourneyStationQuery?
+    ) async throws -> JourneyResponse {
+        var query = [
+            URLQueryItem(name: "origin", value: coordPair(originLat, originLng)),
+            URLQueryItem(name: "dest", value: coordPair(destLat, destLng)),
+        ]
+        if let board {
+            query.append(URLQueryItem(name: "board", value: coordPair(board.lat, board.lng)))
+            query.append(URLQueryItem(name: "boardName", value: board.name))
+            if let line = board.line { query.append(URLQueryItem(name: "boardLine", value: line)) }
+        }
+        if let alight {
+            query.append(URLQueryItem(name: "alight", value: coordPair(alight.lat, alight.lng)))
+            query.append(URLQueryItem(name: "alightName", value: alight.name))
+            if let line = alight.line { query.append(URLQueryItem(name: "alightLine", value: line)) }
+        }
+        do {
+            let result: JourneyResult = try await client.get("/api/route/journey", query: query)
+            return .result(result)
+        } catch APIError.outOfCoverage {
+            return .outOfCoverage
+        }
+    }
+
     /// 수단 재조회(E50 판정 2) — 사용자가 버튼을 눌렀을 때만 부른다(ODsay 호출당 과금, 자동 조회 금지).
     /// 서버가 그 수단만 타는 경로 중 1순위 하나를 `recommended`로 준다(`alternatives` 빈 배열).
     /// nil = 그런 경로 없음, throw = 조회 실패(3-state). 본 조회와 같은 경유 정류장 옵트인을 싣는다 —
@@ -180,6 +212,21 @@ public struct RouteService: Sendable {
         if let via { query.append(URLQueryItem(name: "via", value: coordPair(via.lat, via.lng))) }
         let envelope: WalkRouteEnvelope = try await client.get("/api/route/walk", query: query)
         return (envelope.result, envelope.shortest)
+    }
+}
+
+/// 여정 조회에 싣는 지정 역(E70). `line`은 노선 힌트(없으면 서버가 이름·좌표만으로 판정).
+public struct JourneyStationQuery: Sendable, Hashable {
+    public let name: String
+    public let lat: Double
+    public let lng: Double
+    public let line: String?
+
+    public init(name: String, lat: Double, lng: Double, line: String?) {
+        self.name = name
+        self.lat = lat
+        self.lng = lng
+        self.line = line
     }
 }
 

@@ -415,6 +415,135 @@ public struct TransitRouteEnvelope: Codable, Sendable {
     public let result: TransitRouteResult?
 }
 
+// MARK: - 여정(E70 — 택시 → 대중교통 → 택시)
+
+// /api/route/journey 응답(spec 2026-10-17-e70-mode-change-journey-design.md §4.7). ko 전용·iOS 실험판 전용이라
+// 안드로이드 미이식. 좌표는 기존 `RoutePoint`, 택시 구간은 기존 `CarRouteBriefing`, 대중교통은 `TransitRoute` 그대로.
+
+/// 지정 역을 찾지 못한 쪽(판정 14). 한쪽만 지정한 조회는 그쪽만 온다.
+public enum JourneyMissingSide: String, Codable, Sendable, Hashable {
+    case board, alight, both
+}
+
+public struct JourneyDesignatedMissing: Codable, Sendable, Hashable {
+    public let side: JourneyMissingSide
+
+    public init(side: JourneyMissingSide) { self.side = side }
+}
+
+/// 변형의 갈래. 지정 역 경로와 추천 경로가 같으면 `designated` 하나만 온다.
+public enum JourneyVariantKind: String, Codable, Sendable, Hashable {
+    case designated, recommended
+}
+
+/// 이 변형이 실제로 타는(내리는) 역. `name`은 서버 표기 그대로이고 문장에는 `journeyStationDisplayName`을 거쳐 넣는다.
+public struct JourneyStationRef: Codable, Sendable, Hashable {
+    public let name: String
+    public let coord: RoutePoint
+
+    public init(name: String, coord: RoutePoint) {
+        self.name = name
+        self.coord = coord
+    }
+}
+
+/// 하차 뒤 택시를 탈 자리의 종류. `none`은 후보가 없어 하차 정류 좌표에서 곧장 택시를 부르는 경우다.
+public enum EgressKind: String, Codable, Sendable, Hashable {
+    case exit, stand, none
+}
+
+/// 출구·승강장 후보 하나와 거기서 도착지까지의 택시 구간.
+public struct EgressOption: Codable, Sendable, Hashable {
+    public let kind: EgressKind
+    /// 출구 번호("1", "3-1") · 승강장 이름 · `none`이면 "".
+    public let label: String
+    /// 카카오 POI 이름 원문(예 "광화문역 5호선 1번출구", `none`이면 ""). 출구 도보 세션의 목적지 이름이다.
+    public let placeName: String
+    public let lineName: String?
+    public let coord: RoutePoint
+    public let taxiOut: CarRouteBriefing
+
+    public init(
+        kind: EgressKind, label: String, placeName: String, lineName: String?,
+        coord: RoutePoint, taxiOut: CarRouteBriefing
+    ) {
+        self.kind = kind
+        self.label = label
+        self.placeName = placeName
+        self.lineName = lineName
+        self.coord = coord
+        self.taxiOut = taxiOut
+    }
+}
+
+public struct JourneyEgress: Codable, Sendable, Hashable {
+    /// [0] = 택시 시간 최단 출구(기본). 승강장은 있으면 마지막.
+    public let options: [EgressOption]
+    /// 출구 조회가 실패했다는 신호 — 후보 없음(`none`)과 다른 사실이라 문장이 갈린다(3-state).
+    public let lookupFailed: Bool?
+
+    public init(options: [EgressOption], lookupFailed: Bool?) {
+        self.options = options
+        self.lookupFailed = lookupFailed
+    }
+}
+
+public struct JourneyTotals: Codable, Sendable, Hashable {
+    public let minutes: Int
+    public let taxiFare: Int
+    public let transitFare: Int
+
+    public init(minutes: Int, taxiFare: Int, transitFare: Int) {
+        self.minutes = minutes
+        self.taxiFare = taxiFare
+        self.transitFare = transitFare
+    }
+}
+
+public struct JourneyVariant: Codable, Sendable, Hashable {
+    public let kind: JourneyVariantKind
+    public let boardStation: JourneyStationRef?
+    public let alightStation: JourneyStationRef?
+    /// 승차 역을 지정했을 때만 온다.
+    public let taxiIn: CarRouteBriefing?
+    /// 앞뒤 도보를 자른 경로. `routeKey` 유지라 실시간 안내가 그대로 읽는다.
+    public let transit: TransitRoute
+    /// 하차 역이 지정·판정됐을 때만 온다. 첫·마지막 탈것이 버스면 부재.
+    public let egress: JourneyEgress?
+    public let totals: JourneyTotals
+
+    public init(
+        kind: JourneyVariantKind, boardStation: JourneyStationRef?, alightStation: JourneyStationRef?,
+        taxiIn: CarRouteBriefing?, transit: TransitRoute, egress: JourneyEgress?, totals: JourneyTotals
+    ) {
+        self.kind = kind
+        self.boardStation = boardStation
+        self.alightStation = alightStation
+        self.taxiIn = taxiIn
+        self.transit = transit
+        self.egress = egress
+        self.totals = totals
+    }
+}
+
+public struct JourneyResult: Codable, Sendable, Hashable {
+    /// 0~2개. [0]이 기본 선택(지정 역 경로, 없으면 추천). 빈 배열은 "경로 없음"이지 조회 실패가 아니다.
+    public let variants: [JourneyVariant]
+    public let designatedMissing: JourneyDesignatedMissing?
+
+    public init(variants: [JourneyVariant], designatedMissing: JourneyDesignatedMissing?) {
+        self.variants = variants
+        self.designatedMissing = designatedMissing
+    }
+}
+
+/// `journey` 조회의 결과. 서버의 서비스 지역 밖 마커(`{"outOfCoverage":true}`, 200)는 `APIClient`가 throw하는
+/// `APIError.outOfCoverage`를 `RouteService.journey`가 이 갈래로 바꿔 돌려준다(경로 없음·조회 실패와 다른 신호).
+public enum JourneyResponse: Sendable, Hashable {
+    case result(JourneyResult)
+    case outOfCoverage
+}
+
 // MARK: - 도보 경로
 
 /// 도보 안내 단계 하나. description이 낭독 정본(완성 문장, 예 "천호대로를 따라 119m 이동").
