@@ -48,6 +48,10 @@ final class ClinicNearbyModel {
     }
 
     func load(force: Bool = false) async { await core.load(force: force) }
+    /// 화면 등장 — push했던 화면에서 돌아온 한 번은 다시 조회하지 않는다(A64·A66, 판정은 코어).
+    func appear() async { await core.appear() }
+    /// 이 화면이 push한 화면이 나타났다(A64·A66).
+    func notePushed() { core.notePushed() }
 
     /// "더 보기": 공개 수를 늘리고 첫 새 항목 id를 반환한다(VO 포커스 이동 대상).
     func revealMore() -> String? {
@@ -98,6 +102,7 @@ struct ClinicNearbyView: View {
                             PlaceDetailView(place: nightClinicToPlace(clinic)) {
                                 ClinicDomainSection(clinic: clinic)
                             }
+                            .onAppear { model.notePushed() }
                         } label: {
                             PlaceRow(
                                 place: nightClinicToPlace(clinic),
@@ -134,7 +139,7 @@ struct ClinicNearbyView: View {
                 empty: NearbyOverlayCopy(appLocalized("ios.nearby.clinicEmpty"), systemImage: "cross.case"),
                 isEmpty: { $0.clinics.isEmpty }))
         }
-        .task { await model.load() }
+        .task { await model.appear() }
         .nearbyRefreshable { await model.load(force: true) }
         .sheet(item: $chatPlace) { ChatView(place: $0) }
     }

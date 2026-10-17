@@ -27,6 +27,10 @@ final class EventsNearbyModel {
     }
 
     func load(force: Bool = false) async { await core.load(force: force) }
+    /// 화면 등장 — push했던 화면에서 돌아온 한 번은 다시 조회하지 않는다(A64·A66, 판정은 코어).
+    func appear() async { await core.appear() }
+    /// 이 화면이 push한 화면이 나타났다(A64·A66).
+    func notePushed() { core.notePushed() }
 
     /// "더 보기": 공개 수를 늘리고 첫 새 항목 id를 반환한다(VO 포커스 이동 대상).
     func revealMore() -> String? {
@@ -61,6 +65,7 @@ struct EventsNearbyView: View {
                             PlaceDetailView(place: cultureEventToPlace(event)) {
                                 CultureEventSection(event: event)
                             }
+                            .onAppear { model.notePushed() }
                         } label: {
                             // 목록 행은 "탭할지 말지"를 가르는 것만: 분류·요금·거리.
                             // 기간·시간·대상은 상세 도메인 섹션이 맡는다(행 과밀 방지).
@@ -99,7 +104,7 @@ struct EventsNearbyView: View {
                 empty: NearbyOverlayCopy(appLocalized("ios.nearby.eventsEmpty"), systemImage: "theatermasks"),
                 isEmpty: \.isEmpty))
         }
-        .task { await model.load() }
+        .task { await model.appear() }
         .nearbyRefreshable { await model.load(force: true) }
         .sheet(item: $chatPlace) { ChatView(place: $0) }
     }

@@ -77,12 +77,16 @@ describe("E65 내 주변 로터 액션 배선", () => {
     expect(nearby("SubwayNearbyView.swift")).toContain("showsDirectionsEntry: directionsEntryAllowed");
   });
 
-  it("A64: 지하철역·버스·둘러보기는 push한 화면에서 돌아온 등장에 다시 조회하지 않는다(판정은 NearbyLoadCore 한 곳)", () => {
+  it("A64·A66: 상세를 push하는 목록 일곱은 push한 화면에서 돌아온 등장에 다시 조회하지 않는다(판정은 NearbyLoadCore 한 곳)", () => {
     // 화면은 등장을 코어의 appear()로 넘기고, push한 화면이 나타날 때 표식만 알린다. 화면별 건너뛰기 분기를 두지 않는다.
     const pushes: Record<string, number> = {
       "SubwayNearbyView.swift": 1, // 역 상세
       "BusNearbyView.swift": 1, // 노선 정류소
       "AroundNearbyView.swift": 3, // 한눈에 보기 상세 · 주변 가게 상세 · 주변 상황 행(onPushed)
+      "KidsNearbyView.swift": 1, // 장소 상세(A66)
+      "BarrierFreeNearbyView.swift": 1,
+      "ClinicNearbyView.swift": 1,
+      "EventsNearbyView.swift": 1,
     };
     for (const [file, n] of Object.entries(pushes)) {
       const s = nearby(file);
