@@ -429,10 +429,10 @@ describe("7. 여정(E70) — 실험판 봉인과 내부 인계", () => {
     expect(declarationBody(session(), "isOccupied")).toContain("journey != nil");
   });
 
-  it("길찾기 탭의 정밀 위치 재시작은 여정 중 부르지 않는다", () => {
+  it("길찾기 탭의 정밀 위치 재시작은 여정 중 부르지 않는다(여정이 없으면 종전 그대로)", () => {
     const sites = enclosingHeaders(directions(), "beacon.restart()");
     expect(sites).toHaveLength(1);
-    expect(sites[0].join("\n")).toContain("isOccupied");
+    expect(sites[0].join("\n")).toContain("session.journey == nil");
   });
 
   it("여정 택시는 늘 승객이고, 비콘 시작 요청은 전부 청취자를 밝힌다(기본값 없음, D10)", () => {

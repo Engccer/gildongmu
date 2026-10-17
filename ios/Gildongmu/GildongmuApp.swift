@@ -257,8 +257,9 @@ struct GildongmuApp: App {
                     // 실시간 안내 세션이 살아 있으면 리셋하지 않는다(피드백 라운드1
                     // 11-가): 리셋의 TabView 재생성이 진행 중인 안내를 소멸시킨다 —
                     // 안내 중 복귀는 "유휴"가 아니다. 웹 IdleReset 동일 예외.
+                    // 여정(E70)의 단계 사이(준비·실패)도 안내 중이다 — 결정을 기다리는 시트를 재생성하지 않는다.
                     if IdleReset.shouldReset(backgroundedAt: backgroundedAt, now: .now),
-                       !guideSession.isActive {
+                       !guideSession.isOccupied {
                         resetSession()
                     }
                     backgroundedAt = nil

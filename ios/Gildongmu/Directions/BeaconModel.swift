@@ -635,6 +635,7 @@ final class BeaconModel {
     /// 승차 전 도보 해제(연결 취소·다른 세션 시작). 추적 중이면 세션은 그대로 두고 표식만 뗀다.
     func clearPrewalk() {
         prewalkTarget = nil
+        journeyChain = nil  // 여정 단계 표식도 같은 연결 표식이다(동기 거부 뒤 다음 비여정 세션으로 새지 않게)
         onSessionEnd = nil
     }
 

@@ -92,8 +92,14 @@ final class GuideSession {
         if beacon.isTracking || beacon.arrivalDest != nil { return .beacon }
         if outing.isTracking || outing.endScreen != nil { return .outing }
         if transit.isTracking || transit.pendingWalkHandoff != nil { return .transit }
-        // 여정의 단계 세션이 없는 동안(준비·실패) — 재시도 버튼이 놓일 시트가 늘 있다(spec §6.3).
-        if journey != nil { return .journey }
+        // 여정의 단계 세션이 없는 동안(준비·실패) — 재시도 버튼이 놓일 시트가 늘 있다(spec §6.3). `running`은 그 세션의
+        // 시트다(정지 직후 한 턴 동안 여정 시트가 끼어 깜빡이지 않게).
+        if let journey {
+            switch journey.phase {
+            case .transitioning, .failed: return .journey
+            case .running: break
+            }
+        }
         return nil
     }
 
@@ -234,6 +240,11 @@ final class GuideSession {
                 transitRoute: context.route, destinationLabel: context.destinationLabel,
                 destinationRoman: context.destinationRoman,
                 dest: context.dest, accessible: context.accessible, prewalkCompleted: false)
+            // 여정의 대중교통 단계인데 세션이 서지 않았으면(경로 변환 실패) 세션 없는 running에 남지 않게 끝낸다.
+            if !transit.isTracking, let journey, case .running(.transit) = journey.phase {
+                guideDiagLog("journey prewalkTransitStartFailed")
+                advanceJourney(.transitStopped, token: journey.token)
+            }
         case .userStopped, .ended:
             // 여정(A 미지정)의 첫 단계가 승차 전 도보였으면 대중교통 세션은 시작되지 않으므로 여정도 끝난다(D11).
             if let journey, case .running(.transit) = journey.phase {
@@ -347,7 +358,7 @@ final class GuideSession {
             case .transitioning(let stage):
                 journeyFailure = nil
                 // 버튼 사건은 아직 도는 단계 세션을 멈춘다 — 그 종료 콜백은 낡은 token이라 버려진다.
-                if event == .taxiDropped || event == .taxiBoarded, beacon.isTracking { beacon.stop() }
+                if event == .taxiDropped || event == .taxiBoarded, beacon.isTracking || beacon.starting { beacon.stop() }
                 prepareJourneyStage(stage, token: next.token, delayed: event != .retry)
             case .running(let stage):
                 journeyTransitionAt = nil
@@ -360,6 +371,10 @@ final class GuideSession {
                 // 줄과 버튼이 쓴다. 시작 실패도 같다(`begin`이 시작마다 `lastFailure`를 비우므로 이번 시도의 원인이다).
                 journeyFailure = event == .stageEnded(.ended) || event == .stageEnded(.startFailed)
                     ? beacon.lastFailure : nil
+                // 준비가 30초를 넘긴 실패는 어느 모델도 말하지 않았다 — 띠바로 최소화돼 있어도 들리게 한 번 낸다.
+                if event == .staleTimeout {
+                    beacon.announceNow(journeyStatusText(self), highPriority: true, bypassSuppression: false)
+                }
             }
         }
     }
@@ -376,7 +391,9 @@ final class GuideSession {
             var ready = stage
             if stage == .access, let board = self.journeyPlan?.variant.boardStation {
                 // 측위 실패면 걷기 안내를 시작한다(그 세션이 도착을 판정한다) — 빠진 안내보다 군더더기가 낫다.
-                if let here = try? await LocationService.shared.currentCoordinate(force: true),
+                // 캐시 우선(force 없음) — 택시가 막 확정 도착했으면 정확도 30m 안 fix가 이미 있고, 주머니 속 잠금 화면에서
+                // 새 측위를 걸면 지연·중단 동안 다음 단계가 말없이 늦는다.
+                if let here = try? await LocationService.shared.currentCoordinate(force: false),
                    !journeyNeedsAccessWalk(
                        fromLat: here.lat, fromLng: here.lng, toLat: board.coord.lat, toLng: board.coord.lng) {
                     ready = .transit
@@ -394,18 +411,30 @@ final class GuideSession {
               let plan = journeyPlan
         else {
             guideDiagLog("journey stageStartRefused stage=\(stage.rawValue)")
+            // 낡은 token은 조용히 버린다. 지금 token인데 단계 세션이 돌고 있으면 불변식 위반 — 시작 실패로 넘겨 실패 시트(재시도)
+            // 또는 다음 단계로 가게 한다(spec §6.4 "로그 + failed", 세션 없는 running에 멈추지 않게).
+            if journey?.token == token { advanceJourney(.stageEnded(.startFailed), token: token) }
             return
         }
         let shape = plan.shape
         switch stage {
         case .taxiIn, .access:
-            guard let board = plan.variant.boardStation else { return finishJourney(stopSessions: false) }
+            guard let board = plan.variant.boardStation else {
+                return advanceJourney(.stageEnded(.startFailed), token: token)
+            }
+            // 추천 변형이 버스로 시작하면 타는 곳은 정류장이다 — 「역」을 붙이지 않는다(정류장 도착 문장은 문안 판정 대기라
+            // 그때는 기본 도착 문장).
+            let atStop = plan.variant.transit.legs.first { $0.mode != "walk" }?.mode == "bus"
             let name = journeyStationDisplayName(board.name)
             // 택시 자동 도착과 접근 도보 도착은 역 이름 문장(누르지 않은 인계라 무엇이 시작되는지 알린다, spec §6.3 통지).
             // 기본 「목적지에 도착했습니다」는 여정이 끝난 것처럼 들린다(접근성 감사 M6).
-            beacon.markChained(arrivalText: appLocalized("ios.journey.arrivedStation", name))
+            beacon.markChained(arrivalText: atStop ? nil : appLocalized("ios.journey.arrivedStation", name))
+            // 접근 도보는 승차 전 도보(A25)와 같은 자리다 — 입구가 멀어 지하로 먼저 들어가면 도착 판정이 닿지 않으므로 같은
+            // 「{역} 도착」 선언 버튼을 둔다(시트의 유일한 버튼이 여정 전체 종료가 되지 않게). 도착 문장도 그 선례
+            // 「승차역 {역}에 도착했습니다.」가 된다.
+            if stage == .access { beacon.markPrewalk(target: TransitLabel(ko: board.name)) }
             launchJourneyBeacon(
-                dest: BeaconDest(lat: board.coord.lat, lng: board.coord.lng), label: name + "역",
+                dest: BeaconDest(lat: board.coord.lat, lng: board.coord.lng), label: atStop ? board.name : name + "역",
                 labelRoman: nil, kind: stage == .taxiIn ? .car : .walk, token: token)
         case .transit:
             transit.onJourneyStopped = { [weak self] in self?.advanceJourney(.transitStopped, token: token) }
@@ -415,9 +444,11 @@ final class GuideSession {
             }
             // 역 B를 지정했으면 대중교통 구간의 끝은 그 역이다(말미 도보는 출구 도보·택시가 잇는다).
             let alight = shape.alightDesignated ? plan.variant.alightStation : nil
+            let alightAtStop = plan.variant.transit.legs.last { $0.mode != "walk" }?.mode == "bus"
             beginTransit(
                 route: plan.variant.transit,
-                destinationLabel: alight.map { journeyStationDisplayName($0.name) + "역" } ?? plan.destLabel,
+                destinationLabel: alight.map { alightAtStop ? $0.name : journeyStationDisplayName($0.name) + "역" }
+                    ?? plan.destLabel,
                 destinationRoman: alight == nil ? plan.destRoman : nil,
                 dest: alight.map { BeaconDest(lat: $0.coord.lat, lng: $0.coord.lng) } ?? plan.dest,
                 accessible: false)
@@ -427,7 +458,7 @@ final class GuideSession {
                 finishJourney(stopSessions: false)
             }
         case .egress:
-            guard let option = plan.egress else { return finishJourney(stopSessions: false) }
+            guard let option = plan.egress else { return advanceJourney(.stageEnded(.startFailed), token: token) }
             beacon.markChained(arrivalText: nil)
             launchJourneyBeacon(
                 dest: BeaconDest(lat: option.coord.lat, lng: option.coord.lng), label: option.placeName,

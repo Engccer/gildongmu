@@ -256,10 +256,28 @@ final class DirectionsModel {
         clearResults()
     }
 
+    /// 최근 경로 복원(E70 §5.3) — 펼치고 두 칸을 함께 정한다(없는 쪽은 비운다 — 이전 질의의 역이 딸려 가지 않게).
+    func setJourneyStations(board: RecentStation?, alight: RecentStation?) {
+        journeyExpanded = true
+        via = nil
+        boardStation = board
+        alightStation = alight
+        clearResults()
+    }
+
+    func clearJourneyStation(board: Bool) {
+        if board { boardStation = nil } else { alightStation = nil }
+        clearResults()
+    }
+
     /// 필드 확정은 항상 엔드포인트 전체 교체(원자). 이전 결과는 새 질의와 무관해져 폐기.
     func setEndpoint(_ endpoint: DirectionsEndpoint, for target: DirectionsFieldTarget) {
-        if target == .via { setVia(endpoint); return }
-        if target == .from { from = endpoint } else { to = endpoint }
+        switch target {
+        case .via: setVia(endpoint); return
+        case .from: from = endpoint
+        case .to, .manualLocation: to = endpoint
+        case .boardStation, .alightStation: return  // 역 칸은 장소 경로(`setJourneyStation`)만 받는다
+        }
         recordRecent(endpoint, scope: target == .from ? .from : .to)
         clearResults()
     }
@@ -583,6 +601,7 @@ final class DirectionsModel {
     private func performQuery(from: DirectionsEndpoint, to: DirectionsEndpoint) async {
         guard !Task.isCancelled else { return }
         results = nil
+        journeyOutcome = nil  // 여정 결과도 같은 스냅샷 교체(옛 결과의 [안내 시작]이 측위·조회 동안 남지 않게)
         cancelRequeries()
         resultsCoords = nil
         walkLines = [] // 스냅샷 교체(spec §4) — 이전 세대 줄을 지우고 시작
@@ -673,10 +692,10 @@ final class DirectionsModel {
         }
         // 역을 하나라도 지정했으면 여정만 조회한다(E70 D12, 실험판). 출입구 승격(A11)은 하지 않는다 — 마지막 택시가
         // 목적지까지 가므로 도보 도착점 승격이 뜻을 갖지 않는다.
-        if AppConfig.experimentalJourneyEnabled, hasJourneyStations {
+        if AppConfig.experimentalJourneyEnabled, AppLanguage.dataLocale == "ko", hasJourneyStations {
             await performJourney(
                 from: from, to: to, origin: origin, dest: queried,
-                originNeedsStartNotice: usedManualOrigin || (from == .current && staleAt != nil))
+                originNeedsStartNotice: usedManualOrigin || (from == .current && staleAt != nil), staleAt: staleAt)
             return
         }
 
@@ -764,7 +783,8 @@ final class DirectionsModel {
     /// 포커스는 옮기지 않는다 — 조회 완료 시 조회 버튼에 머무는 이 화면의 규칙(위원장 판정 2026-08-02) 그대로다.
     private func performJourney(
         from: DirectionsEndpoint, to: DirectionsEndpoint,
-        origin: (lat: Double, lng: Double), dest: (lat: Double, lng: Double), originNeedsStartNotice: Bool
+        origin: (lat: Double, lng: Double), dest: (lat: Double, lng: Double), originNeedsStartNotice: Bool,
+        staleAt: Date?
     ) async {
         phase = .loading
         let service = self.service
@@ -798,9 +818,12 @@ final class DirectionsModel {
         resultsRevision += 1
         switch outcome {
         case .found:
+            // 옛 위치로 찾았으면 같은 통지·상태 줄의 뒷문장으로 밝힌다(일반 조회와 같은 계약).
+            resultsStaleNotice = staleAt.map { appLocalized("directions.staleOriginNotice", staleAgeText(fixedAt: $0, now: Date())) }
             phase = .settled(successCount: 1)
             recordRecentRoute(from: from, to: to, via: nil, boardStation: boardStation, alightStation: alightStation)
-            announce(appLocalized("directions.readySummary", 1), haptic: .success)
+            announce([appLocalized("directions.readySummary", 1), resultsStaleNotice].compactMap { $0 }.joined(separator: " "),
+                     haptic: .success)
         case .noRoute:
             phase = .settled(successCount: 0)
             announce(appLocalized("route.transit.noRoute"), haptic: .failure)
@@ -992,14 +1015,30 @@ struct DirectionsTabView: View {
                     }
                     if AppConfig.experimentalJourneyEnabled, AppLanguage.dataLocale == "ko" {
                         if model.journeyExpanded {
+                            // 채운 칸은 밀기 「삭제」(최근 기록 행과 같은 동작 이름 — 로터에도 선다). 두 칸이 다 비면 접고
+                            // 펼침 버튼으로 돌아간다(판정 15·D14 — 역 지정 없는 조회로 돌아오는 길).
                             Button { searchTarget = .boardStation } label: {
                                 Text(stationFieldText(.boardStation))
                             }
                                 .accessibilityFocused($focusedEndpointField, equals: .boardStation)
+                                .swipeActions {
+                                    if model.boardStation != nil {
+                                        Button(appLocalized("recent.delete"), role: .destructive) {
+                                            clearStationField(board: true)
+                                        }
+                                    }
+                                }
                             Button { searchTarget = .alightStation } label: {
                                 Text(stationFieldText(.alightStation))
                             }
                                 .accessibilityFocused($focusedEndpointField, equals: .alightStation)
+                                .swipeActions {
+                                    if model.alightStation != nil {
+                                        Button(appLocalized("recent.delete"), role: .destructive) {
+                                            clearStationField(board: false)
+                                        }
+                                    }
+                                }
                         } else {
                             // 누르면 자기가 사라지는 버튼이라 첫 칸으로 커서를 선점 이동한다(헌장 §5).
                             Button(appLocalized("ios.journey.toggle")) {
@@ -1116,8 +1155,15 @@ struct DirectionsTabView: View {
                                             // 최단 경로가 추천 경로로, 자동차가 도보로
                                             // 조용히 바뀐다.
                                             // 여정 중엔 부르지 않는다 — 여정 실패 시트의 [경로 다시
-                                            // 조회]가 같은 일을 한다(E70 §6.3, 외부 시작 거부와 같은 판정).
-                                            if !session.isOccupied { beacon.restart() }
+                                            // 조회]가 같은 일을 한다(E70 §6.3). 여정이 없으면 종전 그대로
+                                            // 부른다(정식판 불변). 여정 중이면 거부 통지(무반응 금지).
+                                            if session.journey == nil {
+                                                beacon.restart()
+                                            } else {
+                                                beacon.announceNow(
+                                                    appLocalized("guide.alreadyActive"), highPriority: true,
+                                                    bypassSuppression: true)
+                                            }
                                         case .denied:
                                             AccessibilityNotification.Announcement(appLocalized("ios.common.geoReducedDesc")).post()
                                         case .alreadyInFlight: break
@@ -1355,10 +1401,9 @@ struct DirectionsTabView: View {
             model.clearVia()
         }
         // 여정(E70 §5.3): 역이 있으면 칸을 채우고 펼친 채 조회, 없으면 접는다(이전 질의의 역이 딸려 가지 않는다).
-        if AppConfig.experimentalJourneyEnabled, route.boardStation != nil || route.alightStation != nil {
-            model.setJourneyExpanded(true)
-            if let board = route.boardStation { model.setJourneyStation(board, board: true) }
-            if let alight = route.alightStation { model.setJourneyStation(alight, board: false) }
+        if AppConfig.experimentalJourneyEnabled, AppLanguage.dataLocale == "ko",
+           route.boardStation != nil || route.alightStation != nil {
+            model.setJourneyStations(board: route.boardStation, alight: route.alightStation)
         } else if model.journeyExpanded {
             model.setJourneyExpanded(false)
         }
@@ -1602,6 +1647,16 @@ struct DirectionsTabView: View {
             return joinText(appLocalized("ios.journey.boardField"), model.boardStation?.label)
         }
         return joinText(appLocalized("ios.journey.alightField"), model.alightStation?.label)
+    }
+
+    /// 역 칸 비우기. 둘 다 비면 접어서 펼침 버튼으로 돌아가고 조회 버튼으로 커서를 선점한다(칸이 사라지는 전이, 헌장 §5).
+    /// 한 칸만 비우면 칸이 남아 라벨 변화(역 이름이 빠진 칸 이름)가 곧 상태 신호다.
+    private func clearStationField(board: Bool) {
+        model.clearJourneyStation(board: board)
+        if !model.hasJourneyStations {
+            submitFocused = true
+            model.setJourneyExpanded(false)
+        }
     }
 
     /// 역 지정 버튼이 사라진 자리에서 첫 칸으로(지연·검증·1회 재시도 — `landFocusAfterResolve` 동형).

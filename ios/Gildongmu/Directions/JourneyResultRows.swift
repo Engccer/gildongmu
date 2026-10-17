@@ -137,8 +137,8 @@ func journeyVariantHeading(_ v: JourneyVariant, board: RecentStation?, alight: R
     let display = journeyStationDisplayName
     switch v.kind {
     case .designated:
-        if board != nil {
-            return appLocalized("ios.journey.designatedHeading", display(first?.fromName ?? board!.label))
+        if let board {
+            return appLocalized("ios.journey.designatedHeading", display(first?.fromName ?? board.label))
         }
         return appLocalized("ios.journey.designatedHeadingAlight", display(last?.toName ?? alight?.label ?? ""))
     case .recommended:
