@@ -71,7 +71,7 @@ final class GuideSession {
     private var journeyTask: Task<Void, Never>?
     /// 사이 상태에 들어간 시각(복귀 시 30초 상한 판정, §6.3). 잠자기 중에도 전진하는 시계.
     private var journeyTransitionAt: ContinuousClock.Instant?
-    /// 접근 도보 시작 실패 뒤 대중교통 시작이 도보 모델의 통지(원인 + 다리 문장)를 기다리는 상한(ms). 두 문장이 VoiceOver 기본
+    /// 접근 도보·승차 전 도보(A67) 시작 실패 뒤 대중교통 시작이 도보 모델의 통지(원인 + 다리 문장)를 기다리는 상한(ms). 두 문장이 VoiceOver 기본
     /// 속도로 4~6초라 여유를 두고, 사이 상태 상한(`JourneyTuning.staleTransitionSeconds` 30초)보다 충분히 짧다.
     private static let walkSpeechWaitLimitMs = 8_000
     /// `startJourneyStage`가 `beginBeacon`을 부르는 동안 true — 거기서 건 종료 훅을 `cancelPrewalk()`가 지우지 않게.
@@ -249,7 +249,8 @@ final class GuideSession {
             // 다리 문장(「도보 안내를 시작할 수 없어 승차 대기로 바로 넘어갑니다」)은 도보 모델이 원인 문장 뒤에 붙여 `.high` 한
             // 통지로 냈다(A67, `BeaconModel.fail`). 대중교통 창구로 따로 내면 그 재생기는 세션 전이라 백그라운드에서 버려지고,
             // 전경에선 같은 턴에 게시돼 원인 문장을 끊는다. 대중교통 시작은 그 통지가 끝나기를 기다린다 — 시작 통지가 두 문장을
-            // 끊지 않게(여정 접근 도보 `prepareJourneyStage`와 같은 장부·상한). 동기 거부는 원인 문장이 없어 기다릴 것도 없다.
+            // 끊지 않게(여정 접근 도보 `prepareJourneyStage`와 같은 장부·상한). 동기 거부(`beginTransit` 말미)는 원인 문장도 다리
+            // 문장도 없다 — 그 경로는 `startTransit`의 `refuseIfActive`가 같은 상태를 먼저 보므로 닿지 않는다.
             prewalkTask?.cancel()
             prewalkTask = Task { @MainActor [weak self] in
                 guard let self else { return }

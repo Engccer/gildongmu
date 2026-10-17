@@ -118,5 +118,9 @@ describe("승차 전 도보 시작 실패 다리 문장(A67)", () => {
     );
     expect(branch.indexOf("announcementsSettled")).toBeLessThan(branch.indexOf("self.transit.startAfterPrewalk("));
     expect(branch).toMatch(/guard !Task\.isCancelled else \{ return \}\s*self\.transit\.startAfterPrewalk\(/);
+    // 여정의 대중교통 단계인데 세션이 서지 않으면 세션 없는 running(.transit)에 멈추지 않게 실패로 넘긴다(Task 안, 시작 뒤)
+    expect(branch).toMatch(
+      /self\.transit\.startAfterPrewalk\([\s\S]*?prewalkCompleted: false\)[\s\S]*if !self\.transit\.isTracking, let journey = self\.journey, case \.running\(\.transit\) = journey\.phase \{[\s\S]*self\.advanceJourney\(\.stageEnded\(\.startFailed\), token: journey\.token\)/,
+    );
   });
 });
