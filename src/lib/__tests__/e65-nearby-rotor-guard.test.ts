@@ -38,16 +38,19 @@ describe("E65 내 주변 로터 액션 배선", () => {
     expect(buttonCall![0]).not.toContain("rowActionsAskAbout");
   });
 
-  it("지하철역 제목: 헤딩 trait 유지 + 밀기 버튼(왼쪽 상세 → 길찾기, 오른쪽 전화·끝까지 밀기 꺼짐, E72)", () => {
+  it("지하철역 제목: 헤딩 trait 유지 + 밀기 버튼(오른쪽 전화 → 길찾기·끝까지 밀기 꺼짐, 왼쪽 상세, E72)", () => {
     const s = nearby("SubwayNearbyView.swift");
     expect(declaredInOrder(s, "stationHeading(station)\n", [".accessibilityAddTraits(.isHeader)", ".modifier(StationTitleActions("])).toBe(true);
+    // 오른쪽 밀기 묶음이 동작 목록에 먼저 오른다 — 들리는 순서 전화 → 여기까지 길찾기 → 상세 보기(위원장 판정 2026-10-17).
     expect(declaredInOrder(s, "struct StationTitleActions", [
-      ".swipeActions(edge: .trailing) {",
-      'Button(appLocalized("transitGuide.openStation", name))',
-      'Button(appLocalized("directions.toHere"))',
       ".swipeActions(edge: .leading, allowsFullSwipe: false) {",
       "Button(stationCallLabel(",
+      'Button(appLocalized("directions.toHere"))',
+      ".swipeActions(edge: .trailing) {",
+      'Button(appLocalized("transitGuide.openStation", name))',
     ])).toBe(true);
+    const trailing = s.slice(s.indexOf(".swipeActions(edge: .trailing) {", s.indexOf("struct StationTitleActions")));
+    expect(trailing.slice(0, trailing.indexOf(".alert("))).not.toMatch(/directions\.toHere|stationCallLabel/);
     expect(s.slice(s.indexOf("struct StationTitleActions"))).not.toContain(".accessibilityActions");
     // 전화는 E45 창구 하나(라벨 `stationCallLabel`, 동작 `callStationPhone`)만 지난다 — 브리핑도 같은 라벨 함수.
     expect(s.slice(s.indexOf("struct StationTitleActions"))).toContain("callStationPhone(");
@@ -57,12 +60,12 @@ describe("E65 내 주변 로터 액션 배선", () => {
     expect(s).toContain("subwayStationSpokenName(");
   });
 
-  it("버스 정류소 제목: 헤딩 trait 유지 + 여기까지 길찾기 하나", () => {
+  it("버스 정류소 제목: 헤딩 trait 유지 + 여기까지 길찾기 하나(장소 행·역 제목처럼 오른쪽 밀기, 끝까지 밀기 꺼짐)", () => {
     const s = nearby("BusNearbyView.swift");
     expect(declaredInOrder(s, "private func stopTitle(", [
       "busStopHeading(stop).accessibilityAddTraits(.isHeader)",
       "if directionsEntryAllowed {",
-      "heading.swipeActions(edge: .trailing, allowsFullSwipe: false) {",
+      "heading.swipeActions(edge: .leading, allowsFullSwipe: false) {",
       'Button(appLocalized("directions.toHere"))',
     ])).toBe(true);
     expect(s).toContain("stopTitle(stop)");

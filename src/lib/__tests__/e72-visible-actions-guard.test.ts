@@ -29,21 +29,24 @@ describe("규칙 1·2: 장소 목록 행은 밀기 버튼, 딥링크 없음", ()
   const swipe = slice(actions, "case .swipe:", "case .rotor:");
   const rotor = slice(actions, "case .rotor:", "private var copyAddressButton");
 
-  it("왼쪽 밀기는 주소 복사 → 여기까지 길찾기, 끝까지 밀기는 첫 버튼이 주소 복사일 때만", () => {
-    expect(inOrder(swipe, [
-      ".swipeActions(edge: .trailing, allowsFullSwipe: !place.roadAddress.isEmpty) {",
-      "copyAddressButton",
-      "directionsButton",
-    ])).toBe(true);
+  // 밀기 버튼은 오른쪽 밀기(leading) 묶음이 먼저 동작 목록에 오르고 묶음 안은 선언 순이다(실기기 관측 2026-10-17).
+  // 들리는 순서 판정은 전화 → 여기까지 길찾기 → 주소 복사 → 물어보기(위원장, 적극적 행동이 먼저).
+  const leading = slice(swipe, ".swipeActions(edge: .leading", ".swipeActions(edge: .trailing");
+  const trailing = slice(actions, ".swipeActions(edge: .trailing", "case .rotor:");
+
+  it("오른쪽 밀기는 전화 → 여기까지 길찾기이고 끝까지 밀기 실행이 꺼져 있다(둘 다 되돌릴 수 없다)", () => {
+    expect(inOrder(leading, [".swipeActions(edge: .leading, allowsFullSwipe: false) {", "callButton", "directionsButton"])).toBe(true);
+    expect(leading).not.toMatch(/copyAddressButton|askButton/);
   });
 
-  it("오른쪽 밀기는 전화 → 물어보기이고 끝까지 밀기 실행이 꺼져 있다(전화는 되돌릴 수 없다)", () => {
-    expect(inOrder(swipe, [".swipeActions(edge: .leading, allowsFullSwipe: false) {", "callButton", "askButton"])).toBe(true);
+  it("왼쪽 밀기는 주소 복사 → 물어보기이고 끝까지 밀기는 켜져 있다(첫 버튼이 어느 쪽이든 되돌릴 수 있다)", () => {
+    expect(inOrder(trailing, [".swipeActions(edge: .trailing) {", "copyAddressButton", "askButton"])).toBe(true);
+    expect(trailing).not.toMatch(/callButton|directionsButton|allowsFullSwipe/);
     expect(swipe).not.toContain("accessibilityActions");
   });
 
-  it("로터 갈래(List 밖)는 같은 넷을 역순 선언한다 — 들리는 순서는 주소 복사 → 길찾기 → 전화 → 물어보기", () => {
-    expect(inOrder(rotor, [".accessibilityActions {", "askButton", "callButton", "directionsButton", "copyAddressButton"])).toBe(true);
+  it("로터 갈래(List 밖)는 같은 넷을 역순 선언한다 — 들리는 순서는 전화 → 길찾기 → 주소 복사 → 물어보기", () => {
+    expect(inOrder(rotor, [".accessibilityActions {", "askButton", "copyAddressButton", "directionsButton", "callButton"])).toBe(true);
   });
 
   it("행 묶음에 카카오맵·네이버 지도 딥링크가 없다(장소 상세의 보조 출구에만)", () => {

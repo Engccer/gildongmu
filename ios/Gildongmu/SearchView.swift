@@ -467,8 +467,8 @@ struct PlaceRow: View {
 ///
 /// 그리는 방식은 호스트가 고른다. `List` 행은 밀기 버튼(iOS가 같은 버튼을 VoiceOver 동작 목록에 넣는다),
 /// `List` 밖(채팅 카드, `ScrollView`)은 로터. 한 행에 둘을 같이 두지 않는다(동작 목록에 두 번 선다).
-/// 목표로 들리는 순서는 주소 복사 → 여기까지 길찾기 → 전화 걸기 → 물어보기(E60에서 딥링크를 뺀 것)이고,
-/// 밀기 버튼이 동작 목록에 오르는 순서는 실기기 VoiceOver만 판정한다(spec 2026-10-17-e72 §2.2).
+/// 들리는 순서는 전화 걸기 → 여기까지 길찾기 → 주소 복사 → 물어보기(위원장 판정 2026-10-17, 적극적 행동이 먼저).
+/// 밀기 버튼은 오른쪽 밀기 묶음이 먼저 오르고 묶음 안은 선언 순이다(실기기 VoiceOver 관측, spec 2026-10-17-e72 §2.2).
 struct PlaceRowActions: ViewModifier {
     enum Style { case swipe, rotor }
 
@@ -483,26 +483,26 @@ struct PlaceRowActions: ViewModifier {
         switch style {
         case .swipe:
             content
-                // 왼쪽 밀기, 가장자리부터. 끝까지 밀기 실행은 첫 버튼이 주소 복사(클립보드만 바뀐다)일 때만 둔다 —
-                // 도로명이 없어 첫 버튼이 여기까지 길찾기면 끈다. 프리필은 길찾기 탭을 새로 만들어 앞서 조회한 경로를
-                // 지우고 최근 도착지에 기록하며 자동 조회(유료 호출 포함)를 내므로 되돌릴 수 없다.
-                .swipeActions(edge: .trailing, allowsFullSwipe: !place.roadAddress.isEmpty) {
-                    copyAddressButton
-                    directionsButton
-                }
-                // 오른쪽 밀기. 전화는 되돌릴 수 없어 끝까지 밀기 실행을 끈다(앱의 tel: 열기에 iOS 확인창이
-                // 뜨는지는 버전마다 달라 왔다). 버튼을 보고 눌러야 실행된다.
+                // 오른쪽 밀기, 가장자리부터. 끝까지 밀기 실행을 끈다 — 첫 버튼이 전화든(앱의 tel: 열기에 iOS 확인창이
+                // 뜨는지는 버전마다 달라 왔다) 여기까지 길찾기든(프리필은 길찾기 탭을 새로 만들어 앞서 조회한 경로를
+                // 지우고 최근 도착지에 기록하며 자동 조회(유료 호출 포함)를 낸다) 되돌릴 수 없다.
                 .swipeActions(edge: .leading, allowsFullSwipe: false) {
                     callButton
+                    directionsButton
+                }
+                // 왼쪽 밀기. 끝까지 밀면 첫 버튼이 실행된다 — 주소 복사(클립보드만 바뀐다)든, 도로명이 없을 때의
+                // 물어보기(채팅 시트를 열 뿐 보내지 않는다, 닫기로 돌아온다)든 되돌릴 수 있다.
+                .swipeActions(edge: .trailing) {
+                    copyAddressButton
                     askButton
                 }
         case .rotor:
             // ⚠ 선언은 역순: VoiceOver 쓸기 메뉴가 빌더 선언의 역순으로 노출된다(실기기 관측).
             content.accessibilityActions {
                 askButton
-                callButton
-                directionsButton
                 copyAddressButton
+                directionsButton
+                callButton
             }
         }
     }

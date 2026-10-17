@@ -273,7 +273,7 @@ struct SubwayNearbyView: View {
     }
 }
 
-/// 역 제목 밀기 버튼(E65 → E72, 브리핑 E45 동형): 상세 보기 → 여기까지 길찾기 → 전화. 좌표가 없는 응답이면 셋 다 없다.
+/// 역 제목 밀기 버튼(E65 → E72, 브리핑 E45 동형): 전화 → 여기까지 길찾기 → 상세 보기. 좌표가 없는 응답이면 셋 다 없다.
 /// **전화 저장소는 이 수정자만 관찰한다** — 라벨이 직통·대표번호로 갈려 저장소를 읽어야 하는데, 그 읽기가 목록
 /// 본문에 있으면 번호 도착·재확인마다 목록 전체가 다시 그려진다(`BriefingStationRow` 동형).
 /// 좌표 유무로 본문을 가르지 않는다(가르면 좌표가 생기는 순간 헤딩 행이 재생성돼 커서가 풀린다).
@@ -296,27 +296,11 @@ private struct StationTitleActions: ViewModifier {
     }
 
     func body(content: Content) -> some View {
-        // 밀기 버튼(E72 위원장 판정 1). VoiceOver 동작 목록은 iOS가 이 버튼에서 만든다 — 목표 순서는 E65 그대로
-        // 상세 보기 → 여기까지 길찾기 → 전화(실기기 판정, `PlaceRowActions`와 같은 배치 가정).
-        // 전화 동작은 늘 있고 라벨만 상태로 갈린다(E45 판정 ④, 위원장 판정 2026-10-05 E65 그대로).
+        // 밀기 버튼(E72 위원장 판정 1). VoiceOver 동작 목록은 iOS가 이 버튼에서 만든다 — 오른쪽 밀기 묶음이 먼저,
+        // 묶음 안은 선언 순이라 들리는 순서는 전화 → 여기까지 길찾기 → 상세 보기다(위원장 판정 2026-10-17,
+        // `PlaceRowActions`와 같은 원칙). 전화 동작은 늘 있고 라벨만 상태로 갈린다(E45 판정 ④, E65 그대로).
         content
-            // 왼쪽 밀기, 가장자리부터. 끝까지 밀면 상세 보기(화면 이동)가 실행된다.
-            .swipeActions(edge: .trailing) {
-                if let lat = station.lat, let lng = station.lng {
-                    Button(appLocalized("transitGuide.openStation", name)) {
-                        let stop = TransitLegStop(name: station.stationName, lat: lat, lng: lng, nameEn: station.nameEn)
-                        onOpen(StationDestination(place: transitStopPlace(stop), lineName: lineHint))
-                    }
-                    if directionsEntryAllowed {
-                        Button(appLocalized("directions.toHere")) {
-                            DirectionsPrefillStore.shared.pending = DirectionsPrefill(
-                                role: .to, endpoint: .place(
-                                    label: station.stationName, lat: lat, lng: lng, labelRoman: station.nameEn))
-                        }
-                    }
-                }
-            }
-            // 오른쪽 밀기. 전화는 되돌릴 수 없어 끝까지 밀기 실행을 끈다(`PlaceRowActions`와 같은 이유).
+            // 오른쪽 밀기, 가장자리부터. 끝까지 밀기 실행을 끈다 — 전화와 프리필은 되돌릴 수 없다(`PlaceRowActions`와 같은 이유).
             .swipeActions(edge: .leading, allowsFullSwipe: false) {
                 if let lat = station.lat, let lng = station.lng {
                     Button(stationCallLabel(
@@ -328,6 +312,22 @@ private struct StationTitleActions: ViewModifier {
                                 // VoiceOver 사용자는 같은 문장을 통지로 이미 들었다(알림창까지 내면 두 번 듣는다).
                                 if !UIAccessibility.isVoiceOverRunning { visibleNotice = text }
                             })
+                    }
+                    if directionsEntryAllowed {
+                        Button(appLocalized("directions.toHere")) {
+                            DirectionsPrefillStore.shared.pending = DirectionsPrefill(
+                                role: .to, endpoint: .place(
+                                    label: station.stationName, lat: lat, lng: lng, labelRoman: station.nameEn))
+                        }
+                    }
+                }
+            }
+            // 왼쪽 밀기. 끝까지 밀면 상세 보기(화면 이동, 뒤로 돌아온다)가 실행된다.
+            .swipeActions(edge: .trailing) {
+                if let lat = station.lat, let lng = station.lng {
+                    Button(appLocalized("transitGuide.openStation", name)) {
+                        let stop = TransitLegStop(name: station.stationName, lat: lat, lng: lng, nameEn: station.nameEn)
+                        onOpen(StationDestination(place: transitStopPlace(stop), lineName: lineHint))
                     }
                 }
             }

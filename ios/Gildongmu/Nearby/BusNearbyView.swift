@@ -59,13 +59,13 @@ struct BusNearbyView: View {
 
     /// 정류소 제목(헤딩) + 제목 밀기 버튼(E65 → E72). 정류소 상세 화면은 없어 「여기까지 길찾기」 하나뿐이다. 길찾기를
     /// 숨기는 자리(안내 시트·길찾기 탭 스택)에선 버튼을 붙이지 않는다(빈 빌더도 두지 않는다). 값은 화면 수명 내내 같아
-    /// 두 갈래가 오가지 않는다. 끝까지 밀기 실행은 끈다 — 프리필은 앞서 조회한 길찾기를 지우고 자동 조회를 낸다
-    /// (`PlaceRowActions`와 같은 이유).
+    /// 두 갈래가 오가지 않는다. 장소 행·역 제목처럼 오른쪽 밀기에 두고 끝까지 밀기 실행은 끈다 — 프리필은 앞서 조회한
+    /// 길찾기를 지우고 자동 조회를 낸다(`PlaceRowActions`와 같은 이유).
     @ViewBuilder
     private func stopTitle(_ stop: BusStop) -> some View {
         let heading = busStopHeading(stop).accessibilityAddTraits(.isHeader)
         if directionsEntryAllowed {
-            heading.swipeActions(edge: .trailing, allowsFullSwipe: false) {
+            heading.swipeActions(edge: .leading, allowsFullSwipe: false) {
                 Button(appLocalized("directions.toHere")) {
                     DirectionsPrefillStore.shared.pending = DirectionsPrefill(
                         role: .to, endpoint: .place(
