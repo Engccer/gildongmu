@@ -189,7 +189,7 @@ describe("E70-d 입력 메뉴 하나와 「자동차」 문장(위원장 판정 
 
   it("판정 30·31: 여정 문장의 수단은 「자동차」이고 금액은 「택시 요금」이라고 밝힌다", () => {
     expect(KO.ios.journey).toMatchObject({
-      addMenu: "경유지 또는 자동차 구간 추가",
+      addMenu: "경유지/자동차 환승 추가",
       addBoardStation: "자동차에서 내리는 역 추가",
       addAlightStation: "자동차를 탈 역 추가",
       boardField: "자동차에서 내리는 역",

@@ -405,7 +405,7 @@
       "moved": "{position}번째로 옮겼습니다"
     },
     "journey": {
-      "addMenu": "경유지 또는 자동차 구간 추가",
+      "addMenu": "경유지/자동차 환승 추가",
       "addBoardStation": "자동차에서 내리는 역 추가",
       "addAlightStation": "자동차를 탈 역 추가",
       "boardField": "자동차에서 내리는 역",
