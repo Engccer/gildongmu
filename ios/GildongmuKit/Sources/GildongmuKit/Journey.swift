@@ -224,23 +224,61 @@ public func journeyLineLabel(_ raw: String?) -> String? {
     return s.isEmpty ? nil : s
 }
 
-private let journeyRegionPrefixes = ["부산", "대구", "광주", "대전"]
+private let journeyRegionPrefixes = ["수도권", "부산", "대구", "광주", "대전"]
 
-/// 두 노선 표기가 같은 노선인가(서버 `sameLine`의 Kit 근사, 판정 순서도 같다). 한쪽만 비수도권 지역 접두(`부산 2호선`)이고
-/// 다른 쪽이 맨 번호(`2호선` — 카카오 힌트는 지역을 싣지 않는다)면 접두를 뗀 꼴끼리, 노선명 표(`subwayLineIdentity`)에 둘 다
-/// 있으면 표 값끼리, 아니면 정규화한 꼴끼리 비교한다(지역 접두가 둘 다 있고 다르면 다른 노선).
-func journeySameLine(_ a: String, _ b: String) -> Bool {
-    guard let la = journeyLineLabel(a), let lb = journeyLineLabel(b) else { return false }
-    func split(_ s: String) -> (region: String?, core: String) {
-        for r in journeyRegionPrefixes where s.hasPrefix(r) { return (r, String(s.dropFirst(r.count))) }
-        return (nil, s)
+private func isJourneySeparator(_ c: Character) -> Bool {
+    c == " " || c == "\t" || c == "\n" || c == "." || c == "·"
+}
+
+/// 웹 `lineHintMatches`(src/lib/station-match.ts) 이식: 「철도·호선·선」 꼬리 하나를 뗀 코어의 상호 접두 일치, 코어가 숫자뿐이면
+/// 완전 일치(「1호선」 ≠ 「11호선」). ⚠ 정규식 약칭·Foundation 공백 집합을 쓰지 않는다(안드로이드 이식 규칙).
+func journeyLineHintMatches(_ lineName: String, _ lineHint: String) -> Bool {
+    func core(_ s: String) -> String {
+        var t = s.lowercased()
+        while let f = t.first, isJourneySeparator(f) { t.removeFirst() }
+        while let l = t.last, isJourneySeparator(l) { t.removeLast() }
+        for suffix in ["철도", "호선", "선"] where t.hasSuffix(suffix) {
+            t.removeLast(suffix.count)
+            break
+        }
+        return String(t.filter { !isJourneySeparator($0) })
     }
-    let (ra, ca) = split(la)
-    let (rb, cb) = split(lb)
-    if (ra == nil) != (rb == nil) { return ca == cb }
+    let a = core(lineName)
+    let b = core(lineHint)
+    guard !a.isEmpty, !b.isEmpty else { return false }
+    let digits: (String) -> Bool = { $0.allSatisfy { "0123456789".contains($0) } }
+    if digits(a) || digits(b) { return a == b }
+    return a == b || a.hasPrefix(b) || b.hasPrefix(a)
+}
+
+/// 두 노선 표기가 같은 노선인가 — 서버 `sameLine`(src/lib/journey/station-identity.ts)과 같은 판정 순서다(공유 fixture
+/// `journey-line-names.json`이 잠근다). 한쪽만 비수도권 지역 접두(`부산 2호선`)이고 다른 쪽이 지역 없는 맨 번호(`2호선` —
+/// 카카오 출구 힌트는 지역을 싣지 않는다)면 코어끼리, 노선명 표(`subwayLineIdentity`)에 둘 다 있으면 표 값끼리, 지역 접두가
+/// 둘 다 있고 다르면 다른 노선, 아니면 코어끼리 `journeyLineHintMatches`. `수도권`도 지역 접두로 읽는다(떼고 읽으면
+/// `부산1호선` ↔ `수도권 1호선`이 같은 노선이 된다).
+func journeySameLine(_ a: String, _ b: String) -> Bool {
+    func split(_ raw: String) -> (region: String?, core: String) {
+        var s = raw
+        while let l = s.last, isJourneySeparator(l) { s.removeLast() }
+        if s.hasSuffix("(급행)") { s.removeLast(4) }
+        while let f = s.first, isJourneySeparator(f) { s.removeFirst() }
+        var region: String?
+        for r in journeyRegionPrefixes where s.hasPrefix(r) {
+            region = r
+            s.removeFirst(r.count)
+            break
+        }
+        return (region, String(s.filter { !isJourneySeparator($0) }))
+    }
+    let fa = split(a)
+    let fb = split(b)
+    let regional: (String?) -> Bool = { $0 != nil && $0 != "수도권" }
+    if (regional(fa.region) && fb.region == nil) || (regional(fb.region) && fa.region == nil) {
+        return journeyLineHintMatches(fa.core, fb.core)
+    }
     if let ia = subwayLineIdentity(a), let ib = subwayLineIdentity(b) { return ia == ib }
-    if ra != nil, rb != nil, ra != rb { return false }
-    return ca == cb
+    if let ra = fa.region, let rb = fb.region, ra != rb { return false }
+    return journeyLineHintMatches(fa.core, fb.core)
 }
 
 /// 동명 이역 판정에 쓰는 정류 하나 — 이름·노선(모르면 nil)·좌표.

@@ -91,20 +91,35 @@ describe("E70 여정 문장의 자리", () => {
     );
   });
 
-  it("판정 9: 접근 도보 시작 실패의 다리 문장은 도보 모델이 원인 문장과 한 통지로 낸다", () => {
+  it("판정 9: 접근 도보 시작 실패의 다리 문장은 도보 모델이 원인 문장과 한 통지로 내고, 대중교통 시작은 그 통지를 기다린다", () => {
     const beacon = read("BeaconModel.swift");
     const fail = body(beacon, "fail");
-    expect(fail).toContain("starting && journeyChain?.bridgesStartFailure == true");
-    expect(fail).toContain('appLocalized("ios.journey.accessFailedWith", appLocalized(key))');
-    expect(body(beacon, "markChained")).toContain("JourneyChainMark(arrivalText: arrivalText, bridgesStartFailure: bridgesStartFailure)");
+    expect(fail).toContain("let journeyBridge = starting && journeyChain?.bridgesStartFailure == true");
+    // 통지에만 붙이고 상태 줄(길찾기 탭에 남는다)은 원인만
+    expect(fail).toMatch(
+      /announce\(\s*journeyBridge \? appLocalized\("ios\.journey\.accessFailedWith", appLocalized\(key\)\) : statusText,/,
+    );
+    expect(fail).not.toMatch(/statusText = [^\n]*accessFailedWith/);
+    expect(body(beacon, "markChained")).toContain(
+      "JourneyChainMark(arrivalText: arrivalText, bridgesStartFailure: bridgesStartFailure)",
+    );
     const stage = body(session, "startJourneyStage");
     expect(stage).toContain("bridgesStartFailure: stage == .access");
     expect(stage.match(/bridgesStartFailure: false/g)).toHaveLength(3); // 출구 도보 세 갈래
-    // 대중교통 창구로 따로 내지 않는다(세션 전이라 백그라운드에서 버려지고 원인 문장을 끊는다). 원인 없는 동기 거부만 도보 창구로.
     const advance = body(session, "advanceJourney");
-    expect(advance).not.toContain("transit.announceExternal");
-    expect(advance).toContain("ignoreFailureCause && state.phase == .running(.access) && event == .stageEnded(.startFailed)");
-    expect(advance).toMatch(/if accessRefused, stage == \.transit \{\s*beacon\.announceNow\(appLocalized\("transitGuide\.prewalkUnavailable"\)/);
+    // 대중교통 창구로 따로 내지 않는다(세션 전이라 백그라운드에서 버려지고 원인 문장을 끊는다), 동기 거부엔 다리 문장이 없다
+    expect(advance).not.toContain("announceExternal");
+    expect(advance).not.toContain("prewalkUnavailable");
+    expect(advance).toContain(
+      "let accessBridged = !ignoreFailureCause && state.phase == .running(.access) && event == .stageEnded(.startFailed)",
+    );
+    expect(advance).toContain("waitsForWalkSpeech: accessBridged)");
+    const prepare = body(session, "prepareJourneyStage");
+    expect(prepare).toMatch(
+      /if waitsForWalkSpeech, UIAccessibility\.isVoiceOverRunning \{[\s\S]*while !self\.beacon\.announcementsSettled, waited < Self\.walkSpeechWaitLimitMs/,
+    );
+    // 기다림은 `.prepared` 전이(대중교통 시작) 앞이다
+    expect(prepare.indexOf("waitsForWalkSpeech, UIAccessibility")).toBeLessThan(prepare.indexOf("self.advanceJourney(.prepared(ready)"));
   });
 
   it("판정 6: 하차 역을 정한 여정의 하차 직후 버튼은 「다음 구간」이다", () => {

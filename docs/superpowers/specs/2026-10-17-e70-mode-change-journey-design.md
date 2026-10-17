@@ -60,7 +60,7 @@
 24. **역 B를 정한 여정의 하차 직후 버튼 이름은 「다음 구간」**: 하차 통지 「내리신 뒤 다음 구간 버튼을 눌러 주세요.」가 부르는 이름과 맞춘다(다음이 출구 도보든 택시든). 다른 자리의 「택시에 탔어요」(출구 도보 중·실패 시트)는 그대로.
 25. **여정 중 목적지·경유지·다른 경로 바꾸기는 숨긴다**(§6.4, 확정).
 26. **동명 이역이면 두 제목에 노선을 붙인다**: 지정 역과 추천 경로의 그 쪽 역이 이름은 같고 노선이 다를 때만 「경의중앙선 신촌역에서 타는 경로를 찾지 못했습니다.」 → 「2호선 신촌역에서 타는 추천 경로」. 평소엔 지금 문장.
-27. **접근 도보를 시작하지 못하면 승차 전 도보 선례의 다리 문장**(「도보 안내를 시작할 수 없어 승차 대기로 바로 넘어갑니다.」)을 원인 문장 뒤, 대중교통 시작 통지 앞에 낸다. 원인 문장과 **한 통지**(「{원인}. 도보 안내를 시작할 수 없어 …」)로 도보 모델이 낸다 — 대중교통 창구는 세션 전이라 백그라운드에서 버려지고, 따로 내면 같은 턴의 원인 문장을 끊는다(A54와 같은 이유, 구현 접근성 감사). 원인이 없는 동기 거부만 다리 문장 단독.
+27. **접근 도보를 시작하지 못하면 승차 전 도보 선례의 다리 문장**(「도보 안내를 시작할 수 없어 승차 대기로 바로 넘어갑니다.」)을 원인 문장 뒤, 대중교통 시작 통지 앞에 낸다. 원인 문장과 **한 통지**(「{원인}. 도보 안내를 시작할 수 없어 …」)로 도보 모델이 낸다 — 대중교통 창구는 세션 전이라 백그라운드에서 버려지고, 따로 내면 같은 턴의 원인 문장을 끊는다(구현 접근성 감사). 대중교통 시작은 VoiceOver가 켜져 있으면 그 통지가 끝나기를 기다린다(도보 모델 `announcementsSettled`, 상한 8초 — 600ms 인계 뒤 시작 통지가 긴 두 문장을 끊지 않게, 재리뷰). 상태 줄(`statusText`)은 원인만이다(길찾기 탭에 남아 대중교통이 끝난 뒤 「…넘어갑니다」가 거짓 진행형이 되지 않게). 동기 거부(거부 게이트가 이미 「이미 안내 중」을 냈고 대중교통도 같은 이유로 거부된다)엔 다리 문장이 없다.
 
 예문의 숫자·역은 설명용이다. 위 예문은 확정본 문장으로 맞춰 적었고, 화면 문장의 정본은 §8.4 문안 표다(위원장 문안 왕복 2026-10-17 확정).
 
@@ -305,7 +305,7 @@ heading 구조(구현 접근성 감사): 변형이 둘이면 선택 버튼 둘�
 | 자리 | 실패 | 앱이 하는 것 |
 |---|---|---|
 | taxiIn·taxiOut 시작 | `transitioning`의 force 측위 실패, 세션 `.startFailed` | `failed(at: 그 단계)`: 시트 상태 문장 「택시 경로를 불러오지 못했습니다.」 + [다시 시도] + [안내 종료] |
-| access 시작 | 도보 경로 실패 | prewalk `.startFailed`와 같이 다리 문장 「도보 안내를 시작할 수 없어 승차 대기로 바로 넘어갑니다.」(`transitGuide.prewalkUnavailable`, 판정 27) 뒤 대중교통 세션을 바로 시작(`transitioning(to: .transit)`) |
+| access 시작 | 도보 경로 실패 | 원인 문장 + 다리 문장 「도보 안내를 시작할 수 없어 승차 대기로 바로 넘어갑니다.」 한 통지(`journey.accessFailedWith`, 판정 27) 뒤 대중교통 세션 시작(`transitioning(to: .transit)`, 통지 끝을 기다림) |
 | egress 시작 | 도보 경로 실패 | `failed(at: .egress)`: 「출구까지 도보 안내를 시작하지 못했습니다.」 + [택시에 탔어요] + [안내 종료]([택시에 탔어요]가 곧 재시도 대신 다음 단계) |
 | 사이 상태 30초 초과(복귀 시) | 준비 작업이 끝나지 않음 | 그 단계의 `failed`로 |
 | 어느 단계든 | 「안내 종료」 | 여정 전체 종료(D11), 보관 `Task` 취소, 다음 단계 없음 |
@@ -477,4 +477,4 @@ heading 구조(구현 접근성 감사): 변형이 둘이면 선택 버튼 둘�
 
 **검증**: 서버·Kit·앱 웹 레인(vitest 전체·tsc·lint), Kit `swift test` 전체, 앱 두 구성 빌드. 실호출: ODsay 3건(라우트 A만·B만·둘 다), 카카오 약 260건·Tmap 약 64건(게이트 + 라우트). 예선 게이트(역 11곳, 비교 8그룹 — 위원장 실조회 역을 공공 역으로 바꿔 재측정) 놓침 0, 측정 불가 0, 운영 감축 폭 k=2 놓침 1(BACKLOG E70 편승). 같은 역 반경: 같은 이름·다른 노선 정류 45쌍(복합체 최대 427m < 500 ≤ 신촌 705m)을 fixture로 잠금. 리뷰: 서버·Kit spec 준수·코드 품질(opus) 각 MAJOR 3, 앱 spec 준수·코드 품질(opus) 각 MAJOR 4, 접근성 감사(opus) BLOCKER 1·MAJOR 10 — 새 문안이 필요한 것 외 전부 반영, 문안 판정 요청 7건(구현 보고 디렉터리 `judgment-*`, 판정 18은 채택 반영). 보고 원본은 저장소 밖 `~/gildongmu-wt/e70-impl-reports/`.
 
-**문안 판정 반영**(2026-10-17, 세션 e70-wording — 판정 19~27): 새 키 9(§8.4 표), 앱 배선 `GuideSessionCoordinator`(도착 문장·동기 거부 다리 문장)·`BeaconModel`(`markChained(bridgesStartFailure:)` — 시작 실패 원인 + 다리 문장 한 통지)·`JourneyResultRows`(정류장 줄·노선 머리말)·`TransitTrackingSheet`(「다음 구간」)·`DirectionsTabView`(지우기 버튼·최근 경로 여정 문장, 활성화와 같은 조건), Kit `JourneyVariant.boardsAtBusStop`·`alightsAtBusStop`·`journeyLineLabel`·`journeyNeedsLineQualifier`·`journeyLineQualifiers`·`journeyRecommendedTitleIsBoardSide`·`journeyQualifiedStationName`. 배선은 소스 가드 `e70-journey-wording-guard.test.ts`, 순수 판정은 Kit `JourneyTests`가 잠근다. 리뷰(보고 `~/gildongmu-wt/e70-wording-reports/review-*`): 접근성 감사(opus) MAJOR 1(다리 문장 창구)·MINOR 3, 코드 리뷰(opus) MAJOR 1(최근 경로 줄 언어 조건)·MINOR 6 — 「지우기」 뒤 통지 없음(선례와 같음)과 정류장 「승차역」(편승) 외 반영.
+**문안 판정 반영**(2026-10-17, 세션 e70-wording — 판정 19~27): 새 키 9(§8.4 표), 앱 배선 `GuideSessionCoordinator`(도착 문장·단계 표식)·`BeaconModel`(`markChained(bridgesStartFailure:)` — 시작 실패 원인 + 다리 문장 한 통지, 상태 줄은 원인만)·`prepareJourneyStage`(`waitsForWalkSpeech` — 그 통지 끝까지 대중교통 시작 대기)·`JourneyResultRows`(정류장 줄·노선 머리말)·`TransitTrackingSheet`(「다음 구간」)·`DirectionsTabView`(지우기 버튼·최근 경로 여정 문장, 활성화와 같은 조건), Kit `JourneyVariant.boardsAtBusStop`·`alightsAtBusStop`·`journeyLineLabel`·`journeyNeedsLineQualifier`·`journeyLineQualifiers`·`journeyRecommendedTitleIsBoardSide`·`journeyQualifiedStationName`. 배선은 소스 가드 `e70-journey-wording-guard.test.ts`, 순수 판정은 Kit `JourneyTests`가 잠근다. 리뷰(보고 `~/gildongmu-wt/e70-wording-reports/review-*`): 접근성 감사(opus) MAJOR 1(다리 문장 창구)·MINOR 3, 코드 리뷰(opus) MAJOR 1(최근 경로 줄 언어 조건)·MINOR 6 — 「지우기」 뒤 통지 없음(선례와 같음)과 정류장 「승차역」(편승) 외 반영. 재리뷰(opus, `b7771c45..8067d60c`) MAJOR 1(합친 통지가 대중교통 시작 통지에 끊김 → 통지 끝 대기)·MINOR 5(동기 거부 다리 문장 삭제, 상태 줄 원인만, Kit 노선 비교를 서버 순서 + `lineHintMatches` 이식·공유 fixture 전수, 승차 쪽 반례) 반영. 승차 전 도보 선례(`endPrewalk .startFailed`, 정식판)의 같은 창구 문제는 정식판 동작이라 범위 밖(보고).

@@ -71,6 +71,9 @@ final class GuideSession {
     private var journeyTask: Task<Void, Never>?
     /// 사이 상태에 들어간 시각(복귀 시 30초 상한 판정, §6.3). 잠자기 중에도 전진하는 시계.
     private var journeyTransitionAt: ContinuousClock.Instant?
+    /// 접근 도보 시작 실패 뒤 대중교통 시작이 도보 모델의 통지(원인 + 다리 문장)를 기다리는 상한(ms). 두 문장이 VoiceOver 기본
+    /// 속도로 4~6초라 여유를 두고, 사이 상태 상한(`JourneyTuning.staleTransitionSeconds` 30초)보다 충분히 짧다.
+    private static let walkSpeechWaitLimitMs = 8_000
     /// `startJourneyStage`가 `beginBeacon`을 부르는 동안 true — 거기서 건 종료 훅을 `cancelPrewalk()`가 지우지 않게.
     private var launchingJourneyStage = false
     /// 동기 거부로 온 시작 실패는 `beacon.lastFailure`(지난 세션의 원인)를 실패 시트에 쓰지 않는다.
@@ -357,8 +360,10 @@ final class GuideSession {
     func advanceJourney(_ event: JourneyEvent, token: JourneyToken) {
         guard let state = journey else { return }
         // 접근 도보를 시작하지 못하면 대중교통으로 넘어간다 — 다리 문장(판정 27)은 도보 모델이 원인 문장 뒤에 붙여 한 통지로
-        // 낸다(`markChained(bridgesStartFailure:)`). 원인 문장이 없는 동기 거부만 여기서 같은 도보 창구로 낸다.
-        let accessRefused = ignoreFailureCause && state.phase == .running(.access) && event == .stageEnded(.startFailed)
+        // 낸다(`markChained(bridgesStartFailure:)`). 대중교통 시작은 그 통지가 끝나기를 기다린다 — 600ms 인계 뒤 시작 통지가
+        // 긴 두 문장을 끊지 않게. 동기 거부(`ignoreFailureCause`)는 원인 문장이 없고(거부 게이트가 「이미 안내 중」을 냈다)
+        // 이어지는 대중교통도 같은 이유로 거부되므로 다리 문장도 기다림도 없다.
+        let accessBridged = !ignoreFailureCause && state.phase == .running(.access) && event == .stageEnded(.startFailed)
         switch journeyStep(state, event, token: token) {
         case .ignore:
             return
@@ -371,10 +376,8 @@ final class GuideSession {
                 journeyFailure = nil
                 // 버튼 사건은 아직 도는 단계 세션을 멈춘다 — 그 종료 콜백은 낡은 token이라 버려진다.
                 if event == .taxiDropped || event == .taxiBoarded, beacon.isTracking || beacon.starting { beacon.stop() }
-                if accessRefused, stage == .transit {
-                    beacon.announceNow(appLocalized("transitGuide.prewalkUnavailable"), highPriority: true)
-                }
-                prepareJourneyStage(stage, token: next.token, delayed: event != .retry)
+                prepareJourneyStage(
+                    stage, token: next.token, delayed: event != .retry, waitsForWalkSpeech: accessBridged)
             case .running(let stage):
                 journeyTransitionAt = nil
                 startJourneyStage(stage, token: next.token)
@@ -398,12 +401,25 @@ final class GuideSession {
     /// 사이 상태의 준비: 인계 지연(첫 시작·재시도는 없음) → 접근 도보면 그때 위치로 30m 판정(D6) → `prepared`.
     /// 택시 단계는 미리 측위하지 않는다 — 자동차 세션이 첫 fix로 스스로 경로를 조회하고(§6.3 "택시 세션의 경로"),
     /// 측위 실패는 그 세션의 `.startFailed`로 온다.
-    private func prepareJourneyStage(_ stage: JourneyStage, token: JourneyToken, delayed: Bool) {
+    private func prepareJourneyStage(
+        _ stage: JourneyStage, token: JourneyToken, delayed: Bool, waitsForWalkSpeech: Bool
+    ) {
         journeyTask?.cancel()
         journeyTransitionAt = .now
         journeyTask = Task { @MainActor [weak self] in
             if delayed { try? await Task.sleep(for: .milliseconds(JourneyTuning.handoffDelayMs)) }
             guard !Task.isCancelled, let self else { return }
+            // 도보 모델의 통지(원인 + 다리 문장)가 끝날 때까지 — 안내 시트 첫 정보 행 착지(E57)와 같은 장부·상한 계측.
+            // VoiceOver가 꺼져 있으면 장부에 적히지 않으므로 기다리지 않는다.
+            if waitsForWalkSpeech, UIAccessibility.isVoiceOverRunning {
+                var waited = 0
+                while !self.beacon.announcementsSettled, waited < Self.walkSpeechWaitLimitMs {
+                    try? await Task.sleep(for: .milliseconds(100))
+                    guard !Task.isCancelled else { return }
+                    waited += 100
+                }
+                guideDiagLog("journey accessFailSpeechWait ms=\(waited) open=\(GuideSpeechOutput.openAnnouncements)")
+            }
             var ready = stage
             if stage == .access, let board = self.journeyPlan?.variant.boardStation {
                 // 측위 실패면 걷기 안내를 시작한다(그 세션이 도착을 판정한다) — 빠진 안내보다 군더더기가 낫다.

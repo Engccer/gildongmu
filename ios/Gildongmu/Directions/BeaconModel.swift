@@ -1392,14 +1392,16 @@ final class BeaconModel {
         lastFailure = (key, resolution)
         // 승차 전 도보면 사유 뒤에 "대중교통 안내는 시작하지 않았다"를 **두 문장**으로 잇는다(A54 위원장 판정: 완결 문장 둘은
         // 쉼표 결합이 아니라 마침표). 사유 키는 상태 줄 겸용이라 마침표가 없어 문장 틀 키가 로케일별 마침표를 든다.
-        // 여정 접근 도보의 시작 실패(`starting` 중의 실패만 — 걷던 중 끊김은 `stopAndFail`이 `stop()` 뒤에 부른다)도 같은 틀로
-        // 다리 문장을 붙인다(판정 27). 대중교통 창구로 따로 내면 그 재생기는 세션 전이라 백그라운드에서 버려지고, 전경에선 같은
-        // 턴에 게시돼 이 원인 문장을 끊는다(A54와 같은 이유).
-        let journeyBridge = starting && journeyChain?.bridgesStartFailure == true
         statusText = prewalkCancelled
-            ? appLocalized("ios.beacon.prewalkCancelledWith", appLocalized(key))
-            : journeyBridge ? appLocalized("ios.journey.accessFailedWith", appLocalized(key)) : appLocalized(key)
-        announce(statusText, highPriority: highPriority, speechClass: .actionable)
+            ? appLocalized("ios.beacon.prewalkCancelledWith", appLocalized(key)) : appLocalized(key)
+        // 여정 접근 도보의 시작 실패(`starting` 중의 실패만 — 걷던 중 끊김은 `stopAndFail`이 `stop()` 뒤에 부른다)는 통지에만
+        // 다리 문장을 붙인다(판정 27). 대중교통 창구로 따로 내면 그 재생기는 세션 전이라 백그라운드에서 버려지고, 전경에선 같은
+        // 턴에 게시돼 이 원인 문장을 끊는다. 상태 줄(`statusText`, 길찾기 탭에 남는다)은 원인만 — 「…바로 넘어갑니다」는
+        // 대중교통이 끝난 뒤엔 거짓 진행형이 된다. 대중교통 시작은 이 통지가 끝나기를 기다린다(`prepareJourneyStage`).
+        let journeyBridge = starting && journeyChain?.bridgesStartFailure == true
+        announce(
+            journeyBridge ? appLocalized("ios.journey.accessFailedWith", appLocalized(key)) : statusText,
+            highPriority: highPriority, speechClass: .actionable)
     }
 
     /// 중지. 어느 경로로 불려도 idle timer가 반드시 풀리도록 먼저 해제한다

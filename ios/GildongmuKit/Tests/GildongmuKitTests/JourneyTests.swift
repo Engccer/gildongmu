@@ -273,6 +273,24 @@ private let allEvents: [JourneyEvent] =
         #expect(!journeySameLine("경의중앙선", "수도권 2호선"))
     }
 
+    private struct LineNameFile: Decodable {
+        struct Case: Decodable { let a: String; let b: String; let same: Bool }
+        let cases: [Case]
+    }
+
+    /// 서버 `sameLine`과 같은 표본(웹 `station-identity.test.ts`가 같은 파일을 돈다) — 양방향.
+    @Test func sameLineSharedFixture() throws {
+        var url = URL(fileURLWithPath: #filePath)
+        for _ in 0..<5 { url.deleteLastPathComponent() }
+        url.appendPathComponent("src/lib/__tests__/fixtures/journey-line-names.json")
+        let file = try JSONDecoder().decode(LineNameFile.self, from: Data(contentsOf: url))
+        #expect(!file.cases.isEmpty)
+        for c in file.cases {
+            #expect(journeySameLine(c.a, c.b) == c.same, "\(c.a) ↔ \(c.b)")
+            #expect(journeySameLine(c.b, c.a) == c.same, "\(c.b) ↔ \(c.a)")
+        }
+    }
+
     private func stop(_ name: String, _ line: String?, _ lat: Double, _ lng: Double) -> JourneyStopIdentity {
         JourneyStopIdentity(name: name, line: line, lat: lat, lng: lng)
     }
@@ -361,6 +379,16 @@ private let allEvents: [JourneyEvent] =
         let lines = journeyLineQualifiers(result, board: gongdeok, alight: sinchonGyeongui)
         #expect(lines == JourneyLineQualifiers(board: false, alight: true))
         #expect(!journeyRecommendedTitleIsBoardSide(rec, board: gongdeok, alight: sinchonGyeongui, lines: lines))
+    }
+
+    /// 탈것이 둘 이상이어도 승차 쪽은 첫 탈것으로 가른다(재리뷰 m5 — `.first` → `.last` 변이 검출).
+    @Test func boardHomonymUsesFirstVehicleAmongSeveral() {
+        let rec = variant(.recommended, [
+            leg("subway", "신촌", "충정로", line: "수도권 2호선", at: (37.5552, 126.9369), end: (37.5600, 126.9636)),
+            leg("subway", "충정로", "광화문", line: "수도권 5호선", at: (37.5600, 126.9636), end: (37.5710, 126.9768)),
+        ])
+        let result = JourneyResult(variants: [rec], designatedMissing: JourneyDesignatedMissing(side: .board))
+        #expect(journeyLineQualifiers(result, board: sinchonGyeongui, alight: nil) == JourneyLineQualifiers(board: true))
     }
 
     @Test func busSideIsNeverQualified() {
