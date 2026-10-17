@@ -340,12 +340,14 @@ describe("3. 안내 세션 진입점이 늘지 않았다", () => {
   const ENTRY_CALL =
     /(?:beacon\.(?:toggle|restart)|(?:session|self)\.startBeacon|(?<!func )beginBeacon|GuideSession\.shared\.startJourney)\(/g;
 
-  it("안내 세션 진입점 호출이 정확히 10곳이다", () => {
+  // A68(2026-10-17)이 정밀 위치 재시작 호출을 둘로 나눴다(`GuideSession.restartBeacon` 안: 승차 전 도보 연결을 다시 건
+  // 재시작과 그냥 재시작). 진입점은 같은 버튼 하나이고 정식판 도달 판정도 같다 — 아래 "8"이 그 한 버튼을 잠근다.
+  it("안내 세션 진입점 호출이 정확히 11곳이다", () => {
     const sites = swiftFiles(IOS_DIR).flatMap((file) => {
       const hits = readFileSync(file, "utf8").match(ENTRY_CALL) ?? [];
       return hits.map(() => file);
     });
-    expect(sites).toHaveLength(10);
+    expect(sites).toHaveLength(11);
   });
 
   /**
@@ -385,7 +387,7 @@ describe("3. 안내 세션 진입점이 늘지 않았다", () => {
     const hits = swiftFiles(IOS_DIR).flatMap(
       (file) => readFileSync(file, "utf8").match(/beacon\.restart\([^)]*\)/g) ?? [],
     );
-    expect(hits).toEqual(["beacon.restart()"]);
+    expect(hits).toEqual(["beacon.restart()", "beacon.restart()"]);
   });
 });
 
@@ -409,8 +411,7 @@ describe("7. 여정(E70) — 실험판 봉인과 내부 인계", () => {
 
   it("거부 가드 없는 시작 본문의 호출자는 공개 시작·내부 인계·여정 단계뿐이다", () => {
     expect(callersOf(session(), "beginBeacon(")).toEqual(["beginTransit", "launchJourneyBeacon", "startBeacon"]);
-    // `restartBeacon`(A68): 승차 전 도보로 시작했던 세션의 정밀 위치 재시작 — 본문 첫 줄이 `refuseIfActive`다(아래 "8").
-    expect(callersOf(session(), "beginTransit(")).toEqual(["restartBeacon", "startJourneyStage", "startTransit"]);
+    expect(callersOf(session(), "beginTransit(")).toEqual(["startJourneyStage", "startTransit"]);
     expect(callersOf(session(), "launchJourneyBeacon(")).toEqual(["startJourneyStage"]);
     expect(callersOf(session(), "startJourneyStage(")).toEqual(["advanceJourney"]);
   });
@@ -464,9 +465,14 @@ describe("7. 여정(E70) — 실험판 봉인과 내부 인계", () => {
 describe("8. 정밀 위치 재시작은 승차 전 도보를 대중교통까지 잇는다(A68)", () => {
   const session = () => readFileSync(GUIDE_SESSION, "utf8");
   const clean = () => blankSwiftCommentsAndStrings(session());
+  /** 그 식별자를 부르는 선언(func) 이름들(§7의 같은 이름 함수와 같다). */
+  function callersOf(source: string, call: string): string[] {
+    const names = [...source.matchAll(/func\s+(\w+)/g)].map((m) => m[1]);
+    return names.filter((name) => declarationBody(source, name).includes(call)).sort();
+  }
 
   it("길찾기 탭은 모델을 직접 재시작하지 않고 세션 소유자의 재시작 창구 하나를 정밀 위치 허용 뒤에 부른다", () => {
-    expect(directions()).not.toContain("beacon.restart(");
+    expect(blankSwiftCommentsAndStrings(directions())).not.toMatch(/\.restart\(/);
     const sites = enclosingHeaders(directions(), "session.restartBeacon()");
     expect(sites).toHaveLength(1);
     const headers = sites[0].join("\n");
@@ -474,35 +480,50 @@ describe("8. 정밀 위치 재시작은 승차 전 도보를 대중교통까지 
     expect(headers).toContain(".precise");
   });
 
-  it("모델 재시작(`beacon.restart()`)은 앱 전체에서 재시작 창구 안 한 곳뿐이다", () => {
+  it("모델 재시작(`.restart()`)은 앱 전체에서 재시작 창구 안뿐이다(받는 이름이 `beacon`이 아니어도)", () => {
     const files = swiftFiles(IOS_DIR).filter((file) =>
-      blankSwiftCommentsAndStrings(readFileSync(file, "utf8")).includes("beacon.restart("),
+      /\.restart\(/.test(blankSwiftCommentsAndStrings(readFileSync(file, "utf8"))),
     );
     expect(files).toEqual([GUIDE_SESSION]);
-    expect(declarationBody(session(), "restartBeacon")).toContain("beacon.restart()");
+    expect(clean().match(/\.restart\(/g)).toHaveLength(2);
+    expect(declarationBody(session(), "restartBeacon").match(/beacon\.restart\(\)/g)).toHaveLength(2);
   });
 
-  it("재시작 창구: 거부 게이트가 먼저, 승차 전 도보였으면 대중교통 시작을 다시 돌리고 아니면 도보 인자 한 벌", () => {
+  it("재시작 창구: 거부 게이트가 먼저, 걷기는 언제나 모델이 든 인자, 승차 전 도보였으면 그 앞에 연결을 다시 건다", () => {
     const body = declarationBody(session(), "restartBeacon");
     // 진행 중인 대중교통·여정이 있으면 도보로 되돌아가지 않는다 — 어느 갈래보다 앞이어야 한다.
     expect(body).toMatch(/^\{\s*guard !refuseIfActive\(\) else \{ return \}/);
-    expect(body).toMatch(/if let context = prewalkRestart \{\s*beginTransit\([^]*\} else \{\s*beacon\.restart\(\)\s*\}/);
-    // 같은 연결을 재현한다: 대중교통 시작 인자 다섯을 컨텍스트에서 그대로 옮긴다(A13 — 다시 조립하지 않는다).
-    for (const arg of ["context.route", "context.destinationLabel", "context.destinationRoman", "context.dest", "context.accessible"]) {
-      expect(body, arg).toContain(arg);
+    expect(body).toMatch(/guard let context = prewalkRestart else \{\s*beacon\.restart\(\)\s*return\s*\}/);
+    expect(body).toMatch(/launchPrewalk\([^]*\{\s*beacon\.restart\(\)\s*\}/);
+    // 세션 중 바꾼 목적지·경유지·줄이 모델의 시작 인자에 동기화돼 있다 — 여기서 걷기 인자를 조립하거나 대중교통 시작 본문을
+    // 다시 돌리면(그 안에서 새 요청을 만든다) 그것이 처음 값으로 되돌아간다(A13 동형).
+    for (const banned of ["StartRequest(", "beginTransit(", "beginBeacon(", "startBeacon("]) {
+      expect(body, banned).not.toContain(banned);
     }
+    // A67 대기 창의 대중교통 시작을 취소한 뒤 연결을 다시 건다(순서가 거꾸로면 새 연결을 지운다).
+    expect(body.indexOf("cancelPrewalk()")).toBeGreaterThan(-1);
+    expect(body.indexOf("cancelPrewalk()")).toBeLessThan(body.indexOf("launchPrewalk("));
+    expect(callersOf(session(), "launchPrewalk(")).toEqual(["beginTransit", "restartBeacon"]);
   });
 
-  it("재시작 컨텍스트는 비콘의 직전 시작 인자와 짝이다: 승차 전 도보 시작이 쓰고, 그 밖의 비콘 시작·모든 시작 진입이 지운다", () => {
-    // 쓰는 자리는 셋뿐이다(승차 전 도보 시작 한 곳 + 지우는 두 곳). 도보 세션 종료(`endPrewalk`)는 지우지 않는다 — 실패 뒤에 쓰인다.
-    expect(clean().match(/\bprewalkRestart = /g)).toHaveLength(3);
-    const transit = declarationBody(session(), "beginTransit");
-    const set = transit.indexOf("prewalkRestart = context");
-    expect(set).toBeGreaterThan(transit.indexOf("cancelPrewalk()"));
-    expect(set).toBeLessThan(transit.indexOf("beginBeacon("));
-    expect(declarationBody(session(), "cancelPrewalk")).toContain("prewalkRestart = nil");
+  it("연결 한 벌: 표식·종료 훅·시작 문장은 launchPrewalk 한 곳에서 걸린다", () => {
+    const body = declarationBody(session(), "launchPrewalk");
+    for (const needle of ["beacon.markPrewalk(", "beacon.onSessionEnd =", "transitPrewalkStartLine(", "startWalk()"]) {
+      expect(body, needle).toContain(needle);
+    }
+    expect(body.indexOf("beacon.markPrewalk(")).toBeLessThan(body.indexOf("startWalk()"));
+    expect(clean().match(/beacon\.markPrewalk\(/g)?.length).toBe(2); // + 여정 접근 도보(startJourneyStage)
+  });
+
+  it("재시작 컨텍스트는 비콘의 직전 시작 인자와 짝이다: 바뀌는 자리에서만 쓰고 지운다", () => {
+    // 세우는 자리 하나(승차 전 도보 시작 — 여정 안이면 비운다), 지우는 자리 하나(승차 전 도보가 아닌 비콘 시작).
+    expect(clean().match(/\bprewalkRestart\s*=/g)).toHaveLength(2);
+    expect(declarationBody(session(), "launchPrewalk")).toContain("prewalkRestart = journey == nil ? context : nil");
     expect(declarationBody(session(), "beginBeacon")).toMatch(/if !launchingPrewalk \{ prewalkRestart = nil \}/);
-    expect(declarationBody(session(), "endPrewalk")).not.toContain("prewalkRestart");
+    // 비콘을 시작하지 않는 진입·종료는 지우지 않는다 — 지우면 길찾기 탭에 남은 실패 줄의 재시작이 연결 없는 도보가 된다.
+    for (const name of ["cancelPrewalk", "endPrewalk", "startOuting", "finishJourney"]) {
+      expect(declarationBody(session(), name), name).not.toContain("prewalkRestart");
+    }
   });
 });
 

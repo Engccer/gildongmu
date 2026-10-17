@@ -748,8 +748,8 @@ final class BeaconModel {
     /// ⚠ 저장된 시작 인자가 없으면 **아무것도 하지 않는다.** 추측 기본값으로 시작하면
     /// 사용자가 고르지 않은 수단·경로로 안내가 시작되고, 그것이 A13이 만든 증상 그
     /// 자체다. 추적 중에도 no-op이다 — 이 함수는 시작이지 토글이 아니다.
-    /// 호출자는 `GuideSession.restartBeacon` 하나다 — 승차 전 도보의 재시작은 도보 인자만으로는 대중교통 연결을 재현하지
-    /// 못해 그쪽이 대중교통 시작을 다시 돌린다(A68).
+    /// 호출자는 `GuideSession.restartBeacon` 하나다 — 승차 전 도보의 재시작은 이 인자만으로는 대중교통 연결을 재현하지
+    /// 못해 그쪽이 연결(표식·종료 훅)을 먼저 다시 건다(A68).
     func restart() {
         guard !isTracking, let request = lastStartRequest else { return }
         begin(request)

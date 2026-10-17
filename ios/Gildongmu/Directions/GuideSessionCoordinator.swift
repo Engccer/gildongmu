@@ -48,12 +48,23 @@ final class GuideSession {
         let destinationRoman: String?
         let dest: BeaconDest
         let accessible: Bool
+        /// 승차역 표시 라벨(ko·en 쌍)과 도보 분 — 도보 세션 표식·시작 문장이 읽는다(재시작이 같은 문장을 다시 낸다, A68).
+        let station: TransitLabel
+        let minutes: Int
+
+        /// 같은 연결의 새 세대(A68 재시작) — 옛 도보 세션의 늦은 콜백이 새 연결을 소비하지 않게 `id`만 바꾼다.
+        func renewed() -> PrewalkContext {
+            PrewalkContext(
+                id: UUID(), route: route, destinationLabel: destinationLabel, destinationRoman: destinationRoman,
+                dest: dest, accessible: accessible, station: station, minutes: minutes)
+        }
     }
     private var prewalk: PrewalkContext?
-    /// 직전 비콘 시작이 승차 전 도보였으면 그 연결 컨텍스트(A68). 길찾기 탭 [정확한 위치 허용]의 재시작(`restartBeacon`)이
-    /// 도보 인자 한 벌(모델 재시작)이 아니라 이 대중교통 시작을 다시 돌려, 승차 전 도보 → 대중교통으로 잇는다.
-    /// `prewalk`와 달리 도보 세션이 끝나도 남는다(쓰이는 때가 실패 뒤다). 비콘의 `lastStartRequest`와 짝이라 승차 전 도보가
-    /// 아닌 비콘 시작(`beginBeacon`)과 모든 시작 진입의 `cancelPrewalk`가 지운다.
+    /// 비콘의 직전 시작이 승차 전 도보였으면 그 연결 컨텍스트(A68). 길찾기 탭 [정확한 위치 허용]의 재시작(`restartBeacon`)이
+    /// 이 연결을 다시 걸고 모델이 든 시작 인자로 걷기를 다시 시작해, 승차 전 도보 → 대중교통으로 잇는다. `prewalk`와 달리
+    /// 도보 세션이 끝나도 남는다(쓰이는 때가 실패 뒤다). 비콘의 `lastStartRequest`와 짝이라 그것이 바뀌는 자리, 곧 승차 전 도보가
+    /// 아닌 비콘 시작(`beginBeacon`)과 여정 안의 승차 전 도보(`launchPrewalk`)에서만 지운다 — 비콘을 시작하지 않는 진입(나들이·
+    /// 승차 전 도보 없는 대중교통)이 지우면 길찾기 탭에 남은 실패 줄의 재시작이 연결 없는 도보가 된다.
     private var prewalkRestart: PrewalkContext?
     private var prewalkTask: Task<Void, Never>?
     /// `startTransit`의 prewalk 경로가 `startBeacon`을 부르는 동안 true — 그 호출의 취소 게이트가
@@ -196,11 +207,6 @@ final class GuideSession {
                 dest: dest, accessible: accessible)
             return
         }
-        let context = PrewalkContext(
-            id: UUID(), route: route, destinationLabel: destinationLabel, destinationRoman: destinationRoman,
-            dest: dest, accessible: accessible)
-        prewalk = context
-        prewalkRestart = context
         // 표시 라벨은 ko·en 쌍(E27 잔여 ①).
         //
         // ⚠ **도보 세션의 목적지 라벨(`label:`)도 같은 이름을 쓴다.** 종전 주석은 그 자리를
@@ -212,17 +218,32 @@ final class GuideSession {
         // 바뀌었나"를 의심하게 된다 — 이름이 통째로 한국어인 것보다 나쁘다.
         let stationLabel = transitPrewalkLabel(target)
         let walkLabel = transitGuideIsEn ? (stationLabel.en ?? stationLabel.ko) : stationLabel.ko
-        beacon.markPrewalk(target: stationLabel)
+        let context = PrewalkContext(
+            id: UUID(), route: route, destinationLabel: destinationLabel, destinationRoman: destinationRoman,
+            dest: dest, accessible: accessible, station: stationLabel, minutes: target.minutes)
+        launchPrewalk(context) {
+            beginBeacon(BeaconModel.StartRequest(
+                // 역 라벨은 이미 통지 언어로 골랐다(`walkLabel`) — 라틴 표기를 따로 싣지 않는다.
+                dest: BeaconDest(lat: target.lat, lng: target.lng), label: walkLabel, labelRoman: nil, kind: .walk,
+                accessible: accessible, variant: nil, line: nil, alternate: nil,
+                waypoint: nil, carListener: nil))  // 승차역까지의 도보에 경유지는 없다
+        }
+    }
+
+    /// 승차 전 도보 연결을 걸고 도보 세션을 시작한다 — 대중교통 시작(`beginTransit`)과 정밀 위치 재시작(`restartBeacon`, A68)이
+    /// 같은 표식·같은 종료 훅·같은 시작 문장을 쓴다. `startWalk`는 도보 세션 시작 하나다(새 요청, 또는 모델이 든 인자의 재시작).
+    private func launchPrewalk(_ context: PrewalkContext, startWalk: () -> Void) {
+        prewalk = context
+        // 여정 안의 승차 전 도보는 재시작 대상이 아니다 — 여정 재시도는 실패 시트의 [경로 다시 조회]가 맡고(E70 §6.3), 여정이
+        // 끝난 뒤 남으면 여정 없는 대중교통이 시작된다. 비콘 시작 인자는 곧 바뀌므로 옛 컨텍스트도 남기지 않는다.
+        prewalkRestart = journey == nil ? context : nil
+        beacon.markPrewalk(target: context.station)
         beacon.onSessionEnd = { [weak self] reason in self?.endPrewalk(context.id, reason: reason) }
         transit.announceExternal(TransitGuideTextRenderer.render(
             transitPrewalkStartLine(
-                isEn: transitGuideIsEn, station: stationLabel, minutes: target.minutes)), speechClass: .actionable)
+                isEn: transitGuideIsEn, station: context.station, minutes: context.minutes)), speechClass: .actionable)
         launchingPrewalk = true
-        beginBeacon(BeaconModel.StartRequest(
-            // 역 라벨은 이미 통지 언어로 골랐다(`walkLabel`) — 라틴 표기를 따로 싣지 않는다.
-            dest: BeaconDest(lat: target.lat, lng: target.lng), label: walkLabel, labelRoman: nil, kind: .walk,
-            accessible: accessible, variant: nil, line: nil, alternate: nil,
-            waypoint: nil, carListener: nil))  // 승차역까지의 도보에 경유지는 없다
+        startWalk()
         launchingPrewalk = false
         // 동기 거부(requestStart 게이트)면 시작 Task가 없어 실패 콜백도 없다 — 여기서 잇는다.
         if !beacon.starting, !beacon.isTracking { endPrewalk(context.id, reason: .startFailed) }
@@ -298,23 +319,27 @@ final class GuideSession {
     /// 낡은 연결 폐기 — 모든 시작 진입·여정 종료에서. 추적 중인 도보 세션은 건드리지 않는다.
     private func cancelPrewalk() {
         prewalk = nil
-        prewalkRestart = nil
         prewalkTask?.cancel()
         prewalkTask = nil
         beacon.clearPrewalk()
     }
 
     /// 길찾기 탭 [정확한 위치 허용] 뒤 재시작(A13·A68) — 그 버튼이 부르는 유일한 경로. 대중교통·여정이 진행 중이면 거부한다
-    /// (「이미 안내 중」, 도보로 되돌아가지 않는다). 직전 비콘 시작이 승차 전 도보였으면 그 대중교통 시작을 다시 돌려 같은 시작
-    /// 문장·같은 연결로 승차 전 도보 → 대중교통을 잇고, 아니면 모델이 든 시작 인자 한 벌로 다시 시작한다(인자를 다시 조립하지
-    /// 않는다, A13).
+    /// (「이미 안내 중」, 도보로 되돌아가지 않는다). 걷기는 언제나 모델이 든 시작 인자 한 벌로 다시 시작한다 — 세션 중 바꾼
+    /// 목적지·경유지·줄이 거기 동기화돼 있다(인자를 다시 조립하지 않는다, A13). 비콘의 직전 시작이 승차 전 도보였으면 그 앞에
+    /// 연결(표식·종료 훅·시작 문장)을 다시 걸어, 도착하면 대중교통으로 잇는다.
     func restartBeacon() {
         guard !refuseIfActive() else { return }
-        if let context = prewalkRestart {
-            beginTransit(
-                route: context.route, destinationLabel: context.destinationLabel,
-                destinationRoman: context.destinationRoman, dest: context.dest, accessible: context.accessible)
-        } else {
+        transit.clearWalkHandoff()
+        outing.clearEnd()
+        guard let context = prewalkRestart else {
+            beacon.restart()
+            return
+        }
+        // 시작 실패 뒤 대중교통 시작이 통지 끝을 기다리는 창(A67)이면 그 대기를 취소한다 — 걷기가 다시 시작되므로
+        // 대중교통은 도착(또는 다시 실패)한 뒤에 선다.
+        cancelPrewalk()
+        launchPrewalk(context.renewed()) {
             beacon.restart()
         }
     }
