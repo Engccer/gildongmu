@@ -132,6 +132,9 @@ public func journeyStep(_ state: JourneyState, _ event: JourneyEvent, token: Jou
         return go(.transitioning(to: state.shape.hasEgressWalk ? .egress : .taxiOut))
     case (.running(.transit), .transitStopped):
         return .end
+    // 대중교통 세션이 서지 않았다(경로 변환 실패·불변식 위반) — 세션 없는 running에 남지 않게 실패 시트로(재시도 가능).
+    case (.running(.transit), .stageEnded(.startFailed)):
+        return go(.failed(at: .transit))
 
     case (.running(.egress), .stageEnded(.arrived)), (.running(.egress), .taxiBoarded):
         return go(.transitioning(to: .taxiOut))

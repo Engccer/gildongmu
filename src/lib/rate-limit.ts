@@ -250,6 +250,11 @@ export function reserveJourneyTmap(ip: string, now: number, cost: number): Journ
   return journeyTmapBudget.reserve(ip, now, cost);
 }
 
+/** 이 IP의 여정 Tmap 버킷이 이미 다 찼는가(무기록). 차 있으면 라우트가 ODsay·카카오 호출 전에 429로 거절한다. */
+export function journeyIpExhausted(ip: string, now: number): boolean {
+  return journeyTmapBudget.ipCount(ip, now) >= JOURNEY_TMAP_IP_LIMIT;
+}
+
 /** 여정 Tmap 일 상한 소진 여부(무기록). 소진이면 라우트가 ODsay·카카오 호출 전에 503으로 거절한다. */
 export function journeyTmapExhausted(now: number): boolean {
   return journeyTmapBudget.exhausted(now);

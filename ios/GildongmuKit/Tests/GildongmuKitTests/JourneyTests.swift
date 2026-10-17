@@ -65,6 +65,7 @@ private let rows: [JourneyRow] = [
     // running(transit)
     JourneyRow(phase: .running(.transit), event: .rideCompleted, expect: .next(.transitioning(to: .egress))),
     JourneyRow(phase: .running(.transit), event: .transitStopped, expect: .end),
+    JourneyRow(phase: .running(.transit), event: .stageEnded(.startFailed), expect: .next(.failed(at: .transit))),
     // running(egress)
     JourneyRow(phase: .running(.egress), event: .stageEnded(.arrived), expect: .next(.transitioning(to: .taxiOut))),
     JourneyRow(phase: .running(.egress), event: .taxiBoarded, expect: .next(.transitioning(to: .taxiOut))),

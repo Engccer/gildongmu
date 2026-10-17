@@ -3,7 +3,7 @@ import { z } from "zod";
 import { hasKakaoKey, hasOdsayKey, hasTmapKey } from "@/lib/env";
 import { isInKorea } from "@/lib/coverage";
 import { coordSchema } from "@/lib/route-coord-schema";
-import { clientIpFromHeaders, journeyTmapExhausted, reserveJourneyTmap } from "@/lib/rate-limit";
+import { clientIpFromHeaders, journeyIpExhausted, journeyTmapExhausted, reserveJourneyTmap } from "@/lib/rate-limit";
 import { getJourney, journeyDeps } from "@/lib/journey/assemble";
 
 /**
@@ -79,6 +79,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ budgetExhausted: true }, { status: 503 });
   }
   const ip = clientIpFromHeaders(request.headers);
+  // 이 IP의 버킷이 이미 찼으면 유료 ODsay를 부르기 전에 거절한다(남은 칸이 이번 비용보다 모자란 경우는 예약이 가른다).
+  if (journeyIpExhausted(ip, Date.now())) {
+    return NextResponse.json({ error: "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요." }, { status: 429 });
+  }
   try {
     const outcome = await getJourney(
       {

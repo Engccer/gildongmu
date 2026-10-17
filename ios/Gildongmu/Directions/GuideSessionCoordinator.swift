@@ -34,7 +34,8 @@ final class GuideSession {
     /// 경유지 지원 조건(N4): 비콘(도보·자동차) 세션 추적 중 ∧ ko 데이터 로케일(상세 경로
     /// 조회 자체가 ko 전용이라 그 밖에선 경유지가 의미 없다). 대중교통 세션은 제외(ODsay
     /// 미지원). 장소 상세 버튼과 안내 시트 버튼이 같은 게이트를 본다.
-    var waypointAvailable: Bool { beacon.isTracking && AppLanguage.dataLocale == "ko" }
+    /// 여정(E70) 단계 세션은 제외 — 경유지가 여정 계획(택시 목적지 = 승차역)과 갈라진다.
+    var waypointAvailable: Bool { beacon.isTracking && AppLanguage.dataLocale == "ko" && journey == nil }
 
     private var walkHandoffTask: Task<Void, Never>?
 
@@ -72,6 +73,8 @@ final class GuideSession {
     private var journeyTransitionAt: ContinuousClock.Instant?
     /// `startJourneyStage`가 `beginBeacon`을 부르는 동안 true — 거기서 건 종료 훅을 `cancelPrewalk()`가 지우지 않게.
     private var launchingJourneyStage = false
+    /// 동기 거부로 온 시작 실패는 `beacon.lastFailure`(지난 세션의 원인)를 실패 시트에 쓰지 않는다.
+    private var ignoreFailureCause = false
 
     private init() {}
 
@@ -231,6 +234,11 @@ final class GuideSession {
                     transitRoute: context.route, destinationLabel: context.destinationLabel,
                     destinationRoman: context.destinationRoman,
                     dest: context.dest, accessible: context.accessible, prewalkCompleted: true)
+                // 여정의 대중교통 단계인데 세션이 서지 않았으면 세션 없는 running에 남지 않게 실패 시트로.
+                if !self.transit.isTracking, let journey = self.journey, case .running(.transit) = journey.phase {
+                    guideDiagLog("journey prewalkTransitStartFailed")
+                    self.advanceJourney(.stageEnded(.startFailed), token: journey.token)
+                }
             }
         case .startFailed:
             // 도보 안내가 불가해도 대중교통 안내는 가능하다 — 도보 문맥은 유지(아직 걷지 않았다).
@@ -243,7 +251,7 @@ final class GuideSession {
             // 여정의 대중교통 단계인데 세션이 서지 않았으면(경로 변환 실패) 세션 없는 running에 남지 않게 끝낸다.
             if !transit.isTracking, let journey, case .running(.transit) = journey.phase {
                 guideDiagLog("journey prewalkTransitStartFailed")
-                advanceJourney(.transitStopped, token: journey.token)
+                advanceJourney(.stageEnded(.startFailed), token: journey.token)
             }
         case .userStopped, .ended:
             // 여정(A 미지정)의 첫 단계가 승차 전 도보였으면 대중교통 세션은 시작되지 않으므로 여정도 끝난다(D11).
@@ -334,7 +342,8 @@ final class GuideSession {
         journeyFailure = nil
         journey = state
         guard case .transitioning(let first) = state.phase else { return }
-        prepareJourneyStage(first, token: state.token, delayed: false)
+        // 첫 단계는 준비할 것이 없다(인계 지연·접근 도보 판정은 단계 사이의 일) — 곧바로 시작해 여정 시트가 한 턴 끼지 않게.
+        advanceJourney(.prepared(first), token: state.token)
     }
 
     /// 시트 버튼(「택시에서 내렸어요」·「택시에 탔어요」·[경로 다시 조회]·[안내 종료])의 입구 — 누른 순간의 token을 싣는다.
@@ -369,7 +378,8 @@ final class GuideSession {
                 journeyTransitionAt = nil
                 // 그 모델이 낸 원인 문장(권한·정밀 위치)과 해결 수단을 보존한다 — 이미 통지했으므로 다시 말하지 않고 시트 상태
                 // 줄과 버튼이 쓴다. 시작 실패도 같다(`begin`이 시작마다 `lastFailure`를 비우므로 이번 시도의 원인이다).
-                journeyFailure = event == .stageEnded(.ended) || event == .stageEnded(.startFailed)
+                journeyFailure = !ignoreFailureCause
+                    && (event == .stageEnded(.ended) || event == .stageEnded(.startFailed))
                     ? beacon.lastFailure : nil
                 // 준비가 30초를 넘긴 실패는 어느 모델도 말하지 않았다 — 띠바로 최소화돼 있어도 들리게 한 번 낸다.
                 if event == .staleTimeout {
@@ -455,7 +465,7 @@ final class GuideSession {
             // 불변식: 단계 세션 부재를 위에서 확인했으므로 대중교통 시작은 거부되지 않는다(§6.4). 깨지면 남기고 끝낸다.
             if !transit.isTracking, !beacon.isTracking, !beacon.starting {
                 guideDiagLog("journey transitStartInvariantBroken")
-                finishJourney(stopSessions: false)
+                advanceJourney(.stageEnded(.startFailed), token: token)
             }
         case .egress:
             guard let option = plan.egress else { return advanceJourney(.stageEnded(.startFailed), token: token) }
@@ -483,10 +493,13 @@ final class GuideSession {
             variant: nil, line: nil, alternate: nil, waypoint: nil,
             carListener: kind == .car ? .passenger : nil))
         launchingJourneyStage = false
-        // 동기 거부면 시작 Task가 없어 실패 콜백도 없다 — 여기서 잇는다(승차 전 도보 동형).
+        // 동기 거부면 시작 Task가 없어 실패 콜백도 없다 — 여기서 잇는다(승차 전 도보 동형). `begin`을 지나지 않아
+        // `lastFailure`가 지난 세션의 원인이므로 그것을 실패 시트에 쓰지 않는다.
         if !beacon.starting, !beacon.isTracking {
             beacon.clearPrewalk()
+            ignoreFailureCause = true
             advanceJourney(.stageEnded(.startFailed), token: token)
+            ignoreFailureCause = false
         }
     }
 

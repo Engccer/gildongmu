@@ -27,8 +27,8 @@ const TMAP_CAP = 120;
 
 /** 하차역 → 목적지(공공 명소). 역 좌표·목적지 좌표는 카카오 키워드 1순위로 잡는다. */
 const SAMPLES = [
-  { station: "대방", dest: "여의도 IFC몰" },
-  { station: "개봉", dest: "구로구청" },
+  { station: "시청", dest: "덕수궁" },
+  { station: "여의도", dest: "국회의사당" },
   { station: "강남", dest: "코엑스" },
   { station: "서울", dest: "서울대학교병원" },
   { station: "잠실", dest: "올림픽공원" },

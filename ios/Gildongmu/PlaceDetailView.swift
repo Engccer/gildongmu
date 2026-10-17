@@ -231,7 +231,9 @@ struct PlaceDetailView<DomainSection: View>: View {
             }
             // 안내 중에만(N1 spec §2.5): 진행 중인 세션의 목적지를 이 장소로 바꾼다. 비콘은 같은 세션의 경로 재획득,
             // 대중교통은 2단(후보 선택)이라 준비만 하고 통지한다 — 시트를 자동으로 올리지 않는다(설계 리뷰 M3).
-            if showsDirectionsEntry, guideSession.beacon.isTracking || guideSession.transit.isTracking {
+            // 여정(E70) 중엔 없다 — 목적지가 여정 계획의 일부라 바꾸면 다음 단계가 옛 계획으로 이어진다.
+            if showsDirectionsEntry, guideSession.journey == nil,
+               guideSession.beacon.isTracking || guideSession.transit.isTracking {
                 Button(appLocalized("guide.changeDestHere")) {
                     let dest = BeaconDest(lat: place.lat, lng: place.lng)
                     if guideSession.beacon.isTracking {

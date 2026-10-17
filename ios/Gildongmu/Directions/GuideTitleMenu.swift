@@ -16,12 +16,15 @@ struct GuideTitleMenu: View {
     let heading: String
     let label: String
     let onShowDetail: () -> Void
-    let onChangeDestination: () -> Void
+    /// nil이면 「목적지 바꾸기」 항목이 없다 — 여정(E70) 단계 세션은 목적지가 여정 계획의 일부라 바꾸지 않는다.
+    let onChangeDestination: (() -> Void)?
 
     var body: some View {
         Menu(joinText(heading, label)) {
             Button(appLocalized("ios.guide.destMenuDetail"), action: onShowDetail)
-            Button(appLocalized("ios.guide.destMenuChange"), action: onChangeDestination)
+            if let onChangeDestination {
+                Button(appLocalized("ios.guide.destMenuChange"), action: onChangeDestination)
+            }
         }
         .accessibilityAddTraits(.isHeader)
     }

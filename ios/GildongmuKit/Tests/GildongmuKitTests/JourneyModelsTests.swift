@@ -10,6 +10,22 @@ private func decodeResult(_ json: String) throws -> JourneyResult {
 }
 
 @Suite struct JourneyModelsTests {
+    /// 실호출 응답 그대로(2026-10-17 `/api/route/journey` 둘 다 지정 — 홍대입구 2호선 승차 → 잠실 2호선 하차, 공공 지점)를
+    /// 디코딩한다. 손 fixture만으로는 서버가 필드를 바꿔도 잡지 못한다(최종 교차 검토 MINOR-7).
+    @Test func liveResponseDecodes() throws {
+        let result = try JSONDecoder().decode(JourneyResult.self, from: fixture("journey-live-both"))
+        let variant = try #require(result.variants.first)
+        #expect(variant.kind == .designated)
+        #expect(variant.boardStation?.name == "홍대입구")
+        #expect(variant.alightStation?.name == "잠실")
+        #expect(variant.taxiIn?.provider == "tmap")
+        #expect(variant.transit.legs.map(\.mode) == ["subway"])
+        let option = try #require(variant.egress?.options.first)
+        #expect(option.kind == .exit)
+        #expect(option.placeName.hasPrefix("잠실역"))
+        #expect(variant.totals.transitFare == variant.transit.summary.fare)
+    }
+
     @Test func fixtureDecodes() throws {
         let result = try JSONDecoder().decode(JourneyResult.self, from: fixture("journey-result"))
         #expect(result.designatedMissing == nil)

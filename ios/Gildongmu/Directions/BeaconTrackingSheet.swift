@@ -248,7 +248,8 @@ struct BeaconTrackingSheet: View {
                         ),
                         label: model.destinationLabel,
                         onShowDetail: { showPlaceDetail = true },
-                        onChangeDestination: { changeDestPresented = true })
+                        // 여정 단계(E70)는 목적지가 계획의 일부다 — 바꾸면 다음 단계가 옛 계획으로 이어진다.
+                        onChangeDestination: GuideSession.shared.journey == nil ? { changeDestPresented = true } : nil)
                 } trailing: {
                     GuideMinimizeButton(action: onMinimize)
                 }

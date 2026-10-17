@@ -3534,7 +3534,9 @@ final class BeaconModel {
     /// 어디서도 전달되지 않았다. 여기선 이 모델의 재생기가 원복 다리 동안 오디오 세션을 쥐고, 버려지면 복귀 상환(추적 가드
     /// 앞)이 `statusText` 꼬리로 갚는다.
     private func stopAndFail(with status: Status, key: String, resolution: FailResolution = .none) {
-        let prewalk = prewalkTarget != nil  // stop() 앞 캡처(A25 §4.2)
+        // stop() 앞 캡처(A25 §4.2). 여정(E70)의 접근 도보는 끊겨도 대중교통 단계로 넘어가므로(spec §6.1) "대중교통 안내는
+        // 시작하지 않았다" 꼬리를 붙이지 않는다.
+        let prewalk = prewalkTarget != nil && journeyChain == nil
         let leftEndScreen = stopLeavingSummary(playStopTone: false, text: appLocalized(key))
         // 종료 화면이 남지 않으면 시트가 닫히며 VoiceOver가 아래 화면으로 커서를 옮기고 그 라벨을 읽는다 — 실패 사유는 착지
         // 라벨로 대체될 수 없어 `.high`(CLAUDE.md 통지 우선순위 판별선, 접근성 감사 L4). 종료 화면이 남으면 착지가 사유를 읽는다.

@@ -62,6 +62,13 @@ describe("여정 Tmap 예산 — IP 버킷 + 인스턴스 일 상한(spec §4.5-
     expect(budget.ipCount("fresh", 100)).toBe(0);
   });
 
+  it("버킷이 찬 IP는 ipCount가 한도와 같다(라우트 선판정 근거)", () => {
+    const budget = createJourneyTmapBudget();
+    budget.reserve("a", 0, 16);
+    expect(budget.ipCount("a", 1)).toBe(JOURNEY_TMAP_IP_LIMIT);
+    expect(budget.ipCount("a", WINDOW)).toBe(0);
+  });
+
   it("IP 버킷 거절은 일 카운터를 올리지 않는다", () => {
     const budget = createJourneyTmapBudget();
     budget.reserve("a", 0, 16);

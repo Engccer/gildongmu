@@ -162,7 +162,9 @@ struct TransitTrackingSheet: View {
                                     detailLineHint = nil
                                     detailPlace = guideDestinationPlace(dest: dest, label: model.destinationLabel)
                                 },
-                                onChangeDestination: { changeDestPresented = true })
+                                // 여정 단계(E70)는 하차역·출구가 계획의 일부다 — 목적지를 바꾸지 않는다.
+                                onChangeDestination: GuideSession.shared.journey == nil
+                                    ? { changeDestPresented = true } : nil)
                         } trailing: {
                             GuideMinimizeButton(action: onMinimize)
                         }

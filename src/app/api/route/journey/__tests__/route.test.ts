@@ -10,6 +10,7 @@ vi.mock("@/lib/rate-limit", () => ({
   clientIpFromHeaders: vi.fn(() => "1.2.3.4"),
   reserveJourneyTmap: vi.fn(() => "ok"),
   journeyTmapExhausted: vi.fn(() => false),
+  journeyIpExhausted: vi.fn(() => false),
 }));
 vi.mock("@/lib/journey/assemble", () => ({
   journeyDeps: {},
@@ -19,7 +20,7 @@ vi.mock("@/lib/journey/assemble", () => ({
 import { GET } from "../route";
 import { hasTmapKey } from "@/lib/env";
 import { getJourney } from "@/lib/journey/assemble";
-import { journeyTmapExhausted } from "@/lib/rate-limit";
+import { journeyIpExhausted, journeyTmapExhausted } from "@/lib/rate-limit";
 
 const BASE = { origin: "37.5559,126.9723", dest: "37.5716,126.9764" };
 
@@ -92,6 +93,12 @@ describe("GET /api/route/journey", () => {
     const res = await GET(req({ board: "37.5574,126.9561", boardName: "아현역" }));
     expect(res.status).toBe(503);
     expect(await res.json()).toEqual({ budgetExhausted: true });
+    expect(getJourney).not.toHaveBeenCalled();
+  });
+
+  it("IP 버킷이 이미 찼으면 조회 전에 429", async () => {
+    vi.mocked(journeyIpExhausted).mockReturnValueOnce(true);
+    expect((await GET(req({ board: "37.5574,126.9561", boardName: "아현역" }))).status).toBe(429);
     expect(getJourney).not.toHaveBeenCalled();
   });
 

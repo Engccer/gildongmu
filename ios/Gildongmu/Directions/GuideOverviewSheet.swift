@@ -383,7 +383,8 @@ final class TransitOverviewAdapter: GuideOverviewCapability, Identifiable {
     }
 
     var overviewActions: [GuideOverviewAction] {
-        guard model.overview?.alternativesOffered == true else { return [] }
+        // 여정(E70)의 대중교통 단계는 하차역·출구가 계획의 일부라 다른 경로로 바꾸지 않는다.
+        guard model.overview?.alternativesOffered == true, GuideSession.shared.journey == nil else { return [] }
         return [GuideOverviewAction(
             id: Self.altRoutesActionId, label: appLocalized("transitGuide.viewAlternatives"),
             presents: .transitAltRoutes)]
