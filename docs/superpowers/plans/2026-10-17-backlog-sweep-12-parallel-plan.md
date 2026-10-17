@@ -63,3 +63,9 @@
 사본 `~/.claude/parallel-sessions/gildongmu/<이름>.prompt.txt`, 보고 `~/gildongmu-wt/<이름>-reports/`(단계별 새 파일 `start`·`integrating`·`done`·`blocked`·`judgment` + `-<YYYYmmddHHMM>.md`, 리뷰 `review-*`, `base.sha`). 보고는 파일과 `SendMessage` 둘 다. **위원장에게 직접 묻지 않는다**: 판정이 필요하면 `judgment-*.md`에 쉬운 한국어로 질문·선택지·각 선택지에서 위원장이 듣게 될 문장을 적어 통보하고, 기본값으로 진행할 수 있으면 진행한다. 코디네이터가 위원장에게 묻고 답을 전한다.
 
 ## 6. 정정 (코디네이터가 재현해 확인한 것)
+
+- **09:25, 관측 `4b9ec59f`: `small-14` 종료.** A66·A61(소스 추적으로 증상 확인)·A63(Chrome 접근성 트리 실측)·안드로이드 늘 참 단언 교체. 변경 파일이 소유 목록 안임을 확인, 창·worktree 정리. CLAUDE.md 반영 요청 없음.
+- **위원장 판정(E70 진행 중)**: 판정 18 「{역}역에서 내리는 경로」 채택. 실기기: 메인 `4b9ec59f`로 실험판·공식판 두 구성 설치(아이폰 잠금이라 자동 실행만 실패).
+- **10:25, 관측 `76044e59`: `e70-impl` 종료(DONE_WITH_CONCERNS).** 통합 `76044e59`, 게이트 전부 통과, ODsay 3건(상한 10)·카카오 약 300·Tmap 약 77. 소유 밖 최소 수정 5파일(`RouteBriefing`·`GuideTitleMenu`·`GuideOverviewSheet`·`PlaceDetailView`·`briefing-station-entry-guard.test.ts`)은 여정 nil이면 불변이라 수용. 창·worktree 정리.
+- **위원장 판정(E70 열린 판정 1~9, 같은 시각)**: 1 출구 이름 도착 문장 · 2 최근 경로에 역 이름 덧붙임 · 3 「갈아탈 역 지우기」 버튼 하나 · 4 완료 알림 현행 · 5 버스판 문장 둘 · 6 여정 하차 직후 버튼 이름을 「다음 구간」으로(통지 현행) · 7 숨김 현행 · 8 동명 이역일 때만 노선 병기 · 9 다리 문장 싣기. 반영은 새 세션 `e70-wording`(opus·high, base `76044e59`).
+- **`CLAUDE.md` 반영(코디네이터)**: `e70-impl` 요청 중 ODsay 줄 교체·통합 카탈로그 여정 행. 「화면 배치를 바꾸면 … 첫 성공 수단 heading으로 1회 이동」 정정 권고는 **기각**: 웹 `DirectionsView.tsx`(첫 성공 heading 1회 포커스)와 iOS `DirectionsTabView.swift` 주석이 현행이라 문장이 참이다. 77.3KB/80KB.
