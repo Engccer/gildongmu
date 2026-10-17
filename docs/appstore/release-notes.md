@@ -12,6 +12,73 @@
 
 ---
 
+## 2.2 (빌드 33)
+
+기준은 2.1 아카이브 커밋 `49c47afb`(빌드 32, 2026-10-04 제출, 2026-10-05 `READY_FOR_SALE` 확인)이며 그 이후 `ios/` 커밋 42건(10차·11차·12차 소화)을 판정했다. Release 바이너리에 도달하면서 iOS 사용자가 알아차리는 것만 담는다. 2.2인 이유: 목록 밀기 버튼·이름 링크·고정 항목 순서 바꾸기·자동차 경유지 예고가 새로 들어온다. 이 버전부터 앱이 서버 옵트인 `/api/nearby/overview?places=1`·`/api/station/subway-arrival/nearby?coords=1`을 읽는다(2026-10-17 프로덕션 실호출로 ko·en 두 값 확인).
+
+포함 판정:
+
+| 기능 | 커밋 | 노트 |
+|---|---|---|
+| **목록 밀기 버튼**(E72) — 장소 목록 행의 오른쪽 전화·길찾기, 왼쪽 주소 복사·물어보기, VoiceOver 동작 순서, 목록 행 딥링크 제거. 역·정류소 제목 동작(E65가 로터로 넣고 E72가 밀기로) | `1ce4cb42`·`8b9c3958`·`dd041d10`·`410c4710` · `a37bced8`·`434d4378`·`8f723092`·`791879c2` | ko·en. 역·정류소 제목 줄과 딥링크 문장은 위원장 문안 확정에서 뺐다(요약+예시) |
+| **이름 링크**(E72·E65) — 한눈에 보기·브리핑 지하철 줄·대중교통 안내 상태 문장·채팅 산문의 장소·역 이름, 경유역 전화 밀기 | `1ce4cb42`·`a260359b`·`8b9c3958` | ko·en |
+| **고정 항목 순서 바꾸기**(E67) | `b4e3aefa`·`6757624c` | ko·en |
+| **자동차 경유지 접근 예고**(N4) | `19c86b06`·`4deb2bbe`·`0c6cdade` | **ko만**(자동차 안내 ko 게이트, Release 시작 버튼이 `waypoint`를 넘긴다) |
+| 길찾기 섹션 순서 빠른 쪽 위(E64) | `eb096906` | ko·en |
+| 상세 복귀 재조회 생략(A64·A66) | `05d089a9`·`b886d5fa` | ko·en |
+| 이탈 재조회 버튼 노출 조건과 자동 실패 문장(E69) | `8a6cc8af`·`d4b1306c` | ko·en |
+| 승차 전 도보 시작 실패 통지(A67) | `7eb4ac9b`·`67674769`·`46e8dcc1` | ko·en. 오류 수정 |
+| [정확한 위치 허용]이 대중교통까지 잇고 탄 뒤 거둠(A68) | `f7a97675`·`5e0478d6`·`4343d5bb`·`41128a3c` | ko·en. 오류 수정 |
+| 언어 변경 시 프리필 재조회(A61) | `66e6c92b` | ko·en. 오류 수정 |
+
+제외 근거:
+
+- **여정**(E70 `b7129d30`·`47d22016`·`6d8a44a9`·`af86c5d2`·`b09c8a6f`·`b49652c9`·`fe9c5fa2`·`ba240f29`·`28b34445`·`b523dcda`의 여정 분): `experimentalJourneyEnabled` 뒤. 공유 표면 `DirectionsTabView`의 여정 진입·결과·최근 경로 여정 문장이 전부 그 플래그로 가드됨을 소스로 확인. **탭 순서**(E66 `3ff1ef84`): `experimentalTabOrderEnabled` 뒤.
+- **출처 이름 표기**(A60 `0da39c7d`, E58 ⑦ `ebab1ae0`): 표기 보강이라 기능이 늘지 않는다(2.1의 `7c824663` 선례).
+- **건너는 길 이름 졸업의 앱 정리**(`b2fcb281`): 문장은 서버 판본 2라 2.1에 이미 닿았고 앱은 플래그 삭제뿐이다.
+- **동작 변경 0**: 문서·테스트 커밋(`f249f96f` 등).
+
+심사 노트는 **승계한다**(`--review-notes` 미사용): 새 권한·새 데이터 유형·새 제3자가 없고(전화 걸기는 기존 E45 창구), §9 어느 문장도 이번 변경으로 거짓이 되지 않는다. 개인정보 3자 일치에 닿는 변경도 없다.
+
+### ko
+
+```
+새로운 기능
+- 각종 목록에서 스와이프 동작을 정리했습니다. 예를 들어, 검색 결과와 내 주변의 장소 목록에서 행을 밀면 버튼이 나옵니다. 오른쪽으로 밀면 전화 걸기와 여기까지 길찾기, 왼쪽으로 밀면 주소 복사와 물어보기입니다. VoiceOver에서는 위아래 쓸기를 통해 동작을 선택할 수 있습니다.
+- 둘러보기의 한눈에 보기, 경로 설명의 지하철 구간, 대중교통 안내 화면의 상태 문장, AI 채팅 답변에 나온 장소와 역 이름을 누르면 상세 화면이 열립니다. VoiceOver에서는 그 줄에서 위아래 쓸기로 선택할 수 있습니다.
+- 고정해 둔 최근 검색어와 경로, 장소의 순서를 바꿀 수 있습니다. VoiceOver에서는 위아래 쓸기로 맨 위로, 위로, 아래로를 고를 수 있습니다.
+- 자동차 안내가 경유지 도착 1분쯤 전에 남은 거리를 한 번 알려 드립니다.
+
+개선
+- 길찾기 결과에서 도보와 대중교통 중 더 빠른 경로가 맨 위에 나옵니다.
+- 내 주변 목록에서 장소 상세를 보고 돌아오면 다시 불러오지 않고 보던 위치에서 이어 볼 수 있습니다.
+- 길을 벗어났을 때 경로 다시 조회 버튼이 꼭 필요할 때만 나오도록 정리했습니다. 새 경로를 자동으로 찾지 못하면 그 사실도 알려 드립니다.
+
+오류 수정
+- 대중교통 안내에서 승차역까지 걷는 구간을 안내하지 못할 때 안내 음성이 중간에 끊기던 문제를 고쳤습니다.
+- 정확한 위치가 꺼져 승차역까지 걷는 구간 안내가 멈췄을 때 정확한 위치 허용을 누르면, 걷기 안내를 다시 시작하고 대중교통 안내까지 이어 갑니다.
+- 언어를 바꾸면 여기까지 길찾기로 찾은 경로를 한 번 더 조회하던 문제를 고쳤습니다.
+```
+
+### en
+
+```
+New
+- Swipe actions in lists have been reorganized. For example, swipe a row in search results or a Nearby place list to see buttons: swipe right for Call and Directions to here, and swipe left for Copy address and Ask about. With VoiceOver, swipe up or down to choose an action.
+- Tap a place or station name in At a glance in Look around, in subway segments of route descriptions, in the status line on the transit guidance screen, or in AI chat answers to open its details. With VoiceOver, swipe up or down on that line to choose it.
+- You can reorder pinned recent searches, routes, and places. With VoiceOver, swipe up or down to choose Move to top, Move up, or Move down.
+
+Improvements
+- In Directions results, the faster route, walking or transit, now appears at the top.
+- When you return from place details to a Nearby list, the list is not reloaded and you can continue where you left off.
+- When you stray from the route, the Re-query route button now appears only when it is really needed. If no new route can be found automatically, the app tells you.
+
+Fixes
+- Fixed an issue where spoken guidance was cut off when walking guidance to the transit boarding stop could not start.
+- If walking guidance to the boarding stop stopped because precise location was off, tapping Allow Precise Location now restarts the walk and continues into transit guidance.
+- Fixed an issue where changing the language queried a route found with Directions to here again.
+```
+
 ## 2.1 (빌드 32)
 
 기준은 2.0 아카이브 커밋 `5d57aad0`(빌드 30, 2026-10-01 제출, 2026-10-02 `READY_FOR_SALE` 확인)이며 그 이후 `ios/` 커밋 37건(8차·9차 소화)을 판정했다. Release 바이너리에 도달하면서 iOS 사용자가 알아차리는 것만 담는다. 빌드 31은 2026-10-04 업로드·초안 연결까지 했다가 위원장 문안 확정(첫 총평 문장 삭제)과 A59(설정 "백그라운드 음성 안내" 설명에서 정식판에 없는 나들이 구절 제거, 노트 대상 아님)를 싣기 위해 제출 없이 빌드 32로 교체했다. 2.1인 이유: 도보 횡단·이탈 안내와 자동차 짧은 안내의 동작이 여럿 바뀐다. 이 버전부터 앱이 서버 도보 판본 2(`wording=2`)와 자동차 기하 응답의 `at`·`toward`를 읽는다(2026-10-04 프로덕션 실호출로 두 값 확인: 카카오 도보 1건·Tmap 자동차 1건).
