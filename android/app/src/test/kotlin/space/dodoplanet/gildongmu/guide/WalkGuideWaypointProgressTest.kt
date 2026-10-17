@@ -135,6 +135,9 @@ class WalkGuideWaypointProgressTest {
     @Test fun `프로파일 — 도보 튜닝 원본을 쓴다(경유지 접근 예고를 끄는 사본 금지)`() {
         val model = Fixtures.repoRoot.resolve("android/app/src/main/kotlin/space/dodoplanet/gildongmu/guide/WalkGuideModel.kt").readText()
         assertTrue(model.contains("private val tuning = GuideTuning.walk\n"))
-        assertFalse(model.contains("waypointApproachM = null"))
+        // 사본은 생성자나 copy로만 만들어진다(경유지 접근 예고 필드는 non-null이라 값으로는 가를 수 없다).
+        for (copying in listOf("GuideTuning(", "GuideTuning.walk.copy(", "tuning.copy(")) {
+            assertFalse(model.contains(copying), copying)
+        }
     }
 }
