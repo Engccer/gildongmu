@@ -1,5 +1,7 @@
 # 백로그 12차 소화: 병렬 세션 계획 (2026-10-17)
 
+> **종료 상태(2026-10-17 12:10)**: 전 세션 통합 완료, 창·worktree·`feat/*` 0. `small-14` `4b9ec59f`(A66·A61·A63·D34) · `e70-impl` `76044e59`(E70 첫 판) · `e70-wording` `b523dcda`(E70 판정 18~27). 실기기 `b523dcda` 두 구성 설치. 미러링 실기기 확인: A61 통과, A66·A64 화면 쪽 통과, E72 ③ 일부 통과(§2 행에 기록). 남은 위원장 판정: E72 ①②(VoiceOver, 정식판 아카이브 문턱) · E70 FIELD-TEST §6-3 · N4 자동차. 새 결함 A67(정식판 승차 전 도보 다리 문장 창구).
+
 코디네이터 `gildongmu-f4 [d7e740]`. 절차 정본은 `parallel-sessions` 스킬(Claude Code 분기). 이 문서가 세션 착수 프롬프트보다 상세하고 우선한다. 위원장 판정의 정본은 `docs/BACKLOG.md`의 각 항목이다. 위원장 지시(2026-10-17): "남은 백로그도 처리하고 실기기에 배포해 줘."
 
 설계 리뷰 판정: 계획 문서라 적대적 설계 리뷰 대상이 아니다(E70은 spec이 이미 codex 2회·빌더 점검을 거쳤다).
@@ -69,3 +71,5 @@
 - **10:25, 관측 `76044e59`: `e70-impl` 종료(DONE_WITH_CONCERNS).** 통합 `76044e59`, 게이트 전부 통과, ODsay 3건(상한 10)·카카오 약 300·Tmap 약 77. 소유 밖 최소 수정 5파일(`RouteBriefing`·`GuideTitleMenu`·`GuideOverviewSheet`·`PlaceDetailView`·`briefing-station-entry-guard.test.ts`)은 여정 nil이면 불변이라 수용. 창·worktree 정리.
 - **위원장 판정(E70 열린 판정 1~9, 같은 시각)**: 1 출구 이름 도착 문장 · 2 최근 경로에 역 이름 덧붙임 · 3 「갈아탈 역 지우기」 버튼 하나 · 4 완료 알림 현행 · 5 버스판 문장 둘 · 6 여정 하차 직후 버튼 이름을 「다음 구간」으로(통지 현행) · 7 숨김 현행 · 8 동명 이역일 때만 노선 병기 · 9 다리 문장 싣기. 반영은 새 세션 `e70-wording`(opus·high, base `76044e59`).
 - **`CLAUDE.md` 반영(코디네이터)**: `e70-impl` 요청 중 ODsay 줄 교체·통합 카탈로그 여정 행. 「화면 배치를 바꾸면 … 첫 성공 수단 heading으로 1회 이동」 정정 권고는 **기각**: 웹 `DirectionsView.tsx`(첫 성공 heading 1회 포커스)와 iOS `DirectionsTabView.swift` 주석이 현행이라 문장이 참이다. 77.3KB/80KB.
+- **12:00, 관측 `b523dcda`: `e70-wording` 종료.** 판정 18~27 반영(재판정 ①최근 경로 여정만 짧게 ②버스로 끝나면 「내린 정류장에서」), 확인 리뷰 MAJOR 0, 게이트 전부 초록. 범위 밖 관찰 ①은 BACKLOG A67로 등재, ②(실패 통지가 도착 문장을 대체할 수 있음)는 FIELD-TEST §6-3 행. CLAUDE.md 선택 1줄은 반영하지 않는다(spec §8.4·소스 가드가 정본, 여유 2.7KB 보존). 창·worktree 정리.
+- **미러링 실기기 확인(코디네이터, 위원장 지시 "실기기 판정은 아이폰 미러링으로")**: VoiceOver 낭독은 미러링으로 관측 불가(스킬 `iphone-mirroring-control` voiceover-narration). 화면 쪽만 판정해 BACKLOG A61·§2 E65·E72 행에 기록. 밀기는 CGEvent 가로 스크롤(`wheel2`)로 재현된다: 도로명 행은 끝까지 밀기가 발동해 주소 복사가 실행된다.
