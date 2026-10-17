@@ -73,7 +73,7 @@ A64가 지하철역·버스·둘러보기 세 목록만 `NearbyLoadCore.appear()
 
 ✅ **2026-10-17 처리**: Kit `NearbyLoadCore`가 표식 `notePushed()`(목록이 있을 때만)와 등장 진입점 `appear()`(표식 1회 소비 뒤 생략)를 갖고, 세 화면은 `.task`를 `appear()`로 넘기고 push한 화면이 나타날 때 표식만 알린다(`:kit` 미러 동반). 탭 전환 복귀와 새로고침은 종전대로 조회한다. 상세를 띄운 채 탭이나 앱을 떠났다 돌아와 뒤로 가는 복귀도 "상세에서 돌아온 것"이라 생략한다(표식에 시간 상한 없음, 낡은 도착 시각은 새로고침). 같은 증상이 있는 나머지 내 주변 목록(아이 놀 곳·무장애·소아 진료·행사 등)은 판정 범위 밖이라 그대로다(한 줄씩 옮기면 같은 규칙이 된다) → A66.
 
-### A63. 채팅 출처 줄의 쉼표가 줄 가운데 `aria-hidden` span이라 출처가 둘 이상이면 객체가 갈린다 (🆕 2026-10-05, small-13 a11y 리뷰 관찰, 웹) — 낮음
+### A63. 채팅 출처 줄의 쉼표가 줄 가운데 `aria-hidden` span이라 출처가 둘 이상이면 객체가 갈린다 (🆕 2026-10-05, small-13 a11y 리뷰 관찰, 웹) — 낮음 · ✅ 코드 종결(2026-10-17, 세션 `small-14`, CHANGELOG 같은 날)
 
 `src/components/chat/SourceList.tsx`가 출처 사이 쉼표를 `aria-hidden` span으로 둔다. 숨김 노드가 줄 가운데 있으면 StaticText가 갈려(메모리 `aria-hidden-span-mid-line-splits-static-text`) 출처가 둘 이상인 답변에서 출처 줄이 여러 객체로 읽힌다. 처방 후보: 출처가 링크가 아니면 `joinText` 한 줄, 링크면 쉼표를 링크 밖 텍스트 노드로. 판정은 Chrome 접근성 트리 실측으로(jsdom 불가). 출처 `~/gildongmu-wt/small-13-reports/review-a11y-202610050444.md`.
 

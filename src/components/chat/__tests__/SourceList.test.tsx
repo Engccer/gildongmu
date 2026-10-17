@@ -60,4 +60,35 @@ describe("SourceList", () => {
     expect(container.textContent).toContain("source.tago");
     expect(screen.queryByRole("link")).toBeNull();
   });
+
+  // A63: 줄 가운데 숨긴 노드·출처별 노드가 있으면 접근성 객체가 갈린다(판정 정본은 Chrome 접근성 트리 실측,
+  // 여기서는 그 원인인 DOM 모양만 잠근다).
+  it("링크 없는 출처 여럿은 텍스트 노드 하나다", () => {
+    const { container } = render(
+      <SourceList sources={[{ label: "source.kakao" }, { label: "source.airkorea" }, { label: "source.tago" }]} />,
+    );
+    const p = container.querySelector("p")!;
+    expect(p.childNodes).toHaveLength(1);
+    expect(p.textContent).toBe("sources source.kakao, source.airkorea, source.tago");
+    expect(container.querySelector("[aria-hidden]")).toBeNull();
+  });
+
+  it("링크가 섞이면 쉼표는 링크 밖 텍스트 노드에 붙고 숨기지 않는다", () => {
+    const { container } = render(
+      <SourceList
+        sources={[
+          { label: "source.kakao" },
+          { label: "source.perplexity", url: "https://www.perplexity.ai" },
+          { label: "source.airkorea" },
+        ]}
+      />,
+    );
+    const p = container.querySelector("p")!;
+    expect(Array.from(p.childNodes).map((n) => (n.nodeType === 3 ? `t:${n.textContent}` : `a:${n.textContent}`))).toEqual([
+      "t:sources source.kakao, ",
+      "a:source.perplexity",
+      "t:, source.airkorea",
+    ]);
+    expect(container.querySelector("[aria-hidden]")).toBeNull();
+  });
 });
