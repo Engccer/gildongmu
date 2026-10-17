@@ -122,9 +122,9 @@ describe("getJourney — 승차역 지정(A)", () => {
     // 탈것 구성이 같아 한 변형으로 접힌다.
     const noStops = { ...synth("p0"), legs: synth("p0").legs.map((l) => ({ ...l, stops: l.mode === "walk" ? undefined : [] })) };
     const d2 = deps({ candidates: vi.fn(async (p) => ({ ranked: p.modeAxis ? [synth("s0")] : [noStops] })) });
-    const one = await getJourney({ from: FROM, to: TO, board: a }, d2, okReserve()).catch((e) => e);
+    const one = await getJourney({ from: FROM, to: TO, board: a }, d2, okReserve());
     // 접힌 변형은 지정 역 경로 쪽이 남는다(정류 좌표가 있는 쪽).
-    if (one instanceof Error || one.kind !== "ok") throw one;
+    if (one.kind !== "ok") throw new Error(one.kind);
     expect(one.result.variants.map((v) => [v.kind, v.transit.routeKey])).toEqual([["designated", "s0"]]);
   });
 
