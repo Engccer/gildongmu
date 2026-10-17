@@ -1118,8 +1118,14 @@
   "android.guide.waypointSkipped": [
     "label"
   ],
+  "android.journey.arrivedExit": [
+    "exit"
+  ],
   "android.journey.arrivedStation": [
     "station"
+  ],
+  "android.journey.arrivedStop": [
+    "stop"
   ],
   "android.journey.designatedHeading": [
     "station"
@@ -1150,6 +1156,13 @@
     "minutes",
     "fare"
   ],
+  "android.journey.recentTransfer": [
+    "station"
+  ],
+  "android.journey.recentTransferBoth": [
+    "board",
+    "alight"
+  ],
   "android.journey.recommendedHeading": [
     "station"
   ],
@@ -1164,6 +1177,11 @@
   ],
   "android.journey.taxiIn": [
     "station",
+    "minutes",
+    "fare"
+  ],
+  "android.journey.taxiInStop": [
+    "stop",
     "minutes",
     "fare"
   ],

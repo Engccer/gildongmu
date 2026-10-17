@@ -356,6 +356,8 @@ final class GuideSession {
     /// 늦게 도착한 콜백·조회 완료·인계 지연은 seq 불일치로 버려진다(spec §6.3 "전이는 원자적으로 예약한다").
     func advanceJourney(_ event: JourneyEvent, token: JourneyToken) {
         guard let state = journey else { return }
+        // 접근 도보를 시작하지 못하면 대중교통으로 넘어간다 — 승차 전 도보 선례의 다리 문장을 낸다(판정 9).
+        let accessStartFailed = state.phase == .running(.access) && event == .stageEnded(.startFailed)
         switch journeyStep(state, event, token: token) {
         case .ignore:
             return
@@ -368,6 +370,10 @@ final class GuideSession {
                 journeyFailure = nil
                 // 버튼 사건은 아직 도는 단계 세션을 멈춘다 — 그 종료 콜백은 낡은 token이라 버려진다.
                 if event == .taxiDropped || event == .taxiBoarded, beacon.isTracking || beacon.starting { beacon.stop() }
+                if accessStartFailed, stage == .transit {
+                    // 원인 문장(권한·정밀 위치)은 도보 모델이 이미 냈다. 승차 전 도보의 `.startFailed`(`endPrewalk`)와 같은 창구·분류.
+                    transit.announceExternal(appLocalized("transitGuide.prewalkUnavailable"), speechClass: .actionable)
+                }
                 prepareJourneyStage(stage, token: next.token, delayed: event != .retry)
             case .running(let stage):
                 journeyTransitionAt = nil
@@ -432,13 +438,14 @@ final class GuideSession {
             guard let board = plan.variant.boardStation else {
                 return advanceJourney(.stageEnded(.startFailed), token: token)
             }
-            // 추천 변형이 버스로 시작하면 타는 곳은 정류장이다 — 「역」을 붙이지 않는다(정류장 도착 문장은 문안 판정 대기라
-            // 그때는 기본 도착 문장).
-            let atStop = plan.variant.transit.legs.first { $0.mode != "walk" }?.mode == "bus"
+            // 추천 변형이 버스로 시작하면 타는 곳은 정류장이다 — 「역」을 붙이지 않는다(판정 5).
+            let atStop = plan.variant.boardsAtBusStop
             let name = journeyStationDisplayName(board.name)
-            // 택시 자동 도착과 접근 도보 도착은 역 이름 문장(누르지 않은 인계라 무엇이 시작되는지 알린다, spec §6.3 통지).
-            // 기본 「목적지에 도착했습니다」는 여정이 끝난 것처럼 들린다(접근성 감사 M6).
-            beacon.markChained(arrivalText: atStop ? nil : appLocalized("ios.journey.arrivedStation", name))
+            // 택시 자동 도착과 접근 도보 도착은 역(정류장) 이름 문장(누르지 않은 인계라 무엇이 시작되는지 알린다, spec §6.3
+            // 통지). 기본 「목적지에 도착했습니다」는 여정이 끝난 것처럼 들린다(접근성 감사 M6).
+            beacon.markChained(arrivalText: atStop
+                ? appLocalized("ios.journey.arrivedStop", board.name)
+                : appLocalized("ios.journey.arrivedStation", name))
             // 접근 도보는 승차 전 도보(A25)와 같은 자리다 — 입구가 멀어 지하로 먼저 들어가면 도착 판정이 닿지 않으므로 같은
             // 「{역} 도착」 선언 버튼을 둔다(시트의 유일한 버튼이 여정 전체 종료가 되지 않게). 도착 문장도 그 선례
             // 「승차역 {역}에 도착했습니다.」가 된다.
@@ -454,7 +461,7 @@ final class GuideSession {
             }
             // 역 B를 지정했으면 대중교통 구간의 끝은 그 역이다(말미 도보는 출구 도보·택시가 잇는다).
             let alight = shape.alightDesignated ? plan.variant.alightStation : nil
-            let alightAtStop = plan.variant.transit.legs.last { $0.mode != "walk" }?.mode == "bus"
+            let alightAtStop = plan.variant.alightsAtBusStop
             beginTransit(
                 route: plan.variant.transit,
                 destinationLabel: alight.map { alightAtStop ? $0.name : journeyStationDisplayName($0.name) + "역" }
@@ -469,7 +476,13 @@ final class GuideSession {
             }
         case .egress:
             guard let option = plan.egress else { return advanceJourney(.stageEnded(.startFailed), token: token) }
-            beacon.markChained(arrivalText: nil)
+            // 출구·승강장 도착은 그 자리 이름 문장 — 곧 택시 안내가 이어지므로 「목적지에 도착했습니다」로 끝맺지 않는다(판정 1).
+            // `none`은 걷는 구간이 없어 이 단계에 오지 않는다(`hasEgressWalk`).
+            switch option.kind {
+            case .exit: beacon.markChained(arrivalText: appLocalized("ios.journey.arrivedExit", option.label))
+            case .stand: beacon.markChained(arrivalText: appLocalized("ios.journey.arrivedStand"))
+            case .none: beacon.markChained(arrivalText: nil)
+            }
             launchJourneyBeacon(
                 dest: BeaconDest(lat: option.coord.lat, lng: option.coord.lng), label: option.placeName,
                 labelRoman: nil, kind: .walk, token: token)

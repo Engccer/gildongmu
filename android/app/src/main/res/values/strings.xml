@@ -152,8 +152,12 @@
     <string name="android_guide_waypointSet">경유지 %1$s, 경로를 다시 조회합니다</string>
     <string name="android_guide_waypointSkipped">경유지(%1$s)를 제외하고 안내합니다.</string>
     <string name="android_journey_alightField">지하철에서 내려 택시 타는 역</string>
+    <string name="android_journey_arrivedExit">%1$s번 출구에 도착했습니다.</string>
+    <string name="android_journey_arrivedStand">택시 승강장에 도착했습니다.</string>
     <string name="android_journey_arrivedStation">%1$s역에 도착했습니다.</string>
+    <string name="android_journey_arrivedStop">%1$s에 도착했습니다.</string>
     <string name="android_journey_boardField">택시에서 내려 지하철 타는 역</string>
+    <string name="android_journey_clearStations">갈아탈 역 지우기</string>
     <string name="android_journey_designatedHeading">%1$s역에서 타는 경로</string>
     <string name="android_journey_designatedHeadingAlight">%1$s역에서 내리는 경로</string>
     <string name="android_journey_designatedMissing">%1$s역에서 타는 경로를 찾지 못했습니다.</string>
@@ -164,6 +168,8 @@
     <string name="android_journey_egressStand">택시 승강장에서 택시로 %1$s분, 약 %2$s원</string>
     <string name="android_journey_egressStartFailed">출구까지 도보 안내를 시작하지 못했습니다.</string>
     <string name="android_journey_notStation">역을 골라 주세요.</string>
+    <string name="android_journey_recentTransfer">%1$s역에서 갈아타기</string>
+    <string name="android_journey_recentTransferBoth">%1$s역과 %2$s역에서 갈아타기</string>
     <string name="android_journey_recommendedHeading">%1$s역에서 타는 추천 경로</string>
     <string name="android_journey_recommendedHeadingAlight">%1$s역에서 내리는 추천 경로</string>
     <string name="android_journey_recommendedHeadingBus">%1$s에서 버스를 타는 추천 경로</string>
@@ -171,6 +177,7 @@
     <string name="android_journey_taxiBoarded">택시에 탔어요</string>
     <string name="android_journey_taxiDropped">택시에서 내렸어요</string>
     <string name="android_journey_taxiIn">택시로 %1$s역까지 %2$s분, 약 %3$s원</string>
+    <string name="android_journey_taxiInStop">택시로 %1$s까지 %2$s분, 약 %3$s원</string>
     <string name="android_journey_taxiOutFailed">택시 경로를 불러오지 못했습니다.</string>
     <string name="android_journey_toggle">택시로 갈아탈 역 정하기</string>
     <string name="android_journey_totals">총 %1$s분, 택시 요금 약 %2$s원, 대중교통 요금 %3$s원</string>

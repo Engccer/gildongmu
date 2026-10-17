@@ -553,9 +553,10 @@ struct TransitTrackingSheet: View {
             if state.signal == .untrackable {
                 Text(appLocalized("transitGuide.untrackable"))
                     .foregroundStyle(.secondary)
-                // 마지막 leg면 라벨이 인계 자체(E34). 이 자리는 종전대로 착지 바인딩이 없다(A35 범위).
-                Button(journeyTaxiNext
-                    ? appLocalized("ios.journey.taxiBoarded")
+                // 마지막 leg면 라벨이 인계 자체(E34), 여정이면 하차 통지가 부르는 「다음 구간」(판정 6). 이 자리는 종전대로
+                // 착지 바인딩이 없다(A35 범위).
+                Button(journeyHandoff
+                    ? appLocalized("transitGuide.advance")
                     : handoffNow
                     ? appLocalized("transitGuide.walkHandoffStart")
                     : appLocalized("transitGuide.advanceUntrackable")) { advanceOrHandoff() }
@@ -746,14 +747,14 @@ struct TransitTrackingSheet: View {
         return model.finalLegWalkMinutes != nil && onWalkHandoff != nil
     }
 
-    /// 여정의 마지막 leg이고 다음이 택시(출구 후보 없음)인가 — 버튼 라벨이 「택시에 탔어요」(새 문구 없음, spec §6.3).
-    private var journeyTaxiNext: Bool { handoffNow && model.journeyNextIsWalk == false }
+    /// 하차 역을 정한 여정의 마지막 leg인가 — 그 자리 버튼은 다음이 출구 도보든 택시든 「다음 구간」이다(판정 6). 하차 통지
+    /// 「내리신 뒤 다음 구간 버튼을 눌러 주세요.」가 이 이름을 부른다(여정의 잘린 경로엔 말미 도보 분이 없어 `arrived` 문장).
+    private var journeyHandoff: Bool { handoffNow && model.journeyNextIsWalk != nil }
 
     // 착지 대상 라벨 셋 — 뷰와 착지 폴백(`landingFallbackText`)이 **같은 식**을 읽는다(둘로 적으면 드리프트한다).
     private var advanceLabel: String {
-        journeyTaxiNext
-            ? appLocalized("ios.journey.taxiBoarded")
-            : handoffNow ? appLocalized("transitGuide.walkHandoffStart") : appLocalized("transitGuide.advance")
+        journeyHandoff || !handoffNow
+            ? appLocalized("transitGuide.advance") : appLocalized("transitGuide.walkHandoffStart")
     }
     private var waitingLabelText: String {
         appLocalized(model.aboardStep == .pickVehicle ? "transitGuide.waitingLabelAboard" : "transitGuide.waitingLabel")

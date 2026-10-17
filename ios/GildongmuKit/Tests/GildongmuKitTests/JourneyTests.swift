@@ -248,4 +248,37 @@ private let allEvents: [JourneyEvent] =
     @Test func displayNameExtraCases() {
         #expect(journeyStationDisplayName("인천공항1터미널역 공항철도") == "인천공항1터미널")
     }
+
+    // MARK: 동명 이역 노선 머리말(판정 8)
+
+    @Test func lineLabelNormalizesKakaoAndOdsayForms() {
+        #expect(journeyLineLabel("수도권 2호선") == "2호선")
+        #expect(journeyLineLabel("수도권2호선") == "2호선")
+        #expect(journeyLineLabel("수도권 9호선(급행)") == "9호선")
+        #expect(journeyLineLabel("수도권 수인.분당선") == "수인분당선")
+        #expect(journeyLineLabel("경의중앙선") == "경의중앙선")
+        #expect(journeyLineLabel(nil) == nil)
+        #expect(journeyLineLabel(" ") == nil)
+    }
+
+    @Test func qualifierOnlyForSameNameDifferentLine() {
+        // 경의중앙선 신촌을 골랐는데 추천은 2호선 신촌 승차 — 붙인다
+        #expect(journeyNeedsLineQualifier(
+            designatedName: "신촌역", designatedLine: "경의중앙선", actualName: "신촌", actualLine: "수도권 2호선"))
+        // 이름이 다르면 평소 문장(애오개 ≠ 아현)
+        #expect(!journeyNeedsLineQualifier(
+            designatedName: "아현", designatedLine: "2호선", actualName: "애오개", actualLine: "수도권 5호선"))
+        // 이름·노선이 같으면 붙여도 가르지 못한다
+        #expect(!journeyNeedsLineQualifier(
+            designatedName: "신촌", designatedLine: "수도권2호선", actualName: "신촌", actualLine: "수도권 2호선"))
+        // 한쪽 노선을 모르면 다른 역으로 본다(서버가 지정 역으로 인정하지 않은 같은 이름 정류)
+        #expect(journeyNeedsLineQualifier(
+            designatedName: "신촌", designatedLine: nil, actualName: "신촌", actualLine: "수도권 2호선"))
+    }
+
+    @Test func qualifiedNamePrefixesKnownLineOnly() {
+        #expect(journeyQualifiedStationName("신촌", line: "수도권 2호선") == "2호선 신촌")
+        #expect(journeyQualifiedStationName("신촌역", line: "경의중앙선") == "경의중앙선 신촌")
+        #expect(journeyQualifiedStationName("서울역", line: nil) == "서울")
+    }
 }

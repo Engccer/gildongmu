@@ -200,3 +200,41 @@ public func journeyStationDisplayName(_ name: String) -> String {
 private func isTrailingLineToken(_ token: String) -> Bool {
     token.hasSuffix("선") || token.hasSuffix("철도") || token.hasPrefix("GTX-")
 }
+
+// MARK: 탈것 종류와 동명 이역 노선 머리말
+
+public extension JourneyVariant {
+    /// 대중교통 구간이 버스 정류장에서 시작한다 — 택시 앞 구간 줄·도착 문장이 「역」을 붙이지 않는다(판정 5).
+    var boardsAtBusStop: Bool { transit.legs.first { $0.mode != "walk" }?.mode == "bus" }
+    /// 대중교통 구간이 버스 정류장에서 끝난다.
+    var alightsAtBusStop: Bool { transit.legs.last { $0.mode != "walk" }?.mode == "bus" }
+}
+
+/// 제목 머리에 붙일 노선 이름(「2호선」·「경의중앙선」). 카카오 힌트(`수도권2호선`)와 ODsay `lineName`(`수도권 2호선`·
+/// `수도권 수인.분당선`·`…(급행)`)을 같은 꼴로 만든다: 공백·마침표 제거, `수도권` 접두·`(급행)` 꼬리 제거(`subwayLineIdentity`와
+/// 같은 정규화). 빈 값은 nil.
+public func journeyLineLabel(_ raw: String?) -> String? {
+    guard let raw else { return nil }
+    var s = String(raw.filter { $0 != " " && $0 != "." && $0 != "\t" })
+    if s.hasPrefix("수도권") { s.removeFirst(3) }
+    if s.hasSuffix("(급행)") { s.removeLast(4) }
+    return s.isEmpty ? nil : s
+}
+
+/// 지정 역과 실제로 타는(내리는) 역의 제목에 노선을 붙이는가(판정 8): 표시 이름이 같고 노선이 다를 때만.
+/// 한쪽 노선을 모르면 다르다고 본다 — 이름이 같은데 지정 역 경로가 아닌 정류는 서버가 이미 다른 역으로 판정한 것이다
+/// (이름 키 + 좌표 500m + 노선, spec §4.3). 그때는 아는 쪽 노선만 붙는다(`journeyQualifiedStationName`).
+public func journeyNeedsLineQualifier(
+    designatedName: String, designatedLine: String?, actualName: String, actualLine: String?
+) -> Bool {
+    guard journeyStationDisplayName(designatedName) == journeyStationDisplayName(actualName) else { return false }
+    guard let a = journeyLineLabel(designatedLine), let b = journeyLineLabel(actualLine) else { return true }
+    return a != b
+}
+
+/// 문장의 `{station}` 자리 이름에 노선 머리말을 붙인다(「2호선 신촌」). 노선을 모르면 표시 이름만.
+public func journeyQualifiedStationName(_ name: String, line: String?) -> String {
+    let display = journeyStationDisplayName(name)
+    guard let label = journeyLineLabel(line) else { return display }
+    return "\(label) \(display)"
+}

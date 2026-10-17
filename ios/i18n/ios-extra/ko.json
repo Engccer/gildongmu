@@ -426,7 +426,14 @@
       "taxiBoarded": "택시에 탔어요",
       "arrivedStation": "{station}역에 도착했습니다.",
       "taxiOutFailed": "택시 경로를 불러오지 못했습니다.",
-      "egressStartFailed": "출구까지 도보 안내를 시작하지 못했습니다."
+      "egressStartFailed": "출구까지 도보 안내를 시작하지 못했습니다.",
+      "arrivedExit": "{exit}번 출구에 도착했습니다.",
+      "arrivedStand": "택시 승강장에 도착했습니다.",
+      "taxiInStop": "택시로 {stop}까지 {minutes}분, 약 {fare}원",
+      "arrivedStop": "{stop}에 도착했습니다.",
+      "clearStations": "갈아탈 역 지우기",
+      "recentTransfer": "{station}역에서 갈아타기",
+      "recentTransferBoth": "{board}역과 {alight}역에서 갈아타기"
     }
   },
   "guide": {

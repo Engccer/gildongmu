@@ -22051,6 +22051,26 @@
         }
       }
     },
+    "ios.journey.arrivedExit": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@번 출구에 도착했습니다."
+          }
+        }
+      }
+    },
+    "ios.journey.arrivedStand": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "택시 승강장에 도착했습니다."
+          }
+        }
+      }
+    },
     "ios.journey.arrivedStation": {
       "localizations": {
         "ko": {
@@ -22061,12 +22081,32 @@
         }
       }
     },
+    "ios.journey.arrivedStop": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@에 도착했습니다."
+          }
+        }
+      }
+    },
     "ios.journey.boardField": {
       "localizations": {
         "ko": {
           "stringUnit": {
             "state": "translated",
             "value": "택시에서 내려 지하철 타는 역"
+          }
+        }
+      }
+    },
+    "ios.journey.clearStations": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "갈아탈 역 지우기"
           }
         }
       }
@@ -22171,6 +22211,26 @@
         }
       }
     },
+    "ios.journey.recentTransfer": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@역에서 갈아타기"
+          }
+        }
+      }
+    },
+    "ios.journey.recentTransferBoth": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@역과 %2$@역에서 갈아타기"
+          }
+        }
+      }
+    },
     "ios.journey.recommendedHeading": {
       "localizations": {
         "ko": {
@@ -22237,6 +22297,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "택시로 %1$@역까지 %2$@분, 약 %3$@원"
+          }
+        }
+      }
+    },
+    "ios.journey.taxiInStop": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "택시로 %1$@까지 %2$@분, 약 %3$@원"
           }
         }
       }

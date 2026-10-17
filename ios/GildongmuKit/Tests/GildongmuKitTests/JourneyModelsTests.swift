@@ -26,6 +26,16 @@ private func decodeResult(_ json: String) throws -> JourneyResult {
         #expect(variant.totals.transitFare == variant.transit.summary.fare)
     }
 
+    /// 판정 5: 버스 정류장에서 시작·끝나는 변형을 탈것 종류로 가른다(앞뒤 도보는 보지 않는다).
+    @Test func busStopEndsFollowVehicleLegs() throws {
+        let result = try JSONDecoder().decode(JourneyResult.self, from: fixture("journey-result"))
+        #expect(result.variants.allSatisfy { !$0.boardsAtBusStop && !$0.alightsAtBusStop })
+        let json = try #require(String(data: fixture("journey-result"), encoding: .utf8))
+        let bus = json.replacingOccurrences(of: "\"mode\": \"subway\"", with: "\"mode\": \"bus\"")
+        let busResult = try decodeResult(bus)
+        #expect(busResult.variants.allSatisfy { $0.boardsAtBusStop && $0.alightsAtBusStop })
+    }
+
     @Test func fixtureDecodes() throws {
         let result = try JSONDecoder().decode(JourneyResult.self, from: fixture("journey-result"))
         #expect(result.designatedMissing == nil)

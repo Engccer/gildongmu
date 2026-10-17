@@ -462,8 +462,14 @@
   "ios.guide.waypointSkipped": [
     "label"
   ],
+  "ios.journey.arrivedExit": [
+    "exit"
+  ],
   "ios.journey.arrivedStation": [
     "station"
+  ],
+  "ios.journey.arrivedStop": [
+    "stop"
   ],
   "ios.journey.designatedHeading": [
     "station"
@@ -494,6 +500,13 @@
     "minutes",
     "fare"
   ],
+  "ios.journey.recentTransfer": [
+    "station"
+  ],
+  "ios.journey.recentTransferBoth": [
+    "board",
+    "alight"
+  ],
   "ios.journey.recommendedHeading": [
     "station"
   ],
@@ -508,6 +521,11 @@
   ],
   "ios.journey.taxiIn": [
     "station",
+    "minutes",
+    "fare"
+  ],
+  "ios.journey.taxiInStop": [
+    "stop",
     "minutes",
     "fare"
   ],

@@ -1016,7 +1016,8 @@ struct DirectionsTabView: View {
                     if AppConfig.experimentalJourneyEnabled, AppLanguage.dataLocale == "ko" {
                         if model.journeyExpanded {
                             // 채운 칸은 밀기 「삭제」(최근 기록 행과 같은 동작 이름 — 로터에도 선다). 두 칸이 다 비면 접고
-                            // 펼침 버튼으로 돌아간다(판정 15·D14 — 역 지정 없는 조회로 돌아오는 길).
+                            // 펼침 버튼으로 돌아간다(판정 15·D14 — 역 지정 없는 조회로 돌아오는 길). 두 칸 아래 보이는
+                            // 「갈아탈 역 지우기」는 두 칸을 함께 비우고 접는다(E70 열린 판정 3).
                             Button { searchTarget = .boardStation } label: {
                                 Text(stationFieldText(.boardStation))
                             }
@@ -1039,6 +1040,11 @@ struct DirectionsTabView: View {
                                         }
                                     }
                                 }
+                            // 누르면 두 칸과 자기가 사라진다 — 조회 버튼으로 커서를 선점한다(경유지 삭제 동형, 헌장 §5).
+                            Button(appLocalized("ios.journey.clearStations")) {
+                                submitFocused = true
+                                model.setJourneyExpanded(false)
+                            }
                         } else {
                             // 누르면 자기가 사라지는 버튼이라 첫 칸으로 커서를 선점 이동한다(헌장 §5).
                             Button(appLocalized("ios.journey.toggle")) {
@@ -1357,7 +1363,18 @@ struct DirectionsTabView: View {
             let viaText = AppLanguage.current == "ko" ? via + (KoreanParticle.object(via) ?? "") : via
             return appLocalized("recentRoutes.itemVia", from, to, viaText)
         }
-        return appLocalized("recentRoutes.item", from, to)
+        return joinText(appLocalized("recentRoutes.item", from, to), recentTransferText(route))
+    }
+
+    /// 여정 경로의 갈아탈 역 꼬리(E70 열린 판정 2) — 같은 출발·도착의 보통 경로와 들어서 가른다. 역 칸은 ko 데이터
+    /// 로케일에서만 서므로 문장도 ko다. 역이 없으면 nil(보통 경로는 종전 문장 그대로).
+    private func recentTransferText(_ route: RecentRoute) -> String? {
+        let board = route.boardStation.map { journeyStationDisplayName($0.label) }
+        let alight = route.alightStation.map { journeyStationDisplayName($0.label) }
+        if let board, let alight {
+            return appLocalized("ios.journey.recentTransferBoth", board, alight)
+        }
+        return (board ?? alight).map { appLocalized("ios.journey.recentTransfer", $0) }
     }
 
     private func directionsEndpoint(_ side: RecentEndpoint?) -> DirectionsEndpoint {
