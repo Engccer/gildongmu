@@ -247,9 +247,9 @@ final class GuideSession {
             // 도보 안내가 불가해도 대중교통 안내는 가능하다 — 도보 문맥은 유지(아직 걷지 않았다).
             beacon.clearPrewalk()  // 동기 거부 분기는 begin() Task를 지나지 않아 표식이 남는다
             // 다리 문장(「도보 안내를 시작할 수 없어 승차 대기로 바로 넘어갑니다」)은 도보 모델이 원인 문장 뒤에 붙여 `.high` 한
-            // 통지로 냈다(A67, `BeaconModel.fail`). 대중교통 창구로 따로 내면 그 재생기는 세션 전이라 백그라운드에서 버려지고,
-            // 전경에선 같은 턴에 게시돼 원인 문장을 끊는다. 대중교통 시작은 그 통지가 끝나기를 기다린다 — 시작 통지가 두 문장을
-            // 끊지 않게(여정 접근 도보 `prepareJourneyStage`와 같은 장부·상한). 동기 거부(`beginTransit` 말미)는 원인 문장도 다리
+            // 통지로 냈다(A67, `BeaconModel.fail`). 대중교통 창구로 따로 내면 전경에서 같은 턴에 게시돼 원인 문장을 끊는다
+            // (백그라운드는 어느 창구든 세션 전이라 버리지만, 시작 실패는 탭 직후 전경에서 판정돼 닿지 않는다). 대중교통 시작은
+            // 그 통지가 끝나기를 기다린다 — 시작 통지가 두 문장을 끊지 않게(여정 접근 도보 `prepareJourneyStage`와 같은 장부·상한). 동기 거부(`beginTransit` 말미)는 원인 문장도 다리
             // 문장도 없다 — 그 경로는 `startTransit`의 `refuseIfActive`가 같은 상태를 먼저 보므로 닿지 않는다.
             prewalkTask?.cancel()
             prewalkTask = Task { @MainActor [weak self] in
@@ -288,7 +288,7 @@ final class GuideSession {
         }
     }
 
-    /// 낡은 연결 폐기 — 모든 시작 진입·teardown에서. 추적 중인 도보 세션은 건드리지 않는다.
+    /// 낡은 연결 폐기 — 모든 시작 진입·여정 종료에서. 추적 중인 도보 세션은 건드리지 않는다.
     private func cancelPrewalk() {
         prewalk = nil
         prewalkTask?.cancel()
