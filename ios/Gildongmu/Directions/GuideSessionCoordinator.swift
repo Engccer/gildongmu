@@ -356,8 +356,10 @@ final class GuideSession {
                 journeyTask?.cancel()
                 journeyTask = nil
                 journeyTransitionAt = nil
-                // 진행 중 끊김만 원인 문장을 보존한다(그 모델이 이미 통지했다 — 다시 말하지 않는다).
-                journeyFailure = event == .stageEnded(.ended) ? beacon.lastFailure : nil
+                // 그 모델이 낸 원인 문장(권한·정밀 위치)과 해결 수단을 보존한다 — 이미 통지했으므로 다시 말하지 않고 시트 상태
+                // 줄과 버튼이 쓴다. 시작 실패도 같다(`begin`이 시작마다 `lastFailure`를 비우므로 이번 시도의 원인이다).
+                journeyFailure = event == .stageEnded(.ended) || event == .stageEnded(.startFailed)
+                    ? beacon.lastFailure : nil
             }
         }
     }
@@ -399,9 +401,9 @@ final class GuideSession {
         case .taxiIn, .access:
             guard let board = plan.variant.boardStation else { return finishJourney(stopSessions: false) }
             let name = journeyStationDisplayName(board.name)
-            // 택시 자동 도착만 역 이름 문장(사용자가 누르지 않은 인계라 무엇이 시작되는지 알린다, spec §6.3 통지).
-            // 접근 도보의 도착은 그 도보 세션의 기본 도착 문장이다.
-            beacon.markChained(arrivalText: stage == .taxiIn ? appLocalized("ios.journey.arrivedStation", name) : nil)
+            // 택시 자동 도착과 접근 도보 도착은 역 이름 문장(누르지 않은 인계라 무엇이 시작되는지 알린다, spec §6.3 통지).
+            // 기본 「목적지에 도착했습니다」는 여정이 끝난 것처럼 들린다(접근성 감사 M6).
+            beacon.markChained(arrivalText: appLocalized("ios.journey.arrivedStation", name))
             launchJourneyBeacon(
                 dest: BeaconDest(lat: board.coord.lat, lng: board.coord.lng), label: name + "역",
                 labelRoman: nil, kind: stage == .taxiIn ? .car : .walk, token: token)

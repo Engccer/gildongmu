@@ -234,6 +234,10 @@ final class DirectionsModel {
 
     var hasJourneyStations: Bool { boardStation != nil || alightStation != nil }
 
+    var journeyFound: Bool {
+        if case .found = journeyOutcome { true } else { false }
+    }
+
     /// 역 지정 펼침·접힘(판정 15). 펼치면 경유지를 비우고(D14), 접으면 두 칸을 비운다 — 접힌 칸이 조회를 여정으로
     /// 바꾸는 숨은 상태가 되지 않게.
     func setJourneyExpanded(_ expanded: Bool) {
@@ -926,7 +930,7 @@ struct DirectionsTabView: View {
     /// 여러 행에 붙이는 함정 회피 — 항목 정체성 옵셔널 바인딩이 정본(repo 규칙).
     /// ⚠ 대안은 `routeKey`로 식별한다(표시 번호·배열 인덱스 둘 다 포커스 키 금지).
     /// ⚠ 도보는 줄 종류로 식별한다(E42 — 배열 인덱스는 새 조회에서 다른 줄을 가리킬 수 있다).
-    enum GuideStartButton: Hashable { case walkLine(WalkLineKind), car, transitAlt(String) }
+    enum GuideStartButton: Hashable { case walkLine(WalkLineKind), car, transitAlt(String), journey }
     @AccessibilityFocusState private var guideStartFocused: GuideStartButton?
     /// 수단 재조회 결과의 포커스 정체성(E50 §4.3). 찾은 경로는 `routeKey`, 문장은 축으로 식별한다.
     enum RequeryFocus: Hashable { case route(String), notFound(TransitModeAxis) }
@@ -1041,7 +1045,8 @@ struct DirectionsTabView: View {
                 // 최근 경로(스펙 2026-08-10 §1.3): 결과 없는 화면에서만 — 결과 아래 20행은 탐색
                 // 방해. 실패 phase에서는 보인다(다른 경로를 고르는 우회로). swipeActions 삭제가
                 // VoiceOver 로터로 자동 노출된다(endpoint 시트 동형).
-                if model.results == nil && !model.isBusy && !model.recentRoutes.isEmpty {
+                // 여정을 찾았으면 그 결과가 결과다(E70 — `results`를 쓰지 않는다). 최근 경로가 결과 앞에 끼지 않게.
+                if model.results == nil && !model.isBusy && !model.recentRoutes.isEmpty && !model.journeyFound {
                     Section {
                         // 고정 항목은 라벨 접미사 "고정됨"(한 줄 = 한 객체), 고정 토글이
                         // 삭제보다 앞(위원장 지시 2026-08-12) — 로터 커스텀 액션 자동 노출.
@@ -1141,15 +1146,17 @@ struct DirectionsTabView: View {
                                 result: result, board: model.boardStation, alight: model.alightStation,
                                 variantIndex: $model.journeyVariantIndex, egressIndex: $model.journeyEgressIndex,
                                 destinationName: destinationPlaceName, destinationRoman: destinationPlaceRoman,
+                                startFocus: $guideStartFocused,
                                 onStart: { variant, egress in
                                     guard AppConfig.experimentalJourneyEnabled, let tracked = trackedDestination else { return }
+                                    lastGuideStart = .journey
                                     announceGuideStartIfManualOrigin()
                                     GuideSession.shared.startJourney(plan: JourneyPlan(
                                         variant: variant, egress: egress, destLabel: tracked.label,
                                         destRoman: destinationPlaceRoman, dest: tracked.dest))
                                 })
-                        case .noRoute: Text(appLocalized("route.transit.noRoute"))
-                        case .failed: Text(appLocalized("route.transit.error"))
+                        // 경로 없음·조회 실패는 위 상태 줄이 말한다(같은 문장을 두 번 그리지 않는다).
+                        case .noRoute, .failed: EmptyView()
                         }
                     }
                 }

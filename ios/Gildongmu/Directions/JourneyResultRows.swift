@@ -1,8 +1,10 @@
 import SwiftUI
 import GildongmuKit
 
-/// 여정 조회 결과(E70 §5.2, 실험판). 읽기 순서: 못 찾음 줄 → (변형 둘이면) 변형 제목 겸 선택 버튼 → 합계 → 택시 앞 →
-/// 대중교통 구간 → 출구 선택 → 안내 시작. 줄마다 한 접근성 객체(쉼표 결합)다.
+/// 여정 조회 결과(E70 §5.2, 실험판). 읽기 순서: 못 찾음 줄 → (변형 둘이면) 변형 선택 버튼 둘 + 고른 변형의 제목(heading)
+/// → 합계 → 택시 앞 → 대중교통 구간 → 출구 선택 → 안내 시작. 줄마다 한 접근성 객체(쉼표 결합)다.
+/// heading은 고른 변형 제목 한 줄에만 둔다 — 선택 버튼에 heading을 달면 고르지 않은 변형의 제목 아래에 고른 변형의
+/// 합계가 이어져 "heading = 뒤따르는 내용의 제목" 약속이 깨진다(접근성 감사 M2).
 struct JourneyResultRows: View {
     let result: JourneyResult
     /// 사용자가 칸에 고른 역(제목이 "지정 역과 다른가"를 이 이름으로 가른다).
@@ -12,6 +14,8 @@ struct JourneyResultRows: View {
     @Binding var egressIndex: Int
     let destinationName: String?
     let destinationRoman: String?
+    /// 안내 시작 버튼의 포커스 정체성 — 안내가 끝나 시트가 닫히면 길찾기 탭이 여기로 돌려보낸다(`landBeaconStartFocus`).
+    let startFocus: AccessibilityFocusState<DirectionsTabView.GuideStartButton?>.Binding
     let onStart: (JourneyVariant, EgressOption?) -> Void
 
     private var variant: JourneyVariant {
@@ -25,17 +29,19 @@ struct JourneyResultRows: View {
 
     var body: some View {
         ForEach(missingLines, id: \.self) { Text($0) }
-        // 변형이 둘이면 제목이 곧 선택 버튼이다(heading trait + 선택 trait, 한 객체). 하나면 제목 없이 바로 합계.
+        // 변형이 둘이면 선택 버튼 둘(선택 trait + 시각 체크) 뒤에 고른 변형의 제목 heading. 하나면 제목 없이 바로 합계(판정 13).
         if result.variants.count > 1 {
             ForEach(Array(result.variants.enumerated()), id: \.offset) { index, v in
                 Button {
                     variantIndex = index
                     egressIndex = 0
                 } label: {
-                    Text(journeyVariantHeading(v, board: board, alight: alight))
+                    selectableLabel(journeyVariantHeading(v, board: board, alight: alight), selected: index == variantIndex)
                 }
-                .accessibilityAddTraits(index == variantIndex ? [.isHeader, .isSelected] : .isHeader)
+                .accessibilityAddTraits(index == variantIndex ? .isSelected : [])
             }
+            Text(journeyVariantHeading(variant, board: board, alight: alight))
+                .accessibilityAddTraits(.isHeader)
         }
         Text(totalsLine)
         if let taxiIn = variant.taxiIn, let station = variant.boardStation {
@@ -49,7 +55,9 @@ struct JourneyResultRows: View {
             if options.count > 1 {
                 ForEach(Array(options.enumerated()), id: \.offset) { index, option in
                     Button { egressIndex = index } label: {
-                        Text(egressLine(option, lookupFailed: variant.egress?.lookupFailed == true))
+                        selectableLabel(
+                            egressLine(option, lookupFailed: variant.egress?.lookupFailed == true),
+                            selected: index == egressIndex)
                     }
                     .accessibilityAddTraits(index == egressIndex ? .isSelected : [])
                 }
@@ -59,6 +67,18 @@ struct JourneyResultRows: View {
         }
         Button(appLocalized("beacon.guideStartTransitAlt", journeyVariantHeading(variant, board: board, alight: alight))) {
             onStart(variant, egress)
+        }
+        .accessibilityFocused(startFocus, equals: .journey)
+    }
+
+    /// 선택지 줄 — 고른 것은 시각 체크 표식(WCAG 1.4.1: 색·trait만으로 전하지 않는다). 표식은 낭독에서 숨기고 선택 trait가 정본이다.
+    private func selectableLabel(_ text: String, selected: Bool) -> some View {
+        HStack {
+            Text(text)
+            Spacer(minLength: 8)
+            if selected {
+                Image(systemName: "checkmark").accessibilityHidden(true)
+            }
         }
     }
 

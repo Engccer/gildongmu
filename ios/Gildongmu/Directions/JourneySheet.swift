@@ -27,8 +27,9 @@ struct JourneySheet: View {
                 GuideStopButton { session.journeyAction(.userEnded) }
             }
         }
-        .task { await landStatus() }
-        // 준비 중 → 실패로 바뀌면 커서를 상태 문장에 다시 앉힌다(버튼이 새로 생기는 전이라 착지가 안내다).
+        // 착지는 실패일 때만이다. 준비 중 시트는 곧 다음 단계 시트가 덮고, 그 사이 강제 착지 낭독이 직전 문장(택시 자동
+        // 도착의 「…역에 도착했습니다.」)을 끊는다(접근성 감사 M1). 준비 중 → 실패는 버튼이 새로 생기는 전이라 착지가 안내다.
+        .task { if failedStage != nil { await landStatus() } }
         .onChange(of: failedStage) { _, stage in
             guard stage != nil else { return }
             Task { await landStatus() }
@@ -48,7 +49,7 @@ struct JourneySheet: View {
             Button(appLocalized("ios.common.allowPrecise")) {
                 Task { @MainActor in
                     if await LocationService.shared.requestTemporaryPreciseAccuracy() == .granted {
-                        session.journeyAction(.retry)
+                        act(.retry)
                     }
                 }
             }
@@ -57,14 +58,21 @@ struct JourneySheet: View {
         }
         // 출구 도보 시작 실패는 「택시에 탔어요」가 곧 다음 단계라 재시도를 두지 않는다(§6.4 표) — 끊긴 경우는 둔다.
         if stage != .egress || session.journeyFailure != nil {
-            Button(appLocalized("guide.rerouteButton")) { session.journeyAction(.retry) }
+            Button(appLocalized("guide.rerouteButton")) { act(.retry) }
         }
         if stage == .taxiIn {
-            Button(appLocalized("ios.journey.taxiDropped")) { session.journeyAction(.taxiDropped) }
+            Button(appLocalized("ios.journey.taxiDropped")) { act(.taxiDropped) }
         }
         if stage == .egress {
-            Button(appLocalized("ios.journey.taxiBoarded")) { session.journeyAction(.taxiBoarded) }
+            Button(appLocalized("ios.journey.taxiBoarded")) { act(.taxiBoarded) }
         }
+    }
+
+    /// 실패 버튼은 누르면 자기가 사라진다(실패 → 준비 중) — 커서를 남을 상태 문장으로 먼저 옮긴 뒤 전이한다(헌장 §5).
+    /// 상태 문장이 「경로를 찾는 중입니다.」로 바뀌는 것이 곧 눌렸다는 신호다.
+    private func act(_ event: JourneyEvent) {
+        statusFocused = true
+        session.journeyAction(event)
     }
 
     /// 시트 표시 애니메이션이 끝난 뒤 대입하고, 먹지 않았으면 한 번만 다시(`landBeaconStartFocus` 동형).
@@ -82,8 +90,12 @@ func journeyStatusText(_ session: GuideSession) -> String {
     guard case .failed(let stage)? = session.journey?.phase else {
         return appLocalized("directions.loading")
     }
+    // 그 모델이 낸 원인 문장(권한·정밀 위치)이 있으면 그것 — 다른 원인을 말하지 않는다(접근성 감사 M5).
     if let failure = session.journeyFailure { return appLocalized(failure.key) }
-    return stage == .egress
-        ? appLocalized("ios.journey.egressStartFailed")
-        : appLocalized("ios.journey.taxiOutFailed")
+    switch stage {
+    case .egress: return appLocalized("ios.journey.egressStartFailed")
+    case .taxiIn, .taxiOut: return appLocalized("ios.journey.taxiOutFailed")
+    // 대중교통 단계 준비가 복귀 시 30초를 넘긴 경우 — 택시 문장이 아니다.
+    case .transit, .access: return appLocalized("route.transit.error")
+    }
 }

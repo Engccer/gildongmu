@@ -129,3 +129,23 @@ describe("trimJourneyTransit", () => {
     expect(trimJourneyTransit(src, { trimBoard: true, trimAlight: true }).highlight).toEqual(["fastest"]);
   });
 });
+
+describe("trimJourneyTransit — 택시가 대신하는 쪽의 ODsay 출구 번호", () => {
+  const leg = (exit: { board?: string; alight?: string }) =>
+    ({ mode: "subway", lineName: "수도권 2호선", fromName: "가", toName: "나", minutes: 5, exit }) as const;
+  const route = {
+    summary: { totalMinutes: 20, fare: 1550, transfers: 1, walkMinutes: 4 },
+    legs: [{ mode: "walk" as const, minutes: 2 }, leg({ board: "3" }), leg({ alight: "7" }), { mode: "walk" as const, minutes: 2 }],
+    routeKey: "p0",
+  };
+  it("승차를 자르면 첫 탈것의 board, 하차를 자르면 마지막 탈것의 alight를 뗀다", () => {
+    const both = trimJourneyTransit(route, { trimBoard: true, trimAlight: true });
+    expect(both.legs.map((l) => l.exit)).toEqual([undefined, undefined]);
+    expect(both.legs.every((l) => !("exit" in l))).toBe(true);
+  });
+  it("자르지 않은 쪽의 출구 번호는 남긴다", () => {
+    const boardOnly = trimJourneyTransit(route, { trimBoard: true, trimAlight: false });
+    expect(boardOnly.legs.map((l) => l.exit)).toEqual([undefined, { alight: "7" }, undefined]);
+    expect(route.legs[1].exit).toEqual({ board: "3" }); // 입력 불변
+  });
+});

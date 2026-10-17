@@ -22,6 +22,8 @@ final class EndpointSearchModel {
     private var searchTask: Task<Void, Never>?
     /// 지오코딩 재진입 가드(웹 geocodeRef 미러)
     private var isGeocodingInFlight = false
+    /// 역 칸(E70) — 주소 후보를 담지 않는다. 건수 통지·0건 판정·첫 후보 착지가 보이는 후보 기준이 된다.
+    var stationsOnly = false
 
     private let service = SearchService(client: APIClient(baseURL: AppConfig.apiBaseURL))
 
@@ -40,7 +42,7 @@ final class EndpointSearchModel {
             guard !Task.isCancelled else { return }
             // 미니 검색은 필드 확정용이라 상위 5건씩만(전체 탐색은 검색 탭이 담당).
             places = Array(outcome.places.items.prefix(5))
-            addresses = Array(outcome.addresses.items.prefix(5))
+            addresses = stationsOnly ? [] : Array(outcome.addresses.items.prefix(5))
             isSearching = false
             resultsRevision += 1
             let count = places.count + addresses.count
@@ -297,6 +299,7 @@ struct DirectionsEndpointSearchView: View {
                 Button(appLocalized("ios.common.ok")) {}
             }
             .task {
+                model.stationsOnly = isStationTarget
                 searchFieldFocused = true
                 recentEndpoints = recentStore.endpoints(recentScope)
             }
@@ -386,7 +389,11 @@ struct DirectionsEndpointSearchView: View {
     /// 역 칸은 역만 받는다(spec §5.1): 지하철·철도역이 아니면 칸에 넣지 않고 시트를 연 채 polite 통지.
     private func selectStation(_ place: Place) {
         guard stationLayoutKind(place) != nil else {
-            AccessibilityNotification.Announcement(appLocalized("ios.journey.notStation")).post()
+            // 화면 변화 없는 활성화 응답이라 `.high`(통지 우선순위 판별선 — 기본이면 VO 활성화 처리에 묻혀 무반응으로 들린다).
+            var message = AttributedString(appLocalized("ios.journey.notStation"))
+            message.accessibilitySpeechAnnouncementPriority = .high
+            AccessibilityNotification.Announcement(message).post()
+            ResultHaptic.fire(.attention)
             return
         }
         onSelectStation?(place)
