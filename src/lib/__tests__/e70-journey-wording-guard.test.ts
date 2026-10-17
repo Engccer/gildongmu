@@ -99,7 +99,11 @@ describe("E70 여정 문장의 자리", () => {
     expect(fail).toMatch(
       /announce\(\s*journeyBridge \? appLocalized\("ios\.journey\.accessFailedWith", appLocalized\(key\)\) : statusText,/,
     );
-    expect(fail).not.toMatch(/statusText = [^\n]*accessFailedWith/);
+    // 다리 문장 키는 통지 인자에만 한 번 나온다(상태 줄 대입이 여러 줄이어도 잡는다)
+    expect(fail.match(/accessFailedWith/g)).toHaveLength(1);
+    const bridgeAt = fail.indexOf("accessFailedWith");
+    expect(fail.lastIndexOf("announce(", bridgeAt)).toBeGreaterThan(fail.lastIndexOf("statusText =", bridgeAt));
+    expect(fail).toContain("highPriority: highPriority || journeyBridge");
     expect(body(beacon, "markChained")).toContain(
       "JourneyChainMark(arrivalText: arrivalText, bridgesStartFailure: bridgesStartFailure)",
     );
