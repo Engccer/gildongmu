@@ -1399,10 +1399,14 @@ final class BeaconModel {
         // 턴에 게시돼 이 원인 문장을 끊는다. 상태 줄(`statusText`, 길찾기 탭에 남는다)은 원인만 — 「…바로 넘어갑니다」는
         // 대중교통이 끝난 뒤엔 거짓 진행형이 된다. 대중교통 시작은 이 통지가 끝나기를 기다린다(`prepareJourneyStage`).
         // `.high`: 곧 여정 시트가 다시 떠 커서가 옮겨 가고, 이 문장은 그 착지 라벨로 대체될 수 없다(통지 우선순위 판별선).
+        // 승차 전 도보(A25)의 시작 실패도 같은 모양이다(A67): 코디네이터가 곧 대중교통 안내를 시작하고(`endPrewalk`) 그 시트로
+        // 커서가 옮겨 간다. 판정은 `stopAndFail`의 prewalk 술어와 같다(여정 접근 도보는 위 갈래).
         let journeyBridge = starting && journeyChain?.bridgesStartFailure == true
+        let prewalkBridge = starting && prewalkTarget != nil && journeyChain == nil
         announce(
-            journeyBridge ? appLocalized("ios.journey.accessFailedWith", appLocalized(key)) : statusText,
-            highPriority: highPriority || journeyBridge, speechClass: .actionable)
+            journeyBridge ? appLocalized("ios.journey.accessFailedWith", appLocalized(key))
+                : prewalkBridge ? appLocalized("ios.beacon.prewalkUnavailableWith", appLocalized(key)) : statusText,
+            highPriority: highPriority || journeyBridge || prewalkBridge, speechClass: .actionable)
     }
 
     /// 중지. 어느 경로로 불려도 idle timer가 반드시 풀리도록 먼저 해제한다

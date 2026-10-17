@@ -1081,6 +1081,9 @@
   "android.beacon.prewalkCancelledWith": [
     "reason"
   ],
+  "android.beacon.prewalkUnavailableWith": [
+    "reason"
+  ],
   "android.chat.addressesHeading": [
     "count"
   ],

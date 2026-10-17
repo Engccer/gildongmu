@@ -425,6 +425,9 @@
   "ios.beacon.prewalkCancelledWith": [
     "reason"
   ],
+  "ios.beacon.prewalkUnavailableWith": [
+    "reason"
+  ],
   "ios.chat.addressesHeading": [
     "count"
   ],

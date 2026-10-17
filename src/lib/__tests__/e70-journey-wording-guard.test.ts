@@ -97,7 +97,7 @@ describe("E70 여정 문장의 자리", () => {
     expect(fail).toContain("let journeyBridge = starting && journeyChain?.bridgesStartFailure == true");
     // 통지에만 붙이고 상태 줄(길찾기 탭에 남는다)은 원인만
     expect(fail).toMatch(
-      /announce\(\s*journeyBridge \? appLocalized\("ios\.journey\.accessFailedWith", appLocalized\(key\)\) : statusText,/,
+      /announce\(\s*journeyBridge \? appLocalized\("ios\.journey\.accessFailedWith", appLocalized\(key\)\)\s*: prewalkBridge \?[^:]*: statusText,/,
     );
     // 다리 문장 키는 통지 인자에만 한 번 나온다(상태 줄 대입이 여러 줄이어도 잡는다)
     expect(fail.match(/accessFailedWith/g)).toHaveLength(1);

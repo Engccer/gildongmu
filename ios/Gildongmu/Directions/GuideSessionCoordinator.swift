@@ -246,15 +246,32 @@ final class GuideSession {
         case .startFailed:
             // 도보 안내가 불가해도 대중교통 안내는 가능하다 — 도보 문맥은 유지(아직 걷지 않았다).
             beacon.clearPrewalk()  // 동기 거부 분기는 begin() Task를 지나지 않아 표식이 남는다
-            transit.announceExternal(appLocalized("transitGuide.prewalkUnavailable"), speechClass: .actionable)
-            transit.startAfterPrewalk(
-                transitRoute: context.route, destinationLabel: context.destinationLabel,
-                destinationRoman: context.destinationRoman,
-                dest: context.dest, accessible: context.accessible, prewalkCompleted: false)
-            // 여정의 대중교통 단계인데 세션이 서지 않았으면(경로 변환 실패) 세션 없는 running에 남지 않게 끝낸다.
-            if !transit.isTracking, let journey, case .running(.transit) = journey.phase {
-                guideDiagLog("journey prewalkTransitStartFailed")
-                advanceJourney(.stageEnded(.startFailed), token: journey.token)
+            // 다리 문장(「도보 안내를 시작할 수 없어 승차 대기로 바로 넘어갑니다」)은 도보 모델이 원인 문장 뒤에 붙여 `.high` 한
+            // 통지로 냈다(A67, `BeaconModel.fail`). 대중교통 창구로 따로 내면 그 재생기는 세션 전이라 백그라운드에서 버려지고,
+            // 전경에선 같은 턴에 게시돼 원인 문장을 끊는다. 대중교통 시작은 그 통지가 끝나기를 기다린다 — 시작 통지가 두 문장을
+            // 끊지 않게(여정 접근 도보 `prepareJourneyStage`와 같은 장부·상한). 동기 거부는 원인 문장이 없어 기다릴 것도 없다.
+            prewalkTask?.cancel()
+            prewalkTask = Task { @MainActor [weak self] in
+                guard let self else { return }
+                if UIAccessibility.isVoiceOverRunning {
+                    var waited = 0
+                    while !self.beacon.announcementsSettled, waited < Self.walkSpeechWaitLimitMs {
+                        try? await Task.sleep(for: .milliseconds(100))
+                        guard !Task.isCancelled else { return }
+                        waited += 100
+                    }
+                    guideDiagLog("prewalk startFailSpeechWait ms=\(waited) open=\(GuideSpeechOutput.openAnnouncements)")
+                }
+                guard !Task.isCancelled else { return }
+                self.transit.startAfterPrewalk(
+                    transitRoute: context.route, destinationLabel: context.destinationLabel,
+                    destinationRoman: context.destinationRoman,
+                    dest: context.dest, accessible: context.accessible, prewalkCompleted: false)
+                // 여정의 대중교통 단계인데 세션이 서지 않았으면(경로 변환 실패) 세션 없는 running에 남지 않게 끝낸다.
+                if !self.transit.isTracking, let journey = self.journey, case .running(.transit) = journey.phase {
+                    guideDiagLog("journey prewalkTransitStartFailed")
+                    self.advanceJourney(.stageEnded(.startFailed), token: journey.token)
+                }
             }
         case .userStopped, .ended:
             // 여정(A 미지정)의 첫 단계가 승차 전 도보였으면 대중교통 세션은 시작되지 않으므로 여정도 끝난다(D11).

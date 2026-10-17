@@ -19801,6 +19801,46 @@
         }
       }
     },
+    "ios.beacon.prewalkUnavailableWith": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@. 도보 안내를 시작할 수 없어 승차 대기로 바로 넘어갑니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@. Walking guidance could not start; moving straight to boarding wait."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@. No se pudo iniciar la guía a pie; se pasa directamente a la espera de embarque."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@. Le guidage à pied n'a pas pu démarrer ; passage direct à l'attente d'embarquement."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@. Impossibile avviare la guida a piedi; si passa direttamente all'attesa di salita."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@。徒歩案内を開始できないため、そのまま乗車待ちに進みます。"
+          }
+        }
+      }
+    },
     "ios.beacon.soundBackgroundUnavailable": {
       "localizations": {
         "ko": {

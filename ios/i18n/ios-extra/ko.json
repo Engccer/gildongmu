@@ -279,6 +279,7 @@
       "stopped": "거리 추적을 종료했습니다.",
       "stoppedJoin": "거리 추적을 종료했습니다",
       "prewalkCancelledWith": "{reason}. 대중교통 안내는 시작하지 않았습니다.",
+      "prewalkUnavailableWith": "{reason}. 도보 안내를 시작할 수 없어 승차 대기로 바로 넘어갑니다.",
       "arrivedHeading": "도착",
       "arrivedPresumedHeading": "도착 추정",
       "endedHeading": "안내 종료",

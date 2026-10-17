@@ -71,3 +71,52 @@ describe("승차 전 도보 종료 결합 문장(A54)", () => {
     expect(body).not.toContain('"beacon.weak"');
   });
 });
+
+// A67: 승차 전 도보를 시작하지 못하면 다리 문장은 도보 모델이 원인 문장과 한 통지로 내고, 대중교통 시작은 그 통지를 기다린다
+// (E70 판정 27 여정 접근 도보와 같은 방식). 대중교통 창구로 따로 내면 그 재생기는 세션 전이라 백그라운드에서 버려지고, 전경에선
+// 같은 턴에 게시돼 원인 문장을 끊었다.
+describe("승차 전 도보 시작 실패 다리 문장(A67)", () => {
+  it.each(LOCALES)("%s: 문장 틀은 사유 뒤에 기존 다리 문장을 그대로 잇는 두 문장이다(새 문장 없음)", (locale) => {
+    const bridge: string = JSON.parse(read(`messages/${locale}.json`)).transitGuide.prewalkUnavailable;
+    const frame = beaconKeys(locale).prewalkUnavailableWith;
+    expect(frame).toBe(locale === "ja" ? `{reason}。${bridge}` : `{reason}. ${bridge}`);
+  });
+
+  it.each(LOCALES)("%s: 시작 실패 사유 키 셋은 마침표로 끝나지 않는다", (locale) => {
+    const beacon: Record<string, string> = JSON.parse(read(`messages/${locale}.json`)).beacon;
+    for (const reason of [beacon.weak, beacon.denied, beacon.reduced]) {
+      expect(reason, locale).toBeTruthy();
+      expect(reason, locale).not.toMatch(/[.。]$/);
+    }
+  });
+
+  it("도보 모델: 시작 중 실패면 통지에만 다리 문장을 붙여 .high로 낸다(상태 줄은 원인만, 여정 접근 도보는 판정 27 갈래)", () => {
+    const beacon = read("ios/Gildongmu/Directions/BeaconModel.swift");
+    const start = beacon.indexOf("    private func fail(");
+    const body = beacon.slice(start, beacon.indexOf("\n    }\n", start));
+    // stopAndFail의 prewalk 술어와 같은 판정 + 시작 중(걷던 중 끊김은 stopAndFail의 「대중교통 안내는 시작하지 않았다」 꼬리)
+    expect(body).toContain("let prewalkBridge = starting && prewalkTarget != nil && journeyChain == nil");
+    expect(body).toMatch(
+      /announce\(\s*journeyBridge \? appLocalized\("ios\.journey\.accessFailedWith", appLocalized\(key\)\)\s*: prewalkBridge \? appLocalized\("ios\.beacon\.prewalkUnavailableWith", appLocalized\(key\)\) : statusText,\s*highPriority: highPriority \|\| journeyBridge \|\| prewalkBridge, speechClass: \.actionable\)/,
+    );
+    // 다리 문장 키는 통지 인자에만 한 번 나온다(상태 줄은 대중교통이 끝난 뒤 거짓 진행형이 된다)
+    expect(body.match(/prewalkUnavailableWith/g)).toHaveLength(1);
+  });
+
+  it("코디네이터: 시작 실패 갈래는 대중교통 창구로 말하지 않고, 대중교통 시작을 도보 통지 끝(상한 있음)까지 미룬다", () => {
+    const source = read("ios/Gildongmu/Directions/GuideSessionCoordinator.swift");
+    const fn = source.indexOf("    private func endPrewalk(");
+    const from = source.indexOf("        case .startFailed:", fn);
+    const branch = source.slice(from, source.indexOf("        case .userStopped, .ended:", from));
+    expect(fn).toBeGreaterThan(-1);
+    expect(branch.length).toBeGreaterThan(0);
+    expect(branch).not.toContain("announceExternal");
+    expect(source).not.toContain("transitGuide.prewalkUnavailable");
+    // 취소 가능한 연결 Task 안에서(다른 시작·teardown의 cancelPrewalk가 끊는다) 기다린 뒤 시작한다
+    expect(branch).toMatch(
+      /prewalkTask = Task \{ @MainActor \[weak self\] in[\s\S]*if UIAccessibility\.isVoiceOverRunning \{[\s\S]*while !self\.beacon\.announcementsSettled, waited < Self\.walkSpeechWaitLimitMs/,
+    );
+    expect(branch.indexOf("announcementsSettled")).toBeLessThan(branch.indexOf("self.transit.startAfterPrewalk("));
+    expect(branch).toMatch(/guard !Task\.isCancelled else \{ return \}\s*self\.transit\.startAfterPrewalk\(/);
+  });
+});

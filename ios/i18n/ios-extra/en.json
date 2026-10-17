@@ -279,6 +279,7 @@
       "stopped": "Distance tracking stopped.",
       "stoppedJoin": "Distance tracking stopped",
       "prewalkCancelledWith": "{reason}. Transit guidance was not started.",
+      "prewalkUnavailableWith": "{reason}. Walking guidance could not start; moving straight to boarding wait.",
       "arrivedHeading": "Arrived",
       "arrivedPresumedHeading": "Presumed arrival",
       "endedHeading": "Guidance ended",
