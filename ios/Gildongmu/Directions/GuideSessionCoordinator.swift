@@ -336,6 +336,9 @@ final class GuideSession {
             beacon.restart()
             return
         }
+        // 컨텍스트가 있으면 모델의 시작 인자도 그 승차 전 도보다(둘은 `launchPrewalk`의 같은 턴에 선다 — 그 시작이 동기 거부되는
+        // 길은 `startTransit`의 거부 게이트가 먼저 막는다). 새 입구가 이 짝을 깨면 아래 재시작이 no-op이 되어, `launchPrewalk`의
+        // 동기 거부 폴백이 원인 문장 없이 대중교통을 시작한다.
         // 시작 실패 뒤 대중교통 시작이 통지 끝을 기다리는 창(A67)이면 그 대기를 취소한다 — 걷기가 다시 시작되므로
         // 대중교통은 도착(또는 다시 실패)한 뒤에 선다.
         cancelPrewalk()
