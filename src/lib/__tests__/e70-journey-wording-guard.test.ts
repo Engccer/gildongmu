@@ -101,8 +101,14 @@ describe("E70 여정 문장의 자리", () => {
 
   it("판정 8: 제목·못 찾음 줄이 동명 이역 노선 머리말을 거친다", () => {
     const rows = read("JourneyResultRows.swift");
-    expect(body(rows, "journeyVariantHeading")).toContain("journeyQualifiedStationName");
-    expect(body(rows, "missingLines")).toContain("journeyQualifiedStationName($0.label, line: $0.line)");
+    const heading = body(rows, "journeyVariantHeading");
+    expect(heading).toContain("qualified ? journeyQualifiedStationName(name, line: line) : display(name)");
+    expect(heading.match(/qualified: lines\.board\)/g)).toHaveLength(2); // 지정 역 제목 + 추천 제목
+    expect(heading.match(/qualified: lines\.alight\)/g)).toHaveLength(2);
+    const missing = body(rows, "missingLines");
+    expect(missing).toContain("lines.board ? journeyQualifiedStationName($0.label, line: $0.line)");
+    expect(missing).toContain("lines.alight ? journeyQualifiedStationName($0.label, line: $0.line)");
+    expect(body(rows, "journeyLineQualifiers").match(/journeyNeedsLineQualifier\(/g)).toHaveLength(2);
     // 선택 버튼·제목·안내 시작 버튼이 같은 한정자로 같은 이름을 말한다
     expect(rows.match(/journeyVariantHeading\(/g)).toHaveLength(2); // 정의 + `heading(_:)` 한 자리
   });
