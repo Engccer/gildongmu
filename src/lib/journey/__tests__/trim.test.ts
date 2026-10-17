@@ -133,9 +133,9 @@ describe("trimJourneyTransit", () => {
 describe("trimJourneyTransit — 택시가 대신하는 쪽의 ODsay 출구 번호", () => {
   const leg = (exit: { board?: string; alight?: string }) =>
     ({ mode: "subway", lineName: "수도권 2호선", fromName: "가", toName: "나", minutes: 5, exit }) as const;
-  const route = {
+  const route: TransitRoute = {
     summary: { totalMinutes: 20, fare: 1550, transfers: 1, walkMinutes: 4 },
-    legs: [{ mode: "walk" as const, minutes: 2 }, leg({ board: "3" }), leg({ alight: "7" }), { mode: "walk" as const, minutes: 2 }],
+    legs: [{ mode: "walk", minutes: 2 }, leg({ board: "3" }), leg({ alight: "7" }), { mode: "walk", minutes: 2 }],
     routeKey: "p0",
   };
   it("승차를 자르면 첫 탈것의 board, 하차를 자르면 마지막 탈것의 alight를 뗀다", () => {
