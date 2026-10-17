@@ -31,8 +31,10 @@ describe("규칙 1·2: 장소 목록 행은 밀기 버튼, 딥링크 없음", ()
 
   // 밀기 버튼은 오른쪽 밀기(leading) 묶음이 먼저 동작 목록에 오르고 묶음 안은 선언 순이다(실기기 관측 2026-10-17).
   // 들리는 순서 판정은 전화 → 여기까지 길찾기 → 주소 복사 → 물어보기(위원장, 적극적 행동이 먼저).
-  const leading = slice(swipe, ".swipeActions(edge: .leading", ".swipeActions(edge: .trailing");
-  const trailing = slice(actions, ".swipeActions(edge: .trailing", "case .rotor:");
+  // 관측 빌드는 trailing을 먼저(안쪽), leading을 나중(바깥)에 걸었다 — "leading이 먼저"와 "바깥 수정자가 먼저"를
+  // 가르지 못하므로 두 해석이 같은 답을 내는 그 거는 순서를 잠근다.
+  const trailing = slice(swipe, ".swipeActions(edge: .trailing", ".swipeActions(edge: .leading");
+  const leading = slice(actions, ".swipeActions(edge: .leading", "case .rotor:");
 
   it("오른쪽 밀기는 전화 → 여기까지 길찾기이고 끝까지 밀기 실행이 꺼져 있다(둘 다 되돌릴 수 없다)", () => {
     expect(inOrder(leading, [".swipeActions(edge: .leading, allowsFullSwipe: false) {", "callButton", "directionsButton"])).toBe(true);

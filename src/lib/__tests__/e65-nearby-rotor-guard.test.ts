@@ -42,15 +42,18 @@ describe("E65 내 주변 로터 액션 배선", () => {
     const s = nearby("SubwayNearbyView.swift");
     expect(declaredInOrder(s, "stationHeading(station)\n", [".accessibilityAddTraits(.isHeader)", ".modifier(StationTitleActions("])).toBe(true);
     // 오른쪽 밀기 묶음이 동작 목록에 먼저 오른다 — 들리는 순서 전화 → 여기까지 길찾기 → 상세 보기(위원장 판정 2026-10-17).
+    // 거는 순서는 관측 조건(trailing 안쪽 → leading 바깥) 그대로다(e72-visible-actions-guard.test.ts 같은 이유).
     expect(declaredInOrder(s, "struct StationTitleActions", [
+      ".swipeActions(edge: .trailing) {",
+      'Button(appLocalized("transitGuide.openStation", name))',
       ".swipeActions(edge: .leading, allowsFullSwipe: false) {",
       "Button(stationCallLabel(",
       'Button(appLocalized("directions.toHere"))',
-      ".swipeActions(edge: .trailing) {",
-      'Button(appLocalized("transitGuide.openStation", name))',
+      ".alert(",
     ])).toBe(true);
-    const trailing = s.slice(s.indexOf(".swipeActions(edge: .trailing) {", s.indexOf("struct StationTitleActions")));
-    expect(trailing.slice(0, trailing.indexOf(".alert("))).not.toMatch(/directions\.toHere|stationCallLabel/);
+    const actions = s.slice(s.indexOf("struct StationTitleActions"));
+    const trailing = actions.slice(actions.indexOf(".swipeActions(edge: .trailing) {"), actions.indexOf(".swipeActions(edge: .leading"));
+    expect(trailing).not.toMatch(/directions\.toHere|stationCallLabel/);
     expect(s.slice(s.indexOf("struct StationTitleActions"))).not.toContain(".accessibilityActions");
     // 전화는 E45 창구 하나(라벨 `stationCallLabel`, 동작 `callStationPhone`)만 지난다 — 브리핑도 같은 라벨 함수.
     expect(s.slice(s.indexOf("struct StationTitleActions"))).toContain("callStationPhone(");
@@ -68,6 +71,9 @@ describe("E65 내 주변 로터 액션 배선", () => {
       "heading.swipeActions(edge: .leading, allowsFullSwipe: false) {",
       'Button(appLocalized("directions.toHere"))',
     ])).toBe(true);
+    // 반대쪽에 같은 길찾기가 서면 동작 목록에 두 번 들린다.
+    const title = s.slice(s.indexOf("private func stopTitle("), s.indexOf("} else {", s.indexOf("private func stopTitle(")));
+    expect(title).not.toContain(".swipeActions(edge: .trailing");
     expect(s).toContain("stopTitle(stop)");
   });
 

@@ -300,7 +300,17 @@ private struct StationTitleActions: ViewModifier {
         // 묶음 안은 선언 순이라 들리는 순서는 전화 → 여기까지 길찾기 → 상세 보기다(위원장 판정 2026-10-17,
         // `PlaceRowActions`와 같은 원칙). 전화 동작은 늘 있고 라벨만 상태로 갈린다(E45 판정 ④, E65 그대로).
         content
-            // 오른쪽 밀기, 가장자리부터. 끝까지 밀기 실행을 끈다 — 전화와 프리필은 되돌릴 수 없다(`PlaceRowActions`와 같은 이유).
+            // 왼쪽 밀기(안쪽에 먼저 건다 — 거는 순서는 `PlaceRowActions`와 같은 관측 조건). 끝까지 밀면 상세 보기
+            // (화면 이동, 뒤로 돌아온다)가 실행된다.
+            .swipeActions(edge: .trailing) {
+                if let lat = station.lat, let lng = station.lng {
+                    Button(appLocalized("transitGuide.openStation", name)) {
+                        let stop = TransitLegStop(name: station.stationName, lat: lat, lng: lng, nameEn: station.nameEn)
+                        onOpen(StationDestination(place: transitStopPlace(stop), lineName: lineHint))
+                    }
+                }
+            }
+            // 오른쪽 밀기(바깥), 가장자리부터. 끝까지 밀기 실행을 끈다 — 전화와 프리필은 되돌릴 수 없다(`PlaceRowActions`와 같은 이유).
             .swipeActions(edge: .leading, allowsFullSwipe: false) {
                 if let lat = station.lat, let lng = station.lng {
                     Button(stationCallLabel(
@@ -319,15 +329,6 @@ private struct StationTitleActions: ViewModifier {
                                 role: .to, endpoint: .place(
                                     label: station.stationName, lat: lat, lng: lng, labelRoman: station.nameEn))
                         }
-                    }
-                }
-            }
-            // 왼쪽 밀기. 끝까지 밀면 상세 보기(화면 이동, 뒤로 돌아온다)가 실행된다.
-            .swipeActions(edge: .trailing) {
-                if let lat = station.lat, let lng = station.lng {
-                    Button(appLocalized("transitGuide.openStation", name)) {
-                        let stop = TransitLegStop(name: station.stationName, lat: lat, lng: lng, nameEn: station.nameEn)
-                        onOpen(StationDestination(place: transitStopPlace(stop), lineName: lineHint))
                     }
                 }
             }
