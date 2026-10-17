@@ -148,7 +148,8 @@ struct GildongmuApp: App {
                         onMinimize: { guideSession.isMinimized = true },
                         onDestinationCommitted: { GuideFormSyncStore.shared.post($0) },
                         onWaypointCommitted: { GuideFormSyncStore.shared.postWaypoint($0) },
-                        onCarWalkHandoff: { guideSession.acceptCarWalkHandoff() }
+                        onCarWalkHandoff: { guideSession.acceptCarWalkHandoff() },
+                        journeyButton: journeyStageButton
                     )
                 case .transit:
                     TransitTrackingSheet(
@@ -166,6 +167,8 @@ struct GildongmuApp: App {
                         onMinimize: { guideSession.isMinimized = true },
                         onReturn: { guideSession.acceptOutingReturn() }
                     )
+                case .journey:
+                    JourneySheet(session: guideSession, onMinimize: { guideSession.isMinimized = true })
                 }
             }
             // 화면이 사라지면 최소화·띠바 포커스를 되돌린다(설계 리뷰 M1·M9).
@@ -266,6 +269,18 @@ struct GildongmuApp: App {
                     break
                 }
             }
+        }
+    }
+
+    /// 여정(E70 §6.3) 택시·출구 도보 단계의 시트 버튼 — 그 단계가 도는 동안만. 누른 순간의 token으로 전이한다.
+    private var journeyStageButton: (label: String, action: () -> Void)? {
+        switch guideSession.journey?.phase {
+        case .running(.taxiIn)?:
+            return (appLocalized("ios.journey.taxiDropped"), { guideSession.journeyAction(.taxiDropped) })
+        case .running(.egress)?:
+            return (appLocalized("ios.journey.taxiBoarded"), { guideSession.journeyAction(.taxiBoarded) })
+        default:
+            return nil
         }
     }
 
@@ -450,6 +465,8 @@ struct GuideBandView: View {
         // 나들이(E51) — 비콘 다음·대중교통 앞(`GuideSession.screen`과 같은 순서).
         let outing = session.outing
         if outing.isTracking || outing.endScreen != nil { return outing.bandLine }
+        // 여정 단계 사이(E70) — 대중교통 세션이 없을 때만(`GuideSession.screen`과 같은 순서).
+        if session.journey != nil, !session.transit.isTracking { return journeyStatusText(session) }
         let transit = session.transit
         let leg = transit.currentLeg
         switch guideBandSummary(

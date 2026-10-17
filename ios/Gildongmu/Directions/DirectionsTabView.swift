@@ -39,7 +39,9 @@ struct DirectionsPrefill: Equatable {
 /// (`manualLocation`은 `LocationBarView`가 `DirectionsEndpointSearchView`를 재사용하는
 /// 별도 진입로다 — 길찾기 탭의 from/to 상태 머신(`DirectionsModel`)과는 무관하다).
 enum DirectionsFieldTarget: String, Identifiable {
-    case from, to, via, manualLocation
+    /// `boardStation`·`alightStation`은 택시로 갈아탈 역 칸(E70, 실험판) — 검색 시트가 끝점이 아니라 장소(`Place`)를
+    /// 돌려준다(역인지 판정·노선 힌트에 분류가 필요하다, spec §5.1).
+    case from, to, via, manualLocation, boardStation, alightStation
     var id: String { rawValue }
 }
 
@@ -75,6 +77,17 @@ final class DirectionsModel {
     /// 경유지(N4, 선택 사항, 1개). `.place`만 — 검색 시트 `.via` 타깃은 "현재 위치 사용"
     /// 버튼을 내지 않아 `.current`가 구조적으로 들어오지 않는다. 도착지와 같은 원자 확정.
     private(set) var via: DirectionsEndpoint?
+    /// 택시로 갈아탈 역(E70, 실험판 — spec §5.1). 펼침 상태와 두 칸이고, 하나라도 있으면 조회가 여정만 한다(D12).
+    /// 경유지와 함께 쓰지 않는다(D14 — 펼치면 경유지를 비우고 경유지 행이 사라진다).
+    private(set) var journeyExpanded = false
+    private(set) var boardStation: RecentStation?
+    private(set) var alightStation: RecentStation?
+    /// 여정 조회 결과 3-state(찾음·경로 없음·조회 실패). `results`와 같은 세대에만 산다.
+    enum JourneyQueryOutcome: Equatable { case found(JourneyResult), noRoute, failed }
+    private(set) var journeyOutcome: JourneyQueryOutcome?
+    /// 고른 변형·출구(판정 13·16). 새 결과가 기본값(0·0 = 지정 역 경로·택시 시간 최단 출구)으로 되돌린다.
+    var journeyVariantIndex = 0
+    var journeyEgressIndex = 0
     private(set) var phase: Phase = .idle
     private(set) var results: DirectionsResults?
     /// 도보 줄 목록(E42·E52, `lines=2`). 서버 순서가 화면 순서이고 첫 줄이 기본 펼침이다.
@@ -215,7 +228,28 @@ final class DirectionsModel {
         case .from: from
         case .to, .manualLocation: to
         case .via: via
+        case .boardStation, .alightStation: nil  // 역 칸은 끝점이 아니다(`boardStation`·`alightStation`)
         }
+    }
+
+    var hasJourneyStations: Bool { boardStation != nil || alightStation != nil }
+
+    /// 역 지정 펼침·접힘(판정 15). 펼치면 경유지를 비우고(D14), 접으면 두 칸을 비운다 — 접힌 칸이 조회를 여정으로
+    /// 바꾸는 숨은 상태가 되지 않게.
+    func setJourneyExpanded(_ expanded: Bool) {
+        journeyExpanded = expanded
+        if expanded {
+            via = nil
+        } else {
+            boardStation = nil
+            alightStation = nil
+        }
+        clearResults()
+    }
+
+    func setJourneyStation(_ station: RecentStation, board: Bool) {
+        if board { boardStation = station } else { alightStation = station }
+        clearResults()
     }
 
     /// 필드 확정은 항상 엔드포인트 전체 교체(원자). 이전 결과는 새 질의와 무관해져 폐기.
@@ -230,6 +264,12 @@ final class DirectionsModel {
     /// 받는다(현재 위치는 경유지가 될 수 없다 — 서버 spec §3).
     func setVia(_ endpoint: DirectionsEndpoint) {
         guard case .place = endpoint else { return }
+        // 경유지와 갈아탈 역은 함께 쓰지 않는다(E70 D14) — 경유지가 서면 역 칸을 접고 비운다.
+        if journeyExpanded {
+            journeyExpanded = false
+            boardStation = nil
+            alightStation = nil
+        }
         via = endpoint
         recordRecent(endpoint, scope: .via)
         clearResults()
@@ -269,11 +309,14 @@ final class DirectionsModel {
 
     /// 최근 경로 기록(스펙 §1.2): settled 도달 시 1곳. 실패 phase·outOfCoverage·취소는
     /// 여기 도달하지 않는다. current는 nil 투영 — 측위된 실좌표를 굳히지 않는다.
-    private func recordRecentRoute(from: DirectionsEndpoint, to: DirectionsEndpoint, via: DirectionsEndpoint?) {
+    private func recordRecentRoute(
+        from: DirectionsEndpoint, to: DirectionsEndpoint, via: DirectionsEndpoint?,
+        boardStation: RecentStation?, alightStation: RecentStation?
+    ) {
         recentRoutes = recentStore.recordRoute(
             RecentRoute(
                 from: Self.recentSide(from), to: Self.recentSide(to), via: via.flatMap(Self.recentSide),
-                boardStation: nil, alightStation: nil))
+                boardStation: boardStation, alightStation: alightStation))
     }
 
     private static func recentSide(_ endpoint: DirectionsEndpoint) -> RecentEndpoint? {
@@ -324,6 +367,7 @@ final class DirectionsModel {
         promotedDestination = nil
         cancelRequeries()
         resultsCoords = nil
+        journeyOutcome = nil
         phase = .idle
     }
 
@@ -623,6 +667,14 @@ final class DirectionsModel {
             announce(appLocalized("ios.common.outOfCoverage"), haptic: .attention)
             return
         }
+        // 역을 하나라도 지정했으면 여정만 조회한다(E70 D12, 실험판). 출입구 승격(A11)은 하지 않는다 — 마지막 택시가
+        // 목적지까지 가므로 도보 도착점 승격이 뜻을 갖지 않는다.
+        if AppConfig.experimentalJourneyEnabled, hasJourneyStations {
+            await performJourney(
+                from: from, to: to, origin: origin, dest: queried,
+                originNeedsStartNotice: usedManualOrigin || (from == .current && staleAt != nil))
+            return
+        }
 
         // A11 출입구 승격 — 이름 있는 장소 목적지에만, ko 데이터 로케일에서만(도보 경로
         // 자체가 ko 전용이고 카카오 출입구 이름은 한국어 고유명사다). 승격본은 여기서
@@ -692,7 +744,7 @@ final class DirectionsModel {
         promotedDestination = promoted
         phase = .settled(successCount: built.successCount)
         hasQueriedOnce = true
-        recordRecentRoute(from: from, to: to, via: via)
+        recordRecentRoute(from: from, to: to, via: via, boardStation: nil, alightStation: nil)
         resultsRevision += 1
         // 완료 통지는 합산 1문장뿐(수단별 개별 통지 금지). 포커스 이동은 뷰가 revision으로.
         // 옛 위치로 찾았으면 같은 통지의 뒷문장으로 밝힌다(출발지 칸에만 있으면 조회 버튼을 누른
@@ -702,6 +754,56 @@ final class DirectionsModel {
             : appLocalized("directions.allFailed")
         announce([summary, resultsStaleNotice].compactMap { $0 }.joined(separator: " "),
             haptic: built.successCount > 0 ? .success : .failure)
+    }
+
+    /// 여정 조회(E70 §5.2). 결과는 3-state(찾음·경로 없음·조회 실패)이고 완료 통지는 합산 한 문장(기존 창구).
+    /// 포커스는 옮기지 않는다 — 조회 완료 시 조회 버튼에 머무는 이 화면의 규칙(위원장 판정 2026-08-02) 그대로다.
+    private func performJourney(
+        from: DirectionsEndpoint, to: DirectionsEndpoint,
+        origin: (lat: Double, lng: Double), dest: (lat: Double, lng: Double), originNeedsStartNotice: Bool
+    ) async {
+        phase = .loading
+        let service = self.service
+        let board = boardStation.map { JourneyStationQuery(name: $0.label, lat: $0.lat, lng: $0.lng, line: $0.line) }
+        let alight = alightStation.map { JourneyStationQuery(name: $0.label, lat: $0.lat, lng: $0.lng, line: $0.line) }
+        let outcome: JourneyQueryOutcome
+        do {
+            let response = try await withQueryTimeout {
+                try await service.journey(
+                    originLat: origin.lat, originLng: origin.lng, destLat: dest.lat, destLng: dest.lng,
+                    board: board, alight: alight)
+            }
+            guard !Task.isCancelled else { return }
+            switch response {
+            case .outOfCoverage:
+                phase = .outOfCoverage
+                announce(appLocalized("ios.common.outOfCoverage"), haptic: .attention)
+                return
+            case .result(let result):
+                outcome = result.variants.isEmpty ? .noRoute : .found(result)
+            }
+        } catch {
+            guard !Task.isCancelled else { return }
+            outcome = .failed
+        }
+        journeyOutcome = outcome
+        journeyVariantIndex = 0
+        journeyEgressIndex = 0
+        resultsOriginNeedsStartNotice = originNeedsStartNotice
+        hasQueriedOnce = true
+        resultsRevision += 1
+        switch outcome {
+        case .found:
+            phase = .settled(successCount: 1)
+            recordRecentRoute(from: from, to: to, via: nil, boardStation: boardStation, alightStation: alightStation)
+            announce(appLocalized("directions.readySummary", 1), haptic: .success)
+        case .noRoute:
+            phase = .settled(successCount: 0)
+            announce(appLocalized("route.transit.noRoute"), haptic: .failure)
+        case .failed:
+            phase = .settled(successCount: 0)
+            announce(appLocalized("route.transit.error"), haptic: .failure)
+        }
     }
 
     private func coordinate(
@@ -868,7 +970,8 @@ struct DirectionsTabView: View {
                     // (탭=재검색) + 삭제 버튼으로 바뀐다. 삭제는 자기를 누른 버튼을 없애므로
                     // 조회 버튼을 선점한다(헌장 §5). 도착지 확정 후 포커스는 종전대로 조회
                     // 버튼이다(선택 사항이 기본 흐름을 늘리면 안 된다 — 위원장 판정).
-                    if let viaName = viaFieldName {
+                    // 택시로 갈아탈 역(E70, 실험판·ko 데이터 로케일 — D2). 펼치면 경유지 행이 사라진다(D14).
+                    if !model.journeyExpanded, let viaName = viaFieldName {
                         Button { searchTarget = .via } label: {
                             bilingualLine(
                                 visible: "\(appLocalized("directions.via")), \(viaName.display)",
@@ -879,9 +982,27 @@ struct DirectionsTabView: View {
                             submitFocused = true
                             model.clearVia()
                         }
-                    } else {
+                    } else if !model.journeyExpanded {
                         Button(appLocalized("directions.addVia")) { searchTarget = .via }
                             .accessibilityFocused($focusedEndpointField, equals: .via)
+                    }
+                    if AppConfig.experimentalJourneyEnabled, AppLanguage.dataLocale == "ko" {
+                        if model.journeyExpanded {
+                            Button { searchTarget = .boardStation } label: {
+                                Text(stationFieldText(.boardStation))
+                            }
+                                .accessibilityFocused($focusedEndpointField, equals: .boardStation)
+                            Button { searchTarget = .alightStation } label: {
+                                Text(stationFieldText(.alightStation))
+                            }
+                                .accessibilityFocused($focusedEndpointField, equals: .alightStation)
+                        } else {
+                            // 누르면 자기가 사라지는 버튼이라 첫 칸으로 커서를 선점 이동한다(헌장 §5).
+                            Button(appLocalized("ios.journey.toggle")) {
+                                model.setJourneyExpanded(true)
+                                landStationField()
+                            }
+                        }
                     }
                     Button(submitText) { model.runQuery() }
                         .accessibilityFocused($submitFocused)
@@ -989,7 +1110,9 @@ struct DirectionsTabView: View {
                                             // 한 벌을 그대로 쓴다 — 여기서 다시 적으면
                                             // 최단 경로가 추천 경로로, 자동차가 도보로
                                             // 조용히 바뀐다.
-                                            beacon.restart()
+                                            // 여정 중엔 부르지 않는다 — 여정 실패 시트의 [경로 다시
+                                            // 조회]가 같은 일을 한다(E70 §6.3, 외부 시작 거부와 같은 판정).
+                                            if !session.isOccupied { beacon.restart() }
                                         case .denied:
                                             AccessibilityNotification.Announcement(appLocalized("ios.common.geoReducedDesc")).post()
                                         case .alreadyInFlight: break
@@ -1008,6 +1131,26 @@ struct DirectionsTabView: View {
                         // 바로 위 heading이 장소명이었지만 길찾기 결과엔 그 맥락이 없다.
                         Text(joinText(appLocalized("beacon.heading"), tracked.label))
                             .accessibilityAddTraits(.isHeader)
+                    }
+                }
+                if AppConfig.experimentalJourneyEnabled, let outcome = model.journeyOutcome {
+                    Section {
+                        switch outcome {
+                        case .found(let result):
+                            JourneyResultRows(
+                                result: result, board: model.boardStation, alight: model.alightStation,
+                                variantIndex: $model.journeyVariantIndex, egressIndex: $model.journeyEgressIndex,
+                                destinationName: destinationPlaceName, destinationRoman: destinationPlaceRoman,
+                                onStart: { variant, egress in
+                                    guard AppConfig.experimentalJourneyEnabled, let tracked = trackedDestination else { return }
+                                    announceGuideStartIfManualOrigin()
+                                    GuideSession.shared.startJourney(plan: JourneyPlan(
+                                        variant: variant, egress: egress, destLabel: tracked.label,
+                                        destRoman: destinationPlaceRoman, dest: tracked.dest))
+                                })
+                        case .noRoute: Text(appLocalized("route.transit.noRoute"))
+                        case .failed: Text(appLocalized("route.transit.error"))
+                        }
                     }
                 }
                 if let results = model.results {
@@ -1029,7 +1172,7 @@ struct DirectionsTabView: View {
                                     session.startBeacon(BeaconModel.StartRequest(
                                         dest: tracked.dest, label: tracked.label, labelRoman: destinationPlaceRoman, kind: .car,
                                         accessible: false, variant: nil, line: nil, alternate: nil,
-                                        waypoint: sessionWaypoint
+                                        waypoint: sessionWaypoint, carListener: nil
                                     ))
                                 }
                                 .accessibilityFocused($guideStartFocused, equals: .car)
@@ -1059,13 +1202,19 @@ struct DirectionsTabView: View {
                     stationLineHint: destination.lineName)
             }
             .sheet(item: $searchTarget) { target in
-                DirectionsEndpointSearchView(target: target) { endpoint in
+                DirectionsEndpointSearchView(target: target, onSelect: { endpoint in
                     model.setEndpoint(endpoint, for: target)  // .via는 setVia로 라우팅
                     // "현재 위치 사용" 선택은 강제 재측위 + 주소 새로고침 트리거(F-B).
                     if endpoint == .current { model.refreshCurrentLocation() }
                     // 확정으로 닫힐 때만 착지점을 예약한다(취소는 콜백이 없다).
                     focusAfterResolve = target
-                }
+                }, onSelectStation: { place in
+                    // 역 칸(E70 §5.1) — 시트가 역만 돌려준다(역이 아니면 시트가 통지하고 닫지 않는다).
+                    model.setJourneyStation(
+                        RecentStation(label: place.name, lat: place.lat, lng: place.lng, line: journeyLineHint(place)),
+                        board: target == .boardStation)
+                    focusAfterResolve = target
+                })
             }
             // 안내 시트(비콘·대중교통)는 여기 없다 — 세션이 앱 수명이라 루트
             // `GildongmuApp`이 `.sheet(item:)` 하나로 띄운다(N1 spec §2.2).
@@ -1198,6 +1347,14 @@ struct DirectionsTabView: View {
         } else {
             model.clearVia()
         }
+        // 여정(E70 §5.3): 역이 있으면 칸을 채우고 펼친 채 조회, 없으면 접는다(이전 질의의 역이 딸려 가지 않는다).
+        if AppConfig.experimentalJourneyEnabled, route.boardStation != nil || route.alightStation != nil {
+            model.setJourneyExpanded(true)
+            if let board = route.boardStation { model.setJourneyStation(board, board: true) }
+            if let alight = route.alightStation { model.setJourneyStation(alight, board: false) }
+        } else if model.journeyExpanded {
+            model.setJourneyExpanded(false)
+        }
         model.runQuery()
     }
 
@@ -1279,7 +1436,11 @@ struct DirectionsTabView: View {
             applyResolvedFocus(target)
             try? await Task.sleep(for: .milliseconds(600))
             // 먹지 않았으면 1회만 재시도(무한 재대입은 커서를 붙잡아 되레 방해가 된다).
-            let landed = target == .from ? focusedEndpointField == .to : submitFocused
+            let landed = switch target {
+            case .from: focusedEndpointField == .to
+            case .boardStation: focusedEndpointField == .alightStation
+            default: submitFocused
+            }
             guard !landed else { return }
             applyResolvedFocus(target)
         }
@@ -1380,6 +1541,8 @@ struct DirectionsTabView: View {
     private func applyResolvedFocus(_ target: DirectionsFieldTarget) {
         if target == .from {
             focusedEndpointField = .to
+        } else if target == .boardStation {
+            focusedEndpointField = .alightStation
         } else {
             focusedEndpointField = nil
             submitFocused = true
@@ -1423,6 +1586,25 @@ struct DirectionsTabView: View {
         guard model.promotedDestination == nil,
               case .place(_, _, _, let roman) = model.endpoint(for: .to) else { return nil }
         return roman
+    }
+
+    /// 역 칸 한 줄 = 한 객체(E70): 비면 칸 이름이 곧 버튼 이름, 채우면 "칸 이름, 역 이름".
+    private func stationFieldText(_ target: DirectionsFieldTarget) -> String {
+        // 키는 호출마다 리터럴로 쓴다 — 삼항을 호출 안에 넣으면 카탈로그 키 린터가 참조로 세지 못한다.
+        if target == .boardStation {
+            return joinText(appLocalized("ios.journey.boardField"), model.boardStation?.label)
+        }
+        return joinText(appLocalized("ios.journey.alightField"), model.alightStation?.label)
+    }
+
+    /// 역 지정 버튼이 사라진 자리에서 첫 칸으로(지연·검증·1회 재시도 — `landFocusAfterResolve` 동형).
+    private func landStationField() {
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(150))
+            focusedEndpointField = .boardStation
+            try? await Task.sleep(for: .milliseconds(600))
+            if focusedEndpointField != .boardStation { focusedEndpointField = .boardStation }
+        }
     }
 
     /// 필드 한 줄 = 한 객체: "출발지, 현재 위치"처럼 라벨+값 단일 텍스트(쉼표 결합).
@@ -1489,6 +1671,8 @@ struct DirectionsTabView: View {
         case .geoReduced: appLocalized("ios.common.geoReducedDesc")
         case .geoError: appLocalized("directions.geoError")
         case .outOfCoverage: appLocalized("ios.common.outOfCoverage")
+        case .settled where model.journeyOutcome == .noRoute: appLocalized("route.transit.noRoute")
+        case .settled where model.journeyOutcome == .failed: appLocalized("route.transit.error")
         case .settled(let count):
             [count > 0 ? appLocalized("directions.readySummary", count) : appLocalized("directions.allFailed"),
              model.resultsStaleNotice].compactMap { $0 }.joined(separator: " ")
@@ -1666,7 +1850,7 @@ struct DirectionsTabView: View {
                                     line: kind,
                                     alternate: WalkLineKind.switchAlternate(
                                         for: kind, among: model.walkLines.compactMap(\.lineKind)),
-                                    waypoint: sessionWaypoint
+                                    waypoint: sessionWaypoint, carListener: nil
                                 ))
                             }
                             .accessibilityFocused($guideStartFocused, equals: .walkLine(kind))

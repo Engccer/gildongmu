@@ -5,7 +5,8 @@ import GildongmuKit
 /// 않는다(설계 리뷰 M2: 한 갱신에서 한 시트가 내려가며 다른 시트가 올라오면
 /// presentation이 무시될 수 있다).
 enum GuideScreenKind: String, Identifiable {
-    case beacon, transit, outing
+    /// `journey`는 여정(E70)의 단계 사이 — 다음 세션 준비 중이거나 실패해 결정을 기다리는 동안의 시트(`JourneySheet`).
+    case beacon, transit, outing, journey
     var id: String { rawValue }
 }
 
@@ -58,10 +59,30 @@ final class GuideSession {
     /// 지우지 않게(`launchingPrewalk` 동형).
     private var launchingOutingReturn = false
 
+    // MARK: 여정(E70) 상태 — spec 2026-10-17-e70-mode-change-journey-design.md §6
+
+    /// 여정 상태(Kit `journeyStep`이 전이를 정한다). nil이면 여정 없음 — 이때 이 타입의 모든 동작은 종전 그대로다.
+    private(set) var journey: JourneyState?
+    private(set) var journeyPlan: JourneyPlan?
+    /// 진행 중 끊김(`.ended`)으로 실패했을 때 그 모델이 이미 낸 실패 문장 키와 해결 수단(§6.1). 실패 시트의 상태 줄이다.
+    private(set) var journeyFailure: (key: String, resolution: BeaconModel.FailResolution)?
+    /// 사이 상태의 준비 작업(인계 지연·측위) — 하나만 보관하고 종료·다음 전이가 취소한다.
+    private var journeyTask: Task<Void, Never>?
+    /// 사이 상태에 들어간 시각(복귀 시 30초 상한 판정, §6.3). 잠자기 중에도 전진하는 시계.
+    private var journeyTransitionAt: ContinuousClock.Instant?
+    /// `startJourneyStage`가 `beginBeacon`을 부르는 동안 true — 거기서 건 종료 훅을 `cancelPrewalk()`가 지우지 않게.
+    private var launchingJourneyStage = false
+
     private init() {}
 
-    /// 세션 활성 = 코디네이터 점유 ∨ 비콘 시작 대기(권한 팝업 등, 설계 리뷰 M5).
+    /// 세션 활성 = 코디네이터 점유 ∨ 비콘 시작 대기(권한 팝업 등, 설계 리뷰 M5). **단계 세션이 도는가**이고 모델
+    /// 입구 셋(`BeaconModel.requestStart`·`TransitGuideModel.start`·`startAfterPrewalk`)이 보는 값이다 — 여정을
+    /// 넣지 않는다(넣으면 여정 자신의 다음 세션이 모델 입구에서 막힌다, E70 빌더 점검 1).
     var isActive: Bool { coordinator.isActive || beacon.starting || outing.starting }
+
+    /// 외부 시작을 막는가 = 단계 세션 ∨ 여정(단계 사이 포함). 공개 시작 진입점·길찾기 탭의 재시작이 본다.
+    /// 여정이 없으면 `isActive`와 같다(정식판 동작 불변).
+    var isOccupied: Bool { isActive || journey != nil }
 
     /// 안내 화면이 존재해야 하는가 — 추적 중이거나 세션 뒤에 남은 화면이 있을 때.
     var hasScreen: Bool { screen != nil }
@@ -71,6 +92,8 @@ final class GuideSession {
         if beacon.isTracking || beacon.arrivalDest != nil { return .beacon }
         if outing.isTracking || outing.endScreen != nil { return .outing }
         if transit.isTracking || transit.pendingWalkHandoff != nil { return .transit }
+        // 여정의 단계 세션이 없는 동안(준비·실패) — 재시도 버튼이 놓일 시트가 늘 있다(spec §6.3).
+        if journey != nil { return .journey }
         return nil
     }
 
@@ -80,7 +103,13 @@ final class GuideSession {
 
     func startBeacon(_ request: BeaconModel.StartRequest) {
         guard !refuseIfActive() else { return }
-        if !launchingPrewalk, !launchingOutingReturn { cancelPrewalk() }
+        beginBeacon(request)
+    }
+
+    /// 거부 가드 없는 비콘 시작 본문(E70 §6.3). 호출자는 공개 `startBeacon`과 내부 인계(승차 전 도보·여정 단계)뿐이다
+    /// — 여정 중 외부 시작은 `startBeacon`의 거부에서 멈추고, 여정 자신의 다음 세션만 이 길로 온다(점유를 잠시 풀지 않는다).
+    private func beginBeacon(_ request: BeaconModel.StartRequest) {
+        if !launchingPrewalk, !launchingOutingReturn, !launchingJourneyStage { cancelPrewalk() }
         transit.clearWalkHandoff()
         outing.clearEnd()
         beacon.requestStart(request)
@@ -109,7 +138,7 @@ final class GuideSession {
         self.startBeacon(BeaconModel.StartRequest(
             dest: BeaconDest(lat: target.lat, lng: target.lng), label: target.label, labelRoman: nil, kind: .walk,
             accessible: false, variant: nil, line: nil, alternate: nil,
-            waypoint: nil))  // 귀환 경로에 경유지는 없다. 출발점 라벨은 라틴 표기가 없다(그 이름 그대로)
+            waypoint: nil, carListener: nil))  // 귀환 경로에 경유지는 없다. 출발점 라벨은 라틴 표기가 없다(그 이름 그대로)
         launchingOutingReturn = false
         // 동기 거부(requestStart 게이트)면 시작 Task가 없어 실패 콜백도 없다 — 여기서 잇는다.
         if !beacon.starting, !beacon.isTracking { endOutingReturn(id, reason: .startFailed, target: target) }
@@ -129,6 +158,15 @@ final class GuideSession {
         route: TransitRoute, destinationLabel: String, destinationRoman: String?, dest: BeaconDest, accessible: Bool
     ) {
         guard !refuseIfActive() else { return }
+        beginTransit(
+            route: route, destinationLabel: destinationLabel, destinationRoman: destinationRoman, dest: dest,
+            accessible: accessible)
+    }
+
+    /// 거부 가드 없는 대중교통 시작 본문(E70 §6.3, `beginBeacon` 동형). 승차 전 도보(A25)도 여기서 갈린다.
+    private func beginTransit(
+        route: TransitRoute, destinationLabel: String, destinationRoman: String?, dest: BeaconDest, accessible: Bool
+    ) {
         cancelPrewalk()
         beacon.clearArrival()
         outing.clearEnd()
@@ -161,11 +199,11 @@ final class GuideSession {
             transitPrewalkStartLine(
                 isEn: transitGuideIsEn, station: stationLabel, minutes: target.minutes)), speechClass: .actionable)
         launchingPrewalk = true
-        self.startBeacon(BeaconModel.StartRequest(
+        beginBeacon(BeaconModel.StartRequest(
             // 역 라벨은 이미 통지 언어로 골랐다(`walkLabel`) — 라틴 표기를 따로 싣지 않는다.
             dest: BeaconDest(lat: target.lat, lng: target.lng), label: walkLabel, labelRoman: nil, kind: .walk,
             accessible: accessible, variant: nil, line: nil, alternate: nil,
-            waypoint: nil))  // 승차역까지의 도보에 경유지는 없다
+            waypoint: nil, carListener: nil))  // 승차역까지의 도보에 경유지는 없다
         launchingPrewalk = false
         // 동기 거부(requestStart 게이트)면 시작 Task가 없어 실패 콜백도 없다 — 여기서 잇는다.
         if !beacon.starting, !beacon.isTracking { endPrewalk(context.id, reason: .startFailed) }
@@ -197,6 +235,10 @@ final class GuideSession {
                 destinationRoman: context.destinationRoman,
                 dest: context.dest, accessible: context.accessible, prewalkCompleted: false)
         case .userStopped, .ended:
+            // 여정(A 미지정)의 첫 단계가 승차 전 도보였으면 대중교통 세션은 시작되지 않으므로 여정도 끝난다(D11).
+            if let journey, case .running(.transit) = journey.phase {
+                advanceJourney(.transitStopped, token: journey.token)
+            }
             // 문장을 내지 않는다. "대중교통 안내는 시작하지 않았다"는 도보 모델이 정지·실패 사유 뒤에 붙여 **한 통지**로 냈다
             // (사용자 정지 `BeaconModel.stopByUser`, 권한·정밀 위치 상실 `stopAndFail` — `.ended`는 그 경로뿐이다. prewalk엔
             // 안전망이 돌지 않고 다른 시작 진입은 세션 중 거절된다). 대중교통 창구로 내면 그 재생기는 세션을 시작한 적이 없어
@@ -214,9 +256,10 @@ final class GuideSession {
         beacon.clearPrewalk()
     }
 
-    /// 거부 통지는 모델의 창구를 쓴다(지연 슬롯·억제 규칙을 지나야 한다).
+    /// 거부 통지는 모델의 창구를 쓴다(지연 슬롯·억제 규칙을 지나야 한다). 판정은 `isOccupied` — 여정 중(단계 사이 포함)
+    /// 외부 시작은 거부한다(E70 §6.3).
     private func refuseIfActive() -> Bool {
-        guard isActive else { return false }
+        guard isOccupied else { return false }
         beacon.announceNow(appLocalized("guide.alreadyActive"), highPriority: true, bypassSuppression: true)
         return true
     }
@@ -239,7 +282,7 @@ final class GuideSession {
             self.startBeacon(BeaconModel.StartRequest(
                 dest: dest, label: label, labelRoman: roman, kind: .walk, accessible: accessible,
                 variant: nil, line: nil, alternate: nil,
-                waypoint: nil))  // 대중교통 세션엔 경유지가 없다(ODsay 미지원)
+                waypoint: nil, carListener: nil))  // 대중교통 세션엔 경유지가 없다(ODsay 미지원)
         }
     }
 
@@ -252,13 +295,184 @@ final class GuideSession {
         beacon.clearArrival()
         self.startBeacon(BeaconModel.StartRequest(
             dest: dest, label: label, labelRoman: roman, kind: .walk, accessible: false,
-            variant: nil, line: nil, alternate: nil, waypoint: nil))
+            variant: nil, line: nil, alternate: nil, waypoint: nil, carListener: nil))
     }
 
     func handleScenePhaseChange(to phase: ScenePhase) {
         beacon.handleScenePhaseChange(to: phase)
         transit.handleScenePhaseChange(to: phase)
         outing.handleScenePhaseChange(to: phase)
+        // 복귀 시 사이 상태가 30초 넘게 남아 있으면 실패로 내린다 — 조용한 영구 대기 금지(spec §6.3).
+        if phase == .active, let journey, case .transitioning = journey.phase, let at = journeyTransitionAt,
+           at.duration(to: .now) > .seconds(JourneyTuning.staleTransitionSeconds) {
+            advanceJourney(.staleTimeout, token: journey.token)
+        }
+    }
+
+    // MARK: - 여정(E70, spec §6)
+
+    /// 여정 시작 — 길찾기 탭 여정 결과의 [안내 시작] 한 곳에서만 부른다(실험판 봉인, `guidance-gate-drift.test.ts`).
+    func startJourney(plan: JourneyPlan) {
+        guard !refuseIfActive() else { return }
+        cancelPrewalk()
+        beacon.clearArrival()
+        transit.clearWalkHandoff()
+        outing.clearEnd()
+        let state = JourneyState.start(id: UUID(), shape: plan.shape)
+        journeyPlan = plan
+        journeyFailure = nil
+        journey = state
+        guard case .transitioning(let first) = state.phase else { return }
+        prepareJourneyStage(first, token: state.token, delayed: false)
+    }
+
+    /// 시트 버튼(「택시에서 내렸어요」·「택시에 탔어요」·[경로 다시 조회]·[안내 종료])의 입구 — 누른 순간의 token을 싣는다.
+    func journeyAction(_ event: JourneyEvent) {
+        guard let journey else { return }
+        advanceJourney(event, token: journey.token)
+    }
+
+    /// 단계가 끝나는 사건의 **유일한** 입구. 전이를 동기로 커밋한 뒤(seq + 1) 준비 작업·다음 세션을 시작한다 —
+    /// 늦게 도착한 콜백·조회 완료·인계 지연은 seq 불일치로 버려진다(spec §6.3 "전이는 원자적으로 예약한다").
+    func advanceJourney(_ event: JourneyEvent, token: JourneyToken) {
+        guard let state = journey else { return }
+        switch journeyStep(state, event, token: token) {
+        case .ignore:
+            return
+        case .end:
+            finishJourney(stopSessions: event == .userEnded)
+        case .next(let next):
+            journey = next
+            switch next.phase {
+            case .transitioning(let stage):
+                journeyFailure = nil
+                // 버튼 사건은 아직 도는 단계 세션을 멈춘다 — 그 종료 콜백은 낡은 token이라 버려진다.
+                if event == .taxiDropped || event == .taxiBoarded, beacon.isTracking { beacon.stop() }
+                prepareJourneyStage(stage, token: next.token, delayed: event != .retry)
+            case .running(let stage):
+                journeyTransitionAt = nil
+                startJourneyStage(stage, token: next.token)
+            case .failed:
+                journeyTask?.cancel()
+                journeyTask = nil
+                journeyTransitionAt = nil
+                // 진행 중 끊김만 원인 문장을 보존한다(그 모델이 이미 통지했다 — 다시 말하지 않는다).
+                journeyFailure = event == .stageEnded(.ended) ? beacon.lastFailure : nil
+            }
+        }
+    }
+
+    /// 사이 상태의 준비: 인계 지연(첫 시작·재시도는 없음) → 접근 도보면 그때 위치로 30m 판정(D6) → `prepared`.
+    /// 택시 단계는 미리 측위하지 않는다 — 자동차 세션이 첫 fix로 스스로 경로를 조회하고(§6.3 "택시 세션의 경로"),
+    /// 측위 실패는 그 세션의 `.startFailed`로 온다.
+    private func prepareJourneyStage(_ stage: JourneyStage, token: JourneyToken, delayed: Bool) {
+        journeyTask?.cancel()
+        journeyTransitionAt = .now
+        journeyTask = Task { @MainActor [weak self] in
+            if delayed { try? await Task.sleep(for: .milliseconds(JourneyTuning.handoffDelayMs)) }
+            guard !Task.isCancelled, let self else { return }
+            var ready = stage
+            if stage == .access, let board = self.journeyPlan?.variant.boardStation {
+                // 측위 실패면 걷기 안내를 시작한다(그 세션이 도착을 판정한다) — 빠진 안내보다 군더더기가 낫다.
+                if let here = try? await LocationService.shared.currentCoordinate(force: true),
+                   !journeyNeedsAccessWalk(
+                       fromLat: here.lat, fromLng: here.lng, toLat: board.coord.lat, toLng: board.coord.lng) {
+                    ready = .transit
+                }
+                guard !Task.isCancelled else { return }
+            }
+            self.advanceJourney(.prepared(ready), token: token)
+        }
+    }
+
+    /// 여정 단계 세션 시작 — `begin*`을 부르는 여정 쪽 유일한 자리. token이 지금 것이고 단계 세션이 하나도 돌지 않을
+    /// 때만 시작한다(점유를 잠시 푸는 방식은 그 틈에 외부 시작이 끼어든다, spec §6.3).
+    private func startJourneyStage(_ stage: JourneyStage, token: JourneyToken) {
+        guard journey?.token == token, !beacon.isTracking, !beacon.starting, !transit.isTracking,
+              let plan = journeyPlan
+        else {
+            guideDiagLog("journey stageStartRefused stage=\(stage.rawValue)")
+            return
+        }
+        let shape = plan.shape
+        switch stage {
+        case .taxiIn, .access:
+            guard let board = plan.variant.boardStation else { return finishJourney(stopSessions: false) }
+            let name = journeyStationDisplayName(board.name)
+            // 택시 자동 도착만 역 이름 문장(사용자가 누르지 않은 인계라 무엇이 시작되는지 알린다, spec §6.3 통지).
+            // 접근 도보의 도착은 그 도보 세션의 기본 도착 문장이다.
+            beacon.markChained(arrivalText: stage == .taxiIn ? appLocalized("ios.journey.arrivedStation", name) : nil)
+            launchJourneyBeacon(
+                dest: BeaconDest(lat: board.coord.lat, lng: board.coord.lng), label: name + "역",
+                labelRoman: nil, kind: stage == .taxiIn ? .car : .walk, token: token)
+        case .transit:
+            transit.onJourneyStopped = { [weak self] in self?.advanceJourney(.transitStopped, token: token) }
+            if shape.alightDesignated {
+                transit.onJourneyRideCompleted = { [weak self] in self?.advanceJourney(.rideCompleted, token: token) }
+                transit.journeyNextIsWalk = shape.hasEgressWalk
+            }
+            // 역 B를 지정했으면 대중교통 구간의 끝은 그 역이다(말미 도보는 출구 도보·택시가 잇는다).
+            let alight = shape.alightDesignated ? plan.variant.alightStation : nil
+            beginTransit(
+                route: plan.variant.transit,
+                destinationLabel: alight.map { journeyStationDisplayName($0.name) + "역" } ?? plan.destLabel,
+                destinationRoman: alight == nil ? plan.destRoman : nil,
+                dest: alight.map { BeaconDest(lat: $0.coord.lat, lng: $0.coord.lng) } ?? plan.dest,
+                accessible: false)
+            // 불변식: 단계 세션 부재를 위에서 확인했으므로 대중교통 시작은 거부되지 않는다(§6.4). 깨지면 남기고 끝낸다.
+            if !transit.isTracking, !beacon.isTracking, !beacon.starting {
+                guideDiagLog("journey transitStartInvariantBroken")
+                finishJourney(stopSessions: false)
+            }
+        case .egress:
+            guard let option = plan.egress else { return finishJourney(stopSessions: false) }
+            beacon.markChained(arrivalText: nil)
+            launchJourneyBeacon(
+                dest: BeaconDest(lat: option.coord.lat, lng: option.coord.lng), label: option.placeName,
+                labelRoman: nil, kind: .walk, token: token)
+        case .taxiOut:
+            // 여정의 마지막 세션 — chained가 아니다(일반 자동차 종료 화면을 남긴다, §6.1).
+            launchJourneyBeacon(
+                dest: plan.dest, label: plan.destLabel, labelRoman: plan.destRoman, kind: .car, token: token)
+        }
+    }
+
+    /// 여정 단계의 비콘 시작(택시는 늘 승객 — D10). 종료 사유는 그 단계 token을 실어 `advanceJourney`로 간다.
+    private func launchJourneyBeacon(
+        dest: BeaconDest, label: String, labelRoman: String?, kind: BeaconModel.GuideSessionKind, token: JourneyToken
+    ) {
+        beacon.onSessionEnd = { [weak self] reason in
+            self?.advanceJourney(.stageEnded(JourneyStageEnd(reason)), token: token)
+        }
+        launchingJourneyStage = true
+        beginBeacon(BeaconModel.StartRequest(
+            dest: dest, label: label, labelRoman: labelRoman, kind: kind, accessible: false,
+            variant: nil, line: nil, alternate: nil, waypoint: nil,
+            carListener: kind == .car ? .passenger : nil))
+        launchingJourneyStage = false
+        // 동기 거부면 시작 Task가 없어 실패 콜백도 없다 — 여기서 잇는다(승차 전 도보 동형).
+        if !beacon.starting, !beacon.isTracking {
+            beacon.clearPrewalk()
+            advanceJourney(.stageEnded(.startFailed), token: token)
+        }
+    }
+
+    /// 여정 상태를 지운다. `stopSessions`는 여정 시트의 [안내 종료]만 참이다 — 단계 세션이 스스로 끝난 경우(종료 버튼·
+    /// 도착)는 이미 멈췄다.
+    private func finishJourney(stopSessions: Bool) {
+        journey = nil
+        journeyPlan = nil
+        journeyFailure = nil
+        journeyTask?.cancel()
+        journeyTask = nil
+        journeyTransitionAt = nil
+        transit.onJourneyRideCompleted = nil
+        transit.onJourneyStopped = nil
+        transit.journeyNextIsWalk = nil
+        guard stopSessions else { return }
+        cancelPrewalk()
+        if beacon.isTracking || beacon.starting { beacon.stop(playStopTone: true) }
+        if transit.isTracking { transit.stop(playStopTone: true) }
     }
 
     // MARK: - 받아쓰기 중 출력 억제 (K1 ④, N1 후속)
@@ -322,5 +536,34 @@ final class GuideFormSyncStore {
     func takeWaypoint() -> DirectionsEndpoint? {
         defer { pendingWaypoint = nil }
         return pendingWaypoint
+    }
+}
+
+/// 여정 안내의 계획(길찾기 탭 여정 결과에서 고른 변형·출구 + 도착지). 모양은 여기서 유도한다.
+struct JourneyPlan {
+    let variant: JourneyVariant
+    /// 고른 출구·승강장(역 B 미지정이면 nil). `kind == .none`이면 출구 도보 없이 곧장 택시.
+    let egress: EgressOption?
+    let destLabel: String
+    let destRoman: String?
+    let dest: BeaconDest
+
+    var shape: JourneyShape {
+        JourneyShape(
+            startsWithTaxi: variant.taxiIn != nil,
+            alightDesignated: variant.egress != nil,
+            hasEgressWalk: egress.map { $0.kind != .none } ?? false)
+    }
+}
+
+extension JourneyStageEnd {
+    /// 비콘 종료 사유 넷과 1:1(spec §6.1 — 빠진 사유가 있으면 세션은 사라지고 여정만 남는다).
+    init(_ reason: BeaconModel.EndReason) {
+        switch reason {
+        case .arrived: self = .arrived
+        case .userStopped: self = .userStopped
+        case .startFailed: self = .startFailed
+        case .ended: self = .ended
+        }
     }
 }

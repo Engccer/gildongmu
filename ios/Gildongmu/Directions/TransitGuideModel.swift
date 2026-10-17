@@ -52,6 +52,16 @@ final class TransitGuideModel {
     /// 완료 후 도보 핸드오프 제안(§14.2) — 세션 밖 수명(stop()이 소거하는 상태와
     /// 별도 보존). 시트 presentation이 isTracking ∨ 이 값으로 확장된다.
     private(set) var pendingWalkHandoff: TransitWalkHandoff?
+    /// 여정(E70 §6.3) 마지막 leg 완료 콜백 — 역 B를 지정한 여정의 대중교통 단계에만 걸린다. 걸려 있으면 `.done` 갈래가
+    /// 말미 도보(`walkAfterMinutes`)와 무관하게 이것을 **정확히 한 번** 부르고 `pendingWalkHandoff`를 세우지 않는다 —
+    /// 여정 경로는 B 쪽 말미 도보를 잘라 냈으므로(D3) 그 신호에 기대면 인계가 사라진다.
+    var onJourneyRideCompleted: (() -> Void)?
+    /// 여정의 대중교통 단계가 `.done` 갈래가 아닌 경로로 끝났을 때(시트 「안내 종료」·그 밖의 `stop()`) 한 번 — 여정 전체
+    /// 종료(D11). `.done` 갈래는 이것을 먼저 비운다. 역 B 미지정 여정은 이것만 걸려 `.done`의 `stop()`에서도 불린다(여정이
+    /// 그 자리에서 끝나고 종전 말미 도보 인계가 이어진다).
+    var onJourneyStopped: (() -> Void)?
+    /// 여정이면 마지막 leg 버튼의 다음 단계가 걷기인가(출구 도보 → 「남은 도보 안내 시작」, 아니면 「택시에 탔어요」). nil = 여정 아님.
+    var journeyNextIsWalk: Bool?
     /// 목적지 전환 준비 상태(스펙 2026-08-12 §4). nil = 진행 중인 전환 없음.
     /// 확정 전에는 세션·폼 어느 것도 변하지 않는다(2단 확정 단위).
     struct PendingDestChange {
@@ -388,6 +398,12 @@ final class TransitGuideModel {
         altRoutesToken += 1
         pendingAltRoutes = nil
         outputSuppressed = false
+        onJourneyRideCompleted = nil
+        journeyNextIsWalk = nil
+        if let stopped = onJourneyStopped {
+            onJourneyStopped = nil
+            stopped()
+        }
     }
 
     /// 핸드오프 제안 소거(§14.2) — 시트 닫기·수락 시 호출(세션은 이미 종료 상태).
@@ -707,6 +723,12 @@ final class TransitGuideModel {
         return pending
     }
 
+    /// 마지막 leg인가(E70 여정 버튼 조건 — 잘린 경로는 말미 도보 분이 없다).
+    var isOnFinalLeg: Bool {
+        guard let state, let route else { return false }
+        return state.legIndex == route.legs.count - 1
+    }
+
     /// 마지막 leg면 목적지까지의 말미 도보 분(E34 버튼 조건), 아니면 nil.
     var finalLegWalkMinutes: Int? {
         guard let state, let route, state.legIndex == route.legs.count - 1 else { return nil }
@@ -716,6 +738,14 @@ final class TransitGuideModel {
     private func completeOrAdvance(announceDone: Bool) {
         dispatch(.advance)
         if state?.phase == .done {
+            // 여정(E70 §6.3): 말미 도보와 무관하게 다음 단계로. 완료 문장은 다음 세션의 시작 통지가 대신한다(뻔한 꼬리 금지).
+            if let rideCompleted = onJourneyRideCompleted {
+                onJourneyRideCompleted = nil
+                onJourneyStopped = nil
+                stop()
+                rideCompleted()
+                return
+            }
             // 완료 통지는 legAdvanced 이벤트가 이미 냈다 — 자원만 회수한다.
             // 말미 도보가 있으면 핸드오프 제안(§14.2)을 stop() **뒤에** 남긴다
             // (stop()이 pendingWalkHandoff까지 nil로 지우는 단일 소거 경로라 순서 필수).

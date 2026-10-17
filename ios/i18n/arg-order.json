@@ -462,6 +462,60 @@
   "ios.guide.waypointSkipped": [
     "label"
   ],
+  "ios.journey.arrivedStation": [
+    "station"
+  ],
+  "ios.journey.designatedHeading": [
+    "station"
+  ],
+  "ios.journey.designatedHeadingAlight": [
+    "station"
+  ],
+  "ios.journey.designatedMissing": [
+    "station"
+  ],
+  "ios.journey.designatedMissingAlight": [
+    "station"
+  ],
+  "ios.journey.egressExit": [
+    "exit",
+    "minutes",
+    "fare"
+  ],
+  "ios.journey.egressLookupFailed": [
+    "minutes",
+    "fare"
+  ],
+  "ios.journey.egressNone": [
+    "minutes",
+    "fare"
+  ],
+  "ios.journey.egressStand": [
+    "minutes",
+    "fare"
+  ],
+  "ios.journey.recommendedHeading": [
+    "station"
+  ],
+  "ios.journey.recommendedHeadingAlight": [
+    "station"
+  ],
+  "ios.journey.recommendedHeadingBus": [
+    "stop"
+  ],
+  "ios.journey.recommendedHeadingBusAlight": [
+    "stop"
+  ],
+  "ios.journey.taxiIn": [
+    "station",
+    "minutes",
+    "fare"
+  ],
+  "ios.journey.totals": [
+    "minutes",
+    "taxiFare",
+    "transitFare"
+  ],
   "ios.nearby.airStationLine": [
     "name",
     "distance"

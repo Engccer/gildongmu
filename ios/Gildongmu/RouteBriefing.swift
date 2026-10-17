@@ -7,7 +7,7 @@ import GildongmuKit
 /// guidance·노선명·정류장명은 provider 한국어 원문이 낭독 정본, 행은 joinText 단일 텍스트.
 
 /// 요금 천 단위 구분(예 22600 → "22,600")
-private func wonText(_ amount: Int) -> String {
+func wonText(_ amount: Int) -> String {
     amount.formatted(.number.grouping(.automatic))
 }
 

@@ -43,6 +43,15 @@ enum AppConfig {
     static let experimentalTabOrderEnabled = false
     #endif
 
+    /// 택시로 갈아타는 여정(E70)의 봉인. 첫 판은 실험판에서만(BACKLOG E70 판정 5). 소비자는 길찾기 탭의
+    /// 역 지정 버튼·두 칸·여정 결과와 `GuideSession.shared.startJourney` 호출 자리다(`guidance-gate-drift.test.ts`가
+    /// 그 호출이 이 조건 안에 있는지 잠근다). 실차·실보행 판정을 통과하면 이 검사를 삭제한다(플래그 졸업).
+    #if EXPERIMENTAL
+    static let experimentalJourneyEnabled = true
+    #else
+    static let experimentalJourneyEnabled = false
+    #endif
+
     /// 웹 개인정보 처리방침 URL(현재 앱 언어 로케일). 동의 화면·설정이 공유한다.
     static var privacyPolicyURL: URL {
         apiBaseURL.appending(path: "\(AppLanguage.current)/privacy")

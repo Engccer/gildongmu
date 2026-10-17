@@ -552,7 +552,9 @@ struct TransitTrackingSheet: View {
                 Text(appLocalized("transitGuide.untrackable"))
                     .foregroundStyle(.secondary)
                 // 마지막 leg면 라벨이 인계 자체(E34). 이 자리는 종전대로 착지 바인딩이 없다(A35 범위).
-                Button(handoffNow
+                Button(journeyTaxiNext
+                    ? appLocalized("ios.journey.taxiBoarded")
+                    : handoffNow
                     ? appLocalized("transitGuide.walkHandoffStart")
                     : appLocalized("transitGuide.advanceUntrackable")) { advanceOrHandoff() }
             } else if state.phase == .waiting {
@@ -737,12 +739,19 @@ struct TransitTrackingSheet: View {
 
     /// E34 조건: 마지막 leg ∧ 말미 도보 ∧ 인계 가능. 참이면 `advance` 자리 버튼이 "남은 도보 안내 시작".
     private var handoffNow: Bool {
-        model.finalLegWalkMinutes != nil && onWalkHandoff != nil
+        // 여정(E70 §6.3)이면 다음 단계가 곧 인계다 — 잘린 경로라 말미 도보 분이 없어도 마지막 leg면 선다.
+        if model.journeyNextIsWalk != nil { return model.isOnFinalLeg }
+        return model.finalLegWalkMinutes != nil && onWalkHandoff != nil
     }
+
+    /// 여정의 마지막 leg이고 다음이 택시(출구 후보 없음)인가 — 버튼 라벨이 「택시에 탔어요」(새 문구 없음, spec §6.3).
+    private var journeyTaxiNext: Bool { handoffNow && model.journeyNextIsWalk == false }
 
     // 착지 대상 라벨 셋 — 뷰와 착지 폴백(`landingFallbackText`)이 **같은 식**을 읽는다(둘로 적으면 드리프트한다).
     private var advanceLabel: String {
-        handoffNow ? appLocalized("transitGuide.walkHandoffStart") : appLocalized("transitGuide.advance")
+        journeyTaxiNext
+            ? appLocalized("ios.journey.taxiBoarded")
+            : handoffNow ? appLocalized("transitGuide.walkHandoffStart") : appLocalized("transitGuide.advance")
     }
     private var waitingLabelText: String {
         appLocalized(model.aboardStep == .pickVehicle ? "transitGuide.waitingLabelAboard" : "transitGuide.waitingLabel")
@@ -755,6 +764,11 @@ struct TransitTrackingSheet: View {
     /// `advance` 자리 버튼의 동작 — E34면 leg 종료 뒤 **인계가 실제로 남았을 때만** 도보 시작을 부른다
     /// (전이가 no-op이면 세션을 끊지 않는다).
     private func advanceOrHandoff() {
+        // 여정은 `.done` 갈래의 콜백이 다음 단계를 연다(spec §6.3) — 시트가 인계를 부르지 않는다.
+        if model.journeyNextIsWalk != nil {
+            model.advance()
+            return
+        }
         if handoffNow {
             if model.advanceIntoWalkHandoff() { onWalkHandoff?() }
         } else {

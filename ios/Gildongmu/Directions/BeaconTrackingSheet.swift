@@ -36,6 +36,9 @@ struct BeaconTrackingSheet: View {
     let onWaypointCommitted: (DirectionsEndpoint) -> Void
     /// 자동차 도착 종료 화면의 도보 인계(K2 §6.4, 위원장 판정 ④). nil이면 버튼이 없다.
     let onCarWalkHandoff: (() -> Void)?
+    /// 여정(E70 §6.3) 단계 버튼 — 택시 단계 「택시에서 내렸어요」, 출구 도보 「택시에 탔어요」. 그 단계 동안 늘 있다.
+    /// 여정이 아니거나 다른 단계면 nil(버튼 없음). 자동 판정과 먼저 오는 쪽이 다음 단계를 연다.
+    let journeyButton: (label: String, action: () -> Void)?
 
     /// 착지 대상(E57, spec 2026-09-30-guide-sheet-info-row-landing). **시트가 열리거나 이어지거나 띠바에서 돌아올 때의
     /// 첫 착지는 첫 정보 행**(위원장 2026-09-30: "최상단 헤딩이 아닌 남은 거리 행", 띠바 복귀 Q1) — 종전 제목·접기 버튼
@@ -266,6 +269,16 @@ struct BeaconTrackingSheet: View {
                                 transitPrewalkArrivedButtonLine(
                                     isEn: transitGuideIsEn, station: station)))
                                 .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.large)
+                        .padding(.horizontal)
+                        .padding(.top, 8)
+                        .background(.bar, ignoresSafeAreaEdges: [])
+                    }
+                    if let journeyButton {
+                        Button(action: journeyButton.action) {
+                            Text(journeyButton.label).frame(maxWidth: .infinity)
                         }
                         .buttonStyle(.borderedProminent)
                         .controlSize(.large)

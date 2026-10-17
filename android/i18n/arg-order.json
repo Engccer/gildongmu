@@ -1118,6 +1118,60 @@
   "android.guide.waypointSkipped": [
     "label"
   ],
+  "android.journey.arrivedStation": [
+    "station"
+  ],
+  "android.journey.designatedHeading": [
+    "station"
+  ],
+  "android.journey.designatedHeadingAlight": [
+    "station"
+  ],
+  "android.journey.designatedMissing": [
+    "station"
+  ],
+  "android.journey.designatedMissingAlight": [
+    "station"
+  ],
+  "android.journey.egressExit": [
+    "exit",
+    "minutes",
+    "fare"
+  ],
+  "android.journey.egressLookupFailed": [
+    "minutes",
+    "fare"
+  ],
+  "android.journey.egressNone": [
+    "minutes",
+    "fare"
+  ],
+  "android.journey.egressStand": [
+    "minutes",
+    "fare"
+  ],
+  "android.journey.recommendedHeading": [
+    "station"
+  ],
+  "android.journey.recommendedHeadingAlight": [
+    "station"
+  ],
+  "android.journey.recommendedHeadingBus": [
+    "stop"
+  ],
+  "android.journey.recommendedHeadingBusAlight": [
+    "stop"
+  ],
+  "android.journey.taxiIn": [
+    "station",
+    "minutes",
+    "fare"
+  ],
+  "android.journey.totals": [
+    "minutes",
+    "taxiFare",
+    "transitFare"
+  ],
   "android.nearby.airStationLine": [
     "name",
     "distance"

@@ -31,6 +31,8 @@ const IOS_DIR = join(ROOT, "ios");
 const RETIRED_FLAG = "experimentalGuidanceEnabled";
 /** 나들이(E51) 봉인 — 2026-09-27 위원장 재판정으로 1차는 실험판 전용. */
 const OUTING_FLAG = "AppConfig.experimentalOutingEnabled";
+/** 택시로 갈아타는 여정(E70) 봉인 — 첫 판은 실험판 전용(BACKLOG E70 판정 5). */
+const JOURNEY_FLAG = "AppConfig.experimentalJourneyEnabled";
 
 /** 빌드 산출물엔 파생 Swift가 섞여 있어 스캔 대상이 아니다. */
 const SKIP_DIRS = new Set(["build", ".build", "DerivedData", "node_modules", ".git"]);
@@ -283,13 +285,15 @@ describe("2. 도보 경로는 플래그를 졸업했다", () => {
     // 불가이지만 도보 세션 자체는 졸업한 기능이라 별도 게이트가 없다 — spec K2 §6.4).
     // 승차 전 도보(A25, 2026-08-30 — `startTransit` 안. 대중교통 시작 버튼이 봉인 안이라 도달 불가)까지 셋,
     // 나들이 귀환(E51, 2026-09-26 — `acceptOutingReturn`. 나들이 세션은 이미 실좌표 위에 있었고, 그 세션이
-    // 실험판 봉인 안이라 정식판에서 도달 불가)까지 넷.
+    // 실험판 봉인 안이라 정식판에서 도달 불가)까지 넷. E70(2026-10-17)에서 승차 전 도보는 거부 가드 없는 본문
+    // `beginTransit` 안의 `beginBeacon(`으로 옮겼다(여정 중 내부 인계가 `refuseIfActive`에 막히지 않게) — `self.startBeacon(`은 셋.
     const session = readFileSync(GUIDE_SESSION, "utf8");
-    expect(session.match(/self\.startBeacon\(/g)).toHaveLength(4);
+    expect(session.match(/self\.startBeacon\(/g)).toHaveLength(3);
     expect(declarationBody(session, "acceptOutingReturn")).toContain("self.startBeacon(");
     expect(declarationBody(session, "acceptWalkHandoff")).toContain("self.startBeacon(");
     expect(declarationBody(session, "acceptCarWalkHandoff")).toContain("self.startBeacon(");
-    expect(declarationBody(session, "startTransit")).toContain("self.startBeacon(");
+    expect(declarationBody(session, "startTransit")).toContain("beginTransit(");
+    expect(declarationBody(session, "beginTransit")).toContain("beginBeacon(");
   });
 
   it("구 플래그 realtimeGuidanceEnabled가 남아 있지 않다", () => {
@@ -330,14 +334,18 @@ describe("3. 안내 세션 진입점이 늘지 않았다", () => {
    * 시작 버튼은 `session.startBeacon(`(거부 게이트 단일 진입점)으로 형태가 바뀌었다.
    * `beacon.requestStart(`는 `startBeacon` 내부의 한 겹이라 진입점이 아니다.
    */
-  const ENTRY_CALL = /(?:beacon\.(?:toggle|restart)|(?:session|self)\.startBeacon)\(/g;
+  // E70(2026-10-17)이 형태 둘을 더했다: 거부 가드 없는 비콘 시작 본문 `beginBeacon(`(호출 셋 — 공개 `startBeacon`의
+  // 본문, 승차 전 도보 `beginTransit`, 여정 단계 `launchJourneyBeacon`)과 여정 시작 `GuideSession.shared.startJourney(`
+  // (길찾기 탭 하나, 실험판 봉인 뒤 — 아래 "7"이 잠근다). `func beginBeacon(` 선언은 세지 않는다.
+  const ENTRY_CALL =
+    /(?:beacon\.(?:toggle|restart)|(?:session|self)\.startBeacon|(?<!func )beginBeacon|GuideSession\.shared\.startJourney)\(/g;
 
-  it("안내 세션 진입점 호출이 정확히 7곳이다", () => {
+  it("안내 세션 진입점 호출이 정확히 10곳이다", () => {
     const sites = swiftFiles(IOS_DIR).flatMap((file) => {
       const hits = readFileSync(file, "utf8").match(ENTRY_CALL) ?? [];
       return hits.map(() => file);
     });
-    expect(sites).toHaveLength(7);
+    expect(sites).toHaveLength(10);
   });
 
   /**
@@ -378,6 +386,77 @@ describe("3. 안내 세션 진입점이 늘지 않았다", () => {
       (file) => readFileSync(file, "utf8").match(/beacon\.restart\([^)]*\)/g) ?? [],
     );
     expect(hits).toEqual(["beacon.restart()"]);
+  });
+});
+
+describe("7. 여정(E70) — 실험판 봉인과 내부 인계", () => {
+  const session = () => readFileSync(GUIDE_SESSION, "utf8");
+  /** 그 식별자를 부르는 선언(func) 이름들 — 호출 자리의 주인. */
+  function callersOf(source: string, call: string): string[] {
+    const names = [...source.matchAll(/func\s+(\w+)/g)].map((m) => m[1]);
+    return names.filter((name) => declarationBody(source, name).includes(call)).sort();
+  }
+
+  it("여정 시작은 길찾기 탭 한 곳이고 실험판 봉인 조건 안에 있다", () => {
+    const calls = swiftFiles(IOS_DIR).flatMap((file) =>
+      (readFileSync(file, "utf8").match(/GuideSession\.shared\.startJourney\(/g) ?? []).map(() => file.split("/").pop()),
+    );
+    expect(calls).toEqual(["DirectionsTabView.swift"]);
+    const sites = enclosingHeaders(directions(), "GuideSession.shared.startJourney(");
+    expect(sites).toHaveLength(1);
+    expect(sites[0].join("\n")).toContain(JOURNEY_FLAG);
+  });
+
+  it("거부 가드 없는 시작 본문의 호출자는 공개 시작·내부 인계·여정 단계뿐이다", () => {
+    expect(callersOf(session(), "beginBeacon(")).toEqual(["beginTransit", "launchJourneyBeacon", "startBeacon"]);
+    expect(callersOf(session(), "beginTransit(")).toEqual(["startJourneyStage", "startTransit"]);
+    expect(callersOf(session(), "launchJourneyBeacon(")).toEqual(["startJourneyStage"]);
+    expect(callersOf(session(), "startJourneyStage(")).toEqual(["advanceJourney"]);
+  });
+
+  it("여정 단계 시작은 token 결박 + 단계 세션 부재를 먼저 확인한다(spec §6.3 — 점유를 풀지 않는다)", () => {
+    const body = declarationBody(session(), "startJourneyStage");
+    for (const needle of ["journey?.token == token", "!beacon.isTracking", "!beacon.starting", "!transit.isTracking"]) {
+      expect(body, needle).toContain(needle);
+    }
+  });
+
+  it("외부 시작 거부는 여정을 포함한 점유(isOccupied)를 보고, 모델 입구의 isActive엔 여정이 없다", () => {
+    expect(declarationBody(session(), "refuseIfActive")).toContain("isOccupied");
+    expect(declarationBody(session(), "isActive")).not.toContain("journey");
+    expect(declarationBody(session(), "isOccupied")).toContain("journey != nil");
+  });
+
+  it("길찾기 탭의 정밀 위치 재시작은 여정 중 부르지 않는다", () => {
+    const sites = enclosingHeaders(directions(), "beacon.restart()");
+    expect(sites).toHaveLength(1);
+    expect(sites[0].join("\n")).toContain("isOccupied");
+  });
+
+  it("여정 택시는 늘 승객이고, 비콘 시작 요청은 전부 청취자를 밝힌다(기본값 없음, D10)", () => {
+    expect(declarationBody(session(), "launchJourneyBeacon")).toContain(".passenger");
+    const unstated = swiftFiles(IOS_DIR).flatMap((file) => {
+      const src = blankSwiftCommentsAndStrings(readFileSync(file, "utf8"));
+      return [...src.matchAll(/StartRequest\(/g)].flatMap((m) => {
+        if (src.slice(Math.max(0, m.index - 7), m.index) === "struct ") return [];
+        let depth = 0;
+        let i = m.index + "StartRequest".length;
+        for (; i < src.length; i++) {
+          if (src[i] === "(") depth++;
+          if (src[i] === ")" && --depth === 0) break;
+        }
+        return src.slice(m.index, i).includes("carListener:") ? [] : [`${file.split("/").pop()}:${m.index}`];
+      });
+    });
+    expect(unstated).toEqual([]);
+  });
+
+  it("대중교통의 완료(.done) 갈래는 completeOrAdvance 한 곳이고 여정 완료 콜백을 부른다(spec §6.3)", () => {
+    const transit = readFileSync(join(ROOT, "ios/Gildongmu/Directions/TransitGuideModel.swift"), "utf8");
+    const clean = blankSwiftCommentsAndStrings(transit);
+    expect(clean.match(/==\s*\.done\b/g)).toHaveLength(1);
+    expect(declarationBody(transit, "completeOrAdvance")).toContain("== .done");
+    expect(declarationBody(transit, "completeOrAdvance")).toContain("onJourneyRideCompleted");
   });
 });
 

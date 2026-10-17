@@ -22041,6 +22041,236 @@
         }
       }
     },
+    "ios.journey.alightField": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "지하철에서 내려 택시 타는 역"
+          }
+        }
+      }
+    },
+    "ios.journey.arrivedStation": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@역에 도착했습니다."
+          }
+        }
+      }
+    },
+    "ios.journey.boardField": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "택시에서 내려 지하철 타는 역"
+          }
+        }
+      }
+    },
+    "ios.journey.designatedHeading": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@역에서 타는 경로"
+          }
+        }
+      }
+    },
+    "ios.journey.designatedHeadingAlight": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@역에서 내리는 경로"
+          }
+        }
+      }
+    },
+    "ios.journey.designatedMissing": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@역에서 타는 경로를 찾지 못했습니다."
+          }
+        }
+      }
+    },
+    "ios.journey.designatedMissingAlight": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@역에서 내리는 경로를 찾지 못했습니다."
+          }
+        }
+      }
+    },
+    "ios.journey.egressExit": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@번 출구로 나가 택시로 %2$@분, 약 %3$@원"
+          }
+        }
+      }
+    },
+    "ios.journey.egressLookupFailed": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "출구 정보를 불러오지 못했습니다. 내린 역에서 택시로 %1$@분, 약 %2$@원"
+          }
+        }
+      }
+    },
+    "ios.journey.egressNone": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "내린 역에서 택시로 %1$@분, 약 %2$@원"
+          }
+        }
+      }
+    },
+    "ios.journey.egressStand": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "택시 승강장에서 택시로 %1$@분, 약 %2$@원"
+          }
+        }
+      }
+    },
+    "ios.journey.egressStartFailed": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "출구까지 도보 안내를 시작하지 못했습니다."
+          }
+        }
+      }
+    },
+    "ios.journey.notStation": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "역을 골라 주세요."
+          }
+        }
+      }
+    },
+    "ios.journey.recommendedHeading": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@역에서 타는 추천 경로"
+          }
+        }
+      }
+    },
+    "ios.journey.recommendedHeadingAlight": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@역에서 내리는 추천 경로"
+          }
+        }
+      }
+    },
+    "ios.journey.recommendedHeadingBus": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@에서 버스를 타는 추천 경로"
+          }
+        }
+      }
+    },
+    "ios.journey.recommendedHeadingBusAlight": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@에서 버스에서 내리는 추천 경로"
+          }
+        }
+      }
+    },
+    "ios.journey.taxiBoarded": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "택시에 탔어요"
+          }
+        }
+      }
+    },
+    "ios.journey.taxiDropped": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "택시에서 내렸어요"
+          }
+        }
+      }
+    },
+    "ios.journey.taxiIn": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "택시로 %1$@역까지 %2$@분, 약 %3$@원"
+          }
+        }
+      }
+    },
+    "ios.journey.taxiOutFailed": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "택시 경로를 불러오지 못했습니다."
+          }
+        }
+      }
+    },
+    "ios.journey.toggle": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "택시로 갈아탈 역 정하기"
+          }
+        }
+      }
+    },
+    "ios.journey.totals": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "총 %1$@분, 택시 요금 약 %2$@원, 대중교통 요금 %3$@원"
+          }
+        }
+      }
+    },
     "ios.nearby.airFailed": {
       "localizations": {
         "ko": {

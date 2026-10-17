@@ -536,6 +536,17 @@ final class BeaconModel {
     /// ⚠ 표시 라벨이라 **ko·en 쌍**이다(E27 잔여 ①) — 영문 역명이 있으면 선언 버튼·도착 문장이
     /// 영문으로 나가고, 없으면 한국어 원문으로 떨어진다.
     private(set) var prewalkTarget: TransitLabel?
+    /// 여정(E70) 단계 세션의 표식. nil이 아니면 이 세션(택시·접근 도보·출구 도보)은 여정의 한 단계다: 다음 단계가
+    /// 그 자리를 이으므로 종료 화면을 남기지 않고, 잊힌 세션 안전망이 돌지 않으며(지하 진입·택시 정차가 곧 정상이다),
+    /// 도착 문장은 `arrivalText`(nil이면 기본 도착 문장)다. 끝난 사유는 `onSessionEnd`로 여정에 간다(prewalk를 일반화,
+    /// spec §6.3). `stop()`이 비운다 — 종료 분기는 `stop()` 앞에서 캡처한다(prewalk 동형).
+    struct JourneyChainMark: Equatable { let arrivalText: String? }
+    private(set) var journeyChain: JourneyChainMark?
+    /// 마지막 실패의 문장 키와 해결 수단(E70 §6.1 `.ended` 원인 보존). 여정의 실패 시트가 그 문장을 상태 줄로 쓰고
+    /// 해결 수단 버튼을 고른다(새 문장·재통지 없음). 새 시작이 비운다.
+    private(set) var lastFailure: (key: String, resolution: FailResolution)?
+    /// 종료 화면 없이 끝나는 세션인가 — 승차 전 도보 ∨ 여정 단계.
+    private var endsWithoutScreen: Bool { prewalkTarget != nil || journeyChain != nil }
     /// 세션 종료 1회 콜백. 발화점은 둘뿐 — `stop()` 정리 완료 뒤 다음 MainActor 턴, 그리고
     /// `begin()`의 시작 Task 말미(시작되지 않아 `stop()`이 돌지 않는 경로: `.startFailed`).
     /// 경로마다 부르지 않는다 — 종료 경로가 7곳이라 하나를 빠뜨리면 연결이 조용히 끊긴다.
@@ -627,6 +638,13 @@ final class BeaconModel {
         onSessionEnd = nil
     }
 
+    /// 여정 단계 세션으로 표식(E70 §6.3). `requestStart` **앞**에 건다(`markPrewalk` 동형).
+    /// ⚠ `arrivalText`는 기본값 없음 — 자동 인계 문장(「{역}역에 도착했습니다.」)을 쓸 단계가 빠뜨리면 다음 세션의
+    /// 시작 통지만 들려 "왜 대중교통 안내가 시작됐나"를 모른다(spec §6.3 통지).
+    func markChained(arrivalText: String?) {
+        journeyChain = JourneyChainMark(arrivalText: arrivalText)
+    }
+
     /// "승차역 도착" 선언(A25 §4.3) — 도착 판정이 닿지 않는 경우(입구가 멀어 지하로 먼저 진입)의
     /// 사용자 행위. 확정 도착과 같은 모양: 종·`.arrived` 사유·stop()·도착 문장(.high, 직접 응답).
     func declarePrewalkArrival() {
@@ -676,6 +694,9 @@ final class BeaconModel {
         /// 경유지(N4). 기본값 없음 — 호출부가 nil을 적어야 한다(경유지가 있는 조회에서 시작
         /// 버튼이 이 인자를 빠뜨리면 경유지 없는 안내가 조용히 시작된다, A13 동형).
         let waypoint: Waypoint?
+        /// 자동차 청취자 고정(E70 D10 — 여정의 택시는 늘 승객). nil = 설정값을 읽는다(종전 동작). ⚠ 기본값 없음 —
+        /// 여정 택시 시작이 빠뜨리면 운전자 모드 설정이 택시 뒷자리에 운전자 단문을 낸다.
+        let carListener: CarListener?
     }
 
     /// 직전에 시작한 세션의 인자. 시작 실패(정밀 위치 꺼짐 등) 뒤에도 남아 있어야
@@ -697,7 +718,7 @@ final class BeaconModel {
         } else {
             requestStart(StartRequest(
                 dest: dest, label: label, labelRoman: labelRoman, kind: kind, accessible: accessible,
-                variant: nil, line: nil, alternate: nil, waypoint: waypoint))
+                variant: nil, line: nil, alternate: nil, waypoint: waypoint, carListener: nil))
         }
     }
 
@@ -741,10 +762,13 @@ final class BeaconModel {
         lastStepFree = nil
         pendingStepFreeNotice = nil
         pendingEndReason = .ended
+        lastFailure = nil
         startGeneration += 1
         let generation = startGeneration
         startTask = Task { [weak self] in
-            await self?.start(dest: request.dest, label: request.label, labelRoman: request.labelRoman, kind: request.kind)
+            await self?.start(
+                dest: request.dest, label: request.label, labelRoman: request.labelRoman, kind: request.kind,
+                carListener: request.carListener)
             guard let self, self.startGeneration == generation else { return }
             self.starting = false
             // 시작 실패 한 판정(권한 거부·정밀 위치·서비스 꺼짐·claim 거부·취소 전부): 세션이
@@ -752,16 +776,20 @@ final class BeaconModel {
             if !self.isTracking, let cb = self.onSessionEnd {
                 self.onSessionEnd = nil
                 self.prewalkTarget = nil
+                self.journeyChain = nil
                 cb(.startFailed)
             }
         }
     }
 
-    private func start(dest: BeaconDest, label: String, labelRoman: String?, kind: GuideSessionKind = .walk) async {
+    private func start(
+        dest: BeaconDest, label: String, labelRoman: String?, kind: GuideSessionKind = .walk, carListener: CarListener?
+    ) async {
         guard !isTracking else { return }
         // 채널은 권한 가드보다 **앞**에서 정한다 — 가드 실패 통지(`fail`)가 이전 세션 채널로 나가지
-        // 않게(품질 리뷰 m10).
-        listener = CarListener(rawValue: UserDefaults.standard.string(forKey: CarListener.storageKey) ?? "")
+        // 않게(품질 리뷰 m10). 여정 택시는 시작 요청이 승객을 고정한다(E70 D10).
+        listener = carListener
+            ?? CarListener(rawValue: UserDefaults.standard.string(forKey: CarListener.storageKey) ?? "")
             ?? .default
         driverChannel = kind == .car && listener == .driver
 
@@ -1269,7 +1297,7 @@ final class BeaconModel {
         lastStartRequest = StartRequest(
             dest: dest, label: destinationLabel, labelRoman: destinationRoman, kind: request.kind,
             accessible: accessible, variant: sessionVariant,
-            line: sessionLine, alternate: alternateLine, waypoint: waypoint)
+            line: sessionLine, alternate: alternateLine, waypoint: waypoint, carListener: request.carListener)
     }
 
     /// 경로 기준 잔여 거리·예상 시간 갱신(웹 `progressOf` 미러). walk는 provider
@@ -1354,6 +1382,7 @@ final class BeaconModel {
     ) {
         self.status = status
         failResolution = resolution
+        lastFailure = (key, resolution)
         // 승차 전 도보면 사유 뒤에 "대중교통 안내는 시작하지 않았다"를 **두 문장**으로 잇는다(A54 위원장 판정: 완결 문장 둘은
         // 쉼표 결합이 아니라 마침표). 사유 키는 상태 줄 겸용이라 마침표가 없어 문장 틀 키가 로케일별 마침표를 든다.
         statusText = prewalkCancelled
@@ -1465,6 +1494,7 @@ final class BeaconModel {
         offRouteConfirmCoord = nil
         resetAlternativePreview()
         prewalkTarget = nil
+        journeyChain = nil
         // 종료 콜백은 정리가 **끝난 뒤** 다음 턴에 — 이 stop()을 부른 자리가 뒤에 내는 종료
         // 문장(도착·유휴·권한)이 연결 문장보다 먼저 나가고, 정리 도중 다른 모델 시작이
         // 재진입하지 않는다(spec 2026-08-30 §4.2).
@@ -1540,9 +1570,9 @@ final class BeaconModel {
         //   지는 요약은 임계값 미만이거나 만보계가 실제로 죽어 있는 세션이다. 여기서 사후
         //   질의를 태우면 판정이 비동기가 되어 이 함수가 없앤 깜빡임이 되돌아온다.
         let sample = liveHealthSample
-        let prewalk = prewalkTarget != nil  // stop() 앞 캡처(A25 §4.2) — 승차 전 도보는 종료 화면 없음
+        let noScreen = endsWithoutScreen  // stop() 앞 캡처(A25 §4.2) — 승차 전 도보·여정 단계는 종료 화면 없음
         stop(playStopTone: playStopTone)
-        guard !prewalk, wasWalkSession, let dest, let sample,
+        guard !noScreen, wasWalkSession, let dest, let sample,
               WalkHealth.isMeaningfulWalk(steps: sample.steps, distanceMeters: sample.distance)
         else { return false }
         presentEndScreen(dest: dest, text: text, sample: sample)
@@ -2393,16 +2423,17 @@ final class BeaconModel {
         if arrived {
             // prewalk(승차 전 도보)는 stop() 앞에서 캡처 — stop()이 지운다(A25 §4.2).
             let prewalk = prewalkTarget
+            let chained = journeyChain  // 여정 단계(E70) — prewalk처럼 stop() 앞 캡처
             let text = prewalk.map {
                 TransitGuideTextRenderer.render(
                     transitPrewalkArrivedLine(isEn: transitGuideIsEn, station: $0))
-            } ?? appLocalized("guide.arrived")
+            } ?? chained?.arrivalText ?? appLocalized("guide.arrived")
             // 수단은 stop() **앞**에서 기록한다 — stop()이 sessionKind를 walk로 되돌린다(설계 리뷰 B10).
             arrivalSessionKind = sessionKind
             playTone(.nearby)
             pendingEndReason = .arrived
             stop()  // ⚠ dest·statusText를 지우므로 문장은 위에서 미리 만든다
-            if prewalk == nil {
+            if prewalk == nil, chained == nil {
                 // stop() **뒤에** 대입 — 이 값이 시트를 도착 종료 화면으로 유지한다
                 // (presentation 바인딩이 `isTracking || arrivalDest != nil`을 본다).
                 // `dest`는 함수 머리의 guard let 지역 사본이라 stop()의 소거와 무관하다.
@@ -2465,7 +2496,7 @@ final class BeaconModel {
     private func maybeEndIdleSession(now: Double) -> Bool {
         // 승차 전 도보(prewalk)는 제외 — fix 두절 5분은 대개 지하 역사 진입이고, 그때 끝내면 바로
         // 그 경우를 위한 "승차역 도착" 선언 버튼까지 사라진다(A25 spec §2).
-        guard isTracking, prewalkTarget == nil, let startedAt else { return false }
+        guard isTracking, !endsWithoutScreen, let startedAt else { return false }
         let fixRef = max(startedAt, lastFixAt ?? startedAt)
         let progressRef = max(startedAt, sessionLastProgressAt ?? startedAt)
         // 무이동 축은 **도착 추정이 발동할 수 있는 동안 늦게 켠다**(Kit `sessionIdleStationaryElapsed`, 나들이 spec §9,
@@ -2524,9 +2555,13 @@ final class BeaconModel {
                 + "window=\(inFinalApproach ? "final" : "brief")"
         )
         let prewalk = prewalkTarget  // stop() 앞 캡처(A25 §4.2)
+        let chained = journeyChain
         let text = prewalk.map {
             TransitGuideTextRenderer.render(
                 transitPrewalkArrivedLine(isEn: transitGuideIsEn, station: $0))
+        } ?? chained.map {
+            // 여정 단계는 다음 세션이 곧바로 이어지므로 "안내를 종료했습니다"로 끝맺지 않는다(뒤 문장과 모순).
+            $0.arrivalText ?? appLocalized("guide.arrived")
         } ?? appLocalized("guide.arrivedPresumed")
         // 도착 종은 **전경에서만**(위원장 판정 2026-08-19). 이 종료는 도착 3~5분 뒤에 오는
         // 사후 정리라, 잠근 채 두고 잊은 휴대전화가 한참 뒤 갑자기 울리면 당황스럽다 —
@@ -2539,17 +2574,19 @@ final class BeaconModel {
         if sessionKind == .car { arrivalSessionKind = .car }
         pendingEndReason = .arrived
         stop()  // ⚠ dest·statusText를 지우므로 문장은 위에서 미리 만든다(확정 도착 동형)
-        if prewalk == nil {
+        if prewalk == nil, chained == nil {
             arrivalDest = dest
             endKind = .presumed
             loadArrivalHealth()
+        } else {
+            arrivalSessionKind = nil  // 종료 화면이 없으니 그 수단 표식도 없다(확정 도착 동형)
         }
         statusText = text
         lastGuidance = text
         liveTopText = text
-        // 사후 정리라 미룸(도착 3~5분 뒤, 종도 전경만). 단 승차 전 도보의 승차역 도착은 이어질 대중교통 안내의 시작이라
-        // 행동 문장이다(spec §3.2 — prewalk 도착 행, 구현 리뷰 m-3).
-        announce(text, highPriority: true, speechClass: prewalk == nil ? .deferrable : .actionable)
+        // 사후 정리라 미룸(도착 3~5분 뒤, 종도 전경만). 단 승차 전 도보의 승차역 도착·여정 단계의 도착은 이어질 안내의
+        // 시작이라 행동 문장이다(spec §3.2 — prewalk 도착 행, 구현 리뷰 m-3. E70도 같은 이유).
+        announce(text, highPriority: true, speechClass: prewalk == nil && chained == nil ? .deferrable : .actionable)
         return true
     }
 

@@ -103,6 +103,9 @@ final class EndpointSearchModel {
 struct DirectionsEndpointSearchView: View {
     let target: DirectionsFieldTarget
     let onSelect: (DirectionsEndpoint) -> Void
+    /// 택시로 갈아탈 역 칸(E70 §5.1)의 결과 — 끝점이 아니라 장소 그대로(역 판정·노선 힌트에 분류가 필요하다).
+    /// 역 칸 대상에서만 쓰인다. `DirectionsEndpoint`(Kit 공유·최근 기록 저장 포맷)는 넓히지 않는다.
+    var onSelectStation: ((Place) -> Void)? = nil
     @Environment(\.dismiss) private var dismiss
     @State private var model = EndpointSearchModel()
     @State private var speech = SpeechService()
@@ -116,8 +119,13 @@ struct DirectionsEndpointSearchView: View {
         case .from: .from
         case .via: .via  // 경유지 전용 목록(N4) — 도착지 목록과 섞지 않는다
         case .to, .manualLocation: .to
+        case .boardStation, .alightStation: .to  // 역 칸은 최근 목록을 보이지 않는다(`isStationTarget`)
         }
     }
+
+    /// 역 칸(E70) — 최근 끝점·주소 후보를 보이지 않는다(분류가 없어 역인지 알 수 없다, spec §5.1). 반복 여정은 최근 경로가
+    /// 통째로 복원한다.
+    private var isStationTarget: Bool { target == .boardStation || target == .alightStation }
     @State private var recentEndpoints: [RecentEndpoint] = []
     @AccessibilityFocusState private var focusedRecent: RecentEndpoint?
     /// 고정 항목 이동 뒤 커서 유지 재시도(E67).
@@ -147,7 +155,7 @@ struct DirectionsEndpointSearchView: View {
         if let place = model.places.first {
             return (Self.candidateKey(place: place), place.id)
         }
-        if let address = model.addresses.first {
+        if !isStationTarget, let address = model.addresses.first {
             return (Self.candidateKey(address: address), address.roadAddr)
         }
         return nil
@@ -195,7 +203,7 @@ struct DirectionsEndpointSearchView: View {
                 // 쓰면 0건 노출 후 재노출되는 회귀). 행 활성화=재검색 없이 즉시 확정,
                 // swipeActions 삭제가 VoiceOver 로터로 자동 노출된다. 기록은
                 // select→onSelect→setEndpoint가 담당(이중 기록 금지).
-                if !model.hasSearched && !recentEndpoints.isEmpty {
+                if !isStationTarget && !model.hasSearched && !recentEndpoints.isEmpty {
                     Section(appLocalized("recent.title")) {
                         // 고정 항목은 라벨 접미사 "고정됨"(한 줄 = 한 객체), 고정 토글이
                         // 삭제보다 앞(위원장 지시 2026-08-12) — 로터 커스텀 액션 자동 노출.
@@ -228,7 +236,11 @@ struct DirectionsEndpointSearchView: View {
                 }
                 ForEach(model.places) { place in
                     Button {
-                        select(.place(label: place.name, lat: place.lat, lng: place.lng, labelRoman: place.nameRoman))
+                        if isStationTarget {
+                            selectStation(place)
+                        } else {
+                            select(.place(label: place.name, lat: place.lat, lng: place.lng, labelRoman: place.nameRoman))
+                        }
                     } label: {
                         // 한 줄 = 한 객체: 이름+주소 단일 텍스트(웹 joinText 동형). 비-ko는 이름이 로마자
                         // 병기(E28) — 시각 `Roman (한글), 주소`, 낭독은 괄호 없이. 확정 라벨은 원명 그대로.
@@ -240,7 +252,7 @@ struct DirectionsEndpointSearchView: View {
                     }
                     .accessibilityFocused($focusedCandidate, equals: Self.candidateKey(place: place))
                 }
-                ForEach(model.addresses, id: \.roadAddr) { address in
+                ForEach(isStationTarget ? [] : model.addresses, id: \.roadAddr) { address in
                     Button {
                         Task {
                             if let endpoint = await model.geocode(address) { select(endpoint) }
@@ -366,7 +378,19 @@ struct DirectionsEndpointSearchView: View {
         case .to: appLocalized("directions.searchTo")
         case .via: appLocalized("directions.searchVia")
         case .manualLocation: appLocalized("manualLocation.pickTitle")
+        case .boardStation: appLocalized("ios.journey.boardField")
+        case .alightStation: appLocalized("ios.journey.alightField")
         }
+    }
+
+    /// 역 칸은 역만 받는다(spec §5.1): 지하철·철도역이 아니면 칸에 넣지 않고 시트를 연 채 polite 통지.
+    private func selectStation(_ place: Place) {
+        guard stationLayoutKind(place) != nil else {
+            AccessibilityNotification.Announcement(appLocalized("ios.journey.notStation")).post()
+            return
+        }
+        onSelectStation?(place)
+        dismiss()
     }
 
     private func select(_ endpoint: DirectionsEndpoint) {
