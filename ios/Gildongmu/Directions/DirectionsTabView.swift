@@ -1160,16 +1160,10 @@ struct DirectionsTabView: View {
                                             // 한 벌을 그대로 쓴다 — 여기서 다시 적으면
                                             // 최단 경로가 추천 경로로, 자동차가 도보로
                                             // 조용히 바뀐다.
-                                            // 여정 중엔 부르지 않는다 — 여정 실패 시트의 [경로 다시
-                                            // 조회]가 같은 일을 한다(E70 §6.3). 여정이 없으면 종전 그대로
-                                            // 부른다(정식판 불변). 여정 중이면 거부 통지(무반응 금지).
-                                            if session.journey == nil {
-                                                beacon.restart()
-                                            } else {
-                                                beacon.announceNow(
-                                                    appLocalized("guide.alreadyActive"), highPriority: true,
-                                                    bypassSuppression: true)
-                                            }
+                                            // 재시작은 세션 소유자를 지난다(A68): 승차 전 도보로 시작했던
+                                            // 세션이면 대중교통까지 잇고, 대중교통·여정 진행 중이면 거부
+                                            // 통지다(여정은 실패 시트의 [경로 다시 조회]가 같은 일을 한다, E70 §6.3).
+                                            session.restartBeacon()
                                         case .denied:
                                             AccessibilityNotification.Announcement(appLocalized("ios.common.geoReducedDesc")).post()
                                         case .alreadyInFlight: break

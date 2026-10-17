@@ -50,6 +50,11 @@ final class GuideSession {
         let accessible: Bool
     }
     private var prewalk: PrewalkContext?
+    /// 직전 비콘 시작이 승차 전 도보였으면 그 연결 컨텍스트(A68). 길찾기 탭 [정확한 위치 허용]의 재시작(`restartBeacon`)이
+    /// 도보 인자 한 벌(모델 재시작)이 아니라 이 대중교통 시작을 다시 돌려, 승차 전 도보 → 대중교통으로 잇는다.
+    /// `prewalk`와 달리 도보 세션이 끝나도 남는다(쓰이는 때가 실패 뒤다). 비콘의 `lastStartRequest`와 짝이라 승차 전 도보가
+    /// 아닌 비콘 시작(`beginBeacon`)과 모든 시작 진입의 `cancelPrewalk`가 지운다.
+    private var prewalkRestart: PrewalkContext?
     private var prewalkTask: Task<Void, Never>?
     /// `startTransit`의 prewalk 경로가 `startBeacon`을 부르는 동안 true — 그 호출의 취소 게이트가
     /// 자기 컨텍스트를 지우지 않게.
@@ -121,6 +126,7 @@ final class GuideSession {
     /// 거부 가드 없는 비콘 시작 본문(E70 §6.3). 호출자는 공개 `startBeacon`과 내부 인계(승차 전 도보·여정 단계)뿐이다
     /// — 여정 중 외부 시작은 `startBeacon`의 거부에서 멈추고, 여정 자신의 다음 세션만 이 길로 온다(점유를 잠시 풀지 않는다).
     private func beginBeacon(_ request: BeaconModel.StartRequest) {
+        if !launchingPrewalk { prewalkRestart = nil }  // 비콘의 직전 시작 인자가 이제 승차 전 도보가 아니다(A68)
         if !launchingPrewalk, !launchingOutingReturn, !launchingJourneyStage { cancelPrewalk() }
         transit.clearWalkHandoff()
         outing.clearEnd()
@@ -194,6 +200,7 @@ final class GuideSession {
             id: UUID(), route: route, destinationLabel: destinationLabel, destinationRoman: destinationRoman,
             dest: dest, accessible: accessible)
         prewalk = context
+        prewalkRestart = context
         // 표시 라벨은 ko·en 쌍(E27 잔여 ①).
         //
         // ⚠ **도보 세션의 목적지 라벨(`label:`)도 같은 이름을 쓴다.** 종전 주석은 그 자리를
@@ -291,9 +298,25 @@ final class GuideSession {
     /// 낡은 연결 폐기 — 모든 시작 진입·여정 종료에서. 추적 중인 도보 세션은 건드리지 않는다.
     private func cancelPrewalk() {
         prewalk = nil
+        prewalkRestart = nil
         prewalkTask?.cancel()
         prewalkTask = nil
         beacon.clearPrewalk()
+    }
+
+    /// 길찾기 탭 [정확한 위치 허용] 뒤 재시작(A13·A68) — 그 버튼이 부르는 유일한 경로. 대중교통·여정이 진행 중이면 거부한다
+    /// (「이미 안내 중」, 도보로 되돌아가지 않는다). 직전 비콘 시작이 승차 전 도보였으면 그 대중교통 시작을 다시 돌려 같은 시작
+    /// 문장·같은 연결로 승차 전 도보 → 대중교통을 잇고, 아니면 모델이 든 시작 인자 한 벌로 다시 시작한다(인자를 다시 조립하지
+    /// 않는다, A13).
+    func restartBeacon() {
+        guard !refuseIfActive() else { return }
+        if let context = prewalkRestart {
+            beginTransit(
+                route: context.route, destinationLabel: context.destinationLabel,
+                destinationRoman: context.destinationRoman, dest: context.dest, accessible: context.accessible)
+        } else {
+            beacon.restart()
+        }
     }
 
     /// 거부 통지는 모델의 창구를 쓴다(지연 슬롯·억제 규칙을 지나야 한다). 판정은 `isOccupied` — 여정 중(단계 사이 포함)

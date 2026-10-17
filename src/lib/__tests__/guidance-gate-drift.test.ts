@@ -409,7 +409,8 @@ describe("7. 여정(E70) — 실험판 봉인과 내부 인계", () => {
 
   it("거부 가드 없는 시작 본문의 호출자는 공개 시작·내부 인계·여정 단계뿐이다", () => {
     expect(callersOf(session(), "beginBeacon(")).toEqual(["beginTransit", "launchJourneyBeacon", "startBeacon"]);
-    expect(callersOf(session(), "beginTransit(")).toEqual(["startJourneyStage", "startTransit"]);
+    // `restartBeacon`(A68): 승차 전 도보로 시작했던 세션의 정밀 위치 재시작 — 본문 첫 줄이 `refuseIfActive`다(아래 "8").
+    expect(callersOf(session(), "beginTransit(")).toEqual(["restartBeacon", "startJourneyStage", "startTransit"]);
     expect(callersOf(session(), "launchJourneyBeacon(")).toEqual(["startJourneyStage"]);
     expect(callersOf(session(), "startJourneyStage(")).toEqual(["advanceJourney"]);
   });
@@ -429,10 +430,8 @@ describe("7. 여정(E70) — 실험판 봉인과 내부 인계", () => {
     expect(declarationBody(session(), "isOccupied")).toContain("journey != nil");
   });
 
-  it("길찾기 탭의 정밀 위치 재시작은 여정 중 부르지 않는다(여정이 없으면 종전 그대로)", () => {
-    const sites = enclosingHeaders(directions(), "beacon.restart()");
-    expect(sites).toHaveLength(1);
-    expect(sites[0].join("\n")).toContain("session.journey == nil");
+  it("길찾기 탭의 정밀 위치 재시작은 여정 중 거부된다(재시작 창구의 거부 게이트가 여정을 포함한 점유를 본다)", () => {
+    expect(declarationBody(session(), "restartBeacon")).toContain("refuseIfActive()");
   });
 
   it("여정 택시는 늘 승객이고, 비콘 시작 요청은 전부 청취자를 밝힌다(기본값 없음, D10)", () => {
@@ -459,6 +458,51 @@ describe("7. 여정(E70) — 실험판 봉인과 내부 인계", () => {
     expect(clean.match(/==\s*\.done\b/g)).toHaveLength(1);
     expect(declarationBody(transit, "completeOrAdvance")).toContain("== .done");
     expect(declarationBody(transit, "completeOrAdvance")).toContain("onJourneyRideCompleted");
+  });
+});
+
+describe("8. 정밀 위치 재시작은 승차 전 도보를 대중교통까지 잇는다(A68)", () => {
+  const session = () => readFileSync(GUIDE_SESSION, "utf8");
+  const clean = () => blankSwiftCommentsAndStrings(session());
+
+  it("길찾기 탭은 모델을 직접 재시작하지 않고 세션 소유자의 재시작 창구 하나를 정밀 위치 허용 뒤에 부른다", () => {
+    expect(directions()).not.toContain("beacon.restart(");
+    const sites = enclosingHeaders(directions(), "session.restartBeacon()");
+    expect(sites).toHaveLength(1);
+    const headers = sites[0].join("\n");
+    expect(headers).toContain(".granted");
+    expect(headers).toContain(".precise");
+  });
+
+  it("모델 재시작(`beacon.restart()`)은 앱 전체에서 재시작 창구 안 한 곳뿐이다", () => {
+    const files = swiftFiles(IOS_DIR).filter((file) =>
+      blankSwiftCommentsAndStrings(readFileSync(file, "utf8")).includes("beacon.restart("),
+    );
+    expect(files).toEqual([GUIDE_SESSION]);
+    expect(declarationBody(session(), "restartBeacon")).toContain("beacon.restart()");
+  });
+
+  it("재시작 창구: 거부 게이트가 먼저, 승차 전 도보였으면 대중교통 시작을 다시 돌리고 아니면 도보 인자 한 벌", () => {
+    const body = declarationBody(session(), "restartBeacon");
+    // 진행 중인 대중교통·여정이 있으면 도보로 되돌아가지 않는다 — 어느 갈래보다 앞이어야 한다.
+    expect(body).toMatch(/^\{\s*guard !refuseIfActive\(\) else \{ return \}/);
+    expect(body).toMatch(/if let context = prewalkRestart \{\s*beginTransit\([^]*\} else \{\s*beacon\.restart\(\)\s*\}/);
+    // 같은 연결을 재현한다: 대중교통 시작 인자 다섯을 컨텍스트에서 그대로 옮긴다(A13 — 다시 조립하지 않는다).
+    for (const arg of ["context.route", "context.destinationLabel", "context.destinationRoman", "context.dest", "context.accessible"]) {
+      expect(body, arg).toContain(arg);
+    }
+  });
+
+  it("재시작 컨텍스트는 비콘의 직전 시작 인자와 짝이다: 승차 전 도보 시작이 쓰고, 그 밖의 비콘 시작·모든 시작 진입이 지운다", () => {
+    // 쓰는 자리는 셋뿐이다(승차 전 도보 시작 한 곳 + 지우는 두 곳). 도보 세션 종료(`endPrewalk`)는 지우지 않는다 — 실패 뒤에 쓰인다.
+    expect(clean().match(/\bprewalkRestart = /g)).toHaveLength(3);
+    const transit = declarationBody(session(), "beginTransit");
+    const set = transit.indexOf("prewalkRestart = context");
+    expect(set).toBeGreaterThan(transit.indexOf("cancelPrewalk()"));
+    expect(set).toBeLessThan(transit.indexOf("beginBeacon("));
+    expect(declarationBody(session(), "cancelPrewalk")).toContain("prewalkRestart = nil");
+    expect(declarationBody(session(), "beginBeacon")).toMatch(/if !launchingPrewalk \{ prewalkRestart = nil \}/);
+    expect(declarationBody(session(), "endPrewalk")).not.toContain("prewalkRestart");
   });
 });
 
