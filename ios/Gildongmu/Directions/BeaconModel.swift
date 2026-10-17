@@ -540,7 +540,11 @@ final class BeaconModel {
     /// 그 자리를 이으므로 종료 화면을 남기지 않고, 잊힌 세션 안전망이 돌지 않으며(지하 진입·택시 정차가 곧 정상이다),
     /// 도착 문장은 `arrivalText`(nil이면 기본 도착 문장)다. 끝난 사유는 `onSessionEnd`로 여정에 간다(prewalk를 일반화,
     /// spec §6.3). `stop()`이 비운다 — 종료 분기는 `stop()` 앞에서 캡처한다(prewalk 동형).
-    struct JourneyChainMark: Equatable { let arrivalText: String? }
+    struct JourneyChainMark: Equatable {
+        let arrivalText: String?
+        /// 여정 접근 도보 — 시작에 실패하면 여정이 대중교통으로 넘어가므로 원인 문장 뒤에 다리 문장을 붙인다(판정 27).
+        let bridgesStartFailure: Bool
+    }
     private(set) var journeyChain: JourneyChainMark?
     /// 마지막 실패의 문장 키와 해결 수단(E70 §6.1 `.ended` 원인 보존). 여정의 실패 시트가 그 문장을 상태 줄로 쓰고
     /// 해결 수단 버튼을 고른다(새 문장·재통지 없음). 새 시작이 비운다.
@@ -642,8 +646,10 @@ final class BeaconModel {
     /// 여정 단계 세션으로 표식(E70 §6.3). `requestStart` **앞**에 건다(`markPrewalk` 동형).
     /// ⚠ `arrivalText`는 기본값 없음 — 자동 인계 문장(「{역}역에 도착했습니다.」)을 쓸 단계가 빠뜨리면 다음 세션의
     /// 시작 통지만 들려 "왜 대중교통 안내가 시작됐나"를 모른다(spec §6.3 통지).
-    func markChained(arrivalText: String?) {
-        journeyChain = JourneyChainMark(arrivalText: arrivalText)
+    /// ⚠ `bridgesStartFailure`도 기본값 없음 — 접근 도보가 빠뜨리면 시작 실패 뒤 원인 문장과 대중교통 시작 통지만 들려
+    /// "왜 걷기 안내 없이 승차 대기로 넘어갔나"를 모른다.
+    func markChained(arrivalText: String?, bridgesStartFailure: Bool) {
+        journeyChain = JourneyChainMark(arrivalText: arrivalText, bridgesStartFailure: bridgesStartFailure)
     }
 
     /// "승차역 도착" 선언(A25 §4.3) — 도착 판정이 닿지 않는 경우(입구가 멀어 지하로 먼저 진입)의
@@ -1386,8 +1392,13 @@ final class BeaconModel {
         lastFailure = (key, resolution)
         // 승차 전 도보면 사유 뒤에 "대중교통 안내는 시작하지 않았다"를 **두 문장**으로 잇는다(A54 위원장 판정: 완결 문장 둘은
         // 쉼표 결합이 아니라 마침표). 사유 키는 상태 줄 겸용이라 마침표가 없어 문장 틀 키가 로케일별 마침표를 든다.
+        // 여정 접근 도보의 시작 실패(`starting` 중의 실패만 — 걷던 중 끊김은 `stopAndFail`이 `stop()` 뒤에 부른다)도 같은 틀로
+        // 다리 문장을 붙인다(판정 27). 대중교통 창구로 따로 내면 그 재생기는 세션 전이라 백그라운드에서 버려지고, 전경에선 같은
+        // 턴에 게시돼 이 원인 문장을 끊는다(A54와 같은 이유).
+        let journeyBridge = starting && journeyChain?.bridgesStartFailure == true
         statusText = prewalkCancelled
-            ? appLocalized("ios.beacon.prewalkCancelledWith", appLocalized(key)) : appLocalized(key)
+            ? appLocalized("ios.beacon.prewalkCancelledWith", appLocalized(key))
+            : journeyBridge ? appLocalized("ios.journey.accessFailedWith", appLocalized(key)) : appLocalized(key)
         announce(statusText, highPriority: highPriority, speechClass: .actionable)
     }
 

@@ -1118,6 +1118,9 @@
   "android.guide.waypointSkipped": [
     "label"
   ],
+  "android.journey.accessFailedWith": [
+    "reason"
+  ],
   "android.journey.arrivedExit": [
     "exit"
   ],
@@ -1152,14 +1155,22 @@
     "minutes",
     "fare"
   ],
+  "android.journey.egressNoneStop": [
+    "minutes",
+    "fare"
+  ],
   "android.journey.egressStand": [
     "minutes",
     "fare"
   ],
-  "android.journey.recentTransfer": [
+  "android.journey.recentRoute": [
+    "from",
+    "to",
     "station"
   ],
-  "android.journey.recentTransferBoth": [
+  "android.journey.recentRouteBoth": [
+    "from",
+    "to",
     "board",
     "alight"
   ],

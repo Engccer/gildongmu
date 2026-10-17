@@ -462,6 +462,9 @@
   "ios.guide.waypointSkipped": [
     "label"
   ],
+  "ios.journey.accessFailedWith": [
+    "reason"
+  ],
   "ios.journey.arrivedExit": [
     "exit"
   ],
@@ -496,14 +499,22 @@
     "minutes",
     "fare"
   ],
+  "ios.journey.egressNoneStop": [
+    "minutes",
+    "fare"
+  ],
   "ios.journey.egressStand": [
     "minutes",
     "fare"
   ],
-  "ios.journey.recentTransfer": [
+  "ios.journey.recentRoute": [
+    "from",
+    "to",
     "station"
   ],
-  "ios.journey.recentTransferBoth": [
+  "ios.journey.recentRouteBoth": [
+    "from",
+    "to",
     "board",
     "alight"
   ],

@@ -199,7 +199,7 @@
 - `screen`: 비콘·나들이·대중교통 다음에 `journey`가 transitioning/failed면 `.journey`.
 - 복귀(`handleScenePhaseChange(.active)`): transitioning이 30초 넘었으면 `staleTimeout`.
 - `startBeacon`·`startTransit`·`startOuting`의 거부는 `isOccupied`. 길찾기 탭의 `beacon.restart()` 호출 자리는 `!GuideSession.shared.isOccupied` 조건.
-- 시트: `BeaconTrackingSheet`에 `journeyButton: (label: String, action: () -> Void)?`(taxiIn → 「택시에서 내렸어요」, egress → 「택시에 탔어요」), `TransitTrackingSheet`의 `handoffNow`가 여정이면 `journeyNextIsWalk`로 라벨(egress 다음 → `transitGuide.walkHandoffStart`, taxiOut 다음 → `journey.taxiBoarded`) — 동작은 `model.advance()`(콜백이 다음 단계). `JourneySheet`: 상태 문장(transitioning = 기존 진행 문장 「경로를 찾는 중입니다.」 키, failed = 원인 키 또는 `journey.taxiOutFailed`/`journey.egressStartFailed`) + failed면 해결 수단 버튼(기존 설정·정밀 위치 키)·[다시 시도](기존)·단계 버튼 + [안내 종료](기존) → `journeyAction(.userEnded)`. 착지는 상태 문장.
+- 시트: `BeaconTrackingSheet`에 `journeyButton: (label: String, action: () -> Void)?`(taxiIn → 「택시에서 내렸어요」, egress → 「택시에 탔어요」), `TransitTrackingSheet`의 `handoffNow`가 여정이면 `journeyNextIsWalk`로 라벨(egress 다음 → `transitGuide.walkHandoffStart`, taxiOut 다음 → `journey.taxiBoarded`. ⚠ 판정 24로 둘 다 「다음 구간」(`transitGuide.advance`) — spec §6.3이 정본) — 동작은 `model.advance()`(콜백이 다음 단계). `JourneySheet`: 상태 문장(transitioning = 기존 진행 문장 「경로를 찾는 중입니다.」 키, failed = 원인 키 또는 `journey.taxiOutFailed`/`journey.egressStartFailed`) + failed면 해결 수단 버튼(기존 설정·정밀 위치 키)·[다시 시도](기존)·단계 버튼 + [안내 종료](기존) → `journeyAction(.userEnded)`. 착지는 상태 문장.
 
 - [ ] Step 1: BeaconModel(StartRequest 필드 + 호출부 nil 명시, markChained, lastFailure, endsWithoutScreen) → Step 2: TransitGuideModel 콜백 → Step 3: GuideSession(begin* 분리, journey 상태·전이·prepare·startJourneyStage, isOccupied) → Step 4: 시트 셋 + GildongmuApp → Step 5: 두 구성 앱 빌드 → Step 6: 커밋.
 

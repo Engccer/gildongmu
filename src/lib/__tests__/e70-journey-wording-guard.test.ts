@@ -3,9 +3,9 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 /**
- * E70 여정 문안 판정(2026-10-17 위원장, BACKLOG E70 열린 판정 1~9 · spec §8.4 판정 19~27)의 앱 배선 가드.
+ * E70 여정 문안 판정(2026-10-17 위원장, BACKLOG E70 열린 판정 1~9 · spec §3.1 판정 19~27 · §8.4)의 앱 배선 가드.
  * 뷰·세션 조정자 계층은 테스트 레인이 없어 문장이 어느 자리에서 나가는지를 소스로 잠근다. 순수 판정(동명 이역 노선
- * 머리말·버스 정류장 끝)은 Kit `JourneyTests`·`JourneyModelsTests`가 맡는다.
+ * 머리말과 그 쪽 선택·버스 정류장 끝)은 Kit `JourneyTests`·`JourneyModelsTests`가 맡는다.
  */
 
 const ROOT = join(__dirname, "../../..");
@@ -50,9 +50,14 @@ describe("E70 여정 확정 문장(위원장 판정 2026-10-17)", () => {
       taxiInStop: "택시로 {stop}까지 {minutes}분, 약 {fare}원",
       arrivedStop: "{stop}에 도착했습니다.",
       clearStations: "갈아탈 역 지우기",
-      recentTransfer: "{station}역에서 갈아타기",
-      recentTransferBoth: "{board}역과 {alight}역에서 갈아타기",
+      recentRoute: "{from}에서 {to}까지, {station}역에서 갈아타기",
+      recentRouteBoth: "{from}에서 {to}까지, {board}역과 {alight}역에서 갈아타기",
+      egressNoneStop: "내린 정류장에서 택시로 {minutes}분, 약 {fare}원",
     });
+  });
+
+  it("판정 27: 접근 도보 시작 실패 틀은 「원인. 」 뒤에 승차 전 도보 다리 문장 그대로다", () => {
+    expect(KO.ios.journey.accessFailedWith).toBe(`{reason}. ${MESSAGES_KO.transitGuide.prewalkUnavailable}`);
   });
 
   it("재사용하는 기존 문장(판정 4·6·9)은 그대로다", () => {
@@ -80,14 +85,26 @@ describe("E70 여정 문장의 자리", () => {
     expect(stage).not.toMatch(/atStop\s*\?\s*nil/);
     const rows = read("JourneyResultRows.swift");
     expect(rows).toMatch(/if variant\.boardsAtBusStop \{\s*Text\(appLocalized\("ios\.journey\.taxiInStop"/);
+    // 버스로 끝나면 마지막 택시 줄도 정류장 문장(위원장 2026-10-17 judgment-202610171113 ②)
+    expect(body(rows, "egressLine")).toMatch(
+      /if variant\.alightsAtBusStop \{ return appLocalized\("ios\.journey\.egressNoneStop", minutes, fare\) \}/,
+    );
   });
 
-  it("판정 9: 접근 도보 시작 실패는 대중교통으로 넘어가기 전에 다리 문장을 낸다", () => {
+  it("판정 9: 접근 도보 시작 실패의 다리 문장은 도보 모델이 원인 문장과 한 통지로 낸다", () => {
+    const beacon = read("BeaconModel.swift");
+    const fail = body(beacon, "fail");
+    expect(fail).toContain("starting && journeyChain?.bridgesStartFailure == true");
+    expect(fail).toContain('appLocalized("ios.journey.accessFailedWith", appLocalized(key))');
+    expect(body(beacon, "markChained")).toContain("JourneyChainMark(arrivalText: arrivalText, bridgesStartFailure: bridgesStartFailure)");
+    const stage = body(session, "startJourneyStage");
+    expect(stage).toContain("bridgesStartFailure: stage == .access");
+    expect(stage.match(/bridgesStartFailure: false/g)).toHaveLength(3); // 출구 도보 세 갈래
+    // 대중교통 창구로 따로 내지 않는다(세션 전이라 백그라운드에서 버려지고 원인 문장을 끊는다). 원인 없는 동기 거부만 도보 창구로.
     const advance = body(session, "advanceJourney");
-    expect(advance).toContain("state.phase == .running(.access) && event == .stageEnded(.startFailed)");
-    expect(advance).toMatch(
-      /if accessStartFailed, stage == \.transit \{\s*transit\.announceExternal\(appLocalized\("transitGuide\.prewalkUnavailable"\)/,
-    );
+    expect(advance).not.toContain("transit.announceExternal");
+    expect(advance).toContain("ignoreFailureCause && state.phase == .running(.access) && event == .stageEnded(.startFailed)");
+    expect(advance).toMatch(/if accessRefused, stage == \.transit \{\s*beacon\.announceNow\(appLocalized\("transitGuide\.prewalkUnavailable"\)/);
   });
 
   it("판정 6: 하차 역을 정한 여정의 하차 직후 버튼은 「다음 구간」이다", () => {
@@ -108,7 +125,10 @@ describe("E70 여정 문장의 자리", () => {
     const missing = body(rows, "missingLines");
     expect(missing).toContain("lines.board ? journeyQualifiedStationName($0.label, line: $0.line)");
     expect(missing).toContain("lines.alight ? journeyQualifiedStationName($0.label, line: $0.line)");
-    expect(body(rows, "journeyLineQualifiers").match(/journeyNeedsLineQualifier\(/g)).toHaveLength(2);
+    // 쪽 판정은 Kit(`journeyLineQualifiers`·`journeyRecommendedTitleIsBoardSide`, 테스트 `JourneyTests`) 한 곳이다
+    expect(rows).not.toMatch(/func journeyLineQualifiers|struct JourneyLineQualifiers/);
+    expect(body(rows, "lines")).toContain("journeyLineQualifiers(result, board: board, alight: alight)");
+    expect(heading).toContain("journeyRecommendedTitleIsBoardSide(v, board: board, alight: alight, lines: lines)");
     // 선택 버튼·제목·안내 시작 버튼이 같은 한정자로 같은 이름을 말한다
     expect(rows.match(/journeyVariantHeading\(/g)).toHaveLength(2); // 정의 + `heading(_:)` 한 자리
   });
@@ -120,11 +140,14 @@ describe("E70 여정 문장의 자리", () => {
     );
   });
 
-  it("판정 2: 최근 경로 줄은 여정이면 갈아탈 역을 덧붙인다", () => {
+  it("판정 2: 최근 경로 줄은 여정이면 짧은 여정 문장이고, 활성화가 역을 쓰는 조건에서만이다", () => {
     const tab = read("DirectionsTabView.swift");
-    expect(body(tab, "recentRouteLabel")).toContain("recentTransferText(route)");
-    const tail = body(tab, "recentTransferText");
-    expect(tail).toContain('"ios.journey.recentTransferBoth"');
-    expect(tail).toContain('"ios.journey.recentTransfer"');
+    expect(body(tab, "recentRouteLabel")).toContain("if let journey = recentJourneyLabel(route, from: from, to: to) { return journey }");
+    const line = body(tab, "recentJourneyLabel");
+    const gate = 'AppConfig.experimentalJourneyEnabled, AppLanguage.dataLocale == "ko"';
+    expect(line).toContain(`guard ${gate} else { return nil }`);
+    expect(body(tab, "activateRecentRoute")).toContain(gate);
+    expect(line).toContain('"ios.journey.recentRouteBoth", from, to, board, alight');
+    expect(line).toContain('"ios.journey.recentRoute", from, to, $0');
   });
 });

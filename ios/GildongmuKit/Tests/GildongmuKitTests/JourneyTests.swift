@@ -225,6 +225,7 @@ private let allEvents: [JourneyEvent] =
         #expect(JourneyTuning.accessWalkMinMeters == 30)
         #expect(JourneyTuning.handoffDelayMs == 600)
         #expect(JourneyTuning.staleTransitionSeconds == 30)
+        #expect(JourneyTuning.stationIdentityMeters == 500)  // 서버 JOURNEY_STATION_IDENTITY_M
     }
 
     // MARK: 표시 이름(웹 displayStationName 미러 — 공유 fixture 전수)
@@ -261,19 +262,128 @@ private let allEvents: [JourneyEvent] =
         #expect(journeyLineLabel(" ") == nil)
     }
 
-    @Test func qualifierOnlyForSameNameDifferentLine() {
-        // 경의중앙선 신촌을 골랐는데 추천은 2호선 신촌 승차 — 붙인다
-        #expect(journeyNeedsLineQualifier(
-            designatedName: "신촌역", designatedLine: "경의중앙선", actualName: "신촌", actualLine: "수도권 2호선"))
-        // 이름이 다르면 평소 문장(애오개 ≠ 아현)
+    @Test func sameLineFollowsServerForms() {
+        #expect(journeySameLine("수도권2호선", "수도권 2호선"))
+        #expect(journeySameLine("9호선", "수도권 9호선(급행)"))
+        #expect(journeySameLine("수인분당선", "수도권 수인.분당선"))
+        // 카카오 출구 힌트는 지역을 싣지 않는다 — 같은 역 안 비교라 코어만 본다(서버 sameLine 동형)
+        #expect(journeySameLine("2호선", "부산 2호선"))
+        #expect(!journeySameLine("부산 2호선", "대구 2호선"))
+        #expect(!journeySameLine("1호선", "11호선"))
+        #expect(!journeySameLine("경의중앙선", "수도권 2호선"))
+    }
+
+    private func stop(_ name: String, _ line: String?, _ lat: Double, _ lng: Double) -> JourneyStopIdentity {
+        JourneyStopIdentity(name: name, line: line, lat: lat, lng: lng)
+    }
+
+    @Test func qualifierOnlyForSameNameDifferentStation() {
+        // 경의중앙선 신촌을 골랐는데 추천은 2호선 신촌 승차(좌표 약 680m) — 붙인다
+        let gyeongui = stop("신촌역", "경의중앙선", 37.5598, 126.9426)
+        let line2 = stop("신촌", "수도권 2호선", 37.5552, 126.9369)
+        #expect(journeyNeedsLineQualifier(designated: gyeongui, actual: line2))
+        // 노선을 모르면 좌표로 가른다 — 멀면 다른 역
+        #expect(journeyNeedsLineQualifier(designated: stop("신촌", nil, 37.5598, 126.9426), actual: line2))
+        // 노선을 모르고 같은 자리면 같은 역(두 역을 다 정한 여정에서 추천이 고른 그 역에서 탈 때) — 붙이지 않는다
         #expect(!journeyNeedsLineQualifier(
-            designatedName: "아현", designatedLine: "2호선", actualName: "애오개", actualLine: "수도권 5호선"))
-        // 이름·노선이 같으면 붙여도 가르지 못한다
-        #expect(!journeyNeedsLineQualifier(
-            designatedName: "신촌", designatedLine: "수도권2호선", actualName: "신촌", actualLine: "수도권 2호선"))
-        // 한쪽 노선을 모르면 다른 역으로 본다(서버가 지정 역으로 인정하지 않은 같은 이름 정류)
+            designated: stop("서울역", nil, 37.5547, 126.9707), actual: stop("서울역", "수도권 1호선", 37.5546, 126.9720)))
+        // 같은 복합체의 다른 노선(노선 둘 다 앎)은 붙인다
         #expect(journeyNeedsLineQualifier(
-            designatedName: "신촌", designatedLine: nil, actualName: "신촌", actualLine: "수도권 2호선"))
+            designated: stop("잠실", "8호선", 37.5145, 127.1059), actual: stop("잠실", "수도권 2호선", 37.5133, 127.1001)))
+        // 이름이 다르면 평소 문장(애오개 ≠ 아현), 이름·노선이 같으면 붙이지 않는다
+        #expect(!journeyNeedsLineQualifier(designated: stop("아현", "2호선", 37.5573, 126.956), actual: line2))
+        #expect(!journeyNeedsLineQualifier(designated: stop("신촌", "수도권2호선", 37.5598, 126.9426), actual: line2))
+    }
+
+    // MARK: 쪽 판정(결과 화면 제목) — 손으로 만든 변형
+
+    private func leg(_ mode: String, _ from: String?, _ to: String?, line: String? = nil,
+                     at: (Double, Double)? = nil, end: (Double, Double)? = nil) -> TransitRouteLeg {
+        let stops: [TransitLegStop]? = at.map { a in
+            [TransitLegStop(name: from ?? "", lat: a.0, lng: a.1),
+             TransitLegStop(name: to ?? "", lat: (end ?? a).0, lng: (end ?? a).1)]
+        }
+        return TransitRouteLeg(
+            mode: mode, lineName: line, fromName: from, toName: to, stationCount: nil, minutes: 5,
+            serviceStatus: nil, firstServiceTime: nil, lastServiceTime: nil, stops: stops)
+    }
+
+    private func variant(_ kind: JourneyVariantKind, _ legs: [TransitRouteLeg]) -> JourneyVariant {
+        JourneyVariant(
+            kind: kind, boardStation: nil, alightStation: nil, taxiIn: nil,
+            transit: TransitRoute(
+                summary: TransitRouteSummary(
+                    totalMinutes: 20, fare: 1550, transfers: 0, walkMinutes: 0, departName: nil, arriveName: nil),
+                legs: legs, routeKey: "p0"),
+            egress: nil, totals: JourneyTotals(minutes: 20, taxiFare: 0, transitFare: 1550))
+    }
+
+    private let sinchonGyeongui = RecentStation(label: "신촌역", lat: 37.5598, lng: 126.9426, line: "경의중앙선")
+    private let seoulKtx = RecentStation(label: "서울역", lat: 37.5547, lng: 126.9707, line: nil)
+    private let gwanghwamun = RecentStation(label: "광화문역", lat: 37.5710, lng: 126.9768, line: "5호선")
+
+    @Test func boardHomonymQualifiesBoardSideOnly() {
+        let rec = variant(.recommended, [
+            leg("walk", nil, "신촌"),
+            leg("subway", "신촌", "광화문", line: "수도권 2호선", at: (37.5552, 126.9369), end: (37.5710, 126.9768)),
+        ])
+        let result = JourneyResult(variants: [rec], designatedMissing: JourneyDesignatedMissing(side: .board))
+        let lines = journeyLineQualifiers(result, board: sinchonGyeongui, alight: nil)
+        #expect(lines == JourneyLineQualifiers(board: true, alight: false))
+        #expect(journeyRecommendedTitleIsBoardSide(rec, board: sinchonGyeongui, alight: nil, lines: lines))
+    }
+
+    /// 코드 리뷰 m2 반례: 두 역을 다 정했고 하차 쪽만 안 맞았다. 추천은 고른 서울역(힌트 없음)에서 타고 다른 역에서 내린다 —
+    /// 승차 쪽에 노선을 붙이지 않고, 제목은 다른 쪽인 하차 쪽이다.
+    @Test func sameStationWithUnknownLineIsNotHomonym() {
+        let rec = variant(.recommended, [
+            leg("subway", "서울역", "종각", line: "수도권 1호선", at: (37.5546, 126.9720), end: (37.5702, 126.9831)),
+        ])
+        let result = JourneyResult(variants: [rec], designatedMissing: JourneyDesignatedMissing(side: .alight))
+        let lines = journeyLineQualifiers(result, board: seoulKtx, alight: gwanghwamun)
+        #expect(lines == JourneyLineQualifiers(board: false, alight: false))
+        #expect(!journeyRecommendedTitleIsBoardSide(rec, board: seoulKtx, alight: gwanghwamun, lines: lines))
+    }
+
+    /// 칸에 고른 역으로 비교한다: 지정 역 경로는 공덕 경의중앙선에서 타지만 칸(힌트 없는 공덕)과 같은 자리인 추천의 5호선 공덕은
+    /// 서버가 같은 역으로 본다 — 승차 쪽에 붙지 않는다. 하차는 경의중앙선 신촌(칸) vs 2호선 신촌(추천)이라 붙고 제목은 하차 쪽.
+    @Test func alightHomonymComparesAgainstChosenStation() {
+        let designated = variant(.designated, [
+            leg("subway", "공덕", "신촌", line: "경의중앙선", at: (37.5440, 126.9516), end: (37.5598, 126.9426)),
+        ])
+        let rec = variant(.recommended, [
+            leg("subway", "공덕", "충정로", line: "수도권 5호선", at: (37.5440, 126.9516), end: (37.5600, 126.9636)),
+            leg("subway", "충정로", "신촌", line: "수도권 2호선", at: (37.5600, 126.9636), end: (37.5552, 126.9369)),
+            leg("walk", "신촌", nil),
+        ])
+        let gongdeok = RecentStation(label: "공덕역", lat: 37.5440, lng: 126.9516, line: nil)
+        let result = JourneyResult(variants: [designated, rec], designatedMissing: nil)
+        let lines = journeyLineQualifiers(result, board: gongdeok, alight: sinchonGyeongui)
+        #expect(lines == JourneyLineQualifiers(board: false, alight: true))
+        #expect(!journeyRecommendedTitleIsBoardSide(rec, board: gongdeok, alight: sinchonGyeongui, lines: lines))
+    }
+
+    @Test func busSideIsNeverQualified() {
+        let rec = variant(.recommended, [
+            leg("bus", "신촌", "광화문", line: "7612", at: (37.5552, 126.9369), end: (37.5710, 126.9768)),
+        ])
+        let result = JourneyResult(variants: [rec], designatedMissing: JourneyDesignatedMissing(side: .board))
+        #expect(journeyLineQualifiers(result, board: sinchonGyeongui, alight: nil) == JourneyLineQualifiers())
+    }
+
+    /// 코드 리뷰 m4: 앞뒤 도보를 건너 탈것으로 가르고, 승차·하차 쪽이 서로 다르게 나온다.
+    @Test func busStopEndsSkipWalkAndDifferBySide() {
+        let busFirst = variant(.recommended, [
+            leg("walk", nil, "정류장"), leg("bus", "정류장", "역", line: "472"), leg("subway", "역", "광화문", line: "5호선"),
+            leg("walk", "광화문", nil),
+        ])
+        #expect(busFirst.boardsAtBusStop)
+        #expect(!busFirst.alightsAtBusStop)
+        let busLast = variant(.recommended, [
+            leg("walk", nil, "역"), leg("subway", "역", "환승", line: "2호선"), leg("bus", "환승", "정류장", line: "472"),
+        ])
+        #expect(!busLast.boardsAtBusStop)
+        #expect(busLast.alightsAtBusStop)
     }
 
     @Test func qualifiedNamePrefixesKnownLineOnly() {

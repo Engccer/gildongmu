@@ -151,6 +151,7 @@
     <string name="android_guide_waypointRemoved">경유지 %1$s 삭제, 경로를 다시 조회합니다</string>
     <string name="android_guide_waypointSet">경유지 %1$s, 경로를 다시 조회합니다</string>
     <string name="android_guide_waypointSkipped">경유지(%1$s)를 제외하고 안내합니다.</string>
+    <string name="android_journey_accessFailedWith">%1$s. 도보 안내를 시작할 수 없어 승차 대기로 바로 넘어갑니다.</string>
     <string name="android_journey_alightField">지하철에서 내려 택시 타는 역</string>
     <string name="android_journey_arrivedExit">%1$s번 출구에 도착했습니다.</string>
     <string name="android_journey_arrivedStand">택시 승강장에 도착했습니다.</string>
@@ -165,11 +166,12 @@
     <string name="android_journey_egressExit">%1$s번 출구로 나가 택시로 %2$s분, 약 %3$s원</string>
     <string name="android_journey_egressLookupFailed">출구 정보를 불러오지 못했습니다. 내린 역에서 택시로 %1$s분, 약 %2$s원</string>
     <string name="android_journey_egressNone">내린 역에서 택시로 %1$s분, 약 %2$s원</string>
+    <string name="android_journey_egressNoneStop">내린 정류장에서 택시로 %1$s분, 약 %2$s원</string>
     <string name="android_journey_egressStand">택시 승강장에서 택시로 %1$s분, 약 %2$s원</string>
     <string name="android_journey_egressStartFailed">출구까지 도보 안내를 시작하지 못했습니다.</string>
     <string name="android_journey_notStation">역을 골라 주세요.</string>
-    <string name="android_journey_recentTransfer">%1$s역에서 갈아타기</string>
-    <string name="android_journey_recentTransferBoth">%1$s역과 %2$s역에서 갈아타기</string>
+    <string name="android_journey_recentRoute">%1$s에서 %2$s까지, %3$s역에서 갈아타기</string>
+    <string name="android_journey_recentRouteBoth">%1$s에서 %2$s까지, %3$s역과 %4$s역에서 갈아타기</string>
     <string name="android_journey_recommendedHeading">%1$s역에서 타는 추천 경로</string>
     <string name="android_journey_recommendedHeadingAlight">%1$s역에서 내리는 추천 경로</string>
     <string name="android_journey_recommendedHeadingBus">%1$s에서 버스를 타는 추천 경로</string>

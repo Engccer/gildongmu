@@ -432,8 +432,10 @@
       "taxiInStop": "택시로 {stop}까지 {minutes}분, 약 {fare}원",
       "arrivedStop": "{stop}에 도착했습니다.",
       "clearStations": "갈아탈 역 지우기",
-      "recentTransfer": "{station}역에서 갈아타기",
-      "recentTransferBoth": "{board}역과 {alight}역에서 갈아타기"
+      "recentRoute": "{from}에서 {to}까지, {station}역에서 갈아타기",
+      "recentRouteBoth": "{from}에서 {to}까지, {board}역과 {alight}역에서 갈아타기",
+      "egressNoneStop": "내린 정류장에서 택시로 {minutes}분, 약 {fare}원",
+      "accessFailedWith": "{reason}. 도보 안내를 시작할 수 없어 승차 대기로 바로 넘어갑니다."
     }
   },
   "guide": {

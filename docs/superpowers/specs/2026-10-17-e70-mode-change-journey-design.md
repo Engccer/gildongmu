@@ -53,14 +53,14 @@
 판정 19~27은 첫 판 구현 리뷰가 남긴 열린 판정 아홉(BACKLOG E70)의 위원장 판정이다(2026-10-17 코디네이터 문답).
 
 19. **출구 도보 도착은 그 자리 이름 문장**: 「{번호}번 출구에 도착했습니다.」, 승강장이면 「택시 승강장에 도착했습니다.」 — 「목적지에 도착했습니다」는 여정이 끝난 것처럼 들린다.
-20. **최근 경로 줄은 여정이면 갈아탈 역을 덧붙인다**: 「현재 위치부터 광화문까지 경로 조회, 아현역에서 갈아타기」. 역이 둘이면 「아현역과 역곡역에서 갈아타기」.
+20. **최근 경로 줄은 여정이면 짧은 여정 문장**: 「현재 위치에서 광화문까지, 아현역에서 갈아타기」, 역이 둘이면 「…, 아현역과 역곡역에서 갈아타기」(보통 경로는 「…부터 …까지 경로 조회」 그대로 — 위원장 재판정, 판정 요청 `judgment-202610171113` ①).
 21. **펼친 역 칸 아래 보이는 버튼 「갈아탈 역 지우기」**: 두 칸을 다 비우고 접는다. 칸마다의 밀기 「삭제」는 그대로.
 22. **조회 완료 알림은 지금 문장 그대로**(「1개 수단의 경로 안내가 준비되었습니다.」).
-23. **추천 경로가 버스로 시작하면 정류장 문장**: 「택시로 {정류장}까지 {분}분, 약 {요금}원」·「{정류장}에 도착했습니다.」
+23. **추천 경로가 버스로 시작하면 정류장 문장**: 「택시로 {정류장}까지 {분}분, 약 {요금}원」·「{정류장}에 도착했습니다.」 대칭으로 버스로 끝나면 마지막 택시 줄은 「내린 정류장에서 택시로 {분}분, 약 {요금}원」(같은 판정 요청 ②).
 24. **역 B를 정한 여정의 하차 직후 버튼 이름은 「다음 구간」**: 하차 통지 「내리신 뒤 다음 구간 버튼을 눌러 주세요.」가 부르는 이름과 맞춘다(다음이 출구 도보든 택시든). 다른 자리의 「택시에 탔어요」(출구 도보 중·실패 시트)는 그대로.
 25. **여정 중 목적지·경유지·다른 경로 바꾸기는 숨긴다**(§6.4, 확정).
 26. **동명 이역이면 두 제목에 노선을 붙인다**: 지정 역과 추천 경로의 그 쪽 역이 이름은 같고 노선이 다를 때만 「경의중앙선 신촌역에서 타는 경로를 찾지 못했습니다.」 → 「2호선 신촌역에서 타는 추천 경로」. 평소엔 지금 문장.
-27. **접근 도보를 시작하지 못하면 승차 전 도보 선례의 다리 문장**(「도보 안내를 시작할 수 없어 승차 대기로 바로 넘어갑니다.」)을 원인 문장 뒤, 대중교통 시작 통지 앞에 낸다.
+27. **접근 도보를 시작하지 못하면 승차 전 도보 선례의 다리 문장**(「도보 안내를 시작할 수 없어 승차 대기로 바로 넘어갑니다.」)을 원인 문장 뒤, 대중교통 시작 통지 앞에 낸다. 원인 문장과 **한 통지**(「{원인}. 도보 안내를 시작할 수 없어 …」)로 도보 모델이 낸다 — 대중교통 창구는 세션 전이라 백그라운드에서 버려지고, 따로 내면 같은 턴의 원인 문장을 끊는다(A54와 같은 이유, 구현 접근성 감사). 원인이 없는 동기 거부만 다리 문장 단독.
 
 예문의 숫자·역은 설명용이다. 위 예문은 확정본 문장으로 맞춰 적었고, 화면 문장의 정본은 §8.4 문안 표다(위원장 문안 왕복 2026-10-17 확정).
 
@@ -214,7 +214,7 @@ heading 구조(구현 접근성 감사): 변형이 둘이면 선택 버튼 둘�
 
 - `RecentRoute`에 선택 필드 `boardStation`·`alightStation`(이름·좌표·노선 힌트 — 역 칸 전용 값, `DirectionsEndpoint`가 아님) 추가, `sameRoute`가 둘도 비교. 구버전 저장본 디코딩은 부재 = nil.
 - 최근 경로에서 여정을 고르면 칸을 채우고 펼친 상태로 조회(양끝이 있을 때만 자동 조회 — 기존 프리필 규칙).
-- 최근 경로 줄은 여정이면 갈아탈 역 꼬리를 쉼표로 붙인다(판정 20) — 같은 출발·도착의 보통 경로와 들어서 가른다.
+- 최근 경로 줄은 여정이면 여정 문장 「{출발}에서 {도착}까지, {역}역에서 갈아타기」다(판정 20) — 같은 출발·도착의 보통 경로와 들어서 가른다. 활성화가 역을 쓰는 조건(실험판·앱 언어 ko)에서만이고, 그 밖엔 활성화가 역을 버리므로 줄도 보통 문장이다.
 - 웹 `?dir=`는 첫 판에서 건드리지 않는다(웹 UI 없음).
 
 ## 6. iOS 여정 안내 (상태 머신)
@@ -366,13 +366,15 @@ heading 구조(구현 접근성 감사): 변형이 둘이면 선택 버튼 둘�
 | `journey.egressStartFailed` | 출구까지 도보 안내를 시작하지 못했습니다. | egress 실패 |
 | `journey.arrivedExit` | {exit}번 출구에 도착했습니다. | 출구 도보 도착(판정 19) |
 | `journey.arrivedStand` | 택시 승강장에 도착했습니다. | 승강장 도보 도착(판정 19) |
-| `journey.recentTransfer` | {station}역에서 갈아타기 | 최근 경로 줄 꼬리(판정 20) |
-| `journey.recentTransferBoth` | {board}역과 {alight}역에서 갈아타기 | 최근 경로 줄 꼬리, 역 둘(판정 20) |
+| `journey.recentRoute` | {from}에서 {to}까지, {station}역에서 갈아타기 | 최근 경로 줄, 여정(판정 20) |
+| `journey.recentRouteBoth` | {from}에서 {to}까지, {board}역과 {alight}역에서 갈아타기 | 최근 경로 줄, 여정·역 둘(판정 20) |
+| `journey.egressNoneStop` | 내린 정류장에서 택시로 {minutes}분, 약 {fare}원 | 구간 줄, 추천이 버스로 끝남(판정 23) |
+| `journey.accessFailedWith` | {reason}. 도보 안내를 시작할 수 없어 승차 대기로 바로 넘어갑니다. | 접근 도보 시작 실패, 원인 + 다리 문장(판정 27) |
 | `journey.clearStations` | 갈아탈 역 지우기 | 펼친 칸 아래 버튼(판정 21) |
 | `journey.taxiInStop` | 택시로 {stop}까지 {minutes}분, 약 {fare}원 | 구간 줄, 추천이 버스로 시작(판정 23) |
 | `journey.arrivedStop` | {stop}에 도착했습니다. | 택시 자동 인계, 추천이 버스로 시작(판정 23) |
 
-동명 이역(판정 26)은 새 키 없이 `{station}` 자리에 「노선 역이름」을 넣는다(Kit `journeyQualifiedStationName` — 노선 이름은 `수도권` 접두·공백·마침표·급행 꼬리를 뗀 꼴). 붙이는 조건은 Kit `journeyNeedsLineQualifier`: 그 쪽의 지정 역과 추천 경로 지하철 정류가 표시 이름이 같고 노선이 다를 때, 한쪽 노선을 모르면 다른 역으로 본다(서버가 같은 역으로 인정하지 않은 같은 이름 정류다). 그때 노선은 아는 쪽에만 붙는다. 지정 역 쪽 노선은 지정 역 경로가 있으면 그 탈것 노선, 없으면 칸의 노선 힌트다. 추천이 그 쪽에서 버스면 제목이 이미 「버스」를 말해 붙이지 않는다.
+동명 이역(판정 26)은 새 키 없이 `{station}` 자리에 「노선 역이름」을 넣는다(Kit `journeyQualifiedStationName` — 노선 이름은 `수도권` 접두·공백·마침표·급행 꼬리를 뗀 꼴). 붙이는 조건은 Kit `journeyLineQualifiers`·`journeyNeedsLineQualifier`: 칸에 고른 역(이름·노선 힌트·좌표)과 추천 경로의 그 쪽 지하철 정류를 서버 같은 역 판정(§4.3)과 같은 축으로 비교한다 — 표시 이름이 같고, 노선을 둘 다 알면 노선이 다를 때, 하나라도 모르면 좌표가 500m(`JourneyTuning.stationIdentityMeters`)보다 멀 때. 두 역을 다 정한 여정은 추천이 고른 바로 그 역에서 탈 수 있어(다른 쪽이 안 맞았을 뿐) "이름이 같으면 다른 역"으로 보지 않는다(구현 코드 리뷰). 노선은 아는 쪽에만 붙고, 추천이 그 쪽에서 버스면 제목이 이미 「버스」를 말해 붙이지 않는다. 추천 제목이 어느 쪽을 말할지(`journeyRecommendedTitleIsBoardSide`)는 동명 이역을 "다른 쪽"으로 친다.
 
 [다시 시도]·[안내 종료]·대중교통 시작 실패는 기존 키를 그대로 쓰고, 여정의 마지막 leg 버튼은 기존 「다음 구간」(`transitGuide.advance`, 판정 24)이다. `journey.taxiOutFailed`는 taxiIn 시작 실패에도 쓴다(문장이 같은 사실을 말한다).
 
@@ -475,4 +477,4 @@ heading 구조(구현 접근성 감사): 변형이 둘이면 선택 버튼 둘�
 
 **검증**: 서버·Kit·앱 웹 레인(vitest 전체·tsc·lint), Kit `swift test` 전체, 앱 두 구성 빌드. 실호출: ODsay 3건(라우트 A만·B만·둘 다), 카카오 약 260건·Tmap 약 64건(게이트 + 라우트). 예선 게이트(역 11곳, 비교 8그룹 — 위원장 실조회 역을 공공 역으로 바꿔 재측정) 놓침 0, 측정 불가 0, 운영 감축 폭 k=2 놓침 1(BACKLOG E70 편승). 같은 역 반경: 같은 이름·다른 노선 정류 45쌍(복합체 최대 427m < 500 ≤ 신촌 705m)을 fixture로 잠금. 리뷰: 서버·Kit spec 준수·코드 품질(opus) 각 MAJOR 3, 앱 spec 준수·코드 품질(opus) 각 MAJOR 4, 접근성 감사(opus) BLOCKER 1·MAJOR 10 — 새 문안이 필요한 것 외 전부 반영, 문안 판정 요청 7건(구현 보고 디렉터리 `judgment-*`, 판정 18은 채택 반영). 보고 원본은 저장소 밖 `~/gildongmu-wt/e70-impl-reports/`.
 
-**문안 판정 반영**(2026-10-17, 세션 e70-wording — 판정 19~27): 새 키 7(§8.4 표), 앱 배선 `GuideSessionCoordinator`(도착 문장·다리 문장)·`JourneyResultRows`(정류장 줄·노선 머리말)·`TransitTrackingSheet`(「다음 구간」)·`DirectionsTabView`(지우기 버튼·최근 경로 꼬리), Kit `JourneyVariant.boardsAtBusStop`·`alightsAtBusStop`·`journeyLineLabel`·`journeyNeedsLineQualifier`·`journeyQualifiedStationName`. 배선은 소스 가드 `e70-journey-wording-guard.test.ts`(변이 주입 5종 검출), 순수 판정은 Kit `JourneyTests`·`JourneyModelsTests`가 잠근다.
+**문안 판정 반영**(2026-10-17, 세션 e70-wording — 판정 19~27): 새 키 9(§8.4 표), 앱 배선 `GuideSessionCoordinator`(도착 문장·동기 거부 다리 문장)·`BeaconModel`(`markChained(bridgesStartFailure:)` — 시작 실패 원인 + 다리 문장 한 통지)·`JourneyResultRows`(정류장 줄·노선 머리말)·`TransitTrackingSheet`(「다음 구간」)·`DirectionsTabView`(지우기 버튼·최근 경로 여정 문장, 활성화와 같은 조건), Kit `JourneyVariant.boardsAtBusStop`·`alightsAtBusStop`·`journeyLineLabel`·`journeyNeedsLineQualifier`·`journeyLineQualifiers`·`journeyRecommendedTitleIsBoardSide`·`journeyQualifiedStationName`. 배선은 소스 가드 `e70-journey-wording-guard.test.ts`, 순수 판정은 Kit `JourneyTests`가 잠근다. 리뷰(보고 `~/gildongmu-wt/e70-wording-reports/review-*`): 접근성 감사(opus) MAJOR 1(다리 문장 창구)·MINOR 3, 코드 리뷰(opus) MAJOR 1(최근 경로 줄 언어 조건)·MINOR 6 — 「지우기」 뒤 통지 없음(선례와 같음)과 정류장 「승차역」(편승) 외 반영.

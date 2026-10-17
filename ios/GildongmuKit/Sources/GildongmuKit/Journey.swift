@@ -104,6 +104,9 @@ public enum JourneyTuning {
     public static let handoffDelayMs = 600
     /// 사이 상태(`transitioning`)에 머무를 수 있는 상한(초). 넘기면 `staleTimeout`.
     public static let staleTransitionSeconds = 30
+    /// 같은 이름 정류를 같은 역으로 볼 좌표 반경(m) — 서버 `JOURNEY_STATION_IDENTITY_M`(src/lib/journey/station-identity.ts)과
+    /// 같은 값. 제목의 동명 이역 노선 머리말(`journeyNeedsLineQualifier`)이 쓴다.
+    public static let stationIdentityMeters = 500.0
 }
 
 /// 전이 표. `token`이 지금 상태와 다르면 무시한다 — 자동 도착 판정과 버튼이 같은 상태를 보고 둘 다 오면
@@ -221,15 +224,51 @@ public func journeyLineLabel(_ raw: String?) -> String? {
     return s.isEmpty ? nil : s
 }
 
-/// 지정 역과 실제로 타는(내리는) 역의 제목에 노선을 붙이는가(판정 8): 표시 이름이 같고 노선이 다를 때만.
-/// 한쪽 노선을 모르면 다르다고 본다 — 이름이 같은데 지정 역 경로가 아닌 정류는 서버가 이미 다른 역으로 판정한 것이다
-/// (이름 키 + 좌표 500m + 노선, spec §4.3). 그때는 아는 쪽 노선만 붙는다(`journeyQualifiedStationName`).
-public func journeyNeedsLineQualifier(
-    designatedName: String, designatedLine: String?, actualName: String, actualLine: String?
-) -> Bool {
-    guard journeyStationDisplayName(designatedName) == journeyStationDisplayName(actualName) else { return false }
-    guard let a = journeyLineLabel(designatedLine), let b = journeyLineLabel(actualLine) else { return true }
-    return a != b
+private let journeyRegionPrefixes = ["부산", "대구", "광주", "대전"]
+
+/// 두 노선 표기가 같은 노선인가(서버 `sameLine`의 Kit 근사, 판정 순서도 같다). 한쪽만 비수도권 지역 접두(`부산 2호선`)이고
+/// 다른 쪽이 맨 번호(`2호선` — 카카오 힌트는 지역을 싣지 않는다)면 접두를 뗀 꼴끼리, 노선명 표(`subwayLineIdentity`)에 둘 다
+/// 있으면 표 값끼리, 아니면 정규화한 꼴끼리 비교한다(지역 접두가 둘 다 있고 다르면 다른 노선).
+func journeySameLine(_ a: String, _ b: String) -> Bool {
+    guard let la = journeyLineLabel(a), let lb = journeyLineLabel(b) else { return false }
+    func split(_ s: String) -> (region: String?, core: String) {
+        for r in journeyRegionPrefixes where s.hasPrefix(r) { return (r, String(s.dropFirst(r.count))) }
+        return (nil, s)
+    }
+    let (ra, ca) = split(la)
+    let (rb, cb) = split(lb)
+    if (ra == nil) != (rb == nil) { return ca == cb }
+    if let ia = subwayLineIdentity(a), let ib = subwayLineIdentity(b) { return ia == ib }
+    if ra != nil, rb != nil, ra != rb { return false }
+    return ca == cb
+}
+
+/// 동명 이역 판정에 쓰는 정류 하나 — 이름·노선(모르면 nil)·좌표.
+public struct JourneyStopIdentity: Equatable, Sendable {
+    public let name: String
+    public let line: String?
+    public let lat: Double
+    public let lng: Double
+
+    public init(name: String, line: String?, lat: Double, lng: Double) {
+        self.name = name
+        self.line = line
+        self.lat = lat
+        self.lng = lng
+    }
+}
+
+/// 지정 역과 실제로 타는(내리는) 역의 제목에 노선을 붙이는가(판정 26): 표시 이름이 같고 다른 역일 때만. 다른 역의 근거는
+/// 서버 같은 역 판정(spec §4.3)과 같다 — 노선을 둘 다 알면 노선이 다를 때, 하나라도 모르면 좌표가
+/// `JourneyTuning.stationIdentityMeters`보다 멀 때(동명 이역 신촌 680m대). 두 역을 다 지정한 여정에서 추천 경로가
+/// 고른 바로 그 역에서 탈 수 있으므로(다른 쪽이 안 맞아 지정 역 경로가 아니었을 뿐) "이름이 같으면 다른 역"으로 보지 않는다.
+public func journeyNeedsLineQualifier(designated: JourneyStopIdentity, actual: JourneyStopIdentity) -> Bool {
+    guard journeyStationDisplayName(designated.name) == journeyStationDisplayName(actual.name) else { return false }
+    if let a = designated.line, let b = actual.line, journeyLineLabel(a) != nil, journeyLineLabel(b) != nil {
+        return !journeySameLine(a, b)
+    }
+    return haversineMeters(lat1: designated.lat, lng1: designated.lng, lat2: actual.lat, lng2: actual.lng)
+        > JourneyTuning.stationIdentityMeters
 }
 
 /// 문장의 `{station}` 자리 이름에 노선 머리말을 붙인다(「2호선 신촌」). 노선을 모르면 표시 이름만.
@@ -237,4 +276,54 @@ public func journeyQualifiedStationName(_ name: String, line: String?) -> String
     let display = journeyStationDisplayName(name)
     guard let label = journeyLineLabel(line) else { return display }
     return "\(label) \(display)"
+}
+
+/// 동명 이역 노선 머리말을 붙일 쪽(판정 26). 그 쪽의 지정 역 제목(또는 못 찾음 줄)과 추천 제목에 함께 붙는다.
+public struct JourneyLineQualifiers: Equatable, Sendable {
+    public var board: Bool
+    public var alight: Bool
+
+    public init(board: Bool = false, alight: Bool = false) {
+        self.board = board
+        self.alight = alight
+    }
+}
+
+/// 추천 변형의 그 쪽 지하철 정류가 칸에 고른 역과 이름은 같고 다른 역인가. 비교 대상은 서버 같은 역 판정과 같이 칸의 값(이름·
+/// 노선 힌트·좌표)이다 — 지정 역 경로의 탈것 노선으로 비교하면 서버가 같은 역으로 인정한 추천 승차역(힌트 없는 칸)에도 노선이
+/// 붙는다. 버스는 제목이 이미 「버스」를 말해 가를 필요가 없다. 정류 좌표를 모르면 붙이지 않는다(평소 문장이 기본).
+public func journeyLineQualifiers(
+    _ result: JourneyResult, board: RecentStation?, alight: RecentStation?
+) -> JourneyLineQualifiers {
+    guard let recommended = result.variants.first(where: { $0.kind == .recommended }) else { return .init() }
+    func vehicles(_ v: JourneyVariant?) -> [TransitRouteLeg] { v?.transit.legs.filter { $0.mode != "walk" } ?? [] }
+    func stop(_ leg: TransitRouteLeg?, from: Bool, ref: JourneyStationRef?) -> JourneyStopIdentity? {
+        guard let leg, leg.mode != "bus", let name = from ? leg.fromName : leg.toName else { return nil }
+        let stop = from ? leg.stops?.first : leg.stops?.last
+        guard let lat = stop?.lat ?? ref?.coord.lat, let lng = stop?.lng ?? ref?.coord.lng else { return nil }
+        return JourneyStopIdentity(name: name, line: leg.lineName, lat: lat, lng: lng)
+    }
+    func chosen(_ station: RecentStation) -> JourneyStopIdentity {
+        JourneyStopIdentity(name: station.label, line: station.line, lat: station.lat, lng: station.lng)
+    }
+    var out = JourneyLineQualifiers()
+    if let board, let actual = stop(vehicles(recommended).first, from: true, ref: recommended.boardStation) {
+        out.board = journeyNeedsLineQualifier(designated: chosen(board), actual: actual)
+    }
+    if let alight, let actual = stop(vehicles(recommended).last, from: false, ref: recommended.alightStation) {
+        out.alight = journeyNeedsLineQualifier(designated: chosen(alight), actual: actual)
+    }
+    return out
+}
+
+/// 추천 변형 제목이 승차 쪽을 말하는가(spec §8.4 조합 규칙): 승차 쪽이 지정 역과 다르거나(이름, 또는 동명 이역) 하차 쪽도
+/// 같을 때. 아니면(하차 쪽만 다르면) 하차 쪽 제목이다.
+public func journeyRecommendedTitleIsBoardSide(
+    _ v: JourneyVariant, board: RecentStation?, alight: RecentStation?, lines: JourneyLineQualifiers
+) -> Bool {
+    let vehicles = v.transit.legs.filter { $0.mode != "walk" }
+    let display = journeyStationDisplayName
+    let boardDiffers = board.map { display($0.label) != display(vehicles.first?.fromName ?? "") } ?? false
+    let alightDiffers = alight.map { display($0.label) != display(vehicles.last?.toName ?? "") } ?? false
+    return boardDiffers || lines.board || !(alightDiffers || lines.alight)
 }

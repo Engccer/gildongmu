@@ -1356,6 +1356,7 @@ struct DirectionsTabView: View {
         }
         let from = name(route.from)
         let to = name(route.to)
+        if let journey = recentJourneyLabel(route, from: from, to: to) { return journey }
         if let viaSide = route.via {
             let via = name(viaSide)
             // ko 목적격 조사는 라벨 받침에 따라 갈려 문자열 자원에 박을 수 없다 — 호출부가
@@ -1363,18 +1364,20 @@ struct DirectionsTabView: View {
             let viaText = AppLanguage.current == "ko" ? via + (KoreanParticle.object(via) ?? "") : via
             return appLocalized("recentRoutes.itemVia", from, to, viaText)
         }
-        return joinText(appLocalized("recentRoutes.item", from, to), recentTransferText(route))
+        return appLocalized("recentRoutes.item", from, to)
     }
 
-    /// 여정 경로의 갈아탈 역 꼬리(E70 열린 판정 2) — 같은 출발·도착의 보통 경로와 들어서 가른다. 역 칸은 ko 데이터
-    /// 로케일에서만 서므로 문장도 ko다. 역이 없으면 nil(보통 경로는 종전 문장 그대로).
-    private func recentTransferText(_ route: RecentRoute) -> String? {
+    /// 여정 경로의 줄(E70 판정 20) — 「{출발}에서 {도착}까지, {역}역에서 갈아타기」로 같은 출발·도착의 보통 경로와 가른다.
+    /// 조건은 활성화(`activateRecentRoute`)가 역을 쓰는 조건과 같다 — 그 밖(앱 언어가 ko가 아님)이면 역을 버리고 보통 조회를
+    /// 하므로 줄도 보통 문장이다(여정 문장은 ko에만 있어 다른 언어에선 키 이름이 낭독된다). 역이 없으면 nil.
+    private func recentJourneyLabel(_ route: RecentRoute, from: String, to: String) -> String? {
+        guard AppConfig.experimentalJourneyEnabled, AppLanguage.dataLocale == "ko" else { return nil }
         let board = route.boardStation.map { journeyStationDisplayName($0.label) }
         let alight = route.alightStation.map { journeyStationDisplayName($0.label) }
         if let board, let alight {
-            return appLocalized("ios.journey.recentTransferBoth", board, alight)
+            return appLocalized("ios.journey.recentRouteBoth", from, to, board, alight)
         }
-        return (board ?? alight).map { appLocalized("ios.journey.recentTransfer", $0) }
+        return (board ?? alight).map { appLocalized("ios.journey.recentRoute", from, to, $0) }
     }
 
     private func directionsEndpoint(_ side: RecentEndpoint?) -> DirectionsEndpoint {

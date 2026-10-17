@@ -95,7 +95,7 @@ struct JourneyResultRows: View {
     }
 
     /// 판정 14: 지정 역 경로를 못 찾았다는 사실 한 줄(양쪽이면 두 줄, 새 문장 없음 — spec §3.2). 동명 이역이면 고른 역의
-    /// 노선을 붙인다(판정 8).
+    /// 노선을 붙인다(판정 26).
     private var missingLines: [String] {
         guard let side = result.designatedMissing?.side else { return [] }
         let lines = lines
@@ -135,6 +135,8 @@ struct JourneyResultRows: View {
         case .exit: return appLocalized("ios.journey.egressExit", option.label, minutes, fare)
         case .stand: return appLocalized("ios.journey.egressStand", minutes, fare)
         case .none:
+            // 버스로 끝나는 변형은 출구 조회를 하지 않아 실패 갈래가 없다 — 내린 곳이 정류장이라는 문장만 갈린다(판정 23 대칭).
+            if variant.alightsAtBusStop { return appLocalized("ios.journey.egressNoneStop", minutes, fare) }
             return lookupFailed
                 ? appLocalized("ios.journey.egressLookupFailed", minutes, fare)
                 : appLocalized("ios.journey.egressNone", minutes, fare)
@@ -148,37 +150,9 @@ private func minutesOf(_ briefing: CarRouteBriefing) -> Int {
 
 private func minutesText(_ briefing: CarRouteBriefing) -> String { String(minutesOf(briefing)) }
 
-/// 동명 이역 노선 머리말을 붙일 쪽(판정 8). 그 쪽의 지정 역 제목(또는 못 찾음 줄)과 추천 제목에 함께 붙는다.
-struct JourneyLineQualifiers: Equatable {
-    var board = false
-    var alight = false
-}
-
-/// 추천 변형의 그 쪽 지하철 정류가 고른 역과 이름은 같고 노선이 다른가(Kit `journeyNeedsLineQualifier`). 고른 역의 노선은
-/// 지정 역 경로가 있으면 그 탈것 노선, 없으면 칸의 노선 힌트다. 버스는 제목이 이미 「버스」를 말해 가를 필요가 없다.
-func journeyLineQualifiers(_ result: JourneyResult, board: RecentStation?, alight: RecentStation?) -> JourneyLineQualifiers {
-    guard let recommended = result.variants.first(where: { $0.kind == .recommended }) else { return .init() }
-    let designated = result.variants.first { $0.kind == .designated }
-    func vehicles(_ v: JourneyVariant?) -> [TransitRouteLeg] { v?.transit.legs.filter { $0.mode != "walk" } ?? [] }
-    var out = JourneyLineQualifiers()
-    if let board, let actual = vehicles(recommended).first, actual.mode != "bus" {
-        let own = vehicles(designated).first
-        out.board = journeyNeedsLineQualifier(
-            designatedName: own?.fromName ?? board.label, designatedLine: own?.lineName ?? board.line,
-            actualName: actual.fromName ?? "", actualLine: actual.lineName)
-    }
-    if let alight, let actual = vehicles(recommended).last, actual.mode != "bus" {
-        let own = vehicles(designated).last
-        out.alight = journeyNeedsLineQualifier(
-            designatedName: own?.toName ?? alight.label, designatedLine: own?.lineName ?? alight.line,
-            actualName: actual.toName ?? "", actualLine: actual.lineName)
-    }
-    return out
-}
-
 /// 변형 제목(§8.4 표 + 그 아래 조합 규칙). 지정 역 경로는 지정한 쪽의 역 이름, 추천은 다른 쪽(둘 다 다르면 승차 쪽)을
 /// 말하고, 그 쪽 탈것이 버스면 정류장 문장이다. 안내 시작 버튼 라벨도 이 이름을 쓴다(로터에서 어느 경로인지 들린다).
-/// 동명 이역이면 그 쪽 역 이름 앞에 노선을 붙인다(판정 8 — 「2호선 신촌역에서 타는 추천 경로」).
+/// 동명 이역이면 그 쪽 역 이름 앞에 노선을 붙인다(판정 26 — 「2호선 신촌역에서 타는 추천 경로」, Kit `journeyLineQualifiers`).
 func journeyVariantHeading(
     _ v: JourneyVariant, board: RecentStation?, alight: RecentStation?, lines: JourneyLineQualifiers
 ) -> String {
@@ -200,10 +174,7 @@ func journeyVariantHeading(
             "ios.journey.designatedHeadingAlight",
             named(last?.toName ?? alight?.label ?? "", line: last?.lineName ?? alight?.line, qualified: lines.alight))
     case .recommended:
-        let boardDiffers = board.map { display($0.label) != display(first?.fromName ?? "") } ?? false
-        let alightDiffers = alight.map { display($0.label) != display(last?.toName ?? "") } ?? false
-        // 이름이 같아도 노선이 다르면 다른 역이다 — 그 쪽을 다른 쪽으로 친다.
-        if boardDiffers || lines.board || !(alightDiffers || lines.alight) {
+        if journeyRecommendedTitleIsBoardSide(v, board: board, alight: alight, lines: lines) {
             let name = first?.fromName ?? ""
             return first?.mode == "bus"
                 ? appLocalized("ios.journey.recommendedHeadingBus", name)

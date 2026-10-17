@@ -22041,6 +22041,16 @@
         }
       }
     },
+    "ios.journey.accessFailedWith": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@. 도보 안내를 시작할 수 없어 승차 대기로 바로 넘어갑니다."
+          }
+        }
+      }
+    },
     "ios.journey.alightField": {
       "localizations": {
         "ko": {
@@ -22181,6 +22191,16 @@
         }
       }
     },
+    "ios.journey.egressNoneStop": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "내린 정류장에서 택시로 %1$@분, 약 %2$@원"
+          }
+        }
+      }
+    },
     "ios.journey.egressStand": {
       "localizations": {
         "ko": {
@@ -22211,22 +22231,22 @@
         }
       }
     },
-    "ios.journey.recentTransfer": {
+    "ios.journey.recentRoute": {
       "localizations": {
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@역에서 갈아타기"
+            "value": "%1$@에서 %2$@까지, %3$@역에서 갈아타기"
           }
         }
       }
     },
-    "ios.journey.recentTransferBoth": {
+    "ios.journey.recentRouteBoth": {
       "localizations": {
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@역과 %2$@역에서 갈아타기"
+            "value": "%1$@에서 %2$@까지, %3$@역과 %4$@역에서 갈아타기"
           }
         }
       }

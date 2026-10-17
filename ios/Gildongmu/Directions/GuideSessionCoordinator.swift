@@ -356,8 +356,9 @@ final class GuideSession {
     /// 늦게 도착한 콜백·조회 완료·인계 지연은 seq 불일치로 버려진다(spec §6.3 "전이는 원자적으로 예약한다").
     func advanceJourney(_ event: JourneyEvent, token: JourneyToken) {
         guard let state = journey else { return }
-        // 접근 도보를 시작하지 못하면 대중교통으로 넘어간다 — 승차 전 도보 선례의 다리 문장을 낸다(판정 9).
-        let accessStartFailed = state.phase == .running(.access) && event == .stageEnded(.startFailed)
+        // 접근 도보를 시작하지 못하면 대중교통으로 넘어간다 — 다리 문장(판정 27)은 도보 모델이 원인 문장 뒤에 붙여 한 통지로
+        // 낸다(`markChained(bridgesStartFailure:)`). 원인 문장이 없는 동기 거부만 여기서 같은 도보 창구로 낸다.
+        let accessRefused = ignoreFailureCause && state.phase == .running(.access) && event == .stageEnded(.startFailed)
         switch journeyStep(state, event, token: token) {
         case .ignore:
             return
@@ -370,9 +371,8 @@ final class GuideSession {
                 journeyFailure = nil
                 // 버튼 사건은 아직 도는 단계 세션을 멈춘다 — 그 종료 콜백은 낡은 token이라 버려진다.
                 if event == .taxiDropped || event == .taxiBoarded, beacon.isTracking || beacon.starting { beacon.stop() }
-                if accessStartFailed, stage == .transit {
-                    // 원인 문장(권한·정밀 위치)은 도보 모델이 이미 냈다. 승차 전 도보의 `.startFailed`(`endPrewalk`)와 같은 창구·분류.
-                    transit.announceExternal(appLocalized("transitGuide.prewalkUnavailable"), speechClass: .actionable)
+                if accessRefused, stage == .transit {
+                    beacon.announceNow(appLocalized("transitGuide.prewalkUnavailable"), highPriority: true)
                 }
                 prepareJourneyStage(stage, token: next.token, delayed: event != .retry)
             case .running(let stage):
@@ -441,11 +441,14 @@ final class GuideSession {
             // 추천 변형이 버스로 시작하면 타는 곳은 정류장이다 — 「역」을 붙이지 않는다(판정 5).
             let atStop = plan.variant.boardsAtBusStop
             let name = journeyStationDisplayName(board.name)
-            // 택시 자동 도착과 접근 도보 도착은 역(정류장) 이름 문장(누르지 않은 인계라 무엇이 시작되는지 알린다, spec §6.3
-            // 통지). 기본 「목적지에 도착했습니다」는 여정이 끝난 것처럼 들린다(접근성 감사 M6).
-            beacon.markChained(arrivalText: atStop
-                ? appLocalized("ios.journey.arrivedStop", board.name)
-                : appLocalized("ios.journey.arrivedStation", name))
+            // 택시 자동 도착은 역(정류장) 이름 문장(누르지 않은 인계라 무엇이 시작되는지 알린다, spec §6.3 통지). 기본
+            // 「목적지에 도착했습니다」는 여정이 끝난 것처럼 들린다(접근성 감사 M6). 접근 도보 도착은 아래 `markPrewalk`의
+            // 승차 전 도보 문장 「승차역 {이름}에 도착했습니다.」가 이긴다(정류장에도 「승차역」 — BACKLOG E70 편승).
+            beacon.markChained(
+                arrivalText: atStop
+                    ? appLocalized("ios.journey.arrivedStop", board.name)
+                    : appLocalized("ios.journey.arrivedStation", name),
+                bridgesStartFailure: stage == .access)
             // 접근 도보는 승차 전 도보(A25)와 같은 자리다 — 입구가 멀어 지하로 먼저 들어가면 도착 판정이 닿지 않으므로 같은
             // 「{역} 도착」 선언 버튼을 둔다(시트의 유일한 버튼이 여정 전체 종료가 되지 않게). 도착 문장도 그 선례
             // 「승차역 {역}에 도착했습니다.」가 된다.
@@ -479,9 +482,12 @@ final class GuideSession {
             // 출구·승강장 도착은 그 자리 이름 문장 — 곧 택시 안내가 이어지므로 「목적지에 도착했습니다」로 끝맺지 않는다(판정 1).
             // `none`은 걷는 구간이 없어 이 단계에 오지 않는다(`hasEgressWalk`).
             switch option.kind {
-            case .exit: beacon.markChained(arrivalText: appLocalized("ios.journey.arrivedExit", option.label))
-            case .stand: beacon.markChained(arrivalText: appLocalized("ios.journey.arrivedStand"))
-            case .none: beacon.markChained(arrivalText: nil)
+            case .exit:
+                beacon.markChained(
+                    arrivalText: appLocalized("ios.journey.arrivedExit", option.label), bridgesStartFailure: false)
+            case .stand:
+                beacon.markChained(arrivalText: appLocalized("ios.journey.arrivedStand"), bridgesStartFailure: false)
+            case .none: beacon.markChained(arrivalText: nil, bridgesStartFailure: false)
             }
             launchJourneyBeacon(
                 dest: BeaconDest(lat: option.coord.lat, lng: option.coord.lng), label: option.placeName,
