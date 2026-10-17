@@ -95,6 +95,11 @@ describe("E65 내 주변 로터 액션 배선", () => {
       expect(s, file).not.toContain("skipReloadOnReturn");
       expect(s.split("model.notePushed()").length - 1, file).toBe(n);
     }
+    // 장소 상세를 push하는 넷(A66)은 표식이 상세 화면에 붙는다 — 행 라벨·링크에 붙으면 목록이 그려질 때마다 표식이 서서
+    // 탭 전환 복귀의 재조회까지 건너뛴다.
+    for (const file of ["KidsNearbyView.swift", "BarrierFreeNearbyView.swift", "ClinicNearbyView.swift", "EventsNearbyView.swift"]) {
+      expect(nearby(file), file).toMatch(/NavigationLink \{\s*PlaceDetailView\([^\n]*\)( \{[\s\S]*?\n {28}\})?\s*\.onAppear \{ model\.notePushed\(\) \}\s*\} label:/);
+    }
     // 주변 상황 행의 상세도 표식을 낸다(자동 펼침 섹션이 부모 코어로 넘긴다).
     const scene = nearby("SurroundingsSceneSection.swift");
     expect(scene).toContain("PlaceDetailView(place: sceneItemToPlace(item))\n                        .onAppear { onPushed?() }");

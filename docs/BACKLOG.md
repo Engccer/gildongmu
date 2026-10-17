@@ -59,7 +59,7 @@ node scripts/usage-report.mjs   # API 비용·쿼터·키 만료
 
 ### A66. 아이 놀 곳·무장애·소아 진료·행사 목록은 상세 화면에서 돌아올 때마다 다시 조회한다 (🆕 2026-10-17, ios-rotor 관찰, iOS) — 낮음 · ✅ 코드 종결(2026-10-17, 세션 `small-14`, CHANGELOG 같은 날), 실기기 판정은 §2 E65 행 ④와 함께
 
-A64가 지하철역·버스·둘러보기 세 목록만 `NearbyLoadCore.appear()`로 옮겨, 나머지 네 화면(`KidsNearbyView`·`BarrierFreeNearbyView`·`ClinicNearbyView`·`EventsNearbyView`)은 아직 `.task { await model.load() }`라 상세에서 돌아오면 다시 조회하고 "N곳" 완료 통지가 또 나간다. 처방은 A64 판정과 같은 규칙: 화면마다 `.task`를 `appear()`로, push한 화면의 `.onAppear`에서 `notePushed()`(세 화면이 선례). 출처 `~/gildongmu-wt/ios-rotor-reports/done-*.md` 미결 5.
+A64가 지하철역·버스·둘러보기 세 목록만 `NearbyLoadCore.appear()`로 옮겨, 나머지 네 화면(`KidsNearbyView`·`BarrierFreeNearbyView`·`ClinicNearbyView`·`EventsNearbyView`)은 아직 `.task { await model.load() }`라 상세에서 돌아오면 다시 조회하고 "N곳" 완료 통지가 또 나간다. 처방은 A64 판정과 같은 규칙: 화면마다 `.task`를 `appear()`로, push한 화면의 `.onAppear`에서 `notePushed()`(세 화면이 선례). 소아 진료의 진료 상태도 A64의 버스 도착 시각과 같은 판정이다(상세에서 돌아와도 갱신하지 않고, 낡은 값은 새로고침이 받는다). 출처 `~/gildongmu-wt/ios-rotor-reports/done-*.md` 미결 5.
 
 ### A65. 건너는 길 이름이 진행 방향에 따라 달라진다: 같은 횡단보도를 한쪽에서는 틀린 이름으로 말한다 (🆕 2026-10-05, cli-release 리뷰 관찰 · 코디네이터 프로덕션 재현) — 높음 · ▶ 위원장 판정 2026-10-05: 길 이름은 켠 채로 바로 고친다 · ✅ 코드 종결(2026-10-05, 세션 `crossing-road-fix`, CHANGELOG 같은 날), 남은 것은 §2 E62 ⑥ 관찰
 

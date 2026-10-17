@@ -136,8 +136,8 @@ class WalkGuideWaypointProgressTest {
         val model = Fixtures.repoRoot.resolve("android/app/src/main/kotlin/space/dodoplanet/gildongmu/guide/WalkGuideModel.kt").readText()
         assertTrue(model.contains("private val tuning = GuideTuning.walk\n"))
         // 사본은 생성자나 copy로만 만들어진다(경유지 접근 예고 필드는 non-null이라 값으로는 가를 수 없다).
-        for (copying in listOf("GuideTuning(", "GuideTuning.walk.copy(", "tuning.copy(")) {
-            assertFalse(model.contains(copying), copying)
-        }
+        // 줄을 바꾼 `.copy(` 체인도 잡도록 공백을 건너뛴다.
+        val copying = Regex("""GuideTuning[ \t\n]*\(|GuideTuning\.walk[ \t\n]*\.copy[ \t\n]*\(|tuning[ \t\n]*\.copy[ \t\n]*\(""")
+        assertFalse(copying.containsMatchIn(model), copying.find(model)?.value)
     }
 }
