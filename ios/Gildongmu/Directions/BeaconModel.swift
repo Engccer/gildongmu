@@ -622,6 +622,16 @@ final class BeaconModel {
         resetArrivalHealth()
     }
 
+    /// 시작 실패 상태(길찾기 탭 선두의 실패 줄과 해결 버튼)를 거둔다 — 그 실패가 가리키던 안내가 더는 이어질 자리가 없을 때
+    /// (승차 전 도보의 실패 뒤 탔거나 무관한 안내가 시작됐다, A68 판정 2). 호출자는 코디네이터의 `retirePrewalkRestart` 하나다.
+    /// 들리는 말은 없다. `lastFailure`는 여정 실패 시트의 원인 보존이라 건드리지 않는다(새 시작이 비운다).
+    func clearFailure() {
+        guard !isTracking, !starting, status.isFailure else { return }
+        status = .idle
+        statusText = ""
+        failResolution = .none
+    }
+
     /// 체중 권유 응답 표식은 그 종료 화면의 것이다 — 닫기 밖의 소거(30분 만료·인계·새 세션 시작·teardown)에서
     /// 다음 화면으로 새지 않게 한다(E31). 나들이 종료 화면과 같은 키라 도보 종료 화면이 있을 때만 지운다
     /// (코디네이터가 대중교통·나들이 시작마다 `clearArrival()`을 부른다). ⚠ `arrivalDest = nil`을 쓰는 자리는

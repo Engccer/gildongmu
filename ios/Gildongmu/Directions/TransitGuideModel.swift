@@ -1678,7 +1678,11 @@ final class TransitGuideModel {
         case .advance: boardOverrideIndex = nil; selectedDescription = nil
         case .board, .boardAboard, .confirmBoarded, .restoreBoarding, .changeBoarding, .declareArrived, .poll: break
         }
-        if enteredRiding { boardOverrideIndex = nil }
+        if enteredRiding {
+            boardOverrideIndex = nil
+            // 탔다 — 승차 전 도보가 남긴 길찾기 탭의 실패 줄과 재시작 버튼은 이제 지나온 승차역을 가리킨다(A68 판정 2).
+            GuideSession.shared.transitBoarded()
+        }
         // "이미 탑승" 흐름은 대기 국면 전용 UI — 국면이 바뀌면 소거(`reboardPickerActive`와 같은 국면 기반 규칙).
         if result.state.phase != .waiting { aboardStep = nil }
         // boarding 수동 진행 수단의 래치(N3 ①): 국면에 **들어올 때** 지우고(재진입 = 새 차량 대기),

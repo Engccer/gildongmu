@@ -62,9 +62,9 @@ final class GuideSession {
     private var prewalk: PrewalkContext?
     /// 비콘의 직전 시작이 승차 전 도보였으면 그 연결 컨텍스트(A68). 길찾기 탭 [정확한 위치 허용]의 재시작(`restartBeacon`)이
     /// 이 연결을 다시 걸고 모델이 든 시작 인자로 걷기를 다시 시작해, 승차 전 도보 → 대중교통으로 잇는다. `prewalk`와 달리
-    /// 도보 세션이 끝나도 남는다(쓰이는 때가 실패 뒤다). 비콘의 `lastStartRequest`와 짝이라 그것이 바뀌는 자리, 곧 승차 전 도보가
-    /// 아닌 비콘 시작(`beginBeacon`)과 여정 안의 승차 전 도보(`launchPrewalk`)에서만 지운다 — 비콘을 시작하지 않는 진입(나들이·
-    /// 승차 전 도보 없는 대중교통)이 지우면 길찾기 탭에 남은 실패 줄의 재시작이 연결 없는 도보가 된다.
+    /// 도보 세션이 끝나도 남는다(쓰이는 때가 실패 뒤다). 비콘의 `lastStartRequest`와 짝이라 세우는 자리는 `launchPrewalk`
+    /// (여정 안이면 비운다) 하나, 거두는 자리는 `retirePrewalkRestart` 하나다 — 그 실패 줄과 함께 거둔다(따로 지우면 남은
+    /// 줄의 재시작이 연결 없는 도보가 된다).
     private var prewalkRestart: PrewalkContext?
     private var prewalkTask: Task<Void, Never>?
     /// `startTransit`의 prewalk 경로가 `startBeacon`을 부르는 동안 true — 그 호출의 취소 게이트가
@@ -137,7 +137,7 @@ final class GuideSession {
     /// 거부 가드 없는 비콘 시작 본문(E70 §6.3). 호출자는 공개 `startBeacon`과 내부 인계(승차 전 도보·여정 단계)뿐이다
     /// — 여정 중 외부 시작은 `startBeacon`의 거부에서 멈추고, 여정 자신의 다음 세션만 이 길로 온다(점유를 잠시 풀지 않는다).
     private func beginBeacon(_ request: BeaconModel.StartRequest) {
-        if !launchingPrewalk { prewalkRestart = nil }  // 비콘의 직전 시작 인자가 이제 승차 전 도보가 아니다(A68)
+        if !launchingPrewalk { retirePrewalkRestart() }  // 비콘의 직전 시작 인자가 이제 승차 전 도보가 아니다(A68)
         if !launchingPrewalk, !launchingOutingReturn, !launchingJourneyStage { cancelPrewalk() }
         transit.clearWalkHandoff()
         outing.clearEnd()
@@ -148,6 +148,7 @@ final class GuideSession {
     func startOuting() {
         guard !refuseIfActive() else { return }
         cancelPrewalk()
+        retirePrewalkRestart()
         beacon.clearArrival()
         transit.clearWalkHandoff()
         outing.requestStart()
@@ -197,6 +198,7 @@ final class GuideSession {
         route: TransitRoute, destinationLabel: String, destinationRoman: String?, dest: BeaconDest, accessible: Bool
     ) {
         cancelPrewalk()
+        retirePrewalkRestart()  // 새 대중교통 시작 — 승차 전 도보가 있으면 아래 `launchPrewalk`가 새 연결을 세운다
         beacon.clearArrival()
         outing.clearEnd()
         // 승차 전 도보(A25): 첫 탑승 leg 앞 도보가 있으면 도보 실시간 안내를 먼저 돌리고, 도착하면
@@ -316,6 +318,23 @@ final class GuideSession {
         }
     }
 
+    /// 승차 전 도보 재시작 컨텍스트와 그 실패 줄(길찾기 탭 선두의 실패 문장·해결 버튼)을 함께 거둔다(A68 판정 2). 그 실패를
+    /// 만든 승차 전 도보와 무관한 안내가 시작될 때(승차 전 도보가 아닌 비콘 시작·대중교통·나들이·여정 시작)와 대중교통 안내가
+    /// 탔다를 알아차렸을 때(`transitBoarded`) 부른다 — 그 뒤에 누르면 지나온 승차역이나 옛 경로로 걷기가 다시 시작된다.
+    /// 컨텍스트가 없으면 실패 줄은 승차 전 도보의 것이 아니라 건드리지 않는다. 재시작 창구(`restartBeacon`)와 연결의 종료
+    /// (`cancelPrewalk`·`endPrewalk`·`finishJourney`)는 부르지 않는다 — 타기 전에 대중교통을 끝냈으면 그 버튼이 다시 잇는다.
+    private func retirePrewalkRestart() {
+        guard prewalkRestart != nil else { return }
+        prewalkRestart = nil
+        beacon.clearFailure()
+    }
+
+    /// 대중교통 안내가 riding에 들어섰다(선언·관측·[이미 탔어요] 어느 길이든, `TransitGuideModel.dispatch`의 국면 판정 하나).
+    /// 탄 뒤엔 승차 전 도보의 실패 줄과 버튼이 가리키던 걷기가 지난 일이다(A68 판정 2).
+    func transitBoarded() {
+        retirePrewalkRestart()
+    }
+
     /// 낡은 연결 폐기 — 모든 시작 진입·여정 종료에서. 추적 중인 도보 세션은 건드리지 않는다.
     private func cancelPrewalk() {
         prewalk = nil
@@ -406,6 +425,7 @@ final class GuideSession {
     func startJourney(plan: JourneyPlan) {
         guard !refuseIfActive() else { return }
         cancelPrewalk()
+        retirePrewalkRestart()
         beacon.clearArrival()
         transit.clearWalkHandoff()
         outing.clearEnd()

@@ -515,15 +515,69 @@ describe("8. 정밀 위치 재시작은 승차 전 도보를 대중교통까지 
     expect(clean().match(/beacon\.markPrewalk\(/g)?.length).toBe(2); // + 여정 접근 도보(startJourneyStage)
   });
 
-  it("재시작 컨텍스트는 비콘의 직전 시작 인자와 짝이다: 바뀌는 자리에서만 쓰고 지운다", () => {
-    // 세우는 자리 하나(승차 전 도보 시작 — 여정 안이면 비운다), 지우는 자리 하나(승차 전 도보가 아닌 비콘 시작).
+  it("재시작 컨텍스트는 비콘의 직전 시작 인자와 짝이다: 세우는 자리 하나, 거두는 자리 하나", () => {
+    // 세우는 자리(승차 전 도보 시작 — 여정 안이면 비운다)와 거두는 자리(`retirePrewalkRestart`, 실패 줄과 함께).
     expect(clean().match(/\bprewalkRestart\s*=/g)).toHaveLength(2);
     expect(declarationBody(session(), "launchPrewalk")).toContain("prewalkRestart = journey == nil ? context : nil");
-    expect(declarationBody(session(), "beginBeacon")).toMatch(/if !launchingPrewalk \{ prewalkRestart = nil \}/);
-    // 비콘을 시작하지 않는 진입·종료는 지우지 않는다 — 지우면 길찾기 탭에 남은 실패 줄의 재시작이 연결 없는 도보가 된다.
-    for (const name of ["cancelPrewalk", "endPrewalk", "startOuting", "finishJourney"]) {
-      expect(declarationBody(session(), name), name).not.toContain("prewalkRestart");
+    expect(declarationBody(session(), "retirePrewalkRestart")).toContain("prewalkRestart = nil");
+    expect(declarationBody(session(), "beginBeacon")).toMatch(/if !launchingPrewalk \{ retirePrewalkRestart\(\) \}/);
+    // 연결의 종료는 거두지 않는다 — 타기 전에 대중교통을 끝냈으면 남은 버튼이 걷기 → 대중교통을 다시 잇는다.
+    for (const name of ["cancelPrewalk", "endPrewalk", "finishJourney", "restartBeacon"]) {
+      expect(declarationBody(session(), name), name).not.toContain("prewalkRestart =");
+      expect(declarationBody(session(), name), name).not.toContain("retirePrewalkRestart(");
     }
+  });
+});
+
+describe("8-2. 한 번 탔거나 무관한 안내가 시작되면 승차 전 도보의 실패 줄과 버튼을 거둔다(A68 판정 2)", () => {
+  const TRANSIT_MODEL = join(ROOT, "ios/Gildongmu/Directions/TransitGuideModel.swift");
+  const BEACON_MODEL = join(ROOT, "ios/Gildongmu/Directions/BeaconModel.swift");
+  const session = () => readFileSync(GUIDE_SESSION, "utf8");
+
+  it("거두기는 컨텍스트와 실패 줄을 한 함수에서 함께 지우고, 승차 전 도보의 실패가 아니면 건드리지 않는다", () => {
+    const body = declarationBody(session(), "retirePrewalkRestart");
+    expect(body).toMatch(/^\{\s*guard prewalkRestart != nil else \{ return \}\s*prewalkRestart = nil\s*beacon\.clearFailure\(\)\s*$/);
+    // 실패 줄을 거두는 모델 함수는 이 한 자리에서만 불린다(앱 전체).
+    const callers = swiftFiles(IOS_DIR).filter((file) =>
+      /\.clearFailure\(/.test(blankSwiftCommentsAndStrings(readFileSync(file, "utf8"))),
+    );
+    expect(callers).toEqual([GUIDE_SESSION]);
+    expect(blankSwiftCommentsAndStrings(session()).match(/\.clearFailure\(/g)).toHaveLength(1);
+  });
+
+  it("거두는 자리: 무관한 안내의 시작 넷(비콘·대중교통·나들이·여정)과 riding 진입", () => {
+    const names = [...session().matchAll(/func\s+(\w+)/g)].map((m) => m[1]);
+    const callers = names
+      .filter((name) => name !== "retirePrewalkRestart" && declarationBody(session(), name).includes("retirePrewalkRestart("))
+      .sort();
+    expect(callers).toEqual(["beginBeacon", "beginTransit", "startJourney", "startOuting", "transitBoarded"]);
+    // 대중교통 시작은 거둔 뒤에 새 연결을 세운다(거꾸로면 새 연결을 지운다).
+    const transit = declarationBody(session(), "beginTransit");
+    expect(transit.indexOf("retirePrewalkRestart()")).toBeLessThan(transit.indexOf("launchPrewalk("));
+    expect(declarationBody(session(), "transitBoarded")).toMatch(/^\{\s*retirePrewalkRestart\(\)\s*$/);
+  });
+
+  it("탔다는 대중교통 모델의 riding 진입 판정 하나에서 얻는다(선언·관측 어느 길이든)", () => {
+    const model = readFileSync(TRANSIT_MODEL, "utf8");
+    const clean = blankSwiftCommentsAndStrings(model);
+    expect(clean.match(/transitBoarded\(/g)).toHaveLength(1);
+    expect(declarationBody(model, "dispatch")).toContain(
+      "let enteredRiding = result.state.phase == .riding && state.phase != .riding",
+    );
+    const sites = enclosingHeaders(model, "GuideSession.shared.transitBoarded()");
+    expect(sites).toHaveLength(1);
+    expect(sites[0].join("\n")).toContain("if enteredRiding");
+    expect(sites[0].join("\n")).toContain("func dispatch(");
+  });
+
+  it("실패 줄 거두기는 추적·시작 중이 아니고 실패 상태일 때만, 상태·문장·해결 수단을 함께 지운다", () => {
+    const body = declarationBody(readFileSync(BEACON_MODEL, "utf8"), "clearFailure");
+    expect(body).toMatch(/guard !isTracking, !starting, status\.isFailure else \{ return \}/);
+    // `declarationBody`는 문자열 리터럴 내용을 지운다 — 문장 소거는 대입 자리만 본다.
+    for (const needle of ["status = .idle", "statusText = ", "failResolution = .none"]) {
+      expect(body, needle).toContain(needle);
+    }
+    expect(body).not.toContain("lastFailure");
   });
 });
 
