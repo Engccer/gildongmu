@@ -1,0 +1,289 @@
+{
+  "recommended": {
+    "summary": {
+      "totalMinutes": 13,
+      "fare": 1550,
+      "transfers": 0,
+      "walkMinutes": 7,
+      "walkMeters": 438,
+      "departName": "애오개",
+      "arriveName": "광화문"
+    },
+    "legs": [
+      {
+        "mode": "walk",
+        "minutes": 6,
+        "distanceMeters": 425,
+        "toName": "애오개"
+      },
+      {
+        "mode": "subway",
+        "lineName": "수도권 5호선",
+        "fromName": "애오개",
+        "toName": "광화문",
+        "stationCount": 3,
+        "intervalMinutes": 10,
+        "minutes": 6,
+        "serviceWayCode": 2,
+        "stops": [
+          {
+            "name": "애오개",
+            "stationId": "530",
+            "lat": 37.5536,
+            "lng": 126.956759
+          },
+          {
+            "name": "충정로",
+            "stationId": "531",
+            "lat": 37.560346,
+            "lng": 126.963003
+          },
+          {
+            "name": "서대문",
+            "stationId": "532",
+            "lat": 37.565863,
+            "lng": 126.966642
+          },
+          {
+            "name": "광화문",
+            "stationId": "533",
+            "lat": 37.571665,
+            "lng": 126.976502
+          }
+        ],
+        "quickExit": {
+          "elevator": {
+            "kind": "door",
+            "doors": [
+              "8-4"
+            ]
+          },
+          "stairs": {
+            "kind": "door",
+            "doors": [
+              "8-4"
+            ]
+          }
+        },
+        "exit": {
+          "board": "2",
+          "alight": "9"
+        },
+        "serviceStatus": "unknown"
+      },
+      {
+        "mode": "walk",
+        "minutes": 1,
+        "distanceMeters": 13
+      }
+    ],
+    "routeKey": "p0",
+    "vehicle": "subway"
+  },
+  "alternatives": [
+    {
+      "summary": {
+        "totalMinutes": 16,
+        "fare": 1500,
+        "transfers": 0,
+        "walkMinutes": 4,
+        "walkMeters": 258,
+        "departName": "아현역",
+        "arriveName": "광화문역"
+      },
+      "legs": [
+        {
+          "mode": "walk",
+          "minutes": 2,
+          "distanceMeters": 105,
+          "toName": "아현역"
+        },
+        {
+          "mode": "bus",
+          "lineName": "271",
+          "fromName": "아현역",
+          "toName": "광화문역",
+          "stationCount": 4,
+          "intervalMinutes": 6,
+          "minutes": 12,
+          "serviceRouteId": "100100047",
+          "serviceCityCode": 1000,
+          "stops": [
+            {
+              "name": "아현역",
+              "stationId": "86157",
+              "localId": "113000477",
+              "arsId": "14068",
+              "cityCode": "1000",
+              "lat": 37.557294,
+              "lng": 126.954922
+            },
+            {
+              "name": "충정로역",
+              "stationId": "86156",
+              "localId": "112000430",
+              "arsId": "13045",
+              "cityCode": "1000",
+              "lat": 37.560946,
+              "lng": 126.96345
+            },
+            {
+              "name": "서대문역사거리",
+              "stationId": "91324",
+              "localId": "101000304",
+              "arsId": "13047",
+              "cityCode": "1000",
+              "lat": 37.565514,
+              "lng": 126.966421
+            },
+            {
+              "name": "서울역사박물관.경희궁앞",
+              "stationId": "90653",
+              "localId": "100000380",
+              "arsId": "01007",
+              "cityCode": "1000",
+              "lat": 37.569034,
+              "lng": 126.970266
+            },
+            {
+              "name": "광화문역",
+              "stationId": "165600",
+              "localId": "100000384",
+              "arsId": "01009",
+              "cityCode": "1000",
+              "lat": 37.570224,
+              "lng": 126.976521
+            }
+          ],
+          "serviceStatus": "unknown"
+        },
+        {
+          "mode": "walk",
+          "minutes": 2,
+          "distanceMeters": 153
+        }
+      ],
+      "routeKey": "p1",
+      "vehicle": "bus",
+      "highlight": [
+        "busOnly"
+      ],
+      "displayIndex": 1
+    },
+    {
+      "summary": {
+        "totalMinutes": 18,
+        "fare": 1550,
+        "transfers": 1,
+        "walkMinutes": 7,
+        "walkMeters": 16,
+        "departName": "아현",
+        "arriveName": "광화문"
+      },
+      "legs": [
+        {
+          "mode": "walk",
+          "minutes": 1,
+          "distanceMeters": 3,
+          "toName": "아현"
+        },
+        {
+          "mode": "subway",
+          "lineName": "수도권 2호선",
+          "fromName": "아현",
+          "toName": "충정로",
+          "stationCount": 1,
+          "intervalMinutes": 5,
+          "minutes": 2,
+          "serviceWayCode": 2,
+          "stops": [
+            {
+              "name": "아현",
+              "stationId": "242",
+              "lat": 37.557388,
+              "lng": 126.956132
+            },
+            {
+              "name": "충정로",
+              "stationId": "243",
+              "lat": 37.559692,
+              "lng": 126.964332
+            }
+          ],
+          "quickExit": {
+            "transfer": {
+              "kind": "door",
+              "doors": [
+                "7-2"
+              ]
+            }
+          },
+          "exit": {
+            "board": "4"
+          },
+          "serviceStatus": "unknown"
+        },
+        {
+          "mode": "subway",
+          "lineName": "수도권 5호선",
+          "fromName": "충정로",
+          "toName": "광화문",
+          "stationCount": 2,
+          "intervalMinutes": 10,
+          "minutes": 4,
+          "serviceWayCode": 2,
+          "stops": [
+            {
+              "name": "충정로",
+              "stationId": "531",
+              "lat": 37.560346,
+              "lng": 126.963003
+            },
+            {
+              "name": "서대문",
+              "stationId": "532",
+              "lat": 37.565863,
+              "lng": 126.966642
+            },
+            {
+              "name": "광화문",
+              "stationId": "533",
+              "lat": 37.571665,
+              "lng": 126.976502
+            }
+          ],
+          "quickExit": {
+            "elevator": {
+              "kind": "door",
+              "doors": [
+                "8-4"
+              ]
+            },
+            "stairs": {
+              "kind": "door",
+              "doors": [
+                "8-4"
+              ]
+            }
+          },
+          "exit": {
+            "alight": "9"
+          },
+          "serviceStatus": "unknown"
+        },
+        {
+          "mode": "walk",
+          "minutes": 1,
+          "distanceMeters": 13
+        }
+      ],
+      "routeKey": "p3",
+      "vehicle": "subway",
+      "highlight": [
+        "leastWalk"
+      ],
+      "displayIndex": 2
+    }
+  ],
+  "totalCandidates": 18
+}

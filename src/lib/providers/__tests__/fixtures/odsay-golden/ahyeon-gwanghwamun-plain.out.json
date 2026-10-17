@@ -1,0 +1,172 @@
+{
+  "recommended": {
+    "summary": {
+      "totalMinutes": 13,
+      "fare": 1550,
+      "transfers": 0,
+      "walkMinutes": 7,
+      "walkMeters": 438,
+      "departName": "애오개",
+      "arriveName": "광화문"
+    },
+    "legs": [
+      {
+        "mode": "walk",
+        "minutes": 6,
+        "distanceMeters": 425,
+        "toName": "애오개"
+      },
+      {
+        "mode": "subway",
+        "lineName": "수도권 5호선",
+        "fromName": "애오개",
+        "toName": "광화문",
+        "stationCount": 3,
+        "intervalMinutes": 10,
+        "minutes": 6,
+        "serviceWayCode": 2,
+        "quickExit": {
+          "elevator": {
+            "kind": "door",
+            "doors": [
+              "8-4"
+            ]
+          },
+          "stairs": {
+            "kind": "door",
+            "doors": [
+              "8-4"
+            ]
+          }
+        },
+        "serviceStatus": "unknown"
+      },
+      {
+        "mode": "walk",
+        "minutes": 1,
+        "distanceMeters": 13
+      }
+    ],
+    "routeKey": "p0",
+    "vehicle": "subway"
+  },
+  "alternatives": [
+    {
+      "summary": {
+        "totalMinutes": 16,
+        "fare": 1500,
+        "transfers": 0,
+        "walkMinutes": 4,
+        "walkMeters": 258,
+        "departName": "아현역",
+        "arriveName": "광화문역"
+      },
+      "legs": [
+        {
+          "mode": "walk",
+          "minutes": 2,
+          "distanceMeters": 105,
+          "toName": "아현역"
+        },
+        {
+          "mode": "bus",
+          "lineName": "271",
+          "fromName": "아현역",
+          "toName": "광화문역",
+          "stationCount": 4,
+          "intervalMinutes": 6,
+          "minutes": 12,
+          "serviceRouteId": "100100047",
+          "serviceCityCode": 1000,
+          "serviceStatus": "unknown"
+        },
+        {
+          "mode": "walk",
+          "minutes": 2,
+          "distanceMeters": 153
+        }
+      ],
+      "routeKey": "p1",
+      "vehicle": "bus",
+      "highlight": [
+        "busOnly"
+      ],
+      "displayIndex": 1
+    },
+    {
+      "summary": {
+        "totalMinutes": 18,
+        "fare": 1550,
+        "transfers": 1,
+        "walkMinutes": 7,
+        "walkMeters": 16,
+        "departName": "아현",
+        "arriveName": "광화문"
+      },
+      "legs": [
+        {
+          "mode": "walk",
+          "minutes": 1,
+          "distanceMeters": 3,
+          "toName": "아현"
+        },
+        {
+          "mode": "subway",
+          "lineName": "수도권 2호선",
+          "fromName": "아현",
+          "toName": "충정로",
+          "stationCount": 1,
+          "intervalMinutes": 5,
+          "minutes": 2,
+          "serviceWayCode": 2,
+          "quickExit": {
+            "transfer": {
+              "kind": "door",
+              "doors": [
+                "7-2"
+              ]
+            }
+          },
+          "serviceStatus": "unknown"
+        },
+        {
+          "mode": "subway",
+          "lineName": "수도권 5호선",
+          "fromName": "충정로",
+          "toName": "광화문",
+          "stationCount": 2,
+          "intervalMinutes": 10,
+          "minutes": 4,
+          "serviceWayCode": 2,
+          "quickExit": {
+            "elevator": {
+              "kind": "door",
+              "doors": [
+                "8-4"
+              ]
+            },
+            "stairs": {
+              "kind": "door",
+              "doors": [
+                "8-4"
+              ]
+            }
+          },
+          "serviceStatus": "unknown"
+        },
+        {
+          "mode": "walk",
+          "minutes": 1,
+          "distanceMeters": 13
+        }
+      ],
+      "routeKey": "p3",
+      "vehicle": "subway",
+      "highlight": [
+        "leastWalk"
+      ],
+      "displayIndex": 2
+    }
+  ],
+  "totalCandidates": 18
+}

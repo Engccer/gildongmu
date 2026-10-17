@@ -1,0 +1,55 @@
+{
+  "recommended": {
+    "summary": {
+      "totalMinutes": 13,
+      "fare": 1550,
+      "transfers": 0,
+      "walkMinutes": 7,
+      "walkMeters": 438,
+      "departName": "애오개",
+      "arriveName": "광화문"
+    },
+    "legs": [
+      {
+        "mode": "walk",
+        "minutes": 6,
+        "distanceMeters": 425,
+        "toName": "애오개"
+      },
+      {
+        "mode": "subway",
+        "lineName": "수도권 5호선",
+        "fromName": "애오개",
+        "toName": "광화문",
+        "stationCount": 3,
+        "intervalMinutes": 10,
+        "minutes": 6,
+        "serviceWayCode": 2,
+        "quickExit": {
+          "elevator": {
+            "kind": "door",
+            "doors": [
+              "8-4"
+            ]
+          },
+          "stairs": {
+            "kind": "door",
+            "doors": [
+              "8-4"
+            ]
+          }
+        },
+        "serviceStatus": "unknown"
+      },
+      {
+        "mode": "walk",
+        "minutes": 1,
+        "distanceMeters": 13
+      }
+    ],
+    "routeKey": "s0",
+    "vehicle": "subway"
+  },
+  "alternatives": [],
+  "totalCandidates": 2
+}

@@ -590,24 +590,19 @@ async function fetchOdsay(
   return fetchOdsayJson<OdsayResponse>("searchPubTransPathT", q, { revalidate: 3600 });
 }
 
-export async function getTransitRoute(params: {
+/**
+ * 조회·en 재조회·정규화·수단 거르기·강등까지의 **전체 후보**(선정·라벨 전).
+ * 분리한 이유(E70): 지정 역 경로는 선정(`selectTransitRoutes`)이 자르기 전의 전체 후보 위에서 찾아야 한다 —
+ * ODsay는 승차역을 지정받지 못해 이웃 역 승차 경로를 1순위로 줄 수 있고, 지정 역 경로는 선정 밖에 있을 수 있다.
+ * 경로 없음은 null, 조회 실패는 throw. 파이프라인 순서(정규화 → 강등)는 `getTransitRoute`와 같은 계약이다.
+ */
+export async function getTransitCandidates(params: {
   origin: Coord;
   dest: Coord;
-  /** 경유 정류장 옵트인(B2 §7) — 응답 팽창 방지 위해 웹·iOS 클라이언트만 요청. */
   includeStops?: boolean;
-  /**
-   * 응답 언어(E27). `en`이면 ODsay `lang=1`로 영문을 받아 `*En`에 싣는다 — 한국어 필드는 그대로다.
-   * ⚠ `*Kor`가 하나라도 빠진 영문 응답은 통째로 버리고 ko로 재조회한다(fail-closed): 영문이
-   *   한국어 자리에 들어가면 조인 경로가 조용히 죽는다(설계 리뷰 #1). 부재·`ko`는 종전 경로.
-   */
   lang?: OdsayLang;
-  /**
-   * 수단 재조회(E50 판정 2) — 사용자가 버튼을 눌렀을 때만 온다. 있으면 그 수단만 타는 경로 중 **1순위 하나**를
-   * `recommended`로 돌려주고(대안·재조회 제안 없음), 그런 경로가 없으면 null이다. routeKey는 본 조회와 겹치지
-   * 않게 접두가 다르다(`b0`·`s0` — 클라이언트가 두 응답을 한 목록에 합친다).
-   */
   modeAxis?: TransitModeAxis;
-}): Promise<TransitRouteResult | null> {
+}): Promise<{ ranked: TransitRoute[] } | null> {
   const { origin, dest, modeAxis } = params;
   let lang: OdsayLang = params.lang ?? "ko";
   let data = await fetchOdsay(origin, dest, lang, modeAxis);
@@ -659,6 +654,31 @@ export async function getTransitRoute(params: {
     subwayHours,
     kstNowMinutes(new Date()),
   );
+  return { ranked };
+}
+
+export async function getTransitRoute(params: {
+  origin: Coord;
+  dest: Coord;
+  /** 경유 정류장 옵트인(B2 §7) — 응답 팽창 방지 위해 웹·iOS 클라이언트만 요청. */
+  includeStops?: boolean;
+  /**
+   * 응답 언어(E27). `en`이면 ODsay `lang=1`로 영문을 받아 `*En`에 싣는다 — 한국어 필드는 그대로다.
+   * ⚠ `*Kor`가 하나라도 빠진 영문 응답은 통째로 버리고 ko로 재조회한다(fail-closed): 영문이
+   *   한국어 자리에 들어가면 조인 경로가 조용히 죽는다(설계 리뷰 #1). 부재·`ko`는 종전 경로.
+   */
+  lang?: OdsayLang;
+  /**
+   * 수단 재조회(E50 판정 2) — 사용자가 버튼을 눌렀을 때만 온다. 있으면 그 수단만 타는 경로 중 **1순위 하나**를
+   * `recommended`로 돌려주고(대안·재조회 제안 없음), 그런 경로가 없으면 null이다. routeKey는 본 조회와 겹치지
+   * 않게 접두가 다르다(`b0`·`s0` — 클라이언트가 두 응답을 한 목록에 합친다).
+   */
+  modeAxis?: TransitModeAxis;
+}): Promise<TransitRouteResult | null> {
+  const candidates = await getTransitCandidates(params);
+  if (!candidates) return null;
+  const { ranked } = candidates;
+  const { modeAxis } = params;
 
   // 수단 재조회는 그 수단의 1순위 하나만(강등 뒤 — 운행 중인 경로가 앞선다).
   if (modeAxis) return { recommended: ranked[0], alternatives: [], totalCandidates: ranked.length };

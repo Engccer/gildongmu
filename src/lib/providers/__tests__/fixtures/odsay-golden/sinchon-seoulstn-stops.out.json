@@ -1,0 +1,167 @@
+{
+  "recommended": {
+    "summary": {
+      "totalMinutes": 11,
+      "fare": 1550,
+      "transfers": 0,
+      "walkMinutes": 2,
+      "walkMeters": 107,
+      "departName": "신촌",
+      "arriveName": "서울역"
+    },
+    "legs": [
+      {
+        "mode": "walk",
+        "minutes": 1,
+        "distanceMeters": 25,
+        "toName": "신촌"
+      },
+      {
+        "mode": "subway",
+        "lineName": "경의중앙선",
+        "fromName": "신촌",
+        "toName": "서울역",
+        "stationCount": 1,
+        "intervalMinutes": 15,
+        "minutes": 9,
+        "serviceWayCode": 2,
+        "stops": [
+          {
+            "name": "신촌",
+            "stationId": "1611",
+            "lat": 37.559771,
+            "lng": 126.942367
+          },
+          {
+            "name": "서울역",
+            "stationId": "1610",
+            "lat": 37.556407,
+            "lng": 126.971333
+          }
+        ],
+        "exit": {
+          "board": "1",
+          "alight": "1"
+        },
+        "serviceStatus": "unknown"
+      },
+      {
+        "mode": "walk",
+        "minutes": 1,
+        "distanceMeters": 82
+      }
+    ],
+    "routeKey": "p0",
+    "vehicle": "subway"
+  },
+  "alternatives": [
+    {
+      "summary": {
+        "totalMinutes": 17,
+        "fare": 1500,
+        "transfers": 0,
+        "walkMinutes": 3,
+        "walkMeters": 210,
+        "departName": "신촌기차역",
+        "arriveName": "서울역버스환승센터(6번승강장)"
+      },
+      "legs": [
+        {
+          "mode": "walk",
+          "minutes": 2,
+          "distanceMeters": 123,
+          "toName": "신촌기차역"
+        },
+        {
+          "mode": "bus",
+          "lineName": "7017",
+          "fromName": "신촌기차역",
+          "toName": "서울역버스환승센터(6번승강장)",
+          "stationCount": 6,
+          "intervalMinutes": 11,
+          "minutes": 14,
+          "serviceRouteId": "100100337",
+          "serviceCityCode": 1000,
+          "stops": [
+            {
+              "name": "신촌기차역",
+              "stationId": "103839",
+              "localId": "112000127",
+              "arsId": "13210",
+              "cityCode": "1000",
+              "lat": 37.558662,
+              "lng": 126.942588
+            },
+            {
+              "name": "이대역",
+              "stationId": "193785",
+              "localId": "113000418",
+              "arsId": "14064",
+              "cityCode": "1000",
+              "lat": 37.556708,
+              "lng": 126.944789
+            },
+            {
+              "name": "웨딩타운",
+              "stationId": "86169",
+              "localId": "113000476",
+              "arsId": "14067",
+              "cityCode": "1000",
+              "lat": 37.557066,
+              "lng": 126.951586
+            },
+            {
+              "name": "아현역",
+              "stationId": "86157",
+              "localId": "113000477",
+              "arsId": "14068",
+              "cityCode": "1000",
+              "lat": 37.557294,
+              "lng": 126.954922
+            },
+            {
+              "name": "중림동.충정로역2호선",
+              "stationId": "104463",
+              "localId": "101000015",
+              "arsId": "02107",
+              "cityCode": "1000",
+              "lat": 37.559613,
+              "lng": 126.964476
+            },
+            {
+              "name": "한국경제신문사.서소문역사공원",
+              "stationId": "104546",
+              "localId": "101000016",
+              "arsId": "02108",
+              "cityCode": "1000",
+              "lat": 37.56039,
+              "lng": 126.967827
+            },
+            {
+              "name": "서울역버스환승센터(6번승강장)",
+              "stationId": "104664",
+              "localId": "101000006",
+              "arsId": "02006",
+              "cityCode": "1000",
+              "lat": 37.555441,
+              "lng": 126.972796
+            }
+          ],
+          "serviceStatus": "unknown"
+        },
+        {
+          "mode": "walk",
+          "minutes": 1,
+          "distanceMeters": 87
+        }
+      ],
+      "routeKey": "p1",
+      "vehicle": "bus",
+      "highlight": [
+        "busOnly"
+      ],
+      "displayIndex": 1
+    }
+  ],
+  "totalCandidates": 22
+}
