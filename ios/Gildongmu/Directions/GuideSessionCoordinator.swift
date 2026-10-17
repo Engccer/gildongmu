@@ -320,7 +320,8 @@ final class GuideSession {
 
     /// 승차 전 도보 재시작 컨텍스트와 그 실패 줄(길찾기 탭 선두의 실패 문장·해결 버튼)을 함께 거둔다(A68 판정 2). 그 실패를
     /// 만든 승차 전 도보와 무관한 안내가 시작될 때(승차 전 도보가 아닌 비콘 시작·대중교통·나들이·여정 시작)와 대중교통 안내가
-    /// 탔다를 알아차렸을 때(`transitBoarded`) 부른다 — 그 뒤에 누르면 지나온 승차역이나 옛 경로로 걷기가 다시 시작된다.
+    /// 그 계획을 지나갔을 때(`transitPassedPrewalk`: 탔다·경로나 목적지를 바꿨다) 부른다 — 그 뒤에 누르면 지나온 승차역이나
+    /// 옛 경로로 걷기가 다시 시작된다. 되돌리지 않는다: 오승격 뒤 [탑승 변경]으로 대기에 돌아가도 버튼은 다시 서지 않는다.
     /// 컨텍스트가 없으면 실패 줄은 승차 전 도보의 것이 아니라 건드리지 않는다. 재시작 창구(`restartBeacon`)와 연결의 종료
     /// (`cancelPrewalk`·`endPrewalk`·`finishJourney`)는 부르지 않는다 — 타기 전에 대중교통을 끝냈으면 그 버튼이 다시 잇는다.
     private func retirePrewalkRestart() {
@@ -329,9 +330,10 @@ final class GuideSession {
         beacon.clearFailure()
     }
 
-    /// 대중교통 안내가 riding에 들어섰다(선언·관측·[이미 탔어요] 어느 길이든, `TransitGuideModel.dispatch`의 국면 판정 하나).
-    /// 탄 뒤엔 승차 전 도보의 실패 줄과 버튼이 가리키던 걷기가 지난 일이다(A68 판정 2).
-    func transitBoarded() {
+    /// 대중교통 안내가 승차 전 도보의 계획을 지나갔다(A68 판정 2) — 탔다(`TransitGuideModel.dispatch`: riding 이후 국면 ∨
+    /// 다음 leg, 선언·관측·[이미 탔어요]·추적 불가 [다음 구간] 어느 길이든) 또는 경로·목적지를 바꿨다(`changeRoute`). 그 뒤엔
+    /// 승차 전 도보의 실패 줄과 버튼이 가리키던 걷기가 지난 일이다.
+    func transitPassedPrewalk() {
         retirePrewalkRestart()
     }
 

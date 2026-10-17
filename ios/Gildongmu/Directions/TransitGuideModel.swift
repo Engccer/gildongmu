@@ -1171,6 +1171,8 @@ final class TransitGuideModel {
         announcement: RouteChangeAnnouncement
     ) -> Bool {
         guard let guideRoute = buildTransitGuideRoute(transitRoute) else { return false }
+        // 경로·목적지가 바뀌었다 — 승차 전 도보가 남긴 실패 줄의 재시작은 옛 경로·옛 목적지를 잇는다(A68 판정 2).
+        GuideSession.shared.transitPassedPrewalk()
         touchUserAction()  // 목적지 변경·경로 교체는 사용자 조작(유휴 정지 축 — 없으면 유휴 뒤 이 경로가 폴을 못 되살린다)
         pollTask?.cancel()
         pollTask = nil
@@ -1678,11 +1680,14 @@ final class TransitGuideModel {
         case .advance: boardOverrideIndex = nil; selectedDescription = nil
         case .board, .boardAboard, .confirmBoarded, .restoreBoarding, .changeBoarding, .declareArrived, .poll: break
         }
-        if enteredRiding {
-            boardOverrideIndex = nil
-            // 탔다 — 승차 전 도보가 남긴 길찾기 탭의 실패 줄과 재시작 버튼은 이제 지나온 승차역을 가리킨다(A68 판정 2).
-            GuideSession.shared.transitBoarded()
+        if enteredRiding { boardOverrideIndex = nil }
+        // 탔다(A68 판정 2): riding에 들어섰거나 riding을 거치지 않고 그 뒤로 갔다(대기에서 하차역 선언 → arrived, 추적 불가
+        // [다음 구간] → 다음 leg·done). 국면과 leg 순번만 본다. 승차 전 도보가 남긴 길찾기 탭의 실패 줄과 재시작 버튼은 이제
+        // 지나온 승차역을 가리킨다.
+        func boarded(_ s: TransitGuideState) -> Bool {
+            [.riding, .arrived, .done].contains(s.phase) || s.legIndex > 0
         }
+        if boarded(result.state), !boarded(state) { GuideSession.shared.transitPassedPrewalk() }
         // "이미 탑승" 흐름은 대기 국면 전용 UI — 국면이 바뀌면 소거(`reboardPickerActive`와 같은 국면 기반 규칙).
         if result.state.phase != .waiting { aboardStep = nil }
         // boarding 수동 진행 수단의 래치(N3 ①): 국면에 **들어올 때** 지우고(재진입 = 새 차량 대기),

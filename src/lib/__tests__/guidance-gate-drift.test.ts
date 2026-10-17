@@ -95,6 +95,12 @@ function declarationBody(source: string, name: string): string {
   throw new Error(`Swift 선언 ${name}의 닫는 중괄호를 찾지 못했다`);
 }
 
+/** 그 식별자를 부르는 선언(func) 이름들(§8·§8-2가 같은 술어로 센다). */
+function callersOf(source: string, call: string): string[] {
+  const names = [...source.matchAll(/func\s+(\w+)/g)].map((m) => m[1]);
+  return names.filter((name) => declarationBody(source, name).includes(call)).sort();
+}
+
 /**
  * Swift 소스에서 주석·문자열 리터럴을 같은 길이의 공백으로 지운다(오프셋 보존).
  * 아래 `enclosingHeaders`가 중괄호를 셀 때 주석·문자열 안의 `{`·`}`와, 주석에만
@@ -465,11 +471,6 @@ describe("7. 여정(E70) — 실험판 봉인과 내부 인계", () => {
 describe("8. 정밀 위치 재시작은 승차 전 도보를 대중교통까지 잇는다(A68)", () => {
   const session = () => readFileSync(GUIDE_SESSION, "utf8");
   const clean = () => blankSwiftCommentsAndStrings(session());
-  /** 그 식별자를 부르는 선언(func) 이름들(§7의 같은 이름 함수와 같다). */
-  function callersOf(source: string, call: string): string[] {
-    const names = [...source.matchAll(/func\s+(\w+)/g)].map((m) => m[1]);
-    return names.filter((name) => declarationBody(source, name).includes(call)).sort();
-  }
 
   it("길찾기 탭은 모델을 직접 재시작하지 않고 세션 소유자의 재시작 창구 하나를 정밀 위치 허용 뒤에 부른다", () => {
     expect(blankSwiftCommentsAndStrings(directions())).not.toMatch(/\.restart\(/);
@@ -536,6 +537,7 @@ describe("8-2. 한 번 탔거나 무관한 안내가 시작되면 승차 전 도
 
   it("거두기는 컨텍스트와 실패 줄을 한 함수에서 함께 지우고, 승차 전 도보의 실패가 아니면 건드리지 않는다", () => {
     const body = declarationBody(session(), "retirePrewalkRestart");
+    // 본문 고정은 의도다(거두는 자리 한 곳) — 여기에 줄을 더해야 하면 가드를 넓히기 전에 그 줄이 이 함수의 일인지 먼저 본다.
     expect(body).toMatch(/^\{\s*guard prewalkRestart != nil else \{ return \}\s*prewalkRestart = nil\s*beacon\.clearFailure\(\)\s*$/);
     // 실패 줄을 거두는 모델 함수는 이 한 자리에서만 불린다(앱 전체).
     const callers = swiftFiles(IOS_DIR).filter((file) =>
@@ -545,29 +547,30 @@ describe("8-2. 한 번 탔거나 무관한 안내가 시작되면 승차 전 도
     expect(blankSwiftCommentsAndStrings(session()).match(/\.clearFailure\(/g)).toHaveLength(1);
   });
 
-  it("거두는 자리: 무관한 안내의 시작 넷(비콘·대중교통·나들이·여정)과 riding 진입", () => {
-    const names = [...session().matchAll(/func\s+(\w+)/g)].map((m) => m[1]);
-    const callers = names
-      .filter((name) => name !== "retirePrewalkRestart" && declarationBody(session(), name).includes("retirePrewalkRestart("))
-      .sort();
-    expect(callers).toEqual(["beginBeacon", "beginTransit", "startJourney", "startOuting", "transitBoarded"]);
+  it("거두는 자리: 무관한 안내의 시작 넷(비콘·대중교통·나들이·여정)과 대중교통이 그 계획을 지나간 때", () => {
+    const callers = callersOf(session(), "retirePrewalkRestart(").filter((name) => name !== "retirePrewalkRestart");
+    expect(callers).toEqual(["beginBeacon", "beginTransit", "startJourney", "startOuting", "transitPassedPrewalk"]);
     // 대중교통 시작은 거둔 뒤에 새 연결을 세운다(거꾸로면 새 연결을 지운다).
     const transit = declarationBody(session(), "beginTransit");
     expect(transit.indexOf("retirePrewalkRestart()")).toBeLessThan(transit.indexOf("launchPrewalk("));
-    expect(declarationBody(session(), "transitBoarded")).toMatch(/^\{\s*retirePrewalkRestart\(\)\s*$/);
+    expect(declarationBody(session(), "transitPassedPrewalk")).toMatch(/^\{\s*retirePrewalkRestart\(\)\s*$/);
   });
 
-  it("탔다는 대중교통 모델의 riding 진입 판정 하나에서 얻는다(선언·관측 어느 길이든)", () => {
+  it("대중교통 모델은 두 자리에서만 알린다: 탔다(국면 전이 하나)와 경로·목적지 교체", () => {
     const model = readFileSync(TRANSIT_MODEL, "utf8");
-    const clean = blankSwiftCommentsAndStrings(model);
-    expect(clean.match(/transitBoarded\(/g)).toHaveLength(1);
-    expect(declarationBody(model, "dispatch")).toContain(
-      "let enteredRiding = result.state.phase == .riding && state.phase != .riding",
+    expect(blankSwiftCommentsAndStrings(model).match(/transitPassedPrewalk\(/g)).toHaveLength(2);
+    expect(callersOf(model, "GuideSession.shared.transitPassedPrewalk()")).toEqual(["changeRoute", "dispatch"]);
+    const dispatch = declarationBody(model, "dispatch");
+    // 탔다 = riding 이후 국면 ∨ 다음 leg. riding만 보면 riding을 거치지 않고 탄 길(대기에서 하차역 선언 → arrived,
+    // 추적 불가 [다음 구간] → 다음 leg·done)을 놓친다. 전이(이전엔 아니었고 이제 그렇다)에서만 부른다.
+    expect(dispatch).toMatch(
+      /\[\.riding, \.arrived, \.done\]\.contains\(s\.phase\) \|\| s\.legIndex > 0/,
     );
-    const sites = enclosingHeaders(model, "GuideSession.shared.transitBoarded()");
-    expect(sites).toHaveLength(1);
-    expect(sites[0].join("\n")).toContain("if enteredRiding");
-    expect(sites[0].join("\n")).toContain("func dispatch(");
+    expect(dispatch).toContain("if boarded(result.state), !boarded(state) { GuideSession.shared.transitPassedPrewalk() }");
+    // 경로 교체는 변환이 성공해 커밋되는 자리에서 — 실패(`return false`)한 교체는 계획을 바꾸지 않는다.
+    const change = declarationBody(model, "changeRoute");
+    expect(change.indexOf("else { return false }")).toBeLessThan(change.indexOf("transitPassedPrewalk()"));
+    expect(change.indexOf("transitPassedPrewalk()")).toBeLessThan(change.indexOf("self.route = guideRoute"));
   });
 
   it("실패 줄 거두기는 추적·시작 중이 아니고 실패 상태일 때만, 상태·문장·해결 수단을 함께 지운다", () => {
