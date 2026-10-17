@@ -32,11 +32,18 @@ function fallbackCore(ko: string): { region: string | null; core: string } {
  * (지역 접두가 양쪽에 있고 다르면 다른 노선). `1호선` ↔ `11호선`은 다르다.
  */
 export function sameLine(a: string, b: string): boolean {
+  const fa = fallbackCore(a);
+  const fb = fallbackCore(b);
+  // 한쪽만 비수도권 지역 접두(`부산 2호선`)이고 다른 쪽이 맨 노선 토큰(`2호선` — 카카오 출구 이름은 지역을 싣지 않는다)이면
+  // 표 비교를 건너뛴다: 표는 맨 번호를 수도권으로 읽어 `Line 2` ≠ `Busan Line 2`가 되고, 그 역의 출구가 전부 걸러져
+  // 「출구 없음」으로 위장한다. 같은 역 안의 비교라 지역은 이미 정해져 있다 — 코어만 본다.
+  const regional = (f: { region: string | null }) => f.region !== null && f.region !== "수도권";
+  if ((regional(fa) && fb.region === null) || (regional(fb) && fa.region === null)) {
+    return lineHintMatches(fa.core, fb.core);
+  }
   const ta = tableName(a);
   const tb = tableName(b);
   if (ta !== null && tb !== null) return ta === tb;
-  const fa = fallbackCore(a);
-  const fb = fallbackCore(b);
   if (fa.region !== null && fb.region !== null && fa.region !== fb.region) return false;
   return lineHintMatches(fa.core, fb.core);
 }

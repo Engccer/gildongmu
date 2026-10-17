@@ -3,7 +3,7 @@ import { z } from "zod";
 import { hasKakaoKey, hasOdsayKey, hasTmapKey } from "@/lib/env";
 import { isInKorea } from "@/lib/coverage";
 import { coordSchema } from "@/lib/route-coord-schema";
-import { clientIpFromHeaders, reserveJourneyTmap } from "@/lib/rate-limit";
+import { clientIpFromHeaders, journeyTmapExhausted, reserveJourneyTmap } from "@/lib/rate-limit";
 import { getJourney, journeyDeps } from "@/lib/journey/assemble";
 
 /**
@@ -26,6 +26,11 @@ const optionalText = z
   .min(1)
   .nullable()
   .transform((v) => v ?? undefined);
+// 노선 힌트는 선택 값이다 — 빈 값·공백만이면 부재로 접는다(역 이름은 빈 값이면 400 그대로).
+const optionalHint = z
+  .string()
+  .nullable()
+  .transform((v) => v?.trim() || undefined);
 
 const querySchema = z
   .object({
@@ -33,10 +38,10 @@ const querySchema = z
     dest: coordSchema,
     board: optionalCoord,
     boardName: optionalText,
-    boardLine: optionalText,
+    boardLine: optionalHint,
     alight: optionalCoord,
     alightName: optionalText,
-    alightLine: optionalText,
+    alightLine: optionalHint,
     lang: z.union([z.literal("ko"), z.null()]),
   })
   .refine((q) => q.board || q.alight, "갈아탈 역(board·alight) 중 하나는 필요합니다")
@@ -69,6 +74,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "여정 조회는 API 키 등록 후 사용할 수 있습니다." }, { status: 503 });
   }
 
+  // 인스턴스 일 상한이 이미 소진됐으면 유료 ODsay·카카오를 부르기 전에 거절한다(Tmap 예약 거절과 같은 응답).
+  if (journeyTmapExhausted(Date.now())) {
+    return NextResponse.json({ budgetExhausted: true }, { status: 503 });
+  }
   const ip = clientIpFromHeaders(request.headers);
   try {
     const outcome = await getJourney(

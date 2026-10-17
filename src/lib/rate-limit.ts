@@ -227,6 +227,11 @@ export function createJourneyTmapBudget() {
       used += cost;
       return "ok";
     },
+    /** 일 상한을 다 썼는가(무기록) — 비용이 드는 앞 단계(ODsay·카카오)를 부르기 전 선판정용. */
+    exhausted(now: number): boolean {
+      rollDay(now);
+      return used >= JOURNEY_TMAP_DAILY_CAP;
+    },
     dailyCount(now: number): number {
       rollDay(now);
       return used;
@@ -243,4 +248,9 @@ const journeyTmapBudget = createJourneyTmapBudget();
 /** /api/route/journey 전용 Tmap 호출 예약(팬아웃 전 정확한 비용 한 번). */
 export function reserveJourneyTmap(ip: string, now: number, cost: number): JourneyReserveResult {
   return journeyTmapBudget.reserve(ip, now, cost);
+}
+
+/** 여정 Tmap 일 상한 소진 여부(무기록). 소진이면 라우트가 ODsay·카카오 호출 전에 503으로 거절한다. */
+export function journeyTmapExhausted(now: number): boolean {
+  return journeyTmapBudget.exhausted(now);
 }

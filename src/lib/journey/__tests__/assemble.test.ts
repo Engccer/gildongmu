@@ -108,6 +108,26 @@ describe("getJourney — 승차역 지정(A)", () => {
     expect(out.result.variants.map((v) => v.kind)).toEqual(["recommended"]);
   });
 
+  it("지하철만 후보에서 찾은 지정 역 경로가 추천과 같은 탈것이면 변형 하나(routeKey 접두가 달라도)", async () => {
+    const synth = (key: string) =>
+      synthRoute(key, { mode: "subway", line: "수도권 2호선", from: "아현", to: "시청", toCoord: { lat: 37.5657, lng: 126.9769 } });
+    const busFirst = synthRoute("p0", { mode: "bus", line: "601", from: "아현", to: "시청", toCoord: { lat: 37.5657, lng: 126.9769 } });
+    // 전체 후보 1순위는 버스(지정 역 불일치), 지하철만 후보의 같은 지하철 경로가 지정 역 경로다 — 추천(p0 버스)과는 다르다.
+    const d1 = deps({ candidates: vi.fn(async (p) => ({ ranked: p.modeAxis ? [synth("s0")] : [busFirst] })) });
+    const a = { name: "아현역", coord: { lat: 37.56, lng: 126.95 } };
+    const two = await getJourney({ from: FROM, to: TO, board: a }, d1, okReserve());
+    if (two.kind !== "ok") throw new Error(two.kind);
+    expect(two.result.variants.map((v) => [v.kind, v.transit.routeKey])).toEqual([["designated", "s0"], ["recommended", "p0"]]);
+    // 전체 후보 1순위가 같은 지하철 경로(p0)인데 지정 역 술어를 통과 못 해(정류 좌표 없음 등) 지하철만 후보에서 찾았다면
+    // 탈것 구성이 같아 한 변형으로 접힌다.
+    const noStops = { ...synth("p0"), legs: synth("p0").legs.map((l) => ({ ...l, stops: l.mode === "walk" ? undefined : [] })) };
+    const d2 = deps({ candidates: vi.fn(async (p) => ({ ranked: p.modeAxis ? [synth("s0")] : [noStops] })) });
+    const one = await getJourney({ from: FROM, to: TO, board: a }, d2, okReserve()).catch((e) => e);
+    // 접힌 변형은 지정 역 경로 쪽이 남는다(정류 좌표가 있는 쪽).
+    if (one instanceof Error || one.kind !== "ok") throw one;
+    expect(one.result.variants.map((v) => [v.kind, v.transit.routeKey])).toEqual([["designated", "s0"]]);
+  });
+
   it("예약이 거절되면 Tmap을 한 번도 부르지 않는다", async () => {
     const d = deps();
     const out = await getJourney({ from: FROM, to: TO, board: AHYEON }, d, () => "rateLimited");
@@ -190,6 +210,31 @@ describe("getJourney — 하차역 지정(B)", () => {
     expect(egress.options[0].coord).toEqual(GWANGHWAMUN);
   });
 
+  it("출구 조회가 실패하면 승강장이 있어도 후보는 내린 역 하나다(§4.5-7 — 문장과 출발 자리가 어긋나지 않게)", async () => {
+    const stand = { ...exitDoc("s", "광화문역택시승강장", 37.5712, 126.9765), category_name: "교통,수송 > 교통시설 > 택시" };
+    const d = deps({
+      candidates: vi.fn(async () => ({ ranked: [route] })),
+      exits: vi.fn(async () => { throw new Error("카카오"); }),
+      stands: vi.fn(async () => [stand]),
+    });
+    const reserve = okReserve();
+    const out = await getJourney({ from: FROM, to: TO, alight: ALIGHT }, d, reserve);
+    if (out.kind !== "ok") throw new Error(out.kind);
+    expect(out.result.variants[0].egress).toEqual({ lookupFailed: true, options: [expect.objectContaining({ kind: "none", coord: GWANGHWAMUN })] });
+    expect(reserve).toHaveBeenCalledWith(1);
+  });
+
+  it("괄호 부기가 있는 하차역은 괄호를 뗀 이름으로 출구를 찾는다(「출구 없음」 위장 방지)", async () => {
+    const bracket = synthRoute("p0", { mode: "subway", line: "수도권 4호선", from: "사당", to: "총신대입구(이수)", toCoord: { lat: 37.4865, lng: 126.9817 } });
+    const docs = [exitDoc("1", "총신대입구역 1번출구", 37.4868, 126.9819)];
+    const d = deps({ candidates: vi.fn(async () => ({ ranked: [bracket] })), exits: vi.fn(async () => docs) });
+    const out = await getJourney(
+      { from: FROM, to: TO, alight: { name: "총신대입구역", coord: { lat: 37.4865, lng: 126.9817 } } }, d, okReserve());
+    if (out.kind !== "ok") throw new Error(out.kind);
+    expect(vi.mocked(d.exits).mock.calls[0][0]).toBe("총신대입구");
+    expect(out.result.variants[0].egress?.options[0]).toMatchObject({ kind: "exit", label: "1" });
+  });
+
   it("출구 0건(조회 성공)은 lookupFailed 없이 내린 역 후보", async () => {
     const d = deps({ candidates: vi.fn(async () => ({ ranked: [route] })) });
     const out = await getJourney({ from: FROM, to: TO, alight: ALIGHT }, d, okReserve());
@@ -225,5 +270,37 @@ describe("getJourney — 하차역 지정(B)", () => {
     expect(d.exits).toHaveBeenCalledTimes(1); // 원시 검색은 하차역 이름 키 단위로 한 번
     expect(reserve).toHaveBeenCalledWith(2);
     expect(d.car).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("getJourney — 승차·하차 둘 다 지정", () => {
+  it("택시 앞 + 잘린 대중교통 + 택시 뒤(기본 출구) 합계, 예약 = 실제 Tmap 호출 수", async () => {
+    const route = synthRoute("p0", { mode: "subway", line: "수도권 5호선", from: "충정로", to: "광화문", toCoord: GWANGHWAMUN });
+    const board = { name: "충정로역", coord: { lat: 37.56, lng: 126.95 } };
+    const exits = [exitDoc("1", "광화문역 1번출구", 37.5718, 126.9772), exitDoc("2", "광화문역 2번출구", 37.5722, 126.9768)];
+    const d = deps({ candidates: vi.fn(async () => ({ ranked: [route] })), exits: vi.fn(async () => exits) });
+    const reserve = okReserve();
+    const out = await getJourney({ from: FROM, to: TO, board, alight: { name: "광화문역", coord: GWANGHWAMUN } }, d, reserve);
+    if (out.kind !== "ok") throw new Error(out.kind);
+    const [v] = out.result.variants;
+    expect(v.transit.legs.map((l) => l.mode)).toEqual(["subway"]);
+    const min = (s: number) => Math.round(s / 60);
+    expect(v.totals.minutes).toBe(min(v.taxiIn!.durationSeconds) + 10 + min(v.egress!.options[0].taxiOut.durationSeconds));
+    expect(v.totals.taxiFare).toBe(v.taxiIn!.taxiFare + v.egress!.options[0].taxiOut.taxiFare);
+    expect(reserve).toHaveBeenCalledWith(3);
+    expect(d.car).toHaveBeenCalledTimes(3);
+  });
+
+  it("둘 다 맞는 경로가 없으면 사실 줄의 쪽(both·alight)을 정하고 세 번째 변형은 없다", async () => {
+    const route = synthRoute("p0", { mode: "subway", line: "수도권 5호선", from: "충정로", to: "광화문", toCoord: GWANGHWAMUN });
+    const board = { name: "충정로역", coord: { lat: 37.56, lng: 126.95 } };
+    const elsewhere = { name: "종각역", coord: { lat: 37.5702, lng: 126.983 } };
+    const out = await getJourney(
+      { from: FROM, to: TO, board, alight: elsewhere },
+      deps({ candidates: vi.fn(async () => ({ ranked: [route] })) }), okReserve());
+    if (out.kind !== "ok") throw new Error(out.kind);
+    // 승차만 맞는 후보가 있다 → 하차 쪽을 못 찾았다.
+    expect(out.result.designatedMissing).toEqual({ side: "alight" });
+    expect(out.result.variants.map((v) => v.kind)).toEqual(["recommended"]);
   });
 });

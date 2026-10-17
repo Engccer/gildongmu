@@ -57,6 +57,7 @@ describe("여정 Tmap 예산 — IP 버킷 + 인스턴스 일 상한(spec §4.5-
     // 서로 다른 IP 25곳 × 8 = 200.
     for (let i = 0; i < 25; i++) expect(budget.reserve(`ip${i}`, i, 8)).toBe("ok");
     expect(budget.reserve("fresh", 100, 1)).toBe("budgetExhausted");
+    expect(budget.exhausted(100)).toBe(true);
     // 거절된 IP는 버킷이 비어 있어 일 상한이 풀리면 바로 16회를 쓴다.
     expect(budget.ipCount("fresh", 100)).toBe(0);
   });

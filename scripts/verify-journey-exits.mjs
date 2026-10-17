@@ -5,7 +5,9 @@
 //   카카오로 출구를 모으고(provider `searchSubwayExitsKakao` 그대로) → 순수 계층으로 해석·노선 그룹 →
 //   노선 거른 출구가 5개를 넘는 그룹만 전 출구 Tmap(`getCarRoute` 그대로) 대 예선 5개를 비교한다.
 //   5개 이하 그룹은 예선이 아무것도 자르지 않으므로 Tmap 없이 통과로 기록한다.
-//   통과 조건: 예선이 최단(분 단위)을 놓친 그룹 0. 놓치면 exit 1 — spec §4.5-5대로 예선 기준·상한을 다시 판정한다.
+//   통과 조건: 예선이 최단(분 단위)을 놓친 그룹 0 ∧ 측정하지 못한 그룹 0. 놓치면 exit 1 — spec §4.5-5대로 예선
+//   기준·상한을 다시 판정한다. Tmap이 실패해 카카오모빌리티로 폴백한 응답은 비교에서 뺀다(두 provider의 분을 섞지
+//   않는다). 운영 예선은 승차·하차를 둘 다 지정하면 그룹당 2~3칸까지 준다(§4.5-1) — 그 폭(k=3·2)의 놓침은 참고로 보고한다.
 //
 // 저장·재생: `--out <dir>`는 카카오·Tmap 응답을 요청 단위 파일로 저장하고(있으면 다시 부르지 않는다), `--from-corpus <dir>`는
 //   호출 없이 저장본만 읽는다(없는 요청은 실패). 저장소 밖 경로만 받는다(공개 저장소 — 응답 dump를 커밋하지 않는다).
@@ -35,6 +37,8 @@ const SAMPLES = [
   { station: "홍대입구", dest: "마포구청" },
   { station: "사당", dest: "서울대학교" },
   { station: "고속터미널", dest: "예술의전당" },
+  // 괄호 부기 역(ODsay 정류 이름 `총신대입구(이수)`) — 질의 이름이 괄호를 떼는지(「출구 없음」 위장 방지).
+  { station: "총신대입구(이수)", dest: "동작구청" },
 ];
 
 function parseArgs(argv) {
@@ -88,6 +92,7 @@ globalThis.fetch = async (input, init = {}) => {
   if (opts.offline) throw new Error(`corpus에 응답 없음: ${url}`);
   const isTmap = host.endsWith("openapi.sk.com");
   if (isTmap && counts.tmap >= TMAP_CAP) throw new Error(`Tmap 상한 ${TMAP_CAP} 도달 — 멈추고 보고한다`);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Next 전용 캐시 옵션을 걷어 낸다
   const { next: _next, ...rest } = init;
   const res = await realFetch(url, rest);
   if (isTmap) counts.tmap++;
@@ -109,6 +114,7 @@ writeFileSync(
   [
     `export { searchSubwayExitsKakao, searchPlacesKakaoLocal } from ${JSON.stringify(resolve("src/lib/providers/kakao-local"))};`,
     `export { parseExitDoc, prefilterExits } from ${JSON.stringify(resolve("src/lib/journey/egress"))};`,
+    `export { exitQueryStationName } from ${JSON.stringify(resolve("src/lib/journey/display"))};`,
     `export { getCarRoute } from ${JSON.stringify(resolve("src/lib/car-route"))};`,
   ].join("\n"),
 );
@@ -117,7 +123,8 @@ execFileSync(
   ["esbuild", entryPath, "--bundle", "--format=esm", "--platform=node", `--alias:next/cache=${stubPath}`, `--outfile=${bundlePath}`],
   { stdio: "pipe" },
 );
-const { searchSubwayExitsKakao, searchPlacesKakaoLocal, parseExitDoc, prefilterExits, getCarRoute } = await import(bundlePath);
+const { searchSubwayExitsKakao, searchPlacesKakaoLocal, parseExitDoc, prefilterExits, exitQueryStationName, getCarRoute } =
+  await import(bundlePath);
 
 async function topPlace(query, mustInclude) {
   const { places } = await searchPlacesKakaoLocal({ query, limit: 15 });
@@ -129,12 +136,20 @@ async function topPlace(query, mustInclude) {
 const minutes = (b) => Math.round(b.durationSeconds / 60);
 let missed = 0;
 let compared = 0;
+let unmeasured = 0;
+const narrowMissed = { 3: 0, 2: 0 };
 const rows = [];
 for (const s of SAMPLES) {
-  const station = await topPlace(`${s.station}역`, "지하철,전철");
+  const query = exitQueryStationName(s.station);
+  const station = await topPlace(`${query}역`, "지하철,전철");
   const dest = await topPlace(s.dest);
-  const docs = await searchSubwayExitsKakao(s.station, station.coord);
-  const exits = docs.flatMap((d) => parseExitDoc(d, s.station) ?? []);
+  const docs = await searchSubwayExitsKakao(query, station.coord);
+  const exits = docs.flatMap((d) => parseExitDoc(d, query) ?? []);
+  if (exits.length === 0) {
+    unmeasured++;
+    rows.push(`  UNMEASURED ${s.station}역 → ${s.dest}: 출구 0건(질의 이름 「${query}」)`);
+    continue;
+  }
   const byLine = new Map();
   for (const e of exits) {
     const k = e.lineName ?? "(무표기)";
@@ -150,15 +165,30 @@ for (const s of SAMPLES) {
     const timed = [];
     for (const e of group) {
       try {
-        timed.push({ e, min: minutes(await getCarRoute({ origin: e.coord, dest: dest.coord })) });
+        const route = await getCarRoute({ origin: e.coord, dest: dest.coord });
+        if (route.provider !== "tmap") {
+          rows.push(`    (${e.placeName} Tmap 실패 → ${route.provider} 폴백, 비교에서 뺀다)`);
+          continue;
+        }
+        timed.push({ e, min: minutes(route) });
       } catch (err) {
         if (String(err).includes("상한")) throw err;
-        rows.push(`    (${e.placeName} Tmap 실패: ${String(err).slice(0, 80)})`);
+        rows.push(`    (${e.placeName} 경로 실패: ${String(err).slice(0, 80)})`);
       }
     }
+    const bestWithin = (k) => {
+      const kept = new Set(prefilterExits(group, dest.coord, k).map((e) => e.placeName));
+      return Math.min(...timed.filter((t) => kept.has(t.e.placeName)).map((t) => t.min));
+    };
     const best = Math.min(...timed.map((t) => t.min));
-    const kept = new Set(prefilterExits(group, dest.coord, 5).map((e) => e.placeName));
-    const bestKept = Math.min(...timed.filter((t) => kept.has(t.e.placeName)).map((t) => t.min));
+    const bestKept = bestWithin(5);
+    // 측정하지 못한 그룹을 통과로 세지 않는다(전부 실패면 Infinity === Infinity).
+    if (!Number.isFinite(best) || !Number.isFinite(bestKept)) {
+      unmeasured++;
+      rows.push(`  UNMEASURED ${s.station}역 ${line} → ${s.dest}: Tmap 측정 ${timed.length}/${group.length}`);
+      continue;
+    }
+    for (const k of [3, 2]) if (bestWithin(k) !== best) narrowMissed[k]++;
     const ok = bestKept === best;
     if (!ok) missed++;
     const fastest = timed.filter((t) => t.min === best).map((t) => t.e.label).join("·");
@@ -169,7 +199,9 @@ for (const s of SAMPLES) {
 }
 
 console.log(rows.join("\n"));
-console.log(`비교 그룹 ${compared}, 예선이 최단을 놓친 그룹 ${missed}`);
+console.log(`비교 그룹 ${compared}, 예선이 최단을 놓친 그룹 ${missed}, 측정하지 못한 그룹 ${unmeasured}`);
+console.log(`참고(운영 감축 폭): k=3 놓침 ${narrowMissed[3]}, k=2 놓침 ${narrowMissed[2]}`);
 console.log(`호출: 카카오 ${counts.kakao}, Tmap ${counts.tmap}, 저장본 재생 ${counts.replay}`);
-console.log(missed === 0 ? "PASS — 예선 5개가 모든 그룹에서 최단 출구를 지켰다" : "FAIL — 예선 기준을 다시 판정한다(spec §4.5-5)");
-process.exit(missed === 0 ? 0 : 1);
+const pass = missed === 0 && unmeasured === 0;
+console.log(pass ? "PASS — 예선 5개가 모든 그룹에서 최단 출구를 지켰다" : "FAIL — 놓침·측정 불가를 판정한다(spec §4.5-5)");
+process.exit(pass ? 0 : 1);

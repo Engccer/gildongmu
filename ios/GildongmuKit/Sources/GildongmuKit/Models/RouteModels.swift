@@ -508,7 +508,8 @@ public struct JourneyVariant: Codable, Sendable, Hashable {
     public let taxiIn: CarRouteBriefing?
     /// 앞뒤 도보를 자른 경로. `routeKey` 유지라 실시간 안내가 그대로 읽는다.
     public let transit: TransitRoute
-    /// 하차 역이 지정·판정됐을 때만 온다. 첫·마지막 탈것이 버스면 부재.
+    /// 하차 역을 지정한 변형에만 온다(하차 역을 지정하지 않았으면 부재). 마지막 탈것이 버스여도 싣고, 그때 후보는
+    /// `kind: none`(내린 정류장에서 택시) 하나다.
     public let egress: JourneyEgress?
     public let totals: JourneyTotals
 

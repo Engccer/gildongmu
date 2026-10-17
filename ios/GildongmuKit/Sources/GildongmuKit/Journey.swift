@@ -152,6 +152,9 @@ public func journeyStep(_ state: JourneyState, _ event: JourneyEvent, token: Jou
         return go(.running(stage))
     case (.transitioning(to: .access), .prepared(.transit)):
         return go(.running(.transit))   // 30m 미만 접근 도보 생략
+    // access 시작 실패는 막힌 화면이 아니라 대중교통 세션을 바로 시작한다(spec §6.4).
+    case (.transitioning(to: .access), .prepFailed), (.transitioning(to: .access), .staleTimeout):
+        return go(.transitioning(to: .transit))
     case (.transitioning(let stage), .prepFailed), (.transitioning(let stage), .staleTimeout):
         return go(.failed(at: stage))
 
@@ -180,6 +183,11 @@ public func journeyStationDisplayName(_ name: String) -> String {
     var tokens = name.split(whereSeparator: { $0 == " " || $0 == "\t" || $0 == "\n" }).map(String.init)
     while tokens.count > 1, let last = tokens.last, isTrailingLineToken(last) {
         tokens.removeLast()
+    }
+    // 이름이 「서울 역」처럼 갈라진 경우 떨어져 나온 「역」 토큰은 통째로 뗀다(뒤 공백이 남지 않게).
+    if tokens.count > 1, tokens.last == "역" {
+        tokens.removeLast()
+        return tokens.joined(separator: " ")
     }
     var out = tokens.joined(separator: " ")
     if out.count > 1, out.hasSuffix("역") { out.removeLast() }

@@ -7,7 +7,7 @@ import { normalizeStationName } from "../station-match";
 import type { CarRouteBriefing, Coord, EgressOption, JourneyResult, JourneyStationInput, JourneyVariant, TransitRoute } from "../types";
 import { planTaxiCalls, type TaxiStart } from "./budget";
 import { findDesignated, firstVehicle, lastVehicle, legEndStop, missingSide } from "./designated";
-import { displayStationName } from "./display";
+import { exitQueryStationName } from "./display";
 import { chooseFastest, exitsForLine, parseExitDoc, pickStand, type ParsedExit, type StandPick } from "./egress";
 import { trimJourneyTransit } from "./trim";
 
@@ -63,7 +63,7 @@ interface AlightGroup {
 /**
  * 여정 조회(E70 spec §4.2 — **순서가 계약**): ① 대중교통 후보 전체 → ② 지정 역 판정(없으면 지하철만 후보에서 한 번 더)
  * → ③ 추천 → ④ 자르기 → ⑤ 출구 수집(카카오, 무료) → ⑥ Tmap 비용 계산·예약 → ⑦ Tmap 팬아웃 → ⑧ 조립.
- * 예약하지 않은 Tmap 호출은 없다(거절이면 Tmap 0회, 후보가 실패해도 복구 호출을 더 하지 않는다).
+ * 예약하지 않은 Tmap 호출은 없다(거절이면 Tmap 0회, 후보가 실패해도 Tmap을 더 부르지 않는다).
  * 조회 실패는 throw(라우트가 502). 대중교통 경로 없음은 `variants: []`.
  */
 export async function getJourney(req: JourneyRequest, deps: JourneyDeps, reserve: JourneyReserve): Promise<JourneyOutcome> {
@@ -102,54 +102,62 @@ export async function getJourney(req: JourneyRequest, deps: JourneyDeps, reserve
     return { ...p, transit, last: last!, boardStop, alightStop };
   });
 
-  // ⑤ 출구·승강장 — 하차 지정 시만. 원시 검색은 하차역 이름 키 단위로 한 번, 선정은 (하차역, 노선) 그룹마다(§4.5-2).
+  // ⑤ 출구·승강장 — 하차 지정 시만. 원시 검색은 하차역 이름 키 단위로 한 번(역끼리는 병렬), 선정은 (하차역, 노선)
+  //   그룹마다(§4.5-2). 질의 이름은 괄호 부기를 뗀 것(`exitQueryStationName` — 표시 이름이 아니다).
   const groupOf = new Map<number, number>(); // 변형 index → 그룹 index
   const groups: AlightGroup[] = [];
   if (req.alight) {
-    const rawByStation = new Map<string, Promise<{ exits: KakaoLocalDocument[] | null; stands: KakaoLocalDocument[] }>>();
-    const groupKeys: string[] = [];
+    type Raw = { exits: KakaoLocalDocument[] | null; stands: KakaoLocalDocument[] };
+    const rawByStation = new Map<string, Promise<Raw>>();
+    const pending: Array<{ key: string; build: (raw: Raw | null) => AlightGroup; stationKey: string | null }> = [];
     for (const [i, v] of variants.entries()) {
       const subway = v.last.mode === "subway";
       const stationKey = normalizeStationName(v.alightStop.name);
       const key = subway ? `${stationKey}|${v.last.lineName ?? ""}` : `stop|${coordKey(v.alightStop)}`;
-      let g = groupKeys.indexOf(key);
+      let g = pending.findIndex((p) => p.key === key);
       if (g < 0) {
-        g = groupKeys.length;
-        groupKeys.push(key);
+        g = pending.length;
         const stopCoord = { lat: v.alightStop.lat, lng: v.alightStop.lng };
-        if (!subway) {
-          // 버스로 끝나는 변형: 출구가 없다 — 택시는 내린 정류장에서(kind none).
-          groups.push({ stopCoord, exits: [], stand: null, lookupFailed: false });
-        } else {
-          const display = displayStationName(v.alightStop.name);
-          if (!rawByStation.has(stationKey)) {
-            rawByStation.set(
-              stationKey,
-              Promise.all([
-                deps.exits(display, stopCoord).catch((e) => {
-                  console.warn("[journey] 카카오 출구 조회 실패:", e);
-                  return null;
-                }),
-                // 승강장은 선택 정보다 — 조회 실패를 출구 실패 문장으로 바꾸지 않고 승강장 없음으로 둔다(로그만).
-                deps.stands(display, stopCoord).catch((e) => {
-                  console.warn("[journey] 카카오 승강장 조회 실패:", e);
-                  return [] as KakaoLocalDocument[];
-                }),
-              ]).then(([exits, stands]) => ({ exits, stands })),
-            );
-          }
-          const raw = await rawByStation.get(stationKey)!;
-          const parsed = (raw.exits ?? []).flatMap((d) => parseExitDoc(d, display) ?? []);
-          groups.push({
-            stopCoord,
-            exits: raw.exits ? exitsForLine(parsed, v.last.lineName) : [],
-            stand: pickStand(raw.stands, stopCoord),
-            lookupFailed: raw.exits === null,
-          });
+        const query = exitQueryStationName(v.alightStop.name);
+        if (subway && !rawByStation.has(stationKey)) {
+          rawByStation.set(
+            stationKey,
+            Promise.all([
+              deps.exits(query, stopCoord).catch((e) => {
+                console.warn("[journey] 카카오 출구 조회 실패:", e);
+                return null;
+              }),
+              // 승강장은 선택 정보다 — 조회 실패를 출구 실패 문장으로 바꾸지 않고 승강장 없음으로 둔다(로그만).
+              deps.stands(query, stopCoord).catch((e) => {
+                console.warn("[journey] 카카오 승강장 조회 실패:", e);
+                return [] as KakaoLocalDocument[];
+              }),
+            ]).then(([exits, stands]) => ({ exits, stands })),
+          );
         }
+        const lineName = v.last.lineName;
+        pending.push({
+          key,
+          stationKey: subway ? stationKey : null,
+          // 버스로 끝나는 변형: 출구가 없다 — 택시는 내린 정류장에서(kind none).
+          build: (raw) =>
+            !raw
+              ? { stopCoord, exits: [], stand: null, lookupFailed: false }
+              : raw.exits === null
+                ? // 출구 조회 실패 그룹의 후보는 하차 정류 좌표 하나다(§4.5-7) — 승강장을 실으면 「출구 정보를 불러오지
+                  //   못했습니다. 내린 역에서 택시로 N분」의 N이 승강장 출발 값이 되어 문장과 출발 자리가 어긋난다.
+                  { stopCoord, exits: [], stand: null, lookupFailed: true }
+                : {
+                    stopCoord,
+                    exits: exitsForLine(raw.exits.flatMap((d) => parseExitDoc(d, query) ?? []), lineName),
+                    stand: pickStand(raw.stands, stopCoord),
+                    lookupFailed: false,
+                  },
+        });
       }
       groupOf.set(i, g);
     }
+    for (const p of pending) groups.push(p.build(p.stationKey ? await rawByStation.get(p.stationKey)! : null));
   }
 
   // ⑥ 비용 계산·예약 — 기본 변형의 그룹이 [0]이 되도록 변형 순서대로 만들었다.
@@ -162,6 +170,8 @@ export async function getJourney(req: JourneyRequest, deps: JourneyDeps, reserve
   if (reserved !== "ok") return { kind: reserved };
 
   // ⑦ Tmap 팬아웃. 택시 앞 실패는 여정 전체 실패(택시 없는 여정은 여정이 아니다), 택시 뒤는 후보별로.
+  //   예약은 Tmap 호출 수다 — Tmap이 실패한 후보의 provider 폴백(카카오모빌리티, `getCarRoute`)은 Tmap 예산 밖이고,
+  //   후보가 전부 실패해도 Tmap을 더 부르지 않는다.
   const outStarts = new Map<string, Coord>();
   for (const g of plan.groups) for (const s of g.starts) outStarts.set(coordKey(s.coord), s.coord);
   const [inBriefings, outBriefings] = await Promise.all([

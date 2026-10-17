@@ -109,3 +109,34 @@ describe("isSameStation", () => {
     expect(isSameStation(stop, { name: "가상역", coord: { lat: 37.5, lng: 127.0 }, line: "2호선" })).toBe(true);
   });
 });
+
+describe("같은 역 반경 근거 전수(spec §4.3 — 복합체 최대 < 500 ≤ 동명 이역 최소)", () => {
+  const { pairs } = JSON.parse(readFileSync(`${fixtureDir}/journey-station-pairs.json`, "utf8")) as {
+    pairs: Array<{
+      name: string;
+      a: { line: string; lat: number; lng: number };
+      b: { line: string; lat: number; lng: number };
+      homonym: boolean;
+    }>;
+  };
+  const dist = (p: (typeof pairs)[number]) => haversineMeters(p.a.lat, p.a.lng, p.b.lat, p.b.lng);
+
+  it("한 환승 복합체 안 노선 사이 거리는 전부 반경 안이고, 동명 이역은 전부 반경 밖이다", () => {
+    const complexes = pairs.filter((p) => !p.homonym);
+    const homonyms = pairs.filter((p) => p.homonym);
+    expect(complexes.length).toBeGreaterThan(30);
+    expect(homonyms.map((p) => p.name)).toEqual(["신촌"]);
+    expect(Math.max(...complexes.map(dist))).toBeLessThan(JOURNEY_STATION_IDENTITY_M);
+    expect(Math.min(...homonyms.map(dist))).toBeGreaterThanOrEqual(JOURNEY_STATION_IDENTITY_M);
+  });
+
+  it("노선 없는 입력은 복합체의 어느 노선 정류든 같은 역, 동명 이역은 다른 역으로 판정한다", () => {
+    for (const p of pairs) {
+      const verdict = isSameStation(
+        { name: p.name, lat: p.a.lat, lng: p.a.lng, lineName: p.a.line },
+        { name: p.name, coord: { lat: p.b.lat, lng: p.b.lng } },
+      );
+      expect(verdict, `${p.name} ${p.a.line} ↔ ${p.b.line}`).toBe(!p.homonym);
+    }
+  });
+});

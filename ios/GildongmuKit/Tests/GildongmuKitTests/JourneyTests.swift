@@ -83,8 +83,11 @@ private let rows: [JourneyRow] = [
     [
         // transitioning(s)
         JourneyRow(phase: .transitioning(to: stage), event: .prepared(stage), expect: .next(.running(stage))),
-        JourneyRow(phase: .transitioning(to: stage), event: .prepFailed, expect: .next(.failed(at: stage))),
-        JourneyRow(phase: .transitioning(to: stage), event: .staleTimeout, expect: .next(.failed(at: stage))),
+        // access는 아래 별도 행(실패 대신 대중교통으로)
+        JourneyRow(phase: .transitioning(to: stage), event: .prepFailed,
+                   expect: stage == .access ? .next(.transitioning(to: .transit)) : .next(.failed(at: stage))),
+        JourneyRow(phase: .transitioning(to: stage), event: .staleTimeout,
+                   expect: stage == .access ? .next(.transitioning(to: .transit)) : .next(.failed(at: stage))),
         // failed(s)
         JourneyRow(phase: .failed(at: stage), event: .retry, expect: .next(.transitioning(to: stage))),
     ]
@@ -223,22 +226,25 @@ private let allEvents: [JourneyEvent] =
         #expect(JourneyTuning.staleTransitionSeconds == 30)
     }
 
-    // MARK: 표시 이름(웹 displayStationName 미러)
+    // MARK: 표시 이름(웹 displayStationName 미러 — 공유 fixture 전수)
 
-    @Test("역 표시 이름", arguments: [
-        ("서울역", "서울"),
-        ("아현역 2호선", "아현"),
-        ("아현", "아현"),
-        ("역", "역"),
-        ("천호(풍납토성)역", "천호(풍납토성)"),
-        ("공덕역 경의중앙선", "공덕"),
-        ("서울역 1호선 경의선", "서울"),
-        ("인천공항1터미널역 공항철도", "인천공항1터미널"),
-        ("수서역 GTX-A", "수서"),
-        ("  광화문역  ", "광화문"),
-        ("신촌(경의중앙선)", "신촌(경의중앙선)"),
-    ])
-    func displayName(_ input: String, _ expected: String) {
-        #expect(journeyStationDisplayName(input) == expected)
+    private struct DisplayNameFile: Decodable {
+        struct Case: Decodable { let input: String; let expected: String }
+        let cases: [Case]
+    }
+
+    @Test func displayNameSharedFixture() throws {
+        var url = URL(fileURLWithPath: #filePath)
+        for _ in 0..<5 { url.deleteLastPathComponent() }
+        url.appendPathComponent("src/lib/__tests__/fixtures/journey-display-names.json")
+        let file = try JSONDecoder().decode(DisplayNameFile.self, from: Data(contentsOf: url))
+        #expect(!file.cases.isEmpty)
+        for c in file.cases {
+            #expect(journeyStationDisplayName(c.input) == c.expected, "\(c.input)")
+        }
+    }
+
+    @Test func displayNameExtraCases() {
+        #expect(journeyStationDisplayName("인천공항1터미널역 공항철도") == "인천공항1터미널")
     }
 }

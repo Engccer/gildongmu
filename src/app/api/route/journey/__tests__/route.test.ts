@@ -9,6 +9,7 @@ vi.mock("@/lib/env", () => ({
 vi.mock("@/lib/rate-limit", () => ({
   clientIpFromHeaders: vi.fn(() => "1.2.3.4"),
   reserveJourneyTmap: vi.fn(() => "ok"),
+  journeyTmapExhausted: vi.fn(() => false),
 }));
 vi.mock("@/lib/journey/assemble", () => ({
   journeyDeps: {},
@@ -18,6 +19,7 @@ vi.mock("@/lib/journey/assemble", () => ({
 import { GET } from "../route";
 import { hasTmapKey } from "@/lib/env";
 import { getJourney } from "@/lib/journey/assemble";
+import { journeyTmapExhausted } from "@/lib/rate-limit";
 
 const BASE = { origin: "37.5559,126.9723", dest: "37.5716,126.9764" };
 
@@ -77,6 +79,20 @@ describe("GET /api/route/journey", () => {
     const res = await GET(req({ board: "37.5574,126.9561", boardName: "아현역" }));
     expect(res.status).toBe(503);
     expect(await res.json()).toEqual({ budgetExhausted: true });
+  });
+
+  it("빈 노선 힌트는 부재로 접는다(400 아님)", async () => {
+    const res = await GET(req({ board: "37.5574,126.9561", boardName: "아현역", boardLine: " " }));
+    expect(res.status).toBe(200);
+    expect(vi.mocked(getJourney).mock.calls[0][0].board).toEqual({ name: "아현역", coord: { lat: 37.5574, lng: 126.9561 } });
+  });
+
+  it("일 상한이 이미 소진됐으면 조회(ODsay·카카오) 전에 503 budgetExhausted", async () => {
+    vi.mocked(journeyTmapExhausted).mockReturnValueOnce(true);
+    const res = await GET(req({ board: "37.5574,126.9561", boardName: "아현역" }));
+    expect(res.status).toBe(503);
+    expect(await res.json()).toEqual({ budgetExhausted: true });
+    expect(getJourney).not.toHaveBeenCalled();
   });
 
   it("조회 throw는 502", async () => {

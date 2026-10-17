@@ -1,0 +1,16 @@
+{
+  "note": "E70 여정 표시 이름(문장의 {station} 자리) — 웹 displayStationName ↔ Kit journeyStationDisplayName 공유 사례. 괄호 부기 유지, 공백 뒤 노선 토큰 제거, 끝 「역」 한 글자 제거(이름이 「역」 하나면 유지).",
+  "cases": [
+    { "input": "서울역", "expected": "서울" },
+    { "input": "아현역 2호선", "expected": "아현" },
+    { "input": "아현", "expected": "아현" },
+    { "input": "역", "expected": "역" },
+    { "input": "천호(풍납토성)역", "expected": "천호(풍납토성)" },
+    { "input": "공덕역 경의중앙선", "expected": "공덕" },
+    { "input": "서울역 1호선 경의선", "expected": "서울" },
+    { "input": "수서역 GTX-A", "expected": "수서" },
+    { "input": "  광화문역  ", "expected": "광화문" },
+    { "input": "신촌(경의중앙선)", "expected": "신촌(경의중앙선)" },
+    { "input": "서울 역", "expected": "서울" }
+  ]
+}

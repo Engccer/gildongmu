@@ -2,6 +2,7 @@ import { roundCoord } from "../coord-round";
 import { env } from "../env";
 import { categoryEnField } from "../kakao-category";
 import type { Place, PlaceSearchParams, PlaceSearchResult } from "../types";
+import { parseExitDoc } from "../journey/egress";
 
 /**
  * 카카오 로컬(Local) 키워드 검색 provider.
@@ -176,12 +177,12 @@ const EXIT_BATCH = 8;
 const EXIT_MAX_NUMBER = 25;
 const EXIT_MISS_STOP = 3;
 
-/** 그 번호의 출구 문서가 응답에 있는가(`강남역 3번출구`·`강남역 3-1번출구`·`노량진역 1호선 9번출구`). `11번`은 1번이 아니다. */
+/**
+ * 그 번호의 출구 문서가 응답에 있는가 — 해석기(`parseExitDoc`)와 **같은 문법 하나**로 가른다(둘이 다르면 수집기는
+ * "발견"으로 계속 묻는데 해석기는 전부 버려 결과가 「출구 없음」이 된다). `11번`은 1번이 아니고 `3-1번`은 3번이다.
+ */
 function hasExitNumber(docs: KakaoLocalDocument[], stationDisplay: string, n: number): boolean {
-  const tail = new RegExp(`(?:^|\\s)${n}(?:-[0-9]+)?번\\s*출구$`);
-  return docs.some(
-    (d) => d.place_name.startsWith(`${stationDisplay}역`) && tail.test(d.place_name.slice(stationDisplay.length + 1)),
-  );
+  return docs.some((d) => parseExitDoc(d, stationDisplay)?.label.split("-")[0] === String(n));
 }
 
 /**

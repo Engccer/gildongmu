@@ -76,12 +76,23 @@ describe("searchSubwayExitsKakao", () => {
     expect(Math.max(...queried().map((q) => Number(q.match(/ (\d+)번출구/)?.[1])))).toBe(25);
   });
 
-  it("다른 번호의 문서(11번)는 1번의 발견으로 치지 않는다", async () => {
-    serve({ "강남역 1번출구": [doc("11", "강남역 11번출구")] });
+  it("다른 번호의 문서(18번)는 8번의 발견으로 치지 않는다 — 묶음 끝 판정이 바뀌지 않는다", async () => {
+    // 6·7이 미발견이고 8번 질의에 18번만 온다. 8을 발견으로 치면 연속 미발견이 끊겨 다음 묶음(9~16)을 보낸다.
+    const table: Record<string, ReturnType<typeof doc>[]> = { "강남역 8번출구": [doc("18", "강남역 18번출구")] };
+    for (let n = 1; n <= 5; n++) table[`강남역 ${n}번출구`] = [doc(String(n), `강남역 ${n}번출구`)];
+    serve(table);
     const docs = await searchSubwayExitsKakao("강남", COORD);
-    // 발견 판정과 무관하게 원시 문서는 돌려준다(선정은 순수 계층 몫) — 다만 1~3이 미발견이라 묶음은 하나.
     expect(queried()).toHaveLength(8);
-    expect(docs.map((d) => d.id)).toEqual(["11"]);
+    // 발견 판정과 무관하게 원시 문서는 돌려준다(선정은 순수 계층 몫).
+    expect(docs.map((d) => d.id)).toContain("18");
+  });
+
+  it("출구 분류가 아닌 문서는 발견으로 치지 않는다(해석기와 같은 문법)", async () => {
+    const table: Record<string, ReturnType<typeof doc>[]> = {};
+    for (let n = 1; n <= 8; n++) table[`강남역 ${n}번출구`] = [doc(String(n), `강남역 ${n}번출구`, "음식점 > 카페")];
+    serve(table);
+    await searchSubwayExitsKakao("강남", COORD);
+    expect(queried()).toHaveLength(8);
   });
 
   it("같은 문서가 두 질의에 나와도 한 번만 돌려준다", async () => {
