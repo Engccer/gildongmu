@@ -74,7 +74,7 @@ function actionsBlock(src: string, marker = ".accessibilityActions {"): string {
 }
 
 describe("① 소비자는 옵트인이다 (spec §3.5)", () => {
-  it("TransitRouteRows 호출부 전수는 둘이고, 역 진입을 켜는 곳은 길찾기 탭 하나다", () => {
+  it("TransitRouteRows 호출부 전수는 셋이고, 역 진입을 켜는 곳은 길찾기 탭 하나다", () => {
     const callers: string[] = [];
     for (const file of swiftFiles(APP)) {
       const lines = readFileSync(file, "utf8").split("\n");
@@ -87,9 +87,11 @@ describe("① 소비자는 옵트인이다 (spec §3.5)", () => {
       });
     }
     // 부착 자리 **수**만 세면 조망 쪽이 켜져도 통과한다 — 파일과 값을 함께 고정한다.
+    // 여정 결과(E70, 실험판)는 첫 판에서 역 진입을 켜지 않는다 — 켜면 이 목록과 함께 판정한다.
     expect(callers.sort()).toEqual([
       "Directions/DirectionsTabView.swift +stationEntry",
       "Directions/GuideOverviewSheet.swift",
+      "Directions/JourneyResultRows.swift",
     ]);
   });
 
