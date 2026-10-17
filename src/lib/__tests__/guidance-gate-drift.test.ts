@@ -415,9 +415,11 @@ describe("7. 여정(E70) — 실험판 봉인과 내부 인계", () => {
   });
 
   it("여정 단계 시작은 token 결박 + 단계 세션 부재를 먼저 확인한다(spec §6.3 — 점유를 풀지 않는다)", () => {
+    // 본문 첫 `guard` 한 문장이 넷을 다 건다 — 본문 아래 불변식 검사에도 같은 낱말이 있어 낱말 존재만으로는 못 가른다.
     const body = declarationBody(session(), "startJourneyStage");
+    const firstGuard = /guard\b([^]*?)\belse\b/.exec(body)?.[1] ?? "";
     for (const needle of ["journey?.token == token", "!beacon.isTracking", "!beacon.starting", "!transit.isTracking"]) {
-      expect(body, needle).toContain(needle);
+      expect(firstGuard, needle).toContain(needle);
     }
   });
 
