@@ -181,6 +181,12 @@ describe("E70-d 입력 메뉴 하나와 「자동차」 문장(위원장 판정 
     return tab.slice(start, end);
   })();
 
+  it("역 없는 최근 경로를 열면 이전 역을 비운다 — 남으면 조회가 조용히 여정으로 간다", () => {
+    expect(tab).toMatch(
+      /model\.setJourneyStations\(board: route\.boardStation, alight: route\.alightStation\)\s*\}\s*else if model\.hasJourneyStations \{\s*model\.clearJourneyStations\(\)/,
+    );
+  });
+
   it("판정 30·31: 여정 문장의 수단은 「자동차」이고 금액은 「택시 요금」이라고 밝힌다", () => {
     expect(KO.ios.journey).toMatchObject({
       addMenu: "경유지 또는 자동차 구간 추가",
