@@ -1334,3 +1334,50 @@ export interface CultureEvent {
   /** 조회 좌표로부터의 거리(m, 코드 계산) */
   distanceMeters: number;
 }
+
+// ─── E70 여정(택시 → 대중교통 → 택시) ───
+
+/** 사용자가 길찾기 화면에서 고른 갈아탈 역. 노선은 고른 장소에 노선 표기가 있을 때만 싣는다. */
+export interface JourneyStationInput {
+  name: string;
+  coord: Coord;
+  line?: string;
+}
+
+/** 하차역에서 택시를 타는 자리 하나(출구·택시승강장·정보 없음). */
+export interface EgressOption {
+  kind: "exit" | "stand" | "none";
+  /** 출구 번호("1", "3-1") | 승강장 이름 | `none`이면 "" */
+  label: string;
+  lineName?: string;
+  /** 카카오 `place_name` 원문("아현역 3번출구", "서울역택시승강장"). `none`이면 "" */
+  placeName: string;
+  coord: Coord;
+  /** 이 자리에서 도착지까지 */
+  taxiOut: CarRouteBriefing;
+}
+
+export interface JourneyVariant {
+  /** 지정 역 경로와 추천이 같으면 "designated" 하나 */
+  kind: "designated" | "recommended";
+  /** 이 변형이 실제로 타는 곳 */
+  boardStation?: { name: string; coord: Coord };
+  alightStation?: { name: string; coord: Coord };
+  /** 출발지 → 승차역(승차 지정 시) */
+  taxiIn?: CarRouteBriefing;
+  /** 앞뒤 도보를 자른 대중교통 경로(routeKey 유지) */
+  transit: TransitRoute;
+  egress?: {
+    /** [0] = 택시 시간 최단 출구(기본), 승강장은 있으면 마지막 */
+    options: EgressOption[];
+    /** 카카오 출구 조회 실패(없음과 구분) */
+    lookupFailed?: true;
+  };
+  totals: { minutes: number; taxiFare: number; transitFare: number };
+}
+
+export interface JourneyResult {
+  /** 1~2개, [0]이 기본 선택(지정 역 경로, 없으면 추천) */
+  variants: JourneyVariant[];
+  designatedMissing?: { side: "board" | "alight" | "both" };
+}
