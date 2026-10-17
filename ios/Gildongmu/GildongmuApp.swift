@@ -65,7 +65,7 @@ struct GildongmuApp: App {
     /// (드래그·VoiceOver 탈출)는 저장하지 않아 다음 실행에 다시 뜬다.
     @State private var releaseNoticePresented = false
     @AppStorage("themePreference") private var themeRaw = ThemePreference.system.rawValue
-    /// 언어 선택 값. 그 자체가 `.id`에 들어가 전환 즉시 탭 트리를 재생성한다.
+    /// 언어 선택 값. 바뀌면 `languageEpoch`를 올려 전환 즉시 탭 트리를 재생성한다.
     /// 재생성이 필요한 이유: 표시 문자열은 `appLocalized`가 매번 조회하지만
     /// SwiftUI는 UserDefaults 변경을 모르므로 스스로 다시 그리지 않는다.
     /// (탭 내용 초기화는 부작용이 아니라 의도 — 검색 결과·주변 데이터는 로케일
@@ -76,6 +76,9 @@ struct GildongmuApp: App {
     /// 탭 순서가 실제로 바뀌면 증가해 `.id`로 탭 트리를 재생성한다 — `ForEach` 순서 변경만으로 `TabView`가 탭 바를
     /// 다시 배치한다는 보장이 없어 언어 전환과 같은 재생성으로 결정론을 택했다(spec §3.2).
     @State private var tabOrderEpoch = 0
+    /// 언어가 바뀌면 증가해 `.id`로 탭 트리를 재생성한다(A61). 원시 값을 `.id`에 직접 넣으면 재생성이 프리필 소거보다
+    /// 먼저 일어나 새 길찾기 탭이 남은 프리필로 경로를 다시 조회한다 — 탭 순서(`tabOrderEpoch`)와 같은 묶음.
+    @State private var languageEpoch = 0
     private let launchStore = LaunchActionStore.shared
     private let directionsPrefillStore = DirectionsPrefillStore.shared
     /// 장소 상세·검색 "길찾기" 진입이 넘긴 프리필 한 끝(Task I4·E32). directionsEpoch와
@@ -112,13 +115,18 @@ struct GildongmuApp: App {
                     }
                 }
             }
-            .id("\(sessionEpoch)#\(languageRaw)#\(tabOrderEpoch)")
+            .id("\(sessionEpoch)#\(languageEpoch)#\(tabOrderEpoch)")
             // 재생성과 프리필 소거를 한 갱신에 묶는다: 남은 "길찾기" 프리필이 재생성된 길찾기 탭에 다시 적용되면
             // 순서만 바꿨는데 경로 조회가 돈다(Task I4 resetSession과 같은 이유). 같은 순서로의 쓰기는 무시한다.
             .onChange(of: tabOrderRaw) { old, new in
                 guard AppTab.order(stored: old) != AppTab.order(stored: new) else { return }
                 directionsPrefill = nil
                 tabOrderEpoch += 1
+            }
+            // 언어 전환도 같은 규율(A61): 재생성된 길찾기 탭이 남은 프리필로 다시 조회하지 않게 한 갱신에 묶는다.
+            .onChange(of: languageRaw) { _, _ in
+                directionsPrefill = nil
+                languageEpoch += 1
             }
             // 최소화된 안내의 띠바(N1 spec §2.3) — 탭 바 바로 위, 모든 탭 공통. iOS 26은
             // 탭 바 액세서리가 그 자리(콘텐츠 → 띠바 → 탭 바)를 시스템이 보장한다.

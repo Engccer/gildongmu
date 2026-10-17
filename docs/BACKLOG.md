@@ -77,9 +77,9 @@ A64가 지하철역·버스·둘러보기 세 목록만 `NearbyLoadCore.appear()
 
 `src/components/chat/SourceList.tsx`가 출처 사이 쉼표를 `aria-hidden` span으로 둔다. 숨김 노드가 줄 가운데 있으면 StaticText가 갈려(메모리 `aria-hidden-span-mid-line-splits-static-text`) 출처가 둘 이상인 답변에서 출처 줄이 여러 객체로 읽힌다. 처방 후보: 출처가 링크가 아니면 `joinText` 한 줄, 링크면 쉼표를 링크 밖 텍스트 노드로. 판정은 Chrome 접근성 트리 실측으로(jsdom 불가). 출처 `~/gildongmu-wt/small-13-reports/review-a11y-202610050444.md`.
 
-### A61. iOS 언어를 바꾸면 남아 있던 "길찾기" 프리필이 다시 조회된다 (🆕 2026-10-05, ios-reorder 설계 리뷰 관찰) — 낮음
+### A61. iOS 언어를 바꾸면 남아 있던 "길찾기" 프리필이 다시 조회된다 (🆕 2026-10-05, ios-reorder 설계 리뷰 관찰) — 낮음 · ✅ 코드 종결(2026-10-17, 세션 `small-14`, CHANGELOG 같은 날)
 
-장소 상세 "여기까지 길찾기"로 길찾기 탭에 들어간 뒤 설정에서 언어를 바꾸면, 앱 루트가 탭 트리를 재생성(`.id`에 언어)하면서 `directionsPrefill`이 그대로라 새 길찾기 탭이 같은 프리필로 경로 조회를 한 번 더 돈다(대중교통이면 ODsay 호출, 최근 경로 재기록). 탭 순서 재생성(E66)은 같은 갱신에서 프리필을 비워 막았다(`GildongmuApp`의 `tabOrderRaw` onChange). 처방 후보: 언어 전환도 재생성 세대와 프리필 소거를 한 갱신에 묶는다(`.id`에 원시 `languageRaw` 대신 onChange가 올리는 세대). 실측 전이라 증상 확인이 먼저다.
+장소 상세 "여기까지 길찾기"로 길찾기 탭에 들어간 뒤 설정에서 언어를 바꾸면, 앱 루트가 탭 트리를 재생성(`.id`에 언어)하면서 `directionsPrefill`이 그대로라 새 길찾기 탭이 같은 프리필로 경로 조회를 한 번 더 돈다(대중교통이면 ODsay 호출, 최근 경로 재기록). 탭 순서 재생성(E66)은 같은 갱신에서 프리필을 비워 막았다(`GildongmuApp`의 `tabOrderRaw` onChange). **증상 확인(소스 추적)**: 새 `DirectionsModel(prefill:)`이 남은 프리필로 `pendingPrefillQuery`를 세우고 길찾기 탭 `.task`가 `runQuery()`를 부른다. 프리필을 `onChange`에서만 비우면 이미 재생성된 뷰의 `@State`에 옛 값이 잡힌 뒤라 늦다. **처리**: 언어 `onChange`가 프리필 소거와 `languageEpoch` 증가를 한 갱신에 하고 `.id`는 그 세대만 담는다(E66 탭 순서와 같은 묶음).
 
 ### A58. en 자동 재조회 채택 문장이 방향을 두 번 말한다 (🆕 2026-10-04, android-3 리뷰 관찰, iOS·웹·안드로이드 공통) — ✅ 코드 종결 2026-10-04(세션 `small-12`, CHANGELOG 같은 날) · ✅ 잔여 종결 2026-10-05(서버 en `parts`, 세션 `small-13`)
 
