@@ -44,6 +44,28 @@ export function evaluateRateLimit(
   return { allowed: true, remaining: limit - entry.count };
 }
 
+/**
+ * 호출 수 단위 예약 — `evaluateRateLimit`의 비용 판(E70 여정, spec §4.5-3). 한 요청이 외부 API를
+ * 여러 번 부를 때 요청이 아니라 **호출 수**로 센다. 남은 칸이 비용보다 모자라면 아무것도 쓰지 않고
+ * 거절한다(부분 예약 금지 — 예약하지 않은 호출을 만들지 않는 것이 계약이다).
+ */
+export function reserveCalls(
+  store: Map<string, RateLimitEntry>,
+  key: string,
+  now: number,
+  cost: number,
+  limit: number,
+  windowMs: number,
+): boolean {
+  const entry = store.get(key);
+  const fresh = !entry || now - entry.windowStart >= windowMs;
+  const used = fresh ? 0 : entry.count;
+  if (used + cost > limit) return false;
+  if (fresh) store.set(key, { count: cost, windowStart: now });
+  else entry.count += cost;
+  return true;
+}
+
 // IP당 60초에 30회 — 정상 사용자는 디바운스된 검색으로 닿기 어렵고, 봇 폭주는 차단.
 const WINDOW_MS = 60_000;
 const LIMIT = 30;
@@ -171,4 +193,54 @@ const suggestionsStore = new Map<string, RateLimitEntry>();
 /** /api/chat/suggestions 전용 레이트 리밋(60초 20회). 허용이면 true. */
 export function checkSuggestionsRateLimit(ip: string, now: number): boolean {
   return evaluateRateLimit(suggestionsStore, ip, now, SUGGESTIONS_LIMIT, WINDOW_MS).allowed;
+}
+
+// 여정(E70, spec §4.5): 한 조회가 Tmap을 최대 8회 부른다. IP 버킷은 1분 안 두 번 조회(역 A만 넣고 조회한 뒤
+// B를 더해 다시)를 받는 16회이고 자동차 라우트 버킷(10회)과 합치지 않는다 — 합치면 조회 직후 안내 시작의
+// `/api/route/car` 상세 조회가 스스로 429에 걸린다. Tmap 일 1,000건 무료분(자동차·도보 폴백과 공유) 보호는
+// 인스턴스 일 상한이 맡는다. ⚠ 머리 주석의 한계 그대로 인스턴스별이다 — 실험판을 넓히기 전에 외부 저장소로
+// 승격할지 다시 판정한다(BACKLOG E70 편승).
+export const JOURNEY_TMAP_IP_LIMIT = 16;
+export const JOURNEY_TMAP_DAILY_CAP = 200;
+const KST_OFFSET_MS = 9 * 3_600_000;
+
+export type JourneyReserveResult = "ok" | "rateLimited" | "budgetExhausted";
+
+/** 여정 Tmap 예산(테스트가 새 인스턴스를 만든다). 일 상한을 먼저 무기록 판정한다 — 거절된 요청이 IP 버킷을 먹지 않게. */
+export function createJourneyTmapBudget() {
+  const ipStore = new Map<string, RateLimitEntry>();
+  let day = -1;
+  let used = 0;
+  const kstDay = (now: number) => Math.floor((now + KST_OFFSET_MS) / 86_400_000);
+  const rollDay = (now: number) => {
+    const d = kstDay(now);
+    if (d !== day) {
+      day = d;
+      used = 0;
+    }
+  };
+  return {
+    reserve(ip: string, now: number, cost: number): JourneyReserveResult {
+      rollDay(now);
+      if (used + cost > JOURNEY_TMAP_DAILY_CAP) return "budgetExhausted";
+      if (!reserveCalls(ipStore, ip, now, cost, JOURNEY_TMAP_IP_LIMIT, WINDOW_MS)) return "rateLimited";
+      used += cost;
+      return "ok";
+    },
+    dailyCount(now: number): number {
+      rollDay(now);
+      return used;
+    },
+    ipCount(ip: string, now: number): number {
+      const e = ipStore.get(ip);
+      return !e || now - e.windowStart >= WINDOW_MS ? 0 : e.count;
+    },
+  };
+}
+
+const journeyTmapBudget = createJourneyTmapBudget();
+
+/** /api/route/journey 전용 Tmap 호출 예약(팬아웃 전 정확한 비용 한 번). */
+export function reserveJourneyTmap(ip: string, now: number, cost: number): JourneyReserveResult {
+  return journeyTmapBudget.reserve(ip, now, cost);
 }

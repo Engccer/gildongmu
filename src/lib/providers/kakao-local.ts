@@ -143,3 +143,85 @@ export async function searchPlacesKakaoLocal(
     query: params.query,
   };
 }
+
+/**
+ * 반경 검색 URL(E70 여정 출구·승강장 수집). `buildKakaoSearchUrl`은 radius를 일부러 받지 않는다(장소 검색은
+ * 0건 위험) — 출구·승강장은 그 역 주변만 의미가 있어 반경이 곧 거르기다. 좌표 4자리는 캐시 키 안정화.
+ */
+export function buildKakaoRadiusSearchUrl(query: string, coord: { lat: number; lng: number }, radius: number): URL {
+  const url = new URL(ENDPOINT);
+  url.searchParams.set("query", query);
+  url.searchParams.set("size", "15");
+  url.searchParams.set("x", roundCoord(coord.lng, 4));
+  url.searchParams.set("y", roundCoord(coord.lat, 4));
+  url.searchParams.set("radius", String(radius));
+  return url;
+}
+
+async function fetchKakaoRadius(query: string, coord: { lat: number; lng: number }, radius: number, label: string) {
+  const res = await fetch(buildKakaoRadiusSearchUrl(query, coord, radius), {
+    headers: { Authorization: `KakaoAK ${env.KAKAO_REST_API_KEY}` },
+    // 출구·승강장은 정적이지만 카카오 응답 보관 상한(300초, 2026-10-03 위원장 판정)을 넘기지 않는다.
+    next: { revalidate: 300 },
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`카카오 ${label} 검색 실패: HTTP ${res.status} ${body}`);
+  }
+  return ((await res.json()) as KakaoLocalResponse).documents;
+}
+
+const EXIT_RADIUS_M = 800;
+const EXIT_BATCH = 8;
+const EXIT_MAX_NUMBER = 25;
+const EXIT_MISS_STOP = 3;
+
+/** 그 번호의 출구 문서가 응답에 있는가(`강남역 3번출구`·`강남역 3-1번출구`·`노량진역 1호선 9번출구`). `11번`은 1번이 아니다. */
+function hasExitNumber(docs: KakaoLocalDocument[], stationDisplay: string, n: number): boolean {
+  const tail = new RegExp(`(?:^|\\s)${n}(?:-[0-9]+)?번\\s*출구$`);
+  return docs.some(
+    (d) => d.place_name.startsWith(`${stationDisplay}역`) && tail.test(d.place_name.slice(stationDisplay.length + 1)),
+  );
+}
+
+/**
+ * 지하철 출구 원시 문서 수집(E70 spec §4.4). 카카오는 출구를 번호별 질의로만 준다 — `"{역}역 출구"` 한 번은
+ * 실측 10곳 모두 0건이었다(`RESEARCH-2026-10-17-e70-taxi-exit-probe.md`). `n=1..8`을 병렬로 먼저 보내고
+ * 묶음 끝에서 3번 연속 미발견이 아니면 다음 묶음, `n ≤ 25`. 선정(노선·번호 해석)은 순수 계층(`journey/egress.ts`).
+ * `stationDisplay`는 「역」 없는 표시 이름(`서울` — `서울역역` 질의 금지). HTTP 실패는 throw(조회 실패 ≠ 출구 없음).
+ */
+export async function searchSubwayExitsKakao(
+  stationDisplay: string,
+  coord: { lat: number; lng: number },
+): Promise<KakaoLocalDocument[]> {
+  const seen = new Map<string, KakaoLocalDocument>();
+  let misses = 0;
+  for (let start = 1; start <= EXIT_MAX_NUMBER; start += EXIT_BATCH) {
+    const numbers = Array.from({ length: Math.min(EXIT_BATCH, EXIT_MAX_NUMBER - start + 1) }, (_, i) => start + i);
+    const results = await Promise.all(
+      numbers.map((n) => fetchKakaoRadius(`${stationDisplay}역 ${n}번출구`, coord, EXIT_RADIUS_M, "출구")),
+    );
+    results.forEach((docs, i) => {
+      for (const d of docs) if (!seen.has(d.id)) seen.set(d.id, d);
+      misses = hasExitNumber(docs, stationDisplay, numbers[i]) ? 0 : misses + 1;
+    });
+    if (misses >= EXIT_MISS_STOP) break;
+  }
+  return [...seen.values()];
+}
+
+/**
+ * 택시 승강장 원시 문서(E70 spec §4.4, 판정 11). 분류가 `교통시설`·`택시`로 섞여 있어 거르기(이름에 「택시」,
+ * 하차역 300m 안 최근접)는 순수 계층이 한다. 실측 10곳 중 2곳만 있다 — 0건이 정상이다.
+ */
+export async function searchTaxiStandsKakao(
+  stationDisplay: string,
+  coord: { lat: number; lng: number },
+): Promise<KakaoLocalDocument[]> {
+  const lists = await Promise.all(
+    [`${stationDisplay}역 택시승강장`, "택시승강장"].map((q) => fetchKakaoRadius(q, coord, 500, "택시 승강장")),
+  );
+  const seen = new Map<string, KakaoLocalDocument>();
+  for (const d of lists.flat()) if (!seen.has(d.id)) seen.set(d.id, d);
+  return [...seen.values()];
+}
