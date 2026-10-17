@@ -75,9 +75,9 @@ public enum JourneyStageEnd: Sendable, Hashable {
 
 public enum JourneyEvent: Equatable, Sendable {
     case stageEnded(JourneyStageEnd)
-    /// 「택시에서 내렸어요」
+    /// 「자동차에서 내렸어요」
     case taxiDropped
-    /// 「택시에 탔어요」
+    /// 「자동차에 탔어요」
     case taxiBoarded
     /// 대중교통 마지막 탈것을 내렸다(말미 도보 유무와 무관).
     case rideCompleted

@@ -187,14 +187,17 @@ interface EgressOption {
 
 ## 5. iOS 길찾기 화면
 
-### 5.1 입력 (판정 15)
+### 5.1 입력 (판정 15·21·28)
 
-- 경유지 행 다음에 버튼 「택시로 갈아탈 역 정하기」. 누르면 두 칸 「택시에서 내려 지하철 타는 역」·「지하철에서 내려 택시 타는 역」이 나오고 포커스는 첫 칸으로. 칸 검색은 기존 끝점 검색 시트(`DirectionsEndpointSearchView`, 대상 `DirectionsFieldTarget`에 `.boardStation`·`.alightStation` 추가).
+- 경유지도 역도 없을 때 경유지 버튼 자리에 메뉴 하나 「경유지 또는 자동차 구간 추가」. 항목은 이 순서로 「경유지 추가」·「자동차에서 내리는 역 추가」·「자동차를 탈 역 추가」이고, 항목은 검색 시트를 바로 연다(시트를 취소하면 아무것도 바뀌지 않는다). 칸 검색은 기존 끝점 검색 시트(`DirectionsEndpointSearchView`, 대상 `DirectionsFieldTarget`의 `.boardStation`·`.alightStation`).
+- **칸은 역이 정해졌을 때만 생긴다**(빈 칸을 미리 펼치지 않는다). 칸 이름은 「자동차에서 내리는 역」·「자동차를 탈 역」이고, 채운 칸은 "칸 이름, 역 이름" 한 줄 = 한 객체(버튼 = 재검색). 역이 서는 순간 여정이 되고 경유지는 비운다(D14). 역이 정해져 시트가 닫히면 커서는 새로 생긴 그 칸으로 간다.
+- 역 하나만 정해지면 채운 칸 + 남은 쪽을 더하는 일반 버튼 하나(「자동차를 탈 역 추가」 또는 「자동차에서 내리는 역 추가」 — 항목 하나뿐인 메뉴는 만들지 않는다) + 「갈아탈 역 지우기」. 둘 다 정해지면 추가 버튼은 없다.
+- 경유지가 정해지면 경유지 행 + 「경유지 삭제」만 남고 메뉴는 없다(경유지는 하나, 역과 배타).
 - 역만 받는다: 고른 장소가 `stationLayoutKind`(Kit `StationPhone.swift`) `subway`/`rail`이 아니면 칸에 넣지 않고 통지 「역을 골라 주세요.」(`.high` + 주의 진동 — 화면 변화 없는 활성화 응답이라 저장소 통지 우선순위 판별선을 따른다). 역 칸 검색은 주소 후보를 담지 않는다(건수·0건이 보이는 후보 기준).
-- 채운 칸은 밀기 「삭제」(최근 기록 행과 같은 동작 이름)로 비운다. 두 칸 아래 보이는 버튼 「갈아탈 역 지우기」는 두 칸을 함께 비우고 접는다(판정 21). 두 칸이 다 비면 접혀 펼침 버튼으로 돌아가고 커서는 조회 버튼으로 간다(D12 "세 수단이 필요하면 역 칸을 비운다"의 길). 노선 힌트는 장소 이름 꼬리(`parseStationQuery`의 Kit 대응) 또는 카테고리 마지막 조각.
+- 채운 칸은 밀기 「삭제」(최근 기록 행과 같은 동작 이름)로 비우고 그 칸은 사라진다. 커서는 다른 칸이 남으면 그 칸, 없으면 조회 버튼으로 먼저 옮긴다. 칸 아래 보이는 버튼 「갈아탈 역 지우기」는 두 칸을 함께 비우고 커서를 조회 버튼으로 옮긴다(판정 21). 역이 다 비면 메뉴로 돌아간다(D12 "세 수단이 필요하면 역 칸을 비운다"의 길). 노선 힌트는 장소 이름 꼬리(`parseStationQuery`의 Kit 대응) 또는 카테고리 마지막 조각.
 - 검색 시트의 반환(빌더 점검 5): 지금 시트는 끝점(`DirectionsEndpoint` — 이름·좌표·로마자)만 돌려주고 분류를 넘기지 않는다. 역 칸 둘은 **역 칸 전용 결과**(`Place` 그대로 — 분류 포함)를 받는 별도 콜백으로 연다. `DirectionsEndpoint`(Kit 공유 타입·최근 기록 저장 포맷)는 넓히지 않는다. 역 칸의 시트에는 최근 끝점 목록을 보이지 않는다(분류가 없어 역인지 알 수 없다) — 반복 여정은 최근 경로(§5.3)가 통째로 복원한다.
-- 두 칸이 다 비면 지금과 같은 세 수단 조회. 하나라도 있으면 여정 조회(D12). 펼친 상태에서 경유지 행은 사라진다(D14).
-- 봉인: 버튼과 두 칸은 `AppConfig.experimentalJourneyEnabled`(`#if EXPERIMENTAL`) 안에만.
+- 역이 없으면 지금과 같은 세 수단 조회. 하나라도 있으면 여정 조회(D12). 역 칸이 있는 동안 경유지 행은 없다(D14).
+- 봉인: 메뉴·추가 버튼·역 칸은 `AppConfig.experimentalJourneyEnabled`(`#if EXPERIMENTAL`)이고 데이터 로케일이 ko일 때만. 그 밖엔 종전 일반 「경유지 추가」 버튼이다.
 
 ### 5.2 결과 (판정 13·14·16)
 
@@ -203,7 +206,7 @@ interface EgressOption {
 1. (못 찾았을 때만) 「아현역에서 타는 경로를 찾지 못했습니다.」
 2. 변형이 둘이면 변형마다 heading 한 줄(「아현역에서 타는 경로」 / 「애오개역에서 타는 추천 경로」) + 선택 버튼. 하나면 heading 없이 바로 3.
 3. 합계 줄: 「총 41분, 택시 요금 약 15,600원, 대중교통 요금 1,550원」.
-4. 구간 줄: 「택시로 아현역까지 8분, 약 7,800원」 → 기존 대중교통 구간 줄들(`legBoard` 등, 앞뒤 도보 없음) → 출구 선택(승강장이 있으면 두 줄 버튼, 없으면 한 줄 「1번 출구로 나가 택시로 13분, 약 7,800원」).
+4. 구간 줄: 「자동차로 아현역까지 8분, 택시 요금 약 7,800원」 → 기존 대중교통 구간 줄들(`legBoard` 등, 앞뒤 도보 없음) → 출구 선택(승강장이 있으면 두 줄 버튼, 없으면 한 줄 「1번 출구로 나가 자동차로 13분, 택시 요금 약 7,800원」).
 5. [안내 시작] 버튼(선택된 변형·출구로).
 
 포커스: 조회 완료 시 옮기지 않는다 — 이 화면의 현행 규칙(위원장 판정 2026-08-02: 조회 버튼에 머물고 다음 스와이프가 상태 → 결과로 잇는다). 여정을 찾으면 최근 경로 목록은 숨긴다(결과 앞에 끼지 않게).
@@ -213,7 +216,7 @@ heading 구조(구현 접근성 감사): 변형이 둘이면 선택 버튼 둘�
 ### 5.3 저장·복원 (D13)
 
 - `RecentRoute`에 선택 필드 `boardStation`·`alightStation`(이름·좌표·노선 힌트 — 역 칸 전용 값, `DirectionsEndpoint`가 아님) 추가, `sameRoute`가 둘도 비교. 구버전 저장본 디코딩은 부재 = nil.
-- 최근 경로에서 여정을 고르면 칸을 채우고 펼친 상태로 조회(양끝이 있을 때만 자동 조회 — 기존 프리필 규칙).
+- 최근 경로에서 여정을 고르면 칸을 채워 조회(양끝이 있을 때만 자동 조회 — 기존 프리필 규칙).
 - 최근 경로 줄은 여정이면 여정 문장 「{출발}에서 {도착}까지, {역}역에서 갈아타기」다(판정 20) — 같은 출발·도착의 보통 경로와 들어서 가른다. 활성화가 역을 쓰는 조건(실험판·앱 언어 ko)에서만이고, 그 밖엔 활성화가 역을 버리므로 줄도 보통 문장이다.
 - 웹 `?dir=`는 첫 판에서 건드리지 않는다(웹 UI 없음).
 
@@ -316,7 +319,7 @@ heading 구조(구현 접근성 감사): 변형이 둘이면 선택 버튼 둘�
 
 ## 7. 실험판 게이트와 정식판 불변
 
-- 앱: 입력 버튼·두 칸·여정 결과·`startJourney` 호출 자리가 전부 `AppConfig.experimentalJourneyEnabled` 뒤. 검증되면 `#if`를 지운다(항상 참 상수 금지).
+- 앱: 입력 메뉴·역 칸·여정 결과·`startJourney` 호출 자리가 전부 `AppConfig.experimentalJourneyEnabled` 뒤. 검증되면 `#if`를 지운다(항상 참 상수 금지).
 - 서버: `/api/route/journey`는 웹 배포로 열리지만 정식판 앱·웹은 부르지 않는다. 기존 라우트는 `getTransitRoute` 재구성(§4.2-1)만 닿으므로 **기존 대중교통 응답 바이트 동일**을 저장 corpus 재생 테스트로 잠근다.
 - 웹에는 실험판 봉인 같은 장치가 없다는 점을 적어 둔다: 라우트를 아는 누구나 부를 수 있고, 레이트 리밋(§4.1)과 키 쿼터가 유일한 방어다.
 
@@ -341,9 +344,11 @@ heading 구조(구현 접근성 감사): 변형이 둘이면 선택 버튼 둘�
 
 | 키(가칭) | ko 문장 | 자리 |
 |---|---|---|
-| `journey.toggle` | 택시로 갈아탈 역 정하기 | 입력 버튼 |
-| `journey.boardField` | 택시에서 내려 지하철 타는 역 | 입력 칸(역 A) |
-| `journey.alightField` | 지하철에서 내려 택시 타는 역 | 입력 칸(역 B) |
+| `journey.addMenu` | 경유지 또는 자동차 구간 추가 | 입력 메뉴(항목 첫째는 기존 「경유지 추가」) |
+| `journey.addBoardStation` | 자동차에서 내리는 역 추가 | 메뉴 항목·남은 쪽 추가 버튼 |
+| `journey.addAlightStation` | 자동차를 탈 역 추가 | 메뉴 항목·남은 쪽 추가 버튼 |
+| `journey.boardField` | 자동차에서 내리는 역 | 입력 칸(역 A) |
+| `journey.alightField` | 자동차를 탈 역 | 입력 칸(역 B) |
 | `journey.notStation` | 역을 골라 주세요. | 통지 |
 | `journey.designatedHeading` | {station}역에서 타는 경로 | 변형 heading |
 | `journey.designatedHeadingAlight` | {station}역에서 내리는 경로 | 변형 heading(하차 역만 지정, 판정 18) |
@@ -354,24 +359,24 @@ heading 구조(구현 접근성 감사): 변형이 둘이면 선택 버튼 둘�
 | `journey.designatedMissing` | {station}역에서 타는 경로를 찾지 못했습니다. | 결과 맨 위 |
 | `journey.designatedMissingAlight` | {station}역에서 내리는 경로를 찾지 못했습니다. | 결과 맨 위 |
 | `journey.totals` | 총 {minutes}분, 택시 요금 약 {taxiFare}원, 대중교통 요금 {transitFare}원 | 합계 줄 |
-| `journey.taxiIn` | 택시로 {station}역까지 {minutes}분, 약 {fare}원 | 구간 줄 |
-| `journey.egressExit` | {exit}번 출구로 나가 택시로 {minutes}분, 약 {fare}원 | 구간 줄·선택 |
-| `journey.egressStand` | 택시 승강장에서 택시로 {minutes}분, 약 {fare}원 | 선택 |
-| `journey.egressNone` | 내린 역에서 택시로 {minutes}분, 약 {fare}원 | 구간 줄 |
-| `journey.egressLookupFailed` | 출구 정보를 불러오지 못했습니다. 내린 역에서 택시로 {minutes}분, 약 {fare}원 | 구간 줄 |
-| `journey.taxiDropped` | 택시에서 내렸어요 | taxiIn 버튼 |
-| `journey.taxiBoarded` | 택시에 탔어요 | egress 버튼 |
+| `journey.taxiIn` | 자동차로 {station}역까지 {minutes}분, 택시 요금 약 {fare}원 | 구간 줄 |
+| `journey.egressExit` | {exit}번 출구로 나가 자동차로 {minutes}분, 택시 요금 약 {fare}원 | 구간 줄·선택 |
+| `journey.egressStand` | 택시 승강장에서 택시로 {minutes}분, 택시 요금 약 {fare}원 | 선택 |
+| `journey.egressNone` | 내린 역에서 자동차로 {minutes}분, 택시 요금 약 {fare}원 | 구간 줄 |
+| `journey.egressLookupFailed` | 출구 정보를 불러오지 못했습니다. 내린 역에서 자동차로 {minutes}분, 택시 요금 약 {fare}원 | 구간 줄 |
+| `journey.taxiDropped` | 자동차에서 내렸어요 | taxiIn 버튼 |
+| `journey.taxiBoarded` | 자동차에 탔어요 | egress 버튼 |
 | `journey.arrivedStation` | {station}역에 도착했습니다. | 자동 인계 통지 |
-| `journey.taxiOutFailed` | 택시 경로를 불러오지 못했습니다. | taxiOut 실패 |
+| `journey.taxiOutFailed` | 자동차 경로를 불러오지 못했습니다. | taxiOut 실패 |
 | `journey.egressStartFailed` | 출구까지 도보 안내를 시작하지 못했습니다. | egress 실패 |
 | `journey.arrivedExit` | {exit}번 출구에 도착했습니다. | 출구 도보 도착(판정 19) |
 | `journey.arrivedStand` | 택시 승강장에 도착했습니다. | 승강장 도보 도착(판정 19) |
 | `journey.recentRoute` | {from}에서 {to}까지, {station}역에서 갈아타기 | 최근 경로 줄, 여정(판정 20) |
 | `journey.recentRouteBoth` | {from}에서 {to}까지, {board}역과 {alight}역에서 갈아타기 | 최근 경로 줄, 여정·역 둘(판정 20) |
-| `journey.egressNoneStop` | 내린 정류장에서 택시로 {minutes}분, 약 {fare}원 | 구간 줄, 추천이 버스로 끝남(판정 23) |
+| `journey.egressNoneStop` | 내린 정류장에서 자동차로 {minutes}분, 택시 요금 약 {fare}원 | 구간 줄, 추천이 버스로 끝남(판정 23) |
 | `journey.accessFailedWith` | {reason}. 도보 안내를 시작할 수 없어 승차 대기로 바로 넘어갑니다. | 접근 도보 시작 실패, 원인 + 다리 문장(판정 27) |
-| `journey.clearStations` | 갈아탈 역 지우기 | 펼친 칸 아래 버튼(판정 21) |
-| `journey.taxiInStop` | 택시로 {stop}까지 {minutes}분, 약 {fare}원 | 구간 줄, 추천이 버스로 시작(판정 23) |
+| `journey.clearStations` | 갈아탈 역 지우기 | 역 칸 아래 버튼(판정 21) |
+| `journey.taxiInStop` | 자동차로 {stop}까지 {minutes}분, 택시 요금 약 {fare}원 | 구간 줄, 추천이 버스로 시작(판정 23) |
 | `journey.arrivedStop` | {stop}에 도착했습니다. | 택시 자동 인계, 추천이 버스로 시작(판정 23) |
 
 동명 이역(판정 26)은 새 키 없이 `{station}` 자리에 「노선 역이름」을 넣는다(Kit `journeyQualifiedStationName` — 노선 이름은 `수도권` 접두·공백·마침표·급행 꼬리를 뗀 꼴). 붙이는 조건은 Kit `journeyLineQualifiers`·`journeyNeedsLineQualifier`: 칸에 고른 역(이름·노선 힌트·좌표)과 추천 경로의 그 쪽 지하철 정류를 서버 같은 역 판정(§4.3)과 같은 축으로 비교한다 — 표시 이름이 같고, 노선을 둘 다 알면 노선이 다를 때, 하나라도 모르면 좌표가 500m(`JourneyTuning.stationIdentityMeters`)보다 멀 때. 두 역을 다 정한 여정은 추천이 고른 바로 그 역에서 탈 수 있어(다른 쪽이 안 맞았을 뿐) "이름이 같으면 다른 역"으로 보지 않는다(구현 코드 리뷰). 노선은 아는 쪽에만 붙고, 추천이 그 쪽에서 버스면 제목이 이미 「버스」를 말해 붙이지 않는다. 추천 제목이 어느 쪽을 말할지(`journeyRecommendedTitleIsBoardSide`)는 동명 이역을 "다른 쪽"으로 친다.

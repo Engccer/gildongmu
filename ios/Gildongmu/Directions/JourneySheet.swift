@@ -56,7 +56,7 @@ struct JourneySheet: View {
         default:
             EmptyView()
         }
-        // 출구 도보 시작 실패는 「택시에 탔어요」가 곧 다음 단계라 재시도를 두지 않는다(§6.4 표) — 끊긴 경우는 둔다.
+        // 출구 도보 시작 실패는 「자동차에 탔어요」가 곧 다음 단계라 재시도를 두지 않는다(§6.4 표) — 끊긴 경우는 둔다.
         if stage != .egress || session.journeyFailure != nil {
             Button(appLocalized("guide.rerouteButton")) { act(.retry) }
         }

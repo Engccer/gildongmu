@@ -47,12 +47,12 @@ describe("E70 여정 확정 문장(위원장 판정 2026-10-17)", () => {
     expect(KO.ios.journey).toMatchObject({
       arrivedExit: "{exit}번 출구에 도착했습니다.",
       arrivedStand: "택시 승강장에 도착했습니다.",
-      taxiInStop: "택시로 {stop}까지 {minutes}분, 약 {fare}원",
+      taxiInStop: "자동차로 {stop}까지 {minutes}분, 택시 요금 약 {fare}원",
       arrivedStop: "{stop}에 도착했습니다.",
       clearStations: "갈아탈 역 지우기",
       recentRoute: "{from}에서 {to}까지, {station}역에서 갈아타기",
       recentRouteBoth: "{from}에서 {to}까지, {board}역과 {alight}역에서 갈아타기",
-      egressNoneStop: "내린 정류장에서 택시로 {minutes}분, 약 {fare}원",
+      egressNoneStop: "내린 정류장에서 자동차로 {minutes}분, 택시 요금 약 {fare}원",
     });
   });
 
@@ -155,7 +155,7 @@ describe("E70 여정 문장의 자리", () => {
   it("판정 3: 「갈아탈 역 지우기」는 두 칸을 접어 비우고 조회 버튼으로 커서를 선점한다", () => {
     const tab = read("DirectionsTabView.swift");
     expect(tab).toMatch(
-      /Button\(appLocalized\("ios\.journey\.clearStations"\)\) \{\s*submitFocused = true\s*model\.setJourneyExpanded\(false\)/,
+      /Button\(appLocalized\("ios\.journey\.clearStations"\)\) \{\s*submitFocused = true\s*model\.clearJourneyStations\(\)/,
     );
   });
 
@@ -168,5 +168,82 @@ describe("E70 여정 문장의 자리", () => {
     expect(body(tab, "activateRecentRoute")).toContain(gate);
     expect(line).toContain('"ios.journey.recentRouteBoth", from, to, board, alight');
     expect(line).toContain('"ios.journey.recentRoute", from, to, $0');
+  });
+});
+
+describe("E70-d 입력 메뉴 하나와 「자동차」 문장(위원장 판정 28~32, 2026-10-17)", () => {
+  const tab = read("DirectionsTabView.swift");
+  /** 폼의 갈아탈 역·경유지 입력 블록(경유지 행 ~ 조회 버튼). */
+  const form = (() => {
+    const start = tab.indexOf("if !showsStationFields, let viaName = viaFieldName {");
+    const end = tab.indexOf("Button(submitText) { model.runQuery() }", start);
+    if (start < 0 || end < 0) throw new Error("길찾기 입력 블록을 찾지 못했다");
+    return tab.slice(start, end);
+  })();
+
+  it("판정 30·31: 여정 문장의 수단은 「자동차」이고 금액은 「택시 요금」이라고 밝힌다", () => {
+    expect(KO.ios.journey).toMatchObject({
+      addMenu: "경유지 또는 자동차 구간 추가",
+      addBoardStation: "자동차에서 내리는 역 추가",
+      addAlightStation: "자동차를 탈 역 추가",
+      boardField: "자동차에서 내리는 역",
+      alightField: "자동차를 탈 역",
+      taxiIn: "자동차로 {station}역까지 {minutes}분, 택시 요금 약 {fare}원",
+      egressExit: "{exit}번 출구로 나가 자동차로 {minutes}분, 택시 요금 약 {fare}원",
+      egressNone: "내린 역에서 자동차로 {minutes}분, 택시 요금 약 {fare}원",
+      egressLookupFailed: "출구 정보를 불러오지 못했습니다. 내린 역에서 자동차로 {minutes}분, 택시 요금 약 {fare}원",
+      taxiDropped: "자동차에서 내렸어요",
+      taxiBoarded: "자동차에 탔어요",
+      taxiOutFailed: "자동차 경로를 불러오지 못했습니다.",
+      totals: "총 {minutes}분, 택시 요금 약 {taxiFare}원, 대중교통 요금 {transitFare}원",
+    });
+    // 판정 32: 승강장에서 타는 것은 택시다
+    expect(KO.ios.journey.egressStand).toBe("택시 승강장에서 택시로 {minutes}분, 택시 요금 약 {fare}원");
+    expect(KO.ios.journey.arrivedStand).toBe("택시 승강장에 도착했습니다.");
+    expect(KO.ios.journey).not.toHaveProperty("toggle");
+    // 「택시로」는 승강장 문장 하나에만 남는다
+    const taxiRo = Object.entries(KO.ios.journey as Record<string, string>).filter(([, v]) => v.includes("택시로"));
+    expect(taxiRo.map(([k]) => k)).toEqual(["egressStand"]);
+  });
+
+  it("판정 28: 경유지도 역도 없으면 메뉴 하나에 항목 셋이 이 순서다", () => {
+    const menu = form.match(/Menu\(appLocalized\("ios\.journey\.addMenu"\)\) \{([\s\S]*?)\n\s*\}\n/);
+    expect(menu).not.toBeNull();
+    const items = [...menu![1].matchAll(/Button\(appLocalized\("([^"]+)"\)\) \{ searchTarget = \.(\w+) \}/g)].map((m) => [m[1], m[2]]);
+    expect(items).toEqual([
+      ["directions.addVia", "via"],
+      ["ios.journey.addBoardStation", "boardStation"],
+      ["ios.journey.addAlightStation", "alightStation"],
+    ]);
+    // 메뉴는 실험판·ko 조건 안에서만, 그 밖엔 종전 일반 「경유지 추가」 버튼이다
+    expect(form).toMatch(
+      /if journeyInputEnabled \{\s*\/\/[^\n]*\n\s*Menu\(appLocalized\("ios\.journey\.addMenu"\)\)[\s\S]*?\} else \{\s*Button\(appLocalized\("directions\.addVia"\)\) \{ searchTarget = \.via \}/,
+    );
+    expect(body(tab, "journeyInputEnabled")).toContain('AppConfig.experimentalJourneyEnabled && AppLanguage.dataLocale == "ko"');
+    expect(body(tab, "showsStationFields")).toContain("journeyInputEnabled && model.hasJourneyStations");
+  });
+
+  it("판정 28: 칸은 역이 정해졌을 때만 생기고(빈 칸 없음), 남은 쪽은 일반 버튼 하나다", () => {
+    expect(form).toContain("if model.boardStation != nil {\n                            Button { searchTarget = .boardStation }");
+    expect(form).toContain("if model.alightStation != nil {\n                            Button { searchTarget = .alightStation }");
+    expect(form).toMatch(
+      /if model\.boardStation == nil \{\s*Button\(appLocalized\("ios\.journey\.addBoardStation"\)\) \{ searchTarget = \.boardStation \}\s*\} else if model\.alightStation == nil \{\s*Button\(appLocalized\("ios\.journey\.addAlightStation"\)\) \{ searchTarget = \.alightStation \}\s*\}/,
+    );
+    // 메뉴는 하나뿐이다(항목 하나짜리 메뉴를 만들지 않는다)
+    expect(form.match(/Menu\(/g)).toHaveLength(1);
+    // 빈 칸을 미리 펼치는 상태가 없다
+    expect(tab).not.toMatch(/journeyExpanded|setJourneyExpanded|ios\.journey\.toggle/);
+    // 역이 서면 경유지를 비운다(D14)
+    expect(body(tab, "setJourneyStation")).toMatch(/via = nil/);
+  });
+
+  it("역이 정해지면 새로 생긴 그 칸에 착지하고, 칸을 지우면 남는 칸 또는 조회 버튼으로 선점한다", () => {
+    const apply = body(tab, "applyResolvedFocus");
+    expect(apply).toMatch(/target == \.boardStation \|\| target == \.alightStation \{\s*focusedEndpointField = target/);
+    expect(body(tab, "landFocusAfterResolve")).toContain("case .boardStation, .alightStation: focusedEndpointField == target");
+    const clear = body(tab, "clearStationField");
+    // 선점은 모델 변경 전이다(칸이 사라지기 전에)
+    expect(clear.indexOf("focusedEndpointField = remaining")).toBeLessThan(clear.indexOf("model.clearJourneyStation(board: board)"));
+    expect(clear.indexOf("submitFocused = true")).toBeLessThan(clear.indexOf("model.clearJourneyStation(board: board)"));
   });
 });

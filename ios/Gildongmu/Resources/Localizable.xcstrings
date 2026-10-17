@@ -22091,12 +22091,42 @@
         }
       }
     },
+    "ios.journey.addAlightStation": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "자동차를 탈 역 추가"
+          }
+        }
+      }
+    },
+    "ios.journey.addBoardStation": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "자동차에서 내리는 역 추가"
+          }
+        }
+      }
+    },
+    "ios.journey.addMenu": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "경유지 또는 자동차 구간 추가"
+          }
+        }
+      }
+    },
     "ios.journey.alightField": {
       "localizations": {
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "지하철에서 내려 택시 타는 역"
+            "value": "자동차를 탈 역"
           }
         }
       }
@@ -22146,7 +22176,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "택시에서 내려 지하철 타는 역"
+            "value": "자동차에서 내리는 역"
           }
         }
       }
@@ -22206,7 +22236,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@번 출구로 나가 택시로 %2$@분, 약 %3$@원"
+            "value": "%1$@번 출구로 나가 자동차로 %2$@분, 택시 요금 약 %3$@원"
           }
         }
       }
@@ -22216,7 +22246,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "출구 정보를 불러오지 못했습니다. 내린 역에서 택시로 %1$@분, 약 %2$@원"
+            "value": "출구 정보를 불러오지 못했습니다. 내린 역에서 자동차로 %1$@분, 택시 요금 약 %2$@원"
           }
         }
       }
@@ -22226,7 +22256,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "내린 역에서 택시로 %1$@분, 약 %2$@원"
+            "value": "내린 역에서 자동차로 %1$@분, 택시 요금 약 %2$@원"
           }
         }
       }
@@ -22236,7 +22266,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "내린 정류장에서 택시로 %1$@분, 약 %2$@원"
+            "value": "내린 정류장에서 자동차로 %1$@분, 택시 요금 약 %2$@원"
           }
         }
       }
@@ -22246,7 +22276,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "택시 승강장에서 택시로 %1$@분, 약 %2$@원"
+            "value": "택시 승강장에서 택시로 %1$@분, 택시 요금 약 %2$@원"
           }
         }
       }
@@ -22336,7 +22366,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "택시에 탔어요"
+            "value": "자동차에 탔어요"
           }
         }
       }
@@ -22346,7 +22376,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "택시에서 내렸어요"
+            "value": "자동차에서 내렸어요"
           }
         }
       }
@@ -22356,7 +22386,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "택시로 %1$@역까지 %2$@분, 약 %3$@원"
+            "value": "자동차로 %1$@역까지 %2$@분, 택시 요금 약 %3$@원"
           }
         }
       }
@@ -22366,7 +22396,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "택시로 %1$@까지 %2$@분, 약 %3$@원"
+            "value": "자동차로 %1$@까지 %2$@분, 택시 요금 약 %3$@원"
           }
         }
       }
@@ -22376,17 +22406,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "택시 경로를 불러오지 못했습니다."
-          }
-        }
-      }
-    },
-    "ios.journey.toggle": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "택시로 갈아탈 역 정하기"
+            "value": "자동차 경로를 불러오지 못했습니다."
           }
         }
       }

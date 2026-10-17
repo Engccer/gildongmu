@@ -105,7 +105,7 @@ final class EndpointSearchModel {
 struct DirectionsEndpointSearchView: View {
     let target: DirectionsFieldTarget
     let onSelect: (DirectionsEndpoint) -> Void
-    /// 택시로 갈아탈 역 칸(E70 §5.1)의 결과 — 끝점이 아니라 장소 그대로(역 판정·노선 힌트에 분류가 필요하다).
+    /// 자동차로 갈아탈 역 칸(E70 §5.1)의 결과 — 끝점이 아니라 장소 그대로(역 판정·노선 힌트에 분류가 필요하다).
     /// 역 칸 대상에서만 쓰인다. `DirectionsEndpoint`(Kit 공유·최근 기록 저장 포맷)는 넓히지 않는다.
     var onSelectStation: ((Place) -> Void)? = nil
     @Environment(\.dismiss) private var dismiss

@@ -440,7 +440,7 @@ final class GuideSession {
         advanceJourney(.prepared(first), token: state.token)
     }
 
-    /// 시트 버튼(「택시에서 내렸어요」·「택시에 탔어요」·[경로 다시 조회]·[안내 종료])의 입구 — 누른 순간의 token을 싣는다.
+    /// 시트 버튼(「자동차에서 내렸어요」·「자동차에 탔어요」·[경로 다시 조회]·[안내 종료])의 입구 — 누른 순간의 token을 싣는다.
     func journeyAction(_ event: JourneyEvent) {
         guard let journey else { return }
         advanceJourney(event, token: journey.token)

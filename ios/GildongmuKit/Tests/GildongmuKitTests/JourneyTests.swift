@@ -195,7 +195,7 @@ private let allEvents: [JourneyEvent] =
         #expect(step(s, .taxiDropped, token: s.token) != .ignore)
     }
 
-    /// 사용자가 「택시에서 내렸어요」를 누른 직후 자동 도착 판정이 같은 seq로 도착하는 경쟁(Review Focus 4).
+    /// 사용자가 「자동차에서 내렸어요」를 누른 직후 자동 도착 판정이 같은 seq로 도착하는 경쟁(Review Focus 4).
     @Test func taxiDroppedThenAutoArrivalWithSameTokenTransitionsOnce() {
         let s = state(.running(.taxiIn))
         let token = s.token

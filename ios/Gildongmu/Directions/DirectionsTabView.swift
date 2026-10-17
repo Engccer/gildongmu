@@ -39,7 +39,7 @@ struct DirectionsPrefill: Equatable {
 /// (`manualLocation`은 `LocationBarView`가 `DirectionsEndpointSearchView`를 재사용하는
 /// 별도 진입로다 — 길찾기 탭의 from/to 상태 머신(`DirectionsModel`)과는 무관하다).
 enum DirectionsFieldTarget: String, Identifiable {
-    /// `boardStation`·`alightStation`은 택시로 갈아탈 역 칸(E70, 실험판) — 검색 시트가 끝점이 아니라 장소(`Place`)를
+    /// `boardStation`·`alightStation`은 자동차로 갈아탈 역 칸(E70, 실험판) — 검색 시트가 끝점이 아니라 장소(`Place`)를
     /// 돌려준다(역인지 판정·노선 힌트에 분류가 필요하다, spec §5.1).
     case from, to, via, manualLocation, boardStation, alightStation
     var id: String { rawValue }
@@ -77,9 +77,8 @@ final class DirectionsModel {
     /// 경유지(N4, 선택 사항, 1개). `.place`만 — 검색 시트 `.via` 타깃은 "현재 위치 사용"
     /// 버튼을 내지 않아 `.current`가 구조적으로 들어오지 않는다. 도착지와 같은 원자 확정.
     private(set) var via: DirectionsEndpoint?
-    /// 택시로 갈아탈 역(E70, 실험판 — spec §5.1). 펼침 상태와 두 칸이고, 하나라도 있으면 조회가 여정만 한다(D12).
-    /// 경유지와 함께 쓰지 않는다(D14 — 펼치면 경유지를 비우고 경유지 행이 사라진다).
-    private(set) var journeyExpanded = false
+    /// 자동차로 갈아탈 역(E70, 실험판 — spec §5.1). 칸은 역이 정해졌을 때만 있고(빈 칸 없음), 하나라도 있으면
+    /// 조회가 여정만 한다(D12). 경유지와 함께 쓰지 않는다(D14 — 역이 서면 경유지를 비우고, 경유지가 서면 역을 비운다).
     private(set) var boardStation: RecentStation?
     private(set) var alightStation: RecentStation?
     /// 여정 조회 결과 3-state(찾음·경로 없음·조회 실패). `results`와 같은 세대에만 산다.
@@ -238,27 +237,22 @@ final class DirectionsModel {
         if case .found = journeyOutcome { true } else { false }
     }
 
-    /// 역 지정 펼침·접힘(판정 15). 펼치면 경유지를 비우고(D14), 접으면 두 칸을 비운다 — 접힌 칸이 조회를 여정으로
-    /// 바꾸는 숨은 상태가 되지 않게.
-    func setJourneyExpanded(_ expanded: Bool) {
-        journeyExpanded = expanded
-        if expanded {
-            via = nil
-        } else {
-            boardStation = nil
-            alightStation = nil
-        }
-        clearResults()
-    }
-
+    /// 역 칸 하나를 정한다. 역이 서는 순간 여정이 되므로 경유지를 비운다(D14).
     func setJourneyStation(_ station: RecentStation, board: Bool) {
+        via = nil
         if board { boardStation = station } else { alightStation = station }
         clearResults()
     }
 
-    /// 최근 경로 복원(E70 §5.3) — 펼치고 두 칸을 함께 정한다(없는 쪽은 비운다 — 이전 질의의 역이 딸려 가지 않게).
+    /// 「갈아탈 역 지우기」 — 두 칸을 함께 비워 세 수단 조회로 돌아간다(판정 21).
+    func clearJourneyStations() {
+        boardStation = nil
+        alightStation = nil
+        clearResults()
+    }
+
+    /// 최근 경로 복원(E70 §5.3) — 두 칸을 함께 정한다(없는 쪽은 비운다 — 이전 질의의 역이 딸려 가지 않게).
     func setJourneyStations(board: RecentStation?, alight: RecentStation?) {
-        journeyExpanded = true
         via = nil
         boardStation = board
         alightStation = alight
@@ -286,12 +280,9 @@ final class DirectionsModel {
     /// 받는다(현재 위치는 경유지가 될 수 없다 — 서버 spec §3).
     func setVia(_ endpoint: DirectionsEndpoint) {
         guard case .place = endpoint else { return }
-        // 경유지와 갈아탈 역은 함께 쓰지 않는다(E70 D14) — 경유지가 서면 역 칸을 접고 비운다.
-        if journeyExpanded {
-            journeyExpanded = false
-            boardStation = nil
-            alightStation = nil
-        }
+        // 경유지와 갈아탈 역은 함께 쓰지 않는다(E70 D14) — 경유지가 서면 역 칸을 비운다.
+        boardStation = nil
+        alightStation = nil
         via = endpoint
         recordRecent(endpoint, scope: .via)
         clearResults()
@@ -997,8 +988,9 @@ struct DirectionsTabView: View {
                     // (탭=재검색) + 삭제 버튼으로 바뀐다. 삭제는 자기를 누른 버튼을 없애므로
                     // 조회 버튼을 선점한다(헌장 §5). 도착지 확정 후 포커스는 종전대로 조회
                     // 버튼이다(선택 사항이 기본 흐름을 늘리면 안 된다 — 위원장 판정).
-                    // 택시로 갈아탈 역(E70, 실험판·ko 데이터 로케일 — D2). 펼치면 경유지 행이 사라진다(D14).
-                    if !model.journeyExpanded, let viaName = viaFieldName {
+                    // 자동차로 갈아탈 역(E70, 실험판·ko 데이터 로케일 — D2). 경유지와 역은 함께 쓰지 않아(D14) 아무것도
+                    // 없을 때만 둘을 고르는 메뉴 하나가 서고, 고른 쪽이 정해졌을 때만 그 칸이 생긴다(빈 칸 없음, 판정 28).
+                    if !showsStationFields, let viaName = viaFieldName {
                         Button { searchTarget = .via } label: {
                             bilingualLine(
                                 visible: "\(appLocalized("directions.via")), \(viaName.display)",
@@ -1009,48 +1001,54 @@ struct DirectionsTabView: View {
                             submitFocused = true
                             model.clearVia()
                         }
-                    } else if !model.journeyExpanded {
-                        Button(appLocalized("directions.addVia")) { searchTarget = .via }
-                            .accessibilityFocused($focusedEndpointField, equals: .via)
+                    } else if !showsStationFields {
+                        if journeyInputEnabled {
+                            // 항목은 검색 시트를 바로 연다. 취소하면 아무것도 바뀌지 않는다(칸은 확정 때만 생긴다).
+                            Menu(appLocalized("ios.journey.addMenu")) {
+                                Button(appLocalized("directions.addVia")) { searchTarget = .via }
+                                Button(appLocalized("ios.journey.addBoardStation")) { searchTarget = .boardStation }
+                                Button(appLocalized("ios.journey.addAlightStation")) { searchTarget = .alightStation }
+                            }
+                                .accessibilityFocused($focusedEndpointField, equals: .via)
+                        } else {
+                            Button(appLocalized("directions.addVia")) { searchTarget = .via }
+                                .accessibilityFocused($focusedEndpointField, equals: .via)
+                        }
                     }
-                    if AppConfig.experimentalJourneyEnabled, AppLanguage.dataLocale == "ko" {
-                        if model.journeyExpanded {
-                            // 채운 칸은 밀기 「삭제」(최근 기록 행과 같은 동작 이름 — 로터에도 선다). 두 칸이 다 비면 접고
-                            // 펼침 버튼으로 돌아간다(판정 15·D14 — 역 지정 없는 조회로 돌아오는 길). 두 칸 아래 보이는
-                            // 「갈아탈 역 지우기」는 두 칸을 함께 비우고 접는다(E70 열린 판정 3).
+                    if showsStationFields {
+                        // 채운 칸은 버튼 = 재검색, 밀기 「삭제」(최근 기록 행과 같은 동작 이름 — 로터에도 선다).
+                        if model.boardStation != nil {
                             Button { searchTarget = .boardStation } label: {
                                 Text(stationFieldText(.boardStation))
                             }
                                 .accessibilityFocused($focusedEndpointField, equals: .boardStation)
                                 .swipeActions {
-                                    if model.boardStation != nil {
-                                        Button(appLocalized("recent.delete"), role: .destructive) {
-                                            clearStationField(board: true)
-                                        }
+                                    Button(appLocalized("recent.delete"), role: .destructive) {
+                                        clearStationField(board: true)
                                     }
                                 }
+                        }
+                        if model.alightStation != nil {
                             Button { searchTarget = .alightStation } label: {
                                 Text(stationFieldText(.alightStation))
                             }
                                 .accessibilityFocused($focusedEndpointField, equals: .alightStation)
                                 .swipeActions {
-                                    if model.alightStation != nil {
-                                        Button(appLocalized("recent.delete"), role: .destructive) {
-                                            clearStationField(board: false)
-                                        }
+                                    Button(appLocalized("recent.delete"), role: .destructive) {
+                                        clearStationField(board: false)
                                     }
                                 }
-                            // 누르면 두 칸과 자기가 사라진다 — 조회 버튼으로 커서를 선점한다(경유지 삭제 동형, 헌장 §5).
-                            Button(appLocalized("ios.journey.clearStations")) {
-                                submitFocused = true
-                                model.setJourneyExpanded(false)
-                            }
-                        } else {
-                            // 누르면 자기가 사라지는 버튼이라 첫 칸으로 커서를 선점 이동한다(헌장 §5).
-                            Button(appLocalized("ios.journey.toggle")) {
-                                model.setJourneyExpanded(true)
-                                landStationField()
-                            }
+                        }
+                        // 남은 쪽은 항목 하나라 메뉴가 아니라 일반 버튼이다. 둘 다 정해지면 없다.
+                        if model.boardStation == nil {
+                            Button(appLocalized("ios.journey.addBoardStation")) { searchTarget = .boardStation }
+                        } else if model.alightStation == nil {
+                            Button(appLocalized("ios.journey.addAlightStation")) { searchTarget = .alightStation }
+                        }
+                        // 누르면 칸들과 자기가 사라진다 — 조회 버튼으로 커서를 선점한다(경유지 삭제 동형, 헌장 §5).
+                        Button(appLocalized("ios.journey.clearStations")) {
+                            submitFocused = true
+                            model.clearJourneyStations()
                         }
                     }
                     Button(submitText) { model.runQuery() }
@@ -1414,12 +1412,12 @@ struct DirectionsTabView: View {
         } else {
             model.clearVia()
         }
-        // 여정(E70 §5.3): 역이 있으면 칸을 채우고 펼친 채 조회, 없으면 접는다(이전 질의의 역이 딸려 가지 않는다).
+        // 여정(E70 §5.3): 역이 있으면 칸을 채워 조회, 없으면 비운다(이전 질의의 역이 딸려 가지 않는다).
         if AppConfig.experimentalJourneyEnabled, AppLanguage.dataLocale == "ko",
            route.boardStation != nil || route.alightStation != nil {
             model.setJourneyStations(board: route.boardStation, alight: route.alightStation)
-        } else if model.journeyExpanded {
-            model.setJourneyExpanded(false)
+        } else if model.hasJourneyStations {
+            model.clearJourneyStations()
         }
         model.runQuery()
     }
@@ -1492,7 +1490,7 @@ struct DirectionsTabView: View {
     }
 
     /// 웹 `focusAfterResolve` 계약의 iOS 판: 출발지를 고르면 도착지 입력으로,
-    /// 도착지·경유지를 고르면 조회 버튼으로 보낸다(셋 다 "다음에 할 일"이다).
+    /// 도착지·경유지를 고르면 조회 버튼으로 보낸다(셋 다 "다음에 할 일"이다). 갈아탈 역은 새로 생긴 그 칸으로 보낸다(E70).
     ///
     /// 지연·재시도는 채팅(`ChatConversationView`)의 검증된 패턴을 따른다. 시트 dismiss
     /// 애니메이션이 끝나며 시스템이 포커스를 되돌리므로, 그보다 늦게 대입해야 이긴다.
@@ -1504,7 +1502,7 @@ struct DirectionsTabView: View {
             // 먹지 않았으면 1회만 재시도(무한 재대입은 커서를 붙잡아 되레 방해가 된다).
             let landed = switch target {
             case .from: focusedEndpointField == .to
-            case .boardStation: focusedEndpointField == .alightStation
+            case .boardStation, .alightStation: focusedEndpointField == target
             default: submitFocused
             }
             guard !landed else { return }
@@ -1607,8 +1605,9 @@ struct DirectionsTabView: View {
     private func applyResolvedFocus(_ target: DirectionsFieldTarget) {
         if target == .from {
             focusedEndpointField = .to
-        } else if target == .boardStation {
-            focusedEndpointField = .alightStation
+        } else if target == .boardStation || target == .alightStation {
+            // 역이 정해지면 그 칸이 새로 생긴다(빈 칸 없음) — 메뉴·추가 버튼은 사라졌으니 새 칸에 착지한다.
+            focusedEndpointField = target
         } else {
             focusedEndpointField = nil
             submitFocused = true
@@ -1654,7 +1653,15 @@ struct DirectionsTabView: View {
         return roman
     }
 
-    /// 역 칸 한 줄 = 한 객체(E70): 비면 칸 이름이 곧 버튼 이름, 채우면 "칸 이름, 역 이름".
+    /// 갈아탈 역 입력이 서는 조건(E70 실험판·ko 데이터 로케일 — D2, 조회가 여정으로 가는 조건과 같다).
+    private var journeyInputEnabled: Bool {
+        AppConfig.experimentalJourneyEnabled && AppLanguage.dataLocale == "ko"
+    }
+
+    /// 역 칸이 보이는가 — 칸은 역이 정해졌을 때만 있다(빈 칸 없음). 이때 경유지 행·입력 메뉴는 없다(D14).
+    private var showsStationFields: Bool { journeyInputEnabled && model.hasJourneyStations }
+
+    /// 역 칸 한 줄 = 한 객체(E70): "칸 이름, 역 이름". 칸은 역이 정해졌을 때만 그려진다.
     private func stationFieldText(_ target: DirectionsFieldTarget) -> String {
         // 키는 호출마다 리터럴로 쓴다 — 삼항을 호출 안에 넣으면 카탈로그 키 린터가 참조로 세지 못한다.
         if target == .boardStation {
@@ -1663,24 +1670,18 @@ struct DirectionsTabView: View {
         return joinText(appLocalized("ios.journey.alightField"), model.alightStation?.label)
     }
 
-    /// 역 칸 비우기. 둘 다 비면 접어서 펼침 버튼으로 돌아가고 조회 버튼으로 커서를 선점한다(칸이 사라지는 전이, 헌장 §5).
-    /// 한 칸만 비우면 칸이 남아 라벨 변화(역 이름이 빠진 칸 이름)가 곧 상태 신호다.
+    /// 역 칸 비우기(밀기 「삭제」). 비운 칸은 사라지므로 커서를 남는 요소로 선점한다(헌장 §5): 다른 칸이 남으면 그 칸,
+    /// 둘 다 비면 조회 버튼.
     private func clearStationField(board: Bool) {
-        model.clearJourneyStation(board: board)
-        if !model.hasJourneyStations {
+        let remaining: DirectionsFieldTarget? = board
+            ? (model.alightStation != nil ? .alightStation : nil)
+            : (model.boardStation != nil ? .boardStation : nil)
+        if let remaining {
+            focusedEndpointField = remaining
+        } else {
             submitFocused = true
-            model.setJourneyExpanded(false)
         }
-    }
-
-    /// 역 지정 버튼이 사라진 자리에서 첫 칸으로(지연·검증·1회 재시도 — `landFocusAfterResolve` 동형).
-    private func landStationField() {
-        Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(150))
-            focusedEndpointField = .boardStation
-            try? await Task.sleep(for: .milliseconds(600))
-            if focusedEndpointField != .boardStation { focusedEndpointField = .boardStation }
-        }
+        model.clearJourneyStation(board: board)
     }
 
     /// 필드 한 줄 = 한 객체: "출발지, 현재 위치"처럼 라벨+값 단일 텍스트(쉼표 결합).

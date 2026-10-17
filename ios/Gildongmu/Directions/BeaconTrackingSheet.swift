@@ -36,7 +36,7 @@ struct BeaconTrackingSheet: View {
     let onWaypointCommitted: (DirectionsEndpoint) -> Void
     /// 자동차 도착 종료 화면의 도보 인계(K2 §6.4, 위원장 판정 ④). nil이면 버튼이 없다.
     let onCarWalkHandoff: (() -> Void)?
-    /// 여정(E70 §6.3) 단계 버튼 — 택시 단계 「택시에서 내렸어요」, 출구 도보 「택시에 탔어요」. 그 단계 동안 늘 있다.
+    /// 여정(E70 §6.3) 단계 버튼 — 택시 단계 「자동차에서 내렸어요」, 출구 도보 「자동차에 탔어요」. 그 단계 동안 늘 있다.
     /// 여정이 아니거나 다른 단계면 nil(버튼 없음). 자동 판정과 먼저 오는 쪽이 다음 단계를 연다.
     let journeyButton: (label: String, action: () -> Void)?
 

@@ -66,7 +66,7 @@ public struct RecentRoute: Codable, Equatable, Hashable, Sendable {
     /// 경유지(N4). 웹 `RecentRoute.via` 미러 — 동일 판정·정체성에 포함된다(C를 경유하는
     /// 경로와 안 하는 경로는 다른 경로다). 경유지는 장소뿐이라 nil = 경유지 없음.
     public let via: RecentEndpoint?
-    /// 택시로 갈아탈 역(E70). 둘 다 nil이면 일반 세 수단 조회 경로다. 동일 판정·정체성에 포함된다.
+    /// 자동차로 갈아탈 역(E70). 둘 다 nil이면 일반 세 수단 조회 경로다. 동일 판정·정체성에 포함된다.
     /// ⚠ 생성 인자에 기본값을 두지 않는다 — 고정 토글·재기록이 이 둘을 빠뜨리면 역 지정이 조용히 사라진다.
     public let boardStation: RecentStation?
     public let alightStation: RecentStation?
