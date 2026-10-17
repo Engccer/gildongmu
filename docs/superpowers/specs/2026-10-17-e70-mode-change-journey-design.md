@@ -1,6 +1,6 @@
 # E70 첫 판: 역에서 수단을 바꾸는 여정 (택시 → 대중교통 → 택시) 설계
 
-- 상태: **설계 확정**(2026-10-17, 적대적 설계 리뷰 2회 BLOCKER 잔여 0, 빌더 점검 반영 §13.3). 코드 구현 없음 — 다음 세션은 writing-plans부터.
+- 상태: **첫 판 구현 완료**(2026-10-17, iOS 실험판 — 구현 계획 `docs/superpowers/plans/2026-10-17-e70-journey-impl-plan.md`). 설계 확정은 같은 날(적대적 설계 리뷰 2회 BLOCKER 잔여 0, 빌더 점검 반영 §13.3).
 - 판정 정본: `docs/BACKLOG.md` E70(위원장 판정 1~11 + 이 spec의 판정 12~16). 조사: `docs/research/RESEARCH-2026-10-17-e70-taxi-exit-probe.md`(출구 실측), `docs/research/RESEARCH-2026-10-17-e70-maasrp-probe.md`(`maasRP`·지정 역 경로 실측).
 - 범위: **iOS 실험판 전용**(판정 5). 서버는 옵트인 새 라우트 하나만 더하고 기존 `/api/route/*` 응답은 바이트 동일. 웹 UI·안드로이드·en은 첫 판 밖(§10).
 - **설계 리뷰 판정: 해당.** 새 상태 머신(여정 단계 인계), 새 판정 계층(지정 역 경로·출구 선정), 새 외부 통합 계약(카카오 지하철출구 번호별 검색, Tmap 후보별 호출 예산)을 담는다. codex 적대적 설계 리뷰 결과는 §13.
@@ -48,6 +48,8 @@
 
 17. **하차 쪽만 다르고 추천 경로가 버스로 끝나면 제목은 「{정류장}에서 버스에서 내리는 추천 경로」**(2026-10-17, 빌더 점검 뒤 문답).
 
+18. **하차 역만 정했을 때 지정 역 경로의 제목은 「{station}역에서 내리는 경로」**(2026-10-17, 구현 세션 판정 요청 — 확정 문안에 그 줄이 없었다. 「{station}역에서 내리는 경로를 찾지 못했습니다.」와 같은 짜임).
+
 예문의 숫자·역은 설명용이다. 위 예문은 확정본 문장으로 맞춰 적었고, 화면 문장의 정본은 §8.4 문안 표다(위원장 문안 왕복 2026-10-17 확정).
 
 ### 3.2 지정 역 경로 불변식 (판정 7의 계약)
@@ -94,7 +96,7 @@
 1. **대중교통 후보 전체**: 출발점 = A 좌표(A 지정) 또는 `from`, 도착점 = B 좌표(B 지정) 또는 `to`. `getTransitRoute`의 정규화·강등까지(선정 전 `ranked`)를 돌려주는 새 진입점 `getTransitCandidates`(같은 `fetchOdsay`·`revalidate: 3600`, `includeStops: true` — 실시간 안내가 정차역을 쓴다). 기존 `getTransitRoute`는 이 함수 + 선정·라벨로 다시 쓰고 바이트 동일을 테스트로 잠근다.
 2. **지정 역 판정**: `ranked`에서 §3.2 술어를 통과하는 첫 경로 = `designated`. 없으면 `SearchPathType=1`(지하철만, 기존 `modeAxis: "subwayOnly"` 경로) 전체 후보에서 한 번 더. 그래도 없으면 `designated = null`.
 3. **추천**: 기존 선정의 1순위(`selectTransitRoutes(ranked)[0]`) = `recommended`. `designated`와 `routeKey`가 같으면 변형 하나(판정 13).
-4. **자르기(D3)**: 각 변형의 legs에서 A 지정 시 첫 탈것 앞 도보를, B 지정 시 마지막 탈것 뒤 도보를 떼어 낸다. 합계는 **원래 합계에서 떼어 낸 도보의 분만 뺀다**(`totalMinutes − 뗀 도보 분`, `walkMinutes − 뗀 도보 분`) — 남은 legs로 다시 더하지 않는다. `toTransitRoute`가 거리 0인 역내 환승 도보를 legs에서 이미 빼고 그 시간은 `summary.walkMinutes`·`totalTime`에만 남겨 두므로(`odsay.ts` 정규화), 다시 더하면 환승 통로 시간이 사라진다. 요금은 ODsay `payment` 그대로. 테스트: 거리 0·시간 양수 환승 통로가 있는 경로에서 총시간·도보시간 보존.
+4. **자르기(D3)**: 각 변형의 legs에서 A 지정 시 첫 탈것 앞 도보를, B 지정 시 마지막 탈것 뒤 도보를 떼어 낸다. 합계는 **원래 합계에서 떼어 낸 도보의 분만 뺀다**(`totalMinutes − 뗀 도보 분`, `walkMinutes − 뗀 도보 분`) — 남은 legs로 다시 더하지 않는다. `toTransitRoute`가 거리 0인 역내 환승 도보를 legs에서 이미 빼고 그 시간은 `summary.walkMinutes`·`totalTime`에만 남겨 두므로(`odsay.ts` 정규화), 다시 더하면 환승 통로 시간이 사라진다. 요금은 ODsay `payment` 그대로. 택시가 대신하는 쪽 끝 탈것의 ODsay 출구 번호(`exit.board`/`exit.alight`)는 뗀다 — ODsay가 지정 역 좌표로 고른 출구라 하차 줄 「8번 출구 방면」과 출구 선택 줄 「2번 출구로 나가 …」가 어긋난다(구현 리뷰, 실호출 저장본 실측). 테스트: 거리 0·시간 양수 환승 통로가 있는 경로에서 총시간·도보시간 보존.
 5. **택시 앞 구간**(A 지정 시, 변형마다): `from` → 첫 탈것 승차 지점(D4). `getCarRoute`(Tmap ko, 실패 시 카카오 폴백 — 폴백 응답은 `provider: "kakao"`라 안내 불가 표시). 두 변형의 승차 지점이 같으면 한 번만 부른다.
 6. **출구 후보**(B 지정 시, 변형마다, 마지막 탈것이 지하철·철도일 때만): §4.4.
 7. **택시 뒤 구간**: 선택 후보(기본 = 택시 시간 최단 출구, 승강장은 별도 후보)마다 후보 좌표 → `to`. §4.5 예산 안에서.
@@ -176,7 +178,8 @@ interface EgressOption {
 ### 5.1 입력 (판정 15)
 
 - 경유지 행 다음에 버튼 「택시로 갈아탈 역 정하기」. 누르면 두 칸 「택시에서 내려 지하철 타는 역」·「지하철에서 내려 택시 타는 역」이 나오고 포커스는 첫 칸으로. 칸 검색은 기존 끝점 검색 시트(`DirectionsEndpointSearchView`, 대상 `DirectionsFieldTarget`에 `.boardStation`·`.alightStation` 추가).
-- 역만 받는다: 고른 장소가 `stationLayoutKind`(Kit `StationPhone.swift`) `subway`/`rail`이 아니면 칸에 넣지 않고 polite 통지 「역을 골라 주세요.」. 노선 힌트는 장소 이름 꼬리(`parseStationQuery`의 Kit 대응) 또는 카테고리 마지막 조각.
+- 역만 받는다: 고른 장소가 `stationLayoutKind`(Kit `StationPhone.swift`) `subway`/`rail`이 아니면 칸에 넣지 않고 통지 「역을 골라 주세요.」(`.high` + 주의 진동 — 화면 변화 없는 활성화 응답이라 저장소 통지 우선순위 판별선을 따른다). 역 칸 검색은 주소 후보를 담지 않는다(건수·0건이 보이는 후보 기준).
+- 채운 칸은 밀기 「삭제」(최근 기록 행과 같은 동작 이름)로 비운다. 두 칸이 다 비면 접혀 펼침 버튼으로 돌아가고 커서는 조회 버튼으로 간다(D12 "세 수단이 필요하면 역 칸을 비운다"의 길). 노선 힌트는 장소 이름 꼬리(`parseStationQuery`의 Kit 대응) 또는 카테고리 마지막 조각.
 - 검색 시트의 반환(빌더 점검 5): 지금 시트는 끝점(`DirectionsEndpoint` — 이름·좌표·로마자)만 돌려주고 분류를 넘기지 않는다. 역 칸 둘은 **역 칸 전용 결과**(`Place` 그대로 — 분류 포함)를 받는 별도 콜백으로 연다. `DirectionsEndpoint`(Kit 공유 타입·최근 기록 저장 포맷)는 넓히지 않는다. 역 칸의 시트에는 최근 끝점 목록을 보이지 않는다(분류가 없어 역인지 알 수 없다) — 반복 여정은 최근 경로(§5.3)가 통째로 복원한다.
 - 두 칸이 다 비면 지금과 같은 세 수단 조회. 하나라도 있으면 여정 조회(D12). 펼친 상태에서 경유지 행은 사라진다(D14).
 - 봉인: 버튼과 두 칸은 `AppConfig.experimentalJourneyEnabled`(`#if EXPERIMENTAL`) 안에만.
@@ -191,7 +194,9 @@ interface EgressOption {
 4. 구간 줄: 「택시로 아현역까지 8분, 약 7,800원」 → 기존 대중교통 구간 줄들(`legBoard` 등, 앞뒤 도보 없음) → 출구 선택(승강장이 있으면 두 줄 버튼, 없으면 한 줄 「1번 출구로 나가 택시로 13분, 약 7,800원」).
 5. [안내 시작] 버튼(선택된 변형·출구로).
 
-포커스: 조회 완료 시 기존 규칙(첫 성공 수단 heading으로 1회)과 같은 자리 하나 — 변형이 둘이면 첫 변형 heading, 아니면 합계 줄.
+포커스: 조회 완료 시 옮기지 않는다 — 이 화면의 현행 규칙(위원장 판정 2026-08-02: 조회 버튼에 머물고 다음 스와이프가 상태 → 결과로 잇는다). 여정을 찾으면 최근 경로 목록은 숨긴다(결과 앞에 끼지 않게).
+
+heading 구조(구현 접근성 감사): 변형이 둘이면 선택 버튼 둘은 선택 trait + 시각 체크만 갖고, heading은 **고른 변형의 제목 한 줄**에만 둔다 — 선택 버튼에 heading을 달면 고르지 않은 변형 제목 아래에 고른 변형의 합계가 이어진다.
 
 ### 5.3 저장·복원 (D13)
 
@@ -224,7 +229,7 @@ interface EgressOption {
 | `.startFailed` | `failed(at: .taxiIn)` | → transit(prewalk 선례) | `failed(at: .egress)` |
 | `.ended`(진행 중 끊김: 위치 권한 철회·정밀 위치 꺼짐 `stopAndFail`, 잊힌 세션 안전망 등) | `failed(at: .taxiIn, cause:)` | → transit(역 근처라 대중교통 세션이 이어받는다) | `failed(at: .egress, cause:)` |
 
-- `cause`는 그 모델이 이미 낸 실패 문장 키와 해결 수단(`stopAndFail`의 `key`·`FailResolution` — `.settings`·`.precise`)이다. `BeaconModel`이 마지막 실패를 `lastFailure`로 남기고 `onSessionEnd` 콜백 시점에 코디네이터가 읽는다. `.journey` 시트는 그 문장을 상태 줄로 쓰고(새 문장 없음) 해결 수단 버튼(기존 「설정 열기」류) + [다시 시도] + 단계 버튼(taxiIn이면 「택시에서 내렸어요」, egress면 「택시에 탔어요」) + [안내 종료]를 둔다. 통지는 그 모델이 이미 했으므로 다시 하지 않는다.
+- `cause`(`.ended`와 `.startFailed` 둘 다 — 시작 실패의 흔한 원인도 권한·정밀 위치다, 구현 리뷰)는 그 모델이 이미 낸 실패 문장 키와 해결 수단(`stopAndFail`의 `key`·`FailResolution` — `.settings`·`.precise`)이다. `BeaconModel`이 마지막 실패를 `lastFailure`로 남기고 `onSessionEnd` 콜백 시점에 코디네이터가 읽는다. `.journey` 시트는 그 문장을 상태 줄로 쓰고(새 문장 없음) 해결 수단 버튼(기존 「설정 열기」류) + [다시 시도] + 단계 버튼(taxiIn이면 「택시에서 내렸어요」, egress면 「택시에 탔어요」) + [안내 종료]를 둔다. 통지는 그 모델이 이미 했으므로 다시 하지 않는다.
 - `transitStopped`(대중교통 시트의 「안내 종료」·그 밖의 `stop()`): 여정 전체 종료. `TransitGuideModel.stop()`이 `.done` 갈래가 아닌 경로로 불렸을 때 `onJourneyStopped`를 한 번 부른다.
 - taxiOut은 chained가 아니다(여정의 마지막 세션 — 일반 자동차 종료 화면을 남기고, 끝나면 여정 상태를 지운다).
 
@@ -270,7 +275,9 @@ interface EgressOption {
 
 **택시 → 대중교통**: 자동차 확정 도착(D5)에서 지금은 종료 화면 + 「걸어서 안내」(`acceptCarWalkHandoff`)가 뜬다. 여정 `taxiIn`이면 종료 화면을 만들지 않고(`arrivalDest`를 세우지 않는다) `advanceJourney(.taxiArrived)`. 「택시에서 내렸어요」는 `taxiIn` 동안 시트에 늘 있다(`.taxiDropped`). 둘 다 같은 seq를 실어 먼저 온 쪽만 전이한다.
 
-**egress → taxiOut**: 출구 도착(도보 최종 접근) 또는 「택시에 탔어요」(egress 동안 시트에 늘 있음) → `transitioning(to: .taxiOut)`에서 force 측위(나이 상한 기존 길찾기 3분) → 그 좌표를 출발로 자동차 세션 시작(`kind: .car`, `listener: .passenger`). 경로 조회는 세션이 스스로 한다(아래 "택시 세션의 경로").
+**egress → taxiOut**: 출구 도착(도보 최종 접근) 또는 「택시에 탔어요」(egress 동안 시트에 늘 있음) → `transitioning(to: .taxiOut)` → 600ms 뒤 자동차 세션 시작(`kind: .car`, `listener: .passenger`). 경로 조회·출발 좌표는 세션이 첫 fix로 스스로 정하므로(아래 "택시 세션의 경로") 사전 측위를 하지 않는다 — 측위 실패는 그 세션의 `.startFailed`로 온다(구현에서 두 절의 모순을 이 쪽으로 정리). 접근 도보 판정(D6)의 위치는 캐시 우선(`currentCoordinate(force: false)`)이다 — 택시가 막 확정 도착했으면 정확도 30m 안 fix가 있고, 잠금 화면에서 새 측위를 걸면 다음 단계가 말없이 늦는다. 측위 실패면 접근 도보를 시작한다.
+
+**접근 도보의 도착 선언**: 접근 도보는 승차 전 도보(A25)와 같은 자리라 같은 「{역} 도착」 선언 버튼과 도착 문장 「승차역 {역}에 도착했습니다.」를 쓴다(`markPrewalk` 병행 — 지하로 먼저 들어가 도착 판정이 닿지 않으면 시트의 유일한 버튼이 여정 전체 종료가 된다, 구현 리뷰). 택시 자동 도착 문장 「{역}역에 도착했습니다.」는 승차 지점이 버스 정류장이면 쓰지 않는다(정류장 문장은 판정 대기).
 
 **택시 세션의 경로**(빌더 점검 2): 자동차 세션은 `StartRequest`로 경로를 받지 않고 첫 fix에서 `/api/route/car`를 스스로 부른다(`BeaconModel.fetchDetailData`). 여정은 이 시작 경로를 바꾸지 않는다(정식판 자동차 시작 회귀 0) — 서버 여정 응답의 택시 브리핑은 결과 화면 표시·출구 선정에만 쓰고 세션에 넘기지 않으며, 시작 전 별도 조회·검사도 하지 않는다(버려지는 Tmap 호출 0). 세션 안 조회가 카카오 폴백·기하 실패로 끝나면 지금처럼 직선거리 간략 모드로 계속한다: 택시 승객에게 필요한 것은 회전 안내가 아니라 남은 거리와 도착 판정이고, 확정 도착(`carArrivalStep`)은 거리만으로 선다. 그래서 여정의 택시 단계에서 간략 모드는 실패가 아니다.
 
@@ -290,7 +297,8 @@ interface EgressOption {
 | 사이 상태 30초 초과(복귀 시) | 준비 작업이 끝나지 않음 | 그 단계의 `failed`로 |
 | 어느 단계든 | 「안내 종료」 | 여정 전체 종료(D11), 보관 `Task` 취소, 다음 단계 없음 |
 
-- 대중교통 단계 시작에는 실패 갈래가 없다: 거부할 수 있는 것은 모델 입구 가드(`GuideSession.shared.isActive`)뿐이고 `startJourneyStage`가 그 조건(단계 세션 부재)을 먼저 확인한다. 이 불변식은 테스트로 잠근다.
+- 대중교통 단계 시작에는 실패 갈래가 없다: 거부할 수 있는 것은 모델 입구 가드(`GuideSession.shared.isActive`)뿐이고 `startJourneyStage`가 그 조건(단계 세션 부재)을 먼저 확인한다. 이 불변식은 테스트로 잠근다. 그래도 깨지면(지금 token인데 단계 세션이 돎·계획 누락) 침묵 종료가 아니라 `.stageEnded(.startFailed)`로 넘긴다.
+- [다시 시도]는 기존 키 「경로 다시 조회」(`guide.rerouteButton`)다 — 저장소에 「다시 시도」 키가 없다. 대중교통 단계 준비가 복귀 시 30초를 넘겨 `failed(.transit)`이 되면 상태 문장은 「경로를 불러오지 못했습니다.」(`route.transit.error`), 30초 초과 실패는 한 번 통지한다(어느 모델도 말하지 않은 실패라 최소화 중에도 들리게). access 준비 실패·30초 초과는 대중교통으로 넘어간다(Kit `journeyStep`).
 
 ## 7. 실험판 게이트와 정식판 불변
 
@@ -324,6 +332,7 @@ interface EgressOption {
 | `journey.alightField` | 지하철에서 내려 택시 타는 역 | 입력 칸(역 B) |
 | `journey.notStation` | 역을 골라 주세요. | 통지 |
 | `journey.designatedHeading` | {station}역에서 타는 경로 | 변형 heading |
+| `journey.designatedHeadingAlight` | {station}역에서 내리는 경로 | 변형 heading(하차 역만 지정, 판정 18) |
 | `journey.recommendedHeading` | {station}역에서 타는 추천 경로 | 변형 heading(승차 쪽이 다를 때) |
 | `journey.recommendedHeadingBus` | {stop}에서 버스를 타는 추천 경로 | 변형 heading(추천이 버스로 시작) |
 | `journey.recommendedHeadingAlight` | {station}역에서 내리는 추천 경로 | 변형 heading(하차 쪽만 다를 때) |
@@ -429,3 +438,16 @@ interface EgressOption {
 | 4 | 문안 표에 없는 문장(양쪽 못 찾음, 버스로 끝나는 하차 쪽 추천, 대중교통 시작 실패) | 양쪽 못 찾음은 기존 두 문장. 버스 하차 제목은 **위원장 판정 17**. 대중교통 시작 실패는 도달 불가로 표에서 지우고 불변식 테스트로(§6.4) |
 | 5 | 끝점 검색 시트가 분류를 넘기지 않아 역 판정·노선 힌트를 칸에서 못 한다 | 설계 결정: 역 칸 전용 결과(`Place`) 콜백, `DirectionsEndpoint` 불변, 역 칸 시트엔 최근 끝점 없음(§5.1) |
 | 6 | 자동차와 같은 IP 버킷이면 1분 안 재조회·조회 직후 안내 시작이 스스로 429 | 설계 결정: 여정 전용 버킷(호출 수, 60초 16회)으로 되돌리고, 공유 쿼터 보호는 인스턴스 일 상한이 맡는다(§4.5-3·4). 1회차 M2의 "같은 버킷" 처리를 이 근거로 바꿨다 — 예약 단위가 호출 수라는 것과 예약 밖 호출 0은 그대로 |
+
+## 14. 구현 기록 (2026-10-17, 세션 e70-impl)
+
+계획 `docs/superpowers/plans/2026-10-17-e70-journey-impl-plan.md`. 위 절의 문장은 구현에서 정한 차이를 이미 반영했다(§4.2-4 출구 번호, §5.1 통지·삭제, §5.2 포커스·heading, §6.1 cause, §6.3 측위·도착 선언, §6.4 재시도·대중교통 실패). 그 밖의 구현 결정:
+
+- 좌표 파라미터는 형제 경로 라우트의 `"위도,경도"` 쌍(`origin`·`dest`·`board`·`alight`, `coordSchema`)이다(§4.1의 lat/lng 분리 표기 대신).
+- 정류 좌표는 ODsay `startX/Y`·`endX/Y` 대신 같은 값인 `stops[0]`/`stops[끝]`(`includeStops` 필수) — 기존 `TransitLeg` 응답을 바꾸지 않는다.
+- 지하철만 재조회 후보는 routeKey 접두가 `s`라 "지정 역 경로 = 추천"을 탈것 구성으로 가른다.
+- 카카오 출구 질의 이름은 괄호 부기까지 뗀 `exitQueryStationName`(표시 이름 `displayStationName`과 분리), 출구 이름 속 맨 노선 토큰은 비수도권 하차 노선과 코어로 비교, 카카오 출구 조회 실패 그룹은 승강장을 싣지 않는다(§4.5-7).
+- 일 상한이 이미 소진됐으면 ODsay·카카오 전에 503. 빈 노선 힌트는 부재.
+- `EgressOption.placeName`(카카오 POI 원문) — 출구 도보의 목적지 라벨(D8).
+
+**검증**: 서버·Kit·앱 웹 레인(vitest 전체·tsc·lint), Kit `swift test` 전체, 앱 두 구성 빌드. 실호출: ODsay 3건(라우트 A만·B만·둘 다), 카카오 약 260건·Tmap 약 64건(게이트 + 라우트). 예선 게이트(역 11곳, 비교 7그룹) 놓침 0, 측정 불가 0, 운영 감축 폭 k=2 놓침 1(BACKLOG E70 편승). 같은 역 반경: 같은 이름·다른 노선 정류 45쌍(복합체 최대 427m < 500 ≤ 신촌 705m)을 fixture로 잠금. 리뷰: 서버·Kit spec 준수·코드 품질(opus) 각 MAJOR 3, 앱 spec 준수·코드 품질(opus) 각 MAJOR 4, 접근성 감사(opus) BLOCKER 1·MAJOR 10 — 새 문안이 필요한 것 외 전부 반영, 문안 판정 요청 7건(구현 보고 디렉터리 `judgment-*`, 판정 18은 채택 반영). 보고 원본은 저장소 밖 `~/gildongmu-wt/e70-impl-reports/`.
