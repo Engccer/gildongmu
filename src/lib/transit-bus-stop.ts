@@ -187,6 +187,66 @@ export function busStopStep(
   return result({ ...next, pendingIndex: null, behindSince: since }, "behind");
 }
 
+/** 하차 정류장 도착 한 마디(A69)의 fix 정확도 상한(m) — 알림 전용. 2026-10-18 실승차 `busFix`는 대부분 14~34m. ⚠ 잠정값. */
+export const BUS_ALIGHT_NOTICE_MAX_ACCURACY_M = 35;
+/** 적격 fix 두 건 사이 최대 간격(ms) — 넘으면 연속이 아니다. ⚠ 잠정값. */
+export const BUS_ALIGHT_NOTICE_MAX_GAP_MS = 10_000;
+
+/**
+ * 하차 정류장 도착 한 마디(A69 판정 ②, spec `2026-10-19-bus-alight-next-stop-design.md` §2)의 구간 기록.
+ *
+ * ⚠ 표시용 래치를 하차 명령으로 승격하지 않는다(설계 리뷰 H3): 래치의 "연속 두 관측"은 사이에 낀 부적격 fix와 긴
+ * 공백을 넘어 이어지는 표시용 완화다. 이 문장의 실패 방향은 "너무 이르게"라 따로 센다.
+ * `reached`(관측 이력 — 늦은 「다음 정류장」을 거른다)와 `announced`(전달 장부 — 버려지면 앱이 되돌린다)를 가른다(H4).
+ */
+export interface TransitBusAlightNotice {
+  legIndex: number;
+  /** 하차 정류장 반경 안 적격 fix의 연속 수. */
+  streak: number;
+  /** 마지막 적격 fix 시각(ms) — 연속이 끊기면 null. */
+  lastAt: number | null;
+  reached: boolean;
+  announced: boolean;
+}
+
+export interface TransitBusAlightNoticeStepResult {
+  notice: TransitBusAlightNotice;
+  speak: boolean;
+}
+
+/**
+ * fix 한 건(이미 `busStopStep`을 거친 결과)으로 구간 기록을 전진한다. 적격 fix = 최근접이 하차 정류장(경유 목록의
+ * 마지막)이고 추적기 판정이 `pending`·`observed`(정확도·나이·노선 밖·모호·하차 반경 50m를 통과) ∧ 정확도 ≤ 35m.
+ * 적격 fix가 10초 안에 두 번 이어지면 도착이다. 리듀서는 이 함수를 모르고, 결과는 통지만 낸다(표시 전용 계약의
+ * 의도된 예외 하나 — 판정서 2026-08-23 §3, 소스 가드 `transit-bus-stop-guard.test.ts`).
+ */
+export function busAlightNoticeStep(
+  prev: TransitBusAlightNotice | null,
+  state: BusStopState,
+  leg: TransitGuideLeg,
+  result: TransitBusStopStepResult,
+  fix: TransitDeviceFix,
+  now: number,
+): TransitBusAlightNoticeStepResult {
+  const same = prev != null && prev.legIndex === state.legIndex;
+  const base: TransitBusAlightNotice = same
+    ? { ...prev }
+    : { legIndex: state.legIndex, streak: 0, lastAt: null, reached: false, announced: false };
+  const qualifies =
+    busStopApplies(state, leg) &&
+    result.nearestIndex === leg.viaStops.length - 1 &&
+    (result.verdict === "pending" || result.verdict === "observed") &&
+    fix.accuracy <= BUS_ALIGHT_NOTICE_MAX_ACCURACY_M;
+  if (!qualifies) return { notice: { ...base, streak: 0, lastAt: null }, speak: false };
+  const streak = base.lastAt != null && now - base.lastAt <= BUS_ALIGHT_NOTICE_MAX_GAP_MS ? base.streak + 1 : 1;
+  const notice: TransitBusAlightNotice = { ...base, streak, lastAt: now };
+  if (streak < 2) return { notice, speak: false };
+  notice.reached = true;
+  if (notice.announced) return { notice, speak: false };
+  notice.announced = true;
+  return { notice, speak: true };
+}
+
 /** 표식 — 적용 조건·결박·보존 창 안일 때만. `now`가 관측보다 이르면(음수 경과) 보인다. */
 export function busStopMarkOf(
   state: BusStopState,

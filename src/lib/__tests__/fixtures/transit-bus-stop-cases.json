@@ -2766,6 +2766,529 @@
     "reboardOffered": false,
     "alternativesOffered": true
    }
+  },
+  {
+   "name": "A69 하차 정류장 적격 fix 첫 건은 침묵, 10초 안 두 번째가 말한다, 그 뒤는 침묵",
+   "fn": "alightNotice",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 3,
+    "signal": "tracking",
+    "lock": null,
+    "currentLocation": null
+   },
+   "tracker": null,
+   "notice": null,
+   "steps": [
+    {
+     "fix": {
+      "lat": 37.52,
+      "lng": 127.0,
+      "accuracy": 20,
+      "ageSeconds": 1
+     },
+     "now": 1000,
+     "expected": {
+      "speak": false,
+      "notice": {
+       "legIndex": 0,
+       "streak": 1,
+       "lastAt": 1000,
+       "reached": false,
+       "announced": false
+      }
+     }
+    },
+    {
+     "fix": {
+      "lat": 37.52,
+      "lng": 127.0,
+      "accuracy": 20,
+      "ageSeconds": 1
+     },
+     "now": 2000,
+     "expected": {
+      "speak": true,
+      "notice": {
+       "legIndex": 0,
+       "streak": 2,
+       "lastAt": 2000,
+       "reached": true,
+       "announced": true
+      }
+     }
+    },
+    {
+     "fix": {
+      "lat": 37.52,
+      "lng": 127.0,
+      "accuracy": 20,
+      "ageSeconds": 1
+     },
+     "now": 3000,
+     "expected": {
+      "speak": false,
+      "notice": {
+       "legIndex": 0,
+       "streak": 3,
+       "lastAt": 3000,
+       "reached": true,
+       "announced": true
+      }
+     }
+    }
+   ],
+   "expected": null
+  },
+  {
+   "name": "A69 부적격 fix(정확도 35m 초과)가 연속을 끊는다",
+   "fn": "alightNotice",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 3,
+    "signal": "tracking",
+    "lock": null,
+    "currentLocation": null
+   },
+   "tracker": null,
+   "notice": null,
+   "steps": [
+    {
+     "fix": {
+      "lat": 37.52,
+      "lng": 127.0,
+      "accuracy": 20,
+      "ageSeconds": 1
+     },
+     "now": 1000,
+     "expected": {
+      "speak": false,
+      "notice": {
+       "legIndex": 0,
+       "streak": 1,
+       "lastAt": 1000,
+       "reached": false,
+       "announced": false
+      }
+     }
+    },
+    {
+     "fix": {
+      "lat": 37.52,
+      "lng": 127.0,
+      "accuracy": 60,
+      "ageSeconds": 1
+     },
+     "now": 2000,
+     "expected": {
+      "speak": false,
+      "notice": {
+       "legIndex": 0,
+       "streak": 0,
+       "lastAt": null,
+       "reached": false,
+       "announced": false
+      }
+     }
+    },
+    {
+     "fix": {
+      "lat": 37.52,
+      "lng": 127.0,
+      "accuracy": 20,
+      "ageSeconds": 1
+     },
+     "now": 3000,
+     "expected": {
+      "speak": false,
+      "notice": {
+       "legIndex": 0,
+       "streak": 1,
+       "lastAt": 3000,
+       "reached": false,
+       "announced": false
+      }
+     }
+    }
+   ],
+   "expected": null
+  },
+  {
+   "name": "A69 10초 넘는 공백은 연속이 아니다",
+   "fn": "alightNotice",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 3,
+    "signal": "tracking",
+    "lock": null,
+    "currentLocation": null
+   },
+   "tracker": null,
+   "notice": null,
+   "steps": [
+    {
+     "fix": {
+      "lat": 37.52,
+      "lng": 127.0,
+      "accuracy": 20,
+      "ageSeconds": 1
+     },
+     "now": 1000,
+     "expected": {
+      "speak": false,
+      "notice": {
+       "legIndex": 0,
+       "streak": 1,
+       "lastAt": 1000,
+       "reached": false,
+       "announced": false
+      }
+     }
+    },
+    {
+     "fix": {
+      "lat": 37.52,
+      "lng": 127.0,
+      "accuracy": 20,
+      "ageSeconds": 1
+     },
+     "now": 11001,
+     "expected": {
+      "speak": false,
+      "notice": {
+       "legIndex": 0,
+       "streak": 1,
+       "lastAt": 11001,
+       "reached": false,
+       "announced": false
+      }
+     }
+    },
+    {
+     "fix": {
+      "lat": 37.52,
+      "lng": 127.0,
+      "accuracy": 20,
+      "ageSeconds": 1
+     },
+     "now": 12000,
+     "expected": {
+      "speak": true,
+      "notice": {
+       "legIndex": 0,
+       "streak": 2,
+       "lastAt": 12000,
+       "reached": true,
+       "announced": true
+      }
+     }
+    }
+   ],
+   "expected": null
+  },
+  {
+   "name": "A69 하차 정류장 50m 밖(approachingAlight)은 부적격",
+   "fn": "alightNotice",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 3,
+    "signal": "tracking",
+    "lock": null,
+    "currentLocation": null
+   },
+   "tracker": null,
+   "notice": null,
+   "steps": [
+    {
+     "fix": {
+      "lat": 37.5193,
+      "lng": 127.0,
+      "accuracy": 20,
+      "ageSeconds": 1
+     },
+     "now": 1000,
+     "expected": {
+      "speak": false,
+      "notice": {
+       "legIndex": 0,
+       "streak": 0,
+       "lastAt": null,
+       "reached": false,
+       "announced": false
+      }
+     }
+    },
+    {
+     "fix": {
+      "lat": 37.5193,
+      "lng": 127.0,
+      "accuracy": 20,
+      "ageSeconds": 1
+     },
+     "now": 2000,
+     "expected": {
+      "speak": false,
+      "notice": {
+       "legIndex": 0,
+       "streak": 0,
+       "lastAt": null,
+       "reached": false,
+       "announced": false
+      }
+     }
+    }
+   ],
+   "expected": null
+  },
+  {
+   "name": "A69 마지막이 아닌 정류장은 부적격",
+   "fn": "alightNotice",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 3,
+    "signal": "tracking",
+    "lock": null,
+    "currentLocation": null
+   },
+   "tracker": null,
+   "notice": null,
+   "steps": [
+    {
+     "fix": {
+      "lat": 37.516,
+      "lng": 127.0,
+      "accuracy": 20,
+      "ageSeconds": 1
+     },
+     "now": 1000,
+     "expected": {
+      "speak": false,
+      "notice": {
+       "legIndex": 0,
+       "streak": 0,
+       "lastAt": null,
+       "reached": false,
+       "announced": false
+      }
+     }
+    },
+    {
+     "fix": {
+      "lat": 37.516,
+      "lng": 127.0,
+      "accuracy": 20,
+      "ageSeconds": 1
+     },
+     "now": 2000,
+     "expected": {
+      "speak": false,
+      "notice": {
+       "legIndex": 0,
+       "streak": 0,
+       "lastAt": null,
+       "reached": false,
+       "announced": false
+      }
+     }
+    }
+   ],
+   "expected": null
+  },
+  {
+   "name": "A69 적용 밖(도착 추정)은 연속만 끊고 이력은 둔다, 같은 구간 재관측은 다시 말하지 않는다",
+   "fn": "alightNotice",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 3,
+    "signal": "tracking",
+    "lock": null,
+    "currentLocation": null
+   },
+   "tracker": null,
+   "notice": {
+    "legIndex": 0,
+    "streak": 3,
+    "lastAt": 4000,
+    "reached": true,
+    "announced": true
+   },
+   "steps": [
+    {
+     "fix": {
+      "lat": 37.52,
+      "lng": 127.0,
+      "accuracy": 20,
+      "ageSeconds": 1
+     },
+     "now": 5000,
+     "expected": {
+      "speak": false,
+      "notice": {
+       "legIndex": 0,
+       "streak": 0,
+       "lastAt": null,
+       "reached": true,
+       "announced": true
+      }
+     },
+     "state": {
+      "legIndex": 0,
+      "phase": "arrived",
+      "phaseGen": 3,
+      "signal": "tracking",
+      "lock": null,
+      "currentLocation": null
+     }
+    },
+    {
+     "fix": {
+      "lat": 37.52,
+      "lng": 127.0,
+      "accuracy": 20,
+      "ageSeconds": 1
+     },
+     "now": 6000,
+     "expected": {
+      "speak": false,
+      "notice": {
+       "legIndex": 0,
+       "streak": 1,
+       "lastAt": 6000,
+       "reached": true,
+       "announced": true
+      }
+     }
+    },
+    {
+     "fix": {
+      "lat": 37.52,
+      "lng": 127.0,
+      "accuracy": 20,
+      "ageSeconds": 1
+     },
+     "now": 7000,
+     "expected": {
+      "speak": false,
+      "notice": {
+       "legIndex": 0,
+       "streak": 2,
+       "lastAt": 7000,
+       "reached": true,
+       "announced": true
+      }
+     }
+    }
+   ],
+   "expected": null
+  },
+  {
+   "name": "A69 장부만 되돌려진(버려진) 구간은 다음 적격 fix가 다시 말한다",
+   "fn": "alightNotice",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 3,
+    "signal": "tracking",
+    "lock": null,
+    "currentLocation": null
+   },
+   "tracker": null,
+   "notice": {
+    "legIndex": 0,
+    "streak": 3,
+    "lastAt": 4000,
+    "reached": true,
+    "announced": false
+   },
+   "steps": [
+    {
+     "fix": {
+      "lat": 37.52,
+      "lng": 127.0,
+      "accuracy": 20,
+      "ageSeconds": 1
+     },
+     "now": 5000,
+     "expected": {
+      "speak": true,
+      "notice": {
+       "legIndex": 0,
+       "streak": 4,
+       "lastAt": 5000,
+       "reached": true,
+       "announced": true
+      }
+     }
+    }
+   ],
+   "expected": null
+  },
+  {
+   "name": "A69 다음 구간은 새 기록이다",
+   "fn": "alightNotice",
+   "state": {
+    "legIndex": 1,
+    "phase": "riding",
+    "phaseGen": 3,
+    "signal": "tracking",
+    "lock": null,
+    "currentLocation": null
+   },
+   "tracker": null,
+   "notice": {
+    "legIndex": 0,
+    "streak": 3,
+    "lastAt": 4000,
+    "reached": true,
+    "announced": true
+   },
+   "steps": [
+    {
+     "fix": {
+      "lat": 37.52,
+      "lng": 127.0,
+      "accuracy": 20,
+      "ageSeconds": 1
+     },
+     "now": 5000,
+     "expected": {
+      "speak": false,
+      "notice": {
+       "legIndex": 1,
+       "streak": 1,
+       "lastAt": 5000,
+       "reached": false,
+       "announced": false
+      }
+     }
+    },
+    {
+     "fix": {
+      "lat": 37.52,
+      "lng": 127.0,
+      "accuracy": 20,
+      "ageSeconds": 1
+     },
+     "now": 6000,
+     "expected": {
+      "speak": true,
+      "notice": {
+       "legIndex": 1,
+       "streak": 2,
+       "lastAt": 6000,
+       "reached": true,
+       "announced": true
+      }
+     }
+    }
+   ],
+   "expected": null
   }
  ]
 }

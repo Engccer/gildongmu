@@ -4,7 +4,9 @@ import {
   approachFrameLine,
   arrivalStatusLine,
   arrivedAtBoardStopLine,
+  arrivingAtAlightStopLine,
   arrivingAtBoardStopLine,
+  alightStopReachedLine,
   boardedAlightLine,
   boardedLine,
   boardingContextLine,
@@ -155,6 +157,16 @@ const CASES: {
     fn: boardedAlightLine, name: "boardedAlightLine(자동 승격 전용 하차역 조각)",
     run: (e) => boardedAlightLine(e, LEG),
     en: { parts: [{ key: "boardedAlight", args: ["Gwanghwamun"] }], lang: "en" },
+  },
+  {
+    fn: arrivingAtAlightStopLine, name: "arrivingAtAlightStopLine(A69 — 다음 정류장 이름)",
+    run: (e) => arrivingAtAlightStopLine(e, { ...LEG, mode: "bus" }),
+    en: { parts: [{ key: "arrivingAtAlightStop", args: ["Gwanghwamun"] }], lang: "en" },
+  },
+  {
+    fn: alightStopReachedLine, name: "alightStopReachedLine(A69 — GPS 도착 한 마디)",
+    run: (e) => alightStopReachedLine(e, { ...LEG, mode: "bus" }),
+    en: { parts: [{ key: "alightStopReached", args: ["Gwanghwamun"] }], lang: "en" },
   },
   {
     fn: currentStationLine, name: "currentStationLine",
@@ -399,6 +411,8 @@ function runFixtureCase(c: FixtureCase): TransitTextLine {
     case "arrivingAtBoardStop": return arrivingAtBoardStopLine(e, c.leg!);
     case "boarded": return boardedLine(e);
     case "boardedAlight": return boardedAlightLine(e, c.leg!);
+    case "arrivingAtAlightStop": return arrivingAtAlightStopLine(e, c.leg!);
+    case "alightStopReached": return alightStopReachedLine(e, c.leg!);
     case "currentStation": return currentStationLine(e, c.location!);
     case "candidateDesc":
       return candidateDescLine(e, c.leg!, c.item!, {

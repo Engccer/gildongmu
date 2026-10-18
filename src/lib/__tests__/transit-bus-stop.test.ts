@@ -4,11 +4,13 @@ import type { TransitGuideLeg, TransitGuideState } from "../transit-guide";
 import type { TransitOverview } from "../transit-progress-overview";
 import type { TransitRidingPosition } from "../transit-riding-position";
 import {
+  busAlightNoticeStep,
   busStopMarkOf,
   busStopStep,
   overviewApplyingBusStop,
   sameBusStopMark,
   viaStopHereIndexWithBusStop,
+  type TransitBusAlightNotice,
   type TransitBusStopMark,
   type TransitBusStopTracker,
   type TransitDeviceFix,
@@ -26,6 +28,8 @@ type Case = {
   position?: TransitRidingPosition | null;
   now?: number;
   overview?: TransitOverview;
+  notice?: TransitBusAlightNotice | null;
+  steps?: { fix: TransitDeviceFix; now: number; state?: Partial<TransitGuideState>; expected: unknown }[];
   expected: unknown;
 };
 
@@ -56,10 +60,23 @@ describe("transit-bus-stop (shared fixture, E48 §2)", () => {
           case "mark": return busStopMarkOf(state, leg, tracker, now);
           case "viaHere": return viaStopHereIndexWithBusStop(state, leg, raw.position ?? null, mark, now);
           case "overview": return overviewApplyingBusStop(raw.overview!, state, leg, mark);
+          case "alightNotice": {
+            // 시퀀스: 단계마다 추적기 → 알림 기록. 기대값은 단계별 (speak, notice).
+            let t = tracker;
+            let n = raw.notice ?? null;
+            return raw.steps!.map((st) => {
+              const s = (st.state ?? raw.state) as TransitGuideState;
+              const r = busStopStep(t, s, leg, st.fix, st.now);
+              t = r.tracker;
+              const out = busAlightNoticeStep(n, s, leg, r, st.fix, st.now);
+              n = out.notice;
+              return out;
+            });
+          }
           default: throw new Error(`unknown fn ${raw.fn}`);
         }
       })();
-      expect(actual).toEqual(raw.expected);
+      expect(actual).toEqual(raw.fn === "alightNotice" ? raw.steps!.map((st) => st.expected) : raw.expected);
     });
   }
 });

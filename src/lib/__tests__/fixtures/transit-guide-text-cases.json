@@ -3014,6 +3014,392 @@
         ],
         "lang": "ko"
       }
+    },
+    {
+      "name": "arrivingAtAlightStop ko — 하차 임박(A69 다음 정류장)",
+      "fn": "arrivingAtAlightStop",
+      "isEn": false,
+      "leg": {
+        "mode": "bus",
+        "line": {
+          "ko": "노선ᛥ",
+          "en": "421"
+        },
+        "board": {
+          "ko": "승차ᛥ",
+          "en": "Galwol-dong"
+        },
+        "alight": {
+          "ko": "하차ᛥ",
+          "en": "Polytech"
+        },
+        "stops": [
+          {
+            "ko": "경유0ᛥ",
+            "en": "Stop0"
+          }
+        ],
+        "stationCount": 5,
+        "walkBeforeMinutes": 3,
+        "boardOverridden": false
+      },
+      "expect": {
+        "parts": [
+          {
+            "key": "arrivingAtAlightStop",
+            "args": [
+              "하차ᛥ"
+            ]
+          }
+        ],
+        "lang": "ko"
+      }
+    },
+    {
+      "name": "arrivingAtAlightStop en",
+      "fn": "arrivingAtAlightStop",
+      "isEn": true,
+      "leg": {
+        "mode": "bus",
+        "line": {
+          "ko": "노선ᛥ",
+          "en": "421"
+        },
+        "board": {
+          "ko": "승차ᛥ",
+          "en": "Galwol-dong"
+        },
+        "alight": {
+          "ko": "하차ᛥ",
+          "en": "Polytech"
+        },
+        "stops": [
+          {
+            "ko": "경유0ᛥ",
+            "en": "Stop0"
+          }
+        ],
+        "stationCount": 5,
+        "walkBeforeMinutes": 3,
+        "boardOverridden": false
+      },
+      "expect": {
+        "parts": [
+          {
+            "key": "arrivingAtAlightStop",
+            "args": [
+              "Polytech"
+            ]
+          }
+        ],
+        "lang": "en"
+      }
+    },
+    {
+      "name": "arrivingAtAlightStop en 영문 이름 없음은 줄 전체 한국어 값",
+      "fn": "arrivingAtAlightStop",
+      "isEn": true,
+      "leg": {
+        "mode": "bus",
+        "line": {
+          "ko": "노선ᛥ",
+          "en": "421"
+        },
+        "board": {
+          "ko": "승차ᛥ",
+          "en": "Galwol-dong"
+        },
+        "alight": {
+          "ko": "하차ᛥ"
+        },
+        "stops": [
+          {
+            "ko": "경유0ᛥ",
+            "en": "Stop0"
+          }
+        ],
+        "stationCount": 5,
+        "walkBeforeMinutes": 3,
+        "boardOverridden": false
+      },
+      "expect": {
+        "parts": [
+          {
+            "key": "arrivingAtAlightStop",
+            "args": [
+              "하차ᛥ"
+            ]
+          }
+        ],
+        "lang": "ko"
+      }
+    },
+    {
+      "name": "arrivingAtAlightStop 이름 없음은 이름 없는 키(ko)",
+      "fn": "arrivingAtAlightStop",
+      "isEn": false,
+      "leg": {
+        "mode": "bus",
+        "line": {
+          "ko": "노선ᛥ",
+          "en": "421"
+        },
+        "board": {
+          "ko": "승차ᛥ",
+          "en": "Galwol-dong"
+        },
+        "alight": {
+          "ko": ""
+        },
+        "stops": [
+          {
+            "ko": "경유0ᛥ",
+            "en": "Stop0"
+          }
+        ],
+        "stationCount": 5,
+        "walkBeforeMinutes": 3,
+        "boardOverridden": false
+      },
+      "expect": {
+        "parts": [
+          {
+            "key": "arrivingAtAlightStopUnnamed",
+            "args": []
+          }
+        ],
+        "lang": "ko"
+      }
+    },
+    {
+      "name": "arrivingAtAlightStop 이름 없음은 이름 없는 키(en)",
+      "fn": "arrivingAtAlightStop",
+      "isEn": true,
+      "leg": {
+        "mode": "bus",
+        "line": {
+          "ko": "노선ᛥ",
+          "en": "421"
+        },
+        "board": {
+          "ko": "승차ᛥ",
+          "en": "Galwol-dong"
+        },
+        "alight": {
+          "ko": ""
+        },
+        "stops": [
+          {
+            "ko": "경유0ᛥ",
+            "en": "Stop0"
+          }
+        ],
+        "stationCount": 5,
+        "walkBeforeMinutes": 3,
+        "boardOverridden": false
+      },
+      "expect": {
+        "parts": [
+          {
+            "key": "arrivingAtAlightStopUnnamed",
+            "args": []
+          }
+        ],
+        "lang": "en"
+      }
+    },
+    {
+      "name": "alightStopReached ko — GPS 도착 한 마디(A69)",
+      "fn": "alightStopReached",
+      "isEn": false,
+      "leg": {
+        "mode": "bus",
+        "line": {
+          "ko": "노선ᛥ",
+          "en": "421"
+        },
+        "board": {
+          "ko": "승차ᛥ",
+          "en": "Galwol-dong"
+        },
+        "alight": {
+          "ko": "하차ᛥ",
+          "en": "Polytech"
+        },
+        "stops": [
+          {
+            "ko": "경유0ᛥ",
+            "en": "Stop0"
+          }
+        ],
+        "stationCount": 5,
+        "walkBeforeMinutes": 3,
+        "boardOverridden": false
+      },
+      "expect": {
+        "parts": [
+          {
+            "key": "alightStopReached",
+            "args": [
+              "하차ᛥ"
+            ]
+          }
+        ],
+        "lang": "ko"
+      }
+    },
+    {
+      "name": "alightStopReached en",
+      "fn": "alightStopReached",
+      "isEn": true,
+      "leg": {
+        "mode": "bus",
+        "line": {
+          "ko": "노선ᛥ",
+          "en": "421"
+        },
+        "board": {
+          "ko": "승차ᛥ",
+          "en": "Galwol-dong"
+        },
+        "alight": {
+          "ko": "하차ᛥ",
+          "en": "Polytech"
+        },
+        "stops": [
+          {
+            "ko": "경유0ᛥ",
+            "en": "Stop0"
+          }
+        ],
+        "stationCount": 5,
+        "walkBeforeMinutes": 3,
+        "boardOverridden": false
+      },
+      "expect": {
+        "parts": [
+          {
+            "key": "alightStopReached",
+            "args": [
+              "Polytech"
+            ]
+          }
+        ],
+        "lang": "en"
+      }
+    },
+    {
+      "name": "alightStopReached en 영문 이름 없음은 줄 전체 한국어 값",
+      "fn": "alightStopReached",
+      "isEn": true,
+      "leg": {
+        "mode": "bus",
+        "line": {
+          "ko": "노선ᛥ",
+          "en": "421"
+        },
+        "board": {
+          "ko": "승차ᛥ",
+          "en": "Galwol-dong"
+        },
+        "alight": {
+          "ko": "하차ᛥ"
+        },
+        "stops": [
+          {
+            "ko": "경유0ᛥ",
+            "en": "Stop0"
+          }
+        ],
+        "stationCount": 5,
+        "walkBeforeMinutes": 3,
+        "boardOverridden": false
+      },
+      "expect": {
+        "parts": [
+          {
+            "key": "alightStopReached",
+            "args": [
+              "하차ᛥ"
+            ]
+          }
+        ],
+        "lang": "ko"
+      }
+    },
+    {
+      "name": "alightStopReached 이름 없음은 이름 없는 키(ko)",
+      "fn": "alightStopReached",
+      "isEn": false,
+      "leg": {
+        "mode": "bus",
+        "line": {
+          "ko": "노선ᛥ",
+          "en": "421"
+        },
+        "board": {
+          "ko": "승차ᛥ",
+          "en": "Galwol-dong"
+        },
+        "alight": {
+          "ko": ""
+        },
+        "stops": [
+          {
+            "ko": "경유0ᛥ",
+            "en": "Stop0"
+          }
+        ],
+        "stationCount": 5,
+        "walkBeforeMinutes": 3,
+        "boardOverridden": false
+      },
+      "expect": {
+        "parts": [
+          {
+            "key": "alightStopReachedUnnamed",
+            "args": []
+          }
+        ],
+        "lang": "ko"
+      }
+    },
+    {
+      "name": "alightStopReached 이름 없음은 이름 없는 키(en)",
+      "fn": "alightStopReached",
+      "isEn": true,
+      "leg": {
+        "mode": "bus",
+        "line": {
+          "ko": "노선ᛥ",
+          "en": "421"
+        },
+        "board": {
+          "ko": "승차ᛥ",
+          "en": "Galwol-dong"
+        },
+        "alight": {
+          "ko": ""
+        },
+        "stops": [
+          {
+            "ko": "경유0ᛥ",
+            "en": "Stop0"
+          }
+        ],
+        "stationCount": 5,
+        "walkBeforeMinutes": 3,
+        "boardOverridden": false
+      },
+      "expect": {
+        "parts": [
+          {
+            "key": "alightStopReachedUnnamed",
+            "args": []
+          }
+        ],
+        "lang": "en"
+      }
     }
   ]
 }

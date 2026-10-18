@@ -40,6 +40,8 @@ import {
   arrivalStatusLine,
   arrivedAtBoardStopLine,
   arrivingAtBoardStopLine,
+  alightStopReachedLine,
+  arrivingAtAlightStopLine,
   boardedAlightLine,
   boardedLine,
   boardingContextLine,
@@ -72,12 +74,14 @@ import {
   type TransitRidingPosition,
 } from "@/lib/transit-riding-position";
 import {
+  busAlightNoticeStep,
   busStopApplies,
   busStopMarkOf,
   busStopStep,
   BUS_STOP_HOLD_MS,
   sameBusStopMark,
   viaStopHereIndexWithBusStop,
+  type TransitBusAlightNotice,
   type TransitBusStopMark,
   type TransitBusStopTracker,
 } from "@/lib/transit-bus-stop";
@@ -369,6 +373,11 @@ export function useTransitGuide(
   const busTrackerRef = useRef<TransitBusStopTracker | null>(null);
   const [busStopMark, setBusStopMark] = useState<TransitBusStopMark | null>(null);
   const busExpiryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /**
+   * 하차 정류장 도착 한 마디(A69 spec 2026-10-19 §2)의 구간 기록 — 표시 상태와 같은 수명(세션 시작·종료에서 비운다).
+   * `reached`는 늦은 「다음 정류장」을 거른다. 웹 live region은 버림을 알 수 없어 장부(`announced`)를 되돌리지 않는다.
+   */
+  const busAlightNoticeRef = useRef<TransitBusAlightNotice | null>(null);
   /** 현재역이 잡혀 있어 보류한 `neverSeen` 경고의 결박(spec §6 판정 2) — 폴마다 처분한다. */
   const neverSeenPendingRef = useRef<TransitPositionBinding | null>(null);
   const routeRef = useRef<TransitGuideRoute | null>(null);
@@ -736,10 +745,16 @@ export function useTransitGuide(
           // A41: "곧 도착" = 직전 정류소 출발. 승격 없이 임박만 — 탑승 문장은 소실 뒤 boarded(departed)가 낸다.
           if (leg) pushPiece(piece(arrivingAtBoardStopLine(isEn, displayLegOf(leg, null))));
           break;
-        case "arrivingAtAlightStop":
-          // 차내 "이번 정류장" 방송과 같은 시점. 도착 문장은 소실 뒤 arrived(certain: false)가 낸다.
-          parts.push(t("arrivingAtAlightStop"));
+        case "arrivingAtAlightStop": {
+          // A69: 「곧 도착」은 직전 정류장 정차 순간에 이미 켜진다 — "다음 정류장 {하차 정류장}"은 서 있든 떠났든 참이다.
+          // 기기 위치가 이 구간의 하차 정류장 도착을 이미 관측했으면 내지 않는다(그 사람에게 "다음"은 한 정거장 더다).
+          // 도착 문장은 소실 뒤 arrived(certain: false)가 낸다.
+          const notice = busAlightNoticeRef.current;
+          if (notice?.reached && notice.legIndex === stateRef.current?.legIndex) break;
+          if (leg) pushPiece(piece(arrivingAtAlightStopLine(isEn, displayLegOf(leg, null))));
+          else parts.push(t("arrivingAtAlightStopUnnamed"));
           break;
+        }
         case "boarded": {
           if (!leg) break;
           const d = displayLegOf(leg, null);
@@ -1253,6 +1268,7 @@ export function useTransitGuide(
     neverSeenPendingRef.current = null;
     setRidingPosition(null);
     clearBusStop();
+    busAlightNoticeRef.current = null;
     setBoardOverride(null);
     setSelectedDescription(null);
     setReboardPickerActive(false);
@@ -1293,6 +1309,7 @@ export function useTransitGuide(
       neverSeenPendingRef.current = null;
       setRidingPosition(null);
       clearBusStop();
+      busAlightNoticeRef.current = null;
       const init = initTransitGuide(route, Date.now());
       commit(init);
       const first = route.legs[0];
@@ -1731,6 +1748,11 @@ export function useTransitGuide(
     document.addEventListener("visibilitychange", onVisibility);
     return () => document.removeEventListener("visibilitychange", onVisibility);
   }, []);
+  /** A69 GPS 도착 한 마디 — 문장 판정은 그 순간의 언어·투영으로(효과 의존성에 넣으면 스트림이 다시 열린다). */
+  const announceAlightReached = useEffectEvent((leg: TransitGuideLeg) => {
+    const p = piece(alightStopReachedLine(isEn, displayLegOf(leg, null)));
+    announce(p.text, p.ko ? "ko" : undefined);
+  });
   useEffect(() => {
     if (!busRiding || !foreground || !geoAllowed) return;
     if (typeof navigator === "undefined" || !navigator.geolocation) return;
@@ -1740,20 +1762,20 @@ export function useTransitGuide(
         const leg = currentLeg();
         if (!s || !leg) return;
         const now = Date.now();
-        busTrackerRef.current = busStopStep(
-          busTrackerRef.current,
-          s,
-          leg,
-          {
-            lat: pos.coords.latitude,
-            lng: pos.coords.longitude,
-            accuracy: pos.coords.accuracy,
-            // 측정 시각 기준 — 값이 이상하면 나이 상한이 `stale`로 거른다(표식 부재가 정직한 폴백).
-            ageSeconds: (now - pos.timestamp) / 1000,
-          },
-          now,
-        ).tracker;
+        const fix = {
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          accuracy: pos.coords.accuracy,
+          // 측정 시각 기준 — 값이 이상하면 나이 상한이 `stale`로 거른다(표식 부재가 정직한 폴백).
+          ageSeconds: (now - pos.timestamp) / 1000,
+        };
+        const result = busStopStep(busTrackerRef.current, s, leg, fix, now);
+        busTrackerRef.current = result.tracker;
         refreshBusStopMark(now);
+        // A69: 표시 전용 계약의 의도된 예외 하나 — 통지만 내고 리듀서 입력(dispatch)으로 흘러가지 않는다.
+        const notice = busAlightNoticeStep(busAlightNoticeRef.current, s, leg, result, fix, now);
+        busAlightNoticeRef.current = notice.notice;
+        if (notice.speak) announceAlightReached(leg);
       },
       () => {
         // 오류(일시 실패·타임아웃)는 fix가 없다는 뜻일 뿐이다 — 만료 타이머가 표식을 거둔다.

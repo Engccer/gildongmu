@@ -295,6 +295,27 @@ export function boardedAlightLine(isEn: boolean, leg: TransitDisplayLeg): Transi
   return line(isEn, "boardedAlight", [leg.alight], (v) => v);
 }
 
+/**
+ * A69: 서울버스 「곧 도착」(잔여 0) 하차 임박 — "다음 정류장 {하차 정류장}에서 내리세요."
+ *
+ * 「곧 도착」은 직전 정류장에 **정차한 순간**에 이미 켜진다(A41 실측, 간선 90~211초 유지). 그 순간 "이번 정류장"은
+ * "여기서 내려라"로 들려 한 정거장 전에 내린 사고가 났다 — "다음 정류장"은 서 있든 막 떠났든 언제나 하차 정류장이다.
+ * 이름이 비면(투영의 `alight.ko` 빈 값) 깨진 문장 대신 이름 없는 키를 고른다.
+ */
+export function arrivingAtAlightStopLine(isEn: boolean, leg: TransitDisplayLeg): TransitTextLine {
+  if (!leg.alight.ko) return { parts: [{ key: "arrivingAtAlightStopUnnamed", args: [] }], lang: isEn ? "en" : "ko" };
+  return line(isEn, "arrivingAtAlightStop", [leg.alight], (v) => v);
+}
+
+/**
+ * A69: 기기 위치가 하차 정류장 도착을 관측한 한 마디 — "{하차 정류장} 도착. 내리세요." 판정은
+ * `busStopAlightReached`(`transit-bus-stop.ts`), 리듀서는 이 문장을 모른다.
+ */
+export function alightStopReachedLine(isEn: boolean, leg: TransitDisplayLeg): TransitTextLine {
+  if (!leg.alight.ko) return { parts: [{ key: "alightStopReachedUnnamed", args: [] }], lang: isEn ? "en" : "ko" };
+  return line(isEn, "alightStopReached", [leg.alight], (v) => v);
+}
+
 export function currentStationLine(isEn: boolean, location: TransitLabel): TransitTextLine {
   return line(isEn, "currentStation", [location], (v) => v);
 }
@@ -483,6 +504,10 @@ export const TRANSIT_TEXT_KEYS = [
   "arrivingAtBoardStopBus",
   "boarded",
   "boardedAlight",
+  "arrivingAtAlightStop",
+  "arrivingAtAlightStopUnnamed",
+  "alightStopReached",
+  "alightStopReachedUnnamed",
   "currentStation",
   "bound",
   "expressCheck",
