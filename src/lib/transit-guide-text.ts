@@ -309,7 +309,7 @@ export function arrivingAtAlightStopLine(isEn: boolean, leg: TransitDisplayLeg):
 
 /**
  * A69: 기기 위치가 하차 정류장 도착을 관측한 한 마디 — "{하차 정류장} 도착. 내리세요." 판정은
- * `busStopAlightReached`(`transit-bus-stop.ts`), 리듀서는 이 문장을 모른다.
+ * `busAlightNoticeStep`(`transit-bus-stop.ts`), 리듀서는 이 문장을 모른다.
  */
 export function alightStopReachedLine(isEn: boolean, leg: TransitDisplayLeg): TransitTextLine {
   if (!leg.alight.ko) return { parts: [{ key: "alightStopReachedUnnamed", args: [] }], lang: isEn ? "en" : "ko" };

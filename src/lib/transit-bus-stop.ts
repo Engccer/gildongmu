@@ -198,9 +198,12 @@ export const BUS_ALIGHT_NOTICE_MAX_GAP_MS = 10_000;
  * ⚠ 표시용 래치를 하차 명령으로 승격하지 않는다(설계 리뷰 H3): 래치의 "연속 두 관측"은 사이에 낀 부적격 fix와 긴
  * 공백을 넘어 이어지는 표시용 완화다. 이 문장의 실패 방향은 "너무 이르게"라 따로 센다.
  * `reached`(관측 이력 — 늦은 「다음 정류장」을 거른다)와 `announced`(전달 장부 — 버려지면 앱이 되돌린다)를 가른다(H4).
+ * 결박은 (구간, 국면 세대)다 — 세대는 riding 진입·탑승 변경·구간 전진에서만 바뀌고 도착 추정·재관측은 유지하므로,
+ * 한 승차 안의 이력은 남고 [탑승 변경]으로 다시 탄 버스는 새 기록이다(구현 리뷰 m2).
  */
 export interface TransitBusAlightNotice {
   legIndex: number;
+  phaseGen: number;
   /** 하차 정류장 반경 안 적격 fix의 연속 수. */
   streak: number;
   /** 마지막 적격 fix 시각(ms) — 연속이 끊기면 null. */
@@ -216,25 +219,27 @@ export interface TransitBusAlightNoticeStepResult {
 
 /**
  * fix 한 건(이미 `busStopStep`을 거친 결과)으로 구간 기록을 전진한다. 적격 fix = 최근접이 하차 정류장(경유 목록의
- * 마지막)이고 추적기 판정이 `pending`·`observed`(정확도·나이·노선 밖·모호·하차 반경 50m를 통과) ∧ 정확도 ≤ 35m.
+ * 마지막)이고 추적기 판정이 `pending`·`observed`(정확도·나이·노선 밖·모호·하차 반경 50m를 통과) ∧ 정확도 ≤ 35m
+ * ∧ 도착 피드가 아직 두 정거장 이상 남았다고 말하지 않는다(`state.remaining`을 **읽기만** 한다 — 회차·순환 노선이
+ * 하차 정류장 50m 안을 먼저 지나는 곳에서 이르게 말하고 그 뒤 신호를 모두 막지 않게, 구현 리뷰 M1. 모르면 막지 않는다).
  * 적격 fix가 10초 안에 두 번 이어지면 도착이다. 리듀서는 이 함수를 모르고, 결과는 통지만 낸다(표시 전용 계약의
  * 의도된 예외 하나 — 판정서 2026-08-23 §3, 소스 가드 `transit-bus-stop-guard.test.ts`).
  */
 export function busAlightNoticeStep(
   prev: TransitBusAlightNotice | null,
-  state: BusStopState,
+  state: BusStopState & Pick<TransitGuideState, "remaining">,
   leg: TransitGuideLeg,
   result: TransitBusStopStepResult,
   fix: TransitDeviceFix,
   now: number,
 ): TransitBusAlightNoticeStepResult {
-  const same = prev != null && prev.legIndex === state.legIndex;
+  const same = prev != null && prev.legIndex === state.legIndex && prev.phaseGen === state.phaseGen;
   const base: TransitBusAlightNotice = same
     ? { ...prev }
-    : { legIndex: state.legIndex, streak: 0, lastAt: null, reached: false, announced: false };
+    : { legIndex: state.legIndex, phaseGen: state.phaseGen, streak: 0, lastAt: null, reached: false, announced: false };
   const qualifies =
-    busStopApplies(state, leg) &&
     result.nearestIndex === leg.viaStops.length - 1 &&
+    !(state.remaining != null && state.remaining >= 2) &&
     (result.verdict === "pending" || result.verdict === "observed") &&
     fix.accuracy <= BUS_ALIGHT_NOTICE_MAX_ACCURACY_M;
   if (!qualifies) return { notice: { ...base, streak: 0, lastAt: null }, speak: false };

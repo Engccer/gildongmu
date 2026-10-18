@@ -10,6 +10,8 @@ private struct FixtureState: Decodable {
     let phaseGen: Int
     let signal: String
     let currentLocation: String?
+    /// A69 알림 판정이 읽는 도착 피드 잔여(없으면 nil).
+    let remaining: Int?
 }
 private struct FixtureStop: Decodable {
     let name: String
@@ -109,6 +111,7 @@ private func makeState(_ s: FixtureState, route: TransitGuideRoute) throws -> Tr
     state.phaseGen = s.phaseGen
     state.signal = try #require(TransitSignal(rawValue: s.signal))
     state.currentLocation = s.currentLocation
+    state.remaining = s.remaining
     return state
 }
 

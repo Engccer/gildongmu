@@ -36,21 +36,21 @@ E48 버스 정류장 추적기가 **하차 정류장(경유 목록의 마지막)
 표시용 추적기(래치)의 판정을 그대로 하차 명령으로 승격하지 않는다(설계 리뷰 H3): 추적기의 "연속 두 관측"은 사이에 부정확·노선 밖 fix가 끼어도, 시간이 한참 벌어져도 이어지는 **표시용 완화**다(후보 index가 그 verdict들에서 보존되고, 래치 전 후보엔 만료가 없다). 하차 명령은 실패 방향이 "너무 이르게"라 따로 센다.
 
 ```
-TransitBusAlightNotice = { legIndex, streak, lastAt, reached, announced }
+TransitBusAlightNotice = { legIndex, phaseGen, streak, lastAt, reached, announced }
 busAlightNoticeStep(prev, state, leg, result: TransitBusStopStepResult, fix, now) -> { notice, speak }
 ```
 
-- **적격 fix**: 추적기가 이 fix의 최근접을 하차 정류장(경유 목록의 마지막)으로 판정했고(`nearestIndex == last`) 그 판정이 `pending`·`observed`(= 추적기의 정확도 100m·나이 10초·노선 밖 300m·접힘 모호·하차 반경 50m를 전부 통과) ∧ **fix 정확도 ≤ 35m**(`BUS_ALIGHT_NOTICE_MAX_ACCURACY_M`, 알림 전용 문턱).
+- **적격 fix**: 추적기가 이 fix의 최근접을 하차 정류장(경유 목록의 마지막)으로 판정했고(`nearestIndex == last`) 그 판정이 `pending`·`observed`(= 추적기의 정확도 100m·나이 10초·노선 밖 300m·접힘 모호·하차 반경 50m를 전부 통과) ∧ **fix 정확도 ≤ 35m**(`BUS_ALIGHT_NOTICE_MAX_ACCURACY_M`, 알림 전용 문턱) ∧ **도착 피드가 두 정거장 이상 남았다고 말하지 않는다**(`state.remaining`을 읽기만 한다, 모르면 막지 않는다). 마지막 조건은 회차·순환 노선이 하차 정류장 50m 안(예: 교차로 모퉁이)을 먼저 지나는 곳에서 이르게 말하고, 그 기록 때문에 진짜 정류장의 한 마디와 「다음 정류장」까지 모두 막히는 경로를 끊는다(구현 리뷰 M1). 잔여가 한 폴 낡아 실제로는 이미 한 정거장일 때 놓치는 쪽은 안전 방향이다(GPS 한 마디만 빠지고 「다음 정류장」은 그대로 나간다).
 - **연속**: 적격 fix가 직전 적격 fix와 10초(`BUS_ALIGHT_NOTICE_MAX_GAP_MS`) 안에 이어질 때만 `streak + 1`, 부적격 fix 한 건이나 10초 공백이 끊는다(`streak = 0`). `streak ≥ 2`이면 `reached = true`이고, `announced`가 거짓이면 참으로 바꾸며 `speak = true`.
-- **적용 밖**(국면이 riding이 아니거나 버스 아님): 같은 구간의 기록은 두고 연속만 끊는다 — 도착 추정(`arrived(certain: false)`)을 거쳐 재관측으로 돌아와도 이력이 남는다.
-- **구간이 바뀌면 새 기록**. 같은 구간에서 `[탑승 변경]`으로 다시 타도 말하지 않는다(이미 하차 정류장에 닿았다는 기록이 있다).
+- **적용 밖**(국면이 riding이 아니거나 버스 아님): 같은 결박의 기록은 두고 연속만 끊는다 — 도착 추정(`arrived(certain: false)`)과 재관측(`backOnTrack`)은 국면 세대를 바꾸지 않아(`transit-guide.ts` 도착 추정 분기가 세대를 유지) 이력이 남는다.
+- **결박은 (구간, 국면 세대)**: 세대는 riding 진입·탑승 변경·구간 전진에서만 바뀐다. 구간이 바뀌거나 `[탑승 변경]`·`[이미 탔어요]`로 다시 타면 새 기록이다(구현 리뷰 m2 — 구간만으로 묶으면 잘못 선 기록이 다시 탄 버스의 두 신호를 막는다).
 - 정확도 35m 근거: 2026-10-18 실승차 로그의 `busFix` 정확도는 대부분 14~34m(`NearestTenMeters` 프로파일), 이상값은 72m 이상. ⚠ 잠정값(실승차 판정).
 - 50m 안 주행 중(정류장 40m 앞 → 30m 앞) 두 fix로도 나간다 — 위원장 판정 문언("50m 안에서 관측하면")이 정한 시점이고, 문은 정류장에서만 열린다. 막아야 하는 것은 **직전 정류장에서 나가는 것**이고 그 축은 정확도 문턱·연속성·추적기의 최근접 판정이 맡는다. 남는 위험: 직전 정류장이 하차 정류장과 80m 안팎으로 붙어 있고 하차 쪽으로 30m 넘게 치우친 fix가 연속하면 나갈 수 있다(실승차 관찰 항목).
 
 ### 2.2 오케스트레이터(iOS `TransitGuideModel`, 웹 `useTransitGuide`)
 
 - fix를 반영한 뒤(`ingestKeepAliveFix` / 웹 `watchPosition` 콜백) `busAlightNoticeStep`을 돌리고 `speak`면 문장을 낸다. **리듀서에는 아무것도 넣지 않는다** — 상태 전이(승격·`arrived`·폴 주기)는 바뀌지 않고, 도착 확정은 여전히 `declareArrived`뿐이다.
-- **관측 이력과 전달 장부를 가른다**(설계 리뷰 H4): `reached`는 관측 사실이라 지우지 않는다. `announced`는 전달 장부라, iOS 지연 창구가 문장을 버리면(`onDropped` — latest-wins 선점·억제·백그라운드 게이트) 같은 구간일 때 거짓으로 되돌린다. 하차 정류장에 서 있는 동안 fix는 1초 간격으로 계속 오므로(`NearestTenMeters`·거리 필터 없음) 다음 적격 fix가 다시 말한다. 웹 live region은 버림을 알 수단이 없어 장부를 되돌리지 않는다(웹은 전경 한정·polite 단일 창구).
+- **관측 이력과 전달 장부를 가른다**(설계 리뷰 H4): `reached`는 관측 사실이라 지우지 않는다. `announced`는 전달 장부라, iOS 지연 창구가 문장을 버리면(`onDropped` — latest-wins 선점·억제·백그라운드 게이트) 같은 구간일 때 거짓으로 되돌린다. 하차 정류장에 서 있는 동안 fix는 1초 간격으로 계속 오므로(`NearestTenMeters`·거리 필터 없음) 다음 적격 fix가 다시 말한다. 재시도의 소유자는 그 하나다: 억제(받아쓰기) 중 버려진 이 문장은 일반 억제 복구(`droppedWhileSuppressed`)에서 빼고(해제 때 위치 재검증 없이 재생되면 정류장을 벗어난 뒤의 「도착」이나 중복이 된다), 백그라운드에서 버려진 문장은 되돌리지 않고 복귀 시 현재 상태 낭독(`missedAnnouncement`, E53)에 맡긴다(되돌리면 음성 토글 끔에서 fix마다 재시도하고 복귀 낭독과 겹친다). 웹 live region은 버림을 알 수단이 없어 장부를 되돌리지 않는다(웹은 전경 한정·polite 단일 창구).
 - **iOS 출력**: 톤 `.nearby`(리듀서 `arrived`와 같은 "도착" 톤, `allowedInBackground: false` — 백그라운드 톤 허용 집합은 `trackingStarted` 하나라는 E36 판정 그대로) 뒤 `announce(text, highPriority: true, speechClass: .actionable)` — 톤 뒤 발화 계약의 기존 창구(`deferredAnnouncer`)를 지난다. `.actionable`이라 백그라운드 음성 설정이 켜져 있으면 화면이 꺼진 채로도 말한다(E53, 하차 임박 문장과 같은 분류). `highPriority`는 진행 중 낭독을 끊는다 — 지금 내려야 한다는 말이 앞 문장 뒤에 줄 서면 문이 닫힌다.
 - **웹 출력**: 기존 polite live region `announce(text, lang)` 하나(웹 대중교통 안내엔 톤이 없다). 웹 스트림은 전경에서만 열리므로(E48 §5) 웹의 한 마디도 전경 한정이다.
 - **기록 수명**: 세션 시작·경로 변경·세션 종료에서 비운다(유휴 진입은 비우지 않는다: 같은 세션, 같은 구간이다).
@@ -83,4 +83,8 @@ busAlightNoticeStep(prev, state, leg, result: TransitBusStopStepResult, fix, now
 
 ## 6. 설계 리뷰
 
+구현 리뷰(opus, `review-impl-202610190621.md`): MAJOR 1(회차 노선의 이른 「도착」과 그 뒤 신호 전부 침묵) → 잔여 2 이상 부적격, MINOR m1(억제·백그라운드 재시도) → 위 2차 수정과 같음, m2 → 세대 결박, m3(가드·경계 사례 부족) → 발화 배선 가드·정확도 35/36m·간격 정확히 10초 사례 추가, 중복 술어(`busStopApplies`) 제거.
+
 1차 codex `adversarial-review`(base `641739f8`, HEAD spec 커밋, 보고 `~/gildongmu-wt/a69-bus-alight-reports/review-design-202610190608.md`): needs-attention, high 4. H1(늦은 첫 관측의 「다음 정류장」 거짓) → 역순 방지를 GPS 관측 이력으로 넓히고 GPS 없는 잔여 경로를 §2.2에 명시, 문구 변경 권고는 위원장 판정이라 기각. H2(50m 안 두 좌표는 정차를 증명하지 않는다) → 판정 문언이 정한 시점이라 유지하되 알림 전용 정확도 문턱 35m를 더하고 남는 위험(붙은 직전 정류장)을 §2.1에 명시. H3(추적기의 연속 두 관측은 연속이 아니다) → 채택, 알림 전용 연속 판정으로 분리. H4(예약을 전달로 기록하면 영구 소실) → 채택, 관측 이력과 전달 장부 분리 + iOS `onDropped` 되돌림.
+
+2차 codex(HEAD `0951aa50`, 보고 `review-design-202610190617.md`): high 1 — 억제 복구와 `onDropped`의 이중 소유(해제 때 위치 재검증 없는 재생·중복) → 채택, 이 문장을 일반 억제 복구에서 뺐다. 접근성 감사(opus, `review-a11y-202610190619.md`): MINOR 3 — M1은 같은 수정으로 해소, M2(백그라운드 음성 끔에서 fix마다 재시도) → 백그라운드 버림은 되돌리지 않는다, M3(도착 종 약 2.25초가 「내리세요」 앞에 붙는다) → 실승차 관찰 항목(늦으면 짧은 `.ahead`로).

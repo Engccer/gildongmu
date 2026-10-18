@@ -649,7 +649,7 @@ final class TransitGuideModel {
         let notice = transitBusAlightNoticeStep(
             busAlightNotice, state: state, leg: leg, result: result, fix: deviceFix, now: now)
         busAlightNotice = notice.notice
-        if notice.speak { announceAlightReached(leg: leg, legIndex: state.legIndex) }
+        if notice.speak { announceAlightReached(leg: leg, legIndex: state.legIndex, phaseGen: state.phaseGen) }
         guard result.verdict != .notApplicable else { return }
         // 계측: 판정 종류나 래치가 바뀔 때만 1줄 — 실승차 사후에 부정확·노선 밖·모호를 가르는 유일한 증거.
         let latched = result.tracker?.stopIndex
@@ -664,14 +664,21 @@ final class TransitGuideModel {
 
     /// 하차 정류장 도착 한 마디(A69 판정 ②) — 「{하차 정류장} 도착. 내리세요.」 리듀서 `arrived`와 같은 도착 톤 뒤
     /// 지연 창구(톤 뒤 발화)로, 진행 중 낭독을 끊는다(늦으면 문이 닫힌다). 백그라운드는 톤 없이 행동 문장만(E36·E53).
-    /// 문장이 버려지면 전달 장부만 되돌린다 — 정류장에 서 있는 동안 다음 적격 fix가 다시 말한다(설계 리뷰 H4).
-    private func announceAlightReached(leg: TransitGuideLeg, legIndex: Int) {
+    /// 전경에서 문장이 버려지면 전달 장부만 되돌린다 — 정류장에 서 있는 동안 다음 적격 fix가 다시 말한다(설계 리뷰 H4).
+    /// ⚠ 재시도의 소유자는 그 하나다: 억제(받아쓰기) 중 버려진 이 문장은 일반 억제 복구(`droppedWhileSuppressed`)에서
+    /// 뺀다 — 해제 때 위치 재검증 없이 재생되면 정류장을 벗어난 뒤의 "도착. 내리세요."나 중복이 된다(설계 리뷰 2차).
+    private func announceAlightReached(leg: TransitGuideLeg, legIndex: Int, phaseGen: Int) {
         transitGuideLog("busAlightReached leg=\(legIndex)")
         playTone(.nearby, allowedInBackground: false)
         let text = TransitGuideTextRenderer.render(transitAlightStopReachedLine(
             isEn: transitGuideIsEn, leg: displayLeg(leg, useOverride: false)))
         deferredAnnouncer.announce(text, highPriority: true, speechClass: .actionable) { [weak self] in
-            guard let self, self.busAlightNotice?.legIndex == legIndex else { return }
+            guard let self else { return }
+            if self.droppedWhileSuppressed?.text == text { self.droppedWhileSuppressed = nil }
+            // 백그라운드 버림은 복귀 시 현재 상태 낭독(`missedAnnouncement`, E53 §4.3)이 갚는다 — 장부를 되돌리면 음성 토글이
+            // 꺼진 채 정류장에 서 있는 동안 fix마다 재시도하고, 복귀 낭독과 이 문장이 연달아 나가 서로 끊는다(a11y 감사 M2).
+            guard GuideSpeechOutput.isForeground, let notice = self.busAlightNotice,
+                  notice.legIndex == legIndex, notice.phaseGen == phaseGen else { return }
             self.busAlightNotice?.announced = false
             transitGuideLog("busAlightReached dropped leg=\(legIndex)")
         }
@@ -1746,7 +1753,7 @@ final class TransitGuideModel {
             // A69 역순 방지: 기기 위치가 이 구간의 하차 정류장 도착을 이미 관측했으면 「다음 정류장 …」은 톤·문장 모두
             // 내지 않는다(그 사람에게 "다음"은 한 정거장 더다). 리듀서 래치는 그대로 섰다 — 출력만 거른다.
             if case .arrivingAtAlightStop = event, let notice = busAlightNotice, notice.reached,
-               notice.legIndex == result.state.legIndex {
+               notice.legIndex == result.state.legIndex, notice.phaseGen == result.state.phaseGen {
                 transitGuideLog("arrivingAtAlightStop suppressed reason=alightReached")
             // 승차 중 현재역(E35 §6 판정 2): `neverSeen` 순간 현재역이 잡혀 있으면 "찾지 못하고 있다"는 전제가
             // 거짓이라 경고(문장·약한 톤)를 결박째 보류한다. 처분(발화·폐기)은 폴마다 `refreshPosition` 끝에서.

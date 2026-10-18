@@ -83,6 +83,8 @@ describe("하차 정류장 도착 한 마디는 표시 전용 계약의 의도�
     const callback = watch.slice(0, watch.indexOf("enableHighAccuracy"));
     expect(callback).toMatch(/busAlightNoticeStep\(/);
     expect(callback).not.toMatch(/dispatch\(|commit\(/);
+    // 기록 저장과 발화 배선 — 지우면 기능이 조용히 사라진다(구현 리뷰 m3).
+    expect(callback).toMatch(/busAlightNoticeRef\.current = notice\.notice;\s*if \(notice\.speak\) announceAlightReached\(leg\);/);
 
     expect(model.match(/transitBusAlightNoticeStep\(/g)?.length).toBe(1);
     const ingest = model.slice(
@@ -91,12 +93,13 @@ describe("하차 정류장 도착 한 마디는 표시 전용 계약의 의도�
     );
     expect(ingest).toMatch(/transitBusAlightNoticeStep\(/);
     expect(ingest).not.toMatch(/dispatch\(/);
+    expect(ingest).toMatch(/busAlightNotice = notice\.notice\s*if notice\.speak \{ announceAlightReached\(leg: leg, legIndex: state\.legIndex, phaseGen: state\.phaseGen\) \}/);
   });
 
   it("관측 이력이 선 구간의 늦은 「다음 정류장」은 내지 않는다(웹·iOS)", () => {
-    expect(hook).toMatch(/case "arrivingAtAlightStop": \{[\s\S]{0,600}?notice\?\.reached && notice\.legIndex === stateRef\.current\?\.legIndex\) break;/);
+    expect(hook).toMatch(/case "arrivingAtAlightStop": \{[\s\S]{0,700}?notice\?\.reached && notice\.legIndex === cur\?\.legIndex && notice\.phaseGen === cur\.phaseGen\) break;/);
     // iOS는 handle(event:) 앞에서 거른다 — 이벤트 톤(`transitEventProfile`)도 함께 나가지 않게.
-    expect(model).toMatch(/if case \.arrivingAtAlightStop = event, let notice = busAlightNotice, notice\.reached,\s*notice\.legIndex == result\.state\.legIndex \{/);
+    expect(model).toMatch(/if case \.arrivingAtAlightStop = event, let notice = busAlightNotice, notice\.reached,\s*notice\.legIndex == result\.state\.legIndex, notice\.phaseGen == result\.state\.phaseGen \{/);
   });
 
   it("iOS: 도착 톤은 백그라운드 불허, 행동 문장, 버려지면 전달 장부만 되돌린다(관측 이력은 남긴다)", () => {
@@ -104,6 +107,10 @@ describe("하차 정류장 도착 한 마디는 표시 전용 계약의 의도�
     expect(fn).toMatch(/playTone\(\.nearby, allowedInBackground: false\)/);
     expect(fn).toMatch(/deferredAnnouncer\.announce\(text, highPriority: true, speechClass: \.actionable\) \{/);
     expect(fn).toMatch(/self\.busAlightNotice\?\.announced = false/);
+    // 재시도 소유자는 다음 적격 fix 하나 — 일반 억제 복구가 위치 재검증 없이 재생하지 않게(설계 리뷰 2차).
+    expect(fn).toMatch(/if self\.droppedWhileSuppressed\?\.text == text \{ self\.droppedWhileSuppressed = nil \}/);
+    // 백그라운드 버림은 복귀 낭독이 갚는다 — 되돌리지 않는다(a11y 감사 M2).
+    expect(fn).toMatch(/guard GuideSpeechOutput\.isForeground, let notice = self\.busAlightNotice,\s*notice\.legIndex == legIndex, notice\.phaseGen == phaseGen else \{ return \}/);
     expect(fn).not.toMatch(/reached = false/);
   });
 

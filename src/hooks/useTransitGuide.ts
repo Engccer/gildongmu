@@ -750,7 +750,8 @@ export function useTransitGuide(
           // 기기 위치가 이 구간의 하차 정류장 도착을 이미 관측했으면 내지 않는다(그 사람에게 "다음"은 한 정거장 더다).
           // 도착 문장은 소실 뒤 arrived(certain: false)가 낸다.
           const notice = busAlightNoticeRef.current;
-          if (notice?.reached && notice.legIndex === stateRef.current?.legIndex) break;
+          const cur = stateRef.current;
+          if (notice?.reached && notice.legIndex === cur?.legIndex && notice.phaseGen === cur.phaseGen) break;
           if (leg) pushPiece(piece(arrivingAtAlightStopLine(isEn, displayLegOf(leg, null))));
           else parts.push(t("arrivingAtAlightStopUnnamed"));
           break;
