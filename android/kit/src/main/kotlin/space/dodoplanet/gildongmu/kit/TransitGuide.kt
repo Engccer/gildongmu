@@ -263,7 +263,7 @@ sealed class TransitGuideEvent {
      */
     data object ArrivingAtBoardStop : TransitGuideEvent()
 
-    /** riding 서울버스: 하차 정류소 기준 잔여 0 첫 관측 — 차내 "이번 정류장" 방송과 같은 시점(A41). */
+    /** riding 서울버스: 하차 정류소 기준 잔여 0 첫 관측(A41) — 직전 정류소 정차 중에도 켜진다(A69, 문장은 "다음 정류장"). */
     data object ArrivingAtAlightStop : TransitGuideEvent()
     data class TrackingStarted(val message: String, val messageEn: String?, val remaining: Int?, val arrivalCode: String?) :
         TransitGuideEvent()
@@ -1178,7 +1178,8 @@ private fun commitMatched(
     // 도착 관측(§4.2): 지하철 arvlCd "1"(도착)만 확정. 근사 잠금은 arrived 전이 없음(식별자가 없어 그 도착이 내 차량이라는
     // 확정이 불가능하다).
     val approx = base.lock?.let(::isApproxTransitLock) ?: false
-    // A41: 서울버스 잔여 0("곧 도착")은 하차 정류소의 **직전 정류소 출발** — 차내 "이번 정류장" 방송 시점이지 도착이 아니다.
+    // A41: 서울버스 잔여 0("곧 도착")은 차량이 하차 정류소 직전 구간에 든 상태이지 도착이 아니다. ⚠ 직전 정류소에 정차한
+    // 순간에 이미 켜진다(A69 실승차) — 그래서 문장은 "이번"이 아니라 "다음 정류장 {하차}"다.
     // 임박 1회(`ladderAnnounced = 0` 래치)만 내고 riding 유지. 확정 도착은 없다 — 소실이 종전 도착 추정(가역)으로 간다.
     if (!approx && base.lock?.mode == TransitTrackMode.seoulBus && item.remainingStops == 0) {
         val announced = base.ladderAnnounced == 0

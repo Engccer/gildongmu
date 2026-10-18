@@ -285,7 +285,7 @@ public enum TransitGuideEvent: Sendable, Equatable {
     /// boarding 서울버스: 잔여 0("곧 도착" = 직전 정류소 출발, A41 spec 2026-09-12 §0) 첫 관측. 승격이 아니라
     /// 임박이다. payload 없음 — 문장에 항목 값이 필요 없다("곧 도착" 원문은 `lastMessage`로 이미 흐른다).
     case arrivingAtBoardStop
-    /// riding 서울버스: 하차 정류소 기준 잔여 0 첫 관측 — 차내 "이번 정류장" 방송과 같은 시점(A41).
+    /// riding 서울버스: 하차 정류소 기준 잔여 0 첫 관측(A41) — 직전 정류소 정차 중에도 켜진다(A69, 문장은 "다음 정류장").
     case arrivingAtAlightStop
     case trackingStarted(message: String, messageEn: String?, remaining: Int?, arrivalCode: String?)
     case countdown(
@@ -1274,8 +1274,8 @@ private func commitMatched(
     // 도착 관측(§4.2): 지하철 arvlCd "1"(도착)만 확정. 근사 잠금은 arrived 전이
     // 없음(§5.2·§13.2 — 식별자가 없어 그 도착이 내 차량이라는 확정이 불가능하다).
     let approx = base.lock.map(isApproxTransitLock) ?? false
-    // A41: 서울버스 잔여 0("곧 도착")은 하차 정류소의 **직전 정류소 출발** — 차내 "이번 정류장" 방송 시점이지
-    // 도착이 아니다(실호출 spec 2026-09-12 §0). 임박 1회(`ladderAnnounced = 0` 래치)만 내고 riding 유지.
+    // A41: 서울버스 잔여 0("곧 도착")은 차량이 하차 정류소 직전 구간에 든 상태이지 도착이 아니다(실호출 spec 2026-09-12 §0).
+    // ⚠ 직전 정류소에 **정차한 순간**에 이미 켜진다(A69 실승차) — 그래서 문장은 "이번"이 아니라 "다음 정류장 {하차}"다. 임박 1회(`ladderAnnounced = 0` 래치)만 내고 riding 유지.
     // 확정 도착은 없다(정차 신호가 API에 없다) — 소실이 종전 도착 추정(가역)으로 간다.
     if !approx, base.lock?.mode == .seoulBus, item.remainingStops == 0 {
         // 래치 0은 매칭 커밋에서만 서고 리셋 전이는 trackingAnnounced와 함께 지우므로 "첫 관측인데 래치 0"은 없다.
