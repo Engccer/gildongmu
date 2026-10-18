@@ -26,6 +26,8 @@ let startAt: [number, number] = [0, 0];
 /** 자동 재조회 응답 첫 점의 사용자 기준 동쪽 오프셋(m). */
 let rerouteStartEast = 0;
 let rerouteFails = false;
+/** 자동·수동 재조회 응답을 붙잡는 관문. null이면 즉시. */
+let rerouteGate: Promise<void> | null = null;
 let dest = { ...at(600, 0), name: "목적지" };
 let watchCb: ((pos: GeolocationPosition) => void) | null = null;
 let fetchMock: ReturnType<typeof vi.fn>;
@@ -97,6 +99,7 @@ beforeEach(() => {
   startAt = [0, 0];
   rerouteStartEast = 0;
   rerouteFails = false;
+  rerouteGate = null;
   dest = { ...at(600, 0), name: "목적지" };
   Object.defineProperty(navigator, "geolocation", {
     configurable: true,
@@ -111,6 +114,7 @@ beforeEach(() => {
   });
   fetchMock = vi.fn(async () => {
     const first = walkCalls() <= 1;
+    if (!first && rerouteGate) await rerouteGate;
     if (!first && rerouteFails) return { ok: false, status: 502, json: async () => ({}) };
     const steps = first
       ? [{ description: "천호대로를 따라 600m 이동", pathCoords: [at(...startAt), at(startAt[0] + 600, startAt[1])] }]
@@ -191,19 +195,42 @@ describe("A70 ③ 이탈 중 도착 창(nearDestination)", () => {
     rerouteFails = true; // 걷는 동안의 자동 재조회는 실패로 둔다(경로가 바뀌지 않게)
     strayRightAndConfirm();
     expect(screen.getByTestId("off").textContent).toBe("true");
-    while (pos.a < 384) walk(0, 1);
-    await flush();
-    // 목적지 직선 약 16m에서 선다(정지 fix 6개 = 6초 > 5초).
+    // 목적지 쪽으로 걷는다. 20m 안에 든 뒤 5초째 fix가 진입 fix다(약 14m — 도착 반경 15m 안).
     const said: string[] = [];
-    for (let i = 0; i < 6; i++) {
-      fixAt(pos.a, pos.l, 0);
+    while (live() !== "목적지 근처입니다." && pos.a < 400) {
+      walk(0, 1);
       said.push(live());
     }
-    expect(said).toContain("목적지 근처입니다.");
-    expect(said.some((x) => x.includes("벗어났습니다"))).toBe(false);
+    await flush();
+    expect(live()).toBe("목적지 근처입니다.");
+    const gap = Math.hypot(400 - pos.a, 40 - pos.l);
+    // 진입 fix 자체가 도착 반경 안인데도 도착을 선언하지 않는다(설계 리뷰 high ② — 단발 fix로 도착 금지).
+    expect(gap).toBeLessThan(15);
+    expect(said).not.toContain("목적지에 도착했습니다");
     expect(screen.getByTestId("off").textContent).toBe("false");
     expect(btn()).toBe("false");
-    fixAt(pos.a + 8, pos.l + 3);
+    fixAt(pos.a, pos.l, 0);
     expect(live()).toBe("목적지에 도착했습니다");
+  });
+
+  it("진입 순간 진행 중이던 자동 재조회는 뒤늦게 와도 채택하지 않는다(세대 증가)", async () => {
+    dest = { ...at(400, 40), name: "목적지" };
+    await startOnRoute();
+    rerouteFails = true; // 벗어나는 동안의 자동 조회는 실패로 둔다(경로가 바뀌지 않게)
+    strayRightAndConfirm();
+    rerouteFails = false;
+    let open!: () => void;
+    rerouteGate = new Promise<void>((r) => {
+      open = r;
+    });
+    const before = walkCalls();
+    while (live() !== "목적지 근처입니다." && pos.a < 400) walk(0, 1);
+    await flush();
+    expect(walkCalls()).toBeGreaterThan(before); // 나란히 걸어 자동 조회가 떠났고 관문에 붙잡혀 있다
+    expect(live()).toBe("목적지 근처입니다.");
+    open();
+    await flush();
+    expect(live()).toBe("목적지 근처입니다.");
+    expect(screen.getByTestId("off").textContent).toBe("false");
   });
 });

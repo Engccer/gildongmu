@@ -1568,7 +1568,8 @@ class WalkGuideModel(
         lastGuidance = spoken
         liveTopText = spoken
         resultHaptic(ResultHapticKind.attention)
-        announce(spoken, speechClass = GuideSpeechClass.actionable) { pendingFinalApproachIntro = spoken }
+        // high: 이 진입이 "경로 다시 조회" 버튼을 지운다 — `BackOnRoute`와 같은 판별선(iOS `.high` 동형, 구현 리뷰 M1).
+        announce(spoken, highPriority = true, speechClass = GuideSpeechClass.actionable) { pendingFinalApproachIntro = spoken }
     }
 
     private fun handleFinalApproach(fix: GuideFixPayload, motion: MotionState, age: Double, now: Double) {

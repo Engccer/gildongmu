@@ -849,7 +849,7 @@
     <string name="guide_rerouteHeadClock">Girati a %1$s. Poi %2$s</string>
     <string name="guide_rerouteHeadStraight">Dritto, %1$s</string>
     <string name="guide_rough">all\'incirca %1$s</string>
-    <string name="guide_routeStartsAway">L\'inizio del percorso è a %2$s verso %1$s.</string>
+    <string name="guide_routeStartsAway">L\'inizio del percorso è a %2$s a %1$s.</string>
     <string name="guide_transitDestChangePrepared">Ricerca di percorsi con i mezzi. Scegli un percorso nella schermata di guida.</string>
     <string name="guide_uncertain">L\'affidabilità della posizione è bassa</string>
     <string name="guide_uncertainRecovered">Affidabilità della posizione ripristinata</string>

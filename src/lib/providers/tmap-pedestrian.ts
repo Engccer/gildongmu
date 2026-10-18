@@ -241,9 +241,12 @@ export async function getWalkRouteBriefing(params: {
   noStore?: boolean;
   /** 한국어 원문 대조 가드(en 전용). */
   guard?: boolean;
+  /** 호출 상한(A70 출발점 재시도만 넘긴다 — 성공한 카카오 응답 뒤에 직렬로 붙으므로 hang이 요청 전체를 묶지 않게). */
+  signal?: AbortSignal;
 }): Promise<WalkRouteBriefing | null> {
-  const { origin, dest, searchOption, via, includeLineGeometry, noStore, guard } = params;
+  const { origin, dest, searchOption, via, includeLineGeometry, noStore, guard, signal } = params;
   const res = await fetch(ENDPOINT, {
+    ...(signal ? { signal } : {}),
     method: "POST",
     headers: {
       appKey: env.TMAP_APP_KEY ?? "",

@@ -195,12 +195,18 @@ enum GuideText {
     ) -> String? {
         let gap = RerouteProposalGate.routeStartGapMeters(route: route, currentLat: fromLat, currentLng: fromLng)
         guard gap > maxDriftMeters else { return nil }
-        let compass = RerouteProposalGate.routeStartCompass(route: route, fromLat: fromLat, fromLng: fromLng)
-        return appLocalized(
-            "guide.routeStartsAway",
-            appLocalized("whereAmI.direction.\(compass)"),
-            formatDistance(Int(gap.rounded()))
-        )
+        // 키는 리터럴로 — 보간 키는 `check-xcstrings-keys.mjs`가 검증하지 못한다(리뷰 n5, 안드로이드 `when` 표 동형).
+        let direction: String = switch RerouteProposalGate.routeStartCompass(route: route, fromLat: fromLat, fromLng: fromLng) {
+        case "ne": appLocalized("whereAmI.direction.ne")
+        case "e": appLocalized("whereAmI.direction.e")
+        case "se": appLocalized("whereAmI.direction.se")
+        case "s": appLocalized("whereAmI.direction.s")
+        case "sw": appLocalized("whereAmI.direction.sw")
+        case "w": appLocalized("whereAmI.direction.w")
+        case "nw": appLocalized("whereAmI.direction.nw")
+        default: appLocalized("whereAmI.direction.n")
+        }
+        return appLocalized("guide.routeStartsAway", direction, formatDistance(Int(gap.rounded())))
     }
 
     /// 수동 전환 성공 발화(M3 spec §5). 재조회와 같은 구조(새 경로 규모 + 첫 안내)에

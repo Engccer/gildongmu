@@ -810,7 +810,7 @@
     "rerouteButton": "Cerca di nuovo il percorso",
     "rerouteFailed": "Ricerca del percorso non riuscita. Il percorso attuale resta attivo",
     "rerouteAutoGaveUp": "Impossibile trovare automaticamente un nuovo percorso.",
-    "routeStartsAway": "L'inizio del percorso è a {distance} verso {direction}.",
+    "routeStartsAway": "L'inizio del percorso è a {distance} a {direction}.",
     "rerouteDone": "Percorso ricalcolato dalla tua posizione attuale. {first}. {count, plural, one {# indicazione} other {# indicazioni}}, {distance} in totale.",
     "autoReroute": "Ora ti guido su un nuovo percorso. {first}. {count, plural, one {# indicazione} other {# indicazioni}}, {distance} in totale.",
     "rerouteHeadClock": "Girati a {direction}. Poi {first}",

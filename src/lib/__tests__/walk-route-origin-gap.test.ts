@@ -8,7 +8,7 @@ vi.mock("../env", () => ({ hasKakaoKey: vi.fn(() => true), hasTmapKey: vi.fn(() 
 import { getKakaoWalkBriefing } from "../providers/kakao-walk";
 import { getWalkRouteBriefing } from "../providers/tmap-pedestrian";
 import { hasTmapKey } from "../env";
-import { getWalkRoute, getWalkRouteLines, ORIGIN_GAP_RETRY_M } from "../walk-route";
+import { getWalkRoute, getWalkRouteLines, ORIGIN_GAP_RETRY_M, ORIGIN_RETRY_TIMEOUT_MS } from "../walk-route";
 import type { Coord, WalkRouteBriefing } from "../types";
 
 // 합성 좌표(공개 저장소 규율 — 실보행 좌표가 아니다).
@@ -89,6 +89,25 @@ describe("출발점 재시도(A70 §1.2)", () => {
     expect(b?.originGapM).toBe(90);
   });
 
+  it("④-b 재시도는 상한(4초) 안에서만 기다린다 — hang이면 abort되어 카카오 + 필드(구현 리뷰 M2)", async () => {
+    expect(ORIGIN_RETRY_TIMEOUT_MS).toBe(4_000);
+    const timeout = vi.spyOn(AbortSignal, "timeout").mockReturnValue(AbortSignal.abort());
+    vi.mocked(getKakaoWalkBriefing).mockResolvedValue(startingAt(90, KAKAO));
+    // 응답하지 않는 Tmap: 신호가 끊기면 그때만 실패한다.
+    vi.mocked(getWalkRouteBriefing).mockImplementation(
+      (p) =>
+        new Promise((_, reject) => {
+          if (p.signal?.aborted) reject(new Error("aborted"));
+          p.signal?.addEventListener("abort", () => reject(new Error("aborted")));
+        }),
+    );
+    const r = await geo();
+    expect(timeout).toHaveBeenCalledWith(ORIGIN_RETRY_TIMEOUT_MS);
+    expect(r?.kind).toBe("broad");
+    expect(r?.originGapM).toBe(90);
+    timeout.mockRestore();
+  });
+
   it("⑤ 브리핑 응답(기하 없음)은 재시도하지 않고 바이트 동일(필드 없음)", async () => {
     vi.mocked(getKakaoWalkBriefing).mockResolvedValue(startingAt(237, KAKAO));
     const r = await getWalkRoute({ text: { wording: 1 }, lang: "ko", origin: ORIGIN, dest: DEST });
@@ -153,7 +172,7 @@ describe("출발점 재시도(A70 §1.2)", () => {
     vi.mocked(console.warn).mockClear();
     await geo();
     const logged = vi.mocked(console.warn).mock.calls.map((c) => c.map(String).join(" ")).join("\n");
-    expect(logged).toContain("kakao=237m tmap=8m");
+    expect(logged).toContain("kakao=237m tmap=8m 선택=tmap");
     expect(logged).not.toMatch(/37\.5|127\.1/);
   });
 });

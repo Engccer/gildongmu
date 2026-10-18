@@ -322,8 +322,9 @@ function fetchTmapWalk(params: {
   waypoint: Coord | undefined;
   lang: WalkLang;
   includeGeometry: boolean;
+  signal?: AbortSignal;
 }): Promise<WalkRouteBriefing | null> {
-  const { origin, dest, routeMode, noStore, waypoint, lang, includeGeometry } = params;
+  const { origin, dest, routeMode, noStore, waypoint, lang, includeGeometry, signal } = params;
   return getWalkRouteBriefing({
     origin,
     dest,
@@ -332,6 +333,7 @@ function fetchTmapWalk(params: {
     noStore,
     includeLineGeometry: includeGeometry,
     guard: lang === "en",
+    ...(signal ? { signal } : {}),
   });
 }
 
@@ -341,6 +343,13 @@ function fetchTmapWalk(params: {
  * 실시간 안내 응답 211건 오프라인 분포: 중앙값 5.5m, 95% 40.7m, 30m 초과 약 6%(재시도 비용 = 그만큼의 Tmap 호출).
  */
 export const ORIGIN_GAP_RETRY_M = 30;
+
+/**
+ * 재시도 호출 상한(ms). 종전 Tmap은 카카오 **실패 뒤**에만 불려 hang이 이미 실패한 요청에만 붙었지만, 재시도는 **성공한** 카카오
+ * 응답 뒤에 직렬로 붙는다 — 상한이 없으면 Tmap hang이 손에 쥔 결과를 버리고 안내 시작을 클라이언트 시한(iOS 60초)까지 묶는다
+ * (구현 리뷰 M2). 넘기면 abort → catch → 카카오 유지.
+ */
+export const ORIGIN_RETRY_TIMEOUT_MS = 4_000;
 
 /** 요청 출발점에서 경로 첫 점까지(m). 첫 점이 없으면 null — 모르는 것을 멀다고 추정하지 않는다. */
 export function routeOriginGapMeters(briefing: WalkRouteBriefing, origin: Coord): number | null {
@@ -362,13 +371,14 @@ async function preferNearOrigin(
     return r;
   }
   try {
-    const t = await fetchTmapWalk(params);
+    const t = await fetchTmapWalk({ ...params, signal: AbortSignal.timeout(ORIGIN_RETRY_TIMEOUT_MS) });
     const tGap = t ? routeOriginGapMeters(t, params.origin) : null;
+    const pickTmap = t !== null && tGap !== null && tGap < gap;
     // 좌표 없이 거리만 남긴다(공개 로그 규율 — 출발점이 곧 사용자 위치다).
     console.warn(
-      `[walk-route] 출발점 재시도: kakao=${Math.round(gap)}m tmap=${tGap === null ? "-" : `${Math.round(tGap)}m`}`,
+      `[walk-route] 출발점 재시도: kakao=${Math.round(gap)}m tmap=${tGap === null ? "-" : `${Math.round(tGap)}m`} 선택=${pickTmap ? "tmap" : "kakao"}`,
     );
-    if (t && tGap !== null && tGap < gap) return { briefing: t, via: "tmap" };
+    if (pickTmap) return { briefing: t, via: "tmap" };
   } catch (e) {
     console.warn(`[walk-route] 출발점 재시도 실패: kakao=${Math.round(gap)}m`, e);
   }
@@ -508,6 +518,8 @@ async function resolveWalkRoute(
     if (!hasShortestAxis(lang)) {
       throw new Error("[walk-route] variant=shortest를 조회할 키가 없습니다");
     }
+    // 옛 앱의 최단 + 계단 회피 조합도 재시도한다 — 그 조합은 이미 `unavailable`(계단 회피를 하지 않는 경로)이라 Tmap으로
+    // 바뀌어도 잃는 안전 옵션이 없다(구현 리뷰 n3).
     const r = await fetchModeNearOrigin("SHORTEST");
     if (!r?.briefing) return null;
     const annotated = await annotate(r.briefing, r.via);

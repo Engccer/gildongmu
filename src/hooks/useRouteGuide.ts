@@ -1914,6 +1914,10 @@ export function useRouteGuide(
         clearEtaTimer();
         rebaseForAxisChange();
         autoRerouteGenRef.current += 1;
+        // 회차 래치도 내린다(iOS·안드로이드와 같은 표면 상태 — 국면이 finalApproach라 화면엔 어차피 서지 않는다, 리뷰 m7).
+        rerouteGaveUpRef.current = false;
+        rerouteGaveUpSpokenRef.current = false;
+        setRerouteGaveUp(false);
         inFinalApproachRef.current = true;
         finalIntroSpokenRef.current = true;
         lastFinalTickAtRef.current = now;
@@ -2442,8 +2446,9 @@ export function useRouteGuide(
         // 재조회의 출발지는 **지금 서 있는 자리**여야 한다 — 캐시를 읽으면 이탈해서
         // 누른 재조회가 출발점에서 같은 경로를 다시 받아 온다(실사용 발견).
         const fetched = await fetchGuideRoute(true);
-        // 도착 응답 폐기: 세대 불일치·중지·언마운트(채팅 이탈 게이트 동형).
-        if (gen !== genRef.current || !trackingRef.current || !mountedRef.current) return;
+        // 도착 응답 폐기: 세대 불일치·중지·언마운트(채팅 이탈 게이트 동형). 왕복 중 최종 접근에 들었으면(이탈 중 목적지 곁 진입 —
+        // 버튼이 서 있는 국면에서 열린다) 목적지 20m 안에서 새 경로로 되돌리지 않는다(A70 리뷰 m4).
+        if (gen !== genRef.current || !trackingRef.current || !mountedRef.current || inFinalApproachRef.current) return;
         // 왕복 중에 그 경유지를 지났으면 응답 경로는 지난 경유지를 되살린다 — 폐기한다(iOS `rerouteToken`
         // 동형, 설계 리뷰 #2). 이탈 상태는 남으므로 버튼으로 다시 누를 수 있고, 무통지인 것은 직전의 도착
         // 문장이 이 활성화의 응답을 대신하기 때문이다(도착은 이탈 의심이 아닌 fix에서만 선다).

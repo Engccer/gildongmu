@@ -18670,13 +18670,13 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "L'inizio del percorso è a %2$@ verso %1$@."
+            "value": "L'inizio del percorso è a %2$@ a %1$@."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "経路の始点は%1$@へ%2$@離れています。"
+            "value": "経路の始点は%1$@に%2$@離れています。"
           }
         }
       }

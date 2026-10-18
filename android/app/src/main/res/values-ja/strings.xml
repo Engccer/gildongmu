@@ -849,7 +849,7 @@
     <string name="guide_rerouteHeadClock">%1$sを向いてください。その後、%2$s</string>
     <string name="guide_rerouteHeadStraight">そのまま%1$s</string>
     <string name="guide_rough">%1$sほど</string>
-    <string name="guide_routeStartsAway">経路の始点は%1$sへ%2$s離れています。</string>
+    <string name="guide_routeStartsAway">経路の始点は%1$sに%2$s離れています。</string>
     <string name="guide_transitDestChangePrepared">交通機関の経路を検索しています。案内画面で経路を選択してください。</string>
     <string name="guide_uncertain">位置の確度が低いです</string>
     <string name="guide_uncertainRecovered">位置の確度が回復しました</string>

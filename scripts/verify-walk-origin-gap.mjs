@@ -10,15 +10,26 @@
 //  ⓓ en 기하 응답: 재시도 없이 ⓐ 규칙
 //  양성 대조: ⓑ에서 재시도가 Tmap을 고른 사례(`kind: recommended`) 또는 둘 다 먼 사례(`originGapM` 있음)를 1건 이상 관측
 //
+//  로그 판정(선택, `SERVER_LOG=<로컬 서버 로그 경로>`): 요청마다 늘어난 `출발점 재시도` 줄을 세어 재시도 여부를 응답과 따로 판정한다 —
+//  ⓐ는 "재시도 없는 근거리 공개 쌍 ≥ 1"(대조 성립), 양성 대조는 "ⓑ에서 재시도 로그 ≥ 1". 줄 종류(`kind`)만으로는 카카오 실패 뒤
+//  Tmap 폴백과 재시도 채택을 가르지 못한다(구현 리뷰 m5). `PUBLIC_ONLY=1`이면 ⓑ를 건너뛴다(호출 예산 — 비공개 사례 재실행 없이).
+//
 // 출력은 거리만 낸다(좌표 금지 — 비공개 사례는 사용자 실위치다).
 // 사용법: BASE_URL=http://localhost:3070 ORIGIN_GAP_CASES=<저장소 밖 json> node scripts/verify-walk-origin-gap.mjs
 // 호출 수: 공개 2 + 비공개 N×(카카오 1 + 재시도 Tmap ≤1) + 브리핑 1 + en 1(Tmap). 429는 창이 지나면 재시도한다.
 // 종료 코드: 전부 PASS면 0, 하나라도 FAIL이면 1.
 
-import { readFileSync } from "node:fs";
+import { readFileSync, statSync } from "node:fs";
 
 const BASE = process.env.BASE_URL ?? "http://localhost:3000";
 const RETRY_M = 30;
+const LOG = process.env.SERVER_LOG;
+const logSize = () => (LOG ? statSync(LOG).size : 0);
+/** 직전 크기 이후 늘어난 로그에서 재시도 줄 수. 로그를 안 주면 null(판정 안 함). */
+function retriesSince(size) {
+  if (!LOG) return null;
+  return readFileSync(LOG, "utf8").slice(size).split("\n").filter((l) => l.includes("출발점 재시도:")).length;
+}
 
 /** `verify-non-ko-walk-guidance.mjs` 코퍼스의 도심 쌍(공개 지점). [출발lat, 출발lng, 도착lat, 도착lng] */
 const PUBLIC = [
@@ -73,26 +84,38 @@ function gapRule(label, origin, r) {
 }
 
 // ⓐ
+let quietPublic = 0;
 for (const [i, p] of PUBLIC.entries()) {
   const origin = [p[0], p[1]];
+  const before = logSize();
   gapRule(`ⓐ 공개 ${i + 1}`, origin, await walk({ origin, dest: [p[2], p[3]] }));
+  const n = retriesSince(before);
+  if (n !== null) console.log(`     ⓐ 공개 ${i + 1} 재시도 로그 ${n}줄`);
+  if (n === 0) quietPublic++;
 }
+if (LOG) check("ⓐ 재시도 없는 근거리 공개 쌍 ≥ 1(대조 성립)", quietPublic >= 1, `${quietPublic}쌍`);
 
 // ⓑ
 const casesPath = process.env.ORIGIN_GAP_CASES;
 let retriedOrFar = 0;
-if (!casesPath) {
+let retryLogs = 0;
+if (process.env.PUBLIC_ONLY === "1") {
+  console.log("SKIP ⓑ 비공개 사례(PUBLIC_ONLY=1)");
+} else if (!casesPath) {
   check("ⓑ 비공개 사례 파일(ORIGIN_GAP_CASES)", false, "미지정");
 } else {
   const cases = JSON.parse(readFileSync(casesPath, "utf8"));
   for (const [i, c] of cases.entries()) {
+    const before = logSize();
     const r = await walk({ origin: c.origin, dest: c.dest, variant: c.variant, accessible: c.accessible, via: c.via });
+    retryLogs += retriesSince(before) ?? 0;
     const gap = gapRule(`ⓑ 사례 ${i + 1}(캐시 카카오 ${c.cachedGapM}m)`, c.origin, r);
     if (gap === null) continue;
     check(`ⓑ 사례 ${i + 1} 나빠지지 않음`, gap <= c.cachedGapM + 1, `${c.cachedGapM}m → ${gap.toFixed(1)}m`);
     if (r.body.result.kind === "recommended" || r.body.result.originGapM !== undefined) retriedOrFar++;
   }
   check("ⓑ 양성 대조(재시도가 Tmap을 골랐거나 둘 다 먼 사례 ≥ 1)", retriedOrFar >= 1, `${retriedOrFar}건`);
+  if (LOG) check("ⓑ 재시도 로그 ≥ 1", retryLogs >= 1, `${retryLogs}줄`);
 }
 
 // ⓒ

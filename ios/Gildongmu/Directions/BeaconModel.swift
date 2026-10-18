@@ -2226,7 +2226,12 @@ final class BeaconModel {
             lastGuidance = text
             liveTopText = text
             resultHaptic(.attention)
-            announce(text, speechClass: .actionable)
+            // ⚠ `.high`: 이 진입이 "경로 다시 조회" 버튼을 지워 커서가 움직일 수 있다(`backOnRoute`와 같은 판별선, 구현 리뷰 M1).
+            // 버려지면(억제·백그라운드) 진입 서술과 같은 상환 칸으로 갚는다 — 다음 발화가 도착이면 "벗어났습니다"에서 곧바로
+            // "도착했습니다"로 건너뛴다(리뷰 m1).
+            announce(text, highPriority: true, speechClass: .actionable) { [weak self] in
+                self?.pendingFinalApproachIntro = text
+            }
             return
         }
         if case .finalApproachEnter = out.event {
@@ -2397,6 +2402,12 @@ final class BeaconModel {
             // (`backOnRoute`가 지우는 것과 같은 집합 — 국면이 finalApproach라 그 이벤트는 오지 않는다).
             finalApproachIntroSpoken = true
             lastFinalTickAt = uptimeNow
+            // 왕복 중인 버튼 재조회는 폐기한다 — 목적지 20m 안에서 새 경로로 최종 접근을 되돌리지 않게(구현 리뷰 m4, 안드로이드
+            // `abandonReroute` 동형). 진행 중 자동 조회는 위 `clearProposal()`이 이미 막았다.
+            rerouteToken += 1
+            // 시트 착지 표식도 자연 복귀와 같게 내린다 — 앞선 재조회 채택 이력이 남아 있으면 이 진입이 "재조회 성공"처럼 착지해
+            // 같은 문장을 두 번 읽는다(리뷰 M1·접근성 W2: 착지 없음 + `.high`).
+            offRouteEndedByReroute = false
             offRoute = false
             offRouteLine = nil
             offRouteNoticeLive = []
@@ -2412,7 +2423,10 @@ final class BeaconModel {
                 lat1: c.lat, lng1: c.lng, lat2: dest.lat, lng2: dest.lng
             )
         }
-        guideDiagLog("finalEnter offset=\(usableGeometry.map { String(format: "%.1f", $0.offsetMeters) } ?? "-")")
+        // 이탈 중 진입은 호출부가 `finalEnter entry=offRoute`로 남긴다(한 진입 한 줄, 리뷰 n2).
+        if entry == .routeEnd {
+            guideDiagLog("finalEnter offset=\(usableGeometry.map { String(format: "%.1f", $0.offsetMeters) } ?? "-")")
+        }
     }
 
     /// 최종 접근 fix 처리(§3.4). **거리는 항상 현재 fix → 목적지 직선거리**다 —
