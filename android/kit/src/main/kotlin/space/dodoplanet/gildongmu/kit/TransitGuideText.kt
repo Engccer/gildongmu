@@ -248,6 +248,19 @@ fun transitBoardedLine(isEn: Boolean): TransitTextLine = TransitTextLine(listOf(
 fun transitBoardedAlightLine(isEn: Boolean, leg: TransitDisplayLeg): TransitTextLine =
     makeLine(isEn, "boardedAlight", listOf(leg.alight)) { it }
 
+/**
+ * A69: 서울버스 「곧 도착」(잔여 0) 하차 임박 — "다음 정류장 {하차 정류장}에서 내리세요." 「곧 도착」은 직전 정류장에 정차한
+ * 순간에 이미 켜지므로(A41) "이번 정류장"은 "여기서 내려라"로 들린다. 이름이 비면 이름 없는 키를 고른다.
+ */
+fun transitArrivingAtAlightStopLine(isEn: Boolean, leg: TransitDisplayLeg): TransitTextLine =
+    if (leg.alight.ko.isEmpty()) TransitTextLine(listOf(TransitTextPart.key("arrivingAtAlightStopUnnamed")), uiLang(isEn))
+    else makeLine(isEn, "arrivingAtAlightStop", listOf(leg.alight)) { it }
+
+/** A69: 기기 위치가 하차 정류장 도착을 관측한 한 마디 — "{하차 정류장} 도착. 내리세요." (판정은 웹·iOS 정본, 안드로이드 미이식). */
+fun transitAlightStopReachedLine(isEn: Boolean, leg: TransitDisplayLeg): TransitTextLine =
+    if (leg.alight.ko.isEmpty()) TransitTextLine(listOf(TransitTextPart.key("alightStopReachedUnnamed")), uiLang(isEn))
+    else makeLine(isEn, "alightStopReached", listOf(leg.alight)) { it }
+
 fun transitCurrentStationLine(isEn: Boolean, location: TransitLabel): TransitTextLine =
     makeLine(isEn, "currentStation", listOf(location)) { it }
 
@@ -367,7 +380,9 @@ val transitTextKeys: List<String> = listOf(
     "busEtaMinSec", "busEtaMin", "busEtaSec", "busSoon", "busNotDeparted", "busTurning",
     "approachFrame", "vehicleSelected", "selectedVehicle", "vehiclePassed",
     "arrivedAtBoardStop", "arrivedAtBoardStopBus", "arrivingAtBoardStop", "arrivingAtBoardStopBus",
-    "boarded", "boardedAlight", "currentStation",
+    "boarded", "boardedAlight",
+    "arrivingAtAlightStop", "arrivingAtAlightStopUnnamed", "alightStopReached", "alightStopReachedUnnamed",
+    "currentStation",
     "bound", "expressCheck", "expressStopsAt", "expressSkipsAlight", "exitBound", "exitBoundSentence", "departed", "terminatesEarly",
     "viaBoard", "viaAlight", "viaCurrent", "overviewLeg",
     "prewalkStart", "prewalkArrived", "prewalkArrivedButton",

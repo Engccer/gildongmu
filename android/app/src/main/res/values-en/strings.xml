@@ -1236,6 +1236,8 @@
     <string name="transitGuide_aboardStationPrompt">Which station are you passing right now?</string>
     <string name="transitGuide_advance">Next segment</string>
     <string name="transitGuide_advanceUntrackable">Finish this segment and continue</string>
+    <string name="transitGuide_alightStopReached">Arrived at %1$s. Get off here.</string>
+    <string name="transitGuide_alightStopReachedUnnamed">Arrived at your stop. Get off here.</string>
     <string name="transitGuide_approachFrame">At %1$s: %2$s.</string>
     <string name="transitGuide_approachingStarted">Tracking the selected vehicle.</string>
     <string name="transitGuide_approxNote">Approximate: based on the nearest vehicle on this route.</string>
@@ -1246,7 +1248,8 @@
     <string name="transitGuide_arrivedGuess">If you got off, press Next segment.</string>
     <string name="transitGuide_arrivedGuessWalkNext">If you got off, press Start remaining walk guidance. %1$s min walk to your destination.</string>
     <string name="transitGuide_arrivedWalkNext">After getting off, press Start remaining walk guidance. %1$s min walk to your destination.</string>
-    <string name="transitGuide_arrivingAtAlightStop">Get off at this stop.</string>
+    <string name="transitGuide_arrivingAtAlightStop">Get off at the next stop, %1$s.</string>
+    <string name="transitGuide_arrivingAtAlightStopUnnamed">Get off at the next stop.</string>
     <string name="transitGuide_arrivingAtBoardStop">%1$s is arriving soon.</string>
     <string name="transitGuide_arrivingAtBoardStopBus">Bus %1$s is arriving soon.</string>
     <string name="transitGuide_backOnTrack">Vehicle signal reacquired.</string>

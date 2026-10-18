@@ -1236,6 +1236,8 @@
     <string name="transitGuide_aboardStationPrompt">今どの駅を通過していますか？</string>
     <string name="transitGuide_advance">次の区間</string>
     <string name="transitGuide_advanceUntrackable">この区間を終えて次の区間へ</string>
+    <string name="transitGuide_alightStopReached">%1$sに到着。降りてください。</string>
+    <string name="transitGuide_alightStopReachedUnnamed">降車停留所に到着。降りてください。</string>
     <string name="transitGuide_approachFrame">%1$sに%2$s。</string>
     <string name="transitGuide_approachingStarted">選択した車両を追跡します。</string>
     <string name="transitGuide_approxNote">近似追跡: 同路線の接近車両基準。</string>
@@ -1246,7 +1248,8 @@
     <string name="transitGuide_arrivedGuess">降りていれば「次の区間」を押してください。</string>
     <string name="transitGuide_arrivedGuessWalkNext">降りていれば「残りの徒歩案内を開始」を押してください。目的地まで徒歩%1$s分。</string>
     <string name="transitGuide_arrivedWalkNext">降りたら「残りの徒歩案内を開始」を押してください。目的地まで徒歩%1$s分。</string>
-    <string name="transitGuide_arrivingAtAlightStop">この停留所で降りてください。</string>
+    <string name="transitGuide_arrivingAtAlightStop">次の停留所、%1$sで降りてください。</string>
+    <string name="transitGuide_arrivingAtAlightStopUnnamed">次の停留所で降りてください。</string>
     <string name="transitGuide_arrivingAtBoardStop">%1$sがまもなく到着します。</string>
     <string name="transitGuide_arrivingAtBoardStopBus">%1$s番バスがまもなく到着します。</string>
     <string name="transitGuide_backOnTrack">車両の信号を再確認しました。</string>

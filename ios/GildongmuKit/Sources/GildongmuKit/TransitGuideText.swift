@@ -284,6 +284,25 @@ public func transitBoardedAlightLine(isEn: Bool, leg: TransitDisplayLeg) -> Tran
     makeLine(isEn, "boardedAlight", [leg.alight]) { $0 }
 }
 
+/// A69: 서울버스 「곧 도착」(잔여 0) 하차 임박 — "다음 정류장 {하차 정류장}에서 내리세요."
+/// 「곧 도착」은 직전 정류장에 정차한 순간에 이미 켜진다(A41) — "이번 정류장"은 "여기서 내려라"로 들려 한 정거장 전에
+/// 내린 사고가 났다. "다음 정류장"은 서 있든 막 떠났든 언제나 하차 정류장이다. 이름이 비면 이름 없는 키를 고른다.
+public func transitArrivingAtAlightStopLine(isEn: Bool, leg: TransitDisplayLeg) -> TransitTextLine {
+    if leg.alight.ko.isEmpty {
+        return TransitTextLine(parts: [.key("arrivingAtAlightStopUnnamed", [])], lang: isEn ? "en" : "ko")
+    }
+    return makeLine(isEn, "arrivingAtAlightStop", [leg.alight]) { $0 }
+}
+
+/// A69: 기기 위치가 하차 정류장 도착을 관측한 한 마디 — "{하차 정류장} 도착. 내리세요." 판정은
+/// `transitBusAlightNoticeStep`(`TransitBusStop.swift`), 리듀서는 이 문장을 모른다.
+public func transitAlightStopReachedLine(isEn: Bool, leg: TransitDisplayLeg) -> TransitTextLine {
+    if leg.alight.ko.isEmpty {
+        return TransitTextLine(parts: [.key("alightStopReachedUnnamed", [])], lang: isEn ? "en" : "ko")
+    }
+    return makeLine(isEn, "alightStopReached", [leg.alight]) { $0 }
+}
+
 public func transitCurrentStationLine(isEn: Bool, location: TransitLabel) -> TransitTextLine {
     makeLine(isEn, "currentStation", [location]) { $0 }
 }
@@ -425,7 +444,9 @@ public let transitTextKeys: [String] = [
     "busEtaMinSec", "busEtaMin", "busEtaSec", "busSoon", "busNotDeparted", "busTurning",
     "approachFrame", "vehicleSelected", "selectedVehicle", "vehiclePassed",
     "arrivedAtBoardStop", "arrivedAtBoardStopBus", "arrivingAtBoardStop", "arrivingAtBoardStopBus",
-    "boarded", "boardedAlight", "currentStation",
+    "boarded", "boardedAlight",
+    "arrivingAtAlightStop", "arrivingAtAlightStopUnnamed", "alightStopReached", "alightStopReachedUnnamed",
+    "currentStation",
     "bound", "expressCheck", "expressStopsAt", "expressSkipsAlight", "exitBound", "exitBoundSentence", "departed", "terminatesEarly",
     "viaBoard", "viaAlight", "viaCurrent", "overviewLeg",
     "prewalkStart", "prewalkArrived", "prewalkArrivedButton",

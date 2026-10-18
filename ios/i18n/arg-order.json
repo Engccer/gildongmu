@@ -1076,6 +1076,9 @@
   "timetable.toTerminus": [
     "terminus"
   ],
+  "transitGuide.alightStopReached": [
+    "stop"
+  ],
   "transitGuide.approachFrame": [
     "stop",
     "message"
@@ -1091,6 +1094,9 @@
   ],
   "transitGuide.arrivedWalkNext": [
     "minutes"
+  ],
+  "transitGuide.arrivingAtAlightStop": [
+    "stop"
   ],
   "transitGuide.arrivingAtBoardStop": [
     "line"

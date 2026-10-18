@@ -67,6 +67,8 @@ class TransitGuideTextTest {
             "arrivingAtBoardStop" -> transitArrivingAtBoardStopLine(e, need(c.leg, "leg", c))
             "boarded" -> transitBoardedLine(e)
             "boardedAlight" -> transitBoardedAlightLine(e, need(c.leg, "leg", c))
+            "arrivingAtAlightStop" -> transitArrivingAtAlightStopLine(e, need(c.leg, "leg", c))
+            "alightStopReached" -> transitAlightStopReachedLine(e, need(c.leg, "leg", c))
             "currentStation" -> transitCurrentStationLine(e, need(c.location, "location", c))
             "candidateDesc" -> transitCandidateDescLine(e, need(c.leg, "leg", c), need(c.item, "item", c), expressOf(c), c.departedMinutes)
             "vehicleDesc" -> transitVehicleDescLine(e, need(c.item, "item", c))

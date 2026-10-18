@@ -48821,6 +48821,86 @@
         }
       }
     },
+    "transitGuide.alightStopReached": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ 도착. 내리세요."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arrived at %1$@. Get off here."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Llegada a %1$@. Bájese aquí."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arrivée à %1$@. Descendez ici."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arrivo a %1$@. Scendi qui."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@に到着。降りてください。"
+          }
+        }
+      }
+    },
+    "transitGuide.alightStopReachedUnnamed": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "하차 정류장 도착. 내리세요."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arrived at your stop. Get off here."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Llegada a su parada. Bájese aquí."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arrivée à votre arrêt. Descendez ici."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arrivo alla tua fermata. Scendi qui."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "降車停留所に到着。降りてください。"
+          }
+        }
+      }
+    },
     "transitGuide.approachFrame": {
       "localizations": {
         "ko": {
@@ -49226,37 +49306,77 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "이번 정류장에서 내리세요."
+            "value": "다음 정류장 %1$@에서 내리세요."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Get off at this stop."
+            "value": "Get off at the next stop, %1$@."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Bájese en esta parada."
+            "value": "Bájese en la próxima parada, %1$@."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Descendez à cet arrêt."
+            "value": "Descendez au prochain arrêt, %1$@."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Scendi a questa fermata."
+            "value": "Scendi alla prossima fermata, %1$@."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "この停留所で降りてください。"
+            "value": "次の停留所、%1$@で降りてください。"
+          }
+        }
+      }
+    },
+    "transitGuide.arrivingAtAlightStopUnnamed": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다음 정류장에서 내리세요."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Get off at the next stop."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bájese en la próxima parada."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descendez au prochain arrêt."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scendi alla prossima fermata."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "次の停留所で降りてください。"
           }
         }
       }

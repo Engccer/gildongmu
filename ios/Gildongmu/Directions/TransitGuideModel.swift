@@ -122,6 +122,9 @@ final class TransitGuideModel {
     /// 둔다 — 설계 리뷰 m3). 만료는 폴 시계가 아니라 마지막 관측 + 보존 창에 맞춘 타이머가 판정한다(설계 리뷰 M2).
     private(set) var busStopMark: TransitBusStopMark?
     @ObservationIgnored private var busStopTracker: TransitBusStopTracker?
+    /// 하차 정류장 도착 한 마디(A69 spec 2026-10-19 §2)의 구간 기록 — 판정은 Kit `transitBusAlightNoticeStep`.
+    /// 세션 시작·경로 변경·종료에서 비우고 유휴 진입은 비우지 않는다(같은 세션·같은 구간). `reached`는 늦은 「다음 정류장」을 거른다.
+    @ObservationIgnored private var busAlightNotice: TransitBusAlightNotice?
     @ObservationIgnored private var busStopExpiryTask: Task<Void, Never>?
     /// 계측 `busFix` 줄의 직전 (판정, 최근접, 래치) — 바뀔 때만 쓴다(fix는 초 단위로 온다).
     @ObservationIgnored private var lastBusFixLog: (verdict: TransitBusStopVerdict, nearest: Int?, latched: Int?)?
@@ -312,6 +315,7 @@ final class TransitGuideModel {
         // 다음 세션의 phaseGen도 0에서 시작한다 — 옛 위치 결박이 같은 세대·열차로 되살아나지 않게.
         ridingPosition = nil
         clearBusStop()
+        busAlightNotice = nil
         neverSeenPending = nil
         toneState = .initial
         lastPollStartAt = nil
@@ -373,6 +377,7 @@ final class TransitGuideModel {
         route = nil
         ridingPosition = nil
         clearBusStop()
+        busAlightNotice = nil
         neverSeenPending = nil
         waitingLive = []
         waitingDeparted = []
@@ -636,12 +641,15 @@ final class TransitGuideModel {
         guard let state, let leg = currentLeg else { return }
         let age = -fix.timestamp.timeIntervalSinceNow
         let now = nowMs()
-        let result = transitBusStopStep(
-            busStopTracker, state: state, leg: leg,
-            fix: TransitDeviceFix(lat: fix.lat, lng: fix.lng, accuracy: fix.accuracy, ageSeconds: age),
-            now: now)
+        let deviceFix = TransitDeviceFix(lat: fix.lat, lng: fix.lng, accuracy: fix.accuracy, ageSeconds: age)
+        let result = transitBusStopStep(busStopTracker, state: state, leg: leg, fix: deviceFix, now: now)
         busStopTracker = result.tracker
         refreshBusStopMark(now: now)
+        // A69: 표시 전용 계약의 의도된 예외 하나 — 통지만 내고 리듀서 입력(dispatch)으로 흘러가지 않는다.
+        let notice = transitBusAlightNoticeStep(
+            busAlightNotice, state: state, leg: leg, result: result, fix: deviceFix, now: now)
+        busAlightNotice = notice.notice
+        if notice.speak { announceAlightReached(leg: leg, legIndex: state.legIndex) }
         guard result.verdict != .notApplicable else { return }
         // 계측: 판정 종류나 래치가 바뀔 때만 1줄 — 실승차 사후에 부정확·노선 밖·모호를 가르는 유일한 증거.
         let latched = result.tracker?.stopIndex
@@ -651,6 +659,21 @@ final class TransitGuideModel {
             transitGuideLog("busFix verdict=\(result.verdict.rawValue)"
                 + " idx=\(result.nearestIndex.map(String.init) ?? "-") latched=\(latched.map(String.init) ?? "-")"
                 + " acc=\(Int(fix.accuracy.rounded())) age=\(String(format: "%.1f", age))s")
+        }
+    }
+
+    /// 하차 정류장 도착 한 마디(A69 판정 ②) — 「{하차 정류장} 도착. 내리세요.」 리듀서 `arrived`와 같은 도착 톤 뒤
+    /// 지연 창구(톤 뒤 발화)로, 진행 중 낭독을 끊는다(늦으면 문이 닫힌다). 백그라운드는 톤 없이 행동 문장만(E36·E53).
+    /// 문장이 버려지면 전달 장부만 되돌린다 — 정류장에 서 있는 동안 다음 적격 fix가 다시 말한다(설계 리뷰 H4).
+    private func announceAlightReached(leg: TransitGuideLeg, legIndex: Int) {
+        transitGuideLog("busAlightReached leg=\(legIndex)")
+        playTone(.nearby, allowedInBackground: false)
+        let text = TransitGuideTextRenderer.render(transitAlightStopReachedLine(
+            isEn: transitGuideIsEn, leg: displayLeg(leg, useOverride: false)))
+        deferredAnnouncer.announce(text, highPriority: true, speechClass: .actionable) { [weak self] in
+            guard let self, self.busAlightNotice?.legIndex == legIndex else { return }
+            self.busAlightNotice?.announced = false
+            transitGuideLog("busAlightReached dropped leg=\(legIndex)")
         }
     }
 
@@ -1197,6 +1220,7 @@ final class TransitGuideModel {
         expressBlockedNote = nil  // 옛 경로의 하차역 이름이 든 문장(코드 리뷰 #4)
         ridingPosition = nil  // 새 경로는 phaseGen 0부터 — 옛 결박이 되살아나지 않게(E35)
         clearBusStop()  // 같은 이유(E48)
+        busAlightNotice = nil  // 새 경로의 구간 번호는 옛 경로와 무관하다(A69)
         neverSeenPending = nil
         toneState = .initial
         lastPollStartAt = nil
@@ -1719,9 +1743,14 @@ final class TransitGuideModel {
         // 사다리를 구분하지 않으므로 문구 조립이 전이 전 상태를 본다.
         firstObservationInStep = !state.trackingAnnounced && result.state.trackingAnnounced
         if let event = result.event {
+            // A69 역순 방지: 기기 위치가 이 구간의 하차 정류장 도착을 이미 관측했으면 「다음 정류장 …」은 톤·문장 모두
+            // 내지 않는다(그 사람에게 "다음"은 한 정거장 더다). 리듀서 래치는 그대로 섰다 — 출력만 거른다.
+            if case .arrivingAtAlightStop = event, let notice = busAlightNotice, notice.reached,
+               notice.legIndex == result.state.legIndex {
+                transitGuideLog("arrivingAtAlightStop suppressed reason=alightReached")
             // 승차 중 현재역(E35 §6 판정 2): `neverSeen` 순간 현재역이 잡혀 있으면 "찾지 못하고 있다"는 전제가
             // 거짓이라 경고(문장·약한 톤)를 결박째 보류한다. 처분(발화·폐기)은 폴마다 `refreshPosition` 끝에서.
-            if case .neverSeen = event,
+            } else if case .neverSeen = event,
                let deferred = transitNeverSeenWarningDeferred(
                    state: result.state, position: ridingPosition, now: nowMs()) {
                 neverSeenPending = deferred
@@ -1843,8 +1872,14 @@ final class TransitGuideModel {
                     isEn: transitGuideIsEn, leg: displayLeg(leg, useOverride: false))))
             }
         case .arrivingAtAlightStop:
-            // 차내 "이번 정류장" 방송과 같은 시점. 도착 문장은 소실 뒤 arrived(certain: false)가 낸다.
-            parts.append(appLocalized("transitGuide.arrivingAtAlightStop"))
+            // A69: 「곧 도착」은 직전 정류장 정차 순간에 이미 켜진다 — "다음 정류장 {하차 정류장}"은 서 있든 떠났든 참이다.
+            // 도착 문장은 소실 뒤 arrived(certain: false)가 낸다.
+            if let leg {
+                parts.append(TransitGuideTextRenderer.render(transitArrivingAtAlightStopLine(
+                    isEn: transitGuideIsEn, leg: displayLeg(leg, useOverride: false))))
+            } else {
+                parts.append(appLocalized("transitGuide.arrivingAtAlightStopUnnamed"))
+            }
         case let .boarded(_, cause):
             if let leg {
                 let d = displayLeg(leg, useOverride: false)

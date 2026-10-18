@@ -63,6 +63,8 @@ private func run(_ c: TextFixture.Case) -> TransitTextLine {
     case "arrivingAtBoardStop": return transitArrivingAtBoardStopLine(isEn: e, leg: c.leg!)
     case "boarded": return transitBoardedLine(isEn: e)
     case "boardedAlight": return transitBoardedAlightLine(isEn: e, leg: c.leg!)
+    case "arrivingAtAlightStop": return transitArrivingAtAlightStopLine(isEn: e, leg: c.leg!)
+    case "alightStopReached": return transitAlightStopReachedLine(isEn: e, leg: c.leg!)
     case "currentStation": return transitCurrentStationLine(isEn: e, location: c.location!)
     case "candidateDesc":
         return transitCandidateDescLine(

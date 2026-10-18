@@ -26,6 +26,16 @@ private struct StepExpected: Decodable {
     let verdict: TransitBusStopVerdict
     let nearestIndex: Int?
 }
+private struct AlightStep: Decodable {
+    struct Expected: Decodable {
+        let speak: Bool
+        let notice: TransitBusAlightNotice
+    }
+    let fix: TransitDeviceFix
+    let now: Double
+    let state: FixtureState?
+    let expected: Expected
+}
 private struct Case: Decodable {
     let name: String
     let fn: String
@@ -40,9 +50,11 @@ private struct Case: Decodable {
     let expectedInt: Int?
     let expectedMark: TransitBusStopMark?
     let expectedOverview: TransitOverview?
+    let notice: TransitBusAlightNotice?
+    let steps: [AlightStep]?
 
     enum CodingKeys: String, CodingKey {
-        case name, fn, state, leg, tracker, mark, fix, now, overview, expected
+        case name, fn, state, leg, tracker, mark, fix, now, overview, expected, notice, steps
     }
 
     init(from decoder: Decoder) throws {
@@ -56,6 +68,8 @@ private struct Case: Decodable {
         fix = try c.decodeIfPresent(TransitDeviceFix.self, forKey: .fix)
         now = try c.decodeIfPresent(Double.self, forKey: .now)
         overview = try c.decodeIfPresent(TransitOverview.self, forKey: .overview)
+        notice = try c.decodeIfPresent(TransitBusAlightNotice.self, forKey: .notice)
+        steps = try c.decodeIfPresent([AlightStep].self, forKey: .steps)
         expectedStep = fn == "step" ? try c.decode(StepExpected.self, forKey: .expected) : nil
         expectedInt = fn == "viaHere" ? try c.decodeIfPresent(Int.self, forKey: .expected) : nil
         expectedMark = fn == "mark" ? try c.decodeIfPresent(TransitBusStopMark.self, forKey: .expected) : nil
@@ -124,6 +138,19 @@ private func makeState(_ s: FixtureState, route: TransitGuideRoute) throws -> Tr
         case "overview":
             let out = transitOverviewApplyingBusStop(try #require(c.overview), state: state, leg: leg, mark: c.mark)
             #expect(out == c.expectedOverview, "\(c.name)")
+        case "alightNotice":
+            // 시퀀스: 단계마다 추적기 → 알림 기록, 기대값은 단계별 (speak, notice).
+            var tracker = c.tracker
+            var notice = c.notice
+            for (i, st) in try #require(c.steps).enumerated() {
+                let stepState = try st.state.map { try makeState($0, route: TransitGuideRoute(legs: [leg, leg], walkAfterMinutes: nil)) } ?? state
+                let r = transitBusStopStep(tracker, state: stepState, leg: leg, fix: st.fix, now: st.now)
+                tracker = r.tracker
+                let out = transitBusAlightNoticeStep(notice, state: stepState, leg: leg, result: r, fix: st.fix, now: st.now)
+                notice = out.notice
+                #expect(out.speak == st.expected.speak, "\(c.name) #\(i)")
+                #expect(out.notice == st.expected.notice, "\(c.name) #\(i)")
+            }
         default:
             Issue.record("unknown fn \(c.fn)")
         }

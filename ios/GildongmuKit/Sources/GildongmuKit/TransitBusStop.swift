@@ -29,6 +29,11 @@ public let transitBusStopHoldMs: Double = 90_000
 /// 래치보다 뒤 정류장 관측이 이만큼 이어지면 그 정류장에서 다시 시작한다(ms). ⚠ 잠정값.
 public let transitBusStopBehindRestartMs: Double = 60_000
 
+/// 하차 정류장 도착 한 마디(A69)의 fix 정확도 상한(m) — 알림 전용. 2026-10-18 실승차 `busFix`는 대부분 14~34m. ⚠ 잠정값.
+public let transitBusAlightNoticeMaxAccuracyM: Double = 35
+/// 적격 fix 두 건 사이 최대 간격(ms) — 넘으면 연속이 아니다. ⚠ 잠정값.
+public let transitBusAlightNoticeMaxGapMs: Double = 10_000
+
 /// fix 한 건. `ageSeconds`는 호출자가 **측정 시각**으로 잰다(수신 시각이 아니다).
 public struct TransitDeviceFix: Sendable, Equatable, Codable {
     public let lat: Double
@@ -250,4 +255,73 @@ public func transitOverviewApplyingBusStop(
     return TransitOverview(
         legOrdinal: overview.legOrdinal, rows: rows, here: .station(stopIndex: shown),
         reboardOffered: overview.reboardOffered, alternativesOffered: overview.alternativesOffered)
+}
+
+/// 하차 정류장 도착 한 마디(A69 판정 ②, spec `2026-10-19-bus-alight-next-stop-design.md` §2)의 구간 기록.
+///
+/// ⚠ 표시용 래치를 하차 명령으로 승격하지 않는다(설계 리뷰 H3): 래치의 "연속 두 관측"은 사이에 낀 부적격 fix와 긴
+/// 공백을 넘어 이어지는 표시용 완화다. 이 문장의 실패 방향은 "너무 이르게"라 따로 센다.
+/// `reached`(관측 이력 — 늦은 「다음 정류장」을 거른다)와 `announced`(전달 장부 — 버려지면 앱이 되돌린다)를 가른다(H4).
+public struct TransitBusAlightNotice: Sendable, Equatable, Codable {
+    public var legIndex: Int
+    /// 하차 정류장 반경 안 적격 fix의 연속 수.
+    public var streak: Int
+    /// 마지막 적격 fix 시각(ms) — 연속이 끊기면 nil.
+    public var lastAt: Double?
+    public var reached: Bool
+    public var announced: Bool
+
+    public init(legIndex: Int, streak: Int = 0, lastAt: Double? = nil, reached: Bool = false, announced: Bool = false) {
+        self.legIndex = legIndex
+        self.streak = streak
+        self.lastAt = lastAt
+        self.reached = reached
+        self.announced = announced
+    }
+}
+
+public struct TransitBusAlightNoticeStepResult: Sendable, Equatable {
+    public let notice: TransitBusAlightNotice
+    public let speak: Bool
+
+    public init(notice: TransitBusAlightNotice, speak: Bool) {
+        self.notice = notice
+        self.speak = speak
+    }
+}
+
+/// fix 한 건(이미 `transitBusStopStep`을 거친 결과)으로 구간 기록을 전진한다. 적격 fix = 최근접이 하차 정류장(경유 목록의
+/// 마지막)이고 추적기 판정이 `pending`·`observed`(정확도·나이·노선 밖·모호·하차 반경 50m를 통과) ∧ 정확도 ≤ 35m.
+/// 적격 fix가 10초 안에 두 번 이어지면 도착이다. 리듀서는 이 함수를 모르고, 결과는 통지만 낸다(표시 전용 계약의
+/// 의도된 예외 하나 — 판정서 2026-08-23 §3, 소스 가드 `transit-bus-stop-guard.test.ts`).
+public func transitBusAlightNoticeStep(
+    _ prev: TransitBusAlightNotice?, state: TransitGuideState, leg: TransitGuideLeg,
+    result: TransitBusStopStepResult, fix: TransitDeviceFix, now: Double
+) -> TransitBusAlightNoticeStepResult {
+    var base: TransitBusAlightNotice
+    if let prev, prev.legIndex == state.legIndex {
+        base = prev
+    } else {
+        base = TransitBusAlightNotice(legIndex: state.legIndex)
+    }
+    let qualifies = transitBusStopApplies(state: state, leg: leg)
+        && result.nearestIndex == leg.viaStops.count - 1
+        && (result.verdict == .pending || result.verdict == .observed)
+        && fix.accuracy <= transitBusAlightNoticeMaxAccuracyM
+    guard qualifies else {
+        base.streak = 0
+        base.lastAt = nil
+        return TransitBusAlightNoticeStepResult(notice: base, speak: false)
+    }
+    if let last = base.lastAt, now - last <= transitBusAlightNoticeMaxGapMs {
+        base.streak += 1
+    } else {
+        base.streak = 1
+    }
+    base.lastAt = now
+    guard base.streak >= 2 else { return TransitBusAlightNoticeStepResult(notice: base, speak: false) }
+    base.reached = true
+    if base.announced { return TransitBusAlightNoticeStepResult(notice: base, speak: false) }
+    base.announced = true
+    return TransitBusAlightNoticeStepResult(notice: base, speak: true)
 }

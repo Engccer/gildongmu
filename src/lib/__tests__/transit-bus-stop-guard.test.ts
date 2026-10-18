@@ -18,7 +18,7 @@ describe("버스 현재 정류장은 표시 전용이다(E48)", () => {
       "ios/GildongmuKit/Sources/GildongmuKit/TransitProgressOverview.swift",
       "ios/GildongmuKit/Sources/GildongmuKit/TransitSurroundingsAnchor.swift",
     ]) {
-      expect(read(rel), rel).not.toMatch(/BusStop|busStop|bus-stop|DeviceFix/);
+      expect(read(rel), rel).not.toMatch(/BusStop|busStop|bus-stop|DeviceFix|AlightNotice/);
     }
   });
 });
@@ -70,5 +70,47 @@ describe("웹 스트림은 iOS keep-alive와 같은 조건에서만 열린다(�
   it("폴이 도는 버스 riding에서만 — 비관측 잠금·추적 불가 구간은 두 플랫폼 모두 표식이 없다", () => {
     const hook = read("src/hooks/useTransitGuide.ts");
     expect(hook).toMatch(/busStopApplies\(state, activeRoute\.legs\[state\.legIndex\]\) &&\s*pollIntervalMs\(state\) > 0;/);
+  });
+});
+
+describe("하차 정류장 도착 한 마디는 표시 전용 계약의 의도된 예외 하나다(A69 spec 2026-10-19 §2.3)", () => {
+  const hook = read("src/hooks/useTransitGuide.ts");
+  const model = read("ios/Gildongmu/Directions/TransitGuideModel.swift");
+
+  it("판정을 부르는 자리는 플랫폼마다 한 곳이고, 그 자리는 리듀서 입력을 만들지 않는다", () => {
+    expect(hook.match(/busAlightNoticeStep\(/g)?.length).toBe(1);
+    const watch = hook.slice(hook.indexOf("navigator.geolocation.watchPosition("));
+    const callback = watch.slice(0, watch.indexOf("enableHighAccuracy"));
+    expect(callback).toMatch(/busAlightNoticeStep\(/);
+    expect(callback).not.toMatch(/dispatch\(|commit\(/);
+
+    expect(model.match(/transitBusAlightNoticeStep\(/g)?.length).toBe(1);
+    const ingest = model.slice(
+      model.indexOf("private func ingestKeepAliveFix("),
+      model.indexOf("private func announceAlightReached("),
+    );
+    expect(ingest).toMatch(/transitBusAlightNoticeStep\(/);
+    expect(ingest).not.toMatch(/dispatch\(/);
+  });
+
+  it("관측 이력이 선 구간의 늦은 「다음 정류장」은 내지 않는다(웹·iOS)", () => {
+    expect(hook).toMatch(/case "arrivingAtAlightStop": \{[\s\S]{0,600}?notice\?\.reached && notice\.legIndex === stateRef\.current\?\.legIndex\) break;/);
+    // iOS는 handle(event:) 앞에서 거른다 — 이벤트 톤(`transitEventProfile`)도 함께 나가지 않게.
+    expect(model).toMatch(/if case \.arrivingAtAlightStop = event, let notice = busAlightNotice, notice\.reached,\s*notice\.legIndex == result\.state\.legIndex \{/);
+  });
+
+  it("iOS: 도착 톤은 백그라운드 불허, 행동 문장, 버려지면 전달 장부만 되돌린다(관측 이력은 남긴다)", () => {
+    const fn = model.slice(model.indexOf("private func announceAlightReached("), model.indexOf("// MARK: - 사용자 액션"));
+    expect(fn).toMatch(/playTone\(\.nearby, allowedInBackground: false\)/);
+    expect(fn).toMatch(/deferredAnnouncer\.announce\(text, highPriority: true, speechClass: \.actionable\) \{/);
+    expect(fn).toMatch(/self\.busAlightNotice\?\.announced = false/);
+    expect(fn).not.toMatch(/reached = false/);
+  });
+
+  it("기록 수명: 세션 시작·경로 변경·종료 세 자리에서 비우고 유휴 진입은 비우지 않는다", () => {
+    expect(model.match(/^\s*busAlightNotice = nil/gm)?.length).toBe(3);
+    const idle = model.slice(model.indexOf("private func enterIdleIfDue()"), model.indexOf("private func updateKeepAlive()"));
+    expect(idle).not.toMatch(/busAlightNotice = nil/);
+    expect(hook.match(/busAlightNoticeRef\.current = null;/g)?.length).toBe(2);
   });
 });

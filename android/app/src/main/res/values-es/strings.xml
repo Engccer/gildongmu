@@ -1236,6 +1236,8 @@
     <string name="transitGuide_aboardStationPrompt">¿Por qué estación está pasando ahora?</string>
     <string name="transitGuide_advance">Siguiente tramo</string>
     <string name="transitGuide_advanceUntrackable">Terminar este tramo y continuar</string>
+    <string name="transitGuide_alightStopReached">Llegada a %1$s. Bájese aquí.</string>
+    <string name="transitGuide_alightStopReachedUnnamed">Llegada a su parada. Bájese aquí.</string>
     <string name="transitGuide_approachFrame">En %1$s: %2$s.</string>
     <string name="transitGuide_approachingStarted">Siguiendo el vehículo seleccionado.</string>
     <string name="transitGuide_approxNote">Aproximado: basado en el vehículo más cercano de esta línea.</string>
@@ -1246,7 +1248,8 @@
     <string name="transitGuide_arrivedGuess">Si has bajado, pulsa Siguiente tramo.</string>
     <string name="transitGuide_arrivedGuessWalkNext">Si ha bajado, pulse Iniciar guía a pie restante. %1$s min a pie hasta su destino.</string>
     <string name="transitGuide_arrivedWalkNext">Al bajar, pulse Iniciar guía a pie restante. %1$s min a pie hasta su destino.</string>
-    <string name="transitGuide_arrivingAtAlightStop">Bájese en esta parada.</string>
+    <string name="transitGuide_arrivingAtAlightStop">Bájese en la próxima parada, %1$s.</string>
+    <string name="transitGuide_arrivingAtAlightStopUnnamed">Bájese en la próxima parada.</string>
     <string name="transitGuide_arrivingAtBoardStop">%1$s llegará pronto.</string>
     <string name="transitGuide_arrivingAtBoardStopBus">El autobús %1$s llegará pronto.</string>
     <string name="transitGuide_backOnTrack">Señal del vehículo recuperada.</string>
