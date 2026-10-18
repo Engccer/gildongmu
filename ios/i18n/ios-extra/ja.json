@@ -280,6 +280,7 @@
       "stoppedJoin": "距離の追跡を停止しました",
       "prewalkCancelledWith": "{reason}。公共交通案内は開始していません。",
       "prewalkUnavailableWith": "{reason}。徒歩案内を開始できないため、そのまま乗車待ちに進みます。",
+      "transferWalkCancelledWith": "{reason}。公共交通案内も終了しました。",
       "arrivedHeading": "到着",
       "arrivedPresumedHeading": "到着推定",
       "endedHeading": "案内終了",

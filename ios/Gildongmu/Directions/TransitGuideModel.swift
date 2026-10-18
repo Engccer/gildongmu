@@ -10,6 +10,18 @@ struct TransitWalkHandoff: Equatable {
     let walkMinutes: Int
 }
 
+/// 환승 도보 인계(E73 spec D3·D4) — 「다음 구간」이 걷기 안내 대상 도보 앞 구간으로 넘어갈 때 대중교통 모델이 세션 소유자에게
+/// 넘기는 한 벌. 경로는 처음 경로 전체이고 `legIndex`는 걸어서 닿을 승차 구간이다(재개가 그 구간의 대기 국면부터 연다).
+struct TransitTransferWalkHandoff {
+    let route: TransitGuideRoute
+    let legIndex: Int
+    let target: TransitPrewalkTarget
+    let destinationLabel: String
+    let destinationRoman: String?
+    let dest: BeaconDest
+    let accessible: Bool
+}
+
 /// 대중교통 실시간 안내 오케스트레이터(B2 §4·§7). **판정은 전부 Kit이 하고 여기는
 /// 배선만 한다**(BeaconModel 관례): 상태 머신은 `transitGuideStep`, 폴 대상·주기·
 /// 잠금·사다리 전부 Kit, 이 클래스는 폴링 I/O·통지 게시·수명만 담당한다.
@@ -27,6 +39,9 @@ final class TransitGuideModel {
     /// 사용자 입력 유래 국면 전이의 순번(A47, 웹 `userTransitionSeq` 동형). 폴 응답은 올리지 않는다 —
     /// 오르는 자리는 `dispatch`와 경로 전환(`changeRoute`) 두 곳이다.
     private(set) var userTransitionSeq = 0
+    /// 이 세션이 시작한 구간(E73) — 승차 전 도보·처음 시작은 0, 환승 도보 뒤 재개는 그 구간. "탔다"(A68 `transitPassedPrewalk`)는
+    /// 이 구간을 넘었을 때다(재개 세션은 시작부터 legIndex > 0이라 0 기준이면 전이로 잡히지 않는다, spec D8).
+    private var sessionStartLeg = 0
     private(set) var route: TransitGuideRoute?
     private(set) var destinationLabel = ""
     /// 그 목적지의 라틴 표기(E28 `labelRoman`, A53 ①). 조망 "다른 경로"의 영어 마지막 도보 줄이 쓴다 —
@@ -268,17 +283,18 @@ final class TransitGuideModel {
             GuideSession.shared.coordinator.release(token)
             return
         }
-        beginSession(guideRoute: guideRoute, token: token, destinationLabel: destinationLabel,
+        beginSession(guideRoute: guideRoute, startLeg: 0, token: token, destinationLabel: destinationLabel,
                      destinationRoman: destinationRoman, dest: dest, accessible: accessible)
     }
 
-    /// 승차 전 도보 뒤의 시작(A25 spec 2026-08-30 §4.1) — `start`와 같은 게이트, 같은 세션 초기화.
-    /// `prewalkCompleted`가 true면 첫 leg의 도보 문맥을 지운 경로로 시작한다(걸어서 도착한 뒤
-    /// "도보 5분 이동 후"를 다시 말하면 지난 일을 미래형으로 말하는 거짓). 시작 실패로 넘어온
-    /// 경우는 false — 사용자는 아직 걷지 않았다. ⚠ 기본값 없음(안전 인자).
+    /// 승차 전 도보(A25 spec 2026-08-30 §4.1)·환승 도보(E73) 뒤의 시작 — `start`와 같은 게이트, 같은 세션 초기화.
+    /// `startLeg`는 걸어서 닿은 승차 지점의 구간이다(승차 전 도보 0, 환승 도보 그 구간). 경로는 언제나 처음 경로 전체다 —
+    /// 구간 순번·조망이 이어진다(E73 spec D1). `prewalkCompleted`가 true면 그 구간의 도보 문맥을 지운 경로로 시작한다(걸어서
+    /// 도착한 뒤 "도보 5분 이동 후"를 다시 말하면 지난 일을 미래형으로 말하는 거짓). 시작 실패로 넘어온 경우는 false — 사용자는
+    /// 아직 걷지 않았다. ⚠ 기본값 없음(안전 인자).
     func startAfterPrewalk(
-        transitRoute: TransitRoute, destinationLabel: String, destinationRoman: String?, dest: BeaconDest,
-        accessible: Bool, prewalkCompleted: Bool
+        guideRoute: TransitGuideRoute, startLeg: Int, destinationLabel: String, destinationRoman: String?,
+        dest: BeaconDest, accessible: Bool, prewalkCompleted: Bool
     ) {
         guard !GuideSession.shared.isActive,
               let token = GuideSession.shared.coordinator.claim(stop: { [weak self] in self?.stop() })
@@ -287,19 +303,21 @@ final class TransitGuideModel {
                 appLocalized("guide.alreadyActive"), highPriority: true, bypassSuppression: true)
             return
         }
-        guard let built = buildTransitGuideRoute(transitRoute) else {
+        guard guideRoute.legs.indices.contains(startLeg) else {
             GuideSession.shared.coordinator.release(token)
             return
         }
-        beginSession(guideRoute: prewalkCompleted ? withoutPrewalk(built) : built, token: token,
-                     destinationLabel: destinationLabel, destinationRoman: destinationRoman,
-                     dest: dest, accessible: accessible)
+        beginSession(
+            guideRoute: prewalkCompleted ? withoutWalkBefore(guideRoute, legIndex: startLeg) : guideRoute,
+            startLeg: startLeg, token: token, destinationLabel: destinationLabel,
+            destinationRoman: destinationRoman, dest: dest, accessible: accessible)
     }
 
     /// 게이트를 지난 뒤의 세션 초기화 공통부(`start`·`startAfterPrewalk`).
+    /// `startLeg`가 0이 아니면 환승 도보 뒤의 재개다(E73) — 상태는 그 구간의 대기 국면, 시작 통지는 그 구간의 대기 문맥만.
     private func beginSession(
-        guideRoute: TransitGuideRoute, token: Int, destinationLabel: String, destinationRoman: String?,
-        dest: BeaconDest, accessible: Bool
+        guideRoute: TransitGuideRoute, startLeg: Int, token: Int, destinationLabel: String,
+        destinationRoman: String?, dest: BeaconDest, accessible: Bool
     ) {
         pendingWalkHandoff = nil
         sessionToken = token
@@ -329,15 +347,18 @@ final class TransitGuideModel {
         soundDegradedHapticFired = false
         keepAliveDeniedLogged = false
         lastUserActionAt = ProcessInfo.processInfo.systemUptime
-        state = initTransitGuide(route: guideRoute, now: nowMs())
+        sessionStartLeg = startLeg
+        state = initTransitGuide(route: guideRoute, startingAt: startLeg, now: nowMs())
         UIApplication.shared.isIdleTimerDisabled = true
         // 오디오 승격은 **첫 톤보다 먼저**(BeaconModel 동형, E36 §4.2.1). 종전엔 대중교통이 승격을 한 번도
         // 하지 않아 톤이 전부 `.ambient`였고 — `.ambient`는 정의상 백그라운드 무음이다.
         tones.beginSession()
         playTone(.start, allowedInBackground: false)
-        let first = guideRoute.legs[0]
+        let first = guideRoute.legs[state?.legIndex ?? 0]
         // E40: 시작 통지가 목적지를 말한다 — 시트 진입 착지는 상태 문장이라(E38) 목적지를 만날 채널이 없다.
-        var parts = [
+        // 환승 도보 뒤 재개(E73 spec D5)는 이미 돌던 안내라 「안내를 시작합니다. 탑승 구간 N개.」를 다시 말하지 않는다 — 걷기 전
+        // `legAdvanced`가 냈을 대기 문맥(도보를 뺀 것)만 낸다.
+        var parts = startLeg > 0 ? [waitContextText(first, isCurrentLeg: true)] : [
             spokenDestinationName.map { appLocalized("transitGuide.startedAt", $0, guideRoute.legs.count) }
                 ?? appLocalized("transitGuide.started", guideRoute.legs.count),
             waitContextText(first, isCurrentLeg: true),
@@ -409,6 +430,20 @@ final class TransitGuideModel {
             onJourneyStopped = nil
             stopped()
         }
+    }
+
+    /// 환승 도보로 넘기며 세션을 끝낸다(E73 spec D4) — 정지음 없음(곧 도보 시작음이 난다). 여정 훅 셋은 보존한다: `stop()`은
+    /// 그것을 지우고 `onJourneyStopped`를 부르므로 그대로 부르면 여정이 끝난다. 걸어서 닿으면 같은 모델이 그 구간부터 다시
+    /// 시작하며(`startAfterPrewalk`) 훅이 그 세션에 그대로 걸려 있다. 도보 중 정지면 코디네이터 `endPrewalk`가 여정을 끝낸다.
+    func stopForTransferWalk() {
+        let stopped = onJourneyStopped
+        let rideCompleted = onJourneyRideCompleted
+        let nextIsWalk = journeyNextIsWalk
+        onJourneyStopped = nil
+        stop()
+        onJourneyStopped = stopped
+        onJourneyRideCompleted = rideCompleted
+        journeyNextIsWalk = nextIsWalk
     }
 
     /// 핸드오프 제안 소거(§14.2) — 시트 닫기·수락 시 호출(세션은 이미 종료 상태).
@@ -766,6 +801,19 @@ final class TransitGuideModel {
     }
 
     private func completeOrAdvance(announceDone: Bool) {
+        // 환승 도보(E73 spec D3): 리듀서를 순수하게 미리 돌려 다음 구간으로 넘어가는지 보고, 그 구간 앞 도보가 걷기 안내 대상이면
+        // 전진을 커밋하지 않고 세션 소유자에게 넘긴다. `legAdvanced` 통지(「도보 N분 이동 후 …」)는 즉시 창구라 뒤의 세대
+        // 증가로 취소되지 않는다 — 걷기 안내가 붙는 이 경우엔 내면 안 되는 문장이다. 버튼 유효 국면은 리듀서가 정본으로 남는다.
+        if let state, let route, let dest,
+           case let .legAdvanced(nextIndex, final: false)? =
+               transitGuideStep(state: state, input: .advance, route: route, now: nowMs()).event,
+           let target = transitTransferWalkTarget(route, legIndex: nextIndex) {
+            transitGuideLog("transferWalk leg=\(nextIndex) minutes=\(target.minutes)")
+            GuideSession.shared.transitTransferWalk(TransitTransferWalkHandoff(
+                route: route, legIndex: nextIndex, target: target, destinationLabel: destinationLabel,
+                destinationRoman: destinationRoman, dest: dest, accessible: accessible))
+            return
+        }
         dispatch(.advance)
         if state?.phase == .done {
             // 여정(E70 §6.3): 말미 도보와 무관하게 다음 단계로. 완료 문장은 다음 세션의 시작 통지가 대신한다(뻔한 꼬리 금지).
@@ -1235,6 +1283,7 @@ final class TransitGuideModel {
         deferredAnnouncer.advanceGeneration()
         deviceSpeech.reset()
         let previousPhase = state?.phase
+        sessionStartLeg = 0  // 새 경로는 0번 구간부터다 — 환승 도보 뒤 재개 세션의 시작 구간이 남으면 "탔다"를 놓친다(E73 D8)
         state = initTransitGuide(route: guideRoute, now: nowMs())
         // 경로 전환도 사용자 입력(후보 버튼이 사라진다, A47) — dispatch 밖이라 여기서 순번을 올린다. 국면이 그대로(대기 →
         // 대기)면 올리지 않는다: 그때 착지는 누른 버튼의 핸들러가 이미 세웠다(상태 문장).
@@ -1715,8 +1764,9 @@ final class TransitGuideModel {
         // 탔다(A68 판정 2): riding에 들어섰거나 riding을 거치지 않고 그 뒤로 갔다(대기에서 하차역 선언 → arrived, 추적 불가
         // [다음 구간] → 다음 leg·done). 국면과 leg 순번만 본다. 승차 전 도보가 남긴 길찾기 탭의 실패 줄과 재시작 버튼은 이제
         // 지나온 승차역을 가리킨다.
+        // 다음 leg는 이 세션이 시작한 구간 기준이다 — 환승 도보 뒤 재개 세션(E73 spec D8)은 시작부터 legIndex > 0이다.
         func boarded(_ s: TransitGuideState) -> Bool {
-            [.riding, .arrived, .done].contains(s.phase) || s.legIndex > 0
+            [.riding, .arrived, .done].contains(s.phase) || s.legIndex > sessionStartLeg
         }
         if boarded(result.state), !boarded(state) { GuideSession.shared.transitPassedPrewalk() }
         // "이미 탑승" 흐름은 대기 국면 전용 UI — 국면이 바뀌면 소거(`reboardPickerActive`와 같은 국면 기반 규칙).

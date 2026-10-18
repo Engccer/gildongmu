@@ -43,6 +43,8 @@
 
 `GuideSession.transitTransferWalk(_:)`: ① `TransitGuideModel.stopForTransferWalk()` — 정지음 없이 세션을 끝내되 여정 훅 셋(`onJourneyStopped`·`onJourneyRideCompleted`·`journeyNextIsWalk`)을 보존한다(`stop()`은 훅을 지우고 `onJourneyStopped`를 부른다 — 그대로 부르면 여정이 끝난다). ② 600ms 뒤 `launchPrewalk`. 600ms는 E34 하차 후 인계·A25 도착 인계와 같은 값·같은 근거(루트 시트 하나의 단일 presentation — 대중교통 시트가 내려간 뒤 도보 시트가 뜬다). 대기 작업은 `prewalkTask` 한 칸에 두어 그 사이 다른 시작이 오면 `cancelPrewalk()`가 함께 취소한다(E34 창과 같은 노출, 여정 중이면 외부 시작은 `isOccupied`가 거절한다).
 
+⚠ **취소에만 기대지 않는다 — 지연 작업은 표식·훅을 걸기 전에 점유를 다시 본다**(설계 리뷰 high): 모든 시작이 `cancelPrewalk()`를 지나지는 않는다. 길찾기 탭 [정확한 위치 허용]의 재시작(`restartBeacon`)은 승차 전 도보 컨텍스트가 없으면 `beacon.restart()`로 곧장 간다 — 앞선 일반 도보의 실패 줄이 남은 채 대중교통을 시작했다가 인계 공백에 그 버튼을 누르면 일반 도보가 서고, 600ms 뒤 `launchPrewalk`가 그 도보에 환승 표식과 종료 훅을 걸어 다른 목적지의 도보를 환승 도보로 만든다(이어지는 시작 요청은 점유로 거절되지만 동기 거부 갈래는 `beacon.starting`·`isTracking`이 참이라 돌지 않는다). 그래서 지연 작업은 `GuideSession.isActive`(어느 세션이든 점유·비콘·나들이 시작 대기)가 참이면 인계를 버리고 로그만 남긴다 — 대중교통은 이미 끝났고 사용자가 고른 다른 안내가 돈다.
+
 ### D5. 걸어서 닿은 뒤: 그 구간의 대기 국면, 도보 문맥 없음, 시작 통지 대신 대기 문맥
 
 `startAfterPrewalk`가 안내용 경로와 시작 구간을 받는다(`guideRoute:startLeg:` — A25는 `startLeg: 0`). `prewalkCompleted: true`면 그 구간의 `walkBeforeMinutes`를 지운 경로(`withoutWalkBefore(route, legIndex:)`, `withoutPrewalk`의 일반화)로 연다. 대기 문맥·조망·다음 구간 안내가 같은 필드를 읽으므로 한 곳에서 지운다(A25 거짓 미래형 방지와 같은 처리).

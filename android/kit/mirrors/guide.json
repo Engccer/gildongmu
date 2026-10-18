@@ -187,6 +187,11 @@
       "note": "TransitTrackPoll·TransitGuideInput·TransitGuideEvent·SubwayRidingMessage는 sealed class, 튜플 반환은 TransitGuideStepResult·TransitEventProfile·TransitBoardingClassification. withoutPrewalk는 data class copy(필드 누락 불가). normalizeStopName은 internal. 정규식 공백은 Swift ICU 약칭 공백(White_Space)을 명시로 적은 REGEX_SPACE_MEMBERS(SwiftSemantics.kt, [\\t\\n\\u000B\\f\\r\\u0085\\p{Z}] — NBSP·전각 공백 포함, :kit 규칙 — 웹 JS 약칭 공백과는 U+FEFF(JS만)·U+0085(Swift만)가 다르다). trim은 Swift 집합별 미러(SwiftSemantics.kt)"
     },
     {
+      "swift": "TransitTransferWalk.swift",
+      "status": "pending",
+      "note": "E73 환승 도보 인계 판정(iOS 선행) — 웹·안드로이드 대중교통 안내에 세션 중간 재개 경로가 없어 이식 보류(spec 2026-10-19-e73-transfer-walk-design.md D13)"
+    },
+    {
       "swift": "TransitGuideText.swift",
       "status": "ported",
       "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/TransitGuideText.kt",

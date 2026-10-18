@@ -536,6 +536,15 @@ final class BeaconModel {
     /// ⚠ 표시 라벨이라 **ko·en 쌍**이다(E27 잔여 ①) — 영문 역명이 있으면 선언 버튼·도착 문장이
     /// 영문으로 나가고, 없으면 한국어 원문으로 떨어진다.
     private(set) var prewalkTarget: TransitLabel?
+    /// 승차 전 도보 표식이 환승 도보(E73)인가 — 대중교통 안내가 이미 돌던 중이라 정지·권한 상실 꼬리가 「대중교통 안내도
+    /// 종료했습니다」다(A25 꼬리 「시작하지 않았습니다」는 거짓, spec D6). `prewalkTarget`과 함께 서고 함께 지워진다.
+    private(set) var prewalkIsTransfer = false
+    /// 승차 전 도보 정지 꼬리(A54·E73). 판정은 표식에서 — 종료 분기는 `stop()` 앞에서 캡처한다(`stop()`이 표식을 지운다).
+    enum PrewalkStopTail { case transitNotStarted, transitAlsoEnded }
+    private var prewalkStopTail: PrewalkStopTail? {
+        guard prewalkTarget != nil else { return nil }
+        return prewalkIsTransfer ? .transitAlsoEnded : .transitNotStarted
+    }
     /// 여정(E70) 단계 세션의 표식. nil이 아니면 이 세션(택시·접근 도보·출구 도보)은 여정의 한 단계다: 다음 단계가
     /// 그 자리를 이으므로 종료 화면을 남기지 않고, 잊힌 세션 안전망이 돌지 않으며(지하 진입·택시 정차가 곧 정상이다),
     /// 도착 문장은 `arrivalText`(nil이면 기본 도착 문장)다. 끝난 사유는 `onSessionEnd`로 여정에 간다(prewalk를 일반화,
@@ -642,13 +651,24 @@ final class BeaconModel {
 
     /// 승차 전 도보 세션으로 표식(A25). `requestStart` **앞**에 건다 — 시작 Task의 실패 판정이
     /// 이 값을 함께 지운다.
-    func markPrewalk(target: TransitLabel) {
+    /// ⚠ `transfer`는 기본값 없음 — 환승 도보(E73)가 빠뜨리면 정지 꼬리가 이미 돌던 대중교통을 "시작하지 않았다"고 말한다.
+    func markPrewalk(target: TransitLabel, transfer: Bool) {
         prewalkTarget = target
+        prewalkIsTransfer = transfer
+    }
+
+    /// 사유 뒤에 대중교통 꼬리를 잇는 두 문장(A54 문장 틀). 키는 리터럴이어야 카탈로그 린터가 본다.
+    private func prewalkStopText(_ tail: PrewalkStopTail, reason: String) -> String {
+        switch tail {
+        case .transitNotStarted: appLocalized("ios.beacon.prewalkCancelledWith", reason)
+        case .transitAlsoEnded: appLocalized("ios.beacon.transferWalkCancelledWith", reason)
+        }
     }
 
     /// 승차 전 도보 해제(연결 취소·다른 세션 시작). 추적 중이면 세션은 그대로 두고 표식만 뗀다.
     func clearPrewalk() {
         prewalkTarget = nil
+        prewalkIsTransfer = false
         journeyChain = nil  // 여정 단계 표식도 같은 연결 표식이다(동기 거부 뒤 다음 비여정 세션으로 새지 않게)
         onSessionEnd = nil
     }
@@ -795,6 +815,7 @@ final class BeaconModel {
             if !self.isTracking, let cb = self.onSessionEnd {
                 self.onSessionEnd = nil
                 self.prewalkTarget = nil
+                self.prewalkIsTransfer = false
                 self.journeyChain = nil
                 cb(.startFailed)
             }
@@ -1411,7 +1432,7 @@ final class BeaconModel {
     }
 
     private func fail(
-        with status: Status, key: String, resolution: FailResolution = .none, prewalkCancelled: Bool = false,
+        with status: Status, key: String, resolution: FailResolution = .none, prewalkTail: PrewalkStopTail? = nil,
         highPriority: Bool
     ) {
         self.status = status
@@ -1419,8 +1440,8 @@ final class BeaconModel {
         lastFailure = (key, resolution)
         // 승차 전 도보면 사유 뒤에 "대중교통 안내는 시작하지 않았다"를 **두 문장**으로 잇는다(A54 위원장 판정: 완결 문장 둘은
         // 쉼표 결합이 아니라 마침표). 사유 키는 상태 줄 겸용이라 마침표가 없어 문장 틀 키가 로케일별 마침표를 든다.
-        statusText = prewalkCancelled
-            ? appLocalized("ios.beacon.prewalkCancelledWith", appLocalized(key)) : appLocalized(key)
+        // 환승 도보(E73)는 꼬리가 「대중교통 안내도 종료했습니다」다(`prewalkStopText`).
+        statusText = prewalkTail.map { prewalkStopText($0, reason: appLocalized(key)) } ?? appLocalized(key)
         // 여정 접근 도보의 시작 실패(`starting` 중의 실패만 — 걷던 중 끊김은 `stopAndFail`이 `stop()` 뒤에 부른다)는 통지에만
         // 다리 문장을 붙인다(판정 27). 대중교통 창구로 따로 내면 그 재생기는 세션 전이라 백그라운드에서 버려지고, 전경에선 같은
         // 턴에 게시돼 이 원인 문장을 끊는다. 상태 줄(`statusText`, 길찾기 탭에 남는다)은 원인만 — 「…바로 넘어갑니다」는
@@ -1540,6 +1561,7 @@ final class BeaconModel {
         offRouteConfirmCoord = nil
         resetAlternativePreview()
         prewalkTarget = nil
+        prewalkIsTransfer = false
         journeyChain = nil
         // 종료 콜백은 정리가 **끝난 뒤** 다음 턴에 — 이 stop()을 부른 자리가 뒤에 내는 종료
         // 문장(도착·유휴·권한)이 연결 문장보다 먼저 나가고, 정리 도중 다른 모델 시작이
@@ -1580,17 +1602,18 @@ final class BeaconModel {
     /// "대중교통 안내는 시작하지 않았다"까지 두 문장을 낸다, A54).
     func stopByUser() {
         let text = appLocalized("ios.beacon.stopped")
-        let prewalk = prewalkTarget != nil  // stop() 앞 캡처(A25 §4.2)
+        let prewalkTail = prewalkStopTail  // stop() 앞 캡처(A25 §4.2)
         pendingEndReason = .userStopped
         if stopLeavingSummary(playStopTone: true, text: text) {
             announce(text, highPriority: true, speechClass: .actionable)
-        } else if prewalk {
+        } else if let prewalkTail {
             // 승차 전 도보는 종료 화면이 없다 — 정지 사유 뒤에 "대중교통 안내는 시작하지 않았다"를 마침표 두 문장으로(A54 위원장
             // 판정, 권한 상실 `stopAndFail`과 같은 문장 틀). 이 모델의 창구라 정지음 뒤에 나가고 원복 다리 동안 오디오 세션을 쥔다
             // (대중교통 창구는 세션 전이라 정지음과 겹치고 화면이 꺼지면 버린다 — A54 접근성 감사). `.high`: 시트가 닫혀 커서가
             // 아래 화면으로 옮겨 가 그 라벨을 읽는다. 이 문장은 착지 라벨로 대체될 수 없다(통지 우선순위 판별선).
+            // 환승 도보(E73)면 꼬리가 「대중교통 안내도 종료했습니다」다(이미 돌던 안내).
             announce(
-                appLocalized("ios.beacon.prewalkCancelledWith", appLocalized("ios.beacon.stoppedJoin")),
+                prewalkStopText(prewalkTail, reason: appLocalized("ios.beacon.stoppedJoin")),
                 highPriority: true, speechClass: .actionable)
         }
     }
@@ -3646,12 +3669,12 @@ final class BeaconModel {
     private func stopAndFail(with status: Status, key: String, resolution: FailResolution = .none) {
         // stop() 앞 캡처(A25 §4.2). 여정(E70)의 접근 도보는 끊겨도 대중교통 단계로 넘어가므로(spec §6.1) "대중교통 안내는
         // 시작하지 않았다" 꼬리를 붙이지 않는다.
-        let prewalk = prewalkTarget != nil && journeyChain == nil
+        let prewalkTail = journeyChain == nil ? prewalkStopTail : nil
         let leftEndScreen = stopLeavingSummary(playStopTone: false, text: appLocalized(key))
         // 종료 화면이 남지 않으면 시트가 닫히며 VoiceOver가 아래 화면으로 커서를 옮기고 그 라벨을 읽는다 — 실패 사유는 착지
         // 라벨로 대체될 수 없어 `.high`(CLAUDE.md 통지 우선순위 판별선, 접근성 감사 L4). 종료 화면이 남으면 착지가 사유를 읽는다.
         fail(with: status, key: key, resolution: resolution,
-             prewalkCancelled: prewalk, highPriority: !leftEndScreen)
+             prewalkTail: prewalkTail, highPriority: !leftEndScreen)
     }
 
     // MARK: - 무-fix 감시

@@ -280,6 +280,7 @@
       "stoppedJoin": "Suivi de distance arrêté",
       "prewalkCancelledWith": "{reason}. Le guidage des transports n'a pas été lancé.",
       "prewalkUnavailableWith": "{reason}. Le guidage à pied n'a pas pu démarrer ; passage direct à l'attente d'embarquement.",
+      "transferWalkCancelledWith": "{reason}. Le guidage des transports est également terminé.",
       "arrivedHeading": "Arrivée",
       "arrivedPresumedHeading": "Arrivée estimée",
       "endedHeading": "Guidage terminé",

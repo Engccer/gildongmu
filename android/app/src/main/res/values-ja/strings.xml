@@ -67,6 +67,7 @@
     <string name="android_beacon_soundUnavailable">音による案内を再生できません。</string>
     <string name="android_beacon_stopped">距離の追跡を停止しました。</string>
     <string name="android_beacon_stoppedJoin">距離の追跡を停止しました</string>
+    <string name="android_beacon_transferWalkCancelledWith">%1$s。公共交通案内も終了しました。</string>
     <string name="android_chat_addressesHeading">住所%1$s件</string>
     <string name="android_chat_clear">テキストを消去</string>
     <string name="android_chat_consentAgree">同意して開始</string>

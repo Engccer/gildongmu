@@ -348,12 +348,14 @@ describe("3. 안내 세션 진입점이 늘지 않았다", () => {
 
   // A68(2026-10-17)이 정밀 위치 재시작 호출을 둘로 나눴다(`GuideSession.restartBeacon` 안: 승차 전 도보 연결을 다시 건
   // 재시작과 그냥 재시작). 진입점은 같은 버튼 하나이고 정식판 도달 판정도 같다 — 아래 "8"이 그 한 버튼을 잠근다.
-  it("안내 세션 진입점 호출이 정확히 11곳이다", () => {
+  // E73(2026-10-19)이 내부 인계 하나를 더했다: 환승 도보 `transitTransferWalk`의 `beginBeacon(`(사용자 진입점이 아니라 대중교통
+  // 「다음 구간」의 인계 — 호출자는 아래 "7"이 잠근다).
+  it("안내 세션 진입점 호출이 정확히 12곳이다", () => {
     const sites = swiftFiles(IOS_DIR).flatMap((file) => {
       const hits = readFileSync(file, "utf8").match(ENTRY_CALL) ?? [];
       return hits.map(() => file);
     });
-    expect(sites).toHaveLength(11);
+    expect(sites).toHaveLength(12);
   });
 
   /**
@@ -416,7 +418,9 @@ describe("7. 여정(E70) — 실험판 봉인과 내부 인계", () => {
   });
 
   it("거부 가드 없는 시작 본문의 호출자는 공개 시작·내부 인계·여정 단계뿐이다", () => {
-    expect(callersOf(session(), "beginBeacon(")).toEqual(["beginTransit", "launchJourneyBeacon", "startBeacon"]);
+    expect(callersOf(session(), "beginBeacon(")).toEqual([
+      "beginTransit", "launchJourneyBeacon", "startBeacon", "transitTransferWalk",
+    ]);
     expect(callersOf(session(), "beginTransit(")).toEqual(["startJourneyStage", "startTransit"]);
     expect(callersOf(session(), "launchJourneyBeacon(")).toEqual(["startJourneyStage"]);
     expect(callersOf(session(), "startJourneyStage(")).toEqual(["advanceJourney"]);
@@ -504,7 +508,7 @@ describe("8. 정밀 위치 재시작은 승차 전 도보를 대중교통까지 
     // A67 대기 창의 대중교통 시작을 취소한 뒤 연결을 다시 건다(순서가 거꾸로면 새 연결을 지운다).
     expect(body.indexOf("cancelPrewalk()")).toBeGreaterThan(-1);
     expect(body.indexOf("cancelPrewalk()")).toBeLessThan(body.indexOf("launchPrewalk("));
-    expect(callersOf(session(), "launchPrewalk(")).toEqual(["beginTransit", "restartBeacon"]);
+    expect(callersOf(session(), "launchPrewalk(")).toEqual(["beginTransit", "restartBeacon", "transitTransferWalk"]);
   });
 
   it("연결 한 벌: 표식·종료 훅·시작 문장은 launchPrewalk 한 곳에서 걸린다", () => {
@@ -563,8 +567,9 @@ describe("8-2. 한 번 탔거나 무관한 안내가 시작되면 승차 전 도
     const dispatch = declarationBody(model, "dispatch");
     // 탔다 = riding 이후 국면 ∨ 다음 leg. riding만 보면 riding을 거치지 않고 탄 길(대기에서 하차역 선언 → arrived,
     // 추적 불가 [다음 구간] → 다음 leg·done)을 놓친다. 전이(이전엔 아니었고 이제 그렇다)에서만 부른다.
+    // 다음 leg는 세션이 시작한 구간 기준이다 — 환승 도보 뒤 재개 세션(E73 spec D8)은 시작부터 legIndex > 0이다.
     expect(dispatch).toMatch(
-      /\[\.riding, \.arrived, \.done\]\.contains\(s\.phase\) \|\| s\.legIndex > 0/,
+      /\[\.riding, \.arrived, \.done\]\.contains\(s\.phase\) \|\| s\.legIndex > sessionStartLeg/,
     );
     expect(dispatch).toContain("if boarded(result.state), !boarded(state) { GuideSession.shared.transitPassedPrewalk() }");
     // 경로 교체는 변환이 성공해 커밋되는 자리에서 — 실패(`return false`)한 교체는 계획을 바꾸지 않는다.

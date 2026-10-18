@@ -67,6 +67,7 @@
     <string name="android_beacon_soundUnavailable">No se puede reproducir la guía sonora.</string>
     <string name="android_beacon_stopped">Seguimiento de distancia detenido.</string>
     <string name="android_beacon_stoppedJoin">Seguimiento de distancia detenido</string>
+    <string name="android_beacon_transferWalkCancelledWith">%1$s. La guía de transporte público también ha terminado.</string>
     <string name="android_chat_addressesHeading">{1, plural, one {%1$s dirección} other {%1$s direcciones}}</string>
     <string name="android_chat_clear">Borrar texto</string>
     <string name="android_chat_consentAgree">Aceptar y empezar</string>

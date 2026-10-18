@@ -67,6 +67,7 @@
     <string name="android_beacon_soundUnavailable">소리 안내를 재생할 수 없습니다.</string>
     <string name="android_beacon_stopped">거리 추적을 종료했습니다.</string>
     <string name="android_beacon_stoppedJoin">거리 추적을 종료했습니다</string>
+    <string name="android_beacon_transferWalkCancelledWith">%1$s. 대중교통 안내도 종료했습니다.</string>
     <string name="android_chat_addressesHeading">주소 %1$s건</string>
     <string name="android_chat_clear">텍스트 지우기</string>
     <string name="android_chat_consentAgree">동의하고 시작</string>

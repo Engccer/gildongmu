@@ -432,6 +432,9 @@
   "ios.beacon.prewalkUnavailableWith": [
     "reason"
   ],
+  "ios.beacon.transferWalkCancelledWith": [
+    "reason"
+  ],
   "ios.chat.addressesHeading": [
     "count"
   ],

@@ -41,9 +41,11 @@ final class GuideSession {
 
     /// 승차 전 도보 연결 컨텍스트(A25 spec 2026-08-30 §4.4). 도보 세션이 끝나면 같은 시작 요청으로
     /// 대중교통 세션을 잇는다. `id`가 이전 세션의 늦은 콜백을 걸러 낸다.
+    /// 환승 도보(E73)도 같은 연결이다 — `startLeg`가 걸어서 닿을 승차 구간(승차 전 도보 0)이고 경로는 처음 경로 전체다.
     private struct PrewalkContext {
         let id: UUID
-        let route: TransitRoute
+        let guideRoute: TransitGuideRoute
+        let startLeg: Int
         let destinationLabel: String
         let destinationRoman: String?
         let dest: BeaconDest
@@ -55,9 +57,13 @@ final class GuideSession {
         /// 같은 연결의 새 세대(A68 재시작) — 옛 도보 세션의 늦은 콜백이 새 연결을 소비하지 않게 `id`만 바꾼다.
         func renewed() -> PrewalkContext {
             PrewalkContext(
-                id: UUID(), route: route, destinationLabel: destinationLabel, destinationRoman: destinationRoman,
-                dest: dest, accessible: accessible, station: station, minutes: minutes)
+                id: UUID(), guideRoute: guideRoute, startLeg: startLeg, destinationLabel: destinationLabel,
+                destinationRoman: destinationRoman, dest: dest, accessible: accessible, station: station,
+                minutes: minutes)
         }
+
+        /// 대중교통 세션이 이미 돌던 환승 도보인가 — 정지 꼬리 문장(「대중교통 안내도 종료했습니다」)을 가른다(spec D6).
+        var isTransfer: Bool { startLeg > 0 }
     }
     private var prewalk: PrewalkContext?
     /// 비콘의 직전 시작이 승차 전 도보였으면 그 연결 컨텍스트(A68). 길찾기 탭 [정확한 위치 허용]의 재시작(`restartBeacon`)이
@@ -203,7 +209,7 @@ final class GuideSession {
         outing.clearEnd()
         // 승차 전 도보(A25): 첫 탑승 leg 앞 도보가 있으면 도보 실시간 안내를 먼저 돌리고, 도착하면
         // 같은 요청으로 대중교통 세션을 잇는다. 판정은 순수 함수(웹 미러) — nil이면 종전 경로.
-        guard let target = buildTransitGuideRoute(route).flatMap(transitPrewalkTarget) else {
+        guard let guideRoute = buildTransitGuideRoute(route), let target = transitPrewalkTarget(guideRoute) else {
             transit.start(
                 transitRoute: route, destinationLabel: destinationLabel, destinationRoman: destinationRoman,
                 dest: dest, accessible: accessible)
@@ -221,14 +227,50 @@ final class GuideSession {
         let stationLabel = transitPrewalkLabel(target)
         let walkLabel = transitGuideIsEn ? (stationLabel.en ?? stationLabel.ko) : stationLabel.ko
         let context = PrewalkContext(
-            id: UUID(), route: route, destinationLabel: destinationLabel, destinationRoman: destinationRoman,
-            dest: dest, accessible: accessible, station: stationLabel, minutes: target.minutes)
+            id: UUID(), guideRoute: guideRoute, startLeg: 0, destinationLabel: destinationLabel,
+            destinationRoman: destinationRoman, dest: dest, accessible: accessible, station: stationLabel,
+            minutes: target.minutes)
         launchPrewalk(context) {
             beginBeacon(BeaconModel.StartRequest(
                 // 역 라벨은 이미 통지 언어로 골랐다(`walkLabel`) — 라틴 표기를 따로 싣지 않는다.
                 dest: BeaconDest(lat: target.lat, lng: target.lng), label: walkLabel, labelRoman: nil, kind: .walk,
                 accessible: accessible, variant: nil, line: nil, alternate: nil,
                 waypoint: nil, carListener: nil))  // 승차역까지의 도보에 경유지는 없다
+        }
+    }
+
+    /// 환승 도보(E73 spec D1·D4) — 대중교통 모델의 「다음 구간」이 걷기 안내 대상 도보 앞 구간으로 넘어갈 때 부른다(유일한
+    /// 호출자 `TransitGuideModel.completeOrAdvance`). 대중교통 세션을 정지음 없이 끝내고(여정 훅 보존) 600ms 뒤 승차 전 도보와
+    /// 같은 연결로 다음 승차 지점까지 걷는다. 걸어서 닿으면 `endPrewalk`가 같은 경로로 그 구간부터 대중교통을 다시 연다.
+    func transitTransferWalk(_ handoff: TransitTransferWalkHandoff) {
+        transit.stopForTransferWalk()
+        let stationLabel = transitPrewalkLabel(handoff.target)
+        // 도보 세션 목적지 라벨도 통지와 같은 언어의 같은 이름이다(`beginTransit`의 승차 전 도보 주석과 같은 근거).
+        let walkLabel = transitGuideIsEn ? (stationLabel.en ?? stationLabel.ko) : stationLabel.ko
+        let context = PrewalkContext(
+            id: UUID(), guideRoute: handoff.route, startLeg: handoff.legIndex,
+            destinationLabel: handoff.destinationLabel, destinationRoman: handoff.destinationRoman,
+            dest: handoff.dest, accessible: handoff.accessible, station: stationLabel, minutes: handoff.target.minutes)
+        let walkDest = BeaconDest(lat: handoff.target.lat, lng: handoff.target.lng)
+        guideDiagLog("transferWalk leg=\(handoff.legIndex) minutes=\(handoff.target.minutes)")
+        // 600ms: 대중교통 시트가 내려간 뒤 도보 시트가 뜬다(E34 하차 후 인계·A25 도착 인계와 같은 값·같은 근거 — 루트 시트 하나).
+        // 대기는 `prewalkTask` 한 칸이라 그 사이 다른 시작의 `cancelPrewalk()`가 함께 취소한다.
+        prewalkTask?.cancel()
+        prewalkTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .milliseconds(600))
+            guard !Task.isCancelled, let self else { return }
+            // 모든 시작이 `cancelPrewalk()`를 지나지는 않는다(길찾기 탭 정밀 위치 재시작 `restartBeacon`은 승차 전 도보 컨텍스트가 없으면 모델 재시작으로 곧장 간다) —
+            // 그 사이 다른 안내가 섰으면 그 세션에 환승 표식·종료 훅을 걸지 않고 인계를 버린다(설계 리뷰 high, spec D4).
+            guard !self.isActive else {
+                guideDiagLog("transferWalk abandoned reason=occupied")
+                return
+            }
+            self.launchPrewalk(context) {
+                self.beginBeacon(BeaconModel.StartRequest(
+                    dest: walkDest, label: walkLabel, labelRoman: nil, kind: .walk,
+                    accessible: handoff.accessible, variant: nil, line: nil, alternate: nil,
+                    waypoint: nil, carListener: nil))  // 환승역까지의 도보에 경유지는 없다
+            }
         }
     }
 
@@ -239,7 +281,7 @@ final class GuideSession {
         // 여정 안의 승차 전 도보는 재시작 대상이 아니다 — 여정 재시도는 실패 시트의 [경로 다시 조회]가 맡고(E70 §6.3), 여정이
         // 끝난 뒤 남으면 여정 없는 대중교통이 시작된다. 비콘 시작 인자는 곧 바뀌므로 옛 컨텍스트도 남기지 않는다.
         prewalkRestart = journey == nil ? context : nil
-        beacon.markPrewalk(target: context.station)
+        beacon.markPrewalk(target: context.station, transfer: context.isTransfer)
         beacon.onSessionEnd = { [weak self] reason in self?.endPrewalk(context.id, reason: reason) }
         transit.announceExternal(TransitGuideTextRenderer.render(
             transitPrewalkStartLine(
@@ -264,8 +306,8 @@ final class GuideSession {
                 try? await Task.sleep(for: .milliseconds(600))
                 guard !Task.isCancelled, let self else { return }
                 self.transit.startAfterPrewalk(
-                    transitRoute: context.route, destinationLabel: context.destinationLabel,
-                    destinationRoman: context.destinationRoman,
+                    guideRoute: context.guideRoute, startLeg: context.startLeg,
+                    destinationLabel: context.destinationLabel, destinationRoman: context.destinationRoman,
                     dest: context.dest, accessible: context.accessible, prewalkCompleted: true)
                 // 여정의 대중교통 단계인데 세션이 서지 않았으면 세션 없는 running에 남지 않게 실패 시트로.
                 if !self.transit.isTracking, let journey = self.journey, case .running(.transit) = journey.phase {
@@ -295,8 +337,8 @@ final class GuideSession {
                 }
                 guard !Task.isCancelled else { return }
                 self.transit.startAfterPrewalk(
-                    transitRoute: context.route, destinationLabel: context.destinationLabel,
-                    destinationRoman: context.destinationRoman,
+                    guideRoute: context.guideRoute, startLeg: context.startLeg,
+                    destinationLabel: context.destinationLabel, destinationRoman: context.destinationRoman,
                     dest: context.dest, accessible: context.accessible, prewalkCompleted: false)
                 // 여정의 대중교통 단계인데 세션이 서지 않았으면(경로 변환 실패) 세션 없는 running에 남지 않게 끝낸다.
                 if !self.transit.isTracking, let journey = self.journey, case .running(.transit) = journey.phase {
@@ -559,7 +601,7 @@ final class GuideSession {
             // 접근 도보는 승차 전 도보(A25)와 같은 자리다 — 입구가 멀어 지하로 먼저 들어가면 도착 판정이 닿지 않으므로 같은
             // 「{역} 도착」 선언 버튼을 둔다(시트의 유일한 버튼이 여정 전체 종료가 되지 않게). 도착 문장도 그 선례
             // 「승차역 {역}에 도착했습니다.」가 된다.
-            if stage == .access { beacon.markPrewalk(target: TransitLabel(ko: board.name)) }
+            if stage == .access { beacon.markPrewalk(target: TransitLabel(ko: board.name), transfer: false) }
             launchJourneyBeacon(
                 dest: BeaconDest(lat: board.coord.lat, lng: board.coord.lng), label: atStop ? board.name : name + "역",
                 labelRoman: nil, kind: stage == .taxiIn ? .car : .walk, token: token)

@@ -20041,6 +20041,46 @@
         }
       }
     },
+    "ios.beacon.transferWalkCancelledWith": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@. 대중교통 안내도 종료했습니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@. Transit guidance has also ended."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@. La guía de transporte público también ha terminado."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@. Le guidage des transports est également terminé."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@. Anche la guida dei trasporti è terminata."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@。公共交通案内も終了しました。"
+          }
+        }
+      }
+    },
     "ios.chat.addressesHeading": {
       "localizations": {
         "ko": {

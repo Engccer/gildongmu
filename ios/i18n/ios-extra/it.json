@@ -280,6 +280,7 @@
       "stoppedJoin": "Tracciamento della distanza interrotto",
       "prewalkCancelledWith": "{reason}. La guida dei trasporti non è stata avviata.",
       "prewalkUnavailableWith": "{reason}. Impossibile avviare la guida a piedi; si passa direttamente all'attesa di salita.",
+      "transferWalkCancelledWith": "{reason}. Anche la guida dei trasporti è terminata.",
       "arrivedHeading": "Arrivo",
       "arrivedPresumedHeading": "Arrivo stimato",
       "endedHeading": "Guida terminata",

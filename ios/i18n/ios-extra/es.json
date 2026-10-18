@@ -280,6 +280,7 @@
       "stoppedJoin": "Seguimiento de distancia detenido",
       "prewalkCancelledWith": "{reason}. La guía de transporte público no se inició.",
       "prewalkUnavailableWith": "{reason}. No se pudo iniciar la guía a pie; se pasa directamente a la espera de embarque.",
+      "transferWalkCancelledWith": "{reason}. La guía de transporte público también ha terminado.",
       "arrivedHeading": "Llegada",
       "arrivedPresumedHeading": "Llegada estimada",
       "endedHeading": "Guía finalizada",
