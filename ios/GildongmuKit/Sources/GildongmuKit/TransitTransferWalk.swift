@@ -16,9 +16,14 @@ public func transitTransferWalkTarget(_ route: TransitGuideRoute, legIndex: Int)
     // A25 검사를 다시 쓰지 않는다 — 그 구간 하나를 넣어 같은 조건(분 ≥ 1, 승차 좌표 유효)을 지난다.
     guard let target = transitPrewalkTarget(TransitGuideRoute(legs: [leg], walkAfterMinutes: nil)) else { return nil }
     if let meters = transitTransferWalkMeters(route, legIndex: legIndex) {
-        guard meters >= JourneyTuning.accessWalkMinMeters else { return nil }
+        guard transferWalkDistanceQualifies(meters) else { return nil }
     }
     return target
+}
+
+/// 문턱 비교 한 자리 — "30m 이상"(하버사인으로는 정확히 30.0을 만들 수 없어 경계를 이 함수로 직접 시험한다).
+func transferWalkDistanceQualifies(_ meters: Double) -> Bool {
+    meters >= JourneyTuning.accessWalkMinMeters
 }
 
 /// 앞 구간 하차 지점 ↔ 구간 `legIndex` 승차 지점의 직선 거리(m). 어느 한쪽 좌표가 없거나 무효면 nil.

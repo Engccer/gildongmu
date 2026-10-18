@@ -46,6 +46,8 @@ describe("E73 환승 도보 — 대중교통 모델", () => {
     // 실승차 판정 재료: 걷기가 있는 전진은 대상 여부와 무관하게 직선 거리와 판정을 남긴다(spec §5-3).
     expect(body).toContain("meters=\\(meters) target=\\(target == nil ? 0 : 1)");
     expect(body.indexOf("transitTransferWalkMeters(route, legIndex: nextIndex)")).toBeLessThan(passed);
+    // 대상 여부와 무관하게 — 로그는 `if let target {` 밖, 앞이다(안으로 옮기면 문턱에 걸린 환승의 로그가 사라진다).
+    expect(body.indexOf("meters=\\(meters) target=")).toBeLessThan(body.indexOf("if let target {"));
     // 넘긴 뒤 곧장 반환한다 — 전진을 커밋하면 즉시 창구의 「도보 N분 이동 후 …」가 나간다.
     expect(body.slice(handoff, commit)).toMatch(/\)\)\s*return\s*\}/);
     expect(handoff).toBeLessThan(commit);

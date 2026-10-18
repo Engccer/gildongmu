@@ -811,7 +811,7 @@ final class TransitGuideModel {
             let target = transitTransferWalkTarget(route, legIndex: nextIndex)
             // 실승차 판정 재료(spec §5-3): 걷기가 있는 전진은 대상 여부와 무관하게 직선 거리를 남긴다(`-` = 좌표 결손).
             if let minutes = route.legs[nextIndex].walkBeforeMinutes, minutes >= 1 {
-                let meters = transitTransferWalkMeters(route, legIndex: nextIndex).map { String(Int($0.rounded())) } ?? "-"
+                let meters = transitTransferWalkMeters(route, legIndex: nextIndex).map { String(format: "%.1f", $0) } ?? "-"
                 transitGuideLog("transferWalk leg=\(nextIndex) minutes=\(minutes) meters=\(meters) target=\(target == nil ? 0 : 1)")
             }
             if let target {
