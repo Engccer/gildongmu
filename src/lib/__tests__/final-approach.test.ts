@@ -15,6 +15,8 @@ import {
 import fixtures from "./fixtures/final-approach-scenarios.json";
 import presumedFixture from "./fixtures/presumed-arrival-scenarios.json";
 import windowFixture from "./fixtures/brief-arrival-window-cases.json";
+import offRouteArrivalCases from "./fixtures/off-route-arrival-cases.json";
+import { OFF_ROUTE_ARRIVAL_HOLD_S, offRouteArrivalQualifies } from "../final-approach";
 import { CAR_ARRIVAL_MAX_ACC_M } from "../car-arrival";
 
 /** 남→북 직선 100m 경로. lat 1도 ≈ 111320m. */
@@ -240,5 +242,18 @@ describe("briefArrivalWindowStep (공유 fixture, spec 2026-09-02 §2.2)", () =>
       entered: false,
       exited: true,
     });
+  });
+});
+
+// A70 spec §4.1 — 이탈 중 도착 창 입구 자격. 판정표는 Kit·`:kit`과 공유한다.
+describe("offRouteArrivalQualifies 공유 판정표(off-route-arrival-cases.json)", () => {
+  for (const c of offRouteArrivalCases.cases) {
+    it(c.name, () => {
+      expect(offRouteArrivalQualifies(c.distance, c.accuracy)).toBe(c.qualifies);
+    });
+  }
+  it("정확도 상한은 간략 창 상한과 같은 값이다", () => {
+    expect(BRIEF_ARRIVAL_WINDOW_MAX_ACC_M).toBe(30);
+    expect(OFF_ROUTE_ARRIVAL_HOLD_S).toBe(5);
   });
 });

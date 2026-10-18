@@ -1,0 +1,95 @@
+{
+ "comment": "새 경로 첫 점 검사 판정표(A70 spec 2026-10-19 §2). 웹 reroute-proposal-gate.test.ts·Kit RerouteProposalGateTests·:kit RerouteProposalGateTest가 함께 소비한다. 현재 위치 37.5, 127.1에서 첫 점을 north·east(m)만큼 둔다(lat += north/111320, lng += east/(111320·cos 37.5°)). gapMeters는 ±0.5m, nearbyWalk = 30m(도보 rerouteMaxDriftM) 이하, nearbyCar = 150m 이하, compass = 북 기준 8방위.",
+ "cases": [
+  {
+   "name": "같은 자리",
+   "north": 0,
+   "east": 0,
+   "gapMeters": 0.0,
+   "nearbyWalk": true,
+   "nearbyCar": true,
+   "compass": "n"
+  },
+  {
+   "name": "북 10m",
+   "north": 10,
+   "east": 0,
+   "gapMeters": 10.0,
+   "nearbyWalk": true,
+   "nearbyCar": true,
+   "compass": "n"
+  },
+  {
+   "name": "동 29m",
+   "north": 0,
+   "east": 29,
+   "gapMeters": 29.0,
+   "nearbyWalk": true,
+   "nearbyCar": true,
+   "compass": "e"
+  },
+  {
+   "name": "남서 30m 안쪽",
+   "north": -21,
+   "east": -21,
+   "gapMeters": 29.7,
+   "nearbyWalk": true,
+   "nearbyCar": true,
+   "compass": "sw"
+  },
+  {
+   "name": "남 31m",
+   "north": -31,
+   "east": 0,
+   "gapMeters": 31.0,
+   "nearbyWalk": false,
+   "nearbyCar": true,
+   "compass": "s"
+  },
+  {
+   "name": "북동 237m(A70 재현 모양)",
+   "north": 168,
+   "east": 168,
+   "gapMeters": 237.6,
+   "nearbyWalk": false,
+   "nearbyCar": false,
+   "compass": "ne"
+  },
+  {
+   "name": "서 149m",
+   "north": 0,
+   "east": -149,
+   "gapMeters": 149.0,
+   "nearbyWalk": false,
+   "nearbyCar": true,
+   "compass": "w"
+  },
+  {
+   "name": "북서 151m",
+   "north": 107,
+   "east": -107,
+   "gapMeters": 151.3,
+   "nearbyWalk": false,
+   "nearbyCar": false,
+   "compass": "nw"
+  },
+  {
+   "name": "동북동 45m(67.7° — 북동·동 경계 67.5°를 넘어 동)",
+   "north": 17,
+   "east": 41.5,
+   "gapMeters": 44.8,
+   "nearbyWalk": false,
+   "nearbyCar": true,
+   "compass": "e"
+  },
+  {
+   "name": "남남동 60m(158.6° — 남동·남 경계 157.5°를 넘어 남)",
+   "north": -56,
+   "east": 22,
+   "gapMeters": 60.2,
+   "nearbyWalk": false,
+   "nearbyCar": true,
+   "compass": "s"
+  }
+ ]
+}

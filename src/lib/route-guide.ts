@@ -24,6 +24,8 @@ import {
 import { MAX_CAR_SPEED_MPS, MAX_WALK_SPEED_MPS } from "./guide-motion";
 import { SESSION_IDLE_NO_FIX_CAR_S, SESSION_IDLE_NO_FIX_WALK_S } from "./session-idle";
 import {
+  OFF_ROUTE_ARRIVAL_HOLD_S,
+  offRouteArrivalQualifies,
   PRESUMED_ARRIVAL_CAR,
   PRESUMED_ARRIVAL_WALK,
   type PresumedArrivalThresholds,
@@ -284,6 +286,18 @@ export interface GuideTuning {
    * 20m/s에서 왕복 1.5초면 30m를 넘어 그 회차가 끝난다(E63 spec §3.9).
    */
   rerouteMaxDriftM: number;
+  /**
+   * 재조회 자격 셋째 `far`(A70 spec 2026-10-19 §3): 기준 투영 수직이 이 값 이상인 fix가 `rerouteFarS`초 이어지면 다가가는
+   * 중이어도 `rerouteNeeded(far)`. 다른 유효한 길로 수렴하는 걸음은 `away`·`parallel`을 끊어 영영 "돌아가는 중"이었다.
+   * 도보 100·60(위원장 판정), 자동차 400·60(세션 판단 — 잠정, 실주행 판정).
+   */
+  rerouteFarM: number;
+  rerouteFarS: number;
+  /**
+   * 이탈 중 목적지 직선거리가 간략 창 기준 안이면 최종 접근 국면에 드는 두 번째 입구(A70 spec §4,
+   * `offRouteArrivalQualifies`). 도보 true, 자동차 false(자동차 도착은 `carArrivalStep`이 정본이다).
+   */
+  offRouteArrivalEntry: boolean;
   /** 결합 확정(§3.2 ①)의 구속 창 수직 하한. null = 결합 확정 끔(자동차). */
   jointConfirmPerpM: number | null;
   jointConfirmMismatches: number;
@@ -411,6 +425,9 @@ export const WALK_TUNING: GuideTuning = {
   rerouteParallelM: 50,
   rerouteParallelClosingM: 10,
   rerouteMaxDriftM: 30,
+  rerouteFarM: 100,
+  rerouteFarS: 60,
+  offRouteArrivalEntry: true,
   jointConfirmPerpM: 20,
   jointConfirmMismatches: 5,
   approachVoteMaxDeg: 45,
@@ -493,6 +510,10 @@ export const CAR_TUNING: GuideTuning = {
   // 다가감 25m: 합류 램프(5~10°)를 나란히로 읽지 않게(J4 설계 리뷰 — 재생은 25·50을 가르지 못한다).
   rerouteParallelClosingM: 25,
   rerouteMaxDriftM: 150,
+  // 도보 far/away 비(100/25)를 away 100m에 — 도심 한두 블록을 돌아 합류하는 정상 복귀를 far로 읽지 않는다(A70 spec §3.2, 잠정).
+  rerouteFarM: 400,
+  rerouteFarS: 60,
+  offRouteArrivalEntry: false,
   jointConfirmPerpM: null,
   jointConfirmMismatches: 5,
   approachVoteMaxDeg: null,
@@ -689,6 +710,10 @@ export interface GuideState {
   offRouteAwayRun: { count: number; since: number } | null;
   /** 나란히 걷기 기준점(위치·기준 투영 수직, 위원장 판정 J4). 위치라 공백(uncertain·reacquiring)에서도 잇는다. */
   offRouteAnchor: { lat: number; lng: number; perp: number } | null;
+  /** 기준 투영 수직이 `rerouteFarM` 이상으로 이어진 시작 시각(A70 `far`). 문턱 아래 fix·공백·재무장에서 비운다. */
+  offRouteFarSince: number | null;
+  /** 이탈 중 도착 창 자격(`offRouteArrivalQualifies`)이 이어진 시작 시각(A70 §4.1). 자격 없는 fix·공백에서 비운다. */
+  offRouteNearSince: number | null;
   offRouteReason: OffRouteReason | null;
   /** 이 회차에 말할 이탈 문장을 냈는가(보류 `hold` 확정은 거짓으로 남는다). */
   offRouteSpoken: boolean;
@@ -704,7 +729,7 @@ export type OffRouteNotice = "confirm" | "renotify";
 export type OffRouteReason = "distance" | "course" | "joint";
 export type OffRouteGuidance = "turn" | "opposite" | "sideOnly" | "hold";
 export type OffRouteSide = "left" | "right";
-export type RerouteReason = "away" | "parallel";
+export type RerouteReason = "away" | "parallel" | "far";
 /** 유도기의 최근 진행 방위 관측(프로파일 게이트와 무관 — 이탈 문장·새 경로 머리말의 기준 방향, E63 spec §3.3). */
 export interface HeadingObservation {
   bearing: number;
@@ -733,6 +758,11 @@ export type GuideEvent =
   | { kind: "waypointApproaching"; remainingMeters: number }
   | { kind: "finalApproachEnter" }
   /**
+   * 이탈 중 목적지 직선거리가 간략 창 기준 안이라 최종 접근 국면에 들었다(A70 spec §4 — 두 번째 입구). 톤 없음.
+   * 종점 기하 서술은 이 진입에 거짓이라 `finalApproachEnter`와 종류를 가른다(소비자가 간략 인계·서술 없이 직선 추적).
+   */
+  | { kind: "nearDestination" }
+  /**
    * 이탈 확정(`confirm`)·재통지(`renotify`) — 돌아가기 국면(E63 spec §3·§4.1). 재조회는 이 이벤트가 아니라 `rerouteNeeded`가
    * 연다. `guidance`가 문장 틀을 고르고(`hold` = 이미 경로 쪽으로 걷는 중이라 말하지 않는다), `returnRelDeg`는 진행 방위 기준
    * 목표점의 상대 방위(turn·hold만). 소비자는 첫 발화의 분류·톤을 `notice`가 아니라 `firstSpoken`으로 가른다.
@@ -748,7 +778,10 @@ export type GuideEvent =
     }
   /** `spoken` = 이 회차에 말할 이탈 문장을 냈는가. 거짓이면 소비자는 "복귀했습니다"를 말하지 않는다. */
   | { kind: "backOnRoute"; spoken: boolean }
-  /** 돌아가기 국면에서 계속 멀어지거나(`away`) 나란히 계속 걸었다(`parallel`) — 오케스트레이터가 자동 조회·채택한다. */
+  /**
+   * 돌아가기 국면에서 계속 멀어지거나(`away`) 나란히 계속 걸었거나(`parallel`) 멀리 떨어진 채 이어졌다(`far`, A70) —
+   * 오케스트레이터가 자동 조회·채택한다.
+   */
   | { kind: "rerouteNeeded"; reason: RerouteReason }
   | { kind: "uncertainEnter" }
   | { kind: "uncertainExit" }
@@ -897,6 +930,8 @@ export function guideStateAt(
     offRouteMinPerp: null,
     offRouteAwayRun: null,
     offRouteAnchor: null,
+    offRouteFarSince: null,
+    offRouteNearSince: null,
     offRouteReason: null,
     offRouteSpoken: false,
     returnCandidateSince: null,
@@ -1093,6 +1128,8 @@ const PERP_HISTORY_S = 15;
 const CLEARED_RETURN_TIMERS = {
   returnCandidateSince: null,
   offRouteAwayRun: null,
+  offRouteFarSince: null,
+  offRouteNearSince: null,
 } as const;
 function pushPerp(history: readonly { at: number; perp: number }[], now: number, perp: number) {
   return [...history.filter((h) => h.at !== now && now - h.at <= PERP_HISTORY_S), { at: now, perp }];
@@ -1518,6 +1555,23 @@ export function guideStep(
   // 5) 이탈 판정(스펙 §5.6) — 돌아가기 국면(E63 spec §3).
   //    방위 표는 국면 분기 뒤 한 자리에서만 계산한다(D11 — 이탈 국면에서 구속 창 기준 표를 계산해 버리던 낭비 제거).
   if (state.phase === "offRoute") {
+    // (0) 이탈 중 도착 창 — 두 번째 입구(A70 spec §4). 목적지 코앞이면 경로로의 복귀를 기다릴 이유가 없다: 복귀·재조회·
+    //     재통지보다 앞이다. 자격은 간략 창 기준(래치 진입 임계 ∧ 정확도 ≤ 30)을 직선거리로 읽은 순수 술어다.
+    //     ⚠ 미통과 경유지가 있으면 열지 않는다(종점 입구와 같은 조건 — 경유지를 건너뛴 도착 종료, 설계 리뷰 high ①).
+    //     ⚠ 자격이 `OFF_ROUTE_ARRIVAL_HOLD_S` 이어져야 연다 — 단방향 래치라 30m짜리 fix 하나로 들어가면 안 된다(high ②).
+    //       후보 동안은 아래 판정이 종전대로 돈다(후보는 돌아가기 상태를 지우지 않는다).
+    const dest = route.destination;
+    const nearNow =
+      tuning.offRouteArrivalEntry &&
+      dest !== undefined &&
+      (route.waypointStepIndex === undefined || state.waypointReached) &&
+      offRouteArrivalQualifies(haversineMeters(fix.lat, fix.lng, dest.lat, dest.lng), fix.accuracy);
+    const nearSince = nearNow ? (state.offRouteNearSince ?? now) : null;
+    if (nearSince !== null && now - nearSince >= OFF_ROUTE_ARRIVAL_HOLD_S) {
+      // 진입 뒤 0a 가드가 모든 판정을 멈추므로 돌아가기 국면의 필드는 남아도 읽히지 않는다(종점 진입과 같은 단방향 래치).
+      return emit({ ...next, phase: "finalApproach", offRouteNearSince: null }, { kind: "nearDestination" }, null);
+    }
+    next = { ...next, offRouteNearSince: nearSince };
     // 기준 투영은 확정 지점 창이다(§3.3). 쪽·목표점·멀어짐·접근·재통지의 다가감이 전부 이것으로 잰다.
     const ref = confirmWindowProjection(route, fix, state.offRouteConfirmD ?? state.d, tuning, proj);
     loggedSigned = ref.signed;
@@ -1607,17 +1661,24 @@ export function guideStep(
           ? { count: 1, since: now }
           : { count: state.offRouteAwayRun.count + 1, since: state.offRouteAwayRun.since }
         : null;
-    if (run !== null && run.count >= tuning.rerouteAwayFixes && now - run.since >= tuning.rerouteAwayMinS) {
-      // 재무장: 최솟값·기준점을 이 fix로 다시 놓는다 — 조회가 실패·신선도 미달로 끝나도 더 가면 또 요청한다(예산 5회가 상한).
+    // 멀리 떨어짐(`far`, A70 spec §3): 다가가는 걸음도 끊지 않는다 — 다른 유효한 길로 수렴하는 사람이 이 자격의 대상이다.
+    //   멀어짐·나란히 연속 계수와 따로 센다. 같은 fix에서 그 둘이 서면 그쪽이 이긴다(종전 그대로).
+    const farSince = ref.perpMeters >= tuning.rerouteFarM ? (state.offRouteFarSince ?? now) : null;
+    const awayReady = run !== null && run.count >= tuning.rerouteAwayFixes && now - run.since >= tuning.rerouteAwayMinS;
+    const farReady = farSince !== null && now - farSince >= tuning.rerouteFarS;
+    if (awayReady || farReady) {
+      // 재무장: 최솟값·기준점·두 연속을 이 fix로 다시 놓는다 — 조회가 실패·신선도 미달·먼 출발점으로 끝나도 더 가면(멀면 60초 뒤)
+      // 또 요청한다(예산 5회가 상한).
       next = {
         ...next,
         offRouteMinPerp: ref.perpMeters,
         offRouteAnchor: { lat: fix.lat, lng: fix.lng, perp: ref.perpMeters },
         offRouteAwayRun: null,
+        offRouteFarSince: null,
       };
-      return emit(next, { kind: "rerouteNeeded", reason: away ? "away" : "parallel" }, null);
+      return emit(next, { kind: "rerouteNeeded", reason: awayReady ? (away ? "away" : "parallel") : "far" }, null);
     }
-    next = { ...next, offRouteMinPerp: minPerp, offRouteAnchor: anchor, offRouteAwayRun: run };
+    next = { ...next, offRouteMinPerp: minPerp, offRouteAnchor: anchor, offRouteAwayRun: run, offRouteFarSince: farSince };
     // (3) 재통지·보류 뒤 첫 발화(§3.4): 움직이는 중 ∧ 다가가는 중 아님 ∧ 다시 고른 문장이 보류가 아님.
     //     말하지 않았으면(보류 확정) 간격 없이, 말했으면 프로파일 간격.
     const intervalOk =
@@ -1685,6 +1746,9 @@ export function guideStep(
       offRouteMinPerp: ref.perpMeters,
       offRouteAwayRun: null,
       offRouteAnchor: { lat: fix.lat, lng: fix.lng, perp: ref.perpMeters },
+      // 확정 순간부터 센다(A70 §3.1).
+      offRouteFarSince: ref.perpMeters >= tuning.rerouteFarM ? now : null,
+      offRouteNearSince: null,
       offRouteReason: reason,
       offRouteSpoken: !hold,
       returnCandidateSince: null,

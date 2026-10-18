@@ -18,7 +18,7 @@ spec: `docs/superpowers/specs/2026-10-19-reroute-start-gap-design.md`. 세션 `a
 - `GuideState.offRouteFarSince`, `CLEARED_RETURN_TIMERS`·`guideStateAt`·`confirm` 초기화.
 - `RerouteReason` `"far"`, 돌아가기 국면 (2) 단계 `far` 판정(§3.1 순서·재무장).
 - `offRouteArrivalQualifies(distance, accuracy)`(final-approach), 돌아가기 국면 맨 앞 입구 → `phase: finalApproach` + `{kind: "nearDestination"}`.
-- fixture `route-guide-scenarios.json`: `dest` 키, 시나리오 `A70 ①` 수렴 걸음 far(합성: 확정 249m → 60초 뒤 far, 다가가는 중) · `A70 ②` 40m 평행 보도 장시간 far 없음 · `A70 ③` far 뒤 재무장(조회 실패 가정: 같은 상태로 60초 더 → far 재발) · `A70 ④` 이탈 중 목적지 25m(acc 10) → nearDestination · `A70 ⑤` 정확도 35m면 입구 닫힘 · `A70 ⑥` dest 없으면 닫힘 · `A70 ⑦` 자동차 400m·60초 far + 자동차 입구 닫힘 · `A70 ⑧` uncertain 공백은 60초에 산입되지 않음. 웹 하네스에 `dest` 처리.
+- fixture `route-guide-scenarios.json`: `dest` 키, 시나리오 `A70 ①` 수렴 걸음 far(합성: 확정 249m → 60초 뒤 far, 다가가는 중) · `A70 ②` 40m 평행 보도 장시간 far 없음 · `A70 ③` far 뒤 재무장(조회 실패 가정: 같은 상태로 60초 더 → far 재발) · `A70 ④` 이탈 중 목적지 25m(acc 10) 5초 지속 → nearDestination(4초째는 없음) · `A70 ④-b` 근접 fix 뒤 자격 없는 fix 하나면 연속이 끊긴다 · `A70 ④-c` 미통과 경유지가 있으면 닫힘 · `A70 ⑤` 정확도 35m면 입구 닫힘 · `A70 ⑥` dest 없으면 닫힘 · `A70 ⑦` 자동차 400m·60초 far + 자동차 입구 닫힘 · `A70 ⑧` uncertain 공백은 60초에 산입되지 않음. 웹 하네스에 `dest` 처리.
 
 ## T3. 채택 검사 판정 (`reroute-proposal-gate.ts`)
 

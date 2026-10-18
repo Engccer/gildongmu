@@ -44602,6 +44602,5098 @@
      "eventNot": "backOnRoute"
     }
    ]
+  },
+  {
+   "name": "A70 ① 확정 수직 250m 뒤 다른 길로 수렴하는 걸음(수직 250→140m, 다가가는 중) — 멀어짐·나란히는 없고 확정 60초 뒤 rerouteNeeded(far)",
+   "steps": [
+    {
+     "len": 1000,
+     "desc": "직진A"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 100,
+     "lateral": 250,
+     "acc": 10
+    },
+    {
+     "t": 2,
+     "along": 100,
+     "lateral": 250,
+     "acc": 10
+    },
+    {
+     "t": 4,
+     "along": 100,
+     "lateral": 250,
+     "acc": 10
+    },
+    {
+     "t": 6,
+     "along": 100,
+     "lateral": 250,
+     "acc": 10
+    },
+    {
+     "t": 8,
+     "along": 100,
+     "lateral": 250,
+     "acc": 10
+    },
+    {
+     "t": 10,
+     "along": 100,
+     "lateral": 250,
+     "acc": 10
+    },
+    {
+     "t": 12,
+     "along": 100,
+     "lateral": 250,
+     "acc": 10
+    },
+    {
+     "t": 14,
+     "along": 100,
+     "lateral": 250,
+     "acc": 10
+    },
+    {
+     "t": 16,
+     "along": 100,
+     "lateral": 250,
+     "acc": 10
+    },
+    {
+     "t": 18,
+     "along": 100,
+     "lateral": 250,
+     "acc": 10
+    },
+    {
+     "t": 20,
+     "along": 100,
+     "lateral": 250,
+     "acc": 10
+    },
+    {
+     "t": 22,
+     "along": 102,
+     "lateral": 248,
+     "acc": 10
+    },
+    {
+     "t": 24,
+     "along": 104,
+     "lateral": 246,
+     "acc": 10
+    },
+    {
+     "t": 26,
+     "along": 106,
+     "lateral": 244,
+     "acc": 10
+    },
+    {
+     "t": 28,
+     "along": 108,
+     "lateral": 242,
+     "acc": 10
+    },
+    {
+     "t": 30,
+     "along": 110,
+     "lateral": 240,
+     "acc": 10
+    },
+    {
+     "t": 32,
+     "along": 112,
+     "lateral": 238,
+     "acc": 10
+    },
+    {
+     "t": 34,
+     "along": 114,
+     "lateral": 236,
+     "acc": 10
+    },
+    {
+     "t": 36,
+     "along": 116,
+     "lateral": 234,
+     "acc": 10
+    },
+    {
+     "t": 38,
+     "along": 118,
+     "lateral": 232,
+     "acc": 10
+    },
+    {
+     "t": 40,
+     "along": 120,
+     "lateral": 230,
+     "acc": 10
+    },
+    {
+     "t": 42,
+     "along": 122,
+     "lateral": 228,
+     "acc": 10
+    },
+    {
+     "t": 44,
+     "along": 124,
+     "lateral": 226,
+     "acc": 10
+    },
+    {
+     "t": 46,
+     "along": 126,
+     "lateral": 224,
+     "acc": 10
+    },
+    {
+     "t": 48,
+     "along": 128,
+     "lateral": 222,
+     "acc": 10
+    },
+    {
+     "t": 50,
+     "along": 130,
+     "lateral": 220,
+     "acc": 10
+    },
+    {
+     "t": 52,
+     "along": 132,
+     "lateral": 218,
+     "acc": 10
+    },
+    {
+     "t": 54,
+     "along": 134,
+     "lateral": 216,
+     "acc": 10
+    },
+    {
+     "t": 56,
+     "along": 136,
+     "lateral": 214,
+     "acc": 10
+    },
+    {
+     "t": 58,
+     "along": 138,
+     "lateral": 212,
+     "acc": 10
+    },
+    {
+     "t": 60,
+     "along": 140,
+     "lateral": 210,
+     "acc": 10
+    },
+    {
+     "t": 62,
+     "along": 142,
+     "lateral": 208,
+     "acc": 10
+    },
+    {
+     "t": 64,
+     "along": 144,
+     "lateral": 206,
+     "acc": 10
+    },
+    {
+     "t": 66,
+     "along": 146,
+     "lateral": 204,
+     "acc": 10
+    },
+    {
+     "t": 68,
+     "along": 148,
+     "lateral": 202,
+     "acc": 10
+    },
+    {
+     "t": 70,
+     "along": 150,
+     "lateral": 200,
+     "acc": 10
+    },
+    {
+     "t": 72,
+     "along": 152,
+     "lateral": 198,
+     "acc": 10
+    },
+    {
+     "t": 74,
+     "along": 154,
+     "lateral": 196,
+     "acc": 10
+    },
+    {
+     "t": 76,
+     "along": 156,
+     "lateral": 194,
+     "acc": 10
+    },
+    {
+     "t": 78,
+     "along": 158,
+     "lateral": 192,
+     "acc": 10
+    },
+    {
+     "t": 80,
+     "along": 160,
+     "lateral": 190,
+     "acc": 10
+    },
+    {
+     "t": 82,
+     "along": 162,
+     "lateral": 188,
+     "acc": 10
+    },
+    {
+     "t": 84,
+     "along": 164,
+     "lateral": 186,
+     "acc": 10
+    },
+    {
+     "t": 86,
+     "along": 166,
+     "lateral": 184,
+     "acc": 10
+    },
+    {
+     "t": 88,
+     "along": 168,
+     "lateral": 182,
+     "acc": 10
+    },
+    {
+     "t": 90,
+     "along": 170,
+     "lateral": 180,
+     "acc": 10
+    },
+    {
+     "t": 92,
+     "along": 172,
+     "lateral": 178,
+     "acc": 10
+    },
+    {
+     "t": 94,
+     "along": 174,
+     "lateral": 176,
+     "acc": 10
+    },
+    {
+     "t": 96,
+     "along": 176,
+     "lateral": 174,
+     "acc": 10
+    },
+    {
+     "t": 98,
+     "along": 178,
+     "lateral": 172,
+     "acc": 10
+    },
+    {
+     "t": 100,
+     "along": 180,
+     "lateral": 170,
+     "acc": 10
+    },
+    {
+     "t": 102,
+     "along": 182,
+     "lateral": 168,
+     "acc": 10
+    },
+    {
+     "t": 104,
+     "along": 184,
+     "lateral": 166,
+     "acc": 10
+    },
+    {
+     "t": 106,
+     "along": 186,
+     "lateral": 164,
+     "acc": 10
+    },
+    {
+     "t": 108,
+     "along": 188,
+     "lateral": 162,
+     "acc": 10
+    },
+    {
+     "t": 110,
+     "along": 190,
+     "lateral": 160,
+     "acc": 10
+    },
+    {
+     "t": 112,
+     "along": 192,
+     "lateral": 158,
+     "acc": 10
+    },
+    {
+     "t": 114,
+     "along": 194,
+     "lateral": 156,
+     "acc": 10
+    },
+    {
+     "t": 116,
+     "along": 196,
+     "lateral": 154,
+     "acc": 10
+    },
+    {
+     "t": 118,
+     "along": 198,
+     "lateral": 152,
+     "acc": 10
+    },
+    {
+     "t": 120,
+     "along": 200,
+     "lateral": 150,
+     "acc": 10
+    },
+    {
+     "t": 122,
+     "along": 202,
+     "lateral": 148,
+     "acc": 10
+    },
+    {
+     "t": 124,
+     "along": 204,
+     "lateral": 146,
+     "acc": 10
+    },
+    {
+     "t": 126,
+     "along": 206,
+     "lateral": 144,
+     "acc": 10
+    },
+    {
+     "t": 128,
+     "along": 208,
+     "lateral": 142,
+     "acc": 10
+    },
+    {
+     "t": 130,
+     "along": 210,
+     "lateral": 140,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFix": 10,
+     "event": "offRoute",
+     "notice": "confirm"
+    },
+    {
+     "afterFixAny": [
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39
+     ],
+     "eventNot": "rerouteNeeded"
+    },
+    {
+     "afterFix": 40,
+     "event": "rerouteNeeded",
+     "rerouteReason": "far"
+    },
+    {
+     "afterFixAny": [
+      41,
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48,
+      49,
+      50,
+      51,
+      52,
+      53,
+      54,
+      55,
+      56,
+      57,
+      58,
+      59,
+      60,
+      61,
+      62,
+      63,
+      64,
+      65
+     ],
+     "eventNot": "rerouteNeeded"
+    }
+   ]
+  },
+  {
+   "name": "A70 ② 수직 40m 평행 보도를 4분 걸어도 far는 없다(나란히 걷기 parallel만)",
+   "steps": [
+    {
+     "len": 1000,
+     "desc": "직진A"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 100,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 2,
+     "along": 102.4,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 4,
+     "along": 104.8,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 6,
+     "along": 107.2,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 8,
+     "along": 109.6,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 10,
+     "along": 112.0,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 12,
+     "along": 114.4,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 14,
+     "along": 116.8,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 16,
+     "along": 119.2,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 18,
+     "along": 121.6,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 20,
+     "along": 124.0,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 22,
+     "along": 126.4,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 24,
+     "along": 128.8,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 26,
+     "along": 131.2,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 28,
+     "along": 133.6,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 30,
+     "along": 136.0,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 32,
+     "along": 138.4,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 34,
+     "along": 140.8,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 36,
+     "along": 143.2,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 38,
+     "along": 145.6,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 40,
+     "along": 148.0,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 42,
+     "along": 150.4,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 44,
+     "along": 152.8,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 46,
+     "along": 155.2,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 48,
+     "along": 157.6,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 50,
+     "along": 160.0,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 52,
+     "along": 162.4,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 54,
+     "along": 164.8,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 56,
+     "along": 167.2,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 58,
+     "along": 169.6,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 60,
+     "along": 172.0,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 62,
+     "along": 174.4,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 64,
+     "along": 176.8,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 66,
+     "along": 179.2,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 68,
+     "along": 181.6,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 70,
+     "along": 184.0,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 72,
+     "along": 186.4,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 74,
+     "along": 188.8,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 76,
+     "along": 191.2,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 78,
+     "along": 193.6,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 80,
+     "along": 196.0,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 82,
+     "along": 198.4,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 84,
+     "along": 200.8,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 86,
+     "along": 203.2,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 88,
+     "along": 205.6,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 90,
+     "along": 208.0,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 92,
+     "along": 210.4,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 94,
+     "along": 212.8,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 96,
+     "along": 215.2,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 98,
+     "along": 217.6,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 100,
+     "along": 220.0,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 102,
+     "along": 222.4,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 104,
+     "along": 224.8,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 106,
+     "along": 227.2,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 108,
+     "along": 229.6,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 110,
+     "along": 232.0,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 112,
+     "along": 234.4,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 114,
+     "along": 236.8,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 116,
+     "along": 239.2,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 118,
+     "along": 241.6,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 120,
+     "along": 244.0,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 122,
+     "along": 246.4,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 124,
+     "along": 248.8,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 126,
+     "along": 251.2,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 128,
+     "along": 253.6,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 130,
+     "along": 256.0,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 132,
+     "along": 258.4,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 134,
+     "along": 260.8,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 136,
+     "along": 263.2,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 138,
+     "along": 265.6,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 140,
+     "along": 268.0,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 142,
+     "along": 270.4,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 144,
+     "along": 272.8,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 146,
+     "along": 275.2,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 148,
+     "along": 277.6,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 150,
+     "along": 280.0,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 152,
+     "along": 282.4,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 154,
+     "along": 284.8,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 156,
+     "along": 287.2,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 158,
+     "along": 289.6,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 160,
+     "along": 292.0,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 162,
+     "along": 294.4,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 164,
+     "along": 296.8,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 166,
+     "along": 299.2,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 168,
+     "along": 301.6,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 170,
+     "along": 304.0,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 172,
+     "along": 306.4,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 174,
+     "along": 308.8,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 176,
+     "along": 311.2,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 178,
+     "along": 313.6,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 180,
+     "along": 316.0,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 182,
+     "along": 318.4,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 184,
+     "along": 320.8,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 186,
+     "along": 323.2,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 188,
+     "along": 325.6,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 190,
+     "along": 328.0,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 192,
+     "along": 330.4,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 194,
+     "along": 332.8,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 196,
+     "along": 335.2,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 198,
+     "along": 337.6,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 200,
+     "along": 340.0,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 202,
+     "along": 342.4,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 204,
+     "along": 344.8,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 206,
+     "along": 347.2,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 208,
+     "along": 349.6,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 210,
+     "along": 352.0,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 212,
+     "along": 354.4,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 214,
+     "along": 356.8,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 216,
+     "along": 359.2,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 218,
+     "along": 361.6,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 220,
+     "along": 364.0,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 222,
+     "along": 366.4,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 224,
+     "along": 368.8,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 226,
+     "along": 371.2,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 228,
+     "along": 373.6,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 230,
+     "along": 376.0,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 232,
+     "along": 378.4,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 234,
+     "along": 380.8,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 236,
+     "along": 383.2,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 238,
+     "along": 385.6,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 240,
+     "along": 388.0,
+     "lateral": 40,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFixAny": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39,
+      40,
+      41,
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48,
+      49,
+      50,
+      51,
+      52,
+      53,
+      54,
+      55,
+      56,
+      57,
+      58,
+      59,
+      60,
+      61,
+      62,
+      63,
+      64,
+      65,
+      66,
+      67,
+      68,
+      69,
+      70,
+      71,
+      72,
+      73,
+      74,
+      75,
+      76,
+      77,
+      78,
+      79,
+      80,
+      81,
+      82,
+      83,
+      84,
+      85,
+      86,
+      87,
+      88,
+      89,
+      90,
+      91,
+      92,
+      93,
+      94,
+      95,
+      96,
+      97,
+      98,
+      99,
+      100,
+      101,
+      102,
+      103,
+      104,
+      105,
+      106,
+      107,
+      108,
+      109,
+      110,
+      111,
+      112,
+      113,
+      114,
+      115,
+      116,
+      117,
+      118,
+      119,
+      120
+     ],
+     "eventNot": "nearDestination"
+    },
+    {
+     "afterFix": 32,
+     "event": "rerouteNeeded",
+     "rerouteReason": "parallel"
+    },
+    {
+     "afterFix": 55,
+     "event": "rerouteNeeded",
+     "rerouteReason": "parallel"
+    },
+    {
+     "afterFix": 78,
+     "event": "rerouteNeeded",
+     "rerouteReason": "parallel"
+    },
+    {
+     "afterFix": 101,
+     "event": "rerouteNeeded",
+     "rerouteReason": "parallel"
+    }
+   ]
+  },
+  {
+   "name": "A70 ③ far는 낸 fix에서 재무장한다 — 조회가 실패해 같은 국면이 이어지면 60초 뒤 또 far",
+   "steps": [
+    {
+     "len": 1000,
+     "desc": "직진A"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 100,
+     "lateral": 200,
+     "acc": 10
+    },
+    {
+     "t": 2,
+     "along": 100,
+     "lateral": 200,
+     "acc": 10
+    },
+    {
+     "t": 4,
+     "along": 100,
+     "lateral": 200,
+     "acc": 10
+    },
+    {
+     "t": 6,
+     "along": 100,
+     "lateral": 200,
+     "acc": 10
+    },
+    {
+     "t": 8,
+     "along": 100,
+     "lateral": 200,
+     "acc": 10
+    },
+    {
+     "t": 10,
+     "along": 100,
+     "lateral": 200,
+     "acc": 10
+    },
+    {
+     "t": 12,
+     "along": 100,
+     "lateral": 200,
+     "acc": 10
+    },
+    {
+     "t": 14,
+     "along": 100,
+     "lateral": 200,
+     "acc": 10
+    },
+    {
+     "t": 16,
+     "along": 100,
+     "lateral": 200,
+     "acc": 10
+    },
+    {
+     "t": 18,
+     "along": 100,
+     "lateral": 200,
+     "acc": 10
+    },
+    {
+     "t": 20,
+     "along": 100,
+     "lateral": 200,
+     "acc": 10
+    },
+    {
+     "t": 22,
+     "along": 101.0,
+     "lateral": 199.0,
+     "acc": 10
+    },
+    {
+     "t": 24,
+     "along": 102.0,
+     "lateral": 198.0,
+     "acc": 10
+    },
+    {
+     "t": 26,
+     "along": 103.0,
+     "lateral": 197.0,
+     "acc": 10
+    },
+    {
+     "t": 28,
+     "along": 104.0,
+     "lateral": 196.0,
+     "acc": 10
+    },
+    {
+     "t": 30,
+     "along": 105.0,
+     "lateral": 195.0,
+     "acc": 10
+    },
+    {
+     "t": 32,
+     "along": 106.0,
+     "lateral": 194.0,
+     "acc": 10
+    },
+    {
+     "t": 34,
+     "along": 107.0,
+     "lateral": 193.0,
+     "acc": 10
+    },
+    {
+     "t": 36,
+     "along": 108.0,
+     "lateral": 192.0,
+     "acc": 10
+    },
+    {
+     "t": 38,
+     "along": 109.0,
+     "lateral": 191.0,
+     "acc": 10
+    },
+    {
+     "t": 40,
+     "along": 110.0,
+     "lateral": 190.0,
+     "acc": 10
+    },
+    {
+     "t": 42,
+     "along": 111.0,
+     "lateral": 189.0,
+     "acc": 10
+    },
+    {
+     "t": 44,
+     "along": 112.0,
+     "lateral": 188.0,
+     "acc": 10
+    },
+    {
+     "t": 46,
+     "along": 113.0,
+     "lateral": 187.0,
+     "acc": 10
+    },
+    {
+     "t": 48,
+     "along": 114.0,
+     "lateral": 186.0,
+     "acc": 10
+    },
+    {
+     "t": 50,
+     "along": 115.0,
+     "lateral": 185.0,
+     "acc": 10
+    },
+    {
+     "t": 52,
+     "along": 116.0,
+     "lateral": 184.0,
+     "acc": 10
+    },
+    {
+     "t": 54,
+     "along": 117.0,
+     "lateral": 183.0,
+     "acc": 10
+    },
+    {
+     "t": 56,
+     "along": 118.0,
+     "lateral": 182.0,
+     "acc": 10
+    },
+    {
+     "t": 58,
+     "along": 119.0,
+     "lateral": 181.0,
+     "acc": 10
+    },
+    {
+     "t": 60,
+     "along": 120.0,
+     "lateral": 180.0,
+     "acc": 10
+    },
+    {
+     "t": 62,
+     "along": 121.0,
+     "lateral": 179.0,
+     "acc": 10
+    },
+    {
+     "t": 64,
+     "along": 122.0,
+     "lateral": 178.0,
+     "acc": 10
+    },
+    {
+     "t": 66,
+     "along": 123.0,
+     "lateral": 177.0,
+     "acc": 10
+    },
+    {
+     "t": 68,
+     "along": 124.0,
+     "lateral": 176.0,
+     "acc": 10
+    },
+    {
+     "t": 70,
+     "along": 125.0,
+     "lateral": 175.0,
+     "acc": 10
+    },
+    {
+     "t": 72,
+     "along": 126.0,
+     "lateral": 174.0,
+     "acc": 10
+    },
+    {
+     "t": 74,
+     "along": 127.0,
+     "lateral": 173.0,
+     "acc": 10
+    },
+    {
+     "t": 76,
+     "along": 128.0,
+     "lateral": 172.0,
+     "acc": 10
+    },
+    {
+     "t": 78,
+     "along": 129.0,
+     "lateral": 171.0,
+     "acc": 10
+    },
+    {
+     "t": 80,
+     "along": 130.0,
+     "lateral": 170.0,
+     "acc": 10
+    },
+    {
+     "t": 82,
+     "along": 131.0,
+     "lateral": 169.0,
+     "acc": 10
+    },
+    {
+     "t": 84,
+     "along": 132.0,
+     "lateral": 168.0,
+     "acc": 10
+    },
+    {
+     "t": 86,
+     "along": 133.0,
+     "lateral": 167.0,
+     "acc": 10
+    },
+    {
+     "t": 88,
+     "along": 134.0,
+     "lateral": 166.0,
+     "acc": 10
+    },
+    {
+     "t": 90,
+     "along": 135.0,
+     "lateral": 165.0,
+     "acc": 10
+    },
+    {
+     "t": 92,
+     "along": 136.0,
+     "lateral": 164.0,
+     "acc": 10
+    },
+    {
+     "t": 94,
+     "along": 137.0,
+     "lateral": 163.0,
+     "acc": 10
+    },
+    {
+     "t": 96,
+     "along": 138.0,
+     "lateral": 162.0,
+     "acc": 10
+    },
+    {
+     "t": 98,
+     "along": 139.0,
+     "lateral": 161.0,
+     "acc": 10
+    },
+    {
+     "t": 100,
+     "along": 140.0,
+     "lateral": 160.0,
+     "acc": 10
+    },
+    {
+     "t": 102,
+     "along": 141.0,
+     "lateral": 159.0,
+     "acc": 10
+    },
+    {
+     "t": 104,
+     "along": 142.0,
+     "lateral": 158.0,
+     "acc": 10
+    },
+    {
+     "t": 106,
+     "along": 143.0,
+     "lateral": 157.0,
+     "acc": 10
+    },
+    {
+     "t": 108,
+     "along": 144.0,
+     "lateral": 156.0,
+     "acc": 10
+    },
+    {
+     "t": 110,
+     "along": 145.0,
+     "lateral": 155.0,
+     "acc": 10
+    },
+    {
+     "t": 112,
+     "along": 146.0,
+     "lateral": 154.0,
+     "acc": 10
+    },
+    {
+     "t": 114,
+     "along": 147.0,
+     "lateral": 153.0,
+     "acc": 10
+    },
+    {
+     "t": 116,
+     "along": 148.0,
+     "lateral": 152.0,
+     "acc": 10
+    },
+    {
+     "t": 118,
+     "along": 149.0,
+     "lateral": 151.0,
+     "acc": 10
+    },
+    {
+     "t": 120,
+     "along": 150.0,
+     "lateral": 150.0,
+     "acc": 10
+    },
+    {
+     "t": 122,
+     "along": 151.0,
+     "lateral": 149.0,
+     "acc": 10
+    },
+    {
+     "t": 124,
+     "along": 152.0,
+     "lateral": 148.0,
+     "acc": 10
+    },
+    {
+     "t": 126,
+     "along": 153.0,
+     "lateral": 147.0,
+     "acc": 10
+    },
+    {
+     "t": 128,
+     "along": 154.0,
+     "lateral": 146.0,
+     "acc": 10
+    },
+    {
+     "t": 130,
+     "along": 155.0,
+     "lateral": 145.0,
+     "acc": 10
+    },
+    {
+     "t": 132,
+     "along": 156.0,
+     "lateral": 144.0,
+     "acc": 10
+    },
+    {
+     "t": 134,
+     "along": 157.0,
+     "lateral": 143.0,
+     "acc": 10
+    },
+    {
+     "t": 136,
+     "along": 158.0,
+     "lateral": 142.0,
+     "acc": 10
+    },
+    {
+     "t": 138,
+     "along": 159.0,
+     "lateral": 141.0,
+     "acc": 10
+    },
+    {
+     "t": 140,
+     "along": 160.0,
+     "lateral": 140.0,
+     "acc": 10
+    },
+    {
+     "t": 142,
+     "along": 161.0,
+     "lateral": 139.0,
+     "acc": 10
+    },
+    {
+     "t": 144,
+     "along": 162.0,
+     "lateral": 138.0,
+     "acc": 10
+    },
+    {
+     "t": 146,
+     "along": 163.0,
+     "lateral": 137.0,
+     "acc": 10
+    },
+    {
+     "t": 148,
+     "along": 164.0,
+     "lateral": 136.0,
+     "acc": 10
+    },
+    {
+     "t": 150,
+     "along": 165.0,
+     "lateral": 135.0,
+     "acc": 10
+    },
+    {
+     "t": 152,
+     "along": 166.0,
+     "lateral": 134.0,
+     "acc": 10
+    },
+    {
+     "t": 154,
+     "along": 167.0,
+     "lateral": 133.0,
+     "acc": 10
+    },
+    {
+     "t": 156,
+     "along": 168.0,
+     "lateral": 132.0,
+     "acc": 10
+    },
+    {
+     "t": 158,
+     "along": 169.0,
+     "lateral": 131.0,
+     "acc": 10
+    },
+    {
+     "t": 160,
+     "along": 170.0,
+     "lateral": 130.0,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFix": 40,
+     "event": "rerouteNeeded",
+     "rerouteReason": "far"
+    },
+    {
+     "afterFixAny": [
+      41,
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48,
+      49,
+      50,
+      51,
+      52,
+      53,
+      54,
+      55,
+      56,
+      57,
+      58,
+      59,
+      60,
+      61,
+      62,
+      63,
+      64,
+      65,
+      66,
+      67,
+      68,
+      69,
+      70
+     ],
+     "eventNot": "rerouteNeeded"
+    },
+    {
+     "afterFix": 71,
+     "event": "rerouteNeeded",
+     "rerouteReason": "far"
+    }
+   ]
+  },
+  {
+   "name": "A70 ④ 이탈 중 목적지 직선 25m 안(정확도 10m)에 5초 머물면 최종 접근에 든다(nearDestination), 4초째엔 아직 없다",
+   "steps": [
+    {
+     "len": 300,
+     "desc": "직진A"
+    }
+   ],
+   "dest": [
+    300,
+    60
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 150,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 2,
+     "along": 150,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 4,
+     "along": 150,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 6,
+     "along": 150,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 8,
+     "along": 150,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 10,
+     "along": 150,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 12,
+     "along": 150,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 14,
+     "along": 150,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 16,
+     "along": 150,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 18,
+     "along": 150,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 20,
+     "along": 150,
+     "lateral": 40,
+     "acc": 10
+    },
+    {
+     "t": 22,
+     "along": 152.4,
+     "lateral": 40.34,
+     "acc": 10
+    },
+    {
+     "t": 24,
+     "along": 154.8,
+     "lateral": 40.69,
+     "acc": 10
+    },
+    {
+     "t": 26,
+     "along": 157.2,
+     "lateral": 41.03,
+     "acc": 10
+    },
+    {
+     "t": 28,
+     "along": 159.6,
+     "lateral": 41.37,
+     "acc": 10
+    },
+    {
+     "t": 30,
+     "along": 162.0,
+     "lateral": 41.71,
+     "acc": 10
+    },
+    {
+     "t": 32,
+     "along": 164.4,
+     "lateral": 42.06,
+     "acc": 10
+    },
+    {
+     "t": 34,
+     "along": 166.8,
+     "lateral": 42.4,
+     "acc": 10
+    },
+    {
+     "t": 36,
+     "along": 169.2,
+     "lateral": 42.74,
+     "acc": 10
+    },
+    {
+     "t": 38,
+     "along": 171.6,
+     "lateral": 43.09,
+     "acc": 10
+    },
+    {
+     "t": 40,
+     "along": 174.0,
+     "lateral": 43.43,
+     "acc": 10
+    },
+    {
+     "t": 42,
+     "along": 176.4,
+     "lateral": 43.77,
+     "acc": 10
+    },
+    {
+     "t": 44,
+     "along": 178.8,
+     "lateral": 44.11,
+     "acc": 10
+    },
+    {
+     "t": 46,
+     "along": 181.2,
+     "lateral": 44.46,
+     "acc": 10
+    },
+    {
+     "t": 48,
+     "along": 183.6,
+     "lateral": 44.8,
+     "acc": 10
+    },
+    {
+     "t": 50,
+     "along": 186.0,
+     "lateral": 45.14,
+     "acc": 10
+    },
+    {
+     "t": 52,
+     "along": 188.4,
+     "lateral": 45.49,
+     "acc": 10
+    },
+    {
+     "t": 54,
+     "along": 190.8,
+     "lateral": 45.83,
+     "acc": 10
+    },
+    {
+     "t": 56,
+     "along": 193.2,
+     "lateral": 46.17,
+     "acc": 10
+    },
+    {
+     "t": 58,
+     "along": 195.6,
+     "lateral": 46.51,
+     "acc": 10
+    },
+    {
+     "t": 60,
+     "along": 198.0,
+     "lateral": 46.86,
+     "acc": 10
+    },
+    {
+     "t": 62,
+     "along": 200.4,
+     "lateral": 47.2,
+     "acc": 10
+    },
+    {
+     "t": 64,
+     "along": 202.8,
+     "lateral": 47.54,
+     "acc": 10
+    },
+    {
+     "t": 66,
+     "along": 205.2,
+     "lateral": 47.89,
+     "acc": 10
+    },
+    {
+     "t": 68,
+     "along": 207.6,
+     "lateral": 48.23,
+     "acc": 10
+    },
+    {
+     "t": 70,
+     "along": 210.0,
+     "lateral": 48.57,
+     "acc": 10
+    },
+    {
+     "t": 72,
+     "along": 212.4,
+     "lateral": 48.91,
+     "acc": 10
+    },
+    {
+     "t": 74,
+     "along": 214.8,
+     "lateral": 49.26,
+     "acc": 10
+    },
+    {
+     "t": 76,
+     "along": 217.2,
+     "lateral": 49.6,
+     "acc": 10
+    },
+    {
+     "t": 78,
+     "along": 219.6,
+     "lateral": 49.94,
+     "acc": 10
+    },
+    {
+     "t": 80,
+     "along": 222.0,
+     "lateral": 50.29,
+     "acc": 10
+    },
+    {
+     "t": 82,
+     "along": 224.4,
+     "lateral": 50.63,
+     "acc": 10
+    },
+    {
+     "t": 84,
+     "along": 226.8,
+     "lateral": 50.97,
+     "acc": 10
+    },
+    {
+     "t": 86,
+     "along": 229.2,
+     "lateral": 51.31,
+     "acc": 10
+    },
+    {
+     "t": 88,
+     "along": 231.6,
+     "lateral": 51.66,
+     "acc": 10
+    },
+    {
+     "t": 90,
+     "along": 234.0,
+     "lateral": 52.0,
+     "acc": 10
+    },
+    {
+     "t": 92,
+     "along": 236.4,
+     "lateral": 52.34,
+     "acc": 10
+    },
+    {
+     "t": 94,
+     "along": 238.8,
+     "lateral": 52.69,
+     "acc": 10
+    },
+    {
+     "t": 96,
+     "along": 241.2,
+     "lateral": 53.03,
+     "acc": 10
+    },
+    {
+     "t": 98,
+     "along": 243.6,
+     "lateral": 53.37,
+     "acc": 10
+    },
+    {
+     "t": 100,
+     "along": 246.0,
+     "lateral": 53.71,
+     "acc": 10
+    },
+    {
+     "t": 102,
+     "along": 248.4,
+     "lateral": 54.06,
+     "acc": 10
+    },
+    {
+     "t": 104,
+     "along": 250.8,
+     "lateral": 54.4,
+     "acc": 10
+    },
+    {
+     "t": 106,
+     "along": 253.2,
+     "lateral": 54.74,
+     "acc": 10
+    },
+    {
+     "t": 108,
+     "along": 255.6,
+     "lateral": 55.09,
+     "acc": 10
+    },
+    {
+     "t": 110,
+     "along": 258.0,
+     "lateral": 55.43,
+     "acc": 10
+    },
+    {
+     "t": 112,
+     "along": 260.4,
+     "lateral": 55.77,
+     "acc": 10
+    },
+    {
+     "t": 114,
+     "along": 262.8,
+     "lateral": 56.11,
+     "acc": 10
+    },
+    {
+     "t": 116,
+     "along": 265.2,
+     "lateral": 56.46,
+     "acc": 10
+    },
+    {
+     "t": 118,
+     "along": 267.6,
+     "lateral": 56.8,
+     "acc": 10
+    },
+    {
+     "t": 120,
+     "along": 270.0,
+     "lateral": 57.14,
+     "acc": 10
+    },
+    {
+     "t": 122,
+     "along": 272.4,
+     "lateral": 57.49,
+     "acc": 10
+    },
+    {
+     "t": 124,
+     "along": 274.8,
+     "lateral": 57.83,
+     "acc": 10
+    },
+    {
+     "t": 126,
+     "along": 277.2,
+     "lateral": 58.17,
+     "acc": 10
+    },
+    {
+     "t": 128,
+     "along": 279.6,
+     "lateral": 58.51,
+     "acc": 10
+    },
+    {
+     "t": 130,
+     "along": 282.0,
+     "lateral": 58.86,
+     "acc": 10
+    },
+    {
+     "t": 132,
+     "along": 284.4,
+     "lateral": 59.2,
+     "acc": 10
+    },
+    {
+     "t": 134,
+     "along": 286.8,
+     "lateral": 59.54,
+     "acc": 10
+    },
+    {
+     "t": 136,
+     "along": 289.2,
+     "lateral": 59.89,
+     "acc": 10
+    },
+    {
+     "t": 138,
+     "along": 290,
+     "lateral": 60.0,
+     "acc": 10
+    },
+    {
+     "t": 140,
+     "along": 290,
+     "lateral": 60.0,
+     "acc": 10
+    },
+    {
+     "t": 142,
+     "along": 290,
+     "lateral": 60.0,
+     "acc": 10
+    },
+    {
+     "t": 144,
+     "along": 290,
+     "lateral": 60.0,
+     "acc": 10
+    },
+    {
+     "t": 146,
+     "along": 290,
+     "lateral": 60.0,
+     "acc": 10
+    },
+    {
+     "t": 148,
+     "along": 290,
+     "lateral": 60.0,
+     "acc": 10
+    },
+    {
+     "t": 150,
+     "along": 290,
+     "lateral": 60.0,
+     "acc": 10
+    },
+    {
+     "t": 152,
+     "along": 290,
+     "lateral": 60.0,
+     "acc": 10
+    },
+    {
+     "t": 154,
+     "along": 290,
+     "lateral": 60.0,
+     "acc": 10
+    },
+    {
+     "t": 156,
+     "along": 290,
+     "lateral": 60.0,
+     "acc": 10
+    },
+    {
+     "t": 158,
+     "along": 290,
+     "lateral": 60.0,
+     "acc": 10
+    },
+    {
+     "t": 160,
+     "along": 290,
+     "lateral": 60.0,
+     "acc": 10
+    },
+    {
+     "t": 162,
+     "along": 290,
+     "lateral": 60.0,
+     "acc": 10
+    },
+    {
+     "t": 164,
+     "along": 290,
+     "lateral": 60.0,
+     "acc": 10
+    },
+    {
+     "t": 166,
+     "along": 290,
+     "lateral": 60.0,
+     "acc": 10
+    },
+    {
+     "t": 168,
+     "along": 290,
+     "lateral": 60.0,
+     "acc": 10
+    },
+    {
+     "t": 170,
+     "along": 290,
+     "lateral": 60.0,
+     "acc": 10
+    },
+    {
+     "t": 172,
+     "along": 290,
+     "lateral": 60.0,
+     "acc": 10
+    },
+    {
+     "t": 174,
+     "along": 290,
+     "lateral": 60.0,
+     "acc": 10
+    },
+    {
+     "t": 176,
+     "along": 290,
+     "lateral": 60.0,
+     "acc": 10
+    },
+    {
+     "t": 178,
+     "along": 290,
+     "lateral": 60.0,
+     "acc": 10
+    },
+    {
+     "t": 180,
+     "along": 290,
+     "lateral": 60.0,
+     "acc": 10
+    },
+    {
+     "t": 182,
+     "along": 290,
+     "lateral": 60.0,
+     "acc": 10
+    },
+    {
+     "t": 184,
+     "along": 290,
+     "lateral": 60.0,
+     "acc": 10
+    },
+    {
+     "t": 186,
+     "along": 290,
+     "lateral": 60.0,
+     "acc": 10
+    },
+    {
+     "t": 188,
+     "along": 290,
+     "lateral": 60.0,
+     "acc": 10
+    },
+    {
+     "t": 190,
+     "along": 290,
+     "lateral": 60.0,
+     "acc": 10
+    },
+    {
+     "t": 192,
+     "along": 290,
+     "lateral": 60.0,
+     "acc": 10
+    },
+    {
+     "t": 194,
+     "along": 290,
+     "lateral": 60.0,
+     "acc": 10
+    },
+    {
+     "t": 196,
+     "along": 290,
+     "lateral": 60.0,
+     "acc": 10
+    },
+    {
+     "t": 198,
+     "along": 290,
+     "lateral": 60.0,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFix": 10,
+     "event": "offRoute",
+     "notice": "confirm"
+    },
+    {
+     "afterFixAny": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39,
+      40,
+      41,
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48,
+      49,
+      50,
+      51,
+      52,
+      53,
+      54,
+      55,
+      56,
+      57,
+      58,
+      59,
+      60,
+      61,
+      62,
+      63,
+      64,
+      65,
+      66,
+      67
+     ],
+     "eventNot": "nearDestination"
+    },
+    {
+     "afterFix": 68,
+     "event": "nearDestination",
+     "toneNull": true
+    }
+   ]
+  },
+  {
+   "name": "A70 ④-b 근접 자격 사이에 정확도 40m fix 하나가 끼면 연속이 처음부터 — 그 뒤 5초가 지나야 든다",
+   "steps": [
+    {
+     "len": 300,
+     "desc": "직진A"
+    }
+   ],
+   "dest": [
+    300,
+    60
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 250,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 2,
+     "along": 250,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 4,
+     "along": 250,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 6,
+     "along": 250,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 8,
+     "along": 250,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 10,
+     "along": 250,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 12,
+     "along": 250,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 14,
+     "along": 250,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 16,
+     "along": 250,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 18,
+     "along": 250,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 20,
+     "along": 250,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 22,
+     "along": 290,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 24,
+     "along": 290,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 26,
+     "along": 290,
+     "lateral": 60,
+     "acc": 40
+    },
+    {
+     "t": 28,
+     "along": 290,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 30,
+     "along": 290,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 32,
+     "along": 290,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 34,
+     "along": 290,
+     "lateral": 60,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFix": 10,
+     "event": "offRoute",
+     "notice": "confirm"
+    },
+    {
+     "afterFixAny": [
+      11,
+      12,
+      13,
+      14,
+      15,
+      16
+     ],
+     "eventNot": "nearDestination"
+    },
+    {
+     "afterFix": 17,
+     "event": "nearDestination"
+    }
+   ]
+  },
+  {
+   "name": "A70 ④-c 미통과 경유지가 있으면 목적지 곁에 오래 서도 이탈 중 입구는 닫혀 있다",
+   "steps": [
+    {
+     "len": 150,
+     "desc": "직진A"
+    },
+    {
+     "len": 150,
+     "desc": "직진B"
+    }
+   ],
+   "waypointStepIndex": 1,
+   "dest": [
+    300,
+    60
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 250,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 2,
+     "along": 250,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 4,
+     "along": 250,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 6,
+     "along": 250,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 8,
+     "along": 250,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 10,
+     "along": 250,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 12,
+     "along": 250,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 14,
+     "along": 250,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 16,
+     "along": 250,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 18,
+     "along": 250,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 20,
+     "along": 250,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 22,
+     "along": 295,
+     "lateral": 58,
+     "acc": 10
+    },
+    {
+     "t": 24,
+     "along": 295,
+     "lateral": 58,
+     "acc": 10
+    },
+    {
+     "t": 26,
+     "along": 295,
+     "lateral": 58,
+     "acc": 10
+    },
+    {
+     "t": 28,
+     "along": 295,
+     "lateral": 58,
+     "acc": 10
+    },
+    {
+     "t": 30,
+     "along": 295,
+     "lateral": 58,
+     "acc": 10
+    },
+    {
+     "t": 32,
+     "along": 295,
+     "lateral": 58,
+     "acc": 10
+    },
+    {
+     "t": 34,
+     "along": 295,
+     "lateral": 58,
+     "acc": 10
+    },
+    {
+     "t": 36,
+     "along": 295,
+     "lateral": 58,
+     "acc": 10
+    },
+    {
+     "t": 38,
+     "along": 295,
+     "lateral": 58,
+     "acc": 10
+    },
+    {
+     "t": 40,
+     "along": 295,
+     "lateral": 58,
+     "acc": 10
+    },
+    {
+     "t": 42,
+     "along": 295,
+     "lateral": 58,
+     "acc": 10
+    },
+    {
+     "t": 44,
+     "along": 295,
+     "lateral": 58,
+     "acc": 10
+    },
+    {
+     "t": 46,
+     "along": 295,
+     "lateral": 58,
+     "acc": 10
+    },
+    {
+     "t": 48,
+     "along": 295,
+     "lateral": 58,
+     "acc": 10
+    },
+    {
+     "t": 50,
+     "along": 295,
+     "lateral": 58,
+     "acc": 10
+    },
+    {
+     "t": 52,
+     "along": 295,
+     "lateral": 58,
+     "acc": 10
+    },
+    {
+     "t": 54,
+     "along": 295,
+     "lateral": 58,
+     "acc": 10
+    },
+    {
+     "t": 56,
+     "along": 295,
+     "lateral": 58,
+     "acc": 10
+    },
+    {
+     "t": 58,
+     "along": 295,
+     "lateral": 58,
+     "acc": 10
+    },
+    {
+     "t": 60,
+     "along": 295,
+     "lateral": 58,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFix": 10,
+     "event": "offRoute",
+     "notice": "confirm"
+    },
+    {
+     "afterFixAny": [
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30
+     ],
+     "eventNot": "nearDestination"
+    }
+   ]
+  },
+  {
+   "name": "A70 ⑤ 정확도 35m(간략 창 상한 30m 밖)면 목적지 5m 안이라도 입구가 닫혀 있다",
+   "steps": [
+    {
+     "len": 300,
+     "desc": "직진A"
+    }
+   ],
+   "dest": [
+    300,
+    60
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 250,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 2,
+     "along": 250,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 4,
+     "along": 250,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 6,
+     "along": 250,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 8,
+     "along": 250,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 10,
+     "along": 250,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 12,
+     "along": 250,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 14,
+     "along": 250,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 16,
+     "along": 250,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 18,
+     "along": 250,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 20,
+     "along": 250,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 22,
+     "along": 298,
+     "lateral": 60,
+     "acc": 35
+    },
+    {
+     "t": 24,
+     "along": 298,
+     "lateral": 60,
+     "acc": 35
+    },
+    {
+     "t": 26,
+     "along": 298,
+     "lateral": 60,
+     "acc": 35
+    },
+    {
+     "t": 28,
+     "along": 298,
+     "lateral": 60,
+     "acc": 35
+    },
+    {
+     "t": 30,
+     "along": 298,
+     "lateral": 60,
+     "acc": 35
+    },
+    {
+     "t": 32,
+     "along": 298,
+     "lateral": 60,
+     "acc": 35
+    },
+    {
+     "t": 34,
+     "along": 298,
+     "lateral": 60,
+     "acc": 35
+    },
+    {
+     "t": 36,
+     "along": 298,
+     "lateral": 60,
+     "acc": 35
+    },
+    {
+     "t": 38,
+     "along": 298,
+     "lateral": 60,
+     "acc": 35
+    },
+    {
+     "t": 40,
+     "along": 298,
+     "lateral": 60,
+     "acc": 35
+    },
+    {
+     "t": 42,
+     "along": 298,
+     "lateral": 60,
+     "acc": 35
+    },
+    {
+     "t": 44,
+     "along": 298,
+     "lateral": 60,
+     "acc": 35
+    },
+    {
+     "t": 46,
+     "along": 298,
+     "lateral": 60,
+     "acc": 35
+    },
+    {
+     "t": 48,
+     "along": 298,
+     "lateral": 60,
+     "acc": 35
+    },
+    {
+     "t": 50,
+     "along": 298,
+     "lateral": 60,
+     "acc": 35
+    },
+    {
+     "t": 52,
+     "along": 298,
+     "lateral": 60,
+     "acc": 35
+    },
+    {
+     "t": 54,
+     "along": 298,
+     "lateral": 60,
+     "acc": 35
+    },
+    {
+     "t": 56,
+     "along": 298,
+     "lateral": 60,
+     "acc": 35
+    },
+    {
+     "t": 58,
+     "along": 298,
+     "lateral": 60,
+     "acc": 35
+    },
+    {
+     "t": 60,
+     "along": 298,
+     "lateral": 60,
+     "acc": 35
+    }
+   ],
+   "expect": [
+    {
+     "afterFix": 10,
+     "event": "offRoute",
+     "notice": "confirm"
+    },
+    {
+     "afterFixAny": [
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30
+     ],
+     "eventNot": "nearDestination"
+    }
+   ]
+  },
+  {
+   "name": "A70 ⑥ 목적지 좌표를 모르는 경로(dest 없음)는 입구가 닫혀 있다(종전 동작)",
+   "steps": [
+    {
+     "len": 300,
+     "desc": "직진A"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 250,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 2,
+     "along": 250,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 4,
+     "along": 250,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 6,
+     "along": 250,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 8,
+     "along": 250,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 10,
+     "along": 250,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 12,
+     "along": 250,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 14,
+     "along": 250,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 16,
+     "along": 250,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 18,
+     "along": 250,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 20,
+     "along": 250,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 22,
+     "along": 298,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 24,
+     "along": 298,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 26,
+     "along": 298,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 28,
+     "along": 298,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 30,
+     "along": 298,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 32,
+     "along": 298,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 34,
+     "along": 298,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 36,
+     "along": 298,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 38,
+     "along": 298,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 40,
+     "along": 298,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 42,
+     "along": 298,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 44,
+     "along": 298,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 46,
+     "along": 298,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 48,
+     "along": 298,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 50,
+     "along": 298,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 52,
+     "along": 298,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 54,
+     "along": 298,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 56,
+     "along": 298,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 58,
+     "along": 298,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 60,
+     "along": 298,
+     "lateral": 60,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFix": 10,
+     "event": "offRoute",
+     "notice": "confirm"
+    },
+    {
+     "afterFixAny": [
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30
+     ],
+     "eventNot": "nearDestination"
+    }
+   ]
+  },
+  {
+   "name": "A70 ⑦ 자동차: 수직 600m에서 비스듬히 다가가며 달리면(옆으로 3m/s) 멀어짐·나란히 없이 확정 60초 뒤 rerouteNeeded(far), 수직 400m 아래에선 더 없다",
+   "tuning": "car",
+   "steps": [
+    {
+     "len": 3000,
+     "desc": "직진A"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 500,
+     "lateral": 600,
+     "acc": 10
+    },
+    {
+     "t": 1,
+     "along": 500,
+     "lateral": 600,
+     "acc": 10
+    },
+    {
+     "t": 2,
+     "along": 500,
+     "lateral": 600,
+     "acc": 10
+    },
+    {
+     "t": 3,
+     "along": 500,
+     "lateral": 600,
+     "acc": 10
+    },
+    {
+     "t": 4,
+     "along": 500,
+     "lateral": 600,
+     "acc": 10
+    },
+    {
+     "t": 5,
+     "along": 500,
+     "lateral": 600,
+     "acc": 10
+    },
+    {
+     "t": 6,
+     "along": 500,
+     "lateral": 600,
+     "acc": 10
+    },
+    {
+     "t": 7,
+     "along": 500,
+     "lateral": 600,
+     "acc": 10
+    },
+    {
+     "t": 8,
+     "along": 500,
+     "lateral": 600,
+     "acc": 10
+    },
+    {
+     "t": 9,
+     "along": 500,
+     "lateral": 600,
+     "acc": 10
+    },
+    {
+     "t": 10,
+     "along": 500,
+     "lateral": 600,
+     "acc": 10
+    },
+    {
+     "t": 11,
+     "along": 500,
+     "lateral": 600,
+     "acc": 10
+    },
+    {
+     "t": 12,
+     "along": 500,
+     "lateral": 600,
+     "acc": 10
+    },
+    {
+     "t": 13,
+     "along": 508,
+     "lateral": 597,
+     "acc": 10
+    },
+    {
+     "t": 14,
+     "along": 516,
+     "lateral": 594,
+     "acc": 10
+    },
+    {
+     "t": 15,
+     "along": 524,
+     "lateral": 591,
+     "acc": 10
+    },
+    {
+     "t": 16,
+     "along": 532,
+     "lateral": 588,
+     "acc": 10
+    },
+    {
+     "t": 17,
+     "along": 540,
+     "lateral": 585,
+     "acc": 10
+    },
+    {
+     "t": 18,
+     "along": 548,
+     "lateral": 582,
+     "acc": 10
+    },
+    {
+     "t": 19,
+     "along": 556,
+     "lateral": 579,
+     "acc": 10
+    },
+    {
+     "t": 20,
+     "along": 564,
+     "lateral": 576,
+     "acc": 10
+    },
+    {
+     "t": 21,
+     "along": 572,
+     "lateral": 573,
+     "acc": 10
+    },
+    {
+     "t": 22,
+     "along": 580,
+     "lateral": 570,
+     "acc": 10
+    },
+    {
+     "t": 23,
+     "along": 588,
+     "lateral": 567,
+     "acc": 10
+    },
+    {
+     "t": 24,
+     "along": 596,
+     "lateral": 564,
+     "acc": 10
+    },
+    {
+     "t": 25,
+     "along": 604,
+     "lateral": 561,
+     "acc": 10
+    },
+    {
+     "t": 26,
+     "along": 612,
+     "lateral": 558,
+     "acc": 10
+    },
+    {
+     "t": 27,
+     "along": 620,
+     "lateral": 555,
+     "acc": 10
+    },
+    {
+     "t": 28,
+     "along": 628,
+     "lateral": 552,
+     "acc": 10
+    },
+    {
+     "t": 29,
+     "along": 636,
+     "lateral": 549,
+     "acc": 10
+    },
+    {
+     "t": 30,
+     "along": 644,
+     "lateral": 546,
+     "acc": 10
+    },
+    {
+     "t": 31,
+     "along": 652,
+     "lateral": 543,
+     "acc": 10
+    },
+    {
+     "t": 32,
+     "along": 660,
+     "lateral": 540,
+     "acc": 10
+    },
+    {
+     "t": 33,
+     "along": 668,
+     "lateral": 537,
+     "acc": 10
+    },
+    {
+     "t": 34,
+     "along": 676,
+     "lateral": 534,
+     "acc": 10
+    },
+    {
+     "t": 35,
+     "along": 684,
+     "lateral": 531,
+     "acc": 10
+    },
+    {
+     "t": 36,
+     "along": 692,
+     "lateral": 528,
+     "acc": 10
+    },
+    {
+     "t": 37,
+     "along": 700,
+     "lateral": 525,
+     "acc": 10
+    },
+    {
+     "t": 38,
+     "along": 708,
+     "lateral": 522,
+     "acc": 10
+    },
+    {
+     "t": 39,
+     "along": 716,
+     "lateral": 519,
+     "acc": 10
+    },
+    {
+     "t": 40,
+     "along": 724,
+     "lateral": 516,
+     "acc": 10
+    },
+    {
+     "t": 41,
+     "along": 732,
+     "lateral": 513,
+     "acc": 10
+    },
+    {
+     "t": 42,
+     "along": 740,
+     "lateral": 510,
+     "acc": 10
+    },
+    {
+     "t": 43,
+     "along": 748,
+     "lateral": 507,
+     "acc": 10
+    },
+    {
+     "t": 44,
+     "along": 756,
+     "lateral": 504,
+     "acc": 10
+    },
+    {
+     "t": 45,
+     "along": 764,
+     "lateral": 501,
+     "acc": 10
+    },
+    {
+     "t": 46,
+     "along": 772,
+     "lateral": 498,
+     "acc": 10
+    },
+    {
+     "t": 47,
+     "along": 780,
+     "lateral": 495,
+     "acc": 10
+    },
+    {
+     "t": 48,
+     "along": 788,
+     "lateral": 492,
+     "acc": 10
+    },
+    {
+     "t": 49,
+     "along": 796,
+     "lateral": 489,
+     "acc": 10
+    },
+    {
+     "t": 50,
+     "along": 804,
+     "lateral": 486,
+     "acc": 10
+    },
+    {
+     "t": 51,
+     "along": 812,
+     "lateral": 483,
+     "acc": 10
+    },
+    {
+     "t": 52,
+     "along": 820,
+     "lateral": 480,
+     "acc": 10
+    },
+    {
+     "t": 53,
+     "along": 828,
+     "lateral": 477,
+     "acc": 10
+    },
+    {
+     "t": 54,
+     "along": 836,
+     "lateral": 474,
+     "acc": 10
+    },
+    {
+     "t": 55,
+     "along": 844,
+     "lateral": 471,
+     "acc": 10
+    },
+    {
+     "t": 56,
+     "along": 852,
+     "lateral": 468,
+     "acc": 10
+    },
+    {
+     "t": 57,
+     "along": 860,
+     "lateral": 465,
+     "acc": 10
+    },
+    {
+     "t": 58,
+     "along": 868,
+     "lateral": 462,
+     "acc": 10
+    },
+    {
+     "t": 59,
+     "along": 876,
+     "lateral": 459,
+     "acc": 10
+    },
+    {
+     "t": 60,
+     "along": 884,
+     "lateral": 456,
+     "acc": 10
+    },
+    {
+     "t": 61,
+     "along": 892,
+     "lateral": 453,
+     "acc": 10
+    },
+    {
+     "t": 62,
+     "along": 900,
+     "lateral": 450,
+     "acc": 10
+    },
+    {
+     "t": 63,
+     "along": 908,
+     "lateral": 447,
+     "acc": 10
+    },
+    {
+     "t": 64,
+     "along": 916,
+     "lateral": 444,
+     "acc": 10
+    },
+    {
+     "t": 65,
+     "along": 924,
+     "lateral": 441,
+     "acc": 10
+    },
+    {
+     "t": 66,
+     "along": 932,
+     "lateral": 438,
+     "acc": 10
+    },
+    {
+     "t": 67,
+     "along": 940,
+     "lateral": 435,
+     "acc": 10
+    },
+    {
+     "t": 68,
+     "along": 948,
+     "lateral": 432,
+     "acc": 10
+    },
+    {
+     "t": 69,
+     "along": 956,
+     "lateral": 429,
+     "acc": 10
+    },
+    {
+     "t": 70,
+     "along": 964,
+     "lateral": 426,
+     "acc": 10
+    },
+    {
+     "t": 71,
+     "along": 972,
+     "lateral": 423,
+     "acc": 10
+    },
+    {
+     "t": 72,
+     "along": 980,
+     "lateral": 420,
+     "acc": 10
+    },
+    {
+     "t": 73,
+     "along": 988,
+     "lateral": 417,
+     "acc": 10
+    },
+    {
+     "t": 74,
+     "along": 996,
+     "lateral": 414,
+     "acc": 10
+    },
+    {
+     "t": 75,
+     "along": 1004,
+     "lateral": 411,
+     "acc": 10
+    },
+    {
+     "t": 76,
+     "along": 1012,
+     "lateral": 408,
+     "acc": 10
+    },
+    {
+     "t": 77,
+     "along": 1020,
+     "lateral": 405,
+     "acc": 10
+    },
+    {
+     "t": 78,
+     "along": 1028,
+     "lateral": 402,
+     "acc": 10
+    },
+    {
+     "t": 79,
+     "along": 1036,
+     "lateral": 399,
+     "acc": 10
+    },
+    {
+     "t": 80,
+     "along": 1044,
+     "lateral": 396,
+     "acc": 10
+    },
+    {
+     "t": 81,
+     "along": 1052,
+     "lateral": 393,
+     "acc": 10
+    },
+    {
+     "t": 82,
+     "along": 1060,
+     "lateral": 390,
+     "acc": 10
+    },
+    {
+     "t": 83,
+     "along": 1068,
+     "lateral": 387,
+     "acc": 10
+    },
+    {
+     "t": 84,
+     "along": 1076,
+     "lateral": 384,
+     "acc": 10
+    },
+    {
+     "t": 85,
+     "along": 1084,
+     "lateral": 381,
+     "acc": 10
+    },
+    {
+     "t": 86,
+     "along": 1092,
+     "lateral": 378,
+     "acc": 10
+    },
+    {
+     "t": 87,
+     "along": 1100,
+     "lateral": 375,
+     "acc": 10
+    },
+    {
+     "t": 88,
+     "along": 1108,
+     "lateral": 372,
+     "acc": 10
+    },
+    {
+     "t": 89,
+     "along": 1116,
+     "lateral": 369,
+     "acc": 10
+    },
+    {
+     "t": 90,
+     "along": 1124,
+     "lateral": 366,
+     "acc": 10
+    },
+    {
+     "t": 91,
+     "along": 1132,
+     "lateral": 363,
+     "acc": 10
+    },
+    {
+     "t": 92,
+     "along": 1140,
+     "lateral": 360,
+     "acc": 10
+    },
+    {
+     "t": 93,
+     "along": 1148,
+     "lateral": 357,
+     "acc": 10
+    },
+    {
+     "t": 94,
+     "along": 1156,
+     "lateral": 354,
+     "acc": 10
+    },
+    {
+     "t": 95,
+     "along": 1164,
+     "lateral": 351,
+     "acc": 10
+    },
+    {
+     "t": 96,
+     "along": 1172,
+     "lateral": 348,
+     "acc": 10
+    },
+    {
+     "t": 97,
+     "along": 1180,
+     "lateral": 345,
+     "acc": 10
+    },
+    {
+     "t": 98,
+     "along": 1188,
+     "lateral": 342,
+     "acc": 10
+    },
+    {
+     "t": 99,
+     "along": 1196,
+     "lateral": 339,
+     "acc": 10
+    },
+    {
+     "t": 100,
+     "along": 1204,
+     "lateral": 336,
+     "acc": 10
+    },
+    {
+     "t": 101,
+     "along": 1212,
+     "lateral": 333,
+     "acc": 10
+    },
+    {
+     "t": 102,
+     "along": 1220,
+     "lateral": 330,
+     "acc": 10
+    },
+    {
+     "t": 103,
+     "along": 1228,
+     "lateral": 327,
+     "acc": 10
+    },
+    {
+     "t": 104,
+     "along": 1236,
+     "lateral": 324,
+     "acc": 10
+    },
+    {
+     "t": 105,
+     "along": 1244,
+     "lateral": 321,
+     "acc": 10
+    },
+    {
+     "t": 106,
+     "along": 1252,
+     "lateral": 318,
+     "acc": 10
+    },
+    {
+     "t": 107,
+     "along": 1260,
+     "lateral": 315,
+     "acc": 10
+    },
+    {
+     "t": 108,
+     "along": 1268,
+     "lateral": 312,
+     "acc": 10
+    },
+    {
+     "t": 109,
+     "along": 1276,
+     "lateral": 309,
+     "acc": 10
+    },
+    {
+     "t": 110,
+     "along": 1284,
+     "lateral": 306,
+     "acc": 10
+    },
+    {
+     "t": 111,
+     "along": 1292,
+     "lateral": 303,
+     "acc": 10
+    },
+    {
+     "t": 112,
+     "along": 1300,
+     "lateral": 300,
+     "acc": 10
+    },
+    {
+     "t": 113,
+     "along": 1308,
+     "lateral": 297,
+     "acc": 10
+    },
+    {
+     "t": 114,
+     "along": 1316,
+     "lateral": 294,
+     "acc": 10
+    },
+    {
+     "t": 115,
+     "along": 1324,
+     "lateral": 291,
+     "acc": 10
+    },
+    {
+     "t": 116,
+     "along": 1332,
+     "lateral": 288,
+     "acc": 10
+    },
+    {
+     "t": 117,
+     "along": 1340,
+     "lateral": 285,
+     "acc": 10
+    },
+    {
+     "t": 118,
+     "along": 1348,
+     "lateral": 282,
+     "acc": 10
+    },
+    {
+     "t": 119,
+     "along": 1356,
+     "lateral": 279,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFix": 13,
+     "event": "offRoute",
+     "notice": "confirm"
+    },
+    {
+     "afterFixAny": [
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39,
+      40,
+      41,
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48,
+      49,
+      50,
+      51,
+      52,
+      53,
+      54,
+      55,
+      56,
+      57,
+      58,
+      59,
+      60,
+      61,
+      62,
+      63,
+      64,
+      65,
+      66,
+      67,
+      68,
+      69,
+      70,
+      71,
+      72
+     ],
+     "eventNot": "rerouteNeeded"
+    },
+    {
+     "afterFix": 73,
+     "event": "rerouteNeeded",
+     "rerouteReason": "far"
+    },
+    {
+     "afterFixAny": [
+      74,
+      75,
+      76,
+      77,
+      78,
+      79,
+      80,
+      81,
+      82,
+      83,
+      84,
+      85,
+      86,
+      87,
+      88,
+      89,
+      90,
+      91,
+      92,
+      93,
+      94,
+      95,
+      96,
+      97,
+      98,
+      99,
+      100,
+      101,
+      102,
+      103,
+      104,
+      105,
+      106,
+      107,
+      108,
+      109,
+      110,
+      111,
+      112,
+      113,
+      114,
+      115,
+      116,
+      117,
+      118,
+      119
+     ],
+     "eventNot": "rerouteNeeded"
+    }
+   ]
+  },
+  {
+   "name": "A70 ⑦-b 자동차는 이탈 중 목적지 곁 입구가 없다(offRouteArrivalEntry false)",
+   "tuning": "car",
+   "steps": [
+    {
+     "len": 600,
+     "desc": "직진A"
+    }
+   ],
+   "dest": [
+    600,
+    90
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 500,
+     "lateral": 90,
+     "acc": 10
+    },
+    {
+     "t": 1,
+     "along": 500,
+     "lateral": 90,
+     "acc": 10
+    },
+    {
+     "t": 2,
+     "along": 500,
+     "lateral": 90,
+     "acc": 10
+    },
+    {
+     "t": 3,
+     "along": 500,
+     "lateral": 90,
+     "acc": 10
+    },
+    {
+     "t": 4,
+     "along": 500,
+     "lateral": 90,
+     "acc": 10
+    },
+    {
+     "t": 5,
+     "along": 500,
+     "lateral": 90,
+     "acc": 10
+    },
+    {
+     "t": 6,
+     "along": 500,
+     "lateral": 90,
+     "acc": 10
+    },
+    {
+     "t": 7,
+     "along": 500,
+     "lateral": 90,
+     "acc": 10
+    },
+    {
+     "t": 8,
+     "along": 500,
+     "lateral": 90,
+     "acc": 10
+    },
+    {
+     "t": 9,
+     "along": 500,
+     "lateral": 90,
+     "acc": 10
+    },
+    {
+     "t": 10,
+     "along": 500,
+     "lateral": 90,
+     "acc": 10
+    },
+    {
+     "t": 11,
+     "along": 500,
+     "lateral": 90,
+     "acc": 10
+    },
+    {
+     "t": 12,
+     "along": 500,
+     "lateral": 90,
+     "acc": 10
+    },
+    {
+     "t": 13,
+     "along": 598,
+     "lateral": 90,
+     "acc": 10
+    },
+    {
+     "t": 14,
+     "along": 598,
+     "lateral": 90,
+     "acc": 10
+    },
+    {
+     "t": 15,
+     "along": 598,
+     "lateral": 90,
+     "acc": 10
+    },
+    {
+     "t": 16,
+     "along": 598,
+     "lateral": 90,
+     "acc": 10
+    },
+    {
+     "t": 17,
+     "along": 598,
+     "lateral": 90,
+     "acc": 10
+    },
+    {
+     "t": 18,
+     "along": 598,
+     "lateral": 90,
+     "acc": 10
+    },
+    {
+     "t": 19,
+     "along": 598,
+     "lateral": 90,
+     "acc": 10
+    },
+    {
+     "t": 20,
+     "along": 598,
+     "lateral": 90,
+     "acc": 10
+    },
+    {
+     "t": 21,
+     "along": 598,
+     "lateral": 90,
+     "acc": 10
+    },
+    {
+     "t": 22,
+     "along": 598,
+     "lateral": 90,
+     "acc": 10
+    },
+    {
+     "t": 23,
+     "along": 598,
+     "lateral": 90,
+     "acc": 10
+    },
+    {
+     "t": 24,
+     "along": 598,
+     "lateral": 90,
+     "acc": 10
+    },
+    {
+     "t": 25,
+     "along": 598,
+     "lateral": 90,
+     "acc": 10
+    },
+    {
+     "t": 26,
+     "along": 598,
+     "lateral": 90,
+     "acc": 10
+    },
+    {
+     "t": 27,
+     "along": 598,
+     "lateral": 90,
+     "acc": 10
+    },
+    {
+     "t": 28,
+     "along": 598,
+     "lateral": 90,
+     "acc": 10
+    },
+    {
+     "t": 29,
+     "along": 598,
+     "lateral": 90,
+     "acc": 10
+    },
+    {
+     "t": 30,
+     "along": 598,
+     "lateral": 90,
+     "acc": 10
+    },
+    {
+     "t": 31,
+     "along": 598,
+     "lateral": 90,
+     "acc": 10
+    },
+    {
+     "t": 32,
+     "along": 598,
+     "lateral": 90,
+     "acc": 10
+    },
+    {
+     "t": 33,
+     "along": 598,
+     "lateral": 90,
+     "acc": 10
+    },
+    {
+     "t": 34,
+     "along": 598,
+     "lateral": 90,
+     "acc": 10
+    },
+    {
+     "t": 35,
+     "along": 598,
+     "lateral": 90,
+     "acc": 10
+    },
+    {
+     "t": 36,
+     "along": 598,
+     "lateral": 90,
+     "acc": 10
+    },
+    {
+     "t": 37,
+     "along": 598,
+     "lateral": 90,
+     "acc": 10
+    },
+    {
+     "t": 38,
+     "along": 598,
+     "lateral": 90,
+     "acc": 10
+    },
+    {
+     "t": 39,
+     "along": 598,
+     "lateral": 90,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFix": 24,
+     "event": "offRoute",
+     "notice": "confirm"
+    },
+    {
+     "afterFixAny": [
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39
+     ],
+     "eventNot": "nearDestination"
+    }
+   ]
+  },
+  {
+   "name": "A70 ⑧ 정확도 악화(uncertain) 공백은 far 60초에 산입되지 않는다 — 공백 뒤 첫 fix부터 다시 센다",
+   "steps": [
+    {
+     "len": 1000,
+     "desc": "직진A"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 100,
+     "lateral": 250,
+     "acc": 10
+    },
+    {
+     "t": 2,
+     "along": 100,
+     "lateral": 250,
+     "acc": 10
+    },
+    {
+     "t": 4,
+     "along": 100,
+     "lateral": 250,
+     "acc": 10
+    },
+    {
+     "t": 6,
+     "along": 100,
+     "lateral": 250,
+     "acc": 10
+    },
+    {
+     "t": 8,
+     "along": 100,
+     "lateral": 250,
+     "acc": 10
+    },
+    {
+     "t": 10,
+     "along": 100,
+     "lateral": 250,
+     "acc": 10
+    },
+    {
+     "t": 12,
+     "along": 100,
+     "lateral": 250,
+     "acc": 10
+    },
+    {
+     "t": 14,
+     "along": 100,
+     "lateral": 250,
+     "acc": 10
+    },
+    {
+     "t": 16,
+     "along": 100,
+     "lateral": 250,
+     "acc": 10
+    },
+    {
+     "t": 18,
+     "along": 100,
+     "lateral": 250,
+     "acc": 10
+    },
+    {
+     "t": 20,
+     "along": 100,
+     "lateral": 250,
+     "acc": 10
+    },
+    {
+     "t": 22,
+     "along": 102,
+     "lateral": 248,
+     "acc": 10
+    },
+    {
+     "t": 24,
+     "along": 104,
+     "lateral": 246,
+     "acc": 10
+    },
+    {
+     "t": 26,
+     "along": 106,
+     "lateral": 244,
+     "acc": 10
+    },
+    {
+     "t": 28,
+     "along": 108,
+     "lateral": 242,
+     "acc": 10
+    },
+    {
+     "t": 30,
+     "along": 110,
+     "lateral": 240,
+     "acc": 10
+    },
+    {
+     "t": 32,
+     "along": 112,
+     "lateral": 238,
+     "acc": 10
+    },
+    {
+     "t": 34,
+     "along": 114,
+     "lateral": 236,
+     "acc": 10
+    },
+    {
+     "t": 36,
+     "along": 116,
+     "lateral": 234,
+     "acc": 10
+    },
+    {
+     "t": 38,
+     "along": 118,
+     "lateral": 232,
+     "acc": 10
+    },
+    {
+     "t": 40,
+     "along": 120,
+     "lateral": 230,
+     "acc": 10
+    },
+    {
+     "t": 42,
+     "along": 122,
+     "lateral": 228,
+     "acc": 10
+    },
+    {
+     "t": 44,
+     "along": 124,
+     "lateral": 226,
+     "acc": 10
+    },
+    {
+     "t": 46,
+     "along": 126,
+     "lateral": 224,
+     "acc": 10
+    },
+    {
+     "t": 48,
+     "along": 128,
+     "lateral": 222,
+     "acc": 10
+    },
+    {
+     "t": 50,
+     "along": 130,
+     "lateral": 220,
+     "acc": 10
+    },
+    {
+     "t": 52,
+     "along": 132,
+     "lateral": 218,
+     "acc": 80
+    },
+    {
+     "t": 54,
+     "along": 134,
+     "lateral": 216,
+     "acc": 80
+    },
+    {
+     "t": 56,
+     "along": 136,
+     "lateral": 214,
+     "acc": 80
+    },
+    {
+     "t": 58,
+     "along": 138,
+     "lateral": 212,
+     "acc": 80
+    },
+    {
+     "t": 60,
+     "along": 140,
+     "lateral": 210,
+     "acc": 80
+    },
+    {
+     "t": 62,
+     "along": 142,
+     "lateral": 208,
+     "acc": 80
+    },
+    {
+     "t": 64,
+     "along": 144,
+     "lateral": 206,
+     "acc": 80
+    },
+    {
+     "t": 66,
+     "along": 146,
+     "lateral": 204,
+     "acc": 80
+    },
+    {
+     "t": 68,
+     "along": 148,
+     "lateral": 202,
+     "acc": 80
+    },
+    {
+     "t": 70,
+     "along": 150,
+     "lateral": 200,
+     "acc": 80
+    },
+    {
+     "t": 72,
+     "along": 152,
+     "lateral": 198,
+     "acc": 10
+    },
+    {
+     "t": 74,
+     "along": 154,
+     "lateral": 196,
+     "acc": 10
+    },
+    {
+     "t": 76,
+     "along": 156,
+     "lateral": 194,
+     "acc": 10
+    },
+    {
+     "t": 78,
+     "along": 158,
+     "lateral": 192,
+     "acc": 10
+    },
+    {
+     "t": 80,
+     "along": 160,
+     "lateral": 190,
+     "acc": 10
+    },
+    {
+     "t": 82,
+     "along": 162,
+     "lateral": 188,
+     "acc": 10
+    },
+    {
+     "t": 84,
+     "along": 164,
+     "lateral": 186,
+     "acc": 10
+    },
+    {
+     "t": 86,
+     "along": 166,
+     "lateral": 184,
+     "acc": 10
+    },
+    {
+     "t": 88,
+     "along": 168,
+     "lateral": 182,
+     "acc": 10
+    },
+    {
+     "t": 90,
+     "along": 170,
+     "lateral": 180,
+     "acc": 10
+    },
+    {
+     "t": 92,
+     "along": 172,
+     "lateral": 178,
+     "acc": 10
+    },
+    {
+     "t": 94,
+     "along": 174,
+     "lateral": 176,
+     "acc": 10
+    },
+    {
+     "t": 96,
+     "along": 176,
+     "lateral": 174,
+     "acc": 10
+    },
+    {
+     "t": 98,
+     "along": 178,
+     "lateral": 172,
+     "acc": 10
+    },
+    {
+     "t": 100,
+     "along": 180,
+     "lateral": 170,
+     "acc": 10
+    },
+    {
+     "t": 102,
+     "along": 182,
+     "lateral": 168,
+     "acc": 10
+    },
+    {
+     "t": 104,
+     "along": 184,
+     "lateral": 166,
+     "acc": 10
+    },
+    {
+     "t": 106,
+     "along": 186,
+     "lateral": 164,
+     "acc": 10
+    },
+    {
+     "t": 108,
+     "along": 188,
+     "lateral": 162,
+     "acc": 10
+    },
+    {
+     "t": 110,
+     "along": 190,
+     "lateral": 160,
+     "acc": 10
+    },
+    {
+     "t": 112,
+     "along": 192,
+     "lateral": 158,
+     "acc": 10
+    },
+    {
+     "t": 114,
+     "along": 194,
+     "lateral": 156,
+     "acc": 10
+    },
+    {
+     "t": 116,
+     "along": 196,
+     "lateral": 154,
+     "acc": 10
+    },
+    {
+     "t": 118,
+     "along": 198,
+     "lateral": 152,
+     "acc": 10
+    },
+    {
+     "t": 120,
+     "along": 200,
+     "lateral": 150,
+     "acc": 10
+    },
+    {
+     "t": 122,
+     "along": 202,
+     "lateral": 148,
+     "acc": 10
+    },
+    {
+     "t": 124,
+     "along": 204,
+     "lateral": 146,
+     "acc": 10
+    },
+    {
+     "t": 126,
+     "along": 206,
+     "lateral": 144,
+     "acc": 10
+    },
+    {
+     "t": 128,
+     "along": 208,
+     "lateral": 142,
+     "acc": 10
+    },
+    {
+     "t": 130,
+     "along": 210,
+     "lateral": 140,
+     "acc": 10
+    },
+    {
+     "t": 132,
+     "along": 212,
+     "lateral": 138,
+     "acc": 10
+    },
+    {
+     "t": 134,
+     "along": 214,
+     "lateral": 136,
+     "acc": 10
+    },
+    {
+     "t": 136,
+     "along": 216,
+     "lateral": 134,
+     "acc": 10
+    },
+    {
+     "t": 138,
+     "along": 218,
+     "lateral": 132,
+     "acc": 10
+    },
+    {
+     "t": 140,
+     "along": 220,
+     "lateral": 130,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFix": 26,
+     "event": "uncertainEnter"
+    },
+    {
+     "afterFixAny": [
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39,
+      40,
+      41,
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48,
+      49,
+      50,
+      51,
+      52,
+      53,
+      54,
+      55,
+      56,
+      57,
+      58,
+      59,
+      60,
+      61,
+      62,
+      63,
+      64,
+      65,
+      66
+     ],
+     "eventNot": "rerouteNeeded"
+    },
+    {
+     "afterFix": 67,
+     "event": "rerouteNeeded",
+     "rerouteReason": "far"
+    }
+   ]
   }
  ]
 }

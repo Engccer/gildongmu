@@ -61,6 +61,12 @@ export interface GuideRoute {
    * `steps[waypointStepIndex].startD`. 부재 = 경유지 없는 경로. Kit `GuideRoute` 미러.
    */
   waypointStepIndex?: number;
+  /**
+   * 세션의 목적지 좌표(A70 spec 2026-10-19 §4.1 — 이탈 중 도착 창 입구가 직선거리를 잰다). 부재 = 그 입구가 닫힌다.
+   * 안내 세션의 오케스트레이터(웹 `useRouteGuide`·iOS `BeaconModel`·안드로이드 `WalkGuideModel`)가 싣는지는 소스 가드
+   * `a70-destination-wiring.test.ts`가 센다. Kit `GuideRoute.destination` 미러.
+   */
+  destination?: Coord;
 }
 
 export interface Projection {
@@ -89,7 +95,7 @@ export function buildGuideRoute(
     carLandmark?: CarLandmark;
     crossing?: boolean;
   }[],
-  opts?: { waypointStepIndex?: number },
+  opts?: { waypointStepIndex?: number; destination?: Coord },
 ): GuideRoute | null {
   if (steps.length === 0) return null;
   const waypointStepIndex = opts?.waypointStepIndex;
@@ -143,6 +149,7 @@ export function buildGuideRoute(
     steps: spans,
     totalMeters: d,
     ...(waypointStepIndex === undefined ? {} : { waypointStepIndex }),
+    ...(opts?.destination === undefined ? {} : { destination: opts.destination }),
   };
 }
 

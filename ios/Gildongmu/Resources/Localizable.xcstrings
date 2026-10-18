@@ -18641,6 +18641,46 @@
         }
       }
     },
+    "guide.routeStartsAway": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "경로 시작점이 %1$@쪽으로 %2$@ 떨어져 있습니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The route starts %2$@ to the %1$@."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El inicio de la ruta está a %2$@ al %1$@."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le début de l'itinéraire est à %2$@ %1$@."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L'inizio del percorso è a %2$@ verso %1$@."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "経路の始点は%1$@へ%2$@離れています。"
+          }
+        }
+      }
+    },
     "guide.switchedToAccessible": {
       "localizations": {
         "ko": {

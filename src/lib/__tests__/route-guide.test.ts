@@ -49,7 +49,7 @@ type FixtureStep = {
   crossing?: boolean;
 };
 
-function routeFrom(steps: FixtureStep[], waypointStepIndex?: number) {
+function routeFrom(steps: FixtureStep[], waypointStepIndex?: number, dest?: [number, number]) {
   let acc = 0;
   const route = buildGuideRoute(
     steps.map((s) => {
@@ -67,7 +67,7 @@ function routeFrom(steps: FixtureStep[], waypointStepIndex?: number) {
         ...(s.crossing ? { crossing: true } : {}),
       };
     }),
-    { waypointStepIndex },
+    { waypointStepIndex, ...(dest ? { destination: fixCoord(dest[0], dest[1]) } : {}) },
   );
   if (!route) throw new Error("fixture 경로 조립 실패");
   return route;
@@ -123,6 +123,8 @@ describe("route-guide 공유 시나리오(경계표)", () => {
       geometry?: boolean;
       /** 경유지 스텝 index(N4). 미지정=경유지 없음. */
       waypointStepIndex?: number;
+      /** 세션 목적지 `[along, lateral]`(A70 이탈 중 도착 창 입구). 미지정 = 목적지를 모르는 경로(입구 닫힘). */
+      dest?: [number, number];
       steps: FixtureStep[];
       /** `stopped`: 그 fix의 정지 판정(E62 R2). 미지정 = 움직이는 중. */
       fixes: { t: number; along: number; lateral: number; acc: number; stopped?: boolean }[];
@@ -130,7 +132,7 @@ describe("route-guide 공유 시나리오(경계표)", () => {
     }[];
   }).scenarios) {
     it(sc.name, () => {
-      const route = routeFrom(sc.steps, sc.waypointStepIndex);
+      const route = routeFrom(sc.steps, sc.waypointStepIndex, sc.dest);
       const tuning =
         sc.tuning === "car" ? CAR_TUNING : sc.tuning === "carDriver" ? CAR_DRIVER_TUNING : WALK_TUNING;
       let { state } = initialGuideState(route, 0, {

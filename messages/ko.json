@@ -810,6 +810,7 @@
     "rerouteButton": "경로 다시 조회",
     "rerouteFailed": "경로 조회에 실패했습니다. 기존 경로를 유지합니다",
     "rerouteAutoGaveUp": "새 경로를 자동으로 찾지 못했습니다.",
+    "routeStartsAway": "경로 시작점이 {direction}쪽으로 {distance} 떨어져 있습니다.",
     "rerouteDone": "현재 위치에서 경로를 다시 찾았습니다. {first}. 안내 {count}개, 총 {distance}.",
     "autoReroute": "새 경로로 다시 안내합니다. {first}. 안내 {count}개, 총 {distance}.",
     "rerouteHeadClock": "{direction}으로 도세요. 그 후 {first}",

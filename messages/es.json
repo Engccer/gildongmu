@@ -810,6 +810,7 @@
     "rerouteButton": "Volver a consultar la ruta",
     "rerouteFailed": "Falló la consulta de la ruta. Se mantiene la ruta actual",
     "rerouteAutoGaveUp": "No se pudo encontrar una ruta nueva automáticamente.",
+    "routeStartsAway": "El inicio de la ruta está a {distance} al {direction}.",
     "rerouteDone": "Ruta recalculada desde tu ubicación actual. {first}. {count, plural, one {# indicación} other {# indicaciones}}, {distance} en total.",
     "autoReroute": "Ahora te guío por una nueva ruta. {first}. {count, plural, one {# indicación} other {# indicaciones}}, {distance} en total.",
     "rerouteHeadClock": "Gira hacia {direction}. Después, {first}",

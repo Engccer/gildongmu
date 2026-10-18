@@ -849,6 +849,7 @@
     <string name="guide_rerouteHeadClock">Gira hacia %1$s. Después, %2$s</string>
     <string name="guide_rerouteHeadStraight">De frente, %1$s</string>
     <string name="guide_rough">alrededor de %1$s</string>
+    <string name="guide_routeStartsAway">El inicio de la ruta está a %2$s al %1$s.</string>
     <string name="guide_transitDestChangePrepared">Buscando rutas de transporte. Elige una ruta en la pantalla de guía.</string>
     <string name="guide_uncertain">La confianza en la ubicación es baja</string>
     <string name="guide_uncertainRecovered">Se recuperó la confianza en la ubicación</string>

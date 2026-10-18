@@ -387,6 +387,10 @@
   "guide.rough": [
     "distance"
   ],
+  "guide.routeStartsAway": [
+    "direction",
+    "distance"
+  ],
   "guide.switchedToAccessible": [
     "count",
     "distance",

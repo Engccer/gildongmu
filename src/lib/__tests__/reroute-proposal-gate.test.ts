@@ -6,7 +6,11 @@ import {
   REROUTE_MAX_FETCHES_PER_SESSION,
   REROUTE_PROPOSAL_MAX_AGE_S,
   rerouteStillStep,
+  routeStartCompass,
+  routeStartGapMeters,
+  routeStartsNearby,
 } from "../reroute-proposal-gate";
+import startGapCases from "./fixtures/route-start-gap-cases.json";
 import { CAR_TUNING, WALK_TUNING } from "../route-guide";
 
 // Kit RerouteProposalGateTests 미러(E63 — 이동 상한은 수단별 튜닝).
@@ -49,4 +53,26 @@ describe("rerouteStillStep (E69 ⓒ)", () => {
     expect(s).toEqual({ since: null, reached: false });
     expect(rerouteStillStep(s.since, true, 45)).toEqual({ since: 45, reached: false });
   });
+});
+
+// A70 spec §2 — 새 경로 첫 점 검사. 판정표는 Kit·`:kit`과 공유한다.
+describe("routeStart* 공유 판정표(route-start-gap-cases.json)", () => {
+  const here = { lat: 37.5, lng: 127.1 };
+  const routeStartingAt = (north: number, east: number) => ({
+    polyline: {
+      points: [
+        { lat: 37.5 + north / 111320, lng: 127.1 + east / (111320 * Math.cos((37.5 * Math.PI) / 180)) },
+        { lat: 37.6, lng: 127.1 },
+      ],
+    },
+  });
+  for (const c of startGapCases.cases) {
+    it(c.name, () => {
+      const route = routeStartingAt(c.north, c.east);
+      expect(Math.abs(routeStartGapMeters(route, here) - c.gapMeters)).toBeLessThanOrEqual(0.5);
+      expect(routeStartsNearby(route, here, WALK_TUNING.rerouteMaxDriftM)).toBe(c.nearbyWalk);
+      expect(routeStartsNearby(route, here, CAR_TUNING.rerouteMaxDriftM)).toBe(c.nearbyCar);
+      expect(routeStartCompass(route, here)).toBe(c.compass);
+    });
+  }
 });

@@ -9,6 +9,7 @@ import { rewriteWalkBriefing, rewriteWalkBriefingV2 } from "./walk-guidance";
 import { buildEnBriefing, roadNameKeysOf } from "./walk-guidance-en";
 import { roadNamesEn } from "./providers/juso-road-name";
 import { walkStepAction } from "./walk-action";
+import { haversineMeters } from "./geo";
 import type {
   Coord,
   StepFreeStatus,
@@ -284,17 +285,8 @@ async function fetchPrimaryOrFallback(params: {
   /** ⚠ 종전엔 Tmap 폴백에 이 값을 넘기지 않아 기하가 유실됐다(spec §4.6). */
   includeGeometry: boolean;
 }): Promise<{ briefing: WalkRouteBriefing | null; via: "kakao" | "tmap" } | null> {
-  const { origin, dest, routeMode, preciseCoords, noStore, waypoint, lang, includeGeometry } = params;
-  const tmapCall = () =>
-    getWalkRouteBriefing({
-      origin,
-      dest,
-      ...(routeMode === "SHORTEST" ? { searchOption: "10" as const } : {}),
-      via: waypoint,
-      noStore,
-      includeLineGeometry: includeGeometry,
-      guard: lang === "en",
-    });
+  const { origin, dest, routeMode, preciseCoords, noStore, waypoint, lang } = params;
+  const tmapCall = () => fetchTmapWalk(params);
   // ⚠ en은 폴백이 없다 — 카카오로 내려가면 "가용성 폴백"이 아니라 한국어 문장이 나온다.
   // 회전 코드를 주는 provider가 Tmap뿐이라 언어 자체가 provider 선택을 정한다.
   if (lang === "en") {
@@ -319,6 +311,77 @@ async function fetchPrimaryOrFallback(params: {
     return { briefing: await tmapCall(), via: "tmap" };
   }
   return null; // 게이트(hasWalkRouteKey)가 먼저 막지만 이중 방어
+}
+
+/** Tmap 도보 조회 — 폴백·비-ko 단독·출발점 재시도(A70)가 같은 인자 투영을 쓴다. */
+function fetchTmapWalk(params: {
+  origin: Coord;
+  dest: Coord;
+  routeMode: KakaoWalkRouteMode;
+  noStore: boolean;
+  waypoint: Coord | undefined;
+  lang: WalkLang;
+  includeGeometry: boolean;
+}): Promise<WalkRouteBriefing | null> {
+  const { origin, dest, routeMode, noStore, waypoint, lang, includeGeometry } = params;
+  return getWalkRouteBriefing({
+    origin,
+    dest,
+    ...(routeMode === "SHORTEST" ? { searchOption: "10" as const } : {}),
+    via: waypoint,
+    noStore,
+    includeLineGeometry: includeGeometry,
+    guard: lang === "en",
+  });
+}
+
+/**
+ * 출발점 재시도 문턱(m, A70 spec 2026-10-19 §1.2). 앱이 자동 재조회를 거부하는 도보 문턱(`rerouteMaxDriftM` 30m)과 같다 —
+ * 서버가 "앱이 버릴 경로"를 먼저 피하려는 것이 이 층의 뜻이라 둘이 어긋나면 그 사이 구간을 아무도 고치지 않는다.
+ * 실시간 안내 응답 211건 오프라인 분포: 중앙값 5.5m, 95% 40.7m, 30m 초과 약 6%(재시도 비용 = 그만큼의 Tmap 호출).
+ */
+export const ORIGIN_GAP_RETRY_M = 30;
+
+/** 요청 출발점에서 경로 첫 점까지(m). 첫 점이 없으면 null — 모르는 것을 멀다고 추정하지 않는다. */
+export function routeOriginGapMeters(briefing: WalkRouteBriefing, origin: Coord): number | null {
+  const p = briefing.steps[0]?.pathCoords?.[0];
+  return p ? haversineMeters(origin.lat, origin.lng, p.lat, p.lng) : null;
+}
+
+/**
+ * 출발점 재시도(A70 §1.2): 카카오(ko 기본) 경로의 첫 점이 문턱 밖이면 Tmap으로 한 번 더 받아 첫 점이 가까운 쪽을 쓴다(동률은
+ * 카카오). 재시도의 실패·경로 없음은 카카오 결과를 그대로 둔다 — 개선 시도이지 새 실패 경로가 아니다. ⚠ 계단 회피는 호출부가
+ * 부르지 않는다(Tmap엔 동등 모드가 없어 안전 옵션이 조용히 떨어진다). en·Tmap 폴백 응답은 다른 provider가 없거나 이미 답했다.
+ */
+async function preferNearOrigin(
+  r: { briefing: WalkRouteBriefing; via: "kakao" | "tmap" },
+  params: Parameters<typeof fetchTmapWalk>[0],
+): Promise<{ briefing: WalkRouteBriefing; via: "kakao" | "tmap" }> {
+  const gap = routeOriginGapMeters(r.briefing, params.origin);
+  if (gap === null || gap <= ORIGIN_GAP_RETRY_M || r.via !== "kakao" || params.lang !== "ko" || !hasTmapKey()) {
+    return r;
+  }
+  try {
+    const t = await fetchTmapWalk(params);
+    const tGap = t ? routeOriginGapMeters(t, params.origin) : null;
+    // 좌표 없이 거리만 남긴다(공개 로그 규율 — 출발점이 곧 사용자 위치다).
+    console.warn(
+      `[walk-route] 출발점 재시도: kakao=${Math.round(gap)}m tmap=${tGap === null ? "-" : `${Math.round(tGap)}m`}`,
+    );
+    if (t && tGap !== null && tGap < gap) return { briefing: t, via: "tmap" };
+  } catch (e) {
+    console.warn(`[walk-route] 출발점 재시도 실패: kakao=${Math.round(gap)}m`, e);
+  }
+  return r;
+}
+
+/**
+ * 재시도 뒤에도 문턱 밖이면 기하 응답에 `originGapM`(정수 m)을 싣는다. 최종 응답 한 자리에서 재므로 재시도하지 않는 갈래
+ * (계단 회피·en·Tmap 폴백)도 같은 규칙이다. 주석 단계는 첫 점을 바꾸지 않는다(스텝 병합은 앞 스텝의 첫 점을 잇는다).
+ */
+function withOriginGap(briefing: WalkRouteBriefing, origin: Coord): WalkRouteBriefing {
+  const gap = routeOriginGapMeters(briefing, origin);
+  return gap !== null && gap > ORIGIN_GAP_RETRY_M ? { ...briefing, originGapM: Math.round(gap) } : briefing;
 }
 
 /**
@@ -422,6 +485,18 @@ async function resolveWalkRoute(
     fetchPrimaryOrFallback({
       origin, dest, routeMode, preciseCoords, noStore: includeGeometry, waypoint: via, lang, includeGeometry,
     });
+  /**
+   * 기본·최단 축의 조회 + 출발점 재시도(A70). 재시도와 `originGapM`은 **기하 응답에만** — 출발점은 그 경로를 따라 걸을 때만
+   * 의미가 있고, 브리핑 응답(CLI·채팅·MCP·조회 화면)은 바이트 동일이다(`kind`와 같은 규율).
+   */
+  const fetchModeNearOrigin = async (routeMode: KakaoWalkRouteMode) => {
+    const r = await fetchMode(routeMode);
+    if (!includeGeometry || !r?.briefing) return r;
+    return preferNearOrigin(
+      { briefing: r.briefing, via: r.via },
+      { origin, dest, routeMode, noStore: includeGeometry, waypoint: via, lang, includeGeometry },
+    );
+  };
   /** 기본 파이프라인이 준 경로의 이름: 카카오 `BROAD_FIRST`는 큰길, Tmap(ko 폴백·en)은 추천. */
   const plainKind = (provider: "kakao" | "tmap"): WalkLineKind =>
     provider === "kakao" ? "broad" : "recommended";
@@ -433,7 +508,7 @@ async function resolveWalkRoute(
     if (!hasShortestAxis(lang)) {
       throw new Error("[walk-route] variant=shortest를 조회할 키가 없습니다");
     }
-    const r = await fetchMode("SHORTEST");
+    const r = await fetchModeNearOrigin("SHORTEST");
     if (!r?.briefing) return null;
     const annotated = await annotate(r.briefing, r.via);
     return {
@@ -447,7 +522,7 @@ async function resolveWalkRoute(
   }
 
   if (!accessible) {
-    const r = await fetchMode("BROAD_FIRST");
+    const r = await fetchModeNearOrigin("BROAD_FIRST");
     return r?.briefing
       ? { briefing: await annotate(r.briefing, r.via), provider: r.via, kind: plainKind(r.via) }
       : null;
@@ -501,7 +576,10 @@ export async function getWalkRoute(params: WalkRouteParams): Promise<WalkRouteBr
   // 줄 종류(E42)는 **기하 응답(실시간 안내)에만** 싣는다 — 안내 세션이 전환·프리뷰 이름을 요청값이
   // 아니라 받은 경로에서 얻는다. 브리핑 응답은 byte-identical(CLI·채팅·MCP·옛 앱 무변경,
   // `attachStepActions`의 내부 필드 게이트와 같은 규율).
-  return params.includeGeometry && r.kind ? { ...r.briefing, kind: r.kind } : r.briefing;
+  if (!params.includeGeometry) return r.briefing;
+  // 출발점 거리(A70)도 기하 응답에만 — 같은 규율.
+  const briefing = withOriginGap(r.briefing, params.origin);
+  return r.kind ? { ...briefing, kind: r.kind } : briefing;
 }
 
 /**

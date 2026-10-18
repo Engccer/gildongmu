@@ -12,6 +12,7 @@ import type { Coord } from "./types";
 import type { GuideRoute } from "./route-geometry";
 import { haversineMeters } from "./geo";
 import { bearingDegrees } from "./geo/bearing";
+import { ARRIVAL_BASE_M } from "./beacon";
 
 /** 이 미만이면 방향을 주장하지 않는다 — roundCoord(…,4) ±5.5m에서 방위가 뒤집힌다. */
 export const OFFSET_MIN_M = 10;
@@ -240,4 +241,20 @@ export function briefArrivalWindowStep(input: BriefArrivalWindowInput): BriefArr
   const qualifies =
     input.nearby && input.accuracy > 0 && input.accuracy <= BRIEF_ARRIVAL_WINDOW_MAX_ACC_M;
   return { active: qualifies, entered: qualifies && !input.active, exited: !qualifies && input.active };
+}
+
+// ── 이탈 중 도착 창의 두 번째 입구(A70 spec 2026-10-19 §4.1) ──────────────────────
+// Kit 미러는 `FinalApproach.swift`, `:kit`은 `FinalApproach.kt`. 판정은 리듀서 돌아가기 국면이 쓴다.
+
+/** 자격이 이만큼 이어져야 연다(초). 최종 접근은 단방향 래치라 단발 fix로 들어가면 안 된다(설계 리뷰 high ②). */
+export const OFF_ROUTE_ARRIVAL_HOLD_S = 5;
+
+/**
+ * 간략 창 기준을 직선거리로 읽은 자격: 정확도 `(0, 30]` ∧ 목적지 직선거리 ≤ `max(20, 정확도)`(비콘 도착 존 진입 임계).
+ * `briefArrivalWindowStep`(래치 ∧ 정확도)과 같은 두 문턱이고 그 함수는 바뀌지 않는다. 공간 범위는 관측 30m 이하.
+ */
+export function offRouteArrivalQualifies(distanceToDest: number, accuracy: number): boolean {
+  if (!Number.isFinite(distanceToDest) || distanceToDest < 0) return false;
+  if (!(accuracy > 0) || accuracy > BRIEF_ARRIVAL_WINDOW_MAX_ACC_M) return false;
+  return distanceToDest <= Math.max(ARRIVAL_BASE_M, accuracy);
 }

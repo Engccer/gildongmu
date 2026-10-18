@@ -883,6 +883,7 @@
     <string name="guide_rerouteHeadClock">%1$s으로 도세요. 그 후 %2$s</string>
     <string name="guide_rerouteHeadStraight">진행 방향 그대로 %1$s</string>
     <string name="guide_rough">%1$s쯤</string>
+    <string name="guide_routeStartsAway">경로 시작점이 %1$s쪽으로 %2$s 떨어져 있습니다.</string>
     <string name="guide_transitDestChangePrepared">대중교통 경로를 찾고 있습니다. 안내 화면에서 경로를 선택하세요.</string>
     <string name="guide_uncertain">위치 확신이 낮습니다</string>
     <string name="guide_uncertainRecovered">현재 위치를 다시 파악했습니다</string>

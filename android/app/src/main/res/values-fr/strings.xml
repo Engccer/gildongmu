@@ -849,6 +849,7 @@
     <string name="guide_rerouteHeadClock">Tournez vers %1$s. Ensuite, %2$s</string>
     <string name="guide_rerouteHeadStraight">Tout droit, %1$s</string>
     <string name="guide_rough">à peu près %1$s</string>
+    <string name="guide_routeStartsAway">Le début de l\'itinéraire est à %2$s %1$s.</string>
     <string name="guide_transitDestChangePrepared">Recherche d\'itinéraires en transports. Choisissez un itinéraire sur l\'écran de guidage.</string>
     <string name="guide_uncertain">La confiance dans la position est faible</string>
     <string name="guide_uncertainRecovered">La confiance dans la position est rétablie</string>

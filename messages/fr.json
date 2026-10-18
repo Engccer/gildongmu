@@ -810,6 +810,7 @@
     "rerouteButton": "Relancer la recherche d'itinéraire",
     "rerouteFailed": "Échec de la recherche d'itinéraire. L'itinéraire actuel est conservé",
     "rerouteAutoGaveUp": "Impossible de trouver automatiquement un nouvel itinéraire.",
+    "routeStartsAway": "Le début de l'itinéraire est à {distance} {direction}.",
     "rerouteDone": "Itinéraire recalculé depuis votre position actuelle. {first}. {count, plural, one {# instruction} other {# instructions}}, {distance} au total.",
     "autoReroute": "Guidage repris sur un nouvel itinéraire. {first}. {count, plural, one {# instruction} other {# instructions}}, {distance} au total.",
     "rerouteHeadClock": "Tournez vers {direction}. Ensuite, {first}",

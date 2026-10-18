@@ -1,0 +1,59 @@
+{
+ "comment": "이탈 중 도착 창 입구 자격 offRouteArrivalQualifies(distance, accuracy) 판정표(A70 spec 2026-10-19 §4.1). 웹 final-approach·Kit FinalApproachTests·:kit FinalApproachTest가 함께 읽는다. 자격 = 0 < 정확도 ≤ 30 ∧ 0 ≤ 직선거리 ≤ max(20, 정확도).",
+ "cases": [
+  {
+   "name": "정확도 10m, 직선 20m — 하한 20m 경계 안",
+   "distance": 20,
+   "accuracy": 10,
+   "qualifies": true
+  },
+  {
+   "name": "정확도 10m, 직선 20.5m — 하한 밖",
+   "distance": 20.5,
+   "accuracy": 10,
+   "qualifies": false
+  },
+  {
+   "name": "정확도 25m, 직선 25m — 임계가 정확도로 커진다",
+   "distance": 25,
+   "accuracy": 25,
+   "qualifies": true
+  },
+  {
+   "name": "정확도 25m, 직선 25.5m",
+   "distance": 25.5,
+   "accuracy": 25,
+   "qualifies": false
+  },
+  {
+   "name": "정확도 30m, 직선 30m — 상한 경계 안",
+   "distance": 30,
+   "accuracy": 30,
+   "qualifies": true
+  },
+  {
+   "name": "정확도 30.5m — 간략 창 상한 밖",
+   "distance": 5,
+   "accuracy": 30.5,
+   "qualifies": false
+  },
+  {
+   "name": "정확도 0 — 무효",
+   "distance": 5,
+   "accuracy": 0,
+   "qualifies": false
+  },
+  {
+   "name": "정확도 음수 — 무효",
+   "distance": 5,
+   "accuracy": -1,
+   "qualifies": false
+  },
+  {
+   "name": "직선 음수 — 무효",
+   "distance": -1,
+   "accuracy": 10,
+   "qualifies": false
+  }
+ ]
+}

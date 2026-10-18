@@ -849,6 +849,7 @@
     <string name="guide_rerouteHeadClock">Turn to %1$s. Then %2$s</string>
     <string name="guide_rerouteHeadStraight">Straight ahead, %1$s</string>
     <string name="guide_rough">around %1$s</string>
+    <string name="guide_routeStartsAway">The route starts %2$s to the %1$s.</string>
     <string name="guide_transitDestChangePrepared">Finding transit routes. Choose a route on the guidance screen.</string>
     <string name="guide_uncertain">Location confidence is low</string>
     <string name="guide_uncertainRecovered">Location confidence recovered</string>

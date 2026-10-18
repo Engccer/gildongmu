@@ -74,7 +74,14 @@ import { claimGuideSession, releaseGuideSession } from "@/lib/guide-session-stor
 import { isOutOfCoverageBody } from "@/lib/out-of-coverage";
 import type { CarRouteBriefing, WalkRouteBriefing } from "@/lib/types";
 import { walkRouteUrl } from "@/lib/walk-route-url";
-import { isRerouteProposalFresh, mayFetchReroute, rerouteStillStep } from "@/lib/reroute-proposal-gate";
+import {
+  isRerouteProposalFresh,
+  mayFetchReroute,
+  rerouteStillStep,
+  routeStartCompass,
+  routeStartGapMeters,
+  routeStartsNearby,
+} from "@/lib/reroute-proposal-gate";
 import { directionParticle } from "@/lib/korean-particle";
 import {
   SPEECH_DEFER_MAX_S,
@@ -640,6 +647,7 @@ export function useRouteGuide(
   const t = useTranslations("guide");
   const tBeacon = useTranslations("beacon");
   const tDirections = useTranslations("directions");
+  const tWhereAmI = useTranslations("whereAmI");
   // 커버리지 문구는 repo 전역 계층이 소유한다(§A2 — 강등 사유에서 새로 쓰지 않는다).
   const tCommon = useTranslations("common");
   // kind는 세션 봉인 구성의 키 — 첫 렌더 값으로 고정한다(중도 변경 미지원.
@@ -1277,6 +1285,7 @@ export function useRouteGuide(
             : carPeriodicLine(route, event.stepIndex, destRef.current.name, distance, t, prefersEnglish(locale));
         }
         case "finalApproachEnter":
+        case "nearDestination":
           // 이 이벤트의 문장은 `stepFinalApproach`가 소유한다 — 진입 서술은 fix 기준
           // 거리·방향을 쓰는데 이 함수는 fix를 받지 않는다. 빈 문자열은 무발화다.
           return "";
@@ -1380,6 +1389,8 @@ export function useRouteGuide(
     liveSteps: ReturnType<typeof liveStepsFrom>;
     /** 이 경로가 지나가는 경유지(N4 2026-09-24). 경유지 없이 조회했으면 null. */
     via: RouteGuideVia | null;
+    /** 조회에 실은 출발점(실좌표 fix) — 시작 고지(A70 §2.3)가 첫 점까지를 잰다. */
+    origin: { lat: number; lng: number };
     ok: true;
   } | {
     ok: false;
@@ -1422,6 +1433,7 @@ export function useRouteGuide(
           liveSteps: liveStepsFrom(carGuide.route, []),
           // 자동차 경유지 안내는 범위 밖(N4 spec 2026-09-24 §1) — 조회에 싣지 않는다.
           via: null,
+          origin: { lat: fix.lat, lng: fix.lng },
         };
       }
       // 경유지(N4 spec 2026-09-24 §5.1): 이 세션이 이미 도착을 확정했으면 싣지 않는다 — 재조회는
@@ -1449,10 +1461,11 @@ export function useRouteGuide(
       // 경유지를 보냈는데 응답이 경유지 위치를 모르면 상세 불가다 — 경유지를 모르는 경로로 조용히
       // 안내하지 않는다(iOS `fetchDetailData` 동형). 범위 밖 index는 `buildGuideRoute`가 null로 거른다.
       if (via && !result.waypoint) return { ok: false, failure: "unavailable", via };
-      const route = buildGuideRoute(
-        result.steps,
-        via && result.waypoint ? { waypointStepIndex: result.waypoint.stepIndex } : undefined,
-      );
+      // 목적지는 이탈 중 도착 창 입구(A70 §4)가 직선거리를 잰다 — 소스 가드 `a70-destination-wiring.test.ts`.
+      const route = buildGuideRoute(result.steps, {
+        ...(via && result.waypoint ? { waypointStepIndex: result.waypoint.stepIndex } : {}),
+        destination: { lat: target.lat, lng: target.lng },
+      });
       // 경유지 표지가 범위 밖이라 걸러졌으면 그 실패도 경유지 몫이다 — 목적지 강등 문장이 아니라 경유지 문장을 낸다(N4).
       if (!route) return { ok: false, failure: "unavailable", ...(via && result.waypoint ? { via } : {}) };
       return {
@@ -1468,6 +1481,7 @@ export function useRouteGuide(
         finalApproach: result.finalApproach ?? null,
         liveSteps: liveStepsFrom(route, result.steps),
         via: route.waypointStepIndex !== undefined ? via : null,
+        origin: { lat: fix.lat, lng: fix.lng },
       };
     } catch {
       // 네트워크 예외·JSON 파싱 실패 — 잘린 응답과 구분되지 않으므로 재시도 가능으로 본다.
@@ -1526,6 +1540,23 @@ export function useRouteGuide(
       etaTimerRef.current = null;
     }
   }, []);
+
+  /**
+   * 사용자가 연 조회(시작·버튼 재조회)의 출발점 고지(A70 spec §2.3): 새 경로 첫 점이 `rerouteMaxDriftM` 밖이면 앞에 붙일
+   * 문장, 아니면 null. 자동 재조회는 이 경로를 거부한다(아래 `autoReroute`). 방향은 북 기준 8방위 — 시작 순간엔 진행 방위
+   * 관측이 대개 없고, 상태 줄에 남는 문장이 나중에 다시 읽혀도 참이어야 한다(A57).
+   */
+  const routeStartsAwayText = useCallback(
+    (route: GuideRoute, from: { lat: number; lng: number }): string | null => {
+      const gap = routeStartGapMeters(route, from);
+      if (gap <= tuning.rerouteMaxDriftM) return null;
+      return t("routeStartsAway", {
+        direction: tWhereAmI(`direction.${routeStartCompass(route, from)}`),
+        distance: formatDistance(Math.round(gap)),
+      });
+    },
+    [t, tWhereAmI, tuning],
+  );
 
   /** 세션의 최종 접근 상태를 새 경로 기준으로 되돌린다(시작·재조회·중지 공용). */
   const resetFinalApproach = useCallback((geometry: FinalApproachGeometry | null) => {
@@ -1872,6 +1903,26 @@ export function useRouteGuide(
         stepFinalApproach(fix, motion, now);
         return;
       }
+      // 이탈 중 도착 창 — 두 번째 입구(A70 spec §4.2). 종점 진입과 같은 정리를 하되 셋이 다르다: 종점 기하 서술은 이탈 중엔
+      // 거짓이라 내지 않고(서술 래치를 "냈음"으로), 기하가 없어도 간략 인계로 빠지지 않으며(이미 목적지 30m 안), 진입 fix에서
+      // 도착을 판정하지 않고 「목적지 근처입니다」 한 번(설계 리뷰 high ② — 단발 fix로 도착을 선언하지 않는다). 이탈 표시는
+      // 국면이 finalApproach라 위 `setOffRoute`가 이미 내렸다. 진행 중 자동 조회는 세대를 올려 채택을 막는다.
+      if (result.event?.kind === "nearDestination") {
+        setProgress(null);
+        setCurrentText(null);
+        liveRowsStateRef.current = null;
+        clearEtaTimer();
+        rebaseForAxisChange();
+        autoRerouteGenRef.current += 1;
+        inFinalApproachRef.current = true;
+        finalIntroSpokenRef.current = true;
+        lastFinalTickAtRef.current = now;
+        const text = t("finalApproachNear");
+        rememberGuidance(text);
+        setLiveRowsIfChanged({ top: text, next: null, crossing: null });
+        announce(text);
+        return;
+      }
       // 경유지 도착(N4): 이후 재조회는 경유지를 싣지 않는다(iOS `waypoint = nil` 동형). 도착 종은
       // 리듀서가 내지 않으므로 여기서 우선 톤으로 얹는다(iOS `playTone(.nearby)` 동형).
       const waypointReached = result.event?.kind === "waypointReached";
@@ -2200,8 +2251,10 @@ export function useRouteGuide(
         distance: formatDistance(route.totalMeters),
         first,
       });
-      // 계단 회피 안내 문장이 앞이다 — 세션 전체에 걸린 조건이라 걷기 전에 들어야 한다.
-      announce(notice ? `${notice} ${summary}` : summary);
+      // 출발점 고지(A70 §2.3)가 맨 앞 — 첫 문장이 "경로가 여기서 시작하지 않는다"를 말한다. 계단 회피 문장은 그다음이다
+      // (세션 전체에 걸린 조건이라 걷기 전에 들어야 한다).
+      const away = routeStartsAwayText(route, fetched.origin);
+      announce([away, notice, summary].filter((x): x is string => x !== null).join(" "));
     })();
   }, [
     announce,
@@ -2218,6 +2271,7 @@ export function useRouteGuide(
     refreshCarEta,
     rememberGuidance,
     resetFinalApproach,
+    routeStartsAwayText,
     supported,
     t,
     tDirections,
@@ -2414,13 +2468,15 @@ export function useRouteGuide(
           count: route.steps.length,
           distance: formatDistance(route.totalMeters),
         });
-        announce(notice ? `${notice} ${summary}` : summary);
+        // 사용자가 누른 조회는 첫 점이 멀어도 거부하지 않고 알린다(A70 §2.3 — 거부하면 버튼이 막다른 길이 된다).
+        const away = routeStartsAwayText(route, lastFixRef.current ?? fetched.origin);
+        announce([away, notice, summary].filter((x): x is string => x !== null).join(" "));
       } finally {
         rerouteInFlightRef.current = false;
         if (mountedRef.current) setRerouting(false);
       }
     })();
-  }, [announce, commitRerouted, setDegrade, fetchGuideRoute, t]);
+  }, [announce, commitRerouted, setDegrade, fetchGuideRoute, routeStartsAwayText, t]);
 
   /**
    * 자동 재조회(E63 spec §3.5·§3.9): 리듀서가 돌아가기 국면에서 `rerouteNeeded`(계속 멀어짐·나란히 계속 걸음)를 낼 때만
@@ -2473,6 +2529,12 @@ export function useRouteGuide(
           now - at > 15 ||
           !isRerouteProposalFresh(proposal, now, cur, tuning.rerouteMaxDriftM)
         ) {
+          raiseRerouteButton(true);
+          return;
+        }
+        // 새 경로 첫 점이 현재 위치에서 멀면 채택하지 않는다(A70 §2.2 — 요청이 신선해도 provider가 출발점을 멀리 붙인다).
+        // `none`과 같은 결말이다(E69 ⓐ): 버튼 + 한 번 통지, 돌아가기 국면은 잇는다.
+        if (!routeStartsNearby(fetched.route, cur, tuning.rerouteMaxDriftM)) {
           raiseRerouteButton(true);
           return;
         }

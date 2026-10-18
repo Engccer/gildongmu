@@ -61,7 +61,8 @@ const MAX_USABLE_ACCURACY_M = 100;
  * GPS 지터 내성이 깎이고 침묵 계약도 함께 흔들린다. Kit `BeaconConstants.baseDeadBand` 미러.
  */
 export const BASE_DEAD_BAND_M = 15;
-const ARRIVAL_BASE_M = 20;
+/** 도착 존(`nearby` 래치) 진입 임계의 하한(m) — 실제 임계 `max(이 값, 정확도)`. Kit `BeaconConstants` 미러. */
+export const ARRIVAL_BASE_M = 20;
 const SPEAK_INTERVAL_M = 50;
 
 /**

@@ -6,6 +6,7 @@
  * 수단별 데이터(`GuideTuning.rerouteMaxDriftM` — 도보 30m·자동차 150m)라 인자로 받는다.
  */
 import { haversineMeters } from "./geo";
+import { bearingDegrees, bearingToCompass8, type CompassDirection } from "./geo/bearing";
 
 /** 신선도 시간 한계(초, 잠정 — 실보행 판정 대상). */
 export const REROUTE_PROPOSAL_MAX_AGE_S = 120;
@@ -53,4 +54,35 @@ export function rerouteStillStep(
   if (!stopped) return { since: null, reached: false };
   const start = since ?? now;
   return { since: start, reached: now - start >= REROUTE_BUTTON_STILL_S };
+}
+
+// ── 새 경로 첫 점 검사(A70 spec 2026-10-19 §2) ─────────────────────────────────
+// 신선도(`isRerouteProposalFresh`)는 **요청 지점 ↔ 현재 위치**만 본다. provider가 출발점을 멀리 붙이면(실보행 237m) 신선한
+// 요청이 먼 경로를 낳는다 — 그 축은 **경로 첫 점 ↔ 현재 위치**다. 문턱은 같은 수단별 데이터 `rerouteMaxDriftM`.
+// 공유 판정표 `route-start-gap-cases.json`(Kit·`:kit` 미러가 함께 읽는다).
+
+type RouteStart = { polyline: { points: readonly { lat: number; lng: number }[] } };
+
+/** 경로 첫 점까지의 직선거리(m). */
+export function routeStartGapMeters(route: RouteStart, current: { lat: number; lng: number }): number {
+  const p = route.polyline.points[0];
+  return haversineMeters(current.lat, current.lng, p.lat, p.lng);
+}
+
+/** 자동 재조회 채택 자격: 첫 점이 `maxDriftMeters` 안인가. 밖이면 채택하지 않고 `none`과 같은 결말(E69 ⓐ). */
+export function routeStartsNearby(
+  route: RouteStart,
+  current: { lat: number; lng: number },
+  maxDriftMeters: number,
+): boolean {
+  return routeStartGapMeters(route, current) <= maxDriftMeters;
+}
+
+/**
+ * 현재 위치에서 첫 점의 북 기준 8방위 — 사용자가 연 조회(시작·버튼 재조회·줄 전환)의 고지 문장(`guide.routeStartsAway`).
+ * 진행 방위 기준 시계가 아닌 이유: 시작 순간엔 대개 관측이 없고, 상태 행에 남는 문장은 절대 방향이어야 나중에도 참이다(A57).
+ */
+export function routeStartCompass(route: RouteStart, from: { lat: number; lng: number }): CompassDirection {
+  const p = route.polyline.points[0];
+  return bearingToCompass8(bearingDegrees(from.lat, from.lng, p.lat, p.lng));
 }
