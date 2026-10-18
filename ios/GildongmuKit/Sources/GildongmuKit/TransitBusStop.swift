@@ -300,7 +300,9 @@ public struct TransitBusAlightNoticeStepResult: Sendable, Equatable {
 /// fix 한 건(이미 `transitBusStopStep`을 거친 결과)으로 구간 기록을 전진한다. 적격 fix = 최근접이 하차 정류장(경유 목록의
 /// 마지막)이고 추적기 판정이 `pending`·`observed`(정확도·나이·노선 밖·모호·하차 반경 50m를 통과) ∧ 정확도 ≤ 35m
 /// ∧ 도착 피드가 아직 두 정거장 이상 남았다고 말하지 않는다(`state.remaining`을 **읽기만** 한다 — 회차·순환 노선이
-/// 하차 정류장 50m 안을 먼저 지나는 곳에서 이르게 말하고 그 뒤 신호를 모두 막지 않게, 구현 리뷰 M1. 모르면 막지 않는다).
+/// 하차 정류장 50m 안을 먼저 지나는 곳에서 이르게 말하고 그 뒤 신호를 모두 막지 않게, 구현 리뷰 M1). 잔여는 피드가 살아 있을
+/// 때(`signal == .tracking`)만 믿는다 — 소실·폴 실패는 잔여를 지우지 않아, 피드가 죽은 뒤 낡은 2가 한 마디를 승차 끝까지
+/// 막는다(안전 검토 N1). 모르면 막지 않는다.
 /// 적격 fix가 10초 안에 두 번 이어지면 도착이다. 리듀서는 이 함수를 모르고, 결과는 통지만 낸다(표시 전용 계약의
 /// 의도된 예외 하나 — 판정서 2026-08-23 §3, 소스 가드 `transit-bus-stop-guard.test.ts`).
 public func transitBusAlightNoticeStep(
@@ -314,7 +316,7 @@ public func transitBusAlightNoticeStep(
         base = TransitBusAlightNotice(legIndex: state.legIndex, phaseGen: state.phaseGen)
     }
     let qualifies = result.nearestIndex == leg.viaStops.count - 1
-        && !((state.remaining ?? 0) >= 2)
+        && !(state.signal == .tracking && (state.remaining ?? 0) >= 2)
         && (result.verdict == .pending || result.verdict == .observed)
         && fix.accuracy <= transitBusAlightNoticeMaxAccuracyM
     guard qualifies else {

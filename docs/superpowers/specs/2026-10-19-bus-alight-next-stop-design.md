@@ -40,7 +40,7 @@ TransitBusAlightNotice = { legIndex, phaseGen, streak, lastAt, reached, announce
 busAlightNoticeStep(prev, state, leg, result: TransitBusStopStepResult, fix, now) -> { notice, speak }
 ```
 
-- **적격 fix**: 추적기가 이 fix의 최근접을 하차 정류장(경유 목록의 마지막)으로 판정했고(`nearestIndex == last`) 그 판정이 `pending`·`observed`(= 추적기의 정확도 100m·나이 10초·노선 밖 300m·접힘 모호·하차 반경 50m를 전부 통과) ∧ **fix 정확도 ≤ 35m**(`BUS_ALIGHT_NOTICE_MAX_ACCURACY_M`, 알림 전용 문턱) ∧ **도착 피드가 두 정거장 이상 남았다고 말하지 않는다**(`state.remaining`을 읽기만 한다, 모르면 막지 않는다). 마지막 조건은 회차·순환 노선이 하차 정류장 50m 안(예: 교차로 모퉁이)을 먼저 지나는 곳에서 이르게 말하고, 그 기록 때문에 진짜 정류장의 한 마디와 「다음 정류장」까지 모두 막히는 경로를 끊는다(구현 리뷰 M1). 잔여가 한 폴 낡아 실제로는 이미 한 정거장일 때 놓치는 쪽은 안전 방향이다(GPS 한 마디만 빠지고 「다음 정류장」은 그대로 나간다).
+- **적격 fix**: 추적기가 이 fix의 최근접을 하차 정류장(경유 목록의 마지막)으로 판정했고(`nearestIndex == last`) 그 판정이 `pending`·`observed`(= 추적기의 정확도 100m·나이 10초·노선 밖 300m·접힘 모호·하차 반경 50m를 전부 통과) ∧ **fix 정확도 ≤ 35m**(`BUS_ALIGHT_NOTICE_MAX_ACCURACY_M`, 알림 전용 문턱) ∧ **도착 피드가 두 정거장 이상 남았다고 말하지 않는다**(`state.remaining`을 읽기만 한다. 피드가 살아 있을 때(`signal == tracking`)만 믿고, 모르면 막지 않는다). 마지막 조건은 회차·순환 노선이 하차 정류장 50m 안(예: 교차로 모퉁이)을 먼저 지나는 곳에서 이르게 말하고, 그 기록 때문에 진짜 정류장의 한 마디와 「다음 정류장」까지 모두 막히는 경로를 끊는다(구현 리뷰 M1). 잔여가 한 폴 낡아 실제로는 이미 한 정거장일 때 놓치는 쪽은 안전 방향이다(GPS 한 마디만 빠지고 「다음 정류장」은 그대로 나간다).
 - **연속**: 적격 fix가 직전 적격 fix와 10초(`BUS_ALIGHT_NOTICE_MAX_GAP_MS`) 안에 이어질 때만 `streak + 1`, 부적격 fix 한 건이나 10초 공백이 끊는다(`streak = 0`). `streak ≥ 2`이면 `reached = true`이고, `announced`가 거짓이면 참으로 바꾸며 `speak = true`.
 - **적용 밖**(국면이 riding이 아니거나 버스 아님): 같은 결박의 기록은 두고 연속만 끊는다 — 도착 추정(`arrived(certain: false)`)과 재관측(`backOnTrack`)은 국면 세대를 바꾸지 않아(`transit-guide.ts` 도착 추정 분기가 세대를 유지) 이력이 남는다.
 - **결박은 (구간, 국면 세대)**: 세대는 riding 진입·탑승 변경·구간 전진에서만 바뀐다. 구간이 바뀌거나 `[탑승 변경]`·`[이미 탔어요]`로 다시 타면 새 기록이다(구현 리뷰 m2 — 구간만으로 묶으면 잘못 선 기록이 다시 탄 버스의 두 신호를 막는다).
@@ -82,6 +82,8 @@ busAlightNoticeStep(prev, state, leg, result: TransitBusStopStepResult, fix, now
 - **TOPIS 0만으로는 "다음"을 단정하지 않는 문구**(설계 리뷰 H1 권고): 위원장 판정 문구를 바꾸는 제품 판단이다. 판정이 고른 문장을 두고 GPS 관측 이력으로 거짓이 되는 경로를 줄였다.
 
 ## 6. 설계 리뷰
+
+안전 최종 검토(fable, HEAD `3d5526e4`, `review-safety-202610190629.md`): SHIP_WITH_NOTES. N1(소실·폴 실패가 잔여를 지우지 않아 피드가 죽은 뒤 낡은 잔여 2가 한 마디를 막는다) → 잔여 조건을 `signal == tracking`에 한정. N2([탑승 변경 취소] 재진입이 세대를 바꿔 두 번째 한 마디 가능, 사용자 조작·낮음)·N3(늦은 TOPIS 0 ∧ 백그라운드 음성 끔 ∧ 그 사이 전경 복귀면 한 마디는 버려지고 「다음 정류장」은 억제 — 낮음, 후속안: 복귀 낭독이 `reached`면 도착 문장을 읽는다)은 실승차 관찰로 남긴다.
 
 구현 리뷰(opus, `review-impl-202610190621.md`): MAJOR 1(회차 노선의 이른 「도착」과 그 뒤 신호 전부 침묵) → 잔여 2 이상 부적격, MINOR m1(억제·백그라운드 재시도) → 위 2차 수정과 같음, m2 → 세대 결박, m3(가드·경계 사례 부족) → 발화 배선 가드·정확도 35/36m·간격 정확히 10초 사례 추가, 중복 술어(`busStopApplies`) 제거.
 

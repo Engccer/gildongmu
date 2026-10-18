@@ -3521,6 +3521,64 @@
     }
    ],
    "expected": null
+  },
+  {
+   "name": "A69 피드가 끊긴 뒤(signalLost) 낡은 잔여 2는 막지 않는다",
+   "fn": "alightNotice",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "phaseGen": 3,
+    "signal": "signalLost",
+    "lock": null,
+    "currentLocation": null,
+    "remaining": 2
+   },
+   "tracker": null,
+   "notice": null,
+   "steps": [
+    {
+     "fix": {
+      "lat": 37.52,
+      "lng": 127.0,
+      "accuracy": 20,
+      "ageSeconds": 1
+     },
+     "now": 1000,
+     "expected": {
+      "speak": false,
+      "notice": {
+       "legIndex": 0,
+       "phaseGen": 3,
+       "streak": 1,
+       "lastAt": 1000,
+       "reached": false,
+       "announced": false
+      }
+     }
+    },
+    {
+     "fix": {
+      "lat": 37.52,
+      "lng": 127.0,
+      "accuracy": 20,
+      "ageSeconds": 1
+     },
+     "now": 2000,
+     "expected": {
+      "speak": true,
+      "notice": {
+       "legIndex": 0,
+       "phaseGen": 3,
+       "streak": 2,
+       "lastAt": 2000,
+       "reached": true,
+       "announced": true
+      }
+     }
+    }
+   ],
+   "expected": null
   }
  ]
 }
