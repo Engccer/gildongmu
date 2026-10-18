@@ -159,4 +159,18 @@ class FinalApproachTest {
         assertEquals(5.0, offRouteArrivalHoldSeconds)
         assertTrue(!offRouteArrivalQualifies(Double.NaN, 10.0))
     }
+
+    // A70 안전 검토 M1 — 도보 최종 접근 도착의 정확도 상한. 판정표는 웹·Kit과 공유한다.
+    @Serializable
+    private data class FinalApproachArrivalFile(val cases: List<Case>) {
+        @Serializable
+        data class Case(val name: String, val distance: Double, val accuracy: Double, val arrived: Boolean)
+    }
+
+    @Test fun `도보 최종 접근 도착 공유 fixture 동조`() {
+        val cases = Fixtures.sharedJson("final-approach-arrival-cases.json", FinalApproachArrivalFile.serializer()).cases
+        assertTrue(cases.isNotEmpty())
+        for (c in cases) assertEquals(c.arrived, walkFinalApproachArrived(c.distance, c.accuracy), c.name)
+        assertEquals(50.0, uncertainAccuracyMeters)
+    }
 }

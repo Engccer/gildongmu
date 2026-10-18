@@ -66,6 +66,7 @@ import {
   ARRIVE_M,
   FINAL_INTERVAL_S,
   relativeDirection,
+  walkFinalApproachArrived,
   type FinalApproachGeometry,
 } from "@/lib/final-approach";
 import { UNCERTAIN_ACCURACY_M } from "@/lib/route-guide";
@@ -1651,7 +1652,7 @@ export function useRouteGuide(
         destRef.current.lat,
         destRef.current.lng,
       );
-      const arrived = distance <= ARRIVE_M;
+      const arrived = walkFinalApproachArrived(distance, fix.accuracy);
       emitTone(
         {
           unreliable: false,

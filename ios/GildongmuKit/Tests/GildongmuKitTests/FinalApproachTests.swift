@@ -259,3 +259,27 @@ func offRouteArrivalConstants() {
     #expect(!offRouteArrivalQualifies(distance: .nan, accuracy: 10))
     #expect(!offRouteArrivalQualifies(distance: .infinity, accuracy: 10))
 }
+
+// A70 안전 검토 M1 — 도보 최종 접근 도착의 정확도 상한. 판정표는 웹·`:kit`과 공유한다.
+private struct FinalApproachArrivalFile: Decodable {
+    let cases: [Case]
+    struct Case: Decodable {
+        let name: String
+        let distance: Double
+        let accuracy: Double
+        let arrived: Bool
+    }
+}
+
+@Test("도보 최종 접근 도착 공유 fixture 동조")
+func walkFinalApproachArrivedMatchesSharedFixture() throws {
+    var url = URL(fileURLWithPath: #filePath)
+    for _ in 0..<5 { url.deleteLastPathComponent() }
+    url.appendPathComponent("src/lib/__tests__/fixtures/final-approach-arrival-cases.json")
+    let file = try JSONDecoder().decode(FinalApproachArrivalFile.self, from: Data(contentsOf: url))
+    #expect(!file.cases.isEmpty)
+    for c in file.cases {
+        #expect(walkFinalApproachArrived(distance: c.distance, accuracy: c.accuracy) == c.arrived, "\(c.name)")
+    }
+    #expect(uncertainAccuracyMeters == 50)
+}

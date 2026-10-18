@@ -1,0 +1,41 @@
+{
+ "comment": "도보 최종 접근 도착 판정 walkFinalApproachArrived(distance, accuracy) 판정표(A70 안전 검토 M1). 웹 final-approach·Kit FinalApproachTests·:kit FinalApproachTest가 함께 읽는다. 도착 = 0 < 정확도 ≤ 50(웹 uncertain 게이트 UNCERTAIN_ACCURACY_M과 같은 값) ∧ 직선거리 ≤ 15. 자동차는 carArrivalStep(정확도 ≤ 30)이 정본이라 이 표 밖이다.",
+ "cases": [
+  {
+   "name": "15m, 정확도 10m — 도착 반경 경계 안",
+   "distance": 15,
+   "accuracy": 10,
+   "arrived": true
+  },
+  {
+   "name": "15.5m — 반경 밖",
+   "distance": 15.5,
+   "accuracy": 10,
+   "arrived": false
+  },
+  {
+   "name": "5m, 정확도 50m — 상한 경계 안",
+   "distance": 5,
+   "accuracy": 50,
+   "arrived": true
+  },
+  {
+   "name": "5m, 정확도 50.5m — 상한 밖(웹 uncertain 게이트와 같은 값)",
+   "distance": 5,
+   "accuracy": 50.5,
+   "arrived": false
+  },
+  {
+   "name": "5m, 정확도 90m — 멀티패스 튄 fix로 도착하지 않는다(안전 검토 M1)",
+   "distance": 5,
+   "accuracy": 90,
+   "arrived": false
+  },
+  {
+   "name": "정확도 0 — 무효",
+   "distance": 5,
+   "accuracy": 0,
+   "arrived": false
+  }
+ ]
+}

@@ -246,3 +246,11 @@ public func offRouteArrivalQualifies(distance: Double, accuracy: Double) -> Bool
     guard accuracy > 0, accuracy <= briefArrivalWindowMaxAccuracyMeters else { return false }
     return distance <= max(BeaconConstants.arrivalBase, accuracy)
 }
+
+/// 도보 최종 접근 도착 판정(A70 안전 검토 M1, 웹 `walkFinalApproachArrived` 미러): 정확도 `(0, uncertainAccuracyMeters]` ∧
+/// 목적지 직선거리 ≤ `finalApproachArriveMeters`. `isUsableFix`는 상한이 없어(비콘 앵커·최종 접근 틱의 느슨함이 의도다) 정확도 90m
+/// 멀티패스 fix 하나가 15m 안에 떨어지면 도착으로 끝났다 — 도착 선언만 웹 uncertain 게이트와 같은 값으로 조인다.
+/// 공유 판정표 `final-approach-arrival-cases.json`. 자동차는 `carArrivalStep`(정확도 ≤ 30)이 정본이다.
+public func walkFinalApproachArrived(distance: Double, accuracy: Double) -> Bool {
+    accuracy > 0 && accuracy <= uncertainAccuracyMeters && distance <= finalApproachArriveMeters
+}

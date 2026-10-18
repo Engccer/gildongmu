@@ -16,7 +16,14 @@ import fixtures from "./fixtures/final-approach-scenarios.json";
 import presumedFixture from "./fixtures/presumed-arrival-scenarios.json";
 import windowFixture from "./fixtures/brief-arrival-window-cases.json";
 import offRouteArrivalCases from "./fixtures/off-route-arrival-cases.json";
-import { OFF_ROUTE_ARRIVAL_HOLD_S, offRouteArrivalQualifies } from "../final-approach";
+import {
+  FINAL_APPROACH_ARRIVE_MAX_ACC_M,
+  OFF_ROUTE_ARRIVAL_HOLD_S,
+  offRouteArrivalQualifies,
+  walkFinalApproachArrived,
+} from "../final-approach";
+import arrivalCases from "./fixtures/final-approach-arrival-cases.json";
+import { UNCERTAIN_ACCURACY_M } from "../route-guide";
 import { CAR_ARRIVAL_MAX_ACC_M } from "../car-arrival";
 
 /** 남→북 직선 100m 경로. lat 1도 ≈ 111320m. */
@@ -255,5 +262,17 @@ describe("offRouteArrivalQualifies 공유 판정표(off-route-arrival-cases.json
   it("정확도 상한은 간략 창 상한과 같은 값이다", () => {
     expect(BRIEF_ARRIVAL_WINDOW_MAX_ACC_M).toBe(30);
     expect(OFF_ROUTE_ARRIVAL_HOLD_S).toBe(5);
+  });
+});
+
+// A70 안전 검토 M1 — 도보 최종 접근 도착의 정확도 상한. 판정표는 Kit·`:kit`과 공유한다.
+describe("walkFinalApproachArrived 공유 판정표(final-approach-arrival-cases.json)", () => {
+  for (const c of arrivalCases.cases) {
+    it(c.name, () => {
+      expect(walkFinalApproachArrived(c.distance, c.accuracy)).toBe(c.arrived);
+    });
+  }
+  it("상한은 웹 uncertain 게이트와 같은 값이다", () => {
+    expect(FINAL_APPROACH_ARRIVE_MAX_ACC_M).toBe(UNCERTAIN_ACCURACY_M);
   });
 });

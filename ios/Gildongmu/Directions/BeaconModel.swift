@@ -2469,7 +2469,7 @@ final class BeaconModel {
         // 자동차는 "부근 정차"가 도착이다(K2 §6.4, 위원장 판정 ④ — 40m·정지·정확도≤30, 15m 무조건 분기 없음).
         let arrived = sessionKind == .car
             ? carArrivalStep(distance: distance, accuracy: fix.accuracy, motion: motion)
-            : distance <= finalApproachArriveMeters
+            : walkFinalApproachArrived(distance: distance, accuracy: fix.accuracy)  // 정확도 상한 50m(A70 안전 검토 M1)
         // 도착 종·진동이 안 난다는 실사용 보고(2026-08-09)의 판정 근거. 원인 후보가
         // 둘인데(도착 판정 자체가 안 옴 vs 판정은 왔는데 소리가 잘림) 증상이 같아
         // 로그 없이는 갈리지 않는다 — 이 줄이 그 갈림을 남긴다.

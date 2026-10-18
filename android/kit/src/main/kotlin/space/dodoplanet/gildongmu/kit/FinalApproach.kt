@@ -197,3 +197,11 @@ fun offRouteArrivalQualifies(distance: Double, accuracy: Double): Boolean {
     if (!(accuracy > 0) || accuracy > briefArrivalWindowMaxAccuracyMeters) return false
     return distance <= maxOf(BeaconConstants.arrivalBase, accuracy)
 }
+
+/**
+ * 도보 최종 접근 도착 판정(A70 안전 검토 M1, 웹 `walkFinalApproachArrived` ↔ Kit 미러): 정확도 `(0, uncertainAccuracyMeters]` ∧
+ * 목적지 직선거리 ≤ [finalApproachArriveMeters]. `isUsableFix`엔 상한이 없어 멀티패스 fix 하나로 도착이 났다 — 도착 선언만 조인다.
+ * 공유 판정표 `final-approach-arrival-cases.json`. 자동차는 `carArrivalStep`이 정본이다.
+ */
+fun walkFinalApproachArrived(distance: Double, accuracy: Double): Boolean =
+    accuracy > 0 && accuracy <= uncertainAccuracyMeters && distance <= finalApproachArriveMeters

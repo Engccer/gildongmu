@@ -258,3 +258,15 @@ export function offRouteArrivalQualifies(distanceToDest: number, accuracy: numbe
   if (!(accuracy > 0) || accuracy > BRIEF_ARRIVAL_WINDOW_MAX_ACC_M) return false;
   return distanceToDest <= Math.max(ARRIVAL_BASE_M, accuracy);
 }
+
+/**
+ * 도보 최종 접근 도착 판정의 정확도 상한(m) — 웹 uncertain 게이트(`UNCERTAIN_ACCURACY_M` 50, 훅이 그 위 fix를 먼저 거른다)와
+ * 같은 값(테스트가 동일을 단언). Kit·`:kit`은 `isUsableFix`가 상한을 두지 않아(비콘 앵커·최종 접근 틱의 느슨함이 의도다)
+ * 도착 판정만 이 술어로 조인다(A70 안전 검토 M1 — 이탈 중 입구는 위치 사전 정보가 약한 쪽에서 열린다).
+ */
+export const FINAL_APPROACH_ARRIVE_MAX_ACC_M = 50;
+
+/** 도보 최종 접근 도착: 정확도 `(0, 50]` ∧ 목적지 직선거리 ≤ `ARRIVE_M`. 공유 판정표 `final-approach-arrival-cases.json`. */
+export function walkFinalApproachArrived(distanceToDest: number, accuracy: number): boolean {
+  return accuracy > 0 && accuracy <= FINAL_APPROACH_ARRIVE_MAX_ACC_M && distanceToDest <= ARRIVE_M;
+}

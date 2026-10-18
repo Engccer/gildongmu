@@ -84,7 +84,7 @@ import space.dodoplanet.gildongmu.kit.buildGuideRoute
 import space.dodoplanet.gildongmu.kit.clockHour
 import space.dodoplanet.gildongmu.kit.courseAxisVerdict
 import space.dodoplanet.gildongmu.kit.courseStep
-import space.dodoplanet.gildongmu.kit.finalApproachArriveMeters
+import space.dodoplanet.gildongmu.kit.walkFinalApproachArrived
 import space.dodoplanet.gildongmu.kit.finalApproachIntervalSeconds
 import space.dodoplanet.gildongmu.kit.formatDistance
 import space.dodoplanet.gildongmu.kit.guideLiveRows
@@ -1586,7 +1586,7 @@ class WalkGuideModel(
         val anchorStep = advanceProgressAnchor(progressAnchor, RoutePoint(fix.lat, fix.lng))
         progressAnchor = anchorStep.anchor
         if (anchorStep.progressed) lastProgressAt = now
-        val arrived = distance <= finalApproachArriveMeters
+        val arrived = walkFinalApproachArrived(distance, fix.accuracy) // 정확도 상한 50m(A70 안전 검토 M1)
         GuideDiag.log { "final t=${fmt("%.1f", now)} dist=${fmt("%.1f", distance)} acc=${fmt("%.1f", fix.accuracy)} arrived=$arrived introSpoken=$finalApproachIntroSpoken" }
         routeTone(
             ToneLayerInput(
