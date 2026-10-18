@@ -1,0 +1,159 @@
+# A70 재조회 C 세 층: 출발점 재시도 · 첫 점 채택 검사 · `far` 자격과 이탈 중 도착 창 (2026-10-19)
+
+설계 리뷰 판정: **한다** — 리듀서에 새 판정 자격(`far`)과 국면 전이 입구(이탈 중 도착 창)가 들어가고(상태 머신), 서버 응답 계약에 additive 필드와 provider 재시도가 더해진다(외부 통합 계약 가정). 적대적 설계 리뷰 1회 + 회전 상한 2회.
+
+판정 정본: `docs/BACKLOG.md` A70(위원장 판정 2026-10-18 C). 계획 `docs/superpowers/plans/2026-10-19-backlog-sweep-13-parallel-plan.md`(세션 `a70-reroute`). 실보행 기록은 비공개(`~/gildongmu-private/field-logs/guide-diag-2026-10-18.log.gz`·`urlcache-2026-10-18/` entry 507~509)이고 이 문서와 테스트는 합성 좌표만 쓴다.
+
+## 0. 증상과 세 원인 (요약)
+
+의도적으로 앱 경로와 다른 길로 목적지에 간 실보행에서, 두 번째 자동 재조회의 새 경로가 **요청 출발점에서 237m 떨어진 곳에서 시작**했고(카카오 출발점 스냅), 채택 20초 뒤 이탈 확정(수직 249m) → 9분간 다가가며 재통지만 6회(249 → 23m), 재조회·버튼 없음 → 목적지 5m 앞에서도 "오른쪽으로 벗어났습니다".
+
+1. 서버 `getWalkRoute`는 provider가 출발점을 어디에 붙였는지 보지 않고, 앱 채택 가드는 **요청 출발점 ↔ 현재 위치**(`rerouteMaxDriftM`)만 보지 **경로 첫 점 ↔ 현재 위치**는 보지 않는다.
+2. E63 재조회 자격은 `away`(최솟값 + 25m 멀어짐)·`parallel`(기준점에서 50m, 다가가면 기준점 재설정)뿐이라 다른 유효한 길로 **수렴하는** 걸음은 끝까지 "돌아가는 중"이다. E69 버튼도 자동 판정이 손을 들지 않아 서지 않는다.
+3. 도착 창(최종 접근)은 경로 종점 도달로만 열린다. 이탈 국면에서는 목적지 직선거리와 무관하게 닫혀 있다.
+
+**오프라인 분포**(실호출 0, 비공개 urlcache 7묶음의 실시간 안내 도보 응답 211건, 묶음 사이 중복 포함): 요청 출발점 ↔ 응답 첫 점 거리 중앙값 5.5m · 90% 17.8m · 95% 40.7m · 30m 초과 13건 · 50m 초과 9건 · 100m 초과 1건(237m, 이번 사고).
+
+## 1. 서버 층: 출발점 재시도와 `originGapM`
+
+### 1.1 범위: 기하 응답(`includeGeometry=1`)에만
+
+재시도와 새 필드는 **실시간 안내가 쓰는 기하 응답에만** 적용한다. 브리핑 응답(기하 없음 — CLI·채팅·MCP·조회 화면 줄 목록·`alternatives`)은 바이트 동일이다. 같은 규율의 선례: 줄 종류 `kind`는 기하 응답에만 싣는다(`getWalkRoute`, E42). 출발점이 어디인가는 그 경로를 따라 걸을 때만 의미가 있고, 조회 화면의 거리·문장은 출발점 수십 m 차이로 판단이 바뀌지 않는다.
+
+⚠ 기하 응답은 배포된 스토어 앱(iOS 2.2·안드로이드)도 받는다. 재시도로 provider가 바뀐 경로가 **그날부터 정식판에 닿는다**(메모리 "서버 기본값으로 접는 졸업은 그날 정식판에 닿는다"). 그래서 이 범위는 판정 질문 Q1로 올렸고, 기본값은 "닿는다"다(사고 증상 자체를 고치는 변경이고, Tmap은 이미 ko 폴백 provider라 재작성·주석 파이프라인이 그 문장을 다룬다). 위원장이 "아직"이면 옵트인 쿼리(`originSnap=1`)로 접는다 — 함수 한 자리의 조건만 바뀐다.
+
+### 1.2 규칙
+
+`resolveWalkRoute`의 provider 조회 뒤, 주석(annotate) 전 원응답에서:
+
+1. 첫 점 = `steps[0].pathCoords[0]`(없으면 판정하지 않는다 — 모르는 것을 멀다고 추정하지 않는다). `gap = haversine(요청 origin, 첫 점)`.
+2. `gap > ORIGIN_GAP_RETRY_M`(30m)이고, 첫 provider가 카카오이고, ko이고, 계단 회피(`accessible`)가 아니고, Tmap 키가 있으면 **Tmap으로 한 번 더** 받는다(같은 경유지, `variant=shortest`면 `searchOption=10`). 두 응답 중 gap이 작은 쪽을 쓴다(같으면 카카오 — 기본 provider). Tmap 재시도가 throw·null이면 카카오 결과를 그대로 쓴다(재시도는 개선 시도이지 새 실패 경로가 아니다, 로그만).
+3. 고른 응답의 gap이 여전히 `> ORIGIN_GAP_RETRY_M`이면 응답에 `originGapM: Math.round(gap)`(정수 m)을 additive로 싣는다. 30m 이하면 필드 부재.
+
+- **문턱 30m(착수 기본값 50m에서 조정)**: 앱 채택 검사의 도보 문턱(`rerouteMaxDriftM` 30m, §2)과 같은 값이다. 서버 문턱이 앱보다 크면 30~50m 구간의 경로는 서버가 고치려 하지 않은 채 앱이 거부하는 몫이 된다 — 서버가 "앱이 버릴 경로"를 먼저 피하려 하는 것이 이 층의 뜻이다. 대가는 Tmap 호출: 위 분포로 기하 응답의 약 6%(일 호출 규모 수십 건 기준 하루 수 건, 무료 한도 일 1,000건을 자동차와 공유).
+- **계단 회피는 재시도하지 않는다**: Tmap엔 동등 모드가 없어 재시도가 안전 옵션을 조용히 떨어뜨린다. gap만 싣는다.
+- **비-ko(Tmap 단독)**: 다른 provider가 없다(카카오는 한국어 문장, E16 축3). 재시도 없이 gap만 싣는다.
+- **카카오 실패 → Tmap 폴백 응답**: 이미 다른 provider가 답한 것이라 재시도 없이 gap만.
+- **자동차 경로에는 두지 않는다**: 자동차 출발점은 "가장 가까운 차도"라 건물·주차장 안에서 수십~100m 떨어지는 것이 정상이고, ko 기본 Tmap·폴백 카카오내비의 재시도는 유료 쿼터(카카오모빌리티)를 먹으면서 같은 차도를 줄 가능성이 높다. 앱 채택 검사(§2)는 자동차도 자기 문턱(150m)으로 지난다.
+- 같은 경로의 서버 캐시: 기하 응답은 이미 `noStore`(provider fetch)라 재시도 응답이 캐시를 오염시키지 않는다.
+
+### 1.3 계약 표면
+
+- 타입 `WalkRouteBriefing.originGapM?: number`(기하 응답 전용, 서술 주석).
+- 앱(웹·iOS·안드로이드)은 이 필드를 **판정에 쓰지 않는다**. 채택·고지의 기준점은 요청 origin이 아니라 채택 시점의 현재 위치라서다(§2). 필드는 API 계층의 정직성 표기다(메모리 "정직성 표기는 API 계층 계약") — 기하 응답을 받는 다른 소비자가 "이 경로는 요청 지점에서 N m 떨어진 곳에서 시작한다"를 알 수 있게.
+- 로그: 재시도 시 `[walk-route] 출발점 재시도: kakao=<m> tmap=<m> 선택=<provider>`(좌표 없이 거리만).
+
+## 2. 앱 채택 검사와 시작 고지
+
+### 2.1 순수 판정 (세 벌 미러)
+
+`reroute-proposal-gate.ts` ↔ Kit `RerouteProposalGate.swift` ↔ `:kit` `RerouteProposalGate.kt`:
+
+```
+routeStartGapMeters(route.polyline 첫 점, current) -> m
+routeStartsNearby(route, current, maxDriftMeters) -> gap <= maxDriftMeters
+```
+
+문턱은 기존 수단별 데이터 `GuideTuning.rerouteMaxDriftM`(도보 30m · 자동차 150m)을 그대로 쓴다(새 상수 없음 — 위원장 판정이 이 값을 지정).
+
+### 2.2 자동 재조회: 거부
+
+신선도 검사(`isFresh`) 뒤, 채택 직전에 `routeStartsNearby(새 경로, 현재 fix, rerouteMaxDriftM)`가 거짓이면 **채택하지 않고 `none`과 같은 결말**이다: E69 ⓐ 통지 「새 경로를 자동으로 찾지 못했습니다.」 + 버튼(회차 래치), 돌아가기 국면은 잇는다(리듀서가 문턱을 다시 채우면 또 요청 — 세션 예산 5회 상한). 계측 원인 이름 `farStart`(iOS `rerouteAdopt result=farStart gap=<m>`, 웹·안드로이드 같은 원인 축).
+
+### 2.3 사용자가 요청한 조회(시작·버튼 재조회·줄 전환): 거부하지 않고 고지
+
+사용자가 직접 연 조회는 거부하면 막다른 길이 된다(버튼을 눌렀는데 아무것도 안 바뀐다). 그래서 채택하되 **첫 문장에 경로 시작점까지의 거리와 방향**을 붙인다(판정 원문의 "시작은 거부가 아니라 고지"를 버튼 재조회·줄 전환까지 넓힌 것 — 판정 질문 Q3, 기본값 "넓힌다").
+
+- 기준: 시작은 경로 조회 origin fix(= 그 순간의 현재 위치), 버튼 재조회·전환은 커밋 시점의 마지막 fix. gap > `rerouteMaxDriftM`일 때만.
+- 방향: **8방위 낱말**(기존 어휘 `whereAmI.direction.*` — 세 플랫폼 카탈로그에 이미 있다). 시계 방향은 진행 방위가 있어야 하는데 시작 순간은 대개 서 있어 관측이 없고(유도기는 10m 이동부터), 상태 행에 남는 문장은 그 순간의 방위 기준 표현을 담지 않는다(A57). 8방위는 절대 방향이라 나중에 다시 읽혀도 참이다(판정 질문 Q2).
+- 문장(ko): 「경로 시작점이 {direction}쪽으로 {distance} 떨어져 있습니다.」 + 기존 시작·재조회 문장. 거리 표기는 `formatDistance`(1km 미만 m).
+  - 예: 「경로 시작점이 북동쪽으로 240m 떨어져 있습니다. ○○까지 도보 안내 시작. 〈첫 안내〉. 안내 4개, 총 1.2km.」
+- 상태 행·음성 모두 같은 문장(방향이 절대라 A57 분리가 필요 없다).
+- 리듀서는 바뀌지 않는다: 시작점이 멀면 첫 fix들이 경로 밖이라 종전대로 이탈 확정·돌아가기 국면이 이어지고, 멀리 떨어진 채면 §3 `far`가 60초 뒤 자동 재조회를 연다(그 조회는 §2.2 검사를 지난다).
+
+### 2.4 키
+
+새 키 하나 `guide.routeStartsAway`(`{direction}`·`{distance}`, 6로케일 `messages`, iOS·안드로이드는 생성물). 방향 낱말은 기존 `whereAmI.direction.{n,ne,…}`. 방위 → 8칸은 기존 함수가 있으면 재사용하고(웹 `whereAmI`·Kit 쪽 8방위 버킷), 없으면 `reroute-proposal-gate`에 같은 판정으로 둔다(세 벌 미러, 공유 fixture).
+
+## 3. 판정 보강 ①: 재조회 자격 셋째 `far`
+
+### 3.1 규칙
+
+돌아가기 국면(`offRoute`)의 재조회 요청(E63 §3.5, 리듀서 (2) 단계)에 세 번째 자격:
+
+- **수직거리(확정 지점 창 기준 투영 `ref.perpMeters`)가 `rerouteFarM` 이상인 fix가 `rerouteFarS`초 이어지면** 다가가는 중이어도 `rerouteNeeded{reason: "far"}`.
+- 연속의 시작 시각은 상태 `offRouteFarSince`(문턱 아래 fix 하나면 null). `away`·`parallel` 연속 계수(`offRouteAwayRun`)와 **따로** 센다 — 다가가는 걸음은 `away`·`parallel`을 끊지만 `far`는 끊지 않는 것이 이 자격의 뜻이다.
+- 우선순위: 같은 fix에서 `away`·`parallel`이 서면 그쪽(종전 그대로), 아니면 `far`. 이벤트 하나.
+- 재무장: 어느 사유로든 `rerouteNeeded`를 낸 fix에서 최솟값·기준점·`offRouteAwayRun`과 함께 `offRouteFarSince = null` — 조회가 경로 없음·`farStart`·실패로 끝나도 여전히 멀면 60초 뒤 또 요청한다(세션 예산 5회가 상한).
+- 초기화: 확정(`confirm`) 순간 그 fix가 문턱 이상이면 `now`, 아니면 null(확정 순간부터 센다). 정확도 악화(uncertain)·재획득 진입은 E63 §3.9의 다른 시간 누적 필드와 같이 비운다(`CLEARED_RETURN_TIMERS`) — 공백이 60초에 산입되면 관측 없이 성립한다. 복귀·경로 교체는 `guideStateAt` 초기값(null).
+
+### 3.2 값
+
+| 프로파일 | `rerouteFarM` | `rerouteFarS` | 근거 |
+|---|---|---|---|
+| 도보 | 100 | 60 | 위원장 판정 값. A70 "함께 기록"의 반대편 보도(약 40m 평행)·E63 `parallel` 50m에 걸리지 않는다 |
+| 자동차 | 400 | 60 | 세션 판단(잠정, 실주행 판정 §2). 도보 `far`/`away` 비(100/25 = 4)를 자동차 `away` 100m에 적용. 도심 블록(100~200m)을 돌아 옛 경로로 합류하는 정상 복귀를 `far`로 읽지 않게 블록 둘 너머로 둔다. 10m/s면 60초에 600m를 가므로 400m 수직이 1분 이어진 차는 다른 길 위에 있다 |
+
+### 3.3 A70 재현 (합성 좌표 fixture)
+
+확정 수직 249m → 수렴 걸음(249 → 180 → 106 → 65 → 44 → 23m, 9분): 종전은 `rerouteNeeded` 0회. 새 규칙은 확정 + 60초(수직 ≥ 100 유지)에 `far` 1회. 공유 fixture `route-guide-scenarios.json`에 `A70 …` 시나리오로 잠근다(웹·Kit·`:kit` 세 하네스). 반대 사례도 잠근다: 수직 40m 평행 보도를 오래 걸으면 `far` 없음(종전 `parallel` 판정만).
+
+## 4. 판정 보강 ②: 이탈 중 도착 창의 두 번째 입구
+
+### 4.1 규칙
+
+돌아가기 국면에서 **목적지 직선거리가 간략 창 기준 안이면** 최종 접근 국면에 든다(종점 도달 = 첫 번째 입구, 직선거리 = 두 번째 입구).
+
+- 자격(순수 술어, `final-approach.ts` ↔ Kit `FinalApproach.swift` ↔ `:kit` `FinalApproach.kt`, 이름 `offRouteArrivalQualifies(distance, accuracy)`): `0 < 정확도 ≤ BRIEF_ARRIVAL_WINDOW_MAX_ACC_M`(30m) ∧ `직선거리 ≤ max(ARRIVAL_BASE_M 20m, 정확도)`. 간략 창 자격(A31, 래치 ∧ 정확도 ≤ 30)의 래치 진입 규칙(`beacon` 도착 임계 `max(20, acc)`)과 정확도 상한을 그대로 쓴 것이고, `briefArrivalWindowStep` 자체는 바뀌지 않는다. 그 상한 아래에서 이 입구의 공간 범위는 관측 30m 이하.
+- 위치: 리듀서 돌아가기 국면 분기의 **맨 앞**(복귀·재조회·재통지보다 앞). 목적지 코앞이면 경로로의 복귀를 기다릴 이유가 없다.
+- 전이: `phase = "finalApproach"`, 이벤트 **새 종류** `{kind: "nearDestination"}`(톤 없음). 종전 `finalApproachEnter`와 종류를 가른 것은 소비자가 다르게 처리해야 해서다(아래). Swift·Kotlin의 망라 `switch`가 새 종류를 컴파일로 강제한다.
+- 목적지 좌표: 리듀서는 목적지를 몰랐다. `GuideRoute.destination?`(선택 필드)을 더하고 `buildGuideRoute`의 옵션으로 받는다(Kit·`:kit` 같은 인자). 없으면 이 입구는 닫혀 있다(종전 동작). 세 오케스트레이터(웹 `useRouteGuide`·iOS `BeaconModel.fetchDetailData`·안드로이드 `WalkGuideModel`)가 싣는지는 소스 가드가 센다(1선 구조로 강제하려면 46개 호출부를 바꿔야 해 2선 가드로 둔다 — CLAUDE.md "1선 구조, 2선 소스 가드").
+- 프로파일: `GuideTuning.offRouteArrivalEntry`(도보 true · 자동차 false). 자동차 도착은 `carArrivalStep`(40m·도플러 정지·정확도 ≤ 30)이 정본이고 "간략 창"이라는 개념이 자동차엔 없다. 자동차 이탈 중 목적지 옆 주차는 실주행 관찰 대상으로 §2에 남긴다.
+
+### 4.2 소비자 (세 플랫폼)
+
+`nearDestination`은 `finalApproachEnter`와 같은 최종 접근 진입 처리(조회 진행 취소·하단 행 정리·축 전환·도착 창 에피소드 시작 `arrivalWindowEnteredAt`)를 하되 셋이 다르다:
+
+1. **진입 서술(기하 문장)을 내지 않는다**: 「경로가 끝납니다. 왼쪽으로 18m 가면 ○○입니다」는 경로 종점 기준 기하라 이탈 중엔 거짓이다. 서술 래치를 "냈음"으로 두고 기하는 쓰지 않는다.
+2. **간략 인계로 빠지지 않는다**: 기하가 없거나 `tooClose`여도 최종 접근 국면에 든다(이미 목적지 30m 안이라 직선 추적·15m 도착 판정이 곧 할 일이다).
+3. **돌아가기 국면의 흔적을 지운다**: 이탈 플래그·상태 행·재조회 버튼(회차 래치 포함)·진행 중 자동 조회.
+
+첫 발화: 같은 fix가 이미 도착 반경(도보 15m) 안이면 곧바로 도착 처리(「목적지에 도착했습니다」 — 진입 서술이 없으니 "서술이 도착보다 앞" 규칙이 적용될 문장이 없다). 아니면 기존 키 「목적지 근처입니다.」(`finalApproachNear`)를 `.actionable`로 한 번 내고 상태 행에 둔다. 이후는 종전 최종 접근 그대로(주기 통지·도착·도착 추정 창).
+
+## 5. 문자열
+
+| 키 | ko | 소비 |
+|---|---|---|
+| `guide.routeStartsAway` (신규) | 경로 시작점이 {direction}쪽으로 {distance} 떨어져 있습니다. | §2.3 앞 문장 |
+| `guide.finalApproachNear` (기존) | 목적지 근처입니다. | §4.2 첫 발화 |
+| `guide.rerouteAutoGaveUp` (기존) | 새 경로를 자동으로 찾지 못했습니다. | §2.2 |
+
+6로케일 문안은 판정 질문 파일에 렌더된 문장으로 올리고 확정 전까지 기본안으로 구현한다.
+
+## 6. 미러와 fixture
+
+- 웹이 기준본: `route-guide.ts`(tuning 2필드 + `offRouteArrivalEntry`, 상태 `offRouteFarSince`, 이벤트 `nearDestination`, `RerouteReason` `far`), `route-geometry.ts`(`destination`), `final-approach.ts`(`offRouteArrivalQualifies`), `reroute-proposal-gate.ts`(`routeStartGapMeters`·`routeStartsNearby`).
+- Kit·`:kit`은 같은 커밋 묶음에서 이식(sonnet 과제). Kit 파일 추가가 없으면 `android/kit/mirrors/*.json`은 그대로(기존 파일의 판정 추가뿐).
+- 공유 fixture: `route-guide-scenarios.json`에 `A70 …` 시나리오(시나리오 키 `dest: [along, lateral]` 신규, 기대 키는 기존 `event`·`rerouteReason`), `reroute-proposal-gate` 첫 점 판정표는 새 fixture `route-start-gap-cases.json`.
+
+## 7. 실호출 게이트 (`scripts/verify-walk-origin-gap.mjs`, 로컬 서버 대상)
+
+상한: 세션 전체 Tmap + 카카오 30건 이하, ODsay 0.
+
+- ⓐ 공개 지점 근거리 쌍(첫 점이 가까운 정상 경로) 기하 ko 응답: `originGapM` 부재, 재시도 없음(서버 로그 0줄).
+- ⓑ 비공개 케이스 파일(`ORIGIN_GAP_CASES=<경로>` — 위 분포의 30m 초과 원좌표, 저장소 밖): 응답 첫 점 gap ≤ 카카오 단독 gap(재시도가 나빠지게 하지 않는다), gap > 30이면 `originGapM` = 반올림 gap, 30 이하면 부재. 결과는 이 문서에 거리만 적는다.
+- ⓒ 브리핑 응답(기하 없음) 같은 좌표 1건: `originGapM` 부재(미지정 응답 불변).
+- ⓓ en 기하 응답 1건: 재시도 없이 필드 규칙만.
+- 양성 대조: ⓑ에서 재시도가 실제로 Tmap을 고른 사례 ≥ 1 또는 두 provider 모두 먼 사례 ≥ 1을 관측(0건 통과 방지).
+
+## 8. 잠정값과 실보행·실주행 판정 (BACKLOG §2 A70 행)
+
+① 도보 `far` 100m·60초가 수렴하는 우회에서 1분 뒤 새 경로를 주는가, 경로로 돌아가는 정상 걸음에서 헛조회가 나는가 ② 자동차 `far` 400m·60초 ③ 채택 검사 30m가 광장·큰 부지에서 자동 재조회를 너무 자주 거부하는가(로그 `result=farStart gap=`) ④ 시작 고지 문장이 실제로 쓸모 있는가(8방위) ⑤ 이탈 중 목적지 30m 안 진입 → 「목적지 근처입니다」 → 15m 도착 ⑥ 서버 재시도가 고른 Tmap 경로의 문장 품질.
+
+## 9. 기각한 대안
+
+- **서버 문턱 50m 유지**: 앱 30m와 어긋나 30~50m 구간을 서버가 고치지 않은 채 앱이 버린다(§1.2).
+- **시작 고지에 시계 방향**: 시작 순간엔 진행 방위 관측이 대개 없고, 상태 행에 남으면 나중에 틀린 방향으로 읽힌다(A57).
+- **이탈 중 도착을 도착 추정 창만 여는 것**(최종 접근 국면 전이 없이): 「벗어났습니다」 재통지가 목적지 옆에서도 이어지고 도착은 300초 정지 뒤에야 난다 — 사고 증상이 그대로 남는다.
+- **`finalApproachEnter`에 출처 플래그를 다는 것**: 읽는 쪽이 플래그를 빠뜨리면 이탈 중 진입에 종점 기하 서술이 나간다. 종류를 가르면 망라 `switch`가 잡는다.
+- **버튼 상시 노출·직선 안내 모드**: 판정에서 기각(E69 · E16 축2).
