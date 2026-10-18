@@ -15,11 +15,19 @@ public func transitTransferWalkTarget(_ route: TransitGuideRoute, legIndex: Int)
     let leg = route.legs[legIndex]
     // A25 검사를 다시 쓰지 않는다 — 그 구간 하나를 넣어 같은 조건(분 ≥ 1, 승차 좌표 유효)을 지난다.
     guard let target = transitPrewalkTarget(TransitGuideRoute(legs: [leg], walkAfterMinutes: nil)) else { return nil }
-    if let from = route.legs[legIndex - 1].alightStop, isUsableStopCoord(from) {
-        let meters = haversineMeters(lat1: from.lat, lng1: from.lng, lat2: target.lat, lng2: target.lng)
+    if let meters = transitTransferWalkMeters(route, legIndex: legIndex) {
         guard meters >= JourneyTuning.accessWalkMinMeters else { return nil }
     }
     return target
+}
+
+/// 앞 구간 하차 지점 ↔ 구간 `legIndex` 승차 지점의 직선 거리(m). 어느 한쪽 좌표가 없거나 무효면 nil.
+/// 판정(`transitTransferWalkTarget`)과 진단 로그(실승차 판정 재료 — 문턱에서 얼마나 떨어졌는가)가 같은 값을 읽는다.
+public func transitTransferWalkMeters(_ route: TransitGuideRoute, legIndex: Int) -> Double? {
+    guard legIndex >= 1, route.legs.indices.contains(legIndex),
+          let from = route.legs[legIndex - 1].alightStop, isUsableStopCoord(from),
+          let to = route.legs[legIndex].boardStop, isUsableStopCoord(to) else { return nil }
+    return haversineMeters(lat1: from.lat, lng1: from.lng, lat2: to.lat, lng2: to.lng)
 }
 
 /// 도보를 안내로 소비한 뒤의 경로 — `legs[legIndex].walkBeforeMinutes`만 nil(`withoutPrewalk`의 일반화, 0이면 같다).

@@ -37,6 +37,34 @@ private func twoLegRoute(gapMeters: Double, walk: Int? = 1, alight: TransitLegSt
     #expect(JourneyTuning.accessWalkMinMeters == 30)
 }
 
+/// "30m 이상" — 하버사인으로 30m에 처음 닿는 위도(1e-9도 ≈ 0.1mm 간격)에서 대상, 바로 아래에서 nil(`>`로 바뀌면 깨진다).
+@Test func transferWalkTargetIncludesExactlyThirtyMeters() {
+    func meters(_ lat: Double) -> Double { haversineMeters(lat1: origin.lat, lng1: origin.lng, lat2: lat, lng2: origin.lng) }
+    var lat = north(29.999)
+    while meters(lat) < 30 { lat += 1e-9 }
+    let below = lat - 1e-9
+    #expect(meters(lat) >= 30 && meters(below) < 30)
+    func route(_ boardLat: Double) -> TransitGuideRoute {
+        let base = twoLegRoute(gapMeters: 85)
+        return TransitGuideRoute(legs: [
+            base.legs[0],
+            leg("subway", board: TransitLegStop(name: "나역", lat: boardLat, lng: origin.lng),
+                alight: base.legs[1].alightStop, walk: 1, trackMode: .subway),
+        ], walkAfterMinutes: nil)
+    }
+    #expect(transitTransferWalkTarget(route(lat), legIndex: 1)?.name == "나역")
+    #expect(transitTransferWalkTarget(route(below), legIndex: 1) == nil)
+}
+
+@Test func transferWalkMetersIsStraightLineOrNil() {
+    let route = twoLegRoute(gapMeters: 85)
+    #expect(abs((transitTransferWalkMeters(route, legIndex: 1) ?? 0) - 85) < 0.01)
+    #expect(transitTransferWalkMeters(route, legIndex: 0) == nil)
+    #expect(transitTransferWalkMeters(route, legIndex: 2) == nil)
+    let island = twoLegRoute(gapMeters: 85, alight: TransitLegStop(name: "y", lat: 0, lng: 0))
+    #expect(transitTransferWalkMeters(island, legIndex: 1) == nil)
+}
+
 @Test func transferWalkTargetEqualsPrewalkTargetOfThatLeg() {
     let route = twoLegRoute(gapMeters: 85, walk: 2)
     #expect(transitTransferWalkTarget(route, legIndex: 1)

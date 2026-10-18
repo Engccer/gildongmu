@@ -304,6 +304,7 @@ final class TransitGuideModel {
             return
         }
         guard guideRoute.legs.indices.contains(startLeg) else {
+            transitGuideLog("startAfterPrewalk rejected startLeg=\(startLeg) legs=\(guideRoute.legs.count)")
             GuideSession.shared.coordinator.release(token)
             return
         }
@@ -806,13 +807,22 @@ final class TransitGuideModel {
         // 증가로 취소되지 않는다 — 걷기 안내가 붙는 이 경우엔 내면 안 되는 문장이다. 버튼 유효 국면은 리듀서가 정본으로 남는다.
         if let state, let route, let dest,
            case let .legAdvanced(nextIndex, final: false)? =
-               transitGuideStep(state: state, input: .advance, route: route, now: nowMs()).event,
-           let target = transitTransferWalkTarget(route, legIndex: nextIndex) {
-            transitGuideLog("transferWalk leg=\(nextIndex) minutes=\(target.minutes)")
-            GuideSession.shared.transitTransferWalk(TransitTransferWalkHandoff(
-                route: route, legIndex: nextIndex, target: target, destinationLabel: destinationLabel,
-                destinationRoman: destinationRoman, dest: dest, accessible: accessible))
-            return
+               transitGuideStep(state: state, input: .advance, route: route, now: nowMs()).event {
+            let target = transitTransferWalkTarget(route, legIndex: nextIndex)
+            // 실승차 판정 재료(spec §5-3): 걷기가 있는 전진은 대상 여부와 무관하게 직선 거리를 남긴다(`-` = 좌표 결손).
+            if let minutes = route.legs[nextIndex].walkBeforeMinutes, minutes >= 1 {
+                let meters = transitTransferWalkMeters(route, legIndex: nextIndex).map { String(Int($0.rounded())) } ?? "-"
+                transitGuideLog("transferWalk leg=\(nextIndex) minutes=\(minutes) meters=\(meters) target=\(target == nil ? 0 : 1)")
+            }
+            if let target {
+                // 다음 구간으로 넘어간다 = 탔다(A68) — 전진을 커밋하지 않으니 `dispatch`의 전이 대신 여기서 알린다(구현·안전 리뷰 L1:
+                // 빠지면 600ms 창에 남은 [정확한 위치 허용]이 지나온 승차역으로 걷기를 다시 잇는다).
+                GuideSession.shared.transitPassedPrewalk()
+                GuideSession.shared.transitTransferWalk(TransitTransferWalkHandoff(
+                    route: route, legIndex: nextIndex, target: target, destinationLabel: destinationLabel,
+                    destinationRoman: destinationRoman, dest: dest, accessible: accessible))
+                return
+            }
         }
         dispatch(.advance)
         if state?.phase == .done {
@@ -2160,8 +2170,9 @@ final class TransitGuideModel {
 
     /// 세션 밖 오케스트레이터(`GuideSession`)의 통지 창구 — 승차 전 도보 시작·취소·불가 문장(A25).
     /// 같은 억제 규칙을 지난다. 분류는 호출부가 밝힌다(E53 spec §3.3).
-    func announceExternal(_ message: String, speechClass: GuideSpeechClass) {
-        announce(message, speechClass: speechClass)
+    /// ⚠ `highPriority`는 기본값 없음 — 환승 도보 시작(E73)은 시트가 내려가 커서가 옮겨 가는 자리라 `.high`다.
+    func announceExternal(_ message: String, highPriority: Bool, speechClass: GuideSpeechClass) {
+        announce(message, highPriority: highPriority, speechClass: speechClass)
     }
 
     /// 자동 통지 창구(spec 2026-08-14 §4-6 동형). 안내 효과음이 재생 중이면 그 소리가 끝난 뒤에

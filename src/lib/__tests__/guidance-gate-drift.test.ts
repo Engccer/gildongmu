@@ -562,8 +562,11 @@ describe("8-2. 한 번 탔거나 무관한 안내가 시작되면 승차 전 도
 
   it("대중교통 모델은 두 자리에서만 알린다: 탔다(국면 전이 하나)와 경로·목적지 교체", () => {
     const model = readFileSync(TRANSIT_MODEL, "utf8");
-    expect(blankSwiftCommentsAndStrings(model).match(/transitPassedPrewalk\(/g)).toHaveLength(2);
-    expect(callersOf(model, "GuideSession.shared.transitPassedPrewalk()")).toEqual(["changeRoute", "dispatch"]);
+    // 셋째 자리는 환승 도보 인계(E73 `completeOrAdvance`) — 다음 구간으로 넘어가는데 전진을 커밋하지 않아 `dispatch`의 전이를 지나지 않는다.
+    expect(blankSwiftCommentsAndStrings(model).match(/transitPassedPrewalk\(/g)).toHaveLength(3);
+    expect(callersOf(model, "GuideSession.shared.transitPassedPrewalk()")).toEqual([
+      "changeRoute", "completeOrAdvance", "dispatch",
+    ]);
     const dispatch = declarationBody(model, "dispatch");
     // 탔다 = riding 이후 국면 ∨ 다음 leg. riding만 보면 riding을 거치지 않고 탄 길(대기에서 하차역 선언 → arrived,
     // 추적 불가 [다음 구간] → 다음 leg·done)을 놓친다. 전이(이전엔 아니었고 이제 그렇다)에서만 부른다.

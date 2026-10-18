@@ -263,6 +263,10 @@ final class GuideSession {
             // 그 사이 다른 안내가 섰으면 그 세션에 환승 표식·종료 훅을 걸지 않고 인계를 버린다(설계 리뷰 high, spec D4).
             guard !self.isActive else {
                 guideDiagLog("transferWalk abandoned reason=occupied")
+                // 여정의 대중교통 단계였으면 세션 없는 running에 남지 않게 실패 시트로(`endPrewalk` 두 갈래와 같은 모양, 구현 리뷰 L2).
+                if let journey = self.journey, case .running(.transit) = journey.phase {
+                    self.advanceJourney(.stageEnded(.startFailed), token: journey.token)
+                }
                 return
             }
             self.launchPrewalk(context) {
@@ -283,9 +287,12 @@ final class GuideSession {
         prewalkRestart = journey == nil ? context : nil
         beacon.markPrewalk(target: context.station, transfer: context.isTransfer)
         beacon.onSessionEnd = { [weak self] reason in self?.endPrewalk(context.id, reason: reason) }
+        // 환승 도보(E73)는 대중교통 시트가 막 내려가 커서가 밑 화면으로 옮겨 간 자리다 — 그 낭독과 도보 시트 착지에 끊기면
+        // "대중교통은 걸은 뒤 이어진다"를 말해 주는 곳이 없어 `.high`(통지 우선순위 판별선, 접근성 감사 M1). A25 첫 도보는 앞 시트가 없다.
         transit.announceExternal(TransitGuideTextRenderer.render(
             transitPrewalkStartLine(
-                isEn: transitGuideIsEn, station: context.station, minutes: context.minutes)), speechClass: .actionable)
+                isEn: transitGuideIsEn, station: context.station, minutes: context.minutes)),
+            highPriority: context.isTransfer, speechClass: .actionable)
         launchingPrewalk = true
         startWalk()
         launchingPrewalk = false

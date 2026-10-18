@@ -34,11 +34,18 @@ describe("E73 환승 도보 — 대중교통 모델", () => {
     const body = functionBody(transit(), "completeOrAdvance");
     const dryRun = body.indexOf("transitGuideStep(state: state, input: .advance, route: route, now: nowMs())");
     const target = body.indexOf("transitTransferWalkTarget(route, legIndex: nextIndex)");
+    const passed = body.indexOf("GuideSession.shared.transitPassedPrewalk()");
     const handoff = body.indexOf("GuideSession.shared.transitTransferWalk(");
     const commit = body.indexOf("dispatch(.advance)");
     expect(dryRun).toBeGreaterThan(-1);
     expect(dryRun).toBeLessThan(target);
-    expect(target).toBeLessThan(handoff);
+    expect(target).toBeLessThan(passed);
+    // 넘어간다 = 탔다(A68) — 전진을 커밋하지 않으니 인계 앞에서 알린다(리뷰 L1).
+    expect(passed).toBeGreaterThan(-1);
+    expect(passed).toBeLessThan(handoff);
+    // 실승차 판정 재료: 걷기가 있는 전진은 대상 여부와 무관하게 직선 거리와 판정을 남긴다(spec §5-3).
+    expect(body).toContain("meters=\\(meters) target=\\(target == nil ? 0 : 1)");
+    expect(body.indexOf("transitTransferWalkMeters(route, legIndex: nextIndex)")).toBeLessThan(passed);
     // 넘긴 뒤 곧장 반환한다 — 전진을 커밋하면 즉시 창구의 「도보 N분 이동 후 …」가 나간다.
     expect(body.slice(handoff, commit)).toMatch(/\)\)\s*return\s*\}/);
     expect(handoff).toBeLessThan(commit);
@@ -96,6 +103,16 @@ describe("E73 환승 도보 — 세션 소유자", () => {
     for (let i = 1; i < order.length; i++) expect(order[i - 1][1], order[i][0]).toBeLessThan(order[i][1]);
     // 대상 구간이 재개 지점이다.
     expect(body).toContain("startLeg: handoff.legIndex");
+    // 여정이면 버린 인계가 세션 없는 running에 남지 않는다(리뷰 L2).
+    const abandoned = body.slice(body.indexOf("guard !self.isActive else"), body.indexOf("self.launchPrewalk(context)"));
+    expect(abandoned).toMatch(/case \.running\(\.transit\) = journey\.phase \{\s*self\.advanceJourney\(\.stageEnded\(\.startFailed\), token: journey\.token\)/);
+  });
+
+  it("환승 도보 시작 문장만 .high다 — 시트가 내려가 커서가 옮겨 간 자리(접근성 감사 M1)", () => {
+    expect(functionBody(coordinator(), "launchPrewalk")).toMatch(
+      /transitPrewalkStartLine\([^]*\)\),\s*highPriority: context\.isTransfer, speechClass: \.actionable\)/,
+    );
+    expect(transit()).toContain("func announceExternal(_ message: String, highPriority: Bool, speechClass: GuideSpeechClass) {");
   });
 
   it("연결의 두 끝이 시작 구간을 넘긴다(도착·시작 실패)", () => {
@@ -114,6 +131,14 @@ describe("E73 환승 도보 — 세션 소유자", () => {
     expect(functionBody(coordinator(), "launchPrewalk")).toContain(
       "beacon.markPrewalk(target: context.station, transfer: context.isTransfer)",
     );
+    // 꼬리를 가르는 세 줄(리뷰 L3 — 하나라도 고정되면 환승 정지 꼬리가 「시작하지 않았습니다」로 돌아간다).
+    expect(coordinator()).toMatch(/var isTransfer: Bool \{ startLeg > 0 \}/);
+    expect(functionBody(beacon(), "markPrewalk")).toMatch(/^\{\s*prewalkTarget = target\s*prewalkIsTransfer = transfer\s*\}$/);
+    expect(beacon()).toMatch(
+      /private var prewalkStopTail: PrewalkStopTail\? \{\s*guard prewalkTarget != nil else \{ return nil \}\s*return prewalkIsTransfer \? \.transitAlsoEnded : \.transitNotStarted\s*\}/,
+    );
+    // 표식은 함께 서고 함께 지워진다.
+    expect(beacon().match(/^\s+(?:self\.)?prewalkIsTransfer = false$/gm)).toHaveLength(3);
   });
 });
 
