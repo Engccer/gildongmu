@@ -1,0 +1,110 @@
+# E73 환승 도보 안내 — 탑승 구간 사이 도보에 승차 전 도보(A25) 기제를 쓴다 (2026-10-19)
+
+설계 리뷰 판정: **한다** — 대중교통 세션 ↔ 도보 세션 인계(세션을 끝내고 다른 세션으로 잇는 상태 전이)와 세션 재개 지점(구간 순번)이 새로 생긴다(글로벌 리뷰 게이트 ①).
+
+판정 정본은 `docs/BACKLOG.md` E73(위원장 판정 2026-10-18). 이 문서는 그 판정을 iOS에 옮기는 설계 결정과 근거다.
+
+## 1. 문제
+
+`buildTransitGuideRoute`는 탑승 구간 사이의 도보 leg를 다음 탑승 leg의 `walkBeforeMinutes` 숫자 하나로 접는다. 걷기 안내가 붙는 도보는 맨 앞(A25 승차 전 도보)과 맨 뒤(E34 「남은 도보 안내 시작」)뿐이라, 버스에서 내려 지하철 입구까지 85m를 걷는 동안에는 「다음 구간」을 누른 순간 나온 「도보 1분 이동 후 {역}에서 {노선} 탑승」 한 문장이 전부였다(2026-10-18 실승차).
+
+## 2. 결정
+
+### D1. 기제: 대중교통 세션을 끝내고 A25 연결로 도보 세션을 연 뒤, 같은 경로로 그 구간부터 다시 연다
+
+「다음 구간」을 누른 순간 다음 구간이 환승 도보 대상이면(D2) 대중교통 세션을 조용히 끝내고 600ms 뒤 승차 전 도보 연결(`GuideSession.launchPrewalk`: 표식 `markPrewalk` + 종료 훅 `onSessionEnd` → `endPrewalk` + 시작 문장)로 다음 승차 정류장·역까지 도보 세션을 연다. 도보가 끝나면 `endPrewalk`의 기존 갈래가 대중교통을 잇는다. 이때 대중교통 세션은 **처음 경로 전체**를 들고 **그 구간의 대기 국면부터** 시작한다(`initTransitGuide(route:startingAt:now:)`).
+
+기각한 대안:
+
+- **대중교통 세션을 살려 둔 채 일시정지**: 점유는 한 세션만 쥔다(`coordinator.claim`). 도보 모델의 시작 입구가 `GuideSession.isActive`를 보므로 정지 중에도 점유를 풀어야 하고, 정지 중인 대중교통 모델은 `isTracking`이 참이라 화면 우선순위·여정 단계 가드·폴 루프·keep-alive·장면 전환 처리·유휴 정지가 전부 "정지 중" 분기를 새로 가져야 한다. 2,000줄 모델 전역에 조건이 흩어지고, A25 연결은 쓰지 못한다(판정 "그대로 쓴다"와 어긋난다).
+- **남은 구간만 잘라 새 세션**: 판정 글자에는 가장 가깝지만 조망의 구간 순번이 「1/1」로 되돌아가고 지난 구간 행이 사라진다. 상태 머신에 시작 구간을 주면 잘 필요가 없다.
+
+### D2. 대상 판정은 Kit 순수 함수 하나, 거리는 직선 30m(E70 D6 상수 공유)
+
+`transitTransferWalkTarget(route, legIndex:) -> TransitPrewalkTarget?`(Kit 새 파일 `TransitTransferWalk.swift`).
+
+- `legIndex ≥ 1`(맨 앞 도보는 A25 몫)이고 범위 안.
+- A25 조건 그대로: 그 구간의 `walkBeforeMinutes ≥ 1`, 승차 지점 좌표가 유한·(0,0) 아님. 같은 검사를 다시 쓰지 않고 `transitPrewalkTarget`에 그 구간 하나를 넣어 얻는다(조건이 갈라지지 않게).
+- 앞 구간 하차 지점(`alightStop`)과 이 구간 승차 지점(`boardStop`)의 **직선 거리 ≥ `JourneyTuning.accessWalkMinMeters`(30m)**. 상수는 E70 D6과 하나다.
+- 앞 구간 하차 좌표가 없거나 무효면 거리 판정을 건너뛰고 대상으로 본다(분 ≥ 1이면 경로 제공자가 걷기를 낸 것이다). 빠진 안내보다 군더더기가 낫다 — D6의 측위 실패 갈래와 같은 방향.
+
+거리를 ODsay 도보 거리(`distanceMeters`)가 아니라 정류 좌표 직선으로 재는 근거: 안내용 경로(`TransitGuideLeg`)에는 도보 거리가 없어(분만 접힌다) 실으려면 웹·Kit·`:kit` 세 벌 타입과 공유 fixture를 바꿔야 하고, 판정이 "D6과 같은 값"이라 D6의 척도(직선)를 그대로 쓰는 것이 같은 문턱의 같은 뜻이다. 직선은 걷는 거리보다 짧으므로 판정이 보수적이다(길 건너 정류장처럼 직선 25m·보행 100m인 쌍은 문장만 남는다) — 실승차 판정 항목(§5).
+
+지하철 ↔ 지하철 도보도 대상에서 빼지 않는다: ODsay는 역 안 환승 통로를 거리 0으로 주고 서버가 그것을 지운다(`odsay.ts` 실호출 주석). 거리가 있는 지하철 사이 도보는 역 밖으로 나가는 환승이다.
+
+### D3. 트리거는 「다음 구간」 하나이고, 리듀서를 미리 돌려 본다
+
+`.advance` 입력의 출처는 시트의 「다음 구간」(그리고 E34·여정이 같은 함수를 지나는 마지막 구간 버튼) 하나다. `TransitGuideModel.completeOrAdvance` 맨 앞에서 리듀서를 **순수하게 미리 실행**한다(`transitGuideStep(state:input: .advance, …)`, 부작용 없음). 결과 사건이 `legAdvanced(k, final: false)`이고 `transitTransferWalkTarget(route, k)`가 있으면 `dispatch`하지 않고 코디네이터에 넘긴다.
+
+- 미리 돌리는 이유: 지금의 `legAdvanced` 통지는 즉시 창구(`announceNow`)라 뒤의 세대 증가로 취소되지 않는다. 그 문장 「도보 1분 이동 후 …」는 걷기 안내가 붙는 이 경우엔 내면 안 된다. 버튼 유효 국면(`canAdvance`)을 앱에 다시 쓰지 않고 리듀서가 정본으로 남는다.
+- 마지막 구간은 `final: true`라 대상이 아니다(E34·여정 인계 불변).
+
+### D4. 인계 순서와 600ms
+
+`GuideSession.transitTransferWalk(_:)`: ① `TransitGuideModel.stopForTransferWalk()` — 정지음 없이 세션을 끝내되 여정 훅 셋(`onJourneyStopped`·`onJourneyRideCompleted`·`journeyNextIsWalk`)을 보존한다(`stop()`은 훅을 지우고 `onJourneyStopped`를 부른다 — 그대로 부르면 여정이 끝난다). ② 600ms 뒤 `launchPrewalk`. 600ms는 E34 하차 후 인계·A25 도착 인계와 같은 값·같은 근거(루트 시트 하나의 단일 presentation — 대중교통 시트가 내려간 뒤 도보 시트가 뜬다). 대기 작업은 `prewalkTask` 한 칸에 두어 그 사이 다른 시작이 오면 `cancelPrewalk()`가 함께 취소한다(E34 창과 같은 노출, 여정 중이면 외부 시작은 `isOccupied`가 거절한다).
+
+### D5. 걸어서 닿은 뒤: 그 구간의 대기 국면, 도보 문맥 없음, 시작 통지 대신 대기 문맥
+
+`startAfterPrewalk`가 안내용 경로와 시작 구간을 받는다(`guideRoute:startLeg:` — A25는 `startLeg: 0`). `prewalkCompleted: true`면 그 구간의 `walkBeforeMinutes`를 지운 경로(`withoutWalkBefore(route, legIndex:)`, `withoutPrewalk`의 일반화)로 연다. 대기 문맥·조망·다음 구간 안내가 같은 필드를 읽으므로 한 곳에서 지운다(A25 거짓 미래형 방지와 같은 처리).
+
+시작 통지: 시작 구간이 0이 아니면 「{목적지}까지 대중교통 안내를 시작합니다. 탑승 구간 N개.」를 내지 않는다(이미 돌던 안내다). 그 구간의 대기 문맥(+ 추적 불가 꼬리)만 낸다 — 걷기 전 `legAdvanced`가 냈을 문장에서 도보만 뺀 것이다. 시작음은 그대로(대중교통으로 돌아왔다는 신호).
+
+도보를 시작하지 못하면(`.startFailed`) `prewalkCompleted: false`로 같은 구간부터 연다 — 아직 걷지 않았으므로 「도보 N분 이동 후 …」가 참이다. 다리 문장 「도보 안내를 시작할 수 없어 승차 대기로 바로 넘어갑니다」(A67)는 그대로 맞는다.
+
+### D6. 도보 중 정지·권한 상실은 전체 종료, 꼬리 문장은 새 키
+
+A25·E70 D11과 같은 정책: 도보 시트의 [안내 종료]·권한 상실이면 대중교통도 다시 열지 않는다(도착이 늦을 때를 위한 선언 버튼 「{역} 도착」이 따로 있다). 다만 A25 꼬리 「대중교통 안내는 시작하지 않았습니다.」는 이미 돌던 안내라 거짓이다. 환승 도보면 `ios.beacon.transferWalkCancelledWith` 「{reason}. 대중교통 안내도 종료했습니다.」를 쓴다. 도보 모델이 그것을 알도록 `markPrewalk(target:transfer:)`가 기본값 없는 인자를 받는다(여정 접근 도보는 `transfer: false`).
+
+### D7. 도보 시작 문장은 A25 문장 그대로
+
+「승차역 {역}까지 도보 {분}분. 도보 안내를 먼저 시작합니다.」 — 다음 승차를 앞둔 도보라 같은 문장이 성립한다. 새 문장을 만들지 않는다(대안 문안은 판정 파일로 코디네이터에 올렸다).
+
+### D8. 시작 구간이 0이 아닌 세션의 "탔다"
+
+A68 재시작 컨텍스트(`prewalkRestart`)는 대중교통이 그 계획을 지나간 순간(`transitPassedPrewalk`) 거둔다. 지금 술어 "riding·arrived·done 국면 ∨ legIndex > 0"은 재개 세션에서 시작부터 참이라 전이로 잡히지 않는다 — 거두지 않으면 환승 도보 시작 실패 뒤 길찾기 탭에 남은 [정확한 위치 허용]이 대중교통을 마친 뒤에 지나온 환승역으로 걷기를 다시 시작한다. 술어를 "legIndex > 세션의 시작 구간"으로 바꾼다(A25 세션은 시작 구간 0이라 불변).
+
+### D9. 여정(E70) 안의 환승 도보
+
+여정의 대중교통 단계에서도 같은 기제가 돈다. 훅을 보존하므로 재개 세션이 여정 완료·정지 콜백을 그대로 부른다. 도보 중 정지는 `endPrewalk`의 기존 갈래가 여정을 끝낸다(`.transitStopped`). 여정이면 A68 재시작 컨텍스트를 세우지 않는다(기존 `launchPrewalk` 규칙).
+
+**E70 접근 도보(`markChained`)와 한 기제로 합치지 않는다**: 접근 도보는 여정 상태 머신의 단계(`JourneyStage.access`)이고, 환승 도보는 대중교통 단계 *안*의 일이라 여정 없는 대중교통에도 있다. 여정 단계로 만들면 여정 밖에는 없다. 공유하는 것은 문턱 상수와 도착 선언 기제(`markPrewalk`)다.
+
+### D10. 화면
+
+루트 시트 하나(N1). 「다음 구간」을 누르면 대중교통 시트가 내려가고 600ms 공백(시트 없음 — `hasScreen`이 거짓이 되어 `isMinimized`가 초기화된다) 뒤 도보 시트가 뜬다. 도보 중 최소화하면 띠바는 도보 세션의 것이다. 판정의 "대중교통 시트는 도보 동안 최소화"는 이 화면 동작(대중교통 시트가 보이지 않고 도보가 화면을 쥔다)으로 읽는다.
+
+### D11. 통지 겹침(A69 서울버스 하차 한 마디)
+
+A69의 GPS 한 마디와 「다음 정류장 …」은 승차 중(하차 전) 일이고, 인계는 사용자가 내려서 「다음 구간」을 누른 뒤다. 누르는 순간 대중교통 창구에 남은 보류 문장은 `stop()`의 세대 증가가 버린다(끝난 구간 문장). 도착 종은 `arrived` 사건 때 이미 났다. 도보 시작 문장은 600ms 뒤 대중교통 창구(`announceExternal`, A25와 같은 창구)로 나가고 그때 대중교통 재생기는 세션이 끝나 톤 대기가 없다. 그 뒤 도보 시작음·도보 시작 통지 순서는 A25와 같다(도보 모델의 톤 뒤 발화).
+
+### D12. 지하 입구와 GPS 소실
+
+도보 종료 판정(`briefHandoff tooClose`·추정 도착)이 지하 입구에서 늦으면 A25 선언 버튼 「{역} 도착」이 인계한다. 잊힌 세션 안전망은 돌지 않는다(승차 전 도보 표식). 실승차 판정 항목(§5).
+
+### D13. 웹·안드로이드
+
+웹은 승차 전 도보 기제(`TransitGuidePanel`의 `prewalk` 상태 + `DistanceBeacon.onSessionEnd`)가 있으나 세션을 중간 구간부터 다시 여는 경로가 없다. iOS 실승차 판정 뒤에 같은 규칙으로 옮긴다(BACKLOG "iOS 선행, 플랫폼 갭"). 그때 웹 기준본 + 공유 fixture로 Kit 함수를 미러한다. 안드로이드는 대중교통 실시간 안내의 승차 전 도보 기제가 없다(`:kit` 미러만). Kit 새 파일은 등록부(`android/kit/mirrors/guide.json`)에 `pending`으로 둔다.
+
+## 3. 변경 자리
+
+| 자리 | 변경 |
+|---|---|
+| Kit `TransitTransferWalk.swift`(새) | `transitTransferWalkTarget`·`withoutWalkBefore`·`initTransitGuide(route:startingAt:now:)` |
+| `TransitGuideModel.swift` | `completeOrAdvance` 미리 실행 갈래 · `stopForTransferWalk()` · `startAfterPrewalk(guideRoute:startLeg:…)` · `beginSession` 시작 구간·재개 통지 · 탔다 술어의 시작 구간 |
+| `GuideSessionCoordinator.swift` | `transitTransferWalk(_:)` · `PrewalkContext`가 안내용 경로·시작 구간을 든다 · `beginTransit`은 한 번 만든 안내용 경로를 싣는다 |
+| `BeaconModel.swift` | `markPrewalk(target:transfer:)` · 정지·권한 상실 꼬리 문장 분기 |
+| `ios-extra` 6로케일 | `ios.beacon.transferWalkCancelledWith` |
+| 가드 | `guidance-gate-drift.test.ts`(시작 호출 수·호출자) · 새 `transfer-walk-guard.test.ts` |
+
+## 4. 테스트
+
+- Kit: 대상 판정(구간 0·범위 밖·분 결측/0·승차 좌표 무효·하차 좌표 결측·29.9m/30m 경계·A25와 같은 대상 값), `withoutWalkBefore`(그 구간만, 원본 불변, 0이면 `withoutPrewalk`와 같다), `initTransitGuide(startingAt:)`(구간·신호·국면, 범위 밖은 0번 구간 그대로).
+- 소스 가드: 미리 실행이 `dispatch(.advance)`보다 앞 · 인계가 `stopForTransferWalk` 뒤 `prewalkTask` 600ms 뒤 `launchPrewalk` · `stopForTransferWalk`가 훅을 보존하고 정지음이 없다 · `markPrewalk` 호출이 전부 `transfer:`를 밝힌다 · 탔다 술어가 시작 구간을 본다 · 새 키 6로케일과 문장 틀.
+- 로그: `transferWalk leg= minutes= meters=`(대중교통 진단 로그, 실승차 판정 재료) · 코디네이터 `guideDiagLog("transferWalk …")`.
+
+## 5. 실승차 판정 항목 (BACKLOG §2 · FIELD-TEST)
+
+1. 버스 하차 → 지하철 입구(≥30m)에서 「다음 구간」 → 도보 시작 문장·도보 시트, 걸어서 닿으면 「승차역 {역}에 도착했습니다」 뒤 그 구간 대기 문맥(「도보 N분 이동 후」 없음), 구간 순번 유지.
+2. 지하 입구에서 도착 판정이 늦을 때 「{역} 도착」 선언 버튼으로 이어지는가, 늦어지는 시간.
+3. 30m 문턱의 직선 척도가 실제 환승에서 빠뜨리는 쌍(길 건너 정류장)이 있는가.
+4. 도보 중 [안내 종료] 뒤 꼬리 문장 「대중교통 안내도 종료했습니다」.
