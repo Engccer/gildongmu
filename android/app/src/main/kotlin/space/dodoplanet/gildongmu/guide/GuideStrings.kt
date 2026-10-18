@@ -99,6 +99,15 @@ internal fun guideStringId(key: String): Int? = when (key) {
     "guide.rerouteBusy" -> R.string.guide_rerouteBusy
     "guide.rerouteFailed" -> R.string.guide_rerouteFailed
     "guide.rerouteAutoGaveUp" -> R.string.guide_rerouteAutoGaveUp
+    "guide.routeStartsAway" -> R.string.guide_routeStartsAway
+    "whereAmI.direction.n" -> R.string.whereAmI_direction_n
+    "whereAmI.direction.ne" -> R.string.whereAmI_direction_ne
+    "whereAmI.direction.e" -> R.string.whereAmI_direction_e
+    "whereAmI.direction.se" -> R.string.whereAmI_direction_se
+    "whereAmI.direction.s" -> R.string.whereAmI_direction_s
+    "whereAmI.direction.sw" -> R.string.whereAmI_direction_sw
+    "whereAmI.direction.w" -> R.string.whereAmI_direction_w
+    "whereAmI.direction.nw" -> R.string.whereAmI_direction_nw
     "guide.rerouteDone" -> R.string.guide_rerouteDone
     "guide.autoReroute" -> R.string.guide_autoReroute
     "guide.rerouteHeadStraight" -> R.string.guide_rerouteHeadStraight

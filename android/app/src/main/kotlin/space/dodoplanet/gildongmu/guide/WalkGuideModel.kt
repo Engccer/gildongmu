@@ -860,6 +860,8 @@ class WalkGuideModel(
         val route = buildGuideRoute(
             briefing.steps.map { GuideStepGeometry(it.description, it.pathCoords, it.action, crossing = it.crossing == true) },
             briefing.waypoint?.stepIndex,
+            // 목적지는 이탈 중 도착 창 입구(A70 §4)가 직선거리를 잰다 — 소스 가드 `a70-destination-wiring.test.ts`.
+            destination = RoutePoint(dest.lat, dest.lng),
         ) ?: return null
         return DetailFetchResult(
             route, briefing.durationSeconds, briefing.stepFree, briefing.stepFreeStatus, briefing.stepFreeNotice, briefing.finalApproach,
@@ -875,6 +877,18 @@ class WalkGuideModel(
         if (benign || notice != null) lastStepFree = raw
         if (benign || notice == null || raw == prev) return null
         return notice
+    }
+
+    /**
+     * 사용자가 연 조회(시작·버튼 재조회·줄 전환·프리뷰 채택)의 출발점 고지(A70 spec §2.3): 새 경로 첫 점이 `rerouteMaxDriftM` 밖이면 앞에 붙일
+     * 문장, 아니면 null. 사용자가 누른 조회는 첫 점이 멀어도 거부하지 않고 알린다(거부하면 버튼이 막다른 길이 된다). 계측은 거리만 남긴다.
+     */
+    private fun routeStartAwayNotice(route: GuideRoute, from: RoutePoint): String? {
+        val away = text.routeStartsAway(route, from.lat, from.lng, tuning.rerouteMaxDriftM)
+        GuideDiag.log {
+            "routeStartGap gap=${fmt("%.0f", RerouteProposalGate.routeStartGapMeters(route, from.lat, from.lng))} notice=${if (away != null) 1 else 0}"
+        }
+        return away
     }
 
     private suspend fun fetchGuideRoute(origin: RoutePoint, dest: BeaconDest, token: Int) {
@@ -903,7 +917,9 @@ class WalkGuideModel(
             syncOverview()
             val summary = text.start(result.route, initial.firstIndices, destinationLabel)
             val notice = consumeStepFreeNotice(result.stepFreeRaw, result.stepFree, result.stepFreeNotice)
-            val spoken = if (notice != null) "$notice $summary" else summary
+            // 출발점 고지(A70 §2.3)가 맨 앞 — 첫 문장이 "경로가 여기서 시작하지 않는다"를 말한다. 계단 회피 문장은 그다음이다.
+            val away = routeStartAwayNotice(result.route, origin)
+            val spoken = listOfNotNull(away, notice, summary).joinToString(" ")
             lastGuidance = text.unit(result.route, initial.firstIndices)
             statusText = spoken
             announce(spoken, highPriority = true, speechClass = GuideSpeechClass.actionable) { if (notice != null) pendingStepFreeNotice = notice }
@@ -1221,8 +1237,15 @@ class WalkGuideModel(
         val remaining = max(0.0, route.totalMeters - out.state.d)
         val jumped = out.projectionJumped == true
         if (out.event == GuideEvent.FinalApproachEnter) {
-            beginFinalApproach()
+            beginFinalApproach(FinalApproachEntry.routeEnd, fix)
             if (inFinalApproach) handleFinalApproach(fix, motion, age, now)
+            return
+        }
+        // 이탈 중 도착 창 — 두 번째 입구(A70 spec §4.2). 진입 fix에서 `handleFinalApproach`를 돌리지 않는다: 단발 fix 하나로 도착을 선언하지
+        // 않고 「목적지 근처입니다」 한 번만 말한다(설계 리뷰 high ②). 도착은 다음 fix부터 종전 최종 접근 그대로다.
+        if (out.event == GuideEvent.NearDestination) {
+            beginFinalApproach(FinalApproachEntry.offRoute, fix)
+            announceNearDestination()
             return
         }
         updateRemaining(route, out.state)
@@ -1342,6 +1365,7 @@ class WalkGuideModel(
                 if (!outputSuppressed) announce(strings.get("directions.viaRemaining", label, formatDistance(event.remainingMeters)), speechClass = cls)
             }
             GuideEvent.FinalApproachEnter -> Unit // fix를 쥔 handleDetail이 가른다
+            GuideEvent.NearDestination -> Unit // 위와 같다 — 이탈 중 입구(A70 §4.2)도 handleDetail이 소비하고 반환한다
             is GuideEvent.OffRoute -> {
                 // 확정(`confirm`)은 돌아가기 국면의 시작이다 — 재조회가 아니다(E63). 재조회는 리듀서 `RerouteNeeded`가 연다(iOS walk 갈래 동형).
                 // 표시 상태의 회차 시작은 `notice == confirm`, 문장 분류의 "처음 말함"은 `firstSpoken`(§4.1).
@@ -1473,14 +1497,46 @@ class WalkGuideModel(
         resetArrivalWindow()
     }
 
-    /** 진입 처리 — 플래그와 거리 축만 바꾸고 **말하지 않는다**. 첫 발화는 같은 fix의 `handleFinalApproach`. */
-    private fun beginFinalApproach() {
+    /** 최종 접근 입구 — 경로 종점 도달(첫 번째)과 이탈 중 목적지 직선거리 창(A70 §4, 두 번째). */
+    private enum class FinalApproachEntry { routeEnd, offRoute }
+
+    /**
+     * 진입 처리 — 플래그와 거리 축만 바꾸고 **말하지 않는다**. `routeEnd`의 첫 발화는 같은 fix의 `handleFinalApproach`, `offRoute`는
+     * [announceNearDestination]. `offRoute`는 셋이 다르다: 종점 기하 서술은 이탈 중엔 거짓이라 "냈음"으로 두고, 기하가 없어도 간략 인계로
+     * 빠지지 않으며(이미 목적지 30m 안), 돌아가기 국면의 흔적(이탈 플래그·상태 행·재조회 버튼 회차 래치)을 지운다.
+     */
+    private fun beginFinalApproach(entry: FinalApproachEntry, fix: GuideFixPayload) {
         clearProposal()
         resetAlternativePreview()   // 문 앞에서 다른 줄로 전환하면 최종 접근이 풀린다(iOS 동형)
         abandonReroute()            // 이미 떠난 전환(낡음 폴백)·재조회가 진입 뒤 커밋되면 같은 이유로 최종 접근이 풀린다
         remainingText = null
         clearLiveRows()
         rebaseForAxisChange()
+        if (entry == FinalApproachEntry.offRoute) {
+            // `BackOnRoute` 소비와 같은 정리 + 재조회 버튼 회차 래치. 진행 중 자동 조회는 위 `clearProposal`이 세대를 올려 채택을 막는다.
+            offRouteEndedByReroute = false
+            offRoute = false
+            offRouteLine = null
+            offRouteNoticeLive.clear()
+            offRouteStillSince = null
+            rerouteGaveUp = false
+            rerouteGaveUpSpoken = false
+            inFinalApproach = true
+            finalApproachIntroSpoken = true   // 종점 기하 서술은 이탈 중엔 거짓이다 — 래치를 "냈음"으로 두어 끝까지 내지 않는다
+            pendingFinalApproachIntro = null
+            val now = clock()
+            lastFinalTickAt = now
+            resetArrivalWindow()
+            arrivalWindowEnteredAt = now
+            val c = lastFixCoord
+            val d = dest
+            if (c != null && d != null) lastUsableDistanceToDest = haversineMeters(c.lat, c.lng, d.lat, d.lng)
+            syncOverview()
+            GuideDiag.log {
+                "finalEnter entry=offRoute dist=${lastUsableDistanceToDest?.let { fmt("%.1f", it) } ?: "-"} acc=${fmt("%.1f", fix.accuracy)}"
+            }
+            return
+        }
         val usable = finalApproachGeometry?.takeIf { it.unavailableReason != BearingUnavailable.tooClose }
         if (usable == null) {
             GuideDiag.log("briefHandoff reason=${if (finalApproachGeometry == null) "noGeometry" else "tooClose"}")
@@ -1503,6 +1559,16 @@ class WalkGuideModel(
         if (c != null && d != null) lastUsableDistanceToDest = haversineMeters(c.lat, c.lng, d.lat, d.lng)
         syncOverview()
         GuideDiag.log { "finalEnter offset=${fmt("%.1f", usable.offsetMeters)}" }
+    }
+
+    /** 이탈 중 입구의 유일한 발화(A70 §4.2) — 기하 서술도 도착도 아니다. 억제로 못 낸 문장은 진입 서술과 같은 상환 칸으로 갚는다. */
+    private fun announceNearDestination() {
+        val spoken = strings.get("guide.finalApproachNear")
+        statusText = spoken
+        lastGuidance = spoken
+        liveTopText = spoken
+        resultHaptic(ResultHapticKind.attention)
+        announce(spoken, speechClass = GuideSpeechClass.actionable) { pendingFinalApproachIntro = spoken }
     }
 
     private fun handleFinalApproach(fix: GuideFixPayload, motion: MotionState, age: Double, now: Double) {
@@ -1705,7 +1771,9 @@ class WalkGuideModel(
             if (switchTo == null) GuideDiag.log("rerouteAdopt source=button result=adopted headClock=-")
             val notice = consumeStepFreeNotice(result.stepFreeRaw, result.stepFree, result.stepFreeNotice)
             val summary = if (switchTo != null) text.variantSwitch(result.route, firstIndices, result.lineKind ?: switchTo) else text.reroute(result.route, firstIndices)
-            val spoken = if (notice != null) "$notice $summary" else summary
+            // 사용자가 누른 조회는 첫 점이 멀어도 거부하지 않고 알린다(A70 §2.3) — 측정 기준은 마지막 fix, 없으면 조회 출발점.
+            val away = routeStartAwayNotice(result.route, lastFixCoord ?: origin)
+            val spoken = listOfNotNull(away, notice, summary).joinToString(" ")
             statusText = spoken
             resultHaptic(ResultHapticKind.success)
             announce(spoken, highPriority = true, speechClass = GuideSpeechClass.actionable) { if (notice != null) pendingStepFreeNotice = notice }
@@ -1795,6 +1863,13 @@ class WalkGuideModel(
         if (c == null || at == null || clock() - at > freshFixSeconds || !RerouteProposalGate.isFresh(proposal, clock(), c.lat, c.lng, tuning.rerouteMaxDriftM)) {
             GuideDiag.log("rerouteAdopt source=$source result=stale headClock=-")
             raiseRerouteButton("stale", speak = true)
+            return
+        }
+        // 새 경로 첫 점이 현재 위치에서 멀면 채택하지 않는다(A70 §2.2 — 요청이 신선해도 provider가 출발점을 멀리 붙인다).
+        // `stale`과 같은 결말이다(E69 ⓐ): 버튼 + 한 번 통지, 돌아가기 국면은 잇는다.
+        if (!RerouteProposalGate.routeStartsNearby(result.route, c.lat, c.lng, tuning.rerouteMaxDriftM)) {
+            GuideDiag.log { "rerouteAdopt source=$source result=farStart gap=${fmt("%.0f", RerouteProposalGate.routeStartGapMeters(result.route, c.lat, c.lng))} headClock=-" }
+            raiseRerouteButton("farStart", speak = true)
             return
         }
         // 새 경로 첫 문장의 방향 머리말(E63 §3.7): 교체 **전** 세션의 진행 방위 기준 새 경로 첫 15m의 시.
@@ -2040,7 +2115,8 @@ class WalkGuideModel(
             val firstIndices = commitReroutedRoute(ready.fetched)
             val notice = consumeStepFreeNotice(ready.fetched.stepFreeRaw, ready.fetched.stepFree, ready.fetched.stepFreeNotice)
             val summary = text.variantSwitch(ready.fetched.route, firstIndices, ready.fetched.lineKind ?: target)
-            val spoken = if (notice != null) "$notice $summary" else summary
+            val away = routeStartAwayNotice(ready.fetched.route, c)
+            val spoken = listOfNotNull(away, notice, summary).joinToString(" ")
             statusText = spoken
             resultHaptic(ResultHapticKind.success)   // 폴백(재조회) 경로의 성공과 같은 신호 — 같은 사건을 두 경로가 다르게 알리지 않는다
             announce(spoken, highPriority = true, speechClass = GuideSpeechClass.actionable) { if (notice != null) pendingStepFreeNotice = notice }

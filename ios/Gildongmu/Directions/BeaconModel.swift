@@ -1021,7 +1021,9 @@ final class BeaconModel {
                     description: $0.description, pathCoords: $0.pathCoords, action: $0.action,
                     crossing: $0.crossing ?? false)
             },
-            waypointStepIndex: briefing.waypoint?.stepIndex
+            waypointStepIndex: briefing.waypoint?.stepIndex,
+            // 목적지는 이탈 중 도착 창 입구(A70 §4)가 직선거리를 잰다 — 소스 가드 `a70-destination-wiring.test.ts`.
+            destination: RoutePoint(lat: dest.lat, lng: dest.lng)
         ) else { return nil }
         return (
             route, [], briefing.durationSeconds,
@@ -1154,7 +1156,9 @@ final class BeaconModel {
             let notice = consumeStepFreeNotice(
                 fetched.stepFreeRaw, fetched.stepFree, fetched.stepFreeNotice
             )
-            let text = notice.map { "\($0) \(summary)" } ?? summary
+            // 출발점 고지(A70 §2.3)가 맨 앞 — 첫 문장이 "경로가 여기서 시작하지 않는다"를 말한다. 계단 회피 문장은 그다음.
+            let away = routeStartsAwayPrefix(route: fetched.route, from: origin, source: "start")
+            let text = [away, notice, summary].compactMap { $0 }.joined(separator: " ")
             lastGuidance = GuideText.unit(route: fetched.route, indices: initial.firstIndices)
             statusText = text
             // 발화가 버려졌으면(백그라운드·억제) 경고만 따로 남긴다 — 진행 안내와 달리
@@ -1169,6 +1173,17 @@ final class BeaconModel {
             guard !Task.isCancelled, isTracking else { return }
             fallbackToBrief()
         }
+    }
+
+    /// 사용자가 연 조회(시작·버튼 재조회·프리뷰 채택)의 출발점 고지 접두(A70 §2.3). 새 경로 첫 점이 멀어도 거부하지 않고
+    /// 알린다(거부하면 버튼이 막다른 길). 자동 재조회는 이 경로를 거부한다(`fetchProposal`). 로그엔 좌표 없이 거리만.
+    private func routeStartsAwayPrefix(
+        route: GuideRoute, from: (lat: Double, lng: Double), source: String
+    ) -> String? {
+        let gap = RerouteProposalGate.routeStartGapMeters(route: route, currentLat: from.lat, currentLng: from.lng)
+        guideDiagLog("routeStartGap source=\(source) gap=\(Int(gap.rounded())) notice=\(gap > tuning.rerouteMaxDriftM ? 1 : 0)")
+        return GuideText.routeStartsAway(
+            route: route, fromLat: from.lat, fromLng: from.lng, maxDriftMeters: tuning.rerouteMaxDriftM)
     }
 
     /// car ETA 주기 갱신 타이머(§4.6 — 10분). 캡 소진·간략 전환 시 자연 무동작.
@@ -2197,8 +2212,25 @@ final class BeaconModel {
         // (2026-08-11 하교 실사고: 잔여 4m 동결·도착 무통지).
         let remaining = max(0, route.totalMeters - out.state.d)
         let jumped = out.projectionJumped == true
+        if case .nearDestination = out.event {
+            // 이탈 중 도착 창 — 두 번째 입구(A70 spec §4.2). 종점 진입과 같은 정리를 하되 종점 기하 서술은 이탈 중엔 거짓이라 내지
+            // 않고, 이 fix에서 도착을 판정하지 않는다(설계 리뷰: 단발 fix로 도착을 선언하지 않는다) — 도착은 다음 fix부터
+            // 기존 최종 접근 경로가 낸다. 「목적지 근처입니다」 한 번.
+            beginFinalApproach(entry: .offRoute)
+            let entryDist = dest.map { haversineMeters(lat1: fix.lat, lng1: fix.lng, lat2: $0.lat, lng2: $0.lng) }
+            guideDiagLog(
+                "finalEnter entry=offRoute dist=\(entryDist.map { String(format: "%.0f", $0) } ?? "-")"
+                    + " acc=\(String(format: "%.0f", fix.accuracy))")
+            let text = appLocalized("guide.finalApproachNear")
+            statusText = text
+            lastGuidance = text
+            liveTopText = text
+            resultHaptic(.attention)
+            announce(text, speechClass: .actionable)
+            return
+        }
         if case .finalApproachEnter = out.event {
-            beginFinalApproach()
+            beginFinalApproach(entry: .routeEnd)
             // 진입이 소유권을 넘겼으면 **같은 fix로** 첫 발화를 낸다. 다음 fix를
             // 기다리면 종점에 선 채 수 초 침묵하고, 그 침묵이 이번에 고치려는 증상이다.
             if inFinalApproach {
@@ -2313,7 +2345,10 @@ final class BeaconModel {
     /// 진입 처리 — 플래그와 거리 축만 바꾸고 **말하지 않는다.** 첫 발화는
     /// `handleFinalApproach`가 같은 fix로 내며, 그래야 "도착이 진입 서술을 이긴다"가
     /// 한 곳에서 성립한다(두 군데서 말하면 목적지 코앞에서 배치 서술과 도착 통지가 겹친다).
-    private func beginFinalApproach() {
+    /// 최종 접근에 들어선 경로: 경로 종점 도달(`routeEnd`)인가, 이탈 중 목적지 근처 진입(`offRoute`, A70 §4)인가.
+    private enum FinalApproachEntry { case routeEnd, offRoute }
+
+    private func beginFinalApproach(entry: FinalApproachEntry) {
         // 자동 재조회의 트리거·채택은 최종 접근 진입 전에만 성립한다(spec §6 활성
         // 조건, spec 리뷰 MAJOR 2026-08-12). 여기서 토큰을 올리면 진행 중 조회의
         // 채택이 막혀 그 조건이 이 한 줄로 성립한다(진입 후 새 트리거는
@@ -2339,7 +2374,8 @@ final class BeaconModel {
         // 도달 불가였다(K2-a 실사고 — 세션이 새벽까지 살아 있었다). 진입 서술은 기하가 있어야
         // 성립하므로 아래 handleFinalApproach의 서술 분기가 nil 기하에서 스스로 건너뛴다.
         let usableGeometry = finalApproachGeometry.flatMap { $0.unavailableReason == .tooClose ? nil : $0 }
-        guard usableGeometry != nil || tuning.entersFinalApproachWithoutGeometry else {
+        // 이탈 중 진입은 이미 목적지 30m 안이라 기하가 없어도 간략 인계로 빠지지 않는다(A70 §4.2).
+        guard entry == .offRoute || usableGeometry != nil || tuning.entersFinalApproachWithoutGeometry else {
             guideDiagLog("briefHandoff reason=\(finalApproachGeometry == nil ? "noGeometry" : "tooClose")")
             resetArrivalWindow()  // 간략 창은 다음 usable fix가 Kit 리듀서로 연다(spec 2026-09-02 §2.2)
             mode = .brief
@@ -2356,6 +2392,18 @@ final class BeaconModel {
         lastFinalTickAt = nil
         resetArrivalWindow()
         arrivalWindowEnteredAt = uptimeNow
+        if entry == .offRoute {
+            // 종점 기하 서술은 이탈 중엔 거짓이라 영영 말하지 않는다(래치를 "냈음"으로). 이탈 표시·재조회 버튼 래치도 내린다
+            // (`backOnRoute`가 지우는 것과 같은 집합 — 국면이 finalApproach라 그 이벤트는 오지 않는다).
+            finalApproachIntroSpoken = true
+            lastFinalTickAt = uptimeNow
+            offRoute = false
+            offRouteLine = nil
+            offRouteNoticeLive = []
+            offRouteStillSince = nil
+            rerouteGaveUp = false
+            rerouteGaveUpSpoken = false
+        }
         // 진입 fix가 곧 마지막 usable fix일 수 있다(2026-08-13 실사고가 정확히 그
         // 모양) — 거리 캡 입력을 진입 시점 좌표로 미리 세운다. 이후 usable fix마다
         // handleFinalApproach가 갱신한다.
@@ -2891,6 +2939,9 @@ final class BeaconModel {
             // fix를 받지 않아 그 발화를 낼 수 없다. 반쪽 처리를 여기 두면 진입 직후
             // 침묵(정확히 이번에 고치려는 증상)이 되므로 비워 둔다.
             break
+        case .nearDestination:
+            // 이탈 중 도착 창 입구(A70 §4.2)도 `handleDetail`이 fix를 쥐고 가른다(위 finalApproachEnter와 같은 이유).
+            break
         case let .offRoute(notice, reason, guidance, side, returnRelDeg, firstSpoken):
             // 확정(`confirm`)은 돌아가기 국면의 시작이다 — 재조회가 아니다(E63). 재조회는 리듀서 `rerouteNeeded`가 연다.
             // 자동 조회·표시 상태의 회차 시작은 `notice == confirm`, 문장 분류·톤의 "처음 말함"은 `firstSpoken`(§4.1).
@@ -3178,7 +3229,10 @@ final class BeaconModel {
                 summary = GuideText.variantSwitch(
                     route: fetched.route, firstIndices: firstIndices, to: fetched.lineKind ?? target)
             }
-            let text = notice.map { "\($0) \(summary)" } ?? summary
+            // 사용자가 누른 조회는 첫 점이 멀어도 거부하지 않고 알린다(A70 §2.3 — 거부하면 버튼이 막다른 길이 된다).
+            let away = routeStartsAwayPrefix(
+                route: fetched.route, from: lastFixCoord ?? origin, source: "button")
+            let text = [away, notice, summary].compactMap { $0 }.joined(separator: " ")
             statusText = text
             // ⚠ **`.high`가 아니면 이 발화는 도달하지 않는다.** 성공하면 위 `offRoute = false`가
             // 재조회 버튼(커서를 쥔 버튼)을 없애 VoiceOver가 커서를 옮기며 그 자리를 낭독한다 —
@@ -3317,6 +3371,16 @@ final class BeaconModel {
             else {
                 guideDiagLog("rerouteAdopt source=\(source) result=stale headClock=-")
                 raiseRerouteButton(cause: "stale", speak: true)
+                return
+            }
+            // 새 경로 첫 점이 현재 위치에서 멀면 채택하지 않는다(A70 §2.2 — 요청이 신선해도 provider가 출발점을 멀리 붙인다).
+            // `none`·`stale`과 같은 결말이다(E69 ⓐ): 버튼 + 한 번 통지, 돌아가기 국면은 잇는다.
+            guard RerouteProposalGate.routeStartsNearby(
+                route: fetched.route, currentLat: c.lat, currentLng: c.lng, maxDriftMeters: tuning.rerouteMaxDriftM)
+            else {
+                let gap = RerouteProposalGate.routeStartGapMeters(route: fetched.route, currentLat: c.lat, currentLng: c.lng)
+                guideDiagLog("rerouteAdopt source=\(source) result=farStart gap=\(Int(gap.rounded())) headClock=-")
+                raiseRerouteButton(cause: "farStart", speak: true)
                 return
             }
             // 새 경로 첫 문장의 방향 머리말(E63 §3.7): 교체 **전** 세션의 진행 방위 기준 새 경로 첫 15m의 시. 자동차는 없음.
@@ -3505,7 +3569,9 @@ final class BeaconModel {
                 fetched.stepFreeRaw, fetched.stepFree, fetched.stepFreeNotice)
             let summary = GuideText.variantSwitch(
                 route: fetched.route, firstIndices: firstIndices, to: fetched.lineKind ?? target)
-            let text = notice.map { "\($0) \(summary)" } ?? summary
+            let away = routeStartsAwayPrefix(
+                route: fetched.route, from: lastFixCoord ?? (lat: proposal.originLat, lng: proposal.originLng), source: "preview")
+            let text = [away, notice, summary].compactMap { $0 }.joined(separator: " ")
             statusText = text
             // `.high`: 채택 성공으로 조망 시트가 닫히며 시스템이 커서를 복원해 그 라벨을 낭독하고,
             // 기본 우선순위는 그 낭독에 잠식된다(자동 채택 fetchProposal 동형). 첫 정보 행 착지는 이 통지 뒤(E57).

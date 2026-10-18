@@ -190,6 +190,15 @@ const val lat0 = 37.5385
 const val lng0 = 127.1355
 fun north(meters: Double) = RoutePoint(lat0 + meters * meterLat, lng0)
 
+/**
+ * 도보 조회 URL의 `origin=lat,lng`. 실제 provider처럼 응답 경로의 첫 점을 요청 출발점에 붙이려는 응답기가 쓴다 — A70 첫 점 검사
+ * (자동 재조회는 첫 점이 현재 위치에서 30m 밖이면 채택하지 않는다)를 지나려면 재조회 응답이 현재 위치에서 시작해야 한다.
+ */
+fun originOf(url: String): RoutePoint? {
+    val m = Regex("origin=([0-9.]+)(?:,|%2C)([0-9.]+)").find(url) ?: return null
+    return RoutePoint(m.groupValues[1].toDouble(), m.groupValues[2].toDouble())
+}
+
 /** 300m 북진 단일 스텝 + 목적지 = 종점 15m 앞(오프셋 15m, 정면). */
 fun straightRouteJson(lengthMeters: Double = 300.0, target: String? = "길동역", extra: String? = null): String = walkBriefingJson(
     steps = listOf(TestStep("천호대로를 따라 ${lengthMeters.toInt()}m 이동", listOf(north(0.0), north(lengthMeters)), target = target)),

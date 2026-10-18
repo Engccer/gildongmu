@@ -11,6 +11,7 @@ import space.dodoplanet.gildongmu.kit.BeaconDest
 import space.dodoplanet.gildongmu.kit.BeaconTone
 import space.dodoplanet.gildongmu.kit.Fixtures
 import space.dodoplanet.gildongmu.kit.HttpResponse
+import space.dodoplanet.gildongmu.kit.RoutePoint
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.test.Test
@@ -37,7 +38,11 @@ class WalkGuideWaypointProgressTest {
     /** 경유지 도착선 = 150m(스텝 1 시작), 총 400m. 경유지를 빼고 조회하면 400m 단일 스텝. */
     private val responder: (String) -> HttpResponse = { url ->
         if (url.contains("via=")) HttpResponse(200, walkBriefingJson(listOf(TestStep("직진A", listOf(north(0.0), north(150.0))), TestStep("직진B", listOf(north(150.0), north(400.0)))), distanceMeters = 400, durationSeconds = 400, waypointStepIndex = 1))
-        else HttpResponse(200, walkBriefingJson(listOf(TestStep("직진C", listOf(north(0.0), north(400.0)))), distanceMeters = 400, durationSeconds = 400))
+        else {
+            // 경유지 없는 조회는 요청 출발점에서 시작한다(실제 provider처럼 — A70 자동 재조회의 첫 점 검사를 지난다).
+            val o = originOf(url) ?: north(0.0)
+            HttpResponse(200, walkBriefingJson(listOf(TestStep("직진C", listOf(o, RoutePoint(o.lat + 400.0 * meterLat, o.lng)))), distanceMeters = 400, durationSeconds = 400))
+        }
     }
 
     private val via = GuideWaypoint(BeaconDest(north(150.0).lat, lng0), "장미공원")

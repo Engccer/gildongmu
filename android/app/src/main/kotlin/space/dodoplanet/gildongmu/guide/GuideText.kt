@@ -11,6 +11,7 @@ import space.dodoplanet.gildongmu.kit.LiveTopRow
 import space.dodoplanet.gildongmu.kit.OffRouteGuidance
 import space.dodoplanet.gildongmu.kit.OffRouteSide
 import space.dodoplanet.gildongmu.kit.RelativeDirection
+import space.dodoplanet.gildongmu.kit.RerouteProposalGate
 import space.dodoplanet.gildongmu.kit.WalkAction
 import space.dodoplanet.gildongmu.kit.WalkHealth
 import space.dodoplanet.gildongmu.kit.WalkHealthSummary
@@ -143,6 +144,27 @@ class GuideText(private val s: Strings) {
     fun reroute(route: GuideRoute, firstIndices: List<Int>): String =
         // 인자 순서는 ko 플레이스홀더 순서 — 할 일 먼저, 요약은 뒤(E63 문안 라).
         s.get("guide.rerouteDone", unit(route, firstIndices), route.steps.size, formatDistance(route.totalMeters.roundToInt()))
+
+    /**
+     * 사용자가 연 조회(시작·버튼 재조회·줄 전환·프리뷰 채택)의 출발점 고지(A70 spec §2.3): 새 경로 첫 점이 `maxDriftMeters` 밖이면 앞에 붙일
+     * 문장, 아니면 null. 방향은 북 기준 8방위(시작 순간엔 진행 방위 관측이 대개 없고, 상태 행에 남는 문장이 나중에 다시 읽혀도 참이어야 한다, A57).
+     * 방위 키는 리터럴 표다 — 보간하면 소스 가드(`GuideSourceGuardTest`)가 키 모양 리터럴을 못 센다.
+     */
+    fun routeStartsAway(route: GuideRoute, fromLat: Double, fromLng: Double, maxDriftMeters: Double): String? {
+        val gap = RerouteProposalGate.routeStartGapMeters(route, fromLat, fromLng)
+        if (gap <= maxDriftMeters) return null
+        val direction = when (RerouteProposalGate.routeStartCompass(route, fromLat, fromLng)) {
+            "n" -> s.get("whereAmI.direction.n")
+            "ne" -> s.get("whereAmI.direction.ne")
+            "e" -> s.get("whereAmI.direction.e")
+            "se" -> s.get("whereAmI.direction.se")
+            "s" -> s.get("whereAmI.direction.s")
+            "sw" -> s.get("whereAmI.direction.sw")
+            "w" -> s.get("whereAmI.direction.w")
+            else -> s.get("whereAmI.direction.nw")
+        }
+        return s.get("guide.routeStartsAway", direction, formatDistance(gap.roundToInt()))
+    }
 
     /**
      * 수동 전환 성공(M4b, iOS `GuideText.variantSwitch`) — 재조회와 같은 구조(새 경로 규모 + 첫 안내)에 첫 문장만 전환한 줄을 밝힌다("다시 찾았습니다"는

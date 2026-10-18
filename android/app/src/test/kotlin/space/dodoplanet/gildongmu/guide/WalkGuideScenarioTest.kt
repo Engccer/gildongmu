@@ -42,10 +42,12 @@ class WalkGuideScenarioTest {
     private data class Seg(val len: Double, val desc: String, val action: String? = null, val target: String? = null, val crossing: Boolean? = null, val crossingClock: Int? = null, val body: String? = null)
     private data class Fix(val t: Double, val along: Double, val lateral: Double, val acc: Double, val speed: Double = 1.3)
 
-    private fun routeJson(steps: List<Seg>, finalApproach: String? = null): String {
+    /** `origin`은 경로 첫 점(기본 = 시작 지점). 재조회 응답은 실제 provider처럼 요청 출발점에서 시작한다(`originOf`). */
+    private fun routeJson(steps: List<Seg>, finalApproach: String? = null, origin: RoutePoint = north(0.0)): String {
         var acc = 0.0
+        fun at(along: Double) = RoutePoint(origin.lat + along * meterLat, origin.lng)
         val testSteps = steps.map { s ->
-            val step = TestStep(s.desc, listOf(north(acc), north(acc + s.len)), target = s.target, action = s.action, crossing = s.crossing, crossingClock = s.crossingClock, body = s.body)
+            val step = TestStep(s.desc, listOf(at(acc), at(acc + s.len)), target = s.target, action = s.action, crossing = s.crossing, crossingClock = s.crossingClock, body = s.body)
             acc += s.len
             step
         }
@@ -281,7 +283,7 @@ class WalkGuideScenarioTest {
     /** 확정 뒤 계속 멀어지는 fix(최솟값 + 25m를 3 fix ∧ 2초, E63 `RerouteNeeded` away). */
     private val awayFixes = listOf(Fix(37.0, 100.0, 110.0, 10.0), Fix(45.0, 100.0, 120.0, 10.0), Fix(53.0, 100.0, 130.0, 10.0), Fix(61.0, 100.0, 140.0, 10.0))
 
-    @Test fun `④ 이탈 확정 → 방향 문장·warning 톤, 조회 없음 → 계속 멀어지면 자동 조회 1회 → 채택 문장(high)·success 진동·offRoute 해제`() = guideTest(dispatcher, { HttpResponse(200, routeJson(offRouteSteps)) }) { h ->
+    @Test fun `④ 이탈 확정 → 방향 문장·warning 톤, 조회 없음 → 계속 멀어지면 자동 조회 1회 → 채택 문장(high)·success 진동·offRoute 해제`() = guideTest(dispatcher, { url -> HttpResponse(200, routeJson(offRouteSteps, origin = originOf(url) ?: north(0.0))) }) { h ->
         val base = startDetail(h, offRouteFixes)
         h.speaker.spoken.clear(); h.tones.played.clear(); h.haptics.fired.clear()
         feed(h, offRouteFixes, base)
@@ -309,6 +311,81 @@ class WalkGuideScenarioTest {
         assertTrue(adopted.second)
         assertEquals(listOf(ResultHapticKind.success), h.haptics.fired)
         assertEquals(GuideMode.detail, ui.mode)
+    }
+
+    @Test fun `④-A70 자동 조회 응답의 첫 점이 현재 위치에서 30m 밖이면 채택하지 않는다 — 버튼이 서고 한 번 말한다, 상태 행은 벗어난 쪽 그대로`() = guideTest(dispatcher, { HttpResponse(200, routeJson(offRouteSteps)) }) { h ->
+        // 응답기가 늘 시작 지점에서 시작하는 경로를 준다 = provider가 출발점을 멀리(약 170m) 붙인 응답.
+        val base = startDetail(h, offRouteFixes)
+        feed(h, offRouteFixes, base)
+        settle()
+        assertFalse(h.model.ui.value.rerouteGaveUp)
+        h.speaker.spoken.clear(); h.haptics.fired.clear()
+        feed(h, offRouteFixes + awayFixes, base, from = offRouteFixes.size)
+        settle()
+        assertEquals(2, h.transport.seenUrls.size, "시작 조회 + 거부된 자동 재조회")
+        val ui = h.model.ui.value
+        assertTrue(ui.offRoute)
+        assertFalse(ui.offRouteEndedByReroute)
+        assertTrue(ui.rerouteGaveUp)
+        assertTrue(sheetRowExists(ui, SheetRow.reroute))
+        assertEquals(listOf(h.catalog.get("guide.rerouteAutoGaveUp") to false), h.speaker.spoken.filter { it.first == h.catalog.get("guide.rerouteAutoGaveUp") })
+        assertTrue(h.haptics.fired.isEmpty(), h.haptics.fired.toString())
+        assertEquals(h.catalog.get("guide.offRouteRight"), ui.statusText)
+    }
+
+    @Test fun `시작 조회 응답의 첫 점이 출발점에서 30m 밖이면 시작 문장 맨 앞에 출발점 고지(A70) — 거부하지 않는다`() = guideTest(dispatcher, { HttpResponse(200, routeJson(offRouteSteps, origin = north(100.0))) }) { h ->
+        h.model.requestStart(h.request)
+        settle()
+        h.model.handleFix(h.fixAt(Fix(0.0, 0.0, 0.0, 10.0), h.clock.now)); settle()
+        assertEquals(GuideMode.detail, h.model.ui.value.mode)
+        val spoken = h.speaker.spoken.last()
+        assertTrue(spoken.first.startsWith("경로 시작점이 북쪽으로 100 미터 떨어져 있습니다. "), spoken.first)
+        assertTrue(h.model.ui.value.statusText.startsWith("경로 시작점이 북쪽으로 100m 떨어져 있습니다. "), h.model.ui.value.statusText)   // 상태 행은 낭독 정정(미터) 전 원문
+        assertTrue(spoken.second)
+    }
+
+    /** 목적지 = 이탈 지점(along 100, lateral 80) — 경로 밖 목적지 곁에서 이탈이 확정되는 장면(A70 §4). */
+    private fun GuideTestHarness.offRouteDestRequest(): WalkStartRequest {
+        val lat = lat0 + 100.0 * meterLat
+        val lng = lng0 + (80.0 * meterLat) / cos(lat0 * PI / 180)
+        return request.copy(dest = BeaconDest(lat, lng))
+    }
+
+    @Test fun `④-A70 이탈 중 목적지 곁이 5초 이어지면 목적지 근처입니다 한 번 — 진입 fix는 도착을 선언하지 않고, 이탈 흔적은 지운다, 다음 fix부터 종전 도착`() = guideTest(dispatcher, { HttpResponse(200, routeJson(offRouteSteps)) }) { h ->
+        h.model.requestStart(h.offRouteDestRequest())
+        settle()
+        val base = h.clock.now
+        h.model.handleFix(h.fixAt(offRouteFixes[0], base)); settle()
+        assertEquals(GuideMode.detail, h.model.ui.value.mode)
+        feed(h, offRouteFixes, base)
+        settle()
+        assertTrue(h.model.ui.value.offRoute)
+        h.speaker.spoken.clear(); h.haptics.fired.clear()
+        val nearText = h.catalog.get("guide.finalApproachNear")
+        val arrived = h.catalog.get("guide.arrived")
+        // 목적지 곁 fix를 한 개씩 넣는다 — 5초 지속이 차는 fix에서 「목적지 근처입니다」, 그 fix는 도착을 선언하지 않는다.
+        val near = (1..6).map { Fix(29.0 + it * 8.0, 100.0, 80.0, 10.0) }
+        var enteredAt = -1
+        for (i in near.indices) {
+            feed(h, offRouteFixes + near, base, from = offRouteFixes.size + i, until = offRouteFixes.size + i + 1)
+            settle()
+            if (h.speaker.texts.contains(nearText)) { enteredAt = i; break }
+        }
+        assertTrue(enteredAt > 0, "5초 지속이 차야 연다(첫 후보 fix가 아니다): ${h.speaker.texts}")
+        assertEquals(1, h.speaker.texts.count { it == nearText }, h.speaker.texts.toString())
+        assertFalse(h.speaker.texts.contains(arrived), "진입 fix는 도착을 선언하지 않는다: ${h.speaker.texts}")
+        assertTrue(h.coordinator.isActive)
+        val ui = h.model.ui.value
+        assertFalse(ui.offRoute)
+        assertFalse(ui.rerouteGaveUp)
+        assertEquals(nearText, ui.statusText)
+        assertEquals(nearText, ui.liveTopText)
+        assertEquals(1, h.transport.seenUrls.size, "이탈 중 입구는 조회하지 않는다")
+        // 도착은 다음 fix부터 종전 최종 접근 그대로.
+        feed(h, offRouteFixes + near, base, from = offRouteFixes.size + enteredAt + 1, until = offRouteFixes.size + enteredAt + 2)
+        settle()
+        assertTrue(h.speaker.texts.contains(arrived), h.speaker.texts.toString())
+        assertEquals(1, h.speaker.texts.count { it == nearText })
     }
 
     @Test fun `④-E69 자동 조회가 실패하면 그 순간 버튼이 서고 한 번 말한다(high 아님·포커스 무관), 상태 행은 벗어난 쪽 그대로`() = guideTest(dispatcher, { url ->

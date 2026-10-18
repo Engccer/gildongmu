@@ -38,6 +38,17 @@ class GuideTextTest {
         assertEquals("길동역까지 도보 안내 시작. 천호대로를 따라 119m 이동. 안내 3개, 총 331m.", t.start(route, initial.firstIndices, "길동역"))
     }
 
+    @Test fun `출발점 고지 — 첫 점이 문턱 밖이면 북 기준 8방위 + 거리, 안이면 없다(A70)`() {
+        // 경로 첫 점은 north(0). 출발점이 남쪽 100m면 첫 점은 북쪽, 20m면 문턱(30m) 안이다.
+        val south100 = north(-100.0)
+        assertEquals("경로 시작점이 북쪽으로 100m 떨어져 있습니다.", t.routeStartsAway(route, south100.lat, south100.lng, 30.0))
+        val south20 = north(-20.0)
+        assertNull(t.routeStartsAway(route, south20.lat, south20.lng, 30.0))
+        // 동쪽 100m(경도 환산)에 서 있으면 첫 점은 서쪽이다.
+        val east100Lng = lng0 + 100.0 * meterLat / Math.cos(lat0 * Math.PI / 180)
+        assertEquals("경로 시작점이 서쪽으로 100m 떨어져 있습니다.", t.routeStartsAway(route, lat0, east100Lng, 30.0))
+    }
+
     @Test fun `주기 통지 — 횡단 스텝은 원문, target 유무, 마지막 스텝은 목적지 틀`() {
         assertEquals("횡단보도를 건너세요", t.periodicWalk(route, 1, 8, 5.0, "길동역", "어디"))
         assertEquals("길동역까지 약 60m 직진하세요", t.periodicWalk(route, 0, 60, 15.0, "길동역", "길동역"))

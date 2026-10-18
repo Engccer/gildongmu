@@ -187,6 +187,22 @@ enum GuideText {
         )
     }
 
+    /// 사용자가 연 조회(시작·버튼 재조회·줄 전환·프리뷰 채택)의 출발점 고지(A70 spec §2.3): 새 경로 첫 점이
+    /// `maxDriftMeters` 밖이면 앞에 붙일 문장, 아니면 nil. 방향은 북 기준 8방위(시작 순간엔 진행 방위 관측이 대개 없고,
+    /// 상태 행에 남는 문장이 나중에 다시 읽혀도 참이어야 한다, A57). 웹 `routeStartsAwayText` 미러.
+    static func routeStartsAway(
+        route: GuideRoute, fromLat: Double, fromLng: Double, maxDriftMeters: Double
+    ) -> String? {
+        let gap = RerouteProposalGate.routeStartGapMeters(route: route, currentLat: fromLat, currentLng: fromLng)
+        guard gap > maxDriftMeters else { return nil }
+        let compass = RerouteProposalGate.routeStartCompass(route: route, fromLat: fromLat, fromLng: fromLng)
+        return appLocalized(
+            "guide.routeStartsAway",
+            appLocalized("whereAmI.direction.\(compass)"),
+            formatDistance(Int(gap.rounded()))
+        )
+    }
+
     /// 수동 전환 성공 발화(M3 spec §5). 재조회와 같은 구조(새 경로 규모 + 첫 안내)에
     /// 첫 문장만 전환한 줄을 밝힌다 — "다시 찾았습니다"는 전환에선 거짓 서술이라 대체.
     static func variantSwitch(route: GuideRoute, firstIndices: [Int], to line: WalkLineKind) -> String {
