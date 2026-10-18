@@ -140,4 +140,23 @@ class FinalApproachTest {
     @Test fun `NaN 정확도는 자격 없음`() {
         assertEquals(BriefArrivalWindowStep(false, false, true), briefArrivalWindowStep(true, true, Double.NaN))
     }
+
+    // A70 spec 2026-10-19 §4.1 — 이탈 중 도착 창 입구 자격. 판정표는 웹·Kit과 공유한다.
+    @Serializable
+    private data class OffRouteArrivalFile(val cases: List<Case>) {
+        @Serializable
+        data class Case(val name: String, val distance: Double, val accuracy: Double, val qualifies: Boolean)
+    }
+
+    @Test fun `이탈 중 도착 창 입구 자격 공유 fixture 동조`() {
+        val cases = Fixtures.sharedJson("off-route-arrival-cases.json", OffRouteArrivalFile.serializer()).cases
+        assertTrue(cases.isNotEmpty())
+        for (c in cases) assertEquals(c.qualifies, offRouteArrivalQualifies(c.distance, c.accuracy), c.name)
+    }
+
+    @Test fun `이탈 중 도착 창 상수 - 정확도 상한은 간략 창과 같고 유지 시간은 5초다`() {
+        assertEquals(30.0, briefArrivalWindowMaxAccuracyMeters)
+        assertEquals(5.0, offRouteArrivalHoldSeconds)
+        assertTrue(!offRouteArrivalQualifies(Double.NaN, 10.0))
+    }
 }

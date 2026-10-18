@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import GildongmuKit
 
@@ -58,5 +59,52 @@ import Testing
         #expect(s.since == nil && !s.reached)
         let t = RerouteProposalGate.stillStep(since: s.since, stopped: true, now: 45)
         #expect(t.since == 45 && !t.reached)
+    }
+
+    // A70 spec §2 — 새 경로 첫 점 검사. 판정표는 웹·`:kit`과 공유한다(웹 `reroute-proposal-gate.test.ts` 미러).
+    private struct StartGapFile: Decodable {
+        let cases: [Case]
+        struct Case: Decodable {
+            let name: String
+            let north: Double
+            let east: Double
+            let gapMeters: Double
+            let nearbyWalk: Bool
+            let nearbyCar: Bool
+            let compass: String
+        }
+    }
+
+    @Test func 경로_첫_점_검사_공유_판정표() throws {
+        var url = URL(fileURLWithPath: #filePath)
+        for _ in 0..<5 { url.deleteLastPathComponent() }
+        url.appendPathComponent("src/lib/__tests__/fixtures/route-start-gap-cases.json")
+        let file = try JSONDecoder().decode(StartGapFile.self, from: Data(contentsOf: url))
+        #expect(!file.cases.isEmpty)
+        let hereLat = 37.5
+        let hereLng = 127.1
+        for c in file.cases {
+            let start = RoutePoint(
+                lat: hereLat + c.north / 111_320,
+                lng: hereLng + c.east / (111_320 * cos(hereLat * .pi / 180))
+            )
+            let route = buildGuideRoute([
+                GuideStepGeometry(
+                    description: "직진", pathCoords: [start, RoutePoint(lat: 37.6, lng: 127.1)])
+            ])!
+            let gap = RerouteProposalGate.routeStartGapMeters(route: route, currentLat: hereLat, currentLng: hereLng)
+            let walk = RerouteProposalGate.routeStartsNearby(
+                route: route, currentLat: hereLat, currentLng: hereLng,
+                maxDriftMeters: GuideTuning.walk.rerouteMaxDriftM)
+            let car = RerouteProposalGate.routeStartsNearby(
+                route: route, currentLat: hereLat, currentLng: hereLng,
+                maxDriftMeters: GuideTuning.car.rerouteMaxDriftM)
+            let compass = RerouteProposalGate.routeStartCompass(route: route, fromLat: hereLat, fromLng: hereLng)
+            let name = c.name
+            #expect(abs(gap - c.gapMeters) <= 0.5, "\(name): gap \(gap)")
+            #expect(walk == c.nearbyWalk, "\(name): walk")
+            #expect(car == c.nearbyCar, "\(name): car")
+            #expect(compass == c.compass, "\(name): compass")
+        }
     }
 }

@@ -53,6 +53,11 @@ data class GuideRoute(
     val totalMeters: Double,
     /** 경유지에서 시작하는 스텝의 index(서버 `waypoint.stepIndex`). null = 경유지 없는 경로. */
     val waypointStepIndex: Int?,
+    /**
+     * 세션의 목적지 좌표(A70 spec 2026-10-19 §4.1 — 이탈 중 도착 창 입구가 직선거리를 잰다). null = 그 입구가 닫힌다.
+     * 오케스트레이터(`WalkGuideModel`)가 싣는지는 웹 소스 가드 `a70-destination-wiring.test.ts`가 센다. 웹 `GuideRoute.destination` 미러.
+     */
+    val destination: RoutePoint? = null,
 )
 
 data class GuideProjection(
@@ -79,7 +84,11 @@ data class GuideStepGeometry(
  * 상세 부적격으로 간략 폴백한다(fail-closed). `waypointStepIndex`가 범위 `0 until steps.size`
  * 밖이면 null(0은 유효).
  */
-fun buildGuideRoute(steps: List<GuideStepGeometry>, waypointStepIndex: Int? = null): GuideRoute? {
+fun buildGuideRoute(
+    steps: List<GuideStepGeometry>,
+    waypointStepIndex: Int? = null,
+    destination: RoutePoint? = null,
+): GuideRoute? {
     if (waypointStepIndex != null && waypointStepIndex !in steps.indices) return null
     if (steps.isEmpty()) return null
     val points = ArrayList<RoutePoint>()
@@ -121,7 +130,7 @@ fun buildGuideRoute(steps: List<GuideStepGeometry>, waypointStepIndex: Int? = nu
         )
     }
     if (points.size < 2 || d <= 0) return null
-    return GuideRoute(GuidePolyline(points, cum), spans, d, waypointStepIndex)
+    return GuideRoute(GuidePolyline(points, cum), spans, d, waypointStepIndex, destination)
 }
 
 /** 위경도를 기준점(ref) 주변 로컬 평면(m)으로 변환. */

@@ -1,5 +1,8 @@
 package space.dodoplanet.gildongmu.kit
 
+import kotlinx.serialization.Serializable
+import kotlin.math.PI
+import kotlin.math.cos
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -58,5 +61,36 @@ class RerouteProposalGateTest {
         val s = RerouteProposalGate.stillStep(10.0, false, 35.0)
         assertEquals(StillStep(null, false), s)
         assertEquals(StillStep(45.0, false), RerouteProposalGate.stillStep(s.since, true, 45.0))
+    }
+
+    // A70 spec 2026-10-19 §2 — 새 경로 첫 점 검사. 판정표는 웹·Kit과 공유한다.
+    @Serializable
+    private data class StartGapFile(val cases: List<Case>) {
+        @Serializable
+        data class Case(
+            val name: String,
+            val north: Double,
+            val east: Double,
+            val gapMeters: Double,
+            val nearbyWalk: Boolean,
+            val nearbyCar: Boolean,
+            val compass: String,
+        )
+    }
+
+    @Test fun `경로 첫 점 검사 공유 fixture 동조`() {
+        val hereLat = 37.5
+        val hereLng = 127.1
+        val cases = Fixtures.sharedJson("route-start-gap-cases.json", StartGapFile.serializer()).cases
+        assertTrue(cases.isNotEmpty())
+        for (c in cases) {
+            val first = RoutePoint(hereLat + c.north / 111_320.0, hereLng + c.east / (111_320.0 * cos(37.5 * PI / 180)))
+            val route = checkNotNull(buildGuideRoute(listOf(GuideStepGeometry("직진", listOf(first, RoutePoint(37.6, 127.1))))))
+            val gap = RerouteProposalGate.routeStartGapMeters(route, hereLat, hereLng)
+            assertTrue(kotlin.math.abs(gap - c.gapMeters) <= 0.5, "${c.name}: gap $gap")
+            assertEquals(c.nearbyWalk, RerouteProposalGate.routeStartsNearby(route, hereLat, hereLng, GuideTuning.walk.rerouteMaxDriftM), "${c.name}: walk")
+            assertEquals(c.nearbyCar, RerouteProposalGate.routeStartsNearby(route, hereLat, hereLng, GuideTuning.car.rerouteMaxDriftM), "${c.name}: car")
+            assertEquals(c.compass, RerouteProposalGate.routeStartCompass(route, hereLat, hereLng), "${c.name}: compass")
+        }
     }
 }

@@ -38,6 +38,8 @@ class RouteGuideTest {
             val geometry: Boolean? = null,
             /** 경유지 스텝 index(N4). 미지정=경유지 없음. */
             val waypointStepIndex: Int? = null,
+            /** 세션 목적지 `[along, lateral]`(A70 이탈 중 도착 창 입구). 미지정 = 목적지를 모르는 경로(입구 닫힘). */
+            val dest: List<Double>? = null,
             val steps: List<Step>,
             val fixes: List<Fix>,
             val expect: List<Expectation>,
@@ -103,7 +105,7 @@ class RouteGuideTest {
         val points: List<List<Double>>? = null,
     )
 
-    private fun routeFrom(steps: List<Seg>, waypointStepIndex: Int? = null): GuideRoute {
+    private fun routeFrom(steps: List<Seg>, waypointStepIndex: Int? = null, destination: RoutePoint? = null): GuideRoute {
         var acc = 0.0
         val inputs = steps.map { s ->
             val pts = s.points
@@ -117,7 +119,7 @@ class RouteGuideTest {
             if (pts == null) acc += s.len
             g
         }
-        return checkNotNull(buildGuideRoute(inputs, waypointStepIndex))
+        return checkNotNull(buildGuideRoute(inputs, waypointStepIndex, destination))
     }
 
     private fun pointAt(along: Double, lateral: Double) =
@@ -138,6 +140,7 @@ class RouteGuideTest {
         GuideEvent.WaypointReached -> "waypointReached"
         is GuideEvent.WaypointApproaching -> "waypointApproaching"
         GuideEvent.FinalApproachEnter -> "finalApproachEnter"
+        GuideEvent.NearDestination -> "nearDestination"
         is GuideEvent.OffRoute -> "offRoute"
         is GuideEvent.BackOnRoute -> "backOnRoute"
         is GuideEvent.RerouteNeeded -> "rerouteNeeded"
@@ -172,6 +175,7 @@ class RouteGuideTest {
                     Seg(len, it.desc, it.action, it.crossing == true, it.points)
                 },
                 sc.waypointStepIndex,
+                sc.dest?.let { pointAt(it[0], it[1]) },
             )
             val tuning = when (sc.tuning) {
                 null -> GuideTuning.walk

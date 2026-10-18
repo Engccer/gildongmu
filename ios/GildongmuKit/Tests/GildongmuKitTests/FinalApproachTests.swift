@@ -228,3 +228,34 @@ func briefArrivalWindowRejectsNaN() {
         briefArrivalWindowStep(active: true, nearby: true, accuracy: .nan)
             == BriefArrivalWindowStep(active: false, entered: false, exited: true))
 }
+
+// A70 spec §4.1 — 이탈 중 도착 창 입구 자격. 판정표는 웹·`:kit`과 공유한다(웹 `final-approach.test.ts` 미러).
+private struct OffRouteArrivalFile: Decodable {
+    let cases: [Case]
+    struct Case: Decodable {
+        let name: String
+        let distance: Double
+        let accuracy: Double
+        let qualifies: Bool
+    }
+}
+
+@Test("이탈 중 도착 창 자격 공유 fixture 동조")
+func offRouteArrivalQualifiesMatchesSharedFixture() throws {
+    var url = URL(fileURLWithPath: #filePath)
+    for _ in 0..<5 { url.deleteLastPathComponent() }
+    url.appendPathComponent("src/lib/__tests__/fixtures/off-route-arrival-cases.json")
+    let file = try JSONDecoder().decode(OffRouteArrivalFile.self, from: Data(contentsOf: url))
+    #expect(!file.cases.isEmpty)
+    for c in file.cases {
+        #expect(offRouteArrivalQualifies(distance: c.distance, accuracy: c.accuracy) == c.qualifies, "\(c.name)")
+    }
+}
+
+@Test("이탈 중 도착 창: 정확도 상한은 간략 창 상한과 같고 유지 시간은 5초")
+func offRouteArrivalConstants() {
+    #expect(briefArrivalWindowMaxAccuracyMeters == 30)
+    #expect(offRouteArrivalHoldSeconds == 5)
+    #expect(!offRouteArrivalQualifies(distance: .nan, accuracy: 10))
+    #expect(!offRouteArrivalQualifies(distance: .infinity, accuracy: 10))
+}

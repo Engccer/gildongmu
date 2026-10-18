@@ -20,6 +20,8 @@ private struct Scenario: Decodable {
     let geometry: Bool?
     /// 경유지 스텝 index(N4). 미지정=경유지 없음.
     let waypointStepIndex: Int?
+    /// 세션 목적지 `[along, lateral]`(A70 이탈 중 도착 창 입구). 미지정 = 목적지를 모르는 경로(입구 닫힘).
+    let dest: [Double]?
     let steps: [Step]
     let fixes: [Fix]
     let expect: [Expectation]
@@ -133,7 +135,9 @@ private func loadScenarios() throws -> [Scenario] {
     return try JSONDecoder().decode(ScenarioFile.self, from: data).scenarios
 }
 
-private func routeFrom(_ steps: [Scenario.Step], waypointStepIndex: Int? = nil) -> GuideRoute {
+private func routeFrom(
+    _ steps: [Scenario.Step], waypointStepIndex: Int? = nil, dest: [Double]? = nil
+) -> GuideRoute {
     var acc = 0.0
     let inputs = steps.map { s in
         let pathCoords = s.points.map { pts in
@@ -151,7 +155,10 @@ private func routeFrom(_ steps: [Scenario.Step], waypointStepIndex: Int? = nil) 
         if s.points == nil { acc += s.len! }
         return g
     }
-    return buildGuideRoute(inputs, waypointStepIndex: waypointStepIndex)!
+    return buildGuideRoute(
+        inputs, waypointStepIndex: waypointStepIndex,
+        destination: dest.map { pointCoord(along: $0[0], lateral: $0[1]) }
+    )!
 }
 
 private func pointCoord(along: Double, lateral: Double) -> RoutePoint {
@@ -178,6 +185,7 @@ private func kindName(_ event: GuideEvent?) -> String? {
     case .waypointReached: "waypointReached"
     case .waypointApproaching: "waypointApproaching"
     case .finalApproachEnter: "finalApproachEnter"
+    case .nearDestination: "nearDestination"
     case .offRoute: "offRoute"
     case .backOnRoute: "backOnRoute"
     case .rerouteNeeded: "rerouteNeeded"
@@ -237,7 +245,7 @@ private func offRouteFields(_ event: GuideEvent?) -> OffRouteFields? {
 
 @Test func sharedScenarioTable() throws {
     for sc in try loadScenarios() {
-        let route = routeFrom(sc.steps, waypointStepIndex: sc.waypointStepIndex)
+        let route = routeFrom(sc.steps, waypointStepIndex: sc.waypointStepIndex, dest: sc.dest)
         let tuning: GuideTuning =
             sc.tuning == "car" ? .car : sc.tuning == "carDriver" ? .carDriver : .walk
         var state = initialGuideState(

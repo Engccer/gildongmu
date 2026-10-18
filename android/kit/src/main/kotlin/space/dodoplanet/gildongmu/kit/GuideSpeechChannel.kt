@@ -83,9 +83,9 @@ fun guideEventSpeechClass(event: GuideEvent): GuideSpeechClass = when (event) {
     is GuideEvent.AnnounceSteps, is GuideEvent.FarNotice, GuideEvent.WaypointReached, is GuideEvent.WaypointApproaching, is GuideEvent.BackOnRoute ->
         GuideSpeechClass.actionable
     is GuideEvent.OffRoute -> if (event.firstSpoken) GuideSpeechClass.actionable else GuideSpeechClass.deferrable
-    // `FinalApproachEnter`·`SpeedSuggest`는 문장을 내지 않는다(진입 서술은 fix를 쥔 자리가 낸다) — 분류만 닫는다.
+    // `FinalApproachEnter`·`NearDestination`·`SpeedSuggest`는 문장을 내지 않는다(진입 서술은 fix를 쥔 자리가 낸다) — 분류만 닫는다.
     is GuideEvent.BundleReread, is GuideEvent.Periodic, GuideEvent.UncertainEnter, GuideEvent.UncertainExit, GuideEvent.Reacquiring,
-    GuideEvent.Reacquired, GuideEvent.SpeedSuggest, GuideEvent.FinalApproachEnter, is GuideEvent.RerouteNeeded -> GuideSpeechClass.deferrable
+    GuideEvent.Reacquired, GuideEvent.SpeedSuggest, GuideEvent.FinalApproachEnter, GuideEvent.NearDestination, is GuideEvent.RerouteNeeded -> GuideSpeechClass.deferrable
 }
 
 /** 간략 안내(직선거리) 비콘 통지의 분류(spec §3.2). `Nearby`만 도착 신호다. */

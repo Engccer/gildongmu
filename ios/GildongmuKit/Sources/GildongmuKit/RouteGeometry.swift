@@ -77,6 +77,10 @@ public struct GuideRoute: Sendable, Equatable {
     /// 경유지에서 시작하는 스텝의 index(N4, 서버 `waypoint.stepIndex`). 도착선은
     /// `steps[waypointStepIndex].startD`. nil = 경유지 없는 경로.
     public let waypointStepIndex: Int?
+    /// 세션의 목적지 좌표(A70 spec 2026-10-19 §4.1 — 이탈 중 도착 창 입구가 직선거리를 잰다). nil = 모름 → 그 입구가 닫힌다.
+    /// 안내 세션의 오케스트레이터(웹 `useRouteGuide`·iOS `BeaconModel`·안드로이드 `WalkGuideModel`)가 싣는지는 소스 가드
+    /// `a70-destination-wiring.test.ts`가 센다. 웹 `GuideRoute.destination` 미러.
+    public let destination: RoutePoint?
 }
 
 public struct GuideProjection: Sendable, Equatable {
@@ -114,8 +118,9 @@ public struct GuideStepGeometry: Sendable {
 /// `waypointStepIndex`(N4): 범위 `0 ..< steps.count` 밖이면 nil — 경유지를 받은 세션이
 /// 경유지 위치를 모르면 상세 안내 자격이 없다(유령 스텝 가드와 같은 규율). 0은 유효하다
 /// (경유지에서 출발 — leg 0이 비었거나 첫 Point가 경유지).
+/// `destination`(A70): 세션 목적지 좌표를 경로에 싣는다. 생략 = 목적지를 모르는 경로(이탈 중 도착 창 입구가 닫힌다).
 public func buildGuideRoute(
-    _ steps: [GuideStepGeometry], waypointStepIndex: Int? = nil
+    _ steps: [GuideStepGeometry], waypointStepIndex: Int? = nil, destination: RoutePoint? = nil
 ) -> GuideRoute? {
     if let w = waypointStepIndex, !(0..<steps.count).contains(w) { return nil }
     guard !steps.isEmpty else { return nil }
@@ -162,7 +167,8 @@ public func buildGuideRoute(
         polyline: GuidePolyline(points: points, cum: cum),
         steps: spans,
         totalMeters: d,
-        waypointStepIndex: waypointStepIndex
+        waypointStepIndex: waypointStepIndex,
+        destination: destination
     )
 }
 

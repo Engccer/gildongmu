@@ -67,7 +67,36 @@ object RerouteProposalGate {
         val start = since ?: now
         return StillStep(since = start, reached = now - start >= stillButtonSeconds)
     }
+
+    // ── 새 경로 첫 점 검사(A70 spec 2026-10-19 §2) — 공유 fixture `route-start-gap-cases.json` ──
+    // 신선도(`isFresh`)는 요청 지점 ↔ 현재 위치만 본다. provider가 출발점을 멀리 붙이면 신선한 요청이 먼 경로를 낳는다 —
+    // 그 축은 경로 첫 점 ↔ 현재 위치다. 문턱은 같은 수단별 데이터 `GuideTuning.rerouteMaxDriftM`. 웹 `routeStart*` 미러.
+
+    /** 경로 첫 점까지의 직선거리(m). */
+    fun routeStartGapMeters(route: GuideRoute, currentLat: Double, currentLng: Double): Double {
+        val p = route.polyline.points[0]
+        return haversineMeters(currentLat, currentLng, p.lat, p.lng)
+    }
+
+    /** 자동 재조회 채택 자격: 첫 점이 `maxDriftMeters` 안인가. 밖이면 채택하지 않고 `none`과 같은 결말(E69 ⓐ). */
+    fun routeStartsNearby(route: GuideRoute, currentLat: Double, currentLng: Double, maxDriftMeters: Double): Boolean =
+        routeStartGapMeters(route, currentLat, currentLng) <= maxDriftMeters
+
+    private val compass8 = listOf("n", "ne", "e", "se", "s", "sw", "w", "nw")
+
+    /**
+     * 현재 위치에서 첫 점의 북 기준 8방위("n"·"ne"·…·"nw") — 사용자가 연 조회의 고지 문장(`guide.routeStartsAway`).
+     * 진행 방위 기준 시계가 아닌 이유: 시작 순간엔 대개 관측이 없고, 상태 행에 남는 문장은 절대 방향이어야 나중에도 참이다(A57).
+     * 웹 `bearingToCompass8`(45° 반올림, 음수·360+ 정규화) 미러. 양수 반올림은 JS `Math.round`와 같은 half-up이다.
+     */
+    fun routeStartCompass(route: GuideRoute, fromLat: Double, fromLng: Double): String {
+        val p = route.polyline.points[0]
+        val degrees = bearingDegrees(fromLat, fromLng, p.lat, p.lng)
+        val norm = ((degrees % 360) + 360) % 360
+        return compass8[Math.floor(norm / 45 + 0.5).toInt() % 8]
+    }
 }
 
 /** [RerouteProposalGate.stillStep]의 결과 — 연속 시작 시각과 이 fix에서 문턱에 닿았는가. */
 data class StillStep(val since: Double?, val reached: Boolean)
+

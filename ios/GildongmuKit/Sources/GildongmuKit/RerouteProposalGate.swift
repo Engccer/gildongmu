@@ -67,4 +67,33 @@ public enum RerouteProposalGate {
         let start = since ?? now
         return (start, now - start >= stillButtonSeconds)
     }
+
+    // ── 새 경로 첫 점 검사(A70 spec 2026-10-19 §2) — 웹 `routeStart*` 미러 ──────────────────────
+    // 신선도(`isFresh`)는 **요청 지점 ↔ 현재 위치**만 본다. provider가 출발점을 멀리 붙이면(실보행 237m) 신선한 요청이
+    // 먼 경로를 낳는다 — 그 축은 **경로 첫 점 ↔ 현재 위치**다. 문턱은 같은 수단별 데이터 `rerouteMaxDriftM`.
+    // 공유 판정표 `route-start-gap-cases.json`.
+
+    /// 경로 첫 점까지의 직선거리(m).
+    public static func routeStartGapMeters(route: GuideRoute, currentLat: Double, currentLng: Double) -> Double {
+        let p = route.polyline.points[0]
+        return haversineMeters(lat1: currentLat, lng1: currentLng, lat2: p.lat, lng2: p.lng)
+    }
+
+    /// 자동 재조회 채택 자격: 첫 점이 `maxDriftMeters` 안인가. 밖이면 채택하지 않고 `none`과 같은 결말(E69 ⓐ).
+    public static func routeStartsNearby(
+        route: GuideRoute, currentLat: Double, currentLng: Double, maxDriftMeters: Double
+    ) -> Bool {
+        routeStartGapMeters(route: route, currentLat: currentLat, currentLng: currentLng) <= maxDriftMeters
+    }
+
+    /// 현재 위치에서 첫 점의 북 기준 8방위(`n`·`ne`·`e`·`se`·`s`·`sw`·`w`·`nw`) — 사용자가 연 조회(시작·버튼 재조회·줄 전환)의
+    /// 고지 문장(`guide.routeStartsAway`). 진행 방위 기준 시계가 아닌 이유: 시작 순간엔 대개 관측이 없고, 상태 행에 남는
+    /// 문장은 절대 방향이어야 나중에도 참이다(A57).
+    public static func routeStartCompass(route: GuideRoute, fromLat: Double, fromLng: Double) -> String {
+        let p = route.polyline.points[0]
+        let deg = bearingDegrees(fromLat: fromLat, fromLng: fromLng, toLat: p.lat, toLng: p.lng)
+        let dirs = ["n", "ne", "e", "se", "s", "sw", "w", "nw"]
+        let norm = ((deg.truncatingRemainder(dividingBy: 360)) + 360).truncatingRemainder(dividingBy: 360)
+        return dirs[Int((norm / 45).rounded()) % 8]
+    }
 }

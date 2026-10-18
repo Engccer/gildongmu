@@ -182,3 +182,18 @@ fun briefArrivalWindowStep(active: Boolean, nearby: Boolean, accuracy: Double): 
     val qualifies = nearby && accuracy > 0 && accuracy <= briefArrivalWindowMaxAccuracyMeters
     return BriefArrivalWindowStep(active = qualifies, entered = qualifies && !active, exited = !qualifies && active)
 }
+
+// ── 이탈 중 도착 창의 두 번째 입구(A70 spec 2026-10-19 §4.1) — 공유 fixture `off-route-arrival-cases.json` ──
+
+/** 자격이 이만큼 이어져야 연다(초). 최종 접근은 단방향 래치라 단발 fix로 들어가면 안 된다(설계 리뷰 high ②). 웹 `OFF_ROUTE_ARRIVAL_HOLD_S` 미러. */
+const val offRouteArrivalHoldSeconds = 5.0
+
+/**
+ * 간략 창 기준을 직선거리로 읽은 자격: 정확도 `(0, 30]` ∧ 목적지 직선거리 ≤ `max(20, 정확도)`(비콘 도착 존 진입 임계).
+ * [briefArrivalWindowStep]과 같은 두 문턱이고 그 함수는 바뀌지 않는다. 웹 `offRouteArrivalQualifies` 미러.
+ */
+fun offRouteArrivalQualifies(distance: Double, accuracy: Double): Boolean {
+    if (!distance.isFinite() || distance < 0) return false
+    if (!(accuracy > 0) || accuracy > briefArrivalWindowMaxAccuracyMeters) return false
+    return distance <= maxOf(BeaconConstants.arrivalBase, accuracy)
+}

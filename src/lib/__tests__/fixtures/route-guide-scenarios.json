@@ -47361,6 +47361,168 @@
    ]
   },
   {
+   "name": "A70 ④-d 자격이 정확히 5초 이어진 fix에서 든다(4초째엔 아직 없다) — 1초 간격 경계",
+   "steps": [
+    {
+     "len": 300,
+     "desc": "직진A"
+    }
+   ],
+   "dest": [
+    300,
+    60
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 250,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 2,
+     "along": 250,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 4,
+     "along": 250,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 6,
+     "along": 250,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 8,
+     "along": 250,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 10,
+     "along": 250,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 12,
+     "along": 250,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 14,
+     "along": 250,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 16,
+     "along": 250,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 18,
+     "along": 250,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 20,
+     "along": 250,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 21,
+     "along": 290,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 22,
+     "along": 290,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 23,
+     "along": 290,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 24,
+     "along": 290,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 25,
+     "along": 290,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 26,
+     "along": 290,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 27,
+     "along": 290,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 28,
+     "along": 290,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 29,
+     "along": 290,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 30,
+     "along": 290,
+     "lateral": 60,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFix": 10,
+     "event": "offRoute",
+     "notice": "confirm"
+    },
+    {
+     "afterFixAny": [
+      11,
+      12,
+      13,
+      14,
+      15
+     ],
+     "eventNot": "nearDestination"
+    },
+    {
+     "afterFix": 16,
+     "event": "nearDestination"
+    }
+   ]
+  },
+  {
    "name": "A70 ④-c 미통과 경유지가 있으면 목적지 곁에 오래 서도 이탈 중 입구는 닫혀 있다",
    "steps": [
     {

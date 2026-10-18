@@ -82,8 +82,8 @@ public func guideEventSpeechClass(_ event: GuideEvent) -> GuideSpeechClass {
     case let .offRoute(_, _, _, _, _, firstSpoken):
         return firstSpoken ? .actionable : .deferrable
     case .bundleReread, .periodic, .uncertainEnter, .uncertainExit, .reacquiring, .reacquired, .speedSuggest,
-         .finalApproachEnter, .rerouteNeeded:
-        // `finalApproachEnter`·`speedSuggest`·`rerouteNeeded`는 문장을 내지 않는다(진입 서술은 fix를 쥔 자리가, 새 경로
+         .finalApproachEnter, .nearDestination, .rerouteNeeded:
+        // `finalApproachEnter`·`nearDestination`·`speedSuggest`·`rerouteNeeded`는 문장을 내지 않는다(진입 서술은 fix를 쥔 자리가, 새 경로
         // 문장은 재조회를 채택한 자리가 낸다) — 분류만 닫는다.
         return .deferrable
     }
