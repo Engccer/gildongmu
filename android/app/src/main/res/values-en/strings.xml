@@ -68,6 +68,7 @@
     <string name="android_beacon_stopped">Distance tracking stopped.</string>
     <string name="android_beacon_stoppedJoin">Distance tracking stopped</string>
     <string name="android_beacon_transferWalkCancelledWith">%1$s. Transit guidance has also ended.</string>
+    <string name="android_beacon_transferWalkLostWith">%1$s. Walking guidance stopped; moving to boarding wait.</string>
     <string name="android_chat_addressesHeading">{1, plural, one {%1$s address} other {%1$s addresses}}</string>
     <string name="android_chat_clear">Clear text</string>
     <string name="android_chat_consentAgree">Agree and start</string>
@@ -136,6 +137,7 @@
     <string name="android_guide_destMenuChange">Change destination</string>
     <string name="android_guide_destMenuDetail">View place details</string>
     <string name="android_guide_differentRoute">Take a different route</string>
+    <string name="android_guide_differentRouteFailed">Couldn\'t find a new route.</string>
     <string name="android_guide_focusDenied">Another app is using audio, so guide sounds cannot play right now</string>
     <string name="android_guide_mediaVolumeZero">Media volume is off, so guide sounds will not play</string>
     <string name="android_guide_notificationChannel">Walking guidance</string>

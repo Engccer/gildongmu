@@ -164,8 +164,9 @@ describe("백그라운드 음성 안내 배선 (E53)", () => {
     const fail = functionBody(beacon, "stopAndFail");
     // stop()이 prewalkTarget을 지우므로 그 앞에서 캡처한다.
     // 여정 접근 도보는 끊겨도 대중교통으로 넘어가므로 꼬리가 없다. 환승 도보(E73)는 꼬리가 「대중교통 안내도 종료했습니다」다.
-    expect(fail.indexOf("let prewalkTail = journeyChain == nil ? prewalkStopTail : nil")).toBeGreaterThan(-1);
-    expect(fail.indexOf("let prewalkTail = journeyChain == nil ? prewalkStopTail : nil"))
+    // 환승 도보의 위치 상실은 재개 꼬리(「…승차 대기로 넘어갑니다」, 위원장 판정 2026-10-19 — `transfer-walk-guard.test.ts`).
+    expect(fail.indexOf("let prewalkTail = journeyChain == nil")).toBeGreaterThan(-1);
+    expect(fail.indexOf("let prewalkTail = journeyChain == nil"))
       .toBeLessThan(fail.indexOf("stopLeavingSummary("));
     expect(fail).toContain("prewalkTail: prewalkTail,");
     // 버려지면 복귀 상환이 `statusText` 꼬리로 갚으므로 `statusText`도 결합 문장이어야 한다(spec 준수 리뷰 m3).
@@ -179,8 +180,8 @@ describe("백그라운드 음성 안내 배선 (E53)", () => {
     expect(fail).toContain("let leftEndScreen = stopLeavingSummary(");
     expect(fail).toContain("highPriority: !leftEndScreen");
     const coordinator = read(join(DIR, "GuideSessionCoordinator.swift"));
-    const ended = coordinator.slice(coordinator.indexOf("        case .userStopped, .ended:"), coordinator.indexOf("    /// 낡은 연결 폐기"));
-    expect(ended).toContain("case .userStopped, .ended:");
+    const ended = coordinator.slice(coordinator.indexOf("        case .userStopped, .locationLost, .ended:"), coordinator.indexOf("    /// 낡은 연결 폐기"));
+    expect(ended).toContain("case .userStopped, .locationLost, .ended:");
     expect(ended).not.toContain("announceExternal");
   });
 

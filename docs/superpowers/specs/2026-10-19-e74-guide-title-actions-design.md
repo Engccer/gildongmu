@@ -50,13 +50,14 @@
 - **이탈 여부 무관**: 자동 조회의 `offRoute` 조건을 선언 갈래는 보지 않는다. 경로 위에서 눌러도 지금 위치에서 다시 조회한다. 선언이 도는 동안 경로로 돌아와도(`backOnRoute`) 그 조회를 버리지 않는다(이탈과 무관하게 연 조회다). 최종 접근 진입·경유지 도착·목적지 변경·세션 종료는 종전대로 버린다.
 - **채택 검사**: 신선도(`RerouteProposalGate.isFresh` + 최근 fix 15초)는 그대로 지난다. 새 경로 첫 점 검사(A70 `routeStartsNearby`)는 사용자 조회 규칙을 따른다: 거부하지 않고 받으며 「경로 시작점이 {8방위}쪽으로 {거리} 떨어져 있습니다.」를 앞에 붙인다(A70 판정 Q3 — 사용자가 연 조회를 거부하면 막다른 길이다). 근거: 이 동작은 사용자 선언이다.
 - **성공 문장**: 자동 재조회와 같은 `GuideText.autoReroute`(「새 경로로 다시 안내합니다. …」, 도보는 방향 머리말 포함). 상태 행은 머리말을 뺀 문장(A57). `.high`, 성공 진동. **시작점 고지가 붙으면 방향 머리말은 뺀다** — 머리말은 새 경로 시작점에서의 첫 15m 방향이라 "시작점 쪽"과 다른 쪽을 가리킬 수 있다(리뷰 MAJOR 2, 버튼 재조회에도 머리말이 없다).
-- **실패 결말**(경로 없음·신선도 미달·조회 실패·예산 소진): E69 ⓐ 문장 「새 경로를 자동으로 찾지 못했습니다.」를 **`.high`로 매번** 말하고 상태 행에도 두며(버튼 재조회 실패와 같다) 실패 진동. 이탈 중이면 버튼 래치를 세워 「경로 다시 조회」가 선다(E69 ⓐ). 자동 갈래의 "회차당 한 번" 래치와 운전자 채널 침묵을 선언 갈래는 따르지 않는다 — 사용자가 방금 누른 동작의 응답이라, 말하지 않으면 무반응 버튼이 된다(헌장 §5 활성화 응답 `.high`).
+- **실패 결말**(경로 없음·신선도 미달·조회 실패·예산 소진): 「새 경로를 찾지 못했습니다.」(`ios.guide.differentRouteFailed`, 위원장 판정 2026-10-19 — 직접 누른 동작이라 E69 ⓐ 자동 갈래 문장에서 「자동으로」를 뺐다. 자동 갈래는 그 문장 그대로)를 **`.high`로 매번** 말하고 상태 행에도 두며(버튼 재조회 실패와 같다) 실패 진동. 이탈 중이면 버튼 래치를 세워 「경로 다시 조회」가 선다(E69 ⓐ). 자동 갈래의 "회차당 한 번" 래치와 운전자 채널 침묵을 선언 갈래는 따르지 않는다 — 사용자가 방금 누른 동작의 응답이라, 말하지 않으면 무반응 버튼이 된다(헌장 §5 활성화 응답 `.high`).
 - 로그: `differentRoute request n=`(예산 사용 수)·`rerouteAdopt source=declare result=…`(`adopted`·`none`·`stale`·`failed`·`budget`), 첫 점 거리는 `routeStartGap source=declare`.
 
 ## 4. 문자열(판정 5)
 
 - `ios.guide.differentRoute`(신규): ko 「현재 경로와 다른 길로 가기」, en "Take a different route", ja 「今のルートとは別の道で行く」, es "Ir por otro camino", fr "Prendre un autre chemin", it "Prendi un'altra strada".
 - `ios.guide.titleWaypointChange`(신규, `{label}`): ko 「{label}, 경유지 바꾸기」, en·ja는 `ios.guide.waypointChange`와 같은 값(en "change" 그대로). es·fr·it는 한 동작 목록에 나란히 들리는 경유지 추가·삭제와 명사를 맞췄다(es 「cambiar punto intermedio」, fr 「changer l’étape」, it 「cambia tappa」 — 접근성 감사 I8). 기존 키를 고치지 않는 이유: 정식판 경유지 행이 그 키를 쓰고 판정 6이 라벨 통일까지 실험판에 봉인했다. 졸업 때 옛 키와 옛 행을 함께 지운다.
+- `ios.guide.differentRouteFailed`(신규): 자동 갈래 `guide.rerouteAutoGaveUp`의 각 로케일 번역에서 「자동으로」에 해당하는 말만 뺀 꼴(ko 「새 경로를 찾지 못했습니다.」, en "Couldn't find a new route.", ja 「新しい経路を見つけられませんでした。」, es "No se pudo encontrar una ruta nueva.", fr "Impossible de trouver un nouvel itinéraire.", it "Impossibile trovare un nuovo percorso."). 실험판 봉인 안의 유일한 소비자 `differentRouteFailed`. 가드 `reroute-button-visibility-guard.test.ts`.
 - 경유지 추가·삭제·목적지 바꾸기·장소 상세 보기는 기존 키(`directions.addVia`·`ios.guide.waypointRemove`·`ios.guide.destMenuChange`·`ios.guide.destMenuDetail`).
 
 ## 5. 실기기·실보행 판정 항목(BACKLOG §2 E74 행)
@@ -66,7 +67,7 @@
 6. 최종 접근 직전·직후에 동작 목록 맨 앞의 「다른 길로 가기」가 사라져 순서가 당겨지는 것이 헷갈리지 않는가, 대중교통 시트에서 빈 오른쪽 밀기가 열리지 않는가, 실험판의 빈 섹션 헤더가 여백을 남기지 않는가.
 3. 들리는 순서가 판정 3과 같은가, 보이는 밀기 버튼의 글자(「현재 경로와 다른 길로 가기」는 길다)가 읽히는가.
 4. 경로 위에서 누르면 대개 같은 경로가 다시 온다(지금 위치에서 가장 좋은 길이 지금 길이다). 의도된 쓰임(다른 길로 걷기 시작한 뒤 누른다)에서 1분 대기와 이탈 경고를 건너뛰는가.
-5. 실패 문장 「새 경로를 자동으로 찾지 못했습니다.」가 사용자가 누른 동작의 응답으로 어색하지 않은가(판정 원문대로 E69 ⓐ 문장을 쓴다).
+5. 실패 문장 「새 경로를 찾지 못했습니다.」가 들리는가(직접 누른 갈래), 자동 재조회 실패는 「새 경로를 자동으로 찾지 못했습니다.」 그대로인가.
 
 ## 6. 범위 밖
 

@@ -53,9 +53,9 @@
 
 도보를 시작하지 못하면(`.startFailed`) `prewalkCompleted: false`로 같은 구간부터 연다 — 아직 걷지 않았으므로 「도보 N분 이동 후 …」가 참이다. 다리 문장 「도보 안내를 시작할 수 없어 승차 대기로 바로 넘어갑니다」(A67)는 그대로 맞는다.
 
-### D6. 도보 중 정지·권한 상실은 전체 종료, 꼬리 문장은 새 키
+### D6. 도보 중 정지는 전체 종료, 꼬리 문장은 새 키(권한 상실은 D14)
 
-A25·E70 D11과 같은 정책: 도보 시트의 [안내 종료]·권한 상실이면 대중교통도 다시 열지 않는다(도착이 늦을 때를 위한 선언 버튼 「{역} 도착」이 따로 있다). 다만 A25 꼬리 「대중교통 안내는 시작하지 않았습니다.」는 이미 돌던 안내라 거짓이다. 환승 도보면 `ios.beacon.transferWalkCancelledWith` 「{reason}. 대중교통 안내도 종료했습니다.」를 쓴다. 도보 모델이 그것을 알도록 `markPrewalk(target:transfer:)`가 기본값 없는 인자를 받는다(여정 접근 도보는 `transfer: false`).
+A25·E70 D11과 같은 정책: 도보 시트의 [안내 종료]면 대중교통도 다시 열지 않는다(도착이 늦을 때를 위한 선언 버튼 「{역} 도착」이 따로 있다). 다만 A25 꼬리 「대중교통 안내는 시작하지 않았습니다.」는 이미 돌던 안내라 거짓이다. 환승 도보면 `ios.beacon.transferWalkCancelledWith` 「{reason}. 대중교통 안내도 종료했습니다.」를 쓴다. 도보 모델이 그것을 알도록 `markPrewalk(target:transfer:)`가 기본값 없는 인자를 받는다(여정 접근 도보는 `transfer: false`).
 
 ### D7. 도보 시작 문장은 A25 문장 그대로
 
@@ -87,15 +87,28 @@ A69의 GPS 한 마디와 「다음 정류장 …」은 승차 중(하차 전) �
 
 웹은 승차 전 도보 기제(`TransitGuidePanel`의 `prewalk` 상태 + `DistanceBeacon.onSessionEnd`)가 있으나 세션을 중간 구간부터 다시 여는 경로가 없다. iOS 실승차 판정 뒤에 같은 규칙으로 옮긴다(BACKLOG "iOS 선행, 플랫폼 갭"). 그때 웹 기준본 + 공유 fixture로 Kit 함수를 미러한다. 안드로이드는 대중교통 실시간 안내의 승차 전 도보 기제가 없다(`:kit` 미러만). Kit 새 파일은 등록부(`android/kit/mirrors/guide.json`)에 `pending`으로 둔다.
 
+### D14. 환승 도보 중 위치 권한·정확한 위치 상실은 걷기만 끝내고 그 구간 승차 대기로 (위원장 판정 2026-10-19 10:20)
+
+설계 리뷰 판정: 별도 적대적 리뷰 생략, 구현 뒤 opus 리뷰 1회 + 변이 주입. 새 상태가 아니라 기존 재진입(`startAfterPrewalk`)에 갈래 하나를 더하는 것이다.
+
+- **들리는 문장**: 「{사유}. 도보 안내를 멈추고 승차 대기로 넘어갑니다.」(`ios.beacon.transferWalkLostWith`, 판정 시 제시된 문장) 한 통지 뒤 그 구간의 대기 문맥. 사유는 기존 문장(「위치 권한이 필요합니다」·「정확한 위치가 꺼져 있어 거리를 추적할 수 없습니다」).
+- **사유를 갈라 싣는다**: 도보 모델의 종료 사유에 `locationLost`를 더하고 `stopAndFail`만 그것을 쓴다. `.ended`(그 밖의 정지)에 재개를 걸면 종료 경로가 늘 때 다른 정지(화면 이탈 정리 등)가 조용히 재개로 샌다. 여정 단계 매핑(`JourneyStageEnd`)에서는 `.ended`와 같다(접근 도보의 끊김은 원래 대중교통 단계로 넘어간다, E70 §6.1).
+- **재진입은 도착과 같은 함수**: `startAfterPrewalk(guideRoute:startLeg:…, prewalkCompleted: true)` — 이미 걷던 중이라 「도보 N분 이동 후」를 다시 말하면 지난 일을 미래형으로 말한다(D5와 같은 처리). 대기 문맥만 내고 시작 통지 「안내를 시작합니다」는 없다(D5 재개 규칙).
+- **순서**: 걷던 시트가 내려갈 600ms(도착 갈래와 같은 근거) 뒤, VoiceOver 통지 장부가 빌 때까지 기다리고(상한 8초, A67 시작 실패 갈래와 같은 장부) 연다 — 대중교통 시작 통지가 사유·다리 문장을 끊지 않게. 시작 실패 갈래와 한 함수(`resumeTransitAfterWalkSpeech`)를 쓴다. 진단 로그 `transferWalk locationLost resume leg=`·`prewalk locationLostSpeechWait ms=`.
+- **상태 줄도 두 문장**: 위치 상실은 대개 설정 앱에서 끄는 일이라 그 순간 앱이 백그라운드다. 버려진 통지는 전경 복귀 때 도보 모델이 `statusText`로 갚으므로(E53 §3.3) 다리 문장이 상태 줄에 있어야 복귀해서도 들린다. 대중교통을 탄 뒤엔 A68 재시작 컨텍스트와 함께 그 줄이 거둬진다(`transitPassedPrewalk`). 타기 전에 대중교통을 끝내면 「넘어갑니다」가 남는데, 그 줄의 해결 버튼(설정 열기·정확한 위치 허용)이 가리키는 걷기가 여전히 유효해 두었다.
+- **불변**: [안내 종료]는 둘 다 끝냄(판정), 맨 처음 승차 전 도보(A25)의 위치 상실은 전체 종료 그대로(판정 범위는 환승 도보, `context.isTransfer`로 가른다), 여정 접근 도보의 끊김은 기존 여정 갈래.
+- **여정 안**: 재개 세션이 보존된 여정 훅으로 여정을 잇는다(D9). 재개가 서지 않으면 실패 시트(`endPrewalk` 다른 갈래와 같은 모양).
+- **남은 대중교통 안내는 위치 없이 돈다**: keep-alive 위치 스트림은 권한이 없으면 로그만 남기고(`keepAlive denied`) 세션을 끝내지 않는다. 지하철·버스 도착 관측으로 따라간다.
+
 ## 3. 변경 자리
 
 | 자리 | 변경 |
 |---|---|
 | Kit `TransitTransferWalk.swift`(새) | `transitTransferWalkTarget`·`withoutWalkBefore`·`initTransitGuide(route:startingAt:now:)` |
 | `TransitGuideModel.swift` | `completeOrAdvance` 미리 실행 갈래 · `stopForTransferWalk()` · `startAfterPrewalk(guideRoute:startLeg:…)` · `beginSession` 시작 구간·재개 통지 · 탔다 술어의 시작 구간 |
-| `GuideSessionCoordinator.swift` | `transitTransferWalk(_:)` · `PrewalkContext`가 안내용 경로·시작 구간을 든다 · `beginTransit`은 한 번 만든 안내용 경로를 싣는다 |
-| `BeaconModel.swift` | `markPrewalk(target:transfer:)` · 정지·권한 상실 꼬리 문장 분기 |
-| `ios-extra` 6로케일 | `ios.beacon.transferWalkCancelledWith` |
+| `GuideSessionCoordinator.swift` | `transitTransferWalk(_:)` · `PrewalkContext`가 안내용 경로·시작 구간을 든다 · `beginTransit`은 한 번 만든 안내용 경로를 싣는다 · `endPrewalk` 위치 상실 갈래와 `resumeTransitAfterWalkSpeech`(D14) |
+| `BeaconModel.swift` | `markPrewalk(target:transfer:)` · 정지·권한 상실 꼬리 문장 분기 · 종료 사유 `locationLost`(D14) |
+| `ios-extra` 6로케일 | `ios.beacon.transferWalkCancelledWith` · `ios.beacon.transferWalkLostWith`(D14) |
 | 가드 | `guidance-gate-drift.test.ts`(시작 호출 수·호출자) · 새 `transfer-walk-guard.test.ts` |
 
 ## 4. 테스트
@@ -115,6 +128,7 @@ A69의 GPS 한 마디와 「다음 정류장 …」은 승차 중(하차 전) �
 7. 지방버스 근사 잠금으로 아직 타고 있을 때 「다음 구간」을 누르면 어떻게 들리는가(§6 안전 M2).
 8. 환승 도보 시작 문장이 시트 전환 낭독이나 곧이어 나오는 도보 시작 요약(이것도 `.high`, A25와 같은 경로)에 끊기지 않고 끝까지 들리는가, 재개 뒤 차량 후보까지의 스와이프 횟수가 일반 「다음 구간」과 달라 거슬리는가.
 9. 같은 자리 환승(직선 수 m, 하차 좌표 결손)에서 시작 문장·시작음·도착·시작음·대기 문맥이 몰릴 때 알아들을 수 있는가, 소리 경고(화면이 꺼지면 소리가 나지 않는다는 문장·진동)가 환승마다 반복돼 거슬리는가.
+10. 환승 도보 중 설정에서 위치 권한(또는 정확한 위치)을 끄고 앱으로 돌아왔을 때(D14): 「위치 권한이 필요합니다. 도보 안내를 멈추고 승차 대기로 넘어갑니다.」 뒤 그 구간의 대기 문맥(「도보 N분 이동 후」 없음)이 들리는가, 대중교통 시트가 뜨고 구간 순번이 이어지는가, 지하철·버스 도착 관측으로 탑승이 잡히는가.
 
 ## 6. 리뷰 판정 (구현 커밋 `be2b03a5` 기준)
 
@@ -129,7 +143,7 @@ A69의 GPS 한 마디와 「다음 정류장 …」은 승차 중(하차 전) �
 
 반영하지 않은 것과 근거:
 - 지하에서 누르면 열화 fix로 경로를 조회한다(안전 H1)·누르고 바로 잠그면 백그라운드에서 위치를 새로 열지 못한다(안전 M3): E73이 새로 만든 노출이 아니다. E34 하차 후 인계(`acceptWalkHandoff`)가 같은 구조(대중교통 정지 → 600ms → 도보 시작, 대개 지하 하차역)로 2.0부터 출시돼 있다. 환승 도보에서만 출발점 정책을 바꾸면 같은 상황의 두 인계가 갈린다(A18 `routeOriginStep` 단일 경로, 수단 차이를 세션 분기로 두지 않는 규칙). 두 인계 공통 과제로 BACKLOG에 올리고 §5-5·§5-6 현장 항목으로 잰다.
-- 환승 도보 중 권한 상실도 남은 대중교통을 끝낸다(안전 M1): D6 정책(A25·E70 D11과 같은 규칙)이고 꼬리 문장은 사실과 맞다. 「권한 상실이면 그 구간 대기로 복귀」는 제품 판정으로 올린다(판정 파일, 기본값 D6 유지).
+- 환승 도보 중 권한 상실도 남은 대중교통을 끝낸다(안전 M1): 제품 판정으로 올렸고 위원장이 「그 구간 대기로 복귀」를 골랐다(D14).
 - 아직 타고 있을 때(근사 잠금 riding·추적 불가) 누르면 도보가 선다(안전 M2): 「다음 구간」의 뜻은 "내렸다"이고 추적 불가 대기와 근사 잠금 riding은 내린 뒤 누르는 정상 경로이기도 해 riding을 빼면 정당한 환승이 빠진다. 오탭 비용이 커진 것은 사실이라 §5-7로 잰다.
 - 하차 좌표 결손 시 거리 없이 대상(안전 L2): D2의 선택. §5-9로 잰다.
 - 재개마다 세션당 1회 경고 래치가 풀린다(구현 L5): 모델이 세션 사이 상태를 들게 되므로 §5-9로 거슬리는지 먼저 본다.

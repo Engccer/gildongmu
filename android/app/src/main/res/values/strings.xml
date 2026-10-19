@@ -68,6 +68,7 @@
     <string name="android_beacon_stopped">거리 추적을 종료했습니다.</string>
     <string name="android_beacon_stoppedJoin">거리 추적을 종료했습니다</string>
     <string name="android_beacon_transferWalkCancelledWith">%1$s. 대중교통 안내도 종료했습니다.</string>
+    <string name="android_beacon_transferWalkLostWith">%1$s. 도보 안내를 멈추고 승차 대기로 넘어갑니다.</string>
     <string name="android_chat_addressesHeading">주소 %1$s건</string>
     <string name="android_chat_clear">텍스트 지우기</string>
     <string name="android_chat_consentAgree">동의하고 시작</string>
@@ -136,6 +137,7 @@
     <string name="android_guide_destMenuChange">목적지 바꾸기</string>
     <string name="android_guide_destMenuDetail">장소 상세 보기</string>
     <string name="android_guide_differentRoute">현재 경로와 다른 길로 가기</string>
+    <string name="android_guide_differentRouteFailed">새 경로를 찾지 못했습니다.</string>
     <string name="android_guide_focusDenied">다른 앱이 소리를 쓰고 있어 안내 소리를 내지 못하고 있습니다</string>
     <string name="android_guide_mediaVolumeZero">미디어 볼륨이 꺼져 있어 안내 소리가 나지 않습니다</string>
     <string name="android_guide_notificationChannel">도보 안내</string>

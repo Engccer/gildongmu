@@ -68,6 +68,7 @@
     <string name="android_beacon_stopped">Suivi de distance arrêté.</string>
     <string name="android_beacon_stoppedJoin">Suivi de distance arrêté</string>
     <string name="android_beacon_transferWalkCancelledWith">%1$s. Le guidage des transports est également terminé.</string>
+    <string name="android_beacon_transferWalkLostWith">%1$s. Guidage à pied arrêté ; passage à l\'attente d\'embarquement.</string>
     <string name="android_chat_addressesHeading">{1, plural, one {%1$s adresse} other {%1$s adresses}}</string>
     <string name="android_chat_clear">Effacer le texte</string>
     <string name="android_chat_consentAgree">Accepter et commencer</string>
@@ -136,6 +137,7 @@
     <string name="android_guide_destMenuChange">Changer de destination</string>
     <string name="android_guide_destMenuDetail">Voir les détails du lieu</string>
     <string name="android_guide_differentRoute">Prendre un autre chemin</string>
+    <string name="android_guide_differentRouteFailed">Impossible de trouver un nouvel itinéraire.</string>
     <string name="android_guide_focusDenied">Une autre application utilise l’audio : les sons du guidage ne peuvent pas être joués pour le moment</string>
     <string name="android_guide_mediaVolumeZero">Le volume multimédia est coupé : les sons du guidage ne seront pas audibles</string>
     <string name="android_guide_notificationChannel">Guidage à pied</string>

@@ -435,6 +435,9 @@
   "ios.beacon.transferWalkCancelledWith": [
     "reason"
   ],
+  "ios.beacon.transferWalkLostWith": [
+    "reason"
+  ],
   "ios.chat.addressesHeading": [
     "count"
   ],

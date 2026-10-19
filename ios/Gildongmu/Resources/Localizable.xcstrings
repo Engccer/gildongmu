@@ -20081,6 +20081,46 @@
         }
       }
     },
+    "ios.beacon.transferWalkLostWith": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@. 도보 안내를 멈추고 승차 대기로 넘어갑니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@. Walking guidance stopped; moving to boarding wait."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@. Se detuvo la guía a pie; se pasa a la espera de embarque."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@. Guidage à pied arrêté ; passage à l'attente d'embarquement."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@. Guida a piedi interrotta; si passa all'attesa di salita."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@。徒歩案内を止めて乗車待ちに進みます。"
+          }
+        }
+      }
+    },
     "ios.chat.addressesHeading": {
       "localizations": {
         "ko": {
@@ -21877,6 +21917,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "今のルートとは別の道で行く"
+          }
+        }
+      }
+    },
+    "ios.guide.differentRouteFailed": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "새 경로를 찾지 못했습니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't find a new route."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo encontrar una ruta nueva."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible de trouver un nouvel itinéraire."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossibile trovare un nuovo percorso."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新しい経路を見つけられませんでした。"
           }
         }
       }

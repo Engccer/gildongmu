@@ -327,43 +327,62 @@ final class GuideSession {
             beacon.clearPrewalk()  // 동기 거부 분기는 begin() Task를 지나지 않아 표식이 남는다
             // 다리 문장(「도보 안내를 시작할 수 없어 승차 대기로 바로 넘어갑니다」)은 도보 모델이 원인 문장 뒤에 붙여 `.high` 한
             // 통지로 냈다(A67, `BeaconModel.fail`). 대중교통 창구로 따로 내면 전경에서 같은 턴에 게시돼 원인 문장을 끊는다
-            // (백그라운드는 어느 창구든 세션 전이라 버리지만, 시작 실패는 탭 직후 전경에서 판정돼 닿지 않는다). 대중교통 시작은
-            // 그 통지가 끝나기를 기다린다 — 시작 통지가 두 문장을 끊지 않게(여정 접근 도보 `prepareJourneyStage`와 같은 장부·상한). 동기 거부(`beginTransit` 말미)는 원인 문장도 다리
-            // 문장도 없다 — 그 경로는 `startTransit`의 `refuseIfActive`가 같은 상태를 먼저 보므로 닿지 않는다.
-            prewalkTask?.cancel()
-            prewalkTask = Task { @MainActor [weak self] in
-                guard let self else { return }
-                if UIAccessibility.isVoiceOverRunning {
-                    var waited = 0
-                    while !self.beacon.announcementsSettled, waited < Self.walkSpeechWaitLimitMs {
-                        try? await Task.sleep(for: .milliseconds(100))
-                        guard !Task.isCancelled else { return }
-                        waited += 100
-                    }
-                    guideDiagLog("prewalk startFailSpeechWait ms=\(waited) open=\(GuideSpeechOutput.openAnnouncements)")
-                }
-                guard !Task.isCancelled else { return }
-                self.transit.startAfterPrewalk(
-                    guideRoute: context.guideRoute, startLeg: context.startLeg,
-                    destinationLabel: context.destinationLabel, destinationRoman: context.destinationRoman,
-                    dest: context.dest, accessible: context.accessible, prewalkCompleted: false)
-                // 여정의 대중교통 단계인데 세션이 서지 않았으면(경로 변환 실패) 세션 없는 running에 남지 않게 끝낸다.
-                if !self.transit.isTracking, let journey = self.journey, case .running(.transit) = journey.phase {
-                    guideDiagLog("journey prewalkTransitStartFailed")
-                    self.advanceJourney(.stageEnded(.startFailed), token: journey.token)
-                }
-            }
-        case .userStopped, .ended:
+            // (백그라운드는 어느 창구든 세션 전이라 버리지만, 시작 실패는 탭 직후 전경에서 판정돼 닿지 않는다). 동기 거부(`beginTransit`
+            // 말미)는 원인 문장도 다리 문장도 없다 — 그 경로는 `startTransit`의 `refuseIfActive`가 같은 상태를 먼저 보므로 닿지 않는다.
+            resumeTransitAfterWalkSpeech(context, prewalkCompleted: false, sheetGapMs: 0, logLabel: "startFailSpeechWait")
+        case .locationLost where context.isTransfer:
+            // 환승 도보 중 위치 권한·정확한 위치 상실(위원장 판정 2026-10-19): 걷기만 끝내고 그 구간 승차 대기로 — 남은 대중교통
+            // 안내는 위치 없이 도착 정보로 따라간다. 재진입은 도착과 같은 `startAfterPrewalk(prewalkCompleted: true)`다: 이미 걷던
+            // 중이라 「도보 N분 이동 후」를 다시 말하면 지난 일을 미래형으로 말한다. 사유와 다리 문장(「도보 안내를 멈추고 승차 대기로
+            // 넘어갑니다」)은 도보 모델이 한 통지로 냈다(`BeaconModel.stopAndFail`). 600ms: 걷던 시트가 내려간 뒤 대중교통 시트가
+            // 뜬다(도착 갈래와 같은 근거). 여정 안이면 훅이 보존된 재개 세션이 여정을 잇는다(E73 D9). 맨 처음 승차 전 도보(A25)는
+            // 아래 갈래 그대로 — 판정 범위는 환승 도보다.
+            guideDiagLog("transferWalk locationLost resume leg=\(context.startLeg)")
+            resumeTransitAfterWalkSpeech(context, prewalkCompleted: true, sheetGapMs: 600, logLabel: "locationLostSpeechWait")
+        case .userStopped, .locationLost, .ended:
             // 여정(A 미지정)의 첫 단계가 승차 전 도보였으면 대중교통 세션은 시작되지 않으므로 여정도 끝난다(D11).
             if let journey, case .running(.transit) = journey.phase {
                 advanceJourney(.transitStopped, token: journey.token)
             }
             // 문장을 내지 않는다. "대중교통 안내는 시작하지 않았다"는 도보 모델이 정지·실패 사유 뒤에 붙여 **한 통지**로 냈다
-            // (사용자 정지 `BeaconModel.stopByUser`, 권한·정밀 위치 상실 `stopAndFail` — `.ended`는 그 경로뿐이다. prewalk엔
+            // (사용자 정지 `BeaconModel.stopByUser`, 권한·정밀 위치 상실 `stopAndFail` — `.locationLost`. prewalk엔
             // 안전망이 돌지 않고 다른 시작 진입은 세션 중 거절된다). 대중교통 창구로 내면 그 재생기는 세션을 시작한 적이 없어
             // 도보 정지음을 기다리지 않고 겹치며(A54 접근성 감사), 화면이 꺼진 동안엔 버려지고 대중교통 복귀 상환은 추적 가드
             // 뒤라 어디서도 전달되지 않았다(E53 spec §3.3, 횡단 리뷰 F3).
             break
+        }
+    }
+
+    /// 도보 모델이 낸 원인·다리 통지가 끝난 뒤 같은 경로로 그 구간의 대중교통 안내를 연다(`endPrewalk`의 시작 실패·환승 도보 위치
+    /// 상실 갈래). 대중교통 시작 통지가 그 두 문장을 끊지 않게 VoiceOver 통지 장부를 기다린다(여정 접근 도보 `prepareJourneyStage`와
+    /// 같은 장부·상한). `sheetGapMs`는 걷던 시트가 있었을 때 내려갈 틈이다(시작 실패는 시트가 서기 전이라 0). `logLabel`은 실기기 판정 행이
+    /// 읽는 진단 로그 이름이다(`prewalk startFailSpeechWait` — BACKLOG A67).
+    private func resumeTransitAfterWalkSpeech(
+        _ context: PrewalkContext, prewalkCompleted: Bool, sheetGapMs: Int, logLabel: String
+    ) {
+        prewalkTask?.cancel()
+        prewalkTask = Task { @MainActor [weak self] in
+            if sheetGapMs > 0 { try? await Task.sleep(for: .milliseconds(sheetGapMs)) }
+            guard !Task.isCancelled, let self else { return }
+            if UIAccessibility.isVoiceOverRunning {
+                var waited = 0
+                while !self.beacon.announcementsSettled, waited < Self.walkSpeechWaitLimitMs {
+                    try? await Task.sleep(for: .milliseconds(100))
+                    guard !Task.isCancelled else { return }
+                    waited += 100
+                }
+                guideDiagLog("prewalk \(logLabel) ms=\(waited) open=\(GuideSpeechOutput.openAnnouncements)")
+            }
+            guard !Task.isCancelled else { return }
+            self.transit.startAfterPrewalk(
+                guideRoute: context.guideRoute, startLeg: context.startLeg,
+                destinationLabel: context.destinationLabel, destinationRoman: context.destinationRoman,
+                dest: context.dest, accessible: context.accessible, prewalkCompleted: prewalkCompleted)
+            // 여정의 대중교통 단계인데 세션이 서지 않았으면(경로 변환 실패) 세션 없는 running에 남지 않게 끝낸다.
+            if !self.transit.isTracking, let journey = self.journey, case .running(.transit) = journey.phase {
+                guideDiagLog("journey prewalkTransitStartFailed")
+                self.advanceJourney(.stageEnded(.startFailed), token: journey.token)
+            }
         }
     }
 
@@ -778,13 +797,14 @@ struct JourneyPlan {
 }
 
 extension JourneyStageEnd {
-    /// 비콘 종료 사유 넷과 1:1(spec §6.1 — 빠진 사유가 있으면 세션은 사라지고 여정만 남는다).
+    /// 비콘 종료 사유 전부를 받는다(spec §6.1 — 빠진 사유가 있으면 세션은 사라지고 여정만 남는다). 위치 상실(`locationLost`,
+    /// E73 환승 도보 재개용으로 갈라 둔 사유)은 여정 단계에선 그 밖의 정지와 같다.
     init(_ reason: BeaconModel.EndReason) {
         switch reason {
         case .arrived: self = .arrived
         case .userStopped: self = .userStopped
         case .startFailed: self = .startFailed
-        case .ended: self = .ended
+        case .locationLost, .ended: self = .ended
         }
     }
 }

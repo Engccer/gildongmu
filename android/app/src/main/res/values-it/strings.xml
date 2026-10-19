@@ -68,6 +68,7 @@
     <string name="android_beacon_stopped">Tracciamento della distanza interrotto.</string>
     <string name="android_beacon_stoppedJoin">Tracciamento della distanza interrotto</string>
     <string name="android_beacon_transferWalkCancelledWith">%1$s. Anche la guida dei trasporti è terminata.</string>
+    <string name="android_beacon_transferWalkLostWith">%1$s. Guida a piedi interrotta; si passa all\'attesa di salita.</string>
     <string name="android_chat_addressesHeading">{1, plural, one {%1$s indirizzo} other {%1$s indirizzi}}</string>
     <string name="android_chat_clear">Cancella il testo</string>
     <string name="android_chat_consentAgree">Accetta e inizia</string>
@@ -136,6 +137,7 @@
     <string name="android_guide_destMenuChange">Cambia destinazione</string>
     <string name="android_guide_destMenuDetail">Vedi dettagli del luogo</string>
     <string name="android_guide_differentRoute">Prendi un\'altra strada</string>
+    <string name="android_guide_differentRouteFailed">Impossibile trovare un nuovo percorso.</string>
     <string name="android_guide_focusDenied">Un’altra app sta usando l’audio, quindi i suoni della guida non possono essere riprodotti ora</string>
     <string name="android_guide_mediaVolumeZero">Il volume multimediale è disattivato, quindi i suoni della guida non verranno riprodotti</string>
     <string name="android_guide_notificationChannel">Guida a piedi</string>

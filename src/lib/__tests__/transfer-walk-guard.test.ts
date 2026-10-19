@@ -117,11 +117,16 @@ describe("E73 환승 도보 — 세션 소유자", () => {
     expect(transit()).toContain("func announceExternal(_ message: String, highPriority: Bool, speechClass: GuideSpeechClass) {");
   });
 
-  it("연결의 두 끝이 시작 구간을 넘긴다(도착·시작 실패)", () => {
+  it("연결의 끝이 시작 구간을 넘긴다(도착·시작 실패·환승 도보 위치 상실)", () => {
     const body = functionBody(coordinator(), "endPrewalk");
-    expect(body.match(/guideRoute: context\.guideRoute, startLeg: context\.startLeg,/g)).toHaveLength(2);
-    expect(body).toContain("prewalkCompleted: true");
-    expect(body).toContain("prewalkCompleted: false");
+    expect(body.match(/guideRoute: context\.guideRoute, startLeg: context\.startLeg,/g)).toHaveLength(1);
+    expect(body).toContain("dest: context.dest, accessible: context.accessible, prewalkCompleted: true)");
+    expect(body).toContain("resumeTransitAfterWalkSpeech(context, prewalkCompleted: false, sheetGapMs: 0,");
+    const resume = functionBody(coordinator(), "resumeTransitAfterWalkSpeech");
+    expect(resume).toContain("guideRoute: context.guideRoute, startLeg: context.startLeg,");
+    expect(resume).toContain("prewalkCompleted: prewalkCompleted)");
+    // 통지가 끝난 뒤 연다 — 대중교통 시작 통지가 원인·다리 문장을 끊지 않게.
+    expect(resume.indexOf("self.beacon.announcementsSettled")).toBeLessThan(resume.indexOf("self.transit.startAfterPrewalk("));
   });
 
   it("표식은 환승 여부를 기본값 없이 밝힌다(D6)", () => {
@@ -141,6 +146,60 @@ describe("E73 환승 도보 — 세션 소유자", () => {
     );
     // 표식은 함께 서고 함께 지워진다.
     expect(beacon().match(/^\s+(?:self\.)?prewalkIsTransfer = false$/gm)).toHaveLength(3);
+  });
+});
+
+describe("E73 환승 도보 — 걷는 중 위치 상실은 그 구간 승차 대기로(위원장 판정 2026-10-19)", () => {
+  it("도보 모델은 위치 상실을 다른 정지와 갈라 알린다", () => {
+    expect(beacon()).toContain("enum EndReason { case arrived, userStopped, startFailed, locationLost, ended }");
+    const body = functionBody(beacon(), "stopAndFail");
+    // 사유는 stop() 앞에 — stop()이 소비한다.
+    expect(body.indexOf("pendingEndReason = .locationLost")).toBeGreaterThan(-1);
+    expect(body.indexOf("pendingEndReason = .locationLost")).toBeLessThan(body.indexOf("stopLeavingSummary("));
+    // 환승 도보 꼬리만 재개 꼬리로 바뀐다(A25 꼬리·여정 접근 도보는 불변).
+    expect(body).toMatch(
+      /let prewalkTail = journeyChain == nil\s*\? \(prewalkStopTail == \.transitAlsoEnded \? \.transitResumes : prewalkStopTail\) : nil/,
+    );
+    // [안내 종료]는 둘 다 끝냄 그대로(위원장 판정).
+    const stopByUser = functionBody(beacon(), "stopByUser");
+    expect(stopByUser).toContain("let prewalkTail = prewalkStopTail");
+    expect(stopByUser).not.toContain("transitResumes");
+  });
+
+  it("재개 꼬리는 사유와 한 통지·한 상태 줄이다(백그라운드에서 버려지면 복귀 상환이 상태 줄로 갚는다)", () => {
+    expect(functionBody(beacon(), "fail")).toMatch(
+      /statusText = prewalkTail\.map \{ prewalkStopText\(\$0, reason: appLocalized\(key\)\) \} \?\? appLocalized\(key\)/,
+    );
+    expect(functionBody(beacon(), "prewalkStopText")).toContain(
+      'case .transitResumes: appLocalized("ios.beacon.transferWalkLostWith", reason)',
+    );
+  });
+
+  it("코디네이터는 환승 도보의 위치 상실만 그 구간 대기로 다시 연다(A25 승차 전 도보는 전체 종료 그대로)", () => {
+    const body = functionBody(coordinator(), "endPrewalk");
+    const resume = body.indexOf("case .locationLost where context.isTransfer:");
+    const end = body.indexOf("case .userStopped, .locationLost, .ended:");
+    expect(resume).toBeGreaterThan(-1);
+    expect(resume).toBeLessThan(end);
+    // 걷던 중이었다 — 도착과 같이 그 구간 도보 문맥을 지운다(「도보 N분 이동 후」를 말하지 않는다). 걷던 시트가 내려갈 틈 600ms.
+    expect(body.slice(resume, end)).toContain(
+      "resumeTransitAfterWalkSpeech(context, prewalkCompleted: true, sheetGapMs: 600,",
+    );
+    expect(coordinator()).toContain("case .locationLost, .ended: self = .ended");
+  });
+
+  it.each(LOCALES)("%s: 재개 꼬리 틀은 두 문장이고 정지 꼬리와 다르다", (locale) => {
+    const f = JSON.parse(read(join(ROOT, `ios/i18n/ios-extra/${locale}.json`))).ios.beacon as Record<string, string>;
+    expect(f.transferWalkLostWith.startsWith(locale === "ja" ? "{reason}。" : "{reason}. ")).toBe(true);
+    expect(f.transferWalkLostWith).toMatch(/[.。]$/);
+    expect(f.transferWalkLostWith).not.toBe(f.transferWalkCancelledWith);
+  });
+
+  it("렌더: 권한 상실(ko)", () => {
+    const f = JSON.parse(read(join(ROOT, "ios/i18n/ios-extra/ko.json"))).ios.beacon as Record<string, string>;
+    expect(f.transferWalkLostWith.replace("{reason}", "위치 권한이 필요합니다")).toBe(
+      "위치 권한이 필요합니다. 도보 안내를 멈추고 승차 대기로 넘어갑니다.",
+    );
   });
 });
 

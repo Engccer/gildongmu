@@ -1097,6 +1097,9 @@
   "android.beacon.transferWalkCancelledWith": [
     "reason"
   ],
+  "android.beacon.transferWalkLostWith": [
+    "reason"
+  ],
   "android.chat.addressesHeading": [
     "count"
   ],

@@ -53,6 +53,22 @@ describe("iOS", () => {
       /guard token == proposalToken, declared \|\| offRoute, isTracking, mode == \.detail else \{ return \}\s*if declared \{ differentRouteFailed\(cause: "failed"\) \} else \{ raiseRerouteButton\(cause: "failed"/,
     );
   });
+
+  it("E74 직접 누른 「다른 길로 가기」의 실패는 「자동으로」가 없는 문장이다(위원장 판정 2026-10-19) — 자동 갈래는 그대로", () => {
+    const start = model.indexOf("private func differentRouteFailed(");
+    const body = model.slice(start, model.indexOf("\n    }\n", start));
+    expect(body).toMatch(/statusText = appLocalized\("ios\.guide\.differentRouteFailed"\)[^]*announce\(statusText, highPriority: true/);
+    expect(body).not.toContain('appLocalized("guide.rerouteAutoGaveUp")');
+    const frames = (locale: string) =>
+      JSON.parse(read(`ios/i18n/ios-extra/${locale}.json`)).ios.guide as Record<string, string>;
+    const auto = (locale: string) => JSON.parse(read(`messages/${locale}.json`)).guide.rerouteAutoGaveUp as string;
+    for (const locale of ["ko", "en", "es", "fr", "it", "ja"]) {
+      expect(frames(locale).differentRouteFailed, locale).toBeTruthy();
+      expect(frames(locale).differentRouteFailed, locale).not.toBe(auto(locale));
+    }
+    expect(frames("ko").differentRouteFailed).toBe("새 경로를 찾지 못했습니다.");
+    expect(frames("en").differentRouteFailed).toBe("Couldn't find a new route.");
+  });
 });
 
 describe("안드로이드", () => {

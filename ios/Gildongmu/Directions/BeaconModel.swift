@@ -531,7 +531,9 @@ final class BeaconModel {
     // MARK: - 승차 전 도보(prewalk, A25 spec 2026-08-30 §4.2)
 
     /// 도보 세션이 끝난 사유 — `onSessionEnd`로 `GuideSession`에 전달된다.
-    enum EndReason { case arrived, userStopped, startFailed, ended }
+    /// `locationLost`는 걷던 중 위치 권한·정확한 위치 상실(`stopAndFail`) — 환승 도보(E73)는 이 사유에서만 대중교통으로 돌아간다
+    /// (위원장 판정 2026-10-19). `.ended`(그 밖의 정지)와 갈라 두어야 종료 경로가 늘어도 다른 정지가 재개로 새지 않는다.
+    enum EndReason { case arrived, userStopped, startFailed, locationLost, ended }
 
     /// 승차역 라벨. nil이 아니면 이 도보 세션은 대중교통 안내의 승차 전 구간이다: 종료 화면을
     /// 남기지 않고(승차역은 여정의 끝이 아니다), 시트가 "승차역 도착" 선언 버튼을 보이며, 잊힌
@@ -545,7 +547,8 @@ final class BeaconModel {
     /// 종료했습니다」다(A25 꼬리 「시작하지 않았습니다」는 거짓, spec D6). `prewalkTarget`과 함께 서고 함께 지워진다.
     private(set) var prewalkIsTransfer = false
     /// 승차 전 도보 정지 꼬리(A54·E73). 판정은 표식에서 — 종료 분기는 `stop()` 앞에서 캡처한다(`stop()`이 표식을 지운다).
-    enum PrewalkStopTail { case transitNotStarted, transitAlsoEnded }
+    /// `transitResumes`는 환승 도보의 위치 상실 꼬리(「도보 안내를 멈추고 승차 대기로 넘어갑니다」)다 — `stopAndFail`만 고른다.
+    enum PrewalkStopTail { case transitNotStarted, transitAlsoEnded, transitResumes }
     private var prewalkStopTail: PrewalkStopTail? {
         guard prewalkTarget != nil else { return nil }
         return prewalkIsTransfer ? .transitAlsoEnded : .transitNotStarted
@@ -667,6 +670,7 @@ final class BeaconModel {
         switch tail {
         case .transitNotStarted: appLocalized("ios.beacon.prewalkCancelledWith", reason)
         case .transitAlsoEnded: appLocalized("ios.beacon.transferWalkCancelledWith", reason)
+        case .transitResumes: appLocalized("ios.beacon.transferWalkLostWith", reason)
         }
     }
 
@@ -1445,7 +1449,9 @@ final class BeaconModel {
         lastFailure = (key, resolution)
         // 승차 전 도보면 사유 뒤에 "대중교통 안내는 시작하지 않았다"를 **두 문장**으로 잇는다(A54 위원장 판정: 완결 문장 둘은
         // 쉼표 결합이 아니라 마침표). 사유 키는 상태 줄 겸용이라 마침표가 없어 문장 틀 키가 로케일별 마침표를 든다.
-        // 환승 도보(E73)는 꼬리가 「대중교통 안내도 종료했습니다」다(`prewalkStopText`).
+        // 환승 도보(E73)는 꼬리가 사용자 정지면 「대중교통 안내도 종료했습니다」, 위치 상실이면 「도보 안내를 멈추고 승차 대기로
+        // 넘어갑니다」다(`prewalkStopText`). 위치 상실은 대개 설정 앱에서 끄는 일이라 백그라운드다 — 버려진 통지는 복귀 상환이 이
+        // `statusText`로 갚으므로 다리 문장도 여기 있어야 한다.
         statusText = prewalkTail.map { prewalkStopText($0, reason: appLocalized(key)) } ?? appLocalized(key)
         // 여정 접근 도보의 시작 실패(`starting` 중의 실패만 — 걷던 중 끊김은 `stopAndFail`이 `stop()` 뒤에 부른다)는 통지에만
         // 다리 문장을 붙인다(판정 27). 대중교통 창구로 따로 내면 그 재생기는 세션 전이라 백그라운드에서 버려지고, 전경에선 같은
@@ -3409,12 +3415,13 @@ final class BeaconModel {
         }
     }
 
-    /// 선언 조회의 실패 결말(E74): E69 ⓐ 문장을 **`.high`로 매번** — 사용자가 방금 누른 동작의 응답이라 자동 갈래의 회차당
+    /// 선언 조회의 실패 결말(E74): 실패 문장을 **`.high`로 매번** — 사용자가 방금 누른 동작의 응답이라 자동 갈래의 회차당
     /// 한 번 래치·운전자 채널 침묵을 따르지 않는다(말하지 않으면 무반응 버튼, 헌장 §5). 이탈 중이면 버튼 래치도 세운다(E69 ⓐ).
     private func differentRouteFailed(cause: String) {
         if offRoute { raiseRerouteButton(cause: cause, speak: false) }
         // 상태 행에도 둔다(버튼 재조회 실패와 같다 — 화면을 보는 사람에게 결과가 남게, 접근성 감사 W3).
-        statusText = appLocalized("guide.rerouteAutoGaveUp")
+        // 직접 누른 동작이라 「자동으로」가 없는 문장이다(위원장 판정 2026-10-19). 자동 갈래는 `guide.rerouteAutoGaveUp` 그대로.
+        statusText = appLocalized("ios.guide.differentRouteFailed")
         resultHaptic(.failure)
         announce(statusText, highPriority: true, speechClass: .actionable)
     }
@@ -3729,7 +3736,11 @@ final class BeaconModel {
     private func stopAndFail(with status: Status, key: String, resolution: FailResolution = .none) {
         // stop() 앞 캡처(A25 §4.2). 여정(E70)의 접근 도보는 끊겨도 대중교통 단계로 넘어가므로(spec §6.1) "대중교통 안내는
         // 시작하지 않았다" 꼬리를 붙이지 않는다.
-        let prewalkTail = journeyChain == nil ? prewalkStopTail : nil
+        // 환승 도보(E73)는 걷기만 끝내고 그 구간 승차 대기로 넘어간다(위원장 판정 2026-10-19 — 남은 대중교통 안내는 위치 없이도
+        // 돈다). [안내 종료]는 둘 다 끝냄 그대로(`stopByUser`). 재개는 사유 `.locationLost`를 받은 코디네이터 `endPrewalk`가 한다.
+        let prewalkTail = journeyChain == nil
+            ? (prewalkStopTail == .transitAlsoEnded ? .transitResumes : prewalkStopTail) : nil
+        pendingEndReason = .locationLost
         let leftEndScreen = stopLeavingSummary(playStopTone: false, text: appLocalized(key))
         // 종료 화면이 남지 않으면 시트가 닫히며 VoiceOver가 아래 화면으로 커서를 옮기고 그 라벨을 읽는다 — 실패 사유는 착지
         // 라벨로 대체될 수 없어 `.high`(CLAUDE.md 통지 우선순위 판별선, 접근성 감사 L4). 종료 화면이 남으면 착지가 사유를 읽는다.
