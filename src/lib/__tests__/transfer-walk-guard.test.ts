@@ -125,6 +125,9 @@ describe("E73 환승 도보 — 세션 소유자", () => {
     const resume = functionBody(coordinator(), "resumeTransitAfterWalkSpeech");
     expect(resume).toContain("guideRoute: context.guideRoute, startLeg: context.startLeg,");
     expect(resume).toContain("prewalkCompleted: prewalkCompleted)");
+    // 걷던 시트가 내려갈 틈이 기다림보다 앞이다(지우면 두 시트가 한 presentation을 다툰다).
+    expect(resume).toMatch(/if sheetGapMs > 0 \{ try\? await Task\.sleep\(for: \.milliseconds\(sheetGapMs\)\) \}/);
+    expect(resume.indexOf("Task.sleep(for: .milliseconds(sheetGapMs))")).toBeLessThan(resume.indexOf("announcementsSettled"));
     // 통지가 끝난 뒤 연다 — 대중교통 시작 통지가 원인·다리 문장을 끊지 않게.
     expect(resume.indexOf("self.beacon.announcementsSettled")).toBeLessThan(resume.indexOf("self.transit.startAfterPrewalk("));
   });

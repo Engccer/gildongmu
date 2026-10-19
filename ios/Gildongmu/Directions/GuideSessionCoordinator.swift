@@ -62,7 +62,8 @@ final class GuideSession {
                 minutes: minutes)
         }
 
-        /// 대중교통 세션이 이미 돌던 환승 도보인가 — 정지 꼬리 문장(「대중교통 안내도 종료했습니다」)을 가른다(spec D6).
+        /// 대중교통 세션이 이미 돌던 환승 도보인가 — 정지 꼬리 문장(「대중교통 안내도 종료했습니다」)과 위치 상실 뒤 그 구간 대기로의
+        /// 재개(`endPrewalk`)를 가른다(spec D6·D14).
         var isTransfer: Bool { startLeg > 0 }
     }
     private var prewalk: PrewalkContext?

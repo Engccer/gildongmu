@@ -68,7 +68,8 @@ public struct JourneyState: Equatable, Sendable {
     }
 }
 
-/// 단계 세션이 끝난 사유. 앱 `BeaconModel.EndReason` 넷과 1:1이다 — 빠진 사유가 있으면 세션은 사라지고 여정만 남는다.
+/// 단계 세션이 끝난 사유. 앱 `BeaconModel.EndReason` 전부가 여기로 접힌다(위치 상실 `locationLost`는 `ended`) — 빠진 사유가 있으면
+/// 세션은 사라지고 여정만 남는다.
 public enum JourneyStageEnd: Sendable, Hashable {
     case arrived, userStopped, startFailed, ended
 }

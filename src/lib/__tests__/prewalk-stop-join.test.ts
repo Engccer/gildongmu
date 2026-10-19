@@ -40,7 +40,7 @@ describe("승차 전 도보 종료 결합 문장(A54)", () => {
 
   it("코디네이터는 사용자 정지·실패 종료에 문장을 내지 않는다 — 세션 전 대중교통 창구는 정지음과 겹치고 백그라운드에서 버린다", () => {
     const source = read("ios/Gildongmu/Directions/GuideSessionCoordinator.swift");
-    const tail = source.slice(source.indexOf("        case .userStopped, .ended:"), source.indexOf("    /// 낡은 연결 폐기"));
+    const tail = source.slice(source.indexOf("        case .userStopped, .locationLost, .ended:"), source.indexOf("    /// 낡은 연결 폐기"));
     expect(tail.length).toBeGreaterThan(0);
     expect(tail).not.toContain("announceExternal");
     expect(source).not.toContain("prewalkCancelledWith");
@@ -107,9 +107,14 @@ describe("승차 전 도보 시작 실패 다리 문장(A67)", () => {
     const source = read("ios/Gildongmu/Directions/GuideSessionCoordinator.swift");
     const fn = source.indexOf("    private func endPrewalk(");
     const from = source.indexOf("        case .startFailed:", fn);
-    const branch = source.slice(from, source.indexOf("        case .userStopped, .ended:", from));
+    const caseBody = source.slice(from, source.indexOf("        case .locationLost where context.isTransfer:", from));
     expect(fn).toBeGreaterThan(-1);
-    expect(branch.length).toBeGreaterThan(0);
+    expect(caseBody.length).toBeGreaterThan(0);
+    expect(caseBody).not.toContain("announceExternal");
+    // 기다림·시작은 환승 도보 위치 상실 갈래(E73 D14)와 공유하는 한 함수다 — 시작 실패는 걷지 않았으니 도보 문맥 유지.
+    expect(caseBody).toContain("resumeTransitAfterWalkSpeech(context, prewalkCompleted: false, sheetGapMs: 0,");
+    const helper = source.indexOf("    private func resumeTransitAfterWalkSpeech(");
+    const branch = source.slice(helper, source.indexOf("\n    }\n", helper));
     expect(branch).not.toContain("announceExternal");
     expect(source).not.toContain("transitGuide.prewalkUnavailable");
     // 취소 가능한 연결 Task 안에서(다른 시작·teardown의 cancelPrewalk가 끊는다) 기다린 뒤 시작한다
@@ -120,7 +125,7 @@ describe("승차 전 도보 시작 실패 다리 문장(A67)", () => {
     expect(branch).toMatch(/guard !Task\.isCancelled else \{ return \}\s*self\.transit\.startAfterPrewalk\(/);
     // 여정의 대중교통 단계인데 세션이 서지 않으면 세션 없는 running(.transit)에 멈추지 않게 실패로 넘긴다(Task 안, 시작 뒤)
     expect(branch).toMatch(
-      /self\.transit\.startAfterPrewalk\([\s\S]*?prewalkCompleted: false\)[\s\S]*if !self\.transit\.isTracking, let journey = self\.journey, case \.running\(\.transit\) = journey\.phase \{[\s\S]*self\.advanceJourney\(\.stageEnded\(\.startFailed\), token: journey\.token\)/,
+      /self\.transit\.startAfterPrewalk\([\s\S]*?prewalkCompleted: prewalkCompleted\)[\s\S]*if !self\.transit\.isTracking, let journey = self\.journey, case \.running\(\.transit\) = journey\.phase \{[\s\S]*self\.advanceJourney\(\.stageEnded\(\.startFailed\), token: journey\.token\)/,
     );
   });
 });
