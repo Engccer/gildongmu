@@ -145,7 +145,7 @@
     <string name="android_guide_switchedToBroad">Se cambió a la ruta por vías principales. {1, plural, one {%1$s indicación} other {%1$s indicaciones}}, %2$s en total. %3$s</string>
     <string name="android_guide_switchedToRecommended">Se cambió a la ruta recomendada. {1, plural, one {%1$s indicación} other {%1$s indicaciones}}, %2$s en total. %3$s</string>
     <string name="android_guide_switchedToShortest">Se cambió a la ruta más corta. {1, plural, one {%1$s indicación} other {%1$s indicaciones}}, %2$s en total. %3$s</string>
-    <string name="android_guide_titleWaypointChange">%1$s, cambiar punto de paso</string>
+    <string name="android_guide_titleWaypointChange">%1$s, cambiar punto intermedio</string>
     <string name="android_guide_ttsUnavailable">La guía por voz no está disponible en este idioma. Consulta el texto de la guía en pantalla</string>
     <string name="android_guide_viewAlternative">Ver ruta alternativa</string>
     <string name="android_guide_waypointChange">%1$s, cambiar punto de paso</string>

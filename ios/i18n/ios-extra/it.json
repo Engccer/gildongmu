@@ -316,7 +316,7 @@
       "destChangedNoName": "Destinazione cambiata.",
       "destChangedFetching": "Ricerca di un nuovo percorso.",
       "waypointChange": "{label}, cambia punto intermedio",
-      "titleWaypointChange": "{label}, cambia punto intermedio",
+      "titleWaypointChange": "{label}, cambia tappa",
       "differentRoute": "Prendere un'altra strada",
       "waypointSet": "Punto intermedio {label}, ricerca del percorso in corso",
       "waypointKept": "Punto intermedio {label} invariato",

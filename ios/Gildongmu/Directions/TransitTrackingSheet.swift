@@ -816,10 +816,6 @@ struct TransitTrackingSheet: View {
         Button(appLocalized("transitGuide.reboardCancel")) { onCancel() }
     }
 
-    /// 착지 대상 부착 헬퍼(A35 spec §4.1 ①) — `focusedControl` 바인딩의 **유일한 부착 자리**(소스 가드
-    /// `transit-landing-guard.test.ts`). 셋을 한 번에 단다: 정체성 옵셔널 바인딩 · `scrollTo` 키(`.id`) ·
-    /// 실현 관측(onAppear/onDisappear → `rendered`). 대상마다 따로 달면 하나가 빠지고, 빠진 대상은 가시화나
-    /// 사유 판정 없이 조용히 실패한다(종전 `default: break` 5대상이 정확히 그 자리였다).
     /// 제목의 「장소 상세 보기」(종전 메뉴·실험판 제목 행 공용).
     private func showDestinationDetail() {
         guard let dest = detailDest else { return }
@@ -828,6 +824,10 @@ struct TransitTrackingSheet: View {
         detailPlace = guideDestinationPlace(dest: dest, label: model.destinationLabel)
     }
 
+    /// 착지 대상 부착 헬퍼(A35 spec §4.1 ①) — `focusedControl` 바인딩의 **유일한 부착 자리**(소스 가드
+    /// `transit-landing-guard.test.ts`). 셋을 한 번에 단다: 정체성 옵셔널 바인딩 · `scrollTo` 키(`.id`) ·
+    /// 실현 관측(onAppear/onDisappear → `rendered`). 대상마다 따로 달면 하나가 빠지고, 빠진 대상은 가시화나
+    /// 사유 판정 없이 조용히 실패한다(종전 `default: break` 5대상이 정확히 그 자리였다).
     private func landingTarget<V: View>(_ view: V, _ control: SheetControl) -> some View {
         view
             .accessibilityFocused($focusedControl, equals: control)

@@ -412,7 +412,7 @@ final class BeaconModel {
     /// 경로 교체·수동 재조회)로 토큰이 올라가면 늦게 끝나는 옛 조회가 다음 회차를 막지 않는다.
     private var proposalInFlightToken: Int?
     /// 진행 중인 조회가 사용자 선언(「다른 길로 가기」, E74)이면 그 토큰. 선언은 이탈과 무관하게 연 조회라 경로 복귀
-    /// (`backOnRoute`)가 버리지 않는다 — 버리면 누른 동작이 아무 말 없이 사라진다.
+    /// (`backOnRoute`)가 버리지 않는다 — 버리면 누른 동작이 아무 말 없이 사라진다. 조회 Task 끝과 `clearProposal()`이 비운다.
     private var differentRouteToken: Int?
     /// 이 이탈 회차에 게시해 아직 버려지지 않은 이탈 문장들(E63 §3.4). 비었으면 복귀 때 "경로로 복귀했습니다"를 말하지 않는다
     /// — 벗어났다는 말을 듣지 않은 사용자에게 복귀만 들리지 않게. ⚠ 단일 Bool이 아니라 게시 번호 집합이다: 확정 문장을 들은 뒤
@@ -3375,13 +3375,16 @@ final class BeaconModel {
 
     /// 「다른 길로 가기」(E74)가 서는 국면 — 상세 안내 중 ∧ 최종 접근 전(자동 재조회의 활성 조건과 같다). 직선 안내 갈래는
     /// 없다(E16 축2): 서지 않는 국면엔 버튼이 없다.
-    var canRequestDifferentRoute: Bool { isTracking && mode == .detail && !inFinalApproach }
+    /// 다른 조회(버튼 재조회·줄 전환·앞선 선언)가 도는 동안에도 없다 — 누르면 무시될 버튼을 두지 않는다(리뷰 MAJOR 1).
+    var canRequestDifferentRoute: Bool {
+        isTracking && mode == .detail && !inFinalApproach && !rerouteInFlight && differentRouteToken == nil
+    }
 
     /// 「현재 경로와 다른 길로 가기」(E74 실험판, spec 2026-10-19 §3): 지금 위치에서 목적지까지 다시 조회해 채택한다.
     /// 자동 재조회와 같은 길(`fetchProposal`)의 사용자 선언 갈래다 — 세션 예산 5회를 함께 쓰고, 이탈 여부를 보지 않으며,
     /// 진행 중 자동 조회는 버린다(선언이 이긴다). 버튼 재조회·줄 전환·앞선 선언이 돌고 있으면 무시한다(그 조회가 말한다).
     func requestDifferentRoute() {
-        guard canRequestDifferentRoute, !rerouteInFlight, differentRouteToken == nil else { return }
+        guard canRequestDifferentRoute else { return }
         guard RerouteProposalGate.mayFetch(episodeFetchCount: proposalFetchCount) else {
             guideDiagLog("rerouteAdopt source=declare result=budget headClock=-")
             differentRouteFailed(cause: "budget")
@@ -3393,6 +3396,8 @@ final class BeaconModel {
         proposalInFlightToken = token
         differentRouteToken = token
         guideDiagLog("differentRoute request n=\(proposalFetchCount)")
+        // 접수 통지(`.high`, 헌장 §5 활성화 응답): 조회가 수 초 걸려 그동안 무반응 버튼이 되지 않게. 목적지 바꾸기의 조회 중 문장과 같다.
+        announce(appLocalized("ios.guide.destChangedFetching"), highPriority: true, speechClass: .actionable)
         Task { [weak self] in
             await self?.fetchProposal(token: token, source: "declare", declared: true)
             if self?.proposalInFlightToken == token { self?.proposalInFlightToken = nil }
@@ -3404,8 +3409,10 @@ final class BeaconModel {
     /// 한 번 래치·운전자 채널 침묵을 따르지 않는다(말하지 않으면 무반응 버튼, 헌장 §5). 이탈 중이면 버튼 래치도 세운다(E69 ⓐ).
     private func differentRouteFailed(cause: String) {
         if offRoute { raiseRerouteButton(cause: cause, speak: false) }
+        // 상태 행에도 둔다(버튼 재조회 실패와 같다 — 화면을 보는 사람에게 결과가 남게, 접근성 감사 W3).
+        statusText = appLocalized("guide.rerouteAutoGaveUp")
         resultHaptic(.failure)
-        announce(appLocalized("guide.rerouteAutoGaveUp"), highPriority: true, speechClass: .actionable)
+        announce(statusText, highPriority: true, speechClass: .actionable)
     }
 
     /// `declared`(E74): 사용자 선언 조회 — 이탈 조건을 보지 않고, 첫 점이 멀어도 받아 고지하며(A70 §2.3 사용자 조회 규칙),
@@ -3462,8 +3469,12 @@ final class BeaconModel {
                 raiseRerouteButton(cause: "farStart", speak: true)
                 return
             }
+            // 선언(E74)은 사용자가 연 조회라 첫 점이 멀면 거리·방향을 앞에 붙인다(A70 §2.3, 버튼 재조회와 같은 접두).
+            let away = declared ? routeStartsAwayPrefix(route: fetched.route, from: c, source: source) : nil
             // 새 경로 첫 문장의 방향 머리말(E63 §3.7): 교체 **전** 세션의 진행 방위 기준 새 경로 첫 15m의 시. 자동차는 없음.
-            let headClock: Int? = sessionKind == .walk
+            // 시작점 고지가 붙으면 머리말은 뺀다 — 머리말은 시작점에서의 첫 15m 방향이라 "시작점 쪽"과 다른 쪽을 가리킬 수
+            // 있다(리뷰 MAJOR 2, 버튼 재조회에도 머리말이 없다).
+            let headClock: Int? = sessionKind == .walk && away == nil
                 ? guideState.flatMap { rerouteHeadClock(state: $0, route: fetched.route, now: uptimeNow, tuning: tuning) }
                 : nil
             guideDiagLog("rerouteAdopt source=\(source) result=adopted headClock=\(headClock.map(String.init) ?? "-")")
@@ -3477,8 +3488,6 @@ final class BeaconModel {
             )
             let summary = GuideText.autoReroute(
                 route: fetched.route, firstIndices: firstIndices, liveSteps: liveSteps, headClock: headClock)
-            // 선언(E74)은 사용자가 연 조회라 첫 점이 멀면 거리·방향을 앞에 붙인다(A70 §2.3, 버튼 재조회와 같은 접두).
-            let away = declared ? routeStartsAwayPrefix(route: fetched.route, from: c, source: source) : nil
             let text = [away, notice, summary.spoken].compactMap { $0 }.joined(separator: " ")
             // 상태 행은 머리말을 뺀 문장(A57) — 음성만 그 순간의 방향을 말한다.
             statusText = [away, notice, summary.statusLine].compactMap { $0 }.joined(separator: " ")

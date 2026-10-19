@@ -604,9 +604,9 @@ describe("9. 안내 시트 제목 행 밀기 동작(E74) — 실험판 봉인", 
 
   it("제목 행은 두 시트에서 한 번씩만 서고, 그 자리가 봉인 조건 안에 있다", () => {
     expect(callSites(/GuideTitleActionsRow\(/g).sort()).toEqual(["BeaconTrackingSheet.swift", "TransitTrackingSheet.swift"]);
-    // 도보 시트는 계산 프로퍼티(`titleActionsRow`)가 행을 만들고 본문의 그 참조가 조건 안에 있다.
+    // 도보 시트는 계산 프로퍼티(`titleActionsRow`)가 행을 만들고, 선언을 뺀 모든 참조가 조건 안에 있다.
     const beacon = readFileSync(BEACON_SHEET, "utf8");
-    const beaconSites = enclosingHeaders(beacon, "titleActionsRow\n");
+    const beaconSites = enclosingHeaders(beacon, "titleActionsRow").filter((h) => !h[0].includes("var titleActionsRow"));
     expect(beaconSites).toHaveLength(1);
     expect(beaconSites[0].join("\n")).toContain(`if ${TITLE_ACTIONS_FLAG}`);
     const transitSites = enclosingHeaders(readFileSync(TRANSIT_SHEET, "utf8"), "GuideTitleActionsRow(");
@@ -615,7 +615,8 @@ describe("9. 안내 시트 제목 행 밀기 동작(E74) — 실험판 봉인", 
   });
 
   it("「다른 길로 가기」의 호출은 도보 시트의 제목 행 한 곳이다", () => {
-    expect(callSites(/\.requestDifferentRoute\(\)/g)).toEqual(["BeaconTrackingSheet.swift"]);
+    // 함수 참조로 넘기는 형태(`model.requestDifferentRoute`)도 센다 — 이름 출현에서 선언 한 자리를 뺀다.
+    expect(callSites(/(?<!func )\brequestDifferentRoute\b/g)).toEqual(["BeaconTrackingSheet.swift"]);
     expect(declarationBody(readFileSync(BEACON_SHEET, "utf8"), "titleActionsRow")).toContain("model.requestDifferentRoute()");
   });
 

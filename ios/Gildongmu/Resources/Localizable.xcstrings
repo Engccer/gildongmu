@@ -21938,19 +21938,19 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@, cambiar punto de paso"
+            "value": "%1$@, cambiar punto intermedio"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@, changer le point de passage"
+            "value": "%1$@, changer l’étape"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@, cambia punto intermedio"
+            "value": "%1$@, cambia tappa"
           }
         },
         "ja": {
