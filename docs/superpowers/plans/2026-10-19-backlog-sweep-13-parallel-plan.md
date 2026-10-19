@@ -1,6 +1,6 @@
 # 백로그 13차 소화: 병렬 세션 계획 (2026-10-19)
 
-> **종료 상태(2026-10-19 18:45)**: 전 세션 통합 완료, 창·worktree·`feat/*` 0. `a69-bus-alight` `4a400d37` · `a70-reroute` `6e31d805` · `e73-transfer-walk` `d36ee4df` · `e74-title-actions` `49c1abc0` · `small-19` `8d635794`(판정 변경 둘) · `doc-audit-13` `0151fab9`. 실기기 `8d635794` 두 구성 설치. iOS 2.2(빌드 33)는 이미 `READY_FOR_SALE`(doc-audit-13 확인). 남은 위원장 판정은 BACKLOG §2 A69·A70·E73·E74 행(실승차·실보행·실기기), E74 졸업 문턱은 제목 행 VoiceOver 동작 부착 위치.
+> **종료 상태(2026-10-19 18:45)**: 전 세션 통합 완료, 창·worktree·`feat/*` 0. `a69-bus-alight` `a666656c` · `a70-reroute` `53575d6a` · `e73-transfer-walk` `d1120d2d` · `e74-title-actions` `03d002b6` · `small-19` `e4802e57`(판정 변경 둘) · `doc-audit-13` `5569db43`. 실기기 `e4802e57` 두 구성 설치. iOS 2.2(빌드 33)는 이미 `READY_FOR_SALE`(doc-audit-13 확인). 남은 위원장 판정은 BACKLOG §2 A69·A70·E73·E74 행(실승차·실보행·실기기), E74 졸업 문턱은 제목 행 VoiceOver 동작 부착 위치.
 
 코디네이터 `gildongmu-60 [d474b1]`. 절차 정본은 `parallel-sessions` 스킬(Claude Code 분기). 이 문서가 세션 착수 프롬프트보다 상세하고 우선한다. 위원장 판정의 정본은 `docs/BACKLOG.md`의 각 항목이다. 위원장 지시(2026-10-19): "백로그 처리하자. 병렬로 할지 서브에이전트로 할지 변경 규모 판단해서 합리적인 방법으로 진행해 줘."
 
@@ -91,13 +91,14 @@ git push origin feat/<이름>:main && git -C ~/Mac-Projects/gildongmu pull --ff-
 
 ## 6. 정정 (코디네이터가 재현해 확인한 것)
 
-- **위원장 지시(2026-10-19 06:10)**: A70 지인 댁 문장이 남은 옛 커밋(`d1ee1098`)의 히스토리 재작성과 강제 push를 필요한 시점에 묻지 않고 진행한다. **시점은 전 세션·doc-audit 종료 뒤**(도는 worktree가 있으면 그 세션들의 base가 사라진다). 절차는 `~/gildongmu-private/sanitize-2026-10/`(2026-10-04 선례): `git filter-repo --replace-text`로 그 두 문장만 치환 → 트리 대조(HEAD 트리 동일) → `--force-with-lease` → 문서 속 커밋 번호를 옛→새 대응표로 갱신(`fix_sha_citations.py`) → Windows 클론 재동기화 안내.
-- **06:35, 관측 `4a400d37`: `a69-bus-alight` 종료.** 판정 둘 반영(웹·iOS 문장 + GPS 한 마디 `busAlightNoticeStep`, 안드로이드는 문장만이고 추적기 없음 → BACKLOG "규칙만 대기"). 게이트 전부 통과, 실호출 0. 소유 밖 신고 `transit-text-args.ts`·`TransitGuideTextRenderer.swift`(새 키 배선, 필수)·주석 3곳·`mirrors/guide.json` 메모: 수용. CLAUDE.md A41 줄을 요청 문장으로 교체. 창·worktree·브랜치 정리.
+- **위원장 지시(2026-10-19 06:10)**: A70 지인 댁 문장이 남은 옛 커밋(`bb53c692`)의 히스토리 재작성과 강제 push를 필요한 시점에 묻지 않고 진행한다. **시점은 전 세션·doc-audit 종료 뒤**(도는 worktree가 있으면 그 세션들의 base가 사라진다). 절차는 `~/gildongmu-private/sanitize-2026-10/`(2026-10-04 선례): `git filter-repo --replace-text`로 그 두 문장만 치환 → 트리 대조(HEAD 트리 동일) → `--force-with-lease` → 문서 속 커밋 번호를 옛→새 대응표로 갱신(`fix_sha_citations.py`) → Windows 클론 재동기화 안내.
+- **06:35, 관측 `a666656c`: `a69-bus-alight` 종료.** 판정 둘 반영(웹·iOS 문장 + GPS 한 마디 `busAlightNoticeStep`, 안드로이드는 문장만이고 추적기 없음 → BACKLOG "규칙만 대기"). 게이트 전부 통과, 실호출 0. 소유 밖 신고 `transit-text-args.ts`·`TransitGuideTextRenderer.swift`(새 키 배선, 필수)·주석 3곳·`mirrors/guide.json` 메모: 수용. CLAUDE.md A41 줄을 요청 문장으로 교체. 창·worktree·브랜치 정리.
 - **위원장 판정 A70 Q1~Q4(06:25)**: 전부 기본값(서버 재시도 오늘부터 정식판 · 시작 문장 방향+거리 · 버튼 재조회는 받고 알림 · 「목적지 근처입니다」→15m 도착).
-- **06:40: `e73-transfer-walk` 착수**(opus·high, base `4a400d37`).
-- **07:22, 관측 `6e31d805`: `a70-reroute` 종료(DONE_WITH_CONCERNS).** 세 층 반영, 서버 문턱은 실측(정상 경로 95% 40.7m 이하)으로 30m(앱 채택 문턱과 같게), 자동차 `far` 400m·60초, 실호출 29건(카카오 17·Tmap 12, ODsay 0), 프로덕션 사고 경로 첫 점 236.6m → 6.0m. CLAUDE.md 이탈 줄 교체·도보 경로 카탈로그 행 보강 반영.
-- **07:34, 관측 `d36ee4df`: `e73-transfer-walk` 종료.** 환승 도보 30m 이상이면 A25 기제로 도보 → 같은 경로 대기 국면 복귀. 웹은 B14 플랫폼 갭으로 등재.
-- **10:06, 관측 `49c1abc0`: `e74-title-actions` 종료.** 실험판 제목 행 밀기 동작·「다른 길로 가기」. 소유 밖 신고 가드 두 개 정규식 갱신(의도 불변) 수용. CLAUDE.md 플래그 목록·제목 행 한 줄 반영(78.5KB/80KB). 졸업 문턱: 제목 행 안 접근성 객체 둘(제목·접기 버튼)에 VoiceOver 동작이 어디 붙는지 실기기 미관측.
+- **06:40: `e73-transfer-walk` 착수**(opus·high, base `a666656c`).
+- **07:22, 관측 `53575d6a`: `a70-reroute` 종료(DONE_WITH_CONCERNS).** 세 층 반영, 서버 문턱은 실측(정상 경로 95% 40.7m 이하)으로 30m(앱 채택 문턱과 같게), 자동차 `far` 400m·60초, 실호출 29건(카카오 17·Tmap 12, ODsay 0), 프로덕션 사고 경로 첫 점 236.6m → 6.0m. CLAUDE.md 이탈 줄 교체·도보 경로 카탈로그 행 보강 반영.
+- **07:34, 관측 `d1120d2d`: `e73-transfer-walk` 종료.** 환승 도보 30m 이상이면 A25 기제로 도보 → 같은 경로 대기 국면 복귀. 웹은 B14 플랫폼 갭으로 등재.
+- **10:06, 관측 `03d002b6`: `e74-title-actions` 종료.** 실험판 제목 행 밀기 동작·「다른 길로 가기」. 소유 밖 신고 가드 두 개 정규식 갱신(의도 불변) 수용. CLAUDE.md 플래그 목록·제목 행 한 줄 반영(78.5KB/80KB). 졸업 문턱: 제목 행 안 접근성 객체 둘(제목·접기 버튼)에 VoiceOver 동작이 어디 붙는지 실기기 미관측.
 - **위원장 판정(10:20)**: E73 [안내 종료] 둘 다 끝냄(현행) · 시작 문장 기존 문장(현행) · **E73 걷는 중 위치 권한 상실 → 걷기만 끝내고 승차 대기로(변경)** · A70 도보 도착 정확도 상한 50m(현행) · E74 접수 문장 「경로를 조회하고 있습니다」(현행) · E74 대중교통 동작 둘(ODsay 경유역 불가, 현행) · **E74 직접 누른 실패 문장 「새 경로를 찾지 못했습니다.」(변경, 자동 재조회 실패 문장은 그대로)**. 변경 둘은 후속 세션 `small-19`.
-- **18:25: 실기기 설치(코디네이터)** 메인 `8d635794`로 실험판·공식판 두 구성 설치 완료(실험판은 잠금으로 자동 실행만 실패). `small-19` 종료(`8d635794`, 판정 변경 둘 반영, 소유 밖 신고 `Journey.swift` 주석·`prewalk-stop-join` 가드 수용, CLAUDE.md 선택 구절은 여유 보존으로 미반영). `doc-audit-13` 착수.
-- **18:40, 관측 `0151fab9`: `doc-audit-13` 종료.** 2.2 출시 반영, CLAUDE.md 교체 5건 반영(78.5KB), AGENTS.md 재생성. 다음 마일스톤 전 CLAUDE.md 다이어트 세션 권고.
+- **18:25: 실기기 설치(코디네이터)** 메인 `e4802e57`로 실험판·공식판 두 구성 설치 완료(실험판은 잠금으로 자동 실행만 실패). `small-19` 종료(`e4802e57`, 판정 변경 둘 반영, 소유 밖 신고 `Journey.swift` 주석·`prewalk-stop-join` 가드 수용, CLAUDE.md 선택 구절은 여유 보존으로 미반영). `doc-audit-13` 착수.
+- **18:40, 관측 `5569db43`: `doc-audit-13` 종료.** 2.2 출시 반영, CLAUDE.md 교체 5건 반영(78.5KB), AGENTS.md 재생성. 다음 마일스톤 전 CLAUDE.md 다이어트 세션 권고.
+- **18:50: 히스토리 재작성·강제 push 완료(코디네이터, 위원장 지시 06:10).** A70 등재 커밋(새 번호 `bb53c692`)의 지인 댁 이름·출발 좌표 두 문장만 `git filter-repo --replace-text`로 치환, `--force-with-lease`(원격 `115e1a65` 확인) → `afe768c4`. HEAD 트리 동일(diff 0줄), 바뀐 커밋 31개, 태그 12개 불변(전부 대상 앞), 잔존 0(같은 숫자열이 걸린 7줄은 공개 seed 데이터). 이 문서들 속 커밋 번호는 옛→새 대응표(`~/gildongmu-private/sanitize-2026-10/commit-map-20261019.txt`)로 치환했다. Windows 클론은 재동기화 필요.

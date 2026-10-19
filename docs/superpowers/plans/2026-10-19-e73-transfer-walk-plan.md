@@ -1,6 +1,6 @@
 # E73 환승 도보 안내 구현 계획 (2026-10-19)
 
-spec `docs/superpowers/specs/2026-10-19-e73-transfer-walk-design.md`. 세션 `e73-transfer-walk`, base `4a400d37`.
+spec `docs/superpowers/specs/2026-10-19-e73-transfer-walk-design.md`. 세션 `e73-transfer-walk`, base `a666656c`.
 
 구현 방식 판정: **inline**. 태스크 1(Kit)이 태스크 2·3의 인터페이스(`startAfterPrewalk` 시그니처·`initTransitGuide(startingAt:)`)를 정하고, 2·3은 같은 두 파일(`TransitGuideModel.swift`·`GuideSessionCoordinator.swift`)을 함께 고친다(파일 겹침 + 선행 관계). 웹 기준본이 없는 Kit 단독 함수라 미러 이식 과제가 없다.
 

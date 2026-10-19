@@ -1,6 +1,6 @@
 # A70 재조회 C 세 층 구현 계획 (2026-10-19)
 
-spec: `docs/superpowers/specs/2026-10-19-reroute-start-gap-design.md`. 세션 `a70-reroute`, worktree `~/gildongmu-wt/a70-reroute`(base `641739f8`).
+spec: `docs/superpowers/specs/2026-10-19-reroute-start-gap-design.md`. 세션 `a70-reroute`, worktree `~/gildongmu-wt/a70-reroute`(base `03701f6d`).
 
 구현 방식 판정: **웹 기준본(T1~T4)은 inline** — 리듀서·게이트·훅이 같은 이벤트·상태 이름을 정하고 뒤 태스크의 인터페이스를 바꾼다(선행 결정이 후속 인터페이스를 바꾼다). **Kit·`:kit`·iOS 앱·안드로이드 앱 이식(T5~T7)은 sonnet 서브에이전트 과제**로 웹 기준본 커밋 뒤에 낸다 — 파일이 겹치지 않고(Kit·`:kit`·앱 셋) 기준본과 공유 fixture가 계약을 고정한다. T5(Kit)와 T6(`:kit`)는 병렬, T7(iOS 앱·안드로이드 앱)은 각 미러가 끝난 뒤.
 
