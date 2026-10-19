@@ -3375,16 +3375,20 @@ final class BeaconModel {
 
     /// 「다른 길로 가기」(E74)가 서는 국면 — 상세 안내 중 ∧ 최종 접근 전(자동 재조회의 활성 조건과 같다). 직선 안내 갈래는
     /// 없다(E16 축2): 서지 않는 국면엔 버튼이 없다.
-    /// 다른 조회(버튼 재조회·줄 전환·앞선 선언)가 도는 동안에도 없다 — 누르면 무시될 버튼을 두지 않는다(리뷰 MAJOR 1).
-    var canRequestDifferentRoute: Bool {
-        isTracking && mode == .detail && !inFinalApproach && !rerouteInFlight && differentRouteToken == nil
-    }
+    /// 다른 조회가 도는 동안에도 버튼은 남는다 — 누를 때마다 동작 목록 맨 앞이 빠졌다 돌아오면 순서가 당겨져 다른 동작이
+    /// 실행될 수 있다(증분 리뷰 m1). 그때 누르면 접수 문장만 다시 말한다(`requestDifferentRoute`).
+    var canRequestDifferentRoute: Bool { isTracking && mode == .detail && !inFinalApproach }
 
     /// 「현재 경로와 다른 길로 가기」(E74 실험판, spec 2026-10-19 §3): 지금 위치에서 목적지까지 다시 조회해 채택한다.
     /// 자동 재조회와 같은 길(`fetchProposal`)의 사용자 선언 갈래다 — 세션 예산 5회를 함께 쓰고, 이탈 여부를 보지 않으며,
     /// 진행 중 자동 조회는 버린다(선언이 이긴다). 버튼 재조회·줄 전환·앞선 선언이 돌고 있으면 무시한다(그 조회가 말한다).
     func requestDifferentRoute() {
         guard canRequestDifferentRoute else { return }
+        // 버튼 재조회·줄 전환·앞선 선언이 돌고 있으면 그 조회가 결과를 말한다 — 누른 응답으로 접수 문장만 다시.
+        guard !rerouteInFlight, differentRouteToken == nil else {
+            announce(appLocalized("ios.guide.destChangedFetching"), highPriority: true, speechClass: .actionable)
+            return
+        }
         guard RerouteProposalGate.mayFetch(episodeFetchCount: proposalFetchCount) else {
             guideDiagLog("rerouteAdopt source=declare result=budget headClock=-")
             differentRouteFailed(cause: "budget")

@@ -317,7 +317,7 @@
       "destChangedFetching": "Ricerca di un nuovo percorso.",
       "waypointChange": "{label}, cambia punto intermedio",
       "titleWaypointChange": "{label}, cambia tappa",
-      "differentRoute": "Prendere un'altra strada",
+      "differentRoute": "Prendi un'altra strada",
       "waypointSet": "Punto intermedio {label}, ricerca del percorso in corso",
       "waypointKept": "Punto intermedio {label} invariato",
       "waypointDropped": "Non è stato trovato alcun percorso che passi per la tappa intermedia ({label}). Ti guidiamo alla destinazione ({dest}) senza la tappa intermedia.",

@@ -135,7 +135,7 @@
     <string name="android_guide_destChangedNoName">Destinazione cambiata.</string>
     <string name="android_guide_destMenuChange">Cambia destinazione</string>
     <string name="android_guide_destMenuDetail">Vedi dettagli del luogo</string>
-    <string name="android_guide_differentRoute">Prendere un\'altra strada</string>
+    <string name="android_guide_differentRoute">Prendi un\'altra strada</string>
     <string name="android_guide_focusDenied">Un’altra app sta usando l’audio, quindi i suoni della guida non possono essere riprodotti ora</string>
     <string name="android_guide_mediaVolumeZero">Il volume multimediale è disattivato, quindi i suoni della guida non verranno riprodotti</string>
     <string name="android_guide_notificationChannel">Guida a piedi</string>

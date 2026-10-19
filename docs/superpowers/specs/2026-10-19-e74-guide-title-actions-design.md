@@ -18,7 +18,7 @@
 
 | 밀기 | 버튼(선언 순 = 가장자리부터) | 조건 |
 |---|---|---|
-| 오른쪽(`leading`) | 현재 경로와 다른 길로 가기 | 도보·자동차, 상세 안내 중이고 최종 접근 전이며 다른 조회(버튼 재조회·줄 전환·앞선 선언)가 돌지 않을 때(`canRequestDifferentRoute`) |
+| 오른쪽(`leading`) | 현재 경로와 다른 길로 가기 | 도보·자동차, 상세 안내 중이고 최종 접근 전(`canRequestDifferentRoute`) |
 | | 경유지 추가 / {경유지}, 경유지 바꾸기 | 도보·자동차, `waypointAvailable` |
 | | 경유지 삭제 | 미도착 경유지가 있을 때 |
 | 왼쪽(`trailing`) | 목적지 바꾸기 | 여정(E70) 단계가 아닐 때 |
@@ -45,7 +45,7 @@
 자동 재조회와 같은 길(`fetchProposal`)을 사용자 선언 갈래로 연다.
 
 - **예산 공유**: `proposalFetchCount`(세션 5회)를 함께 쓴다. 소진이면 조회 없이 실패 결말.
-- **진행 중 조회**: 자동 조회가 돌고 있으면 버린다(토큰 증가, 선언이 이긴다). 버튼 재조회·줄 전환·앞선 선언이 돌고 있으면 버튼이 없다(누르면 무시될 버튼을 두지 않는다, 리뷰 MAJOR 1).
+- **진행 중 조회**: 자동 조회가 돌고 있으면 버린다(토큰 증가, 선언이 이긴다). 버튼 재조회·줄 전환·앞선 선언이 돌고 있으면 새 조회를 열지 않고 접수 문장만 다시 말한다(버튼은 남긴다 — 숨기면 누를 때마다 동작 목록 순서가 당겨져 다른 동작이 실행될 수 있다, 증분 리뷰 m1).
 - **접수 통지**: 받아들인 순간 「경로를 조회하고 있습니다.」(`ios.guide.destChangedFetching`, 목적지 바꾸기의 조회 중 문장)를 `.high`로 — 조회가 수 초 걸려 그동안 무반응 버튼이 되지 않게(헌장 §5, 리뷰 MAJOR 1·접근성 W2). 문안은 판정 요청(`judgment-*.md`)에 기본값으로 올렸다.
 - **이탈 여부 무관**: 자동 조회의 `offRoute` 조건을 선언 갈래는 보지 않는다. 경로 위에서 눌러도 지금 위치에서 다시 조회한다. 선언이 도는 동안 경로로 돌아와도(`backOnRoute`) 그 조회를 버리지 않는다(이탈과 무관하게 연 조회다). 최종 접근 진입·경유지 도착·목적지 변경·세션 종료는 종전대로 버린다.
 - **채택 검사**: 신선도(`RerouteProposalGate.isFresh` + 최근 fix 15초)는 그대로 지난다. 새 경로 첫 점 검사(A70 `routeStartsNearby`)는 사용자 조회 규칙을 따른다: 거부하지 않고 받으며 「경로 시작점이 {8방위}쪽으로 {거리} 떨어져 있습니다.」를 앞에 붙인다(A70 판정 Q3 — 사용자가 연 조회를 거부하면 막다른 길이다). 근거: 이 동작은 사용자 선언이다.
@@ -55,7 +55,7 @@
 
 ## 4. 문자열(판정 5)
 
-- `ios.guide.differentRoute`(신규): ko 「현재 경로와 다른 길로 가기」, en "Take a different route", ja 「今のルートとは別の道で行く」, es "Ir por otro camino", fr "Prendre un autre chemin", it "Prendere un'altra strada".
+- `ios.guide.differentRoute`(신규): ko 「현재 경로와 다른 길로 가기」, en "Take a different route", ja 「今のルートとは別の道で行く」, es "Ir por otro camino", fr "Prendre un autre chemin", it "Prendi un'altra strada".
 - `ios.guide.titleWaypointChange`(신규, `{label}`): ko 「{label}, 경유지 바꾸기」, en·ja는 `ios.guide.waypointChange`와 같은 값(en "change" 그대로). es·fr·it는 한 동작 목록에 나란히 들리는 경유지 추가·삭제와 명사를 맞췄다(es 「cambiar punto intermedio」, fr 「changer l’étape」, it 「cambia tappa」 — 접근성 감사 I8). 기존 키를 고치지 않는 이유: 정식판 경유지 행이 그 키를 쓰고 판정 6이 라벨 통일까지 실험판에 봉인했다. 졸업 때 옛 키와 옛 행을 함께 지운다.
 - 경유지 추가·삭제·목적지 바꾸기·장소 상세 보기는 기존 키(`directions.addVia`·`ios.guide.waypointRemove`·`ios.guide.destMenuChange`·`ios.guide.destMenuDetail`).
 
