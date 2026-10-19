@@ -411,6 +411,9 @@ final class BeaconModel {
     /// 재무장했다. 새 요청이 토큰을 올려 진행 중 조회를 버리면 느린 망에서 채택 없이 예산만 쓴다, E63 spec §3.5). 폐기(복귀·
     /// 경로 교체·수동 재조회)로 토큰이 올라가면 늦게 끝나는 옛 조회가 다음 회차를 막지 않는다.
     private var proposalInFlightToken: Int?
+    /// 진행 중인 조회가 사용자 선언(「다른 길로 가기」, E74)이면 그 토큰. 선언은 이탈과 무관하게 연 조회라 경로 복귀
+    /// (`backOnRoute`)가 버리지 않는다 — 버리면 누른 동작이 아무 말 없이 사라진다.
+    private var differentRouteToken: Int?
     /// 이 이탈 회차에 게시해 아직 버려지지 않은 이탈 문장들(E63 §3.4). 비었으면 복귀 때 "경로로 복귀했습니다"를 말하지 않는다
     /// — 벗어났다는 말을 듣지 않은 사용자에게 복귀만 들리지 않게. ⚠ 단일 Bool이 아니라 게시 번호 집합이다: 확정 문장을 들은 뒤
     /// 백그라운드 재통지(`.deferrable`)가 버려지거나 앞 문장의 늦은 `onDropped`가 와도 들은 문장의 기록이 지워지지 않는다.
@@ -453,6 +456,8 @@ final class BeaconModel {
     /// 채택 성공 세대 — 시트(프리뷰·조망)가 onChange로 연쇄 닫힘·포커스 복귀에 쓴다.
     /// 값 자체는 의미 없고 증가가 이벤트다(offRoute onChange 관례의 세대 판).
     private(set) var variantAdoptedSeq = 0
+    /// 「현재 경로와 다른 길로 가기」(E74 실험판) 채택 세대 — 시트가 첫 정보 행 착지에 쓴다(증가가 이벤트).
+    private(set) var differentRouteAdoptedSeq = 0
     /// 전환 커밋(E42): 요청 축과 두 줄 종류를 **한 원자 블록에서** 맞바꾼다 — 헤더 라벨·프리뷰
     /// 조회·채택·수동 전환이 같은 판정을 공유한다(사본 drift 방지 — 이 파일은 단위 테스트 레인이 없다).
     private func commitLineSwitch(to target: WalkLineKind) {
@@ -3020,8 +3025,8 @@ final class BeaconModel {
             offRouteEndedByReroute = false
             offRoute = false
             offRouteLine = nil
-            // 이탈 복귀 = 자동 재조회 근거 소멸(진행 중 조회의 채택 차단).
-            clearProposal()
+            // 이탈 복귀 = 자동 재조회 근거 소멸(진행 중 조회의 채택 차단). 사용자 선언 조회(E74)는 이탈이 근거가 아니라 잇는다.
+            if differentRouteToken != proposalToken { clearProposal() }
             // 리듀서가 이 회차에 이탈 문장을 냈고 ∧ 실제로 게시했을 때만 말한다(E63 §3.4). 아니면 이벤트만 — 상태 행은 현행 안내.
             // 운전자 채널은 리듀서의 보류와 무관하게 늘 말하므로 게시 기록만 본다.
             let say = (spoken || driverChannel) && offRouteNoticePosted
@@ -3368,7 +3373,44 @@ final class BeaconModel {
         return nil
     }
 
-    private func fetchProposal(token: Int, source: String) async {
+    /// 「다른 길로 가기」(E74)가 서는 국면 — 상세 안내 중 ∧ 최종 접근 전(자동 재조회의 활성 조건과 같다). 직선 안내 갈래는
+    /// 없다(E16 축2): 서지 않는 국면엔 버튼이 없다.
+    var canRequestDifferentRoute: Bool { isTracking && mode == .detail && !inFinalApproach }
+
+    /// 「현재 경로와 다른 길로 가기」(E74 실험판, spec 2026-10-19 §3): 지금 위치에서 목적지까지 다시 조회해 채택한다.
+    /// 자동 재조회와 같은 길(`fetchProposal`)의 사용자 선언 갈래다 — 세션 예산 5회를 함께 쓰고, 이탈 여부를 보지 않으며,
+    /// 진행 중 자동 조회는 버린다(선언이 이긴다). 버튼 재조회·줄 전환·앞선 선언이 돌고 있으면 무시한다(그 조회가 말한다).
+    func requestDifferentRoute() {
+        guard canRequestDifferentRoute, !rerouteInFlight, differentRouteToken == nil else { return }
+        guard RerouteProposalGate.mayFetch(episodeFetchCount: proposalFetchCount) else {
+            guideDiagLog("rerouteAdopt source=declare result=budget headClock=-")
+            differentRouteFailed(cause: "budget")
+            return
+        }
+        proposalToken += 1
+        proposalFetchCount += 1
+        let token = proposalToken
+        proposalInFlightToken = token
+        differentRouteToken = token
+        guideDiagLog("differentRoute request n=\(proposalFetchCount)")
+        Task { [weak self] in
+            await self?.fetchProposal(token: token, source: "declare", declared: true)
+            if self?.proposalInFlightToken == token { self?.proposalInFlightToken = nil }
+            if self?.differentRouteToken == token { self?.differentRouteToken = nil }
+        }
+    }
+
+    /// 선언 조회의 실패 결말(E74): E69 ⓐ 문장을 **`.high`로 매번** — 사용자가 방금 누른 동작의 응답이라 자동 갈래의 회차당
+    /// 한 번 래치·운전자 채널 침묵을 따르지 않는다(말하지 않으면 무반응 버튼, 헌장 §5). 이탈 중이면 버튼 래치도 세운다(E69 ⓐ).
+    private func differentRouteFailed(cause: String) {
+        if offRoute { raiseRerouteButton(cause: cause, speak: false) }
+        resultHaptic(.failure)
+        announce(appLocalized("guide.rerouteAutoGaveUp"), highPriority: true, speechClass: .actionable)
+    }
+
+    /// `declared`(E74): 사용자 선언 조회 — 이탈 조건을 보지 않고, 첫 점이 멀어도 받아 고지하며(A70 §2.3 사용자 조회 규칙),
+    /// 실패는 `differentRouteFailed`. 그 밖(신선도·토큰·경유지 결박·성공 문장)은 자동 갈래와 같다.
+    private func fetchProposal(token: Int, source: String, declared: Bool = false) async {
         guard let dest else { return }
         do {
             // 출발점은 확정 시점의 최신 세션 fix(연속 수신 중이라 currentCoordinate가
@@ -3378,7 +3420,7 @@ final class BeaconModel {
             // 완료 후 시각을 쓰면 왕복이 긴 만큼 실제보다 신선하게 판정된다.
             // 같은 호스트 71초 hang 실사고 전례, spec 리뷰 MINOR 2026-08-12).
             let acquiredAt = uptimeNow
-            guard token == proposalToken, offRoute, isTracking, mode == .detail,
+            guard token == proposalToken, declared || offRoute, isTracking, mode == .detail,
                   self.dest == dest else { return }
             let waypointAtFetch = waypoint
             let fetched = try await fetchDetailData(
@@ -3387,12 +3429,12 @@ final class BeaconModel {
             // 채택 가드: 토큰 일치 ∧ 이탈 지속 중 ∧ 수동 조회 비진행일 때만(복귀 후 늦은
             // 응답이 경로를 갈아치우는 경로 차단 — latest-wins, spec §6 리뷰 #1. 수동
             // 재조회·전환과의 이중 커밋은 양방향으로 막는다 — 리뷰 MAJOR 2026-09-02).
-            guard token == proposalToken, offRoute, isTracking, mode == .detail, !rerouteInFlight,
+            guard token == proposalToken, declared || offRoute, isTracking, mode == .detail, !rerouteInFlight,
                   self.dest == dest, self.waypoint == waypointAtFetch else { return }
             // 경로 없음은 돌아가기 국면을 잇는다 — 리듀서가 문턱을 다시 채우면 또 요청한다(E63 §3.5 재무장). 버튼은 이 순간 선다(E69 ⓐ).
             guard let fetched else {
                 guideDiagLog("rerouteAdopt source=\(source) result=none headClock=-")
-                raiseRerouteButton(cause: "none", speak: true)
+                if declared { differentRouteFailed(cause: "none") } else { raiseRerouteButton(cause: "none", speak: true) }
                 return
             }
             // 채택 시점 신선도 — 자동 채택의 유일한 안전망. 현재 좌표를 단정할 수 없거나
@@ -3407,12 +3449,12 @@ final class BeaconModel {
                       maxDriftMeters: tuning.rerouteMaxDriftM)
             else {
                 guideDiagLog("rerouteAdopt source=\(source) result=stale headClock=-")
-                raiseRerouteButton(cause: "stale", speak: true)
+                if declared { differentRouteFailed(cause: "stale") } else { raiseRerouteButton(cause: "stale", speak: true) }
                 return
             }
             // 새 경로 첫 점이 현재 위치에서 멀면 채택하지 않는다(A70 §2.2 — 요청이 신선해도 provider가 출발점을 멀리 붙인다).
-            // `none`·`stale`과 같은 결말이다(E69 ⓐ): 버튼 + 한 번 통지, 돌아가기 국면은 잇는다.
-            guard RerouteProposalGate.routeStartsNearby(
+            // `none`·`stale`과 같은 결말이다(E69 ⓐ): 버튼 + 한 번 통지, 돌아가기 국면은 잇는다. 선언(E74)은 받고 아래에서 고지한다.
+            guard declared || RerouteProposalGate.routeStartsNearby(
                 route: fetched.route, currentLat: c.lat, currentLng: c.lng, maxDriftMeters: tuning.rerouteMaxDriftM)
             else {
                 let gap = RerouteProposalGate.routeStartGapMeters(route: fetched.route, currentLat: c.lat, currentLng: c.lng)
@@ -3435,20 +3477,23 @@ final class BeaconModel {
             )
             let summary = GuideText.autoReroute(
                 route: fetched.route, firstIndices: firstIndices, liveSteps: liveSteps, headClock: headClock)
-            let text = notice.map { "\($0) \(summary.spoken)" } ?? summary.spoken
+            // 선언(E74)은 사용자가 연 조회라 첫 점이 멀면 거리·방향을 앞에 붙인다(A70 §2.3, 버튼 재조회와 같은 접두).
+            let away = declared ? routeStartsAwayPrefix(route: fetched.route, from: c, source: source) : nil
+            let text = [away, notice, summary.spoken].compactMap { $0 }.joined(separator: " ")
             // 상태 행은 머리말을 뺀 문장(A57) — 음성만 그 순간의 방향을 말한다.
-            statusText = notice.map { "\($0) \(summary.statusLine)" } ?? summary.statusLine
+            statusText = [away, notice, summary.statusLine].compactMap { $0 }.joined(separator: " ")
             rerouteStatusVoice = (statusLine: statusText, spoken: text)
             resultHaptic(.success)
             announce(text, highPriority: true, speechClass: .actionable) { [weak self] in
                 if let notice { self?.pendingStepFreeNotice = notice }
             }
+            if declared { differentRouteAdoptedSeq += 1 }
         } catch {
             // 조회 실패는 돌아가기 국면을 잇는다 — 더 멀어지면 리듀서가 또 요청한다(세션 예산 5회가 상한, E63 §3.5).
             guideDiagLog("rerouteAdopt source=\(source) result=failed headClock=-")
             // 폐기된 조회(복귀·경로 교체·수동 재조회로 토큰이 올랐다)의 실패는 이 회차의 결말이 아니다(E69 ⓐ).
-            guard token == proposalToken, offRoute, isTracking, mode == .detail else { return }
-            raiseRerouteButton(cause: "failed", speak: true)
+            guard token == proposalToken, declared || offRoute, isTracking, mode == .detail else { return }
+            if declared { differentRouteFailed(cause: "failed") } else { raiseRerouteButton(cause: "failed", speak: true) }
         }
     }
 
@@ -3493,6 +3538,8 @@ final class BeaconModel {
     /// 토큰 증가로 늦게 도착한 응답의 채택을 차단한다. 통지 없음.
     private func clearProposal() {
         proposalToken += 1
+        // 버린 선언 조회(E74)가 응답 없이 오래 걸려도 다음 선언을 막지 않게(세션 종료·최종 접근·수동 재조회 등).
+        differentRouteToken = nil
     }
 
     // MARK: - 대안 경로 프리뷰 조회·채택 (spec 2026-08-14 §3·§4)

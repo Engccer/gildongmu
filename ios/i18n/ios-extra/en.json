@@ -316,6 +316,8 @@
       "destChangedNoName": "Destination changed.",
       "destChangedFetching": "Finding a new route.",
       "waypointChange": "{label}, change waypoint",
+      "titleWaypointChange": "{label}, change waypoint",
+      "differentRoute": "Take a different route",
       "waypointSet": "Waypoint {label}, fetching the route again",
       "waypointKept": "Waypoint {label} unchanged",
       "waypointDropped": "No route through the waypoint ({label}) was found. Guiding to the destination ({dest}) without the waypoint.",

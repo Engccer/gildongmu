@@ -453,6 +453,9 @@
   "ios.guide.routeListCurrent": [
     "step"
   ],
+  "ios.guide.titleWaypointChange": [
+    "label"
+  ],
   "ios.guide.waypointChange": [
     "label"
   ],

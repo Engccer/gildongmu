@@ -124,10 +124,14 @@ struct BeaconTrackingSheet: View {
                 arrivalSection(dest: arrival, proxy: proxy)
             } else {
             Section {
+                // 실험판(E74): 제목이 섹션 첫 행으로 내려와 밀기 버튼을 든다 — 경유지 두 행은 그 동작으로 합쳐졌다.
+                if AppConfig.experimentalGuideTitleActionsEnabled {
+                    titleActionsRow
+                }
                 // 경유지(N4, 위원장 판정: 목적지 팝업과 안내 종료 사이). 라벨이 곧 상태 —
                 // 미도착 경유지가 있으면 "C, 경유지 변경", 없으면(도착 뒤 포함) "경유지 추가".
                 // ko 전용 기능이라 상세 조회가 없는 로케일에는 두지 않는다(`waypointAvailable`).
-                if GuideSession.shared.waypointAvailable {
+                if !AppConfig.experimentalGuideTitleActionsEnabled, GuideSession.shared.waypointAvailable {
                     Button(model.waypoint.map { appLocalized("ios.guide.waypointChange", $0.label) }
                            ?? appLocalized("directions.addVia")) {
                         waypointPresented = true
@@ -240,18 +244,20 @@ struct BeaconTrackingSheet: View {
             } header: {
                 // 무엇을 추적 중인지가 화면에 있어야 한다. 시트로 분리되면서 주변 맥락이
                 // 통째로 사라졌으므로 여기서만 알 수 있다. 수단 라벨(B1 §3.3)이 heading.
-                // 제목이 곧 목적지 메뉴다(스펙 2026-08-12 §1 — 장소 상세·목적지 바꾸기).
-                GuideTitleRow {
-                    GuideTitleMenu(
-                        heading: appLocalized(
-                            model.sessionKind == .car ? "beacon.carHeading" : "beacon.walkHeading"
-                        ),
-                        label: model.destinationLabel,
-                        onShowDetail: { showPlaceDetail = true },
-                        // 여정 단계(E70)는 목적지가 계획의 일부다 — 바꾸면 다음 단계가 옛 계획으로 이어진다.
-                        onChangeDestination: GuideSession.shared.journey == nil ? { changeDestPresented = true } : nil)
-                } trailing: {
-                    GuideMinimizeButton(action: onMinimize)
+                // 제목이 곧 목적지 메뉴다(스펙 2026-08-12 §1 — 장소 상세·목적지 바꾸기). 실험판은 첫 행(위)이 대신한다.
+                if !AppConfig.experimentalGuideTitleActionsEnabled {
+                    GuideTitleRow {
+                        GuideTitleMenu(
+                            heading: appLocalized(
+                                model.sessionKind == .car ? "beacon.carHeading" : "beacon.walkHeading"
+                            ),
+                            label: model.destinationLabel,
+                            onShowDetail: { showPlaceDetail = true },
+                            // 여정 단계(E70)는 목적지가 계획의 일부다 — 바꾸면 다음 단계가 옛 계획으로 이어진다.
+                            onChangeDestination: GuideSession.shared.journey == nil ? { changeDestPresented = true } : nil)
+                    } trailing: {
+                        GuideMinimizeButton(action: onMinimize)
+                    }
                 }
             }
             }
@@ -432,6 +438,11 @@ struct BeaconTrackingSheet: View {
             guard model.offRouteEndedByReroute, pressed || focusedRow == .reroute else { return }
             requestInfoLanding(note: "rerouted")
         }
+        // 「다른 길로 가기」(E74) 채택: 경로를 바꾸는 제목 행 동작은 전부 새 경로의 첫 정보 행에 앉는다(목적지·경유지 바꾸기와
+        // 같은 규칙, spec 2026-10-19 §2.2). 채택 통지가 끝난 뒤다(E57). 실패는 무이동 — 커서는 제목 행에 남는다.
+        .onChange(of: model.differentRouteAdoptedSeq) {
+            requestInfoLanding(note: "differentRoute")
+        }
         // 프리뷰 채택 성공: 조망(과 그 위 프리뷰)을 닫고, 닫힌 뒤 첫 정보 행으로 복귀(spec
         // 2026-08-14 §4 — 포커스를 쥔 시트가 통째로 사라지는 전이, 재조회 성공 동형 · E57 설계 리뷰 M3). 조망이 이미
         // 닫힌 뒤 채택이 끝났으면(낡음 폴백) 곧장 요청한다 — 표식을 남기면 다음에 조망을 그냥 열고 닫을 때 튄다.
@@ -468,6 +479,27 @@ struct BeaconTrackingSheet: View {
             }
         }
         }
+    }
+
+    /// 실험판 제목 행(E74, spec 2026-10-19 §2). 동작의 조건은 종전 메뉴·경유지 행과 같고(여정 단계엔 목적지 바꾸기 없음,
+    /// ko 전용 경유지), 「다른 길로 가기」만 새로 선다. 경유지 삭제 뒤 착지는 종전 행과 같은 `waypointRemoved`.
+    private var titleActionsRow: some View {
+        let waypointAvailable = GuideSession.shared.waypointAvailable
+        return GuideTitleActionsRow(
+            heading: appLocalized(model.sessionKind == .car ? "beacon.carHeading" : "beacon.walkHeading"),
+            label: model.destinationLabel,
+            onDifferentRoute: model.canRequestDifferentRoute ? { model.requestDifferentRoute() } : nil,
+            waypoint: waypointAvailable
+                ? (label: model.waypoint.map { appLocalized("ios.guide.titleWaypointChange", $0.label) }
+                       ?? appLocalized("directions.addVia"),
+                   action: { waypointPresented = true })
+                : nil,
+            onRemoveWaypoint: waypointAvailable && model.waypoint != nil
+                ? { if model.removeWaypoint() { requestInfoLanding(note: "waypointRemoved") } }
+                : nil,
+            onChangeDestination: GuideSession.shared.journey == nil ? { changeDestPresented = true } : nil,
+            onShowDetail: { showPlaceDetail = true },
+            onMinimize: onMinimize)
     }
 
     /// 종료 화면(위원장 판정 2026-08-11, 중지 종료 확장 2026-08-19). 헤딩이 어느 목적지의

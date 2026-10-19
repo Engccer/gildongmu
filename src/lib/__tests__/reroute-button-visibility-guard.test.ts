@@ -50,7 +50,7 @@ describe("iOS", () => {
 
   it("③ 폐기된 조회의 실패는 래치를 세우지 않는다", () => {
     expect(model).toMatch(
-      /guard token == proposalToken, offRoute, isTracking, mode == \.detail else \{ return \}\s*raiseRerouteButton\(cause: "failed"/,
+      /guard token == proposalToken, declared \|\| offRoute, isTracking, mode == \.detail else \{ return \}\s*if declared \{ differentRouteFailed\(cause: "failed"\) \} else \{ raiseRerouteButton\(cause: "failed"/,
     );
   });
 });

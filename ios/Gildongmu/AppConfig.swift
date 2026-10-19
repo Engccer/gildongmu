@@ -52,6 +52,17 @@ enum AppConfig {
     static let experimentalJourneyEnabled = false
     #endif
 
+    /// 안내 시트 제목 행 밀기 동작(E74, 위원장 판정 2026-10-18)의 봉인. 켜지면 도보·자동차·대중교통 시트의 제목이
+    /// 섹션 헤더의 팝업 메뉴에서 섹션 첫 행(`GuideTitleActionsRow`)으로 내려가 밀기 버튼을 들고, 도보·자동차 시트의
+    /// 경유지 두 행이 그 동작으로 합쳐지며 「현재 경로와 다른 길로 가기」(`BeaconModel.requestDifferentRoute`)가 선다.
+    /// 꺼지면 종전 메뉴·경유지 행 그대로다. 소비자는 두 시트의 제목 자리뿐이다(`guidance-gate-drift.test.ts` §8이 잠근다).
+    /// 실사용 판정을 통과하면 이 검사와 종전 갈래를 함께 삭제한다(플래그 졸업).
+    #if EXPERIMENTAL
+    static let experimentalGuideTitleActionsEnabled = true
+    #else
+    static let experimentalGuideTitleActionsEnabled = false
+    #endif
+
     /// 웹 개인정보 처리방침 URL(현재 앱 언어 로케일). 동의 화면·설정이 공유한다.
     static var privacyPolicyURL: URL {
         apiBaseURL.appending(path: "\(AppLanguage.current)/privacy")

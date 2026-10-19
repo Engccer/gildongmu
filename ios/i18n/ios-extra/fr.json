@@ -316,6 +316,8 @@
       "destChangedNoName": "Destination modifiée.",
       "destChangedFetching": "Recherche d'un nouvel itinéraire.",
       "waypointChange": "{label}, changer le point de passage",
+      "titleWaypointChange": "{label}, changer le point de passage",
+      "differentRoute": "Prendre un autre chemin",
       "waypointSet": "Point de passage {label}, nouvelle recherche d’itinéraire",
       "waypointKept": "Point de passage {label} inchangé",
       "waypointDropped": "Aucun itinéraire passant par l'étape ({label}) n'a été trouvé. Guidage vers la destination ({dest}) sans l'étape.",

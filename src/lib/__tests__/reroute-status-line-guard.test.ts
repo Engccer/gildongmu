@@ -30,8 +30,9 @@ describe("iOS BeaconModel 자동 재조회 채택", () => {
   );
 
   it("① 상태 행은 statusLine, 음성은 spoken", () => {
-    expect(block).toMatch(/statusText = notice\.map \{ "\\\(\$0\) \\\(summary\.statusLine\)" \} \?\? summary\.statusLine/);
-    expect(block).toMatch(/let text = notice\.map \{ "\\\(\$0\) \\\(summary\.spoken\)" \} \?\? summary\.spoken/);
+    // 선언 조회(E74)의 시작점 고지 `away`는 두 쪽에 같이 붙는다 — 머리말은 음성 쪽(`summary.spoken`)에만 있다.
+    expect(block).toContain("statusText = [away, notice, summary.statusLine].compactMap { $0 }.joined(separator: \" \")");
+    expect(block).toContain("let text = [away, notice, summary.spoken].compactMap { $0 }.joined(separator: \" \")");
     expect(block).toContain("announce(text,");
     expect(block).not.toMatch(/statusText = text\b/);
   });

@@ -141,6 +141,19 @@ struct TransitTrackingSheet: View {
             List {
                 if model.state != nil {
                     Section {
+                        // 실험판(E74): 제목이 섹션 첫 행으로 내려와 밀기 버튼을 든다(경유지·다른 길로 가기는 대중교통에 없다).
+                        if AppConfig.experimentalGuideTitleActionsEnabled {
+                            GuideTitleActionsRow(
+                                heading: appLocalized("beacon.transitHeading"),
+                                label: model.destinationLabel,
+                                onDifferentRoute: nil,
+                                waypoint: nil,
+                                onRemoveWaypoint: nil,
+                                onChangeDestination: GuideSession.shared.journey == nil
+                                    ? { changeDestPresented = true } : nil,
+                                onShowDetail: showDestinationDetail,
+                                onMinimize: onMinimize)
+                        }
                         // 조망 모달이 응답이다(도보 동형). `announceProgress()`를 부르지 않는다 —
                         // 헤더 착지가 같은 문장을 낭독하므로 통지를 먼저 내면 둘이 잠식한다(§4.3).
                         Button(appLocalized("guide.progressButton")) {
@@ -151,22 +164,19 @@ struct TransitTrackingSheet: View {
                         viaStopsRows
                         phaseControls(proxy: proxy)
                     } header: {
-                        // 제목이 곧 목적지 메뉴다(스펙 2026-08-12 §1).
-                        GuideTitleRow {
-                            GuideTitleMenu(
-                                heading: appLocalized("beacon.transitHeading"),
-                                label: model.destinationLabel,
-                                onShowDetail: {
-                                    guard let dest = detailDest else { return }
-                                    model.touchUserAction()
-                                    detailLineHint = nil
-                                    detailPlace = guideDestinationPlace(dest: dest, label: model.destinationLabel)
-                                },
-                                // 여정 단계(E70)는 하차역·출구가 계획의 일부다 — 목적지를 바꾸지 않는다.
-                                onChangeDestination: GuideSession.shared.journey == nil
-                                    ? { changeDestPresented = true } : nil)
-                        } trailing: {
-                            GuideMinimizeButton(action: onMinimize)
+                        // 제목이 곧 목적지 메뉴다(스펙 2026-08-12 §1). 실험판은 첫 행(위)이 대신한다.
+                        if !AppConfig.experimentalGuideTitleActionsEnabled {
+                            GuideTitleRow {
+                                GuideTitleMenu(
+                                    heading: appLocalized("beacon.transitHeading"),
+                                    label: model.destinationLabel,
+                                    onShowDetail: showDestinationDetail,
+                                    // 여정 단계(E70)는 하차역·출구가 계획의 일부다 — 목적지를 바꾸지 않는다.
+                                    onChangeDestination: GuideSession.shared.journey == nil
+                                        ? { changeDestPresented = true } : nil)
+                            } trailing: {
+                                GuideMinimizeButton(action: onMinimize)
+                            }
                         }
                     }
                     surroundingsSection(proxy: proxy)
@@ -810,6 +820,14 @@ struct TransitTrackingSheet: View {
     /// `transit-landing-guard.test.ts`). 셋을 한 번에 단다: 정체성 옵셔널 바인딩 · `scrollTo` 키(`.id`) ·
     /// 실현 관측(onAppear/onDisappear → `rendered`). 대상마다 따로 달면 하나가 빠지고, 빠진 대상은 가시화나
     /// 사유 판정 없이 조용히 실패한다(종전 `default: break` 5대상이 정확히 그 자리였다).
+    /// 제목의 「장소 상세 보기」(종전 메뉴·실험판 제목 행 공용).
+    private func showDestinationDetail() {
+        guard let dest = detailDest else { return }
+        model.touchUserAction()
+        detailLineHint = nil
+        detailPlace = guideDestinationPlace(dest: dest, label: model.destinationLabel)
+    }
+
     private func landingTarget<V: View>(_ view: V, _ control: SheetControl) -> some View {
         view
             .accessibilityFocused($focusedControl, equals: control)

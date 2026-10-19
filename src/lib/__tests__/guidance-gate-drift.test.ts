@@ -33,6 +33,8 @@ const RETIRED_FLAG = "experimentalGuidanceEnabled";
 const OUTING_FLAG = "AppConfig.experimentalOutingEnabled";
 /** 택시로 갈아타는 여정(E70) 봉인 — 첫 판은 실험판 전용(BACKLOG E70 판정 5). */
 const JOURNEY_FLAG = "AppConfig.experimentalJourneyEnabled";
+/** 안내 시트 제목 행 밀기 동작(E74) 봉인 — 실험판 전용(BACKLOG E74 판정 6). */
+const TITLE_ACTIONS_FLAG = "AppConfig.experimentalGuideTitleActionsEnabled";
 
 /** 빌드 산출물엔 파생 Swift가 섞여 있어 스캔 대상이 아니다. */
 const SKIP_DIRS = new Set(["build", ".build", "DerivedData", "node_modules", ".git"]);
@@ -589,6 +591,47 @@ describe("8-2. 한 번 탔거나 무관한 안내가 시작되면 승차 전 도
       expect(body, needle).toContain(needle);
     }
     expect(body).not.toContain("lastFailure");
+  });
+});
+
+describe("9. 안내 시트 제목 행 밀기 동작(E74) — 실험판 봉인", () => {
+  const BEACON_SHEET = join(ROOT, "ios/Gildongmu/Directions/BeaconTrackingSheet.swift");
+  const TRANSIT_SHEET = join(ROOT, "ios/Gildongmu/Directions/TransitTrackingSheet.swift");
+  const callSites = (pattern: RegExp) =>
+    swiftFiles(IOS_DIR).flatMap((file) =>
+      (blankSwiftCommentsAndStrings(readFileSync(file, "utf8")).match(pattern) ?? []).map(() => file.split("/").pop()),
+    );
+
+  it("제목 행은 두 시트에서 한 번씩만 서고, 그 자리가 봉인 조건 안에 있다", () => {
+    expect(callSites(/GuideTitleActionsRow\(/g).sort()).toEqual(["BeaconTrackingSheet.swift", "TransitTrackingSheet.swift"]);
+    // 도보 시트는 계산 프로퍼티(`titleActionsRow`)가 행을 만들고 본문의 그 참조가 조건 안에 있다.
+    const beacon = readFileSync(BEACON_SHEET, "utf8");
+    const beaconSites = enclosingHeaders(beacon, "titleActionsRow\n");
+    expect(beaconSites).toHaveLength(1);
+    expect(beaconSites[0].join("\n")).toContain(`if ${TITLE_ACTIONS_FLAG}`);
+    const transitSites = enclosingHeaders(readFileSync(TRANSIT_SHEET, "utf8"), "GuideTitleActionsRow(");
+    expect(transitSites).toHaveLength(1);
+    expect(transitSites[0].join("\n")).toContain(`if ${TITLE_ACTIONS_FLAG}`);
+  });
+
+  it("「다른 길로 가기」의 호출은 도보 시트의 제목 행 한 곳이다", () => {
+    expect(callSites(/\.requestDifferentRoute\(\)/g)).toEqual(["BeaconTrackingSheet.swift"]);
+    expect(declarationBody(readFileSync(BEACON_SHEET, "utf8"), "titleActionsRow")).toContain("model.requestDifferentRoute()");
+  });
+
+  it.each([
+    ["BeaconTrackingSheet.swift", BEACON_SHEET],
+    ["TransitTrackingSheet.swift", TRANSIT_SHEET],
+  ])("%s의 종전 제목 메뉴는 정식판 조건(!플래그) 안에 남아 있다", (_name, file) => {
+    const sites = enclosingHeaders(readFileSync(file, "utf8"), "GuideTitleMenu(");
+    expect(sites).toHaveLength(1);
+    expect(sites[0].join("\n")).toContain(`if !${TITLE_ACTIONS_FLAG}`);
+  });
+
+  it("도보 시트의 종전 경유지 행은 정식판 조건 안에 남아 있다", () => {
+    const sites = enclosingHeaders(readFileSync(BEACON_SHEET, "utf8"), "Button(model.waypoint.map");
+    expect(sites).toHaveLength(1);
+    expect(sites[0].join("\n")).toContain(`if !${TITLE_ACTIONS_FLAG}`);
   });
 });
 

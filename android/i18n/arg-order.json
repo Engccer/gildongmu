@@ -1115,6 +1115,9 @@
   "android.guide.routeListCurrent": [
     "step"
   ],
+  "android.guide.titleWaypointChange": [
+    "label"
+  ],
   "android.guide.waypointChange": [
     "label"
   ],

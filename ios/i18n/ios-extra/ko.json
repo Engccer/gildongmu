@@ -316,6 +316,8 @@
       "destChangedNoName": "목적지를 바꿨습니다.",
       "destChangedFetching": "경로를 조회하고 있습니다.",
       "waypointChange": "{label}, 경유지 변경",
+      "titleWaypointChange": "{label}, 경유지 바꾸기",
+      "differentRoute": "현재 경로와 다른 길로 가기",
       "waypointSet": "경유지 {label}, 경로를 다시 조회합니다",
       "waypointKept": "경유지 {label} 그대로입니다",
       "waypointDropped": "경유지({label})를 포함한 경로를 찾지 못했습니다. 경유지 없이 목적지({dest})로 안내합니다.",

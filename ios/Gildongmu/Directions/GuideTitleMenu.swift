@@ -30,6 +30,54 @@ struct GuideTitleMenu: View {
     }
 }
 
+/// 안내 시트 제목 행 — 실험판(E74, `AppConfig.experimentalGuideTitleActionsEnabled`)에서 `GuideTitleMenu` 헤더를
+/// 대신하는 **섹션 첫 행**(spec 2026-10-19-e74-guide-title-actions §2). 밀기 버튼은 행에만 붙어 제목이 헤더에서 행으로
+/// 내려왔다. 제목은 종전 메뉴 라벨과 같은 합친 한 줄 + 헤딩 trait(헤딩 로터 보존), 오른쪽 끝은 접기 아이콘(종전 배치).
+/// VoiceOver 동작 목록은 iOS가 밀기 버튼에서 만든다 — 오른쪽 묶음이 먼저, 묶음 안은 선언 순이라 들리는 순서는
+/// 다른 길로 가기 → 경유지 → 목적지 바꾸기 → 장소 상세 보기(판정 3). nil인 동작은 버튼이 없다.
+/// 끝까지 밀기 실행은 두 묶음 다 끈다 — 넷 다 되돌릴 수 없다(판정 2).
+struct GuideTitleActionsRow: View {
+    let heading: String
+    let label: String
+    /// 「현재 경로와 다른 길로 가기」 — 도보·자동차 상세 안내 중에만(대중교통·간략·최종 접근은 nil).
+    let onDifferentRoute: (() -> Void)?
+    /// 경유지 추가/바꾸기 — 라벨이 곧 상태(「경유지 추가」 / 「{경유지}, 경유지 바꾸기」). 대중교통·비-ko는 nil.
+    let waypoint: (label: String, action: () -> Void)?
+    /// 경유지 삭제 — 미도착 경유지가 있을 때만.
+    let onRemoveWaypoint: (() -> Void)?
+    /// nil이면 「목적지 바꾸기」가 없다 — 여정(E70) 단계 세션(`GuideTitleMenu`와 같은 이유).
+    let onChangeDestination: (() -> Void)?
+    let onShowDetail: () -> Void
+    let onMinimize: () -> Void
+
+    var body: some View {
+        // ⚠ 거는 순서는 왼쪽 밀기(안쪽) → 오른쪽 밀기(바깥) — `PlaceRowActions`와 같은 관측 조건.
+        GuideTitleRow {
+            Text(joinText(heading, label))
+                .accessibilityAddTraits(.isHeader)
+        } trailing: {
+            GuideMinimizeButton(action: onMinimize)
+        }
+        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+            if let onChangeDestination {
+                Button(appLocalized("ios.guide.destMenuChange"), action: onChangeDestination)
+            }
+            Button(appLocalized("ios.guide.destMenuDetail"), action: onShowDetail)
+        }
+        .swipeActions(edge: .leading, allowsFullSwipe: false) {
+            if let onDifferentRoute {
+                Button(appLocalized("ios.guide.differentRoute"), action: onDifferentRoute)
+            }
+            if let waypoint {
+                Button(waypoint.label, action: waypoint.action)
+            }
+            if let onRemoveWaypoint {
+                Button(appLocalized("ios.guide.waypointRemove"), action: onRemoveWaypoint)
+            }
+        }
+    }
+}
+
 /// 안내 시트 섹션 헤더 행: 제목 메뉴(좌) + 접기 아이콘(우, 선택). 접기 버튼은 이 행의 우측
 /// 끝 작은 아이콘이다(위원장 판정 2026-08-23 — 종전 toolbar 배치는 제목 없는 빈 내비게이션
 /// 바가 아이콘 하나를 들고 한 행을 차지해 "제목이 빠진 화면"으로 보였다. 유튜브 플레이어의

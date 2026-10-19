@@ -135,6 +135,7 @@
     <string name="android_guide_destChangedNoName">Destination changed.</string>
     <string name="android_guide_destMenuChange">Change destination</string>
     <string name="android_guide_destMenuDetail">View place details</string>
+    <string name="android_guide_differentRoute">Take a different route</string>
     <string name="android_guide_focusDenied">Another app is using audio, so guide sounds cannot play right now</string>
     <string name="android_guide_mediaVolumeZero">Media volume is off, so guide sounds will not play</string>
     <string name="android_guide_notificationChannel">Walking guidance</string>
@@ -144,6 +145,7 @@
     <string name="android_guide_switchedToBroad">Switched to the main-road route. {1, plural, one {%1$s step} other {%1$s steps}}, %2$s total. %3$s</string>
     <string name="android_guide_switchedToRecommended">Switched to the recommended route. {1, plural, one {%1$s step} other {%1$s steps}}, %2$s total. %3$s</string>
     <string name="android_guide_switchedToShortest">Switched to the shortest route. {1, plural, one {%1$s step} other {%1$s steps}}, %2$s total. %3$s</string>
+    <string name="android_guide_titleWaypointChange">%1$s, change waypoint</string>
     <string name="android_guide_ttsUnavailable">Voice guidance is not available for this language. Check the guidance text on screen</string>
     <string name="android_guide_viewAlternative">View alternative route</string>
     <string name="android_guide_waypointChange">%1$s, change waypoint</string>
