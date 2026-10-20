@@ -12,6 +12,58 @@
 
 ---
 
+## 2.3 (빌드 34)
+
+기준은 2.2 아카이브 커밋 `bfa494eb`(빌드 33, 2026-10-17 제출, 2026-10-18 `READY_FOR_SALE` 확인)이며 그 이후 `ios/` 커밋 17건(13차 소화)을 판정했다. Release 바이너리에 도달하면서 iOS 사용자가 알아차리는 것만 담는다. 2.3인 이유: 대중교통 환승 도보 안내·버스 하차 정류장 기기 위치 도착 알림이 새로 들어오고, 경로 이탈 재조회·먼 시작점 안내·이탈 중 도착 창·서울버스 하차 안내 문장이 바뀐다. 서버 도보 안내 기하 응답(`includeGeometry=1`, ko)의 카카오 첫 점 30m 밖 Tmap 재시도와 `originGapM`도 이 버전의 앱 시작점 고지와 짝으로 동작한다.
+
+포함 판정:
+
+| 기능 | 커밋 | 노트 |
+|---|---|---|
+| **대중교통 환승 도보 안내**(E73) — 환승 시 직선 30m 이상·도보 1분 이상 구간에서 「다음 구간」을 누르면 다음 승차 지점까지 도보 안내 후 그 구간 승차 대기부터 대중교통 안내 재개 | `4a04c0ac`·`0fc008a0`·`2cc7c052`·`1016f879`·`e4802e57`(E73 분) | ko·en |
+| **버스 하차 정류장 기기 위치 도착 알림 + 다음 정류장 이름 안내**(A69) — 승차 중 기기 위치로 하차 정류장 50m 안에 들면 「{stop} 도착. 내리세요.」 한 마디, 서울버스 하차 정류장 "곧 도착" 문장을 「다음 정류장 {stop}에서 내리세요.」로 교체 | `06ad463b`·`e5cadca7`·`4fcb0331`·`a666656c` | ko·en. 기기 위치 도착 알림은 새로운 기능, "곧 도착" 문장 교체는 오류 수정 |
+| **경로 이탈 `far` 재조회·먼 시작점 거부 및 고지·이탈 중 도착 창**(A70) — 다른 길로 다가가도 원래 경로에서 도보 100m·자동차 400m 이상 60초면 자동 재조회, 자동 재조회 첫 점이 도보 30m·자동차 150m 밖이면 채택 거부와 실패 통지, 시작·직접 재조회·경로 전환 시 시작점이 멀면 8방위·거리 고지, 도보 이탈 중 목적지 간략 창 안 5초면 최종 접근 진입(정확도 50m 상한 포함) | `7e26a842`·`25946e44`·`99a14852`·`08f3af2b`·`53575d6a` | ko·en(자동차 갈래와 서버 도보 출발점 재시도는 ko만) |
+
+제외 근거:
+
+- **안내 시트 제목 행 밀기 동작 + 「현재 경로와 다른 길로 가기」**(E74 `80d685ec`·`6c2bebee`·`03d002b6`·`1016f879`·`e4802e57`의 E74 분): `experimentalGuideTitleActionsEnabled` 뒤라 정식판 도달 0.
+- **길찾기 입력 경유지·자동차 환승 메뉴와 여정 자동차 문장**(E70-d `f2cd0d08`·`89da25b2`): `DirectionsTabView.journeyInputEnabled`(`experimentalJourneyEnabled`) 뒤. Release에서는 기존 `경유지 추가` 버튼이 그대로 노출됨을 소스로 확인.
+- **동작 변경 0**: 문서·감사 커밋(`90276226`·`5569db43`·`afe768c4`·`1ed86824`).
+
+심사 노트는 **승계한다**(`--review-notes` 미사용): 새 권한·새 데이터 유형·새 제3자가 없고, §9의 버스 승차 중 기기 위치 설명(`while riding a bus it uses the device position to show which stop the bus is passing`)과도 일치하며 어느 문장도 이번 변경으로 거짓이 되지 않는다. 개인정보 3자 일치에 닿는 변경도 없다.
+
+### ko
+
+```
+새로운 기능
+- 대중교통 안내에서 갈아타려고 걸어야 할 때 다음 구간을 누르면, 다음 타는 곳까지 도보 안내를 해 드리고 도착하면 대중교통 안내를 이어 갑니다.
+- 버스를 타고 가는 동안 위치 권한이 켜져 있으면, 내릴 정류장에 들어서는 순간 도착했다고 한 번 더 알려 드립니다.
+
+개선
+- 길을 벗어난 뒤 다른 길로 가더라도 원래 경로에서 멀리 떨어진 상태가 1분 동안 이어지면 지금 위치에서 새 경로를 찾습니다.
+- 자동으로 찾은 새 경로의 시작점이 지금 계신 곳에서 너무 멀면 그대로 바꾸지 않고 알려 드립니다. 안내를 시작하거나 경로를 직접 다시 찾았을 때 시작점이 멀면 어느 쪽으로 얼마나 떨어져 있는지 먼저 알려 드립니다.
+- 도보 안내 중 경로를 벗어난 상태여도 목적지 가까이에 이르면 목적지 근처라고 알리고 도착 안내로 이어 갑니다.
+
+오류 수정
+- 서울버스에서 내릴 정류장이 가까워졌을 때 직전 정류장에 서 있는데도 이번 정류장에서 내리라고 들리던 문제를 고쳐, 다음 정류장 이름과 함께 안내합니다.
+```
+
+### en
+
+```
+New
+- During transit guidance, when you need to walk to a transfer stop, tapping Next Leg now guides you on foot to the next boarding stop and resumes transit guidance when you arrive.
+- While riding a bus with location access enabled, the app now announces once more as you reach your stop to get off.
+
+Improvements
+- If you take a different street after leaving the route and stay far from the original route for a minute, the app now finds a new route from your current location.
+- If a new route found automatically starts too far from where you are, the app does not switch to it and lets you know. When you start guidance or re-query a route yourself and its starting point is far away, the app first tells you the direction and distance to the start.
+- During walking guidance, if you get close to your destination even while off route, the app now announces that you are near your destination and continues with arrival guidance.
+
+Fixes
+- Fixed an issue on Seoul buses where the approaching-stop announcement could sound like you should get off while the bus was still at the previous stop. It now names the next stop clearly.
+```
+
 ## 2.2 (빌드 33)
 
 기준은 2.1 아카이브 커밋 `49c47afb`(빌드 32, 2026-10-04 제출, 2026-10-05 `READY_FOR_SALE` 확인)이며 그 이후 `ios/` 커밋 42건(10차·11차·12차 소화)을 판정했다. Release 바이너리에 도달하면서 iOS 사용자가 알아차리는 것만 담는다. 2.2인 이유: 목록 밀기 버튼·이름 링크·고정 항목 순서 바꾸기·자동차 경유지 예고가 새로 들어온다. 이 버전부터 앱이 서버 옵트인 `/api/nearby/overview?places=1`·`/api/station/subway-arrival/nearby?coords=1`을 읽는다(2026-10-17 프로덕션 실호출로 ko·en 두 값 확인).
