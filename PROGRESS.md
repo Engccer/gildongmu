@@ -19,7 +19,7 @@
 | 채널 | 상태 |
 |---|---|
 | 웹 | https://gildongmu.dodoplanet.space (push = 자동 배포) |
-| iOS | 스토어 최신 **2.2 `READY_FOR_SALE`**(빌드 33, 아카이브 커밋 `bfa494eb`, 2026-10-19 `asc-submit.mjs --check`로 출시 확인. 목록 밀기 버튼·이름 링크·고정 항목 순서 바꾸기·자동차 경유지 예고). 미릴리스 iOS 변경: `git log bfa494eb..HEAD -- ios/` |
+| iOS | 스토어 최신 **2.2 `READY_FOR_SALE`**(빌드 33, 아카이브 커밋 `bfa494eb`, 2026-10-19 `asc-submit.mjs --check`로 출시 확인. 목록 밀기 버튼·이름 링크·고정 항목 순서 바꾸기·자동차 경유지 예고) · **2.3 `WAITING_FOR_REVIEW`**(빌드 34, 아카이브 커밋 `4649c02e`, 2026-10-20 20:01 KST 제출. 대중교통 환승 도보 안내·버스 하차 정류장 도착 알림·경로 이탈 재조회 보강). 미릴리스 iOS 변경: `git log 4649c02e..HEAD -- ios/` |
 | iOS 최소 지원 | **18.0**(2026-08-19 하향, 1.10부터 적용 — 스토어 반영 완료) |
 | npm | `gildongmu` · `gildongmu-mcp` **v0.12.0**(2026-10-05, `cli-v0.12.0` 태그 → Trusted Publishing 워크플로 성공, `npm view` 両패키지 0.12.0·SLSA provenance 확인). 미발행 변경 없음 |
 | 저장소 | GitHub **public**(2026-08-17 전환) — https://github.com/Engccer/gildongmu. 코드 MIT, 번들 데이터는 `NOTICE.md`. **모든 커밋이 즉시 공개된다** — 실주소·계측 로그·키를 넣지 않는 규칙은 `CLAUDE.md` 개발 규칙, 재유입 가드는 `public-repo-privacy-guard.test.ts`(목록은 저장소 밖). 과거 기록 정리(히스토리 재작성)는 2026-10-04 완료(커밋 번호가 2026-07-22 이후 전부 바뀌었다. 다른 클론은 재클론, BACKLOG A56·§8) |
