@@ -23,6 +23,8 @@
 | `docs/appstore/release-notes.md` | App Store 버전별 What's New | 제출 절차(→ `1.0-submission-draft.md`) |
 | `packages/*/CHANGELOG.md` | npm 사용자가 보는 릴리스 노트 | 내부 구현 서사 |
 
+⚠ **후속 과제: `docs/BACKLOG.md`를 워크스페이스 형식으로 옮긴다**(워크스페이스 CLAUDE.md §프로젝트 맥락 문서). 열린 항목을 `### A70.` 헤딩에서 체크박스 `- [ ] **제목**`으로 바꾸고 머리에 `## 착수 순서` 표를 둔다. 지금 형식은 `doc-audit` 린트가 열린 항목을 세지 못해 표 누락·끝난 행을 잡지 못한다. 옮긴 뒤 이 문단을 지운다.
+
 **마일스톤을 닫는 마지막 단계는 이 분배다.** 서사는 `CHANGELOG.md`로, 남은 판정은 `docs/BACKLOG.md`로, 새로 배운 함정은 이 파일로, 상태 한 줄만 `PROGRESS.md`로 보낸다. 새 함정은 **이 파일엔 규칙 한두 줄, 근거·세부는 `docs/INTEGRATIONS.md`(외부 통합) 또는 `docs/PATTERNS.md`(그 밖)의 같은 제목 절**로 나눠 적는다 — 이 파일에 문단째 쓰는 것이 재팽창의 경로다.
 
 ⚠ **재팽창은 "완료된 일이 현재 상태로 위장"해서 일어난다**(`PROGRESS.md`가 273KB까지 분 기제: 끝난 마일스톤을 "운영 중인 기능" 제목 아래 두면 정의를 통과한다).
