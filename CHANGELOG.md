@@ -9,6 +9,11 @@
 
 ---
 
+## 2026-10-27
+
+### BACKLOG를 워크스페이스 형식으로 (D36)
+`docs/BACKLOG.md` §1~§8의 열린 항목 116건을 헤딩·굵은 불릿에서 체크박스 `- [ ] **식별자. 제목**`으로 바꾸고(본문 불변, 변환은 스크립트 + 줄 대조), 머리에 `## 착수 순서` 표를 두었다. 사라진 항목 헤딩을 가리키던 앵커 링크는 그 항목이 든 절 앵커로 옮겼다. 끝났는데 남아 있던 A56·E60을 종결 표로 보냈다. 계획 `docs/superpowers/plans/2026-10-27-backlog-format-parallel-plan.md`.
+
 ## 2026-10-20
 
 ### App Store 2.3 심사 제출 (빌드 34)
@@ -501,11 +506,11 @@ seed 변환기가 `환승역구분`을 접미 일치로 읽고 모르는 어휘�
 
 ### 안드로이드 도보 실시간 안내 정식 기능 이동
 
-도보 진입점·세션·띠바의 실험 게이트와 `AppConfig.experimentalGuidanceEnabled`(소비자 0)를 삭제하고, 전경 서비스(`location`)·`FOREGROUND_SERVICE(_LOCATION)`·`WAKE_LOCK`·`ACTIVITY_RECOGNITION`을 정식 매니페스트로 승격했다(실험판 매니페스트 삭제, 탭 순서·결과 진동 설정 행·진단 로그의 실험 게이트는 유지). 산출물 검사(`check-release-manifest.mjs`)가 정식·실험 APK 모두를 잠근다. 정식판 첫 Play 제출에 전경 서비스 선언이 필요해졌다(`docs/playstore/data-safety.md` §4 #14). 남은 것은 한소네 7 `debug` 검증([BACKLOG E43](docs/BACKLOG.md#e43-안드로이드-앱---코드-도달2026-09-17-d7a4ae97-웨이브-03-완료--실기기-판정m5스토어)).
+도보 진입점·세션·띠바의 실험 게이트와 `AppConfig.experimentalGuidanceEnabled`(소비자 0)를 삭제하고, 전경 서비스(`location`)·`FOREGROUND_SERVICE(_LOCATION)`·`WAKE_LOCK`·`ACTIVITY_RECOGNITION`을 정식 매니페스트로 승격했다(실험판 매니페스트 삭제, 탭 순서·결과 진동 설정 행·진단 로그의 실험 게이트는 유지). 산출물 검사(`check-release-manifest.mjs`)가 정식·실험 APK 모두를 잠근다. 정식판 첫 Play 제출에 전경 서비스 선언이 필요해졌다(`docs/playstore/data-safety.md` §4 #14). 남은 것은 한소네 7 `debug` 검증([BACKLOG E43](docs/BACKLOG.md#5-신규확장)).
 
 ### A46 승차 대기 배경 관측·수동 진행 버튼 이름
 
-고른 차량을 기다리는(boarding) 동안에도 keep-alive 위치 스트림을 켜서, 화면을 끄거나 다른 앱을 써도 폴이 돌고 도착 관측 승격이 기본 경로가 되게 했다(iOS 실험판). 관측이 끝난 뒤의 수동 진행 버튼은 [선택한 열차에 탔어요]·[선택한 버스에 탔어요], 대기 국면은 [이미 탔어요]로 바꾸고, 세 안내 문장(`vehiclePassed`·`boardingSignalLost`·`boardingUpstreamFailed`)에서 버튼 이름을 인용하던 꼬리를 뺐다(웹·iOS, 6로케일). [BACKLOG A46](docs/BACKLOG.md#a46-고른-열차를-기다리다-화면을-끄면-앱이-도착을-못-보고-돌아오면-도착-정보-없이를-묻는다--2026-09-23-위원장-실승차-피드백-ios-실험판---코드-종결2026-09-23-세션-a46-changelog-같은-날-실승차-판정-대기).
+고른 차량을 기다리는(boarding) 동안에도 keep-alive 위치 스트림을 켜서, 화면을 끄거나 다른 앱을 써도 폴이 돌고 도착 관측 승격이 기본 경로가 되게 했다(iOS 실험판). 관측이 끝난 뒤의 수동 진행 버튼은 [선택한 열차에 탔어요]·[선택한 버스에 탔어요], 대기 국면은 [이미 탔어요]로 바꾸고, 세 안내 문장(`vehiclePassed`·`boardingSignalLost`·`boardingUpstreamFailed`)에서 버튼 이름을 인용하던 꼬리를 뺐다(웹·iOS, 6로케일). [BACKLOG A46](docs/BACKLOG.md#1-결함).
 
 ### 채팅 서버 소규모 묶음 (A44·A45·A42)
 
