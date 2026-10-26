@@ -14,6 +14,9 @@
 ### BACKLOG를 워크스페이스 형식으로 (D36)
 `docs/BACKLOG.md` §1~§8의 열린 항목 116건을 헤딩·굵은 불릿에서 체크박스 `- [ ] **식별자. 제목**`으로 바꾸고(본문 불변, 변환은 스크립트 + 줄 대조), 머리에 `## 착수 순서` 표를 두었다. 사라진 항목 헤딩을 가리키던 앵커 링크는 그 항목이 든 절 앵커로 옮겼다. 끝났는데 남아 있던 E60과 이 작업 D36을 종결 표로 보내 열린 항목은 114건이다. 계획 `docs/superpowers/plans/2026-10-27-backlog-format-parallel-plan.md`.
 
+### BACKLOG 감량: 코드가 끝난 항목은 본문을 지운다
+코드가 끝나고 실기기·실사용 판정만 남은 항목 67개의 본문을 지우고, 판정은 §2 행 하나로 남겼다(본문에만 있던 판정 기준은 §2 행으로, 함정은 `docs/PATTERNS.md`·`docs/INTEGRATIONS.md` 같은 제목 절로). 종결 표 머리 규칙도 같은 뜻으로 고쳤고, E16 잔여는 B15·D37로 옮겼다. `docs/BACKLOG.md` 490KB → 390KB. 계획 `docs/superpowers/plans/2026-10-27-backlog-slim-device-check-parallel-plan.md`.
+
 ## 2026-10-20
 
 ### App Store 2.3 심사 제출 (빌드 34)
