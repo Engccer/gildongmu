@@ -574,7 +574,7 @@ export interface WalkRouteStep {
   /**
    * 결정 지점 행동(**서버 투영**, E16 축3 spec `2026-08-23-non-ko-walk-guidance-design.md` §4.2.1).
    * `attachStepActions`가 전량 채운다: Tmap 스텝은 `turnType` 표에서, 카카오 스텝은 주석까지
-   * 끝난 최종 문장을 `walkStepAction`에 태워서. 리듀서는 이 필드만 본다(`actionSource: "step"`)
+   * 끝난 최종 문장을 `walkStepAction`에 태워서. 리듀서는 이 필드만 본다(`stepActionFor`)
    * — 클라이언트 문자열 폴백을 두면 구조화의 "의도된 행동 없음"과 미투영을 구별하지 못한다.
    * `live`와 같은 게이트로 `includeGeometry=1` 응답에만 실린다.
    */

@@ -49,6 +49,10 @@ function stubSynth(initialVoices: Voice[]) {
   };
 }
 
+// 본문은 바이트로 준다 — jsdom의 전역 `Blob`은 `stream()`이 없어 Node 22 `Response`가 받지 못한다
+// (`object.stream is not a function`). 훅은 `res.blob()`만 부르므로 본문 내용은 무관하다.
+const mp3Response = () => new Response(new TextEncoder().encode("mp3"), { status: 200 });
+
 function stubServer(response: Response) {
   const fetchMock = vi.fn(async () => response);
   vi.stubGlobal("fetch", fetchMock);
@@ -145,7 +149,7 @@ describe("useTtsPlayback", () => {
   it("보이스가 끝내 오지 않으면 대기 상한 뒤 서버로 넘어간다", async () => {
     vi.useFakeTimers();
     stubSynth([]);
-    const { fetchMock } = stubServer(new Response(new Blob(["mp3"]), { status: 200 }));
+    const { fetchMock } = stubServer(mp3Response());
     const { result } = renderHook(() => useTtsPlayback("ko", vi.fn()));
     act(() => result.current.toggle("m1", "안녕"));
     await act(async () => {
@@ -156,7 +160,7 @@ describe("useTtsPlayback", () => {
 
   it("로케일 보이스가 없으면 /api/tts로 합성해 재생하고 끝나면 상태를 비운다", async () => {
     stubSynth([EN]);
-    const { fetchMock, audios } = stubServer(new Response(new Blob(["mp3"]), { status: 200 }));
+    const { fetchMock, audios } = stubServer(mp3Response());
     const { result } = renderHook(() => useTtsPlayback("ko", vi.fn()));
     act(() => result.current.toggle("m1", "안녕"));
     await waitFor(() => expect(audios).toHaveLength(1));
@@ -180,7 +184,7 @@ describe("useTtsPlayback", () => {
   });
 
   it("합성 API가 없는 브라우저는 곧장 서버로 간다", async () => {
-    const { fetchMock } = stubServer(new Response(new Blob(["mp3"]), { status: 200 }));
+    const { fetchMock } = stubServer(mp3Response());
     const { result } = renderHook(() => useTtsPlayback("ko", vi.fn()));
     act(() => result.current.toggle("m1", "안녕"));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
@@ -207,7 +211,7 @@ describe("useTtsPlayback", () => {
     const { result } = renderHook(() => useTtsPlayback("ko", vi.fn()));
     act(() => result.current.toggle("m1", "안녕"));
     act(() => result.current.stop());
-    await act(async () => resolve(new Response(new Blob(["mp3"]), { status: 200 })));
+    await act(async () => resolve(mp3Response()));
     expect(audios).toHaveLength(0);
     expect(result.current.playingId).toBeNull();
   });
@@ -246,7 +250,7 @@ describe("useTtsPlayback", () => {
 
   it("서버 음성 재생 중 언마운트하면 멈추고 blob URL을 해제한다", async () => {
     stubSynth([EN]);
-    const { audios } = stubServer(new Response(new Blob(["mp3"]), { status: 200 }));
+    const { audios } = stubServer(mp3Response());
     const { result, unmount } = renderHook(() => useTtsPlayback("ko", vi.fn()));
     act(() => result.current.toggle("m1", "안녕"));
     await waitFor(() => expect(audios).toHaveLength(1));

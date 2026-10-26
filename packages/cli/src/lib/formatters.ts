@@ -386,12 +386,11 @@ interface WebSearchResultItem {
 const m = (n: number): string => `${Math.round(n)}m`;
 
 /**
- * 적응형 거리: 1km 미만은 미터, 그 이상은 "{km}km {m}m"(웹 `formatDistance` 미러).
- * `m()`은 도보권 항목(정류소·역) 전용이라 수십 km에 쓰면 "89700m"가 되어
+ * 적응형 거리: 1km 미만은 미터, 그 이상은 후행 0 없는 소수 km("6.285km", 웹 `formatDistance`
+ * 미러). `m()`은 도보권 항목(정류소·역) 전용이라 수십 km에 쓰면 "89700m"가 되어
  * 낭독으로 크기를 가늠할 수 없다.
  *
- * ⚠ 웹·Kit과 **문자열이 byte 단위로 같아야 한다**(드리프트 가드가 강제). 100m 단위
- * 반올림을 먼저 하는 이유는 1,999m가 "1km 1000m"이 되는 자리올림을 막기 위해서다.
+ * ⚠ 웹·Kit과 **문자열이 byte 단위로 같아야 한다**(드리프트 가드가 강제).
  */
 export const dist = (n: number): string => {
   const rounded = Math.round(n);

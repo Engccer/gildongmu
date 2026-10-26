@@ -122,7 +122,7 @@ describe("isCrossingStep — 횡단 유닛은 서버 플래그로 판정한다(A
       },
       { description: "Turn left, then walk 40m", startD: 80, endD: 120, action: "left" },
     ];
-    const units = buildDisplayUnits(steps, "step");
+    const units = buildDisplayUnits(steps);
     expect(units.map((u) => u.crossing)).toEqual([false, true, false]);
     expect(units[1].crossingText).toBe("Cross the crosswalk, then walk 30m");
     expect(units[0].endAction).toBe("crosswalk");
@@ -132,7 +132,7 @@ describe("isCrossingStep — 횡단 유닛은 서버 플래그로 판정한다(A
     const steps: LiveStepInput[] = [
       { description: "천호역 횡단보도까지 100m 이동", startD: 0, endD: 100, action: "crosswalk" },
     ];
-    expect(buildDisplayUnits(steps, "step")[0].crossing).toBe(false);
+    expect(buildDisplayUnits(steps)[0].crossing).toBe(false);
   });
 
   it("liveStepsFrom은 응답 스텝의 crossing을 표시 입력으로 옮긴다", () => {
@@ -200,7 +200,7 @@ describe("guide-live-rows 공유 시나리오(기대 문자열)", () => {
         acc += s.len;
         return input;
       });
-      const units = buildDisplayUnits(steps, sc.kind === "car" ? "step" : "text");
+      const units = buildDisplayUnits(steps);
       let state: LiveRowsState | null = null;
       let baselineD = sc.baselineD;
       const results: { top: string; next: string; crossing: string }[] = [];

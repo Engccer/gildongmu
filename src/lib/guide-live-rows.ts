@@ -11,7 +11,7 @@
  * 우선순위 1·2(도착·최종 접근)는 이 계층 밖이다 — 그 국면의 발화·표시 소유자는
  * 오케스트레이터의 최종 접근 층이고, 여기는 finalApproach에서 빈 행을 낸다.
  */
-import { displayEffectiveD, stepActionFor, type GuidePhase, type GuideTuning } from "./route-guide";
+import { displayEffectiveD, stepActionFor, type GuidePhase } from "./route-guide";
 import type { GuideRoute } from "./route-geometry";
 import type { WalkAction } from "./walk-action";
 
@@ -88,12 +88,9 @@ export function isCrossingStep(action: WalkAction | null, crossing: boolean | un
   return (action === "crosswalk" || action === "underpass") && crossing === true;
 }
 
-/** `source`: 행동 출처(리듀서 `actionSource`와 같은 값 — 2026-08-23부터 walk·car 모두 `step`). 기본값 없음. */
-export function buildDisplayUnits(
-  steps: LiveStepInput[],
-  source: GuideTuning["actionSource"],
-): DisplayUnit[] {
-  const actionOf = (step: LiveStepInput) => stepActionFor(step, source);
+/** 행동은 리듀서와 같은 서버 투영 `action`만 본다(`stepActionFor`, 수단 불문). */
+export function buildDisplayUnits(steps: LiveStepInput[]): DisplayUnit[] {
+  const actionOf = (step: LiveStepInput) => stepActionFor(step);
   const groups: { indices: number[]; crossing: boolean; action: WalkAction | null }[] = [];
   for (let i = 0; i < steps.length; i++) {
     const action = actionOf(steps[i]);

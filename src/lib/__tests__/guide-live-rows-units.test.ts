@@ -1,18 +1,22 @@
 import { describe, expect, it } from "vitest";
 import { buildDisplayUnits, guideLiveRows, type LiveStepInput } from "../guide-live-rows";
 import { TURN_APPROACH_M } from "../guide-live-rows";
+import type { GuideAction } from "../walk-action";
 
+// 스텝 `action`은 서버 투영이다 — 서버가 최종 문장에 `walkStepAction`을 태워 싣는 값과 같게
+// 명시한다(공유 fixture 규약). 표시 계층은 문장을 분류하지 않는다(D37).
 function steps(
-  ...defs: [number, string, { target?: string; anchor?: string; crossing?: true }?][]
+  ...defs: [number, string, { target?: string; anchor?: string; crossing?: true; action?: GuideAction }?][]
 ): LiveStepInput[] {
   let d = 0;
   return defs.map(([len, description, extra]) => {
-    const { crossing, ...live } = extra ?? {};
+    const { crossing, action, ...live } = extra ?? {};
     const s: LiveStepInput = {
       description,
       startD: d,
       endD: d + len,
       ...(live.target || live.anchor ? { live } : {}),
+      ...(action ? { action } : {}),
       // 횡단 구간은 서버 플래그가 근거다(A26) — 문장의 "건너"로 판정하지 않는다.
       ...(crossing ? { crossing } : {}),
     };
@@ -27,8 +31,8 @@ describe("buildDisplayUnits (spec §4.1)", () => {
       steps(
         [40, "천중로를 따라 40m 이동"],
         [30, "30m 이동"],
-        [35, "오른쪽으로 돌아 35m 이동"],
-      ), "text");
+        [35, "오른쪽으로 돌아 35m 이동", { action: "right" }],
+      ));
     expect(u.map((x) => x.stepIndices)).toEqual([[0, 1], [2]]);
     expect(u[0].endD).toBe(70);
     expect(u[0].endAction).toBe("right");
@@ -39,9 +43,9 @@ describe("buildDisplayUnits (spec §4.1)", () => {
     const u = buildDisplayUnits(
       steps(
         [58, "빵집까지 58m 이동", { target: "빵집" }],
-        [21, "횡단보도를 건너세요, 횡단보도 길이 21m, 음향신호기 있음", { crossing: true }],
+        [21, "횡단보도를 건너세요, 횡단보도 길이 21m, 음향신호기 있음", { crossing: true, action: "crosswalk" }],
         [40, "40m 이동"],
-      ), "text");
+      ));
     expect(u.map((x) => x.stepIndices)).toEqual([[0], [1], [2]]);
     expect(u[0].endAction).toBe("crosswalk");
     expect(u[1].crossing).toBe(true);
@@ -52,9 +56,9 @@ describe("buildDisplayUnits (spec §4.1)", () => {
     const u = buildDisplayUnits(
       steps(
         [58, "58m 이동"],
-        [30, "횡단보도 후 30m 이동", { crossing: true }],
+        [30, "횡단보도 후 30m 이동", { crossing: true, action: "crosswalk" }],
         [40, "40m 이동"],
-      ), "text");
+      ));
     expect(u.map((x) => x.crossing)).toEqual([false, true, false]);
   });
 
@@ -62,15 +66,15 @@ describe("buildDisplayUnits (spec §4.1)", () => {
     const u = buildDisplayUnits(
       steps(
         [58, "빵집까지 58m 이동", { target: "빵집" }],
-        [35, "약국 앞에서 오른쪽으로 돌아 35m 이동", { anchor: "약국" }],
-      ), "text");
+        [35, "약국 앞에서 오른쪽으로 돌아 35m 이동", { anchor: "약국", action: "right" }],
+      ));
     expect(u[0].target).toBe("빵집");
     expect(u[0].endAnchor).toBe("약국");
   });
 
   it("지명 속 '횡단보도'(회전 문장)는 횡단 유닛이 아니다", () => {
     const u = buildDisplayUnits(
-      steps([40, "직진 40m 이동"], [30, "천호역 횡단보도에서 왼쪽으로 돌아 30m 이동"]), "text");
+      steps([40, "직진 40m 이동"], [30, "천호역 횡단보도에서 왼쪽으로 돌아 30m 이동", { action: "left" }]));
     expect(u[1].crossing).toBe(false);
     expect(u[0].endAction).toBe("left");
   });
@@ -78,7 +82,7 @@ describe("buildDisplayUnits (spec §4.1)", () => {
 
 describe("guideLiveRows — 클램프·리셋(F4)", () => {
   const units = buildDisplayUnits(
-    steps([100, "목적지까지 100m 이동", { target: "목적지" }]), "text");
+    steps([100, "목적지까지 100m 이동", { target: "목적지" }]));
 
   it("역행 잔여는 직전 표시값 유지, 국면도 클램프 값으로 판정", () => {
     const a = guideLiveRows(null, units, 30, 0, "following", TURN_APPROACH_M); // eff 40 → 60

@@ -42,7 +42,7 @@ import {
 import { clockHour, relativeBearing } from "./clock-direction";
 import { haversineMeters } from "./geo";
 import { bearingDegrees } from "./geo/bearing";
-import { imminentTone, walkStepAction, type GuideAction, type ImminentTone } from "./walk-action";
+import { imminentTone, type GuideAction, type ImminentTone } from "./walk-action";
 
 export { buildGuideRoute, LONG_STEP_MIN_M, type GuideRoute } from "./route-geometry";
 
@@ -208,12 +208,6 @@ export interface GuideTuning {
    * walk `IMMINENT_REPEAT_M`. 첫 단계(`imminentAheadMeters`)와 합쳐 강한 내림차순이어야 한다.
    */
   imminentRepeatM: readonly number[];
-  /**
-   * 행동의 출처. `text`=문장 분류(`walkStepAction`), `step`=서버 투영 `action`만(없으면 침묵).
-   * ⚠ car는 `step`이다 — 문장으로 되돌아가면 "왼쪽 옆길"·"오른쪽 방향"(갈래·시설 문장)이
-   * 회전으로 분류돼 코드 판정 층을 신설한 목적이 무효가 된다(설계 리뷰 B1).
-   */
-  actionSource: "text" | "step";
   /**
    * 임박 큐가 전문 선행(`imminentUpTo < announcedUpTo`)을 요구하는가. walk true — "잠시 후
    * 왼쪽으로 도세요"는 무엇을 향한 회전인지 전문이 먼저 말해야 한다. car false — 명령
@@ -400,11 +394,11 @@ export const WALK_TUNING: GuideTuning = {
   imminentAheadS: 0,
   imminentUnknownSpeedM: IMMINENT_AHEAD_M,
   imminentRepeatM: IMMINENT_REPEAT_M,
-  // 도보 행동도 **서버가 전량 투영**한다(E16 축3 spec §4.2.1): 카카오 스텝은 서버가 최종
-  // 문장을 분류해 싣고 Tmap 스텝은 turnType 표에서 온다. 클라이언트 문자열 폴백을 두면
-  // 구조화의 "의도된 행동 없음"(육교·계단·엘리베이터)과 미투영을 구별하지 못하고,
-  // en 문장에서는 한국어 부분 문자열 분류가 아예 성립하지 않는다.
-  actionSource: "step",
+  // 결정 지점 행동은 수단 불문 **서버 투영**(`step.action`)만 본다(E16 축3 spec §4.2.1) —
+  // 종전 `actionSource` 축은 walk·car 둘 다 `"step"`이 되어 지웠다(Kit 2026-09-02 동형).
+  // 클라이언트 문자열 폴백을 두면 구조화의 "의도된 행동 없음"(육교·계단·엘리베이터)과
+  // 미투영을 구별하지 못하고, en 문장에서는 한국어 부분 문자열 분류가 성립하지 않으며,
+  // car는 갈래·시설 문장("왼쪽 옆길"·"오른쪽 방향")이 회전이 된다(설계 리뷰 B1).
   imminentNeedsAnnounce: true,
   silentCatchUp: false,
   quietAfterAnnounce: true,
@@ -487,7 +481,6 @@ export const CAR_TUNING: GuideTuning = {
   imminentAheadS: CAR_IMMINENT_AHEAD_S,
   imminentUnknownSpeedM: CAR_IMMINENT_UNKNOWN_SPEED_M,
   imminentRepeatM: [],
-  actionSource: "step",
   imminentNeedsAnnounce: false,
   silentCatchUp: true,
   quietAfterAnnounce: false,
@@ -848,14 +841,11 @@ export function unitAt(route: GuideRoute, index: number): number[] {
 }
 
 /**
- * 결정 지점 행동. 출처는 프로파일이 정한다(`actionSource`) — car는 서버 투영만 보고 문장으로
- * 되돌아가지 않는다(없으면 침묵). 공용 `stepActionFor`는 표시 계층(`guide-live-rows`)도 쓴다.
+ * 결정 지점 행동 — 서버 투영 `action`만 본다(없으면 침묵, 문장으로 되돌아가지 않는다).
+ * 공용 `stepActionFor`는 표시 계층(`guide-live-rows`)도 쓴다.
  */
-export function stepActionFor(
-  step: { description: string; action?: GuideAction },
-  source: GuideTuning["actionSource"],
-): GuideAction | null {
-  return source === "step" ? (step.action ?? null) : walkStepAction(step.description);
+export function stepActionFor(step: { action?: GuideAction }): GuideAction | null {
+  return step.action ?? null;
 }
 
 function stepAt(route: GuideRoute, d: number): StepSpan {
@@ -1873,9 +1863,8 @@ export function guideStep(
   //     유예를 못 채운 중간 상태에서, 의심 중인 투영을 근거로 명령을 내지 않는다.
   //     ⚠ **임계는 거리 바닥과 시간 축의 max다**(K2 §3.2, `announceAhead` 동형). walk는
   //     시간 계수 0이라 20m 고정이고, car는 `max(15, v×6)` — 20m/s에서 120m, 정지·표본
-  //     부재에서 15m. 행동 출처는 프로파일이 정한다(`actionSource`: car는 서버 turnType 투영
-  //     `action`만 — 없으면 침묵, walk는 문장 분류). 자동차 문장은 "오른쪽 방향"이 회전이 아니라
-  //     문장으로 되돌아가지 않는다. car는 전문 선행을 요구하지 않는다(`imminentNeedsAnnounce`).
+  //     부재에서 15m. 행동은 수단 불문 서버 투영 `action`만 — 없으면 침묵, 문장으로
+  //     되돌아가지 않는다(자동차 문장은 "오른쪽 방향"이 회전이 아니다). car는 전문 선행을 요구하지 않는다(`imminentNeedsAnnounce`).
   //     ⚠ **단계는 셋이고 래치는 마지막 단계에서만 전진한다**(2026-08-26 위원장 피드백 —
   //     "10m 전만이 아니라 5m 전·0m에서도 같은 소리를"). 단계 목록은
   //     `[imminentAheadMeters, ...imminentRepeatM]`(walk 20·15·10, car는 첫 단계뿐)이고
@@ -1901,7 +1890,7 @@ export function guideStep(
       }
       if (stage >= 0) {
         const target = next.imminentUpTo + 1;
-        const action = stepActionFor(route.steps[target], tuning.actionSource);
+        const action = stepActionFor(route.steps[target]);
         if (!action || stage === stages.length - 1) {
           next = { ...next, imminentUpTo: target, imminentStage: 0 };
         } else {
@@ -2014,7 +2003,7 @@ export function guideStep(
     );
     const nextUnit = unitAt(route, next.announcedUpTo + 1);
     const nextFirst = route.steps[nextUnit[0]];
-    const nextFirstAction = stepActionFor(nextFirst, tuning.actionSource);
+    const nextFirstAction = stepActionFor(nextFirst);
     if (tuning.deferAnnounce && announcedEnd - d <= announceAhead) {
       // R5: 전문이 나간 유닛 안에 실위치가 아직 나가지 않은 횡단이 있으면 그 횡단을 나간 뒤로 미룬다 — 짧은 횡단
       //     앞에서 다음 전문과 임박 큐가 1~2초 차로 겹치던 ⓐ(2026-10-03 3/3)와 "첫째를 건넌 뒤" 문장.

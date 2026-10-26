@@ -58,7 +58,7 @@ import {
   type LiveRowsOutput,
   type LiveRowsState,
 } from "@/lib/guide-live-rows";
-import { walkStepAction, type GuideAction, type WalkAction } from "@/lib/walk-action";
+import { type GuideAction, type WalkAction } from "@/lib/walk-action";
 import { dataLocale, prefersEnglish } from "@/lib/data-locale";
 import { formatDistance, joinText } from "@/lib/format";
 import { haversineMeters } from "@/lib/geo";
@@ -2222,7 +2222,7 @@ export function useRouteGuide(
       roadSpansRef.current = fetched.roadSpans;
       // 하단 2행 표시 유닛은 경로와 수명이 같다 — commitDetail(refreshLiveRows)보다 앞.
       displayUnitsRef.current =
-        fetched.liveSteps.length > 0 ? buildDisplayUnits(fetched.liveSteps, tuning.actionSource) : [];
+        fetched.liveSteps.length > 0 ? buildDisplayUnits(fetched.liveSteps) : [];
       liveStepsRef.current = fetched.liveSteps;
       if (kindFixed === "car") {
         // 시작 조회가 ETA 1회차(§4.6 — 캡은 시작·주기·수동 재조회 전부 포함).
@@ -2265,7 +2265,6 @@ export function useRouteGuide(
     announce,
     clearDegrade,
     setDegrade,
-    tuning,
     clearEtaTimer,
     commitDetail,
     consumeStepFreeNotice,
@@ -2399,7 +2398,7 @@ export function useRouteGuide(
       roadSpansRef.current = fetched.roadSpans;
       // 새 경로 = 새 표시 유닛(commitDetail의 rows 리셋·재계산보다 앞).
       displayUnitsRef.current =
-        fetched.liveSteps.length > 0 ? buildDisplayUnits(fetched.liveSteps, tuning.actionSource) : [];
+        fetched.liveSteps.length > 0 ? buildDisplayUnits(fetched.liveSteps) : [];
       liveStepsRef.current = fetched.liveSteps;
       if (kindFixed === "car") {
         // 수동 재조회도 ETA 호출 캡에 포함(§4.6). 새 경로 기준으로 원자 교체.
@@ -2431,7 +2430,7 @@ export function useRouteGuide(
       const notice = consumeStepFreeNotice(fetched.stepFree, fetched.stepFreeNotice);
       return { route, firstIndices: init.firstIndices, notice };
     },
-    [clearDegrade, tuning, commitDetail, consumeStepFreeNotice, kindFixed, rememberGuidance, resetFinalApproach, t],
+    [clearDegrade, commitDetail, consumeStepFreeNotice, kindFixed, rememberGuidance, resetFinalApproach, t],
   );
 
   const requestReroute = useCallback(() => {

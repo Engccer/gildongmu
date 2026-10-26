@@ -11,6 +11,9 @@
 
 ## 2026-10-27
 
+### 내부 품질 셋: 웹 리듀서 죽은 분기 · 거리 표기 주석 · 기준선 복구 (D37·D32·D38)
+①웹 `GuideTuning.actionSource`와 `stepActionFor`·`buildDisplayUnits`의 `source` 인자를 지웠다 — walk·car 모두 `"step"`이라 문장 분류 분기에 닿는 프로파일이 없었다(Kit 2026-09-02 정리의 동형, `walk-action.ts`는 서버 `attachStepActions`가 쓰므로 남는다). 표시 계층 테스트(`guide-live-rows`·`-units`)도 서버 투영 `action`으로 돌아 공유 fixture의 `action`이 웹에서도 검사된다(명시한 값은 `walkStepAction` 결과와 대조). ②웹 `format.ts`·Kit `Format.swift`·CLI `dist` 머리 주석이 폐기된 "3km 600m" 나눠쓰기를 현행처럼 말하던 것을 소수 km 서술로 고쳤다(코드 불변). ③기준선 이탈 둘을 고쳤다: `useTtsPlayback` 테스트가 jsdom `Blob`을 Node 22 `Response` 본문으로 넘겨 5건 실패하던 것(바이트 본문으로) · `catalog-lang-drift`가 E70 `/api/route/journey`의 ko 전용 `lang`을 미등록으로 잡던 것(CLI/MCP 소비자 없는 iOS 실험판 전용 라우트로 예외 열거).
+
 ### BACKLOG를 워크스페이스 형식으로 (D36)
 `docs/BACKLOG.md` §1~§8의 열린 항목 116건을 헤딩·굵은 불릿에서 체크박스 `- [ ] **식별자. 제목**`으로 바꾸고(본문 불변, 변환은 스크립트 + 줄 대조), 머리에 `## 착수 순서` 표를 두었다. 사라진 항목 헤딩을 가리키던 앵커 링크는 그 항목이 든 절 앵커로 옮겼다. 끝났는데 남아 있던 E60과 이 작업 D36을 종결 표로 보내 열린 항목은 114건이다. 계획 `docs/superpowers/plans/2026-10-27-backlog-format-parallel-plan.md`.
 

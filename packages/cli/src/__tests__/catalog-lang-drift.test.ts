@@ -34,6 +34,9 @@ const NOT_IN_CATALOG_BY_DESIGN = new Map<string, string>([
   // 단발 조회 명령이 없다. ⚠ 이 항목이 없던 하루 동안 이 파일이 red였는데 아무도 몰랐다:
   // 루트 `npm run test:run`의 include 밖이라 이 디렉터리에서 `npx vitest run`을 돌려야만 보인다.
   ["/api/transit/track", "CLI/MCP 소비자가 없는 웹·iOS 안내 세션 전용 폴 라우트"],
+  // 여정 조립(E70, 2026-10-17) — iOS 실험판 전용이고 ko 전용이라(`lang`은 누락·`ko`만, 그 밖 400)
+  // 카탈로그에 얹어도 영어를 요청할 수단이 되지 못한다. CLI/MCP에 얹을 때 이 항목을 지운다.
+  ["/api/route/journey", "CLI/MCP 소비자가 없는 iOS 실험판 전용·ko 전용 라우트"],
 ]);
 
 function routeDirs(dir: string): string[] {
