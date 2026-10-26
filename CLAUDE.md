@@ -88,7 +88,7 @@
 - **경유지(`via`)는 응답 `waypoint{stepIndex,coord}` 하나로만 드러나고 스텝 문장은 불변이다**: 표지를 못 찾으면 throw, 대중교통은 `unsupported:"waypoint"`, iOS 안내의 `via`·`waypoint`는 기본값 없는 필수 인자. → INTEGRATIONS
 - **단위 함정**: NCP Directions `duration`=**밀리초**(카카오·`durationSeconds`=초, 미변환 시 28분→468시간). ODsay `totalTime`=분·`payment`=원·`totalWalk`=미터.
 - **거리 표기는 `formatDistance`만 지난다**(웹 `format.ts`·Kit `Format.swift`·CLI `dist()`·`:kit` `Format.kt` 4벌 미러, 1km 미만 m·이상 소수 km). 소수 km 직접 조립 금지(`format-drift.test.ts`), 낭독 정정은 m만. → INTEGRATIONS
-- **3-state 불변식 (시각장애인 정합)**: "0대/없음"과 "정보 없음(`unknown`)"과 "조회 실패(throw→502)"를 **절대 뭉개지 않는다**. 도착·진료·공기질·날씨·시설 전반에 적용. 해석 불가한 수치는 숨기고 등급 단어를 정본으로.
+- **3-state 불변식 (시각장애인 정합)**: "0대/없음"과 "정보 없음(`unknown`)"과 "조회 실패(throw→502)"를 **절대 뭉개지 않는다**. 도착·진료·공기질·날씨·시설 전반에 적용. 해석 불가한 수치는 숨기고 등급 단어를 정본으로. 판정선은 "그 값이 사용자의 행동을 가르는가"이고, 이미 안내되는 대상에 덧붙는 수식(횡단보도 차로 수)은 대상이 아니다(→ INTEGRATIONS §횡단보도 차로 수·도로 폭).
 - **도착 낭독 정본은 완성 문장 필드**(서울버스 `arrmsg1`·지하철 `arvlMsg2`, 지하철 도착 목록은 E37 예외): `traTime1`/`barvlDt` 슬롯형 환산 금지(운행종료에도 비0), 슬롯 페어(`arrmsg1`·`arrmsg2`)는 둘 다 투영(슬롯2는 메시지가 다를 때만). → INTEGRATIONS
 - **서울버스 "곧 도착"(잔여 0)은 정차가 아니고 직전 정류소 정차 중에도 켜진다**(A41·A69): 잔여 0은 임박 이벤트로만, 승차 승격은 "잔여 0 뒤 소실"(`boarded(departed)`), 하차 확정은 `declareArrived`뿐이고 리듀서는 기기 위치를 모른다. → INTEGRATIONS
 - **도착 한 줄의 현재역 꼬리는 값 포함으로 가르고 축은 그 줄의 언어다**(A32, `subwayShowsCurrentLocationTail` 웹 ↔ Kit, E37 뒤로는 원문 경로 한정): 완성 문장이 `arvlMsg3` 값을 담으면 꼬리를 뺀다. 글자 패턴·한국어 축 en 판정 금지. → INTEGRATIONS

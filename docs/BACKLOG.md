@@ -1163,7 +1163,7 @@ spec `docs/superpowers/specs/2026-08-29-webmcp-wave2-design.md`(정본). 오전�
 | E34 | 마지막 leg 버튼 하나로 leg 종료 + 도보 시작(인계 제안 화면 삭제) | 2026-09-11 · 같은 spec §4.3(세션 transit-1). 실승차 판정은 §2 E34 행 |
 | A35 | 대중교통 안내 시트 착지 재설계(실현 관측 → 반복 가시화 → 늦은 검증 3회 → 전 대상 폴백 통지) | 2026-09-11 · spec `docs/superpowers/specs/2026-09-11-transit-station-to-place-and-landing-design.md` §4.1(세션 transit-3). 실승차 재판정은 §2 A35 행(A19 되살림) |
 | E38 | 그 시트의 착지 **대상**을 상태 문장 행 하나로 통일(`phaseTransitionLanding`이 기본 `status` + 예외 하나를 돌려준다) | 2026-09-12 · 같은 spec §4.1 정정 절(세션 sheet-landing), CHANGELOG 같은 날. 실승차 판정은 §2 A35 행과 `docs/FIELD-TEST.md` §5-3 마지막 행 |
-| A41 | 서울버스 "곧 도착"(잔여 0)은 정차가 아니라 직전 정류소 출발 — 임박 이벤트 2종 + "잔여 0 뒤 소실"을 승차 승격(`departed`)으로 | 2026-09-12 · spec `docs/superpowers/specs/2026-09-12-seoul-bus-stop-arrival-signal-design.md`(세션 transit-signal), CHANGELOG 같은 날. 실승차 재판정은 §2 N3 행 ②-1~②-6 |
+| A41 | 서울버스 "곧 도착"(잔여 0)은 정차가 아니고 직전 정류소 정차 중에도 켜진다(A69) — 임박 이벤트 2종 + "잔여 0 뒤 소실"을 승차 승격(`departed`)으로 | 2026-09-12 · spec `docs/superpowers/specs/2026-09-12-seoul-bus-stop-arrival-signal-design.md`(세션 transit-signal), CHANGELOG 같은 날. 실승차 재판정은 §2 N3 행 ②-1~②-6 |
 | E39 | 안내 시트 상태 문장을 문장형으로 — 공유 조립기 `arrivalStatusLine` ↔ Kit `transitArrivalStatusLine`(서버 `rewriteBusArrivalMessage`·`frameLine`·`messageFrame` 폐지) | 2026-09-12 · spec `docs/superpowers/specs/2026-09-12-transit-status-prose-design.md`(세션 status-prose), CHANGELOG 같은 날. 실승차 판정은 §2 E39·E40·E41 행 |
 | E40 | 세 수단 시작 통지 첫머리에 목적지 라벨 | 2026-09-12 · 같은 spec(세션 status-prose), CHANGELOG 같은 날. 실승차·실보행 판정은 §2 E39·E40·E41 행 ⑤ |
 | E41 | 통지는 "방금 무슨 일이 일어났고 다음에 무엇을 하는가"만 — 착지가 상태 문장에 앉는 전이에서만 축소(`boardedCount` 폐지, `legAdvancedNext` 철회) | 2026-09-12 · 같은 spec(세션 status-prose), CHANGELOG 같은 날. 실승차 판정은 §2 E39·E40·E41 행 |
