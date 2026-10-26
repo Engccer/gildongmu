@@ -435,7 +435,7 @@ Devpost 메일(2026-09-24 00:32 KST)이 수상 발표를 2026-09-29(화) 08:00 K
 
 ### 웹 탑승 변경 역 즉시 조회(A48)·검증 기준선 복구·거리 표기 가드 4벌
 
-웹 대중교통 안내에서 [탑승 변경]으로 고른 역의 첫 조회가 진행 중 폴과 겹쳐도 다음 주기로 밀리지 않는다(`pickAboardStation`과 같은 재폴 표식). `TransitGuidePanel.test.tsx`의 간헐 실패(통지 단언이 커밋을 기다리지 않음)를 고쳤고, 거리 표기 사본 금지 가드 `format-drift.test.ts`가 안드로이드 `:kit`·`:app`까지 스캔한다. [BACKLOG A48](docs/BACKLOG.md#1-결함)
+웹 대중교통 안내에서 [탑승 변경]으로 고른 역의 첫 조회가 진행 중 폴과 겹쳐도 다음 주기로 밀리지 않는다(`pickAboardStation`과 같은 재폴 표식). `TransitGuidePanel.test.tsx`의 간헐 실패(통지 단언이 커밋을 기다리지 않음)를 고쳤고, 거리 표기 사본 금지 가드 `format-drift.test.ts`가 안드로이드 `:kit`·`:app`까지 스캔한다. [BACKLOG A48](docs/BACKLOG.md#종결된-식별자)
 
 ### 문서 만료 점검(5차 웨이브 뒤)
 
@@ -513,7 +513,7 @@ seed 변환기가 `환승역구분`을 접미 일치로 읽고 모르는 어휘�
 
 ### A46 승차 대기 배경 관측·수동 진행 버튼 이름
 
-고른 차량을 기다리는(boarding) 동안에도 keep-alive 위치 스트림을 켜서, 화면을 끄거나 다른 앱을 써도 폴이 돌고 도착 관측 승격이 기본 경로가 되게 했다(iOS 실험판). 관측이 끝난 뒤의 수동 진행 버튼은 [선택한 열차에 탔어요]·[선택한 버스에 탔어요], 대기 국면은 [이미 탔어요]로 바꾸고, 세 안내 문장(`vehiclePassed`·`boardingSignalLost`·`boardingUpstreamFailed`)에서 버튼 이름을 인용하던 꼬리를 뺐다(웹·iOS, 6로케일). [BACKLOG A46](docs/BACKLOG.md#1-결함).
+고른 차량을 기다리는(boarding) 동안에도 keep-alive 위치 스트림을 켜서, 화면을 끄거나 다른 앱을 써도 폴이 돌고 도착 관측 승격이 기본 경로가 되게 했다(iOS 실험판). 관측이 끝난 뒤의 수동 진행 버튼은 [선택한 열차에 탔어요]·[선택한 버스에 탔어요], 대기 국면은 [이미 탔어요]로 바꾸고, 세 안내 문장(`vehiclePassed`·`boardingSignalLost`·`boardingUpstreamFailed`)에서 버튼 이름을 인용하던 꼬리를 뺐다(웹·iOS, 6로케일). [BACKLOG A46](docs/BACKLOG.md#종결된-식별자).
 
 ### 채팅 서버 소규모 묶음 (A44·A45·A42)
 
