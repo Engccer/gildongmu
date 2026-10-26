@@ -1398,6 +1398,7 @@ spec `docs/superpowers/specs/2026-08-29-webmcp-wave2-design.md`(정본). 오전�
 
 | 시한 | 항목 | 미조치 시 |
 |---|---|---|
+| 2026-11 (매월) | 월간 의존성·보안 점검(`dependency-upkeep` 스킬): Dependabot PR 정리, 남은 보안 경고(moderate 2건), 메이저 업데이트 1건 | 보안 경고가 쌓이고 업데이트 묶음이 커져 한 번에 올리기 어려워진다 |
 | 2027-01-01 | Gemini 프로모 요금 종료(입력 $0.75→$1.50, 출력 $3.75→$7.50) | 채팅 단가 2배. **조치 불필요** — 분기는 `scripts/lib/usage-probes.mjs`의 `GEMINI_PROMO_END_MS`·`geminiOutputUsdPerMillion`이 날짜로 자동 전환한다 |
 | 2027-06-30 | 네이버 지역검색 → NAVER API Hub(NCP) 인증 이관 | ko 장소 병합 사망. NCP 계정 기보유·비용 영향 없음 |
 | 2027-07 | iOS 프로비저닝 프로파일 만료 | 실기기 배포 중단 |
@@ -1473,6 +1474,7 @@ spec `docs/superpowers/specs/2026-08-29-webmcp-wave2-design.md`(정본). 오전�
 
 ### 나머지
 
+- **의존성 PR 병합(2026-10-26 등록)**: 병합하면 Vercel 배포가 돈다. 순서대로 ①의존성 갱신 PR [#3](https://github.com/Engccer/gildongmu/pull/3)(잠금 파일만, 보안 경고 22→2) ②Dependabot 설정 PR [#10](https://github.com/Engccer/gildongmu/pull/10)(월 1회 묶음 PR, 새 버전은 7일 기다림, 메이저 제외, `.npmrc` `min-release-age=7`) ③Dependabot 보안 PR #4~#9(fast-uri·ip-address·body-parser·vitest 4.1.12·zod·undici)는 ①과 내용이 같아 Dependabot이 스스로 닫는지 보고, 남은 것만 병합한다. 완료 기준: 열린 의존성 PR 0개.
 - **A56 마무리(2026-10-04 히스토리 재작성 뒤)**: ①Windows(`hunyong-samsung`)의 길동무 클론을 **재클론**한다(옛 클론에서 push하면 지운 기록이 되살아난다. pull로는 안 된다). 재클론 뒤 `privacy-guard.json`을 `%USERPROFILE%\gildongmu-private\`에 복사한다(없으면 재유입 가드 테스트가 실패한다). ②**GitHub 지원팀 요청은 보류**(위원장 판정 2026-10-04: 문제가 감지되면 그때 요청한다). GitHub는 덮어쓴 옛 커밋을 한동안 보관해 옛 커밋 주소를 정확히 알면 열린다. 요청문 초안은 `~/gildongmu-wt/sanitize-reports/judgment-202610040820.md` 부록. 이 맥에는 Codex 체크포인트 참조(`refs/codex/*`) 3개가 옛 객체를 로컬에만 쥐고 있다(원격에는 없다).
 - **도로명주소 전자지도 이용 신청(E58 ② 위원장 판정 2026-10-02 "신청은 백로그에")**: 행안부 주소정보누리집 이용 신청 + 보안 서약(위원장 명의). ⚠ 서약서에 "국외 반출 금지"가 있으면 정적 seed로 못 쓴다(같은 기관 내비게이션용DB 서약서에는 있었다 — 위 juso 절차 기록). 받으면 골목 갈림길 22곳 중 무원천 5곳을 채우는지 연구 문서 §5 술어로 재생해 판정.
 - **안드로이드(E43)**: Google Play 개발자 계정 개설(25달러, D1 개인 계정). 내부 테스트 트랙·Play App Signing·keystore(`~/gildongmu-private/`)가 뒤따른다
