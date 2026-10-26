@@ -2,12 +2,17 @@
 
 `CLAUDE.md`가 **요지만 남기고 여기로 옮긴 상세 계약**이다(2026-09-02 문서 축소 — CLAUDE.md는 매 세션·매 리뷰어가 전량 읽으므로 규칙 한 줄만 두고, 근거·실사고·함정의 세부는 여기에 둔다). `CLAUDE.md`의 항목이 `→ PATTERNS`로 끝나면 **그 코드를 수정하기 전에 같은 제목의 절을 읽는다**.
 
-- 외부 통합(provider·route·envelope·좌표·영문 응답)과 **실시간 안내 세션**(도보·자동차·대중교통 안내의 판정·시트·톤·띠바)의 상세는 `docs/INTEGRATIONS.md`, 여기는 그 밖의 내부 계약(접근성 repo 디테일·위치·포커스·강등·검색·i18n·채팅·WebMCP·iOS 빌드 구성·CLI 릴리스·배포·운영 스크립트·공개 저장소 규율)이다.
+- 외부 통합(provider·route·envelope·좌표·영문 응답)과 **실시간 안내 세션**(도보·자동차·대중교통 안내의 판정·시트·톤·띠바)의 상세는 `docs/INTEGRATIONS.md`, 여기는 그 밖의 내부 계약(접근성 repo 디테일·위치·포커스·강등·검색·i18n·채팅·WebMCP·iOS 빌드 구성·안드로이드·CLI 릴리스·배포·운영 스크립트·공개 저장소 규율)이다. 안드로이드 앱의 함정은 안내 세션 것까지 `## 안드로이드` 한 절에 모은다.
 - 여기 있는 것은 전부 실측으로 확정된 계약이고, 어기면 대개 **조용한 실패**(포커스 이탈·거짓 라벨·죽은 기능)가 된다. 설계 근거는 각 항목이 가리키는 spec이 정본이다.
 
 ---
 
 ## 접근성 repo 디테일
+
+### 설정 화면의 헤딩은 주제 묶음 다섯에만 있고 설정 하나는 한 줄이다
+
+**설정 화면의 헤딩은 주제 묶음 다섯에만 있고 설정 하나는 한 줄이다**(E59: iOS 메뉴 피커·토글, 설명 문장은 헤더 없는 이어지는 섹션의 footer / 안드로이드 `SettingsGroup`, 묶음이 바뀌는 자리에 포커스 받는 헤딩). 새 설정은 판정된 묶음에 넣고 가드 `settings-topic-sections.test.ts` 묶음표와 `SettingsRowsTest` 묶음표에 더한다.
+
 
 ### "내 주변" 결과 각 항목 이름은 `<h4>`
 
@@ -365,6 +370,27 @@ iOS 지도 버튼·검색 로터 액션은 URL 빌더가 성공할 때만 만들
 
 ## 채팅
 
+### 에이전트 루프
+
+**에이전트 루프**(`agent-loop.ts` `runAgentLoop`, maxIterations=6): functionCall→`Promise.allSettled` 병렬→관찰 반복, renders·sources 누적. `/api/chat`은 **NDJSON 스트리밍**(`maxDuration=120`), follow-up 칩은 `/api/chat/suggestions`. 도구 throw가 루프 안 죽임, 빈 text는 1회 폴백, 카드는 done에서 1회 마운트(중복 낭독 차단).
+
+### 장소 앵커 불변식
+
+**장소 앵커 불변식**: `placeContext` 있으면 주변 도구는 `anchorOf(ctx)`=장소좌표 기준, 단 **길찾기 출발지는 실제 `userLocation`**(장소로 안 덮음). 장소 앵커 시 기기위치 nearby 카드는 render 생략(산문이 정본). `placeContext` 없으면 동작 byte-identical.
+
+### 장소 특징 날조 금지
+
+**⚠ 장소 특징 날조 금지**: 도구가 준 필드만 — Gemini가 카페 분위기·평판을 사전지식으로 날조하면 시각장애 사용자가 검증 불가([[agentic-llm-fabricates-unstated-fields]], systemInstruction에 명시). 도구는 provider 직접 import 호출(`ToolResult{data,render?,source?}`), self-fetch 카드+출처(`SourceList`) 노출, `data`는 LLM에만(PII 누수 차단).
+
+### 마크다운 답변
+
+**마크다운 답변**(`react-markdown`+`remark-gfm`): 헤딩은 강조 단락으로 다운그레이드(아웃라인 오염 방지). ⚠ **loose list `remarkTightLists`로 tight 강제** — `<li><p>` 중첩이 iOS VoiceOver 이중 낭독([[markdown-loose-list-voiceover-double-read]]). 완료 통지는 효과음(`playReceive`)+포커스 이동(진행만 live region).
+
+### 개인정보 3자 일치 불변식
+
+**개인정보 3자 일치 불변식**: 수집·전송 항목을 바꾸면(새 데이터 유형·새 제3자) 웹 `/{locale}/privacy` 카피 + iOS `PrivacyInfo.xcprivacy` + ASC 영양 라벨(`docs/appstore/1.0-submission-draft.md` §7)을 **동시 갱신** — 불일치는 심사 거절·앱 제거 사유. iOS 받아쓰기는 온디바이스라 오디오는 세 곳 모두 미신고가 정본.
+
+
 ### 장소·주소 카드 탭=상세 진입
 
 **장소·주소 카드 탭=상세 진입**(`place-open-request` 브릿지, 상세 열림 중엔 같은 히스토리 엔트리 교체): `requestOpenPlace`를 `PlaceSearch`가 구독해 상세를 연다. 다른 카드로 갈아탈 땐 새 `pushState` 대신 `openSeq` 증가로 상세 뷰를 재마운트(뒤로가기 1회로 채팅까지 복귀). 주소 카드는 탭 시 `/api/geocode`로 좌표를 확보한 뒤 여는데, 왕복 중 오버레이가 닫히면(`aliveRef`) 도착 응답을 폐기한다(헌장 §6 ⑨ 이탈 게이트 동형).
@@ -450,6 +476,11 @@ privacy `agent` 절은 웹 전용이라 iOS `PrivacyInfo`·ASC 라벨 3자 일�
 
 ## iOS 빌드 구성
 
+### `Experimental`이 한꺼번에 정하는 것
+
+**`Experimental`이 한꺼번에 정하는 것**: `EXPERIMENTAL` 컴파일 조건 · 번들 ID `space.dodoplanet.gildongmu.dev` · 표시 이름 `…실험` · 아이콘 `AppIconExperimental`. 번들 ID가 달라 **공식판과 한 기기에 공존**한다(설정·동의는 앱별로 분리). ⚠ 위치 권한 문구는 이 목록에 없다(정식 문구 한 벌).
+
+
 ### 한 버튼이 두 역할을 겸하면 봉인이 그 버튼을 통째로 지우거나 통째로 남기지 못한다
 
 ⚠ **한 버튼이 두 역할을 겸하면 봉인이 그 버튼을 통째로 지우거나 통째로 남기지 못한다**(2026-08-15). 안내 시작 섹션의 버튼은 추적 중엔 "중지"(항상 유효), 비추적이면 직선거리 안내 시작(봉인 대상)이라, 섹션 표시 조건만 막으면 **실패 상태 경로**로 섹션이 떠서 봉인이 뚫렸다. 조건은 역할별로 쓴다(`beacon.isTracking || 플래그`). 2026-10-01 2.0 졸업 때 그 비추적 얼굴(간략 단독 시작, `beacon.briefGuideStart`)을 지워 버튼은 추적 중 "안내 종료" 하나가 됐다 — 간략 안내는 모드가 아니라 내부 강등이라(E16 축2) 단독 진입점을 되살리지 않는다(`guidance-gate-drift.test.ts`가 식별자 0건을 센다).
@@ -524,6 +555,10 @@ privacy `agent` 절은 웹 전용이라 iOS `PrivacyInfo`·ASC 라벨 3자 일�
 
 `CLAUDE.md`가 요지만 남기고 여기로 옮긴 상세 계약이다. 각 절 제목은 `CLAUDE.md`의 해당 항목 제목과 같다.
 
+### 배포 직후 React #418(hydration) transient
+
+⚠ **배포 직후 React #418(hydration) transient**는 스테일 SW 캐시 탓, 코드 결함 아님([[pwa-stale-sw-deploy-hydration-418]]) — dev 클린·캐시제거 먼저 확인. PWA는 수제 서비스워커(`public/sw.js`, Serwist가 Next 16 Turbopack 미지원이라 폴백), document network-first·`/api/` 비캐시.
+
 ### 대외 정본 도메인
 
 **대외 정본 도메인**: https://gildongmu.dodoplanet.space (2026-07-27 확정, DNS는 Cloudflare 와일드카드 CNAME — 상세는 PROGRESS). Vercel 프로젝트 URL https://gildongmu.vercel.app 도 유효(팀 `hunyong-kims-projects`). GitHub `Engccer/gildongmu` 연결 — **push하면 자동 배포**. ⚠ ODsay Referer는 URI 키 묶임이라 `gildongmu.dodoplanet.space`다(2026-09-23 Flex 앱 `gildongmuflex` 전환 때 옛 `gildongmu.vercel.app`에서 교체 — 옛 주소는 Basic 앱 `gildongmuweb`이 점유해 새 앱에 등록할 수 없었다. 다시 바꾸려면 ODsay 콘솔에 새 도메인 URI 등록 선행).
@@ -557,3 +592,42 @@ E37 도착 줄 파서에서 실측했다(2026-09-13). 소·대괄호를 함께 �
 ### 실기기 계측 로그(`guide-diag*.log*`)는 커밋하지 않는다
 
 ①**실기기 계측 로그(`guide-diag*.log*`)는 커밋하지 않는다** — 초 단위 위경도는 개발자의 실제 이동 경로다. `.gitignore`가 막고, 원본은 `~/gildongmu-private/field-logs/`에, 색인만 `docs/superpowers/specs/logs/README.md`에 둔다. 게이트 테스트가 로그를 필요로 하면 필요한 축만 익명화 fixture로 뗀다(좌표가 불필요하면 t·event만). 좌표가 필요하면 **위도와 경도를 함께, 둥글지 않은 상수로** 옮기고 상수는 저장소 밖에만 둔다: 경도만 옮기면 원래 위도선이 그대로 남고, 동네가 알려진 상태에서 둥근 상수는 바로 역산된다. **자택·지인 주택은 문서·테스트·커밋 메시지 어디서도 실주소·동 호수로 적지 않는다** — "자택"·"주택 A/B"로 쓰고 대응표는 `~/gildongmu-private/places.md`에 둔다(공개 전 이력째 치환한 자리이며, 실보행 코스 설명이 이 규칙을 가장 자주 어긴다). 주소만이 아니다: **자택 근처 상호·골목·정류소 이름, 자택에서 출발하거나 자택에 닿는 경로의 첫·마지막 구간(기준물·거리), 자택 라벨이 붙은 좌표**도 위치를 좁힌다. 같은 실경로를 여러 fixture에 나눠 담으면 한 곳만 고쳐도 나머지가 사슬을 잇는다. 자택에서 돌린 실호출 결과표와 화면 예시는 주변 상호와 거리가 그대로 지문이 되므로 공개 지점으로 다시 돌리거나 일반 이름으로 쓴다. 재유입은 `src/lib/__tests__/public-repo-privacy-guard.test.ts`가 막는다: 금지 좌표 반경·문자열은 저장소 밖 `~/gildongmu-private/privacy-guard.json`에 두고, 커밋 이메일이 주인인 클론에서는 그 파일이 없으면 실패하며 포크에서는 건너뛴다. `.githooks/pre-commit`이 문서만 고친 커밋에도 이 테스트를 돌린다(`npm install`의 `prepare`가 `core.hooksPath`를 켠다). 커밋 메시지·투영 좌표(TM)·바이너리는 가드 밖이다.
+
+
+---
+
+## 안드로이드
+
+`CLAUDE.md`가 요지만 남기고 여기로 옮긴 상세 계약이다. 각 절 제목은 `CLAUDE.md`의 해당 항목 제목과 같다.
+
+### Kit(`ios/GildongmuKit/Sources`)에 파일을 추가·개명·삭제하면 `android/kit/mirrors/<그룹>.json`을 함께 고친다
+
+**Kit(`ios/GildongmuKit/Sources`)에 파일을 추가·개명·삭제하면 `android/kit/mirrors/<그룹>.json`을 함께 고친다**(새 파일은 `pending`으로 등재) — 안드로이드가 세 번째 미러라 `mirror-registry.test.ts`가 등록부에 없는 Kit 파일을 빨갛게 만든다. 갱신법은 `android/README.md` §5.
+
+### `:kit`에서 정규식 약칭 클래스(`\d`·`\s`·`\w`)와 Kotlin 기본 `trim`·`isBlank`·`isWhitespace`를 쓰지 않는다
+
+⚠ **`:kit`에서 정규식 약칭 클래스(`\d`·`\s`·`\w`)와 Kotlin 기본 `trim`·`isBlank`·`isWhitespace`를 쓰지 않는다** — 기기 java.util.regex는 ICU 기반이라 JVM 테스트가 기기 동작을 대표하지 못하고, Foundation `CharacterSet`은 U+200B를 공백으로 본다. 명시 클래스 + `SwiftSemantics`만(`RegexPortabilityTest`·trim 가드가 잠근다). → `android/README.md` §3
+
+### 안내 시트 안의 다단 화면은 같은 시트의 페이지 전환이고, 스택 화면은 시트를 접고 push한 뒤 그 엔트리 id가 빠지면 재개한다
+
+**안내 시트 안의 다단 화면은 같은 시트의 페이지 전환이고, 스택 화면은 시트를 접고 push한 뒤 그 엔트리 id가 빠지면 재개한다**(M4b, `GuidePlaceNav.kt` — 타입 조회로 판정하지 말 것). 시트 안 재사용 `StatusLine`은 `LocalModalOpen`으로 감싸고, 밑 탭 화면은 `AppRoot`가 시트 표시 중 공급하므로 **화면 안에서 `LocalModalOpen`을 공급할 때는 바깥 값과 OR한다**(자기 값으로 덮으면 시트 뒤에서 앱 통지를 집는다, `GuideSheetModalGuardTest`). → `android/README.md` §3 화면 관용구
+
+### Compose 1.12의 접근성 초점 이벤트엔 노드 이름이 없다
+
+⚠ **Compose 1.12의 접근성 초점 이벤트엔 노드 이름이 없다** — 커서가 앉은 노드는 이벤트 시점에 노드 제공자의 `findFocus`로 얻어 리소스 id(`testTag` + 조상 `testTagsAsResourceId`)로 가린다(`guide/ui/A11yFocusObserver.kt`). 낭독 문장으로 가르면 늘 빈 문자열이다. 입력 초점 이동(한소네 키보드)은 이벤트가 오지 않는다. → `android/README.md` §3
+
+### 안드로이드 안내 음성은 TTS 한 채널이고 잠금과 다른 앱은 같은 백그라운드다
+
+**안드로이드 안내 음성은 TTS 한 채널이고 잠금과 다른 앱은 같은 백그라운드다**(E53 이식 2026-10-02 — 종전 "화면 꺼짐이면 전부 말함" 폐지): 술어 `voiceOver` = 전경 직접 TTS, `device` = 대기 칸, 대기 칸 `voiceOverRunning`은 늘 참. 안내 시트 착지 대기는 TTS 발화 완료 콜백으로 끝을 안다(게시 장부 불요). → `android/README.md` §3 안내 음성 채널
+
+### 버튼 착지는 `a11y/Landing.kt`의 `landingTarget`만
+
+⚠ **버튼 착지는 `a11y/Landing.kt`의 `landingTarget`만** — Compose 1.12.1은 터치 입력 모드에서 `clickable`이 포커스를 못 받아 `requestFocus()`가 조용히 false다. 한소네(키보드 모드) 실측은 초록이라 TalkBack 폰에서만 드러난다.
+
+### `:kit` 테스트는 모듈 밖 파일을 읽어 Gradle이 변경을 모른다
+
+⚠ **`:kit` 테스트는 모듈 밖 파일을 읽어 Gradle이 변경을 모른다** — `outputs.upToDateWhen { false }`로 늘 돈다. `:app`은 아직이라 모듈 밖 파일만 바꾼 뒤엔 `--rerun-tasks`. → `android/README.md` §4
+
+### 도보 안내 전경 서비스(`location`)·`WAKE_LOCK`·`ACTIVITY_RECOGNITION`은 정식 매니페스트(`src/main`)에 있다
+
+⚠ **도보 안내 전경 서비스(`location`)·`WAKE_LOCK`·`ACTIVITY_RECOGNITION`은 정식 매니페스트(`src/main`)에 있다**(iOS 백그라운드 모드 동형). 다른 소스셋에 옮기면 그 구성에서만 화면을 끄면 안내가 죽는다 — `AppSourceGuardTest`와 `android/scripts/check-release-manifest.mjs`가 잠근다. 실험 전용 항목의 자리는 `android/README.md`.

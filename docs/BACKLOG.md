@@ -1457,6 +1457,8 @@ spec `docs/superpowers/specs/2026-08-29-webmcp-wave2-design.md`(정본). 오전�
 - **D35. Cache Components(`cacheComponents: true`) 도입**(🆕 2026-10-26, Next 16.4.3 업데이트 때 판정): 켜고 빌드하면 ①라우트 설정 비호환 19건(`dynamic = "force-dynamic"` 18곳, `station/meta`의 `revalidate` 1곳)이 난다. 19곳 모두 `request.nextUrl.searchParams`를 읽어 요청 시 실행되므로 줄 삭제로 끝나고, provider의 fetch `next.revalidate`·`unstable_cache`는 그대로 동작해 외부 API 호출 빈도는 바뀌지 않는다. ②그 뒤 `/[locale]` 프리렌더가 클라이언트 컴포넌트의 `Date.now()`에서 멈춘다(`"use client"` 파일 중 `Date.now()`·`new Date()`·`Math.random()` 사용 8개). Suspense 경계나 effect 이동이 필요해 첫 화면 렌더가 바뀌므로 기계적 수정이 아니다. 얹힐 곳: 다음에 `[locale]` 페이지 셸·첫 렌더를 고치는 작업. API 중심 앱이라 이점(정적 셸)이 작아 단독 착수 근거는 약하다.
 
 
+- **D36. 이 파일을 워크스페이스 BACKLOG 형식으로 옮긴다**(🆕 2026-10-26 등록, 2026-10-27 CLAUDE.md에서 이관): 열린 항목을 `### A70.` 같은 헤딩에서 체크박스 `- [ ] **제목**`으로 바꾸고 머리에 `## 착수 순서` 표(`| 묶음 | 항목 | 자리 | 순서 |`)를 둔다(형식 정본은 워크스페이스 CLAUDE.md §프로젝트 맥락 문서). 지금 형식은 `doc-audit` 린트가 열린 항목을 세지 못해 표 누락·끝난 행을 잡지 못한다. 얹힐 곳: 다음 doc-audit 회차 또는 BACKLOG를 크게 손보는 세션.
+
 (D11 이탈 표결 절반·D31은 2026-10-04 종결, 아래 종결 표.)
 
 ---
