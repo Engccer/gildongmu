@@ -29,7 +29,7 @@
 
 1. **조회와 시작 사이 열차 목록이 바뀜**(고른 방향 열차가 모두 지나가 반대 방향만 남음) → 안내 목록이 비고 「열차 정보 없이 계속」만 남아야 한다(반대 방향 되살리기 금지). 태스크 2(`journeyAboardTrainItems`) + 태스크 3(`waitingCandidatesPool`·`boardAboard` 재확인) 테스트.
 2. **환승역에서 같은 이름 다른 노선**(서울역 1호선 aboard, 후보 첫 탈것이 서울역 4호선) → 불일치. 태스크 1 테스트.
-3. **순환선 2호선 내선·외선**(`updnLine`이 상행·하행이 아님) → `directionMatchesWayCode`가 내선=1·외선=2로 판정하고, 방면 묶음도 내선·외선으로 갈린다. 태스크 1·2·5.
+3. **순환선 2호선 내선·외선**(`updnLine`이 상행·하행이 아님) → `directionMatchesWayCode`가 외선=1·내선=2로 판정하고, 방면 묶음도 내선·외선으로 갈린다. 태스크 1·2·5.
 4. **노선이 안 붙은 역 장소**(카카오 분류 끝이 노선이 아님) + 그 역 도착 목록에 노선이 둘 이상 → 노선 질문이 선다. 노선이 하나뿐이면 묻지 않는다. 태스크 2(`journeyAboardLines`) + 태스크 4.
 5. **aboard 출발 상태에서 출발지를 다른 곳으로 바꾸거나 역 B를 지움** → aboard 상태가 남아 일반 조회에 `boardKind=aboard`가 실리면 안 된다. 태스크 4 모델 테스트(소스 가드).
 
@@ -54,7 +54,7 @@
 
 `designated.test.ts`에 기존 픽스처 빌더로 지하철 첫 탈것 경로를 만들어:
 - `sideMatch(route,"board",{name:"서울역",coord,line:"1호선",kind:"aboard",direction:"상행"},false)` → 1호선·`serviceWayCode:1` 경로 `"strong"`, `serviceWayCode:2` 경로 `null`, `serviceWayCode` 없음 `null`, 4호선(`lineName:"수도권 4호선"`, wayCode 1) 경로 `null`, 첫 탈것이 버스인 경로 `null`(stops=true여도 약 맞음 없음).
-- 2호선: `direction:"내선"` ↔ wayCode 1 strong, `"외선"` ↔ 2 strong.
+- 2호선: `direction:"외선"` ↔ wayCode 1 strong, `"내선"` ↔ 2 strong.
 - `boardOppositeOnly([[wayCode2Route]], aboardInput상행)` → `true`; `[[wayCode2Route, wayCode1Route]]` → `false`; 다른 노선만 → `false`.
 
 - [ ] **Step 2: 실패 확인** — `npx vitest run src/lib/journey/__tests__/designated.test.ts` → FAIL.
