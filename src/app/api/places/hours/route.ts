@@ -5,8 +5,6 @@ import { isInKorea } from "@/lib/coverage";
 import { hasGooglePlacesKey } from "@/lib/env";
 import { getPlaceHoursToday } from "@/lib/providers/google-places";
 
-export const dynamic = "force-dynamic";
-
 /**
  * 장소 상세 영업시간 한 줄(E24). 매칭 보조 라우트라 **어떤 실패도 `{hours:null}`**(무장애
  * `match` 동형) — 키 없음·한국 밖·매칭 실패·부재·429·타임아웃을 소비자는 구분하지 않고

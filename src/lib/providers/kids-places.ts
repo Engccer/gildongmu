@@ -145,7 +145,7 @@ async function fetchKakaoKeyword(
   const res = await fetch(url, {
     headers: { Authorization: `KakaoAK ${env.KAKAO_REST_API_KEY}` },
     // 키즈 장소는 분 단위로 생기고 사라지지 않으므로 같은 좌표 재방문 시 카카오
-    // 호출을 줄이는 300초 좌표-키 캐시(라우트는 force-dynamic이라 매 요청 평가되지만
+    // 호출을 줄이는 300초 좌표-키 캐시(라우트는 요청 시 실행되어 매 요청 평가되지만
     // 동일 좌표는 이 fetch 캐시가 흡수). 실시간성이 필요한 버스/지하철의 no-store와 구분.
     next: { revalidate: 300 },
   });

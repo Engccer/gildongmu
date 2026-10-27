@@ -21,8 +21,6 @@ import {
  * (버스/따릉이 nearby 라우트와 통일).
  */
 
-export const dynamic = "force-dynamic";
-
 const querySchema = z.object({
   lat: latParam(),
   lng: lngParam(),

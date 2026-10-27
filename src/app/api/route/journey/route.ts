@@ -17,7 +17,6 @@ import { getJourney, journeyDeps } from "@/lib/journey/assemble";
  * - Tmap 호출은 팬아웃 전 정확한 비용으로 한 번 예약한다(§4.5) — 예약하지 않은 호출은 없다.
  * - 택시 시간이 실시간이라 응답을 캐시하지 않는다.
  */
-export const dynamic = "force-dynamic";
 
 const optionalCoord = coordSchema.nullable().transform((v) => v ?? undefined);
 const optionalText = z

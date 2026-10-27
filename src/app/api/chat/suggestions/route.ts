@@ -9,8 +9,6 @@ import { buildFollowUpPrompt, parseFollowUps } from "@/lib/chat/follow-up";
 import { checkSuggestionsRateLimit, clientIpFromHeaders } from "@/lib/rate-limit";
 import { routing } from "@/i18n/routing";
 
-export const dynamic = "force-dynamic";
-
 // 길이는 400이 아니라 절단 — 클라이언트는 원문을 그대로 보내고, 긴 답변(카드 13곳 + 출처)일수록
 // 칩이 유용한데 정확히 그 답변에서만 칩이 사라지는 것을 막는다. 앞부분이 대화 맥락의 핵심이다.
 const schema = z.object({

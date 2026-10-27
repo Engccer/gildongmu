@@ -12,8 +12,6 @@ import { assembleWhereAmI } from "@/lib/where-am-i";
  * 네 조각 전부 비면 502(조회 실패 ≠ 정보 없음), 그 외 200.
  */
 
-export const dynamic = "force-dynamic";
-
 const querySchema = z.object({
   lat: latParam(),
   lng: lngParam(),

@@ -16,8 +16,6 @@ import { NEARBY_LIMIT_MAX } from "@/lib/nearby-limits";
  * (provider 캡 50 이내) — 침묵 절단 금지.
  */
 
-export const dynamic = "force-dynamic";
-
 /** limit 미지정 시 기본 상한 — ea18f6b 이전의 종전 캡(소비자 출력 불변 계약). */
 const DEFAULT_LIMIT = 8;
 

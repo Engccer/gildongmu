@@ -10,7 +10,6 @@ import { assembleScene } from "@/lib/surroundings-scene";
  * 앵커 주변을 입구 기준 좌우로 재구성한다(M1). 축을 못 세우면 방위 폴백이라
  * 200이고, 조회 실패만 502다(3-state).
  */
-export const dynamic = "force-dynamic";
 
 const querySchema = z.object({ lat: latParam(), lng: lngParam() });
 

@@ -22,8 +22,6 @@ import { checkCongestionRateLimit, clientIpFromHeaders } from "@/lib/rate-limit"
  * 이유가 없다. 채팅은 서비스를 직접 호출해 예보를 본다(설계 §2-6).
  */
 
-export const dynamic = "force-dynamic";
-
 const querySchema = z.object({ lat: latParam(), lng: lngParam() });
 
 export async function GET(request: NextRequest) {

@@ -9,7 +9,6 @@ import { routing } from "@/i18n/routing";
 import { checkChatRateLimit, clientIpFromHeaders } from "@/lib/rate-limit";
 import type { ExecutionContext, ChatStreamEvent } from "@/lib/chat/types";
 
-export const dynamic = "force-dynamic";
 export const maxDuration = 120; // 적극 연쇄 + 여러 Gemini 호출 — 조기 중단 방지
 
 interface ChatRequest {

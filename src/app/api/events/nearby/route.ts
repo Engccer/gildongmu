@@ -25,8 +25,6 @@ import { NEARBY_LIMIT_MAX } from "@/lib/nearby-limits";
  * upstream 장애 → 502("조회 실패"와 "근처에 없음"을 구분).
  */
 
-export const dynamic = "force-dynamic";
-
 /** limit 미지정 시 기본 상한 — 소비자 출력 불변 계약(둘러보기와 동일). */
 const DEFAULT_LIMIT = 12;
 

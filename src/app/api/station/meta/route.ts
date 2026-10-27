@@ -18,8 +18,6 @@ import { langParam } from "@/lib/lang-param";
 // 미지정·ko는 종전과 byte-identical.
 const schema = z.object({ station: z.string().trim().min(1).max(50), lang: langParam() });
 
-export const revalidate = 86_400; // 하루 — seed는 연 1회 갱신
-
 export async function GET(request: NextRequest) {
   const parsed = schema.safeParse({
     station: request.nextUrl.searchParams.get("station") ?? "",

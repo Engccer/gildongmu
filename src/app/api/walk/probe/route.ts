@@ -10,12 +10,11 @@ import { getWalkProbe } from "@/lib/walk-probe";
  * GET /api/walk/probe?lat&lng&bearing — 나들이 카카오 도보 탐침(E58 ①③, spec 2026-09-26 §6.6).
  * 진행 방위로 180m 앞까지 도보 경로를 묻고 횡단보도·회전 지점만 돌려준다.
  *
- * ⚠ 결과는 저장하지 않는다(카카오 약관 — `walk-probe.ts` 머리말): 이 라우트는 동적(`force-dynamic`)이고 응답에
+ * ⚠ 결과는 저장하지 않는다(카카오 약관 — `walk-probe.ts` 머리말): 이 라우트는 요청 시 실행되고(`use cache` 없음) 응답에
  * `Cache-Control: no-store`를 단다. 3-state: 입력 오류 400 · 한국 밖 200 `{outOfCoverage:true}`(upstream 미호출) ·
  * 카카오 키 없음 404(탐침은 카카오만 부른다 — Tmap 폴백 없음, `walk-probe.ts`) · 경로 없음 200 빈 목록 · 조회 실패 502.
  * 요청 한도는 도보 경로와 같은 통.
  */
-export const dynamic = "force-dynamic";
 
 const querySchema = z.object({
   lat: latParam(),

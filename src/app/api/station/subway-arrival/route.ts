@@ -10,10 +10,8 @@ import { langParam } from "@/lib/lang-param";
  * provider가 null → { arrivals: null } 200으로 graceful degrade.
  * upstream 장애·인증/쿼터 오류만 502(seoul-metro-facilities 라우트와 동일 정책).
  *
- * 실시간이라 라우트도 캐시하지 않는다(provider fetch no-store + dynamic).
+ * 실시간이라 라우트도 캐시하지 않는다(provider fetch no-store, 요청 쿼리를 읽어 요청 시 실행 — `use cache`를 두지 않는다).
  */
-
-export const dynamic = "force-dynamic";
 
 // `lang=en`은 도착 영문 필드(`*En`)를 additive로 싣는다(E27). 미지정·ko는 종전과 byte-identical.
 const schema = z.object({ station: z.string().trim().min(1).max(50), lang: langParam() });

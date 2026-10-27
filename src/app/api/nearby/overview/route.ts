@@ -11,7 +11,6 @@ import { assembleNearbyOverview } from "@/lib/nearby-overview";
  * 키와 무관하게 항상 있으므로 `data: null` 상태는 없다(응답은 항상 data). 조립 자체의
  * 예외만 502(조각 실패는 불릿 `failed`로 200 안에 실린다 — 3-state).
  */
-export const dynamic = "force-dynamic";
 
 // `places=1`은 「한눈에 보기」 항목에 상세 진입 재료를 싣는다(E65, 앱 로터). 미지정 응답은 종전과 byte-identical.
 const querySchema = z.object({ lat: latParam(), lng: lngParam(), places: z.enum(["1"]).optional() });

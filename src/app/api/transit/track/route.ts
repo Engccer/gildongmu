@@ -20,8 +20,6 @@ import {
  * IP 60초 20회(폴링 최소 15초 + 복귀 즉폴 버스트 여유 — rate-limit.ts 주석).
  */
 
-export const dynamic = "force-dynamic";
-
 const seoulWaitSchema = z.object({
   arsId: z.string().trim().min(1).max(10),
   routeId: z.string().trim().min(1).max(20),

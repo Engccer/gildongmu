@@ -22,8 +22,6 @@ import { NEARBY_LIMIT_MAX } from "@/lib/nearby-limits";
  * upstream 전부 실패 → 502("조회 실패"와 "근처에 없음"을 구분). 빈 결과 → []graceful.
  */
 
-export const dynamic = "force-dynamic";
-
 /** limit 미지정 시 기본 상한 — ea18f6b 이전의 종전 캡(소비자 출력 불변 계약). */
 const DEFAULT_LIMIT = 8;
 

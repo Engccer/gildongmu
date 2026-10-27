@@ -21,8 +21,6 @@ import { findNightClinicsNow } from "@/lib/clinics";
  * upstream 장애 → 502("조회 실패"와 "근처에 없음"을 구분 — 의료 정보 정본).
  */
 
-export const dynamic = "force-dynamic";
-
 const querySchema = z.object({
   lat: latParam(),
   lng: lngParam(),

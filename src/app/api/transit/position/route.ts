@@ -12,8 +12,6 @@ import { trackSubwayPosition } from "@/lib/transit-position";
  * `lang`은 받지 않는다 — 역명은 조인 키로만 쓰이고 화면 라벨은 leg 경유역 표시 투영에서 고른다.
  */
 
-export const dynamic = "force-dynamic";
-
 const schema = z.object({
   line: z.string().trim().min(1).max(30),
   train: z.string().trim().regex(/^[0-9A-Za-z]{1,10}$/),
