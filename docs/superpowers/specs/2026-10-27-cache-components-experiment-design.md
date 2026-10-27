@@ -13,7 +13,7 @@ Cache Components는 **웹 서버(Next.js)만** 바꾼다. iOS·안드로이드 �
 | 변경 | 자리 | 이유 |
 |---|---|---|
 | `cacheComponents: true`, `partialPrefetching: true` | `next.config.ts` | 켜는 스위치. `partialPrefetching`을 비워 두면 경고가 나고, 가이드는 새로 켜는 앱에 둘 다 켜기를 권한다 |
-| `export const dynamic = "force-dynamic"` 18곳 삭제 | `src/app/api/**/route.ts` | Cache Components와 비호환(빌드 오류). 19곳 모두 `request.nextUrl.searchParams`를 읽어 원래 요청 시 실행이다 |
+| `export const dynamic = "force-dynamic"` 18곳 삭제 | `src/app/api/**/route.ts` | Cache Components와 비호환(빌드 오류). 변경 라우트들은 요청 정보(쿼리·본문·헤더)를 읽어 원래 요청 시 실행이다 |
 | `export const revalidate = 86_400` 삭제 | `src/app/api/station/meta/route.ts` | 같은 이유. 이 라우트는 쿼리를 읽어 종전에도 동적(ƒ)이라 값이 효력이 없었다 |
 | 프리렌더 중 `Date.now()` 회피 | `src/hooks/useClockWhile.ts` | 빌드가 막는 유일한 자리였다. 서버엔 측위가 없어 그 값이 화면에 쓰이지 않는다 |
 | `force-dynamic` 언급 문서 6곳 | `CLAUDE.md`·`docs/INTEGRATIONS.md`·주석 | "라우트에 `use cache`를 두지 않는다"로 바꿔 적었다 |
@@ -60,7 +60,7 @@ npm run test:a11y   # 후보 트리에서(게이트가 직접 빌드한다)
 
 - ① 첫 화면: **차이 없음.** 화면별 ±10ms 안에서 방향이 엇갈린다(측정 잡음 수준). HTML은 약 +400B
   (Partial Prefetching 메타). 헤딩·랜드마크 순서는 세 화면 모두 같다.
-- ② upstream 캐시: 두 빌드 모두 카카오 **1/1**, 지하철 도착 **5/5**. 캐시 수명도 실시간성도 그대로다.
+- ② upstream 캐시: 두 빌드 모두 카카오 **1/1**. 지하철 도착 **5/5**는 HTTP 503 대역의 호출 횟수이며, 정상 응답의 실시간성 검증은 §6 재측정 결과를 따른다.
 - ③ 라우트 표: 기준도 이미 화면 4종 × 6개 언어가 전부 정적(●)이고 후보도 정적(○, 일반 경로 틀만 ◐)이다.
   API 41개는 둘 다 요청 시 실행(ƒ). 접근성 게이트 9/9 통과.
 
@@ -76,9 +76,44 @@ npm run test:a11y   # 후보 트리에서(게이트가 직접 빌드한다)
 
 ▶ **위원장 판정 2026-10-27: ⓐ 머지한다.**
 
-## 5. 다음 세션이 할 일
+## 5. 남은 확인
 
-- 판정 ⓐ면: 로컬 Mac에서 `public-repo-privacy-guard` 실행 → main 머지(자동 배포) → 배포 직후 실서버에서
-  ① `/ko` 첫 화면·스크린 리더 첫 낭독 ② `/api/places` 같은 요청 두 번(Vercel Observability로 카카오 호출 1회)
-  ③ 지하철 도착이 매번 새 값인지 확인. 문제가 있으면 되돌린다(`git revert` 한 번).
-- 판정 ⓑ면: 브랜치를 지우고 BACKLOG D35를 "다음 메이저(Next 17) 편승"으로 고친다. 측정 도구는 main에 남겨도 된다.
+운영 웹 첫 화면을 VoiceOver로 열어 첫 낭독과 탐색 순서를 확인한다(BACKLOG §2 D35).
+Chrome 접근성 트리와 자동 접근성 검사는 실제 낭독 판정을 대신하지 않는다.
+
+## 6. 로컬 통합·운영 검증 (2026-10-27)
+
+기준 `60858224`, 통합 `886f7ee9`. D32·D33·D35·D37·D38의 원격 커밋과 의존성 PR #3·설정 PR #10을
+통합했다. 두 PR은 GitHub에서 merged, 동일 수정 버전을 포함한 보안 PR #4~#9는 closed이며 열린 PR은 0개다.
+
+### 로컬 검증
+
+- 프로덕션 빌드 성공, lint 오류 0·기존 경고 6.
+- 웹 테스트 5,826 통과·7 skip, CLI 250 통과, MCP 12 통과, 브라우저 접근성 9/9 통과.
+- 공개 저장소 프라이버시 가드 통과. 별도 컨텍스트 코드 리뷰·의존성 리뷰 통과.
+- 초기 지하철 대역은 HTTP 503이라 캐시 회귀가 있어도 호출 5회를 기록할 수 있었다.
+  `0f143aa3`에서 HTTP 200·INFO-000 정상 봉투로 바꾸고, 호출마다 다른 도착 문장을 반환하도록 고쳤다.
+  판정은 HTTP 200, 파싱값 존재, 고유값 수, upstream 호출 수를 모두 검사한다.
+- 동일 더미 키로 빌드한 기준·통합 후보를 각각 실행해 재측정했다(페이지별 5회).
+  두 빌드 모두 장소 요청 5회에 카카오 1회·같은 장소 값 5개, 지하철 요청 5회에 upstream 5회·서로 다른 문장 5개,
+  응답은 모두 HTTP 200이었다. 세 화면의 헤딩·랜드마크 순서도 같다.
+  후보에는 의존성 갱신이 함께 들어 있으므로 이 재측정의 성능 차이는 D35 단독 효과로 해석하지 않는다.
+- 테스트용 Chromium 미설치로 브라우저 실행이 실패한 뒤, 각 Playwright 버전의 Chromium을 설치해 재검사했다.
+  문서 동기화 도구는 Python 3.9의 `Path.write_text(newline=...)` 미지원으로 실패해 Python 3.12로 실행했다.
+- npm audit: critical·high 0, moderate 2(@tailwindcss/typography·postcss-selector-parser).
+  GitHub 재평가 뒤에는 postcss-selector-parser medium 알림 1건만 남았다. 자동 강제 수정은 적용하지 않았다.
+
+### 운영 검증
+
+- Vercel 배포 `dpl_DXmXWavstzXWCVtk2YdzckqpM2rw`가 READY, production이고 커밋은 `886f7ee9`다.
+- `/ko`·`/en` HTTP 200, `X-Vercel-Cache: PRERENDER`. Chrome에서 첫 화면 제목·검색·길찾기·내 주변 순서 유지,
+  콘솔 오류·경고 0. 실제 VoiceOver 낭독은 미확인이다.
+- `/api/places`에 동일한 공공 장소 질의를 두 번 보내 모두 HTTP 200·17개 장소·동일 응답을 받았다.
+  19:59:28~19:59:30 KST의 Vercel Observability External APIs에서 dapi.kakao.com은 API Calls 1,
+  Cached Calls 1이었다. 해당 두 요청의 런타임 로그도 이 배포의 HTTP 200으로 확인했다.
+  응답의 `X-Vercel-Cache: MISS`는 라우트 응답 캐시이므로 provider 데이터 캐시 판정에 쓰지 않았다.
+- 광화문 지하철 도착을 두 번 조회해 모두 HTTP 200·MISS, 도착 문장과 `receivedAt`이 바뀌는 것을 확인했다.
+  외부 호출은 이 공개 웹 API 검사만 사용했고 ODsay·유료 LLM 호출은 하지 않았다.
+
+문서 점검은 이번 통합 범위에 한정했다. D33 mock 폴백, D37 제거된 인자, D35 역 메타 캐시 서술을 정정하고,
+완료된 병합 지시는 BACKLOG에서 제거했다. D35 코드 작업의 행선지는 종결 표, 남은 실제 첫 낭독은 §2 행이다.

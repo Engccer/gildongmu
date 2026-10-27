@@ -18,7 +18,7 @@
 
 | 채널 | 상태 |
 |---|---|
-| 웹 | https://gildongmu.dodoplanet.space (push = 자동 배포) |
+| 웹 | https://gildongmu.dodoplanet.space (push = 자동 배포). Cache Components·Partial Prefetching 사용, 첫 낭독 판정은 BACKLOG §2 D35 |
 | iOS | 스토어 최신 **2.2 `READY_FOR_SALE`**(빌드 33, 아카이브 커밋 `bfa494eb`, 2026-10-19 `asc-submit.mjs --check`로 출시 확인. 목록 밀기 버튼·이름 링크·고정 항목 순서 바꾸기·자동차 경유지 예고) · **2.3 `WAITING_FOR_REVIEW`**(빌드 34, 아카이브 커밋 `4649c02e`, 2026-10-20 20:01 KST 제출. 대중교통 환승 도보 안내·버스 하차 정류장 도착 알림·경로 이탈 재조회 보강). 미릴리스 iOS 변경: `git log 4649c02e..HEAD -- ios/` |
 | iOS 최소 지원 | **18.0**(2026-08-19 하향, 1.10부터 적용 — 스토어 반영 완료) |
 | npm | `gildongmu` · `gildongmu-mcp` **v0.12.0**(2026-10-05, `cli-v0.12.0` 태그 → Trusted Publishing 워크플로 성공, `npm view` 両패키지 0.12.0·SLSA provenance 확인). 미발행 변경 없음 |

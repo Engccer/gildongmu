@@ -340,6 +340,7 @@ en(및 es/fr/it/ja) 사용에서 **우리 코드 결함**으로 한국어가 노
 
 | 식별자 | 판정 대상 | 빌드 | 정본 |
 |---|---|---|---|
+| **D35 첫 낭독** | Cache Components 전환 뒤 웹 첫 화면의 VoiceOver 첫 낭독·탐색 순서가 자연스러운가. 자동 접근성 검사와 Chrome 접근성 트리 확인은 통과했으나 실제 낭독은 미확인 | 웹 운영 배포 | `2026-10-27-cache-components-experiment-design.md` §6 |
 | **E43 iOS 상태·액션** | 권한 거부·대략적 위치·취득 실패 라벨과 설정 복귀 시 갱신, 수동 위치 우선, 경유 정류소 0/1/복수 통지, 지도 URL 부재 시 버튼·로터 미노출과 유효 액션 보존, 주소 조회 취소 후 재진입을 확인한다 | 정식판(스토어 1.18부터) | `2026-09-19-ios-backlog-parallel-plan.md` |
 | **stale-origin 옛 위치** | ①비행기 모드(또는 지하)에서 표시줄이 "마지막으로 확인한 위치, 주소, N분 전"으로 읽히는가(한 객체) ②그 상태로 길찾기 조회가 진행되고, 경로가 하나라도 있으면 완료 통지 끝에 "현재 위치를 확인하지 못해 N분 전에 확인한 위치로 찾았습니다."가 붙는가(0건이면 "경로를 찾지 못했습니다."만 — 위원장 판정) ③비행기 모드를 풀고 "내 주변"이나 길찾기를 한 번 성공시키면 표시줄이 "현재 위치(주소 부근)"로 돌아오는가 ④커서를 표시줄에 둔 채 2분 기다려 "N분 전" 갱신이 재낭독·커서 이탈을 만드는가 ⑤권한을 끄면 표시줄은 옛 위치가 아니라 권한 문구이고, 길찾기 출발지 칸은 주소 없는 "출발지, 현재 위치"인가. iOS 두 구성·한소네 7·웹 | 웹 prod · iOS 정식판(스토어 1.19부터)·실험판 · 한소네 7 실기기 설치분(`1a64b99c`) | spec 2026-09-23 stale-origin §6 |
 | **E64 실사용** | 길찾기 결과 섹션 순서(2026-10-05, 대본 `docs/FIELD-TEST.md` §1): 도보와 대중교통이 둘 다 나오면 표시된 분 값이 작은 쪽이 맨 위인가(같으면 도보, 웹은 조회 완료 커서도 그 heading에 앉는가), 대중교통이 없으면 종전대로 도보 30분 이하만 위인가, 수단 재조회·계단 회피 뒤 섹션이 움직이지 않는가. 30분 넘는 도보가 맨 위로 올라오는 것이 쓸모 있는가. 착수 기본값(판정 아님): 시간이 같으면 도보가 먼저다. 비교는 화면에 표시되는 분 값으로 한다(초로 가르면 「약 30분」끼리 순서가 갈려 설명할 수 없다. `WalkCollapse` 주석과 같은 이유). 대중교통 시간 인자는 기본값 없이 더한다 | 웹(배포 뒤) · iOS 2.2(빌드 33)부터 · 안드로이드 `debug` | CHANGELOG 2026-10-05 |
@@ -997,7 +998,6 @@ spec `docs/superpowers/specs/2026-08-29-webmcp-wave2-design.md`(정본). 오전�
 
 ✅ D26 `--provenance` 재판정은 2026-08-25 cli-v0.9.0 실발행으로 종결(서사는 `CHANGELOG.md` 2026-08-25). ✅ **D24·D25·D8은 2026-08-17 단독 정리로 종결**했고 **D10은 같은 날 E20 계측기가 `DiagFileLog`로 이미 통합해 둔 것을 뒤늦게 내렸다**(등재만 낡아 있던 사례 — 만료 점검 방식 1). 서사는 `CHANGELOG.md` 2026-08-17.
 
-- [ ] **D35. Cache Components(`cacheComponents: true`) 도입**(🆕 2026-10-26, Next 16.4.3 업데이트 때 판정) — ⏳ 2026-10-27 실험 브랜치 `claude/d35-cache-components`에서 구현·실측 완료, ▶ 위원장 판정 2026-10-27: **머지한다**(ⓐ). 남은 것은 로컬 프라이버시 가드 → main 머지 → 배포 직후 실서버 확인 3건(spec `2026-10-27-cache-components-experiment-design.md` §5). 실측: 첫 화면·upstream 캐시·접근성 게이트 모두 차이 없음, 렌더 중 시계 읽기는 1곳뿐이었다. 원 기록: 켜고 빌드하면 ①라우트 설정 비호환 19건(`dynamic = "force-dynamic"` 18곳, `station/meta`의 `revalidate` 1곳)이 난다. 19곳 모두 `request.nextUrl.searchParams`를 읽어 요청 시 실행되므로 줄 삭제로 끝나고, provider의 fetch `next.revalidate`·`unstable_cache`는 그대로 동작해 외부 API 호출 빈도는 바뀌지 않는다. ②그 뒤 `/[locale]` 프리렌더가 클라이언트 컴포넌트의 `Date.now()`에서 멈춘다(`"use client"` 파일 중 `Date.now()`·`new Date()`·`Math.random()` 사용 8개). Suspense 경계나 effect 이동이 필요해 첫 화면 렌더가 바뀌므로 기계적 수정이 아니다. 얹힐 곳: 다음에 `[locale]` 페이지 셸·첫 렌더를 고치는 작업. API 중심 앱이라 이점(정적 셸)이 작아 단독 착수 근거는 약하다.
 
 
 (D11 이탈 표결 절반·D31은 2026-10-04 종결, 아래 종결 표.)
@@ -1031,7 +1031,6 @@ spec `docs/superpowers/specs/2026-08-29-webmcp-wave2-design.md`(정본). 오전�
 
 ### 나머지
 
-- **의존성 PR 병합(2026-10-26 등록)**: 병합하면 Vercel 배포가 돈다. 순서대로 ①의존성 갱신 PR [#3](https://github.com/Engccer/gildongmu/pull/3)(잠금 파일만, 보안 경고 22→2) ②Dependabot 설정 PR [#10](https://github.com/Engccer/gildongmu/pull/10)(월 1회 묶음 PR, 새 버전은 7일 기다림, 메이저 제외, `.npmrc` `min-release-age=7`) ③Dependabot 보안 PR #4~#9(fast-uri·ip-address·body-parser·vitest 4.1.12·zod·undici)는 ①과 내용이 같아 Dependabot이 스스로 닫는지 보고, 남은 것만 병합한다. 완료 기준: 열린 의존성 PR 0개.
 - **A56 마무리(2026-10-04 히스토리 재작성 뒤)**: ①Windows(`hunyong-samsung`)의 길동무 클론을 **재클론**한다(옛 클론에서 push하면 지운 기록이 되살아난다. pull로는 안 된다). 재클론 뒤 `privacy-guard.json`을 `%USERPROFILE%\gildongmu-private\`에 복사한다(없으면 재유입 가드 테스트가 실패한다). ②**GitHub 지원팀 요청은 보류**(위원장 판정 2026-10-04: 문제가 감지되면 그때 요청한다). GitHub는 덮어쓴 옛 커밋을 한동안 보관해 옛 커밋 주소를 정확히 알면 열린다. 요청문 초안은 `~/gildongmu-wt/sanitize-reports/judgment-202610040820.md` 부록. 이 맥에는 Codex 체크포인트 참조(`refs/codex/*`) 3개가 옛 객체를 로컬에만 쥐고 있다(원격에는 없다).
 - **도로명주소 전자지도 이용 신청(E58 ② 위원장 판정 2026-10-02 "신청은 백로그에")**: 행안부 주소정보누리집 이용 신청 + 보안 서약(위원장 명의). ⚠ 서약서에 "국외 반출 금지"가 있으면 정적 seed로 못 쓴다(같은 기관 내비게이션용DB 서약서에는 있었다 — 위 juso 절차 기록). 받으면 골목 갈림길 22곳 중 무원천 5곳을 채우는지 연구 문서 §5 술어로 재생해 판정.
 - **안드로이드(E43)**: Google Play 개발자 계정 개설(25달러, D1 개인 계정). 내부 테스트 트랙·Play App Signing·keystore(`~/gildongmu-private/`)가 뒤따른다
@@ -1130,6 +1129,7 @@ spec `docs/superpowers/specs/2026-08-29-webmcp-wave2-design.md`(정본). 오전�
 | E42 | 도보 경로 두 줄을 카카오 안에서 다시 짠다 | 2026-09-23 · spec `2026-09-23-walk-two-lines-kakao-design.md`, CHANGELOG 같은 날. 판정은 §2 관찰 항목 E42·E52 도보 줄 VO 행 |
 | A56 | 공개 저장소에 자택을 특정할 수 있는 정보가 남아 있었다(현재 파일·과거 기록 정리) | 2026-10-04 세션 `sanitize`, CHANGELOG 같은 날. 재발 방지는 `docs/PATTERNS.md` §실기기 계측 로그(`guide-diag*.log*`)는 커밋하지 않는다, 남은 위원장 몫은 §8 "A56 마무리" |
 | E16 | 간략 안내를 개념째 지운다(명칭·비-ko 상세·웹 단독 진입점 제거) | 2026-08-23 전 축 · spec `2026-08-23-non-ko-walk-guidance-design.md`, CHANGELOG 같은 날. en 낭독 판정은 §2 E16 축3 en 낭독 행, 웹 이식 잔여 둘은 B15, 웹 죽은 분기는 D37 |
+| D35 | Cache Components 전환·로컬 및 운영 검증 | 2026-10-27, CHANGELOG 같은 날 · spec `2026-10-27-cache-components-experiment-design.md` §6. 실제 첫 낭독은 §2 D35 행 |
 | D36 | BACKLOG를 워크스페이스 형식으로 옮김(열린 항목 체크박스 + 머리 `## 착수 순서` 표) | 2026-10-27 세션 backlog-format, CHANGELOG 같은 날 |
 | D38 | 기준선 이탈 둘: `useTtsPlayback` 테스트 5건이 Node 22에서 실패(jsdom `Blob` 본문), `catalog-lang-drift`가 `/api/route/journey`(ko 전용 `lang`)를 잡음 | 2026-10-27 클라우드 세션, CHANGELOG 같은 날 |
 | D33 | 장소 검색은 키가 하나도 없으면 mock 장소를 돌려줬다 | 2026-10-27 클라우드 세션(위원장 판정: 규칙대로 없앤다), CHANGELOG 같은 날 |

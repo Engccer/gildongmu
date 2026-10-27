@@ -11,7 +11,7 @@ import { langParam } from "@/lib/lang-param";
  * seed(src/lib/data/subway-stations.json, 1,098역)는 서버 전용 import라
  * 클라이언트 번들에서 제외하기 위해 이 라우트를 경유한다. 정적 데이터라
  * 외부 I/O가 없어 실패 경로가 없고, 미커버 역은 meta:null로 graceful degrade.
- * 연 1회 갱신(차기 2026-12)이라 응답을 하루 캐시한다.
+ * 연 1회 갱신(차기 2026-12)하는 seed를 요청마다 메모리에서 조회한다.
  */
 
 // `lang=en`은 `linesEn`(노선명 영문 표, E27)과 `operatorEn`(운영기관 영문 표)을 additive로 싣는다.

@@ -72,7 +72,7 @@
 ### Provider 추상화 패턴 (신규 국내 서비스 추가 시 따른다)
 - `src/lib/providers/`에 도메인별 단일 진입점(예: `searchPlaces()`)이 키 유무로 provider 자동 선택. **provider 파일 추가 → 진입점에 선택 로직 → 게이트(`hasXKey()`).**
 - **게이트 패턴**: 키 없으면 도구·섹션·버튼·import **전부 0**(死기능·회귀 0). 채팅 declaration도 게이트(`availableDeclarations()`가 통과분만 Gemini 노출 → LLM이 호출 불가).
-- **mock으로 조용히 폴백 금지**(가짜 실데이터 금지). 키 없음→null·섹션 미노출, upstream 장애→throw→502.
+- **mock으로 조용히 폴백 금지**(가짜 실데이터 금지). 키 없는 부가 기능은 게이트로 숨기고, 장소 검색의 키 없음·upstream 장애는 throw→502. 데모는 `PLACES_PROVIDER=mock` 명시 지정으로만 제공한다.
 
 ### 횡단 함정 (반복 적용 — 새 통합마다 점검)
 - **앱의 상세 진입 재료는 옵트인으로만 싣는다**(E65 overview `places=1`·근접 역 `coords=1`): 채팅 도구가 응답 객체를 Gemini 입력에 펼치고 CLI·MCP가 원문을 출력하므로, 새 필드는 `src/lib/chat/router.ts`의 소비 자리부터 확인한다. → INTEGRATIONS
@@ -98,7 +98,7 @@
 - **ODsay는 승차역을 지정받지 못한다 — 지정 역 경로는 선정 전 후보(`getTransitCandidates`)에서 이름 키 + 정류 좌표 500m + (있으면) 노선으로 찾는다**(E70, 반경 근거 fixture `journey-station-pairs.json`, `maasRP`도 지정 없음). → INTEGRATIONS §여정 조립과 출구 수집
 - **음성 전사를 검색어로 쓰기 전 `normalizeVoiceQuery` 필수**(웹 `format.ts` ↔ Kit `VoiceQuery.swift`) — STT 후행 마침표에 juso가 0건이 된다. 소비 여부 판정은 별개 층 `hasSpeechContent`(Kit, `SpeechService.stop()` 한 곳). 채팅은 미적용. → INTEGRATIONS
 - **"내 주변" 거리순 정렬은 코드 책임**(Haversine, `totalCount` 신뢰 금지). ⚠ 검색 탭은 거리순이 아니라 정확도순+근접 블렌딩 — 거리 표기만 `annotateDistances`, 재정렬 금지. → INTEGRATIONS
-- **캐시**: 실시간=`no-store`(라우트는 Cache Components라 `use cache` 없이 요청 시 실행 — 라우트에 `use cache`를 두지 말 것, 버스 도착은 provider 기본 `no-store`), 준정적=`revalidate`(역메타 86400·공기질 600·날씨 1800·juso 주소 3600, 카카오 응답은 300이 상한 — `kakao-cache-ttl.test.ts`).
+- **캐시**: 실시간=`no-store`(라우트는 Cache Components라 `use cache` 없이 요청 시 실행 — 라우트에 `use cache`를 두지 말 것, 버스 도착은 provider 기본 `no-store`), 준정적=`revalidate`(공기질 600·날씨 1800·juso 주소 3600, 카카오 응답은 300이 상한 — `kakao-cache-ttl.test.ts`).
 - **실시간 안내의 표시는 조인과 타입 수준에서 갈려 있다**(E27): 조인 필드(노선·역명)는 en에서도 한국어로 동결, 문장 계층은 조인 필드 없는 투영(`transit-display.ts` ↔ `TransitDisplayProjection.swift`)만, 문장 판정은 `transit-guide-text.ts` ↔ `TransitGuideText.swift`. → INTEGRATIONS
 - **대중교통·역 정보의 영문은 `lang=en` 응답의 additive `*En`이고 한국어 필드는 어느 응답에서도 그대로다**(E27, `langParam()` — 누락=ko·미지 값 400, 자체 `catch("ko")` 금지). 표 미지·미매칭은 필드 부재(폴백 금지), 한 줄 안에서 언어를 섞지 않는다(`pickLine`). → INTEGRATIONS
 - **서버가 합성하는 한국어 문장은 구조화 원재료를 함께 싣고, 클라이언트가 자기 언어로 조립한다**(A26: 문자열 불변 + additive `parts`·`lineCore`·`key`·`guidanceLang`). 판정을 문장 부분 문자열에 걸지 말 것(`crossing` 플래그). → INTEGRATIONS
