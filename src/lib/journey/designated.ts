@@ -1,3 +1,4 @@
+import { directionMatchesWayCode } from "../transit-guide";
 import type { JourneyStationInput, TransitLeg, TransitLegStop, TransitRoute } from "../types";
 import { busStopNamesStation, isSameBusStop, isSameStation } from "./station-identity";
 
@@ -24,12 +25,26 @@ export function legEndStop(leg: TransitLeg, end: "board" | "alight"): TransitLeg
 /** 한쪽 맞음의 등급: 강(역↔지하철 leg · 정류장↔버스 leg), 약(역↔버스 leg, `stops`일 때만). */
 export type SideGrade = "strong" | "weak" | null;
 
-/** 지정 입력 하나가 경로의 끝 탈것과 맞는 등급. 정류장 입력은 버스 leg만, 역 입력은 지하철 leg(강)·버스 leg(약). */
+/**
+ * 지금 탄 열차(E71 R4)의 같은 역·노선 지하철 leg인가. `directionMatchesWayCode`가 모르는 표기·`wayCode` 없음을 `null`로
+ * 주므로 방향 일치(`true`)와 반대(`false`)를 호출부가 가른다.
+ */
+function aboardLegDirection(leg: TransitLeg, stop: TransitLegStop, input: JourneyStationInput): boolean | null {
+  if (leg.mode !== "subway") return null;
+  if (!isSameStation({ name: stop.name, lat: stop.lat, lng: stop.lng, lineName: leg.lineName }, input)) return null;
+  return directionMatchesWayCode(input.direction ?? "", leg.serviceWayCode ?? null);
+}
+
+/**
+ * 지정 입력 하나가 경로의 끝 탈것과 맞는 등급. 정류장 입력은 버스 leg만, 역 입력은 지하철 leg(강)·버스 leg(약).
+ * 지금 탄 열차(`aboard`)는 같은 역·노선·방향의 지하철 leg만 강이고 약 맞음이 없다(`stops` 무시).
+ */
 export function sideMatch(route: TransitRoute, end: "board" | "alight", input: JourneyStationInput, stops: boolean): SideGrade {
   const leg = end === "board" ? firstVehicle(route) : lastVehicle(route);
   if (!leg) return null;
   const stop = legEndStop(leg, end);
   if (!stop) return null;
+  if (input.kind === "aboard") return aboardLegDirection(leg, stop, input) === true ? "strong" : null;
   if (input.kind === "stop") {
     return leg.mode === "bus" && isSameBusStop(stop, input) ? "strong" : null;
   }
@@ -93,4 +108,22 @@ export function missingSide(pools: TransitRoute[][], d: Designation, stops: bool
   if (boardOnly && !alightOnly) return "alight";
   if (alightOnly && !boardOnly) return "board";
   return "both";
+}
+
+/**
+ * 지금 탄 열차(aboard)의 경로가 없는 까닭이 방향뿐인가(E71 R5): 어느 풀에도 aboard 술어를 통과한 경로가 없고,
+ * 첫 탈것이 같은 역·노선 지하철인데 방향만 반대(`=== false`)인 후보가 하나 이상 있다. 다른 노선·다른 역·`wayCode` 없음은
+ * 방향이 원인이 아니므로 세지 않는다.
+ */
+export function boardOppositeOnly(pools: TransitRoute[][], input: JourneyStationInput): boolean {
+  let opposite = false;
+  for (const r of pools.flat()) {
+    const leg = firstVehicle(r);
+    const stop = leg && legEndStop(leg, "board");
+    if (!leg || !stop) continue;
+    const dir = aboardLegDirection(leg, stop, input);
+    if (dir === true) return false;
+    if (dir === false) opposite = true;
+  }
+  return opposite;
 }

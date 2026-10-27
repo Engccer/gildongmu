@@ -3,7 +3,7 @@ import ahyeon from "../../__tests__/fixtures/odsay-e70/ahyeon-gwanghwamun.json";
 import ahyeonSubway from "../../__tests__/fixtures/odsay-e70/ahyeon-gwanghwamun-subway.json";
 import { normalizeOdsayRoutes, type OdsayResponse } from "../../providers/odsay";
 import type { KakaoLocalDocument } from "../../providers/kakao-local";
-import type { CarRouteBriefing, Coord, TransitLeg, TransitRoute } from "../../types";
+import type { CarRouteBriefing, Coord, JourneyStationInput, TransitLeg, TransitRoute } from "../../types";
 import { getJourney, type JourneyDeps } from "../assemble";
 
 const FROM: Coord = { lat: 37.5596, lng: 126.9637 }; // 충정로 부근(공공 지점)
@@ -405,5 +405,147 @@ describe("getJourney — 버스 정류장 지정(E70-e)", () => {
     expect(out.result.variants[0].egress?.options.map((o) => o.kind)).toEqual(["none"]);
     // Tmap 비용 = 택시 뒤 1(택시 앞 없음)
     expect(reserve).toHaveBeenCalledWith(1);
+  });
+});
+
+describe("getJourney — 지금 탄 열차에서 출발(E71)", () => {
+  const SEOUL: Coord = { lat: 37.5547, lng: 126.9707 }; // 서울역(공공 지점)
+  const CITY_HALL: Coord = { lat: 37.5657, lng: 126.9769 };
+  const GWANGHWAMUN_STN: Coord = { lat: 37.5716, lng: 126.9764 };
+  const ABOARD: JourneyStationInput = { name: "서울역", coord: SEOUL, line: "1호선", kind: "aboard", direction: "상행" };
+
+  /** 서울역 승차 1호선 합성 경로. 하차 정류·방향을 정한다. */
+  const train = (key: string, o: { wayCode?: number; line?: string; to?: string; toCoord?: Coord } = {}): TransitRoute => ({
+    summary: { totalMinutes: 8, fare: 1550, transfers: 0, walkMinutes: 2 },
+    legs: [
+      { mode: "walk", minutes: 1 },
+      {
+        mode: "subway", lineName: o.line ?? "수도권 1호선", fromName: "서울역", toName: o.to ?? "시청", minutes: 4, stationCount: 1,
+        ...(o.wayCode !== undefined ? { serviceWayCode: o.wayCode } : {}),
+        stops: [{ name: "서울역", lat: SEOUL.lat, lng: SEOUL.lng }, { name: o.to ?? "시청", lat: (o.toCoord ?? CITY_HALL).lat, lng: (o.toCoord ?? CITY_HALL).lng }],
+      },
+      { mode: "walk", minutes: 3 },
+    ],
+    routeKey: key,
+  });
+  // 추천 1순위: 서울역이 아닌 곳에서 버스로 시작(aboard가 아닌 경로).
+  const busTop = synthRoute("p0", { mode: "bus", line: "601", from: "아현", to: "시청", toCoord: CITY_HALL });
+  const poolDeps = (allPool: TransitRoute[], subwayPool: TransitRoute[] = []) =>
+    deps({ candidates: vi.fn(async (p) => ({ ranked: p.modeAxis ? subwayPool : allPool })) });
+
+  it("맞는 경로가 있으면 designated 하나, 택시 앞 없음·Tmap 0회, 추천은 더하지 않는다", async () => {
+    const d = poolDeps([busTop, train("p1", { wayCode: 1 })]);
+    const reserve = okReserve();
+    const out = await getJourney({ from: FROM, to: TO, board: ABOARD }, d, reserve);
+    if (out.kind !== "ok") throw new Error(out.kind);
+    expect(out.result.variants).toHaveLength(1);
+    const v = out.result.variants[0];
+    expect(v.kind).toBe("designated");
+    expect(v.transit.routeKey).toBe("p1");
+    expect(v.taxiIn).toBeUndefined();
+    expect(v.egress).toBeUndefined();
+    expect(out.result.designatedMissing).toBeUndefined();
+    expect(reserve).toHaveBeenCalledWith(0);
+    expect(d.car).not.toHaveBeenCalled();
+    // D3: 승차 쪽 도보는 잘렸다.
+    expect(v.transit.legs[0].mode).toBe("subway");
+    expect(v.boardStation?.name).toBe("서울역");
+    expect(v.totals.taxiFare).toBe(0);
+  });
+
+  it("ODsay 출발점은 board 좌표이고 전체 후보 → 지하철만 후보 순서로 찾는다", async () => {
+    const d = poolDeps([busTop], [train("s0", { wayCode: 1 })]);
+    const out = await getJourney({ from: FROM, to: TO, board: ABOARD }, d, okReserve());
+    if (out.kind !== "ok") throw new Error(out.kind);
+    expect(d.candidates).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(d.candidates).mock.calls[0][0].origin).toEqual(SEOUL);
+    expect(vi.mocked(d.candidates).mock.calls[1][0].modeAxis).toBe("subwayOnly");
+    expect(out.result.variants.map((v) => [v.kind, v.transit.routeKey])).toEqual([["designated", "s0"]]);
+  });
+
+  it("맞는 경로가 없고 방향만 반대인 후보가 있으면 variants 0 + oppositeDirection", async () => {
+    const d = poolDeps([busTop, train("p1", { wayCode: 2 })]);
+    const reserve = okReserve();
+    const out = await getJourney({ from: FROM, to: TO, board: ABOARD }, d, reserve);
+    expect(out).toEqual({ kind: "ok", result: { variants: [], designatedMissing: { side: "board", oppositeDirection: true } } });
+    expect(reserve).not.toHaveBeenCalled();
+    expect(d.car).not.toHaveBeenCalled();
+  });
+
+  it("맞는 경로가 없고 방향과 무관하면(다른 노선만) oppositeDirection 키가 없다", async () => {
+    const d = poolDeps([busTop, train("p1", { wayCode: 2, line: "수도권 4호선" })]);
+    const out = await getJourney({ from: FROM, to: TO, board: ABOARD }, d, okReserve());
+    if (out.kind !== "ok") throw new Error(out.kind);
+    expect(out.result.variants).toEqual([]);
+    expect(out.result.designatedMissing).toEqual({ side: "board" });
+    expect(out.result.designatedMissing).not.toHaveProperty("oppositeDirection");
+  });
+
+  it("stops=1이어도 aboard는 약한 맞음·버스만 조회를 타지 않는다", async () => {
+    const d = poolDeps([busTop]);
+    await getJourney({ from: FROM, to: TO, board: ABOARD, stops: true }, d, okReserve());
+    expect(vi.mocked(d.candidates).mock.calls.map((c) => c[0].modeAxis)).toEqual([undefined, "subwayOnly"]);
+  });
+
+  it("승차·하차 둘 다 맞는 경로가 있으면 designated 하나 + 택시 뒤(출구) 구간", async () => {
+    const d = poolDeps([busTop, train("p1", { wayCode: 1 })]);
+    const out = await getJourney(
+      { from: FROM, to: TO, board: ABOARD, alight: { name: "시청역", coord: CITY_HALL } },
+      d,
+      okReserve(),
+    );
+    if (out.kind !== "ok") throw new Error(out.kind);
+    expect(out.result.variants.map((v) => v.kind)).toEqual(["designated"]);
+    expect(out.result.variants[0].taxiIn).toBeUndefined();
+    expect(out.result.variants[0].egress).toBeDefined();
+    expect(out.result.designatedMissing).toBeUndefined();
+    // 택시 앞은 부르지 않는다 — 택시 뒤 후보(출구 없음 → 내린 역 하나)뿐.
+    expect(d.car).toHaveBeenCalledTimes(1);
+  });
+
+  it("역 B까지 맞는 경로가 없고 aboard만 맞으면 그 경로를 recommended + alight 사실 줄로 낸다", async () => {
+    // 하차가 광화문으로 끝나는 aboard 경로뿐 — 시청 하차 지정은 어느 후보에도 없다.
+    const d = poolDeps([busTop, train("p1", { wayCode: 1, to: "광화문", toCoord: GWANGHWAMUN_STN })]);
+    const out = await getJourney(
+      { from: FROM, to: TO, board: ABOARD, alight: { name: "시청역", coord: CITY_HALL } },
+      d,
+      okReserve(),
+    );
+    if (out.kind !== "ok") throw new Error(out.kind);
+    expect(out.result.variants).toHaveLength(1);
+    const v = out.result.variants[0];
+    expect(v.kind).toBe("recommended");
+    expect(v.transit.routeKey).toBe("p1");
+    expect(v.taxiIn).toBeUndefined();
+    expect(out.result.designatedMissing).toEqual({ side: "alight" });
+  });
+
+  it("역 B를 못 맞추고 aboard도 못 맞추면 board 쪽 사실 줄만(variants 0)", async () => {
+    const d = poolDeps([busTop, train("p1", { wayCode: 2, to: "광화문", toCoord: GWANGHWAMUN_STN })]);
+    const out = await getJourney(
+      { from: FROM, to: TO, board: ABOARD, alight: { name: "시청역", coord: CITY_HALL } },
+      d,
+      okReserve(),
+    );
+    expect(out).toEqual({ kind: "ok", result: { variants: [], designatedMissing: { side: "board", oppositeDirection: true } } });
+  });
+
+  it("aboard만 맞는 경로 탐색은 풀 순서(전체 → 지하철만)를 따른다", async () => {
+    const d = poolDeps(
+      [busTop, train("p1", { wayCode: 1, to: "광화문", toCoord: GWANGHWAMUN_STN })],
+      [train("s0", { wayCode: 1, to: "광화문", toCoord: GWANGHWAMUN_STN })],
+    );
+    const out = await getJourney(
+      { from: FROM, to: TO, board: ABOARD, alight: { name: "시청역", coord: CITY_HALL } },
+      d,
+      okReserve(),
+    );
+    if (out.kind !== "ok") throw new Error(out.kind);
+    expect(out.result.variants[0].transit.routeKey).toBe("p1");
+  });
+
+  it("대중교통 후보가 아예 없으면 종전처럼 변형 0(사실 줄 없음)", async () => {
+    const out = await getJourney({ from: FROM, to: TO, board: ABOARD }, deps({ candidates: vi.fn(async () => null) }), okReserve());
+    expect(out).toEqual({ kind: "ok", result: { variants: [] } });
   });
 });

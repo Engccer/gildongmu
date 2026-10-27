@@ -12,6 +12,8 @@ import { getJourney, journeyDeps } from "@/lib/journey/assemble";
  *
  * - 좌표는 형제 경로 라우트(`/api/route/car`·`/transit`)와 같은 `"위도,경도"` 쌍. 역은 좌표 + 이름이 함께 와야 하고
  *   A·B 중 하나는 있어야 한다. 노선 힌트(`boardLine`·`alightLine`)는 선택.
+ * - E71 옵트인: `boardKind=aboard`는 이미 그 역에서 `boardDir`(상행·하행·내선·외선) 방향 열차 안에 있다는 뜻이다. `boardLine`이
+ *   필수이고 `stops`는 필요 없다. 택시 앞 구간·추천 변형 없이 그 열차에서 출발하는 경로만 낸다.
  * - ko 전용(D2): 택시 안내 기하가 Tmap ko 경로에만 있다. `lang`은 누락 또는 `ko`만, 그 밖은 400.
  * - 정식판 앱·웹은 이 라우트를 부르지 않는다(iOS 실험판 봉인). 웹에는 봉인이 없어 레이트 리밋과 키 쿼터가 유일한 방어다.
  * - Tmap 호출은 팬아웃 전 정확한 비용으로 한 번 예약한다(§4.5) — 예약하지 않은 호출은 없다.
@@ -43,14 +45,17 @@ const querySchema = z
     alightLine: optionalHint,
     // E70-e 옵트인: 정류장 입력(`*Kind=stop`)과 역 입력의 버스 경로 맞춤. 없으면 종전과 동일하다.
     stops: z.union([z.literal("1"), z.null()]),
-    boardKind: z.union([z.literal("stop"), z.null()]),
+    boardKind: z.union([z.literal("stop"), z.literal("aboard"), z.null()]),
+    boardDir: z.union([z.enum(["상행", "하행", "내선", "외선"]), z.null()]),
     alightKind: z.union([z.literal("stop"), z.null()]),
     lang: z.union([z.literal("ko"), z.null()]),
   })
   .refine((q) => q.board || q.alight, "갈아탈 역(board·alight) 중 하나는 필요합니다")
   .refine((q) => !q.board === !q.boardName && !q.alight === !q.alightName, "역 좌표와 역 이름은 함께 보내야 합니다")
-  .refine((q) => !(q.boardKind || q.alightKind) || q.stops, "정류장 지정(boardKind·alightKind)은 stops=1과 함께 보내야 합니다")
-  .refine((q) => (!q.boardKind || q.board) && (!q.alightKind || q.alight), "정류장 종류는 그 쪽 좌표·이름이 있을 때만 보낼 수 있습니다");
+  .refine((q) => !(q.boardKind === "stop" || q.alightKind) || q.stops, "정류장 지정(boardKind·alightKind)은 stops=1과 함께 보내야 합니다")
+  .refine((q) => (!q.boardKind || q.board) && (!q.alightKind || q.alight), "정류장 종류는 그 쪽 좌표·이름이 있을 때만 보낼 수 있습니다")
+  .refine((q) => (q.boardKind === "aboard") === (q.boardDir !== null), "boardDir는 boardKind=aboard일 때만, 그때는 반드시 보내야 합니다")
+  .refine((q) => q.boardKind !== "aboard" || q.boardLine, "지금 탄 열차(boardKind=aboard)는 boardLine이 필요합니다");
 
 const NO_STORE = { "Cache-Control": "no-store" };
 
@@ -67,6 +72,7 @@ export async function GET(request: NextRequest) {
     alightLine: sp.get("alightLine"),
     stops: sp.get("stops"),
     boardKind: sp.get("boardKind"),
+    boardDir: sp.get("boardDir"),
     alightKind: sp.get("alightKind"),
     lang: sp.get("lang"),
   });
@@ -96,7 +102,7 @@ export async function GET(request: NextRequest) {
       {
         from: q.origin,
         to: q.dest,
-        ...(q.board && q.boardName ? { board: { name: q.boardName, coord: q.board, ...(q.boardLine ? { line: q.boardLine } : {}), ...(q.boardKind ? { kind: q.boardKind } : {}) } } : {}),
+        ...(q.board && q.boardName ? { board: { name: q.boardName, coord: q.board, ...(q.boardLine ? { line: q.boardLine } : {}), ...(q.boardKind ? { kind: q.boardKind } : {}), ...(q.boardDir ? { direction: q.boardDir } : {}) } } : {}),
         ...(q.alight && q.alightName ? { alight: { name: q.alightName, coord: q.alight, ...(q.alightLine ? { line: q.alightLine } : {}), ...(q.alightKind ? { kind: q.alightKind } : {}) } } : {}),
         ...(q.stops ? { stops: true } : {}),
       },

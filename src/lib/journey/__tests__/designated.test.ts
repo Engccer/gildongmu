@@ -8,6 +8,7 @@ import {
   lastVehicle,
   legEndStop,
   matchesAlight,
+  boardOppositeOnly,
   matchesBoard,
   missingSide,
   sideMatch,
@@ -180,5 +181,84 @@ describe("정류장 입력·약한 맞음(E70-e)", () => {
     const d = { board: { name: "강남역", coord: here }, alight: { name: "수원역", coord: { lat: 37.2656, lng: 127.0001 } } };
     expect(missingSide([[r]], d, false)).toBe("both");
     expect(missingSide([[r]], d, true)).toBe("alight");
+  });
+});
+
+describe("지금 탄 열차(aboard, E71)", () => {
+  const seoulStn = { lat: 37.5547, lng: 126.9707 }; // 서울역(공공 지점)
+  const subwayRoute = (key: string, opts: { line?: string; wayCode?: number; from?: string; at?: { lat: number; lng: number } } = {}): TransitRoute => {
+    const at = opts.at ?? seoulStn;
+    const leg: TransitLeg = {
+      mode: "subway", lineName: opts.line ?? "수도권 1호선", fromName: opts.from ?? "서울역", toName: "시청", minutes: 3, stationCount: 1,
+      ...(opts.wayCode !== undefined ? { serviceWayCode: opts.wayCode } : {}),
+      stops: [{ name: opts.from ?? "서울역", lat: at.lat, lng: at.lng }, { name: "시청", lat: 37.5657, lng: 126.9769 }],
+    };
+    return { summary: { totalMinutes: 5, fare: 1550, transfers: 0, walkMinutes: 2 }, legs: [walk(1), leg, walk(1)], routeKey: key };
+  };
+  const aboard = (direction: NonNullable<JourneyStationInput["direction"]>, line = "1호선", name = "서울역"): JourneyStationInput => ({
+    name, coord: seoulStn, line, kind: "aboard", direction,
+  });
+
+  it("같은 역·노선이고 방향이 맞으면 강, 반대·wayCode 없음·다른 노선은 null", () => {
+    const up = aboard("상행");
+    expect(sideMatch(subwayRoute("a", { wayCode: 1 }), "board", up, false)).toBe("strong");
+    expect(sideMatch(subwayRoute("b", { wayCode: 2 }), "board", up, false)).toBeNull();
+    expect(sideMatch(subwayRoute("c"), "board", up, false)).toBeNull();
+    expect(sideMatch(subwayRoute("d", { line: "수도권 4호선", wayCode: 1 }), "board", up, false)).toBeNull();
+    expect(sideMatch(subwayRoute("e", { wayCode: 2 }), "board", aboard("하행"), false)).toBe("strong");
+  });
+
+  it("순환선: directionMatchesWayCode 표대로 외선 ↔ 1, 내선 ↔ 2", () => {
+    const r1 = subwayRoute("r1", { line: "수도권 2호선", wayCode: 1 });
+    const r2 = subwayRoute("r2", { line: "수도권 2호선", wayCode: 2 });
+    expect(sideMatch(r1, "board", aboard("외선", "2호선"), false)).toBe("strong");
+    expect(sideMatch(r2, "board", aboard("외선", "2호선"), false)).toBeNull();
+    expect(sideMatch(r2, "board", aboard("내선", "2호선"), false)).toBe("strong");
+    expect(sideMatch(r1, "board", aboard("내선", "2호선"), false)).toBeNull();
+  });
+
+  it("방향 표기를 모르면(direction 없음) 불일치", () => {
+    const noDir: JourneyStationInput = { name: "서울역", coord: seoulStn, line: "1호선", kind: "aboard" };
+    expect(sideMatch(subwayRoute("a", { wayCode: 1 }), "board", noDir, false)).toBeNull();
+  });
+
+  it("첫 탈것이 버스인 경로는 stops=true여도 약 맞음이 없다", () => {
+    const busFirst: TransitRoute = {
+      summary: { totalMinutes: 10, fare: 1500, transfers: 0, walkMinutes: 2 },
+      legs: [{ mode: "bus", lineName: "601", fromName: "서울역버스환승센터", toName: "시청", minutes: 8, stops: [
+        { name: "서울역버스환승센터", lat: seoulStn.lat, lng: seoulStn.lng },
+        { name: "시청", lat: 37.5657, lng: 126.9769 },
+      ] }],
+      routeKey: "bus",
+    };
+    expect(sideMatch(busFirst, "board", aboard("상행"), true)).toBeNull();
+    expect(findDesignated([busFirst], { board: aboard("상행") }, { allowWeak: true })).toBeNull();
+  });
+
+  it("aboard는 하차 쪽 판정에는 영향이 없다(하차 입력은 종전 역 판정)", () => {
+    const r = subwayRoute("a", { wayCode: 1 });
+    const alight: JourneyStationInput = { name: "시청역", coord: { lat: 37.5657, lng: 126.9769 } };
+    expect(findDesignated([r], { board: aboard("상행"), alight })?.routeKey).toBe("a");
+  });
+
+  it("boardOppositeOnly: 방향만 반대인 후보만 있을 때 true", () => {
+    const up = aboard("상행");
+    expect(boardOppositeOnly([[subwayRoute("o", { wayCode: 2 })]], up)).toBe(true);
+    expect(boardOppositeOnly([[subwayRoute("o", { wayCode: 2 }), subwayRoute("m", { wayCode: 1 })]], up)).toBe(false);
+    expect(boardOppositeOnly([[subwayRoute("m", { wayCode: 1 })]], up)).toBe(false);
+  });
+
+  it("boardOppositeOnly: 다른 노선·다른 역·wayCode 없음·버스만이면 false(방향이 원인이 아니다)", () => {
+    const up = aboard("상행");
+    expect(boardOppositeOnly([[subwayRoute("l4", { line: "수도권 4호선", wayCode: 2 })]], up)).toBe(false);
+    expect(boardOppositeOnly([[subwayRoute("far", { wayCode: 2, at: { lat: 37.6, lng: 127.1 } })]], up)).toBe(false);
+    expect(boardOppositeOnly([[subwayRoute("nw")]], up)).toBe(false);
+    expect(boardOppositeOnly([], up)).toBe(false);
+  });
+
+  it("boardOppositeOnly: 여러 풀 사이를 가로질러 본다(한 풀의 반대 방향 + 다른 풀의 맞는 방향이면 false)", () => {
+    const up = aboard("상행");
+    expect(boardOppositeOnly([[subwayRoute("o", { wayCode: 2 })], [subwayRoute("m", { wayCode: 1 })]], up)).toBe(false);
+    expect(boardOppositeOnly([[subwayRoute("x", { line: "수도권 4호선", wayCode: 1 })], [subwayRoute("o", { wayCode: 2 })]], up)).toBe(true);
   });
 });

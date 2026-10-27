@@ -732,7 +732,7 @@ function isLine2Direction(updnLine: string): boolean {
  * 13개 역 도착 표본 52건의 직전 역(`currentLocation`)이 같은 순환 순서를 어긋남
  * 없이 따랐다.
  */
-function directionMatchesWayCode(updnLine: string, wayCode: number | null): boolean | null {
+export function directionMatchesWayCode(updnLine: string, wayCode: number | null): boolean | null {
   if (wayCode == null) return null;
   switch (updnLine) {
     case "상행":

@@ -6,7 +6,7 @@ import { searchSubwayExitsKakao, searchTaxiStandsKakao, type KakaoLocalDocument 
 import { normalizeStationName } from "../station-match";
 import type { CarRouteBriefing, Coord, EgressOption, JourneyResult, JourneyStationInput, JourneyVariant, TransitRoute } from "../types";
 import { planTaxiCalls, type TaxiStart } from "./budget";
-import { findDesignated, firstVehicle, lastVehicle, legEndStop, missingSide } from "./designated";
+import { boardOppositeOnly, findDesignated, firstVehicle, lastVehicle, legEndStop, missingSide } from "./designated";
 import { exitQueryStationName } from "./display";
 import { chooseFastest, exitsForLine, parseExitDoc, pickStand, type ParsedExit, type StandPick } from "./egress";
 import { trimJourneyTransit } from "./trim";
@@ -67,9 +67,13 @@ interface AlightGroup {
  * → ③ 추천 → ④ 자르기 → ⑤ 출구 수집(카카오, 무료) → ⑥ Tmap 비용 계산·예약 → ⑦ Tmap 팬아웃 → ⑧ 조립.
  * 예약하지 않은 Tmap 호출은 없다(거절이면 Tmap 0회, 후보가 실패해도 Tmap을 더 부르지 않는다).
  * 조회 실패는 throw(라우트가 502). 대중교통 경로 없음은 `variants: []`.
+ *
+ * 지금 탄 열차(`board.kind === "aboard"`, E71 spec §4.2)는 같은 파이프라인에서 달라지는 곳이 다섯이다: 지정 판정의 술어
+ * (`sideMatch`), 정류장 약 맞음·버스만 조회 없음, 추천 변형 없음(R5), 택시 앞 구간 없음(R6), 못 맞추면 즉시 사실 줄 반환.
  */
 export async function getJourney(req: JourneyRequest, deps: JourneyDeps, reserve: JourneyReserve): Promise<JourneyOutcome> {
   const designation = { board: req.board, alight: req.alight };
+  const aboard = req.board?.kind === "aboard";
   const origin = req.board?.coord ?? req.from;
   const dest = req.alight?.coord ?? req.to;
 
@@ -88,7 +92,7 @@ export async function getJourney(req: JourneyRequest, deps: JourneyDeps, reserve
     if (subway) pools.push(subway.ranked);
     designated = subway ? findDesignated(subway.ranked, designation) : null;
   }
-  if (!designated && stops) {
+  if (!designated && stops && !aboard) {
     for (const pool of pools) {
       designated = findDesignated(pool, designation, { allowWeak: true });
       if (designated) break;
@@ -99,16 +103,35 @@ export async function getJourney(req: JourneyRequest, deps: JourneyDeps, reserve
       designated = busOnly ? findDesignated(busOnly.ranked, designation, { allowWeak: true }) : null;
     }
   }
-  if (!designated) designatedMissing = { side: missingSide(pools, designation, stops) };
+  if (!designated && !aboard) designatedMissing = { side: missingSide(pools, designation, stops) };
 
   // ③ 추천 = 기존 선정의 1순위. 지정 역 경로와 같으면 변형 하나(판정 13).
-  const recommended = selectTransitRoutes(all.ranked)[0];
-  const picked: Array<{ kind: JourneyVariant["kind"]; route: TransitRoute }> = designated
-    ? [
-        { kind: "designated", route: designated },
-        ...(sameItinerary(designated, recommended) ? [] : [{ kind: "recommended" as const, route: recommended }]),
-      ]
-    : [{ kind: "recommended", route: recommended }];
+  //   aboard는 추천을 내지 않는다(R5) — 이미 열차 안이라 다른 곳에서 타는 경로는 쓸 수 없다. 역 B까지 맞는 경로가 없으면
+  //   aboard만 맞는 경로를 recommended로 내고(여전히 그 열차를 탄다), 그것도 없으면 사실 줄만 두고 끝낸다.
+  let picked: Array<{ kind: JourneyVariant["kind"]; route: TransitRoute }>;
+  if (aboard) {
+    let route = designated;
+    if (!route && req.alight) {
+      for (const pool of pools) {
+        route = findDesignated(pool, { board: req.board });
+        if (route) break;
+      }
+      if (route) designatedMissing = { side: "alight" };
+    }
+    if (!route) {
+      const opposite = boardOppositeOnly(pools, req.board!);
+      return { kind: "ok", result: { variants: [], designatedMissing: { side: "board", ...(opposite ? { oppositeDirection: true as const } : {}) } } };
+    }
+    picked = [{ kind: designated ? "designated" : "recommended", route }];
+  } else {
+    const recommended = selectTransitRoutes(all.ranked)[0];
+    picked = designated
+      ? [
+          { kind: "designated", route: designated },
+          ...(sameItinerary(designated, recommended) ? [] : [{ kind: "recommended" as const, route: recommended }]),
+        ]
+      : [{ kind: "recommended", route: recommended }];
+  }
 
   // ④ 자르기(D3) — 지정한 쪽만.
   const variants = picked.map((p) => {
@@ -181,7 +204,7 @@ export async function getJourney(req: JourneyRequest, deps: JourneyDeps, reserve
 
   // ⑥ 비용 계산·예약 — 기본 변형의 그룹이 [0]이 되도록 변형 순서대로 만들었다.
   const plan = planTaxiCalls({
-    taxiInDests: req.board ? variants.map((v) => ({ lat: v.boardStop.lat, lng: v.boardStop.lng })) : [],
+    taxiInDests: req.board && !aboard ? variants.map((v) => ({ lat: v.boardStop.lat, lng: v.boardStop.lng })) : [],
     groups: groups.map((g) => ({ exits: g.exits, stand: g.stand, fallbackStop: g.stopCoord })),
     to: req.to,
   });
@@ -239,7 +262,7 @@ export async function getJourney(req: JourneyRequest, deps: JourneyDeps, reserve
 
   const result: JourneyResult = {
     variants: variants.map((v, i): JourneyVariant => {
-      const taxiIn = req.board ? taxiInResults.get(coordKey(v.boardStop)) : undefined;
+      const taxiIn = req.board && !aboard ? taxiInResults.get(coordKey(v.boardStop)) : undefined;
       const g = groupOf.get(i);
       const egress = g !== undefined ? egressFor(g) : undefined;
       const taxiOut = egress?.options[0].taxiOut;

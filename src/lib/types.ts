@@ -1365,8 +1365,13 @@ export interface JourneyStationInput {
   name: string;
   coord: Coord;
   line?: string;
-  /** `"stop"`이면 사용자가 고른 것이 역이 아니라 버스 정류장이다(E70-e). 없으면 역. */
-  kind?: "stop";
+  /**
+   * `"stop"`이면 사용자가 고른 것이 역이 아니라 버스 정류장이다(E70-e).
+   * `"aboard"`면 이미 그 역에서 `direction` 방향 열차 안에 있다(E71, 승차 쪽에서만). 없으면 역.
+   */
+  kind?: "stop" | "aboard";
+  /** `kind === "aboard"`일 때만: 탄 열차의 방향(서울 지하철 도착 `updnLine` 표기). */
+  direction?: "상행" | "하행" | "내선" | "외선";
 }
 
 /** 하차역에서 택시를 타는 자리 하나(출구·택시승강장·정보 없음). */
@@ -1404,5 +1409,6 @@ export interface JourneyVariant {
 export interface JourneyResult {
   /** 1~2개, [0]이 기본 선택(지정 역 경로, 없으면 추천) */
   variants: JourneyVariant[];
-  designatedMissing?: { side: "board" | "alight" | "both" };
+  /** `oppositeDirection`: 지금 탄 열차(aboard)의 같은 역·노선 후보가 방향만 반대일 때(E71). */
+  designatedMissing?: { side: "board" | "alight" | "both"; oppositeDirection?: true };
 }
