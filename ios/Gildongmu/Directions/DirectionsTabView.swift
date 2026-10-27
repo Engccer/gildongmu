@@ -1197,7 +1197,7 @@ struct DirectionsTabView: View {
                                     announceGuideStartIfManualOrigin()
                                     GuideSession.shared.startJourney(plan: JourneyPlan(
                                         variant: variant, egress: egress, destLabel: tracked.label,
-                                        destRoman: destinationPlaceRoman, dest: tracked.dest))
+                                        destRoman: destinationPlaceRoman, dest: tracked.dest, aboard: nil))
                                 })
                         // 경로 없음·조회 실패는 위 상태 줄이 말한다(같은 문장을 두 번 그리지 않는다).
                         case .noRoute, .failed: EmptyView()

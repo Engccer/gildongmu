@@ -197,12 +197,15 @@ final class GuideSession {
         guard !refuseIfActive() else { return }
         beginTransit(
             route: route, destinationLabel: destinationLabel, destinationRoman: destinationRoman, dest: dest,
-            accessible: accessible)
+            accessible: accessible, aboard: nil)
     }
 
     /// 거부 가드 없는 대중교통 시작 본문(E70 §6.3, `beginBeacon` 동형). 승차 전 도보(A25)도 여기서 갈린다.
+    /// `aboard`(E71)가 있으면 이미 탄 열차에서 시작이라 승차 전 도보 판정을 건너뛴다(서버가 승차 쪽을 잘라 원래 서지 않지만
+    /// 구조로 막는다). ⚠ 기본값 없음(안전 인자).
     private func beginTransit(
-        route: TransitRoute, destinationLabel: String, destinationRoman: String?, dest: BeaconDest, accessible: Bool
+        route: TransitRoute, destinationLabel: String, destinationRoman: String?, dest: BeaconDest, accessible: Bool,
+        aboard: TransitAboardStart?
     ) {
         cancelPrewalk()
         retirePrewalkRestart()  // 새 대중교통 시작 — 승차 전 도보가 있으면 아래 `launchPrewalk`가 새 연결을 세운다
@@ -210,10 +213,12 @@ final class GuideSession {
         outing.clearEnd()
         // 승차 전 도보(A25): 첫 탑승 leg 앞 도보가 있으면 도보 실시간 안내를 먼저 돌리고, 도착하면
         // 같은 요청으로 대중교통 세션을 잇는다. 판정은 순수 함수(웹 미러) — nil이면 종전 경로.
-        guard let guideRoute = buildTransitGuideRoute(route), let target = transitPrewalkTarget(guideRoute) else {
+        guard let guideRoute = buildTransitGuideRoute(route), aboard == nil,
+              let target = transitPrewalkTarget(guideRoute)
+        else {
             transit.start(
                 transitRoute: route, destinationLabel: destinationLabel, destinationRoman: destinationRoman,
-                dest: dest, accessible: accessible)
+                dest: dest, accessible: accessible, aboard: aboard)
             return
         }
         // 표시 라벨은 ko·en 쌍(E27 잔여 ①).
@@ -647,7 +652,7 @@ final class GuideSession {
                     ?? plan.destLabel,
                 destinationRoman: alight == nil ? plan.destRoman : nil,
                 dest: alight.map { BeaconDest(lat: $0.coord.lat, lng: $0.coord.lng) } ?? plan.dest,
-                accessible: false)
+                accessible: false, aboard: plan.aboard)
             // 불변식: 단계 세션 부재를 위에서 확인했으므로 대중교통 시작은 거부되지 않는다(§6.4). 깨지면 남기고 끝낸다.
             if !transit.isTracking, !beacon.isTracking, !beacon.starting {
                 guideDiagLog("journey transitStartInvariantBroken")
@@ -788,6 +793,8 @@ struct JourneyPlan {
     let destLabel: String
     let destRoman: String?
     let dest: BeaconDest
+    /// 지금 탄 열차에서 시작하면 고른 방향(E71). nil이면 종전 대기 시작. ⚠ 기본값 없음(안전 인자).
+    let aboard: TransitAboardStart?
 
     var shape: JourneyShape {
         JourneyShape(

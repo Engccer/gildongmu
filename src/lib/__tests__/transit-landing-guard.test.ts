@@ -40,8 +40,9 @@ describe("TransitTrackingSheet 착지 계약 (A35)", () => {
     // 종전엔 그 대상 이름(`title`/`minimize`)을 정규식에서 빼는 것으로 면제했는데, E38로 열림 착지가 `.status`가
     // 되면서 그 방식은 대상 뷰 착지까지 함께 눈감는다 — 자리를 표지(`returnedFromBand`)로 가른다.
     // E57(위원장 판정 Q1)로 띠바 복귀도 상태 문장이 되어 분기 표지(`returnedFromBand`)가 사라졌다 — 면제 자리는
-    // List 수준 한 줄 `.task { landControlFocus(.status, proxy: proxy) }`다.
-    const exemptAt = lines.findIndex((l) => l.trim() === ".task { landControlFocus(.status, proxy: proxy) }");
+    // List 수준 한 줄 `.task { landControlFocus(… ? .waitingLabel : .status, proxy: proxy) }`다
+    // (E71 R9: aboard 열차 고르기면 질문 라벨, 아니면 상태 문장).
+    const exemptAt = lines.findIndex((l) => l.trim() === ".task { landControlFocus(model.aboardStep == .pickVehicle && controlExists(.waitingLabel) ? .waitingLabel : .status, proxy: proxy) }");
     expect(exemptAt, "시트 열림 착지(List 수준 .task)가 사라졌다").toBeGreaterThan(-1);
     for (let i = 0; i < lines.length; i += 1) {
       if (i === exemptAt) continue;
