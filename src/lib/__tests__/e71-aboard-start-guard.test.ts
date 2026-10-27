@@ -166,6 +166,11 @@ describe("E71 aboard 출발 — 길찾기 화면(spec §5·R11·R12)", () => {
     expect(TAB).toMatch(/if model\.aboardOrigin == nil \{\s*Button\(appLocalized\("directions\.swap"\)\)/);
   });
 
+  it("aboard 결과의 안내 시작 버튼은 이름 없는 beacon.start다(제목의 「타는 경로」가 이미 탄 사람에게 거짓)", () => {
+    const rows = readFileSync(join(DIR, "JourneyResultRows.swift"), "utf8");
+    expect(rows).toContain('Button(aboard ? appLocalized("beacon.start") : appLocalized("beacon.guideStartTransitAlt", heading(variant)))');
+  });
+
   it("JourneyPlan 생성부가 aboard를 고른 방향에서 만든다", () => {
     const at = TAB.indexOf("JourneyPlan(");
     expect(at).toBeGreaterThan(0);
@@ -176,7 +181,8 @@ describe("E71 aboard 출발 — 길찾기 화면(spec §5·R11·R12)", () => {
   it("방면 전 조회 버튼은 조회하지 않고 단계 줄로 커서를 옮긴다", () => {
     const b = body(TAB, "private func submitJourneyOrQuery(");
     expect(b).toMatch(/guard model\.aboardNeedsDirection else \{\s*model\.runQuery\(\)\s*return\s*\}\s*aboardStepFocused = true/);
-    expect(b).toContain("accessibilitySpeechAnnouncementPriority = .high");
+    // 커서가 옮겨 간 줄의 라벨이 같은 문장이라 통지를 겹치지 않는다(.high는 착지 라벨로 대체될 수 없을 때만)
+    expect(b).not.toMatch(/Announcement|accessibilitySpeechAnnouncementPriority/);
     expect(body(TAB, "func runQuery(")).toContain("aboardNeedsDirection");
   });
 });

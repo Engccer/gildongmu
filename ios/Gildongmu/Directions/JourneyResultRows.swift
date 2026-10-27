@@ -73,7 +73,8 @@ struct JourneyResultRows: View {
                 Text(egressLine(option, lookupFailed: variant.egress?.lookupFailed == true))
             }
         }
-        Button(appLocalized("beacon.guideStartTransitAlt", heading(variant))) {
+        // 지금 탄 열차(E71)는 변형이 하나이고 제목의 「{역}에서 타는 경로」가 이미 탄 사람에게 거짓이라 이름 없는 「안내 시작」이다.
+        Button(aboard ? appLocalized("beacon.start") : appLocalized("beacon.guideStartTransitAlt", heading(variant))) {
             onStart(variant, egress)
         }
         .accessibilityFocused(startFocus, equals: .journey)

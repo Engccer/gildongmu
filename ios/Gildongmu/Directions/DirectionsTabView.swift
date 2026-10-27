@@ -1770,20 +1770,14 @@ struct DirectionsTabView: View {
 
     private var isAboardOrigin: Bool { model.aboardOrigin != nil }
 
-    /// 조회 버튼. 지금 탄 열차인데 방면 전이면 조회하지 않고 커서를 단계 줄로 옮기며 그 줄의 문장을 통지한다(R12 — 화면 변화 없는
-    /// 활성화 응답이라 `.high`, 기본 우선순위면 VoiceOver 활성화 처리에 묻힌다).
+    /// 조회 버튼. 지금 탄 열차인데 방면 전이면 조회하지 않고 커서를 지금 서 있는 단계 줄(질문·불러오는 중·실패 문장)로 옮긴다.
+    /// 그 줄의 라벨이 곧 알릴 문장이라 별도 통지를 겹치지 않는다(헌장 §5 — 상태는 재포커스한 요소의 라벨로 전한다).
     private func submitJourneyOrQuery() {
         guard model.aboardNeedsDirection else {
             model.runQuery()
             return
         }
         aboardStepFocused = true
-        if let text = aboardStepText {
-            var message = AttributedString(text)
-            message.accessibilitySpeechAnnouncementPriority = .high
-            AccessibilityNotification.Announcement(message).post()
-        }
-        ResultHaptic.fire(.attention)
     }
 
     /// 역 확정 뒤 단계 줄 착지. 시트 dismiss가 끝나며 시스템이 커서를 되돌리므로 늦게 대입하고 1회 재시도한다(`landFocusAfterResolve` 동형).
