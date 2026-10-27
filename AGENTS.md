@@ -89,6 +89,7 @@
 - **좌표는 WGS84 십진 통일.** 변환 함정: 에어코리아 측정소=**TM중부원점 EPSG:2097**(proj4, ⚠ 카카오/네이버의 EPSG:5181 아님, Δ300m+) / 기상청=**격자 nx,ny LCC**(`dfs_xy_conv` 이식) / 네이버 `mapx/mapy`(×10⁷ 정수)는 provider 내부만.
 - **data.go.kr envelope는 공용 파서를 쓴다**(`datagokr-envelope.ts`: `readItems`·`readResultCode`·`fetchDataGoKrJson`, 자체 추출 함수 금지, 정책은 provider). `apis.data.go.kr`은 https만(http는 hang, 가드 `datagokr-https-usage.test.ts`). → INTEGRATIONS
 - **TAGO는 동시 세션 한도를 HTTP 200 + resultCode 99로 준다**(「가용한 세션이 존재하지 않습니다」): 공용 파서가 throw로 읽으니 0건으로 접지 말고, 실호출 게이트 corpus는 resultCode 비"00" 봉투를 저장하지 않는다. → INTEGRATIONS
+- **여정 「지금 탄 열차」(E71) 출발은 옵트인 `boardKind=aboard`·`boardDir`이고 맞지 않으면 대체 경로를 내지 않는다**: 방향 대응은 `directionMatchesWayCode`(상행·외선=1, 하행·내선=2), Tmap 0회라 IP는 `chargeJourneyIp`로 따로 세며, 안내 쪽 열차 목록은 고른 방면에 잠긴다(`journeyAboardTrainItems`·`boardAboard` 재확인). → INTEGRATIONS
 - **Tmap 응답 본문은 `readTmapJson`으로 읽는다**(`tmap-json.ts`, 보행자·자동차 공용): POI 이름 구분자로 날 NUL이 문자열 안에 와서 `res.json()`이 실패한다(A62). 새 Tmap 호출 자리도 같다. → INTEGRATIONS §봉투·폴백
 - **서울 열린데이터(`openapi.seoul.go.kr`) 본문은 `readSeoulOpenJson`으로 읽는다**(`seoul-open-json.ts` — 무효 키가 200+XML로 온다). 실시간 지하철은 호스트·키가 달라 계약 밖. → INTEGRATIONS
 - **envelope 비표준 주의(공용 파서 스코프 밖 — `response` 래퍼가 없다)**: 서울버스(TOPIS)·서울지하철 실시간·서울 열린데이터는 봉투가 각각 다르다. **봉투가 다르면 파서도 다르다** — 공용 모듈에 넣지 말 것. → INTEGRATIONS
