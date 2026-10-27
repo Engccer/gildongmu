@@ -1853,12 +1853,12 @@ struct DirectionsTabView: View {
         settleAboardArrival(rereadIfFocused: true)
     }
 
-    /// 시트가 닫힌 뒤 보류한 결과를 처리한다. 닫힌 자리의 착지(`landFocusAfterResolve`, 400ms + 600ms)가 끝난 뒤라야
-    /// 통지가 착지 낭독에 묻히지 않는다. 그 사이 시트가 다시 열렸거나 새 결과·새 착지가 표식을 가져갔으면 그쪽이 처리한다.
+    /// 시트가 닫힌 뒤 보류한 결과를 처리한다. 닫힌 자리의 착지(`landFocusAfterResolve`, 400ms + 600ms 재시도)가 끝난 뒤라야
+    /// 통지가 착지 낭독에 묻히지 않는다 — 재시도 대입과 같은 시점에 겹치지 않게 1500ms. 그 사이 시트가 다시 열렸거나 새 결과·새 착지가 표식을 가져갔으면 그쪽이 처리한다.
     private func settleAboardArrivalAfterSheet() {
         guard let deferred = aboardDeferredArrival, !aboardLandingPending else { return }
         Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(1000))
+            try? await Task.sleep(for: .milliseconds(1500))
             guard searchTarget == nil, !aboardLandingPending, aboardDeferredArrival == deferred else { return }
             aboardDeferredArrival = nil
             guard model.aboardOrigin?.station == deferred.station else { return }
