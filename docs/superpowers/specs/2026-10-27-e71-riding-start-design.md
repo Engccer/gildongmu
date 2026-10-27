@@ -70,7 +70,7 @@
 ### 4.1 요청
 
 - `boardKind=aboard`(새 값) + `boardDir` ∈ {`상행`, `하행`, `내선`, `외선`}. `board`·`boardName`·`boardLine`이 함께 와야 한다(aboard만 `boardLine` 필수 — 없으면 `isSameStation`이 노선 비교를 건너뛰어 환승역의 다른 노선이 통과한다). `boardDir`은 `boardKind=aboard`일 때만 받고 그때는 필수(400). `stops=1`을 요구하지 않는다(종전 refine은 `boardKind=stop`에만 건다).
-- 타입: `JourneyStationInput.kind?: "stop" | "aboard"`, `direction?: "상행" | "하행" | "내선" | "외선"`(aboard에서만). Kit `JourneyStationQuery.kind`에 `.aboard`, `direction` 필드.
+- 타입: `JourneyStationInput.kind?: "stop" | "aboard"`, `direction?: "상행" | "하행" | "내선" | "외선"`(aboard에서만). Kit은 `JourneyStationQuery.aboardDirection: String?`(non-nil이면 `boardKind=aboard`·`boardDir`, `kind`는 nil — 저장 포맷 `JourneyStationKind`를 넓히지 않는다).
 - 미지정 요청은 종전과 바이트 동일(파이프라인 분기가 `kind === "aboard"`에서만 갈린다).
 
 ### 4.2 파이프라인 차이 (aboard일 때만)
