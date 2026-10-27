@@ -15,6 +15,11 @@ const DIR = join(__dirname, "../../../ios/Gildongmu/Directions");
 const MODEL = readFileSync(join(DIR, "TransitGuideModel.swift"), "utf8");
 const COORD = readFileSync(join(DIR, "GuideSessionCoordinator.swift"), "utf8");
 const SHEET = readFileSync(join(DIR, "TransitTrackingSheet.swift"), "utf8");
+const TAB = readFileSync(join(DIR, "DirectionsTabView.swift"), "utf8");
+const ENDPOINT = readFileSync(join(DIR, "DirectionsEndpointSearchView.swift"), "utf8");
+const KO = JSON.parse(readFileSync(join(__dirname, "../../../ios/i18n/ios-extra/ko.json"), "utf8")) as {
+  ios: { journey: Record<string, string> };
+};
 
 /** 선언 시그니처(여는 중괄호 앞까지). */
 function signature(source: string, head: string): string {
@@ -116,5 +121,98 @@ describe("E71 aboard 시작 — 통지와 착지(R8·R9)", () => {
       expect(body(MODEL, head), `${head}에 표식 해제가 없다`).toMatch(/aboardStartLandingPending = false/);
     }
     expect(MODEL).toMatch(/if result\.state\.phase != \.waiting \{[^}]*aboardStartLandingPending = false/);
+  });
+});
+
+describe("E71 aboard 출발 — 길찾기 화면(spec §5·R11·R12)", () => {
+  it("출발지 시트의 aboardStart 행은 콜백이 있을 때만 서고 길찾기 탭은 journeyInputEnabled일 때만 그 콜백을 넘긴다", () => {
+    expect(ENDPOINT).toMatch(/if target == \.from, onSelectAboardStation != nil[^{]*\{[\s\S]{0,400}ios\.journey\.aboardStart/);
+    expect(TAB).toMatch(/onSelectAboardStation: journeyInputEnabled \? \{/);
+    expect(TAB.match(/onSelectAboardStation:/g)?.length, "길찾기 탭의 시트 호출은 하나다").toBe(1);
+  });
+
+  it("onSelectAboardStation은 기본값이 없다(역 init 선언의 필수 인자)", () => {
+    const sig = signature(ENDPOINT, "init(\n        target: DirectionsFieldTarget, onSelect: @escaping (DirectionsEndpoint) -> Void,\n        onSelectStation");
+    expect(sig).toContain("onSelectAboardStation: ((RecentStation) -> Void)?");
+    expect(sig).not.toContain("onSelectAboardStation: ((RecentStation) -> Void)? =");
+  });
+
+  it("시트는 aboard 모드에서 지하철역(.subway)만 받고 아니면 notStation 통지다", () => {
+    const b = body(ENDPOINT, "private func selectAboardStation(");
+    expect(b).toContain("stationLayoutKind(place) == .subway");
+    expect(b).toContain("ios.journey.notStation");
+    expect(b).toContain("kind: nil");
+  });
+
+  it("performJourney는 aboard 결과를 최근 경로에 저장하지 않는다(R11)", () => {
+    const b = body(TAB, "private func performJourney(");
+    expect(b).toMatch(/if aboardOrigin == nil \{\s*recordRecentRoute\(/);
+    expect(b.match(/recordRecentRoute\(/g)?.length, "저장 자리는 하나다").toBe(1);
+  });
+
+  it("performJourney의 승차 쪽 질의는 aboard면 고른 방향을 싣는다", () => {
+    const b = body(TAB, "private func performJourney(");
+    expect(b).toMatch(/aboardDirection: a\.direction\?\.direction/);
+  });
+
+  it("setEndpoint는 출발지 확정에서 aboard를 지운다(R12)", () => {
+    const b = body(TAB, "func setEndpoint(");
+    expect(b).toMatch(/case \.from:[^\n]*clearAboard\(\)/);
+  });
+
+  it("출발지가 aboard면 바꾸기·경유지·역 A 항목이 숨는다", () => {
+    expect(body(TAB, "func swap(")).toContain("aboardOrigin == nil");
+    expect(TAB).toMatch(/Button\(appLocalized\("directions\.swap"\)\)[\s\S]{0,80}model\.swap\(\)/);
+    expect(TAB).toMatch(/if model\.aboardOrigin == nil \{\s*Button\(appLocalized\("directions\.swap"\)\)/);
+  });
+
+  it("JourneyPlan 생성부가 aboard를 고른 방향에서 만든다", () => {
+    const at = TAB.indexOf("JourneyPlan(");
+    expect(at).toBeGreaterThan(0);
+    expect(TAB.slice(at, at + 400)).toMatch(/aboard: model\.aboardOrigin\?\.direction\.map \{ TransitAboardStart\(direction: \$0\.direction\) \}/);
+    expect(TAB).not.toContain("aboard: nil");
+  });
+
+  it("방면 전 조회 버튼은 조회하지 않고 단계 줄로 커서를 옮긴다", () => {
+    const b = body(TAB, "private func submitJourneyOrQuery(");
+    expect(b).toMatch(/guard model\.aboardNeedsDirection else \{\s*model\.runQuery\(\)\s*return\s*\}\s*aboardStepFocused = true/);
+    expect(b).toContain("accessibilitySpeechAnnouncementPriority = .high");
+    expect(body(TAB, "func runQuery(")).toContain("aboardNeedsDirection");
+  });
+});
+
+/** spec §7 표(ko). 한 글자도 다르면 낭독 계약이 바뀐 것이다. */
+const ABOARD_KO: Record<string, string> = {
+  aboardStart: "지금 탄 열차에서 출발",
+  aboardStationField: "지금 서 있거나 다음에 설 역",
+  aboardField: "지금 탄 열차, {station}",
+  aboardFieldDirection: "지금 탄 열차, {station}, {direction}",
+  aboardLinePrompt: "어느 노선인가요?",
+  aboardDirectionPrompt: "어느 방면 열차인가요?",
+  aboardDirectionRow: "{direction}, {terminals}",
+  aboardTerminal: "{name}행",
+  aboardDirectionsLoading: "열차 정보를 불러오는 중입니다.",
+  aboardDirectionsEmpty: "지금 이 역에 오는 열차가 조회되지 않습니다.",
+  aboardDirectionsUnavailable: "이 역은 실시간 열차 정보가 없어 지금 탄 열차에서 출발할 수 없습니다.",
+  aboardDirectionsFailed: "열차 정보를 불러오지 못했습니다.",
+  aboardMissing: "지금 탄 열차로 가는 경로를 찾지 못했습니다.",
+  aboardOpposite: "지금 탄 열차는 목적지 반대 방향으로 갑니다.",
+  totalsAboard: "총 {minutes}분",
+  totalsAboardTaxi: "총 {minutes}분, 택시 요금 약 {taxiFare}원",
+};
+
+describe("E71 aboard 출발 — 표시·낭독 문장(spec §7)", () => {
+  it("키 16개가 ko.json에 spec 문장 그대로 있다", () => {
+    expect(Object.keys(ABOARD_KO)).toHaveLength(16);
+    for (const [key, text] of Object.entries(ABOARD_KO)) {
+      expect(KO.ios.journey[key], `ios.journey.${key}`).toBe(text);
+    }
+  });
+
+  it("그 문장들에 가운뎃점·em dash가 없다", () => {
+    for (const [key, text] of Object.entries(ABOARD_KO)) {
+      expect(KO.ios.journey[key], key).not.toMatch(/[·\u2014\u2013]/);
+      expect(text).not.toMatch(/[·\u2014\u2013]/);
+    }
   });
 });

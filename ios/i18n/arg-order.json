@@ -475,6 +475,20 @@
   "ios.guide.waypointSkipped": [
     "label"
   ],
+  "ios.journey.aboardDirectionRow": [
+    "direction",
+    "terminals"
+  ],
+  "ios.journey.aboardField": [
+    "station"
+  ],
+  "ios.journey.aboardFieldDirection": [
+    "station",
+    "direction"
+  ],
+  "ios.journey.aboardTerminal": [
+    "name"
+  ],
   "ios.journey.accessFailedWith": [
     "reason"
   ],
@@ -583,6 +597,13 @@
     "minutes",
     "taxiFare",
     "transitFare"
+  ],
+  "ios.journey.totalsAboard": [
+    "minutes"
+  ],
+  "ios.journey.totalsAboardTaxi": [
+    "minutes",
+    "taxiFare"
   ],
   "ios.nearby.airStationLine": [
     "name",

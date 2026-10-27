@@ -454,7 +454,23 @@
       "stationPlace": "{station}역",
       "busStopKind": "정류장",
       "stopSearchFailed": "정류장을 불러오지 못했습니다.",
-      "stopSearchTruncated": "정류장 이름을 더 길게 입력해 주세요."
+      "stopSearchTruncated": "정류장 이름을 더 길게 입력해 주세요.",
+      "aboardStart": "지금 탄 열차에서 출발",
+      "aboardStationField": "지금 서 있거나 다음에 설 역",
+      "aboardField": "지금 탄 열차, {station}",
+      "aboardFieldDirection": "지금 탄 열차, {station}, {direction}",
+      "aboardLinePrompt": "어느 노선인가요?",
+      "aboardDirectionPrompt": "어느 방면 열차인가요?",
+      "aboardDirectionRow": "{direction}, {terminals}",
+      "aboardTerminal": "{name}행",
+      "aboardDirectionsLoading": "열차 정보를 불러오는 중입니다.",
+      "aboardDirectionsEmpty": "지금 이 역에 오는 열차가 조회되지 않습니다.",
+      "aboardDirectionsUnavailable": "이 역은 실시간 열차 정보가 없어 지금 탄 열차에서 출발할 수 없습니다.",
+      "aboardDirectionsFailed": "열차 정보를 불러오지 못했습니다.",
+      "aboardMissing": "지금 탄 열차로 가는 경로를 찾지 못했습니다.",
+      "aboardOpposite": "지금 탄 열차는 목적지 반대 방향으로 갑니다.",
+      "totalsAboard": "총 {minutes}분",
+      "totalsAboardTaxi": "총 {minutes}분, 택시 요금 약 {taxiFare}원"
     }
   },
   "guide": {

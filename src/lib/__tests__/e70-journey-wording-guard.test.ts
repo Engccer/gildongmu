@@ -193,8 +193,8 @@ describe("E70-d 입력 메뉴 하나와 「자동차」 문장(위원장 판정 
   const tab = read("DirectionsTabView.swift");
   /** 폼의 갈아탈 역·경유지 입력 블록(경유지 행 ~ 조회 버튼). */
   const form = (() => {
-    const start = tab.indexOf("if !showsStationFields, let viaName = viaFieldName {");
-    const end = tab.indexOf("Button(submitText) { model.runQuery() }", start);
+    const start = tab.indexOf("if !isAboardOrigin, !showsStationFields, let viaName = viaFieldName {");
+    const end = tab.indexOf("Button(submitText) { submitJourneyOrQuery() }", start);
     if (start < 0 || end < 0) throw new Error("길찾기 입력 블록을 찾지 못했다");
     return tab.slice(start, end);
   })();

@@ -22361,6 +22361,146 @@
         }
       }
     },
+    "ios.journey.aboardDirectionPrompt": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "어느 방면 열차인가요?"
+          }
+        }
+      }
+    },
+    "ios.journey.aboardDirectionRow": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@, %2$@"
+          }
+        }
+      }
+    },
+    "ios.journey.aboardDirectionsEmpty": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "지금 이 역에 오는 열차가 조회되지 않습니다."
+          }
+        }
+      }
+    },
+    "ios.journey.aboardDirectionsFailed": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "열차 정보를 불러오지 못했습니다."
+          }
+        }
+      }
+    },
+    "ios.journey.aboardDirectionsLoading": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "열차 정보를 불러오는 중입니다."
+          }
+        }
+      }
+    },
+    "ios.journey.aboardDirectionsUnavailable": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 역은 실시간 열차 정보가 없어 지금 탄 열차에서 출발할 수 없습니다."
+          }
+        }
+      }
+    },
+    "ios.journey.aboardField": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "지금 탄 열차, %1$@"
+          }
+        }
+      }
+    },
+    "ios.journey.aboardFieldDirection": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "지금 탄 열차, %1$@, %2$@"
+          }
+        }
+      }
+    },
+    "ios.journey.aboardLinePrompt": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "어느 노선인가요?"
+          }
+        }
+      }
+    },
+    "ios.journey.aboardMissing": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "지금 탄 열차로 가는 경로를 찾지 못했습니다."
+          }
+        }
+      }
+    },
+    "ios.journey.aboardOpposite": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "지금 탄 열차는 목적지 반대 방향으로 갑니다."
+          }
+        }
+      }
+    },
+    "ios.journey.aboardStart": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "지금 탄 열차에서 출발"
+          }
+        }
+      }
+    },
+    "ios.journey.aboardStationField": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "지금 서 있거나 다음에 설 역"
+          }
+        }
+      }
+    },
+    "ios.journey.aboardTerminal": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@행"
+          }
+        }
+      }
+    },
     "ios.journey.accessFailedWith": {
       "localizations": {
         "ko": {
@@ -22797,6 +22937,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "총 %1$@분, 택시 요금 약 %2$@원, 대중교통 요금 %3$@원"
+          }
+        }
+      }
+    },
+    "ios.journey.totalsAboard": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "총 %1$@분"
+          }
+        }
+      }
+    },
+    "ios.journey.totalsAboardTaxi": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "총 %1$@분, 택시 요금 약 %2$@원"
           }
         }
       }

@@ -10,6 +10,8 @@ struct JourneyResultRows: View {
     /// 사용자가 칸에 고른 역(제목이 "지정 역과 다른가"를 이 이름으로 가른다).
     let board: RecentStation?
     let alight: RecentStation?
+    /// 출발이 지금 탄 열차(E71)면 합계가 대중교통 요금을 말하지 않는다(이미 낸 요금 — R13). 서버 `totals`는 그대로다.
+    let aboard: Bool
     @Binding var variantIndex: Int
     @Binding var egressIndex: Int
     let destinationName: String?
@@ -129,6 +131,11 @@ struct JourneyResultRows: View {
             minutes += minutesOf(picked.taxiOut) - minutesOf(base.taxiOut)
             taxiFare += picked.taxiOut.taxiFare - base.taxiOut.taxiFare
         }
+        if aboard {
+            return taxiFare == 0
+                ? appLocalized("ios.journey.totalsAboard", String(minutes))
+                : appLocalized("ios.journey.totalsAboardTaxi", String(minutes), wonText(taxiFare))
+        }
         return appLocalized(
             "ios.journey.totals", String(minutes), wonText(taxiFare), wonText(variant.totals.transitFare))
     }
@@ -147,6 +154,11 @@ struct JourneyResultRows: View {
                 : appLocalized("ios.journey.egressNone", minutes, fare)
         }
     }
+}
+
+/// 지금 탄 열차 출발(E71)에서 경로가 하나도 없을 때의 문장. 그 역·노선에 반대 방향 열차만 있으면 그 사실을 말한다.
+func journeyAboardNoRouteText(opposite: Bool) -> String {
+    opposite ? appLocalized("ios.journey.aboardOpposite") : appLocalized("ios.journey.aboardMissing")
 }
 
 private func minutesOf(_ briefing: CarRouteBriefing) -> Int {

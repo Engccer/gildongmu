@@ -114,6 +114,26 @@ final class EndpointSearchModel {
         searchTask?.cancel()
     }
 
+    /// 지금 탄 열차 역 검색(E71)으로 바뀐다 — 같은 시트가 지하철역만 받는 검색으로 다시 시작한다. 앞선 후보·주소·정류장 줄은
+    /// 이 모드의 계약(지하철역만, 정류장 검색 없음)과 맞지 않아 비운다.
+    func startAboardSearch() {
+        searchTask?.cancel()
+        query = ""
+        places = []
+        addresses = []
+        stops = []
+        notice = ""
+        isSearching = false
+        hasSearched = false
+        stopsFailed = false
+        stopsTruncated = false
+        showsNoBusData = false
+        showsPlacesFailure = false
+        stationsOnly = true
+        stopOrigin = nil
+        stopDest = nil
+    }
+
     /// 서버 `q`의 trim 길이 계약(2~30자) — 밖이면 정류장 검색을 하지 않는다(400이 실패 줄로 위장하지 않게).
     private static let stopQueryLengths = 2...30
 
@@ -186,6 +206,9 @@ struct DirectionsEndpointSearchView: View {
     /// 자동차로 갈아탈 역 칸(E70 §5.1)의 결과 — 끝점이 아니라 장소 그대로(역 판정·노선 힌트에 분류가 필요하다).
     /// 역 칸 대상에서만 쓰인다. `DirectionsEndpoint`(Kit 공유·최근 기록 저장 포맷)는 넓히지 않는다.
     let onSelectStation: ((RecentStation) -> Void)?
+    /// 출발지 칸의 「지금 탄 열차에서 출발」(E71)의 결과 — 역을 장소 그대로 돌려준다(노선 힌트가 필요하다). 실험판 여정 입력이 설 때만
+    /// 값이 있고, 없으면 출발지 시트에 그 행이 없다.
+    let onSelectAboardStation: ((RecentStation) -> Void)?
     /// 정류장 이름 검색의 지역 근거(E70-e) — 길찾기 화면의 출발·도착 중 알려진 좌표. 역 칸 대상에서만 쓰인다.
     let stopOrigin: (lat: Double, lng: Double)?
     let stopDest: (lat: Double, lng: Double)?
@@ -195,6 +218,7 @@ struct DirectionsEndpointSearchView: View {
         self.target = target
         self.onSelect = onSelect
         self.onSelectStation = nil
+        self.onSelectAboardStation = nil
         self.stopOrigin = nil
         self.stopDest = nil
     }
@@ -203,11 +227,13 @@ struct DirectionsEndpointSearchView: View {
     init(
         target: DirectionsFieldTarget, onSelect: @escaping (DirectionsEndpoint) -> Void,
         onSelectStation: @escaping (RecentStation) -> Void,
+        onSelectAboardStation: ((RecentStation) -> Void)?,
         stopOrigin: (lat: Double, lng: Double)?, stopDest: (lat: Double, lng: Double)?
     ) {
         self.target = target
         self.onSelect = onSelect
         self.onSelectStation = onSelectStation
+        self.onSelectAboardStation = onSelectAboardStation
         self.stopOrigin = stopOrigin
         self.stopDest = stopDest
     }
@@ -231,6 +257,10 @@ struct DirectionsEndpointSearchView: View {
     /// 역 칸(E70) — 최근 끝점·주소 후보를 보이지 않는다(분류가 없어 역인지 알 수 없다, spec §5.1). 반복 여정은 최근 경로가
     /// 통째로 복원한다.
     private var isStationTarget: Bool { target == .boardStation || target == .alightStation }
+    /// 지금 탄 열차 역 검색 모드(E71) — 출발지 시트가 그 자리에서 바뀐다(닫았다 다시 띄우면 그 사이 커서가 최상단으로 떨어진다).
+    /// 최근 목록·주소 후보·현재 위치 행이 없고 지하철역만 받는다는 점이 역 칸과 같아 목록 조건은 둘을 함께 본다.
+    @State private var aboardMode = false
+    private var stationsOnlyView: Bool { isStationTarget || aboardMode }
     @State private var recentEndpoints: [RecentEndpoint] = []
     @AccessibilityFocusState private var focusedRecent: RecentEndpoint?
     /// 고정 항목 이동 뒤 커서 유지 재시도(E67).
@@ -267,7 +297,7 @@ struct DirectionsEndpointSearchView: View {
         if let place = model.otherPlaces.first {
             return (Self.candidateKey(place: place), place.id)
         }
-        if !isStationTarget, let address = model.addresses.first {
+        if !stationsOnlyView, let address = model.addresses.first {
             return (Self.candidateKey(address: address), address.roadAddr)
         }
         return nil
@@ -300,11 +330,20 @@ struct DirectionsEndpointSearchView: View {
                 }
                 // 출발지에서는 "현재 위치 사용"이 GPS 선택을, 수동 위치 지정 맥락에서는
                 // 지정 해제를 뜻한다. 도착지에는 노출하지 않는다(스왑이 담당).
-                if target == .from || target == .manualLocation {
+                if (target == .from || target == .manualLocation) && !aboardMode {
                     Button(appLocalized(target == .manualLocation
                                         ? "manualLocation.useGps"
                                         : "directions.useCurrentLocation")) {
                         select(.current)
+                    }
+                }
+                // 지금 탄 열차에서 출발(E71): 「현재 위치 사용」 바로 다음 행. 누르면 이 시트가 역 검색으로 바뀌고 이 행은 사라지므로
+                // 커서를 항상 존재하는 검색 필드로 먼저 옮긴다(헌장 §5).
+                if target == .from, onSelectAboardStation != nil, !aboardMode {
+                    Button(appLocalized("ios.journey.aboardStart")) {
+                        searchFieldFocused = true
+                        model.startAboardSearch()
+                        aboardMode = true
                     }
                 }
                 if !model.notice.isEmpty {
@@ -315,7 +354,7 @@ struct DirectionsEndpointSearchView: View {
                 // 쓰면 0건 노출 후 재노출되는 회귀). 행 활성화=재검색 없이 즉시 확정,
                 // swipeActions 삭제가 VoiceOver 로터로 자동 노출된다. 기록은
                 // select→onSelect→setEndpoint가 담당(이중 기록 금지).
-                if !isStationTarget && !model.hasSearched && !recentEndpoints.isEmpty {
+                if !stationsOnlyView && !model.hasSearched && !recentEndpoints.isEmpty {
                     Section(appLocalized("recent.title")) {
                         // 고정 항목은 라벨 접미사 "고정됨"(한 줄 = 한 객체), 고정 토글이
                         // 삭제보다 앞(위원장 지시 2026-08-12) — 로터 커스텀 액션 자동 노출.
@@ -371,7 +410,7 @@ struct DirectionsEndpointSearchView: View {
                     Text(appLocalized("ios.common.unavailableHere.noBusData"))
                 }
                 ForEach(model.otherPlaces) { place in placeRow(place) }
-                ForEach(isStationTarget ? [] : model.addresses, id: \.roadAddr) { address in
+                ForEach(stationsOnlyView ? [] : model.addresses, id: \.roadAddr) { address in
                     Button {
                         Task {
                             if let endpoint = await model.geocode(address) { select(endpoint) }
@@ -394,7 +433,7 @@ struct DirectionsEndpointSearchView: View {
             .searchable(
                 text: $model.query,
                 placement: .navigationBarDrawer(displayMode: .always),
-                prompt: Text(appLocalized("ios.search.prompt")))
+                prompt: Text(aboardMode ? appLocalized("ios.journey.aboardStationField") : appLocalized("ios.search.prompt")))
             .searchFocused($searchFieldFocused)
             .onSubmit(of: .search) { model.submit() }
             .toolbar {
@@ -435,7 +474,9 @@ struct DirectionsEndpointSearchView: View {
 
     private func placeRow(_ place: Place) -> some View {
         Button {
-            if isStationTarget {
+            if aboardMode {
+                selectAboardStation(place)
+            } else if isStationTarget {
                 selectStation(place)
             } else {
                 select(.place(label: place.name, lat: place.lat, lng: place.lng, labelRoman: place.nameRoman))
@@ -515,7 +556,7 @@ struct DirectionsEndpointSearchView: View {
     // exhaustive switch로 새 타깃이 기존 분기에 흡수되지 않게 한다.
     private var sheetTitle: String {
         switch target {
-        case .from: appLocalized("directions.searchFrom")
+        case .from: aboardMode ? appLocalized("ios.journey.aboardStationField") : appLocalized("directions.searchFrom")
         case .to: appLocalized("directions.searchTo")
         case .via: appLocalized("directions.searchVia")
         case .manualLocation: appLocalized("manualLocation.pickTitle")
@@ -535,6 +576,22 @@ struct DirectionsEndpointSearchView: View {
             return
         }
         onSelectStation?(RecentStation(
+            label: place.name, lat: place.lat, lng: place.lng, line: journeyLineHint(place), kind: nil))
+        dismiss()
+    }
+
+    /// 지금 탄 열차 역 검색(E71): 지하철역만 받는다(실시간 도착이 닿는 노선이 첫 판의 범위, spec §5.1). 아니면 시트를 연 채 통지한다.
+    /// 장소 이름이 라벨이고(노선이 함께 들려야 한다) 노선 힌트는 역 칸과 같은 추출이다.
+    private func selectAboardStation(_ place: Place) {
+        guard stationLayoutKind(place) == .subway else {
+            // 화면 변화 없는 활성화 응답이라 `.high`(selectStation과 같은 근거).
+            var message = AttributedString(appLocalized("ios.journey.notStation"))
+            message.accessibilitySpeechAnnouncementPriority = .high
+            AccessibilityNotification.Announcement(message).post()
+            ResultHaptic.fire(.attention)
+            return
+        }
+        onSelectAboardStation?(RecentStation(
             label: place.name, lat: place.lat, lng: place.lng, line: journeyLineHint(place), kind: nil))
         dismiss()
     }
