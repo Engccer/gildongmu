@@ -503,6 +503,18 @@ private func arrival(_ line: String?, _ dir: String, _ nm: String, _ dest: Strin
         ])
     }
 
+    @Test func capitalRegionPrefixedHintMatchesBareArrivalLine() throws {
+        let list = [
+            try arrival("1호선", "상행", "인천행 - 구로방면", "인천"),
+            try arrival("2호선", "내선", "성수행 - 시청방면", "성수"),
+            try arrival("경의중앙선", "상행", "문산행 - 가좌방면", "문산"),
+        ]
+        #expect(journeyAboardDirections(list, line: "수도권1호선").map(\.direction) == ["상행"])
+        #expect(journeyAboardDirections(list, line: "수도권1호선").first?.terminals == ["인천"])
+        #expect(journeyAboardDirections(list, line: "수도권2호선").map(\.direction) == ["내선"])
+        #expect(journeyAboardDirections(list, line: "수도권1호선").contains { $0.terminals.contains("문산") } == false)
+    }
+
     @Test func nameFallsBackToDirectionWithoutDashSeparator() throws {
         let list = [try arrival("1호선", "상행", "인천행", "인천")]
         #expect(journeyAboardDirections(list, line: "1호선").first?.name == "상행")

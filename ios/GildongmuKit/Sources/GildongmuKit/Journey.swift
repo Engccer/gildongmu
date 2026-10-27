@@ -433,13 +433,13 @@ public func journeyAboardLines(_ arrivals: [SubwayArrival]) -> [String] {
     return seen
 }
 
-/// 고른 노선의 방면 묶음 — `direction`(trim 뒤 빈 값 버림)으로 묶고 처음 본 순서를 지킨다.
+/// 고른 노선의 방면 묶음 — 노선은 `journeySameLine`으로 가른다(카카오 힌트 `수도권1호선` ↔ 도착 목록 `1호선`). `direction`(trim 뒤 빈 값 버림)으로 묶고 처음 본 순서를 지킨다.
 public func journeyAboardDirections(_ arrivals: [SubwayArrival], line: String) -> [JourneyAboardDirection] {
     var order: [String] = []
     var names: [String: String] = [:]
     var terminals: [String: [String]] = [:]
     for a in arrivals {
-        guard let l = a.line, journeyLineHintMatches(l, line) else { continue }
+        guard let l = a.line, journeySameLine(l, line) else { continue }
         let dir = journeyAboardTrim(a.direction)
         if dir.isEmpty { continue }
         if terminals[dir] == nil {

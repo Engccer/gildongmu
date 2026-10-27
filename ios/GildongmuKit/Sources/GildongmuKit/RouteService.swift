@@ -246,6 +246,7 @@ public struct JourneyStationQuery: Sendable, Hashable {
     /// 정류장이면 `busStop`(노선 힌트는 싣지 않는다). nil = 역. ⚠ 기본값 없음 — 빠뜨리면 정류장이 역으로 조회된다.
     public let kind: JourneyStationKind?
     /// 지금 탄 열차의 방향(`updnLine` 원문 — 상행·하행·내선·외선). 승차 쪽에만 오고 non-nil이면 `boardKind=aboard`로 조회한다(E71).
+    /// 단 `kind == .busStop`이면 무시한다(`boardKind=stop`만 싣고 `boardDir`은 없다).
     /// ⚠ 기본값 없음 — 빠뜨리면 지금 탄 열차가 일반 역 지정으로 조회된다.
     public let aboardDirection: String?
 

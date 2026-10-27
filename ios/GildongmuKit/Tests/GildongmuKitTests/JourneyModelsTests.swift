@@ -154,6 +154,20 @@ extension StubNetworkTests {
         #expect(captured?.contains { $0.name == "alightKind" || $0.name == "alightDir" } == false)
     }
 
+    @Test func journeyAboardIsIgnoredForBusStopSide() async throws {
+        var captured: [URLQueryItem]?
+        StubURLProtocol.handler = { request in
+            captured = URLComponents(url: request.url!, resolvingAgainstBaseURL: false)?.queryItems
+            return (200, Data(#"{"variants":[]}"#.utf8))
+        }
+        _ = try await RouteService(client: stubbedClient()).journey(
+            originLat: 37.55, originLng: 126.95, destLat: 37.58, destLng: 126.98,
+            board: JourneyStationQuery(name: "강남역", lat: 37.4979, lng: 127.0276, line: nil, kind: .busStop, aboardDirection: "상행"),
+            alight: nil)
+        #expect(captured?.first { $0.name == "boardKind" }?.value == "stop")
+        #expect(captured?.contains { $0.name == "boardDir" } == false)
+    }
+
     @Test func journeyAboardWithoutLineOmitsBoardLine() async throws {
         var captured: [URLQueryItem]?
         StubURLProtocol.handler = { request in
