@@ -95,14 +95,14 @@ aboard는 Tmap을 부르지 않아(역 B 없음) 종전 IP 버킷(Tmap 예약 �
 ### 5.1 입력
 
 - 출발지 검색 시트(`DirectionsEndpointSearchView`, 대상 `.from`)의 「현재 위치 사용」 다음 행 「지금 탄 열차에서 출발」(`ios.journey.aboardStart`). 봉인: `experimentalJourneyEnabled` ∧ 데이터 로케일 ko(역 칸과 같은 조건).
-- 누르면 **같은 시트가 aboard 모드로 바뀐다**(시트를 닫았다 다시 띄우지 않는다 — 그 사이 커서가 화면 최상단으로 떨어진다). 역 칸 검색과 같은 화면이되 **지하철역만** 받는다(`stationLayoutKind == .subway`, 정류장 검색 없음, 최근 목록·「현재 위치 사용」 없음). 제목·검색 필드 이름 「지금 서 있거나 다음에 설 역」(`ios.journey.aboardStationField`), 커서는 검색 필드로. 지하철역이 아니면 기존 통지 「역이나 정류장을 골라 주세요.」(`ios.journey.notStation`).
+- 누르면 **같은 시트가 aboard 모드로 바뀐다**(시트를 닫았다 다시 띄우지 않는다 — 그 사이 커서가 화면 최상단으로 떨어진다). 역 칸 검색과 같은 화면이되 **지하철역만** 받는다(`stationLayoutKind == .subway`, 정류장 검색 없음, 최근 목록·「현재 위치 사용」 없음). 제목·검색 필드 이름 「지금 서 있거나 다음에 설 역」(`ios.journey.aboardStationField`), 커서는 검색 필드로. 지하철역이 아니면 「지하철역을 골라 주세요.」(`ios.journey.aboardNotSubway` — 역 칸의 「역이나 정류장을 골라 주세요.」는 정류장도 받는다는 뜻이라 여기선 고칠 행동을 잘못 알린다).
 - 역이 정해지면 시트가 닫히고 출발지 칸이 「출발지, 지금 탄 열차, {역 장소 이름}」이 되며 그 아래에 방면 단계가 선다. 커서는 방면 질문 줄로 간다(질문이 다음 행동이다).
   - 노선: 장소 노선 힌트(카테고리 끝 조각 또는 이름 꼬리 — 역 칸과 같은 추출)가 있으면 그 노선. 없으면 도착 목록의 서로 다른 `line`이 하나면 그것, 둘 이상이면 질문 「어느 노선인가요?」(`ios.journey.aboardLinePrompt`) + 노선 버튼들.
   - 방면: 질문 「어느 방면 열차인가요?」(`ios.journey.aboardDirectionPrompt`) + 묶음마다 버튼 한 줄 「{방면}, {종착1}행, {종착2}행」(`ios.journey.aboardDirectionRow` — 종착 조각은 `joinText`, 한 줄 = 한 객체). 3-state는 R3.
   - 고르면 질문·버튼이 사라지고 출발지 칸이 「출발지, 지금 탄 열차, {역 장소 이름}, {방면}」, 커서는 조회 버튼(사라지는 버튼의 포커스 선점, 헌장 §5).
 - 출발지 칸을 다시 누르면 출발지 검색 시트가 열리고, 다른 출발지를 고르면 지금 탄 열차 상태를 지운다. 「지금 탄 열차에서 출발」을 다시 누르면 역부터 다시.
 - R12 숨김. 역 B 칸(「자동차를 탈 역」)은 E70 그대로.
-- 조회: 지금 탄 열차 출발이 방면까지 정해졌으면 여정 조회만 한다(D12 동형). 방면 전이면 조회 버튼은 방면 질문으로 커서를 옮기고 「어느 방면 열차인가요?」를 통지한다(`.high`, 화면 변화 없는 활성화 응답).
+- 조회: 지금 탄 열차 출발이 방면까지 정해졌으면 여정 조회만 한다(D12 동형). 방면 전이면 조회 버튼은 지금 단계의 질문·상태 줄로 커서만 옮긴다(착지한 줄의 라벨이 곧 응답이라 통지를 겹치지 않는다, 헌장 §5).
 
 ### 5.2 결과
 
@@ -134,7 +134,8 @@ R11: 최근 경로 저장 자리에서 aboard 조회를 건너뛴다(소스 가�
 | `ios.journey.aboardField` | 지금 탄 열차, {station} | 출발지 칸 값(방면 전) |
 | `ios.journey.aboardFieldDirection` | 지금 탄 열차, {station}, {direction} | 출발지 칸 값(방면 뒤) |
 | `ios.journey.aboardLinePrompt` | 어느 노선인가요? | 노선 질문 |
-| `ios.journey.aboardDirectionPrompt` | 어느 방면 열차인가요? | 방면 질문·방면 전 조회 응답 |
+| `ios.journey.aboardDirectionPrompt` | 어느 방면 열차인가요? | 방면 질문(방면 전 조회 버튼의 착지 줄) |
+| `ios.journey.aboardNotSubway` | 지하철역을 골라 주세요. | aboard 역 검색에서 지하철역이 아닌 장소를 골랐을 때 |
 | `ios.journey.aboardDirectionRow` | {direction}, {terminals} | 방면 버튼(종착 조각은 「{이름}행」을 `joinText`) |
 | `ios.journey.aboardTerminal` | {name}행 | 종착 조각 |
 | `ios.journey.aboardDirectionsLoading` | 열차 정보를 불러오는 중입니다. | 방면 3-state |
