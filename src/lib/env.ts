@@ -3,8 +3,9 @@ import { z } from "zod";
 /**
  * 서버 전용 환경변수 검증.
  *
- * 모든 키는 선택(optional)이다 — 키가 없으면 mock provider로 폴백하므로
- * 환경변수 없이도 dev 서버가 항상 뜬다.
+ * 모든 키는 선택(optional)이다 — 환경변수 없이도 dev 서버는 뜨고, 키가 없는 기능은
+ * 게이트(`hasXKey()`)가 가린다. 가짜 데이터로 대신하지 않는다(장소 검색은 키가 없으면 실패하고,
+ * 데모가 필요하면 `PLACES_PROVIDER=mock`을 명시한다).
  *
  * 키 체계 주의 (2025년 NCP Maps 개편 이후):
  * - NCP Maps (Geocoding/Directions/Static Map): 신규 "Maps" 상품의
@@ -65,7 +66,7 @@ const envSchema = z.object({
   // 미설정 시 502 → 클라이언트 온디바이스 낭독 폴백(문서화된 경로라 게이트 함수 없음).
   GOOGLE_CLOUD_TTS_API_KEY: z.string().min(1).optional(),
 
-  // Google Places API (New) — 장소 상세 영업시간 한 줄(E24, iOS 실험판 전용 소비).
+  // Google Places API (New) — 장소 상세 영업시간 한 줄(E24, 웹·iOS 장소 상세).
   // gildongmu-prod 키 `gildongmu-places`(Places API만 허용). 예산 상한은 GCP 쿼터가 강제.
   GOOGLE_PLACES_API_KEY: z.string().min(1).optional(),
 

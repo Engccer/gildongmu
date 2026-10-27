@@ -11,6 +11,9 @@
 
 ## 2026-10-27
 
+### 장소 검색은 키가 없으면 가짜 장소 대신 실패한다 (D33)
+`pickPlacesProvider`가 카카오·네이버 키가 하나도 없을 때 `searchPlacesMock`으로 떨어지던 것을 throw(라우트 502)로 바꿨다 — "mock으로 조용히 폴백 금지" 규칙과의 어긋남(위원장 판정: 규칙대로). 데모 데이터는 `PLACES_PROVIDER=mock` 명시 지정으로만 나오고 화면 데모 안내도 그때만 뜬다(`activeProviderName()`은 키가 없으면 `"none"`). 운영은 키가 있어 동작 불변, 실브라우저 접근성 게이트는 더미 키 + fixture라 영향 없음. `env.ts` 머리 주석과 `GOOGLE_PLACES_API_KEY` 주석(웹·iOS 장소 상세)도 고쳤다.
+
 ### 내부 품질 셋: 웹 리듀서 죽은 분기 · 거리 표기 주석 · 기준선 복구 (D37·D32·D38)
 ①웹 `GuideTuning.actionSource`와 `stepActionFor`·`buildDisplayUnits`의 `source` 인자를 지웠다 — walk·car 모두 `"step"`이라 문장 분류 분기에 닿는 프로파일이 없었다(Kit 2026-09-02 정리의 동형, `walk-action.ts`는 서버 `attachStepActions`가 쓰므로 남는다). 표시 계층 테스트(`guide-live-rows`·`-units`)도 서버 투영 `action`으로 돌아 공유 fixture의 `action`이 웹에서도 검사된다(명시한 값은 `walkStepAction` 결과와 대조). ②웹 `format.ts`·Kit `Format.swift`·CLI `dist` 머리 주석이 폐기된 "3km 600m" 나눠쓰기를 현행처럼 말하던 것을 소수 km 서술로 고쳤다(코드 불변). ③기준선 이탈 둘을 고쳤다: `useTtsPlayback` 테스트가 jsdom `Blob`을 Node 22 `Response` 본문으로 넘겨 5건 실패하던 것(바이트 본문으로) · `catalog-lang-drift`가 E70 `/api/route/journey`의 ko 전용 `lang`을 미등록으로 잡던 것(CLI/MCP 소비자 없는 iOS 실험판 전용 라우트로 예외 열거).
 

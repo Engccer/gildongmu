@@ -71,13 +71,13 @@ export function mergePlaces(primary: Place[], secondary: Place[]): Place[] {
  * 1. en 로케일 + TourAPI 키 → tour-api (카카오·네이버 모두 다국어 미지원 —
  *    영문 장소명·주소를 주는 유일한 공식 소스이므로 외국인 시나리오 우선)
  * 2. ko: 카카오+네이버 両키 보유 시 병합(searchPlacesMergedKo) >
- *    kakao-local > naver-local > mock
+ *    kakao-local > naver-local. 키가 하나도 없으면 throw(D33 — 가짜 장소로 대신하지 않는다)
  * - 카카오 우선 이유: 결과 최대 15건(네이버 5건), WGS84 좌표 그대로,
  *   place_url(카카오맵 상세) 제공 — 탐색 UX가 명백히 우위 (docs/RESEARCH 참고)
  * - 네이버 병합 이유: 카카오 미등록 가게 보강 — 커버리지 공백 실측 사례는
  *   searchPlacesMergedKo 주석 참고
  * - PLACES_PROVIDER 환경변수로 강제 지정 가능 (A/B 비교 실험용):
- *   "kakao" | "naver" | "tour" | "mock"
+ *   "kakao" | "naver" | "tour" | "mock" — mock은 **이 명시 지정으로만** 나온다(화면에 데모 안내가 뜬다)
  *
  * 실데이터 호출이 실패하면 mock으로 폴백하지 않고 에러를 그대로 던진다 —
  * 조용한 폴백은 "실데이터처럼 보이는 가짜"를 만들어 디버깅을 방해하기 때문.
@@ -139,7 +139,9 @@ async function pickPlacesProvider(
   }
   if (hasKakaoKey()) return searchPlacesKakaoLocal(params);
   if (hasNaverLocalKeys()) return searchPlacesNaverLocal(params);
-  return searchPlacesMock(params);
+  // 키가 없으면 가짜 장소로 대신하지 않는다(D33, 2026-10-27 위원장 판정) — 실데이터처럼 보이는
+  // 가짜는 금지다. 라우트가 502로 내고, 키 없이 데모가 필요하면 `PLACES_PROVIDER=mock`을 명시한다.
+  throw new Error("장소 검색 키(KAKAO_REST_API_KEY·NAVER_LOCAL_CLIENT_ID/SECRET)가 없습니다");
 }
 
 /**
@@ -283,7 +285,7 @@ export async function enrichEnglishAddresses(
   );
 }
 
-/** 현재 활성화될 provider 이름 — UI 안내용 (ko 로케일 기준 기본 경로) */
+/** 현재 활성화될 provider 이름 — UI 안내용 (ko 로케일 기준 기본 경로). 키가 없으면 "none"(검색은 throw). */
 export function activeProviderName(): PlaceSearchResult["provider"] {
   const forced = process.env.PLACES_PROVIDER;
   if (forced === "kakao") return "kakao-local";
@@ -292,5 +294,5 @@ export function activeProviderName(): PlaceSearchResult["provider"] {
   if (forced === "mock") return "mock";
   if (hasKakaoKey()) return "kakao-local";
   if (hasNaverLocalKeys()) return "naver-local";
-  return "mock";
+  return "none";
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { searchPlaces } from "../providers/places";
+import { activeProviderName, searchPlaces } from "../providers/places";
 import { searchPlacesKakaoLocal } from "../providers/kakao-local";
 import { searchPlacesNaverLocal } from "../providers/naver-local";
 import { hasKakaoKey, hasNaverLocalKeys, hasTourApiKey } from "../env";
@@ -108,5 +108,32 @@ describe("searchPlaces (sort=review — 네이버 단독, spec 2026-08-17 §2·�
     await searchPlaces({ query: "q" });
     expect(kakaoMock).toHaveBeenCalledTimes(2);
     expect(naverMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("searchPlaces (키 없음 — 가짜 장소로 대신하지 않는다, D33)", () => {
+  beforeEach(() => {
+    kakaoMock.mockReset();
+    naverMock.mockReset();
+    hasKakao.mockReturnValue(false);
+    hasNaver.mockReturnValue(false);
+    hasTour.mockReturnValue(false);
+    delete process.env.PLACES_PROVIDER;
+  });
+
+  it("장소 키가 하나도 없으면 mock 결과 대신 throw한다(라우트 502)", async () => {
+    await expect(searchPlaces({ query: "카페" })).rejects.toThrow("장소 검색 키");
+    expect(activeProviderName()).toBe("none");
+  });
+
+  it("PLACES_PROVIDER=mock 명시 지정일 때만 데모 데이터가 나온다", async () => {
+    process.env.PLACES_PROVIDER = "mock";
+    try {
+      const r = await searchPlaces({ query: "카페" });
+      expect(r.provider).toBe("mock");
+      expect(activeProviderName()).toBe("mock");
+    } finally {
+      delete process.env.PLACES_PROVIDER;
+    }
   });
 });

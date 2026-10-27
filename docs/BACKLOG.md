@@ -997,8 +997,6 @@ spec `docs/superpowers/specs/2026-08-29-webmcp-wave2-design.md`(정본). 오전�
 
 ✅ D26 `--provenance` 재판정은 2026-08-25 cli-v0.9.0 실발행으로 종결(서사는 `CHANGELOG.md` 2026-08-25). ✅ **D24·D25·D8은 2026-08-17 단독 정리로 종결**했고 **D10은 같은 날 E20 계측기가 `DiagFileLog`로 이미 통합해 둔 것을 뒤늦게 내렸다**(등재만 낡아 있던 사례 — 만료 점검 방식 1). 서사는 `CHANGELOG.md` 2026-08-17.
 
-- [ ] **D33. 장소 검색은 키가 하나도 없으면 mock 장소를 돌려준다**(🆕 2026-10-05, 10차 doc-audit 관찰): `src/lib/providers/places.ts` `pickPlacesProvider` 끝의 `searchPlacesMock`이 `CLAUDE.md` "mock으로 조용히 폴백 금지"와 어긋난다(운영은 키가 있어 실해 없음, 개발 편의 폴백). 같은 자리의 `src/lib/env.ts` 머리 주석("키가 없으면 mock provider로 폴백")과 `GOOGLE_PLACES_API_KEY` 주석("iOS 실험판 전용 소비", 실제로는 웹·iOS 정식판)도 낡았다. 얹힐 곳: 다음에 `places.ts`·`env.ts`를 고치는 작업(null로 바꿀지, 개발용 예외로 규칙에 적을지 함께 정한다).
-
 - [ ] **D35. Cache Components(`cacheComponents: true`) 도입**(🆕 2026-10-26, Next 16.4.3 업데이트 때 판정): 켜고 빌드하면 ①라우트 설정 비호환 19건(`dynamic = "force-dynamic"` 18곳, `station/meta`의 `revalidate` 1곳)이 난다. 19곳 모두 `request.nextUrl.searchParams`를 읽어 요청 시 실행되므로 줄 삭제로 끝나고, provider의 fetch `next.revalidate`·`unstable_cache`는 그대로 동작해 외부 API 호출 빈도는 바뀌지 않는다. ②그 뒤 `/[locale]` 프리렌더가 클라이언트 컴포넌트의 `Date.now()`에서 멈춘다(`"use client"` 파일 중 `Date.now()`·`new Date()`·`Math.random()` 사용 8개). Suspense 경계나 effect 이동이 필요해 첫 화면 렌더가 바뀌므로 기계적 수정이 아니다. 얹힐 곳: 다음에 `[locale]` 페이지 셸·첫 렌더를 고치는 작업. API 중심 앱이라 이점(정적 셸)이 작아 단독 착수 근거는 약하다.
 
 
@@ -1134,6 +1132,7 @@ spec `docs/superpowers/specs/2026-08-29-webmcp-wave2-design.md`(정본). 오전�
 | E16 | 간략 안내를 개념째 지운다(명칭·비-ko 상세·웹 단독 진입점 제거) | 2026-08-23 전 축 · spec `2026-08-23-non-ko-walk-guidance-design.md`, CHANGELOG 같은 날. en 낭독 판정은 §2 E16 축3 en 낭독 행, 웹 이식 잔여 둘은 B15, 웹 죽은 분기는 D37 |
 | D36 | BACKLOG를 워크스페이스 형식으로 옮김(열린 항목 체크박스 + 머리 `## 착수 순서` 표) | 2026-10-27 세션 backlog-format, CHANGELOG 같은 날 |
 | D38 | 기준선 이탈 둘: `useTtsPlayback` 테스트 5건이 Node 22에서 실패(jsdom `Blob` 본문), `catalog-lang-drift`가 `/api/route/journey`(ko 전용 `lang`)를 잡음 | 2026-10-27 클라우드 세션, CHANGELOG 같은 날 |
+| D33 | 장소 검색은 키가 하나도 없으면 mock 장소를 돌려줬다 | 2026-10-27 클라우드 세션(위원장 판정: 규칙대로 없앤다), CHANGELOG 같은 날 |
 | D37 | 웹 `GuideTuning.actionSource` `"text"` 분기는 죽은 분기였다(Kit 2026-09-02 정리의 웹 동형) | 2026-10-27 클라우드 세션, CHANGELOG 같은 날 |
 | D32 | 거리 표기 함수 머리 주석이 폐기된 "1km 200m" 나눠쓰기 표기를 설명했다 | 2026-10-27 클라우드 세션(`doc-audit` 단독 정리 시한), CHANGELOG 같은 날 |
 | E60 | 장소 탭 검색 결과 로터에서 "여기까지 길찾기"를 주소 복사 바로 다음으로 | 2026-10-02 세션 small-9, CHANGELOG 같은 날. 실기기 판정 대상은 2.2부터 E72 밀기 버튼이 그 순서를 대체해 사라졌다(§2 E72 행) |
