@@ -142,6 +142,7 @@ describe("GET /api/route/journey", () => {
 
   describe("E71 boardKind=aboard · boardDir", () => {
     const ABOARD = { board: "37.5547,126.9707", boardName: "서울역", boardLine: "1호선", boardKind: "aboard", boardDir: "상행" };
+    const without = (key: keyof typeof ABOARD) => Object.fromEntries(Object.entries(ABOARD).filter(([k]) => k !== key));
 
     it("정상 aboard 요청은 stops 없이도 받고 direction·kind를 board에 실어 넘긴다", async () => {
       const res = await GET(req(ABOARD));
@@ -160,8 +161,7 @@ describe("GET /api/route/journey", () => {
     });
 
     it("aboard인데 boardDir가 없으면 400", async () => {
-      const { boardDir: _omit, ...rest } = ABOARD;
-      expect((await GET(req(rest))).status).toBe(400);
+      expect((await GET(req(without("boardDir")))).status).toBe(400);
     });
 
     it("boardDir가 규격 밖이면 400", async () => {
@@ -169,8 +169,7 @@ describe("GET /api/route/journey", () => {
     });
 
     it("boardKind 없이 boardDir만 오면 400", async () => {
-      const { boardKind: _omit, ...rest } = ABOARD;
-      expect((await GET(req(rest))).status).toBe(400);
+      expect((await GET(req(without("boardKind")))).status).toBe(400);
     });
 
     it("boardKind=stop과 boardDir를 함께 보내면 400", async () => {
@@ -178,8 +177,7 @@ describe("GET /api/route/journey", () => {
     });
 
     it("aboard인데 boardLine이 없거나 공백이면 400", async () => {
-      const { boardLine: _omit, ...rest } = ABOARD;
-      expect((await GET(req(rest))).status).toBe(400);
+      expect((await GET(req(without("boardLine")))).status).toBe(400);
       expect((await GET(req({ ...ABOARD, boardLine: " " }))).status).toBe(400);
     });
 
