@@ -84,7 +84,11 @@
 
 ### 4.3 응답
 
-종전 `JourneyResult` 그대로 + `designatedMissing.oppositeDirection?: true`(aboard에서만, additive). aboard 변형엔 `taxiIn`이 없다.
+종전 `JourneyResult` 그대로 + `designatedMissing.oppositeDirection?: true`(aboard에서만, additive). aboard 변형엔 `taxiIn`이 없다. 출발·도착 사이 대중교통 후보 자체가 0건이면 종전처럼 `{ variants: [] }`만 낸다(앱은 둘 다 「지금 탄 열차로 가는 경로를 찾지 못했습니다.」).
+
+### 4.4 레이트 리밋
+
+aboard는 Tmap을 부르지 않아(역 B 없음) 종전 IP 버킷(Tmap 예약 비용으로 찬다)이 요청을 세지 못한다. 그래서 aboard 요청은 경로 조회 전에 IP 버킷에 1칸을 기록한다(`chargeJourneyIp`, Tmap 일 상한은 그대로). ODsay는 호출 수가 곧 비용이라 aboard도 종전과 같은 IP당 상한 아래에 둔다.
 
 ## 5. iOS 길찾기 화면
 
@@ -171,7 +175,7 @@ R11: 최근 경로 저장 자리에서 aboard 조회를 건너뛴다(소스 가�
 
 ## 9. 첫 판 밖
 
-- 버스에서 시작(정류소 실시간·차량 식별 계약이 다르다), 실시간 없는 지하철·철도, 급행에 맞는 경로 찾기(판정 ④ 나), 웹·안드로이드·en, 최근 경로 저장.
+- 버스에서 시작(정류소 실시간·차량 식별 계약이 다르다), 역 B가 정류장인 aboard의 지하철만 후보 보강(종전 `allStations` 규칙 그대로라 전체 후보에서만 찾는다), 실시간 없는 지하철·철도, 급행에 맞는 경로 찾기(판정 ④ 나), 웹·안드로이드·en, 최근 경로 저장.
 
 ## 10. 구현 순서와 소유 파일
 
