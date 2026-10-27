@@ -12,7 +12,7 @@
 ## 2026-10-27
 
 ### 지금 탄 열차에서 여정 시작 (E71, iOS 실험판)
-길찾기 출발지 검색 화면 맨 위 「지금 탄 열차에서 출발」로 지금 서 있거나 다음에 설 역 → (필요하면 노선) → 방면(서울 실시간 도착의 `updnLine` 묶음)을 고르면, 그 역에서 그 방향 열차로 가는 경로만 조회한다(서버 옵트인 `boardKind=aboard`·`boardDir`, 방향은 `serviceWayCode`로 판정, 반대 방향이면 그렇게 말한다, 추천 대체 없음, 미지정 응답 불변). 안내는 대기 문맥 없이 시작해 같은 방면 열차만 고르는 [이미 탔어요] 둘째 단계로 바로 열린다. 최근 경로에 저장하지 않는다. 실호출 게이트 `scripts/verify-journey-aboard.mjs` 3표본 PASS. spec `docs/superpowers/specs/2026-10-27-e71-riding-start-design.md`, 계획 `docs/superpowers/plans/2026-10-27-e71-riding-start-impl-plan.md`.
+길찾기 출발지 검색 화면의 「지금 탄 열차에서 출발」(「현재 위치 사용」 다음 줄)로 지금 서 있거나 다음에 설 역 → (필요하면 노선) → 방면(서울 실시간 도착의 `updnLine` 묶음)을 고르면, 그 역에서 그 방향 열차로 가는 경로만 조회한다(서버 옵트인 `boardKind=aboard`·`boardDir`, 방향은 `serviceWayCode`로 판정, 반대 방향이면 그렇게 말한다, 추천 대체 없음, 미지정 응답 불변). 안내는 대기 문맥 없이 시작해 같은 방면 열차만 고르는 [이미 탔어요] 둘째 단계로 바로 열린다. 최근 경로에 저장하지 않는다. 실호출 게이트 `scripts/verify-journey-aboard.mjs` 3표본 PASS. spec `docs/superpowers/specs/2026-10-27-e71-riding-start-design.md`, 계획 `docs/superpowers/plans/2026-10-27-e71-riding-start-impl-plan.md`.
 
 ### 안내 시트 경로 새로고침 · 「지금 여기는 어디?」 · 제목 행 정식판 (E75·E74)
 iOS 도보·자동차 안내 시트 제목 오른쪽(접기 왼쪽)에 「경로 새로고침」 아이콘 버튼을 두고(종전 실험판 「현재 경로와 다른 길로 가기」, 자동 재조회 예산 밖), 목록 안 「경로 다시 조회」(E69)를 지웠다. 「진행 상황」과 「주변 확인」은 「지금 여기는 어디?」 창 하나로 합쳐 진행 뒤에 **지금 위치** 주변을 잇는다(도착 화면·대중교통 시트는 그대로). E74 제목 행 밀기 동작은 플래그를 지워 세 시트 모두 정식판으로, 종전 팝업 메뉴·경유지 두 행·`ios.guide.waypointChange`를 함께 지웠다(안드로이드가 쓰는 키는 `android-extra`로). spec `docs/superpowers/specs/2026-10-27-e75-guide-sheet-refresh-design.md`.

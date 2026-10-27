@@ -300,6 +300,7 @@ final class DirectionsModel {
         aboardDirectionsState = .idle
         aboardArrivals = []
         from = .current
+        clearResults()
     }
 
     private func loadAboardDirections() {

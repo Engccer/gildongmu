@@ -375,6 +375,7 @@ final class TransitGuideModel {
             boardOverrideIndex = 0
             transitGuideLog("aboard start direction=\(aboard.direction)")
         } else {
+            if let aboard { transitGuideLog("aboard start skipped direction=\(aboard.direction) untrackable first leg") }
             aboardDirection = nil
             aboardStep = nil
             boardOverrideIndex = nil
