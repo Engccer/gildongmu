@@ -232,6 +232,13 @@ export function createJourneyTmapBudget() {
       rollDay(now);
       return used >= JOURNEY_TMAP_DAILY_CAP;
     },
+    /**
+     * 요청 단위로 IP 칸 하나를 쓴다(일 상한은 올리지 않는다). 지금 탄 열차(aboard)는 Tmap을 0회 부르므로 `reserve`가 IP를
+     * 세지 못하는데, 유료 ODsay는 그대로 1~2회 부른다 — 요청 하나를 한 칸으로 세어 상한이 사라지지 않게 한다.
+     */
+    chargeIp(ip: string, now: number): boolean {
+      return reserveCalls(ipStore, ip, now, 1, JOURNEY_TMAP_IP_LIMIT, WINDOW_MS);
+    },
     dailyCount(now: number): number {
       rollDay(now);
       return used;
@@ -248,6 +255,11 @@ const journeyTmapBudget = createJourneyTmapBudget();
 /** /api/route/journey 전용 Tmap 호출 예약(팬아웃 전 정확한 비용 한 번). */
 export function reserveJourneyTmap(ip: string, now: number, cost: number): JourneyReserveResult {
   return journeyTmapBudget.reserve(ip, now, cost);
+}
+
+/** aboard 요청의 IP 칸 하나 예약(요청 단위, 일 상한 불변). 칸이 없으면 false. */
+export function chargeJourneyIp(ip: string, now: number): boolean {
+  return journeyTmapBudget.chargeIp(ip, now);
 }
 
 /** 이 IP의 여정 Tmap 버킷이 이미 다 찼는가(무기록). 차 있으면 라우트가 ODsay·카카오 호출 전에 429로 거절한다. */

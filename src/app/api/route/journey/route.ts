@@ -3,7 +3,7 @@ import { z } from "zod";
 import { hasKakaoKey, hasOdsayKey, hasTmapKey } from "@/lib/env";
 import { isInKorea } from "@/lib/coverage";
 import { coordSchema } from "@/lib/route-coord-schema";
-import { clientIpFromHeaders, journeyIpExhausted, journeyTmapExhausted, reserveJourneyTmap } from "@/lib/rate-limit";
+import { chargeJourneyIp, clientIpFromHeaders, journeyIpExhausted, journeyTmapExhausted, reserveJourneyTmap } from "@/lib/rate-limit";
 import { getJourney, journeyDeps } from "@/lib/journey/assemble";
 
 /**
@@ -53,7 +53,8 @@ const querySchema = z
   .refine((q) => q.board || q.alight, "갈아탈 역(board·alight) 중 하나는 필요합니다")
   .refine((q) => !q.board === !q.boardName && !q.alight === !q.alightName, "역 좌표와 역 이름은 함께 보내야 합니다")
   .refine((q) => !(q.boardKind === "stop" || q.alightKind) || q.stops, "정류장 지정(boardKind·alightKind)은 stops=1과 함께 보내야 합니다")
-  .refine((q) => (!q.boardKind || q.board) && (!q.alightKind || q.alight), "정류장 종류는 그 쪽 좌표·이름이 있을 때만 보낼 수 있습니다")
+  .refine((q) => q.boardKind !== "aboard" || q.board, "지금 탄 열차 출발(boardKind=aboard)은 board·boardName과 함께 보내야 합니다")
+  .refine((q) => (q.boardKind !== "stop" || q.board) && (!q.alightKind || q.alight), "정류장 종류는 그 쪽 좌표·이름이 있을 때만 보낼 수 있습니다")
   .refine((q) => (q.boardKind === "aboard") === (q.boardDir !== null), "boardDir는 boardKind=aboard일 때만, 그때는 반드시 보내야 합니다")
   .refine((q) => q.boardKind !== "aboard" || q.boardLine, "지금 탄 열차(boardKind=aboard)는 boardLine이 필요합니다");
 
@@ -95,6 +96,10 @@ export async function GET(request: NextRequest) {
   const ip = clientIpFromHeaders(request.headers);
   // 이 IP의 버킷이 이미 찼으면 유료 ODsay를 부르기 전에 거절한다(남은 칸이 이번 비용보다 모자란 경우는 예약이 가른다).
   if (journeyIpExhausted(ip, Date.now())) {
+    return NextResponse.json({ error: "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요." }, { status: 429 });
+  }
+  // aboard는 Tmap을 0회 부르는 경우가 있어 Tmap 예약이 IP를 세지 못한다 — 유료 ODsay 상한이 사라지지 않게 요청 단위로 한 칸을 쓴다.
+  if (q.boardKind === "aboard" && !chargeJourneyIp(ip, Date.now())) {
     return NextResponse.json({ error: "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요." }, { status: 429 });
   }
   try {

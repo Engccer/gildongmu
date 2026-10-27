@@ -3,12 +3,12 @@ import { describe, expect, it } from "vitest";
 import { normalizeOdsayRoutes } from "../../providers/odsay";
 import type { JourneyStationInput, TransitLeg, TransitRoute } from "../../types";
 import {
+  boardOppositeOnly,
   findDesignated,
   firstVehicle,
   lastVehicle,
   legEndStop,
   matchesAlight,
-  boardOppositeOnly,
   matchesBoard,
   missingSide,
   sideMatch,

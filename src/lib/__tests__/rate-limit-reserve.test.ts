@@ -2,6 +2,8 @@ import { describe, it, expect } from "vitest";
 import {
   reserveCalls,
   createJourneyTmapBudget,
+  chargeJourneyIp,
+  journeyIpExhausted,
   JOURNEY_TMAP_IP_LIMIT,
   JOURNEY_TMAP_DAILY_CAP,
   type RateLimitEntry,
@@ -74,6 +76,35 @@ describe("여정 Tmap 예산 — IP 버킷 + 인스턴스 일 상한(spec §4.5-
     budget.reserve("a", 0, 16);
     expect(budget.reserve("a", 1, 1)).toBe("rateLimited");
     expect(budget.dailyCount(1)).toBe(16);
+  });
+
+  it("chargeIp는 IP 칸을 1 올리고 일 카운터는 그대로이며, 칸이 차면 false(E71 aboard)", () => {
+    const budget = createJourneyTmapBudget();
+    expect(budget.chargeIp("a", 0)).toBe(true);
+    expect(budget.ipCount("a", 1)).toBe(1);
+    expect(budget.dailyCount(1)).toBe(0);
+    for (let i = 1; i < JOURNEY_TMAP_IP_LIMIT; i++) expect(budget.chargeIp("a", 1)).toBe(true);
+    expect(budget.chargeIp("a", 2)).toBe(false);
+    expect(budget.ipCount("a", 2)).toBe(JOURNEY_TMAP_IP_LIMIT);
+    // 다른 IP는 따로 세고, 창이 지나면 새로 시작한다.
+    expect(budget.chargeIp("b", 2)).toBe(true);
+    expect(budget.chargeIp("a", WINDOW)).toBe(true);
+  });
+
+  it("chargeIp와 reserve는 같은 IP 버킷을 쓴다", () => {
+    const budget = createJourneyTmapBudget();
+    budget.reserve("a", 0, 15);
+    expect(budget.chargeIp("a", 1)).toBe(true);
+    expect(budget.chargeIp("a", 2)).toBe(false);
+    expect(budget.reserve("a", 3, 1)).toBe("rateLimited");
+  });
+
+  it("모듈 래퍼: aboard 요청을 IP 상한만큼 반복하면 다음 요청은 거절되고 journeyIpExhausted가 참이다", () => {
+    const ip = "chargeJourneyIp-test-ip";
+    const now = Date.UTC(2026, 9, 27, 3, 0, 0);
+    for (let i = 0; i < JOURNEY_TMAP_IP_LIMIT; i++) expect(chargeJourneyIp(ip, now)).toBe(true);
+    expect(journeyIpExhausted(ip, now)).toBe(true);
+    expect(chargeJourneyIp(ip, now)).toBe(false);
   });
 
   it("KST 자정(UTC 15:00)에 일 카운터가 새로 시작한다", () => {

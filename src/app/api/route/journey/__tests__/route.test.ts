@@ -11,6 +11,7 @@ vi.mock("@/lib/rate-limit", () => ({
   reserveJourneyTmap: vi.fn(() => "ok"),
   journeyTmapExhausted: vi.fn(() => false),
   journeyIpExhausted: vi.fn(() => false),
+  chargeJourneyIp: vi.fn(() => true),
 }));
 vi.mock("@/lib/journey/assemble", () => ({
   journeyDeps: {},
@@ -20,7 +21,7 @@ vi.mock("@/lib/journey/assemble", () => ({
 import { GET } from "../route";
 import { hasTmapKey } from "@/lib/env";
 import { getJourney } from "@/lib/journey/assemble";
-import { journeyIpExhausted, journeyTmapExhausted } from "@/lib/rate-limit";
+import { chargeJourneyIp, journeyIpExhausted, journeyTmapExhausted } from "@/lib/rate-limit";
 
 const BASE = { origin: "37.5559,126.9723", dest: "37.5716,126.9764" };
 
@@ -184,6 +185,28 @@ describe("GET /api/route/journey", () => {
 
     it("그 쪽 좌표가 없는 boardKind=aboard는 400", async () => {
       expect((await GET(req({ alight: "37.5716,126.9764", alightName: "광화문역", boardKind: "aboard", boardDir: "상행", boardLine: "1호선" }))).status).toBe(400);
+    });
+
+    it("aboard는 조회 전에 IP 칸을 쓰고, 칸이 없으면 429이며 조회하지 않는다", async () => {
+      await GET(req(ABOARD));
+      expect(chargeJourneyIp).toHaveBeenCalledWith("1.2.3.4", expect.any(Number));
+      vi.mocked(getJourney).mockClear();
+      vi.mocked(chargeJourneyIp).mockReturnValueOnce(false);
+      const res = await GET(req(ABOARD));
+      expect(res.status).toBe(429);
+      expect(getJourney).not.toHaveBeenCalled();
+    });
+
+    it("aboard가 아닌 요청은 요청 단위 IP 칸을 쓰지 않는다(종전 계수 그대로)", async () => {
+      vi.mocked(chargeJourneyIp).mockClear();
+      await GET(req({ board: "37.5574,126.9561", boardName: "아현역" }));
+      expect(chargeJourneyIp).not.toHaveBeenCalled();
+    });
+
+    it("aboard인데 board가 없으면 aboard에 맞는 400 문장", async () => {
+      const res = await GET(req({ alight: "37.5716,126.9764", alightName: "광화문역", boardKind: "aboard", boardDir: "상행", boardLine: "1호선" }));
+      expect(res.status).toBe(400);
+      expect((await res.json()).error).toContain("boardKind=aboard");
     });
 
     it("alightKind=aboard는 받지 않는다(400)", async () => {
