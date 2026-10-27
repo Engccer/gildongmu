@@ -2,7 +2,7 @@
 //
 // 서버 프로세스의 전역 fetch를 Next가 감싸기 **전에** 바꿔 둔다. Next의 데이터 캐시(`next.revalidate`·
 // `unstable_cache`)는 이 대역 위에 얹히므로, 여기까지 내려온 호출 수가 곧 "실제 upstream 호출 수"다.
-// 실호출 0: localhost 밖 요청은 전부 여기서 끝난다(카카오만 정상 응답, 나머지는 503 — 호출 수만 센다).
+// 실호출 0: localhost 밖 요청은 전부 여기서 끝난다(카카오·지하철은 정상 응답, 나머지는 503).
 //
 // 집계는 `UPSTREAM_COUNT_FILE`에 호스트별 JSON으로 덮어쓴다(요청마다 동기 기록 — 서버를 죽여도 남는다).
 
@@ -38,6 +38,15 @@ globalThis.fetch = async (input, init) => {
   if (countFile) writeFileSync(countFile, JSON.stringify(counts));
   if (url.hostname === "dapi.kakao.com") {
     return new Response(JSON.stringify(KAKAO_DOCS), { status: 200, headers: { "content-type": "application/json" } });
+  }
+  if (url.hostname === "swopenapi.seoul.go.kr") {
+    return Response.json({
+      errorMessage: { code: "INFO-000", total: 1 },
+      realtimeArrivalList: [{
+        subwayId: "1005", updnLine: "상행", trainLineNm: "방화행", bstatnNm: "방화",
+        arvlMsg2: `${counts[url.hostname]}분 후`, barvlDt: "60", btrainNo: "measure-1",
+      }],
+    });
   }
   return new Response(JSON.stringify({ error: "측정 대역(D35)" }), { status: 503, headers: { "content-type": "application/json" } });
 };

@@ -138,10 +138,21 @@ async function probeCache(origin, countFile) {
   for (const p of CACHE_PROBES) {
     const before = existsSync(countFile) ? JSON.parse(readFileSync(countFile, "utf8"))[p.host] ?? 0 : 0;
     const statuses = [];
-    for (let i = 0; i < REPEAT; i++) statuses.push((await fetch(origin + p.path)).status);
+    const values = [];
+    for (let i = 0; i < REPEAT; i++) {
+      const response = await fetch(origin + p.path);
+      statuses.push(response.status);
+      const body = await response.json();
+      values.push(p.host === "swopenapi.seoul.go.kr"
+        ? body.arrivals?.arrivals?.[0]?.message ?? null
+        : body.places?.[0]?.id ?? null);
+    }
     await new Promise((r) => setTimeout(r, 200));
     const after = existsSync(countFile) ? JSON.parse(readFileSync(countFile, "utf8"))[p.host] ?? 0 : 0;
-    out.push({ name: p.name, requests: REPEAT, upstreamCalls: after - before, expect: p.expect, ok: after - before === p.expect, statuses });
+    const valid = statuses.every((s) => s === 200) && values.every((v) => typeof v === "string" && v.length > 0);
+    const expectedValues = p.host === "swopenapi.seoul.go.kr" ? REPEAT : 1;
+    const ok = after - before === p.expect && valid && new Set(values).size === expectedValues;
+    out.push({ name: p.name, requests: REPEAT, upstreamCalls: after - before, expect: p.expect, ok, statuses, values });
   }
   return out;
 }
