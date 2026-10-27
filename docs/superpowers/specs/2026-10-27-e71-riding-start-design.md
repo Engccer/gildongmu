@@ -53,12 +53,13 @@
 | R1 | **Kit 대중교통 상태 머신(`TransitGuide.swift` 전이)과 웹·`:kit` 미러, 공유 fixture를 바꾸지 않는다.** 시작은 `initTransitGuide`(waiting) + 앱 모델이 A34 둘째 단계를 세우는 것이고, riding 진입은 기존 입력 `boardAboard`·`board(근사)`뿐이다. E71이 기대는 전이는 공유 fixture `transit-guide-scenarios.json`의 기존 시나리오가 세 벌에서 이미 잠근다(「이미 탑승 식별 잠금(A34 ②): waiting → boardAboard → riding(declared)」, 「비관측 잠금(지하철 이미 탑승, A34 ①)」, 「이미 탑승 식별 잠금 가드」) | 미관측을 탑승으로 추론하지 않는다는 N3 원칙과 A34 판정(사용자가 고른 열차만 식별 잠금)을 그대로 지킨다. 새 시작 상태(`initTransitGuideRiding` 류)를 만들면 열차를 누가 정하는가를 다시 판정해야 하고, 그 판정은 A34가 이미 했다. 이미 잠긴 전이에 시나리오를 덧대지 않는다 |
 | R2 | 방면은 **그 역의 실시간 도착 목록**에서 만든다(Kit 순수 함수 `journeyAboardDirections`): 노선이 같은 도착 항목을 `updnLine`으로 묶고, 묶음마다 이름은 `trainLineNm`의 「 - 」 뒤 조각(「구로방면」), 없으면 `updnLine` 원문, 종착 이름(중복 제거, 처음 본 순서)을 붙인다. `updnLine`이 빈 항목은 버린다 | 사용자는 열차 안에서 종착(「인천행」)이나 다음 역 방면을 듣는다. 방향 키 `updnLine`은 서버 방향 판정(R4)과 같은 축이다 |
 | R3 | 방면 목록의 3-state: 불러오는 중 / 0묶음(「지금 이 역에 오는 열차가 조회되지 않습니다.」) / 미커버(null, 「이 역은 실시간 열차 정보가 없어 지금 탄 열차에서 출발할 수 없습니다.」) / 조회 실패(「열차 정보를 불러오지 못했습니다.」 + [다시 시도]). 미커버·0묶음이면 조회 버튼은 지금 탄 열차 출발을 조회하지 않는다 | 3-state 불변식. 실시간이 없는 역은 안내 화면의 열차 식별도 성립하지 않는다 |
-| R4 | 서버 지정 판정의 aboard 술어 = 첫 탈것이 지하철 ∧ 기존 같은 역 판정(`isSameStation`: 이름 키 · 500m · 노선 힌트) ∧ `directionMatchesWayCode(boardDir, leg.serviceWayCode) === true`. `null`(모르는 표기·`wayCode` 없음)은 불일치 | 반대 방향 안내가 경로 없음보다 나쁘다(오필터가 과노출보다 나쁘다는 기존 대응표 원칙의 반대 방향 적용: 여기선 틀린 경로가 곧 사고) |
+| R4 | 서버 지정 판정의 aboard 술어 = 첫 탈것이 지하철 ∧ 기존 같은 역 판정(`isSameStation`: 이름 키 · 500m · 노선 힌트 — aboard는 노선 힌트가 필수라 노선 비교가 언제나 걸린다) ∧ `directionMatchesWayCode(boardDir, leg.serviceWayCode) === true`. `null`(모르는 표기·`wayCode` 없음)은 불일치 | 반대 방향 안내가 경로 없음보다 나쁘다(오필터가 과노출보다 나쁘다는 기존 대응표 원칙의 반대 방향 적용: 여기선 틀린 경로가 곧 사고) |
 | R5 | aboard면 **추천 경로(`selectTransitRoutes` 1순위)를 변형으로 내지 않는다.** 역 B도 정했고 둘 다 맞는 경로가 없으면 aboard만 맞는 경로를 `kind: "recommended"` + `designatedMissing.side: "alight"`로 낸다(E70 판정 14 문장 「{B}역에서 내리는 경로를 찾지 못했습니다.」 그대로 — 여전히 그 열차를 탄다). aboard가 안 맞으면 `variants: []` + `designatedMissing: { side: "board", oppositeDirection?: true }`(같은 역·노선 후보가 방향만 다를 때) | 사용자는 이미 열차 안이다. 다른 곳에서 타는 경로는 쓸 수 없다 |
 | R6 | aboard면 택시 앞 구간이 없다(Tmap 0회), 승차 쪽 도보는 자른다(D3 `trimBoard`) | 출발이 열차 안이다 |
 | R7 | 조회 출발 좌표는 고른 역 좌표(`origin`도 같은 값을 보낸다) | 지하·열차 안 GPS는 부정확하다. `origin`은 aboard에서 택시 앞 구간이 없어 쓰이지 않는다 |
-| R8 | 안내 시작: `JourneyPlan.aboard`가 참이면 `startJourneyStage(.transit)` → `beginTransit(…, aboard: true)` → `TransitGuideModel.start(…, aboard: true)`. 모델은 세션 초기화 뒤 첫 leg가 지하철 추적 가능(`trackMode == .subway`, `viaStops` 비어 있지 않음)이면 `aboardStep = .pickVehicle`·`boardOverrideIndex = 0`으로 둘째 단계를 세우고 즉폴한다. 시작 통지는 목적지 문장(E40 `transitGuide.startedAt`)만이고 대기 문맥(「{역}에서 {노선} 탑승.」)을 내지 않는다. 추적 불가 leg면 종전 대기 시작 + [이미 탔어요](방어, R3 때문에 도달하지 않는다) | A34 둘째 단계와 같은 화면·같은 판정. 대기 문맥은 승차 중인 사람에게 거짓이다 |
+| R8 | 안내 시작: `JourneyPlan.aboard`가 참이면 `startJourneyStage(.transit)` → `beginTransit(…, aboard: plan.aboard)` → `TransitGuideModel.start(…, aboard:)`(`TransitAboardStart?` = 고른 방향 `updnLine` 원문, nil = 종전 대기 시작). 모델은 세션 초기화 뒤 첫 leg가 지하철 추적 가능(`trackMode == .subway`, `viaStops` 비어 있지 않음)이면 `aboardStep = .pickVehicle`·`boardOverrideIndex = 0`으로 둘째 단계를 세우고 즉폴한다. 시작 통지는 목적지 문장(E40 `transitGuide.startedAt`)만이고 대기 문맥(「{역}에서 {노선} 탑승.」)을 내지 않는다. 추적 불가 leg면 종전 대기 시작 + [이미 탔어요](방어, R3 때문에 도달하지 않는다) | A34 둘째 단계와 같은 화면·같은 판정. 대기 문맥은 승차 중인 사람에게 거짓이다 |
 | R9 | 시트 첫 착지는 aboard 시작이면 `.waitingLabel`(「타고 계신 차량을 선택하세요」), 아니면 종전 `.status` | 첫 행동이 열차 고르기다. 착지 허용 집합에 이미 있는 대상이라 가드 변경이 작다(E75 인계: 제목 행에는 착지 바인딩이 없고 기본은 상태 문장 — aboard 시작만 질문 라벨) |
+| R14 | **aboard 시작의 열차 목록은 고른 방향에 잠긴다**(설계 리뷰 high). 모델은 그 세션 동안 도착 항목 중 `direction`이 고른 `updnLine`과 같은 것만 후보 분류(`classifyTransitBoardingCandidates`)에 넘긴다(분류의 "방향 일치 0이면 전체 복원"이 같은 방향 안에서만 일어나게). `boardAboard(item:)`도 같은 조건을 다시 확인하고 다르면 무시한다. 맞는 열차가 없으면 목록은 비고 「열차 정보 없이 계속」(급행 노선이면 「급행인가요?」)이 남는다 — 반대 방향을 되살리지 않는다. 판정은 Kit 순수 함수 `journeyAboardTrainItems(items:direction:)` 하나(`Journey.swift`) | 사용자가 방면을 이미 밝혔고 서버가 그 방향 경로만 냈다. 조회와 시작 사이에 열차가 바뀌어도 반대 방향 열차로 riding 식별 잠금이 서면 하차 안내가 엉뚱한 역을 센다. 기존 A34(방면을 밝히지 않은 세션 안 흐름)의 복원 동작은 그대로 둔다 |
 | R10 | `aboard` 인자는 기본값 없이 `beginTransit`·`TransitGuideModel.start`에 더하고 기존 호출 자리는 `false`를 명시한다 | 안전 인자 기본값 금지 규율 |
 | R11 | 지금 탄 열차 출발 여정은 최근 경로에 저장하지 않는다 | 열차 위치는 그때뿐이다 |
 | R12 | 출발지가 지금 탄 열차면 「바꾸기」·경유지·「자동차에서 내리는 역 추가」를 숨기고 「자동차를 탈 역 추가」 일반 버튼만 둔다. 출발지 칸을 다시 눌러 다른 출발지를 고르면 지금 탄 열차는 사라진다 | 경유지·역 A는 열차 출발과 배타(D14와 같은 이유) |
@@ -68,7 +69,7 @@
 
 ### 4.1 요청
 
-- `boardKind=aboard`(새 값) + `boardDir` ∈ {`상행`, `하행`, `내선`, `외선`}. `board`·`boardName`이 함께 와야 하고 `boardLine`은 선택(역 칸과 같다). `boardDir`은 `boardKind=aboard`일 때만 받고 그때는 필수(400). `stops=1`을 요구하지 않는다(종전 refine은 `boardKind=stop`에만 건다).
+- `boardKind=aboard`(새 값) + `boardDir` ∈ {`상행`, `하행`, `내선`, `외선`}. `board`·`boardName`·`boardLine`이 함께 와야 한다(aboard만 `boardLine` 필수 — 없으면 `isSameStation`이 노선 비교를 건너뛰어 환승역의 다른 노선이 통과한다). `boardDir`은 `boardKind=aboard`일 때만 받고 그때는 필수(400). `stops=1`을 요구하지 않는다(종전 refine은 `boardKind=stop`에만 건다).
 - 타입: `JourneyStationInput.kind?: "stop" | "aboard"`, `direction?: "상행" | "하행" | "내선" | "외선"`(aboard에서만). Kit `JourneyStationQuery.kind`에 `.aboard`, `direction` 필드.
 - 미지정 요청은 종전과 바이트 동일(파이프라인 분기가 `kind === "aboard"`에서만 갈린다).
 
@@ -116,6 +117,7 @@ R11: 최근 경로 저장 자리에서 aboard 조회를 건너뛴다(소스 가�
 - `startJourneyStage(.transit)`이 `beginTransit(route:…, aboard: plan.aboard)`를 부른다. `startTransit`은 `aboard: false`.
 - `TransitGuideModel.start(…, aboard:)`·`beginSession(…, aboard:)` — R8. `startAfterPrewalk`는 `aboard: false`(승차 전 도보·환승 도보 뒤는 언제나 대기).
 - 시트 첫 착지 R9: 시트가 처음 뜰 때 `model.aboardStep == .pickVehicle`이면 `.waitingLabel`.
+- 열차 목록은 R14로 고른 방향에 잠긴다(세션 상태 `aboardDirection`, [다른 역 선택] 뒤에도 유지, `boardAboard`·확정 도착·안내 종료에서 해제).
 - 그 뒤는 전부 기존: 열차 고르기 → `boardAboard` → riding(식별, 하차역 목록 폴, 사다리·도착), 「열차 정보 없이 계속」 → (급행 노선이면 「급행인가요?」) → riding(비관측, 폴 0, 수동 [다음 구간]), [다른 역 선택], 하차 뒤 여정 다음 단계(역 B 지정이면 `rideCompleted` → 출구 도보·자동차, 아니면 말미 도보 인계).
 - 봉인: `startJourney`의 호출 자리는 종전 하나(길찾기 탭, 실험판 조건 안)이고 aboard는 그 안의 계획 값이다. 세션 시작 호출 전수(`guidance-gate-drift.test.ts`)는 바뀌지 않아야 한다 — 바뀌면 그 가드가 잡는다. `beginTransit`·`TransitGuideModel.start` 시그니처 변경에 맞춰 가드 문자열만 갱신한다.
 
@@ -148,10 +150,10 @@ R11: 최근 경로 저장 자리에서 aboard 조회를 건너뛴다(소스 가�
 
 ### 8.1 단위·계약
 
-- 서버 순수: aboard 술어(같은 역·노선·방향 맞음 / 방향 반대 / 노선 다름 / 이름 같고 500m 밖 / `wayCode` 없음 → 불일치), 추천 미제공, 역 B 동시 지정의 `alight` 폴백, `oppositeDirection` 조건, 택시 앞 구간 없음(Tmap 비용), 미지정 요청 바이트 동일, 라우트 파라미터 검증(400 셋: `boardDir` 누락, `boardDir` 미지 값, `boardDir` 단독).
-- Kit: `journeyAboardDirections`(노선 거르기·묶기·이름 추출·종착 중복·빈 `updnLine`), `JourneyStationQuery` aboard 질의 문자열, `JourneyResult` `oppositeDirection` 디코딩.
+- 서버 순수: aboard 술어(같은 역·노선·방향 맞음 / 방향 반대 / 노선 다름 / 이름 같고 500m 밖 / `wayCode` 없음 → 불일치), 추천 미제공, 역 B 동시 지정의 `alight` 폴백, `oppositeDirection` 조건, 택시 앞 구간 없음(Tmap 비용), 미지정 요청 바이트 동일, 라우트 파라미터 검증(400 넷: `boardDir` 누락, `boardDir` 미지 값, `boardDir` 단독, aboard인데 `boardLine` 누락), 환승역 다른 노선 배제(같은 이름·같은 좌표의 다른 노선 leg는 불일치).
+- Kit: `journeyAboardDirections`(노선 거르기·묶기·이름 추출·종착 중복·빈 `updnLine`), `journeyAboardTrainItems`(같은 방향만, 반대 방향만 남으면 빈 배열 — 리뷰 high의 결합 재현: 반대 방향 1개만 남은 목록이 분류 뒤에도 선택 가능 후보 0), `JourneyStationQuery` aboard 질의 문자열, `JourneyResult` `oppositeDirection` 디코딩.
 - 대중교통 전이: 변경 없음(R1). Kit `swift test`·웹 `test:run`의 기존 공유 fixture 레인이 그대로 초록이어야 한다.
-- 소스 가드: 출발지 시트 행·aboard 시작 경로의 실험판 조건, `TransitGuideModel.start`의 `aboard` 기본값 없음과 시작 통지 분기, 시트 첫 착지 분기(`transit-landing-guard.test.ts`), 최근 경로 미저장, `guidance-gate-drift.test.ts` 진입점 수 불변.
+- 소스 가드: 출발지 시트 행·aboard 시작 경로의 실험판 조건, `TransitGuideModel.start`의 `aboard` 기본값 없음과 시작 통지 분기, 시트 첫 착지 분기(`transit-landing-guard.test.ts`), aboard 방향 잠금의 두 자리(후보 분류 입력·`boardAboard` 재확인), 최근 경로 미저장, `guidance-gate-drift.test.ts` 진입점 수 불변.
 
 ### 8.2 실호출 게이트 (머지 조건)
 
@@ -183,4 +185,9 @@ R11: 최근 경로 저장 자리에서 aboard 조회를 건너뛴다(소스 가�
 
 ## 11. 설계 리뷰
 
-(codex adversarial-review 결과를 여기에 적는다.)
+codex `adversarial-review`(2026-10-27, 기준 `cb467a03`, 원문 `~/gildongmu-wt/e71-riding-start-reports/review-design-202610272147.md`) 판정 needs-attention, 지적 2건 모두 수용:
+
+| 심각도 | 지적 | 처리 |
+|---|---|---|
+| high | A34 후보 분류가 방향 일치 0이면 전체를 복원하고 `boardAboard`가 방향을 재확인하지 않아, 조회와 시작 사이 반대 방향 열차만 남으면 그 열차로 riding 식별 잠금이 선다(웹 미러로 재현) | R14 신설: aboard 시작 세션은 고른 `updnLine`과 같은 항목만 분류에 넘기고 `boardAboard`에서 재확인, 맞는 열차가 없으면 비관측 진입만. 기존 A34 복원 동작은 방면을 밝히지 않은 흐름이라 유지 |
+| medium | `boardLine`이 선택이면 `isSameStation`이 노선 비교를 건너뛰어 환승역 다른 노선이 aboard로 통과한다(서울역 1·4호선 재현) | §4.1: aboard는 `boardLine` 필수(400), 환승역 다른 노선 배제 테스트 |
