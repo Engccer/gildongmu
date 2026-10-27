@@ -365,11 +365,12 @@ final class TransitGuideModel {
         waitingLive = []
         waitingDeparted = []
         waitingReason = nil
-        let firstLeg = guideRoute.legs[state?.legIndex ?? 0]
-        let aboardStarted = aboard != nil && startLeg == 0 && firstLeg.trackMode == .subway
-            && !firstLeg.viaStops.isEmpty
+        let first = guideRoute.legs[state?.legIndex ?? 0]
+        let aboardStarted = aboard != nil && startLeg == 0 && first.trackMode == .subway && !first.viaStops.isEmpty
+        aboardStartLandingPending = false
         if aboardStarted, let aboard {
             aboardDirection = aboard.direction
+            aboardStartLandingPending = true
             aboardStep = .pickVehicle
             boardOverrideIndex = 0
             transitGuideLog("aboard start direction=\(aboard.direction)")
@@ -383,7 +384,6 @@ final class TransitGuideModel {
         // 하지 않아 톤이 전부 `.ambient`였고 — `.ambient`는 정의상 백그라운드 무음이다.
         tones.beginSession()
         playTone(.start, allowedInBackground: false)
-        let first = guideRoute.legs[state?.legIndex ?? 0]
         // E40: 시작 통지가 목적지를 말한다 — 시트 진입 착지는 상태 문장이라(E38) 목적지를 만날 채널이 없다.
         // 환승 도보 뒤 재개(E73 spec D5)는 이미 돌던 안내라 「안내를 시작합니다. 탑승 구간 N개.」를 다시 말하지 않는다 — 걷기 전
         // `legAdvanced`가 냈을 대기 문맥(도보를 뺀 것)만 낸다.
@@ -453,6 +453,7 @@ final class TransitGuideModel {
         boardOverrideIndex = nil
         aboardStep = nil
         aboardDirection = nil
+        aboardStartLandingPending = false
         boardingManualAvailable = false
         selectedDescription = nil
         reboardPickerActive = false
@@ -939,6 +940,7 @@ final class TransitGuideModel {
         guard let state, state.phase == .waiting || state.phase == .riding else { return }
         transitGuideLog("declareArrived from=\(state.phase.rawValue) leg=\(state.legIndex)")
         aboardDirection = nil
+        aboardStartLandingPending = false
         dispatch(.declareArrived)
         waitingLive = []
         waitingDeparted = []
@@ -955,6 +957,15 @@ final class TransitGuideModel {
     /// `boardAboard`가 다시 확인한다 — 방면을 밝히지 않은 A34 흐름(nil)의 "방향 일치 0이면 전체 복원"은 그대로다.
     /// [다른 역 선택] 뒤에도 유지하고, riding 진입·도착 선언·경로 교체·세션 종료에서 푼다.
     private(set) var aboardDirection: String?
+    /// E71 R9: 시트 첫 착지가 질문 라벨(`.waitingLabel`)이어야 하는 일회성 표식 — aboard 시작이 섰을 때만 true이고 시트의 열림
+    /// 착지가 `consumeAboardStartLanding()`으로 읽으며 false로 돌린다. 띠바 복귀·일반 A34 둘째 단계의 시트 재열림은 E38
+    /// 판정대로 상태 문장이다(`aboardStep`을 보면 그 둘도 질문 라벨로 간다). `aboardDirection`을 푸는 자리에서 함께 푼다.
+    private(set) var aboardStartLandingPending = false
+
+    func consumeAboardStartLanding() -> Bool {
+        defer { aboardStartLandingPending = false }
+        return aboardStartLandingPending
+    }
     /// 이 dispatch의 입력이 `boardAboard`였다 — `boarded(declared)` 통지에 선택 차량 조각을 붙일지의 판별
     /// (`firstObservationInStep` 동형. `confirmBoarded`의 declared는 `vehicleSelected`가 이미 말했다).
     private var aboardBoardInStep = false
@@ -1314,6 +1325,7 @@ final class TransitGuideModel {
         pendingWalkHandoff = nil  // 옛 목적지의 핸드오프 제안 무효
         aboardStep = nil  // 새 경로의 대기 국면은 처음부터
         aboardDirection = nil  // 옛 경로에서 고른 방향은 새 경로에 닿지 않는다
+        aboardStartLandingPending = false
         boardingManualAvailable = false
         // 같은 목적지의 경로 전환이면 메뉴 쪽 목적지 후보는 낡았다(출발점이 바뀌었다).
         destChangeToken += 1
@@ -1818,7 +1830,7 @@ final class TransitGuideModel {
         // 진입**(선언·관측 어느 길이든)에서 지운다. 국면 기반이라 폴이 일으키는 승격도 잡는다.
         let enteredRiding = result.state.phase == .riding && state.phase != .riding
         switch input {
-        case .advance: boardOverrideIndex = nil; selectedDescription = nil; aboardDirection = nil
+        case .advance: boardOverrideIndex = nil; selectedDescription = nil; aboardDirection = nil; aboardStartLandingPending = false
         case .board, .boardAboard, .confirmBoarded, .restoreBoarding, .changeBoarding, .declareArrived, .poll: break
         }
         if enteredRiding { boardOverrideIndex = nil }
@@ -1831,7 +1843,7 @@ final class TransitGuideModel {
         }
         if boarded(result.state), !boarded(state) { GuideSession.shared.transitPassedPrewalk() }
         // "이미 탑승" 흐름은 대기 국면 전용 UI — 국면이 바뀌면 소거(`reboardPickerActive`와 같은 국면 기반 규칙).
-        if result.state.phase != .waiting { aboardStep = nil; aboardDirection = nil }
+        if result.state.phase != .waiting { aboardStep = nil; aboardDirection = nil; aboardStartLandingPending = false }
         // boarding 수동 진행 수단의 래치(N3 ①): 국면에 **들어올 때** 지우고(재진입 = 새 차량 대기),
         // 그 국면 안에서 관측이 끝나면 세운다. 국면 밖에선 언제나 false.
         if result.state.phase != .boarding || state.phase != .boarding {

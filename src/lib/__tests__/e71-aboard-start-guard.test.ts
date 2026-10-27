@@ -45,7 +45,7 @@ function body(source: string, head: string): string {
 }
 
 describe("E71 aboard 시작 — 안전 인자(R10)", () => {
-  it("TransitGuideModel.start·startAfterPrewalk·beginSession·beginTransit 시그니처의 aboard에 기본값이 없다", () => {
+  it("TransitGuideModel.start·beginSession·beginTransit 시그니처의 aboard에 기본값이 없다", () => {
     for (const [src, head] of [
       [MODEL, "func start("],
       [MODEL, "private func beginSession("],
@@ -90,6 +90,7 @@ describe("E71 aboard 시작 — 방향 잠금(R14)", () => {
       expect(body(MODEL, head), `${head}에 aboardDirection 해제가 없다`).toMatch(/aboardDirection = nil/);
     }
     expect(MODEL).toMatch(/if result\.state\.phase != \.waiting \{[^}]*aboardDirection = nil/);
+    expect(MODEL).toMatch(/case \.advance:[^\n]*aboardDirection = nil/);
   });
 });
 
@@ -99,8 +100,21 @@ describe("E71 aboard 시작 — 통지와 착지(R8·R9)", () => {
     expect(b).toMatch(/if !aboardStarted \{\s*parts\.append\(waitContextText\(first, isCurrentLeg: true\)\)/);
   });
 
-  it("시트 첫 착지는 aboard 열차 고르기면 질문 라벨, 아니면 상태 문장 한 줄이다", () => {
-    const line = ".task { landControlFocus(model.aboardStep == .pickVehicle && controlExists(.waitingLabel) ? .waitingLabel : .status, proxy: proxy) }";
+  it("시트 첫 착지는 aboard 시작의 일회성 표식이 설 때만 질문 라벨, 아니면 상태 문장 한 줄이다(E38 — 띠바 복귀·일반 A34는 상태 문장)", () => {
+    const line = ".task { landControlFocus(model.consumeAboardStartLanding() && controlExists(.waitingLabel) ? .waitingLabel : .status, proxy: proxy) }";
     expect(SHEET.includes(line), "시트 열림 착지 한 줄이 없다").toBe(true);
+    expect(SHEET).not.toMatch(/landControlFocus\(model\.aboardStep/);
+  });
+
+  it("착지 표식은 aboard 시작에서만 서고 소비 메서드가 되돌리며 방향 잠금을 푸는 자리에서 함께 풀린다", () => {
+    expect(body(MODEL, "private func beginSession(")).toMatch(/aboardStartLandingPending = true/);
+    expect(MODEL.match(/aboardStartLandingPending = true/g)?.length, "표식을 세우는 자리는 beginSession 하나다").toBe(1);
+    const consume = body(MODEL, "func consumeAboardStartLanding(");
+    expect(consume).toContain("defer { aboardStartLandingPending = false }");
+    expect(consume).toContain("return aboardStartLandingPending");
+    for (const head of ["func stop(", "func declareArrived(", "private func changeRoute("]) {
+      expect(body(MODEL, head), `${head}에 표식 해제가 없다`).toMatch(/aboardStartLandingPending = false/);
+    }
+    expect(MODEL).toMatch(/if result\.state\.phase != \.waiting \{[^}]*aboardStartLandingPending = false/);
   });
 });

@@ -175,10 +175,11 @@ struct TransitTrackingSheet: View {
                 }
             }
             // 시트 열림 착지 — 띠바에서 돌아온 시트도 같다(E57 위원장 판정 Q1 2026-09-30, 종전 접기 버튼 착지 폐기).
-            // 지금 탄 열차에서 시작한 안내(E71 R9)는 첫 행동이 열차 고르기라 그 질문 라벨에 앉는다 — 라벨이 서지 않는 갈래
-            // (`controlExists`)는 기본값인 상태 문장으로(안 그러면 `vanished`로 끝나 착지도 폴백도 없다).
+            // 지금 탄 열차에서 시작한 안내(E71 R9)의 첫 열림만 첫 행동이 열차 고르기라 그 질문 라벨에 앉는다(일회성 표식 —
+            // 띠바 복귀는 E38대로 상태 문장). 라벨이 서지 않는 갈래(`controlExists`)는 기본값인 상태 문장으로(안 그러면
+            // `vanished`로 끝나 착지도 폴백도 없다).
             // List 수준 `.task`라 대상 뷰 `.task` 금지(A35 트리거 결손)의 예외다(가드가 이 한 줄을 면제한다).
-            .task { landControlFocus(model.aboardStep == .pickVehicle && controlExists(.waitingLabel) ? .waitingLabel : .status, proxy: proxy) }
+            .task { landControlFocus(model.consumeAboardStartLanding() && controlExists(.waitingLabel) ? .waitingLabel : .status, proxy: proxy) }
             .onChange(of: model.state?.legIndex) { viaExpanded = false }
             // 경유역 목록을 펼치는 순간 그 구간 역의 전화번호를 일괄 조회한다(E44 spec §6, 리뷰 M6).
             .onChange(of: viaExpanded) { _, expanded in
