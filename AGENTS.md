@@ -128,7 +128,7 @@
 - **그 시트의 착지 대상은 기본이 상태 문장 행이다**(E38 `SheetControl.status`, 띠바 복귀 포함). 예외 허용 집합은 `transit-landing-guard.test.ts`, 착지 테스트는 누르기 전에 그 컨트롤로 커서를 옮긴다(`clickFocused`). → PATTERNS
 - **도보·자동차 안내 시트의 첫 착지는 첫 정보 행(남은 거리 → 윗줄 → 상태 문장)이다**(E57, `requestInfoLanding` 한 입구, 제목·접기 착지 재도입 금지): 안내 모델이 게시한 통지가 끝날 때까지 모델 `announcementsSettled`로 기다리고(시트가 끝 신호를 직접 듣지 말 것), 대기 중 커서를 옮기면 착지하지 않는다. 가드 `guide-sheet-landing-guard.test.ts`. → PATTERNS
 - **안내 시트에서 장소 상세는 중첩 시트 하나(`detailPlace`)로 열고, 산문 속 역 언급은 이름 링크 + 로터 액션이다**(E33·E72, 역 Place는 `transitStopPlace`). 링크는 역 정체성(`viaStops` 순번)에 결박하고 줄은 언제나 같은 `Text`다. → PATTERNS
-- **실험판 안내 시트 제목은 밀기 버튼을 든 첫 행이다**(E74 `GuideTitleActionsRow`): 「다른 길로 가기」는 `fetchProposal(declared:)`로 자동 재조회 길을 타되 사용자 조회 규칙(첫 점 고지·실패 매번)을 따른다. → PATTERNS
+- **안내 시트 제목은 밀기 버튼과 경로 새로고침을 든 첫 행이다**(E74·E75 `GuideTitleActionsRow`): 「경로 새로고침」은 `fetchProposal(declared:)`로 자동 재조회 길을 타되 사용자 조회 규칙(첫 점 고지·실패 매번, 예산 밖)을 따르고, 목록 안 「경로 다시 조회」는 없다. 「지금 여기는 어디?」 주변은 지금 위치(`force: true`)를 창이 한 번 조회한다. → PATTERNS
 - **화면 배치를 바꾸면 그 자리를 지나가는 포커스 점프를 함께 점검한다**(조회 완료 시 첫 성공 수단 heading으로 1회 이동). → PATTERNS
 - **실시간 안내 판정 계층은 전부 순수 함수이고 웹·Kit·안드로이드 `:kit` 미러다**(`toneLayerStep`·`motionStep`·`trendStep` 공유 fixture). 톤은 배타 계층 하나만, **정지 fix는 톤을 내지 않는다**(E55, `tick`은 나들이 10m 비프 전용), 정지 판정은 도플러 3-state. 수정 전 §실시간 길 안내를 읽는다. → INTEGRATIONS
 - **안내 경로 origin은 "신선한가"가 아니라 "정확한가"로 고른다**(A18, Kit `routeOriginStep`만 지난다 — 세션 첫 fix가 곧 가장 나쁜 fix). `isUsableFix`를 조이지 말고 재측위 의존을 되살리지 말 것. `routeOrigin` 로그 1줄 필수. → INTEGRATIONS
