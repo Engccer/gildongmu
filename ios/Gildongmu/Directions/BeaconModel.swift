@@ -178,7 +178,7 @@ final class BeaconModel {
     /// E69: 이 회차에 「새 경로를 자동으로 찾지 못했습니다.」를 게시해 아직 버려지지 않았다. 위 래치와 따로 둔다 — 문장이 버려지면
     /// (받아쓰기 억제·백그라운드 음성 끔·latest-wins) 다음 ⓐⓑ에서 다시 말한다(1회성 통지는 전달된 시점에 래치).
     private var rerouteGaveUpSpoken = false
-    /// 마지막 실행 안내(상세=스텝·묶음, 간략=거리 통지). 진행 상황 버튼의 uncertain
+    /// 마지막 실행 안내(상세=스텝·묶음, 간략=거리 통지). 진행 문장(「지금 여기는 어디?」 창 머리)의 uncertain
     /// 분기가 소비한다. 상태·오류 통지는 대상이 아니다(스펙 §4.2 리뷰 #23).
     private(set) var lastGuidance: String?
     /// 경로 기준 잔여 거리·예상 시간 상시 표시 1줄(상세 모드 전용, 웹 progress 미러 —
@@ -262,7 +262,7 @@ final class BeaconModel {
     /// 시작 경로 조회의 세대 토큰. defer가 stale task에서 새 세션의 awaitingRoute를
     /// 조기 해제하는 레이스 차단(독립 리뷰 MEDIUM — 빠른 목적지 변경 시).
     private var routeFetchToken = 0
-    /// 마지막 수용 fix 좌표·시각(진행 상황 버튼의 직선거리·신선도 게이트용, 양 모드 기록).
+    /// 마지막 수용 fix 좌표·시각(진행 문장의 직선거리·신선도 게이트용, 양 모드 기록).
     private var lastFixCoord: (lat: Double, lng: Double)?
     private var lastFixCoordAt: Double?
     /// 수동 전환 진행 신호(M3) — 조망 프리뷰 채택 버튼의 busy 귀속.
@@ -395,7 +395,7 @@ final class BeaconModel {
     /// 되므로 미달이면 버리고 그 순간 "자동으로 찾지 못했습니다"를 한 번 말한다(E69 ⓐ — 수동 출구는 제목 행 경로 새로고침, E75).
     /// latest-wins 토큰 — 폐기·목적지 변경·세션 종료·수동 재조회 시 증가. 토큰이 일치하고
     /// 이탈이 지속 중일 때만 응답을 채택한다(복귀 후 늦게 도착한 응답이 경로를 갈아치우는
-    /// 경로 차단). 조회 실패는 버튼을 세우고 한 번 말한다(E69). 더 멀어지면 리듀서가 또 요청한다(세션 예산 5회).
+    /// 경로 차단). 조회 실패는 래치를 세우고 한 번 말한다(E69, 수동 출구는 경로 새로고침 E75). 더 멀어지면 리듀서가 또 요청한다(세션 예산 5회).
     private var proposalToken = 0
     /// 세션당 자동 조회 횟수(상한 5, RerouteProposalGate — GPS 진동으로 확정 회차가
     /// 반복 생성될 때 쿼터·통지 폭주의 마지막 방어선).
@@ -404,7 +404,7 @@ final class BeaconModel {
     /// 재무장했다. 새 요청이 토큰을 올려 진행 중 조회를 버리면 느린 망에서 채택 없이 예산만 쓴다, E63 spec §3.5). 폐기(복귀·
     /// 경로 교체·수동 재조회)로 토큰이 올라가면 늦게 끝나는 옛 조회가 다음 회차를 막지 않는다.
     private var proposalInFlightToken: Int?
-    /// 진행 중인 조회가 사용자 선언(「다른 길로 가기」, E74)이면 그 토큰. 선언은 이탈과 무관하게 연 조회라 경로 복귀
+    /// 진행 중인 조회가 사용자 선언(경로 새로고침, E74·E75)이면 그 토큰. 선언은 이탈과 무관하게 연 조회라 경로 복귀
     /// (`backOnRoute`)가 버리지 않는다 — 버리면 누른 동작이 아무 말 없이 사라진다. 조회 Task 끝과 `clearProposal()`이 비운다.
     private var differentRouteToken: Int?
     /// 이 이탈 회차에 게시해 아직 버려지지 않은 이탈 문장들(E63 §3.4). 비었으면 복귀 때 "경로로 복귀했습니다"를 말하지 않는다
@@ -449,7 +449,7 @@ final class BeaconModel {
     /// 채택 성공 세대 — 시트(프리뷰·조망)가 onChange로 연쇄 닫힘·포커스 복귀에 쓴다.
     /// 값 자체는 의미 없고 증가가 이벤트다(offRoute onChange 관례의 세대 판).
     private(set) var variantAdoptedSeq = 0
-    /// 「현재 경로와 다른 길로 가기」(E74 실험판) 채택 세대 — 시트가 첫 정보 행 착지에 쓴다(증가가 이벤트).
+    /// 경로 새로고침(E75, 종전 E74 「현재 경로와 다른 길로 가기」) 채택 세대 — 시트가 첫 정보 행 착지에 쓴다(증가가 이벤트).
     private(set) var differentRouteAdoptedSeq = 0
     /// 전환 커밋(E42): 요청 축과 두 줄 종류를 **한 원자 블록에서** 맞바꾼다 — 헤더 라벨·프리뷰
     /// 조회·채택·수동 전환이 같은 판정을 공유한다(사본 drift 방지 — 이 파일은 단위 테스트 레인이 없다).
@@ -1199,7 +1199,7 @@ final class BeaconModel {
         }
     }
 
-    /// 사용자가 연 조회(시작·버튼 재조회·프리뷰 채택)의 출발점 고지 접두(A70 §2.3). 새 경로 첫 점이 멀어도 거부하지 않고
+    /// 사용자가 연 조회(시작·경로 새로고침·프리뷰 채택)의 출발점 고지 접두(A70 §2.3). 새 경로 첫 점이 멀어도 거부하지 않고
     /// 알린다(거부하면 버튼이 막다른 길). 자동 재조회는 이 경로를 거부한다(`fetchProposal`). 로그엔 좌표 없이 거리만.
     private func routeStartsAwayPrefix(
         route: GuideRoute, from: (lat: Double, lng: Double), source: String
@@ -2305,7 +2305,7 @@ final class BeaconModel {
         stepRerouteStill(phase: out.state.phase, stopped: motion == .stopped, now: now)
     }
 
-    /// E69 ⓒ: 벗어난 채 `GuideFix.stopped`가 30초 이어지면 버튼 래치를 조용히 세운다(새 정지 판정 금지 — 같은 술어).
+    /// E69 ⓒ: 벗어난 채 `GuideFix.stopped`가 30초 이어지면 자동 갈래 래치를 조용히 세운다(새 정지 판정 금지 — 같은 술어).
     /// 리듀서 국면이 돌아가기(`.offRoute`)인 fix만 센다 — uncertain·reacquiring(정확도 악화·공백) fix에서 연속을 비워 끊긴 시간이
     /// 정지로 산입되지 않게 한다(E63 spec §3.9와 같은 이유, 웹·안드로이드 동형).
     private func stepRerouteStill(phase: GuidePhase, stopped: Bool, now: Double) {
@@ -2428,7 +2428,7 @@ final class BeaconModel {
             // (`backOnRoute`가 지우는 것과 같은 집합 — 국면이 finalApproach라 그 이벤트는 오지 않는다).
             finalApproachIntroSpoken = true
             lastFinalTickAt = uptimeNow
-            // 왕복 중인 버튼 재조회는 폐기한다 — 목적지 20m 안에서 새 경로로 최종 접근을 되돌리지 않게(구현 리뷰 m4, 안드로이드
+            // 왕복 중인 선언 조회(경로 새로고침)는 폐기한다 — 목적지 20m 안에서 새 경로로 최종 접근을 되돌리지 않게(구현 리뷰 m4, 안드로이드
             // `abandonReroute` 동형). 진행 중 자동 조회는 위 `clearProposal()`이 이미 막았다.
             rerouteToken += 1
             offRoute = false
@@ -3414,11 +3414,11 @@ final class BeaconModel {
                 raiseRerouteButton(cause: "farStart", speak: true)
                 return
             }
-            // 선언(E74)은 사용자가 연 조회라 첫 점이 멀면 거리·방향을 앞에 붙인다(A70 §2.3, 버튼 재조회와 같은 접두).
+            // 선언(경로 새로고침)은 사용자가 연 조회라 첫 점이 멀면 거리·방향을 앞에 붙인다(A70 §2.3).
             let away = declared ? routeStartsAwayPrefix(route: fetched.route, from: c, source: source) : nil
             // 새 경로 첫 문장의 방향 머리말(E63 §3.7): 교체 **전** 세션의 진행 방위 기준 새 경로 첫 15m의 시. 자동차는 없음.
             // 시작점 고지가 붙으면 머리말은 뺀다 — 머리말은 시작점에서의 첫 15m 방향이라 "시작점 쪽"과 다른 쪽을 가리킬 수
-            // 있다(리뷰 MAJOR 2, 버튼 재조회에도 머리말이 없다).
+            // 있다(리뷰 MAJOR 2).
             let headClock: Int? = sessionKind == .walk && away == nil
                 ? guideState.flatMap { rerouteHeadClock(state: $0, route: fetched.route, now: uptimeNow, tuning: tuning) }
                 : nil
