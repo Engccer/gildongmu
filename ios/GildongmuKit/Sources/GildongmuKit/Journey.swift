@@ -397,3 +397,66 @@ public func journeyRecommendedTitleIsBoardSide(
     let alightDiffers = alight.map { differs($0, vehicles.last?.toName) } ?? false
     return boardDiffers || lines.board || !(alightDiffers || lines.alight)
 }
+
+// MARK: E71 지금 탄 열차에서 여정 시작 — 방면 묶음·방향 잠금
+
+/// 지금 탄 열차의 방면 한 묶음. `direction`은 서버 `updnLine` 원문(상행·하행·내선·외선)이고 질의 `boardDir`에 그대로 실린다.
+public struct JourneyAboardDirection: Sendable, Hashable {
+    public let direction: String
+    /// 「구로방면」 — 도착 문구의 「 - 」 뒤 조각. 없으면 `direction`.
+    public let name: String
+    /// 그 방면 열차의 종착 이름(「행」 없음). 중복 없이 처음 본 순서.
+    public let terminals: [String]
+
+    public init(direction: String, name: String, terminals: [String]) {
+        self.direction = direction
+        self.name = name
+        self.terminals = terminals
+    }
+}
+
+/// 공백·탭·개행만 뗀다. ⚠ Foundation 공백 집합을 쓰지 않는다(안드로이드 이식 규칙).
+private func journeyAboardTrim(_ s: String) -> String {
+    var t = Substring(s)
+    while let f = t.first, f == " " || f == "\t" || f == "\n" { t.removeFirst() }
+    while let l = t.last, l == " " || l == "\t" || l == "\n" { t.removeLast() }
+    return String(t)
+}
+
+/// 도착 목록에 나온 노선 이름들 — 비어 있지 않은 서로 다른 값, 처음 본 순서.
+public func journeyAboardLines(_ arrivals: [SubwayArrival]) -> [String] {
+    var seen: [String] = []
+    for a in arrivals {
+        guard let line = a.line, !journeyAboardTrim(line).isEmpty, !seen.contains(line) else { continue }
+        seen.append(line)
+    }
+    return seen
+}
+
+/// 고른 노선의 방면 묶음 — `direction`(trim 뒤 빈 값 버림)으로 묶고 처음 본 순서를 지킨다.
+public func journeyAboardDirections(_ arrivals: [SubwayArrival], line: String) -> [JourneyAboardDirection] {
+    var order: [String] = []
+    var names: [String: String] = [:]
+    var terminals: [String: [String]] = [:]
+    for a in arrivals {
+        guard let l = a.line, journeyLineHintMatches(l, line) else { continue }
+        let dir = journeyAboardTrim(a.direction)
+        if dir.isEmpty { continue }
+        if terminals[dir] == nil {
+            order.append(dir)
+            terminals[dir] = []
+        }
+        if names[dir] == nil, let range = a.trainLineNm.range(of: " - ") {
+            let tail = journeyAboardTrim(String(a.trainLineNm[range.upperBound...]))
+            if !tail.isEmpty { names[dir] = tail }
+        }
+        let dest = journeyAboardTrim(a.destination)
+        if !dest.isEmpty, terminals[dir]?.contains(dest) == false { terminals[dir]?.append(dest) }
+    }
+    return order.map { JourneyAboardDirection(direction: $0, name: names[$0] ?? $0, terminals: terminals[$0] ?? []) }
+}
+
+/// 방향이 잠긴 열차만 — 순서를 지킨다. 승차 뒤 열차 선택 목록이 반대 방향을 섞어 보이지 않게 한다.
+public func journeyAboardTrainItems(_ items: [TransitTrackItem], direction: String) -> [TransitTrackItem] {
+    items.filter { $0.direction == direction }
+}

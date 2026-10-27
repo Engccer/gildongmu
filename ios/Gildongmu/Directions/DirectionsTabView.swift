@@ -779,8 +779,8 @@ final class DirectionsModel {
     ) async {
         phase = .loading
         let service = self.service
-        let board = boardStation.map { JourneyStationQuery(name: $0.label, lat: $0.lat, lng: $0.lng, line: $0.line, kind: $0.kind) }
-        let alight = alightStation.map { JourneyStationQuery(name: $0.label, lat: $0.lat, lng: $0.lng, line: $0.line, kind: $0.kind) }
+        let board = boardStation.map { JourneyStationQuery(name: $0.label, lat: $0.lat, lng: $0.lng, line: $0.line, kind: $0.kind, aboardDirection: nil) }
+        let alight = alightStation.map { JourneyStationQuery(name: $0.label, lat: $0.lat, lng: $0.lng, line: $0.line, kind: $0.kind, aboardDirection: nil) }
         let outcome: JourneyQueryOutcome
         do {
             let response = try await withQueryTimeout {

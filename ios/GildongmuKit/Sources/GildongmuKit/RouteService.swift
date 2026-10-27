@@ -81,6 +81,11 @@ public struct RouteService: Sendable {
             query.append(URLQueryItem(name: "boardName", value: board.name))
             if let line = board.line, board.kind != .busStop { query.append(URLQueryItem(name: "boardLine", value: line)) }
             if board.kind == .busStop { query.append(URLQueryItem(name: "boardKind", value: "stop")) }
+            // 지금 탄 열차(E71): 노선이 없으면 boardLine이 빠져 서버 400이 실패 3-state로 드러난다.
+            if let dir = board.aboardDirection, board.kind != .busStop {
+                query.append(URLQueryItem(name: "boardKind", value: "aboard"))
+                query.append(URLQueryItem(name: "boardDir", value: dir))
+            }
         }
         if let alight {
             query.append(URLQueryItem(name: "alight", value: coordPair(alight.lat, alight.lng)))
@@ -240,13 +245,17 @@ public struct JourneyStationQuery: Sendable, Hashable {
     public let line: String?
     /// 정류장이면 `busStop`(노선 힌트는 싣지 않는다). nil = 역. ⚠ 기본값 없음 — 빠뜨리면 정류장이 역으로 조회된다.
     public let kind: JourneyStationKind?
+    /// 지금 탄 열차의 방향(`updnLine` 원문 — 상행·하행·내선·외선). 승차 쪽에만 오고 non-nil이면 `boardKind=aboard`로 조회한다(E71).
+    /// ⚠ 기본값 없음 — 빠뜨리면 지금 탄 열차가 일반 역 지정으로 조회된다.
+    public let aboardDirection: String?
 
-    public init(name: String, lat: Double, lng: Double, line: String?, kind: JourneyStationKind?) {
+    public init(name: String, lat: Double, lng: Double, line: String?, kind: JourneyStationKind?, aboardDirection: String?) {
         self.name = name
         self.lat = lat
         self.lng = lng
         self.line = line
         self.kind = kind
+        self.aboardDirection = aboardDirection
     }
 }
 

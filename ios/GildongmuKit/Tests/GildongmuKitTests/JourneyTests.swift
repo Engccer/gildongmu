@@ -345,7 +345,7 @@ private let allEvents: [JourneyEvent] =
             leg("walk", nil, "신촌"),
             leg("subway", "신촌", "광화문", line: "수도권 2호선", at: (37.5552, 126.9369), end: (37.5710, 126.9768)),
         ])
-        let result = JourneyResult(variants: [rec], designatedMissing: JourneyDesignatedMissing(side: .board))
+        let result = JourneyResult(variants: [rec], designatedMissing: JourneyDesignatedMissing(side: .board, oppositeDirection: nil))
         let lines = journeyLineQualifiers(result, board: sinchonGyeongui, alight: nil)
         #expect(lines == JourneyLineQualifiers(board: true, alight: false))
         #expect(journeyRecommendedTitleIsBoardSide(rec, board: sinchonGyeongui, alight: nil, lines: lines))
@@ -357,7 +357,7 @@ private let allEvents: [JourneyEvent] =
         let rec = variant(.recommended, [
             leg("subway", "서울역", "종각", line: "수도권 1호선", at: (37.5546, 126.9720), end: (37.5702, 126.9831)),
         ])
-        let result = JourneyResult(variants: [rec], designatedMissing: JourneyDesignatedMissing(side: .alight))
+        let result = JourneyResult(variants: [rec], designatedMissing: JourneyDesignatedMissing(side: .alight, oppositeDirection: nil))
         let lines = journeyLineQualifiers(result, board: seoulKtx, alight: gwanghwamun)
         #expect(lines == JourneyLineQualifiers(board: false, alight: false))
         #expect(!journeyRecommendedTitleIsBoardSide(rec, board: seoulKtx, alight: gwanghwamun, lines: lines))
@@ -387,7 +387,7 @@ private let allEvents: [JourneyEvent] =
             leg("subway", "신촌", "충정로", line: "수도권 2호선", at: (37.5552, 126.9369), end: (37.5600, 126.9636)),
             leg("subway", "충정로", "광화문", line: "수도권 5호선", at: (37.5600, 126.9636), end: (37.5710, 126.9768)),
         ])
-        let result = JourneyResult(variants: [rec], designatedMissing: JourneyDesignatedMissing(side: .board))
+        let result = JourneyResult(variants: [rec], designatedMissing: JourneyDesignatedMissing(side: .board, oppositeDirection: nil))
         #expect(journeyLineQualifiers(result, board: sinchonGyeongui, alight: nil) == JourneyLineQualifiers(board: true))
     }
 
@@ -395,7 +395,7 @@ private let allEvents: [JourneyEvent] =
         let rec = variant(.recommended, [
             leg("bus", "신촌", "광화문", line: "7612", at: (37.5552, 126.9369), end: (37.5710, 126.9768)),
         ])
-        let result = JourneyResult(variants: [rec], designatedMissing: JourneyDesignatedMissing(side: .board))
+        let result = JourneyResult(variants: [rec], designatedMissing: JourneyDesignatedMissing(side: .board, oppositeDirection: nil))
         #expect(journeyLineQualifiers(result, board: sinchonGyeongui, alight: nil) == JourneyLineQualifiers())
     }
 
@@ -443,12 +443,12 @@ private let allEvents: [JourneyEvent] =
         let far = variant(.recommended, [
             leg("subway", "강남", "역삼", line: "수도권 5호선", at: (37.5049, 127.0276), end: (37.5007, 127.0364)),
         ])
-        let farResult = JourneyResult(variants: [far], designatedMissing: JourneyDesignatedMissing(side: .board))
+        let farResult = JourneyResult(variants: [far], designatedMissing: JourneyDesignatedMissing(side: .board, oppositeDirection: nil))
         #expect(journeyLineQualifiers(farResult, board: sameNameStop, alight: nil) == JourneyLineQualifiers())
         let farAlight = variant(.recommended, [
             leg("subway", "역삼", "강남", line: "수도권 5호선", at: (37.5007, 127.0364), end: (37.5049, 127.0276)),
         ])
-        let farAlightResult = JourneyResult(variants: [farAlight], designatedMissing: JourneyDesignatedMissing(side: .alight))
+        let farAlightResult = JourneyResult(variants: [farAlight], designatedMissing: JourneyDesignatedMissing(side: .alight, oppositeDirection: nil))
         #expect(journeyLineQualifiers(farAlightResult, board: nil, alight: sameNameStop) == JourneyLineQualifiers())
         let otherKey = variant(.recommended, [leg("bus", "논현사거리", "역삼", line: "112")])
         let alightStop = RecentStation(label: "역삼역", lat: 37.5007, lng: 127.0364, line: nil, kind: .busStop)
@@ -463,5 +463,77 @@ private let allEvents: [JourneyEvent] =
         #expect(journeyQualifiedStationName("신촌", line: "수도권 2호선") == "2호선 신촌")
         #expect(journeyQualifiedStationName("신촌역", line: "경의중앙선") == "경의중앙선 신촌")
         #expect(journeyQualifiedStationName("서울역", line: nil) == "서울")
+    }
+}
+
+// MARK: E71 지금 탄 열차 — 방면 묶음·방향 잠금
+
+private func arrival(_ line: String?, _ dir: String, _ nm: String, _ dest: String) throws -> SubwayArrival {
+    func q(_ s: String) -> String { "\"\(s)\"" }
+    let json = "{\"line\":\(line.map(q) ?? "null"),\"direction\":\(q(dir)),\"trainLineNm\":\(q(nm)),"
+        + "\"destination\":\(q(dest)),\"message\":\"곧 도착\",\"arrivalSeconds\":0,\"express\":false}"
+    return try JSONDecoder().decode(SubwayArrival.self, from: Data(json.utf8))
+}
+
+@Suite struct JourneyAboardTests {
+    @Test func linesAreDistinctNonEmptyInFirstSeenOrder() throws {
+        let list = [
+            try arrival("1호선", "상행", "인천행 - 구로방면", "인천"),
+            try arrival(nil, "상행", "x", "x"),
+            try arrival("1호선", "하행", "청량리행 - 역곡방면", "청량리"),
+            try arrival("경의중앙선", "상행", "문산행 - 가좌방면", "문산"),
+            try arrival("", "상행", "x", "x"),
+        ]
+        #expect(journeyAboardLines(list) == ["1호선", "경의중앙선"])
+        #expect(journeyAboardLines([]) == [])
+    }
+
+    @Test func directionsGroupByUpdnLineWithBoundNameAndTerminals() throws {
+        let list = [
+            try arrival("1호선", "상행", "인천행 - 구로방면", "인천"),
+            try arrival("1호선", "상행", "부평행 - 구로방면", "부평"),
+            try arrival("1호선", "하행", "청량리행 - 역곡방면", "청량리"),
+            try arrival("1호선", "상행", "인천행 - 구로방면", "인천"),
+            try arrival("경의중앙선", "상행", "문산행 - 가좌방면", "문산"),
+            try arrival("1호선", "", "x행 - y방면", "x"),
+        ]
+        #expect(journeyAboardDirections(list, line: "1호선") == [
+            JourneyAboardDirection(direction: "상행", name: "구로방면", terminals: ["인천", "부평"]),
+            JourneyAboardDirection(direction: "하행", name: "역곡방면", terminals: ["청량리"]),
+        ])
+    }
+
+    @Test func nameFallsBackToDirectionWithoutDashSeparator() throws {
+        let list = [try arrival("1호선", "상행", "인천행", "인천")]
+        #expect(journeyAboardDirections(list, line: "1호선").first?.name == "상행")
+    }
+
+    @Test func nameComesFromFirstEntryThatHasSeparator() throws {
+        let list = [
+            try arrival("1호선", "상행", "인천행", "인천"),
+            try arrival("1호선", "상행", "부평행 -  구로방면 ", "부평"),
+        ]
+        #expect(journeyAboardDirections(list, line: "1호선").first?.name == "구로방면")
+    }
+
+    @Test func circularLineGivesInnerAndOuterGroups() throws {
+        let list = [
+            try arrival("2호선", "내선", "성수행 - 시청방면", "성수"),
+            try arrival("2호선", "외선", "신도림행 - 충정로방면", "신도림"),
+            try arrival("2호선", "내선", "성수행 - 시청방면", "성수"),
+        ]
+        let groups = journeyAboardDirections(list, line: "2호선")
+        #expect(groups.map(\.direction) == ["내선", "외선"])
+        #expect(groups[0].terminals == ["성수"])
+    }
+
+    @Test func trainItemsKeepOnlyTheLockedDirection() {
+        func item(_ dir: String, _ id: String) -> TransitTrackItem {
+            TransitTrackItem(vehicleId: id, direction: dir, message: "", remainingStops: nil,
+                             destinationName: nil, express: false, arrivalCode: nil)
+        }
+        let items = [item("상행", "a"), item("하행", "b"), item("상행", "c")]
+        #expect(journeyAboardTrainItems(items, direction: "상행").map(\.vehicleId) == ["a", "c"])
+        #expect(journeyAboardTrainItems([item("하행", "b")], direction: "상행").isEmpty)
     }
 }

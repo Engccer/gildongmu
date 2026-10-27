@@ -427,8 +427,13 @@ public enum JourneyMissingSide: String, Codable, Sendable, Hashable {
 
 public struct JourneyDesignatedMissing: Codable, Sendable, Hashable {
     public let side: JourneyMissingSide
+    /// 지금 탄 열차의 승차 쪽에서 반대 방향에만 그 역 열차가 있을 때 true(E71 판정 R14). 키가 없으면 nil.
+    public let oppositeDirection: Bool?
 
-    public init(side: JourneyMissingSide) { self.side = side }
+    public init(side: JourneyMissingSide, oppositeDirection: Bool?) {
+        self.side = side
+        self.oppositeDirection = oppositeDirection
+    }
 }
 
 /// 변형의 갈래. 지정 역 경로와 추천 경로가 같으면 `designated` 하나만 온다.

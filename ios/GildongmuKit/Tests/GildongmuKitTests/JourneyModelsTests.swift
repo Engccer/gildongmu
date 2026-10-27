@@ -62,7 +62,7 @@ private func decodeResult(_ json: String) throws -> JourneyResult {
     @Test func designatedMissingAndEmptyVariantsDecode() throws {
         let missing = try decodeResult(#"{"variants":[],"designatedMissing":{"side":"alight"}}"#)
         #expect(missing.variants.isEmpty)
-        #expect(missing.designatedMissing == JourneyDesignatedMissing(side: .alight))
+        #expect(missing.designatedMissing == JourneyDesignatedMissing(side: .alight, oppositeDirection: nil))
         for (raw, side) in [("board", JourneyMissingSide.board), ("both", .both)] {
             let r = try decodeResult(#"{"variants":[],"designatedMissing":{"side":"\#(raw)"}}"#)
             #expect(r.designatedMissing?.side == side)
@@ -110,8 +110,8 @@ extension StubNetworkTests {
         }
         let response = try await RouteService(client: stubbedClient()).journey(
             originLat: 37.55, originLng: 126.95, destLat: 37.58, destLng: 126.98,
-            board: JourneyStationQuery(name: "아현", lat: 37.5573, lng: 126.956, line: "2호선", kind: nil),
-            alight: JourneyStationQuery(name: "광화문", lat: 37.5714, lng: 126.9767, line: nil, kind: nil))
+            board: JourneyStationQuery(name: "아현", lat: 37.5573, lng: 126.956, line: "2호선", kind: nil, aboardDirection: nil),
+            alight: JourneyStationQuery(name: "광화문", lat: 37.5714, lng: 126.9767, line: nil, kind: nil, aboardDirection: nil))
         guard case .result(let result) = response else {
             Issue.record("result가 아니다: \(response)")
             return
@@ -135,6 +135,45 @@ extension StubNetworkTests {
         #expect(captured?.contains { $0.name == "boardKind" || $0.name == "alightKind" } == false)
     }
 
+    @Test func journeySendsAboardKindAndDirection() async throws {
+        var captured: [URLQueryItem]?
+        StubURLProtocol.handler = { request in
+            captured = URLComponents(url: request.url!, resolvingAgainstBaseURL: false)?.queryItems
+            return (200, Data(#"{"variants":[]}"#.utf8))
+        }
+        _ = try await RouteService(client: stubbedClient()).journey(
+            originLat: 37.55, originLng: 126.95, destLat: 37.58, destLng: 126.98,
+            board: JourneyStationQuery(name: "서울역", lat: 37.5547, lng: 126.9707, line: "1호선", kind: nil, aboardDirection: "상행"),
+            alight: JourneyStationQuery(name: "광화문", lat: 37.5714, lng: 126.9767, line: nil, kind: nil, aboardDirection: "하행"))
+        func value(_ name: String) -> String? { captured?.first { $0.name == name }?.value }
+        #expect(value("boardKind") == "aboard")
+        #expect(value("boardDir") == "상행")
+        #expect(value("boardLine") == "1호선")
+        #expect(value("stops") == "1")
+        // aboard는 하차 쪽에 오지 않는다 — 넘겨도 무시
+        #expect(captured?.contains { $0.name == "alightKind" || $0.name == "alightDir" } == false)
+    }
+
+    @Test func journeyAboardWithoutLineOmitsBoardLine() async throws {
+        var captured: [URLQueryItem]?
+        StubURLProtocol.handler = { request in
+            captured = URLComponents(url: request.url!, resolvingAgainstBaseURL: false)?.queryItems
+            return (200, Data(#"{"variants":[]}"#.utf8))
+        }
+        _ = try await RouteService(client: stubbedClient()).journey(
+            originLat: 37.55, originLng: 126.95, destLat: 37.58, destLng: 126.98,
+            board: JourneyStationQuery(name: "서울역", lat: 37.5547, lng: 126.9707, line: nil, kind: nil, aboardDirection: "상행"),
+            alight: nil)
+        #expect(captured?.contains { $0.name == "boardLine" } == false)
+    }
+
+    @Test func oppositeDirectionDecodesOptionally() throws {
+        let r = try decodeResult(#"{"variants":[],"designatedMissing":{"side":"board","oppositeDirection":true}}"#)
+        #expect(r.designatedMissing?.oppositeDirection == true)
+        let none = try decodeResult(#"{"variants":[],"designatedMissing":{"side":"board"}}"#)
+        #expect(none.designatedMissing?.oppositeDirection == nil)
+    }
+
     @Test func journeySendsKindForBusStopSides() async throws {
         var captured: [URLQueryItem]?
         StubURLProtocol.handler = { request in
@@ -143,8 +182,8 @@ extension StubNetworkTests {
         }
         _ = try await RouteService(client: stubbedClient()).journey(
             originLat: 37.55, originLng: 126.95, destLat: 37.58, destLng: 126.98,
-            board: JourneyStationQuery(name: "강남역", lat: 37.4979, lng: 127.0276, line: "5호선", kind: .busStop),
-            alight: JourneyStationQuery(name: "광화문", lat: 37.5714, lng: 126.9767, line: nil, kind: nil))
+            board: JourneyStationQuery(name: "강남역", lat: 37.4979, lng: 127.0276, line: "5호선", kind: .busStop, aboardDirection: nil),
+            alight: JourneyStationQuery(name: "광화문", lat: 37.5714, lng: 126.9767, line: nil, kind: nil, aboardDirection: nil))
         func value(_ name: String) -> String? { captured?.first { $0.name == name }?.value }
         #expect(value("stops") == "1")
         #expect(value("boardKind") == "stop")
@@ -199,7 +238,7 @@ extension StubNetworkTests {
         let response = try await RouteService(client: stubbedClient()).journey(
             originLat: 37.55, originLng: 126.95, destLat: 37.58, destLng: 126.98,
             board: nil,
-            alight: JourneyStationQuery(name: "광화문", lat: 37.5714, lng: 126.9767, line: "5호선", kind: nil))
+            alight: JourneyStationQuery(name: "광화문", lat: 37.5714, lng: 126.9767, line: "5호선", kind: nil, aboardDirection: nil))
         guard case .result(let result) = response else {
             Issue.record("result가 아니다")
             return
