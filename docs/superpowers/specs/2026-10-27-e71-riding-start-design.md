@@ -1,6 +1,6 @@
 # E71: 타고 있는 열차에서 여정을 시작한다 — 설계
 
-- 상태: 설계(2026-10-27, 세션 e71-riding-start). 판정 요청 `~/gildongmu-wt/e71-riding-start-reports/judgment-202610272205.md`(⓪~④, 기본값으로 진행).
+- 상태: 설계(2026-10-27, 세션 e71-riding-start). 판정 ⓪~④와 세션이 정한 넷(R11·R12·구간 줄 문장 유지·실시간 없는 노선 거절 문장)은 **위원장 판정 2026-10-27 22:12로 기본값 확정**(§3.1).
 - 판정 정본: `docs/BACKLOG.md` E71, 코디네이터 판정(계획 `docs/superpowers/plans/2026-10-27-backlog-sweep-14-parallel-plan.md` §1 판정 7). E70 첫 판의 판정(spec `2026-10-17-e70-mode-change-journey-design.md` D1~D14, 판정 1~32)과 E70-e(`2026-10-27-e70e-bus-stop-transfer-design.md`)는 재논의하지 않고 그 위에 얹는다.
 - 범위: **iOS 실험판 전용**(E70과 같은 봉인 `AppConfig.experimentalJourneyEnabled`), **첫 판은 지하철 중 서울 실시간 도착이 닿는 노선만**. 서버는 기존 `/api/route/journey`에 옵트인 파라미터만 더하고 미지정 응답은 바이트 동일.
 - **설계 리뷰 판정: 해당.** 새 외부 계약 가정(서울 지하철 실시간 `updnLine`·`trainLineNm` ↔ ODsay `wayCode` 방향 조인)과 안내 세션의 새 시작 경로(대중교통 세션이 대기 국면의 "이미 탔어요" 둘째 단계로 열린다)를 담는다. codex 적대적 설계 리뷰 결과는 §11.
@@ -36,7 +36,7 @@
 
 ## 3. 판정 기록
 
-### 3.1 판정 요청(기본값으로 진행, `judgment-202610272205.md`)
+### 3.1 판정(2026-10-27 22:12 위원장 확정 — 전부 기본값)
 
 | # | 질문 | 기본값 |
 |---|---|---|
