@@ -91,7 +91,7 @@
 ### 5.1 입력
 
 - 출발지 검색 시트(`DirectionsEndpointSearchView`, 대상 `.from`)의 「현재 위치 사용」 다음 행 「지금 탄 열차에서 출발」(`ios.journey.aboardStart`). 봉인: `experimentalJourneyEnabled` ∧ 데이터 로케일 ko(역 칸과 같은 조건).
-- 누르면 시트가 새 대상 `.aboardStation`으로 바뀐다(길찾기 탭 `searchTarget = .aboardStation`). 역 칸 검색과 같은 화면이되 **지하철역만** 받는다(`stationLayoutKind == .subway`, 정류장 검색 없음, 최근 목록 없음). 제목 「지금 서 있거나 다음에 설 역」(`ios.journey.aboardStationField`). 지하철역이 아니면 기존 통지 「역을 골라 주세요.」.
+- 누르면 **같은 시트가 aboard 모드로 바뀐다**(시트를 닫았다 다시 띄우지 않는다 — 그 사이 커서가 화면 최상단으로 떨어진다). 역 칸 검색과 같은 화면이되 **지하철역만** 받는다(`stationLayoutKind == .subway`, 정류장 검색 없음, 최근 목록·「현재 위치 사용」 없음). 제목·검색 필드 이름 「지금 서 있거나 다음에 설 역」(`ios.journey.aboardStationField`), 커서는 검색 필드로. 지하철역이 아니면 기존 통지 「역이나 정류장을 골라 주세요.」(`ios.journey.notStation`).
 - 역이 정해지면 시트가 닫히고 출발지 칸이 「출발지, 지금 탄 열차, {역 장소 이름}」이 되며 그 아래에 방면 단계가 선다. 커서는 방면 질문 줄로 간다(질문이 다음 행동이다).
   - 노선: 장소 노선 힌트(카테고리 끝 조각 또는 이름 꼬리 — 역 칸과 같은 추출)가 있으면 그 노선. 없으면 도착 목록의 서로 다른 `line`이 하나면 그것, 둘 이상이면 질문 「어느 노선인가요?」(`ios.journey.aboardLinePrompt`) + 노선 버튼들.
   - 방면: 질문 「어느 방면 열차인가요?」(`ios.journey.aboardDirectionPrompt`) + 묶음마다 버튼 한 줄 「{방면}, {종착1}행, {종착2}행」(`ios.journey.aboardDirectionRow` — 종착 조각은 `joinText`, 한 줄 = 한 객체). 3-state는 R3.
