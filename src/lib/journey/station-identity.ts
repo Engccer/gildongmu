@@ -63,3 +63,66 @@ export function isSameStation(
   if (input.line && stop.lineName) return sameLine(stop.lineName, input.line);
   return true;
 }
+
+/**
+ * 버스 정류장 이름의 비교 키(E70-e spec §4.2): 공백 제거 → 괄호 묶음 전부 제거 → 숫자 사이가 아닌 첫 `.` 앞부분.
+ * 「강남역.삼성전자」→「강남역」, 「부산진역 (해양수산부.동구청)」→「부산진역」, 「2.28기념중앙공원건너1」→ 그대로.
+ * Swift ICU 미러(`journeyBusStopKey`)가 같은 표를 읽으므로 정규식은 문자 클래스 안 `[`를 쓰지 않는다.
+ */
+export function busStopKey(name: string): string {
+  const s = name.replace(/\s+/g, "").replace(/\([^)]*\)/g, "");
+  for (let i = 0; i < s.length; i++) {
+    if (s[i] !== ".") continue;
+    const digitsAround = /^[0-9]$/.test(s[i - 1] ?? "") && /^[0-9]$/.test(s[i + 1] ?? "");
+    if (!digitsAround) return s.slice(0, i);
+  }
+  return s;
+}
+
+/** 이름이 달라도 같은 정류장으로 보는 거리(m) — 같은 모퉁이의 이웃 정류장(「시청.덕수궁」 ↔ 「시청앞.덕수궁」, 실측 37m). */
+export const JOURNEY_SAME_STOP_M = 50;
+
+/**
+ * 정류장 입력 ↔ 버스 leg 끝 정류(강): (빈 키가 아니고 키 같음 ∧ 좌표 500m 이내) ∨ 좌표 50m 이내(이름 무관).
+ * 길 건너·부속명만 다른 정류장은 같은 곳으로 본다.
+ */
+export function isSameBusStop(
+  stop: { name: string; lat: number; lng: number },
+  input: JourneyStationInput,
+): boolean {
+  if (withinRadius(stop, input, JOURNEY_SAME_STOP_M)) return true;
+  const key = busStopKey(input.name);
+  // 빈 키(이름이 `.`·괄호뿐)는 이름 조건을 없애 500m 안이면 다 같은 곳이 되므로 이름 경로로는 맞지 않는다.
+  if (key === "" || busStopKey(stop.name) !== key) return false;
+  return withinRadius(stop, input, JOURNEY_STATION_IDENTITY_M);
+}
+
+function withinRadius(stop: { lat: number; lng: number }, input: JourneyStationInput, meters: number): boolean {
+  const d = haversineMeters(stop.lat, stop.lng, input.coord.lat, input.coord.lng);
+  return Number.isFinite(d) && d <= meters;
+}
+
+const HANGUL_SYLLABLE = /^[가-힣]$/;
+
+/**
+ * 역 입력 ↔ 버스 leg 끝 정류(약, `stops`일 때만): 좌표 500m 이내 ∧ (정류장 키를 역 키로 정규화한 것이 같다 ∨
+ * 정류장 키 안에 `${역 키}역`이 있고 그 앞 글자가 없거나 한글 음절이 아니거나 `선`·`도`다).
+ * 역 키는 `normalizeStationName` 재사용 — 자체 역명 정규화는 두지 않는다.
+ */
+export function busStopNamesStation(
+  stop: { name: string; lat: number; lng: number },
+  input: JourneyStationInput,
+): boolean {
+  if (!withinRadius(stop, input, JOURNEY_STATION_IDENTITY_M)) return false;
+  const k = normalizeStationName(input.name);
+  if (!k) return false;
+  const key = busStopKey(stop.name).toLowerCase();
+  if (key === "") return false;
+  if (normalizeStationName(key) === k) return true;
+  const needle = `${k}역`;
+  for (let i = key.indexOf(needle); i >= 0; i = key.indexOf(needle, i + 1)) {
+    const prev = i === 0 ? "" : key[i - 1];
+    if (prev === "" || !HANGUL_SYLLABLE.test(prev) || prev === "선" || prev === "도") return true;
+  }
+  return false;
+}

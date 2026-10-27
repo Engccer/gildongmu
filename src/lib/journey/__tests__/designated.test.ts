@@ -10,6 +10,7 @@ import {
   matchesAlight,
   matchesBoard,
   missingSide,
+  sideMatch,
 } from "../designated";
 
 function loadRoutes(name: string): TransitRoute[] {
@@ -107,20 +108,20 @@ describe("missingSide", () => {
   const subwayOnly = loadRoutes("ahyeon-gwanghwamun-subway");
 
   it("한쪽만 지정하면 그쪽", () => {
-    expect(missingSide([ranked], { board: nowhere })).toBe("board");
-    expect(missingSide([ranked], { alight: nowhere })).toBe("alight");
+    expect(missingSide([ranked], { board: nowhere }, false)).toBe("board");
+    expect(missingSide([ranked], { alight: nowhere }, false)).toBe("alight");
   });
 
   it("승차만 맞는 후보가 있으면 alight", () => {
-    expect(missingSide([ranked, subwayOnly], { board: ahyeon, alight: nowhere })).toBe("alight");
+    expect(missingSide([ranked, subwayOnly], { board: ahyeon, alight: nowhere }, false)).toBe("alight");
   });
 
   it("하차만 맞는 후보가 있으면 board", () => {
-    expect(missingSide([ranked, subwayOnly], { board: nowhere, alight: gwanghwamun })).toBe("board");
+    expect(missingSide([ranked, subwayOnly], { board: nowhere, alight: gwanghwamun }, false)).toBe("board");
   });
 
   it("어느 쪽도 없으면 both", () => {
-    expect(missingSide([ranked], { board: nowhere, alight: nowhere })).toBe("both");
+    expect(missingSide([ranked], { board: nowhere, alight: nowhere }, false)).toBe("both");
   });
 
   it("승차만 맞는 후보와 하차만 맞는 후보가 따로 있으면 both", () => {
@@ -129,11 +130,55 @@ describe("missingSide", () => {
     const seoul: JourneyStationInput = { name: "시청역", coord: { lat: 37.565366, lng: 126.97714 } };
     const p17 = ranked.find((r) => r.routeKey === "p17")!;
     expect(matchesAlight(p17, seoul)).toBe(true);
-    expect(missingSide([ranked], { board: ahyeon, alight: seoul })).toBe("both");
+    expect(missingSide([ranked], { board: ahyeon, alight: seoul }, false)).toBe("both");
   });
 
   it("합성 버스 경로로도 동작한다", () => {
     const r = { summary: { totalMinutes: 15, fare: 0, transfers: 0, walkMinutes: 3 }, legs: [walk(1), bus(), walk(2)], routeKey: "b" } as TransitRoute;
     expect(matchesBoard(r, ahyeon)).toBe(false);
+  });
+});
+
+describe("정류장 입력·약한 맞음(E70-e)", () => {
+  const here = { lat: 37.56, lng: 126.95 };
+  const busRoute = (key: string, from: string, to: string): TransitRoute => ({
+    summary: { totalMinutes: 20, fare: 1500, transfers: 0, walkMinutes: 4 },
+    legs: [{ mode: "bus", lineName: "601", fromName: from, toName: to, minutes: 12, stops: [
+      { name: from, lat: here.lat, lng: here.lng },
+      { name: to, lat: 37.57, lng: 126.97 },
+    ] }],
+    routeKey: key,
+  });
+  const stopIn = (name: string, c = here): JourneyStationInput => ({ name, coord: c, kind: "stop" });
+
+  it("정류장 입력은 버스 leg만 강으로 맞고 지하철 leg는 맞지 않는다", () => {
+    const r = busRoute("b0", "시청.교육청", "광화문");
+    expect(sideMatch(r, "board", stopIn("시청.덕수궁"), false)).toBe("strong");
+    expect(sideMatch(r, "board", stopIn("시청앞", { lat: here.lat + 0.001, lng: here.lng }), false)).toBeNull();
+    const subway = loadRoutes("ahyeon-gwanghwamun").find((x) => x.routeKey === "p3")!;
+    const s0 = legEndStop(firstVehicle(subway)!, "board")!;
+    expect(sideMatch(subway, "board", stopIn(s0.name, { lat: s0.lat, lng: s0.lng }), false)).toBeNull();
+  });
+
+  it("역 입력은 버스 leg를 stops일 때만, 약으로 맞춘다", () => {
+    const r = busRoute("b0", "강남역12번출구", "광화문");
+    const station: JourneyStationInput = { name: "강남역", coord: here };
+    expect(sideMatch(r, "board", station, false)).toBeNull();
+    expect(sideMatch(r, "board", station, true)).toBe("weak");
+    expect(matchesBoard(r, station)).toBe(false);
+  });
+
+  it("findDesignated: allowWeak 없이는 약한 맞음을 받지 않는다", () => {
+    const r = busRoute("b0", "강남역12번출구", "광화문");
+    const d = { board: { name: "강남역", coord: here } };
+    expect(findDesignated([r], d)).toBeNull();
+    expect(findDesignated([r], d, { allowWeak: true })).toBe(r);
+  });
+
+  it("missingSide: stops일 때 약한 맞음도 맞는 쪽으로 센다", () => {
+    const r = busRoute("b0", "강남역12번출구", "광화문");
+    const d = { board: { name: "강남역", coord: here }, alight: { name: "수원역", coord: { lat: 37.2656, lng: 127.0001 } } };
+    expect(missingSide([[r]], d, false)).toBe("both");
+    expect(missingSide([[r]], d, true)).toBe("alight");
   });
 });

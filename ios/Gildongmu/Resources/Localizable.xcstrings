@@ -22376,7 +22376,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "자동차를 탈 역 추가"
+            "value": "자동차를 탈 역/정류장 추가"
           }
         }
       }
@@ -22386,7 +22386,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "자동차에서 내리는 역 추가"
+            "value": "자동차에서 내리는 역/정류장 추가"
           }
         }
       }
@@ -22406,7 +22406,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "자동차를 탈 역"
+            "value": "자동차를 탈 역/정류장"
           }
         }
       }
@@ -22456,7 +22456,17 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "자동차에서 내리는 역"
+            "value": "자동차에서 내리는 역/정류장"
+          }
+        }
+      }
+    },
+    "ios.journey.busStopKind": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "정류장"
           }
         }
       }
@@ -22466,7 +22476,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "갈아탈 역 지우기"
+            "value": "갈아탈 역/정류장 지우기"
           }
         }
       }
@@ -22491,6 +22501,26 @@
         }
       }
     },
+    "ios.journey.designatedHeadingBus": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@에서 버스를 타는 경로"
+          }
+        }
+      }
+    },
+    "ios.journey.designatedHeadingBusAlight": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@에서 버스에서 내리는 경로"
+          }
+        }
+      }
+    },
     "ios.journey.designatedMissing": {
       "localizations": {
         "ko": {
@@ -22507,6 +22537,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "%1$@역에서 내리는 경로를 찾지 못했습니다."
+          }
+        }
+      }
+    },
+    "ios.journey.designatedMissingStop": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@에서 타는 경로를 찾지 못했습니다."
+          }
+        }
+      }
+    },
+    "ios.journey.designatedMissingStopAlight": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@에서 내리는 경로를 찾지 못했습니다."
           }
         }
       }
@@ -22576,7 +22626,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "역을 골라 주세요."
+            "value": "역이나 정류장을 골라 주세요."
           }
         }
       }
@@ -22597,6 +22647,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "%1$@에서 %2$@까지, %3$@역과 %4$@역에서 갈아타기"
+          }
+        }
+      }
+    },
+    "ios.journey.recentRouteBothPlaces": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@에서 %2$@까지, %3$@, %4$@에서 갈아타기"
+          }
+        }
+      }
+    },
+    "ios.journey.recentRouteStop": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@에서 %2$@까지, %3$@에서 갈아타기"
           }
         }
       }
@@ -22637,6 +22707,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "%1$@에서 버스에서 내리는 추천 경로"
+          }
+        }
+      }
+    },
+    "ios.journey.stationPlace": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@역"
+          }
+        }
+      }
+    },
+    "ios.journey.stopSearchFailed": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "정류장을 불러오지 못했습니다."
+          }
+        }
+      }
+    },
+    "ios.journey.stopSearchTruncated": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "정류장 이름을 더 길게 입력해 주세요."
           }
         }
       }

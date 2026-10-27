@@ -493,11 +493,23 @@
   "ios.journey.designatedHeadingAlight": [
     "station"
   ],
+  "ios.journey.designatedHeadingBus": [
+    "stop"
+  ],
+  "ios.journey.designatedHeadingBusAlight": [
+    "stop"
+  ],
   "ios.journey.designatedMissing": [
     "station"
   ],
   "ios.journey.designatedMissingAlight": [
     "station"
+  ],
+  "ios.journey.designatedMissingStop": [
+    "stop"
+  ],
+  "ios.journey.designatedMissingStopAlight": [
+    "stop"
   ],
   "ios.journey.egressExit": [
     "exit",
@@ -531,6 +543,17 @@
     "board",
     "alight"
   ],
+  "ios.journey.recentRouteBothPlaces": [
+    "from",
+    "to",
+    "board",
+    "alight"
+  ],
+  "ios.journey.recentRouteStop": [
+    "from",
+    "to",
+    "stop"
+  ],
   "ios.journey.recommendedHeading": [
     "station"
   ],
@@ -542,6 +565,9 @@
   ],
   "ios.journey.recommendedHeadingBusAlight": [
     "stop"
+  ],
+  "ios.journey.stationPlace": [
+    "station"
   ],
   "ios.journey.taxiIn": [
     "station",

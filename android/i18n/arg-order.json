@@ -1158,11 +1158,23 @@
   "android.journey.designatedHeadingAlight": [
     "station"
   ],
+  "android.journey.designatedHeadingBus": [
+    "stop"
+  ],
+  "android.journey.designatedHeadingBusAlight": [
+    "stop"
+  ],
   "android.journey.designatedMissing": [
     "station"
   ],
   "android.journey.designatedMissingAlight": [
     "station"
+  ],
+  "android.journey.designatedMissingStop": [
+    "stop"
+  ],
+  "android.journey.designatedMissingStopAlight": [
+    "stop"
   ],
   "android.journey.egressExit": [
     "exit",
@@ -1196,6 +1208,17 @@
     "board",
     "alight"
   ],
+  "android.journey.recentRouteBothPlaces": [
+    "from",
+    "to",
+    "board",
+    "alight"
+  ],
+  "android.journey.recentRouteStop": [
+    "from",
+    "to",
+    "stop"
+  ],
   "android.journey.recommendedHeading": [
     "station"
   ],
@@ -1207,6 +1230,9 @@
   ],
   "android.journey.recommendedHeadingBusAlight": [
     "stop"
+  ],
+  "android.journey.stationPlace": [
+    "station"
   ],
   "android.journey.taxiIn": [
     "station",

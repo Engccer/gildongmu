@@ -99,15 +99,20 @@ struct JourneyResultRows: View {
     private var missingLines: [String] {
         guard let side = result.designatedMissing?.side else { return [] }
         let lines = lines
+        // 정류장 입력은 원문 그대로 말한다(역 표시 이름 함수로 깎지 않는다).
         let boardLine = board.map {
-            appLocalized(
-                "ios.journey.designatedMissing",
-                lines.board ? journeyQualifiedStationName($0.label, line: $0.line) : journeyStationDisplayName($0.label))
+            $0.kind == .busStop
+                ? appLocalized("ios.journey.designatedMissingStop", $0.label)
+                : appLocalized(
+                    "ios.journey.designatedMissing",
+                    lines.board ? journeyQualifiedStationName($0.label, line: $0.line) : journeyStationDisplayName($0.label))
         }
         let alightLine = alight.map {
-            appLocalized(
-                "ios.journey.designatedMissingAlight",
-                lines.alight ? journeyQualifiedStationName($0.label, line: $0.line) : journeyStationDisplayName($0.label))
+            $0.kind == .busStop
+                ? appLocalized("ios.journey.designatedMissingStopAlight", $0.label)
+                : appLocalized(
+                    "ios.journey.designatedMissingAlight",
+                    lines.alight ? journeyQualifiedStationName($0.label, line: $0.line) : journeyStationDisplayName($0.label))
         }
         switch side {
         case .board: return [boardLine].compactMap { $0 }
@@ -165,6 +170,13 @@ func journeyVariantHeading(
     }
     switch v.kind {
     case .designated:
+        // 지정 경로가 버스로 시작·끝나면 정류장 문장이다(역을 골랐어도 그 이름의 정류장 경로가 잡히면 무엇이 잡혔는지 들린다).
+        if board != nil, first?.mode == "bus" {
+            return appLocalized("ios.journey.designatedHeadingBus", first?.fromName ?? board?.label ?? "")
+        }
+        if board == nil, last?.mode == "bus" {
+            return appLocalized("ios.journey.designatedHeadingBusAlight", last?.toName ?? alight?.label ?? "")
+        }
         if let board {
             return appLocalized(
                 "ios.journey.designatedHeading",

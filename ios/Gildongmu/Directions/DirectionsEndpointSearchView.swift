@@ -24,8 +24,31 @@ final class EndpointSearchModel {
     private var isGeocodingInFlight = false
     /// 역 칸(E70) — 주소 후보를 담지 않는다. 건수 통지·0건 판정·첫 후보 착지가 보이는 후보 기준이 된다.
     var stationsOnly = false
+    /// 역 칸의 정류장 줄(E70-e spec §3). 정류장 이름 검색은 제출 때 장소 검색과 병렬로 돌고, 거리는 근접 블렌딩과 같은 기준점에서 잰다.
+    struct StopRow: Identifiable {
+        let hit: JourneyStopHit
+        let distance: Int?
+        var id: String { "\(hit.name)|\(hit.lat)|\(hit.lng)" }
+    }
+    private(set) var stops: [StopRow] = []
+    /// 정류장 검색만 실패 — 정류장 자리에 한 줄(장소 줄·받은 정류장 줄은 그대로).
+    private(set) var stopsFailed = false
+    /// 일부만 받았다 — 정류장 줄 뒤에 할 일을 말하는 한 줄.
+    private(set) var stopsTruncated = false
+    /// 대상 지역을 못 정했다 — 장소·정류장이 둘 다 0건일 때만 기존 「정류소 정보가 제공되지 않습니다」를 더한다.
+    private(set) var showsNoBusData = false
+    /// 역 칸에서 장소 검색이 실패했는데 정류장 줄이 있다 — 역 장소 줄이 없는 이유가 "역 없음"이 아니라 "조회 실패"임을 알린다.
+    private(set) var showsPlacesFailure = false
+    /// 길찾기 화면의 출발·도착 좌표 중 알려진 것(둘 다 없으면 정류장 검색을 하지 않는다).
+    var stopOrigin: (lat: Double, lng: Double)?
+    var stopDest: (lat: Double, lng: Double)?
 
     private let service = SearchService(client: APIClient(baseURL: AppConfig.apiBaseURL))
+    private let routeService = RouteService(client: APIClient(baseURL: AppConfig.apiBaseURL))
+
+    /// 역 장소 줄(카카오 순서 그대로) → 정류장 줄 → 그 밖 장소 줄 — 고를 수 있는 것이 먼저다. 역 칸이 아니면 장소 전부가 앞쪽이다.
+    var selectablePlaces: [Place] { stationsOnly ? places.filter { stationLayoutKind($0) != nil } : places }
+    var otherPlaces: [Place] { stationsOnly ? places.filter { stationLayoutKind($0) == nil } : [] }
 
     func submit() {
         let trimmed = query.trimmingCharacters(in: .whitespaces)
@@ -36,24 +59,42 @@ final class EndpointSearchModel {
         searchTask = Task {
             // 허용된 세션이면 좌표를 실어 근접 블렌딩(SearchModel 동형, 팝업 없음).
             let coordinate = await LocationService.shared.coordinateForRanking()
+            async let stopOutcome = searchStops(trimmed, reference: coordinate)
             let outcome = await service.search(
                 query: trimmed, lat: coordinate?.lat, lng: coordinate?.lng,
                 lang: AppLanguage.dataLocale, includeWeb: false)
+            let stopResult = await stopOutcome
             guard !Task.isCancelled else { return }
             // 미니 검색은 필드 확정용이라 상위 5건씩만(전체 탐색은 검색 탭이 담당).
             places = Array(outcome.places.items.prefix(5))
             addresses = stationsOnly ? [] : Array(outcome.addresses.items.prefix(5))
+            stops = stopResult?.rows ?? []
+            stopsFailed = stopResult?.failed ?? false
+            stopsTruncated = stopResult?.truncated ?? false
             isSearching = false
             resultsRevision += 1
-            let count = places.count + addresses.count
-            let message: String
-            let haptic: ResultHaptic.Kind
+            let count = places.count + addresses.count + stops.count
+            showsNoBusData = count == 0 && (stopResult?.unsearched ?? false)
+            // 역 칸은 주소를 버리므로 장소 트랙의 성패만 본다(주소 성공이 장소 실패를 가리지 않는다).
+            let placesFailed = stationsOnly ? outcome.places.isFailed : outcome.allFailed
+            showsPlacesFailure = stationsOnly && placesFailed && count > 0
+            var message: String
+            var haptic: ResultHaptic.Kind
             if count > 0 {
                 message = appLocalized("directions.candidateCount", count)
                 notice = ""
                 haptic = .success
-            } else if outcome.allFailed {
-                // 3-state: "0건"과 "조회 실패"를 뭉개지 않는다(양쪽 다 실패했을 때만 오류).
+                // 실패는 줄만 두면 훑어야 알게 된다 — 건수 뒤에 한 문장씩 덧붙이고 진동도 그에 맞춘다(3-state).
+                if showsPlacesFailure {
+                    message += " " + appLocalized("directions.candidateError")
+                    haptic = .attention
+                }
+                if stopsFailed {
+                    message += " " + appLocalized("ios.journey.stopSearchFailed")
+                    haptic = .attention
+                }
+            } else if placesFailed {
+                // 3-state: "0건"과 "조회 실패"를 뭉개지 않는다.
                 message = appLocalized("directions.candidateError")
                 notice = message
                 haptic = .failure
@@ -61,7 +102,9 @@ final class EndpointSearchModel {
                 message = appLocalized("directions.candidateNone")
                 notice = message
                 haptic = .attention
+                if stopsFailed { message += " " + appLocalized("ios.journey.stopSearchFailed") }
             }
+            if showsNoBusData { message += " " + appLocalized("ios.common.unavailableHere.noBusData") }
             ResultHaptic.fire(haptic)
             AccessibilityNotification.Announcement(message).post()
         }
@@ -69,6 +112,41 @@ final class EndpointSearchModel {
 
     func cancel() {
         searchTask?.cancel()
+    }
+
+    /// 서버 `q`의 trim 길이 계약(2~30자) — 밖이면 정류장 검색을 하지 않는다(400이 실패 줄로 위장하지 않게).
+    private static let stopQueryLengths = 2...30
+
+    private struct StopSearchOutcome {
+        let rows: [StopRow]
+        let failed: Bool
+        let truncated: Bool
+        let unsearched: Bool
+    }
+
+    /// 역 칸 + 두 글자 이상 + 알려진 좌표가 있을 때만 정류장 검색을 한다. 던지면 실패 한 줄(미유도 지역은 `unsearched`가 따로 말한다).
+    private func searchStops(_ text: String, reference: (lat: Double, lng: Double)?) async -> StopSearchOutcome? {
+        guard stationsOnly, Self.stopQueryLengths.contains(text.count), stopOrigin != nil || stopDest != nil else { return nil }
+        do {
+            let result = try await routeService.journeyStops(query: text, origin: stopOrigin, dest: stopDest)
+            var rows = result.stops.map { hit in
+                StopRow(
+                    hit: hit,
+                    distance: reference.map {
+                        Int(haversineMeters(lat1: $0.lat, lng1: $0.lng, lat2: hit.lat, lng2: hit.lng).rounded())
+                    })
+            }
+            // 거리순(기준점이 없으면 서버 순서 그대로). 정렬은 안정적이지 않으므로 거리 있는 쪽만 가른다.
+            if reference != nil { rows.sort { ($0.distance ?? .max) < ($1.distance ?? .max) } }
+            return StopSearchOutcome(
+                rows: Array(rows.prefix(5)), failed: result.failed, truncated: result.truncated,
+                unsearched: result.unsearched)
+        } catch APIError.outOfCoverage {
+            // 서비스 지역 밖은 실패가 아니다 — 정류장 줄·실패 줄 없이 장소 결과가 정본이다.
+            return StopSearchOutcome(rows: [], failed: false, truncated: false, unsearched: false)
+        } catch {
+            return StopSearchOutcome(rows: [], failed: true, truncated: false, unsearched: false)
+        }
     }
 
     /// 주소 후보 선택: 지오코딩 성공 시에만 확정. 실패는 coordError 통지 + 시트 유지(nil).
@@ -107,7 +185,32 @@ struct DirectionsEndpointSearchView: View {
     let onSelect: (DirectionsEndpoint) -> Void
     /// 자동차로 갈아탈 역 칸(E70 §5.1)의 결과 — 끝점이 아니라 장소 그대로(역 판정·노선 힌트에 분류가 필요하다).
     /// 역 칸 대상에서만 쓰인다. `DirectionsEndpoint`(Kit 공유·최근 기록 저장 포맷)는 넓히지 않는다.
-    var onSelectStation: ((Place) -> Void)? = nil
+    let onSelectStation: ((RecentStation) -> Void)?
+    /// 정류장 이름 검색의 지역 근거(E70-e) — 길찾기 화면의 출발·도착 중 알려진 좌표. 역 칸 대상에서만 쓰인다.
+    let stopOrigin: (lat: Double, lng: Double)?
+    let stopDest: (lat: Double, lng: Double)?
+
+    /// 끝점 칸(출발·도착·경유지·수동 위치) — 역 칸 전용 인자가 없다.
+    init(target: DirectionsFieldTarget, onSelect: @escaping (DirectionsEndpoint) -> Void) {
+        self.target = target
+        self.onSelect = onSelect
+        self.onSelectStation = nil
+        self.stopOrigin = nil
+        self.stopDest = nil
+    }
+
+    /// 역 칸 — 정류장 검색의 지역 근거를 기본값 없이 받는다(빠뜨리면 정류장 검색이 조용히 꺼진다).
+    init(
+        target: DirectionsFieldTarget, onSelect: @escaping (DirectionsEndpoint) -> Void,
+        onSelectStation: @escaping (RecentStation) -> Void,
+        stopOrigin: (lat: Double, lng: Double)?, stopDest: (lat: Double, lng: Double)?
+    ) {
+        self.target = target
+        self.onSelect = onSelect
+        self.onSelectStation = onSelectStation
+        self.stopOrigin = stopOrigin
+        self.stopDest = stopDest
+    }
     @Environment(\.dismiss) private var dismiss
     @State private var model = EndpointSearchModel()
     @State private var speech = SpeechService()
@@ -150,11 +253,18 @@ struct DirectionsEndpointSearchView: View {
     /// 후보 행의 안정 키. 장소와 주소가 한 목록에 섞이므로 접두사로 네임스페이스를 가른다.
     private static func candidateKey(place: Place) -> String { "place:\(place.id)" }
     private static func candidateKey(address: JusoAddress) -> String { "addr:\(address.roadAddr)" }
+    private static func candidateKey(stop: EndpointSearchModel.StopRow) -> String { "stop:\(stop.id)" }
 
-    /// 렌더 순서(장소 먼저, 그다음 주소)와 일치하는 첫 후보. 둘 다 비면 nil.
+    /// 렌더 순서(역 장소 → 정류장 → 그 밖 장소 → 주소)와 일치하는 첫 후보. 둘 다 비면 nil.
     /// `focus`는 포커스 바인딩 값, `scroll`은 ForEach 정체성(= scrollTo 인자)이다.
     private var firstCandidate: (focus: String, scroll: String)? {
-        if let place = model.places.first {
+        if let place = model.selectablePlaces.first {
+            return (Self.candidateKey(place: place), place.id)
+        }
+        if let stop = model.stops.first {
+            return (Self.candidateKey(stop: stop), stop.id)
+        }
+        if let place = model.otherPlaces.first {
             return (Self.candidateKey(place: place), place.id)
         }
         if !isStationTarget, let address = model.addresses.first {
@@ -236,24 +346,31 @@ struct DirectionsEndpointSearchView: View {
                         Button(appLocalized("recent.clearAll")) { clearRecent() }
                     }
                 }
-                ForEach(model.places) { place in
-                    Button {
-                        if isStationTarget {
-                            selectStation(place)
-                        } else {
-                            select(.place(label: place.name, lat: place.lat, lng: place.lng, labelRoman: place.nameRoman))
-                        }
-                    } label: {
-                        // 한 줄 = 한 객체: 이름+주소 단일 텍스트(웹 joinText 동형). 비-ko는 이름이 로마자
-                        // 병기(E28) — 시각 `Roman (한글), 주소`, 낭독은 괄호 없이. 확정 라벨은 원명 그대로.
-                        let name = bilingual(place.name, roman: place.nameRoman)
-                        let address = place.roadAddress.isEmpty ? place.address : place.roadAddress
-                        bilingualLine(
-                            visible: joinText(name.display, address),
-                            accessible: joinText(name.primary, address))
-                    }
-                    .accessibilityFocused($focusedCandidate, equals: Self.candidateKey(place: place))
+                ForEach(model.selectablePlaces) { place in placeRow(place) }
+                if model.showsPlacesFailure {
+                    Text(appLocalized("directions.candidateError"))
                 }
+                ForEach(model.stops) { stop in
+                    Button {
+                        selectStop(stop.hit)
+                    } label: {
+                        // 한 줄 = 한 객체: 이름, 「정류장」, 거리(기준점이 없으면 거리 조각 없음). 이름은 원문 그대로(깎지 않는다).
+                        Text(joinText(
+                            stop.hit.name, appLocalized("ios.journey.busStopKind"),
+                            stop.distance.map(formatDistance)))
+                    }
+                    .accessibilityFocused($focusedCandidate, equals: Self.candidateKey(stop: stop))
+                }
+                if model.stopsFailed {
+                    Text(appLocalized("ios.journey.stopSearchFailed"))
+                }
+                if model.stopsTruncated {
+                    Text(appLocalized("ios.journey.stopSearchTruncated"))
+                }
+                if model.showsNoBusData {
+                    Text(appLocalized("ios.common.unavailableHere.noBusData"))
+                }
+                ForEach(model.otherPlaces) { place in placeRow(place) }
                 ForEach(isStationTarget ? [] : model.addresses, id: \.roadAddr) { address in
                     Button {
                         Task {
@@ -300,6 +417,8 @@ struct DirectionsEndpointSearchView: View {
             }
             .task {
                 model.stationsOnly = isStationTarget
+                model.stopOrigin = stopOrigin
+                model.stopDest = stopDest
                 searchFieldFocused = true
                 recentEndpoints = recentStore.endpoints(recentScope)
             }
@@ -312,6 +431,25 @@ struct DirectionsEndpointSearchView: View {
             }
             }
         }
+    }
+
+    private func placeRow(_ place: Place) -> some View {
+        Button {
+            if isStationTarget {
+                selectStation(place)
+            } else {
+                select(.place(label: place.name, lat: place.lat, lng: place.lng, labelRoman: place.nameRoman))
+            }
+        } label: {
+            // 한 줄 = 한 객체: 이름+주소 단일 텍스트(웹 joinText 동형). 비-ko는 이름이 로마자
+            // 병기(E28) — 시각 `Roman (한글), 주소`, 낭독은 괄호 없이. 확정 라벨은 원명 그대로.
+            let name = bilingual(place.name, roman: place.nameRoman)
+            let address = place.roadAddress.isEmpty ? place.address : place.roadAddress
+            bilingualLine(
+                visible: joinText(name.display, address),
+                accessible: joinText(name.primary, address))
+        }
+        .accessibilityFocused($focusedCandidate, equals: Self.candidateKey(place: place))
     }
 
     /// 후보 도착 시 첫 후보로 커서를 보낸다.
@@ -386,7 +524,7 @@ struct DirectionsEndpointSearchView: View {
         }
     }
 
-    /// 역 칸은 역만 받는다(spec §5.1): 지하철·철도역이 아니면 칸에 넣지 않고 시트를 연 채 polite 통지.
+    /// 역 칸은 역이나 정류장만 받는다(spec §5.1): 이 줄은 장소 줄이고 지하철·철도역이 아니면 칸에 넣지 않고 시트를 연 채 polite 통지.
     private func selectStation(_ place: Place) {
         guard stationLayoutKind(place) != nil else {
             // 화면 변화 없는 활성화 응답이라 `.high`(통지 우선순위 판별선 — 기본이면 VO 활성화 처리에 묻혀 무반응으로 들린다).
@@ -396,7 +534,14 @@ struct DirectionsEndpointSearchView: View {
             ResultHaptic.fire(.attention)
             return
         }
-        onSelectStation?(place)
+        onSelectStation?(RecentStation(
+            label: place.name, lat: place.lat, lng: place.lng, line: journeyLineHint(place), kind: nil))
+        dismiss()
+    }
+
+    /// 정류장 칸(E70-e): 이름은 원문 그대로, 노선 힌트 없음.
+    private func selectStop(_ hit: JourneyStopHit) {
+        onSelectStation?(RecentStation(label: hit.name, lat: hit.lat, lng: hit.lng, line: nil, kind: .busStop))
         dismiss()
     }
 

@@ -41,10 +41,16 @@ const querySchema = z
     alight: optionalCoord,
     alightName: optionalText,
     alightLine: optionalHint,
+    // E70-e 옵트인: 정류장 입력(`*Kind=stop`)과 역 입력의 버스 경로 맞춤. 없으면 종전과 동일하다.
+    stops: z.union([z.literal("1"), z.null()]),
+    boardKind: z.union([z.literal("stop"), z.null()]),
+    alightKind: z.union([z.literal("stop"), z.null()]),
     lang: z.union([z.literal("ko"), z.null()]),
   })
   .refine((q) => q.board || q.alight, "갈아탈 역(board·alight) 중 하나는 필요합니다")
-  .refine((q) => !q.board === !q.boardName && !q.alight === !q.alightName, "역 좌표와 역 이름은 함께 보내야 합니다");
+  .refine((q) => !q.board === !q.boardName && !q.alight === !q.alightName, "역 좌표와 역 이름은 함께 보내야 합니다")
+  .refine((q) => !(q.boardKind || q.alightKind) || q.stops, "정류장 지정(boardKind·alightKind)은 stops=1과 함께 보내야 합니다")
+  .refine((q) => (!q.boardKind || q.board) && (!q.alightKind || q.alight), "정류장 종류는 그 쪽 좌표·이름이 있을 때만 보낼 수 있습니다");
 
 const NO_STORE = { "Cache-Control": "no-store" };
 
@@ -59,6 +65,9 @@ export async function GET(request: NextRequest) {
     alight: sp.get("alight"),
     alightName: sp.get("alightName"),
     alightLine: sp.get("alightLine"),
+    stops: sp.get("stops"),
+    boardKind: sp.get("boardKind"),
+    alightKind: sp.get("alightKind"),
     lang: sp.get("lang"),
   });
   if (!parsed.success) {
@@ -87,8 +96,9 @@ export async function GET(request: NextRequest) {
       {
         from: q.origin,
         to: q.dest,
-        ...(q.board && q.boardName ? { board: { name: q.boardName, coord: q.board, ...(q.boardLine ? { line: q.boardLine } : {}) } } : {}),
-        ...(q.alight && q.alightName ? { alight: { name: q.alightName, coord: q.alight, ...(q.alightLine ? { line: q.alightLine } : {}) } } : {}),
+        ...(q.board && q.boardName ? { board: { name: q.boardName, coord: q.board, ...(q.boardLine ? { line: q.boardLine } : {}), ...(q.boardKind ? { kind: q.boardKind } : {}) } } : {}),
+        ...(q.alight && q.alightName ? { alight: { name: q.alightName, coord: q.alight, ...(q.alightLine ? { line: q.alightLine } : {}), ...(q.alightKind ? { kind: q.alightKind } : {}) } } : {}),
+        ...(q.stops ? { stops: true } : {}),
       },
       journeyDeps,
       (cost) => reserveJourneyTmap(ip, Date.now(), cost),

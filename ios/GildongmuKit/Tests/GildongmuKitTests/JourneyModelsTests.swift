@@ -110,8 +110,8 @@ extension StubNetworkTests {
         }
         let response = try await RouteService(client: stubbedClient()).journey(
             originLat: 37.55, originLng: 126.95, destLat: 37.58, destLng: 126.98,
-            board: JourneyStationQuery(name: "아현", lat: 37.5573, lng: 126.956, line: "2호선"),
-            alight: JourneyStationQuery(name: "광화문", lat: 37.5714, lng: 126.9767, line: nil))
+            board: JourneyStationQuery(name: "아현", lat: 37.5573, lng: 126.956, line: "2호선", kind: nil),
+            alight: JourneyStationQuery(name: "광화문", lat: 37.5714, lng: 126.9767, line: nil, kind: nil))
         guard case .result(let result) = response else {
             Issue.record("result가 아니다: \(response)")
             return
@@ -130,6 +130,64 @@ extension StubNetworkTests {
         #expect(captured?.contains { $0.name == "alightLine" } == false)
         // ko 전용 — lang을 보내지 않는다
         #expect(captured?.contains { $0.name == "lang" } == false)
+        // 정류장 옵트인은 늘 싣고, 역 지정에는 Kind를 싣지 않는다
+        #expect(value("stops") == "1")
+        #expect(captured?.contains { $0.name == "boardKind" || $0.name == "alightKind" } == false)
+    }
+
+    @Test func journeySendsKindForBusStopSides() async throws {
+        var captured: [URLQueryItem]?
+        StubURLProtocol.handler = { request in
+            captured = URLComponents(url: request.url!, resolvingAgainstBaseURL: false)?.queryItems
+            return (200, Data(#"{"variants":[]}"#.utf8))
+        }
+        _ = try await RouteService(client: stubbedClient()).journey(
+            originLat: 37.55, originLng: 126.95, destLat: 37.58, destLng: 126.98,
+            board: JourneyStationQuery(name: "강남역", lat: 37.4979, lng: 127.0276, line: "5호선", kind: .busStop),
+            alight: JourneyStationQuery(name: "광화문", lat: 37.5714, lng: 126.9767, line: nil, kind: nil))
+        func value(_ name: String) -> String? { captured?.first { $0.name == name }?.value }
+        #expect(value("stops") == "1")
+        #expect(value("boardKind") == "stop")
+        #expect(captured?.contains { $0.name == "boardLine" } == false)
+        #expect(captured?.contains { $0.name == "alightKind" } == false)
+    }
+
+    @Test func journeyStopsSendsQueryAndDecodesThreeStates() async throws {
+        var captured: [URLQueryItem]?
+        var path: String?
+        StubURLProtocol.handler = { request in
+            let comps = URLComponents(url: request.url!, resolvingAgainstBaseURL: false)
+            captured = comps?.queryItems
+            path = comps?.path
+            return (200, Data(#"{"stops":[{"name":"강남역.삼성전자","lat":37.4979,"lng":127.0276,"stopNo":"25-001","source":"seoul"},{"name":"강남역","lat":37.5,"lng":127.1,"source":"tago"}],"failed":true,"truncated":true}"#.utf8))
+        }
+        let svc = RouteService(client: stubbedClient())
+        let res = try await svc.journeyStops(query: "강남역", origin: (37.55, 126.95), dest: nil)
+        #expect(path == "/api/route/journey/stops")
+        #expect(captured?.first { $0.name == "q" }?.value == "강남역")
+        #expect(captured?.first { $0.name == "origin" }?.value == "37.55,126.95")
+        #expect(captured?.contains { $0.name == "dest" } == false)
+        #expect(res.stops.count == 2)
+        #expect(res.stops[0].stopNo == "25-001" && res.stops[0].source == .seoul)
+        #expect(res.stops[1].stopNo == nil && res.stops[1].source == .tago)
+        #expect(res.failed && res.truncated && !res.unsearched)
+
+        StubURLProtocol.handler = { _ in (200, Data(#"{"stops":[]}"#.utf8)) }
+        let empty = try await svc.journeyStops(query: "없는곳", origin: nil, dest: (37.58, 126.98))
+        #expect(empty.stops.isEmpty && !empty.failed && !empty.unsearched && !empty.truncated)
+
+        StubURLProtocol.handler = { _ in (200, Data(#"{"stops":[],"unsearched":true}"#.utf8)) }
+        let unsearched = try await svc.journeyStops(query: "강남", origin: (37.55, 126.95), dest: nil)
+        #expect(unsearched.unsearched && unsearched.stops.isEmpty)
+
+        StubURLProtocol.handler = { _ in (200, Data(#"{"outOfCoverage":true}"#.utf8)) }
+        do {
+            _ = try await svc.journeyStops(query: "후쿠오카", origin: (33.5, 130.4), dest: nil)
+            Issue.record("throw해야 한다")
+        } catch APIError.outOfCoverage {
+        } catch {
+            Issue.record("outOfCoverage가 아니다: \(error)")
+        }
     }
 
     @Test func journeyOmitsUndesignatedSide() async throws {
@@ -141,14 +199,14 @@ extension StubNetworkTests {
         let response = try await RouteService(client: stubbedClient()).journey(
             originLat: 37.55, originLng: 126.95, destLat: 37.58, destLng: 126.98,
             board: nil,
-            alight: JourneyStationQuery(name: "광화문", lat: 37.5714, lng: 126.9767, line: "5호선"))
+            alight: JourneyStationQuery(name: "광화문", lat: 37.5714, lng: 126.9767, line: "5호선", kind: nil))
         guard case .result(let result) = response else {
             Issue.record("result가 아니다")
             return
         }
         #expect(result.variants.isEmpty)
         let names = Set(captured?.map(\.name) ?? [])
-        #expect(names == ["origin", "dest", "alight", "alightName", "alightLine"])
+        #expect(names == ["origin", "dest", "stops", "alight", "alightName", "alightLine"])
     }
 
     @Test func journeyOutOfCoverageMarkerDecodesToOutOfCoverage() async throws {
@@ -181,8 +239,8 @@ private func freshDefaults(_ name: String) -> UserDefaults {
 
 private let home = RecentEndpoint(label: "출발지", lat: 37.5, lng: 127.0)
 private let dest = RecentEndpoint(label: "도착지", lat: 37.6, lng: 127.1)
-private let ahyeon = RecentStation(label: "아현", lat: 37.5573, lng: 126.956, line: "2호선")
-private let gwanghwamun = RecentStation(label: "광화문", lat: 37.5714, lng: 126.9767, line: nil)
+private let ahyeon = RecentStation(label: "아현", lat: 37.5573, lng: 126.956, line: "2호선", kind: nil)
+private let gwanghwamun = RecentStation(label: "광화문", lat: 37.5714, lng: 126.9767, line: nil, kind: nil)
 
 @Suite struct RecentRouteStationTests {
     @Test func legacyJSONDecodesWithNilStations() throws {
@@ -231,13 +289,13 @@ private let gwanghwamun = RecentStation(label: "광화문", lat: 37.5714, lng: 1
     @Test func stationKeyUsesFourDecimalCoordinates() {
         // 좌표 4자리 일치 = 같은 역(라벨·노선 힌트는 정체성이 아니다)
         let a = RecentRoute(from: home, to: dest, via: nil,
-                            boardStation: RecentStation(label: "아현", lat: 37.55731, lng: 126.95601, line: "2호선"),
+                            boardStation: RecentStation(label: "아현", lat: 37.55731, lng: 126.95601, line: "2호선", kind: nil),
                             alightStation: nil, pinned: false)
         let b = RecentRoute(from: home, to: dest, via: nil,
-                            boardStation: RecentStation(label: "아현역", lat: 37.55732, lng: 126.95602, line: nil),
+                            boardStation: RecentStation(label: "아현역", lat: 37.55732, lng: 126.95602, line: nil, kind: nil),
                             alightStation: nil, pinned: false)
         let c = RecentRoute(from: home, to: dest, via: nil,
-                            boardStation: RecentStation(label: "아현", lat: 37.5580, lng: 126.956, line: "2호선"),
+                            boardStation: RecentStation(label: "아현", lat: 37.5580, lng: 126.956, line: "2호선", kind: nil),
                             alightStation: nil, pinned: false)
         #expect(a.id == b.id)
         #expect(RecentSearchStore.sameRoute(a, b))
@@ -256,5 +314,32 @@ private let gwanghwamun = RecentStation(label: "광화문", lat: 37.5714, lng: 1
         let again = store.recordRoute(route)
         #expect(again.first?.pinned == true)
         #expect(again.first?.boardStation == ahyeon)
+    }
+}
+
+@Suite struct RecentStationKindTests {
+    @Test func legacyStationJSONDecodesWithNilKind() throws {
+        let json = #"{"label":"아현","lat":37.5573,"lng":126.956,"line":"2호선"}"#
+        let station = try JSONDecoder().decode(RecentStation.self, from: Data(json.utf8))
+        #expect(station.kind == nil)
+    }
+
+    @Test func unknownKindDecodesToNilWithoutLosingList() throws {
+        let json = #"[{"label":"x","lat":37.5,"lng":127.0,"kind":"station"},{"label":"y","lat":37.6,"lng":127.1,"kind":"stop"}]"#
+        let list = try JSONDecoder().decode([RecentStation].self, from: Data(json.utf8))
+        #expect(list.map(\.kind) == [nil, .busStop])
+    }
+
+    @Test func busStopKindRoundTripsAndIsPartOfIdentity() throws {
+        let stop = RecentStation(label: "강남역", lat: 37.4979, lng: 127.0276, line: nil, kind: .busStop)
+        let data = try JSONEncoder().encode(stop)
+        #expect(String(decoding: data, as: UTF8.self).contains(#""kind":"stop""#))
+        #expect(try JSONDecoder().decode(RecentStation.self, from: data) == stop)
+        let station = RecentStation(label: "강남역", lat: 37.4979, lng: 127.0276, line: nil, kind: nil)
+        #expect(stop.id != station.id)
+        let a = RecentRoute(from: home, to: dest, boardStation: stop, alightStation: nil)
+        let b = RecentRoute(from: home, to: dest, boardStation: station, alightStation: nil)
+        #expect(a.id != b.id)
+        #expect(!RecentSearchStore.sameRoute(a, b))
     }
 }

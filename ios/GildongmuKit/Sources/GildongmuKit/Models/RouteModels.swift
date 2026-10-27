@@ -545,6 +545,50 @@ public enum JourneyResponse: Sendable, Hashable {
     case outOfCoverage
 }
 
+/// 정류장 이름 검색 한 건(E70-e spec §4.6). `source`는 서울 TOPIS / 지방 TAGO.
+public struct JourneyStopHit: Codable, Sendable, Hashable {
+    public enum Source: String, Codable, Sendable, Hashable { case seoul, tago }
+    public let name: String
+    public let lat: Double
+    public let lng: Double
+    public let stopNo: String?
+    public let source: Source
+
+    public init(name: String, lat: Double, lng: Double, stopNo: String?, source: Source) {
+        self.name = name
+        self.lat = lat
+        self.lng = lng
+        self.stopNo = stopNo
+        self.source = source
+    }
+}
+
+/// 정류장 이름 검색 응답. 3-state: 정상 0건(`stops` 빈 배열, 플래그 없음) / 미유도(`unsearched`) / 일부 실패(`failed`).
+/// `truncated` = TAGO 페이지 상한에 걸려 가까운 정류장이 빠졌을 수 있다. 플래그 부재 = false.
+public struct JourneyStopsResult: Codable, Sendable, Hashable {
+    public let stops: [JourneyStopHit]
+    public let unsearched: Bool
+    public let failed: Bool
+    public let truncated: Bool
+
+    public init(stops: [JourneyStopHit], unsearched: Bool, failed: Bool, truncated: Bool) {
+        self.stops = stops
+        self.unsearched = unsearched
+        self.failed = failed
+        self.truncated = truncated
+    }
+
+    private enum CodingKeys: String, CodingKey { case stops, unsearched, failed, truncated }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        stops = try c.decode([JourneyStopHit].self, forKey: .stops)
+        unsearched = try c.decodeIfPresent(Bool.self, forKey: .unsearched) ?? false
+        failed = try c.decodeIfPresent(Bool.self, forKey: .failed) ?? false
+        truncated = try c.decodeIfPresent(Bool.self, forKey: .truncated) ?? false
+    }
+}
+
 // MARK: - 도보 경로
 
 /// 도보 안내 단계 하나. description이 낭독 정본(완성 문장, 예 "천호대로를 따라 119m 이동").

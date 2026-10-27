@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { judgeTagoCityCoverage } from "../tago-coverage";
+import { judgeTagoCityCoverage, tagoCityCodeOf } from "../tago-coverage";
 
 /**
  * 좌표는 전부 실측으로 얻은 카카오 `coord2regioncode` 실제 출력이다(2026-08-02).
@@ -84,5 +84,41 @@ describe("judgeTagoCityCoverage", () => {
   it("모르는 시도는 unknown: 개편이 표를 낡게 만들어도 미제공으로 단정하지 않는다", () => {
     expect(judgeTagoCityCoverage("가상통합특별시", "어딘가시")).toBe("unknown");
     expect(judgeTagoCityCoverage("", "")).toBe("unknown");
+  });
+});
+
+describe("tagoCityCodeOf", () => {
+  it("서울은 TOPIS 센티넬, 광역시·세종·제주는 2자리 코드", () => {
+    expect(tagoCityCodeOf("서울특별시", "중구")).toBe("seoul");
+    expect(tagoCityCodeOf("부산광역시", "부산진구")).toBe("21");
+    expect(tagoCityCodeOf("인천광역시", "강화군")).toBe("23");
+    expect(tagoCityCodeOf("세종특별자치시", "")).toBe("12");
+    expect(tagoCityCodeOf("제주특별자치도", "서귀포시")).toBe("39");
+  });
+
+  it("통합 시도의 광주 자치구는 24, 같은 시도의 군은 전남 seed 코드", () => {
+    expect(tagoCityCodeOf("전남광주통합특별시", "북구")).toBe("24");
+    expect(tagoCityCodeOf("전남광주통합특별시", "해남군")).toMatch(/^36\d{3}$/);
+  });
+
+  it("옛 표기 광주광역시도 24, 다른 도의 공백 없는 ~구는 24가 아니다", () => {
+    expect(tagoCityCodeOf("광주광역시", "북구")).toBe("24");
+    expect(tagoCityCodeOf("경기도", "북구")).toBeNull();
+  });
+
+  it("도의 시군은 seed 5자리, 특례시 일반구는 시 이름으로 찾는다", () => {
+    expect(tagoCityCodeOf("경기도", "수원시")).toBe("31010");
+    expect(tagoCityCodeOf("경기도", "수원시 영통구")).toBe("31010");
+  });
+
+  it("동명 시군은 도 접두로 갈린다(경남 고성군만 있다)", () => {
+    expect(tagoCityCodeOf("경상남도", "고성군")).toBe("38340");
+    expect(tagoCityCodeOf("강원특별자치도", "고성군")).toBeNull();
+  });
+
+  it("등록 정류소 0·표에 없는 이름·시군 없음은 null", () => {
+    expect(tagoCityCodeOf("강원특별자치도", "양양군")).toBeNull();
+    expect(tagoCityCodeOf("모르는도", "어딘가시")).toBeNull();
+    expect(tagoCityCodeOf("경기도", "")).toBeNull();
   });
 });

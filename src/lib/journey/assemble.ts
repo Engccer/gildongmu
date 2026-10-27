@@ -16,6 +16,8 @@ export interface JourneyRequest {
   to: Coord;
   board?: JourneyStationInput;
   alight?: JourneyStationInput;
+  /** E70-e 옵트인: 정류장 입력을 받고, 역 입력이 버스 경로(약한 맞음)·버스만 후보로도 맞춰진다. */
+  stops?: boolean;
 }
 
 export interface JourneyDeps {
@@ -74,13 +76,30 @@ export async function getJourney(req: JourneyRequest, deps: JourneyDeps, reserve
   // ①② — 지정 역 경로는 선정이 자르기 전의 전체 후보 위에서 찾는다(선정 밖에 있을 수 있다).
   const all = await deps.candidates({ origin, dest, includeStops: true });
   if (!all || all.ranked.length === 0) return { kind: "ok", result: { variants: [] } };
+  const stops = req.stops === true;
+  // 강이 약보다 앞선다 — 풀 사이에서도(spec E70-e §4.3): ① 전체 강 ② 지하철만 강(모든 지정 쪽이 역일 때만)
+  // ③ 이미 받은 풀 강·약(호출 없음) ④ 버스만 강·약. 찾으면 멈춘다.
+  const pools: TransitRoute[][] = [all.ranked];
+  const allStations = (!req.board || req.board.kind !== "stop") && (!req.alight || req.alight.kind !== "stop");
   let designated = findDesignated(all.ranked, designation);
   let designatedMissing: JourneyResult["designatedMissing"];
-  if (!designated) {
+  if (!designated && allStations) {
     const subway = await deps.candidates({ origin, dest, includeStops: true, modeAxis: "subwayOnly" });
+    if (subway) pools.push(subway.ranked);
     designated = subway ? findDesignated(subway.ranked, designation) : null;
-    if (!designated) designatedMissing = { side: missingSide([all.ranked, subway?.ranked ?? []], designation) };
   }
+  if (!designated && stops) {
+    for (const pool of pools) {
+      designated = findDesignated(pool, designation, { allowWeak: true });
+      if (designated) break;
+    }
+    if (!designated) {
+      const busOnly = await deps.candidates({ origin, dest, includeStops: true, modeAxis: "busOnly" });
+      if (busOnly) pools.push(busOnly.ranked);
+      designated = busOnly ? findDesignated(busOnly.ranked, designation, { allowWeak: true }) : null;
+    }
+  }
+  if (!designated) designatedMissing = { side: missingSide(pools, designation, stops) };
 
   // ③ 추천 = 기존 선정의 1순위. 지정 역 경로와 같으면 변형 하나(판정 13).
   const recommended = selectTransitRoutes(all.ranked)[0];

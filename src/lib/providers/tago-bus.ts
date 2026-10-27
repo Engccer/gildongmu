@@ -1,4 +1,4 @@
-import type { BusArrival, BusRouteStop, BusStop } from "../types";
+import type { BusArrival, BusRouteStop, BusStop, JourneyStopHit } from "../types";
 import { env } from "../env";
 import { haversineMeters } from "../geo";
 import {
@@ -232,4 +232,49 @@ export async function fetchBusRouteStops(
     { next: { revalidate: 86_400 } },
   );
   return parseBusRouteStops(raw);
+}
+
+/** `getSttnNoList` 응답 → 정류장 이름 검색 건. 항목에 `citycode`가 없어 호출한 코드는 호출부가 안다. */
+export function parseTagoStopsByName(raw: unknown): JourneyStopHit[] {
+  return readItems(raw)
+    .map((it): JourneyStopHit => ({
+      name: str(it.nodenm),
+      lat: numF(it.gpslati),
+      lng: numF(it.gpslong),
+      ...(it.nodeno != null && str(it.nodeno) !== "" ? { stopNo: str(it.nodeno) } : {}),
+      source: "tago",
+    }))
+    .filter((s) => s.name !== "" && Number.isFinite(s.lat) && Number.isFinite(s.lng));
+}
+
+/**
+ * 정류장 이름 검색(E70-e spec §4.6): `getSttnNoList`는 부분 일치이고 요청에 좌표가 없어 첫 페이지가 가까운 순이 아니다.
+ * `totalCount`에 이를 때까지 최대 5페이지(500건, `fetchTagoNearby` 선례) 모아 돌려주고, 상한에 걸려 남았으면
+ * `truncated`다(정렬은 호출부가 모두 모은 뒤에). 이름(×도시) 단위 하루 캐시.
+ */
+export async function searchTagoStopsByName(
+  cityCode: string,
+  q: string,
+): Promise<{ stops: JourneyStopHit[]; truncated: boolean }> {
+  if (!env.DATA_GO_KR_API_KEY) return { stops: [], truncated: false };
+  const PAGE = 100;
+  const MAX_PAGES = 5;
+  const fetchPage = (pageNo: number) =>
+    fetchTago(
+      STN_BASE,
+      "getSttnNoList",
+      { cityCode, nodeNm: q, numOfRows: PAGE, pageNo },
+      { next: { revalidate: 86_400 } },
+    );
+  const first = await fetchPage(1);
+  const total = readTotalCount(first);
+  const firstItems = readItems(first);
+  if (firstItems.length === 0) return { stops: [], truncated: false };
+  // 필요한 페이지는 totalCount로 정해지므로 2페이지부터 병렬이다. 중간 페이지가 실패하면 그 도시 검색 실패(throw)다:
+  // 부분 페이지로 정렬하면 가까운 정류장이 빠진다.
+  const pages = Math.min(MAX_PAGES, Math.ceil(total / PAGE));
+  const rest = await Promise.all(Array.from({ length: Math.max(0, pages - 1) }, (_, i) => fetchPage(i + 2)));
+  const stops = [first, ...rest].flatMap(parseTagoStopsByName);
+  const received = [first, ...rest].reduce<number>((n, raw) => n + readItems(raw).length, 0);
+  return { stops, truncated: received < total };
 }

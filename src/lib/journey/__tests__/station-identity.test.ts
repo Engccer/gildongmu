@@ -4,7 +4,7 @@ import { haversineMeters } from "../../geo";
 import { normalizeOdsayRoutes } from "../../providers/odsay";
 import type { TransitRoute } from "../../types";
 import { firstVehicle } from "../designated";
-import { JOURNEY_STATION_IDENTITY_M, isSameStation, sameLine } from "../station-identity";
+import { JOURNEY_SAME_STOP_M, JOURNEY_STATION_IDENTITY_M, busStopKey, busStopNamesStation, isSameBusStop, isSameStation, sameLine } from "../station-identity";
 
 const fixtureDir = "src/lib/__tests__/fixtures";
 
@@ -138,5 +138,71 @@ describe("같은 역 반경 근거 전수(spec §4.3 — 복합체 최대 < 500 
       );
       expect(verdict, `${p.name} ${p.a.line} ↔ ${p.b.line}`).toBe(!p.homonym);
     }
+  });
+});
+
+describe("버스 정류장 판정(E70-e)", () => {
+  const { busStops } = JSON.parse(readFileSync(`${fixtureDir}/journey-station-pairs.json`, "utf8")) as {
+    busStops: {
+      names: Array<{ name: string; key: string }>;
+      stationMatches: Array<{ station: string; stop: string; match: boolean }>;
+    };
+  };
+  const here = { lat: 37.5, lng: 127.0 };
+  /** 북쪽으로 대략 m미터 떨어진 점(위도 1도 ≈ 111,195m). */
+  const north = (m: number) => ({ lat: here.lat + m / 111195, lng: here.lng });
+
+  it("busStopKey: fixture 이름 전수", () => {
+    expect(busStops.names.length).toBeGreaterThan(10);
+    for (const c of busStops.names) expect(busStopKey(c.name), c.name).toBe(c.key);
+  });
+
+  it("isSameBusStop: 부속명만 다른 정류장은 같은 곳, 이름 키가 다르면 다른 곳", () => {
+    const input = { name: "시청.교육청", coord: here, kind: "stop" as const };
+    expect(isSameBusStop({ name: "시청.덕수궁", ...north(30) }, input)).toBe(true);
+    expect(isSameBusStop({ name: "시청앞.덕수궁", ...north(80) }, input)).toBe(false);
+  });
+
+  it("isSameBusStop: 좌표 500m 경계", () => {
+    const input = { name: "광화문", coord: here, kind: "stop" as const };
+    expect(isSameBusStop({ name: "광화문", ...north(JOURNEY_STATION_IDENTITY_M - 10) }, input)).toBe(true);
+    expect(isSameBusStop({ name: "광화문", ...north(JOURNEY_STATION_IDENTITY_M + 10) }, input)).toBe(false);
+  });
+
+  it("busStopNamesStation: fixture 역 ↔ 정류장 표본", () => {
+    expect(busStops.stationMatches.length).toBeGreaterThan(6);
+    for (const c of busStops.stationMatches) {
+      const stop = { name: c.stop, ...north(50) };
+      expect(busStopNamesStation(stop, { name: c.station, coord: here }), `${c.station} ↔ ${c.stop}`).toBe(c.match);
+    }
+  });
+
+  it("키가 빈 문자열이면 이름 경로로는 맞지 않는다(50m 밖이면 500m 안이어도 다른 곳, 역 이름 정류장도 아니다)", () => {
+    const input = { name: ".삼성전자", coord: here, kind: "stop" as const };
+    expect(isSameBusStop({ name: "(5번승강장)", ...north(80) }, input)).toBe(false);
+    expect(isSameBusStop({ name: ".삼성전자", ...north(80) }, input)).toBe(false);
+    expect(busStopNamesStation({ name: ".삼성전자", ...here }, { name: "강남역", coord: here })).toBe(false);
+  });
+
+  it("isSameBusStop: 이름 키가 달라도 50m 안의 이웃 정류장은 같은 곳(근접 조항은 이름과 무관)", () => {
+    const input = { name: "시청.덕수궁", coord: { lat: 37.566254, lng: 126.976921 }, kind: "stop" as const };
+    const at = (m: number) => ({ lat: input.coord.lat + m / 111195, lng: input.coord.lng });
+    expect(isSameBusStop({ name: "시청앞.덕수궁", ...at(37) }, input)).toBe(true);
+    expect(isSameBusStop({ name: "시청앞.덕수궁", ...at(80) }, input)).toBe(false);
+    expect(isSameBusStop({ name: "시청앞.덕수궁", ...at(JOURNEY_SAME_STOP_M - 1) }, input)).toBe(true);
+    expect(isSameBusStop({ name: "시청앞.덕수궁", ...at(JOURNEY_SAME_STOP_M + 1) }, input)).toBe(false);
+    // 빈 키여도 50m 안이면 같은 곳
+    expect(isSameBusStop({ name: "(5번승강장)", ...at(10) }, { ...input, name: ".삼성전자" })).toBe(true);
+  });
+
+  it("busStopNamesStation: 영문이 섞인 이름은 대소문자를 가리지 않는다", () => {
+    expect(busStopNamesStation({ name: "DMC역3번출구", ...here }, { name: "dmc역", coord: here })).toBe(true);
+    expect(busStopNamesStation({ name: "dmc역3번출구", ...here }, { name: "DMC역", coord: here })).toBe(true);
+  });
+
+  it("busStopNamesStation: 이름이 맞아도 좌표 500m 밖이면 아니다", () => {
+    const input = { name: "강남역", coord: here };
+    expect(busStopNamesStation({ name: "강남역12번출구", ...north(JOURNEY_STATION_IDENTITY_M - 10) }, input)).toBe(true);
+    expect(busStopNamesStation({ name: "강남역12번출구", ...north(JOURNEY_STATION_IDENTITY_M + 10) }, input)).toBe(false);
   });
 });

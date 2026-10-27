@@ -779,8 +779,8 @@ final class DirectionsModel {
     ) async {
         phase = .loading
         let service = self.service
-        let board = boardStation.map { JourneyStationQuery(name: $0.label, lat: $0.lat, lng: $0.lng, line: $0.line) }
-        let alight = alightStation.map { JourneyStationQuery(name: $0.label, lat: $0.lat, lng: $0.lng, line: $0.line) }
+        let board = boardStation.map { JourneyStationQuery(name: $0.label, lat: $0.lat, lng: $0.lng, line: $0.line, kind: $0.kind) }
+        let alight = alightStation.map { JourneyStationQuery(name: $0.label, lat: $0.lat, lng: $0.lng, line: $0.line, kind: $0.kind) }
         let outcome: JourneyQueryOutcome
         do {
             let response = try await withQueryTimeout {
@@ -1259,13 +1259,11 @@ struct DirectionsTabView: View {
                     if endpoint == .current { model.refreshCurrentLocation() }
                     // 확정으로 닫힐 때만 착지점을 예약한다(취소는 콜백이 없다).
                     focusAfterResolve = target
-                }, onSelectStation: { place in
-                    // 역 칸(E70 §5.1) — 시트가 역만 돌려준다(역이 아니면 시트가 통지하고 닫지 않는다).
-                    model.setJourneyStation(
-                        RecentStation(label: place.name, lat: place.lat, lng: place.lng, line: journeyLineHint(place)),
-                        board: target == .boardStation)
+                }, onSelectStation: { station in
+                    // 역 칸(E70 §5.1) — 시트가 역이나 정류장만 돌려준다(그 밖이면 시트가 통지하고 닫지 않는다).
+                    model.setJourneyStation(station, board: target == .boardStation)
                     focusAfterResolve = target
-                })
+                }, stopOrigin: endpointCoordinate(model.from), stopDest: endpointCoordinate(model.to))
             }
             // 안내 시트(비콘·대중교통)는 여기 없다 — 세션이 앱 수명이라 루트
             // `GildongmuApp`이 `.sheet(item:)` 하나로 띄운다(N1 spec §2.2).
@@ -1340,6 +1338,15 @@ struct DirectionsTabView: View {
         }
     }
 
+    /// 정류장 이름 검색의 지역 근거(E70-e) — 현재 위치 출발이면 위치 스토어의 마지막 좌표다(없으면 nil).
+    private func endpointCoordinate(_ endpoint: DirectionsEndpoint?) -> (lat: Double, lng: Double)? {
+        switch endpoint {
+        case .place(_, let lat, let lng, _): (lat: lat, lng: lng)
+        case .current: LocationService.shared.lastCoordinate
+        case nil: nil
+        }
+    }
+
     private func recentRouteLabel(_ route: RecentRoute, accessible: Bool) -> String {
         func name(_ side: RecentEndpoint?) -> String {
             guard let side else { return appLocalized("directions.currentLocation") }
@@ -1364,8 +1371,22 @@ struct DirectionsTabView: View {
     /// 하므로 줄도 보통 문장이다(여정 문장은 ko에만 있어 다른 언어에선 키 이름이 낭독된다). 역이 없으면 nil.
     private func recentJourneyLabel(_ route: RecentRoute, from: String, to: String) -> String? {
         guard AppConfig.experimentalJourneyEnabled, AppLanguage.dataLocale == "ko" else { return nil }
-        let board = route.boardStation.map { journeyStationDisplayName($0.label) }
-        let alight = route.alightStation.map { journeyStationDisplayName($0.label) }
+        let sides = [route.boardStation, route.alightStation].compactMap { $0 }
+        // 정류장은 원문 그대로 말한다(역 표시 이름 함수로 깎지 않는다).
+        func name(_ side: RecentStation) -> String { side.kind == .busStop ? side.label : journeyStationDisplayName(side.label) }
+        if sides.contains(where: { $0.kind == .busStop }) {
+            if sides.count == 1, let only = sides.first {
+                return appLocalized("ios.journey.recentRouteStop", from, to, only.label)
+            }
+            func place(_ side: RecentStation) -> String {
+                side.kind == .busStop ? side.label : appLocalized("ios.journey.stationPlace", name(side))
+            }
+            if let board = route.boardStation, let alight = route.alightStation {
+                return appLocalized("ios.journey.recentRouteBothPlaces", from, to, place(board), place(alight))
+            }
+        }
+        let board = route.boardStation.map(name)
+        let alight = route.alightStation.map(name)
         if let board, let alight {
             return appLocalized("ios.journey.recentRouteBoth", from, to, board, alight)
         }

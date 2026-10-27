@@ -177,6 +177,30 @@ public func journeyStep(_ state: JourneyState, _ event: JourneyEvent, token: Jou
     }
 }
 
+/// 버스 정류장 이름의 비교 키(E70-e spec §4.2, 웹 `busStopKey` 미러): 공백 제거 → 괄호 묶음 전부 제거 →
+/// 숫자 사이가 아닌 첫 `.` 앞부분. 정규식을 쓰지 않는 직접 주사라 약칭 클래스·`[` 이스케이프 함정이 없다.
+/// 공유 fixture `journey-station-pairs.json`의 `busStops.names` 표로 웹과 같은 값을 잠근다.
+public func journeyBusStopKey(_ name: String) -> String {
+    let chars = name.filter { !$0.isWhitespace }
+    var kept: [Character] = []
+    var i = chars.startIndex
+    while i < chars.endIndex {
+        if chars[i] == "(", let close = chars[i...].firstIndex(of: ")") {
+            i = chars.index(after: close)
+            continue
+        }
+        kept.append(chars[i])
+        i = chars.index(after: i)
+    }
+    func isDigit(_ c: Character?) -> Bool { c.map { $0 >= "0" && $0 <= "9" && $0.isASCII } ?? false }
+    for (k, c) in kept.enumerated() where c == "." {
+        let prev = k > 0 ? kept[k - 1] : nil
+        let next = k + 1 < kept.count ? kept[k + 1] : nil
+        if !(isDigit(prev) && isDigit(next)) { return String(kept[..<k]) }
+    }
+    return String(kept)
+}
+
 /// 접근 도보가 필요한가 — 인계 시점 위치에서 승차 지점까지 직선이 `accessWalkMinMeters` 이상.
 public func journeyNeedsAccessWalk(fromLat: Double, fromLng: Double, toLat: Double, toLng: Double) -> Bool {
     haversineMeters(lat1: fromLat, lng1: fromLng, lat2: toLat, lng2: toLng) >= JourneyTuning.accessWalkMinMeters
@@ -346,10 +370,11 @@ public func journeyLineQualifiers(
         JourneyStopIdentity(name: station.label, line: station.line, lat: station.lat, lng: station.lng)
     }
     var out = JourneyLineQualifiers()
-    if let board, let actual = stop(vehicles(recommended).first, from: true, ref: recommended.boardStation) {
+    // 정류장 지정 쪽은 노선 머리말 대상이 아니다(동명 이역 판정은 역 전용, 버스 leg는 위 stop()이 이미 제외).
+    if let board, board.kind != .busStop, let actual = stop(vehicles(recommended).first, from: true, ref: recommended.boardStation) {
         out.board = journeyNeedsLineQualifier(designated: chosen(board), actual: actual)
     }
-    if let alight, let actual = stop(vehicles(recommended).last, from: false, ref: recommended.alightStation) {
+    if let alight, alight.kind != .busStop, let actual = stop(vehicles(recommended).last, from: false, ref: recommended.alightStation) {
         out.alight = journeyNeedsLineQualifier(designated: chosen(alight), actual: actual)
     }
     return out
@@ -361,8 +386,14 @@ public func journeyRecommendedTitleIsBoardSide(
     _ v: JourneyVariant, board: RecentStation?, alight: RecentStation?, lines: JourneyLineQualifiers
 ) -> Bool {
     let vehicles = v.transit.legs.filter { $0.mode != "walk" }
-    let display = journeyStationDisplayName
-    let boardDiffers = board.map { display($0.label) != display(vehicles.first?.fromName ?? "") } ?? false
-    let alightDiffers = alight.map { display($0.label) != display(vehicles.last?.toName ?? "") } ?? false
+    // 지정과 다른가: 역은 표시 이름, 정류장은 정류장 키(역 표시 이름 함수로 정류장 이름을 깎지 않는다).
+    func differs(_ station: RecentStation, _ actual: String?) -> Bool {
+        let a = actual ?? ""
+        return station.kind == .busStop
+            ? journeyBusStopKey(station.label) != journeyBusStopKey(a)
+            : journeyStationDisplayName(station.label) != journeyStationDisplayName(a)
+    }
+    let boardDiffers = board.map { differs($0, vehicles.first?.fromName) } ?? false
+    let alightDiffers = alight.map { differs($0, vehicles.last?.toName) } ?? false
     return boardDiffers || lines.board || !(alightDiffers || lines.alight)
 }

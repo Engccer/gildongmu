@@ -74,16 +74,19 @@ public struct RouteService: Sendable {
         var query = [
             URLQueryItem(name: "origin", value: coordPair(originLat, originLng)),
             URLQueryItem(name: "dest", value: coordPair(destLat, destLng)),
+            URLQueryItem(name: "stops", value: "1"),
         ]
         if let board {
             query.append(URLQueryItem(name: "board", value: coordPair(board.lat, board.lng)))
             query.append(URLQueryItem(name: "boardName", value: board.name))
-            if let line = board.line { query.append(URLQueryItem(name: "boardLine", value: line)) }
+            if let line = board.line, board.kind != .busStop { query.append(URLQueryItem(name: "boardLine", value: line)) }
+            if board.kind == .busStop { query.append(URLQueryItem(name: "boardKind", value: "stop")) }
         }
         if let alight {
             query.append(URLQueryItem(name: "alight", value: coordPair(alight.lat, alight.lng)))
             query.append(URLQueryItem(name: "alightName", value: alight.name))
-            if let line = alight.line { query.append(URLQueryItem(name: "alightLine", value: line)) }
+            if let line = alight.line, alight.kind != .busStop { query.append(URLQueryItem(name: "alightLine", value: line)) }
+            if alight.kind == .busStop { query.append(URLQueryItem(name: "alightKind", value: "stop")) }
         }
         do {
             let result: JourneyResult = try await client.get("/api/route/journey", query: query)
@@ -91,6 +94,20 @@ public struct RouteService: Sendable {
         } catch APIError.outOfCoverage {
             return .outOfCoverage
         }
+    }
+
+    /// 정류장 이름 검색(E70-e spec §4.6). `origin`·`dest` 중 하나 이상은 있어야 한다(둘 다 nil이면 서버가 400).
+    /// 결과 3-state: `stops` 빈 배열 = 정상 0건, `unsearched` = 대상 지역을 못 정함, `failed` = 일부 조회 실패(나머지는 실림).
+    /// 서비스 지역 밖은 `APIClient`가 `APIError.outOfCoverage`를 던진다. 시트 제출 때만 부른다(타자마다 아님).
+    public func journeyStops(
+        query text: String,
+        origin: (lat: Double, lng: Double)?,
+        dest: (lat: Double, lng: Double)?
+    ) async throws -> JourneyStopsResult {
+        var query = [URLQueryItem(name: "q", value: text)]
+        if let origin { query.append(URLQueryItem(name: "origin", value: coordPair(origin.lat, origin.lng))) }
+        if let dest { query.append(URLQueryItem(name: "dest", value: coordPair(dest.lat, dest.lng))) }
+        return try await client.get("/api/route/journey/stops", query: query)
     }
 
     /// 수단 재조회(E50 판정 2) — 사용자가 버튼을 눌렀을 때만 부른다(ODsay 호출당 과금, 자동 조회 금지).
@@ -221,12 +238,15 @@ public struct JourneyStationQuery: Sendable, Hashable {
     public let lat: Double
     public let lng: Double
     public let line: String?
+    /// 정류장이면 `busStop`(노선 힌트는 싣지 않는다). nil = 역. ⚠ 기본값 없음 — 빠뜨리면 정류장이 역으로 조회된다.
+    public let kind: JourneyStationKind?
 
-    public init(name: String, lat: Double, lng: Double, line: String?) {
+    public init(name: String, lat: Double, lng: Double, line: String?, kind: JourneyStationKind?) {
         self.name = name
         self.lat = lat
         self.lng = lng
         self.line = line
+        self.kind = kind
     }
 }
 

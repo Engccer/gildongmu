@@ -1343,11 +1343,30 @@ export interface CultureEvent {
 
 // ─── E70 여정(택시 → 대중교통 → 택시) ───
 
+/** 정류장 이름 검색(E70-e spec §4.6)의 한 건. 좌표는 WGS84 십진. */
+export interface JourneyStopHit {
+  name: string;
+  lat: number;
+  lng: number;
+  stopNo?: string;
+  source: "seoul" | "tago";
+}
+
+/** `/api/route/journey/stops` 응답. 0건·미유도(`unsearched`)·일부 실패(`failed`)·페이지 상한(`truncated`)을 뭉개지 않는다. */
+export interface JourneyStopSearchResult {
+  stops: JourneyStopHit[];
+  unsearched?: true;
+  failed?: true;
+  truncated?: true;
+}
+
 /** 사용자가 길찾기 화면에서 고른 갈아탈 역. 노선은 고른 장소에 노선 표기가 있을 때만 싣는다. */
 export interface JourneyStationInput {
   name: string;
   coord: Coord;
   line?: string;
+  /** `"stop"`이면 사용자가 고른 것이 역이 아니라 버스 정류장이다(E70-e). 없으면 역. */
+  kind?: "stop";
 }
 
 /** 하차역에서 택시를 타는 자리 하나(출구·택시승강장·정보 없음). */

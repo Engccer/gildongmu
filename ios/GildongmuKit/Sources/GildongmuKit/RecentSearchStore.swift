@@ -49,13 +49,32 @@ public struct RecentStation: Codable, Equatable, Hashable, Sendable {
     public let lat: Double
     public let lng: Double
     public let line: String?
+    /// 지정 종류(E70-e). nil = 역(구버전 저장본은 부재 = nil), `busStop` = 시내버스 정류장. 같은 이름의 역과 정류장은 다른 지정이다.
+    /// ⚠ 생성 인자에 기본값을 두지 않는다 — 빠뜨린 호출이 정류장 지정을 역으로 조용히 바꾼다.
+    public let kind: JourneyStationKind?
 
-    public init(label: String, lat: Double, lng: Double, line: String?) {
+    public init(label: String, lat: Double, lng: Double, line: String?, kind: JourneyStationKind?) {
         self.label = label
         self.lat = lat
         self.lng = lng
         self.line = line
+        self.kind = kind
     }
+
+    /// kind 부재·모르는 원시값은 nil — 한 항목의 종류 때문에 경로 목록 전체 디코딩이 실패해 고정 경로까지 사라지는 일을 막는다.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        label = try c.decode(String.self, forKey: .label)
+        lat = try c.decode(Double.self, forKey: .lat)
+        lng = try c.decode(Double.self, forKey: .lng)
+        line = try c.decodeIfPresent(String.self, forKey: .line)
+        kind = (try? c.decodeIfPresent(JourneyStationKind.self, forKey: .kind)) ?? nil
+    }
+}
+
+/// 지정 칸의 종류(E70-e). 역 입력은 종류 값이 없다(nil). 서버 `boardKind`·`alightKind`의 `stop`과 1:1이고 이 원시값은 저장 포맷이라 바꾸지 않는다.
+public enum JourneyStationKind: String, Codable, Sendable, Hashable {
+    case busStop = "stop"
 }
 
 /// 최근 조회 경로(출발·도착 쌍, 스펙 2026-08-10). nil = "현재 위치" —
@@ -121,9 +140,9 @@ extension RecentEndpoint: Identifiable {
 }
 
 extension RecentStation: Identifiable {
-    /// 좌표 4자리 키 — 라벨·노선 힌트에 불변.
+    /// 좌표 4자리 키 + 정류장 표식 — 라벨·노선 힌트에 불변. 같은 좌표의 역과 정류장은 다른 지정이다.
     public var id: String {
-        String(format: "%.4f,%.4f", lat, lng)
+        String(format: "%.4f,%.4f", lat, lng) + (kind == .busStop ? "#stop" : "")
     }
 }
 

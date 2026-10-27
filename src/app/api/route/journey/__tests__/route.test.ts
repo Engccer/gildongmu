@@ -106,4 +106,36 @@ describe("GET /api/route/journey", () => {
     vi.mocked(getJourney).mockRejectedValueOnce(new Error("ODsay 오류"));
     expect((await GET(req({ board: "37.5574,126.9561", boardName: "아현역" }))).status).toBe(502);
   });
+
+  describe("E70-e stops · boardKind · alightKind", () => {
+    const STOP = { board: "37.5574,126.9561", boardName: "시청.교육청" };
+
+    it("stops 없이 boardKind·alightKind가 오면 400", async () => {
+      expect((await GET(req({ ...STOP, boardKind: "stop" }))).status).toBe(400);
+    });
+
+    it("그 쪽 좌표가 없는 kind는 400", async () => {
+      expect((await GET(req({ ...STOP, stops: "1", alightKind: "stop" }))).status).toBe(400);
+    });
+
+    it("stops·kind 값이 규격 밖이면 400", async () => {
+      expect((await GET(req({ ...STOP, stops: "2" }))).status).toBe(400);
+      expect((await GET(req({ ...STOP, stops: "1", boardKind: "bus" }))).status).toBe(400);
+    });
+
+    it("stops=1과 boardKind=stop은 서비스에 stops·kind로 전달된다", async () => {
+      const res = await GET(req({ ...STOP, stops: "1", boardKind: "stop" }));
+      expect(res.status).toBe(200);
+      const arg = vi.mocked(getJourney).mock.calls[0][0];
+      expect(arg.stops).toBe(true);
+      expect(arg.board?.kind).toBe("stop");
+    });
+
+    it("옵트인이 없으면 서비스 요청에 stops·kind 키가 없다(종전과 동일)", async () => {
+      await GET(req({ ...STOP }));
+      const arg = vi.mocked(getJourney).mock.calls[0][0];
+      expect(arg).not.toHaveProperty("stops");
+      expect(arg.board).not.toHaveProperty("kind");
+    });
+  });
 });

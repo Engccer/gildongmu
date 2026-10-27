@@ -304,3 +304,106 @@ describe("getJourney — 승차·하차 둘 다 지정", () => {
     expect(out.result.variants.map((v) => v.kind)).toEqual(["recommended"]);
   });
 });
+
+describe("getJourney — 버스 정류장 지정(E70-e)", () => {
+  const BOARD_STOP = { lat: 37.56, lng: 126.95 }; // synthRoute의 승차 정류 좌표
+  const stopIn = (name: string, coord: Coord = BOARD_STOP) => ({ name, coord, kind: "stop" as const });
+  const busFrom = (key: string, from: string) =>
+    synthRoute(key, { mode: "bus", line: "601", from, to: "광화문", toCoord: GWANGHWAMUN });
+  const subwayFrom = (key: string, from: string) =>
+    synthRoute(key, { mode: "subway", line: "수도권 2호선", from, to: "시청", toCoord: { lat: 37.5657, lng: 126.9769 } });
+  const axes = (d: ReturnType<typeof deps>) => vi.mocked(d.candidates).mock.calls.map((c) => c[0].modeAxis);
+
+  it("stops 없으면 버스만을 부르지 않는다(종전: 전체 + 지하철만)", async () => {
+    const d = deps({ candidates: vi.fn(async () => ({ ranked: [busFrom("p0", "강남역12번출구")] })) });
+    const out = await getJourney({ from: FROM, to: TO, board: { name: "강남역", coord: BOARD_STOP } }, d, okReserve());
+    expect(axes(d)).toEqual([undefined, "subwayOnly"]);
+    // 약한 맞음은 옵트인이 있어야만 지정 경로가 된다 — 없으면 종전처럼 못 찾은 것으로 남는다.
+    if (out.kind !== "ok") throw new Error(out.kind);
+    expect(out.result.variants[0].kind).toBe("recommended");
+    expect(out.result.designatedMissing).toEqual({ side: "board" });
+  });
+
+  it("정류장 쪽이 하나라도 있으면 지하철만을 부르지 않는다(하차 정류장만 · 승차 역 + 하차 정류장)", async () => {
+    const sub = subwayFrom("p0", "아현");
+    const alightStop = stopIn("광화문", GWANGHWAMUN);
+    const d1 = deps({ candidates: vi.fn(async () => ({ ranked: [sub] })) });
+    await getJourney({ from: FROM, to: TO, alight: alightStop, stops: true }, d1, okReserve());
+    expect(axes(d1)).toEqual([undefined, "busOnly"]);
+    const d2 = deps({ candidates: vi.fn(async () => ({ ranked: [sub] })) });
+    await getJourney({ from: FROM, to: TO, board: { name: "아현역", coord: BOARD_STOP }, alight: alightStop, stops: true }, d2, okReserve());
+    expect(axes(d2)).toEqual([undefined, "busOnly"]);
+  });
+
+  it("정류장만 지정하면 호출 2회(전체 + 버스만), 지하철만은 부르지 않는다", async () => {
+    const d = deps({
+      candidates: vi.fn(async (p) => ({ ranked: p.modeAxis === "busOnly" ? [busFrom("b0", "시청.교육청")] : [subwayFrom("p0", "아현")] })),
+    });
+    const out = await getJourney({ from: FROM, to: TO, board: stopIn("시청.덕수궁"), stops: true }, d, okReserve());
+    if (out.kind !== "ok") throw new Error(out.kind);
+    expect(axes(d)).toEqual([undefined, "busOnly"]);
+    expect(out.result.variants[0].kind).toBe("designated");
+    expect(out.result.variants[0].transit.routeKey).toBe("b0");
+  });
+
+  it("전체 후보에서 정류장이 강으로 맞으면 추가 조회 없이 멈춘다", async () => {
+    const d = deps({ candidates: vi.fn(async () => ({ ranked: [busFrom("p0", "시청.교육청")] })) });
+    await getJourney({ from: FROM, to: TO, board: stopIn("시청.덕수궁"), stops: true }, d, okReserve());
+    expect(d.candidates).toHaveBeenCalledTimes(1);
+  });
+
+  it("역만 지정하고 못 찾으면 호출 3회(전체 → 지하철만 → 버스만), 상한 3", async () => {
+    const d = deps({ candidates: vi.fn(async () => ({ ranked: [subwayFrom("p0", "아현")] })) });
+    const out = await getJourney({ from: FROM, to: TO, board: { name: "강남역", coord: BOARD_STOP }, stops: true }, d, okReserve());
+    if (out.kind !== "ok") throw new Error(out.kind);
+    expect(axes(d)).toEqual([undefined, "subwayOnly", "busOnly"]);
+    expect(out.result.designatedMissing).toEqual({ side: "board" });
+  });
+
+  it("강이 약보다 앞선다 — 전체 후보의 약한 버스 맞음보다 지하철만 후보의 강한 맞음이 이긴다", async () => {
+    const weak = busFrom("p0", "강남역12번출구");
+    const strong = subwayFrom("s0", "강남");
+    const d = deps({ candidates: vi.fn(async (p) => ({ ranked: p.modeAxis === "subwayOnly" ? [strong] : [weak] })) });
+    const out = await getJourney({ from: FROM, to: TO, board: { name: "강남역", coord: BOARD_STOP }, stops: true }, d, okReserve());
+    if (out.kind !== "ok") throw new Error(out.kind);
+    expect(out.result.variants[0]).toMatchObject({ kind: "designated" });
+    expect(out.result.variants[0].transit.routeKey).toBe("s0");
+    expect(axes(d)).toEqual([undefined, "subwayOnly"]);
+  });
+
+  it("지하철 경로가 어느 풀에도 없으면 이미 받은 풀의 약한 맞음을 받는다(버스만 호출 없음)", async () => {
+    const weak = busFrom("p0", "강남역12번출구");
+    const d = deps({ candidates: vi.fn(async () => ({ ranked: [weak] })) });
+    const out = await getJourney({ from: FROM, to: TO, board: { name: "강남역", coord: BOARD_STOP }, stops: true }, d, okReserve());
+    if (out.kind !== "ok") throw new Error(out.kind);
+    expect(axes(d)).toEqual([undefined, "subwayOnly"]);
+    expect(out.result.variants[0]).toMatchObject({ kind: "designated" });
+    expect(out.result.variants[0].transit.routeKey).toBe("p0");
+  });
+
+  it("버스만 후보에서 약한 맞음을 찾는다", async () => {
+    const d = deps({
+      candidates: vi.fn(async (p) => ({ ranked: p.modeAxis === "busOnly" ? [busFrom("b0", "강남역.삼성전자")] : [subwayFrom("p0", "아현")] })),
+    });
+    const out = await getJourney({ from: FROM, to: TO, board: { name: "강남역", coord: BOARD_STOP }, stops: true }, d, okReserve());
+    if (out.kind !== "ok") throw new Error(out.kind);
+    expect(out.result.variants[0].transit.routeKey).toBe("b0");
+  });
+
+  it("정류장에서 끝나는 지정 변형은 카카오 출구·승강장을 부르지 않고 egress none이다", async () => {
+    const route = busFrom("p0", "충정로");
+    const alightStop = { name: "광화문", coord: GWANGHWAMUN, kind: "stop" as const };
+    const exits = vi.fn(async () => [exitDoc("1", "광화문역 1번출구", 37.5718, 126.9772)]);
+    const stands = vi.fn(async () => []);
+    const d = deps({ candidates: vi.fn(async () => ({ ranked: [route] })), exits, stands });
+    const reserve = okReserve();
+    const out = await getJourney({ from: FROM, to: TO, alight: alightStop, stops: true }, d, reserve);
+    if (out.kind !== "ok") throw new Error(out.kind);
+    expect(out.result.variants[0].kind).toBe("designated");
+    expect(exits).not.toHaveBeenCalled();
+    expect(stands).not.toHaveBeenCalled();
+    expect(out.result.variants[0].egress?.options.map((o) => o.kind)).toEqual(["none"]);
+    // Tmap 비용 = 택시 뒤 1(택시 앞 없음)
+    expect(reserve).toHaveBeenCalledWith(1);
+  });
+});

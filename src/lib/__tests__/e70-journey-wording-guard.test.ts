@@ -49,7 +49,7 @@ describe("E70 여정 확정 문장(위원장 판정 2026-10-17)", () => {
       arrivedStand: "택시 승강장에 도착했습니다.",
       taxiInStop: "자동차로 {stop}까지 {minutes}분, 택시 요금 약 {fare}원",
       arrivedStop: "{stop}에 도착했습니다.",
-      clearStations: "갈아탈 역 지우기",
+      clearStations: "갈아탈 역/정류장 지우기",
       recentRoute: "{from}에서 {to}까지, {station}역에서 갈아타기",
       recentRouteBoth: "{from}에서 {to}까지, {board}역과 {alight}역에서 갈아타기",
       egressNoneStop: "내린 정류장에서 자동차로 {minutes}분, 택시 요금 약 {fare}원",
@@ -171,6 +171,24 @@ describe("E70 여정 문장의 자리", () => {
   });
 });
 
+describe("E70-e 정류장 지정 문구(spec §6)", () => {
+  it("새 문장과 바뀐 notStation은 확정 문안 그대로다", () => {
+    expect(KO.ios.journey).toMatchObject({
+      notStation: "역이나 정류장을 골라 주세요.",
+      busStopKind: "정류장",
+      stopSearchFailed: "정류장을 불러오지 못했습니다.",
+      stopSearchTruncated: "정류장 이름을 더 길게 입력해 주세요.",
+      designatedHeadingBus: "{stop}에서 버스를 타는 경로",
+      designatedHeadingBusAlight: "{stop}에서 버스에서 내리는 경로",
+      designatedMissingStop: "{stop}에서 타는 경로를 찾지 못했습니다.",
+      designatedMissingStopAlight: "{stop}에서 내리는 경로를 찾지 못했습니다.",
+      recentRouteStop: "{from}에서 {to}까지, {stop}에서 갈아타기",
+      recentRouteBothPlaces: "{from}에서 {to}까지, {board}, {alight}에서 갈아타기",
+      stationPlace: "{station}역",
+    });
+  });
+});
+
 describe("E70-d 입력 메뉴 하나와 「자동차」 문장(위원장 판정 28~32, 2026-10-17)", () => {
   const tab = read("DirectionsTabView.swift");
   /** 폼의 갈아탈 역·경유지 입력 블록(경유지 행 ~ 조회 버튼). */
@@ -190,10 +208,10 @@ describe("E70-d 입력 메뉴 하나와 「자동차」 문장(위원장 판정 
   it("판정 30·31: 여정 문장의 수단은 「자동차」이고 금액은 「택시 요금」이라고 밝힌다", () => {
     expect(KO.ios.journey).toMatchObject({
       addMenu: "경유지/자동차 환승 추가",
-      addBoardStation: "자동차에서 내리는 역 추가",
-      addAlightStation: "자동차를 탈 역 추가",
-      boardField: "자동차에서 내리는 역",
-      alightField: "자동차를 탈 역",
+      addBoardStation: "자동차에서 내리는 역/정류장 추가",
+      addAlightStation: "자동차를 탈 역/정류장 추가",
+      boardField: "자동차에서 내리는 역/정류장",
+      alightField: "자동차를 탈 역/정류장",
       taxiIn: "자동차로 {station}역까지 {minutes}분, 택시 요금 약 {fare}원",
       egressExit: "{exit}번 출구로 나가 자동차로 {minutes}분, 택시 요금 약 {fare}원",
       egressNone: "내린 역에서 자동차로 {minutes}분, 택시 요금 약 {fare}원",

@@ -336,9 +336,9 @@ private let allEvents: [JourneyEvent] =
             egress: nil, totals: JourneyTotals(minutes: 20, taxiFare: 0, transitFare: 1550))
     }
 
-    private let sinchonGyeongui = RecentStation(label: "신촌역", lat: 37.5598, lng: 126.9426, line: "경의중앙선")
-    private let seoulKtx = RecentStation(label: "서울역", lat: 37.5547, lng: 126.9707, line: nil)
-    private let gwanghwamun = RecentStation(label: "광화문역", lat: 37.5710, lng: 126.9768, line: "5호선")
+    private let sinchonGyeongui = RecentStation(label: "신촌역", lat: 37.5598, lng: 126.9426, line: "경의중앙선", kind: nil)
+    private let seoulKtx = RecentStation(label: "서울역", lat: 37.5547, lng: 126.9707, line: nil, kind: nil)
+    private let gwanghwamun = RecentStation(label: "광화문역", lat: 37.5710, lng: 126.9768, line: "5호선", kind: nil)
 
     @Test func boardHomonymQualifiesBoardSideOnly() {
         let rec = variant(.recommended, [
@@ -374,7 +374,7 @@ private let allEvents: [JourneyEvent] =
             leg("subway", "충정로", "신촌", line: "수도권 2호선", at: (37.5600, 126.9636), end: (37.5552, 126.9369)),
             leg("walk", "신촌", nil),
         ])
-        let gongdeok = RecentStation(label: "공덕역", lat: 37.5440, lng: 126.9516, line: nil)
+        let gongdeok = RecentStation(label: "공덕역", lat: 37.5440, lng: 126.9516, line: nil, kind: nil)
         let result = JourneyResult(variants: [designated, rec], designatedMissing: nil)
         let lines = journeyLineQualifiers(result, board: gongdeok, alight: sinchonGyeongui)
         #expect(lines == JourneyLineQualifiers(board: false, alight: true))
@@ -412,6 +412,51 @@ private let allEvents: [JourneyEvent] =
         ])
         #expect(!busLast.boardsAtBusStop)
         #expect(busLast.alightsAtBusStop)
+    }
+
+    // MARK: 버스 정류장 지정(E70-e)
+
+    private struct BusStopKeyFile: Decodable {
+        struct Name: Decodable { let name: String; let key: String }
+        struct Pairs: Decodable { let names: [Name] }
+        let busStops: Pairs
+    }
+
+    /// 웹 `busStopKey`와 같은 공유 fixture 표 전체를 읽는다.
+    @Test func busStopKeyMatchesSharedTable() throws {
+        var url = URL(fileURLWithPath: #filePath)
+        for _ in 0..<5 { url.deleteLastPathComponent() }
+        url.appendPathComponent("src/lib/__tests__/fixtures/journey-station-pairs.json")
+        let file = try JSONDecoder().decode(BusStopKeyFile.self, from: Data(contentsOf: url))
+        #expect(!file.busStops.names.isEmpty)
+        for c in file.busStops.names {
+            #expect(journeyBusStopKey(c.name) == c.key, "\(c.name)")
+        }
+        // 짝 없는 여는 괄호는 그대로 남는다(웹 정규식 `\([^)]*\)`와 같다)
+        #expect(journeyBusStopKey("가(나") == "가(나")
+    }
+
+    @Test func busStopSideSkipsLineQualifierAndComparesByKey() {
+        let stopBoard = RecentStation(label: "강남역.삼성전자", lat: 37.4979, lng: 127.0276, line: nil, kind: .busStop)
+        // 표시 이름이 역과 같고(「강남」) 600m 이상 떨어진 정류장 — 가드가 없으면 동명 이역으로 보고 노선 머리말이 붙는다
+        let sameNameStop = RecentStation(label: "강남역", lat: 37.4979, lng: 127.0276, line: nil, kind: .busStop)
+        let far = variant(.recommended, [
+            leg("subway", "강남", "역삼", line: "수도권 5호선", at: (37.5049, 127.0276), end: (37.5007, 127.0364)),
+        ])
+        let farResult = JourneyResult(variants: [far], designatedMissing: JourneyDesignatedMissing(side: .board))
+        #expect(journeyLineQualifiers(farResult, board: sameNameStop, alight: nil) == JourneyLineQualifiers())
+        let farAlight = variant(.recommended, [
+            leg("subway", "역삼", "강남", line: "수도권 5호선", at: (37.5007, 127.0364), end: (37.5049, 127.0276)),
+        ])
+        let farAlightResult = JourneyResult(variants: [farAlight], designatedMissing: JourneyDesignatedMissing(side: .alight))
+        #expect(journeyLineQualifiers(farAlightResult, board: nil, alight: sameNameStop) == JourneyLineQualifiers())
+        let otherKey = variant(.recommended, [leg("bus", "논현사거리", "역삼", line: "112")])
+        let alightStop = RecentStation(label: "역삼역", lat: 37.5007, lng: 127.0364, line: nil, kind: .busStop)
+        // 승차는 같은 키, 하차는 다른 키 → 하차 쪽 제목
+        let toOther = variant(.recommended, [leg("bus", "강남역", "다른정류장", line: "112")])
+        #expect(!journeyRecommendedTitleIsBoardSide(toOther, board: stopBoard, alight: alightStop, lines: .init()))
+        // 승차가 다른 키 → 승차 쪽 제목
+        #expect(journeyRecommendedTitleIsBoardSide(otherKey, board: stopBoard, alight: nil, lines: .init()))
     }
 
     @Test func qualifiedNamePrefixesKnownLineOnly() {

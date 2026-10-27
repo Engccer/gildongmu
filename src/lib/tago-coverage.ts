@@ -109,3 +109,43 @@ export function judgeTagoCityCoverage(
   // TAGO에 있다. 도 접두를 빼면 강원 고성군이 커버로 오판된다(조사 중 실제로 겪었다).
   return COVERED.has(`${prefix}:${city}`) ? "covered" : "uncovered";
 }
+
+/** 시도 전체가 도시코드 하나인 곳: 광역시·세종·제주(TAGO 2자리 코드). 서울은 TOPIS라 따로 `"seoul"`. */
+const WHOLE_PROVINCE_CODE: Record<string, string> = {
+  부산광역시: "21",
+  대구광역시: "22",
+  인천광역시: "23",
+  광주광역시: "24",
+  대전광역시: "25",
+  울산광역시: "26",
+  세종특별자치시: "12",
+};
+
+/** `${도 접두}:${시군명}` → TAGO 도시코드(5자리). `COVERED`와 같은 seed·같은 적재 규칙(등록 정류소 0·2자리 코드 제외). */
+const CITY_CODE = new Map<string, string>(
+  seed.cities
+    .filter((c) => c.stops > 0 && c.code >= 1000)
+    .flatMap((c) => c.names.map((n) => [`${Math.floor(c.code / 1000)}:${n}`, String(c.code)] as const)),
+);
+
+/**
+ * 카카오 역지오코딩의 시도·시군구 → 검색 대상 도시코드(E70-e spec §4.6-1). 서울은 `"seoul"`(TOPIS),
+ * 광역시·세종·제주는 TAGO 2자리, 도의 시군은 seed의 5자리, 그 밖은 `null`.
+ *
+ * ⚠ `null`은 "표로는 모른다"이지 "제공 안 함"이 아니다: 행정구역은 TAGO 제공 도시코드와 일대일이 아니라
+ * (담양·화순 → 광주 24) 호출부가 좌표 근접 정류소의 도시코드를 따로 더한다.
+ */
+export function tagoCityCodeOf(province: string, city: string): string | null {
+  const si = province.trim();
+  const gun = city.trim();
+  if (si === "서울특별시") return "seoul";
+  if (si.includes("제주")) return "39";
+  const whole = WHOLE_PROVINCE_CODE[si];
+  if (whole) return whole;
+  // 통합 시도 안의 광주 자치구(공백 없는 `~구`). `수원시 영통구`는 특례시 일반구라 아래에서 시 이름으로 찾는다.
+  if (si === "전남광주통합특별시" && gun !== "" && !gun.includes(" ") && gun.endsWith("구")) return "24";
+  if (gun === "") return null;
+  const prefix = PROVINCE_PREFIX[si];
+  if (prefix === undefined) return null;
+  return CITY_CODE.get(`${prefix}:${gun.split(" ")[0]}`) ?? null;
+}

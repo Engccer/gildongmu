@@ -1,4 +1,4 @@
-import type { BusArrival, BusRouteStop, BusStop } from "../types";
+import type { BusArrival, BusRouteStop, BusStop, JourneyStopHit } from "../types";
 import { env } from "../env";
 import { haversineMeters } from "../geo";
 
@@ -299,4 +299,29 @@ export async function fetchSeoulRideSlots(
     ord,
   });
   return parseSeoulTrackSlots(raw);
+}
+
+/**
+ * 정류장 이름 검색(E70-e spec §4.6): TOPIS `getStationByName`은 부분 일치이고 한 응답에 전부 준다(페이지 없음).
+ * 좌표는 `tmX`=경도·`tmY`=위도(실측 2026-10-27). 좌표 없는 항목은 버린다. 이름 단위 하루 캐시.
+ */
+export function parseSeoulStopsByName(raw: unknown): JourneyStopHit[] {
+  return parseSeoulItems(raw)
+    .map((it): JourneyStopHit => {
+      const ars = str(it.arsId);
+      return {
+        name: str(it.stNm),
+        lat: numF(it.tmY),
+        lng: numF(it.tmX),
+        ...(ars !== "" && ars !== "0" ? { stopNo: ars } : {}),
+        source: "seoul",
+      };
+    })
+    .filter((s) => s.name !== "" && Number.isFinite(s.lat) && Number.isFinite(s.lng));
+}
+
+export async function searchSeoulStopsByName(q: string): Promise<JourneyStopHit[]> {
+  if (!env.DATA_GO_KR_API_KEY) return [];
+  const raw = await fetchSeoul("stationinfo/getStationByName", { stSrch: q }, { next: { revalidate: 86_400 } });
+  return parseSeoulStopsByName(raw);
 }
