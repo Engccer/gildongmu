@@ -11,6 +11,9 @@
 
 ## 2026-10-27
 
+### Next.js Cache Components 켜기 (D35)
+`cacheComponents`·`partialPrefetching`을 켰다. 비호환 라우트 설정 19곳(`force-dynamic` 18·`station/meta` `revalidate` 1 — 전부 쿼리를 읽어 원래 요청 시 실행)을 지우고, 렌더 중 시계 읽기 1곳(`useClockWhile`)이 서버 프리렌더에서 시계를 읽지 않게 했다. 실측(두 빌드 15회 중앙값, 실호출 0): 첫 화면 ±10ms 안, 카카오 캐시 1/1·지하철 도착 5/5로 upstream 호출 불변, 헤딩·랜드마크 순서 동일, 접근성 게이트 9/9 — 이득도 손실도 없고 다음 메이저 기본값을 미리 맞춘 것(위원장 판정). 측정 도구 `scripts/cache-components-measure/`, spec `2026-10-27-cache-components-experiment-design.md`.
+
 ### 장소 검색은 키가 없으면 가짜 장소 대신 실패한다 (D33)
 `pickPlacesProvider`가 카카오·네이버 키가 하나도 없을 때 `searchPlacesMock`으로 떨어지던 것을 throw(라우트 502)로 바꿨다 — "mock으로 조용히 폴백 금지" 규칙과의 어긋남(위원장 판정: 규칙대로). 데모 데이터는 `PLACES_PROVIDER=mock` 명시 지정으로만 나오고 화면 데모 안내도 그때만 뜬다(`activeProviderName()`은 키가 없으면 `"none"`). 운영은 키가 있어 동작 불변, 실브라우저 접근성 게이트는 더미 키 + fixture라 영향 없음. `env.ts` 머리 주석과 `GOOGLE_PLACES_API_KEY` 주석(웹·iOS 장소 상세)도 고쳤다.
 
