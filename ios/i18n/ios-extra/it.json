@@ -325,7 +325,8 @@
       "waypointDropped": "Non è stato trovato alcun percorso che passi per la tappa intermedia ({label}). Ti guidiamo alla destinazione ({dest}) senza la tappa intermedia.",
       "waypointSkipped": "Ti guidiamo senza la tappa intermedia ({label}).",
       "waypointRemove": "Rimuovi tappa",
-      "waypointRemoved": "Tappa {label} rimossa, nuova ricerca del percorso"
+      "waypointRemoved": "Tappa {label} rimossa, nuova ricerca del percorso",
+      "carOffRoute": "Fuori percorso; guida in pausa. Tocca Aggiorna percorso per riprendere"
     },
     "transitGuide": {
       "destChangeHeading": "Scegli un nuovo percorso, {name}",

@@ -325,7 +325,8 @@
       "waypointDropped": "No route through the waypoint ({label}) was found. Guiding to the destination ({dest}) without the waypoint.",
       "waypointSkipped": "Guiding without the waypoint ({label}).",
       "waypointRemove": "Remove waypoint",
-      "waypointRemoved": "Waypoint {label} removed, re-fetching the route"
+      "waypointRemoved": "Waypoint {label} removed, re-fetching the route",
+      "carOffRoute": "You are off the route; guidance is paused. Refresh the route to resume"
     },
     "transitGuide": {
       "destChangeHeading": "Choose a new route, {name}",

@@ -131,6 +131,7 @@
     <string name="android_guide_altPreviewRemaining">current route remaining %1$s</string>
     <string name="android_guide_altPreviewSummary">%1$s, %2$s total</string>
     <string name="android_guide_altPreviewTime">about %1$s min walk</string>
+    <string name="android_guide_carOffRoute">You are off the route; guidance is paused. Refresh the route to resume</string>
     <string name="android_guide_destChanged">New destination: %1$s.</string>
     <string name="android_guide_destChangedFetching">Finding a new route.</string>
     <string name="android_guide_destChangedNoName">Destination changed.</string>

@@ -131,6 +131,7 @@
     <string name="android_guide_altPreviewRemaining">現在のルート残り%1$s</string>
     <string name="android_guide_altPreviewSummary">%1$s、合計%2$s</string>
     <string name="android_guide_altPreviewTime">徒歩約%1$s分</string>
+    <string name="android_guide_carOffRoute">経路から外れたため案内を一時停止しました。「経路を更新」で再開できます</string>
     <string name="android_guide_destChanged">新しい目的地 %1$s。</string>
     <string name="android_guide_destChangedFetching">新しいルートを検索しています。</string>
     <string name="android_guide_destChangedNoName">目的地を変更しました。</string>

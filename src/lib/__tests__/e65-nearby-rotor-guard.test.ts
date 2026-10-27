@@ -111,7 +111,7 @@ describe("E65 내 주변 로터 액션 배선", () => {
     }
     // 주변 상황 행의 상세도 표식을 낸다(자동 펼침 섹션이 부모 코어로 넘긴다).
     const scene = nearby("SurroundingsSceneSection.swift");
-    expect(scene).toContain("PlaceDetailView(place: sceneItemToPlace(item))\n                        .onAppear { onPushed?() }");
+    expect(scene).toContain("PlaceDetailView(place: sceneItemToPlace(item), showsDirectionsEntry: showsDirectionsEntry)\n                        .onAppear { onPushed?() }");
     // 코어: 표식은 목록이 있을 때만, 등장은 표식 1회 소비 뒤 load(). 상태만으로 막지 않는다(탭 전환 복귀는 재조회).
     const core = read("ios/GildongmuKit/Sources/GildongmuKit/NearbyLoadCore.swift");
     expect(core).toMatch(/public func notePushed\(\) \{\s*if case \.loaded = phase \{ coveredByPush = true \}\s*\}/);

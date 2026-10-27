@@ -615,7 +615,7 @@ describe("9. 안내 시트 제목 행 밀기 동작(E74) — E75에서 졸업", 
     }
   });
 
-  it("제목 행은 두 시트에서 한 번씩 조건 없이 선다", () => {
+  it("제목 행은 두 시트에서 한 번씩 서고, 그 자리가 실험 조건 안에 있지 않다", () => {
     expect(callSites(/GuideTitleActionsRow\(/g).sort()).toEqual(["BeaconTrackingSheet.swift", "TransitTrackingSheet.swift"]);
     // 도보 시트는 계산 프로퍼티(`titleActionsRow`)가 행을 만들고, 선언을 뺀 참조가 섹션 첫 자리 하나다.
     const beaconSites = enclosingHeaders(readFileSync(BEACON_SHEET, "utf8"), "titleActionsRow").filter(
@@ -636,7 +636,27 @@ describe("9. 안내 시트 제목 행 밀기 동작(E74) — E75에서 졸업", 
   });
 
   it("도보 시트의 경유지는 제목 행 밀기 동작뿐이다(종전 경유지 두 행 없음)", () => {
-    expect(readFileSync(BEACON_SHEET, "utf8")).not.toContain("Button(model.waypoint.map");
+    expect(readFileSync(BEACON_SHEET, "utf8")).not.toMatch(/Button\([^\n]*(model\.waypoint|directions\.addVia|guide\.waypointRemove)/);
+  });
+
+  // E75 판정 5·6: 주변 기준은 지금 위치(force — 위치 스토어 TTL 함정)이고 수동 위치를 거치지 않는다(실시간 안내는 실좌표). 창이 열릴
+  // 때 셸이 한 번 조회하고(행 `.task`는 화면에 들어올 때마다 돈다), 안내 중이라 장소 상세에 길찾기 진입을 싣지 않는다.
+  it("「지금 여기는 어디?」 주변은 지금 위치를 force로 한 번 조회하고, 장소 상세에 길찾기 진입이 없다", () => {
+    const overview = readFileSync(join(ROOT, "ios/Gildongmu/Directions/GuideOverviewSheet.swift"), "utf8");
+    const here = declarationBody(overview, "hereCoordinate");
+    expect(here).toContain("LocationService.shared.currentCoordinate(force: true)");
+    expect(here).not.toMatch(/ManualLocation|manualLocation/);
+    expect(overview).toMatch(/\.task \{\s*guard showsHereSurroundings else \{ return \}[\s\S]{0,200}if case \.idle = model\.phase \{ await model\.load\(\) \}/);
+    const rows = overview.slice(overview.indexOf("struct GuideHereSurroundingsRows"), overview.indexOf("func hereCoordinate"));
+    expect(rows).toContain("let model: SurroundingsSceneModel");
+    expect(rows).not.toContain(".task");
+    expect(overview).toContain("showsDirectionsEntry: false)");
+    expect(readFileSync(BEACON_SHEET, "utf8")).toContain("showsHereSurroundings: true");
+  });
+
+  it("iOS는 공유 문장 guide.carOffRoute(「경로 다시 조회로 재개」 — 웹·안드로이드 버튼)를 쓰지 않는다", () => {
+    const offenders = swiftFiles(IOS_DIR).filter((file) => readFileSync(file, "utf8").includes('"guide.carOffRoute"'));
+    expect(offenders).toEqual([]);
   });
 });
 

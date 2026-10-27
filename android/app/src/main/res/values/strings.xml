@@ -131,6 +131,7 @@
     <string name="android_guide_altPreviewRemaining">지금 경로 잔여 %1$s</string>
     <string name="android_guide_altPreviewSummary">%1$s, 총 %2$s</string>
     <string name="android_guide_altPreviewTime">도보 약 %1$s분</string>
+    <string name="android_guide_carOffRoute">경로에서 벗어나 안내를 일시 중지했습니다. 경로 새로고침으로 재개할 수 있습니다</string>
     <string name="android_guide_destChanged">새 목적지 %1$s.</string>
     <string name="android_guide_destChangedFetching">경로를 조회하고 있습니다.</string>
     <string name="android_guide_destChangedNoName">목적지를 바꿨습니다.</string>

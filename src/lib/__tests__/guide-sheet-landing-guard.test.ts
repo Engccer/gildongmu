@@ -125,9 +125,10 @@ describe("BeaconTrackingSheet 착지 (E57)", () => {
     expect(BEACON).toContain('requestInfoLanding(note: "waypointRemoved")');
     expect(BEACON).toMatch(/\.onChange\(of: model\.differentRouteAdoptedSeq\) \{\s*requestInfoLanding\(note: "differentRoute"\)/);
     // E69 「경로 다시 조회」 버튼과 그 사라짐 착지는 경로 새로고침으로 합쳐져 없다(E75 판정 3 — 같은 일을 하는 버튼 둘 금지).
-    for (const gone of ["reroutePressed", "showsRerouteButton", "offRouteEndedByReroute", "case reroute", "guide.rerouteButton"]) {
+    for (const gone of ["reroutePressed", "showsRerouteButton", "offRouteEndedByReroute", "guide.rerouteButton"]) {
       expect(BEACON, gone).not.toContain(gone);
     }
+    expect(BEACON).not.toMatch(/case [^\n]*\breroute\b/);
     for (const note of ["destinationChanged", "waypointChanged"]) {
       expect(BEACON, note).toContain(`landAfterDismiss = DismissLanding(note: "${note}")`);
     }

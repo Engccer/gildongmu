@@ -50,7 +50,7 @@ describe("BeaconModel 돌아가기 국면 배선(E63)", () => {
   });
 
   it("상태 행은 벗어난 쪽만이다 — 시계 방향은 음성으로만(위원장 판정 2026-10-04)", () => {
-    expect(beacon).toMatch(/offRouteLine = driverChannel \? appLocalized\("guide\.carOffRoute"\) : GuideText\.offRouteSide\(side\)/);
+    expect(beacon).toMatch(/offRouteLine = driverChannel \? appLocalized\("ios\.guide\.carOffRoute"\) : GuideText\.offRouteSide\(side\)/);
   });
 
   it("자동 조회 진행 중 판정은 토큰 비교다 — 폐기된 옛 조회가 다음 회차를 막지 않는다", () => {

@@ -21681,6 +21681,46 @@
         }
       }
     },
+    "ios.guide.carOffRoute": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "경로에서 벗어나 안내를 일시 중지했습니다. 경로 새로고침으로 재개할 수 있습니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You are off the route; guidance is paused. Refresh the route to resume"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fuera de la ruta; guía en pausa. Pulsa Actualizar ruta para reanudar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hors itinéraire ; guidage en pause. Touchez Actualiser l'itinéraire pour reprendre"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fuori percorso; guida in pausa. Tocca Aggiorna percorso per riprendere"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "経路から外れたため案内を一時停止しました。「経路を更新」で再開できます"
+          }
+        }
+      }
+    },
     "ios.guide.destChanged": {
       "localizations": {
         "ko": {

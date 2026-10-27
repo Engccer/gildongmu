@@ -38,7 +38,7 @@
 ### 2.4 목록 안 「경로 다시 조회」 삭제(판정 3)
 
 - 시트의 E69 버튼 행, `BeaconModel.showsRerouteButton`·`requestReroute()`·`isRerouting`을 지운다(소비자가 그 버튼뿐이다). 착지 대상 `.reroute`와 "누른 결과로 버튼이 사라질 때"의 착지(`reroutePressed`·`offRoute` 해제 착지)·그 근거 값 `offRouteEndedByReroute`도 함께 지운다. 새로고침 버튼은 이탈 해제로 사라지지 않으므로 그 착지가 필요 없다.
-- E69 래치 `rerouteGaveUp`과 자동 갈래 문장 「새 경로를 자동으로 찾지 못했습니다.」는 남긴다. 래치는 그 문장의 회차당 한 번 게시를 가른다. 문장 뒤 사용자의 다음 행동이 버튼 대신 경로 새로고침이다.
+- E69 래치 `rerouteGaveUp`과 자동 갈래 문장 「새 경로를 자동으로 찾지 못했습니다.」는 남긴다. 래치는 회차의 첫 진단 로그(`rerouteButton cause=`) 한 번만 가르고, 문장의 회차당 한 번은 `rerouteGaveUpSpoken`이 가른다. 문장 뒤 사용자의 다음 행동이 버튼 대신 경로 새로고침이다. 운전자 채널 이탈 문장의 꼬리도 iOS 전용 키 `ios.guide.carOffRoute`로 「경로 새로고침」을 가리킨다(웹·안드로이드는 공유 `guide.carOffRoute` 그대로).
 
 ## 3. 예산 판정(이 spec의 유일한 동작 변경)
 

@@ -102,6 +102,9 @@ struct GuideOverviewSheet<Capability: GuideOverviewCapability>: View {
     let onFollowUp: (GuideOverviewFollowUp) -> Void
     @Environment(\.dismiss) private var dismiss
     @State private var subsheet: GuideOverviewSubsheet?
+    /// 지금 위치 주변 모델 — 셸이 소유하고 창이 열릴 때 한 번 조회한다(행의 `.task`에 걸면 행이 화면에 들어올 때마다 다시
+    /// 측위·조회해 「더 보기」가 접히고, 긴 구간 목록에선 내려가기 전까지 조회가 시작되지 않는다).
+    @State private var hereModel: SurroundingsSceneModel?
 
     var body: some View {
         // 주변 장소 행의 "더 보기" 가시화용 proxy(`SurroundingsSceneGroupsView`가 받는다).
@@ -133,14 +136,22 @@ struct GuideOverviewSheet<Capability: GuideOverviewCapability>: View {
                         subsheet = action.presents
                     }
                 }
-                if showsHereSurroundings {
-                    GuideHereSurroundingsRows(proxy: proxy)
+                if showsHereSurroundings, let hereModel {
+                    GuideHereSurroundingsRows(model: hereModel, proxy: proxy)
                 }
                 Button(appLocalized("actions.close")) { dismiss() }
             } header: {
                 distanceText(capability.overviewHeaderText)
                     .accessibilityAddTraits(.isHeader)
             }
+        }
+        // 장소 상세를 열었다 돌아와도 다시 조회하지 않는다(A64 — 목록이 바뀌면 돌아온 커서가 갈 곳을 잃는다). 상세를 열기
+        // 전에 취소돼 `idle`로 돌아간 조회만 다시 건다.
+        .task {
+            guard showsHereSurroundings else { return }
+            let model = hereModel ?? SurroundingsSceneModel(coordinate: .current { _ in try await hereCoordinate() })
+            hereModel = model
+            if case .idle = model.phase { await model.load() }
         }
         }
         .sheet(item: $subsheet, onDismiss: {}) { which in
@@ -188,23 +199,29 @@ struct GuideOverviewSheet<Capability: GuideOverviewCapability>: View {
 // MARK: - 지금 위치 주변 (E75 「지금 여기는 어디?」)
 
 /// 「지금 여기는 어디?」 창의 주변 행(E75 판정 5·6, spec 2026-10-27 §4): 「주변 상황」 헤딩 + 지금 위치의 주소 문장·방위
-/// 묶음(둘러보기 장면 `/api/surroundings/scene`). 창이 열릴 때 한 번 조회한다. 조용히 나타나는 행이라 헤딩이 발견 경로이고
-/// (헌장 §3) 포커스를 옮기지 않는다 — 창의 착지는 머리(진행 문장)다. 예외 하나: 조회 중 문장 행에 커서가 있는 채 결과가 오면
-/// 그 행이 사라지므로 헤딩으로 옮긴다(헌장 §5).
+/// 묶음(둘러보기 장면 `/api/surroundings/scene`). 모델은 셸이 소유하고 창이 열릴 때 한 번 조회한다. 조용히 나타나는 행이라 헤딩이
+/// 발견 경로이고(헌장 §3) 포커스를 옮기지 않는다 — 창의 착지는 머리(진행 문장)다. 예외 하나: 조회 중 행에 커서가 있는 채 결과가
+/// 오면 그 행이 사라지므로 결과 문장(장면이면 헤딩)으로 옮긴다(헌장 §5).
 ///
 /// 기준은 **지금 위치**다(종전 안내 시트 「주변 확인」은 목적지 앵커였다. 도착 종료 화면은 그대로 목적지). 좌표는
 /// `currentCoordinate(force: true)`: 추적 중엔 스트림 최신 fix를 재사용 게이트로 거른 값이고(못 넘으면 실패 — 옛 좌표를 "지금"으로
 /// 말하지 않는다), 추적 밖이면 캐시를 버리고 새로 잰다. 수동 위치는 거치지 않는다(실시간 안내는 실좌표).
 struct GuideHereSurroundingsRows: View {
+    let model: SurroundingsSceneModel
     let proxy: ScrollViewProxy
-    @State private var model = SurroundingsSceneModel(coordinate: .current { _ in try await hereCoordinate() })
     @AccessibilityFocusState private var focusedID: String?
 
-    /// 장면 밖 상태 문장(3-state — 위치 실패·권한·정밀도·지역 밖·0건·조회 실패를 뭉개지 않는다). 장면이 있으면 nil.
+    private var isLoading: Bool {
+        switch model.phase {
+        case .idle, .loading: true
+        default: false
+        }
+    }
+
+    /// 결과 상태 문장(3-state — 위치 실패·권한·정밀도·지역 밖·0건·조회 실패를 뭉개지 않는다). 조회 중·장면이면 nil.
     private var message: String? {
         switch model.phase {
-        case .idle, .loading: appLocalized("surroundings.loading")
-        case .loaded: nil
+        case .idle, .loading, .loaded: nil
         case .empty: appLocalized("surroundings.empty")
         case .failedServer: appLocalized("surroundings.error")
         case .failedLocation: appLocalized("manualLocation.gpsFailed")
@@ -222,24 +239,33 @@ struct GuideHereSurroundingsRows: View {
             .accessibilityAddTraits(.isHeader)
             .id("here-heading")
             .accessibilityFocused($focusedID, equals: "here-heading")
-            // 헤딩은 늘 있는 행이라 조회를 여기 건다(행 묶음에 걸면 자식마다 돈다).
-            .task {
-                await model.load()
-                guard focusedID == "here-message", message == nil else { return }
-                proxy.scrollTo("here-heading")
-                try? await Task.sleep(for: .milliseconds(400))
-                focusedID = "here-heading"
-                try? await Task.sleep(for: .milliseconds(600))
-                if focusedID != "here-heading" { focusedID = "here-heading" }
+            // 조회 중 행에 커서가 있는 채 그 행이 사라지면 결과 문장(없으면 헤딩)으로 옮긴다 — 행 id가 같으면 글자만 바뀌어
+            // VoiceOver가 실패·0건을 읽지 않는다(헌장 §5).
+            .onChange(of: isLoading) { wasLoading, loading in
+                guard wasLoading, !loading, focusedID == "here-loading" else { return }
+                let target = message == nil ? "here-heading" : "here-message"
+                Task {
+                    proxy.scrollTo(target)
+                    try? await Task.sleep(for: .milliseconds(400))
+                    focusedID = target
+                    try? await Task.sleep(for: .milliseconds(600))
+                    if focusedID != target { focusedID = target }
+                }
             }
-        if let message {
+        if isLoading {
+            Text(appLocalized("surroundings.loading"))
+                .id("here-loading")
+                .accessibilityFocused($focusedID, equals: "here-loading")
+        } else if let message {
             Text(message)
                 .id("here-message")
                 .accessibilityFocused($focusedID, equals: "here-message")
         }
         if case .loaded(let scene) = model.phase {
+            // 안내 중이라 길찾기 프리필·목적지 바꾸기는 싣지 않는다(안내 시트의 장소 상세와 같다, spec 2026-08-12 §2).
             SurroundingsSceneGroupsView(
-                scene: scene, reveal: model.reveal, proxy: proxy, focusedID: $focusedID)
+                scene: scene, reveal: model.reveal, proxy: proxy, focusedID: $focusedID,
+                showsDirectionsEntry: false)
         }
     }
 }

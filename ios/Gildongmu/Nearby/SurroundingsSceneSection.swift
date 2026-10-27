@@ -277,6 +277,9 @@ struct SurroundingsSceneGroupsView: View {
     var rowActionsAskAbout: ((Place) -> Void)? = nil
     /// 장소 상세가 나타났을 때(A64) — 둘러보기가 돌아올 때 다시 조회하지 않게 코어에 알린다. 버튼형은 자기 조회가 요청형이라 nil.
     var onPushed: (() -> Void)? = nil
+    /// 장소 상세의 길찾기 프리필·목적지 바꾸기(E75) — 안내 중 「지금 여기는 어디?」 창만 false(시트 뒤 탭을 조작하고, 시트 세
+    /// 겹 깊이에서 목적지 착지 계약을 우회한다).
+    var showsDirectionsEntry = true
 
     var body: some View {
         // 위치 확인 문장 먼저, 그다음 묶음(spec 판정 3).
@@ -296,7 +299,7 @@ struct SurroundingsSceneGroupsView: View {
             ) { index, item in
                 // 한 줄 = 한 접근성 객체. 거리 낭독 정정은 distanceText가(m→로케일 단어).
                 let link = NavigationLink {
-                    PlaceDetailView(place: sceneItemToPlace(item))
+                    PlaceDetailView(place: sceneItemToPlace(item), showsDirectionsEntry: showsDirectionsEntry)
                         .onAppear { onPushed?() }
                 } label: {
                     SceneText.itemRow(item)

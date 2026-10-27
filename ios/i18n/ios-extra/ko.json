@@ -325,7 +325,8 @@
       "waypointDropped": "경유지({label})를 포함한 경로를 찾지 못했습니다. 경유지 없이 목적지({dest})로 안내합니다.",
       "waypointSkipped": "경유지({label})를 제외하고 안내합니다.",
       "waypointRemove": "경유지 삭제",
-      "waypointRemoved": "경유지 {label} 삭제, 경로를 다시 조회합니다"
+      "waypointRemoved": "경유지 {label} 삭제, 경로를 다시 조회합니다",
+      "carOffRoute": "경로에서 벗어나 안내를 일시 중지했습니다. 경로 새로고침으로 재개할 수 있습니다"
     },
     "transitGuide": {
       "destChangeHeading": "새 경로 선택, {name}",

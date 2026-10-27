@@ -131,6 +131,7 @@
     <string name="android_guide_altPreviewRemaining">percorso attuale rimanente %1$s</string>
     <string name="android_guide_altPreviewSummary">%1$s, %2$s in totale</string>
     <string name="android_guide_altPreviewTime">circa %1$s min a piedi</string>
+    <string name="android_guide_carOffRoute">Fuori percorso; guida in pausa. Tocca Aggiorna percorso per riprendere</string>
     <string name="android_guide_destChanged">Nuova destinazione: %1$s.</string>
     <string name="android_guide_destChangedFetching">Ricerca di un nuovo percorso.</string>
     <string name="android_guide_destChangedNoName">Destinazione cambiata.</string>

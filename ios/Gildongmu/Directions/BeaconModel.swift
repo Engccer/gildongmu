@@ -392,7 +392,7 @@ final class BeaconModel {
     /// 조회하고 `rerouteNeeded`는 그 조회가 실패·신선도 미달로 끝난 뒤의 재시도로만 쓴다(E63 spec §3.8).
     /// 남긴 안전망은 채택 시점의 신선도 검사 하나다(`RerouteProposalGate`: 취득점 수단별 이동 상한(`rerouteMaxDriftMeters`
     /// 도보 30m·자동차 150m)·120초 + 최근 fix 15초) — 낡은 출발점의 경로를 채택하면 도로 중앙 안내(§5.6 실사고 계열)가
-    /// 되므로 미달이면 버리고 그 순간 수동 "경로 다시 조회" 버튼이 선다(E69 ⓐ).
+    /// 되므로 미달이면 버리고 그 순간 "자동으로 찾지 못했습니다"를 한 번 말한다(E69 ⓐ — 수동 출구는 제목 행 경로 새로고침, E75).
     /// latest-wins 토큰 — 폐기·목적지 변경·세션 종료·수동 재조회 시 증가. 토큰이 일치하고
     /// 이탈이 지속 중일 때만 응답을 채택한다(복귀 후 늦게 도착한 응답이 경로를 갈아치우는
     /// 경로 차단). 조회 실패는 버튼을 세우고 한 번 말한다(E69). 더 멀어지면 리듀서가 또 요청한다(세션 예산 5회).
@@ -2160,7 +2160,7 @@ final class BeaconModel {
         // 현행 상태 전문, 그 밖은 벗어난 쪽만(위원장 판정 2026-10-04): 시계 방향은 사용자가 몸을 돌리면 곧 거짓이 되는데 이 행은
         // 시트 착지·전경 복귀 재생이 나중에 다시 읽는다.
         if case let .offRoute(_, _, _, side, _, _) = out.event {
-            offRouteLine = driverChannel ? appLocalized("guide.carOffRoute") : GuideText.offRouteSide(side)
+            offRouteLine = driverChannel ? appLocalized("ios.guide.carOffRoute") : GuideText.offRouteSide(side)
         }
         // 지난 임박 문장은 상태 행에 남기지 않는다(전경 복귀 재생이 지난 회전을 다시 읽는다, a11y 감사 M1).
         if let pending = imminentStatus, out.state.stepIndex >= pending.target {
@@ -2252,7 +2252,7 @@ final class BeaconModel {
             lastGuidance = text
             liveTopText = text
             resultHaptic(.attention)
-            // ⚠ `.high`: 이 진입이 "경로 다시 조회" 버튼을 지워 커서가 움직일 수 있다(`backOnRoute`와 같은 판별선, 구현 리뷰 M1).
+            // ⚠ `.high`: 이 진입이 경로 새로고침 버튼·이탈 행을 지워 커서가 움직일 수 있다(`backOnRoute`와 같은 판별선, 구현 리뷰 M1).
             // 버려지면(억제·백그라운드) 진입 서술과 같은 상환 칸으로 갚는다 — 다음 발화가 도착이면 "벗어났습니다"에서 곧바로
             // "도착했습니다"로 건너뛴다(리뷰 m1).
             announce(text, highPriority: true, speechClass: .actionable) { [weak self] in
@@ -2339,7 +2339,7 @@ final class BeaconModel {
     /// 왜 필요한가: `statusText`는 이벤트 소비 시점에만 대입되는 **래치**다. 재획득
     /// 국면에서 위치는 되찾았는데 방위가 확인되지 않으면 리듀서가 국면을 `.offRoute`로
     /// 되돌리면서 **이벤트는 내지 않는다**(이탈은 이미 통지한 상태라 재통지가 아니라는
-    /// 판정이며 그 판정은 옳다). 그 결과 `offRoute` 플래그와 재조회 버튼은 정확한데
+    /// 판정이며 그 판정은 옳다). 그 결과 `offRoute` 플래그와 래치는 정확한데
     /// 화면·복귀 재생만 "현재 위치를 다시 파악하는 중"에 머문다 — walk 기준 최대 60초.
     ///
     /// ⚠ **통지하지 않는다.** 이벤트가 없다는 것은 새로 알릴 일이 없다는 뜻이고, 여기서
@@ -2347,7 +2347,7 @@ final class BeaconModel {
     /// ⚠ 되돌리는 것은 **재획득 문구일 때뿐**이다. 다른 문구는 그 자리의 최신 사실이다.
     private func syncStatusTextWithPhase(_ phase: GuidePhase) {
         guard phase == .offRoute, statusText == appLocalized("guide.reacquiring") else { return }
-        statusText = offRouteLine ?? appLocalized(sessionKind == .car ? "guide.carOffRoute" : "guide.offRoute")
+        statusText = offRouteLine ?? appLocalized(sessionKind == .car ? "ios.guide.carOffRoute" : "guide.offRoute")
     }
 
     // MARK: - 최종 접근 (spec 2026-08-08 §3.3·§3.4·§4)
@@ -2424,7 +2424,7 @@ final class BeaconModel {
         resetArrivalWindow()
         arrivalWindowEnteredAt = uptimeNow
         if entry == .offRoute {
-            // 종점 기하 서술은 이탈 중엔 거짓이라 영영 말하지 않는다(래치를 "냈음"으로). 이탈 표시·재조회 버튼 래치도 내린다
+            // 종점 기하 서술은 이탈 중엔 거짓이라 영영 말하지 않는다(래치를 "냈음"으로). 이탈 표시·자동 갈래 래치도 내린다
             // (`backOnRoute`가 지우는 것과 같은 집합 — 국면이 finalApproach라 그 이벤트는 오지 않는다).
             finalApproachIntroSpoken = true
             lastFinalTickAt = uptimeNow
@@ -3001,7 +3001,7 @@ final class BeaconModel {
                     logOffRouteNotice(notice, reason, guidance, side, returnRelDeg, firstSpoken, perp: perp, spoken: false)
                     break
                 }
-                let text = appLocalized("guide.carOffRoute")
+                let text = appLocalized("ios.guide.carOffRoute")
                 statusText = text
                 postOffRouteNotice(text, speechClass: notice == .confirm ? .actionable : speechClass)
                 logOffRouteNotice(notice, reason, guidance, side, returnRelDeg, firstSpoken, perp: perp, spoken: true)
@@ -3038,9 +3038,9 @@ final class BeaconModel {
             statusText = text
             // 이탈은 warning 톤이 진동을 동반하는데 복귀는 무신호였다 — 짝을 맞춘다(E30 확장).
             resultHaptic(.success)
-            // ⚠ `.high`: 복귀(`offRoute = false`)가 "경로 다시 조회" 버튼을 지워 커서를 쥔 VoiceOver가 그 자리를 낭독하고, 기본
-            // 우선순위 통지는 그 처리에 잠식된다(`performReroute` 성공 통지와 같은 기제). 버튼은 자동 판정이 손을 든 회차에만
-            // 서지만(E69) 그 회차엔 복귀까지 남아 커서가 그 위에 있을 수 있고, 착지 라벨(남은 거리)은 "돌아왔다"를 대신하지 못한다.
+            // ⚠ `.high`: 복귀(`offRoute = false`)가 이탈 행을 지우고 남은 거리 행을 되살려 커서를 쥔 VoiceOver가 그 자리를
+            // 낭독하고, 기본 우선순위 통지는 그 처리에 잠식된다(채택 성공 통지와 같은 기제). 착지 라벨(남은 거리)은 "돌아왔다"를
+            // 대신하지 못한다.
             announce(text, highPriority: true, speechClass: speechClass)
         case let .rerouteNeeded(reason):
             // 돌아가기 국면에서 계속 멀어지거나 나란히 계속 걸었다(E63 §3.5·판정 J4) — 자동 조회·채택. 운전자 채널은 확정 즉시
@@ -3391,7 +3391,7 @@ final class BeaconModel {
             }
             // 채택 시점 신선도 — 자동 채택의 유일한 안전망. 현재 좌표를 단정할 수 없거나
             // (fix 15초 공백) 취득점에서 30m·120초를 넘겼으면 채택하지 않는다(그 회차
-            // 종결, 수동 버튼이 예비). 서버 hang 동안 걸어 낡아진 출발점의 경로를
+            // 종결, 경로 새로고침이 예비). 서버 hang 동안 걸어 낡아진 출발점의 경로를
             // 채택하는 §5.6 실사고 경로를 이 검사가 막는다.
             let proposal = RerouteProposal(
                 originLat: origin.lat, originLng: origin.lng, acquiredAt: acquiredAt)
@@ -3424,9 +3424,9 @@ final class BeaconModel {
                 : nil
             guideDiagLog("rerouteAdopt source=\(source) result=adopted headClock=\(headClock.map(String.init) ?? "-")")
             // 채택은 performReroute의 성공 커밋 경로 그대로(spec §6 리뷰 #4 — 별도 전이
-            // 신설 금지). 통지는 `.high`: 커밋이 `offRoute = false`로 재조회 버튼을 지워
-            // 커서가 옮겨갈 수 있고, 기본 우선순위는 그 착지 낭독에 잠식된다(수동 재조회
-            // 성공 통지와 같은 근거). 시트의 첫 정보 행 착지는 이 통지 뒤다(E57).
+            // 신설 금지). 통지는 `.high`: 커밋이 `offRoute = false`로 이탈 행을 지워
+            // 커서가 옮겨갈 수 있고, 기본 우선순위는 그 착지 낭독에 잠식된다. 시트의 첫 정보 행
+            // 착지는 이 통지 뒤다(E57).
             let firstIndices = commitReroutedRoute(fetched)
             let notice = consumeStepFreeNotice(
                 fetched.stepFreeRaw, fetched.stepFree, fetched.stepFreeNotice

@@ -325,7 +325,8 @@
       "waypointDropped": "No se encontró ninguna ruta que pase por el punto intermedio ({label}). Te guiamos al destino ({dest}) sin el punto intermedio.",
       "waypointSkipped": "Te guiamos sin el punto intermedio ({label}).",
       "waypointRemove": "Quitar punto intermedio",
-      "waypointRemoved": "Punto intermedio {label} quitado, consultando la ruta de nuevo"
+      "waypointRemoved": "Punto intermedio {label} quitado, consultando la ruta de nuevo",
+      "carOffRoute": "Fuera de la ruta; guía en pausa. Pulsa Actualizar ruta para reanudar"
     },
     "transitGuide": {
       "destChangeHeading": "Elige una nueva ruta, {name}",

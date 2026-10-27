@@ -325,7 +325,8 @@
       "waypointDropped": "Aucun itinéraire passant par l'étape ({label}) n'a été trouvé. Guidage vers la destination ({dest}) sans l'étape.",
       "waypointSkipped": "Guidage sans l'étape ({label}).",
       "waypointRemove": "Supprimer l’étape",
-      "waypointRemoved": "Étape {label} supprimée, nouvelle recherche d’itinéraire"
+      "waypointRemoved": "Étape {label} supprimée, nouvelle recherche d’itinéraire",
+      "carOffRoute": "Hors itinéraire ; guidage en pause. Touchez Actualiser l'itinéraire pour reprendre"
     },
     "transitGuide": {
       "destChangeHeading": "Choisissez un nouvel itinéraire, {name}",
