@@ -263,8 +263,8 @@ describe("E71 aboard 출발 — 길찾기 화면(spec §5·R11·R12)", () => {
 
 /** spec §7 표(ko). 한 글자도 다르면 낭독 계약이 바뀐 것이다. */
 const ABOARD_KO: Record<string, string> = {
-  aboardStart: "지금 탄 열차에서 출발",
-  aboardStationField: "지금 서 있거나 다음에 설 역",
+  aboardStart: "지하철역 검색",
+  aboardStationField: "현재 정차 중인 역 또는 다음 역 검색",
   aboardField: "지금 탄 열차, {station}",
   aboardFieldDirection: "지금 탄 열차, {station}, {direction}",
   aboardLinePrompt: "어느 노선인가요?",

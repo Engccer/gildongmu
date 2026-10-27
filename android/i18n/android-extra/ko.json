@@ -91,7 +91,7 @@
     },
     "settings": {
       "resultHapticsFooter": "검색과 내 주변의 결과를 진동으로도 알립니다. 화면이 켜져 있고 기기의 촉각 피드백 설정이 켜져 있을 때만 진동합니다.",
-      "backgroundSpeechFooter": "화면이 꺼지거나 다른 앱을 쓰는 동안에도 회전, 이탈, 도착 같은 안내를 기기 음성으로 말합니다."
+      "backgroundSpeechFooter": "화면이 꺼져 있거나 다른 앱을 쓰고 있어도 회전, 이탈, 도착 등을 기기 음성으로 안내합니다."
     }
   },
   "search": {
