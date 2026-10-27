@@ -1096,6 +1096,10 @@ struct DirectionsTabView: View {
     @State private var aboardStationPicked = false
     /// 역을 고른 뒤 단계 줄 착지가 끝나기 전 — 그 사이에 방면 조회가 끝나면 착지한 줄의 라벨이 읽으므로 통지를 겹치지 않는다.
     @State private var aboardLandingPending = false
+    /// 착지의 첫 대입이 이미 일어났다(그 뒤 도착한 결과는 커서가 옛 라벨 위에 있어 착지가 끝날 때 처리한다).
+    @State private var aboardLandingAssigned = false
+    /// 첫 대입 뒤 착지가 끝나기 전에 도착한 방면 조회 결과 — 버리지 않고 착지가 끝날 때 한 번 처리한다.
+    @State private var aboardArrivalAfterLanding: DirectionsModel.AboardDirectionsState?
     /// 단계 줄 하나만 이 바인딩을 쓴다(상태가 바뀌어도 같은 자리의 한 줄이라 커서가 유지된다).
     @AccessibilityFocusState private var aboardStepFocused: Bool
     /// 추적 시트가 닫힌 뒤 돌아갈 자리. 시트 dismiss가 VO 커서를 화면 최상단으로
@@ -1728,7 +1732,6 @@ struct DirectionsTabView: View {
                 Button(line) {
                     aboardStepFocused = true
                     model.chooseAboardLine(line)
-                    rereadAboardStep()  // 같은 줄이 방면 질문(또는 오는 열차 없음 문장)이 된다 — 라벨 변경은 낭독되지 않아 다시 읽게 한다
                 }
             }
         case .loaded(let directions):
@@ -1788,10 +1791,16 @@ struct DirectionsTabView: View {
         Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(400))
             aboardStepFocused = true
+            aboardLandingAssigned = true
             try? await Task.sleep(for: .milliseconds(600))
+            if !aboardStepFocused { aboardStepFocused = true }
+            // 착지 끝. 첫 대입 전에 도착한 결과는 착지 라벨이 새 문장으로 읽었으니 소비만 하고, 그 뒤 도착한 결과는 지금 한 번 처리한다.
             aboardLandingPending = false
-            guard !aboardStepFocused else { return }
-            aboardStepFocused = true
+            aboardLandingAssigned = false
+            if let arrived = aboardArrivalAfterLanding {
+                aboardArrivalAfterLanding = nil
+                handleAboardArrival(arrived)
+            }
         }
     }
 
@@ -1806,7 +1815,10 @@ struct DirectionsTabView: View {
             sentence = (appLocalized("ios.journey.aboardDirectionsEmpty"), .attention)
         case .idle, .loading, .lines, .loaded: sentence = nil
         }
-        if aboardLandingPending { return }
+        if aboardLandingPending {
+            if aboardLandingAssigned { aboardArrivalAfterLanding = state }
+            return
+        }
         if aboardStepFocused {
             rereadAboardStep()
             if let sentence { ResultHaptic.fire(sentence.1) }

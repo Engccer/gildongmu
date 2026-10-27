@@ -184,7 +184,12 @@ describe("E71 aboard 출발 — 길찾기 화면(spec §5·R11·R12)", () => {
 
   it("방면 조회 도착의 통지는 착지 예약·커서 위치를 보고, 로딩 중 이탈은 실패가 아니라 미완료로 두고 돌아오면 재조회한다", () => {
     const arrive = body(TAB, "private func handleAboardArrival(");
-    expect(arrive).toMatch(/if aboardLandingPending \{ return \}[\s\S]*if aboardStepFocused \{[\s\S]*rereadAboardStep\(\)/);
+    expect(arrive).toMatch(/if aboardLandingPending \{\s*if aboardLandingAssigned \{ aboardArrivalAfterLanding = state \}\s*return\s*\}[\s\S]*if aboardStepFocused \{[\s\S]*rereadAboardStep\(\)/);
+    // 첫 대입 뒤 착지 중 도착한 결과는 버리지 않고 착지가 끝날 때 한 번 처리한다
+    const land = body(TAB, "private func landAboardStepFocus(");
+    expect(land).toMatch(/aboardLandingAssigned = true[\s\S]*aboardLandingPending = false[\s\S]*handleAboardArrival\(arrived\)/);
+    // 노선 버튼은 선점 대입만 한다(같은 트랜잭션의 다시 읽기는 선점을 무효화한다)
+    expect(TAB).toMatch(/aboardStepFocused = true\s*model\.chooseAboardLine\(line\)\s*\}/);
     expect(body(TAB, "private func commitAboardState(")).not.toMatch(/Announcement/);
     const cancel = body(TAB, "func cancel()");
     expect(cancel).toMatch(/aboardDirectionsState == \.loading \{[\s\S]*aboardDirectionsState = \.idle/);
