@@ -283,8 +283,9 @@ final class DirectionsModel {
         aboardOrigin?.direction = direction
     }
 
+    /// 실패와 오는 열차 없음(열차는 잠시 뒤 올 수 있다)에서 다시 조회한다.
     func retryAboardDirections() {
-        guard aboardOrigin != nil, aboardDirectionsState == .failed else { return }
+        guard aboardOrigin != nil, aboardDirectionsState == .failed || aboardDirectionsState == .loaded([]) else { return }
         loadAboardDirections()
     }
 
@@ -1094,12 +1095,14 @@ struct DirectionsTabView: View {
     @State private var focusAfterResolve: DirectionsFieldTarget?
     /// 지금 탄 열차 역을 고른 뒤 커서를 단계 줄(방면·노선 질문 또는 그 자리의 상태 문장)로 보낼 표식(E71).
     @State private var aboardStationPicked = false
-    /// 역을 고른 뒤 단계 줄 착지가 끝나기 전 — 그 사이에 방면 조회가 끝나면 착지한 줄의 라벨이 읽으므로 통지를 겹치지 않는다.
+    /// 역을 고른 뒤 단계 줄 착지가 끝나기 전 — 그 사이에 방면 조회가 끝나면 착지가 끝날 때 처리한다.
     @State private var aboardLandingPending = false
-    /// 착지의 첫 대입이 이미 일어났다(그 뒤 도착한 결과는 커서가 옛 라벨 위에 있어 착지가 끝날 때 처리한다).
+    /// 착지의 대입이 이미 일어났다(그 뒤 도착한 결과는 커서가 옛 라벨 위에 있다).
     @State private var aboardLandingAssigned = false
-    /// 첫 대입 뒤 착지가 끝나기 전에 도착한 방면 조회 결과 — 버리지 않고 착지가 끝날 때 한 번 처리한다.
-    @State private var aboardArrivalAfterLanding: DirectionsModel.AboardDirectionsState?
+    /// 착지 세대. 역을 곧바로 다시 고르면 착지가 겹치는데, 마지막 착지만 위 두 표식을 풀고 보류한 결과를 처리한다.
+    @State private var aboardLandingGeneration = 0
+    /// 착지 중이나 검색 시트가 떠 있는 동안 도착한 방면 조회 결과의 표식. 값은 들지 않는다 — 처리할 때 모델의 지금 상태를 다시 읽는다.
+    @State private var aboardDeferredArrival: AboardDeferredArrival?
     /// 단계 줄 하나만 이 바인딩을 쓴다(상태가 바뀌어도 같은 자리의 한 줄이라 커서가 유지된다).
     @AccessibilityFocusState private var aboardStepFocused: Bool
     /// 추적 시트가 닫힌 뒤 돌아갈 자리. 시트 dismiss가 VO 커서를 화면 최상단으로
@@ -1439,7 +1442,7 @@ struct DirectionsTabView: View {
                     // 지금 탄 열차(E71) — 출발지 칸이 바뀌고 방면 단계가 선다. 착지는 시트가 닫힌 뒤 단계 줄이다.
                     model.startAboard(station: station)
                     aboardStationPicked = true
-                    aboardLandingPending = true
+                    beginAboardLanding()
                 } : nil, stopOrigin: endpointCoordinate(model.from), stopDest: endpointCoordinate(model.to))
             }
             // 안내 시트(비콘·대중교통)는 여기 없다 — 세션이 앱 수명이라 루트
@@ -1490,15 +1493,16 @@ struct DirectionsTabView: View {
                     landAboardStepFocus()
                     return
                 }
+                settleAboardArrivalAfterSheet()
                 guard let resolved = focusAfterResolve else { return }
                 focusAfterResolve = nil
                 landFocusAfterResolve(from: resolved)
             }
             // 방면 목록이 도착해 단계 줄이 로딩 문장에서 질문으로 바뀌면 커서가 그 줄에 있을 때 다시 읽게 한다(라벨만 바뀌는 변화는 VoiceOver가
-            // 낭독하지 않는다). 오는 열차 없음·미커버·실패는 모델의 polite 통지가 말한다.
+            // 낭독하지 않는다). 오는 열차 없음·미커버·실패는 커서가 다른 곳이면 polite 통지 한 번이다.
             .onChange(of: model.aboardDirectionsState) { old, new in
                 guard old == .loading, new != .idle, new != .loading else { return }
-                handleAboardArrival(new)
+                handleAboardArrival()
             }
             // 데이터 로케일이 ko 밖으로 바뀌어 여정 입력이 사라지면 지금 탄 열차 출발도 함께 지운다(R11 — 일반 조회로 떨어져 저장되지 않게).
             .onChange(of: journeyInputEnabled) { _, enabled in
@@ -1734,7 +1738,7 @@ struct DirectionsTabView: View {
                     model.chooseAboardLine(line)
                 }
             }
-        case .loaded(let directions):
+        case .loaded(let directions) where !directions.isEmpty:
             ForEach(directions, id: \.self) { direction in
                 // 고르면 질문과 버튼들이 사라진다 — 조회 버튼으로 커서를 선점한다(경유지 삭제 동형).
                 Button(aboardDirectionRowText(direction)) {
@@ -1742,7 +1746,8 @@ struct DirectionsTabView: View {
                     model.chooseAboardDirection(direction)
                 }
             }
-        case .failed:
+        case .failed, .loaded:
+            // 실패와 오는 열차 없음(위 갈래가 비지 않은 목록을 가져갔다 — 열차는 잠시 뒤 올 수 있다).
             // 누르면 자기가 사라지고 단계 줄이 로딩 문장이 된다 — 단계 줄로 선점한다.
             Button(appLocalized("ios.common.refresh")) {
                 aboardStepFocused = true
@@ -1786,27 +1791,87 @@ struct DirectionsTabView: View {
         aboardStepFocused = true
     }
 
+    /// 착지·시트 보류 표식. `station`은 보류할 때의 지금 탄 열차 역(처리 때 지워졌거나 바뀌었으면 버린다),
+    /// `afterAssignment`는 착지 대입 뒤에 도착했다(커서가 옛 라벨 위에 있었으므로 다시 읽어야 한다).
+    private struct AboardDeferredArrival: Equatable {
+        let station: RecentStation
+        var afterAssignment: Bool
+    }
+
+    /// 역을 고른 순간(시트가 닫히기 전) 착지를 예약한다. 새 세대가 앞 착지의 표식 해제·처리를 막고, 앞 역의 보류 결과는 버린다.
+    private func beginAboardLanding() {
+        aboardLandingGeneration += 1
+        aboardLandingPending = true
+        aboardLandingAssigned = false
+        aboardDeferredArrival = nil
+    }
+
     /// 역 확정 뒤 단계 줄 착지. 시트 dismiss가 끝나며 시스템이 커서를 되돌리므로 늦게 대입하고 1회 재시도한다(`landFocusAfterResolve` 동형).
+    /// 재시도했으면 한 번 더 기다려 그 대입이 앉았는지 본다 — 두 대입이 모두 빗나가면 착지 라벨이 읽히지 않았으니 보통 규칙(통지)으로 처리한다.
     private func landAboardStepFocus() {
+        let generation = aboardLandingGeneration
+        let station = model.aboardOrigin?.station
         Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(400))
+            guard generation == aboardLandingGeneration else { return }
             aboardStepFocused = true
             aboardLandingAssigned = true
             try? await Task.sleep(for: .milliseconds(600))
-            if !aboardStepFocused { aboardStepFocused = true }
-            // 착지 끝. 첫 대입 전에 도착한 결과는 착지 라벨이 새 문장으로 읽었으니 소비만 하고, 그 뒤 도착한 결과는 지금 한 번 처리한다.
+            guard generation == aboardLandingGeneration else { return }
+            let retried = !aboardStepFocused
+            if retried {
+                aboardStepFocused = true
+                aboardDeferredArrival?.afterAssignment = false  // 재시도 대입이 지금 라벨을 읽는다
+                try? await Task.sleep(for: .milliseconds(600))
+                guard generation == aboardLandingGeneration else { return }
+            }
             aboardLandingPending = false
             aboardLandingAssigned = false
-            if let arrived = aboardArrivalAfterLanding {
-                aboardArrivalAfterLanding = nil
-                handleAboardArrival(arrived)
-            }
+            // 착지 사이에 다른 칸 시트가 열렸으면 그 시트가 닫힐 때 처리한다(받아쓰기 중 발화 0).
+            guard searchTarget == nil else { return }
+            guard let deferred = aboardDeferredArrival else { return }
+            aboardDeferredArrival = nil
+            guard deferred.station == station, model.aboardOrigin?.station == station else { return }
+            // 대입 전 도착은 착지 라벨이 새 문장으로 읽었으니 다시 읽지 않는다(진동만). 대입 뒤 도착은 다시 읽는다.
+            settleAboardArrival(rereadIfFocused: deferred.afterAssignment)
         }
     }
 
-    /// 방면 조회가 끝났을 때(로딩 → 확정). 노선·방면 질문은 도착을 통지하지 않는다(다음 스와이프가 목록이다). 질문 자리에 문장이 서는 세 갈래
-    /// (미커버·오는 열차 없음·실패)는 커서가 그 줄에 있으면 다시 읽게 하고, 착지가 예약 중이면 착지가 읽으며, 커서가 다른 곳이면 polite 통지 한 번이다.
-    private func handleAboardArrival(_ state: DirectionsModel.AboardDirectionsState) {
+    /// 방면 조회가 끝났을 때(로딩 → 확정). 착지 중이면 착지가 끝날 때, 검색 시트가 떠 있으면(받아쓰기 — 헌장 §6 녹음 중 발화 0)
+    /// 시트가 닫힐 때 처리하도록 표식만 남긴다. 아니면 지금 처리한다.
+    private func handleAboardArrival() {
+        guard let station = model.aboardOrigin?.station else { return }
+        if aboardLandingPending {
+            aboardDeferredArrival = AboardDeferredArrival(station: station, afterAssignment: aboardLandingAssigned)
+            return
+        }
+        if searchTarget != nil {
+            aboardDeferredArrival = AboardDeferredArrival(station: station, afterAssignment: false)
+            return
+        }
+        aboardDeferredArrival = nil
+        settleAboardArrival(rereadIfFocused: true)
+    }
+
+    /// 시트가 닫힌 뒤 보류한 결과를 처리한다. 닫힌 자리의 착지(`landFocusAfterResolve`, 400ms + 600ms)가 끝난 뒤라야
+    /// 통지가 착지 낭독에 묻히지 않는다. 그 사이 시트가 다시 열렸거나 새 결과·새 착지가 표식을 가져갔으면 그쪽이 처리한다.
+    private func settleAboardArrivalAfterSheet() {
+        guard let deferred = aboardDeferredArrival, !aboardLandingPending else { return }
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(1000))
+            guard searchTarget == nil, !aboardLandingPending, aboardDeferredArrival == deferred else { return }
+            aboardDeferredArrival = nil
+            guard model.aboardOrigin?.station == deferred.station else { return }
+            settleAboardArrival(rereadIfFocused: true)
+        }
+    }
+
+    /// 지금 상태를 보통 규칙으로 처리한다. 노선·방면 질문은 통지하지 않는다(다음 스와이프가 목록이다). 질문 자리에 문장이 서는 세 갈래
+    /// (미커버·오는 열차 없음·실패)는 진동 한 번(문장이 나가는 조건 = 진동이 나가는 조건)이고, 커서가 그 줄에 있으면 그 줄이 말하며
+    /// (`rereadIfFocused`면 다시 읽기), 커서가 다른 곳이면 polite 통지 한 번이다.
+    private func settleAboardArrival(rereadIfFocused: Bool) {
+        let state = model.aboardDirectionsState
+        guard state != .idle, state != .loading else { return }
         let sentence: (String, ResultHaptic.Kind)?
         switch state {
         case .unavailable: sentence = (appLocalized("ios.journey.aboardDirectionsUnavailable"), .attention)
@@ -1815,12 +1880,8 @@ struct DirectionsTabView: View {
             sentence = (appLocalized("ios.journey.aboardDirectionsEmpty"), .attention)
         case .idle, .loading, .lines, .loaded: sentence = nil
         }
-        if aboardLandingPending {
-            if aboardLandingAssigned { aboardArrivalAfterLanding = state }
-            return
-        }
         if aboardStepFocused {
-            rereadAboardStep()
+            if rereadIfFocused { rereadAboardStep() }
             if let sentence { ResultHaptic.fire(sentence.1) }
         } else if let sentence {
             ResultHaptic.fire(sentence.1)

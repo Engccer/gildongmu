@@ -137,10 +137,11 @@ describe("E71 aboard 출발 — 길찾기 화면(spec §5·R11·R12)", () => {
     expect(sig).not.toContain("onSelectAboardStation: ((RecentStation) -> Void)? =");
   });
 
-  it("시트는 aboard 모드에서 지하철역(.subway)만 받고 아니면 notStation 통지다", () => {
+  it("시트는 aboard 모드에서 지하철역(.subway)만 받고 아니면 aboardNotSubway 통지다(역 칸의 notStation은 정류장도 받는다는 뜻)", () => {
     const b = body(ENDPOINT, "private func selectAboardStation(");
     expect(b).toContain("stationLayoutKind(place) == .subway");
-    expect(b).toContain("ios.journey.notStation");
+    expect(b).toContain("ios.journey.aboardNotSubway");
+    expect(b).not.toContain("ios.journey.notStation");
     expect(b).toContain("kind: nil");
   });
 
@@ -182,12 +183,46 @@ describe("E71 aboard 출발 — 길찾기 화면(spec §5·R11·R12)", () => {
     expect(land).toMatch(/searchFieldFocused = false[\s\S]*searchFieldFocused = true/);
   });
 
-  it("방면 조회 도착의 통지는 착지 예약·커서 위치를 보고, 로딩 중 이탈은 실패가 아니라 미완료로 두고 돌아오면 재조회한다", () => {
+  it("방면 조회 도착은 착지 중·검색 시트가 떠 있는 동안 표식만 남기고, 처리할 때 모델의 지금 상태를 다시 읽는다", () => {
     const arrive = body(TAB, "private func handleAboardArrival(");
-    expect(arrive).toMatch(/if aboardLandingPending \{\s*if aboardLandingAssigned \{ aboardArrivalAfterLanding = state \}\s*return\s*\}[\s\S]*if aboardStepFocused \{[\s\S]*rereadAboardStep\(\)/);
-    // 첫 대입 뒤 착지 중 도착한 결과는 버리지 않고 착지가 끝날 때 한 번 처리한다
+    expect(arrive).toMatch(/if aboardLandingPending \{[\s\S]*?afterAssignment: aboardLandingAssigned[\s\S]*?return\s*\}/);
+    // 검색 시트(받아쓰기)가 떠 있는 동안은 통지·진동이 없다(헌장 §6 녹음 중 발화 0)
+    expect(arrive).toMatch(/if searchTarget != nil \{[\s\S]*?return\s*\}/);
+    expect(arrive.indexOf("searchTarget != nil")).toBeLessThan(arrive.indexOf("settleAboardArrival("));
+    // 보류 칸은 상태 값을 들지 않는다(지운 뒤·바꾼 뒤 옛 결과를 처리하지 않게)
+    expect(TAB).not.toContain("aboardArrivalAfterLanding");
+    expect(TAB).toMatch(/@State private var aboardDeferredArrival: AboardDeferredArrival\?/);
+    expect(body(TAB, "private struct AboardDeferredArrival")).toContain("let station: RecentStation");
+    const settle = body(TAB, "private func settleAboardArrival(");
+    expect(settle).toMatch(/let state = model\.aboardDirectionsState/);
+    expect(settle).toMatch(/guard state != \.idle, state != \.loading else \{ return \}/);
+    expect(settle).toMatch(/if aboardStepFocused \{[\s\S]*rereadAboardStep\(\)[\s\S]*\} else if let sentence \{[\s\S]*Announcement/);
+    expect(TAB).toMatch(/\.onChange\(of: model\.aboardDirectionsState\) \{ old, new in\s*guard old == \.loading, new != \.idle, new != \.loading else \{ return \}\s*handleAboardArrival\(\)/);
+  });
+
+  it("착지는 세대 토큰으로 겹침을 막고, 끝에서 역 정체성을 확인하며, 재시도 대입이 커서를 옮겼으면 다시 읽지 않는다", () => {
+    const begin = body(TAB, "private func beginAboardLanding(");
+    expect(begin).toMatch(/aboardLandingGeneration \+= 1/);
+    expect(begin).toContain("aboardLandingPending = true");
+    expect(begin).toContain("aboardDeferredArrival = nil");
+    expect(TAB).toMatch(/onSelectAboardStation: journeyInputEnabled \? \{ station in[\s\S]{0,300}beginAboardLanding\(\)/);
     const land = body(TAB, "private func landAboardStepFocus(");
-    expect(land).toMatch(/aboardLandingAssigned = true[\s\S]*aboardLandingPending = false[\s\S]*handleAboardArrival\(arrived\)/);
+    expect(land.match(/guard generation == aboardLandingGeneration else \{ return \}/g)?.length ?? 0).toBeGreaterThanOrEqual(3);
+    expect(land).toMatch(/let station = model\.aboardOrigin\?\.station/);
+    expect(land).toMatch(/deferred\.station == station, model\.aboardOrigin\?\.station == station/);
+    // 재시도 대입은 지금 라벨을 읽으므로 그 전에 도착한 결과를 다시 읽기 대상에서 뺀다
+    expect(land).toMatch(/if retried \{\s*aboardStepFocused = true\s*aboardDeferredArrival\?\.afterAssignment = false/);
+    expect(land).toMatch(/aboardLandingPending = false[\s\S]*settleAboardArrival\(rereadIfFocused: deferred\.afterAssignment\)/);
+    // 착지 끝에 시트가 떠 있으면 시트가 닫힐 때로 넘긴다
+    expect(land).toMatch(/guard searchTarget == nil else \{ return \}/);
+    // 시트가 닫히면 보류한 결과를 처리한다
+    expect(TAB).toMatch(/\.onChange\(of: searchTarget\) \{[\s\S]{0,900}settleAboardArrivalAfterSheet\(\)/);
+    const after = body(TAB, "private func settleAboardArrivalAfterSheet(");
+    expect(after).toMatch(/model\.aboardOrigin\?\.station == deferred\.station/);
+    expect(after).toContain("settleAboardArrival(rereadIfFocused: true)");
+  });
+
+  it("노선 버튼은 선점 대입만 하고, 로딩 중 이탈은 실패가 아니라 미완료로 두고 돌아오면 재조회한다", () => {
     // 노선 버튼은 선점 대입만 한다(같은 트랜잭션의 다시 읽기는 선점을 무효화한다)
     expect(TAB).toMatch(/aboardStepFocused = true\s*model\.chooseAboardLine\(line\)\s*\}/);
     expect(body(TAB, "private func commitAboardState(")).not.toMatch(/Announcement/);
@@ -195,6 +230,12 @@ describe("E71 aboard 출발 — 길찾기 화면(spec §5·R11·R12)", () => {
     expect(cancel).toMatch(/aboardDirectionsState == \.loading \{[\s\S]*aboardDirectionsState = \.idle/);
     expect(body(TAB, "func resumeAboardDirections(")).toContain("loadAboardDirections()");
     expect(TAB).toMatch(/model\.resumeAboardDirections\(\)\s*await model\.loadCurrentAddressIfAuthorized\(\)/);
+  });
+
+  it("오는 열차 없음도 실패처럼 새로고침 버튼이 있다(열차는 잠시 뒤 올 수 있다)", () => {
+    const rows = body(TAB, "private var aboardStepRows");
+    expect(rows).toMatch(/case \.failed, \.loaded:\s*Button\(appLocalized\("ios\.common\.refresh"\)\) \{\s*aboardStepFocused = true\s*model\.retryAboardDirections\(\)/);
+    expect(body(TAB, "func retryAboardDirections(")).toMatch(/aboardDirectionsState == \.failed \|\| aboardDirectionsState == \.loaded\(\[\]\)/);
   });
 
   it("여정 입력이 사라지면 aboard를 지우고, 조회는 aboard인데 여정 조건이 아니면 일반 조회로 떨어지지 않는다(R11)", () => {
@@ -228,6 +269,7 @@ const ABOARD_KO: Record<string, string> = {
   aboardFieldDirection: "지금 탄 열차, {station}, {direction}",
   aboardLinePrompt: "어느 노선인가요?",
   aboardDirectionPrompt: "어느 방면 열차인가요?",
+  aboardNotSubway: "지하철역을 골라 주세요.",
   aboardDirectionRow: "{direction}, {terminals}",
   aboardTerminal: "{name}행",
   aboardDirectionsLoading: "열차 정보를 불러오는 중입니다.",
@@ -241,8 +283,8 @@ const ABOARD_KO: Record<string, string> = {
 };
 
 describe("E71 aboard 출발 — 표시·낭독 문장(spec §7)", () => {
-  it("키 16개가 ko.json에 spec 문장 그대로 있다", () => {
-    expect(Object.keys(ABOARD_KO)).toHaveLength(16);
+  it("키 17개가 ko.json에 spec 문장 그대로 있다", () => {
+    expect(Object.keys(ABOARD_KO)).toHaveLength(17);
     for (const [key, text] of Object.entries(ABOARD_KO)) {
       expect(KO.ios.journey[key], `ios.journey.${key}`).toBe(text);
     }

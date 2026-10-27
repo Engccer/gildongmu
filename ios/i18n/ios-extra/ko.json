@@ -461,6 +461,7 @@
       "aboardFieldDirection": "지금 탄 열차, {station}, {direction}",
       "aboardLinePrompt": "어느 노선인가요?",
       "aboardDirectionPrompt": "어느 방면 열차인가요?",
+      "aboardNotSubway": "지하철역을 골라 주세요.",
       "aboardDirectionRow": "{direction}, {terminals}",
       "aboardTerminal": "{name}행",
       "aboardDirectionsLoading": "열차 정보를 불러오는 중입니다.",

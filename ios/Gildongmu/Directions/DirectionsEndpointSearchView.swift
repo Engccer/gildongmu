@@ -601,8 +601,8 @@ struct DirectionsEndpointSearchView: View {
     /// 장소 이름이 라벨이고(노선이 함께 들려야 한다) 노선 힌트는 역 칸과 같은 추출이다.
     private func selectAboardStation(_ place: Place) {
         guard stationLayoutKind(place) == .subway else {
-            // 화면 변화 없는 활성화 응답이라 `.high`(selectStation과 같은 근거).
-            var message = AttributedString(appLocalized("ios.journey.notStation"))
+            // 화면 변화 없는 활성화 응답이라 `.high`(selectStation과 같은 근거). 역 칸의 문장은 정류장도 받는다는 뜻이라 쓰지 않는다.
+            var message = AttributedString(appLocalized("ios.journey.aboardNotSubway"))
             message.accessibilitySpeechAnnouncementPriority = .high
             AccessibilityNotification.Announcement(message).post()
             ResultHaptic.fire(.attention)

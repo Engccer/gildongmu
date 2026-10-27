@@ -1140,6 +1140,20 @@
   "android.guide.waypointSkipped": [
     "label"
   ],
+  "android.journey.aboardDirectionRow": [
+    "direction",
+    "terminals"
+  ],
+  "android.journey.aboardField": [
+    "station"
+  ],
+  "android.journey.aboardFieldDirection": [
+    "station",
+    "direction"
+  ],
+  "android.journey.aboardTerminal": [
+    "name"
+  ],
   "android.journey.accessFailedWith": [
     "reason"
   ],
@@ -1248,6 +1262,13 @@
     "minutes",
     "taxiFare",
     "transitFare"
+  ],
+  "android.journey.totalsAboard": [
+    "minutes"
+  ],
+  "android.journey.totalsAboardTaxi": [
+    "minutes",
+    "taxiFare"
   ],
   "android.nearby.airStationLine": [
     "name",

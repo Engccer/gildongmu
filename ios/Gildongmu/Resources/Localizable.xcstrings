@@ -22461,6 +22461,16 @@
         }
       }
     },
+    "ios.journey.aboardNotSubway": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "지하철역을 골라 주세요."
+          }
+        }
+      }
+    },
     "ios.journey.aboardOpposite": {
       "localizations": {
         "ko": {
