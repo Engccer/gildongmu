@@ -36,6 +36,9 @@
     "distance",
     "first"
   ],
+  "android.guide.waypointChange": [
+    "label"
+  ],
   "android.nearby.announceRouteStops": [
     "count"
   ],
@@ -1119,9 +1122,6 @@
     "step"
   ],
   "android.guide.titleWaypointChange": [
-    "label"
-  ],
-  "android.guide.waypointChange": [
     "label"
   ],
   "android.guide.waypointDropped": [

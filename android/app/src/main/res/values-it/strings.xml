@@ -136,7 +136,7 @@
     <string name="android_guide_destChangedNoName">Destinazione cambiata.</string>
     <string name="android_guide_destMenuChange">Cambia destinazione</string>
     <string name="android_guide_destMenuDetail">Vedi dettagli del luogo</string>
-    <string name="android_guide_differentRoute">Prendi un\'altra strada</string>
+    <string name="android_guide_differentRoute">Aggiorna percorso</string>
     <string name="android_guide_differentRouteFailed">Impossibile trovare un nuovo percorso.</string>
     <string name="android_guide_focusDenied">Un’altra app sta usando l’audio, quindi i suoni della guida non possono essere riprodotti ora</string>
     <string name="android_guide_mediaVolumeZero">Il volume multimediale è disattivato, quindi i suoni della guida non verranno riprodotti</string>
@@ -157,6 +157,7 @@
     <string name="android_guide_waypointRemoved">Tappa %1$s rimossa, nuova ricerca del percorso</string>
     <string name="android_guide_waypointSet">Punto intermedio %1$s, ricerca del percorso in corso</string>
     <string name="android_guide_waypointSkipped">Ti guidiamo senza la tappa intermedia (%1$s).</string>
+    <string name="android_guide_whereNow">Dove sono adesso?</string>
     <string name="android_nearby_airFailed">Impossibile caricare la qualità dell\'aria</string>
     <string name="android_nearby_airStationLine">Stazione di monitoraggio %1$s, %2$skm</string>
     <string name="android_nearby_announceBikes">{1, plural, one {%1$s stazione} other {%1$s stazioni}} nelle vicinanze</string>

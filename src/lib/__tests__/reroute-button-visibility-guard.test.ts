@@ -6,8 +6,8 @@ import { describe, expect, it } from "vitest";
  * E69 "경로 다시 조회" 버튼 노출 배선의 소스 가드(spec `2026-10-17-reroute-button-visibility-design.md`). iOS 앱 타깃은 테스트 레인이
  * 없어 아래를 되돌려도 다른 테스트가 초록으로 통과한다(웹은 `useRouteGuide.offroute.test.tsx`, 안드로이드는 `WalkGuideScenarioTest`가
  * 동작으로 잠근다).
- * ① 시트 렌더와 착지용 행 존재 사본이 `showsRerouteButton`(= `offRoute` ∧ 래치)을 읽는다 — `offRoute` 단독으로 되돌리면 돌아가는
- *   내내 버튼이 보인다.
+ * ① 웹·안드로이드: 시트 렌더와 착지용 행 존재 사본이 `offRoute` ∧ 래치를 읽는다 — `offRoute` 단독으로 되돌리면 돌아가는 내내 버튼이
+ *   보인다. iOS는 E75(spec `2026-10-27-e75-guide-sheet-refresh-design.md`)에서 그 버튼이 제목 행 경로 새로고침으로 합쳐졌다.
  * ② 래치를 세우는 다섯 자리(경로 없음·신선도 미달·실패·예산·정지)와, 회차 시작(확정)에서 내리는 자리.
  * ③ 실패의 래치는 폐기된 조회(토큰이 오른 뒤)에 서지 않는다.
  */
@@ -18,11 +18,22 @@ describe("iOS", () => {
   const sheet = read("ios/Gildongmu/Directions/BeaconTrackingSheet.swift");
   const model = read("ios/Gildongmu/Directions/BeaconModel.swift");
 
-  it("① 렌더와 행 존재 사본이 같은 노출 조건", () => {
-    expect(model).toContain("var showsRerouteButton: Bool { offRoute && rerouteGaveUp }");
-    expect(sheet).toContain("if model.showsRerouteButton {");
-    expect(sheet).toContain("case .reroute: return tracking && model.showsRerouteButton");
+  it("① E75: 「경로 다시 조회」 버튼은 제목 행 경로 새로고침으로 합쳐졌고, 새로고침은 상세 안내·최종 접근 전에 늘 선다", () => {
+    // 같은 일을 하는 버튼 둘이 들리지 않게(E75 판정 3). 래치(②)는 남아 자동 갈래 문장의 회차당 한 번을 가른다.
+    for (const gone of ["showsRerouteButton", "func requestReroute(", "isRerouting", "guide.rerouteButton", "guide.rerouteBusy"]) {
+      expect(model + sheet, gone).not.toContain(gone);
+    }
+    expect(model).toContain("var canRequestDifferentRoute: Bool { isTracking && mode == .detail && !inFinalApproach }");
+    expect(sheet).toMatch(/if model\.canRequestDifferentRoute \{\s*focusTarget\(GuideRefreshButton/);
     expect(sheet).not.toMatch(/if model\.offRoute \{/);
+  });
+
+  it("① E75: 경로 새로고침은 자동 재조회 예산을 보지도 세지도 않는다 — 예산이 바닥난 뒤의 유일한 수동 출구다", () => {
+    const start = model.indexOf("func requestDifferentRoute() {");
+    const body = model.slice(start, model.indexOf("\n    }\n", start));
+    expect(body).toContain('fetchProposal(token: token, source: "declare", declared: true)');
+    expect(body).not.toContain("mayFetch");
+    expect(body).not.toContain("proposalFetchCount += 1");
   });
 
   it("② 래치를 세우는 자리와 내리는 자리", () => {

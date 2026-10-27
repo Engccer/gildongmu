@@ -70,6 +70,7 @@
       "downloadReady": "El reconocimiento de voz está listo. Vuelve a tocar Iniciar dictado."
     },
     "guide": {
+      "waypointChange": "{label}, cambiar punto de paso",
       "mediaVolumeZero": "El volumen multimedia está apagado, por lo que no sonará la guía",
       "focusDenied": "Otra aplicación está usando el audio, así que la guía no puede sonar ahora",
       "ttsUnavailable": "La guía por voz no está disponible en este idioma. Consulta el texto de la guía en pantalla",

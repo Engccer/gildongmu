@@ -70,6 +70,7 @@
       "downloadReady": "音声認識の準備ができました。もう一度「音声入力を開始」を押してください"
     },
     "guide": {
+      "waypointChange": "{label}、経由地を変更",
       "mediaVolumeZero": "メディア音量がオフのため案内音が鳴りません",
       "focusDenied": "他のアプリが音声を使用中のため、案内音を鳴らせません",
       "ttsUnavailable": "この言語の音声案内は利用できません。画面の案内文をご確認ください",

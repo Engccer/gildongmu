@@ -70,6 +70,7 @@
       "downloadReady": "Speech recognition is ready. Tap Start dictation again."
     },
     "guide": {
+      "waypointChange": "{label}, change waypoint",
       "mediaVolumeZero": "Media volume is off, so guide sounds will not play",
       "focusDenied": "Another app is using audio, so guide sounds cannot play right now",
       "ttsUnavailable": "Voice guidance is not available for this language. Check the guidance text on screen",

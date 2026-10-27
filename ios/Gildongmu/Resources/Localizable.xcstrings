@@ -21886,37 +21886,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "현재 경로와 다른 길로 가기"
+            "value": "경로 새로고침"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Take a different route"
+            "value": "Refresh route"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ir por otro camino"
+            "value": "Actualizar ruta"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Prendre un autre chemin"
+            "value": "Actualiser l'itinéraire"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Prendi un'altra strada"
+            "value": "Aggiorna percorso"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "今のルートとは別の道で行く"
+            "value": "経路を更新"
           }
         }
       }
@@ -22031,46 +22031,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "%1$@, cambia tappa"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$@、経由地を変更"
-          }
-        }
-      }
-    },
-    "ios.guide.waypointChange": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$@, 경유지 변경"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$@, change waypoint"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$@, cambiar punto de paso"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$@, changer le point de passage"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$@, cambia punto intermedio"
           }
         },
         "ja": {
@@ -22317,6 +22277,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "経由地（%1$@）を除いて案内します。"
+          }
+        }
+      }
+    },
+    "ios.guide.whereNow": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "지금 여기는 어디?"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Where am I now?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Dónde estoy ahora?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Où suis-je maintenant ?"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dove sono adesso?"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今ここはどこ？"
           }
         }
       }

@@ -10,11 +10,9 @@ import SwiftUI
 /// 가두므로 스와이프 몇 번이면 상태에 닿고, 종료는 최하단 고정 버튼이라 네 손가락 아래쪽
 /// 탭 한 번이다(위원장 실보행 피드백 2026-08-02, 종료 하단 고정 2026-08-23).
 ///
-/// 컨트롤 집합: 중지·진행 상황·주변 확인·재조회(이탈 시). "다음으로 건너뛰기"는 두지
-/// 않는다(선례 부재 + 사용자가 진행을 주장하게 만드는 실패 모드, 조사 §5.4). 상세⇄간략
-/// 전환 버튼은 위원장 실사용 판정으로 폐지(2026-08-11 — 무용). 주변 확인은 그 자리로
-/// 올라왔다(말미 배치는 안내 정보 행을 읽다 보면 다음 스와이프가 자꾸 이 버튼에 닿는
-/// 불편 — 같은 판정).
+/// 컨트롤 집합: 제목 행(밀기 동작·경로 새로고침·접기)·「지금 여기는 어디?」·중지(E75 2026-10-27). "다음으로
+/// 건너뛰기"는 두지 않는다(선례 부재 + 사용자가 진행을 주장하게 만드는 실패 모드, 조사 §5.4). 상세⇄간략
+/// 전환 버튼은 위원장 실사용 판정으로 폐지(2026-08-11 — 무용).
 ///
 /// **도착 종료 화면**(위원장 판정 2026-08-11): 도착으로 세션이 끝나면 시트를 닫지 않고
 /// 도착 화면으로 전환한다 — 즉시 닫혀 경로 조회 결과로 떨어지는 전이가 어색했고, 도착
@@ -48,8 +46,9 @@ struct BeaconTrackingSheet: View {
         /// 정보 행(첫 정보 행 후보 — `firstInfoRow`의 순서가 곧 우선순위다). 자동차 "현재 도로"·아랫줄·직선거리
         /// 주석은 후보가 아니다: 남은 거리·윗줄이 없을 때 함께 없거나 상태 문장보다 늘 뒤다(설계 리뷰 M6).
         case remaining, liveTop, status
-        /// 재조회 버튼 — 착지 대상이 아니라 "커서가 사라지는 버튼 위에 있었는가"를 읽는 자리(자동 채택, spec §3.4).
-        case reroute
+        /// 경로 새로고침 버튼(E75) — 착지 대상이 아니라 "커서가 사라지는 버튼 위에 있었는가"를 읽는 자리다(최종 접근 진입·
+        /// 간략 강등으로 버튼이 사라질 때 소실 복구, spec 2026-10-27 §5).
+        case refresh
         /// 종료 화면의 도착(중지) 문장 — 종료 화면의 첫 정보 행(헌장 §5: 도착 전이가 포커스를 쥔 컨트롤을 통째로 없앤다).
         case arrived
         /// 체중 입력 뒤 갱신된 걸음 요약 문장 — [체중 입력하기](트리거)가 사라져 표준 dismiss의 포커스 복원이
@@ -59,7 +58,7 @@ struct BeaconTrackingSheet: View {
         var isInfoRow: Bool {
             switch self {
             case .remaining, .liveTop, .status: true
-            case .reroute, .arrived, .healthSummary: false
+            case .refresh, .arrived, .healthSummary: false
             }
         }
     }
@@ -80,9 +79,9 @@ struct BeaconTrackingSheet: View {
     /// (설계 리뷰 M3, 대중교통 `pendingFollowUp` 동형). 모달 뒤의 행에 대입하면 조용히 되돌아간다.
     @State private var landAfterDismiss: DismissLanding?
     @Environment(\.scenePhase) private var scenePhase
-    /// 전 구간 조망 모달(위원장 판정 개정 2026-08-10): 인라인 펼침은 같은 화면의
-    /// 탐색 개체를 너무 늘렸다 — 별도 시트로 스코프를 가둬 "딱 확인하고 닫기"가
-    /// 성립한다. 닫으면 시스템이 트리거 버튼으로 포커스를 복원한다(표준 dismiss).
+    /// 「지금 여기는 어디?」 창(E75 — 전 구간 조망 + 지금 위치 주변, 위원장 판정 개정 2026-08-10의 조망 모달): 인라인 펼침은
+    /// 같은 화면의 탐색 개체를 너무 늘렸다 — 별도 시트로 스코프를 가둬 "딱 확인하고 닫기"가 성립한다. 닫으면 시스템이
+    /// 트리거 버튼으로 포커스를 복원한다(표준 dismiss).
     @State private var showRouteList = false
     /// 목적지 검색 시트(스펙 §3) — 열린 동안 톤·통지 전부 억제(받아쓰기 마이크).
     @State private var changeDestPresented = false
@@ -90,9 +89,6 @@ struct BeaconTrackingSheet: View {
     @State private var waypointPresented = false
     /// 장소 상세 시트(스펙 §2) — 안내 신호는 유지(억제 없음, 임박 큐는 안전 계층).
     @State private var showPlaceDetail = false
-    /// 재조회 버튼을 눌렀다는 표식. 성공(offRoute 해제)으로 버튼이 사라질 때 커서를 첫 정보 행으로
-    /// 옮기는 근거(사용자가 누른 결과로 사라지는 경로). 이탈이 풀리면 결과와 무관하게 지운다(코드 리뷰 m9).
-    @State private var reroutePressed = false
     /// 도착 화면 "체중 입력하기" → 설정 시트(표준 중첩 시트). 루트의 `openSettings`
     /// 환경값을 쓰지 않는 이유: 이 시트가 떠 있는 동안 루트가 또 시트를 올리면 표시되지 않는다.
     @State private var showsSettings = false
@@ -109,9 +105,8 @@ struct BeaconTrackingSheet: View {
     @AppStorage(WalkHealth.weightPromptEngagedKey) private var weightPromptEngaged = false
 
     var body: some View {
-        // 접기 버튼은 섹션 헤더(제목 메뉴) 행 우측의 작은 아이콘이다(위원장 판정 2026-08-23 —
-        // 한 행을 차지하지 않고, 빈 내비게이션 바도 두지 않는다). GuideTitleMenu가 배치·라벨·
-        // 착지 바인딩을 들고, 도착 화면에서는 헤더에 붙이지 않는다.
+        // 접기 버튼은 제목 행 우측의 작은 아이콘이다(위원장 판정 2026-08-23 — 한 행을 차지하지 않고, 빈 내비게이션 바도
+        // 두지 않는다). 도착 화면에는 제목 행이 없다.
         sheetBody
     }
 
@@ -124,63 +119,14 @@ struct BeaconTrackingSheet: View {
                 arrivalSection(dest: arrival, proxy: proxy)
             } else {
             Section {
-                // 실험판(E74): 제목이 섹션 첫 행으로 내려와 밀기 버튼을 든다 — 경유지 두 행은 그 동작으로 합쳐졌다.
-                if AppConfig.experimentalGuideTitleActionsEnabled {
-                    titleActionsRow
-                }
-                // 경유지(N4, 위원장 판정: 목적지 팝업과 안내 종료 사이). 라벨이 곧 상태 —
-                // 미도착 경유지가 있으면 "C, 경유지 변경", 없으면(도착 뒤 포함) "경유지 추가".
-                // ko 전용 기능이라 상세 조회가 없는 로케일에는 두지 않는다(`waypointAvailable`).
-                if !AppConfig.experimentalGuideTitleActionsEnabled, GuideSession.shared.waypointAvailable {
-                    Button(model.waypoint.map { appLocalized("ios.guide.waypointChange", $0.label) }
-                           ?? appLocalized("directions.addVia")) {
-                        waypointPresented = true
-                    }
-                    // 경유지 삭제(N4 잔여, K2 §6.5): 미도착 경유지가 있을 때만. 누르면 자신이
-                    // 사라지므로 첫 정보 행으로 옮긴다(E57 — 경로를 다시 조회하니 조회 끝까지 기다린다).
-                    if model.waypoint != nil {
-                        Button(appLocalized("ios.guide.waypointRemove")) {
-                            if model.removeWaypoint() { requestInfoLanding(note: "waypointRemoved") }
-                        }
-                    }
-                }
+                // 제목 행(E74, 정식판 졸업 E75): 제목·경로 새로고침·접기 + 밀기 동작(경유지·목적지 바꾸기·상세).
+                titleActionsRow
                 // 반복 버튼은 위원장 실사용 판정으로 제거 확정(2026-08-03 묶음 A).
-                // 진행 상황: 자동 통지를 기다리지 않는 임의 시점 조회(Soundscape Where Am I).
-                // 경로 보유(상세) 세션은 조망 모달이 응답이다 — 모달 표시와 Announcement가
-                // 경합하므로 발화하지 않고, 조망 문장은 모달 헤더 착지가 낭독한다.
-                // 간략·경로 미보유 세션은 종전대로 낭독뿐(죽은 모달 금지).
-                Button(appLocalized("guide.progressButton")) {
-                    if model.routeStepDescriptions != nil {
-                        showRouteList = true
-                    } else {
-                        model.announceProgress()
-                    }
-                }
-                // 주변 확인(M1 부근 재구성) — 전환 버튼이 있던 자리(위원장 판정
-                // 2026-08-11, 전환 버튼은 무용으로 폐지): 말미 별도 섹션이던 시절엔
-                // 안내 정보 행을 읽다 보면 다음 스와이프가 자꾸 이 버튼에 닿았다.
-                // 앵커는 **목적지** 좌표다(실시간 안내는 실좌표를 쓰지만 이 기능은
-                // "도착지 부근이 어떤 모습인가"를 묻는다, spec §5). 펼친 결과가 아래
-                // 상태 행을 밀지만 펼침은 사용자가 방금 누른 행동이다.
-                if let dest = model.dest {
-                    SurroundingsSceneSection(
-                        anchor: (lat: dest.lat, lng: dest.lng), proxy: proxy)
-                }
-                // 재조회: 이탈 중에도 자동 판정이 손을 든 자리에서만 노출(E69 — 자동 조회 실패·경로 없음·
-                // 신선도 미달, 예산 소진, 벗어난 채 30초 정지). 돌아가는 중에는 앱이 이미 판정하고 있으므로
-                // 없다(종전 "준비된 새 경로로 안내" 확인 라벨은 폐기 — 누르지 않을 이유가 없는 확인은 군더더기).
-                // 진행 신호는 라벨 교체가 정본(라벨이 곧 상태 신호 — 별도 통지 중복 금지).
-                // 성공하면 이 버튼 자체가 사라지므로, 누른 결과로 사라질 때는 첫 정보 행
-                // (새 경로의 남은 거리)으로 포커스를 옮긴다(헌장 §5, a11y 감사 HIGH · E57).
-                if model.showsRerouteButton {
-                    focusTarget(Button(appLocalized(
-                        model.isRerouting ? "guide.rerouteBusy" : "guide.rerouteButton"
-                    )) {
-                        reroutePressed = true
-                        model.requestReroute()
-                    }, .reroute)
-                    // busy는 isRerouting만 본다(전환 진행은 isSwitchingVariant —
-                    // 공유하면 진행 중이 아닌 버튼에 "조회 중"이 오귀속된다).
+                // 「지금 여기는 어디?」(E75 판정 4·5): 종전 진행 상황 + 주변 확인을 합친 창 하나. 경로 보유(상세) 세션은 머리가
+                // 진행 문장·행이 구간 목록, 간략·경로 미보유 세션은 머리 한 줄이고, 둘 다 뒤에 지금 위치 주변이 잇는다.
+                // 모달 표시와 Announcement가 경합하므로 발화하지 않는다 — 창 머리 착지가 진행 문장을 낭독한다.
+                Button(appLocalized("ios.guide.whereNow")) {
+                    showRouteList = true
                 }
                 // 수동 전환 버튼은 폐기(spec 2026-08-14 §1 — 상시 노출이 경로 변경
                 // 압박으로 읽힘). 전환 진입점은 진행 상황 조망의 프리뷰다(§2).
@@ -241,24 +187,6 @@ struct BeaconTrackingSheet: View {
                 // 진짜 무음 상황은 위 soundDegraded 행이 런타임 판정으로, 더 정확한
                 // 문구로 알린다. 상시 문장을 재도입하지 말 것(런타임 판정이 있는 자리에
                 // 언제나 참인 척하는 문장을 얹으면 플랫폼 능력이 바뀔 때 거짓만 남는다).
-            } header: {
-                // 무엇을 추적 중인지가 화면에 있어야 한다. 시트로 분리되면서 주변 맥락이
-                // 통째로 사라졌으므로 여기서만 알 수 있다. 수단 라벨(B1 §3.3)이 heading.
-                // 제목이 곧 목적지 메뉴다(스펙 2026-08-12 §1 — 장소 상세·목적지 바꾸기). 실험판은 첫 행(위)이 대신한다.
-                if !AppConfig.experimentalGuideTitleActionsEnabled {
-                    GuideTitleRow {
-                        GuideTitleMenu(
-                            heading: appLocalized(
-                                model.sessionKind == .car ? "beacon.carHeading" : "beacon.walkHeading"
-                            ),
-                            label: model.destinationLabel,
-                            onShowDetail: { showPlaceDetail = true },
-                            // 여정 단계(E70)는 목적지가 계획의 일부다 — 바꾸면 다음 단계가 옛 계획으로 이어진다.
-                            onChangeDestination: GuideSession.shared.journey == nil ? { changeDestPresented = true } : nil)
-                    } trailing: {
-                        GuideMinimizeButton(action: onMinimize)
-                    }
-                }
             }
             }
         }
@@ -321,7 +249,7 @@ struct BeaconTrackingSheet: View {
             guard !awaiting, pendingInfoLanding != nil else { return }
             resolvePendingInfoLanding()
         }
-        // 소실 복구(spec §3.4, 설계 리뷰 B1): 커서가 앉아 있던 정보 행이 사라지면(이탈 확정·최종 접근 진입·간략 강등)
+        // 소실 복구(spec §3.4, 설계 리뷰 B1): 커서가 앉아 있던 정보 행·새로고침 버튼이 사라지면(이탈 확정·최종 접근 진입·간략 강등)
         // SwiftUI List는 커서를 시트 맨 위로 보내기도 한다. 판정은 바인딩의 nil 전이가 아니라 **행 집합이 바뀌는 순간의
         // 바인딩**이다(대중교통 A47 iOS 동형). 스와이프로 떠난 경우는 커서가 그 행에 없어 걸리지 않고, 종료 화면 전이는
         // 도착 착지가 맡는다. 같은 커밋이 낸 통지(이탈 경고·강등 문장)가 끝난 뒤에 앉는다(spec 준수 리뷰 — 끊지 않게).
@@ -374,11 +302,15 @@ struct BeaconTrackingSheet: View {
             pendingTimeoutTask?.cancel()
             announcementWaitTask?.cancel()
         }
-        // 전 구간 조망 모달(판정 개정 2026-08-10). 시트 위 시트는 표준 중첩 표시.
-        // 셸·프리뷰는 GuideOverviewSheet.swift로 이동(E15-1 능력 공유) — 도보 행·행동은
-        // BeaconOverviewAdapter가 종전 그대로 투영한다(동작 변경 0).
+        // 「지금 여기는 어디?」 창(E75, 종전 전 구간 조망 모달). 시트 위 시트는 표준 중첩 표시. 셸·프리뷰는
+        // GuideOverviewSheet.swift(E15-1 능력 공유) — 도보 행·행동은 BeaconOverviewAdapter가 투영하고, 지금 위치 주변이
+        // 뒤에 잇는다. 주변 장소 행이 상세로 여는 링크라 스택으로 감싸고, 빈 내비게이션 바는 숨긴다(바가 창 머리보다 먼저
+        // 착지 후보가 되면 "창 착지 = 진행 문장 낭독"이 깨진다).
         .sheet(isPresented: $showRouteList, onDismiss: landAfterSubSheet) {
-            GuideOverviewSheet(capability: BeaconOverviewAdapter(model: model)) { _ in }
+            NavigationStack {
+                GuideOverviewSheet(capability: BeaconOverviewAdapter(model: model), showsHereSurroundings: true) { _ in }
+                    .toolbar(.hidden, for: .navigationBar)
+            }
         }
         .sheet(isPresented: $showsSettings, onDismiss: {
             model.recomputeArrivalHealth()
@@ -428,18 +360,8 @@ struct BeaconTrackingSheet: View {
                     showsDirectionsEntry: false)
             }
         }
-        // 재조회 성공으로 버튼이 사라진 순간 커서를 첫 정보 행(새 경로의 남은 거리)으로(헌장 §5 이탈 방지, E57).
-        // 자동 채택(E10ⓑ 2026-09-02)은 사용자가 누르지 않은 전이라 **커서가 그 버튼 위에 있었을 때만** 옮긴다(a11y 감사
-        // M1 — 다른 행을 읽는 사람을 끌어가지 않는다). 자연 복귀(backOnRoute)는 무이동. 착지는 재조회 요약이 끝난 뒤다.
-        .onChange(of: model.offRoute) { _, isOff in
-            guard !isOff else { return }
-            let pressed = reroutePressed
-            reroutePressed = false
-            guard model.offRouteEndedByReroute, pressed || focusedRow == .reroute else { return }
-            requestInfoLanding(note: "rerouted")
-        }
-        // 「다른 길로 가기」(E74) 채택: 경로를 바꾸는 제목 행 동작은 전부 새 경로의 첫 정보 행에 앉는다(목적지·경유지 바꾸기와
-        // 같은 규칙, spec 2026-10-19 §2.2). 채택 통지가 끝난 뒤다(E57). 실패는 무이동 — 커서는 제목 행에 남는다.
+        // 경로 새로고침(E75, 종전 E74 「다른 길로 가기」) 채택: 경로를 바꾸는 제목 행 동작은 전부 새 경로의 첫 정보 행에 앉는다
+        // (목적지·경유지 바꾸기와 같은 규칙, spec 2026-10-19 §2.2). 채택 통지가 끝난 뒤다(E57). 실패는 무이동 — 커서는 버튼에 남는다.
         .onChange(of: model.differentRouteAdoptedSeq) {
             requestInfoLanding(note: "differentRoute")
         }
@@ -481,14 +403,15 @@ struct BeaconTrackingSheet: View {
         }
     }
 
-    /// 실험판 제목 행(E74, spec 2026-10-19 §2). 동작의 조건은 종전 메뉴·경유지 행과 같고(여정 단계엔 목적지 바꾸기 없음,
-    /// ko 전용 경유지), 「다른 길로 가기」만 새로 선다. 경유지 삭제 뒤 착지는 종전 행과 같은 `waypointRemoved`.
+    /// 제목 행(E74, 정식판 졸업 E75 — spec 2026-10-19 §2·2026-10-27 §1·§2). 여정 단계엔 목적지 바꾸기가 없고(목적지가 계획의
+    /// 일부라 바꾸면 다음 단계가 옛 계획으로 이어진다), 경유지는 ko 전용(`waypointAvailable`)이다. 경로 새로고침은 상세 안내 중·최종
+    /// 접근 전에만 선다(`canRequestDifferentRoute`) — 사라질 때 커서가 그 위였으면 소실 복구가 첫 정보 행으로 옮긴다(`.refresh`).
+    /// 경유지 삭제 뒤 착지는 `waypointRemoved`(경로를 다시 조회하니 조회 끝까지 기다린다).
     private var titleActionsRow: some View {
         let waypointAvailable = GuideSession.shared.waypointAvailable
         return GuideTitleActionsRow(
             heading: appLocalized(model.sessionKind == .car ? "beacon.carHeading" : "beacon.walkHeading"),
             label: model.destinationLabel,
-            onDifferentRoute: model.canRequestDifferentRoute ? { model.requestDifferentRoute() } : nil,
             waypoint: waypointAvailable
                 ? (label: model.waypoint.map { appLocalized("ios.guide.titleWaypointChange", $0.label) }
                        ?? appLocalized("directions.addVia"),
@@ -499,7 +422,12 @@ struct BeaconTrackingSheet: View {
                 : nil,
             onChangeDestination: GuideSession.shared.journey == nil ? { changeDestPresented = true } : nil,
             onShowDetail: { showPlaceDetail = true },
-            onMinimize: onMinimize)
+            onMinimize: onMinimize
+        ) {
+            if model.canRequestDifferentRoute {
+                focusTarget(GuideRefreshButton { model.requestDifferentRoute() }, .refresh)
+            }
+        }
     }
 
     /// 종료 화면(위원장 판정 2026-08-11, 중지 종료 확장 2026-08-19). 헤딩이 어느 목적지의
@@ -647,15 +575,16 @@ struct BeaconTrackingSheet: View {
         case .remaining: return tracking && model.mode == .detail && !model.offRoute && model.remainingText != nil
         case .liveTop: return tracking && model.mode == .detail && model.liveTopText != nil
         case .status: return tracking && model.mode == .brief && !model.statusText.isEmpty
-        case .reroute: return tracking && model.showsRerouteButton
+        case .refresh: return tracking && model.canRequestDifferentRoute
         case .arrived: return !tracking
         case .healthSummary: return !tracking && model.arrivalHealth != nil
         }
     }
 
-    /// 지금 렌더된 정보 행 — 소실 복구가 이 집합의 변화로 판정한다(spec §3.4).
+    /// 지금 렌더된 정보 행 + 경로 새로고침 버튼 — 소실 복구가 이 집합의 변화로 판정한다(spec §3.4). 새로고침은 정보 행이
+    /// 아니지만 최종 접근 진입·간략 강등으로 사라질 때 그 위의 커서를 같은 길로 첫 정보 행에 옮긴다(E75 spec §5, 헌장 §5).
     private var presentInfoRows: Set<SheetFocus> {
-        Set([SheetFocus.remaining, .liveTop, .status].filter(rowExists))
+        Set([SheetFocus.remaining, .liveTop, .status, .refresh].filter(rowExists))
     }
 
     /// 첫 정보 행(spec §2.1) — 화면의 행 순서 그대로다. 추적 중엔 비지 않는다(상세면 윗줄, 간략이면 상태 문장이

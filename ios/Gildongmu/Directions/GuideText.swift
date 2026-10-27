@@ -172,21 +172,6 @@ enum GuideText {
         )
     }
 
-    /// 재조회 성공 원자 발화. **첫 안내만 내보내면 그것이 새 경로인지 원래 경로의
-    /// 다음 스텝인지 낭독으로 구분되지 않는다**(실기기 실사용 발견). 화면 출발지 필드는
-    /// 길찾기 입력값이라 세션이 갱신하지 않으므로, "출발지가 현재 위치로 바뀌었다"를
-    /// 전할 채널은 이 문장뿐이다. 시작 발화와 같은 구조로 새 경로의 규모까지 준다.
-    /// 수단별로 가르지 않는다 — 수단은 세션 시작 통지가 이미 말했다.
-    /// 할 일 먼저, 요약은 뒤(문안 확정본 라 — 인자 순서는 ko 문장 순서, arg-order ABI).
-    static func reroute(route: GuideRoute, firstIndices: [Int]) -> String {
-        appLocalized(
-            "guide.rerouteDone",
-            unit(route: route, indices: firstIndices),
-            route.steps.count,
-            formatDistance(Int(route.totalMeters.rounded()))
-        )
-    }
-
     /// 사용자가 연 조회(시작·버튼 재조회·줄 전환·프리뷰 채택)의 출발점 고지(A70 spec §2.3): 새 경로 첫 점이
     /// `maxDriftMeters` 밖이면 앞에 붙일 문장, 아니면 nil. 방향은 북 기준 8방위(시작 순간엔 진행 방위 관측이 대개 없고,
     /// 상태 행에 남는 문장이 나중에 다시 읽혀도 참이어야 한다, A57). 웹 `routeStartsAwayText` 미러.

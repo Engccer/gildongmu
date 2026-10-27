@@ -121,11 +121,13 @@ describe("BeaconTrackingSheet 착지 (E57)", () => {
     expect(body(BEACON, "private func resolvePendingInfoLanding(")).toContain("reason=userMoved movedMs=");
   });
 
-  it("사용자 전이: 시트 안 버튼은 곧장, 자식 시트 안에서 고른 것은 닫힌 뒤, 자동 채택은 커서가 버튼 위였을 때만", () => {
+  it("사용자 전이: 시트 안 동작은 곧장, 자식 시트 안에서 고른 것은 닫힌 뒤, 경로 새로고침 채택은 새 경로 첫 정보 행으로", () => {
     expect(BEACON).toContain('requestInfoLanding(note: "waypointRemoved")');
-    expect(BEACON).toMatch(/guard model\.offRouteEndedByReroute, pressed \|\| focusedRow == \.reroute else \{ return \}\s*requestInfoLanding\(note: "rerouted"/);
-    // 재조회 버튼 표식은 이탈이 풀리면 결과와 무관하게 지운다(코드 리뷰 m9).
-    expect(BEACON).toMatch(/let pressed = reroutePressed\s*reroutePressed = false/);
+    expect(BEACON).toMatch(/\.onChange\(of: model\.differentRouteAdoptedSeq\) \{\s*requestInfoLanding\(note: "differentRoute"\)/);
+    // E69 「경로 다시 조회」 버튼과 그 사라짐 착지는 경로 새로고침으로 합쳐져 없다(E75 판정 3 — 같은 일을 하는 버튼 둘 금지).
+    for (const gone of ["reroutePressed", "showsRerouteButton", "offRouteEndedByReroute", "case reroute", "guide.rerouteButton"]) {
+      expect(BEACON, gone).not.toContain(gone);
+    }
     for (const note of ["destinationChanged", "waypointChanged"]) {
       expect(BEACON, note).toContain(`landAfterDismiss = DismissLanding(note: "${note}")`);
     }
@@ -141,7 +143,11 @@ describe("BeaconTrackingSheet 착지 (E57)", () => {
     expect(BEACON).toMatch(/let closing = showRouteList \|\| showPlaceDetail\s*showRouteList = false\s*showPlaceDetail = false\s*clearPendingInfoLanding\(\)[\s\S]{0,300}if closing \|\| changeDestPresented \|\| waypointPresented \{\s*landAfterDismiss = DismissLanding\(note: "arrived", target: \.arrived\)/);
   });
 
-  it("소실 복구: 행 집합이 바뀌는 순간 커서가 사라진 정보 행에 있었으면, 그 통지가 끝난 뒤 첫 정보 행으로(B1)", () => {
+  it("소실 복구: 행 집합이 바뀌는 순간 커서가 사라진 정보 행·새로고침 버튼에 있었으면, 그 통지가 끝난 뒤 첫 정보 행으로(B1, E75)", () => {
+    // 새로고침 버튼은 최종 접근 진입·간략 강등에 사라진다 — 집합에 들고, 행 존재 사본이 렌더 조건(`canRequestDifferentRoute`)과 짝이다.
+    expect(BEACON).toContain("Set([SheetFocus.remaining, .liveTop, .status, .refresh].filter(rowExists))");
+    expect(BEACON).toContain("case .refresh: return tracking && model.canRequestDifferentRoute");
+    expect(BEACON).toContain("case .refresh, .arrived, .healthSummary: false");
     expect(BEACON).toMatch(
       /\.onChange\(of: presentInfoRows\) \{ old, new in\s*guard let focused = focusedRow, old\.contains\(focused\), !new\.contains\(focused\),\s*model\.isTracking, model\.arrivalDest == nil else \{ return \}\s*requestInfoLanding\(note: "lost=\\\(focused\)"\)/,
     );

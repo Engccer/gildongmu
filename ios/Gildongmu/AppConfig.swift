@@ -20,8 +20,8 @@ enum AppConfig {
     /// 2026-08-15 §3.2 표) — 신규 진입점을 만들면 그 표와 `guidance-gate-drift.test.ts`를 함께
     /// 갱신하는 것이 계약이다. 판정을 통과해 정식 출시할 때는 그 플래그의 검사를 **삭제**한다
     /// (플래그 졸업 — 항상 참인 상수를 남기지 않는다). 도보 안내는 2026-08-15, 자동차·대중교통
-    /// 안내와 백그라운드 음성 안내는 2026-10-01(2.0, spec 2026-10-01-release-2.0-graduation-design.md)에
-    /// 졸업했다.
+    /// 안내와 백그라운드 음성 안내는 2026-10-01(2.0, spec 2026-10-01-release-2.0-graduation-design.md)에,
+    /// 안내 시트 제목 행 밀기 동작(E74)은 2026-10-27(E75)에 졸업했다.
 
     /// 나들이 모드(E51)의 봉인. 1차는 실험판에서만 — 다듬을 것이 많다(위원장 재판정 2026-09-27).
     /// 나들이 진입점 둘이 이 값을 읽는다(`guidance-gate-drift.test.ts`가 잠근다). 진입점 밖 소비자 하나: 설정
@@ -50,17 +50,6 @@ enum AppConfig {
     static let experimentalJourneyEnabled = true
     #else
     static let experimentalJourneyEnabled = false
-    #endif
-
-    /// 안내 시트 제목 행 밀기 동작(E74, 위원장 판정 2026-10-18)의 봉인. 켜지면 도보·자동차·대중교통 시트의 제목이
-    /// 섹션 헤더의 팝업 메뉴에서 섹션 첫 행(`GuideTitleActionsRow`)으로 내려가 밀기 버튼을 들고, 도보·자동차 시트의
-    /// 경유지 두 행이 그 동작으로 합쳐지며 「현재 경로와 다른 길로 가기」(`BeaconModel.requestDifferentRoute`)가 선다.
-    /// 꺼지면 종전 메뉴·경유지 행 그대로다. 소비자는 두 시트의 제목 자리뿐이다(`guidance-gate-drift.test.ts` §9가 잠근다).
-    /// 실사용 판정을 통과하면 이 검사와 종전 갈래를 함께 삭제한다(플래그 졸업).
-    #if EXPERIMENTAL
-    static let experimentalGuideTitleActionsEnabled = true
-    #else
-    static let experimentalGuideTitleActionsEnabled = false
     #endif
 
     /// 웹 개인정보 처리방침 URL(현재 앱 언어 로케일). 동의 화면·설정이 공유한다.

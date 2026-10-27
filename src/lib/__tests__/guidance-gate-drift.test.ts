@@ -33,8 +33,8 @@ const RETIRED_FLAG = "experimentalGuidanceEnabled";
 const OUTING_FLAG = "AppConfig.experimentalOutingEnabled";
 /** 택시로 갈아타는 여정(E70) 봉인 — 첫 판은 실험판 전용(BACKLOG E70 판정 5). */
 const JOURNEY_FLAG = "AppConfig.experimentalJourneyEnabled";
-/** 안내 시트 제목 행 밀기 동작(E74) 봉인 — 실험판 전용(BACKLOG E74 판정 6). */
-const TITLE_ACTIONS_FLAG = "AppConfig.experimentalGuideTitleActionsEnabled";
+/** 안내 시트 제목 행 밀기 동작(E74) 봉인 — E75(2026-10-27)에서 졸업했다. 식별자가 iOS 어디에도 남지 않아야 한다. */
+const RETIRED_TITLE_ACTIONS_FLAG = "experimentalGuideTitleActionsEnabled";
 
 /** 빌드 산출물엔 파생 Swift가 섞여 있어 스캔 대상이 아니다. */
 const SKIP_DIRS = new Set(["build", ".build", "DerivedData", "node_modules", ".git"]);
@@ -594,7 +594,7 @@ describe("8-2. 한 번 탔거나 무관한 안내가 시작되면 승차 전 도
   });
 });
 
-describe("9. 안내 시트 제목 행 밀기 동작(E74) — 실험판 봉인", () => {
+describe("9. 안내 시트 제목 행 밀기 동작(E74) — E75에서 졸업", () => {
   const BEACON_SHEET = join(ROOT, "ios/Gildongmu/Directions/BeaconTrackingSheet.swift");
   const TRANSIT_SHEET = join(ROOT, "ios/Gildongmu/Directions/TransitTrackingSheet.swift");
   const callSites = (pattern: RegExp) =>
@@ -602,37 +602,41 @@ describe("9. 안내 시트 제목 행 밀기 동작(E74) — 실험판 봉인", 
       (blankSwiftCommentsAndStrings(readFileSync(file, "utf8")).match(pattern) ?? []).map(() => file.split("/").pop()),
     );
 
-  it("제목 행은 두 시트에서 한 번씩만 서고, 그 자리가 봉인 조건 안에 있다", () => {
+  // 졸업한 게이트가 다시 플래그를 보면 정식판에서 제목 행이 조용히 사라진다. 주석까지 0건(삭제된 심볼이 문서에서 지시하면
+  // 뜻이 반대로 읽힌다). 종전 정식판 갈래(팝업 메뉴·경유지 두 행·옛 키)도 졸업 규칙대로 함께 지웠다.
+  it("졸업 플래그·종전 팝업 메뉴·옛 경유지 키가 iOS 소스에 남아 있지 않다", () => {
+    for (const needle of [RETIRED_TITLE_ACTIONS_FLAG, "GuideTitleMenu", "ios.guide.waypointChange"]) {
+      const offenders = swiftFiles(IOS_DIR).filter((file) => readFileSync(file, "utf8").includes(needle));
+      expect(offenders, needle).toEqual([]);
+    }
+    for (const locale of ["ko", "en", "ja", "es", "fr", "it"]) {
+      const extra = JSON.parse(readFileSync(join(ROOT, `ios/i18n/ios-extra/${locale}.json`), "utf8"));
+      expect(extra.ios.guide.waypointChange, locale).toBeUndefined();
+    }
+  });
+
+  it("제목 행은 두 시트에서 한 번씩 조건 없이 선다", () => {
     expect(callSites(/GuideTitleActionsRow\(/g).sort()).toEqual(["BeaconTrackingSheet.swift", "TransitTrackingSheet.swift"]);
-    // 도보 시트는 계산 프로퍼티(`titleActionsRow`)가 행을 만들고, 선언을 뺀 모든 참조가 조건 안에 있다.
-    const beacon = readFileSync(BEACON_SHEET, "utf8");
-    const beaconSites = enclosingHeaders(beacon, "titleActionsRow").filter((h) => !h[0].includes("var titleActionsRow"));
+    // 도보 시트는 계산 프로퍼티(`titleActionsRow`)가 행을 만들고, 선언을 뺀 참조가 섹션 첫 자리 하나다.
+    const beaconSites = enclosingHeaders(readFileSync(BEACON_SHEET, "utf8"), "titleActionsRow").filter(
+      (h) => !h[0].includes("var titleActionsRow"),
+    );
     expect(beaconSites).toHaveLength(1);
-    expect(beaconSites[0].join("\n")).toContain(`if ${TITLE_ACTIONS_FLAG}`);
     const transitSites = enclosingHeaders(readFileSync(TRANSIT_SHEET, "utf8"), "GuideTitleActionsRow(");
     expect(transitSites).toHaveLength(1);
-    expect(transitSites[0].join("\n")).toContain(`if ${TITLE_ACTIONS_FLAG}`);
+    for (const site of [...beaconSites, ...transitSites]) expect(site.join("\n")).not.toContain("experimental");
   });
 
-  it("「다른 길로 가기」의 호출은 도보 시트의 제목 행 한 곳이다", () => {
+  it("경로 새로고침(종전 「다른 길로 가기」)의 호출은 도보 시트 제목 행의 새로고침 버튼 한 곳이다", () => {
     // 함수 참조로 넘기는 형태(`model.requestDifferentRoute`)도 센다 — 이름 출현에서 선언 한 자리를 뺀다.
     expect(callSites(/(?<!func )\brequestDifferentRoute\b/g)).toEqual(["BeaconTrackingSheet.swift"]);
-    expect(declarationBody(readFileSync(BEACON_SHEET, "utf8"), "titleActionsRow")).toContain("model.requestDifferentRoute()");
+    expect(declarationBody(readFileSync(BEACON_SHEET, "utf8"), "titleActionsRow")).toMatch(
+      /if model\.canRequestDifferentRoute \{\s*focusTarget\(GuideRefreshButton \{ model\.requestDifferentRoute\(\) \}, \.refresh\)/,
+    );
   });
 
-  it.each([
-    ["BeaconTrackingSheet.swift", BEACON_SHEET],
-    ["TransitTrackingSheet.swift", TRANSIT_SHEET],
-  ])("%s의 종전 제목 메뉴는 정식판 조건(!플래그) 안에 남아 있다", (_name, file) => {
-    const sites = enclosingHeaders(readFileSync(file, "utf8"), "GuideTitleMenu(");
-    expect(sites).toHaveLength(1);
-    expect(sites[0].join("\n")).toContain(`if !${TITLE_ACTIONS_FLAG}`);
-  });
-
-  it("도보 시트의 종전 경유지 행은 정식판 조건 안에 남아 있다", () => {
-    const sites = enclosingHeaders(readFileSync(BEACON_SHEET, "utf8"), "Button(model.waypoint.map");
-    expect(sites).toHaveLength(1);
-    expect(sites[0].join("\n")).toContain(`if !${TITLE_ACTIONS_FLAG}`);
+  it("도보 시트의 경유지는 제목 행 밀기 동작뿐이다(종전 경유지 두 행 없음)", () => {
+    expect(readFileSync(BEACON_SHEET, "utf8")).not.toContain("Button(model.waypoint.map");
   });
 });
 

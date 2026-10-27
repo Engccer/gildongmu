@@ -95,17 +95,22 @@ extension GuideOverviewCapability {
 /// 낭독" 계약을 깬다. 말미 닫기는 유지(전 구간을 훑고 난 자리에서 되스크롤 방지).
 struct GuideOverviewSheet<Capability: GuideOverviewCapability>: View {
     let capability: Capability
+    /// 행동 슬롯 뒤에 지금 위치 주변(「주변 상황」)을 잇는가 — 도보·자동차 시트의 「지금 여기는 어디?」 창만 참(E75 판정 5·7).
+    /// 능력 프로토콜에 넣지 않는다: 프로토콜은 조망 전용으로 봉인돼 있고(위 머리 주석), 주변은 세션 상태가 아니라 위치에서 나온다.
+    var showsHereSurroundings = false
     /// 조망을 닫고 나서 부모가 실행할 것 — 셸은 기록만 하고 `dismiss()`한다.
     let onFollowUp: (GuideOverviewFollowUp) -> Void
     @Environment(\.dismiss) private var dismiss
     @State private var subsheet: GuideOverviewSubsheet?
 
     var body: some View {
+        // 주변 장소 행의 "더 보기" 가시화용 proxy(`SurroundingsSceneGroupsView`가 받는다).
+        ScrollViewReader { proxy in
         List {
             Section {
                 // 상단 닫기는 행이 있을 때만(행이 없으면 말미 닫기 하나로 족하다 — 도보
-                // 종전 동작과 같다).
-                if !capability.overviewRows.isEmpty {
+                // 종전 동작과 같다). 주변이 이어지면 간략 세션에서도 창이 길어지므로 둔다.
+                if !capability.overviewRows.isEmpty || showsHereSurroundings {
                     Button(appLocalized("actions.close")) { dismiss() }
                 }
                 ForEach(capability.overviewRows) { row in
@@ -128,11 +133,15 @@ struct GuideOverviewSheet<Capability: GuideOverviewCapability>: View {
                         subsheet = action.presents
                     }
                 }
+                if showsHereSurroundings {
+                    GuideHereSurroundingsRows(proxy: proxy)
+                }
                 Button(appLocalized("actions.close")) { dismiss() }
             } header: {
                 distanceText(capability.overviewHeaderText)
                     .accessibilityAddTraits(.isHeader)
             }
+        }
         }
         .sheet(item: $subsheet, onDismiss: {}) { which in
             subsheetView(which)
@@ -172,6 +181,79 @@ struct GuideOverviewSheet<Capability: GuideOverviewCapability>: View {
                     dismiss()
                 }
             }
+        }
+    }
+}
+
+// MARK: - 지금 위치 주변 (E75 「지금 여기는 어디?」)
+
+/// 「지금 여기는 어디?」 창의 주변 행(E75 판정 5·6, spec 2026-10-27 §4): 「주변 상황」 헤딩 + 지금 위치의 주소 문장·방위
+/// 묶음(둘러보기 장면 `/api/surroundings/scene`). 창이 열릴 때 한 번 조회한다. 조용히 나타나는 행이라 헤딩이 발견 경로이고
+/// (헌장 §3) 포커스를 옮기지 않는다 — 창의 착지는 머리(진행 문장)다. 예외 하나: 조회 중 문장 행에 커서가 있는 채 결과가 오면
+/// 그 행이 사라지므로 헤딩으로 옮긴다(헌장 §5).
+///
+/// 기준은 **지금 위치**다(종전 안내 시트 「주변 확인」은 목적지 앵커였다. 도착 종료 화면은 그대로 목적지). 좌표는
+/// `currentCoordinate(force: true)`: 추적 중엔 스트림 최신 fix를 재사용 게이트로 거른 값이고(못 넘으면 실패 — 옛 좌표를 "지금"으로
+/// 말하지 않는다), 추적 밖이면 캐시를 버리고 새로 잰다. 수동 위치는 거치지 않는다(실시간 안내는 실좌표).
+struct GuideHereSurroundingsRows: View {
+    let proxy: ScrollViewProxy
+    @State private var model = SurroundingsSceneModel(coordinate: .current { _ in try await hereCoordinate() })
+    @AccessibilityFocusState private var focusedID: String?
+
+    /// 장면 밖 상태 문장(3-state — 위치 실패·권한·정밀도·지역 밖·0건·조회 실패를 뭉개지 않는다). 장면이 있으면 nil.
+    private var message: String? {
+        switch model.phase {
+        case .idle, .loading: appLocalized("surroundings.loading")
+        case .loaded: nil
+        case .empty: appLocalized("surroundings.empty")
+        case .failedServer: appLocalized("surroundings.error")
+        case .failedLocation: appLocalized("manualLocation.gpsFailed")
+        case .denied: appLocalized("ios.common.geoDeniedTitle")
+        case .reducedAccuracy: appLocalized("ios.common.geoReducedTitle")
+        case .outOfCoverage: appLocalized("ios.common.outOfCoverage")
+        case .unavailableHere(.seoulOnly): appLocalized("ios.common.unavailableHere.seoulOnly")
+        case .unavailableHere(.noBusData): appLocalized("ios.common.unavailableHere.noBusData")
+        }
+    }
+
+    var body: some View {
+        Text(appLocalized("surroundings.ready"))
+            .font(.headline)
+            .accessibilityAddTraits(.isHeader)
+            .id("here-heading")
+            .accessibilityFocused($focusedID, equals: "here-heading")
+            // 헤딩은 늘 있는 행이라 조회를 여기 건다(행 묶음에 걸면 자식마다 돈다).
+            .task {
+                await model.load()
+                guard focusedID == "here-message", message == nil else { return }
+                proxy.scrollTo("here-heading")
+                try? await Task.sleep(for: .milliseconds(400))
+                focusedID = "here-heading"
+                try? await Task.sleep(for: .milliseconds(600))
+                if focusedID != "here-heading" { focusedID = "here-heading" }
+            }
+        if let message {
+            Text(message)
+                .id("here-message")
+                .accessibilityFocused($focusedID, equals: "here-message")
+        }
+        if case .loaded(let scene) = model.phase {
+            SurroundingsSceneGroupsView(
+                scene: scene, reveal: model.reveal, proxy: proxy, focusedID: $focusedID)
+        }
+    }
+}
+
+/// 지금 위치(`force: true`, 수동 위치 없이). 위치 오류를 코어 상태로 번역한다 — 취득 실패가 서버 실패 문장으로 새지 않게.
+@MainActor
+private func hereCoordinate() async throws -> NearbyCoord {
+    do {
+        return try await LocationService.shared.currentCoordinate(force: true)
+    } catch let error as LocationService.LocationError {
+        switch error {
+        case .denied: throw NearbyLocationError.denied
+        case .reducedAccuracy: throw NearbyLocationError.reducedAccuracy
+        case .unavailable: throw NearbyLocationError.unavailable
         }
     }
 }

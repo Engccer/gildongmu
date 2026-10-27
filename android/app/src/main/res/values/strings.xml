@@ -136,7 +136,7 @@
     <string name="android_guide_destChangedNoName">목적지를 바꿨습니다.</string>
     <string name="android_guide_destMenuChange">목적지 바꾸기</string>
     <string name="android_guide_destMenuDetail">장소 상세 보기</string>
-    <string name="android_guide_differentRoute">현재 경로와 다른 길로 가기</string>
+    <string name="android_guide_differentRoute">경로 새로고침</string>
     <string name="android_guide_differentRouteFailed">새 경로를 찾지 못했습니다.</string>
     <string name="android_guide_focusDenied">다른 앱이 소리를 쓰고 있어 안내 소리를 내지 못하고 있습니다</string>
     <string name="android_guide_mediaVolumeZero">미디어 볼륨이 꺼져 있어 안내 소리가 나지 않습니다</string>
@@ -157,6 +157,7 @@
     <string name="android_guide_waypointRemoved">경유지 %1$s 삭제, 경로를 다시 조회합니다</string>
     <string name="android_guide_waypointSet">경유지 %1$s, 경로를 다시 조회합니다</string>
     <string name="android_guide_waypointSkipped">경유지(%1$s)를 제외하고 안내합니다.</string>
+    <string name="android_guide_whereNow">지금 여기는 어디?</string>
     <string name="android_journey_accessFailedWith">%1$s. 도보 안내를 시작할 수 없어 승차 대기로 바로 넘어갑니다.</string>
     <string name="android_journey_addAlightStation">자동차를 탈 역 추가</string>
     <string name="android_journey_addBoardStation">자동차에서 내리는 역 추가</string>

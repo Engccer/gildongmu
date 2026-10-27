@@ -1,54 +1,44 @@
 import GildongmuKit
 import SwiftUI
 
-/// 안내 시트 추적 섹션 헤더의 제목 메뉴(스펙 2026-08-12 §1). 라벨은 종전 헤더와 같은
-/// 합친 한 줄이라 VoiceOver가 "수단 안내, 목적지, 팝업 버튼"으로 낭독하고, 헤딩
-/// trait를 유지해 헤딩 로터 항행을 보존한다(GildongmuTitleMenu 선례의 시트 판).
-/// 실기기 판정 대상: 헤딩+팝업 버튼 조합 낭독이 어색하면 폴백 — 헤더는 텍스트 유지
-/// + 섹션 첫 행 메뉴 버튼(스펙 §8 ①).
+/// 안내 시트 제목 행(E74, 정식판 졸업 E75 2026-10-27) — 도보·자동차·대중교통 시트 **섹션 첫 행**. 밀기 버튼은 행에만
+/// 붙어 제목이 섹션 헤더가 아니라 행이다(spec 2026-10-19-e74-guide-title-actions §2). 제목은 수단·목적지를 합친 한 줄 +
+/// 헤딩 trait(헤딩 로터 보존), 오른쪽은 경로 새로고침(도보·자동차, 선택) → 접기 아이콘(읽기 순서 제목 → 새로고침 → 접기,
+/// E75 판정 2). VoiceOver 동작 목록은 iOS가 밀기 버튼에서 만든다 — 오른쪽 묶음이 먼저, 묶음 안은 선언 순이라 들리는 순서는
+/// 경유지 → 경유지 삭제 → 목적지 바꾸기 → 장소 상세 보기. nil인 동작은 버튼이 없다.
+/// 끝까지 밀기 실행은 두 묶음 다 끈다 — 되돌릴 수 없는 동작들이다(E74 판정 2).
 ///
-/// 도착 종료·핸드오프 화면의 헤더에는 붙이지 않는다 — 세션이 끝난 화면이라
-/// "목적지 바꾸기"가 성립하지 않는다(스펙 §1).
-///
-/// 행 배치(접기 아이콘 우측)는 `GuideTitleRow`가 맡는다 — 착지 바인딩을 호출부가 이 뷰에
-/// 직접 달 수 있도록 메뉴와 행을 분리했다(도보는 Bool, 대중교통은 `SheetControl` 옵셔널).
-struct GuideTitleMenu: View {
+/// 도착 종료·핸드오프 화면에는 두지 않는다 — 세션이 끝난 화면이라 "목적지 바꾸기"가 성립하지 않는다.
+struct GuideTitleActionsRow<Refresh: View>: View {
     let heading: String
     let label: String
-    let onShowDetail: () -> Void
-    /// nil이면 「목적지 바꾸기」 항목이 없다 — 여정(E70) 단계 세션은 목적지가 여정 계획의 일부라 바꾸지 않는다.
-    let onChangeDestination: (() -> Void)?
-
-    var body: some View {
-        Menu(joinText(heading, label)) {
-            Button(appLocalized("ios.guide.destMenuDetail"), action: onShowDetail)
-            if let onChangeDestination {
-                Button(appLocalized("ios.guide.destMenuChange"), action: onChangeDestination)
-            }
-        }
-        .accessibilityAddTraits(.isHeader)
-    }
-}
-
-/// 안내 시트 제목 행 — 실험판(E74, `AppConfig.experimentalGuideTitleActionsEnabled`)에서 `GuideTitleMenu` 헤더를
-/// 대신하는 **섹션 첫 행**(spec 2026-10-19-e74-guide-title-actions §2). 밀기 버튼은 행에만 붙어 제목이 헤더에서 행으로
-/// 내려왔다. 제목은 종전 메뉴 라벨과 같은 합친 한 줄 + 헤딩 trait(헤딩 로터 보존), 오른쪽 끝은 접기 아이콘(종전 배치).
-/// VoiceOver 동작 목록은 iOS가 밀기 버튼에서 만든다 — 오른쪽 묶음이 먼저, 묶음 안은 선언 순이라 들리는 순서는
-/// 다른 길로 가기 → 경유지 → 목적지 바꾸기 → 장소 상세 보기(판정 3). nil인 동작은 버튼이 없다.
-/// 끝까지 밀기 실행은 두 묶음 다 끈다 — 넷 다 되돌릴 수 없다(판정 2).
-struct GuideTitleActionsRow: View {
-    let heading: String
-    let label: String
-    /// 「현재 경로와 다른 길로 가기」 — 도보·자동차 상세 안내 중에만(대중교통·간략·최종 접근은 nil).
-    let onDifferentRoute: (() -> Void)?
     /// 경유지 추가/바꾸기 — 라벨이 곧 상태(「경유지 추가」 / 「{경유지}, 경유지 바꾸기」). 대중교통·비-ko는 nil.
     let waypoint: (label: String, action: () -> Void)?
     /// 경유지 삭제 — 미도착 경유지가 있을 때만.
     let onRemoveWaypoint: (() -> Void)?
-    /// nil이면 「목적지 바꾸기」가 없다 — 여정(E70) 단계 세션(`GuideTitleMenu`와 같은 이유).
+    /// nil이면 「목적지 바꾸기」가 없다 — 여정(E70) 단계 세션은 목적지가 여정 계획의 일부라 바꾸지 않는다.
     let onChangeDestination: (() -> Void)?
     let onShowDetail: () -> Void
     let onMinimize: () -> Void
+    /// 접기 왼쪽 슬롯 — 도보·자동차 시트의 경로 새로고침(`GuideRefreshButton`). 착지 바인딩을 호출부가 달 수 있게 뷰로 받는다.
+    @ViewBuilder let refresh: () -> Refresh
+
+    init(heading: String, label: String,
+         waypoint: (label: String, action: () -> Void)?,
+         onRemoveWaypoint: (() -> Void)?,
+         onChangeDestination: (() -> Void)?,
+         onShowDetail: @escaping () -> Void,
+         onMinimize: @escaping () -> Void,
+         @ViewBuilder refresh: @escaping () -> Refresh = { EmptyView() }) {
+        self.heading = heading
+        self.label = label
+        self.waypoint = waypoint
+        self.onRemoveWaypoint = onRemoveWaypoint
+        self.onChangeDestination = onChangeDestination
+        self.onShowDetail = onShowDetail
+        self.onMinimize = onMinimize
+        self.refresh = refresh
+    }
 
     var body: some View {
         // ⚠ 거는 순서는 왼쪽 밀기(안쪽) → 오른쪽 밀기(바깥) — `PlaceRowActions`와 같은 관측 조건.
@@ -56,6 +46,7 @@ struct GuideTitleActionsRow: View {
             Text(joinText(heading, label))
                 .accessibilityAddTraits(.isHeader)
         } trailing: {
+            refresh()
             GuideMinimizeButton(action: onMinimize)
         }
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
@@ -65,9 +56,6 @@ struct GuideTitleActionsRow: View {
             Button(appLocalized("ios.guide.destMenuDetail"), action: onShowDetail)
         }
         .swipeActions(edge: .leading, allowsFullSwipe: false) {
-            if let onDifferentRoute {
-                Button(appLocalized("ios.guide.differentRoute"), action: onDifferentRoute)
-            }
             if let waypoint {
                 Button(waypoint.label, action: waypoint.action)
             }
@@ -78,7 +66,7 @@ struct GuideTitleActionsRow: View {
     }
 }
 
-/// 안내 시트 섹션 헤더 행: 제목 메뉴(좌) + 접기 아이콘(우, 선택). 접기 버튼은 이 행의 우측
+/// 안내 시트 제목 줄 배치: 제목(좌) + 아이콘 버튼(우, 선택). 접기 버튼은 이 행의 우측
 /// 끝 작은 아이콘이다(위원장 판정 2026-08-23 — 종전 toolbar 배치는 제목 없는 빈 내비게이션
 /// 바가 아이콘 하나를 들고 한 행을 차지해 "제목이 빠진 화면"으로 보였다. 유튜브 플레이어의
 /// 제목 행 우측 아이콘 동형). 읽기 순서는 제목 → 접기. 도착 종료·핸드오프 화면은 trailing을 비운다.
@@ -98,6 +86,24 @@ struct GuideTitleRow<Title: View, Trailing: View>: View {
             Spacer(minLength: 8)
             trailing()
         }
+    }
+}
+
+/// 경로 새로고침 아이콘(E75 판정 1·2) — 지금 위치에서 목적지까지 다시 조회해 채택한다(`BeaconModel.requestDifferentRoute`).
+/// 접기 아이콘과 같은 틀(본문 크기 아이콘 + 44×44 터치 영역, 이름은 `accessibilityLabel`). 조회 중에도 라벨을 바꾸지 않는다 —
+/// 누른 응답은 접수 문장(`.high`)이고, 라벨 교체는 커서가 이 버튼에 있을 때만 들려 그 밖엔 잡음이다(spec 2026-10-27 §2.3).
+struct GuideRefreshButton: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "arrow.clockwise")
+                .font(.body)
+                .frame(minWidth: 44, minHeight: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.borderless)
+        .accessibilityLabel(appLocalized("ios.guide.differentRoute"))
     }
 }
 

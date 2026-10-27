@@ -43,13 +43,19 @@ final class SurroundingsSceneModel {
     private(set) var closed = false
     var phase: NearbyLoadPhase<SurroundingsScene> { core.phase }
 
-    init(anchor: NearbyCoord) {
+    convenience init(anchor: NearbyCoord) {
+        self.init(coordinate: .fixed(anchor))
+    }
+
+    /// 좌표 소스를 받는 판(E75 안내 시트 「지금 여기는 어디?」 — 지금 내 위치 `.current`). 권한·정밀도·측위 실패는
+    /// 코어가 `denied`·`reducedAccuracy`·`failedLocation`으로 가른다(앵커판엔 오지 않는 상태).
+    init(coordinate: NearbyCoordinateSource) {
         let service = NearbyService(client: APIClient(baseURL: AppConfig.apiBaseURL))
         core = NearbyLoadCore(
-            coordinate: .fixed(anchor),
+            coordinate: coordinate,
             coverage: .korea,
             fetch: { coord, _ in
-                guard let coord else { preconditionFailure("fixed 소스는 좌표 보장") }
+                guard let coord else { preconditionFailure("fixed·current 소스는 좌표 보장") }
                 // data null = 서버 키 미보유. 여기 도달했다면 구성 결함이므로 빈 결과로
                 // 위장하지 않고 오류로 태운다(웹 parse 미러, 3-state).
                 guard let scene = try await service.surroundingsScene(

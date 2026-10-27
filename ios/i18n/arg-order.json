@@ -459,9 +459,6 @@
   "ios.guide.titleWaypointChange": [
     "label"
   ],
-  "ios.guide.waypointChange": [
-    "label"
-  ],
   "ios.guide.waypointDropped": [
     "label",
     "dest"

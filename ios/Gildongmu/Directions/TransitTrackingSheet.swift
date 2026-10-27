@@ -131,8 +131,7 @@ struct TransitTrackingSheet: View {
     @State private var expressPromptActive = false
 
     var body: some View {
-        // 접기 버튼은 섹션 헤더(제목 메뉴) 행 우측 아이콘(BeaconTrackingSheet 동형,
-        // 위원장 판정 2026-08-23).
+        // 접기 버튼은 제목 행 우측 아이콘(BeaconTrackingSheet 동형, 위원장 판정 2026-08-23).
         sheetBody
     }
 
@@ -141,19 +140,18 @@ struct TransitTrackingSheet: View {
             List {
                 if model.state != nil {
                     Section {
-                        // 실험판(E74): 제목이 섹션 첫 행으로 내려와 밀기 버튼을 든다(경유지·다른 길로 가기는 대중교통에 없다).
-                        if AppConfig.experimentalGuideTitleActionsEnabled {
-                            GuideTitleActionsRow(
-                                heading: appLocalized("beacon.transitHeading"),
-                                label: model.destinationLabel,
-                                onDifferentRoute: nil,
-                                waypoint: nil,
-                                onRemoveWaypoint: nil,
-                                onChangeDestination: GuideSession.shared.journey == nil
-                                    ? { changeDestPresented = true } : nil,
-                                onShowDetail: showDestinationDetail,
-                                onMinimize: onMinimize)
-                        }
+                        // 제목 행(E74, 정식판 졸업 E75): 제목·접기 + 밀기 동작(목적지 바꾸기·상세). 경유지·경로 새로고침은
+                        // 대중교통에 없다(ODsay가 경유역을 받지 않는다, N4 · E75 판정 7). 여정 단계(E70)는 하차역·출구가 계획의
+                        // 일부라 목적지를 바꾸지 않는다.
+                        GuideTitleActionsRow(
+                            heading: appLocalized("beacon.transitHeading"),
+                            label: model.destinationLabel,
+                            waypoint: nil,
+                            onRemoveWaypoint: nil,
+                            onChangeDestination: GuideSession.shared.journey == nil
+                                ? { changeDestPresented = true } : nil,
+                            onShowDetail: showDestinationDetail,
+                            onMinimize: onMinimize)
                         // 조망 모달이 응답이다(도보 동형). `announceProgress()`를 부르지 않는다 —
                         // 헤더 착지가 같은 문장을 낭독하므로 통지를 먼저 내면 둘이 잠식한다(§4.3).
                         Button(appLocalized("guide.progressButton")) {
@@ -163,21 +161,6 @@ struct TransitTrackingSheet: View {
                         statusRows
                         viaStopsRows
                         phaseControls(proxy: proxy)
-                    } header: {
-                        // 제목이 곧 목적지 메뉴다(스펙 2026-08-12 §1). 실험판은 첫 행(위)이 대신한다.
-                        if !AppConfig.experimentalGuideTitleActionsEnabled {
-                            GuideTitleRow {
-                                GuideTitleMenu(
-                                    heading: appLocalized("beacon.transitHeading"),
-                                    label: model.destinationLabel,
-                                    onShowDetail: showDestinationDetail,
-                                    // 여정 단계(E70)는 하차역·출구가 계획의 일부다 — 목적지를 바꾸지 않는다.
-                                    onChangeDestination: GuideSession.shared.journey == nil
-                                        ? { changeDestPresented = true } : nil)
-                            } trailing: {
-                                GuideMinimizeButton(action: onMinimize)
-                            }
-                        }
                     }
                     surroundingsSection(proxy: proxy)
                     destChangeSection(proxy: proxy)
