@@ -8,17 +8,14 @@
 //      묶고 처음 본 순서를 지키며, 이름은 `trainLineNm`의 「 - 」 뒤 조각(없으면 direction)이다.
 //   ② 묶음마다 그 `updnLine`으로 aboard 여정(`getJourney`, `board.kind = "aboard"`, 역 B 없음)을 조회한다.
 //
-// 판정(묶음 하나):
-//   - 지정 변형(designated): variants 1개 ∧ 첫 탈것이 지하철 ∧ `serviceWayCode`가 있고 `directionMatchesWayCode(updnLine, wayCode) === true`
-//     ∧ 첫 탈것 승차 정류 이름이 표본 역.
-//   - 반대 방향(opposite): variants 0개 ∧ `designatedMissing.oppositeDirection === true`.
-//   - 그 밖(other): variants 0개이고 `designatedMissing`(사유)이 있다 — 순환선에서만 허용된다(아래 규칙).
-// 판정(표본 하나, 묶음 결과를 모아서):
-//   - 직선 노선: 지정 변형이 정확히 하나, 나머지는 전부 반대 방향. (한 방향의 열차만 도착 목록에 있으면 그 하나만 지정 변형이면 된다.)
-//   - 순환선(2호선): 지정 변형이 하나 이상(내선·외선 둘 다 목적지에 닿을 수 있어 둘 다 지정 변형이어도 정상). 지정 변형이 아닌 묶음은
-//     `variants: []`이고 `designatedMissing`(사유)이 있어야 한다.
-//   - FAIL: 도착 0건·같은 노선 묶음 0·`updnLine` 미지 표기·`wayCode` 없음·위 판정 불일치·Tmap 비용 예약(역 B가 없어 0이어야 한다).
-//   - 측정 못 한 표본(조회 throw·reserve 거절·상한 도달)도 FAIL. 통과 = 전 표본 PASS ∧ 측정 못 함 0.
+// 판정: 표본마다 기대 방향 두 개를 고정한다(`expect` — 지리로 확정된 값, `directionMatchesWayCode` 대응 자체의 회귀도 잡는다).
+//   - `expect.designated` 묶음: variants 1개 ∧ kind designated ∧ 첫 탈것이 지하철 ∧ `serviceWayCode`가 있고
+//     `directionMatchesWayCode(updnLine, wayCode) === true` ∧ 승차 정류 이름이 표본 역.
+//   - `expect.opposite` 묶음: variants 0개 ∧ `designatedMissing.side === "board"` ∧ `oppositeDirection === true`.
+//   - 두 묶음은 도착 목록에 반드시 있어야 한다(없으면 측정 못 함 = FAIL). 그 밖의 묶음은 판정하지 않고 묶음 줄에만 남긴다.
+//   - FAIL: 도착 0건·같은 노선 묶음 0·위 판정 불일치·Tmap 비용 예약(역 B가 없어 0이어야 한다)·측정 못 한 표본(throw 포함)·
+//     실호출 상한 거절 1회 이상(provider try/catch가 삼켜도 센다)·재생 모드의 판정 경로(ODsay·서울 실시간) corpus 누락.
+//     무료 보조 조회(other)의 corpus 누락은 경고만 한다. 통과 = 전 표본 PASS ∧ 측정 못 함 0 ∧ 상한 거절 0.
 //
 // 저장·재생: `--out <dir>`는 응답을 요청 단위 파일로 저장하고(있으면 다시 부르지 않는다 — 같은 OD의 두 방향 조회는 같은 ODsay
 //   요청이라 한 번만 나간다), `--from-corpus <dir>`는 호출 없이 저장본만 읽는다(저장본이 없으면 실패). 저장소 밖 경로만 받는다(공개 저장소).
@@ -39,32 +36,32 @@ const ODSAY_CAP = 10;
 const SEOUL_RT_CAP = 20;
 const TMAP_CAP = 0; // 역 B 표본이 없다 — 하차 출구·택시 조회가 일어나지 않는다
 const KAKAO_CAP = 0;
-const OTHER_CAP = 40; // 여정 조립 경로의 무료 공공 조회(노선 운행시간 등)
+const OTHER_CAP = 150; // 여정 조립 경로의 무료 공공 조회(노선 운행시간 등)
 
 // 공개 역·랜드마크 좌표(누구나 아는 역 중심 근사). 우선순위 순서 — 상한이 모자라면 뒤(왕십리)부터 못 잰다.
 // line은 카카오 출구 이름 표기(수도권 접두)로 둔다: 접두 힌트 ↔ 도착 목록 `1호선`을 `sameLine`이 같게 보는지가 이 게이트의 대상이다.
-// circle: 순환선(내선·외선 둘 다 목적지에 닿을 수 있다).
+// expect: 지리로 확정한 기대 방향 — designated는 목적지로 가는 쪽, opposite는 반대 쪽(순환선도 ODsay 최단 쪽이 designated).
 const SAMPLES = [
   {
     id: "seoul",
     label: "서울역 1호선 → 영등포(남쪽, 직선 노선)",
     station: { name: "서울역", coord: { lat: 37.5547, lng: 126.9707 }, line: "수도권1호선" },
     to: { name: "영등포역", coord: { lat: 37.5159, lng: 126.9075 } },
-    circle: false,
+    expect: { designated: "하행", opposite: "상행" },
   },
   {
     id: "sindorim",
-    label: "신도림 2호선 → 강남(순환선, 내선·외선)",
+    label: "신도림 2호선 → 강남(순환선)",
     station: { name: "신도림", coord: { lat: 37.5088, lng: 126.8913 }, line: "수도권2호선" },
     to: { name: "강남역", coord: { lat: 37.4979, lng: 127.0276 } },
-    circle: true,
+    expect: { designated: "외선", opposite: "내선" },
   },
   {
     id: "wangsimni",
     label: "왕십리 5호선 → 광화문(한 방향)",
     station: { name: "왕십리", coord: { lat: 37.5612, lng: 127.0371 }, line: "수도권5호선" },
     to: { name: "광화문", coord: { lat: 37.571, lng: 126.9769 } },
-    circle: false,
+    expect: { designated: "상행", opposite: "하행" },
   },
 ];
 
@@ -124,6 +121,10 @@ if (opts.offline) {
 const SECRET_PARAMS = ["apiKey", "serviceKey", "ServiceKey", "appKey"];
 const realFetch = globalThis.fetch;
 const counts = { odsay: 0, seoul: 0, tmap: 0, kakao: 0, other: 0, replay: 0 };
+// provider가 호출 실패를 try/catch로 삼켜도 게이트가 알 수 있게 세는 것: 상한 거절(live)·corpus 누락(재생).
+const rejected = { odsay: 0, seoul: 0, tmap: 0, kakao: 0, other: 0 };
+const missing = { odsay: 0, seoul: 0, tmap: 0, kakao: 0, other: 0 };
+const CLASS_LABEL = { odsay: "ODsay", seoul: "서울 실시간", tmap: "Tmap", kakao: "카카오", other: "기타 공공" };
 // 상한은 실행마다가 아니라 corpus 폴더 단위 누적이다(실패 응답은 저장되지 않아 재실행이 다시 부르기 때문).
 const ledgerFile = join(opts.dir, "_live-calls.json");
 const ledger = existsSync(ledgerFile) ? JSON.parse(readFileSync(ledgerFile, "utf8")) : {};
@@ -149,8 +150,18 @@ globalThis.fetch = async (input, init = {}) => {
     const { status, body } = JSON.parse(readFileSync(file, "utf8"));
     return new Response(body, { status });
   }
-  if (opts.offline) throw new Error(`corpus에 응답 없음: ${cls} ${u.pathname}`);
-  if (spent(cls) >= CAPS[cls]) throw new Error(`${cls} 실호출 상한 ${CAPS[cls]} 도달 — 멈추고 보고한다`);
+  if (opts.offline) {
+    missing[cls]++;
+    throw new Error(`corpus에 응답 없음: ${cls} ${u.pathname}`);
+  }
+  if (spent(cls) >= CAPS[cls]) {
+    rejected[cls]++;
+    throw new Error(
+      CAPS[cls] === 0
+        ? `${CLASS_LABEL[cls]} 상한 0 위반 — 역 B 없음 전제가 깨짐(${u.pathname})`
+        : `${CLASS_LABEL[cls]} 실호출 상한 ${CAPS[cls]} 도달 — 멈추고 보고한다`,
+    );
+  }
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Next 전용 캐시 옵션을 걷어 낸다
   const { next: _next, ...rest } = init;
   counts[cls]++; // 병렬 요청이 같은 잔여를 함께 통과하지 않게 await 전에 센다
@@ -248,10 +259,15 @@ for (const s of samples) {
     );
     if (list.length > 0 && groups.length === 0) problems.push("같은 노선 방면 묶음 0(노선 매칭 실패 의심)");
 
-    const verdicts = [];
-    for (const g of groups) {
-      if (!SERVER_DIRECTIONS.includes(g.direction)) {
-        problems.push(`미지 updnLine 「${g.direction}」(서버 입력은 ${SERVER_DIRECTIONS.join("·")}만 받는다)`);
+    // 기대 방향 두 묶음만 조회·판정한다. 그 밖의 묶음은 위 묶음 줄에만 남긴다(판정 안 함).
+    for (const role of ["designated", "opposite"]) {
+      const dir = s.expect[role];
+      const g = groups.find((x) => x.direction === dir);
+      if (!g) {
+        if (list.length > 0 && groups.length > 0) {
+          unmeasuredHere = true;
+          rows.push(`    ${role} 기대 방향 「${dir}」: 측정 못 함 — 그 방향 열차가 도착 목록에 없다`);
+        }
         continue;
       }
       const reserved = [];
@@ -270,22 +286,27 @@ for (const s of samples) {
       } catch (e) {
         if (String(e).includes("상한")) capStop = true;
         unmeasuredHere = true;
-        rows.push(`    ${g.direction}: UNMEASURED ${String(e).slice(0, 200)}`);
+        rows.push(`    ${dir}: UNMEASURED ${String(e).slice(0, 200)}`);
         if (capStop) break;
         continue;
       }
-      rows.push(`    ${g.direction}: ODsay 실호출 ${counts.odsay - before}회`);
+      rows.push(`    ${dir}: ODsay 실호출 ${counts.odsay - before}회`);
       if (outcome.kind !== "ok") {
         unmeasuredHere = true;
-        rows.push(`    ${g.direction}: UNMEASURED ${outcome.kind}`);
+        rows.push(`    ${dir}: UNMEASURED ${outcome.kind}`);
         continue;
       }
       const cost = reserved.reduce((a, b) => a + b, 0);
-      if (cost !== 0) problems.push(`${g.direction}: Tmap 비용 ${cost} 예약(역 B가 없어 0이어야 한다)`);
+      if (cost !== 0) problems.push(`${dir}: Tmap 비용 ${cost} 예약(역 B가 없어 0이어야 한다)`);
       const { variants, designatedMissing } = outcome.result;
-      for (const v of variants) rows.push(`    ${g.direction} ${v.kind}: ${describe(v)}`);
+      for (const v of variants) rows.push(`    ${dir} ${v.kind}: ${describe(v)}`);
+      rows.push(`    ${dir} 결과: variants ${variants.length}${designatedMissing ? `, designatedMissing ${JSON.stringify(designatedMissing)}` : ""}`);
 
-      if (variants.length === 1) {
+      if (role === "designated") {
+        if (variants.length !== 1) {
+          problems.push(`${dir}: 지정 변형 기대인데 variants ${variants.length}개`);
+          continue;
+        }
         const v = variants[0];
         const first = vehicles(v.transit)[0];
         const wayCode = first?.serviceWayCode ?? null;
@@ -297,34 +318,11 @@ for (const s of samples) {
           [normalizeStationName(v.boardStation.name) === normalizeStationName(s.station.name), `승차 정류 「${v.boardStation.name}」≠ 표본 역`],
         ];
         const bad = checks.filter(([ok]) => !ok).map(([, why]) => why);
-        if (bad.length > 0) problems.push(`${g.direction}: 지정 변형 검증 실패(${bad.join(", ")})`);
-        verdicts.push({ direction: g.direction, kind: bad.length > 0 ? "broken" : "designated" });
-      } else if (variants.length === 0) {
-        verdicts.push({
-          direction: g.direction,
-          kind: designatedMissing?.oppositeDirection === true ? "opposite" : designatedMissing ? "other" : "broken",
-          missing: designatedMissing,
-        });
-        if (!designatedMissing) problems.push(`${g.direction}: variants 0개인데 designatedMissing 사유가 없다`);
-      } else {
-        problems.push(`${g.direction}: variants ${variants.length}개(aboard는 최대 1개)`);
-        verdicts.push({ direction: g.direction, kind: "broken" });
-      }
-    }
-
-    const designated = verdicts.filter((v) => v.kind === "designated").length;
-    for (const v of verdicts) rows.push(`    판정 ${v.direction}: ${v.kind}${v.missing ? ` ${JSON.stringify(v.missing)}` : ""}`);
-    if (verdicts.length > 0) {
-      if (s.circle) {
-        // 순환선: 지정 변형 ≥ 1, 나머지는 사유(designatedMissing)가 있는 빈 결과(반대 방향 포함).
-        if (designated < 1) problems.push("순환선인데 지정 변형이 하나도 없다");
-        const nonDesignated = verdicts.filter((v) => v.kind !== "designated" && v.kind !== "broken");
-        if (nonDesignated.some((v) => !v.missing)) problems.push("지정 변형이 아닌 묶음에 사유가 없다");
-      } else {
-        // 직선 노선: 지정 변형 정확히 하나, 나머지는 전부 반대 방향.
-        if (designated !== 1) problems.push(`직선 노선인데 지정 변형이 ${designated}개(정확히 1개 기대)`);
-        const wrong = verdicts.filter((v) => v.kind === "other");
-        if (wrong.length > 0) problems.push(`반대 방향이어야 할 묶음이 다른 사유: ${wrong.map((v) => v.direction).join(",")}`);
+        if (bad.length > 0) problems.push(`${dir}: 지정 변형 검증 실패(${bad.join(", ")})`);
+      } else if (!(variants.length === 0 && designatedMissing?.side === "board" && designatedMissing.oppositeDirection === true)) {
+        problems.push(
+          `${dir}: 반대 방향 기대(variants 0 ∧ side board ∧ oppositeDirection true)인데 variants ${variants.length}, designatedMissing ${JSON.stringify(designatedMissing ?? null)}`,
+        );
       }
     }
   } catch (e) {
@@ -346,12 +344,20 @@ for (const s of samples) {
   }
 }
 
+const sum = (o) => Object.values(o).reduce((x, y) => x + y, 0);
+const rejectedTotal = sum(rejected);
+const missingCore = missing.odsay + missing.seoul + missing.tmap + missing.kakao; // 판정 경로
+if (missing.other > 0) rows.push(`\n  경고: 무료 보조 조회(기타 공공) corpus 누락 ${missing.other}건 — 판정에는 쓰지 않는다`);
 console.log(rows.join("\n"));
 console.log(
-  `\nPASS ${passed}/${samples.length} · ODsay 실호출 ${counts.odsay} · 서울 실시간 ${counts.seoul} · Tmap ${counts.tmap} · 카카오 ${counts.kakao} · 기타 공공 ${counts.other}, 재생 ${counts.replay}`,
+  `\nPASS ${passed}/${samples.length} · ODsay 실호출 ${counts.odsay} · 서울 실시간 ${counts.seoul} · Tmap ${counts.tmap} · 카카오 ${counts.kakao} · 기타 공공 ${counts.other}, 재생 ${counts.replay} · 상한 거절 ${rejectedTotal}${rejectedTotal > 0 ? `(${Object.entries(rejected).filter(([, n]) => n > 0).map(([c, n]) => `${CLASS_LABEL[c]} ${n}`).join(", ")})` : ""} · corpus 누락 ${sum(missing)}(판정 경로 ${missingCore}, 기타 ${missing.other})`,
 );
-if (passed !== samples.length) {
-  console.error(`FAIL: 통과 ${passed}/${samples.length} · 측정 못 함 ${unmeasured}`);
+const reasons = [];
+if (passed !== samples.length) reasons.push(`통과 ${passed}/${samples.length} · 측정 못 함 ${unmeasured}`);
+if (rejectedTotal > 0) reasons.push(`상한 거절 ${rejectedTotal}(provider가 삼켰어도 측정이 불완전하다)`);
+if (missingCore > 0) reasons.push(`재생 corpus 누락 ${missingCore}(판정 경로)`);
+if (reasons.length > 0) {
+  console.error(`FAIL: ${reasons.join(" · ")}`);
   process.exit(1);
 }
 console.log("PASS: aboard 방면 묶음·방향 판정 표본 전부 통과");
