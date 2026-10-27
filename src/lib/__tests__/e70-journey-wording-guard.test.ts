@@ -249,7 +249,10 @@ describe("E70-d 입력 메뉴 하나와 「자동차」 문장(위원장 판정 
 
   it("판정 28: 칸은 역이 정해졌을 때만 생기고(빈 칸 없음), 남은 쪽은 일반 버튼 하나다", () => {
     expect(form).toContain("if model.boardStation != nil {\n                            Button { searchTarget = .boardStation }");
-    expect(form).toContain("if model.alightStation != nil {\n                            Button { searchTarget = .alightStation }");
+    // 역 B 칸은 헬퍼 한 벌을 E70 분기와 지금 탄 열차(E71) 분기가 함께 쓴다 — E70 분기에서 단독으로 다시 잠근다
+    const e70Branch = form.slice(form.indexOf("} else if showsStationFields {"));
+    expect(e70Branch).toContain("if model.alightStation != nil {\n                            alightStationRow\n");
+    expect(body(tab, "alightStationRow")).toContain("Button { searchTarget = .alightStation }");
     expect(form).toMatch(
       /if model\.boardStation == nil \{\s*Button\(appLocalized\("ios\.journey\.addBoardStation"\)\) \{ searchTarget = \.boardStation \}\s*\} else if model\.alightStation == nil \{\s*Button\(appLocalized\("ios\.journey\.addAlightStation"\)\) \{ searchTarget = \.alightStation \}\s*\}/,
     );

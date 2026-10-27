@@ -341,21 +341,16 @@ final class DirectionsModel {
         }
     }
 
-    /// 단계 상태를 확정하고, 질문 자리에 문장이 서는 세 갈래(미커버·오는 열차 없음·실패)만 polite 통지 한 번을 낸다(상태 변화).
-    /// 노선·방면 질문은 커서가 그 줄에 있어 통지하지 않는다. 직접 게시한다 — `announce`는 무통지 조회 표식을 따라 삼킬 수 있다.
+    /// 단계 상태를 확정한다. 질문 자리에 문장이 서는 세 갈래(미커버·오는 열차 없음·실패)의 통지는 뷰가 낸다 — 커서가 이미 그 줄에 있거나
+    /// 착지가 예약돼 있으면 그 줄의 라벨이 같은 문장이라 통지를 겹치지 않는다(헌장 §5).
     private func commitAboardState(_ state: AboardDirectionsState) {
         aboardDirectionsState = state
-        let message: String
-        let haptic: ResultHaptic.Kind
-        switch state {
-        case .unavailable: (message, haptic) = (appLocalized("ios.journey.aboardDirectionsUnavailable"), .attention)
-        case .failed: (message, haptic) = (appLocalized("ios.journey.aboardDirectionsFailed"), .failure)
-        case .loaded(let directions) where directions.isEmpty:
-            (message, haptic) = (appLocalized("ios.journey.aboardDirectionsEmpty"), .attention)
-        case .idle, .loading, .lines, .loaded: return
-        }
-        ResultHaptic.fire(haptic)
-        AccessibilityNotification.Announcement(message).post()
+    }
+
+    /// 화면을 다시 띄울 때 로딩 중에 끊겼던 방면 조회를 이어 한다(`cancel()`가 `.idle`로 둔 것 — 실패와 미완료를 뭉개지 않는다).
+    func resumeAboardDirections() {
+        guard aboardOrigin != nil, aboardNeedsDirection, aboardDirectionsState == .idle else { return }
+        loadAboardDirections()
     }
 
     var journeyFound: Bool {
@@ -573,11 +568,12 @@ final class DirectionsModel {
         queryTask?.cancel()
         cancelCurrentAddress()
         isInFlight = false
-        // 방면 조회 중에 떠나면 늦은 실패 통지가 다른 탭의 낭독을 끊는다 — 끊고 조회 실패 상태로 남겨 돌아오면 다시 불러올 수 있게 한다.
+        // 방면 조회 중에 떠나면 늦은 실패 통지가 다른 탭의 낭독을 끊는다 — 끊고 미완료(`.idle`)로 두면 돌아올 때 `resumeAboardDirections`가
+        // 다시 조회한다(실패로 두면 일어나지 않은 실패를 말한다).
         if aboardDirectionsState == .loading {
             aboardGeneration += 1
             aboardTask?.cancel()
-            aboardDirectionsState = .failed
+            aboardDirectionsState = .idle
         }
         // 진행 중 재조회도 끊는다. 조회 중이던 축은 버튼으로 되돌린다(`.loading`에 남으면 돌아왔을 때 눌리지 않는다).
         for (axis, task) in requeryTasks {
@@ -819,6 +815,11 @@ final class DirectionsModel {
         }
         // 역을 하나라도 지정했으면 여정만 조회한다(E70 D12, 실험판). 출입구 승격(A11)은 하지 않는다 — 마지막 택시가
         // 목적지까지 가므로 도보 도착점 승격이 뜻을 갖지 않는다.
+        // 지금 탄 열차인데 여정 조회가 막힌 조건(실험판·ko 밖)이면 일반 세 수단 조회로 떨어져 aboard 역을 최근 경로에 저장하지 않도록 조회하지 않는다(R11).
+        if aboardOrigin != nil, !(AppConfig.experimentalJourneyEnabled && AppLanguage.dataLocale == "ko") {
+            phase = .idle
+            return
+        }
         if AppConfig.experimentalJourneyEnabled, AppLanguage.dataLocale == "ko", hasJourneyStations || aboardOrigin != nil {
             await performJourney(
                 from: from, to: to, origin: origin, dest: queried,
@@ -1093,6 +1094,8 @@ struct DirectionsTabView: View {
     @State private var focusAfterResolve: DirectionsFieldTarget?
     /// 지금 탄 열차 역을 고른 뒤 커서를 단계 줄(방면·노선 질문 또는 그 자리의 상태 문장)로 보낼 표식(E71).
     @State private var aboardStationPicked = false
+    /// 역을 고른 뒤 단계 줄 착지가 끝나기 전 — 그 사이에 방면 조회가 끝나면 착지한 줄의 라벨이 읽으므로 통지를 겹치지 않는다.
+    @State private var aboardLandingPending = false
     /// 단계 줄 하나만 이 바인딩을 쓴다(상태가 바뀌어도 같은 자리의 한 줄이라 커서가 유지된다).
     @AccessibilityFocusState private var aboardStepFocused: Bool
     /// 추적 시트가 닫힌 뒤 돌아갈 자리. 시트 dismiss가 VO 커서를 화면 최상단으로
@@ -1182,15 +1185,7 @@ struct DirectionsTabView: View {
                     if isAboardOrigin {
                         // 역 B(자동차를 탈 역)는 E70 그대로 — 항목이 하나라 메뉴가 아니라 일반 버튼이다(R12). 역 A 칸·지우기 버튼은 없다.
                         if model.alightStation != nil {
-                            Button { searchTarget = .alightStation } label: {
-                                Text(stationFieldText(.alightStation))
-                            }
-                                .accessibilityFocused($focusedEndpointField, equals: .alightStation)
-                                .swipeActions {
-                                    Button(appLocalized("recent.delete"), role: .destructive) {
-                                        clearStationField(board: false)
-                                    }
-                                }
+                            alightStationRow
                         } else {
                             Button(appLocalized("ios.journey.addAlightStation")) { searchTarget = .alightStation }
                         }
@@ -1208,15 +1203,7 @@ struct DirectionsTabView: View {
                                 }
                         }
                         if model.alightStation != nil {
-                            Button { searchTarget = .alightStation } label: {
-                                Text(stationFieldText(.alightStation))
-                            }
-                                .accessibilityFocused($focusedEndpointField, equals: .alightStation)
-                                .swipeActions {
-                                    Button(appLocalized("recent.delete"), role: .destructive) {
-                                        clearStationField(board: false)
-                                    }
-                                }
+                            alightStationRow
                         }
                         // 남은 쪽은 항목 하나라 메뉴가 아니라 일반 버튼이다. 둘 다 정해지면 없다.
                         if model.boardStation == nil {
@@ -1448,6 +1435,7 @@ struct DirectionsTabView: View {
                     // 지금 탄 열차(E71) — 출발지 칸이 바뀌고 방면 단계가 선다. 착지는 시트가 닫힌 뒤 단계 줄이다.
                     model.startAboard(station: station)
                     aboardStationPicked = true
+                    aboardLandingPending = true
                 } : nil, stopOrigin: endpointCoordinate(model.from), stopDest: endpointCoordinate(model.to))
             }
             // 안내 시트(비콘·대중교통)는 여기 없다 — 세션이 앱 수명이라 루트
@@ -1505,12 +1493,12 @@ struct DirectionsTabView: View {
             // 방면 목록이 도착해 단계 줄이 로딩 문장에서 질문으로 바뀌면 커서가 그 줄에 있을 때 다시 읽게 한다(라벨만 바뀌는 변화는 VoiceOver가
             // 낭독하지 않는다). 오는 열차 없음·미커버·실패는 모델의 polite 통지가 말한다.
             .onChange(of: model.aboardDirectionsState) { old, new in
-                guard old == .loading, aboardStepFocused else { return }
-                switch new {
-                case .lines: rereadAboardStep()
-                case .loaded(let directions) where !directions.isEmpty: rereadAboardStep()
-                default: break
-                }
+                guard old == .loading, new != .idle, new != .loading else { return }
+                handleAboardArrival(new)
+            }
+            // 데이터 로케일이 ko 밖으로 바뀌어 여정 입력이 사라지면 지금 탄 열차 출발도 함께 지운다(R11 — 일반 조회로 떨어져 저장되지 않게).
+            .onChange(of: journeyInputEnabled) { _, enabled in
+                if !enabled { model.clearAboard() }
             }
             // 폼 도착지 변경은 세션을 멈추지 않는다(N1 — 경로 조회는 안내 중에도 허용).
             // 세션이 자기 목적지를 들고 있어 폼이 바뀌어도 옛 목적지 추적 창은 없다.
@@ -1532,6 +1520,7 @@ struct DirectionsTabView: View {
                 // "여기부터 길찾기"는 조회 대신 착지다(E32). 출발지 확정 뒤 도착지로
                 // 보내는 그 경로를 그대로 쓴다 — 지연·검증·1회 재시도가 정본 시퀀스다.
                 if model.consumePrefillFocusIfPending() { landFocusAfterResolve(from: .from) }
+                model.resumeAboardDirections()
                 await model.loadCurrentAddressIfAuthorized()
             }
             // 다른 화면의 측위 성공·실패로 옛 위치가 서거나 풀리면 칸이 따라간다(측위 없이).
@@ -1712,6 +1701,19 @@ struct DirectionsTabView: View {
         if emptied { submitFocused = true }
     }
 
+    /// 역 B 칸(자동차를 탈 역) — 채운 칸은 버튼 = 재검색, 밀기 「삭제」. E70 분기와 지금 탄 열차(E71) 분기가 함께 쓴다.
+    private var alightStationRow: some View {
+        Button { searchTarget = .alightStation } label: {
+            Text(stationFieldText(.alightStation))
+        }
+            .accessibilityFocused($focusedEndpointField, equals: .alightStation)
+            .swipeActions {
+                Button(appLocalized("recent.delete"), role: .destructive) {
+                    clearStationField(board: false)
+                }
+            }
+    }
+
     /// 지금 탄 열차 단계 줄(E71): 노선 질문 → 방면 질문 → (3-state 문장). 줄은 상태가 바뀌어도 같은 자리의 한 줄이라 커서가 그대로다.
     @ViewBuilder
     private var aboardStepRows: some View {
@@ -1726,6 +1728,7 @@ struct DirectionsTabView: View {
                 Button(line) {
                     aboardStepFocused = true
                     model.chooseAboardLine(line)
+                    rereadAboardStep()  // 같은 줄이 방면 질문(또는 오는 열차 없음 문장)이 된다 — 라벨 변경은 낭독되지 않아 다시 읽게 한다
                 }
             }
         case .loaded(let directions):
@@ -1786,8 +1789,30 @@ struct DirectionsTabView: View {
             try? await Task.sleep(for: .milliseconds(400))
             aboardStepFocused = true
             try? await Task.sleep(for: .milliseconds(600))
+            aboardLandingPending = false
             guard !aboardStepFocused else { return }
             aboardStepFocused = true
+        }
+    }
+
+    /// 방면 조회가 끝났을 때(로딩 → 확정). 노선·방면 질문은 도착을 통지하지 않는다(다음 스와이프가 목록이다). 질문 자리에 문장이 서는 세 갈래
+    /// (미커버·오는 열차 없음·실패)는 커서가 그 줄에 있으면 다시 읽게 하고, 착지가 예약 중이면 착지가 읽으며, 커서가 다른 곳이면 polite 통지 한 번이다.
+    private func handleAboardArrival(_ state: DirectionsModel.AboardDirectionsState) {
+        let sentence: (String, ResultHaptic.Kind)?
+        switch state {
+        case .unavailable: sentence = (appLocalized("ios.journey.aboardDirectionsUnavailable"), .attention)
+        case .failed: sentence = (appLocalized("ios.journey.aboardDirectionsFailed"), .failure)
+        case .loaded(let directions) where directions.isEmpty:
+            sentence = (appLocalized("ios.journey.aboardDirectionsEmpty"), .attention)
+        case .idle, .loading, .lines, .loaded: sentence = nil
+        }
+        if aboardLandingPending { return }
+        if aboardStepFocused {
+            rereadAboardStep()
+            if let sentence { ResultHaptic.fire(sentence.1) }
+        } else if let sentence {
+            ResultHaptic.fire(sentence.1)
+            AccessibilityNotification.Announcement(sentence.0).post()
         }
     }
 

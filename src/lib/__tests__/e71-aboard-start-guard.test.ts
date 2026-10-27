@@ -171,6 +171,34 @@ describe("E71 aboard 출발 — 길찾기 화면(spec §5·R11·R12)", () => {
     expect(rows).toContain('Button(aboard ? appLocalized("beacon.start") : appLocalized("beacon.guideStartTransitAlt", heading(variant)))');
   });
 
+  it("역 B 칸은 헬퍼 하나를 두 분기가 쓰고 헬퍼가 밀기 삭제를 든다", () => {
+    expect(TAB.match(/\n\s*alightStationRow\n/g)?.length).toBe(2);
+    expect(body(TAB, "private var alightStationRow")).toContain("clearStationField(board: false)");
+  });
+
+  it("aboard 시작 행은 사라지기 전에 마이크 행을 선점하고 검색 필드 착지는 경합 바인딩을 먼저 놓는다", () => {
+    expect(ENDPOINT).toMatch(/Button\(appLocalized\("ios\.journey\.aboardStart"\)\) \{\s*micRowFocused = true/);
+    const land = body(ENDPOINT, "private func landAboardSearchField(");
+    expect(land).toMatch(/searchFieldFocused = false[\s\S]*searchFieldFocused = true/);
+  });
+
+  it("방면 조회 도착의 통지는 착지 예약·커서 위치를 보고, 로딩 중 이탈은 실패가 아니라 미완료로 두고 돌아오면 재조회한다", () => {
+    const arrive = body(TAB, "private func handleAboardArrival(");
+    expect(arrive).toMatch(/if aboardLandingPending \{ return \}[\s\S]*if aboardStepFocused \{[\s\S]*rereadAboardStep\(\)/);
+    expect(body(TAB, "private func commitAboardState(")).not.toMatch(/Announcement/);
+    const cancel = body(TAB, "func cancel()");
+    expect(cancel).toMatch(/aboardDirectionsState == \.loading \{[\s\S]*aboardDirectionsState = \.idle/);
+    expect(body(TAB, "func resumeAboardDirections(")).toContain("loadAboardDirections()");
+    expect(TAB).toMatch(/model\.resumeAboardDirections\(\)\s*await model\.loadCurrentAddressIfAuthorized\(\)/);
+  });
+
+  it("여정 입력이 사라지면 aboard를 지우고, 조회는 aboard인데 여정 조건이 아니면 일반 조회로 떨어지지 않는다(R11)", () => {
+    expect(TAB).toMatch(/\.onChange\(of: journeyInputEnabled\) \{ _, enabled in\s*if !enabled \{ model\.clearAboard\(\) \}/);
+    expect(body(TAB, "private func performQuery(")).toMatch(
+      /if aboardOrigin != nil, !\(AppConfig\.experimentalJourneyEnabled && AppLanguage\.dataLocale == "ko"\) \{\s*phase = \.idle\s*return\s*\}/,
+    );
+  });
+
   it("JourneyPlan 생성부가 aboard를 고른 방향에서 만든다", () => {
     const at = TAB.indexOf("JourneyPlan(");
     expect(at).toBeGreaterThan(0);

@@ -337,13 +337,14 @@ struct DirectionsEndpointSearchView: View {
                         select(.current)
                     }
                 }
-                // 지금 탄 열차에서 출발(E71): 「현재 위치 사용」 바로 다음 행. 누르면 이 시트가 역 검색으로 바뀌고 이 행은 사라지므로
-                // 커서를 항상 존재하는 검색 필드로 먼저 옮긴다(헌장 §5).
+                // 지금 탄 열차에서 출발(E71): 「현재 위치 사용」 바로 다음 행. 누르면 이 시트가 역 검색으로 바뀌고 이 행과 「현재 위치 사용」
+                // 행이 사라지므로, 행이 사라지기 전에 항상 있는 마이크 행으로 커서를 선점한 뒤 검색 필드로 옮긴다(헌장 §5).
                 if target == .from, onSelectAboardStation != nil, !aboardMode {
                     Button(appLocalized("ios.journey.aboardStart")) {
-                        searchFieldFocused = true
+                        micRowFocused = true
                         model.startAboardSearch()
                         aboardMode = true
+                        landAboardSearchField()
                     }
                 }
                 if !model.notice.isEmpty {
@@ -530,6 +531,22 @@ struct DirectionsEndpointSearchView: View {
             try? await Task.sleep(for: .milliseconds(300))
             guard !Task.isCancelled else { return }
             applyCandidateFocus(first.focus)
+        }
+    }
+
+    /// 지금 탄 열차 역 검색으로 바뀐 뒤 커서를 검색 필드로 보낸다. 검색 필드엔 접근성 포커스 바인딩이 없고 키보드 포커스(`@FocusState`)가 VoiceOver
+    /// 커서를 끈다 — 필드는 시트가 열릴 때 이미 first responder라 같은 값 재대입은 no-op이므로(`applyCandidateFocus`가 문서화한 함정),
+    /// 경합 바인딩을 먼저 놓고(false) 한 틱 뒤 대입한다. 그 사이 커서는 선점해 둔 마이크 행에 있다.
+    private func landAboardSearchField() {
+        candidateFocusTask?.cancel()
+        candidateFocusTask = Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(150))
+            guard !Task.isCancelled else { return }
+            searchFieldFocused = false
+            micRowFocused = false
+            try? await Task.sleep(for: .milliseconds(100))
+            guard !Task.isCancelled else { return }
+            searchFieldFocused = true
         }
     }
 
