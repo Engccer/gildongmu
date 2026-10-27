@@ -225,7 +225,6 @@ function aboardDirections(arrivals, line) {
   return order.map((direction) => ({ direction, name: names.get(direction) ?? direction, terminals: terminals.get(direction) }));
 }
 
-const SERVER_DIRECTIONS = ["상행", "하행", "내선", "외선"];
 const vehicles = (route) => route.legs.filter((l) => l.mode !== "walk");
 const describe = (v) =>
   vehicles(v.transit)
