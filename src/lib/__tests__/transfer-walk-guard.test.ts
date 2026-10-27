@@ -75,7 +75,7 @@ describe("E73 환승 도보 — 대중교통 모델", () => {
     const begin = functionBody(transit(), "beginSession");
     expect(begin).toContain("state = initTransitGuide(route: guideRoute, startingAt: startLeg, now: nowMs())");
     // 재개는 「안내를 시작합니다. 탑승 구간 N개.」를 다시 말하지 않는다.
-    expect(begin).toMatch(/var parts = startLeg > 0 \? \[waitContextText\(first, isCurrentLeg: true\)\] : \[/);
+    expect(begin).toMatch(/if startLeg > 0 \{\s*parts = \[waitContextText\(first, isCurrentLeg: true\)\]\s*\} else \{/);
     expect(begin).toContain("let first = guideRoute.legs[state?.legIndex ?? 0]");
   });
 
