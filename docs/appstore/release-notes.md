@@ -12,6 +12,45 @@
 
 ---
 
+## 2.4 (빌드 35)
+
+기준은 2.3 아카이브 커밋 `4649c02e`(빌드 34)이며 이후 `ios/` 커밋 17건을 판정했다. 정식판에 안내 제목 행의 밀기 동작과 경로 새로고침, 현재 위치 주변을 함께 보는 화면이 추가된다.
+
+포함 판정:
+
+| 기능 | 커밋 | 노트 |
+|---|---|---|
+| 안내 제목 행 밀기 동작 정식판 승격(E74), 경로 새로고침과 「지금 여기는 어디?」(E75) | `c94ef916`·`e4f17c6e` | ko·en. 자동차 안내와 경유지 동작은 ko만 |
+| 받아쓰기·설정·안내 등의 한국어 문구 정돈 | `d6832e78` | ko만. Swift에서 사용하는 정식판 문구 |
+
+제외 근거:
+
+- E70-e 버스 정류장 지정과 E71 지금 탄 열차 출발은 `AppConfig.experimentalJourneyEnabled`와 한국어 게이트 뒤에 있다. 새 여정 API 매개변수·모델도 이 진입점에서만 사용한다.
+- `fde47dd2`의 Kit 거리 표기 변경은 주석뿐이다. 문서·테스트·실험판 후속 보정은 별도 항목으로 적지 않는다.
+
+심사 노트는 승계한다(`--review-notes` 미사용). 기존 위치 조회를 안내 중에도 제공하는 변경이며 새 권한·데이터 유형·제3자는 없다. 「지금 여기는 어디?」는 기존 `/api/surroundings/scene` 응답을 재사용하며 언어별 요청 매개변수는 없다.
+
+### ko
+
+```
+새로운 기능
+- 도보·자동차·대중교통 안내 화면에서 제목 줄을 밀면 목적지를 바꾸거나 장소 상세를 볼 수 있습니다. 도보·자동차 안내에서는 경유지를 추가하거나 바꾸고 지울 수도 있습니다. VoiceOver에서는 제목 줄에서 위아래로 쓸어 동작을 선택하세요.
+- 도보·자동차 안내 화면의 제목 옆에 ‘경로 새로고침’ 버튼을 추가했습니다. 안내 중 지금 위치에서 목적지까지 경로를 다시 찾을 수 있습니다.
+- 도보·자동차 안내의 ‘진행 상황’과 ‘주변 확인’을 ‘지금 여기는 어디?’로 합쳤습니다. 얼마나 왔는지 확인하고, 지금 있는 곳의 주소와 주변 장소도 함께 살펴볼 수 있습니다.
+
+개선
+- 받아쓰기 사용법과 설정 설명, 안내 문구를 더 자연스럽고 이해하기 쉬운 한국어로 다듬었습니다.
+```
+
+### en
+
+```
+New
+- Swipe the title row during walking or transit guidance to change your destination or view its details. With VoiceOver, swipe up or down on the title row to choose an action.
+- A Refresh Route button next to the title in walking guidance lets you find a route to your destination from where you are now.
+- Walking guidance now brings progress and nearby information together under “Where am I now?”. Check your progress, then explore the address and places around your current location in the same view.
+```
+
 ## 2.3 (빌드 34)
 
 기준은 2.2 아카이브 커밋 `bfa494eb`(빌드 33, 2026-10-17 제출, 2026-10-18 `READY_FOR_SALE` 확인)이며 그 이후 `ios/` 커밋 17건(13차 소화)을 판정했다. Release 바이너리에 도달하면서 iOS 사용자가 알아차리는 것만 담는다. 2.3인 이유: 대중교통 환승 도보 안내·버스 하차 정류장 기기 위치 도착 알림이 새로 들어오고, 경로 이탈 재조회·먼 시작점 안내·이탈 중 도착 창·서울버스 하차 안내 문장이 바뀐다. 서버 도보 안내 기하 응답(`includeGeometry=1`, ko)의 카카오 첫 점 30m 밖 Tmap 재시도와 `originGapM`도 이 버전의 앱 시작점 고지와 짝으로 동작한다.
