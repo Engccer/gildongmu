@@ -28,7 +28,9 @@ import { tmpdir } from "node:os";
 import { isAbsolute, join, relative, resolve } from "node:path";
 
 const ODSAY_CAP = 4;
-const BUS_CAP = 80; // 운행시간(노선당 1)·경유 정류소(노선당 1)·정류소 도착(leg당 1)
+// 운행시간은 집합 노선만이 아니라 후보 경로 전체의 버스 노선마다 1회다(게이트는 캐시를 걷어 내 매번 실호출 — 운영은
+// 하루 캐시). 표본 셋 첫 실행이 운행시간만 70회 남짓을 썼다(2026-10-31). 여기에 경유 정류소(노선당 1)·정류소 도착(leg당 1).
+const BUS_CAP = 160;
 const MAX_LEGS = 4; // 집합 leg를 이만큼만 잰다(TOPIS 트래픽 상한)
 
 // 공개 명소 좌표(누구나 아는 랜드마크 중심 근사).
