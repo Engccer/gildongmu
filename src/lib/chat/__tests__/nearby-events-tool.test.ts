@@ -10,9 +10,16 @@ vi.mock("@/lib/culture-events", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/culture-events")>()),
   findEventsNear: vi.fn(),
 }));
+// 따릉이도 같은 이유로 판정(isBikeServiceArea)은 실제 구현, 조회만 모킹한다 — 키가 있는 환경에서
+// 실조회(전 페이지 루프)로 빠지면 테스트가 네트워크에 묶여 시간 초과로 실패한다.
+vi.mock("@/lib/providers/seoul-bike", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/providers/seoul-bike")>()),
+  fetchNearbyBikeStations: vi.fn(),
+}));
 
 import { executeFunction } from "../router";
 import { findEventsNear } from "@/lib/culture-events";
+import { fetchNearbyBikeStations } from "@/lib/providers/seoul-bike";
 
 const mockFind = vi.mocked(findEventsNear);
 
@@ -98,6 +105,12 @@ describe("get_nearby_events (채팅 도구)", () => {
  * 여기 둔다(같은 계약을 검증하므로 흩어 두면 한쪽만 낡는다).
  */
 describe("get_bike_stations (서울 전용 게이트)", () => {
+  const mockBike = vi.mocked(fetchNearbyBikeStations);
+  beforeEach(() => {
+    mockBike.mockReset();
+    mockBike.mockResolvedValue([]);
+  });
+
   it("지방 좌표는 '정보 미보유' — provider 미호출", async () => {
     const r = await executeFunction(
       "get_bike_stations",
@@ -106,11 +119,13 @@ describe("get_bike_stations (서울 전용 게이트)", () => {
     );
     expect((r.data as { unavailableHere?: string }).unavailableHere).toBe("seoulOnly");
     expect(r.render).toBeUndefined(); // 미제공 지역에 카드를 띄우지 않는다
+    expect(mockBike).not.toHaveBeenCalled();
   });
 
   it("서울 안은 정상 조회", async () => {
     const r = await executeFunction("get_bike_stations", {}, ctx({ userLocation: SEOUL }));
     expect((r.data as { unavailableHere?: string }).unavailableHere).toBeUndefined();
+    expect(mockBike).toHaveBeenCalledWith(SEOUL.lat, SEOUL.lng);
   });
 });
 
