@@ -29,7 +29,7 @@ node scripts/usage-report.mjs   # API 비용·쿼터·키 만료
 
 | 묶음 | 항목 | 필요 환경 | 순서 |
 |---|---|---|---|
-| E76 서버·웹 게이트 | **E76 서버·웹 실호출 게이트와 머지**: 코드는 2026-10-31 클라우드 세션이 브랜치 `e76-bus-lanes`에 끝냈다(spec `docs/superpowers/specs/2026-10-31-e76-bus-lane-set-design.md`). 컨테이너에 키가 없어 `node scripts/verify-bus-lanes.mjs --out <저장소 밖>`을 못 돌렸다 — 낮 시간에 돌려 PASS면 main에 머지(자동 배포), WARN ③은 행 단위로 판정 | 로컬 필요 | 선행 |
+| E76 서버·웹 게이트 | **E76 서버·웹 실호출 게이트와 머지**: 코드는 2026-10-31 클라우드 세션이 브랜치 `e76-bus-lanes`에 끝냈다(spec `docs/superpowers/specs/2026-10-31-e76-bus-lane-set-design.md`). 컨테이너에 키가 없어 `node scripts/verify-bus-lanes.mjs --out <저장소 밖>`을 못 돌렸다 — 낮 시간에 돌려 PASS면 main에 머지(자동 배포), WARN ②'·③은 행 단위로 판정. ⚠ 이 브랜치 커밋은 클라우드에 가드 입력이 없어 pre-commit 개인정보 가드를 건너뛰었다(위원장 승인) — 머지 전 `npx vitest run src/lib/__tests__/public-repo-privacy-guard.test.ts` | 로컬 필요 | 선행 |
 | E76 iOS | **E76. 같은 하차 정류소로 가는 버스 노선을 전부 보이고 고르게 한다: 경로 브리핑 줄 + 대중교통 안내 시트 대기 목록**(Kit 디코딩·브리핑 줄·`TransitTrackingSheet` 대기 목록·실기기 설치, 정식판 2.5). 서버 계약·미러 목록은 spec §2·§3·§7 | 로컬 필요 | E76 서버·웹 게이트 뒤 |
 
 그 밖은 §2 판정이 풀어 준다: E75 → B16, E73 → B14, E66 → E68, E51 → G5·B13, E70 ⓐ 실사용 → E70-b·E70-c. E71 다음 판 후보 ⓐ~ⓖ는 무엇을 할지 판정 전이다(ⓕ는 §2 E71 ⑥ 판정 뒤, ⓖ 게이트 표본 확장은 ODsay 호출 비용 승인 뒤). A16 실승차(§2 A16 ⑥⑦⑧) → E14(A16과 함께).
