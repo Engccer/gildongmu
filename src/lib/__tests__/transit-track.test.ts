@@ -41,8 +41,20 @@ describe("parseSeoulTrackSlots — 추적 슬롯(B2 §5.1·§5.2)", () => {
       message: "6분47초후[4번째 전]",
       remainingStops: 4,
       lowFloor: true,
+      routeId: "227000006",
     });
     expect(slots[1].remainingStops).toBe(9);
+  });
+
+  it("노선 집합을 주면 그 노선들 항목만 남긴다(E76)", () => {
+    const raw = seoulRaw([
+      { busRouteId: "A", vehId1: "1", arrmsg1: "3분후[2번째 전]" },
+      { busRouteId: "B", vehId1: "2", arrmsg1: "5분후[3번째 전]" },
+      { busRouteId: "C", vehId1: "3", arrmsg1: "1분후[1번째 전]" },
+    ]);
+    expect(parseSeoulTrackSlots(raw, new Set(["A", "C"])).map((s) => s.routeId)).toEqual(["A", "C"]);
+    expect(parseSeoulTrackSlots(raw, "B").map((s) => s.routeId)).toEqual(["B"]);
+    expect(parseSeoulTrackSlots(raw)).toHaveLength(3);
   });
 
   it("구조 필드 부재 시 arrmsg 패턴 폴백, 둘 다 없으면 null(사다리만 비활성)", () => {

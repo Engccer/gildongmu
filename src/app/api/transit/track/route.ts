@@ -9,6 +9,7 @@ import {
   trackSeoulWait,
   trackSubway,
   trackTago,
+  SEOUL_WAIT_ROUTE_SET_MAX,
 } from "@/lib/transit-track";
 
 /**
@@ -20,10 +21,19 @@ import {
  * IP 60초 20회(폴링 최소 15초 + 복귀 즉폴 버스트 여유 — rate-limit.ts 주석).
  */
 
-const seoulWaitSchema = z.object({
-  arsId: z.string().trim().min(1).max(10),
-  routeId: z.string().trim().min(1).max(20),
-});
+const routeIdSchema = z.string().trim().min(1).max(20);
+// 단일 노선(`routeId`, 종전 계약) 또는 노선 집합(`routeIds`, E76 — 쉼표 구분, 중복 제거 뒤 1~12개). 둘 다·둘 다 없음은 400.
+const seoulWaitSchema = z.union([
+  z.object({ arsId: z.string().trim().min(1).max(10), routeId: routeIdSchema, routeIds: z.never().optional() }),
+  z.object({
+    arsId: z.string().trim().min(1).max(10),
+    routeId: z.never().optional(),
+    routeIds: z
+      .string()
+      .transform((v) => [...new Set(v.split(",").map((x) => x.trim()))])
+      .pipe(z.array(routeIdSchema).min(1).max(SEOUL_WAIT_ROUTE_SET_MAX)),
+  }),
+]);
 const seoulRideSchema = z.object({
   routeId: z.string().trim().min(1).max(20),
   boardId: z.string().trim().min(1).max(20),
@@ -65,7 +75,11 @@ export async function GET(request: NextRequest) {
     if (mode === "seoulBus" && phase === "wait") {
       const parsed = seoulWaitSchema.safeParse(params);
       if (!parsed.success) return badRequest();
-      return NextResponse.json({ mode, ...(await trackSeoulWait({ ...parsed.data, lang })) });
+      const d = parsed.data;
+      const result = d.routeIds
+        ? await trackSeoulWait({ arsId: d.arsId, routeIds: d.routeIds, lang })
+        : await trackSeoulWait({ arsId: d.arsId, routeId: d.routeId, lang });
+      return NextResponse.json({ mode, ...result });
     }
     if (mode === "seoulBus" && phase === "ride") {
       const parsed = seoulRideSchema.safeParse(params);

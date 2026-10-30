@@ -905,6 +905,70 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
     });
   });
 
+  it("노선 집합(E76): 대기 목록은 같은 하차 정류소 노선 전부이고 줄 앞에 번호가 있다 → 고른 노선으로 승차·추적이 잠긴다", async () => {
+    const urls: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        urls.push(url);
+        if (url.includes("routeIds=")) {
+          return {
+            ok: true,
+            json: async () => ({
+              mode: "seoulBus",
+              status: "ok",
+              rawCount: 13,
+              items: [
+                trackItem({ vehicleId: "b", direction: "", destinationName: null, message: "3분후[1번째 전]", remainingStops: 1, arrivalCode: null, route: "100100447" }),
+                trackItem({ vehicleId: "a", direction: "", destinationName: null, message: "13분후[2번째 전]", remainingStops: 2, arrivalCode: null, route: "100100185" }),
+              ],
+            }),
+          } as Response;
+        }
+        return { ok: true, json: async () => ({ mode: "seoulBus", status: "empty", rawCount: 0 }) } as Response;
+      }),
+    );
+    const LANE_ROUTE: TransitRoute = {
+      summary: { totalMinutes: 12, fare: 1500, transfers: 0, walkMinutes: 0 },
+      routeKey: "p0",
+      legs: [
+        {
+          mode: "bus",
+          lineName: "1711",
+          fromName: "소공동주민센터",
+          toName: "광화문역2번출구.KT광화문지사",
+          stationCount: 3,
+          minutes: 8,
+          serviceRouteId: "100100185",
+          serviceCityCode: 1000,
+          stops: [
+            { name: "소공동주민센터", lat: 37.564, lng: 126.979, cityCode: "1000", arsId: "02001", localId: "100000118" },
+            { name: "광화문역2번출구.KT광화문지사", lat: 37.5716, lng: 126.9769, cityCode: "1000", arsId: "01120", localId: "100000200" },
+          ],
+          lanes: [
+            { lineName: "1711", serviceRouteId: "100100185", serviceCityCode: 1000 },
+            { lineName: "7016", serviceRouteId: "100100447", serviceCityCode: 1000 },
+          ],
+        },
+      ],
+    };
+    render(<TransitGuidePanelHost route={LANE_ROUTE} triggerLabel="시작" walkAccessible={false} />);
+    fireEvent.click(screen.getByRole("button", { name: "시작" }));
+    // 대기 문맥이 집합 전부를 말하고, 후보 줄은 번호가 맨 앞이다.
+    expect((await screen.findAllByText(/waitContextBus:소공동주민센터,1711, 7016/)).length).toBeGreaterThan(0);
+    const pick = await screen.findByRole("button", { name: /selectBus:7016, 3분후\[1번째 전\]/ });
+    expect(screen.getByRole("button", { name: /selectBus:1711, 13분후\[2번째 전\]/ })).toBeTruthy();
+    expect(urls[0]).toContain("phase=wait&arsId=02001&routeIds=100100185,100100447&");
+    const before = urls.length;
+    clickFocused(pick);
+    // 고른 차량의 노선 하나로 승차 정류소를 지켜본다(집합이 아니다).
+    await waitFor(() => expect(urls.length).toBeGreaterThan(before));
+    expect(urls[before]).toContain("phase=wait&arsId=02001&routeId=100100447&");
+    // 상시 표시 문맥도 고른 노선을 말한다.
+    expect((await screen.findAllByText(/boardingContextBus:소공동주민센터,7016/)).length).toBeGreaterThan(0);
+  });
+
   it("경유역 목록(§14.1): disclosure 정적 표시 + 승차·하차 라벨 + 현재 위치 병치", async () => {
     vi.stubGlobal(
       "fetch",

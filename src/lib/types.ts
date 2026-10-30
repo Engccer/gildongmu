@@ -448,6 +448,26 @@ export interface TransitLeg {
    * 않는다. 없는 쪽은 키 부재, 둘 다 없으면 `exit` 자체 부재.
    */
   exit?: { board?: string; alight?: string };
+  /**
+   * 같은 승차·하차 정류소 쌍을 잇는 버스 노선 전부(E76, ODsay `subPath.lane[]`). **버스 leg·`lanes=1` 옵트인에만**,
+   * 쓸 수 있는 노선이 둘 이상일 때만 싣는다(하나면 키 부재 — 그 하나는 이미 `lineName`이다).
+   * 첫 항목은 언제나 이 leg 자신(`lineName`·`serviceRouteId`와 같은 값)이고 나머지는 ODsay 순서다.
+   * 예약 노선(「(예약)」)과 운행 시간 밖으로 판정된 노선은 빠진다(정보 없음은 남긴다 — 3-state).
+   * spec `2026-10-31-e76-bus-lane-set-design.md`.
+   */
+  lanes?: TransitLane[];
+}
+
+/** 같은 정류소 쌍을 잇는 버스 노선 하나(E76). 필드 뜻은 `TransitLeg`의 같은 이름 필드와 같다. */
+export interface TransitLane {
+  /** 버스 번호 한국어 원문(ODsay busNo — en 응답은 busNoKor) */
+  lineName: string;
+  /** 영문 번호(`lang=en`에만) */
+  lineNameEn?: string;
+  /** ODsay busLocalBlID(서울은 TOPIS busRouteId와 같은 값) — 대기 폴 노선 집합의 키 */
+  serviceRouteId?: string;
+  /** ODsay busCityCode(서울=1000) */
+  serviceCityCode?: number;
 }
 
 /**

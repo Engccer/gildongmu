@@ -9,6 +9,8 @@ import {
   aboardCandidates,
   boardingObservationLost,
   isUnobservedTransitLock,
+  laneForItem,
+  legWithLane,
   pollIntervalMs,
   subwayIdForOdsayLine,
   transitGuideStep,
@@ -175,6 +177,12 @@ export function trackTargetUrl(
   if (mode === "seoulBus") {
     if (atBoardStop) {
       if (!leg.boardStop?.arsId || !leg.routeId) return null;
+      // 대기 국면은 같은 하차 정류소에 서는 노선 전부의 도착을 받는다(E76). boarding은 고른 차량의 노선
+      // 하나다 — 그 국면의 leg는 이미 고른 노선으로 바뀌어 있다(`legWithLane`).
+      if (phase === "waiting" && leg.lanes && leg.lanes.length >= 2) {
+        const ids = leg.lanes.map((lane) => encodeURIComponent(lane.key)).join(",");
+        return `/api/transit/track?mode=seoulBus&phase=wait&arsId=${encodeURIComponent(leg.boardStop.arsId)}&routeIds=${ids}&lang=${lang}`;
+      }
       return `/api/transit/track?mode=seoulBus&phase=wait&arsId=${encodeURIComponent(leg.boardStop.arsId)}&routeId=${encodeURIComponent(leg.routeId)}&lang=${lang}`;
     }
     if (!leg.boardStop?.localId || !leg.alightStop?.localId || !leg.routeId) return null;
@@ -416,6 +424,28 @@ export function useTransitGuide(
     const r = routeRef.current;
     if (!s || !r) return null;
     return r.legs[s.legIndex] ?? null;
+  }, []);
+
+  /**
+   * 현재 leg를 노선 집합(E76)의 한 노선으로 바꾼다 — 세션 경로(`routeRef`·`sessionRoute`)를 고쳐 쓰므로 이후 폴 URL·
+   * 상태 문장·통지가 전부 그 노선을 읽는다. 집합 밖 키·이미 그 노선이면 아무것도 하지 않는다. 바뀐 leg를 돌려준다.
+   * ⚠ 잠금(`board`) **전에** 부른다 — 잠금 직후 즉폴이 바뀌기 전 노선으로 나가면 다른 노선 하차 추적을 시작한다.
+   */
+  const selectLane = useCallback((key: string): TransitGuideLeg | null => {
+    const s = stateRef.current;
+    const r = routeRef.current;
+    const leg = s && r ? (r.legs[s.legIndex] ?? null) : null;
+    if (!s || !r || !leg) return leg;
+    const lane = leg.lanes?.find((l) => l.key === key);
+    if (!lane || lane.key === leg.routeId) return leg;
+    const next = legWithLane(leg, lane);
+    const nextRoute: TransitGuideRoute = {
+      ...r,
+      legs: r.legs.map((l, i) => (i === s.legIndex ? next : l)),
+    };
+    routeRef.current = nextRoute;
+    setSessionRoute(nextRoute);
+    return next;
   }, []);
 
   /** 세션의 데이터 언어(E27 잔여 ①) — 화면·통지가 같은 축을 쓴다. */
@@ -1381,19 +1411,22 @@ export function useTransitGuide(
    */
   const boardCandidate = useCallback(
     (candidate: BoardingCandidate, description: TransitLabel | null) => {
-      const leg = currentLeg();
-      if (!leg?.trackMode) return;
+      const current = currentLeg();
+      if (!current?.trackMode) return;
       // 선택 진입점의 차단 재판정(A16 L1, 설계 리뷰 2차 #3) — 버튼 유무에만 기대지 않는다.
-      if (unreachableReason(candidate.item, leg)) return;
+      if (unreachableReason(candidate.item, current)) return;
+      // 노선 집합(E76): 고른 차량의 노선으로 leg를 바꾼 뒤 잠근다 — 승차·추적이 그 노선으로 잠긴다.
+      const lane = laneForItem(current, candidate.item);
+      const leg = (lane ? selectLane(lane.key) : null) ?? current;
       setSelectedDescription(description);
       board({
-        mode: leg.trackMode,
+        mode: current.trackMode,
         routeId: leg.routeId ?? subwayIdForOdsayLine(leg.lineName) ?? "",
         direction: candidate.item.direction,
         vehicleId: candidate.item.vehicleId ?? "",
       });
     },
-    [board, currentLeg, setSelectedDescription],
+    [board, currentLeg, selectLane, setSelectedDescription],
   );
 
   /** "선택한 열차에 탔어요"(boarding → riding 사용자 선언, N3 ① — 관측이 끝난 뒤에만 낼 수 있다). */
@@ -1506,10 +1539,14 @@ export function useTransitGuide(
    * 탄 사용자가 승차 정류소 폴링으로 되돌아간다(설계 리뷰 M5) — 전용 입력이 정본.
    */
   const cancelChangeBoarding = useCallback(() => {
-    if (!stateRef.current?.previousLock) return;
+    const previous = stateRef.current?.previousLock;
+    if (!previous) return;
+    // 노선 집합(E76): 변경 중에 다른 노선을 골랐다 취소하면 leg도 직전 잠금의 노선으로 돌아가야 한다
+    // (서울버스 잠금의 routeId가 그 노선 키다 — 집합 밖·단일 노선이면 아무것도 하지 않는다).
+    if (previous.mode === "seoulBus") selectLane(previous.routeId);
     dispatch({ kind: "restoreBoarding" });
     requestImmediatePoll();
-  }, [dispatch, requestImmediatePoll]);
+  }, [dispatch, requestImmediatePoll, selectLane]);
 
   /** "이미 탔어요"(§13.2) — 식별자 없는 근사 잠금(tagoBus 계약 동형). */
 

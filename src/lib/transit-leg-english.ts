@@ -20,7 +20,26 @@ export function transitLegUsesEnglish(leg: TransitLeg, english: boolean): boolea
   if (!english) return false;
   const present = (ko: string | undefined, en: string | undefined) => nonBlank(ko) === null || nonBlank(en) !== null;
   if (leg.mode === "walk") return present(leg.toName, leg.toNameEn);
-  return nonBlank(leg.lineNameEn) !== null && present(leg.fromName, leg.fromNameEn) && present(leg.toName, leg.toNameEn);
+  // 노선 집합(E76)은 한 조각으로 읽히므로 모든 노선의 영문이 있어야 영어 줄이다(한 조각 안에서 언어를 섞지 않는다).
+  const lanesEn = (leg.lanes ?? []).every((lane) => nonBlank(lane.lineNameEn) !== null);
+  return (
+    nonBlank(leg.lineNameEn) !== null &&
+    lanesEn &&
+    present(leg.fromName, leg.fromNameEn) &&
+    present(leg.toName, leg.toNameEn)
+  );
+}
+
+/**
+ * 탑승 줄이 부르는 노선 조각(E76). 같은 정류소 쌍을 잇는 노선 집합이 있으면 그 번호 전부를 쉼표로 이은 한 조각
+ * (「1711, 1020, 7016」 — 문장 틀은 그대로 「…번 버스」), 없으면 그 leg의 노선 하나.
+ */
+function lineOf(leg: TransitLeg, en: boolean): string | null {
+  if (leg.lanes && leg.lanes.length >= 2) {
+    const names = leg.lanes.map((lane) => nonBlank(en ? lane.lineNameEn : lane.lineName));
+    if (names.every((n): n is string => n !== null)) return names.join(", ");
+  }
+  return nonBlank(en ? leg.lineNameEn : leg.lineName);
 }
 
 /** 탑승 줄이 부르는 노선·승차·하차 이름 — 영어 줄이면 셋 다 영문, 아니면 셋 다 한국어 원문. 부재는 null. */
@@ -31,7 +50,7 @@ export function transitBoardLegNames(
   const en = transitLegUsesEnglish(leg, english);
   return {
     english: en,
-    line: nonBlank(en ? leg.lineNameEn : leg.lineName),
+    line: lineOf(leg, en),
     from: nonBlank(en ? leg.fromNameEn : leg.fromName),
     to: nonBlank(en ? leg.toNameEn : leg.toName),
   };

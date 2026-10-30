@@ -122,6 +122,8 @@ export interface SeoulTrackSlot {
   /** 잔여 정거장(§6.2 추출): staOrd−sectOrd 구조 필드 우선, 부재 시 arrmsg 패턴. */
   remainingStops: number | null;
   lowFloor: boolean;
+  /** 노선 ID 원문(busRouteId). 노선 집합 대기 폴(E76)이 항목의 노선을 밝히는 축 — 없으면 "". */
+  routeId: string;
 }
 
 /**
@@ -161,18 +163,23 @@ function slotToTrack(it: RawItem, slot: "1" | "2", staOrd: number): SeoulTrackSl
     message,
     remainingStops: structural ?? remainingFromArrmsg(message),
     lowFloor: str(it[`busType${slot}`]) === "1",
+    routeId: str(it.busRouteId),
   };
 }
 
 /**
  * 도착 응답(getStationByUid·getArrInfoByRoute 공통 형태) → 추적 슬롯.
- * routeId를 주면 그 노선(busRouteId) 항목만. 슬롯2는 메시지가 슬롯1과 다를 때만
- * (parseSeoulArrivals의 중복 제거 관례 동형).
+ * routeId를 주면 그 노선(busRouteId) 항목만, 집합을 주면 그 노선들 항목만(E76). 슬롯2는 메시지가
+ * 슬롯1과 다를 때만(parseSeoulArrivals의 중복 제거 관례 동형).
  */
-export function parseSeoulTrackSlots(raw: unknown, routeId?: string): SeoulTrackSlot[] {
+export function parseSeoulTrackSlots(
+  raw: unknown,
+  routeId?: string | ReadonlySet<string>,
+): SeoulTrackSlot[] {
   const out: SeoulTrackSlot[] = [];
   for (const it of parseSeoulItems(raw)) {
-    if (routeId && str(it.busRouteId) !== routeId) continue;
+    const id = str(it.busRouteId);
+    if (typeof routeId === "string" ? routeId && id !== routeId : routeId && !routeId.has(id)) continue;
     const staOrd = numF(it.staOrd);
     const first = slotToTrack(it, "1", staOrd);
     if (!first) continue;
@@ -274,7 +281,7 @@ export async function fetchSeoulRouteStops(
 /** 승차 대기(B2 waiting): 정류소 전 노선 도착에서 그 노선 슬롯만(vehId 보존). */
 export async function fetchSeoulWaitSlots(
   arsId: string,
-  routeId: string,
+  routeId: string | ReadonlySet<string>,
 ): Promise<{ slots: SeoulTrackSlot[]; rawCount: number }> {
   if (!env.DATA_GO_KR_API_KEY) return { slots: [], rawCount: 0 };
   const raw = await fetchSeoul("stationinfo/getStationByUid", { arsId });

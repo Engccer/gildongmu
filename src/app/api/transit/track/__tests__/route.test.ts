@@ -14,6 +14,7 @@ vi.mock("@/lib/transit-track", () => ({
   })),
   trackTago: vi.fn(async () => ({ status: "ok", items: [] })),
   trackSubway: vi.fn(async () => ({ status: "unsupported" })),
+  SEOUL_WAIT_ROUTE_SET_MAX: 12,
 }));
 
 import { GET } from "../route";
@@ -45,6 +46,32 @@ describe("GET /api/transit/track — 판별 union(B2 §7)", () => {
     expect(body.mode).toBe("seoulBus");
     expect(body.status).toBe("ok");
     expect(trackSeoulWait).toHaveBeenCalledWith({ arsId: "24101", routeId: "227000006", lang: "ko" });
+  });
+
+  it("seoulBus wait 노선 집합(E76): 쉼표 목록을 중복 제거해 서비스로 전달", async () => {
+    const res = await GET(
+      makeRequest({ mode: "seoulBus", phase: "wait", arsId: "02001", routeIds: "100100185,100100447, 100100185" }),
+    );
+    expect(res.status).toBe(200);
+    expect(trackSeoulWait).toHaveBeenCalledWith({
+      arsId: "02001",
+      routeIds: ["100100185", "100100447"],
+      lang: "ko",
+    });
+  });
+
+  it("seoulBus wait: routeId·routeIds 둘 다, 둘 다 없음, 빈 항목, 상한 초과는 400(서비스 미호출)", async () => {
+    const cases: Record<string, string>[] = [
+      { routeId: "A", routeIds: "A,B" },
+      {},
+      { routeIds: "A,,B" },
+      { routeIds: Array.from({ length: 13 }, (_, i) => `R${i}`).join(",") },
+    ];
+    for (const extra of cases) {
+      const res = await GET(makeRequest({ mode: "seoulBus", phase: "wait", arsId: "1", ...extra }));
+      expect(res.status).toBe(400);
+    }
+    expect(trackSeoulWait).not.toHaveBeenCalled();
   });
 
   it("seoulBus ride: boardId·alightId를 로컬 ID로 매핑", async () => {

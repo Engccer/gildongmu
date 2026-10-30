@@ -4,11 +4,11 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { FocusEvent } from "react";
 import { useTranslations } from "next-intl";
 import { useTransitGuide } from "@/hooks/useTransitGuide";
-import { isApproxTransitLock, needsExpressPrompt } from "@/lib/transit-guide";
+import { isApproxTransitLock, laneForItem, needsExpressPrompt } from "@/lib/transit-guide";
 import type { TransitGuideLeg, TransitPrewalkTarget } from "@/lib/transit-guide";
 import type { TransitRoute } from "@/lib/types";
 import { joinText } from "@/lib/format";
-import { transitDisplayItem, transitDisplayLeg, type TransitLabel } from "@/lib/transit-display";
+import { laneLabel, transitDisplayItem, transitDisplayLeg, type TransitLabel } from "@/lib/transit-display";
 import {
   candidateDescLine,
   expressSkipsAlightLine,
@@ -499,9 +499,12 @@ export function TransitGuidePanel({
                       const displayLeg = transitDisplayLeg(leg, null);
                       const displayItem = transitDisplayItem(item);
                       // 차단 행은 급행 조각을 빼고 사유 줄만 결정 문장으로 둔다(a11y 감사 2026-09-02).
+                      // 노선 집합(E76): 같은 하차 정류소에 서는 노선 전부의 도착이라 줄 맨 앞에 노선 번호를 싣는다.
+                      const lane = laneForItem(leg, item);
                       const descLine = candidateDescLine(isEn, displayLeg, displayItem, {
                         express: option.candidate.unreachable ? null : option.candidate.express,
                         departedMinutes: option.departedMinutes,
+                        route: lane ? laneLabel(lane) : null,
                       });
                       const desc = render(descLine);
                       if (option.candidate.unreachable) {

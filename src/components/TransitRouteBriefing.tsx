@@ -65,7 +65,7 @@ export function TransitRouteBriefing({
       // `lang=en`은 ODsay `lang=1` 영문을 `*En`에 additive로 받는다(E27 — 종전 "무료 티어 국문 전용"
       // 주석은 2026-08-31 실호출로 폐기). 한국어 필드는 그대로라 ko는 종전 URL과 같다.
       const res = await fetch(
-        `/api/route/transit?origin=${originLat},${originLng}&dest=${dest.lat},${dest.lng}&lang=${dataLocale(locale)}`,
+        `/api/route/transit?origin=${originLat},${originLng}&dest=${dest.lat},${dest.lng}&lanes=1&lang=${dataLocale(locale)}`,
       );
       const body = await res.json();
       if (myReq !== reqId.current) return; // stale 응답 폐기

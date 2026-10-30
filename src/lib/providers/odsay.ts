@@ -21,6 +21,7 @@ import { fetchExpressStopsMap } from "./odsay-express-stops";
 import { attachExpressStops, expressLinesIn, type ExpressStopSet } from "../express-stops";
 import type {
   Coord,
+  TransitLane,
   TransitLeg,
   TransitLegStop,
   TransitModeAxis,
@@ -339,12 +340,45 @@ function quickExitFor(sp: OdsaySubPath, kind: AlightKind, lang: OdsayLang) {
     : null;
 }
 
+/** 예약 노선 표기(「M4108(예약)」) — 정류소에서 그냥 탈 수 없어 노선 집합 후보가 아니다(E76). */
+const RESERVATION_LANE = /\(예약\)/;
+
+/**
+ * 같은 정류소 쌍을 잇는 버스 노선 집합(E76, spec `2026-10-31-e76-bus-lane-set-design.md` §2).
+ * 첫 항목은 `lane[0]`(= leg 자신)이고, 번호가 없거나 예약 노선이거나 앞과 같은 노선은 뺀다.
+ * 둘 미만이면 null(키 부재 — 하나뿐인 집합은 `lineName`이 이미 말한다). 운행 시간 판정은 뒤 단계 몫.
+ */
+export function busLanesOf(sp: OdsaySubPath, lang: OdsayLang): TransitLane[] | null {
+  if (sp.trafficType !== 2 || !Array.isArray(sp.lane)) return null;
+  const en = lang === "en";
+  const seen = new Set<string>();
+  const out: TransitLane[] = [];
+  sp.lane.forEach((lane, i) => {
+    const lineName = String((en ? lane.busNoKor : lane.busNo) ?? "").trim();
+    if (!lineName) return;
+    // lane[0]은 leg 자신이라 예약 표기여도 남긴다(그것을 빼면 첫 항목 = leg 계약이 깨진다).
+    if (i > 0 && RESERVATION_LANE.test(lineName)) return;
+    const id = lane.busLocalBlID ? String(lane.busLocalBlID) : "";
+    const key = id || `name:${lineName}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    const lineNameEn = en ? toDisplayEnglish(lane.busNo) : undefined;
+    out.push({
+      lineName,
+      ...(lineNameEn ? { lineNameEn } : {}),
+      ...(id && lane.busCityCode != null ? { serviceRouteId: id, serviceCityCode: lane.busCityCode } : {}),
+    });
+  });
+  return out.length >= 2 ? out : null;
+}
+
 function toLeg(
   sp: OdsaySubPath,
   includeStops: boolean,
   boardKind: "entry" | "inStation",
   alightKind: AlightKind,
   lang: OdsayLang,
+  includeLanes: boolean,
 ): TransitLeg {
   const minutes = sp.sectionTime ?? 0;
   if (sp.trafficType === 3) {
@@ -359,6 +393,8 @@ function toLeg(
   // 출구 번호는 `stops`와 같은 옵트인 경계(includeStops)에만 — 낭독 소비자(웹·iOS)가 같고 CLI/MCP 미지정
   // 응답은 byte-identical을 유지한다(spec §2).
   const exit = mode === "subway" && includeStops ? exitOf(sp, boardKind, alightKind) : null;
+  // 노선 집합(E76)은 `lanes=1` 옵트인에만 — 미지정 응답은 byte-identical(CLI·MCP·채팅 무변화).
+  const lanes = mode === "bus" && includeLanes ? busLanesOf(sp, lang) : null;
   const en = lang === "en";
   // 한국어 정본: ko 응답은 원래 필드, en 응답은 `*Kor`(원래 필드가 영문이다).
   const lineName = mode === "subway" ? (en ? lane?.nameKor : lane?.name) : en ? lane?.busNoKor : lane?.busNo;
@@ -396,6 +432,7 @@ function toLeg(
     // 판정 불가·미커버·시설 없음은 전부 키 부재(3-state, E5 §7).
     ...(quickExit ? { quickExit } : {}),
     ...(exit ? { exit } : {}),
+    ...(lanes ? { lanes } : {}),
   };
 }
 
@@ -404,6 +441,7 @@ function toTransitRoute(
   includeStops: boolean,
   routeKey: string,
   lang: OdsayLang,
+  includeLanes: boolean,
 ): TransitRoute {
   // 거리 0 도보는 역내 환승 통로다(실호출 검증: {trafficType:3, distance:0,
   // sectionTime:1~3}). 환승은 노선 전환·transfers로 이미 표현되므로 leg
@@ -413,7 +451,7 @@ function toTransitRoute(
   const legs = path.subPath
     .map((sp, i) => ({ sp, board: boardKindAt(path.subPath, i), kind: alightKindAt(path.subPath, i) }))
     .filter(({ sp }) => !(sp.trafficType === 3 && (sp.distance ?? 0) === 0))
-    .map(({ sp, board, kind }) => toLeg(sp, includeStops, board, kind, lang));
+    .map(({ sp, board, kind }) => toLeg(sp, includeStops, board, kind, lang, includeLanes));
 
   // 도보 구간의 행선지 유도: 그 뒤 첫 탑승 구간의 fromName.
   // ⚠ 환승 통로 필터 **뒤**의 배열에서 돈다. 필터 전에 돌면 0m 통로가 사이에 끼어
@@ -482,7 +520,7 @@ function vehicleOf(path: OdsayPath): TransitVehicle | undefined {
  */
 export function normalizeOdsayRoutes(
   data: OdsayResponse,
-  opts?: { includeStops?: boolean; lang?: OdsayLang; keyPrefix?: string },
+  opts?: { includeStops?: boolean; includeLanes?: boolean; lang?: OdsayLang; keyPrefix?: string },
 ): TransitRoute[] | null {
   const err = readOdsayError(data.error);
   if (err) {
@@ -497,7 +535,13 @@ export function normalizeOdsayRoutes(
   }
   if (paths.length === 0) return null;
   return paths.map((p, i) =>
-    toTransitRoute(p, opts?.includeStops === true, `${opts?.keyPrefix ?? "p"}${i}`, opts?.lang ?? "ko"),
+    toTransitRoute(
+      p,
+      opts?.includeStops === true,
+      `${opts?.keyPrefix ?? "p"}${i}`,
+      opts?.lang ?? "ko",
+      opts?.includeLanes === true,
+    ),
   );
 }
 
@@ -518,6 +562,28 @@ function formatHHMM(minutes: number): string {
  * ⚠ 버스·지하철 leg는 조인 키가 없어도 반드시 상태를 갖는다(조회 불가는 unknown).
  *   정렬엔 안 쓰지만 `unknown` 표기 3-state는 상태가 있어야 성립한다.
  */
+/**
+ * 노선 집합에서 운행 시간 밖으로 **판정된** 노선을 뺀다(E76 §2.3). 첫 항목(leg 자신)은 남긴다 — 그 상태는
+ * leg의 `serviceStatus`가 이미 말하고 강등 정렬이 처리한다. 판정 불가(시간표 없음·조회 실패)는 남긴다:
+ * 탈 수 있는 노선을 근거 없이 지우면 고를 수 있는 것이 사라진다(3-state). 둘 미만이 되면 키 부재.
+ */
+function withRunningLanes(
+  leg: TransitLeg,
+  lanes: TransitLane[],
+  busHours: Map<string, ServiceHours>,
+  nowMinutes: number,
+): TransitLeg {
+  const kept = lanes.filter((lane, i) => {
+    if (i === 0) return true;
+    const h = lane.serviceRouteId ? busHours.get(lane.serviceRouteId) : undefined;
+    return !h || judgeServiceStatus(nowMinutes, h.firstMinutes, h.lastMinutes) !== "outside";
+  });
+  if (kept.length >= 2) return { ...leg, lanes: kept };
+  const rest: TransitLeg = { ...leg };
+  delete rest.lanes;
+  return rest;
+}
+
 export function annotateServiceStatus(
   routes: TransitRoute[],
   busHours: Map<string, ServiceHours>,
@@ -546,12 +612,13 @@ export function annotateServiceStatus(
       const status: ServiceStatus = h
         ? judgeServiceStatus(nowMinutes, h.firstMinutes, h.lastMinutes)
         : "unknown";
-      return {
+      const annotated: TransitLeg = {
         ...leg,
         serviceStatus: status,
         ...(h?.firstMinutes != null ? { firstServiceTime: formatHHMM(h.firstMinutes) } : {}),
         ...(h?.lastMinutes != null ? { lastServiceTime: formatHHMM(h.lastMinutes) } : {}),
       };
+      return leg.lanes ? withRunningLanes(annotated, leg.lanes, busHours, nowMinutes) : annotated;
     }),
   });
 
@@ -600,6 +667,8 @@ export async function getTransitCandidates(params: {
   origin: Coord;
   dest: Coord;
   includeStops?: boolean;
+  /** 버스 노선 집합 옵트인(E76) — `TransitLeg.lanes`. */
+  includeLanes?: boolean;
   lang?: OdsayLang;
   modeAxis?: TransitModeAxis;
 }): Promise<{ ranked: TransitRoute[] } | null> {
@@ -617,6 +686,7 @@ export async function getTransitCandidates(params: {
   // 0단계 정규화(전체). 봉투 3-state는 normalizeOdsayRoutes가 담당한다.
   const normalized = normalizeOdsayRoutes(data, {
     includeStops: params.includeStops,
+    includeLanes: params.includeLanes,
     lang,
     ...(modeAxis ? { keyPrefix: modeAxis === "busOnly" ? "b" : "s" } : {}),
   });
@@ -636,6 +706,14 @@ export async function getTransitCandidates(params: {
       ? [{ localId: l.serviceRouteId, cityCode: l.serviceCityCode, routeNo: l.lineName ?? "" }]
       : [],
   );
+  // 노선 집합(E76)의 나머지 노선도 같은 시간표 조회를 지난다(중복 제거·24시간 캐시 — 옵트인 응답에만 생긴다).
+  const laneRefs = allLegs.flatMap((l) =>
+    (l.lanes ?? []).slice(1).flatMap((lane) =>
+      lane.serviceRouteId && lane.serviceCityCode != null
+        ? [{ localId: lane.serviceRouteId, cityCode: lane.serviceCityCode, routeNo: lane.lineName }]
+        : [],
+    ),
+  );
   const subwayRefs = allLegs.flatMap((l) =>
     l.mode === "subway" && l.fromName && l.lineName && l.serviceWayCode != null
       ? [{ stationName: l.fromName, lineName: l.lineName, wayCode: l.serviceWayCode }]
@@ -644,7 +722,7 @@ export async function getTransitCandidates(params: {
   // 급행 정차역 집합(A16 L1)은 `stops`와 같은 옵트인 경계 — 실시간 안내의 viaStops가 stops에서 나오므로
   // 급행 판정이 성립하는 소비자가 정확히 includeStops 소비자다. 실패·미지 노선은 부재(거짓 집합보다 부재).
   const [busHours, subwayHours, expressSets] = await Promise.all([
-    fetchServiceHoursMap(refs),
+    fetchServiceHoursMap([...refs, ...laneRefs]),
     fetchSubwayServiceHoursMap(subwayRefs),
     params.includeStops ? fetchExpressStopsMap(expressLinesIn(routes)) : new Map<string, ExpressStopSet>(),
   ]);
@@ -674,6 +752,11 @@ export async function getTransitRoute(params: {
    * 않게 접두가 다르다(`b0`·`s0` — 클라이언트가 두 응답을 한 목록에 합친다).
    */
   modeAxis?: TransitModeAxis;
+  /**
+   * 버스 노선 집합 옵트인(E76) — 같은 승차·하차 정류소 쌍을 잇는 노선 전부를 `TransitLeg.lanes`에 싣는다.
+   * 웹·iOS 경로 브리핑과 실시간 안내 대기 목록만 요청한다. 미지정 응답은 byte-identical.
+   */
+  includeLanes?: boolean;
 }): Promise<TransitRouteResult | null> {
   const candidates = await getTransitCandidates(params);
   if (!candidates) return null;

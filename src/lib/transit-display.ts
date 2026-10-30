@@ -10,7 +10,7 @@
  *
  * ⚠ 투영에 `vehicleId`·`routeId`·`arsId`·좌표를 넣지 말 것 — 넣는 순간 표시 계층이 다시 조인할 수 있다.
  */
-import type { TrackItem, TransitGuideLeg } from "./transit-guide";
+import type { TrackItem, TransitGuideLane, TransitGuideLeg } from "./transit-guide";
 import type { TransitLegStop } from "./types";
 
 /** 한 조각의 ko·en 쌍. `en` 부재 = 그 조각의 영문이 없다(그 줄은 통째로 ko). */
@@ -32,6 +32,11 @@ export interface TransitDisplayLeg {
   boardOverridden: boolean;
   /** 하차 출구 번호(E25) — 조인이 아니라 표시 값이라 투영에 둔다. 부재는 키 없음. */
   exitAlight?: string;
+  /**
+   * 노선 집합(E76)의 번호 목록 — 쉼표로 이은 한 조각(「1711, 1020, 7016」). 대기 문맥이 `line` 대신 읽는다.
+   * 영문은 모든 노선의 영문이 있을 때만(한 조각 안에서 언어를 섞지 않는다). 집합이 없으면 키 없음.
+   */
+  laneList?: TransitLabel;
 }
 
 export interface TransitDisplayItem {
@@ -89,7 +94,19 @@ export function transitDisplayLeg(
     walkBeforeMinutes: leg.walkBeforeMinutes,
     boardOverridden: override !== null,
     ...(leg.exitAlight ? { exitAlight: leg.exitAlight } : {}),
+    ...(leg.lanes && leg.lanes.length >= 2 ? { laneList: laneListLabel(leg.lanes) } : {}),
   };
+}
+
+/** 노선 하나의 표시 조각(E76) — 대기 목록 후보 줄 앞머리. */
+export function laneLabel(lane: TransitGuideLane): TransitLabel {
+  return label(lane.lineName, lane.lineNameEn);
+}
+
+function laneListLabel(lanes: TransitGuideLane[]): TransitLabel {
+  const ko = lanes.map((l) => l.lineName).join(", ");
+  const en = lanes.every((l) => l.lineNameEn?.trim()) ? lanes.map((l) => l.lineNameEn).join(", ") : undefined;
+  return label(ko, en);
 }
 
 /** 폴링 항목 → 표시 투영. `message`만 `""`를 자리 표시로 보존한다. */

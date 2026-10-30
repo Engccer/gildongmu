@@ -290,7 +290,7 @@ async function fetchMode(
     // 조회가 실패해 빠진 줄(E52 판정 (나))은 줄 목록 끝의 한 문장이 된다 — "같은 길이라 뺐다"와 가르기 위해.
     return lines.length > 0 ? { kind: "done", mode, lines, failedLines: body.failedLines } : { kind: "empty" };
   }
-  const res = await fetch(`/api/route/transit?${qs}&includeStops=1&lang=${lang}`, { signal });
+  const res = await fetch(`/api/route/transit?${qs}&includeStops=1&lanes=1&lang=${lang}`, { signal });
   if (!res.ok) return { kind: "error" };
   const body = (await res.json()) as { result: unknown };
   if (isOutOfCoverageBody(body)) return { kind: "outOfCoverage" };
@@ -316,7 +316,7 @@ async function fetchTransitRequery(
   const qs = `origin=${origin.lat},${origin.lng}&dest=${dest.lat},${dest.lng}`;
   try {
     const res = await fetch(
-      `/api/route/transit?${qs}&includeStops=1&lang=${lang}&pathType=${axis === "busOnly" ? "2" : "1"}`,
+      `/api/route/transit?${qs}&includeStops=1&lanes=1&lang=${lang}&pathType=${axis === "busOnly" ? "2" : "1"}`,
       { signal },
     );
     if (!res.ok) return { kind: "failed" };

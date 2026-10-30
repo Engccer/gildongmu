@@ -175,7 +175,7 @@ const CASES: {
   },
   {
     fn: candidateDescLine, name: "candidateDescLine(급행·관측 시각 포함)",
-    run: (e) => candidateDescLine(e, LEG, ITEM, { express: "unknown", departedMinutes: 2 }),
+    run: (e) => candidateDescLine(e, LEG, ITEM, { express: "unknown", departedMinutes: 2, route: null }),
     en: {
       parts: [
         { key: "bound", args: ["Hanam"] },
@@ -304,7 +304,7 @@ describe("역방향 — 영문 조각이 하나라도 없으면 그 줄은 통�
         });
       }
       if (hole.item?.destination) {
-        expect(candidateDescLine(true, leg, item, { express: null, departedMinutes: null })).toEqual({
+        expect(candidateDescLine(true, leg, item, { express: null, departedMinutes: null, route: null })).toEqual({
           parts: [
             { key: "bound", args: [`종착${S}`] },
             { text: `방향${S}` },
@@ -322,6 +322,7 @@ describe("역방향 — 영문 조각이 하나라도 없으면 그 줄은 통�
       candidateDescLine(true, LEG, { ...tago, destination: null }, {
         express: null,
         departedMinutes: null,
+        route: null,
       }),
     ).toEqual({ parts: [{ text: "Down" }], lang: "en" });
   });
@@ -418,6 +419,8 @@ function runFixtureCase(c: FixtureCase): TransitTextLine {
       return candidateDescLine(e, c.leg!, c.item!, {
         express: c.express!,
         departedMinutes: c.departedMinutes ?? null,
+        // 노선 조각(E76)은 공유 fixture 밖이다 — Kit 미러가 따라오면 fixture로 옮긴다(spec §7).
+        route: null,
       });
     case "vehicleDesc": return vehicleDescLine(e, c.item!);
     case "terminatesEarly": return terminatesEarlyLine(e, c.leg!, c.item!);
@@ -494,7 +497,7 @@ describe("합성 경로: 서울버스 TrackItem → 투영 → 후보 줄", () =
   it("방향이 구조적 ''이어도 서버가 만든 영문 문장이 살아남는다", () => {
     const leg = transitDisplayLeg(busLeg(), null);
     const item = transitDisplayItem(busTrackItem());
-    expect(candidateDescLine(true, leg, item, { express: null, departedMinutes: null })).toEqual({
+    expect(candidateDescLine(true, leg, item, { express: null, departedMinutes: null, route: null })).toEqual({
       parts: [{ text: "In 6 min 47 sec, 4 stops away" }],
       lang: "en",
     });
@@ -503,7 +506,7 @@ describe("합성 경로: 서울버스 TrackItem → 투영 → 후보 줄", () =
   it("완성 문장 영문이 없으면(행렬 밖) 그 줄만 ko로 떨어진다", () => {
     const leg = transitDisplayLeg(busLeg(), null);
     const item = transitDisplayItem(busTrackItem({ messageEn: undefined }));
-    expect(candidateDescLine(true, leg, item, { express: null, departedMinutes: null })).toEqual({
+    expect(candidateDescLine(true, leg, item, { express: null, departedMinutes: null, route: null })).toEqual({
       parts: [{ text: "6분47초후[4번째 전]" }],
       lang: "ko",
     });
@@ -512,7 +515,7 @@ describe("합성 경로: 서울버스 TrackItem → 투영 → 후보 줄", () =
   it("급행 주석이 붙어도 하차역 영문이 있으면 영어 줄", () => {
     const leg = transitDisplayLeg(busLeg(), null);
     const item = transitDisplayItem(busTrackItem());
-    expect(candidateDescLine(true, leg, item, { express: "unknown", departedMinutes: 2 })).toEqual({
+    expect(candidateDescLine(true, leg, item, { express: "unknown", departedMinutes: 2, route: null })).toEqual({
       parts: [
         { text: "In 6 min 47 sec, 4 stops away" },
         { key: "expressCheck", args: ["Jamsil Stn. Exit 8"] },
@@ -527,7 +530,7 @@ describe("합성 경로: 서울버스 TrackItem → 투영 → 후보 줄", () =
     const item = transitDisplayItem(
       busTrackItem({ vehicleId: null, message: "", messageEn: "", remainingStops: 2 }),
     );
-    expect(candidateDescLine(true, leg, item, { express: null, departedMinutes: null })).toEqual({
+    expect(candidateDescLine(true, leg, item, { express: null, departedMinutes: null, route: null })).toEqual({
       parts: [],
       lang: "en",
     });

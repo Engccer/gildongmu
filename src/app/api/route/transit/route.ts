@@ -25,6 +25,9 @@ const querySchema = z.object({
   // 경유 정류장 옵트인(B2 §7, walk includeGeometry 선례): "1"만 허용, 그 외 400.
   // 미지정 응답은 기존과 byte-호환(stops 키 자체 부재).
   includeStops: z.union([z.literal("1"), z.null()]),
+  // 버스 노선 집합 옵트인(E76): 같은 승차·하차 정류소 쌍을 잇는 노선 전부를 `lanes`에. "1"만 허용, 그 외 400.
+  // 미지정 응답은 종전과 byte-호환(lanes 키 자체 부재).
+  lanes: z.union([z.literal("1"), z.null()]),
   // 응답 언어(E27): en이면 ODsay `lang=1`로 영문을 받아 `*En`에 additive로 싣는다. 한국어 필드는
   // 어느 응답에서도 그대로(조인 키). 미지정·ko는 종전과 byte-identical(CLI/MCP 무변화).
   lang: langParam(),
@@ -41,6 +44,7 @@ export async function GET(request: NextRequest) {
     dest: request.nextUrl.searchParams.get("dest") ?? "",
     via: request.nextUrl.searchParams.get("via"),
     includeStops: request.nextUrl.searchParams.get("includeStops"),
+    lanes: request.nextUrl.searchParams.get("lanes"),
     lang: request.nextUrl.searchParams.get("lang"),
     pathType: request.nextUrl.searchParams.get("pathType"),
   });
@@ -78,6 +82,7 @@ export async function GET(request: NextRequest) {
       origin: parsed.data.origin,
       dest: parsed.data.dest,
       includeStops: parsed.data.includeStops === "1",
+      includeLanes: parsed.data.lanes === "1",
       lang: parsed.data.lang,
       ...(parsed.data.pathType ? { modeAxis: parsed.data.pathType } : {}),
     });

@@ -39,7 +39,7 @@ const SUBWAY_ARRIVAL = {
 describe("실시간 추적 영문 조각 (E27 잔여 ①, spec 2026-09-01 §3.2)", () => {
   it("lang 부재(ko)면 항목 키 집합이 종전과 정확히 같다 — 최대 회귀 방어선", async () => {
     vi.mocked(fetchSeoulWaitSlots).mockResolvedValue({
-      slots: [{ vehicleId: "1", message: "6분47초후[4번째 전]", remainingStops: 4, lowFloor: true }],
+      slots: [{ vehicleId: "1", message: "6분47초후[4번째 전]", remainingStops: 4, lowFloor: true, routeId: "2" }],
       rawCount: 1,
     });
     const ko = await trackSeoulWait({ arsId: "1", routeId: "2", lang: "ko" });
@@ -52,7 +52,7 @@ describe("실시간 추적 영문 조각 (E27 잔여 ①, spec 2026-09-01 §3.2)
 
   it("서울버스 en: messageEn만 붙고 방향·종착역 자리는 만들지 않는다(구조적 부재)", async () => {
     vi.mocked(fetchSeoulWaitSlots).mockResolvedValue({
-      slots: [{ vehicleId: "1", message: "6분47초후[4번째 전]", remainingStops: 4, lowFloor: true }],
+      slots: [{ vehicleId: "1", message: "6분47초후[4번째 전]", remainingStops: 4, lowFloor: true, routeId: "2" }],
       rawCount: 1,
     });
     const en = await trackSeoulWait({ arsId: "1", routeId: "2", lang: "en" });

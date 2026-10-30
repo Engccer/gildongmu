@@ -164,6 +164,61 @@ export interface TransitGuideLeg {
   exitAlight?: string;
   /** 구간 소요 분(ODsay `TransitLeg.minutes`) — Kit 미러(유휴 폴 정지 한계 근거, iOS 전용 소비). */
   minutes?: number;
+  /**
+   * 같은 승차·하차 정류소 쌍을 잇는 노선 전부(E76, 서버 `TransitLeg.lanes`의 안내 투영). 대기 국면은 이 집합 전부의
+   * 도착을 한 목록으로 받고, 차량을 고르면 그 차량의 노선으로 leg가 바뀐다(`legWithLane` — `lineName`·`routeId`).
+   * 순서·내용은 세션 내내 그대로다(첫 항목 = 경로가 추천한 노선). 서울버스 leg에만, 둘 이상일 때만.
+   */
+  lanes?: TransitGuideLane[];
+}
+
+/**
+ * 노선 집합 대기 폴의 상한(E76). ODsay 실측 최대 10(서울역 환승센터 광역버스) + 여유. 서버(`/api/transit/track`
+ * `routeIds`)가 이 값으로 400을 내고 클라이언트(`guideLanesOf`)가 같은 값으로 자른다 — 한쪽만 바꾸면 대기 폴이
+ * 전부 400이 되어 목록이 「조회 실패」에 머문다.
+ */
+export const SEOUL_WAIT_ROUTE_SET_MAX = 12;
+
+/** 안내 leg의 노선 하나(E76). `key`는 대기 폴 항목의 `route`와 맞추는 값(서울버스 busRouteId). */
+export interface TransitGuideLane {
+  lineName: string;
+  lineNameEn?: string;
+  key: string;
+}
+
+/**
+ * 서버 노선 집합 → 안내 노선 집합(E76 §4.1). 서울버스만이다 — 지방버스(TAGO)는 차량 식별자가 없어 고른 노선을
+ * 잠글 수단이 근사 버튼 하나뿐이라 이번 판의 대상이 아니다(spec §6). 키(TOPIS ID)가 없는 노선은 대기 폴이
+ * 찾을 수 없으므로 빼고, 첫 항목이 leg 자신이 아니면(계약 위반) 통째로 버린다.
+ */
+function guideLanesOf(leg: TransitLeg, trackMode: TransitTrackMode | null): TransitGuideLane[] | null {
+  if (trackMode !== "seoulBus" || !leg.lanes || !leg.serviceRouteId) return null;
+  const lanes = leg.lanes.flatMap((lane): TransitGuideLane[] =>
+    lane.serviceRouteId
+      ? [{ lineName: lane.lineName, ...(lane.lineNameEn ? { lineNameEn: lane.lineNameEn } : {}), key: lane.serviceRouteId }]
+      : [],
+  );
+  if (lanes.length < 2 || lanes[0].key !== leg.serviceRouteId) return null;
+  // 상한 밖은 ODsay 순서 뒤쪽부터 버린다(첫 항목 = 추천 노선은 남는다).
+  return lanes.slice(0, SEOUL_WAIT_ROUTE_SET_MAX);
+}
+
+/** 대기 폴 항목의 노선(E76). 집합 폴이 아니거나(항목에 `route` 없음) 집합 밖 키면 null. */
+export function laneForItem(leg: TransitGuideLeg, item: TrackItem): TransitGuideLane | null {
+  if (!leg.lanes || item.route == null) return null;
+  return leg.lanes.find((lane) => lane.key === item.route) ?? null;
+}
+
+/**
+ * 고른 노선으로 바꾼 leg(E76 §4.3). 노선 이름·영문·TOPIS ID만 바뀌고 정류소·경유·집합은 그대로다 —
+ * ODsay가 같은 정류소 쌍으로 묶은 노선들이라 승차·하차 정류소가 같다. 승차 뒤 폴(`phase=ride`)과
+ * 상태 문장·통지가 전부 이 leg를 읽으므로 이 한 자리가 "고른 차량의 노선으로 잠긴다"의 구현이다.
+ */
+export function legWithLane(leg: TransitGuideLeg, lane: TransitGuideLane): TransitGuideLeg {
+  const next: TransitGuideLeg = { ...leg, lineName: lane.lineName, routeId: lane.key };
+  if (lane.lineNameEn) next.lineNameEn = lane.lineNameEn;
+  else delete next.lineNameEn;
+  return next;
 }
 
 /**
@@ -214,6 +269,11 @@ export interface TrackItem {
   directionEn?: string;
   destinationNameEn?: string;
   currentLocationEn?: string;
+  /**
+   * 이 항목의 노선 키(E76, 노선 집합 대기 폴 응답에만 — 서울버스 busRouteId). 소비자는 leg의 `lanes`에서
+   * 같은 키를 찾아 노선 번호를 읽는다(`laneForItem`). 단일 노선 폴엔 부재.
+   */
+  route?: string;
 }
 
 export type TrackPoll =
@@ -563,11 +623,13 @@ export function buildTransitGuideRoute(route: TransitRoute): TransitGuideRoute |
     const boardNameEn = leg.fromName != null ? leg.fromNameEn : boardStop?.nameEn;
     const alightNameEn = leg.toName != null ? leg.toNameEn : alightStop?.nameEn;
     const exitAlight = validExitNo(leg.exit?.alight);
+    const trackMode = classifyTrackMode(leg, boardStop, alightStop);
+    const lanes = guideLanesOf(leg, trackMode);
     legs.push({
       mode: leg.mode,
       lineName: leg.lineName ?? "",
       ...(leg.lineNameEn ? { lineNameEn: leg.lineNameEn } : {}),
-      trackMode: classifyTrackMode(leg, boardStop, alightStop),
+      trackMode,
       boardName: leg.fromName ?? boardStop?.name ?? "",
       ...(boardNameEn ? { boardNameEn } : {}),
       alightName: leg.toName ?? alightStop?.name ?? "",
@@ -584,6 +646,7 @@ export function buildTransitGuideRoute(route: TransitRoute): TransitGuideRoute |
       ...(leg.expressStops?.length ? { expressStops: leg.expressStops } : {}),
       ...(leg.expressStopIds?.length ? { expressStopIds: leg.expressStopIds } : {}),
       ...(exitAlight ? { exitAlight } : {}),
+      ...(lanes ? { lanes } : {}),
     });
     pendingWalk = null;
   }

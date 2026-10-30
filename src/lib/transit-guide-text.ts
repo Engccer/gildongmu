@@ -87,14 +87,16 @@ export function waitContextLine(
 ): TransitTextLine {
   const overridden = isCurrentLeg && leg.boardOverridden;
   const walk = leg.walkBeforeMinutes;
+  // 노선 집합(E76)이 있으면 대기 문맥은 그 전부를 말한다 — 대기 목록이 집합 전부의 도착이다.
+  const lines = leg.laneList ?? leg.line;
   if (!overridden && walk != null && walk > 0) {
-    return line(isEn, modeKey(leg, "waitContextWalk"), [leg.board, leg.line], ([stop, lineName]) => [
+    return line(isEn, modeKey(leg, "waitContextWalk"), [leg.board, lines], ([stop, lineName]) => [
       String(walk),
       stop,
       lineName,
     ]);
   }
-  return line(isEn, modeKey(leg, "waitContext"), [leg.board, leg.line], (v) => v);
+  return line(isEn, modeKey(leg, "waitContext"), [leg.board, lines], (v) => v);
 }
 
 /** boarding 문맥(N3) — 승차 정류소에서 선택 차량을 기다리는 중. */
@@ -332,9 +334,15 @@ export function candidateDescLine(
   isEn: boolean,
   leg: TransitDisplayLeg,
   item: TransitDisplayItem,
-  opts: { express: ExpressVerdict | null; departedMinutes: number | null },
+  opts: {
+    express: ExpressVerdict | null;
+    departedMinutes: number | null;
+    /** 노선 집합 대기 목록(E76)의 그 항목 노선 — 줄 맨 앞(「7018, 3분후[1번째 전]」). 단일 노선이면 null. */
+    route: TransitLabel | null;
+  },
 ): TransitTextLine {
   const labels: TransitLabel[] = [];
+  if (opts.route) labels.push(opts.route);
   if (item.destination) labels.push(item.destination);
   labels.push(item.direction, item.message);
   // 급행 조각(A16 L1): unknown → 종전 "정차 여부 확인 필요", stops → "정차". skips는 조각을 만들지
@@ -345,6 +353,10 @@ export function candidateDescLine(
   const { values, lang } = pickLabels(isEn, labels);
   let i = 0;
   const parts: TransitTextPart[] = [];
+  if (opts.route) {
+    const route = values[i++];
+    if (route) parts.push({ text: route });
+  }
   if (item.destination) parts.push({ key: "bound", args: [values[i++]] });
   const direction = values[i++];
   if (direction) parts.push({ text: direction });

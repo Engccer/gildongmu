@@ -69,7 +69,12 @@ const HANGUL = /[가-힣]/;
  * 신규 호출부가 국면을 빠뜨려도 컴파일이 통과해 조용히 틀린 문장을 낸다
  * ([[no-default-for-safety-parameters]]).
  */
-function slotToItem(slot: SeoulTrackSlot, phase: "wait" | "ride", lang: DataLang): TrackItem {
+function slotToItem(
+  slot: SeoulTrackSlot,
+  phase: "wait" | "ride",
+  lang: DataLang,
+  withRoute: boolean,
+): TrackItem {
   const messageEn = lang === "en" ? busArrivalMessageEnFrom(slot.message, phase) : undefined;
   return {
     vehicleId: slot.vehicleId,
@@ -85,18 +90,48 @@ function slotToItem(slot: SeoulTrackSlot, phase: "wait" | "ride", lang: DataLang
     arrivalCode: null,
     // 방향·종착역은 서울버스에 **구조적으로 없다**(ko도 ""·null) — 영문 자리도 만들지 않는다.
     ...(messageEn ? { messageEn } : {}),
+    // 노선 집합 대기 폴(E76)에만 — 단일 노선 폴 응답은 종전과 byte-identical(기존 앱 디코더 무변화).
+    ...(withRoute && slot.routeId ? { route: slot.routeId } : {}),
   };
 }
 
-/** 승차 대기: 승차 정류소(arsId)의 그 노선 도착 슬롯(vehId 보존 — 잠금 선택지). */
-export async function trackSeoulWait(params: {
-  arsId: string;
-  routeId: string;
-  lang: DataLang;
-}): Promise<TransitTrackResult> {
+/** 노선 집합 대기 폴의 상한(E76) — 정본은 클라이언트와 공유하는 `transit-guide.ts`. */
+export { SEOUL_WAIT_ROUTE_SET_MAX } from "./transit-guide";
+
+/**
+ * 노선 집합 대기 항목 정렬(E76 §3.2): 잔여 정거장 오름차순, 잔여를 모르면 뒤, 같으면 응답 순서(안정 정렬).
+ * 단일 노선 폴은 정렬하지 않는다(종전 순서 = 슬롯1·슬롯2 순서가 그 노선의 도착 순서다).
+ * ⚠ 예상 시각(`traTime`)으로 정렬하지 않는다 — 운행종료에도 비0이라 신뢰 불가다(도착 낭독 정본 규칙).
+ */
+export function sortByRemaining<T extends { remainingStops: number | null }>(items: T[]): T[] {
+  const rank = (n: number | null) => (n == null ? Number.POSITIVE_INFINITY : n);
+  return items
+    .map((item, i) => ({ item, i }))
+    .sort((a, b) => rank(a.item.remainingStops) - rank(b.item.remainingStops) || a.i - b.i)
+    .map(({ item }) => item);
+}
+
+/**
+ * 승차 대기: 승차 정류소(arsId)의 그 노선 도착 슬롯(vehId 보존 — 잠금 선택지).
+ * `routeIds`(E76)를 주면 그 노선들의 도착을 한 목록으로 — 같은 하차 정류소에 서는 노선 전부를 고를 수 있게 —
+ * 항목마다 `route`(busRouteId)를 싣고 잔여순으로 정렬한다. 둘 중 하나만 온다(라우트가 가른다).
+ */
+export async function trackSeoulWait(
+  params: { arsId: string; lang: DataLang } & (
+    | { routeId: string; routeIds?: undefined }
+    | { routeIds: string[]; routeId?: undefined }
+  ),
+): Promise<TransitTrackResult> {
+  if (params.routeIds) {
+    const { slots, rawCount } = await fetchSeoulWaitSlots(params.arsId, new Set(params.routeIds));
+    return withItems(
+      sortByRemaining(slots.map((s) => slotToItem(s, "wait", params.lang, true))),
+      rawCount,
+    );
+  }
   const { slots, rawCount } = await fetchSeoulWaitSlots(params.arsId, params.routeId);
   return withItems(
-    slots.map((s) => slotToItem(s, "wait", params.lang)),
+    slots.map((s) => slotToItem(s, "wait", params.lang, false)),
     rawCount,
   );
 }
@@ -145,7 +180,7 @@ export async function trackSeoulRide(params: {
   const slots = await fetchSeoulRideSlots(alightLocalId, routeId, ord);
   // getArrInfoByRoute는 이미 노선 스코프 조회라 필터가 없다 — rawCount = 항목 수.
   return withItems(
-    slots.map((s) => slotToItem(s, "ride", lang)),
+    slots.map((s) => slotToItem(s, "ride", lang, false)),
     slots.length,
   );
 }
