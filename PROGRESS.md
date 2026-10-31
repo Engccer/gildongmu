@@ -20,9 +20,10 @@
 |---|---|
 | 웹 | https://gildongmu.dodoplanet.space (push = 자동 배포). Cache Components·Partial Prefetching 사용, 첫 낭독 판정은 BACKLOG §2 D35 |
 | iOS | **2.4 `WAITING_FOR_REVIEW`**(빌드 35, 아카이브 커밋 `08dc9950`, 2026-10-28 06:15 KST 심사 제출). 스토어 최신 **2.3 `READY_FOR_SALE`**(빌드 34, 아카이브 커밋 `4649c02e`). 2.4는 안내 제목 행 밀기 동작·경로 새로고침·「지금 여기는 어디?」·한국어 문구 정돈. |
+| iOS 로컬 확인판 | **2.5.0(빌드 36), Release 구성**. E76 버스 노선 집합 선택 구현. 연결 아이폰 설치 완료, 잠금으로 자동 실행 미확인. App Store 제출 전. |
 | iOS 최소 지원 | **18.0**(2026-08-19 하향, 1.10부터 적용 — 스토어 반영 완료) |
 | npm | `gildongmu` · `gildongmu-mcp` **v0.12.0**(2026-10-05, `cli-v0.12.0` 태그 → Trusted Publishing 워크플로 성공, `npm view` 両패키지 0.12.0·SLSA provenance 확인). 미발행 변경 없음 |
-| 저장소 | GitHub **public**(2026-08-17 전환) — https://github.com/Engccer/gildongmu. 코드 MIT, 번들 데이터는 `NOTICE.md`. **모든 커밋이 즉시 공개된다** — 실주소·계측 로그·키를 넣지 않는 규칙은 `CLAUDE.md` 개발 규칙, 재유입 가드는 `public-repo-privacy-guard.test.ts`(목록은 저장소 밖). 과거 기록 정리(히스토리 재작성)는 2026-10-04 완료(커밋 번호가 2026-07-22 이후 전부 바뀌었다. 다른 클론은 재클론, BACKLOG A56·§8) |
+| 저장소 | GitHub **public**(2026-08-17 전환) — https://github.com/Engccer/gildongmu. 코드 MIT, 번들 데이터는 `NOTICE.md`. **모든 커밋이 즉시 공개된다** — 실주소·계측 로그·키를 넣지 않는 규칙은 `CLAUDE.md` 개발 규칙. 과거 기록 정리(히스토리 재작성)는 2026-10-04 완료(커밋 번호가 2026-07-22 이후 전부 바뀌었다. 다른 클론은 재클론, BACKLOG A56·§8) |
 
 - iOS 심사 상태 조회: `node ios/scripts/asc-submit.mjs --check`
 - 미릴리스 iOS 변경량: `git rev-list --count <직전 릴리스 커밋>..HEAD -- ios/` (숫자를 문서에 박지 않는다 — 사흘에 세 번 낡은 이력이 있다)

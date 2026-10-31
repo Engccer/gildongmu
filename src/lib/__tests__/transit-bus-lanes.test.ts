@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   buildTransitGuideRoute,
@@ -207,5 +208,42 @@ describe("경로 브리핑 탑승 줄", () => {
     const partial = { ...en, lanes: [en.lanes![0], { lineName: "7016" }] };
     expect(transitLegUsesEnglish(partial, true)).toBe(false);
     expect(transitBoardLegNames(partial, true).line).toBe("1711, 7016");
+  });
+});
+
+
+describe("iOS 노선 교체는 리듀서가 입력을 받는 상태에서만 실행한다", () => {
+  const model = readFileSync("ios/Gildongmu/Directions/TransitGuideModel.swift", "utf8");
+
+  it("선택은 waiting이면서 추적 가능할 때만 경로를 바꾼다", () => {
+    const body = model.slice(model.indexOf("    func board(item:"), model.indexOf("    /// 선택 차량 설명"));
+    const gate = "guard let state, state.phase == .waiting, state.signal != .untrackable else { return }";
+    expect(body).toContain(gate);
+    expect(body.indexOf(gate)).toBeLessThan(body.indexOf("transitLegWithLane("));
+    expect(body.indexOf("replaceCurrentLeg(leg)")).toBeLessThan(body.indexOf("dispatch(.board(lock))"));
+  });
+
+  it("변경 취소도 waiting일 때만 원래 노선으로 복귀한다", () => {
+    const body = model.slice(model.indexOf("    func cancelChangeBoarding()"), model.indexOf('    /// "이미 탔어요"'));
+    const gate = "guard let state, state.phase == .waiting, let previous = state.previousLock else { return }";
+    expect(body).toContain(gate);
+    expect(body.indexOf(gate)).toBeLessThan(body.indexOf("replaceCurrentLeg("));
+    expect(body.indexOf("replaceCurrentLeg(")).toBeLessThan(body.indexOf("dispatch(.restoreBoarding)"));
+  });
+});
+
+describe("웹 노선 교체의 상태 경계", () => {
+  const hook = readFileSync("src/hooks/useTransitGuide.ts", "utf8");
+  it("오래된 후보 선택은 노선을 바꾸기 전에 거절한다", () => {
+    const body = hook.slice(hook.indexOf("  const boardCandidate ="), hook.indexOf("  const confirmBoarded ="));
+    const guard = 'if (state?.phase !== "waiting" || state.signal === "untrackable") return;';
+    expect(body).toContain(guard);
+    expect(body.indexOf(guard)).toBeLessThan(body.indexOf("selectLane(lane.key)"));
+  });
+  it("대기가 끝난 뒤 취소 콜백은 원래 노선을 덮어쓰지 않는다", () => {
+    const body = hook.slice(hook.indexOf("  const cancelChangeBoarding ="), hook.indexOf("  const boardAlready ="));
+    const guard = 'if (stateRef.current?.phase !== "waiting") return;';
+    expect(body).toContain(guard);
+    expect(body.indexOf(guard)).toBeLessThan(body.indexOf("selectLane(previous.routeId)"));
   });
 });

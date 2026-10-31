@@ -12,6 +12,22 @@
 
 ---
 
+## 2.5 (빌드 36)
+
+### ko
+
+```
+- 같은 정류소에서 같은 하차 정류소로 가는 버스 노선을 경로 안내에 함께 표시합니다.
+- 서울버스 안내에서 여러 노선의 도착 정보를 한 목록으로 확인하고, 탈 버스를 고를 수 있습니다. 버스를 고르면 해당 노선으로 승차와 하차를 안내합니다.
+```
+
+### en
+
+```
+- Route directions now show bus routes that share the same boarding and alighting stops.
+- In Seoul bus guidance, view arrivals for these routes in one list and choose your bus. Boarding and alighting guidance then follows the route you selected.
+```
+
 ## 2.4 (빌드 35)
 
 기준은 2.3 아카이브 커밋 `4649c02e`(빌드 34)이며 이후 `ios/` 커밋 17건을 판정했다. 정식판에 안내 제목 행의 밀기 동작과 경로 새로고침, 현재 위치 주변을 함께 보는 화면이 추가된다.

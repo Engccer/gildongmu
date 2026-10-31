@@ -113,7 +113,7 @@ IP 레이트리밋 60초 10회 + fetch 단위 `revalidate 300`(카카오, GET이
 
 ### 버스 노선 집합은 첫 항목이 leg 자신이고, 고르면 leg가 그 노선으로 바뀐다
 
-**버스 노선 집합은 첫 항목이 leg 자신이고, 고르면 leg가 그 노선으로 바뀐다**(E76, 2026-10-31, spec `2026-10-31-e76-bus-lane-set-design.md`): ODsay `subPath.lane[]`은 같은 정류소 쌍을 잇는 노선 묶음이다(종전엔 `lane[0]`만 읽었다). `TransitLeg.lanes`는 옵트인 `lanes=1`에만, 버스 leg에만, 둘 이상일 때만 실리고 **첫 항목 = leg 자신**(`lineName`·`serviceRouteId`)이 계약이다 — 예약 노선(「(예약)」)·운행 시간 밖으로 판정된 노선은 빼되 첫 항목과 판정 불가 노선은 남긴다(3-state). 대기 폴은 `routeId`(종전)와 `routeIds`(집합) 중 정확히 하나이고, 집합 폴만 항목에 `route`(TOPIS `busRouteId`)를 싣고 잔여순으로 정렬한다(`traTime` 정렬 금지). 웹 안내는 waiting 국면만 집합으로 폴하고, 후보를 고르면 `legWithLane`으로 **세션 경로의 leg 자체를** 그 노선으로 바꾼 뒤 잠근다 — 상태 문장·통지·`phase=ride` URL이 전부 그 leg를 읽으므로 노선별 분기를 따로 두지 말 것. ⚠ 바꾸기는 `board` **전**이다(잠금 직후 즉폴이 옛 노선으로 나간다). ⚠ 탑승 변경 취소는 직전 잠금의 `routeId`로 leg를 되돌린다. 리듀서는 노선을 모른다(매칭은 `vehicleId`). 지방버스(TAGO)는 안내 집합 밖이다(잠금 수단이 근사 버튼 하나).
+**버스 노선 집합은 첫 항목이 leg 자신이고, 고르면 leg가 그 노선으로 바뀐다**(E76, 2026-10-31, spec `2026-10-31-e76-bus-lane-set-design.md`): ODsay `subPath.lane[]`은 같은 정류소 쌍을 잇는 노선 묶음이다(종전엔 `lane[0]`만 읽었다). `TransitLeg.lanes`는 옵트인 `lanes=1`에만, 버스 leg에만, 둘 이상일 때만 실리고 **첫 항목 = leg 자신**(`lineName`·`serviceRouteId`)이 계약이다 — 예약 노선(「(예약)」)·운행 시간 밖으로 판정된 노선은 빼되 첫 항목과 판정 불가 노선은 남긴다(3-state). 대기 폴은 `routeId`(종전)와 `routeIds`(집합) 중 정확히 하나이고, 집합 폴만 항목에 `route`(TOPIS `busRouteId`)를 싣고 잔여순으로 정렬한다(`traTime` 정렬 금지). 웹·iOS 안내는 waiting 국면만 집합으로 폴하고, 후보를 고르면 `legWithLane`으로 **세션 경로의 leg 자체를** 그 노선으로 바꾼 뒤 잠근다 — 상태 문장·통지·`phase=ride` URL이 전부 그 leg를 읽으므로 노선별 분기를 따로 두지 말 것. ⚠ 바꾸기는 `board` **전**이다(잠금 직후 즉폴이 옛 노선으로 나간다). ⚠ 탑승 변경 취소는 직전 잠금의 `routeId`로 leg를 되돌린다. 리듀서는 노선을 모른다(매칭은 `vehicleId`). 지방버스(TAGO)는 안내 집합 밖이다(잠금 수단이 근사 버튼 하나).
 
 ### 승차 국면 지하철 상태줄은 `arvlMsg2` 원문을 "{stop}까지" 틀에 넣지 않는다
 

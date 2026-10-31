@@ -217,7 +217,15 @@ public struct TransitLegStop: Codable, Sendable, Hashable {
 /// 가질 수 있다(도보 구간의 행선지·거리, spec §3.2).
 /// ⚠ `lang=en` 응답에서도 `lineName`·`fromName`·`toName`은 **한국어**다(E27 원칙 1 — 운행시간·빠른하차·
 ///   실시간 추적·역명 매칭의 조인 키). 영문은 `*En`(additive, en에만) — 표시 전용.
+public struct TransitLane: Codable, Sendable, Hashable {
+    public let lineName: String
+    public let lineNameEn: String?
+    public let serviceRouteId: String?
+    public let serviceCityCode: Int?
+}
+
 public struct TransitRouteLeg: Codable, Sendable, Hashable {
+    public let lanes: [TransitLane]?
     public let mode: String
     /// 노선명(예 "수도권 5호선"·"342"), walk는 nil
     public let lineName: String?
@@ -278,7 +286,7 @@ public struct TransitRouteLeg: Codable, Sendable, Hashable {
         quickExit: QuickExit? = nil,
         lineNameEn: String? = nil, fromNameEn: String? = nil, toNameEn: String? = nil,
         expressStops: [String]? = nil, exit: TransitLegExit? = nil,
-        expressStopIds: [String]? = nil
+        expressStopIds: [String]? = nil, lanes: [TransitLane]? = nil
     ) {
         self.mode = mode
         self.lineName = lineName
@@ -300,6 +308,7 @@ public struct TransitRouteLeg: Codable, Sendable, Hashable {
         self.expressStops = expressStops
         self.expressStopIds = expressStopIds
         self.exit = exit
+        self.lanes = lanes
     }
 }
 

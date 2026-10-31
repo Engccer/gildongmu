@@ -372,6 +372,7 @@ interface FixtureCase {
   leg?: TransitDisplayLeg;
   item?: TransitDisplayItem;
   message?: TransitLabel;
+  route?: TransitLabel;
   arrivalCode?: string | null;
   desc?: TransitLabel | null;
   location?: TransitLabel;
@@ -419,8 +420,7 @@ function runFixtureCase(c: FixtureCase): TransitTextLine {
       return candidateDescLine(e, c.leg!, c.item!, {
         express: c.express!,
         departedMinutes: c.departedMinutes ?? null,
-        // 노선 조각(E76)은 공유 fixture 밖이다 — Kit 미러가 따라오면 fixture로 옮긴다(spec §7).
-        route: null,
+        route: c.route ?? null,
       });
     case "vehicleDesc": return vehicleDescLine(e, c.item!);
     case "terminatesEarly": return terminatesEarlyLine(e, c.leg!, c.item!);

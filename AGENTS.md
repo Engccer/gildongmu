@@ -136,6 +136,7 @@
 - **안내 경로 origin은 "신선한가"가 아니라 "정확한가"로 고른다**(A18, Kit `routeOriginStep`만 지난다 — 세션 첫 fix가 곧 가장 나쁜 fix). `isUsableFix`를 조이지 말고 재측위 의존을 되살리지 말 것. `routeOrigin` 로그 1줄 필수. → INTEGRATIONS
 - **소리와 음성은 같은 청각 채널이다 — 톤 뒤 발화 계약**(`speechDeferStep`, Kit `GuideSpeechGate.swift` ↔ 웹 `guide-speech-gate.ts`, 단일 슬롯 latest-wins). 새 통지 경로는 `announce` 창구를 지나야 한다 — 직접 게시 금지. → INTEGRATIONS
 - **대중교통 승차 추세 톤은 이벤트 소유가 신뢰 불가보다 앞이고, 앵커는 "마지막으로 전달된 잔여"다**(E15 ②, `transitToneStep` ↔ `transit-guide-tone.ts`; 도보 순서로 되돌리지 말 것). → INTEGRATIONS
+- **버스 노선 집합(E76)은 첫 항목이 leg 자신이고, 후보를 고르면 세션 leg를 그 노선으로 바꾼 뒤 잠근다**(`legWithLane`, `board` 전): `lanes`는 옵트인 `lanes=1`, 대기 폴은 `routeId`·`routeIds` 중 하나이고 집합 폴만 `route`를 싣는다. 노선별 문장 분기를 따로 두지 말 것. → INTEGRATIONS
 - **승차 후보의 활성화 차단 술어는 `unreachable` 하나이고 급행 판정은 ID가 정본이다**(A16 L1 `expressVerdict`, 그 외 `unknown`). 근사 잠금은 `needsExpressPrompt`로 묻고, 출구 번호는 확정 도착·하차역 행에만. → INTEGRATIONS
 - **소리를 낸 직후 세션을 끝내면 그 소리가 잘린다 — 순서가 아니라 대기가 답이다**(`BeaconTonePlayer.endSession()`이 잔여 시간만큼 원복을 미루고, `beginSession()`은 그 예약을 취소, `shutdown()`은 즉시 원복). 전경에선 증상이 없다. → INTEGRATIONS
 - **오디오 재생기는 셋(도보·대중교통·나들이)이고 미뤄진 원복은 최신 소유자에게 이전된다**(`.ownershipTransferred`). route 변경 `.categoryChange`는 현재 세션 값 == 적용값 대조로 자기 메아리만 거른다(전면 필터 금지). → INTEGRATIONS
@@ -361,7 +362,7 @@ node scripts/usage-report.mjs   # API 과금·쿼터·키 만료 상태 (로컬 
 - **신규 국내 서비스는 대장과 작업 큐가 다른 문서다**: `docs/SPEC.md` §3 "실험 백로그"는 **조사한 서비스의 대장**(존재하는가·쓸 만한가)이고, `docs/BACKLOG.md` E는 **착수 후보 큐**(다음에 뭘 할까)다. 발굴하면 SPEC에 등록하고, 착수를 결정하면 BACKLOG로 올린다. 둘은 중복이 아니라 파이프라인이다.
 - **마일스톤을 닫을 때 문서를 분배한다**(위 §문서 체계). iOS 릴리스는 What's New를 `docs/appstore/release-notes.md`에 남기고 `node scripts/build-release-notes.mjs`로 번들 JSON을 재생성한다(드리프트 테스트). ⚠ 번들은 아카이브 시점에 굳으므로 아카이브 뒤 고쳤으면 빌드 번호를 올린다. → PATTERNS
 - **저장소는 공개 전제로 다룬다(2026-08-17 오픈소스 준비)**. **기준 절차의 정본은 `sanitize-for-release` 스킬**(공개 저장소 `Engccer/sanitize-for-release`)이며, gildongmu는 그 스킬의 **유형 C(원본 격리형)** 다. 유형별 절차·스윕 축은 스킬을 따르고 여기서는 이 저장소의 자리만 적는다.
-  - ①**실기기 계측 로그(`guide-diag*.log*`)는 커밋하지 않는다**(게이트 테스트엔 익명화 fixture만, 좌표는 위경도를 함께 비공개 상수로). **자택·지인 주택은 어디서도 실주소·동 호수로 적지 않는다** — 자택 근처 상호·골목·정류소와 자택 출발·도착 구간의 이름·거리도 같다. 재유입 가드 `public-repo-privacy-guard.test.ts`. → PATTERNS
+  - ①**실기기 계측 로그(`guide-diag*.log*`)는 커밋하지 않는다**(게이트 테스트엔 익명화 fixture만, 좌표는 위경도를 함께 비공개 상수로). **자택·지인 주택은 어디서도 실주소·동 호수로 적지 않는다** — 자택 근처 상호·골목·정류소와 자택 출발·도착 구간의 이름·거리도 같다. → PATTERNS
   - ②**정적 seed를 추가·교체하면 `NOTICE.md` 표에 파일·원출처·이용 조건·재생성 스크립트를 함께 적는다** — 코드는 MIT지만 데이터는 원출처 조건이고, 표에 없으면 MIT로 오인된다. OSM 파생 파일과 공공데이터 파일은 한 파일로 합치지 않는다.
   - ③fork가 바꿔야 할 식별자(도메인·번들 ID·패키지명·연락처)를 새로 박으면 `docs/FORKING.md` 표에 그 자리를 더한다.
 - gildongmu는 리뷰 게이트 통과 후 묻지 말고 commit+push(자동배포 포함, [[gildongmu-auto-commit-push]]). `git add -A` 금지, 의도 파일만([[commit-stage-explicit-files]]).

@@ -351,6 +351,8 @@ const RESERVATION_LANE = /\(예약\)/;
 export function busLanesOf(sp: OdsaySubPath, lang: OdsayLang): TransitLane[] | null {
   if (sp.trafficType !== 2 || !Array.isArray(sp.lane)) return null;
   const en = lang === "en";
+  const first = sp.lane[0];
+  if (!String((en ? first?.busNoKor : first?.busNo) ?? "").trim()) return null;
   const seen = new Set<string>();
   const out: TransitLane[] = [];
   sp.lane.forEach((lane, i) => {

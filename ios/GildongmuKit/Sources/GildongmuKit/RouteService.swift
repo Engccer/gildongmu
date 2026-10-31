@@ -55,6 +55,7 @@ public struct RouteService: Sendable {
             URLQueryItem(name: "origin", value: coordPair(originLat, originLng)),
             URLQueryItem(name: "dest", value: coordPair(destLat, destLng)),
         ]
+        query.append(URLQueryItem(name: "lanes", value: "1"))
         if includeStops { query.append(URLQueryItem(name: "includeStops", value: "1")) }
         if lang != "ko" { query.append(URLQueryItem(name: "lang", value: lang)) }
         let envelope: TransitRouteEnvelope = try await client.get("/api/route/transit", query: query)
@@ -129,6 +130,7 @@ public struct RouteService: Sendable {
             URLQueryItem(name: "origin", value: coordPair(originLat, originLng)),
             URLQueryItem(name: "dest", value: coordPair(destLat, destLng)),
             URLQueryItem(name: "includeStops", value: "1"),
+            URLQueryItem(name: "lanes", value: "1"),
         ]
         if lang != "ko" { query.append(URLQueryItem(name: "lang", value: lang)) }
         query.append(URLQueryItem(name: "pathType", value: axis.pathType))

@@ -40,12 +40,13 @@ public struct TransitTrackService: Sendable {
 
     /// ⚠ `lang`은 **기본값 없는 필수 인자**다(E27 잔여 ①, spec 2026-09-01 §3.3) — 생략이 컴파일을
     /// 통과하면 실시간 줄만 조용히 한국어로 떨어지고 서버는 400도 내지 않는다(부재 = ko가 정상 계약).
-    public func seoulWait(arsId: String, routeId: String, lang: String) async throws -> TransitTrackEnvelope {
+    public func seoulWait(arsId: String, routeId: String, routeIds: [String]?, lang: String) async throws -> TransitTrackEnvelope {
         try await get([
             URLQueryItem(name: "mode", value: "seoulBus"),
             URLQueryItem(name: "phase", value: "wait"),
             URLQueryItem(name: "arsId", value: arsId),
-            URLQueryItem(name: "routeId", value: routeId),
+            URLQueryItem(name: routeIds == nil ? "routeId" : "routeIds",
+                         value: routeIds?.joined(separator: ",") ?? routeId),
             URLQueryItem(name: "lang", value: lang),
         ])
     }

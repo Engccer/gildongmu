@@ -75,6 +75,7 @@ public func transitLegUsesEnglish(_ leg: TransitRouteLeg, lang: DataLocale) -> B
         return transitBriefingName(leg.toName) == nil || transitBriefingName(leg.toNameEn) != nil
     }
     return transitBriefingName(leg.lineNameEn) != nil
+        && (leg.lanes?.allSatisfy { transitBriefingName($0.lineNameEn) != nil } ?? true)
         && (transitBriefingName(leg.fromName) == nil || transitBriefingName(leg.fromNameEn) != nil)
         && (transitBriefingName(leg.toName) == nil || transitBriefingName(leg.toNameEn) != nil)
 }
@@ -83,4 +84,14 @@ public func transitLegUsesEnglish(_ leg: TransitRouteLeg, lang: DataLocale) -> B
 public func transitAlightStationName(_ leg: TransitRouteLeg, lang: DataLocale) -> String {
     if transitLegUsesEnglish(leg, lang: lang), let en = transitBriefingName(leg.toNameEn) { return en }
     return transitBriefingName(leg.toName) ?? ""
+}
+
+public func transitBriefingLineName(_ leg: TransitRouteLeg, english: Bool) -> String? {
+    if let lanes = leg.lanes, lanes.count >= 2 {
+        if english, lanes.allSatisfy({ transitBriefingName($0.lineNameEn) != nil }) {
+            return lanes.compactMap(\.lineNameEn).joined(separator: ", ")
+        }
+        return lanes.map(\.lineName).joined(separator: ", ")
+    }
+    return english ? leg.lineNameEn ?? leg.lineName : leg.lineName
 }

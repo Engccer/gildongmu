@@ -245,6 +245,7 @@ extension StubNetworkTests {
             originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1, includeStops: true, lang: "en")
         #expect(capturedQuery?.contains(where: { $0.name == "lang" && $0.value == "en" }) == true)
         #expect(capturedQuery?.contains(where: { $0.name == "includeStops" && $0.value == "1" }) == true)
+        #expect(capturedQuery?.contains(where: { $0.name == "lanes" && $0.value == "1" }) == true)
         _ = try await RouteService(client: stubbedClient()).transit(
             originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1, lang: "ko")
         #expect(capturedQuery?.contains(where: { $0.name == "lang" }) == false)
@@ -280,5 +281,23 @@ extension StubNetworkTests {
             accessible: false, lang: .ko, includeGeometry: true, via: nil)
         #expect(capturedQuery?.filter { $0.name == "wording" }.map(\.value) == ["2"])
         #expect(capturedQuery?.contains(where: { $0.name == "crossingRoad" }) == false)
+    }
+}
+
+
+extension StubNetworkTests {
+    @Test func seoulWaitRouteSetAndSingleRouteAreExclusive() async throws {
+        var capturedQuery: [URLQueryItem]?
+        StubURLProtocol.handler = { request in
+            capturedQuery = URLComponents(url: request.url!, resolvingAgainstBaseURL: false)?.queryItems
+            return (200, Data(#"{"mode":"seoulBus","status":"empty"}"#.utf8))
+        }
+        let service = TransitTrackService(client: stubbedClient())
+        _ = try await service.seoulWait(arsId: "01001", routeId: "R1", routeIds: ["R1", "R2"], lang: "ko")
+        #expect(capturedQuery?.contains(where: { $0.name == "routeIds" && $0.value == "R1,R2" }) == true)
+        #expect(capturedQuery?.contains(where: { $0.name == "routeId" }) == false)
+        _ = try await service.seoulWait(arsId: "01001", routeId: "R2", routeIds: nil, lang: "en")
+        #expect(capturedQuery?.contains(where: { $0.name == "routeId" && $0.value == "R2" }) == true)
+        #expect(capturedQuery?.contains(where: { $0.name == "routeIds" }) == false)
     }
 }

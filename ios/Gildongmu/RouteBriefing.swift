@@ -351,8 +351,8 @@ func transitLegText(
     let fromName = pick(leg.fromName, leg.fromNameEn)
     let toName = pick(leg.toName, leg.toNameEn)
     let lineNameRaw: String? = {
-        if case .english = names, let en = leg.lineNameEn { return en }
-        return leg.lineName
+        if case .english = names { return transitBriefingLineName(leg, english: true) }
+        return transitBriefingLineName(leg, english: false)
     }()
     if leg.mode == "walk" {
         // 마지막 도보에는 행선지가 없다(provider가 목적지 이름을 모른다). 소비자가

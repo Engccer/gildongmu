@@ -1,5 +1,10 @@
 [
   {
+    "version": "2.5",
+    "ko": "- 같은 정류소에서 같은 하차 정류소로 가는 버스 노선을 경로 안내에 함께 표시합니다.\n- 서울버스 안내에서 여러 노선의 도착 정보를 한 목록으로 확인하고, 탈 버스를 고를 수 있습니다. 버스를 고르면 해당 노선으로 승차와 하차를 안내합니다.",
+    "en": "- Route directions now show bus routes that share the same boarding and alighting stops.\n- In Seoul bus guidance, view arrivals for these routes in one list and choose your bus. Boarding and alighting guidance then follows the route you selected."
+  },
+  {
     "version": "2.4",
     "ko": "새로운 기능\n- 도보·자동차·대중교통 안내 화면에서 제목 줄을 밀면 목적지를 바꾸거나 장소 상세를 볼 수 있습니다. 도보·자동차 안내에서는 경유지를 추가하거나 바꾸고 지울 수도 있습니다. VoiceOver에서는 제목 줄에서 위아래로 쓸어 동작을 선택하세요.\n- 도보·자동차 안내 화면의 제목 옆에 ‘경로 새로고침’ 버튼을 추가했습니다. 안내 중 지금 위치에서 목적지까지 경로를 다시 찾을 수 있습니다.\n- 도보·자동차 안내의 ‘진행 상황’과 ‘주변 확인’을 ‘지금 여기는 어디?’로 합쳤습니다. 얼마나 왔는지 확인하고, 지금 있는 곳의 주소와 주변 장소도 함께 살펴볼 수 있습니다.\n\n개선\n- 받아쓰기 사용법과 설정 설명, 안내 문구를 더 자연스럽고 이해하기 쉬운 한국어로 다듬었습니다.",
     "en": "New\n- Swipe the title row during walking or transit guidance to change your destination or view its details. With VoiceOver, swipe up or down on the title row to choose an action.\n- A Refresh Route button next to the title in walking guidance lets you find a route to your destination from where you are now.\n- Walking guidance now brings progress and nearby information together under “Where am I now?”. Check your progress, then explore the address and places around your current location in the same view."

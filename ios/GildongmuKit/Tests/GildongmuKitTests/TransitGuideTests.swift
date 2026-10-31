@@ -777,3 +777,35 @@ private struct RidingCase: Decodable {
         }
     }
 }
+
+@Test func busLaneSetDecodeSelectAndRestore() throws {
+    let json = #"{"mode":"bus","lineName":"271","lineNameEn":"271","fromName":"승차","toName":"하차","minutes":8,"serviceRouteId":"R1","stops":[{"name":"승차","lat":37.5,"lng":127,"cityCode":"1000","arsId":"01001","localId":"S1"},{"name":"하차","lat":37.6,"lng":127,"cityCode":"1000","localId":"S2"}],"lanes":[{"lineName":"271","lineNameEn":"271","serviceRouteId":"R1","serviceCityCode":1000},{"lineName":"273","serviceRouteId":"R2","serviceCityCode":1000}]}"#
+    let decoded = try JSONDecoder().decode(TransitRouteLeg.self, from: Data(json.utf8))
+    let lanes = try #require(transitGuideLanesOf(decoded))
+    #expect(lanes.map(\.key) == ["R1", "R2"])
+    #expect(transitBriefingLineName(decoded, english: false) == "271, 273")
+    #expect(!transitLegUsesEnglish(decoded, lang: .en))
+    let leg = TransitGuideLeg(mode: "bus", lineName: "271", trackMode: .seoulBus,
+        boardName: "승차", alightName: "하차", boardStop: decoded.stops?.first,
+        alightStop: decoded.stops?.last, viaStops: decoded.stops!, stationCount: 3,
+        routeId: "R1", wayCode: nil, walkBeforeMinutes: 2, lineNameEn: "271", lanes: lanes)
+    let itemJSON = #"{"vehicleId":"V2","direction":"","message":"곧 도착","express":false,"route":"R2"}"#
+    let item = try JSONDecoder().decode(TransitTrackItem.self, from: Data(itemJSON.utf8))
+    let lane = try #require(transitLaneForItem(leg, item: item))
+    let selected = transitLegWithLane(leg, lane: lane)
+    #expect(selected.routeId == "R2")
+    #expect(selected.lineName == "273")
+    #expect(selected.lineNameEn == nil)
+    #expect(selected.viaStops == leg.viaStops)
+    #expect(selected.lanes == leg.lanes)
+    let restored = transitLegWithLane(selected, lane: lanes[0])
+    #expect(restored.routeId == "R1")
+    #expect(restored.lineNameEn == "271")
+    let display = transitDisplayLeg(selected, boardOverrideIndex: nil)
+    #expect(display.line.ko == "273")
+    #expect(display.laneList?.ko == "271, 273")
+    #expect(display.laneList?.en == nil)
+    let stripped = withoutPrewalk(TransitGuideRoute(legs: [selected], walkAfterMinutes: nil))
+    #expect(stripped.legs[0].lanes == lanes)
+    #expect(stripped.legs[0].walkBeforeMinutes == nil)
+}

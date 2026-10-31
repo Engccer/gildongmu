@@ -468,6 +468,7 @@ extension StubNetworkTests {
         #expect(result == nil)  // 없음은 nil(throw 아님)
         #expect(items.contains(URLQueryItem(name: "pathType", value: "2")))
         #expect(items.contains(URLQueryItem(name: "includeStops", value: "1")))
+        #expect(items.contains(URLQueryItem(name: "lanes", value: "1")))
         #expect(!items.contains { $0.name == "lang" })
         #expect(TransitModeAxis.subwayOnly.pathType == "1")
     }

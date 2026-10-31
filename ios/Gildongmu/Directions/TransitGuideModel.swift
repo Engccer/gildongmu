@@ -765,13 +765,25 @@ final class TransitGuideModel {
     /// 기다린다 — riding 승격은 상태 머신이 관측으로 한다. `description`은 선택 차량의
     /// 안정 설명(행선·방향 — 폴마다 바뀌는 완성 문장은 제외)으로 상시 표시·통지에 쓴다.
     /// dispatch **전에** 동기로 보관해 vehicleSelected 통지가 빈 설명을 읽지 않는다.
+    private func replaceCurrentLeg(_ leg: TransitGuideLeg) {
+        guard let route, let state, route.legs.indices.contains(state.legIndex) else { return }
+        var legs = route.legs
+        legs[state.legIndex] = leg
+        self.route = TransitGuideRoute(legs: legs, walkAfterMinutes: route.walkAfterMinutes)
+    }
+
     func board(item: TransitTrackItem, description: TransitLabel?) {
-        guard let leg = currentLeg, let trackMode = leg.trackMode else { return }
+        guard let state, state.phase == .waiting, state.signal != .untrackable else { return }
+        guard var leg = currentLeg, let trackMode = leg.trackMode else { return }
         // 선택 진입점의 차단 재판정(A16 L1, 설계 리뷰 2차 #3): 시트 버튼 유무에만 기대면 다른 호출
         // 경로가 결정적 미도달 열차를 잠근다. 같은 술어(`transitUnreachableReason`)로 여기서도 거른다.
         guard transitUnreachableReason(item, leg: leg) == nil else {
             transitGuideLog("board rejected unreachable vehicle=\(item.vehicleId ?? "-")")
             return
+        }
+        if let lane = transitLaneForItem(leg, item: item) {
+            leg = transitLegWithLane(leg, lane: lane)
+            replaceCurrentLeg(leg)
         }
         let lock = TransitLock(
             mode: trackMode,
@@ -1064,7 +1076,10 @@ final class TransitGuideModel {
     /// 소유). ⚠ `board(previousLock)`으로 돌리면 식별자 잠금은 boarding으로 가서 이미
     /// 탄 사용자가 승차 정류소 폴링으로 되돌아간다(설계 리뷰 M5) — 전용 입력이 정본.
     func cancelChangeBoarding() {
-        guard state?.previousLock != nil else { return }
+        guard let state, state.phase == .waiting, let previous = state.previousLock else { return }
+        if let leg = currentLeg, let lane = leg.lanes?.first(where: { $0.key == previous.routeId }) {
+            replaceCurrentLeg(transitLegWithLane(leg, lane: lane))
+        }
         dispatch(.restoreBoarding)
         restartPollLoop(immediate: true)
     }
@@ -1666,7 +1681,9 @@ final class TransitGuideModel {
                         return (.unsupported, nil)
                     }
                     let env = try await trackService.seoulWait(
-                        arsId: arsId, routeId: routeId, lang: AppLanguage.dataLocale)
+                        arsId: arsId, routeId: routeId,
+                        routeIds: phase == .waiting ? leg.lanes?.map(\.key) : nil,
+                        lang: AppLanguage.dataLocale)
                     return (TransitTrackService.poll(from: env), env.rawCount)
                 }
                 guard let boardId = leg.boardStop?.localId,

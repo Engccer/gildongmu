@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { annotateServiceStatus, normalizeOdsayRoutes } from "../odsay";
+import { annotateServiceStatus, busLanesOf, normalizeOdsayRoutes } from "../odsay";
 import type { ServiceHours } from "../bus-service-hours";
 import type { TransitLeg, TransitRoute } from "../../types";
 import AHYEON from "../../__tests__/fixtures/odsay-e70/ahyeon-gwanghwamun.json";
@@ -30,6 +30,12 @@ describe("TransitLeg.lanes — ODsay lane[] 투영", () => {
       { lineName: "708", serviceRouteId: "123000011", serviceCityCode: 1000 },
       { lineName: "N51", serviceRouteId: "117000002", serviceCityCode: 1000 },
     ]);
+  });
+
+  it("첫 노선 번호가 비면 뒤 노선을 대표 노선으로 승격하지 않는다", () => {
+    expect(busLanesOf({ trafficType: 2, lane: [
+      { busNo: "" }, { busNo: "7016" }, { busNo: "708" },
+    ] } as never, "ko")).toBeNull();
   });
 
   it("lane이 하나면 키 부재(그 하나는 lineName이 이미 말한다)", () => {

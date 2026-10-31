@@ -1025,7 +1025,7 @@ struct TransitTrackingSheet: View {
         let desc = TransitGuideTextRenderer.render(transitCandidateDescLine(
             isEn: transitGuideIsEn, leg: displayLeg, item: displayItem,
             express: candidate.unreachable == nil ? candidate.express : nil,
-            departedMinutes: departedMinutes))
+            departedMinutes: departedMinutes, route: transitLaneLabel(transitLaneForItem(leg, item: item))))
         // 결정적 미도달 사유는 vehId 유무보다 앞이다(웹과 같은 순서) — "왜 못 고르는가"가 먼저다.
         if let reason = candidate.unreachable {
             // 결정적 미도달(§5.1·A16 L1) — 활성화 차단의 단일 술어, 사유별 문장 병기.

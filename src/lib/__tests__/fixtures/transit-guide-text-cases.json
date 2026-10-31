@@ -3400,6 +3400,200 @@
         ],
         "lang": "en"
       }
+    },
+    {
+      "name": "candidateDesc 노선 번호 먼저 ko",
+      "fn": "candidateDesc",
+      "isEn": false,
+      "leg": {
+        "mode": "bus",
+        "line": {
+          "ko": "노선ᛥ",
+          "en": "Line 5"
+        },
+        "board": {
+          "ko": "승차ᛥ",
+          "en": "Cheonho"
+        },
+        "alight": {
+          "ko": "하차ᛥ",
+          "en": "Gwanghwamun"
+        },
+        "stops": [
+          {
+            "ko": "경유0ᛥ",
+            "en": "Stop0"
+          },
+          {
+            "ko": "경유1ᛥ",
+            "en": "Stop1"
+          }
+        ],
+        "stationCount": 8,
+        "walkBeforeMinutes": 3,
+        "boardOverridden": false
+      },
+      "item": {
+        "message": {
+          "ko": "6분47초후[4번째 전]",
+          "en": "In 6 min 47 sec, 4 stops away"
+        },
+        "direction": {
+          "ko": "",
+          "en": ""
+        },
+        "destination": null,
+        "currentLocation": null,
+        "express": false,
+        "remainingStops": 4,
+        "selectable": true
+      },
+      "express": null,
+      "departedMinutes": null,
+      "expect": {
+        "parts": [
+          {
+            "text": "7016"
+          },
+          {
+            "text": "6분47초후[4번째 전]"
+          }
+        ],
+        "lang": "ko"
+      },
+      "route": {
+        "ko": "7016",
+        "en": "7016"
+      }
+    },
+    {
+      "name": "candidateDesc 노선 번호 먼저 en",
+      "fn": "candidateDesc",
+      "isEn": true,
+      "leg": {
+        "mode": "bus",
+        "line": {
+          "ko": "노선ᛥ",
+          "en": "Line 5"
+        },
+        "board": {
+          "ko": "승차ᛥ",
+          "en": "Cheonho"
+        },
+        "alight": {
+          "ko": "하차ᛥ",
+          "en": "Gwanghwamun"
+        },
+        "stops": [
+          {
+            "ko": "경유0ᛥ",
+            "en": "Stop0"
+          },
+          {
+            "ko": "경유1ᛥ",
+            "en": "Stop1"
+          }
+        ],
+        "stationCount": 8,
+        "walkBeforeMinutes": 3,
+        "boardOverridden": false
+      },
+      "item": {
+        "message": {
+          "ko": "6분47초후[4번째 전]",
+          "en": "In 6 min 47 sec, 4 stops away"
+        },
+        "direction": {
+          "ko": "",
+          "en": ""
+        },
+        "destination": null,
+        "currentLocation": null,
+        "express": false,
+        "remainingStops": 4,
+        "selectable": true
+      },
+      "express": null,
+      "departedMinutes": null,
+      "expect": {
+        "parts": [
+          {
+            "text": "7016"
+          },
+          {
+            "text": "In 6 min 47 sec, 4 stops away"
+          }
+        ],
+        "lang": "en"
+      },
+      "route": {
+        "ko": "7016",
+        "en": "7016"
+      }
+    },
+    {
+      "name": "candidateDesc 노선 영문 누락 전체 ko",
+      "fn": "candidateDesc",
+      "isEn": true,
+      "leg": {
+        "mode": "bus",
+        "line": {
+          "ko": "노선ᛥ",
+          "en": "Line 5"
+        },
+        "board": {
+          "ko": "승차ᛥ",
+          "en": "Cheonho"
+        },
+        "alight": {
+          "ko": "하차ᛥ",
+          "en": "Gwanghwamun"
+        },
+        "stops": [
+          {
+            "ko": "경유0ᛥ",
+            "en": "Stop0"
+          },
+          {
+            "ko": "경유1ᛥ",
+            "en": "Stop1"
+          }
+        ],
+        "stationCount": 8,
+        "walkBeforeMinutes": 3,
+        "boardOverridden": false
+      },
+      "item": {
+        "message": {
+          "ko": "6분47초후[4번째 전]",
+          "en": "In 6 min 47 sec, 4 stops away"
+        },
+        "direction": {
+          "ko": "",
+          "en": ""
+        },
+        "destination": null,
+        "currentLocation": null,
+        "express": false,
+        "remainingStops": 4,
+        "selectable": true
+      },
+      "express": null,
+      "departedMinutes": null,
+      "expect": {
+        "parts": [
+          {
+            "text": "7016"
+          },
+          {
+            "text": "6분47초후[4번째 전]"
+          }
+        ],
+        "lang": "ko"
+      },
+      "route": {
+        "ko": "7016"
+      }
     }
   ]
 }

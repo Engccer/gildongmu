@@ -92,9 +92,16 @@ public func transitAboardCandidates(_ items: [TransitTrackItem]) -> [TransitTrac
 }
 
 /// 안내 대상으로 조립된 탑승 leg(§4.1). 도보 leg는 대기 문맥으로 흡수된다.
-public struct TransitGuideLeg: Codable, Sendable {
-    public let mode: String // "bus" | "subway"
+public struct TransitGuideLane: Codable, Sendable, Equatable {
     public let lineName: String
+    public let lineNameEn: String?
+    public let key: String
+}
+
+public struct TransitGuideLeg: Codable, Sendable {
+    public let lanes: [TransitGuideLane]?
+    public let mode: String // "bus" | "subway"
+    public fileprivate(set) var lineName: String
     /// nil = 추적 불가(비수도권 지하철·정보 결손) — 수동 전진만 가능.
     public let trackMode: TransitTrackMode?
     public let boardName: String
@@ -103,7 +110,7 @@ public struct TransitGuideLeg: Codable, Sendable {
     ///
     /// ⚠ 위 한국어 필드는 en 세션에서도 한국어다 — 조인(매핑표·조회 쿼리·종착 검사)이 그 값으로
     /// 돌기 때문이고, 여기 영문을 넣으면 오류가 아니라 "실시간 정보가 영영 안 뜬다"가 된다.
-    public let lineNameEn: String?
+    public fileprivate(set) var lineNameEn: String?
     public let boardNameEn: String?
     public let alightNameEn: String?
     public let boardStop: TransitLegStop?
@@ -111,7 +118,7 @@ public struct TransitGuideLeg: Codable, Sendable {
     /// 경유 전체(양 끝 포함, includeStops 미보유 시 []) — 종착 검사(§5.1) 축.
     public let viaStops: [TransitLegStop]
     public let stationCount: Int?
-    public let routeId: String?
+    public fileprivate(set) var routeId: String?
     public let wayCode: Int?
     public let walkBeforeMinutes: Int?
     /// 하차역 빠른하차 문 위치(E5). 판정 불가·미커버는 nil.
@@ -134,7 +141,7 @@ public struct TransitGuideLeg: Codable, Sendable {
         quickExit: QuickExit? = nil,
         lineNameEn: String? = nil, boardNameEn: String? = nil, alightNameEn: String? = nil,
         expressStops: [String]? = nil, expressStopIds: [String]? = nil, exitAlight: String? = nil,
-        minutes: Int? = nil
+        minutes: Int? = nil, lanes: [TransitGuideLane]? = nil
     ) {
         self.mode = mode
         self.lineName = lineName
@@ -156,6 +163,7 @@ public struct TransitGuideLeg: Codable, Sendable {
         self.expressStopIds = expressStopIds
         self.exitAlight = exitAlight
         self.minutes = minutes
+        self.lanes = lanes
     }
 }
 
@@ -183,6 +191,7 @@ public struct TransitGuideRoute: Codable, Sendable {
 /// — 서버는 어느 국면에서도 다듬지 않는다(E39, 2026-09-12에 서울버스 승차 국면 재작성을 폐지했다).
 /// 문장 조립은 `transitArrivalStatusLine`이 `parseBusArrmsgKind`로 구조를 읽어 한 자리에서 한다.
 public struct TransitTrackItem: Codable, Sendable, Equatable {
+    public let route: String?
     public let vehicleId: String?
     public let direction: String
     public let message: String
@@ -213,9 +222,10 @@ public struct TransitTrackItem: Codable, Sendable, Equatable {
         destinationName: String?, express: Bool, arrivalCode: String?,
         currentLocation: String? = nil, dataStamp: String? = nil, dataAgeSeconds: Int? = nil,
         messageEn: String? = nil, directionEn: String? = nil,
-        destinationNameEn: String? = nil, currentLocationEn: String? = nil
+        destinationNameEn: String? = nil, currentLocationEn: String? = nil, route: String? = nil
     ) {
         self.vehicleId = vehicleId
+        self.route = route
         self.direction = direction
         self.message = message
         self.remainingStops = remainingStops
@@ -508,7 +518,7 @@ public func buildTransitGuideRoute(_ route: TransitRoute) -> TransitGuideRoute? 
             expressStops: (leg.expressStops?.isEmpty == false) ? leg.expressStops : nil,
             expressStopIds: (leg.expressStopIds?.isEmpty == false) ? leg.expressStopIds : nil,
             exitAlight: transitValidExitNo(leg.exit?.alight),
-            minutes: leg.minutes
+            minutes: leg.minutes, lanes: transitGuideLanesOf(leg)
         ))
         pendingWalk = nil
     }
@@ -563,7 +573,7 @@ public func withoutPrewalk(_ route: TransitGuideRoute) -> TransitGuideRoute {
         quickExit: first.quickExit,
         lineNameEn: first.lineNameEn, boardNameEn: first.boardNameEn, alightNameEn: first.alightNameEn,
         expressStops: first.expressStops, expressStopIds: first.expressStopIds, exitAlight: first.exitAlight,
-        minutes: first.minutes)
+        minutes: first.minutes, lanes: first.lanes)
     return TransitGuideRoute(legs: [stripped] + route.legs.dropFirst(), walkAfterMinutes: route.walkAfterMinutes)
 }
 
@@ -1353,4 +1363,32 @@ public func subwayRidingMessage(_ arrivalCode: String?) -> SubwayRidingMessage {
     case "99": return .omit
     default: return .raw
     }
+}
+
+/// 서울버스만 집합을 추적한다. 첫 노선 정체성과 서버 상한 12를 지킨다.
+public func transitGuideLanesOf(_ leg: TransitRouteLeg) -> [TransitGuideLane]? {
+    let stops = leg.stops ?? []
+    guard classifyTransitTrackMode(mode: leg.mode, lineName: leg.lineName ?? "",
+        serviceRouteId: leg.serviceRouteId, boardStop: stops.first,
+        alightStop: stops.count > 1 ? stops.last : nil) == .seoulBus,
+        let id = leg.serviceRouteId, let source = leg.lanes else { return nil }
+    let lanes = source.compactMap { lane -> TransitGuideLane? in
+        guard let key = lane.serviceRouteId, !key.isEmpty else { return nil }
+        return TransitGuideLane(lineName: lane.lineName, lineNameEn: lane.lineNameEn, key: key)
+    }
+    guard lanes.count >= 2, lanes.first?.key == id else { return nil }
+    return Array(lanes.prefix(12))
+}
+
+public func transitLaneForItem(_ leg: TransitGuideLeg, item: TransitTrackItem) -> TransitGuideLane? {
+    guard let key = item.route else { return nil }
+    return leg.lanes?.first { $0.key == key }
+}
+
+public func transitLegWithLane(_ leg: TransitGuideLeg, lane: TransitGuideLane) -> TransitGuideLeg {
+    var next = leg
+    next.lineName = lane.lineName
+    next.lineNameEn = lane.lineNameEn
+    next.routeId = lane.key
+    return next
 }

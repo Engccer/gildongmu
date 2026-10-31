@@ -1411,6 +1411,8 @@ export function useTransitGuide(
    */
   const boardCandidate = useCallback(
     (candidate: BoardingCandidate, description: TransitLabel | null) => {
+      const state = stateRef.current;
+      if (state?.phase !== "waiting" || state.signal === "untrackable") return;
       const current = currentLeg();
       if (!current?.trackMode) return;
       // 선택 진입점의 차단 재판정(A16 L1, 설계 리뷰 2차 #3) — 버튼 유무에만 기대지 않는다.
@@ -1539,6 +1541,7 @@ export function useTransitGuide(
    * 탄 사용자가 승차 정류소 폴링으로 되돌아간다(설계 리뷰 M5) — 전용 입력이 정본.
    */
   const cancelChangeBoarding = useCallback(() => {
+    if (stateRef.current?.phase !== "waiting") return;
     const previous = stateRef.current?.previousLock;
     if (!previous) return;
     // 노선 집합(E76): 변경 중에 다른 노선을 골랐다 취소하면 leg도 직전 잠금의 노선으로 돌아가야 한다

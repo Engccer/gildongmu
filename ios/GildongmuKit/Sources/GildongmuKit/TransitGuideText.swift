@@ -71,9 +71,9 @@ public func transitWaitContextLine(
 ) -> TransitTextLine {
     let overridden = isCurrentLeg && leg.boardOverridden
     if !overridden, let walk = leg.walkBeforeMinutes, walk > 0 {
-        return makeLine(isEn, modeKey(leg, "waitContextWalk"), [leg.board, leg.line]) { [String(walk), $0[0], $0[1]] }
+        return makeLine(isEn, modeKey(leg, "waitContextWalk"), [leg.board, leg.laneList ?? leg.line]) { [String(walk), $0[0], $0[1]] }
     }
-    return makeLine(isEn, modeKey(leg, "waitContext"), [leg.board, leg.line]) { $0 }
+    return makeLine(isEn, modeKey(leg, "waitContext"), [leg.board, leg.laneList ?? leg.line]) { $0 }
 }
 
 public func transitBoardingContextLine(isEn: Bool, leg: TransitDisplayLeg) -> TransitTextLine {
@@ -313,9 +313,10 @@ public func transitCurrentStationLine(isEn: Bool, location: TransitLabel) -> Tra
 /// ⚠ 조각 순서가 곧 낭독 순서다. 빈 조각은 제거되어 구분자가 겹치지 않는다.
 public func transitCandidateDescLine(
     isEn: Bool, leg: TransitDisplayLeg, item: TransitDisplayItem,
-    express: TransitExpressVerdict?, departedMinutes: Int?
+    express: TransitExpressVerdict?, departedMinutes: Int?, route: TransitLabel?
 ) -> TransitTextLine {
     var labels: [TransitLabel] = []
+    if let route { labels.append(route) }
     if let dest = item.destination { labels.append(dest) }
     labels.append(item.direction)
     labels.append(item.message)
@@ -329,6 +330,7 @@ public func transitCandidateDescLine(
     let picked = transitPickLabels(isEn: isEn, labels)
     var i = 0
     var parts: [TransitTextPart] = []
+    if route != nil { parts.append(.text(picked.values[i])); i += 1 }
     if item.destination != nil {
         parts.append(.key("bound", [picked.values[i]])); i += 1
     }

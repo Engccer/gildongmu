@@ -21,6 +21,7 @@ public struct TransitLabel: Codable, Sendable, Equatable {
 }
 
 public struct TransitDisplayLeg: Codable, Sendable, Equatable {
+    public let laneList: TransitLabel?
     public let mode: String
     public let line: TransitLabel
     /// 재선택한 기준 역이 있으면 그 역(A16 L3).
@@ -37,7 +38,7 @@ public struct TransitDisplayLeg: Codable, Sendable, Equatable {
     public init(
         mode: String, line: TransitLabel, board: TransitLabel, alight: TransitLabel,
         stops: [TransitLabel], stationCount: Int?, walkBeforeMinutes: Int?,
-        boardOverridden: Bool, exitAlight: String? = nil
+        boardOverridden: Bool, exitAlight: String? = nil, laneList: TransitLabel? = nil
     ) {
         self.mode = mode
         self.line = line
@@ -48,6 +49,7 @@ public struct TransitDisplayLeg: Codable, Sendable, Equatable {
         self.walkBeforeMinutes = walkBeforeMinutes
         self.boardOverridden = boardOverridden
         self.exitAlight = exitAlight
+        self.laneList = laneList
     }
 }
 
@@ -100,7 +102,7 @@ public func transitDisplayLeg(
         stationCount: leg.stationCount,
         walkBeforeMinutes: leg.walkBeforeMinutes,
         boardOverridden: override != nil,
-        exitAlight: leg.exitAlight)
+        exitAlight: leg.exitAlight, laneList: transitLaneListLabel(leg.lanes))
 }
 
 /// 폴링 항목 → 표시 투영. `message`만 `""`를 자리 표시로 보존한다.
@@ -133,4 +135,15 @@ public func transitMessageLabel(_ ko: String, _ en: String?) -> TransitLabel {
 /// 현재역 쌍 — 없으면 nil(부재와 빈 문자열을 뭉개지 않는다).
 public func transitLocationLabel(_ ko: String?, _ en: String?) -> TransitLabel? {
     (ko?.isEmpty == false) ? transitLabel(ko, en) : nil
+}
+
+public func transitLaneLabel(_ lane: TransitGuideLane?) -> TransitLabel? {
+    lane.map { transitLabel($0.lineName, $0.lineNameEn) }
+}
+
+public func transitLaneListLabel(_ lanes: [TransitGuideLane]?) -> TransitLabel? {
+    guard let lanes, lanes.count >= 2 else { return nil }
+    let labels = lanes.map { transitLabel($0.lineName, $0.lineNameEn) }
+    return TransitLabel(ko: labels.map(\.ko).joined(separator: ", "),
+        en: labels.allSatisfy { $0.en != nil } ? labels.compactMap(\.en).joined(separator: ", ") : nil)
 }
