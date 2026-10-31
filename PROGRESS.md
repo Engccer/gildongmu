@@ -20,7 +20,7 @@
 |---|---|
 | 웹 | https://gildongmu.dodoplanet.space (push = 자동 배포). Cache Components·Partial Prefetching 사용, 첫 낭독 판정은 BACKLOG §2 D35 |
 | iOS | **2.4 `WAITING_FOR_REVIEW`**(빌드 35, 아카이브 커밋 `08dc9950`, 2026-10-28 06:15 KST 심사 제출). 스토어 최신 **2.3 `READY_FOR_SALE`**(빌드 34, 아카이브 커밋 `4649c02e`). 2.4는 안내 제목 행 밀기 동작·경로 새로고침·「지금 여기는 어디?」·한국어 문구 정돈. |
-| iOS 로컬 확인판 | **2.5.0(빌드 36), Release 구성**. E76 버스 노선 집합 선택 구현. 연결 아이폰 설치 완료, 잠금으로 자동 실행 미확인. App Store 제출 전. |
+| iOS 로컬 확인판 | **2.5.0(빌드 36), 정식판 Release·실험판 Experimental 구성**. E76 버스 노선 집합 선택 구현. 정식판·실험판 모두 연결 아이폰 설치와 실행 확인. 정식판 E76 화면 흐름 확인, VoiceOver 낭독·실승차는 별도 판정. App Store 제출 전. |
 | iOS 최소 지원 | **18.0**(2026-08-19 하향, 1.10부터 적용 — 스토어 반영 완료) |
 | npm | `gildongmu` · `gildongmu-mcp` **v0.12.0**(2026-10-05, `cli-v0.12.0` 태그 → Trusted Publishing 워크플로 성공, `npm view` 両패키지 0.12.0·SLSA provenance 확인). 미발행 변경 없음 |
 | 저장소 | GitHub **public**(2026-08-17 전환) — https://github.com/Engccer/gildongmu. 코드 MIT, 번들 데이터는 `NOTICE.md`. **모든 커밋이 즉시 공개된다** — 실주소·계측 로그·키를 넣지 않는 규칙은 `CLAUDE.md` 개발 규칙. 과거 기록 정리(히스토리 재작성)는 2026-10-04 완료(커밋 번호가 2026-07-22 이후 전부 바뀌었다. 다른 클론은 재클론, BACKLOG A56·§8) |
