@@ -55,6 +55,12 @@ export function JourneyStationField({
   const tJourney = useTranslations("journey");
   const inputId = useId();
   const [text, setText] = useState(value?.label ?? "");
+  // 밖에서 확정 값이 바뀌면(최근 경로 활성화) 입력 글자도 그 이름으로 — 칸이 옛 글자를 말하지 않게(리뷰 m6). 렌더 중 파생 조정.
+  const [seenValue, setSeenValue] = useState(value);
+  if (value !== seenValue) {
+    setSeenValue(value);
+    if (value) setText(value.label);
+  }
   const [candidates, setCandidates] = useState<Candidates | null>(null);
   const reqRef = useRef(0);
   const firstRef = useRef<HTMLButtonElement | null>(null);

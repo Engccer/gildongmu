@@ -122,10 +122,7 @@ export function DistanceBeacon({
    * 그 밖의 종료를 같은 `"ended"`로 내므로, 여정이 「안내 종료 = 여정 전체 종료」(D11)를 가르려면 이 신호가 필요하다.
    */
   onUserStop?: () => void;
-  /**
-   * 위치 권한 거부·미지원으로 세션이 서지 못하거나 끊겼을 때 1회(E70-f §7.3) — 이 전이는 `onSessionEnd`를 부르지 않는다.
-   * `"start"` = 추적이 한 번도 서지 않았다, `"running"` = 추적 중이었다.
-   */
+  /** 위치 권한 거부·미지원 1회(E70-f §7.3) — `useRouteGuide` 동명 옵션 그대로(`"start"` = 첫 fix 전). */
   onFailure?: (when: "start" | "running") => void;
 }) {
   const t = useTranslations("beacon");
@@ -141,7 +138,7 @@ export function DistanceBeacon({
       return false;
     }
   });
-  const guide = useRouteGuide(dest, kind, { accessible, variant }, { onSessionEnd, via, arrivalText });
+  const guide = useRouteGuide(dest, kind, { accessible, variant }, { onSessionEnd, via, arrivalText, onFailure });
 
   /** 남은 거리 행의 거리 조각 — 목표(N4 2026-09-24 §5.2)에 따라 라벨이 값과 함께 바뀐다. */
   function remainingDistanceText(progress: GuideProgress): string {
@@ -213,20 +210,6 @@ export function DistanceBeacon({
     onActiveChangeRef.current?.(tracking);
   }, [tracking]);
   useEffect(() => () => onActiveChangeRef.current?.(false), []);
-
-  // 권한 거부·미지원 전이를 부모에 통지(E70-f) — 추적이 선 적이 있는지로 시작 실패와 끊김을 가른다.
-  const onFailureRef = useRef(onFailure);
-  useEffect(() => {
-    onFailureRef.current = onFailure;
-  });
-  const everTrackedRef = useRef(false);
-  const failed = guide.status === "denied" || guide.status === "unsupported";
-  useEffect(() => {
-    if (tracking) everTrackedRef.current = true;
-  }, [tracking]);
-  useEffect(() => {
-    if (failed) onFailureRef.current?.(everTrackedRef.current ? "running" : "start");
-  }, [failed]);
 
   if (!guide.supported) return null;
 

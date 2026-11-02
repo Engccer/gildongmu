@@ -44,6 +44,13 @@ export function stopActiveGuideSession(): boolean {
   return true;
 }
 
+/**
+ * 저장소를 지금 쥔 것이 이 중지 함수인가 — 여정(E70-f)이 사이 상태에서 "다른 세션이 저장소를 쥐었다"를 자기 점유와 가를 때 쓴다.
+ */
+export function isGuideSessionOwner(stop: StopFn): boolean {
+  return currentStop === stop;
+}
+
 /** 테스트 전용 — 모듈 상태 초기화. */
 export function __resetGuideSessionStoreForTest(): void {
   currentStop = null;

@@ -71,7 +71,8 @@
 ### 7.1 소유와 점유
 
 - 웹엔 앱 수명 코디네이터가 없다. **여정 안내는 결과 섹션의 `JourneyGuide` 컴포넌트가 소유한다**: 여정 상태(`JourneyState`)·준비 타이머·단계별 패널(그 단계의 `DistanceBeacon` 또는 `TransitGuidePanel`)이 한 컴포넌트 안에 있다. 단계 패널은 단계가 바뀔 때 갈아 끼워진다(앞 세션은 이미 끝났으므로 언마운트는 자원 회수뿐).
-- 세션 단일성은 기존 `guide-session-store`(claim/release) 그대로다. 여정 사이 상태(준비·실패)는 세션이 없으므로 다른 안내 시작이 그 사이에 끼어들 수 있는데, 끼어들면 그 시작이 여정과 무관한 세션을 claim한다 — 여정은 **다른 세션의 시작을 감지하면 끝난다**: 사이 상태 동안 `JourneyGuide`가 store에 자기 stop 함수를 claim해 둔다(사이 상태도 "안내 중"이다 — 유휴 리셋 예외·목적지 편집 무효화 `stopActiveGuideSession`이 여정을 끝낸다). iOS의 `isOccupied`(외부 시작 거부)와 방향은 반대지만(웹은 claim이 앞 소유자를 멈추는 규칙) "여정과 다른 세션이 동시에 살지 않는다"는 불변식은 같다.
+- 세션 단일성은 기존 `guide-session-store`(claim/release) 그대로다. 여정 사이 상태(준비·실패)는 세션이 없으므로 다른 안내 시작이 그 사이에 끼어들 수 있는데, 끼어들면 그 시작이 여정과 무관한 세션을 claim한다 — 여정은 **다른 세션의 시작을 감지하면 끝난다**: 사이 상태 동안 `JourneyGuide`가 store에 자기 stop 함수를 claim해 둔다(사이 상태도 "안내 중"이다 — 유휴 리셋 예외·목적지 편집 무효화 `stopActiveGuideSession`이 여정을 끝낸다).
+- **순서 계약(구현 리뷰 B1·M3, 통합 테스트 `JourneyGuide.integration.test.tsx`)**: ① 전이 함수는 `stateRef`를 다른 무엇보다 먼저 커밋한다 — 웹 `useRouteGuide.stop()`은 저장소를 놓기 **전에** `onSessionEnd("ended")`를 불러, 늦게 커밋하면 같은 token의 재진입 사건이 무한 재귀를 만든다(첫 구현의 실결함). ② 사이 상태의 claim은 전이 함수가 아니라 **부모 effect**가 한다 — 앞 단계 패널의 언마운트 정리(그 세션의 release)가 부모 effect보다 먼저 돈다. 그 effect에서 저장소를 남(자기 점유가 아닌 것, `isGuideSessionOwner`)이 쥐고 있으면 다른 안내 시작이 이 단계를 끊은 것이라 여정을 끝낸다. ③ 단계를 시작하는 전이는 claim을 전이 함수 안에서 동기로 놓는다(자식 패널의 자동 시작 claim이 부모 effect보다 먼저 돈다). iOS의 `isOccupied`(외부 시작 거부)와 방향은 반대지만(웹은 claim이 앞 소유자를 멈추는 규칙) "여정과 다른 세션이 동시에 살지 않는다"는 불변식은 같다.
 - 여정 중엔 결과 섹션을 강제로 펼친 채 둔다(접힘·언마운트가 세션을 죽이는 경로 차단 — 도보 줄·대중교통 대안 선례).
 
 ### 7.2 전이 표
@@ -87,7 +88,7 @@
 | `onSessionEnd("arrived")` | `stageEnded(arrived)` |
 | 패널 [안내 중지]를 누른 뒤의 `"ended"` | `stageEnded(userStopped)` — `DistanceBeacon`에 새 `onUserStop` prop(사용자가 누른 중지 직전 1회)을 두고 그 직후의 `"ended"`를 사용자 중지로 읽는다 |
 | 그 밖의 `"ended"`(탭 숨김·다른 세션 claim·이탈 정리) | `stageEnded(ended)` |
-| 위치 권한 거부·미지원(`status`가 `denied`·`unsupported`로) | 아직 첫 fix 전이면 `stageEnded(startFailed)`, 추적 중이었으면 `stageEnded(ended)` — 새 `onFailure` prop(이 전이는 `onSessionEnd`를 부르지 않는다) |
+| 위치 권한 거부·미지원 | 첫 fix 전이면 `stageEnded(startFailed)`, fix를 받은 뒤면 `stageEnded(ended)` — `useRouteGuide`의 새 `onFailure` 옵션(이 전이는 `onSessionEnd`를 부르지 않는다). ⚠ 축은 첫 fix 수신(`lastFixRef`)이다 — `status`는 시작 순간 동기로 `tracking`이 되어 표시 상태로는 가를 수 없다(구현 리뷰 M2) |
 
 대중교통 단계: `useTransitGuide`에 옵트인 두 콜백을 더한다 — `onRideCompleted`(완료 `done` 갈래 한 자리에서 정확히 한 번, 말미 도보 인계 `doneHandoff` 대신) · `onStopped`(그 밖의 세션 종료 = `transitStopped`). 둘 다 미지정이면 종전 동작 바이트 동일. B를 지정하지 않은 여정은 `onRideCompleted`를 걸지 않고 기존 말미 도보 인계(목적지까지)를 그대로 쓴다 — 그 끝(사용자 중지·완료)이 곧 여정 끝이다.
 
@@ -98,7 +99,7 @@
 - **transit**: `TransitGuidePanel autoStart`(새 prop — 마운트 뒤 1회 시작, 승차 전 도보 대상이 있으면 그 갈래부터) + 위 두 콜백. B 지정이면 `dest` 없음(말미 도보 인계 없음, 마지막 leg 버튼은 기존 「다음 구간」 — 판정 24).
 - **egress**: `DistanceBeacon kind="walk" autoStart`(목적지 = 고른 출구·승강장, 라벨 = 카카오 POI 이름 — D8) + [자동차에 탔어요](`taxiBoarded`). 도착 문장 `arrivedExit`/`arrivedStand`.
 - **taxiOut**: `DistanceBeacon kind="car" autoStart`(목적지 = 도착지). 끝나면(어떤 사유든) 여정 끝.
-- **사이 상태**: 상태 문장 한 줄(`directions.loading` — iOS와 같은 키) + [안내 중지](`userEnded`). 600ms 인계 지연(`JOURNEY_HANDOFF_DELAY_MS`) 뒤 `prepared`. access 준비는 위치 스토어 스냅샷(캐시 우선, 새 측위 없음 — 원 spec §6.3)으로 승차 지점까지 30m 판정, 좌표가 없으면 걷기 안내를 시작한다. 준비가 30초를 넘기면 `staleTimeout`.
+- **사이 상태**: 상태 문장 한 줄(`directions.loading` — iOS와 같은 키) + [안내 중지](`userEnded`). 600ms 인계 지연(`JOURNEY_HANDOFF_DELAY_MS`) 뒤 `prepared`. access 준비는 위치 스토어 스냅샷(캐시 우선, 새 측위 없음 — 원 spec §6.3)으로 승차 지점까지 30m 판정, 좌표가 없으면 걷기 안내를 시작한다. ⚠ 웹 안내 세션의 fix는 위치 스토어에 쓰이지 않아 이 스냅숏은 대개 택시를 타기 전 좌표다 — 생략은 거의 일어나지 않고 늘 걷기 안내 쪽으로 안전하게 떨어진다(iOS "인계 시점 위치"와의 차이, 구현 리뷰 m7). 실보행에서 30m 안 하차가 잦으면 택시 세션의 마지막 fix를 넘기는 쪽으로 고친다. 준비가 30초를 넘기면 `staleTimeout`.
 - **실패**: 상태 문장(`journey.egressStartFailed` / `journey.taxiOutFailed` / `route.transit.error` — iOS `journeyStatusText`) + [경로 다시 조회](`guide.rerouteButton`, egress 시작 실패만 없음) + 단계 버튼(taxiIn이면 [자동차에서 내렸어요], egress면 [자동차에 탔어요]) + [안내 중지]. 실패 진입은 버튼이 새로 생기는 전이라 상태 문장으로 포커스를 옮긴다. 실패 버튼은 누르면 자기가 사라지므로 상태 문장으로 먼저 옮긴 뒤 전이한다.
 - 접근 도보 시작 실패(판정 27)의 다리 문장: 웹 도보 패널은 원인(`beacon.denied` 등)을 이미 창구에 냈다. 여정은 그 뒤 다리 문장 `transitGuide.prewalkUnavailable`(「도보 안내를 시작할 수 없어 승차 대기로 바로 넘어갑니다.」 — 승차 전 도보 선례 키)만 따로 게시하고, 대중교통 시작을 600ms가 아니라 `JOURNEY_BRIDGE_DELAY_MS`(2.5초) 뒤로 미룬다. iOS는 통지 끝을 기다리지만(`announcementsSettled`) 웹 live region은 낭독 끝을 알 수 없어, 다음 게시가 다리 문장을 끊지 않을 최소 여유를 고정값으로 둔다. 그래서 `journey.accessFailedWith`(원인 + 다리 한 문장) 키는 웹에 없다.
 - 통지·창구: 모든 단계 패널은 화면 창구(`announce`) 하나에 게시한다(A40). 단계 사이에 새 문장을 더하지 않는다(뻔한 꼬리 금지) — 다음 세션 시작 통지가 전환을 말한다. 택시 자동 도착만 도착 문장이 그 앞에 온다(`arrivalText`).
@@ -108,7 +109,7 @@
 - 백그라운드: 웹은 탭이 숨으면 안내가 끝난다(기존 웹 안내와 같다 — `"ended"` → 실패 시트, 돌아와 [경로 다시 조회]). iOS의 keep-alive·백그라운드 폴은 없다.
 - 운전자 모드 무시(D10)는 웹에 운전자 모드가 없어 자동 성립.
 - **웹 자동차 안내엔 `carArrivalStep`(40m·정지·정확도 30m) 확정 도착이 없다**: 웹 `useRouteGuide`의 자동 도착은 최종 접근 기하가 있을 때의 도보 판정(15m)뿐이고, 기하가 없으면 간략 모드로 끝까지 간다. 그래서 웹 택시 단계의 주 인계 수단은 [자동차에서 내렸어요] 버튼이다(판정 8 "자동 + 버튼, 먼저 오는 쪽"의 버튼 쪽). 자동 인계를 웹에도 세우는 일은 웹 자동차 확정 도착(B1 계열) 이식과 함께다 — BACKLOG §2 E70 ⑩ 관찰.
-- 대중교통 단계의 시작 통지에 하차역 이름이 실리지 않는다(웹 패널은 목적지 라벨을 `dest`에서만 읽고, 하차 쪽 지정 여정은 `dest`를 넘기지 않는다 — 넘기면 말미 도보 인계가 선다). iOS는 「{역}역」을 싣는다. 작은 차이라 첫 판에 둔다.
+- 대중교통 단계의 시작 통지는 하차 쪽 지정 여정에서 하차역(「{역}역」·정류장 이름)을 목적지로 싣는다 — `dest` 없이(말미 도보 인계 없이) `TransitGuidePanel`의 새 `destinationLabel` prop으로(iOS와 같다, 구현 리뷰 m8). 끝난 여정의 남은 대중교통 패널은 자체 트리거를 숨긴다(`showTrigger={false}`, m9 — 여정의 [안내 시작]과 다른 것을 시작한다).
 
 ## 8. 문안
 

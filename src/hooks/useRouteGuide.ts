@@ -644,11 +644,18 @@ export function useRouteGuide(
      * 도착했습니다」는 여정이 끝난 것처럼 들린다. 미지정 = 기본 문장(종전 동작).
      */
     arrivalText?: string;
+    /**
+     * 위치 권한 거부·미지원으로 세션이 서지 못하거나 끊겼을 때 1회(E70-f spec §7.3) — 이 전이는 `onSessionEnd`를 부르지
+     * 않는다. `"start"` = 첫 fix 전(시작 실패), `"running"` = fix를 받은 뒤. ⚠ `status`는 시작 순간 동기로 `tracking`이
+     * 되므로 표시 상태로는 가를 수 없다(리뷰 M2) — 첫 fix 수신이 축이다.
+     */
+    onFailure?: (when: "start" | "running") => void;
   } = {},
 ): RouteGuideApi {
   const locale = useLocale();
   const onSessionEndRef = useRef(options.onSessionEnd);
   const arrivalTextRef = useRef(options.arrivalText);
+  const onFailureRef = useRef(options.onFailure);
   /** 확정 도착 분기가 stop() 직전에 세운다 — stop()이 사유를 읽고 되돌린다. */
   const arrivedRef = useRef(false);
   const t = useTranslations("guide");
@@ -2067,6 +2074,7 @@ export function useRouteGuide(
         void wakeLock.release();
         setStatus("denied");
         announce(tBeacon("denied"));
+        onFailureRef.current?.(lastFixRef.current === null ? "start" : "running");
         return;
       }
       // POSITION_UNAVAILABLE·TIMEOUT: 추적 유지, 신호 약함만(전이 1회) 통지.
@@ -2143,6 +2151,7 @@ export function useRouteGuide(
   const start = useCallback(() => {
     if (!supported) {
       setStatus("unsupported");
+      onFailureRef.current?.("start");
       return;
     }
     if (watchIdRef.current !== null) return;
@@ -2579,6 +2588,7 @@ export function useRouteGuide(
     viaRef.current = options.via ?? null;
     onSessionEndRef.current = options.onSessionEnd;
     arrivalTextRef.current = options.arrivalText;
+    onFailureRef.current = options.onFailure;
     handleFixRef.current = handleFix;
     handleErrorRef.current = handleError;
     stopRef.current = stop;

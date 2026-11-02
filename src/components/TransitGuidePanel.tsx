@@ -51,6 +51,8 @@ export function TransitGuidePanel({
   autoStart = false,
   onRideCompleted,
   onStopped,
+  destinationLabel,
+  showTrigger = true,
 }: {
   route: TransitRoute;
   triggerLabel: string;
@@ -82,6 +84,10 @@ export function TransitGuidePanel({
    * 인계로 넘어간 완료(E70-f `transitStopped`). 언마운트는 자원 회수라 부르지 않는다.
    */
   onStopped?: () => void;
+  /** 시작 통지의 목적지(E40) — `dest` 없이(말미 도보 인계 없이) 목적지를 말할 때. `dest.name`이 있으면 그것이 이긴다. */
+  destinationLabel?: string;
+  /** 세션이 없을 때의 시작 트리거를 보인다(기본 참). 끝난 여정의 남은 패널은 끈다(E70-f). */
+  showTrigger?: boolean;
 }) {
   const t = useTranslations("transitGuide");
   const tBeacon = useTranslations("beacon");
@@ -93,7 +99,7 @@ export function TransitGuidePanel({
   const rideCompletedRef = useRef(false);
   const guide = useTransitGuide(route, {
     walkHandoffAvailable: dest != null,
-    ...(dest?.name ? { destinationLabel: dest.name } : {}),
+    ...(dest?.name ? { destinationLabel: dest.name } : destinationLabel ? { destinationLabel } : {}),
     ...(onRideCompleted
       ? {
           onRideCompleted: () => {
@@ -379,7 +385,7 @@ export function TransitGuidePanel({
 
   return (
     <div className="mt-1">
-      {!active && (
+      {!active && showTrigger && (
         <button
           type="button"
           ref={triggerRef}

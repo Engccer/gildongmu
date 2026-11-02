@@ -6,11 +6,16 @@ import type { Coord, EgressOption, JourneyVariant } from "@/lib/types";
 import { DistanceBeacon } from "./DistanceBeacon";
 import { TransitGuidePanel } from "./TransitGuidePanel";
 import { buildTransitGuideRoute } from "@/lib/transit-guide";
-import { claimGuideSession, releaseGuideSession } from "@/lib/guide-session-store";
+import {
+  claimGuideSession,
+  hasActiveGuideSession,
+  isGuideSessionOwner,
+  releaseGuideSession,
+} from "@/lib/guide-session-store";
 import { getGeolocationSnapshot } from "@/lib/geolocation";
 import { haversineMeters } from "@/lib/geo";
 import { displayStationName } from "@/lib/journey/display";
-import { boardsAtBusStop } from "@/lib/journey/journey-lines";
+import { alightsAtBusStop, boardsAtBusStop } from "@/lib/journey/journey-lines";
 import {
   JOURNEY_ACCESS_WALK_MIN_M,
   JOURNEY_BRIDGE_DELAY_MS,
@@ -79,10 +84,12 @@ export function JourneyGuide({
   /** 대중교통 단계에서 끝났는가 — 끝난 뒤에도 그 패널(말미 도보 인계)을 남긴다. */
   const [keptTransit, setKeptTransit] = useState(false);
   const statusRef = useRef<HTMLParagraphElement>(null);
-  const focusStatusRef = useRef(false);
+  // 시작 상태(준비 중)는 [안내 시작] 버튼이 사라지며 들어온다 — 첫 커밋에서도 상태 문장으로 착지한다(리뷰 m4).
+  const focusStatusRef = useRef(true);
   /** 단계 패널의 [안내 중지]를 누른 직후의 "ended"를 사용자 중지로 읽는다(§7.3). */
   const userStopRef = useRef(false);
-  const transitKeyRef = useRef("journey-transit");
+  /** 마지막으로 선 대중교통 단계의 패널 key — 끝난 뒤에도 같은 key로 남겨야 패널 상태(말미 도보 인계)가 이어진다. */
+  const [transitKey, setTransitKey] = useState("journey-transit");
 
   const onFinishedRef = useRef(onFinished);
   useEffect(() => {
@@ -98,6 +105,14 @@ export function JourneyGuide({
     onFinishedRef.current(false);
   });
 
+  /**
+   * 사건 하나를 전이 표에 넣는다. ⚠ **지금 상태(`stateRef`)를 다른 무엇보다 먼저 커밋한다**(리뷰 B1): 웹 `useRouteGuide.stop()`은
+   * 저장소를 놓기 전에 `onSessionEnd("ended")`를 부르므로, 상태를 늦게 커밋하면 그 재진입 사건이 같은 token으로 다시 전이한다.
+   *
+   * 사이 상태의 점유 claim은 여기서 하지 않고 아래 effect가 한다 — 앞 단계 패널의 언마운트 정리(그 세션의 release)가 부모 effect보다
+   * 먼저 돌기 때문이다. 여기서 claim하면 아직 살아 있는 단계 세션의 stop을 불러 재진입을 만들거나, 아직 돌지 않은 그 패널의 자동
+   * 시작 claim이 이 여정의 점유를 거꾸로 끊는다(통합 테스트가 잡은 경합).
+   */
   const act = useCallback(
     (event: JourneyEvent, token: JourneyToken) => {
       const current = stateRef.current;
@@ -105,8 +120,8 @@ export function JourneyGuide({
       const r = journeyStep(current, event, token);
       if (r.kind === "ignore") return;
       if (r.kind === "end") {
-        releaseGuideSession(occupyStop);
         stateRef.current = null;
+        releaseGuideSession(occupyStop);
         setState(null);
         const keep = current.phase.kind === "running" && current.phase.stage === "transit";
         setKeptTransit(keep);
@@ -114,15 +129,17 @@ export function JourneyGuide({
         return;
       }
       const next = r.state;
+      stateRef.current = next;
       lastEventRef.current = event;
+      setState(next);
       if (next.phase.kind === "running") {
+        if (next.phase.stage === "transit") setTransitKey(`journey-transit-${next.journeyId}-${next.seq}`);
         // 단계 세션의 claim이 이 여정을 끝내지 않게 먼저 놓는다(자식 effect가 부모보다 먼저 돈다).
         releaseGuideSession(occupyStop);
       } else {
-        claimGuideSession(occupyStop);
-        // 누른 버튼이 사라지는 전이(단계 버튼·실패 버튼)와 실패 진입은 상태 문장으로 착지한다(헌장 §5).
+        // 누른 버튼이 사라지는 전이(단계 버튼·실패 버튼)와 실패 진입은 상태 문장으로 착지한다(헌장 §5). 실패 문장은 착지가
+        // 낭독하므로 따로 통지하지 않는다(보이는 문장을 창구에 복제하지 않는다, 리뷰 m5).
         focusStatusRef.current = true;
-        if (next.phase.kind === "failed" && event.kind === "staleTimeout") announce(failedText(next.phase.stage));
       }
       // 접근 도보를 시작하지 못하고 대중교통으로 넘어간다 — 원인은 도보 패널이 이미 냈고, 다리 문장을 잇는다(판정 27, §7.4).
       if (
@@ -133,10 +150,8 @@ export function JourneyGuide({
       ) {
         announce(tTransit("prewalkUnavailable"));
       }
-      stateRef.current = next;
-      setState(next);
     },
-    // failedText·announce·번역기는 렌더마다 같은 값을 읽으면 된다.
+    // announce·번역기는 렌더마다 같은 값을 읽으면 된다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [announce, occupyStop],
   );
@@ -153,15 +168,27 @@ export function JourneyGuide({
     }
   }
 
-  // 시작 상태는 사이 상태라 마운트 때 claim한다(앞서 돌던 다른 안내는 여기서 멈춘다). 언마운트는 자원 회수.
-  useEffect(() => {
-    claimGuideSession(occupyStop);
-    return () => releaseGuideSession(occupyStop);
-  }, [occupyStop]);
+  // 언마운트는 자원 회수(점유를 놓는다).
+  useEffect(() => () => releaseGuideSession(occupyStop), [occupyStop]);
+
 
   // 사이 상태의 준비: 인계 지연 → (접근 도보면) 위치 스토어 스냅숏으로 30m 판정 → prepared. 30초 상한은 staleTimeout.
   const seq = state?.seq ?? 0;
   const phaseKind = state?.phase.kind;
+  // 사이 상태(준비·실패)의 점유. 시작 상태(seq 1)는 claim한다 — 앞서 돌던 다른 안내는 여기서 멈춘다. 그 뒤의 사이 상태는 앞 단계
+  // 패널의 언마운트 정리가 끝난 뒤라 저장소가 비어 있어야 하고, 누가 쥐고 있으면 다른 안내 시작이 이 단계를 끊은 것이다 — 여정을
+  // 끝낸다(리뷰 M3, spec §7.1 "여정과 다른 세션이 동시에 살지 않는다").
+  useEffect(() => {
+    const s = stateRef.current;
+    if (!s || s.phase.kind === "running") return;
+    if (s.seq > 1 && hasActiveGuideSession() && !isGuideSessionOwner(occupyStop)) {
+      stateRef.current = null;
+      setState(null);
+      onFinishedRef.current(false);
+      return;
+    }
+    claimGuideSession(occupyStop);
+  }, [seq, occupyStop]);
   useEffect(() => {
     const s = stateRef.current;
     if (!s || s.phase.kind !== "transitioning") return;
@@ -238,17 +265,25 @@ export function JourneyGuide({
   };
 
   function transitPanel(tk: JourneyToken | null) {
-    // 끝난 뒤에도 같은 key로 남겨야 패널 상태(말미 도보 인계)가 이어진다 — 마지막으로 선 대중교통 단계의 key를 쓴다.
-    if (tk) transitKeyRef.current = `journey-transit-${tk.journeyId}-${tk.seq}`;
     return (
       <TransitGuidePanel
-        key={transitKeyRef.current}
+        key={transitKey}
         route={variant.transit}
         triggerLabel={tBeacon("start")}
         dest={plan.alightDesignated ? undefined : { lat: plan.dest.lat, lng: plan.dest.lng, name: plan.destLabel }}
+        // 하차 쪽 지정 여정은 말미 도보 인계 없이(`dest` 없음) 시작 통지에 하차역을 싣는다(E40, iOS `destinationLabel`과 같다).
+        {...(plan.alightDesignated && variant.alightStation
+          ? {
+              destinationLabel: alightsAtBusStop(variant)
+                ? variant.alightStation.name
+                : `${displayStationName(variant.alightStation.name)}역`,
+            }
+          : {})}
         walkAccessible={false}
         announce={announce}
         autoStart={tk !== null}
+        // 끝난 뒤 남은 패널의 자체 [안내 시작]은 여정의 [안내 시작]과 다른 것을 시작한다 — 숨긴다(리뷰 m9).
+        showTrigger={tk !== null}
         {...(tk && plan.alightDesignated ? { onRideCompleted: () => act({ kind: "rideCompleted" }, tk) } : {})}
         {...(tk ? { onStopped: () => act({ kind: "transitStopped" }, tk) } : {})}
       />
