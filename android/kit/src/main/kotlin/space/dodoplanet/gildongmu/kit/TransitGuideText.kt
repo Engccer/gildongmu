@@ -336,16 +336,20 @@ fun transitTerminatesEarlyLine(isEn: Boolean, leg: TransitDisplayLeg, item: Tran
 
 // MARK: - 경유 목록·조망
 
-/** 경유 정류소 한 줄 — 이름 + 승차·하차·현재 위치 표식(표식은 UI 라벨이라 인자가 없다). */
+/**
+ * 경유 정류소 한 줄 — 이름 + 승차·하차·현재 위치 표식(표식은 UI 라벨이라 인자가 없다).
+ * **현재 위치 표식은 줄 맨 앞이다**(「현재 위치, 명동」): 스크린 리더로 목록을 훑을 때 첫 낱말에서 지금 역을 알아본다.
+ */
 fun transitViaStopLine(isEn: Boolean, stop: TransitLabel, role: String, here: Boolean, exit: String? = null): TransitTextLine {
     val picked = transitPickLabels(isEn, listOf(stop))
-    val parts = mutableListOf(TransitTextPart.text(picked.values[0]))
+    val parts = mutableListOf<TransitTextPart>()
+    if (here) parts.add(TransitTextPart.key("viaCurrent"))
+    parts.add(TransitTextPart.text(picked.values[0]))
     if (role == "board") {
         parts.add(TransitTextPart.key("viaBoard"))
     } else if (role == "alight") {
         parts.add(TransitTextPart.key("viaAlight"))
     }
-    if (here) parts.add(TransitTextPart.key("viaCurrent"))
     // 하차역 행에 출구 번호 병기(E25) — 하차 역할에만.
     if (role == "alight" && !exit.isNullOrEmpty()) parts.add(TransitTextPart.key("exitBound", listOf(exit)))
     return TransitTextLine(parts, picked.lang)

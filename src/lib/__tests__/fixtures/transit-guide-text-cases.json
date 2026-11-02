@@ -1121,14 +1121,14 @@
       "expect": {
         "parts": [
           {
+            "key": "viaCurrent",
+            "args": []
+          },
+          {
             "text": "Stop0"
           },
           {
             "key": "viaBoard",
-            "args": []
-          },
-          {
-            "key": "viaCurrent",
             "args": []
           }
         ],

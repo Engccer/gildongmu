@@ -1014,7 +1014,7 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
     // 탑승 → 하차 폴의 currentLocation이 경유 목록에 현재 위치로 병치된다.
     await boardTrainAndTrack();
     await waitFor(() => {
-      expect(screen.getByText("왕십리(성동구청), transitGuide.viaCurrent")).toBeTruthy();
+      expect(screen.getByText("transitGuide.viaCurrent, 왕십리(성동구청)")).toBeTruthy();
     });
   });
 
@@ -1055,7 +1055,7 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
       `/api/transit/position?line=${encodeURIComponent("수도권 5호선")}&train=5696`,
     );
     fireEvent.click(await screen.findByRole("button", { name: "transitGuide.viaStopsTrain:2" }));
-    expect(screen.getByText("왕십리(성동구청), transitGuide.viaCurrent")).toBeTruthy();
+    expect(screen.getByText("transitGuide.viaCurrent, 왕십리(성동구청)")).toBeTruthy();
   });
 
   it("승차 중 현재역(E35): 위치가 없으면(열차 없음) 표식도 문장 교체도 없다 — 현행 미관측 문장 그대로", async () => {

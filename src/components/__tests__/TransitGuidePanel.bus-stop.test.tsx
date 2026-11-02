@@ -148,7 +148,7 @@ describe("버스 승차 중 현재 정류장 — 웹 배선(E48)", () => {
     geo.emit();
     expect(screen.queryByText(/transitGuide\.viaCurrent/)).toBeNull();
     geo.emit();
-    await waitFor(() => expect(screen.getByText("강동역, transitGuide.viaCurrent")).toBeTruthy());
+    await waitFor(() => expect(screen.getByText("transitGuide.viaCurrent, 강동역")).toBeTruthy());
     // 공유 스토어는 다시 재지 않았다 — 현재 위치 주소·표시줄이 흔들리지 않는다(설계 리뷰 M3).
     expect(geo.getCurrentPosition).toHaveBeenCalledTimes(1);
     expect(getGeolocationSnapshot()).toMatchObject({ status: "ready", coords: { lat: 37.5, lng: 127.1 } });
@@ -165,11 +165,11 @@ describe("버스 승차 중 현재 정류장 — 웹 배선(E48)", () => {
     try {
       geo.emit();
       geo.emit();
-      expect(screen.getByText("강동역, transitGuide.viaCurrent")).toBeTruthy();
+      expect(screen.getByText("transitGuide.viaCurrent, 강동역")).toBeTruthy();
       await act(async () => {
         await vi.advanceTimersByTimeAsync(89_000);
       });
-      expect(screen.getByText("강동역, transitGuide.viaCurrent")).toBeTruthy();
+      expect(screen.getByText("transitGuide.viaCurrent, 강동역")).toBeTruthy();
       await act(async () => {
         await vi.advanceTimersByTimeAsync(1_100);
       });
@@ -205,7 +205,7 @@ describe("버스 승차 중 현재 정류장 — 웹 배선(E48)", () => {
     await waitFor(() => expect(geo.watchPosition.mock.calls.length).toBe(geo.clearWatch.mock.calls.length + 1));
     geo.emit();
     geo.emit();
-    await waitFor(() => expect(screen.getByText("강동역, transitGuide.viaCurrent")).toBeTruthy());
+    await waitFor(() => expect(screen.getByText("transitGuide.viaCurrent, 강동역")).toBeTruthy());
   });
 
   it("권한이 거부된 스토어면 스트림을 열지 않는다(시간 초과·위치 불가와 다르다)", async () => {

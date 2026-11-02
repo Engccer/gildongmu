@@ -393,14 +393,16 @@ public func transitTerminatesEarlyLine(
 // MARK: - 경유 목록·조망
 
 /// 경유 정류소 한 줄 — 이름 + 승차·하차·현재 위치 표식(표식은 UI 라벨이라 인자가 없다).
+/// **현재 위치 표식은 줄 맨 앞이다**(「현재 위치, 명동」): VO로 목록을 훑을 때 첫 낱말에서 지금 역을 알아본다.
 public func transitViaStopLine(
     isEn: Bool, stop: TransitLabel, role: String, here: Bool, exit: String? = nil
 ) -> TransitTextLine {
     let picked = transitPickLabels(isEn: isEn, [stop])
-    var parts: [TransitTextPart] = [.text(picked.values[0])]
+    var parts: [TransitTextPart] = []
+    if here { parts.append(.key("viaCurrent")) }
+    parts.append(.text(picked.values[0]))
     if role == "board" { parts.append(.key("viaBoard")) }
     else if role == "alight" { parts.append(.key("viaAlight")) }
-    if here { parts.append(.key("viaCurrent")) }
     // 하차역 행에 출구 번호 병기(E25) — 하차 역할에만.
     if role == "alight", let exit, !exit.isEmpty { parts.append(.key("exitBound", [exit])) }
     return TransitTextLine(parts: parts, lang: picked.lang)

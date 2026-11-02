@@ -216,7 +216,7 @@ const CASES: {
     fn: viaStopLine, name: "viaStopLine(승차·현재 위치)",
     run: (e) => viaStopLine(e, LEG.stops[0], "board", true),
     en: {
-      parts: [{ text: "Stop0" }, { key: "viaBoard", args: [] }, { key: "viaCurrent", args: [] }],
+      parts: [{ key: "viaCurrent", args: [] }, { text: "Stop0" }, { key: "viaBoard", args: [] }],
       lang: "en",
     },
   },

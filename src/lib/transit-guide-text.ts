@@ -426,7 +426,10 @@ export function terminatesEarlyLine(
 
 // === 경유 목록·조망 ===
 
-/** 경유 정류소 한 줄 — 이름 + 승차·하차·현재 위치 표식(표식은 UI 라벨이라 인자가 없다). */
+/**
+ * 경유 정류소 한 줄 — 이름 + 승차·하차·현재 위치 표식(표식은 UI 라벨이라 인자가 없다).
+ * **현재 위치 표식은 줄 맨 앞이다**(「현재 위치, 명동」): VO로 목록을 훑을 때 첫 낱말에서 지금 역을 알아본다.
+ */
 export function viaStopLine(
   isEn: boolean,
   stop: TransitLabel,
@@ -436,10 +439,11 @@ export function viaStopLine(
   exit: string | null = null,
 ): TransitTextLine {
   const { values, lang } = pickLabels(isEn, [stop]);
-  const parts: TransitTextPart[] = [{ text: values[0] }];
+  const parts: TransitTextPart[] = [];
+  if (here) parts.push({ key: "viaCurrent", args: [] });
+  parts.push({ text: values[0] });
   if (role === "board") parts.push({ key: "viaBoard", args: [] });
   else if (role === "alight") parts.push({ key: "viaAlight", args: [] });
-  if (here) parts.push({ key: "viaCurrent", args: [] });
   if (role === "alight" && exit) parts.push({ key: "exitBound", args: [exit] });
   return { parts, lang };
 }
