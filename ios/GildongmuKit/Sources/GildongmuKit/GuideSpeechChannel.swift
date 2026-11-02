@@ -98,17 +98,21 @@ public func beaconNoticeSpeechClass(_ notice: BeaconNotice) -> GuideSpeechClass 
 }
 
 /// 대중교통 이벤트의 분류(spec §3.3). 사다리(잔여 ≥2)·상태 문장은 주기·상태, 잔여 ≤1·임박·도착·국면 전이·
-/// 1회성 행동 문장은 행동 문장이다. `trackingStarted`는 백그라운드 톤이 있는 유일한 이벤트라(E36) 그 톤이 자리를 맡는다.
+/// 1회성 행동 문장은 행동 문장이다. `trackingStarted`는 백그라운드 톤이 있는 유일한 이벤트라(E36) 그 톤이 자리를 맡는다 — 단 첫 관측이 잔여 ≤1이면 행동 문장이다(A71).
 public func transitEventSpeechClass(_ event: TransitGuideEvent) -> GuideSpeechClass {
     switch event {
     case let .approaching(remaining, _, _):
         return (remaining ?? .max) <= 1 ? .actionable : .deferrable
     case let .countdown(remaining, _, _, _, _, _):
         return remaining <= 1 ? .actionable : .deferrable
+    case let .trackingStarted(_, _, remaining, _):
+        // 첫 관측이 이미 잔여 ≤1이면 사다리 래치가 그 값에 서서 뒤이은 countdown(1)이 나오지 않는다 — 이 문장이
+        // 「다음 역 {하차역}에서 내리세요」의 유일한 자리라 백그라운드에서도 말한다(잔여 ≥2·미상은 종전대로 톤이 맡는다).
+        return (remaining ?? .max) <= 1 ? .actionable : .deferrable
     case .vehicleSelected, .vehiclePassed, .arrivingAtBoardStop, .arrivingAtAlightStop, .boarded, .arrived,
          .legAdvanced, .neverSeen:
         return .actionable
-    case .trackingStarted, .messageChanged, .backOnTrack, .approxVehicleChanged, .signalLost, .upstreamFailed,
+    case .messageChanged, .backOnTrack, .approxVehicleChanged, .signalLost, .upstreamFailed,
          .signalRecovered, .boardingReset, .capSlowed:
         return .deferrable
     }

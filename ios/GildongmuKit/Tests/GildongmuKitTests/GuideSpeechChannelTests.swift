@@ -126,6 +126,8 @@ struct GuideSpeechChannelTests {
             .approaching(remaining: 1, message: "", messageEn: nil),
             .countdown(remaining: 1, message: "", messageEn: nil, currentLocation: nil,
                        currentLocationEn: nil, arrivalCode: nil),
+            .trackingStarted(message: "", messageEn: nil, remaining: 1, arrivalCode: "3"),
+            .trackingStarted(message: "", messageEn: nil, remaining: 0, arrivalCode: "0"),
         ]
         for event in actionable {
             #expect(transitEventSpeechClass(event) == .actionable, "\(event)")
@@ -136,6 +138,7 @@ struct GuideSpeechChannelTests {
             .countdown(remaining: 2, message: "", messageEn: nil, currentLocation: nil,
                        currentLocationEn: nil, arrivalCode: nil),
             .trackingStarted(message: "", messageEn: nil, remaining: 3, arrivalCode: nil),
+            .trackingStarted(message: "", messageEn: nil, remaining: nil, arrivalCode: nil),
             .messageChanged(message: "", messageEn: nil, arrivalCode: nil),
             .backOnTrack(message: "", messageEn: nil, arrivalCode: nil),
             .approxVehicleChanged(message: "", messageEn: nil),

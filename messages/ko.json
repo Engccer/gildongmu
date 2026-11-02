@@ -1069,7 +1069,7 @@
     "boarded": "탑승했습니다.",
     "boardedAlight": "하차: {stop}.",
     "context": "{line} 탑승 중, {stop}에서 하차합니다.",
-    "subwayNextStop": "다음 역 {stop}.",
+    "subwayNextStop": "다음 역 {stop}에서 내리세요.",
     "subwayArriving": "{stop} 진입 중.",
     "subwayAtStop": "{stop} 도착.",
     "subwayDeparted": "{stop} 출발.",

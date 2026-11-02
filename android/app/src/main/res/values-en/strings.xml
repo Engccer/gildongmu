@@ -1402,7 +1402,7 @@
     <string name="transitGuide_subwayArriving">Arriving at %1$s.</string>
     <string name="transitGuide_subwayAtStop">At %1$s.</string>
     <string name="transitGuide_subwayDeparted">Departed %1$s.</string>
-    <string name="transitGuide_subwayNextStop">Next stop %1$s.</string>
+    <string name="transitGuide_subwayNextStop">Get off at the next stop, %1$s.</string>
     <string name="transitGuide_surroundingsAnchorAlight">Around your stop, %1$s</string>
     <string name="transitGuide_surroundingsAnchorCurrent">Around current station, %1$s</string>
     <string name="transitGuide_terminatesEarly">Bound for %1$s, does not reach %2$s</string>

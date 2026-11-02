@@ -98,11 +98,12 @@ class GuideSpeechChannelTest {
             TransitGuideEvent.Arrived(true), TransitGuideEvent.Arrived(false), TransitGuideEvent.LegAdvanced(1, false),
             TransitGuideEvent.LegAdvanced(1, true), TransitGuideEvent.NeverSeen, TransitGuideEvent.Approaching(1, "", null),
             TransitGuideEvent.Countdown(1, "", null, null, null, null),
+            TransitGuideEvent.TrackingStarted("", null, 1, "3"), TransitGuideEvent.TrackingStarted("", null, 0, "0"),
         )
         for (e in actionable) assertEquals(GuideSpeechClass.actionable, transitEventSpeechClass(e), "$e")
         val deferrable = listOf(
             TransitGuideEvent.Approaching(2, "", null), TransitGuideEvent.Approaching(null, "", null),
-            TransitGuideEvent.Countdown(2, "", null, null, null, null), TransitGuideEvent.TrackingStarted("", null, 3, null),
+            TransitGuideEvent.Countdown(2, "", null, null, null, null), TransitGuideEvent.TrackingStarted("", null, 3, null), TransitGuideEvent.TrackingStarted("", null, null, null),
             TransitGuideEvent.MessageChanged("", null, null), TransitGuideEvent.BackOnTrack("", null, null),
             TransitGuideEvent.ApproxVehicleChanged("", null), TransitGuideEvent.SignalLost, TransitGuideEvent.UpstreamFailed,
             TransitGuideEvent.SignalRecovered, TransitGuideEvent.BoardingReset, TransitGuideEvent.CapSlowed,
