@@ -3,6 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { JourneyResult, Place } from "@/lib/types";
 import { placeEndpoint } from "@/lib/directions-state";
+import { clearRecentRoutes, recordRecentRoute } from "@/lib/recent-searches";
+import { bridgeOf } from "@/lib/webmcp/view-registry";
+import type { DirectionsBridge } from "@/lib/webmcp/tools/context";
 
 vi.mock("next-intl", async () => {
   const m = await import("./stable-intl-mock");
@@ -61,13 +64,17 @@ const journey: JourneyResult = {
 };
 
 let fetchMock: ReturnType<typeof vi.fn>;
+/** 여정 조회 응답(케이스가 바꿔 끼운다): 기본은 찾음. */
+let journeyResponse: () => Response = () => ({ ok: true, json: async () => journey }) as Response;
 beforeEach(() => {
+  journeyResponse = () => ({ ok: true, json: async () => journey }) as Response;
+  clearRecentRoutes();
   fetchMock = vi.fn(async (input: RequestInfo | URL) => {
     const url = String(input);
     if (url.startsWith("/api/places")) {
       return { ok: true, json: async () => ({ places: [cafe, ahyeonStation], provider: "kakao-local", query: "q" }) } as Response;
     }
-    if (url.startsWith("/api/route/journey?")) return { ok: true, json: async () => journey } as Response;
+    if (url.startsWith("/api/route/journey?")) return journeyResponse();
     throw new Error(`unexpected fetch: ${url}`);
   });
   vi.stubGlobal("fetch", fetchMock);
@@ -92,6 +99,15 @@ function renderView(canPlanJourney: boolean) {
       onBack={() => {}}
     />,
   );
+}
+
+/** 승차 쪽 역 칸을 열어 아현역을 확정한다. */
+async function pickBoardStation() {
+  fireEvent.click(screen.getByRole("button", { name: "addMenu" }));
+  fireEvent.click(screen.getByRole("button", { name: "addBoardStation" }));
+  fireEvent.change(screen.getByLabelText("boardField"), { target: { value: "아현" } });
+  fireEvent.click(screen.getByRole("button", { name: "searchField" }));
+  fireEvent.click(await screen.findByRole("button", { name: /아현역 2호선/ }));
 }
 
 describe("여정 웹 입구(E70-f)", () => {
@@ -155,6 +171,10 @@ describe("여정 웹 입구(E70-f)", () => {
     await waitFor(() => expect(screen.getByRole("status").textContent).toContain("readySummary"));
     expect(screen.getByRole("button", { name: "guideStartTransitAlt" })).toBeTruthy();
     await waitFor(() => expect(document.activeElement).toBe(heading));
+    // 도구 스냅샷은 여정 결과에 null을 낸다(spec §4 — 도구 계약에 여정이 없다. 수단 전부 null인 plan은 "경로 없음"으로 읽힌다).
+    const snapshot = bridgeOf<DirectionsBridge>("directions")!.bridge.read();
+    expect(snapshot.phase).toBe("settled");
+    expect(snapshot.plan).toBeNull();
   });
 
   it("열린 역 칸이 비어 있으면 조회하지 않고 needEndpoints", async () => {
@@ -164,5 +184,49 @@ describe("여정 웹 입구(E70-f)", () => {
     fireEvent.click(screen.getByRole("button", { name: "submit" }));
     await waitFor(() => expect(screen.getByRole("status").textContent).toContain("needEndpoints"));
     expect(fetchMock.mock.calls.some((c) => String(c[0]).startsWith("/api/route"))).toBe(false);
+  });
+
+  it("경로 없음과 조회 실패는 다른 통지다(3-state, iOS와 같은 키)", async () => {
+    journeyResponse = () => ({ ok: true, json: async () => ({ variants: [] }) }) as Response;
+    renderView(true);
+    await pickBoardStation();
+    fireEvent.click(screen.getByRole("button", { name: "submit" }));
+    await waitFor(() => expect(screen.getByRole("status").textContent).toContain("noRoute"));
+    expect(screen.queryByRole("heading", { name: "designatedHeading" })).toBeNull();
+
+    journeyResponse = () => ({ ok: false, status: 502, json: async () => ({}) }) as Response;
+    fireEvent.click(screen.getByRole("button", { name: "submit" }));
+    await waitFor(() => expect(screen.getByRole("status").textContent).toContain("error"));
+    expect(screen.getByRole("status").textContent).not.toContain("noRoute");
+  });
+
+  it("출발·도착 교체는 갈아탈 곳도 자리를 바꾼다(승차 쪽 → 하차 쪽)", async () => {
+    renderView(true);
+    await pickBoardStation();
+    expect((screen.getByLabelText("boardField") as HTMLInputElement).value).toBe("아현역 2호선");
+    fireEvent.click(screen.getByRole("button", { name: "swap" }));
+    expect(screen.queryByLabelText("boardField")).toBeNull();
+    expect((screen.getByLabelText("alightField") as HTMLInputElement).value).toBe("아현역 2호선");
+    fireEvent.click(screen.getByRole("button", { name: "submit" }));
+    await screen.findByRole("heading", { name: "designatedHeadingAlight" });
+    const journeyUrl = fetchMock.mock.calls.map((c) => String(c[0])).find((u) => u.startsWith("/api/route/journey?"));
+    const q = new URL(journeyUrl!, "http://x").searchParams;
+    expect(q.get("alight")).toBe("37.5577,126.9562");
+    expect(q.get("board")).toBeNull();
+  });
+
+  it("게이트가 거짓이면 최근 경로 목록에서 여정 항목을 숨긴다(같은 끝점 보통 경로와 문장이 같다)", async () => {
+    const side = (label: string, lat: number, lng: number) => ({ label, lat, lng });
+    recordRecentRoute({ from: side("집", 37.55, 126.95), to: side("광화문", 37.571, 126.976) });
+    recordRecentRoute({
+      from: side("집", 37.55, 126.95),
+      to: side("광화문", 37.571, 126.976),
+      board: { label: "아현역 2호선", lat: 37.5577, lng: 126.9562, line: "수도권2호선" },
+    });
+    const view = render(<DirectionsView canShowWalk canShowTransit canBriefCarRoute canPlanJourney={false} onBack={() => {}} />);
+    await waitFor(() => expect(screen.getAllByRole("button", { name: /^item/ })).toHaveLength(1));
+    view.unmount();
+    render(<DirectionsView canShowWalk canShowTransit canBriefCarRoute canPlanJourney onBack={() => {}} />);
+    await waitFor(() => expect(screen.getAllByRole("button", { name: /^item|^recentRoute/ })).toHaveLength(2));
   });
 });

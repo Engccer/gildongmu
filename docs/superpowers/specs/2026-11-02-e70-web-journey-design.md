@@ -28,6 +28,8 @@
 - **웹 칸은 검색 입력이다**(iOS는 시트에서 고른 뒤 칸이 선다). 칸 이름은 `journey.boardField`·`journey.alightField`. 입력 + [검색](+ 음성은 첫 판 밖 — 끝점 칸과 달리 넣지 않는다, 아래 §9).
 - **후보는 역과 정류장만 보인다**(iOS는 모든 장소를 보이고 역이 아니면 「역이나 정류장을 골라 주세요.」로 거절한다). 웹은 목록 단계에서 거른다: `/api/places` 결과 중 `stationLayoutKind(place)`가 `subway`·`rail`인 것 상위 5 + `/api/route/journey/stops`(2~30자, 기준 좌표는 출발·도착 칸의 확정 좌표 중 있는 것, 둘 다 없으면 부르지 않는다) 상위 5. 이유: 웹 목록은 고르는 즉시 칸이 확정되는 흐름이라 거절 통지가 "고른 것이 안 들어갔다"를 알리는 유일한 신호가 되고, 그 왕복이 목록 단계 거르기보다 비싸다. 그래서 `notStation` 문장은 웹에 없다.
   - 줄: 역은 `joinText(이름, 주소)`(끝점 후보와 같은 줄), 정류장은 `joinText(이름, journey.busStopKind, 거리)`(iOS와 같은 줄). 통지는 건수(`directions.candidateCount`), 0건 `candidateNone`, 장소·정류장 둘 다 실패면 `candidateError`. 정류장 검색만 실패하면 건수 통지 뒤에 `journey.stopSearchFailed`를 같은 문장으로 잇고, 잘렸으면(`truncated`) 목록 끝에 `journey.stopSearchTruncated` 평문.
+- **출발·도착 교체(`swapFields`)는 갈아탈 곳도 자리를 바꾼다**(승차 쪽 ↔ 하차 쪽, 구현 리뷰 m3): 승차 쪽은 출발지 근처, 하차 쪽은 도착지 근처에서 고른 역이라 끝점만 바꾸면 도착지 근처 역에서 자동차를 내리는 여정이 된다. 돌아오는 여정이면 바꾼 그대로 맞는다. ⚠ iOS `DirectionsTabView.swap()`은 역 칸을 바꾸지 않는다 — BACKLOG E70 편승에 적었다.
+- 정류장 검색은 출발·도착 가운데 확정 좌표가 하나라도 있을 때만 부른다(기준 좌표 없는 정류장 검색은 뜻이 없다). 둘 다 미확정이면 역만 내고 통지도 역 기준(`candidateNone`)이다 — 두 끝점이 모두 미확정인 채 역 칸부터 채우는 순서는 드물어 별도 문장을 두지 않았다(구현 리뷰 m1, 실사용에서 걸리면 문장 판정).
 - 칸을 확정하면 입력에 이름이 남는다(끝점 칸과 같다). 남은 쪽이 비었으면 그 쪽을 더하는 일반 버튼 하나(원 spec §5.1 "항목 하나뿐인 메뉴는 만들지 않는다") + 「갈아탈 역/정류장 지우기」(판정 21: 두 칸을 비우고 조회 버튼으로 포커스). 칸마다의 삭제는 웹 첫 판에 없다 — 지우기 하나가 같은 일을 한다(밀기 동작이 없는 웹에서 버튼을 셋 늘리지 않는다).
 - 노선 힌트: 원 spec §4.1 — 카테고리 마지막 조각이 노선이면 그것, 아니면 이름 꼬리 노선 토큰(iOS `journeyLineHint` 이식 `journeyLineHint`).
 - D14(경유지와 배타): 역 칸이 하나라도 있으면 경유지 칸·메뉴 없음, 경유지가 있으면 메뉴 없음(종전 「경유지 삭제」만).
@@ -40,7 +42,7 @@
 - 결과는 `QueryResults.journey`(3-state: `found` / `noRoute`(`variants: []`) / `failed`(비-200·네트워크·15초 시간 초과))로 싣고 `outcomes`는 비운다. `outOfCoverage` 마커는 일반 조회와 같은 phase.
 - 완료 통지: 찾음 = `directions.readySummary`(count 1, 판정 22) + 옛 위치 뒷문장, 경로 없음 = `route.transit.noRoute`, 실패 = `route.transit.error`(iOS와 같은 키).
 - 포커스: 찾으면 여정 섹션 heading으로 1회(웹 길찾기 규칙 — 첫 성공 수단 heading. iOS는 조회 버튼에 머무는 화면 규칙이라 다르다).
-- WebMCP: 도구 호출(`runQuery(request)`)은 역 칸을 읽지 않는다 — 도구 계약(7개 도구)에 여정이 없고, 화면에 역 칸이 있어도 도구 요청은 일반 조회다. 도구 스냅샷(`buildToolPlan`)은 여정 결과에 `null`을 낸다(첫 판 밖).
+- WebMCP: 도구 호출(`runQuery(request)`)은 역 칸을 읽지 않는다 — 도구 계약(7개 도구)에 여정이 없고, 화면에 역 칸이 있어도 도구 요청은 일반 조회다. 도구 조회는 칸을 지우지도 않으므로(도구가 화면 입력을 바꾸지 않는다는 W1 원칙) 그 뒤 사용자가 조회 버튼을 누르면 다시 여정이다(구현 리뷰 m2, 의도된 동작). 도구 스냅샷(`buildToolPlan`)은 여정 결과에 `null`을 낸다(결과 전과 같다 — 수단 전부 null인 plan은 "경로 없음"으로 읽힌다. 여정 노출은 첫 판 밖).
 - `?dir=`는 역 칸을 싣지 않는다(새로고침하면 역 칸이 빈다, 첫 판 밖 — A61 복원 표식과 함께 설계할 일).
 
 ## 5. 결과 (W4)
@@ -122,6 +124,7 @@ E71(지금 탄 열차) · `?dir=` 역 칸 복원 · WebMCP 여정 · en · 역 �
 ## 10. 검증
 
 - 순수: `journey-step.test.ts`(공유 fixture 전수 + 낡은 token + 경쟁), `journey-lines.test.ts`(제목·못 찾음·합계·출구 줄·노선 머리말·최근 경로 줄), `recent-searches` 역 필드 왕복·구버전 디코딩.
-- 컴포넌트(jsdom): 입력 메뉴·D14 배타·역만 후보·지우기 포커스, 여정 조회 분기(일반 수단 fetch 0회), 결과 읽기 순서, 이어 안내 전이(택시 도착 → 접근 도보/대중교통, 출구 도보 → 택시, 사용자 중지 = 여정 끝).
+- 컴포넌트(jsdom): 입력 메뉴·D14 배타·역만 후보·지우기 포커스, 여정 조회 분기(일반 수단 fetch 0회)·경로 없음/실패 통지·교체 시 역 칸 교환·게이트 거짓 최근 목록·도구 스냅샷 null(`DirectionsJourney.test.tsx`), 결과 읽기 순서·`aria-pressed`·변형 전환 시 출구 기본화·안내 중 선택 숨김(`JourneyResult.test.tsx`), 이어 안내 전이(택시 도착 → 접근 도보/대중교통, 출구 도보 → 택시, 사용자 중지 = 여정 끝; `JourneyGuide.test.tsx`는 단계 패널 목, `JourneyGuide.integration.test.tsx`는 실물 `DistanceBeacon`).
+- 잠기지 않은 것(구현 리뷰 M2, 2026-11-02): 대중교통 단계를 실물 `TransitGuidePanel`로 엮은 통합 케이스(`onRideCompleted`·`onStopped` 순서는 패널 단독 테스트에만), 역 칸 편집 시 활성 안내 중지, 최근 경로 활성화(D13)의 칸 채움. 웹 실보행(§2 E70 ⑩)과 함께 본다.
 - 기존 동작 바이트 동일: 게이트 거짓이면 종전 경유지 버튼, `useTransitGuide`·`DistanceBeacon`·`useRouteGuide` 새 옵션 미지정 시 종전 테스트 전부 통과.
 - 실보행·실차: §2 E70 행에 "웹" 관찰을 더한다(웹 실시간 안내 자체가 실보행 미검증 — B6과 같은 축).

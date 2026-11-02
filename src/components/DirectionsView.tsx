@@ -657,7 +657,11 @@ export function DirectionsView({
   // 최근 경로(스펙 2026-08-10): 출발·도착 쌍. 결과 없는 화면에서만 노출.
   const [recentRoutes, setRecentRoutes] = useState<RecentRoute[]>([]);
   const tRecentRoutes = useTranslations("recentRoutes");
-  const visibleRecentRoutes = recentRoutes.slice(0, 5); // 웹 최근 목록 관례(상위 5)
+  // 게이트가 거짓인 화면에선 여정 항목(갈아탈 곳이 있는 경로)을 숨긴다 — 활성화해도 갈아탈 곳을 버려 보통 조회가 되고,
+  // 같은 끝점의 보통 경로와 문장이 같아 목록에 같은 줄이 둘 보인다(E70-f 구현 리뷰 m4). 저장본은 남긴다.
+  const visibleRecentRoutes = recentRoutes
+    .filter((r) => journeyEnabled || (!r.board && !r.alight))
+    .slice(0, 5); // 웹 최근 목록 관례(상위 5)
   const routeDeleteRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const routeFocusIndexRef = useRef<number | null>(null);
   const [routeRevision, setRouteRevision] = useState(0);
@@ -844,6 +848,10 @@ export function DirectionsView({
     const stopped = stopActiveGuideSession();
     setFromField(toField);
     setToField(fromField);
+    // 갈아탈 곳도 자리를 바꾼다 — 승차 쪽은 출발지 근처, 하차 쪽은 도착지 근처에서 고른 역이라 끝점만 바꾸면
+    // 도착지 근처 역에서 자동차를 내리는 엉뚱한 여정이 된다(E70-f 구현 리뷰 m3). 돌아오는 여정이면 그대로 맞는다.
+    setBoardSlot(alightSlot);
+    setAlightSlot(boardSlot);
     discardResults();
     announce(stopped ? tBeacon("stopped") : "");
   }
@@ -1351,7 +1359,9 @@ export function DirectionsView({
       : [],
   );
   function buildToolPlan(): ToolPlan | null {
-    if (!results) return null;
+    // 여정 결과는 도구 계약 밖이다(E70-f spec §4 — 7개 도구에 여정이 없다). 수단이 전부 null인 plan을 내면
+    // 에이전트가 "조회는 됐는데 경로가 하나도 없다"로 읽으므로 결과 전과 같은 null을 낸다.
+    if (!results || results.journey) return null;
     const transitOutcome = results.outcomes.transit;
     const entries =
       transitOutcome?.kind === "done" && transitOutcome.mode === "transit"
