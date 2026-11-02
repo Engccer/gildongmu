@@ -478,9 +478,11 @@ struct TransitTrackingSheet: View {
                     }
                 }
             } label: {
+                // 개수는 이동 역 수(승차역 제외 = viaStops − 1) — 목록은 승차·하차역을 다 싣지만 "경유역 N개"의
+                // 관례와 경로 브리핑의 ODsay `stationCount`가 이 수다(웹 `TransitGuidePanel`과 동일).
                 Text(appLocalized(
                     leg.mode == "subway" ? "transitGuide.viaStopsTrain" : "transitGuide.viaStopsBus",
-                    leg.viaStops.count
+                    max(0, leg.viaStops.count - 1)
                 ))
             }
         }

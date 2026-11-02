@@ -133,7 +133,7 @@ async function startBusRiding() {
   render(<TransitGuidePanelHost route={BUS_ROUTE} triggerLabel="시작" walkAccessible={false} />);
   fireEvent.click(screen.getByRole("button", { name: "시작" }));
   await boardBusByDeparture();
-  fireEvent.click(await screen.findByRole("button", { name: "transitGuide.viaStopsBus:3" }));
+  fireEvent.click(await screen.findByRole("button", { name: "transitGuide.viaStopsBus:2" }));
 }
 
 describe("버스 승차 중 현재 정류장 — 웹 배선(E48)", () => {

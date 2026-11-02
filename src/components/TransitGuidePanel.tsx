@@ -383,9 +383,11 @@ export function TransitGuidePanel({
                 aria-expanded={viaOpen}
                 className="min-h-11 rounded-md border border-gray-400 px-3 text-sm"
               >
+                {/* 개수는 이동 역 수(승차역 제외 = viaStops − 1) — 목록은 승차·하차역을 다 싣지만
+                    "경유역 N개"의 관례와 경로 브리핑의 ODsay `stationCount`가 이 수다(두 화면 숫자 일치). */}
                 {leg.mode === "subway"
-                  ? t("viaStopsTrain", { count: leg.viaStops.length })
-                  : t("viaStopsBus", { count: leg.viaStops.length })}
+                  ? t("viaStopsTrain", { count: Math.max(0, leg.viaStops.length - 1) })
+                  : t("viaStopsBus", { count: Math.max(0, leg.viaStops.length - 1) })}
               </button>
               {viaOpen &&
                 (() => {

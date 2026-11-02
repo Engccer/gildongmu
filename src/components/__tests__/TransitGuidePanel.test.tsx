@@ -1003,7 +1003,7 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
     fireEvent.click(screen.getByRole("button", { name: "시작" }));
 
     // 대기 국면에도 disclosure는 보이고(정적 목록), 펼치면 승차·하차 라벨이 붙는다.
-    const via = await screen.findByRole("button", { name: "transitGuide.viaStopsTrain:3" });
+    const via = await screen.findByRole("button", { name: "transitGuide.viaStopsTrain:2" });
     expect(via.getAttribute("aria-expanded")).toBe("false");
     fireEvent.click(via);
     expect(via.getAttribute("aria-expanded")).toBe("true");
@@ -1054,7 +1054,7 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
     expect(positionUrls[0]).toBe(
       `/api/transit/position?line=${encodeURIComponent("수도권 5호선")}&train=5696`,
     );
-    fireEvent.click(await screen.findByRole("button", { name: "transitGuide.viaStopsTrain:3" }));
+    fireEvent.click(await screen.findByRole("button", { name: "transitGuide.viaStopsTrain:2" }));
     expect(screen.getByText("왕십리(성동구청), transitGuide.viaCurrent")).toBeTruthy();
   });
 
@@ -1082,7 +1082,7 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
 
     await waitFor(() => expect(statusLine().textContent).toContain("stateRidingNotYetVisible"));
     expect(statusLine().textContent).not.toContain("transitGuide.currentStation");
-    fireEvent.click(await screen.findByRole("button", { name: "transitGuide.viaStopsTrain:3" }));
+    fireEvent.click(await screen.findByRole("button", { name: "transitGuide.viaStopsTrain:2" }));
     expect(screen.queryByText(/transitGuide\.viaCurrent/)).toBeNull();
   });
 
