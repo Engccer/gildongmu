@@ -11,6 +11,9 @@
 
 ## 2026-11-02
 
+### 웹 길찾기에 자동차 환승 여정(E70-f)
+iOS 실험판의 「경유지/자동차 환승 추가」를 웹 길찾기에 옮겼다(ko 로케일 공개, 위원장 판정 2026-11-02). 역·정류장 칸 → 여정만 조회 → 변형·출구 선택 → 택시·접근 도보·대중교통·출구 도보·택시 이어 안내를 결과 섹션의 `JourneyGuide`가 소유한다. 전이 표는 Kit `journeyStep`의 TS 미러와 공유 fixture(Kit 소비 테스트 `JourneyStepSharedTests`는 Mac에서 첫 실행 필요), 문안은 iOS와 같은 ko 문장(`journey-web-copy.test.ts`). 여정 Tmap 상한은 메모리 장치 유지. spec `docs/superpowers/specs/2026-11-02-e70-web-journey-design.md`.
+
 ### 경유역 목록의 현재 위치 표식을 줄 맨 앞으로
 펼친 경유역·정류장 목록의 현재 역 줄이 「명동, 현재 위치」에서 「현재 위치, 명동」으로 바뀌었다. VoiceOver로 목록을 훑을 때 첫 낱말에서 지금 역을 알아보게 하려는 것이다. 조립기 `viaStopLine` 웹·Kit·`:kit` 세 벌과 공유 fixture를 함께 고쳤고, iOS 안내 조망의 정차역 행도 같은 함수라 함께 바뀐다.
 

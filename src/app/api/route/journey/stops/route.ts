@@ -8,7 +8,7 @@ import { searchJourneyStops, stopSearchDeps } from "@/lib/journey/stop-search";
 /**
  * 정류장 이름 검색(E70-e spec §4.6): 여정 칸 검색 시트가 제출 때만 부른다. `q`는 trim 2~30자(한 글자 부분 일치는
  * 수천 건이다), 좌표는 형제 여정 라우트와 같은 `"위도,경도"` 쌍이며 둘 중 하나 이상 필수다.
- * 한국 밖 좌표는 버리고 둘 다 밖이면 200 `{"outOfCoverage":true}`. 키가 없으면 503(죽은 기능 0 — 실험판만 부른다).
+ * 한국 밖 좌표는 버리고 둘 다 밖이면 200 `{"outOfCoverage":true}`. 키가 없으면 503(죽은 기능 0 — iOS 실험판과 웹 칸 검색이 부른다, 웹은 키 게이트 `canSearchJourneyStops` 뒤).
  * 라우트에 `use cache`를 두지 않는다: 이름 단위 캐시는 provider fetch의 revalidate가 맡는다.
  */
 

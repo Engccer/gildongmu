@@ -215,6 +215,11 @@ export function useTransitGuide(
      * 들지만 웹 패널은 목적지 좌표 없이도 뜬다).
      */
     destinationLabel?: string;
+    /**
+     * 여정(E70-f, spec 2026-11-02 §7.3)의 하차 쪽 지정 — 마지막 탈것을 내린 완료(`done`) 갈래 한 자리에서 정확히 한 번 부르고,
+     * 말미 도보 인계(`doneHandoff`)를 세우지 않는다(여정의 다음 단계가 그 자리를 맡는다). 미지정 = 종전 동작.
+     */
+    onRideCompleted?: () => void;
   } = {},
 ) {
   const walkHandoffAvailable = options.walkHandoffAvailable ?? false;
@@ -224,6 +229,10 @@ export function useTransitGuide(
   useEffect(() => {
     walkHandoffAvailableRef.current = walkHandoffAvailable;
   }, [walkHandoffAvailable]);
+  const onRideCompletedRef = useRef(options.onRideCompleted);
+  useEffect(() => {
+    onRideCompletedRef.current = options.onRideCompleted;
+  });
   const t = useTranslations("transitGuide");
   const locale = useLocale();
 
@@ -1455,6 +1464,12 @@ export function useTransitGuide(
       releaseGuideSession(stopSession);
       clearTimer();
       stopSession();
+      // 여정의 하차 쪽 지정(E70-f): 다음 단계(출구 도보·택시)가 말미 도보 인계를 대신한다 — 둘이 동시에 서지 않는다.
+      const rideCompleted = onRideCompletedRef.current;
+      if (rideCompleted) {
+        rideCompleted();
+        return false;
+      }
       if (walkMinutes != null) setDoneHandoff({ walkMinutes });
       return walkMinutes != null;
     }

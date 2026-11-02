@@ -459,6 +459,115 @@
     "direction",
     "distance"
   ],
+  "journey.arrivedExit": [
+    "exit"
+  ],
+  "journey.arrivedStation": [
+    "station"
+  ],
+  "journey.arrivedStop": [
+    "stop"
+  ],
+  "journey.designatedHeading": [
+    "station"
+  ],
+  "journey.designatedHeadingAlight": [
+    "station"
+  ],
+  "journey.designatedHeadingBus": [
+    "stop"
+  ],
+  "journey.designatedHeadingBusAlight": [
+    "stop"
+  ],
+  "journey.designatedMissing": [
+    "station"
+  ],
+  "journey.designatedMissingAlight": [
+    "station"
+  ],
+  "journey.designatedMissingStop": [
+    "stop"
+  ],
+  "journey.designatedMissingStopAlight": [
+    "stop"
+  ],
+  "journey.egressExit": [
+    "exit",
+    "minutes",
+    "fare"
+  ],
+  "journey.egressLookupFailed": [
+    "minutes",
+    "fare"
+  ],
+  "journey.egressNone": [
+    "minutes",
+    "fare"
+  ],
+  "journey.egressNoneStop": [
+    "minutes",
+    "fare"
+  ],
+  "journey.egressStand": [
+    "minutes",
+    "fare"
+  ],
+  "journey.recentRoute": [
+    "from",
+    "to",
+    "station"
+  ],
+  "journey.recentRouteBoth": [
+    "from",
+    "to",
+    "board",
+    "alight"
+  ],
+  "journey.recentRouteBothPlaces": [
+    "from",
+    "to",
+    "board",
+    "alight"
+  ],
+  "journey.recentRouteStop": [
+    "from",
+    "to",
+    "stop"
+  ],
+  "journey.recommendedHeading": [
+    "station"
+  ],
+  "journey.recommendedHeadingAlight": [
+    "station"
+  ],
+  "journey.recommendedHeadingBus": [
+    "stop"
+  ],
+  "journey.recommendedHeadingBusAlight": [
+    "stop"
+  ],
+  "journey.searchField": [
+    "field"
+  ],
+  "journey.stationPlace": [
+    "station"
+  ],
+  "journey.taxiIn": [
+    "station",
+    "minutes",
+    "fare"
+  ],
+  "journey.taxiInStop": [
+    "stop",
+    "minutes",
+    "fare"
+  ],
+  "journey.totals": [
+    "minutes",
+    "taxiFare",
+    "transitFare"
+  ],
   "kidsNearby.asOf": [
     "time"
   ],

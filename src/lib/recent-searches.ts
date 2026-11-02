@@ -264,7 +264,31 @@ export type RecentRoute = {
   to: RecentEndpoint | null;
   /** 경유지 1개(N4). 장소만(현재 위치 불가). 없으면 키 부재(기존 저장본 호환). */
   via?: RecentEndpoint;
+  /**
+   * 여정의 갈아탈 곳(E70-f D13 — 승차 쪽·하차 쪽). 역 칸 전용 값이라 끝점과 달리 노선 힌트·정류장 종류를 든다.
+   * 없으면 키 부재(기존 저장본 호환). 경유지와 함께 오지 않는다(D14).
+   */
+  board?: RecentJourneyStation;
+  alight?: RecentJourneyStation;
   pinned?: boolean;
+};
+
+/** 최근 경로에 저장하는 갈아탈 역·정류장(`JourneyStationPick`과 같은 모양). */
+export type RecentJourneyStation = {
+  label: string;
+  lat: number;
+  lng: number;
+  line?: string;
+  kind?: "stop";
+};
+
+const isJourneyStation = (v: unknown): v is RecentJourneyStation => {
+  if (typeof v !== "object" || v === null) return false;
+  const s = v as RecentJourneyStation;
+  return (
+    typeof s.label === "string" && Number.isFinite(s.lat) && Number.isFinite(s.lng) &&
+    (s.line === undefined || typeof s.line === "string") && (s.kind === undefined || s.kind === "stop")
+  );
 };
 
 const ROUTES_KEY = "gildongmu:recent-routes:v1";
@@ -275,6 +299,8 @@ const isRoute = (v: unknown): v is RecentRoute =>
   typeof v === "object" && v !== null &&
   isRouteSide((v as RecentRoute).from) && isRouteSide((v as RecentRoute).to) &&
   ((v as RecentRoute).via === undefined || isEndpoint((v as RecentRoute).via)) &&
+  ((v as RecentRoute).board === undefined || isJourneyStation((v as RecentRoute).board)) &&
+  ((v as RecentRoute).alight === undefined || isJourneyStation((v as RecentRoute).alight)) &&
   isPinnedFlag((v as RecentRoute).pinned);
 
 function sameSide(a: RecentEndpoint | null, b: RecentEndpoint | null): boolean {
@@ -282,10 +308,16 @@ function sameSide(a: RecentEndpoint | null, b: RecentEndpoint | null): boolean {
   return sameEndpoint(a, b);
 }
 
-/** 동일 판정: from·to·via 셋 전부(현재 위치끼리도 동일, via 부재끼리도 동일). pinned 무관. */
+function sameStation(a: RecentJourneyStation | undefined, b: RecentJourneyStation | undefined): boolean {
+  if (!a || !b) return a === b;
+  return a.lat.toFixed(4) === b.lat.toFixed(4) && a.lng.toFixed(4) === b.lng.toFixed(4) && a.kind === b.kind;
+}
+
+/** 동일 판정: from·to·via와 갈아탈 곳 둘 전부(현재 위치끼리도 동일, 부재끼리도 동일). pinned 무관. */
 function sameRoute(a: RecentRoute, b: RecentRoute): boolean {
   return (
-    sameSide(a.from, b.from) && sameSide(a.to, b.to) && sameSide(a.via ?? null, b.via ?? null)
+    sameSide(a.from, b.from) && sameSide(a.to, b.to) && sameSide(a.via ?? null, b.via ?? null) &&
+    sameStation(a.board, b.board) && sameStation(a.alight, b.alight)
   );
 }
 

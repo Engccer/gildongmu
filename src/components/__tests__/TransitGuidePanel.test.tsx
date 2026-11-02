@@ -1154,6 +1154,68 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
     expect(screen.getByRole("button", { name: "시작" })).toBeTruthy();
   });
 
+  it("여정 옵트인(E70-f): autoStart로 바로 시작, 마지막 하차 완료는 말미 도보 인계 대신 onRideCompleted 1회", async () => {
+    Object.defineProperty(navigator, "geolocation", {
+      value: { getCurrentPosition: vi.fn(), watchPosition: vi.fn(() => 1), clearWatch: vi.fn() },
+      configurable: true,
+    });
+    const routeWithTailWalk: TransitRoute = { ...ROUTE, legs: [...ROUTE.legs, { mode: "walk", minutes: 5 }] };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("station=" + encodeURIComponent("천호"))) {
+          return {
+            ok: true,
+            json: async () => ({ mode: "subway", status: "ok", rawCount: 1, items: [trackItem({})] }),
+          } as Response;
+        }
+        return {
+          ok: true,
+          json: async () => ({
+            mode: "subway",
+            status: "ok",
+            rawCount: 1,
+            items: [trackItem({ message: "여의도 도착", remainingStops: 0, arrivalCode: "1" })],
+          }),
+        } as Response;
+      }),
+    );
+    const onRideCompleted = vi.fn();
+    const onStopped = vi.fn();
+    render(
+      <TransitGuidePanelHost
+        route={routeWithTailWalk}
+        triggerLabel="시작"
+        walkAccessible={false}
+        autoStart
+        onRideCompleted={onRideCompleted}
+        onStopped={onStopped}
+      />,
+    );
+    // 트리거를 누르지 않아도 세션이 선다.
+    await boardTrainAndTrack();
+    // 목적지를 넘기지 않으면(하차 쪽 지정 여정) 마지막 leg 버튼은 「다음 구간」이다(판정 24).
+    fireEvent.click(await screen.findByRole("button", { name: "transitGuide.advance" }));
+    await waitFor(() => expect(onRideCompleted).toHaveBeenCalledTimes(1));
+    expect(onStopped).not.toHaveBeenCalled();
+    expect(screen.queryByRole("button", { name: "transitGuide.walkHandoffStart" })).toBeNull();
+  });
+
+  it("여정 옵트인(E70-f): 사용자 중지는 onStopped 1회", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        json: async () => ({ mode: "subway", status: "ok", rawCount: 1, items: [trackItem({})] }),
+      }) as Response),
+    );
+    const onStopped = vi.fn();
+    render(<TransitGuidePanelHost route={ROUTE} triggerLabel="시작" walkAccessible={false} autoStart onStopped={onStopped} />);
+    fireEvent.click(await screen.findByRole("button", { name: "beacon.stop" }));
+    await waitFor(() => expect(onStopped).toHaveBeenCalledTimes(1));
+  });
+
   it("중간 leg의 도착은 여전히 [다음 구간]이고, 역 선택에서 하차역을 고르면 도착 선언이다(A37 ②·E34 (d))", async () => {
     Object.defineProperty(navigator, "geolocation", {
       value: { getCurrentPosition: vi.fn(), watchPosition: vi.fn(() => 1), clearWatch: vi.fn() },

@@ -251,6 +251,30 @@ describe("recent routes", () => {
     expect(list[1].from).toBeNull();
   });
 
+  it("여정의 갈아탈 곳(E70-f D13)은 왕복 보존되고, 같은 끝점의 보통 경로와 다른 항목이다", () => {
+    const s = memStorage();
+    const board = { label: "아현역", lat: 37.5577, lng: 126.9562, line: "수도권2호선" };
+    const stop = { label: "부천시청", lat: 37.5, lng: 126.76, kind: "stop" as const };
+    recordRecentRoute(curToSchool, s);
+    recordRecentRoute({ ...curToSchool, board }, s);
+    const list = recordRecentRoute({ ...curToSchool, board, alight: stop }, s);
+    expect(list).toHaveLength(3);
+    expect(loadRecentRoutes(s)[0]).toMatchObject({ from: null, to: school, board, alight: stop });
+    // 같은 여정 재기록은 끌어올림
+    expect(recordRecentRoute({ ...curToSchool, board }, s)).toHaveLength(3);
+  });
+
+  it("갈아탈 곳 모양이 틀린 저장본은 버린다(구버전 저장본은 부재라 그대로)", () => {
+    const s = memStorage({
+      "gildongmu:recent-routes:v1": JSON.stringify([
+        { from: null, to: { label: "a", lat: 1, lng: 1 } },
+        { from: null, to: { label: "b", lat: 2, lng: 2 }, board: { label: "x", lat: "nope", lng: 1 } },
+        { from: null, to: { label: "c", lat: 3, lng: 3 }, alight: { label: "y", lat: 1, lng: 1, kind: "train" } },
+      ]),
+    });
+    expect(loadRecentRoutes(s).map((r) => r.to?.label)).toEqual(["a"]);
+  });
+
   it("양측 현재 위치 쌍은 기록하지 않는다", () => {
     const s = memStorage();
     expect(recordRecentRoute({ from: null, to: null }, s)).toEqual([]);

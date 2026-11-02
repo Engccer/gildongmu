@@ -639,10 +639,16 @@ export function useRouteGuide(
     onSessionEnd?: (reason: "arrived" | "ended") => void;
     /** 도보 경유지(N4 2026-09-24). 미지정·null = 경유지 없음(종전 동작). */
     via?: RouteGuideVia | null;
+    /**
+     * 확정 도착 문장 대체(E70-f 여정 단계, spec 2026-11-02 §7.4) — 다음 단계가 이어지는 도착에서 기본 「목적지에
+     * 도착했습니다」는 여정이 끝난 것처럼 들린다. 미지정 = 기본 문장(종전 동작).
+     */
+    arrivalText?: string;
   } = {},
 ): RouteGuideApi {
   const locale = useLocale();
   const onSessionEndRef = useRef(options.onSessionEnd);
+  const arrivalTextRef = useRef(options.arrivalText);
   /** 확정 도착 분기가 stop() 직전에 세운다 — stop()이 사유를 읽고 되돌린다. */
   const arrivedRef = useRef(false);
   const t = useTranslations("guide");
@@ -1705,7 +1711,7 @@ export function useRouteGuide(
       }
 
       if (arrived) {
-        const text = t("arrived");
+        const text = arrivalTextRef.current ?? t("arrived");
         rememberGuidance(text);
         // ⚠ `stopRef`가 아니라 `sessionStopRef`를 쓴다. `stopRef`는 매 렌더 대입되는데,
         // 훅 인자로 캡처된 값을 나중에 수정하는 것을 React Compiler가 막는다
@@ -2572,6 +2578,7 @@ export function useRouteGuide(
     walkAxisRef.current = walkAxis;
     viaRef.current = options.via ?? null;
     onSessionEndRef.current = options.onSessionEnd;
+    arrivalTextRef.current = options.arrivalText;
     handleFixRef.current = handleFix;
     handleErrorRef.current = handleError;
     stopRef.current = stop;

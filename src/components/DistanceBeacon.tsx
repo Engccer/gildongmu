@@ -53,6 +53,9 @@ export function DistanceBeacon({
   onSessionEnd,
   onActiveChange,
   via,
+  arrivalText,
+  onUserStop,
+  onFailure,
 }: {
   dest: { lat: number; lng: number; name: string };
   /** 안내 수단(B1 §4.1 봉인 구성 키). 장소 상세는 walk 고정, 길찾기 뷰는 버튼별. */
@@ -112,6 +115,18 @@ export function DistanceBeacon({
    * "다음 목표"(경유지 → 목적지) 기준이 된다. 미지정 = 경유지 없음(종전 동작).
    */
   via?: RouteGuideVia | null;
+  /** 확정 도착 문장 대체(E70-f 여정 단계) — `useRouteGuide` 동명 옵션 그대로. 미지정 = 기본 문장. */
+  arrivalText?: string;
+  /**
+   * 사용자가 이 패널의 중지(트리거·토글)를 누른 직후·세션 중지 직전 1회(E70-f spec §7.3). 웹 `onSessionEnd`는 사용자 중지와
+   * 그 밖의 종료를 같은 `"ended"`로 내므로, 여정이 「안내 종료 = 여정 전체 종료」(D11)를 가르려면 이 신호가 필요하다.
+   */
+  onUserStop?: () => void;
+  /**
+   * 위치 권한 거부·미지원으로 세션이 서지 못하거나 끊겼을 때 1회(E70-f §7.3) — 이 전이는 `onSessionEnd`를 부르지 않는다.
+   * `"start"` = 추적이 한 번도 서지 않았다, `"running"` = 추적 중이었다.
+   */
+  onFailure?: (when: "start" | "running") => void;
 }) {
   const t = useTranslations("beacon");
   const tGuide = useTranslations("guide");
@@ -126,7 +141,7 @@ export function DistanceBeacon({
       return false;
     }
   });
-  const guide = useRouteGuide(dest, kind, { accessible, variant }, { onSessionEnd, via });
+  const guide = useRouteGuide(dest, kind, { accessible, variant }, { onSessionEnd, via, arrivalText });
 
   /** 남은 거리 행의 거리 조각 — 목표(N4 2026-09-24 §5.2)에 따라 라벨이 값과 함께 바뀐다. */
   function remainingDistanceText(progress: GuideProgress): string {
@@ -199,6 +214,20 @@ export function DistanceBeacon({
   }, [tracking]);
   useEffect(() => () => onActiveChangeRef.current?.(false), []);
 
+  // 권한 거부·미지원 전이를 부모에 통지(E70-f) — 추적이 선 적이 있는지로 시작 실패와 끊김을 가른다.
+  const onFailureRef = useRef(onFailure);
+  useEffect(() => {
+    onFailureRef.current = onFailure;
+  });
+  const everTrackedRef = useRef(false);
+  const failed = guide.status === "denied" || guide.status === "unsupported";
+  useEffect(() => {
+    if (tracking) everTrackedRef.current = true;
+  }, [tracking]);
+  useEffect(() => {
+    if (failed) onFailureRef.current?.(everTrackedRef.current ? "running" : "start");
+  }, [failed]);
+
   if (!guide.supported) return null;
 
   const togglePanel = () => {
@@ -213,6 +242,7 @@ export function DistanceBeacon({
       return;
     }
     if (open) {
+      if (tracking) onUserStop?.();
       guide.stop();
     } else if (startOnOpen || autoStart) {
       guide.start();
@@ -281,7 +311,11 @@ export function DistanceBeacon({
               <button
                 ref={stopToggleRef}
                 type="button"
-                onClick={() => (tracking ? guide.stop() : guide.start())}
+                onClick={() => {
+                  if (!tracking) return guide.start();
+                  onUserStop?.();
+                  guide.stop();
+                }}
                 className="mt-2 inline-flex min-h-11 items-center rounded-md bg-accent px-4 text-sm font-medium text-accent-foreground"
               >
                 {tracking ? t("stop") : t("start")}

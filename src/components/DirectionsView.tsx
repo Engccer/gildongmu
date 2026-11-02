@@ -6,6 +6,7 @@ import { ArrowLeft, ArrowUpDown, MapPinPlus } from "lucide-react";
 import type {
   CarRouteBriefing,
   Coord,
+  JourneyResult,
   JusoAddress,
   Place,
   PlaceSearchResult,
@@ -79,6 +80,9 @@ import { TransitGuidePanel } from "./TransitGuidePanel";
 import { buildTransitGuideRoute } from "@/lib/transit-guide";
 import { VoiceRecordButton } from "./VoiceRecordButton";
 import { KoTail, langFor, useBilingualName } from "./BilingualName";
+import { JourneyStationField } from "./JourneyStationField";
+import { JourneyResultView } from "./JourneyResult";
+import { recentJourneyLabel, type JourneyStationPick } from "@/lib/journey/journey-lines";
 
 type ModeKey = DirectionsModeKey;
 
@@ -153,7 +157,19 @@ type QueryResults = {
   fromRoman: string | null;
   toRoman: string | null;
   viaRoman: string | null;
+  /**
+   * 여정 조회 결과(E70-f spec §4 — 갈아탈 곳을 정하면 여정만 조회한다, D12). 있으면 `outcomes`는 비어 있다. 3-state: 찾음 ≠
+   * 경로 없음 ≠ 조회 실패. 갈아탈 곳은 조회 시점 스냅숏이다(제목의 "지정과 다른가"를 이 값으로 가른다).
+   */
+  journey?: {
+    outcome: { kind: "found"; result: JourneyResult } | { kind: "noRoute" } | { kind: "failed" };
+    board: JourneyStationPick | null;
+    alight: JourneyStationPick | null;
+  };
 };
+
+/** 여정 갈아탈 곳 칸 하나: null = 칸 없음, `pick: null` = 칸은 열렸고 아직 고르지 않음. */
+type JourneySlot = { pick: JourneyStationPick | null } | null;
 
 /** 필드 원자 상태: 라벨 텍스트를 편집하면 resolved(좌표 포함)가 즉시 무효화된다. */
 type FieldState = {
@@ -217,6 +233,48 @@ function readViaFromUrl(): DirEndpoint | null {
  * ⚠ 예산 2초. 대부분의 목적지는 출입구 POI가 없으므로(실측) 이 조회는 **다수 조회에
  * 아무 이득 없이 붙는 지연**이다 — 상한을 짧게 두는 이유다.
  */
+/**
+ * 여정 조회(E70-f spec §4) — `/api/route/journey`. iOS `RouteService.journey`와 같은 질의: `stops=1` 늘, 정류장이면 `*Kind=stop`
+ * (노선 힌트는 역에만). 3-state: 찾음 / 경로 없음(`variants: []`) / 실패(비-200·네트워크·15초 시간 초과). 한국 밖은 마커.
+ */
+async function fetchJourney(
+  origin: Coord,
+  dest: Coord,
+  board: JourneyStationPick | null,
+  alight: JourneyStationPick | null,
+): Promise<{ kind: "found"; result: JourneyResult } | { kind: "noRoute" } | { kind: "failed" } | { kind: "outOfCoverage" }> {
+  const q = new URLSearchParams({
+    origin: `${origin.lat},${origin.lng}`,
+    dest: `${dest.lat},${dest.lng}`,
+    stops: "1",
+  });
+  for (const [side, pick] of [
+    ["board", board],
+    ["alight", alight],
+  ] as const) {
+    if (!pick) continue;
+    q.set(side, `${pick.lat},${pick.lng}`);
+    q.set(`${side}Name`, pick.label);
+    if (pick.kind === "stop") q.set(`${side}Kind`, "stop");
+    else if (pick.line) q.set(`${side}Line`, pick.line);
+  }
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 15_000);
+  try {
+    const res = await fetch(`/api/route/journey?${q}`, { signal: ctrl.signal });
+    if (!res.ok) return { kind: "failed" };
+    const body = (await res.json()) as unknown;
+    if (isOutOfCoverageBody(body)) return { kind: "outOfCoverage" };
+    const result = body as JourneyResult;
+    if (!Array.isArray(result.variants)) return { kind: "failed" };
+    return result.variants.length > 0 ? { kind: "found", result } : { kind: "noRoute" };
+  } catch {
+    return { kind: "failed" };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function fetchEntrance(
   name: string,
   dest: Coord,
@@ -350,6 +408,8 @@ export function DirectionsView({
   canShowWalk,
   canShowTransit,
   canBriefCarRoute,
+  canPlanJourney = false,
+  canSearchJourneyStops = false,
   initialFrom,
   initialTo = null,
   prefill = false,
@@ -358,6 +418,13 @@ export function DirectionsView({
   canShowWalk: boolean;
   canShowTransit: boolean;
   canBriefCarRoute: boolean;
+  /**
+   * 여정(자동차 환승, E70-f) 서버 키 게이트 — `/api/route/journey`의 503 조건(ODsay·Tmap·카카오)과 같은 식. 거짓이면 입구 0
+   * (종전 「경유지 추가」 버튼 그대로).
+   */
+  canPlanJourney?: boolean;
+  /** 정류장 이름 검색(`/api/route/journey/stops`) 키 게이트 — 거짓이면 갈아탈 곳 칸 후보가 역뿐이다. */
+  canSearchJourneyStops?: boolean;
   initialFrom?: DirEndpoint;
   initialTo?: DirEndpoint | null;
   /**
@@ -430,6 +497,20 @@ export function DirectionsView({
   });
   const viaInputRef = useRef<HTMLInputElement | null>(null);
   const [recentVia, setRecentVia] = useState<RecentEndpoint[]>([]);
+  /**
+   * 여정의 갈아탈 곳(E70-f spec §3) — 승차 쪽(「자동차에서 내리는 역/정류장」)·하차 쪽(「자동차를 탈 역/정류장」). 하나라도
+   * 확정되면 조회는 여정만 한다(D12), 경유지와 함께 쓰지 않는다(D14). 게이트(`journeyEnabled`)가 거짓이면 늘 비어 있다.
+   */
+  const [boardSlot, setBoardSlot] = useState<JourneySlot>(null);
+  const [alightSlot, setAlightSlot] = useState<JourneySlot>(null);
+  /** 「경유지/자동차 환승 추가」 disclosure 펼침. */
+  const [addMenuOpen, setAddMenuOpen] = useState(false);
+  const boardInputRef = useRef<HTMLInputElement | null>(null);
+  const alightInputRef = useRef<HTMLInputElement | null>(null);
+  const journeyHeadingRef = useRef<HTMLHeadingElement>(null);
+  const tJourney = useTranslations("journey");
+  const journeyEnabled = canPlanJourney && !prefersEnglish(locale);
+  const hasJourneySlots = journeyEnabled && (boardSlot !== null || alightSlot !== null);
   const [phase, setPhase] = useState<Phase>({ kind: "idle" });
   const [results, setResults] = useState<QueryResults | null>(null);
   // 대중교통 경로 disclosure(W3C APG)의 펼침 상태. 키는 배열 인덱스도 표시
@@ -774,7 +855,13 @@ export function DirectionsView({
    * 확정할 endpoint를 직접 넘겨 그 경합을 우회한다. 조회 버튼 클릭은 인자 없이 호출한다
    * (기존 필드 상태 그대로). 필드 상태 갱신과 조회 시작은 호출자가 같은 틱에 한다.
    */
-  async function runQuery(request?: { from: DirEndpoint; to: DirEndpoint; via: DirEndpoint | null }) {
+  async function runQuery(request?: {
+    from: DirEndpoint;
+    to: DirEndpoint;
+    via: DirEndpoint | null;
+    /** 갈아탈 곳(E70-f, 최근 경로 활성화만 싣는다 — 도구 요청은 싣지 않는다). */
+    journey?: { board: JourneyStationPick | null; alight: JourneyStationPick | null };
+  }) {
     if (inFlight.current) return;
     const from = request ? request.from : fromField.resolved;
     const to = request ? request.to : toField.resolved;
@@ -782,8 +869,25 @@ export function DirectionsView({
     // 반쯤 적힌 경유지를 조용히 버리고 조회하지 않는다(N4 spec §3).
     const viaEp = request ? request.via : viaField?.resolved ?? null;
     const viaPending = !request && viaField !== null && !viaField.resolved;
+    // 여정(E70-f): 도구 요청은 갈아탈 곳 칸을 읽지 않는다(도구 계약에 여정이 없다, spec §4). 열린 칸이 비어 있으면 경유지와 같은 통지다.
+    const journeyBoard = !journeyEnabled
+      ? null
+      : request
+        ? (request.journey?.board ?? null)
+        : hasJourneySlots
+          ? (boardSlot?.pick ?? null)
+          : null;
+    const journeyAlight = !journeyEnabled
+      ? null
+      : request
+        ? (request.journey?.alight ?? null)
+        : hasJourneySlots
+          ? (alightSlot?.pick ?? null)
+          : null;
+    const journeyPending =
+      !request && hasJourneySlots && ((boardSlot !== null && !boardSlot.pick) || (alightSlot !== null && !alightSlot.pick));
     announce("");
-    if (!from || !to || viaPending) {
+    if (!from || !to || viaPending || journeyPending) {
       setPhase({ kind: "needEndpoints" });
       return;
     }
@@ -855,6 +959,56 @@ export function DirectionsView({
       let dest = to.kind === "current" ? (cur as Coord) : to.coord;
       let destLabel = to.kind === "current" ? currentLabel : to.label;
       let destRoman = to.kind === "place" ? (to.labelRoman ?? null) : null;
+      // 여정(E70-f spec §4): 갈아탈 곳을 정했으면 여정만 조회한다(D12). 출입구 승격(A11)은 하지 않는다 — iOS `performJourney`도
+      // 승격 앞에서 갈린다(택시 도착 목적지는 원래 장소다).
+      if (journeyBoard || journeyAlight) {
+        setPhase({ kind: "loading" });
+        const outcome = await fetchJourney(origin, dest, journeyBoard, journeyAlight);
+        if (myGen !== genRef.current) return;
+        if (outcome.kind === "outOfCoverage") {
+          announce("");
+          setPhase({ kind: "outOfCoverage" });
+          settleAfterCommit(myGen, { kind: "outOfCoverage" });
+          return;
+        }
+        const planId = `p${myGen}`;
+        setResults({
+          destLabel,
+          destRoman,
+          destCoord: dest,
+          originCoord: origin,
+          dataLang: dataLocale(locale),
+          outcomes: {},
+          viaLabel: null,
+          via: null,
+          orderedModes: [],
+          originSource,
+          staleAge: staleAgeAtQuery,
+          planId,
+          fromLabel: from.kind === "current" ? null : from.label,
+          toLabel: to.kind === "current" ? null : to.label,
+          fromRoman: from.kind === "current" ? null : (from.labelRoman ?? null),
+          toRoman: to.kind === "current" ? null : (to.labelRoman ?? null),
+          viaRoman: null,
+          journey: { outcome, board: journeyBoard, alight: journeyAlight },
+        });
+        announce("");
+        setPhase({ kind: "settled" });
+        settleAfterCommit(myGen, { kind: "settled", planId });
+        if (outcome.kind === "found") {
+          // 최근 경로에 갈아탈 곳을 함께(D13) — 반복 여정을 통째로 되살린다.
+          setRecentRoutes(
+            recordRecentRoute({
+              from: from.kind === "current" ? null : recentOf(from),
+              to: to.kind === "current" ? null : recentOf(to),
+              ...(journeyBoard ? { board: journeyBoard } : {}),
+              ...(journeyAlight ? { alight: journeyAlight } : {}),
+            }),
+          );
+          requestAnimationFrame(() => journeyHeadingRef.current?.focus());
+        }
+        return;
+      }
       // A11 출입구 승격 — 이름 있는 장소 목적지에만, ko 데이터 로케일에서만
       // (도보 경로 자체가 ko 전용이고 카카오 출입구 이름은 한국어 고유명사다).
       // 승격본은 여기서 확정되어 전 수단 조회·안내 세션·계단 회피 재조회가 **같은
@@ -965,14 +1119,24 @@ export function DirectionsView({
   // 커밋되는 상태 불일치가 재발한다. 낭독되는 수치라 시각으로 반증되지 않으므로
   // 진실원을 하나(results.outcomes)로 줄이는 것이 수정이다. settled인데 results가
   // 없으면(재조회 중 편집으로 리셋) 요약도 없다 — 없는 경로를 세지 않는다.
+  // 여정 조회(E70-f)는 "1개 수단"이다(판정 22). 경로 없음·실패는 iOS와 같은 대중교통 문장.
+  const journeyOutcome = results?.journey?.outcome ?? null;
   const settledCount = results
-    ? results.orderedModes.filter((m) => results.outcomes[m]?.kind === "done").length
+    ? journeyOutcome
+      ? journeyOutcome.kind === "found"
+        ? 1
+        : 0
+      : results.orderedModes.filter((m) => results.outcomes[m]?.kind === "done").length
     : null;
   const settledBase =
     phase.kind === "settled" && settledCount !== null
       ? settledCount > 0
         ? t("readySummary", { count: settledCount })
-        : t("allFailed")
+        : journeyOutcome?.kind === "noRoute"
+          ? tTransit("noRoute")
+          : journeyOutcome?.kind === "failed"
+            ? tTransit("error")
+            : t("allFailed")
       : "";
   // 옛 위치로 찾았으면 그 사실을 같은 통지의 뒷문장으로(출발지 칸에만 있으면 조회 버튼을
   // 누른 사용자는 칸으로 되돌아가야 안다). 한 사건이라 한 문장 묶음으로 낸다. 경로를 하나도
@@ -1387,6 +1551,11 @@ export function DirectionsView({
     // "경복궁을"·"학교를"). 호출부가 붙이고, 한글이 아닌 이름은 조사 없이 물러난다.
     const viaLabel =
       r.via && locale === "ko" ? r.via.label + (objectParticle(r.via.label) ?? "") : r.via && name(r.via);
+    // 여정이면 짧은 여정 문장(판정 20) — 게이트가 거짓인 화면에선 활성화도 갈아탈 곳을 버리므로 보통 문장이다.
+    const journey = journeyEnabled
+      ? recentJourneyLabel(r.board ?? null, r.alight ?? null, side(r.from), side(r.to), tJourney)
+      : null;
+    if (journey) return journey;
     return r.via
       ? tRecentRoutes("itemVia", { from: side(r.from), to: side(r.to), via: viaLabel ?? "" })
       : tRecentRoutes("item", { from: side(r.from), to: side(r.to) });
@@ -1402,10 +1571,16 @@ export function DirectionsView({
     setFromField(endpointToField(fromEp, currentLabel));
     setToField(endpointToField(toEp, currentLabel));
     setViaField(viaEp ? endpointToField(viaEp, currentLabel) : null);
+    // 여정(D13): 갈아탈 곳 칸도 채운다. 게이트가 거짓이면 버린다(보통 조회).
+    const board = journeyEnabled ? (r.board ?? null) : null;
+    const alight = journeyEnabled ? (r.alight ?? null) : null;
+    setBoardSlot(board ? { pick: board } : null);
+    setAlightSlot(alight ? { pick: alight } : null);
+    setAddMenuOpen(false);
     if (r.from) setRecentFrom(recordRecentEndpoint("from", r.from));
     if (r.to) setRecentTo(recordRecentEndpoint("to", r.to));
     if (r.via) setRecentVia(recordRecentEndpoint("via", r.via));
-    void runQuery({ from: fromEp, to: toEp, via: viaEp });
+    void runQuery({ from: fromEp, to: toEp, via: viaEp, journey: { board, alight } });
   }
   function deleteRecentRoute(r: RecentRoute, index: number) {
     const next = removeRecentRoute(r);
@@ -1442,6 +1617,37 @@ export function DirectionsView({
       announce(tRecent("clearedExceptPinned"));
     }
   }
+
+  /** 경유지 칸을 연다(종전 「경유지 추가」와 메뉴 항목 공용) — 그 자리가 입력으로 바뀌므로 새 입력으로 선점 이동(헌장 §5). */
+  function openVia() {
+    setAddMenuOpen(false);
+    setViaField({ text: "", resolved: null });
+    requestAnimationFrame(() => viaInputRef.current?.focus());
+  }
+
+  /** 갈아탈 곳 칸을 연다(E70-f) — 누른 버튼이 사라지므로 새 칸의 입력으로 선점 이동한다. 경유지와 배타(D14). */
+  function openJourneySlot(side: "board" | "alight") {
+    setAddMenuOpen(false);
+    if (side === "board") setBoardSlot((prev) => prev ?? { pick: null });
+    else setAlightSlot((prev) => prev ?? { pick: null });
+    requestAnimationFrame(() => (side === "board" ? boardInputRef : alightInputRef).current?.focus());
+  }
+
+  /** 「갈아탈 역/정류장 지우기」(판정 21) — 두 칸을 비우고 접는다. 버튼도 사라지므로 조회 버튼으로 먼저 옮긴다. */
+  function clearJourneySlots() {
+    submitRef.current?.focus();
+    if (stopActiveGuideSession()) announce(tBeacon("stopped"));
+    setBoardSlot(null);
+    setAlightSlot(null);
+    discardResults();
+  }
+
+  /** 정류장 이름 검색의 기준 좌표 — 출발·도착 칸의 확정 좌표(현재 위치면 스토어의 신선한 좌표). */
+  const endpointCoord = (ep: DirEndpoint | null): Coord | null =>
+    ep === null ? null : ep.kind === "place" ? ep.coord : geo.status === "ready" ? geo.coords : null;
+  const journeyStopRefs = { origin: endpointCoord(fromField.resolved), dest: endpointCoord(toField.resolved) };
+  const secondaryActionClass =
+    "mt-3 inline-flex min-h-11 items-center gap-1 text-sm font-medium text-blue-700 underline dark:text-blue-300";
 
   return (
     <div>
@@ -1554,19 +1760,7 @@ export function DirectionsView({
           바뀌므로 포커스를 새 입력으로 선점 이동한다(헌장 §5). 도착지 확정 뒤 포커스는
           종전대로 조회 버튼이다 — 선택 사항이 기본 흐름을 늘리지 않는다. 현재 위치는
           경유지가 될 수 없다(onUseCurrent 미제공). */}
-      {viaField === null ? (
-        <button
-          type="button"
-          onClick={() => {
-            setViaField({ text: "", resolved: null });
-            requestAnimationFrame(() => viaInputRef.current?.focus());
-          }}
-          className="mt-3 inline-flex min-h-11 items-center gap-1 text-sm font-medium text-blue-700 underline dark:text-blue-300"
-        >
-          <MapPinPlus aria-hidden="true" className="h-4 w-4" />
-          {t("addVia")}
-        </button>
-      ) : (
+      {viaField !== null ? (
         <>
           <EndpointField
             label={t("via")}
@@ -1623,6 +1817,110 @@ export function DirectionsView({
             {t("removeVia")}
           </button>
         </>
+      ) : hasJourneySlots ? (
+        <>
+          {/* 여정의 갈아탈 곳(E70-f spec §3). 칸은 검색 입력이고 후보는 역·정류장뿐이다. 고르면 조회 버튼으로 전진한다. */}
+          {boardSlot && (
+            <JourneyStationField
+              key="journey-board"
+              label={tJourney("boardField")}
+              value={boardSlot.pick}
+              onResolve={(pick) => {
+                if (stopActiveGuideSession()) announce(tBeacon("stopped"));
+                setBoardSlot({ pick });
+                discardResults();
+              }}
+              onEdit={() => {
+                if (stopActiveGuideSession()) announce(tBeacon("stopped"));
+                setBoardSlot({ pick: null });
+                discardResults();
+              }}
+              stopRefs={journeyStopRefs}
+              canSearchStops={canSearchJourneyStops}
+              registerInput={(el) => {
+                boardInputRef.current = el;
+              }}
+              focusAfterResolve={() => submitRef.current?.focus()}
+              announce={announce}
+            />
+          )}
+          {alightSlot && (
+            <JourneyStationField
+              key="journey-alight"
+              label={tJourney("alightField")}
+              value={alightSlot.pick}
+              onResolve={(pick) => {
+                if (stopActiveGuideSession()) announce(tBeacon("stopped"));
+                setAlightSlot({ pick });
+                discardResults();
+              }}
+              onEdit={() => {
+                if (stopActiveGuideSession()) announce(tBeacon("stopped"));
+                setAlightSlot({ pick: null });
+                discardResults();
+              }}
+              stopRefs={journeyStopRefs}
+              canSearchStops={canSearchJourneyStops}
+              registerInput={(el) => {
+                alightInputRef.current = el;
+              }}
+              focusAfterResolve={() => submitRef.current?.focus()}
+              announce={announce}
+            />
+          )}
+          {/* 남은 쪽을 더하는 일반 버튼 하나(항목 하나뿐인 메뉴는 만들지 않는다, 원 spec §5.1). */}
+          {!boardSlot && (
+            <button type="button" onClick={() => openJourneySlot("board")} className={secondaryActionClass}>
+              {tJourney("addBoardStation")}
+            </button>
+          )}
+          {!alightSlot && (
+            <button type="button" onClick={() => openJourneySlot("alight")} className={secondaryActionClass}>
+              {tJourney("addAlightStation")}
+            </button>
+          )}
+          {/* 판정 21: 두 칸을 비우고 접는다 — 이 버튼도 사라지므로 조회 버튼으로 선점 이동. */}
+          <div>
+            <button type="button" onClick={clearJourneySlots} className="mt-2 min-h-11 text-sm underline">
+              {tJourney("clearStations")}
+            </button>
+          </div>
+        </>
+      ) : journeyEnabled ? (
+        // 「경유지/자동차 환승 추가」(E70-d 판정 28의 웹 판, spec §3): disclosure 버튼 + 항목 셋. ARIA menu 역할은 쓰지 않는다.
+        <div>
+          <button
+            type="button"
+            aria-expanded={addMenuOpen}
+            onClick={() => setAddMenuOpen((v) => !v)}
+            className={secondaryActionClass}
+          >
+            <MapPinPlus aria-hidden="true" className="h-4 w-4" />
+            {tJourney("addMenu")}
+          </button>
+          {addMenuOpen && (
+            <div className="ml-4 flex flex-col items-start">
+              <button type="button" onClick={openVia} className="min-h-11 text-sm underline">
+                {t("addVia")}
+              </button>
+              <button type="button" onClick={() => openJourneySlot("board")} className="min-h-11 text-sm underline">
+                {tJourney("addBoardStation")}
+              </button>
+              <button type="button" onClick={() => openJourneySlot("alight")} className="min-h-11 text-sm underline">
+                {tJourney("addAlightStation")}
+              </button>
+            </div>
+          )}
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={openVia}
+          className="mt-3 inline-flex min-h-11 items-center gap-1 text-sm font-medium text-blue-700 underline dark:text-blue-300"
+        >
+          <MapPinPlus aria-hidden="true" className="h-4 w-4" />
+          {t("addVia")}
+        </button>
       )}
 
       {/* disabled 금지: aria-disabled + in-flight ref 가드로 포커스를 지킨다 */}
@@ -1659,7 +1957,7 @@ export function DirectionsView({
               const label = routeItemLabel(r);
               return (
                 <li
-                  key={`${r.from?.lat ?? "cur"},${r.from?.lng ?? ""}→${r.to?.lat ?? "cur"},${r.to?.lng ?? ""}${r.via ? `@${r.via.lat},${r.via.lng}` : ""}`}
+                  key={`${r.from?.lat ?? "cur"},${r.from?.lng ?? ""}→${r.to?.lat ?? "cur"},${r.to?.lng ?? ""}${r.via ? `@${r.via.lat},${r.via.lng}` : ""}${r.board ? `^${r.board.lat},${r.board.lng}` : ""}${r.alight ? `v${r.alight.lat},${r.alight.lng}` : ""}`}
                   className="flex items-center gap-2"
                 >
                   <button
@@ -1940,6 +2238,22 @@ export function DirectionsView({
               </div>
             );
           })}
+          {/* 여정 결과(E70-f spec §5) — 경로 없음·실패는 상태 줄(위 창구)이 말한다(iOS 상태 문장과 같은 키). */}
+          {results.journey?.outcome.kind === "found" && (
+            <div className="mt-3 rounded-md border border-gray-300 p-3">
+              <JourneyResultView
+                result={results.journey.outcome.result}
+                board={results.journey.board}
+                alight={results.journey.alight}
+                dest={results.destCoord}
+                destLabel={results.destLabel}
+                destRoman={results.destRoman}
+                locale={locale}
+                headingRef={journeyHeadingRef}
+                announce={announce}
+              />
+            </div>
+          )}
         </div>
       )}
     </div>
