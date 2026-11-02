@@ -48,6 +48,11 @@ export function TransitGuidePanel({
   walkAccessible,
   announce,
   onActiveChange,
+  autoStart = false,
+  onRideCompleted,
+  onStopped,
+  destinationLabel,
+  showTrigger = true,
 }: {
   route: TransitRoute;
   triggerLabel: string;
@@ -67,6 +72,22 @@ export function TransitGuidePanel({
   /** 세션 활성 전이 통지. 대안 disclosure 안에 마운트된 패널이 접힘으로
       unmount되면 세션이 조용히 죽으므로, 부모가 이 신호로 강제 펼침을 유지한다. */
   onActiveChange?: (active: boolean) => void;
+  /**
+   * 마운트 뒤 1회 세션을 시작한다(E70-f 여정의 대중교통 단계 — 사용자는 이미 [안내 시작]을 눌렀다). 승차 전 도보 대상이 있으면
+   * 트리거와 같이 그 갈래부터. 시작은 커밋 뒤 effect(창구가 빈 채로 먼저 DOM에 있어야 첫 통지가 발화된다).
+   */
+  autoStart?: boolean;
+  /** 여정의 하차 쪽 지정 — 마지막 탈것 하차 완료에서 1회(`useTransitGuide` 동명 옵션, 말미 도보 인계 대신). */
+  onRideCompleted?: () => void;
+  /**
+   * 세션(승차 전 도보 포함)이 완주(`onRideCompleted`) 말고 끝났을 때 1회 — 사용자 중지·다른 세션의 claim·탭 숨김·말미 도보
+   * 인계로 넘어간 완료(E70-f `transitStopped`). 언마운트는 자원 회수라 부르지 않는다.
+   */
+  onStopped?: () => void;
+  /** 시작 통지의 목적지(E40) — `dest` 없이(말미 도보 인계 없이) 목적지를 말할 때. `dest.name`이 있으면 그것이 이긴다. */
+  destinationLabel?: string;
+  /** 세션이 없을 때의 시작 트리거를 보인다(기본 참). 끝난 여정의 남은 패널은 끈다(E70-f). */
+  showTrigger?: boolean;
 }) {
   const t = useTranslations("transitGuide");
   const tBeacon = useTranslations("beacon");
@@ -74,9 +95,19 @@ export function TransitGuidePanel({
   // 빠른하차 문구는 경로 브리핑과 같은 카탈로그를 쓴다 — 두 화면이 같은 사실을
   // 다른 문장으로 말하면 같은 정보인지 알 수 없다.
   const tTransitRoute = useTranslations("route.transit");
+  // 완주 콜백이 부른 종료는 `onStopped`가 아니다 — 같은 커밋의 active false 전이에서 거른다.
+  const rideCompletedRef = useRef(false);
   const guide = useTransitGuide(route, {
     walkHandoffAvailable: dest != null,
-    ...(dest?.name ? { destinationLabel: dest.name } : {}),
+    ...(dest?.name ? { destinationLabel: dest.name } : destinationLabel ? { destinationLabel } : {}),
+    ...(onRideCompleted
+      ? {
+          onRideCompleted: () => {
+            rideCompletedRef.current = true;
+            onRideCompleted();
+          },
+        }
+      : {}),
   });
 
   // 안내 문장을 화면의 단일 창구로 올린다(A40). ⚠ **빈 값은 게시하지 않는다** — 훅은
@@ -211,6 +242,41 @@ export function TransitGuidePanel({
   }, [active]);
   useEffect(() => () => onActiveChangeRef.current?.(false), []);
 
+  // 여정 단계의 종료 신호(E70-f) — active가 true → false로 내려갈 때 1회. 완주는 위 콜백이 이미 알렸다.
+  const onStoppedRef = useRef(onStopped);
+  useEffect(() => {
+    onStoppedRef.current = onStopped;
+  });
+  const wasActiveRef = useRef(false);
+  useEffect(() => {
+    if (active) {
+      wasActiveRef.current = true;
+      return;
+    }
+    if (!wasActiveRef.current) return;
+    wasActiveRef.current = false;
+    if (rideCompletedRef.current) {
+      rideCompletedRef.current = false;
+      return;
+    }
+    onStoppedRef.current?.();
+  }, [active]);
+
+  // 자동 시작(E70-f) — 커밋 뒤 1회. 트리거와 같은 갈래(승차 전 도보 대상이 있으면 도보부터).
+  const autoStartedRef = useRef(false);
+  useEffect(() => {
+    if (!autoStart || autoStartedRef.current || !guide.startable) return;
+    autoStartedRef.current = true;
+    // react-hooks/set-state-in-effect 회피: 한 틱 미룬다(DirectionsView 최근 목록 로드와 같은 관례).
+    const target = guide.prewalkTarget;
+    queueMicrotask(() => {
+      if (target) beginPrewalk(target);
+      else guide.start();
+    });
+    // 마운트 1회 계약 — prop은 마운트 시점에만 의미가 있다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // 경유역 목록 disclosure(§14.1) — 정적 표시 1단계, leg가 바뀌면 접는다
   // (렌더 중 파생 상태 조정 — effect 내 동기 setState의 캐스케이드 회피).
   const [viaOpen, setViaOpen] = useState(false);
@@ -319,7 +385,7 @@ export function TransitGuidePanel({
 
   return (
     <div className="mt-1">
-      {!active && (
+      {!active && showTrigger && (
         <button
           type="button"
           ref={triggerRef}

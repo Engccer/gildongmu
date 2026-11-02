@@ -114,6 +114,7 @@
 - **카카오 분류 경로의 영문은 세그먼트 사전(`kakao-category-en.json`) + 서버 `categoryEn`이고 "전부-아니면-원문"이다**(A28). 표시는 `pickCategory` 한 자리, 판정 축은 원문 `category`만(소스 가드). 사전은 실호출 스냅샷. → INTEGRATIONS
 
 ### UI·상태 패턴
+- **웹 여정 안내(E70-f)는 결과 섹션의 `JourneyGuide`가 소유하고 사이 상태에만 세션 저장소를 claim한다**: `stateRef`를 먼저 커밋하고(`stop()`이 release 전에 `onSessionEnd`를 불러 재진입한다), 사이 상태 claim은 부모 effect에서, 단계 시작 직전 release는 전이 함수 안에서 동기로 한다. 대중교통 단계에서 끝나면 그 패널을 같은 key·같은 감싸개로 남긴다. → PATTERNS
 - **iOS 주소 요청은 측위 전부터 같은 세대를 소유한다**(`DirectionsAddressState`). 취소·언어 변경·늦은 완료와 종료가 최신 주소·로딩을 건드리지 못하게 한다. → PATTERNS
 - **iOS 브리핑의 빈 이름은 `transitBriefingName`으로 가른다**(문장·영문 자격·로터 조인 공통). 조인 정규화는 개행 부재 판정을 대신하지 못한다. → PATTERNS §경로 브리핑의 역 진입점
 - **신규 "내 주변" 도메인은 공유 계층으로 만든다**(`useNearbyFetch`+`NearbyPanelShell`+`nearbyLiveMessage`+`useRevealMore`, 계약 스위트 `src/components/__tests__/nearby-contract.tsx`). 골격 복붙 금지. → PATTERNS

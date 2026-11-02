@@ -114,10 +114,16 @@ export function PlaceSearch({
   canShowChat = false,
   canShowWalk = false,
   canSortByReview = false,
+  canPlanJourney = false,
+  canSearchJourneyStops = false,
 }: {
   isMockMode: boolean;
   /** 카카오 키가 있어 자동차 경로 텍스트 브리핑을 제공할 수 있는지 */
   canBriefCarRoute?: boolean;
+  /** 여정(자동차 환승, E70-f) 키 게이트 — ODsay·Tmap·카카오. `/api/route/journey` 503 조건과 같은 식. */
+  canPlanJourney?: boolean;
+  /** 여정 정류장 이름 검색 키 게이트(data.go.kr·카카오) — 거짓이면 갈아탈 곳 후보가 역뿐이다. */
+  canSearchJourneyStops?: boolean;
   /** data.go.kr 키가 있어 TAGO 버스 도착·정류소를 제공할 수 있는지 */
   canShowBus?: boolean;
   /** 서울 열린데이터 키가 있어 따릉이 대여소를 제공할 수 있는지 */
@@ -1157,6 +1163,8 @@ export function PlaceSearch({
         canShowWalk={canShowWalk}
         canShowTransit={canShowTransit}
         canBriefCarRoute={canBriefCarRoute}
+        canPlanJourney={canPlanJourney}
+        canSearchJourneyStops={canSearchJourneyStops}
         initialFrom={directions.from}
         initialTo={directions.to}
         prefill={directions.prefill ?? false}

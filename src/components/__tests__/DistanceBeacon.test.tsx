@@ -121,6 +121,52 @@ describe("시작/중지 겸용 트리거는 추적 상태로 동작한다(E42 �
   });
 });
 
+describe("여정 단계 옵트인(E70-f spec §7.3)", () => {
+  it("사용자가 누른 중지는 onUserStop 다음 onSessionEnd(\"ended\")", async () => {
+    const calls: string[] = [];
+    render(
+      <NextIntlClientProvider locale="ko" messages={ko}>
+        <DistanceBeaconHost
+          dest={DEST}
+          accessible={false}
+          variant={null}
+          startOnOpen
+          triggerLabel="여정 시작"
+          onUserStop={() => calls.push("userStop")}
+          onSessionEnd={(r) => calls.push(r)}
+        />
+      </NextIntlClientProvider>,
+    );
+    const trigger = screen.getByRole("button", { name: "여정 시작" });
+    fireEvent.click(trigger);
+    await waitFor(() => expect(trigger.textContent).toBe(ko.beacon.stop));
+    fireEvent.click(trigger);
+    expect(calls).toEqual(["userStop", "ended"]);
+  });
+
+  it("위치 권한 거부로 서지 못하면 onFailure(\"start\") 1회", async () => {
+    Object.defineProperty(navigator, "geolocation", {
+      configurable: true,
+      value: {
+        watchPosition: vi.fn((_ok: unknown, err: (e: unknown) => void) => {
+          err({ code: 1, PERMISSION_DENIED: 1, POSITION_UNAVAILABLE: 2, TIMEOUT: 3 });
+          return 1;
+        }),
+        clearWatch: vi.fn(),
+        getCurrentPosition: vi.fn(),
+      },
+    });
+    const onFailure = vi.fn();
+    render(
+      <NextIntlClientProvider locale="ko" messages={ko}>
+        <DistanceBeaconHost dest={DEST} accessible={false} variant={null} autoStart onFailure={onFailure} />
+      </NextIntlClientProvider>,
+    );
+    await waitFor(() => expect(onFailure).toHaveBeenCalledWith("start"));
+    expect(onFailure).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("DistanceBeacon 컨트롤 노출", () => {
   // E16 축2: 전환 버튼이 사라졌으므로 "상세가 섰다"의 신호는 **경로 기준 잔여 표시**다
   // (간략에는 경로가 없어 그 줄이 없다). 강등 문구가 없다는 것도 함께 본다.

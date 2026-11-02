@@ -639,10 +639,23 @@ export function useRouteGuide(
     onSessionEnd?: (reason: "arrived" | "ended") => void;
     /** 도보 경유지(N4 2026-09-24). 미지정·null = 경유지 없음(종전 동작). */
     via?: RouteGuideVia | null;
+    /**
+     * 확정 도착 문장 대체(E70-f 여정 단계, spec 2026-11-02 §7.4) — 다음 단계가 이어지는 도착에서 기본 「목적지에
+     * 도착했습니다」는 여정이 끝난 것처럼 들린다. 미지정 = 기본 문장(종전 동작).
+     */
+    arrivalText?: string;
+    /**
+     * 위치 권한 거부·미지원으로 세션이 서지 못하거나 끊겼을 때 1회(E70-f spec §7.3) — 이 전이는 `onSessionEnd`를 부르지
+     * 않는다. `"start"` = 첫 fix 전(시작 실패), `"running"` = fix를 받은 뒤. ⚠ `status`는 시작 순간 동기로 `tracking`이
+     * 되므로 표시 상태로는 가를 수 없다(리뷰 M2) — 첫 fix 수신이 축이다.
+     */
+    onFailure?: (when: "start" | "running") => void;
   } = {},
 ): RouteGuideApi {
   const locale = useLocale();
   const onSessionEndRef = useRef(options.onSessionEnd);
+  const arrivalTextRef = useRef(options.arrivalText);
+  const onFailureRef = useRef(options.onFailure);
   /** 확정 도착 분기가 stop() 직전에 세운다 — stop()이 사유를 읽고 되돌린다. */
   const arrivedRef = useRef(false);
   const t = useTranslations("guide");
@@ -1705,7 +1718,7 @@ export function useRouteGuide(
       }
 
       if (arrived) {
-        const text = t("arrived");
+        const text = arrivalTextRef.current ?? t("arrived");
         rememberGuidance(text);
         // ⚠ `stopRef`가 아니라 `sessionStopRef`를 쓴다. `stopRef`는 매 렌더 대입되는데,
         // 훅 인자로 캡처된 값을 나중에 수정하는 것을 React Compiler가 막는다
@@ -2061,6 +2074,7 @@ export function useRouteGuide(
         void wakeLock.release();
         setStatus("denied");
         announce(tBeacon("denied"));
+        onFailureRef.current?.(lastFixRef.current === null ? "start" : "running");
         return;
       }
       // POSITION_UNAVAILABLE·TIMEOUT: 추적 유지, 신호 약함만(전이 1회) 통지.
@@ -2137,6 +2151,7 @@ export function useRouteGuide(
   const start = useCallback(() => {
     if (!supported) {
       setStatus("unsupported");
+      onFailureRef.current?.("start");
       return;
     }
     if (watchIdRef.current !== null) return;
@@ -2572,6 +2587,8 @@ export function useRouteGuide(
     walkAxisRef.current = walkAxis;
     viaRef.current = options.via ?? null;
     onSessionEndRef.current = options.onSessionEnd;
+    arrivalTextRef.current = options.arrivalText;
+    onFailureRef.current = options.onFailure;
     handleFixRef.current = handleFix;
     handleErrorRef.current = handleError;
     stopRef.current = stop;
