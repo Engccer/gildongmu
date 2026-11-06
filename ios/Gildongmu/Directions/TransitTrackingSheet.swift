@@ -759,7 +759,15 @@ struct TransitTrackingSheet: View {
     }
     /// 역 선택 질문 키 — riding 픽커 "지금 어느 역에 계신가요?", waiting pickStation "지금 어느 역을 지나고 계신가요?".
     private var reboardPromptKey: String {
-        model.aboardStep == .pickStation ? "transitGuide.aboardStationPrompt" : "transitGuide.reboardStationPrompt"
+        if model.aboardStep == .pickStation { return "transitGuide.aboardStationPrompt" }
+        // 서울버스(E76 후속 ⓔ)는 정류장을 묻는다 — 고른 정류장 기준으로 다시 기다린다.
+        return reboardAsksStop ? "transitGuide.reboardStopPrompt" : "transitGuide.reboardStationPrompt"
+    }
+    private var reboardCancelKey: String {
+        reboardAsksStop ? "transitGuide.reboardStopCancel" : "transitGuide.reboardCancel"
+    }
+    private var reboardAsksStop: Bool {
+        model.aboardStep != .pickStation && model.currentLeg?.trackMode == .seoulBus
     }
 
     /// `advance` 자리 버튼의 동작 — E34면 leg 종료 뒤 **인계가 실제로 남았을 때만** 도보 시작을 부른다
@@ -801,7 +809,7 @@ struct TransitTrackingSheet: View {
             // 하지 않기로 했다).
             Button(transitGuideIsEn ? (stop.en ?? stop.ko) : stop.ko) { onPick(index) }
         }
-        Button(appLocalized("transitGuide.reboardCancel")) { onCancel() }
+        Button(appLocalized(reboardCancelKey)) { onCancel() }
     }
 
     /// 제목의 「장소 상세 보기」(종전 메뉴·실험판 제목 행 공용).

@@ -809,3 +809,107 @@ private struct RidingCase: Decodable {
     #expect(stripped.legs[0].lanes == lanes)
     #expect(stripped.legs[0].walkBeforeMinutes == nil)
 }
+
+// MARK: - E76 후속 ⓔⓕⓓ (웹 `transit-bus-lanes-followup.test.ts` 미러)
+
+private let followupStops: [TransitLegStop] = [
+    followupStop("아현역", "14068", "113000477", nil),
+    followupStop("충정로역", "13045", "112000430", "Chungjeongno Station"),
+    followupStop("서대문역사거리", "13047", "101000304", nil),
+    followupStop("광화문역", "01009", "100000384", nil),
+]
+
+private func followupStop(_ name: String, _ ars: String?, _ local: String?, _ en: String?) -> TransitLegStop {
+    let json = "{\"name\":\"\(name)\",\"lat\":37.5,\"lng\":127,"
+        + (ars.map { "\"arsId\":\"\($0)\"," } ?? "") + (local.map { "\"localId\":\"\($0)\"," } ?? "")
+        + (en.map { "\"nameEn\":\"\($0)\"," } ?? "") + "\"cityCode\":\"1000\"}"
+    return try! JSONDecoder().decode(TransitLegStop.self, from: Data(json.utf8))
+}
+
+private func followupLeg(
+    trackMode: TransitTrackMode = .seoulBus, mode: String = "bus", stops: [TransitLegStop]? = nil,
+    stationCount: Int? = 3, lanes: [TransitGuideLane]? = [
+        TransitGuideLane(lineName: "271", lineNameEn: nil, key: "100100047"),
+        TransitGuideLane(lineName: "273", lineNameEn: nil, key: "100100049"),
+    ]
+) -> TransitGuideLeg {
+    let via = stops ?? followupStops
+    return TransitGuideLeg(
+        mode: mode, lineName: "271", trackMode: trackMode, boardName: "아현역", alightName: "광화문역",
+        boardStop: via.first, alightStop: via.last, viaStops: via, stationCount: stationCount,
+        routeId: "100100047", wayCode: nil, walkBeforeMinutes: 4, boardNameEn: "Ahyeon Station", lanes: lanes)
+}
+
+private let approxLock = TransitLock(mode: .seoulBus, routeId: "100100047", direction: "", vehicleId: "")
+private let identifiedLock = TransitLock(mode: .seoulBus, routeId: "100100047", direction: "", vehicleId: "v1")
+
+@Test func followupLegFromStop() throws {
+    let next = try #require(transitLegFromStop(followupLeg(), index: 1))
+    #expect(next.boardStop == followupStops[1])
+    #expect(next.boardName == "충정로역")
+    #expect(next.boardNameEn == "Chungjeongno Station")
+    #expect(next.viaStops == Array(followupStops[1...]))
+    #expect(next.stationCount == 2)
+    #expect(next.walkBeforeMinutes == nil)
+    #expect(next.lanes == nil)
+    #expect(next.lanesPending)
+    #expect(next.lineName == "271" && next.routeId == "100100047" && next.alightStop == followupStops[3])
+    // 영문 없는 정류장을 고르면 옛 승차 영문이 남지 않는다.
+    #expect(transitLegFromStop(followupLeg(), index: 2)?.boardNameEn == nil)
+    // 정거장 수를 모르면 계속 모른다.
+    #expect(transitLegFromStop(followupLeg(stationCount: nil), index: 1)?.stationCount == nil)
+    for i in [0, 3, 4, -1] { #expect(transitLegFromStop(followupLeg(), index: i) == nil) }
+}
+
+@Test func followupLanesWithRoutes() throws {
+    let leg = try #require(transitLegFromStop(followupLeg(), index: 1))
+    let lanes = transitLanesWithRoutes(leg, routes: [
+        TransitLaneRoute(routeId: "100100033", lineName: "160", lineNameEn: "160"),
+        TransitLaneRoute(routeId: "100100047", lineName: "271"),
+        TransitLaneRoute(routeId: "", lineName: "x"),
+        TransitLaneRoute(routeId: "100100033", lineName: "160"),
+    ])
+    #expect(lanes == [
+        TransitGuideLane(lineName: "271", lineNameEn: nil, key: "100100047"),
+        TransitGuideLane(lineName: "160", lineNameEn: "160", key: "100100033"),
+    ])
+    #expect(transitLanesWithRoutes(followupLeg(), routes: []) == nil)
+    let many = (0..<20).map { TransitLaneRoute(routeId: "R\($0)", lineName: "\($0)") }
+    #expect(transitLanesWithRoutes(followupLeg(), routes: many)?.count == 12)
+}
+
+@Test func followupReboardStopPickable() {
+    #expect(transitReboardStopPickable(followupLeg()))
+    var missing = followupStops
+    missing[1] = followupStop("충정로역", nil, "112000430", nil)
+    #expect(!transitReboardStopPickable(followupLeg(stops: missing)))
+    var empty = followupLeg()
+    empty = TransitGuideLeg(mode: "bus", lineName: "271", trackMode: .seoulBus, boardName: "a", alightName: "b",
+        boardStop: nil, alightStop: nil, viaStops: [], stationCount: nil, routeId: "R", wayCode: nil, walkBeforeMinutes: nil)
+    #expect(!transitReboardStopPickable(empty))
+    #expect(transitReboardStopPickable(followupLeg(trackMode: .subway, mode: "subway")))
+    #expect(!transitReboardStopPickable(followupLeg(trackMode: .tagoBus)))
+}
+
+@Test func followupRideLineUnconfirmed() throws {
+    #expect(transitRideLineUnconfirmed(followupLeg(), lock: approxLock))
+    #expect(!transitRideLineUnconfirmed(followupLeg(), lock: identifiedLock))
+    #expect(!transitRideLineUnconfirmed(followupLeg(lanes: nil), lock: approxLock))
+    #expect(transitRideLineUnconfirmed(try #require(transitLegFromStop(followupLeg(), index: 1)), lock: approxLock))
+    #expect(!transitRideLineUnconfirmed(followupLeg(), lock: nil))
+    #expect(!transitRideLineUnconfirmed(followupLeg(mode: "subway"), lock: approxLock))
+}
+
+@Test func followupTagoLaneSetKeyedByLineName() throws {
+    func decode(_ lanes: String, line: String = "1711") throws -> TransitRouteLeg {
+        let json = "{\"mode\":\"bus\",\"lineName\":\"\(line)\",\"fromName\":\"a\",\"toName\":\"b\",\"minutes\":8,\"stops\":[{\"name\":\"a\",\"lat\":36.3,\"lng\":127.4,\"cityCode\":\"25\",\"localId\":\"DJB1\"},{\"name\":\"b\",\"lat\":36.4,\"lng\":127.4,\"cityCode\":\"25\",\"localId\":\"DJB2\"}],\"lanes\":\(lanes)}"
+        return try JSONDecoder().decode(TransitRouteLeg.self, from: Data(json.utf8))
+    }
+    let leg = try decode(#"[{"lineName":"1711"},{"lineName":"7016"},{"lineName":"708"},{"lineName":"7016"}]"#)
+    #expect(classifyTransitTrackMode(mode: leg.mode, lineName: leg.lineName ?? "", serviceRouteId: leg.serviceRouteId,
+        boardStop: leg.stops?.first, alightStop: leg.stops?.last) == .tagoBus)
+    #expect(transitGuideLanesOf(leg)?.map(\.key) == ["1711", "7016", "708"])
+    // 첫 항목이 leg 자신이 아니면 버린다, 하나뿐이어도 집합이 아니다.
+    #expect(transitGuideLanesOf(try decode(#"[{"lineName":"7016"},{"lineName":"1711"}]"#)) == nil)
+    #expect(transitGuideLanesOf(try decode(#"[{"lineName":"1711"},{"lineName":"1711"}]"#)) == nil)
+}

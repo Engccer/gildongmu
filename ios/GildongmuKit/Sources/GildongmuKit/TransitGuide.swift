@@ -99,7 +99,10 @@ public struct TransitGuideLane: Codable, Sendable, Equatable {
 }
 
 public struct TransitGuideLeg: Codable, Sendable {
-    public let lanes: [TransitGuideLane]?
+    public fileprivate(set) var lanes: [TransitGuideLane]?
+    /// 재기준 정류장의 집합을 아직 모른다(E76 후속 ⓔ, 리뷰 M1) — `transitLegFromStop`이 세우고 `phase=lanes` 응답 반영이
+    /// 지운다. 응답 전·실패·늦은 응답 폐기 뒤에도 남아 「노선 모름」(`transitRideLineUnconfirmed`)으로 읽힌다. 웹 `lanesPending` 미러.
+    public fileprivate(set) var lanesPending: Bool = false
     public let mode: String // "bus" | "subway"
     public fileprivate(set) var lineName: String
     /// nil = 추적 불가(비수도권 지하철·정보 결손) — 수동 전진만 가능.
@@ -132,6 +135,13 @@ public struct TransitGuideLeg: Codable, Sendable {
     /// 구간 소요 분(ODsay `TransitLeg.minutes`) — 유휴 폴 정지 한계의 근거(E36 §4.2.6). 표시엔 쓰지 않는다.
     public let minutes: Int?
 
+    /// `lanesPending`은 런타임 표식이라 디코딩·인코딩 대상이 아니다(공유 fixture에 없다).
+    private enum CodingKeys: String, CodingKey {
+        case lanes, mode, lineName, trackMode, boardName, alightName, lineNameEn, boardNameEn, alightNameEn
+        case boardStop, alightStop, viaStops, stationCount, routeId, wayCode, walkBeforeMinutes
+        case quickExit, expressStops, expressStopIds, exitAlight, minutes
+    }
+
     public init(
         mode: String, lineName: String, trackMode: TransitTrackMode?,
         boardName: String, alightName: String,
@@ -141,8 +151,9 @@ public struct TransitGuideLeg: Codable, Sendable {
         quickExit: QuickExit? = nil,
         lineNameEn: String? = nil, boardNameEn: String? = nil, alightNameEn: String? = nil,
         expressStops: [String]? = nil, expressStopIds: [String]? = nil, exitAlight: String? = nil,
-        minutes: Int? = nil, lanes: [TransitGuideLane]? = nil
+        minutes: Int? = nil, lanes: [TransitGuideLane]? = nil, lanesPending: Bool = false
     ) {
+        self.lanesPending = lanesPending
         self.mode = mode
         self.lineName = lineName
         self.trackMode = trackMode
@@ -573,7 +584,7 @@ public func withoutPrewalk(_ route: TransitGuideRoute) -> TransitGuideRoute {
         quickExit: first.quickExit,
         lineNameEn: first.lineNameEn, boardNameEn: first.boardNameEn, alightNameEn: first.alightNameEn,
         expressStops: first.expressStops, expressStopIds: first.expressStopIds, exitAlight: first.exitAlight,
-        minutes: first.minutes, lanes: first.lanes)
+        minutes: first.minutes, lanes: first.lanes, lanesPending: first.lanesPending)
     return TransitGuideRoute(legs: [stripped] + route.legs.dropFirst(), walkAfterMinutes: route.walkAfterMinutes)
 }
 
@@ -1365,13 +1376,26 @@ public func subwayRidingMessage(_ arrivalCode: String?) -> SubwayRidingMessage {
     }
 }
 
-/// 서울버스만 집합을 추적한다. 첫 노선 정체성과 서버 상한 12를 지킨다.
+/// 서울버스는 키가 TOPIS ID이고 첫 노선 정체성과 서버 상한 12를 지킨다. 지방버스(E76 후속 ⓓ)는 키가 **노선 번호**(`lineName`)다 —
+/// TAGO 도착 `routeno`와 같은 축이고, 이름 중복은 한 번만 세며, 둘 이상이면서 첫 항목이 leg 자신일 때만 집합이다. 웹 `guideLanesOf` 미러.
 public func transitGuideLanesOf(_ leg: TransitRouteLeg) -> [TransitGuideLane]? {
     let stops = leg.stops ?? []
-    guard classifyTransitTrackMode(mode: leg.mode, lineName: leg.lineName ?? "",
+    let mode = classifyTransitTrackMode(mode: leg.mode, lineName: leg.lineName ?? "",
         serviceRouteId: leg.serviceRouteId, boardStop: stops.first,
-        alightStop: stops.count > 1 ? stops.last : nil) == .seoulBus,
-        let id = leg.serviceRouteId, let source = leg.lanes else { return nil }
+        alightStop: stops.count > 1 ? stops.last : nil)
+    guard let source = leg.lanes else { return nil }
+    if mode == .tagoBus {
+        guard let own = leg.lineName, !own.isEmpty else { return nil }
+        var seen = Set<String>()
+        var lanes: [TransitGuideLane] = []
+        for lane in source where !lane.lineName.isEmpty && !seen.contains(lane.lineName) {
+            seen.insert(lane.lineName)
+            lanes.append(TransitGuideLane(lineName: lane.lineName, lineNameEn: lane.lineNameEn, key: lane.lineName))
+        }
+        guard lanes.count >= 2, lanes.first?.key == own else { return nil }
+        return Array(lanes.prefix(12))
+    }
+    guard mode == .seoulBus, let id = leg.serviceRouteId else { return nil }
     let lanes = source.compactMap { lane -> TransitGuideLane? in
         guard let key = lane.serviceRouteId, !key.isEmpty else { return nil }
         return TransitGuideLane(lineName: lane.lineName, lineNameEn: lane.lineNameEn, key: key)
@@ -1391,4 +1415,80 @@ public func transitLegWithLane(_ leg: TransitGuideLeg, lane: TransitGuideLane) -
     next.lineNameEn = lane.lineNameEn
     next.routeId = lane.key
     return next
+}
+
+// === 서울버스 정류장 재기준·번호 없는 문장 (E76 후속 ⓔⓕ) — 순수, 웹 미러 ===
+
+/// 승차 중 [탑승 변경]이 「지금 어느 역·정류장」을 먼저 묻는가(A16 L3, 서울버스는 E76 후속 ⓔ). 지하철은 역 이름으로 조회하고,
+/// 서울버스는 경유 정류장 전부에 `arsId`(대기 폴)·`localId`(하차 순번)가 있어야 그 정류장 기준으로 다시 기다릴 수 있다.
+/// 지방버스는 [탑승 변경]이 없다. 웹 `reboardStopPickable` 미러.
+public func transitReboardStopPickable(_ leg: TransitGuideLeg) -> Bool {
+    if leg.viaStops.isEmpty { return false }
+    switch leg.trackMode {
+    case .subway: return true
+    case .seoulBus:
+        return leg.viaStops.allSatisfy { !($0.arsId ?? "").isEmpty && !($0.localId ?? "").isEmpty }
+    default: return false
+    }
+}
+
+/// 고른 정류장 기준으로 바꾼 leg(서울버스 재기준, spec `2026-11-07-e76-followup-design.md` §2.2). 승차·경유·정거장 수가 그
+/// 정류장부터이고 선행 도보·집합은 지우며(`lanesPending`) 노선·하차는 그대로다. 첫 정류장·하차 정류장·범위 밖은 nil.
+/// 웹 `legFromStop` 미러.
+public func transitLegFromStop(_ leg: TransitGuideLeg, index: Int) -> TransitGuideLeg? {
+    guard index > 0, index < leg.viaStops.count - 1 else { return nil }
+    let stop = leg.viaStops[index]
+    return TransitGuideLeg(
+        mode: leg.mode, lineName: leg.lineName, trackMode: leg.trackMode,
+        boardName: stop.name, alightName: leg.alightName,
+        boardStop: stop, alightStop: leg.alightStop,
+        viaStops: Array(leg.viaStops[index...]),
+        stationCount: leg.stationCount == nil ? nil : leg.viaStops.count - 1 - index,
+        routeId: leg.routeId, wayCode: leg.wayCode, walkBeforeMinutes: nil,
+        quickExit: leg.quickExit,
+        lineNameEn: leg.lineNameEn, boardNameEn: stop.nameEn, alightNameEn: leg.alightNameEn,
+        expressStops: leg.expressStops, expressStopIds: leg.expressStopIds, exitAlight: leg.exitAlight,
+        minutes: leg.minutes, lanes: nil, lanesPending: true)
+}
+
+/// 재기준 집합 응답을 leg에 반영한다 — 미조회 표식을 지우고, 집합이 있으면(둘 이상) 채운다. 웹 `filled` 조립 미러.
+public func transitLegWithLanes(_ leg: TransitGuideLeg, lanes: [TransitGuideLane]?) -> TransitGuideLeg {
+    var next = leg
+    next.lanesPending = false
+    if let lanes { next.lanes = lanes }
+    return next
+}
+
+/// 재기준 집합 서버 응답의 노선 하나(`/api/transit/track?phase=lanes`).
+public struct TransitLaneRoute: Codable, Sendable, Equatable {
+    public let routeId: String
+    public let lineName: String
+    public let lineNameEn: String?
+
+    public init(routeId: String, lineName: String, lineNameEn: String? = nil) {
+        self.routeId = routeId
+        self.lineName = lineName
+        self.lineNameEn = lineNameEn
+    }
+}
+
+/// `[지금 노선] + 서버 노선` → 안내 집합(§2.4). 첫 항목은 언제나 leg 자신이다. 둘 미만이면 nil, 상한 12.
+/// 웹 `lanesWithRoutes` 미러.
+public func transitLanesWithRoutes(_ leg: TransitGuideLeg, routes: [TransitLaneRoute]) -> [TransitGuideLane]? {
+    guard let own = leg.routeId, !own.isEmpty else { return nil }
+    var lanes = [TransitGuideLane(lineName: leg.lineName, lineNameEn: leg.lineNameEn, key: own)]
+    var seen: Set<String> = [own]
+    for r in routes where !r.routeId.isEmpty && !r.lineName.isEmpty && !seen.contains(r.routeId) {
+        seen.insert(r.routeId)
+        lanes.append(TransitGuideLane(lineName: r.lineName, lineNameEn: r.lineNameEn, key: r.routeId))
+    }
+    lanes = Array(lanes.prefix(12))
+    return lanes.count >= 2 ? lanes : nil
+}
+
+/// 승차 중 노선을 모르는가(ⓕ·ⓓ) — 근사 잠금 ∧ (같은 하차 정류소로 가는 노선이 둘 이상 ∨ 재기준 집합 미조회). 상태에서
+/// 유도한다(leg에 표식을 저장하지 않는다). 웹 `rideLineUnconfirmed` 미러.
+public func transitRideLineUnconfirmed(_ leg: TransitGuideLeg, lock: TransitLock?) -> Bool {
+    guard let lock, isApproxTransitLock(lock), leg.mode == "bus" else { return false }
+    return (leg.lanes?.count ?? 0) >= 2 || leg.lanesPending
 }

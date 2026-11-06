@@ -80,8 +80,13 @@ public func transitBoardingContextLine(isEn: Bool, leg: TransitDisplayLeg) -> Tr
     makeLine(isEn, modeKey(leg, "boardingContext"), [leg.board, leg.line]) { $0 }
 }
 
-public func transitContextLine(isEn: Bool, leg: TransitDisplayLeg) -> TransitTextLine {
-    makeLine(isEn, modeKey(leg, "context"), [leg.line, leg.alight]) { $0 }
+/// `lineUnconfirmed`(E76 후속 ⓕ·ⓓ, 판정 `transitRideLineUnconfirmed`): 근사 잠금 ∧ 노선 여럿이면 번호 없이 「버스 탑승 중, …」.
+/// ⚠ 기본값 없는 필수 인자 — 생략이 통과하면 모르는 번호를 말하는 문장이 조용히 남는다.
+public func transitContextLine(isEn: Bool, leg: TransitDisplayLeg, lineUnconfirmed: Bool) -> TransitTextLine {
+    if lineUnconfirmed && leg.mode == "bus" {
+        return makeLine(isEn, "contextBusUnconfirmed", [leg.alight]) { $0 }
+    }
+    return makeLine(isEn, modeKey(leg, "context"), [leg.line, leg.alight]) { $0 }
 }
 
 // MARK: - 완성 문장 프레임
@@ -442,7 +447,7 @@ public func transitOpenStationLine(isEn: Bool, station: TransitLabel) -> Transit
 /// descriptor가 낼 수 있는 전체 키 — 앱 리터럴 `switch` 망라성 대조 축(spec §5.2).
 public let transitTextKeys: [String] = [
     "waitContext", "waitContextBus", "waitContextWalk", "waitContextWalkBus",
-    "boardingContext", "boardingContextBus", "context", "contextBus",
+    "boardingContext", "boardingContextBus", "context", "contextBus", "contextBusUnconfirmed",
     "subwayNextStop", "subwayArriving", "subwayAtStop", "subwayDeparted",
     "remainingCount", "remainingCountJoin", "stopsAway", "stopsAwayOnly",
     "busEtaMinSec", "busEtaMin", "busEtaSec", "busSoon", "busNotDeparted", "busTurning",

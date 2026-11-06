@@ -215,6 +215,10 @@ final class TransitGuideModel {
     private var pollTask: Task<Void, Never>?
     private var seq = 0
     private var retained: [String: (item: TransitTrackItem, lastSeenAt: Date)] = [:]
+    /// 서울버스 정류장 재기준(E76 후속 ⓔ)의 되돌림 원본과 세대. `snapshot`은 승차 중 [탑승 변경] 직전의 leg(집합 포함)이고
+    /// 취소가 그것을 되돌린다. `gen`은 `phase=lanes` 응답의 결박 — 다른 정류장을 고르거나 세션이 바뀌면 오른다. 웹 `reanchorRef` 미러.
+    private var reanchor: (legIndex: Int, snapshot: TransitGuideLeg, gen: Int)?
+    private var reanchorGen = 0
     // ⚠ 키는 (legIndex, 대상 정류소) 복합 — legIndex만 쓰면 waiting에서 해석한
     // 승차 정류소가 riding 캐시로 적중해 하차 카운트다운이 승차 정류소 도착을
     // 읽는다(독립 리뷰 BLOCKER).
@@ -339,6 +343,7 @@ final class TransitGuideModel {
         self.accessible = accessible
         seq = 0
         retained = [:]
+        reanchor = nil
         tagoResolved = [:]
         tagoUnsupported = []
         // 다음 세션의 phaseGen도 0에서 시작한다 — 옛 위치 결박이 같은 세대·열차로 되살아나지 않게.
@@ -442,6 +447,7 @@ final class TransitGuideModel {
         waitingDeparted = []
         waitingReason = nil
         retained = [:]
+        reanchor = nil
         tagoResolved = [:]
         tagoUnsupported = []
         wasBackgrounded = false
@@ -781,7 +787,8 @@ final class TransitGuideModel {
             transitGuideLog("board rejected unreachable vehicle=\(item.vehicleId ?? "-")")
             return
         }
-        if let lane = transitLaneForItem(leg, item: item) {
+        // 지방버스 집합의 키는 노선 번호라 `routeId`로 쓸 수 없다 — 노선 교체는 서울버스만(E76 후속 ⓓ).
+        if trackMode == .seoulBus, let lane = transitLaneForItem(leg, item: item) {
             leg = transitLegWithLane(leg, lane: lane)
             replaceCurrentLeg(leg)
         }
@@ -924,18 +931,19 @@ final class TransitGuideModel {
               leg.viaStops.indices.contains(i) else { return nil }
         return leg.viaStops[i].name
     }
-    /// 역 선택 단계 표시 여부(지하철 전용 — 아래 beginReboard 주석).
+    /// 역·정류장 선택 단계 표시 여부(지하철·서울버스 — 아래 beginReboard 주석).
     private(set) var reboardPickerActive = false
 
-    /// "탑승 변경" 진입. 지하철은 지금 있는 역을 먼저 묻고, 그 외 수단은 종전대로
-    /// 곧장 재선택으로 간다.
+    /// "탑승 변경" 진입. 지하철은 지금 있는 역을, 서울버스는 지금 있는 정류장을(E76 후속 ⓔ — 한 정거장 전에 내린 뒤 원래
+    /// 승차 정류소 도착만 듣던 420 사례) 먼저 묻고, 그 밖은 종전대로 곧장 재선택으로 간다. 판정은 `transitReboardStopPickable`.
     ///
-    /// ⚠ 지하철 전용인 근거 둘: ①조회 파라미터가 수단마다 다르다(지하철만 역
-    /// *이름*으로 조회하고 서울버스는 정류소 ID를 쓴다) ②문제의 성격이 다르다 —
-    /// 지하철은 같은 노선에서 급행↔완행을 갈아타지만 버스는 갈아타면 다른 leg다.
+    /// ⚠ 지하철은 조회 파라미터가 역 *이름*이라 표시 인덱스(`boardOverrideIndex`)를 덧씌우고, 서울버스는 정류소 ID를 쓰므로
+    /// leg 자체를 바꾼다(`changeBoarding(at:)`).
     func beginReboard() {
         touchUserAction()
-        guard let leg = currentLeg, leg.trackMode == .subway, !leg.viaStops.isEmpty else {
+        // 승차 중의 새 [탑승 변경]은 새 원본을 잡는다 — 지난 재기준의 원본이 남으면 다음 취소가 옛 leg를 되살린다.
+        if state?.phase != .waiting { reanchor = nil }
+        guard let leg = currentLeg, transitReboardStopPickable(leg) else {
             changeBoarding()
             return
         }
@@ -1057,9 +1065,53 @@ final class TransitGuideModel {
     /// 사용자가 고른 현재 역으로 재선택한다(A16 L3). 인자는 **세션 경로 `viaStops`의 인덱스**다 —
     /// 이름을 받는 판을 남기면 그것이 다시 동명 역 모호 경로가 된다(spec §3.6).
     func changeBoarding(at stopIndex: Int) {
+        if let state, let leg = currentLeg, leg.trackMode == .seoulBus {
+            reboardPickerActive = false
+            reseatSeoulBus(legIndex: state.legIndex, leg: leg, stopIndex: stopIndex)
+            return
+        }
         boardOverrideIndex = stopIndex
         reboardPickerActive = false
         changeBoarding()
+    }
+
+    /// 서울버스 정류장 재기준(E76 후속 ⓔ §2.2): 고른 정류장 기준 leg로 바꾸고 다시 기다린다. 첫 정류장(원래 승차)은 종전대로
+    /// 원래 leg 대기다. ⚠ 3분 보관 후보를 비운다(설계 리뷰 H1) — 옛 정류장 차량이 새 목록에 섞이면 그 차량을 지금 노선으로 잠근다.
+    private func reseatSeoulBus(legIndex: Int, leg: TransitGuideLeg, stopIndex: Int) {
+        guard let next = transitLegFromStop(leg, index: stopIndex) else {
+            reanchor = nil
+            changeBoarding()
+            return
+        }
+        reanchorGen += 1
+        let gen = reanchorGen
+        reanchor = (legIndex, leg, gen)
+        replaceCurrentLeg(next)
+        retained = [:]
+        changeBoarding()
+        Task { [weak self] in await self?.fetchReanchorLanes(next, gen: gen) }
+    }
+
+    /// 재기준 정류장의 노선 집합(E76 후속 ⓔ §2.4). 결박: 세션·재기준 세대·대기 국면·같은 leg 그대로일 때만 반영한다(차량을
+    /// 골랐거나 다른 정류장을 골랐으면 버린다 — 그 leg는 `lanesPending`이 남아 「노선 모름」으로 정직하다). 실패는 조용하다.
+    private func fetchReanchorLanes(_ leg: TransitGuideLeg, gen: Int) async {
+        guard let arsId = leg.boardStop?.arsId, let boardId = leg.boardStop?.localId,
+              let alightId = leg.alightStop?.localId, let routeId = leg.routeId else { return }
+        let session = sessionToken
+        do {
+            let env = try await trackService.seoulLanes(
+                arsId: arsId, boardId: boardId, alightId: alightId, routeId: routeId,
+                lang: AppLanguage.dataLocale)
+            guard sessionToken == session, let reanchor, reanchor.gen == gen,
+                  let state, state.phase == .waiting, state.legIndex == reanchor.legIndex,
+                  let current = currentLeg, current.lanesPending, current.boardStop == leg.boardStop,
+                  env.status == "ok", let routes = env.routes else { return }
+            let lanes = transitLanesWithRoutes(current, routes: routes)
+            replaceCurrentLeg(transitLegWithLanes(current, lanes: lanes))
+            if lanes != nil { restartPollLoop(immediate: true) }
+        } catch {
+            // 네트워크·502 — 조용히(`lanesPending` 유지).
+        }
     }
 
     func changeBoarding() {
@@ -1077,7 +1129,15 @@ final class TransitGuideModel {
     /// 탄 사용자가 승차 정류소 폴링으로 되돌아간다(설계 리뷰 M5) — 전용 입력이 정본.
     func cancelChangeBoarding() {
         guard let state, state.phase == .waiting, let previous = state.previousLock else { return }
-        if let leg = currentLeg, let lane = leg.lanes?.first(where: { $0.key == previous.routeId }) {
+        // 정류장 재기준(E76 후속 ⓔ)을 취소하면 [탑승 변경] 직전 leg(원래 정류장·집합)로 되돌린 뒤 노선을 맞춘다.
+        let origin = reanchor
+        reanchor = nil
+        if let origin, origin.legIndex == state.legIndex {
+            replaceCurrentLeg(origin.snapshot)
+            retained = [:]
+        }
+        if previous.mode == .seoulBus, let leg = currentLeg,
+           let lane = leg.lanes?.first(where: { $0.key == previous.routeId }) {
             replaceCurrentLeg(transitLegWithLane(leg, lane: lane))
         }
         dispatch(.restoreBoarding)
@@ -1423,7 +1483,7 @@ final class TransitGuideModel {
         var parts: [String] = switch state.phase {
         case .waiting: [waitContextText(leg, isCurrentLeg: true)]
         case .boarding: [boardingContextText(leg)]
-        default: [contextText(leg)]
+        default: [contextText(leg, lock: state.lock)]
         }
         // 잔여 + 도착 서술을 한 줄 두 조각으로(E39) — 렌더가 쉼표로 이어 한 문장이 된다.
         let message = live ? state.lastMessage.flatMap { m -> TransitLabel? in
@@ -1468,8 +1528,10 @@ final class TransitGuideModel {
         // 근사 주석("같은 노선의 접근 차량 기준")은 지방버스만(대기 중에도 근사 예고). 지하철·서울버스 근사는
         // 2026-09-11부터 비관측이라 접근 차량 기준이 아니다 — 국면을 보지 않는 잠금 술어로 갈라 선언 도착
         // 뒤에도 상속되지 않게(리뷰 m2).
+        // 집합이 있으면(E76 후속 ⓓ) 탄 노선을 모르므로 「추천 노선의 접근 차량 기준」 — 승차 중 폴은 추천 노선 하나다.
         if leg.trackMode == .tagoBus {
-            parts.append(appLocalized("transitGuide.approxNote"))
+            parts.append(appLocalized(
+                (leg.lanes?.count ?? 0) >= 2 ? "transitGuide.approxNoteLanes" : "transitGuide.approxNote"))
         }
         // 급행 선언 잠금(§6)은 판정을 상시 표시에 남긴다 — 답한 직후의 침묵이 "확인됨"으로 읽히지 않게.
         if state.lock?.express == true {
@@ -1703,6 +1765,9 @@ final class TransitGuideModel {
                 }
                 let env = try await trackService.tagoTrack(
                     cityCode: resolved.cityCode, nodeId: resolved.nodeId, routeNo: leg.lineName,
+                    // 대기 국면만 노선 집합(E76 후속 ⓓ). 승차 중은 추천 노선 하나다 — 집합 최솟값은 폴마다 다른 노선
+                    // 버스로 튀어 리듀서가 그것을 카운트다운·임박으로 읽는다(설계 리뷰 H3).
+                    routeNos: phase == .waiting && (leg.lanes?.count ?? 0) >= 2 ? leg.lanes?.map(\.key) : nil,
                     lang: AppLanguage.dataLocale)
                 return (TransitTrackService.poll(from: env), env.rawCount)
             case .subway:
@@ -2054,7 +2119,7 @@ final class TransitGuideModel {
                 }
             }
         case let .trackingStarted(message, messageEn, remaining, arrivalCode):
-            if let leg { parts.append(contextText(leg)) }
+            if let leg { parts.append(contextText(leg, lock: self.state?.lock)) }
             parts.append(appLocalized("transitGuide.trackingStarted"))
             if let leg {
                 parts.append(arrivalText(
@@ -2163,9 +2228,12 @@ final class TransitGuideModel {
     }
 
     /// 노선·하차 전문 문맥(§6.1 M1 개정) — 추적 시작·진행 상황·상시 표시가 담당.
-    func contextText(_ leg: TransitGuideLeg) -> String {
+    /// `lock`은 기본값 없는 인자다(E76 후속 ⓕ): 근사 잠금 ∧ 노선 여럿이면 번호 없는 문장이라, 생략이 통과하면 모르는 번호를 말한다.
+    func contextText(_ leg: TransitGuideLeg, lock: TransitLock?) -> String {
         TransitGuideTextRenderer.render(
-            transitContextLine(isEn: transitGuideIsEn, leg: displayLeg(leg, useOverride: false)))
+            transitContextLine(
+                isEn: transitGuideIsEn, leg: displayLeg(leg, useOverride: false),
+                lineUnconfirmed: transitRideLineUnconfirmed(leg, lock: lock)))
     }
 
     /// leg → 표시 투영(E27 잔여 ①, spec §3.5). 조인 필드가 타입에 없어 이 아래에서는

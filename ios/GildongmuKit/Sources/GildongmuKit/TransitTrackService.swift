@@ -11,6 +11,12 @@ public struct TransitTrackEnvelope: Codable, Sendable {
     public let stop: TransitTrackResolvedStop?
 }
 
+/// `phase=lanes` 응답(E76 후속 ⓔ). `routes`는 지금 노선을 뺀 나머지다.
+public struct TransitLanesEnvelope: Codable, Sendable {
+    public let status: String
+    public let routes: [TransitLaneRoute]?
+}
+
 /// 지방버스 하차 정류소 해석 결과(mode=tagoBus&phase=resolve).
 public struct TransitTrackResolvedStop: Codable, Sendable, Equatable {
     public let nodeId: String
@@ -75,15 +81,34 @@ public struct TransitTrackService: Sendable {
         ])
     }
 
+    /// `routeNos`(E76 후속 ⓓ, 대기 국면의 노선 집합 — 쉼표, 항목마다 `route`가 실린다)가 있으면 `routeNo` 대신 그것을 보낸다.
+    /// 서버는 둘 중 정확히 하나만 받는다.
     public func tagoTrack(
-        cityCode: String, nodeId: String, routeNo: String, lang: String
+        cityCode: String, nodeId: String, routeNo: String, routeNos: [String]?, lang: String
     ) async throws -> TransitTrackEnvelope {
         try await get([
             URLQueryItem(name: "mode", value: "tagoBus"),
             URLQueryItem(name: "phase", value: "track"),
             URLQueryItem(name: "cityCode", value: cityCode),
             URLQueryItem(name: "nodeId", value: nodeId),
-            URLQueryItem(name: "routeNo", value: routeNo),
+            URLQueryItem(name: routeNos == nil ? "routeNo" : "routeNos",
+                         value: routeNos?.joined(separator: ",") ?? routeNo),
+            URLQueryItem(name: "lang", value: lang),
+        ])
+    }
+
+    /// 서울버스 정류장 재기준 집합(E76 후속 ⓔ §2.3) — 그 정류장에서 같은 하차 정류장에 서는 **지금 노선 외** 노선.
+    /// 502(upstream 실패)는 throw, 호출자는 조용히 버린다(단일 노선 대기가 이미 돈다).
+    public func seoulLanes(
+        arsId: String, boardId: String, alightId: String, routeId: String, lang: String
+    ) async throws -> TransitLanesEnvelope {
+        try await client.get("/api/transit/track", query: [
+            URLQueryItem(name: "mode", value: "seoulBus"),
+            URLQueryItem(name: "phase", value: "lanes"),
+            URLQueryItem(name: "arsId", value: arsId),
+            URLQueryItem(name: "boardId", value: boardId),
+            URLQueryItem(name: "alightId", value: alightId),
+            URLQueryItem(name: "routeId", value: routeId),
             URLQueryItem(name: "lang", value: lang),
         ])
     }

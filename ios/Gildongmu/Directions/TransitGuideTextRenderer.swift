@@ -36,6 +36,7 @@ enum TransitGuideTextRenderer {
         case "boardingContextBus": return appLocalized("transitGuide.boardingContextBus", arguments: args)
         case "context": return appLocalized("transitGuide.context", arguments: args)
         case "contextBus": return appLocalized("transitGuide.contextBus", arguments: args)
+        case "contextBusUnconfirmed": return appLocalized("transitGuide.contextBusUnconfirmed", arguments: args)
         case "remainingCount": return appLocalized("transitGuide.remainingCount", arguments: args)
         case "remainingCountJoin": return appLocalized("transitGuide.remainingCountJoin", arguments: args)
         case "stopsAway": return appLocalized("transitGuide.stopsAway", arguments: args)

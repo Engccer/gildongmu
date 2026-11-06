@@ -470,6 +470,11 @@ struct GuideBandView: View {
         if session.journey != nil, !session.transit.isTracking { return journeyStatusText(session) }
         let transit = session.transit
         let leg = transit.currentLeg
+        // 노선을 모르면(E76 후속 ⓕ) 번호 자리는 「버스」다.
+        let ridingLine: (String) -> String = { line in
+            leg.map { transitRideLineUnconfirmed($0, lock: transit.state?.lock) } == true
+                ? appLocalized("guide.band.busUnconfirmed") : line
+        }
         switch guideBandSummary(
             phase: transit.state?.phase, boardStop: leg?.boardName, line: leg?.lineName,
             remaining: transit.state?.remaining, hasWalkHandoff: transit.pendingWalkHandoff != nil,
@@ -484,9 +489,9 @@ struct GuideBandView: View {
         case .waiting(let stop, let line):
             return appLocalized("guide.band.transitWaiting", stop, line)
         case .riding(let line, let remaining?):
-            return appLocalized("guide.band.transitRiding", line, remaining)
+            return appLocalized("guide.band.transitRiding", ridingLine(line), remaining)
         case .riding(let line, nil):
-            return appLocalized("guide.band.transitRidingNoCount", line)
+            return appLocalized("guide.band.transitRidingNoCount", ridingLine(line))
         case .arrived:
             return appLocalized("guide.band.transitArrived", transit.destinationLabel)
         case .destChangePending(let label):
