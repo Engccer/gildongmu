@@ -1,5 +1,7 @@
 # E77 병렬 세션 계획 (2026-11-07)
 
+> **종료 상태(2026-11-07)**: `e77-input` → main `ccca8040`, 웹 배포·iOS 실험판 실기기 설치, 판정은 BACKLOG §2 E70 ⑪. 웨이브 중 추가한 `branch-intake`(클라우드 브랜치 `claude/dreamy-faraday-n6egwd` 수용) → PR #14 `581285cf`, iOS 두 구성 설치, 판정은 BACKLOG §2 A71. 두 worktree·창 정리 끝.
+
 코디네이터 `gildongmu-75 [1ac7af]`(위원장 창, 같은 시간 다른 백로그 판정 진행) + 작업 세션 1: `e77-input`.
 
 ## §1 마일스톤·확정 판정·모델 배정
