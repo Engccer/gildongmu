@@ -426,7 +426,8 @@ struct TransitTrackingSheet: View {
         case let .land(target):
             landControlFocus(target, proxy: proxy)
         case .beginReboard:
-            // 지하철은 `reboardPickerActive` 전이의 프롬프트 착지가, 버스는 waiting 전이의 목록 라벨 착지가 맡는다.
+            // 역·정류장을 물을 수 있는 구간(지하철·서울버스, `transitReboardStopPickable`)은 `reboardPickerActive` 전이의 질문 헤딩 착지가,
+            // 그 밖은 waiting 전이의 목록 라벨 착지가 맡는다.
             model.beginReboard()
         }
     }

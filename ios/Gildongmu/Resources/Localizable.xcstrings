@@ -13721,46 +13721,6 @@
         }
       }
     },
-    "guide.band.busUnconfirmed": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "버스"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Bus"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Autobús"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Bus"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Autobus"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "バス"
-          }
-        }
-      }
-    },
     "guide.band.ended": {
       "localizations": {
         "ko": {
@@ -14077,6 +14037,86 @@
           "stringUnit": {
             "state": "translated",
             "value": "%1$@に乗車中、残り%2$@駅"
+          }
+        }
+      }
+    },
+    "guide.band.transitRidingBusUnconfirmed": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "버스 탑승 중, 남은 정거장 %1$@개"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "On a bus, {1, plural, one {%1$@ stop} other {%1$@ stops}} left"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En el autobús, {1, plural, one {falta %1$@ parada} other {faltan %1$@ paradas}}"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "À bord du bus, {1, plural, one {%1$@ arrêt restant} other {%1$@ arrêts restants}}"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A bordo dell'autobus, {1, plural, one {%1$@ fermata rimanente} other {%1$@ fermate rimanenti}}"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "バスに乗車中、残り%1$@駅"
+          }
+        }
+      }
+    },
+    "guide.band.transitRidingBusUnconfirmedNoCount": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "버스 탑승 중"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "On a bus"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En el autobús"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "À bord du bus"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A bordo dell'autobus"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "バスに乗車中"
           }
         }
       }

@@ -470,11 +470,8 @@ struct GuideBandView: View {
         if session.journey != nil, !session.transit.isTracking { return journeyStatusText(session) }
         let transit = session.transit
         let leg = transit.currentLeg
-        // 노선을 모르면(E76 후속 ⓕ) 번호 자리는 「버스」다.
-        let ridingLine: (String) -> String = { line in
-            leg.map { transitRideLineUnconfirmed($0, lock: transit.state?.lock) } == true
-                ? appLocalized("guide.band.busUnconfirmed") : line
-        }
+        // 노선을 모르면(E76 후속 ⓕ) 번호 자리가 없는 전용 문장을 쓴다(조각 조립이 아니라 키 하나 — 언어별 어순).
+        let lineUnconfirmed = leg.map { transitRideLineUnconfirmed($0, lock: transit.state?.lock) } == true
         switch guideBandSummary(
             phase: transit.state?.phase, boardStop: leg?.boardName, line: leg?.lineName,
             remaining: transit.state?.remaining, hasWalkHandoff: transit.pendingWalkHandoff != nil,
@@ -488,10 +485,14 @@ struct GuideBandView: View {
         ) {
         case .waiting(let stop, let line):
             return appLocalized("guide.band.transitWaiting", stop, line)
+        case .riding(_, let remaining?) where lineUnconfirmed:
+            return appLocalized("guide.band.transitRidingBusUnconfirmed", remaining)
+        case .riding(_, nil) where lineUnconfirmed:
+            return appLocalized("guide.band.transitRidingBusUnconfirmedNoCount")
         case .riding(let line, let remaining?):
-            return appLocalized("guide.band.transitRiding", ridingLine(line), remaining)
+            return appLocalized("guide.band.transitRiding", line, remaining)
         case .riding(let line, nil):
-            return appLocalized("guide.band.transitRidingNoCount", ridingLine(line))
+            return appLocalized("guide.band.transitRidingNoCount", line)
         case .arrived:
             return appLocalized("guide.band.transitArrived", transit.destinationLabel)
         case .destChangePending(let label):

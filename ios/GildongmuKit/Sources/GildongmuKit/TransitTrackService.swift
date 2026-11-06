@@ -15,6 +15,8 @@ public struct TransitTrackEnvelope: Codable, Sendable {
 public struct TransitLanesEnvelope: Codable, Sendable {
     public let status: String
     public let routes: [TransitLaneRoute]?
+    /// 확인하지 못한 노선 수(예산 소진·경유 조회 실패) — 0이 아니면 `routes: []`가 「다른 노선 없음」의 증거가 아니다.
+    public let unverified: Int?
 }
 
 /// 지방버스 하차 정류소 해석 결과(mode=tagoBus&phase=resolve).

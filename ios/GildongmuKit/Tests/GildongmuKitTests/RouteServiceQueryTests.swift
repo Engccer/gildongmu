@@ -336,3 +336,46 @@ extension StubNetworkTests {
         #expect(capturedQuery?.contains(where: { $0.name == "routeIds" }) == false)
     }
 }
+
+extension StubNetworkTests {
+    @Test func tagoTrackRouteNosAndRouteNoAreExclusive() async throws {
+        var capturedQuery: [URLQueryItem]?
+        StubURLProtocol.handler = { request in
+            capturedQuery = URLComponents(url: request.url!, resolvingAgainstBaseURL: false)?.queryItems
+            return (200, Data(#"{"mode":"tagoBus","status":"empty"}"#.utf8))
+        }
+        let service = TransitTrackService(client: stubbedClient())
+        _ = try await service.tagoTrack(
+            cityCode: "25", nodeId: "DJB1", routeNo: "1711", routeNos: ["1711", "7016"], lang: "ko")
+        #expect(capturedQuery?.contains(where: { $0.name == "routeNos" && $0.value == "1711,7016" }) == true)
+        #expect(capturedQuery?.contains(where: { $0.name == "routeNo" }) == false)
+        _ = try await service.tagoTrack(cityCode: "25", nodeId: "DJB1", routeNo: "1711", routeNos: nil, lang: "ko")
+        #expect(capturedQuery?.contains(where: { $0.name == "routeNo" && $0.value == "1711" }) == true)
+        #expect(capturedQuery?.contains(where: { $0.name == "routeNos" }) == false)
+    }
+
+    @Test func seoulLanesSendsSixParamsAndDecodes() async throws {
+        var capturedQuery: [URLQueryItem]?
+        StubURLProtocol.handler = { request in
+            capturedQuery = URLComponents(url: request.url!, resolvingAgainstBaseURL: false)?.queryItems
+            return (200, Data(#"{"status":"ok","routes":[{"routeId":"R2","lineName":"273"}],"unverified":2}"#.utf8))
+        }
+        let service = TransitTrackService(client: stubbedClient())
+        let env = try await service.seoulLanes(
+            arsId: "13045", boardId: "112000430", alightId: "100000384", routeId: "100100047", lang: "en")
+        let got = Dictionary(uniqueKeysWithValues: (capturedQuery ?? []).map { ($0.name, $0.value ?? "") })
+        #expect(got == [
+            "mode": "seoulBus", "phase": "lanes", "arsId": "13045", "boardId": "112000430",
+            "alightId": "100000384", "routeId": "100100047", "lang": "en",
+        ])
+        #expect(env.routes == [TransitLaneRoute(routeId: "R2", lineName: "273")])
+        #expect(env.unverified == 2)
+    }
+
+    @Test func seoulLanesDecodesAbsentRoutes() async throws {
+        StubURLProtocol.handler = { _ in (200, Data(#"{"status":"ok"}"#.utf8)) }
+        let service = TransitTrackService(client: stubbedClient())
+        let env = try await service.seoulLanes(arsId: "a", boardId: "b", alightId: "c", routeId: "d", lang: "ko")
+        #expect(env.routes == nil && env.unverified == nil)
+    }
+}

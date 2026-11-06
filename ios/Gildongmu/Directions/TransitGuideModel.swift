@@ -992,7 +992,7 @@ final class TransitGuideModel {
     private var aboardBoardInStep = false
 
     /// [이미 탔어요] — 지하철이면 역부터 묻는다. 그 밖(서울버스)은 종전대로 곧장 근사(비관측) 잠금
-    /// (역 이름 조회가 성립하지 않는다 — `beginReboard`가 지하철 전용인 근거와 같다).
+    /// (서울버스는 정류소 ID 조회라 역 이름 질문이 성립하지 않는다 — [탑승 변경]의 정류장 질문과 다른 흐름이다).
     func beginAboard() {
         touchUserAction()
         guard state?.phase == .waiting, let leg = currentLeg else { return }
@@ -1107,6 +1107,8 @@ final class TransitGuideModel {
                   let current = currentLeg, current.lanesPending, current.boardStop == leg.boardStop,
                   env.status == "ok", let routes = env.routes else { return }
             let lanes = transitLanesWithRoutes(current, routes: routes)
+            // 확인된 다른 노선 0 ∧ 미확인 있음(예산 소진·경유 조회 실패)은 「단일 노선 확정」이 아니다 — 「노선 모름」을 남긴다.
+            if lanes == nil && (env.unverified ?? 0) > 0 { return }
             replaceCurrentLeg(transitLegWithLanes(current, lanes: lanes))
             if lanes != nil { restartPollLoop(immediate: true) }
         } catch {
@@ -1944,6 +1946,9 @@ final class TransitGuideModel {
         // 일으키는 arrived 전이를 놓친다. `boardOverrideIndex`는 waiting에서 쓰이므로
         // 같은 축으로 묶을 수 없고, 그래서 둘의 소거 조건이 다르다.
         if result.state.phase != .riding { reboardPickerActive = false }
+        // 정류장 재기준 원본(E76 후속 ⓔ)의 수명은 그 대기 국면 하나다 — 잠금으로 대기를 벗어난 뒤 [다른 차량 선택]→[취소]가
+        // 옛 정류장 leg를 되살리면 새 정류장에서 고른 차량을 옛 정류장 기준으로 추적한다.
+        if result.state.phase != .waiting { reanchor = nil }
         // 계측(§13.5): 국면·신호 전이와 이벤트만 기록(무이벤트 폴 소음 제외).
         if result.event != nil || result.state.phase != state.phase
             || result.state.signal != state.signal {

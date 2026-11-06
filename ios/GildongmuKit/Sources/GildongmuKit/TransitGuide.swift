@@ -107,23 +107,23 @@ public struct TransitGuideLeg: Codable, Sendable {
     public fileprivate(set) var lineName: String
     /// nil = 추적 불가(비수도권 지하철·정보 결손) — 수동 전진만 가능.
     public let trackMode: TransitTrackMode?
-    public let boardName: String
+    public fileprivate(set) var boardName: String
     public let alightName: String
     /// 영문 표시 조각(E27 잔여 ①, `lang=en` 조회에만 — 웹 `TransitGuideLeg` 미러).
     ///
     /// ⚠ 위 한국어 필드는 en 세션에서도 한국어다 — 조인(매핑표·조회 쿼리·종착 검사)이 그 값으로
     /// 돌기 때문이고, 여기 영문을 넣으면 오류가 아니라 "실시간 정보가 영영 안 뜬다"가 된다.
     public fileprivate(set) var lineNameEn: String?
-    public let boardNameEn: String?
+    public fileprivate(set) var boardNameEn: String?
     public let alightNameEn: String?
-    public let boardStop: TransitLegStop?
+    public fileprivate(set) var boardStop: TransitLegStop?
     public let alightStop: TransitLegStop?
     /// 경유 전체(양 끝 포함, includeStops 미보유 시 []) — 종착 검사(§5.1) 축.
-    public let viaStops: [TransitLegStop]
-    public let stationCount: Int?
+    public fileprivate(set) var viaStops: [TransitLegStop]
+    public fileprivate(set) var stationCount: Int?
     public fileprivate(set) var routeId: String?
     public let wayCode: Int?
-    public let walkBeforeMinutes: Int?
+    public fileprivate(set) var walkBeforeMinutes: Int?
     /// 하차역 빠른하차 문 위치(E5). 판정 불가·미커버는 nil.
     public let quickExit: QuickExit?
     /// 급행 정차역 이름 집합(A16 L1, 단일 패턴 노선에만 — 부재 = 판정 불가). 웹 미러.
@@ -1438,17 +1438,17 @@ public func transitReboardStopPickable(_ leg: TransitGuideLeg) -> Bool {
 public func transitLegFromStop(_ leg: TransitGuideLeg, index: Int) -> TransitGuideLeg? {
     guard index > 0, index < leg.viaStops.count - 1 else { return nil }
     let stop = leg.viaStops[index]
-    return TransitGuideLeg(
-        mode: leg.mode, lineName: leg.lineName, trackMode: leg.trackMode,
-        boardName: stop.name, alightName: leg.alightName,
-        boardStop: stop, alightStop: leg.alightStop,
-        viaStops: Array(leg.viaStops[index...]),
-        stationCount: leg.stationCount == nil ? nil : leg.viaStops.count - 1 - index,
-        routeId: leg.routeId, wayCode: leg.wayCode, walkBeforeMinutes: nil,
-        quickExit: leg.quickExit,
-        lineNameEn: leg.lineNameEn, boardNameEn: stop.nameEn, alightNameEn: leg.alightNameEn,
-        expressStops: leg.expressStops, expressStopIds: leg.expressStopIds, exitAlight: leg.exitAlight,
-        minutes: leg.minutes, lanes: nil, lanesPending: true)
+    // 바꿀 필드만 대입한다 — 필드를 새로 더해도 복사에서 빠지지 않는다(웹 `...leg`와 같은 구조).
+    var next = leg
+    next.boardStop = stop
+    next.boardName = stop.name
+    next.boardNameEn = stop.nameEn
+    next.viaStops = Array(leg.viaStops[index...])
+    next.stationCount = leg.stationCount == nil ? nil : leg.viaStops.count - 1 - index
+    next.walkBeforeMinutes = nil
+    next.lanes = nil
+    next.lanesPending = true
+    return next
 }
 
 /// 재기준 집합 응답을 leg에 반영한다 — 미조회 표식을 지우고, 집합이 있으면(둘 이상) 채운다. 웹 `filled` 조립 미러.
