@@ -1463,7 +1463,7 @@
     <string name="transitGuide_subwayArriving">%1$s 진입 중.</string>
     <string name="transitGuide_subwayAtStop">%1$s 도착.</string>
     <string name="transitGuide_subwayDeparted">%1$s 출발.</string>
-    <string name="transitGuide_subwayNextStop">다음 역 %1$s.</string>
+    <string name="transitGuide_subwayNextStop">다음 역 %1$s에서 내리세요.</string>
     <string name="transitGuide_surroundingsAnchorAlight">내릴 곳 %1$s 주변</string>
     <string name="transitGuide_surroundingsAnchorCurrent">현재역 %1$s 주변</string>
     <string name="transitGuide_terminatesEarly">%1$s행, %2$s까지 가지 않습니다</string>

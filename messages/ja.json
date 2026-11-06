@@ -1069,7 +1069,7 @@
     "boarded": "乗車しました。",
     "boardedAlight": "降車: {stop}。",
     "context": "{line}に乗車中、{stop}で下車します。",
-    "subwayNextStop": "次は{stop}。",
+    "subwayNextStop": "次の駅、{stop}で降りてください。",
     "subwayArriving": "{stop}に進入中。",
     "subwayAtStop": "{stop}に到着。",
     "subwayDeparted": "{stop}を出発。",

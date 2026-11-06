@@ -1069,7 +1069,7 @@
     "boarded": "Boarded.",
     "boardedAlight": "Get off at {stop}.",
     "context": "Riding {line}, get off at {stop}.",
-    "subwayNextStop": "Next stop {stop}.",
+    "subwayNextStop": "Get off at the next stop, {stop}.",
     "subwayArriving": "Arriving at {stop}.",
     "subwayAtStop": "At {stop}.",
     "subwayDeparted": "Departed {stop}.",

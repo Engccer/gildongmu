@@ -1402,7 +1402,7 @@
     <string name="transitGuide_subwayArriving">%1$sに進入中。</string>
     <string name="transitGuide_subwayAtStop">%1$sに到着。</string>
     <string name="transitGuide_subwayDeparted">%1$sを出発。</string>
-    <string name="transitGuide_subwayNextStop">次は%1$s。</string>
+    <string name="transitGuide_subwayNextStop">次の駅、%1$sで降りてください。</string>
     <string name="transitGuide_surroundingsAnchorAlight">降車駅 %1$s の周辺</string>
     <string name="transitGuide_surroundingsAnchorCurrent">現在駅 %1$s の周辺</string>
     <string name="transitGuide_terminatesEarly">%1$s行き、%2$sまで行きません</string>

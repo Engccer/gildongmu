@@ -1402,7 +1402,7 @@
     <string name="transitGuide_subwayArriving">In arrivo a %1$s.</string>
     <string name="transitGuide_subwayAtStop">A %1$s.</string>
     <string name="transitGuide_subwayDeparted">Partito da %1$s.</string>
-    <string name="transitGuide_subwayNextStop">Prossima fermata %1$s.</string>
+    <string name="transitGuide_subwayNextStop">Scendi alla prossima fermata, %1$s.</string>
     <string name="transitGuide_surroundingsAnchorAlight">Intorno alla tua fermata, %1$s</string>
     <string name="transitGuide_surroundingsAnchorCurrent">Intorno alla stazione attuale, %1$s</string>
     <string name="transitGuide_terminatesEarly">Diretto a %1$s, non arriva a %2$s</string>

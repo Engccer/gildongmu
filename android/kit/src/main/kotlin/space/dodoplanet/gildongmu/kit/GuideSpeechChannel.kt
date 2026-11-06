@@ -96,15 +96,17 @@ fun beaconNoticeSpeechClass(notice: BeaconNotice): GuideSpeechClass = when (noti
 
 /**
  * 대중교통 이벤트의 분류(spec §3.3). 사다리(잔여 ≥2)·상태 문장은 주기·상태, 잔여 ≤1·임박·도착·국면 전이·1회성 행동 문장은 행동 문장이다.
- * `TrackingStarted`는 백그라운드 톤이 있는 유일한 이벤트라 그 톤이 자리를 맡는다.
+ * `TrackingStarted`는 백그라운드 톤이 있는 유일한 이벤트라 그 톤이 자리를 맡는다 — 단 첫 관측이 잔여 ≤1이면 행동 문장이다.
  */
 fun transitEventSpeechClass(event: TransitGuideEvent): GuideSpeechClass = when (event) {
     is TransitGuideEvent.Approaching -> if ((event.remaining ?: Int.MAX_VALUE) <= 1) GuideSpeechClass.actionable else GuideSpeechClass.deferrable
     is TransitGuideEvent.Countdown -> if (event.remaining <= 1) GuideSpeechClass.actionable else GuideSpeechClass.deferrable
+    // 첫 관측이 이미 잔여 ≤1이면 뒤이은 Countdown(1)이 나오지 않는다 — 하차 지시 문장의 유일한 자리라 백그라운드에서도 말한다.
+    is TransitGuideEvent.TrackingStarted -> if ((event.remaining ?: Int.MAX_VALUE) <= 1) GuideSpeechClass.actionable else GuideSpeechClass.deferrable
     is TransitGuideEvent.VehicleSelected, TransitGuideEvent.VehiclePassed, TransitGuideEvent.ArrivingAtBoardStop,
     TransitGuideEvent.ArrivingAtAlightStop, is TransitGuideEvent.Boarded, is TransitGuideEvent.Arrived, is TransitGuideEvent.LegAdvanced,
     TransitGuideEvent.NeverSeen -> GuideSpeechClass.actionable
-    is TransitGuideEvent.TrackingStarted, is TransitGuideEvent.MessageChanged, is TransitGuideEvent.BackOnTrack,
+    is TransitGuideEvent.MessageChanged, is TransitGuideEvent.BackOnTrack,
     is TransitGuideEvent.ApproxVehicleChanged, TransitGuideEvent.SignalLost, TransitGuideEvent.UpstreamFailed, TransitGuideEvent.SignalRecovered,
     TransitGuideEvent.BoardingReset, TransitGuideEvent.CapSlowed -> GuideSpeechClass.deferrable
 }

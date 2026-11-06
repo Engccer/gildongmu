@@ -1069,7 +1069,7 @@
     "boarded": "A bordo.",
     "boardedAlight": "Baja en {stop}.",
     "context": "A bordo de {line}, baje en {stop}.",
-    "subwayNextStop": "Próxima parada {stop}.",
+    "subwayNextStop": "Bájese en la próxima parada, {stop}.",
     "subwayArriving": "Llegando a {stop}.",
     "subwayAtStop": "En {stop}.",
     "subwayDeparted": "Salió de {stop}.",

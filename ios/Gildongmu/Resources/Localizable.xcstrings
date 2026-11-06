@@ -55696,37 +55696,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "다음 역 %1$@."
+            "value": "다음 역 %1$@에서 내리세요."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Next stop %1$@."
+            "value": "Get off at the next stop, %1$@."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Próxima parada %1$@."
+            "value": "Bájese en la próxima parada, %1$@."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Prochain arrêt %1$@."
+            "value": "Descendez au prochain arrêt, %1$@."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Prossima fermata %1$@."
+            "value": "Scendi alla prossima fermata, %1$@."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "次は%1$@。"
+            "value": "次の駅、%1$@で降りてください。"
           }
         }
       }

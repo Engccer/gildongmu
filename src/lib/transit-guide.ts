@@ -1601,7 +1601,7 @@ function commitMatched(
  * 지하철 `arvlMsg2`는 조회역(=하차역) 기준 **열차 위치 서술**("전역 도착"·"[3]번째 전역")이라 버스 완성
  * 문장("2분 남음")을 전제한 `messageFrame`("{stop}까지 {message}")에 넣으면 뜻이 뒤집힌다
  * ("충정로까지 전역 도착"). 승차 국면은 코드로 탑승자 시점 문장을 고른다:
- * - 3·4·5(전역 출발·진입·도착) → `subwayNextStop`("다음 역 {stop}.")
+ * - 3·4·5(전역 출발·진입·도착) → `subwayNextStop`("다음 역 {stop}에서 내리세요.", A71)
  * - 0(진입) → `subwayArriving` · 1(도착) → `subwayAtStop` · 2(출발) → `subwayDeparted`(하차역을 지나친
  *   신호 — 상태 머신의 도착 판정은 1만 보므로 충돌 없음)
  * - 99(운행중) → `omit`(잔여 수는 `remainingCount`가 이미 말한다)
