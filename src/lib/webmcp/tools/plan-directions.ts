@@ -252,6 +252,8 @@ export function planDirectionsTool(): WebMcpTool {
         via = r.endpoint;
       }
       if (signal?.aborted) return finish(failure("aborted"), SHAPE);
+      // 끝점 해석(fetch) 사이에 사용자가 화면 안 모달(E77 입구 질문)을 열었을 수 있다 — 화면을 바꾸기 직전에 다시 본다.
+      if (anyModalOpen()) return finish(failure("modalOpen"), SHAPE);
 
       // 완전 교체(리뷰 #24): 생략된 from은 현재 위치, via는 없음으로 한 번에.
       const outcome = await bridge.runQuery(

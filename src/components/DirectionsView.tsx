@@ -2458,7 +2458,7 @@ function EndpointField({
     addresses: JusoAddress[];
     /** 입구 칸(E77)의 정류장 줄 — 그 밖 칸은 늘 비어 있다. */
     stops: StopCandidate[];
-    /** 장소·주소 조회가 둘 다 실패했는데 정류장 줄이 있다(입구 칸만) — 줄과 통지로 실패를 밝힌다(3-state, iOS `showsPlacesFailure`). */
+    /** 장소 조회가 실패했는데 다른 후보(정류장·주소)가 있다(입구 칸만) — 줄과 통지로 실패를 밝힌다(3-state, iOS `showsPlacesFailure`). */
     placesFailed: boolean;
     stopsFailed: boolean;
     stopsTruncated: boolean;
@@ -2560,7 +2560,11 @@ function EndpointField({
     if (candidateListRef.current?.contains(document.activeElement)) {
       inputRef.current?.focus();
     }
-    const placesFailed = placesRes.status === "rejected" && addrRes.status === "rejected";
+    // 입구 칸은 역이 장소 검색에서만 오므로 장소 트랙의 성패를 본다(주소 성공이 장소 실패를 가리지 않는다, iOS 역 칸과 같은 규칙).
+    // 그 밖 칸은 종전대로 둘 다 실패해야 실패다.
+    const placesFailed = transfer
+      ? placesRes.status === "rejected"
+      : placesRes.status === "rejected" && addrRes.status === "rejected";
     const count = places.length + addresses.length + stopRes.stops.length;
     setCandidates({
       places,
@@ -2578,7 +2582,7 @@ function EndpointField({
       announce(`${t("candidateCount", { count })}${placesTail}${stopTail}`);
       setCandidateRevision((r) => r + 1);
     } else if (placesFailed) {
-      // 3-state: "0건"과 "조회 실패"를 뭉개지 않는다(장소·주소가 둘 다 실패하면 정류장 0건이어도 오류).
+      // 3-state: "0건"과 "조회 실패"를 뭉개지 않는다(실패한 트랙이 있으면 나머지가 0건이어도 오류).
       announce(t("candidateError"));
     } else {
       announce(`${t("candidateNone")}${stopTail}`);

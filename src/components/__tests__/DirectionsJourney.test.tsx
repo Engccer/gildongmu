@@ -277,6 +277,48 @@ describe("여정 웹 입구(E70-f · E77)", () => {
     expect(screen.getByText("candidateError")).toBeTruthy();
   });
 
+  it("장소·주소가 실패하고 정류장이 0건이면 「0건」이 아니라 실패다(3-state)", async () => {
+    const base = fetchMock.getMockImplementation() as (input: RequestInfo | URL) => Promise<Response>;
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.startsWith("/api/places") || url.startsWith("/api/address/search")) return { ok: false, status: 502, json: async () => ({}) } as Response;
+      if (url.startsWith("/api/route/journey/stops?")) return { ok: true, json: async () => ({ stops: [] }) } as Response;
+      return base(input);
+    });
+    renderView(true);
+    fireEvent.click(screen.getByRole("button", { name: "addMenu" }));
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText("transferField")));
+    fireEvent.change(screen.getByLabelText("transferField"), { target: { value: "아현" } });
+    fireEvent.click(screen.getByRole("button", { name: "searchField" }));
+    await waitFor(() => expect(screen.getByRole("status").textContent).toContain("candidateError"));
+    expect(screen.getByRole("status").textContent).not.toContain("candidateNone");
+  });
+
+  it("장소만 실패하고 주소가 오면 건수 뒤에 실패를 덧붙인다(역은 장소 검색에서만 온다)", async () => {
+    const base = fetchMock.getMockImplementation() as (input: RequestInfo | URL) => Promise<Response>;
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.startsWith("/api/places")) return { ok: false, status: 502, json: async () => ({}) } as Response;
+      if (url.startsWith("/api/address/search"))
+        return { ok: true, json: async () => ({ addresses: [{ roadAddr: "서울 마포구 아현로 1", roadAddrPart1: "서울 마포구 아현로 1", engAddr: "1 Ahyeon-ro" }] }) } as Response;
+      return base(input);
+    });
+    renderView(true);
+    fireEvent.click(screen.getByRole("button", { name: "addMenu" }));
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText("transferField")));
+    fireEvent.change(screen.getByLabelText("transferField"), { target: { value: "아현" } });
+    fireEvent.click(screen.getByRole("button", { name: "searchField" }));
+    await waitFor(() => expect(screen.getByRole("status").textContent).toMatch(/candidateCount.*candidateError/));
+  });
+
+  it("질문에 답하면 떠 있던 조회 결과를 버린다(새 입력이 옛 결과를 남기지 않는다)", async () => {
+    renderView(true);
+    fireEvent.click(screen.getByRole("button", { name: "submit" }));
+    await screen.findByRole("heading", { name: "car" });
+    await pickBoardStation();
+    await waitFor(() => expect(screen.queryByRole("heading", { name: "car" })).toBeNull());
+  });
+
   it("정류장 검색만 실패하면 건수 뒤에 그 문장을 잇는다", async () => {
     const base = fetchMock.getMockImplementation() as (input: RequestInfo | URL) => Promise<Response>;
     fetchMock.mockImplementation(async (input: RequestInfo | URL) =>
