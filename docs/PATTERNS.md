@@ -232,9 +232,18 @@ E25(위원장 요청 2026-09-07, 구현 2026-09-13). 판정 정본은 웹 `src/l
 
 ### 웹 여정 안내는 결과 섹션의 `JourneyGuide`가 소유하고, 사이 상태 동안만 세션 저장소를 점유한다
 
-**웹 여정 안내는 결과 섹션의 `JourneyGuide`가 소유하고, 사이 상태 동안만 세션 저장소를 점유한다**(E70-f 2026-11-02, spec `2026-11-02-e70-web-journey-design.md` §7): 웹엔 iOS `GuideSession` 같은 앱 수명 코디네이터가 없어 여정 상태·준비 타이머·단계 패널을 한 컴포넌트가 든다. 단계 세션이 도는 동안은 그 패널(`DistanceBeacon`·`TransitGuidePanel`)이 `guide-session-store`를 claim하고, 단계 사이(준비·실패)엔 `JourneyGuide`가 자기 중지 함수를 claim해 다른 안내 시작·목적지 편집이 여정을 끝내게 한다. ⚠ 순서가 계약이다(첫 구현의 무한 재귀 실결함, 통합 테스트 `JourneyGuide.integration.test.tsx`): ① 전이 함수는 `stateRef`를 **먼저** 커밋한다 — 웹 `useRouteGuide.stop()`은 저장소를 놓기 전에 `onSessionEnd("ended")`를 불러 같은 token의 재진입 사건이 온다. ② 사이 상태의 claim은 **부모 effect**에서 한다(앞 단계 패널의 언마운트 release가 먼저 돈다) — 그때 남이 저장소를 쥐고 있으면(`isGuideSessionOwner`로 자기 점유와 가른다) 여정을 끝낸다. ③ 단계를 시작하는 전이는 claim을 전이 함수 안에서 동기로 놓는다(자식 패널의 자동 시작 claim이 부모 effect보다 먼저 돈다). 목 패널 스위트로는 이 순서를 재현하지 못한다 — 실물 `DistanceBeacon` 통합 테스트가 정본이다. ⚠ 여정이 대중교통 단계에서 끝나면 그 패널을 **같은 key·같은 감싸는 요소로** 남긴다(트리 위치가 바뀌면 다시 마운트돼 말미 도보 인계 상태를 잃는다 — 테스트가 잡은 실사고). 웹 신호 `onSessionEnd`는 사유가 둘뿐이라 사용자 중지는 `onUserStop`, 권한 실패는 `onFailure`로 따로 받는다(§7.3 표). 세 옵트인 prop은 미지정이면 종전 동작이다.
+**웹 여정 안내는 결과 섹션의 `JourneyGuide`가 소유하고, 사이 상태 동안만 세션 저장소를 점유한다**(E70-f 2026-11-02, spec `2026-11-02-e70-web-journey-design.md` §7): 웹엔 iOS `GuideSession` 같은 앱 수명 코디네이터가 없어 여정 상태·준비 타이머·단계 패널을 한 컴포넌트가 든다. 단계 세션이 도는 동안은 그 패널(`DistanceBeacon`·`TransitGuidePanel`)이 `guide-session-store`를 claim하고, 단계 사이(준비·실패)엔 `JourneyGuide`가 자기 중지 함수를 claim해 다른 안내 시작·목적지 편집이 여정을 끝내게 한다. ⚠ 순서가 계약이다(첫 구현의 무한 재귀 실결함, 통합 테스트 `JourneyGuide.integration.test.tsx`): ① 전이 함수는 `stateRef`를 **먼저** 커밋한다 — 웹 `useRouteGuide.stop()`은 저장소를 놓기 전에 `onSessionEnd("ended")`를 불러 같은 token의 재진입 사건이 온다. ② 사이 상태의 claim은 **부모 effect**에서 한다(앞 단계 패널의 언마운트 release가 먼저 돈다) — 그때 남이 저장소를 쥐고 있으면(`isGuideSessionOwner`로 자기 점유와 가른다) 여정을 끝낸다. ③ 단계를 시작하는 전이는 claim을 전이 함수 안에서 동기로 놓는다(자식 패널의 자동 시작 claim이 부모 effect보다 먼저 돈다). 목 패널 스위트로는 이 순서를 재현하지 못한다 — 실물 `DistanceBeacon` 통합 테스트가 정본이다. ⚠ 여정이 대중교통 단계에서 끝나면 그 패널을 **같은 key·같은 감싸는 요소로** 남긴다(트리 위치가 바뀌면 다시 마운트돼 말미 도보 인계 상태를 잃는다 — 테스트가 잡은 실사고). 웹 신호 `onSessionEnd`는 사유가 둘뿐이라 사용자 중지는 `onUserStop`, 권한 실패는 `onFailure`로 따로 받는다(§7.3 표). 옵트인 prop(`DistanceBeacon`의 `arrivalText`·`onUserStop`·`onFailure`, `TransitGuidePanel`의 `autoStart`·`onRideCompleted`·`onStopped`)은 미지정이면 종전 동작이다.
 
 ## 강등·통지·표시 규칙
+
+### 여정 입구는 장소 검색 한 번과 확인 질문 하나이고, 짐작은 웹·Kit 한 판정이다
+
+E77(2026-11-07, spec `docs/superpowers/specs/2026-11-07-e77-unified-waypoint-input-design.md`). 「경유지/자동차 환승 추가」는 메뉴 없이 장소 검색을 열고, 역·정류장을 고르면 「…환승하실 예정인가요?」 질문 하나를 띄운다(문장 정본은 `messages/ko.json` `journey.ask*`·`answer*`). 버튼 1은 언제나 짐작이고 버튼 3은 「경유만 합니다」다. 두 번째 역·정류장은 묻지 않는다(남은 역할이 하나뿐).
+
+- **짐작은 출발·도착 중 직선거리가 가까운 쪽**이고 웹 `journeyTransferGuess`(`src/lib/journey/transfer-guess.ts`) ↔ Kit `journeyTransferGuess`(`Journey.swift`)가 공유 fixture `src/lib/__tests__/fixtures/journey-transfer-guess.json`으로 잠긴다. 좌표가 없거나 같으면 「자동차로 이동하다가」 쪽. 짐작 규칙을 한쪽에서만 바꾸지 말 것.
+- **입구·역 칸 검색은 3-state를 지킨다**: 역이 오는 것은 장소 트랙이라 주소 트랙의 성공이 장소 실패를 가리면 안 된다. 장소·주소 둘 다 실패면 정류장 0건이어도 「검색에 실패」, 장소만 실패면 건수 뒤에 실패를 덧붙이고 줄로도 보인다(웹 입구 칸·iOS 역 칸·지금 탄 열차·입구 검색 공통, 정류장 후보 fetch는 `src/lib/journey/stop-candidates.ts`).
+- **웹 질문은 네이티브 `<dialog>` 하나**(이름 = 질문 문장, 열리면 버튼 1, 닫으면 입구 버튼으로 커서, 검색칸과 후보는 남는다). 열린 동안 `markModal("journeyTransfer")`로 도구를 막고(→ §사용자 조작이 언제나 도구를 이긴다), 입구가 사라지면 묻던 질문도 버린다.
+- **iOS 질문은 시트가 닫힌 뒤에 선다**: 검색 시트의 선택은 `pendingTransfer`에 담기만 하고, `onChange(of: searchTarget)`가 닫힘을 보고 dismiss 애니메이션 뒤(450ms) `confirmationDialog`를 연다. 그 사이 다른 칸의 시트가 열렸으면 대기를 버린다(남으면 이후 시트 닫힘의 커서 착지를 가로챈다). 닫기는 취소 역할 버튼으로 받는다.
 
 ### iOS 통지 우선순위의 판별선은 "포커스가 움직이고, 그 통지가 착지 라벨로 대체될 수 없을 때 `.high`"다
 
@@ -477,9 +486,11 @@ follow-up 칩 예산(A45): 서버 생성 예산 15초, 클라이언트 3벌(웹 
 
 **도구의 길찾기 조회는 화면 정본 `runQuery(request)`를 부르고 세대 결박 대기자로 기다린다**(`DirectionsView`): 종단 phase의 resolve는 **커밋 뒤 effect**(`settleAfterCommit` → `pendingOutcomeRef`)에서, `bridgeRef` 갱신 effect **뒤에** 선언되고 커밋된 `results.planId`·`phase`가 일치할 때만 푼다. 안내 세션이 살아 있으면 `sessionActive`로 거절하고 **세션을 끊지 않는다**(화면의 사용자 조회는 끊는다 — 그 차이가 의도다). 새 세대 시작이 앞 대기자를 `superseded`로 끝낸다.
 
+여정 결과는 7개 도구 계약 밖이라 `buildToolPlan`(`DirectionsView.tsx`)이 결과 전과 같은 `null`을 낸다. 수단이 전부 `null`인 plan을 내면 에이전트가 「경로 없음」으로 읽는다(E70-f 구현 리뷰 M1).
+
 ### 사용자 조작이 언제나 도구를 이긴다
 
-**사용자 조작이 언제나 도구를 이긴다**: 검색·정렬·축 닫기·새 조회는 새 세대를 발급하고 앞 세대 도구 대기자는 `superseded`. 모달(채팅·현재 위치 지정 — 허브의 것은 `markModal`로 표식)이 열려 있으면 `modalOpen`으로 거절하고 닫지 않는다.
+**사용자 조작이 언제나 도구를 이긴다**: 검색·정렬·축 닫기·새 조회는 새 세대를 발급하고 앞 세대 도구 대기자는 `superseded`. 모달(채팅·현재 위치 지정 — 허브의 것은 `markModal`로 표식, 길찾기 화면 안의 여정 입구 질문 `markModal("journeyTransfer")` E77)이 열려 있으면 `modalOpen`으로 거절하고 닫지 않는다. 이미 길찾기 뷰라 이동 가드를 지나지 않는 같은 화면 안 모달은 도구가 직접 `anyModalOpen()`을 보고, 끝점 해석 fetch 사이에 열릴 수 있으니 `runQuery` 직전에 한 번 더 본다(`plan-directions.ts`).
 
 ### 손잡이는 불투명 `ref`
 
@@ -508,7 +519,7 @@ privacy `agent` 절은 웹 전용이라 iOS `PrivacyInfo`·ASC 라벨 3자 일�
 
 ### 코드 게이트
 
-**코드 게이트**: `AppConfig.experimentalOutingEnabled`(2026-09-27 E51 나들이)가 `#if EXPERIMENTAL`로 갈려 진입점 둘(제목 메뉴·길찾기 탭 거절 자리 버튼)을 막고 실보행 판정 뒤 졸업한다(BACKLOG G5). 진입점 밖 소비자 하나: 설정 백그라운드 음성 안내 설명 문장 선택(A59 — 졸업 때 Outing 키로 고정하고 `settings-topic-sections.test.ts` A59 가드와 안드로이드 문장 대조를 함께 고친다). 같은 자리의 `experimentalTabOrderEnabled`(2026-10-05 E66, K1 고정 순서 실험을 대체)는 설정 「탭 순서」 줄과 저장된 사용자 순서(`AppTab.order(stored:)`)를 켠다. 꺼지면 줄이 없고 순서는 기본(채팅 첫 탭) 고정 — 실사용 판정 뒤 졸업. `experimentalJourneyEnabled`(2026-10-17 E70 여정)는 길찾기 탭의 역 지정 버튼·두 칸·여정 결과와 `GuideSession.shared.startJourney` 호출 자리를 막고(역·정류장 지정 E70-e와 지금 탄 열차 출발지 E71도 같은 플래그 뒤, 가드가 그 호출이 조건 안인지 잠근다) 실차·실보행 판정 뒤 졸업한다. 졸업한 플래그: 도보(2026-08-15), 자동차·대중교통 `experimentalGuidanceEnabled`와 백그라운드 음성 `experimentalBackgroundSpeechEnabled`(2026-10-01 2.0, spec `2026-10-01-release-2.0-graduation-design.md`), 건너는 길 이름 `experimentalCrossingRoadEnabled`(2026-10-05, 서버 판본 2의 일부로 접어 옵트인 `crossingRoad=1`도 없앴다, INTEGRATIONS §판본 2 문장과 횡단 방향), 안내 시트 제목 행 `experimentalGuideTitleActionsEnabled`(2026-10-27 E75, spec `2026-10-27-e75-guide-sheet-refresh-design.md`) — 선언째 지웠고 가드가 식별자 0건을 센다. 실험 기능을 새로 넣을 때도 같은 방식이다: `#if EXPERIMENTAL`로 갈리는 상수 하나, 그 상수를 보는 자리는 진입점(세션 시작 호출)이며, 졸업은 검사 삭제다.
+**코드 게이트**: `AppConfig.experimentalOutingEnabled`(2026-09-27 E51 나들이)가 `#if EXPERIMENTAL`로 갈려 진입점 둘(제목 메뉴·길찾기 탭 거절 자리 버튼)을 막고 실보행 판정 뒤 졸업한다(BACKLOG G5). 진입점 밖 소비자 하나: 설정 백그라운드 음성 안내 설명 문장 선택(A59 — 졸업 때 Outing 키로 고정하고 `settings-topic-sections.test.ts` A59 가드와 안드로이드 문장 대조를 함께 고친다). 같은 자리의 `experimentalTabOrderEnabled`(2026-10-05 E66, K1 고정 순서 실험을 대체)는 설정 「탭 순서」 줄과 저장된 사용자 순서(`AppTab.order(stored:)`)를 켠다. 꺼지면 줄이 없고 순서는 기본(채팅 첫 탭) 고정 — 실사용 판정 뒤 졸업. `experimentalJourneyEnabled`(2026-10-17 E70 여정)는 길찾기 탭의 「경유지/자동차 환승 추가」 입구(검색 시트 + 확인 대화상자, E77)·역/정류장 칸·여정 결과와 `GuideSession.shared.startJourney` 호출 자리를 막고(역·정류장 지정 E70-e와 지금 탄 열차 출발지 E71도 같은 플래그 뒤, 가드가 그 호출이 조건 안인지 잠근다) 실차·실보행 판정 뒤 졸업한다. 졸업한 플래그: 도보(2026-08-15), 자동차·대중교통 `experimentalGuidanceEnabled`와 백그라운드 음성 `experimentalBackgroundSpeechEnabled`(2026-10-01 2.0, spec `2026-10-01-release-2.0-graduation-design.md`), 건너는 길 이름 `experimentalCrossingRoadEnabled`(2026-10-05, 서버 판본 2의 일부로 접어 옵트인 `crossingRoad=1`도 없앴다, INTEGRATIONS §판본 2 문장과 횡단 방향), 안내 시트 제목 행 `experimentalGuideTitleActionsEnabled`(2026-10-27 E75, spec `2026-10-27-e75-guide-sheet-refresh-design.md`) — 선언째 지웠고 가드가 식별자 0건을 센다. 실험 기능을 새로 넣을 때도 같은 방식이다: `#if EXPERIMENTAL`로 갈리는 상수 하나, 그 상수를 보는 자리는 진입점(세션 시작 호출)이며, 졸업은 검사 삭제다.
 
 ### 봉인의 판정 축은 플래그 참조 목록이 아니라 세션을 시작시키는 호출 전수다
 

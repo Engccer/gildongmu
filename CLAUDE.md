@@ -109,6 +109,7 @@
 
 ### UI·상태 패턴
 - **웹 여정 안내(E70-f)는 결과 섹션의 `JourneyGuide`가 소유하고 사이 상태에만 세션 저장소를 claim한다**: `stateRef`를 먼저 커밋하고(`stop()`이 release 전에 `onSessionEnd`를 불러 재진입한다), 사이 상태 claim은 부모 effect에서, 단계 시작 직전 release는 전이 함수 안에서 동기로 한다. 대중교통 단계에서 끝나면 그 패널을 같은 key·같은 감싸개로 남긴다. → PATTERNS
+- **여정 입구는 장소 검색 한 번과 확인 질문 하나이고, 짐작은 웹·Kit 한 판정이다**(E77): 짐작은 웹 `journeyTransferGuess` ↔ Kit 공유 fixture로 잠그고, 입구·역 칸 검색은 장소 트랙 실패를 주소 성공이 가리지 않는다(3-state). iOS 질문은 시트가 닫힌 뒤에 선다. → PATTERNS
 - **iOS 주소 요청은 측위 전부터 같은 세대를 소유한다**(`DirectionsAddressState`). 취소·언어 변경·늦은 완료와 종료가 최신 주소·로딩을 건드리지 못하게 한다. → PATTERNS
 - **iOS 브리핑의 빈 이름은 `transitBriefingName`으로 가른다**(문장·영문 자격·로터 조인 공통). 조인 정규화는 개행 부재 판정을 대신하지 못한다. → PATTERNS §경로 브리핑의 역 진입점
 - **신규 "내 주변" 도메인은 공유 계층으로 만든다**(`useNearbyFetch`+`NearbyPanelShell`+`nearbyLiveMessage`+`useRevealMore`, 계약 스위트 `src/components/__tests__/nearby-contract.tsx`). 골격 복붙 금지. → PATTERNS
@@ -131,7 +132,7 @@
 - **안내 경로 origin은 "신선한가"가 아니라 "정확한가"로 고른다**(A18, Kit `routeOriginStep`만 지난다 — 세션 첫 fix가 곧 가장 나쁜 fix). `isUsableFix`를 조이지 말고 재측위 의존을 되살리지 말 것. `routeOrigin` 로그 1줄 필수. → INTEGRATIONS
 - **소리와 음성은 같은 청각 채널이다 — 톤 뒤 발화 계약**(`speechDeferStep`, Kit `GuideSpeechGate.swift` ↔ 웹 `guide-speech-gate.ts`, 단일 슬롯 latest-wins). 새 통지 경로는 `announce` 창구를 지나야 한다 — 직접 게시 금지. → INTEGRATIONS
 - **대중교통 승차 추세 톤은 이벤트 소유가 신뢰 불가보다 앞이고, 앵커는 "마지막으로 전달된 잔여"다**(E15 ②, `transitToneStep` ↔ `transit-guide-tone.ts`; 도보 순서로 되돌리지 말 것). → INTEGRATIONS
-- **버스 노선 집합(E76)은 첫 항목이 leg 자신이고, 후보를 고르면 세션 leg를 그 노선으로 바꾼 뒤 잠근다**(`legWithLane`, `board` 전): `lanes`는 옵트인 `lanes=1`, 대기 폴은 `routeId`·`routeIds` 중 하나이고 집합 폴만 `route`를 싣는다. 노선별 문장 분기를 따로 두지 말 것. → INTEGRATIONS
+- **버스 노선 집합(E76)은 첫 항목이 leg 자신이고, 후보를 고르면 세션 leg를 그 노선으로 바꾼 뒤 잠근다**(`legWithLane` ↔ Kit `transitLegWithLane`, `board` 전): `lanes`는 옵트인 `lanes=1`, 대기 폴은 `routeId`·`routeIds` 중 하나이고 집합 폴만 `route`를 싣는다. 노선별 문장 분기를 따로 두지 말 것. → INTEGRATIONS
 - **승차 후보의 활성화 차단 술어는 `unreachable` 하나이고 급행 판정은 ID가 정본이다**(A16 L1 `expressVerdict`, 그 외 `unknown`). 근사 잠금은 `needsExpressPrompt`로 묻고, 출구 번호는 확정 도착·하차역 행에만. → INTEGRATIONS
 - **소리를 낸 직후 세션을 끝내면 그 소리가 잘린다 — 순서가 아니라 대기가 답이다**(`BeaconTonePlayer.endSession()`이 잔여 시간만큼 원복을 미루고, `beginSession()`은 그 예약을 취소, `shutdown()`은 즉시 원복). 전경에선 증상이 없다. → INTEGRATIONS
 - **오디오 재생기는 셋(도보·대중교통·나들이)이고 미뤄진 원복은 최신 소유자에게 이전된다**(`.ownershipTransferred`). route 변경 `.categoryChange`는 현재 세션 값 == 적용값 대조로 자기 메아리만 거른다(전면 필터 금지). → INTEGRATIONS
@@ -249,7 +250,7 @@
 | 도보 경로 | **kakao-walk(기본)+tmap-pedestrian(폴백)** → `walk-route.ts` / `/api/route/walk` | `getWalkRoute`만 호출, 문장은 서버 `rewriteWalkGuidance`(소비자 재조합 금지), 옵트인 `wording=2`는 `rewriteWalkBriefingV2`(미지정 응답 불변), `action`은 `attachStepActions`. 비-ko는 Tmap 단독 en(`lang` 필수 인자), 조회 화면은 `lines=2` 줄 목록(`lines` 값은 판본 번호). 기하 응답은 카카오 첫 점 30m 밖이면 Tmap 재시도(A70). → INTEGRATIONS |
 | 횡단보도 차로 수·도로 폭 | crosswalks(정적 seed 15028201) → `walk-route.ts` `annotateCrosswalkInfo` / 별도 라우트 없음 | 단일 횡단보도 스텝 끝에 `, N차로, 도로 폭 Mm` — 있는 곳만, 3중 게이트 전부 통과일 때만, Tmap·병합 스텝·분해된 연속 횡단 조각은 침묵. → INTEGRATIONS |
 | 대중교통 | odsay + odsay-select + bus-service-hours + subway-service-hours + odsay-express-stops(급행 정차역, ODsay 추가 호출·7일 캐시) / `/api/route/transit` | **파이프라인 순서가 계약: 정규화 → 강등 → 선정 → 축 라벨.** 재조회 제안(`requeryAxes`)은 강등 뒤 전체 후보로 판정. iOS `routeKey` 필수 디코딩이라 **웹 배포가 앱보다 먼저**. → INTEGRATIONS |
-| 여정(E70, iOS 실험판) | `journey/*` / `/api/route/journey` | 조회 셋 조립(ko 전용). ⚠ 카카오 출구 질의는 괄호 뗀 `exitQueryStationName`(표시 이름 함수와 분리 — 섞으면 「출구 없음」 위장), `lookupFailed`는 카카오 출구 실패만, Tmap은 호출 수 팬아웃 전 예약(IP 16·인스턴스 일 200). 정류장 지정(E70-e)은 옵트인 `stops=1`, 이름은 TOPIS·TAGO 검색(`/api/route/journey/stops`). → INTEGRATIONS |
+| 여정(E70, 웹 ko 공개·iOS 실험판) | `journey/*` / `/api/route/journey` | 조회 셋 조립(ko 전용). ⚠ 카카오 출구 질의는 괄호 뗀 `exitQueryStationName`(표시 이름 함수와 분리 — 섞으면 「출구 없음」 위장), `lookupFailed`는 카카오 출구 실패만, Tmap은 호출 수 팬아웃 전 예약(IP 16·인스턴스 일 200). 정류장 지정(E70-e)은 옵트인 `stops=1`, 이름은 TOPIS·TAGO 검색(`/api/route/journey/stops`). → INTEGRATIONS |
 | 지하철 빠른하차 | subway-quick-exit(정적 seed) → `quick-exit.ts` / 별도 라우트 없음(`TransitLeg.quickExit`) | 거리는 열차 선형 위치, 엘베×계단 쌍 최적화, 방향은 방면 1개 확정일 때만. ⚠ 환승 leg는 ODsay `subPath.door`가 정본(A20, 긍정 정규식만 통과). → INTEGRATIONS |
 | 장소 영업시간(E24, 웹·iOS 장소 상세) | google-places → `place-hours.ts`(순수) / `/api/places/hours` | 어떤 실패도 `{hours:null}`. `place_id`만 캐시, 영업시간은 캐시 금지. ⚠ 약관 TTS 금지(`place-hours-tts-drift.test.ts`), 좌표만으로 매칭하지 않는다. attribution "Google Maps"는 번역·변형 금지. → INTEGRATIONS |
 | STT | Deepgram nova-3 / `/api/speech-to-text` | ⚠ `detect_language` 금지(ko→vi 오인식), `language` 명시. 효과음으로 시작/정지 통지 |
