@@ -2057,6 +2057,130 @@
       }
     },
     {
+      "name": "context 버스 노선 미확인은 번호 없는 키(E76 후속 ⓕ)",
+      "fn": "context",
+      "isEn": false,
+      "leg": {
+        "mode": "bus",
+        "line": {
+          "ko": "노선ᛥ",
+          "en": "421"
+        },
+        "board": {
+          "ko": "승차ᛥ",
+          "en": "Galwol-dong"
+        },
+        "alight": {
+          "ko": "하차ᛥ",
+          "en": "Polytech"
+        },
+        "stops": [
+          {
+            "ko": "경유0ᛥ",
+            "en": "Stop0"
+          }
+        ],
+        "stationCount": 5,
+        "walkBeforeMinutes": 3,
+        "boardOverridden": false
+      },
+      "expect": {
+        "parts": [
+          {
+            "key": "contextBusUnconfirmed",
+            "args": [
+              "하차ᛥ"
+            ]
+          }
+        ],
+        "lang": "ko"
+      },
+      "lineUnconfirmed": true
+    },
+    {
+      "name": "context 버스 노선 미확인 en은 하차 영문만으로 영어 줄",
+      "fn": "context",
+      "isEn": true,
+      "leg": {
+        "mode": "bus",
+        "line": {
+          "ko": "노선ᛥ",
+          "en": "421"
+        },
+        "board": {
+          "ko": "승차ᛥ",
+          "en": "Galwol-dong"
+        },
+        "alight": {
+          "ko": "하차ᛥ",
+          "en": "Polytech"
+        },
+        "stops": [
+          {
+            "ko": "경유0ᛥ",
+            "en": "Stop0"
+          }
+        ],
+        "stationCount": 5,
+        "walkBeforeMinutes": 3,
+        "boardOverridden": false
+      },
+      "expect": {
+        "parts": [
+          {
+            "key": "contextBusUnconfirmed",
+            "args": [
+              "Polytech"
+            ]
+          }
+        ],
+        "lang": "en"
+      },
+      "lineUnconfirmed": true
+    },
+    {
+      "name": "context 지하철은 노선 미확인이어도 종전 키",
+      "fn": "context",
+      "isEn": false,
+      "leg": {
+        "mode": "subway",
+        "line": {
+          "ko": "노선ᛥ",
+          "en": "421"
+        },
+        "board": {
+          "ko": "승차ᛥ",
+          "en": "Galwol-dong"
+        },
+        "alight": {
+          "ko": "하차ᛥ",
+          "en": "Polytech"
+        },
+        "stops": [
+          {
+            "ko": "경유0ᛥ",
+            "en": "Stop0"
+          }
+        ],
+        "stationCount": 5,
+        "walkBeforeMinutes": 3,
+        "boardOverridden": false
+      },
+      "expect": {
+        "parts": [
+          {
+            "key": "context",
+            "args": [
+              "노선ᛥ",
+              "하차ᛥ"
+            ]
+          }
+        ],
+        "lang": "ko"
+      },
+      "lineUnconfirmed": true
+    },
+    {
       "name": "boardingContext 지하철은 종전 키",
       "fn": "boardingContext",
       "isEn": false,

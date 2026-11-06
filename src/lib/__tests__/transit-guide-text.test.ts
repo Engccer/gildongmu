@@ -87,7 +87,7 @@ const CASES: {
   },
   {
     fn: contextLine, name: "contextLine",
-    run: (e) => contextLine(e, LEG),
+    run: (e) => contextLine(e, LEG, false),
     en: { parts: [{ key: "context", args: ["Line 5", "Gwanghwamun"] }], lang: "en" },
   },
   {
@@ -280,7 +280,7 @@ describe("역방향 — 영문 조각이 하나라도 없으면 그 줄은 통�
       const item = { ...ITEM, ...hole.item };
       // 각 줄이 "무언가 ko가 됐다"가 아니라 **정확한 ko 결과**를 내는지 본다(설계 리뷰 #15).
       if (hole.leg?.line) {
-        expect(contextLine(true, leg)).toEqual({
+        expect(contextLine(true, leg, false)).toEqual({
           parts: [{ key: "context", args: [`노선${S}`, `하차${S}`] }],
           lang: "ko",
         });
@@ -381,6 +381,8 @@ interface FixtureCase {
   role?: "board" | "via" | "alight";
   here?: boolean;
   isCurrentLeg?: boolean;
+  /** context의 번호 없는 갈래(E76 후속 ⓕ·ⓓ). 없으면 false. */
+  lineUnconfirmed?: boolean;
   express?: "skips" | "stops" | "unknown" | null;
   exit?: string | null;
   sentence?: boolean;
@@ -399,7 +401,7 @@ function runFixtureCase(c: FixtureCase): TransitTextLine {
   switch (c.fn) {
     case "waitContext": return waitContextLine(e, c.leg!, c.isCurrentLeg!);
     case "boardingContext": return boardingContextLine(e, c.leg!);
-    case "context": return contextLine(e, c.leg!);
+    case "context": return contextLine(e, c.leg!, c.lineUnconfirmed ?? false);
     case "approachFrame": return approachFrameLine(e, c.leg!, c.message!);
     case "arrivalStatus":
       return arrivalStatusLine(

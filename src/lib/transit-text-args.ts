@@ -14,6 +14,7 @@ export const TRANSIT_TEXT_ARG_NAMES: Record<string, readonly string[]> = {
   boardingContextBus: ["stop", "line"],
   context: ["line", "stop"],
   contextBus: ["line", "stop"],
+  contextBusUnconfirmed: ["stop"],
   remainingCount: ["count"],
   remainingCountJoin: ["count"],
   stopsAway: ["count"],

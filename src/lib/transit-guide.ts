@@ -167,9 +167,16 @@ export interface TransitGuideLeg {
   /**
    * 같은 승차·하차 정류소 쌍을 잇는 노선 전부(E76, 서버 `TransitLeg.lanes`의 안내 투영). 대기 국면은 이 집합 전부의
    * 도착을 한 목록으로 받고, 차량을 고르면 그 차량의 노선으로 leg가 바뀐다(`legWithLane` — `lineName`·`routeId`).
-   * 순서·내용은 세션 내내 그대로다(첫 항목 = 경로가 추천한 노선). 서울버스 leg에만, 둘 이상일 때만.
+   * 순서·내용은 세션 내내 그대로다(첫 항목 = 경로가 추천한 노선). 서울버스·지방버스(E76 후속 ⓓ, 키 = 노선 번호) leg에만,
+   * 둘 이상일 때만. 서울버스 정류장 재기준(`legFromStop`)은 지우고 서버 `phase=lanes`가 다시 채운다.
    */
   lanes?: TransitGuideLane[];
+  /**
+   * 재기준 정류장의 집합을 아직 모른다(E76 후속 ⓔ, 리뷰 M1) — `legFromStop`이 세우고 `phase=lanes` 응답 반영이 지운다.
+   * 응답 전·실패·늦은 응답 폐기 뒤에도 남아 「노선 모름」(`rideLineUnconfirmed`)으로 읽힌다 — 집합 미조회를 단일 노선
+   * 확정으로 읽으면 다른 버스를 탔을 수 있는데 번호를 확정해 말한다.
+   */
+  lanesPending?: true;
 }
 
 /**
@@ -187,11 +194,23 @@ export interface TransitGuideLane {
 }
 
 /**
- * 서버 노선 집합 → 안내 노선 집합(E76 §4.1). 서울버스만이다 — 지방버스(TAGO)는 차량 식별자가 없어 고른 노선을
- * 잠글 수단이 근사 버튼 하나뿐이라 이번 판의 대상이 아니다(spec §6). 키(TOPIS ID)가 없는 노선은 대기 폴이
- * 찾을 수 없으므로 빼고, 첫 항목이 leg 자신이 아니면(계약 위반) 통째로 버린다.
+ * 서버 노선 집합 → 안내 노선 집합(E76 §4.1). 서울버스는 키가 TOPIS ID라 키가 없는 노선은 대기 폴이 찾을 수 없으므로 빼고,
+ * 지방버스(E76 후속 ⓓ)는 키가 노선 번호다. 첫 항목이 leg 자신이 아니면(계약 위반) 통째로 버린다.
  */
 function guideLanesOf(leg: TransitLeg, trackMode: TransitTrackMode | null): TransitGuideLane[] | null {
+  // 지방버스(E76 후속 ⓓ): 키는 노선 번호 — TAGO 도착 `routeno`와 같은 축(단일 노선 추적이 이미 `routeNo === lineName`으로
+  // 거른다). 줄은 버튼이 아니고 잠금은 근사 버튼 하나라 고른 노선으로 leg를 바꾸는 일은 없다(집합은 폴·문장에만 쓰인다).
+  if (trackMode === "tagoBus") {
+    if (!leg.lanes || !leg.lineName) return null;
+    const seen = new Set<string>();
+    const lanes = leg.lanes.flatMap((lane): TransitGuideLane[] => {
+      if (!lane.lineName || seen.has(lane.lineName)) return [];
+      seen.add(lane.lineName);
+      return [{ lineName: lane.lineName, ...(lane.lineNameEn ? { lineNameEn: lane.lineNameEn } : {}), key: lane.lineName }];
+    });
+    if (lanes.length < 2 || lanes[0].key !== leg.lineName) return null;
+    return lanes.slice(0, SEOUL_WAIT_ROUTE_SET_MAX);
+  }
   if (trackMode !== "seoulBus" || !leg.lanes || !leg.serviceRouteId) return null;
   const lanes = leg.lanes.flatMap((lane): TransitGuideLane[] =>
     lane.serviceRouteId
@@ -219,6 +238,87 @@ export function legWithLane(leg: TransitGuideLeg, lane: TransitGuideLane): Trans
   if (lane.lineNameEn) next.lineNameEn = lane.lineNameEn;
   else delete next.lineNameEn;
   return next;
+}
+
+/**
+ * 승차 중 [탑승 변경]이 「지금 어느 역·정류장」을 먼저 묻는가(A16 L3, 서울버스는 E76 후속 ⓔ). 지하철은 역 이름으로 조회하고,
+ * 서울버스는 고른 정류장의 `arsId`(대기 폴)·`localId`(하차 순번)가 있어야 그 정류장 기준으로 다시 기다릴 수 있다 — 하나라도
+ * 없으면 종전대로 곧장 원래 승차 정류소 대기다. 지방버스는 [탑승 변경]이 없다. Kit `transitReboardStopPickable` 미러.
+ */
+export function reboardStopPickable(leg: TransitGuideLeg): boolean {
+  if (leg.viaStops.length === 0) return false;
+  if (leg.trackMode === "subway") return true;
+  if (leg.trackMode === "seoulBus") return leg.viaStops.every((stop) => !!stop.arsId && !!stop.localId);
+  return false;
+}
+
+/**
+ * 고른 정류장 기준으로 바꾼 leg(E76 후속 ⓔ, spec `2026-11-07-e76-followup-design.md` §2.2) — 서울버스 재기준. 승차 정류장·경유·
+ * 정거장 수가 그 정류장부터이고, 선행 도보는 지난 일이라 지우며, 집합은 그 정류장의 것이 아니라 지운다(서버 `phase=lanes`가
+ * 다시 센다). 노선·하차는 그대로다. 지하철 L3처럼 표시 인덱스를 덧씌우지 않는 이유: 하차 추적(`phase=ride`)이 승차 정류장
+ * `localId`로 하차 순번을 푸므로, 새 정류장에서 다른 노선을 고르면 원래 승차 정류장 기준으로는 그 노선을 풀 수 없다.
+ * 첫 정류장(원래 승차)·하차 정류장·범위 밖은 null(바꾸지 않는다). Kit `transitLegFromStop` 미러.
+ */
+export function legFromStop(leg: TransitGuideLeg, index: number): TransitGuideLeg | null {
+  if (!Number.isInteger(index) || index <= 0 || index >= leg.viaStops.length - 1) return null;
+  const stop = leg.viaStops[index];
+  const next: TransitGuideLeg = {
+    ...leg,
+    boardStop: stop,
+    boardName: stop.name,
+    viaStops: leg.viaStops.slice(index),
+    stationCount: leg.stationCount == null ? null : leg.viaStops.length - 1 - index,
+    walkBeforeMinutes: null,
+    lanesPending: true,
+  };
+  if (stop.nameEn) next.boardNameEn = stop.nameEn;
+  else delete next.boardNameEn;
+  delete next.lanes;
+  return next;
+}
+
+/** 재기준 집합 서버 응답의 노선 하나(`/api/transit/track?phase=lanes`, E76 후속 ⓔ). */
+export interface TransitLaneRoute {
+  routeId: string;
+  lineName: string;
+  lineNameEn?: string;
+}
+
+/**
+ * `[지금 노선] + 서버 노선` → 안내 집합(E76 후속 ⓔ §2.4). 첫 항목은 언제나 leg 자신이다 — 서버가 지금 노선을 빼고 보내므로
+ * 이름을 모르는 서버가 첫 항목 계약을 어길 길이 없다. 둘 미만이면 null(집합 없음), 상한 `SEOUL_WAIT_ROUTE_SET_MAX`.
+ * Kit `transitLanesWithRoutes` 미러.
+ */
+export function lanesWithRoutes(leg: TransitGuideLeg, routes: TransitLaneRoute[]): TransitGuideLane[] | null {
+  if (!leg.routeId) return null;
+  const self: TransitGuideLane = {
+    lineName: leg.lineName,
+    ...(leg.lineNameEn ? { lineNameEn: leg.lineNameEn } : {}),
+    key: leg.routeId,
+  };
+  const seen = new Set([self.key]);
+  const rest = routes.flatMap((r): TransitGuideLane[] => {
+    if (!r.routeId || !r.lineName || seen.has(r.routeId)) return [];
+    seen.add(r.routeId);
+    return [{ lineName: r.lineName, ...(r.lineNameEn ? { lineNameEn: r.lineNameEn } : {}), key: r.routeId }];
+  });
+  const lanes = [self, ...rest].slice(0, SEOUL_WAIT_ROUTE_SET_MAX);
+  return lanes.length >= 2 ? lanes : null;
+}
+
+/**
+ * 승차 중 노선을 모르는가(E76 후속 ⓕ·ⓓ) — 근사 잠금(서울버스 [이미 탔어요]·지방버스 근사) ∧ (같은 하차 정류소로 가는 노선이
+ * 둘 이상 ∨ 재기준 정류장의 집합 미조회)이면 어느 노선에 탔는지 앱이 모른다. 그때 승차 중 문장의 노선 자리는 「버스」다(탄 노선을 묻지 않는다, 위원장 판정).
+ * 상태에서 **유도**한다 — leg에 표식을 저장하면 탑승 변경·취소 경로마다 지우고 다시 세워야 하고 하나를 빠뜨리면 낡은 표식이
+ * 남는다. Kit `transitRideLineUnconfirmed` 미러.
+ */
+export function rideLineUnconfirmed(leg: TransitGuideLeg, lock: TransitLock | null): boolean {
+  return (
+    lock != null &&
+    isApproxTransitLock(lock) &&
+    leg.mode === "bus" &&
+    ((leg.lanes?.length ?? 0) >= 2 || leg.lanesPending === true)
+  );
 }
 
 /**

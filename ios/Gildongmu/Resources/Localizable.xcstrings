@@ -13721,6 +13721,46 @@
         }
       }
     },
+    "guide.band.busUnconfirmed": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "버스"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bus"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Autobús"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bus"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Autobus"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "バス"
+          }
+        }
+      }
+    },
     "guide.band.ended": {
       "localizations": {
         "ko": {
@@ -52791,6 +52831,46 @@
         }
       }
     },
+    "transitGuide.approxNoteLanes": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "근사 추적: 추천 노선의 접근 차량 기준."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Approximate: based on the nearest vehicle on the recommended route."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aproximado: basado en el vehículo más cercano de la línea recomendada."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Approximatif : basé sur le véhicule le plus proche de la ligne recommandée."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Approssimato: basato sul veicolo più vicino della linea consigliata."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "近似追跡: 推奨路線の接近車両基準。"
+          }
+        }
+      }
+    },
     "transitGuide.approxVehicleChanged": {
       "localizations": {
         "ko": {
@@ -54267,6 +54347,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "%1$@番バスに乗車中、%2$@で下車します。"
+          }
+        }
+      }
+    },
+    "transitGuide.contextBusUnconfirmed": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "버스 탑승 중, %1$@에서 하차합니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Riding a bus, get off at %1$@."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A bordo del autobús, baje en %1$@."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "À bord du bus, descendez à %1$@."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A bordo dell'autobus, scendi a %1$@."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "バスに乗車中、%1$@で下車します。"
           }
         }
       }
@@ -55867,6 +55987,86 @@
           "stringUnit": {
             "state": "translated",
             "value": "今どの駅にいますか。"
+          }
+        }
+      }
+    },
+    "transitGuide.reboardStopCancel": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "정류장 선택 취소"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel bus stop selection"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancelar selección de parada de autobús"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Annuler la sélection d'arrêt de bus"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Annulla selezione fermata dell'autobus"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "停留所の選択を取り消す"
+          }
+        }
+      }
+    },
+    "transitGuide.reboardStopPrompt": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "지금 어느 정류장에 계신가요?"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Which bus stop are you at now?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿En qué parada de autobús estás ahora?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "À quel arrêt de bus êtes-vous maintenant ?"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A quale fermata dell'autobus ti trovi adesso?"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今どの停留所にいますか。"
           }
         }
       }

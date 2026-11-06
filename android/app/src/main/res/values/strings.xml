@@ -817,6 +817,7 @@
     <string name="guide_autoReroute">새 경로로 다시 안내합니다. %1$s. 안내 %2$s개, 총 %3$s.</string>
     <string name="guide_backOnRoute">경로로 복귀했습니다</string>
     <string name="guide_band_arrived">%1$s 도착</string>
+    <string name="guide_band_busUnconfirmed">버스</string>
     <string name="guide_band_ended">%1$s 안내 종료</string>
     <string name="guide_band_remaining">%1$s까지 남은 거리 %2$s</string>
     <string name="guide_band_return">안내 시트 펼치기</string>
@@ -1407,6 +1408,7 @@
     <string name="transitGuide_approachFrame">%1$s에 %2$s.</string>
     <string name="transitGuide_approachingStarted">선택한 차량을 추적합니다.</string>
     <string name="transitGuide_approxNote">근사 추적: 같은 노선의 접근 차량 기준.</string>
+    <string name="transitGuide_approxNoteLanes">근사 추적: 추천 노선의 접근 차량 기준.</string>
     <string name="transitGuide_approxVehicleChanged">다른 차량 기준으로 바뀌었습니다.</string>
     <string name="transitGuide_arrived">내리신 뒤 다음 구간 버튼을 눌러 주세요.</string>
     <string name="transitGuide_arrivedAtBoardStop">%1$s 도착. 탑승하세요.</string>
@@ -1444,6 +1446,7 @@
     <string name="transitGuide_changeBoardingDone">차량을 다시 선택합니다.</string>
     <string name="transitGuide_context">%1$s 탑승 중, %2$s에서 하차합니다.</string>
     <string name="transitGuide_contextBus">%1$s번 버스 탑승 중, %2$s에서 하차합니다.</string>
+    <string name="transitGuide_contextBusUnconfirmed">버스 탑승 중, %1$s에서 하차합니다.</string>
     <string name="transitGuide_continueWithoutTrain">열차 정보 없이 계속</string>
     <string name="transitGuide_currentStation">현재 위치 %1$s.</string>
     <string name="transitGuide_dataAge">%1$s초 전 기준.</string>
@@ -1484,6 +1487,8 @@
     <string name="transitGuide_prewalkUnavailable">도보 안내를 시작할 수 없어 승차 대기로 바로 넘어갑니다.</string>
     <string name="transitGuide_reboardCancel">역 선택 취소</string>
     <string name="transitGuide_reboardStationPrompt">지금 어느 역에 계신가요?</string>
+    <string name="transitGuide_reboardStopCancel">정류장 선택 취소</string>
+    <string name="transitGuide_reboardStopPrompt">지금 어느 정류장에 계신가요?</string>
     <string name="transitGuide_refresh">새로고침</string>
     <string name="transitGuide_remainingCount">남은 정거장 %1$s개.</string>
     <string name="transitGuide_remainingCountJoin">남은 정거장 %1$s개</string>

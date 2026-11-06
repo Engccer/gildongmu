@@ -10,7 +10,11 @@ import {
   boardingObservationLost,
   isUnobservedTransitLock,
   laneForItem,
+  lanesWithRoutes,
+  legFromStop,
   legWithLane,
+  reboardStopPickable,
+  rideLineUnconfirmed,
   pollIntervalMs,
   subwayIdForOdsayLine,
   transitGuideStep,
@@ -25,6 +29,7 @@ import {
   type TransitGuideLeg,
   type TransitGuideRoute,
   type TransitGuideState,
+  type TransitLaneRoute,
   type TransitLock,
   transitPrewalkTarget,
   withoutPrewalk,
@@ -190,7 +195,14 @@ export function trackTargetUrl(
   }
   if (mode === "tagoBus") {
     if (!resolvedTago) return null;
-    return `/api/transit/track?mode=tagoBus&phase=track&cityCode=${encodeURIComponent(resolvedTago.cityCode)}&nodeId=${encodeURIComponent(resolvedTago.nodeId)}&routeNo=${encodeURIComponent(leg.lineName)}&lang=${lang}`;
+    const base = `/api/transit/track?mode=tagoBus&phase=track&cityCode=${encodeURIComponent(resolvedTago.cityCode)}&nodeId=${encodeURIComponent(resolvedTago.nodeId)}`;
+    // 대기 국면만 노선 집합(E76 후속 ⓓ). 승차 중은 추천 노선 하나다 — 집합 최솟값은 폴마다 다른 노선 버스로 튀어
+    // 리듀서가 그것을 카운트다운·임박으로 읽는다(설계 리뷰 H3).
+    if (phase === "waiting" && leg.lanes && leg.lanes.length >= 2) {
+      const nos = leg.lanes.map((lane) => encodeURIComponent(lane.key)).join(",");
+      return `${base}&routeNos=${nos}&lang=${lang}`;
+    }
+    return `${base}&routeNo=${encodeURIComponent(leg.lineName)}&lang=${lang}`;
   }
   // waiting 국면의 기준 역은 사용자가 고른 현재 역이 이긴다(A16 L3).
   // riding(alightName)은 건드리지 않는다 — 그쪽은 L1 영역이다.
@@ -445,6 +457,8 @@ export function useTransitGuide(
     const r = routeRef.current;
     const leg = s && r ? (r.legs[s.legIndex] ?? null) : null;
     if (!s || !r || !leg) return leg;
+    // 지방버스 집합의 키는 노선 번호라 `routeId`로 쓸 수 없다 — 노선 교체는 서울버스만(E76 후속 ⓓ).
+    if (leg.trackMode !== "seoulBus") return leg;
     const lane = leg.lanes?.find((l) => l.key === key);
     if (!lane || lane.key === leg.routeId) return leg;
     const next = legWithLane(leg, lane);
@@ -456,6 +470,27 @@ export function useTransitGuide(
     setSessionRoute(nextRoute);
     return next;
   }, []);
+
+  /** 현재 leg를 통째로 바꾼다(서울버스 재기준, E76 후속 ⓔ) — `selectLane`과 같은 두 벌(ref·state)을 함께 쓴다. */
+  const replaceCurrentLeg = useCallback((next: TransitGuideLeg) => {
+    const s = stateRef.current;
+    const r = routeRef.current;
+    if (!s || !r) return;
+    const nextRoute: TransitGuideRoute = {
+      ...r,
+      legs: r.legs.map((l, i) => (i === s.legIndex ? next : l)),
+    };
+    routeRef.current = nextRoute;
+    setSessionRoute(nextRoute);
+  }, []);
+
+  /**
+   * 서울버스 정류장 재기준(E76 후속 ⓔ)의 되돌림 원본과 세대. `snapshot`은 승차 중 [탑승 변경] 직전의 leg(집합 포함)이고
+   * 취소가 그것을 되돌린다. 재기준을 여러 번 해도 원본은 처음 것 하나다. 승차 중에 다시 [탑승 변경]을 누르면 새로 잡는다.
+   * `gen`은 `phase=lanes` 응답의 결박 — 다른 정류장을 고르거나 세션이 바뀌면 오른다.
+   */
+  const reanchorRef = useRef<{ legIndex: number; snapshot: TransitGuideLeg; gen: number } | null>(null);
+  const reanchorGenRef = useRef(0);
 
   /** 세션의 데이터 언어(E27 잔여 ①) — 화면·통지가 같은 축을 쓴다. */
   const isEn = prefersEnglish(locale);
@@ -522,9 +557,13 @@ export function useTransitGuide(
     [boardOverride, displayLegOf, isEn, piece],
   );
 
-  /** 노선·하차 전문 문맥(§6.1 M1 개정) — 추적 시작·진행 상황·상시 표시가 담당. */
+  /**
+   * 노선·하차 전문 문맥(§6.1 M1 개정) — 추적 시작·진행 상황·상시 표시가 담당. `lock`은 기본값 없는 인자다(E76 후속 ⓕ):
+   * 근사 잠금 ∧ 노선 여럿이면 번호 없는 문장이라, 생략이 통과하면 모르는 번호를 말한다.
+   */
   const contextPiece = useCallback(
-    (leg: TransitGuideLeg) => piece(contextLine(isEn, displayLegOf(leg, null))),
+    (leg: TransitGuideLeg, lock: TransitLock | null) =>
+      piece(contextLine(isEn, displayLegOf(leg, null), rideLineUnconfirmed(leg, lock))),
     [displayLegOf, isEn, piece],
   );
 
@@ -654,7 +693,7 @@ export function useTransitGuide(
           ? waitContextPiece(leg, true)
           : boarding
             ? boardingContextPiece(leg)
-            : contextPiece(leg),
+            : contextPiece(leg, s.lock),
         // 신호 문구(E39 위원장 판정): 대기 국면의 `notYetVisible`은 그 국면 내내 고정이라 정보가
         // 0이고(목록 자리가 0건 사유를 3-state로 말한다), 추적 중은 도착 조각이 그 사실을 이미
         // 말한다. 추적 중인데 도착 조각이 비면 그것이 정보다 — "차량이 없다"가 아니라 "언제
@@ -691,7 +730,12 @@ export function useTransitGuide(
         ),
         // 근사 주석("같은 노선의 접근 차량 기준")은 지방버스만(대기 중에도 근사 예고). 지하철·서울버스
         // 근사는 2026-09-11부터 비관측이라 접근 차량 기준이 아니다(리뷰 m2 — 국면이 아니라 잠금 술어).
-        ui(leg.trackMode === "tagoBus" ? t("approxNote") : ""),
+        // 집합이 있으면(E76 후속 ⓓ) 탄 노선을 모르므로 「추천 노선의 접근 차량 기준」 — 승차 중 폴은 추천 노선 하나다.
+        ui(
+          leg.trackMode === "tagoBus"
+            ? t((leg.lanes?.length ?? 0) >= 2 ? "approxNoteLanes" : "approxNote")
+            : "",
+        ),
         // 급행 선언 잠금(§6)은 판정을 상시 표시에 남긴다 — 답한 직후의 침묵이 "확인됨"으로 읽히지 않게.
         s.lock?.express
           ? piece(expressStatusLine(isEn, displayLegOf(leg, null), declaredExpressVerdict(leg)))
@@ -814,7 +858,7 @@ export function useTransitGuide(
           break;
         }
         case "trackingStarted":
-          if (leg) pushPiece(contextPiece(leg));
+          if (leg) pushPiece(contextPiece(leg, stateRef.current?.lock ?? null));
           parts.push(t("trackingStarted"));
           if (leg) pushPiece(arrivalPiece(leg, event, event.remaining, "riding"));
           break;
@@ -1300,6 +1344,7 @@ export function useTransitGuide(
     clearTimer();
     stateRef.current = null;
     routeRef.current = null;
+    reanchorRef.current = null;
     setSessionRoute(null);
     retainedRef.current.clear();
     tagoResolvedRef.current.clear();
@@ -1339,6 +1384,7 @@ export function useTransitGuide(
       setDoneHandoff(null);
       claimGuideSession(stopSession);
       routeRef.current = route;
+      reanchorRef.current = null;
       setSessionRoute(route);
       // 순번·세대는 0에서 다시 시작하므로 옛 세션의 늦은 응답은 세션 식별자가 거른다(A50).
       sessionRef.current += 1;
@@ -1520,14 +1566,14 @@ export function useTransitGuide(
   }, [dispatch, requestImmediatePoll]);
 
   /**
-   * 탑승 변경 진입(A16 L3). 지하철은 지금 있는 역을 먼저 묻는다.
-   *
-   * ⚠ 지하철 전용인 근거 둘: 조회 파라미터가 수단마다 다르고(지하철만 역 *이름*,
-   * 서울버스는 정류소 ID), 버스는 갈아타면 대개 다른 leg다. iOS `beginReboard` 미러.
+   * 탑승 변경 진입(A16 L3). 지하철은 지금 있는 역을, 서울버스는 지금 있는 정류장을(E76 후속 ⓔ — 한 정거장 전에 내린
+   * 뒤 원래 승차 정류소 도착만 듣던 420 사례) 먼저 묻는다. 판정은 `reboardStopPickable`. iOS `beginReboard` 미러.
    */
   const beginReboard = useCallback(() => {
     const leg = currentLeg();
-    if (leg?.trackMode === "subway" && leg.viaStops.length > 0) {
+    // 승차 중의 새 [탑승 변경]은 새 원본을 잡는다 — 지난 재기준의 원본이 남으면 다음 취소가 옛 leg를 되살린다.
+    if (stateRef.current?.phase !== "waiting") reanchorRef.current = null;
+    if (leg && reboardStopPickable(leg)) {
       setReboardPickerActive(true);
       return;
     }
@@ -1537,17 +1583,84 @@ export function useTransitGuide(
   const cancelReboard = useCallback(() => setReboardPickerActive(false), []);
 
   /**
+   * 재기준 정류장의 노선 집합(E76 후속 ⓔ §2.4) — 그 정류장에서 같은 하차 정류장에 서는 서울버스 노선을 서버가 센다. 결박: 세션·
+   * 재기준 세대·대기 국면·그 leg 그대로일 때만 반영한다(차량을 골랐거나 다른 정류장을 골랐으면 버린다 — 그 leg는 `lanesPending`이
+   * 남아 「노선 모름」으로 정직하다). 실패는 조용하다 — 단일 노선 대기가 이미 돌고 있다.
+   */
+  const fetchReanchorLanes = useCallback(
+    async (leg: TransitGuideLeg, gen: number) => {
+      const board = leg.boardStop;
+      const alight = leg.alightStop;
+      if (!board?.arsId || !board.localId || !alight?.localId || !leg.routeId) return;
+      const session = sessionRef.current;
+      const url = `/api/transit/track?mode=seoulBus&phase=lanes&arsId=${encodeURIComponent(board.arsId)}&boardId=${encodeURIComponent(board.localId)}&alightId=${encodeURIComponent(alight.localId)}&routeId=${encodeURIComponent(leg.routeId)}&lang=${dataLocale(locale)}`;
+      try {
+        const res = await fetch(url);
+        if (!res.ok) return;
+        const body = (await res.json()) as { status?: string; routes?: TransitLaneRoute[] };
+        if (
+          sessionRef.current !== session ||
+          reanchorRef.current?.gen !== gen ||
+          stateRef.current?.phase !== "waiting" ||
+          currentLeg() !== leg
+        ) {
+          return;
+        }
+        if (body.status !== "ok" || !Array.isArray(body.routes)) return;
+        const lanes = lanesWithRoutes(leg, body.routes);
+        const filled: TransitGuideLeg = { ...leg };
+        delete filled.lanesPending;
+        if (lanes) filled.lanes = lanes;
+        replaceCurrentLeg(filled);
+        if (lanes) requestImmediatePoll();
+      } catch {
+        // 네트워크 실패 — 조용히(`lanesPending` 유지).
+      }
+    },
+    [currentLeg, locale, replaceCurrentLeg, requestImmediatePoll],
+  );
+
+  /**
+   * 서울버스 정류장 재기준(E76 후속 ⓔ §2.2): 고른 정류장 기준 leg로 바꾸고 다시 기다린다. 첫 정류장(원래 승차)은 종전대로
+   * 원래 leg 대기다. ⚠ 3분 보관 후보를 비운다(설계 리뷰 H1) — 옛 정류장 차량이 새 목록에 섞이면 그 차량을 지금 노선으로 잠근다.
+   */
+  const reseatSeoulBus = useCallback(
+    (legIndex: number, leg: TransitGuideLeg, stopIndex: number) => {
+      const next = legFromStop(leg, stopIndex);
+      if (!next) {
+        reanchorRef.current = null;
+        changeBoarding();
+        return;
+      }
+      const gen = ++reanchorGenRef.current;
+      reanchorRef.current = { legIndex, snapshot: leg, gen };
+      replaceCurrentLeg(next);
+      retainedRef.current.clear();
+      changeBoarding();
+      void fetchReanchorLanes(next, gen);
+    },
+    [changeBoarding, fetchReanchorLanes, replaceCurrentLeg],
+  );
+
+  /**
    * 사용자가 고른 현재 역으로 재선택한다(A16 L3). 인자는 **세션 경로 `viaStops`의 인덱스**다 —
    * 이름을 받는 판을 남기면 그것이 다시 동명 역 모호 경로가 된다(spec §3.6).
    */
   const changeBoardingAt = useCallback(
     (stopIndex: number) => {
+      const s = stateRef.current;
+      const leg = currentLeg();
+      if (s && leg?.trackMode === "seoulBus") {
+        setReboardPickerActive(false);
+        reseatSeoulBus(s.legIndex, leg, stopIndex);
+        return;
+      }
       setBoardOverride(stopIndex);
       setReboardPickerActive(false);
       // in-flight 폴과 겹쳐도 새 역 첫 조회가 밀리지 않는다 — `changeBoarding`의 즉폴 창구가 맡는다(A48·A49).
       changeBoarding();
     },
-    [changeBoarding, setBoardOverride],
+    [changeBoarding, currentLeg, reseatSeoulBus, setBoardOverride],
   );
 
   /**
@@ -1561,10 +1674,17 @@ export function useTransitGuide(
     if (!previous) return;
     // 노선 집합(E76): 변경 중에 다른 노선을 골랐다 취소하면 leg도 직전 잠금의 노선으로 돌아가야 한다
     // (서울버스 잠금의 routeId가 그 노선 키다 — 집합 밖·단일 노선이면 아무것도 하지 않는다).
+    // 정류장 재기준(E76 후속 ⓔ)을 취소하면 [탑승 변경] 직전 leg(원래 정류장·집합)로 되돌린 뒤 노선을 맞춘다.
+    const reanchor = reanchorRef.current;
+    reanchorRef.current = null;
+    if (reanchor && reanchor.legIndex === stateRef.current.legIndex) {
+      replaceCurrentLeg(reanchor.snapshot);
+      retainedRef.current.clear();
+    }
     if (previous.mode === "seoulBus") selectLane(previous.routeId);
     dispatch({ kind: "restoreBoarding" });
     requestImmediatePoll();
-  }, [dispatch, requestImmediatePoll, selectLane]);
+  }, [dispatch, replaceCurrentLeg, requestImmediatePoll, selectLane]);
 
   /** "이미 탔어요"(§13.2) — 식별자 없는 근사 잠금(tagoBus 계약 동형). */
 

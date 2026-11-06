@@ -788,7 +788,8 @@ export function TransitGuidePanel({
           {state.phase === "riding" && guide.reboardPickerActive && (
             // 승차 중 탑승 변경(A16 L3): 하차역이면 도착 선언(A37 ②), 그 밖은 그 역 기준 재선택.
             <StationPicker
-              prompt={t("reboardStationPrompt")}
+              // 서울버스(E76 후속 ⓔ)는 정류장을 묻는다 — 고른 정류장 기준으로 다시 기다린다.
+              prompt={t(leg.trackMode === "seoulBus" ? "reboardStopPrompt" : "reboardStationPrompt")}
               promptRef={reboardPromptRef}
               leg={leg}
               isEn={isEn}
@@ -801,7 +802,7 @@ export function TransitGuidePanel({
                 // 대입해야 하므로 리렌더 다음 프레임에서 잡는다.
                 requestAnimationFrame(() => statusRef.current?.focus());
               }}
-              cancelLabel={t("reboardCancel")}
+              cancelLabel={t(leg.trackMode === "seoulBus" ? "reboardStopCancel" : "reboardCancel")}
             />
           )}
 

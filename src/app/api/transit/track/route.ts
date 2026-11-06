@@ -8,6 +8,7 @@ import {
   trackSeoulRide,
   trackSeoulWait,
   trackSubway,
+  trackSeoulLanes,
   trackTago,
   SEOUL_WAIT_ROUTE_SET_MAX,
 } from "@/lib/transit-track";
@@ -39,12 +40,33 @@ const seoulRideSchema = z.object({
   boardId: z.string().trim().min(1).max(20),
   alightId: z.string().trim().min(1).max(20),
 });
-const tagoResolveSchema = z.object({ lat: latParam(), lng: lngParam() });
-const tagoTrackSchema = z.object({
-  cityCode: z.string().trim().min(1).max(10),
-  nodeId: z.string().trim().min(1).max(30),
-  routeNo: z.string().trim().min(1).max(20),
+// 재기준 집합(E76 후속 ⓔ): 지금 서 있는 정류소(arsId·localId)에서 하차 정류소(localId)로 가는 노선 중 지금 노선 밖.
+const seoulLanesSchema = z.object({
+  arsId: z.string().trim().min(1).max(10),
+  boardId: z.string().trim().min(1).max(20),
+  alightId: z.string().trim().min(1).max(20),
+  routeId: routeIdSchema,
 });
+const tagoResolveSchema = z.object({ lat: latParam(), lng: lngParam() });
+const routeNoSchema = z.string().trim().min(1).max(20);
+// 단일 노선(`routeNo`, 종전 계약) 또는 노선 집합(`routeNos`, E76 후속 ⓓ — 쉼표 구분, 중복 제거 뒤 1~12개). 둘 다·둘 다 없음은 400.
+const tagoTrackSchema = z.union([
+  z.object({
+    cityCode: z.string().trim().min(1).max(10),
+    nodeId: z.string().trim().min(1).max(30),
+    routeNo: routeNoSchema,
+    routeNos: z.never().optional(),
+  }),
+  z.object({
+    cityCode: z.string().trim().min(1).max(10),
+    nodeId: z.string().trim().min(1).max(30),
+    routeNo: z.never().optional(),
+    routeNos: z
+      .string()
+      .transform((v) => [...new Set(v.split(",").map((x) => x.trim()))])
+      .pipe(z.array(routeNoSchema).min(1).max(SEOUL_WAIT_ROUTE_SET_MAX)),
+  }),
+]);
 const subwaySchema = z.object({
   station: z.string().trim().min(1).max(50),
   line: z.string().trim().min(1).max(30),
@@ -90,6 +112,15 @@ export async function GET(request: NextRequest) {
         ...(await trackSeoulRide({ routeId, boardLocalId: boardId, alightLocalId: alightId, lang })),
       });
     }
+    if (mode === "seoulBus" && phase === "lanes") {
+      const parsed = seoulLanesSchema.safeParse(params);
+      if (!parsed.success) return badRequest();
+      const { arsId, boardId, alightId, routeId } = parsed.data;
+      return NextResponse.json({
+        mode,
+        ...(await trackSeoulLanes({ arsId, boardLocalId: boardId, alightLocalId: alightId, routeId, lang })),
+      });
+    }
     if (mode === "tagoBus" && phase === "resolve") {
       const parsed = tagoResolveSchema.safeParse(params);
       if (!parsed.success) {
@@ -100,7 +131,11 @@ export async function GET(request: NextRequest) {
     if (mode === "tagoBus" && phase === "track") {
       const parsed = tagoTrackSchema.safeParse(params);
       if (!parsed.success) return badRequest();
-      return NextResponse.json({ mode, ...(await trackTago({ ...parsed.data, lang })) });
+      const d = parsed.data;
+      const result = d.routeNos
+        ? await trackTago({ cityCode: d.cityCode, nodeId: d.nodeId, routeNos: d.routeNos, lang })
+        : await trackTago({ cityCode: d.cityCode, nodeId: d.nodeId, routeNo: d.routeNo, lang });
+      return NextResponse.json({ mode, ...result });
     }
     if (mode === "subway" && phase === "track") {
       const parsed = subwaySchema.safeParse(params);

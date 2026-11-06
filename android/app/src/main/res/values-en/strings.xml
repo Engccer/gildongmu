@@ -734,6 +734,7 @@
     <string name="guide_autoReroute">Now guiding on a new route. %1$s. {2, plural, one {%2$s instruction} other {%2$s instructions}}, %3$s total.</string>
     <string name="guide_backOnRoute">Back on the route</string>
     <string name="guide_band_arrived">Arrived at %1$s</string>
+    <string name="guide_band_busUnconfirmed">Bus</string>
     <string name="guide_band_ended">Guidance to %1$s ended</string>
     <string name="guide_band_remaining">%2$s left to %1$s</string>
     <string name="guide_band_return">Expand guidance sheet</string>
@@ -1324,6 +1325,7 @@
     <string name="transitGuide_approachFrame">At %1$s: %2$s.</string>
     <string name="transitGuide_approachingStarted">Tracking the selected vehicle.</string>
     <string name="transitGuide_approxNote">Approximate: based on the nearest vehicle on this route.</string>
+    <string name="transitGuide_approxNoteLanes">Approximate: based on the nearest vehicle on the recommended route.</string>
     <string name="transitGuide_approxVehicleChanged">Now tracking a different vehicle.</string>
     <string name="transitGuide_arrived">After getting off, press Next segment.</string>
     <string name="transitGuide_arrivedAtBoardStop">%1$s has arrived. Board now.</string>
@@ -1361,6 +1363,7 @@
     <string name="transitGuide_changeBoardingDone">Choose your vehicle again.</string>
     <string name="transitGuide_context">Riding %1$s, get off at %2$s.</string>
     <string name="transitGuide_contextBus">Riding bus %1$s, get off at %2$s.</string>
+    <string name="transitGuide_contextBusUnconfirmed">Riding a bus, get off at %1$s.</string>
     <string name="transitGuide_continueWithoutTrain">Continue without train info</string>
     <string name="transitGuide_currentStation">Now at %1$s.</string>
     <string name="transitGuide_dataAge">As of {1, plural, one {%1$s second} other {%1$s seconds}} ago.</string>
@@ -1401,6 +1404,8 @@
     <string name="transitGuide_prewalkUnavailable">Walking guidance could not start; moving straight to boarding wait.</string>
     <string name="transitGuide_reboardCancel">Cancel stop selection</string>
     <string name="transitGuide_reboardStationPrompt">Which stop are you at now?</string>
+    <string name="transitGuide_reboardStopCancel">Cancel bus stop selection</string>
+    <string name="transitGuide_reboardStopPrompt">Which bus stop are you at now?</string>
     <string name="transitGuide_refresh">Refresh</string>
     <string name="transitGuide_remainingCount">{1, plural, one {%1$s stop} other {%1$s stops}} remaining.</string>
     <string name="transitGuide_remainingCountJoin">{1, plural, one {%1$s stop} other {%1$s stops}} remaining</string>

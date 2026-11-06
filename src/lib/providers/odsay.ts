@@ -340,8 +340,8 @@ function quickExitFor(sp: OdsaySubPath, kind: AlightKind, lang: OdsayLang) {
     : null;
 }
 
-/** 예약 노선 표기(「M4108(예약)」) — 정류소에서 그냥 탈 수 없어 노선 집합 후보가 아니다(E76). */
-const RESERVATION_LANE = /\(예약\)/;
+/** 예약 노선 표기(「M4108(예약)」) — 정류소에서 그냥 탈 수 없어 노선 집합 후보가 아니다(E76). 재기준 집합(`trackSeoulLanes`)도 이 판정을 쓴다. */
+export const RESERVATION_LANE = /\(예약\)/;
 
 /**
  * 같은 정류소 쌍을 잇는 버스 노선 집합(E76, spec `2026-10-31-e76-bus-lane-set-design.md` §2).

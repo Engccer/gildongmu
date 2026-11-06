@@ -95,11 +95,15 @@ describe("안내 leg의 노선 집합", () => {
     expect(lanes[0].key).toBe("100100185");
   });
 
-  it("지방버스(TAGO)는 이번 판의 대상이 아니다(고른 노선을 잠글 수단이 없다)", () => {
+  it("지방버스(TAGO)는 노선 번호를 키로 집합을 싣는다(E76 후속 ⓓ — TAGO 도착 routeno와 같은 축)", () => {
     const tago = busLeg({ serviceCityCode: 2000, stops: [{ ...BOARD, cityCode: "2000" }, { ...ALIGHT, cityCode: "2000" }] });
     const guide = buildTransitGuideRoute(route(tago))!;
     expect(guide.legs[0].trackMode).toBe("tagoBus");
-    expect(guide.legs[0].lanes).toBeUndefined();
+    expect(guide.legs[0].lanes).toEqual([
+      { lineName: "1711", key: "1711" },
+      { lineName: "7016", key: "7016" },
+      { lineName: "708", key: "708" },
+    ]);
   });
 
   it("laneForItem은 집합 폴 항목의 route로 노선을 찾고, route가 없으면 null", () => {

@@ -734,6 +734,7 @@
     <string name="guide_autoReroute">新しいルートで案内を再開します。%1$s。案内%2$s件、合計%3$s。</string>
     <string name="guide_backOnRoute">経路に復帰しました</string>
     <string name="guide_band_arrived">%1$sに到着</string>
+    <string name="guide_band_busUnconfirmed">バス</string>
     <string name="guide_band_ended">%1$sへの案内終了</string>
     <string name="guide_band_remaining">%1$sまで残り%2$s</string>
     <string name="guide_band_return">案内シートを開く</string>
@@ -1324,6 +1325,7 @@
     <string name="transitGuide_approachFrame">%1$sに%2$s。</string>
     <string name="transitGuide_approachingStarted">選択した車両を追跡します。</string>
     <string name="transitGuide_approxNote">近似追跡: 同路線の接近車両基準。</string>
+    <string name="transitGuide_approxNoteLanes">近似追跡: 推奨路線の接近車両基準。</string>
     <string name="transitGuide_approxVehicleChanged">別の車両基準に変わりました。</string>
     <string name="transitGuide_arrived">降りたら「次の区間」を押してください。</string>
     <string name="transitGuide_arrivedAtBoardStop">%1$sが到着。乗車してください。</string>
@@ -1361,6 +1363,7 @@
     <string name="transitGuide_changeBoardingDone">車両を選び直します。</string>
     <string name="transitGuide_context">%1$sに乗車中、%2$sで下車します。</string>
     <string name="transitGuide_contextBus">%1$s番バスに乗車中、%2$sで下車します。</string>
+    <string name="transitGuide_contextBusUnconfirmed">バスに乗車中、%1$sで下車します。</string>
     <string name="transitGuide_continueWithoutTrain">列車情報なしで続行</string>
     <string name="transitGuide_currentStation">現在位置 %1$s。</string>
     <string name="transitGuide_dataAge">%1$s秒前の情報。</string>
@@ -1401,6 +1404,8 @@
     <string name="transitGuide_prewalkUnavailable">徒歩案内を開始できないため、そのまま乗車待ちに進みます。</string>
     <string name="transitGuide_reboardCancel">駅の選択を取り消す</string>
     <string name="transitGuide_reboardStationPrompt">今どの駅にいますか。</string>
+    <string name="transitGuide_reboardStopCancel">停留所の選択を取り消す</string>
+    <string name="transitGuide_reboardStopPrompt">今どの停留所にいますか。</string>
     <string name="transitGuide_refresh">更新</string>
     <string name="transitGuide_remainingCount">残り%1$s駅。</string>
     <string name="transitGuide_remainingCountJoin">残り%1$s駅</string>

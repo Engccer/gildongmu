@@ -104,8 +104,20 @@ export function boardingContextLine(isEn: boolean, leg: TransitDisplayLeg): Tran
   return line(isEn, modeKey(leg, "boardingContext"), [leg.board, leg.line], (v) => v);
 }
 
-/** 노선·하차 전문 문맥(§6.1 M1) — 추적 시작·진행 상황·상시 표시가 담당. */
-export function contextLine(isEn: boolean, leg: TransitDisplayLeg): TransitTextLine {
+/**
+ * 노선·하차 전문 문맥(§6.1 M1) — 추적 시작·진행 상황·상시 표시가 담당.
+ *
+ * `lineUnconfirmed`(E76 후속 ⓕ·ⓓ, 판정 `rideLineUnconfirmed`): 근사 잠금 ∧ 노선 여럿이면 어느 노선에 탔는지 모르므로 번호 없이
+ * 「버스 탑승 중, …」. ⚠ 기본값 없는 필수 인자 — 생략이 통과하면 모르는 번호를 말하는 문장이 조용히 남는다.
+ */
+export function contextLine(
+  isEn: boolean,
+  leg: TransitDisplayLeg,
+  lineUnconfirmed: boolean,
+): TransitTextLine {
+  if (lineUnconfirmed && leg.mode === "bus") {
+    return line(isEn, "contextBusUnconfirmed", [leg.alight], (v) => v);
+  }
   return line(isEn, modeKey(leg, "context"), [leg.line, leg.alight], (v) => v);
 }
 
@@ -496,6 +508,7 @@ export const TRANSIT_TEXT_KEYS = [
   "boardingContextBus",
   "context",
   "contextBus",
+  "contextBusUnconfirmed",
   "remainingCount",
   "remainingCountJoin",
   "stopsAway",

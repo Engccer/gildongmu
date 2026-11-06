@@ -291,6 +291,29 @@ export async function fetchSeoulWaitSlots(
 }
 
 /**
+ * 정류소에 서는 노선 목록(E76 후속 ⓔ — 재기준 집합의 후보). `getStationByUid` 항목의 `busRouteId`·`rtNm`을 응답 순서대로,
+ * 같은 ID는 한 번만. ID나 번호가 빈 항목은 뺀다(대기 폴이 찾을 수 없다).
+ */
+export function parseSeoulStopRoutes(raw: unknown): { routeId: string; routeNo: string }[] {
+  const seen = new Set<string>();
+  const out: { routeId: string; routeNo: string }[] = [];
+  for (const it of parseSeoulItems(raw)) {
+    const routeId = str(it.busRouteId).trim();
+    const routeNo = str(it.rtNm).trim();
+    if (!routeId || !routeNo || seen.has(routeId)) continue;
+    seen.add(routeId);
+    out.push({ routeId, routeNo });
+  }
+  return out;
+}
+
+/** 정류소의 노선 목록(재기준 집합, E76 후속 ⓔ). 대기 폴과 같은 오퍼레이션이고 실시간이라 캐시하지 않는다. */
+export async function fetchSeoulStopRoutes(arsId: string): Promise<{ routeId: string; routeNo: string }[]> {
+  if (!env.DATA_GO_KR_API_KEY) return [];
+  return parseSeoulStopRoutes(await fetchSeoul("stationinfo/getStationByUid", { arsId }));
+}
+
+/**
  * 하차 카운트다운(B2 riding): 하차 정류소×노선 기준 도착(getArrInfoByRoute, 신규 op).
  * ord는 그 노선 경유 시퀀스에서의 하차 정류소 순번(순환·왕복 중복 대응은 서비스 몫).
  */

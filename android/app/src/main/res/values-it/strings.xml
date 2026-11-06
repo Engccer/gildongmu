@@ -734,6 +734,7 @@
     <string name="guide_autoReroute">Ora ti guido su un nuovo percorso. %1$s. {2, plural, one {%2$s indicazione} other {%2$s indicazioni}}, %3$s in totale.</string>
     <string name="guide_backOnRoute">Di nuovo sul percorso</string>
     <string name="guide_band_arrived">Arrivato a %1$s</string>
+    <string name="guide_band_busUnconfirmed">Autobus</string>
     <string name="guide_band_ended">Guida verso %1$s terminata</string>
     <string name="guide_band_remaining">%2$s rimanenti fino a %1$s</string>
     <string name="guide_band_return">Espandi la scheda guida</string>
@@ -1324,6 +1325,7 @@
     <string name="transitGuide_approachFrame">A %1$s: %2$s.</string>
     <string name="transitGuide_approachingStarted">Tracciamento del veicolo selezionato.</string>
     <string name="transitGuide_approxNote">Approssimato: basato sul veicolo più vicino di questa linea.</string>
+    <string name="transitGuide_approxNoteLanes">Approssimato: basato sul veicolo più vicino della linea consigliata.</string>
     <string name="transitGuide_approxVehicleChanged">Ora si segue un altro veicolo.</string>
     <string name="transitGuide_arrived">Dopo essere sceso, premi Tratta successiva.</string>
     <string name="transitGuide_arrivedAtBoardStop">%1$s è arrivato. Sali ora.</string>
@@ -1361,6 +1363,7 @@
     <string name="transitGuide_changeBoardingDone">Scegli di nuovo il veicolo.</string>
     <string name="transitGuide_context">A bordo della %1$s, scendi a %2$s.</string>
     <string name="transitGuide_contextBus">A bordo dell\'autobus %1$s, scendi a %2$s.</string>
+    <string name="transitGuide_contextBusUnconfirmed">A bordo dell\'autobus, scendi a %1$s.</string>
     <string name="transitGuide_continueWithoutTrain">Continua senza info sul treno</string>
     <string name="transitGuide_currentStation">Ora a %1$s.</string>
     <string name="transitGuide_dataAge">Dati di {1, plural, one {%1$s secondo} other {%1$s secondi}} fa.</string>
@@ -1401,6 +1404,8 @@
     <string name="transitGuide_prewalkUnavailable">Impossibile avviare la guida a piedi; si passa direttamente all\'attesa di salita.</string>
     <string name="transitGuide_reboardCancel">Annulla selezione fermata</string>
     <string name="transitGuide_reboardStationPrompt">A quale fermata ti trovi adesso?</string>
+    <string name="transitGuide_reboardStopCancel">Annulla selezione fermata dell\'autobus</string>
+    <string name="transitGuide_reboardStopPrompt">A quale fermata dell\'autobus ti trovi adesso?</string>
     <string name="transitGuide_refresh">Aggiorna</string>
     <string name="transitGuide_remainingCount">{1, plural, one {%1$s fermata rimanente} other {%1$s fermate rimanenti}}.</string>
     <string name="transitGuide_remainingCountJoin">{1, plural, one {%1$s fermata rimanente} other {%1$s fermate rimanenti}}</string>

@@ -14,6 +14,7 @@ vi.mock("@/lib/transit-track", () => ({
   })),
   trackTago: vi.fn(async () => ({ status: "ok", items: [] })),
   trackSubway: vi.fn(async () => ({ status: "unsupported" })),
+  trackSeoulLanes: vi.fn(async () => ({ status: "ok", routes: [], checked: 0, unverified: 0 })),
   SEOUL_WAIT_ROUTE_SET_MAX: 12,
 }));
 
@@ -21,6 +22,7 @@ import { GET } from "../route";
 import { checkTransitTrackRateLimit } from "@/lib/rate-limit";
 import {
   resolveTagoStop,
+  trackSeoulLanes,
   trackSeoulRide,
   trackSeoulWait,
   trackSubway,
@@ -169,5 +171,69 @@ describe("GET /api/transit/track — lang (E27 잔여 ①, spec 2026-09-01 §3.2
 
     await GET(makeRequest({ mode: "subway", phase: "track", station: "천호", line: "5호선", lang: "en" }));
     expect(vi.mocked(trackSubway).mock.calls.at(-1)?.[0]).toMatchObject({ lang: "en" });
+  });
+});
+
+describe("GET /api/transit/track — E76 후속(재기준 집합 ⓔ·지방버스 집합 ⓓ)", () => {
+  beforeEach(() => {
+    vi.mocked(checkTransitTrackRateLimit).mockReturnValue(true);
+    vi.mocked(trackSeoulLanes).mockClear();
+    vi.mocked(trackTago).mockClear();
+  });
+
+  it("seoulBus lanes: 네 인자를 서비스로 전달하고 mode를 되돌린다", async () => {
+    const res = await GET(
+      makeRequest({ mode: "seoulBus", phase: "lanes", arsId: "13045", boardId: "112000430", alightId: "100000384", routeId: "100100047", lang: "en" }),
+    );
+    expect(res.status).toBe(200);
+    expect((await res.json()).mode).toBe("seoulBus");
+    expect(trackSeoulLanes).toHaveBeenCalledWith({
+      arsId: "13045",
+      boardLocalId: "112000430",
+      alightLocalId: "100000384",
+      routeId: "100100047",
+      lang: "en",
+    });
+  });
+
+  it("seoulBus lanes: 인자 하나라도 없으면 400(서비스 미호출)", async () => {
+    const full = { arsId: "1", boardId: "2", alightId: "3", routeId: "4" };
+    for (const k of Object.keys(full)) {
+      const rest: Record<string, string> = { ...full };
+      delete rest[k];
+      const res = await GET(makeRequest({ mode: "seoulBus", phase: "lanes", ...rest }));
+      expect(res.status).toBe(400);
+    }
+    expect(trackSeoulLanes).not.toHaveBeenCalled();
+  });
+
+  it("seoulBus lanes: 정류소 조회 실패는 502(3-state)", async () => {
+    vi.mocked(trackSeoulLanes).mockRejectedValueOnce(new Error("upstream"));
+    const res = await GET(
+      makeRequest({ mode: "seoulBus", phase: "lanes", arsId: "1", boardId: "2", alightId: "3", routeId: "4" }),
+    );
+    expect(res.status).toBe(502);
+  });
+
+  it("tagoBus track 노선 집합: routeNos를 중복 제거해 전달", async () => {
+    const res = await GET(
+      makeRequest({ mode: "tagoBus", phase: "track", cityCode: "25", nodeId: "DJB1", routeNos: "102,105, 102" }),
+    );
+    expect(res.status).toBe(200);
+    expect(trackTago).toHaveBeenCalledWith({ cityCode: "25", nodeId: "DJB1", routeNos: ["102", "105"], lang: "ko" });
+  });
+
+  it("tagoBus track: routeNo·routeNos 둘 다, 둘 다 없음, 빈 항목, 상한 초과는 400", async () => {
+    const cases: Record<string, string>[] = [
+      { routeNo: "1", routeNos: "1,2" },
+      {},
+      { routeNos: "1,,2" },
+      { routeNos: Array.from({ length: 13 }, (_, i) => `${i}`).join(",") },
+    ];
+    for (const extra of cases) {
+      const res = await GET(makeRequest({ mode: "tagoBus", phase: "track", cityCode: "25", nodeId: "N", ...extra }));
+      expect(res.status).toBe(400);
+    }
+    expect(trackTago).not.toHaveBeenCalled();
   });
 });

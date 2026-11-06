@@ -4,9 +4,15 @@ import type { BusRouteStop, BusStop } from "./types";
 import {
   fetchSeoulRideSlots,
   fetchSeoulRouteStops,
+  fetchSeoulStopRoutes,
   fetchSeoulWaitSlots,
   type SeoulTrackSlot,
 } from "./providers/seoul-bus";
+import { fetchServiceHoursMap } from "./providers/bus-service-hours";
+import { RESERVATION_LANE } from "./providers/odsay";
+import { judgeServiceStatus, kstNowMinutes } from "./service-hours";
+import { toDisplayEnglish } from "./transit-name-en";
+import { SEOUL_WAIT_ROUTE_SET_MAX as WAIT_SET_MAX } from "./transit-guide";
 import { fetchTagoArrivals, fetchTagoStopsNear } from "./providers/tago-bus";
 import {
   fetchSubwayArrivals,
@@ -185,6 +191,146 @@ export async function trackSeoulRide(params: {
   );
 }
 
+/** 재기준 집합(E76 후속 ⓔ)의 경유 정류소 조회 동시 상한 — TOPIS에 한 번에 몰지 않는다(하루 캐시라 대개 캐시 적중). */
+export const SEOUL_LANES_CONCURRENCY = 5;
+
+/** 서울 노선 운행 시간 조회 도시 코드(ODsay busCityCode 서울 = 1000, `fetchServiceHoursMap`이 TOPIS로 보낸다). */
+const SEOUL_CITY_CODE = 1000;
+
+/**
+ * 재기준 집합의 경유 조회 하루 예산(인스턴스 단위, E76 후속 ⓔ 리뷰 M2). **메모리 캐시 뒤에** 둔다 — 적중은 예산을 쓰지 않는다
+ * (앞에 두면 이미 캐시된 노선까지 막는다). 공공데이터포털 개발계정 보수 가정(오퍼레이션당 일 1,000회)의 30%.
+ */
+export const SEOUL_LANES_DAILY_MISS_BUDGET = 300;
+
+const routeStopsMemo = new Map<string, { day: string; stops: BusRouteStop[] }>();
+const routeStopsInFlight = new Map<string, Promise<BusRouteStop[]>>();
+const missBudget = { day: "", used: 0 };
+
+/** KST 날짜 키(하루 캐시·예산의 경계). */
+function kstDay(now: Date): string {
+  return new Date(now.getTime() + 9 * 3_600_000).toISOString().slice(0, 10);
+}
+
+/** 테스트 전용 — 메모리 캐시·예산을 비운다. */
+export function resetSeoulLanesMemoForTest(): void {
+  routeStopsMemo.clear();
+  routeStopsInFlight.clear();
+  missBudget.day = "";
+  missBudget.used = 0;
+}
+
+/**
+ * 노선 경유(재기준 집합용): 메모리 하루 캐시 → 같은 노선 동시 요청 합침 → 예산 → `fetchSeoulRouteStops`(Next 하루 캐시).
+ * 예산 소진은 throw(그 노선은 `unverified`). 실패는 캐시하지 않는다.
+ */
+async function routeStopsForLanes(routeId: string, now: Date): Promise<BusRouteStop[]> {
+  const day = kstDay(now);
+  const memo = routeStopsMemo.get(routeId);
+  if (memo && memo.day === day) return memo.stops;
+  const pending = routeStopsInFlight.get(routeId);
+  if (pending) return pending;
+  if (missBudget.day !== day) {
+    missBudget.day = day;
+    missBudget.used = 0;
+  }
+  if (missBudget.used >= SEOUL_LANES_DAILY_MISS_BUDGET) throw new Error("재기준 집합 경유 조회 예산 소진");
+  missBudget.used++;
+  const p = fetchSeoulRouteStops(routeId)
+    .then((stops) => {
+      routeStopsMemo.set(routeId, { day, stops });
+      return stops;
+    })
+    .finally(() => routeStopsInFlight.delete(routeId));
+  routeStopsInFlight.set(routeId, p);
+  return p;
+}
+
+/**
+ * 재기준 집합 자격(순수): 그 정류소가 노선 경유에 **정확히 한 번** 나오고 그 뒤에 하차 정류소가 온다. 두 번 이상이면(순환·회차)
+ * 사용자가 선 회차를 정류소 ID로 가를 수 없어 뺀다 — `pickAlightOrd`는 첫 회차를 골라 지난 구간을 읽을 수 있다(리뷰 H2).
+ */
+export function reachesAlightOnce(stops: BusRouteStop[], boardLocalId: string, alightLocalId: string): boolean {
+  if (stops.filter((s) => s.nodeId === boardLocalId).length !== 1) return false;
+  return pickAlightOrd(stops, boardLocalId, alightLocalId) != null;
+}
+
+export interface SeoulLaneRoute {
+  routeId: string;
+  lineName: string;
+  lineNameEn?: string;
+}
+
+/** 동시 상한 `limit`으로 차례대로 실행(실패는 항목별 `rejected` — 하나가 전체를 죽이지 않는다). */
+async function settleLimited<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<PromiseSettledResult<R>[]> {
+  const out: PromiseSettledResult<R>[] = new Array(items.length);
+  let next = 0;
+  const worker = async () => {
+    while (next < items.length) {
+      const i = next++;
+      try {
+        out[i] = { status: "fulfilled", value: await fn(items[i]) };
+      } catch (reason) {
+        out[i] = { status: "rejected", reason };
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return out;
+}
+
+/**
+ * 지금 서 있는 정류소 기준 노선 집합(E76 후속 ⓔ, spec `2026-11-07-e76-followup-design.md` §2.3). 그 정류소(`arsId`)에 서는
+ * 노선 중 **지금 노선(`routeId`)을 뺀** 나머지에서, 경유 정류소(하루 캐시)에서 그 정류소(`boardLocalId`) 뒤에 하차 정류소
+ * (`alightLocalId`)가 오는 노선만 낸다(판정 ⓑ와 같은 기준, `pickAlightOrd`). 클라이언트가 `[지금 노선] + routes`로 집합을 만든다.
+ *
+ * 3-state: 정류소 조회 실패는 throw(502 — 단일 노선 대기가 계속된다). 노선 하나의 경유 조회 실패·예산 소진·순환 회차 모호는
+ * 그 노선을 **뺀다**(`unverified`) — 모르면 엉뚱한 곳으로 가는 버스를 고르게 할 수 있다(운행 시간 판정 불가를 남기는 것과
+ * 방향이 반대다).
+ * 운행 시간은 E76 §2.3과 같다(밖으로 **판정된** 노선만 뺀다).
+ */
+export async function trackSeoulLanes(params: {
+  arsId: string;
+  boardLocalId: string;
+  alightLocalId: string;
+  routeId: string;
+  lang: DataLang;
+}): Promise<{ status: "ok"; routes: SeoulLaneRoute[]; checked: number; unverified: number }> {
+  const candidates = (await fetchSeoulStopRoutes(params.arsId)).filter(
+    (r) => r.routeId !== params.routeId && !RESERVATION_LANE.test(r.routeNo),
+  );
+  const now = new Date();
+  const settled = await settleLimited(candidates, SEOUL_LANES_CONCURRENCY, async (r) => {
+    const stops = await routeStopsForLanes(r.routeId, now);
+    const boardCount = stops.filter((s) => s.nodeId === params.boardLocalId).length;
+    // 순환·회차로 두 번 나오면 판정 불가(미확인으로 센다), 안 나오면 이 정류소를 지나지 않는 노선(정상 탈락).
+    if (boardCount > 1) return "ambiguous" as const;
+    return reachesAlightOnce(stops, params.boardLocalId, params.alightLocalId);
+  });
+  let unverified = 0;
+  const reaching = candidates.filter((_, i) => {
+    const r = settled[i];
+    if (r.status === "rejected" || r.value === "ambiguous") {
+      unverified++;
+      return false;
+    }
+    return r.value;
+  });
+  const hours = await fetchServiceHoursMap(
+    reaching.map((r) => ({ localId: r.routeId, cityCode: SEOUL_CITY_CODE, routeNo: r.routeNo })),
+  );
+  const nowMinutes = kstNowMinutes(now);
+  const running = reaching.filter((r) => {
+    const h = hours.get(r.routeId);
+    return !h || judgeServiceStatus(nowMinutes, h.firstMinutes, h.lastMinutes) !== "outside";
+  });
+  const routes = running.slice(0, WAIT_SET_MAX - 1).map((r): SeoulLaneRoute => {
+    const lineNameEn = params.lang === "en" ? toDisplayEnglish(r.routeNo) : undefined;
+    return { routeId: r.routeId, lineName: r.routeNo, ...(lineNameEn ? { lineNameEn } : {}) };
+  });
+  return { status: "ok", routes, checked: candidates.length, unverified };
+}
+
 // === 지방 버스(TAGO 근사) ===
 
 /**
@@ -220,16 +366,21 @@ export async function resolveTagoStop(params: {
   };
 }
 
-/** 대기·카운트다운 공용(같은 도착 API): 그 정류소의 노선 번호 일치 도착만. */
-export async function trackTago(params: {
-  cityCode: string;
-  nodeId: string;
-  routeNo: string;
-  lang: DataLang;
-}): Promise<TransitTrackResult> {
+/**
+ * 대기·카운트다운 공용(같은 도착 API): 그 정류소의 노선 번호 일치 도착만. `routeNos`(E76 후속 ⓓ)를 주면 그 노선들의
+ * 도착을 한 목록으로 — 항목마다 `route`(노선 번호)를 싣고 잔여순으로 정렬한다. TAGO 도착 API는 정류소 전 노선을 한 번에
+ * 주므로 집합 폴도 upstream 호출은 한 번이다. 둘 중 하나만 온다(라우트가 가른다).
+ */
+export async function trackTago(
+  params: { cityCode: string; nodeId: string; lang: DataLang } & (
+    | { routeNo: string; routeNos?: undefined }
+    | { routeNos: string[]; routeNo?: undefined }
+  ),
+): Promise<TransitTrackResult> {
   const arrivals = await fetchTagoArrivals(params.cityCode, params.nodeId);
+  const set = params.routeNos ? new Set(params.routeNos) : null;
   const items = arrivals
-    .filter((a) => a.routeNo === params.routeNo)
+    .filter((a) => (set ? set.has(a.routeNo) : a.routeNo === params.routeNo))
     .map(
       (a): TrackItem => ({
         vehicleId: null, // TAGO는 차량 식별자가 없다(근사, 조사 §1.2)
@@ -243,9 +394,11 @@ export async function trackTago(params: {
         // 자리 표시이고, 빼면 줄 원자성 판정이 "영문 결측"으로 읽어 en 사용자의 지방버스 줄이
         // 전부 한국어로 폴백한다(spec §3.2 행렬).
         ...(params.lang === "en" ? { messageEn: "" } : {}),
+        // 노선 집합 폴(E76 후속 ⓓ)에만 — 단일 노선 폴 응답은 종전과 byte-identical.
+        ...(set ? { route: a.routeNo } : {}),
       }),
     );
-  return withItems(items, arrivals.length);
+  return withItems(set ? sortByRemaining(items) : items, arrivals.length);
 }
 
 // === 지하철(수도권) ===
