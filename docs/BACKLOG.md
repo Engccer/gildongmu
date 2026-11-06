@@ -76,7 +76,7 @@ node scripts/usage-report.mjs   # API 비용·쿼터·키 만료
 
 - [ ] **A72. 안드로이드 게이트가 main에서 실패한다: `:kit` 2건(E76 미러 누락)·`:app` 5건(주소·검색 문구)** (🆕 2026-11-07 branch-intake 세션 발견, base `0ca7d2c3` 임시 worktree로 기존 결함 확인) · 안드로이드 — 중간
 
-`:kit` 테스트의 `TransitTrackServiceTest`(seoulWait `routeId`)·`TransitGuideTextTest`(후보 설명의 노선 번호 순서)가 E76(버스 노선 집합)이 바꾼 공유 fixture·계약을 `:kit`이 따라가지 못해 실패하고, `:app` `testDebugUnitTest` 5건은 `d6832e78`(확정한 한국어 UI 문구)의 주소·검색 문구 변경(「좌표→위치」·「후보→검색 결과」)을 안드로이드 테스트가 따라가지 못해 실패한다. 웹·Kit 레인은 초록이라 조용히 남았다. 처방: E76 판정을 `:kit` 미러로 이식(정본은 웹·Kit, `android/README.md` 이식 관용구)하고 `:app` 테스트 기대 문장을 새 문구로 맞춘다. 안드로이드 화면 동작까지 E76을 따를지는 §4 B14(대중교통 안내 이식) 때 함께 판정하고 이 항목은 게이트 복구까지다.
+`:kit` 테스트의 `TransitTrackServiceTest`(seoulWait `routeId`)·`TransitGuideTextTest`(후보 설명의 노선 번호 순서)가 E76(버스 노선 집합)이 바꾼 공유 fixture·계약을 `:kit`이 따라가지 못해 실패하고, `:app` `testDebugUnitTest` 5건은 `d6832e78`(확정한 한국어 UI 문구)의 주소·검색 문구 변경(「좌표→위치」·「후보→검색 결과」)을 안드로이드 테스트가 따라가지 못해 실패한다. 웹·Kit 레인은 초록이라 조용히 남았다. 처방: E76 판정을 `:kit` 미러로 이식(정본은 웹·Kit, `android/README.md` 이식 관용구)하고 `:app` 테스트 기대 문장을 새 문구로 맞춘다. 안드로이드 화면 동작까지 E76을 따를지는 안드로이드 대중교통 안내 이식(E43 M5, §4 B14와 같은 때) 때 함께 판정하고 이 항목은 게이트 복구까지다.
 
 - [ ] **A70. 재조회로 받은 새 경로가 현재 위치에서 멀리 떨어진 곳에서 시작하고, 다가가는 중이면 끝까지 재조회가 없으며, 이탈 중엔 목적지 옆에 서도 도착이 없다** (🆕 2026-10-18 위원장 실보행 피드백 + 로그 판독, 판정 완료: C 세 층 전부) · 서버 + 웹·iOS·안드로이드 — 높음 · ✅ 코드 종결(2026-10-19, 세션 `a70-reroute`, CHANGELOG 같은 날, spec `2026-10-19-reroute-start-gap-design.md`), 실보행·실주행 판정 대기(§2 A70 행)
 
@@ -1130,7 +1130,7 @@ spec `docs/superpowers/specs/2026-08-29-webmcp-wave2-design.md`(정본). 오전�
 | A25 | 대중교통 안내가 승차역까지의 도보 구간을 건너뛴다 | 2026-08-30 · spec `2026-08-30-transit-prewalk-handoff-design.md`, CHANGELOG 같은 날. 판정은 §2 A25 실승차 행 |
 | B11 | iOS 도착 줄의 ko에는 방향(상행/하행)이 없고 en에는 있다 | 2026-09-19, CHANGELOG 같은 날. 판정은 §2 관찰 항목 B11 방향 낭독 행 |
 | B12 | 웹 채팅 답변에 복사·듣기 버튼 없음 | 2026-09-24 세션 `b12`, CHANGELOG 같은 날. 판정은 §2 관찰 항목 B12 웹 채팅 복사·듣기 행 |
-| E77 | 경유지/자동차 환승 입구를 검색칸 하나 + 확인 질문으로(메뉴 셋 대체) | 2026-11-07 세션 `e77-input` · spec `2026-11-07-e77-unified-waypoint-input-design.md`, CHANGELOG 같은 날. 확정 문안은 `messages/ko.json` `journey.ask*`·`answer*`, 판정은 §2 E70 ⑪ |
+| E77 | 경유지/자동차 환승 입구를 검색칸 하나 + 확인 질문으로(메뉴 셋 대체) | 2026-11-07 세션 `e77-input` · spec `2026-11-07-e77-unified-waypoint-input-design.md`, CHANGELOG 같은 날. 판정·확정 문안은 spec §2(글자 잠금 `JourneyTransferPrompt.test.ts`), 실기기 판정은 §2 E70 ⑪ |
 | E76 | 같은 하차 정류소 버스 노선 전부 보이고 고르기 | 2026-10-31 서버·웹·iOS(스토어 2.5) · spec `2026-10-31-e76-bus-lane-set-design.md`, CHANGELOG 같은 날. 판정은 §2 E76 행, 후속 ⓓⓔⓕ는 §5 E76 후속 |
 | E75 | 도보·자동차 안내 시트: 「경로 새로고침」 버튼 + 「지금 여기는 어디?」 합치기 + E74 졸업 | 2026-10-27 세션 `e75-sheet` · spec `2026-10-27-e75-guide-sheet-refresh-design.md`, CHANGELOG 같은 날. 판정은 §2 E75 행, 안드로이드 이식은 §4 B16 |
 | E74 | 안내 시트 제목 행을 밀기 동작으로: 경유지·목적지 바꾸기·상세(「현재 경로와 다른 길로 가기」는 E75 경로 새로고침으로) | 2026-10-19 세션 `e74-title-actions`(실험판) · 2026-10-27 E75로 정식판 졸업, spec `2026-10-19-e74-guide-title-actions-design.md`, CHANGELOG 두 날짜. 판정은 §2 E75 행, 안드로이드 이식은 §4 B16 |

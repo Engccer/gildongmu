@@ -155,7 +155,7 @@ iOS는 스토어 2.5가, 웹은 `origin/main`이 프로덕션이다. 구현 방�
 
 ⚠ 이 목록은 **명령으로 재확인한다**(`vercel env ls production`). 문서 사본만 믿으면 등록된 키가 빠진 채 낡는다.
 
-⚠ **누락 점검의 술어는 `process\.env\.[A-Z_]+` 스캔이다**(문자열 검색이 아니라). 코드가 읽는 변수 중 위 17개 밖의 것(`PLACES_PROVIDER`·`NEXT_PUBLIC_APP_IDENTIFIER` 등)은 전부 기본값이 있거나 `scripts/` 로컬 전용이라 prod 등록이 불필요하다(2026-11-07 스캔 `grep -rhoE "process\.env\.[A-Z_]+" src packages scripts`로 재대조).
+⚠ **누락 점검의 술어는 `process\.env\.[A-Z_]+` 스캔이다**(문자열 검색이 아니라). 코드가 읽는 변수 중 위 17개 밖의 것(`PLACES_PROVIDER`·`NEXT_PUBLIC_APP_IDENTIFIER` 등)은 전부 기본값이 있거나 로컬 전용(`scripts/`·`src/__ab__`·`src/__realcall__`·CLI/MCP 사용자 측)이라 prod 등록이 불필요하다(2026-11-07 스캔 `grep -rhoE --exclude-dir=node_modules "process\.env\.[A-Z_]+" src packages scripts`로 재대조).
 
 ⚠ **env 변경 후 반드시 재배포** — 키는 배포 시점에 함수로 주입된다(`vercel deploy --prod --yes` 또는 push). 키만 추가하고 재배포하지 않으면 기존 함수는 옛 env를 본다.
 
