@@ -60,7 +60,7 @@
 - 수단 낱말을 자리표시자로 두지 않는 이유: 조사(「지하철을」·「기차를」)가 낱말마다 달라 한 틀에 넣을 수 없다. 문장 하나 = 키 하나(낭독 안내문은 필드 조립이 아니라 문장 쓰기).
 - 질문은 짐작 쪽 `ask*`, 버튼은 **짐작이 첫 버튼**: 짐작 `alight`면 [`answerYesAlight`, `answerNoBoard{수단}`, `answerViaOnly`], 짐작 `board`면 [`answerYesBoard{수단}`, `answerNoAlight{수단}`, `answerViaOnly`].
 - 답 → 칸: `answerYesAlight`·`answerNoAlight*` → 하차 쪽 칸(`alight`), `answerYesBoard*`·`answerNoBoard*` → 승차 쪽 칸(`board`), `answerViaOnly` → 경유지(그 장소를 끝점으로, 최근 경유지 기록 포함).
-- 지운 키는 없다(입구 이름 `addMenu`, 남은 쪽 추가 `addBoardStation`·`addAlightStation`, 빈 칸 이름 `boardField`·`alightField`, 지우기 `clearStations`, `notStation`이 모두 남는다). 안드로이드 문자열 영향 없음.
+- 지운 키는 없다(입구 이름 `addMenu`, 남은 쪽 추가 `addBoardStation`·`addAlightStation`, 빈 칸 이름 `boardField`·`alightField`, 지우기 `clearStations`, `notStation`이 모두 남는다). 안드로이드는 웹 `journey.*`를 생성 문자열로 받으므로 새 키가 생성물(`android/app/src/main/res/values*/strings.xml`·`android/i18n/arg-order.json`)에 추가만 된다 — 안드로이드 화면이 쓰는 키는 없다.
 - 웹 6로케일은 이 ko를 번역한다. iOS 여정 키는 첫 판 관례대로 ko 한 벌(`ios-extra/ko.json`만, 기능이 데이터 로케일 ko 전용).
 - 웹 전용 키 하나: `transferField` 「경유지/자동차 환승」(입구 검색 칸의 이름, §3.1) — **위원장 판정 2026-11-07**(선택지 셋 중 이 문장). iOS 시트 제목은 입구 버튼 이름(`addMenu`)을 쓴다.
 
