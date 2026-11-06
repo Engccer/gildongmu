@@ -7,7 +7,7 @@ import { join } from "node:path";
  * 이름 키와 글자 하나까지 같아야 한다. 같은 앱의 두 창구가 다른 말을 하면 화면을 못 보는 사용자에게 둘이 같은 기능이라는
  * 근거가 없다. 웹 전용 키(아래 목록)만 대응이 없다.
  */
-const WEB_ONLY = new Set(["searchField"]);
+const WEB_ONLY = new Set(["searchField", "transferField"]);
 
 const root = join(__dirname, "../../..");
 const web = JSON.parse(readFileSync(join(root, "messages/ko.json"), "utf8")).journey as Record<string, string>;

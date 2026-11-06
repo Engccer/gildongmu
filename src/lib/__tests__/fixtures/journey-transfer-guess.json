@@ -1,0 +1,12 @@
+{
+  "description": "E77 짐작 판정 공유 fixture — 웹 journeyTransferGuess ↔ Kit journeyTransferGuess. 좌표 null은 그 끝점 좌표 없음.",
+  "cases": [
+    { "name": "출발지가 더 가깝다", "place": { "lat": 37.5577, "lng": 126.9562 }, "origin": { "lat": 37.55, "lng": 126.95 }, "dest": { "lat": 37.571, "lng": 126.976 }, "expected": "board" },
+    { "name": "도착지가 더 가깝다", "place": { "lat": 37.5577, "lng": 126.9562 }, "origin": { "lat": 37.4979, "lng": 127.0276 }, "dest": { "lat": 37.5547, "lng": 126.9707 }, "expected": "alight" },
+    { "name": "거리가 같다(경도 0.5 대칭, 이진 정확)", "place": { "lat": 37.5, "lng": 127.5 }, "origin": { "lat": 37.5, "lng": 127.0 }, "dest": { "lat": 37.5, "lng": 128.0 }, "expected": "board" },
+    { "name": "세 점이 같다", "place": { "lat": 37.5, "lng": 127.0 }, "origin": { "lat": 37.5, "lng": 127.0 }, "dest": { "lat": 37.5, "lng": 127.0 }, "expected": "board" },
+    { "name": "출발지 좌표 없음(도착지가 가까워도)", "place": { "lat": 37.5577, "lng": 126.9562 }, "origin": null, "dest": { "lat": 37.5578, "lng": 126.9563 }, "expected": "board" },
+    { "name": "도착지 좌표 없음", "place": { "lat": 37.5577, "lng": 126.9562 }, "origin": { "lat": 37.4979, "lng": 127.0276 }, "dest": null, "expected": "board" },
+    { "name": "둘 다 없음", "place": { "lat": 37.5577, "lng": 126.9562 }, "origin": null, "dest": null, "expected": "board" }
+  ]
+}
