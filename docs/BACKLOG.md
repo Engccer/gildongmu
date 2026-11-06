@@ -29,7 +29,6 @@ node scripts/usage-report.mjs   # API 비용·쿼터·키 만료
 
 | 묶음 | 항목 | 필요 환경 | 순서 |
 |---|---|---|---|
-| 안드로이드 게이트 복구 | **A72. 안드로이드 게이트가 main에서 실패한다: `:kit` 2건(E76 미러 누락)·`:app` 5건(주소·검색 문구)** | 로컬 필요 | 병행 |
 | 자동차 정체 안내 | **E80. 자동차 경로의 정체 구간·고정식 단속 지점 안내** | 로컬 필요 | 병행 |
 | 버스 노선 집합 후속 | **E76 후속: 지금 서 있는 정류소 기준 노선 목록·지방버스 대기 목록의 노선 전부·「이미 탔어요」 뒤 번호 없는 문장** | 로컬 필요 | 병행 |
 | 대중교통 백그라운드 진행음 | **E79. 대중교통 승차 중 진행 효과음을 백그라운드에서도 낸다**(E36 판정 뒤집기, iOS) | 로컬 필요 | 병행 |
@@ -73,10 +72,6 @@ node scripts/usage-report.mjs   # API 비용·쿼터·키 만료
 ## 1. 결함
 
 있는 기능이 틀린 답을 낸다. **여기가 비면 축 3(도달)부터 다시 본다** — 2026-08-02에 "코드 마일스톤 0"이라는 결론이 그 축의 부재 때문에 틀렸다.
-
-- [ ] **A72. 안드로이드 게이트가 main에서 실패한다: `:kit` 2건(E76 미러 누락)·`:app` 5건(주소·검색 문구)** (🆕 2026-11-07 branch-intake 세션 발견, base `0ca7d2c3` 임시 worktree로 기존 결함 확인) · 안드로이드 — 중간
-
-`:kit` 테스트의 `TransitTrackServiceTest`(seoulWait `routeId`)·`TransitGuideTextTest`(후보 설명의 노선 번호 순서)가 E76(버스 노선 집합)이 바꾼 공유 fixture·계약을 `:kit`이 따라가지 못해 실패하고, `:app` `testDebugUnitTest` 5건은 `d6832e78`(확정한 한국어 UI 문구)의 주소·검색 문구 변경(「좌표→위치」·「후보→검색 결과」)을 안드로이드 테스트가 따라가지 못해 실패한다. 웹·Kit 레인은 초록이라 조용히 남았다. 처방: E76 판정을 `:kit` 미러로 이식(정본은 웹·Kit, `android/README.md` 이식 관용구)하고 `:app` 테스트 기대 문장을 새 문구로 맞춘다. 안드로이드 화면 동작까지 E76을 따를지는 안드로이드 대중교통 안내 이식(E43 M5, §4 B14와 같은 때) 때 함께 판정하고 이 항목은 게이트 복구까지다.
 
 - [ ] **A70. 재조회로 받은 새 경로가 현재 위치에서 멀리 떨어진 곳에서 시작하고, 다가가는 중이면 끝까지 재조회가 없으며, 이탈 중엔 목적지 옆에 서도 도착이 없다** (🆕 2026-10-18 위원장 실보행 피드백 + 로그 판독, 판정 완료: C 세 층 전부) · 서버 + 웹·iOS·안드로이드 — 높음 · ✅ 코드 종결(2026-10-19, 세션 `a70-reroute`, CHANGELOG 같은 날, spec `2026-10-19-reroute-start-gap-design.md`), 실보행·실주행 판정 대기(§2 A70 행)
 
@@ -418,7 +413,7 @@ E51은 위원장 판정으로 iOS에만 먼저 냈다(2026-09-27부터 실험판
 
 - [ ] **B14. 환승 도보 안내(E73)는 iOS에만 있다** (iOS 선행 2026-10-19)
 
-웹은 승차 전 도보 기제(`TransitGuidePanel`의 `prewalk` 상태 + `DistanceBeacon.onSessionEnd`)가 있으나 대중교통 안내를 중간 구간부터 다시 여는 경로가 없고, 안드로이드는 대중교통 실시간 안내가 없다. Kit `TransitTransferWalk.swift`는 등록부에 `pending`. 얹힐 곳: §2 E73 실승차 판정(문턱·출발점 정책이 정해진 뒤 웹 기준본 + 공유 fixture로 옮긴다, spec D13). 안드로이드는 대중교통 안내 이식 때 A69 `transitBusAlightNoticeStep`과 함께.
+웹은 승차 전 도보 기제(`TransitGuidePanel`의 `prewalk` 상태 + `DistanceBeacon.onSessionEnd`)가 있으나 대중교통 안내를 중간 구간부터 다시 여는 경로가 없고, 안드로이드는 대중교통 실시간 안내가 없다. Kit `TransitTransferWalk.swift`는 등록부에 `pending`. 얹힐 곳: §2 E73 실승차 판정(문턱·출발점 정책이 정해진 뒤 웹 기준본 + 공유 fixture로 옮긴다, spec D13). 안드로이드는 대중교통 안내 이식 때 A69 `transitBusAlightNoticeStep`과 함께. 그때 E76 노선 집합도 함께 판정하고, 판정이 따르기로 나면 `:kit`에 아직 없는 Kit 쪽을 옮긴다: 모델 `TransitLane`·`TransitRouteLeg.lanes`·`TransitTrackItem.route`·`TransitGuideLane`·`TransitGuideLeg.lanes` · 판정 `transitGuideLanesOf`·`transitLaneForItem`·`transitLegWithLane` · 표시 `transitLaneLabel`·`transitLaneListLabel`·`TransitDisplayLeg.laneList`(대기 문맥 줄 `waitContext` 노선 목록)·`transitBriefingLineName`·`transitLegUsesEnglish`의 노선 집합 영문 조건 · 조회 `RouteService`의 `lanes=1`(A72가 게이트를 깨던 `seoulWait` `routeIds`·후보 설명 `route`만 먼저 옮겼다).
 
 - [ ] **B16. 안내 시트 제목 행 밀기 동작·「경로 새로고침」·「지금 여기는 어디?」는 iOS에만 있다** (iOS 선행 2026-10-27, 위원장 등록 판정 같은 날)
 
@@ -1105,6 +1100,7 @@ spec `docs/superpowers/specs/2026-08-29-webmcp-wave2-design.md`(정본). 오전�
 
 | 식별자 | 무엇이었나 | 종결 |
 |---|---|---|
+| A72 | 안드로이드 게이트가 main에서 실패한다: `:kit` 2건(E76 미러 누락)·`:app` 5건(주소·검색 문구) | 2026-11-07 세션 `a72-android`, CHANGELOG 같은 날. 화면 동작 판정 없음(테스트·미러 계약만), 남은 E76 `:kit` 미러는 §4 B14 본문 |
 | A71 | 지하철 riding에 버스 A69와 같은 「다음 역 {하차역}에서 내리세요」 지시가 없다 | 2026-11-02, CHANGELOG 같은 날. 판정은 §2 A71 실승차 행 |
 | A69 | 서울버스 하차 통지 「이번 정류장에서 내리세요」가 직전 정류장에 설 때 나간다 | 2026-10-19 세션 `a69-bus-alight`, CHANGELOG 같은 날. 실승차 종결 2026-11-02(위원장 실사용 문제 없음), 안드로이드 ②는 §4 B14 본문의 이식 묶음 |
 | A68 | 승차 전 도보 실패 뒤 [정확한 위치 허용]이 도보만 되살리고 대중교통과 잇지 않는다 | 2026-10-17 세션 `small-16`·`small-17`, CHANGELOG 같은 날. 판정은 §2 A68 실기기 행 |
@@ -1273,7 +1269,7 @@ spec `docs/superpowers/specs/2026-08-29-webmcp-wave2-design.md`(정본). 오전�
 
 ## 다음에 할 일
 
-**2026-11-07 기준**: 코드 종결: E70-f 웹 여정(ko 공개, 11-02) · A71 지하철 하차 지시(11-02, PR #14 수용 11-07) · E77 입구 검색칸 + 확인 질문(웹·iOS 실험판, 11-07). 등재: E78·E79·E80·A72(11-02~07). **iOS 2.5(빌드 36, 아카이브 `b37ec07b`)는 `READY_FOR_SALE` 확인**이라 E76은 스토어판에서 판정된다.
+**2026-11-07 기준**: 코드 종결: E70-f 웹 여정(ko 공개, 11-02) · A71 지하철 하차 지시(11-02, PR #14 수용 11-07) · E77 입구 검색칸 + 확인 질문(웹·iOS 실험판, 11-07) · A72 안드로이드 게이트 복구(11-07). 등재: E78·E79·E80·A72(11-02~07). **iOS 2.5(빌드 36, 아카이브 `b37ec07b`)는 `READY_FOR_SALE` 확인**이라 E76은 스토어판에서 판정된다.
 
 **2026-10-27 기준**: 14차 소화(계획 `docs/superpowers/plans/2026-10-27-backlog-sweep-14-parallel-plan.md` §6에 세션별 통합 SHA)가 끝났다. 코드 종결: E75 안내 시트 경로 새로고침·「지금 여기는 어디?」(E74 제목 행 정식판 졸업 포함) · E70-e 버스 정류장도 갈아탈 곳으로(iOS 실험판) · E71 지금 탄 열차에서 출발(iOS 실험판). 판정은 §2 각 행. **iOS 2.3(빌드 34, 아카이브 `4649c02e`)은 2026-10-27 `READY_FOR_SALE` 확인**이라 13차 정식판 도달분(A69·A70 앱 층·E73)은 스토어판에서 판정된다.
 
