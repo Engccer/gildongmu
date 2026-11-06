@@ -133,6 +133,7 @@
 - **소리와 음성은 같은 청각 채널이다 — 톤 뒤 발화 계약**(`speechDeferStep`, Kit `GuideSpeechGate.swift` ↔ 웹 `guide-speech-gate.ts`, 단일 슬롯 latest-wins). 새 통지 경로는 `announce` 창구를 지나야 한다 — 직접 게시 금지. → INTEGRATIONS
 - **대중교통 승차 추세 톤은 이벤트 소유가 신뢰 불가보다 앞이고, 앵커는 "마지막으로 전달된 잔여"다**(E15 ②, `transitToneStep` ↔ `transit-guide-tone.ts`; 도보 순서로 되돌리지 말 것). → INTEGRATIONS
 - **버스 노선 집합(E76)은 첫 항목이 leg 자신이고, 후보를 고르면 세션 leg를 그 노선으로 바꾼 뒤 잠근다**(`legWithLane` ↔ Kit `transitLegWithLane`, `board` 전): `lanes`는 옵트인 `lanes=1`, 대기 폴은 `routeId`·`routeIds` 중 하나이고 집합 폴만 `route`를 싣는다. 노선별 문장 분기를 따로 두지 말 것. → INTEGRATIONS
+- **서울버스 승차 중 정류장 재선택은 leg 교체이고(`legFromStop` ↔ Kit, 표시 인덱스 금지), 근사 잠금 ∧ 노선 미확정이면 번호 대신 「버스」다**(E76 후속, 유도 술어 `rideLineUnconfirmed`, `contextLine` 셋째 인자 필수). 재기준 집합(`phase=lanes`)의 경유 조회 예산은 메모리 캐시 뒤, 지방버스 승차 중 폴은 추천 노선 하나. → INTEGRATIONS §버스 정류장 재기준
 - **승차 후보의 활성화 차단 술어는 `unreachable` 하나이고 급행 판정은 ID가 정본이다**(A16 L1 `expressVerdict`, 그 외 `unknown`). 근사 잠금은 `needsExpressPrompt`로 묻고, 출구 번호는 확정 도착·하차역 행에만. → INTEGRATIONS
 - **소리를 낸 직후 세션을 끝내면 그 소리가 잘린다 — 순서가 아니라 대기가 답이다**(`BeaconTonePlayer.endSession()`이 잔여 시간만큼 원복을 미루고, `beginSession()`은 그 예약을 취소, `shutdown()`은 즉시 원복). 전경에선 증상이 없다. → INTEGRATIONS
 - **오디오 재생기는 셋(도보·대중교통·나들이)이고 미뤄진 원복은 최신 소유자에게 이전된다**(`.ownershipTransferred`). route 변경 `.categoryChange`는 현재 세션 값 == 적용값 대조로 자기 메아리만 거른다(전면 필터 금지). → INTEGRATIONS

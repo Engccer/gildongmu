@@ -486,7 +486,7 @@ export function useTransitGuide(
 
   /**
    * 서울버스 정류장 재기준(E76 후속 ⓔ)의 되돌림 원본과 세대. `snapshot`은 승차 중 [탑승 변경] 직전의 leg(집합 포함)이고
-   * 취소가 그것을 되돌린다. 재기준을 여러 번 해도 원본은 처음 것 하나다. 승차 중에 다시 [탑승 변경]을 누르면 새로 잡는다.
+   * 취소가 그것을 되돌린다. 정류장 질문은 승차 중에만 나오므로 [탑승 변경] 한 번에 재기준도 한 번이고, 다음 [탑승 변경]이 새로 잡는다.
    * `gen`은 `phase=lanes` 응답의 결박 — 다른 정류장을 고르거나 세션이 바뀌면 오른다.
    */
   const reanchorRef = useRef<{ legIndex: number; snapshot: TransitGuideLeg; gen: number } | null>(null);
