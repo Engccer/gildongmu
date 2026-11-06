@@ -16,7 +16,7 @@ class ChatStrings(
     val progressSearching: (String) -> String,
     /** 도구 카테고리 라벨. 미지 키는 원문 그대로(iOS 동형). */
     val toolLabel: (String) -> String,
-    /** 지오코딩 0건 — "좌표를 찾지 못해". */
+    /** 지오코딩 0건 — "위치를 확인하지 못해". */
     val addressNotFound: () -> String,
     /** 지오코딩 조회 실패 — "확인하지 못했습니다"(3-state: 없음 ≠ 실패). */
     val addressLookupFailed: () -> String,
