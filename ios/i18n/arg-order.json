@@ -492,6 +492,36 @@
   "ios.journey.accessFailedWith": [
     "reason"
   ],
+  "ios.journey.answerNoAlightBus": [
+    "place"
+  ],
+  "ios.journey.answerNoAlightRail": [
+    "place"
+  ],
+  "ios.journey.answerNoAlightSubway": [
+    "place"
+  ],
+  "ios.journey.answerNoBoardBus": [
+    "place"
+  ],
+  "ios.journey.answerNoBoardRail": [
+    "place"
+  ],
+  "ios.journey.answerNoBoardSubway": [
+    "place"
+  ],
+  "ios.journey.answerYesAlight": [
+    "place"
+  ],
+  "ios.journey.answerYesBoardBus": [
+    "place"
+  ],
+  "ios.journey.answerYesBoardRail": [
+    "place"
+  ],
+  "ios.journey.answerYesBoardSubway": [
+    "place"
+  ],
   "ios.journey.arrivedExit": [
     "exit"
   ],
@@ -500,6 +530,24 @@
   ],
   "ios.journey.arrivedStop": [
     "stop"
+  ],
+  "ios.journey.askAlightBus": [
+    "place"
+  ],
+  "ios.journey.askAlightRail": [
+    "place"
+  ],
+  "ios.journey.askAlightSubway": [
+    "place"
+  ],
+  "ios.journey.askBoardBus": [
+    "place"
+  ],
+  "ios.journey.askBoardRail": [
+    "place"
+  ],
+  "ios.journey.askBoardSubway": [
+    "place"
   ],
   "ios.journey.designatedHeading": [
     "station"
@@ -582,6 +630,9 @@
   ],
   "ios.journey.stationPlace": [
     "station"
+  ],
+  "ios.journey.stopPlace": [
+    "stop"
   ],
   "ios.journey.taxiIn": [
     "station",
@@ -835,6 +886,36 @@
   "ios.transitGuide.destChangeHeading": [
     "name"
   ],
+  "journey.answerNoAlightBus": [
+    "place"
+  ],
+  "journey.answerNoAlightRail": [
+    "place"
+  ],
+  "journey.answerNoAlightSubway": [
+    "place"
+  ],
+  "journey.answerNoBoardBus": [
+    "place"
+  ],
+  "journey.answerNoBoardRail": [
+    "place"
+  ],
+  "journey.answerNoBoardSubway": [
+    "place"
+  ],
+  "journey.answerYesAlight": [
+    "place"
+  ],
+  "journey.answerYesBoardBus": [
+    "place"
+  ],
+  "journey.answerYesBoardRail": [
+    "place"
+  ],
+  "journey.answerYesBoardSubway": [
+    "place"
+  ],
   "journey.arrivedExit": [
     "exit"
   ],
@@ -843,6 +924,24 @@
   ],
   "journey.arrivedStop": [
     "stop"
+  ],
+  "journey.askAlightBus": [
+    "place"
+  ],
+  "journey.askAlightRail": [
+    "place"
+  ],
+  "journey.askAlightSubway": [
+    "place"
+  ],
+  "journey.askBoardBus": [
+    "place"
+  ],
+  "journey.askBoardRail": [
+    "place"
+  ],
+  "journey.askBoardSubway": [
+    "place"
   ],
   "journey.designatedHeading": [
     "station"
@@ -928,6 +1027,9 @@
   ],
   "journey.stationPlace": [
     "station"
+  ],
+  "journey.stopPlace": [
+    "stop"
   ],
   "journey.taxiIn": [
     "station",

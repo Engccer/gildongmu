@@ -460,3 +460,27 @@ public func journeyAboardDirections(_ arrivals: [SubwayArrival], line: String) -
 public func journeyAboardTrainItems(_ items: [TransitTrackItem], direction: String) -> [TransitTrackItem] {
     items.filter { $0.direction == direction }
 }
+
+// MARK: 입구 검색 짐작(E77 판정 3 — 웹 `journeyTransferGuess` 미러, 공유 fixture `journey-transfer-guess.json`)
+
+/// 입구 검색에서 고른 역·정류장이 어느 쪽 갈아탈 곳인가: `.board`(자동차로 이동하다가 그 장소에서 대중교통으로, 승차 쪽 칸) /
+/// `.alight`(대중교통을 이용하다가 그 장소에서 내려 자동차로, 하차 쪽 칸).
+public enum JourneyTransferSide: Sendable, Equatable {
+    case board, alight
+}
+
+/// 질문·버튼 문장의 수단 낱말: 지하철역 `.subway`, 기차역 `.rail`, 버스 정류장 `.bus`.
+public enum JourneyTransferMode: Sendable, Equatable {
+    case subway, rail, bus
+}
+
+/// 출발지·도착지 좌표가 둘 다 있고 도착지까지 직선거리가 엄격히 더 짧을 때만 `.alight`, 그 밖은 `.board`.
+public func journeyTransferGuess(
+    placeLat: Double, placeLng: Double,
+    origin: (lat: Double, lng: Double)?, dest: (lat: Double, lng: Double)?
+) -> JourneyTransferSide {
+    guard let origin, let dest else { return .board }
+    let toOrigin = haversineMeters(lat1: placeLat, lng1: placeLng, lat2: origin.lat, lng2: origin.lng)
+    let toDest = haversineMeters(lat1: placeLat, lng1: placeLng, lat2: dest.lat, lng2: dest.lng)
+    return toDest < toOrigin ? .alight : .board
+}

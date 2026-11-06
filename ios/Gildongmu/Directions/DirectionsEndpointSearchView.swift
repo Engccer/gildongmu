@@ -24,6 +24,8 @@ final class EndpointSearchModel {
     private var isGeocodingInFlight = false
     /// 역 칸(E70) — 주소 후보를 담지 않는다. 건수 통지·0건 판정·첫 후보 착지가 보이는 후보 기준이 된다.
     var stationsOnly = false
+    /// 정류장 줄을 찾는가 — 역 칸(`stationsOnly`)과 입구 검색(E77 `.transfer`, 주소 후보도 있어 `stationsOnly`는 거짓)이 켠다.
+    var searchesStops = false
     /// 역 칸의 정류장 줄(E70-e spec §3). 정류장 이름 검색은 제출 때 장소 검색과 병렬로 돌고, 거리는 근접 블렌딩과 같은 기준점에서 잰다.
     struct StopRow: Identifiable {
         let hit: JourneyStopHit
@@ -130,6 +132,7 @@ final class EndpointSearchModel {
         showsNoBusData = false
         showsPlacesFailure = false
         stationsOnly = true
+        searchesStops = false
         stopOrigin = nil
         stopDest = nil
     }
@@ -146,7 +149,7 @@ final class EndpointSearchModel {
 
     /// 역 칸 + 두 글자 이상 + 알려진 좌표가 있을 때만 정류장 검색을 한다. 던지면 실패 한 줄(미유도 지역은 `unsearched`가 따로 말한다).
     private func searchStops(_ text: String, reference: (lat: Double, lng: Double)?) async -> StopSearchOutcome? {
-        guard stationsOnly, Self.stopQueryLengths.contains(text.count), stopOrigin != nil || stopDest != nil else { return nil }
+        guard searchesStops, Self.stopQueryLengths.contains(text.count), stopOrigin != nil || stopDest != nil else { return nil }
         do {
             let result = try await routeService.journeyStops(query: text, origin: stopOrigin, dest: stopDest)
             var rows = result.stops.map { hit in
@@ -209,6 +212,9 @@ struct DirectionsEndpointSearchView: View {
     /// 출발지 칸의 「지금 탄 열차에서 출발」(E71)의 결과 — 역을 장소 그대로 돌려준다(노선 힌트가 필요하다). 실험판 여정 입력이 설 때만
     /// 값이 있고, 없으면 출발지 시트에 그 행이 없다.
     let onSelectAboardStation: ((RecentStation) -> Void)?
+    /// 입구 검색(E77 `.transfer`)의 결과 — 역 장소 줄이나 정류장 줄을 골랐을 때 수단 낱말과 함께 넘긴다(질문은 시트가 닫힌 뒤 길찾기
+    /// 화면이 띄운다). 그 밖(장소·주소·최근)은 `onSelect`로 경유지다. `.transfer` 대상에서만 쓰인다.
+    let onSelectTransfer: ((RecentStation, JourneyTransferMode) -> Void)?
     /// 정류장 이름 검색의 지역 근거(E70-e) — 길찾기 화면의 출발·도착 중 알려진 좌표. 역 칸 대상에서만 쓰인다.
     let stopOrigin: (lat: Double, lng: Double)?
     let stopDest: (lat: Double, lng: Double)?
@@ -219,6 +225,7 @@ struct DirectionsEndpointSearchView: View {
         self.onSelect = onSelect
         self.onSelectStation = nil
         self.onSelectAboardStation = nil
+        self.onSelectTransfer = nil
         self.stopOrigin = nil
         self.stopDest = nil
     }
@@ -228,12 +235,14 @@ struct DirectionsEndpointSearchView: View {
         target: DirectionsFieldTarget, onSelect: @escaping (DirectionsEndpoint) -> Void,
         onSelectStation: @escaping (RecentStation) -> Void,
         onSelectAboardStation: ((RecentStation) -> Void)?,
+        onSelectTransfer: ((RecentStation, JourneyTransferMode) -> Void)?,
         stopOrigin: (lat: Double, lng: Double)?, stopDest: (lat: Double, lng: Double)?
     ) {
         self.target = target
         self.onSelect = onSelect
         self.onSelectStation = onSelectStation
         self.onSelectAboardStation = onSelectAboardStation
+        self.onSelectTransfer = onSelectTransfer
         self.stopOrigin = stopOrigin
         self.stopDest = stopDest
     }
@@ -248,7 +257,7 @@ struct DirectionsEndpointSearchView: View {
     private var recentScope: RecentEndpointScope {
         switch target {
         case .from: .from
-        case .via: .via  // 경유지 전용 목록(N4) — 도착지 목록과 섞지 않는다
+        case .via, .transfer: .via  // 경유지 전용 목록(N4) — 도착지 목록과 섞지 않는다
         case .to, .manualLocation: .to
         case .boardStation, .alightStation: .to  // 역 칸은 최근 목록을 보이지 않는다(`isStationTarget`)
         }
@@ -257,6 +266,8 @@ struct DirectionsEndpointSearchView: View {
     /// 역 칸(E70) — 최근 끝점·주소 후보를 보이지 않는다(분류가 없어 역인지 알 수 없다, spec §5.1). 반복 여정은 최근 경로가
     /// 통째로 복원한다.
     private var isStationTarget: Bool { target == .boardStation || target == .alightStation }
+    /// 입구 검색(E77) — 경유지/자동차 환승 칸. 최근 경유지·주소 후보가 있고 정류장 줄도 돈다.
+    private var isTransferTarget: Bool { target == .transfer }
     /// 지금 탄 열차 역 검색 모드(E71) — 출발지 시트가 그 자리에서 바뀐다(닫았다 다시 띄우면 그 사이 커서가 최상단으로 떨어진다).
     /// 최근 목록·주소 후보·현재 위치 행이 없고 지하철역만 받는다는 점이 역 칸과 같아 목록 조건은 둘을 함께 본다.
     @State private var aboardMode = false
@@ -457,6 +468,7 @@ struct DirectionsEndpointSearchView: View {
             }
             .task {
                 model.stationsOnly = isStationTarget
+                model.searchesStops = isStationTarget || isTransferTarget
                 model.stopOrigin = stopOrigin
                 model.stopDest = stopDest
                 searchFieldFocused = true
@@ -479,6 +491,8 @@ struct DirectionsEndpointSearchView: View {
                 selectAboardStation(place)
             } else if isStationTarget {
                 selectStation(place)
+            } else if isTransferTarget {
+                selectTransferPlace(place)
             } else {
                 select(.place(label: place.name, lat: place.lat, lng: place.lng, labelRoman: place.nameRoman))
             }
@@ -577,6 +591,7 @@ struct DirectionsEndpointSearchView: View {
         case .to: appLocalized("directions.searchTo")
         case .via: appLocalized("directions.searchVia")
         case .manualLocation: appLocalized("manualLocation.pickTitle")
+        case .transfer: appLocalized("ios.journey.addMenu")
         case .boardStation: appLocalized("ios.journey.boardField")
         case .alightStation: appLocalized("ios.journey.alightField")
         }
@@ -614,8 +629,29 @@ struct DirectionsEndpointSearchView: View {
     }
 
     /// 정류장 칸(E70-e): 이름은 원문 그대로, 노선 힌트 없음.
+    /// 입구 검색(E77)의 stop 줄은 질문 대상이고(수단 낱말 「버스」), 역 칸의 stop 줄은 종전대로 칸 확정이다.
     private func selectStop(_ hit: JourneyStopHit) {
-        onSelectStation?(RecentStation(label: hit.name, lat: hit.lat, lng: hit.lng, line: nil, kind: .busStop))
+        let station = RecentStation(label: hit.name, lat: hit.lat, lng: hit.lng, line: nil, kind: .busStop)
+        if isTransferTarget {
+            onSelectTransfer?(station, .bus)
+        } else {
+            onSelectStation?(station)
+        }
+        dismiss()
+    }
+
+    /// 입구 검색(E77)의 장소 줄: 지하철·철도역이면 확정하지 않고 질문 대상으로 넘기고, 그 밖은 종전 경유지 확정이다.
+    private func selectTransferPlace(_ place: Place) {
+        let mode: JourneyTransferMode
+        switch stationLayoutKind(place) {
+        case .subway: mode = .subway
+        case .rail: mode = .rail
+        case nil:
+            select(.place(label: place.name, lat: place.lat, lng: place.lng, labelRoman: place.nameRoman))
+            return
+        }
+        onSelectTransfer?(RecentStation(
+            label: place.name, lat: place.lat, lng: place.lng, line: journeyLineHint(place), kind: nil), mode)
         dismiss()
     }
 

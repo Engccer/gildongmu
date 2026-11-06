@@ -459,6 +459,36 @@
     "direction",
     "distance"
   ],
+  "journey.answerNoAlightBus": [
+    "place"
+  ],
+  "journey.answerNoAlightRail": [
+    "place"
+  ],
+  "journey.answerNoAlightSubway": [
+    "place"
+  ],
+  "journey.answerNoBoardBus": [
+    "place"
+  ],
+  "journey.answerNoBoardRail": [
+    "place"
+  ],
+  "journey.answerNoBoardSubway": [
+    "place"
+  ],
+  "journey.answerYesAlight": [
+    "place"
+  ],
+  "journey.answerYesBoardBus": [
+    "place"
+  ],
+  "journey.answerYesBoardRail": [
+    "place"
+  ],
+  "journey.answerYesBoardSubway": [
+    "place"
+  ],
   "journey.arrivedExit": [
     "exit"
   ],
@@ -467,6 +497,24 @@
   ],
   "journey.arrivedStop": [
     "stop"
+  ],
+  "journey.askAlightBus": [
+    "place"
+  ],
+  "journey.askAlightRail": [
+    "place"
+  ],
+  "journey.askAlightSubway": [
+    "place"
+  ],
+  "journey.askBoardBus": [
+    "place"
+  ],
+  "journey.askBoardRail": [
+    "place"
+  ],
+  "journey.askBoardSubway": [
+    "place"
   ],
   "journey.designatedHeading": [
     "station"
@@ -552,6 +600,9 @@
   ],
   "journey.stationPlace": [
     "station"
+  ],
+  "journey.stopPlace": [
+    "stop"
   ],
   "journey.taxiIn": [
     "station",
@@ -1266,6 +1317,36 @@
   "android.journey.accessFailedWith": [
     "reason"
   ],
+  "android.journey.answerNoAlightBus": [
+    "place"
+  ],
+  "android.journey.answerNoAlightRail": [
+    "place"
+  ],
+  "android.journey.answerNoAlightSubway": [
+    "place"
+  ],
+  "android.journey.answerNoBoardBus": [
+    "place"
+  ],
+  "android.journey.answerNoBoardRail": [
+    "place"
+  ],
+  "android.journey.answerNoBoardSubway": [
+    "place"
+  ],
+  "android.journey.answerYesAlight": [
+    "place"
+  ],
+  "android.journey.answerYesBoardBus": [
+    "place"
+  ],
+  "android.journey.answerYesBoardRail": [
+    "place"
+  ],
+  "android.journey.answerYesBoardSubway": [
+    "place"
+  ],
   "android.journey.arrivedExit": [
     "exit"
   ],
@@ -1274,6 +1355,24 @@
   ],
   "android.journey.arrivedStop": [
     "stop"
+  ],
+  "android.journey.askAlightBus": [
+    "place"
+  ],
+  "android.journey.askAlightRail": [
+    "place"
+  ],
+  "android.journey.askAlightSubway": [
+    "place"
+  ],
+  "android.journey.askBoardBus": [
+    "place"
+  ],
+  "android.journey.askBoardRail": [
+    "place"
+  ],
+  "android.journey.askBoardSubway": [
+    "place"
   ],
   "android.journey.designatedHeading": [
     "station"
@@ -1356,6 +1455,9 @@
   ],
   "android.journey.stationPlace": [
     "station"
+  ],
+  "android.journey.stopPlace": [
+    "stop"
   ],
   "android.journey.taxiIn": [
     "station",

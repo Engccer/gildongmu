@@ -230,18 +230,9 @@ describe("E70-d 입력 메뉴 하나와 「자동차」 문장(위원장 판정 
     expect(taxiRo.map(([k]) => k)).toEqual(["egressStand"]);
   });
 
-  it("판정 28: 경유지도 역도 없으면 메뉴 하나에 항목 셋이 이 순서다", () => {
-    const menu = form.match(/Menu\(appLocalized\("ios\.journey\.addMenu"\)\) \{([\s\S]*?)\n\s*\}\n/);
-    expect(menu).not.toBeNull();
-    const items = [...menu![1].matchAll(/Button\(appLocalized\("([^"]+)"\)\) \{ searchTarget = \.(\w+) \}/g)].map((m) => [m[1], m[2]]);
-    expect(items).toEqual([
-      ["directions.addVia", "via"],
-      ["ios.journey.addBoardStation", "boardStation"],
-      ["ios.journey.addAlightStation", "alightStation"],
-    ]);
-    // 메뉴는 실험판·ko 조건 안에서만, 그 밖엔 종전 일반 「경유지 추가」 버튼이다
+  it("판정 28(E77): 경유지도 역도 없으면 입구는 검색 시트를 여는 버튼 하나다 — 메뉴 없음", () => {
     expect(form).toMatch(
-      /if journeyInputEnabled \{\s*\/\/[^\n]*\n\s*Menu\(appLocalized\("ios\.journey\.addMenu"\)\)[\s\S]*?\} else \{\s*Button\(appLocalized\("directions\.addVia"\)\) \{ searchTarget = \.via \}/,
+      /if journeyInputEnabled \{\s*\/\/[^\n]*\n(?:\s*\/\/[^\n]*\n)*\s*Button\(appLocalized\("ios\.journey\.addMenu"\)\) \{ searchTarget = \.transfer \}\s*\.accessibilityFocused\(\$focusedEndpointField, equals: \.via\)\s*\} else \{\s*Button\(appLocalized\("directions\.addVia"\)\) \{ searchTarget = \.via \}/,
     );
     expect(body(tab, "journeyInputEnabled")).toContain('AppConfig.experimentalJourneyEnabled && AppLanguage.dataLocale == "ko"');
     expect(body(tab, "showsStationFields")).toContain("journeyInputEnabled && model.hasJourneyStations");
@@ -256,8 +247,8 @@ describe("E70-d 입력 메뉴 하나와 「자동차」 문장(위원장 판정 
     expect(form).toMatch(
       /if model\.boardStation == nil \{\s*Button\(appLocalized\("ios\.journey\.addBoardStation"\)\) \{ searchTarget = \.boardStation \}\s*\} else if model\.alightStation == nil \{\s*Button\(appLocalized\("ios\.journey\.addAlightStation"\)\) \{ searchTarget = \.alightStation \}\s*\}/,
     );
-    // 메뉴는 하나뿐이다(항목 하나짜리 메뉴를 만들지 않는다)
-    expect(form.match(/Menu\(/g)).toHaveLength(1);
+    // 입구는 메뉴가 아니다(E77 — 시트 하나가 경유지와 환승을 함께 받는다)
+    expect(form.match(/Menu\(/g)).toBeNull();
     // 빈 칸을 미리 펼치는 상태가 없다
     expect(tab).not.toMatch(/journeyExpanded|setJourneyExpanded|ios\.journey\.toggle/);
     // 역이 서면 경유지를 비운다(D14)

@@ -22561,6 +22561,136 @@
         }
       }
     },
+    "ios.journey.alightFieldStation": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "자동차를 탈 역"
+          }
+        }
+      }
+    },
+    "ios.journey.alightFieldStop": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "자동차를 탈 정류장"
+          }
+        }
+      }
+    },
+    "ios.journey.answerNoAlightBus": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "아니요, 버스를 이용하다가 %1$@에서 내려 자동차로 환승합니다"
+          }
+        }
+      }
+    },
+    "ios.journey.answerNoAlightRail": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "아니요, 기차를 이용하다가 %1$@에서 내려 자동차로 환승합니다"
+          }
+        }
+      }
+    },
+    "ios.journey.answerNoAlightSubway": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "아니요, 지하철을 이용하다가 %1$@에서 내려 자동차로 환승합니다"
+          }
+        }
+      }
+    },
+    "ios.journey.answerNoBoardBus": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "아니요, 자동차로 이동하다가 %1$@에서 버스로 환승합니다"
+          }
+        }
+      }
+    },
+    "ios.journey.answerNoBoardRail": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "아니요, 자동차로 이동하다가 %1$@에서 기차로 환승합니다"
+          }
+        }
+      }
+    },
+    "ios.journey.answerNoBoardSubway": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "아니요, 자동차로 이동하다가 %1$@에서 지하철로 환승합니다"
+          }
+        }
+      }
+    },
+    "ios.journey.answerViaOnly": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "아니요, 환승하지 않고 경유만 합니다"
+          }
+        }
+      }
+    },
+    "ios.journey.answerYesAlight": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "네, %1$@에서 자동차로 환승합니다"
+          }
+        }
+      }
+    },
+    "ios.journey.answerYesBoardBus": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "네, %1$@에서 버스로 환승합니다"
+          }
+        }
+      }
+    },
+    "ios.journey.answerYesBoardRail": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "네, %1$@에서 기차로 환승합니다"
+          }
+        }
+      }
+    },
+    "ios.journey.answerYesBoardSubway": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "네, %1$@에서 지하철로 환승합니다"
+          }
+        }
+      }
+    },
     "ios.journey.arrivedExit": {
       "localizations": {
         "ko": {
@@ -22601,12 +22731,92 @@
         }
       }
     },
+    "ios.journey.askAlightBus": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "버스를 이용하다가 %1$@에서 내려 자동차로 환승하실 예정인가요?"
+          }
+        }
+      }
+    },
+    "ios.journey.askAlightRail": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "기차를 이용하다가 %1$@에서 내려 자동차로 환승하실 예정인가요?"
+          }
+        }
+      }
+    },
+    "ios.journey.askAlightSubway": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "지하철을 이용하다가 %1$@에서 내려 자동차로 환승하실 예정인가요?"
+          }
+        }
+      }
+    },
+    "ios.journey.askBoardBus": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "자동차로 이동하다가 %1$@에서 버스로 환승하실 예정인가요?"
+          }
+        }
+      }
+    },
+    "ios.journey.askBoardRail": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "자동차로 이동하다가 %1$@에서 기차로 환승하실 예정인가요?"
+          }
+        }
+      }
+    },
+    "ios.journey.askBoardSubway": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "자동차로 이동하다가 %1$@에서 지하철로 환승하실 예정인가요?"
+          }
+        }
+      }
+    },
     "ios.journey.boardField": {
       "localizations": {
         "ko": {
           "stringUnit": {
             "state": "translated",
             "value": "자동차에서 내리는 역/정류장"
+          }
+        }
+      }
+    },
+    "ios.journey.boardFieldStation": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "자동차에서 내리는 역"
+          }
+        }
+      }
+    },
+    "ios.journey.boardFieldStop": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "자동차에서 내리는 정류장"
           }
         }
       }
@@ -22867,6 +23077,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "%1$@역"
+          }
+        }
+      }
+    },
+    "ios.journey.stopPlace": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ 정류장"
           }
         }
       }
@@ -34171,6 +34391,526 @@
         }
       }
     },
+    "journey.alightFieldStation": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "자동차를 탈 역"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Station where you take a car"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estación donde toma un coche"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gare où vous prenez une voiture"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stazione dove prende un'auto"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "車に乗る駅"
+          }
+        }
+      }
+    },
+    "journey.alightFieldStop": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "자동차를 탈 정류장"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stop where you take a car"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Parada donde toma un coche"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arrêt où vous prenez une voiture"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fermata dove prende un'auto"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "車に乗る停留所"
+          }
+        }
+      }
+    },
+    "journey.answerNoAlightBus": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "아니요, 버스를 이용하다가 %1$@에서 내려 자동차로 환승합니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No, I'll take the bus, get off at %1$@, and switch to a car"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No, voy en autobús, bajo en %1$@ y cambio a coche"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non, je prends le bus, je descends à %1$@ et je continue en voiture"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No, prendo l'autobus, scendo a %1$@ e proseguo in auto"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "いいえ、バスで%1$@まで行き、降りて車に乗り換えます"
+          }
+        }
+      }
+    },
+    "journey.answerNoAlightRail": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "아니요, 기차를 이용하다가 %1$@에서 내려 자동차로 환승합니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No, I'll take the train, get off at %1$@, and switch to a car"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No, voy en tren, bajo en %1$@ y cambio a coche"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non, je prends le train, je descends à %1$@ et je continue en voiture"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No, prendo il treno, scendo a %1$@ e proseguo in auto"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "いいえ、列車で%1$@まで行き、降りて車に乗り換えます"
+          }
+        }
+      }
+    },
+    "journey.answerNoAlightSubway": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "아니요, 지하철을 이용하다가 %1$@에서 내려 자동차로 환승합니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No, I'll take the subway, get off at %1$@, and switch to a car"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No, voy en metro, bajo en %1$@ y cambio a coche"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non, je prends le métro, je descends à %1$@ et je continue en voiture"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No, prendo la metro, scendo a %1$@ e proseguo in auto"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "いいえ、地下鉄で%1$@まで行き、降りて車に乗り換えます"
+          }
+        }
+      }
+    },
+    "journey.answerNoBoardBus": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "아니요, 자동차로 이동하다가 %1$@에서 버스로 환승합니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No, I'll go by car and switch to the bus at %1$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No, voy en coche y cambio al autobús en %1$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non, je roule en voiture puis je prends le bus à %1$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No, vado in auto e prendo l'autobus a %1$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "いいえ、車で移動し、%1$@でバスに乗り換えます"
+          }
+        }
+      }
+    },
+    "journey.answerNoBoardRail": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "아니요, 자동차로 이동하다가 %1$@에서 기차로 환승합니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No, I'll go by car and switch to the train at %1$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No, voy en coche y cambio al tren en %1$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non, je roule en voiture puis je prends le train à %1$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No, vado in auto e prendo il treno a %1$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "いいえ、車で移動し、%1$@で列車に乗り換えます"
+          }
+        }
+      }
+    },
+    "journey.answerNoBoardSubway": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "아니요, 자동차로 이동하다가 %1$@에서 지하철로 환승합니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No, I'll go by car and switch to the subway at %1$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No, voy en coche y cambio al metro en %1$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non, je roule en voiture puis je prends le métro à %1$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No, vado in auto e prendo la metro a %1$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "いいえ、車で移動し、%1$@で地下鉄に乗り換えます"
+          }
+        }
+      }
+    },
+    "journey.answerViaOnly": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "아니요, 환승하지 않고 경유만 합니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No, I'll just stop by without switching"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No, solo paso por allí sin cambiar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non, je passe seulement par là sans changer"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No, passo soltanto di lì senza cambiare"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "いいえ、乗り換えずに経由するだけです"
+          }
+        }
+      }
+    },
+    "journey.answerYesAlight": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "네, %1$@에서 자동차로 환승합니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yes, I'll switch to a car at %1$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sí, cambio a coche en %1$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oui, je continue en voiture à %1$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sì, proseguo in auto da %1$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "はい、%1$@で車に乗り換えます"
+          }
+        }
+      }
+    },
+    "journey.answerYesBoardBus": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "네, %1$@에서 버스로 환승합니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yes, I'll switch to the bus at %1$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sí, cambio al autobús en %1$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oui, je prends le bus à %1$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sì, prendo l'autobus a %1$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "はい、%1$@でバスに乗り換えます"
+          }
+        }
+      }
+    },
+    "journey.answerYesBoardRail": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "네, %1$@에서 기차로 환승합니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yes, I'll switch to the train at %1$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sí, cambio al tren en %1$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oui, je prends le train à %1$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sì, prendo il treno a %1$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "はい、%1$@で列車に乗り換えます"
+          }
+        }
+      }
+    },
+    "journey.answerYesBoardSubway": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "네, %1$@에서 지하철로 환승합니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yes, I'll switch to the subway at %1$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sí, cambio al metro en %1$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oui, je prends le métro à %1$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sì, prendo la metro a %1$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "はい、%1$@で地下鉄に乗り換えます"
+          }
+        }
+      }
+    },
     "journey.arrivedExit": {
       "localizations": {
         "ko": {
@@ -34331,6 +35071,246 @@
         }
       }
     },
+    "journey.askAlightBus": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "버스를 이용하다가 %1$@에서 내려 자동차로 환승하실 예정인가요?"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Will you take the bus, get off at %1$@, and switch to a car?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Irá en autobús, bajará en %1$@ y cambiará a coche?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allez-vous prendre le bus, descendre à %1$@ et continuer en voiture ?"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prenderà l'autobus, scenderà a %1$@ e proseguirà in auto?"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "バスで%1$@まで行き、降りて車に乗り換える予定ですか？"
+          }
+        }
+      }
+    },
+    "journey.askAlightRail": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "기차를 이용하다가 %1$@에서 내려 자동차로 환승하실 예정인가요?"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Will you take the train, get off at %1$@, and switch to a car?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Irá en tren, bajará en %1$@ y cambiará a coche?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allez-vous prendre le train, descendre à %1$@ et continuer en voiture ?"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prenderà il treno, scenderà a %1$@ e proseguirà in auto?"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "列車で%1$@まで行き、降りて車に乗り換える予定ですか？"
+          }
+        }
+      }
+    },
+    "journey.askAlightSubway": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "지하철을 이용하다가 %1$@에서 내려 자동차로 환승하실 예정인가요?"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Will you take the subway, get off at %1$@, and switch to a car?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Irá en metro, bajará en %1$@ y cambiará a coche?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allez-vous prendre le métro, descendre à %1$@ et continuer en voiture ?"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prenderà la metro, scenderà a %1$@ e proseguirà in auto?"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "地下鉄で%1$@まで行き、降りて車に乗り換える予定ですか？"
+          }
+        }
+      }
+    },
+    "journey.askBoardBus": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "자동차로 이동하다가 %1$@에서 버스로 환승하실 예정인가요?"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Will you go by car and switch to the bus at %1$@?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Irá en coche y cambiará al autobús en %1$@?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allez-vous rouler en voiture puis prendre le bus à %1$@ ?"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Andrà in auto e prenderà l'autobus a %1$@?"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "車で移動し、%1$@でバスに乗り換える予定ですか？"
+          }
+        }
+      }
+    },
+    "journey.askBoardRail": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "자동차로 이동하다가 %1$@에서 기차로 환승하실 예정인가요?"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Will you go by car and switch to the train at %1$@?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Irá en coche y cambiará al tren en %1$@?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allez-vous rouler en voiture puis prendre le train à %1$@ ?"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Andrà in auto e prenderà il treno a %1$@?"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "車で移動し、%1$@で列車に乗り換える予定ですか？"
+          }
+        }
+      }
+    },
+    "journey.askBoardSubway": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "자동차로 이동하다가 %1$@에서 지하철로 환승하실 예정인가요?"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Will you go by car and switch to the subway at %1$@?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Irá en coche y cambiará al metro en %1$@?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allez-vous rouler en voiture puis prendre le métro à %1$@ ?"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Andrà in auto e prenderà la metro a %1$@?"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "車で移動し、%1$@で地下鉄に乗り換える予定ですか？"
+          }
+        }
+      }
+    },
     "journey.boardField": {
       "localizations": {
         "ko": {
@@ -34367,6 +35347,86 @@
           "stringUnit": {
             "state": "translated",
             "value": "車を降りる駅・停留所"
+          }
+        }
+      }
+    },
+    "journey.boardFieldStation": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "자동차에서 내리는 역"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Station where you leave the car"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estación donde deja el coche"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gare où vous quittez la voiture"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stazione dove lascia l'auto"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "車を降りる駅"
+          }
+        }
+      }
+    },
+    "journey.boardFieldStop": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "자동차에서 내리는 정류장"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stop where you leave the car"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Parada donde deja el coche"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arrêt où vous quittez la voiture"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fermata dove lascia l'auto"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "車を降りる停留所"
           }
         }
       }
@@ -35411,6 +36471,46 @@
         }
       }
     },
+    "journey.stopPlace": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ 정류장"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ stop"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "parada %1$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "arrêt %1$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "fermata %1$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@停留所"
+          }
+        }
+      }
+    },
     "journey.stopSearchFailed": {
       "localizations": {
         "ko": {
@@ -35727,6 +36827,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "合計%1$@分、タクシー料金約%2$@ウォン、公共交通料金%3$@ウォン"
+          }
+        }
+      }
+    },
+    "journey.transferField": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "경유지/자동차 환승"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stop or car transfer"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Parada o transbordo en coche"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Étape ou changement en voiture"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tappa o cambio in auto"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "経由地・車の乗り換え"
           }
         }
       }

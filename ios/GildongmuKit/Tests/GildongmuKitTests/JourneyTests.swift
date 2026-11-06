@@ -246,6 +246,29 @@ private let allEvents: [JourneyEvent] =
         }
     }
 
+    // MARK: 입구 검색 짐작(E77 — 공유 fixture 전수)
+
+    private struct GuessFile: Decodable {
+        struct Pt: Decodable { let lat: Double; let lng: Double }
+        struct Case: Decodable { let name: String; let place: Pt; let origin: Pt?; let dest: Pt?; let expected: String }
+        let cases: [Case]
+    }
+
+    @Test func transferGuessSharedFixture() throws {
+        var url = URL(fileURLWithPath: #filePath)
+        for _ in 0..<5 { url.deleteLastPathComponent() }
+        url.appendPathComponent("src/lib/__tests__/fixtures/journey-transfer-guess.json")
+        let file = try JSONDecoder().decode(GuessFile.self, from: Data(contentsOf: url))
+        #expect(file.cases.count == 7)
+        for c in file.cases {
+            let got = journeyTransferGuess(
+                placeLat: c.place.lat, placeLng: c.place.lng,
+                origin: c.origin.map { (lat: $0.lat, lng: $0.lng) },
+                dest: c.dest.map { (lat: $0.lat, lng: $0.lng) })
+            #expect((got == .alight ? "alight" : "board") == c.expected, "\(c.name)")
+        }
+    }
+
     @Test func displayNameExtraCases() {
         #expect(journeyStationDisplayName("인천공항1터미널역 공항철도") == "인천공항1터미널")
     }

@@ -41,8 +41,17 @@ struct DirectionsPrefill: Equatable {
 enum DirectionsFieldTarget: String, Identifiable {
     /// `boardStation`·`alightStation`은 자동차로 갈아탈 역 칸(E70, 실험판) — 검색 시트가 끝점이 아니라 장소(`Place`)를
     /// 돌려준다(역인지 판정·노선 힌트에 분류가 필요하다, spec §5.1).
-    case from, to, via, manualLocation, boardStation, alightStation
+    /// `transfer`는 입구 검색(E77) — 경유지/자동차 환승 칸 하나. 칸은 확정되기 전엔 없고(검색 시트만), 고른 장소가 역·정류장이면 질문을 거쳐
+    /// 역 칸이나 경유지가 된다.
+    case from, to, via, manualLocation, boardStation, alightStation, transfer
     var id: String { rawValue }
+}
+
+/// 입구 검색(E77)에서 고른 역·정류장과 그 질문의 짐작(시트가 닫힐 때 정해 두어 답 버튼 순서가 흔들리지 않는다).
+struct PendingTransfer: Equatable {
+    let station: RecentStation
+    let mode: JourneyTransferMode
+    let guess: JourneyTransferSide
 }
 
 /// 수단별 15초 타임아웃(웹 AbortController 15_000 미러). 초과·상위 취소 시 하위 요청도 취소.
@@ -247,7 +256,7 @@ final class DirectionsModel {
         case .from: from
         case .to, .manualLocation: to
         case .via: via
-        case .boardStation, .alightStation: nil  // 역 칸은 끝점이 아니다(`boardStation`·`alightStation`)
+        case .boardStation, .alightStation, .transfer: nil  // 역 칸·입구 검색은 끝점이 아니다
         }
     }
 
@@ -391,7 +400,7 @@ final class DirectionsModel {
     /// 필드 확정은 항상 엔드포인트 전체 교체(원자). 이전 결과는 새 질의와 무관해져 폐기.
     func setEndpoint(_ endpoint: DirectionsEndpoint, for target: DirectionsFieldTarget) {
         switch target {
-        case .via: setVia(endpoint); return
+        case .via, .transfer: setVia(endpoint); return  // 입구 검색의 비역 장소·주소·최근은 경유지(E77)
         case .from: clearAboard(); from = endpoint  // 지금 탄 열차는 출발지 칸의 값이라 다른 끝점이 들어오면 사라진다(R12)
         case .to, .manualLocation: to = endpoint
         case .boardStation, .alightStation: return  // 역 칸은 장소 경로(`setJourneyStation`)만 받는다
@@ -431,6 +440,7 @@ final class DirectionsModel {
     func swap() {
         guard aboardOrigin == nil else { return }  // 지금 탄 열차는 출발지 전용이라 도착지와 바꿀 수 없다(R12 — 화면은 항목을 숨긴다)
         (from, to) = (to, from)
+        (boardStation, alightStation) = (alightStation, boardStation)  // 출발↔도착이 뒤집히면 역 칸의 방향도 뒤집힌다(웹 swapFields 동형)
         clearResults()
     }
 
@@ -1094,6 +1104,12 @@ struct DirectionsTabView: View {
     @AccessibilityFocusState private var focusedEndpointField: DirectionsFieldTarget?
     @AccessibilityFocusState private var submitFocused: Bool
     @State private var focusAfterResolve: DirectionsFieldTarget?
+    /// 입구 검색(E77)에서 역·정류장을 골라 답을 기다리는 값. 시트가 닫히면 질문이 서고, 답·취소가 비운다.
+    @State private var pendingTransfer: PendingTransfer?
+    /// 질문 대화상자 표시. 내용은 `pendingTransfer`가 정하고, 답 버튼은 대기를 먼저 비우므로 닫힘 처리가 취소와 답을 가른다.
+    @State private var showTransferQuestion = false
+    /// 마지막 질문의 내용 — 답으로 대기가 비워진 뒤에도 닫히는 동안 문장이 비지 않게 남긴다.
+    @State private var lastTransferAsk: PendingTransfer?
     /// 지금 탄 열차 역을 고른 뒤 커서를 단계 줄(방면·노선 질문 또는 그 자리의 상태 문장)로 보낼 표식(E71).
     @State private var aboardStationPicked = false
     /// 역을 고른 뒤 단계 줄 착지가 끝나기 전 — 그 사이에 방면 조회가 끝나면 착지가 끝날 때 처리한다.
@@ -1178,12 +1194,9 @@ struct DirectionsTabView: View {
                         }
                     } else if !isAboardOrigin, !showsStationFields {
                         if journeyInputEnabled {
-                            // 항목은 검색 시트를 바로 연다. 취소하면 아무것도 바뀌지 않는다(칸은 확정 때만 생긴다).
-                            Menu(appLocalized("ios.journey.addMenu")) {
-                                Button(appLocalized("directions.addVia")) { searchTarget = .via }
-                                Button(appLocalized("ios.journey.addBoardStation")) { searchTarget = .boardStation }
-                                Button(appLocalized("ios.journey.addAlightStation")) { searchTarget = .alightStation }
-                            }
+                            // 입구 검색(E77): 시트 하나가 경유지와 자동차 환승을 함께 받는다. 역·정류장을 고르면 시트가 닫힌 뒤 질문이 선다.
+                            // 취소하면 아무것도 바뀌지 않는다(칸은 확정 때만 생긴다).
+                            Button(appLocalized("ios.journey.addMenu")) { searchTarget = .transfer }
                                 .accessibilityFocused($focusedEndpointField, equals: .via)
                         } else {
                             Button(appLocalized("directions.addVia")) { searchTarget = .via }
@@ -1444,7 +1457,25 @@ struct DirectionsTabView: View {
                     model.startAboard(station: station)
                     aboardStationPicked = true
                     beginAboardLanding()
-                } : nil, stopOrigin: endpointCoordinate(model.from), stopDest: endpointCoordinate(model.to))
+                } : nil, onSelectTransfer: { station, mode in
+                    // 입구 검색(E77) — 확정하지 않고 대기에 담는다. 질문은 시트가 닫힌 뒤(`onChange(of: searchTarget)`) 선다.
+                    pendingTransfer = PendingTransfer(
+                        station: station, mode: mode,
+                        guess: journeyTransferGuess(
+                            placeLat: station.lat, placeLng: station.lng,
+                            origin: endpointCoordinate(model.from), dest: endpointCoordinate(model.to)))
+                }, stopOrigin: endpointCoordinate(model.from), stopDest: endpointCoordinate(model.to))
+            }
+            .confirmationDialog(
+                transferQuestionText, isPresented: $showTransferQuestion, titleVisibility: .visible
+            ) {
+                transferQuestionButtons
+            }
+            .onChange(of: showTransferQuestion) { _, shown in
+                // 답 없이 닫힘(시스템 취소·바깥 탭) — 아무것도 바꾸지 않고 입구 버튼으로 돌아간다. 답은 먼저 대기를 비운다.
+                guard !shown, pendingTransfer != nil else { return }
+                pendingTransfer = nil
+                landFocus(on: .via)
             }
             // 안내 시트(비콘·대중교통)는 여기 없다 — 세션이 앱 수명이라 루트
             // `GildongmuApp`이 `.sheet(item:)` 하나로 띄운다(N1 spec §2.2).
@@ -1488,6 +1519,10 @@ struct DirectionsTabView: View {
                 beacon.outputSuppressed = searchTarget != nil
                 transitGuide.outputSuppressed = searchTarget != nil
                 guard searchTarget == nil else { return }
+                if pendingTransfer != nil {
+                    presentTransferQuestion()
+                    return
+                }
                 if aboardStationPicked {
                     aboardStationPicked = false
                     focusAfterResolve = nil
@@ -1899,6 +1934,100 @@ struct DirectionsTabView: View {
         }
     }
 
+    /// 입구 검색의 질문이 설 차례 — 시트 dismiss 애니메이션이 끝난 뒤여야 같은 계층에서 대화상자가 뜬다(`landFocusAfterResolve`와 같은
+    /// 시간차 근거).
+    private func presentTransferQuestion() {
+        guard let ask = pendingTransfer else { return }
+        lastTransferAsk = ask
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(450))
+            guard pendingTransfer == ask else { return }
+            showTransferQuestion = true
+        }
+    }
+
+    /// 칸 하나로 지연 착지(지연 → 대입 → 검증 → 1회 재시도) — 시트가 아니라 대화상자가 닫힌 뒤에도 시스템이 커서를 되돌리므로 같은 패턴이다.
+    private func landFocus(on target: DirectionsFieldTarget) {
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(400))
+            focusedEndpointField = target
+            try? await Task.sleep(for: .milliseconds(600))
+            guard focusedEndpointField != target else { return }
+            focusedEndpointField = target
+        }
+    }
+
+    private func answerTransfer(_ ask: PendingTransfer, board: Bool?) {
+        pendingTransfer = nil
+        if let board {
+            model.setJourneyStation(ask.station, board: board)
+            landFocusAfterResolve(from: board ? .boardStation : .alightStation)
+        } else {
+            model.setVia(.place(label: ask.station.label, lat: ask.station.lat, lng: ask.station.lng, labelRoman: nil))
+            landFocus(on: .via)
+        }
+    }
+
+    private func transferPlaceName(_ ask: PendingTransfer) -> String {
+        ask.station.kind == .busStop
+            ? appLocalized("ios.journey.stopPlace", ask.station.label)
+            : appLocalized("ios.journey.stationPlace", journeyStationDisplayName(ask.station.label))
+    }
+
+    /// 질문 문장(짐작 쪽). 키는 호출마다 리터럴이다(카탈로그 키 린터가 보간 키를 참조로 세지 못한다).
+    private var transferQuestionText: String {
+        guard let ask = pendingTransfer ?? lastTransferAsk else { return "" }
+        let place = transferPlaceName(ask)
+        switch (ask.guess, ask.mode) {
+        case (.alight, .subway): return appLocalized("ios.journey.askAlightSubway", place)
+        case (.alight, .rail): return appLocalized("ios.journey.askAlightRail", place)
+        case (.alight, .bus): return appLocalized("ios.journey.askAlightBus", place)
+        case (.board, .subway): return appLocalized("ios.journey.askBoardSubway", place)
+        case (.board, .rail): return appLocalized("ios.journey.askBoardRail", place)
+        case (.board, .bus): return appLocalized("ios.journey.askBoardBus", place)
+        }
+    }
+
+    /// 버튼 순서: 짐작이 첫 버튼, 그다음 반대편, 마지막이 경유만(spec §2.3). 취소는 시스템 기본 버튼이 맡는다.
+    @ViewBuilder
+    private var transferQuestionButtons: some View {
+        if let ask = pendingTransfer ?? lastTransferAsk {
+            let place = transferPlaceName(ask)
+            if ask.guess == .alight {
+                Button(appLocalized("ios.journey.answerYesAlight", place)) { answerTransfer(ask, board: false) }
+                Button(transferNoBoardText(ask, place)) { answerTransfer(ask, board: true) }
+            } else {
+                Button(transferYesBoardText(ask, place)) { answerTransfer(ask, board: true) }
+                Button(transferNoAlightText(ask, place)) { answerTransfer(ask, board: false) }
+            }
+            Button(appLocalized("ios.journey.answerViaOnly")) { answerTransfer(ask, board: nil) }
+        }
+    }
+
+    private func transferYesBoardText(_ ask: PendingTransfer, _ place: String) -> String {
+        switch ask.mode {
+        case .subway: appLocalized("ios.journey.answerYesBoardSubway", place)
+        case .rail: appLocalized("ios.journey.answerYesBoardRail", place)
+        case .bus: appLocalized("ios.journey.answerYesBoardBus", place)
+        }
+    }
+
+    private func transferNoBoardText(_ ask: PendingTransfer, _ place: String) -> String {
+        switch ask.mode {
+        case .subway: appLocalized("ios.journey.answerNoBoardSubway", place)
+        case .rail: appLocalized("ios.journey.answerNoBoardRail", place)
+        case .bus: appLocalized("ios.journey.answerNoBoardBus", place)
+        }
+    }
+
+    private func transferNoAlightText(_ ask: PendingTransfer, _ place: String) -> String {
+        switch ask.mode {
+        case .subway: appLocalized("ios.journey.answerNoAlightSubway", place)
+        case .rail: appLocalized("ios.journey.answerNoAlightRail", place)
+        case .bus: appLocalized("ios.journey.answerNoAlightBus", place)
+        }
+    }
+
     /// 웹 `focusAfterResolve` 계약의 iOS 판: 출발지를 고르면 도착지 입력으로,
     /// 도착지·경유지를 고르면 조회 버튼으로 보낸다(셋 다 "다음에 할 일"이다). 갈아탈 역은 새로 생긴 그 칸으로 보낸다(E70).
     ///
@@ -2074,10 +2203,15 @@ struct DirectionsTabView: View {
     /// 역 칸 한 줄 = 한 객체(E70): "칸 이름, 역 이름". 칸은 역이 정해졌을 때만 그려진다.
     private func stationFieldText(_ target: DirectionsFieldTarget) -> String {
         // 키는 호출마다 리터럴로 쓴다 — 삼항을 호출 안에 넣으면 카탈로그 키 린터가 참조로 세지 못한다.
+        // 채운 칸 이름은 종류별(역/정류장, E77 §3.3) — 칸은 값이 정해졌을 때만 그려진다.
         if target == .boardStation {
-            return joinText(appLocalized("ios.journey.boardField"), model.boardStation?.label)
+            let name = model.boardStation?.kind == .busStop
+                ? appLocalized("ios.journey.boardFieldStop") : appLocalized("ios.journey.boardFieldStation")
+            return joinText(name, model.boardStation?.label)
         }
-        return joinText(appLocalized("ios.journey.alightField"), model.alightStation?.label)
+        let name = model.alightStation?.kind == .busStop
+            ? appLocalized("ios.journey.alightFieldStop") : appLocalized("ios.journey.alightFieldStation")
+        return joinText(name, model.alightStation?.label)
     }
 
     /// 역 칸 비우기(밀기 「삭제」). 비운 칸은 사라지므로 커서를 남는 요소로 선점한다(헌장 §5): 다른 칸이 남으면 그 칸,
