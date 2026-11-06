@@ -80,9 +80,16 @@ import { TransitGuidePanel } from "./TransitGuidePanel";
 import { buildTransitGuideRoute } from "@/lib/transit-guide";
 import { VoiceRecordButton } from "./VoiceRecordButton";
 import { KoTail, langFor, useBilingualName } from "./BilingualName";
-import { JourneyStationField } from "./JourneyStationField";
+import { JourneyStationField, searchStopCandidates, type StopCandidate } from "./JourneyStationField";
+import {
+  JourneyTransferDialog,
+  type JourneyTransferAnswer,
+  type JourneyTransferQuestion,
+} from "./JourneyTransferDialog";
+import { journeyTransferGuess } from "@/lib/journey/transfer-guess";
+import { stationLayoutKind } from "@/lib/station-phone";
 import { JourneyResultView } from "./JourneyResult";
-import { recentJourneyLabel, type JourneyStationPick } from "@/lib/journey/journey-lines";
+import { journeyLineHint, recentJourneyLabel, type JourneyStationPick } from "@/lib/journey/journey-lines";
 
 type ModeKey = DirectionsModeKey;
 
@@ -503,14 +510,23 @@ export function DirectionsView({
    */
   const [boardSlot, setBoardSlot] = useState<JourneySlot>(null);
   const [alightSlot, setAlightSlot] = useState<JourneySlot>(null);
-  /** 「경유지/자동차 환승 추가」 disclosure 펼침. */
-  const [addMenuOpen, setAddMenuOpen] = useState(false);
+  /**
+   * 「경유지/자동차 환승 추가」 disclosure가 펼친 입구 검색 칸(E77 spec §3.1). 경유지나 갈아탈 곳이 서면 입구 자체가 없으므로
+   * 접힌 것으로 되돌린다(다시 비면 버튼만 선다).
+   */
+  const [transferOpen, setTransferOpen] = useState(false);
+  const [transferField, setTransferField] = useState<FieldState>({ text: "", resolved: null });
+  /** 입구 칸에서 고른 역·정류장의 확인 질문(E77 판정 3). 열려 있는 동안만 값이 있다. */
+  const [transferQuestion, setTransferQuestion] = useState<JourneyTransferQuestion | null>(null);
+  const transferEntryRef = useRef<HTMLButtonElement>(null);
+  const transferInputRef = useRef<HTMLInputElement | null>(null);
   const boardInputRef = useRef<HTMLInputElement | null>(null);
   const alightInputRef = useRef<HTMLInputElement | null>(null);
   const journeyHeadingRef = useRef<HTMLHeadingElement>(null);
   const tJourney = useTranslations("journey");
   const journeyEnabled = canPlanJourney && !prefersEnglish(locale);
   const hasJourneySlots = journeyEnabled && (boardSlot !== null || alightSlot !== null);
+  if (transferOpen && (viaField !== null || hasJourneySlots)) setTransferOpen(false);
   const [phase, setPhase] = useState<Phase>({ kind: "idle" });
   const [results, setResults] = useState<QueryResults | null>(null);
   // 대중교통 경로 disclosure(W3C APG)의 펼침 상태. 키는 배열 인덱스도 표시
@@ -1586,7 +1602,8 @@ export function DirectionsView({
     const alight = journeyEnabled ? (r.alight ?? null) : null;
     setBoardSlot(board ? { pick: board } : null);
     setAlightSlot(alight ? { pick: alight } : null);
-    setAddMenuOpen(false);
+    setTransferOpen(false);
+    setTransferQuestion(null);
     if (r.from) setRecentFrom(recordRecentEndpoint("from", r.from));
     if (r.to) setRecentTo(recordRecentEndpoint("to", r.to));
     if (r.via) setRecentVia(recordRecentEndpoint("via", r.via));
@@ -1630,14 +1647,12 @@ export function DirectionsView({
 
   /** 경유지 칸을 연다(종전 「경유지 추가」와 메뉴 항목 공용) — 그 자리가 입력으로 바뀌므로 새 입력으로 선점 이동(헌장 §5). */
   function openVia() {
-    setAddMenuOpen(false);
     setViaField({ text: "", resolved: null });
     requestAnimationFrame(() => viaInputRef.current?.focus());
   }
 
   /** 갈아탈 곳 칸을 연다(E70-f) — 누른 버튼이 사라지므로 새 칸의 입력으로 선점 이동한다. 경유지와 배타(D14). */
   function openJourneySlot(side: "board" | "alight") {
-    setAddMenuOpen(false);
     if (side === "board") setBoardSlot((prev) => prev ?? { pick: null });
     else setAlightSlot((prev) => prev ?? { pick: null });
     requestAnimationFrame(() => (side === "board" ? boardInputRef : alightInputRef).current?.focus());
@@ -1650,6 +1665,46 @@ export function DirectionsView({
     setBoardSlot(null);
     setAlightSlot(null);
     discardResults();
+  }
+
+  /** 경유지 확정(종전 경유지 칸 확정과 같은 경로 — 최근 경유지 기록, 안내 정지, 결과 버림). 입구 칸과 경유지 칸이 함께 쓴다. */
+  function resolveVia(ep: DirEndpoint) {
+    if (stopActiveGuideSession()) announce(tBeacon("stopped"));
+    if (ep.kind === "place") {
+      setRecentVia(recordRecentEndpoint("via", recentOf(ep)));
+    }
+    setViaField(endpointToField(ep, currentLabel));
+    discardResults();
+  }
+
+  /** 입구 칸에서 역·정류장을 골랐다 — 앱이 짐작한 쪽으로 확인 질문을 연다(E77 판정 3). 아직 아무것도 바꾸지 않는다. */
+  function askTransfer(pick: JourneyStationPick, mode: JourneyTransferQuestion["mode"], roman: string | null) {
+    const guess = journeyTransferGuess({ lat: pick.lat, lng: pick.lng }, journeyStopRefs.origin, journeyStopRefs.dest);
+    setTransferQuestion({ pick, mode, guess, roman });
+  }
+
+  /** 질문에 답했다 — 그 줄을 세우고 커서를 새 줄의 입력으로(판정 5). 대화상자는 이미 닫혔다(모달 inert 해제 뒤). */
+  function answerTransfer(answer: JourneyTransferAnswer) {
+    const q = transferQuestion;
+    setTransferQuestion(null);
+    if (!q) return;
+    setTransferOpen(false);
+    if (answer === "via") {
+      resolveVia(placeEndpoint(q.pick.label, { lat: q.pick.lat, lng: q.pick.lng }, q.roman));
+      requestAnimationFrame(() => viaInputRef.current?.focus());
+      return;
+    }
+    if (stopActiveGuideSession()) announce(tBeacon("stopped"));
+    if (answer === "board") setBoardSlot({ pick: q.pick });
+    else setAlightSlot({ pick: q.pick });
+    discardResults();
+    requestAnimationFrame(() => (answer === "board" ? boardInputRef : alightInputRef).current?.focus());
+  }
+
+  /** 질문을 닫았다 — 아무것도 바꾸지 않고(검색 칸·후보 그대로) 입구 버튼으로 커서를 돌린다. */
+  function dismissTransfer() {
+    setTransferQuestion(null);
+    transferEntryRef.current?.focus();
   }
 
   /** 정류장 이름 검색의 기준 좌표 — 출발·도착 칸의 확정 좌표(현재 위치면 스토어의 신선한 좌표). */
@@ -1781,14 +1836,7 @@ export function DirectionsView({
               setViaField({ text, resolved: null });
               discardResults();
             }}
-            onResolve={(ep) => {
-              if (stopActiveGuideSession()) announce(tBeacon("stopped"));
-              if (ep.kind === "place") {
-                setRecentVia(recordRecentEndpoint("via", recentOf(ep)));
-              }
-              setViaField(endpointToField(ep, currentLabel));
-              discardResults();
-            }}
+            onResolve={resolveVia}
             registerInput={(el) => {
               viaInputRef.current = el;
             }}
@@ -1833,7 +1881,13 @@ export function DirectionsView({
           {boardSlot && (
             <JourneyStationField
               key="journey-board"
-              label={tJourney("boardField")}
+              label={
+                boardSlot.pick
+                  ? boardSlot.pick.kind === "stop"
+                    ? tJourney("boardFieldStop")
+                    : tJourney("boardFieldStation")
+                  : tJourney("boardField")
+              }
               value={boardSlot.pick}
               onResolve={(pick) => {
                 if (stopActiveGuideSession()) announce(tBeacon("stopped"));
@@ -1857,7 +1911,13 @@ export function DirectionsView({
           {alightSlot && (
             <JourneyStationField
               key="journey-alight"
-              label={tJourney("alightField")}
+              label={
+                alightSlot.pick
+                  ? alightSlot.pick.kind === "stop"
+                    ? tJourney("alightFieldStop")
+                    : tJourney("alightFieldStation")
+                  : tJourney("alightField")
+              }
               value={alightSlot.pick}
               onResolve={(pick) => {
                 if (stopActiveGuideSession()) announce(tBeacon("stopped"));
@@ -1897,29 +1957,71 @@ export function DirectionsView({
           </div>
         </>
       ) : journeyEnabled ? (
-        // 「경유지/자동차 환승 추가」(E70-d 판정 28의 웹 판, spec §3): disclosure 버튼 + 항목 셋. ARIA menu 역할은 쓰지 않는다.
+        // 「경유지/자동차 환승 추가」(E77 spec §3): disclosure 버튼이 끝점 칸과 같은 검색 칸 하나를 펼친다. 역·정류장을 고르면
+        // 확인 질문, 그 밖은 질문 없이 경유지. 다시 누르면 접힌다(검색 취소 — 아무것도 바뀌지 않는다).
         <div>
           <button
             type="button"
-            aria-expanded={addMenuOpen}
-            onClick={() => setAddMenuOpen((v) => !v)}
+            ref={transferEntryRef}
+            aria-expanded={transferOpen}
+            onClick={() => {
+              const opening = !transferOpen;
+              setTransferOpen(opening);
+              if (opening) setTransferField({ text: "", resolved: null });
+              if (opening) requestAnimationFrame(() => transferInputRef.current?.focus());
+            }}
             className={secondaryActionClass}
           >
             <MapPinPlus aria-hidden="true" className="h-4 w-4" />
             {tJourney("addMenu")}
           </button>
-          {addMenuOpen && (
-            <div className="ml-4 flex flex-col items-start">
-              <button type="button" onClick={openVia} className="min-h-11 text-sm underline">
-                {t("addVia")}
-              </button>
-              <button type="button" onClick={() => openJourneySlot("board")} className="min-h-11 text-sm underline">
-                {tJourney("addBoardStation")}
-              </button>
-              <button type="button" onClick={() => openJourneySlot("alight")} className="min-h-11 text-sm underline">
-                {tJourney("addAlightStation")}
-              </button>
-            </div>
+          {transferOpen && (
+            <EndpointField
+              label={tJourney("transferField")}
+              searchLabel={tJourney("searchField", { field: tJourney("transferField") })}
+              field={transferField}
+              onTextChange={(text) => setTransferField({ text, resolved: null })}
+              onResolve={(ep) => {
+                setTransferOpen(false);
+                resolveVia(ep);
+              }}
+              registerInput={(el) => {
+                transferInputRef.current = el;
+              }}
+              focusAfterResolve={() => submitRef.current?.focus()}
+              announce={announce}
+              locale={locale}
+              t={t}
+              recentEndpoints={recentVia}
+              onDeleteRecent={(e) => {
+                const next = removeRecentEndpoint("via", e);
+                setRecentVia(next);
+                return next;
+              }}
+              onClearRecent={() => {
+                const kept = clearRecentEndpoints("via");
+                setRecentVia(kept);
+                return kept;
+              }}
+              onTogglePinRecent={(e, pinned) => {
+                setRecentEndpointPinned("via", e, pinned);
+                setRecentVia((prev) => prev.map((x) => (x === e ? { ...x, pinned } : x)));
+              }}
+              tRecent={tRecent}
+              transfer={{
+                stopRefs: journeyStopRefs,
+                canSearchStops: canSearchJourneyStops,
+                onPickStation: (p, mode) => {
+                  const line = journeyLineHint(p);
+                  askTransfer({ label: p.name, lat: p.lat, lng: p.lng, ...(line ? { line } : {}) }, mode, p.nameRoman ?? null);
+                },
+                onPickStop: (stop: StopCandidate) =>
+                  askTransfer({ label: stop.name, lat: stop.lat, lng: stop.lng, kind: "stop" }, "bus", null),
+              }}
+            />
+          )}
+          {transferQuestion && (
+            <JourneyTransferDialog question={transferQuestion} onAnswer={answerTransfer} onDismiss={dismissTransfer} />
           )}
         </div>
       ) : (
@@ -2299,6 +2401,7 @@ function EndpointField({
   onClearRecent,
   onTogglePinRecent,
   tRecent,
+  transfer,
 }: {
   label: string;
   searchLabel: string;
@@ -2324,13 +2427,28 @@ function EndpointField({
   /** 고정 토글 — 부모가 저장 + 로컬 상태 in-place 교체(화면 재정렬 금지) */
   onTogglePinRecent: (e: RecentEndpoint, pinned: boolean) => void;
   tRecent: ReturnType<typeof useTranslations<"recent">>;
+  /**
+   * 「경유지/자동차 환승 추가」 입구 칸(E77 spec §3.1)일 때만. 정류장 줄을 장소 줄과 주소 줄 사이에 싣고, 역 장소 줄·정류장 줄은
+   * 확정하지 않고 콜백으로 넘긴다(부모가 질문 대화상자를 연다). 없으면 종전 끝점 칸과 같다.
+   */
+  transfer?: {
+    stopRefs: { origin: Coord | null; dest: Coord | null };
+    canSearchStops: boolean;
+    onPickStation: (place: Place, mode: "subway" | "rail") => void;
+    onPickStop: (stop: StopCandidate) => void;
+  };
 }) {
   const inputId = useId();
+  const tJourney = useTranslations("journey");
   const bilingual = useBilingualName();
   const inputRef = useRef<HTMLInputElement>(null);
   const [candidates, setCandidates] = useState<{
     places: Place[];
     addresses: JusoAddress[];
+    /** 입구 칸(E77)의 정류장 줄 — 그 밖 칸은 늘 비어 있다. */
+    stops: StopCandidate[];
+    stopsFailed: boolean;
+    stopsTruncated: boolean;
   } | null>(null);
   const reqRef = useRef(0);
   const geocodeRef = useRef(false);
@@ -2395,6 +2513,9 @@ function EndpointField({
     const q = (queryOverride ?? field.text).trim();
     if (!q) return;
     const myId = ++reqRef.current;
+    const stopSearch = transfer
+      ? searchStopCandidates(q, transfer.stopRefs, transfer.canSearchStops)
+      : Promise.resolve({ wanted: false, stops: [], failed: false, truncated: false });
     const [placesRes, addrRes] = await Promise.allSettled([
       fetch(
         `/api/places?query=${encodeURIComponent(q)}&lang=${dataLocale(locale)}`,
@@ -2409,6 +2530,7 @@ function EndpointField({
         },
       ),
     ]);
+    const stopRes = await stopSearch;
     if (myId !== reqRef.current) return;
     // 미니 검색은 필드 확정용이라 상위 5건씩만(전체 탐색은 홈 검색이 담당).
     const places =
@@ -2425,19 +2547,28 @@ function EndpointField({
     if (candidateListRef.current?.contains(document.activeElement)) {
       inputRef.current?.focus();
     }
-    setCandidates({ places, addresses });
-    const count = places.length + addresses.length;
+    setCandidates({
+      places,
+      addresses,
+      stops: stopRes.stops,
+      stopsFailed: stopRes.failed,
+      stopsTruncated: stopRes.truncated,
+    });
+    // 정류장 검색만 실패했으면 건수·0건 통지 뒤에 같은 문장으로 잇는다(역 칸과 같은 3-state, E70-f spec §3).
+    const stopTail = stopRes.failed ? ` ${tJourney("stopSearchFailed")}` : "";
+    const count = places.length + addresses.length + stopRes.stops.length;
     if (count > 0) {
-      announce(t("candidateCount", { count }));
+      announce(`${t("candidateCount", { count })}${stopTail}`);
       setCandidateRevision((r) => r + 1);
     } else if (
       placesRes.status === "rejected" &&
-      addrRes.status === "rejected"
+      addrRes.status === "rejected" &&
+      (!stopRes.wanted || stopRes.failed)
     ) {
       // 3-state: "0건"과 "조회 실패"를 뭉개지 않는다(양쪽 다 실패했을 때만 오류).
       announce(t("candidateError"));
     } else {
-      announce(t("candidateNone"));
+      announce(`${t("candidateNone")}${stopTail}`);
     }
   }
 
@@ -2529,7 +2660,11 @@ function EndpointField({
         </button>
       )}
       {candidates &&
-        (candidates.places.length > 0 || candidates.addresses.length > 0) && (
+        (candidates.places.length > 0 ||
+          candidates.addresses.length > 0 ||
+          candidates.stops.length > 0 ||
+          candidates.stopsFailed ||
+          candidates.stopsTruncated) && (
           <ul ref={candidateListRef} className="mt-1">
             {/* 장소 후보: 비-ko는 이름이 로마자(E28)이고 한글은 버튼 이름의 마지막 노드(R1). 주소는
                 한국어 원문이라 접근 텍스트에 한글이 남으면 줄 전체 lang=ko(R4, NightClinics 선례).
@@ -2543,9 +2678,15 @@ function EndpointField({
                   <button
                     type="button"
                     ref={i === 0 ? firstCandidateRef : undefined}
-                    onClick={() =>
-                      resolveAndClose(placeEndpoint(p.name, { lat: p.lat, lng: p.lng }, p.nameRoman))
-                    }
+                    onClick={() => {
+                      // 입구 칸(E77): 역이면 확정하지 않고 질문으로 넘긴다(목록·포커스는 그대로 — 질문을 닫으면 아무것도 안 바뀐다).
+                      const layout = transfer ? stationLayoutKind(p) : null;
+                      if (transfer && layout) {
+                        transfer.onPickStation(p, layout);
+                        return;
+                      }
+                      resolveAndClose(placeEndpoint(p.name, { lat: p.lat, lng: p.lng }, p.nameRoman));
+                    }}
                     className="min-h-11 w-full text-left text-sm underline"
                     lang={langFor(text)}
                   >
@@ -2555,6 +2696,24 @@ function EndpointField({
                 </li>
               );
             })}
+            {/* 정류장 줄(입구 칸만, E77): 역 칸과 같은 줄 「{정류장}, 정류장, {거리}」 — 고르면 질문으로 넘긴다. */}
+            {transfer &&
+              candidates.stops.map((s, i) => (
+                <li key={s.key}>
+                  <button
+                    type="button"
+                    ref={candidates.places.length === 0 && i === 0 ? firstCandidateRef : undefined}
+                    onClick={() => transfer.onPickStop(s)}
+                    className="min-h-11 w-full text-left text-sm underline"
+                  >
+                    {joinText(s.name, tJourney("busStopKind"), s.distance !== null && formatDistance(s.distance))}
+                  </button>
+                </li>
+              ))}
+            {transfer && candidates.stopsFailed && <li className="text-sm">{tJourney("stopSearchFailed")}</li>}
+            {transfer && candidates.stopsTruncated && (
+              <li className="text-sm">{tJourney("stopSearchTruncated")}</li>
+            )}
             {/* 주소 후보: juso 공식 영문 주소(`engAddr`)가 원천이라 로마자보다 앞선다. */}
             {candidates.addresses.map((a, i) => {
               const name = bilingual(a.roadAddr, { en: a.engAddr });
@@ -2563,7 +2722,7 @@ function EndpointField({
                   <button
                     type="button"
                     ref={
-                      candidates.places.length === 0 && i === 0
+                      candidates.places.length === 0 && candidates.stops.length === 0 && i === 0
                         ? firstCandidateRef
                         : undefined
                     }

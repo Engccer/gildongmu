@@ -69,12 +69,21 @@ let journeyResponse: () => Response = () => ({ ok: true, json: async () => journ
 beforeEach(() => {
   journeyResponse = () => ({ ok: true, json: async () => journey }) as Response;
   clearRecentRoutes();
+  // 경유지 확정은 `?dir=`에 경유지를 남긴다 — 다음 케이스의 첫 화면이 경유지 복원으로 시작하지 않게 비운다.
+  window.history.replaceState(null, "", "/");
   fetchMock = vi.fn(async (input: RequestInfo | URL) => {
     const url = String(input);
     if (url.startsWith("/api/places")) {
       return { ok: true, json: async () => ({ places: [cafe, ahyeonStation], provider: "kakao-local", query: "q" }) } as Response;
     }
     if (url.startsWith("/api/route/journey?")) return journeyResponse();
+    if (url.startsWith("/api/address/search")) return { ok: true, json: async () => ({ addresses: [] }) } as Response;
+    if (url.startsWith("/api/route/journey/stops?")) {
+      return {
+        ok: true,
+        json: async () => ({ stops: [{ name: "아현역", lat: 37.5571, lng: 126.9555, stopNo: "13001", source: "seoul" }] }),
+      } as Response;
+    }
     throw new Error(`unexpected fetch: ${url}`);
   });
   vi.stubGlobal("fetch", fetchMock);
@@ -94,6 +103,7 @@ function renderView(canPlanJourney: boolean) {
       canShowTransit
       canBriefCarRoute
       canPlanJourney={canPlanJourney}
+      canSearchJourneyStops
       initialFrom={from}
       initialTo={to}
       onBack={() => {}}
@@ -101,58 +111,154 @@ function renderView(canPlanJourney: boolean) {
   );
 }
 
-/** 승차 쪽 역 칸을 열어 아현역을 확정한다. */
-async function pickBoardStation() {
+/** 입구 칸을 펼쳐 「아현」을 검색한다(E77 — 끝점 칸과 같은 장소 검색 + 정류장 줄). */
+async function searchTransfer() {
   fireEvent.click(screen.getByRole("button", { name: "addMenu" }));
-  fireEvent.click(screen.getByRole("button", { name: "addBoardStation" }));
-  fireEvent.change(screen.getByLabelText("boardField"), { target: { value: "아현" } });
+  // 펼침은 다음 프레임에 입력으로 포커스를 준다 — 그 이동이 끝난 뒤 진행해야 뒤의 포커스 단언이 그 이동과 겹치지 않는다.
+  await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText("transferField")));
+  fireEvent.change(screen.getByLabelText("transferField"), { target: { value: "아현" } });
   fireEvent.click(screen.getByRole("button", { name: "searchField" }));
-  fireEvent.click(await screen.findByRole("button", { name: /아현역 2호선/ }));
+  await screen.findByRole("button", { name: /아현역 2호선/ });
 }
 
-describe("여정 웹 입구(E70-f)", () => {
+/** 입구 칸에서 아현역을 골라 짐작(출발지 쪽 — 집이 더 가깝다)에 「네」로 답한다 → 승차 쪽 칸. */
+async function pickBoardStation() {
+  await searchTransfer();
+  fireEvent.click(screen.getByRole("button", { name: /아현역 2호선/ }));
+  fireEvent.click(await screen.findByRole("button", { name: "answerYesBoardSubway" }));
+}
+
+describe("여정 웹 입구(E70-f · E77)", () => {
   it("게이트가 거짓이면 종전 「경유지 추가」 버튼만 있다", () => {
     renderView(false);
     expect(screen.getByRole("button", { name: "addVia" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "addMenu" })).toBeNull();
   });
 
-  it("메뉴는 disclosure이고 항목 셋(경유지·내리는 역·탈 역) 순서다", () => {
+  it("입구는 disclosure이고 누르면 메뉴 없이 검색 칸 하나가 펼쳐져 입력으로 착지한다, 다시 누르면 접힌다(검색 취소)", async () => {
     renderView(true);
-    const menu = screen.getByRole("button", { name: "addMenu" });
-    expect(menu.getAttribute("aria-expanded")).toBe("false");
-    fireEvent.click(menu);
-    expect(menu.getAttribute("aria-expanded")).toBe("true");
-    const items = ["addVia", "addBoardStation", "addAlightStation"].map((name) => screen.getByRole("button", { name }));
-    expect(items[0].compareDocumentPosition(items[1]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(items[1].compareDocumentPosition(items[2]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const entry = screen.getByRole("button", { name: "addMenu" });
+    expect(entry.getAttribute("aria-expanded")).toBe("false");
+    fireEvent.click(entry);
+    expect(entry.getAttribute("aria-expanded")).toBe("true");
+    const input = screen.getByLabelText("transferField");
+    await waitFor(() => expect(document.activeElement).toBe(input));
+    for (const name of ["addVia", "addBoardStation", "addAlightStation"]) {
+      expect(screen.queryByRole("button", { name })).toBeNull();
+    }
+    fireEvent.click(entry);
+    expect(screen.queryByLabelText("transferField")).toBeNull();
+    expect(screen.queryByLabelText("via")).toBeNull();
   });
 
-  it("역 칸을 열면 입력으로 착지하고, 경유지 버튼·메뉴가 사라지며 남은 쪽 추가 버튼과 지우기가 선다(D14)", async () => {
+  it("후보는 장소 전부 + 정류장 줄이고, 역이 아닌 장소는 질문 없이 경유지가 된다", async () => {
     renderView(true);
-    fireEvent.click(screen.getByRole("button", { name: "addMenu" }));
-    fireEvent.click(screen.getByRole("button", { name: "addBoardStation" }));
-    const input = screen.getByLabelText("boardField");
-    await waitFor(() => expect(document.activeElement).toBe(input));
+    await searchTransfer();
+    expect(screen.getByRole("button", { name: /아현 카페/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /^아현역, busStopKind/ })).toBeTruthy();
+    const stopsUrl = fetchMock.mock.calls.map((c) => String(c[0])).find((u) => u.startsWith("/api/route/journey/stops?"));
+    expect(stopsUrl).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /아현 카페/ }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect((screen.getByLabelText("via") as HTMLInputElement).value).toBe("아현 카페");
+    expect(screen.getByRole("button", { name: "removeVia" })).toBeTruthy();
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "submit" }));
+  });
+
+  it("역을 고르면 질문 문장 → 짐작 버튼 순서의 대화상자가 열리고 버튼 1에 착지한다", async () => {
+    renderView(true);
+    await searchTransfer();
+    fireEvent.click(screen.getByRole("button", { name: /아현역 2호선/ }));
+    const dialog = await screen.findByRole("dialog", { name: "askBoardSubway" });
+    const buttons = Array.from(dialog.querySelectorAll("button")).map((b) => b.textContent);
+    expect(buttons).toEqual(["answerYesBoardSubway", "answerNoAlightSubway", "answerViaOnly", "close"]);
+    const question = dialog.querySelector("p")!;
+    expect(question.compareDocumentPosition(dialog.querySelector("button")!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    await waitFor(() => expect(document.activeElement?.textContent).toBe("answerYesBoardSubway"));
+    // 과잉 ARIA 없음: 이름은 질문 문장 하나(aria-labelledby), role·aria-modal을 덧씌우지 않는다.
+    expect(dialog.tagName).toBe("DIALOG");
+    expect(dialog.getAttribute("role")).toBeNull();
+    expect(dialog.getAttribute("aria-modal")).toBeNull();
+  });
+
+  it("답이 「네」면 승차 쪽 칸이 종류별 이름으로 서고 커서가 그 칸으로 간다, 남은 쪽은 종전 버튼이다(두 번째는 묻지 않는다)", async () => {
+    renderView(true);
+    await pickBoardStation();
+    expect(screen.queryByRole("dialog")).toBeNull();
+    const field = screen.getByLabelText("boardFieldStation") as HTMLInputElement;
+    expect(field.value).toBe("아현역 2호선");
+    await waitFor(() => expect(document.activeElement).toBe(field));
     expect(screen.queryByRole("button", { name: "addMenu" })).toBeNull();
     expect(screen.queryByRole("button", { name: "addVia" })).toBeNull();
-    expect(screen.getByRole("button", { name: "addAlightStation" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "addAlightStation" }));
+    const alight = screen.getByLabelText("alightField");
+    await waitFor(() => expect(document.activeElement).toBe(alight));
+    fireEvent.change(alight, { target: { value: "아현" } });
+    const searchButtons = screen.getAllByRole("button", { name: "searchField" });
+    fireEvent.click(searchButtons[searchButtons.length - 1]);
+    fireEvent.click(await screen.findByRole("button", { name: /아현역 2호선, 서울/ }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.getByLabelText("alightFieldStation")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "clearStations" }));
-    expect(screen.queryByLabelText("boardField")).toBeNull();
-    // 지우기 버튼도 사라지므로 조회 버튼으로 먼저 옮긴다(판정 21).
+    expect(screen.queryByLabelText("boardFieldStation")).toBeNull();
     expect(document.activeElement).toBe(screen.getByRole("button", { name: "submit" }));
-    expect(screen.getByRole("button", { name: "addMenu" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "addMenu" }).getAttribute("aria-expanded")).toBe("false");
   });
 
-  it("후보는 역만, 고르면 여정만 조회한다(D12 — 수단별 조회 0회)", async () => {
+  it("버튼 2(짐작과 반대)는 하차 쪽 칸, 「경유만」은 경유지가 된다", async () => {
     renderView(true);
-    fireEvent.click(screen.getByRole("button", { name: "addMenu" }));
-    fireEvent.click(screen.getByRole("button", { name: "addBoardStation" }));
-    fireEvent.change(screen.getByLabelText("boardField"), { target: { value: "아현" } });
-    fireEvent.click(screen.getByRole("button", { name: "searchField" }));
-    const pick = await screen.findByRole("button", { name: /아현역 2호선/ });
-    expect(screen.queryByRole("button", { name: /아현 카페/ })).toBeNull();
-    fireEvent.click(pick);
+    await searchTransfer();
+    fireEvent.click(screen.getByRole("button", { name: /아현역 2호선/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "answerNoAlightSubway" }));
+    const alight = screen.getByLabelText("alightFieldStation") as HTMLInputElement;
+    await waitFor(() => expect(document.activeElement).toBe(alight));
+    fireEvent.click(screen.getByRole("button", { name: "clearStations" }));
+
+    await searchTransfer();
+    fireEvent.click(screen.getByRole("button", { name: /아현역 2호선/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "answerViaOnly" }));
+    const via = screen.getByLabelText("via") as HTMLInputElement;
+    expect(via.value).toBe("아현역 2호선");
+    await waitFor(() => expect(document.activeElement).toBe(via));
+    expect(screen.queryByLabelText(/Field(Station|Stop)$/)).toBeNull();
+  });
+
+  it("질문을 닫으면 아무것도 바뀌지 않고 커서는 입구 버튼으로 간다(검색 칸·후보 그대로)", async () => {
+    renderView(true);
+    await searchTransfer();
+    fireEvent.click(screen.getByRole("button", { name: /아현역 2호선/ }));
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(screen.getByRole("button", { name: "close" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "addMenu" }));
+    expect(screen.getByRole("button", { name: /아현역 2호선/ })).toBeTruthy();
+    expect(screen.queryByLabelText(/^(boardField|alightField|via)/)).toBeNull();
+    // Esc(cancel)도 같은 경로다.
+    fireEvent.click(screen.getByRole("button", { name: /아현역 2호선/ }));
+    fireEvent(await screen.findByRole("dialog"), new Event("cancel", { cancelable: true }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "addMenu" }));
+    expect(dialog.isConnected).toBe(false);
+  });
+
+  it("정류장 줄을 고르면 버스 질문이 열리고 답하면 정류장 칸 이름이 선다", async () => {
+    renderView(true);
+    await searchTransfer();
+    fireEvent.click(screen.getByRole("button", { name: /^아현역, busStopKind/ }));
+    const dialog = await screen.findByRole("dialog", { name: "askBoardBus" });
+    expect(Array.from(dialog.querySelectorAll("button")).map((b) => b.textContent)).toEqual([
+      "answerYesBoardBus",
+      "answerNoAlightBus",
+      "answerViaOnly",
+      "close",
+    ]);
+    fireEvent.click(screen.getByRole("button", { name: "answerYesBoardBus" }));
+    expect((screen.getByLabelText("boardFieldStop") as HTMLInputElement).value).toBe("아현역");
+  });
+
+  it("고른 역으로 여정만 조회한다(D12 — 수단별 조회 0회)", async () => {
+    renderView(true);
+    await pickBoardStation();
     fireEvent.click(screen.getByRole("button", { name: "submit" }));
     const heading = await screen.findByRole("heading", { name: "designatedHeading" });
     expect(heading.tagName).toBe("H3");
@@ -177,10 +283,11 @@ describe("여정 웹 입구(E70-f)", () => {
     expect(snapshot.plan).toBeNull();
   });
 
-  it("열린 역 칸이 비어 있으면 조회하지 않고 needEndpoints", async () => {
+  it("남은 쪽 칸을 열고 비워 두면 조회하지 않고 needEndpoints", async () => {
     renderView(true);
-    fireEvent.click(screen.getByRole("button", { name: "addMenu" }));
+    await pickBoardStation();
     fireEvent.click(screen.getByRole("button", { name: "addAlightStation" }));
+    fetchMock.mockClear();
     fireEvent.click(screen.getByRole("button", { name: "submit" }));
     await waitFor(() => expect(screen.getByRole("status").textContent).toContain("needEndpoints"));
     expect(fetchMock.mock.calls.some((c) => String(c[0]).startsWith("/api/route"))).toBe(false);
@@ -203,10 +310,10 @@ describe("여정 웹 입구(E70-f)", () => {
   it("출발·도착 교체는 갈아탈 곳도 자리를 바꾼다(승차 쪽 → 하차 쪽)", async () => {
     renderView(true);
     await pickBoardStation();
-    expect((screen.getByLabelText("boardField") as HTMLInputElement).value).toBe("아현역 2호선");
+    expect((screen.getByLabelText("boardFieldStation") as HTMLInputElement).value).toBe("아현역 2호선");
     fireEvent.click(screen.getByRole("button", { name: "swap" }));
-    expect(screen.queryByLabelText("boardField")).toBeNull();
-    expect((screen.getByLabelText("alightField") as HTMLInputElement).value).toBe("아현역 2호선");
+    expect(screen.queryByLabelText("boardFieldStation")).toBeNull();
+    expect((screen.getByLabelText("alightFieldStation") as HTMLInputElement).value).toBe("아현역 2호선");
     fireEvent.click(screen.getByRole("button", { name: "submit" }));
     await screen.findByRole("heading", { name: "designatedHeadingAlight" });
     const journeyUrl = fetchMock.mock.calls.map((c) => String(c[0])).find((u) => u.startsWith("/api/route/journey?"));

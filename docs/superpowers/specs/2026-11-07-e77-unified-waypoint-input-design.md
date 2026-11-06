@@ -62,7 +62,7 @@
 - 답 → 칸: `answerYesAlight`·`answerNoAlight*` → 하차 쪽 칸(`alight`), `answerYesBoard*`·`answerNoBoard*` → 승차 쪽 칸(`board`), `answerViaOnly` → 경유지(그 장소를 끝점으로, 최근 경유지 기록 포함).
 - 지운 키는 없다(입구 이름 `addMenu`, 남은 쪽 추가 `addBoardStation`·`addAlightStation`, 빈 칸 이름 `boardField`·`alightField`, 지우기 `clearStations`, `notStation`이 모두 남는다). 안드로이드 문자열 영향 없음.
 - 웹 6로케일은 이 ko를 번역한다. iOS 여정 키는 첫 판 관례대로 ko 한 벌(`ios-extra/ko.json`만, 기능이 데이터 로케일 ko 전용).
-- 웹 전용 키 하나: `transferField` 「경유지/자동차 환승」(입구 검색 칸의 이름, §3.1). iOS 시트 제목은 입구 버튼 이름(`addMenu`)을 쓴다. 판정 요청 `judgment-*.md`에 기본값으로 올렸다.
+- 웹 전용 키 하나: `transferField` 「경유지/자동차 환승」(입구 검색 칸의 이름, §3.1) — **위원장 판정 2026-11-07**(선택지 셋 중 이 문장). iOS 시트 제목은 입구 버튼 이름(`addMenu`)을 쓴다.
 
 ### 2.4 두 번째와 그 밖
 

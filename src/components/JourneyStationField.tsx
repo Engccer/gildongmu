@@ -14,11 +14,50 @@ const STOP_QUERY_MAX = 30;
 /** 후보는 역·정류장 각각 상위 5(끝점 칸 미니 검색과 같은 폭). */
 const CANDIDATE_LIMIT = 5;
 
+/** 정류장 후보 한 줄(E70-e) — 역 칸과 입구 칸(E77)이 같은 줄을 쓴다. */
+export type StopCandidate = { name: string; lat: number; lng: number; distance: number | null; key: string };
+
 type Candidates = {
   stations: Place[];
-  stops: { name: string; lat: number; lng: number; distance: number | null; key: string }[];
+  stops: StopCandidate[];
   truncated: boolean;
 };
+
+/**
+ * 정류장 이름 검색(`/api/route/journey/stops`) — 역 칸과 입구 칸(E77 spec §3.1)의 공용 경로. 기준 좌표(출발·도착 칸의 확정
+ * 좌표 중 있는 것)가 없거나 게이트가 거짓이거나 길이가 범위 밖이면 부르지 않는다(`wanted: false`). 거리는 첫 기준 좌표에서 잰다.
+ * `failed`는 요청 실패와 응답 안의 일부 원천 실패를 함께 본다(0건과 실패를 뭉개지 않는다, 3-state).
+ */
+export async function searchStopCandidates(
+  q: string,
+  stopRefs: { origin: Coord | null; dest: Coord | null },
+  canSearchStops: boolean,
+): Promise<{ wanted: boolean; stops: StopCandidate[]; failed: boolean; truncated: boolean }> {
+  const refs = [stopRefs.origin, stopRefs.dest].filter((c): c is Coord => c !== null);
+  const wanted = canSearchStops && refs.length > 0 && q.length >= STOP_QUERY_MIN && q.length <= STOP_QUERY_MAX;
+  if (!wanted) return { wanted, stops: [], failed: false, truncated: false };
+  const params = new URLSearchParams({ q });
+  if (stopRefs.origin) params.set("origin", `${stopRefs.origin.lat},${stopRefs.origin.lng}`);
+  if (stopRefs.dest) params.set("dest", `${stopRefs.dest.lat},${stopRefs.dest.lng}`);
+  let body: JourneyStopSearchResult | { outOfCoverage: true };
+  try {
+    const r = await fetch(`/api/route/journey/stops?${params}`);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    body = (await r.json()) as JourneyStopSearchResult | { outOfCoverage: true };
+  } catch {
+    return { wanted, stops: [], failed: true, truncated: false };
+  }
+  const result = "stops" in body ? body : null;
+  const reference = refs[0];
+  const stops = (result?.stops ?? []).slice(0, CANDIDATE_LIMIT).map((s, i) => ({
+    name: s.name,
+    lat: s.lat,
+    lng: s.lng,
+    distance: haversineMeters(reference.lat, reference.lng, s.lat, s.lng),
+    key: `${s.source}:${s.stopNo ?? i}:${s.lat},${s.lng}`,
+  }));
+  return { wanted, stops, failed: result?.failed === true, truncated: result?.truncated === true };
+}
 
 /**
  * 여정의 갈아탈 역·정류장 칸(E70-f spec §3). 끝점 칸(`EndpointField`)과 같은 입력 + [검색] 모양이되 **후보가 역과 정류장뿐이다**:
@@ -74,44 +113,27 @@ export function JourneyStationField({
     const q = text.trim();
     if (!q) return;
     const myId = ++reqRef.current;
-    const refs = [stopRefs.origin, stopRefs.dest].filter((c): c is Coord => c !== null);
-    const stopsWanted = canSearchStops && refs.length > 0 && q.length >= STOP_QUERY_MIN && q.length <= STOP_QUERY_MAX;
-    const stopParams = new URLSearchParams({ q });
-    if (stopRefs.origin) stopParams.set("origin", `${stopRefs.origin.lat},${stopRefs.origin.lng}`);
-    if (stopRefs.dest) stopParams.set("dest", `${stopRefs.dest.lat},${stopRefs.dest.lng}`);
-    const [placesRes, stopsRes] = await Promise.allSettled([
-      fetch(`/api/places?query=${encodeURIComponent(q)}&lang=ko`).then(async (r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return (await r.json()) as PlaceSearchResult;
-      }),
-      stopsWanted
-        ? fetch(`/api/route/journey/stops?${stopParams}`).then(async (r) => {
-            if (!r.ok) throw new Error(`HTTP ${r.status}`);
-            return (await r.json()) as JourneyStopSearchResult | { outOfCoverage: true };
-          })
-        : Promise.resolve(null),
+    const [placesRes, stopRes] = await Promise.all([
+      fetch(`/api/places?query=${encodeURIComponent(q)}&lang=ko`)
+        .then(async (r) => {
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          return { status: "fulfilled" as const, value: (await r.json()) as PlaceSearchResult };
+        })
+        .catch(() => ({ status: "rejected" as const })),
+      searchStopCandidates(q, stopRefs, canSearchStops),
     ]);
     if (myId !== reqRef.current) return;
     const stations =
       placesRes.status === "fulfilled"
         ? placesRes.value.places.filter((p) => stationLayoutKind(p) !== null).slice(0, CANDIDATE_LIMIT)
         : [];
-    const stopBody = stopsRes.status === "fulfilled" ? stopsRes.value : null;
-    const stopResult = stopBody && "stops" in stopBody ? stopBody : null;
-    const reference = refs[0] ?? null;
-    const stops = (stopResult?.stops ?? []).slice(0, CANDIDATE_LIMIT).map((s, i) => ({
-      name: s.name,
-      lat: s.lat,
-      lng: s.lng,
-      distance: reference ? haversineMeters(reference.lat, reference.lng, s.lat, s.lng) : null,
-      key: `${s.source}:${s.stopNo ?? i}:${s.lat},${s.lng}`,
-    }));
-    // 정류장 검색만 실패했다 — 0건과 실패를 뭉개지 않는다(3-state). 응답 안의 `failed`(일부 원천 실패)도 같다.
-    const stopsFailed = stopsWanted && (stopsRes.status === "rejected" || stopResult?.failed === true);
+    const stops = stopRes.stops;
+    const stopsWanted = stopRes.wanted;
+    const stopsFailed = stopRes.failed;
     if (listRef.current?.contains(document.activeElement)) {
       document.getElementById(inputId)?.focus();
     }
-    setCandidates({ stations, stops, truncated: stopResult?.truncated === true });
+    setCandidates({ stations, stops, truncated: stopRes.truncated });
     const count = stations.length + stops.length;
     if (count > 0) {
       const base = t("candidateCount", { count });
