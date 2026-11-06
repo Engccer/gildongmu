@@ -19,13 +19,13 @@ const jam = (startMeters: number, lengthMeters: number, road: string | null): Ca
 describe("carCongestionLine (E80 §4)", () => {
   it("출발 직후 정체는 「출발 지점부터」", () => {
     expect(carCongestionLine({ jams: [jam(30, 900, "통일로")] }, T(tb), false)).toBe(
-      "막히는 구간 1곳: 출발 지점부터 통일로 900m.",
+      "막히는 구간 1곳: 출발 지점부터 통일로 900m 구간.",
     );
   });
   it(`이름은 ${BRIEFING_JAM_MAX}곳까지, 나머지는 개수만`, () => {
     const jams = [1000, 3000, 5000, 7000, 9000].map((s) => jam(s, 600, "올림픽대로"));
     expect(carCongestionLine({ jams }, T(tb), false)).toBe(
-      "막히는 구간 5곳: 1km 가서 올림픽대로 600m, 3km 가서 올림픽대로 600m, 5km 가서 올림픽대로 600m, 그 밖에 2곳.",
+      "막히는 구간 5곳: 1km 앞 올림픽대로 600m 구간, 3km 앞 올림픽대로 600m 구간, 5km 앞 올림픽대로 600m 구간, 그 밖에 2곳.",
     );
   });
   it("미요청·정보 없음은 null", () => {

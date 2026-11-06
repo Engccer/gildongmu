@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
+import { useEffect } from "react";
 import ko from "../../../messages/ko.json";
 
 vi.mock("@/lib/geolocation", () => ({
@@ -42,9 +43,14 @@ const CAR_BODY = {
 const DEST = { lat: 37.5 + 500 * M, lng: 127.1, name: "목적지" };
 
 let fetchMock: ReturnType<typeof vi.fn>;
+/** live region에 실제로 쓰인 문장 기록(같은 문장 재게시도 한 줄씩 — 통지 횟수를 센다). */
+let liveLog: string[] = [];
 
 function Harness({ kind, tag }: { kind: GuideKind; tag: string }) {
   const g = useRouteGuide(DEST, kind, { accessible: false, variant: null });
+  useEffect(() => {
+    if (g.liveText) liveLog.push(g.liveText);
+  }, [g.liveText]);
   return (
     <div>
       <button onClick={g.start}>start-{tag}</button>
@@ -63,6 +69,7 @@ function renderHarness(children: React.ReactNode) {
 }
 
 beforeEach(() => {
+  liveLog = [];
   Object.defineProperty(navigator, "geolocation", {
     configurable: true,
     value: {
@@ -175,5 +182,65 @@ describe("E80 재조회 6분 · 새 정체 한 문장(§5)", () => {
     // ETA 커밋까지 기다린 뒤에도 통지가 시작 문장 그대로다.
     await new Promise((r) => setTimeout(r, 50));
     expect(screen.getByTestId("live-a").textContent).not.toContain("정체");
+  });
+
+  const refreshes = () => fetchMock.mock.calls.filter(([u]) => !String(u).includes("includeGeometry=1")).length;
+  const jamLines = () => liveLog.filter((x) => x.includes("정체가 새로 생겼습니다"));
+  async function tick(n: number) {
+    const before = refreshes();
+    await act(async () => vi.advanceTimersByTime(360_000));
+    await waitFor(() => expect(refreshes()).toBe(before + n));
+    // 같은 문장 재게시는 빈 값을 거쳐 REANNOUNCE_DELAY_MS(120ms) 뒤에 쓰인다 — 그보다 넉넉히 기다려야 반복을 센다.
+    await new Promise((r) => setTimeout(r, 300));
+  }
+
+  it("같은 새 정체가 재조회마다 와도 한 번만 말한다(알린 정체는 아는 정체가 된다)", async () => {
+    bodies([], [JAM]);
+    await startAndTick();
+    await waitFor(() => expect(jamLines()).toHaveLength(1));
+    await tick(1);
+    await tick(1);
+    expect(jamLines()).toHaveLength(1);
+  });
+
+  it("재조회는 시작 조회를 포함해 여정 10회가 상한이다", async () => {
+    bodies([], []);
+    await startAndTick();
+    for (let i = 0; i < 8; i++) await tick(1);
+    expect(refreshes()).toBe(9);
+    await act(async () => vi.advanceTimersByTime(360_000 * 3));
+    await new Promise((r) => setTimeout(r, 30));
+    expect(refreshes()).toBe(9);
+  });
+
+  it("카카오(폴백) 재조회의 정체는 말하지 않는다 — 코드표·경로가 달라 오보가 된다", async () => {
+    fetchMock.mockImplementation(async (url: string) => ({
+      ok: true,
+      json: async () =>
+        url.includes("includeGeometry=1")
+          ? { ...CAR_BODY, congestion: { jams: [] } }
+          : { ...CAR_BODY, provider: "kakao", durationSeconds: 280, congestion: { jams: [JAM] } },
+    }));
+    await startAndTick();
+    await new Promise((r) => setTimeout(r, 50));
+    expect(jamLines()).toHaveLength(0);
+  });
+
+  it("시작 조회에 교통 정보가 없으면 정보가 처음 온 재조회는 기준선이 되고, 그 뒤 새로 생긴 것만 말한다", async () => {
+    const LATER = { road: "올림픽로", startMeters: 420, lengthMeters: 60, start: pt(420), end: pt(480) };
+    let n = 0;
+    fetchMock.mockImplementation(async (url: string) => ({
+      ok: true,
+      json: async () => {
+        if (url.includes("includeGeometry=1")) return { ...CAR_BODY };
+        n += 1;
+        return { ...CAR_BODY, durationSeconds: 280, congestion: { jams: n === 1 ? [JAM] : [JAM, LATER] } };
+      },
+    }));
+    await startAndTick();
+    await new Promise((r) => setTimeout(r, 50));
+    expect(jamLines()).toHaveLength(0);
+    await tick(1);
+    await waitFor(() => expect(jamLines()).toEqual(["420m 앞 올림픽로에 60m 정체가 새로 생겼습니다."]));
   });
 });

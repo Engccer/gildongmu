@@ -752,8 +752,12 @@ export function useRouteGuide(
   /** car ETA(§4.6): 현 위치→목적지 재조회 totalTime + 갱신 시각(단조 초). */
   const etaRef = useRef<{ seconds: number; updatedAt: number } | null>(null);
   const etaCallCountRef = useRef(0);
-  /** car 아는 정체(E80 §5): 시작 조회·재조회·재경로에서 본 정체의 좌표. 새 정체 통지는 이것과 겹치지 않는 것만. */
-  const knownJamsRef = useRef<KnownJam[]>([]);
+  /**
+   * car 아는 정체(E80 §5): 시작 조회·재경로 조회에서 본 정체와 알린 정체의 좌표. 새 정체 통지는 이것과 겹치지 않는 것만.
+   * null = 기준선 없음(교통 정보를 아직 Tmap에서 받지 못했다) — 정보가 처음 들어온 재조회는 말하지 않고 기준선으로 삼는다
+   * (원래 있던 정체를 「새로 생겼습니다」로 말하지 않으려고).
+   */
+  const knownJamsRef = useRef<KnownJam[] | null>(null);
   const etaTimerRef = useRef<number | null>(null);
   const lastFixRef = useRef<GuideFix | null>(null);
   /** 마지막 fix 수신 시각(초, 단조) — 진행 상황의 직선거리 신선도 게이트용. */
@@ -800,6 +804,8 @@ export function useRouteGuide(
    * latest-wins(§4-1)는 `announce` 진입의 clearTimeout 한 곳이 지킨다.
    */
   const reannounceTimerRef = useRef<number | null>(null);
+  /** 보류 중인 통지가 버려질 때 부를 상환(iOS `announce(onDropped:)` 미러 — 1회성 문장의 latch 되돌리기). */
+  const pendingDropRef = useRef<(() => void) | null>(null);
   /** 지금 재생 중인 안내 톤이 끝나는 단조 시각(초) — `speechDeferStep` 입력. */
   const toneEndsAtRef = useRef<number | null>(null);
 
@@ -837,7 +843,7 @@ export function useRouteGuide(
    * 리더 사용자는 문장 앞머리를 잃는다. 판정은 `speechDeferStep`(Kit 미러) 소유.
    */
   const announce = useCallback(
-    (text: string) => {
+    (text: string, onDropped?: () => void) => {
       if (!mountedRef.current) return;
       // 단일 슬롯 latest-wins(§4-1): 새 통지가 보류 문장(지연·재발화 불문)을 버린다.
       // 안내는 최신이 참이다 — 늦게 말한 임박 명령은 이미 돈 모퉁이를 돌라는 명령이다.
@@ -845,6 +851,10 @@ export function useRouteGuide(
         window.clearTimeout(reannounceTimerRef.current);
         reannounceTimerRef.current = null;
       }
+      // 버려진 보류 문장의 상환은 그 시점에 부른다(iOS `onDropped` 미러). 게시된 문장은 상환하지 않는다.
+      const dropped = pendingDropRef.current;
+      pendingDropRef.current = null;
+      dropped?.();
       // 빈 문자열은 지우기라 지연이 무의미하다(세션 경계의 announce("")).
       const wait = text
         ? speechDeferStep(performance.now() / 1000, toneEndsAtRef.current)
@@ -853,16 +863,25 @@ export function useRouteGuide(
         commit(text);
         return;
       }
+      pendingDropRef.current = onDropped ?? null;
       const gen = genRef.current;
       const scheduledAt = performance.now() / 1000;
       const schedule = (delay: number) => {
         const due = performance.now() / 1000 + delay;
         reannounceTimerRef.current = window.setTimeout(() => {
           reannounceTimerRef.current = null;
-          if (!mountedRef.current || gen !== genRef.current) return;
+          if (!mountedRef.current || gen !== genRef.current) {
+            pendingDropRef.current = null;
+            return;
+          }
           const now = performance.now() / 1000;
           // 낡은 예약 폐기(리뷰 MAJOR 6): throttled 탭에서 늦게 깬 명령은 버린다.
-          if (now - due > DEFER_LATE_DISCARD_S) return;
+          if (now - due > DEFER_LATE_DISCARD_S) {
+            const late = pendingDropRef.current;
+            pendingDropRef.current = null;
+            late?.();
+            return;
+          }
           // 게시 직전 재평가(§4-5): 예약 후 새 톤(발화 없는 추세음 등)이 시작됐으면
           // 더 기다리되, 예약 시각부터의 총 대기는 상한 안(무한 연기 구조 차단).
           const elapsed = now - scheduledAt;
@@ -871,6 +890,7 @@ export function useRouteGuide(
             schedule(Math.min(more, SPEECH_DEFER_MAX_S - elapsed));
             return;
           }
+          pendingDropRef.current = null;
           commit(text);
         }, delay * 1000);
       };
@@ -1393,8 +1413,8 @@ export function useRouteGuide(
     route: GuideRoute;
     durationSeconds: number | null;
     roadSpans: CarRoadSpan[];
-    /** car 정체(E80 §5 — 아는 정체의 기준선). 정보 없음·도보는 빈 목록. */
-    jams: CarJam[];
+    /** car 정체(E80 §5 — 아는 정체의 기준선). null = 정보 없음(Tmap 아님 포함)·도보. */
+    jams: CarJam[] | null;
     /**
      * 계단 회피 판정(도보 전용, 미요청·자동차면 null). ⚠ 타입은 `StepFreeStatus`가
      * 아니라 `string`이다 — 서버 응답은 런타임 검증을 거치지 않으므로 알려진 셋
@@ -1445,7 +1465,8 @@ export function useRouteGuide(
               ? briefing.durationSeconds
               : null,
           roadSpans: carGuide.roadSpans,
-          jams: briefing.congestion?.jams ?? [],
+          // 정보는 Tmap만 센다 — 카카오는 코드표·경로가 달라 주행 중 Tmap 재조회와 대조하면 서행을 새 정체로 말한다.
+          jams: briefing.provider === "tmap" ? (briefing.congestion?.jams ?? null) : null,
           // 자동차에는 계단 회피·최종 접근 개념이 없다(실주행은 딥링크 위임이 정본).
           stepFree: null,
           stepFreeNotice: null,
@@ -1497,7 +1518,7 @@ export function useRouteGuide(
             ? result.durationSeconds
             : null,
         roadSpans: [],
-        jams: [],
+        jams: null,
         stepFree: result.stepFree ?? null,
         stepFreeNotice: result.stepFreeNotice ?? null,
         finalApproach: result.finalApproach ?? null,
@@ -1512,9 +1533,38 @@ export function useRouteGuide(
   }, [kindFixed, locale]);
 
   /**
+   * 새 정체 한 문장(E80 spec §5): 재조회 응답의 정체 중 지금 안내 경로 위·앞쪽이고 아는 정체와 겹치지 않는 가장 가까운 하나.
+   * 풀린 정체는 말하지 않는다. 판정은 `newJamsAhead`(Kit `newCarJamsAhead` 미러), 호출부 규칙은 넷:
+   * ① 정보는 Tmap만 센다(카카오 폴백 응답은 코드표·경로가 달라 오보) ② 기준선이 없으면 이번 정보를 말없이 기준선으로
+   * ③ 응답을 기다리는 사이 이탈했으면 낡은 경로 기준이라 말하지 않는다 ④ 보류 중인 통지(톤 뒤 임박 명령 등)가 있으면
+   * 밀어내지 않고 이번엔 건너뛴다 — 아는 정체에 넣지 않아 다음 재조회가 다시 판정한다. 버려지면 알린 하나를 되돌린다.
+   */
+  const announceNewJam = useCallback(
+    (briefing: CarRouteBriefing) => {
+      const jams = briefing.provider === "tmap" ? briefing.congestion?.jams : undefined;
+      const route = routeRef.current;
+      const state = guideRef.current;
+      if (!jams || !route || !state || state.phase === "offRoute") return;
+      const known = knownJamsRef.current;
+      if (known === null) {
+        knownJamsRef.current = jams.map(({ start, end }) => ({ start, end }));
+        return;
+      }
+      const out = newJamsAhead({ polyline: route.polyline, totalMeters: route.totalMeters, d: state.d, known, fresh: jams });
+      if (!out.nearest || reannounceTimerRef.current !== null) return;
+      const added = out.known[out.known.length - 1];
+      knownJamsRef.current = out.known;
+      announce(carNewJamLine(out.nearest.jam, out.nearest.aheadMeters, t, prefersEnglish(locale)), () => {
+        knownJamsRef.current = knownJamsRef.current?.filter((k) => k !== added) ?? null;
+      });
+    },
+    [announce, locale, t],
+  );
+
+  /**
    * car ETA 갱신(§4.6): 현 위치→목적지 재조회의 totalTime을 그대로 잔여 ETA로
    * 쓴다(기하·안내 상태는 교체하지 않는다). 세대 일치 시에만 커밋, 실패는 조용히
-   * 직전 값 유지(stale 판정은 updatedAt이 담당). 캡은 시작 조회를 포함해 6회.
+   * 직전 값 유지(stale 판정은 updatedAt이 담당). 캡은 시작 조회를 포함해 10회(E80 위원장 판정 ②).
    */
   const refreshCarEta = useCallback(async () => {
     if (kindFixed !== "car" || !trackingRef.current) return;
@@ -1526,7 +1576,7 @@ export function useRouteGuide(
     etaCallCountRef.current += 1;
     try {
       // ETA는 "현 위치 → 목적지" 재조회값이라 좌표가 낡으면 카운트다운이 멎는다
-      // (10분 주기 6회가 전부 같은 출발점을 조회하게 된다). fail-closed: 실좌표를
+      // (6분 주기 10회가 전부 같은 출발점을 조회하게 된다). fail-closed: 실좌표를
       // 못 얻으면 이번 주기는 건너뛰고 직전 값을 유지한다(수동 위치로 재조회하지 않음).
       const fix = await awaitRealFix({ force: true });
       if (!fix) return;
@@ -1551,26 +1601,11 @@ export function useRouteGuide(
       const route = routeRef.current;
       const state = guideRef.current;
       if (route && state) setProgress(progressOf(route, state));
-      // 새 정체(E80 §5): 지금 안내 경로 위·앞쪽이고 아는 정체와 겹치지 않는 것 중 가장 가까운 하나만 한 문장.
-      // 이탈 중엔 위에서 이미 돌아갔다(재조회 동결). 풀린 정체는 말하지 않는다.
-      const jams = briefing.congestion?.jams;
-      if (route && state && jams && jams.length > 0) {
-        const out = newJamsAhead({
-          polyline: route.polyline,
-          totalMeters: route.totalMeters,
-          d: state.d,
-          known: knownJamsRef.current,
-          fresh: jams,
-        });
-        knownJamsRef.current = out.known;
-        if (out.nearest) {
-          announce(carNewJamLine(out.nearest.jam, out.nearest.aheadMeters, t, prefersEnglish(locale)));
-        }
-      }
+      announceNewJam(briefing);
     } catch {
       // 조용히 직전 값 유지 — 반복 실패가 polite 채널을 점유하지 않는다(§4.6).
     }
-  }, [announce, kindFixed, locale, progressOf, t]);
+  }, [announceNewJam, kindFixed, progressOf]);
 
   const clearEtaTimer = useCallback(() => {
     if (etaTimerRef.current !== null) {
@@ -2139,7 +2174,7 @@ export function useRouteGuide(
     excludedViaRef.current = null;
     viaPassedRef.current = false;
     roadSpansRef.current = [];
-    knownJamsRef.current = [];
+    knownJamsRef.current = null;
     etaRef.current = null;
     etaCallCountRef.current = 0;
     lastFixRef.current = null;
@@ -2196,7 +2231,7 @@ export function useRouteGuide(
     excludedViaRef.current = null;
     viaPassedRef.current = false;
     roadSpansRef.current = [];
-    knownJamsRef.current = [];
+    knownJamsRef.current = null;
     etaRef.current = null;
     etaCallCountRef.current = 0;
     lastFixRef.current = null;
@@ -2262,7 +2297,7 @@ export function useRouteGuide(
       routeViaRef.current = fetched.via;
       roadSpansRef.current = fetched.roadSpans;
       // 시작 조회가 본 정체가 아는 정체의 기준선이다 — 새로 생긴 것만 주행 중에 말한다(E80 §5).
-      knownJamsRef.current = fetched.jams.map(({ start, end }) => ({ start, end }));
+      knownJamsRef.current = fetched.jams?.map(({ start, end }) => ({ start, end })) ?? null;
       // 하단 2행 표시 유닛은 경로와 수명이 같다 — commitDetail(refreshLiveRows)보다 앞.
       displayUnitsRef.current =
         fetched.liveSteps.length > 0 ? buildDisplayUnits(fetched.liveSteps) : [];
@@ -2440,7 +2475,9 @@ export function useRouteGuide(
       routeViaRef.current = fetched.via;
       roadSpansRef.current = fetched.roadSpans;
       // 이 조회가 본 정체는 아는 정체다 — 새로 생긴 것만 주행 중에 말한다(E80 §5).
-      knownJamsRef.current = [...knownJamsRef.current, ...fetched.jams.map(({ start, end }) => ({ start, end }))];
+      if (fetched.jams) {
+        knownJamsRef.current = [...(knownJamsRef.current ?? []), ...fetched.jams.map(({ start, end }) => ({ start, end }))];
+      }
       // 새 경로 = 새 표시 유닛(commitDetail의 rows 리셋·재계산보다 앞).
       displayUnitsRef.current =
         fetched.liveSteps.length > 0 ? buildDisplayUnits(fetched.liveSteps) : [];

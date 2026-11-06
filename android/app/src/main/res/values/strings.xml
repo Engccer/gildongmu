@@ -1148,10 +1148,10 @@
     <string name="route_briefing_error">경로 브리핑에 실패했습니다.</string>
     <string name="route_briefing_geoError">현재 위치를 가져올 수 없습니다. 브라우저의 위치 권한을 확인해 주세요.</string>
     <string name="route_briefing_heading">%1$s까지 자동차 경로</string>
-    <string name="route_briefing_jamItem">%1$s 가서 %2$s %3$s</string>
-    <string name="route_briefing_jamItemStart">출발 지점부터 %1$s %2$s</string>
-    <string name="route_briefing_jamItemStartUnnamed">출발 지점부터 %1$s</string>
-    <string name="route_briefing_jamItemUnnamed">%1$s 가서 %2$s</string>
+    <string name="route_briefing_jamItem">%1$s 앞 %2$s %3$s 구간</string>
+    <string name="route_briefing_jamItemStart">출발 지점부터 %1$s %2$s 구간</string>
+    <string name="route_briefing_jamItemStartUnnamed">출발 지점부터 %1$s 구간</string>
+    <string name="route_briefing_jamItemUnnamed">%1$s 앞 %2$s 구간</string>
     <string name="route_briefing_jamMore">그 밖에 %1$s곳</string>
     <string name="route_briefing_jamNone">막히는 구간이 없습니다.</string>
     <string name="route_briefing_jams">막히는 구간 %1$s곳: %2$s.</string>

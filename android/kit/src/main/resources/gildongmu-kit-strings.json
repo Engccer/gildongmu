@@ -266,15 +266,15 @@
       "ja": "%1$sまでの車の経路"
     },
     "route.briefing.jamItem": {
-      "ko": "%1$s 가서 %2$s %3$s",
+      "ko": "%1$s 앞 %2$s %3$s 구간",
       "en": "%3$s on %2$s starting in %1$s",
       "es": "%3$s en %2$s dentro de %1$s",
       "fr": "%3$s sur %2$s dans %1$s",
       "it": "%3$s su %2$s tra %1$s",
-      "ja": "%1$s先、%2$s %3$s"
+      "ja": "%1$s先 %2$s %3$s"
     },
     "route.briefing.jamItemStart": {
-      "ko": "출발 지점부터 %1$s %2$s",
+      "ko": "출발 지점부터 %1$s %2$s 구간",
       "en": "%2$s on %1$s from the start",
       "es": "%2$s en %1$s desde la salida",
       "fr": "%2$s sur %1$s dès le départ",
@@ -282,7 +282,7 @@
       "ja": "出発地点から%1$s %2$s"
     },
     "route.briefing.jamItemStartUnnamed": {
-      "ko": "출발 지점부터 %1$s",
+      "ko": "출발 지점부터 %1$s 구간",
       "en": "%1$s from the start",
       "es": "%1$s desde la salida",
       "fr": "%1$s dès le départ",
@@ -290,19 +290,19 @@
       "ja": "出発地点から%1$s"
     },
     "route.briefing.jamItemUnnamed": {
-      "ko": "%1$s 가서 %2$s",
+      "ko": "%1$s 앞 %2$s 구간",
       "en": "%2$s starting in %1$s",
       "es": "%2$s dentro de %1$s",
       "fr": "%2$s dans %1$s",
       "it": "%2$s tra %1$s",
-      "ja": "%1$s先、%2$s"
+      "ja": "%1$s先 %2$s"
     },
     "route.briefing.jamMore": {
       "ko": "그 밖에 %1$s곳",
       "en": "%1$s more",
       "es": "%1$s más",
       "fr": "%1$s de plus",
-      "it": "altri %1$s",
+      "it": "{1, plural, one {un altro} other {altri %1$s}}",
       "ja": "ほか%1$sか所"
     },
     "route.briefing.jamNone": {

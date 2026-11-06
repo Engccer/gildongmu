@@ -6,7 +6,7 @@ import type { CarCongestion, CarJam } from "./types";
  * iOS는 같은 키로 `RouteBriefing.swift`·`BeaconModel`이 조립한다(키가 문장 정본).
  *
  * - 비-ko 화면(`english`)은 한글 도로 이름을 뺀다(E61 `carSpokenLandmark`와 같은 규칙 — 외국어 틀에 한글 이름 금지).
- * - 출발 지점에서 바로 시작하는 정체(`JAM_FROM_START_M` 미만)는 「0m 가서」 대신 「출발 지점부터」.
+ * - 출발 지점에서 바로 시작하는 정체(`JAM_FROM_START_M` 미만)는 「0m 앞」 대신 「출발 지점부터」.
  * - 거리는 `formatDistance`만 지난다.
  */
 

@@ -13,6 +13,12 @@ import type { CarJam, Coord } from "./types";
 
 /** 정체 좌표가 안내 경로 위로 인정되는 수직거리(m). 실호출 게이트에서 같은 응답 기준 0m였다. */
 export const JAM_ON_ROUTE_M = 40;
+/**
+ * 투영한 구간 길이와 정체 길이의 허용 차(m, 정체 길이의 `JAM_LENGTH_TOLERANCE_RATIO`와 큰 쪽). 양 끝만 경로 위인 우회로 정체
+ * (분기점·합류점만 내 경로에 걸린다)를 내 앞 정체로 말하지 않으려는 검사다 — 그 도로 이름까지 틀리게 들린다.
+ */
+export const JAM_LENGTH_TOLERANCE_M = 150;
+export const JAM_LENGTH_TOLERANCE_RATIO = 0.25;
 
 export interface KnownJam {
   start: Coord;
@@ -22,7 +28,10 @@ export interface KnownJam {
 export interface NewJamsAheadResult {
   /** 알릴 정체(가장 가까운 하나)와 지금 위치에서 정체 시작까지(m). 없으면 null. */
   nearest: { jam: CarJam; aheadMeters: number } | null;
-  /** 갱신된 아는 정체(새로 본 것 전부를 더한다 — 같은 정체를 두 번 말하지 않는다). */
+  /**
+   * 알린 뒤의 아는 정체 = 입력 + `nearest` 하나. 알리지 않은 먼 새 정체는 더하지 않는다 — 다음 재조회가 말한다.
+   * 호출부는 실제로 말했을 때만 이것을 채택한다(통지가 버려지면 입력 그대로 두어 다음 재조회가 다시 판정한다).
+   */
   known: KnownJam[];
 }
 
@@ -52,6 +61,8 @@ export function newJamsAhead(input: {
     const iv = intervalOn(polyline, jam, d, totalMeters);
     // 시작이 지금 진행거리보다 앞이 아니면 지나갔거나 이미 그 안이다(창 클램프로 s === d가 된다).
     if (!iv || iv[0] <= d) continue;
+    const tolerance = Math.max(JAM_LENGTH_TOLERANCE_M, jam.lengthMeters * JAM_LENGTH_TOLERANCE_RATIO);
+    if (Math.abs(iv[1] - iv[0] - jam.lengthMeters) > tolerance) continue;
     if (knownIntervals.some(([ks, ke]) => iv[0] < ke && ks < iv[1])) continue;
     added.push({ jam, s: iv[0] });
   }
@@ -59,6 +70,6 @@ export function newJamsAhead(input: {
   added.sort((a, b) => a.s - b.s);
   return {
     nearest: { jam: added[0].jam, aheadMeters: Math.round(added[0].s - d) },
-    known: [...input.known, ...added.map(({ jam }) => ({ start: jam.start, end: jam.end }))],
+    known: [...input.known, { start: added[0].jam.start, end: added[0].jam.end }],
   };
 }

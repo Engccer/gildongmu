@@ -130,7 +130,7 @@ describe("정체 한 줄(E80 §4 — 요약 뒤 한 접근성 객체, 3-state)",
     const { container } = renderKo({ ...BRIEFING, congestion: { jams: [jam(7400, 1100, "올림픽대로"), jam(10500, 600, null)] } });
     const ps = [...container.querySelectorAll("p")];
     const line = ps[1];
-    expect(line.textContent).toBe("막히는 구간 2곳: 7.4km 가서 올림픽대로 1.1km, 10.5km 가서 600m.");
+    expect(line.textContent).toBe("막히는 구간 2곳: 7.4km 앞 올림픽대로 1.1km 구간, 10.5km 앞 600m 구간.");
     expect(line.querySelectorAll("*")).toHaveLength(0);
   });
 

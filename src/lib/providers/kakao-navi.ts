@@ -104,7 +104,8 @@ export function normalizeRoute(
  * 이번엔 정보 없음으로 둔다(spec §1).
  */
 function kakaoLevel(state: number): { known: boolean; jam: boolean } {
-  if (state === 1 || state === 2) return { known: true, jam: true };
+  // 6 교통사고(통행 불가)는 정체보다 나쁘다 — 정보 없음으로 접으면 그 구간이 「막히는 곳 없음」의 근거가 된다.
+  if (state === 1 || state === 2 || state === 6) return { known: true, jam: true };
   if (state === 3 || state === 4) return { known: true, jam: false };
   return { known: false, jam: false };
 }
@@ -179,7 +180,7 @@ export async function getCarRouteBriefing(params: {
   // 정체 해석 실패는 경로를 깨지 않는다(spec §2 — 정보 없음으로 접는다).
   let congestion: CarRouteBriefing["congestion"] = null;
   try {
-    congestion = summarizeCongestion(kakaoCongestionPieces(route));
+    congestion = summarizeCongestion(kakaoCongestionPieces(route), briefing.distanceMeters);
   } catch {
     congestion = null;
   }

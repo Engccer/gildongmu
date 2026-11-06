@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { JAM_MERGE_GAP_M, JAM_MIN_M, summarizeCongestion, type CongestionPiece } from "../car-traffic";
+import { CONGESTION_MIN_COVERAGE, JAM_MERGE_GAP_M, JAM_MIN_M, summarizeCongestion, type CongestionPiece } from "../car-traffic";
 import { getTmapCarBriefing, tmapCongestionPieces, type TmapCarResponse } from "../providers/tmap-car";
 import { getCarRouteBriefing, kakaoCongestionPieces, type KakaoNaviRoute } from "../providers/kakao-navi";
 
@@ -8,25 +8,42 @@ function piece(fromM: number, toM: number, jam: boolean, road: string | null = "
   return { fromM, toM, jam, known, road, from: P(37.5, 127 + fromM / 1e6), to: P(37.5, 127 + toM / 1e6) };
 }
 
+/** 조각 길이 합을 경로 총거리로 쓰는 요약(분모 검사는 별도 케이스). */
+const sum = (ps: CongestionPiece[]) => summarizeCongestion(ps, ps.reduce((a, p) => a + (p.toM - p.fromM), 0));
+
 describe("summarizeCongestion (E80 spec §3)", () => {
   it("알려진 조각이 하나도 없으면 null(정보 없음 — 정체 없음과 다르다)", () => {
-    expect(summarizeCongestion([])).toBeNull();
-    expect(summarizeCongestion([piece(0, 900, false, null, false)])).toBeNull();
+    expect(sum([])).toBeNull();
+    expect(sum([piece(0, 900, false, null, false)])).toBeNull();
+  });
+
+  it("교통 정보가 있는 길이가 경로 총거리의 80% 미만이면 null — 분모는 조각 합이 아니라 총거리다", () => {
+    const ps = [piece(0, 800, false)];
+    expect(summarizeCongestion(ps, 1000)).toEqual({ jams: [] });
+    expect(summarizeCongestion(ps, 1001)).toBeNull();
+    expect(summarizeCongestion([piece(0, 300, false), piece(300, 1000, false, null, false)], 1000)).toBeNull();
+    expect(CONGESTION_MIN_COVERAGE).toBe(0.8);
+    expect(summarizeCongestion(ps, 0)).toBeNull();
   });
 
   it("정보는 있는데 문턱을 넘는 정체가 없으면 빈 목록(정체 없음)", () => {
-    expect(summarizeCongestion([piece(0, 2000, false), piece(2000, 2000 + JAM_MIN_M - 1, true)])).toEqual({ jams: [] });
+    expect(sum([piece(0, 2000, false), piece(2000, 2000 + JAM_MIN_M - 1, true)])).toEqual({ jams: [] });
+  });
+
+  it("합치기 간격은 200m(위원장 판정 2026-11-07 ③) — 상수 참조만으로는 값 변이를 못 잡는다", () => {
+    expect(JAM_MERGE_GAP_M).toBe(200);
+    expect(JAM_MIN_M).toBe(500);
   });
 
   it("간격이 합치기 문턱 이하인 정체는 하나로 잇고, 넘으면 가른다", () => {
-    const a = summarizeCongestion([
+    const a = sum([
       piece(1000, 1300, true),
       piece(1300, 1300 + JAM_MERGE_GAP_M, false),
       piece(1300 + JAM_MERGE_GAP_M, 1600, true),
     ]);
     expect(a?.jams).toHaveLength(1);
     expect(a?.jams[0]).toMatchObject({ startMeters: 1000, lengthMeters: 600, road: "올림픽대로" });
-    const b = summarizeCongestion([
+    const b = sum([
       piece(1000, 1300, true),
       piece(1300, 1301 + JAM_MERGE_GAP_M, false),
       piece(1301 + JAM_MERGE_GAP_M, 1600, true),
@@ -35,13 +52,13 @@ describe("summarizeCongestion (E80 spec §3)", () => {
   });
 
   it("도로 이름은 구간 안에서 가장 긴 이름 있는 도로, 이름이 없으면 null", () => {
-    const s = summarizeCongestion([piece(0, 200, true, "잠원로"), piece(200, 800, true, "반포대로"), piece(800, 900, true, null)]);
+    const s = sum([piece(0, 200, true, "잠원로"), piece(200, 800, true, "반포대로"), piece(800, 900, true, null)]);
     expect(s?.jams[0].road).toBe("반포대로");
-    expect(summarizeCongestion([piece(0, 900, true, null)])?.jams[0].road).toBeNull();
+    expect(sum([piece(0, 900, true, null)])?.jams[0].road).toBeNull();
   });
 
   it("시작·끝 좌표는 이어 붙인 구간의 첫 조각 시작과 마지막 조각 끝", () => {
-    const s = summarizeCongestion([piece(100, 400, true), piece(400, 700, true)]);
+    const s = sum([piece(100, 400, true), piece(400, 700, true)]);
     expect(s?.jams[0].start).toEqual(P(37.5, 127 + 100 / 1e6));
     expect(s?.jams[0].end).toEqual(P(37.5, 127 + 700 / 1e6));
   });
@@ -90,9 +107,9 @@ describe("tmapCongestionPieces — 코드표(4·3 정체, 1·2 아님, 0 정보�
   });
 
   it("코드 0·범위 밖·잘못된 인덱스는 정보 없음이거나 버린다 → 전부 0이면 null", () => {
-    expect(summarizeCongestion(tmapCongestionPieces(tmapFixture([[0, 12, 0, 0]])))).toBeNull();
+    expect(summarizeCongestion(tmapCongestionPieces(tmapFixture([[0, 12, 0, 0]])), 1060)).toBeNull();
     expect(tmapCongestionPieces(tmapFixture([[5, 3, 4, 10], [0, 99, 4, 10]]))).toEqual([]);
-    expect(summarizeCongestion(tmapCongestionPieces(tmapFixture(undefined)))).toBeNull();
+    expect(summarizeCongestion(tmapCongestionPieces(tmapFixture(undefined)), 1060)).toBeNull();
   });
 
   it("\"일반도로\"는 이름이 아니다(null)", () => {
@@ -119,16 +136,16 @@ function kakaoRoute(roads: { state: number; distance: number; name?: string }[])
   };
 }
 
-describe("kakaoCongestionPieces — 코드표(1·2 정체, 3·4 아님, 0·6 정보 없음)", () => {
+describe("kakaoCongestionPieces — 코드표(1·2·6 정체, 3·4 아님, 0 정보 없음)", () => {
   it("⚠ Tmap과 숫자 방향이 반대: 카카오 1이 정체, 4가 원활", () => {
     const p = kakaoCongestionPieces(kakaoRoute([{ state: 1, distance: 300 }, { state: 4, distance: 300 }, { state: 2, distance: 300 }]));
     expect(p.map((x) => x.jam)).toEqual([true, false, true]);
     expect(p[1]).toMatchObject({ fromM: 300, toM: 600 });
   });
 
-  it("6(교통사고)은 관측 0건이라 정보 없음으로 둔다, 전부 0이면 null", () => {
-    expect(kakaoCongestionPieces(kakaoRoute([{ state: 6, distance: 300 }]))[0]).toMatchObject({ known: false, jam: false });
-    expect(summarizeCongestion(kakaoCongestionPieces(kakaoRoute([{ state: 0, distance: 900 }])))).toBeNull();
+  it("6(교통사고·통행 불가)은 정체로 친다(정보 없음으로 접으면 「막히는 곳 없음」의 근거가 된다), 전부 0이면 null", () => {
+    expect(kakaoCongestionPieces(kakaoRoute([{ state: 6, distance: 300 }]))[0]).toMatchObject({ known: true, jam: true });
+    expect(summarizeCongestion(kakaoCongestionPieces(kakaoRoute([{ state: 0, distance: 900 }])), 900)).toBeNull();
   });
 
   it("빈 이름은 null", () => {

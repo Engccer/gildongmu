@@ -1069,7 +1069,7 @@
     <string name="route_briefing_jamItemStart">%2$s su %1$s dalla partenza</string>
     <string name="route_briefing_jamItemStartUnnamed">%1$s dalla partenza</string>
     <string name="route_briefing_jamItemUnnamed">%2$s tra %1$s</string>
-    <string name="route_briefing_jamMore">altri %1$s</string>
+    <string name="route_briefing_jamMore">{1, plural, one {un altro} other {altri %1$s}}</string>
     <string name="route_briefing_jamNone">Nessun tratto congestionato.</string>
     <string name="route_briefing_jams">{1, plural, one {%1$s tratto congestionato} other {%1$s tratti congestionati}}: %2$s.</string>
     <string name="route_briefing_loading">Calcolo del percorso…</string>

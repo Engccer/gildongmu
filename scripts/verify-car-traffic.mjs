@@ -10,9 +10,12 @@
 //  ⓑ 같은 쌍 `traffic` 없음: 응답에 `congestion` 키가 없고 안내 문장 목록이 ⓐ와 같다(옵트인이 경로를 바꾸지 않는다)
 //  ⓒ en(NCP 키가 있을 때): `traffic=1`이면 `congestion: null`
 //  양성 대조: 전체 쌍에서 정체 ≥ 1건 관측(0이면 판정 불가 — 정체 시간대에 다시 돌린다)
+//  ⓓ(관측, FAIL 아님) 주행 중 재조회 흉내: 안내 경로의 30% 지점을 출발점으로 다시 찾은 경로의 정체 중, 원래 안내 경로
+//     위(40m)에 놓이는 것과 아닌 것을 센다. 주행 중 판정이 그 좌표를 원래 경로에 투영하므로, "아님"이 많으면 재조회가
+//     정체를 피해 다른 길을 골라 새 정체를 놓치는 빈도다(설계 리뷰 M1 — 실주행 로그 `carJams`와 함께 본다).
 //
 // 사용법: BASE_URL=http://localhost:3000 node scripts/verify-car-traffic.mjs
-// 호출 수: 쌍 3 × Tmap 2 + en 1(NCP) = 7. 카카오 폴백은 강제할 수 없어 단위 테스트(실호출 corpus 모양)가 맡는다.
+// 호출 수: 쌍 3 × Tmap 3 + en 1(NCP) = 10(언제나 실호출 — 저장 응답 재생 모드는 없다. 결과는 보고 corpus에 남긴다). 카카오 폴백은 강제할 수 없어 단위 테스트(실호출 corpus 모양)가 맡는다.
 // 종료 코드: 전부 PASS면 0, 하나라도 FAIL이면 1.
 
 const BASE = process.env.BASE_URL ?? "http://localhost:3000";
@@ -82,6 +85,17 @@ for (const [name, oLat, oLng, dLat, dLng] of PAIRS) {
     const ds = distToPath(j.start, path);
     const de = distToPath(j.end, path);
     check(`${label} 좌표가 안내 경로 위`, ds <= ON_ROUTE_M && de <= ON_ROUTE_M, `시작 ${ds.toFixed(1)}m 끝 ${de.toFixed(1)}m`);
+  }
+  if (path.length > 2) {
+    const mid = path[Math.floor(path.length * 0.3)];
+    const m = await get(`origin=${mid.lat},${mid.lng}&dest=${dLat},${dLng}&includeGeometry=1&traffic=1`);
+    let on = 0;
+    let off = 0;
+    for (const j of m.body?.congestion?.jams ?? []) {
+      if (distToPath(j.start, path) <= ON_ROUTE_M && distToPath(j.end, path) <= ON_ROUTE_M) on++;
+      else off++;
+    }
+    console.log(`INFO ${name} ⓓ 30% 지점 재조회 정체: 원 경로 위 ${on}건, 밖 ${off}건 (provider ${m.body?.provider})`);
   }
   const b = await get(`${base}&includeGeometry=1`);
   check(`${name} ⓑ 미지정 응답에 congestion 키 없음`, b.status === 200 && !("congestion" in b.body));

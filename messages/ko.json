@@ -120,10 +120,10 @@
       "notConfigured": "자동차 경로 안내를 사용할 수 없습니다.",
       "jams": "막히는 구간 {count}곳: {list}.",
       "jamNone": "막히는 구간이 없습니다.",
-      "jamItem": "{distance} 가서 {road} {length}",
-      "jamItemUnnamed": "{distance} 가서 {length}",
-      "jamItemStart": "출발 지점부터 {road} {length}",
-      "jamItemStartUnnamed": "출발 지점부터 {length}",
+      "jamItem": "{distance} 앞 {road} {length} 구간",
+      "jamItemUnnamed": "{distance} 앞 {length} 구간",
+      "jamItemStart": "출발 지점부터 {road} {length} 구간",
+      "jamItemStartUnnamed": "출발 지점부터 {length} 구간",
       "jamMore": "그 밖에 {count}곳"
     },
     "transit": {

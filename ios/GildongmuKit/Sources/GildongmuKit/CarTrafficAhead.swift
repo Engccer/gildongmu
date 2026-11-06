@@ -9,6 +9,10 @@ import Foundation
 
 /// 정체 좌표가 안내 경로 위로 인정되는 수직거리(m). 웹 `JAM_ON_ROUTE_M` 미러.
 public let carJamOnRouteMeters = 40.0
+/// 투영 구간 길이와 정체 길이의 허용 차(m)·비율. 웹 `JAM_LENGTH_TOLERANCE_M`·`JAM_LENGTH_TOLERANCE_RATIO` 미러 —
+/// 양 끝만 경로 위인 우회로 정체를 내 앞 정체로 말하지 않는다.
+public let carJamLengthToleranceMeters = 150.0
+public let carJamLengthToleranceRatio = 0.25
 
 /// 아는 정체(좌표만).
 public struct KnownCarJam: Sendable, Equatable, Codable {
@@ -24,7 +28,7 @@ public struct KnownCarJam: Sendable, Equatable, Codable {
 public struct NewCarJamsAhead: Sendable, Equatable {
     /// 알릴 정체(가장 가까운 하나)와 지금 위치에서 정체 시작까지(m). 없으면 nil.
     public let nearest: (jam: CarJam, aheadMeters: Int)?
-    /// 갱신된 아는 정체(새로 본 것 전부를 더한다 — 같은 정체를 두 번 말하지 않는다).
+    /// 알린 뒤의 아는 정체 = 입력 + `nearest` 하나(먼 새 정체는 다음 재조회가 말한다). 호출부는 실제로 말했을 때만 채택한다.
     public let known: [KnownCarJam]
 
     public static func == (a: NewCarJamsAhead, b: NewCarJamsAhead) -> Bool {
@@ -56,6 +60,8 @@ public func newCarJamsAhead(
         guard let iv = jamInterval(polyline, start: jam.start, end: jam.end, fromD: d, toD: totalMeters),
               iv.0 > d
         else { continue }
+        let tolerance = max(carJamLengthToleranceMeters, Double(jam.lengthMeters) * carJamLengthToleranceRatio)
+        if abs(iv.1 - iv.0 - Double(jam.lengthMeters)) > tolerance { continue }
         if knownIntervals.contains(where: { iv.0 < $0.1 && $0.0 < iv.1 }) { continue }
         added.append((jam, iv.0))
     }
@@ -65,5 +71,5 @@ public func newCarJamsAhead(
     let first = sorted[0]
     return NewCarJamsAhead(
         nearest: (first.jam, Int((first.s - d).rounded())),
-        known: known + sorted.map { KnownCarJam(start: $0.jam.start, end: $0.jam.end) })
+        known: known + [KnownCarJam(start: first.jam.start, end: first.jam.end)])
 }

@@ -255,6 +255,17 @@ extension StubNetworkTests {
         #expect(capturedQuery?.contains(where: { $0.name == "traffic" }) == false)
         #expect(off.congestion == nil)
     }
+
+    /// E80 설계 리뷰 m7: 정체 형식이 어긋나도 경로는 산다 — 정체만 nil(정보 없음)로 접는다.
+    @Test func carMalformedCongestionKeepsRoute() async throws {
+        StubURLProtocol.handler = { _ in
+            (200, Data(#"{"distanceMeters":1,"durationSeconds":1,"taxiFare":0,"tollFare":0,"guides":[],"provider":"tmap","congestion":{"jams":[{"road":null,"startMeters":"x"}]}}"#.utf8))
+        }
+        let b = try await RouteService(client: stubbedClient()).car(
+            originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1, lang: "ko", via: nil, traffic: true)
+        #expect(b.provider == "tmap")
+        #expect(b.congestion == nil)
+    }
 }
 
 // E27: 대중교통 `lang` — 비-ko만 파라미터를 실어 ko 요청은 종전과 byte-identical(walk 동형).

@@ -294,7 +294,7 @@ export async function getTmapCarBriefing(params: {
   // 정체 해석 실패는 경로를 깨지 않는다 — 부가정보 때문에 안내가 사라지면 안 된다(spec §2, 정보 없음으로 접는다).
   let congestion: CarRouteBriefing["congestion"] = null;
   try {
-    congestion = summarizeCongestion(tmapCongestionPieces(data));
+    congestion = summarizeCongestion(tmapCongestionPieces(data), briefing.distanceMeters);
   } catch {
     congestion = null;
   }

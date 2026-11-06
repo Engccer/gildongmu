@@ -211,7 +211,7 @@
    }
   },
   {
-   "name": "새 정체 둘 → 가까운 하나만 알리고 둘 다 아는 정체로",
+   "name": "새 정체 둘 → 가까운 하나만 알리고 그 하나만 아는 정체로(먼 것은 다음 재조회가 말한다)",
    "d": 100,
    "known": [],
    "fresh": [
@@ -245,7 +245,7 @@
    "expect": {
     "nearest": 1,
     "aheadMeters": 1100,
-    "knownCount": 2
+    "knownCount": 1
    }
   },
   {
@@ -307,6 +307,56 @@
     "nearest": null,
     "aheadMeters": null,
     "knownCount": 0
+   }
+  },
+  {
+   "name": "양 끝만 경로 위이고 투영 길이가 정체 길이와 어긋난다(우회로 정체) → 알리지 않는다",
+   "d": 100,
+   "known": [],
+   "fresh": [
+    {
+     "road": "우회로",
+     "startMeters": 0,
+     "lengthMeters": 800,
+     "start": {
+      "lat": 37.5,
+      "lng": 127.01358755746328
+     },
+     "end": {
+      "lat": 37.5,
+      "lng": 127.04302726530038
+     }
+    }
+   ],
+   "expect": {
+    "nearest": null,
+    "aheadMeters": null,
+    "knownCount": 0
+   }
+  },
+  {
+   "name": "투영 길이가 허용 차 안(정체 길이의 25%·150m 중 큰 쪽) → 알린다",
+   "d": 100,
+   "known": [],
+   "fresh": [
+    {
+     "road": "올림픽대로",
+     "startMeters": 0,
+     "lengthMeters": 2200,
+     "start": {
+      "lat": 37.5,
+      "lng": 127.01358755746328
+     },
+     "end": {
+      "lat": 37.5,
+      "lng": 127.04302726530038
+     }
+    }
+   ],
+   "expect": {
+    "nearest": 0,
+    "aheadMeters": 1100,
+    "knownCount": 1
    }
   }
  ]

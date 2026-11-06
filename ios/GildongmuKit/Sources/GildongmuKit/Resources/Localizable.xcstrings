@@ -1326,7 +1326,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ 가서 %2$@ %3$@"
+            "value": "%1$@ 앞 %2$@ %3$@ 구간"
           }
         },
         "en": {
@@ -1356,7 +1356,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@先、%2$@ %3$@"
+            "value": "%1$@先 %2$@ %3$@"
           }
         }
       }
@@ -1366,7 +1366,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "출발 지점부터 %1$@ %2$@"
+            "value": "출발 지점부터 %1$@ %2$@ 구간"
           }
         },
         "en": {
@@ -1406,7 +1406,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "출발 지점부터 %1$@"
+            "value": "출발 지점부터 %1$@ 구간"
           }
         },
         "en": {
@@ -1446,7 +1446,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ 가서 %2$@"
+            "value": "%1$@ 앞 %2$@ 구간"
           }
         },
         "en": {
@@ -1476,7 +1476,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@先、%2$@"
+            "value": "%1$@先 %2$@"
           }
         }
       }
@@ -1510,7 +1510,7 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "altri %1$@"
+            "value": "{1, plural, one {un altro} other {altri %1$@}}"
           }
         },
         "ja": {

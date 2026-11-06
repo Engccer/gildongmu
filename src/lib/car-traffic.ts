@@ -24,15 +24,22 @@ export interface CongestionPiece {
 
 /** 이 간격 이하로 떨어진 정체 조각은 하나로 본다(가다 서다). */
 export const JAM_MERGE_GAP_M = 200;
-/** 이보다 짧은 정체는 싣지 않는다(잠정 — spec §3 ③, 실호출 보정 대상). */
+/** 이보다 짧은 정체는 싣지 않는다(위원장 판정 2026-11-07 ③). */
 export const JAM_MIN_M = 500;
+/**
+ * 교통 정보가 있는 길이가 경로 총거리의 이 비율보다 적으면 정보 없음(null)이다 — 짧은 한 조각만 「원활」이어도
+ * 「막히는 구간이 없습니다」라고 단정하면 정보 없음과 정체 없음이 섞인다(3-state). 실호출 표본은 98.9~100%였다.
+ */
+export const CONGESTION_MIN_COVERAGE = 0.8;
 
 /**
- * 조각 → 정체 요약. 알려진 조각이 하나도 없으면 null(정보 없음, 3-state).
+ * 조각 → 정체 요약. 교통 정보가 있는 길이가 `totalMeters`의 `CONGESTION_MIN_COVERAGE` 미만이면 null(정보 없음).
+ * 분모는 조각 합이 아니라 경로 총거리다 — Tmap은 정보 없는 LineString에 조각을 만들지 않는다.
  * 조각은 경로 순서여야 한다(provider가 보장).
  */
-export function summarizeCongestion(pieces: CongestionPiece[]): CarCongestion | null {
-  if (!pieces.some((p) => p.known)) return null;
+export function summarizeCongestion(pieces: CongestionPiece[], totalMeters: number): CarCongestion | null {
+  const knownM = pieces.reduce((sum, p) => sum + (p.known ? Math.max(0, p.toM - p.fromM) : 0), 0);
+  if (!(totalMeters > 0) || knownM < totalMeters * CONGESTION_MIN_COVERAGE) return null;
   const runs: { fromM: number; toM: number; from: Coord; to: Coord; roads: Map<string, number> }[] = [];
   for (const p of pieces) {
     if (!p.jam || p.toM <= p.fromM) continue;

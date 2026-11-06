@@ -148,6 +148,26 @@ public struct CarRouteBriefing: Codable, Sendable, Hashable {
     }
 }
 
+extension CarRouteBriefing {
+    /// 디코딩은 합성과 같되 **정체만 관용적이다**(E80 설계 리뷰 m7): 부가 정보의 형식 하나가 어긋났다고 경로 전체가
+    /// 디코딩 실패(= 길찾기 실패)가 되면 안 된다. 정체가 해석되지 않으면 nil(정보 없음)로 접는다 — 일부만 버리면
+    /// 「정체 없음」으로 위장할 수 있어 통째로 접는다.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            distanceMeters: try c.decode(Int.self, forKey: .distanceMeters),
+            durationSeconds: try c.decode(Int.self, forKey: .durationSeconds),
+            taxiFare: try c.decode(Int.self, forKey: .taxiFare),
+            tollFare: try c.decode(Int.self, forKey: .tollFare),
+            guides: try c.decode([CarRouteGuide].self, forKey: .guides),
+            provider: try c.decodeIfPresent(String.self, forKey: .provider),
+            terminalCoord: try c.decodeIfPresent(RoutePoint.self, forKey: .terminalCoord),
+            waypoint: try c.decodeIfPresent(RouteWaypoint.self, forKey: .waypoint),
+            guidanceLang: try c.decodeIfPresent(String.self, forKey: .guidanceLang),
+            congestion: (try? c.decodeIfPresent(CarCongestion.self, forKey: .congestion)) ?? nil)
+    }
+}
+
 /// 정체 구간 하나(E80 spec §2, 웹 `CarJam` 미러). 거리는 경로 출발점 기준 정수 m.
 public struct CarJam: Codable, Sendable, Hashable {
     /// 구간 안 가장 긴 이름 있는 도로. 무명이면 nil.

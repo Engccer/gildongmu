@@ -194,6 +194,12 @@ export function CarRouteResult({
   waypointLabel?: string | null;
 }) {
   const tDir = useTranslations("directions");
+  // 정체(E80 §4): 요약 바로 뒤 한 줄. 미요청·정보 없음은 줄 없음, 정체 없음은 그렇다고 말한다(3-state).
+  const congestionLine = carCongestionLine(
+    briefing.congestion,
+    (key, values) => t(key as Parameters<typeof t>[0], values),
+    prefersEnglish(locale),
+  );
   return (
     <>
       <p className="mt-1 text-sm">
@@ -211,15 +217,7 @@ export function CarRouteResult({
           </>
         )}
       </p>
-      {(() => {
-        // 정체(E80 §4): 요약 바로 뒤 한 줄. 미요청·정보 없음은 줄 없음, 정체 없음은 그렇다고 말한다(3-state).
-        const line = carCongestionLine(
-          briefing.congestion,
-          (key, values) => t(key as Parameters<typeof t>[0], values),
-          prefersEnglish(locale),
-        );
-        return line ? <p className="mt-1 text-sm">{line}</p> : null;
-      })()}
+      {congestionLine && <p className="mt-1 text-sm">{congestionLine}</p>}
       <StepList
         items={carStepItems(briefing)}
         waypointIndex={briefing.waypoint?.stepIndex}

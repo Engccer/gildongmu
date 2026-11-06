@@ -120,8 +120,8 @@
       "notConfigured": "自動車経路案内は利用できません。",
       "jams": "渋滞区間 {count}か所: {list}。",
       "jamNone": "渋滞区間はありません。",
-      "jamItem": "{distance}先、{road} {length}",
-      "jamItemUnnamed": "{distance}先、{length}",
+      "jamItem": "{distance}先 {road} {length}",
+      "jamItemUnnamed": "{distance}先 {length}",
       "jamItemStart": "出発地点から{road} {length}",
       "jamItemStartUnnamed": "出発地点から{length}",
       "jamMore": "ほか{count}か所"

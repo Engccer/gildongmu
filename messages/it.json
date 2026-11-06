@@ -124,7 +124,7 @@
       "jamItemUnnamed": "{length} tra {distance}",
       "jamItemStart": "{length} su {road} dalla partenza",
       "jamItemStartUnnamed": "{length} dalla partenza",
-      "jamMore": "altri {count}"
+      "jamMore": "{count, plural, one {un altro} other {altri #}}"
     },
     "transit": {
       "button": "Mezzi pubblici fin qui",
