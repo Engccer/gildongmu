@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { journeyTransferPrompt, type JourneyTransferQuestion } from "../JourneyTransferDialog";
 
 /**
- * E77 확정 문안 표(docs/BACKLOG.md §5 E77, 위원장 TextEdit 왕복 2026-11-07)를 실제 ko 문자열로 조립해 글자 하나까지 대조한다.
+ * E77 확정 문안 표(spec `2026-11-07-e77-unified-waypoint-input-design.md` §2.3, 위원장 TextEdit 왕복 2026-11-07)를 실제 ko 문자열로 조립해 글자 하나까지 대조한다.
  * 짐작이 첫 버튼, 질문은 짐작 쪽 문장이다.
  */
 const ko = JSON.parse(readFileSync(join(__dirname, "../../../messages/ko.json"), "utf8")).journey as Record<string, string>;
