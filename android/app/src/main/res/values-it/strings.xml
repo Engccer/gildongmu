@@ -763,6 +763,8 @@
     <string name="guide_carLiveAction_keepRight">tieni la destra</string>
     <string name="guide_carLiveAction_left">svolta a sinistra</string>
     <string name="guide_carLiveAction_right">svolta a destra</string>
+    <string name="guide_carNewJam">Nuova coda di %3$s su %2$s, tra %1$s.</string>
+    <string name="guide_carNewJamUnnamed">Nuova coda di %2$s tra %1$s.</string>
     <string name="guide_carOffRoute">Fuori percorso; guida in pausa. Richiedi di nuovo il percorso per riprendere</string>
     <string name="guide_carOffRouteBehind">Il percorso è dietro di te</string>
     <string name="guide_carOffRouteClock">Il percorso è a %1$s</string>
@@ -1063,6 +1065,13 @@
     <string name="route_briefing_error">Riepilogo del percorso non riuscito.</string>
     <string name="route_briefing_geoError">Impossibile ottenere la tua posizione. Controlla le autorizzazioni di localizzazione del browser.</string>
     <string name="route_briefing_heading">Percorso in auto per %1$s</string>
+    <string name="route_briefing_jamItem">%3$s su %2$s tra %1$s</string>
+    <string name="route_briefing_jamItemStart">%2$s su %1$s dalla partenza</string>
+    <string name="route_briefing_jamItemStartUnnamed">%1$s dalla partenza</string>
+    <string name="route_briefing_jamItemUnnamed">%2$s tra %1$s</string>
+    <string name="route_briefing_jamMore">altri %1$s</string>
+    <string name="route_briefing_jamNone">Nessun tratto congestionato.</string>
+    <string name="route_briefing_jams">{1, plural, one {%1$s tratto congestionato} other {%1$s tratti congestionati}}: %2$s.</string>
     <string name="route_briefing_loading">Calcolo del percorso…</string>
     <string name="route_briefing_locating">Recupero della tua posizione…</string>
     <string name="route_briefing_noRoute">Nessun percorso trovato. Controlla partenza e destinazione.</string>

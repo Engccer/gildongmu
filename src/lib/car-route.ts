@@ -23,6 +23,8 @@ export async function getCarRoute(params: {
   includeGeometry?: boolean;
   /** 경유지 1개(N4) — Tmap passList·카카오 waypoints 両 provider 수용(실호출 2026-08-22). */
   via?: Coord;
+  /** 정체 구간 옵트인(E80) — Tmap `trafficInfo`·카카오 `road_details` 両 provider(실호출 2026-11-07). */
+  traffic?: boolean;
 }): Promise<CarRouteBriefing> {
   // 안내문 재작성은 진입점 한 곳이 계약이다(walk-route.ts의 rewriteWalkBriefing
   // 동형) — 모든 소비자(웹·iOS·CLI·채팅·실시간 안내)가 한 번에 동조된다.

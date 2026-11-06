@@ -265,6 +265,62 @@
       "it": "Percorso in auto per %1$s",
       "ja": "%1$sまでの車の経路"
     },
+    "route.briefing.jamItem": {
+      "ko": "%1$s 가서 %2$s %3$s",
+      "en": "%3$s on %2$s starting in %1$s",
+      "es": "%3$s en %2$s dentro de %1$s",
+      "fr": "%3$s sur %2$s dans %1$s",
+      "it": "%3$s su %2$s tra %1$s",
+      "ja": "%1$s先、%2$s %3$s"
+    },
+    "route.briefing.jamItemStart": {
+      "ko": "출발 지점부터 %1$s %2$s",
+      "en": "%2$s on %1$s from the start",
+      "es": "%2$s en %1$s desde la salida",
+      "fr": "%2$s sur %1$s dès le départ",
+      "it": "%2$s su %1$s dalla partenza",
+      "ja": "出発地点から%1$s %2$s"
+    },
+    "route.briefing.jamItemStartUnnamed": {
+      "ko": "출발 지점부터 %1$s",
+      "en": "%1$s from the start",
+      "es": "%1$s desde la salida",
+      "fr": "%1$s dès le départ",
+      "it": "%1$s dalla partenza",
+      "ja": "出発地点から%1$s"
+    },
+    "route.briefing.jamItemUnnamed": {
+      "ko": "%1$s 가서 %2$s",
+      "en": "%2$s starting in %1$s",
+      "es": "%2$s dentro de %1$s",
+      "fr": "%2$s dans %1$s",
+      "it": "%2$s tra %1$s",
+      "ja": "%1$s先、%2$s"
+    },
+    "route.briefing.jamMore": {
+      "ko": "그 밖에 %1$s곳",
+      "en": "%1$s more",
+      "es": "%1$s más",
+      "fr": "%1$s de plus",
+      "it": "altri %1$s",
+      "ja": "ほか%1$sか所"
+    },
+    "route.briefing.jamNone": {
+      "ko": "막히는 구간이 없습니다.",
+      "en": "No congested stretches.",
+      "es": "No hay tramos con atasco.",
+      "fr": "Aucun tronçon encombré.",
+      "it": "Nessun tratto congestionato.",
+      "ja": "渋滞区間はありません。"
+    },
+    "route.briefing.jams": {
+      "ko": "막히는 구간 %1$s곳: %2$s.",
+      "en": "{1, plural, one {%1$s congested stretch} other {%1$s congested stretches}}: %2$s.",
+      "es": "{1, plural, one {%1$s tramo con atasco} other {%1$s tramos con atasco}}: %2$s.",
+      "fr": "{1, plural, one {%1$s tronçon encombré} other {%1$s tronçons encombrés}} : %2$s.",
+      "it": "{1, plural, one {%1$s tratto congestionato} other {%1$s tratti congestionati}}: %2$s.",
+      "ja": "渋滞区間 %1$sか所: %2$s。"
+    },
     "route.briefing.loading": {
       "ko": "경로 계산 중…",
       "en": "Calculating route…",

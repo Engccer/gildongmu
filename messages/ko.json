@@ -117,7 +117,14 @@
       "disclaimer": "실시간 교통 기준 예상치입니다.",
       "noRoute": "경로를 찾지 못했습니다. 출발지와 목적지를 확인해 주세요.",
       "rateLimited": "요청이 너무 많습니다.",
-      "notConfigured": "자동차 경로 안내를 사용할 수 없습니다."
+      "notConfigured": "자동차 경로 안내를 사용할 수 없습니다.",
+      "jams": "막히는 구간 {count}곳: {list}.",
+      "jamNone": "막히는 구간이 없습니다.",
+      "jamItem": "{distance} 가서 {road} {length}",
+      "jamItemUnnamed": "{distance} 가서 {length}",
+      "jamItemStart": "출발 지점부터 {road} {length}",
+      "jamItemStartUnnamed": "출발 지점부터 {length}",
+      "jamMore": "그 밖에 {count}곳"
     },
     "transit": {
       "button": "여기까지 대중교통 길찾기",
@@ -884,7 +891,9 @@
     "degradedNoteHandoff": "경로가 끝나 목적지 방향과 거리로 안내 중입니다.",
     "clockDirection": "{hour}시 방향",
     "crossingRemaining": "횡단보도 끝까지 약 {distance}",
-    "crossingRemainingUnderpass": "지하보도 끝까지 약 {distance}"
+    "crossingRemainingUnderpass": "지하보도 끝까지 약 {distance}",
+    "carNewJam": "{distance} 앞 {road}에 {length} 정체가 새로 생겼습니다.",
+    "carNewJamUnnamed": "{distance} 앞에 {length} 정체가 새로 생겼습니다."
   },
   "offline": {
     "heading": "오프라인 상태입니다",

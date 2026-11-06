@@ -117,7 +117,14 @@
       "disclaimer": "リアルタイム交通に基づく推定です。",
       "noRoute": "経路が見つかりませんでした。出発地と目的地を確認してください。",
       "rateLimited": "リクエストが多すぎます。",
-      "notConfigured": "自動車経路案内は利用できません。"
+      "notConfigured": "自動車経路案内は利用できません。",
+      "jams": "渋滞区間 {count}か所: {list}。",
+      "jamNone": "渋滞区間はありません。",
+      "jamItem": "{distance}先、{road} {length}",
+      "jamItemUnnamed": "{distance}先、{length}",
+      "jamItemStart": "出発地点から{road} {length}",
+      "jamItemStartUnnamed": "出発地点から{length}",
+      "jamMore": "ほか{count}か所"
     },
     "transit": {
       "button": "ここまで公共交通で経路検索",
@@ -884,7 +891,9 @@
     "degradedNoteHandoff": "経路が終わったため、目的地の方向と距離で案内しています。",
     "clockDirection": "{hour}時の方向",
     "crossingRemaining": "横断歩道の終わりまで約{distance}",
-    "crossingRemainingUnderpass": "地下道の終わりまで約{distance}"
+    "crossingRemainingUnderpass": "地下道の終わりまで約{distance}",
+    "carNewJam": "{distance}先の{road}で{length}の渋滞が新たに発生しました。",
+    "carNewJamUnnamed": "{distance}先で{length}の渋滞が新たに発生しました。"
   },
   "offline": {
     "heading": "オフラインです",

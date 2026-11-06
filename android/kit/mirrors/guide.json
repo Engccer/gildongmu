@@ -288,6 +288,11 @@
       "swift": "Journey.swift",
       "status": "pending",
       "note": "E70 여정 전이(첫 판 iOS 실험판 전용) — 안드로이드 자동차 안내가 없어 이식 보류"
+    },
+    {
+      "swift": "CarTrafficAhead.swift",
+      "status": "pending",
+      "note": "E80 주행 중 새 정체 판정(웹·iOS 선행). 공유 fixture car-jams-ahead-cases.json. 안드로이드에 자동차 실시간 안내 세션이 생길 때 이식한다(spec 2026-11-07-e80-car-traffic-design.md)"
     }
   ]
 }

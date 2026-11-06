@@ -339,6 +339,26 @@ export interface CarRouteBriefing {
   terminalCoord?: Coord;
   /** 경유지(`via` 요청 시에만, N4). */
   waypoint?: RouteWaypoint;
+  /**
+   * 정체 구간(E80, 옵트인 `traffic=1`에만 — 미지정 응답엔 키가 없다). `null` = 정보 없음(provider가 교통 정보를
+   * 주지 않았거나 en NCP 경로), `{ jams: [] }` = 문턱을 넘는 정체 없음. 조회 실패는 종전대로 502.
+   */
+  congestion?: CarCongestion | null;
+}
+
+/** 정체 구간 하나(E80 spec §2). 거리는 경로 출발점 기준 정수 m. */
+export interface CarJam {
+  /** 구간 안 가장 긴 이름 있는 도로. 무명이면 null. */
+  road: string | null;
+  startMeters: number;
+  lengthMeters: number;
+  /** 정체 시작·끝 좌표 — 주행 중 판정이 안내 경로에 투영한다. */
+  start: Coord;
+  end: Coord;
+}
+
+export interface CarCongestion {
+  jams: CarJam[];
 }
 
 /**

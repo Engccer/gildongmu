@@ -229,6 +229,13 @@ final class BeaconModel {
     private var etaUpdatedAt: Double?
     /// ETA 호출 캡(시작 조회·주기·수동 재조회 전부 포함, §4.6).
     private var etaCallCount = 0
+    /// car ETA 재조회(§4.6, E80 위원장 판정 2026-11-07 ②): 6분 주기, 시작 조회 포함 세션 캡 10회, 오래됨 = 주기 + 1분.
+    /// 웹 `useRouteGuide`의 `CAR_ETA_INTERVAL_MS`·`CAR_ETA_CALL_CAP`·`CAR_ETA_STALE_S` 동조.
+    private static let carEtaIntervalSeconds = 360
+    private static let carEtaCallCap = 10
+    private static let carEtaStaleSeconds = 420.0
+    /// car 아는 정체(E80 §5): 시작 조회·재조회·재경로에서 본 정체의 좌표. 새 정체 통지는 이것과 겹치지 않는 것만.
+    private var knownCarJams: [KnownCarJam] = []
     private var etaTask: Task<Void, Never>?
     private var guideState: GuideState?
     /// 시작 직후 경로 조회 대기·진행 중 — 이 동안 비콘 발화를 보류해 "간략 첫 거리 →
@@ -993,7 +1000,9 @@ final class BeaconModel {
         finalApproach: FinalApproachPayload?, liveSteps: [LiveStepInput],
         /// 서버가 실제로 돌려준 경로의 줄 종류(E42 — 요청이 아니라 응답). 전환·프리뷰 문장의 이름.
         /// nil = 자동차·구버전 서버·어느 이름도 참이 아닌 응답(계단 문구가 남은 계단 회피).
-        lineKind: WalkLineKind?
+        lineKind: WalkLineKind?,
+        /// car 정체(E80 §5 — 아는 정체의 기준선). 정보 없음·도보는 빈 목록.
+        jams: [CarJam]
     )
 
     /// `waypoint`는 **인자로 받는다**(가변 `self.waypoint`를 읽지 않는다 — 왕복 중 경유지가
@@ -1011,7 +1020,9 @@ final class BeaconModel {
                 destLat: dest.lat, destLng: dest.lng,
                 // 안내 문장 언어(A26) — walk와 같은 규율, 기본값 없는 인자라 생략은 컴파일이 막는다.
                 lang: AppLanguage.dataLocale,
-                includeGeometry: true, via: via
+                includeGeometry: true, via: via,
+                // 정체(E80 §5): 시작·재경로 조회가 본 정체가 아는 정체의 기준선이다.
+                traffic: true
             )
             if via != nil, briefing.waypoint == nil { return nil }
             guard briefing.provider == "tmap", let car = buildCarGuide(briefing: briefing) else {
@@ -1020,7 +1031,7 @@ final class BeaconModel {
             // 자동차에는 계단 회피·최종 접근 기하가 없다 — 타입이 그 사실을 말한다.
             // 하단 2행 입력(K2 §4): live 조각(target·anchor)은 없고 행동은 스텝의 서버 투영.
             return (car.route, car.roadSpans, briefing.durationSeconds, nil, nil, nil, nil,
-                    liveStepsFrom(route: car.route, steps: []), nil)
+                    liveStepsFrom(route: car.route, steps: []), nil, briefing.congestion?.jams ?? [])
         }
         let briefing = try await routeService.walk(
             originLat: origin.lat, originLng: origin.lng,
@@ -1058,7 +1069,8 @@ final class BeaconModel {
                 (target: $0.live?.target, anchor: $0.live?.anchor, crossing: $0.crossing ?? false,
                  body: $0.parts?.body, crossingClock: $0.crossingClock)
             }),
-            briefing.lineKind
+            briefing.lineKind,
+            []
         )
     }
 
@@ -1130,6 +1142,7 @@ final class BeaconModel {
             routeWaypointLabel = waypointAtFetch?.label
             guideRouteDurationSeconds = fetched.durationSeconds
             roadSpans = fetched.spans
+            knownCarJams = fetched.jams.map { KnownCarJam(start: $0.start, end: $0.end) }
             if sessionKind == .car {
                 // 시작 조회가 ETA 1회차(§4.6 캡 포함), 주기 타이머 가동.
                 etaCallCount = 1
@@ -1210,12 +1223,12 @@ final class BeaconModel {
             route: route, fromLat: from.lat, fromLng: from.lng, maxDriftMeters: tuning.rerouteMaxDriftM)
     }
 
-    /// car ETA 주기 갱신 타이머(§4.6 — 10분). 캡 소진·간략 전환 시 자연 무동작.
+    /// car ETA 주기 갱신 타이머(§4.6 — 6분, E80). 캡 소진·간략 전환 시 자연 무동작.
     private func startEtaTimer() {
         etaTask?.cancel()
         etaTask = Task { [weak self] in
             while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(600))
+                try? await Task.sleep(for: .seconds(Self.carEtaIntervalSeconds))
                 guard let self else { return }
                 guard !Task.isCancelled else { return }
                 await self.refreshCarEta()
@@ -1225,7 +1238,7 @@ final class BeaconModel {
 
     private func refreshCarEta() async {
         guard sessionKind == .car, isTracking, mode == .detail else { return }
-        guard etaCallCount < 6 else { return }
+        guard etaCallCount < Self.carEtaCallCap else { return }
         // 이탈 중 동결(§4.4): 낡은 경로 기준 ETA 갱신은 거짓이라 건너뛴다.
         guard guideState?.phase != .offRoute else { return }
         guard let dest else { return }
@@ -1237,7 +1250,8 @@ final class BeaconModel {
                 originLat: origin.lat, originLng: origin.lng,
                 destLat: dest.lat, destLng: dest.lng,
                 lang: AppLanguage.dataLocale,
-                via: waypoint.map { (lat: $0.dest.lat, lng: $0.dest.lng) }
+                via: waypoint.map { (lat: $0.dest.lat, lng: $0.dest.lng) },
+                traffic: true
             )
             // 세대 일치 커밋(§4.6) — 중지·재조회·목적지 변경 후 도착 응답 폐기.
             guard token == routeFetchToken, isTracking, mode == .detail, self.dest == dest,
@@ -1247,10 +1261,26 @@ final class BeaconModel {
             etaUpdatedAt = uptimeNow
             if let route = guideRoute, let state = guideState {
                 updateRemaining(route: route, state: state)
+                announceNewCarJam(route: route, state: state, fresh: briefing.congestion?.jams ?? [])
             }
         } catch {
             // 조용히 직전 값 유지 — stale 판정은 etaUpdatedAt이 담당(§4.6 3-state).
         }
+    }
+
+    /// 새 정체 한 문장(E80 spec §5). 지금 안내 경로 위·앞쪽이고 아는 정체와 겹치지 않는 것 중 가장 가까운 하나만.
+    /// 판정은 Kit `newCarJamsAhead`(웹 `newJamsAhead` 미러). 풀린 정체는 말하지 않는다. 이탈 중엔 재조회 자체가 동결이다.
+    /// 운전자 모드(실험판)는 종전 단문 체계를 유지해 싣지 않는다(판정 요청 중 기본값) — 아는 정체는 그래도 갱신한다.
+    /// 분류는 `.actionable`(1회성 경고: 백그라운드 음성 토글이 켜져 있으면 잠금 중에도 말한다).
+    private func announceNewCarJam(route: GuideRoute, state: GuideState, fresh: [CarJam]) {
+        guard !fresh.isEmpty else { return }
+        let out = newCarJamsAhead(
+            polyline: route.polyline, totalMeters: route.totalMeters, d: state.d,
+            known: knownCarJams, fresh: fresh)
+        knownCarJams = out.known
+        guard let nearest = out.nearest, !driverChannel else { return }
+        guideDiagLog("carNewJam ahead=\(nearest.aheadMeters) len=\(nearest.jam.lengthMeters)")
+        announce(carNewJamText(nearest.jam, aheadMeters: nearest.aheadMeters), speechClass: .actionable)
     }
 
     /// "현재 도로" 행 갱신(E56) — **현재 진행거리가 속한 링크에서 직접 유도**한다. 스텝 단위가
@@ -1539,6 +1569,7 @@ final class BeaconModel {
         rerouteGaveUpSpoken = false
         offRouteStillSince = nil
         roadSpans = []
+        knownCarJams = []
         etaSeconds = nil
         etaUpdatedAt = nil
         etaCallCount = 0
@@ -1692,6 +1723,7 @@ final class BeaconModel {
         liveSteps = []
         liveBaselineD = 0
         roadSpans = []
+        knownCarJams = []
         etaTask?.cancel(); etaTask = nil
         etaSeconds = nil; etaUpdatedAt = nil; etaCallCount = 0
         pendingRecovery = nil
@@ -3140,7 +3172,7 @@ final class BeaconModel {
                 text = joinText(
                     road.map { appLocalized("guide.carRoadNow", $0) },
                     base,
-                    (etaAge ?? 0) > 660
+                    (etaAge ?? 0) > Self.carEtaStaleSeconds
                         ? appLocalized("guide.etaStale", String(Int(((etaAge ?? 0) / 60).rounded())))
                         : nil
                 )
@@ -3257,9 +3289,11 @@ final class BeaconModel {
         routeWaypointLabel = fetched.route.waypointStepIndex == nil ? nil : waypoint?.label
         guideRouteDurationSeconds = fetched.durationSeconds
         roadSpans = fetched.spans
+        // 새 경로가 본 정체도 아는 정체다(E80 §5) — 재경로 문장이 이미 나간 자리라 따로 말하지 않는다.
+        knownCarJams += fetched.jams.map { KnownCarJam(start: $0.start, end: $0.end) }
         if sessionKind == .car {
             // 수동 재조회도 ETA 캡에 포함(§4.6) + 새 경로 기준 원자 교체.
-            etaCallCount = min(6, etaCallCount + 1)
+            etaCallCount = min(Self.carEtaCallCap, etaCallCount + 1)
             if let dur = fetched.durationSeconds, dur > 0 {
                 etaSeconds = Double(dur)
                 etaUpdatedAt = uptimeNow

@@ -763,6 +763,8 @@
     <string name="guide_carLiveAction_keepRight">manténgase a la derecha</string>
     <string name="guide_carLiveAction_left">gire a la izquierda</string>
     <string name="guide_carLiveAction_right">gire a la derecha</string>
+    <string name="guide_carNewJam">Nuevo atasco de %3$s en %2$s, a %1$s.</string>
+    <string name="guide_carNewJamUnnamed">Nuevo atasco de %2$s a %1$s.</string>
     <string name="guide_carOffRoute">Fuera de la ruta; guía en pausa. Vuelve a consultar la ruta para reanudar</string>
     <string name="guide_carOffRouteBehind">La ruta está detrás</string>
     <string name="guide_carOffRouteClock">La ruta está en %1$s</string>
@@ -1063,6 +1065,13 @@
     <string name="route_briefing_error">El resumen de la ruta falló.</string>
     <string name="route_briefing_geoError">No se pudo obtener tu ubicación. Revisa el permiso de ubicación del navegador.</string>
     <string name="route_briefing_heading">Ruta en coche a %1$s</string>
+    <string name="route_briefing_jamItem">%3$s en %2$s dentro de %1$s</string>
+    <string name="route_briefing_jamItemStart">%2$s en %1$s desde la salida</string>
+    <string name="route_briefing_jamItemStartUnnamed">%1$s desde la salida</string>
+    <string name="route_briefing_jamItemUnnamed">%2$s dentro de %1$s</string>
+    <string name="route_briefing_jamMore">%1$s más</string>
+    <string name="route_briefing_jamNone">No hay tramos con atasco.</string>
+    <string name="route_briefing_jams">{1, plural, one {%1$s tramo con atasco} other {%1$s tramos con atasco}}: %2$s.</string>
     <string name="route_briefing_loading">Calculando la ruta…</string>
     <string name="route_briefing_locating">Obteniendo tu ubicación…</string>
     <string name="route_briefing_noRoute">No se encontró ninguna ruta. Comprueba el origen y el destino.</string>

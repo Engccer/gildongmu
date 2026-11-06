@@ -1,6 +1,8 @@
 import { env } from "../env";
 import { readTmapJson } from "./tmap-json";
 import { carActionFromTurnType } from "../car-action";
+import { haversineMeters } from "../geo";
+import { summarizeCongestion, type CongestionPiece } from "../car-traffic";
 import type { CarRouteBriefing, CarRouteGuide, Coord, RouteWaypoint } from "../types";
 
 /**
@@ -45,7 +47,15 @@ interface TmapCarPointFeature {
 /** LineString feature(구간 폴리라인) — B1 실시간 자동차 안내의 기하 원천. */
 interface TmapCarLineFeature {
   type: "Feature";
-  geometry: { type: "LineString"; coordinates: [number, number][] };
+  geometry: {
+    type: "LineString";
+    coordinates: [number, number][];
+    /**
+     * 교통 정보(요청 `trafficInfo: "Y"`일 때만, E80). ⚠ properties가 아니라 **geometry 안**이다(공식 문서·실호출
+     * 2026-11-07). 원소 `[시작index, 끝index, 혼잡도, 속도(km/h)]`, index는 이 LineString `coordinates`의 인덱스.
+     */
+    traffic?: [number, number, number, number][];
+  };
   properties: {
     name?: string;
     distance?: number;
@@ -193,6 +203,54 @@ export function normalizeTmapCarRoute(
   };
 }
 
+/**
+ * Tmap 혼잡도 코드표(공식 문서 2026-11-07): 0 정보없음 · 1 원활 · 2 서행 · 3 지체(문서상 폐기) · 4 정체.
+ * ⚠ 숫자가 클수록 막힌다 — 카카오(1이 정체)와 반대. 정체로 읽는 것은 3·4뿐, 범위 밖 값은 정보 없음으로 본다.
+ */
+function tmapLevel(code: number): { known: boolean; jam: boolean } {
+  if (code === 3 || code === 4) return { known: true, jam: true };
+  if (code === 1 || code === 2) return { known: true, jam: false };
+  return { known: false, jam: false };
+}
+
+/**
+ * Tmap 응답 → 경로 순서의 교통 조각(E80 §3 ①). 길이는 좌표 누적 거리(문서에 구간 m가 없다). `traffic`이 없는
+ * LineString은 조각을 내지 않지만 누적 거리는 진행시킨다.
+ */
+export function tmapCongestionPieces(data: TmapCarResponse): CongestionPiece[] {
+  const pieces: CongestionPiece[] = [];
+  let along = 0;
+  for (const f of data.features) {
+    if (f.geometry.type !== "LineString") continue;
+    const line = f as TmapCarLineFeature;
+    const coords = line.geometry.coordinates;
+    const cum: number[] = [0];
+    for (let i = 1; i < coords.length; i++) {
+      const [aLng, aLat] = coords[i - 1];
+      const [bLng, bLat] = coords[i];
+      cum.push(cum[i - 1] + haversineMeters(aLat, aLng, bLat, bLng));
+    }
+    const rawName = typeof line.properties.name === "string" ? line.properties.name : "";
+    const road = rawName && rawName !== "일반도로" ? rawName : null;
+    for (const t of line.geometry.traffic ?? []) {
+      const [i, j, code] = t;
+      if (!(i >= 0 && j > i && j < coords.length)) continue;
+      const { known, jam } = tmapLevel(code);
+      pieces.push({
+        fromM: along + cum[i],
+        toM: along + cum[j],
+        known,
+        jam,
+        road,
+        from: { lat: coords[i][1], lng: coords[i][0] },
+        to: { lat: coords[j][1], lng: coords[j][0] },
+      });
+    }
+    along += cum[cum.length - 1] ?? 0;
+  }
+  return pieces;
+}
+
 /** 자동차 경로 텍스트 브리핑 조회. 실패는 전부 throw(폴백 판단은 car-route.ts 몫). */
 export async function getTmapCarBriefing(params: {
   origin: Coord;
@@ -200,6 +258,8 @@ export async function getTmapCarBriefing(params: {
   includeGeometry?: boolean;
   /** 경유지 1개(N4) — passList "lng,lat". */
   via?: Coord;
+  /** 정체 구간 옵트인(E80). 거짓이면 요청 본문·응답 모두 종전과 같다. */
+  traffic?: boolean;
 }): Promise<CarRouteBriefing> {
   const { origin, dest, via } = params;
   const res = await fetch(ENDPOINT, {
@@ -216,6 +276,7 @@ export async function getTmapCarBriefing(params: {
       reqCoordType: "WGS84GEO",
       resCoordType: "WGS84GEO",
       ...(via ? { passList: `${via.lng},${via.lat}` } : {}),
+      ...(params.traffic ? { trafficInfo: "Y" } : {}),
     }),
     // 실시간 교통이 반영되는 응답이라 캐시하지 않는다
     cache: "no-store",
@@ -225,8 +286,17 @@ export async function getTmapCarBriefing(params: {
     throw new Error(`Tmap 자동차 경로 실패: HTTP ${res.status} ${body}`);
   }
   const data = (await readTmapJson(res)) as TmapCarResponse;
-  return normalizeTmapCarRoute(data, {
+  const briefing = normalizeTmapCarRoute(data, {
     includeGeometry: params.includeGeometry,
     expectWaypoint: via !== undefined,
   });
+  if (!params.traffic) return briefing;
+  // 정체 해석 실패는 경로를 깨지 않는다 — 부가정보 때문에 안내가 사라지면 안 된다(spec §2, 정보 없음으로 접는다).
+  let congestion: CarRouteBriefing["congestion"] = null;
+  try {
+    congestion = summarizeCongestion(tmapCongestionPieces(data));
+  } catch {
+    congestion = null;
+  }
+  return { ...briefing, congestion };
 }

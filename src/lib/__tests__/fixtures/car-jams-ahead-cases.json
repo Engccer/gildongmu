@@ -1,0 +1,313 @@
+{
+ "_comment": "E80 newJamsAhead 공유 fixture(웹 car-traffic-ahead.test.ts ↔ Kit CarTrafficAheadTests). 경로는 위도 37.5 동쪽 직선, cum은 로컬 평면 거리. 생성: spec 2026-11-07-e80-car-traffic-design.md §5",
+ "polyline": {
+  "points": [
+   {
+    "lat": 37.5,
+    "lng": 127
+   },
+   {
+    "lat": 37.5,
+    "lng": 127.01
+   },
+   {
+    "lat": 37.5,
+    "lng": 127.02
+   },
+   {
+    "lat": 37.5,
+    "lng": 127.03
+   },
+   {
+    "lat": 37.5,
+    "lng": 127.04
+   },
+   {
+    "lat": 37.5,
+    "lng": 127.05
+   }
+  ],
+  "cum": [
+   0,
+   883.160938412203,
+   1766.321876824406,
+   2649.482815236609,
+   3532.643753648812,
+   4415.804692061015
+  ]
+ },
+ "totalMeters": 4415.804692061015,
+ "cases": [
+  {
+   "name": "앞쪽 새 정체 하나 → 알린다",
+   "d": 500,
+   "known": [],
+   "fresh": [
+    {
+     "road": "올림픽대로",
+     "startMeters": 0,
+     "lengthMeters": 800,
+     "start": {
+      "lat": 37.5,
+      "lng": 127.02264592910547
+     },
+     "end": {
+      "lat": 37.5,
+      "lng": 127.03170430074765
+     }
+    }
+   ],
+   "expect": {
+    "nearest": 0,
+    "aheadMeters": 1500,
+    "knownCount": 1
+   }
+  },
+  {
+   "name": "시작이 지금보다 뒤 → 알리지 않는다",
+   "d": 2500,
+   "known": [],
+   "fresh": [
+    {
+     "road": "올림픽대로",
+     "startMeters": 0,
+     "lengthMeters": 800,
+     "start": {
+      "lat": 37.5,
+      "lng": 127.02264592910547
+     },
+     "end": {
+      "lat": 37.5,
+      "lng": 127.03170430074765
+     }
+    }
+   ],
+   "expect": {
+    "nearest": null,
+    "aheadMeters": null,
+    "knownCount": 0
+   }
+  },
+  {
+   "name": "정체 안에 이미 있다(시작 뒤·끝 앞) → 알리지 않는다",
+   "d": 2400,
+   "known": [],
+   "fresh": [
+    {
+     "road": "올림픽대로",
+     "startMeters": 0,
+     "lengthMeters": 1000,
+     "start": {
+      "lat": 37.5,
+      "lng": 127.02264592910547
+     },
+     "end": {
+      "lat": 37.5,
+      "lng": 127.0339688936582
+     }
+    }
+   ],
+   "expect": {
+    "nearest": null,
+    "aheadMeters": null,
+    "knownCount": 0
+   }
+  },
+  {
+   "name": "아는 정체와 겹친다(앞으로 늘었다) → 새것 아님",
+   "d": 500,
+   "known": [
+    {
+     "start": {
+      "lat": 37.5,
+      "lng": 127.02264592910547
+     },
+     "end": {
+      "lat": 37.5,
+      "lng": 127.02943970783711
+     }
+    }
+   ],
+   "fresh": [
+    {
+     "road": "올림픽대로",
+     "startMeters": 0,
+     "lengthMeters": 1200,
+     "start": {
+      "lat": 37.5,
+      "lng": 127.02604281847128
+     },
+     "end": {
+      "lat": 37.5,
+      "lng": 127.03963037593456
+     }
+    }
+   ],
+   "expect": {
+    "nearest": null,
+    "aheadMeters": null,
+    "knownCount": 1
+   }
+  },
+  {
+   "name": "아는 정체와 떨어진 새 정체 → 알린다",
+   "d": 500,
+   "known": [
+    {
+     "start": {
+      "lat": 37.5,
+      "lng": 127.02264592910547
+     },
+     "end": {
+      "lat": 37.5,
+      "lng": 127.02943970783711
+     }
+    }
+   ],
+   "fresh": [
+    {
+     "road": "올림픽대로",
+     "startMeters": 0,
+     "lengthMeters": 800,
+     "start": {
+      "lat": 37.5,
+      "lng": 127.0339688936582
+     },
+     "end": {
+      "lat": 37.5,
+      "lng": 127.04302726530038
+     }
+    }
+   ],
+   "expect": {
+    "nearest": 0,
+    "aheadMeters": 2500,
+    "knownCount": 2
+   }
+  },
+  {
+   "name": "경로 밖(재조회가 다른 길) → 알리지 않는다",
+   "d": 500,
+   "known": [],
+   "fresh": [
+    {
+     "road": "강변북로",
+     "startMeters": 0,
+     "lengthMeters": 800,
+     "start": {
+      "lat": 37.501,
+      "lng": 127.02264592910547
+     },
+     "end": {
+      "lat": 37.501,
+      "lng": 127.03170430074765
+     }
+    }
+   ],
+   "expect": {
+    "nearest": null,
+    "aheadMeters": null,
+    "knownCount": 0
+   }
+  },
+  {
+   "name": "새 정체 둘 → 가까운 하나만 알리고 둘 다 아는 정체로",
+   "d": 100,
+   "known": [],
+   "fresh": [
+    {
+     "road": "서부간선도로",
+     "startMeters": 0,
+     "lengthMeters": 700,
+     "start": {
+      "lat": 37.5,
+      "lng": 127.03963037593456
+     },
+     "end": {
+      "lat": 37.5,
+      "lng": 127.04755645112148
+     }
+    },
+    {
+     "road": "올림픽대로",
+     "startMeters": 0,
+     "lengthMeters": 700,
+     "start": {
+      "lat": 37.5,
+      "lng": 127.01358755746328
+     },
+     "end": {
+      "lat": 37.5,
+      "lng": 127.0215136326502
+     }
+    }
+   ],
+   "expect": {
+    "nearest": 1,
+    "aheadMeters": 1100,
+    "knownCount": 2
+   }
+  },
+  {
+   "name": "경로 밖의 아는 정체는 새 정체를 막지 않는다",
+   "d": 500,
+   "known": [
+    {
+     "start": {
+      "lat": 37.501,
+      "lng": 127.02264592910547
+     },
+     "end": {
+      "lat": 37.501,
+      "lng": 127.03170430074765
+     }
+    }
+   ],
+   "fresh": [
+    {
+     "road": "올림픽대로",
+     "startMeters": 0,
+     "lengthMeters": 800,
+     "start": {
+      "lat": 37.5,
+      "lng": 127.02264592910547
+     },
+     "end": {
+      "lat": 37.5,
+      "lng": 127.03170430074765
+     }
+    }
+   ],
+   "expect": {
+    "nearest": 0,
+    "aheadMeters": 1500,
+    "knownCount": 2
+   }
+  },
+  {
+   "name": "경로 끝을 넘는 정체(끝이 경로 밖) → 알리지 않는다",
+   "d": 500,
+   "known": [],
+   "fresh": [
+    {
+     "road": "올림픽대로",
+     "startMeters": 0,
+     "lengthMeters": 2400,
+     "start": {
+      "lat": 37.5,
+      "lng": 127.04529185821093
+     },
+     "end": {
+      "lat": 37.5,
+      "lng": 127.0724669731375
+     }
+    }
+   ],
+   "expect": {
+    "nearest": null,
+    "aheadMeters": null,
+    "knownCount": 0
+   }
+  }
+ ]
+}

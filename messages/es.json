@@ -117,7 +117,14 @@
       "disclaimer": "Estimaciones basadas en el tráfico en tiempo real.",
       "noRoute": "No se encontró ninguna ruta. Comprueba el origen y el destino.",
       "rateLimited": "Demasiadas solicitudes.",
-      "notConfigured": "Las indicaciones en coche no están disponibles."
+      "notConfigured": "Las indicaciones en coche no están disponibles.",
+      "jams": "{count, plural, one {# tramo con atasco} other {# tramos con atasco}}: {list}.",
+      "jamNone": "No hay tramos con atasco.",
+      "jamItem": "{length} en {road} dentro de {distance}",
+      "jamItemUnnamed": "{length} dentro de {distance}",
+      "jamItemStart": "{length} en {road} desde la salida",
+      "jamItemStartUnnamed": "{length} desde la salida",
+      "jamMore": "{count} más"
     },
     "transit": {
       "button": "Transporte público hasta aquí",
@@ -884,7 +891,9 @@
     "degradedNoteHandoff": "La ruta ha terminado, así que la guía usa la dirección y la distancia al destino.",
     "clockDirection": "la posición {hour} del reloj",
     "crossingRemaining": "Unos {distance} hasta el final del paso de peatones",
-    "crossingRemainingUnderpass": "Unos {distance} hasta el final del paso subterráneo"
+    "crossingRemainingUnderpass": "Unos {distance} hasta el final del paso subterráneo",
+    "carNewJam": "Nuevo atasco de {length} en {road}, a {distance}.",
+    "carNewJamUnnamed": "Nuevo atasco de {length} a {distance}."
   },
   "offline": {
     "heading": "Estás sin conexión",

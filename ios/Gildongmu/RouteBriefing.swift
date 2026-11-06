@@ -24,6 +24,10 @@ struct CarRouteRows: View {
             appLocalized("ios.route.durationMinutes", String(briefing.durationSeconds / 60)),
             appLocalized("ios.route.taxiFare", wonText(briefing.taxiFare)),
             briefing.tollFare > 0 ? appLocalized("ios.route.tollFare", wonText(briefing.tollFare)) : nil))
+        // 정체(E80 §4): 요약 바로 뒤 한 행. 미요청·정보 없음은 행 없음, 정체 없음은 그렇다고 말한다(3-state).
+        if let line = carCongestionText(briefing.congestion) {
+            distanceText(line)
+        }
         ForEach(Array(briefing.guides.enumerated()), id: \.offset) { index, guide in
             if let waypoint = briefing.waypoint, index == waypoint.stepIndex, let waypointLabel {
                 Text(appLocalized("directions.viaArrived", waypointLabel))
@@ -37,6 +41,47 @@ struct CarRouteRows: View {
             }
         }
     }
+}
+
+/// 정체 문장(E80 spec §4·§5, 웹 `car-traffic-text.ts` 미러 — 같은 키가 문장 정본).
+/// 비-ko 화면은 한글 도로 이름을 뺀다(`carSpokenLandmark`와 같은 규칙). 출발 지점 100m 안에서 시작하면 「출발 지점부터」.
+private let carBriefingJamMax = 3
+private let carJamFromStartMeters = 100
+
+private func spokenJamRoad(_ road: String?) -> String? {
+    guard let road, !road.isEmpty else { return nil }
+    return AppLanguage.dataLocaleValue == .en && hasHangul(road) ? nil : road
+}
+
+private func carJamItemText(_ jam: CarJam) -> String {
+    let length = formatDistance(jam.lengthMeters)
+    let road = spokenJamRoad(jam.road)
+    if jam.startMeters < carJamFromStartMeters {
+        return road.map { appLocalized("route.briefing.jamItemStart", $0, length) }
+            ?? appLocalized("route.briefing.jamItemStartUnnamed", length)
+    }
+    let distance = formatDistance(jam.startMeters)
+    return road.map { appLocalized("route.briefing.jamItem", distance, $0, length) }
+        ?? appLocalized("route.briefing.jamItemUnnamed", distance, length)
+}
+
+/// 출발 전 브리핑 한 줄. nil = 줄 없음(미요청·정보 없음).
+func carCongestionText(_ congestion: CarCongestion?) -> String? {
+    guard let congestion else { return nil }
+    let jams = congestion.jams
+    if jams.isEmpty { return appLocalized("route.briefing.jamNone") }
+    var items = jams.prefix(carBriefingJamMax).map(carJamItemText)
+    let rest = jams.count - items.count
+    if rest > 0 { items.append(appLocalized("route.briefing.jamMore", rest)) }
+    return appLocalized("route.briefing.jams", jams.count, items.joined(separator: ", "))
+}
+
+/// 주행 중 새 정체 한 문장. `aheadMeters`는 지금 위치에서 정체 시작까지.
+func carNewJamText(_ jam: CarJam, aheadMeters: Int) -> String {
+    let distance = formatDistance(aheadMeters)
+    let length = formatDistance(jam.lengthMeters)
+    return spokenJamRoad(jam.road).map { appLocalized("guide.carNewJam", distance, $0, length) }
+        ?? appLocalized("guide.carNewJamUnnamed", distance, length)
 }
 
 /// 대중교통 결과 행들(요약 1행+구간들). 소비 화면이 heading·섹션을 소유한다.

@@ -117,7 +117,14 @@
       "disclaimer": "Stime basate sul traffico in tempo reale.",
       "noRoute": "Nessun percorso trovato. Controlla partenza e destinazione.",
       "rateLimited": "Troppe richieste.",
-      "notConfigured": "Le indicazioni in auto non sono disponibili."
+      "notConfigured": "Le indicazioni in auto non sono disponibili.",
+      "jams": "{count, plural, one {# tratto congestionato} other {# tratti congestionati}}: {list}.",
+      "jamNone": "Nessun tratto congestionato.",
+      "jamItem": "{length} su {road} tra {distance}",
+      "jamItemUnnamed": "{length} tra {distance}",
+      "jamItemStart": "{length} su {road} dalla partenza",
+      "jamItemStartUnnamed": "{length} dalla partenza",
+      "jamMore": "altri {count}"
     },
     "transit": {
       "button": "Mezzi pubblici fin qui",
@@ -884,7 +891,9 @@
     "degradedNoteHandoff": "Il percorso è terminato, quindi la guida usa la direzione e la distanza dalla destinazione.",
     "clockDirection": "ore {hour}",
     "crossingRemaining": "Circa {distance} alla fine delle strisce pedonali",
-    "crossingRemainingUnderpass": "Circa {distance} alla fine del sottopassaggio"
+    "crossingRemainingUnderpass": "Circa {distance} alla fine del sottopassaggio",
+    "carNewJam": "Nuova coda di {length} su {road}, tra {distance}.",
+    "carNewJamUnnamed": "Nuova coda di {length} tra {distance}."
   },
   "offline": {
     "heading": "Sei offline",

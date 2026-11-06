@@ -36,6 +36,10 @@ const querySchema = z.object({
   includeGeometry: z
     .union([z.literal("1"), z.null()])
     .transform((v) => v === "1"),
+  // 정체 구간 옵트인(E80 spec §2): 누락 또는 정확히 "1"만, 그 외 400(`includeGeometry` 동형). 미지정 응답은 byte 불변.
+  traffic: z
+    .union([z.literal("1"), z.null()])
+    .transform((v) => v === "1"),
   // 안내 문장 언어(E27 계약, 2026-09-02 통일): 누락=ko, 그 외는 정확히 ko/en만. 종전엔
   // `=== "en"` 문자열 비교라 `EN`·`eng`가 조용히 한국어로 떨어졌다 — 그 응답은 `guidanceLang: "ko"`가
   // 실려 폴백처럼 보이지만 실제로는 요청이 틀린 것이라, 400이 정직하다.
@@ -48,6 +52,7 @@ export async function GET(request: NextRequest) {
     dest: request.nextUrl.searchParams.get("dest") ?? "",
     via: request.nextUrl.searchParams.get("via"),
     includeGeometry: request.nextUrl.searchParams.get("includeGeometry"),
+    traffic: request.nextUrl.searchParams.get("traffic"),
     lang: request.nextUrl.searchParams.get("lang"),
   });
   if (!parsed.success) {
@@ -94,13 +99,18 @@ export async function GET(request: NextRequest) {
 
   try {
     // en(NCP) 경로는 기하·경유지 미지원 — 그 둘은 위에서 ko 서비스로 갈렸다.
+    // 정체(E80): NCP는 교통 정보가 없어 옵트인이면 `congestion: null`(정보 없음 — 소비자는 침묵).
     const briefing = useNcp
-      ? await getCarRouteBriefingEn({ origin, dest })
+      ? {
+          ...(await getCarRouteBriefingEn({ origin, dest })),
+          ...(parsed.data.traffic ? { congestion: null } : {}),
+        }
       : await getCarRoute({
           origin,
           dest,
           includeGeometry: parsed.data.includeGeometry,
           via,
+          traffic: parsed.data.traffic,
         });
     // 안내문 언어 마커(A26): ko 폴백은 위 판정 그대로 두고, 그 결과만 응답에 싣는다 —
     // en 화면이 한국어 문장을 받았을 때 `lang="ko"`로 정직하게 표기할 유일한 근거.

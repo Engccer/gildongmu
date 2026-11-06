@@ -105,3 +105,49 @@ describe("오류 낭독은 서버 문자열이 아니라 t() 문장", () => {
     expect(text).toBe(messages.route.briefing.error);
   });
 });
+
+describe("정체 한 줄(E80 §4 — 요약 뒤 한 접근성 객체, 3-state)", () => {
+  const jam = (startMeters: number, lengthMeters: number, road: string | null) => ({
+    road,
+    startMeters,
+    lengthMeters,
+    start: { lat: 37.5, lng: 127 },
+    end: { lat: 37.5, lng: 127.01 },
+  });
+  function renderKo(briefing: Briefing) {
+    function H() {
+      const t = useTranslations("route.briefing");
+      return <CarRouteResult briefing={briefing} locale="ko" t={t} />;
+    }
+    return render(
+      <NextIntlClientProvider locale="ko" messages={messages}>
+        <H />
+      </NextIntlClientProvider>,
+    );
+  }
+
+  it("정체가 있으면 요약 바로 뒤 <p> 하나, 자식 요소 없음", () => {
+    const { container } = renderKo({ ...BRIEFING, congestion: { jams: [jam(7400, 1100, "올림픽대로"), jam(10500, 600, null)] } });
+    const ps = [...container.querySelectorAll("p")];
+    const line = ps[1];
+    expect(line.textContent).toBe("막히는 구간 2곳: 7.4km 가서 올림픽대로 1.1km, 10.5km 가서 600m.");
+    expect(line.querySelectorAll("*")).toHaveLength(0);
+  });
+
+  it("정체 없음은 그렇다고 말하고, 정보 없음(null)·미요청은 줄이 없다", () => {
+    const none = renderKo({ ...BRIEFING, congestion: { jams: [] } });
+    expect(none.container.textContent).toContain("막히는 구간이 없습니다.");
+    cleanup();
+    const unknown = renderKo({ ...BRIEFING, congestion: null });
+    expect(unknown.container.textContent).not.toContain("막히는 구간");
+    cleanup();
+    const absent = renderKo(BRIEFING);
+    expect(absent.container.textContent).not.toContain("막히는 구간");
+  });
+
+  it("en 화면은 한글 도로 이름을 싣지 않는다", () => {
+    const { container } = renderResult({ ...BRIEFING, congestion: { jams: [jam(7400, 1100, "올림픽대로")] } });
+    expect(container.textContent).toContain("1 congested stretch: 1.1km starting in 7.4km.");
+    expect(container.textContent).not.toContain("올림픽대로");
+  });
+});

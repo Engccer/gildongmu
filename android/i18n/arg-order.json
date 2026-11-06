@@ -297,6 +297,15 @@
     "toward",
     "action"
   ],
+  "guide.carNewJam": [
+    "distance",
+    "road",
+    "length"
+  ],
+  "guide.carNewJamUnnamed": [
+    "distance",
+    "length"
+  ],
   "guide.carOffRouteClock": [
     "direction"
   ],
@@ -688,6 +697,29 @@
   ],
   "route.briefing.heading": [
     "name"
+  ],
+  "route.briefing.jamItem": [
+    "distance",
+    "road",
+    "length"
+  ],
+  "route.briefing.jamItemStart": [
+    "road",
+    "length"
+  ],
+  "route.briefing.jamItemStartUnnamed": [
+    "length"
+  ],
+  "route.briefing.jamItemUnnamed": [
+    "distance",
+    "length"
+  ],
+  "route.briefing.jamMore": [
+    "count"
+  ],
+  "route.briefing.jams": [
+    "count",
+    "list"
   ],
   "route.briefing.summary": [
     "distance",

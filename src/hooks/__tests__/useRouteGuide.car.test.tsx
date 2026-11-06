@@ -133,3 +133,47 @@ describe("useRouteGuide car kind", () => {
     expect(screen.getByTestId("status-a").textContent).toBe("idle");
   });
 });
+
+describe("E80 재조회 6분 · 새 정체 한 문장(§5)", () => {
+  const JAM = { road: "올림픽로", startMeters: 200, lengthMeters: 200, start: pt(200), end: pt(400) };
+  function bodies(startJams: unknown[], refreshJams: unknown[]) {
+    fetchMock.mockImplementation(async (url: string) => ({
+      ok: true,
+      json: async () =>
+        url.includes("includeGeometry=1")
+          ? { ...CAR_BODY, congestion: { jams: startJams } }
+          : { ...CAR_BODY, durationSeconds: 280, congestion: { jams: refreshJams } },
+    }));
+  }
+  async function startAndTick() {
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
+    renderHarness(<Harness kind="car" tag="a" />);
+    fireEvent.click(screen.getByText("start-a"));
+    await waitFor(() => expect(screen.getByTestId("live-a").textContent).toContain("자동차 안내 시작"));
+    // 5분 59초엔 재조회가 없다 — 주기는 6분이다.
+    await act(async () => vi.advanceTimersByTime(359_000));
+    expect(fetchMock.mock.calls.filter(([u]) => !String(u).includes("includeGeometry=1"))).toHaveLength(0);
+    await act(async () => vi.advanceTimersByTime(1_000));
+    await waitFor(() =>
+      expect(fetchMock.mock.calls.filter(([u]) => !String(u).includes("includeGeometry=1"))).toHaveLength(1),
+    );
+  }
+  afterEach(() => vi.useRealTimers());
+
+  it("시작 조회·재조회 둘 다 traffic=1, 앞쪽 새 정체는 한 문장으로 알린다", async () => {
+    bodies([], [JAM]);
+    await startAndTick();
+    expect(fetchMock.mock.calls.every(([u]) => String(u).includes("traffic=1"))).toBe(true);
+    await waitFor(() =>
+      expect(screen.getByTestId("live-a").textContent).toBe("200m 앞 올림픽로에 200m 정체가 새로 생겼습니다."),
+    );
+  });
+
+  it("시작 조회 때 이미 있던 정체는 재조회에 다시 와도 말하지 않는다", async () => {
+    bodies([JAM], [JAM]);
+    await startAndTick();
+    // ETA 커밋까지 기다린 뒤에도 통지가 시작 문장 그대로다.
+    await new Promise((r) => setTimeout(r, 50));
+    expect(screen.getByTestId("live-a").textContent).not.toContain("정체");
+  });
+});

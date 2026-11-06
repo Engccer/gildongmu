@@ -117,7 +117,14 @@
       "disclaimer": "Estimations basées sur le trafic en temps réel.",
       "noRoute": "Aucun itinéraire trouvé. Vérifiez le départ et la destination.",
       "rateLimited": "Trop de requêtes.",
-      "notConfigured": "L'itinéraire en voiture n'est pas disponible."
+      "notConfigured": "L'itinéraire en voiture n'est pas disponible.",
+      "jams": "{count, plural, one {# tronçon encombré} other {# tronçons encombrés}} : {list}.",
+      "jamNone": "Aucun tronçon encombré.",
+      "jamItem": "{length} sur {road} dans {distance}",
+      "jamItemUnnamed": "{length} dans {distance}",
+      "jamItemStart": "{length} sur {road} dès le départ",
+      "jamItemStartUnnamed": "{length} dès le départ",
+      "jamMore": "{count} de plus"
     },
     "transit": {
       "button": "Transports en commun jusqu'ici",
@@ -884,7 +891,9 @@
     "degradedNoteHandoff": "L’itinéraire est terminé ; le guidage utilise la direction et la distance jusqu’à la destination.",
     "clockDirection": "{hour} h",
     "crossingRemaining": "Environ {distance} jusqu'au bout du passage piéton",
-    "crossingRemainingUnderpass": "Environ {distance} jusqu'au bout du passage souterrain"
+    "crossingRemainingUnderpass": "Environ {distance} jusqu'au bout du passage souterrain",
+    "carNewJam": "Nouvel embouteillage de {length} sur {road}, dans {distance}.",
+    "carNewJamUnnamed": "Nouvel embouteillage de {length} dans {distance}."
   },
   "offline": {
     "heading": "Vous êtes hors ligne",

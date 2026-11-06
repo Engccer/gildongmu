@@ -188,6 +188,31 @@ describe("GET /api/route/car", () => {
     expect(getCarRoute).not.toHaveBeenCalled();
   });
 
+  describe("정체 옵트인 traffic(E80 §2)", () => {
+    const req = (traffic: string | null, lang?: string) => {
+      const params = new URLSearchParams({ origin: "37.5,127.0", dest: "37.6,127.1" });
+      if (traffic !== null) params.set("traffic", traffic);
+      if (lang) params.set("lang", lang);
+      return new NextRequest(`http://x/api/route/car?${params.toString()}`);
+    };
+    it("누락은 traffic=false, \"1\"은 true로 서비스에 넘긴다", async () => {
+      await GET(req(null));
+      expect(vi.mocked(getCarRoute).mock.calls[0][0]).toMatchObject({ traffic: false });
+      await GET(req("1"));
+      expect(vi.mocked(getCarRoute).mock.calls[1][0]).toMatchObject({ traffic: true });
+    });
+    it("\"1\" 밖의 값은 400(옵트인을 조용히 무시하지 않는다)", async () => {
+      for (const bad of ["true", "0", "", "Y"]) {
+        expect((await GET(req(bad))).status, `traffic=${bad}`).toBe(400);
+      }
+    });
+    it("en(NCP) 경로는 옵트인이면 congestion: null(정보 없음), 미지정이면 키 없음", async () => {
+      vi.mocked(hasNcpMapsKeys).mockReturnValue(true);
+      expect((await (await GET(req("1", "en"))).json()).congestion).toBeNull();
+      expect("congestion" in (await (await GET(req(null, "en"))).json())).toBe(false);
+    });
+  });
+
   describe("via 경유지(N4)", () => {
     it("경유지가 한국 밖이면 200 outOfCoverage(provider 미호출)", async () => {
       const res = await GET(new NextRequest("http://x/api/route/car?origin=37.5,127.0&dest=37.6,127.1&via=37.7749,-122.4194"));

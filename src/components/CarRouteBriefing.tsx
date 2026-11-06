@@ -6,7 +6,8 @@ import type { CarRouteBriefing as Briefing } from "@/lib/types";
 import { durationToMinutes, formatDistance } from "@/lib/format";
 import { StepList } from "./WalkRouteBriefing";
 import { carStepItems } from "@/lib/route-step-items";
-import { dataLocale } from "@/lib/data-locale";
+import { dataLocale, prefersEnglish } from "@/lib/data-locale";
+import { carCongestionLine } from "@/lib/car-traffic-text";
 import { awaitGeolocation } from "@/lib/geolocation";
 import { isInKorea } from "@/lib/coverage";
 import { isOutOfCoverageBody } from "@/lib/out-of-coverage";
@@ -210,6 +211,15 @@ export function CarRouteResult({
           </>
         )}
       </p>
+      {(() => {
+        // 정체(E80 §4): 요약 바로 뒤 한 줄. 미요청·정보 없음은 줄 없음, 정체 없음은 그렇다고 말한다(3-state).
+        const line = carCongestionLine(
+          briefing.congestion,
+          (key, values) => t(key as Parameters<typeof t>[0], values),
+          prefersEnglish(locale),
+        );
+        return line ? <p className="mt-1 text-sm">{line}</p> : null;
+      })()}
       <StepList
         items={carStepItems(briefing)}
         waypointIndex={briefing.waypoint?.stepIndex}

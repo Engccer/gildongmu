@@ -763,6 +763,8 @@
     <string name="guide_carLiveAction_keepRight">keep right</string>
     <string name="guide_carLiveAction_left">turn left</string>
     <string name="guide_carLiveAction_right">turn right</string>
+    <string name="guide_carNewJam">New %3$s traffic jam on %2$s, %1$s ahead.</string>
+    <string name="guide_carNewJamUnnamed">New %2$s traffic jam %1$s ahead.</string>
     <string name="guide_carOffRoute">You are off the route; guidance is paused. Refresh the route to resume</string>
     <string name="guide_carOffRouteBehind">The route is behind you</string>
     <string name="guide_carOffRouteClock">The route is at %1$s</string>
@@ -1063,6 +1065,13 @@
     <string name="route_briefing_error">Route briefing failed.</string>
     <string name="route_briefing_geoError">Could not get your location. Please check the browser\'s location permission.</string>
     <string name="route_briefing_heading">Car route to %1$s</string>
+    <string name="route_briefing_jamItem">%3$s on %2$s starting in %1$s</string>
+    <string name="route_briefing_jamItemStart">%2$s on %1$s from the start</string>
+    <string name="route_briefing_jamItemStartUnnamed">%1$s from the start</string>
+    <string name="route_briefing_jamItemUnnamed">%2$s starting in %1$s</string>
+    <string name="route_briefing_jamMore">%1$s more</string>
+    <string name="route_briefing_jamNone">No congested stretches.</string>
+    <string name="route_briefing_jams">{1, plural, one {%1$s congested stretch} other {%1$s congested stretches}}: %2$s.</string>
     <string name="route_briefing_loading">Calculating route…</string>
     <string name="route_briefing_locating">Getting your location…</string>
     <string name="route_briefing_noRoute">No route found. Check the start and destination.</string>

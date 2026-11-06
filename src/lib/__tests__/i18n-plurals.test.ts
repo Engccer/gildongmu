@@ -157,6 +157,7 @@ describe("수량 문구 복수형(A29)", () => {
     "route.transit.legBoard": "Board  at , 1 stop",
     "route.transit.legTransfer": "Transfer to  at , 1 stop",
     "route.transit.summary": "x min, x won, 1 transfer",
+    "route.briefing.jams": "1 congested stretch: x.",
     "directions.candidateCount": "Found 1 candidate.",
     "manualLocation.staleAgeMinutes": "1 minute ago",
     "manualLocation.staleAgeHours": "1 hour ago",

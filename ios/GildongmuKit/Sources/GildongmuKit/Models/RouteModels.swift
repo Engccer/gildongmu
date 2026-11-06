@@ -126,11 +126,14 @@ public struct CarRouteBriefing: Codable, Sendable, Hashable {
     /// 안내문 언어 "ko"/"en"(A26, 웹 `guidanceLang` 미러). en 요청도 NCP 키 부재·경유지면 서버가
     /// ko로 폴백하고 그 사실을 이 필드로 알린다. 구버전 서버·구버전 응답은 nil.
     public let guidanceLang: String?
+    /// 정체 구간(E80, 옵트인 `traffic=1`에만). nil = 미요청 또는 정보 없음(웹은 키 부재와 `null`을 가르지만 소비자는 둘 다
+    /// 침묵이라 같은 값으로 받는다), 빈 `jams` = 문턱을 넘는 정체 없음.
+    public let congestion: CarCongestion?
 
     public init(
         distanceMeters: Int, durationSeconds: Int, taxiFare: Int, tollFare: Int,
         guides: [CarRouteGuide], provider: String? = nil, terminalCoord: RoutePoint? = nil,
-        waypoint: RouteWaypoint? = nil, guidanceLang: String? = nil
+        waypoint: RouteWaypoint? = nil, guidanceLang: String? = nil, congestion: CarCongestion? = nil
     ) {
         self.distanceMeters = distanceMeters
         self.durationSeconds = durationSeconds
@@ -141,6 +144,34 @@ public struct CarRouteBriefing: Codable, Sendable, Hashable {
         self.terminalCoord = terminalCoord
         self.waypoint = waypoint
         self.guidanceLang = guidanceLang
+        self.congestion = congestion
+    }
+}
+
+/// 정체 구간 하나(E80 spec §2, 웹 `CarJam` 미러). 거리는 경로 출발점 기준 정수 m.
+public struct CarJam: Codable, Sendable, Hashable {
+    /// 구간 안 가장 긴 이름 있는 도로. 무명이면 nil.
+    public let road: String?
+    public let startMeters: Int
+    public let lengthMeters: Int
+    /// 정체 시작·끝 좌표 — 주행 중 판정이 안내 경로에 투영한다.
+    public let start: RoutePoint
+    public let end: RoutePoint
+
+    public init(road: String?, startMeters: Int, lengthMeters: Int, start: RoutePoint, end: RoutePoint) {
+        self.road = road
+        self.startMeters = startMeters
+        self.lengthMeters = lengthMeters
+        self.start = start
+        self.end = end
+    }
+}
+
+public struct CarCongestion: Codable, Sendable, Hashable {
+    public let jams: [CarJam]
+
+    public init(jams: [CarJam]) {
+        self.jams = jams
     }
 }
 

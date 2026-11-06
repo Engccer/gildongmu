@@ -211,7 +211,7 @@ extension StubNetworkTests {
             return (200, Data(#"{"distanceMeters":1,"durationSeconds":1,"taxiFare":0,"tollFare":0,"guides":[]}"#.utf8))
         }
         _ = try await RouteService(client: stubbedClient()).car(
-            originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1, lang: "ko", via: nil)
+            originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1, lang: "ko", via: nil, traffic: false)
         #expect(capturedQuery?.contains(where: { $0.name == "via" }) == false)
     }
 
@@ -224,12 +224,36 @@ extension StubNetworkTests {
             return (200, Data(#"{"distanceMeters":1,"durationSeconds":1,"taxiFare":0,"tollFare":0,"guides":[]}"#.utf8))
         }
         _ = try await RouteService(client: stubbedClient()).car(
-            originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1, lang: "en", via: nil)
+            originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1, lang: "en", via: nil, traffic: false)
         #expect(capturedQuery?.contains(where: { $0.name == "lang" && $0.value == "en" }) == true)
 
         _ = try await RouteService(client: stubbedClient()).car(
-            originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1, lang: "ko", via: nil)
+            originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1, lang: "ko", via: nil, traffic: false)
         #expect(capturedQuery?.contains(where: { $0.name == "lang" }) == false)
+    }
+
+    /// E80 §2: 정체는 옵트인 — 켜면 `traffic=1`, 끄면 파라미터 없음(종전 요청과 byte-identical). 응답 `congestion`은
+    /// 정체 목록·null·키 부재 모두 디코딩된다.
+    @Test func carTrafficOptIn() async throws {
+        var capturedQuery: [URLQueryItem]?
+        StubURLProtocol.handler = { request in
+            capturedQuery = URLComponents(url: request.url!, resolvingAgainstBaseURL: false)?.queryItems
+            return (200, Data(#"{"distanceMeters":1,"durationSeconds":1,"taxiFare":0,"tollFare":0,"guides":[],"congestion":{"jams":[{"road":null,"startMeters":10,"lengthMeters":600,"start":{"lat":37.5,"lng":127},"end":{"lat":37.5,"lng":127.01}}]}}"#.utf8))
+        }
+        let on = try await RouteService(client: stubbedClient()).car(
+            originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1, lang: "ko", via: nil, traffic: true)
+        #expect(capturedQuery?.contains(where: { $0.name == "traffic" && $0.value == "1" }) == true)
+        #expect(on.congestion?.jams.first?.lengthMeters == 600)
+        #expect(on.congestion?.jams.first?.road == nil)
+
+        StubURLProtocol.handler = { request in
+            capturedQuery = URLComponents(url: request.url!, resolvingAgainstBaseURL: false)?.queryItems
+            return (200, Data(#"{"distanceMeters":1,"durationSeconds":1,"taxiFare":0,"tollFare":0,"guides":[],"congestion":null}"#.utf8))
+        }
+        let off = try await RouteService(client: stubbedClient()).car(
+            originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1, lang: "ko", via: nil, traffic: false)
+        #expect(capturedQuery?.contains(where: { $0.name == "traffic" }) == false)
+        #expect(off.congestion == nil)
     }
 }
 

@@ -1051,7 +1051,7 @@ final class DirectionsModel {
     ) async -> Result<CarRouteBriefing, any Error> {
         do {
             return .success(try await withQueryTimeout {
-                try await service.car(originLat: origin.lat, originLng: origin.lng, destLat: dest.lat, destLng: dest.lng, lang: lang, via: via)
+                try await service.car(originLat: origin.lat, originLng: origin.lng, destLat: dest.lat, destLng: dest.lng, lang: lang, via: via, traffic: true)
             })
         } catch { return .failure(error) }
     }

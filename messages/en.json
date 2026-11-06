@@ -117,7 +117,14 @@
       "disclaimer": "Estimates based on live traffic.",
       "noRoute": "No route found. Check the start and destination.",
       "rateLimited": "Too many requests.",
-      "notConfigured": "Driving directions are unavailable."
+      "notConfigured": "Driving directions are unavailable.",
+      "jams": "{count, plural, one {# congested stretch} other {# congested stretches}}: {list}.",
+      "jamNone": "No congested stretches.",
+      "jamItem": "{length} on {road} starting in {distance}",
+      "jamItemUnnamed": "{length} starting in {distance}",
+      "jamItemStart": "{length} on {road} from the start",
+      "jamItemStartUnnamed": "{length} from the start",
+      "jamMore": "{count} more"
     },
     "transit": {
       "button": "Public transit to here",
@@ -884,7 +891,9 @@
     "degradedNoteHandoff": "The route has ended, so guidance is using the direction and distance to the destination.",
     "clockDirection": "{hour} o'clock",
     "crossingRemaining": "About {distance} to the end of the crosswalk",
-    "crossingRemainingUnderpass": "About {distance} to the end of the underpass"
+    "crossingRemainingUnderpass": "About {distance} to the end of the underpass",
+    "carNewJam": "New {length} traffic jam on {road}, {distance} ahead.",
+    "carNewJamUnnamed": "New {length} traffic jam {distance} ahead."
   },
   "offline": {
     "heading": "You are offline",

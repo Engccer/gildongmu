@@ -332,7 +332,8 @@ async function fetchMode(
   const viaQs = via ? `&via=${via.lat},${via.lng}` : "";
   if (mode === "transit" && via) return { kind: "unsupportedWaypoint" };
   if (mode === "car") {
-    const res = await fetch(`/api/route/car?${qs}${viaQs}&lang=${lang}`, { signal });
+    // 정체 구간(E80 §2)은 결과 화면이 옵트인한다 — CLI·MCP·채팅은 싣지 않는다(약관 재제공 조항, spec §2).
+    const res = await fetch(`/api/route/car?${qs}${viaQs}&lang=${lang}&traffic=1`, { signal });
     if (!res.ok) return { kind: "error" };
     const body = await res.json();
     if (isOutOfCoverageBody(body)) return { kind: "outOfCoverage" };

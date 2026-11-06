@@ -26,7 +26,9 @@ public struct RouteService: Sendable {
         destLat: Double, destLng: Double,
         lang: String,
         includeGeometry: Bool = false,
-        via: (lat: Double, lng: Double)?
+        via: (lat: Double, lng: Double)?,
+        /// 정체 구간 옵트인(E80 §2). **기본값이 없다** — 결과 화면·안내 조회는 켜고, 그 밖은 끈다를 호출부가 밝힌다.
+        traffic: Bool
     ) async throws -> CarRouteBriefing {
         var query = [
             URLQueryItem(name: "origin", value: coordPair(originLat, originLng)),
@@ -35,6 +37,7 @@ public struct RouteService: Sendable {
         if lang != "ko" { query.append(URLQueryItem(name: "lang", value: lang)) }
         if includeGeometry { query.append(URLQueryItem(name: "includeGeometry", value: "1")) }
         if let via { query.append(URLQueryItem(name: "via", value: coordPair(via.lat, via.lng))) }
+        if traffic { query.append(URLQueryItem(name: "traffic", value: "1")) }
         return try await client.get("/api/route/car", query: query)
     }
 

@@ -763,6 +763,8 @@
     <string name="guide_carLiveAction_keepRight">restez à droite</string>
     <string name="guide_carLiveAction_left">tournez à gauche</string>
     <string name="guide_carLiveAction_right">tournez à droite</string>
+    <string name="guide_carNewJam">Nouvel embouteillage de %3$s sur %2$s, dans %1$s.</string>
+    <string name="guide_carNewJamUnnamed">Nouvel embouteillage de %2$s dans %1$s.</string>
     <string name="guide_carOffRoute">Hors itinéraire ; guidage en pause. Relancez la recherche d\'itinéraire pour reprendre</string>
     <string name="guide_carOffRouteBehind">L\'itinéraire est derrière vous</string>
     <string name="guide_carOffRouteClock">L\'itinéraire est en direction de %1$s</string>
@@ -1063,6 +1065,13 @@
     <string name="route_briefing_error">Échec de la présentation de l\'itinéraire.</string>
     <string name="route_briefing_geoError">Impossible d\'obtenir votre position. Veuillez vérifier l\'autorisation de localisation du navigateur.</string>
     <string name="route_briefing_heading">Itinéraire en voiture vers %1$s</string>
+    <string name="route_briefing_jamItem">%3$s sur %2$s dans %1$s</string>
+    <string name="route_briefing_jamItemStart">%2$s sur %1$s dès le départ</string>
+    <string name="route_briefing_jamItemStartUnnamed">%1$s dès le départ</string>
+    <string name="route_briefing_jamItemUnnamed">%2$s dans %1$s</string>
+    <string name="route_briefing_jamMore">%1$s de plus</string>
+    <string name="route_briefing_jamNone">Aucun tronçon encombré.</string>
+    <string name="route_briefing_jams">{1, plural, one {%1$s tronçon encombré} other {%1$s tronçons encombrés}} : %2$s.</string>
     <string name="route_briefing_loading">Calcul de l\'itinéraire…</string>
     <string name="route_briefing_locating">Localisation en cours…</string>
     <string name="route_briefing_noRoute">Aucun itinéraire trouvé. Vérifiez le départ et la destination.</string>

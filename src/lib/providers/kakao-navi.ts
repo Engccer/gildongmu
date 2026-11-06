@@ -1,4 +1,5 @@
 import { env } from "../env";
+import { summarizeCongestion, type CongestionPiece } from "../car-traffic";
 import type { CarRouteBriefing, CarRouteGuide, Coord, RouteWaypoint } from "../types";
 
 /**
@@ -11,7 +12,7 @@ import type { CarRouteBriefing, CarRouteGuide, Coord, RouteWaypoint } from "../t
  * 이 provider의 목적은 지도 폴리라인이 아니라 **턴바이턴 텍스트 브리핑**이다.
  * 응답의 guides[].guidance가 이미 완성된 한국어 안내문
  * ("염천교에서 서대문역 방면으로 좌회전")이므로 그대로 정본 텍스트로 쓴다.
- * roads(폴리라인 좌표)는 요청 자체를 끈다(road_details=false) — 받지도 않는다.
+ * roads(도로 조각)는 정체 옵트인(E80 `traffic`)일 때만 받는다(`road_details=true`) — 그 밖엔 요청 자체를 끈다.
  *
  * 주의: 좌표 파라미터는 "경도,위도"(x,y) 순서. 이 파일 밖은 lat/lng 도메인.
  * 경유지는 `waypoints`(실호출 확정 2026-08-22): sections가 2개로 갈리고 경유지
@@ -30,7 +31,7 @@ interface KakaoNaviGuide {
   y?: number;
 }
 
-interface KakaoNaviRoute {
+export interface KakaoNaviRoute {
   result_code: number;
   result_msg: string;
   summary: {
@@ -38,7 +39,16 @@ interface KakaoNaviRoute {
     duration: number;
     fare: { taxi: number; toll: number };
   };
-  sections: Array<{ guides?: KakaoNaviGuide[] }>;
+  sections: Array<{ guides?: KakaoNaviGuide[]; roads?: KakaoNaviRoad[] }>;
+}
+
+/** 도로 조각(`road_details=true`일 때, E80). 거리 m, 속도 km/h, `vertexes`는 [x,y,x,y,…] 평탄 배열. */
+interface KakaoNaviRoad {
+  name: string;
+  distance: number;
+  traffic_speed: number;
+  traffic_state: number;
+  vertexes: number[];
 }
 
 interface KakaoNaviResponse {
@@ -89,6 +99,43 @@ export function normalizeRoute(
 }
 
 /**
+ * 카카오모빌리티 교통 상태 코드표(공식 레퍼런스 2026-11-07): 0 정보 없음 · 1 정체 · 2 지체 · 3 서행 · 4 원활 ·
+ * 6 교통사고(통행 불가). ⚠ 숫자가 작을수록 막힌다 — Tmap(4가 정체)과 반대. 6은 관측 0건이고 "정체"와 뜻이 달라
+ * 이번엔 정보 없음으로 둔다(spec §1).
+ */
+function kakaoLevel(state: number): { known: boolean; jam: boolean } {
+  if (state === 1 || state === 2) return { known: true, jam: true };
+  if (state === 3 || state === 4) return { known: true, jam: false };
+  return { known: false, jam: false };
+}
+
+/** 카카오 경로 → 경로 순서의 교통 조각(E80 §3 ①). 조각 길이는 `distance`, 좌표는 `vertexes` 첫·끝. */
+export function kakaoCongestionPieces(route: KakaoNaviRoute): CongestionPiece[] {
+  const pieces: CongestionPiece[] = [];
+  let along = 0;
+  for (const section of route.sections) {
+    for (const r of section.roads ?? []) {
+      const v = r.vertexes ?? [];
+      const len = Number.isFinite(r.distance) && r.distance > 0 ? r.distance : 0;
+      if (len > 0 && v.length >= 4) {
+        const { known, jam } = kakaoLevel(r.traffic_state);
+        pieces.push({
+          fromM: along,
+          toM: along + len,
+          known,
+          jam,
+          road: r.name ? r.name : null,
+          from: { lat: v[1], lng: v[0] },
+          to: { lat: v[v.length - 1], lng: v[v.length - 2] },
+        });
+      }
+      along += len;
+    }
+  }
+  return pieces;
+}
+
+/**
  * 자동차 경로 텍스트 브리핑 조회.
  * result_code 0이 아니면(경로 없음·출발/도착 동일 등) result_msg를 담아 throw.
  */
@@ -97,13 +144,15 @@ export async function getCarRouteBriefing(params: {
   dest: Coord;
   /** 경유지 1개(N4) — waypoints "lng,lat". */
   via?: Coord;
+  /** 정체 구간 옵트인(E80). 거짓이면 요청·응답 모두 종전과 같다(`road_details=false`). */
+  traffic?: boolean;
 }): Promise<CarRouteBriefing> {
   const url = new URL(ENDPOINT);
   url.searchParams.set("origin", `${params.origin.lng},${params.origin.lat}`);
   url.searchParams.set("destination", `${params.dest.lng},${params.dest.lat}`);
   if (params.via) url.searchParams.set("waypoints", `${params.via.lng},${params.via.lat}`);
   url.searchParams.set("summary", "false");
-  url.searchParams.set("road_details", "false");
+  url.searchParams.set("road_details", params.traffic ? "true" : "false");
 
   const res = await fetch(url, {
     headers: { Authorization: `KakaoAK ${env.KAKAO_REST_API_KEY}` },
@@ -125,5 +174,14 @@ export async function getCarRouteBriefing(params: {
       `카카오모빌리티 경로 탐색 실패 (${route.result_code}): ${route.result_msg}`,
     );
   }
-  return normalizeRoute(route, { expectWaypoint: params.via !== undefined });
+  const briefing = normalizeRoute(route, { expectWaypoint: params.via !== undefined });
+  if (!params.traffic) return briefing;
+  // 정체 해석 실패는 경로를 깨지 않는다(spec §2 — 정보 없음으로 접는다).
+  let congestion: CarRouteBriefing["congestion"] = null;
+  try {
+    congestion = summarizeCongestion(kakaoCongestionPieces(route));
+  } catch {
+    congestion = null;
+  }
+  return { ...briefing, congestion };
 }

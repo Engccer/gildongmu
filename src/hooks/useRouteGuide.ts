@@ -73,7 +73,9 @@ import { UNCERTAIN_ACCURACY_M } from "@/lib/route-guide";
 import { awaitRealFix } from "@/lib/effective-location";
 import { claimGuideSession, releaseGuideSession } from "@/lib/guide-session-store";
 import { isOutOfCoverageBody } from "@/lib/out-of-coverage";
-import type { CarRouteBriefing, WalkRouteBriefing } from "@/lib/types";
+import type { CarJam, CarRouteBriefing, WalkRouteBriefing } from "@/lib/types";
+import { newJamsAhead, type KnownJam } from "@/lib/car-traffic-ahead";
+import { carNewJamLine } from "@/lib/car-traffic-text";
 import { walkRouteUrl } from "@/lib/walk-route-url";
 import {
   isRerouteProposalFresh,
@@ -202,11 +204,11 @@ const GUIDE_TUNINGS: Record<GuideKind, GuideTuning> = {
   car: CAR_TUNING,
 };
 
-/** car ETA 재조회(§4.6): 10분 주기, 시작 조회 포함 세션 캡 6회. */
-const CAR_ETA_INTERVAL_MS = 600_000;
-const CAR_ETA_CALL_CAP = 6;
-/** ETA를 "오래됨"으로 판정하는 경과(초) — 주기 + 여유. */
-const CAR_ETA_STALE_S = 660;
+/** car ETA 재조회(§4.6, E80 위원장 판정 2026-11-07 ②): 6분 주기, 시작 조회 포함 세션 캡 10회. iOS `BeaconModel` 동조. */
+const CAR_ETA_INTERVAL_MS = 360_000;
+const CAR_ETA_CALL_CAP = 10;
+/** ETA를 "오래됨"으로 판정하는 경과(초) — 주기 + 여유(1분). */
+const CAR_ETA_STALE_S = 420;
 
 type GuideT = ReturnType<typeof useTranslations<"guide">>;
 type BeaconT = ReturnType<typeof useTranslations<"beacon">>;
@@ -750,6 +752,8 @@ export function useRouteGuide(
   /** car ETA(§4.6): 현 위치→목적지 재조회 totalTime + 갱신 시각(단조 초). */
   const etaRef = useRef<{ seconds: number; updatedAt: number } | null>(null);
   const etaCallCountRef = useRef(0);
+  /** car 아는 정체(E80 §5): 시작 조회·재조회·재경로에서 본 정체의 좌표. 새 정체 통지는 이것과 겹치지 않는 것만. */
+  const knownJamsRef = useRef<KnownJam[]>([]);
   const etaTimerRef = useRef<number | null>(null);
   const lastFixRef = useRef<GuideFix | null>(null);
   /** 마지막 fix 수신 시각(초, 단조) — 진행 상황의 직선거리 신선도 게이트용. */
@@ -1389,6 +1393,8 @@ export function useRouteGuide(
     route: GuideRoute;
     durationSeconds: number | null;
     roadSpans: CarRoadSpan[];
+    /** car 정체(E80 §5 — 아는 정체의 기준선). 정보 없음·도보는 빈 목록. */
+    jams: CarJam[];
     /**
      * 계단 회피 판정(도보 전용, 미요청·자동차면 null). ⚠ 타입은 `StepFreeStatus`가
      * 아니라 `string`이다 — 서버 응답은 런타임 검증을 거치지 않으므로 알려진 셋
@@ -1421,7 +1427,7 @@ export function useRouteGuide(
       if (kindFixed === "car") {
         const res = await fetch(
           `/api/route/car?origin=${fix.lat},${fix.lng}` +
-            `&dest=${target.lat},${target.lng}&includeGeometry=1`,
+            `&dest=${target.lat},${target.lng}&includeGeometry=1&traffic=1`,
         );
         if (!res.ok) return { ok: false, failure: failureOfStatus(res.status) };
         const body: unknown = await res.json();
@@ -1439,6 +1445,7 @@ export function useRouteGuide(
               ? briefing.durationSeconds
               : null,
           roadSpans: carGuide.roadSpans,
+          jams: briefing.congestion?.jams ?? [],
           // 자동차에는 계단 회피·최종 접근 개념이 없다(실주행은 딥링크 위임이 정본).
           stepFree: null,
           stepFreeNotice: null,
@@ -1490,6 +1497,7 @@ export function useRouteGuide(
             ? result.durationSeconds
             : null,
         roadSpans: [],
+        jams: [],
         stepFree: result.stepFree ?? null,
         stepFreeNotice: result.stepFreeNotice ?? null,
         finalApproach: result.finalApproach ?? null,
@@ -1525,7 +1533,7 @@ export function useRouteGuide(
       const target = destRef.current;
       const res = await fetch(
         `/api/route/car?origin=${fix.lat},${fix.lng}` +
-          `&dest=${target.lat},${target.lng}`,
+          `&dest=${target.lat},${target.lng}&traffic=1`,
       );
       if (!res.ok) return;
       const body: unknown = await res.json();
@@ -1543,10 +1551,26 @@ export function useRouteGuide(
       const route = routeRef.current;
       const state = guideRef.current;
       if (route && state) setProgress(progressOf(route, state));
+      // 새 정체(E80 §5): 지금 안내 경로 위·앞쪽이고 아는 정체와 겹치지 않는 것 중 가장 가까운 하나만 한 문장.
+      // 이탈 중엔 위에서 이미 돌아갔다(재조회 동결). 풀린 정체는 말하지 않는다.
+      const jams = briefing.congestion?.jams;
+      if (route && state && jams && jams.length > 0) {
+        const out = newJamsAhead({
+          polyline: route.polyline,
+          totalMeters: route.totalMeters,
+          d: state.d,
+          known: knownJamsRef.current,
+          fresh: jams,
+        });
+        knownJamsRef.current = out.known;
+        if (out.nearest) {
+          announce(carNewJamLine(out.nearest.jam, out.nearest.aheadMeters, t, prefersEnglish(locale)));
+        }
+      }
     } catch {
       // 조용히 직전 값 유지 — 반복 실패가 polite 채널을 점유하지 않는다(§4.6).
     }
-  }, [kindFixed, progressOf]);
+  }, [announce, kindFixed, locale, progressOf, t]);
 
   const clearEtaTimer = useCallback(() => {
     if (etaTimerRef.current !== null) {
@@ -2115,6 +2139,7 @@ export function useRouteGuide(
     excludedViaRef.current = null;
     viaPassedRef.current = false;
     roadSpansRef.current = [];
+    knownJamsRef.current = [];
     etaRef.current = null;
     etaCallCountRef.current = 0;
     lastFixRef.current = null;
@@ -2171,6 +2196,7 @@ export function useRouteGuide(
     excludedViaRef.current = null;
     viaPassedRef.current = false;
     roadSpansRef.current = [];
+    knownJamsRef.current = [];
     etaRef.current = null;
     etaCallCountRef.current = 0;
     lastFixRef.current = null;
@@ -2235,6 +2261,8 @@ export function useRouteGuide(
       routeDurationRef.current = fetched.durationSeconds;
       routeViaRef.current = fetched.via;
       roadSpansRef.current = fetched.roadSpans;
+      // 시작 조회가 본 정체가 아는 정체의 기준선이다 — 새로 생긴 것만 주행 중에 말한다(E80 §5).
+      knownJamsRef.current = fetched.jams.map(({ start, end }) => ({ start, end }));
       // 하단 2행 표시 유닛은 경로와 수명이 같다 — commitDetail(refreshLiveRows)보다 앞.
       displayUnitsRef.current =
         fetched.liveSteps.length > 0 ? buildDisplayUnits(fetched.liveSteps) : [];
@@ -2411,6 +2439,8 @@ export function useRouteGuide(
       routeDurationRef.current = fetched.durationSeconds;
       routeViaRef.current = fetched.via;
       roadSpansRef.current = fetched.roadSpans;
+      // 이 조회가 본 정체는 아는 정체다 — 새로 생긴 것만 주행 중에 말한다(E80 §5).
+      knownJamsRef.current = [...knownJamsRef.current, ...fetched.jams.map(({ start, end }) => ({ start, end }))];
       // 새 경로 = 새 표시 유닛(commitDetail의 rows 리셋·재계산보다 앞).
       displayUnitsRef.current =
         fetched.liveSteps.length > 0 ? buildDisplayUnits(fetched.liveSteps) : [];
