@@ -1180,7 +1180,7 @@ struct DirectionsTabView: View {
                     // 조회 버튼을 선점한다(헌장 §5). 도착지 확정 후 포커스는 종전대로 조회
                     // 버튼이다(선택 사항이 기본 흐름을 늘리면 안 된다 — 위원장 판정).
                     // 자동차로 갈아탈 역(E70, 실험판·ko 데이터 로케일 — D2). 경유지와 역은 함께 쓰지 않아(D14) 아무것도
-                    // 없을 때만 둘을 고르는 메뉴 하나가 서고, 고른 쪽이 정해졌을 때만 그 칸이 생긴다(빈 칸 없음, 판정 28).
+                    // 없을 때만 입구 버튼 하나가 서고(E77 — 검색 시트 하나 + 확인 질문), 정해졌을 때만 그 칸이 생긴다(빈 칸 없음, 판정 28).
                     if !isAboardOrigin, !showsStationFields, let viaName = viaFieldName {
                         Button { searchTarget = .via } label: {
                             bilingualLine(
@@ -1472,10 +1472,14 @@ struct DirectionsTabView: View {
                 transferQuestionButtons
             }
             .onChange(of: showTransferQuestion) { _, shown in
-                // 답 없이 닫힘(시스템 취소·바깥 탭) — 아무것도 바꾸지 않고 입구 버튼으로 돌아간다. 답은 먼저 대기를 비운다.
-                guard !shown, pendingTransfer != nil else { return }
-                pendingTransfer = nil
-                landFocus(on: .via)
+                // 버튼 동작 없이 닫힌 경로(바깥 탭 등)의 안전망 — 버튼 동작과 닫힘 통지의 순서는 약속되지 않으므로 한 틱 뒤에 본다.
+                // 답·취소 버튼은 대기를 먼저 비우므로 여기선 아무것도 하지 않는다.
+                guard !shown, let ask = pendingTransfer else { return }
+                Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(100))
+                    guard pendingTransfer == ask, !showTransferQuestion else { return }
+                    cancelTransfer()
+                }
             }
             // 안내 시트(비콘·대중교통)는 여기 없다 — 세션이 앱 수명이라 루트
             // `GildongmuApp`이 `.sheet(item:)` 하나로 띄운다(N1 spec §2.2).
@@ -1942,8 +1946,20 @@ struct DirectionsTabView: View {
         Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(450))
             guard pendingTransfer == ask else { return }
+            // 그 사이 다른 칸의 시트가 열렸으면 질문을 버린다 — 대기가 남으면 이후 시트 닫힘의 커서 착지를 가로챈다.
+            guard searchTarget == nil else {
+                pendingTransfer = nil
+                return
+            }
             showTransferQuestion = true
         }
+    }
+
+    /// 질문을 답 없이 닫았다 — 아무것도 바꾸지 않고 입구 버튼으로 돌아간다(E77 판정 5). 대기가 이미 비었으면 무동작(멱등).
+    private func cancelTransfer() {
+        guard pendingTransfer != nil else { return }
+        pendingTransfer = nil
+        landFocus(on: .via)
     }
 
     /// 칸 하나로 지연 착지(지연 → 대입 → 검증 → 1회 재시도) — 시트가 아니라 대화상자가 닫힌 뒤에도 시스템이 커서를 되돌리므로 같은 패턴이다.
@@ -1988,7 +2004,7 @@ struct DirectionsTabView: View {
         }
     }
 
-    /// 버튼 순서: 짐작이 첫 버튼, 그다음 반대편, 마지막이 경유만(spec §2.3). 취소는 시스템 기본 버튼이 맡는다.
+    /// 버튼 순서: 짐작이 첫 버튼, 그다음 반대편, 마지막이 경유만(spec §2.3). 닫기는 취소 역할 버튼 「닫기」(웹과 같은 말, 앱 선례 `actions.close`)가 맡는다.
     @ViewBuilder
     private var transferQuestionButtons: some View {
         if let ask = pendingTransfer ?? lastTransferAsk {
@@ -2001,6 +2017,7 @@ struct DirectionsTabView: View {
                 Button(transferNoAlightText(ask, place)) { answerTransfer(ask, board: false) }
             }
             Button(appLocalized("ios.journey.answerViaOnly")) { answerTransfer(ask, board: nil) }
+            Button(appLocalized("actions.close"), role: .cancel) { cancelTransfer() }
         }
     }
 

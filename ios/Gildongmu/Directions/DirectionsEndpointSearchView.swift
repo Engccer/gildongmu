@@ -79,7 +79,8 @@ final class EndpointSearchModel {
             showsNoBusData = count == 0 && (stopResult?.unsearched ?? false)
             // 역 칸은 주소를 버리므로 장소 트랙의 성패만 본다(주소 성공이 장소 실패를 가리지 않는다).
             let placesFailed = stationsOnly ? outcome.places.isFailed : outcome.allFailed
-            showsPlacesFailure = stationsOnly && placesFailed && count > 0
+            // 정류장 줄을 찾는 칸(역 칸·입구 검색)만 장소 실패와 후보가 함께 있을 수 있다 — 그때 실패를 줄과 통지로 밝힌다.
+            showsPlacesFailure = searchesStops && placesFailed && count > 0
             var message: String
             var haptic: ResultHaptic.Kind
             if count > 0 {

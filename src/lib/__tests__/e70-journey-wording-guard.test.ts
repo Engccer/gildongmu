@@ -264,4 +264,20 @@ describe("E70-d 입력 메뉴 하나와 「자동차」 문장(위원장 판정 
     expect(clear.indexOf("focusedEndpointField = remaining")).toBeLessThan(clear.indexOf("model.clearJourneyStation(board: board)"));
     expect(clear.indexOf("submitFocused = true")).toBeLessThan(clear.indexOf("model.clearJourneyStation(board: board)"));
   });
+  it("E77 질문 버튼: 짐작이 첫 버튼이고 답마다 서는 칸이 정해져 있다, 닫기는 취소 역할로 대기만 비운다", () => {
+    const buttons = body(tab, "transferQuestionButtons");
+    const order = [...buttons.matchAll(/Button\(([^\n]*?)\) \{ (\w+)\(([^)]*)\) \}/g)].map((m) => `${m[1]} -> ${m[2]}(${m[3]})`);
+    expect(order).toEqual([
+      'appLocalized("ios.journey.answerYesAlight", place) -> answerTransfer(ask, board: false)',
+      "transferNoBoardText(ask, place) -> answerTransfer(ask, board: true)",
+      "transferYesBoardText(ask, place) -> answerTransfer(ask, board: true)",
+      "transferNoAlightText(ask, place) -> answerTransfer(ask, board: false)",
+      'appLocalized("ios.journey.answerViaOnly") -> answerTransfer(ask, board: nil)',
+      'appLocalized("actions.close"), role: .cancel -> cancelTransfer()',
+    ]);
+    // 짐작 갈래: alight면 하차 「네」가 먼저, 그 밖은 승차 「네」가 먼저
+    expect(buttons).toMatch(/if ask\.guess == \.alight \{\s*Button\(appLocalized\("ios\.journey\.answerYesAlight"/);
+    // 입구 시트를 여는 자리는 하나
+    expect(tab.match(/searchTarget = \.transfer/g)).toHaveLength(1);
+  });
 });

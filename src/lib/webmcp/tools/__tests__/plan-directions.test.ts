@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { planDirectionsTool } from "../plan-directions";
-import { __resetViewRegistryForTest, publishView, setNavigator } from "../../view-registry";
+import { __resetViewRegistryForTest, markModal, publishView, setNavigator } from "../../view-registry";
 import { __resetToolLockForTest } from "../../tool-lock";
 import { __resetToolBudgetForTest } from "../../tool-budget";
 import { __setNonceForTest, encodeRef } from "../../place-refs";
@@ -76,6 +76,16 @@ describe("plan_directions W2(spec §3.4)", () => {
     publishView("home", home());
     setNavigator({ toHome: async () => {}, toDirections: () => {}, toPlace: () => {}, isModalOpen: () => true });
     expect(await call({ toRef: encodeRef(1, "p", 0) })).toMatchObject({ ok: false, reason: "modalOpen" });
+  });
+  it("이미 길찾기 뷰여도 그 화면 안 모달(E77 입구 질문)이 열려 있으면 modalOpen이고 조회하지 않는다", async () => {
+    __setNonceForTest("n");
+    publishView("home", home());
+    const runQuery = vi.fn<DirectionsBridge["runQuery"]>(async () => ({ kind: "settled", planId: "P1" }));
+    publishView("directions", directions(runQuery));
+    setNavigator({ toHome: async () => {}, toDirections: () => {}, toPlace: () => {}, isModalOpen: () => false });
+    markModal("journeyTransfer", true);
+    expect(await call({ toRef: encodeRef(1, "p", 0) })).toMatchObject({ ok: false, reason: "modalOpen" });
+    expect(runQuery).not.toHaveBeenCalled();
   });
   it("주소 ref는 지오코딩으로 endpoint, 실패는 geocodeFailed", async () => {
     __setNonceForTest("n");

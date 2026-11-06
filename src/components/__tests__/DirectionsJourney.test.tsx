@@ -4,7 +4,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import type { JourneyResult, Place } from "@/lib/types";
 import { placeEndpoint } from "@/lib/directions-state";
 import { clearRecentRoutes, recordRecentRoute } from "@/lib/recent-searches";
-import { bridgeOf } from "@/lib/webmcp/view-registry";
+import { anyModalOpen, bridgeOf } from "@/lib/webmcp/view-registry";
 import type { DirectionsBridge } from "@/lib/webmcp/tools/context";
 
 vi.mock("next-intl", async () => {
@@ -239,6 +239,66 @@ describe("여정 웹 입구(E70-f · E77)", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(document.activeElement).toBe(screen.getByRole("button", { name: "addMenu" }));
     expect(dialog.isConnected).toBe(false);
+  });
+
+  it("후보 순서는 장소 → 정류장 → 주소이고 건수에 정류장이 든다", async () => {
+    const base = fetchMock.getMockImplementation() as (input: RequestInfo | URL) => Promise<Response>;
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) =>
+      String(input).startsWith("/api/address/search")
+        ? ({ ok: true, json: async () => ({ addresses: [{ roadAddr: "서울 마포구 아현로 1", roadAddrPart1: "서울 마포구 아현로 1", engAddr: "1 Ahyeon-ro" }] }) } as Response)
+        : base(input),
+    );
+    renderView(true);
+    await searchTransfer();
+    const names = Array.from(screen.getByLabelText("transferField").closest("div")!.parentElement!.querySelectorAll("li button")).map(
+      (b) => b.textContent ?? "",
+    );
+    const at = (re: RegExp) => names.findIndex((n) => re.test(n));
+    expect(at(/아현 카페/)).toBeGreaterThanOrEqual(0);
+    expect(at(/아현 카페/)).toBeLessThan(at(/^아현역, busStopKind/));
+    expect(at(/^아현역, busStopKind/)).toBeLessThan(at(/아현로 1/));
+    await waitFor(() => expect(screen.getByRole("status").textContent).toContain("candidateCount"));
+  });
+
+  it("장소·주소가 둘 다 실패하고 정류장만 오면 건수 뒤에 실패를 덧붙이고 줄로도 보인다(3-state)", async () => {
+    const base = fetchMock.getMockImplementation() as (input: RequestInfo | URL) => Promise<Response>;
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.startsWith("/api/places") || url.startsWith("/api/address/search")) return { ok: false, status: 502, json: async () => ({}) } as Response;
+      return base(input);
+    });
+    renderView(true);
+    fireEvent.click(screen.getByRole("button", { name: "addMenu" }));
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText("transferField")));
+    fireEvent.change(screen.getByLabelText("transferField"), { target: { value: "아현" } });
+    fireEvent.click(screen.getByRole("button", { name: "searchField" }));
+    await screen.findByRole("button", { name: /^아현역, busStopKind/ });
+    await waitFor(() => expect(screen.getByRole("status").textContent).toMatch(/candidateCount.*candidateError/));
+    expect(screen.getByText("candidateError")).toBeTruthy();
+  });
+
+  it("정류장 검색만 실패하면 건수 뒤에 그 문장을 잇는다", async () => {
+    const base = fetchMock.getMockImplementation() as (input: RequestInfo | URL) => Promise<Response>;
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) =>
+      String(input).startsWith("/api/route/journey/stops?")
+        ? ({ ok: false, status: 502, json: async () => ({}) } as Response)
+        : base(input),
+    );
+    renderView(true);
+    await searchTransfer();
+    await waitFor(() => expect(screen.getByRole("status").textContent).toMatch(/candidateCount.*stopSearchFailed/));
+    expect(screen.queryByRole("button", { name: /^아현역, busStopKind/ })).toBeNull();
+  });
+
+  it("질문이 열린 동안은 모달로 표식돼 도구 조회가 거절된다", async () => {
+    renderView(true);
+    await searchTransfer();
+    expect(anyModalOpen()).toBe(false);
+    fireEvent.click(screen.getByRole("button", { name: /아현역 2호선/ }));
+    await screen.findByRole("dialog");
+    expect(anyModalOpen()).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "close" }));
+    expect(anyModalOpen()).toBe(false);
   });
 
   it("정류장 줄을 고르면 버스 질문이 열리고 답하면 정류장 칸 이름이 선다", async () => {

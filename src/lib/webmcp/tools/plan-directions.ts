@@ -5,7 +5,7 @@ import { checkBudget, consumeBudget } from "../tool-budget";
 import { finish, withFailure } from "../output";
 import { resolveRef } from "../place-refs";
 import { failure, type ToolFailure, type WebMcpTool } from "../types";
-import { bridgeOf } from "../view-registry";
+import { anyModalOpen, bridgeOf } from "../view-registry";
 import type { HomeBridge, ToolPlan } from "./context";
 import { ensureDirections, isFailure, withOp } from "./ensure-view";
 
@@ -226,6 +226,8 @@ export function planDirectionsTool(): WebMcpTool {
       // 화면 이동(spec §3.4): 길찾기 뷰가 아니면 `toDirections` 뒤 이동 시작 이후 게시만 일치.
       const bridge = await ensureDirections(op);
       if (isFailure(bridge)) return finish(bridge, SHAPE);
+      // 이미 길찾기 뷰면 이동 가드(`modalGuard`)를 지나지 않는다 — 그 화면 안의 모달(입구 질문 E77)이 열려 있으면 여기서 거절한다.
+      if (anyModalOpen()) return finish(failure("modalOpen"), SHAPE);
       // 예산은 이동이 성립한 뒤(후보 검색·조회 fetch 앞)에 소비한다 — search_places와 같은 순서.
       consumeBudget("plan", now);
       const lang = bridge.read().lang;

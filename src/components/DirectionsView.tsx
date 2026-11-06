@@ -64,7 +64,7 @@ import { hasActiveGuideSession, stopActiveGuideSession } from "@/lib/guide-sessi
 import { alightLineText, boardExitOnBoardLine } from "@/lib/transit-exit-lines";
 import { transitBoardLegNames } from "@/lib/transit-leg-english";
 import { transitWalkLegMessage } from "@/lib/transit-walk-leg";
-import { isUnwinding, publishView, withdrawView } from "@/lib/webmcp/view-registry";
+import { isUnwinding, markModal, publishView, withdrawView } from "@/lib/webmcp/view-registry";
 import type {
   DirectionsBridge,
   DirectionsSnapshot,
@@ -80,7 +80,8 @@ import { TransitGuidePanel } from "./TransitGuidePanel";
 import { buildTransitGuideRoute } from "@/lib/transit-guide";
 import { VoiceRecordButton } from "./VoiceRecordButton";
 import { KoTail, langFor, useBilingualName } from "./BilingualName";
-import { JourneyStationField, searchStopCandidates, type StopCandidate } from "./JourneyStationField";
+import { JourneyStationField } from "./JourneyStationField";
+import { searchStopCandidates, type StopCandidate } from "@/lib/journey/stop-candidates";
 import {
   JourneyTransferDialog,
   type JourneyTransferAnswer,
@@ -526,7 +527,17 @@ export function DirectionsView({
   const tJourney = useTranslations("journey");
   const journeyEnabled = canPlanJourney && !prefersEnglish(locale);
   const hasJourneySlots = journeyEnabled && (boardSlot !== null || alightSlot !== null);
-  if (transferOpen && (viaField !== null || hasJourneySlots)) setTransferOpen(false);
+  if ((transferOpen || transferQuestion !== null) && (viaField !== null || hasJourneySlots)) {
+    // 입구가 사라졌다(도구·최근 경로 복원이 경유지나 갈아탈 곳을 세웠다) — 묻던 질문도 함께 버린다(뒤에 저절로 다시 뜨지 않게).
+    setTransferOpen(false);
+    setTransferQuestion(null);
+  }
+  // 질문이 열린 동안 도구층의 길찾기 조회를 `modalOpen`으로 거절한다(사용자 조작이 도구를 이긴다).
+  useEffect(() => {
+    if (transferQuestion === null) return;
+    markModal("journeyTransfer", true);
+    return () => markModal("journeyTransfer", false);
+  }, [transferQuestion]);
   const [phase, setPhase] = useState<Phase>({ kind: "idle" });
   const [results, setResults] = useState<QueryResults | null>(null);
   // 대중교통 경로 disclosure(W3C APG)의 펼침 상태. 키는 배열 인덱스도 표시
@@ -2447,6 +2458,8 @@ function EndpointField({
     addresses: JusoAddress[];
     /** 입구 칸(E77)의 정류장 줄 — 그 밖 칸은 늘 비어 있다. */
     stops: StopCandidate[];
+    /** 장소·주소 조회가 둘 다 실패했는데 정류장 줄이 있다(입구 칸만) — 줄과 통지로 실패를 밝힌다(3-state, iOS `showsPlacesFailure`). */
+    placesFailed: boolean;
     stopsFailed: boolean;
     stopsTruncated: boolean;
   } | null>(null);
@@ -2547,25 +2560,25 @@ function EndpointField({
     if (candidateListRef.current?.contains(document.activeElement)) {
       inputRef.current?.focus();
     }
+    const placesFailed = placesRes.status === "rejected" && addrRes.status === "rejected";
+    const count = places.length + addresses.length + stopRes.stops.length;
     setCandidates({
       places,
       addresses,
       stops: stopRes.stops,
+      placesFailed: placesFailed && count > 0,
       stopsFailed: stopRes.failed,
       stopsTruncated: stopRes.truncated,
     });
     // 정류장 검색만 실패했으면 건수·0건 통지 뒤에 같은 문장으로 잇는다(역 칸과 같은 3-state, E70-f spec §3).
     const stopTail = stopRes.failed ? ` ${tJourney("stopSearchFailed")}` : "";
-    const count = places.length + addresses.length + stopRes.stops.length;
     if (count > 0) {
-      announce(`${t("candidateCount", { count })}${stopTail}`);
+      // 정류장만 왔고 장소·주소는 실패했으면 그 실패도 덧붙인다 — 역 줄이 없는 까닭이 "역 없음"이 아니다.
+      const placesTail = placesFailed ? ` ${t("candidateError")}` : "";
+      announce(`${t("candidateCount", { count })}${placesTail}${stopTail}`);
       setCandidateRevision((r) => r + 1);
-    } else if (
-      placesRes.status === "rejected" &&
-      addrRes.status === "rejected" &&
-      (!stopRes.wanted || stopRes.failed)
-    ) {
-      // 3-state: "0건"과 "조회 실패"를 뭉개지 않는다(양쪽 다 실패했을 때만 오류).
+    } else if (placesFailed) {
+      // 3-state: "0건"과 "조회 실패"를 뭉개지 않는다(장소·주소가 둘 다 실패하면 정류장 0건이어도 오류).
       announce(t("candidateError"));
     } else {
       announce(`${t("candidateNone")}${stopTail}`);
@@ -2696,6 +2709,7 @@ function EndpointField({
                 </li>
               );
             })}
+            {candidates.placesFailed && <li className="text-sm">{t("candidateError")}</li>}
             {/* 정류장 줄(입구 칸만, E77): 역 칸과 같은 줄 「{정류장}, 정류장, {거리}」 — 고르면 질문으로 넘긴다. */}
             {transfer &&
               candidates.stops.map((s, i) => (
