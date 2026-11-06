@@ -111,7 +111,7 @@
 | `arrivingAtBoardStop` | "{line} 곧 도착합니다." | actionable | 임박 |
 | `vehiclePassed` | "선택한 차량이 {stop}에서 이미 출발한 것으로 보입니다." | actionable | 다른 차량을 골라야 한다 |
 | `boarded`(observed·departed·declared) | "{line} 도착. 탑승하세요." / "탑승했습니다. 하차: {stop}." | actionable | 국면 전이. 오관측이면 탑승 변경이 필요하다 |
-| `trackingStarted` | "추적을 시작합니다. …" | deferrable | 백그라운드 톤이 있는 유일한 이벤트(E36). 그 톤이 자리를 맡는다 |
+| `trackingStarted` | "추적을 시작합니다. …" | deferrable(첫 관측 잔여 ≤1이면 actionable, A71 2026-11-02) | 백그라운드 톤이 있는 유일한 이벤트(E36). 그 톤이 자리를 맡는다. 단 첫 관측이 이미 잔여 ≤1이면 뒤이은 `countdown(1)`이 없어 이 문장이 하차 지시의 유일한 자리다 |
 | `countdown` 잔여 ≤1 | 하차 임박 상태 문장 | actionable | 임박 |
 | `countdown` 잔여 ≥2 | "남은 정거장 {n}개." 등 | deferrable | 주기(사다리) |
 | `arrivingAtAlightStop` | "이번 정류장에서 내리세요." | actionable | 임박 |
