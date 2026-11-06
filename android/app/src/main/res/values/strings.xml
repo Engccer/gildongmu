@@ -817,7 +817,6 @@
     <string name="guide_autoReroute">새 경로로 다시 안내합니다. %1$s. 안내 %2$s개, 총 %3$s.</string>
     <string name="guide_backOnRoute">경로로 복귀했습니다</string>
     <string name="guide_band_arrived">%1$s 도착</string>
-    <string name="guide_band_busUnconfirmed">버스</string>
     <string name="guide_band_ended">%1$s 안내 종료</string>
     <string name="guide_band_remaining">%1$s까지 남은 거리 %2$s</string>
     <string name="guide_band_return">안내 시트 펼치기</string>
@@ -826,6 +825,8 @@
     <string name="guide_band_transitDestChangeFailed">%1$s로 목적지 변경 실패, 안내 화면에서 확인</string>
     <string name="guide_band_transitDestChangePending">%1$s로 목적지 변경, 경로 선택 대기</string>
     <string name="guide_band_transitRiding">%1$s 탑승 중, 남은 정거장 %2$s개</string>
+    <string name="guide_band_transitRidingBusUnconfirmed">버스 탑승 중, 남은 정거장 %1$s개</string>
+    <string name="guide_band_transitRidingBusUnconfirmedNoCount">버스 탑승 중</string>
     <string name="guide_band_transitRidingNoCount">%1$s 탑승 중</string>
     <string name="guide_band_transitWaiting">%1$s에서 %2$s 탑승 기다리는 중</string>
     <string name="guide_bundle">다음 안내. %1$s</string>

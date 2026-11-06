@@ -303,8 +303,9 @@ export async function trackSeoulLanes(params: {
   const settled = await settleLimited(candidates, SEOUL_LANES_CONCURRENCY, async (r) => {
     const stops = await routeStopsForLanes(r.routeId, now);
     const boardCount = stops.filter((s) => s.nodeId === params.boardLocalId).length;
-    // 순환·회차로 두 번 나오면 판정 불가(미확인으로 센다), 안 나오면 이 정류소를 지나지 않는 노선(정상 탈락).
-    if (boardCount > 1) return "ambiguous" as const;
+    // 순환·회차로 두 번 나오면 판정 불가. 0번도 판정 불가다 — 후보는 이 정류소의 노선 목록에서 왔으므로 경유에 없으면
+    // 정류소 ID 축(`arsId`↔`localId`)이 어긋난 것이다(정상 탈락으로 세면 클라이언트가 단일 노선 확정으로 읽는다, 코드 리뷰 MAJOR).
+    if (boardCount !== 1) return "ambiguous" as const;
     return reachesAlightOnce(stops, params.boardLocalId, params.alightLocalId);
   });
   let unverified = 0;

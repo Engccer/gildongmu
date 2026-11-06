@@ -60,6 +60,14 @@ describe("trackSeoulLanes — 지금 서 있는 정류소 기준 집합(ⓔ)", (
     expect(vi.mocked(fetchSeoulRouteStops).mock.calls.map((c) => c[0]).sort()).toEqual(["R1", "R2", "R4"]);
   });
 
+  it("경유에 그 정류소가 없는 노선은 ID 축 어긋남이라 unverified(정상 탈락 아님)", async () => {
+    vi.mocked(fetchSeoulStopRoutes).mockResolvedValue([{ routeId: "R1", routeNo: "160" }]);
+    vi.mocked(fetchSeoulRouteStops).mockResolvedValue(stops("X", "Y", "A"));
+    const r = await trackSeoulLanes(BASE);
+    expect(r.routes).toEqual([]);
+    expect(r.unverified).toBe(1);
+  });
+
   it("방향이 반대인 노선(하차 정류소가 정류소보다 앞)은 집합 밖", async () => {
     vi.mocked(fetchSeoulStopRoutes).mockResolvedValue([{ routeId: "R1", routeNo: "160" }]);
     vi.mocked(fetchSeoulRouteStops).mockResolvedValue(stops("A", "Y", "B"));

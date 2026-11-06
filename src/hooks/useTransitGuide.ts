@@ -1011,6 +1011,9 @@ export function useTransitGuide(
       // MAJOR). ⚠ 국면 기반인 이유: board·advance만 열거하면 폴이 일으키는 arrived
       // 전이를 놓친다. boardOverride는 waiting에서 쓰이므로 같은 축으로 못 묶는다.
       if (next.phase !== "riding") setReboardPickerActive(false);
+      // 정류장 재기준 원본(E76 후속 ⓔ)의 수명은 그 대기 국면 하나다 — 잠금으로 대기를 벗어난 뒤 [다른 차량 선택]→[취소]가
+      // 옛 정류장 leg를 되살리면 새 정류장에서 고른 차량을 옛 정류장 기준으로 추적한다(코드 리뷰 MAJOR, iOS dispatch 동형).
+      if (next.phase !== "waiting") reanchorRef.current = null;
       // "이미 탑승" 흐름은 대기 국면 전용 UI — 국면이 바뀌면 소거(같은 국면 기반 규칙).
       if (next.phase !== "waiting") setAboardStep(null);
       // boarding 수동 진행 수단의 래치(N3 ①): 국면에 **들어올 때** 지우고(재진입 = 새 차량 대기),
@@ -1597,7 +1600,7 @@ export function useTransitGuide(
       try {
         const res = await fetch(url);
         if (!res.ok) return;
-        const body = (await res.json()) as { status?: string; routes?: TransitLaneRoute[] };
+        const body = (await res.json()) as { status?: string; routes?: TransitLaneRoute[]; unverified?: number };
         if (
           sessionRef.current !== session ||
           reanchorRef.current?.gen !== gen ||
@@ -1608,6 +1611,8 @@ export function useTransitGuide(
         }
         if (body.status !== "ok" || !Array.isArray(body.routes)) return;
         const lanes = lanesWithRoutes(leg, body.routes);
+        // 확인된 다른 노선 0 ∧ 미확인 있음(예산 소진·경유 조회 실패)은 「단일 노선 확정」이 아니다 — 「노선 모름」을 남긴다(리뷰 M1 취지).
+        if (!lanes && (body.unverified ?? 0) > 0) return;
         const filled: TransitGuideLeg = { ...leg };
         delete filled.lanesPending;
         if (lanes) filled.lanes = lanes;

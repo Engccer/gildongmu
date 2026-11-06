@@ -274,6 +274,9 @@
     "line",
     "count"
   ],
+  "guide.band.transitRidingBusUnconfirmed": [
+    "count"
+  ],
   "guide.band.transitRidingNoCount": [
     "line"
   ],

@@ -734,7 +734,6 @@
     <string name="guide_autoReroute">Now guiding on a new route. %1$s. {2, plural, one {%2$s instruction} other {%2$s instructions}}, %3$s total.</string>
     <string name="guide_backOnRoute">Back on the route</string>
     <string name="guide_band_arrived">Arrived at %1$s</string>
-    <string name="guide_band_busUnconfirmed">Bus</string>
     <string name="guide_band_ended">Guidance to %1$s ended</string>
     <string name="guide_band_remaining">%2$s left to %1$s</string>
     <string name="guide_band_return">Expand guidance sheet</string>
@@ -743,6 +742,8 @@
     <string name="guide_band_transitDestChangeFailed">Destination change to %1$s failed, check the guidance screen</string>
     <string name="guide_band_transitDestChangePending">Changing destination to %1$s, choose a route</string>
     <string name="guide_band_transitRiding">On %1$s, {2, plural, one {%2$s stop} other {%2$s stops}} left</string>
+    <string name="guide_band_transitRidingBusUnconfirmed">On a bus, {1, plural, one {%1$s stop} other {%1$s stops}} left</string>
+    <string name="guide_band_transitRidingBusUnconfirmedNoCount">On a bus</string>
     <string name="guide_band_transitRidingNoCount">On %1$s</string>
     <string name="guide_band_transitWaiting">Waiting to board %2$s at %1$s</string>
     <string name="guide_bundle">Next instructions. %1$s</string>

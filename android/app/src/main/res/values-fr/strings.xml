@@ -734,7 +734,6 @@
     <string name="guide_autoReroute">Guidage repris sur un nouvel itinéraire. %1$s. {2, plural, one {%2$s instruction} other {%2$s instructions}}, %3$s au total.</string>
     <string name="guide_backOnRoute">De retour sur l\'itinéraire</string>
     <string name="guide_band_arrived">Arrivé à %1$s</string>
-    <string name="guide_band_busUnconfirmed">Bus</string>
     <string name="guide_band_ended">Guidage vers %1$s terminé</string>
     <string name="guide_band_remaining">%2$s restants jusqu\'à %1$s</string>
     <string name="guide_band_return">Déplier la feuille de guidage</string>
@@ -743,6 +742,8 @@
     <string name="guide_band_transitDestChangeFailed">Changement de destination vers %1$s échoué, voir le guidage</string>
     <string name="guide_band_transitDestChangePending">Changement de destination vers %1$s, choisissez un itinéraire</string>
     <string name="guide_band_transitRiding">À bord de %1$s, {2, plural, one {%2$s arrêt restant} other {%2$s arrêts restants}}</string>
+    <string name="guide_band_transitRidingBusUnconfirmed">À bord du bus, {1, plural, one {%1$s arrêt restant} other {%1$s arrêts restants}}</string>
+    <string name="guide_band_transitRidingBusUnconfirmedNoCount">À bord du bus</string>
     <string name="guide_band_transitRidingNoCount">À bord de %1$s</string>
     <string name="guide_band_transitWaiting">En attente de %2$s à %1$s</string>
     <string name="guide_bundle">Prochaines instructions. %1$s</string>

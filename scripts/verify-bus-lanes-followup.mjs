@@ -8,7 +8,7 @@
 //       지금 노선(271)은 응답에 없어야 하고, 경유 조회 전부 미확인(unverified == checked)이면 FAIL.
 //   ⓔ② 다른 하차 정류장(광화문역6번출구 100000025)으로만 가는 노선(600·602·603)이 섞이면 WARN — TOPIS 경유상 두 정류장을
 //       모두 지날 수 있어 FAIL로 단정하지 않는다.
-//   ⓔ③ 키 호환: 그 정류장 도착(`trackSeoulWait` 집합 폴)에 새 노선 ID가 하나라도 나타나는가(낮 시간 — 없으면 WARN).
+//   ⓔ③ 키 호환: 그 정류장 도착(`trackSeoulWait` 집합 폴)에 새 노선 ID가 하나라도 나타나는가(낮 시간 — 없으면 UNMEASURED).
 //   ⓓ  지방버스 집합 폴: 공개 명소(대전역) 정류소 해석 → 전체 도착에서 노선 둘을 골라 `routeNos` 폴 — 항목이 그 노선뿐이고
 //       `route`를 싣고 잔여순인가. 단일 노선 폴은 `route`가 없다(byte-호환). 정류소 해석·도착 0건은 UNMEASURED(시간대).
 //
@@ -170,7 +170,8 @@ for (const r of REANCHORS) {
     });
     rows.push(`      집합 ${res.routes.length}개(경유 조회 ${res.checked}, 미확인 ${res.unverified}): ${res.routes.map((x) => x.lineName).join(", ")}`);
     if (res.checked === 0) fail("① 경유를 조회한 노선이 0 — 정류소 노선 목록이 비었다");
-    else if (res.unverified === res.checked) fail("① 경유 조회 전부 미확인");
+    else if (res.unverified === res.checked) fail("① 경유 조회 전부 미확인(ID 축 어긋남 의심)");
+    else if (res.unverified > 0) warn(`① 미확인 ${res.unverified}개(순환·회차·ID 어긋남·조회 실패) — 그 노선은 집합 밖`);
     if (res.routes.some((x) => x.routeId === CURRENT_ROUTE.routeId)) fail("① 지금 노선이 응답에 있다");
     const ids = new Set(res.routes.map((x) => x.routeId));
     for (const m of r.mustInclude) {
@@ -181,7 +182,11 @@ for (const r of REANCHORS) {
     const wait = await trackSeoulWait({ arsId: r.arsId, routeIds: [CURRENT_ROUTE.routeId, ...res.routes.map((x) => x.routeId)].slice(0, 12), lang: "ko" });
     const present = new Set(wait.status === "ok" ? wait.items.map((i) => i.route) : []);
     const seenNew = res.routes.filter((x) => present.has(x.routeId)).map((x) => x.lineName);
-    if (res.routes.length > 0 && seenNew.length === 0) warn(`③ 정류소 도착에 새 노선 0(시간대?) — 도착 ${wait.status === "ok" ? wait.rawCount : 0}건`);
+    if (res.routes.length > 0 && seenNew.length === 0) {
+      // 키 호환은 이 관측으로만 확인된다 — 0은 통과가 아니라 측정 못 함(시간대)이다.
+      unmeasured++;
+      rows.push(`      UNMEASURED ③ 정류소 도착에 새 노선 0(시간대?) — 도착 ${wait.status === "ok" ? wait.rawCount : 0}건`);
+    }
     else rows.push(`      PASS ③ 정류소 도착에 새 노선: ${seenNew.join(", ") || "(집합 없음)"}`);
   } catch (e) {
     unmeasured++;

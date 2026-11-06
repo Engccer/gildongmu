@@ -52,7 +52,7 @@ GET /api/transit/track?mode=seoulBus&phase=lanes&arsId={정류장 arsId}&boardId
 - `routes`는 **지금 leg 노선을 뺀** 나머지다. 클라이언트가 `[지금 노선] + routes`로 집합을 만든다 — 「첫 항목 = leg 자신」(E76 §2.2) 계약을 서버가 이름을 몰라 어기는 경로를 없앤다(지금 노선이 그 정류장 도착 목록에 없어도 첫 항목은 leg다).
 - 판정(`trackSeoulLanes`, `transit-track.ts`):
   1. 정류장의 노선: TOPIS `getStationByUid(arsId)`(대기 폴과 같은 오퍼레이션, `no-store`)의 항목에서 `busRouteId`·`rtNm`. 같은 ID 중복 제거, 지금 노선 제외, 예약 노선(`(예약)`, E76 §2.2 정규식 공유) 제외.
-  2. 같은 하차 정류장(판정 ⓑ와 같은 기준): 노선마다 `getStaionByRoute`(`fetchSeoulRouteStops`, **하루 캐시**, 하차 폴의 순번 해석과 같은 캐시 칸)를 받아 `pickAlightOrd(stops, boardId, alightId) != null`인 노선만 남긴다. ⚠ **그 정류장이 노선 경유에 두 번 이상 나오면(순환·회차) 뺀다**(리뷰 H2 — `pickAlightOrd`는 첫 회차를 골라 사용자가 선 회차 뒤의 하차가 아니라 지난 구간을 읽을 수 있다, `unverified`에 센다).
+  2. 같은 하차 정류장(판정 ⓑ와 같은 기준): 노선마다 `getStaionByRoute`(`fetchSeoulRouteStops`, **하루 캐시**, 하차 폴의 순번 해석과 같은 캐시 칸)를 받아 `pickAlightOrd(stops, boardId, alightId) != null`인 노선만 남긴다. ⚠ **그 정류장이 노선 경유에 두 번 이상 나오면(순환·회차) 뺀다**(리뷰 H2 — `pickAlightOrd`는 첫 회차를 골라 사용자가 선 회차 뒤의 하차가 아니라 지난 구간을 읽을 수 있다, `unverified`에 센다). 경유에 그 정류장이 **0번** 나와도 `unverified`다 — 후보가 그 정류장의 노선 목록에서 왔으므로 정류장 ID 축(`arsId`↔`localId`) 어긋남이다(정상 탈락으로 세면 클라이언트가 단일 노선 확정으로 읽는다, 코드 리뷰). 클라이언트는 확인 0 ∧ `unverified > 0`이면 `lanesPending`을 남긴다.
   3. 운행 시간: E76 §2.3과 같은 `fetchServiceHoursMap`(하루 캐시) — **밖으로 판정된** 노선만 뺀다. 판정 불가는 남긴다.
   4. 상한: `SEOUL_WAIT_ROUTE_SET_MAX − 1`(지금 노선 자리 하나). 순서는 TOPIS 응답 순서.
 - **3-state**: ① 정류장 조회 실패(throw) → 502, 클라이언트는 단일 노선 대기를 계속한다(집합 없음) ② 노선 하나의 경유 조회 실패 → 그 노선은 **뺀다**(`unverified`에 센다). 운행 시간과 방향이 반대인 이유: 운행 시간은 「모르면 탈 수도 있다」지만 경유는 「모르면 다른 곳으로 갈 수도 있다」 — 엉뚱한 곳으로 가는 버스를 고를 수 있게 하는 쪽이 더 나쁘다 ③ 확인된 노선 0 → `routes: []`(집합 없음, 정상).
@@ -91,7 +91,7 @@ GET /api/transit/track?mode=seoulBus&phase=lanes&arsId={정류장 arsId}&boardId
 - 술어는 상태에서 **유도**한다(leg에 표식을 저장하지 않는다): 잠금이 풀리면(탑승 변경) 자동으로 거짓이 되고, 취소로 근사 잠금에 돌아오면 자동으로 참이다. 저장 표식은 해제·복귀 경로마다 지우고 다시 세워야 해서 하나를 빠뜨리면 낡은 표식이 남는다.
 - 소비자 — 승차 중 노선을 말하는 문장 전부:
   1. 문맥 `contextLine(isEn, leg, lineUnconfirmed)` — **셋째 인자는 기본값 없는 필수 인자**(웹·Kit). 참이고 버스면 키 `contextBusUnconfirmed` 「버스 탑승 중, {stop}에서 하차합니다.」(기존 「{line}번 버스 탑승 중, {stop}에서 하차합니다.」에서 번호 자리만 지운 초안, 확정은 판정 왕복). 쓰이는 자리: 상시 상태 문장·진행 상황·추적 시작 통지.
-  2. iOS 띠바 승차 줄(`guide.band.transitRiding`·`…NoCount`의 `{line}` 자리): 참이면 `guide.band.busUnconfirmed` 「버스」를 넣는다(「버스 탑승 중, 남은 정거장 3개」).
+  2. iOS 띠바 승차 줄(`guide.band.transitRiding`·`…NoCount`의 `{line}` 자리): 참이면 전용 틀 `guide.band.transitRidingBusUnconfirmed`·`…NoCount` 「버스 탑승 중, 남은 정거장 3개」(번호 자리에 낱말을 끼우면 en·fr·it 관사가 깨진다 — 접근성 감사).
   3. 지방버스 근사 주석(`approxNote` 「근사 추적: 같은 노선의 접근 차량 기준.」): 집합이 있으면 탄 노선을 모르므로 `approxNoteLanes` 「근사 추적: 추천 노선의 접근 차량 기준.」(초안, 판정 왕복) — 승차 중 카운트다운이 추천 노선 하나를 따른다는 것(§4)을 말한다.
 - 바뀌지 않는 것: 대기 문맥(집합 전부를 말한다), 조망의 구간 행(경로 계획), 탑승 통지 `boarded`(노선 인자 없음), 하차 임박·도착 문장(하차 정류장만 말한다).
 
@@ -109,10 +109,10 @@ GET /api/transit/track?mode=seoulBus&phase=lanes&arsId={정류장 arsId}&boardId
 | 키 | ko 초안 | 쓰는 곳 |
 |---|---|---|
 | `contextBusUnconfirmed` | 버스 탑승 중, {stop}에서 하차합니다. | §3 ① |
-| `approxNoteLanes` | 근사 추적: 이 구간 노선들의 접근 차량 기준. | §3 ③ |
+| `approxNoteLanes` | 근사 추적: 추천 노선의 접근 차량 기준. | §3 ③ |
 | `reboardStopPrompt` | 지금 어느 정류장에 계신가요? | §2.1 |
 | `reboardStopCancel` | 정류장 선택 취소 | §2.1 |
-| iOS `guide.band.busUnconfirmed` | 버스 | §3 ② |
+| iOS `guide.band.transitRidingBusUnconfirmed`·`…NoCount` | 버스 탑승 중, 남은 정거장 {count}개 · 버스 탑승 중 | §3 ② |
 
 확정 문안은 판정 파일(`judgment-*.md`)로 위원장 TextEdit 왕복을 받고, 확정본이 오면 글자를 맞춘다. 기다리는 동안 초안으로 진행한다.
 
@@ -127,7 +127,7 @@ GET /api/transit/track?mode=seoulBus&phase=lanes&arsId={정류장 arsId}&boardId
 
 ODsay는 부르지 않는다(Flex 과금) — 경로는 E76 fixture `odsay-e70`의 공개 명소 구간(아현역 → 광화문역 271·273·721·270)과 TOPIS 실호출만 쓴다.
 
-1. ⓔ 재기준 집합: 그 leg의 경유 정류장 `i = 1`과 `i = 마지막 − 1`에서 `trackSeoulLanes`를 태운다. PASS 조건: `checked ≥ 1` ∧ 지금 노선이 아닌 노선이 1개 이상 확인(정류장에 다른 노선이 있는 표본) ∧ 확인된 노선마다 `pickAlightOrd` 재검증. `unverified > 0`은 WARN, `checked > 0 ∧ 확인 0 ∧ unverified == checked`는 FAIL(ID 축 어긋남 = 매핑 미스).
+1. ⓔ 재기준 집합: 그 leg의 경유 정류장 `i = 1`과 `i = 마지막 − 1`에서 `trackSeoulLanes`를 태운다. PASS 조건: `checked ≥ 1` ∧ 지금 노선이 아닌 노선이 1개 이상 확인(정류장에 다른 노선이 있는 표본) ∧ ODsay fixture가 그 정류장 → 하차를 지난다고 보여 주는 노선이 전부 포함(부재 FAIL — 같은 판정 함수로 재검증하는 대신 독립 출처로 단언한다) ∧ 새 노선이 그 정류장 도착(`trackSeoulWait`)에 1개 이상(0이면 시간대라 UNMEASURED). `unverified > 0`은 WARN, `checked > 0 ∧ 확인 0 ∧ unverified == checked`는 FAIL(ID 축 어긋남 = 매핑 미스).
 2. ⓔ 키 호환: 확인된 집합으로 그 정류장 집합 대기 폴(`trackSeoulWait` `routeIds`)에 1개 이상 나타나는가(0이면 FAIL, 일부 없음 WARN).
 3. ⓓ TAGO: 공개 명소 지방 정류소 하나(TAGO 해석 가능 좌표)의 도착 전체에서 노선 번호 둘 이상을 `routeNos`로 폴해 `route`가 실리고 잔여순인지. 표본 정류소 도착이 0이면 「측정 못 함」(PASS 아님).
 - 상한 `BUS_CAP` 60(TOPIS·TAGO 합). `--out <저장소 밖>`·`--from-corpus` 규약은 `verify-bus-lanes.mjs`와 같다. 결과 corpus는 보고 디렉터리에 둔다.

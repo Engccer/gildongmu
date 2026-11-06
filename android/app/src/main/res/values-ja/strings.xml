@@ -734,7 +734,6 @@
     <string name="guide_autoReroute">新しいルートで案内を再開します。%1$s。案内%2$s件、合計%3$s。</string>
     <string name="guide_backOnRoute">経路に復帰しました</string>
     <string name="guide_band_arrived">%1$sに到着</string>
-    <string name="guide_band_busUnconfirmed">バス</string>
     <string name="guide_band_ended">%1$sへの案内終了</string>
     <string name="guide_band_remaining">%1$sまで残り%2$s</string>
     <string name="guide_band_return">案内シートを開く</string>
@@ -743,6 +742,8 @@
     <string name="guide_band_transitDestChangeFailed">%1$sへの目的地変更に失敗、案内画面で確認</string>
     <string name="guide_band_transitDestChangePending">目的地を%1$sに変更中、経路を選択</string>
     <string name="guide_band_transitRiding">%1$sに乗車中、残り%2$s駅</string>
+    <string name="guide_band_transitRidingBusUnconfirmed">バスに乗車中、残り%1$s駅</string>
+    <string name="guide_band_transitRidingBusUnconfirmedNoCount">バスに乗車中</string>
     <string name="guide_band_transitRidingNoCount">%1$sに乗車中</string>
     <string name="guide_band_transitWaiting">%1$sで%2$sの乗車待ち</string>
     <string name="guide_bundle">次の案内。%1$s</string>

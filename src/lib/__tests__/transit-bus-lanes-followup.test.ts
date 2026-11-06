@@ -196,7 +196,55 @@ describe("웹 재기준 배선(소스 가드)", () => {
     expect(body.indexOf("replaceCurrentLeg(reanchor.snapshot)")).toBeLessThan(body.indexOf("selectLane(previous.routeId)"));
   });
 
+  it("대기를 벗어나면 재기준 원본을 버린다(코드 리뷰 MAJOR — 국면 기반, dispatch 한 자리)", () => {
+    const body = hook.slice(hook.indexOf("  const dispatch = useCallback("), hook.indexOf("  const dispatch = useCallback(") + 4000);
+    expect(body).toContain('if (next.phase !== "waiting") reanchorRef.current = null;');
+  });
+
+  it("확인 0 ∧ 미확인 있음은 노선 모름을 남긴다", () => {
+    const body = hook.slice(hook.indexOf("  const fetchReanchorLanes ="), hook.indexOf("  const reseatSeoulBus ="));
+    const guard = "if (!lanes && (body.unverified ?? 0) > 0) return;";
+    expect(body).toContain(guard);
+    expect(body.indexOf(guard)).toBeLessThan(body.indexOf("delete filled.lanesPending"));
+  });
+
+  it("지방버스 집합 폴은 대기 국면에만(리뷰 H3)", () => {
+    const fn = hook.slice(hook.indexOf("export function trackTargetUrl("), hook.indexOf("export function useTransitGuide("));
+    expect(fn).toContain('if (phase === "waiting" && leg.lanes && leg.lanes.length >= 2) {\n      const nos');
+  });
+
   it("문맥 문장은 잠금을 받는다(기본값 없는 인자)", () => {
     expect(hook).not.toMatch(/contextPiece\(leg\)/);
+  });
+});
+
+describe("iOS 재기준 배선(소스 가드 — 앱 타깃엔 테스트 레인이 없다)", () => {
+  const model = readFileSync("ios/Gildongmu/Directions/TransitGuideModel.swift", "utf8");
+
+  it("dispatch가 대기를 벗어나면 재기준 원본을 버린다(코드 리뷰 MAJOR)", () => {
+    expect(model).toContain("if result.state.phase != .waiting { reanchor = nil }");
+  });
+
+  it("재기준은 보관 후보를 비운 뒤 대기로 돌린다(리뷰 H1)", () => {
+    const body = model.slice(model.indexOf("func reseatSeoulBus"), model.indexOf("func reseatSeoulBus") + 2500);
+    const clear = body.indexOf("retained = [:]");
+    expect(body.indexOf("replaceCurrentLeg(next)")).toBeLessThan(clear);
+    expect(clear).toBeLessThan(body.indexOf("changeBoarding()", clear));
+  });
+
+  it("지방버스 집합 폴은 대기 국면에만(리뷰 H3)", () => {
+    expect(model).toContain("routeNos: phase == .waiting && (leg.lanes?.count ?? 0) >= 2 ? leg.lanes?.map(\\.key) : nil,");
+  });
+
+  it("집합 응답은 세션·세대·대기·같은 구간·같은 정류장일 때만, 확인 0 ∧ 미확인은 노선 모름 유지", () => {
+    const body = model.slice(model.indexOf("func fetchReanchorLanes"), model.indexOf("func fetchReanchorLanes") + 3000);
+    for (const s of [
+      "guard sessionToken == session, let reanchor, reanchor.gen == gen,",
+      "let state, state.phase == .waiting, state.legIndex == reanchor.legIndex,",
+      "let current = currentLeg, current.lanesPending, current.boardStop == leg.boardStop,",
+      "if lanes == nil && (env.unverified ?? 0) > 0 { return }",
+    ]) {
+      expect(body).toContain(s);
+    }
   });
 });

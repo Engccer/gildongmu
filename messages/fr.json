@@ -851,7 +851,8 @@
       "transitWaiting": "En attente de {line} à {stop}",
       "transitRiding": "À bord de {line}, {count, plural, one {# arrêt restant} other {# arrêts restants}}",
       "transitRidingNoCount": "À bord de {line}",
-      "busUnconfirmed": "Bus",
+      "transitRidingBusUnconfirmed": "À bord du bus, {count, plural, one {# arrêt restant} other {# arrêts restants}}",
+      "transitRidingBusUnconfirmedNoCount": "À bord du bus",
       "transitArrived": "Arrivé à {dest}",
       "transitDestChangePending": "Changement de destination vers {label}, choisissez un itinéraire",
       "transitDestChangeFailed": "Changement de destination vers {label} échoué, voir le guidage"

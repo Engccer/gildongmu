@@ -166,6 +166,7 @@ describe("수량 문구 복수형(A29)", () => {
     "guide.rerouteDone": "Route recalculated from your current location. x. 1 instruction, x total.",
     "guide.carStart": "Car guidance to x started. x. 1 instruction, x total.",
     "guide.band.transitRiding": "On x, 1 stop left",
+    "guide.band.transitRidingBusUnconfirmed": "On a bus, 1 stop left",
     "walkInfra.audioSummary": "1 device within 300m",
     "walkInfra.audioSite": "x, x (1 device)",
     "walkInfra.osmSummary": "1 crosswalk or tactile paving point",
