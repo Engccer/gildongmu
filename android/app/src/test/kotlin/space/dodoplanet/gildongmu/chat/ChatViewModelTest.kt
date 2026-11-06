@@ -352,11 +352,11 @@ class ChatViewModelTest {
 
         val none = make(geocode = { null })
         assertNull(none.vm.resolveAddress(address))
-        assertEquals("이 주소의 좌표를 찾지 못해 상세를 열 수 없습니다.", none.vm.state.value.notice.text)
+        assertEquals("이 주소의 위치를 확인하지 못해 상세 정보를 열 수 없습니다.", none.vm.state.value.notice.text)
 
         val broken = make(geocode = { throw IOException("down") })
         assertNull(broken.vm.resolveAddress(address))
-        assertEquals("선택한 주소의 좌표를 확인하지 못했습니다.", broken.vm.state.value.notice.text)
+        assertEquals("선택한 주소의 위치를 확인하지 못했습니다.", broken.vm.state.value.notice.text)
     }
 
     @Test fun `주소 해석 in-flight 가드는 진행 중 재탭을 무시하고 취소 뒤 풀린다`() = runTest(dispatcher) {

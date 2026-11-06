@@ -31,6 +31,7 @@ class TransitGuideTextTest {
             val express: String? = null,
             val exit: String? = null,
             val sentence: Boolean? = null,
+            val route: TransitLabel? = null,
             val departedMinutes: Int? = null,
             val minutes: Int? = null,
             val n: Int? = null,
@@ -70,7 +71,7 @@ class TransitGuideTextTest {
             "arrivingAtAlightStop" -> transitArrivingAtAlightStopLine(e, need(c.leg, "leg", c))
             "alightStopReached" -> transitAlightStopReachedLine(e, need(c.leg, "leg", c))
             "currentStation" -> transitCurrentStationLine(e, need(c.location, "location", c))
-            "candidateDesc" -> transitCandidateDescLine(e, need(c.leg, "leg", c), need(c.item, "item", c), expressOf(c), c.departedMinutes)
+            "candidateDesc" -> transitCandidateDescLine(e, need(c.leg, "leg", c), need(c.item, "item", c), expressOf(c), c.departedMinutes, c.route)
             "vehicleDesc" -> transitVehicleDescLine(e, need(c.item, "item", c))
             "terminatesEarly" -> transitTerminatesEarlyLine(e, need(c.leg, "leg", c), need(c.item, "item", c))
             "expressSkipsAlight" -> transitExpressSkipsAlightLine(e, need(c.leg, "leg", c))

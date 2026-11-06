@@ -77,7 +77,7 @@ class ManualLocationPickerViewModelTest {
         val r = rig(LocationPermission.None); runCurrent()
         r.vm.picker.selectPlace(place.copy(lat = Double.NaN)); runCurrent()
         assertNull(r.manual.current.value); assertFalse(r.vm.done.value)
-        assertEquals("선택한 주소의 좌표를 확인하지 못했습니다.", r.vm.picker.state.value!!.notice.text)
+        assertEquals("선택한 주소의 위치를 확인하지 못했습니다.", r.vm.picker.state.value!!.notice.text)
     }
 
     @Test fun `Place + Fine, 측위 실패(8초 무응답) → origin null로 set·done, 지정 측위는 silent가 아니라 실패 표식이 선다`() = runTest(main.dispatcher) {

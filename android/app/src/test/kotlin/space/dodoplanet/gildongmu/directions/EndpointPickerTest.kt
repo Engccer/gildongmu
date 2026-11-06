@@ -60,7 +60,7 @@ class EndpointPickerTest {
         p.open(DirectionsFieldTarget.to); p.state.value!!.queryState.setTextAndPlaceCursorAtEnd("강동"); p.submitCandidates()
         assertTrue(p.state.value!!.isSearching); testScheduler.advanceUntilIdle()
         val s = p.state.value!!
-        assertEquals(1, s.places.size); assertEquals(1, s.candidateRevision); assertFalse(s.isSearching); assertEquals("후보 1건을 찾았습니다.", s.notice.text)
+        assertEquals(1, s.places.size); assertEquals(1, s.candidateRevision); assertFalse(s.isSearching); assertEquals("검색 결과 1건을 찾았습니다.", s.notice.text)
         assertTrue(t.urls.first { pathOf(it) == "/api/places" }.contains("lat=37.5"))
     }
 

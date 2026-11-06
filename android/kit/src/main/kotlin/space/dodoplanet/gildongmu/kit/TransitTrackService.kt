@@ -31,9 +31,14 @@ class TransitTrackService(private val client: APIClient) {
     /**
      * ⚠ `lang`은 **기본값 없는 필수 인자**다(E27 잔여 ①, spec 2026-09-01 §3.3) — 생략이 컴파일을 통과하면 실시간 줄만
      * 조용히 한국어로 떨어지고 서버는 400도 내지 않는다(부재 = ko가 정상 계약).
+     * E76: `routeIds`가 있으면 노선 집합 폴(`routeIds=a,b`), 없으면 단일 노선 폴(`routeId`) — Swift 원본과 같은 자리·순서.
      */
-    suspend fun seoulWait(arsId: String, routeId: String, lang: String): TransitTrackEnvelope = get(
-        listOf("mode" to "seoulBus", "phase" to "wait", "arsId" to arsId, "routeId" to routeId, "lang" to lang),
+    suspend fun seoulWait(arsId: String, routeId: String, routeIds: List<String>?, lang: String): TransitTrackEnvelope = get(
+        listOf(
+            "mode" to "seoulBus", "phase" to "wait", "arsId" to arsId,
+            if (routeIds == null) "routeId" to routeId else "routeIds" to routeIds.joinToString(","),
+            "lang" to lang,
+        ),
     )
 
     suspend fun seoulRide(routeId: String, boardId: String, alightId: String, lang: String): TransitTrackEnvelope = get(

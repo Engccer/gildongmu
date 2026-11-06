@@ -572,7 +572,7 @@ class DirectionsViewModelTest {
         dispatcher.scheduler.advanceUntilIdle()
         val s = m.endpointSearch.value!!
         assertEquals(5, s.places.size); assertEquals(5, s.addresses.size); assertEquals(1, s.candidateRevision)
-        assertEquals("후보 10건을 찾았습니다.", s.notice.text)
+        assertEquals("검색 결과 10건을 찾았습니다.", s.notice.text)
         // 도착지 피커에서 "현재 위치"는 확정되지 않는다(화면도 버튼을 내지 않는다 — 이중 방어)
         m.selectCurrent()
         assertNotNull(m.endpointSearch.value); assertNull(m.state.value.to)
@@ -580,10 +580,10 @@ class DirectionsViewModelTest {
         // 0건과 실패는 다른 문장
         val m2 = vm(Routes(places = emptyPlaces, addresses = emptyAddr))
         m2.openPicker(DirectionsFieldTarget.to); m2.endpointSearch.value!!.queryState.setTextAndPlaceCursorAtEnd("x"); m2.submitCandidates(); dispatcher.scheduler.advanceUntilIdle()
-        assertEquals("후보를 찾지 못했습니다.", m2.endpointSearch.value!!.notice.text)
+        assertEquals("검색 결과가 없습니다.", m2.endpointSearch.value!!.notice.text)
         val m3 = vm(Routes())
         m3.openPicker(DirectionsFieldTarget.to); m3.endpointSearch.value!!.queryState.setTextAndPlaceCursorAtEnd("x"); m3.submitCandidates(); dispatcher.scheduler.advanceUntilIdle()
-        assertEquals("후보 검색에 실패했습니다.", m3.endpointSearch.value!!.notice.text)
+        assertEquals("검색에 실패했습니다.", m3.endpointSearch.value!!.notice.text)
         // 닫힘은 검색을 취소하고 열었던 필드로 착지
         val r4 = Routes(places = placesK1, addresses = emptyAddr, delays = mapOf("/api/places" to 1_000L))
         val m4 = vm(r4)
@@ -616,7 +616,7 @@ class DirectionsViewModelTest {
         m2.openPicker(DirectionsFieldTarget.to); m2.endpointSearch.value!!.queryState.setTextAndPlaceCursorAtEnd("천호"); m2.submitCandidates(); dispatcher.scheduler.advanceUntilIdle()
         m2.selectAddress(m2.endpointSearch.value!!.addresses.single()); dispatcher.scheduler.advanceUntilIdle()
         assertNotNull(m2.endpointSearch.value)
-        assertEquals("선택한 주소의 좌표를 확인하지 못했습니다.", m2.endpointSearch.value!!.notice.text)
+        assertEquals("선택한 주소의 위치를 확인하지 못했습니다.", m2.endpointSearch.value!!.notice.text)
         assertNull(m2.state.value.to)
     }
 

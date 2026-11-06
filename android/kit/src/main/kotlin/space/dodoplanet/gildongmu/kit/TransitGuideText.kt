@@ -276,8 +276,11 @@ fun transitCandidateDescLine(
     item: TransitDisplayItem,
     express: TransitExpressVerdict?,
     departedMinutes: Int?,
+    route: TransitLabel?,
 ): TransitTextLine {
     val labels = ArrayList<TransitLabel>()
+    // E76: 노선 집합 대기 목록은 줄 앞에 노선 번호(조각 순서 = 낭독 순서).
+    route?.let { labels.add(it) }
     item.destination?.let { labels.add(it) }
     labels.add(item.direction)
     labels.add(item.message)
@@ -291,6 +294,7 @@ fun transitCandidateDescLine(
     val picked = transitPickLabels(isEn, labels)
     var i = 0
     val parts = ArrayList<TransitTextPart>()
+    if (route != null) parts.add(TransitTextPart.text(picked.values[i++]))
     if (item.destination != null) parts.add(TransitTextPart.key("bound", listOf(picked.values[i++])))
     val direction = picked.values[i++]
     if (direction.isNotEmpty()) parts.add(TransitTextPart.text(direction))
