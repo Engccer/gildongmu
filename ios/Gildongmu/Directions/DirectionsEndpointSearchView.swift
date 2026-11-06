@@ -39,7 +39,8 @@ final class EndpointSearchModel {
     private(set) var stopsTruncated = false
     /// 대상 지역을 못 정했다 — 장소·정류장이 둘 다 0건일 때만 기존 「정류소 정보가 제공되지 않습니다」를 더한다.
     private(set) var showsNoBusData = false
-    /// 역 칸에서 장소 검색이 실패했는데 정류장 줄이 있다 — 역 장소 줄이 없는 이유가 "역 없음"이 아니라 "조회 실패"임을 알린다.
+    /// 역 칸·입구 검색에서 장소 검색이 실패했는데 다른 후보(정류장·입구 검색의 주소)가 있다 — 역 장소 줄이 없는 이유가 "역 없음"이 아니라
+    /// "조회 실패"임을 알린다.
     private(set) var showsPlacesFailure = false
     /// 길찾기 화면의 출발·도착 좌표 중 알려진 것(둘 다 없으면 정류장 검색을 하지 않는다).
     var stopOrigin: (lat: Double, lng: Double)?
@@ -79,7 +80,7 @@ final class EndpointSearchModel {
             showsNoBusData = count == 0 && (stopResult?.unsearched ?? false)
             // 역 칸·입구 검색은 역이 장소 트랙에서만 오므로 그 성패를 본다(주소 성공이 장소 실패를 가리지 않는다).
             let placesFailed = (stationsOnly || searchesStops) ? outcome.places.isFailed : outcome.allFailed
-            // 역이 장소 트랙에서만 오는 칸(역 칸·지금 탄 열차·입구 검색)은 장소 실패와 다른 후보가 함께 있을 수 있다 — 그때 실패를 줄과 통지로 밝힌다.
+            // 장소 실패와 다른 후보가 함께 있을 수 있는 칸(역 칸·입구 검색 — 지금 탄 열차는 다른 후보가 없어 서지 않는다)은 실패를 줄과 통지로 밝힌다.
             showsPlacesFailure = (stationsOnly || searchesStops) && placesFailed && count > 0
             var message: String
             var haptic: ResultHaptic.Kind
