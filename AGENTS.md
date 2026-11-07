@@ -138,7 +138,8 @@
 - **안내 경로 origin은 "신선한가"가 아니라 "정확한가"로 고른다**(A18, Kit `routeOriginStep`만 지난다 — 세션 첫 fix가 곧 가장 나쁜 fix). `isUsableFix`를 조이지 말고 재측위 의존을 되살리지 말 것. `routeOrigin` 로그 1줄 필수. → INTEGRATIONS
 - **소리와 음성은 같은 청각 채널이다 — 톤 뒤 발화 계약**(`speechDeferStep`, Kit `GuideSpeechGate.swift` ↔ 웹 `guide-speech-gate.ts`, 단일 슬롯 latest-wins). 새 통지 경로는 `announce` 창구를 지나야 한다 — 직접 게시 금지. → INTEGRATIONS
 - **대중교통 승차 추세 톤은 이벤트 소유가 신뢰 불가보다 앞이고, 앵커는 "마지막으로 전달된 잔여"다**(E15 ②, `transitToneStep` ↔ `transit-guide-tone.ts`; 도보 순서로 되돌리지 말 것). → INTEGRATIONS
-- **버스 노선 집합(E76)은 첫 항목이 leg 자신이고, 후보를 고르면 세션 leg를 그 노선으로 바꾼 뒤 잠근다**(`legWithLane` ↔ Kit `transitLegWithLane`, `board` 전): `lanes`는 옵트인 `lanes=1`, 대기 폴은 `routeId`·`routeIds` 중 하나이고 집합 폴만 `route`를 싣는다. 노선별 문장 분기를 따로 두지 말 것. → INTEGRATIONS
+- **버스 노선 집합(E76)은 첫 항목이 leg 자신이고, 후보를 고르면 세션 leg를 그 노선으로 바꾼 뒤 잠근다**(`legWithLane` ↔ Kit `transitLegWithLane`, `board` 전): `lanes`는 옵트인 `lanes=1`, 대기 폴은 서울버스 `routeId`·`routeIds`, 지방버스 `routeNo`·`routeNos` 중 하나이고 집합 폴만 `route`를 싣는다. 노선별 문장 분기를 따로 두지 말 것. → INTEGRATIONS
+- **서울버스 승차 중 정류장 재선택은 leg 교체이고(`legFromStop` ↔ Kit, 표시 인덱스 금지), 근사 잠금 ∧ 노선 미확정이면 번호 대신 「버스」다**(E76 후속, 유도 술어 `rideLineUnconfirmed`, `contextLine` 셋째 인자 필수). 재기준 집합(`phase=lanes`)의 경유 조회 예산은 메모리 캐시 뒤, 지방버스 승차 중 폴은 추천 노선 하나. → INTEGRATIONS §버스 정류장 재기준
 - **승차 후보의 활성화 차단 술어는 `unreachable` 하나이고 급행 판정은 ID가 정본이다**(A16 L1 `expressVerdict`, 그 외 `unknown`). 근사 잠금은 `needsExpressPrompt`로 묻고, 출구 번호는 확정 도착·하차역 행에만. → INTEGRATIONS
 - **소리를 낸 직후 세션을 끝내면 그 소리가 잘린다 — 순서가 아니라 대기가 답이다**(`BeaconTonePlayer.endSession()`이 잔여 시간만큼 원복을 미루고, `beginSession()`은 그 예약을 취소, `shutdown()`은 즉시 원복). 전경에선 증상이 없다. → INTEGRATIONS
 - **오디오 재생기는 셋(도보·대중교통·나들이)이고 미뤄진 원복은 최신 소유자에게 이전된다**(`.ownershipTransferred`). route 변경 `.categoryChange`는 현재 세션 값 == 적용값 대조로 자기 메아리만 거른다(전면 필터 금지). → INTEGRATIONS
@@ -149,6 +150,7 @@
 - **자동차 경유지 접근 예고는 임박 큐와 같은 임계 구조 + 정숙 시간이다**(`waypointApproachThreshold` = `max(150m, v×60초)`): 리듀서 밖 실행 안내는 자동차 세션에서 `guideState.lastAnnouncedAt`을 적는다(가드 `car-waypoint-approach-guard.test.ts`). → INTEGRATIONS §자동차 임박·따라잡기
 - **자동차 짧은 안내(임박·주기)의 지점·방면은 서버 `at`·`toward`(기하 옵트인 additive)가 정본이고 클라이언트는 스텝 `carLandmark`에서만 읽는다**(E61): 안내문 재파싱 금지, 비-ko는 `carSpokenLandmark`가 한글 이름을 뺀다, 운전자 모드는 종전 단문(`guide.carDriverNotice`). → INTEGRATIONS §자동차 경로
 - **자동차 "현재 도로"는 스텝이 아니라 링크 단위다**(E56): `roadSpans` + `roadNameAt(진행거리)`만 지난다 — 한 안내 구간 안에서 도로가 바뀌는 스텝이 15%라 스텝별 도로 이름 필드·안내문 파싱 금지. 모르면 줄 없음, 통지 없음. → INTEGRATIONS §자동차 경로
+- **자동차 정체는 옵트인 `traffic=1`의 `congestion`(null = 정보 없음)이고 provider 코드표는 방향이 반대라 provider 안에서만 읽는다**(E80). 주행 중 새 정체는 지금 경로에 투영해 가르고(`newJamsAhead` ↔ Kit `newCarJamsAhead`, 호출부 규칙 넷은 상세 절), CLI·MCP·채팅은 옵트인하지 않는다(약관 재제공). → INTEGRATIONS §자동차 경로
 - **잊힌 도보 세션은 국면 무관 안전망이 끝낸다**(A23 `sessionIdleStep` ↔ `session-idle.ts`): fix 두절 임계는 `GuideTuning.sessionIdleNoFixSeconds`(웹 `sessionIdleNoFixS`, 기본값 없는 인자), 무이동 5분은 도보만. 수단 차이는 `GuideTuning` 데이터로(`sessionKind` switch 금지). → INTEGRATIONS
 - **나들이(E51)는 세 번째 안내 세션이고 판정은 Kit 순수 함수(`Outing*.swift`)다**: 실험판 봉인(`experimentalOutingEnabled`), 시작은 `GuideSession.startOuting` 한 곳, 귀환은 `acceptOutingReturn`의 `startBeacon` 인계, 좌우는 `OutingSide`에서만. 교차로·횡단보도 원천은 `OutingNodes.swift`가 합친다. → INTEGRATIONS
 - **백그라운드 음성 안내(E53)는 Kit `guideSpeechChannel` 하나가 채널을 가르고 분류(`speechClass`)는 호출부가 기본값 없이 밝힌다**: 기기 음성은 세 모델 공유 칸 `DeviceSpeechQueue`만 지난다(가드 `background-speech-guard.test.ts`). → INTEGRATIONS §백그라운드 음성 안내는 채널 술어 하나가 가르고 기기 음성 대기 칸은 세 모델이 공유한다
@@ -165,8 +167,9 @@
 - **확정 도착·비관측 riding은 폴 주기 0이고 즉폴도 예외가 아니다**(`restartPollLoop`·웹 `pollOnce`: `interval <= 0`이면 반환). 마지막 leg는 `advanceIntoWalkHandoff()` + `acceptWalkHandoff` 한 동작, 인계 제안 화면 없음(E34). → INTEGRATIONS
 - **boarding 국면의 선언 버튼은 관측이 끝났을 때만 선다**(N3 ①, `transitBoardingObservationLost` ↔ 웹 `boardingObservationLost`). ⚠ 관측 승격 직후 즉폴 금지, 착지는 **전이의 출처**로(A47 `userTransitionSeq`, 국면 쌍 추정 금지), 즉폴은 `requestImmediatePoll` 창구만(A49). → PATTERNS
 - **riding 미관측 상한은 시계가 아니라 조회 횟수다**(A36 ①, `transitNeverSeenPolls` 10 ↔ 웹 `NEVER_SEEN_POLLS`): 실패 폴·boarding 폴·비관측 잠금은 세지 않고 riding 진입에서 0. 벽시계 백스톱 부활 금지(위원장 판정). → INTEGRATIONS
-- **대중교통 안내는 백그라운드에서도 폴하고, 프로세스를 살리는 것은 오디오가 아니라 boarding·riding 동안의 keep-alive 위치 스트림이다**(E36·A46). 백그라운드 톤은 `trackingStarted` 하나(`playTone(_:allowedInBackground:)` 기본값 없음), keep-alive fix는 `keepAliveFixSink`로 안내 세션에만(E48). → INTEGRATIONS
+- **대중교통 안내는 백그라운드에서도 폴하고, 프로세스를 살리는 것은 오디오가 아니라 boarding·riding 동안의 keep-alive 위치 스트림이다**(E36·A46). 백그라운드 톤은 Kit `transitToneAllowedInBackground` 하나가 가른다(E79: 승차 중 추세·사다리·도착과 고른 차량 다가옴, 신호 잃음 반복음 제외, `playTone(_:allowedInBackground:)` 기본값 없음, 리터럴 `true` 금지), keep-alive fix는 `keepAliveFixSink`로 안내 세션에만(E48). → INTEGRATIONS
 - **승차 전 도보(prewalk)는 대중교통 세션이 아니라 그 앞의 도보 세션이고, 종료 화면을 남기지 않는다**(A25·E73 환승 도보: `transitPrewalkTarget` → `markPrewalk` → `onSessionEnd`). `prewalkTarget`은 `stop()` 앞에서 캡처, 잊힌 세션 안전망 비적용. → INTEGRATIONS
+- **잘못 내림 복구(E78 「여기서 다시 길찾기」)는 같은 세션의 경로 교체이고, 슬롯(`pendingRecovery`)이 있는 동안 옛 세션은 조용하다**(폴·즉폴·버스 하차 위치 통지 0, 진입 때 통지 장부 무효화): 사용자 조작·경쟁 커밋은 `invalidateRecovery()`를 먼저 부르고, 승차 전 도보 연결의 환승 여부는 `PrewalkContext.isTransfer` 저장값(구간 번호로 가르지 말 것). → INTEGRATIONS
 - **iOS 통지 우선순위의 판별선은 "포커스가 움직이고, 그 통지가 착지 라벨로 대체될 수 없을 때 `.high`"다**(`BeaconModel.performReroute` 실사고). 화면 변화 없는 활성화 응답("복사됨")도 `.high`, 실패만 `.high`이고 성공이 기본값인 비대칭은 결함 신호. → PATTERNS
 - **결과 진동은 `ResultHaptic.fire(.success|.attention|.failure)` 한 창구다**(스위치 `TrendHaptics.storageKey` 뒤). 1회성 결과·전이에만, **문장이 나가는 조건 = 진동이 나가는 조건**. 제너레이터 직접 생성은 기존 4곳뿐(`result-haptic-guard.test.ts`). → PATTERNS
 - **내 주변 탭 동작은 기존 판별선을 재사용한다**(E65·E72: 장소 하나인 `List` 행 = 행 뿌리의 `placeRowSwipeActions`, 문장 속 여러 장소 = 링크 + 로터). 앵커 목록의 `directionsEntryAllowed`는 기본값 없는 인자이고, 상세에서 돌아온 등장은 다시 조회하지 않는다(A64). → PATTERNS
