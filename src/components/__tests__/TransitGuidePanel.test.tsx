@@ -969,6 +969,90 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
     expect((await screen.findAllByText(/boardingContextBus:소공동주민센터,7016/)).length).toBeGreaterThan(0);
   });
 
+  describe("서울버스 승차 중 정류장 재기준(E76 후속 ⓔ)", () => {
+    const REANCHOR_ROUTE: TransitRoute = {
+      summary: { totalMinutes: 20, fare: 1500, transfers: 0, walkMinutes: 0 },
+      routeKey: "r0",
+      legs: [
+        {
+          mode: "bus",
+          lineName: "3318",
+          fromName: "길동사거리",
+          toName: "천호역",
+          stationCount: 2,
+          minutes: 12,
+          serviceRouteId: "227000006",
+          stops: [
+            { name: "길동사거리", lat: 37.5, lng: 127.1, cityCode: "1000", arsId: "24101", localId: "123000017" },
+            { name: "중간정류장", lat: 37.51, lng: 127.11, cityCode: "1000", arsId: "24105", localId: "123000020" },
+            { name: "천호역", lat: 37.53, lng: 127.12, cityCode: "1000", arsId: "24102", localId: "123000043" },
+          ],
+        },
+      ],
+    };
+    const busItem = (vehicleId: string, extra: Record<string, unknown> = {}) =>
+      trackItem({ vehicleId, direction: "", destinationName: null, message: "3분후[1번째 전]", remainingStops: 1, arrivalCode: null, ...extra });
+
+    function stubBus(urls: string[], lanesRoutes: { routeId: string; lineName: string }[]) {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async (input: RequestInfo | URL) => {
+          const url = String(input);
+          urls.push(url);
+          if (url.includes("phase=lanes")) {
+            return { ok: true, json: async () => ({ mode: "seoulBus", status: "ok", routes: lanesRoutes, checked: 3, unverified: 0 }) } as Response;
+          }
+          if (url.includes("routeIds=")) {
+            return { ok: true, json: async () => ({ mode: "seoulBus", status: "ok", rawCount: 2, items: [busItem("n1", { route: "999" }), busItem("c1", { route: "227000006" })] }) } as Response;
+          }
+          if (url.includes("phase=wait")) {
+            return { ok: true, json: async () => ({ mode: "seoulBus", status: "ok", rawCount: 1, items: [busItem(url.includes("arsId=24105") ? "v9" : "v1")] }) } as Response;
+          }
+          return { ok: true, json: async () => ({ mode: "seoulBus", status: "empty", rawCount: 0 }) } as Response;
+        }),
+      );
+    }
+
+    it("정류장을 묻고, 고른 정류장 기준으로 다시 기다리며 그곳의 노선 집합을 붙인다", async () => {
+      const urls: string[] = [];
+      stubBus(urls, [{ routeId: "999", lineName: "999" }]);
+      render(<TransitGuidePanelHost route={REANCHOR_ROUTE} triggerLabel="시작" walkAccessible={false} />);
+      fireEvent.click(screen.getByRole("button", { name: "시작" }));
+      await boardBusByDeparture(/selectBus/);
+      fireEvent.click(await screen.findByRole("button", { name: "transitGuide.changeBoarding" }));
+      expect(screen.getByRole("heading", { name: "transitGuide.reboardStopPrompt" })).toBeTruthy();
+      expect(screen.getByRole("button", { name: "transitGuide.reboardStopCancel" })).toBeTruthy();
+      urls.length = 0;
+      clickFocused(screen.getByRole("button", { name: "중간정류장" }));
+      await waitFor(() => {
+        expect(urls.some((u) => u.includes("phase=lanes&arsId=24105&boardId=123000020&alightId=123000043&routeId=227000006&"))).toBe(true);
+      });
+      expect(urls.some((u) => u.includes("phase=wait&arsId=24105&routeId=227000006&"))).toBe(true);
+      // 집합 응답이 붙으면 그 정류장 기준 집합 폴로 바뀐다.
+      await waitFor(() => {
+        expect(urls.some((u) => u.includes("phase=wait&arsId=24105&routeIds=227000006,999&"))).toBe(true);
+      });
+      expect(urls.some((u) => u.includes("arsId=24101"))).toBe(false);
+    });
+
+    it("재기준 뒤 차량을 고르고 [다른 차량 선택]→[탑승 변경 취소]해도 옛 정류장으로 돌아가지 않는다(코드 리뷰 MAJOR)", async () => {
+      const urls: string[] = [];
+      stubBus(urls, []);
+      render(<TransitGuidePanelHost route={REANCHOR_ROUTE} triggerLabel="시작" walkAccessible={false} />);
+      fireEvent.click(screen.getByRole("button", { name: "시작" }));
+      await boardBusByDeparture(/selectBus/);
+      fireEvent.click(await screen.findByRole("button", { name: "transitGuide.changeBoarding" }));
+      clickFocused(screen.getByRole("button", { name: "중간정류장" }));
+      // 그 정류장 도착(v9)을 골라 boarding으로.
+      clickFocused(await screen.findByRole("button", { name: /selectBus/ }));
+      fireEvent.click(await screen.findByRole("button", { name: "transitGuide.reselectVehicle" }));
+      urls.length = 0;
+      fireEvent.click(await screen.findByRole("button", { name: "transitGuide.cancelChangeBoarding" }));
+      await waitFor(() => expect(urls.some((u) => u.includes("phase=wait"))).toBe(true));
+      expect(urls.filter((u) => u.includes("phase=wait")).every((u) => u.includes("arsId=24105"))).toBe(true);
+    });
+  });
+
   it("경유역 목록(§14.1): disclosure 정적 표시 + 승차·하차 라벨 + 현재 위치 병치", async () => {
     vi.stubGlobal(
       "fetch",
