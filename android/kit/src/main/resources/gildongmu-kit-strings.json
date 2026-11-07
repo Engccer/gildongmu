@@ -271,7 +271,7 @@
       "es": "%3$s en %2$s dentro de %1$s",
       "fr": "%3$s sur %2$s dans %1$s",
       "it": "%3$s su %2$s tra %1$s",
-      "ja": "%1$s先 %2$s %3$s"
+      "ja": "%1$s先から%2$s %3$s"
     },
     "route.briefing.jamItemStart": {
       "ko": "출발 지점부터 %1$s %2$s 구간",
@@ -295,7 +295,7 @@
       "es": "%2$s dentro de %1$s",
       "fr": "%2$s dans %1$s",
       "it": "%2$s tra %1$s",
-      "ja": "%1$s先 %2$s"
+      "ja": "%1$s先から%2$s"
     },
     "route.briefing.jamMore": {
       "ko": "그 밖에 %1$s곳",

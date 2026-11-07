@@ -1065,10 +1065,10 @@
     <string name="route_briefing_error">経路案内に失敗しました。</string>
     <string name="route_briefing_geoError">現在地を取得できません。ブラウザの位置情報の許可をご確認ください。</string>
     <string name="route_briefing_heading">%1$sまでの車の経路</string>
-    <string name="route_briefing_jamItem">%1$s先 %2$s %3$s</string>
+    <string name="route_briefing_jamItem">%1$s先から%2$s %3$s</string>
     <string name="route_briefing_jamItemStart">出発地点から%1$s %2$s</string>
     <string name="route_briefing_jamItemStartUnnamed">出発地点から%1$s</string>
-    <string name="route_briefing_jamItemUnnamed">%1$s先 %2$s</string>
+    <string name="route_briefing_jamItemUnnamed">%1$s先から%2$s</string>
     <string name="route_briefing_jamMore">ほか%1$sか所</string>
     <string name="route_briefing_jamNone">渋滞区間はありません。</string>
     <string name="route_briefing_jams">渋滞区間 %1$sか所: %2$s。</string>

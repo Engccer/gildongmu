@@ -151,7 +151,8 @@ public struct CarRouteBriefing: Codable, Sendable, Hashable {
 extension CarRouteBriefing {
     /// 디코딩은 합성과 같되 **정체만 관용적이다**(E80 설계 리뷰 m7): 부가 정보의 형식 하나가 어긋났다고 경로 전체가
     /// 디코딩 실패(= 길찾기 실패)가 되면 안 된다. 정체가 해석되지 않으면 nil(정보 없음)로 접는다 — 일부만 버리면
-    /// 「정체 없음」으로 위장할 수 있어 통째로 접는다.
+    /// 「정체 없음」으로 위장할 수 있어 통째로 접는다. ⚠ 새 필드를 더하면 여기에도 디코딩을 더한다 — 생성자 기본값이
+    /// 있어 빠뜨려도 컴파일되고 그 필드만 조용히 nil이 된다.
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         self.init(

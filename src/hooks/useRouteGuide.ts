@@ -1465,8 +1465,8 @@ export function useRouteGuide(
               ? briefing.durationSeconds
               : null,
           roadSpans: carGuide.roadSpans,
-          // 정보는 Tmap만 센다 — 카카오는 코드표·경로가 달라 주행 중 Tmap 재조회와 대조하면 서행을 새 정체로 말한다.
-          jams: briefing.provider === "tmap" ? (briefing.congestion?.jams ?? null) : null,
+          // 상세 안내는 Tmap 응답만 선다(위 가드) — 그래서 기준선도 늘 Tmap 정보다.
+          jams: briefing.congestion?.jams ?? null,
           // 자동차에는 계단 회피·최종 접근 개념이 없다(실주행은 딥링크 위임이 정본).
           stepFree: null,
           stepFreeNotice: null,

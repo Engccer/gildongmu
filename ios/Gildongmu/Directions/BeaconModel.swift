@@ -1275,7 +1275,8 @@ final class BeaconModel {
     /// 분류는 `.actionable`(1회성 경고: 백그라운드 음성 토글이 켜져 있으면 잠금 중에도 말한다).
     /// 호출부 규칙(웹 `announceNewJam` 동형): ① 정보는 Tmap만 센다(카카오 폴백은 코드표·경로가 달라 오보) ② 기준선이
     /// 없으면 이번 정보를 말없이 기준선으로 ③ 응답을 기다리는 사이 이탈했으면 말하지 않는다 ④ 보류 중인 통지(톤 뒤 임박
-    /// 명령 등)가 있으면 밀어내지 않고 건너뛴다(아는 정체에 넣지 않아 다음 재조회가 다시 판정). 버려지면 알린 하나를 되돌린다.
+    /// 명령 등)가 있거나 기기 음성이 말하는 중이면 밀어내지 않고 건너뛴다(아는 정체에 넣지 않아 다음 재조회가 다시 판정).
+    /// 버려지면 알린 하나를 되돌린다.
     private func announceNewCarJam(route: GuideRoute, state: GuideState, briefing: CarRouteBriefing) {
         guard briefing.provider == "tmap", let fresh = briefing.congestion?.jams, state.phase != .offRoute
         else { return }
@@ -1287,8 +1288,11 @@ final class BeaconModel {
         let out = newCarJamsAhead(
             polyline: route.polyline, totalMeters: route.totalMeters, d: state.d, known: known, fresh: fresh)
         // 계측(설계 리뷰 M1): 재조회가 정체를 피해 다른 길을 고르면 내 경로 위 정체가 응답에 없다 — 실주행 빈도를 잰다.
-        guideDiagLog("carJams fresh=\(fresh.count) new=\(out.nearest == nil ? 0 : 1) pending=\(deferredAnnouncer.hasPending)")
-        guard let nearest = out.nearest, !deferredAnnouncer.hasPending, let added = out.known.last else { return }
+        // 말하는 중인 안내도 보류로 친다(재리뷰 MAJOR-1): 운전자 채널 `speakGuidance`는 진행 중 발화를 끊고, 백그라운드
+        // 기기 음성 대기 칸은 latest-wins라 — 회전 명령을 6분 재조회 문장이 자르면 안 된다.
+        let busy = deferredAnnouncer.hasPending || GuideSpeechOutput.speechBusy(deviceSpeech)
+        guideDiagLog("carJams fresh=\(fresh.count) new=\(out.nearest == nil ? 0 : 1) busy=\(busy)")
+        guard let nearest = out.nearest, !busy, let added = out.known.last else { return }
         knownCarJams = out.known
         guideDiagLog("carNewJam ahead=\(nearest.aheadMeters) len=\(nearest.jam.lengthMeters)")
         announce(

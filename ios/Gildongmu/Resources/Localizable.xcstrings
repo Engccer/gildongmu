@@ -42466,7 +42466,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@先 %2$@ %3$@"
+            "value": "%1$@先から%2$@ %3$@"
           }
         }
       }
@@ -42586,7 +42586,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@先 %2$@"
+            "value": "%1$@先から%2$@"
           }
         }
       }

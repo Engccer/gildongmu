@@ -13,6 +13,29 @@ describe("E80 배선 가드", () => {
     expect(read("ios/Gildongmu/Directions/DirectionsTabView.swift")).toMatch(/service\.car\([^)]*traffic: true\)/);
   });
 
+  it("웹 재조회 상수도 6분·10회·오래됨 420초(iOS carEta* 동조)", () => {
+    const hook = read("src/hooks/useRouteGuide.ts");
+    expect(hook).toMatch(/const CAR_ETA_INTERVAL_MS = 360_000;/);
+    expect(hook).toMatch(/const CAR_ETA_CALL_CAP = 10;/);
+    expect(hook).toMatch(/const CAR_ETA_STALE_S = 420;/);
+  });
+
+  it("「출발 지점부터」 문턱·브리핑 상한은 웹과 iOS가 같다", () => {
+    const text = read("src/lib/car-traffic-text.ts");
+    const ios = read("ios/Gildongmu/RouteBriefing.swift");
+    expect(text).toContain("export const JAM_FROM_START_M = 100;");
+    expect(ios).toContain("private let carJamFromStartMeters = 100");
+    expect(text).toContain("export const BRIEFING_JAM_MAX = 3;");
+    expect(ios).toContain("private let carBriefingJamMax = 3");
+  });
+
+  it("Kit 판정 상수는 웹과 같다", () => {
+    const kit = read("ios/GildongmuKit/Sources/GildongmuKit/CarTrafficAhead.swift");
+    expect(kit).toContain("public let carJamOnRouteMeters = 40.0");
+    expect(kit).toContain("public let carJamLengthToleranceMeters = 150.0");
+    expect(kit).toContain("public let carJamLengthToleranceRatio = 0.25");
+  });
+
   it("iOS 재조회 상수는 6분·10회·오래됨 420초(웹 CAR_ETA_* 동조)", () => {
     expect(beacon).toContain("private static let carEtaIntervalSeconds = 360");
     expect(beacon).toContain("private static let carEtaCallCap = 10");
@@ -27,7 +50,8 @@ describe("E80 배선 가드", () => {
     const fn = beacon.match(/private func announceNewCarJam[\s\S]*?\n {4}\}\n/)?.[0] ?? "";
     expect(fn).toContain('briefing.provider == "tmap"');
     expect(fn).toContain("state.phase != .offRoute");
-    expect(fn).toContain("!deferredAnnouncer.hasPending");
+    expect(fn).toContain("deferredAnnouncer.hasPending || GuideSpeechOutput.speechBusy(deviceSpeech)");
+    expect(fn).toMatch(/guard let nearest = out\.nearest, !busy/);
     expect(fn).toContain("knownCarJams = out.known");
     expect(fn).toContain("speechClass: .actionable");
     expect(fn).toMatch(/onDropped: \{[\s\S]*list\.remove\(at: i\)/);
