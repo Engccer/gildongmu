@@ -135,6 +135,8 @@ describe("E78 복구 — 모델", () => {
     expect(body).toContain('legIndex: 0, target: target');
     expect(body).toContain('lead: appLocalized("ios.transitGuide.routeSwitched")');
     expect(body).toContain("announcement: .routeSwitched");
+    // 국면이 같아도(추적 불가 구간 waiting → waiting) 채택은 전이 착지를 소유한다 — 버튼·조회 중 행이 사라진다.
+    expect(body).toContain("if state?.phase == phaseBefore { userTransitionSeq += 1 }");
   });
 
   it("경로 세대는 세션 시작과 경로 교체에서만 오른다", () => {

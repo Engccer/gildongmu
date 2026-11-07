@@ -1480,6 +1480,7 @@ final class TransitGuideModel {
                 lead: appLocalized("ios.transitGuide.routeSwitched")))
             return
         }
+        let phaseBefore = state?.phase
         guard changeRoute(transitRoute: route, destinationLabel: destinationLabel,
                           destinationRoman: destinationRoman, dest: dest,
                           announcement: .routeSwitched) else {
@@ -1489,6 +1490,9 @@ final class TransitGuideModel {
             return
         }
         transitGuideLog("recovery adopted route=\(route.routeKey) prewalk=0")
+        // 추적 불가 구간(대기 국면 고정)에서 채택하면 waiting → waiting이라 `changeRoute`가 순번을 올리지 않는다 — 그런데 버튼·조회 중
+        // 행이 사라지고(새 경로는 추적 가능) 착지를 세운 핸들러도 없다(비동기 조회의 끝). 전이 착지(대기 라벨)를 여기서 소유한다(재검토 4차 MAJOR-K).
+        if state?.phase == phaseBefore { userTransitionSeq += 1 }
         ResultHaptic.fire(.success)
     }
 

@@ -153,7 +153,8 @@ describe("TransitTrackingSheet 착지 대상 (E38) · boarding 수동 진행 (N3
     // 출처는 입력이 정한다: 순번이 오르는 자리는 dispatch(폴 제외)와 경로 전환 두 곳이다. 경로 전환은 dispatch 밖이라
     // 빠지면 승차 중 목적지 전환이 관측 전이로 읽혀 핸들러의 착지까지 취소된다(spec 리뷰 H1).
     const model = readFileSync(join(ROOT, "ios/Gildongmu/Directions/TransitGuideModel.swift"), "utf8");
-    expect(model.match(/userTransitionSeq \+= 1/g) ?? []).toHaveLength(2);
+    // 셋째 자리는 잘못 내림 복구 채택(E78 `commitRecovery`) — 추적 불가 구간은 waiting → waiting이라 `changeRoute`가 올리지 않는다.
+    expect(model.match(/userTransitionSeq \+= 1/g) ?? []).toHaveLength(3);
     // 순번 증가는 새 상태 대입 **뒤**여야 한다(앞이면 비교가 옛 국면끼리라 영영 오르지 않는다 — H1 재발).
     const change = model.slice(model.indexOf("private func changeRoute("));
     const init = change.indexOf("state = initTransitGuide(route: guideRoute, now: nowMs())");
