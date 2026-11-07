@@ -19,7 +19,7 @@
 | 채널 | 상태 |
 |---|---|
 | 웹 | https://gildongmu.dodoplanet.space (push = 자동 배포). Cache Components·Partial Prefetching 사용, 첫 낭독 판정은 BACKLOG §2 D35 |
-| iOS | **2.5 `READY_FOR_SALE`**(빌드 36, 아카이브 커밋 `b37ec07b`, 2026-11-07 `asc-submit --check` 확인). 2.5는 같은 승차·하차 정류소를 잇는 버스 노선 표시와 서울버스 노선 선택(E76). 2.5 뒤 정식판 미도달 변경은 BACKLOG §3. |
+| iOS | **2.6 `WAITING_FOR_REVIEW`**(빌드 37, 아카이브 커밋 `b64ff2c3`, 2026-11-07 13:15 KST 제출). 스토어 최신은 **2.5 `READY_FOR_SALE`**(빌드 36, 아카이브 `b37ec07b`). 2.6은 잘못 내림 복구(E78)·화면 잠금 진행음(E79)·자동차 정체 안내(E80, ko)·하차 지시(A71)·E76 후속. 2.6 뒤 정식판 미도달 변경은 BACKLOG §3. |
 | iOS 최소 지원 | **18.0**(2026-08-19 하향, 1.10부터 적용 — 스토어 반영 완료) |
 | npm | `gildongmu` · `gildongmu-mcp` **v0.12.0**(2026-10-05, `cli-v0.12.0` 태그 → Trusted Publishing 워크플로 성공, `npm view` 両패키지 0.12.0·SLSA provenance 확인). 미발행 변경 없음 |
 | 저장소 | GitHub **public**(2026-08-17 전환) — https://github.com/Engccer/gildongmu. 코드 MIT, 번들 데이터는 `NOTICE.md`. **모든 커밋이 즉시 공개된다** — 실주소·계측 로그·키를 넣지 않는 규칙은 `CLAUDE.md` 개발 규칙. 2026-10-04 이전 클론은 히스토리 재작성 탓에 재클론한다(BACKLOG A56·§8) |
