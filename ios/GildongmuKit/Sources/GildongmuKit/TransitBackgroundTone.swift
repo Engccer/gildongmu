@@ -31,7 +31,11 @@ public func transitToneAllowedInBackground(_ source: TransitBackgroundToneSource
              .approaching, .arrivingAtBoardStop:
             return true
         case let .boarded(_, cause):
-            return cause != .declared
+            // 전수 switch — 새 원인이 생기면 컴파일이 멈춰 소리 쪽으로 조용히 열리지 않는다(리뷰 NIT).
+            switch cause {
+            case .observed, .departed: return true
+            case .declared: return false
+            }
         case let .legAdvanced(_, final):
             return final
         default:
