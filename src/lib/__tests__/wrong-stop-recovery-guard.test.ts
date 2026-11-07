@@ -101,9 +101,12 @@ describe("E78 복구 — 모델", () => {
 
   it("최소화 중 결과만 통지로 내고, 복귀·유휴 재개 문장은 결과로 바꿔치기하지 않는다", () => {
     expect(functionBody(model(), "finishRecovery")).toMatch(
-      /if GuideSession\.shared\.isMinimized, let text = recoveryOutcomeText\(outcome\) \{\s*announce\(text, highPriority: true, speechClass: \.actionable\)/,
+      /if GuideSession\.shared\.isMinimized, let text = recoveryOutcomeText\(outcome\) \{\s*\/\/[^\n]*\n\s*if !isForeground \{ recoveryOutcomeOwed = outcome \}\s*announce\(text, highPriority: true, speechClass: \.actionable\)/,
     );
-    expect(functionBody(model(), "returnStatusText")).not.toContain("recoveryOutcome");
+    // 복귀 낭독은 결과 행 상태가 아니라 1회성 상환 표식만 본다(복귀 때 지운다).
+    expect(functionBody(model(), "returnStatusText")).not.toMatch(/recoveryOutcome\b/);
+    expect(functionBody(model(), "returnStatusText")).toContain("if let owed = recoveryOutcomeOwed");
+    expect(functionBody(model(), "handleScenePhaseChange")).toContain("recoveryOutcomeOwed = nil");
     // 모델이 최소화를 읽는 자리는 이 하나다(코디네이터 불변식의 예외).
     expect(model().match(/isMinimized/g)).toHaveLength(1);
   });
@@ -111,7 +114,8 @@ describe("E78 복구 — 모델", () => {
   it("역 질문 시한은 마지막 조작 기준이고, 닿으면 곧장 유휴 정지다", () => {
     const body = functionBody(model(), "scheduleRecoveryPickTimeout");
     expect(body).toContain("self.lastUserActionAt");
-    expect(body).toContain("if remaining > 0 || self.outputSuppressed {");
+    expect(body).toContain("if remaining > 0 || (self.outputSuppressed && self.isForeground) {");
+    expect(body).toContain("transitPollIntervalMs(state) <= 0 { return }");
     expect(body).toContain("if !self.enterIdleIfDue() { self.restartPollLoop(immediate: true) }");
   });
 
