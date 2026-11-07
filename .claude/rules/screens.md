@@ -1,0 +1,68 @@
+---
+paths:
+  - "src/components/**"
+  - "src/hooks/**"
+  - "src/app/**/*.tsx"
+  - "src/lib/geolocation.ts"
+  - "src/lib/effective-location.ts"
+  - "src/lib/manual-location*"
+  - "src/lib/nearby-*"
+  - "src/lib/overview-lines.ts"
+  - "src/lib/search-sections.ts"
+  - "src/lib/station-phone.ts"
+  - "src/lib/data-locale.ts"
+  - "src/lib/deeplink*"
+  - "ios/Gildongmu/**"
+  - "android/app/**"
+  - "ios/GildongmuKit/Sources/GildongmuKit/NearbyLoadCore.swift"
+  - "ios/GildongmuKit/Sources/GildongmuKit/RevealWindow.swift"
+  - "ios/GildongmuKit/Sources/GildongmuKit/LocationFix.swift"
+  - "ios/GildongmuKit/Sources/GildongmuKit/InlineTargetSpans.swift"
+  - "ios/GildongmuKit/Sources/GildongmuKit/Reorder.swift"
+  - "ios/GildongmuKit/Sources/GildongmuKit/ManualLocation.swift"
+  - "ios/GildongmuKit/Sources/GildongmuKit/NearbyService.swift"
+  - "ios/GildongmuKit/Sources/GildongmuKit/BarrierFreeService.swift"
+  - "ios/GildongmuKit/Sources/GildongmuKit/StationPhone.swift"
+  - "ios/GildongmuKit/Sources/GildongmuKit/Deeplink.swift"
+  - "ios/GildongmuKit/Sources/GildongmuKit/BeaconTones.swift"
+  - "android/kit/src/main/kotlin/**/NearbyLoadCore.kt"
+  - "android/kit/src/main/kotlin/**/RevealWindow.kt"
+  - "android/kit/src/main/kotlin/**/LocationFix.kt"
+  - "android/kit/src/main/kotlin/**/Reorder.kt"
+  - "android/kit/src/main/kotlin/**/ManualLocation.kt"
+  - "android/kit/src/main/kotlin/**/NearbyService.kt"
+  - "android/kit/src/main/kotlin/**/StationPhone.kt"
+  - "android/kit/src/main/kotlin/**/Deeplink.kt"
+  - "src/lib/kakao-category.ts"
+  - "src/lib/__tests__/result-haptic-guard.test.ts"
+  - "src/lib/__tests__/manual-location-copy.test.ts"
+  - "src/lib/__tests__/station-detail-guard.test.ts"
+  - "src/lib/__tests__/settings-topic-sections.test.ts"
+---
+
+# 화면 규칙 (검색 · 장소 상세 · 내 주변 · 위치 · 설정, 웹·iOS·안드로이드 공통)
+
+Claude Code는 위 `paths`에 맞는 파일을 읽을 때 이 파일을 자동으로 싣는다. 설계 단계(파일을 열기 전)이거나 다른 에이전트라면 이 영역 작업 전에 직접 읽는다. 항목 끝의 `→ INTEGRATIONS`·`→ PATTERNS`는 `docs/INTEGRATIONS.md`·`docs/PATTERNS.md`의 같은 제목 절이다. 어디서나 통하는 원칙은 루트 `CLAUDE.md`에 있다.
+
+- **신규 "내 주변" 도메인은 공유 계층으로 만든다**(`useNearbyFetch`+`NearbyPanelShell`+`nearbyLiveMessage`+`useRevealMore`, 계약 스위트 `src/components/__tests__/nearby-contract.tsx`). 골격 복붙 금지. → PATTERNS
+- **iOS "내 주변" 화면도 공유 상태 머신으로 만든다**(Kit `NearbyLoadCore`+`RevealWindow`+앱 `nearbyAnnouncer`·`NearbyOverlayDescriptor`; `load()` 복붙 금지, 계약은 `NearbyLoadCoreTests`). → PATTERNS
+- **"내 주변" 섹션들(현재 10개)은 허브 뷰(`NearbyHub`, `?panel=nearby`)에 있고 패널은 `nearby-panel-store.ts` 싱글턴으로 접는다**(직접 닫기·Esc는 `restoreFocus=true`, 자동 닫힘은 `false`). → PATTERNS
+- **둘러보기는 세 요청(조망·장면·목록)을 한 fetch로 묶어 한 번에 커밋한다**(반경 `OVERVIEW_RADIUS_M` 한 상수, 불릿 문장 `overview-lines.ts` 4벌 미러). "현재 위치 확인" 되살리기 금지. → PATTERNS
+- **iOS 목록 포커스 이동은 "가시화 → 지연 → 경합 해제 → 대입 → 검증 → 1회 재시도"가 정본**(`SearchView.landFirstRowFocus`, "내 주변"은 `NearbyFocusLander`, 대중교통 시트만 3단 위 A35 `landControlFocus`). 착지 대상 부착은 `landingTarget` 한 자리(`transit-landing-guard.test.ts`). → PATTERNS
+- **iOS 통지 우선순위의 판별선은 "포커스가 움직이고, 그 통지가 착지 라벨로 대체될 수 없을 때 `.high`"다**(`BeaconModel.performReroute` 실사고). 화면 변화 없는 활성화 응답("복사됨")도 `.high`, 실패만 `.high`이고 성공이 기본값인 비대칭은 결함 신호. → PATTERNS
+- **결과 진동은 `ResultHaptic.fire(.success|.attention|.failure)` 한 창구다**(스위치 `TrendHaptics.storageKey` 뒤). 1회성 결과·전이에만, **문장이 나가는 조건 = 진동이 나가는 조건**. 제너레이터 직접 생성은 기존 4곳뿐(`result-haptic-guard.test.ts`). → PATTERNS
+- **내 주변 탭 동작은 기존 판별선을 재사용한다**(E65·E72: 장소 하나인 `List` 행 = 행 뿌리의 `placeRowSwipeActions`, 문장 속 여러 장소 = 링크 + 로터). 앵커 목록의 `directionsEntryAllowed`는 기본값 없는 인자이고, 상세에서 돌아온 등장은 다시 조회하지 않는다(A64). → PATTERNS
+- **로터 동작은 화면에도 보인다**(E72): 장소 하나인 `List` 행은 밀기 버튼을 **행 뿌리**에 두고, 줄 안 대상은 이름에만 밑줄 링크(Kit `inlineTargetSpans`, 노선 이름은 `avoiding`) + 같은 대상의 로터. 줄 글자에 "버튼" 금지. → PATTERNS
+- **순서 바꾸기 로터 액션은 Kit `Reorder` 한 판정(`availableMoves`·`moved`)과 앱 `reorderActions`·`announceReorderPosition`·`keepFocusAfterMove` 한 벌을 쓴다**(E67·E66): 이동 기준은 화면에 보이는 순서이고 저장 배열을 채택하며, 고정 블록을 시간·이름으로 다시 정렬하는 쓰기를 더하지 않는다. → PATTERNS
+- **현위치 수동 지정: 유효 위치를 소비하는 화면과 표시줄을 함께 옮긴다**(장소 앵커 > 수동 위치 > GPS, 실시간 안내만 실좌표). 라벨은 `isManualLocationVerified`까지 본다(가드 `manual-location-copy.test.ts`). → PATTERNS
+- **"내 주변" 장소 목록 5종은 "더 보기" 단계 공개**(10건 + 회당 10, 라우트 옵트인 `limit`≤50 + `total`, 웹 `NEARBY_LIMIT_MAX` ↔ Kit `fetchLimit`). 포커스는 첫 새 항목, 별도 통지 금지. → PATTERNS
+- **역 상세 레이아웃은 `stationLayoutKind`(Kit `StationPhone.swift` ↔ 웹 `station-phone.ts`)가 켠다**(E44): `isStation`은 역 섹션 로드와 비역 분기의 역 섹션 표시에만, 경유역 전화번호는 같은 역·같은 노선·1km 후보만. 가드 `station-detail-guard.test.ts`. → INTEGRATIONS
+- **검색→상세 흐름**: 단일 검색창, 카테고리 칩 필터, 장소 선택 시 **History API 뷰 전환**(카카오는 ID 단건조회 없어 메모리 `Place`로 상세). `?q=` URL 동기화 + request-id ref로 stale 응답 폐기.
+- **검색창 3섹션 결정론 병렬**(장소+주소 병렬, 정확도순 플랫 리스트). ⚠ 부활 금지 3종: Gemini 자연어 라우터·명소 별도 섹션·버킷 섹션 그룹핑(버킷은 칩 필터 축으로만). → PATTERNS
+- **프리필 진입과 `?dir=` 복원은 필드 값이 같아도 다른 진입이라 표식으로 가른다**(`openDirections`의 `prefill` ↔ iOS `DirectionsPrefill`): 자동 조회를 `initialTo` 값에 걸지 말 것, 양끝이 있을 때만 조회. → PATTERNS
+- **딥링크(`nmap://`·`kakaomap://`)는 장소 상세의 보조 출구이고, 브리핑 진입점은 길찾기 뷰와 채팅 렌더 카드로 일원화**(장소 상세 단일 수단 브리핑 재도입 금지). → PATTERNS §딥링크는 장소 상세의 보조 출구다
+- **텍스트 입력의 확정 시점은 키보드 종류가 정한다**(A39, `.decimalPad`엔 `onSubmit` 없음): 커밋은 포커스 이탈·닫기 핸들러·`onDisappear` 셋에서 멱등으로, 범위 밖 값을 기본값으로 접지 말 것. → PATTERNS
+- **데이터 언어 분리**(`src/lib/data-locale.ts`): 외부 fetch·영문 분기에 `useLocale()` 원시값 금지, `dataLocale`/`prefersEnglish` 경유. iOS 문장 안 수치는 앱 선택 언어로 포맷. → PATTERNS
+- **iOS 피커는 언어가 바뀌어도 현재 값·선택지를 다시 그리지 않는다**(A51, 인라인·메뉴 둘 다 — E59 실측): 열린 채 언어가 바뀌는 화면의 피커는 `.id("<피커>-\(AppLanguage.current)")`로 언어를 정체성에 넣는다(커서가 있는 언어 피커는 제외). → PATTERNS
+- **설정 화면의 헤딩은 주제 묶음 다섯에만 있고 설정 하나는 한 줄이다**(E59). 새 설정은 판정된 묶음에 넣고 `settings-topic-sections.test.ts`·`SettingsRowsTest` 묶음표에 더한다. → PATTERNS
+- **카카오 분류 경로의 영문은 세그먼트 사전(`kakao-category-en.json`) + 서버 `categoryEn`이고 "전부-아니면-원문"이다**(A28). 표시는 `pickCategory` 한 자리, 판정 축은 원문 `category`만(소스 가드). 사전은 실호출 스냅샷. → INTEGRATIONS

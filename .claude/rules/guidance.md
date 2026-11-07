@@ -1,0 +1,99 @@
+---
+paths:
+  - "src/lib/guide-*"
+  - "src/lib/transit-*"
+  - "src/lib/car-*"
+  - "src/lib/walk-*"
+  - "src/lib/journey/**"
+  - "src/lib/beacon.ts"
+  - "src/lib/route-guide.ts"
+  - "src/lib/session-idle.ts"
+  - "src/lib/final-approach.ts"
+  - "src/lib/end-screen.ts"
+  - "src/lib/reroute-proposal-gate.ts"
+  - "src/lib/stale-origin.ts"
+  - "src/lib/tones.ts"
+  - "src/hooks/useRouteGuide.ts"
+  - "src/hooks/useTransitGuide.ts"
+  - "src/hooks/useBeaconSound.ts"
+  - "src/hooks/useTonePlayer.ts"
+  - "src/components/DirectionsView.tsx"
+  - "src/components/DistanceBeacon.tsx"
+  - "src/components/TransitGuidePanel.tsx"
+  - "src/components/Journey*.tsx"
+  - "src/components/*RouteBriefing.tsx"
+  - "ios/Gildongmu/Directions/**"
+  - "ios/Gildongmu/GildongmuApp.swift"
+  - "ios/Gildongmu/RouteBriefing.swift"
+  - "ios/GildongmuKit/**"
+  - "android/**"
+  - "ios/Gildongmu/LocationService.swift"
+  - "ios/Gildongmu/SpeechService.swift"
+  - "ios/Gildongmu/Chat/TtsPlayer.swift"
+  - "src/lib/route-geometry.ts"
+  - "src/lib/bus-arrival-en.ts"
+  - "src/lib/__tests__/guidance-gate-drift.test.ts"
+  - "src/lib/__tests__/transit-landing-guard.test.ts"
+  - "src/lib/__tests__/guide-sheet-landing-guard.test.ts"
+  - "src/lib/__tests__/car-waypoint-approach-guard.test.ts"
+  - "src/lib/__tests__/background-speech-guard.test.ts"
+  - "src/lib/__tests__/transit-riding-position-guard.test.ts"
+---
+
+# 실시간 안내·길찾기 조회 규칙 (도보 · 자동차 · 대중교통 · 나들이 · 여정)
+
+Claude Code는 위 `paths`에 맞는 파일을 읽을 때 이 파일을 자동으로 싣는다. 설계 단계(파일을 열기 전)이거나 다른 에이전트라면 이 영역 작업 전에 직접 읽는다. 항목 끝의 `→ INTEGRATIONS`·`→ PATTERNS`는 `docs/INTEGRATIONS.md`·`docs/PATTERNS.md`의 같은 제목 절이다. 어디서나 통하는 원칙은 루트 `CLAUDE.md`에 있다.
+
+- **화면을 띄울지 말지를 가르는 판정은 동기로 한다**(도보 종료 화면 `WalkHealth.isMeaningfulWalk`). 스와이프·VO escape는 시트 최소화만, 소거는 `clearArrival()`뿐. → PATTERNS
+- **웹 여정 안내(E70-f)는 결과 섹션의 `JourneyGuide`가 소유하고 사이 상태에만 세션 저장소를 claim한다**: `stateRef`를 먼저 커밋하고(`stop()`이 release 전에 `onSessionEnd`를 불러 재진입한다), 사이 상태 claim은 부모 effect에서, 단계 시작 직전 release는 전이 함수 안에서 동기로 한다. 대중교통 단계에서 끝나면 그 패널을 같은 key·같은 감싸개로 남긴다. → PATTERNS
+- **여정 입구는 장소 검색 한 번과 확인 질문 하나이고, 짐작은 웹·Kit 한 판정이다**(E77): 짐작은 웹 `journeyTransferGuess` ↔ Kit 공유 fixture로 잠그고, 입구·역 칸 검색은 장소 트랙 실패를 주소 성공이 가리지 않는다(3-state). iOS 질문은 시트가 닫힌 뒤에 선다. → PATTERNS
+- **iOS 주소 요청은 측위 전부터 같은 세대를 소유한다**(`DirectionsAddressState`). 취소·언어 변경·늦은 완료와 종료가 최신 주소·로딩을 건드리지 못하게 한다. → PATTERNS
+- **iOS 브리핑의 빈 이름은 `transitBriefingName`으로 가른다**(문장·영문 자격·로터 조인 공통). 조인 정규화는 개행 부재 판정을 대신하지 못한다. → PATTERNS §경로 브리핑의 역 진입점
+- **안내 시트를 최소화하면 콘텐츠 뷰가 파괴되어 `@State`가 사라진다**(루트 `.sheet(item:)` 하나 + `presentedScreen = isMinimized ? nil : screen`). 영속 값을 바꾸는 판정에 쓰이는 표식은 `@AppStorage`, 소비는 `onChange`가 아니라 사용자가 누르는 버튼 핸들러에서. 뷰 계층은 테스트 레인이 없어 배선을 소스 가드로 잠근다. → PATTERNS
+- **대중교통 시트의 착지 대상은 기본이 상태 문장 행이다**(E38 `SheetControl.status`, 띠바 복귀 포함). 예외 허용 집합은 `transit-landing-guard.test.ts`, 착지 테스트는 누르기 전에 그 컨트롤로 커서를 옮긴다(`clickFocused`). → PATTERNS
+- **도보·자동차 안내 시트의 첫 착지는 첫 정보 행(남은 거리 → 윗줄 → 상태 문장)이다**(E57, `requestInfoLanding` 한 입구, 제목·접기 착지 재도입 금지): 안내 모델이 게시한 통지가 끝날 때까지 모델 `announcementsSettled`로 기다리고(시트가 끝 신호를 직접 듣지 말 것), 가드 `guide-sheet-landing-guard.test.ts`. → PATTERNS
+- **안내 시트에서 장소 상세는 중첩 시트 하나(`detailPlace`)로 열고, 산문 속 역 언급은 이름 링크 + 로터 액션이다**(E33·E72, 역 Place는 `transitStopPlace`). 링크는 역 정체성(`viaStops` 순번)에 결박하고 줄은 언제나 같은 `Text`다. → PATTERNS
+- **안내 시트 제목은 밀기 버튼과 경로 새로고침을 든 첫 행이다**(E74·E75 `GuideTitleActionsRow`): 「경로 새로고침」은 `fetchProposal(declared:)`로 자동 재조회 길을 타되 사용자 조회 규칙(첫 점 고지·실패 매번, 예산 밖)을 따르고, 목록 안 「경로 다시 조회」는 없다. 「지금 여기는 어디?」 주변은 지금 위치(`force: true`)다. → PATTERNS
+- **실시간 안내 판정 계층은 전부 순수 함수이고 웹·Kit·안드로이드 `:kit` 미러다**(`toneLayerStep`·`motionStep`·`trendStep` 공유 fixture). 톤은 배타 계층 하나만, **정지 fix는 톤을 내지 않는다**(E55, `tick`은 나들이 10m 비프 전용), 정지 판정은 도플러 3-state. 수정 전 §실시간 길 안내를 읽는다. → INTEGRATIONS
+- **안내 경로 origin은 "신선한가"가 아니라 "정확한가"로 고른다**(A18, Kit `routeOriginStep`만 지난다 — 세션 첫 fix가 곧 가장 나쁜 fix). `isUsableFix`를 조이지 말고 재측위 의존을 되살리지 말 것. `routeOrigin` 로그 1줄 필수. → INTEGRATIONS
+- **소리와 음성은 같은 청각 채널이다 — 톤 뒤 발화 계약**(`speechDeferStep`, Kit `GuideSpeechGate.swift` ↔ 웹 `guide-speech-gate.ts`, 단일 슬롯 latest-wins). 새 통지 경로는 `announce` 창구를 지나야 한다 — 직접 게시 금지. → INTEGRATIONS
+- **대중교통 승차 추세 톤은 이벤트 소유가 신뢰 불가보다 앞이고, 앵커는 "마지막으로 전달된 잔여"다**(E15 ②, `transitToneStep` ↔ `transit-guide-tone.ts`; 도보 순서로 되돌리지 말 것). → INTEGRATIONS
+- **버스 노선 집합(E76)은 첫 항목이 leg 자신이고, 후보를 고르면 세션 leg를 그 노선으로 바꾼 뒤 잠근다**(`legWithLane` ↔ Kit `transitLegWithLane`, `board` 전): `lanes`는 옵트인 `lanes=1`, 대기 폴은 서울버스 `routeId`·`routeIds`, 지방버스 `routeNo`·`routeNos` 중 하나이고 집합 폴만 `route`를 싣는다. 노선별 문장 분기를 따로 두지 말 것. → INTEGRATIONS
+- **서울버스 승차 중 정류장 재선택은 leg 교체이고(`legFromStop` ↔ Kit, 표시 인덱스 금지), 근사 잠금 ∧ 노선 미확정이면 번호 대신 「버스」다**(E76 후속, 유도 술어 `rideLineUnconfirmed`, `contextLine` 셋째 인자 필수). 재기준 집합(`phase=lanes`)의 경유 조회 예산은 메모리 캐시 뒤, 지방버스 승차 중 폴은 추천 노선 하나. → INTEGRATIONS §버스 정류장 재기준
+- **승차 후보의 활성화 차단 술어는 `unreachable` 하나이고 급행 판정은 ID가 정본이다**(A16 L1 `expressVerdict`, 그 외 `unknown`). 근사 잠금은 `needsExpressPrompt`로 묻고, 출구 번호는 확정 도착·하차역 행에만. → INTEGRATIONS
+- **소리를 낸 직후 세션을 끝내면 그 소리가 잘린다 — 순서가 아니라 대기가 답이다**(`BeaconTonePlayer.endSession()`이 잔여 시간만큼 원복을 미루고, `beginSession()`은 그 예약을 취소, `shutdown()`은 즉시 원복). 전경에선 증상이 없다. → INTEGRATIONS
+- **오디오 재생기는 셋(도보·대중교통·나들이)이고 미뤄진 원복은 최신 소유자에게 이전된다**(`.ownershipTransferred`). route 변경 `.categoryChange`는 현재 세션 값 == 적용값 대조로 자기 메아리만 거른다(전면 필터 금지). → INTEGRATIONS
+- **결정 지점 안내는 두 층이고 거리가 다르다**: 30m `announceSteps` 전문 + `imminent` 짧은 명령형. 되읽기는 들어선 스텝의 `parts.body`로, 행동 분류는 서버 `step.action`만(클라이언트 폴백 금지). → INTEGRATIONS
+- **횡단 중·정지 중엔 주기 통지·되읽기가 없고 다음 구간 전문은 횡단을 나간 뒤다**(E62): 나감 판정 `crossingExitThreshold`의 시작점 여유 조건을 지우지 말 것, `GuideFix.stopped`는 기본값 없음. → INTEGRATIONS §횡단 중·정지 중 침묵과 늦은 전문
+- **도보 판본 2(`wording=2`)의 횡단 방향은 직전 스텝의 마지막 10m 이상 선분 기준 시계 방향이다**(`walk-crossing.ts`, 웹·Kit·`:kit` 한 벌). 카카오 괄호 도로명은 직전 스텝이 안에서 꺾였으면 싣지 않는다(`roadLabelHoldsToEnd`, 옛 `crossingRoad=1`은 서버가 읽지 않는다). → INTEGRATIONS §판본 2 문장과 횡단 방향
+- **자동차 임박 큐는 문장이 아니라 서버 `turnType` 투영(`action`)으로 행동을 고르고, 없으면 침묵이다**(K2, 표 정본 `car-action.ts` ↔ `CarAction.swift`). 임계 `max(15m, v×6초)`·표본 부족 60m, 공백 뒤 따라잡기는 `silentCatchUp` 세 항이 한 묶음. 운전자 모드는 `BeaconModel`이 `TtsPlayer.speakGuidance`로 발화. → INTEGRATIONS
+- **자동차 경유지 접근 예고는 임박 큐와 같은 임계 구조 + 정숙 시간이다**(`waypointApproachThreshold` = `max(150m, v×60초)`): 리듀서 밖 실행 안내는 자동차 세션에서 `guideState.lastAnnouncedAt`을 적는다(가드 `car-waypoint-approach-guard.test.ts`). → INTEGRATIONS §자동차 임박·따라잡기
+- **자동차 짧은 안내(임박·주기)의 지점·방면은 서버 `at`·`toward`(기하 옵트인 additive)가 정본이고 클라이언트는 스텝 `carLandmark`에서만 읽는다**(E61): 안내문 재파싱 금지, 비-ko는 `carSpokenLandmark`가 한글 이름을 뺀다, 운전자 모드는 종전 단문(`guide.carDriverNotice`). → INTEGRATIONS §자동차 경로
+- **자동차 "현재 도로"는 스텝이 아니라 링크 단위다**(E56): `roadSpans` + `roadNameAt(진행거리)`만 지난다 — 한 안내 구간 안에서 도로가 바뀌는 스텝이 15%라 스텝별 도로 이름 필드·안내문 파싱 금지. 모르면 줄 없음, 통지 없음. → INTEGRATIONS §자동차 경로
+- **자동차 정체는 옵트인 `traffic=1`의 `congestion`(null = 정보 없음)이고 provider 코드표는 방향이 반대라 provider 안에서만 읽는다**(E80). 주행 중 새 정체는 지금 경로에 투영해 가르고(`newJamsAhead` ↔ Kit `newCarJamsAhead`, 호출부 규칙 넷은 상세 절), CLI·MCP·채팅은 옵트인하지 않는다(약관 재제공). → INTEGRATIONS §자동차 경로
+- **잊힌 도보 세션은 국면 무관 안전망이 끝낸다**(A23 `sessionIdleStep` ↔ `session-idle.ts`): fix 두절 임계는 `GuideTuning.sessionIdleNoFixSeconds`(웹 `sessionIdleNoFixS`, 기본값 없는 인자), 무이동 5분은 도보만. 수단 차이는 `GuideTuning` 데이터로(`sessionKind` switch 금지). → INTEGRATIONS
+- **나들이(E51)는 세 번째 안내 세션이고 판정은 Kit 순수 함수(`Outing*.swift`)다**: 실험판 봉인(`experimentalOutingEnabled`), 시작은 `GuideSession.startOuting` 한 곳, 귀환은 `acceptOutingReturn`의 `startBeacon` 인계, 좌우는 `OutingSide`에서만. 교차로·횡단보도 원천은 `OutingNodes.swift`가 합친다. → INTEGRATIONS
+- **백그라운드 음성 안내(E53)는 Kit `guideSpeechChannel` 하나가 채널을 가르고 분류(`speechClass`)는 호출부가 기본값 없이 밝힌다**: 기기 음성은 세 모델 공유 칸 `DeviceSpeechQueue`만 지난다(가드 `background-speech-guard.test.ts`). → INTEGRATIONS §백그라운드 음성 안내는 채널 술어 하나가 가르고 기기 음성 대기 칸은 세 모델이 공유한다
+- **도착 추정의 국면 게이트는 "도착 창"이고 간략 창의 자격은 Kit 리듀서 `briefArrivalWindowStep`이다**(A31 — `nearby` 래치를 창 근거로 읽지 말 것). 창 에피소드 상태는 `resetArrivalWindow()` 한 곳이 지운다. 종료 화면 30분 만료는 백그라운드를 거친 복귀에서만. → INTEGRATIONS
+- **이탈 확정은 재조회가 아니라 돌아가기 국면의 시작이다**(E63): 새 경로는 `rerouteNeeded`(멀어짐·나란히·`far`)에서만 조회하고, 자동 채택은 새 경로 첫 점도 `rerouteMaxDriftM` 안이어야 한다. 방위 축은 "이탈 판정 방위 축" 절. 재조회 버튼은 웹·안드로이드에서 자동 판정이 손을 든 회차에만(E69, iOS는 제목 행 새로고침). → INTEGRATIONS §이탈은 돌아가기 국면의 시작이다
+- **띠바는 탭 콘텐츠 안에 두지, TabView 자체에 걸지 않는다**(K1: 26.1+ `tabViewBottomAccessory`, 18~25 `withGuideBand`). 착지 바인딩 `bandFocusedTab: AppTab?`. → INTEGRATIONS
+- **`outputSuppressed`는 공유 Bool이라 받아쓰기 억제의 종료는 `이전 값 ∧ 현재 값`이다**(`GuideSession.setDictationActive(_, owner:)` 소유자 집합; 취소된 세대는 풀지 않는다). → INTEGRATIONS
+- **안내 조망은 수단별 시트가 아니라 능력 단위로 공유한다**(E15-1 `GuideOverviewSheet`+`GuideOverviewCapability`, 판정 `transitProgressOverview` ↔ `transit-progress-overview.ts`). 조망 안 착지는 닫힌 뒤 `onDismiss`. → INTEGRATIONS
+- **안내 세션은 앱 수명이고 시트를 내리는 제스처는 최소화다**(N1 `GuideSession.shared`, 루트 `.sheet(item:)` 하나): 시작은 `startBeacon/startTransit/startOuting/startJourney`만(+`restartBeacon`·환승 `transitTransferWalk`, `guidance-gate-drift.test.ts`가 센다), dismiss는 `isMinimized = true`, 소거는 "닫기"의 `clearArrival()`뿐. → INTEGRATIONS
+- **승차 중 현재역(실시간 열차 위치)은 상태 머신 밖 표시 상태다**(E35, `transit-riding-position.ts` ↔ `TransitRidingPosition.swift`): 리듀서는 위치를 모른다(`transit-riding-position-guard.test.ts`), 조회는 도착 피드 미관측 riding에서만, 응답은 요청 결박으로 거른다. → INTEGRATIONS
+- **승차 국면 지하철 상태줄은 `arvlMsg2` 원문을 "{stop}까지" 틀에 넣지 않는다**(A27, `subwayRidingMessage(arrivalCode)` 웹 ↔ Kit 공유 fixture). 대기 후보·내 주변 목록은 완성 문장 그대로. → INTEGRATIONS
+- **안내 시트 상태 문장은 한 조립기(`arrivalStatusLine` ↔ Kit `transitArrivalStatusLine`)가 만들고 통지는 그 문장에 없는 것만 말한다**(E39·E41): 쉼표 결합, 결합용 키엔 마침표 없음, 수단 낱말은 `*Bus` 키로. 시작 통지는 목적지를 말한다(E40). 통지를 줄이기 전에 `phaseTransitionLanding`을 읽는다. → PATTERNS
+- **근사 잠금은 두 갈래다 — 지방버스만 관측하고, 그 밖은 비관측이다**(A34 ①, `transitLockIsUnobserved` ↔ 웹 `isUnobservedTransitLock`: 폴·매칭·어림값 0, `signalStatusText(…, unobserved:)` 필수 인자). [이미 탔어요]는 역부터 묻고 그 역의 열차만 `boardAboard`로 riding 직행. → INTEGRATIONS
+- **확정 도착·비관측 riding은 폴 주기 0이고 즉폴도 예외가 아니다**(`restartPollLoop`·웹 `pollOnce`: `interval <= 0`이면 반환). 마지막 leg는 `advanceIntoWalkHandoff()` + `acceptWalkHandoff` 한 동작, 인계 제안 화면 없음(E34). → INTEGRATIONS
+- **boarding 국면의 선언 버튼은 관측이 끝났을 때만 선다**(N3 ①, `transitBoardingObservationLost` ↔ 웹 `boardingObservationLost`). ⚠ 관측 승격 직후 즉폴 금지, 착지는 **전이의 출처**로(A47 `userTransitionSeq`, 국면 쌍 추정 금지), 즉폴은 `requestImmediatePoll` 창구만(A49). → PATTERNS
+- **riding 미관측 상한은 시계가 아니라 조회 횟수다**(A36 ①, `transitNeverSeenPolls` 10 ↔ 웹 `NEVER_SEEN_POLLS`): 실패 폴·boarding 폴·비관측 잠금은 세지 않고 riding 진입에서 0. 벽시계 백스톱 부활 금지(위원장 판정). → INTEGRATIONS
+- **대중교통 안내는 백그라운드에서도 폴하고, 프로세스를 살리는 것은 오디오가 아니라 boarding·riding 동안의 keep-alive 위치 스트림이다**(E36·A46). 백그라운드 톤은 Kit `transitToneAllowedInBackground` 하나가 가른다(E79: 승차 중 추세·사다리·도착과 고른 차량 다가옴, 신호 잃음 반복음 제외, `playTone(_:allowedInBackground:)` 기본값 없음, 리터럴 `true` 금지), keep-alive fix는 `keepAliveFixSink`로 안내 세션에만(E48). → INTEGRATIONS
+- **승차 전 도보(prewalk)는 대중교통 세션이 아니라 그 앞의 도보 세션이고, 종료 화면을 남기지 않는다**(A25·E73 환승 도보: `transitPrewalkTarget` → `markPrewalk` → `onSessionEnd`). `prewalkTarget`은 `stop()` 앞에서 캡처, 잊힌 세션 안전망 비적용. → INTEGRATIONS
+- **잘못 내림 복구(E78 「여기서 다시 길찾기」)는 같은 세션의 경로 교체이고, 슬롯(`pendingRecovery`)이 있는 동안 옛 세션은 조용하다**(폴·즉폴·버스 하차 위치 통지 0, 진입 때 통지 장부 무효화): 사용자 조작·경쟁 커밋은 `invalidateRecovery()`를 먼저 부르고, 승차 전 도보 연결의 환승 여부는 `PrewalkContext.isTransfer` 저장값(구간 번호로 가르지 말 것). → INTEGRATIONS
+- **직선거리는 고를 수 있는 모드가 아니라 이름 없는 내부 강등이다**(E16 축2 — 웹에 단독 진입점·모드 전환 버튼 재도입 금지, 시작 가능 수단 0이면 버튼 0). 기능을 지울 땐 소비자 기준(웹·iOS 공유 i18n 키·이벤트)으로 자른다. → PATTERNS
+- **모드 이름을 지운 대가는 강등 사유가 유일한 단서가 되는 것이다**: `fetchGuideRoute`는 `{ok:false, failure}` 태그(`noLocation`·`retryable`·`unavailable`·`outOfCoverage`), 비-200 전부를 재시도 가능으로 접지 말 것, 강등 문구에 모드 이름 금지. → PATTERNS
+- **경로 브리핑의 역 진입점은 이름 조인이고 줄은 전부 `Text`로 남는다**(E45 Kit `transitBriefingStations`: 위치 인덱스 금지, 조인 실패는 진입점 0). 진입은 역 이름 링크(E72, 상세만)와 로터, 소비자는 옵트인(`stationEntry` 기본 꺼짐). → PATTERNS
+- **경로 브리핑의 출구 번호는 한 경로에 정확히 한 줄에만 실린다**(E25 배타 술어 `boardExitAfterWalk`·`boardExitOnBoardLine`): 소비자 셋(웹 브리핑·WebMCP·iOS 길찾기 행)을 함께 고치고, 하차 줄 역명은 `transitBoardLegNames` ↔ `transitLegUsesEnglish`(`toName` 직접 읽기 금지). → PATTERNS
+- **서울버스 "곧 도착"(잔여 0)은 정차가 아니고 직전 정류소 정차 중에도 켜진다**(A41·A69): 잔여 0은 임박 이벤트로만, 승차 승격은 "잔여 0 뒤 소실"(`boarded(departed)`), 하차 확정은 `declareArrived`뿐이고 리듀서는 기기 위치를 모른다. → INTEGRATIONS
+- **여정 「지금 탄 열차」(E71) 출발은 옵트인 `boardKind=aboard`·`boardDir`이고 맞지 않으면 대체 경로를 내지 않는다**: 방향 대응은 `directionMatchesWayCode`, Tmap 0회라 IP는 `chargeJourneyIp`로 따로 세며, 안내 쪽 열차 목록은 고른 방면에 잠긴다(`journeyAboardTrainItems`·`boardAboard` 재확인). → INTEGRATIONS
+- **경유지(`via`)는 응답 `waypoint{stepIndex,coord}` 하나로만 드러나고 스텝 문장은 불변이다**: 표지를 못 찾으면 throw, 대중교통은 `unsupported:"waypoint"`, iOS 안내의 `via`·`waypoint`는 기본값 없는 필수 인자. → INTEGRATIONS
