@@ -12,6 +12,78 @@
 
 ---
 
+## 2.6 (빌드 37)
+
+기준은 2.5 아카이브 커밋 `b37ec07b`(빌드 36)이며 이후 `ios/` 커밋 27건을 판정했다. 정식판에 잘못 내렸을 때의 경로 재탐색, 화면 잠금 중 대중교통 진행음, 자동차 경로의 정체 안내가 추가된다.
+
+포함 판정:
+
+| 기능 | 커밋 | 노트 |
+|---|---|---|
+| 잘못 내렸을 때 「여기서 다시 길찾기」(E78) | `3988af49`·`a838a12b`·`4eb15c70`·`e2426cf5`·`d0d60ddf`·`b124e69f` | ko·en. 대중교통 안내 시트(Release), 게이트는 Kit `transitRecoveryOffered`(승차 중·도착 뒤·추적 불가 구간, 여정 단계 제외)뿐이고 로케일 가드 없음. 비한국어 거절 문장 `ios.transitGuide.recoveryNotSubway` 6로케일 |
+| 화면 잠금 중 승차 중 진행음·단계음·도착음, 대기 중 다가옴 소리(E79) | `838e1502`·`99f89ca1`·`405bee28` | ko·en. Kit `transitToneAllowedInBackground`, 언어 무관 |
+| 자동차 경로 결과의 막히는 구간 한 줄, 주행 중 새 정체 한 문장(E80 1단계) | `7286cb31`·`a7235a5c`·`c70cdf93` | ko만. 결과 줄은 `CarRouteRows`(Release), 새 정체 문장은 `BeaconModel.announceNewCarJam`이 정식 자동차 안내 전부에서 낸다(운전자 모드 전용 아님). 자동차 안내 자체가 `carGuideStartable`(ko 데이터 로케일 + Tmap)로 ko 전용이고, en 결과 화면은 영어 경로(NCP)라 `congestion: null` → 줄 없음(아래 실호출) |
+| 서울버스 승차 중 「탑승 변경」이 정류장을 묻고 그 정류장 기준으로 다시 기다림(E76 후속 ⓔ) | `04969d1e`·`bb845a81` | ko·en. 새 서버 경로 `phase=lanes` 프로덕션 확인 |
+| 지방버스 대기 목록에 같은 하차 정류장 노선 전부(E76 후속 ⓓ) | `04969d1e` | ko·en. `routeNos` 프로덕션 확인. 노선 교체는 서울버스만이라(`trackMode == .seoulBus` 가드) 노트는 "함께 보여 준다"까지만 쓴다 |
+| 지하철 하차 지시 「다음 역 {하차역}에서 내리세요.」(A71) | `17a3d38f` | ko·en. 키 `transitGuide.subwayNextStop` 문구만 바뀜(6로케일, Swift 참조 `TransitGuideTextRenderer`), 첫 관측 잔여 ≤1도 백그라운드 음성 분류 |
+| 경유역 목록의 「현재 위치」 표식을 줄 맨 앞으로 | `73eafd13` | ko·en. Kit `transitViaStopLine`, 안내 조망 정차역 행 포함 |
+
+제외 근거:
+
+- **E77 입구 검색 + 확인 질문**(`71b6fdc1`·`9242f0fa`·`444ce579`·`ccca8040`·`5310f81b`): 입구 버튼은 `journeyInputEnabled`(`AppConfig.experimentalJourneyEnabled` ∧ ko) 안에서만 `.transfer`를 연다. Release는 종전 `directions.addVia` → `.via`. 공유 표면 `DirectionsEndpointSearchView`의 `.via` 경로(정류장 검색 `searchesStops` 거짓, 장소 실패 판정)는 동작 불변이고, `swap()`의 역 칸 맞바꿈은 Release에서 늘 nil이라 무동작. 실험판 봉인.
+- **E70-f 웹 자동차 환승 여정**(`48f91ad2`): iOS는 xcstrings·arg-order 재생성(추가만)뿐, Swift 변경 없음.
+- **E76 후속 ⓕ 번호 없는 승차 문장**(`04969d1e`·`2e789419`): 근사 잠금에서 노선이 확정되지 않았을 때 번호 대신 「버스」로 말하는 교정. 기능이 늘지 않는 정직성 교정이라 적지 않는다. `transitGuide.approxNote` 문구 변경(「근사 추적: 같은 노선의 접근 차량 기준.」 → 「가장 가까운 버스 기준 추정입니다.」)도 같은 묶음.
+- **경유역 펼침 개수**(`85613468`): 「경유역 N개」가 하나 많던 것을 이동 역 수로 교정. 체감 기능 변화 없음.
+- **E80 재조회 주기 10분·6회 → 6분·10회**: 새 정체 문장의 전제일 뿐 사용자가 따로 알아차리는 변화가 아님(예상 시간 오래됨 표기 문턱도 함께 이동).
+- `e349e91c`(주석)·`f994ba05`(리팩터, 동작 동일), 테스트·문서·생성물은 별도 항목으로 적지 않는다.
+
+xcstrings 값 변경 전수(앱 + Kit, `b37ec07b`..HEAD): 추가 112·7, 삭제 0, 값 변경 2(`transitGuide.subwayNextStop`, `transitGuide.approxNote`). 둘 다 위에 판정함.
+
+프로덕션 실호출(2026-11-07 13:00 KST, `https://gildongmu.dodoplanet.space`, ODsay 호출 0회):
+
+- E80 `/api/route/car?origin=37.5547,126.9707&dest=37.5133,127.1001&traffic=1`(서울역 → 잠실역)
+  - ko: 200, `provider: "tmap"`, `congestion.jams` 3건(세종대로 1,271m·올림픽대로 1,162m·올림픽대로 2,899m, `road`·`startMeters`·`lengthMeters`·`start`·`end` 모두 있음, Kit `CarJam` 디코딩 형태와 일치). `includeGeometry=1`(안내 조회 형태)도 `tmap`·3건.
+  - **en: 200이지만 `congestion: null`, `provider` 필드 없음(NCP 경로). 영어 화면에는 정체 정보가 오지 않는다 → E80은 en 노트에서 뺀다.** (en은 자동차 안내 시작도 불가라 새 정체 문장도 없음)
+- E76 ⓔ `/api/transit/track?mode=seoulBus&phase=lanes&arsId=13045&boardId=112000430&alightId=100000384&routeId=100100047`(실호출 게이트 표본: 271번, 충정로역 → 광화문역)
+  - ko·en 모두 200 `status: ok`, `routes` 6개(6002·160·260·270·273·721), `checked: 22`, `unverified: 0`. 게이트가 요구하는 160·260 포함, 지금 노선 271 미포함. en은 항목마다 `lineNameEn` 실림.
+- E76 ⓓ `/api/transit/track?mode=tagoBus&phase=track&cityCode=25&nodeId=DJB8003054&routeNos=…`(대전역/역전시장, `phase=resolve`로 해석)
+  - ko·en 모두 200 `status: ok`, 항목에 `route`("102") 실림, en은 `messageEn` 포함. 표본 시각에 집합 안 노선의 도착은 1건(`rawCount: 4`)이라 "여러 노선이 한 목록"은 이 호출로는 1건만 관측. 필드 계약은 확인.
+- E78은 새 서버 의존이 없다(재조회는 기존 `fetchTransitCandidates` → `/api/route/transit`, 역 검색은 기존 `/api/places`). ODsay 과금 회피로 호출하지 않음.
+
+심사 노트 판정: **승계한다(`--review-notes` 미사용).** 새 권한·새 데이터 유형·새 제3자 없음(E80 정체는 기존 Tmap·카카오 호출에 옵트인, E76은 기존 TOPIS·TAGO, E78의 새 측위는 기존 사용 중 위치). §9 백그라운드 절("Direction, distance, and off-route events are conveyed as audio cues and spoken announcements … background audio allows the cues to play", "during transit guidance it also keeps checking bus and train arrivals while the screen is off")은 E79로 거짓이 되지 않고 오히려 더 넓게 참이 된다. E80 새 정체 문장의 백그라운드 발화도 "spoken announcements" 범위다. "driving guidance is Korean only"도 그대로 참.
+
+E76 후속 문안은 2026-11-07 위원장 확정본 그대로다. 한국어 노트는 `tone-polish` 짧은 안내문 기준(`internal_notice` 검사 7/7 통과)으로 다듬었고 위원장이 대화창에서 확정했다. 라벨 인용 부호는 2.4 선례(ko ‘ ’, en “ ”)를 따른다.
+
+### ko
+
+```
+새로운 기능
+- 대중교통 안내 중 잘못 내렸으면 ‘여기서 다시 길찾기’를 누르세요. 지금 있는 곳에서 목적지까지 경로를 다시 찾아 바로 안내합니다. 지하철에서는 지금 있는 역을 고르고, 목록에 없으면 ‘목록에 없는 역 찾기’로 검색합니다. 갈 수 있는 대중교통 경로가 없으면 ‘목적지까지 걸어가기’로 도보 안내를 시작합니다.
+- 대중교통 안내 중 화면을 잠가도 효과음이 납니다. 탑승 중에는 정거장이 가까워지는 소리, 남은 정거장 소리, 도착 소리가 나고, 고른 차량을 기다리는 동안에는 차량이 다가오는 소리가 납니다.
+- 자동차 경로 결과에서 막히는 구간의 위치와 길이를 알려 줍니다. 막히는 구간이 없을 때도 알려 줍니다.
+- 자동차 안내 중 앞으로 지날 길에 정체가 새로 생기면 거리와 길이를 한 번 알려 줍니다.
+
+개선
+- 지하철 탑승 중 내릴 역 한 정거장 전에 ‘다음 역 ○○에서 내리세요.’라고 안내합니다.
+- 서울버스 탑승 중 ‘탑승 변경’을 누르면 지금 있는 정류장을 묻고, 그 정류장에서 하차 정류장으로 가는 버스의 도착 정보를 다시 보여 줍니다.
+- 서울 밖 지역 버스 안내의 대기 목록에 같은 하차 정류장으로 가는 노선의 도착 정보를 모두 보여 줍니다.
+- 경유역 목록에서 지금 있는 역은 ‘현재 위치’를 역 이름보다 먼저 읽어 줍니다.
+```
+
+### en
+
+```
+New
+- If you get off at the wrong stop during transit guidance, tap “Find a route from here” to find a new route to your destination from where you are. On the subway, choose the station you're at, or tap “Find a station not listed” to search for it. If no transit route is available, “Walk to destination” starts walking guidance.
+- During transit guidance, sounds now play even with the screen locked: stops getting closer, stops-remaining cues, and arrival while you ride, plus the approaching sound while you wait for the vehicle you chose.
+
+Improvements
+- On the subway, one stop before yours you now hear “Get off at the next stop” with the station name.
+- When riding a Seoul bus, “Change boarding” now asks which bus stop you're at, then shows arrivals there for routes to your stop and guides you from that stop.
+- In bus guidance outside Seoul, the waiting list now shows arrivals for every route that goes to your stop.
+- In the list of stops along your ride, the current position now comes first on its line.
+```
+
 ## 2.5 (빌드 36)
 
 기준은 2.4 아카이브 커밋 `08dc9950`(빌드 35)이며 이후 `ios/` 커밋 1건을 판정했다.
