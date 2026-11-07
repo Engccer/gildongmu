@@ -47,6 +47,22 @@ describe("대중교통 백그라운드 폴 소스 가드 (E36)", () => {
     const calls = MODEL.match(/playTone\([^)]*\)/g) ?? [];
     expect(calls.length).toBeGreaterThan(3);
     expect(calls.every((call) => call.includes("allowedInBackground:"))).toBe(true);
+    // 인자 값은 Kit 판정 결과 셋 중 하나 또는 리터럴 false뿐이다(spec §5) — `!isForeground` 같은 우회 식은 경고음을
+    // 잠금 화면에서 울린다(리뷰 MINOR-1). 선언(`allowedInBackground: Bool`)은 제외.
+    const ALLOWED_ARGS = new Set([
+      "false",
+      "allowedInBackground", // handle(event:)의 지역 상수 — 바로 아래에서 Kit 판정 대입을 단언한다
+      "transitToneAllowedInBackground(.trend(tone))",
+      "transitToneAllowedInBackground(.alightReached)",
+    ]);
+    const args = [...MODEL.matchAll(/playTone\([^)]*?allowedInBackground:\s*([^\n]*?)\)\s*(?:\}|$|\n)/gm)]
+      .map((m) => m[1].trim())
+      .filter((arg) => arg !== "Bool");
+    expect(args.length).toBe(calls.length - 1);
+    for (const arg of args) expect(ALLOWED_ARGS, `허용 밖 인자: ${arg}`).toContain(arg);
+    // 재생기 직접 호출은 playTone 안 한 곳뿐이다 — 다른 자리의 `tones.play(`는 백그라운드 게이트를 우회한다(리뷰 MINOR-2).
+    expect(MODEL.match(/tones\.play\(/g) ?? []).toHaveLength(1);
+    expect(body(/private func playTone\(_ tone: BeaconTone, allowedInBackground: Bool\)/)).toContain("tones.play(tone)");
     // 이벤트 톤은 이벤트 전체를 Kit에 넘긴다 — 톤 종류로 가르면 boarding 사다리(approaching)가 riding 사다리와 섞인다.
     const handle = body(/private func handle\(event: TransitGuideEvent\)/);
     expect(handle).toContain("let allowedInBackground = transitToneAllowedInBackground(.event(event))");
