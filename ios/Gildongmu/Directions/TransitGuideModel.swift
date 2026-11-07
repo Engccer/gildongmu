@@ -575,8 +575,6 @@ final class TransitGuideModel {
     private func returnStatusText() -> String {
         // 잘못 내림 복구 중엔 복구 상태만(E78 §8-5) — 틀렸다고 선언한 옛 안내 상태를 말하지 않는다.
         if let pending = pendingRecovery { return recoveryStatusText(pending) }
-        // 백그라운드에서 끝난 복구 결과는 결과 문장으로 갚는다(코드 리뷰 MINOR-2).
-        if let outcome = recoveryOutcome, let text = recoveryOutcomeText(outcome) { return text }
         guard let s = state, let leg = currentLeg else { return "" }
         // 현재역이 잡혀 있으면 그것이 상태다(E35 §6). 창은 **지금** 시각으로 — 백그라운드 동안 지났을 수 있다.
         if let located = positionStatusText(state: s, leg: leg, now: nowMs()) { return located }
@@ -1315,15 +1313,24 @@ final class TransitGuideModel {
     /// 역 질문을 연 채 잊힌 세션의 안전망(코드 리뷰 MAJOR-1): 슬롯이 있는 동안 폴이 없어 유휴 판정(`enterIdleIfDue`, 폴 루프 안)이
     /// 돌지 않는다 — 유휴 상한이 지나도록 역을 고르지 않으면 질문을 거두고 폴을 다시 세운다. 마지막 조작이 그 누름이라 재개된 첫 폴
     /// 직전에 기존 유휴 정지(폴·keep-alive 정지, 「한동안 조작이 없어 …」)가 판정된다.
-    private func scheduleRecoveryPickTimeout(token: Int) {
+    /// 시한의 축은 누른 시각이 아니라 마지막 조작(`lastUserActionAt`, 유휴 판정과 같은 시계)이다 — 질문을 다시 보고 있는 사용자 밑에서
+    /// 거두면 「틀렸다」고 선언한 옛 안내가 그대로 재개된다(재검토 MINOR-A). 닿으면 폴 재개를 거치지 않고 곧장 유휴 정지로 간다.
+    /// 검색 시트(받아쓰기 억제 중)가 열려 있으면 미룬다 — 거두면 그 시트에서 고른 역이 조용히 버려진다.
+    private func scheduleRecoveryPickTimeout(token: Int, after seconds: Double? = nil) {
         let limitSeconds = transitIdlePollLimitMs(legMinutes: currentLeg?.minutes) / 1000
+        let wait = seconds ?? limitSeconds
         Task { @MainActor [weak self] in
-            try? await Task.sleep(for: .seconds(limitSeconds))
-            guard let self, let pending = self.pendingRecovery, pending.token == token,
+            try? await Task.sleep(for: .seconds(wait))
+            guard let self, self.isTracking, let pending = self.pendingRecovery, pending.token == token,
                   pending.phase == .pickStation else { return }
+            let remaining = limitSeconds - (ProcessInfo.processInfo.systemUptime - self.lastUserActionAt)
+            if remaining > 0 || self.outputSuppressed {
+                self.scheduleRecoveryPickTimeout(token: token, after: max(remaining, 60))
+                return
+            }
             transitGuideLog("recovery pickTimeout")
             self.pendingRecovery = nil
-            self.restartPollLoop(immediate: true)
+            if !self.enterIdleIfDue() { self.restartPollLoop(immediate: true) }
         }
     }
 
@@ -1423,14 +1430,11 @@ final class TransitGuideModel {
         recoveryOutcome = outcome
         transitGuideLog("recovery outcome=\(outcome)")
         // 결과 문장의 정본은 시트의 결과 행 착지다(백그라운드면 시트가 이월해 복귀 때 착지한다). 시트가 최소화돼 있으면 콘텐츠 뷰가
-        // 파괴돼 착지가 없다 — 전경이면 같은 문장을 통지 창구로 내고, 백그라운드면 복귀 낭독(`returnStatusText`)이 갚는다
-        // (코드 리뷰 MINOR-2 — 문장 조건 = 진동 조건). 시트가 떠 있을 때 둘 다 내면 착지 낭독과 겹친다.
-        if GuideSession.shared.isMinimized {
-            if !isForeground {
-                missedAnnouncement = true
-            } else if let text = recoveryOutcomeText(outcome) {
-                announce(text, highPriority: true, speechClass: .actionable)
-            }
+        // 파괴돼 착지가 없다 — 같은 문장을 자동 통지 창구로 낸다(백그라운드는 E53 채널 술어가 기기 음성/버림을 가르고, 버리면 복귀 때
+        // 현재 상태를 말한다 — 결과 행은 시트를 다시 열면 그대로 있다). 시트가 떠 있을 때 둘 다 내면 착지 낭독과 겹친다.
+        // ⚠ 모델이 최소화를 읽는 유일한 자리(코디네이터 머리 주석의 예외, 코드 리뷰 MINOR-2·재검토 MINOR-C).
+        if GuideSession.shared.isMinimized, let text = recoveryOutcomeText(outcome) {
+            announce(text, highPriority: true, speechClass: .actionable)
         }
         // 문장이 나가는 조건 = 진동 조건(결과 행 착지가 문장이다).
         switch outcome {
@@ -1447,9 +1451,9 @@ final class TransitGuideModel {
               pending.routeGen == routeGen, let dest,
               let guideRoute = buildTransitGuideRoute(route) else {
             // 실질 도달 불가(경쟁 커밋은 `invalidateRecovery`가 토큰부터 무효화한다)지만, 닿으면 조회 중 행이 말없이 사라지지 않게
-            // 실패 결과로 수렴한다(접근성 감사 N4).
+            // 결과로 수렴한다(접근성 감사 N4). 변환 실패는 조회 실패가 아니라 안내 불가다(「다시 시도」가 같은 결과를 다시 받는다).
             transitGuideLog("recovery dropped reason=guard")
-            finishRecovery(token: token, outcome: .fetchFailed)
+            finishRecovery(token: token, outcome: buildTransitGuideRoute(route) == nil ? .noGuidable : .fetchFailed)
             return
         }
         // 슬롯을 먼저 비운다 — 경로 교체가 부르는 폴 재개가 복구 게이트에 막히지 않게.
@@ -1480,7 +1484,7 @@ final class TransitGuideModel {
         ResultHaptic.fire(.success)
     }
 
-    /// 결과 행 문장 — 시트 `recoveryStatusText`와 같은 키(최소화·복귀 낭독용).
+    /// 결과 행 문장 — 시트 `recoveryStatusText`와 같은 키(최소화 중 통지용).
     private func recoveryOutcomeText(_ outcome: RecoveryOutcome) -> String? {
         switch outcome {
         case .noLocation: appLocalized("ios.transitGuide.recoveryNoLocation")

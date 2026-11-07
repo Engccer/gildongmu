@@ -99,12 +99,20 @@ describe("E78 복구 — 모델", () => {
     );
   });
 
-  it("최소화 중 결과는 통지·복귀 낭독으로 갚고, 시트가 떠 있으면 착지만이다", () => {
-    const body = functionBody(model(), "finishRecovery");
-    expect(body).toMatch(/if GuideSession\.shared\.isMinimized \{\s*if !isForeground \{\s*missedAnnouncement = true/);
-    expect(functionBody(model(), "returnStatusText")).toContain(
-      "if let outcome = recoveryOutcome, let text = recoveryOutcomeText(outcome) { return text }",
+  it("최소화 중 결과만 통지로 내고, 복귀·유휴 재개 문장은 결과로 바꿔치기하지 않는다", () => {
+    expect(functionBody(model(), "finishRecovery")).toMatch(
+      /if GuideSession\.shared\.isMinimized, let text = recoveryOutcomeText\(outcome\) \{\s*announce\(text, highPriority: true, speechClass: \.actionable\)/,
     );
+    expect(functionBody(model(), "returnStatusText")).not.toContain("recoveryOutcome");
+    // 모델이 최소화를 읽는 자리는 이 하나다(코디네이터 불변식의 예외).
+    expect(model().match(/isMinimized/g)).toHaveLength(1);
+  });
+
+  it("역 질문 시한은 마지막 조작 기준이고, 닿으면 곧장 유휴 정지다", () => {
+    const body = functionBody(model(), "scheduleRecoveryPickTimeout");
+    expect(body).toContain("self.lastUserActionAt");
+    expect(body).toContain("if remaining > 0 || self.outputSuppressed {");
+    expect(body).toContain("if !self.enterIdleIfDue() { self.restartPollLoop(immediate: true) }");
   });
 
   it("커밋은 토큰·추적 중·경로 세대를 확인하고, 승차 전 도보가 있으면 도보부터 연다(§3.3·§8-1)", () => {

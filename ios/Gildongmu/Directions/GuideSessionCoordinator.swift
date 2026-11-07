@@ -14,7 +14,8 @@ enum GuideScreenKind: String, Identifiable {
 ///
 /// `BeaconModel`·`TransitGuideModel`이 길찾기 탭 `@State`에 살던 시절엔 탭 전환이
 /// 곧 세션 종료였고 시트 닫힘이 곧 중지였다. 이제 모델은 앱 수명이고, 시트·띠바의
-/// 표시 상태(`isMinimized`)는 여기 산다 — **모델은 최소화를 모른다**.
+/// 표시 상태(`isMinimized`)는 여기 산다 — **모델은 최소화를 모른다**(예외 하나: 대중교통 모델의 잘못 내림 복구 결과 통지
+/// `finishRecovery` — 결과 문장의 정본인 시트 착지가 최소화 중엔 없어서 그때만 통지로 낸다, E78).
 ///
 /// 시작 요청은 전부 `startBeacon`·`startTransit`을 지난다(설계 리뷰 C1·C2): 거부
 /// 게이트 한 곳 + 다른 모델의 잔여 화면(도착·중지 종료 화면, 핸드오프 제안) 소거.
