@@ -27,18 +27,18 @@
 | `.event(.signalLost / .neverSeen / .upstreamFailed / .vehiclePassed)` | warning | 내지 않는다(①의 집합 밖, 신호 잃음과 같은 갈래) |
 | `.event(.approaching)` boarding 접근 사다리 3·2 / 1 | closer / ahead | 낸다(§2.1) |
 | `.event(.arrivingAtBoardStop)` 서울버스 「곧 도착」 | ahead | 낸다(§2.1) |
-| `.event(.boarded(observed))` 도착 관측 「지금 타세요」 | start | 낸다(§2.1) |
-| `.event(.boarded(declared / departed))`·`.legAdvanced(final: false)` 사용자 선언·출발 추정·중간 구간 시작 | start | 내지 않는다(사용자 조작 응답이거나, 도착을 못 보고 떠난 뒤의 추정이라 「지금 타세요」가 아니다) |
+| `.event(.boarded(observed / departed))` 관측 승차(지하철 도착 관측·서울버스 출발 관측) | start | 낸다(§2.1) |
+| `.event(.boarded(declared))`·`.legAdvanced(final: false)` 사용자 선언·중간 구간 시작 | start | 내지 않는다(사용자 조작 응답, 전경) |
 | 세션 시작·종료음 `.start`·`.stop` | start·stop | 내지 않는다(사용자 조작 응답, 전경) |
 
 ### 2.1 boarding 국면(고른 차량을 기다리는 동안)도 낸다 — 위원장 판정 2026-11-07 두 번째
 
-첫 구현은 판정문의 "승차 중"을 따라 고른 차량이 승차 정류소로 다가오는 사다리(`approaching` 3·2·1)·「곧 도착」(`arrivingAtBoardStop`)·「지금 타세요」(`boarded(observed)`)를 전경만으로 두고 판정을 물었다. 위원장 답은 **기다리는 동안에도 낸다**(선택지 2). boarding은 keep-alive(A46)로 앱이 깨어 있는 국면이라 소리 낼 기회가 실제로 있다. 출발 관측(`boarded(departed)`)은 도착을 못 보고 떠난 뒤 "탔다"로 추정하는 전이라 「지금 타세요」 소리가 아니어서 제외했다. 차량을 고르기 전(waiting)은 keep-alive가 없어 앱이 잠들고, 허용 집합에도 waiting 이벤트가 없다.
+첫 구현은 판정문의 "승차 중"을 따라 고른 차량이 승차 정류소로 다가오는 사다리(`approaching` 3·2·1)·「곧 도착」(`arrivingAtBoardStop`)·「지금 타세요」(`boarded(observed)`)를 전경만으로 두고 판정을 물었다. 위원장 답은 **기다리는 동안에도 낸다**(선택지 2). boarding은 keep-alive(A46)로 앱이 깨어 있는 국면이라 소리 낼 기회가 실제로 있다. 승차 전이 시작음은 관측 둘 다 낸다: 도착 관측(`boarded(observed)`)은 지하철만 내고, 서울버스는 정차 신호가 API에 없어 자동 승차 전이가 출발 관측(`boarded(departed)`, 문장 「탑승했습니다. 하차: …」)뿐이라 이것을 빼면 판정문이 그린 서울버스 흐름의 마지막 소리가 사라진다(리뷰 MAJOR). 지방버스는 boarding을 거치지 않는다(근사 잠금). 고른 직후 첫 관측은 몇 정거장 앞이든 가까워짐 소리 한 번이다(사다리와 같은 소리). 차량을 고르기 전(waiting)은 keep-alive가 없어 앱이 잠들고, 허용 집합에도 waiting 이벤트가 없다.
 
 ### 2.2 국면 밖에서 소리가 날 수 없는가
 
 - 추세 층(`transitToneStep`)은 riding·arrived에서만 톤을 낸다(Kit 구조). 확정 도착은 층이 전부 억제한다.
-- 허용 이벤트 중 `countdown`·`trackingStarted`·`arrivingAtAlightStop`·`arrived`는 리듀서가 riding에서만 낸다. `legAdvanced(final: true)`는 사용자 조작(전경)이 정상 경로다. `approaching`·`arrivingAtBoardStop`·`boarded(observed)`는 boarding에서만 난다(§2.1).
+- 허용 이벤트 중 `countdown`·`trackingStarted`·`arrivingAtAlightStop`·`arrived`는 리듀서가 riding에서만 낸다. `legAdvanced(final: true)`는 사용자 조작(전경)이 정상 경로다. `approaching`·`arrivingAtBoardStop`·관측 `boarded`는 boarding에서만 난다(§2.1).
 - 백그라운드에서 프로세스를 살리는 keep-alive 위치 스트림(E36·A46)은 (boarding ∨ riding) ∧ 폴 주기 > 0 ∧ 비유휴에서만 켜진다. waiting에서 화면을 끄면 앱이 잠들어 폴 자체가 멎으므로 소리 낼 기회가 없고, 허용 집합에도 waiting 이벤트는 없다. 확정 도착·비관측 잠금은 폴 주기 0이라 keep-alive가 꺼지지만, 그 순간의 도착 톤은 꺼지기 전 같은 스텝에서 난다.
 
 ## 3. 톤 뒤 발화 계약 — 톤과 「내리세요」가 겹치는가 (판정 ②)

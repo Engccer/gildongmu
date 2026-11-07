@@ -63,7 +63,7 @@ describe("대중교통 백그라운드 폴 소스 가드 (E36)", () => {
     // 재생기 직접 호출은 playTone 안 한 곳뿐이다 — 다른 자리의 `tones.play(`는 백그라운드 게이트를 우회한다(리뷰 MINOR-2).
     expect(MODEL.match(/tones\.play\(/g) ?? []).toHaveLength(1);
     expect(body(/private func playTone\(_ tone: BeaconTone, allowedInBackground: Bool\)/)).toContain("tones.play(tone)");
-    // 이벤트 톤은 이벤트 전체를 Kit에 넘긴다 — 같은 `start` 소리라도 도착 관측(`boarded(observed)`)은 허용, 선언·출발 추정은 불허라 톤 종류로는 가를 수 없다.
+    // 이벤트 톤은 이벤트 전체를 Kit에 넘긴다 — 같은 `start` 소리라도 관측 승차(`boarded(observed|departed)`)는 허용, 선언 탑승·중간 구간 시작은 불허라 톤 종류로는 가를 수 없다.
     const handle = body(/private func handle\(event: TransitGuideEvent\)/);
     expect(handle).toContain("let allowedInBackground = transitToneAllowedInBackground(.event(event))");
     // 추세 톤 자리: 신호 잃음 반복음(unreliable)을 거르는 판정이 Kit에 있다(판정 ①).

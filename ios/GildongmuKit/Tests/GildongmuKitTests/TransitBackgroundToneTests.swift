@@ -36,11 +36,12 @@ struct TransitBackgroundToneTests {
         #expect(allowed(.approaching(remaining: nil, message: "m", messageEn: nil)))
         #expect(allowed(.arrivingAtBoardStop))
         #expect(allowed(.boarded(legIndex: 0, cause: .observed)))
+        // 서울버스는 정차 신호가 없어 승차 전이가 출발 관측뿐이다 — 빼면 잠금 화면 서울버스 승차가 무음이 된다(리뷰 MAJOR).
+        #expect(allowed(.boarded(legIndex: 0, cause: .departed)))
     }
 
-    @Test func 사용자_조작_응답과_출발_관측은_전경만이다() {
+    @Test func 사용자_조작_응답은_전경만이다() {
         #expect(!allowed(.boarded(legIndex: 0, cause: .declared)))
-        #expect(!allowed(.boarded(legIndex: 0, cause: .departed)))
         #expect(!allowed(.legAdvanced(legIndex: 1, final: false)))
         #expect(!allowed(.vehicleSelected(legIndex: 0)))
     }
