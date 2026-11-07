@@ -65,7 +65,7 @@ export function readResultMsg(raw: unknown): string | null {
  * `response.body.totalCount`를 정수로 읽는다(없으면 0).
  *
  * ⚠ 추출 헬퍼일 뿐 신뢰 보증이 아니다. data.go.kr 계열엔 이 값이 전체 건수가
- *   아니라 "그 페이지 row 수"인 API가 있다(CLAUDE.md 횡단 함정). 페이지네이션
+ *   아니라 "그 페이지 row 수"인 API가 있다(`.claude/rules/integrations.md` 횡단 함정). 페이지네이션
  *   종료 조건으로 쓸지는 각 provider가 실호출로 확인하고 정한다.
  */
 export function readTotalCount(raw: unknown): number {

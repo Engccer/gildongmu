@@ -247,7 +247,7 @@ function rawArrivalPart(isEn: boolean, message: TransitLabel): ArrivalPart | nul
  * A27 승차 국면 지하철 문장 종류 — **판정은 `subwayRidingMessage`가 정본**이고 여기서는 그 결과를
  * i18n 키로 옮기기만 한다.
  *
- * ⚠ 판정을 여기에 다시 쓰면 안 된다(리뷰 검출 2026-09-01): 그러면 CLAUDE.md가 정본이라 부르는
+ * ⚠ 판정을 여기에 다시 쓰면 안 된다(리뷰 검출 2026-09-01): 그러면 `.claude/rules/guidance.md`가 정본이라 부르는
  * 함수의 프로덕션 호출자가 0이 되어 공유 fixture만 초록인 채로 남고, `arvlCd`를 하나 더해도
  * 실제 문장은 안 따라오는 조용한 드리프트 경로가 생긴다.
  */

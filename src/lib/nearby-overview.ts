@@ -294,7 +294,7 @@ export async function assembleNearbyOverview(lat: number, lng: number, detail = 
       ? settle(findKidsPlacesNear(lat, lng, radius).then((ks) => ks.map((k) => ({ ...k, projected: kidsPlaceToPlace(k) }))))
       : Promise.resolve(null),
     // 국내 미제공 판정선은 이 조각의 조회 반경(1km)이다 — 문화행사 라우트의 3km와 다르다
-    // (CLAUDE.md "판정선은 그 도메인의 조회 반경을 그대로 쓴다").
+    // (`docs/INTEGRATIONS.md` "판정선은 그 도메인의 조회 반경을 그대로 쓴다").
     !seoul
       ? Promise.resolve(null)
       : metersOutsideSeoul(lat, lng) > OVERVIEW_RADIUS_M

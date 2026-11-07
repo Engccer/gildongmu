@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 
 /**
  * iOS 도보 줄(E42) 배선 소스 가드 — 뷰·모델 계층은 테스트 레인이 없어 배선을 소스로 잠근다
- * (CLAUDE.md "뷰 계층은 테스트 레인이 없어 배선을 소스 가드로 잠근다", 구현 리뷰 m1·M1).
+ * (`.claude/rules/guidance.md` "뷰 계층은 테스트 레인이 없어 배선을 소스 가드로 잠근다", 구현 리뷰 m1·M1).
  */
 const read = (p: string) => readFileSync(p, "utf8");
 const BEACON = "ios/Gildongmu/Directions/BeaconModel.swift";

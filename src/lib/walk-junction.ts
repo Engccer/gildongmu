@@ -5,7 +5,7 @@ import { haversineMeters } from "./geo";
  *
  * 두 정적 seed(OSM `osm-walk-junctions.json`·서울 도보 네트워크 `seoul-walk-network.json`)는 같은 갈래 부호를
  * 쓴다: 정수 `kind × 36 + round(방위/10)`. 여기서 그것을 "교차점에서 그 방위로 25m 간 점"으로 푼다 — 좌우는 서버가
- * 정하지 않고 Kit `outingProject`가 그 점을 투영해 정한다(좌우의 원천은 `OutingSide` 하나, CLAUDE.md 나들이 줄).
+ * 정하지 않고 Kit `outingProject`가 그 점을 투영해 정한다(좌우의 원천은 `OutingSide` 하나, `.claude/rules/guidance.md` 나들이 줄).
  *
  * ⚠ 두 seed를 한 파일로 합치지 않는다(ODbL 파생 DB와 공공데이터). 이 모듈은 부호 해석만 공유한다.
  */

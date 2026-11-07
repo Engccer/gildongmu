@@ -1706,7 +1706,7 @@ function commitMatched(
  *   신호 — 상태 머신의 도착 판정은 1만 보므로 충돌 없음)
  * - 99(운행중) → `omit`(잔여 수는 `remainingCount`가 이미 말한다)
  * - 미지·결측 → `raw`(원문을 **까지 틀 없이** 그대로, 3-state 폴백)
- * ⚠ 대기 국면 후보 목록·내 주변 도착 목록은 완성 문장 정본 불변(CLAUDE.md) — 여기는 riding 상태줄뿐.
+ * ⚠ 대기 국면 후보 목록·내 주변 도착 목록은 완성 문장 정본 불변(`.claude/rules/guidance.md`) — 여기는 riding 상태줄뿐.
  */
 export type SubwayRidingMessage =
   | { kind: "key"; key: "subwayNextStop" | "subwayArriving" | "subwayAtStop" | "subwayDeparted" }

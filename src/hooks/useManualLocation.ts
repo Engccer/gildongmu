@@ -70,7 +70,7 @@ export function useManualLocationBilingual(): { text: string; secondary: string 
  *
  * 축이 둘이고 서로 다른 시제를 갖는다: *어느 위치로 조회했나*는 기록이라 얼려야 하고
  * (`NearbyStatus.done.manualLabel`), *지금 검증 가능한가*는 현재 상태라 살아 있어야
- * 한다(며칠 전 판정이 새 세션의 라벨을 정하면 안 된다 — `CLAUDE.md` 수동 위치 절).
+ * 한다(며칠 전 판정이 새 세션의 라벨을 정하면 안 된다 — `.claude/rules/screens.md` 수동 위치 항목).
  * 그래서 라벨 전체를 얼리지도, 전체를 지금 상태에서 만들지도 않는다.
  *
  * ⚠ 지정이 해제된 뒤에는 검증 가능형을 쓰지 않는다 — 확인할 대상 자체가 없으므로

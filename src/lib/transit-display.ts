@@ -60,7 +60,7 @@ export interface TransitDisplayItem {
  * 나머지 조각이 전부 영문이어도 줄 전체가 한국어로 되돌아간다 — 서울버스는 `direction`이
  * 구조적으로 `""`(서버가 `directionEn`을 만들지 않는다)라, 이 정규화가 없으면 서버가 만든
  * `In 6 min 47 sec`가 대기 후보 목록에서 통째로 버려진다(리뷰 2인 독립 검출).
- * CLAUDE.md 계약 그대로다: "`""`는 ko에도 그 조각이 없다는 자리 표시라 영어 줄이 성립한다."
+ * `docs/INTEGRATIONS.md` 계약 그대로다: "`""`는 ko에도 그 조각이 없다는 자리 표시라 영어 줄이 성립한다."
  */
 function label(ko: string | undefined, en: string | undefined): TransitLabel {
   const koText = ko ?? "";
