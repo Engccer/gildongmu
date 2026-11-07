@@ -173,6 +173,11 @@
       "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/SessionIdleTest.kt"
     },
     {
+      "swift": "TransitBackgroundTone.swift",
+      "status": "pending",
+      "note": "E79 대중교통 백그라운드 톤 허용 집합(iOS 선행) — 안드로이드는 대중교통 안내 미구현(BACKLOG §4 B14)이라 이식 보류(spec 2026-11-07-e79-transit-background-tones-design.md)"
+    },
+    {
       "swift": "TransitDisplayProjection.swift",
       "status": "ported",
       "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/TransitDisplayProjection.kt",

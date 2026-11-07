@@ -744,13 +744,14 @@ final class TransitGuideModel {
     }
 
     /// 하차 정류장 도착 한 마디(A69 판정 ②) — 「{하차 정류장} 도착. 내리세요.」 리듀서 `arrived`와 같은 도착 톤 뒤
-    /// 지연 창구(톤 뒤 발화)로, 진행 중 낭독을 끊는다(늦으면 문이 닫힌다). 백그라운드는 톤 없이 행동 문장만(E36·E53).
+    /// 지연 창구(톤 뒤 발화)로, 진행 중 낭독을 끊는다(늦으면 문이 닫힌다). 백그라운드에서도 도착 톤을 낸다(E79) — 문장은
+    /// 그 톤이 끝난 뒤 채널 술어(E53)를 따른다.
     /// 전경에서 문장이 버려지면 전달 장부만 되돌린다 — 정류장에 서 있는 동안 다음 적격 fix가 다시 말한다(설계 리뷰 H4).
     /// ⚠ 재시도의 소유자는 그 하나다: 억제(받아쓰기) 중 버려진 이 문장은 일반 억제 복구(`droppedWhileSuppressed`)에서
     /// 뺀다 — 해제 때 위치 재검증 없이 재생되면 정류장을 벗어난 뒤의 "도착. 내리세요."나 중복이 된다(설계 리뷰 2차).
     private func announceAlightReached(leg: TransitGuideLeg, legIndex: Int, phaseGen: Int) {
         transitGuideLog("busAlightReached leg=\(legIndex)")
-        playTone(.nearby, allowedInBackground: false)
+        playTone(.nearby, allowedInBackground: transitToneAllowedInBackground(.alightReached))
         let text = TransitGuideTextRenderer.render(transitAlightStopReachedLine(
             isEn: transitGuideIsEn, leg: displayLeg(leg, useOverride: false)))
         deferredAnnouncer.announce(text, highPriority: true, speechClass: .actionable) { [weak self] in
@@ -1979,7 +1980,8 @@ final class TransitGuideModel {
         }
         if let tone = toned.tone {
             transitGuideLog("tone kind=\(tone.rawValue) anchor=\(toned.state.anchorRemaining.map(String.init) ?? "-")")
-            playTone(tone, allowedInBackground: false)
+            // 추세 closer·farther는 백그라운드에서도, 신호 잃음 60초 반복음은 전경만(E79 판정 ①, Kit 판정).
+            playTone(tone, allowedInBackground: transitToneAllowedInBackground(.trend(tone)))
         }
     }
 
@@ -1987,10 +1989,10 @@ final class TransitGuideModel {
 
     private func handle(event: TransitGuideEvent) {
         let profile = transitEventProfile(event)
-        // 백그라운드 톤 허용 집합은 **첫 관측 하나**(E36 위원장 판정 — 사다리·도착·추세는 별건). 아래가
-        // 이 파일에서 허용 인자를 참으로 대입하는 유일한 자리이고 소스 가드(`transit-background-guards.test.ts`)가 센다.
-        let allowedInBackground: Bool
-        if case .trackingStarted = event { allowedInBackground = true } else { allowedInBackground = false }
+        // 백그라운드 톤 허용 집합은 Kit `transitToneAllowedInBackground` 하나가 가른다(E79 위원장 판정 2026-11-07 —
+        // 승차 중 사다리·임박·도착과 첫 관측, 경고음 제외). 이 파일엔 리터럴 `true`가 없다(소스 가드
+        // `transit-background-guards.test.ts`).
+        let allowedInBackground = transitToneAllowedInBackground(.event(event))
         switch profile.tone {
         case .start: playTone(.start, allowedInBackground: allowedInBackground)
         case .ladder: playTone(.closer, allowedInBackground: allowedInBackground)

@@ -8,8 +8,9 @@ import { join } from "node:path";
  *
  * 1. **백그라운드 발화는 채널 술어만 연다** — `TransitGuideModel.post`가 게시 전에 채널 술어(E53)를 지난다. 정식판은
  *    토글 실효값이 거짓이라 종전 계약(백그라운드는 소리만, 음성은 복귀 시) 그대로다 — 조용한 회귀의 대가가 크다.
- * 2. **백그라운드 톤 허용 집합 = 첫 관측(`trackingStarted`) 하나** — `allowedInBackground = true`
- *    대입이 파일에 정확히 한 곳. 사다리·도착·추세 톤을 여기 넣는 것은 별건 판정이다(BACKLOG E36).
+ * 2. **백그라운드 톤 허용 집합은 Kit `transitToneAllowedInBackground` 하나가 가른다**(E79, spec
+ *    `2026-11-07-e79-transit-background-tones-design.md` §2 — 승차 중 사다리·임박·추세·도착과 첫 관측, 신호 잃음
+ *    반복음·경고음 제외). 모델의 `playTone` 호출부는 그 판정 결과 또는 리터럴 `false`만 넘기고 리터럴 `true`는 0곳.
  * 3. **keep-alive 국면 = boarding ∨ riding**(A46) — 앱을 살리는 위치 스트림이 켜지는 조건.
  */
 
@@ -38,20 +39,24 @@ describe("대중교통 백그라운드 폴 소스 가드 (E36)", () => {
     expect(post).not.toContain("AccessibilityNotification.Announcement(");
   });
 
-  it("백그라운드 톤 허용은 정확히 한 자리(trackingStarted)", () => {
-    const allowed = MODEL.match(/allowedInBackground = true/g) ?? [];
-    expect(allowed).toHaveLength(1);
-    const at = MODEL.indexOf("allowedInBackground = true");
-    // 그 대입은 `.trackingStarted` 판별 안에서만 참이다.
-    const line = MODEL.slice(MODEL.lastIndexOf("\n", at) + 1, MODEL.indexOf("\n", at));
-    expect(line).toContain("case .trackingStarted = event");
-    // 호출부 리터럴 `allowedInBackground: true`는 0곳 — 대입 1곳을 우회하는 형태(코드 리뷰 C3 변이).
+  it("백그라운드 톤 허용은 Kit 판정 하나를 지난다(E79) — 리터럴 true 0곳, 호출부 전부 인자를 밝힌다", () => {
+    // 허용을 참으로 만드는 형태(대입·호출부 리터럴)가 파일에 없다 — Kit 판정을 우회하는 자리(코드 리뷰 C3 변이).
+    expect(MODEL.match(/allowedInBackground\s*=\s*true/g) ?? []).toHaveLength(0);
     expect(MODEL.match(/allowedInBackground:\s*true/g) ?? []).toHaveLength(0);
-    // 호출부는 전부 인자를 밝힌다(기본값 없음 — 안전 인자). `func playTone(` 선언은 정규식이 `playTone(`부터
-    // 잡으므로 인자 이름을 포함해 같은 조건을 통과한다.
+    // 호출부는 전부 인자를 밝힌다(기본값 없음 — 안전 인자). `func playTone(` 선언도 인자 이름을 포함해 통과한다.
     const calls = MODEL.match(/playTone\([^)]*\)/g) ?? [];
     expect(calls.length).toBeGreaterThan(3);
     expect(calls.every((call) => call.includes("allowedInBackground:"))).toBe(true);
+    // 이벤트 톤은 이벤트 전체를 Kit에 넘긴다 — 톤 종류로 가르면 boarding 사다리(approaching)가 riding 사다리와 섞인다.
+    const handle = body(/private func handle\(event: TransitGuideEvent\)/);
+    expect(handle).toContain("let allowedInBackground = transitToneAllowedInBackground(.event(event))");
+    // 추세 톤 자리: 신호 잃음 반복음(unreliable)을 거르는 판정이 Kit에 있다(판정 ①).
+    expect(MODEL).toContain("playTone(tone, allowedInBackground: transitToneAllowedInBackground(.trend(tone)))");
+    // 하차 정류장 도착(A69) 톤은 도착 톤이라 허용(판정 ①).
+    const alight = body(/private func announceAlightReached\(/);
+    expect(alight).toContain("playTone(.nearby, allowedInBackground: transitToneAllowedInBackground(.alightReached))");
+    // 세션 시작·종료음은 사용자 조작 응답이라 전경만.
+    expect(MODEL.match(/playTone\(\.(start|stop), allowedInBackground: false\)/g)?.length ?? 0).toBeGreaterThanOrEqual(3);
   });
 
   it("유휴 정지는 idlePaused 키를 자동 창구 .high로 게시한다", () => {

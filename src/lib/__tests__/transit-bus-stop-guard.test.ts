@@ -102,9 +102,9 @@ describe("하차 정류장 도착 한 마디는 표시 전용 계약의 의도�
     expect(model).toMatch(/if case \.arrivingAtAlightStop = event, let notice = busAlightNotice, notice\.reached,\s*notice\.legIndex == result\.state\.legIndex, notice\.phaseGen == result\.state\.phaseGen \{/);
   });
 
-  it("iOS: 도착 톤은 백그라운드 불허, 행동 문장, 버려지면 전달 장부만 되돌린다(관측 이력은 남긴다)", () => {
+  it("iOS: 도착 톤은 백그라운드 허용(E79 Kit 판정), 행동 문장, 버려지면 전달 장부만 되돌린다(관측 이력은 남긴다)", () => {
     const fn = model.slice(model.indexOf("private func announceAlightReached("), model.indexOf("// MARK: - 사용자 액션"));
-    expect(fn).toMatch(/playTone\(\.nearby, allowedInBackground: false\)/);
+    expect(fn).toMatch(/playTone\(\.nearby, allowedInBackground: transitToneAllowedInBackground\(\.alightReached\)\)/);
     expect(fn).toMatch(/deferredAnnouncer\.announce\(text, highPriority: true, speechClass: \.actionable\) \{/);
     expect(fn).toMatch(/self\.busAlightNotice\?\.announced = false/);
     // 재시도 소유자는 다음 적격 fix 하나 — 일반 억제 복구가 위치 재검증 없이 재생하지 않게(설계 리뷰 2차).
