@@ -88,6 +88,10 @@ class TransitTrackServiceTest {
     /** `lang`은 추적 4메서드에만 — 정류소 해석은 표시 문장이 없어 싣지 않는다(Swift 주석). */
     @Test fun `추적 4메서드는 lang을 같은 이름으로 싣고 정류소 해석은 싣지 않는다`() = runTest {
         assertEquals("en", queryItems { it.seoulWait("123", "r", null, "en") }.toMap()["lang"])
+        // E76 후속 ⓓ: 지방버스 대기 집합은 `routeNos`(쉼표)가 `routeNo` 자리를 대신한다.
+        val tago = queryItems { it.tagoTrack("c", "n", "1711", listOf("1711", "7016"), "ko") }
+        assertEquals(listOf("mode", "phase", "cityCode", "nodeId", "routeNos", "lang"), tago.map { it.first })
+        assertEquals("1711,7016", tago.toMap()["routeNos"])
         assertEquals("en", queryItems { it.subwayTrack("천호", "1005", "en") }.toMap()["lang"])
         assertEquals(null, queryItems { it.resolveTagoStop(36.35, 127.38) }.toMap()["lang"])
     }

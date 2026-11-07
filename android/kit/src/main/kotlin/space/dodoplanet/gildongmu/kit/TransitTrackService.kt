@@ -16,10 +16,6 @@ data class TransitTrackEnvelope(
     val stop: TransitTrackResolvedStop? = null,
 )
 
-/** 노선 집합 항목(E76 후속 ⓔ, Kit `TransitLaneRoute` 미러 — 응답 디코딩만). */
-@Serializable
-data class TransitLaneRoute(val routeId: String, val lineName: String, val lineNameEn: String? = null)
-
 /** `phase=lanes` 응답(E76 후속 ⓔ). `unverified`가 0이 아니면 `routes: []`가 「다른 노선 없음」의 증거가 아니다. */
 @Serializable
 data class TransitLanesEnvelope(val status: String, val routes: List<TransitLaneRoute>? = null, val unverified: Int? = null)

@@ -1252,3 +1252,7 @@ fun subwayRidingMessage(arrivalCode: String?): SubwayRidingMessage = when (arriv
     "99" -> SubwayRidingMessage.Omit
     else -> SubwayRidingMessage.Raw
 }
+
+/** 노선 집합 항목(E76 후속 ⓔ, Kit `TransitLaneRoute` 미러 — 응답 디코딩만). */
+@Serializable
+data class TransitLaneRoute(val routeId: String, val lineName: String, val lineNameEn: String? = null)
