@@ -1408,8 +1408,8 @@
     <string name="transitGuide_alightStopReachedUnnamed">하차 정류장 도착. 내리세요.</string>
     <string name="transitGuide_approachFrame">%1$s에 %2$s.</string>
     <string name="transitGuide_approachingStarted">선택한 차량을 추적합니다.</string>
-    <string name="transitGuide_approxNote">근사 추적: 같은 노선의 접근 차량 기준.</string>
-    <string name="transitGuide_approxNoteLanes">근사 추적: 추천 노선의 접근 차량 기준.</string>
+    <string name="transitGuide_approxNote">가장 가까운 버스 기준 추정입니다.</string>
+    <string name="transitGuide_approxNoteLanes">추천 노선 중 가장 가까운 버스 기준 추정입니다.</string>
     <string name="transitGuide_approxVehicleChanged">다른 차량 기준으로 바뀌었습니다.</string>
     <string name="transitGuide_arrived">내리신 뒤 다음 구간 버튼을 눌러 주세요.</string>
     <string name="transitGuide_arrivedAtBoardStop">%1$s 도착. 탑승하세요.</string>

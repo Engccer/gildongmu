@@ -92,7 +92,7 @@ GET /api/transit/track?mode=seoulBus&phase=lanes&arsId={정류장 arsId}&boardId
 - 소비자 — 승차 중 노선을 말하는 문장 전부:
   1. 문맥 `contextLine(isEn, leg, lineUnconfirmed)` — **셋째 인자는 기본값 없는 필수 인자**(웹·Kit). 참이고 버스면 키 `contextBusUnconfirmed` 「버스 탑승 중, {stop}에서 하차합니다.」(기존 「{line}번 버스 탑승 중, {stop}에서 하차합니다.」에서 번호 자리만 지운 초안, 확정은 판정 왕복). 쓰이는 자리: 상시 상태 문장·진행 상황·추적 시작 통지.
   2. iOS 띠바 승차 줄(`guide.band.transitRiding`·`…NoCount`의 `{line}` 자리): 참이면 전용 틀 `guide.band.transitRidingBusUnconfirmed`·`…NoCount` 「버스 탑승 중, 남은 정거장 3개」(번호 자리에 낱말을 끼우면 en·fr·it 관사가 깨진다 — 접근성 감사).
-  3. 지방버스 근사 주석(`approxNote` 「근사 추적: 같은 노선의 접근 차량 기준.」): 집합이 있으면 탄 노선을 모르므로 `approxNoteLanes` 「근사 추적: 추천 노선의 접근 차량 기준.」(초안, 판정 왕복) — 승차 중 카운트다운이 추천 노선 하나를 따른다는 것(§4)을 말한다.
+  3. 지방버스 근사 주석(`approxNote` 「근사 추적: 같은 노선의 접근 차량 기준.」): 집합이 있으면 탄 노선을 모르므로 `approxNoteLanes` 「추천 노선 중 가장 가까운 버스 기준 추정입니다.」(초안, 판정 왕복 — 노선 하나의 `approxNote`도 「가장 가까운 버스 기준 추정입니다.」로 교체) — 승차 중 카운트다운이 추천 노선 하나를 따른다는 것(§4)을 말한다.
 - 바뀌지 않는 것: 대기 문맥(집합 전부를 말한다), 조망의 구간 행(경로 계획), 탑승 통지 `boarded`(노선 인자 없음), 하차 임박·도착 문장(하차 정류장만 말한다).
 
 ## 4. ⓓ 지방버스(TAGO) 대기 목록 노선 전부
@@ -109,7 +109,8 @@ GET /api/transit/track?mode=seoulBus&phase=lanes&arsId={정류장 arsId}&boardId
 | 키 | ko 초안 | 쓰는 곳 |
 |---|---|---|
 | `contextBusUnconfirmed` | 버스 탑승 중, {stop}에서 하차합니다. | §3 ① |
-| `approxNoteLanes` | 근사 추적: 추천 노선의 접근 차량 기준. | §3 ③ |
+| `approxNoteLanes` | 추천 노선 중 가장 가까운 버스 기준 추정입니다. | §3 ③ |
+| `approxNote`(기존 문장 교체) | 가장 가까운 버스 기준 추정입니다. | §3 ③ |
 | `reboardStopPrompt` | 지금 어느 정류장에 계신가요? | §2.1 |
 | `reboardStopCancel` | 정류장 선택 취소 | §2.1 |
 | iOS `guide.band.transitRidingBusUnconfirmed`·`…NoCount` | 버스 탑승 중, 남은 정거장 {count}개 · 버스 탑승 중 | §3 ② |

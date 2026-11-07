@@ -1325,8 +1325,8 @@
     <string name="transitGuide_alightStopReachedUnnamed">Llegada a su parada. Bájese aquí.</string>
     <string name="transitGuide_approachFrame">En %1$s: %2$s.</string>
     <string name="transitGuide_approachingStarted">Siguiendo el vehículo seleccionado.</string>
-    <string name="transitGuide_approxNote">Aproximado: basado en el vehículo más cercano de esta línea.</string>
-    <string name="transitGuide_approxNoteLanes">Aproximado: basado en el vehículo más cercano de la línea recomendada.</string>
+    <string name="transitGuide_approxNote">Estimación basada en el autobús más cercano.</string>
+    <string name="transitGuide_approxNoteLanes">Estimación basada en el autobús más cercano de la línea recomendada.</string>
     <string name="transitGuide_approxVehicleChanged">Ahora se sigue otro vehículo.</string>
     <string name="transitGuide_arrived">Después de bajar, pulsa Siguiente tramo.</string>
     <string name="transitGuide_arrivedAtBoardStop">%1$s ha llegado. Suba ahora.</string>

@@ -52836,37 +52836,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "근사 추적: 같은 노선의 접근 차량 기준."
+            "value": "가장 가까운 버스 기준 추정입니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Approximate: based on the nearest vehicle on this route."
+            "value": "Estimated from the nearest bus."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aproximado: basado en el vehículo más cercano de esta línea."
+            "value": "Estimación basada en el autobús más cercano."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Approximatif : basé sur le véhicule le plus proche de cette ligne."
+            "value": "Estimation d'après le bus le plus proche."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Approssimato: basato sul veicolo più vicino di questa linea."
+            "value": "Stima basata sull'autobus più vicino."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "近似追跡: 同路線の接近車両基準。"
+            "value": "最も近いバスを基準にした推定です。"
           }
         }
       }
@@ -52876,37 +52876,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "근사 추적: 추천 노선의 접근 차량 기준."
+            "value": "추천 노선 중 가장 가까운 버스 기준 추정입니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Approximate: based on the nearest vehicle on the recommended route."
+            "value": "Estimated from the nearest bus on the recommended route."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aproximado: basado en el vehículo más cercano de la línea recomendada."
+            "value": "Estimación basada en el autobús más cercano de la línea recomendada."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Approximatif : basé sur le véhicule le plus proche de la ligne recommandée."
+            "value": "Estimation d'après le bus le plus proche de la ligne recommandée."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Approssimato: basato sul veicolo più vicino della linea consigliata."
+            "value": "Stima basata sull'autobus più vicino della linea consigliata."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "近似追跡: 推奨路線の接近車両基準。"
+            "value": "推奨路線のうち最も近いバスを基準にした推定です。"
           }
         }
       }

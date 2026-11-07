@@ -1527,10 +1527,10 @@ final class TransitGuideModel {
         if riding, !unobserved, state.remaining == nil, let count = leg.stationCount {
             parts.append(appLocalized("transitGuide.stationCountAbout", count))
         }
-        // 근사 주석("같은 노선의 접근 차량 기준")은 지방버스만(대기 중에도 근사 예고). 지하철·서울버스 근사는
+        // 근사 주석(`approxNote`)은 지방버스만(대기 중에도 근사 예고). 지하철·서울버스 근사는
         // 2026-09-11부터 비관측이라 접근 차량 기준이 아니다 — 국면을 보지 않는 잠금 술어로 갈라 선언 도착
         // 뒤에도 상속되지 않게(리뷰 m2).
-        // 집합이 있으면(E76 후속 ⓓ) 탄 노선을 모르므로 「추천 노선의 접근 차량 기준」 — 승차 중 폴은 추천 노선 하나다.
+        // 집합이 있으면(E76 후속 ⓓ) 탄 노선을 모르므로 `approxNoteLanes`(추천 노선 기준임을 말한다) — 승차 중 폴은 추천 노선 하나다.
         if leg.trackMode == .tagoBus {
             parts.append(appLocalized(
                 (leg.lanes?.count ?? 0) >= 2 ? "transitGuide.approxNoteLanes" : "transitGuide.approxNote"))

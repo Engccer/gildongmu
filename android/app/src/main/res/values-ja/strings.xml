@@ -1325,8 +1325,8 @@
     <string name="transitGuide_alightStopReachedUnnamed">降車停留所に到着。降りてください。</string>
     <string name="transitGuide_approachFrame">%1$sに%2$s。</string>
     <string name="transitGuide_approachingStarted">選択した車両を追跡します。</string>
-    <string name="transitGuide_approxNote">近似追跡: 同路線の接近車両基準。</string>
-    <string name="transitGuide_approxNoteLanes">近似追跡: 推奨路線の接近車両基準。</string>
+    <string name="transitGuide_approxNote">最も近いバスを基準にした推定です。</string>
+    <string name="transitGuide_approxNoteLanes">推奨路線のうち最も近いバスを基準にした推定です。</string>
     <string name="transitGuide_approxVehicleChanged">別の車両基準に変わりました。</string>
     <string name="transitGuide_arrived">降りたら「次の区間」を押してください。</string>
     <string name="transitGuide_arrivedAtBoardStop">%1$sが到着。乗車してください。</string>

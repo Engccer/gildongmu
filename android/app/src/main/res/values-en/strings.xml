@@ -1325,8 +1325,8 @@
     <string name="transitGuide_alightStopReachedUnnamed">Arrived at your stop. Get off here.</string>
     <string name="transitGuide_approachFrame">At %1$s: %2$s.</string>
     <string name="transitGuide_approachingStarted">Tracking the selected vehicle.</string>
-    <string name="transitGuide_approxNote">Approximate: based on the nearest vehicle on this route.</string>
-    <string name="transitGuide_approxNoteLanes">Approximate: based on the nearest vehicle on the recommended route.</string>
+    <string name="transitGuide_approxNote">Estimated from the nearest bus.</string>
+    <string name="transitGuide_approxNoteLanes">Estimated from the nearest bus on the recommended route.</string>
     <string name="transitGuide_approxVehicleChanged">Now tracking a different vehicle.</string>
     <string name="transitGuide_arrived">After getting off, press Next segment.</string>
     <string name="transitGuide_arrivedAtBoardStop">%1$s has arrived. Board now.</string>

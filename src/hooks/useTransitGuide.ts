@@ -728,9 +728,9 @@ export function useTransitGuide(
             ? t("stationCountAbout", { count: leg.stationCount })
             : "",
         ),
-        // 근사 주석("같은 노선의 접근 차량 기준")은 지방버스만(대기 중에도 근사 예고). 지하철·서울버스
+        // 근사 주석(`approxNote`)은 지방버스만(대기 중에도 근사 예고). 지하철·서울버스
         // 근사는 2026-09-11부터 비관측이라 접근 차량 기준이 아니다(리뷰 m2 — 국면이 아니라 잠금 술어).
-        // 집합이 있으면(E76 후속 ⓓ) 탄 노선을 모르므로 「추천 노선의 접근 차량 기준」 — 승차 중 폴은 추천 노선 하나다.
+        // 집합이 있으면(E76 후속 ⓓ) 탄 노선을 모르므로 `approxNoteLanes`(추천 노선 기준임을 말한다) — 승차 중 폴은 추천 노선 하나다.
         ui(
           leg.trackMode === "tagoBus"
             ? t((leg.lanes?.length ?? 0) >= 2 ? "approxNoteLanes" : "approxNote")
