@@ -809,6 +809,16 @@ A52·A53·A55에서 정한 것: CLI 포매터의 도보 줄은 한국어 고정 
 
 한 번 탄 뒤 거두는 실패 줄은 승차 전 도보가 남긴 셋 전부(정확한 위치·위치 권한·약한 신호)다(A68).
 
+### 잘못 내림 복구(E78 「여기서 다시 길찾기」)는 같은 세션의 경로 교체이고, 슬롯(`pendingRecovery`)이 있는 동안 옛 세션은 조용하다
+
+(2026-11-07 E78, iOS 정식판, spec `2026-11-07-e78-wrong-stop-recovery-design.md` §8이 §3·§5보다 우선.) 버튼은 Kit `transitRecoveryOffered`(승차 중·도착, 여정 단계 밖)가 세우고, 출발점은 `transitRecoveryOrigin`이 수단으로 가른다(버스 = `currentCoordinate(force: true)`, 지하철 = 이번 구간 역 + 「목록에 없는 역 찾기」 검색, 앱은 출발점을 추정하지 않는다). 조회는 누름당 `fetchTransitCandidates` 한 번이고 바꿀 경로는 `transitRecoveryRoute`(추천 → 대안 순으로 **모든 탑승 구간이 `trackMode != nil`인** 첫 경로)다 — 조회 0건(`noRoute`)과 안내 가능 0(`noGuidable`)은 다른 문장이고 둘 다 「목적지까지 걸어가기」(`acceptWalkHandoff`)를 둔다.
+
+- **슬롯이 있는 동안 옛 세션은 말하지도 보지도 않는다**: `restartPollLoop`가 즉폴까지 반환하고, `ingestKeepAliveFix`는 버스 하차 위치 판정(`transitBusAlightNoticeStep`)째 건너뛴다 — 말만 막으면 장부가 `announced`로 서서 복구를 취소한 뒤에도 그 정류장 「도착. 내리세요.」가 영영 나오지 않는다. 진입 때 `quietForRecovery()`가 폴·지연 슬롯·기기 음성 칸·`missedAnnouncement`·`droppedWhileSuppressed`·`neverSeenPending`을 비우고, 복귀 낭독(`returnStatusText`)은 복구 상태만 말한다.
+- **슬롯을 비우는 자리마다 폴을 다시 세운다**(`finishRecovery`·`cancelRecovery`·가드 탈락·`dispatch`의 사용자 입력). 재개는 주기 0·유휴 게이트를 그대로 지난다. 사용자 조작·경쟁 커밋(`beginReboard`·`prepareDestinationChange`·`prepareAltRoutes`·`changeRoute`·`stop`)은 `invalidateRecovery()`를 **먼저** 부른다 — 늦게 도착한 복구 응답이 사용자가 방금 고른 것을 덮지 않게.
+- **커밋 가드는 토큰 ∧ 추적 중 ∧ 경로 세대(`routeGen`)다.** 국면 세대·구간 번호로는 버리지 않는다(누름 자체가 옛 세션의 위치 판단이 틀렸다는 선언). `routeGen`은 세션 시작·경로 교체 두 자리에서만 오른다.
+- **새 경로가 걸어가야 하는 곳에서 시작하면 대중교통보다 도보가 먼저 세션을 갖는다**: `transitTransferWalk(legIndex: 0, lead: 「경로를 바꿨습니다.」)` — 대기 착지·시작 통지를 먼저 내지 않는다. 앞 문장은 도보 시작 문장과 **한 게시**다(latest-wins 창구에서 두 번 게시하면 앞 문장이 진다). 이 연결은 이미 돌던 세션의 연장이라 `isTransfer = true`(정지 꼬리 「대중교통 안내도 종료했습니다」, 위치 상실 뒤 그 구간 대기로 재개, 시작 문장 `.high`) — 새 경로 0번 구간이라 종전 `startLeg > 0` 계산으로는 A25로 오판한다.
+- 웹·안드로이드는 미이식(BACKLOG §4 B18). Kit 판정은 등록부 `pending`.
+
 ### 실시간 안내 판정 계층은 전부 순수 함수이고 웹·Kit·안드로이드 `:kit` 미러다
 
 **실시간 안내 판정 계층은 전부 순수 함수이고 웹·Kit·안드로이드 `:kit` 미러다**(`toneLayerStep`·`motionStep`·`trendStep`, 공유 fixture가 동조 강제 — 오디오 세션 `guideAudioStep`은 Kit 전용). 톤은 **배타적 계층 순서**(신뢰 불가 → 우선 톤 → 이벤트 소유 → 추세 축)로 하나만 나고, 정지 판정은 **도플러 3-state**이며, fix 부재는 **타이머 워치독**이 잡는다(fix 경로에만 걸면 권한 철회 시 영구 침묵). 오디오 카테고리 승격은 `didPromote`일 때만 원복한다(세션이 프로세스 전역 자원이라 무조건 원복하면 다른 소비자를 깬다). **상세 계약은 [§실시간 길 안내](#실시간-길-안내-톤정지-판정오디오-세션)** — 이 코드를 수정하기 전에 읽는다.

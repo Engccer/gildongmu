@@ -133,3 +133,11 @@ codex `adversarial-review` 1회(2026-11-07, base `59f45857^`, 원문 `~/gildongm
 5. [high] §5-1 조용히: 폴 정지에 더해 **복구 진입 때 옛 자동 통지의 보류 장부(`missedAnnouncement`·검색 억제 중 `droppedWhileSuppressed`·지연 슬롯)를 무효화**하고, 복구 중 전경 복귀·억제 해제는 복구 상태만 말한다. 취소 시 옛 문장을 재생하지 않고 즉폴로 현재 상태를 다시 판정한다.
 6. [medium] §5-2 비한국어: 행 숨김을 복구 정책으로 쓰지 않는다. 지원 로케일 모두에서 경유 목록 밖 역을 고를 검색 경로를 정하고(로케일별 실호출로 확인), 검색 실패는 실패 문장 + 「다시 시도」로 남긴다. Release 구성·비한국어 로케일 확인을 구현 완료 조건에 넣는다.
 
+
+## 9. 구현 메모 (세션 `e78-impl`, 2026-11-07)
+
+- **§8-1 「A25 규칙 그대로」의 정정**: 복구가 연 승차 전 도보는 이미 돌던 대중교통 세션의 연장이라 정지 꼬리는 「대중교통 안내도 종료했습니다」, 위치 상실은 그 구간(새 경로 0번) 대기로 재개, 시작 문장은 `.high`다(E73 환승 도보와 같다). 종전 `PrewalkContext.isTransfer`는 `startLeg > 0`으로 계산돼 0번 구간인 복구를 A25로 오판하므로 입구가 밝히는 저장값으로 바꿨다(`beginTransit` false, `transitTransferWalk` true). 연결 자체는 같은 `transitTransferWalk`이고 진입점 수(12)는 그대로다.
+- **「경로를 바꿨습니다.」는 도보 시작 문장과 한 게시다**(`TransitTransferWalkHandoff.lead`) — 둘로 게시하면 latest-wins 창구에서 앞 문장이 진다.
+- **새 문장**(초안, `ios.transitGuide.recovery*` 6로케일): 「여기서 다시 길찾기」·「목록에 없는 역 찾기」·「지금 계신 역 검색」(검색 화면 제목·칸)·「현재 위치를 확인할 수 없어 다시 길찾기를 하지 못했습니다.」·「여기서 실시간으로 안내할 수 있는 대중교통 경로가 없습니다.」·「다시 시도」·「목적지까지 걸어가기」. 기존 문장 재사용: 조회 중 `destChangeLoading`, 실패 `destChangeError`, 0건 `altNone`, 역 질문 `reboardStationPrompt`.
+- **비한국어(§8-6)**: 앱 데이터 언어가 ko가 아니면 en으로 접히므로 `/api/places?lang=en` 실호출 한 축으로 다섯 로케일을 대표했다 — `Gangnam Station`·`Sindorim` 둘 다 `교통,수송 > 지하철,전철` 분류 장소를 돌려줘 `stationLayoutKind == .subway` 판정이 원문 `category` 축에서 통과한다(corpus는 세션 보고 디렉터리).
+- **착지**: 역 질문은 `.reboardPrompt`를 재사용하고(같은 질문 문장), 조회 중·결과 줄은 새 대상 `.recoveryStatus` 하나다. 버스의 첫 누름은 버튼이 그대로라 착지하지 않고 `.high` 통지가 응답이다. 채택 뒤 착지는 국면 전이 착지(대기 라벨)가 맡는다.

@@ -163,6 +163,7 @@
 - **riding 미관측 상한은 시계가 아니라 조회 횟수다**(A36 ①, `transitNeverSeenPolls` 10 ↔ 웹 `NEVER_SEEN_POLLS`): 실패 폴·boarding 폴·비관측 잠금은 세지 않고 riding 진입에서 0. 벽시계 백스톱 부활 금지(위원장 판정). → INTEGRATIONS
 - **대중교통 안내는 백그라운드에서도 폴하고, 프로세스를 살리는 것은 오디오가 아니라 boarding·riding 동안의 keep-alive 위치 스트림이다**(E36·A46). 백그라운드 톤은 Kit `transitToneAllowedInBackground` 하나가 가른다(E79: 승차 중 추세·사다리·도착과 고른 차량 다가옴, 신호 잃음 반복음 제외, `playTone(_:allowedInBackground:)` 기본값 없음, 리터럴 `true` 금지), keep-alive fix는 `keepAliveFixSink`로 안내 세션에만(E48). → INTEGRATIONS
 - **승차 전 도보(prewalk)는 대중교통 세션이 아니라 그 앞의 도보 세션이고, 종료 화면을 남기지 않는다**(A25·E73 환승 도보: `transitPrewalkTarget` → `markPrewalk` → `onSessionEnd`). `prewalkTarget`은 `stop()` 앞에서 캡처, 잊힌 세션 안전망 비적용. → INTEGRATIONS
+- **잘못 내림 복구(E78 「여기서 다시 길찾기」)는 같은 세션의 경로 교체이고, 슬롯(`pendingRecovery`)이 있는 동안 옛 세션은 조용하다**(폴·즉폴·버스 하차 위치 통지 0, 진입 때 통지 장부 무효화): 사용자 조작·경쟁 커밋은 `invalidateRecovery()`를 먼저 부르고, 승차 전 도보 연결의 환승 여부는 `PrewalkContext.isTransfer` 저장값(구간 번호로 가르지 말 것). → INTEGRATIONS
 - **iOS 통지 우선순위의 판별선은 "포커스가 움직이고, 그 통지가 착지 라벨로 대체될 수 없을 때 `.high`"다**(`BeaconModel.performReroute` 실사고). 화면 변화 없는 활성화 응답("복사됨")도 `.high`, 실패만 `.high`이고 성공이 기본값인 비대칭은 결함 신호. → PATTERNS
 - **결과 진동은 `ResultHaptic.fire(.success|.attention|.failure)` 한 창구다**(스위치 `TrendHaptics.storageKey` 뒤). 1회성 결과·전이에만, **문장이 나가는 조건 = 진동이 나가는 조건**. 제너레이터 직접 생성은 기존 4곳뿐(`result-haptic-guard.test.ts`). → PATTERNS
 - **내 주변 탭 동작은 기존 판별선을 재사용한다**(E65·E72: 장소 하나인 `List` 행 = 행 뿌리의 `placeRowSwipeActions`, 문장 속 여러 장소 = 링크 + 로터). 앵커 목록의 `directionsEntryAllowed`는 기본값 없는 인자이고, 상세에서 돌아온 등장은 다시 조회하지 않는다(A64). → PATTERNS
