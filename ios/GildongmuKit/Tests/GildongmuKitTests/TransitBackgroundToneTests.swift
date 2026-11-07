@@ -30,12 +30,17 @@ struct TransitBackgroundToneTests {
         #expect(!allowed(.vehiclePassed))
     }
 
-    @Test func 승차_전과_구간_시작음은_이번_판_밖이다() {
-        #expect(!allowed(.approaching(remaining: 2, message: "m", messageEn: nil)))
-        #expect(!allowed(.approaching(remaining: 1, message: "m", messageEn: nil)))
-        #expect(!allowed(.arrivingAtBoardStop))
-        #expect(!allowed(.boarded(legIndex: 0, cause: .observed)))
+    @Test func 고른_차량을_기다리는_동안의_다가옴_소리도_낸다() {
+        #expect(allowed(.approaching(remaining: 2, message: "m", messageEn: nil)))
+        #expect(allowed(.approaching(remaining: 1, message: "m", messageEn: nil)))
+        #expect(allowed(.approaching(remaining: nil, message: "m", messageEn: nil)))
+        #expect(allowed(.arrivingAtBoardStop))
+        #expect(allowed(.boarded(legIndex: 0, cause: .observed)))
+    }
+
+    @Test func 사용자_조작_응답과_출발_관측은_전경만이다() {
         #expect(!allowed(.boarded(legIndex: 0, cause: .declared)))
+        #expect(!allowed(.boarded(legIndex: 0, cause: .departed)))
         #expect(!allowed(.legAdvanced(legIndex: 1, final: false)))
         #expect(!allowed(.vehicleSelected(legIndex: 0)))
     }

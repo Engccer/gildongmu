@@ -9,7 +9,7 @@ import { join } from "node:path";
  * 1. **백그라운드 발화는 채널 술어만 연다** — `TransitGuideModel.post`가 게시 전에 채널 술어(E53)를 지난다. 정식판은
  *    토글 실효값이 거짓이라 종전 계약(백그라운드는 소리만, 음성은 복귀 시) 그대로다 — 조용한 회귀의 대가가 크다.
  * 2. **백그라운드 톤 허용 집합은 Kit `transitToneAllowedInBackground` 하나가 가른다**(E79, spec
- *    `2026-11-07-e79-transit-background-tones-design.md` §2 — 승차 중 사다리·임박·추세·도착과 첫 관측, 신호 잃음
+ *    `2026-11-07-e79-transit-background-tones-design.md` §2 — 승차 중 사다리·임박·추세·도착과 첫 관측, boarding 다가옴 소리, 신호 잃음
  *    반복음·경고음 제외). 모델의 `playTone` 호출부는 그 판정 결과 또는 리터럴 `false`만 넘기고 리터럴 `true`는 0곳.
  * 3. **keep-alive 국면 = boarding ∨ riding**(A46) — 앱을 살리는 위치 스트림이 켜지는 조건.
  */
@@ -63,7 +63,7 @@ describe("대중교통 백그라운드 폴 소스 가드 (E36)", () => {
     // 재생기 직접 호출은 playTone 안 한 곳뿐이다 — 다른 자리의 `tones.play(`는 백그라운드 게이트를 우회한다(리뷰 MINOR-2).
     expect(MODEL.match(/tones\.play\(/g) ?? []).toHaveLength(1);
     expect(body(/private func playTone\(_ tone: BeaconTone, allowedInBackground: Bool\)/)).toContain("tones.play(tone)");
-    // 이벤트 톤은 이벤트 전체를 Kit에 넘긴다 — 톤 종류로 가르면 boarding 사다리(approaching)가 riding 사다리와 섞인다.
+    // 이벤트 톤은 이벤트 전체를 Kit에 넘긴다 — 같은 `start` 소리라도 도착 관측(`boarded(observed)`)은 허용, 선언·출발 추정은 불허라 톤 종류로는 가를 수 없다.
     const handle = body(/private func handle\(event: TransitGuideEvent\)/);
     expect(handle).toContain("let allowedInBackground = transitToneAllowedInBackground(.event(event))");
     // 추세 톤 자리: 신호 잃음 반복음(unreliable)을 거르는 판정이 Kit에 있다(판정 ①).
