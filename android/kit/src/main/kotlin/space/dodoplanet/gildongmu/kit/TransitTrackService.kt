@@ -16,6 +16,14 @@ data class TransitTrackEnvelope(
     val stop: TransitTrackResolvedStop? = null,
 )
 
+/** 노선 집합 항목(E76 후속 ⓔ, Kit `TransitLaneRoute` 미러 — 응답 디코딩만). */
+@Serializable
+data class TransitLaneRoute(val routeId: String, val lineName: String, val lineNameEn: String? = null)
+
+/** `phase=lanes` 응답(E76 후속 ⓔ). `unverified`가 0이 아니면 `routes: []`가 「다른 노선 없음」의 증거가 아니다. */
+@Serializable
+data class TransitLanesEnvelope(val status: String, val routes: List<TransitLaneRoute>? = null, val unverified: Int? = null)
+
 /** 지방버스 하차 정류소 해석 결과(mode=tagoBus&phase=resolve). */
 @Serializable
 data class TransitTrackResolvedStop(val nodeId: String, val cityCode: String, val name: String)
@@ -56,12 +64,25 @@ class TransitTrackService(private val client: APIClient) {
         listOf("mode" to "tagoBus", "phase" to "resolve") + coordQuery(lat, lng),
     )
 
-    suspend fun tagoTrack(cityCode: String, nodeId: String, routeNo: String, lang: String): TransitTrackEnvelope = get(
+    /** E76 후속 ⓓ: `routeNos`(대기 국면 노선 집합)가 있으면 `routeNo` 자리를 대신한다 — Swift 원본과 같은 자리. */
+    suspend fun tagoTrack(cityCode: String, nodeId: String, routeNo: String, routeNos: List<String>?, lang: String): TransitTrackEnvelope = get(
         listOf(
-            "mode" to "tagoBus", "phase" to "track", "cityCode" to cityCode,
-            "nodeId" to nodeId, "routeNo" to routeNo, "lang" to lang,
+            "mode" to "tagoBus", "phase" to "track", "cityCode" to cityCode, "nodeId" to nodeId,
+            if (routeNos == null) "routeNo" to routeNo else "routeNos" to routeNos.joinToString(","),
+            "lang" to lang,
         ),
     )
+
+    /** 서울버스 정류장 재기준 집합(E76 후속 ⓔ) — Swift `seoulLanes` 미러(안드로이드 소비자는 아직 없다). */
+    suspend fun seoulLanes(arsId: String, boardId: String, alightId: String, routeId: String, lang: String): TransitLanesEnvelope =
+        client.get(
+            "/api/transit/track",
+            listOf(
+                "mode" to "seoulBus", "phase" to "lanes", "arsId" to arsId, "boardId" to boardId,
+                "alightId" to alightId, "routeId" to routeId, "lang" to lang,
+            ),
+            TransitLanesEnvelope.serializer(),
+        )
 
     suspend fun subwayTrack(station: String, line: String, lang: String): TransitTrackEnvelope = get(
         listOf("mode" to "subway", "phase" to "track", "station" to station, "line" to line, "lang" to lang),

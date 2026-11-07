@@ -14,7 +14,7 @@ class TransitTrackServiceTest {
     private val body = """{"mode":"subway","status":"empty"}"""
 
     /** 한 호출이 실은 쿼리 (이름, 값) — 순서 그대로. */
-    private suspend fun queryItems(call: suspend (TransitTrackService) -> TransitTrackEnvelope): List<QueryItem> {
+    private suspend fun queryItems(call: suspend (TransitTrackService) -> Any): List<QueryItem> {
         var seen = ""
         val service = TransitTrackService(
             stubbedClient { url ->
@@ -53,14 +53,15 @@ class TransitTrackServiceTest {
         "seoulWait" -> queryItems { it.seoulWait("123", "r", null, "en") }
         "seoulRide" -> queryItems { it.seoulRide("r", "b", "a", "en") }
         "resolveTagoStop" -> queryItems { it.resolveTagoStop(36.35, 127.38) }
-        "tagoTrack" -> queryItems { it.tagoTrack("c", "n", "10", "en") }
+        "tagoTrack" -> queryItems { it.tagoTrack("c", "n", "10", null, "en") }
+        "seoulLanes" -> queryItems { it.seoulLanes("01007", "b", "a", "r", "en") }
         "subwayTrack" -> queryItems { it.subwayTrack("천호", "1005", "en") }
         else -> fail("Kotlin 미러에 없는 Swift 메서드: $swiftName")
     }
 
     @Test fun `메서드별 쿼리 이름·순서·고정 값은 Swift 원본과 같다`() = runTest {
         val swift = swiftQueryItems()
-        assertEquals(setOf("seoulWait", "seoulRide", "resolveTagoStop", "tagoTrack", "subwayTrack"), swift.keys)
+        assertEquals(setOf("seoulWait", "seoulRide", "resolveTagoStop", "tagoTrack", "seoulLanes", "subwayTrack"), swift.keys)
         for ((name, expected) in swift) {
             assertTrue(expected.isNotEmpty(), name) // 선언 모양이 바뀌어 대조가 공회전하는 것을 막는다
             val actual = queryItemsForSwiftFunc(name)

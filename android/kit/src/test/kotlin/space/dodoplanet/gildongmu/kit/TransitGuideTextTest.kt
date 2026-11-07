@@ -28,6 +28,7 @@ class TransitGuideTextTest {
             val role: String? = null,
             val here: Boolean? = null,
             val isCurrentLeg: Boolean? = null,
+            val lineUnconfirmed: Boolean? = null,
             val express: String? = null,
             val exit: String? = null,
             val sentence: Boolean? = null,
@@ -55,7 +56,7 @@ class TransitGuideTextTest {
         return when (c.fn) {
             "waitContext" -> transitWaitContextLine(e, need(c.leg, "leg", c), need(c.isCurrentLeg, "isCurrentLeg", c))
             "boardingContext" -> transitBoardingContextLine(e, need(c.leg, "leg", c))
-            "context" -> transitContextLine(e, need(c.leg, "leg", c))
+            "context" -> transitContextLine(e, need(c.leg, "leg", c), c.lineUnconfirmed ?: false)
             "approachFrame" -> transitApproachFrameLine(e, need(c.leg, "leg", c), need(c.message, "message", c))
             "arrivalStatus" -> transitArrivalStatusLine(
                 e, need(c.leg, "leg", c), c.message, c.arrivalCode, c.remaining,

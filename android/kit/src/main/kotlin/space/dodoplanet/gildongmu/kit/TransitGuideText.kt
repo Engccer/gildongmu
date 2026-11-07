@@ -73,8 +73,13 @@ fun transitWaitContextLine(isEn: Boolean, leg: TransitDisplayLeg, isCurrentLeg: 
 fun transitBoardingContextLine(isEn: Boolean, leg: TransitDisplayLeg): TransitTextLine =
     makeLine(isEn, modeKey(leg, "boardingContext"), listOf(leg.board, leg.line)) { it }
 
-fun transitContextLine(isEn: Boolean, leg: TransitDisplayLeg): TransitTextLine =
-    makeLine(isEn, modeKey(leg, "context"), listOf(leg.line, leg.alight)) { it }
+/** `lineUnconfirmed`(E76 후속 ⓕ): 근사 잠금 ∧ 노선 미확정이면 번호 없는 「버스 탑승 중」. 기본값 없는 필수 인자(웹·Kit 동형). */
+fun transitContextLine(isEn: Boolean, leg: TransitDisplayLeg, lineUnconfirmed: Boolean): TransitTextLine =
+    if (lineUnconfirmed && leg.mode == "bus") {
+        makeLine(isEn, "contextBusUnconfirmed", listOf(leg.alight)) { it }
+    } else {
+        makeLine(isEn, modeKey(leg, "context"), listOf(leg.line, leg.alight)) { it }
+    }
 
 // MARK: - 완성 문장 프레임
 
@@ -382,7 +387,7 @@ fun transitOpenStationLine(isEn: Boolean, station: TransitLabel): TransitTextLin
 /** descriptor가 낼 수 있는 전체 키 — 앱 리터럴 분기 망라성 대조 축(spec §5.2). */
 val transitTextKeys: List<String> = listOf(
     "waitContext", "waitContextBus", "waitContextWalk", "waitContextWalkBus",
-    "boardingContext", "boardingContextBus", "context", "contextBus",
+    "boardingContext", "boardingContextBus", "context", "contextBus", "contextBusUnconfirmed",
     "subwayNextStop", "subwayArriving", "subwayAtStop", "subwayDeparted",
     "remainingCount", "remainingCountJoin", "stopsAway", "stopsAwayOnly",
     "busEtaMinSec", "busEtaMin", "busEtaSec", "busSoon", "busNotDeparted", "busTurning",
