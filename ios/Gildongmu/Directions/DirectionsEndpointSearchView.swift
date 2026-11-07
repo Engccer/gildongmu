@@ -645,7 +645,9 @@ struct DirectionsEndpointSearchView: View {
     private func selectAboardStation(_ place: Place) {
         guard stationLayoutKind(place) == .subway else {
             // 화면 변화 없는 활성화 응답이라 `.high`(selectStation과 같은 근거). 역 칸의 문장은 정류장도 받는다는 뜻이라 쓰지 않는다.
-            var message = AttributedString(appLocalized("ios.journey.aboardNotSubway"))
+            // 복구(E78)는 정식판 6로케일 문장, 여정(E71)은 ko 전용 실험 문장(spec 리뷰 MAJOR-1 — 키가 그대로 낭독되지 않게).
+            var message = AttributedString(recoveryMode
+                ? appLocalized("ios.transitGuide.recoveryNotSubway") : appLocalized("ios.journey.aboardNotSubway"))
             message.accessibilitySpeechAnnouncementPriority = .high
             AccessibilityNotification.Announcement(message).post()
             ResultHaptic.fire(.attention)

@@ -33831,6 +33831,46 @@
         }
       }
     },
+    "ios.transitGuide.recoveryNotSubway": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "지하철역을 골라 주세요."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Please choose a subway station."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elige una estación de metro."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choisissez une station de métro."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scegli una stazione della metropolitana."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "地下鉄の駅を選んでください。"
+          }
+        }
+      }
+    },
     "ios.transitGuide.recoveryRetry": {
       "localizations": {
         "ko": {

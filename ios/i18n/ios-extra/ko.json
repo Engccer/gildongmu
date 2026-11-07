@@ -350,7 +350,8 @@
       "recoveryRetry": "다시 시도",
       "recoveryWalk": "목적지까지 걸어가기",
       "recoveryFindStation": "목록에 없는 역 찾기",
-      "recoveryStationSearch": "지금 계신 역 검색"
+      "recoveryStationSearch": "지금 계신 역 검색",
+      "recoveryNotSubway": "지하철역을 골라 주세요."
     },
     "outing": {
       "heading": "나들이",

@@ -453,7 +453,14 @@ struct TransitTrackingSheet: View {
         // 하위 시트가 열린 채 조망이 통째로 닫힌 경우 그 조회를 폐기(spec §5.2 — 늦은
         // 응답이 모델에 남지 않게).
         if let token = model.pendingAltRoutes?.token { model.cancelAltRoutes(token: token) }
-        guard let followUp = pendingFollowUp else { return }
+        // 조망이 떠 있던 동안 이월된 착지(E78 복구 결과 행 등 — 국면 전이 착지는 `pendingFollowUp`이 맡는다, 접근성 감사 M2).
+        guard let followUp = pendingFollowUp else {
+            if let target = deferredLanding {
+                deferredLanding = nil
+                landControlFocus(target, proxy: proxy, note: "note=deferred")
+            }
+            return
+        }
         pendingFollowUp = nil
         switch followUp {
         case let .land(target):
@@ -950,7 +957,7 @@ struct TransitTrackingSheet: View {
         // 배경(VO 커서 없음)·모달 위(장소 상세·목적지 검색 — 커서가 모달 안이라 대입이 먹어도 `stolen`으로 끝나고 폴백만
         // 남는다, a11y 감사 A1)에선 시도하지 않고 이월한다. 조망(`overviewAdapter`)은 자기 `pendingFollowUp` 계약.
         let blocker: LandingOutcome? = !model.isForeground ? .background
-            : (detailPlace != nil || changeDestPresented || recoverySearchPresented) ? .modal : nil
+            : (detailPlace != nil || changeDestPresented || recoverySearchPresented || overviewAdapter != nil) ? .modal : nil
         if let blocker {
             deferredLanding = target
             transitGuideLog("controlFocus target=\(target) reason=\(blocker.rawValue) deferred=true"

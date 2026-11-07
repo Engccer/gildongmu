@@ -350,7 +350,8 @@
       "recoveryRetry": "Try again",
       "recoveryWalk": "Walk to destination",
       "recoveryFindStation": "Find a station not listed",
-      "recoveryStationSearch": "Search for the station you're at"
+      "recoveryStationSearch": "Search for the station you're at",
+      "recoveryNotSubway": "Please choose a subway station."
     },
     "outing": {
       "heading": "Stroll",

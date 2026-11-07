@@ -32,7 +32,7 @@ describe("E78 복구 — 모델", () => {
     expect(model()).toContain(
       "transitRecoveryOffered(phase: state.phase, inJourney: GuideSession.shared.journey != nil)",
     );
-    expect(functionBody(model(), "beginRecovery")).toContain("transitRecoveryOrigin(leg)");
+    expect(functionBody(model(), "startRecovery")).toContain("transitRecoveryOrigin(leg)");
   });
 
   it("버스 출발점은 새 측위다 — 옛 좌표를 쓰지 않는다(§3.2 Q3)", () => {
@@ -75,8 +75,35 @@ describe("E78 복구 — 모델", () => {
     for (const name of ["beginReboard", "prepareDestinationChange", "prepareAltRoutes", "changeRoute", "stop"]) {
       expect(functionBody(model(), name), name).toContain("invalidateRecovery()");
     }
-    expect(functionBody(model(), "dispatch")).toContain(
-      "if userAction, invalidateRecovery() { restartPollLoop(immediate: true) }",
+    const dispatch = functionBody(model(), "dispatch");
+    expect(dispatch).toContain("let recoveryWasPending = userAction && invalidateRecovery()");
+    // 폴 재개는 상태 대입 뒤 — 전이 전 상태로 주기를 재지 않는다(주기 0 전이의 옛 주기 즉폴 금지).
+    expect(dispatch.indexOf("self.state = result.state")).toBeLessThan(
+      dispatch.indexOf("if recoveryWasPending { restartPollLoop(immediate: true) }"),
+    );
+  });
+
+  it("역 질문을 연 채 잊으면 유휴 상한 뒤 질문을 거두고 폴을 다시 세운다(유휴 안전망 복귀)", () => {
+    expect(functionBody(model(), "startRecovery")).toContain("scheduleRecoveryPickTimeout(token: recoveryToken)");
+    const body = functionBody(model(), "scheduleRecoveryPickTimeout");
+    expect(body).toContain("transitIdlePollLimitMs(legMinutes: currentLeg?.minutes)");
+    expect(body).toContain("pending.phase == .pickStation");
+    expect(body).toContain("self.restartPollLoop(immediate: true)");
+  });
+
+  it("버스 「다시 시도」는 조회 중 통지를 겹치지 않는다(착지가 응답)", () => {
+    expect(functionBody(model(), "beginRecovery")).toContain("startRecovery(announcesLoading: true)");
+    expect(functionBody(model(), "retryRecovery")).toContain("startRecovery(announcesLoading: false)");
+    expect(functionBody(model(), "startRecovery")).toMatch(
+      /if announcesLoading \{\s*announceNow\(appLocalized\("ios\.transitGuide\.destChangeLoading"\), highPriority: true\)/,
+    );
+  });
+
+  it("최소화 중 결과는 통지·복귀 낭독으로 갚고, 시트가 떠 있으면 착지만이다", () => {
+    const body = functionBody(model(), "finishRecovery");
+    expect(body).toMatch(/if GuideSession\.shared\.isMinimized \{\s*if !isForeground \{\s*missedAnnouncement = true/);
+    expect(functionBody(model(), "returnStatusText")).toContain(
+      "if let outcome = recoveryOutcome, let text = recoveryOutcomeText(outcome) { return text }",
     );
   });
 
@@ -120,6 +147,15 @@ describe("E78 복구 — 시트", () => {
     expect(picker.indexOf("ForEach(")).toBeLessThan(find);
     expect(find).toBeLessThan(cancel);
     expect(sheet()).toContain("DirectionsEndpointSearchView(recoveryStation:");
+    // 복구 검색의 거절 문장은 6로케일 키다(여정 문장은 ko 전용 — 비한국어에서 키 문자열이 낭독됐다).
+    const search = read(join(DIR, "DirectionsEndpointSearchView.swift"));
+    expect(functionBody(search, "selectAboardStation")).toContain(
+      'recoveryMode\n                ? appLocalized("ios.transitGuide.recoveryNotSubway")',
+    );
+    for (const loc of ["ko", "en", "es", "fr", "it", "ja"]) {
+      const json = JSON.parse(read(join(ROOT, `ios/i18n/ios-extra/${loc}.json`)));
+      expect(json.ios.transitGuide.recoveryNotSubway, loc).toBeTruthy();
+    }
   });
 
   it("걸어가기는 경로 없음·안내 가능 없음에만, 「다시 시도」는 실패에만 선다(§8-2)", () => {

@@ -422,6 +422,7 @@
     <string name="android_transitGuide_recoveryFindStation">Find a station not listed</string>
     <string name="android_transitGuide_recoveryNoGuidable">No transit route from here can be guided in real time.</string>
     <string name="android_transitGuide_recoveryNoLocation">Couldn\'t find your current location, so the route search didn\'t run.</string>
+    <string name="android_transitGuide_recoveryNotSubway">Please choose a subway station.</string>
     <string name="android_transitGuide_recoveryRetry">Try again</string>
     <string name="android_transitGuide_recoveryStart">Find a route from here</string>
     <string name="android_transitGuide_recoveryStationSearch">Search for the station you\'re at</string>

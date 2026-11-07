@@ -422,6 +422,7 @@
     <string name="android_transitGuide_recoveryFindStation">Cerca una stazione non in elenco</string>
     <string name="android_transitGuide_recoveryNoGuidable">Da qui non c’è un percorso con i mezzi pubblici guidabile in tempo reale.</string>
     <string name="android_transitGuide_recoveryNoLocation">Impossibile ottenere la posizione attuale, quindi il percorso non è stato cercato.</string>
+    <string name="android_transitGuide_recoveryNotSubway">Scegli una stazione della metropolitana.</string>
     <string name="android_transitGuide_recoveryRetry">Riprova</string>
     <string name="android_transitGuide_recoveryStart">Cerca percorso da qui</string>
     <string name="android_transitGuide_recoveryStationSearch">Cerca la stazione in cui ti trovi</string>

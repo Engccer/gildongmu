@@ -575,6 +575,8 @@ final class TransitGuideModel {
     private func returnStatusText() -> String {
         // 잘못 내림 복구 중엔 복구 상태만(E78 §8-5) — 틀렸다고 선언한 옛 안내 상태를 말하지 않는다.
         if let pending = pendingRecovery { return recoveryStatusText(pending) }
+        // 백그라운드에서 끝난 복구 결과는 결과 문장으로 갚는다(코드 리뷰 MINOR-2).
+        if let outcome = recoveryOutcome, let text = recoveryOutcomeText(outcome) { return text }
         guard let s = state, let leg = currentLeg else { return "" }
         // 현재역이 잡혀 있으면 그것이 상태다(E35 §6). 창은 **지금** 시각으로 — 백그라운드 동안 지났을 수 있다.
         if let located = positionStatusText(state: s, leg: leg, now: nowMs()) { return located }
@@ -1248,6 +1250,12 @@ final class TransitGuideModel {
 
     /// 버튼. 버스는 곧장 새 측위·조회, 지하철은 역부터 묻는다(Q3). 조회 중 다시 누르면 같은 문장만 다시 말한다(E74 규칙).
     func beginRecovery() {
+        startRecovery(announcesLoading: true)
+    }
+
+    /// `announcesLoading`: 버스 갈래의 조회 중 `.high` 통지를 낼까 — 버튼이 그대로 남는 첫 누름은 통지가 유일한 응답이고,
+    /// 「다시 시도」는 그 행이 사라져 시트가 조회 중 행으로 착지하므로 통지를 겹치지 않는다(헌장 §5, 접근성 감사 M1). 기본값 없음.
+    private func startRecovery(announcesLoading: Bool) {
         guard let leg = currentLeg, recoveryOffered else { return }
         if let pending = pendingRecovery {
             if pending.phase == .loading {
@@ -1264,15 +1272,19 @@ final class TransitGuideModel {
         recoveryRetryOrigin = nil
         recoveryToken += 1
         quietForRecovery()
+        updateKeepAlive()  // 유휴 정지 중 누름이면 꺼져 있던 스트림을 다시 켠다(코드 리뷰 NIT-2)
         let origin = transitRecoveryOrigin(leg)
         transitGuideLog("recovery begin phase=\(state?.phase.rawValue ?? "-") leg=\(state?.legIndex ?? -1) origin=\(origin)")
         switch origin {
         case .askStation:
             pendingRecovery = PendingRecovery(token: recoveryToken, routeGen: routeGen, phase: .pickStation)
+            scheduleRecoveryPickTimeout(token: recoveryToken)
         case .deviceFix:
             pendingRecovery = PendingRecovery(token: recoveryToken, routeGen: routeGen, phase: .loading)
             // 버튼이 그대로 남아 커서가 움직이지 않는다 — 통지가 유일한 응답이다(.high).
-            announceNow(appLocalized("ios.transitGuide.destChangeLoading"), highPriority: true)
+            if announcesLoading {
+                announceNow(appLocalized("ios.transitGuide.destChangeLoading"), highPriority: true)
+            }
             let token = recoveryToken
             Task { await runRecovery(token: token, origin: nil) }
         }
@@ -1300,9 +1312,25 @@ final class TransitGuideModel {
         Task { await runRecovery(token: pending.token, origin: origin) }
     }
 
+    /// 역 질문을 연 채 잊힌 세션의 안전망(코드 리뷰 MAJOR-1): 슬롯이 있는 동안 폴이 없어 유휴 판정(`enterIdleIfDue`, 폴 루프 안)이
+    /// 돌지 않는다 — 유휴 상한이 지나도록 역을 고르지 않으면 질문을 거두고 폴을 다시 세운다. 마지막 조작이 그 누름이라 재개된 첫 폴
+    /// 직전에 기존 유휴 정지(폴·keep-alive 정지, 「한동안 조작이 없어 …」)가 판정된다.
+    private func scheduleRecoveryPickTimeout(token: Int) {
+        let limitSeconds = transitIdlePollLimitMs(legMinutes: currentLeg?.minutes) / 1000
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(limitSeconds))
+            guard let self, let pending = self.pendingRecovery, pending.token == token,
+                  pending.phase == .pickStation else { return }
+            transitGuideLog("recovery pickTimeout")
+            self.pendingRecovery = nil
+            self.restartPollLoop(immediate: true)
+        }
+    }
+
     /// 역 고르기 취소 — 옛 문장을 재생하지 않고 즉폴로 현재 상태를 다시 판정한다(§8-5).
     func cancelRecovery() {
         guard pendingRecovery != nil else { return }
+        noteUserAction()
         transitGuideLog("recovery cancel")
         pendingRecovery = nil
         restartPollLoop(immediate: true)
@@ -1312,7 +1340,7 @@ final class TransitGuideModel {
     func retryRecovery() {
         guard recoveryOutcome == .noLocation || recoveryOutcome == .fetchFailed else { return }
         guard let origin = recoveryRetryOrigin, recoveryOffered else {
-            beginRecovery()
+            startRecovery(announcesLoading: false)
             return
         }
         noteUserAction()
@@ -1320,6 +1348,7 @@ final class TransitGuideModel {
         recoveryOutcome = nil
         recoveryToken += 1
         quietForRecovery()
+        updateKeepAlive()
         pendingRecovery = PendingRecovery(token: recoveryToken, routeGen: routeGen, phase: .loading)
         // 「다시 시도」 행이 사라지고 상태 행이 조회 중으로 바뀐다 — 착지는 시트(상태 행), 통지는 내지 않는다.
         transitGuideLog("recovery retry origin=station")
@@ -1393,6 +1422,16 @@ final class TransitGuideModel {
         pendingRecovery = nil
         recoveryOutcome = outcome
         transitGuideLog("recovery outcome=\(outcome)")
+        // 결과 문장의 정본은 시트의 결과 행 착지다(백그라운드면 시트가 이월해 복귀 때 착지한다). 시트가 최소화돼 있으면 콘텐츠 뷰가
+        // 파괴돼 착지가 없다 — 전경이면 같은 문장을 통지 창구로 내고, 백그라운드면 복귀 낭독(`returnStatusText`)이 갚는다
+        // (코드 리뷰 MINOR-2 — 문장 조건 = 진동 조건). 시트가 떠 있을 때 둘 다 내면 착지 낭독과 겹친다.
+        if GuideSession.shared.isMinimized {
+            if !isForeground {
+                missedAnnouncement = true
+            } else if let text = recoveryOutcomeText(outcome) {
+                announce(text, highPriority: true, speechClass: .actionable)
+            }
+        }
         // 문장이 나가는 조건 = 진동 조건(결과 행 착지가 문장이다).
         switch outcome {
         case .noLocation, .fetchFailed: ResultHaptic.fire(.failure)
@@ -1407,11 +1446,10 @@ final class TransitGuideModel {
         guard let pending = pendingRecovery, pending.token == token, isTracking,
               pending.routeGen == routeGen, let dest,
               let guideRoute = buildTransitGuideRoute(route) else {
-            if pendingRecovery?.token == token {
-                transitGuideLog("recovery dropped reason=guard")
-                pendingRecovery = nil
-                restartPollLoop(immediate: true)
-            }
+            // 실질 도달 불가(경쟁 커밋은 `invalidateRecovery`가 토큰부터 무효화한다)지만, 닿으면 조회 중 행이 말없이 사라지지 않게
+            // 실패 결과로 수렴한다(접근성 감사 N4).
+            transitGuideLog("recovery dropped reason=guard")
+            finishRecovery(token: token, outcome: .fetchFailed)
             return
         }
         // 슬롯을 먼저 비운다 — 경로 교체가 부르는 폴 재개가 복구 게이트에 막히지 않게.
@@ -1421,6 +1459,8 @@ final class TransitGuideModel {
             // 대중교통보다 도보가 먼저 세션을 갖는다(§8-1): 이 모델은 인계에서 정지음 없이 끝나고, 걸어서 닿으면 새 경로 0번 구간
             // 대기부터 다시 연다(`startAfterPrewalk`). 대기 착지·시작 통지를 먼저 내지 않는다.
             transitGuideLog("recovery adopted route=\(route.routeKey) prewalk=1 minutes=\(target.minutes)")
+            // 경로가 바뀌었다 — 옛 승차 전 도보가 남긴 실패 줄의 재시작은 옛 경로를 잇는다(A68 판정 2, `changeRoute`와 같은 자리).
+            GuideSession.shared.transitPassedPrewalk()
             ResultHaptic.fire(.success)
             GuideSession.shared.transitTransferWalk(TransitTransferWalkHandoff(
                 route: guideRoute, legIndex: 0, target: target, destinationLabel: destinationLabel,
@@ -1438,6 +1478,16 @@ final class TransitGuideModel {
         }
         transitGuideLog("recovery adopted route=\(route.routeKey) prewalk=0")
         ResultHaptic.fire(.success)
+    }
+
+    /// 결과 행 문장 — 시트 `recoveryStatusText`와 같은 키(최소화·복귀 낭독용).
+    private func recoveryOutcomeText(_ outcome: RecoveryOutcome) -> String? {
+        switch outcome {
+        case .noLocation: appLocalized("ios.transitGuide.recoveryNoLocation")
+        case .fetchFailed: appLocalized("ios.transitGuide.destChangeError")
+        case .noRoute: appLocalized("ios.transitGuide.altNone")
+        case .noGuidable: appLocalized("ios.transitGuide.recoveryNoGuidable")
+        }
     }
 
     /// 복구 중 복귀 낭독의 문장 — 옛 안내 상태가 아니라 복구 상태만 말한다(§8-5).
@@ -2143,9 +2193,9 @@ final class TransitGuideModel {
         // **상태 대입 뒤**(코드 리뷰 C4 — 입력 전 상태로 주기를 재지 않게).
         let userAction: Bool = if case .poll = input { false } else { true }
         if userAction { noteUserAction() }
-        // 사용자 조작(다음 구간·탑승 변경·차량 선택·이미 탔어요·하차 선언)이 복구를 이긴다(§8-3).
-        // 폴은 여기서 다시 세운다 — 호출부마다 재개 여부가 달라 복구 게이트에 막힌 채 남는 경로가 없게.
-        if userAction, invalidateRecovery() { restartPollLoop(immediate: true) }
+        // 사용자 조작(다음 구간·탑승 변경·차량 선택·이미 탔어요·하차 선언)이 복구를 이긴다(§8-3). 폴 재개는 상태 대입 뒤(아래) —
+        // 전이 전 상태로 주기를 재면 주기 0 전이(riding → arrived)에서 옛 주기로 즉폴이 나간다(코드 리뷰 NIT-1).
+        let recoveryWasPending = userAction && invalidateRecovery()
         let result = transitGuideStep(state: state, input: input, route: route, now: nowMs())
         // A47: 사용자 입력이 국면을 바꿨다(누른 버튼이 사라진다) — 시트가 이 순번의 변화로 착지를 가른다.
         // 국면 쌍으로 추정하면 boarding→riding 선언과 관측 승격이 같은 쌍이라 한쪽을 반드시 틀린다.
@@ -2154,6 +2204,12 @@ final class TransitGuideModel {
         }
         self.state = result.state
         if userAction { resumeIfIdle() }
+        if recoveryWasPending { restartPollLoop(immediate: true) }
+        // 자동 전이(국면·구간)가 지나간 결과 행은 낡았다 — 새 국면에 옛 「다시 시도」가 붙어 읽히지 않게 거둔다(spec 리뷰 NIT-3).
+        if recoveryOutcome != nil, result.state.phase != state.phase || result.state.legIndex != state.legIndex {
+            recoveryOutcome = nil
+            recoveryRetryOrigin = nil
+        }
         updateKeepAlive()
         if case .neverSeen = result.event {
             // A36 ① 판정 재료(spec §4.6·§7): 상한에 닿은 조회 수와 그 시점 잔여(대본 §5-3이 이 문자열을 읽는다).

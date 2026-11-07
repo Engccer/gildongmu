@@ -350,7 +350,8 @@
       "recoveryRetry": "再試行",
       "recoveryWalk": "目的地まで歩く",
       "recoveryFindStation": "一覧にない駅を探す",
-      "recoveryStationSearch": "今いる駅を検索"
+      "recoveryStationSearch": "今いる駅を検索",
+      "recoveryNotSubway": "地下鉄の駅を選んでください。"
     },
     "outing": {
       "heading": "お散歩",

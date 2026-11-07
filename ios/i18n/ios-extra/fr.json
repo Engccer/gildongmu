@@ -350,7 +350,8 @@
       "recoveryRetry": "Réessayer",
       "recoveryWalk": "Marcher jusqu'à la destination",
       "recoveryFindStation": "Chercher une station absente de la liste",
-      "recoveryStationSearch": "Rechercher la station où vous êtes"
+      "recoveryStationSearch": "Rechercher la station où vous êtes",
+      "recoveryNotSubway": "Choisissez une station de métro."
     },
     "outing": {
       "heading": "Balade",
