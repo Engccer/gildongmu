@@ -351,7 +351,8 @@
       "recoveryWalk": "Marcher jusqu'à la destination",
       "recoveryFindStation": "Chercher une station absente de la liste",
       "recoveryStationSearch": "Rechercher la station où vous êtes",
-      "recoveryNotSubway": "Choisissez une station de métro."
+      "recoveryNotSubway": "Choisissez une station de métro.",
+      "recoveryNoRoute": "Aucun itinéraire en transports en commun depuis ici."
     },
     "outing": {
       "heading": "Balade",

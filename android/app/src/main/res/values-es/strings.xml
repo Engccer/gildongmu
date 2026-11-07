@@ -422,6 +422,7 @@
     <string name="android_transitGuide_recoveryFindStation">Buscar una estación que no está en la lista</string>
     <string name="android_transitGuide_recoveryNoGuidable">No hay ninguna ruta de transporte público desde aquí con guía en tiempo real.</string>
     <string name="android_transitGuide_recoveryNoLocation">No se pudo obtener tu ubicación actual, así que no se buscó una ruta nueva.</string>
+    <string name="android_transitGuide_recoveryNoRoute">No hay ninguna ruta de transporte público desde aquí.</string>
     <string name="android_transitGuide_recoveryNotSubway">Elige una estación de metro.</string>
     <string name="android_transitGuide_recoveryRetry">Reintentar</string>
     <string name="android_transitGuide_recoveryStart">Buscar ruta desde aquí</string>

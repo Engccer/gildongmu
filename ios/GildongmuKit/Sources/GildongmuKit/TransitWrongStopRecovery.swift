@@ -9,11 +9,13 @@ import Foundation
 // 다시 조회한 후보 중 무엇으로 바꿀지의 판정뿐이고, 세션 교체는 앱의 경로 교체(`changeRoute`)가 한다.
 
 /// 「여기서 다시 길찾기」 버튼을 세우는 국면(spec §3.1·§5-3): 승차 중·도착 뒤, 모든 수단(지방버스 포함).
+/// 추적 불가 구간(비수도권 지하철·노선 이름 없는 버스)은 리듀서가 대기 국면에 머무르므로 국면과 무관하게 세운다 — 앱이 탔는지를
+/// 몰라 타기 전에도 보이는 것은 위원장 판정으로 수용했다(2026-11-07, 안내가 가장 약한 구간에서 복구 수단을 빼지 않는다).
 /// 여정(E70) 단계 안에서는 세우지 않는다 — 역 A·B를 지정한 계획이라 일반 재조회로 바꾸면 여정 상태와 어긋난다.
 /// ⚠ 기본값 없음(안전 인자 — 여정 여부를 빠뜨리면 여정 단계에 버튼이 선다).
-public func transitRecoveryOffered(phase: TransitPhase, inJourney: Bool) -> Bool {
-    guard !inJourney else { return false }
-    return phase == .riding || phase == .arrived
+public func transitRecoveryOffered(phase: TransitPhase, untrackable: Bool, inJourney: Bool) -> Bool {
+    guard !inJourney, phase != .done else { return false }
+    return untrackable || phase == .riding || phase == .arrived
 }
 
 /// 출발점을 정하는 방법(spec §3.2, 위원장 판정 Q3 가).

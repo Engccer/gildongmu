@@ -229,6 +229,16 @@ struct TransitTrackingSheet: View {
                     landControlFocus(.recoveryStatus, proxy: proxy)
                 }
             }
+            // 시한이 역 질문을 거뒀다(누른 버튼 없이 목록이 사라진다) — 열린 역 검색 시트를 닫고(거기서 고른 역은 버려진다) 상태 문장으로.
+            // 시트가 떠 있으면 착지는 이월돼 닫힘이 소비한다.
+            .onChange(of: model.recoveryWithdrawnSeq) {
+                if recoverySearchPresented {
+                    deferredLanding = .status
+                    recoverySearchPresented = false
+                } else {
+                    landControlFocus(.status, proxy: proxy)
+                }
+            }
             // 결과 행(실패·경로 없음) — 조회 중 행이 바뀐 같은 자리에 착지. 채택은 국면 전이 착지가 맡는다(결과 nil).
             .onChange(of: model.recoveryOutcome) { _, outcome in
                 if outcome != nil { landControlFocus(.recoveryStatus, proxy: proxy) }
@@ -692,7 +702,7 @@ struct TransitTrackingSheet: View {
         switch model.recoveryOutcome {
         case .noLocation: return appLocalized("ios.transitGuide.recoveryNoLocation")
         case .fetchFailed: return appLocalized("ios.transitGuide.destChangeError")
-        case .noRoute: return appLocalized("ios.transitGuide.altNone")
+        case .noRoute: return appLocalized("ios.transitGuide.recoveryNoRoute")
         case .noGuidable: return appLocalized("ios.transitGuide.recoveryNoGuidable")
         case nil: return nil
         }

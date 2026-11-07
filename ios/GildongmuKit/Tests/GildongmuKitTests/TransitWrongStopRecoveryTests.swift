@@ -18,14 +18,21 @@ private func route(_ legs: [TransitGuideLeg]) -> TransitGuideRoute {
 }
 
 @Test func recoveryOfferedOnlyRidingOrArrivedOutsideJourney() {
-    #expect(transitRecoveryOffered(phase: .riding, inJourney: false))
-    #expect(transitRecoveryOffered(phase: .arrived, inJourney: false))
+    #expect(transitRecoveryOffered(phase: .riding, untrackable: false, inJourney: false))
+    #expect(transitRecoveryOffered(phase: .arrived, untrackable: false, inJourney: false))
     for phase in [TransitPhase.waiting, .boarding, .done] {
-        #expect(!transitRecoveryOffered(phase: phase, inJourney: false), "\(phase)")
+        #expect(!transitRecoveryOffered(phase: phase, untrackable: false, inJourney: false), "\(phase)")
     }
     // 여정 단계는 국면과 무관하게 세우지 않는다(§5-3).
-    #expect(!transitRecoveryOffered(phase: .riding, inJourney: true))
-    #expect(!transitRecoveryOffered(phase: .arrived, inJourney: true))
+    #expect(!transitRecoveryOffered(phase: .riding, untrackable: false, inJourney: true))
+    #expect(!transitRecoveryOffered(phase: .arrived, untrackable: false, inJourney: true))
+}
+
+@Test func recoveryOfferedOnUntrackableLegWhilePhaseStaysWaiting() {
+    // 추적 불가 구간은 대기 국면에 머문다 — 그래도 선다(위원장 판정 2026-11-07, 타기 전 노출은 수용).
+    #expect(transitRecoveryOffered(phase: .waiting, untrackable: true, inJourney: false))
+    #expect(!transitRecoveryOffered(phase: .done, untrackable: true, inJourney: false))
+    #expect(!transitRecoveryOffered(phase: .waiting, untrackable: true, inJourney: true))
 }
 
 @Test func recoveryOriginAsksStationOnlyForSubway() {

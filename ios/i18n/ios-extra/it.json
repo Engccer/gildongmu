@@ -351,7 +351,8 @@
       "recoveryWalk": "Cammina fino alla destinazione",
       "recoveryFindStation": "Cerca una stazione non in elenco",
       "recoveryStationSearch": "Cerca la stazione in cui ti trovi",
-      "recoveryNotSubway": "Scegli una stazione della metropolitana."
+      "recoveryNotSubway": "Scegli una stazione della metropolitana.",
+      "recoveryNoRoute": "Nessun percorso con i mezzi pubblici da qui."
     },
     "outing": {
       "heading": "Passeggiata",

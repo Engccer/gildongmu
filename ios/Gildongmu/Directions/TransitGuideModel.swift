@@ -564,7 +564,6 @@ final class TransitGuideModel {
                 restartPollLoop(immediate: true)
             }
             missedAnnouncement = false
-            recoveryOutcomeOwed = nil
         @unknown default:
             break
         }
@@ -576,8 +575,6 @@ final class TransitGuideModel {
     private func returnStatusText() -> String {
         // 잘못 내림 복구 중엔 복구 상태만(E78 §8-5) — 틀렸다고 선언한 옛 안내 상태를 말하지 않는다.
         if let pending = pendingRecovery { return recoveryStatusText(pending) }
-        // 최소화 ∧ 백그라운드에서 버려진 복구 결과의 1회성 상환(복귀 때 지운다 — 다음 복귀·유휴 재개엔 현재 상태).
-        if let owed = recoveryOutcomeOwed, let text = recoveryOutcomeText(owed) { return text }
         guard let s = state, let leg = currentLeg else { return "" }
         // 현재역이 잡혀 있으면 그것이 상태다(E35 §6). 창은 **지금** 시각으로 — 백그라운드 동안 지났을 수 있다.
         if let located = positionStatusText(state: s, leg: leg, now: nowMs()) { return located }
@@ -1236,8 +1233,8 @@ final class TransitGuideModel {
         case noGuidable
     }
     private(set) var pendingRecovery: PendingRecovery?
-    /// 최소화 ∧ 백그라운드에서 끝난 복구 결과 — 다음 전경 복귀 낭독 한 번만 결과 문장을 말한다.
-    private var recoveryOutcomeOwed: RecoveryOutcome?
+    /// 시한이 역 질문을 거둔 순번 — 시트가 이 변화로 열린 역 검색 시트를 닫고 상태 문장으로 착지한다(누른 버튼 없이 질문이 사라진다).
+    private(set) var recoveryWithdrawnSeq = 0
     private(set) var recoveryOutcome: RecoveryOutcome?
     private var recoveryToken = 0
     /// 지하철 구간에서 고른 역 좌표 — 조회 실패의 「다시 시도」가 같은 역으로 다시 조회한다. 버스는 매번 새 측위라 nil.
@@ -1248,7 +1245,8 @@ final class TransitGuideModel {
     /// 「여기서 다시 길찾기」를 세우는가(Kit 판정 — 승차 중·도착 뒤, 여정 단계 밖).
     var recoveryOffered: Bool {
         guard let state else { return false }
-        return transitRecoveryOffered(phase: state.phase, inJourney: GuideSession.shared.journey != nil)
+        return transitRecoveryOffered(
+            phase: state.phase, untrackable: state.signal == .untrackable, inJourney: GuideSession.shared.journey != nil)
     }
 
     /// 버튼. 버스는 곧장 새 측위·조회, 지하철은 역부터 묻는다(Q3). 조회 중 다시 누르면 같은 문장만 다시 말한다(E74 규칙).
@@ -1336,6 +1334,7 @@ final class TransitGuideModel {
             }
             transitGuideLog("recovery pickTimeout")
             self.pendingRecovery = nil
+            self.recoveryWithdrawnSeq += 1
             // 주기 0 국면(확정 도착·비관측 riding)은 원래 유휴 정지가 없다 — 멈출 폴이 없으니 「안내를 멈추었습니다」는 사실이 아니다.
             // 질문만 조용히 거둔다(재재검토 MINOR-D).
             if let state = self.state, transitPollIntervalMs(state) <= 0 { return }
@@ -1381,7 +1380,6 @@ final class TransitGuideModel {
         recoveryToken += 1
         pendingRecovery = nil
         recoveryOutcome = nil
-        recoveryOutcomeOwed = nil
         recoveryRetryOrigin = nil
         return wasPending
     }
@@ -1444,8 +1442,6 @@ final class TransitGuideModel {
         // 현재 상태를 말한다 — 결과 행은 시트를 다시 열면 그대로 있다). 시트가 떠 있을 때 둘 다 내면 착지 낭독과 겹친다.
         // ⚠ 모델이 최소화를 읽는 유일한 자리(코디네이터 머리 주석의 예외, 코드 리뷰 MINOR-2·재검토 MINOR-C).
         if GuideSession.shared.isMinimized, let text = recoveryOutcomeText(outcome) {
-            // 백그라운드에서 버려지면 복귀 낭독이 이 결과를 한 번 갚는다(옛 안내 상태가 아니라 — 행동 선택지가 시트 안에만 남는다).
-            if !isForeground { recoveryOutcomeOwed = outcome }
             announce(text, highPriority: true, speechClass: .actionable)
         }
         // 문장이 나가는 조건 = 진동 조건(결과 행 착지가 문장이다).
@@ -1501,7 +1497,7 @@ final class TransitGuideModel {
         switch outcome {
         case .noLocation: appLocalized("ios.transitGuide.recoveryNoLocation")
         case .fetchFailed: appLocalized("ios.transitGuide.destChangeError")
-        case .noRoute: appLocalized("ios.transitGuide.altNone")
+        case .noRoute: appLocalized("ios.transitGuide.recoveryNoRoute")
         case .noGuidable: appLocalized("ios.transitGuide.recoveryNoGuidable")
         }
     }

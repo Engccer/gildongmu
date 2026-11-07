@@ -351,7 +351,8 @@
       "recoveryWalk": "Caminar hasta el destino",
       "recoveryFindStation": "Buscar una estación que no está en la lista",
       "recoveryStationSearch": "Buscar la estación donde estás",
-      "recoveryNotSubway": "Elige una estación de metro."
+      "recoveryNotSubway": "Elige una estación de metro.",
+      "recoveryNoRoute": "No hay ninguna ruta de transporte público desde aquí."
     },
     "outing": {
       "heading": "Paseo",

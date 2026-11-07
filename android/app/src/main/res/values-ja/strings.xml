@@ -422,6 +422,7 @@
     <string name="android_transitGuide_recoveryFindStation">一覧にない駅を探す</string>
     <string name="android_transitGuide_recoveryNoGuidable">ここからリアルタイムで案内できる公共交通の経路がありません。</string>
     <string name="android_transitGuide_recoveryNoLocation">現在地を確認できず、経路を再検索できませんでした。</string>
+    <string name="android_transitGuide_recoveryNoRoute">ここから行ける公共交通機関の経路がありません。</string>
     <string name="android_transitGuide_recoveryNotSubway">地下鉄の駅を選んでください。</string>
     <string name="android_transitGuide_recoveryRetry">再試行</string>
     <string name="android_transitGuide_recoveryStart">ここから経路を再検索</string>

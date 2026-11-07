@@ -30,7 +30,7 @@ const sheet = () => read(join(DIR, "TransitTrackingSheet.swift"));
 describe("E78 복구 — 모델", () => {
   it("버튼 국면은 Kit 판정 하나이고 여정 여부를 기본값 없이 넘긴다(§3.1·§5-3)", () => {
     expect(model()).toContain(
-      "transitRecoveryOffered(phase: state.phase, inJourney: GuideSession.shared.journey != nil)",
+      "phase: state.phase, untrackable: state.signal == .untrackable, inJourney: GuideSession.shared.journey != nil)",
     );
     expect(functionBody(model(), "startRecovery")).toContain("transitRecoveryOrigin(leg)");
   });
@@ -101,12 +101,10 @@ describe("E78 복구 — 모델", () => {
 
   it("최소화 중 결과만 통지로 내고, 복귀·유휴 재개 문장은 결과로 바꿔치기하지 않는다", () => {
     expect(functionBody(model(), "finishRecovery")).toMatch(
-      /if GuideSession\.shared\.isMinimized, let text = recoveryOutcomeText\(outcome\) \{\s*\/\/[^\n]*\n\s*if !isForeground \{ recoveryOutcomeOwed = outcome \}\s*announce\(text, highPriority: true, speechClass: \.actionable\)/,
+      /if GuideSession\.shared\.isMinimized, let text = recoveryOutcomeText\(outcome\) \{\s*announce\(text, highPriority: true, speechClass: \.actionable\)/,
     );
-    // 복귀 낭독은 결과 행 상태가 아니라 1회성 상환 표식만 본다(복귀 때 지운다).
-    expect(functionBody(model(), "returnStatusText")).not.toMatch(/recoveryOutcome\b/);
-    expect(functionBody(model(), "returnStatusText")).toContain("if let owed = recoveryOutcomeOwed");
-    expect(functionBody(model(), "handleScenePhaseChange")).toContain("recoveryOutcomeOwed = nil");
+    // 복귀·유휴 재개 낭독은 복구 결과를 말하지 않는다(낡은 결과가 현재 상태를 밀어냈다).
+    expect(functionBody(model(), "returnStatusText")).not.toContain("recoveryOutcome");
     // 모델이 최소화를 읽는 자리는 이 하나다(코디네이터 불변식의 예외).
     expect(model().match(/isMinimized/g)).toHaveLength(1);
   });
@@ -116,6 +114,9 @@ describe("E78 복구 — 모델", () => {
     expect(body).toContain("self.lastUserActionAt");
     expect(body).toContain("if remaining > 0 || (self.outputSuppressed && self.isForeground) {");
     expect(body).toContain("transitPollIntervalMs(state) <= 0 { return }");
+    // 거둠은 시트에 순번으로 알린다 — 열린 역 검색 시트를 닫고 상태 문장으로 착지(고른 역이 말없이 버려지지 않게).
+    expect(body).toContain("self.recoveryWithdrawnSeq += 1");
+    expect(sheet()).toMatch(/\.onChange\(of: model\.recoveryWithdrawnSeq\) \{\s*if recoverySearchPresented \{\s*deferredLanding = \.status\s*recoverySearchPresented = false/);
     expect(body).toContain("if !self.enterIdleIfDue() { self.restartPollLoop(immediate: true) }");
   });
 
