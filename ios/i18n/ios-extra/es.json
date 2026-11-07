@@ -343,7 +343,14 @@
       "adoptRoute": "Cambiar a esta ruta",
       "routeSwitched": "Ruta cambiada.",
       "altNone": "No hay otras rutas de transporte desde aquí.",
-      "altRefetching": "Las condiciones cambiaron; buscando otras rutas de nuevo."
+      "altRefetching": "Las condiciones cambiaron; buscando otras rutas de nuevo.",
+      "recoveryStart": "Buscar ruta desde aquí",
+      "recoveryNoLocation": "No se pudo obtener tu ubicación actual, así que no se buscó una ruta nueva.",
+      "recoveryNoGuidable": "No hay ninguna ruta de transporte público desde aquí con guía en tiempo real.",
+      "recoveryRetry": "Reintentar",
+      "recoveryWalk": "Caminar hasta el destino",
+      "recoveryFindStation": "Buscar una estación que no está en la lista",
+      "recoveryStationSearch": "Buscar la estación donde estás"
     },
     "outing": {
       "heading": "Paseo",

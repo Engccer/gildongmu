@@ -343,7 +343,14 @@
       "adoptRoute": "Passa a questo percorso",
       "routeSwitched": "Percorso cambiato.",
       "altNone": "Nessun altro percorso con i mezzi da qui.",
-      "altRefetching": "Le condizioni sono cambiate; nuova ricerca dei percorsi."
+      "altRefetching": "Le condizioni sono cambiate; nuova ricerca dei percorsi.",
+      "recoveryStart": "Cerca percorso da qui",
+      "recoveryNoLocation": "Impossibile ottenere la posizione attuale, quindi il percorso non è stato cercato.",
+      "recoveryNoGuidable": "Da qui non c’è un percorso con i mezzi pubblici guidabile in tempo reale.",
+      "recoveryRetry": "Riprova",
+      "recoveryWalk": "Cammina fino alla destinazione",
+      "recoveryFindStation": "Cerca una stazione non in elenco",
+      "recoveryStationSearch": "Cerca la stazione in cui ti trovi"
     },
     "outing": {
       "heading": "Passeggiata",

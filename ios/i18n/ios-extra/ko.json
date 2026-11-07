@@ -343,7 +343,14 @@
       "adoptRoute": "이 경로로 전환",
       "routeSwitched": "경로를 바꿨습니다.",
       "altNone": "여기서 가는 다른 대중교통 경로가 없습니다.",
-      "altRefetching": "조건이 바뀌어 다른 경로를 다시 조회합니다."
+      "altRefetching": "조건이 바뀌어 다른 경로를 다시 조회합니다.",
+      "recoveryStart": "여기서 다시 길찾기",
+      "recoveryNoLocation": "현재 위치를 확인할 수 없어 다시 길찾기를 하지 못했습니다.",
+      "recoveryNoGuidable": "여기서 실시간으로 안내할 수 있는 대중교통 경로가 없습니다.",
+      "recoveryRetry": "다시 시도",
+      "recoveryWalk": "목적지까지 걸어가기",
+      "recoveryFindStation": "목록에 없는 역 찾기",
+      "recoveryStationSearch": "지금 계신 역 검색"
     },
     "outing": {
       "heading": "나들이",

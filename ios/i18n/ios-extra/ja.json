@@ -343,7 +343,14 @@
       "adoptRoute": "この経路に切り替える",
       "routeSwitched": "経路を変更しました。",
       "altNone": "ここからのほかの公共交通経路はありません。",
-      "altRefetching": "条件が変わったため、ほかの経路を再検索します。"
+      "altRefetching": "条件が変わったため、ほかの経路を再検索します。",
+      "recoveryStart": "ここから経路を再検索",
+      "recoveryNoLocation": "現在地を確認できず、経路を再検索できませんでした。",
+      "recoveryNoGuidable": "ここからリアルタイムで案内できる公共交通の経路がありません。",
+      "recoveryRetry": "再試行",
+      "recoveryWalk": "目的地まで歩く",
+      "recoveryFindStation": "一覧にない駅を探す",
+      "recoveryStationSearch": "今いる駅を検索"
     },
     "outing": {
       "heading": "お散歩",

@@ -419,6 +419,13 @@
     <string name="android_transitGuide_destChangeLoading">Ricerca di nuovi percorsi.</string>
     <string name="android_transitGuide_destChangeNone">Nessun percorso con i mezzi pubblici verso la nuova destinazione.</string>
     <string name="android_transitGuide_destChangeRefetched">Percorsi aggiornati in base alla tua posizione attuale.</string>
+    <string name="android_transitGuide_recoveryFindStation">Cerca una stazione non in elenco</string>
+    <string name="android_transitGuide_recoveryNoGuidable">Da qui non c’è un percorso con i mezzi pubblici guidabile in tempo reale.</string>
+    <string name="android_transitGuide_recoveryNoLocation">Impossibile ottenere la posizione attuale, quindi il percorso non è stato cercato.</string>
+    <string name="android_transitGuide_recoveryRetry">Riprova</string>
+    <string name="android_transitGuide_recoveryStart">Cerca percorso da qui</string>
+    <string name="android_transitGuide_recoveryStationSearch">Cerca la stazione in cui ti trovi</string>
+    <string name="android_transitGuide_recoveryWalk">Cammina fino alla destinazione</string>
     <string name="android_transitGuide_routeSwitched">Percorso cambiato.</string>
     <string name="android_unit_spokenMeters">metri</string>
     <string name="android_voice_denied">Consenti l\'accesso al microfono nelle Impostazioni</string>

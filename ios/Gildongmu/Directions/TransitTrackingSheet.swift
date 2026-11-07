@@ -32,6 +32,8 @@ struct TransitTrackingSheet: View {
 
     /// 목적지 검색 시트(스펙 §4.1 1단) — 열린 동안 통지·톤 억제(받아쓰기 마이크).
     @State private var changeDestPresented = false
+    /// 잘못 내림 복구의 「목록에 없는 역 찾기」 검색 시트(E78 §5-2).
+    @State private var recoverySearchPresented = false
     /// 장소 상세 시트(스펙 2026-08-12 §2 + E33) — 안내 신호 유지(억제 없음). 목적지(제목 메뉴)와
     /// 지하철 경유역(경유역 행·상태 문장 언급)이 **같은 중첩 시트 하나**를 지난다(`.sheet(item:)`).
     /// ⚠ N1 M3가 기각한 것은 반대 방향(장소 상세가 떠 있는데 루트 안내 시트를 올리기)이다 —
@@ -68,6 +70,9 @@ struct TransitTrackingSheet: View {
         case expressBlocked
         /// 목적지 전환 후보 상태 행(조회 중·0건·오류, 스펙 §4.4).
         case destChangeStatus
+        /// 잘못 내림 복구 상태 행(E78 §3.3 — 조회 중·위치 실패·조회 실패·경로 없음·안내 가능 경로 없음). 행이 사라지는 전이
+        /// (역 목록·「다시 시도」)와 결과 도착의 착지 자리다.
+        case recoveryStatus
     }
     @AccessibilityFocusState private var focusedControl: SheetControl?
     /// 착지 대상 중 지금 List에 **실현된** 것(A35 spec §4.1 ①). `landingTarget`의 onAppear/onDisappear가
@@ -215,6 +220,19 @@ struct TransitTrackingSheet: View {
             .onChange(of: model.aboardStep) { _, step in
                 if step == .pickStation { landControlFocus(.reboardPrompt, proxy: proxy) }
             }
+            // 잘못 내림 복구(E78): 역 질문이 버튼 자리를 대신하면 질문 헤딩으로, 역을 골라 목록이 사라지면 조회 중 행으로. 버스의 첫
+            // 누름은 버튼이 그대로라 착지하지 않는다(모델의 `.high` 통지가 응답이다). 검색 시트 위의 선택은 닫힘 이월이 맡는다.
+            .onChange(of: model.pendingRecovery?.phase) { old, new in
+                if new == .pickStation {
+                    landControlFocus(.reboardPrompt, proxy: proxy)
+                } else if new == .loading, old == .pickStation {
+                    landControlFocus(.recoveryStatus, proxy: proxy)
+                }
+            }
+            // 결과 행(실패·경로 없음) — 조회 중 행이 바뀐 같은 자리에 착지. 채택은 국면 전이 착지가 맡는다(결과 nil).
+            .onChange(of: model.recoveryOutcome) { _, outcome in
+                if outcome != nil { landControlFocus(.recoveryStatus, proxy: proxy) }
+            }
             // 급행 확인 프롬프트(§6)는 연 국면 세대에 묶인다 — 경로 교체(waiting→waiting)도 세대가 바뀐다(코드 리뷰 #4).
             .onChange(of: model.state?.phaseGen) { expressPromptActive = false }
             // 키는 국면 + 사용자 전이 순번(A47) — 순번만 바뀐 커밋(대기 → 다음 구간 대기처럼 국면이 같은 사용자
@@ -270,6 +288,21 @@ struct TransitTrackingSheet: View {
                 if !presented, model.pendingDestChange != nil {
                     landControlFocus(.destChangeStatus, proxy: proxy)
                 } else if !presented, let target = deferredLanding {
+                    deferredLanding = nil
+                    landControlFocus(target, proxy: proxy, note: "note=deferred")
+                }
+            }
+            // 잘못 내림 복구의 역 검색(E78 §5-2) — 지하철역만 받는다. 고르면 그 역에서 다시 조회한다(취소면 역 목록 그대로).
+            .sheet(isPresented: $recoverySearchPresented) {
+                DirectionsEndpointSearchView(recoveryStation: { station in
+                    model.recoverFrom(searchedStation: station.lat, lng: station.lng)
+                })
+            }
+            .onChange(of: recoverySearchPresented) { _, presented in
+                // 검색 시트에 받아쓰기 마이크가 있다 — 열린 동안 통지·톤 억제(목적지 검색과 같은 계약).
+                model.outputSuppressed = presented
+                // 떠 있던 동안 이월된 착지(대개 조회 중 행) — 취소로 닫혔으면 이월이 없고 시스템이 「목록에 없는 역 찾기」로 되돌린다.
+                if !presented, let target = deferredLanding {
                     deferredLanding = nil
                     landControlFocus(target, proxy: proxy, note: "note=deferred")
                 }
@@ -608,6 +641,53 @@ struct TransitTrackingSheet: View {
                     }
                 }
             }
+            recoveryControls(leg: leg, proxy: proxy)
+        }
+    }
+
+    /// 「여기서 다시 길찾기」(E78 spec §3·§8) — 국면 버튼(「다음 구간」·「남은 도보 안내 시작」·「탑승 변경」) 바로 다음. 지하철은 역부터
+    /// 묻고(버튼 자리를 역 목록이 대신한다), 상태 행은 버튼 아래 한 줄 + 그 결과의 다음 행동 하나다.
+    @ViewBuilder private func recoveryControls(leg: TransitGuideLeg, proxy: ScrollViewProxy) -> some View {
+        if model.recoveryOffered {
+            if model.pendingRecovery?.phase == .pickStation {
+                stationPicker(
+                    leg: leg, proxy: proxy,
+                    onPick: { index in model.recoverFrom(stationAt: index) },
+                    onFindStation: { recoverySearchPresented = true },
+                    onCancel: {
+                        model.cancelRecovery()
+                        landControlFocus(.status, proxy: proxy)
+                    })
+            } else {
+                Button(appLocalized("ios.transitGuide.recoveryStart")) { model.beginRecovery() }
+            }
+            if let text = recoveryStatusText {
+                landingTarget(Text(text), .recoveryStatus)
+            }
+            switch model.recoveryOutcome {
+            case .noLocation, .fetchFailed:
+                // 누르면 이 행이 사라진다 — 상태 행(조회 중)으로 커서를 옮긴다(헌장 §5).
+                Button(appLocalized("ios.transitGuide.recoveryRetry")) {
+                    model.retryRecovery()
+                    landControlFocus(.recoveryStatus, proxy: proxy)
+                }
+            case .noRoute, .noGuidable:
+                Button(appLocalized("ios.transitGuide.recoveryWalk")) { onWalkHandoff?() }
+            case nil:
+                EmptyView()
+            }
+        }
+    }
+
+    /// 복구 상태 행 문장 — 뷰와 착지 폴백이 같은 식을 읽는다. 역 고르기 중엔 행이 없다(질문 헤딩이 그 자리다).
+    private var recoveryStatusText: String? {
+        if model.pendingRecovery?.phase == .loading { return appLocalized("ios.transitGuide.destChangeLoading") }
+        switch model.recoveryOutcome {
+        case .noLocation: return appLocalized("ios.transitGuide.recoveryNoLocation")
+        case .fetchFailed: return appLocalized("ios.transitGuide.destChangeError")
+        case .noRoute: return appLocalized("ios.transitGuide.altNone")
+        case .noGuidable: return appLocalized("ios.transitGuide.recoveryNoGuidable")
+        case nil: return nil
         }
     }
 
@@ -795,7 +875,7 @@ struct TransitTrackingSheet: View {
     /// 무관하게 항상 성립한다.
     @ViewBuilder private func stationPicker(
         leg: TransitGuideLeg, proxy: ScrollViewProxy,
-        onPick: @escaping (Int) -> Void, onCancel: @escaping () -> Void
+        onPick: @escaping (Int) -> Void, onFindStation: (() -> Void)? = nil, onCancel: @escaping () -> Void
     ) -> some View {
         // 질문은 흐름별(`reboardPromptKey` — 뷰·폴백이 같은 식). 착지는 이 뷰가 아니라 화면이 열리는 상태 변화
         // (`reboardPickerActive`·`aboardStep`)가 부른다(A35 §4.1 ③).
@@ -809,6 +889,10 @@ struct TransitTrackingSheet: View {
             // 고르면 세션 도중 ko로 바꿨을 때 이 버튼만 영어로 남는다(spec §3.9가 세션 재시작을
             // 하지 않기로 했다).
             Button(transitGuideIsEn ? (stop.en ?? stop.ko) : stop.ko) { onPick(index) }
+        }
+        // 잘못 내림 복구만(E78 §5-2): 하차역을 지나쳐 목록에 없는 역 — 목록 맨 끝, 취소 앞.
+        if let onFindStation {
+            Button(appLocalized("ios.transitGuide.recoveryFindStation")) { onFindStation() }
         }
         Button(appLocalized(reboardCancelKey)) { onCancel() }
     }
@@ -866,7 +950,7 @@ struct TransitTrackingSheet: View {
         // 배경(VO 커서 없음)·모달 위(장소 상세·목적지 검색 — 커서가 모달 안이라 대입이 먹어도 `stolen`으로 끝나고 폴백만
         // 남는다, a11y 감사 A1)에선 시도하지 않고 이월한다. 조망(`overviewAdapter`)은 자기 `pendingFollowUp` 계약.
         let blocker: LandingOutcome? = !model.isForeground ? .background
-            : (detailPlace != nil || changeDestPresented) ? .modal : nil
+            : (detailPlace != nil || changeDestPresented || recoverySearchPresented) ? .modal : nil
         if let blocker {
             deferredLanding = target
             transitGuideLog("controlFocus target=\(target) reason=\(blocker.rawValue) deferred=true"
@@ -983,6 +1067,7 @@ struct TransitTrackingSheet: View {
             case .failed: return appLocalized("ios.transitGuide.destChangeError")
             case .loaded, .none: return ""
             }
+        case .recoveryStatus: return recoveryStatusText ?? ""
         }
     }
 
@@ -998,11 +1083,13 @@ struct TransitTrackingSheet: View {
         case .reboardPrompt:
             return (phase == .riding && model.reboardPickerActive)
                 || (phase == .waiting && model.aboardStep == .pickStation)
+                || (model.recoveryOffered && model.pendingRecovery?.phase == .pickStation)
         case .expressPrompt: return phase == .waiting && expressPromptActive
         case .expressBlocked: return phase == .waiting && model.expressBlockedNote != nil
         case .destChangeStatus:
             if case .loaded = model.pendingDestChange?.phase { return false }
             return model.pendingDestChange != nil
+        case .recoveryStatus: return model.recoveryOffered && recoveryStatusText != nil
         }
     }
 

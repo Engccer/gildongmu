@@ -502,6 +502,13 @@
     <string name="android_transitGuide_destChangeLoading">새 경로를 조회하고 있습니다.</string>
     <string name="android_transitGuide_destChangeNone">새 목적지로 가는 대중교통 경로가 없습니다.</string>
     <string name="android_transitGuide_destChangeRefetched">위치가 바뀌어 경로를 다시 조회했습니다.</string>
+    <string name="android_transitGuide_recoveryFindStation">목록에 없는 역 찾기</string>
+    <string name="android_transitGuide_recoveryNoGuidable">여기서 실시간으로 안내할 수 있는 대중교통 경로가 없습니다.</string>
+    <string name="android_transitGuide_recoveryNoLocation">현재 위치를 확인할 수 없어 다시 길찾기를 하지 못했습니다.</string>
+    <string name="android_transitGuide_recoveryRetry">다시 시도</string>
+    <string name="android_transitGuide_recoveryStart">여기서 다시 길찾기</string>
+    <string name="android_transitGuide_recoveryStationSearch">지금 계신 역 검색</string>
+    <string name="android_transitGuide_recoveryWalk">목적지까지 걸어가기</string>
     <string name="android_transitGuide_routeSwitched">경로를 바꿨습니다.</string>
     <string name="android_unit_spokenMeters">미터</string>
     <string name="android_voice_denied">설정에서 마이크 접근을 허용해 주세요</string>

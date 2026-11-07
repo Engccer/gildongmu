@@ -77,7 +77,7 @@ describe("TransitTrackingSheet 착지 계약 (A35)", () => {
     expect(SHEET).not.toContain("defer { if landingInFlight == target");
     // 배경·모달에선 시도하지 않는다(L4·A1) — 진입 게이트 + 배경 전환의 진행 중 착지 이월(M1) + 최소화 취소(M2).
     expect(SHEET).toContain("!model.isForeground ? .background");
-    expect(SHEET).toContain("(detailPlace != nil || changeDestPresented) ? .modal");
+    expect(SHEET).toContain("(detailPlace != nil || changeDestPresented || recoverySearchPresented) ? .modal");
     expect(SHEET).toContain(".onChange(of: scenePhase)");
     expect(SHEET).toContain("case .background:");
     expect(SHEET).toContain(".onDisappear { controlFocusTask?.cancel() }");
@@ -193,6 +193,7 @@ describe("TransitTrackingSheet 착지 대상 (E38) · boarding 수동 진행 (N3
       "expressPrompt",
       "expressBlocked",
       "destChangeStatus",
+      "recoveryStatus",
     ].sort();
     // ① enum에 죽은 case가 남지 않는다(소스 가드가 죽은 대상을 잠그면 다음 사람이 대상으로 읽는다).
     const enumStart = SHEET.indexOf("enum SheetControl: Hashable {");

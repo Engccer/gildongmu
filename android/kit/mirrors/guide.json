@@ -197,6 +197,11 @@
       "note": "E73 환승 도보 인계 판정(iOS 선행) — 웹·안드로이드 대중교통 안내에 세션 중간 재개 경로가 없어 이식 보류(spec 2026-10-19-e73-transfer-walk-design.md D13)"
     },
     {
+      "swift": "TransitWrongStopRecovery.swift",
+      "status": "pending",
+      "note": "E78 잘못 내림 복구 판정(iOS 정식판 선행) — 웹엔 대중교통 재조회 기계가, 안드로이드엔 대중교통 안내 세션이 없어 이식 보류(spec 2026-11-07-e78-wrong-stop-recovery-design.md Q5)"
+    },
+    {
       "swift": "TransitGuideText.swift",
       "status": "ported",
       "kotlin": "android/kit/src/main/kotlin/space/dodoplanet/gildongmu/kit/TransitGuideText.kt",

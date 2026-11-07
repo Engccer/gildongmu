@@ -343,7 +343,14 @@
       "adoptRoute": "Switch to this route",
       "routeSwitched": "Route changed.",
       "altNone": "No other transit routes from here.",
-      "altRefetching": "Conditions changed; looking up other routes again."
+      "altRefetching": "Conditions changed; looking up other routes again.",
+      "recoveryStart": "Find a route from here",
+      "recoveryNoLocation": "Couldn't find your current location, so the route search didn't run.",
+      "recoveryNoGuidable": "No transit route from here can be guided in real time.",
+      "recoveryRetry": "Try again",
+      "recoveryWalk": "Walk to destination",
+      "recoveryFindStation": "Find a station not listed",
+      "recoveryStationSearch": "Search for the station you're at"
     },
     "outing": {
       "heading": "Stroll",

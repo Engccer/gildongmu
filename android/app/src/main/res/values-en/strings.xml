@@ -419,6 +419,13 @@
     <string name="android_transitGuide_destChangeLoading">Finding new routes.</string>
     <string name="android_transitGuide_destChangeNone">No transit route to the new destination.</string>
     <string name="android_transitGuide_destChangeRefetched">Routes refreshed for your current location.</string>
+    <string name="android_transitGuide_recoveryFindStation">Find a station not listed</string>
+    <string name="android_transitGuide_recoveryNoGuidable">No transit route from here can be guided in real time.</string>
+    <string name="android_transitGuide_recoveryNoLocation">Couldn\'t find your current location, so the route search didn\'t run.</string>
+    <string name="android_transitGuide_recoveryRetry">Try again</string>
+    <string name="android_transitGuide_recoveryStart">Find a route from here</string>
+    <string name="android_transitGuide_recoveryStationSearch">Search for the station you\'re at</string>
+    <string name="android_transitGuide_recoveryWalk">Walk to destination</string>
     <string name="android_transitGuide_routeSwitched">Route changed.</string>
     <string name="android_unit_spokenMeters">meters</string>
     <string name="android_voice_denied">Please allow microphone access in Settings</string>

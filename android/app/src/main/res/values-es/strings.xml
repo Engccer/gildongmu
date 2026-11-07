@@ -419,6 +419,13 @@
     <string name="android_transitGuide_destChangeLoading">Buscando nuevas rutas.</string>
     <string name="android_transitGuide_destChangeNone">No hay ruta de transporte público al nuevo destino.</string>
     <string name="android_transitGuide_destChangeRefetched">Rutas actualizadas según tu ubicación actual.</string>
+    <string name="android_transitGuide_recoveryFindStation">Buscar una estación que no está en la lista</string>
+    <string name="android_transitGuide_recoveryNoGuidable">No hay ninguna ruta de transporte público desde aquí con guía en tiempo real.</string>
+    <string name="android_transitGuide_recoveryNoLocation">No se pudo obtener tu ubicación actual, así que no se buscó una ruta nueva.</string>
+    <string name="android_transitGuide_recoveryRetry">Reintentar</string>
+    <string name="android_transitGuide_recoveryStart">Buscar ruta desde aquí</string>
+    <string name="android_transitGuide_recoveryStationSearch">Buscar la estación donde estás</string>
+    <string name="android_transitGuide_recoveryWalk">Caminar hasta el destino</string>
     <string name="android_transitGuide_routeSwitched">Ruta cambiada.</string>
     <string name="android_unit_spokenMeters">metros</string>
     <string name="android_voice_denied">Permite el acceso al micrófono en Ajustes</string>

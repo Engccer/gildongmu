@@ -419,6 +419,13 @@
     <string name="android_transitGuide_destChangeLoading">新しいルートを検索しています。</string>
     <string name="android_transitGuide_destChangeNone">新しい目的地への公共交通ルートがありません。</string>
     <string name="android_transitGuide_destChangeRefetched">現在地に合わせてルートを再検索しました。</string>
+    <string name="android_transitGuide_recoveryFindStation">一覧にない駅を探す</string>
+    <string name="android_transitGuide_recoveryNoGuidable">ここからリアルタイムで案内できる公共交通の経路がありません。</string>
+    <string name="android_transitGuide_recoveryNoLocation">現在地を確認できず、経路を再検索できませんでした。</string>
+    <string name="android_transitGuide_recoveryRetry">再試行</string>
+    <string name="android_transitGuide_recoveryStart">ここから経路を再検索</string>
+    <string name="android_transitGuide_recoveryStationSearch">今いる駅を検索</string>
+    <string name="android_transitGuide_recoveryWalk">目的地まで歩く</string>
     <string name="android_transitGuide_routeSwitched">経路を変更しました。</string>
     <string name="android_unit_spokenMeters">メートル</string>
     <string name="android_voice_denied">設定でマイクへのアクセスを許可してください</string>

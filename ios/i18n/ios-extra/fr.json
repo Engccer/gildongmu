@@ -343,7 +343,14 @@
       "adoptRoute": "Passer à cet itinéraire",
       "routeSwitched": "Itinéraire modifié.",
       "altNone": "Aucun autre itinéraire en transports depuis ici.",
-      "altRefetching": "Les conditions ont changé ; nouvelle recherche d’itinéraires."
+      "altRefetching": "Les conditions ont changé ; nouvelle recherche d’itinéraires.",
+      "recoveryStart": "Rechercher un itinéraire d'ici",
+      "recoveryNoLocation": "Impossible d'obtenir votre position actuelle, l'itinéraire n'a pas été recherché.",
+      "recoveryNoGuidable": "Aucun itinéraire en transports en commun depuis ici ne peut être guidé en temps réel.",
+      "recoveryRetry": "Réessayer",
+      "recoveryWalk": "Marcher jusqu'à la destination",
+      "recoveryFindStation": "Chercher une station absente de la liste",
+      "recoveryStationSearch": "Rechercher la station où vous êtes"
     },
     "outing": {
       "heading": "Balade",

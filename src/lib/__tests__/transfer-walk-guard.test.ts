@@ -111,8 +111,11 @@ describe("E73 환승 도보 — 세션 소유자", () => {
   });
 
   it("환승 도보 시작 문장만 .high다 — 시트가 내려가 커서가 옮겨 간 자리(접근성 감사 M1)", () => {
-    expect(functionBody(coordinator(), "launchPrewalk")).toMatch(
-      /transitPrewalkStartLine\([^]*\)\),\s*highPriority: context\.isTransfer, speechClass: \.actionable\)/,
+    const launch = functionBody(coordinator(), "launchPrewalk");
+    expect(launch).toMatch(/let startLine = TransitGuideTextRenderer\.render\(\s*transitPrewalkStartLine\(/);
+    // E78 복구의 앞 문장은 시작 문장과 **한 게시**다(latest-wins 창구에서 두 번 게시하면 앞 문장이 진다).
+    expect(launch).toMatch(
+      /context\.lead\.map \{ "\\\(\$0\) \\\(startLine\)" \} \?\? startLine,\s*highPriority: context\.isTransfer, speechClass: \.actionable\)/,
     );
     expect(transit()).toContain("func announceExternal(_ message: String, highPriority: Bool, speechClass: GuideSpeechClass) {");
   });
@@ -142,7 +145,11 @@ describe("E73 환승 도보 — 세션 소유자", () => {
       "beacon.markPrewalk(target: context.station, transfer: context.isTransfer)",
     );
     // 꼬리를 가르는 세 줄(리뷰 L3 — 하나라도 고정되면 환승 정지 꼬리가 「시작하지 않았습니다」로 돌아간다).
-    expect(coordinator()).toMatch(/var isTransfer: Bool \{ startLeg > 0 \}/);
+    // E78 이후 환승 여부는 구간 번호가 아니라 입구가 밝힌다(복구는 새 경로 0번 구간이다) — 세 생성 자리가 기본값 없이.
+    expect(coordinator()).toMatch(/^\s+let isTransfer: Bool$/m);
+    expect(functionBody(coordinator(), "beginTransit")).toContain("isTransfer: false, lead: nil)");
+    expect(functionBody(coordinator(), "transitTransferWalk")).toContain("isTransfer: true, lead: handoff.lead)");
+    expect(coordinator()).toContain("minutes: minutes, isTransfer: isTransfer, lead: nil)");
     expect(functionBody(beacon(), "markPrewalk")).toMatch(/^\{\s*prewalkTarget = target\s*prewalkIsTransfer = transfer\s*\}$/);
     expect(beacon()).toMatch(
       /private var prewalkStopTail: PrewalkStopTail\? \{\s*guard prewalkTarget != nil else \{ return nil \}\s*return prewalkIsTransfer \? \.transitAlsoEnded : \.transitNotStarted\s*\}/,

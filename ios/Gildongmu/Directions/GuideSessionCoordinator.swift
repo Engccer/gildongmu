@@ -53,18 +53,20 @@ final class GuideSession {
         /// 승차역 표시 라벨(ko·en 쌍)과 도보 분 — 도보 세션 표식·시작 문장이 읽는다(재시작이 같은 문장을 다시 낸다, A68).
         let station: TransitLabel
         let minutes: Int
+        /// 대중교통 세션이 이미 돌던 연장인가(환승 도보 E73·잘못 내림 복구 E78) — 정지 꼬리 문장(「대중교통 안내도 종료했습니다」),
+        /// 위치 상실 뒤 그 구간 대기로의 재개(`endPrewalk`), 시작 문장 우선순위를 가른다(spec D6·D14). E78은 새 경로 0번 구간부터라
+        /// 구간 번호(`startLeg > 0`)로는 가를 수 없다 — 입구가 밝힌다(A25 첫 도보만 false).
+        let isTransfer: Bool
+        /// 시작 문장 앞 한 문장(E78 「경로를 바꿨습니다.」). 재시작(A68)은 다시 말하지 않는다.
+        let lead: String?
 
         /// 같은 연결의 새 세대(A68 재시작) — 옛 도보 세션의 늦은 콜백이 새 연결을 소비하지 않게 `id`만 바꾼다.
         func renewed() -> PrewalkContext {
             PrewalkContext(
                 id: UUID(), guideRoute: guideRoute, startLeg: startLeg, destinationLabel: destinationLabel,
                 destinationRoman: destinationRoman, dest: dest, accessible: accessible, station: station,
-                minutes: minutes)
+                minutes: minutes, isTransfer: isTransfer, lead: nil)
         }
-
-        /// 대중교통 세션이 이미 돌던 환승 도보인가 — 정지 꼬리 문장(「대중교통 안내도 종료했습니다」)과 위치 상실 뒤 그 구간 대기로의
-        /// 재개(`endPrewalk`)를 가른다(spec D6·D14).
-        var isTransfer: Bool { startLeg > 0 }
     }
     private var prewalk: PrewalkContext?
     /// 비콘의 직전 시작이 승차 전 도보였으면 그 연결 컨텍스트(A68). 길찾기 탭 [정확한 위치 허용]의 재시작(`restartBeacon`)이
@@ -235,7 +237,7 @@ final class GuideSession {
         let context = PrewalkContext(
             id: UUID(), guideRoute: guideRoute, startLeg: 0, destinationLabel: destinationLabel,
             destinationRoman: destinationRoman, dest: dest, accessible: accessible, station: stationLabel,
-            minutes: target.minutes)
+            minutes: target.minutes, isTransfer: false, lead: nil)
         launchPrewalk(context) {
             beginBeacon(BeaconModel.StartRequest(
                 // 역 라벨은 이미 통지 언어로 골랐다(`walkLabel`) — 라틴 표기를 따로 싣지 않는다.
@@ -245,8 +247,9 @@ final class GuideSession {
         }
     }
 
-    /// 환승 도보(E73 spec D1·D4) — 대중교통 모델의 「다음 구간」이 걷기 안내 대상 도보 앞 구간으로 넘어갈 때 부른다(유일한
-    /// 호출자 `TransitGuideModel.completeOrAdvance`). 대중교통 세션을 정지음 없이 끝내고(여정 훅 보존) 600ms 뒤 승차 전 도보와
+    /// 환승 도보(E73 spec D1·D4) — 대중교통 모델의 「다음 구간」이 걷기 안내 대상 도보 앞 구간으로 넘어갈 때 부른다
+    /// (`TransitGuideModel.completeOrAdvance`). 잘못 내림 복구(E78 spec §8-1)가 고른 새 경로의 첫 승차 지점이 걸어가야 하는 곳일 때도
+    /// 같은 연결이다(`TransitGuideModel.commitRecovery`, 0번 구간·`lead` 「경로를 바꿨습니다.」). 대중교통 세션을 정지음 없이 끝내고(여정 훅 보존) 600ms 뒤 승차 전 도보와
     /// 같은 연결로 다음 승차 지점까지 걷는다. 걸어서 닿으면 `endPrewalk`가 같은 경로로 그 구간부터 대중교통을 다시 연다.
     func transitTransferWalk(_ handoff: TransitTransferWalkHandoff) {
         transit.stopForTransferWalk()
@@ -256,9 +259,10 @@ final class GuideSession {
         let context = PrewalkContext(
             id: UUID(), guideRoute: handoff.route, startLeg: handoff.legIndex,
             destinationLabel: handoff.destinationLabel, destinationRoman: handoff.destinationRoman,
-            dest: handoff.dest, accessible: handoff.accessible, station: stationLabel, minutes: handoff.target.minutes)
+            dest: handoff.dest, accessible: handoff.accessible, station: stationLabel, minutes: handoff.target.minutes,
+            isTransfer: true, lead: handoff.lead)
         let walkDest = BeaconDest(lat: handoff.target.lat, lng: handoff.target.lng)
-        guideDiagLog("transferWalk leg=\(handoff.legIndex) minutes=\(handoff.target.minutes)")
+        guideDiagLog("transferWalk leg=\(handoff.legIndex) minutes=\(handoff.target.minutes) recovery=\(handoff.lead != nil ? 1 : 0)")
         // 600ms: 대중교통 시트가 내려간 뒤 도보 시트가 뜬다(E34 하차 후 인계·A25 도착 인계와 같은 값·같은 근거 — 루트 시트 하나).
         // 대기는 `prewalkTask` 한 칸이라 그 사이 다른 시작의 `cancelPrewalk()`가 함께 취소한다.
         prewalkTask?.cancel()
@@ -295,9 +299,12 @@ final class GuideSession {
         beacon.onSessionEnd = { [weak self] reason in self?.endPrewalk(context.id, reason: reason) }
         // 환승 도보(E73)는 대중교통 시트가 막 내려가 커서가 밑 화면으로 옮겨 간 자리다 — 그 낭독과 도보 시트 착지에 끊기면
         // "대중교통은 걸은 뒤 이어진다"를 말해 주는 곳이 없어 `.high`(통지 우선순위 판별선, 접근성 감사 M1). A25 첫 도보는 앞 시트가 없다.
-        transit.announceExternal(TransitGuideTextRenderer.render(
+        // E78 복구는 「경로를 바꿨습니다.」를 앞에 붙인 한 문장 묶음이다 — 두 번 게시하면 latest-wins 창구에서 앞 문장이 진다.
+        let startLine = TransitGuideTextRenderer.render(
             transitPrewalkStartLine(
-                isEn: transitGuideIsEn, station: context.station, minutes: context.minutes)),
+                isEn: transitGuideIsEn, station: context.station, minutes: context.minutes))
+        transit.announceExternal(
+            context.lead.map { "\($0) \(startLine)" } ?? startLine,
             highPriority: context.isTransfer, speechClass: .actionable)
         launchingPrewalk = true
         startWalk()

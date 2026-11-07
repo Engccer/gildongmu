@@ -352,6 +352,8 @@ describe("3. 안내 세션 진입점이 늘지 않았다", () => {
   // 재시작과 그냥 재시작). 진입점은 같은 버튼 하나이고 정식판 도달 판정도 같다 — 아래 "8"이 그 한 버튼을 잠근다.
   // E73(2026-10-19)이 내부 인계 하나를 더했다: 환승 도보 `transitTransferWalk`의 `beginBeacon(`(사용자 진입점이 아니라 대중교통
   // 「다음 구간」의 인계 — 호출자는 아래 "7"이 잠근다).
+  // E78(2026-11-07)은 진입점을 더하지 않는다: 잘못 내림 복구는 같은 세션의 경로 교체(`changeRoute`)이고, 새 경로가 걸어가야
+  // 하는 곳에서 시작하면 같은 `transitTransferWalk`를 지난다(호출 자리가 늘 뿐 진입점 수는 그대로다, spec §5-4).
   it("안내 세션 진입점 호출이 정확히 12곳이다", () => {
     const sites = swiftFiles(IOS_DIR).flatMap((file) => {
       const hits = readFileSync(file, "utf8").match(ENTRY_CALL) ?? [];

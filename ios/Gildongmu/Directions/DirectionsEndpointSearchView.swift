@@ -220,6 +220,9 @@ struct DirectionsEndpointSearchView: View {
     /// 정류장 이름 검색의 지역 근거(E70-e) — 길찾기 화면의 출발·도착 중 알려진 좌표. 역 칸 대상에서만 쓰인다.
     let stopOrigin: (lat: Double, lng: Double)?
     let stopDest: (lat: Double, lng: Double)?
+    /// 잘못 내림 복구의 「목록에 없는 역 찾기」(E78 spec §5-2) — 지금 탄 열차 역 검색(E71) 갈래를 처음부터 연다. 질문만 다르다
+    /// (「지금 계신 역 검색」 — 내린 사람에게 「정차 중인 역 또는 다음 역」은 맞지 않는다).
+    private let recoveryMode: Bool
 
     /// 끝점 칸(출발·도착·경유지·수동 위치) — 역 칸 전용 인자가 없다.
     init(target: DirectionsFieldTarget, onSelect: @escaping (DirectionsEndpoint) -> Void) {
@@ -230,6 +233,20 @@ struct DirectionsEndpointSearchView: View {
         self.onSelectTransfer = nil
         self.stopOrigin = nil
         self.stopDest = nil
+        self.recoveryMode = false
+    }
+
+    /// 잘못 내림 복구의 역 검색(E78) — 지하철역만 받고(`selectAboardStation` 판정 재사용) 고른 역 좌표가 출발점이다.
+    init(recoveryStation onSelectStation: @escaping (RecentStation) -> Void) {
+        self.target = .from
+        self.onSelect = { _ in }
+        self.onSelectStation = nil
+        self.onSelectAboardStation = onSelectStation
+        self.onSelectTransfer = nil
+        self.stopOrigin = nil
+        self.stopDest = nil
+        self.recoveryMode = true
+        self._aboardMode = State(initialValue: true)
     }
 
     /// 역 칸 — 정류장 검색의 지역 근거를 기본값 없이 받는다(빠뜨리면 정류장 검색이 조용히 꺼진다).
@@ -247,6 +264,7 @@ struct DirectionsEndpointSearchView: View {
         self.onSelectTransfer = onSelectTransfer
         self.stopOrigin = stopOrigin
         self.stopDest = stopDest
+        self.recoveryMode = false
     }
     @Environment(\.dismiss) private var dismiss
     @State private var model = EndpointSearchModel()
@@ -447,7 +465,7 @@ struct DirectionsEndpointSearchView: View {
             .searchable(
                 text: $model.query,
                 placement: .navigationBarDrawer(displayMode: .always),
-                prompt: Text(aboardMode ? appLocalized("ios.journey.aboardStationField") : appLocalized("ios.search.prompt")))
+                prompt: Text(aboardFieldText ?? appLocalized("ios.search.prompt")))
             .searchFocused($searchFieldFocused)
             .onSubmit(of: .search) { model.submit() }
             .toolbar {
@@ -470,6 +488,7 @@ struct DirectionsEndpointSearchView: View {
             }
             .task {
                 model.stationsOnly = isStationTarget
+                if recoveryMode { model.startAboardSearch() }
                 model.searchesStops = isStationTarget || isTransferTarget
                 model.stopOrigin = stopOrigin
                 model.stopDest = stopDest
@@ -587,9 +606,16 @@ struct DirectionsEndpointSearchView: View {
     // ⚠ 이분 삼항(target == .from ? A : B)으로 두면 manualLocation이 조용히 "도착지
     // 검색" 제목으로 떨어진다(실제로 이 자리에서 나던 결함, 전수 확인 중 발견) —
     // exhaustive switch로 새 타깃이 기존 분기에 흡수되지 않게 한다.
+    /// 역 검색 갈래의 제목·검색 칸 문장 — 복구(E78)는 「지금 계신 역 검색」, 지금 탄 열차(E71)는 「현재 정차 중인 역 또는 다음 역 검색」.
+    private var aboardFieldText: String? {
+        guard aboardMode else { return nil }
+        return recoveryMode
+            ? appLocalized("ios.transitGuide.recoveryStationSearch") : appLocalized("ios.journey.aboardStationField")
+    }
+
     private var sheetTitle: String {
         switch target {
-        case .from: aboardMode ? appLocalized("ios.journey.aboardStationField") : appLocalized("directions.searchFrom")
+        case .from: aboardFieldText ?? appLocalized("directions.searchFrom")
         case .to: appLocalized("directions.searchTo")
         case .via: appLocalized("directions.searchVia")
         case .manualLocation: appLocalized("manualLocation.pickTitle")

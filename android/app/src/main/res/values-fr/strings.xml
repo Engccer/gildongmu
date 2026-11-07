@@ -419,6 +419,13 @@
     <string name="android_transitGuide_destChangeLoading">Recherche de nouveaux itinéraires.</string>
     <string name="android_transitGuide_destChangeNone">Aucun itinéraire en transports en commun vers la nouvelle destination.</string>
     <string name="android_transitGuide_destChangeRefetched">Itinéraires actualisés selon votre position actuelle.</string>
+    <string name="android_transitGuide_recoveryFindStation">Chercher une station absente de la liste</string>
+    <string name="android_transitGuide_recoveryNoGuidable">Aucun itinéraire en transports en commun depuis ici ne peut être guidé en temps réel.</string>
+    <string name="android_transitGuide_recoveryNoLocation">Impossible d\'obtenir votre position actuelle, l\'itinéraire n\'a pas été recherché.</string>
+    <string name="android_transitGuide_recoveryRetry">Réessayer</string>
+    <string name="android_transitGuide_recoveryStart">Rechercher un itinéraire d\'ici</string>
+    <string name="android_transitGuide_recoveryStationSearch">Rechercher la station où vous êtes</string>
+    <string name="android_transitGuide_recoveryWalk">Marcher jusqu\'à la destination</string>
     <string name="android_transitGuide_routeSwitched">Itinéraire modifié.</string>
     <string name="android_unit_spokenMeters">mètres</string>
     <string name="android_voice_denied">Autorisez l\'accès au micro dans Réglages</string>
