@@ -159,7 +159,6 @@ struct GuideInfoBand: ViewModifier {
         /// nil이면 자연 높이(아직 재지 못했다).
         let minHeight: CGFloat?
         let onHeight: (CGFloat) -> Void
-        let onGone: () -> Void
     }
 
     let style: Style?
@@ -171,7 +170,6 @@ struct GuideInfoBand: ViewModifier {
                 .frame(maxWidth: .infinity, minHeight: style.minHeight, alignment: .leading)
                 .contentShape(Rectangle())
                 .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { style.onHeight($0) }
-                .onDisappear(perform: style.onGone)
                 .accessibilityElement(children: .combine)
         } else {
             content

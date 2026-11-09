@@ -776,13 +776,20 @@ struct BeaconTrackingSheet: View {
         }
     }
 
+    /// 그 띠가 지금 렌더되는가 — 몫과 높이 합산이 같은 판정을 쓴다.
+    private func bandExists(_ band: InfoBand) -> Bool {
+        switch band {
+        case .remaining: rowExists(.remaining)
+        case .action: rowExists(.liveTop) || rowExists(.status)
+        case .next: model.arrivalDest == nil && model.mode == .detail && model.liveNextText != nil
+        }
+    }
+
     /// 띠의 몫(합 4). 남은 거리·다음 예고는 있을 때 1씩, 나머지는 전부 지금 할 행동이다.
     private func bandWeight(_ band: InfoBand) -> CGFloat {
-        let hasRemaining = rowExists(.remaining)
-        let hasNext = model.mode == .detail && model.liveNextText != nil
         switch band {
         case .remaining, .next: return 1
-        case .action: return 4 - (hasRemaining ? 1 : 0) - (hasNext ? 1 : 0)
+        case .action: return 4 - (bandExists(.remaining) ? 1 : 0) - (bandExists(.next) ? 1 : 0)
         }
     }
 
@@ -794,8 +801,7 @@ struct BeaconTrackingSheet: View {
         return GuideInfoBand.Style(
             font: font,
             minHeight: bandTotal.map { $0 * bandWeight(band) / 4 },
-            onHeight: { bandActual[band] = $0 },
-            onGone: { bandActual[band] = nil })
+            onHeight: { bandActual[band] = $0 })
     }
 
     /// ⚠ 재는 값 둘(목록 내용 높이·띠 높이)은 한 배정에 대해 서로 다른 순간에 갱신된다. 바뀌는 즉시 계산하면 새 띠 높이와
@@ -812,8 +818,11 @@ struct BeaconTrackingSheet: View {
     /// 띠가 나눠 가질 높이를 다시 잡는다: 보이는 높이에서 띠가 아닌 것(`내용 - 띠의 실제 높이`)을 뺀 나머지. 띠가 배정대로 서 있으면
     /// 한 번에 수렴하고, 큰 글자로 띠가 배정보다 크면 그만큼 내용이 넘쳐 목록이 스크롤된다(글자를 줄이거나 자르지 않는다).
     private func rebalanceBands() {
-        guard let metrics = listMetrics, metrics.visible > 0, !bandActual.isEmpty else { return }
-        let fixed = metrics.content - bandActual.values.reduce(0, +)
+        // 사라진 띠의 높이는 지우지 않고 **지금 렌더되는 띠만** 더한다: `onDisappear`로 지우면 목록이 화면 밖 행을 내릴 때도
+        // 지워지고, 윗줄과 상태 문장이 같은 칸을 번갈아 쓸 때 새 줄의 값이 옛 줄의 소멸에 지워진다(리뷰 지적).
+        let rendered = bandActual.filter { bandExists($0.key) }
+        guard let metrics = listMetrics, metrics.visible > 0, !rendered.isEmpty else { return }
+        let fixed = metrics.content - rendered.values.reduce(0, +)
         let target = max(0, metrics.visible - fixed - 1)
         if abs(target - (bandTotal ?? -1)) > 0.5 {
             guideDiagLog("sheetBands visible=\(Int(metrics.visible)) content=\(Int(metrics.content)) fixed=\(Int(fixed)) total=\(Int(target))")
