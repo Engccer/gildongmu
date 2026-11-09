@@ -24,7 +24,7 @@ struct JourneySheet: View {
                 ToolbarItem(placement: .topBarTrailing) { GuideMinimizeButton(action: onMinimize) }
             }
             .safeAreaInset(edge: .bottom) {
-                GuideStopButton { session.journeyAction(.userEnded) }
+                GuideStopButton(tall: false) { session.journeyAction(.userEnded) }
             }
         }
         // 착지는 실패일 때만이다. 준비 중 시트는 곧 다음 단계 시트가 덮고, 그 사이 강제 착지 낭독이 직전 문장(택시 자동

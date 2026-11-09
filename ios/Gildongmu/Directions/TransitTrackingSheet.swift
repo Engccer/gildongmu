@@ -176,7 +176,7 @@ struct TransitTrackingSheet: View {
             // 안내 종료는 목록 밖 최하단 고정(GuideStopButton 주석).
             .safeAreaInset(edge: .bottom) {
                 if model.state != nil {
-                    GuideStopButton(action: onStop)
+                    GuideStopButton(tall: false, action: onStop)
                 }
             }
             // 시트 열림 착지 — 띠바에서 돌아온 시트도 같다(E57 위원장 판정 Q1 2026-09-30, 종전 접기 버튼 착지 폐기).

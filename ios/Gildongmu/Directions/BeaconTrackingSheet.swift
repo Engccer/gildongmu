@@ -104,6 +104,24 @@ struct BeaconTrackingSheet: View {
     /// 소비 지점은 [닫기] 하나이고 **거기서 읽고 거기서 지운다**.
     @AppStorage(WalkHealth.weightPromptEngagedKey) private var weightPromptEngaged = false
 
+    /// 정보 띠(E81, 위원장 판정 2026-11-10): 제목·「지금 여기는 어디?」 아래부터 「안내 종료」 위까지의 빈 공간을 남은 거리 1 :
+    /// 지금 할 행동 2 : 다음 예고 1로 나눠 갖는다. 줄을 더하지 않고 있는 줄을 키우므로 접근성 객체 수와 스와이프 순서는 그대로이고,
+    /// 띠 전체가 그 줄의 접근성 객체라 화면을 짚으면 닿는다. 없는 줄의 몫은 지금 할 행동이 받는다(간략 안내의 상태 문장 포함) —
+    /// 화면 가운데는 언제나 지금 할 행동이다. 자동차 「현재 도로」·주석 줄은 한 줄 크기 그대로다(큰 띠 셋의 자리가 도보와 같게).
+    enum InfoBand: Hashable { case remaining, action, next }
+    /// 띠 셋이 나눠 가질 높이(행 안쪽 내용 기준). nil이면 아직 재지 못해 자연 높이다.
+    @State private var bandTotal: CGFloat?
+    /// 지금 렌더된 띠의 실제 내용 높이 — 큰 글자에서 자연 높이가 배정보다 크면 그 값이 든다(넘치면 목록이 스크롤된다).
+    @State private var bandActual: [InfoBand: CGFloat] = [:]
+    @State private var listMetrics: ListMetrics?
+    @State private var rebalanceTask: Task<Void, Never>?
+
+    /// 목록의 보이는 높이와 내용 전체 높이. 고정 줄(제목·버튼·주석·행 여백)의 높이는 재지 않고 `내용 - 띠`로 얻는다.
+    struct ListMetrics: Equatable {
+        let visible: CGFloat
+        let content: CGFloat
+    }
+
     var body: some View {
         // 접기 버튼은 제목 행 우측의 작은 아이콘이다(위원장 판정 2026-08-23 — 한 행을 차지하지 않고, 빈 내비게이션 바도
         // 두지 않는다). 도착 화면에는 제목 행이 없다.
@@ -159,6 +177,7 @@ struct BeaconTrackingSheet: View {
                     if let top = model.liveTopText { focusTarget(distanceText(top), .liveTop) }
                     if let next = model.liveNextText {
                         distanceText(next).foregroundStyle(.secondary)
+                            .modifier(GuideInfoBand(style: bandStyle(.next)))
                     }
                 } else {
                     // 간략 세션은 종전 행 유지. walk 상세의 statusText
@@ -190,6 +209,16 @@ struct BeaconTrackingSheet: View {
             }
             }
         }
+        // 정보 띠(E81)의 재료: 보이는 높이는 하단 고정 버튼 묶음(안전 영역 inset)을 뺀 값이다.
+        .onScrollGeometryChange(for: ListMetrics.self) { geo in
+            ListMetrics(
+                visible: geo.containerSize.height - geo.contentInsets.top - geo.contentInsets.bottom,
+                content: geo.contentSize.height)
+        } action: { _, metrics in
+            listMetrics = metrics
+            scheduleRebalance()
+        }
+        .onChange(of: bandActual) { scheduleRebalance() }
         // 안내 종료는 목록 밖 최하단 고정(GuideStopButton 주석). 도착 화면엔 없다(닫기가 그 자리).
         .safeAreaInset(edge: .bottom) {
             if model.arrivalDest == nil {
@@ -221,7 +250,8 @@ struct BeaconTrackingSheet: View {
                         .padding(.top, 8)
                         .background(.bar, ignoresSafeAreaEdges: [])
                     }
-                    GuideStopButton(action: onStop)
+                    // 추가 버튼(승차 전 도보 선언·여정 단계)이 서도 종료만 두 배다(E81 판정 6 — 맨 아래 자리가 흔들리지 않게).
+                    GuideStopButton(tall: true, action: onStop)
                 }
             }
         }
@@ -301,6 +331,7 @@ struct BeaconTrackingSheet: View {
             focusTask?.cancel()
             pendingTimeoutTask?.cancel()
             announcementWaitTask?.cancel()
+            rebalanceTask?.cancel()
         }
         // 「지금 여기는 어디?」 창(E75, 종전 전 구간 조망 모달). 시트 위 시트는 표준 중첩 표시. 셸·프리뷰는
         // GuideOverviewSheet.swift(E15-1 능력 공유) — 도보 행·행동은 BeaconOverviewAdapter가 투영하고, 지금 위치 주변이
@@ -731,8 +762,63 @@ struct BeaconTrackingSheet: View {
     /// 착지 부착 헬퍼 — `focusedRow` 바인딩의 **유일한 부착 자리**(가드가 개수를 센다). `.id`는 가시화 키다.
     private func focusTarget<V: View>(_ view: V, _ target: SheetFocus) -> some View {
         view
+            .modifier(GuideInfoBand(style: Self.band(of: target).map(bandStyle)))
             .accessibilityFocused($focusedRow, equals: target)
             .id(Self.focusId(target))
+    }
+
+    /// 착지 대상 가운데 띠인 것(E81). 지금 할 행동 자리는 상세의 윗줄과 간략의 상태 문장이 번갈아 쓴다(함께 서지 않는다).
+    private static func band(of target: SheetFocus) -> InfoBand? {
+        switch target {
+        case .remaining: .remaining
+        case .liveTop, .status: .action
+        case .refresh, .arrived, .healthSummary: nil
+        }
+    }
+
+    /// 띠의 몫(합 4). 남은 거리·다음 예고는 있을 때 1씩, 나머지는 전부 지금 할 행동이다.
+    private func bandWeight(_ band: InfoBand) -> CGFloat {
+        let hasRemaining = rowExists(.remaining)
+        let hasNext = model.mode == .detail && model.liveNextText != nil
+        switch band {
+        case .remaining, .next: return 1
+        case .action: return 4 - (hasRemaining ? 1 : 0) - (hasNext ? 1 : 0)
+        }
+    }
+
+    private func bandStyle(_ band: InfoBand) -> GuideInfoBand.Style {
+        let font: Font = switch band {
+        case .remaining, .next: .title3
+        case .action: model.mode == .detail ? .title.weight(.semibold) : .title2
+        }
+        return GuideInfoBand.Style(
+            font: font,
+            minHeight: bandTotal.map { $0 * bandWeight(band) / 4 },
+            onHeight: { bandActual[band] = $0 },
+            onGone: { bandActual[band] = nil })
+    }
+
+    /// ⚠ 재는 값 둘(목록 내용 높이·띠 높이)은 한 배정에 대해 서로 다른 순간에 갱신된다. 바뀌는 즉시 계산하면 새 띠 높이와
+    /// 옛 내용 높이를 짝지어 배정이 끝없이 자라고 메인 스레드가 멈춘다(실기기 실측 2026-11-10). 둘 다 가라앉은 뒤에 한 번 계산한다.
+    private func scheduleRebalance() {
+        rebalanceTask?.cancel()
+        rebalanceTask = Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(120))
+            guard !Task.isCancelled else { return }
+            rebalanceBands()
+        }
+    }
+
+    /// 띠가 나눠 가질 높이를 다시 잡는다: 보이는 높이에서 띠가 아닌 것(`내용 - 띠의 실제 높이`)을 뺀 나머지. 띠가 배정대로 서 있으면
+    /// 한 번에 수렴하고, 큰 글자로 띠가 배정보다 크면 그만큼 내용이 넘쳐 목록이 스크롤된다(글자를 줄이거나 자르지 않는다).
+    private func rebalanceBands() {
+        guard let metrics = listMetrics, metrics.visible > 0, !bandActual.isEmpty else { return }
+        let fixed = metrics.content - bandActual.values.reduce(0, +)
+        let target = max(0, metrics.visible - fixed - 1)
+        if abs(target - (bandTotal ?? -1)) > 0.5 {
+            guideDiagLog("sheetBands visible=\(Int(metrics.visible)) content=\(Int(metrics.content)) fixed=\(Int(fixed)) total=\(Int(target))")
+            bandTotal = target
+        }
     }
 
     private static func focusId(_ target: SheetFocus) -> String { "beacon-focus-\(target)" }

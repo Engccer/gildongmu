@@ -130,17 +130,51 @@ struct GuideMinimizeButton: View {
 /// 상황마다 달라 위치가 흔들리고 그 지름길이 성립하지 않는다. 호출부는 `List`에
 /// `.safeAreaInset(edge: .bottom)`으로 붙이고 착지 바인딩을 단다.
 struct GuideStopButton: View {
+    /// 두 배 높이(E81 판정 3·6, 도보·자동차 시트) — 화면 맨 아래를 짚으면 바로 닿는다. 대중교통 시트는 종전 높이다.
+    let tall: Bool
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
             Text(appLocalized("beacon.stop"))
-                .frame(maxWidth: .infinity)
+                .frame(maxWidth: .infinity, minHeight: tall ? Self.tallLabelHeight : nil)
         }
         .buttonStyle(.bordered)
         .controlSize(.large)
         .padding(.horizontal)
             .padding(.vertical, 8)
             .background(.bar, ignoresSafeAreaEdges: [])
+    }
+
+    /// `.large` 버튼(약 50pt)을 두 배(약 100pt)로 만드는 라벨 높이.
+    private static let tallLabelHeight: CGFloat = 72
+}
+
+/// 안내 시트 정보 띠(E81) — 한 줄을 배정 높이만큼 키우고 **띠 전체를 그 줄의 접근성 객체로** 만든다(키우기만 하면 객체의 틀은
+/// 글자 둘레에 머물러, 화면을 짚어도 빈 곳에서는 읽히지 않는다). 객체 수·낭독 라벨은 그대로다(자식 하나를 합친다).
+/// `style`이 nil이면 아무것도 하지 않는다 — 띠가 아닌 착지 대상이 같은 헬퍼를 지나기 때문이다.
+struct GuideInfoBand: ViewModifier {
+    struct Style {
+        let font: Font
+        /// nil이면 자연 높이(아직 재지 못했다).
+        let minHeight: CGFloat?
+        let onHeight: (CGFloat) -> Void
+        let onGone: () -> Void
+    }
+
+    let style: Style?
+
+    func body(content: Content) -> some View {
+        if let style {
+            content
+                .font(style.font)
+                .frame(maxWidth: .infinity, minHeight: style.minHeight, alignment: .leading)
+                .contentShape(Rectangle())
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { style.onHeight($0) }
+                .onDisappear(perform: style.onGone)
+                .accessibilityElement(children: .combine)
+        } else {
+            content
+        }
     }
 }
