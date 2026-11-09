@@ -12,6 +12,42 @@
 
 ---
 
+## 2.7 (빌드 38)
+
+기준은 2.6 아카이브 커밋 `b64ff2c3`(빌드 37)이며 이후 `ios/` 커밋 2건을 판정했다. 도보·자동차 안내 시트의 정보 줄이 화면의 빈 공간을 나눠 갖는다.
+
+포함 판정:
+
+| 기능 | 커밋 | 노트 |
+|---|---|---|
+| 안내 시트 정보 띠: 남은 거리 1 : 지금 할 행동 2 : 다음 예고 1, 「안내 종료」 두 배 높이(E81) | `13b687c6`과 리뷰 반영 후속 1건 | ko·en. `BeaconTrackingSheet`(Release, 실험 게이트 밖). 도보 안내는 전 언어, 자동차 안내는 ko 전용이라 en 노트는 도보만 적는다 |
+
+제외 근거: 리뷰 반영 후속 커밋은 같은 기능의 보정이라 별도 항목이 아니다. 대중교통·여정 시트의 종료 버튼은 종전 높이(`tall: false`)라 변화가 없다.
+
+새 서버 의존 없음(앱이 새로 읽는 라우트·응답 필드 0), xcstrings 변경 없음.
+
+심사 노트 판정: **승계한다(`--review-notes` 미사용).** 새 권한·새 데이터 유형·새 제3자 없음. 화면 배치만 바뀌었다.
+
+한국어 노트는 `tone-polish` 짧은 안내문 기준으로 다듬었고 위원장이 2026-11-10 대화창에서 확정했다.
+
+### ko
+
+```
+개선
+- 도보·자동차 안내 화면에서 남은 거리, 지금 할 행동, 다음 안내를 화면에 크게 나눠 보여 줍니다. VoiceOver를 쓸 때는 화면 위쪽에서 남은 거리, 가운데에서 지금 할 행동, 아래쪽에서 다음 안내를 바로 찾을 수 있습니다.
+- ‘안내 종료’ 버튼을 두 배로 키워 화면 맨 아래에서 쉽게 누를 수 있습니다.
+```
+
+### en
+
+```
+Improvements
+- The walking guidance screen now shows the remaining distance, what to do now, and what comes next in large sections that fill the screen. With VoiceOver, you can find the remaining distance in the upper part of the screen, what to do now in the middle, and what comes next in the lower part.
+- The “Stop guidance” button is now twice as tall, so it is easy to press at the bottom of the screen.
+```
+
+---
+
 ## 2.6 (빌드 37)
 
 기준은 2.5 아카이브 커밋 `b37ec07b`(빌드 36)이며 이후 `ios/` 커밋 27건을 판정했다. 정식판에 잘못 내렸을 때의 경로 재탐색, 화면 잠금 중 대중교통 진행음, 자동차 경로의 정체 안내가 추가된다.
