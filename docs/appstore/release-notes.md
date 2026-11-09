@@ -46,8 +46,6 @@ Improvements
 - The “Stop guidance” button is now twice as tall, so it is easy to press at the bottom of the screen.
 ```
 
----
-
 ## 2.6 (빌드 37)
 
 기준은 2.5 아카이브 커밋 `b37ec07b`(빌드 36)이며 이후 `ios/` 커밋 27건을 판정했다. 정식판에 잘못 내렸을 때의 경로 재탐색, 화면 잠금 중 대중교통 진행음, 자동차 경로의 정체 안내가 추가된다.
