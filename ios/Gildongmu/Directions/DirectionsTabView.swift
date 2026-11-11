@@ -45,8 +45,16 @@ struct JourneyPrefill: Equatable {
     let result: JourneyResult?
     /// 카드의 조회가 수동 지정 위치에서였는가 — 결과를 그대로 보여 줄 때 안내 시작 고지의 근거(`resultsOriginNeedsStartNotice`).
     let manualOrigin: Bool
-    /// 다시 조회 사유 통지(「위치가 바뀌어 경로를 다시 찾습니다.」). 조회 완료 통지의 앞 문장으로 합쳐 한 통지로 낸다.
+    /// 다시 조회 사유 통지(「위치가 바뀌어 경로를 다시 찾습니다.」) — 조회를 **시작할 때** 한 번 말한다(spec D16, 웹과 같은 시점).
+    /// 완료 통지에는 붙이지 않는다(같은 문장을 두 번 말하지 않는다).
     let requeryNotice: String?
+}
+
+/// 카드로 연 여정을 최근 경로에 남긴다(E70-b S5, 웹 `DirectionsView`와 같게: 출발은 현재 위치라 nil 투영, 갈아탈 역 포함).
+/// 모델 init이 아니라 프리필 소비 지점과 카드의 [안내 시작]에서만 부른다(init은 재평가마다 돌아 삭제한 기록이 부활한다).
+func recordJourneyRecentRoute(dest: RecentEndpoint, board: RecentStation?, alight: RecentStation?) {
+    _ = RecentSearchStore().recordRoute(
+        RecentRoute(from: nil, to: dest, via: nil, boardStation: board, alightStation: alight))
 }
 
 /// 길찾기 필드 식별(출발지/도착지) + 수동 위치 지정. 검색 시트 라우팅 공용
@@ -230,9 +238,11 @@ final class DirectionsModel {
     /// 조회를 걸면 방금 한 동작의 응답이 "도착지를 입력하세요" 오류가 된다.
     /// `pendingPrefillQuery`와 배타적이다(양끝이 다 있으면 조회, 아니면 착지).
     private var pendingPrefillFocus: Bool
-    /// 채팅 여정 카드가 낡아 다시 조회할 때의 사유 문장(E70-b D16) — 조회 완료 통지 앞에 합쳐 한 번만 낸다(같은 사건의 두 통지가
-    /// 서로를 끊지 않게). 조회가 통지 없이 끝나는 경로(측위 실패)에서는 그 실패 통지가 대신 말한다.
+    /// 채팅 여정 카드가 낡아 다시 조회할 때의 사유 문장(E70-b D16) — 조회를 시작할 때(`runPrefillQueryIfPending`) 한 번 말한다.
     private var journeyRequeryNotice: String?
+    /// 카드의 결과를 조회 없이 세운 진입의 완료 통지 1회분(E70-b S4). 조회가 없어 완료 통지도 없으니, 이 화면의 규칙(커서는 옮기지
+    /// 않고 합산 한 문장으로 알린다)대로 「경로를 찾았습니다」를 한 번 말한다.
+    private var pendingJourneyReadyAnnounce = false
 
     init(prefill: DirectionsPrefill? = nil) {
         // ⚠ 지역 상수로 받아 판정한다 — `@Observable`이 저장 프로퍼티를 접근자로
@@ -260,6 +270,7 @@ final class DirectionsModel {
                 resultsOriginNeedsStartNotice = journey.manualOrigin
                 phase = .settled(successCount: 1)
                 hasQueriedOnce = true
+                pendingJourneyReadyAnnounce = true
             } else {
                 journeyRequeryNotice = journey.requeryNotice
             }
@@ -270,8 +281,17 @@ final class DirectionsModel {
     /// 있으면(안내 주도 폼 동기화가 같은 `.task`에서 먼저 돌 수 있다) `runQuery`의
     /// in-flight 가드가 흡수하고, 그 경우에도 소비된 것으로 친다(두 번 조회하지 않는다).
     func runPrefillQueryIfPending() {
+        if pendingJourneyReadyAnnounce {
+            pendingJourneyReadyAnnounce = false
+            announce(appLocalized("directions.readySummary", 1), haptic: .success)
+        }
         guard pendingPrefillQuery else { return }
         pendingPrefillQuery = false
+        // 낡은 카드의 재조회: 사유를 조회 시작 때 말한다. 완료 통지가 뒤따르며 서로 문장이 다르다.
+        if let notice = journeyRequeryNotice {
+            journeyRequeryNotice = nil
+            announce(notice, haptic: nil)
+        }
         runQuery()
     }
 
@@ -1010,25 +1030,18 @@ final class DirectionsModel {
             if aboardOrigin == nil {
                 recordRecentRoute(from: from, to: to, via: nil, boardStation: boardStation, alightStation: alightStation)
             }
-            announceJourneyOutcome([appLocalized("directions.readySummary", 1), resultsStaleNotice].compactMap { $0 }.joined(separator: " "),
+            announce([appLocalized("directions.readySummary", 1), resultsStaleNotice].compactMap { $0 }.joined(separator: " "),
                                    haptic: .success)
         case .noRoute:
             phase = .settled(successCount: 0)
-            announceJourneyOutcome(appLocalized("route.transit.noRoute"), haptic: .failure)
+            announce(appLocalized("route.transit.noRoute"), haptic: .failure)
         case .aboardNoRoute(let opposite):
             phase = .settled(successCount: 0)
-            announceJourneyOutcome(journeyAboardNoRouteText(opposite: opposite), haptic: .failure)
+            announce(journeyAboardNoRouteText(opposite: opposite), haptic: .failure)
         case .failed:
             phase = .settled(successCount: 0)
-            announceJourneyOutcome(appLocalized("route.transit.error"), haptic: .failure)
+            announce(appLocalized("route.transit.error"), haptic: .failure)
         }
-    }
-
-    /// 여정 조회 결과 통지. 채팅 카드가 낡아 다시 조회한 것이면 그 사유를 앞 문장으로 합쳐 한 통지로 낸다(E70-b D16) — 한 번만.
-    private func announceJourneyOutcome(_ message: String, haptic: ResultHaptic.Kind) {
-        let notice = journeyRequeryNotice
-        journeyRequeryNotice = nil
-        announce([notice, message].compactMap { $0 }.joined(separator: " "), haptic: haptic)
     }
 
     private func coordinate(

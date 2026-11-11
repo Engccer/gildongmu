@@ -15,6 +15,9 @@ struct JourneyChatCardView: View {
 
     /// 재진입 가드(웹 in-flight ref 미러). 측위 대기 중 재탭은 무시하고, 시각 표식(흐림)만 바꾼다.
     @State private var busy = false
+    /// 측위를 기다리는 [안내 시작]의 Task. 카드가 화면에서 사라지면(탭 이탈·대화 폐기) 취소해 뒤늦은 시작·탭 전환·재조회를 막는다
+    /// (웹 `PlaceSearch`의 "그 선택이 이긴다"와 같은 뜻, S1).
+    @State private var startTask: Task<Void, Never>?
 
     private var variant: JourneyVariant? { payload.result.variants.first }
     /// 첫 출구(= 서버 기본 출구). 역 B 미지정이면 nil.
@@ -32,17 +35,25 @@ struct JourneyChatCardView: View {
                 }
                 Text(journeyTotalsLine(variant, egress: egress, aboard: false)).font(.subheadline)
                 if !payload.manualOrigin {
-                    Button(appLocalized("beacon.start")) { start(variant) }
+                    // 측위를 기다리는 동안 라벨이 바뀌는 것이 VoiceOver 신호 하나다(S2, 헌장 §5 — 포커스는 버튼에 남고 별도 통지는 없다).
+                    Button(busy ? appLocalized("directions.locating") : appLocalized("beacon.start")) { start(variant) }
+                        .frame(minHeight: 44)
                         .buttonStyle(.bordered)
                         .opacity(busy ? 0.5 : 1)
                 }
                 Button(appLocalized("ios.journey.openInDirections")) { openInDirections(requery: false) }
+                    .frame(minHeight: 44)
                     .buttonStyle(.bordered)
                     .opacity(busy ? 0.5 : 1)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(12)
             .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.secondary.opacity(0.4)))
+            .onDisappear {
+                startTask?.cancel()
+                startTask = nil
+                busy = false
+            }
         }
     }
 
@@ -50,11 +61,15 @@ struct JourneyChatCardView: View {
     /// 아니면(낡음·이동·측위 실패) 시작하지 않고 길찾기 탭에서 같은 여정을 지금 위치로 다시 조회한다. 전송이 아니라 AI 동의와 무관하다.
     private func start(_ variant: JourneyVariant) {
         guard AppConfig.experimentalJourneyEnabled, !payload.manualOrigin, !busy else { return }
+        // 다른 안내가 진행 중이면 측위·재조회 전에 거부한다(S3) — 시작할 수 없는 상황에서 탭 전환·유료 조회가 일어나지 않게.
+        guard !GuideSession.shared.refuseStartIfOccupied() else { return }
         busy = true
-        Task { @MainActor in
+        startTask = Task { @MainActor in
             defer { busy = false }
             // 실측위 — 수동 위치 스토어를 거치지 않는다(안내는 늘 실좌표에서 시작한다). 실패하면 `noFix`로 다시 조회한다.
             let fix = try? await LocationService.shared.currentCoordinate(force: true)
+            // 측위 중 카드가 사라졌으면 아무것도 하지 않는다(S1).
+            guard !Task.isCancelled else { return }
             let freshness = journeyCardFreshness(
                 origin: payload.origin, queriedAtMs: payload.queriedAt,
                 fix: fix.map { RoutePoint(lat: $0.lat, lng: $0.lng) }, nowMs: Date().timeIntervalSince1970 * 1000)
@@ -64,6 +79,10 @@ struct JourneyChatCardView: View {
             }
             // 봉인 조건을 호출 자리의 머리말에 둔다(위 가드와 같은 술어 — `guidance-gate-drift.test.ts`가 이 자리를 잠근다).
             if AppConfig.experimentalJourneyEnabled {
+                recordJourneyRecentRoute(
+                    dest: RecentEndpoint(
+                        label: payload.destLabel, lat: payload.dest.lat, lng: payload.dest.lng, labelRoman: payload.destRoman),
+                    board: payload.board, alight: payload.alight)
                 GuideSession.shared.startJourney(plan: JourneyPlan(
                     variant: variant, egress: variant.egress?.options.first, destLabel: payload.destLabel,
                     destRoman: payload.destRoman, dest: BeaconDest(lat: payload.dest.lat, lng: payload.dest.lng),

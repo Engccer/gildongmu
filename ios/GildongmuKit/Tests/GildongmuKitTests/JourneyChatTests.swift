@@ -6,8 +6,8 @@ import Foundation
 // 요청 본문 능력 신고. Fixtures/chat-journey-render.json은 서버 `journey-tool.ts`의 render 모양에
 // 실호출 여정 응답(journey-live-both, 홍대입구 승차 → 잠실 하차)을 담은 것이다.
 
-private func journeyRenderJSON() throws -> String {
-    let url = try #require(Bundle.module.url(forResource: "Fixtures/chat-journey-render", withExtension: "json"))
+private func journeyRenderJSON(_ name: String = "chat-journey-render") throws -> String {
+    let url = try #require(Bundle.module.url(forResource: "Fixtures/\(name)", withExtension: "json"))
     return try String(contentsOf: url, encoding: .utf8)
 }
 
@@ -24,12 +24,24 @@ private func doneLine(render: String) -> String {
         #expect(payload.origin == RoutePoint(lat: 37.5563, lng: 126.9236))
         #expect(payload.queriedAt == 1_800_000_000_000)
         #expect(payload.manualOrigin == false)
-        #expect(payload.board?.label == "홍대입구")
-        #expect(payload.board?.line == "수도권 2호선")
-        #expect(payload.alight?.label == "잠실")
+        // 서버 `pickJourneyStation`의 모양: 노선을 말하지 않은 역은 「…역」 노선 없는 이름.
+        #expect(payload.board?.label == "홍대입구역")
+        #expect(payload.board?.line == nil)
+        #expect(payload.alight?.label == "잠실역")
         #expect(payload.alight?.line == nil)
         #expect(payload.destLabel == "잠실역")
         #expect(payload.destRoman == nil)
+    }
+
+    @Test func 정류장_지정과_못_찾음_줄과_수동_출발이_디코딩된다() throws {
+        guard case .done(_, let renders, _) = try decodeChatEventLine(doneLine(render: try journeyRenderJSON("chat-journey-render-stop-missing"))),
+              case .journey(let payload)? = renders.first
+        else { Issue.record("journey 렌더여야 한다"); return }
+        #expect(payload.board?.kind == .busStop)
+        #expect(payload.alight == nil)
+        #expect(payload.result.designatedMissing?.side == .board)
+        #expect(payload.manualOrigin)
+        #expect(payload.destRoman == "Jamsil Station")
     }
 
     @Test func 지정_역이_없는_null은_nil이다() throws {

@@ -452,6 +452,9 @@ final class GuideSession {
 
     /// 거부 통지는 모델의 창구를 쓴다(지연 슬롯·억제 규칙을 지나야 한다). 판정은 `isOccupied` — 여정 중(단계 사이 포함)
     /// 외부 시작은 거부한다(E70 §6.3).
+    /// 채팅 여정 카드(E70-b S3)가 측위·재조회 전에 점유를 먼저 판정하는 입구 — 길찾기 [안내 시작]이 점유 중에 하는 것과 같은 거부 통지를 낸다.
+    func refuseStartIfOccupied() -> Bool { refuseIfActive() }
+
     private func refuseIfActive() -> Bool {
         guard isOccupied else { return false }
         beacon.announceNow(appLocalized("guide.alreadyActive"), highPriority: true, bypassSuppression: true)

@@ -388,6 +388,14 @@ struct GildongmuApp: App {
         directionsPrefill = prefill
         directionsEpoch += 1
         selectedTab = .directions
+        // 채팅 여정 카드가 결과를 조회 없이 넘긴 진입은 여기서 최근 경로에 남긴다(E70-b S5 — 정확히 한 번 일어나는 자리).
+        // 재조회로 넘긴 진입은 `performJourney`가 기록한다.
+        if AppConfig.experimentalJourneyEnabled, let journey = prefill.journey, journey.result != nil,
+           case .place(let label, let lat, let lng, let roman) = prefill.endpoint {
+            recordJourneyRecentRoute(
+                dest: RecentEndpoint(label: label, lat: lat, lng: lng, labelRoman: roman),
+                board: journey.board, alight: journey.alight)
+        }
         if case .place(let label, let lat, let lng, let roman) = prefill.endpoint {
             // 프리필은 그 필드의 확정이므로 같은 스코프에 기록한다(분리 저장) —
             // "여기부터"를 출발지 최근 목록에 넣지 않으면 다음에 그 장소를 출발지로
