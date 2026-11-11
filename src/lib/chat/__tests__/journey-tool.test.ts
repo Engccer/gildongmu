@@ -448,13 +448,27 @@ describe("plan_journey 실행 — 턴 규칙(D5)", () => {
 
   it("병렬 후보 호출 둘 중 하나가 실패해도 성공한 쪽이 세운 되묻기 상태는 풀리지 않는다", async () => {
     const ctx = ctxWith();
-    // 두 순서 모두: 실패하는 호출(목적지 못 찾음)이 먼저 자리를 잡든 나중에 잡든, 성공한 호출의 되묻기 상태가 남는다.
+    // 실패하는 호출(목적지 못 찾음)이 먼저 자리를 잡고 먼저 끝난다 — 성공한 호출이 자리를 다시 세워야 한다.
     await Promise.all([
       executeFunction("plan_journey", { destination: "없는곳" }, ctx),
       executeFunction("plan_journey", { destination: "여의도공원" }, ctx),
-      executeFunction("plan_journey", { destination: "없는곳" }, ctx),
     ]);
     expect(ctx.journey?.turn.asked).toBe(true);
+
+    // 실패하는 호출이 먼저 자리를 잡고 **나중에** 끝난다 — 스냅숏으로 되돌리면 성공한 쪽의 상태가 풀린다.
+    const slow = ctxWith();
+    mockSearch.mockImplementation(async ({ query }) => {
+      if (query === "느린없는곳") {
+        await new Promise((r) => setTimeout(r, 20));
+        return { places: [] } as never;
+      }
+      return { places: query === "여의도공원" ? [DEST] : [] } as never;
+    });
+    await Promise.all([
+      executeFunction("plan_journey", { destination: "느린없는곳" }, slow),
+      executeFunction("plan_journey", { destination: "여의도공원" }, slow),
+    ]);
+    expect(slow.journey?.turn.asked).toBe(true);
     const r = await executeFunction("plan_journey", { destination: "여의도공원", board_station: "신도림역" }, ctx);
     expect(r.data).toMatchObject({ askUserFirst: true });
     expect(mockQuery).not.toHaveBeenCalled();
