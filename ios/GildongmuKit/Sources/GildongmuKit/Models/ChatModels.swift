@@ -21,7 +21,25 @@ public enum ChatRenderPayload: Sendable {
     case places([Place], sort: PlaceSort)
     case addresses([JusoAddress])
     case webResults([WebSearchResult])
+    /// 여정 카드(E70-b, 실험판). 디코딩이 실패한 `journey` 렌더는 `.unsupported`로 접는다(답 전체를 잃지 않는다).
+    case journey(JourneyChatPayload)
     case unsupported
+}
+
+/// 채팅 여정 카드 재료(웹 `JourneyRenderPayload` 미러, E70-b spec D8). `board`·`alight`는 칸에 지정한 역이라
+/// 길찾기 결과 화면과 같은 `RecentStation`(label·lat·lng·line?·kind?, 모르는 kind는 nil)으로 받는다.
+public struct JourneyChatPayload: Decodable, Sendable, Hashable {
+    public let result: JourneyResult
+    public let origin: RoutePoint
+    /// 조회 시각(epoch ms). 신선도 판정(`journeyCardFreshness`)의 근거.
+    public let queriedAt: Double
+    /// 출발지가 수동 지정 위치였는가 — 참이면 카드는 [안내 시작]을 내지 않는다(D2).
+    public let manualOrigin: Bool
+    public let board: RecentStation?
+    public let alight: RecentStation?
+    public let dest: RoutePoint
+    public let destLabel: String
+    public let destRoman: String?
 }
 
 extension ChatRenderPayload: Decodable {
@@ -39,6 +57,9 @@ extension ChatRenderPayload: Decodable {
             self = .addresses(try container.decode([JusoAddress].self, forKey: .results))
         case "web-results":
             self = .webResults(try container.decode([WebSearchResult].self, forKey: .results))
+        case "journey":
+            // 카드 한 장이 깨졌다고 답 전체를 잃지 않는다 — 접어서 산문이 정본이 되게 한다.
+            self = (try? JourneyChatPayload(from: decoder)).map { .journey($0) } ?? .unsupported
         // 웹은 self-fetch 카드(타입만)이고, 서버가 iOS를 위해 같은 렌더에 공통 Place 투영
         // (`nearby-place.ts`)을 `places`로 싣는다(2026-08-17, BACKLOG B9). 있으면 장소
         // 카드로 취급해 카드·산문 장소 언급 → 상세 진입이 다른 장소 답변과 같아진다.
@@ -133,11 +154,21 @@ public struct ChatRequestBody: Encodable, Sendable {
     public let userLocation: Coordinate?
     public let locale: String
     public let placeContext: PlaceContext?
+    /// 클라이언트 능력 신고(E70-b D7). nil이면 키 자체를 생략해 종전 요청과 byte-identical이다.
+    /// 실험판 채팅 탭에서만 `["journey"]`를 싣고, 장소 채팅은 싣지 않는다.
+    public let capabilities: [String]?
+    /// `userLocation`이 수동 지정 위치인가(D2). `capabilities`와 함께만 싣는다(웹 `useChat` 미러).
+    public let userLocationManual: Bool?
 
-    public init(messages: [Turn], userLocation: Coordinate?, locale: String, placeContext: PlaceContext?) {
+    public init(
+        messages: [Turn], userLocation: Coordinate?, locale: String, placeContext: PlaceContext?,
+        capabilities: [String]? = nil, userLocationManual: Bool? = nil
+    ) {
         self.messages = messages
         self.userLocation = userLocation
         self.locale = locale
         self.placeContext = placeContext
+        self.capabilities = capabilities
+        self.userLocationManual = userLocationManual
     }
 }

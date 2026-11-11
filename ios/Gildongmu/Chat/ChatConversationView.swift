@@ -91,7 +91,8 @@ struct ChatConversationView<EmptyContent: View>: View {
                                 onOpenPlace: { place, originKey in
                                     pendingOriginKey = originKey
                                     detailPlace = place
-                                }
+                                },
+                                showsJourneyCard: model.place == nil
                             )
                             .id(message.id)
                             // follow-up 질문 칩(spec 2026-08-24 §3.3): 마지막 assistant 말풍선
@@ -378,6 +379,8 @@ private struct MessageBubbleView: View {
     @AccessibilityFocusState.Binding var focusedOriginKey: String?
     /// 장소 상세 열기(장소, 원점 포커스 키).
     let onOpenPlace: (Place, String) -> Void
+    /// 여정 카드(E70-b)를 그리는 자리인가 — 채팅 탭의 범용 채팅만이다(장소 채팅 시트는 능력을 신고하지 않아 카드가 오지 않는다).
+    let showsJourneyCard: Bool
 
     /// 이 답변의 카드 장소 — 산문 블록 커스텀 액션의 유일한 근거(장소 앵커 모드처럼
     /// 서버가 카드를 생략하면 자연히 빈 배열이라 액션도 없다).
@@ -580,6 +583,11 @@ private struct MessageBubbleView: View {
         case .webResults(let results):
             ForEach(results, id: \.url) { result in
                 webResultRow(result)
+            }
+        case .journey(let payload):
+            // 실험판 봉인 뒤에서만(거짓이면 카드를 그리지 않는다). 구획 헤딩도 없다(E70-b D15) — 제목이 카드의 첫 줄이다.
+            if AppConfig.experimentalJourneyEnabled, showsJourneyCard {
+                JourneyChatCardView(payload: payload)
             }
         case .unsupported:
             EmptyView()

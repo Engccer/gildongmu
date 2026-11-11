@@ -26,6 +26,9 @@ const INFO_PLIST = join(ROOT, "ios/Support/Info.plist");
 const EXPERIMENTAL_SH = join(ROOT, "ios/scripts/experimental-infoplist.sh");
 const INFOPLIST_XCSTRINGS = join(ROOT, "ios/Gildongmu/Resources/InfoPlist.xcstrings");
 const IOS_DIR = join(ROOT, "ios");
+const CHAT_CARD = join(ROOT, "ios/Gildongmu/Chat/JourneyChatCardView.swift");
+const CHAT_CONVERSATION = join(ROOT, "ios/Gildongmu/Chat/ChatConversationView.swift");
+const CHAT_MODEL = join(ROOT, "ios/Gildongmu/Chat/ChatModel.swift");
 
 /** 2.0에서 삭제된 수단 봉인 플래그 — 식별자가 iOS 어디에도 남지 않아야 한다(항상 참 상수 금지). */
 const RETIRED_FLAG = "experimentalGuidanceEnabled";
@@ -354,12 +357,13 @@ describe("3. 안내 세션 진입점이 늘지 않았다", () => {
   // 「다음 구간」의 인계 — 호출자는 아래 "7"이 잠근다).
   // E78(2026-11-07)은 진입점을 더하지 않는다: 잘못 내림 복구는 같은 세션의 경로 교체(`changeRoute`)이고, 새 경로가 걸어가야
   // 하는 곳에서 시작하면 같은 `transitTransferWalk`를 지난다(호출 자리가 늘 뿐 진입점 수는 그대로다, spec §5-4).
-  it("안내 세션 진입점 호출이 정확히 12곳이다", () => {
+  // E70-b(2026-11-12)가 채팅 여정 카드의 `startJourney` 호출 하나를 더했다(12 → 13). 실험판 봉인 뒤이고 아래 "7"이 잠근다.
+  it("안내 세션 진입점 호출이 정확히 13곳이다", () => {
     const sites = swiftFiles(IOS_DIR).flatMap((file) => {
       const hits = readFileSync(file, "utf8").match(ENTRY_CALL) ?? [];
       return hits.map(() => file);
     });
-    expect(sites).toHaveLength(12);
+    expect(sites).toHaveLength(13);
   });
 
   /**
@@ -411,14 +415,41 @@ describe("7. 여정(E70) — 실험판 봉인과 내부 인계", () => {
     return names.filter((name) => declarationBody(source, name).includes(call)).sort();
   }
 
-  it("여정 시작은 길찾기 탭 한 곳이고 실험판 봉인 조건 안에 있다", () => {
+  it("여정 시작은 길찾기 탭과 채팅 여정 카드(E70-b) 두 곳뿐이고 둘 다 실험판 봉인 조건 안에 있다", () => {
     const calls = swiftFiles(IOS_DIR).flatMap((file) =>
       (readFileSync(file, "utf8").match(/GuideSession\.shared\.startJourney\(/g) ?? []).map(() => file.split("/").pop()),
     );
-    expect(calls).toEqual(["DirectionsTabView.swift"]);
+    expect([...calls].sort()).toEqual(["DirectionsTabView.swift", "JourneyChatCardView.swift"]);
     const sites = enclosingHeaders(directions(), "GuideSession.shared.startJourney(");
     expect(sites).toHaveLength(1);
     expect(sites[0].join("\n")).toContain(JOURNEY_FLAG);
+    const cardSites = enclosingHeaders(readFileSync(CHAT_CARD, "utf8"), "GuideSession.shared.startJourney(");
+    expect(cardSites).toHaveLength(1);
+    expect(cardSites[0].join("\n")).toContain(JOURNEY_FLAG);
+  });
+
+  it("채팅 여정 카드(E70-b)의 그리기·능력 신고·길찾기 프리필은 실험판 봉인 뒤에만 있고 장소 채팅에는 닿지 않는다", () => {
+    // 카드를 만드는 자리는 대화 화면 한 곳이고 봉인 머리말 안이며 범용 채팅(`showsJourneyCard`)에서만이다.
+    const cardUses = swiftFiles(IOS_DIR).flatMap((file) =>
+      (readFileSync(file, "utf8").match(/JourneyChatCardView\(/g) ?? []).map(() => file.split("/").pop()),
+    );
+    expect(cardUses).toEqual(["ChatConversationView.swift"]);
+    const conversation = readFileSync(CHAT_CONVERSATION, "utf8");
+    const drawSites = enclosingHeaders(conversation, "JourneyChatCardView(payload");
+    expect(drawSites).toHaveLength(1);
+    expect(drawSites[0].join("\n")).toContain(JOURNEY_FLAG);
+    expect(drawSites[0].join("\n")).toContain("showsJourneyCard");
+    expect(conversation).toContain("showsJourneyCard: model.place == nil");
+    // 능력 신고: 요청 본문에 `capabilities`를 싣는 자리는 한 곳이고, 그 값은 봉인과 범용 채팅 조건 변수만 지난다.
+    const model = readFileSync(CHAT_MODEL, "utf8");
+    expect(model.match(/capabilities:/g)).toHaveLength(1);
+    expect(model).toContain("let reportsJourney = AppConfig.experimentalJourneyEnabled && place == nil");
+    expect(model).toContain('capabilities: reportsJourney ? ["journey"] : nil');
+    expect(model).toContain("userLocationManual: reportsJourney ?");
+    // 길찾기 모델이 프리필의 여정 재료를 읽는 자리도 봉인 머리말 안이다(역 칸이 없는 구성에서 닿지 않는다).
+    const prefillSites = enclosingHeaders(directions(), "let journey = prefill?.journey");
+    expect(prefillSites).toHaveLength(1);
+    expect(prefillSites[0].join("\n")).toContain(JOURNEY_FLAG);
   });
 
   it("거부 가드 없는 시작 본문의 호출자는 공개 시작·내부 인계·여정 단계뿐이다", () => {

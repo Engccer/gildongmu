@@ -97,49 +97,9 @@ struct JourneyResultRows: View {
         journeyVariantHeading(v, board: board, alight: alight, lines: lines)
     }
 
-    /// 판정 14: 지정 역 경로를 못 찾았다는 사실 한 줄(양쪽이면 두 줄, 새 문장 없음 — spec §3.2). 동명 이역이면 고른 역의
-    /// 노선을 붙인다(판정 26).
-    private var missingLines: [String] {
-        guard let side = result.designatedMissing?.side else { return [] }
-        let lines = lines
-        // 정류장 입력은 원문 그대로 말한다(역 표시 이름 함수로 깎지 않는다).
-        let boardLine = board.map {
-            $0.kind == .busStop
-                ? appLocalized("ios.journey.designatedMissingStop", $0.label)
-                : appLocalized(
-                    "ios.journey.designatedMissing",
-                    lines.board ? journeyQualifiedStationName($0.label, line: $0.line) : journeyStationDisplayName($0.label))
-        }
-        let alightLine = alight.map {
-            $0.kind == .busStop
-                ? appLocalized("ios.journey.designatedMissingStopAlight", $0.label)
-                : appLocalized(
-                    "ios.journey.designatedMissingAlight",
-                    lines.alight ? journeyQualifiedStationName($0.label, line: $0.line) : journeyStationDisplayName($0.label))
-        }
-        switch side {
-        case .board: return [boardLine].compactMap { $0 }
-        case .alight: return [alightLine].compactMap { $0 }
-        case .both: return [boardLine, alightLine].compactMap { $0 }
-        }
-    }
+    private var missingLines: [String] { journeyMissingLines(result, board: board, alight: alight) }
 
-    /// 합계는 서버가 기본 출구로 낸 값이다 — 다른 출구·승강장을 고르면 그 택시 구간만큼 바꿔 말한다.
-    private var totalsLine: String {
-        var minutes = variant.totals.minutes
-        var taxiFare = variant.totals.taxiFare
-        if let base = variant.egress?.options.first, let picked = egress {
-            minutes += minutesOf(picked.taxiOut) - minutesOf(base.taxiOut)
-            taxiFare += picked.taxiOut.taxiFare - base.taxiOut.taxiFare
-        }
-        if aboard {
-            return taxiFare == 0
-                ? appLocalized("ios.journey.totalsAboard", String(minutes))
-                : appLocalized("ios.journey.totalsAboardTaxi", String(minutes), wonText(taxiFare))
-        }
-        return appLocalized(
-            "ios.journey.totals", String(minutes), wonText(taxiFare), wonText(variant.totals.transitFare))
-    }
+    private var totalsLine: String { journeyTotalsLine(variant, egress: egress, aboard: aboard) }
 
     private func egressLine(_ option: EgressOption, lookupFailed: Bool) -> String {
         let minutes = minutesText(option.taxiOut)
@@ -226,4 +186,49 @@ func journeyLineHint(_ place: Place) -> String? {
     }
     if let tail = place.name.split(separator: " ").dropFirst().last, isLine(tail) { return String(tail) }
     return nil
+}
+
+/// 판정 14: 지정 역 경로를 못 찾았다는 사실 한 줄(양쪽이면 두 줄, 새 문장 없음 — spec §3.2). 동명 이역이면 고른 역의
+/// 노선을 붙인다(판정 26). 길찾기 결과 화면과 채팅 여정 카드(E70-b)가 같은 함수를 쓴다.
+func journeyMissingLines(_ result: JourneyResult, board: RecentStation?, alight: RecentStation?) -> [String] {
+    guard let side = result.designatedMissing?.side else { return [] }
+    let lines = journeyLineQualifiers(result, board: board, alight: alight)
+    // 정류장 입력은 원문 그대로 말한다(역 표시 이름 함수로 깎지 않는다).
+    let boardLine = board.map {
+        $0.kind == .busStop
+            ? appLocalized("ios.journey.designatedMissingStop", $0.label)
+            : appLocalized(
+                "ios.journey.designatedMissing",
+                lines.board ? journeyQualifiedStationName($0.label, line: $0.line) : journeyStationDisplayName($0.label))
+    }
+    let alightLine = alight.map {
+        $0.kind == .busStop
+            ? appLocalized("ios.journey.designatedMissingStopAlight", $0.label)
+            : appLocalized(
+                "ios.journey.designatedMissingAlight",
+                lines.alight ? journeyQualifiedStationName($0.label, line: $0.line) : journeyStationDisplayName($0.label))
+    }
+    switch side {
+    case .board: return [boardLine].compactMap { $0 }
+    case .alight: return [alightLine].compactMap { $0 }
+    case .both: return [boardLine, alightLine].compactMap { $0 }
+    }
+}
+
+/// 합계는 서버가 기본 출구로 낸 값이다 — 다른 출구·승강장을 고르면 그 택시 구간만큼 바꿔 말한다. 카드는 첫 출구(= 기본)라 그대로다.
+/// `aboard`면 대중교통 요금을 말하지 않는다(이미 낸 요금 — R13).
+func journeyTotalsLine(_ variant: JourneyVariant, egress: EgressOption?, aboard: Bool) -> String {
+    var minutes = variant.totals.minutes
+    var taxiFare = variant.totals.taxiFare
+    if let base = variant.egress?.options.first, let picked = egress {
+        minutes += minutesOf(picked.taxiOut) - minutesOf(base.taxiOut)
+        taxiFare += picked.taxiOut.taxiFare - base.taxiOut.taxiFare
+    }
+    if aboard {
+        return taxiFare == 0
+            ? appLocalized("ios.journey.totalsAboard", String(minutes))
+            : appLocalized("ios.journey.totalsAboardTaxi", String(minutes), wonText(taxiFare))
+    }
+    return appLocalized(
+        "ios.journey.totals", String(minutes), wonText(taxiFare), wonText(variant.totals.transitFare))
 }

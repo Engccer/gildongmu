@@ -7,9 +7,9 @@ import { join } from "node:path";
  * 이름 키와 글자 하나까지 같아야 한다. 같은 앱의 두 창구가 다른 말을 하면 화면을 못 보는 사용자에게 둘이 같은 기능이라는
  * 근거가 없다. 웹 전용 키(아래 목록)만 대응이 없다.
  */
-// `openInDirections`·`cardStaleRequery`는 채팅 여정 카드(E70-b)의 웹 문안이다 — iOS 카드가 `ios.journey.*`에 같은 이름 키를
-// 들이면 여기서 빼서 두 창구의 문장이 같은지 다시 잠근다.
-const WEB_ONLY = new Set(["searchField", "transferField", "openInDirections", "cardStaleRequery"]);
+// `openInDirections`·`cardStaleRequery`(채팅 여정 카드, E70-b)는 iOS 카드가 `ios.journey.*`에 같은 이름 키를 들여 대응이 있으니
+// 이 목록에 없다(두 창구의 문장이 같은지 잠긴다).
+const WEB_ONLY = new Set(["searchField", "transferField"]);
 
 const root = join(__dirname, "../../..");
 const web = JSON.parse(readFileSync(join(root, "messages/ko.json"), "utf8")).journey as Record<string, string>;

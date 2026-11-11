@@ -23031,6 +23031,16 @@
         }
       }
     },
+    "ios.journey.cardStaleRequery": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "위치가 바뀌어 경로를 다시 찾습니다."
+          }
+        }
+      }
+    },
     "ios.journey.clearStations": {
       "localizations": {
         "ko": {
@@ -23187,6 +23197,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "역이나 정류장을 골라 주세요."
+          }
+        }
+      }
+    },
+    "ios.journey.openInDirections": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "길찾기에서 열기"
           }
         }
       }

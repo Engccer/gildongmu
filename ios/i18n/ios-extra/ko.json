@@ -481,6 +481,8 @@
       "aboardOpposite": "지금 탄 열차는 목적지 반대 방향으로 갑니다.",
       "totalsAboard": "총 {minutes}분",
       "totalsAboardTaxi": "총 {minutes}분, 택시 요금 약 {taxiFare}원",
+      "openInDirections": "길찾기에서 열기",
+      "cardStaleRequery": "위치가 바뀌어 경로를 다시 찾습니다.",
       "askAlightSubway": "지하철을 이용하다가 {place}에서 내려 자동차로 환승하실 예정인가요?",
       "askAlightRail": "기차를 이용하다가 {place}에서 내려 자동차로 환승하실 예정인가요?",
       "askAlightBus": "버스를 이용하다가 {place}에서 내려 자동차로 환승하실 예정인가요?",

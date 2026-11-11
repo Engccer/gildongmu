@@ -33,6 +33,20 @@ struct DirectionsPrefill: Equatable {
     enum Role { case from, to }
     let role: Role
     let endpoint: DirectionsEndpoint
+    /// 채팅 여정 카드(E70-b, 실험판)가 넘기는 갈아탈 역·결과. nil이면 종전 프리필이다.
+    var journey: JourneyPrefill? = nil
+}
+
+/// 채팅 여정 카드가 길찾기 탭에 넘기는 재료(E70-b D14·D16). 도착지는 프리필의 끝점(`.to`)이고, 여기엔 갈아탈 역과 카드의 결과가 든다.
+/// `result`가 있으면 재조회 없이 그 결과를 보여 주고([길찾기에서 열기]), nil이면 같은 여정을 지금 위치로 다시 조회한다(낡은 카드의 [안내 시작]).
+struct JourneyPrefill: Equatable {
+    let board: RecentStation?
+    let alight: RecentStation?
+    let result: JourneyResult?
+    /// 카드의 조회가 수동 지정 위치에서였는가 — 결과를 그대로 보여 줄 때 안내 시작 고지의 근거(`resultsOriginNeedsStartNotice`).
+    let manualOrigin: Bool
+    /// 다시 조회 사유 통지(「위치가 바뀌어 경로를 다시 찾습니다.」). 조회 완료 통지의 앞 문장으로 합쳐 한 통지로 낸다.
+    let requeryNotice: String?
 }
 
 /// 길찾기 필드 식별(출발지/도착지) + 수동 위치 지정. 검색 시트 라우팅 공용
@@ -216,6 +230,9 @@ final class DirectionsModel {
     /// 조회를 걸면 방금 한 동작의 응답이 "도착지를 입력하세요" 오류가 된다.
     /// `pendingPrefillQuery`와 배타적이다(양끝이 다 있으면 조회, 아니면 착지).
     private var pendingPrefillFocus: Bool
+    /// 채팅 여정 카드가 낡아 다시 조회할 때의 사유 문장(E70-b D16) — 조회 완료 통지 앞에 합쳐 한 번만 낸다(같은 사건의 두 통지가
+    /// 서로를 끊지 않게). 조회가 통지 없이 끝나는 경로(측위 실패)에서는 그 실패 통지가 대신 말한다.
+    private var journeyRequeryNotice: String?
 
     init(prefill: DirectionsPrefill? = nil) {
         // ⚠ 지역 상수로 받아 판정한다 — `@Observable`이 저장 프로퍼티를 접근자로
@@ -230,6 +247,23 @@ final class DirectionsModel {
         pendingPrefillQuery = prefill != nil && initialFrom != nil && initialTo != nil
         pendingPrefillFocus = prefill != nil && initialTo == nil
         recentRoutes = RecentSearchStore().routes()
+        // 채팅 여정 카드(E70-b): 갈아탈 역을 칸에 세우고, 카드의 결과가 있으면 조회 없이 결과 상태를 세운다(D14). 없으면 위의
+        // 자동 조회가 그 역으로 여정을 다시 조회한다(D16). 실험판 봉인 밖에서는 아무것도 하지 않는다(역 칸이 없는 구성).
+        if AppConfig.experimentalJourneyEnabled, let journey = prefill?.journey {
+            boardStation = journey.board
+            alightStation = journey.alight
+            if let result = journey.result {
+                pendingPrefillQuery = false
+                journeyOutcome = .found(result)
+                journeyVariantIndex = 0
+                journeyEgressIndex = 0
+                resultsOriginNeedsStartNotice = journey.manualOrigin
+                phase = .settled(successCount: 1)
+                hasQueriedOnce = true
+            } else {
+                journeyRequeryNotice = journey.requeryNotice
+            }
+        }
     }
 
     /// 프리필 자동 조회 소비(뷰 `.task` 1회). 호출 시점의 필드로 조회한다 — 진행 중 조회가
@@ -976,18 +1010,25 @@ final class DirectionsModel {
             if aboardOrigin == nil {
                 recordRecentRoute(from: from, to: to, via: nil, boardStation: boardStation, alightStation: alightStation)
             }
-            announce([appLocalized("directions.readySummary", 1), resultsStaleNotice].compactMap { $0 }.joined(separator: " "),
-                     haptic: .success)
+            announceJourneyOutcome([appLocalized("directions.readySummary", 1), resultsStaleNotice].compactMap { $0 }.joined(separator: " "),
+                                   haptic: .success)
         case .noRoute:
             phase = .settled(successCount: 0)
-            announce(appLocalized("route.transit.noRoute"), haptic: .failure)
+            announceJourneyOutcome(appLocalized("route.transit.noRoute"), haptic: .failure)
         case .aboardNoRoute(let opposite):
             phase = .settled(successCount: 0)
-            announce(journeyAboardNoRouteText(opposite: opposite), haptic: .failure)
+            announceJourneyOutcome(journeyAboardNoRouteText(opposite: opposite), haptic: .failure)
         case .failed:
             phase = .settled(successCount: 0)
-            announce(appLocalized("route.transit.error"), haptic: .failure)
+            announceJourneyOutcome(appLocalized("route.transit.error"), haptic: .failure)
         }
+    }
+
+    /// 여정 조회 결과 통지. 채팅 카드가 낡아 다시 조회한 것이면 그 사유를 앞 문장으로 합쳐 한 통지로 낸다(E70-b D16) — 한 번만.
+    private func announceJourneyOutcome(_ message: String, haptic: ResultHaptic.Kind) {
+        let notice = journeyRequeryNotice
+        journeyRequeryNotice = nil
+        announce([notice, message].compactMap { $0 }.joined(separator: " "), haptic: haptic)
     }
 
     private func coordinate(

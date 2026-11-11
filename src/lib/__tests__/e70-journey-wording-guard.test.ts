@@ -141,7 +141,7 @@ describe("E70 여정 문장의 자리", () => {
     expect(heading).toContain("qualified ? journeyQualifiedStationName(name, line: line) : display(name)");
     expect(heading.match(/qualified: lines\.board\)/g)).toHaveLength(2); // 지정 역 제목 + 추천 제목
     expect(heading.match(/qualified: lines\.alight\)/g)).toHaveLength(2);
-    const missing = body(rows, "missingLines");
+    const missing = body(rows, "journeyMissingLines");
     expect(missing).toContain("lines.board ? journeyQualifiedStationName($0.label, line: $0.line)");
     expect(missing).toContain("lines.alight ? journeyQualifiedStationName($0.label, line: $0.line)");
     // 쪽 판정은 Kit(`journeyLineQualifiers`·`journeyRecommendedTitleIsBoardSide`, 테스트 `JourneyTests`) 한 곳이다

@@ -175,6 +175,9 @@ final class ChatModel {
     private func requestBody() -> ChatRequestBody {
         let effective = ManualLocationStore.shared.current.map { (lat: $0.lat, lng: $0.lng) }
             ?? LocationService.shared.lastCoordinate
+        // 여정 능력 신고(E70-b D7): 실험판의 채팅 탭(범용 채팅)만이다. 장소 채팅은 카드를 못 그려 신고하지 않는다.
+        // 신고하지 않으면 두 필드 모두 키가 생략돼 요청 본문은 종전과 같다. `userLocationManual`은 위 유효 위치가 수동 지정인가(D2).
+        let reportsJourney = AppConfig.experimentalJourneyEnabled && place == nil
         return ChatRequestBody(
             messages: messages.map { .init(role: $0.role == .user ? "user" : "assistant", text: $0.text) },
             userLocation: effective.map { .init(lat: $0.lat, lng: $0.lng) },
@@ -187,7 +190,9 @@ final class ChatModel {
                     category: place.category.isEmpty ? nil : place.category,
                     isStation: isStation(place)
                 )
-            }
+            },
+            capabilities: reportsJourney ? ["journey"] : nil,
+            userLocationManual: reportsJourney ? ManualLocationStore.shared.current != nil : nil
         )
     }
 
@@ -206,6 +211,7 @@ final class ChatModel {
         case "get_weather": appLocalized("chat.progress.tool.get_weather")
         case "get_station_meta": appLocalized("chat.progress.tool.get_station_meta")
         case "get_station_facilities": appLocalized("chat.progress.tool.get_station_facilities")
+        case "plan_journey": appLocalized("chat.progress.tool.plan_journey")
         case "get_car_route": appLocalized("chat.progress.tool.get_car_route")
         case "get_transit_route": appLocalized("chat.progress.tool.get_transit_route")
         case "get_walk_route": appLocalized("chat.progress.tool.get_walk_route")
