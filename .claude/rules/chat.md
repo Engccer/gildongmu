@@ -54,7 +54,8 @@ Claude Code는 위 `paths`에 맞는 파일을 읽을 때 이 파일을 자동�
 - **⚠ 장소 특징 날조 금지**: 도구가 준 필드만 말한다(systemInstruction에 명시, [[agentic-llm-fabricates-unstated-fields]]). 도구 결과 `data`는 LLM에만(PII 누수 차단), 화면엔 카드+출처. → PATTERNS
 - **마크다운 답변**: 헤딩은 강조 단락으로 다운그레이드하고, loose list는 `remarkTightLists`로 tight 강제한다(`<li><p>`가 VoiceOver 이중 낭독). → PATTERNS
 - **답변 복사·듣기는 평문 한 벌과 통지 창구 하나를 쓴다**(웹 B12, `markdownToPlainText`는 Kit·`:kit`와 공유 fixture — `markdown-plain-text.ts`엔 JS 약칭 클래스·`m` 플래그 금지). → PATTERNS
-- **채팅 도구는 24개이고 목록 정본은 코드다**(`declarations.ts`·`router.ts`). 지명→좌표는 `resolveCoord` 한 곳(실패는 `placeNotFound`, 현재 위치 폴백 금지), 지명·앵커 조회는 기기 위치 self-fetch 카드 금지(`placeMode`). → PATTERNS
+- **여정 도구 `plan_journey`는 클라이언트가 능력을 신고한 요청에만 열린다**(`capabilities: ["journey"]` ∧ ko ∧ 키 셋 ∧ 장소 채팅 아님, 없으면 선언·실행·지침 0). 카드를 그리는 새 클라이언트는 신고와 카드를 함께 들이고, 여정 조회는 `queryJourney` 한 곳만 지난다(`getJourney` 직접 호출 금지). 노선을 말하지 않은 역은 노선으로 좁히지 않는다. → spec `2026-11-12-e70b-chat-journey-design.md`
+- **채팅 도구는 25개(여정 도구 포함)이고 목록 정본은 코드다**(`declarations.ts`·`router.ts`). 지명→좌표는 `resolveCoord` 한 곳(실패는 `placeNotFound`, 현재 위치 폴백 금지), 지명·앵커 조회는 기기 위치 self-fetch 카드 금지(`placeMode`). → PATTERNS
 - **모델 교체는 `npm run eval:ab`로 판정한다 — 벤더 벤치마크로 올리지 말 것**(날조 축은 `src/__ab__/grounding.ts` 자동 판정, pass^k 게이트). systemInstruction 정본은 `system-instruction.ts` 하나. 비용은 `candidatesTokenCount`+`thoughtsTokenCount`. → PATTERNS
 - **iOS 채팅 AI 동의 게이트**(`ChatConsentView` + `ChatModel.send` 가드 이중 방어 — 새 전송 경로는 우회 여부 확인). → PATTERNS
 - **음성 전사를 검색어로 쓰기 전 `normalizeVoiceQuery` 필수**(웹 `format.ts` ↔ Kit `VoiceQuery.swift`) — STT 후행 마침표에 juso가 0건이 된다. 소비 여부 판정은 별개 층 `hasSpeechContent`(Kit, `SpeechService.stop()` 한 곳). 채팅은 미적용. → INTEGRATIONS
