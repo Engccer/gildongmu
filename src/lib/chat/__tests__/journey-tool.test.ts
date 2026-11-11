@@ -98,40 +98,58 @@ beforeEach(() => {
   vi.mocked(hasDataGoKrKey).mockReturnValue(true);
 });
 
+/** 후보의 정류 좌표가 없거나 멀어 거리 거르기에 걸리지 않는 끝점. */
+const FAR_ENDS = { origin: { lat: 35.1, lng: 129.0 }, dest: { lat: 35.2, lng: 129.1 } };
+
+describe("journeyStationCandidates — 걸어갈 거리의 역은 후보가 아니다", () => {
+  const stops = (lat: number, lng: number) => [{ name: "가", lat, lng }, { name: "나", lat: lat + 0.05, lng }] as never;
+  const withStops = route([{ ...leg("subway", "수도권 1호선", "시청", "수원"), stops: stops(37.5657, 126.9769) }]);
+  it("승차 후보: 출발지에서 500m 안의 승차역은 뺀다", () => {
+    const origin = { lat: 37.5663, lng: 126.9779 };
+    expect(journeyStationCandidates(withStops, "board", { origin, dest: FAR_ENDS.dest })).toEqual([]);
+    expect(journeyStationCandidates(withStops, "board", FAR_ENDS).map((c) => c.name)).toEqual(["시청역"]);
+  });
+  it("하차 후보: 목적지에서 500m 안의 하차역은 뺀다", () => {
+    const dest = { lat: 37.6157, lng: 126.9769 };
+    expect(journeyStationCandidates(withStops, "alight", { origin: FAR_ENDS.origin, dest })).toEqual([]);
+    expect(journeyStationCandidates(withStops, "alight", FAR_ENDS).map((c) => c.name)).toEqual(["수원역"]);
+  });
+});
+
 describe("journeyStationCandidates — 후보는 대중교통 경로에서만(D4)", () => {
   it("board: 첫 승차역과 환승역(마지막 하차역 제외), 구간의 노선과 함께", () => {
-    expect(journeyStationCandidates(TWO_LINES, "board")).toEqual([
+    expect(journeyStationCandidates(TWO_LINES, "board", FAR_ENDS)).toEqual([
       { name: "길동역", line: "5호선", side: "board" },
       { name: "천호(풍납토성)역", line: "8호선", side: "board" },
     ]);
   });
 
   it("alight: 환승역과 마지막 하차역(첫 승차역 제외)", () => {
-    expect(journeyStationCandidates(TWO_LINES, "alight")).toEqual([
+    expect(journeyStationCandidates(TWO_LINES, "alight", FAR_ENDS)).toEqual([
       { name: "천호(풍납토성)역", line: "5호선", side: "alight" },
       { name: "잠실역", line: "8호선", side: "alight" },
     ]);
   });
 
   it("쪽을 모르면 두 묶음을 side 표지로 갈라 함께 싣는다", () => {
-    const all = journeyStationCandidates(TWO_LINES, undefined);
+    const all = journeyStationCandidates(TWO_LINES, undefined, FAR_ENDS);
     expect(all.map((c) => `${c.side}:${c.name}`)).toEqual(["board:길동역", "board:천호(풍납토성)역", "alight:천호(풍납토성)역", "alight:잠실역"]);
   });
 
   it("버스만 타는 경로와 경로 없음은 빈 목록", () => {
-    expect(journeyStationCandidates(route([leg("walk"), leg("bus", "341", "길동사거리", "여의도환승센터")]), "board")).toEqual([]);
-    expect(journeyStationCandidates(route([leg("bus", "341", "가", "나")]), undefined)).toEqual([]);
-    expect(journeyStationCandidates(null, "alight")).toEqual([]);
+    expect(journeyStationCandidates(route([leg("walk"), leg("bus", "341", "길동사거리", "여의도환승센터")]), "board", FAR_ENDS)).toEqual([]);
+    expect(journeyStationCandidates(route([leg("bus", "341", "가", "나")]), undefined, FAR_ENDS)).toEqual([]);
+    expect(journeyStationCandidates(null, "alight", FAR_ENDS)).toEqual([]);
   });
 
   it("버스 구간의 정류장은 후보가 아니다(지하철 구간만)", () => {
     const mixed = route([leg("bus", "341", "길동사거리", "천호역"), leg("subway", "수도권 5호선", "천호", "여의도")]);
-    expect(journeyStationCandidates(mixed, "board")).toEqual([{ name: "천호역", line: "5호선", side: "board" }]);
+    expect(journeyStationCandidates(mixed, "board", FAR_ENDS)).toEqual([{ name: "천호역", line: "5호선", side: "board" }]);
   });
 
   it("한쪽에 최대 3곳, 경로 순서", () => {
     const four = route(["가", "나", "다", "라"].map((n, i) => leg("subway", `수도권 ${i + 1}호선`, n, `${n}끝`)));
-    expect(journeyStationCandidates(four, "board").map((c) => c.name)).toEqual(["가역", "나역", "다역"]);
+    expect(journeyStationCandidates(four, "board", FAR_ENDS).map((c) => c.name)).toEqual(["가역", "나역", "다역"]);
   });
 });
 
@@ -154,7 +172,8 @@ describe("pickJourneyStation — 역 이름 선정(D3)", () => {
   it("노선이 없으면 기준 좌표에 가장 가까운 것(같은 자리의 환승역은 되묻지 않는다)", () => {
     const near2 = { lat: 37.5089, lng: 126.8913 };
     const r = pickJourneyStation("신도림역", undefined, [SINDORIM_1, SINDORIM_2], near2);
-    expect(r.kind === "found" && r.station.label).toBe("신도림역 2호선");
+    // 노선을 말하지 않았으면 노선으로 좁히지 않는다(이름만, 좌표는 가장 가까운 줄의 것) — 어느 노선으로 가는 경로든 지정 역으로 맞는다.
+    expect(r).toEqual({ kind: "found", station: { label: "신도림역", lat: SINDORIM_2.lat, lng: SINDORIM_2.lng } });
   });
 
   it("이름이 같은 역이 2km 넘게 떨어져 있고 노선이 없으면 고르지 않고 노선 목록을 돌려준다", () => {
@@ -228,7 +247,7 @@ describe("plan_journey 실행 — 후보(D4)", () => {
     expect(r.render).toBeUndefined();
     expect(r.source).toEqual([{ label: "source.odsay" }]);
     expect(mockQuery).not.toHaveBeenCalled();
-    expect(mockTransit).toHaveBeenCalledWith({ origin: GILDONG, dest: { lat: DEST.lat, lng: DEST.lng } });
+    expect(mockTransit).toHaveBeenCalledWith({ origin: GILDONG, dest: { lat: DEST.lat, lng: DEST.lng }, includeStops: true });
     expect(ctx.journey!.turn.asked).toBe(true);
   });
 

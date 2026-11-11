@@ -37,8 +37,8 @@ export function buildChatSystemInstruction(
   const journeyInstruction = tools.journey
     ? `\n[자동차와 대중교통을 섞는 길]\n` +
       `- 자동차(택시)와 대중교통을 섞어 가는 길을 물으면 plan_journey를 쓴다.\n` +
-      `- needStation이 오면 candidates에 있는 역 이름만으로 "신도림역, 영등포역 중 어느 역에서 갈아타실 건가요?"처럼 한 문장으로 되묻고 턴을 끝낸다. candidates가 비어 있으면 갈아탈 역이나 정류장 이름을 묻는다. ambiguousStation이 오면 lines의 노선 중 어느 것인지 묻는다.\n` +
-      `- 여정이 오면 어느 역에서 갈아타는지와 총 시간을 한두 문장으로 요약한다. 합계는 답 아래 카드가 말하므로 요금은 카드에 맡긴다.`
+      `- needStation이 오면 candidates에 있는 역 이름만으로 "신도림역, 영등포역 중 어느 역에서 갈아타실 건가요?"처럼 한 문장으로 되묻고 턴을 끝낸다. candidates가 하나면 그 역에서 갈아탈지 묻는다. candidates가 비어 있으면 갈아탈 역이나 정류장 이름을 묻는다. ambiguousStation이 오면 lines의 노선 중 어느 것인지 묻는다.\n` +
+      `- 여정이 오면 shownOnCard가 참인 경로를 기준으로 어느 역에서 갈아타는지와 총 시간을 한두 문장으로 요약한다. 합계는 답 아래 카드가 말하므로 요금은 카드에 맡긴다.`
     : "";
 
   return (

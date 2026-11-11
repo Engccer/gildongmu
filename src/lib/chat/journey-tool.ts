@@ -33,6 +33,8 @@ export interface JourneyCandidate {
 export const JOURNEY_CANDIDATES_PER_SIDE = 3;
 /** 이름이 같은 역이 이보다 멀리 떨어져 있으면 다른 역이다(D3) — 노선 없이 고르지 않고 되묻는다. */
 export const JOURNEY_AMBIGUOUS_STATION_M = 2000;
+/** 승차 후보는 출발지에서, 하차 후보는 목적지에서 이 거리(m) 안이면 뺀다 — 걸어갈 역이다(잠정값). */
+export const JOURNEY_CANDIDATE_MIN_M = 500;
 
 /**
  * 후보 역(D4, 순수): 대중교통 추천 경로의 지하철·기차 구간에서만 뽑는다. 경로 순서, 한쪽에 최대 3곳.
@@ -41,7 +43,11 @@ export const JOURNEY_AMBIGUOUS_STATION_M = 2000;
  * - 쪽을 모르면 두 묶음을 `side` 표지로 갈라 함께 싣는다(board 먼저).
  * 버스만 타는 경로·경로 없음은 빈 목록이다.
  */
-export function journeyStationCandidates(route: TransitRoute | null, side: JourneySide | undefined): JourneyCandidate[] {
+export function journeyStationCandidates(
+  route: TransitRoute | null,
+  side: JourneySide | undefined,
+  ends: { origin: Coord; dest: Coord },
+): JourneyCandidate[] {
   if (!route) return [];
   const rail = route.legs.filter((l) => l.mode === "subway");
   const of = (s: JourneySide): JourneyCandidate[] => {
@@ -50,6 +56,11 @@ export function journeyStationCandidates(route: TransitRoute | null, side: Journ
     for (const leg of rail) {
       const raw = s === "board" ? leg.fromName : leg.toName;
       if (!raw) continue;
+      // 걸어갈 거리의 역은 자동차로 갈아탈 후보가 아니다(실호출 2026-11-12: 출발지 바로 앞 역 하나만 후보로 나왔다).
+      // 정류 좌표가 없으면 거르지 않는다(모르는 것을 가깝다고 보지 않는다).
+      const stop = s === "board" ? leg.stops?.[0] : leg.stops?.[leg.stops.length - 1];
+      const end = s === "board" ? ends.origin : ends.dest;
+      if (stop && haversineMeters(stop.lat, stop.lng, end.lat, end.lng) < JOURNEY_CANDIDATE_MIN_M) continue;
       const key = normalizeStationName(raw);
       if (key === "" || seen.has(key)) continue;
       seen.add(key);
@@ -94,6 +105,9 @@ export function pickJourneyStation(name: string, line: string | undefined, place
   }
   const dist = (p: Place) => haversineMeters(p.lat, p.lng, near.lat, near.lng);
   const best = pool.reduce((a, b) => (dist(b) < dist(a) ? b : a));
+  // 노선을 말하지 않았으면 노선으로 좁히지 않는다: 장소 검색의 한 줄(「서울역 경의중앙선」)을 그대로 실으면 그 노선만 지정 역으로
+  // 맞아 다른 노선(1호선)으로 가는 경로가 「지정 역 경로 없음」이 된다(실호출 2026-11-12). 같음 판정은 이름 + 500m가 맡는다.
+  if (!wantLine) return { kind: "found", station: { label: `${displayStationName(best.name)}역`, lat: best.lat, lng: best.lng } };
   const bestLine = journeyLineHint(best);
   return { kind: "found", station: { label: best.name, lat: best.lat, lng: best.lng, ...(bestLine ? { line: bestLine } : {}) } };
 }
@@ -268,9 +282,9 @@ export async function executePlanJourney(args: Record<string, unknown>, ctx: Exe
 
     if (askMode) {
       const side = args.transfer_side === "board" || args.transfer_side === "alight" ? args.transfer_side : undefined;
-      // 기존 대중교통 도구와 같은 호출이라 같은 캐시를 탄다.
-      const transit = await getTransitRoute({ origin, dest });
-      const candidates = journeyStationCandidates(transit?.recommended ?? null, side);
+      // 정류 좌표(`stops`)가 있어야 걸어갈 거리의 역을 후보에서 뺄 수 있다 — 좌표는 옵트인 응답에만 실린다.
+      const transit = await getTransitRoute({ origin, dest, includeStops: true });
+      const candidates = journeyStationCandidates(transit?.recommended ?? null, side, { origin, dest });
       keep = true;
       return {
         data: { needStation: true, destination: p.name, candidates },
