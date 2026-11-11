@@ -448,8 +448,9 @@ describe("plan_journey 실행 — 턴 규칙(D5)", () => {
 
   it("병렬 후보 호출 둘 중 하나가 실패해도 성공한 쪽이 세운 되묻기 상태는 풀리지 않는다", async () => {
     const ctx = ctxWith();
-    // 첫 호출은 목적지를 찾고 후보를 돌려준다. 둘째 호출은 목적지를 못 찾아 자리를 돌려주려 한다.
+    // 두 순서 모두: 실패하는 호출(목적지 못 찾음)이 먼저 자리를 잡든 나중에 잡든, 성공한 호출의 되묻기 상태가 남는다.
     await Promise.all([
+      executeFunction("plan_journey", { destination: "없는곳" }, ctx),
       executeFunction("plan_journey", { destination: "여의도공원" }, ctx),
       executeFunction("plan_journey", { destination: "없는곳" }, ctx),
     ]);

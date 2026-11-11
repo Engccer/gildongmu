@@ -359,7 +359,11 @@ export async function executePlanJourney(args: Record<string, unknown>, ctx: Exe
   } finally {
     // 자리를 지킨 호출은 다른 호출이 되돌리지 못하게 표시한다: 병렬 호출 둘 중 하나가 실패해 스냅숏으로 되돌리면
     // 성공한 쪽이 세운 `asked`가 풀려 같은 턴에 조회가 통과한다(리뷰 S1).
-    if (keep) keptClaims(j.turn).add(claim);
+    if (keep) {
+      keptClaims(j.turn).add(claim);
+      // 먼저 실패한 병렬 호출이 이미 되돌렸을 수 있다 — 지킨 자리는 다시 세운다.
+      j.turn[claim] = true;
+    }
     else if (!keptClaims(j.turn).has(claim)) j.turn[claim] = before;
   }
 }
