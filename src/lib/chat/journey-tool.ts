@@ -10,7 +10,7 @@ import { isInKorea } from "@/lib/coverage";
 import { haversineMeters } from "@/lib/geo";
 import { displayStationName, exitQueryStationName } from "@/lib/journey/display";
 import { journeyLineHint, journeyLineLabel } from "@/lib/journey/journey-lines";
-import { queryJourney } from "@/lib/journey/query";
+import { journeyBudgetPrecheck, queryJourney } from "@/lib/journey/query";
 import { sameLine } from "@/lib/journey/station-identity";
 import { searchJourneyStops, stopSearchDeps } from "@/lib/journey/stop-search";
 import { getTransitRoute } from "@/lib/providers/odsay";
@@ -233,6 +233,14 @@ async function resolveSide(
   return notFound;
 }
 
+/** 턴마다, 성공해서 지켜야 하는 자리(`asked`·`queried`). */
+const KEPT = new WeakMap<object, Set<string>>();
+function keptClaims(turn: object): Set<string> {
+  let set = KEPT.get(turn);
+  if (!set) KEPT.set(turn, (set = new Set()));
+  return set;
+}
+
 const stationInput = (s: JourneyChatStation): JourneyStationInput => ({
   name: s.label,
   coord: { lat: s.lat, lng: s.lng },
@@ -267,6 +275,12 @@ export async function executePlanJourney(args: Record<string, unknown>, ctx: Exe
     // 후보·동명 역을 돌려준 턴에는 조회하지 않는다 — 채팅이 스스로 골라 조회하지 않는다(P2)를 실행부가 지킨다.
     if (j.turn.asked) return { data: ASK_USER_FIRST };
     if (j.turn.queried) return { data: TURN_LIMIT };
+  }
+  // 한도가 이미 소진됐으면 장소·정류장 검색도 내보내지 않는다(무기록 선판정, 턴 자리를 쓰지 않는다).
+  if (!askMode) {
+    const pre = journeyBudgetPrecheck(j.clientIp);
+    if (pre === "rateLimited") return { data: RATE_LIMITED };
+    if (pre === "budgetExhausted") return { data: DAILY_BUDGET_EXHAUSTED };
   }
   const claim = askMode ? "asked" : "queried";
   const before = j.turn[claim];
@@ -343,6 +357,9 @@ export async function executePlanJourney(args: Record<string, unknown>, ctx: Exe
       source: src,
     };
   } finally {
-    if (!keep) j.turn[claim] = before;
+    // 자리를 지킨 호출은 다른 호출이 되돌리지 못하게 표시한다: 병렬 호출 둘 중 하나가 실패해 스냅숏으로 되돌리면
+    // 성공한 쪽이 세운 `asked`가 풀려 같은 턴에 조회가 통과한다(리뷰 S1).
+    if (keep) keptClaims(j.turn).add(claim);
+    else if (!keptClaims(j.turn).has(claim)) j.turn[claim] = before;
   }
 }

@@ -5,7 +5,7 @@ import type { ExecutionContext } from "../types";
 
 vi.mock("@/lib/providers/places", () => ({ searchPlaces: vi.fn() }));
 vi.mock("@/lib/providers/odsay", () => ({ getTransitRoute: vi.fn() }));
-vi.mock("@/lib/journey/query", () => ({ queryJourney: vi.fn() }));
+vi.mock("@/lib/journey/query", () => ({ queryJourney: vi.fn(), journeyBudgetPrecheck: vi.fn(() => "ok") }));
 vi.mock("@/lib/journey/stop-search", () => ({ searchJourneyStops: vi.fn(), stopSearchDeps: {} }));
 vi.mock("@/lib/env", async (orig) => ({
   ...(await orig<typeof import("@/lib/env")>()),
@@ -21,7 +21,7 @@ import {
 } from "../journey-tool";
 import { searchPlaces } from "@/lib/providers/places";
 import { getTransitRoute } from "@/lib/providers/odsay";
-import { queryJourney } from "@/lib/journey/query";
+import { journeyBudgetPrecheck, queryJourney } from "@/lib/journey/query";
 import { searchJourneyStops } from "@/lib/journey/stop-search";
 import { hasDataGoKrKey } from "@/lib/env";
 
@@ -444,6 +444,30 @@ describe("plan_journey 실행 — 턴 규칙(D5)", () => {
     expect(r.data).toMatchObject({ askUserFirst: true });
     expect(r.render).toBeUndefined();
     expect(mockQuery).not.toHaveBeenCalled();
+  });
+
+  it("병렬 후보 호출 둘 중 하나가 실패해도 성공한 쪽이 세운 되묻기 상태는 풀리지 않는다", async () => {
+    const ctx = ctxWith();
+    // 첫 호출은 목적지를 찾고 후보를 돌려준다. 둘째 호출은 목적지를 못 찾아 자리를 돌려주려 한다.
+    await Promise.all([
+      executeFunction("plan_journey", { destination: "여의도공원" }, ctx),
+      executeFunction("plan_journey", { destination: "없는곳" }, ctx),
+    ]);
+    expect(ctx.journey?.turn.asked).toBe(true);
+    const r = await executeFunction("plan_journey", { destination: "여의도공원", board_station: "신도림역" }, ctx);
+    expect(r.data).toMatchObject({ askUserFirst: true });
+    expect(mockQuery).not.toHaveBeenCalled();
+  });
+
+  it("한도가 이미 소진됐으면 장소 검색도 내보내지 않는다", async () => {
+    vi.mocked(journeyBudgetPrecheck).mockReturnValueOnce("budgetExhausted");
+    const ctx = ctxWith();
+    const r = await executeFunction("plan_journey", QUERY, ctx);
+    expect(r.data).toMatchObject({ dailyBudgetExhausted: true });
+    expect(mockSearch).not.toHaveBeenCalled();
+    expect(mockQuery).not.toHaveBeenCalled();
+    // 거절은 턴 자리를 쓰지 않는다.
+    expect(ctx.journey?.turn.queried).toBe(false);
   });
 
   it("후보 호출과 조회 호출이 병렬로 와도 조회하지 않는다(후보가 먼저)", async () => {

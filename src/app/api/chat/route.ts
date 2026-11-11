@@ -83,7 +83,8 @@ export async function POST(request: Request) {
   }
   const pc = body.placeContext;
   // 선언 목록이 정본이다: `plan_journey`가 실제로 선언됐을 때만(능력 신고 ∧ ko ∧ 키 셋) 실행 컨텍스트와 지침을 연다.
-  const declarations = availableDeclarations(chatCapabilities(body.capabilities, locale));
+  // 장소 상세에서 연 채팅(`placeContext`)에는 여정을 열지 않는다(첫 판 비목표) — 클라이언트가 신고해도 서버가 닫는다.
+  const declarations = availableDeclarations(pc ? new Set() : chatCapabilities(body.capabilities, locale));
   const journeyOpen = declarations.some((d) => d.name === "plan_journey");
   const ctx: ExecutionContext = {
     userLocation: body.userLocation,

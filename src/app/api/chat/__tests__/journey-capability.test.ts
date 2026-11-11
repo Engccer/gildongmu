@@ -64,6 +64,11 @@ describe("POST /api/chat — 능력 신고(E70-b)", () => {
     expect(o.ctx.journey?.manualOrigin).toBe(true);
   });
 
+  it("장소 상세에서 연 채팅(placeContext)은 신고해도 열리지 않는다", async () => {
+    const o = await send({ locale: "ko", capabilities: ["journey"], placeContext: { name: "서울역", lat: 37.5547, lng: 126.9707 } });
+    expect(o.ctx.journey).toBeUndefined();
+  });
+
   it("ko가 아닌 로케일의 신고는 버린다", async () => {
     const o = await send({ locale: "en", capabilities: ["journey"] });
     expect(toolNames(o)).not.toContain("plan_journey");
