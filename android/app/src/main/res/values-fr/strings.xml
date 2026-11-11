@@ -611,6 +611,7 @@
     <string name="chat_progress_tool_get_walk_infrastructure">infrastructures piétonnes</string>
     <string name="chat_progress_tool_get_walk_route">itinéraire à pied</string>
     <string name="chat_progress_tool_get_weather">météo</string>
+    <string name="chat_progress_tool_plan_journey">itinéraire voiture et transports</string>
     <string name="chat_progress_tool_search_address">adresse</string>
     <string name="chat_progress_tool_search_places">lieux</string>
     <string name="chat_progress_tool_search_web">recherche web</string>
@@ -904,6 +905,7 @@
     <string name="journey_boardFieldStation">Gare où vous quittez la voiture</string>
     <string name="journey_boardFieldStop">Arrêt où vous quittez la voiture</string>
     <string name="journey_busStopKind">arrêt de bus</string>
+    <string name="journey_cardStaleRequery">Votre position a changé. Nouvelle recherche de l\'itinéraire.</string>
     <string name="journey_clearStations">Effacer les gares et arrêts de correspondance</string>
     <string name="journey_designatedHeading">Itinéraire montant à la gare %1$s</string>
     <string name="journey_designatedHeadingAlight">Itinéraire descendant à la gare %1$s</string>
@@ -919,6 +921,7 @@
     <string name="journey_egressNoneStop">Depuis l’arrêt, %1$s min en voiture, taxi environ %2$s wons</string>
     <string name="journey_egressStand">Depuis la station de taxis, %1$s min en taxi, taxi environ %2$s wons</string>
     <string name="journey_egressStartFailed">Impossible de démarrer le guidage à pied jusqu’à la sortie.</string>
+    <string name="journey_openInDirections">Ouvrir dans Itinéraire</string>
     <string name="journey_recentRoute">De %1$s à %2$s, correspondance à la gare %3$s</string>
     <string name="journey_recentRouteBoth">De %1$s à %2$s, correspondance aux gares %3$s et %4$s</string>
     <string name="journey_recentRouteBothPlaces">De %1$s à %2$s, correspondance à %3$s, %4$s</string>

@@ -17,6 +17,7 @@ import type {
   WalkLineKind,
   WalkRouteLine,
 } from "@/lib/types";
+import type { JourneyRenderPayload } from "@/lib/chat/types";
 import { resolveAddressCoord } from "@/lib/resolve-address-coord";
 import { parseDir, placeEndpoint, serializeDir, type DirEndpoint } from "@/lib/directions-state";
 import {
@@ -178,6 +179,46 @@ type QueryResults = {
 
 /** 여정 갈아탈 곳 칸 하나: null = 칸 없음, `pick: null` = 칸은 열렸고 아직 고르지 않음. */
 type JourneySlot = { pick: JourneyStationPick | null } | null;
+
+/**
+ * 채팅 여정 카드에서 넘어온 진입(E70-b spec `2026-11-12-e70b-chat-journey-design.md` D12·D14·D16·D17). 도착지는 `initialTo`가 나르고,
+ * 이 값은 갈아탈 곳·결과와 **마운트에서 할 일 하나**를 나른다:
+ * - `open`([길찾기에서 열기]): 조회 없이 카드의 결과를 세우고 여정 제목에 착지한다.
+ * - `start`([안내 시작], 카드가 신선하다): 조회 없이 결과를 세우고 이어 안내를 바로 시작한다(단계 패널이 자기 트리거로 착지).
+ * - `requery`([안내 시작], 카드가 낡았다): 카드의 결과를 쓰지 않고 같은 도착지·갈아탈 곳으로 지금 위치에서 다시 조회한다.
+ */
+export type DirectionsJourneyEntry = { payload: JourneyRenderPayload; mode: "open" | "start" | "requery" };
+
+/** 카드에서 세운 결과의 세대 — 이 화면의 첫 세대다(`genRef`가 1에서 시작한다). 다시 조회하면 `p2`부터라 겹치지 않는다. */
+const JOURNEY_CARD_PLAN_ID = "p1";
+
+/**
+ * 카드의 여정 결과를 조회 결과 상태로 옮긴다 — `runQuery`의 여정 갈래가 커밋하는 것과 **같은 필드**를 채운다(출발은 현재 위치
+ * 끝점, 도착은 카드의 장소). 출입구 승격은 여정 갈래와 같이 하지 않는다.
+ */
+function resultsFromJourneyCard(p: JourneyRenderPayload, dataLang: "ko" | "en"): QueryResults {
+  return {
+    destLabel: p.destLabel,
+    destRoman: p.destRoman,
+    destCoord: p.dest,
+    originCoord: p.origin,
+    dataLang,
+    outcomes: {},
+    viaLabel: null,
+    via: null,
+    orderedModes: [],
+    // 서버가 조회에 쓴 출발 좌표의 출처다. 옛 위치(`stale`)는 웹 채팅이 보내지 않는다(`useChat`은 신선한 좌표만 싣는다).
+    originSource: p.manualOrigin ? "manual" : "gps",
+    staleAge: null,
+    planId: JOURNEY_CARD_PLAN_ID,
+    fromLabel: null,
+    toLabel: p.destLabel,
+    fromRoman: null,
+    toRoman: p.destRoman,
+    viaRoman: null,
+    journey: { outcome: { kind: "found", result: p.result }, board: p.board, alight: p.alight },
+  };
+}
 
 /** 필드 원자 상태: 라벨 텍스트를 편집하면 resolved(좌표 포함)가 즉시 무효화된다. */
 type FieldState = {
@@ -422,6 +463,7 @@ export function DirectionsView({
   initialFrom,
   initialTo = null,
   prefill = false,
+  initialJourney,
   onBack,
 }: {
   canShowWalk: boolean;
@@ -442,6 +484,11 @@ export function DirectionsView({
    * 진입을 가를 수 없다 — 이 표식이 있는 진입에서만 마운트 1회 자동 조회가 돈다.
    */
   prefill?: boolean;
+  /**
+   * 채팅 여정 카드에서 넘어온 진입(E70-b). `prefill`과 함께 쓰지 않는다 — 이쪽은 조회를 이미 끝낸 결과를 들고 온다.
+   * **마운트 시점 값만 읽는다**(1회 소비).
+   */
+  initialJourney?: DirectionsJourneyEntry;
   onBack: () => void;
 }) {
   const t = useTranslations("directions");
@@ -455,6 +502,13 @@ export function DirectionsView({
   const tTransitGuide = useTranslations("transitGuide");
   const tManual = useTranslations("manualLocation");
   const locale = useLocale();
+  // 카드 진입은 첫 렌더 값으로 굳힌다(1회 소비). 여정 게이트(`journeyEnabled`와 같은 식)가 거짓이면 버린다 — 능력 신고가 같은
+  // 게이트 뒤라 정상 경로에선 닿지 않지만, 갈아탈 곳 칸이 없는 화면에 여정 결과만 서는 일은 막는다.
+  const [journeyEntry] = useState<DirectionsJourneyEntry | null>(() =>
+    initialJourney && canPlanJourney && !prefersEnglish(locale) ? initialJourney : null,
+  );
+  /** 카드의 결과를 조회 없이 세우는 진입인가(`requery`는 결과를 쓰지 않는다). */
+  const journeySeed = journeyEntry && journeyEntry.mode !== "requery" ? journeyEntry.payload : null;
   const manual = useManualLocation();
   // 검증 가능/불가 판정은 표시줄과 한 훅을 공유한다(판정선이 갈리면 화면으로 확인 불가).
   const manualLabel = useManualLocationLabel();
@@ -510,8 +564,12 @@ export function DirectionsView({
    * 여정의 갈아탈 곳(E70-f spec §3) — 승차 쪽(「자동차에서 내리는 역/정류장」)·하차 쪽(「자동차를 탈 역/정류장」). 하나라도
    * 확정되면 조회는 여정만 한다(D12), 경유지와 함께 쓰지 않는다(D14). 게이트(`journeyEnabled`)가 거짓이면 늘 비어 있다.
    */
-  const [boardSlot, setBoardSlot] = useState<JourneySlot>(null);
-  const [alightSlot, setAlightSlot] = useState<JourneySlot>(null);
+  const [boardSlot, setBoardSlot] = useState<JourneySlot>(() =>
+    journeyEntry?.payload.board ? { pick: journeyEntry.payload.board } : null,
+  );
+  const [alightSlot, setAlightSlot] = useState<JourneySlot>(() =>
+    journeyEntry?.payload.alight ? { pick: journeyEntry.payload.alight } : null,
+  );
   /**
    * 「경유지/자동차 환승 추가」 disclosure가 펼친 입구 검색 칸(E77 spec §3.1). 경유지나 갈아탈 곳이 서면 입구 자체가 없으므로
    * 접힌 것으로 되돌린다(다시 비면 버튼만 선다).
@@ -539,8 +597,11 @@ export function DirectionsView({
     markModal("journeyTransfer", true);
     return () => markModal("journeyTransfer", false);
   }, [transferQuestion]);
-  const [phase, setPhase] = useState<Phase>({ kind: "idle" });
-  const [results, setResults] = useState<QueryResults | null>(null);
+  // 카드 진입(E70-b `open`·`start`)은 조회 없이 결과 상태에서 시작한다 — 카드가 든 여정을 그대로 세운다(D12·D14).
+  const [phase, setPhase] = useState<Phase>(() => (journeySeed ? { kind: "settled" } : { kind: "idle" }));
+  const [results, setResults] = useState<QueryResults | null>(() =>
+    journeySeed ? resultsFromJourneyCard(journeySeed, dataLocale(locale)) : null,
+  );
   // 대중교통 경로 disclosure(W3C APG)의 펼침 상태. 키는 배열 인덱스도 표시
   // 번호도 아닌 `routeKey`다. 표시 번호는 축 라벨이 붙은 대안을 건너뛰므로
   // 인덱스와 다른 좌표계이고, 인덱스는 순서가 바뀌면 다른 경로를 가리킨다(§4.2).
@@ -740,7 +801,8 @@ export function DirectionsView({
   /** 결과 영역(수단 섹션 전부) — 도구 조회가 폐기하기 전 포커스 선점 판정용. */
   const resultsRef = useRef<HTMLDivElement>(null);
   const inFlight = useRef(false);
-  const genRef = useRef(0);
+  // 카드의 결과로 시작했으면 그것이 첫 세대(`JOURNEY_CARD_PLAN_ID`)다 — 다음 조회가 같은 세대 번호를 다시 내지 않게 1에서 시작한다.
+  const genRef = useRef(journeySeed ? 1 : 0);
   /**
    * WebMCP 세대 결박 대기자(spec §3.4·§8.3) — 단일 슬롯. 도구가 시작한 조회의 세대에 결박되고
    * 그 세대의 종단 phase 전이에서만 resolve된다. 다른 세대의 조회 시작은 `superseded`,
@@ -802,8 +864,46 @@ export function DirectionsView({
   useEffect(() => {
     // 도구 언와인드 중의 재마운트(앞으로가기 복원 등)는 착지하지 않는다(spec §6.1).
     if (isUnwinding()) return;
+    // 채팅 여정 카드 진입(E70-b D17)은 착지가 하나다 — 화면 제목 착지를 건너뛴다. [길찾기에서 열기]는 여정 제목(같은 커밋에서
+    // 이미 그려졌다), [안내 시작]은 이어 안내의 단계 패널이 자기 트리거로 착지하므로 여기서 옮기지 않는다(옮기면 자식의
+    // 레이아웃 effect 착지를 이 effect가 뒤에서 빼앗는다).
+    if (journeyEntry?.mode === "open") {
+      journeyHeadingRef.current?.focus();
+      return;
+    }
+    if (journeyEntry?.mode === "start") return;
     if (prefillActionRef.current === "landOnTo") toInputRef.current?.focus();
     else titleRef.current?.focus();
+    // 첫 렌더에서 굳힌 진입 값으로 도는 마운트 1회 착지다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // 채팅 여정 카드 진입의 마운트 1회 일(E70-b).
+  // - 카드의 결과를 세웠으면(`open`·`start`) 조회가 성공했을 때와 같이 최근 경로에 갈아탈 곳을 함께 적는다.
+  // - `requery`(D16: 카드가 낡았다)면 같은 도착지·갈아탈 곳으로 지금 위치에서 다시 조회한다. 조회는 화면 정본 트랜잭션
+  //   `runQuery`를 그대로 지난다(세대 발급·3-state·결과 제목 착지). 사유는 이 화면의 단일 창구로 말한다 — `runQuery`가 시작할 때
+  //   창구를 비우므로 **그 뒤에** 게시하고, 조회가 끝나면 `runQuery`가 다시 비워 결과 요약이 나간다.
+  const journeyEntryDoneRef = useRef(false);
+  useEffect(() => {
+    if (!journeyEntry || journeyEntryDoneRef.current) return;
+    journeyEntryDoneRef.current = true;
+    if (isUnwinding()) return;
+    const { board, alight } = journeyEntry.payload;
+    if (journeyEntry.mode !== "requery") {
+      const to = initialTo?.kind === "place" ? recentOf(initialTo) : null;
+      queueMicrotask(() =>
+        setRecentRoutes(
+          recordRecentRoute({ from: null, to, ...(board ? { board } : {}), ...(alight ? { alight } : {}) }),
+        ),
+      );
+      return;
+    }
+    if (!initialTo) return;
+    void runQuery({ from: { kind: "current" }, to: initialTo, via: null, journey: { board, alight } });
+    // 한 틱 미룬다(effect 안 동기 setState 회피 — 이 파일의 최근 기록 로드와 같은 패턴). `runQuery`의 동기 구간은 이미 지났다.
+    queueMicrotask(() => announce(tJourney("cardStaleRequery")));
+    // 첫 렌더의 진입 값으로 도는 마운트 1회 일이다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // 프리필 진입 자동 조회(B10): 장소 상세의 "여기까지 길찾기"는 도착지 채움과
@@ -2375,6 +2475,9 @@ export function DirectionsView({
                 locale={locale}
                 headingRef={journeyHeadingRef}
                 announce={announce}
+                // 채팅 카드의 [안내 시작](E70-b D12): 카드에서 세운 그 결과에만 건다 — 다시 조회한 결과(다른 세대)가 저절로
+                // 안내를 시작하지 않게.
+                autoStart={journeyEntry?.mode === "start" && results.planId === JOURNEY_CARD_PLAN_ID}
               />
             </div>
           )}

@@ -15,15 +15,30 @@ export interface ChatPlaceContext {
   category?: string;
 }
 
+/** 선언된 도구에 딸린 지침 단락을 여는 스위치 — 도구가 선언될 때만 참으로 넘긴다(없는 도구를 지시하지 않는다). */
+export interface ChatInstructionTools {
+  /** `plan_journey`가 선언됐는가(E70-b §4.3). */
+  journey: boolean;
+}
+
 export function buildChatSystemInstruction(
   locale: string,
-  place?: ChatPlaceContext,
+  place: ChatPlaceContext | undefined,
+  tools: ChatInstructionTools,
 ): string {
   const placeInstruction = place
     ? `\n[장소 컨텍스트]\n` +
       `- 사용자는 지금 '${place.name}'${place.category ? `(${place.category})` : ""}에 관해 묻고 있다. "여기/이곳/근처/주변"은 이 장소를 가리킨다.\n` +
       `- 주변 시설·교통·공기질 등 위치 기반 조회는 이 장소를 기준으로 한다(지명을 따로 주지 않아도 이 장소가 기본 위치다).\n` +
       `- 단 "여기까지 가는 법" 같은 길찾기는 사용자의 현재 위치에서 '${place.name}'(으)로 가는 경로다 — 길찾기 도구의 목적지로 '${place.name}'을(를) 넘겨라.`
+    : "";
+
+  // 여정 한 단락(E70-b spec §4.3 최소판): 긍정 트리거만 둔다 — 금지문은 실측(`npm run eval:ab`)에서 필요가 입증될 때만 더한다.
+  const journeyInstruction = tools.journey
+    ? `\n[자동차와 대중교통을 섞는 길]\n` +
+      `- 자동차(택시)와 대중교통을 섞어 가는 길을 물으면 plan_journey를 쓴다.\n` +
+      `- needStation이 오면 candidates에 있는 역 이름만으로 "신도림역, 영등포역 중 어느 역에서 갈아타실 건가요?"처럼 한 문장으로 되묻고 턴을 끝낸다. candidates가 비어 있으면 갈아탈 역이나 정류장 이름을 묻는다. ambiguousStation이 오면 lines의 노선 중 어느 것인지 묻는다.\n` +
+      `- 여정이 오면 어느 역에서 갈아타는지와 총 시간을 한두 문장으로 요약한다. 합계는 답 아래 카드가 말하므로 요금은 카드에 맡긴다.`
     : "";
 
   return (
@@ -45,6 +60,7 @@ export function buildChatSystemInstruction(
     // 덧대는 것은 실측으로 필요가 입증될 때만). 2026-09-02 하네스가 잰 문장이 이것이다(`docs/evals/`).
     `- 도구가 빈 결과(0건)·정보 없음(null·unavailable)·실패 중 무엇을 돌려줬는지 구분해 그대로 전하라 — 각각 "없다"·"알 수 없다"·"조회하지 못했다"이며, 그 자리를 이름·수치로 채우지 마라. 대안은 이 앱 안에서 사용자가 할 수 있는 행동 한 가지로 제시하라(다른 지도·내비 앱 안내는 대안이 아니다).\n` +
     `- 출처·딥링크는 시스템이 응답 하단에 자동으로 붙인다. 본문엔 URL을 나열하지 말고 간결하게 핵심만 종합하라.` +
-    placeInstruction
+    placeInstruction +
+    journeyInstruction
   );
 }

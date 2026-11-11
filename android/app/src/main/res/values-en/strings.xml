@@ -611,6 +611,7 @@
     <string name="chat_progress_tool_get_walk_infrastructure">walking infrastructure</string>
     <string name="chat_progress_tool_get_walk_route">walking route</string>
     <string name="chat_progress_tool_get_weather">weather</string>
+    <string name="chat_progress_tool_plan_journey">car and transit route</string>
     <string name="chat_progress_tool_search_address">address</string>
     <string name="chat_progress_tool_search_places">places</string>
     <string name="chat_progress_tool_search_web">web search</string>
@@ -904,6 +905,7 @@
     <string name="journey_boardFieldStation">Station where you leave the car</string>
     <string name="journey_boardFieldStop">Stop where you leave the car</string>
     <string name="journey_busStopKind">bus stop</string>
+    <string name="journey_cardStaleRequery">Your location changed. Finding the route again.</string>
     <string name="journey_clearStations">Clear transfer stations and stops</string>
     <string name="journey_designatedHeading">Route boarding at %1$s Station</string>
     <string name="journey_designatedHeadingAlight">Route getting off at %1$s Station</string>
@@ -919,6 +921,7 @@
     <string name="journey_egressNoneStop">From the stop, %1$s min by car, taxi fare about %2$s won</string>
     <string name="journey_egressStand">From the taxi stand, %1$s min by taxi, taxi fare about %2$s won</string>
     <string name="journey_egressStartFailed">Couldn\'t start walking guidance to the exit.</string>
+    <string name="journey_openInDirections">Open in Directions</string>
     <string name="journey_recentRoute">%1$s to %2$s, transfer at %3$s Station</string>
     <string name="journey_recentRouteBoth">%1$s to %2$s, transfer at %3$s and %4$s stations</string>
     <string name="journey_recentRouteBothPlaces">%1$s to %2$s, transfer at %3$s, %4$s</string>

@@ -19,9 +19,9 @@ import { jusoAddressToPlace } from "@/lib/address-to-place";
 import { resolveAddressCoord } from "@/lib/resolve-address-coord";
 import { requestOpenPlace, subscribeOpenPlace } from "@/lib/place-open-request";
 import { parseDir, placeEndpoint, type DirEndpoint } from "@/lib/directions-state";
-import { dataLocale } from "@/lib/data-locale";
+import { dataLocale, prefersEnglish } from "@/lib/data-locale";
 import { joinText, normalizeVoiceQuery } from "@/lib/format";
-import { requestLocation } from "@/lib/geolocation";
+import { awaitGeolocation, requestLocation } from "@/lib/geolocation";
 import { isInKorea } from "@/lib/coverage";
 import {
   clearRecentQueries,
@@ -63,9 +63,11 @@ import { ResultList } from "./ResultList";
 import { AddressResultList } from "./AddressResultList";
 import { WebResults } from "./WebResults";
 import { PlaceDetail } from "./PlaceDetail";
-import { DirectionsView } from "./DirectionsView";
+import { DirectionsView, type DirectionsJourneyEntry } from "./DirectionsView";
 import { NearbyHub } from "./NearbyHub";
 import { ChatOverlay } from "./chat/ChatOverlay";
+import type { JourneyActionHandler } from "./chat/JourneyChatCard";
+import { journeyCardFreshness } from "./chat/journey-card-freshness";
 import { LocationBar } from "./LocationBar";
 import { ManualLocationPicker } from "./ManualLocationPicker";
 
@@ -189,6 +191,8 @@ export function PlaceSearch({
      * DirectionsView의 마운트 1회 자동 조회를 가르는 유일한 축이다.
      */
     prefill?: boolean;
+    /** 채팅 여정 카드에서 넘어온 진입(E70-b) — 갈아탈 곳·결과와 마운트에서 할 일. 도착지는 `to`가 나른다. */
+    journey?: DirectionsJourneyEntry;
   } | null>(null);
   // "내 주변" 허브 뷰(스펙 2026-07-30). 열림/닫힘은 URL(?panel=nearby)이 정본,
   // History 스택은 directions와 동형 규율(직접 진입 시 스택 합성 없음 — 닫기가
@@ -488,6 +492,42 @@ export function PlaceSearch({
         : { from: prefill.endpoint, to: null, prefill: true },
     );
   }
+  /**
+   * 채팅 여정 카드의 버튼(E70-b spec D12·D14·D16·D17) — 채팅을 닫고 길찾기 화면을 그 여정으로 연다(다시 조회하지 않는다).
+   *
+   * [안내 시작]은 먼저 위치를 새로 받아(`force` — 스토어에 TTL이 없고 카드는 대화에 오래 남는다) 카드가 아직 쓸 만한지 본다.
+   * 그동안 채팅은 열려 있고 포커스는 누른 버튼에 남는다(카드가 `aria-disabled`로 잠근다). 낡았으면(10분·100m·측위 실패)
+   * 카드의 결과로 시작하지 않고 길찾기 화면이 같은 여정을 다시 조회한다.
+   *
+   * 착지는 길찾기 화면이 하나로 정한다: 채팅을 닫을 때의 검색창 복귀(`onClose`)는 이 경로에서 하지 않는다 — 홈이 통째로
+   * 길찾기 화면으로 바뀌므로 복귀할 자리도 없다.
+   */
+  const journeyActionInFlight = useRef(false);
+  const handleJourneyAction: JourneyActionHandler = async (payload, { start }) => {
+    if (journeyActionInFlight.current) return;
+    const chat = generalChatRef.current;
+    let mode: DirectionsJourneyEntry["mode"] = "open";
+    if (start) {
+      journeyActionInFlight.current = true;
+      try {
+        const fix = await awaitGeolocation({ force: true });
+        mode =
+          journeyCardFreshness(payload, fix.status === "ready" ? fix.coords : null, Date.now()) === "fresh"
+            ? "start"
+            : "requery";
+      } finally {
+        journeyActionInFlight.current = false;
+      }
+      // 기다리는 사이 사용자가 채팅을 닫았거나 다른 화면으로 갔으면 그 선택이 이긴다(떠난 화면 위에 길찾기를 열지 않는다).
+      if (generalChatRef.current !== chat || generalChatRef.current === null || directionsOpenRef.current) return;
+    }
+    setGeneralChat(null);
+    window.history.pushState({ ...(window.history.state ?? {}), directions: true }, "");
+    setDirections({
+      to: placeEndpoint(payload.destLabel, payload.dest, payload.destRoman),
+      journey: { payload, mode },
+    });
+  };
   function backFromDirections() {
     if (window.history.state?.directions) {
       window.history.back();
@@ -1168,6 +1208,7 @@ export function PlaceSearch({
         initialFrom={directions.from}
         initialTo={directions.to}
         prefill={directions.prefill ?? false}
+        initialJourney={directions.journey}
         onBack={backFromDirections}
       />
     );
@@ -1360,6 +1401,9 @@ export function PlaceSearch({
       {generalChat && (
         <ChatOverlay
           initialMessage={generalChat.seed}
+          // 여정 능력(E70-b D7): 서버 키 게이트와 ko일 때만 통로를 준다 — 통로가 곧 능력 신고의 스위치다. 길찾기 화면의
+          // 여정 게이트(`journeyEnabled`)와 같은 식이어야 카드가 연 화면에 갈아탈 곳 칸이 있다.
+          onJourneyAction={canPlanJourney && !prefersEnglish(locale) ? handleJourneyAction : undefined}
           onClose={() => {
             setGeneralChat(null);
             searchInputRef.current?.focus();

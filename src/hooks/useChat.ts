@@ -25,8 +25,17 @@ export interface PlaceContext {
   isStation?: boolean;
 }
 
-export function useChat(opts?: { placeContext?: PlaceContext }) {
+export function useChat(opts?: {
+  placeContext?: PlaceContext;
+  /**
+   * 여정 능력 신고(E70-b spec D7) — 여정 카드를 그리고 그 버튼을 길찾기 화면으로 이을 수 있는 채팅만 참을 준다(웹 ko 옴니박스
+   * 범용 채팅). 참이면 요청에 `capabilities: ["journey"]`와 `userLocationManual`을 싣는다. **거짓·생략이면 요청 본문은 종전과 같다**
+   * (서버가 `plan_journey`를 선언하지 않는다 — 카드를 못 잇는 자리가 유료 조회만 일으키지 않게).
+   */
+  journeyCapable?: boolean;
+}) {
   const placeContext = opts?.placeContext;
+  const journeyCapable = opts?.journeyCapable === true;
   const locale = useLocale();
   const geo = useGeolocation();
   const manual = useManualLocation();
@@ -90,6 +99,9 @@ export function useChat(opts?: { placeContext?: PlaceContext }) {
             userLocation,
             locale,
             placeContext,
+            // 여정 능력(E70-b): 신고할 때만 두 필드가 생긴다. `userLocationManual`은 위 `userLocation`이 수동 지정 위치인가 —
+            // 서버가 카드에 `manualOrigin`으로 돌려주고 카드는 [안내 시작]을 내지 않는다(D2).
+            ...(journeyCapable ? { capabilities: ["journey"], userLocationManual: manual !== null } : {}),
           }),
           signal: controller.signal,
         });
@@ -152,7 +164,7 @@ export function useChat(opts?: { placeContext?: PlaceContext }) {
         inFlight.current = false;
       }
     },
-    [userLocation, locale, placeContext],
+    [userLocation, locale, placeContext, journeyCapable, manual],
   );
 
   const dismissError = useCallback(() => setError(null), []);

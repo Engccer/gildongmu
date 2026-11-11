@@ -611,6 +611,7 @@
     <string name="chat_progress_tool_get_walk_infrastructure">infraestructura peatonal</string>
     <string name="chat_progress_tool_get_walk_route">ruta a pie</string>
     <string name="chat_progress_tool_get_weather">tiempo</string>
+    <string name="chat_progress_tool_plan_journey">ruta en coche y transporte público</string>
     <string name="chat_progress_tool_search_address">dirección</string>
     <string name="chat_progress_tool_search_places">lugares</string>
     <string name="chat_progress_tool_search_web">búsqueda web</string>
@@ -904,6 +905,7 @@
     <string name="journey_boardFieldStation">Estación donde deja el coche</string>
     <string name="journey_boardFieldStop">Parada donde deja el coche</string>
     <string name="journey_busStopKind">parada de autobús</string>
+    <string name="journey_cardStaleRequery">Tu ubicación ha cambiado. Buscando la ruta de nuevo.</string>
     <string name="journey_clearStations">Borrar estaciones y paradas de transbordo</string>
     <string name="journey_designatedHeading">Ruta subiendo en la estación %1$s</string>
     <string name="journey_designatedHeadingAlight">Ruta bajando en la estación %1$s</string>
@@ -919,6 +921,7 @@
     <string name="journey_egressNoneStop">Desde la parada, %1$s min en coche, taxi aprox. %2$s wones</string>
     <string name="journey_egressStand">Desde la parada de taxis, %1$s min en taxi, taxi aprox. %2$s wones</string>
     <string name="journey_egressStartFailed">No se pudo iniciar la guía a pie hasta la salida.</string>
+    <string name="journey_openInDirections">Abrir en Cómo llegar</string>
     <string name="journey_recentRoute">De %1$s a %2$s, transbordo en la estación %3$s</string>
     <string name="journey_recentRouteBoth">De %1$s a %2$s, transbordo en las estaciones %3$s y %4$s</string>
     <string name="journey_recentRouteBothPlaces">De %1$s a %2$s, transbordo en %3$s, %4$s</string>

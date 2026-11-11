@@ -596,6 +596,7 @@
         "search_web": "웹 검색",
         "get_nearby_barrier_free": "무장애 관광지",
         "get_walk_infrastructure": "보행 인프라",
+        "plan_journey": "자동차 환승 경로",
         "unknown": "정보"
       }
     },
@@ -1330,6 +1331,8 @@
     "boardFieldStop": "자동차에서 내리는 정류장",
     "alightFieldStation": "자동차를 탈 역",
     "alightFieldStop": "자동차를 탈 정류장",
-    "transferField": "경유지/자동차 환승"
+    "transferField": "경유지/자동차 환승",
+    "openInDirections": "길찾기에서 열기",
+    "cardStaleRequery": "위치가 바뀌어 경로를 다시 찾습니다."
   }
 }

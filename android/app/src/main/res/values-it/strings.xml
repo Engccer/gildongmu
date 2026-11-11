@@ -611,6 +611,7 @@
     <string name="chat_progress_tool_get_walk_infrastructure">infrastrutture pedonali</string>
     <string name="chat_progress_tool_get_walk_route">percorso a piedi</string>
     <string name="chat_progress_tool_get_weather">meteo</string>
+    <string name="chat_progress_tool_plan_journey">percorso in auto e mezzi pubblici</string>
     <string name="chat_progress_tool_search_address">indirizzo</string>
     <string name="chat_progress_tool_search_places">luoghi</string>
     <string name="chat_progress_tool_search_web">ricerca web</string>
@@ -904,6 +905,7 @@
     <string name="journey_boardFieldStation">Stazione dove lascia l\'auto</string>
     <string name="journey_boardFieldStop">Fermata dove lascia l\'auto</string>
     <string name="journey_busStopKind">fermata dell’autobus</string>
+    <string name="journey_cardStaleRequery">La tua posizione è cambiata. Cerco di nuovo il percorso.</string>
     <string name="journey_clearStations">Cancella stazioni e fermate di cambio</string>
     <string name="journey_designatedHeading">Percorso salendo alla stazione %1$s</string>
     <string name="journey_designatedHeadingAlight">Percorso scendendo alla stazione %1$s</string>
@@ -919,6 +921,7 @@
     <string name="journey_egressNoneStop">Dalla fermata, %1$s min in auto, taxi circa %2$s won</string>
     <string name="journey_egressStand">Dal posteggio taxi, %1$s min in taxi, taxi circa %2$s won</string>
     <string name="journey_egressStartFailed">Impossibile avviare la guida a piedi fino all’uscita.</string>
+    <string name="journey_openInDirections">Apri in Indicazioni</string>
     <string name="journey_recentRoute">Da %1$s a %2$s, cambio alla stazione %3$s</string>
     <string name="journey_recentRouteBoth">Da %1$s a %2$s, cambio alle stazioni %3$s e %4$s</string>
     <string name="journey_recentRouteBothPlaces">Da %1$s a %2$s, cambio a %3$s, %4$s</string>

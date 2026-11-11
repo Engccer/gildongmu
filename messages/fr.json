@@ -596,6 +596,7 @@
         "search_web": "recherche web",
         "get_nearby_barrier_free": "lieux accessibles",
         "get_walk_infrastructure": "infrastructures piétonnes",
+        "plan_journey": "itinéraire voiture et transports",
         "unknown": "informations"
       }
     },
@@ -1330,6 +1331,8 @@
     "boardFieldStop": "Arrêt où vous quittez la voiture",
     "alightFieldStation": "Gare où vous prenez une voiture",
     "alightFieldStop": "Arrêt où vous prenez une voiture",
-    "transferField": "Étape ou changement en voiture"
+    "transferField": "Étape ou changement en voiture",
+    "openInDirections": "Ouvrir dans Itinéraire",
+    "cardStaleRequery": "Votre position a changé. Nouvelle recherche de l'itinéraire."
   }
 }

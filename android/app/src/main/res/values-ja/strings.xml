@@ -611,6 +611,7 @@
     <string name="chat_progress_tool_get_walk_infrastructure">歩行インフラ</string>
     <string name="chat_progress_tool_get_walk_route">徒歩の経路</string>
     <string name="chat_progress_tool_get_weather">天気</string>
+    <string name="chat_progress_tool_plan_journey">車と公共交通の乗り継ぎ経路</string>
     <string name="chat_progress_tool_search_address">住所</string>
     <string name="chat_progress_tool_search_places">場所</string>
     <string name="chat_progress_tool_search_web">ウェブ検索</string>
@@ -904,6 +905,7 @@
     <string name="journey_boardFieldStation">車を降りる駅</string>
     <string name="journey_boardFieldStop">車を降りる停留所</string>
     <string name="journey_busStopKind">停留所</string>
+    <string name="journey_cardStaleRequery">位置が変わったため、経路を探し直します。</string>
     <string name="journey_clearStations">乗り換えの駅・停留所を消去</string>
     <string name="journey_designatedHeading">%1$s駅で乗るルート</string>
     <string name="journey_designatedHeadingAlight">%1$s駅で降りるルート</string>
@@ -919,6 +921,7 @@
     <string name="journey_egressNoneStop">降りた停留所から車で%1$s分、タクシー料金約%2$sウォン</string>
     <string name="journey_egressStand">タクシー乗り場からタクシーで%1$s分、タクシー料金約%2$sウォン</string>
     <string name="journey_egressStartFailed">出口までの徒歩案内を開始できませんでした。</string>
+    <string name="journey_openInDirections">経路検索で開く</string>
     <string name="journey_recentRoute">%1$sから%2$sまで、%3$s駅で乗り換え</string>
     <string name="journey_recentRouteBoth">%1$sから%2$sまで、%3$s駅と%4$s駅で乗り換え</string>
     <string name="journey_recentRouteBothPlaces">%1$sから%2$sまで、%3$s、%4$sで乗り換え</string>

@@ -36,6 +36,7 @@ export function JourneyResultView({
   locale,
   headingRef,
   announce,
+  autoStart = false,
 }: {
   result: JourneyResult;
   board: JourneyStationPick | null;
@@ -46,6 +47,12 @@ export function JourneyResultView({
   locale: string;
   headingRef: Ref<HTMLHeadingElement>;
   announce: (text: string, lang?: "ko") => void;
+  /**
+   * 마운트하면서 기본 선택(첫 변형·첫 출구)으로 이어 안내를 바로 시작한다 — 채팅 여정 카드의 [안내 시작](E70-b D12)이 이미
+   * 그 계획을 보고 눌렀다. **마운트 시점 값만 읽는다.** [안내 시작]을 누른 것과 같은 상태에서 출발하므로 착지도 같다(준비 상태
+   * 문장을 거쳐 단계 패널의 트리거).
+   */
+  autoStart?: boolean;
 }) {
   const t = useTranslations("journey");
   const tBeacon = useTranslations("beacon");
@@ -56,7 +63,21 @@ export function JourneyResultView({
    * 이어 안내. `finished`면 여정은 끝났지만 대중교통 단계에서 끝나 그 패널(말미 도보 인계)이 남아 있다 — 그동안 [안내 시작]도
    * 다시 선다(누르면 새 여정이 그 패널을 갈아 끼운다).
    */
-  const [guide, setGuide] = useState<{ id: number; plan: JourneyGuidePlan; finished: boolean } | null>(null);
+  const [guide, setGuide] = useState<{ id: number; plan: JourneyGuidePlan; finished: boolean } | null>(() =>
+    autoStart && result.variants.length > 0
+      ? {
+          id: 1,
+          plan: {
+            variant: result.variants[0],
+            egress: journeyEgressOption(result.variants[0], 0),
+            alightDesignated: alight !== null,
+            dest,
+            destLabel,
+          },
+          finished: false,
+        }
+      : null,
+  );
   const startRef = useRef<HTMLButtonElement>(null);
 
   const variant = result.variants[Math.min(variantIndex, result.variants.length - 1)];

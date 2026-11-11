@@ -596,6 +596,7 @@
         "search_web": "ウェブ検索",
         "get_nearby_barrier_free": "バリアフリー観光地",
         "get_walk_infrastructure": "歩行インフラ",
+        "plan_journey": "車と公共交通の乗り継ぎ経路",
         "unknown": "情報"
       }
     },
@@ -1330,6 +1331,8 @@
     "boardFieldStop": "車を降りる停留所",
     "alightFieldStation": "車に乗る駅",
     "alightFieldStop": "車に乗る停留所",
-    "transferField": "経由地・車の乗り換え"
+    "transferField": "経由地・車の乗り換え",
+    "openInDirections": "経路検索で開く",
+    "cardStaleRequery": "位置が変わったため、経路を探し直します。"
   }
 }

@@ -11,12 +11,19 @@ import {
   hasCarRouteKey,
   hasPerplexityKey,
   hasNaverLocalKeys,
+  hasTmapKey,
 } from "@/lib/env";
+import type { ChatCapability } from "./types";
 
 interface GatedDeclaration {
   /** 함수형은 호출 시점의 키 상태로 선언을 조립한다(인자 단위 게이트용). */
   declaration: FunctionDeclaration | (() => FunctionDeclaration);
   gate: () => boolean;
+  /**
+   * 클라이언트가 신고해야 열리는 능력(E70-b D7). 있으면 키 게이트에 더해 요청의 능력 집합에 이 값이 있어야 선언된다 —
+   * 카드를 못 그리는 클라이언트(정식판 앱·옛 클라이언트)가 유료 조회만 일으키지 않게 한다.
+   */
+  capability?: ChatCapability;
 }
 
 /**
@@ -55,6 +62,51 @@ const PLACE_ARG = {
     description: "지명(없으면 현재 위치 또는 보고 있는 장소 기준)",
   },
 } as const;
+
+/** 여정 도구의 갈아탈 곳 한쪽 인자 묶음. 정류장(`_kind: stop`)은 정류장 이름 검색 키(data.go.kr)가 있을 때만 받는다. */
+function journeySideProperties(side: "board" | "alight", what: string): Record<string, unknown> {
+  return {
+    [`${side}_station`]: { type: "string", description: `${what} 역 이름(사용자가 말한 그대로, 예: '신도림역')` },
+    [`${side}_line`]: { type: "string", description: "그 역의 노선(사용자가 말했을 때만, 예: '2호선')" },
+    ...(hasDataGoKrKey()
+      ? {
+          [`${side}_kind`]: {
+            type: "string",
+            enum: ["station", "stop"],
+            description: "station(기본)은 지하철·기차역, stop은 버스 정류장. 사용자가 버스 정류장이라고 말했을 때만 stop.",
+          },
+        }
+      : {}),
+  };
+}
+
+/** plan_journey 선언(E70-b spec §4.1, D1). 모델이 채우는 것은 이름과 순서뿐이고 좌표·노선·경로·시간·요금은 서버가 만든다. */
+function buildPlanJourneyDeclaration(): FunctionDeclaration {
+  return {
+    name: "plan_journey",
+    description:
+      "자동차(택시·가족 차)와 대중교통을 섞어 가는 여정을 조회한다(출발지는 현재 위치). " +
+      "자동차에서 내려 대중교통을 탈 역은 board_station에, 대중교통에서 내려 자동차를 탈 역은 alight_station에 사용자가 말한 이름 그대로 넣는다. " +
+      "둘 다 모르면 비워서 호출하면 실제 대중교통 경로가 지나는 후보 역(candidates)이 온다. " +
+      "needStation·ambiguousStation·askUserFirst가 오면 조회하지 않은 것이니 사용자에게 되묻고, journey가 null이면 경로가 없는 것이다. " +
+      "rateLimited·dailyBudgetExhausted는 조회 한도이고 경로가 없다는 뜻이 아니다.",
+    parametersJsonSchema: {
+      type: "object",
+      properties: {
+        destination: { type: "string", description: "목적지 지명 또는 주소" },
+        ...journeySideProperties("board", "자동차에서 내려 대중교통을 탈"),
+        ...journeySideProperties("alight", "대중교통에서 내려 자동차를 탈"),
+        transfer_side: {
+          type: "string",
+          enum: ["board", "alight"],
+          description:
+            "갈아탈 역을 모를 때만: board는 자동차로 역까지 가서 대중교통을 타는 쪽, alight는 대중교통으로 가다가 내려 자동차를 타는 쪽의 후보를 받는다.",
+        },
+      },
+      required: ["destination"],
+    },
+  };
+}
 
 const DECLARATIONS: GatedDeclaration[] = [
   { gate: hasKakaoKey, declaration: buildSearchPlacesDeclaration },
@@ -405,6 +457,12 @@ const DECLARATIONS: GatedDeclaration[] = [
     },
   },
   {
+    // 여정(E70-b D7): 키 셋 + 클라이언트 능력 신고. 로케일(ko)은 라우트가 능력 집합을 만들 때 가른다.
+    gate: () => hasOdsayKey() && hasTmapKey() && hasKakaoKey(),
+    capability: "journey",
+    declaration: buildPlanJourneyDeclaration,
+  },
+  {
     gate: hasPerplexityKey,
     declaration: {
       name: "search_web",
@@ -434,9 +492,14 @@ const DECLARATIONS: GatedDeclaration[] = [
   },
 ];
 
-/** 게이트를 통과한 도구 선언만 반환 */
-export function availableDeclarations(): FunctionDeclaration[] {
-  return DECLARATIONS.filter((d) => d.gate()).map((d) =>
+/**
+ * 게이트를 통과한 도구 선언만 반환한다.
+ *
+ * `capabilities`는 이 요청의 클라이언트가 신고한 능력 집합이고 **기본값 없는 필수 인자**다 — 생략이 컴파일을 통과하면
+ * 능력 게이트가 조용히 빠져 전면 노출이 된다. 능력이 필요 없는 호출부는 빈 집합을 밝혀 넘긴다(종전 목록과 동일).
+ */
+export function availableDeclarations(capabilities: ReadonlySet<ChatCapability>): FunctionDeclaration[] {
+  return DECLARATIONS.filter((d) => d.gate() && (!d.capability || capabilities.has(d.capability))).map((d) =>
     typeof d.declaration === "function" ? d.declaration() : d.declaration,
   );
 }

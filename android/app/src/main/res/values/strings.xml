@@ -694,6 +694,7 @@
     <string name="chat_progress_tool_get_walk_infrastructure">보행 인프라</string>
     <string name="chat_progress_tool_get_walk_route">도보 경로</string>
     <string name="chat_progress_tool_get_weather">날씨</string>
+    <string name="chat_progress_tool_plan_journey">자동차 환승 경로</string>
     <string name="chat_progress_tool_search_address">주소</string>
     <string name="chat_progress_tool_search_places">장소</string>
     <string name="chat_progress_tool_search_web">웹 검색</string>
@@ -987,6 +988,7 @@
     <string name="journey_boardFieldStation">자동차에서 내리는 역</string>
     <string name="journey_boardFieldStop">자동차에서 내리는 정류장</string>
     <string name="journey_busStopKind">정류장</string>
+    <string name="journey_cardStaleRequery">위치가 바뀌어 경로를 다시 찾습니다.</string>
     <string name="journey_clearStations">갈아탈 역/정류장 지우기</string>
     <string name="journey_designatedHeading">%1$s역에서 타는 경로</string>
     <string name="journey_designatedHeadingAlight">%1$s역에서 내리는 경로</string>
@@ -1002,6 +1004,7 @@
     <string name="journey_egressNoneStop">내린 정류장에서 자동차로 %1$s분, 택시 요금 약 %2$s원</string>
     <string name="journey_egressStand">택시 승강장에서 택시로 %1$s분, 택시 요금 약 %2$s원</string>
     <string name="journey_egressStartFailed">출구까지 도보 안내를 시작하지 못했습니다.</string>
+    <string name="journey_openInDirections">길찾기에서 열기</string>
     <string name="journey_recentRoute">%1$s에서 %2$s까지, %3$s역에서 갈아타기</string>
     <string name="journey_recentRouteBoth">%1$s에서 %2$s까지, %3$s역과 %4$s역에서 갈아타기</string>
     <string name="journey_recentRouteBothPlaces">%1$s에서 %2$s까지, %3$s, %4$s에서 갈아타기</string>

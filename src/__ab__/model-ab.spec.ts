@@ -153,8 +153,8 @@ async function runOne(real: GoogleGenAI, model: string, c: Case, rep: number): P
     const result = await runAgentLoop({
       ai: instrument(real, rounds, toolOutputs),
       model,
-      systemInstruction: buildChatSystemInstruction("ko", c.place),
-      tools: [{ functionDeclarations: availableDeclarations() }],
+      systemInstruction: buildChatSystemInstruction("ko", c.place, { journey: false }),
+      tools: [{ functionDeclarations: availableDeclarations(new Set()) }],
       history,
       ctx,
     });

@@ -9,6 +9,7 @@ import { markdownToPlainText } from "@/lib/markdown-plain-text";
 import { MessageBubble } from "./MessageBubble";
 import { ChatInput } from "./ChatInput";
 import { FollowUpChips } from "./FollowUpChips";
+import type { JourneyActionHandler } from "./JourneyChatCard";
 
 /**
  * 채팅 컨테이너 — useChat + MessageBubble + ChatInput을 결합.
@@ -27,22 +28,29 @@ import { FollowUpChips } from "./FollowUpChips";
  * - follow-up 칩: 응답 완료 뒤 비동기로 붙고(통지 없음), 칩·예시 버튼 전송은 그 버튼이
  *   사라지기 전에 보내기 버튼으로 포커스를 선점한다 — 포커스를 쥔 요소가 언마운트되면
  *   스크린 리더 커서가 body로 이탈한다(헌장 §6 "전송 시엔 보내기 버튼에 머문다").
+ * - onJourneyAction(E70-b): 여정 카드 버튼의 통로. **있을 때만** 채팅 요청이 여정 능력을 신고한다(없으면 요청 본문이 종전과
+ *   같다). [안내 시작]은 위치를 새로 받는 동안 채팅이 열려 있으므로 그 대기를 이 화면의 통지 창구로 알린다.
  */
 export function ChatInterface({
   inputRef,
   placeContext,
   examplePrompts,
   initialMessage,
+  onJourneyAction,
 }: {
   inputRef?: Ref<HTMLInputElement>;
   placeContext?: PlaceContext;
   examplePrompts?: string[];
   initialMessage?: string;
+  onJourneyAction?: JourneyActionHandler;
 }) {
   const t = useTranslations("chat");
   // placeChat 스코프 번역기 — 빈 상태 안내 문구(placeChat.empty)는 chat 스코프 밖이다.
   const tp = useTranslations("placeChat");
-  const { messages, isLoading, error, progressCategories, sendMessage } = useChat({ placeContext });
+  const tDirections = useTranslations("directions");
+  // 여정 능력은 카드 통로가 이어진 범용 채팅에서만 신고한다(장소 앵커 채팅은 통로가 와도 신고하지 않는다).
+  const journeyCapable = onJourneyAction !== undefined && !placeContext;
+  const { messages, isLoading, error, progressCategories, sendMessage } = useChat({ placeContext, journeyCapable });
   const { playSend, playReceive } = useChatSound();
   const locale = useLocale();
   const followUps = useFollowUpSuggestions(locale);
@@ -83,6 +91,15 @@ export function ChatInterface({
   }, []);
   const tts = useTtsPlayback(locale, () => announce(t("listenFailed")));
   const handleCopied = useCallback(() => announce(t("copied")), [announce, t]);
+  // 여정 카드 버튼. [안내 시작]은 신선도 판정(D16)을 위해 위치를 새로 받는다 — 그동안 포커스는 누른 버튼에 남고 화면은
+  // 그대로라, 기다리는 대상을 이 창구로 말한다(길찾기 화면의 측위 문구와 같은 키).
+  const handleJourneyAction = useCallback<JourneyActionHandler>(
+    (payload, opts) => {
+      if (opts.start) announce(tDirections("locating"));
+      return onJourneyAction?.(payload, opts);
+    },
+    [announce, onJourneyAction, tDirections],
+  );
   // 최신 사용자 질문 heading 참조 — 응답 완료 후 포커스 이동 앵커.
   const lastQueryRef = useRef<HTMLHeadingElement>(null);
   // 직전 isLoading 값 — true→false 전환으로 "방금 응답 완료"를 감지한다.
@@ -154,6 +171,7 @@ export function ChatInterface({
             listening={tts.playingId === m.id}
             onCopied={handleCopied}
             onToggleListen={() => tts.toggle(m.id, markdownToPlainText(m.text))}
+            onJourneyAction={journeyCapable ? handleJourneyAction : undefined}
           />
         ))}
       </div>

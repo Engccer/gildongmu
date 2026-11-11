@@ -28,6 +28,7 @@ import { TransitRouteBriefing } from "@/components/TransitRouteBriefing";
 import { WebResults } from "@/components/WebResults";
 import { BarrierFreeNearby } from "@/components/BarrierFreeNearby";
 import { SourceList } from "./SourceList";
+import { JourneyChatCard, type JourneyActionHandler } from "./JourneyChatCard";
 
 /**
  * 채팅 메시지 1건 렌더.
@@ -40,6 +41,7 @@ import { SourceList } from "./SourceList";
  *   응답 완료 후 포커스가 이 heading으로 이동한다(턴별 탐색).
  * @param lastQueryRef - 최신 질문 heading 참조(ChatInterface가 포커스 이동에 사용).
  * - 어시스턴트 답변 끝에 [복사][듣기](B12, iOS 듣기·공유 계약의 웹판).
+ * @param onJourneyAction - 여정 카드 버튼의 통로(E70-b). 옴니박스 범용 채팅만 준다 — 없으면 카드가 버튼 없이 선다.
  */
 export function MessageBubble({
   message,
@@ -49,6 +51,7 @@ export function MessageBubble({
   listening,
   onCopied,
   onToggleListen,
+  onJourneyAction,
 }: {
   message: ChatMessage;
   onOpenPlace?: (place: Place) => void;
@@ -59,6 +62,7 @@ export function MessageBubble({
   /** 평문 복사 성공 — "복사됨" 통지는 채팅 화면의 창구 몫. 복사·듣기 둘 다 주어질 때만 버튼이 선다. */
   onCopied?: () => void;
   onToggleListen?: () => void;
+  onJourneyAction?: JourneyActionHandler;
 }) {
   const tChat = useTranslations("chat");
   const isUser = message.role === "user";
@@ -100,7 +104,7 @@ export function MessageBubble({
           </div>
         ))}
       {message.renders?.map((render, i) => (
-        <RenderBlock key={i} render={render} onOpenPlace={onOpenPlace} />
+        <RenderBlock key={i} render={render} onOpenPlace={onOpenPlace} onJourneyAction={onJourneyAction} />
       ))}
       {/* 어시스턴트 메시지에만 출처 푸터 표시 */}
       {!isUser && <SourceList sources={message.sources} />}
@@ -147,9 +151,11 @@ const markdownComponents = {
 function RenderBlock({
   render,
   onOpenPlace,
+  onJourneyAction,
 }: {
   render: RenderPayload;
   onOpenPlace?: (place: Place) => void;
+  onJourneyAction?: JourneyActionHandler;
 }) {
   const tChat = useTranslations("chat");
   switch (render.type) {
@@ -207,6 +213,8 @@ function RenderBlock({
       return <CarRouteBriefing dest={render.dest} />;
     case "transit-route":
       return <TransitRouteBriefing dest={render.dest} />;
+    case "journey":
+      return <JourneyChatCard payload={render} onAction={onJourneyAction} />;
     default:
       return null;
   }

@@ -35,11 +35,13 @@ export type JourneyOutcome =
   | { kind: "budgetExhausted" };
 
 /** 실제 provider. 택시 시간은 기하가 필요 없어 `includeGeometry` 없이(안내 세션은 시작 뒤 스스로 다시 조회한다, spec §6.3). */
+// provider 참조는 호출 때 읽는다(화살표로 감쌈) — 이 모듈은 채팅 라우터에서도 실리는데(E70-b), 모듈 로드 때 읽으면
+// provider를 부분 목한 테스트가 여정과 무관한데도 로드에서 실패한다.
 export const journeyDeps: JourneyDeps = {
-  candidates: getTransitCandidates,
+  candidates: (params) => getTransitCandidates(params),
   car: (origin, dest) => getCarRoute({ origin, dest }),
-  exits: searchSubwayExitsKakao,
-  stands: searchTaxiStandsKakao,
+  exits: (stationDisplay, coord) => searchSubwayExitsKakao(stationDisplay, coord),
+  stands: (stationDisplay, coord) => searchTaxiStandsKakao(stationDisplay, coord),
 };
 
 const coordKey = (c: Coord) => `${c.lat.toFixed(4)},${c.lng.toFixed(4)}`;

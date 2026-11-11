@@ -7,6 +7,7 @@ import type { Place } from "@/lib/types";
 import { isStation } from "@/lib/station-match";
 import { ChatInterface } from "./ChatInterface";
 import { placeChatPrompts } from "@/lib/chat/place-prompts";
+import type { JourneyActionHandler } from "./JourneyChatCard";
 
 /**
  * 장소별 채팅 오버레이 — role="dialog" aria-modal 풀스크린 셸.
@@ -25,15 +26,20 @@ import { placeChatPrompts } from "@/lib/chat/place-prompts";
  *
  * place 없이(옴니박스 [AI에게 질문]) 열리면 범용 모드 — placeContext·예시 프롬프트
  * 없이 순수 채팅으로 동작하고, initialMessage가 있으면 첫 질문을 자동 전송한다.
+ *
+ * onJourneyAction(E70-b): 여정 카드 버튼의 통로이자 **여정 능력 신고의 스위치**다. 옴니박스 범용 채팅만 준다 — 장소 상세가
+ * 여는 채팅은 주지 않는다(첫 판 비목표). place가 함께 오면 무시한다(능력도 신고하지 않는다).
  */
 export function ChatOverlay({
   place,
   initialMessage,
   onClose,
+  onJourneyAction,
 }: {
   place?: Place;
   initialMessage?: string;
   onClose: () => void;
+  onJourneyAction?: JourneyActionHandler;
 }) {
   const tp = useTranslations("placeChat");
   const t = useTranslations();
@@ -115,6 +121,7 @@ export function ChatOverlay({
         placeContext={placeContext}
         examplePrompts={examplePrompts}
         initialMessage={initialMessage}
+        onJourneyAction={place ? undefined : onJourneyAction}
       />
     </div>
   );

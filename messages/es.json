@@ -596,6 +596,7 @@
         "search_web": "búsqueda web",
         "get_nearby_barrier_free": "lugares accesibles",
         "get_walk_infrastructure": "infraestructura peatonal",
+        "plan_journey": "ruta en coche y transporte público",
         "unknown": "información"
       }
     },
@@ -1330,6 +1331,8 @@
     "boardFieldStop": "Parada donde deja el coche",
     "alightFieldStation": "Estación donde toma un coche",
     "alightFieldStop": "Parada donde toma un coche",
-    "transferField": "Parada o transbordo en coche"
+    "transferField": "Parada o transbordo en coche",
+    "openInDirections": "Abrir en Cómo llegar",
+    "cardStaleRequery": "Tu ubicación ha cambiado. Buscando la ruta de nuevo."
   }
 }

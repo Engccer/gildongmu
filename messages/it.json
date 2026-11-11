@@ -596,6 +596,7 @@
         "search_web": "ricerca web",
         "get_nearby_barrier_free": "luoghi accessibili",
         "get_walk_infrastructure": "infrastrutture pedonali",
+        "plan_journey": "percorso in auto e mezzi pubblici",
         "unknown": "informazioni"
       }
     },
@@ -1330,6 +1331,8 @@
     "boardFieldStop": "Fermata dove lascia l'auto",
     "alightFieldStation": "Stazione dove prende un'auto",
     "alightFieldStop": "Fermata dove prende un'auto",
-    "transferField": "Tappa o cambio in auto"
+    "transferField": "Tappa o cambio in auto",
+    "openInDirections": "Apri in Indicazioni",
+    "cardStaleRequery": "La tua posizione è cambiata. Cerco di nuovo il percorso."
   }
 }

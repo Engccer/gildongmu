@@ -3,8 +3,8 @@ import { z } from "zod";
 import { hasKakaoKey, hasOdsayKey, hasTmapKey } from "@/lib/env";
 import { isInKorea } from "@/lib/coverage";
 import { coordSchema } from "@/lib/route-coord-schema";
-import { chargeJourneyIp, clientIpFromHeaders, journeyIpExhausted, journeyTmapExhausted, reserveJourneyTmap } from "@/lib/rate-limit";
-import { getJourney, journeyDeps } from "@/lib/journey/assemble";
+import { clientIpFromHeaders } from "@/lib/rate-limit";
+import { queryJourney } from "@/lib/journey/query";
 
 /**
  * 여정 조회(E70, spec `2026-10-17-e70-mode-change-journey-design.md` §4): 택시(출발 → 역 A) + 대중교통(A → B) +
@@ -90,21 +90,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "여정 조회는 API 키 등록 후 사용할 수 있습니다." }, { status: 503 });
   }
 
-  // 인스턴스 일 상한이 이미 소진됐으면 유료 ODsay·카카오를 부르기 전에 거절한다(Tmap 예약 거절과 같은 응답).
-  if (journeyTmapExhausted(Date.now())) {
-    return NextResponse.json({ budgetExhausted: true }, { status: 503 });
-  }
   const ip = clientIpFromHeaders(request.headers);
-  // 이 IP의 버킷이 이미 찼으면 유료 ODsay를 부르기 전에 거절한다(남은 칸이 이번 비용보다 모자란 경우는 예약이 가른다).
-  if (journeyIpExhausted(ip, Date.now())) {
-    return NextResponse.json({ error: "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요." }, { status: 429 });
-  }
-  // aboard는 Tmap을 0회 부르는 경우가 있어 Tmap 예약이 IP를 세지 못한다 — 유료 ODsay 상한이 사라지지 않게 요청 단위로 한 칸을 쓴다.
-  if (q.boardKind === "aboard" && !chargeJourneyIp(ip, Date.now())) {
-    return NextResponse.json({ error: "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요." }, { status: 429 });
-  }
   try {
-    const outcome = await getJourney(
+    // 선판정(일 상한 → IP 버킷 → aboard 칸)과 Tmap 예약은 진입 함수 하나가 맡는다(E70-b D6 — 채팅 도구와 같은 함수).
+    const outcome = await queryJourney(
       {
         from: q.origin,
         to: q.dest,
@@ -112,8 +101,7 @@ export async function GET(request: NextRequest) {
         ...(q.alight && q.alightName ? { alight: { name: q.alightName, coord: q.alight, ...(q.alightLine ? { line: q.alightLine } : {}), ...(q.alightKind ? { kind: q.alightKind } : {}) } } : {}),
         ...(q.stops ? { stops: true } : {}),
       },
-      journeyDeps,
-      (cost) => reserveJourneyTmap(ip, Date.now(), cost),
+      ip,
     );
     if (outcome.kind === "rateLimited") {
       return NextResponse.json({ error: "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요." }, { status: 429 });

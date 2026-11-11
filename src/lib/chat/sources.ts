@@ -65,6 +65,9 @@ export function sourceFor(
       return ctx.dataLocale === "en" ? [NCP] : [TMAP, KAKAO_MOBILITY];
     case "get_transit_route":
       return [ODSAY];
+    case "plan_journey":
+      // 여정 = 대중교통(ODsay) + 택시 구간(자동차 경로와 같은 기본 Tmap·폴백 카카오모빌리티 병기).
+      return [ODSAY, TMAP, KAKAO_MOBILITY];
     case "get_walk_route":
       // 기본 카카오(dapi.kakao.com 도보)·폴백 Tmap — 응답이 어느 쪽에서 왔는지
       // 서비스가 노출하지 않으므로(스키마 불변 계약) 두 제공처를 정직하게 병기.

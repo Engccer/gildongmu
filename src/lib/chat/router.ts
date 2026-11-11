@@ -39,6 +39,7 @@ import { getTransitRoute } from "@/lib/providers/odsay";
 import { getWalkRoute } from "@/lib/walk-route";
 import { getWalkInfrastructure } from "@/lib/walk-infra";
 import { searchWebPerplexity } from "./perplexity-search";
+import { executePlanJourney } from "./journey-tool";
 import { hasNcpMapsKeys, hasWalkRouteKey } from "@/lib/env";
 import { placesToRender, placesToData, addressesToRender, addressesToData } from "./render";
 import { overviewSources, sourceFor } from "./sources";
@@ -556,6 +557,9 @@ export async function executeFunction(
         source: src,
       };
     }
+    case "plan_journey":
+      // 여정(E70-b): 턴 규칙·역 해석·예산 진입점은 `journey-tool.ts`에 있다. `ctx.journey`가 없으면 거절한다.
+      return executePlanJourney(args, ctx);
     case "search_web": {
       // perplexity-search가 data·render를 빚고, 출처는 여기서 부착(실패면 카드 없음).
       const result = await searchWebPerplexity(args);

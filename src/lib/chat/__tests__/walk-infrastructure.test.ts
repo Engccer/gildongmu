@@ -53,7 +53,7 @@ describe("get_walk_infrastructure 선언 노출", () => {
   it("게이트 없음, 키가 전부 없어도 항상 노출", async () => {
     vi.stubEnv("KAKAO_REST_API_KEY", undefined);
     vi.stubEnv("DATA_GO_KR_API_KEY", undefined);
-    expect(availableDeclarations().some((d) => d.name === "get_walk_infrastructure")).toBe(true);
+    expect(availableDeclarations(new Set()).some((d) => d.name === "get_walk_infrastructure")).toBe(true);
     vi.unstubAllEnvs();
   });
 });

@@ -7,7 +7,7 @@ import { runAgentLoop } from "@/lib/chat/agent-loop";
 import { dataLocale } from "@/lib/data-locale";
 import { routing } from "@/i18n/routing";
 import { checkChatRateLimit, clientIpFromHeaders } from "@/lib/rate-limit";
-import type { ExecutionContext, ChatStreamEvent } from "@/lib/chat/types";
+import type { ChatCapability, ExecutionContext, ChatStreamEvent } from "@/lib/chat/types";
 
 export const maxDuration = 120; // 적극 연쇄 + 여러 Gemini 호출 — 조기 중단 방지
 
@@ -17,6 +17,20 @@ interface ChatRequest {
   locale?: string;
   /** 장소 상세에서 연 채팅일 때 — 좌표 도구의 장소 앵커(I-1) + LLM 지시(I-3). */
   placeContext?: { name: string; lat: number; lng: number; category?: string; isStation?: boolean };
+  /** 클라이언트가 그릴 수 있는 것의 신고(E70-b D7). 알려진 값 `"journey"`, 모르는 값은 버린다. 없으면 종전과 동일. */
+  capabilities?: string[];
+  /** `userLocation`이 수동 지정 위치인가(E70-b D2) — 여정 카드가 [안내 시작]을 내지 않는다. */
+  userLocationManual?: boolean;
+}
+
+/**
+ * 요청의 능력 신고를 서버가 아는 값으로 거른다(E70-b D7). 여정은 ko 전용이라(택시 안내 기하가 Tmap ko 경로에만 있다)
+ * 다른 로케일의 신고는 버린다. 키 게이트는 선언 쪽(`availableDeclarations`)이 건다.
+ */
+function chatCapabilities(raw: unknown, locale: string): Set<ChatCapability> {
+  const out = new Set<ChatCapability>();
+  if (Array.isArray(raw) && raw.includes("journey") && locale === "ko") out.add("journey");
+  return out;
 }
 
 // A44: JSON.stringify는 U+2028·U+2029·U+0085를 날 문자로 둔다. Swift `bytes.lines`(와 Kotlin 미러)는
@@ -35,7 +49,8 @@ function toNdjsonLine(event: ChatStreamEvent): string {
 
 export async function POST(request: Request) {
   // 무인증 공개 API의 유료 호출(Gemini·Perplexity) 비용 방어 — 스펙 §5.
-  if (!checkChatRateLimit(clientIpFromHeaders(request.headers), Date.now())) {
+  const clientIp = clientIpFromHeaders(request.headers);
+  if (!checkChatRateLimit(clientIp, Date.now())) {
     return new Response(JSON.stringify({ error: "rate_limited" }), {
       status: 429, headers: { "Content-Type": "application/json" },
     });
@@ -67,16 +82,22 @@ export async function POST(request: Request) {
     });
   }
   const pc = body.placeContext;
+  // 선언 목록이 정본이다: `plan_journey`가 실제로 선언됐을 때만(능력 신고 ∧ ko ∧ 키 셋) 실행 컨텍스트와 지침을 연다.
+  const declarations = availableDeclarations(chatCapabilities(body.capabilities, locale));
+  const journeyOpen = declarations.some((d) => d.name === "plan_journey");
   const ctx: ExecutionContext = {
     userLocation: body.userLocation,
     placeAnchor: pc ? { lat: pc.lat, lng: pc.lng, name: pc.name } : undefined,
+    ...(journeyOpen
+      ? { journey: { clientIp, manualOrigin: body.userLocationManual === true, turn: { asked: false, queried: false } } }
+      : {}),
     locale,
     dataLocale: dataLocale(locale),
   };
 
-  const systemInstruction = buildChatSystemInstruction(locale, pc);
+  const systemInstruction = buildChatSystemInstruction(locale, pc, { journey: journeyOpen });
 
-  const tools = [{ functionDeclarations: availableDeclarations() }];
+  const tools = [{ functionDeclarations: declarations }];
   const history: Content[] = body.messages.map((m) => ({
     role: m.role === "assistant" ? "model" : "user",
     parts: [{ text: m.text }],

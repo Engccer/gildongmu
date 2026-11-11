@@ -5,7 +5,7 @@
  * 후속 태스크(라우터·render 헬퍼·useChat·MessageBubble)가 전부 이 타입을 import한다.
  */
 
-import type { Place, JusoAddress, WebSearchResult } from "@/lib/types";
+import type { Place, JusoAddress, WebSearchResult, JourneyResult } from "@/lib/types";
 
 /** 응답 하단에 표시할 데이터 제공처. label은 i18n 키(chat.<label>), url은 선택. */
 export interface SourceAttribution {
@@ -23,6 +23,21 @@ export interface ExecutionContext {
    * 길찾기 출발지는 현재 위치로 보존된다(I-2). 없으면 기존 동작(I-3).
    */
   placeAnchor?: { lat: number; lng: number; name: string };
+  /**
+   * 여정 도구(`plan_journey`, E70-b) 컨텍스트 — 클라이언트가 `"journey"` 능력을 신고했고 로케일이 ko일 때만 라우트가 싣는다.
+   * **없으면 도구가 선언되지도 실행되지도 않는다**(닫힌 쪽이 기본값, D7).
+   */
+  journey?: {
+    /** 요청 IP — 여정 Tmap 예산의 IP 버킷 키(D6). */
+    clientIp: string;
+    /** `userLocation`이 수동 지정 위치인가(D2) — 참이면 카드가 [안내 시작]을 내지 않는다. */
+    manualOrigin: boolean;
+    /**
+     * 이 턴의 상태(D5). 요청마다 새 컨텍스트라 턴과 수명이 같다. 실행 진입 시 await 전에 동기로 갱신한다.
+     * `asked`: 후보·동명 역을 돌려줘 되물어야 한다(이 턴엔 여정을 조회하지 않는다). `queried`: 여정을 이미 조회했다.
+     */
+    turn: { asked: boolean; queried: boolean };
+  };
   /** UI 로케일 (ko|en|es|fr|it) */
   locale: string;
   /** 외부 데이터 언어 — dataLocale()로 파생 (ko|en) */
@@ -58,7 +73,38 @@ export type RenderPayload =
   | { type: "station-meta"; stationName: string }               // <StationMeta stationName/>
   | { type: "station-facilities"; stationName: string }         // <StationFacilities/> + <SeoulMetroFacilities/>
   | { type: "car-route"; dest: { lat: number; lng: number; name: string } }      // <CarRouteBriefing dest/>
-  | { type: "transit-route"; dest: { lat: number; lng: number; name: string } }; // <TransitRouteBriefing dest/>
+  | { type: "transit-route"; dest: { lat: number; lng: number; name: string } } // <TransitRouteBriefing dest/>
+  | JourneyRenderPayload;                                       // <JourneyChatCard/> (E70-b)
+
+/** 채팅 요청이 신고할 수 있는 클라이언트 능력(E70-b D7). 모르는 값은 서버가 버린다. */
+export type ChatCapability = "journey";
+
+/** 여정에서 갈아탈 곳 하나 — 웹 `JourneyStationPick`과 같은 모양(React 비의존이라 여기서 다시 적는다). */
+export interface JourneyChatStation {
+  label: string;
+  lat: number;
+  lng: number;
+  line?: string;
+  kind?: "stop";
+}
+
+/**
+ * 여정 카드(E70-b spec `2026-11-12-e70b-chat-journey-design.md` D8) — props-driven. 카드는 `result.variants[0]`과 첫 출구로
+ * 제목·합계를 그리고, [안내 시작]은 `origin`·`queriedAt`으로 신선도(D16)를 본다. `manualOrigin`이면 [안내 시작]이 없다(D2).
+ */
+export interface JourneyRenderPayload {
+  type: "journey";
+  result: JourneyResult;
+  origin: { lat: number; lng: number };
+  /** 조회 시각(epoch ms). */
+  queriedAt: number;
+  manualOrigin: boolean;
+  board: JourneyChatStation | null;
+  alight: JourneyChatStation | null;
+  dest: { lat: number; lng: number };
+  destLabel: string;
+  destRoman: string | null;
+}
 
 /** 도구 실행 결과 — LLM용 데이터 + 선택적 카드 + 출처. */
 export interface ToolResult {

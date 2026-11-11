@@ -596,6 +596,7 @@
         "search_web": "web search",
         "get_nearby_barrier_free": "barrier-free places",
         "get_walk_infrastructure": "walking infrastructure",
+        "plan_journey": "car and transit route",
         "unknown": "information"
       }
     },
@@ -1330,6 +1331,8 @@
     "boardFieldStop": "Stop where you leave the car",
     "alightFieldStation": "Station where you take a car",
     "alightFieldStop": "Stop where you take a car",
-    "transferField": "Stop or car transfer"
+    "transferField": "Stop or car transfer",
+    "openInDirections": "Open in Directions",
+    "cardStaleRequery": "Your location changed. Finding the route again."
   }
 }

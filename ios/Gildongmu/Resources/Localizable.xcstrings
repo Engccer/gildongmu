@@ -8121,6 +8121,46 @@
         }
       }
     },
+    "chat.progress.tool.plan_journey": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "자동차 환승 경로"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "car and transit route"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ruta en coche y transporte público"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "itinéraire voiture et transports"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "percorso in auto e mezzi pubblici"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "車と公共交通の乗り継ぎ経路"
+          }
+        }
+      }
+    },
     "chat.progress.tool.search_address": {
       "localizations": {
         "ko": {
@@ -35991,6 +36031,46 @@
         }
       }
     },
+    "journey.cardStaleRequery": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "위치가 바뀌어 경로를 다시 찾습니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your location changed. Finding the route again."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu ubicación ha cambiado. Buscando la ruta de nuevo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Votre position a changé. Nouvelle recherche de l'itinéraire."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La tua posizione è cambiata. Cerco di nuovo il percorso."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "位置が変わったため、経路を探し直します。"
+          }
+        }
+      }
+    },
     "journey.clearStations": {
       "localizations": {
         "ko": {
@@ -36587,6 +36667,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "出口までの徒歩案内を開始できませんでした。"
+          }
+        }
+      }
+    },
+    "journey.openInDirections": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "길찾기에서 열기"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open in Directions"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir en Cómo llegar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ouvrir dans Itinéraire"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apri in Indicazioni"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "経路検索で開く"
           }
         }
       }
