@@ -7,7 +7,8 @@ import GildongmuKit
 /// - 제목·못 찾음 줄·합계는 길찾기 결과 화면(`JourneyResultRows`)과 같은 함수·같은 문자열이다. 싣는 계획은 추천 순서 첫 변형
 ///   (`variants[0]`)과 첫 출구다(그 화면의 기본 선택과 같다). 구간·다른 경로·출구는 [길찾기에서 열기]로 간다.
 /// - 제목은 heading이 아니다(D15) — 턴 점프는 질문 heading이 맡고, 답 안의 heading은 회전자를 오염시킨다.
-/// - 수동 지정 위치에서 조회한 여정(`manualOrigin`)은 [안내 시작]을 내지 않는다(D2).
+/// - 수동 지정 위치에서 조회한 여정(`manualOrigin`)에도 [안내 시작]을 둔다(E70-b2 ③, D2 대체): 실제 위치를 받아 카드의 결과로
+///   시작하지 않고 길찾기 탭에서 현재 위치 기준으로 다시 조회한다(길찾기 화면의 「막지 않고 알린다」와 같은 쪽).
 /// - 이 뷰는 `AppConfig.experimentalJourneyEnabled` 뒤에서만 그려지고(`ChatConversationView`), 두 동작도 같은 봉인을 한 번 더 확인한다.
 /// - 측위를 기다리는 동안 버튼을 `disabled`로 만들지 않는다 — 포커스가 버튼에 남아야 한다(재진입은 `busy` 가드로 막는다).
 struct JourneyChatCardView: View {
@@ -34,13 +35,11 @@ struct JourneyChatCardView: View {
                     Text($0).font(.subheadline)
                 }
                 Text(journeyTotalsLine(variant, egress: egress, aboard: false)).font(.subheadline)
-                if !payload.manualOrigin {
-                    // 측위를 기다리는 동안 라벨이 바뀌는 것이 VoiceOver 신호 하나다(S2, 헌장 §5 — 포커스는 버튼에 남고 별도 통지는 없다).
-                    Button(busy ? appLocalized("directions.locating") : appLocalized("beacon.start")) { start(variant) }
-                        .frame(minHeight: 44)
-                        .buttonStyle(.bordered)
-                        .opacity(busy ? 0.5 : 1)
-                }
+                // 측위를 기다리는 동안 라벨이 바뀌는 것이 VoiceOver 신호 하나다(S2, 헌장 §5 — 포커스는 버튼에 남고 별도 통지는 없다).
+                Button(busy ? appLocalized("directions.locating") : appLocalized("beacon.start")) { start(variant) }
+                    .frame(minHeight: 44)
+                    .buttonStyle(.bordered)
+                    .opacity(busy ? 0.5 : 1)
                 Button(appLocalized("ios.journey.openInDirections")) { openInDirections(requery: false) }
                     .frame(minHeight: 44)
                     .buttonStyle(.bordered)
@@ -58,9 +57,10 @@ struct JourneyChatCardView: View {
     }
 
     /// [안내 시작](D13·D16): 위치를 새로 받아 카드의 출발 좌표·조회 시각과 견준다. 신선하면 카드의 결과로 바로 이어 안내를 시작하고,
-    /// 아니면(낡음·이동·측위 실패) 시작하지 않고 길찾기 탭에서 같은 여정을 지금 위치로 다시 조회한다. 전송이 아니라 AI 동의와 무관하다.
+    /// 아니면(낡음·이동·측위 실패·수동 지정 위치에서 조회한 카드) 시작하지 않고 길찾기 탭에서 같은 여정을 실제 위치로 다시 조회한다.
+    /// 전송이 아니라 AI 동의와 무관하다.
     private func start(_ variant: JourneyVariant) {
-        guard AppConfig.experimentalJourneyEnabled, !payload.manualOrigin, !busy else { return }
+        guard AppConfig.experimentalJourneyEnabled, !busy else { return }
         // 다른 안내가 진행 중이면 측위·재조회 전에 거부한다(S3) — 시작할 수 없는 상황에서 탭 전환·유료 조회가 일어나지 않게.
         guard !GuideSession.shared.refuseStartIfOccupied() else { return }
         busy = true
@@ -73,7 +73,8 @@ struct JourneyChatCardView: View {
             let freshness = journeyCardFreshness(
                 origin: payload.origin, queriedAtMs: payload.queriedAt,
                 fix: fix.map { RoutePoint(lat: $0.lat, lng: $0.lng) }, nowMs: Date().timeIntervalSince1970 * 1000)
-            guard freshness == .fresh else {
+            // 수동 지정 위치에서 조회한 카드는 신선해도 그 결과로 시작하지 않는다(E70-b2 ③ — 첫 구간부터 실제 위치와 어긋난다).
+            guard freshness == .fresh, !payload.manualOrigin else {
                 openInDirections(requery: true)
                 return
             }
@@ -92,7 +93,7 @@ struct JourneyChatCardView: View {
     }
 
     /// [길찾기에서 열기](D14): 길찾기 탭에 도착지·갈아탈 곳을 채운다. `requery`가 거짓이면 카드의 결과를 재조회 없이 그대로 보여 주고,
-    /// 참이면(낡은 카드의 [안내 시작]) 같은 여정을 지금 위치로 다시 조회하며 사유를 조회 완료 통지에 합쳐 한 번 말한다.
+    /// 참이면(낡은 카드·수동 위치 카드의 [안내 시작]) 같은 여정을 **실제 위치**로 다시 조회하며 사유를 조회 시작 때 한 번 말한다.
     private func openInDirections(requery: Bool) {
         guard AppConfig.experimentalJourneyEnabled, !busy || requery else { return }
         DirectionsPrefillStore.shared.pending = DirectionsPrefill(
@@ -100,7 +101,7 @@ struct JourneyChatCardView: View {
             endpoint: .place(label: payload.destLabel, lat: payload.dest.lat, lng: payload.dest.lng, labelRoman: payload.destRoman),
             journey: JourneyPrefill(
                 board: payload.board, alight: payload.alight, result: requery ? nil : payload.result,
-                manualOrigin: payload.manualOrigin,
+                manualOrigin: payload.manualOrigin, realOrigin: requery,
                 requeryNotice: requery ? appLocalized("ios.journey.cardStaleRequery") : nil))
     }
 }

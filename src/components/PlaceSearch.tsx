@@ -67,6 +67,7 @@ import { DirectionsView, type DirectionsJourneyEntry } from "./DirectionsView";
 import { NearbyHub } from "./NearbyHub";
 import { ChatOverlay } from "./chat/ChatOverlay";
 import type { JourneyActionHandler } from "./chat/JourneyChatCard";
+import type { ChatMessage } from "@/lib/chat/types";
 import { journeyCardFreshness } from "./chat/journey-card-freshness";
 import { LocationBar } from "./LocationBar";
 import { ManualLocationPicker } from "./ManualLocationPicker";
@@ -226,10 +227,20 @@ export function PlaceSearch({
   // 범용 채팅(옴니박스 [AI에게 질문], 스펙 §1·§3). 입력 텍스트는 1회성 전달 —
   // ?q= 미기록·검색 API 미호출. 닫기는 트리거(SearchBar 영역)로 포커스 복귀 대신
   // 검색 입력창으로 복귀한다(질문 흐름의 자연스러운 다음 행동 = 재입력).
-  const [generalChat, setGeneralChat] = useState<{ seed?: string } | null>(null);
+  const [generalChat, setGeneralChat] = useState<{ seed?: string; restore?: ChatMessage[] } | null>(null);
+  // 대화 보존(E70-b2 판정 ①): 여정 카드의 버튼으로 채팅이 닫힌 때만 그 대화(카드 포함)를 들고 있다가, [AI에게 질문]을 다시
+  // 열면 이어 보여 준다. Esc·닫기 버튼·장소 카드로 닫히면 버린다(종전대로 새 대화). 열려 있는 채팅의 최신 대화는
+  // `chatTranscriptRef`가 따라가고, 보존분은 카드 버튼이 닫는 순간에만 `preservedChatRef`로 옮긴다.
+  const chatTranscriptRef = useRef<ChatMessage[]>([]);
+  const preservedChatRef = useRef<ChatMessage[] | null>(null);
+  const handleChatMessages = useCallback((messages: ChatMessage[]) => {
+    chatTranscriptRef.current = messages;
+  }, []);
 
   function openGeneralChat() {
-    setGeneralChat({ seed: query.trim() || undefined });
+    const restore = preservedChatRef.current ?? undefined;
+    chatTranscriptRef.current = restore ?? [];
+    setGeneralChat({ seed: query.trim() || undefined, restore });
   }
 
   useEffect(() => {
@@ -444,6 +455,8 @@ export function PlaceSearch({
       // initialMessage가 재전송되는 것을 차단(홈 언마운트는 오버레이만 지우고
       // generalChat state는 남긴다).
       setGeneralChat(null);
+      // 카드 버튼으로 닫힌 것이 아니다 — 보존해 둔 대화도 버린다(다시 열었다가 장소로 떠난 뒤 옛 스냅숏이 되살아나지 않게).
+      preservedChatRef.current = null;
       setOpenSeq((s) => s + 1);
       if (selectedRef.current) {
         window.history.replaceState(
@@ -497,7 +510,10 @@ export function PlaceSearch({
    *
    * [안내 시작]은 먼저 위치를 새로 받아(`force` — 스토어에 TTL이 없고 카드는 대화에 오래 남는다) 카드가 아직 쓸 만한지 본다.
    * 그동안 채팅은 열려 있고 포커스는 누른 버튼에 남는다(카드가 `aria-disabled`로 잠근다). 낡았으면(10분·100m·측위 실패)
-   * 카드의 결과로 시작하지 않고 길찾기 화면이 같은 여정을 다시 조회한다.
+   * 카드의 결과로 시작하지 않고 길찾기 화면이 같은 여정을 다시 조회한다. 수동 지정 위치에서 조회한 카드(`manualOrigin`)는
+   * 신선도와 무관하게 늘 다시 조회한다(E70-b2 ③) — 그 재조회는 수동 위치가 아니라 실제 위치에서 출발한다(`requery`).
+   *
+   * 이 버튼으로 닫힌 채팅은 대화를 남긴다(E70-b2 ①) — [AI에게 질문]을 다시 열면 이어서 물을 수 있다.
    *
    * 착지는 길찾기 화면이 하나로 정한다: 채팅을 닫을 때의 검색창 복귀(`onClose`)는 이 경로에서 하지 않는다 — 홈이 통째로
    * 길찾기 화면으로 바뀌므로 복귀할 자리도 없다.
@@ -512,6 +528,7 @@ export function PlaceSearch({
       try {
         const fix = await awaitGeolocation({ force: true });
         mode =
+          !payload.manualOrigin &&
           journeyCardFreshness(payload, fix.status === "ready" ? fix.coords : null, Date.now()) === "fresh"
             ? "start"
             : "requery";
@@ -521,6 +538,7 @@ export function PlaceSearch({
       // 기다리는 사이 사용자가 채팅을 닫았거나 다른 화면으로 갔으면 그 선택이 이긴다(떠난 화면 위에 길찾기를 열지 않는다).
       if (generalChatRef.current !== chat || generalChatRef.current === null || directionsOpenRef.current) return;
     }
+    preservedChatRef.current = chatTranscriptRef.current;
     setGeneralChat(null);
     window.history.pushState({ ...(window.history.state ?? {}), directions: true }, "");
     setDirections({
@@ -1404,7 +1422,10 @@ export function PlaceSearch({
           // 여정 능력(E70-b D7): 서버 키 게이트와 ko일 때만 통로를 준다 — 통로가 곧 능력 신고의 스위치다. 길찾기 화면의
           // 여정 게이트(`journeyEnabled`)와 같은 식이어야 카드가 연 화면에 갈아탈 곳 칸이 있다.
           onJourneyAction={canPlanJourney && !prefersEnglish(locale) ? handleJourneyAction : undefined}
+          initialMessages={generalChat.restore}
+          onMessages={handleChatMessages}
           onClose={() => {
+            preservedChatRef.current = null;
             setGeneralChat(null);
             searchInputRef.current?.focus();
           }}

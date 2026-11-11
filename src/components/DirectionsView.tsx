@@ -22,6 +22,7 @@ import { resolveAddressCoord } from "@/lib/resolve-address-coord";
 import { parseDir, placeEndpoint, serializeDir, type DirEndpoint } from "@/lib/directions-state";
 import {
   DIRECTIONS_ORIGIN_MAX_AGE_SECONDS,
+  awaitGeolocation,
   getGeolocationSnapshot,
 } from "@/lib/geolocation";
 import { awaitEffectiveLocation } from "@/lib/effective-location";
@@ -185,7 +186,8 @@ type JourneySlot = { pick: JourneyStationPick | null } | null;
  * 이 값은 갈아탈 곳·결과와 **마운트에서 할 일 하나**를 나른다:
  * - `open`([길찾기에서 열기]): 조회 없이 카드의 결과를 세우고 여정 제목에 착지한다.
  * - `start`([안내 시작], 카드가 신선하다): 조회 없이 결과를 세우고 이어 안내를 바로 시작한다(단계 패널이 자기 트리거로 착지).
- * - `requery`([안내 시작], 카드가 낡았다): 카드의 결과를 쓰지 않고 같은 도착지·갈아탈 곳으로 지금 위치에서 다시 조회한다.
+ * - `requery`([안내 시작], 카드가 낡았거나 수동 지정 위치에서 조회한 카드다): 카드의 결과를 쓰지 않고 같은 도착지·갈아탈 곳으로
+ *   **실제 위치**에서 다시 조회한다(E70-b2 ③ — 수동 위치가 켜져 있어도 그 좌표가 아니라 기기 위치다. 안내를 시작하려던 것이다).
  */
 export type DirectionsJourneyEntry = { payload: JourneyRenderPayload; mode: "open" | "start" | "requery" };
 
@@ -899,7 +901,7 @@ export function DirectionsView({
       return;
     }
     if (!initialTo) return;
-    void runQuery({ from: { kind: "current" }, to: initialTo, via: null, journey: { board, alight } });
+    void runQuery({ from: { kind: "current" }, to: initialTo, via: null, journey: { board, alight }, realOrigin: true });
     // 한 틱 미룬다(effect 안 동기 setState 회피 — 이 파일의 최근 기록 로드와 같은 패턴). `runQuery`의 동기 구간은 이미 지났다.
     queueMicrotask(() => announce(tJourney("cardStaleRequery")));
     // 첫 렌더의 진입 값으로 도는 마운트 1회 일이다.
@@ -997,6 +999,11 @@ export function DirectionsView({
     via: DirEndpoint | null;
     /** 갈아탈 곳(E70-f, 최근 경로 활성화만 싣는다 — 도구 요청은 싣지 않는다). */
     journey?: { board: JourneyStationPick | null; alight: JourneyStationPick | null };
+    /**
+     * "현재 위치" 끝점을 수동 지정 위치가 아니라 기기 위치로 푼다(E70-b2 ③, 채팅 여정 카드 [안내 시작]의 재조회만 싣는다).
+     * 기본값을 두지 않는 자리다 — 싣지 않으면 종전대로 유효 위치(수동 위치 > GPS)다.
+     */
+    realOrigin?: true;
   }) {
     if (inFlight.current) return;
     const from = request ? request.from : fromField.resolved;
@@ -1057,13 +1064,19 @@ export function DirectionsView({
       let staleAgeAtQuery: StaleAgeMessage | null = null;
       if (from.kind === "current" || to.kind === "current") {
         setPhase({ kind: "locating" });
-        const acquired = await awaitEffectiveLocation({
-          force: false,
-          maxAgeSeconds: DIRECTIONS_ORIGIN_MAX_AGE_SECONDS,
-        });
+        const locate = { force: false, maxAgeSeconds: DIRECTIONS_ORIGIN_MAX_AGE_SECONDS };
+        let acquired: { lat: number; lng: number; source: "gps" | "manual" } | null;
+        if (request?.realOrigin) {
+          // 수동 위치를 건너뛴다 — 스토어의 기기 좌표만 본다(카드가 방금 `force`로 받아 나이 상한 안이다).
+          const fix = await awaitGeolocation(locate);
+          acquired = fix.status === "ready" ? { lat: fix.coords.lat, lng: fix.coords.lng, source: "gps" } : null;
+        } else {
+          acquired = await awaitEffectiveLocation(locate);
+        }
         if (myGen !== genRef.current) return;
         // 재측위가 취득 실패로 끝났고 직전 좌표가 있으면 그 옛 위치로 계속한다(위원장 판정
-        // 2026-09-23). `acquired`가 null이면 수동 위치도 없다(있으면 그것이 답이다).
+        // 2026-09-23). `acquired`가 null이면 수동 위치도 없다(있으면 그것이 답이다 — 기기 위치만 보는 `realOrigin`도
+        // 옛 기기 좌표로 잇는 것은 같다).
         const stale = acquired ? null : staleFixOf(getGeolocationSnapshot());
         const effective: { lat: number; lng: number; source: "gps" | "manual" | "stale" } | null =
           acquired ?? (stale ? { lat: stale.lat, lng: stale.lng, source: "stale" } : null);
@@ -1719,7 +1732,7 @@ export function DirectionsView({
     if (r.from) setRecentFrom(recordRecentEndpoint("from", r.from));
     if (r.to) setRecentTo(recordRecentEndpoint("to", r.to));
     if (r.via) setRecentVia(recordRecentEndpoint("via", r.via));
-    void runQuery({ from: fromEp, to: toEp, via: viaEp, journey: { board, alight } });
+    void runQuery({ from: fromEp, to: toEp, via: viaEp, journey: { board, alight }, realOrigin: true });
   }
   function deleteRecentRoute(r: RecentRoute, index: number) {
     const next = removeRecentRoute(r);

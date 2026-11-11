@@ -11,6 +11,7 @@ import type { JourneyResult } from "@/lib/types";
 import type { JourneyRenderPayload } from "@/lib/chat/types";
 import { placeEndpoint } from "@/lib/directions-state";
 import { clearRecentRoutes, loadRecentRoutes } from "@/lib/recent-searches";
+import { __resetManualLocationForTest, setManualLocation } from "@/lib/manual-location-store";
 
 vi.mock("next-intl", async () => {
   const m = await import("./stable-intl-mock");
@@ -167,6 +168,19 @@ describe("채팅 여정 카드 → 길찾기 화면(E70-b)", () => {
     expect(screen.getByRole("button", { name: "guideStartTransitAlt" })).toBeTruthy();
     // 사유 통지는 결과 요약에 자리를 내준다.
     expect(region.textContent).not.toBe("cardStaleRequery");
+  });
+
+  it("[안내 시작] 재조회는 수동 지정 위치가 켜져 있어도 실제 위치에서 출발한다(E70-b2 ③)", async () => {
+    setManualLocation({ lat: 37.4979, lng: 127.0276, label: "강남역", origin: null, setAt: Date.now() });
+    try {
+      renderEntry("requery");
+      await waitFor(() => expect(journeyCalls().length).toBe(1));
+      const q = new URLSearchParams(journeyCalls()[0].split("?")[1]);
+      // 수동 위치(강남역)가 아니라 기기 위치다.
+      expect(q.get("origin")).toBe("37.5501,126.9501");
+    } finally {
+      __resetManualLocationForTest();
+    }
   });
 
   it("여정 게이트가 거짓이면 카드 진입을 버린다(결과·갈아탈 곳 칸 없음, 조회 없음)", () => {

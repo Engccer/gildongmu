@@ -10,6 +10,7 @@ import { MessageBubble } from "./MessageBubble";
 import { ChatInput } from "./ChatInput";
 import { FollowUpChips } from "./FollowUpChips";
 import type { JourneyActionHandler } from "./JourneyChatCard";
+import type { ChatMessage } from "@/lib/chat/types";
 
 /**
  * 채팅 컨테이너 — useChat + MessageBubble + ChatInput을 결합.
@@ -37,12 +38,17 @@ export function ChatInterface({
   examplePrompts,
   initialMessage,
   onJourneyAction,
+  initialMessages,
+  onMessages,
 }: {
   inputRef?: Ref<HTMLInputElement>;
   placeContext?: PlaceContext;
   examplePrompts?: string[];
   initialMessage?: string;
   onJourneyAction?: JourneyActionHandler;
+  /** 이어 갈 대화와 대화 변경 알림(E70-b2 ①) — 여정 카드 버튼으로 닫힌 범용 채팅을 다시 열 때만 쓴다. */
+  initialMessages?: ChatMessage[];
+  onMessages?: (messages: ChatMessage[]) => void;
 }) {
   const t = useTranslations("chat");
   // placeChat 스코프 번역기 — 빈 상태 안내 문구(placeChat.empty)는 chat 스코프 밖이다.
@@ -50,7 +56,12 @@ export function ChatInterface({
   const tDirections = useTranslations("directions");
   // 여정 능력은 카드 통로가 이어진 범용 채팅에서만 신고한다(장소 앵커 채팅은 통로가 와도 신고하지 않는다).
   const journeyCapable = onJourneyAction !== undefined && !placeContext;
-  const { messages, isLoading, error, progressCategories, sendMessage } = useChat({ placeContext, journeyCapable });
+  const { messages, isLoading, error, progressCategories, sendMessage } = useChat({
+    placeContext,
+    journeyCapable,
+    initialMessages,
+    onMessages,
+  });
   const { playSend, playReceive } = useChatSound();
   const locale = useLocale();
   const followUps = useFollowUpSuggestions(locale);

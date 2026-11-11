@@ -33,6 +33,13 @@ export function useChat(opts?: {
    * (서버가 `plan_journey`를 선언하지 않는다 — 카드를 못 잇는 자리가 유료 조회만 일으키지 않게).
    */
   journeyCapable?: boolean;
+  /**
+   * 이어 갈 대화(E70-b2 판정 ①) — 여정 카드 버튼으로 닫혔던 채팅을 다시 열 때 그 대화와 카드를 첫 상태로 세운다. 마운트 때 한 번만
+   * 읽는다. 답을 받지 못한 마지막 질문(닫히며 끊긴 전송)은 싣지 않는다 — 질문만 둘이 이어진 히스토리를 서버에 보내지 않는다.
+   */
+  initialMessages?: ChatMessage[];
+  /** 대화가 바뀔 때마다 최신 목록을 알린다(부모가 다시 열 때를 위해 들고 있는다). 신원이 안정된 콜백을 넘긴다. */
+  onMessages?: (messages: ChatMessage[]) => void;
 }) {
   const placeContext = opts?.placeContext;
   const journeyCapable = opts?.journeyCapable === true;
@@ -58,11 +65,16 @@ export function useChat(opts?: {
     [manual, geoCoords],
   );
 
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const onMessages = opts?.onMessages;
+  const [initial] = useState<ChatMessage[]>(() => {
+    const seed = opts?.initialMessages ?? [];
+    return seed.at(-1)?.role === "user" ? seed.slice(0, -1) : seed;
+  });
+  const [messages, setMessages] = useState<ChatMessage[]>(initial);
   // 렌더용 messages의 미러 — 히스토리 구성(전송 payload)의 단일 출처로 쓴다.
   // 이렇게 하면 sendMessage가 messages를 deps로 잡지 않아(신원 안정화 → onSend churn
   // 제거), 비동기 중 stale 클로저로 직전 응답이 히스토리에서 누락되는 경쟁 창도 닫힌다.
-  const messagesRef = useRef<ChatMessage[]>([]);
+  const messagesRef = useRef<ChatMessage[]>(initial);
   const [isLoading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [progressCategories, setProgressCategories] = useState<string[]>([]);
@@ -80,6 +92,7 @@ export function useChat(opts?: {
       const history = [...messagesRef.current, userMsg];
       messagesRef.current = history;
       setMessages(history);
+      onMessages?.(history);
       setLoading(true);
 
       // 타임아웃은 fetch 헤더 수신뿐 아니라 스트림 본문 소비(read 루프)까지 전체에
@@ -100,7 +113,7 @@ export function useChat(opts?: {
             locale,
             placeContext,
             // 여정 능력(E70-b): 신고할 때만 두 필드가 생긴다. `userLocationManual`은 위 `userLocation`이 수동 지정 위치인가 —
-            // 서버가 카드에 `manualOrigin`으로 돌려주고 카드는 [안내 시작]을 내지 않는다(D2).
+            // 서버가 카드에 `manualOrigin`으로 돌려준다(그 카드의 [안내 시작]은 실제 위치로 다시 조회한다, E70-b2 ③).
             ...(journeyCapable ? { capabilities: ["journey"], userLocationManual: manual !== null } : {}),
           }),
           signal: controller.signal,
@@ -155,6 +168,7 @@ export function useChat(opts?: {
         const next = [...messagesRef.current, assistantMsg];
         messagesRef.current = next;
         setMessages(next);
+        onMessages?.(next);
       } catch (e) {
         setError(e instanceof DOMException && e.name === "AbortError" ? "timeout" : "chat_failed");
       } finally {
@@ -164,7 +178,7 @@ export function useChat(opts?: {
         inFlight.current = false;
       }
     },
-    [userLocation, locale, placeContext, journeyCapable, manual],
+    [userLocation, locale, placeContext, journeyCapable, manual, onMessages],
   );
 
   const dismissError = useCallback(() => setError(null), []);

@@ -22,7 +22,8 @@ export type JourneyActionHandler = (payload: JourneyRenderPayload, opts: { start
  * 읽기 순서: 제목 → (지정한 역으로 못 찾았으면) 그 사실 줄 → 합계 → [안내 시작] → [길찾기에서 열기]. 줄마다 한 접근성 객체다.
  * - 싣는 계획은 추천 순서의 첫 변형과 첫 출구다(길찾기 결과 화면의 기본 선택과 같다). 구간·다른 경로·출구는 [길찾기에서 열기]로 간다.
  * - 제목은 heading이 아니라 평문 한 줄이다 — 턴 점프는 질문 heading이 맡고, 답 안의 heading은 회전자를 오염시킨다.
- * - 수동 지정 위치에서 조회한 여정(`manualOrigin`)은 [안내 시작]을 내지 않는다(D2: 첫 구간부터 실제 위치와 어긋난다).
+ * - 수동 지정 위치에서 조회한 여정(`manualOrigin`)에도 [안내 시작]을 둔다(E70-b2 ③, D2 대체): 받는 쪽이 실제 위치를 받아
+ *   카드의 결과로 시작하지 않고 길찾기에서 현재 위치 기준으로 다시 조회한다(막지 않고 알린다).
  * - `onAction`이 없으면(장소 상세에서 연 채팅 등, 능력을 신고하지 않는 자리) 버튼 없이 제목·합계만 그린다.
  * - 버튼은 `disabled`를 쓰지 않는다 — 측위를 기다리는 동안 포커스가 버튼에 남아야 한다(`aria-disabled` + in-flight ref 가드).
  */
@@ -67,11 +68,9 @@ export function JourneyChatCard({
       <p className="mt-1 text-sm">{journeyTotalsLine(variant, 0, t)}</p>
       {onAction && (
         <div className="mt-2 flex flex-wrap gap-2">
-          {!payload.manualOrigin && (
-            <button type="button" onClick={() => void act(true)} aria-disabled={busy} className={CARD_BUTTON}>
-              {tBeacon("start")}
-            </button>
-          )}
+          <button type="button" onClick={() => void act(true)} aria-disabled={busy} className={CARD_BUTTON}>
+            {tBeacon("start")}
+          </button>
           <button type="button" onClick={() => void act(false)} aria-disabled={busy} className={CARD_BUTTON}>
             {t("openInDirections")}
           </button>

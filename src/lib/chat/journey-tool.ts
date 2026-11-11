@@ -73,6 +73,18 @@ export function journeyStationCandidates(
   return side ? of(side) : [...of("board"), ...of("alight")];
 }
 
+/**
+ * 직행 노선(E70-b2 판정 ②, 순수): 추천 경로가 환승 없이 지하철·기차 한 노선만 타면 그 노선 이름(「2호선」), 아니면 null.
+ * 후보가 0곳일 때만 쓴다 — 승차역·하차역이 출발지·목적지 곁이라 걸러진 길이고, 앱이 중간 역을 골라 내놓지 않으므로
+ * 노선 이름을 알려 주고 어느 역까지 자동차로 갈지 묻게 한다. 버스가 끼거나 노선 이름을 모르면 null(일반 되묻기로 간다).
+ */
+export function journeyDirectLine(route: TransitRoute | null): string | null {
+  if (!route) return null;
+  const rides = route.legs.filter((l) => l.mode !== "walk");
+  if (rides.length !== 1 || rides[0].mode !== "subway") return null;
+  return journeyLineLabel(rides[0].lineName);
+}
+
 export type JourneyStationPickResult =
   | { kind: "found"; station: JourneyChatStation }
   /** 동명 역이 멀리 떨어져 있거나 말한 노선의 역이 없다 — 조회하지 않고 노선을 되묻는다. */
@@ -300,9 +312,11 @@ export async function executePlanJourney(args: Record<string, unknown>, ctx: Exe
       const transit = await getTransitRoute({ origin, dest, includeStops: true });
       const candidates = journeyStationCandidates(transit?.recommended ?? null, side, { origin, dest });
       keep = true;
+      // 직행 노선(E70-b2 ②): 확정 문안이 「어느 역까지 자동차로」라 자동차를 먼저 타는 쪽에만 싣는다(내리는 쪽만 물은 호출은 일반 되묻기).
+      const directLine = candidates.length === 0 && side !== "alight" ? journeyDirectLine(transit?.recommended ?? null) : null;
       return {
-        data: { needStation: true, destination: p.name, candidates },
-        source: candidates.length > 0 ? sourceFor("get_transit_route", ctx) : undefined,
+        data: { needStation: true, destination: p.name, candidates, ...(directLine ? { directLine } : {}) },
+        source: candidates.length > 0 || directLine ? sourceFor("get_transit_route", ctx) : undefined,
       };
     }
 

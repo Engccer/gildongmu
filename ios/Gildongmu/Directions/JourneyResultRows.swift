@@ -18,6 +18,9 @@ struct JourneyResultRows: View {
     let destinationRoman: String?
     /// 안내 시작 버튼의 포커스 정체성 — 안내가 끝나 시트가 닫히면 길찾기 탭이 여기로 돌려보낸다(`landBeaconStartFocus`).
     let startFocus: AccessibilityFocusState<DirectionsTabView.GuideStartButton?>.Binding
+    /// 채팅 여정 카드의 [길찾기에서 열기] 착지(E70-b2 ④): 고른 변형의 제목에 붙이고, 변형이 하나라 제목이 없으면 결과의 첫 줄
+    /// (못 찾음 줄, 없으면 합계)에 붙인다 — 어느 쪽이든 그 줄부터 읽어 내려가면 결과 전체를 듣는다.
+    let landingFocus: AccessibilityFocusState<Bool>.Binding
     let onStart: (JourneyVariant, EgressOption?) -> Void
 
     private var variant: JourneyVariant {
@@ -30,7 +33,10 @@ struct JourneyResultRows: View {
     }
 
     var body: some View {
-        ForEach(missingLines, id: \.self) { Text($0) }
+        let single = result.variants.count == 1
+        ForEach(Array(missingLines.enumerated()), id: \.element) { index, line in
+            landing(Text(line), single && index == 0)
+        }
         // 변형이 둘이면 선택 버튼 둘(선택 trait + 시각 체크) 뒤에 고른 변형의 제목 heading. 하나면 제목 없이 바로 합계(판정 13).
         if result.variants.count > 1 {
             ForEach(Array(result.variants.enumerated()), id: \.offset) { index, v in
@@ -44,8 +50,9 @@ struct JourneyResultRows: View {
             }
             Text(heading(variant))
                 .accessibilityAddTraits(.isHeader)
+                .accessibilityFocused(landingFocus)
         }
-        Text(totalsLine)
+        landing(Text(totalsLine), single && missingLines.isEmpty)
         if let taxiIn = variant.taxiIn, let station = variant.boardStation {
             // 추천 경로가 버스로 시작하면 택시는 정류장 앞까지 간다 — 정류장 이름에 「역」을 붙이지 않는다(판정 5).
             if variant.boardsAtBusStop {
@@ -78,6 +85,12 @@ struct JourneyResultRows: View {
             onStart(variant, egress)
         }
         .accessibilityFocused(startFocus, equals: .journey)
+    }
+
+    /// 착지 대상인 줄에만 포커스 바인딩을 붙인다(같은 바인딩을 두 줄에 붙이지 않는다).
+    @ViewBuilder
+    private func landing(_ text: Text, _ target: Bool) -> some View {
+        if target { text.accessibilityFocused(landingFocus) } else { text }
     }
 
     /// 선택지 줄 — 고른 것은 시각 체크 표식(WCAG 1.4.1: 색·trait만으로 전하지 않는다). 표식은 낭독에서 숨기고 선택 trait가 정본이다.

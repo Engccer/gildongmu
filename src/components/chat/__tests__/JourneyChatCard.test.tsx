@@ -106,10 +106,16 @@ describe("JourneyChatCard", () => {
     expect(objects(container).map((o) => o.tag)).toEqual(["p", "p", "button", "button"]);
   });
 
-  it("수동 지정 위치에서 조회한 여정은 [안내 시작]을 내지 않는다([길찾기에서 열기]만)", () => {
-    render(<JourneyChatCard payload={payload({ manualOrigin: true })} onAction={() => {}} />);
-    expect(screen.queryByRole("button", { name: "beacon.start" })).toBeNull();
-    expect(screen.getByRole("button", { name: "journey.openInDirections" })).toBeTruthy();
+  it("수동 지정 위치에서 조회한 여정에도 [안내 시작]을 둔다(E70-b2 ③ — 받는 쪽이 실제 위치로 다시 조회한다)", () => {
+    const onAction = vi.fn();
+    const manual = payload({ manualOrigin: true });
+    const { container } = render(<JourneyChatCard payload={manual} onAction={onAction} />);
+    expect(objects(container).filter((o) => o.tag === "button").map((o) => o.text)).toEqual([
+      "beacon.start",
+      "journey.openInDirections",
+    ]);
+    fireEvent.click(screen.getByRole("button", { name: "beacon.start" }));
+    expect(onAction).toHaveBeenCalledWith(manual, { start: true });
   });
 
   it("통로가 없으면(장소 상세 채팅 등) 버튼 없이 제목·합계만 그린다", () => {

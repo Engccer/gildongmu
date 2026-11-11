@@ -179,4 +179,33 @@ describe("useChat", () => {
     expect(result.current.messages).toHaveLength(1);
     expect(result.current.messages[0]).toMatchObject({ role: "user" });
   });
+
+  // E70-b2 판정 ①: 여정 카드 버튼으로 닫힌 대화를 다시 열 때 이어 간다.
+  describe("이어 가는 대화(initialMessages·onMessages)", () => {
+    const prior = [
+      { id: "a", role: "user" as const, text: "자동차로 신도림역 가서 지하철로 강남역" },
+      { id: "b", role: "assistant" as const, text: "신도림역에서 갈아탑니다.", renders: [{ type: "places" as const, places: [] }] },
+    ];
+
+    it("첫 상태로 서고(카드 포함), 다음 질문의 히스토리에 실린다", async () => {
+      const onMessages = vi.fn();
+      const { result } = renderHook(() => useChat({ initialMessages: prior, onMessages }));
+      expect(result.current.messages).toEqual(prior);
+      await act(async () => {
+        await result.current.sendMessage("요금은?");
+      });
+      const body = JSON.parse(vi.mocked(global.fetch).mock.calls[0][1]!.body as string);
+      expect(body.messages.map((m: { text: string }) => m.text)).toEqual([prior[0].text, prior[1].text, "요금은?"]);
+      // 부모가 들고 있을 최신 대화: 질문을 보낼 때와 답이 왔을 때 알린다.
+      expect(onMessages).toHaveBeenCalledTimes(2);
+      expect(onMessages.mock.calls[1][0]).toHaveLength(4);
+      expect(result.current.messages).toHaveLength(4);
+    });
+
+    it("답을 받지 못한 마지막 질문은 싣지 않는다(질문 둘이 이어진 히스토리를 보내지 않는다)", () => {
+      const cut = [...prior, { id: "c", role: "user" as const, text: "끊긴 질문" }];
+      const { result } = renderHook(() => useChat({ initialMessages: cut }));
+      expect(result.current.messages).toEqual(prior);
+    });
+  });
 });

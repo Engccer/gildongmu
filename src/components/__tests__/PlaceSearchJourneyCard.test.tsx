@@ -43,12 +43,20 @@ vi.mock("../chat/ChatOverlay", () => ({
   ChatOverlay: ({
     onClose,
     onJourneyAction,
+    initialMessages,
+    onMessages,
   }: {
     onClose: () => void;
     onJourneyAction?: (payload: unknown, opts: { start: boolean }) => void | Promise<void>;
+    initialMessages?: { id: string }[];
+    onMessages?: (messages: { id: string }[]) => void;
   }) => (
     <div role="dialog">
       <p data-testid="journey-channel">{onJourneyAction ? "on" : "off"}</p>
+      <p data-testid="chat-restored">{(initialMessages ?? []).map((m) => m.id).join(",")}</p>
+      <button type="button" onClick={() => onMessages?.([...(initialMessages ?? []), { id: `t${(initialMessages ?? []).length + 1}` }])}>
+        chat-talk
+      </button>
       <button type="button" onClick={() => void onJourneyAction?.(card.payload, { start: true })}>
         card-start
       </button>
@@ -166,6 +174,17 @@ describe("채팅 여정 카드 → PlaceSearch(E70-b)", () => {
     expect(journeyOf()).toBe("requery:same");
   });
 
+  it("[안내 시작]: 수동 지정 위치에서 조회한 카드는 신선해도 다시 조회한다(E70-b2 ③)", async () => {
+    card.payload = makePayload({ manualOrigin: true });
+    openChat();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "card-start" }));
+    });
+    // 실제 위치를 새로 받고(수동 위치 스토어를 거치지 않는 `awaitGeolocation`), 카드의 결과로 시작하지 않는다.
+    expect(geo.calls).toEqual([{ force: true }]);
+    expect(journeyOf()).toBe("requery:same");
+  });
+
   it("[안내 시작]: 조회한 지 오래됐으면 다시 조회한다", async () => {
     card.payload = makePayload({ queriedAt: Date.now() - JOURNEY_CARD_MAX_AGE_MS - 60_000 });
     openChat();
@@ -226,5 +245,56 @@ describe("채팅 여정 카드 → PlaceSearch(E70-b)", () => {
     });
     expect(focusSpy).not.toHaveBeenCalled();
     focusSpy.mockRestore();
+  });
+
+  // E70-b2 판정 ①: 카드 버튼으로 닫힌 때만 대화를 남긴다.
+  describe("대화 보존(E70-b2)", () => {
+    const restored = () => screen.getByTestId("chat-restored").textContent;
+    async function leaveByCard(name: "card-open" | "card-start") {
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name }));
+      });
+      expect(screen.queryByRole("dialog")).toBeNull();
+      // 길찾기에서 돌아온다(뒤로가기) — 홈의 [AI에게 질문]이 다시 보인다.
+      await act(async () => {
+        window.history.back();
+        window.dispatchEvent(new PopStateEvent("popstate", { state: null }));
+      });
+    }
+
+    it.each(["card-open", "card-start"] as const)("%s로 닫힌 뒤 다시 열면 그 대화를 이어 보여 준다", async (name) => {
+      openChat();
+      expect(restored()).toBe("");
+      fireEvent.click(screen.getByRole("button", { name: "chat-talk" }));
+      await leaveByCard(name);
+      fireEvent.click(await screen.findByRole("button", { name: "askAi" }));
+      expect(restored()).toBe("t1");
+    });
+
+    it("이어 연 채팅에서 대화를 더 하지 않고 카드 버튼으로 다시 닫아도 대화가 남는다", async () => {
+      openChat();
+      fireEvent.click(screen.getByRole("button", { name: "chat-talk" }));
+      await leaveByCard("card-open");
+      fireEvent.click(await screen.findByRole("button", { name: "askAi" }));
+      await leaveByCard("card-open");
+      fireEvent.click(await screen.findByRole("button", { name: "askAi" }));
+      expect(restored()).toBe("t1");
+    });
+
+    it("닫기 버튼으로 닫으면 종전대로 새 대화다 — 이어 연 채팅을 닫아도 같다", async () => {
+      openChat();
+      fireEvent.click(screen.getByRole("button", { name: "chat-talk" }));
+      fireEvent.click(screen.getByRole("button", { name: "chat-close" }));
+      fireEvent.click(screen.getByRole("button", { name: "askAi" }));
+      expect(restored()).toBe("");
+
+      fireEvent.click(screen.getByRole("button", { name: "chat-talk" }));
+      await leaveByCard("card-open");
+      fireEvent.click(await screen.findByRole("button", { name: "askAi" }));
+      expect(restored()).toBe("t1");
+      fireEvent.click(screen.getByRole("button", { name: "chat-close" }));
+      fireEvent.click(screen.getByRole("button", { name: "askAi" }));
+      expect(restored()).toBe("");
+    });
   });
 });

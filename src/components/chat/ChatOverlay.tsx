@@ -8,6 +8,7 @@ import { isStation } from "@/lib/station-match";
 import { ChatInterface } from "./ChatInterface";
 import { placeChatPrompts } from "@/lib/chat/place-prompts";
 import type { JourneyActionHandler } from "./JourneyChatCard";
+import type { ChatMessage } from "@/lib/chat/types";
 
 /**
  * 장소별 채팅 오버레이 — role="dialog" aria-modal 풀스크린 셸.
@@ -29,17 +30,24 @@ import type { JourneyActionHandler } from "./JourneyChatCard";
  *
  * onJourneyAction(E70-b): 여정 카드 버튼의 통로이자 **여정 능력 신고의 스위치**다. 옴니박스 범용 채팅만 준다 — 장소 상세가
  * 여는 채팅은 주지 않는다(첫 판 비목표). place가 함께 오면 무시한다(능력도 신고하지 않는다).
+ *
+ * initialMessages·onMessages(E70-b2 ①): 여정 카드 버튼으로 닫힌 범용 채팅을 다시 열면 그 대화와 카드를 이어 보여 준다. 부모가
+ * 대화를 들고 있다가 넘긴다 — Esc·닫기 버튼으로 닫으면 부모가 버리므로 종전대로 새 대화다.
  */
 export function ChatOverlay({
   place,
   initialMessage,
   onClose,
   onJourneyAction,
+  initialMessages,
+  onMessages,
 }: {
   place?: Place;
   initialMessage?: string;
   onClose: () => void;
   onJourneyAction?: JourneyActionHandler;
+  initialMessages?: ChatMessage[];
+  onMessages?: (messages: ChatMessage[]) => void;
 }) {
   const tp = useTranslations("placeChat");
   const t = useTranslations();
@@ -122,6 +130,8 @@ export function ChatOverlay({
         examplePrompts={examplePrompts}
         initialMessage={initialMessage}
         onJourneyAction={place ? undefined : onJourneyAction}
+        initialMessages={place ? undefined : initialMessages}
+        onMessages={place ? undefined : onMessages}
       />
     </div>
   );

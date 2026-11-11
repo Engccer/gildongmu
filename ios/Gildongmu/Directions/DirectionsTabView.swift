@@ -45,6 +45,8 @@ struct JourneyPrefill: Equatable {
     let result: JourneyResult?
     /// 카드의 조회가 수동 지정 위치에서였는가 — 결과를 그대로 보여 줄 때 안내 시작 고지의 근거(`resultsOriginNeedsStartNotice`).
     let manualOrigin: Bool
+    /// 다시 조회할 때 출발지를 수동 지정 위치가 아니라 기기 위치로 푼다(E70-b2 ③ — 카드의 [안내 시작]이 넘긴 재조회만 참이다).
+    let realOrigin: Bool
     /// 다시 조회 사유 통지(「위치가 바뀌어 경로를 다시 찾습니다.」) — 조회를 **시작할 때** 한 번 말한다(spec D16, 웹과 같은 시점).
     /// 완료 통지에는 붙이지 않는다(같은 문장을 두 번 말하지 않는다).
     let requeryNotice: String?
@@ -240,9 +242,13 @@ final class DirectionsModel {
     private var pendingPrefillFocus: Bool
     /// 채팅 여정 카드가 낡아 다시 조회할 때의 사유 문장(E70-b D16) — 조회를 시작할 때(`runPrefillQueryIfPending`) 한 번 말한다.
     private var journeyRequeryNotice: String?
-    /// 카드의 결과를 조회 없이 세운 진입의 완료 통지 1회분(E70-b S4). 조회가 없어 완료 통지도 없으니, 이 화면의 규칙(커서는 옮기지
-    /// 않고 합산 한 문장으로 알린다)대로 「경로를 찾았습니다」를 한 번 말한다.
-    private var pendingJourneyReadyAnnounce = false
+    /// 카드의 결과를 조회 없이 세운 진입([길찾기에서 열기])의 착지 1회분(E70-b2 ④). 커서를 여정 결과의 첫머리(제목, 변형이 하나라
+    /// 제목이 없으면 결과 첫 줄)로 옮기고 진동만 낸다 — 착지한 줄이 곧 결과라 「경로 1개를 찾았습니다」 통지는 하지 않는다.
+    private var pendingJourneyCardLanding = false
+    /// 낡은 카드·수동 위치 카드의 재조회 1회분: 출발지를 기기 위치로 푼다(E70-b2 ③).
+    private var pendingJourneyRealOrigin = false
+    /// 이번 조회의 "현재 위치"를 수동 지정 위치가 아니라 기기 위치로 푸는가. `silentQuery`와 같이 `runQuery` 진입이 매번 다시 정한다.
+    private var realOriginQuery = false
 
     init(prefill: DirectionsPrefill? = nil) {
         // ⚠ 지역 상수로 받아 판정한다 — `@Observable`이 저장 프로퍼티를 접근자로
@@ -270,9 +276,10 @@ final class DirectionsModel {
                 resultsOriginNeedsStartNotice = journey.manualOrigin
                 phase = .settled(successCount: 1)
                 hasQueriedOnce = true
-                pendingJourneyReadyAnnounce = true
+                pendingJourneyCardLanding = true
             } else {
                 journeyRequeryNotice = journey.requeryNotice
+                pendingJourneyRealOrigin = journey.realOrigin
             }
         }
     }
@@ -281,10 +288,6 @@ final class DirectionsModel {
     /// 있으면(안내 주도 폼 동기화가 같은 `.task`에서 먼저 돌 수 있다) `runQuery`의
     /// in-flight 가드가 흡수하고, 그 경우에도 소비된 것으로 친다(두 번 조회하지 않는다).
     func runPrefillQueryIfPending() {
-        if pendingJourneyReadyAnnounce {
-            pendingJourneyReadyAnnounce = false
-            announce(appLocalized("directions.readySummary", 1), haptic: .success)
-        }
         guard pendingPrefillQuery else { return }
         pendingPrefillQuery = false
         // 낡은 카드의 재조회: 사유를 조회 시작 때 말한다. 완료 통지가 뒤따르며 서로 문장이 다르다.
@@ -292,7 +295,18 @@ final class DirectionsModel {
             journeyRequeryNotice = nil
             announce(notice, haptic: nil)
         }
-        runQuery()
+        let realOrigin = pendingJourneyRealOrigin
+        pendingJourneyRealOrigin = false
+        runQuery(realOrigin: realOrigin)
+    }
+
+    /// 카드의 결과를 조회 없이 세운 진입의 착지 소비(뷰 `.task` 1회). 참이면 뷰가 여정 결과 첫머리로 커서를 보낸다.
+    /// 진동은 여기서 한 번 낸다(조회가 없어 완료 통지·진동이 따로 오지 않는다).
+    func consumeJourneyCardLandingIfPending() -> Bool {
+        guard pendingJourneyCardLanding else { return false }
+        pendingJourneyCardLanding = false
+        ResultHaptic.fire(.success)
+        return true
     }
 
     /// 출발지만 채운 프리필 진입의 착지 소비(뷰 `.task` 1회, 위 조회 소비와 같은 규율).
@@ -768,9 +782,11 @@ final class DirectionsModel {
     /// 안내 주도 재조회(스펙 2026-08-12 §5.3)는 silently=true — 완료·실패 통지를
     /// 전부 삼킨다. 결과는 안내 시트 뒤 화면 최신화용이라 통지가 안내 발화와 경합할
     /// 이유가 없다. stale 경합은 기존 latest-wins(queryTask 취소·isInFlight)가 그대로.
-    func runQuery(silently: Bool = false) {
+    /// `realOrigin`은 채팅 여정 카드 [안내 시작]의 재조회만 참으로 넘긴다(E70-b2 ③) — "현재 위치"를 수동 지정 위치가 아니라 기기 위치로 푼다.
+    func runQuery(silently: Bool = false, realOrigin: Bool = false) {
         if isInFlight { return }
         silentQuery = silently
+        realOriginQuery = realOrigin
         if aboardNeedsDirection { return }  // 방면 전에는 조회하지 않는다(화면이 질문으로 안내한다)
         guard let from, let to else {
             phase = .needEndpoints
@@ -817,10 +833,16 @@ final class DirectionsModel {
             // 호출 직전 스냅샷(effectiveCoordinate 내부의 분기 판정과 같은 turn) —
             // 측위 대기 중(await) 수동 위치가 새로 켜지는 레이스에서 실제로는 GPS로
             // 받아온 좌표를 수동 기원으로 오분류하지 않는다.
-            usedManualOrigin = from == .current && ManualLocationStore.shared.current != nil
+            let realOrigin = realOriginQuery
+            usedManualOrigin = !realOrigin && from == .current && ManualLocationStore.shared.current != nil
             do throws(LocationService.LocationError) {
                 do throws(LocationService.LocationError) {
-                    current = try await ManualLocationJudge.effectiveCoordinate(force: false)
+                    // 기기 위치로 푸는 조회는 수동 위치 스토어를 거치지 않는다(카드가 방금 강제 측위해 캐시가 신선하다).
+                    if realOrigin {
+                        current = try await LocationService.shared.currentCoordinate(force: false)
+                    } else {
+                        current = try await ManualLocationJudge.effectiveCoordinate(force: false)
+                    }
                 } catch {
                     // 취득 실패인데 옛 좌표가 있으면 그 옛 위치로 계속한다(stale-origin). 아니면 원래 실패 갈래로.
                     guard let stale = staleOriginFallback(after: error) else { throw error }
@@ -1187,6 +1209,8 @@ struct DirectionsTabView: View {
     /// 수단 재조회 결과의 포커스 정체성(E50 §4.3). 찾은 경로는 `routeKey`, 문장은 축으로 식별한다.
     enum RequeryFocus: Hashable { case route(String), notFound(TransitModeAxis) }
     @AccessibilityFocusState private var requeryFocused: RequeryFocus?
+    /// 채팅 여정 카드의 [길찾기에서 열기]로 들어온 착지(E70-b2 ④) — 여정 결과 첫머리(`JourneyResultRows`가 붙인다).
+    @AccessibilityFocusState private var journeyLandingFocused: Bool
     @State private var requeryLandingTask: Task<Void, Never>?
     /// 시트가 닫힐 때 되돌아갈 시작 버튼(방금 떠나온 자리). 이 탭에서 시작한 적이 없으면 nil(대입 없음).
     @State private var lastGuideStart: GuideStartButton?
@@ -1432,7 +1456,7 @@ struct DirectionsTabView: View {
                                 aboard: model.aboardOrigin != nil,
                                 variantIndex: $model.journeyVariantIndex, egressIndex: $model.journeyEgressIndex,
                                 destinationName: destinationPlaceName, destinationRoman: destinationPlaceRoman,
-                                startFocus: $guideStartFocused,
+                                startFocus: $guideStartFocused, landingFocus: $journeyLandingFocused,
                                 onStart: { variant, egress in
                                     guard AppConfig.experimentalJourneyEnabled, let tracked = trackedDestination else { return }
                                     lastGuideStart = .journey
@@ -1619,6 +1643,8 @@ struct DirectionsTabView: View {
                 // "여기까지 길찾기" 진입은 도착지 채움 + 즉시 조회가 한 동작(1회 소비 —
                 // 탭 재진입엔 돌지 않는다). 폼 동기화 재조회가 먼저 돌았으면 가드가 흡수.
                 model.runPrefillQueryIfPending()
+                // 채팅 여정 카드의 [길찾기에서 열기](E70-b2 ④): 조회 없이 선 결과의 첫머리로 커서를 옮긴다.
+                if model.consumeJourneyCardLandingIfPending() { landJourneyCardFocus() }
                 // "여기부터 길찾기"는 조회 대신 착지다(E32). 출발지 확정 뒤 도착지로
                 // 보내는 그 경로를 그대로 쓴다 — 지연·검증·1회 재시도가 정본 시퀀스다.
                 if model.consumePrefillFocusIfPending() { landFocusAfterResolve(from: .from) }
@@ -2104,6 +2130,18 @@ struct DirectionsTabView: View {
     ///
     /// 지연·재시도는 채팅(`ChatConversationView`)의 검증된 패턴을 따른다. 시트 dismiss
     /// 애니메이션이 끝나며 시스템이 포커스를 되돌리므로, 그보다 늦게 대입해야 이긴다.
+    /// 채팅 여정 카드에서 넘어온 결과의 첫머리 착지(E70-b2 ④). 탭 전환이 끝나며 시스템이 커서를 탭 첫 요소로 되돌리므로 늦게 대입하고
+    /// 1회 재시도한다(아래 `landFocusAfterResolve`와 같은 패턴).
+    private func landJourneyCardFocus() {
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(400))
+            journeyLandingFocused = true
+            try? await Task.sleep(for: .milliseconds(600))
+            guard !journeyLandingFocused else { return }
+            journeyLandingFocused = true
+        }
+    }
+
     private func landFocusAfterResolve(from target: DirectionsFieldTarget) {
         Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(400))

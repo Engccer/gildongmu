@@ -14,6 +14,7 @@ vi.mock("@/lib/env", async (orig) => ({
 
 import { executeFunction } from "../router";
 import {
+  journeyDirectLine,
   journeyStationCandidates,
   journeySummary,
   pickJourneyStation,
@@ -256,6 +257,53 @@ describe("plan_journey 실행 — 후보(D4)", () => {
     const r = await executeFunction("plan_journey", { destination: "여의도공원" }, ctxWith());
     expect(r.data).toEqual({ needStation: true, destination: "여의도공원", candidates: [] });
     expect(r.source).toBeUndefined();
+  });
+
+  // E70-b2 판정 ②: 환승 없이 한 노선으로 가는 길은 승차역·하차역이 출발지·목적지 곁이라 후보가 0곳이다.
+  describe("직행 노선(E70-b2)", () => {
+    // 출발지(길동) 곁에서 타고 목적지(여의도공원) 곁에서 내린다 — 두 역 모두 500m 안이라 후보에서 빠진다.
+    const direct = route([
+      leg("walk"),
+      {
+        ...leg("subway", "수도권 5호선", "길동", "여의나루"),
+        stops: [
+          { name: "길동", lat: GILDONG.lat, lng: GILDONG.lng },
+          { name: "여의나루", lat: DEST.lat, lng: DEST.lng },
+        ] as never,
+      },
+      leg("walk"),
+    ]);
+
+    it("순수 판정: 지하철 한 노선만 타면 노선 이름, 환승·버스·경로 없음은 null", () => {
+      expect(journeyDirectLine(direct)).toBe("5호선");
+      expect(journeyDirectLine(TWO_LINES)).toBeNull();
+      expect(journeyDirectLine(route([leg("bus", "341", "가", "나")]))).toBeNull();
+      expect(journeyDirectLine(route([leg("bus", "341", "가", "나"), leg("subway", "수도권 5호선", "나", "다")]))).toBeNull();
+      expect(journeyDirectLine(route([leg("subway", undefined, "가", "나")]))).toBeNull();
+      expect(journeyDirectLine(null)).toBeNull();
+    });
+
+    it("후보가 0곳이고 한 노선이면 directLine을 싣는다(중간 역 후보는 내지 않는다)", async () => {
+      mockTransit.mockResolvedValue({ recommended: direct, alternatives: [], totalCandidates: 1 });
+      const ctx = ctxWith();
+      const r = await executeFunction("plan_journey", { destination: "여의도공원" }, ctx);
+      expect(r.data).toEqual({ needStation: true, destination: "여의도공원", candidates: [], directLine: "5호선" });
+      expect(r.render).toBeUndefined();
+      expect(r.source).toEqual([{ label: "source.odsay" }]);
+      expect(mockQuery).not.toHaveBeenCalled();
+      expect(ctx.journey!.turn.asked).toBe(true);
+    });
+
+    it("내리는 쪽만 물은 호출에는 싣지 않는다(확정 문안이 「어느 역까지 자동차로」다)", async () => {
+      mockTransit.mockResolvedValue({ recommended: direct, alternatives: [], totalCandidates: 1 });
+      const r = await executeFunction("plan_journey", { destination: "여의도공원", transfer_side: "alight" }, ctxWith());
+      expect(r.data).toEqual({ needStation: true, destination: "여의도공원", candidates: [] });
+    });
+
+    it("후보가 있으면 싣지 않는다", async () => {
+      const r = await executeFunction("plan_journey", { destination: "여의도공원", transfer_side: "board" }, ctxWith());
+      expect(r.data).not.toHaveProperty("directLine");
+    });
   });
 
   it("대중교통 조회 실패는 throw(「후보 없음」으로 접지 않는다)이고 자리를 돌려준다", async () => {
