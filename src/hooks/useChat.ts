@@ -8,7 +8,7 @@
  * - 에러는 "chat_failed" 코드로 설정하고, dismissError()로 초기화한다.
  * - NDJSON 스트림을 라인 단위로 읽어 status/done/error 이벤트를 처리한다.
  */
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocale } from "next-intl";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { useManualLocation } from "@/hooks/useManualLocation";
@@ -79,6 +79,21 @@ export function useChat(opts?: {
   const [error, setError] = useState<string | null>(null);
   const [progressCategories, setProgressCategories] = useState<string[]>([]);
   const inFlight = useRef(false);
+  // 닫힌 채팅의 늦은 응답이 부모의 대화 미러를 덮지 않게 한다 — 그 사이 열린 새 채팅의 대화가 옛 대화로 바뀌면
+  // Esc로 버린 대화가 다음에 되살아난다(E70-b2 리뷰 S1). 알림은 살아 있는 채팅만 한다.
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+  const notify = useCallback(
+    (next: ChatMessage[]) => {
+      if (mountedRef.current) onMessages?.(next);
+    },
+    [onMessages],
+  );
 
   const sendMessage = useCallback(
     async (text: string) => {
@@ -92,7 +107,7 @@ export function useChat(opts?: {
       const history = [...messagesRef.current, userMsg];
       messagesRef.current = history;
       setMessages(history);
-      onMessages?.(history);
+      notify(history);
       setLoading(true);
 
       // 타임아웃은 fetch 헤더 수신뿐 아니라 스트림 본문 소비(read 루프)까지 전체에
@@ -168,7 +183,7 @@ export function useChat(opts?: {
         const next = [...messagesRef.current, assistantMsg];
         messagesRef.current = next;
         setMessages(next);
-        onMessages?.(next);
+        notify(next);
       } catch (e) {
         setError(e instanceof DOMException && e.name === "AbortError" ? "timeout" : "chat_failed");
       } finally {
@@ -178,7 +193,7 @@ export function useChat(opts?: {
         inFlight.current = false;
       }
     },
-    [userLocation, locale, placeContext, journeyCapable, manual, onMessages],
+    [userLocation, locale, placeContext, journeyCapable, manual, notify],
   );
 
   const dismissError = useCallback(() => setError(null), []);

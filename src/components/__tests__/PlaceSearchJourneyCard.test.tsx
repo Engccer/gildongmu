@@ -44,17 +44,23 @@ vi.mock("../chat/ChatOverlay", () => ({
     onClose,
     onJourneyAction,
     initialMessages,
+    initialMessage,
     onMessages,
   }: {
+    initialMessage?: string;
     onClose: () => void;
     onJourneyAction?: (payload: unknown, opts: { start: boolean }) => void | Promise<void>;
-    initialMessages?: { id: string }[];
-    onMessages?: (messages: { id: string }[]) => void;
+    initialMessages?: { id: string; role?: string; text?: string }[];
+    onMessages?: (messages: { id: string; role?: string; text?: string }[]) => void;
   }) => (
     <div role="dialog">
       <p data-testid="journey-channel">{onJourneyAction ? "on" : "off"}</p>
+      <p data-testid="chat-seed">{initialMessage ?? ""}</p>
       <p data-testid="chat-restored">{(initialMessages ?? []).map((m) => m.id).join(",")}</p>
-      <button type="button" onClick={() => onMessages?.([...(initialMessages ?? []), { id: `t${(initialMessages ?? []).length + 1}` }])}>
+      <button type="button" onClick={() => onMessages?.([
+            ...(initialMessages ?? []),
+            { id: `t${(initialMessages ?? []).length + 1}`, role: "user", text: initialMessage ?? "말로 물은 질문" },
+          ])}>
         chat-talk
       </button>
       <button type="button" onClick={() => void onJourneyAction?.(card.payload, { start: true })}>
@@ -279,6 +285,26 @@ describe("채팅 여정 카드 → PlaceSearch(E70-b)", () => {
       await leaveByCard("card-open");
       fireEvent.click(await screen.findByRole("button", { name: "askAi" }));
       expect(restored()).toBe("t1");
+    });
+
+    it("검색칸에 남은 첫 질문은 이어 열 때 다시 보내지 않고, 새로 쓴 글은 이어 묻는 질문으로 보낸다", async () => {
+      render(<PlaceSearch isMockMode={false} canShowChat canShowTransit canPlanJourney />);
+      const box = screen.getByRole("searchbox") as HTMLInputElement;
+      fireEvent.change(box, { target: { value: "자동차로 신도림역 가서 지하철로 강남역" } });
+      fireEvent.click(screen.getByRole("button", { name: "askAi" }));
+      expect(screen.getByTestId("chat-seed").textContent).toBe("자동차로 신도림역 가서 지하철로 강남역");
+      // 채팅이 그 질문을 보냈다(대화에 실린다).
+      fireEvent.click(screen.getByRole("button", { name: "chat-talk" }));
+      await leaveByCard("card-open");
+      fireEvent.click(await screen.findByRole("button", { name: "askAi" }));
+      expect(restored()).toBe("t1");
+      expect(screen.getByTestId("chat-seed").textContent).toBe("");
+
+      await leaveByCard("card-open");
+      fireEvent.change(screen.getByRole("searchbox"), { target: { value: "요금은 얼마야" } });
+      fireEvent.click(await screen.findByRole("button", { name: "askAi" }));
+      expect(restored()).toBe("t1");
+      expect(screen.getByTestId("chat-seed").textContent).toBe("요금은 얼마야");
     });
 
     it("닫기 버튼으로 닫으면 종전대로 새 대화다 — 이어 연 채팅을 닫아도 같다", async () => {

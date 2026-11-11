@@ -1732,7 +1732,7 @@ export function DirectionsView({
     if (r.from) setRecentFrom(recordRecentEndpoint("from", r.from));
     if (r.to) setRecentTo(recordRecentEndpoint("to", r.to));
     if (r.via) setRecentVia(recordRecentEndpoint("via", r.via));
-    void runQuery({ from: fromEp, to: toEp, via: viaEp, journey: { board, alight }, realOrigin: true });
+    void runQuery({ from: fromEp, to: toEp, via: viaEp, journey: { board, alight } });
   }
   function deleteRecentRoute(r: RecentRoute, index: number) {
     const next = removeRecentRoute(r);

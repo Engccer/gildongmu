@@ -6,7 +6,7 @@
  * - [안내 시작](낡음): 카드의 결과를 쓰지 않고 같은 도착지·갈아탈 곳으로 다시 조회하고, 사유를 화면 단일 창구로 말한다.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { JourneyResult } from "@/lib/types";
 import type { JourneyRenderPayload } from "@/lib/chat/types";
 import { placeEndpoint } from "@/lib/directions-state";
@@ -178,6 +178,18 @@ describe("채팅 여정 카드 → 길찾기 화면(E70-b)", () => {
       const q = new URLSearchParams(journeyCalls()[0].split("?")[1]);
       // 수동 위치(강남역)가 아니라 기기 위치다.
       expect(q.get("origin")).toBe("37.5501,126.9501");
+    } finally {
+      __resetManualLocationForTest();
+    }
+  });
+
+  it("카드 진입이 아닌 조회(조회 버튼)는 수동 지정 위치에서 출발한다(기기 위치로 새지 않는다)", async () => {
+    setManualLocation({ lat: 37.4979, lng: 127.0276, label: "강남역", origin: null, setAt: Date.now() });
+    try {
+      renderEntry("open");
+      fireEvent.click(screen.getByRole("button", { name: "submit" }));
+      await waitFor(() => expect(journeyCalls().length).toBe(1));
+      expect(new URLSearchParams(journeyCalls()[0].split("?")[1]).get("origin")).toBe("37.4979,127.0276");
     } finally {
       __resetManualLocationForTest();
     }

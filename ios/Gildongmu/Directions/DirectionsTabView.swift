@@ -291,9 +291,11 @@ final class DirectionsModel {
         guard pendingPrefillQuery else { return }
         pendingPrefillQuery = false
         // 낡은 카드의 재조회: 사유를 조회 시작 때 말한다. 완료 통지가 뒤따르며 서로 문장이 다르다.
+        // 진행 중 조회가 이 조회를 흡수하면(같은 `.task`의 폼 동기화가 먼저 돈 경우) 사유도 말하지 않는다 — 그 조회는 기기 위치로
+        // 다시 찾는 조회가 아니라서, 말하면 하지 않은 일을 알리게 된다(E70-b2 리뷰 S3).
         if let notice = journeyRequeryNotice {
             journeyRequeryNotice = nil
-            announce(notice, haptic: nil)
+            if !isInFlight { announce(notice, haptic: nil) }
         }
         let realOrigin = pendingJourneyRealOrigin
         pendingJourneyRealOrigin = false
@@ -2125,11 +2127,6 @@ struct DirectionsTabView: View {
         }
     }
 
-    /// 웹 `focusAfterResolve` 계약의 iOS 판: 출발지를 고르면 도착지 입력으로,
-    /// 도착지·경유지를 고르면 조회 버튼으로 보낸다(셋 다 "다음에 할 일"이다). 갈아탈 역은 새로 생긴 그 칸으로 보낸다(E70).
-    ///
-    /// 지연·재시도는 채팅(`ChatConversationView`)의 검증된 패턴을 따른다. 시트 dismiss
-    /// 애니메이션이 끝나며 시스템이 포커스를 되돌리므로, 그보다 늦게 대입해야 이긴다.
     /// 채팅 여정 카드에서 넘어온 결과의 첫머리 착지(E70-b2 ④). 탭 전환이 끝나며 시스템이 커서를 탭 첫 요소로 되돌리므로 늦게 대입하고
     /// 1회 재시도한다(아래 `landFocusAfterResolve`와 같은 패턴).
     private func landJourneyCardFocus() {
@@ -2142,6 +2139,11 @@ struct DirectionsTabView: View {
         }
     }
 
+    /// 웹 `focusAfterResolve` 계약의 iOS 판: 출발지를 고르면 도착지 입력으로,
+    /// 도착지·경유지를 고르면 조회 버튼으로 보낸다(셋 다 "다음에 할 일"이다). 갈아탈 역은 새로 생긴 그 칸으로 보낸다(E70).
+    ///
+    /// 지연·재시도는 채팅(`ChatConversationView`)의 검증된 패턴을 따른다. 시트 dismiss
+    /// 애니메이션이 끝나며 시스템이 포커스를 되돌리므로, 그보다 늦게 대입해야 이긴다.
     private func landFocusAfterResolve(from target: DirectionsFieldTarget) {
         Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(400))

@@ -240,7 +240,11 @@ export function PlaceSearch({
   function openGeneralChat() {
     const restore = preservedChatRef.current ?? undefined;
     chatTranscriptRef.current = restore ?? [];
-    setGeneralChat({ seed: query.trim() || undefined, restore });
+    // 검색칸의 글은 채팅을 열어도 지워지지 않는다 — 이어 여는 대화에 이미 있는 질문이면 다시 보내지 않는다(같은 질문이 한 번 더
+    // 전송되어 여정을 또 조회한다, E70-b2 리뷰 M2). 새로 쓴 글이면 이어서 묻는 질문으로 보낸다.
+    const typed = query.trim();
+    const asked = restore?.some((m) => m.role === "user" && m.text === typed) ?? false;
+    setGeneralChat({ seed: typed && !asked ? typed : undefined, restore });
   }
 
   useEffect(() => {

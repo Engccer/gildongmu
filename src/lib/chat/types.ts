@@ -90,7 +90,8 @@ export interface JourneyChatStation {
 
 /**
  * 여정 카드(E70-b spec `2026-11-12-e70b-chat-journey-design.md` D8) — props-driven. 카드는 `result.variants[0]`과 첫 출구로
- * 제목·합계를 그리고, [안내 시작]은 `origin`·`queriedAt`으로 신선도(D16)를 본다. `manualOrigin`이면 [안내 시작]이 없다(D2).
+ * 제목·합계를 그리고, [안내 시작]은 `origin`·`queriedAt`으로 신선도(D16)를 본다. `manualOrigin`이면 [안내 시작]이 카드의 결과로
+ * 시작하지 않고 실제 위치로 다시 조회한다(E70-b2 ③, D2 대체).
  */
 export interface JourneyRenderPayload {
   type: "journey";

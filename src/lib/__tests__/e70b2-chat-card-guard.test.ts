@@ -8,6 +8,7 @@ const IOS = join(process.cwd(), "ios/Gildongmu");
 const card = readFileSync(join(IOS, "Chat/JourneyChatCardView.swift"), "utf8");
 const tab = readFileSync(join(IOS, "Directions/DirectionsTabView.swift"), "utf8");
 const rows = readFileSync(join(IOS, "Directions/JourneyResultRows.swift"), "utf8");
+const webDirections = readFileSync(join(process.cwd(), "src/components/DirectionsView.tsx"), "utf8");
 
 /** `marker`로 시작하는 함수·뷰 본문(다음 4칸 들여쓰기 닫는 중괄호까지). */
 function body(src: string, marker: string): string {
@@ -45,6 +46,14 @@ describe("E70-b2 ③ 수동 위치 카드", () => {
     const query = body(tab, "private func performQuery(");
     expect(query).toContain("usedManualOrigin = !realOrigin && from == .current");
     expect(query).toMatch(/if realOrigin \{\s+current = try await LocationService\.shared\.currentCoordinate\(force: false\)/);
+  });
+});
+
+describe("E70-b2 ③ 웹 길찾기 화면", () => {
+  it("기기 위치로 푸는 조회는 카드 진입의 재조회 하나뿐이다(최근 경로·조회 버튼·도구는 유효 위치 그대로)", () => {
+    const sites = webDirections.split("\n").filter((line) => line.includes("realOrigin: true"));
+    expect(sites).toHaveLength(1);
+    expect(sites[0]).toContain('from: { kind: "current" }, to: initialTo');
   });
 });
 
