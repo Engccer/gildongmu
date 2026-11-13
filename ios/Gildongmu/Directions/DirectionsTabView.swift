@@ -264,7 +264,7 @@ final class DirectionsModel {
         pendingPrefillFocus = prefill != nil && initialTo == nil
         recentRoutes = RecentSearchStore().routes()
         // 채팅 여정 카드(E70-b): 갈아탈 역을 칸에 세우고, 카드의 결과가 있으면 조회 없이 결과 상태를 세운다(D14). 없으면 위의
-        // 자동 조회가 그 역으로 여정을 다시 조회한다(D16). 데이터 로케일이 ko가 아니면 역 칸이 없어 아무것도 하지 않는다.
+        // 자동 조회가 그 역으로 여정을 다시 조회한다(D16). 여정 카드는 서버가 ko 채팅에만 보내므로 다른 언어에서는 이 자리에 닿지 않는다.
         if let journey = prefill?.journey {
             boardStation = journey.board
             alightStation = journey.alight

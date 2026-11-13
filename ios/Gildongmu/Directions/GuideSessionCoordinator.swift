@@ -508,7 +508,7 @@ final class GuideSession {
 
     // MARK: - 여정(E70, spec §6)
 
-    /// 여정 시작 — 길찾기 탭 여정 결과의 [안내 시작] 한 곳에서만 부른다(실험판 봉인, `guidance-gate-drift.test.ts`).
+    /// 여정 시작 — 길찾기 탭 여정 결과와 채팅 여정 카드의 [안내 시작] 두 곳에서만 부른다(`guidance-gate-drift.test.ts`가 센다).
     func startJourney(plan: JourneyPlan) {
         guard !refuseIfActive() else { return }
         cancelPrewalk()

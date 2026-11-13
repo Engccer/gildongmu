@@ -149,7 +149,7 @@ spec `2026-08-07-directions-view-restructure-design.md`·`2026-08-01-odsay-servi
 
 ### 여정 조립과 출구 수집 (`/api/route/journey`, E70)
 
-`src/lib/journey/assemble.ts` `getJourney`가 조회 셋(택시 앞 · 잘린 대중교통 · 택시 뒤)을 한 트랜잭션으로 묶는다. ko 전용, 부르는 곳은 iOS 실험판과 웹 길찾기(ko 공개, E70-f 2026-11-02)다(웹엔 봉인이 없어 레이트 리밋과 쿼터가 유일한 방어).
+`src/lib/journey/assemble.ts` `getJourney`가 조회 셋(택시 앞 · 잘린 대중교통 · 택시 뒤)을 한 트랜잭션으로 묶는다. ko 전용, 부르는 곳은 iOS와 웹 길찾기, 채팅 도구 `plan_journey`다(봉인이 없어 레이트 리밋과 쿼터가 유일한 방어).
 
 - **순서가 계약이다**: 후보 전체 → 지정 역(없으면 지하철만 재조회) → 추천(`selectTransitRoutes(ranked)[0]`) → 자르기 → 카카오 출구 → Tmap 비용 계산·예약 → Tmap 팬아웃 → 조립. 예약을 팬아웃 뒤로 옮기면 거절된 요청이 Tmap을 이미 썼다.
 - **같은 역 = 이름 키 ∧ 정류 좌표 500m ∧ (양쪽에 노선이 있으면 같은 노선)**, 좌표 조건은 늘 건다. 정류 좌표는 `stops[0]`/`stops[끝]`이라 `includeStops`가 필수다. 500m의 근거는 `journey-station-pairs.json`(같은 이름·다른 노선 정류 45쌍, 복합체 최대 427m 잠실 < 500 ≤ 동명 이역 신촌 705m)을 테스트가 잠근다 — 새 표본이 그 부등식을 깨면 spec §4.3으로 돌아간다.
