@@ -33,7 +33,7 @@ struct DirectionsPrefill: Equatable {
     enum Role { case from, to }
     let role: Role
     let endpoint: DirectionsEndpoint
-    /// 채팅 여정 카드(E70-b, 실험판)가 넘기는 갈아탈 역·결과. nil이면 종전 프리필이다.
+    /// 채팅 여정 카드(E70-b)가 넘기는 갈아탈 역·결과. nil이면 종전 프리필이다.
     var journey: JourneyPrefill? = nil
 }
 
@@ -63,7 +63,7 @@ func recordJourneyRecentRoute(dest: RecentEndpoint, board: RecentStation?, aligh
 /// (`manualLocation`은 `LocationBarView`가 `DirectionsEndpointSearchView`를 재사용하는
 /// 별도 진입로다 — 길찾기 탭의 from/to 상태 머신(`DirectionsModel`)과는 무관하다).
 enum DirectionsFieldTarget: String, Identifiable {
-    /// `boardStation`·`alightStation`은 자동차로 갈아탈 역 칸(E70, 실험판) — 검색 시트가 끝점이 아니라 장소(`Place`)를
+    /// `boardStation`·`alightStation`은 자동차로 갈아탈 역 칸(E70) — 검색 시트가 끝점이 아니라 장소(`Place`)를
     /// 돌려준다(역인지 판정·노선 힌트에 분류가 필요하다, spec §5.1).
     /// `transfer`는 입구 검색(E77) — 경유지/자동차 환승 칸 하나. 칸은 확정되기 전엔 없고(검색 시트만), 고른 장소가 역·정류장이면 질문을 거쳐
     /// 역 칸이나 경유지가 된다.
@@ -110,7 +110,7 @@ final class DirectionsModel {
     /// 경유지(N4, 선택 사항, 1개). `.place`만 — 검색 시트 `.via` 타깃은 "현재 위치 사용"
     /// 버튼을 내지 않아 `.current`가 구조적으로 들어오지 않는다. 도착지와 같은 원자 확정.
     private(set) var via: DirectionsEndpoint?
-    /// 자동차로 갈아탈 역(E70, 실험판 — spec §5.1). 칸은 역이 정해졌을 때만 있고(빈 칸 없음), 하나라도 있으면
+    /// 자동차로 갈아탈 역(E70 — spec §5.1). 칸은 역이 정해졌을 때만 있고(빈 칸 없음), 하나라도 있으면
     /// 조회가 여정만 한다(D12). 경유지와 함께 쓰지 않는다(D14 — 역이 서면 경유지를 비우고, 경유지가 서면 역을 비운다).
     private(set) var boardStation: RecentStation?
     private(set) var alightStation: RecentStation?
@@ -264,8 +264,8 @@ final class DirectionsModel {
         pendingPrefillFocus = prefill != nil && initialTo == nil
         recentRoutes = RecentSearchStore().routes()
         // 채팅 여정 카드(E70-b): 갈아탈 역을 칸에 세우고, 카드의 결과가 있으면 조회 없이 결과 상태를 세운다(D14). 없으면 위의
-        // 자동 조회가 그 역으로 여정을 다시 조회한다(D16). 실험판 봉인 밖에서는 아무것도 하지 않는다(역 칸이 없는 구성).
-        if AppConfig.experimentalJourneyEnabled, let journey = prefill?.journey {
+        // 자동 조회가 그 역으로 여정을 다시 조회한다(D16). 데이터 로케일이 ko가 아니면 역 칸이 없어 아무것도 하지 않는다.
+        if let journey = prefill?.journey {
             boardStation = journey.board
             alightStation = journey.alight
             if let result = journey.result {
@@ -903,14 +903,14 @@ final class DirectionsModel {
             announce(appLocalized("ios.common.outOfCoverage"), haptic: .attention)
             return
         }
-        // 역을 하나라도 지정했으면 여정만 조회한다(E70 D12, 실험판). 출입구 승격(A11)은 하지 않는다 — 마지막 택시가
+        // 역을 하나라도 지정했으면 여정만 조회한다(E70 D12). 출입구 승격(A11)은 하지 않는다 — 마지막 택시가
         // 목적지까지 가므로 도보 도착점 승격이 뜻을 갖지 않는다.
-        // 지금 탄 열차인데 여정 조회가 막힌 조건(실험판·ko 밖)이면 일반 세 수단 조회로 떨어져 aboard 역을 최근 경로에 저장하지 않도록 조회하지 않는다(R11).
-        if aboardOrigin != nil, !(AppConfig.experimentalJourneyEnabled && AppLanguage.dataLocale == "ko") {
+        // 지금 탄 열차인데 여정 조회가 막힌 조건(ko 밖)이면 일반 세 수단 조회로 떨어져 aboard 역을 최근 경로에 저장하지 않도록 조회하지 않는다(R11).
+        if aboardOrigin != nil, AppLanguage.dataLocale != "ko" {
             phase = .idle
             return
         }
-        if AppConfig.experimentalJourneyEnabled, AppLanguage.dataLocale == "ko", hasJourneyStations || aboardOrigin != nil {
+        if AppLanguage.dataLocale == "ko", hasJourneyStations || aboardOrigin != nil {
             await performJourney(
                 from: from, to: to, origin: origin, dest: queried,
                 originNeedsStartNotice: usedManualOrigin || (from == .current && staleAt != nil), staleAt: staleAt)
@@ -1259,7 +1259,7 @@ struct DirectionsTabView: View {
                     // (탭=재검색) + 삭제 버튼으로 바뀐다. 삭제는 자기를 누른 버튼을 없애므로
                     // 조회 버튼을 선점한다(헌장 §5). 도착지 확정 후 포커스는 종전대로 조회
                     // 버튼이다(선택 사항이 기본 흐름을 늘리면 안 된다 — 위원장 판정).
-                    // 자동차로 갈아탈 역(E70, 실험판·ko 데이터 로케일 — D2). 경유지와 역은 함께 쓰지 않아(D14) 아무것도
+                    // 자동차로 갈아탈 역(E70, ko 데이터 로케일 — D2). 경유지와 역은 함께 쓰지 않아(D14) 아무것도
                     // 없을 때만 입구 버튼 하나가 서고(E77 — 검색 시트 하나 + 확인 질문), 정해졌을 때만 그 칸이 생긴다(빈 칸 없음, 판정 28).
                     if !isAboardOrigin, !showsStationFields, let viaName = viaFieldName {
                         Button { searchTarget = .via } label: {
@@ -1449,7 +1449,7 @@ struct DirectionsTabView: View {
                             .accessibilityAddTraits(.isHeader)
                     }
                 }
-                if AppConfig.experimentalJourneyEnabled, let outcome = model.journeyOutcome {
+                if let outcome = model.journeyOutcome {
                     Section {
                         switch outcome {
                         case .found(let result):
@@ -1460,7 +1460,7 @@ struct DirectionsTabView: View {
                                 destinationName: destinationPlaceName, destinationRoman: destinationPlaceRoman,
                                 startFocus: $guideStartFocused, landingFocus: $journeyLandingFocused,
                                 onStart: { variant, egress in
-                                    guard AppConfig.experimentalJourneyEnabled, let tracked = trackedDestination else { return }
+                                    guard let tracked = trackedDestination else { return }
                                     lastGuideStart = .journey
                                     announceGuideStartIfManualOrigin()
                                     GuideSession.shared.startJourney(plan: JourneyPlan(
@@ -1691,7 +1691,7 @@ struct DirectionsTabView: View {
     /// 조건은 활성화(`activateRecentRoute`)가 역을 쓰는 조건과 같다 — 그 밖(앱 언어가 ko가 아님)이면 역을 버리고 보통 조회를
     /// 하므로 줄도 보통 문장이다(여정 문장은 ko에만 있어 다른 언어에선 키 이름이 낭독된다). 역이 없으면 nil.
     private func recentJourneyLabel(_ route: RecentRoute, from: String, to: String) -> String? {
-        guard AppConfig.experimentalJourneyEnabled, AppLanguage.dataLocale == "ko" else { return nil }
+        guard AppLanguage.dataLocale == "ko" else { return nil }
         let sides = [route.boardStation, route.alightStation].compactMap { $0 }
         // 정류장은 원문 그대로 말한다(역 표시 이름 함수로 깎지 않는다).
         func name(_ side: RecentStation) -> String { side.kind == .busStop ? side.label : journeyStationDisplayName(side.label) }
@@ -1755,7 +1755,7 @@ struct DirectionsTabView: View {
             model.clearVia()
         }
         // 여정(E70 §5.3): 역이 있으면 칸을 채워 조회, 없으면 비운다(이전 질의의 역이 딸려 가지 않는다).
-        if AppConfig.experimentalJourneyEnabled, AppLanguage.dataLocale == "ko",
+        if AppLanguage.dataLocale == "ko",
            route.boardStation != nil || route.alightStation != nil {
             model.setJourneyStations(board: route.boardStation, alight: route.alightStation)
         } else if model.hasJourneyStations {
@@ -2303,9 +2303,9 @@ struct DirectionsTabView: View {
         return roman
     }
 
-    /// 갈아탈 역 입력이 서는 조건(E70 실험판·ko 데이터 로케일 — D2, 조회가 여정으로 가는 조건과 같다).
+    /// 갈아탈 역 입력이 서는 조건(E70 ko 데이터 로케일 — D2, 조회가 여정으로 가는 조건과 같다).
     private var journeyInputEnabled: Bool {
-        AppConfig.experimentalJourneyEnabled && AppLanguage.dataLocale == "ko"
+        AppLanguage.dataLocale == "ko"
     }
 
     /// 역 칸이 보이는가 — 칸은 역이 정해졌을 때만 있다(빈 칸 없음). 이때 경유지 행·입력 메뉴는 없다(D14).

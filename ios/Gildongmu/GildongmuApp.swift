@@ -390,7 +390,7 @@ struct GildongmuApp: App {
         selectedTab = .directions
         // 채팅 여정 카드가 결과를 조회 없이 넘긴 진입은 여기서 최근 경로에 남긴다(E70-b S5 — 정확히 한 번 일어나는 자리).
         // 재조회로 넘긴 진입은 `performJourney`가 기록한다.
-        if AppConfig.experimentalJourneyEnabled, let journey = prefill.journey, journey.result != nil,
+        if let journey = prefill.journey, journey.result != nil,
            case .place(let label, let lat, let lng, let roman) = prefill.endpoint {
             recordJourneyRecentRoute(
                 dest: RecentEndpoint(label: label, lat: lat, lng: lng, labelRoman: roman),

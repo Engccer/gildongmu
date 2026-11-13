@@ -585,8 +585,8 @@ private struct MessageBubbleView: View {
                 webResultRow(result)
             }
         case .journey(let payload):
-            // 실험판 봉인 뒤에서만(거짓이면 카드를 그리지 않는다). 구획 헤딩도 없다(E70-b D15) — 제목이 카드의 첫 줄이다.
-            if AppConfig.experimentalJourneyEnabled, showsJourneyCard {
+            // `showsJourneyCard`가 거짓이면 카드를 그리지 않는다. 구획 헤딩도 없다(E70-b D15) — 제목이 카드의 첫 줄이다.
+            if showsJourneyCard {
                 JourneyChatCardView(payload: payload)
             }
         case .unsupported:

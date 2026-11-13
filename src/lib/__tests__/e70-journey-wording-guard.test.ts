@@ -163,7 +163,7 @@ describe("E70 여정 문장의 자리", () => {
     const tab = read("DirectionsTabView.swift");
     expect(body(tab, "recentRouteLabel")).toContain("if let journey = recentJourneyLabel(route, from: from, to: to) { return journey }");
     const line = body(tab, "recentJourneyLabel");
-    const gate = 'AppConfig.experimentalJourneyEnabled, AppLanguage.dataLocale == "ko"';
+    const gate = 'AppLanguage.dataLocale == "ko"';
     expect(line).toContain(`guard ${gate} else { return nil }`);
     expect(body(tab, "activateRecentRoute")).toContain(gate);
     expect(line).toContain('"ios.journey.recentRouteBoth", from, to, board, alight');
@@ -234,7 +234,8 @@ describe("E70-d 입력 메뉴 하나와 「자동차」 문장(위원장 판정 
     expect(form).toMatch(
       /if journeyInputEnabled \{\s*\/\/[^\n]*\n(?:\s*\/\/[^\n]*\n)*\s*Button\(appLocalized\("ios\.journey\.addMenu"\)\) \{ searchTarget = \.transfer \}\s*\.accessibilityFocused\(\$focusedEndpointField, equals: \.via\)\s*\} else \{\s*Button\(appLocalized\("directions\.addVia"\)\) \{ searchTarget = \.via \}/,
     );
-    expect(body(tab, "journeyInputEnabled")).toContain('AppConfig.experimentalJourneyEnabled && AppLanguage.dataLocale == "ko"');
+    expect(body(tab, "journeyInputEnabled")).toContain('AppLanguage.dataLocale == "ko"');
+    expect(body(tab, "journeyInputEnabled")).not.toContain("experimental");
     expect(body(tab, "showsStationFields")).toContain("journeyInputEnabled && model.hasJourneyStations");
   });
 

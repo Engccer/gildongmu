@@ -175,9 +175,9 @@ final class ChatModel {
     private func requestBody() -> ChatRequestBody {
         let effective = ManualLocationStore.shared.current.map { (lat: $0.lat, lng: $0.lng) }
             ?? LocationService.shared.lastCoordinate
-        // 여정 능력 신고(E70-b D7): 실험판의 채팅 탭(범용 채팅)만이다. 장소 채팅은 카드를 못 그려 신고하지 않는다.
+        // 여정 능력 신고(E70-b D7): 채팅 탭(범용 채팅)만이다. 장소 채팅은 카드를 못 그려 신고하지 않는다.
         // 신고하지 않으면 두 필드 모두 키가 생략돼 요청 본문은 종전과 같다. `userLocationManual`은 위 유효 위치가 수동 지정인가(D2).
-        let reportsJourney = AppConfig.experimentalJourneyEnabled && place == nil
+        let reportsJourney = place == nil
         return ChatRequestBody(
             messages: messages.map { .init(role: $0.role == .user ? "user" : "assistant", text: $0.text) },
             userLocation: effective.map { .init(lat: $0.lat, lng: $0.lng) },

@@ -241,7 +241,7 @@ describe("E71 aboard 출발 — 길찾기 화면(spec §5·R11·R12)", () => {
   it("여정 입력이 사라지면 aboard를 지우고, 조회는 aboard인데 여정 조건이 아니면 일반 조회로 떨어지지 않는다(R11)", () => {
     expect(TAB).toMatch(/\.onChange\(of: journeyInputEnabled\) \{ _, enabled in\s*if !enabled \{ model\.clearAboard\(\) \}/);
     expect(body(TAB, "private func performQuery(")).toMatch(
-      /if aboardOrigin != nil, !\(AppConfig\.experimentalJourneyEnabled && AppLanguage\.dataLocale == "ko"\) \{\s*phase = \.idle\s*return\s*\}/,
+      /if aboardOrigin != nil, AppLanguage\.dataLocale != "ko" \{\s*phase = \.idle\s*return\s*\}/,
     );
   });
 

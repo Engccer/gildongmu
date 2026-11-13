@@ -1,5 +1,7 @@
 # E70-b 채팅으로 여정 확정 — 설계
 
+> 2026-11-14 정식판 졸업, 플래그(`experimentalJourneyEnabled`) 삭제. 아래 실험판·봉인 서술은 졸업 전 기록이다.
+
 2026-11-12 · 서버 + 웹(ko) + iOS 실험판 · 앞 설계: `2026-10-17-e70-mode-change-journey-design.md`(서버 조립·여정 모델), `2026-11-02-e70-web-journey-design.md`(웹 이어 안내)
 
 ## 1. 목표와 성과
