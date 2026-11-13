@@ -579,17 +579,17 @@
         {
           "t": 1,
           "kind": "fix",
-          "progressed": false
+          "moved": 0
         },
         {
           "t": 150,
           "kind": "fix",
-          "progressed": false
+          "moved": 0
         },
         {
           "t": 299,
           "kind": "fix",
-          "progressed": false
+          "moved": 0
         },
         {
           "t": 299,
@@ -599,7 +599,7 @@
         {
           "t": 300,
           "kind": "fix",
-          "progressed": false
+          "moved": 0
         },
         {
           "t": 300,
@@ -615,7 +615,7 @@
         {
           "t": 250,
           "kind": "fix",
-          "progressed": false
+          "moved": 0
         },
         {
           "t": 299,
@@ -625,7 +625,7 @@
         {
           "t": 300,
           "kind": "fix",
-          "progressed": false
+          "moved": 0
         },
         {
           "t": 300,
@@ -667,7 +667,7 @@
         {
           "t": 330,
           "kind": "fix",
-          "progressed": false
+          "moved": 0
         },
         {
           "t": 331,
@@ -677,72 +677,72 @@
         {
           "t": 350,
           "kind": "fix",
-          "progressed": false
+          "moved": 0
         },
         {
           "t": 370,
           "kind": "fix",
-          "progressed": false
+          "moved": 0
         },
         {
           "t": 390,
           "kind": "fix",
-          "progressed": false
+          "moved": 0
         },
         {
           "t": 410,
           "kind": "fix",
-          "progressed": false
+          "moved": 0
         },
         {
           "t": 430,
           "kind": "fix",
-          "progressed": false
+          "moved": 0
         },
         {
           "t": 450,
           "kind": "fix",
-          "progressed": false
+          "moved": 0
         },
         {
           "t": 470,
           "kind": "fix",
-          "progressed": false
+          "moved": 0
         },
         {
           "t": 490,
           "kind": "fix",
-          "progressed": false
+          "moved": 0
         },
         {
           "t": 510,
           "kind": "fix",
-          "progressed": false
+          "moved": 0
         },
         {
           "t": 530,
           "kind": "fix",
-          "progressed": false
+          "moved": 0
         },
         {
           "t": 550,
           "kind": "fix",
-          "progressed": false
+          "moved": 0
         },
         {
           "t": 570,
           "kind": "fix",
-          "progressed": false
+          "moved": 0
         },
         {
           "t": 590,
           "kind": "fix",
-          "progressed": false
+          "moved": 0
         },
         {
           "t": 610,
           "kind": "fix",
-          "progressed": false
+          "moved": 0
         },
         {
           "t": 629,
@@ -752,7 +752,7 @@
         {
           "t": 630,
           "kind": "fix",
-          "progressed": false
+          "moved": 0
         },
         {
           "t": 630,
@@ -768,7 +768,7 @@
         {
           "t": 330,
           "kind": "fix",
-          "progressed": false
+          "moved": 0
         },
         {
           "t": 330,
@@ -782,7 +782,7 @@
         {
           "t": 629,
           "kind": "fix",
-          "progressed": false
+          "moved": 0
         },
         {
           "t": 629,
@@ -792,7 +792,7 @@
         {
           "t": 630,
           "kind": "fix",
-          "progressed": false
+          "moved": 0
         },
         {
           "t": 630,
@@ -838,17 +838,17 @@
         {
           "t": 1,
           "kind": "fix",
-          "progressed": false
+          "moved": 0
         },
         {
           "t": 20,
           "kind": "fix",
-          "progressed": false
+          "moved": 0
         },
         {
           "t": 40,
           "kind": "fix",
-          "progressed": false
+          "moved": 0
         },
         {
           "t": 340,
@@ -857,6 +857,411 @@
         },
         {
           "t": 600,
+          "kind": "tick",
+          "expect": null
+        },
+        {
+          "t": 939,
+          "kind": "tick",
+          "expect": null
+        },
+        {
+          "t": 940,
+          "kind": "tick",
+          "expect": "noFix"
+        }
+      ]
+    },
+    {
+      "name": "창: 31초 간격으로 드문드문 오는 제자리 fix는 시계를 다시 세우지 않는다(첫 fix만) — 세션이 유한 시간에 끝난다",
+      "hold": true,
+      "events": [
+        {
+          "t": 31,
+          "kind": "fix",
+          "moved": 0
+        },
+        {
+          "t": 62,
+          "kind": "fix",
+          "moved": 0
+        },
+        {
+          "t": 93,
+          "kind": "fix",
+          "moved": 0
+        },
+        {
+          "t": 124,
+          "kind": "fix",
+          "moved": 0
+        },
+        {
+          "t": 155,
+          "kind": "fix",
+          "moved": 0
+        },
+        {
+          "t": 186,
+          "kind": "fix",
+          "moved": 0
+        },
+        {
+          "t": 217,
+          "kind": "fix",
+          "moved": 0
+        },
+        {
+          "t": 248,
+          "kind": "fix",
+          "moved": 0
+        },
+        {
+          "t": 279,
+          "kind": "fix",
+          "moved": 0
+        },
+        {
+          "t": 310,
+          "kind": "fix",
+          "moved": 0
+        },
+        {
+          "t": 330,
+          "kind": "tick",
+          "expect": null
+        },
+        {
+          "t": 331,
+          "kind": "tick",
+          "expect": "stationary"
+        }
+      ]
+    },
+    {
+      "name": "창 중간 관측 공백 뒤 첫 fix가 앵커에서 25m 넘게 움직였으면 그 fix부터 300초를 센다",
+      "hold": true,
+      "events": [
+        {
+          "t": 1,
+          "kind": "fix",
+          "moved": 0
+        },
+        {
+          "t": 20,
+          "kind": "fix",
+          "moved": 0
+        },
+        {
+          "t": 40,
+          "kind": "fix",
+          "moved": 0
+        },
+        {
+          "t": 399,
+          "kind": "tick",
+          "expect": null
+        },
+        {
+          "t": 400,
+          "kind": "fix",
+          "moved": 30
+        },
+        {
+          "t": 401,
+          "kind": "tick",
+          "expect": null
+        },
+        {
+          "t": 420,
+          "kind": "fix",
+          "moved": 0
+        },
+        {
+          "t": 440,
+          "kind": "fix",
+          "moved": 0
+        },
+        {
+          "t": 460,
+          "kind": "fix",
+          "moved": 0
+        },
+        {
+          "t": 480,
+          "kind": "fix",
+          "moved": 0
+        },
+        {
+          "t": 500,
+          "kind": "fix",
+          "moved": 0
+        },
+        {
+          "t": 520,
+          "kind": "fix",
+          "moved": 0
+        },
+        {
+          "t": 540,
+          "kind": "fix",
+          "moved": 0
+        },
+        {
+          "t": 560,
+          "kind": "fix",
+          "moved": 0
+        },
+        {
+          "t": 580,
+          "kind": "fix",
+          "moved": 0
+        },
+        {
+          "t": 600,
+          "kind": "fix",
+          "moved": 0
+        },
+        {
+          "t": 620,
+          "kind": "fix",
+          "moved": 0
+        },
+        {
+          "t": 640,
+          "kind": "fix",
+          "moved": 0
+        },
+        {
+          "t": 660,
+          "kind": "fix",
+          "moved": 0
+        },
+        {
+          "t": 680,
+          "kind": "fix",
+          "moved": 0
+        },
+        {
+          "t": 699,
+          "kind": "tick",
+          "expect": null
+        },
+        {
+          "t": 700,
+          "kind": "fix",
+          "moved": 0
+        },
+        {
+          "t": 700,
+          "kind": "tick",
+          "expect": "stationary"
+        }
+      ]
+    },
+    {
+      "name": "창 중간 관측 공백 뒤 첫 fix가 같은 자리면 시계를 다시 세우지 않는다",
+      "hold": true,
+      "events": [
+        {
+          "t": 1,
+          "kind": "fix",
+          "moved": 0
+        },
+        {
+          "t": 20,
+          "kind": "fix",
+          "moved": 0
+        },
+        {
+          "t": 40,
+          "kind": "fix",
+          "moved": 0
+        },
+        {
+          "t": 399,
+          "kind": "tick",
+          "expect": null
+        },
+        {
+          "t": 400,
+          "kind": "fix",
+          "moved": 0
+        },
+        {
+          "t": 401,
+          "kind": "tick",
+          "expect": "stationary"
+        }
+      ]
+    },
+    {
+      "name": "틱 경계: 마지막 fix 뒤 30초까지는 무이동을 센다",
+      "hold": true,
+      "events": [
+        {
+          "t": 1,
+          "kind": "fix",
+          "moved": 0
+        },
+        {
+          "t": 20,
+          "kind": "fix",
+          "moved": 0
+        },
+        {
+          "t": 40,
+          "kind": "fix",
+          "moved": 0
+        },
+        {
+          "t": 60,
+          "kind": "fix",
+          "moved": 0
+        },
+        {
+          "t": 80,
+          "kind": "fix",
+          "moved": 0
+        },
+        {
+          "t": 100,
+          "kind": "fix",
+          "moved": 0
+        },
+        {
+          "t": 120,
+          "kind": "fix",
+          "moved": 0
+        },
+        {
+          "t": 140,
+          "kind": "fix",
+          "moved": 0
+        },
+        {
+          "t": 160,
+          "kind": "fix",
+          "moved": 0
+        },
+        {
+          "t": 180,
+          "kind": "fix",
+          "moved": 0
+        },
+        {
+          "t": 200,
+          "kind": "fix",
+          "moved": 0
+        },
+        {
+          "t": 220,
+          "kind": "fix",
+          "moved": 0
+        },
+        {
+          "t": 240,
+          "kind": "fix",
+          "moved": 0
+        },
+        {
+          "t": 260,
+          "kind": "fix",
+          "moved": 0
+        },
+        {
+          "t": 280,
+          "kind": "fix",
+          "moved": 0
+        },
+        {
+          "t": 310,
+          "kind": "tick",
+          "expect": "stationary"
+        }
+      ]
+    },
+    {
+      "name": "틱 경계: 마지막 fix 뒤 31초부터는 무이동을 세지 않는다",
+      "hold": true,
+      "events": [
+        {
+          "t": 1,
+          "kind": "fix",
+          "moved": 0
+        },
+        {
+          "t": 20,
+          "kind": "fix",
+          "moved": 0
+        },
+        {
+          "t": 40,
+          "kind": "fix",
+          "moved": 0
+        },
+        {
+          "t": 60,
+          "kind": "fix",
+          "moved": 0
+        },
+        {
+          "t": 80,
+          "kind": "fix",
+          "moved": 0
+        },
+        {
+          "t": 100,
+          "kind": "fix",
+          "moved": 0
+        },
+        {
+          "t": 120,
+          "kind": "fix",
+          "moved": 0
+        },
+        {
+          "t": 140,
+          "kind": "fix",
+          "moved": 0
+        },
+        {
+          "t": 160,
+          "kind": "fix",
+          "moved": 0
+        },
+        {
+          "t": 180,
+          "kind": "fix",
+          "moved": 0
+        },
+        {
+          "t": 200,
+          "kind": "fix",
+          "moved": 0
+        },
+        {
+          "t": 220,
+          "kind": "fix",
+          "moved": 0
+        },
+        {
+          "t": 240,
+          "kind": "fix",
+          "moved": 0
+        },
+        {
+          "t": 260,
+          "kind": "fix",
+          "moved": 0
+        },
+        {
+          "t": 280,
+          "kind": "fix",
+          "moved": 0
+        },
+        {
+          "t": 311,
           "kind": "tick",
           "expect": null
         }
@@ -869,77 +1274,77 @@
         {
           "t": 1,
           "kind": "fix",
-          "progressed": false
+          "moved": 0
         },
         {
           "t": 20,
           "kind": "fix",
-          "progressed": false
+          "moved": 0
         },
         {
           "t": 40,
           "kind": "fix",
-          "progressed": false
+          "moved": 0
         },
         {
           "t": 60,
           "kind": "fix",
-          "progressed": false
+          "moved": 0
         },
         {
           "t": 80,
           "kind": "fix",
-          "progressed": false
+          "moved": 0
         },
         {
           "t": 100,
           "kind": "fix",
-          "progressed": false
+          "moved": 0
         },
         {
           "t": 120,
           "kind": "fix",
-          "progressed": false
+          "moved": 0
         },
         {
           "t": 140,
           "kind": "fix",
-          "progressed": false
+          "moved": 0
         },
         {
           "t": 160,
           "kind": "fix",
-          "progressed": false
+          "moved": 0
         },
         {
           "t": 180,
           "kind": "fix",
-          "progressed": false
+          "moved": 0
         },
         {
           "t": 200,
           "kind": "fix",
-          "progressed": false
+          "moved": 0
         },
         {
           "t": 220,
           "kind": "fix",
-          "progressed": false
+          "moved": 0
         },
         {
           "t": 240,
           "kind": "fix",
-          "progressed": false
+          "moved": 0
         },
         {
           "t": 260,
           "kind": "fix",
-          "progressed": false
+          "moved": 0
         },
         {
           "t": 280,
           "kind": "fix",
-          "progressed": false
+          "moved": 0
         },
         {
           "t": 299,
@@ -949,7 +1354,7 @@
         {
           "t": 300,
           "kind": "fix",
-          "progressed": false
+          "moved": 0
         },
         {
           "t": 300,
@@ -965,82 +1370,82 @@
         {
           "t": 1,
           "kind": "fix",
-          "progressed": false
+          "moved": 0
         },
         {
           "t": 100,
           "kind": "fix",
-          "progressed": true
+          "moved": 30
         },
         {
           "t": 120,
           "kind": "fix",
-          "progressed": false
+          "moved": 0
         },
         {
           "t": 140,
           "kind": "fix",
-          "progressed": false
+          "moved": 0
         },
         {
           "t": 160,
           "kind": "fix",
-          "progressed": false
+          "moved": 0
         },
         {
           "t": 180,
           "kind": "fix",
-          "progressed": false
+          "moved": 0
         },
         {
           "t": 200,
           "kind": "fix",
-          "progressed": false
+          "moved": 0
         },
         {
           "t": 220,
           "kind": "fix",
-          "progressed": false
+          "moved": 0
         },
         {
           "t": 240,
           "kind": "fix",
-          "progressed": false
+          "moved": 0
         },
         {
           "t": 260,
           "kind": "fix",
-          "progressed": false
+          "moved": 0
         },
         {
           "t": 280,
           "kind": "fix",
-          "progressed": false
+          "moved": 0
         },
         {
           "t": 300,
           "kind": "fix",
-          "progressed": false
+          "moved": 0
         },
         {
           "t": 320,
           "kind": "fix",
-          "progressed": false
+          "moved": 0
         },
         {
           "t": 340,
           "kind": "fix",
-          "progressed": false
+          "moved": 0
         },
         {
           "t": 360,
           "kind": "fix",
-          "progressed": false
+          "moved": 0
         },
         {
           "t": 380,
           "kind": "fix",
-          "progressed": false
+          "moved": 0
         },
         {
           "t": 399,
@@ -1050,7 +1455,7 @@
         {
           "t": 400,
           "kind": "fix",
-          "progressed": false
+          "moved": 0
         },
         {
           "t": 400,

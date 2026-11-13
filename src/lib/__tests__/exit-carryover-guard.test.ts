@@ -113,6 +113,16 @@ describe("출구 대기 창의 수명", () => {
     );
     // 창이 세운 하한 뒤로 잰다(관측 공백 뒤 첫 fix, 창이 닫힌 시각). 하한이 없으면 종전 식이다.
     expect(idle).toContain("exitHoldAwareSessionIdleStep(");
+    // 창 안 fix의 하한 갱신은 직전 fix 시각을 읽으므로 `lastFixAt = now`보다 앞이어야 한다(뒤면 간격이 늘 0이라 영영 안 선다).
+    const waiting = MODEL.slice(MODEL.indexOf("        if awaitingRoute {\n            // 출구 대기(E84)"));
+    const floorsCall = waiting.indexOf("exitHoldIdleFloorsAfterFix(");
+    expect(floorsCall).toBeGreaterThan(0);
+    expect(waiting.slice(floorsCall, floorsCall + 200)).toContain("previousFixAt: lastFixAt, startedAt: startedAt,");
+    expect(floorsCall).toBeLessThan(waiting.indexOf("lastFixAt = now"));
+    expect(waiting.slice(0, waiting.indexOf("lastFixAt = now"))).toContain(
+      "if step.resumed { sessionProgressAnchor = RoutePoint(lat: fix.lat, lng: fix.lng) }",
+    );
+    expect(waiting.slice(0, waiting.indexOf("lastFixAt = now"))).toContain("distanceFromAnchor: sessionProgressAnchor.map {");
     expect(idle).toContain("floors: exitHoldIdleFloors, holdActive: exitHold != nil, tuning: tuning,");
     expect(idle).not.toMatch(/sessionIdleStep\(|max\(startedAt/);
     expect(body(MODEL, "private func closeExitHold(")).toContain(

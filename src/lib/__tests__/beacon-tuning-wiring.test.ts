@@ -68,7 +68,8 @@ describe("BeaconModel 세션 종료 갈림은 GuideTuning 데이터를 읽는다
   // 두 필드는 Kit이 읽는다(모델이 상수를 직접 박거나 프로파일 리터럴을 넘기면 실패).
   it.each(["tuning.sessionIdleStationaryAxis", "tuning.sessionIdleNoFixSeconds"])("%s 참조(Kit 판정 함수)", (needle) => {
     const kit = readFileSync(new URL("../../../ios/GildongmuKit/Sources/GildongmuKit/ExitHold.swift", import.meta.url), "utf8");
-    expect(kit.includes(needle)).toBe(true);
+    const fn = kit.slice(kit.indexOf("public func exitHoldAwareSessionIdleStep("));
+    expect(fn.slice(0, fn.indexOf("\n}\n")).includes(needle)).toBe(true);
     const idle = code.slice(code.indexOf("func maybeEndIdleSession"), code.indexOf("func maybePresumeArrival"));
     expect(idle).toMatch(/holdActive: exitHold != nil, tuning: tuning,/);
   });

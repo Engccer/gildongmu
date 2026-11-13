@@ -138,13 +138,18 @@ public struct ExitHoldIdleFloors: Equatable, Sendable {
     }
 }
 
-/// 창 안 fix 한 건. 직전 fix(없으면 세션 시작)와의 간격이 `exitHoldObservationGapSeconds`를 넘으면 무이동 시계를 이 fix로
-/// 다시 세운다. `resumed`가 참이면 호출부는 진행 앵커도 이 fix로 재설정한다(공백 전 앵커와의 변위는 관측이 아니다).
+/// 창 안 fix 한 건. 직전 fix(없으면 세션 시작)와의 간격이 `exitHoldObservationGapSeconds`를 넘고 **그 fix가 진행 앵커에서
+/// 벗어났을 때만**(앵커가 아직 없거나 `sessionProgressEpsilonMeters` 이상) 무이동 시계를 이 fix로 다시 세운다. `resumed`가
+/// 참이면 호출부는 진행 앵커도 이 fix로 재설정한다.
+/// ⚠ 같은 자리의 공백 뒤 fix로는 세우지 않는다: 30초 넘는 간격으로 드문드문 오는 제자리 fix마다 시계가 다시 서면
+/// 세션이 영영 끝나지 않는다. `distanceFromAnchor` nil = 앵커 없음(세션 첫 fix).
 public func exitHoldIdleFloorsAfterFix(
-    _ floors: ExitHoldIdleFloors, now: Double, previousFixAt: Double?, startedAt: Double
+    _ floors: ExitHoldIdleFloors, now: Double, previousFixAt: Double?, startedAt: Double,
+    distanceFromAnchor: Double?
 ) -> (floors: ExitHoldIdleFloors, resumed: Bool) {
     let gap = now - max(startedAt, previousFixAt ?? startedAt)
     guard gap > exitHoldObservationGapSeconds else { return (floors, false) }
+    if let distanceFromAnchor, distanceFromAnchor < sessionProgressEpsilonMeters { return (floors, false) }
     var next = floors
     next.progress = now
     return (next, true)

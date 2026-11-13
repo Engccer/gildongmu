@@ -70,7 +70,7 @@ private struct FixtureFile: Decodable {
         struct Event: Decodable {
             let t: Double
             let kind: String
-            let progressed: Bool?
+            let moved: Double?
             let expect: String?
         }
         let name: String
@@ -157,21 +157,26 @@ private func loadFixture() throws -> FixtureFile {
     @Test("창과 안전망 시나리오 fixture — 출구 없는 세션은 종전과 같다")
     func idleScenarios() throws {
         let scenarios = try loadFixture().idleScenarios
-        #expect(scenarios.count >= 10)
+        #expect(scenarios.count >= 15)
         for scenario in scenarios {
             var lastFixAt: Double?
             var lastProgressAt: Double?
             var floors = ExitHoldIdleFloors()
             var holdActive = scenario.hold
+            var hasAnchor = false
             for event in scenario.events {
                 switch event.kind {
                 case "fix":
+                    // `moved` = 이 fix가 진행 앵커에서 떨어진 거리(m). 모델처럼 첫 fix는 앵커만 세우고 진행으로 치지 않는다.
+                    let moved = event.moved ?? 0
                     if holdActive {
                         floors = exitHoldIdleFloorsAfterFix(
-                            floors, now: event.t, previousFixAt: lastFixAt, startedAt: 0).floors
+                            floors, now: event.t, previousFixAt: lastFixAt, startedAt: 0,
+                            distanceFromAnchor: hasAnchor ? moved : nil).floors
                     }
                     lastFixAt = event.t
-                    if event.progressed == true { lastProgressAt = event.t }
+                    if hasAnchor, moved >= sessionProgressEpsilonMeters { lastProgressAt = event.t }
+                    hasAnchor = true
                 case "close":
                     holdActive = false
                     floors = exitHoldIdleFloorsAfterClose(now: event.t)

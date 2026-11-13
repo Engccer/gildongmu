@@ -2198,10 +2198,14 @@ final class BeaconModel {
         // 세션에서 가장 나쁜 fix라 그대로 쓰면 경로가 다른 곳에서 출발한다(A18,
         // 2026-08-16 실보행 115m). 미달 fix는 최선값으로 보관하고 대기 상한에 쓴다.
         if awaitingRoute {
-            // 출구 대기(E84): 관측 공백 뒤 첫 fix는 무이동 시계와 진행 앵커를 다시 세운다(직전 fix 시각을 덮기 전에 본다).
+            // 출구 대기(E84): 관측 공백 뒤 앵커에서 벗어난 fix(세션 첫 fix 포함)는 무이동 시계와 진행 앵커를 다시 세운다
+            // (직전 fix 시각을 덮기 전에 본다). 같은 자리 fix로는 세우지 않는다(Kit 주석).
             if exitHold != nil, let startedAt {
                 let step = exitHoldIdleFloorsAfterFix(
-                    exitHoldIdleFloors, now: now, previousFixAt: lastFixAt, startedAt: startedAt)
+                    exitHoldIdleFloors, now: now, previousFixAt: lastFixAt, startedAt: startedAt,
+                    distanceFromAnchor: sessionProgressAnchor.map {
+                        haversineMeters(lat1: $0.lat, lng1: $0.lng, lat2: fix.lat, lng2: fix.lng)
+                    })
                 exitHoldIdleFloors = step.floors
                 if step.resumed { sessionProgressAnchor = RoutePoint(lat: fix.lat, lng: fix.lng) }
             }
