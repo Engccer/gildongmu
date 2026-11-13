@@ -4,7 +4,7 @@ import Foundation
 ///
 /// 카드는 대화에 남아 몇 시간 뒤 다른 곳에서도 눌리고 위치 스토어에는 TTL이 없다. [안내 시작]은 위치를 새로 받아 이 판정을
 /// 지나며, `fresh`가 아니면 카드의 결과로 시작하지 않고 같은 여정을 지금 위치로 다시 조회한다.
-/// 두 수치는 잠정값이다(spec D16) — 웹과 같은 값이어야 하니 바꾸면 두 곳이다(`JOURNEY_CARD_MAX_AGE_MS`·`JOURNEY_CARD_MAX_DRIFT_M`).
+/// 두 수치는 위원장 판정 2026-11-14로 확정했다(spec D16) — 웹과 같은 값이어야 하니 바꾸면 두 곳이다(`JOURNEY_CARD_MAX_AGE_MS`·`JOURNEY_CARD_MAX_DRIFT_M`).
 public enum JourneyCardPolicy {
     /// 조회한 지 이보다 오래된 카드는 다시 조회한다(밀리초).
     public static let maxAgeMs: Double = 10 * 60 * 1000
