@@ -83,7 +83,7 @@ Claude Code는 위 `paths`에 맞는 파일을 읽을 때 이 파일을 자동�
 | 지하철 빠른하차 | subway-quick-exit(정적 seed) → `quick-exit.ts` / 별도 라우트 없음(`TransitLeg.quickExit`) | 거리는 열차 선형 위치, 엘베×계단 쌍 최적화, 방향은 방면 1개 확정일 때만. ⚠ 환승 leg는 ODsay `subPath.door`가 정본(A20, 긍정 정규식만 통과). → INTEGRATIONS |
 | 장소 영업시간(E24, 웹·iOS 장소 상세) | google-places → `place-hours.ts`(순수) / `/api/places/hours` | 어떤 실패도 `{hours:null}`. `place_id`만 캐시, 영업시간은 캐시 금지. ⚠ 약관 TTS 금지(`place-hours-tts-drift.test.ts`), 좌표만으로 매칭하지 않는다. attribution "Google Maps"는 번역·변형 금지. → INTEGRATIONS |
 | STT | Deepgram nova-3 / `/api/speech-to-text` | ⚠ `detect_language` 금지(ko→vi 오인식), `language` 명시. 효과음으로 시작/정지 통지 |
-| 대중교통 추적 | `transit-track.ts`(TOPIS·TAGO·서울 지하철) / `/api/transit/track` | 판별 union으로 봉투 차이 흡수, 3-state, `no-store`(라우트 `use cache` 없음), IP 60초 20회 |
+| 대중교통 추적 | `transit-track.ts`(TOPIS·TAGO·서울 지하철) / `/api/transit/track` | 판별 union으로 봉투 차이 흡수, 3-state, `no-store`(라우트 `use cache` 없음), IP 60초 20회. ⚠ 지하철 `arvlCd`는 문장과 맞춘 뒤에만 싣는다(`reconcileArvlCd` — 8호선은 「[N]번째 전역」에 코드 1을 싣는다, A73) |
 | 한눈에 보기 | `nearby-overview.ts` / `/api/nearby/overview` | 주변 6종을 반경 1km로 집계, 키 게이트는 불릿 단위, 조각 실패는 불릿 `failed`로 200(3-state), 옵트인 `places=1`(E65) |
 | 채팅 웹검색 | perplexity-search / `search_web` 도구 + `/api/search/web`(검색창 웹섹션, 1시간 캐시) | `ToolResult{data,render,source}`, 결과 카드+출처 노출 |
 

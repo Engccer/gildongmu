@@ -8,6 +8,7 @@ import {
   parseRecptnDt,
   pickAlightOrd,
   pickTagoStop,
+  reconcileArvlCd,
   remainingFromArvlCd,
   remainingFromArvlMsg,
   subwayDataAgeSeconds,
@@ -214,6 +215,26 @@ describe("recptnDt 신선도 게이트(§12.1)", () => {
   });
 });
 
+describe("reconcileArvlCd — 완성 문장과 어긋나는 도착 코드(실승차 2026-11-13)", () => {
+  it("문장이 N번째 전역인데 코드가 당역 도착·진입·출발이면 운행중(99)으로 읽는다", () => {
+    // 8호선 실측: 하차역까지 7역 남은 열차에 arvlCd 1이 실려 와 확정 도착이 오발했다.
+    expect(reconcileArvlCd("[7]번째 전역 (몽촌토성(평화의문))", "1")).toBe("99");
+    expect(reconcileArvlCd("[2]번째 전역 (송파)", "1")).toBe("99");
+    expect(reconcileArvlCd("[1]번째 전역 (암사)", "1")).toBe("99");
+    expect(reconcileArvlCd("[3]번째 전역 (길동)", "0")).toBe("99");
+    expect(reconcileArvlCd("[3]번째 전역 (길동)", "5")).toBe("99");
+  });
+  it("문장과 코드가 같은 잔여를 말하거나 한쪽이 잔여를 말하지 않으면 코드 그대로", () => {
+    expect(reconcileArvlCd("정자 도착", "1")).toBe("1");
+    expect(reconcileArvlCd("정자 진입", "0")).toBe("0");
+    expect(reconcileArvlCd("전역 도착", "5")).toBe("5");
+    expect(reconcileArvlCd("전역 진입", "4")).toBe("4");
+    expect(reconcileArvlCd("[7]번째 전역 (가천대)", "99")).toBe("99");
+    expect(reconcileArvlCd("4분 후 (길동)", "99")).toBe("99");
+    expect(reconcileArvlCd("곧 도착", undefined)).toBeNull();
+  });
+});
+
 describe("trackSubway — 노선 필터·3-state(모킹)", () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -233,6 +254,41 @@ describe("trackSubway — 노선 필터·3-state(모킹)", () => {
     }));
     return import("../transit-track");
   }
+
+  it("8호선형 모순 행(N번째 전역 + 코드 1)은 잔여를 문장에서, 코드는 99로 싣는다", async () => {
+    const mod = await withMockedArrivals({
+      stationName: "복정",
+      arrivals: [
+        { line: "5호선", direction: "하행", trainLineNm: "x", destination: "x",
+          message: "[7]번째 전역 (몽촌토성(평화의문))", arrivalSeconds: 0, express: false, trainNo: "8201",
+          arrivalCode: "1", currentLocation: "몽촌토성(평화의문)" },
+      ],
+    });
+    const r = await mod.trackSubway({ station: "천호", lineName: "수도권 5호선", lang: "ko" });
+    expect(r.status).toBe("ok");
+    if (r.status === "ok") {
+      expect(r.items[0]).toMatchObject({ remainingStops: 7, arrivalCode: "99" });
+    }
+  });
+
+  it("정상 행(하차역 도착·전역 도착)은 trackSubway를 지나도 코드가 그대로다", async () => {
+    const row = { line: "5호선", direction: "하행", trainLineNm: "x", destination: "x", arrivalSeconds: 0, express: false };
+    const mod = await withMockedArrivals({
+      stationName: "천호",
+      arrivals: [
+        { ...row, message: "천호 도착", trainNo: "5001", arrivalCode: "1" },
+        { ...row, message: "전역 도착", trainNo: "5002", arrivalCode: "5" },
+      ],
+    });
+    const r = await mod.trackSubway({ station: "천호", lineName: "수도권 5호선", lang: "ko" });
+    expect(r.status).toBe("ok");
+    if (r.status === "ok") {
+      expect(r.items.map((i) => [i.vehicleId, i.remainingStops, i.arrivalCode])).toEqual([
+        ["5001", 0, "1"],
+        ["5002", 1, "5"],
+      ]);
+    }
+  });
 
   it("노선 일치 항목만 TrackItem으로(잠금 키 원문 보존)", async () => {
     const mod = await withMockedArrivals({
