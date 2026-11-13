@@ -747,6 +747,7 @@
   },
   "guide": {
     "detailStart": "Walking guidance to {dest} started. {first}. {count, plural, one {# instruction} other {# instructions}}, {distance} total.",
+    "exitLeadStart": "Take Exit {exit}.",
     "next": "In {distance}, {step}",
     "nextDestination": "{distance} to {dest}",
     "periodicStraight": "Go straight {distance} toward {target}",

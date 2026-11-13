@@ -1,0 +1,407 @@
+{
+  "_comment": "출구 대기(E84) 판정 공유 fixture. Kit ExitHold.swift가 소비한다(웹·안드로이드 미이식).",
+  "constants": {
+    "exitHoldMaxSeconds": 240,
+    "exitHoldRecentWindowSeconds": 15,
+    "exitHoldStationMaxMeters": 600,
+    "exitLeadRepeatWindowSeconds": 4
+  },
+  "steps": [
+    {
+      "name": "보관 불가(정확도 150m)는 대기",
+      "elapsed": 10,
+      "fix": {
+        "lat": 37.5,
+        "lng": 127.1,
+        "accuracy": 150,
+        "ageSeconds": 1
+      },
+      "isFirstStorable": false,
+      "stationDistance": 50,
+      "recent": [],
+      "now": 100,
+      "expect": {
+        "kind": "wait"
+      }
+    },
+    {
+      "name": "낡은 fix(나이 30초)는 대기",
+      "elapsed": 10,
+      "fix": {
+        "lat": 37.5,
+        "lng": 127.1,
+        "accuracy": 10,
+        "ageSeconds": 30
+      },
+      "isFirstStorable": false,
+      "stationDistance": 50,
+      "recent": [],
+      "now": 100,
+      "expect": {
+        "kind": "wait"
+      }
+    },
+    {
+      "name": "첫 보관 가능 fix가 역에서 600m+정확도 밖이면 포기",
+      "elapsed": 3,
+      "fix": {
+        "lat": 37.5,
+        "lng": 127.1,
+        "accuracy": 65,
+        "ageSeconds": 1
+      },
+      "isFirstStorable": true,
+      "stationDistance": 700,
+      "recent": [
+        {
+          "fix": {
+            "lat": 37.5,
+            "lng": 127.1,
+            "accuracy": 65,
+            "ageSeconds": 1
+          },
+          "at": 100
+        }
+      ],
+      "now": 100,
+      "expect": {
+        "kind": "abandon"
+      }
+    },
+    {
+      "name": "경계: 600m+정확도와 같으면 포기하지 않는다",
+      "elapsed": 3,
+      "fix": {
+        "lat": 37.5,
+        "lng": 127.1,
+        "accuracy": 65,
+        "ageSeconds": 1
+      },
+      "isFirstStorable": true,
+      "stationDistance": 665,
+      "recent": [
+        {
+          "fix": {
+            "lat": 37.5,
+            "lng": 127.1,
+            "accuracy": 65,
+            "ageSeconds": 1
+          },
+          "at": 100
+        }
+      ],
+      "now": 100,
+      "expect": {
+        "kind": "wait"
+      }
+    },
+    {
+      "name": "수용 fix라도 첫 fix가 다른 역이면 포기가 먼저",
+      "elapsed": 3,
+      "fix": {
+        "lat": 37.5,
+        "lng": 127.1,
+        "accuracy": 10,
+        "ageSeconds": 1
+      },
+      "isFirstStorable": true,
+      "stationDistance": 2000,
+      "recent": [
+        {
+          "fix": {
+            "lat": 37.5,
+            "lng": 127.1,
+            "accuracy": 10,
+            "ageSeconds": 1
+          },
+          "at": 100
+        }
+      ],
+      "now": 100,
+      "expect": {
+        "kind": "abandon"
+      }
+    },
+    {
+      "name": "첫 fix가 아니면 멀어도 포기하지 않는다",
+      "elapsed": 60,
+      "fix": {
+        "lat": 37.5,
+        "lng": 127.1,
+        "accuracy": 65,
+        "ageSeconds": 1
+      },
+      "isFirstStorable": false,
+      "stationDistance": 900,
+      "recent": [
+        {
+          "fix": {
+            "lat": 37.5,
+            "lng": 127.1,
+            "accuracy": 65,
+            "ageSeconds": 1
+          },
+          "at": 100
+        }
+      ],
+      "now": 100,
+      "expect": {
+        "kind": "wait"
+      }
+    },
+    {
+      "name": "역 좌표를 모르면 다른 역 판정을 하지 않는다",
+      "elapsed": 3,
+      "fix": {
+        "lat": 37.5,
+        "lng": 127.1,
+        "accuracy": 65,
+        "ageSeconds": 1
+      },
+      "isFirstStorable": true,
+      "stationDistance": null,
+      "recent": [
+        {
+          "fix": {
+            "lat": 37.5,
+            "lng": 127.1,
+            "accuracy": 65,
+            "ageSeconds": 1
+          },
+          "at": 100
+        }
+      ],
+      "now": 100,
+      "expect": {
+        "kind": "wait"
+      }
+    },
+    {
+      "name": "수용 fix(30m 경계)는 조회",
+      "elapsed": 90,
+      "fix": {
+        "lat": 37.5,
+        "lng": 127.1,
+        "accuracy": 30,
+        "ageSeconds": 1
+      },
+      "isFirstStorable": false,
+      "stationDistance": 120,
+      "recent": [
+        {
+          "fix": {
+            "lat": 37.5,
+            "lng": 127.1,
+            "accuracy": 30,
+            "ageSeconds": 1
+          },
+          "at": 100
+        }
+      ],
+      "now": 100,
+      "expect": {
+        "kind": "fetch",
+        "reason": "accepted",
+        "accuracy": 30,
+        "ageSeconds": 1
+      }
+    },
+    {
+      "name": "상한 전에는 미수용 fix로 조회하지 않는다",
+      "elapsed": 239,
+      "fix": {
+        "lat": 37.5,
+        "lng": 127.1,
+        "accuracy": 65,
+        "ageSeconds": 1
+      },
+      "isFirstStorable": false,
+      "stationDistance": 120,
+      "recent": [
+        {
+          "fix": {
+            "lat": 37.5,
+            "lng": 127.1,
+            "accuracy": 65,
+            "ageSeconds": 1
+          },
+          "at": 100
+        }
+      ],
+      "now": 100,
+      "expect": {
+        "kind": "wait"
+      }
+    },
+    {
+      "name": "상한에 닿으면 최근 15초의 최선값으로 조회(몇 분 전 더 정확한 fix는 쓰지 않는다)",
+      "elapsed": 240,
+      "fix": {
+        "lat": 37.5,
+        "lng": 127.1,
+        "accuracy": 65,
+        "ageSeconds": 1
+      },
+      "isFirstStorable": false,
+      "stationDistance": 120,
+      "recent": [
+        {
+          "fix": {
+            "lat": 37.5,
+            "lng": 127.1,
+            "accuracy": 35,
+            "ageSeconds": 1
+          },
+          "at": 40
+        },
+        {
+          "fix": {
+            "lat": 37.5,
+            "lng": 127.1,
+            "accuracy": 48,
+            "ageSeconds": 1
+          },
+          "at": 92
+        },
+        {
+          "fix": {
+            "lat": 37.5,
+            "lng": 127.1,
+            "accuracy": 65,
+            "ageSeconds": 1
+          },
+          "at": 100
+        }
+      ],
+      "now": 100,
+      "expect": {
+        "kind": "fetch",
+        "reason": "recentBest",
+        "accuracy": 48,
+        "ageSeconds": 9
+      }
+    }
+  ],
+  "recentBest": [
+    {
+      "name": "표본 없음",
+      "samples": [],
+      "now": 100,
+      "expect": null
+    },
+    {
+      "name": "창 밖 표본뿐",
+      "samples": [
+        {
+          "fix": {
+            "lat": 37.5,
+            "lng": 127.1,
+            "accuracy": 20,
+            "ageSeconds": 1
+          },
+          "at": 80
+        }
+      ],
+      "now": 100,
+      "expect": null
+    },
+    {
+      "name": "경계 15초는 포함, 나이는 소비 시점까지 더한다",
+      "samples": [
+        {
+          "fix": {
+            "lat": 37.5,
+            "lng": 127.1,
+            "accuracy": 40,
+            "ageSeconds": 1
+          },
+          "at": 85
+        },
+        {
+          "fix": {
+            "lat": 37.5,
+            "lng": 127.1,
+            "accuracy": 55,
+            "ageSeconds": 1
+          },
+          "at": 99
+        }
+      ],
+      "now": 100,
+      "expect": {
+        "accuracy": 40,
+        "ageSeconds": 16
+      }
+    }
+  ],
+  "prefix": [
+    {
+      "name": "출구 없음",
+      "hasExit": false,
+      "dropped": true,
+      "secondsSincePosted": null,
+      "expect": false
+    },
+    {
+      "name": "아직 게시 못 함",
+      "hasExit": true,
+      "dropped": false,
+      "secondsSincePosted": null,
+      "expect": true
+    },
+    {
+      "name": "게시 직후(1초)",
+      "hasExit": true,
+      "dropped": false,
+      "secondsSincePosted": 1,
+      "expect": true
+    },
+    {
+      "name": "경계 4초는 접두 없음",
+      "hasExit": true,
+      "dropped": false,
+      "secondsSincePosted": 4,
+      "expect": false
+    },
+    {
+      "name": "몇 분 뒤",
+      "hasExit": true,
+      "dropped": false,
+      "secondsSincePosted": 180,
+      "expect": false
+    },
+    {
+      "name": "버려진 통지는 시간이 지나도 접두",
+      "hasExit": true,
+      "dropped": true,
+      "secondsSincePosted": 180,
+      "expect": true
+    }
+  ],
+  "stationary": [
+    {
+      "name": "fix가 계속 오면 종전 값",
+      "secondsSinceProgress": 200,
+      "secondsSinceFix": 1,
+      "expect": 199
+    },
+    {
+      "name": "fix가 끊긴 시간은 뺀다",
+      "secondsSinceProgress": 400,
+      "secondsSinceFix": 380,
+      "expect": 20
+    },
+    {
+      "name": "fix가 한 번도 없으면 0",
+      "secondsSinceProgress": 500,
+      "secondsSinceFix": 500,
+      "expect": 0
+    },
+    {
+      "name": "음수는 0",
+      "secondsSinceProgress": 10,
+      "secondsSinceFix": 30,
+      "expect": 0
+    }
+  ]
+}

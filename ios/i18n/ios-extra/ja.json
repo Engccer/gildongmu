@@ -316,6 +316,8 @@
       "destChanged": "新しい目的地 {name}。",
       "destChangedNoName": "目的地を変更しました。",
       "destChangedFetching": "新しいルートを検索しています。",
+      "exitHoldAction": "{exit}番出口から出る",
+      "exitHoldRelease": "出口を出ました",
       "titleWaypointChange": "{label}、経由地を変更",
       "differentRoute": "経路を更新",
       "differentRouteFailed": "新しい経路を見つけられませんでした。",

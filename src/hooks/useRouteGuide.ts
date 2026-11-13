@@ -647,6 +647,12 @@ export function useRouteGuide(
      */
     arrivalText?: string;
     /**
+     * 출구 인계(E84): 지하철 말미 도보 인계가 실어 온 하차 출구 번호. 있으면 이 마운트의 **첫** 시작류 통지(시작 요약 또는
+     * 강등 문장) 앞에 「N번 출구로 나가세요.」를 싣는다. 미지정·null = 종전 문장 그대로.
+     * ⚠ 웹은 출구 대기 창이 없다(iOS 전용) — 출구 문장 뒤에 역 안 좌표 기준 안내가 이어질 수 있다(BACKLOG §4).
+     */
+    exitLead?: string | null;
+    /**
      * 위치 권한 거부·미지원으로 세션이 서지 못하거나 끊겼을 때 1회(E70-f spec §7.3) — 이 전이는 `onSessionEnd`를 부르지
      * 않는다. `"start"` = 첫 fix 전(시작 실패), `"running"` = fix를 받은 뒤. ⚠ `status`는 시작 순간 동기로 `tracking`이
      * 되므로 표시 상태로는 가를 수 없다(리뷰 M2) — 첫 fix 수신이 축이다.
@@ -657,6 +663,9 @@ export function useRouteGuide(
   const locale = useLocale();
   const onSessionEndRef = useRef(options.onSessionEnd);
   const arrivalTextRef = useRef(options.arrivalText);
+  const exitLeadRef = useRef(options.exitLead ?? null);
+  /** 출구 문장은 한 번만 싣는다 — 같은 마운트의 재시작은 이미 역 밖이다. */
+  const exitLeadUsedRef = useRef(false);
   const onFailureRef = useRef(options.onFailure);
   /** 확정 도착 분기가 stop() 직전에 세운다 — stop()이 사유를 읽고 되돌린다. */
   const arrivedRef = useRef(false);
@@ -2268,6 +2277,12 @@ export function useRouteGuide(
       if (gen !== genRef.current || !trackingRef.current || !mountedRef.current) return;
       // 이 세션이 맞다 — 성공·실패 어느 쪽이든 여기서 보류를 끝낸다(무한 억제 차단).
       awaitingRouteRef.current = false;
+      // 출구 인계(E84): 첫 시작류 통지가 출구 문장부터 말한다. 없으면 null이라 아래 문장은 종전과 바이트 동일하다.
+      const exitLead =
+        kindFixed === "walk" && exitLeadRef.current && !exitLeadUsedRef.current
+          ? t("exitLeadStart", { exit: exitLeadRef.current })
+          : null;
+      exitLeadUsedRef.current = true;
       if (!fetched.ok) {
         // 경로가 없으면 경로 기반 계단 판정도 없다(3-state). 복구된 상세가 열화면
         // 그때 다시 통지된다 — 새 경로에 대한 새 판정이므로 반복이 아니다.
@@ -2285,6 +2300,9 @@ export function useRouteGuide(
           excludedViaRef.current = droppedVia;
           setDegrade(fetched.failure, { announce: false });
           announce(tDirections("viaDropped", { label: droppedVia.label, dest: destRef.current.name }));
+        } else if (exitLead) {
+          setDegrade(fetched.failure, { announce: false });
+          announce(`${exitLead} ${degradeMessage(fetched.failure)}`);
         } else {
           setDegrade(fetched.failure);
         }
@@ -2337,11 +2355,12 @@ export function useRouteGuide(
       // 출발점 고지(A70 §2.3)가 맨 앞 — 첫 문장이 "경로가 여기서 시작하지 않는다"를 말한다. 계단 회피 문장은 그다음이다
       // (세션 전체에 걸린 조건이라 걷기 전에 들어야 한다).
       const away = routeStartsAwayText(route, fetched.origin);
-      announce([away, notice, summary].filter((x): x is string => x !== null).join(" "));
+      announce([exitLead, away, notice, summary].filter((x): x is string => x !== null).join(" "));
     })();
   }, [
     announce,
     clearDegrade,
+    degradeMessage,
     setDegrade,
     clearEtaTimer,
     commitDetail,
@@ -2655,6 +2674,7 @@ export function useRouteGuide(
     viaRef.current = options.via ?? null;
     onSessionEndRef.current = options.onSessionEnd;
     arrivalTextRef.current = options.arrivalText;
+    exitLeadRef.current = options.exitLead ?? null;
     onFailureRef.current = options.onFailure;
     handleFixRef.current = handleFix;
     handleErrorRef.current = handleError;

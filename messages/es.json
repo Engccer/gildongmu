@@ -747,6 +747,7 @@
   },
   "guide": {
     "detailStart": "Guía a pie hasta {dest} iniciada. {first}. {count, plural, one {# indicación} other {# indicaciones}}, {distance} en total.",
+    "exitLeadStart": "Salga por la salida {exit}.",
     "next": "En {distance}, {step}",
     "nextDestination": "{distance} hasta {dest}",
     "periodicStraight": "Siga recto {distance} hacia {target}",

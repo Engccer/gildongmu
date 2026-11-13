@@ -139,6 +139,8 @@
     <string name="android_guide_destMenuDetail">Voir les détails du lieu</string>
     <string name="android_guide_differentRoute">Actualiser l\'itinéraire</string>
     <string name="android_guide_differentRouteFailed">Impossible de trouver un nouvel itinéraire.</string>
+    <string name="android_guide_exitHoldAction">Prendre la sortie %1$s</string>
+    <string name="android_guide_exitHoldRelease">J\'ai quitté la station</string>
     <string name="android_guide_focusDenied">Une autre application utilise l’audio : les sons du guidage ne peuvent pas être joués pour le moment</string>
     <string name="android_guide_mediaVolumeZero">Le volume multimédia est coupé : les sons du guidage ne seront pas audibles</string>
     <string name="android_guide_notificationChannel">Guidage à pied</string>
@@ -810,6 +812,7 @@
     <string name="guide_dirRightTo">sur la droite</string>
     <string name="guide_endedIdle">Le guidage est terminé car il n\'y a eu ni signal de position ni déplacement pendant un moment</string>
     <string name="guide_etaStale">Durée estimée datant de %1$s min</string>
+    <string name="guide_exitLeadStart">Prenez la sortie %1$s.</string>
     <string name="guide_farNotice">Prochaine instruction dans environ %1$s. %2$s</string>
     <string name="guide_finalApproachNear">Vous êtes près de la destination.</string>
     <string name="guide_finalApproachNearDir">Vous êtes près de la destination. Elle est %1$s.</string>

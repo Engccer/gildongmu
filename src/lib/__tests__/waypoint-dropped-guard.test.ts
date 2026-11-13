@@ -28,6 +28,7 @@ describe("iOS 간략 폴백의 경유지 포기 문장(N4)", () => {
     ]) {
       expect(branch, line).toContain(line);
     }
-    expect(body).toContain("announce(text, highPriority: droppedWaypoint, speechClass: .actionable)");
+    // 출구 인계(E84)의 접두는 문장을 감쌀 뿐이다(출구가 없으면 그대로 돌려준다).
+    expect(body).toContain("announce(withExitLead(text), highPriority: droppedWaypoint, speechClass: .actionable)");
   });
 });

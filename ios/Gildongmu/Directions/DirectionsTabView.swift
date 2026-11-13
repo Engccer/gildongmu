@@ -1492,8 +1492,7 @@ struct DirectionsTabView: View {
                                     session.startBeacon(BeaconModel.StartRequest(
                                         dest: tracked.dest, label: tracked.label, labelRoman: destinationPlaceRoman, kind: .car,
                                         accessible: false, variant: nil, line: nil, alternate: nil,
-                                        waypoint: sessionWaypoint, carListener: nil
-                                    ))
+                                        waypoint: sessionWaypoint, carListener: nil, exitLead: nil))
                                 }
                                 .accessibilityFocused($guideStartFocused, equals: .car)
                             }
@@ -2590,8 +2589,7 @@ struct DirectionsTabView: View {
                                     line: kind,
                                     alternate: WalkLineKind.switchAlternate(
                                         for: kind, among: model.walkLines.compactMap(\.lineKind)),
-                                    waypoint: sessionWaypoint, carListener: nil
-                                ))
+                                    waypoint: sessionWaypoint, carListener: nil, exitLead: nil))
                             }
                             .accessibilityFocused($guideStartFocused, equals: .walkLine(kind))
                         }

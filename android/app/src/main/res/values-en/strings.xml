@@ -139,6 +139,8 @@
     <string name="android_guide_destMenuDetail">View place details</string>
     <string name="android_guide_differentRoute">Refresh route</string>
     <string name="android_guide_differentRouteFailed">Couldn\'t find a new route.</string>
+    <string name="android_guide_exitHoldAction">Take Exit %1$s</string>
+    <string name="android_guide_exitHoldRelease">I\'ve left the station</string>
     <string name="android_guide_focusDenied">Another app is using audio, so guide sounds cannot play right now</string>
     <string name="android_guide_mediaVolumeZero">Media volume is off, so guide sounds will not play</string>
     <string name="android_guide_notificationChannel">Walking guidance</string>
@@ -810,6 +812,7 @@
     <string name="guide_dirRightTo">to the right</string>
     <string name="guide_endedIdle">Guidance has ended because there was no location signal or movement for a while</string>
     <string name="guide_etaStale">ETA is from %1$s min ago</string>
+    <string name="guide_exitLeadStart">Take Exit %1$s.</string>
     <string name="guide_farNotice">Next instruction in about %1$s. %2$s</string>
     <string name="guide_finalApproachNear">You are near the destination.</string>
     <string name="guide_finalApproachNearDir">You are near the destination. It is %1$s.</string>

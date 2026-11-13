@@ -139,6 +139,8 @@
     <string name="android_guide_destMenuDetail">Vedi dettagli del luogo</string>
     <string name="android_guide_differentRoute">Aggiorna percorso</string>
     <string name="android_guide_differentRouteFailed">Impossibile trovare un nuovo percorso.</string>
+    <string name="android_guide_exitHoldAction">Prendere l\'uscita %1$s</string>
+    <string name="android_guide_exitHoldRelease">Ho lasciato la stazione</string>
     <string name="android_guide_focusDenied">Un’altra app sta usando l’audio, quindi i suoni della guida non possono essere riprodotti ora</string>
     <string name="android_guide_mediaVolumeZero">Il volume multimediale è disattivato, quindi i suoni della guida non verranno riprodotti</string>
     <string name="android_guide_notificationChannel">Guida a piedi</string>
@@ -810,6 +812,7 @@
     <string name="guide_dirRightTo">a destra</string>
     <string name="guide_endedIdle">La guida è terminata perché per un po\' non ci sono stati segnale di posizione né movimento</string>
     <string name="guide_etaStale">Tempo stimato di %1$s min fa</string>
+    <string name="guide_exitLeadStart">Prenda l\'uscita %1$s.</string>
     <string name="guide_farNotice">Prossima indicazione tra circa %1$s. %2$s</string>
     <string name="guide_finalApproachNear">Sei vicino alla destinazione.</string>
     <string name="guide_finalApproachNearDir">Sei vicino alla destinazione. È %1$s.</string>

@@ -166,6 +166,7 @@ struct TransitTrackingSheet: View {
                         statusRows
                         viaStopsRows
                         phaseControls(proxy: proxy)
+                        alightPrepRow
                     }
                     surroundingsSection(proxy: proxy)
                     destChangeSection(proxy: proxy)
@@ -1112,9 +1113,29 @@ struct TransitTrackingSheet: View {
 
     /// 빠른하차 줄 — 하차역명을 표시 라벨로 넘긴다(영문 없으면 한국어 원문).
     private func quickExitLine(_ leg: TransitGuideLeg) -> String? {
+        quickExitText(leg.quickExit, station: alightStationLabel(leg), lang: AppLanguage.current)
+    }
+
+    /// 하차역 표시 라벨: 대기 국면 빠른 하차 줄과 승차 국면 하차 준비 줄이 같은 이름을 쓴다(조인 필드를 문장에 넣지 않는다, E27).
+    private func alightStationLabel(_ leg: TransitGuideLeg) -> String {
         let alight = model.displayLeg(leg, useOverride: false).alight
-        let station = transitGuideIsEn ? (alight.en ?? alight.ko) : alight.ko
-        return quickExitText(leg.quickExit, station: station, lang: AppLanguage.current)
+        return transitGuideIsEn ? (alight.en ?? alight.ko) : alight.ko
+    }
+
+    /// 하차 준비 줄(E84): 타려는 순간과 타고 가는 동안, 내릴 문과 나갈 출구를 한 줄로. 길찾기 결과의 하차 줄과 같은 함수·같은
+    /// 문장이다. 본 Section의 마지막 줄(국면 버튼 다음, 주변 섹션 앞)이고 정적 정보라 통지·착지가 없다. 문 위치도 출구도
+    /// 없으면 줄이 없다(부재 문구를 만들지 않는다). 대기 국면은 열차 목록 앞 빠른 하차 줄이 있고, 도착 국면은 통지가 출구를 말한다.
+    @ViewBuilder private var alightPrepRow: some View {
+        if let state = model.state, state.phase == .boarding || state.phase == .riding,
+           let leg = model.currentLeg,
+           let text = alightLineText(
+               leg.quickExit, station: alightStationLabel(leg),
+               exitAlight: model.displayLeg(leg, useOverride: false).exitAlight,
+               lang: AppLanguage.current,
+               exitBound: { appLocalized("transitGuide.exitBound", $0) })
+        {
+            Text(text)
+        }
     }
 
     /// 선택 차량 설명을 ko·en 쌍으로 얼린다. **비면 nil** — 서울버스는 행선·방향이 둘 다 없어

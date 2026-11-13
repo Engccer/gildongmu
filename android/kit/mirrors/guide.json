@@ -173,6 +173,11 @@
       "test": "android/kit/src/test/kotlin/space/dodoplanet/gildongmu/kit/SessionIdleTest.kt"
     },
     {
+      "swift": "ExitHold.swift",
+      "status": "pending",
+      "note": "E84 출구 대기 판정(iOS 선행). 공유 fixture exit-hold-cases.json. 안드로이드는 대중교통 안내 미구현(BACKLOG §4 B14)이라 이식 보류(spec 2026-11-14-transit-exit-carryover-design.md)"
+    },
+    {
       "swift": "TransitBackgroundTone.swift",
       "status": "pending",
       "note": "E79 대중교통 백그라운드 톤 허용 집합(iOS 선행) — 안드로이드는 대중교통 안내 미구현(BACKLOG §4 B14)이라 이식 보류(spec 2026-11-07-e79-transit-background-tones-design.md)"

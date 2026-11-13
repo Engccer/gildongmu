@@ -809,6 +809,20 @@ A52·A53·A55에서 정한 것: CLI 포매터의 도보 줄은 한국어 고정 
 
 한 번 탄 뒤 거두는 실패 줄은 승차 전 도보가 남긴 셋 전부(정확한 위치·위치 권한·약한 신호)다(A68).
 
+### 하차 출구 인계(E84)의 「출구 대기」는 도보 시작 조회 대기 창의 연장이고, 창을 닫는 축은 시계가 아니라 fix 증거(Kit `exitHoldStep`)와 사용자 선언이다
+
+지하철 말미 도보 인계가 출구 번호를 실어 오면(`TransitWalkHandoff.exitAlight` → `acceptWalkHandoff` → `StartRequest.exitLead`) 도보 세션은 시작 경로 조회 대기 창(`awaitingRoute`)을 「출구 대기」로 연다. 창 안에서는 `handle(fix:)`가 조기 반환하므로 리듀서·톤·주기 통지가 fix를 보지 못한다. 막을 통지 목록을 따로 관리하지 않는 것이 이 구조의 값이다. 설계 정본은 spec `2026-11-14-transit-exit-carryover-design.md`.
+
+- **출구의 입구는 하나다.** `acceptWalkHandoff`가 `transit.stop()` 앞에서 인계 값(`pendingWalkHandoff`)만 읽는다. 경로에서 직접 읽으면 잘못 내림 복구(E78)의 「걸어가기」(인계 값 없이 같은 함수에 들어온다)가 계획한 역의 출구를 다른 역에서 말한다. 환승 도보·승차 전 도보·여정·자동차 인계는 `exitLead: nil`이다.
+- **창 안 fix는 Kit `exitHoldStep` 하나만 지난다**(`ExitHold.swift`, 공유 fixture `exit-hold-cases.json`). 순서가 계약이다: 보관 불가 → 대기 / 첫 보관 가능 fix가 하차역에서 600m + 정확도 밖 → 버림(다른 역에서 내렸다) / 수용(30m·10초, `routeOriginStep`) → 조회 / 240초를 넘겼고 최근 15초 안에 보관 가능 fix가 있다 → 그 최근 최선값으로 조회 / 그 밖 → 대기. ⚠ 상한의 후보를 창 전체 최선값으로 넓히지 말 것: 몇 분 전 승강장 좌표가 뽑힌다. ⚠ fix가 한 건도 없으면 상한은 걸리지 않는다(아직 지하다).
+- **창이 열리면 종전 15초 시계(`startFixWaitWatch`)를 걸지 않는다.** 그 함수는 반대로 `closeExitHold`를 먼저 부른다: 종전 대기 시계를 거는 모든 자리(목적지 전환·경유지·재획득·「출구로 나왔어요」·다른 역 판정)가 호출 전수로 창을 닫는다. 창 상태를 직접 지우는 자리는 `closeExitHold`와 `stop()` 둘뿐이다.
+- **창이 닫히는 첫 순간 저장된 시작 요청에서도 출구를 내린다**(`syncStartRequestWithSession`이 열려 있는 창의 값만 승계). 역 밖에서 안내를 받은 세션을 다시 시작했을 때 출구 문장이 다시 나오면 거짓이다. 창이 풀리기 전에 끝난 세션(권한·정밀 위치 실패)의 재시작만 창을 다시 연다.
+- **잊힌 세션 안전망**: 창 동안 fix 두절 임계는 `GuideTuning.sessionIdleNoFixExitHoldSeconds`(900초)이고, 무이동 축은 `exitHoldStationaryElapsed`로 fix가 끊긴 시간을 뺀다. ⚠ 둘은 한 쌍이다: fix가 0건이면 진행 기록도 없어, 두절 임계만 늘리면 무이동 축이 300초에 세션을 끝낸다.
+- **출구 문장**: 시작 직후 단독 통지(`guide.exitLeadStart`, 소리 강등 고지가 있으면 한 통지로 합친다). fix로 창이 풀려 나가는 첫 시작류 통지는 `exitLeadPrefixNeeded`(단독 통지가 버려졌거나 게시 4초 미만)가 참이면 `withExitLead`로 접두를 다시 싣는다. 판정을 `announcementsSettled`에 걸지 말 것. 버튼·다른 역·목적지 전환으로 닫힌 창은 접두가 없다.
+- **시트**: 출구 줄은 시트가 `statusRowText`(`model.exitHoldLine ?? statusText`)로 유도한다. 모델의 `statusText`에 쓰지 않는다. 행 렌더와 `rowExists(.status)`가 같은 값을 읽고, 창 동안 `requestInfoLanding`은 조회를 기다리지 않는다.
+- **계측**(숫자만, 좌표 금지): `exitHold start`, `exitHoldRelease reason= elapsed= acc=`, 창 안 fix마다 `routeOriginWait acc= age= speed= speedAcc= holdT= station=`. 상수 240초·15초·600m·4초·900초는 실승차 전까지 잠정이다(BACKLOG §2 E84).
+- **웹은 출구 대기가 없다**(BACKLOG §4 B19): `useRouteGuide`의 `exitLead` 옵션이 그 마운트의 첫 시작류 통지 앞에 출구 문장을 한 번 싣는 것이 전부다.
+
 ### 잘못 내림 복구(E78 「여기서 다시 길찾기」)는 같은 세션의 경로 교체이고, 슬롯(`pendingRecovery`)이 있는 동안 옛 세션은 조용하다
 
 (2026-11-07 E78, iOS 정식판, spec `2026-11-07-e78-wrong-stop-recovery-design.md` §8이 §3·§5보다 우선.) 버튼은 Kit `transitRecoveryOffered`(승차 중·도착, 추적 불가 구간은 대기 국면에서도 — 리듀서가 대기에 고정되므로, 여정 단계 밖)가 세우고, 출발점은 `transitRecoveryOrigin`이 수단으로 가른다(버스 = `currentCoordinate(force: true)`, 지하철 = 이번 구간 역 + 「목록에 없는 역 찾기」 검색, 앱은 출발점을 추정하지 않는다). 조회는 누름당 `fetchTransitCandidates` 한 번이고 바꿀 경로는 `transitRecoveryRoute`(추천 → 대안 순으로 **모든 탑승 구간이 `trackMode != nil`인** 첫 경로)다 — 조회 0건(`noRoute`)과 안내 가능 0(`noGuidable`)은 다른 문장이고 둘 다 「목적지까지 걸어가기」(`acceptWalkHandoff`)를 둔다.

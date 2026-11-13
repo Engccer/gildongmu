@@ -150,7 +150,8 @@ struct BeaconTrackingSheet: View {
                 // 압박으로 읽힘). 전환 진입점은 「지금 여기는 어디?」 조망의 프리뷰다(§2).
                 // 직선거리 주석은 간략 안내에서만 참이다 — 상세는 경로 기반 거리를 쓴다.
                 // 시트가 인라인 섹션을 덮으므로 걷는 중 닿을 수 있는 곳은 여기뿐.
-                if model.mode == .brief {
+                // 출구 대기(E84) 동안은 숨긴다: 아직 거리를 안내하지 않는다.
+                if model.mode == .brief, !model.exitHoldActive {
                     Text(appLocalized("beacon.straightLineNote"))
                         .font(.footnote)
                         .foregroundStyle(.secondary)
@@ -186,12 +187,16 @@ struct BeaconTrackingSheet: View {
                     // 않는다**(spec §2-1 상태 행 폐지 — 시각 신호는 윗줄이 상태 문장에서
                     // 그 자리 숫자로 되돌아오는 전환 자체다. 리뷰 지적 기각 근거,
                     // 실사용 판정은 BACKLOG H M0 축 4).
-                    if !model.statusText.isEmpty {
-                        focusTarget(distanceText(
-                            model.statusIsNextPreview
-                                ? appLocalized("guide.progressNext", model.statusText)
-                                : model.statusText
-                        ).foregroundStyle(.secondary), .status)
+                    // 출구 대기(E84) 동안 이 행은 「N번 출구로 나가기」다(`statusRowText`가 유도한다, 모델의 statusText는 그대로).
+                    if let text = statusRowText {
+                        focusTarget(distanceText(text).foregroundStyle(.secondary), .status)
+                    }
+                    // 「출구로 나왔어요」(E84): 위치가 잡히기를 기다리지 않고 지금 경로를 조회한다. 출구 줄 바로 다음.
+                    if model.exitHoldActive {
+                        Button(appLocalized("ios.guide.exitHoldRelease")) {
+                            model.declareExitedStation()
+                            requestInfoLanding(note: "exitDeclared")
+                        }
                     }
                 }
                 // 잠금 중 무음 예고. 세션 내내 참인 지속 상태라 상태 1줄과 자리를
@@ -600,12 +605,19 @@ struct BeaconTrackingSheet: View {
 
     /// 착지 대상이 지금 렌더되는가 — 행 렌더 조건의 사본이다(대중교통 `controlExists` 동형). 렌더 조건을 바꾸면
     /// 여기도 바꾼다(가드 `guide-sheet-landing-guard.test.ts`가 짝을 본다).
+    /// 간략 분기 상태 행의 문장. 출구 대기(E84) 동안은 출구 줄이 그 자리를 쓴다. 행 렌더와 `rowExists(.status)`가 함께 읽는다.
+    private var statusRowText: String? {
+        if let exit = model.exitHoldLine { return exit }
+        guard !model.statusText.isEmpty else { return nil }
+        return model.statusIsNextPreview ? appLocalized("guide.progressNext", model.statusText) : model.statusText
+    }
+
     private func rowExists(_ row: SheetFocus) -> Bool {
         let tracking = model.arrivalDest == nil
         switch row {
         case .remaining: return tracking && model.mode == .detail && !model.offRoute && model.remainingText != nil
         case .liveTop: return tracking && model.mode == .detail && model.liveTopText != nil
-        case .status: return tracking && model.mode == .brief && !model.statusText.isEmpty
+        case .status: return tracking && model.mode == .brief && statusRowText != nil
         case .refresh: return tracking && model.canRequestDifferentRoute
         case .arrived: return !tracking
         case .healthSummary: return !tracking && model.arrivalHealth != nil
@@ -676,7 +688,8 @@ struct BeaconTrackingSheet: View {
         clearPendingInfoLanding()
         let since = ProcessInfo.processInfo.systemUptime
         pendingInfoLanding = PendingInfoLanding(since: since, note: note, target: target)
-        guard model.awaitingRoute else {
+        // 출구 대기(E84)는 몇 분짜리 창이라 조회를 기다리지 않는다: 출구 줄에 바로 앉는다.
+        guard model.awaitingRoute, !model.exitHoldActive else {
             resolvePendingInfoLanding()
             return
         }

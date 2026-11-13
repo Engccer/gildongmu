@@ -8,6 +8,12 @@ import SwiftUI
 struct TransitWalkHandoff: Equatable {
     let destinationLabel: String
     let walkMinutes: Int
+    /// 마지막 구간의 하차 출구 번호(E84). 없으면 nil. ⚠ 기본값 없음: 이 값은 정상 완료(`completeOrAdvance`)만 세운다.
+    /// 잘못 내림 복구의 「걸어가기」는 이 인계 값 없이 도보를 시작하므로 계획한 역의 출구가 다른 역에서 나가지 않는다.
+    let exitAlight: String?
+    /// 그 하차역 좌표(E84 다른 역 판정). 좌표가 없으면 nil.
+    let alightLat: Double?
+    let alightLng: Double?
 }
 
 /// 환승 도보 인계(E73 spec D3·D4) — 「다음 구간」이 걷기 안내 대상 도보 앞 구간으로 넘어갈 때 대중교통 모델이 세션 소유자에게
@@ -907,8 +913,13 @@ final class TransitGuideModel {
             // (stop()이 pendingWalkHandoff까지 nil로 지우는 단일 소거 경로라 순서 필수).
             // ⚠ E34(2026-09-11)부터 이 값은 인계 화면의 근거가 아니라 **한 턴 수명 신호**다 — 같은 턴에
             // `GuideSession.acceptWalkHandoff`가 소비한다(인계 제안 화면은 도달 경로가 없어 삭제됐다).
+            // 출구·하차역 좌표(E84)는 `stop()`이 경로를 지우기 전에 마지막 구간에서 읽는다(확정 도착 통지와 같은 원천).
+            let finalLeg = route?.legs.last
             let handoff = route?.walkAfterMinutes.map {
-                TransitWalkHandoff(destinationLabel: destinationLabel, walkMinutes: $0)
+                TransitWalkHandoff(
+                    destinationLabel: destinationLabel, walkMinutes: $0,
+                    exitAlight: finalLeg?.exitAlight,
+                    alightLat: finalLeg?.alightStop?.lat, alightLng: finalLeg?.alightStop?.lng)
             }
             // 완료 문장은 stop() **뒤에** 낸다(BeaconModel 도착 문장 선례, 코드 리뷰 B1 2026-09-02):
             // `handle(event:)`가 start 톤 뒤로 미룬 문장은 stop()의 세대 증가가 취소하므로, 그 자리는

@@ -63,7 +63,9 @@ describe("BeaconTrackingSheet 착지 (E57)", () => {
     const exists = body(BEACON, "private func rowExists(");
     expect(exists).toContain("case .remaining: return tracking && model.mode == .detail && !model.offRoute && model.remainingText != nil");
     expect(exists).toContain("case .liveTop: return tracking && model.mode == .detail && model.liveTopText != nil");
-    expect(exists).toContain("case .status: return tracking && model.mode == .brief && !model.statusText.isEmpty");
+    expect(exists).toContain("case .status: return tracking && model.mode == .brief && statusRowText != nil");
+    // 행 렌더와 존재 판정은 같은 유도 값을 읽는다(출구 대기 E84 동안은 출구 줄).
+    expect(BEACON).toContain("if let text = statusRowText {");
     expect(exists).not.toMatch(/\bdefault:/);
     // 렌더 쪽 조건이 바뀌면 위 사본도 함께 바뀌어야 한다 — 렌더 조건 문자열을 함께 잠근다.
     expect(BEACON).toContain("if model.mode == .detail, !model.offRoute, let remaining = model.remainingText {");

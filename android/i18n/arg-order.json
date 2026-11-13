@@ -354,6 +354,9 @@
   "guide.etaStale": [
     "minutes"
   ],
+  "guide.exitLeadStart": [
+    "exit"
+  ],
   "guide.farNotice": [
     "distance",
     "step"
@@ -1315,6 +1318,9 @@
   ],
   "android.guide.destChanged": [
     "name"
+  ],
+  "android.guide.exitHoldAction": [
+    "exit"
   ],
   "android.guide.routeListCurrent": [
     "step"

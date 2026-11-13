@@ -178,7 +178,7 @@ final class GuideSession {
         self.startBeacon(BeaconModel.StartRequest(
             dest: BeaconDest(lat: target.lat, lng: target.lng), label: target.label, labelRoman: nil, kind: .walk,
             accessible: false, variant: nil, line: nil, alternate: nil,
-            waypoint: nil, carListener: nil))  // 귀환 경로에 경유지는 없다. 출발점 라벨은 라틴 표기가 없다(그 이름 그대로)
+            waypoint: nil, carListener: nil, exitLead: nil))  // 귀환 경로에 경유지는 없다. 출발점 라벨은 라틴 표기가 없다(그 이름 그대로)
         launchingOutingReturn = false
         // 동기 거부(requestStart 게이트)면 시작 Task가 없어 실패 콜백도 없다 — 여기서 잇는다.
         if !beacon.starting, !beacon.isTracking { endOutingReturn(id, reason: .startFailed, target: target) }
@@ -244,7 +244,7 @@ final class GuideSession {
                 // 역 라벨은 이미 통지 언어로 골랐다(`walkLabel`) — 라틴 표기를 따로 싣지 않는다.
                 dest: BeaconDest(lat: target.lat, lng: target.lng), label: walkLabel, labelRoman: nil, kind: .walk,
                 accessible: accessible, variant: nil, line: nil, alternate: nil,
-                waypoint: nil, carListener: nil))  // 승차역까지의 도보에 경유지는 없다
+                waypoint: nil, carListener: nil, exitLead: nil))  // 승차역까지의 도보에 경유지는 없다
         }
     }
 
@@ -284,7 +284,7 @@ final class GuideSession {
                 self.beginBeacon(BeaconModel.StartRequest(
                     dest: walkDest, label: walkLabel, labelRoman: nil, kind: .walk,
                     accessible: handoff.accessible, variant: nil, line: nil, alternate: nil,
-                    waypoint: nil, carListener: nil))  // 환승역까지의 도보에 경유지는 없다
+                    waypoint: nil, carListener: nil, exitLead: nil))  // 환승역까지의 도보에 경유지는 없다
             }
         }
     }
@@ -470,6 +470,13 @@ final class GuideSession {
         let label = transit.destinationLabel
         let roman = transit.destinationRoman
         let accessible = transit.accessible
+        // 출구 인계(E84)는 **인계 값에서만** 읽는다(경로에서 직접 읽지 않는다) — 잘못 내림 복구의 「걸어가기」는 인계 값 없이
+        // 여기 들어오므로 계획한 역의 출구가 실리지 않는다. `stop()`·`clearWalkHandoff()`가 값을 지우기 전에 읽는다.
+        let exitLead = transit.pendingWalkHandoff.flatMap { handoff in
+            transitValidExitNo(handoff.exitAlight).map {
+                BeaconModel.ExitLead(exit: $0, stationLat: handoff.alightLat, stationLng: handoff.alightLng)
+            }
+        }
         transit.stop()
         transit.clearWalkHandoff()
         walkHandoffTask?.cancel()
@@ -479,7 +486,7 @@ final class GuideSession {
             self.startBeacon(BeaconModel.StartRequest(
                 dest: dest, label: label, labelRoman: roman, kind: .walk, accessible: accessible,
                 variant: nil, line: nil, alternate: nil,
-                waypoint: nil, carListener: nil))  // 대중교통 세션엔 경유지가 없다(ODsay 미지원)
+                waypoint: nil, carListener: nil, exitLead: exitLead))  // 대중교통 세션엔 경유지가 없다(ODsay 미지원)
         }
     }
 
@@ -492,7 +499,7 @@ final class GuideSession {
         beacon.clearArrival()
         self.startBeacon(BeaconModel.StartRequest(
             dest: dest, label: label, labelRoman: roman, kind: .walk, accessible: false,
-            variant: nil, line: nil, alternate: nil, waypoint: nil, carListener: nil))
+            variant: nil, line: nil, alternate: nil, waypoint: nil, carListener: nil, exitLead: nil))
     }
 
     func handleScenePhaseChange(to phase: ScenePhase) {
@@ -702,7 +709,7 @@ final class GuideSession {
         beginBeacon(BeaconModel.StartRequest(
             dest: dest, label: label, labelRoman: labelRoman, kind: kind, accessible: false,
             variant: nil, line: nil, alternate: nil, waypoint: nil,
-            carListener: kind == .car ? .passenger : nil))
+            carListener: kind == .car ? .passenger : nil, exitLead: nil))
         launchingJourneyStage = false
         // 동기 거부면 시작 Task가 없어 실패 콜백도 없다 — 여기서 잇는다(승차 전 도보 동형). `begin`을 지나지 않아
         // `lastFailure`가 지난 세션의 원인이므로 그것을 실패 시트에 쓰지 않는다.

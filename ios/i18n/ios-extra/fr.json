@@ -316,6 +316,8 @@
       "destChanged": "Nouvelle destination : {name}.",
       "destChangedNoName": "Destination modifiée.",
       "destChangedFetching": "Recherche d'un nouvel itinéraire.",
+      "exitHoldAction": "Prendre la sortie {exit}",
+      "exitHoldRelease": "J'ai quitté la station",
       "titleWaypointChange": "{label}, changer l’étape",
       "differentRoute": "Actualiser l'itinéraire",
       "differentRouteFailed": "Impossible de trouver un nouvel itinéraire.",

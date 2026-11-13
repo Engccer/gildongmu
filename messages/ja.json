@@ -747,6 +747,7 @@
   },
   "guide": {
     "detailStart": "{dest}まで徒歩案内開始。{first}。案内{count}件、合計{distance}。",
+    "exitLeadStart": "{exit}番出口から出てください。",
     "next": "{distance}先、{step}",
     "nextDestination": "{dest}まで{distance}",
     "periodicStraight": "{target}まで{distance}直進してください",

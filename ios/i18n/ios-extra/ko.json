@@ -316,6 +316,8 @@
       "destChanged": "새 목적지 {name}.",
       "destChangedNoName": "목적지를 바꿨습니다.",
       "destChangedFetching": "경로를 조회하고 있습니다.",
+      "exitHoldAction": "{exit}번 출구로 나가기",
+      "exitHoldRelease": "출구로 나왔어요",
       "titleWaypointChange": "{label}, 경유지 바꾸기",
       "differentRoute": "경로 새로고침",
       "differentRouteFailed": "새 경로를 찾지 못했습니다.",

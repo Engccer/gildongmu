@@ -286,6 +286,9 @@
   "guide.etaStale": [
     "minutes"
   ],
+  "guide.exitLeadStart": [
+    "exit"
+  ],
   "guide.farNotice": [
     "distance",
     "step"
@@ -464,6 +467,9 @@
   ],
   "ios.guide.destChanged": [
     "name"
+  ],
+  "ios.guide.exitHoldAction": [
+    "exit"
   ],
   "ios.guide.routeListCurrent": [
     "step"

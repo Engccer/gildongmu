@@ -747,6 +747,7 @@
   },
   "guide": {
     "detailStart": "{dest}까지 도보 안내 시작. {first}. 안내 {count}개, 총 {distance}.",
+    "exitLeadStart": "{exit}번 출구로 나가세요.",
     "next": "{distance} 앞 {step}",
     "nextDestination": "{dest}까지 {distance}",
     "periodicStraight": "{target}까지 {distance} 직진하세요",

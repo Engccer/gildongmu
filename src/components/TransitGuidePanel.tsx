@@ -23,6 +23,7 @@ import { namedArgs } from "@/lib/transit-text-args";
 import { prefersEnglish } from "@/lib/data-locale";
 import { useLocale } from "next-intl";
 import { quickExitText } from "@/lib/quick-exit-text";
+import { alightLineText } from "@/lib/transit-exit-lines";
 import { DistanceBeacon } from "./DistanceBeacon";
 
 /**
@@ -228,6 +229,16 @@ export function TransitGuidePanel({
     leg?.quickExit,
   );
   const quickExitLang = isEn && alightLabel && !alightLabel.en ? "ko" : undefined;
+  // 하차 준비 줄(E84): 길찾기 결과의 하차 줄과 같은 함수·같은 문장. 역 이름·lang 선택은 위 빠른 하차 줄과 같다.
+  const alightPrep = leg
+    ? alightLineText(
+        tTransitRoute,
+        t,
+        alightLabel ? (isEn ? (alightLabel.en ?? alightLabel.ko) : alightLabel.ko) : "",
+        leg.quickExit,
+        transitDisplayLeg(leg, null).exitAlight,
+      )
+    : null;
 
   // 세션 활성 전이를 부모에 통지(식별자는 ref로 고정 — 부모 인라인 콜백이
   // 렌더마다 새 함수여도 effect가 재발화하지 않는다). unmount 시 false 정리.
@@ -780,6 +791,16 @@ export function TransitGuidePanel({
           )}
 
           {/*
+            하차 준비 줄(E84): 타려는 순간과 타고 가는 동안, 내릴 문과 나갈 출구를 한 줄로(국면 버튼 다음). 정적 정보라
+            통지하지 않는다. 대기 국면은 열차 목록 앞 빠른 하차 줄이, 도착 국면은 도착 통지가 맡는다.
+          */}
+          {(state.phase === "boarding" || state.phase === "riding") && alightPrep && (
+            <p className="mt-2 text-sm" lang={quickExitLang}>
+              {alightPrep}
+            </p>
+          )}
+
+          {/*
             역 재선택(A16 L3) — 갈아탄 뒤 지금 있는 역을 묻는다. 위치가 아니라
             목록인 근거(위원장 판정): 지하철 안에서는 GPS가 잡히지 않는다.
             ⚠ 조용히 나타나는 섹션이 아니라 버튼으로 펼친 것이라 region이 아니라
@@ -842,6 +863,7 @@ export function TransitGuidePanel({
           announce={announce}
           autoStart
           focusTriggerOnMount
+          exitLead={guide.doneHandoff.exitAlight}
           triggerLabel={t("walkHandoffStart")}
         />
       )}
