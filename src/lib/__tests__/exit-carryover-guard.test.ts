@@ -108,10 +108,19 @@ describe("출구 대기 창의 수명", () => {
 
   it("창 동안 안전망 임계는 GuideTuning 데이터로 갈린다(sessionKind 분기 없음)", () => {
     const idle = body(MODEL, "private func maybeEndIdleSession(now: Double) -> Bool {");
-    expect(idle).toContain(
-      "noFixSeconds: exitHold != nil ? tuning.sessionIdleNoFixExitHoldSeconds : tuning.sessionIdleNoFixSeconds",
+    expect(KIT).toContain(
+      "noFixSeconds: holdActive ? tuning.sessionIdleNoFixExitHoldSeconds : tuning.sessionIdleNoFixSeconds)",
     );
-    expect(idle).toContain("exitHoldStationaryElapsed(");
+    // 창이 세운 하한 뒤로 잰다(관측 공백 뒤 첫 fix, 창이 닫힌 시각). 하한이 없으면 종전 식이다.
+    expect(idle).toContain("exitHoldAwareSessionIdleStep(");
+    expect(idle).toContain("floors: exitHoldIdleFloors, holdActive: exitHold != nil, tuning: tuning,");
+    expect(idle).not.toMatch(/sessionIdleStep\(|max\(startedAt/);
+    expect(body(MODEL, "private func closeExitHold(")).toContain(
+      "exitHoldIdleFloors = exitHoldIdleFloorsAfterClose(now: uptimeNow)",
+    );
+    // 하한을 세우는 자리는 창 안 fix와 창 닫힘 둘, 지우는 자리는 시작·창 열기·종료 셋이다.
+    expect(MODEL.match(/exitHoldIdleFloors = ExitHoldIdleFloors\(\)/g) ?? []).toHaveLength(4);
+    expect(MODEL.match(/exitHoldIdleFloors = (?!ExitHoldIdleFloors\(\))/g) ?? []).toHaveLength(2);
     expect(idle).not.toMatch(/switch sessionKind|sessionKind == /);
   });
 
@@ -135,7 +144,7 @@ describe("출구 대기 창의 수명", () => {
 describe("시트", () => {
   it("도보 시트: 출구 줄은 상태 행 자리를 유도 값으로 쓰고, 해제 버튼은 그 바로 다음이며 disabled가 아니다", () => {
     const row = BEACON_SHEET.indexOf("if let text = statusRowText {");
-    const button = BEACON_SHEET.indexOf('Button(appLocalized("ios.guide.exitHoldRelease"))');
+    const button = BEACON_SHEET.indexOf('focusTarget(Button(appLocalized("ios.guide.exitHoldRelease"))');
     expect(row).toBeGreaterThan(-1);
     expect(button).toBeGreaterThan(row);
     const between = BEACON_SHEET.slice(row, button);
@@ -144,6 +153,8 @@ describe("시트", () => {
     expect(action).toContain("model.declareExitedStation()");
     expect(action).toContain('requestInfoLanding(note: "exitDeclared")');
     expect(action).not.toContain(".disabled(");
+    // 창이 위치 증거로 저절로 닫히면 버튼이 사라진다: 커서가 그 위였으면 소실 복구가 돌도록 착지 바인딩에 건다.
+    expect(action).toContain("}, .exitRelease)");
     expect(body(BEACON_SHEET, "private var statusRowText: String? {")).toContain("model.exitHoldLine");
     // 출구 줄은 모델의 statusText에 쓰지 않는다(창이 풀리면 줄도 사라진다).
     expect(MODEL).not.toMatch(/statusText = .*exitHold/);

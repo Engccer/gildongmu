@@ -49,6 +49,9 @@ struct BeaconTrackingSheet: View {
         /// 경로 새로고침 버튼(E75) — 착지 대상이 아니라 "커서가 사라지는 버튼 위에 있었는가"를 읽는 자리다(최종 접근 진입·
         /// 간략 강등으로 버튼이 사라질 때 소실 복구, spec 2026-10-27 §5).
         case refresh
+        /// 「출구로 나왔어요」 버튼(E84) — `.refresh`와 같은 자리다: 착지 대상이 아니라, 창이 위치 증거로 저절로 닫혀 버튼이
+        /// 사라질 때 커서가 그 위였는지를 읽는다(소실 복구).
+        case exitRelease
         /// 종료 화면의 도착(중지) 문장 — 종료 화면의 첫 정보 행(헌장 §5: 도착 전이가 포커스를 쥔 컨트롤을 통째로 없앤다).
         case arrived
         /// 체중 입력 뒤 갱신된 걸음 요약 문장 — [체중 입력하기](트리거)가 사라져 표준 dismiss의 포커스 복원이
@@ -58,7 +61,7 @@ struct BeaconTrackingSheet: View {
         var isInfoRow: Bool {
             switch self {
             case .remaining, .liveTop, .status: true
-            case .refresh, .arrived, .healthSummary: false
+            case .refresh, .exitRelease, .arrived, .healthSummary: false
             }
         }
     }
@@ -193,10 +196,10 @@ struct BeaconTrackingSheet: View {
                     }
                     // 「출구로 나왔어요」(E84): 위치가 잡히기를 기다리지 않고 지금 경로를 조회한다. 출구 줄 바로 다음.
                     if model.exitHoldActive {
-                        Button(appLocalized("ios.guide.exitHoldRelease")) {
+                        focusTarget(Button(appLocalized("ios.guide.exitHoldRelease")) {
                             model.declareExitedStation()
                             requestInfoLanding(note: "exitDeclared")
-                        }
+                        }, .exitRelease)
                     }
                 }
                 // 잠금 중 무음 예고. 세션 내내 참인 지속 상태라 상태 1줄과 자리를
@@ -619,6 +622,7 @@ struct BeaconTrackingSheet: View {
         case .liveTop: return tracking && model.mode == .detail && model.liveTopText != nil
         case .status: return tracking && model.mode == .brief && statusRowText != nil
         case .refresh: return tracking && model.canRequestDifferentRoute
+        case .exitRelease: return tracking && model.mode == .brief && model.exitHoldActive
         case .arrived: return !tracking
         case .healthSummary: return !tracking && model.arrivalHealth != nil
         }
@@ -627,7 +631,7 @@ struct BeaconTrackingSheet: View {
     /// 지금 렌더된 정보 행 + 경로 새로고침 버튼 — 소실 복구가 이 집합의 변화로 판정한다(spec §3.4). 새로고침은 정보 행이
     /// 아니지만 최종 접근 진입·간략 강등으로 사라질 때 그 위의 커서를 같은 길로 첫 정보 행에 옮긴다(E75 spec §5, 헌장 §5).
     private var presentInfoRows: Set<SheetFocus> {
-        Set([SheetFocus.remaining, .liveTop, .status, .refresh].filter(rowExists))
+        Set([SheetFocus.remaining, .liveTop, .status, .refresh, .exitRelease].filter(rowExists))
     }
 
     /// 첫 정보 행(spec §2.1) — 화면의 행 순서 그대로다. 추적 중엔 비지 않는다(상세면 윗줄, 간략이면 상태 문장이
@@ -785,7 +789,7 @@ struct BeaconTrackingSheet: View {
         switch target {
         case .remaining: .remaining
         case .liveTop, .status: .action
-        case .refresh, .arrived, .healthSummary: nil
+        case .refresh, .exitRelease, .arrived, .healthSummary: nil
         }
     }
 

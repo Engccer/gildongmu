@@ -6,8 +6,9 @@ import Foundation
 // 회전 안내가 나갈 자리가 없다. **창을 닫는 축은 벽시계가 아니라 증거(최근 fix)와 사용자 선언(버튼)이다.**
 // 판정은 전부 이 파일의 순수 함수이고 공유 fixture `exit-hold-cases.json`이 잠근다(웹·안드로이드는 미이식).
 
-/// 보관 가능한 fix는 오는데 수용 정확도에 들지 못하는 상태가 이만큼 이어지면 최근 창의 최선값으로 조회한다(잠정).
-/// fix가 아예 없으면 이 상한은 걸리지 않는다 — 깊은 역사를 걷는 중일 수 있어 계속 기다린다.
+/// 창이 이만큼 열려 있었고(잠정) **보관 가능한 fix가 최근 창 길이 이상 이어졌는데도** 수용 정확도에 들지 못하면 최근 창의
+/// 최선값으로 조회한다. fix가 아예 없으면 이 상한은 걸리지 않는다 — 깊은 역사를 걷는 중일 수 있어 계속 기다린다.
+/// 오래 걸어 나온 사람의 첫 보관 가능 fix에 곧바로 걸리지도 않는다(그 fix는 대개 가장 나쁜 fix다).
 public let exitHoldMaxSeconds = 240.0
 /// 상한에서 쓸 최선값 후보의 창(초). 창 전체의 최선값은 몇 분 전 승강장 좌표일 수 있다 — 종전 시작 대기 상한과 같은 15초.
 public let exitHoldRecentWindowSeconds = 15.0
@@ -18,6 +19,8 @@ public let exitHoldStationMaxMeters = 600.0
 public let exitLeadRepeatWindowSeconds = 4.0
 /// 창 동안 잊힌 세션 안전망의 fix 두절 임계(초, 잠정). `GuideTuning.sessionIdleNoFixExitHoldSeconds`가 싣는다.
 public let exitHoldSessionIdleNoFixSeconds = 900.0
+/// 창 안에서 fix가 이만큼 끊겼다가 다시 오면 「관측 공백」으로 본다(초, 잠정): 그 fix가 무이동 시계를 다시 세운다.
+public let exitHoldObservationGapSeconds = 30.0
 
 /// 창 안에서 받은 보관 가능 fix 하나와 받은 시각(단조 초).
 public struct ExitHoldSample: Equatable, Sendable {
@@ -68,14 +71,17 @@ public func exitHoldRecentBest(samples: [ExitHoldSample], now: Double) -> RouteO
 /// - `isFirstStorable`: 이 fix가 창 안에서 처음 받은 보관 가능 fix인가(다른 역 판정은 그 한 번만 한다).
 /// - `stationDistance`: 이 fix에서 하차역까지 직선 거리(m). 역 좌표를 모르면 nil(다른 역 판정을 하지 않는다).
 /// - `recent`: 이 fix를 **포함한** 창 안 표본.
+/// - `storableSince`: 이 fix가 속한 보관 가능 fix 연속 구간의 첫 표본 시각(`exitHoldStorableRunStart`). 보관 불가면 nil.
 ///
-/// 순서가 계약이다: 보관 불가 → 대기 / 다른 역 → 포기 / 수용 → 조회 / 상한 → 최근 최선값 조회 / 그 밖 → 대기.
+/// 순서가 계약이다: 보관 불가 → 대기 / 다른 역 → 포기 / 수용 → 조회 /
+/// 상한(창 240초 ∧ 연속 구간 15초 이상) → 최근 최선값 조회 / 그 밖 → 대기.
 public func exitHoldStep(
     elapsed: Double,
     fix: RouteOriginFix,
     isFirstStorable: Bool,
     stationDistance: Double?,
     recent: [ExitHoldSample],
+    storableSince: Double?,
     now: Double
 ) -> ExitHoldDecision {
     guard exitHoldStorable(fix) else { return .wait }
@@ -86,7 +92,8 @@ public func exitHoldStep(
     if case let .fetch(origin) = routeOriginStep(best: nil, fix: fix) {
         return .fetch(origin, reason: .accepted)
     }
-    if elapsed >= exitHoldMaxSeconds, let best = exitHoldRecentBest(samples: recent, now: now) {
+    if elapsed >= exitHoldMaxSeconds, let storableSince, now - storableSince >= exitHoldRecentWindowSeconds,
+       let best = exitHoldRecentBest(samples: recent, now: now) {
         return .fetch(best, reason: .recentBest)
     }
     return .wait
@@ -102,8 +109,81 @@ public func exitLeadPrefixNeeded(hasExit: Bool, dropped: Bool, secondsSincePoste
     return secondsSincePosted < exitLeadRepeatWindowSeconds
 }
 
-/// 출구 대기 창의 무이동 축 경과. 무이동은 fix가 와야 관측된다 — fix가 끊긴 시간(지하 통로)은 「멈춰 있었다」의
-/// 증거가 아니므로 뺀다(끊긴 시간은 두절 축이 따로 센다). fix가 계속 오면 종전 값과 같다.
-public func exitHoldStationaryElapsed(secondsSinceProgress: Double, secondsSinceFix: Double) -> Double {
-    max(0, secondsSinceProgress - max(0, secondsSinceFix))
+/// 보관 가능 fix 연속 구간의 시작 시각. 직전 보관 가능 표본과의 간격이 최근 창을 넘으면 구간이 끊긴 것으로 보고
+/// 이 fix에서 새로 시작한다(`previousSampleAt` nil = 첫 표본).
+public func exitHoldStorableRunStart(previousStart: Double?, previousSampleAt: Double?, now: Double) -> Double {
+    guard let previousStart, let previousSampleAt,
+          now - previousSampleAt >= 0, now - previousSampleAt <= exitHoldRecentWindowSeconds
+    else { return now }
+    return previousStart
+}
+
+// ── 창과 잊힌 세션 안전망(`SessionIdle.swift`) ──
+// 안전망의 두 시계(fix 두절·무이동)는 「마지막 fix」「마지막 진행」에서 잰다. 출구 대기 창은 그 전제를 둘 깬다:
+// ① 지하 통로에서 fix가 몇 분 끊겼다가 처음 오는 fix는 진행으로 치지 않으므로(앵커만 세운다) 무이동 시계가 세션 시작부터
+//    흐른 것으로 읽혀 그 fix 직후 세션이 끝난다. ② 창이 닫히며 두절 임계가 900초에서 300초로 돌아오면 창 안에서 흐른
+//    시간이 곧바로 임계를 넘는다. 그래서 시계의 **하한**을 둔다: 관측 공백 뒤 첫 fix가 무이동 시계를, 창이 닫히는 순간이
+//    두 시계를 다시 세운다. 출구 인계가 없는 세션은 하한이 nil이라 종전과 같다.
+
+/// 안전망 시계의 하한. nil = 하한 없음(종전 동작).
+public struct ExitHoldIdleFloors: Equatable, Sendable {
+    /// fix 두절 시계의 하한(창이 닫힌 시각).
+    public var fix: Double?
+    /// 무이동 시계의 하한(창이 닫힌 시각 또는 관측 공백 뒤 첫 fix).
+    public var progress: Double?
+
+    public init(fix: Double? = nil, progress: Double? = nil) {
+        self.fix = fix
+        self.progress = progress
+    }
+}
+
+/// 창 안 fix 한 건. 직전 fix(없으면 세션 시작)와의 간격이 `exitHoldObservationGapSeconds`를 넘으면 무이동 시계를 이 fix로
+/// 다시 세운다. `resumed`가 참이면 호출부는 진행 앵커도 이 fix로 재설정한다(공백 전 앵커와의 변위는 관측이 아니다).
+public func exitHoldIdleFloorsAfterFix(
+    _ floors: ExitHoldIdleFloors, now: Double, previousFixAt: Double?, startedAt: Double
+) -> (floors: ExitHoldIdleFloors, resumed: Bool) {
+    let gap = now - max(startedAt, previousFixAt ?? startedAt)
+    guard gap > exitHoldObservationGapSeconds else { return (floors, false) }
+    var next = floors
+    next.progress = now
+    return (next, true)
+}
+
+/// 창이 닫히는 순간: 두 시계가 그 시각부터 새로 흐른다.
+public func exitHoldIdleFloorsAfterClose(now: Double) -> ExitHoldIdleFloors {
+    ExitHoldIdleFloors(fix: now, progress: now)
+}
+
+/// 안전망 시계의 기준 시각. `floor` nil이면 종전 식(`max(startedAt, last ?? startedAt)`)과 같다.
+public func sessionIdleReference(startedAt: Double, last: Double?, floor: Double?) -> Double {
+    max(startedAt, last ?? startedAt, floor ?? startedAt)
+}
+
+/// 도보·자동차 세션의 안전망 판정 한 자리(워치독 틱마다). 출구 대기가 없던 세션(`floors` 비어 있음 ∧ `holdActive` 거짓)은
+/// 종전 식과 값이 같다. 창 동안은 ① 두절 임계가 `sessionIdleNoFixExitHoldSeconds`이고 ② 지금 관측이 끊겨 있으면
+/// (마지막 fix 뒤 `exitHoldObservationGapSeconds` 초과) 무이동을 세지 않는다 — 무이동은 fix가 와야 관측된다.
+public func exitHoldAwareSessionIdleStep(
+    now: Double,
+    startedAt: Double,
+    lastFixAt: Double?,
+    lastProgressAt: Double?,
+    floors: ExitHoldIdleFloors,
+    holdActive: Bool,
+    tuning: GuideTuning,
+    presumedArrivalCanFire: Bool
+) -> SessionIdleReason? {
+    let sinceFix = now - sessionIdleReference(startedAt: startedAt, last: lastFixAt, floor: floors.fix)
+    let sinceProgress = now - sessionIdleReference(startedAt: startedAt, last: lastProgressAt, floor: floors.progress)
+    let stationary: Double? = if !tuning.sessionIdleStationaryAxis {
+        nil
+    } else if holdActive, sinceFix > exitHoldObservationGapSeconds {
+        0
+    } else {
+        sessionIdleStationaryElapsed(secondsSinceProgress: sinceProgress, presumedArrivalCanFire: presumedArrivalCanFire)
+    }
+    return sessionIdleStep(
+        secondsSinceUsableFix: sinceFix,
+        secondsSinceProgress: stationary,
+        noFixSeconds: holdActive ? tuning.sessionIdleNoFixExitHoldSeconds : tuning.sessionIdleNoFixSeconds)
 }

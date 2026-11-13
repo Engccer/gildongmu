@@ -15,7 +15,7 @@
 
 - iOS: 「남은 도보 안내 시작」을 누르면 도보 안내가 「5번 출구로 나가세요.」부터 말하고 시트의 지금 할 행동 줄이 「5번 출구로 나가기」가 된다. 그동안 경로를 조회하지 않아 역 안의 부정확한 위치로 만든 회전 안내가 나가지 않는다. 역 밖에서 위치가 30m 안으로 잡히거나 「출구로 나왔어요」를 누르면 평소 안내가 시작된다. 출구 번호가 없는 경로는 종전과 같다.
 - iOS·웹: 승차 중 시트에 하차 준비 한 줄(내릴 문과 나갈 출구, 길찾기 결과의 하차 줄과 같은 문장)이 국면 버튼 다음에 선다. 웹은 도보 시작 통지 앞에 출구 문장만 싣는다(출구 대기 없음, BACKLOG §4 B19).
-- 판정은 Kit `ExitHold.swift` 순수 함수와 공유 fixture `exit-hold-cases.json`, 배선은 `exit-carryover-guard.test.ts`. 상수(240초·15초·600m·4초·900초)는 실승차 전까지 잠정이다(BACKLOG §2 E84). spec `docs/superpowers/specs/2026-11-14-transit-exit-carryover-design.md`.
+- 판정은 Kit `ExitHold.swift` 순수 함수와 공유 fixture `exit-hold-cases.json`, 배선은 `exit-carryover-guard.test.ts`. 상수(240초·15초·600m·4초·900초·30초)는 실승차 전까지 잠정이다(BACKLOG §2 E84). 출구 대기를 5분 넘게 버틴 세션이 첫 위치·버튼 직후 잊힌 세션 안전망에 걸려 끝나지 않도록, 관측 공백 뒤 첫 위치와 대기가 풀리는 순간이 안전망 시계를 다시 세운다. spec `docs/superpowers/specs/2026-11-14-transit-exit-carryover-design.md`.
 
 ### iOS 여정 넷을 정식판으로 졸업했다 (E70·E70-e·E71·E70-b, 플래그 삭제)
 

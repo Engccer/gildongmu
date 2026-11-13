@@ -60,10 +60,17 @@ describe("BeaconModel 세션 종료 갈림은 GuideTuning 데이터를 읽는다
   it.each([
     "tuning.presumedArrival",
     "tuning.entersFinalApproachWithoutGeometry",
-    "tuning.sessionIdleStationaryAxis",
-    "tuning.sessionIdleNoFixSeconds",
   ])("%s 참조", (needle) => {
     expect(src.includes(needle)).toBe(true);
+  });
+
+  // 안전망 판정 조립은 Kit 한 자리(E84 `exitHoldAwareSessionIdleStep`)다: 모델은 세션의 `tuning`을 통째로 넘기고
+  // 두 필드는 Kit이 읽는다(모델이 상수를 직접 박거나 프로파일 리터럴을 넘기면 실패).
+  it.each(["tuning.sessionIdleStationaryAxis", "tuning.sessionIdleNoFixSeconds"])("%s 참조(Kit 판정 함수)", (needle) => {
+    const kit = readFileSync(new URL("../../../ios/GildongmuKit/Sources/GildongmuKit/ExitHold.swift", import.meta.url), "utf8");
+    expect(kit.includes(needle)).toBe(true);
+    const idle = code.slice(code.indexOf("func maybeEndIdleSession"), code.indexOf("func maybePresumeArrival"));
+    expect(idle).toMatch(/holdActive: exitHold != nil, tuning: tuning,/);
   });
 
   it("프로파일 리터럴(.walk/.car)을 판정 함수에 직접 넘기지 않는다", () => {
@@ -79,7 +86,10 @@ describe("BeaconModel 세션 종료 갈림은 GuideTuning 데이터를 읽는다
   it("안전망 무이동 축은 도착 추정이 발동할 수 있는 동안(창 ∧ 거리 캡) 유예를 두고 늦게 켠다(나들이 spec §9)", () => {
     const idle = code.slice(code.indexOf("func maybeEndIdleSession"), code.indexOf("func maybePresumeArrival"));
     expect(idle).toMatch(/let presumedArrivalCanFire = inArrivalWindow\s*&& \(tuning\.presumedArrival\.map \{ \(lastUsableDistanceToDest \?\? \.infinity\) <= \$0\.maxDistanceMeters \} \?\? false\)/);
-    expect(idle).toMatch(/sessionIdleStationaryElapsed\(\s*secondsSinceProgress: now - progressRef, presumedArrivalCanFire: presumedArrivalCanFire\)/);
+    // 판정 조립은 Kit 한 자리로 옮겼다(E84 `exitHoldAwareSessionIdleStep`): 모델은 유예 술어를 넘기고 Kit이 유예 식을 지난다.
+    expect(idle).toMatch(/exitHoldAwareSessionIdleStep\([\s\S]*?presumedArrivalCanFire: presumedArrivalCanFire\s*\)/);
+    const kit = readFileSync(new URL("../../../ios/GildongmuKit/Sources/GildongmuKit/ExitHold.swift", import.meta.url), "utf8");
+    expect(kit).toMatch(/sessionIdleStationaryElapsed\(secondsSinceProgress: sinceProgress, presumedArrivalCanFire: presumedArrivalCanFire\)/);
   });
 });
 

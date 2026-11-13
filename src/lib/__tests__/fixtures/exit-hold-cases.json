@@ -4,7 +4,8 @@
     "exitHoldMaxSeconds": 240,
     "exitHoldRecentWindowSeconds": 15,
     "exitHoldStationMaxMeters": 600,
-    "exitLeadRepeatWindowSeconds": 4
+    "exitLeadRepeatWindowSeconds": 4,
+    "exitHoldObservationGapSeconds": 30
   },
   "steps": [
     {
@@ -19,6 +20,7 @@
       "isFirstStorable": false,
       "stationDistance": 50,
       "recent": [],
+      "storableSince": null,
       "now": 100,
       "expect": {
         "kind": "wait"
@@ -36,6 +38,7 @@
       "isFirstStorable": false,
       "stationDistance": 50,
       "recent": [],
+      "storableSince": null,
       "now": 100,
       "expect": {
         "kind": "wait"
@@ -63,6 +66,7 @@
           "at": 100
         }
       ],
+      "storableSince": 60,
       "now": 100,
       "expect": {
         "kind": "abandon"
@@ -90,6 +94,7 @@
           "at": 100
         }
       ],
+      "storableSince": 60,
       "now": 100,
       "expect": {
         "kind": "wait"
@@ -117,6 +122,7 @@
           "at": 100
         }
       ],
+      "storableSince": 100,
       "now": 100,
       "expect": {
         "kind": "abandon"
@@ -144,6 +150,7 @@
           "at": 100
         }
       ],
+      "storableSince": 60,
       "now": 100,
       "expect": {
         "kind": "wait"
@@ -171,6 +178,7 @@
           "at": 100
         }
       ],
+      "storableSince": 60,
       "now": 100,
       "expect": {
         "kind": "wait"
@@ -198,6 +206,7 @@
           "at": 100
         }
       ],
+      "storableSince": 100,
       "now": 100,
       "expect": {
         "kind": "fetch",
@@ -228,6 +237,7 @@
           "at": 100
         }
       ],
+      "storableSince": 60,
       "now": 100,
       "expect": {
         "kind": "wait"
@@ -273,12 +283,149 @@
           "at": 100
         }
       ],
+      "storableSince": 40,
       "now": 100,
       "expect": {
         "kind": "fetch",
         "reason": "recentBest",
         "accuracy": 48,
         "ageSeconds": 9
+      }
+    },
+    {
+      "name": "상한 뒤 첫 보관 가능 fix는 대기(오래 걸어 나온 사람의 첫 fix로 조회하지 않는다)",
+      "elapsed": 400,
+      "fix": {
+        "lat": 37.5,
+        "lng": 127.1,
+        "accuracy": 80,
+        "ageSeconds": 1
+      },
+      "isFirstStorable": true,
+      "stationDistance": 120,
+      "recent": [
+        {
+          "fix": {
+            "lat": 37.5,
+            "lng": 127.1,
+            "accuracy": 80,
+            "ageSeconds": 1
+          },
+          "at": 100
+        }
+      ],
+      "storableSince": 100,
+      "now": 100,
+      "expect": {
+        "kind": "wait"
+      }
+    },
+    {
+      "name": "상한 뒤 보관 가능 fix가 14초 이어진 것으로는 아직 대기",
+      "elapsed": 414,
+      "fix": {
+        "lat": 37.5,
+        "lng": 127.1,
+        "accuracy": 70,
+        "ageSeconds": 1
+      },
+      "isFirstStorable": false,
+      "stationDistance": 120,
+      "recent": [
+        {
+          "fix": {
+            "lat": 37.5,
+            "lng": 127.1,
+            "accuracy": 80,
+            "ageSeconds": 1
+          },
+          "at": 86
+        },
+        {
+          "fix": {
+            "lat": 37.5,
+            "lng": 127.1,
+            "accuracy": 70,
+            "ageSeconds": 1
+          },
+          "at": 100
+        }
+      ],
+      "storableSince": 86,
+      "now": 100,
+      "expect": {
+        "kind": "wait"
+      }
+    },
+    {
+      "name": "상한 뒤 보관 가능 fix가 15초 이어지면 최근 최선값으로 조회",
+      "elapsed": 415,
+      "fix": {
+        "lat": 37.5,
+        "lng": 127.1,
+        "accuracy": 70,
+        "ageSeconds": 1
+      },
+      "isFirstStorable": false,
+      "stationDistance": 120,
+      "recent": [
+        {
+          "fix": {
+            "lat": 37.5,
+            "lng": 127.1,
+            "accuracy": 80,
+            "ageSeconds": 1
+          },
+          "at": 85
+        },
+        {
+          "fix": {
+            "lat": 37.5,
+            "lng": 127.1,
+            "accuracy": 70,
+            "ageSeconds": 1
+          },
+          "at": 100
+        }
+      ],
+      "storableSince": 85,
+      "now": 100,
+      "expect": {
+        "kind": "fetch",
+        "reason": "recentBest",
+        "accuracy": 70,
+        "ageSeconds": 1
+      }
+    },
+    {
+      "name": "수용 fix는 연속 구간과 무관하게 곧바로 조회",
+      "elapsed": 400,
+      "fix": {
+        "lat": 37.5,
+        "lng": 127.1,
+        "accuracy": 12,
+        "ageSeconds": 1
+      },
+      "isFirstStorable": true,
+      "stationDistance": 120,
+      "recent": [
+        {
+          "fix": {
+            "lat": 37.5,
+            "lng": 127.1,
+            "accuracy": 12,
+            "ageSeconds": 1
+          },
+          "at": 100
+        }
+      ],
+      "storableSince": 100,
+      "now": 100,
+      "expect": {
+        "kind": "fetch",
+        "reason": "accepted",
+        "accuracy": 12,
+        "ageSeconds": 1
       }
     }
   ],
@@ -378,30 +525,539 @@
       "expect": true
     }
   ],
-  "stationary": [
+  "storableRun": [
     {
-      "name": "fix가 계속 오면 종전 값",
-      "secondsSinceProgress": 200,
-      "secondsSinceFix": 1,
-      "expect": 199
+      "name": "첫 표본은 그 시각에서 시작",
+      "previousStart": null,
+      "previousSampleAt": null,
+      "now": 100,
+      "expect": 100
     },
     {
-      "name": "fix가 끊긴 시간은 뺀다",
-      "secondsSinceProgress": 400,
-      "secondsSinceFix": 380,
-      "expect": 20
+      "name": "최근 창 안에서 이어지면 시작 유지",
+      "previousStart": 80,
+      "previousSampleAt": 90,
+      "now": 100,
+      "expect": 80
     },
     {
-      "name": "fix가 한 번도 없으면 0",
-      "secondsSinceProgress": 500,
-      "secondsSinceFix": 500,
-      "expect": 0
+      "name": "경계 15초는 이어진 것",
+      "previousStart": 60,
+      "previousSampleAt": 85,
+      "now": 100,
+      "expect": 60
     },
     {
-      "name": "음수는 0",
-      "secondsSinceProgress": 10,
-      "secondsSinceFix": 30,
-      "expect": 0
+      "name": "15초 넘게 끊기면 새로 시작",
+      "previousStart": 60,
+      "previousSampleAt": 84,
+      "now": 100,
+      "expect": 100
+    }
+  ],
+  "idleScenarios": [
+    {
+      "name": "출구 없는 세션: fix 0건이면 300초에 두절(종전과 같다)",
+      "hold": false,
+      "events": [
+        {
+          "t": 299,
+          "kind": "tick",
+          "expect": null
+        },
+        {
+          "t": 300,
+          "kind": "tick",
+          "expect": "noFix"
+        }
+      ]
+    },
+    {
+      "name": "출구 없는 세션: fix는 오는데 진행이 없으면 300초에 무이동(종전과 같다)",
+      "hold": false,
+      "events": [
+        {
+          "t": 1,
+          "kind": "fix",
+          "progressed": false
+        },
+        {
+          "t": 150,
+          "kind": "fix",
+          "progressed": false
+        },
+        {
+          "t": 299,
+          "kind": "fix",
+          "progressed": false
+        },
+        {
+          "t": 299,
+          "kind": "tick",
+          "expect": null
+        },
+        {
+          "t": 300,
+          "kind": "fix",
+          "progressed": false
+        },
+        {
+          "t": 300,
+          "kind": "tick",
+          "expect": "stationary"
+        }
+      ]
+    },
+    {
+      "name": "출구 없는 세션: 250초 두절 뒤 첫 fix는 시계를 다시 세우지 않는다(종전과 같다)",
+      "hold": false,
+      "events": [
+        {
+          "t": 250,
+          "kind": "fix",
+          "progressed": false
+        },
+        {
+          "t": 299,
+          "kind": "tick",
+          "expect": null
+        },
+        {
+          "t": 300,
+          "kind": "fix",
+          "progressed": false
+        },
+        {
+          "t": 300,
+          "kind": "tick",
+          "expect": "stationary"
+        }
+      ]
+    },
+    {
+      "name": "창: fix 0건이면 무이동을 세지 않고 900초에 두절",
+      "hold": true,
+      "events": [
+        {
+          "t": 330,
+          "kind": "tick",
+          "expect": null
+        },
+        {
+          "t": 899,
+          "kind": "tick",
+          "expect": null
+        },
+        {
+          "t": 900,
+          "kind": "tick",
+          "expect": "noFix"
+        }
+      ]
+    },
+    {
+      "name": "재현 ①: fix 0건 330초 뒤 미수용 첫 fix — 다음 틱에 끝나지 않고, 그 fix부터 300초를 센다",
+      "hold": true,
+      "events": [
+        {
+          "t": 329,
+          "kind": "tick",
+          "expect": null
+        },
+        {
+          "t": 330,
+          "kind": "fix",
+          "progressed": false
+        },
+        {
+          "t": 331,
+          "kind": "tick",
+          "expect": null
+        },
+        {
+          "t": 350,
+          "kind": "fix",
+          "progressed": false
+        },
+        {
+          "t": 370,
+          "kind": "fix",
+          "progressed": false
+        },
+        {
+          "t": 390,
+          "kind": "fix",
+          "progressed": false
+        },
+        {
+          "t": 410,
+          "kind": "fix",
+          "progressed": false
+        },
+        {
+          "t": 430,
+          "kind": "fix",
+          "progressed": false
+        },
+        {
+          "t": 450,
+          "kind": "fix",
+          "progressed": false
+        },
+        {
+          "t": 470,
+          "kind": "fix",
+          "progressed": false
+        },
+        {
+          "t": 490,
+          "kind": "fix",
+          "progressed": false
+        },
+        {
+          "t": 510,
+          "kind": "fix",
+          "progressed": false
+        },
+        {
+          "t": 530,
+          "kind": "fix",
+          "progressed": false
+        },
+        {
+          "t": 550,
+          "kind": "fix",
+          "progressed": false
+        },
+        {
+          "t": 570,
+          "kind": "fix",
+          "progressed": false
+        },
+        {
+          "t": 590,
+          "kind": "fix",
+          "progressed": false
+        },
+        {
+          "t": 610,
+          "kind": "fix",
+          "progressed": false
+        },
+        {
+          "t": 629,
+          "kind": "tick",
+          "expect": null
+        },
+        {
+          "t": 630,
+          "kind": "fix",
+          "progressed": false
+        },
+        {
+          "t": 630,
+          "kind": "tick",
+          "expect": "stationary"
+        }
+      ]
+    },
+    {
+      "name": "재현 ②: fix 0건 330초 뒤 첫 fix가 수용돼 창이 닫힌 직후 틱에 끝나지 않는다",
+      "hold": true,
+      "events": [
+        {
+          "t": 330,
+          "kind": "fix",
+          "progressed": false
+        },
+        {
+          "t": 330,
+          "kind": "close"
+        },
+        {
+          "t": 331,
+          "kind": "tick",
+          "expect": null
+        },
+        {
+          "t": 629,
+          "kind": "fix",
+          "progressed": false
+        },
+        {
+          "t": 629,
+          "kind": "tick",
+          "expect": null
+        },
+        {
+          "t": 630,
+          "kind": "fix",
+          "progressed": false
+        },
+        {
+          "t": 630,
+          "kind": "tick",
+          "expect": "stationary"
+        }
+      ]
+    },
+    {
+      "name": "재현 ③: fix 0건 400초 뒤 창을 닫으면(버튼·전환) 두절 300초를 닫힌 시각부터 센다",
+      "hold": true,
+      "events": [
+        {
+          "t": 399,
+          "kind": "tick",
+          "expect": null
+        },
+        {
+          "t": 400,
+          "kind": "close"
+        },
+        {
+          "t": 401,
+          "kind": "tick",
+          "expect": null
+        },
+        {
+          "t": 699,
+          "kind": "tick",
+          "expect": null
+        },
+        {
+          "t": 700,
+          "kind": "tick",
+          "expect": "noFix"
+        }
+      ]
+    },
+    {
+      "name": "창: fix가 이어지다 끊기면 끊긴 동안은 무이동을 세지 않는다",
+      "hold": true,
+      "events": [
+        {
+          "t": 1,
+          "kind": "fix",
+          "progressed": false
+        },
+        {
+          "t": 20,
+          "kind": "fix",
+          "progressed": false
+        },
+        {
+          "t": 40,
+          "kind": "fix",
+          "progressed": false
+        },
+        {
+          "t": 340,
+          "kind": "tick",
+          "expect": null
+        },
+        {
+          "t": 600,
+          "kind": "tick",
+          "expect": null
+        }
+      ]
+    },
+    {
+      "name": "창: fix가 계속 오는데 움직이지 않으면 종전처럼 300초에 무이동",
+      "hold": true,
+      "events": [
+        {
+          "t": 1,
+          "kind": "fix",
+          "progressed": false
+        },
+        {
+          "t": 20,
+          "kind": "fix",
+          "progressed": false
+        },
+        {
+          "t": 40,
+          "kind": "fix",
+          "progressed": false
+        },
+        {
+          "t": 60,
+          "kind": "fix",
+          "progressed": false
+        },
+        {
+          "t": 80,
+          "kind": "fix",
+          "progressed": false
+        },
+        {
+          "t": 100,
+          "kind": "fix",
+          "progressed": false
+        },
+        {
+          "t": 120,
+          "kind": "fix",
+          "progressed": false
+        },
+        {
+          "t": 140,
+          "kind": "fix",
+          "progressed": false
+        },
+        {
+          "t": 160,
+          "kind": "fix",
+          "progressed": false
+        },
+        {
+          "t": 180,
+          "kind": "fix",
+          "progressed": false
+        },
+        {
+          "t": 200,
+          "kind": "fix",
+          "progressed": false
+        },
+        {
+          "t": 220,
+          "kind": "fix",
+          "progressed": false
+        },
+        {
+          "t": 240,
+          "kind": "fix",
+          "progressed": false
+        },
+        {
+          "t": 260,
+          "kind": "fix",
+          "progressed": false
+        },
+        {
+          "t": 280,
+          "kind": "fix",
+          "progressed": false
+        },
+        {
+          "t": 299,
+          "kind": "tick",
+          "expect": null
+        },
+        {
+          "t": 300,
+          "kind": "fix",
+          "progressed": false
+        },
+        {
+          "t": 300,
+          "kind": "tick",
+          "expect": "stationary"
+        }
+      ]
+    },
+    {
+      "name": "창: 걸어서 진행이 관측되면 무이동 시계가 그 시각부터",
+      "hold": true,
+      "events": [
+        {
+          "t": 1,
+          "kind": "fix",
+          "progressed": false
+        },
+        {
+          "t": 100,
+          "kind": "fix",
+          "progressed": true
+        },
+        {
+          "t": 120,
+          "kind": "fix",
+          "progressed": false
+        },
+        {
+          "t": 140,
+          "kind": "fix",
+          "progressed": false
+        },
+        {
+          "t": 160,
+          "kind": "fix",
+          "progressed": false
+        },
+        {
+          "t": 180,
+          "kind": "fix",
+          "progressed": false
+        },
+        {
+          "t": 200,
+          "kind": "fix",
+          "progressed": false
+        },
+        {
+          "t": 220,
+          "kind": "fix",
+          "progressed": false
+        },
+        {
+          "t": 240,
+          "kind": "fix",
+          "progressed": false
+        },
+        {
+          "t": 260,
+          "kind": "fix",
+          "progressed": false
+        },
+        {
+          "t": 280,
+          "kind": "fix",
+          "progressed": false
+        },
+        {
+          "t": 300,
+          "kind": "fix",
+          "progressed": false
+        },
+        {
+          "t": 320,
+          "kind": "fix",
+          "progressed": false
+        },
+        {
+          "t": 340,
+          "kind": "fix",
+          "progressed": false
+        },
+        {
+          "t": 360,
+          "kind": "fix",
+          "progressed": false
+        },
+        {
+          "t": 380,
+          "kind": "fix",
+          "progressed": false
+        },
+        {
+          "t": 399,
+          "kind": "tick",
+          "expect": null
+        },
+        {
+          "t": 400,
+          "kind": "fix",
+          "progressed": false
+        },
+        {
+          "t": 400,
+          "kind": "tick",
+          "expect": "stationary"
+        }
+      ]
     }
   ]
 }

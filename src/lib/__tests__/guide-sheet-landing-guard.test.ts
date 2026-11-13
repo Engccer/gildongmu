@@ -148,9 +148,11 @@ describe("BeaconTrackingSheet 착지 (E57)", () => {
 
   it("소실 복구: 행 집합이 바뀌는 순간 커서가 사라진 정보 행·새로고침 버튼에 있었으면, 그 통지가 끝난 뒤 첫 정보 행으로(B1, E75)", () => {
     // 새로고침 버튼은 최종 접근 진입·간략 강등에 사라진다 — 집합에 들고, 행 존재 사본이 렌더 조건(`canRequestDifferentRoute`)과 짝이다.
-    expect(BEACON).toContain("Set([SheetFocus.remaining, .liveTop, .status, .refresh].filter(rowExists))");
+    expect(BEACON).toContain("Set([SheetFocus.remaining, .liveTop, .status, .refresh, .exitRelease].filter(rowExists))");
     expect(BEACON).toContain("case .refresh: return tracking && model.canRequestDifferentRoute");
-    expect(BEACON).toContain("case .refresh, .arrived, .healthSummary: false");
+    expect(BEACON).toContain("case .refresh, .exitRelease, .arrived, .healthSummary: false");
+    // 「출구로 나왔어요」(E84)도 같다: 창이 저절로 닫혀 버튼이 사라질 때 커서가 그 위였으면 첫 정보 행으로 옮긴다.
+    expect(BEACON).toContain("case .exitRelease: return tracking && model.mode == .brief && model.exitHoldActive");
     expect(BEACON).toMatch(
       /\.onChange\(of: presentInfoRows\) \{ old, new in\s*guard let focused = focusedRow, old\.contains\(focused\), !new\.contains\(focused\),\s*model\.isTracking, model\.arrivalDest == nil else \{ return \}\s*requestInfoLanding\(note: "lost=\\\(focused\)"\)/,
     );

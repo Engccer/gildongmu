@@ -12,7 +12,7 @@ const ROW = read("GuideTitleActionsRow.swift");
 describe("안내 시트 정보 띠 (E81)", () => {
   it("띠는 남은 거리·지금 할 행동·다음 예고 셋이고, 현재 도로·주석 줄은 띠가 아니다", () => {
     expect(BEACON).toContain("enum InfoBand: Hashable { case remaining, action, next }");
-    expect(BEACON).toMatch(/case \.remaining: \.remaining\s*case \.liveTop, \.status: \.action\s*case \.refresh, \.arrived, \.healthSummary: nil/);
+    expect(BEACON).toMatch(/case \.remaining: \.remaining\s*case \.liveTop, \.status: \.action\s*case \.refresh, \.exitRelease, \.arrived, \.healthSummary: nil/);
     // 띠를 직접 붙이는 자리는 착지 대상이 아닌 다음 예고 하나다(나머지는 착지 헬퍼가 붙인다).
     expect(BEACON.match(/GuideInfoBand\(style: bandStyle\(/g) ?? []).toHaveLength(1);
     expect(BEACON).toContain("distanceText(next).foregroundStyle(.secondary)\n                            .modifier(GuideInfoBand(style: bandStyle(.next)))");
