@@ -327,6 +327,19 @@ describe("DistanceBeacon 컨트롤 노출", () => {
 describe("DistanceBeacon 사용자 시작·중지 → 세션 점유", () => {
   beforeEach(() => __resetGuideSessionStoreForTest());
 
+  it("사용자 중지는 종료 문장을 게시한다 — 세션의 마지막 상태 문장(신호 약함)이 끝난 화면에 남지 않는다", async () => {
+    const { container } = renderPanel("ko");
+    openAndStart("ko");
+    await waitFor(() => expect(hasActiveGuideSession()).toBe(true));
+    // 위치 취득 실패(POSITION_UNAVAILABLE) → 추적은 유지하고 "신호 약함"만 통지한다.
+    const errorCb = vi.mocked(navigator.geolocation.watchPosition).mock.calls[0][1]!;
+    act(() => errorCb({ code: 2, PERMISSION_DENIED: 1 } as GeolocationPositionError));
+    const region = container.querySelector('[role="status"]')!;
+    await waitFor(() => expect(region.textContent).toBe(ko.beacon.weak));
+    fireEvent.click(screen.getByRole("button", { name: ko.beacon.stop }));
+    await waitFor(() => expect(region.textContent).toBe(ko.beacon.stopped));
+  });
+
   it("시작 버튼이 세션을 점유하고 중지 버튼이 푼다", async () => {
     renderPanel("ko");
     expect(hasActiveGuideSession()).toBe(false);

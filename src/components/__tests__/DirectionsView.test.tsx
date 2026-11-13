@@ -508,6 +508,25 @@ describe("최근 경로 섹션", () => {
     expect(screen.getByText("clearAll")).toBeTruthy();
   });
 
+  it("칸별 최근 장소 목록도 조회 결과가 없는 화면에만 있다 — 조회하면 사라진다", async () => {
+    localStorage.clear();
+    seedRoutes();
+    localStorage.setItem(
+      "gildongmu:recent-endpoints-to:v1",
+      JSON.stringify([{ label: "서울월드컵경기장", lat: 37.568, lng: 126.897 }]),
+    );
+    stubFetch();
+    renderView();
+    // 칸별 목록 제목은 tRecent("titleFor") — mock 번역기라 key 그대로다.
+    expect(await screen.findByRole("heading", { name: "titleFor", level: 3 })).toBeTruthy();
+    fireEvent.click((await screen.findAllByText("item"))[0]);
+    // 조회 중(busy)부터 결과가 선 뒤까지 목록이 없다.
+    expect(screen.queryByRole("heading", { name: "titleFor", level: 3 })).toBeNull();
+    await waitFor(() => expect(screen.queryByRole("heading", { name: "title", level: 3 })).toBeNull());
+    expect(screen.queryByRole("heading", { name: "titleFor", level: 3 })).toBeNull();
+    expect(screen.queryByText("서울월드컵경기장")).toBeNull();
+  });
+
   it("활성화: 즉시 조회 시작 + 조회 버튼 포커스 선점, settled 후 섹션 숨김·기록 끌어올림", async () => {
     localStorage.clear();
     seedRoutes();

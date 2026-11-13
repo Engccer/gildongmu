@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { ArrowLeft, ArrowUpDown, MapPinPlus } from "lucide-react";
 import type {
@@ -1262,6 +1262,9 @@ export function DirectionsView({
   }
 
   const busy = phase.kind === "locating" || phase.kind === "loading";
+  // 최근 장소 목록은 조회 결과가 없는 화면에서만(아래 최근 경로와 같은 조건) — 결과가 서 있는데 칸마다 목록이
+  // 남으면 폼과 결과 사이를 가로막는다. 칸을 고치면 결과가 폐기되므로 목록은 그때 돌아온다.
+  const recentHidden = results !== null || busy;
   // 요약 수치는 저장하지 않고 results에서 파생한다(A8 + 독립 리뷰 2026-08-11) —
   // phase에 successCount를 들고 다니면 outcomes만 바꾸는 경로가 생길 때마다
   // 동기화가 필요하고(종전 계단 회피 토글 재조회가 그 경로였다), 편집 경로가 results를 리셋하는 15초 창에서 낡은 클로저로
@@ -1890,6 +1893,7 @@ export function DirectionsView({
           setRecentFrom((prev) => prev.map((x) => (x === e ? { ...x, pinned } : x)));
         }}
         tRecent={tRecent}
+        hideRecent={recentHidden}
       />
 
       <button
@@ -1944,6 +1948,7 @@ export function DirectionsView({
           setRecentTo((prev) => prev.map((x) => (x === e ? { ...x, pinned } : x)));
         }}
         tRecent={tRecent}
+        hideRecent={recentHidden}
       />
 
       {/* 경유지(N4, 선택 사항): 도착지와 조회 버튼 사이. 버튼을 누르면 그 자리가 필드로
@@ -1985,6 +1990,7 @@ export function DirectionsView({
               setRecentVia((prev) => prev.map((x) => (x === e ? { ...x, pinned } : x)));
             }}
             tRecent={tRecent}
+            hideRecent={recentHidden}
           />
           {/* 삭제하면 이 버튼과 필드가 함께 사라진다 — 조회 버튼으로 선점 이동. */}
           <button
@@ -2133,6 +2139,7 @@ export function DirectionsView({
                 setRecentVia((prev) => prev.map((x) => (x === e ? { ...x, pinned } : x)));
               }}
               tRecent={tRecent}
+              hideRecent={recentHidden}
               transfer={{
                 stopRefs: journeyStopRefs,
                 canSearchStops: canSearchJourneyStops,
@@ -2529,6 +2536,7 @@ function EndpointField({
   onClearRecent,
   onTogglePinRecent,
   tRecent,
+  hideRecent,
   transfer,
 }: {
   label: string;
@@ -2555,6 +2563,8 @@ function EndpointField({
   /** 고정 토글 — 부모가 저장 + 로컬 상태 in-place 교체(화면 재정렬 금지) */
   onTogglePinRecent: (e: RecentEndpoint, pinned: boolean) => void;
   tRecent: ReturnType<typeof useTranslations<"recent">>;
+  /** 조회 중이거나 결과가 서 있다 — 최근 장소 목록을 숨긴다. 기본값 없음(생략하면 목록이 결과 위에 남는다). */
+  hideRecent: boolean;
   /**
    * 「경유지/자동차 환승 추가」 입구 칸(E77 spec §3.1)일 때만. 정류장 줄을 장소 줄과 주소 줄 사이에 싣고, 역 장소 줄·정류장 줄은
    * 확정하지 않고 콜백으로 넘긴다(부모가 질문 대화상자를 연다). 없으면 종전 끝점 칸과 같다.
@@ -2604,6 +2614,15 @@ function EndpointField({
     recentFocusIndexRef.current = null;
     recentDeleteRefs.current[idx]?.focus();
   }, [recentRevision]);
+
+  // 조회가 시작되면 목록이 사라진다 — 포커스가 그 안에 있었다면 페인트 전에 이 칸의 입력으로 옮긴다(헌장 §5).
+  // 노드 제거에는 blur가 오지 않으므로 onFocus 표식으로 판정한다(DistanceBeacon 재조회 버튼과 같은 방식).
+  const recentFocusedRef = useRef(false);
+  useLayoutEffect(() => {
+    if (!hideRecent || !recentFocusedRef.current) return;
+    recentFocusedRef.current = false;
+    inputRef.current?.focus();
+  }, [hideRecent]);
 
   function deleteRecent(e: RecentEndpoint, index: number) {
     const next = onDeleteRecent(e);
@@ -2873,12 +2892,20 @@ function EndpointField({
             })}
           </ul>
         )}
-      {/* 최근 장소(스펙 2026-07-26): 후보 검색 전 상태에만. 조용히 나타나는 목록이라
+      {/* 최근 장소(스펙 2026-07-26): 후보 검색 전 상태에만, 조회 결과가 없는 화면에만(`hideRecent`). 조용히 나타나는 목록이라
           heading이 발견 경로(h3 — 뷰 제목 h2 아래 관례). 출발지·도착지 두 필드가 동시에
           노출될 수 있어 필드명을 헤딩에 포함(titleFor) — 동일 텍스트 헤딩 중복 방지
           (리뷰 확정 2026-07-26). 선택은 확정 공용 경로 재사용. */}
-      {candidates === null && visibleRecent.length > 0 && (
-        <section className="mt-2">
+      {candidates === null && !hideRecent && visibleRecent.length > 0 && (
+        <section
+          className="mt-2"
+          onFocus={() => {
+            recentFocusedRef.current = true;
+          }}
+          onBlur={() => {
+            recentFocusedRef.current = false;
+          }}
+        >
           <h3 className="text-sm font-semibold">
             {tRecent("titleFor", { field: label })}
           </h3>

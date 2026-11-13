@@ -213,6 +213,16 @@ export function DistanceBeacon({
 
   if (!guide.supported) return null;
 
+  /**
+   * 사용자가 누른 중지. 종료 문장을 창구에 게시한다 — 훅의 `stop()`은 자기 문장을 비우지만 빈 값은 창구에 올리지 않으므로
+   * (위 effect), 게시가 없으면 세션의 마지막 상태 문장("신호 약함" 등)이 끝난 화면에 그대로 남는다(대중교통 패널 중지와 같은 문장).
+   */
+  const stopByUser = () => {
+    onUserStop?.();
+    guide.stop();
+    announce(t("stopped"));
+  };
+
   const togglePanel = () => {
     // 시작/중지 겸용 트리거(startOnOpen·autoStart)는 **추적 상태로 동작을 고른다** — 라벨이 이미
     // 추적 상태로 정해지므로(아래) 동작도 같은 축이어야 한다. 다른 패널의 시작이 이 세션을
@@ -225,8 +235,8 @@ export function DistanceBeacon({
       return;
     }
     if (open) {
-      if (tracking) onUserStop?.();
-      guide.stop();
+      if (tracking) stopByUser();
+      else guide.stop();
     } else if (startOnOpen || autoStart) {
       guide.start();
       onStart?.();
@@ -296,8 +306,7 @@ export function DistanceBeacon({
                 type="button"
                 onClick={() => {
                   if (!tracking) return guide.start();
-                  onUserStop?.();
-                  guide.stop();
+                  stopByUser();
                 }}
                 className="mt-2 inline-flex min-h-11 items-center rounded-md bg-accent px-4 text-sm font-medium text-accent-foreground"
               >
