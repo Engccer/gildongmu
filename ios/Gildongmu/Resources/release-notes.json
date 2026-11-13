@@ -1,5 +1,10 @@
 [
   {
+    "version": "2.8",
+    "ko": "새로운 기능\n- 대중교통과 자동차를 함께 이용하는 경로를 찾을 수 있습니다. 길찾기에서 ‘경유지/자동차 환승 추가’를 눌러 갈아탈 역이나 정류장을 고르면, 전체 소요 시간과 예상 택시 요금을 알려 주고 타는 순서대로 안내합니다.\n- 지하철을 탄 뒤에도 길찾기를 시작할 수 있습니다. 출발지 검색에서 ‘지하철역 검색’을 누르고 지금 있는 역과 열차 방면을 고르면, 타고 있는 열차를 기준으로 경로를 찾습니다.\n- 채팅에서 대중교통과 자동차를 함께 이용하는 경로를 물으면 답변 아래에 경로 카드가 나타납니다. ‘안내 시작’을 누르면 바로 안내가 시작되고, ‘길찾기에서 열기’를 누르면 길찾기 화면에서 경로를 자세히 볼 수 있습니다.\n\n개선\n- 지하철을 타고 있는 동안 안내 화면에서 내릴 역, 빠른 하차 문, 나갈 출구 번호를 미리 확인할 수 있습니다.\n- 지하철에서 내리면 몇 번 출구로 나가야 하는지 먼저 알려 줍니다. 목적지까지의 도보 안내는 역 밖으로 나온 뒤에 시작됩니다. 바로 시작되지 않으면 ‘출구로 나왔어요’ 버튼을 눌러 주세요.",
+    "en": "Improvements\n- While riding the subway, the guidance screen now shows your stop, the best door for a quick exit, and the exit number in advance.\n- When you get off the subway, the app first tells you which exit to take. Walking guidance to your destination starts once you are outside the station. If it does not start right away, press “I've left the station”."
+  },
+  {
     "version": "2.7",
     "ko": "개선\n- 도보·자동차 안내 화면에서 남은 거리, 지금 할 행동, 다음 안내를 화면에 크게 나눠 보여 줍니다. VoiceOver를 쓸 때는 화면 위쪽에서 남은 거리, 가운데에서 지금 할 행동, 아래쪽에서 다음 안내를 바로 찾을 수 있습니다.\n- ‘안내 종료’ 버튼을 두 배로 키워 화면 맨 아래에서 쉽게 누를 수 있습니다.",
     "en": "Improvements\n- The walking guidance screen now shows the remaining distance, what to do now, and what comes next in large sections that fill the screen. With VoiceOver, you can find the remaining distance in the upper part of the screen, what to do now in the middle, and what comes next in the lower part.\n- The “Stop guidance” button is now twice as tall, so it is easy to press at the bottom of the screen."
