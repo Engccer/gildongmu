@@ -58,9 +58,26 @@ export interface RunResult {
 }
 
 export interface ResultFile {
-  run: { models: string[]; repeats: number; only?: string; measuredAt: string; interleaved: boolean; gitSha: string };
+  run: {
+    models: string[];
+    repeats: number;
+    only?: string;
+    measuredAt: string;
+    interleaved: boolean;
+    gitSha: string;
+    /**
+     * 세션에 보낸 systemInstruction 원문(키 `instructionKey(장소)`). 채점기의 지침 문구 대조(`scoreGrounding` `instruction`)를
+     * 재호출 없이 재채점할 때 같은 값으로 돌리려고 남긴다. 지침은 장소(이름·분류)에 따라서만 달라진다.
+     */
+    instructions?: Record<string, string>;
+  };
   cases: EvalCase[];
   results: RunResult[];
+}
+
+/** `run.instructions`의 키 — 장소 채팅이 아니면 빈 문자열. */
+export function instructionKey(place: { name?: string; category?: string } | undefined | null): string {
+  return place ? `${place.name ?? ""}|${place.category ?? ""}` : "";
 }
 
 const PROMO_END = "2026-12-31T23:59:59.999Z";

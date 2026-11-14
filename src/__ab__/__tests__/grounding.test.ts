@@ -168,6 +168,76 @@ describe("scoreGrounding — 엔티티 대조", () => {
   });
 });
 
+/**
+ * E86 Claude 측정(2026-11-14)에서 사람이 오탐으로 읽은 네 갈래. 갈래마다 통과해야 할 실제 답과,
+ * 같은 모양이지만 여전히 잡혀야 할 반례를 함께 둔다(면제를 넓히면 반례가 깨진다).
+ */
+describe("scoreGrounding — 도구 밖이지만 날조가 아닌 네 갈래(E86 Claude 실측)", () => {
+  /** systemInstruction의 리뷰순 한 줄(네이버 키가 있을 때 실린다) — 규칙 검사용 발췌. */
+  const INSTRUCTION =
+    '- 별점·평점·리뷰 수를 물으면 그 값은 제공되지 않음을 밝히고, 대신 search_places의 sort "review"(네이버 리뷰 많은 순, 최대 5곳)를 제안하거나 호출하라.';
+  const num = { fromTools: ["t"], fields: ["*"], kinds: ["number"] as const };
+  const name = { fromTools: ["t"], fields: ["*"], kinds: ["name"] as const };
+
+  it("① 지침 문구를 앞 낱말까지 옮긴 수치(「최대 5곳」)는 통과한다 — 09 Opus 낮음 rep1 원문", () => {
+    const text =
+      '스타벅스 강동역점이 붐비는지, 분위기가 어떤지는 확인하지 못했어요.\n\n리뷰를 참고하고 싶으시면 "강동역 카페"를 네이버 리뷰가 많은 순으로 최대 5곳 찾아 드릴게요.';
+    expect(scoreGrounding(CASE_09_GROUNDING, CONGESTION_NULL, text, KNOWN_09, INSTRUCTION)).toEqual({ pass: true, leaked: [] });
+    // 지침이 없으면 잡힌다 — 통과시키는 것은 이 규칙이다.
+    expect(scoreGrounding(CASE_09_GROUNDING, CONGESTION_NULL, text, KNOWN_09).leaked).toEqual(["number:5곳"]);
+  });
+  it("① 반례: 지침에 없는 수치, 앞 낱말이 다른 같은 수치, 지침 표현과 맨 수치가 섞인 답은 잡힌다", () => {
+    expect(scoreGrounding(num, [], "리뷰 많은 순으로 최대 10곳 찾아 드릴게요", [], INSTRUCTION).leaked).toEqual(["number:10곳"]);
+    expect(scoreGrounding(num, [], "근처 대여소 5곳을 찾았어요", [], INSTRUCTION).leaked).toEqual(["number:5곳"]);
+    expect(scoreGrounding(num, [], "최대 5곳까지 찾을 수 있어요. 근처에 카페 5곳이 있어요", [], INSTRUCTION).leaked).toEqual(["number:5곳"]);
+    // 도구 선언 설명에만 있는 「반경 150m」는 지침이 아니다(E86 61에서 사람이 날조로 읽은 문장).
+    expect(scoreGrounding(num, [], "주변 반경 150m 내에 23곳이 있습니다", [], INSTRUCTION).leaked).toEqual(["number:150m", "number:23곳"]);
+  });
+
+  it("② 다음 발화를 권하는 따옴표 예시 속 이름은 대조하지 않는다 — 42 Sonnet rep1·43 Opus 낮음 rep2 원문", () => {
+    expect(scoreGrounding(name, [], '예를 들어 "강남역 도착 정보"라고 하시면 바로 조회해 드리겠습니다.')).toEqual({ pass: true, leaked: [] });
+    expect(scoreGrounding(name, [], '서울에서 따릉이를 빌릴 계획이라면 "강남역 근처 따릉이"처럼 지명을 말씀해 주세요.')).toEqual({ pass: true, leaked: [] });
+    // 사용자 질문에 나온 이름은 원래부터 known으로 접지된다.
+    expect(scoreGrounding(name, [], "강남역 근처 대여소는 서울 데이터에서 찾아요", ["강남역 근처 따릉이 어디야"]).pass).toBe(true);
+  });
+  it("② 반례: 권유 꼬리 없는 따옴표, 권유가 아닌 「라고」, 따옴표 없는 「예를 들어」는 사실 서술이라 잡힌다", () => {
+    expect(scoreGrounding(name, [], '가장 가까운 역은 "강남역"입니다.').leaked).toEqual(["name:강남역"]);
+    expect(scoreGrounding(name, [], '"강남역"이라고 불리는 곳이 가장 가까워요.').leaked).toEqual(["name:강남역"]);
+    expect(scoreGrounding(name, [], "예를 들어 강남역 도착 정보라고 하시면 됩니다.").leaked).toEqual(["name:강남역"]);
+  });
+
+  /** 42의 실제 도착 메시지 모양(경춘선 하행). */
+  const ARRIVALS = [
+    {
+      name: "t",
+      response: {
+        arrivals: [
+          { line: "경춘선 하행, 춘천행 - 춘천방면", message: "3정거장 전 강촌." },
+          { line: "경춘선 하행, 춘천행 - 춘천방면 (ITX)", message: "23정거장 전 청량리." },
+        ],
+      },
+    },
+  ];
+  it("③ 도구 값의 끝 낱말에 「역」만 붙인 이름은 통과한다 — 42 Opus 보통 rep1·Opus 낮음 rep3 원문", () => {
+    expect(scoreGrounding(name, ARRIVALS, "다음 열차는 3정거장 전인 강촌역에 있어요.")).toEqual({ pass: true, leaked: [] });
+    expect(scoreGrounding(name, ARRIVALS, "ITX: 청량리역 출발, 23정거장 전")).toEqual({ pass: true, leaked: [] });
+  });
+  it("③ 반례: 도구에 없는 다른 역, 값 가운데 낱말(주소의 지역명)에 「역」을 붙인 이름은 잡힌다", () => {
+    expect(scoreGrounding(name, ARRIVALS, "다음 열차는 가평역에 있어요.").leaked).toEqual(["name:가평역"]);
+    const address = [{ name: "t", response: { address: "서울 강동구 천호대로 1077" } }];
+    expect(scoreGrounding(name, address, "서울역과 천호역 사이").leaked).toEqual(["name:서울역", "name:천호역"]);
+  });
+
+  const CLINIC = [{ name: "t", response: { items: [{ name: "365온(ON)가정의원", nameRoman: "365on(ON)gajeonguiwon" }] } }];
+  it("④ 도구 이름의 괄호 병기만 뺀 이름은 통과한다 — 04 Sonnet rep1 원문", () => {
+    expect(scoreGrounding(name, CLINIC, "4. **365온가정의원 (중구)**, 약 10.7km")).toEqual({ pass: true, leaked: [] });
+    expect(scoreGrounding(name, CLINIC, "365온(ON)가정의원")).toEqual({ pass: true, leaked: [] });
+  });
+  it("④ 반례: 괄호 밖 글자까지 바꾼 이름은 잡힌다", () => {
+    expect(scoreGrounding(name, CLINIC, "365가정의원, 365온누리가정의원").leaked).toEqual(["name:365가정의원", "name:365온누리가정의원"]);
+  });
+});
+
 describe("scoreGrounding — 어휘 강등(09 장소 앵커)", () => {
   it("3.7-flash 날조 7건(2026-08-14 5건 + 08-25 스모크 2건)을 전부 잡는다(머지 게이트)", () => {
     for (const s of fixture.fabricated) {

@@ -32,7 +32,7 @@ import { GEMINI_MODEL } from "@/lib/gemini/client";
 import { dataLocale } from "@/lib/data-locale";
 import type { ExecutionContext } from "@/lib/chat/types";
 import { checkLangInvariantArgs, scoreGrounding, type ToolOutput } from "./grounding";
-import { buildReport, parseModelSpec, type Checks, type ResultFile, type RunResult } from "./report";
+import { buildReport, instructionKey, parseModelSpec, type Checks, type ResultFile, type RunResult } from "./report";
 import { CASES, GILDONG, type Case } from "./cases";
 import {
   isClaudeModel,
@@ -136,6 +136,11 @@ function ctxOf(c: Case): ExecutionContext {
   };
 }
 
+/** 세션에 보내는 systemInstruction — 두 러너와 채점기·결과 파일이 같은 값을 쓰게 한 곳에서 만든다. */
+function instructionOf(c: Case): string {
+  return buildChatSystemInstruction("ko", c.place, { journey: false });
+}
+
 function checksOf(c: Case, toolCalls: string[], toolArgs: RoundStat["toolArgs"], toolOutputs: ToolOutput[], text: string): Checks {
   const checks: Checks = {};
   if (c.expectAny) checks.expect = c.expectAny.some((t) => toolCalls.includes(t));
@@ -145,8 +150,8 @@ function checksOf(c: Case, toolCalls: string[], toolArgs: RoundStat["toolArgs"],
     const v = checkLangInvariantArgs(c.langInvariantArgs, toolArgs);
     if (v !== null) checks.langInvariant = v;
   }
-  // 장소 앵커 이름·사용자 발화는 도구 밖에서 이미 주어진 문자열이라 leak이 아니다.
-  if (c.grounding) checks.grounding = scoreGrounding(c.grounding, toolOutputs, text, [c.place?.name ?? "", ...c.turns]);
+  // 장소 앵커 이름·사용자 발화는 도구 밖에서 이미 주어진 문자열이라 leak이 아니다. 지침은 수치 문구 대조에만 쓴다.
+  if (c.grounding) checks.grounding = scoreGrounding(c.grounding, toolOutputs, text, [c.place?.name ?? "", ...c.turns], instructionOf(c));
   return checks;
 }
 
@@ -178,7 +183,7 @@ async function runOne(real: GoogleGenAI, model: string, c: Case, rep: number): P
     const result = await runAgentLoop({
       ai: instrument(real, rounds, toolOutputs, spec.thinkingLevel),
       model: spec.model,
-      systemInstruction: buildChatSystemInstruction("ko", c.place, { journey: false }),
+      systemInstruction: instructionOf(c),
       tools: [{ functionDeclarations: availableDeclarations(new Set()) }],
       history,
       ctx,
@@ -226,7 +231,7 @@ async function runClaudeOne(client: ClaudeClientLike, model: string, c: Case, re
       {
         client,
         spec: parseClaudeSpec(model),
-        systemInstruction: buildChatSystemInstruction("ko", c.place, { journey: false }),
+        systemInstruction: instructionOf(c),
         tools: toAnthropicTools(availableDeclarations(new Set())),
         turns: c.turns,
         ctx: ctxOf(c),
@@ -306,7 +311,15 @@ it("모델 A/B 실호출", async () => {
   }
 
   const file: ResultFile = {
-    run: { models: MODELS, repeats: REPS, only, measuredAt, interleaved: true, gitSha: gitSha() },
+    run: {
+      models: MODELS,
+      repeats: REPS,
+      only,
+      measuredAt,
+      interleaved: true,
+      gitSha: gitSha(),
+      instructions: Object.fromEntries(cases.map((c) => [instructionKey(c.place), instructionOf(c)])),
+    },
     cases: cases.map(({ place, withLocation, location, ...rest }) => ({ ...rest, context: { place, withLocation, location } })),
     results,
   };
